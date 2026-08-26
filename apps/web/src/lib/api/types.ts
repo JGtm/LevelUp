@@ -137,29 +137,12 @@ export interface FilterMatchIdsResponse {
 // Setup / Auth (Slice 1)
 // ---------------------------------------------------------------------------
 
-export interface SetupAuthInfo {
-  has_client_id: boolean
-  has_refresh_token: boolean
-  has_msal_cache: boolean
-  preferred_method: 'refresh_token' | 'device_code' | 'unknown'
-}
-
 export interface SetupPlayerInfo {
   has_any_profile: boolean
   default_player_slug: string | null
 }
 
 export type SetupNextStep = 'choose_mode' | 'auth' | 'player' | 'initial_sync' | 'smoke_test' | 'done'
-
-// @deprecated sprint 29 — GET /setup/status est un artefact mort (absent FastAPI + Go).
-// Conserver temporairement pour ne pas casser les imports existants.
-// À supprimer avec useSetupStatus() au Sprint 32.
-export interface SetupStatusResponse {
-  needs_setup: boolean
-  auth: SetupAuthInfo
-  player: SetupPlayerInfo
-  next_blocking_step: SetupNextStep
-}
 
 export interface DeviceFlowStartResponse {
   attempt_id: string

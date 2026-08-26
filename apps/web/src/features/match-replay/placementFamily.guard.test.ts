@@ -184,10 +184,21 @@ describe('garde-rail : le vocabulaire des familles de pose', () => {
  * lu/pause, boucle rAF, curseur de la frise, arret sur la derniere image — part dans
  * `useReplayPlayback.ts`, huitieme extraction imposee par ce cliquet. Le canvas garde le
  * DESSIN, le hook porte le TEMPS.
+ *
+ * 742 -> 706 le 2026-08-26 (capture d'image et enregistrement video) : le canvas etait PILE a
+ * son plafond, a la ligne pres, et le lot y branche deux commandes de sortie. Le CADRAGE —
+ * fond retenu ou ecarte, bornes de scene, largeur de dessin, amplitude verticale, projection
+ * partagee et trame d'altitudes — part dans `useReplayView.ts`, neuvieme extraction imposee
+ * par ce cliquet. Les noms sortent inchanges, donc pas une ligne du dessin ne bouge.
+ *
+ * LE CABLAGE DE LA CAPTURE TIENT EN QUATRE LIGNES, et il n'en prendra pas une de plus : le
+ * hook rend UN objet (`ReplayCapture`, patron de `ReplaySound`) que le canvas repasse tel quel
+ * a la barre. L'enregistrement video puis le son de la video se branchent en ETENDANT l'appel
+ * existant, pas en l'allongeant — c'est ce qui permet a ce plafond de tenir sur les trois lots.
  */
 describe('garde-rail : la taille du canvas du rejeu ne remonte pas', () => {
   it('ReplayCanvas.tsx reste sous son plafond', () => {
     const src = readFileSync(resolve(__dirname, 'ReplayCanvas.tsx'), 'utf8')
-    expect(src.split('\n').length - 1).toBeLessThanOrEqual(742)
+    expect(src.split('\n').length - 1).toBeLessThanOrEqual(706)
   })
 })
