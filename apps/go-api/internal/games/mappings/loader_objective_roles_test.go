@@ -90,6 +90,38 @@ schema_version = 1
 match = ["CTF"]
 roles = ["flag_spawn"]
 `, "title_slug manquant"},
+		// LE GARDE-FOU DU CORRECTIF DU 2026-08-26 : `points_only` sur un rôle SURFACIQUE
+		// effacerait les bases de la carte en les réduisant à des marqueurs — une régression
+		// majeure en une ligne de configuration, et parfaitement crédible à l'écran.
+		{"points_only sur un role surfacique", `
+[meta]
+title_slug = "halo_infinite"
+schema_version = 1
+[[modes]]
+match = ["Strongholds"]
+roles = ["strongholds_zone"]
+points_only = true
+`, "points_only interdit sur le rôle surfacique"},
+		{"points_only sur la colline", `
+[meta]
+title_slug = "halo_infinite"
+schema_version = 1
+[[modes]]
+match = ["KOTH"]
+roles = ["hill"]
+points_only = true
+`, "points_only interdit sur le rôle surfacique"},
+		// Le rôle ponctuel d'un mode mixte ne sauve pas l'entrée : c'est le rôle SURFACIQUE
+		// qui la fait refuser, où qu'il soit dans la liste.
+		{"points_only sur un mode mixte", `
+[meta]
+title_slug = "halo_infinite"
+schema_version = 1
+[[modes]]
+match = ["Bizarre"]
+roles = ["flag_spawn", "extraction_zone"]
+points_only = true
+`, "points_only interdit sur le rôle surfacique"},
 	}
 	for _, c := range cas {
 		t.Run(c.nom, func(t *testing.T) {
@@ -178,6 +210,34 @@ func TestObjectiveRoles_FichierDuDepot(t *testing.T) {
 	}
 	if !neutres[mapvar.RoleTotalControlZone] {
 		t.Error("totalcontrol_zone doit être neutre : la possession d'une zone est dynamique")
+	}
+	// LE DRAPEAU `points_only` DU FICHIER VERSIONNÉ (correctif du 2026-08-26). Les quatre
+	// modes dont l'objectif se TOUCHE le portent ; les quatre dont l'objectif se TIENT ne
+	// doivent SURTOUT pas l'avoir — c'est la même liste, prise par ses deux bouts.
+	ponctuels := map[mapvar.Role]bool{}
+	for _, m := range modes {
+		for _, r := range m.Roles {
+			if m.PointsOnly {
+				ponctuels[r] = true
+			}
+		}
+	}
+	for _, r := range []mapvar.Role{
+		mapvar.RoleFlagSpawn, mapvar.RoleFlagDelivery, mapvar.RoleOddballSpawn,
+		mapvar.RoleStockpileSocket, mapvar.RoleStockpileNavpoint, mapvar.RoleAssaultBomb,
+	} {
+		if !ponctuels[r] {
+			t.Errorf("%s doit être points_only : son objectif se touche, il ne se tient pas — "+
+				"sans ce drapeau, une forme au catalogue redeviendrait une base dessinée", r)
+		}
+	}
+	for _, r := range []mapvar.Role{
+		mapvar.RoleStrongholdZone, mapvar.RoleExtractionZone, mapvar.RoleHill,
+		mapvar.RoleTotalControlZone,
+	} {
+		if ponctuels[r] {
+			t.Errorf("%s ne doit JAMAIS être points_only : c'est une aire qu'on tient", r)
+		}
 	}
 }
 

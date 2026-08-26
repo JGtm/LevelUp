@@ -17,6 +17,38 @@
 # un UUID brut) = aucun role = aucun calque. Plusieurs entrees peuvent matcher : leurs
 # roles s'additionnent.
 #
+# `points_only = true` : les objets du mode sont des POINTS, quelle que soit la forme que le
+# fichier de carte leur donne — un objet a forme sort en MARQUEUR (son centre), jamais en zone
+# dessinee. AJOUTE LE 2026-08-26 sur signalement utilisateur (« des bases s'affichent sur un
+# CTF », film 530820e5 sur Catalyst).
+#
+# CE QUI SE PASSAIT. Le catalogue porte des formes sur des roles qui ne sont pas des aires a
+# tenir, et `BuildMapObjectives` transformait TOUT objet a forme en zone. Recensement du
+# 2026-08-26 sur les 73 entrees du catalogue (1 764 objets) :
+#
+#   flag_delivery        28 objets a forme sur 14 cartes (Catalyst en porte 2, en cylindre)
+#   stockpile_navpoint   32 objets a forme sur 16 cartes (AUCUN ponctuel : tous a forme)
+#   assault_bomb          2 objets a forme sur  2 cartes
+#   flag_spawn / oddball_spawn / stockpile_socket   0 objet a forme — rien a corriger, mais
+#                        leurs modes portent le drapeau quand meme (voir ci-dessous)
+#
+# LE CATALOGUE N'EST PAS MODIFIE, ET C'EST DELIBERE : cette forme est une donnee REELLE du
+# fichier de carte (l'aire ou la capture du drapeau est validee, le volume ou le noyau se
+# depose). Ce qui etait faux, c'est de la PRESENTER comme une base de Bastion. La distinction
+# « objectif qu'on TIENT » contre « objectif qu'on TOUCHE » est un savoir du TITRE : elle vit
+# donc ici, en donnee, et pas dans le decodeur.
+#
+# LE DRAPEAU SE POSE PAR MODE, PAS PAR ROLE, et c'est ce qui le rend robuste : en CTF, en
+# Assaut, en Stockpile et en Oddball, AUCUN objectif n'est une aire qu'on tient — on porte un
+# objet, on le depose quelque part. Marquer les quatre entrees couvre donc aussi les roles qui
+# n'ont aucune forme aujourd'hui (`flag_spawn`, `oddball_spawn`, `stockpile_socket`) : une
+# regeneration du catalogue qui leur en donnerait une ne rouvrirait pas le defaut.
+#
+# GARDE-FOU AU CHARGEMENT : `points_only` est REFUSE sur un role surfacique
+# (`strongholds_zone`, `extraction_zone`, `hill`, `totalcontrol_zone`, `firefight_objective`).
+# Sans ce refus, une ligne de configuration ferait disparaitre les trois bases d'une carte de
+# Bastion en les reduisant a des marqueurs — une regression majeure et silencieuse.
+#
 # `neutral = true` : les objets du mode s'affichent NEUTRES meme si le fichier .mvar
 # leur donne un team_index. MESURE sur le catalogue 72 cartes : 48 zones de Bastion en
 # equipe 0 et 47 en equipe 1 (Vagabond en porte) — or la possession d'une zone de
@@ -46,8 +78,9 @@ schema_version = 1
 # Toutes les variantes drapeau : le jeton "CTF" attrape CTF / One Flag CTF / Fiesta CTF /
 # Neutral Flag CTF / CTF 3 Captures ; "Neutral Flag" attrape "Arena Neutral Flag" (mesure
 # sur les 435 pair_name du registre local, 2026-08-13).
-match = ["CTF", "Neutral Flag"]
-roles = ["flag_spawn", "flag_delivery"]
+match       = ["CTF", "Neutral Flag"]
+roles       = ["flag_spawn", "flag_delivery"]
+points_only = true
 
 [[modes]]
 match   = ["Strongholds"]
@@ -55,12 +88,14 @@ roles   = ["strongholds_zone"]
 neutral = true
 
 [[modes]]
-match = ["Oddball"]
-roles = ["oddball_spawn"]
+match       = ["Oddball"]
+roles       = ["oddball_spawn"]
+points_only = true
 
 [[modes]]
-match = ["Stockpile"]
-roles = ["stockpile_socket", "stockpile_navpoint"]
+match       = ["Stockpile"]
+roles       = ["stockpile_socket", "stockpile_navpoint"]
+points_only = true
 
 [[modes]]
 match   = ["Extraction"]
@@ -71,8 +106,9 @@ neutral = true
 # Les variantes bombe sont des habillages d'Assaut : "Neutral Bomb", "One Bomb",
 # "Neutral Bomb Squad" (mesure registre local). L'objet assault_bomb est l'apparition
 # de la bombe — neutre dans le fichier (4/4 en team_index -1).
-match = ["Assault", "Neutral Bomb", "One Bomb"]
-roles = ["assault_bomb"]
+match       = ["Assault", "Neutral Bomb", "One Bomb"]
+roles       = ["assault_bomb"]
+points_only = true
 
 [[modes]]
 # King of the Hill (lot C-ter volet 2, 2026-08-19). "King of the Hill" attrape les pair_name
