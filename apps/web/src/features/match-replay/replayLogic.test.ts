@@ -226,3 +226,29 @@ describe('sceneBounds avec un sol reconstruit', () => {
     expect(sceneBounds(doc)).toEqual(doc.bounds)
   })
 })
+
+describe('sceneBounds avec un fond de carte posé', () => {
+  // LE DÉFAUT CORRIGÉ (2026-08-26, capture utilisateur) : une image posée remplace les props
+  // Forge à l'écran (ils sont le `else if` du fond dans ReplayCanvas), mais l'union les
+  // gardait au dénominateur du cadre. Le cadre était dimensionné sur de la matière INVISIBLE
+  // et la carte se réduisait à un timbre dans un canvas vide.
+  const props = { minX: -400, minY: -400, maxX: 400, maxY: 400 }
+
+  it('écarte les props du cadre — la zone jouée seule', () => {
+    const doc = makeDoc({ geometryBounds: props })
+    expect(sceneBounds(doc, true)).toEqual(doc.bounds)
+  })
+
+  it('sans image, les props cadrent encore : ils sont alors le seul fond', () => {
+    const doc = makeDoc({ geometryBounds: props })
+    expect(sceneBounds(doc, false)).toMatchObject({ minX: -400, maxX: 400, maxY: 400 })
+  })
+
+  it('le cadre avec image est stable même quand les props explosent', () => {
+    // Le témoin qui MORD : si l'image cessait d'écarter les props, ces deux cadres
+    // différeraient d'un facteur 40.
+    const serre = sceneBounds(makeDoc({ geometryBounds: { minX: -1, minY: -1, maxX: 1, maxY: 1 } }), true)
+    const large = sceneBounds(makeDoc({ geometryBounds: props }), true)
+    expect(large).toEqual(serre)
+  })
+})

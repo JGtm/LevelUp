@@ -161,11 +161,18 @@ export function canvasScale(
  * ±250 m (skybox, décor lointain) là où les joueurs en parcourent 50 : cadrer sur elle
  * réduirait le terrain à un timbre au centre de l'écran. C'est aussi le cadrage du POC.
  *
- * SANS SOL, les props Forge redeviennent le seul fond, et ils débordent de la zone parcourue :
- * on cadre alors sur l'union, sinon ils seraient rognés.
+ * `hasMapImage` ÉTEND CETTE MÊME RÈGLE AU FOND DE CARTE, et le défaut qu'elle corrige était
+ * visible à l'écran (2026-08-26) : quand une image est posée, `ReplayCanvas` ne dessine PAS
+ * les props Forge (ils sont le `else if` du fond), mais l'union les gardait au dénominateur
+ * du cadre. Le cadre était donc dimensionné sur une matière INVISIBLE, et la carte se
+ * réduisait à un timbre dans un canvas vide. Une image de carte est un fond au même titre
+ * qu'un sol reconstruit : elle rend les props inutiles au cadrage.
+ *
+ * SANS SOL NI IMAGE, les props Forge redeviennent le seul fond, et ils débordent de la zone
+ * parcourue : on cadre alors sur l'union, sinon ils seraient rognés.
  */
-export function sceneBounds(doc: ReplayDocumentReady): ReplayBounds {
-  if (doc.structure?.length) return doc.bounds
+export function sceneBounds(doc: ReplayDocumentReady, hasMapImage = false): ReplayBounds {
+  if (hasMapImage || doc.structure?.length) return doc.bounds
   const g = doc.geometryBounds
   if (!g) return doc.bounds
   return {
