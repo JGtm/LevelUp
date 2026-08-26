@@ -256,6 +256,34 @@ Sans lui, chaque phase suivante decouvrirait son corpus en cours de route. 951 f
 (`data/cache/film_chunks`), mais leur MODE n'est pas dans le manifeste : il se lit dans
 `match_registry.game_variant_name`.
 
+> **D1 EST BLOQUE SUR SON OUTILLAGE (2026-08-26), et voici jusqu'ou il est alle.** L'item D1.1
+> prescrit un `COPY (...) TO ...` en lecture seule, sur le modele de `oracle_export.sql`. Cette
+> recette suppose un client SQL : le serveur MCP `duckdb` documente par `CLAUDE.md`, ou le binaire
+> `duckdb`. **Aucun des deux n'est disponible dans cette session** (`duckdb` absent du PATH, MCP
+> non expose), et un `server.exe` tient la base — toute ouverture doit passer par
+> `OpenReadForQuery`, donc par du code Go.
+>
+> CE QUI A ETE OBTENU MALGRE TOUT, avec le CLI EXISTANT et teste (`cmd/zone-attribution
+> -select-only`, `OpenReadForQuery`, aucune ecriture) :
+>
+>	1 940 matchs au registre · 208 en mode a ZONES · 151 sans film en cache ·
+>	3 sans bornes de carte · 6 sans formes au catalogue · 48 MESURABLES
+>
+> **ET CE CHIFFRE NE REPOND PAS A LA QUESTION DE D1**, il faut le dire : ce CLI compte les zones
+> du role `strongholds_zone` SEUL. Les 48 films eligibles rendent tous « 3 zone(s) » — la
+> signature exacte de Bastion (3 zones par carte, sans exception mesuree le 2026-08-20). Une carte
+> de Total Control en declare 13 a 18 : aucun de ces 48 n'en est un, mais l'outil ne saurait pas
+> le DIRE — un match de Total Control tomberait dans les « 6 sans formes au catalogue » sans etre
+> nomme. Et il ne voit ni Oddball, ni Extraction, ni Stockpile, qui ne sont pas de la famille
+> `zone`.
+>
+> **ARBITRAGE DEMANDE (§6, n°7)** : le recensement par mode exige un chemin de lecture qui
+> n'existe pas. Trois options, par cout croissant — (a) exposer le MCP `duckdb` a la session ;
+> (b) ajouter un drapeau `-mode` a `cmd/zone-attribution` (mais c'est un outil de MESURE, pas de
+> recensement) ; (c) un petit `cmd` de recensement dedie. Creer un binaire de production pour un
+> comptage ponctuel est une decision, pas une initiative d'executeur : elle revient au
+> superviseur.
+
 - [ ] D1.1 Export LECTURE SEULE d'un recensement : `match_id`, `game_variant_name`, `map_id`,
       `map_name`, `start_time` pour tout `match_registry`. Meme recette que l'oracle du lot A
       (`registre_film/oracle_export.sql`) : un `COPY (...) TO '<repo>/.ai/V7.5/replay2d/registre_film/census_modes_2026-08.tsv' (HEADER, DELIMITER E'\t')`.
@@ -757,6 +785,18 @@ ecriture ; jamais `git add -A` ; aucun push ; aucune attente passive.
    volontairement absente sur une colline. La progression sur forme concerne donc Bastion
    d'abord, Total Control apres D3, et JAMAIS la colline de KOTH — qui garde sa seule
    appartenance. Confirmer que ce perimetre reduit est bien celui attendu.
+7. **Le chemin de recensement de D1 n'existe pas** (detail au bloc D1). Le plan prescrit un
+   `COPY` SQL en lecture seule ; ni le MCP `duckdb` ni le binaire `duckdb` ne sont disponibles, et
+   la base est tenue par un serveur. Trois options : exposer le MCP a la session ; ajouter un
+   drapeau `-mode` a `cmd/zone-attribution` (mais c'est un outil de MESURE) ; ou un `cmd` de
+   recensement dedie. Creer un binaire de production pour un comptage ponctuel est une decision
+   de superviseur, pas une initiative d'executeur.
+8. **D2-bis : 88-89 % avec un temoin a 56 % — suffisant ou non ?** Le seuil de 90 % n'est pas
+   atteint et n'a pas ete rebaisse. Trois suites possibles : basculer sur l'oracle du score
+   PERSONNEL (le dernier disponible) ; remesurer avec un temoin de permutation excluant les slots
+   FRERES de l'objet de mode (defaut signale, deliberement NON corrige apres coup) ; ou trancher
+   que ce niveau de preuve suffit pour un calque de rejeu — cette derniere est une decision
+   PRODUIT, elle ne m'appartient pas.
 
 ---
 
