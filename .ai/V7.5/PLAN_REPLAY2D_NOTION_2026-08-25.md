@@ -84,18 +84,44 @@ Items (chaque item statué `[x]`/`[~]`/`[!]` au CR) :
   PAS `held` — une zone tenue par un camp non situable (aucune ligne « moi ») garde le trait
   plein. Mordant prouvé par double mutation (dont la confusion `held`/`owner`).
 
-- [ ] A7 (demande utilisateur 25/08, reçue en cours de pilotage) : fiche joueur à l'état
+- [x] A7 (demande utilisateur 25/08, reçue en cours de pilotage) : fiche joueur à l'état
   MORT : (a) retirer l'accentuation de la bordure gauche de la fiche ; (b) centrer le
   compteur de réapparition ; (c) retirer la jauge (barre de progression de réapparition).
   Ancres candidates : `ReplayTeams.tsx` / `ReplayVitality.tsx` — vérifier sur pièces.
   Mêmes gates que A1-A6 ; clés i18n orphelines supprimées le cas échéant ; 0 code mort.
-- [ ] A8 (demande utilisateur 25/08, reçue en cours de pilotage) : (a) retirer le bandeau
+  Les DEUX ancres étaient bonnes. (a) `[x]` `ReplayTeams.tsx:228` — `style.boxShadow =
+  'inset 2px 0 0 destructive'` supprimé du branchement `!state.alive` ; le FOND teinté et le
+  nom à l'encre `destructive` restent (la mort se lit toujours, vérifié par un test dédié).
+  (b) `[x]` `ReplayVitality.tsx` `RespawnRow` — `justify-center` sur la rangée du compte,
+  `text-center` sur la lacune « Réapparition ? » (même cellule, même centrage).
+  (c) `[x]` jauge `role="progressbar"` supprimée (ex-`:98-109`) avec le calcul `span`/`progress`
+  qui ne servait qu'à elle et la clé i18n orpheline `respawnBarLabel` (FR + EN + contrat).
+  7 tests ; mordant prouvé par double mutation — dont un FAUX VERROU corrigé au passage : le
+  cas de centrage visait le PARENT de la rangée, qui porte déjà `justify-center` pour son
+  centrage vertical, et survivait donc à la mutation.
+
+- [x] A8 (demande utilisateur 25/08, reçue en cours de pilotage) : (a) retirer le bandeau
   « Données de rejeu d'une version antérieure — certains éléments peuvent manquer. »
   (clé i18n FR+EN + contrat + logique d'affichage ; NE PAS supprimer la constante
-  `EXPECTED_REPLAY_SCHEMA_VERSION` si elle a d'autres lecteurs — vérifier sur pièces) ;
-  (b) retirer l'accentuation sur les lignes du kill feed (même esprit que la bordure de
-  fiche A7 — identifier l'accent exact sur pièces avant de retirer). Mêmes gates ;
-  0 code mort.
+  `EXPECTED_REPLAY_SCHEMA_VERSION` si elle a d'autres lecteurs) ; (b) retirer
+  l'accentuation sur les LIGNES du kill feed.
+  (a) `[x]` bandeau retiré de `replay.tsx` (le `<p>` conditionnel + le calcul `schemaState` +
+  l'import). VÉRIFICATION SUR PIÈCES DES CONSOMMATEURS, comme demandé : `replaySchemaState()`
+  et le type `ReplaySchemaState` n'avaient AUCUN autre lecteur que ce bandeau — supprimés avec
+  `replaySchemaLogic.test.ts`, sans quoi ils devenaient du code mort à tests verts.
+  `EXPECTED_REPLAY_SCHEMA_VERSION` **et** `replaySchemaLogic.guard.test.ts` sont **CONSERVÉS** :
+  le garde-rail de parité avec la constante Go en est un consommateur vivant. Clés
+  `replaySchemaStale` / `replaySchemaAhead` retirées (FR + EN + contrat).
+  POINT D'ARBITRAGE : la constante n'a plus de lecteur À L'EXÉCUTION, son seul consommateur est
+  désormais son propre garde-rail de parité. Conservée sur consigne explicite ; l'en-tête du
+  fichier le dit noir sur blanc pour qui reviendra.
+  (b) `[x]` les TROIS `borderLeft: 3px solid …` du fil retirés (`ReplayKillFeed.tsx` — ligne de
+  kill, mort neutre, médaille seule). **CONSERVÉ ET SIGNALÉ** : le fond BLEUTÉ des morts
+  assistées (`color-mix(info 10%)`) — c'est une information mesurée (assistant nommé), pas un
+  ornement ; un test existant l'ancrait déjà, mutation vérifiée. Le camp reste dit par la
+  couleur du nom du tueur et de sa victime sur la même ligne.
+  3 tests ; mordant prouvé par double mutation (liseré médaille restauré -> 1 échec ; fond
+  assisté retiré -> 1 échec, le verrou de l'assistance).
 
 Gates (dans le worktree, exit codes réels) : `npm ci` (autorisé), typecheck
 (`npx tsc -b` via `make check-types` ou équivalent local), `npx vitest run` ciblé
@@ -106,8 +132,12 @@ STATUT LOT A (25/08) : A1-A6 FUSIONNÉS dans feat/v75 (merge --no-ff, gates rejo
 principal après fusion : tsc -b exit 0 cache purgé, vitest 75 fichiers / 1083 tests
 exit 0). Arbitrages superviseur : phrase `layerAimHint` GARDÉE (elle répond à la question
 utilisateur dans le produit) ; cliquet canvas 742 GARDÉ (croissance par extraction
-uniquement — consigne transmise au lot D). A7 en vol (2e passe du même exécuteur,
-même branche `wt/ui-rejeu`, 2e fusion à son CR).
+uniquement — consigne transmise au lot D). (26/08) A7+A8 FUSIONNÉS (2e passe, gates
+rejoués au principal). Arbitrages superviseur 2e passe : fond bleuté des morts assistées
+CONSERVÉ (information mesurée `assist_state`, à signaler à l'utilisateur — retrait
+possible en 1 ligne s'il le veut) ; `EXPECTED_REPLAY_SCHEMA_VERSION` + garde de parité
+CONSERVÉS avec condition au registre (à la clôture du lot D : si toujours aucun lecteur
+à l'exécution, supprimer constante + garde). LOT A CLOS.
 
 ## Lot B — `wt/notif-rejeu` (Go, pt 5)
 

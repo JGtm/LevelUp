@@ -1,27 +1,26 @@
 /**
- * replaySchemaLogic.ts — LA GARDE `schemaVersion`, absente jusqu'à ce lot (audit
- * AUDIT_AVAL_INVENTAIRE_2026-08-24.md, point 1, le plus grave).
+ * replaySchemaLogic.ts — LA VERSION DE SCHÉMA que ce build du client attend.
  *
- * CE QUE L'AUDIT CONSTATAIT : le client ne lisait JAMAIS `doc.schemaVersion`. Un artefact
- * construit avant un bump de schéma sert une fiche AMPUTÉE — un champ ajouté par la montée
- * n'existe simplement pas sur le vieil artefact — et rien à l'écran ne le distingue d'un
- * « rien à afficher ». La reprise du backfill se fait par SchemaVersion (opérateur, commande
- * manuelle, cf. `cmd_backfill_replay.go`) : tant qu'elle n'a pas tourné pour un match donné,
- * son artefact reste dégradé SANS SIGNAL.
+ * CE QU'IL RESTE DE LA GARDE `schemaVersion` (lot 2, audit AUDIT_AVAL_INVENTAIRE_2026-08-24,
+ * point 1). Le lot 2 avait posé DEUX choses : la copie locale de la constante Go, et une NOTE à
+ * l'écran quand l'artefact reçu n'était pas de la version attendue (« Données de rejeu d'une
+ * version antérieure — certains éléments peuvent manquer »). La NOTE a été retirée le
+ * 2026-08-25 sur demande utilisateur : elle s'affichait sur des rejeux parfaitement lisibles,
+ * à chaque bump de schéma, jusqu'à ce que le backfill soit repassé — c'est-à-dire pendant des
+ * jours, sur des matchs auxquels il ne manquait rien de visible. La fonction de comparaison qui
+ * ne servait qu'à elle est partie avec (règle 0 code mort).
  *
- * CE QUE CE FICHIER AJOUTE, ET CE QU'IL N'AJOUTE PAS. Une note DISCRÈTE, jamais un blocage —
- * la fiche continue d'afficher tout ce que l'artefact porte (décision produit du lot, cf.
- * LOT2_TELEMETRIE_GARDE_SCHEMA_2026-08-25.md). Ni le REJET des lectures antérieures à l'origine
- * (point 2 de l'audit) ni le fixture `SelectedGrenadeRank` (découverte du lot 1) n'entrent
- * dans ce périmètre.
+ * CE QUI RESTE, ET POURQUOI. La copie locale de `replay.SchemaVersion` et son garde-rail de
+ * PARITÉ (`replaySchemaLogic.guard.test.ts`) : le contrat généré (`lib/api/generated.ts`) type
+ * `schemaVersion` en `number` sans valeur littérale — cette valeur varie d'un artefact à
+ * l'autre, c'est le point. La source de vérité reste donc la constante Go
+ * (`internal/analysis/replay/document.go`), et le garde-rail lit ce fichier pour interdire à la
+ * copie de dériver. Il documente, dans le front, la version que le back sert aujourd'hui.
  *
- * D'OÙ VIENT `EXPECTED_REPLAY_SCHEMA_VERSION`. Le contrat généré (`lib/api/generated.ts`) type
- * `schemaVersion` en `number` — il ne PORTE aucune valeur littérale, puisque cette valeur
- * varie précisément d'un artefact à l'autre (c'est le point). La source de vérité reste donc
- * la constante Go `replay.SchemaVersion` (document.go) ; ce fichier en garde une COPIE locale,
- * documentée, avec un garde-rail de PARITÉ (`replaySchemaLogic.guard.test.ts`, même patron que
- * `placementFamily.guard.test.ts`) qui lit le fichier Go et fait échouer le test si les deux
- * divergent — une génération dédiée pour un seul entier serait disproportionnée.
+ * ATTENTION SI L'ON REVIENT ICI : depuis le retrait de la note, la constante n'a plus de
+ * lecteur À L'EXÉCUTION — son seul consommateur est le garde-rail de parité. La rebrancher
+ * (télémétrie, garde de lecture par version) est le geste qui lui rendrait un rôle ; la
+ * supprimer ferait perdre l'ancrage vérifiable entre les deux côtés.
  */
 
 /**
@@ -31,27 +30,3 @@
  * constante Go — la mettre à jour ici NE SUFFIT PAS à faire mentir le garde-rail.
  */
 export const EXPECTED_REPLAY_SCHEMA_VERSION = 19
-
-/**
- * ReplaySchemaState — les trois lectures possibles d'un `schemaVersion` reçu face à ce que ce
- * build du client sait exploiter :
- * - `current` : les deux versions concordent, rien à dire ;
- * - `stale`   : l'artefact est ANTÉRIEUR — construit avant un bump que ce client attend. C'est
- *   le cas de l'audit : un backfill n'a pas encore tourné sur ce match ;
- * - `ahead`   : l'artefact est POSTÉRIEUR — ce déploiement du client est en retard sur le
- *   format que le serveur sert désormais. Rare (suppose un serveur redéployé avant le client),
- *   mais symétrique : un client qui ignorerait silencieusement des champs qu'il ne connaît pas
- *   encore mérite la même note que l'inverse.
- */
-export type ReplaySchemaState = 'current' | 'stale' | 'ahead'
-
-/**
- * replaySchemaState compare le `schemaVersion` d'un artefact reçu à la version que CE build du
- * client sait exploiter. PURE — aucune I/O, aucun accès document : c'est ce qui la rend
- * testable sans fabriquer un ReplayDocument complet.
- */
-export function replaySchemaState(schemaVersion: number): ReplaySchemaState {
-  if (schemaVersion < EXPECTED_REPLAY_SCHEMA_VERSION) return 'stale'
-  if (schemaVersion > EXPECTED_REPLAY_SCHEMA_VERSION) return 'ahead'
-  return 'current'
-}

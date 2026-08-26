@@ -301,6 +301,48 @@ describe('ReplayKillFeed — les médailles du fil', () => {
   })
 })
 
+/**
+ * PLUS DE LISERÉ DE LIGNE (demande utilisateur du 2026-08-25, la même que pour la fiche morte).
+ * Les TROIS formes de ligne le portaient — kill, mort neutre, médaille seule — et les trois
+ * sont vérifiées ici, sur des rendus qui les produisent réellement. Le fond BLEUTÉ des morts
+ * assistées, lui, RESTE : c'est une information mesurée (un assistant nommé), pas un ornement —
+ * il a son propre verrou dans le bloc de l'assistance ci-dessous.
+ */
+describe('ReplayKillFeed — aucune ligne ne porte de liseré gauche', () => {
+  const bordsDe = (container: HTMLElement) =>
+    Array.from(container.querySelectorAll('li')).map(
+      (li) => (li as HTMLElement).style.borderLeft,
+    )
+
+  it('ligne de kill : aucun bord gauche', () => {
+    const { container } = renderFeed([kill({ tMs: 1_000, xuid: 'me' })], 20_000)
+    expect(bordsDe(container)).toEqual([''])
+  })
+
+  // MÊME MONTAGE que le bloc « le fil sur le référentiel des pistes » : deux vies de « foe »,
+  // la seconde se terminant sans qu'aucun kill ne la revendique. Le rendu porte alors les DEUX
+  // formes à la fois — la ligne de kill et la ligne neutre — et aucune ne doit avoir de bord.
+  it('ligne de MORT NEUTRE : aucun bord gauche non plus', () => {
+    const doc = testReplayDoc({
+      frameIntervalMs: 100,
+      tracks: [
+        { slot: 2, team: -1, xuid: 'foe', points: [{ t: 0, x: 0, y: 0 }], startFrame: 0, endFrame: 20 },
+        { slot: 2, team: -1, xuid: 'foe', points: [{ t: 40, x: 0, y: 0 }], startFrame: 40, endFrame: 80 },
+      ],
+    })
+    const kills = [kill({ tMs: 5_000, xuid: 'me', victimXuid: 'foe', victimGamertag: 'Cobra01' })]
+    const { container } = renderFeed(kills, 9_000, 0, [], doc)
+    expect(screen.getByText('mort')).toBeTruthy()
+    expect(bordsDe(container)).toEqual(['', ''])
+  })
+
+  it('ligne de MÉDAILLE SEULE : aucun bord gauche non plus', () => {
+    const { container } = renderFeed([], 60_000, T0, [medal({ tMs: 10_000, xuid: 'me', gamertag: 'JGtm' })])
+    expect(screen.getByRole('img', { name: 'Sans lunette' })).toBeTruthy()
+    expect(bordsDe(container)).toEqual([''])
+  })
+})
+
 describe('ReplayKillFeed — les TROIS états de l’assistance, jamais confondus', () => {
   it('assistant NOMMÉ : le nom et SA part seule — la part du tueur est sortie (2026-08-24)', () => {
     const { container } = renderFeed(

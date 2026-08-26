@@ -225,7 +225,11 @@ function PlayerCard({ player, doc, frame, presence, vitalityFade, readingFull, f
   let flashClass = ''
   const style: CSSProperties = {}
   if (!state.alive) {
-    style.boxShadow = `inset 2px 0 0 ${tokenCssVar('destructive')}`
+    // PAS DE LISERÉ GAUCHE (demande utilisateur du 2026-08-25 : « virer l'accentuation sur la
+    // bordure gauche de la fiche quand le joueur est mort »). L'état de mort reste dit TROIS
+    // fois — le fond teinté ci-dessous, le nom à l'encre `destructive`, et le compte de retour
+    // à la place des jauges. Le liseré était un quatrième signe pour le même fait, et c'est
+    // celui qui découpait la colonne en tranches dès qu'un joueur sur deux était mort.
     style.background = `color-mix(in srgb, ${tokenCssVar('destructive')} 12%, transparent)`
     if (deathAge >= 0 && deathAge <= flashFrames) {
       flashClass = 'replay-flash-death'

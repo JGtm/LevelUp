@@ -24,7 +24,6 @@ import { buildPlayerMarks } from '@/features/match-replay/playerMarks'
 import { ReplayCanvas } from '@/features/match-replay/ReplayCanvas'
 import { ReplayKillFeed } from '@/features/match-replay/ReplayKillFeed'
 import { frameToMs } from '@/features/match-replay/replayLogic'
-import { replaySchemaState } from '@/features/match-replay/replaySchemaLogic'
 import { ReplayScoreBanner } from '@/features/match-replay/ReplayScoreBanner'
 import { ReplayTeams } from '@/features/match-replay/ReplayTeams'
 import { collectKillEvents } from '@/features/match-view/_momentum'
@@ -124,9 +123,6 @@ function ReplayPage() {
   const nowMs = data ? frameToMs(frame, data) : 0
 
   const hasReplay = !!data && data.tracks.length > 0
-  // GARDE SCHEMAVERSION (lot 2, audit du 2026-08-24, point 1) : une note DISCRÈTE, jamais un
-  // blocage — la fiche affiche tout ce que l'artefact porte, cf. replaySchemaLogic.ts.
-  const schemaState = data ? replaySchemaState(data.schemaVersion) : 'current'
 
   return (
     <div className="space-y-4 p-6">
@@ -143,12 +139,6 @@ function ReplayPage() {
           {t.back}
         </Link>
       </div>
-
-      {schemaState !== 'current' && (
-        <p className="text-xs text-muted-foreground">
-          {schemaState === 'stale' ? t.replaySchemaStale : t.replaySchemaAhead}
-        </p>
-      )}
 
       {isLoading && <p className="text-sm text-muted-foreground">{t.loading}</p>}
 
