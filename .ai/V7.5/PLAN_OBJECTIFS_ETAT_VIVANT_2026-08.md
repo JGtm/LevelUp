@@ -404,12 +404,19 @@ recoupe sur pieces) :
 - une hierarchie d'encres existe deja en embryon : l'arc est trace avec `colorOfCapturer(owner)`
   (`useZoneStates.ts:80-81`), c'est-a-dire l'encre du camp OPPOSE au proprietaire courant.
 
-- [ ] D6.1 **Remplissage progressif de la FORME**, proportionnel a la jauge lue en escalier
+- [x] D6.1 **Remplissage progressif de la FORME**, proportionnel a la jauge lue en escalier
       (`zoneGaugeAt`, `zoneStatesLayer.ts:100`), par decoupe canvas (`ctx.clip` sur
       `traceZonePath`) puis balayage — **agnostique de la forme** : une boite orientee comme un
       cylindre passent par le meme trace. Il REMPLACE l'arc externe (`drawGaugeArc` est retire
       avec son alpha et ses tests : regle 0 code mort, pas de bascule qui garde les deux).
-- [ ] D6.2 **Hierarchie des encres** quand une equipe capture une base tenue par l'adversaire :
+      **FAIT** — `paintCaptureFill` (`zoneStatesPaint.ts:181-203`), balayage VERTICAL bas ->
+      haut. Le sens du balayage est un ARBITRAGE que le plan laissait ouvert : une fraction
+      d'ANGLE n'est pas une fraction d'AIRE sur une boite orientee (un demi-tour d'arc y couvre
+      une part qui depend de l'orientation, pas de la capture), alors qu'une bande horizontale
+      clippee est proportionnelle sur toute forme — et elle ne balaie pas la lettre centrale.
+      `drawGaugeArc`, `ZONE_GAUGE_ALPHA`, `ZONE_GAUGE_WIDTH`, `ZONE_GAUGE_MIN_RADIUS` et
+      `ZoneGaugeArc` sont SUPPRIMES.
+- [x] D6.2 **Hierarchie des encres** quand une equipe capture une base tenue par l'adversaire :
       progression de l'attaquant FRANCHE par-dessus la teinte du proprietaire AFFAIBLIE. Le
       detail (valeurs d'alpha, sens du balayage, ordre de peinture) se TRANCHE DANS CE PLAN au
       moment de l'ouverture de la phase, jamais en cours d'implementation.
@@ -418,11 +425,22 @@ recoupe sur pieces) :
       dans un match a deux camps ET sur une zone DEJA TENUE. Sur une zone NEUTRE, `colorOfCapturer`
       rend `null` aujourd'hui et l'arc se peint en encre neutre : la progression y restera
       NEUTRE — ne pas inventer un attaquant.
-- [ ] D6.3 **Alphas d'appartenance** : evaluer le renforcement de `ZONE_HELD_FILL_ALPHA` (0,22
+      **FAIT** — `ZONE_UNDER_CAPTURE_FILL_ALPHA = 0,16` (le proprietaire recule) contre
+      `ZONE_CAPTURE_FILL_ALPHA = 0,55` (l'attaquant passe franc), `zoneStatesPaint.ts:88-89`.
+      La limite de donnee est tenue et testee : une zone neutre en capture rend une progression
+      NEUTRE, une zone tenue par un camp non situable aussi.
+- [x] D6.3 **Alphas d'appartenance** : evaluer le renforcement de `ZONE_HELD_FILL_ALPHA` (0,22
       aujourd'hui, `zoneStatesLayer.ts:198`) et de `ZONE_ACTIVE_FILL_ALPHA` (0,3) — la teinte
       actuelle est jugee trop discrete par l'utilisateur. Valeurs proposees au plan, verdict au
       gate VISUEL.
-- [ ] D6.4 **POINT DE CONTROLE DONNEES (gate, pas un item de confort)** : verifier sur les
+      **FAIT** — tenue 0,22 -> **0,30**, active 0,30 -> **0,42**. L'ECART entre les deux se
+      creuse en meme temps qu'ils montent : renforcer la seule zone tenue aurait efface ce qui
+      distingue la colline active, le repere le plus utile de la carte. L'echelle COMPLETE
+      compose avec le retrait des zones libres du lot A et vit dans `ZONE_ALPHA_ORDER` —
+      libre 0 < en perte 0,16 < tenue 0,30 < active 0,42 < progression 0,55 —, testee par son
+      ORDRE et non par ses valeurs, precisement pour que le gate visuel puisse toutes les bouger.
+      **Verdict VISUEL a l'utilisateur.**
+- [~] D6.4 **POINT DE CONTROLE DONNEES (gate, pas un item de confort)** : verifier sur les
       artefacts TEMOINS que `coverage.zones.gaugePoints > 0` la ou la progression doit se voir.
       **CORRECTION AU BRIEF DE L'AJOUT DE PERIMETRE** : la serie `gauge` n'a PAS ete validee sur
       KOTH — c'est l'inverse. Elle est publiee **sur les modes a zones SIMULTANEES SEULEMENT
@@ -434,15 +452,50 @@ recoupe sur pieces) :
       Strongholds = points ATTENDUS (si zero sur un temoin Bastion : `[!]`, condition de reprise) ;
       KOTH = zero ATTENDU, ce n'est pas un defaut, et la colline garde son seul etat
       d'appartenance ; Total Control = INCONNU tant que D3 n'a pas mesure, donc `[!]` par defaut.
-- [ ] D6.5 **Le pulse ponctuel de capture est CONSERVE** : il marque un INSTANT, la progression
+      **`[~]` — COUVERT PAR LE CODE ET LES TESTS, PAS PAR UNE LECTURE D'ARTEFACT.** Le contrat
+      « aucune serie = aucune progression » est verrouille par test (fixture `gauge: []`, et la
+      colline du fixture qui publie un sommet `progress` sans serie ne dessine rien). La lecture
+      des artefacts TEMOINS (`coverage.zones.gaugePoints`) exige de cuire des films, donc des
+      commandes Go — INTERDITES sur ce creneau (autre lot en build). Reste donc a faire, en une
+      lecture, quand un creneau Go s'ouvre : `gaugePoints > 0` sur un temoin Bastion, `= 0` sur
+      un temoin KOTH. Aucun code n'en depend : le client se comporte identiquement dans les deux
+      cas, c'est un controle de la DONNEE, pas du rendu.
+- [x] D6.5 **Le pulse ponctuel de capture est CONSERVE** : il marque un INSTANT, la progression
       decrit une DUREE — les deux se lisent ensemble (c'est deja l'arbitrage ecrit en tete
       d'`objectivesLayer.ts`). Rien n'est retire de ce cote.
-- [ ] D6.6 Tokens semantiques uniquement (aucun hex, aucune classe Tailwind couleur) ; aucun texte
+      **FAIT — par NON-ACTION verifiee** : `buildObjectivePulses` et `drawObjectivePulses` ne
+      sont pas touches, la famille ZONE garde son role entier.
+- [x] D6.6 Tokens semantiques uniquement (aucun hex, aucune classe Tailwind couleur) ; aucun texte
       neuf sur le canvas ; tests : forme du remplissage a 0 / 0,5 / 1, agnosticite boite/cylindre,
       hierarchie sur zone tenue ET sur zone neutre, garde « aucune couleur en dur ».
+      **FAIT** — aucune valeur de couleur n'est ecrite dans le lot (les encres arrivent resolues
+      de `useZoneStates`, inchange) ; aucun texte neuf (la garde « rien hors le glyphe A-C »
+      passe telle quelle). 35 cas sur le calque, dont 6 neufs. **Mordant prouve par DOUBLE
+      MUTATION** : remplissage par le HAUT (`box.top` au lieu de `box.bottom - h`) = 1 echec ;
+      hierarchie des encres INVERSEE (0,16 / 0,55 permutes) = 2 echecs. Les deux mutations ont
+      ete revertees.
 
 **Gate D6** : volet TECHNIQUE = les trois commandes web NUES de D5, plus le point de controle
 D6.4 statue sur les temoins. Volet VISUEL = **l'utilisateur** (planche + en app).
+
+**Gate D6 (volet TECHNIQUE) : TENU (2026-08-26).** Depuis `apps/web` du worktree, apres
+`npm ci` et purge de `node_modules/.tmp` : `npm run typecheck` = **0** ; `npx vitest run
+src/features/match-replay` = **0** (75 fichiers, 1 088 tests) ; `npx eslint` sur les quatre
+fichiers touches = **0** (zero erreur, zero avertissement). Cliquet `ReplayCanvas.tsx` :
+**742 lignes, INCHANGE** — le lot ne touche pas le canvas. Aucune commande Go n'a ete lancee.
+**Le volet VISUEL reste ouvert** : il appartient a l'utilisateur, et il porte deux questions
+precises — les nouveaux aplats (tenue 0,30 / active 0,42) et le sens de balayage bas -> haut.
+
+**UNE EXTRACTION QUE LE PLAN NE PREVOYAIT PAS, ET CE QUI L'A IMPOSEE.** Le passage de l'arc
+exterieur au remplissage de la forme a porte `zoneStatesLayer.ts` de 417 a 568 lignes, au-dessus
+du seuil du depot. La regle etant d'extraire et jamais d'exempter, la peinture est partie dans
+`zoneStatesPaint.ts` (259 l.) : le calque decide CE QU'IL FAUT peindre (etat couvrant la frame,
+valeur de jauge, lettre), la peinture decide COMMENT (opacites, hierarchie, ordre des passes,
+decoupage). Trois fichiers source sous le seuil apres coup : calque 345, peinture 259,
+`objectivesLayer` 414. La coupure suit une couture reelle — un reglage d'encre se change sans
+rouvrir la lecture d'etat — et la GEOMETRIE n'a pas ete dupliquee : `traceZonePath` reste la
+seule source de la forme, et l'emprise ecran passe par `zoneCornersWorld` / `zoneCanvasRadius`,
+deux helpers EXTRAITS de `traceZonePath` lui-meme plutot que recopies.
 
 ### D7 — RENDU des calques NEUFS de D5 (web) — **apres D5 ET apres la fusion du lot A**
 
@@ -521,6 +574,17 @@ ecriture ; jamais `git add -A` ; aucun push ; aucune attente passive.
 
 ## 7. Decouvertes (hors perimetre — consignees, NON traitees)
 
+- (2026-08-26, D6) **`colorOfCapturer` est appele avec le PROPRIETAIRE, et rend le camp d'en
+  face** (`useZoneStates.ts:90-91`). C'est une DEDUCTION a deux camps, correcte sur une zone
+  tenue et muette ailleurs — sur une zone NEUTRE en cours de capture, la page ne peut nommer
+  personne et la progression reste neutre. Ce n'est pas un defaut du client : le film ne
+  replique aucun proprietaire sur les slots de rampe (mesure du lot C-bis). Si D3 ouvrait un
+  mode a plus de deux camps, cette deduction cesserait d'etre valide — la nommer ici pour que
+  personne ne la prenne pour une lecture.
+- (2026-08-26, D6) **Le fixture de test du calque publie `progress` sur ses intervalles** alors
+  que plus rien ne le lit depuis le schema 18 (le client ne dessine plus le sommet). Le champ
+  est CONSERVE au fixture a dessein — c'est lui qui rend le cas « sans `gauge`, le sommet ne
+  remplace pas la progression » non tautologique — mais il n'a plus aucun lecteur de production.
 - **Land Grab est classe `zone` par `ObjectiveTypeOf` mais n'a ni role ni entree de table.** Il a
   donc des evenements nommes que rien ne consomme, et ses hashs `landgrab_zone` sont dans les
   fichiers de carte sans role. Incoherence reelle, non traitee ici (§2.8).
@@ -557,3 +621,16 @@ ecriture ; jamais `git add -A` ; aucun push ; aucune attente passive.
   en phase D6 (item D-R : progression et appartenance sur la FORME), independante de D2-D5 et
   conditionnee a la seule fusion du lot A ; les anciennes phases D6/D7 deviennent D7/D8.
   **STOP — validation superviseur avant D1.**
+
+- 2026-08-26 — **D6 (item D-R) CLOSE, volet technique.** Base : fusion d'`origin/feat/v75`
+  (`ae12cb1a0`, qui apporte le lot A — retrait des zones libres a 0,5 / 1,6 px, seuil
+  `owner === null`, encre neutre `divergent-neutral`) puis relecture integrale de
+  `zoneStatesLayer.ts` AVANT d'ecrire une ligne. La progression de capture se lit desormais SUR
+  la forme (balayage vertical bas -> haut, `ctx.clip` sur `traceZonePath`), l'arc exterieur et
+  ses quatre reglages sont supprimes, la hierarchie d'encres compose avec le retrait du lot A
+  (`ZONE_ALPHA_ORDER`). Items : D6.1, D6.2, D6.3, D6.5, D6.6 `[x]` ; **D6.4 `[~]`** — le contrat
+  « aucune serie = aucune progression » est verrouille par test, mais la lecture de
+  `coverage.zones.gaugePoints` sur les temoins exige de cuire des films, donc du Go, interdit sur
+  ce creneau. Gates web verts (0 / 0 / 0), `ReplayCanvas.tsx` inchange a 742. Extraction non
+  prevue de `zoneStatesPaint.ts` (seuil des 500 lignes franchi par le lot). Mordant prouve par
+  double mutation. **STOP — D2 attend le signal du superviseur.**
