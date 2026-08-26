@@ -72607,3 +72607,88 @@ marges vides des fonds natifs sont rognees a l'affichage.
 la coquille — mediane 53,5 % de largeur utile sur les natifs). C'est la phase 2 du
 `PLAN_REVUE_CARTE_PAR_CARTE.md`. Consigne au registre : `REGISTRE_CARTES.md`, section
 « Decouvertes hors fonds ».
+
+---
+
+## [2026-08-26] Cartes phase 1 — la re-cuisson de Catalyst, et le defaut qu'elle a fait sortir
+
+**Statut** : Complete (branche `wt/cartes-revue-par-carte`, non committe — attente du go commit).
+
+**Decision technique principale** : phase 1 du `PLAN_REVUE_CARTE_PAR_CARTE.md`. Catalyst
+re-cuit avec la chaine d'aujourd'hui vers un `--out-dir` scratch : **NON identique au publie**
+(`heightPx` 1553 -> 1546, `originY` 71,476 -> 71,120, ancres **24 -> 19**, `playLevelZ`
+24,410 -> 24,907, `mapNames` perd `catalyst_map`). Cause : le catalogue d'objectifs a ete
+regenere depuis par les lots KOTH (`a96db3048` 19/08, `fec6b9bf9` 20/08, `d50f3b728` 25/08).
+**Consequence pour tout le chantier : les fonds publies sont perimes vis-a-vis du catalogue**,
+une re-cuisson de masse deplacera d'autres cartes que Catalyst. A l'oeil la re-cuisson est
+indiscernable du publie : l'ecart est metrique, il n'explique PAS la difference avec le temoin
+du 10/08 12:24, qui reste NON expliquee et est declaree telle quelle.
+
+Ce que la mesure a trouve A LA PLACE, et qui vaut plus que l'archeologie : `zJeu` est un
+SCALAIRE, `MedianeZ(ancres) - AncrageDecalageSol` (`cuisson.go:140`, `cuisson_forge.go:93`),
+et la constante `AncrageDecalageSol = 0,29 m` est etalonnee sur UNE carte (Cliffhanger). Sur
+une carte dont les objectifs vivent a plusieurs etages, la mediane des ancres n'est le sol
+d'aucun d'eux. Le sidecar mesurait deja l'erreur sans que personne la lise
+(`anchorMedianGapM`, `cuisson.go:355`).
+
+**Resultats observes** : sur les 56 fonds, **43 sont entre -0,40 et +0,03 m** (l'etalonnage
+tient) mais **13 sont hors clou** : Behemoth -17,51 m, The Pit -15,53, Empyrean -14,41,
+Catalyst -13,33, Fragmentation -11,71, Fortress -10,60, Domicile -8,62, Banished Narrows
+-6,05, Recharge -5,29, Oasis -4,38, Streets -4,33, Bazaar -4,22, Breaker -3,29. Or
+`TeinteNiveauDeJeu` ecrete a `PorteeNiveauDeJeu = 10 m` : au-dela, la surface JOUEE est peinte
+au maximum de recul (`recul = 0,38`, teinte froide) — **exactement l'inversion de hierarchie
+visuelle que cette teinte a ete ecrite pour supprimer**. Six cartes depassent la portee et
+rendent donc leur arene au recul maximal. Le correctif n'est PAS un reglage par carte : la
+surface de reference par pixel existe deja (`SurfaceReference`, armee au rendu par
+`ArmeReference`) — il suffit que la teinte lise cette surface au lieu du scalaire.
+
+Second livrable : `cmd/mapfond-planche` (sans CGO, hors ligne) — manifeste TSV -> une page
+HTML autonome, vignettes en data URI, reduction par MOYENNE DE BLOC en alpha premultiplie (un
+plus-proche-voisin perdrait la moitie des traits fins d'une carte). Le cadre de chaque image
+est trace et le damier rend le vide transparent VISIBLE : c'est ce qui fait lire le defaut de
+cadrage, qu'aucun oracle ne voit. Premiere planche publiee (4,95 Mo, 57 fiches, 59 vignettes) :
+https://claude.ai/code/artifact/5e8fa28d-da9e-4eba-898d-33174158be40
+
+**Conclusion / prochaine etape** : gate 1 rendu — l'ecart au temoin reste ouvert et ecrit comme
+tel, un defaut distinct est mesure sur 13 cartes avec son correctif nomme. Attente du verdict
+utilisateur sur la planche, puis phase 2 (cadrage de l'asset) et le correctif de la teinte,
+groupes en UNE re-cuisson pour ne pas faire juger deux fois les memes cartes.
+
+---
+
+## [2026-08-26] Cartes — gate utilisateur : 9 valides, 9 a finaliser, et le style devient par carte
+
+**Statut** : Complete (branche `wt/cartes-revue-par-carte`, non committe — attente du go commit).
+
+**Decision technique principale** : premiere planche de gate publiee et JUGEE
+(https://claude.ai/code/artifact/5e8fa28d-da9e-4eba-898d-33174158be40, 57 fiches). Le verdict
+est entre au registre avec son verbatim. Repartition des 56 fonds apres gate : **9 VALIDEE, 9
+A FINALISER, 1 A TRANCHER, 2 A RETRAVAILLER, 35 REFUSEE**. L'ambiguite du 13/08 est LEVEE :
+les 7 natifs re-cuits sont juges (Scarr valide, les six autres a finaliser), et trois natifs
+tenus pour valides depuis le 10/08 en sortent (Streets, Bazaar, Recharge).
+
+Ce que le gate a ouvert, et qui n'etait pas au plan : **le style est un choix PAR CARTE**.
+L'utilisateur veut `encre` sur Cliffhanger et le rendu du temoin sur Catalyst. Verifie sur
+pieces : le fond `ridgeline.png` en production est en style `jeu` (fond noir, arene claire) ;
+`Desktop/COULEUR_encre_cliffhanger.png` est en style `encre` (quasi monochrome sur blanc,
+riviere bleue) — ce ne sont pas les memes, et le style prefere n'est pas celui qui est livre.
+Or `StyleJeu` et `StyleEncre` existent DEJA en production (`fond_png.go`), le sidecar publie
+deja le style retenu, et seul `mapfond-build --style` est global. Une table de reglages par
+carte en DONNEE (style + raison + date de gate) suffit : aucune regle de rendu neuve, aucune
+branche. C'est le levier « chaque carte a sa maniere » le moins cher, et il devient le point A
+du plan.
+
+**Resultats observes** : Catalyst est declare REGRESSION — le temoin du 10/08, jamais livre,
+est meilleur que la production ; la cible de la carte est donc « reproduire ce temoin », pas
+« faire mieux ». Vagabond perd son gel `CarteForge.FondFige` (pose le 13/08 « a revoir » ; le
+gate a eu lieu, gros retravail demande). Honnetete de la correlation, ecrite au plan : sur les
+8 natifs dont l'ecart mediane-ancres/sol depasse l'etalonnage, **4 sont sur la liste a
+finaliser et 4 sont acceptes** — le defaut de teinte mesure a la phase 1.3 est reel mais
+n'explique pas a lui seul les verdicts. Demande produit hors perimetre : un ZOOM dans la page
+de rejeu ; verifie qu'il n'en existe aucun (`CANVAS_HEIGHT` fige a 480 px, `fitWidth` ajuste
+la scene a cette hauteur) — lot a part, il touche la projection partagee dessin/survol et le
+cache des calques cuits.
+
+**Conclusion / prochaine etape** : point A du plan (style par carte en donnee + garde-rail +
+planche de comparaison `jeu`/`encre` sur les 11 cartes non closes). Les zones jamais foulees
+restent une SECONDE BASE DE TRAVAIL (precision utilisateur), pas une regle de rendu final.
