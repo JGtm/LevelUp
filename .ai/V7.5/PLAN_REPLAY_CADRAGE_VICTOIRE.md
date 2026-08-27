@@ -476,15 +476,21 @@ packs annonceur ; correspondance constructible via `team_id` → couleur officie
   VAINQUEUR, lui, reste affiché (il ne dépend que de `outcome_code` et de `is_me`). Ce n'est
   pas incohérent — le titre affirme moins que deux nombres — mais c'est une asymétrie à
   connaître si un témoin montre un panneau sans chiffres.
-- **Lot C, 2026-08-27 — le son reste MUET après un rechargement de page tant qu'on n'a pas
-  rebasculé le bouton deux fois.** La préférence `replay-sound-on` est restaurée à `true` au
-  montage, mais le `ReplayAudioPlayer` ne naît QUE dans `toggle()` (politique d'autoplay) :
-  `playerRef` est donc nul, le battement se tait, et le premier clic du bouton — qui semble
-  « activer » — coupe en réalité une préférence déjà à `true`. Dette ANTÉRIEURE au lot (elle
-  vaut pour tous les sons du rejeu, pas seulement la fin de partie) ; elle touche aussi la
-  conclusion sonore, qui ne partira pas sur un rejeu ouvert par un rechargement. Le correctif
-  naturel serait un premier geste QUELCONQUE de la page qui crée le lecteur quand la
-  préférence est déjà à `true`. Non traité : hors périmètre.
+- **Lot C, 2026-08-27 — le son restait MUET après un rechargement de page tant qu'on n'avait pas
+  rebasculé le bouton deux fois. CORRIGÉ le 2026-08-27** (commit
+  `fix(v7.5-rejeu): le son deja active revit au premier geste apres rechargement`, décision
+  utilisateur du jour), dernier correctif avant merge.
+  Le défaut : la préférence `replay-sound-on` est restaurée à `true` au montage, mais le
+  `ReplayAudioPlayer` ne naît QUE dans un geste (politique d'autoplay) — `playerRef` était donc
+  nul, le battement se taisait, et le premier clic du bouton, le seul geste qui pouvait tout
+  réparer, basculait la préférence à « coupé ». Deux clics pour entendre quoi que ce soit.
+  Le correctif ne touche PAS la doctrine (aucun contexte créé hors geste) : il allonge la liste
+  des gestes qui comptent. `toggle()` ACTIVE quand la préférence dit « activé » et que rien ne
+  joue, au lieu de couper ; et `useReplaySound.wake()`, appelé par `useReplayPlayback` sur
+  « Lecture » et « Recommencer » (`onTransportGesture`), rend son lecteur au rejeu sans même
+  passer par le bouton. La conclusion sonore du lot C en bénéficie : un rejeu rechargé qui
+  atteint la fin après un geste de transport sonne. Sept cas dans `useReplaySound.test.tsx`,
+  trois dans `useReplayPlayback.test.tsx`.
 - **Lot C, 2026-08-27 — `i18n.ts` du rejeu reste à 534 lignes** (découverte du lot B). Le lot C
   n'y touche pas : il n'ajoute aucune string UI.
 - **Lot A, 2026-08-26 — invariant utile pour le Lot B** : quand la fenêtre existe et que le

@@ -561,7 +561,7 @@ export function ReplayCanvas({
   // dans useReplayPlayback : le canvas garde le DESSIN, le hook porte le TEMPS.
   const { playing, startFrame, endFrame, sliderRef, togglePlay, restart, onScrub } = useReplayPlayback({
     doc, playWindow, baseFps, speed: multiplier, renderWidth, frameRef, draw,
-    soundTick: sound.tick, onEnded: sound.endMatch,
+    soundTick: sound.tick, onEnded: sound.endMatch, onTransportGesture: sound.wake,
   })
   // CE QUI SORT DU REJEU (image, vidéo) vit dans useReplayCapture : le canvas prête sa TOILE, son
   // HORLOGE et sa lecture. `play` reçoit `togglePlay` — appelé sur une PAUSE seule, il vaut lecture.

@@ -220,6 +220,100 @@ describe('useReplaySound — préférences', () => {
 })
 
 /**
+ * LE RETOUR SUR UNE PAGE DONT LE SON ÉTAIT DÉJÀ ACTIVÉ (correctif du 2026-08-27).
+ *
+ * LE DÉFAUT QUE CES CAS FIXENT, signalé à l'usage : la préférence revient du stockage local, le
+ * lecteur non (un AudioContext ne naît que dans un geste). Le panneau annonçait donc « son
+ * activé » sur un rejeu muet, et le clic suivant — le seul geste qui pouvait tout réparer —
+ * basculait la préférence à « coupé ». Il fallait DEUX clics pour entendre quoi que ce soit.
+ *
+ * `localStorage` est posé À LA MAIN plutôt que par un premier montage : ce qu'on veut
+ * reproduire est un RECHARGEMENT DE PAGE, c'est-à-dire une préférence sans lecteur — un premier
+ * montage laisserait derrière lui un contexte audio déjà ouvert et testerait autre chose.
+ */
+describe('useReplaySound — le son déjà activé revit au premier geste', () => {
+  /** L'état exact d'un rechargement : la préférence dit « activé », rien n'est encore né. */
+  function reloadWithSoundOn() {
+    localStorage.setItem('replay-sound-on', 'true')
+    return mount()
+  }
+
+  it('au chargement, la préférence est là mais RIEN ne sonne — c’est le désaccord à réparer', () => {
+    const { result } = reloadWithSoundOn()
+    expect(result.current.on).toBe(true)
+    act(() => result.current.tick(1_900))
+    act(() => result.current.tick(2_050)) // le kill passe ici
+    expect(ctx.gains).toHaveLength(0) // aucun lecteur : pas même un gain maître
+    expect(ctx.sources).toHaveLength(0)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('LE PREMIER CLIC ACTIVE : le son part, et la préférence RESTE à « activé »', async () => {
+    const { result } = reloadWithSoundOn()
+    act(() => result.current.toggle())
+    await act(async () => { await flushAudio() })
+    expect(result.current.on).toBe(true)
+    expect(localStorage.getItem('replay-sound-on')).toBe('true')
+    expect(ctx.resumed).toBe(1)
+    act(() => result.current.tick(1_900))
+    act(() => result.current.tick(2_050))
+    expect(ctx.sources).toHaveLength(1)
+  })
+
+  it('le clic SUIVANT coupe, comme d’habitude : la bascule n’est pas cassée', async () => {
+    const { result } = reloadWithSoundOn()
+    act(() => result.current.toggle()) // celui-ci active
+    await act(async () => { await flushAudio() })
+    act(() => result.current.toggle()) // celui-ci coupe
+    expect(result.current.on).toBe(false)
+    expect(localStorage.getItem('replay-sound-on')).toBe('false')
+    act(() => result.current.tick(1_900))
+    act(() => result.current.tick(2_050))
+    expect(ctx.sources).toHaveLength(0)
+  })
+
+  it('un geste de transport suffit : le son revient sans passer par le bouton', async () => {
+    const { result } = reloadWithSoundOn()
+    act(() => result.current.wake())
+    await act(async () => { await flushAudio() })
+    expect(result.current.on).toBe(true)
+    act(() => result.current.tick(1_900))
+    act(() => result.current.tick(2_050))
+    expect(ctx.sources).toHaveLength(1)
+  })
+
+  it('son COUPÉ : un geste de transport n’ouvre aucun contexte (la doctrine tient)', () => {
+    const { result } = mount() // préférence par défaut : coupé
+    act(() => result.current.wake())
+    expect(ctx.gains).toHaveLength(0)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('un geste de transport de plus ne recrée rien : le lecteur né reste le seul', async () => {
+    const { result } = reloadWithSoundOn()
+    act(() => result.current.wake())
+    await act(async () => { await flushAudio() })
+    const gains = ctx.gains.length
+    act(() => result.current.wake())
+    act(() => result.current.wake())
+    expect(ctx.gains).toHaveLength(gains)
+    expect(ctx.resumed).toBe(1)
+  })
+
+  it('la CONCLUSION sonore en bénéficie : un rejeu réveillé qui atteint la fin sonne', async () => {
+    localStorage.setItem('replay-sound-on', 'true')
+    const doc = docWithCouple()
+    const { result } = renderHook(() =>
+      useReplaySound(doc, [kill()], 0, 1, { outcome: 'win', ffa: false, locale: 'fr' }),
+    )
+    act(() => result.current.wake())
+    await act(async () => { await flushAudio() })
+    act(() => result.current.endMatch())
+    expect(ctx.sources).toHaveLength(2) // la voix et la fanfare
+  })
+})
+
+/**
  * LA FIN DE PARTIE (lot C, 2026-08-27). Les règles de SÉLECTION ont leurs tests
  * (endMatchSound.test.ts) ; ici on ne juge que le câblage — que la conclusion obéisse aux mêmes
  * silences que le reste (son coupé, avance rapide), que ses prises soient DÉJÀ chargées quand
