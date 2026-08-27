@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
-  "module": "f1cc3b4e-471c-4ec5-b855-1db7d9e6ce42",
+  "module": "4a5e5612-2b2e-4375-a0b3-9335a68815f3",
   "mapNames": [
-    "Solitude",
-    "solitude_map"
+    "Solitude - Ranked",
+    "solitude_-_ranked_map"
   ],
-  "image": "f1cc3b4e-471c-4ec5-b855-1db7d9e6ce42.png",
+  "image": "4a5e5612-2b2e-4375-a0b3-9335a68815f3.png",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
-  "generatedAt": "2026-08-26T20:59:24.6847334Z",
+  "generatedAt": "2026-08-27T06:20:40.4892761Z",
   "style": "encre",
   "calibration": {
     "metersPerPixel": 0.04249320983886719,
@@ -21,20 +21,20 @@
     "anchors": 19,
     "anchorsInFrame": 19,
     "anchorsWithGround": 19,
-    "anchorMedianGapM": -0.04612462844632148,
+    "anchorMedianGapM": -0.09661490393003191,
     "instancesDrawn": 0,
     "instancesScenery": 0,
-    "playLevelZ": 79.07378479003906,
+    "playLevelZ": 79.23394866943359,
     "boundaryApplied": false,
     "boundaryPlanes": 0,
     "boundaryCellsCleared": 0,
     "waterVolumes": 0,
     "waterCells": 0,
-    "coveredShare": 0.6343853493050082,
+    "coveredShare": 0.6336551833647114,
     "covered": true,
-    "cellsSubstituted": 1433136,
-    "forgeObjects": 3223,
-    "forgeObjectsDrawn": 3153,
+    "cellsSubstituted": 1427246,
+    "forgeObjects": 3227,
+    "forgeObjectsDrawn": 3157,
     "forgeObjectsWithoutModel": 53,
     "forgeDeathVolumes": 17
   }

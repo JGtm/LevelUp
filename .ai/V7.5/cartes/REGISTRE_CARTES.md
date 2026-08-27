@@ -63,10 +63,10 @@ metres (attendu : -0,29). `matchs` = somme des matchs de tous les map_id servis 
 | Bazaar | `ctf_bazaar` | 56 | 39.3 | -4,22 | natif | VALIDEE 26/08 — les quatre traitements |
 | Illusion | `ctf_illusion` | 56 | 76.3 | -0,26 | natif | VALIDEE 26/08 — ecretage 6 m + comblement |
 | Recharge - Ranked / Recharge | `sgh_blueprint` | 56 | 28.8 | -5,29 | natif | VALIDEE 26/08 — 6 reglages (plafond 4 m, sans eau) |
-| Aquarius / Aquarius - Ranked | `ctf_aquarius` | 54 | 33.7 | -0,05 | natif | A FINALISER |
-| Chasm | `chasm` | 52 | 100.0 | -0,09 | natif | A FINALISER |
+| Aquarius / Aquarius - Ranked | `ctf_aquarius` | 54 | 33.7 | -0,05 | natif | VALIDEE `encre` 26/08 — plafond 2 m |
+| Chasm | `chasm` | 52 | 100.0 | -0,09 | natif | VALIDEE `encre` 26/08 — boite manuelle + plancher -12 |
 | Forest - Ranked / Forest | `forest` | 49 | 35.8 | -0,30 | natif | VALIDEE 26/08 |
-| Prism | `sgh_crystalcaves` | 49 | 49.2 | -0,23 | natif | A FINALISER |
+| Prism | `sgh_crystalcaves` | 49 | 49.2 | -0,23 | natif | VALIDEE `encre` 26/08 — plafond 2 m + masque |
 | Catalyst | `catalyst` | 48 | 50.0 | -0,19 | natif | VALIDEE `encre` 26/08 — boite mesuree sur positions |
 | Forbidden | `ctf_forbidden` | 46 | 44.7 | -0,21 | natif | VALIDEE `encre` 26/08 — plafond 4 m + masque 63 zones |
 | Behemoth | `va_behemoth` | 44 | 83.2 | -17,51 | natif | VALIDEE 26/08 |
@@ -107,7 +107,7 @@ metres (attendu : -0,29). `matchs` = somme des matchs de tous les map_id servis 
 | Obituary | `a289bafe` | 9 | 92.7 | -0,00 | forge | REFUSEE 13/08 |
 | Shogun | `33075df7` | 9 | 100.0 | -0,03 | forge | REFUSEE 13/08 |
 | Fortitude | `1ede38fa` | 7 | 99.1 | -0,11 | forge | REFUSEE 13/08 |
-| Corpo | `8be179f7` | 2 | 61.2 | -0,25 | forge | VALIDEE 26/08 |
+| Corpo | `8be179f7` | 2 | 61.2 | -0,25 | forge | A FINALISER — correction utilisateur 26/08 |
 
 ## Cartes jouees SANS fond (44 map_id, 209 matchs)
 
@@ -493,3 +493,136 @@ comblement pose environ 440 000 cellules d aplat et recupere deux ancres.
 ailleurs, et on ne sait toujours pas pourquoi cette portion d arene n a pas de triangles ;
 (2) un aplat n est pas un releve, la surface comblee est plate ; (3) un petit fragment isole
 flotte a mi-hauteur du flanc ouest, la ou l eau etait peinte.
+
+## 2026-08-26 — LES CARTES QUI MANQUAIENT
+
+Demande de l'utilisateur : « faut generer celles qui nous manquent ». Mesure faite sur
+`shared_matches_v2` (copie de lecture — la base etait tenue en ecriture par un `server.exe`
+local) croisee avec les fonds publies et le depot de variantes `.ai/re_dump/mapvar`.
+
+**123 cartes jouees dans la base, 35 sans fond de rejeu.** Elles se repartissent en trois cas,
+et un seul est un defaut de notre chaine :
+
+| Cas | Cartes | Traitement |
+|---|---|---|
+| **Declarables** — `.mvar` de carte ET fichier-lien de canevas presents | 29 | DECLAREES ce jour dans `CartesForge`, canevas PROUVE par level_id (`TestPreuveLevelIDCartes` vert sur les 29) |
+| **Bloquees par l'installation du jeu** | Live Fire (3 assets : 51, 18 et 2 matchs) | RIEN A FAIRE COTE CODE — voir ci-dessous |
+| **Sans donnee** | Detachment, Argyle, TFF Night Of The Undead | pas de fichier-lien de canevas (Detachment, Argyle) ou pas de `.mvar` du tout |
+
+### Live Fire : le module n'est pas installe
+
+Question de l'utilisateur : « je ne vois toujours pas Live Fire comme carte ». La cause est
+mesuree et elle n'est pas dans notre code :
+
+```
+sgh_interlock-rtx-new.module    0,21 Mo   (pc)     0,48 Mo (any)   0,21 Mo (ds)
+sgh_streets-rtx-new.module    478,41 Mo   (pc)    19,36 Mo (any)   7,12 Mo (ds)
+```
+
+Le module de Live Fire est un TALON de 0,2 Mo dans les trois racines, sans `_hd1`, quand les
+autres cartes pesent 90 a 1 550 Mo. `TestDiagnosticLiveFire` le confirme par l'autre bout :
+`himap: aucun tag sbsp dans .../sgh_interlock-rtx-new.module`. La geometrie de la carte n'est
+pas sur le disque. C'etait deja consigne le 2026-08-13 dans `cmd/mapquant-build` (« NON
+CATALOGUEE malgre un module PROUVE ») sans que la cause — installation partielle — soit
+nommee.
+
+**Action cote utilisateur** : verifier l'integrite des fichiers du jeu sur Steam, ou
+re-telecharger le contenu multijoueur. Aucun contournement possible : sans geometrie, un fond
+serait une coordonnee devinee. Live Fire est la 6e carte la plus jouee du corpus (51 matchs,
+11 sur 90 jours) — c'est le manque le plus couteux de la liste.
+
+### Ce que le pool classe 2026 ajoute
+
+L'agent documentaire a etabli le pool classe a jour (sources officielles Waypoint) : 15 cartes,
+dont 8 en Forge. Trois n'ont JAMAIS ete jouees par les joueurs suivis (Vacancy, Serenity,
+Interference) et n'ont donc ni match ni `.mvar` : rien a cuire tant qu'un match n'en ramene pas
+l'asset. **Lattice** est le cas limite : une seule partie jouee, sous le nom « Lattice -
+Ranked » — elle fait partie des 29 declarees ce jour.
+
+### 2026-08-26 — CORRECTION : Corpo n'est pas validee
+
+**Verbatim** : « Corpo est pas validee attention mais tu peux continuer a generer les cartes
+manquantes et refusees »
+
+Sa ligne portait `VALIDEE 26/08`. C'est une erreur d'attribution de ma part : Corpo etait un
+PILOTE technique du lot « fonds par map_id » du 13/08 (une des deux seules cartes jouees seules
+sur leur canevas, cf. `CartesForge`), et j'ai pris ce statut d'outillage pour un verdict
+utilisateur. **Aucun verdict n'a jamais ete rendu sur son image.** Ligne repassee
+`A FINALISER`. Elle reste dans la regeneration en encre comme les autres non closes ; son
+verdict viendra a la planche.
+
+Lecon : le seul statut `VALIDEE` legitime est celui qui porte un verbatim dans ce journal. Une
+ligne validee sans verbatim est a re-verifier, pas a croire.
+
+## 2026-08-27 — CORRECTION : 28 des 29 cartes declarees N'ETAIENT PAS CUISINABLES
+
+J'avais annonce hier soir « 29 cartes declarables, declarees ». **C'etait faux : une seule
+l'etait** (Solitude - Ranked). Les 28 autres ont echoue a la cuisson sur
+`replay: carte absente du catalogue d'objectifs`.
+
+**La condition que j'avais oubliee.** Pour cuire un fond Forge il faut TROIS choses, et je
+n'en avais verifie que deux :
+
+| Condition | Ou elle se lit | Verifiee hier ? |
+|---|---|---|
+| le `.mvar` de la carte | `.ai/re_dump/mapvar` | oui |
+| le canevas | fichier-lien + preuve level_id | oui |
+| **les ancres d'objectif** | **`data/.../map_objectives.json`** | **NON** |
+
+Le CADRE d'un fond est construit sur les ancres (`CadreSurAncresEchelle`) : sans ancre, il n'y
+a meme pas d'image a rendre. La verification etait a une requete de distance et je ne l'ai pas
+faite — j'ai declare sur la foi de deux conditions sur trois, puis annonce le resultat comme
+acquis avant qu'une seule carte ait ete cuite.
+
+Les 28 declarations ont ete RETIREES de `CartesForge` (une declaration sans fond publie casse
+le garde-rail `TestFondForgeJamaisSousCleModule`, et c'est tres bien ainsi : c'est lui qui
+aurait attrape la faute si je l'avais joue avant d'annoncer).
+
+**Le vrai prochain lot pour ces cartes** : les faire entrer dans le catalogue d'objectifs
+(`cmd/mapobj-build`), PUIS les declarer. Elles sont ici :
+
+| carte | map_id | matchs | canevas |
+|---|---|---|---|
+| Insolence | `d5c5eb4f` | 7 | fo09_academy |
+| Flood Gulch | `7097bc4f` | 6 | fo05_desert |
+| 944396dd-5661-4a16-b1d8-a6053f762c55 | `944396dd` | 1 | fo13_frost |
+| Ecotone | `8816f240` | 8 | fo11_blank |
+| Solution | `ee43d273` | 7 | fo05_desert |
+| Threshold | `ddbb3a00` | 5 | fo11_blank |
+| Fortitude Heavies | `305b1bdd` | 4 | fo05_desert |
+| Thunderhead Heavies | `37bc3df6` | 4 | fo08_wetland |
+| Thunderhead | `28a3ac28` | 4 | fo08_wetland |
+| Pharaoh | `88d45250` | 3 | fo11_blank |
+| Obituary Heavies | `e3681516` | 3 | fo09_academy |
+| Merchant's Square | `7dfec55d` | 2 | fo09_academy |
+| Credence | `0cc728d2` | 2 | fo11_blank |
+| Vallaheim Firefight | `e8268e75` | 2 | fo05_desert |
+| Urban Raid | `be848f91` | 2 | fo09_academy |
+| Disciple | `525451ca` | 2 | fo11_blank |
+| Ronin | `f459867d` | 1 | fo08_wetland |
+| Origin - Ranked | `46a8319c` | 1 | fo08_wetland |
+| Nadair | `6dbd1c0d` | 1 | fo11_blank |
+| Cole Protocol | `571afb7f` | 1 | fo09_academy |
+| Outlook | `ea7b30e6` | 1 | fo13_frost |
+| Refuge Heavies | `c10c7e79` | 1 | fo08_wetland |
+| Lattice - Ranked | `1a6cfc2e` | 1 | fo13_frost |
+| Rat's Nest | `133c0185` | 1 | fo08_wetland |
+| Insolence Heavies | `2a339c65` | 1 | fo09_academy |
+| Scarlett's Landing | `79042fc0` | 1 | fo08_wetland |
+| Warehouse | `5b12d6d9` | 1 | fo11_blank |
+| Dawnbreaker | `89dd4003` | 1 | fo05_desert |
+### L'incident de la nuit : une boucle chaude de sept heures
+
+De 01 h 00 a 08 h 17, le script a rejoue le MEME lot en boucle — 135 000 lignes d'erreur,
+32 Mo de journal, aucune carte produite. Cause : mon filet anti-boucle n'ecartait un lot que
+si le binaire sortait avec le code 0. Or `mapfond-build` sort en ERREUR quand une carte
+echoue. Le filet ne se declenchait donc JAMAIS sur le seul cas qu'il devait couvrir — une
+carte definitivement incuisable — et ne couvrait que le cas ou le binaire reussit sans rien
+faire, qui n'arrive pas.
+
+Le garde-fou « ne pas classer en echec un process tue de l'exterieur », ajoute pour eviter une
+regression, a donc CREE la boucle infinie. Correctif : un compteur de tentatives par carte —
+trois passages sans production et la carte sort de la file, quel que soit le code de sortie.
+
+**Bilan reel de la campagne** : 38 fonds Forge cuisinables, 38 cuits. Les 28 autres attendent
+le catalogue d'objectifs.
