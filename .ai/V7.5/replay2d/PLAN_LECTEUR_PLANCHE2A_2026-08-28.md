@@ -232,6 +232,20 @@ sur wt/lecteur. Reprendre a la premiere case non statuee du lot ouvert.
   une regression du present lot — elle preexiste. Le lot 3 la resorbe par construction
   (retrait des props sliderRef/minFrame/maxFrame/onScrub/leadMarks + extraction
   `useReplayTimeline`), et le gate exige le cliquet VERT : le plafond n'est PAS releve.
+- (revue R1, 2026-08-28, lot 5 — CONSIGNE, NON CORRIGE) **LES RACCOURCIS SE TAISENT QUAND LA
+  FRISE GARDE LE FOCUS.** `isTypingTarget` (useReplayShortcuts) traite tout `INPUT` comme un
+  champ de saisie — le curseur de la frise en est un (`type=range`). Apres un clic sur la frise,
+  elle garde le focus : Espace ne fait plus rien, et ←/→ deplacent le curseur natif d'UNE image
+  au lieu de sauter 10 s. Ce n'est pas un bug de la garde (elle protege une vraie recherche
+  textuelle), c'est une DECISION PRODUIT non tranchee : faut-il exclure `type=range` de la garde,
+  ou rendre le focus au conteneur apres un scrub ? Condition de reprise : verdict utilisateur au
+  gate visuel, quand le comportement se constate a l'ecran.
+- (revue R1, 2026-08-28, lot 5 — CONSIGNE, NON CORRIGE) `useReplaySettings` rend un OBJET NEUF a
+  chaque rendu (pre-existant, anterieur a ce chantier). Consequence directe : le `useMemo` de
+  `useReplayDrawer` ne retient rien — ses dependances changent d'identite en permanence. Le memo
+  reste (gratuit, et il devient vrai le jour ou la source amont se stabilise) et son commentaire
+  le DIT desormais, plutot que de promettre une memoisation qui n'a pas lieu. Le retirer ou
+  memoiser la source amont : meme lot, hors perimetre ici.
 - (executeur, 2026-08-28, lot 3) **LE GATE `tsc` DU PLAN NE VERIFIE RIEN.**
   `npx tsc -p apps/web --noEmit` compile ZERO fichier : `apps/web/tsconfig.json` ne porte que
   des `references` avec `files: []`. La commande d'autorite est `npm run typecheck` (`tsc -b`),

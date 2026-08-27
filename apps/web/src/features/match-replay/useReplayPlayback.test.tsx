@@ -482,6 +482,66 @@ describe('useReplayPlayback — le remplissage de la frise suit le curseur', () 
     expect(played(el)).toBe('100%')
   })
 
+  /**
+   * LA POSE INITIALE — le cas que les autres ne couvrent pas, et c'est le scénario RÉEL : la
+   * fenêtre de gameplay vient de la Match View, qui arrive APRÈS le document du rejeu. Le champ
+   * existe donc déjà quand elle se connaît, et c'est l'effet de pose (et non un geste) qui doit
+   * écrire les deux choses. Sans son appel à `writeCursor`, la frise s'afficherait creuse
+   * jusqu'au premier pas de la boucle.
+   */
+  it('la fenêtre qui ARRIVE pose le curseur ET son remplissage', () => {
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 0
+    const draw = vi.fn()
+    const view = renderHook(
+      ({ playWindow }: { playWindow: ReplayWindowBounds | null }) =>
+        useReplayPlayback({
+          doc: DOC,
+          playWindow,
+          baseFps: 10,
+          speed: 1,
+          renderWidth: 480,
+          frameRef,
+          draw,
+          soundTick: vi.fn(),
+          onEnded: vi.fn(),
+          onTransportGesture: vi.fn(),
+        }),
+      { initialProps: { playWindow: null as ReplayWindowBounds | null } },
+    )
+    const el = attachSlider(view.result.current.sliderRef)
+    view.rerender({ playWindow: FENETRE })
+    // Le curseur est au coup d'envoi, et le remplissage part de zéro AVEC lui.
+    expect(frameRef.current).toBe(10)
+    expect(el.value).toBe('10')
+    expect(played(el)).toBe('0%')
+  })
+
+  it('une lecture DÉJÀ engagée garde sa position, et son remplissage est posé quand même', () => {
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 25 // au-delà du coup d'envoi : le repositionnement ne recule jamais
+    const view = renderHook(
+      ({ playWindow }: { playWindow: ReplayWindowBounds | null }) =>
+        useReplayPlayback({
+          doc: DOC,
+          playWindow,
+          baseFps: 10,
+          speed: 1,
+          renderWidth: 480,
+          frameRef,
+          draw: vi.fn(),
+          soundTick: vi.fn(),
+          onEnded: vi.fn(),
+          onTransportGesture: vi.fn(),
+        }),
+      { initialProps: { playWindow: null as ReplayWindowBounds | null } },
+    )
+    const el = attachSlider(view.result.current.sliderRef)
+    view.rerender({ playWindow: FENETRE })
+    expect(frameRef.current).toBe(25)
+    expect(played(el)).toBe('50%')
+  })
+
   it('la boucle de lecture l’écrit à chaque pas', () => {
     const frameRef = createRef<number>() as RefObject<number>
     frameRef.current = 10

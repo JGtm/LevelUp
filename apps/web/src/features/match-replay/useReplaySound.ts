@@ -343,6 +343,14 @@ export function useReplaySound(
   }, [openPlayer])
 
   const toggle = useCallback(() => {
+    // RIEN À COMMANDER, RIEN NE BOUGE (correctif du 2026-08-28, revue R1). Le bouton du son ne
+    // se rend pas quand le match n'a aucun son — mais le RACCOURCI CLAVIER, lui, n'a pas de
+    // rendu à respecter : « M » sur un tel match basculait la préférence, la PERSISTAIT
+    // (`SOUND_ON_KEY`) et ouvrait un lecteur, sans qu'un seul pixel ne change à l'écran. Le
+    // rejeu suivant démarrait alors dans l'état inverse de celui qu'on croyait avoir laissé.
+    // La garde vit ICI, chez le propriétaire de l'état, et pas dans le clavier : c'est le seul
+    // endroit qui la rend vraie pour TOUS les appelants, présents et à venir.
+    if (!hasAnySound) return
     // LE PREMIER CLIC APRÈS UN RECHARGEMENT ACTIVE, IL NE COUPE PAS (correctif du 2026-08-27).
     // La préférence est à « activé » mais aucun lecteur n'existe : l'état affiché et l'état
     // réel se contredisent, et basculer la préférence à « coupé » ferait payer à l'utilisateur
@@ -360,7 +368,7 @@ export function useReplaySound(
     if (next) openPlayer()
     else playerRef.current?.setVolume(0)
     setOn(next)
-  }, [openPlayer])
+  }, [openPlayer, hasAnySound])
 
   const setVolume = useCallback((v: number) => {
     const clamped = Math.min(Math.max(v, 0), 1)

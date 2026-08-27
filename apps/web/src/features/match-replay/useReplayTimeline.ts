@@ -143,8 +143,12 @@ export function useReplayTimeline(o: ReplayTimelineOptions): ReplayTimeline {
 /**
  * reduceFeed ramène le fil à ce que les pistes demandent. Les MÉDAILLES SEULES n'y entrent pas :
  * elles n'ont ni tueur ni défunt, et une piste d'événements dit qui a marqué ou qui est tombé.
+ *
+ * EXPORTÉ POUR ÊTRE TESTÉ (revue R1), pas pour être appelé d'ailleurs : c'est ici que se décide
+ * À QUI appartient une ligne, et une inversion tueur/victime y serait invisible à la relecture
+ * comme à l'écran — les deux pistes resteraient peuplées, avec les mauvais événements.
  */
-function reduceFeed(
+export function reduceFeed(
   entries: readonly ReplayFeedEntry[],
   marks: ReadonlyMap<string, PlayerMarkKind>,
 ): { kills: TrackKill[]; deaths: TrackDeath[] } {

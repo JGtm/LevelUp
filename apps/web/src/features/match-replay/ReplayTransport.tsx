@@ -91,7 +91,7 @@ export function ReplayTransport({
             type="button"
             onClick={onTogglePlay}
             aria-label={playing ? t.pause : t.play}
-            title={`${playing ? t.pause : t.play} (Espace)`}
+            title={`${playing ? t.pause : t.play} (${t.keySpace})`}
             className="inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors hover:bg-primary/90 active:bg-primary/80"
           >
             {playing ? <PauseIcon /> : <PlayIcon />}

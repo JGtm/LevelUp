@@ -137,10 +137,13 @@ export function useReplayPlayback(o: ReplayPlaybackOptions): ReplayPlayback {
   /**
    * writeCursor POSE LE CURSEUR : la valeur du champ, et le REMPLISSAGE de la frise habillée.
    *
-   * `--played` est la part parcourue, en pourcentage de la fenêtre — la feuille de style s'en
-   * sert pour peindre la piste jusqu'au curseur (cf. `replay-timeline` dans globals.css). Elle
-   * s'écrit ICI et nulle part ailleurs : un chemin qui déplacerait le curseur sans elle
-   * laisserait un remplissage figé sur la position précédente.
+   * `--played` est la part parcourue, en pourcentage de la fenêtre. Le dégradé de la piste la
+   * consomme depuis les classes du champ lui-même (`ReplayTimelineTracks.tsx`, variantes
+   * `[&::-webkit-slider-runnable-track]` / `[&::-moz-range-track]` — même technique que le
+   * volume dans `ReplaySoundControls.tsx`) : aucune feuille de style à tenir à jour, et aucun
+   * rendu React pour un remplissage qui suit la lecture. Elle s'écrit ICI et nulle part
+   * ailleurs — un chemin qui déplacerait le curseur sans elle laisserait le remplissage figé
+   * sur la position précédente.
    */
   const writeCursor = useCallback(
     (frame: number) => {

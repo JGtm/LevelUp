@@ -4902,3 +4902,51 @@ n'appartient pas a ce lot. Les deux warnings ESLint du perimetre sont pre-exista
 lots avaient ete valides par un `tsc` qui ne compilait aucun fichier, et les deux vrais defauts
 (collision de casse, cliquet a 708) sont restes invisibles jusqu'au moment ou la bonne commande a
 tourne. Un gate qui sort 0 sans avoir rien lu est pire qu'un gate absent : il donne une confiance.
+
+**LOT 5 — REVUE ADVERSARIALE R1 : 2 P1 + 6 P2 recevables, 20 conditions tiennent.** Un relecteur
+frais a rejoue les gates de son cote (typecheck cache purge, 1561 tests, ESLint, cliquet a 674)
+et conclut que le lot fait ce qu'il pretend. Six corrections retenues au triage pilote, appliquees
+ici en un commit ; rien d'autre.
+
+**C1 — un mot francais dans l'interface anglaise.** Le title du bouton lecture/pause ecrivait
+« (Espace) » en dur. Cle `keySpace` ('Espace' / 'Space'). Verifie sur pieces : c'est la SEULE
+touche du lecteur qui se traduit — R, M, ←, → sont des touches physiques, leur nom est le glyphe
+grave dessus.
+
+**C2 — le clavier contournait une regle de l'interface, et la preference en gardait la trace.**
+`toggle` n'avait aucune garde : sur un match SANS AUCUN SON, le bouton ne se rend pas (regle « pas
+de commande quand il n'y a rien a commander »), mais « M » basculait quand meme — il persistait
+`SOUND_ON_KEY` et ouvrait un AudioContext sans qu'un pixel ne change. Le rejeu SUIVANT, celui-la
+sonore, demarrait donc dans l'etat inverse de celui qu'on croyait avoir laisse. La garde est posee
+CHEZ LE PROPRIETAIRE DE L'ETAT (`useReplaySound.toggle`), pas dans le clavier : c'est le seul
+endroit qui la rend vraie pour tous les appelants, presents et a venir. Verifie sur pieces que le
+tiroir de reglages n'appelle jamais `toggle` (il ne touche qu'a `toggleCategory`, et ne se rend
+pas si `!available`) — donc aucun autre chemin n'etait concerne.
+
+**C3 — code mort cree par le lot lui-meme.** `useLeadMarks` rendait sept champs, tailles pour les
+props d'un composant supprime la veille ; son unique lecteur restant n'en lit que trois. Les
+quatre autres (`frameCount`, `frameIntervalMs`, `playWindow`, `locale`) etaient recopies pour
+personne — l'echelle et l'horloge sont desormais l'affaire de `useReplayTimeline`, qui les tient
+de premiere main. Le hook perd aussi son parametre `playWindow`, devenu inutile.
+
+**C4/C5 — deux commentaires qui mentaient.** L'un renvoyait a une classe `replay-timeline` de
+`globals.css` qui n'existe pas (le degrade vit dans les variantes Tailwind du champ lui-meme) ;
+l'autre promettait une memoisation qui n'a pas lieu (les dependances du memo sont des litteraux
+recrees a chaque rendu, `useReplaySettings` n'etant pas memoise — pre-existant). Le second est
+corrige EN TANT QUE COMMENTAIRE : le memo reste, il est gratuit et deviendra vrai le jour ou la
+source amont se stabilise. Une doc fausse coute plus cher qu'une doc absente : elle se croit.
+
+**C6 — deux trous de couverture du perimetre du lot.** (a) `reduceFeed` decide A QUI appartient
+une ligne, et rien ne le testait : inverser tueur et victime laissait les deux pistes peuplees
+avec les mauvais evenements, retirer la garde `victime = 'me'` y deversait les morts de la partie
+entiere — invisible a la relecture comme a l'ecran. Exporte et couvert par 12 cas, dont le tir ami
+(la meme ligne est le frag de l'un et la mort de l'autre). (b) L'appel `writeCursor` de la pose
+initiale n'avait pas de temoin, le helper de test attachant le champ apres le montage. Deux cas
+montent le SCENARIO REEL — la fenetre de gameplay arrive APRES le document, le champ existe deja
+quand elle se connait — et verifient que valeur et remplissage sont poses, y compris quand la
+lecture est deja engagee au-dela du coup d'envoi.
+
+Chiffres du gate lot 5 (rejoues APRES corrections, cache typecheck purge) : `npm run typecheck`
+exit 0 ; vitest 103 fichiers / **1576 tests, 0 echec** (+15 : 12 reduceFeed, 2 pose initiale,
+1 garde du son) ; ESLint 0 erreur sur les 12 fichiers touches, 1 warning PRE-EXISTANT
+(`exhaustive-deps` objectiveObjects) ; cliquet 6/6, canvas toujours a 674.

@@ -83,6 +83,26 @@ describe('useReplaySound — coupé par défaut', () => {
     const { result } = renderHook(() => useReplaySound(doc, [], 0, 1))
     expect(result.current.available).toBe(false)
   })
+
+  /**
+   * ET LA BASCULE REFUSE DE S'EXÉCUTER (correctif du 2026-08-28, revue R1).
+   *
+   * LE DÉFAUT QUE CE CAS FIXE : le bouton du son ne se rend pas sur un match muet, mais le
+   * RACCOURCI CLAVIER « M », lui, n'a pas de rendu à respecter. Il basculait donc la
+   * préférence, la PERSISTAIT dans le stockage local et ouvrait un AudioContext, sans qu'un
+   * seul pixel ne change à l'écran — et le rejeu SUIVANT, celui-là sonore, démarrait dans
+   * l'état inverse de celui qu'on croyait avoir laissé. La garde vit chez le propriétaire de
+   * l'état, donc elle vaut pour tous les appelants, clavier compris.
+   */
+  it('MATCH MUET : la bascule ne persiste rien et n’ouvre aucun contexte audio', () => {
+    const doc = docWithCouple()
+    const { result } = renderHook(() => useReplaySound(doc, [], 0, 1))
+    act(() => result.current.toggle())
+    expect(result.current.on).toBe(false)
+    expect(localStorage.getItem('replay-sound-on')).toBeNull()
+    expect(ctx.sources).toHaveLength(0)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
 })
 
 describe('useReplaySound — activation', () => {
