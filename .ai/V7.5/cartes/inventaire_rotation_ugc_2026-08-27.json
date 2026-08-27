@@ -1,0 +1,1858 @@
+{
+ "schema_version": 1,
+ "genere_le": "2026-08-27T15:45:56.872Z",
+ "source": "discovery-infiniteugc /hi/search?assetKind=MapModePair (872 paires, 9 pages de 100) -> ReferencedAssets (197 distincts) -> /hi/Maps/{assetId} (104 repondent 200)",
+ "note": "Univers des cartes atteignables par la rotation matchmaking au 2026-08-27. level_id derive de ~TagLevelId (verifie 34/34 sur les cartes Forge deja au catalogue) ; sur les natives TagLevelId vaut 117343 pour toutes et ne dit rien, leur identite est le nom du .mvar = le module.",
+ "total": 104,
+ "natives": 21,
+ "forge": 83,
+ "deja_au_catalogue": 41,
+ "cartes": [
+  {
+   "map_id": "78da545f-a168-4a5e-9c8d-dd379067c352",
+   "version_id": "7db34ec2-84f8-4e3a-98e6-a830b554f281",
+   "nom": "Absolution",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo09_academy",
+   "level_id": 1437677928,
+   "tag_level_id": -1437677929,
+   "objets_forge": 5564,
+   "mvar": [
+    "fo09_academy.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/78da545f-a168-4a5e-9c8d-dd379067c352/7db34ec2-84f8-4e3a-98e6-a830b554f281/",
+   "au_catalogue_objectifs": true,
+   "fond_publie_sous_map_id": true
+  },
+  {
+   "map_id": "023507d1-7566-458d-b3d7-31627c40c01d",
+   "version_id": "ac0cd6db-2ce4-43df-91ef-7e5a90550a08",
+   "nom": "Apostle",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo11_blank",
+   "level_id": 426470249,
+   "tag_level_id": -426470250,
+   "objets_forge": 5619,
+   "mvar": [
+    "fo11_blank.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/023507d1-7566-458d-b3d7-31627c40c01d/ac0cd6db-2ce4-43df-91ef-7e5a90550a08/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "33c0766c-ef15-48f8-b298-34aba5bff3b4",
+   "version_id": "711c83cf-c952-46cf-80fa-57e62af2bd38",
+   "nom": "Aquarius",
+   "famille": "native",
+   "module": "ctf_aquarius",
+   "canevas": null,
+   "level_id": null,
+   "tag_level_id": 117343,
+   "objets_forge": 0,
+   "mvar": [
+    "ctf_aquarius.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/33c0766c-ef15-48f8-b298-34aba5bff3b4/711c83cf-c952-46cf-80fa-57e62af2bd38/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "667072ae-ba00-4414-adda-8203e8c49295",
+   "version_id": "9cce4f7e-cd2e-470f-93eb-a2725958f8bd",
+   "nom": "Aquarius - Ranked",
+   "famille": "forge",
+   "module": null,
+   "canevas": "ctf_aquarius",
+   "level_id": -1598071734,
+   "tag_level_id": 1598071733,
+   "objets_forge": 362,
+   "mvar": [
+    "ctf_aquarius.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/667072ae-ba00-4414-adda-8203e8c49295/9cce4f7e-cd2e-470f-93eb-a2725958f8bd/",
+   "au_catalogue_objectifs": true,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "0b22acc2-fdc2-4c80-b59c-dc84bded06d8",
+   "version_id": "da68ee08-1670-45b2-8c56-688bac931b5a",
+   "nom": "Aqueduct",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo03_space",
+   "level_id": -747133697,
+   "tag_level_id": 747133696,
+   "objets_forge": 4977,
+   "mvar": [
+    "fo03_space.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/0b22acc2-fdc2-4c80-b59c-dc84bded06d8/da68ee08-1670-45b2-8c56-688bac931b5a/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "2e35d8c0-8292-465c-8d69-35b5ff8b70db",
+   "version_id": "c4dffc26-537d-4162-a9d1-703798784c49",
+   "nom": "Argyle",
+   "famille": "forge",
+   "module": null,
+   "canevas": null,
+   "level_id": 426470249,
+   "tag_level_id": -426470250,
+   "objets_forge": 5083,
+   "mvar": [
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/2e35d8c0-8292-465c-8d69-35b5ff8b70db/c4dffc26-537d-4162-a9d1-703798784c49/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "dd600260-d91c-4d77-9990-3f35873c90a1",
+   "version_id": "72b1fcec-0595-43a3-8080-b780ab821461",
+   "nom": "Argyle",
+   "famille": "forge",
+   "module": null,
+   "canevas": null,
+   "level_id": 426470249,
+   "tag_level_id": -426470250,
+   "objets_forge": 5083,
+   "mvar": [
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/dd600260-d91c-4d77-9990-3f35873c90a1/72b1fcec-0595-43a3-8080-b780ab821461/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "78677080-db7a-429e-84fe-f041d8342c37",
+   "version_id": "042ca666-15c8-4b68-b7bc-7a1d2fbdf113",
+   "nom": "Argyle - Ranked",
+   "famille": "forge",
+   "module": null,
+   "canevas": null,
+   "level_id": 426470249,
+   "tag_level_id": -426470250,
+   "objets_forge": 5066,
+   "mvar": [
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/78677080-db7a-429e-84fe-f041d8342c37/042ca666-15c8-4b68-b7bc-7a1d2fbdf113/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "beaf8ac9-fa85-4562-8def-28d9428dbddb",
+   "version_id": "e92c6ffa-741c-4c82-a253-657acd92c694",
+   "nom": "Arrival",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo03_space",
+   "level_id": -747133697,
+   "tag_level_id": 747133696,
+   "objets_forge": 5638,
+   "mvar": [
+    "fo03_space.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/beaf8ac9-fa85-4562-8def-28d9428dbddb/e92c6ffa-741c-4c82-a253-657acd92c694/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "e0bd2b53-30d6-4a20-8664-5905ac5748d1",
+   "version_id": "d87ca5ce-5f8d-4c8b-b6f9-5d4cae483df9",
+   "nom": "Arrival",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo03_space",
+   "level_id": -747133697,
+   "tag_level_id": 747133696,
+   "objets_forge": 5639,
+   "mvar": [
+    "fo03_space.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/e0bd2b53-30d6-4a20-8664-5905ac5748d1/d87ca5ce-5f8d-4c8b-b6f9-5d4cae483df9/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "9ad226d8-8947-4c5b-95bc-d220187698c1",
+   "version_id": "2b429f97-31ca-4dc3-bec3-f04825991ab0",
+   "nom": "Banished Narrows",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo05_desert",
+   "level_id": 1804860316,
+   "tag_level_id": -1804860317,
+   "objets_forge": 5011,
+   "mvar": [
+    "fo05_desert.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/9ad226d8-8947-4c5b-95bc-d220187698c1/2b429f97-31ca-4dc3-bec3-f04825991ab0/",
+   "au_catalogue_objectifs": true,
+   "fond_publie_sous_map_id": true
+  },
+  {
+   "map_id": "298d5036-cd43-47b3-a4bd-31e127566593",
+   "version_id": "5546a6ec-841d-4955-be7a-5f32c3ac0428",
+   "nom": "Bazaar",
+   "famille": "native",
+   "module": "ctf_bazaar",
+   "canevas": null,
+   "level_id": null,
+   "tag_level_id": 117343,
+   "objets_forge": 0,
+   "mvar": [
+    "ctf_bazaar.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/298d5036-cd43-47b3-a4bd-31e127566593/5546a6ec-841d-4955-be7a-5f32c3ac0428/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "53136ad9-0fd6-4271-8752-31d114b9561e",
+   "version_id": "d79b7333-90bf-4cbf-8e44-3b39da651202",
+   "nom": "Behemoth",
+   "famille": "native",
+   "module": "va_behemoth",
+   "canevas": null,
+   "level_id": null,
+   "tag_level_id": 117343,
+   "objets_forge": 0,
+   "mvar": [
+    "va_behemoth.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/53136ad9-0fd6-4271-8752-31d114b9561e/d79b7333-90bf-4cbf-8e44-3b39da651202/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "e6cbfe01-665b-4a8c-bf3a-d63a65a7c890",
+   "version_id": "635c65fe-d207-47e5-b30d-dce1ec680c51",
+   "nom": "Breaker",
+   "famille": "native",
+   "module": "ctf_breaker",
+   "canevas": null,
+   "level_id": null,
+   "tag_level_id": 117343,
+   "objets_forge": 0,
+   "mvar": [
+    "ctf_breaker.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/e6cbfe01-665b-4a8c-bf3a-d63a65a7c890/635c65fe-d207-47e5-b30d-dce1ec680c51/",
+   "au_catalogue_objectifs": true,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "e8567de9-6e15-458d-b2cf-7762bcbaa6f2",
+   "version_id": "e334de69-4703-428f-aac4-90cfc21b242b",
+   "nom": "Breaker Firefight",
+   "famille": "forge",
+   "module": null,
+   "canevas": "ctf_breaker",
+   "level_id": 847557134,
+   "tag_level_id": -847557135,
+   "objets_forge": 711,
+   "mvar": [
+    "ctf_breaker.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/e8567de9-6e15-458d-b2cf-7762bcbaa6f2/e334de69-4703-428f-aac4-90cfc21b242b/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "11ca6a12-da14-4315-94e4-130e1a5e0848",
+   "version_id": "efbaac4a-61d6-4e9b-a35c-6669f8911998",
+   "nom": "Catalyst",
+   "famille": "forge",
+   "module": null,
+   "canevas": "catalyst",
+   "level_id": -1044063363,
+   "tag_level_id": 1044063362,
+   "objets_forge": 252,
+   "mvar": [
+    "catalyst.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/11ca6a12-da14-4315-94e4-130e1a5e0848/efbaac4a-61d6-4e9b-a35c-6669f8911998/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "4b6a9a35-520d-4784-86fd-5403a1d2fd8a",
+   "version_id": "72ebb5da-204e-4177-9f8c-105d57788eee",
+   "nom": "Catalyst",
+   "famille": "forge",
+   "module": null,
+   "canevas": "catalyst",
+   "level_id": -1044063363,
+   "tag_level_id": 1044063362,
+   "objets_forge": 631,
+   "mvar": [
+    "catalyst.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/4b6a9a35-520d-4784-86fd-5403a1d2fd8a/72ebb5da-204e-4177-9f8c-105d57788eee/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "e859cf75-9b8a-429a-91be-2376681c8537",
+   "version_id": "463a6db1-b0a7-4477-b20b-0c51a7916d4f",
+   "nom": "Catalyst",
+   "famille": "native",
+   "module": "catalyst",
+   "canevas": null,
+   "level_id": null,
+   "tag_level_id": 117343,
+   "objets_forge": 0,
+   "mvar": [
+    "catalyst.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/e859cf75-9b8a-429a-91be-2376681c8537/463a6db1-b0a7-4477-b20b-0c51a7916d4f/",
+   "au_catalogue_objectifs": true,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "fc1ced39-128b-439d-9b44-4710225090f3",
+   "version_id": "e03dfd3a-804f-48d0-a1f2-e5963f036dbe",
+   "nom": "Chasm",
+   "famille": "native",
+   "module": "chasm",
+   "canevas": null,
+   "level_id": null,
+   "tag_level_id": 117343,
+   "objets_forge": 0,
+   "mvar": [
+    "chasm.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/fc1ced39-128b-439d-9b44-4710225090f3/e03dfd3a-804f-48d0-a1f2-e5963f036dbe/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "81274d6f-6a94-425a-a16e-3bdb1e2eea9d",
+   "version_id": "2cbfa179-2bd2-499d-a5bd-74bf2d14d05b",
+   "nom": "Cliffhanger",
+   "famille": "native",
+   "module": "ridgeline",
+   "canevas": null,
+   "level_id": null,
+   "tag_level_id": 117343,
+   "objets_forge": 0,
+   "mvar": [
+    "ridgeline.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/81274d6f-6a94-425a-a16e-3bdb1e2eea9d/2cbfa179-2bd2-499d-a5bd-74bf2d14d05b/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "f1c0aa1c-5cfb-4669-962a-91d81a683050",
+   "version_id": "66af01bd-7ff8-4d15-a36f-046d8bc5dd81",
+   "nom": "Cliffhanger Firefight",
+   "famille": "forge",
+   "module": null,
+   "canevas": "ridgeline",
+   "level_id": -1009396204,
+   "tag_level_id": 1009396203,
+   "objets_forge": 774,
+   "mvar": [
+    "map.mvar",
+    "ridgeline.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/f1c0aa1c-5cfb-4669-962a-91d81a683050/66af01bd-7ff8-4d15-a36f-046d8bc5dd81/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "c9d416e2-ca9d-406d-b1fb-3da688e84a2f",
+   "version_id": "27a5d572-7ced-4f1b-afae-8a199e7840bc",
+   "nom": "Cliffside",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo05_desert",
+   "level_id": 1804860316,
+   "tag_level_id": -1804860317,
+   "objets_forge": 5502,
+   "mvar": [
+    "fo05_desert.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/c9d416e2-ca9d-406d-b1fb-3da688e84a2f/27a5d572-7ced-4f1b-afae-8a199e7840bc/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "8be179f7-8940-4868-b881-44cad1ca8711",
+   "version_id": "70967918-5255-4219-9bfe-87c1bd92da40",
+   "nom": "Corpo",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo11_blank",
+   "level_id": 426470249,
+   "tag_level_id": -426470250,
+   "objets_forge": 2020,
+   "mvar": [
+    "fo11_blank.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/8be179f7-8940-4868-b881-44cad1ca8711/70967918-5255-4219-9bfe-87c1bd92da40/",
+   "au_catalogue_objectifs": true,
+   "fond_publie_sous_map_id": true
+  },
+  {
+   "map_id": "bae4df14-4f4a-424c-aac1-2f795c807146",
+   "version_id": "35fdc4d3-7864-4600-adc9-847de372166a",
+   "nom": "Critical Dewpoint",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo11_blank",
+   "level_id": 426470249,
+   "tag_level_id": -426470250,
+   "objets_forge": 5203,
+   "mvar": [
+    "fo11_blank.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/bae4df14-4f4a-424c-aac1-2f795c807146/35fdc4d3-7864-4600-adc9-847de372166a/",
+   "au_catalogue_objectifs": true,
+   "fond_publie_sous_map_id": true
+  },
+  {
+   "map_id": "f718abc4-1bf6-4665-8050-5e20071e04a4",
+   "version_id": "8f5c2fdc-4ca7-4a2d-88d3-697037d6d537",
+   "nom": "Critical Dewpoint",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo11_blank",
+   "level_id": 426470249,
+   "tag_level_id": -426470250,
+   "objets_forge": 5385,
+   "mvar": [
+    "fo11_blank.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/f718abc4-1bf6-4665-8050-5e20071e04a4/8f5c2fdc-4ca7-4a2d-88d3-697037d6d537/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "63d634be-0319-489d-8c21-9c4e012f664f",
+   "version_id": "397afd65-341c-46f0-9a32-caa46d995f0a",
+   "nom": "Curfew",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo11_blank",
+   "level_id": 426470249,
+   "tag_level_id": -426470250,
+   "objets_forge": 4627,
+   "mvar": [
+    "fo11_blank.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/63d634be-0319-489d-8c21-9c4e012f664f/397afd65-341c-46f0-9a32-caa46d995f0a/",
+   "au_catalogue_objectifs": true,
+   "fond_publie_sous_map_id": true
+  },
+  {
+   "map_id": "26874260-cb7a-4e59-942e-55b1d24fd8d0",
+   "version_id": "3d0a4c82-139a-4bba-856f-dd11e74d971a",
+   "nom": "Daimyo",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo11_blank",
+   "level_id": 426470249,
+   "tag_level_id": -426470250,
+   "objets_forge": 5635,
+   "mvar": [
+    "fo11_blank.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/26874260-cb7a-4e59-942e-55b1d24fd8d0/3d0a4c82-139a-4bba-856f-dd11e74d971a/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "73966558-e9a4-4533-bd5b-862a22ac03ce",
+   "version_id": "a9c0d807-6e2e-47b6-83b7-49a6b2ff8ef0",
+   "nom": "Dead Water",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo08_wetland",
+   "level_id": 88891201,
+   "tag_level_id": -88891202,
+   "objets_forge": 5374,
+   "mvar": [
+    "fo08_wetland.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/73966558-e9a4-4533-bd5b-862a22ac03ce/a9c0d807-6e2e-47b6-83b7-49a6b2ff8ef0/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "08607bf4-6abe-4a5b-9547-290a6cc1433e",
+   "version_id": "866fbb48-fc87-459e-a3fe-a69d764c0256",
+   "nom": "Deadlock",
+   "famille": "native",
+   "module": "btb_drydock",
+   "canevas": null,
+   "level_id": null,
+   "tag_level_id": 117343,
+   "objets_forge": 0,
+   "mvar": [
+    "btb_drydock.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/08607bf4-6abe-4a5b-9547-290a6cc1433e/866fbb48-fc87-459e-a3fe-a69d764c0256/",
+   "au_catalogue_objectifs": true,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "6f82df05-3b24-4746-8579-e0c5ef9e9d64",
+   "version_id": "f1f191c2-d388-4cf4-a177-b28f8229d80b",
+   "nom": "Deadlock",
+   "famille": "forge",
+   "module": null,
+   "canevas": "btb_drydock",
+   "level_id": -785503777,
+   "tag_level_id": 785503776,
+   "objets_forge": 869,
+   "mvar": [
+    "btb_drydock.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/6f82df05-3b24-4746-8579-e0c5ef9e9d64/f1f191c2-d388-4cf4-a177-b28f8229d80b/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "372ce070-302d-4de8-a633-eadf488aee1f",
+   "version_id": "71cc4a84-47b0-4711-881f-2cb2a893aabf",
+   "nom": "Deadlock Firefight",
+   "famille": "forge",
+   "module": null,
+   "canevas": "btb_drydock",
+   "level_id": -785503777,
+   "tag_level_id": 785503776,
+   "objets_forge": 887,
+   "mvar": [
+    "btb_drydock.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/372ce070-302d-4de8-a633-eadf488aee1f/71cc4a84-47b0-4711-881f-2cb2a893aabf/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "d39600e2-3c35-4a3a-bdf5-7b3cbdde98e1",
+   "version_id": "f323778e-4a5d-46b3-998d-b409958b1a2b",
+   "nom": "Detachment",
+   "famille": "forge",
+   "module": null,
+   "canevas": null,
+   "level_id": 1437677928,
+   "tag_level_id": -1437677929,
+   "objets_forge": 4582,
+   "mvar": [
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/d39600e2-3c35-4a3a-bdf5-7b3cbdde98e1/f323778e-4a5d-46b3-998d-b409958b1a2b/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "50a1a3b5-c54d-4e40-8744-b92051d48897",
+   "version_id": "0a9971c2-3339-487b-9cf2-bcae88a34dbd",
+   "nom": "Diminished",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo11_blank",
+   "level_id": 426470249,
+   "tag_level_id": -426470250,
+   "objets_forge": 2018,
+   "mvar": [
+    "fo11_blank.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/50a1a3b5-c54d-4e40-8744-b92051d48897/0a9971c2-3339-487b-9cf2-bcae88a34dbd/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "921aebb1-783d-45e4-bacd-7ad869fa8dae",
+   "version_id": "6a2f9336-a5cd-41c5-ab0d-0da39ef351c1",
+   "nom": "Domicile",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo05_desert",
+   "level_id": 1804860316,
+   "tag_level_id": -1804860317,
+   "objets_forge": 5540,
+   "mvar": [
+    "fo05_desert.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/921aebb1-783d-45e4-bacd-7ad869fa8dae/6a2f9336-a5cd-41c5-ab0d-0da39ef351c1/",
+   "au_catalogue_objectifs": true,
+   "fond_publie_sous_map_id": true
+  },
+  {
+   "map_id": "f631b010-3eed-4b84-8e09-4ed90ab32c26",
+   "version_id": "9ed2a244-fb34-4e40-9edc-68c34138fd61",
+   "nom": "Domicile",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo05_desert",
+   "level_id": 1804860316,
+   "tag_level_id": -1804860317,
+   "objets_forge": 5659,
+   "mvar": [
+    "fo05_desert.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/f631b010-3eed-4b84-8e09-4ed90ab32c26/9ed2a244-fb34-4e40-9edc-68c34138fd61/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "e4bb06db-065f-4902-b93b-d8dac315eac4",
+   "version_id": "55402a49-0dba-495a-9a21-7346a1b79e81",
+   "nom": "Dredge",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo06_deepsea",
+   "level_id": 2123870979,
+   "tag_level_id": -2123870980,
+   "objets_forge": 5537,
+   "mvar": [
+    "fo06_deepsea.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/e4bb06db-065f-4902-b93b-d8dac315eac4/55402a49-0dba-495a-9a21-7346a1b79e81/",
+   "au_catalogue_objectifs": true,
+   "fond_publie_sous_map_id": true
+  },
+  {
+   "map_id": "90cd321d-1439-49de-943d-06245a407909",
+   "version_id": "3c111549-081d-4a6c-a868-0ce2beb75e47",
+   "nom": "Dynasty",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo08_wetland",
+   "level_id": 88891201,
+   "tag_level_id": -88891202,
+   "objets_forge": 5597,
+   "mvar": [
+    "fo08_wetland.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/90cd321d-1439-49de-943d-06245a407909/3c111549-081d-4a6c-a868-0ce2beb75e47/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "d035fc3e-f298-4c14-9487-465be2e1dc1f",
+   "version_id": "8d5eb886-a41d-4093-827e-2cbdc75c651e",
+   "nom": "Empyrean",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo11_blank",
+   "level_id": 426470249,
+   "tag_level_id": -426470250,
+   "objets_forge": 5373,
+   "mvar": [
+    "fo11_blank.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/d035fc3e-f298-4c14-9487-465be2e1dc1f/8d5eb886-a41d-4093-827e-2cbdc75c651e/",
+   "au_catalogue_objectifs": true,
+   "fond_publie_sous_map_id": true
+  },
+  {
+   "map_id": "70dd38c5-2eb7-4db3-8901-0dfca292ff18",
+   "version_id": "8c4ab697-8630-47bf-b8a8-7d49a5e91b3c",
+   "nom": "Empyrean - Ranked",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo11_blank",
+   "level_id": 426470249,
+   "tag_level_id": -426470250,
+   "objets_forge": 5323,
+   "mvar": [
+    "fo11_blank.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/70dd38c5-2eb7-4db3-8901-0dfca292ff18/8c4ab697-8630-47bf-b8a8-7d49a5e91b3c/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "78905252-4e2f-4cf7-840f-c0bad5a6b67f",
+   "version_id": "fd1b8461-57b0-41f1-b9ba-c0fde7c660ec",
+   "nom": "Exiled",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo05_desert",
+   "level_id": 1804860316,
+   "tag_level_id": -1804860317,
+   "objets_forge": 5584,
+   "mvar": [
+    "fo05_desert.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/78905252-4e2f-4cf7-840f-c0bad5a6b67f/fd1b8461-57b0-41f1-b9ba-c0fde7c660ec/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "9bb8d9df-ff6c-4a6e-b151-436bbb2c0907",
+   "version_id": "c9bb9a73-c790-436d-8f95-5409ac5a183a",
+   "nom": "Exiled",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo05_desert",
+   "level_id": 1804860316,
+   "tag_level_id": -1804860317,
+   "objets_forge": 5581,
+   "mvar": [
+    "fo05_desert.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/9bb8d9df-ff6c-4a6e-b151-436bbb2c0907/c9bb9a73-c790-436d-8f95-5409ac5a183a/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "f32b61f8-b94d-4a1b-9c69-f9d1c47b8e9b",
+   "version_id": "93422e7d-e6dd-4588-9417-18a8dacd57d9",
+   "nom": "Exiled Firefight",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo05_desert",
+   "level_id": 1804860316,
+   "tag_level_id": -1804860317,
+   "objets_forge": 5573,
+   "mvar": [
+    "fo05_desert.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/f32b61f8-b94d-4a1b-9c69-f9d1c47b8e9b/93422e7d-e6dd-4588-9417-18a8dacd57d9/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "7e8b3a2c-459d-4f33-9066-66041b5a36c4",
+   "version_id": "fbfe8683-78ec-4d0b-961f-bb334288124c",
+   "nom": "Forbidden",
+   "famille": "forge",
+   "module": null,
+   "canevas": "ctf_forbidden",
+   "level_id": -1418393216,
+   "tag_level_id": 1418393215,
+   "objets_forge": 845,
+   "mvar": [
+    "ctf_forbidden.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/7e8b3a2c-459d-4f33-9066-66041b5a36c4/fbfe8683-78ec-4d0b-961f-bb334288124c/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "db2b5f9c-9895-4f73-9d57-44f9b191f3cf",
+   "version_id": "1025d3aa-0231-435d-b165-773a36ced676",
+   "nom": "Forbidden",
+   "famille": "forge",
+   "module": null,
+   "canevas": "ctf_forbidden",
+   "level_id": -1418393216,
+   "tag_level_id": 1418393215,
+   "objets_forge": 843,
+   "mvar": [
+    "ctf_forbidden.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/db2b5f9c-9895-4f73-9d57-44f9b191f3cf/1025d3aa-0231-435d-b165-773a36ced676/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "ea51a3dd-2125-4e5b-872d-25f1835edd29",
+   "version_id": "dd6b48a2-cdb7-4197-af60-706f4ca10f69",
+   "nom": "Forbidden",
+   "famille": "native",
+   "module": "ctf_forbidden",
+   "canevas": null,
+   "level_id": null,
+   "tag_level_id": 117343,
+   "objets_forge": 0,
+   "mvar": [
+    "ctf_forbidden.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/ea51a3dd-2125-4e5b-872d-25f1835edd29/dd6b48a2-cdb7-4197-af60-706f4ca10f69/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "5c215079-c34d-4d25-b86a-435e35edf188",
+   "version_id": "0d1ce9cd-1969-4ec6-8650-0c7039c0e0c4",
+   "nom": "Forbidden - Ranked",
+   "famille": "forge",
+   "module": null,
+   "canevas": "ctf_forbidden",
+   "level_id": -1418393216,
+   "tag_level_id": 1418393215,
+   "objets_forge": 800,
+   "mvar": [
+    "ctf_forbidden.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/5c215079-c34d-4d25-b86a-435e35edf188/0d1ce9cd-1969-4ec6-8650-0c7039c0e0c4/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "619bea21-f1e6-461f-8a7d-2bb4f905d0ca",
+   "version_id": "ed9e777f-4c8a-441c-b970-e66cc5c2dd9a",
+   "nom": "Forest",
+   "famille": "native",
+   "module": "forest",
+   "canevas": null,
+   "level_id": null,
+   "tag_level_id": 117343,
+   "objets_forge": 0,
+   "mvar": [
+    "forest.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/619bea21-f1e6-461f-8a7d-2bb4f905d0ca/ed9e777f-4c8a-441c-b970-e66cc5c2dd9a/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "1ede38fa-4d30-4dfa-a8b7-5d08bf4e46e3",
+   "version_id": "ad5eb2a0-1909-425e-a7de-5faa34a9d1e7",
+   "nom": "Fortitude",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo05_desert",
+   "level_id": 1804860316,
+   "tag_level_id": -1804860317,
+   "objets_forge": 5595,
+   "mvar": [
+    "fo05_desert.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/1ede38fa-4d30-4dfa-a8b7-5d08bf4e46e3/ad5eb2a0-1909-425e-a7de-5faa34a9d1e7/",
+   "au_catalogue_objectifs": true,
+   "fond_publie_sous_map_id": true
+  },
+  {
+   "map_id": "068f41f4-e3dd-4bec-b297-d2ded85ab54b",
+   "version_id": "2f0b4c72-51e5-4115-b302-0bae4b4df7dd",
+   "nom": "Fragmentation",
+   "famille": "forge",
+   "module": null,
+   "canevas": "btb_fragmentation",
+   "level_id": -340635692,
+   "tag_level_id": 340635691,
+   "objets_forge": 994,
+   "mvar": [
+    "btb_fragmentation.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/068f41f4-e3dd-4bec-b297-d2ded85ab54b/2f0b4c72-51e5-4115-b302-0bae4b4df7dd/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "4f196016-0101-4844-8358-2504f7c44656",
+   "version_id": "645e4e35-a573-4362-a59c-1c7867622891",
+   "nom": "Fragmentation",
+   "famille": "native",
+   "module": "btb_fragmentation",
+   "canevas": null,
+   "level_id": null,
+   "tag_level_id": 117343,
+   "objets_forge": 0,
+   "mvar": [
+    "btb_fragmentation.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/4f196016-0101-4844-8358-2504f7c44656/645e4e35-a573-4362-a59c-1c7867622891/",
+   "au_catalogue_objectifs": true,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "ad2d5fe1-033d-4168-b91b-5d96595d6644",
+   "version_id": "4360aedd-cc2c-4dd8-81a7-ce636da99996",
+   "nom": "Fragmentation Firefight",
+   "famille": "forge",
+   "module": null,
+   "canevas": "btb_fragmentation",
+   "level_id": -340635692,
+   "tag_level_id": 340635691,
+   "objets_forge": 773,
+   "mvar": [
+    "btb_fragmentation.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/ad2d5fe1-033d-4168-b91b-5d96595d6644/4360aedd-cc2c-4dd8-81a7-ce636da99996/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "a6b56a60-371e-41d4-a248-0df797cb3a16",
+   "version_id": "bb778721-1ccb-4a8f-988b-de66d61b4d5f",
+   "nom": "Goliath",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo11_blank",
+   "level_id": 426470249,
+   "tag_level_id": -426470250,
+   "objets_forge": 5630,
+   "mvar": [
+    "fo11_blank.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/a6b56a60-371e-41d4-a248-0df797cb3a16/bb778721-1ccb-4a8f-988b-de66d61b4d5f/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "3d52899a-2a54-49ba-94f7-583eea8be9c8",
+   "version_id": "d2e3b209-dea1-47af-9f92-22c872301d68",
+   "nom": "High Ground",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo09_academy",
+   "level_id": 1437677928,
+   "tag_level_id": -1437677929,
+   "objets_forge": 5459,
+   "mvar": [
+    "fo09_academy.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/3d52899a-2a54-49ba-94f7-583eea8be9c8/d2e3b209-dea1-47af-9f92-22c872301d68/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "33c6505d-1cfa-43c6-9fa9-311eb0502ad9",
+   "version_id": "d550b178-a436-4821-ba21-f11a57f35b63",
+   "nom": "Highpower",
+   "famille": "forge",
+   "module": null,
+   "canevas": "btb_highpower",
+   "level_id": -2109972058,
+   "tag_level_id": 2109972057,
+   "objets_forge": 1283,
+   "mvar": [
+    "btb_highpower.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/33c6505d-1cfa-43c6-9fa9-311eb0502ad9/d550b178-a436-4821-ba21-f11a57f35b63/",
+   "au_catalogue_objectifs": true,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "c494ef7c-d203-42a9-9c0f-b3f576334501",
+   "version_id": "aeedf79f-ae5a-4de6-bb29-b14f66baf64b",
+   "nom": "Highpower",
+   "famille": "native",
+   "module": "btb_highpower",
+   "canevas": null,
+   "level_id": null,
+   "tag_level_id": 117343,
+   "objets_forge": 0,
+   "mvar": [
+    "btb_highpower.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/c494ef7c-d203-42a9-9c0f-b3f576334501/aeedf79f-ae5a-4de6-bb29-b14f66baf64b/",
+   "au_catalogue_objectifs": true,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "eaf608f0-6ec3-444f-a51a-9c1de5d0bf5c",
+   "version_id": "681d9ead-df2c-45d6-a828-a7d9e2e582cd",
+   "nom": "House of Reckoning",
+   "famille": "native",
+   "module": "pve_house",
+   "canevas": null,
+   "level_id": null,
+   "tag_level_id": 117343,
+   "objets_forge": 0,
+   "mvar": [
+    "pve_house.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/eaf608f0-6ec3-444f-a51a-9c1de5d0bf5c/681d9ead-df2c-45d6-a828-a7d9e2e582cd/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "86ef3b1c-2f39-4c29-8c19-65ab84a704c2",
+   "version_id": "db6a631d-1465-4b86-b970-78d800e5cfd3",
+   "nom": "Illusion",
+   "famille": "native",
+   "module": "ctf_illusion",
+   "canevas": null,
+   "level_id": null,
+   "tag_level_id": 117343,
+   "objets_forge": 0,
+   "mvar": [
+    "ctf_illusion.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/86ef3b1c-2f39-4c29-8c19-65ab84a704c2/db6a631d-1465-4b86-b970-78d800e5cfd3/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "d5c5eb4f-0dcb-4677-a866-eae0dcbfde9b",
+   "version_id": "b574a3ab-0329-4e00-8e84-0db796c2d5df",
+   "nom": "Insolence",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo09_academy",
+   "level_id": 1437677928,
+   "tag_level_id": -1437677929,
+   "objets_forge": 5639,
+   "mvar": [
+    "fo09_academy.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/d5c5eb4f-0dcb-4677-a866-eae0dcbfde9b/b574a3ab-0329-4e00-8e84-0db796c2d5df/",
+   "au_catalogue_objectifs": true,
+   "fond_publie_sous_map_id": true
+  },
+  {
+   "map_id": "654dff62-d618-496a-8914-06ab73d991e3",
+   "version_id": "87e7bd29-9914-48f3-81e0-38ad200e1e4e",
+   "nom": "Interference",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo13_frost",
+   "level_id": -992358985,
+   "tag_level_id": 992358984,
+   "objets_forge": 4743,
+   "mvar": [
+    "fo13_frost.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/654dff62-d618-496a-8914-06ab73d991e3/87e7bd29-9914-48f3-81e0-38ad200e1e4e/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "01af558d-53ab-4f05-ba68-92d805fc6260",
+   "version_id": "365ec58b-2bb0-4d74-9e5f-9497fbc9a665",
+   "nom": "Isolation",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo08_wetland",
+   "level_id": 88891201,
+   "tag_level_id": -88891202,
+   "objets_forge": 5338,
+   "mvar": [
+    "fo08_wetland.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/01af558d-53ab-4f05-ba68-92d805fc6260/365ec58b-2bb0-4d74-9e5f-9497fbc9a665/",
+   "au_catalogue_objectifs": true,
+   "fond_publie_sous_map_id": true
+  },
+  {
+   "map_id": "5dbe246f-7c75-4b60-a5cf-1b4f26e94734",
+   "version_id": "67a0172c-bc59-4673-a924-2080ce1d2b19",
+   "nom": "Isolation",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo08_wetland",
+   "level_id": 88891201,
+   "tag_level_id": -88891202,
+   "objets_forge": 5643,
+   "mvar": [
+    "fo08_wetland.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/5dbe246f-7c75-4b60-a5cf-1b4f26e94734/67a0172c-bc59-4673-a924-2080ce1d2b19/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "98a83f87-2420-48c6-93f8-cc6b62d73235",
+   "version_id": "10932bb4-ee1a-483d-9a7f-cf02f845f6ef",
+   "nom": "Kaiketsu",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo05_desert",
+   "level_id": 1804860316,
+   "tag_level_id": -1804860317,
+   "objets_forge": 5637,
+   "mvar": [
+    "fo05_desert.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/98a83f87-2420-48c6-93f8-cc6b62d73235/10932bb4-ee1a-483d-9a7f-cf02f845f6ef/",
+   "au_catalogue_objectifs": true,
+   "fond_publie_sous_map_id": true
+  },
+  {
+   "map_id": "df7dbf08-b8de-4ade-9d7f-1947128c9ae4",
+   "version_id": "78b20301-c971-4e25-a9bf-fec81e4723fc",
+   "nom": "Kiken'na",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo08_wetland",
+   "level_id": 88891201,
+   "tag_level_id": -88891202,
+   "objets_forge": 5645,
+   "mvar": [
+    "fo08_wetland.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/df7dbf08-b8de-4ade-9d7f-1947128c9ae4/78b20301-c971-4e25-a9bf-fec81e4723fc/",
+   "au_catalogue_objectifs": true,
+   "fond_publie_sous_map_id": true
+  },
+  {
+   "map_id": "9f589ad8-625d-49b8-9a57-1e560576a4b9",
+   "version_id": "231e298c-2c66-4913-994e-604156741b80",
+   "nom": "Kusini Bay",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo11_blank",
+   "level_id": 426470249,
+   "tag_level_id": -426470250,
+   "objets_forge": 5645,
+   "mvar": [
+    "fo11_blank.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/9f589ad8-625d-49b8-9a57-1e560576a4b9/231e298c-2c66-4913-994e-604156741b80/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "b10f80d2-77bc-45e3-bdd6-f4d2fc22180e",
+   "version_id": "8a01465e-ac58-4320-8850-49bae59ba06e",
+   "nom": "Kusini Bay Firefight",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo11_blank",
+   "level_id": 426470249,
+   "tag_level_id": -426470250,
+   "objets_forge": 5506,
+   "mvar": [
+    "fo11_blank.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/b10f80d2-77bc-45e3-bdd6-f4d2fc22180e/8a01465e-ac58-4320-8850-49bae59ba06e/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "3c1f2523-0515-4b42-b651-33b0a01397c3",
+   "version_id": "7e1c72eb-3779-4660-be75-a4ceb63ae9cd",
+   "nom": "Last Broadcast",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo08_wetland",
+   "level_id": 88891201,
+   "tag_level_id": -88891202,
+   "objets_forge": 5438,
+   "mvar": [
+    "fo08_wetland.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/3c1f2523-0515-4b42-b651-33b0a01397c3/7e1c72eb-3779-4660-be75-a4ceb63ae9cd/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "56a11b8c-64d1-4537-8893-a9241e4d5b93",
+   "version_id": "1cd21d5a-a57e-4d42-997d-ff95ca0e32fc",
+   "nom": "Launch Site",
+   "famille": "native",
+   "module": "va_launchsite",
+   "canevas": null,
+   "level_id": null,
+   "tag_level_id": 117343,
+   "objets_forge": 0,
+   "mvar": [
+    "va_launchsite.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/56a11b8c-64d1-4537-8893-a9241e4d5b93/1cd21d5a-a57e-4d42-997d-ff95ca0e32fc/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "b6aca0c7-8ba7-4066-bf91-693571374c3c",
+   "version_id": "67bf316f-e891-4e85-8f3d-b129ef5fcb2e",
+   "nom": "Live Fire",
+   "famille": "native",
+   "module": "sgh_interlock",
+   "canevas": null,
+   "level_id": null,
+   "tag_level_id": 117343,
+   "objets_forge": 0,
+   "mvar": [
+    "sgh_interlock.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/b6aca0c7-8ba7-4066-bf91-693571374c3c/67bf316f-e891-4e85-8f3d-b129ef5fcb2e/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "309253f8-7a75-48ff-83e1-e7fb3db2ac47",
+   "version_id": "86a644f0-5063-40b8-b601-ce361439da72",
+   "nom": "Live Fire - Ranked",
+   "famille": "forge",
+   "module": null,
+   "canevas": "sgh_interlock",
+   "level_id": 1253388187,
+   "tag_level_id": -1253388188,
+   "objets_forge": 398,
+   "mvar": [
+    "map.mvar",
+    "sgh_interlock.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/309253f8-7a75-48ff-83e1-e7fb3db2ac47/86a644f0-5063-40b8-b601-ce361439da72/",
+   "au_catalogue_objectifs": true,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "6aa0a116-66a6-4242-a1b3-41aa417d6dc6",
+   "version_id": "32465034-7f98-4dea-b178-8058d3d39c8e",
+   "nom": "Oasis",
+   "famille": "native",
+   "module": "btb_exiled",
+   "canevas": null,
+   "level_id": null,
+   "tag_level_id": 117343,
+   "objets_forge": 0,
+   "mvar": [
+    "btb_exiled.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/6aa0a116-66a6-4242-a1b3-41aa417d6dc6/32465034-7f98-4dea-b178-8058d3d39c8e/",
+   "au_catalogue_objectifs": true,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "f566aa62-afe4-4f33-b44f-7a314cb23f9b",
+   "version_id": "f2fc571a-14b5-413d-9b52-dfb69de94110",
+   "nom": "Oasis Firefight",
+   "famille": "forge",
+   "module": null,
+   "canevas": "btb_exiled",
+   "level_id": -611378397,
+   "tag_level_id": 611378396,
+   "objets_forge": 849,
+   "mvar": [
+    "btb_exiled.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/f566aa62-afe4-4f33-b44f-7a314cb23f9b/f2fc571a-14b5-413d-9b52-dfb69de94110/",
+   "au_catalogue_objectifs": true,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "a289bafe-102e-4363-98f7-80b596007338",
+   "version_id": "93845a4c-0ace-4161-86cb-9d0c190d07da",
+   "nom": "Obituary",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo09_academy",
+   "level_id": 1437677928,
+   "tag_level_id": -1437677929,
+   "objets_forge": 5647,
+   "mvar": [
+    "fo09_academy.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/a289bafe-102e-4363-98f7-80b596007338/93845a4c-0ace-4161-86cb-9d0c190d07da/",
+   "au_catalogue_objectifs": true,
+   "fond_publie_sous_map_id": true
+  },
+  {
+   "map_id": "255bbe78-b191-476e-b0ae-0763c3bc2f44",
+   "version_id": "b29f6e87-b4ce-4423-8277-e749bedbb813",
+   "nom": "Opulence",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo11_blank",
+   "level_id": 426470249,
+   "tag_level_id": -426470250,
+   "objets_forge": 3699,
+   "mvar": [
+    "fo11_blank.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/255bbe78-b191-476e-b0ae-0763c3bc2f44/b29f6e87-b4ce-4423-8277-e749bedbb813/",
+   "au_catalogue_objectifs": true,
+   "fond_publie_sous_map_id": true
+  },
+  {
+   "map_id": "6f24843d-a636-4d7d-b4bd-b077a12e2a3b",
+   "version_id": "bb5e07c9-2524-43f3-831e-5b9f2297c8f1",
+   "nom": "Perilous",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo08_wetland",
+   "level_id": 88891201,
+   "tag_level_id": -88891202,
+   "objets_forge": 5516,
+   "mvar": [
+    "fo08_wetland.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/6f24843d-a636-4d7d-b4bd-b077a12e2a3b/bb5e07c9-2524-43f3-831e-5b9f2297c8f1/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "92d23264-d3b9-462e-adbc-8ddb44e81966",
+   "version_id": "c9a6a0ef-03b6-46d7-b0c0-6e18d105f0de",
+   "nom": "Prism",
+   "famille": "native",
+   "module": "sgh_crystalcaves",
+   "canevas": null,
+   "level_id": null,
+   "tag_level_id": 117343,
+   "objets_forge": 0,
+   "mvar": [
+    "sgh_crystalcaves.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/92d23264-d3b9-462e-adbc-8ddb44e81966/c9a6a0ef-03b6-46d7-b0c0-6e18d105f0de/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "133c0185-24ed-4bc2-b834-62db5c936257",
+   "version_id": "cfc6d71c-306b-4088-abc0-cadd8754a8a1",
+   "nom": "Rat's Nest",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo08_wetland",
+   "level_id": 88891201,
+   "tag_level_id": -88891202,
+   "objets_forge": 5492,
+   "mvar": [
+    "fo08_wetland.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/133c0185-24ed-4bc2-b834-62db5c936257/cfc6d71c-306b-4088-abc0-cadd8754a8a1/",
+   "au_catalogue_objectifs": true,
+   "fond_publie_sous_map_id": true
+  },
+  {
+   "map_id": "97696a83-ac78-407d-85b1-ef74d3c64c4a",
+   "version_id": "8ac4bfa1-bdcb-4bdf-a6a7-d59df8d3ad5f",
+   "nom": "Rat's Nest",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo08_wetland",
+   "level_id": 88891201,
+   "tag_level_id": -88891202,
+   "objets_forge": 5612,
+   "mvar": [
+    "fo08_wetland.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/97696a83-ac78-407d-85b1-ef74d3c64c4a/8ac4bfa1-bdcb-4bdf-a6a7-d59df8d3ad5f/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "3adbac00-12bc-48c8-9c4c-292b869ebdf6",
+   "version_id": "6c76b526-77a9-4bb0-ad9d-2c9c4537ee99",
+   "nom": "Recharge",
+   "famille": "forge",
+   "module": null,
+   "canevas": "sgh_blueprint",
+   "level_id": -687782121,
+   "tag_level_id": 687782120,
+   "objets_forge": 781,
+   "mvar": [
+    "map.mvar",
+    "sgh_blueprint.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/3adbac00-12bc-48c8-9c4c-292b869ebdf6/6c76b526-77a9-4bb0-ad9d-2c9c4537ee99/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "8420410b-044d-44d7-80b6-98a766c8c39f",
+   "version_id": "3195263c-ef0f-49da-99a1-54839a1a64a0",
+   "nom": "Recharge",
+   "famille": "native",
+   "module": "sgh_blueprint",
+   "canevas": null,
+   "level_id": null,
+   "tag_level_id": 117343,
+   "objets_forge": 0,
+   "mvar": [
+    "sgh_blueprint.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/8420410b-044d-44d7-80b6-98a766c8c39f/3195263c-ef0f-49da-99a1-54839a1a64a0/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "336b5174-3579-4fd8-b2f0-922e4a5f7628",
+   "version_id": "c0c6705e-167b-4335-afe0-2bafc7290f40",
+   "nom": "Recharge - Ranked",
+   "famille": "forge",
+   "module": null,
+   "canevas": "sgh_blueprint",
+   "level_id": -687782121,
+   "tag_level_id": 687782120,
+   "objets_forge": 431,
+   "mvar": [
+    "map.mvar",
+    "sgh_blueprint.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/336b5174-3579-4fd8-b2f0-922e4a5f7628/c0c6705e-167b-4335-afe0-2bafc7290f40/",
+   "au_catalogue_objectifs": true,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "41217472-3020-4bd8-bce9-b2a2b0d50896",
+   "version_id": "99c96da2-961a-4436-8d29-9e2a17a16c7f",
+   "nom": "Refuge",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo08_wetland",
+   "level_id": 88891201,
+   "tag_level_id": -88891202,
+   "objets_forge": 5492,
+   "mvar": [
+    "fo08_wetland.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/41217472-3020-4bd8-bce9-b2a2b0d50896/99c96da2-961a-4436-8d29-9e2a17a16c7f/",
+   "au_catalogue_objectifs": true,
+   "fond_publie_sous_map_id": true
+  },
+  {
+   "map_id": "cd08bc7a-7ba5-4502-be87-c58b641fc94d",
+   "version_id": "ef803442-9dbe-4ac3-b848-8eba21d4845b",
+   "nom": "Salvation",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo11_blank",
+   "level_id": 426470249,
+   "tag_level_id": -426470250,
+   "objets_forge": 4971,
+   "mvar": [
+    "fo11_blank.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/cd08bc7a-7ba5-4502-be87-c58b641fc94d/ef803442-9dbe-4ac3-b848-8eba21d4845b/",
+   "au_catalogue_objectifs": true,
+   "fond_publie_sous_map_id": true
+  },
+  {
+   "map_id": "247637f8-1ed2-47de-8ff0-fd4b68f50888",
+   "version_id": "b1bbed19-ba61-4cfd-8b1e-14a986cf75c1",
+   "nom": "Scarr",
+   "famille": "native",
+   "module": "btb_engine",
+   "canevas": null,
+   "level_id": null,
+   "tag_level_id": 117343,
+   "objets_forge": 0,
+   "mvar": [
+    "btb_engine.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/247637f8-1ed2-47de-8ff0-fd4b68f50888/b1bbed19-ba61-4cfd-8b1e-14a986cf75c1/",
+   "au_catalogue_objectifs": true,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "5c2898ac-bf38-48c9-8c46-7a4c09f3cd1d",
+   "version_id": "53f117a5-0e12-4d14-9308-61f8f87411af",
+   "nom": "Scarr Firefight",
+   "famille": "forge",
+   "module": null,
+   "canevas": "btb_engine",
+   "level_id": 799711266,
+   "tag_level_id": -799711267,
+   "objets_forge": 747,
+   "mvar": [
+    "btb_engine.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/5c2898ac-bf38-48c9-8c46-7a4c09f3cd1d/53f117a5-0e12-4d14-9308-61f8f87411af/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "2962c4e0-ab15-4979-8d28-c0792632c862",
+   "version_id": "036d0373-b072-45e1-a8de-ba30f13e0b16",
+   "nom": "Shiro",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo05_desert",
+   "level_id": 1804860316,
+   "tag_level_id": -1804860317,
+   "objets_forge": 5563,
+   "mvar": [
+    "fo05_desert.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/2962c4e0-ab15-4979-8d28-c0792632c862/036d0373-b072-45e1-a8de-ba30f13e0b16/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "98783453-ce40-4020-9e87-62099a290b62",
+   "version_id": "064cf75f-50d5-4d1c-b4b3-9cd718cd9825",
+   "nom": "Smallhalla",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo08_wetland",
+   "level_id": 88891201,
+   "tag_level_id": -88891202,
+   "objets_forge": 4159,
+   "mvar": [
+    "fo08_wetland.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/98783453-ce40-4020-9e87-62099a290b62/064cf75f-50d5-4d1c-b4b3-9cd718cd9825/",
+   "au_catalogue_objectifs": true,
+   "fond_publie_sous_map_id": true
+  },
+  {
+   "map_id": "f1cc3b4e-471c-4ec5-b855-1db7d9e6ce42",
+   "version_id": "cc6dfb16-7782-4995-a74a-98e86051fcdf",
+   "nom": "Solitude",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo11_blank",
+   "level_id": 426470249,
+   "tag_level_id": -426470250,
+   "objets_forge": 3279,
+   "mvar": [
+    "fo11_blank.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/f1cc3b4e-471c-4ec5-b855-1db7d9e6ce42/cc6dfb16-7782-4995-a74a-98e86051fcdf/",
+   "au_catalogue_objectifs": true,
+   "fond_publie_sous_map_id": true
+  },
+  {
+   "map_id": "4a5e5612-2b2e-4375-a0b3-9335a68815f3",
+   "version_id": "77710e1b-d9bc-42fd-a74b-918c27387783",
+   "nom": "Solitude - Ranked",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo11_blank",
+   "level_id": 426470249,
+   "tag_level_id": -426470250,
+   "objets_forge": 3290,
+   "mvar": [
+    "fo11_blank.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/4a5e5612-2b2e-4375-a0b3-9335a68815f3/77710e1b-d9bc-42fd-a74b-918c27387783/",
+   "au_catalogue_objectifs": true,
+   "fond_publie_sous_map_id": true
+  },
+  {
+   "map_id": "ee43d273-8677-45c2-a8cd-aedd2c463dc9",
+   "version_id": "94dd3837-1fe9-4df6-94ac-0ae2e63db986",
+   "nom": "Solution",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo05_desert",
+   "level_id": 1804860316,
+   "tag_level_id": -1804860317,
+   "objets_forge": 5602,
+   "mvar": [
+    "fo05_desert.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/ee43d273-8677-45c2-a8cd-aedd2c463dc9/94dd3837-1fe9-4df6-94ac-0ae2e63db986/",
+   "au_catalogue_objectifs": true,
+   "fond_publie_sous_map_id": true
+  },
+  {
+   "map_id": "7a9265af-a880-487b-8829-68d88fcfb145",
+   "version_id": "6147aa00-84e8-44ac-93c0-8638506349f1",
+   "nom": "Starboard",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo03_space",
+   "level_id": -747133697,
+   "tag_level_id": 747133696,
+   "objets_forge": 4036,
+   "mvar": [
+    "fo03_space.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/7a9265af-a880-487b-8829-68d88fcfb145/6147aa00-84e8-44ac-93c0-8638506349f1/",
+   "au_catalogue_objectifs": true,
+   "fond_publie_sous_map_id": true
+  },
+  {
+   "map_id": "f0a1760f-0d4a-4bcc-ac7a-e8f9aee331dc",
+   "version_id": "7cfb2ea5-2f69-4ed5-9d54-73988bebe8d7",
+   "nom": "Streets",
+   "famille": "native",
+   "module": "sgh_streets",
+   "canevas": null,
+   "level_id": null,
+   "tag_level_id": 117343,
+   "objets_forge": 0,
+   "mvar": [
+    "sgh_streets.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/f0a1760f-0d4a-4bcc-ac7a-e8f9aee331dc/7cfb2ea5-2f69-4ed5-9d54-73988bebe8d7/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "e23ea388-9bcb-4180-a0dc-fbe987751b9e",
+   "version_id": "bc130bc8-6610-458d-b04a-ead6392824c4",
+   "nom": "Streets - Ranked",
+   "famille": "forge",
+   "module": null,
+   "canevas": null,
+   "level_id": -942333627,
+   "tag_level_id": 942333626,
+   "objets_forge": 405,
+   "mvar": [
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/e23ea388-9bcb-4180-a0dc-fbe987751b9e/bc130bc8-6610-458d-b04a-ead6392824c4/",
+   "au_catalogue_objectifs": true,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "3c93772b-0338-4ee1-8108-4c0bb52ee219",
+   "version_id": "bfaf575d-8d7e-4c48-9319-9d5910a2d5aa",
+   "nom": "Suban",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo03_space",
+   "level_id": -747133697,
+   "tag_level_id": 747133696,
+   "objets_forge": 5569,
+   "mvar": [
+    "fo03_space.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/3c93772b-0338-4ee1-8108-4c0bb52ee219/bfaf575d-8d7e-4c48-9319-9d5910a2d5aa/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "95b69e4b-485f-4c6c-9b00-4bd68c94c1e9",
+   "version_id": "d6a434d9-0860-451f-a971-e9cfead782ae",
+   "nom": "Sylvanus",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo05_desert",
+   "level_id": 1804860316,
+   "tag_level_id": -1804860317,
+   "objets_forge": 5505,
+   "mvar": [
+    "fo05_desert.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/95b69e4b-485f-4c6c-9b00-4bd68c94c1e9/d6a434d9-0860-451f-a971-e9cfead782ae/",
+   "au_catalogue_objectifs": true,
+   "fond_publie_sous_map_id": true
+  },
+  {
+   "map_id": "edcd4467-6846-455f-ac44-f1034476f774",
+   "version_id": "b4cf8f05-d9e2-49a9-9fb4-8f1e489b638c",
+   "nom": "Takamanohara",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo11_blank",
+   "level_id": 426470249,
+   "tag_level_id": -426470250,
+   "objets_forge": 5617,
+   "mvar": [
+    "fo11_blank.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/edcd4467-6846-455f-ac44-f1034476f774/b4cf8f05-d9e2-49a9-9fb4-8f1e489b638c/",
+   "au_catalogue_objectifs": true,
+   "fond_publie_sous_map_id": true
+  },
+  {
+   "map_id": "ec1d4f25-8e4a-4cf7-ae48-43fa9e1a3808",
+   "version_id": "dcaea063-4afe-4409-a258-6099bd2228a3",
+   "nom": "The Pit",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo09_academy",
+   "level_id": 1437677928,
+   "tag_level_id": -1437677929,
+   "objets_forge": 5510,
+   "mvar": [
+    "fo09_academy.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/ec1d4f25-8e4a-4cf7-ae48-43fa9e1a3808/dcaea063-4afe-4409-a258-6099bd2228a3/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "27c4e8a1-d982-4e74-a1ec-d32f45551194",
+   "version_id": "ad794b7e-8cc1-4fca-bc9e-04ff31dab9b1",
+   "nom": "The Pit - Ranked",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo09_academy",
+   "level_id": 1437677928,
+   "tag_level_id": -1437677929,
+   "objets_forge": 5477,
+   "mvar": [
+    "fo09_academy.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/27c4e8a1-d982-4e74-a1ec-d32f45551194/ad794b7e-8cc1-4fca-bc9e-04ff31dab9b1/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "28a3ac28-f69d-4fa9-9ebf-a0449c89c8da",
+   "version_id": "5f93b32d-cdae-4742-b4ad-09bc3e0720f0",
+   "nom": "Thunderhead",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo08_wetland",
+   "level_id": 88891201,
+   "tag_level_id": -88891202,
+   "objets_forge": 5322,
+   "mvar": [
+    "fo08_wetland.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/28a3ac28-f69d-4fa9-9ebf-a0449c89c8da/5f93b32d-cdae-4742-b4ad-09bc3e0720f0/",
+   "au_catalogue_objectifs": true,
+   "fond_publie_sous_map_id": true
+  },
+  {
+   "map_id": "105f5d84-8de1-4908-af3a-1c4f3bf9d642",
+   "version_id": "1f2f2310-65a6-4a08-937c-dbdcd7dc2f56",
+   "nom": "Vagabond",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo08_wetland",
+   "level_id": 88891201,
+   "tag_level_id": -88891202,
+   "objets_forge": 4830,
+   "mvar": [
+    "fo08_wetland.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/105f5d84-8de1-4908-af3a-1c4f3bf9d642/1f2f2310-65a6-4a08-937c-dbdcd7dc2f56/",
+   "au_catalogue_objectifs": true,
+   "fond_publie_sous_map_id": true
+  },
+  {
+   "map_id": "688c2033-35de-461e-9394-a32c665c964c",
+   "version_id": "353a79a0-831d-4c27-9496-799d111b5b89",
+   "nom": "Vallaheim",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo05_desert",
+   "level_id": 1804860316,
+   "tag_level_id": -1804860317,
+   "objets_forge": 5263,
+   "mvar": [
+    "fo05_desert.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/688c2033-35de-461e-9394-a32c665c964c/353a79a0-831d-4c27-9496-799d111b5b89/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "8c95653b-e3ee-406c-ac4f-64f54a732708",
+   "version_id": "9755d8b6-963f-446a-abc5-ee54d3c01a87",
+   "nom": "Vallaheim",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo05_desert",
+   "level_id": 1804860316,
+   "tag_level_id": -1804860317,
+   "objets_forge": 5535,
+   "mvar": [
+    "fo05_desert.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/8c95653b-e3ee-406c-ac4f-64f54a732708/9755d8b6-963f-446a-abc5-ee54d3c01a87/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "e8268e75-6583-42ad-9e0c-2d2f043f5f0f",
+   "version_id": "470ca4cf-b6f2-4d1e-ba3d-dc4d136f7764",
+   "nom": "Vallaheim Firefight",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo05_desert",
+   "level_id": 1804860316,
+   "tag_level_id": -1804860317,
+   "objets_forge": 5429,
+   "mvar": [
+    "fo05_desert.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/e8268e75-6583-42ad-9e0c-2d2f043f5f0f/470ca4cf-b6f2-4d1e-ba3d-dc4d136f7764/",
+   "au_catalogue_objectifs": true,
+   "fond_publie_sous_map_id": true
+  },
+  {
+   "map_id": "0661af5e-8b6d-44c0-bb7c-9c76cdcc624d",
+   "version_id": "1b61d905-687d-4041-86a1-beb5259c6cff",
+   "nom": "Waterworks",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo08_wetland",
+   "level_id": 88891201,
+   "tag_level_id": -88891202,
+   "objets_forge": 5310,
+   "mvar": [
+    "fo08_wetland.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/0661af5e-8b6d-44c0-bb7c-9c76cdcc624d/1b61d905-687d-4041-86a1-beb5259c6cff/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  },
+  {
+   "map_id": "96783263-5c9c-4dc4-a2ad-d1dfc35883b2",
+   "version_id": "90b0e0fa-e1a2-48d0-8d05-4057dc633ddc",
+   "nom": "Waterworks",
+   "famille": "forge",
+   "module": null,
+   "canevas": "fo08_wetland",
+   "level_id": 88891201,
+   "tag_level_id": -88891202,
+   "objets_forge": 5374,
+   "mvar": [
+    "fo08_wetland.mvar",
+    "map.mvar"
+   ],
+   "blob_prefix": "https://blobs-infiniteugc.svc.halowaypoint.com/ugcstorage/map/96783263-5c9c-4dc4-a2ad-d1dfc35883b2/90b0e0fa-e1a2-48d0-8d05-4057dc633ddc/",
+   "au_catalogue_objectifs": false,
+   "fond_publie_sous_map_id": false
+  }
+ ]
+}

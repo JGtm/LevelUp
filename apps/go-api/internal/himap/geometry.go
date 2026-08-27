@@ -166,7 +166,12 @@ func decodeIndexDesc(r []byte) (bufferDesc, bool) {
 }
 
 // lodEntry : un niveau de detail d'un maillage.
-type lodEntry struct{ vertexBuf, indexBuf int }
+//
+// `abs` est l'offset ABSOLU de l'enregistrement dans les octets du tag. Il n'est pas la pour
+// decorer : les drapeaux de visibilite du LOD (`lod flags`, `lod render flags`, cf.
+// filtres_reclaimer.go) ne se lisent nulle part ailleurs, et les recalculer dans un second
+// parcours donnerait deux lectures a maintenir du meme bloc.
+type lodEntry struct{ vertexBuf, indexBuf, abs int }
 
 // lods rend les niveaux de detail d'un maillage.
 func (a *RuntimeGeoAsset) lods(meshIndex int) []lodEntry {
@@ -198,6 +203,7 @@ func (a *RuntimeGeoAsset) lods(meshIndex int) []lodEntry {
 		out = append(out, lodEntry{
 			vertexBuf: int(binary.LittleEndian.Uint16(r[lodOffVertexBuffer:])),
 			indexBuf:  int(binary.LittleEndian.Uint16(r[lodOffIndexBuffer:])),
+			abs:       abs + k*lodStride,
 		})
 	}
 	return out
