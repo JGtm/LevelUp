@@ -74171,3 +74171,32 @@ juge discernable sur capture (bandes claires du verre SOUS volutes sombres). Gat
 apres le tour : vitest 5034 verts, tsc purge 0, eslint 0 erreur (le reglage final du nuage
 est un ajustement de valeurs CSS pur, hors couverture). Captures d ecran du volet obtenues
 sur ce tour (fourreau en rotation aux deux instants, nuage visible, flash de mort saisi).
+
+## [2026-08-27] Chantier note de perf — lot 1bis LIVRE et VALIDE, Volet A CLOS, lot 2 lance
+
+**Statut** : En cours (plan `.ai/PLAN_PERF_NOTE_OBJECTIFS.md`).
+
+**Volet A CLOS** : gate visuel valide par l utilisateur, CI de branche verte au niveau
+JOB sur `6b7c5402b`.
+
+**Lot 1bis livre** (`f6b978676` pousse sur feat/perf-note-objectifs) : liste objectif
+17 entrees + regle du prefixe (pair_names inverses), lusrChainForOther branche sur la
+source unique. Serveur dev arrete avec autorisation utilisateur, rejeu corpus VALIDE a
+la piece par le pilote : exactement 26 movers (25 sociaux -> arena_objectif : 6
+CTF:Arena, 6 CTF:Arena Neutral Flag, 2 Strongholds:Arena, 4 neutral bomb, 3 vip, 3 one
+bomb, 1 neutral bomb squad ; 1 Ranked:CTF 3 Captures -> ranked_objectif). CORRECTIONS de
+l analyse en route : (a) 6 des « 14 inverses » du lot 0 etaient des modes SLAYER
+inverses (Team Slayer:Arena, Slayer:Arena) — restes slayer a bon droit ; (b) 6 movers
+passent par lusrChainForOther (CTF:Arena Neutral Flag, deux cotes inconnus des
+categories) — le branchement Other est un chemin ACTIF, pas une robustesse. Temoin
+missClassified redefini (deux moities du pair_name) : 0 mal classe. Gates verts
+(integration -p 1 six tranches 304/304 packages, zero --- FAIL:, himap timeout local
+connu).
+
+**Backfill (question user)** : recompute force des notes + recompute LUSR = lot 4, une
+seule passe apres lots 2-3 ; PIEGE ancre au plan : cmd/levelup ne cable pas les
+classifiers -> le binaire du recompute doit poser et VERIFIER les seams.
+
+**Conclusion / prochaine etape** : executeur lot 2 lance (batch auto-nettoyant des notes
+orphelines + garde-rail + reparation index PSA de la DB Daemon, corruption ART verifiee
+sur pieces). Serveur dev laisse ARRETE pendant les phases DB du chantier.

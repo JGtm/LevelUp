@@ -132,8 +132,9 @@ ré-ancrage session composition) et gate visuel utilisateur.
 **Statut Volet A : LIVRÉ le 2026-08-27** — commit `6b7c5402b` (wt/squad-compo) mergé
 fast-forward dans feat/v75 et poussé sur origin (autorisation utilisateur explicite).
 Gates rejoués par le pilote en première main : typecheck exit 0 (cache purgé), lint
-exit 0 (22 warnings pré-existants), vitest squad+lib 1321/1321 exit 0. Reste ouvert :
-gate visuel utilisateur sur son dev habituel + CI de branche à confirmer au niveau JOB.
+exit 0 (22 warnings pré-existants), vitest squad+lib 1321/1321 exit 0. CI de branche
+verte au niveau JOB (CI 25m48s + Deploy Pre-Check + Secrets, run 33093141505).
+**Gate visuel utilisateur VALIDÉ le 2026-08-27 — VOLET A CLOS.**
 
 ## Volet B — chantier note de perf (lots strictement séquentiels)
 
@@ -222,23 +223,23 @@ Pré-requis : lot 1 clos (le helper unique existe). Périmètre : la classificat
 FAMILLE uniquement — `NormalizeModeLabel` et `InferModeCategoryFromPairName` (catégories
 UI) ne changent PAS.
 
-- [ ] B1b.1 Le helper unique devient `IsObjectiveMode(pairName)` (ou équivalent) avec
+- [x] B1b.1 Le helper unique devient `IsObjectiveMode(pairName)` (ou équivalent) avec
       deux règles : (1) sous-mode normalisé (partie droite) ∈ liste objectif ; (2) sinon,
       si le PRÉFIXE (partie gauche du `:`, normalisée) ∈ liste objectif → objectif
       (couvre les pair_names inversés type `Strongholds:Arena`). Ajouts à la liste :
       `vip`, `neutral bomb`, `one bomb`, `neutral bomb squad`, `ctf 3 captures`.
       `arena` n'entre dans AUCUNE liste.
-- [ ] B1b.2 Brancher les trois consommateurs sur le helper : `lusrChainForAssassin`
+- [x] B1b.2 Brancher les trois consommateurs sur le helper : `lusrChainForAssassin`
       (déjà fait au lot 1), `lusrChainForOther` (les inversés sont en catégorie Other —
       test IsObjectiveMode APRÈS les règles chaos, avant le fallback arena_slayer), et
       le classifieur de famille ranked (lot 1).
-- [ ] B1b.3 Tests : les 26 cas du corpus (annexe rapport lot 0) deviennent des fixtures —
+- [x] B1b.3 Tests : les 26 cas du corpus (annexe rapport lot 0) deviennent des fixtures —
       `Assault:Neutral Bomb on Origin` → arena_objectif, `Arena:VIP on Catalyst` →
       arena_objectif, `Strongholds:Arena on Behemoth` → arena_objectif,
       `Ranked:CTF 3 Captures on Argyle` → ranked_objectif (remplace le cas « limitation
       connue » du lot 1), etc. + cas de non-régression (Fiesta/chaos prioritaires sur la
       règle préfixe ; `Arena:Slayer` intact). Garde-rail B1.2 mis à jour si nécessaire.
-- [ ] B1b.4 Rejouer `cmd/diag_perfsim` (lecture seule, serveur arrêté) et vérifier le
+- [x] B1b.4 Rejouer `cmd/diag_perfsim` (lecture seule, serveur arrêté) et vérifier le
       delta : exactement les 26 matchs changent de famille sur le corpus des 4 joueurs
       (14 `arena` + 4 `neutral bomb` + 3 `vip` + 3 `one bomb` + 1 `neutral bomb squad` +
       1 `ctf 3 captures`) — toute autre bascule = STOP et analyse. Consigner les comptes
@@ -246,6 +247,43 @@ UI) ne changent PAS.
 
 Gate 1bis : gates go du lot 1 rejoués (unit + vet + build + intégration -p 1) + le delta
 de B1b.4 conforme (26 matchs, pas un de plus).
+
+**Gate 1bis PARTIEL le 2026-08-27** — code livré et vérifié pilote (helper 17 entrées +
+règle du préfixe via `isObjectiveModeLabel` interne, nom `IsObjectiveSubMode` conservé —
+justifié : symétrie du seam avec halo_5, 20 call-sites, le sous-mode d'un pair inversé
+EST la partie gauche). Gates : unit/vet/build/gofmt exit 0 ; intégration `-p 1` en 6
+tranches couvrant 304/304 packages, ZÉRO `--- FAIL:` (seul himap sort en timeout local
+connu). RESTE `[!]` : le rejeu corpus B1b.4 — bloqué par le serveur dev actif sur les
+DBs réelles (session utilisateur) ; condition de reprise : port 8000 libre.
+**Grille de lecture du rejeu (consignée d'avance)** : (a) l'annexe des sous-modes est
+bâtie sur l'UNIVERS complet (DNF/exclus inclus), les tables par chaîne sur le SCORABLE —
+le delta lu dans les tables sera ≤ 26 sans anomalie ; (b) un pair de catégorie Other
+portant un mode objectif (ex. `Rumble Pit:Oddball`) peut bouger EN PLUS des 26 de
+l'annexe (qui ne couvrait qu'Assassin+Ranked) — valider ces movers À LA PIÈCE (le pair
+porte réellement un mode objectif) au lieu de crier au 27e ; (c) le rapport de l'outil
+imprime désormais `missClassified` avec attendu 0 (témoin automatique).
+
+**B1b.4 REJOUÉ ET VALIDÉ le 2026-08-27** (serveur arrêté avec autorisation utilisateur,
+RUN_EXIT=0, comptes globaux inchangés). Delta validé À LA PIÈCE par requêtes DB
+directes : **26 movers exactement** — 6 `CTF:Arena on Opulence` + 6 `CTF:Arena Neutral
+Flag` (Live Fire ×3, Prism ×3) + 2 `Strongholds:Arena` + 4 `Assault:Neutral Bomb` +
+3 `Arena:VIP` + 3 `Assault:One Bomb` + 1 `Assault:Neutral Bomb Squad` (= 25 sociaux →
+arena_objectif) + 1 `Ranked:CTF 3 Captures` (→ ranked_objectif). Tables par chaîne
+réconciliées : JGtm arena_objectif 221→235 (+14), Choco 152→156 (+4), Madina 192→199
+(+7) et ranked_objectif 21→22 (+1). **Correction du lot 0** : sur les « 14 pair_names
+inversés », 6 étaient des modes SLAYER inversés (`Team Slayer:Arena` ×5, `Slayer:Arena`
+×1) — ils restent à bon droit en famille slayer ; l'annexe lot 0 les comptait à tort
+comme objectifs. La composition des 26 diffère donc de la prédiction (6 slayer-inversés
+sortent, 6 `CTF:Arena Neutral Flag` entrent), le TOTAL de 26 est identique. Témoin
+`missClassified` REDÉFINI (mesure les deux moitiés du pair_name, croise miroir et
+classifieur de production) : **0 mal classé — attendu 0**, run vert, comptes inchangés,
+aucun 27e mover. **GATE 1BIS INTÉGRALEMENT PASSÉ le 2026-08-27.**
+Raffinement final (exécuteur, vérifié cohérent avec les requêtes pilote) : la
+répartition des movers inversés est 8 par la branche Assassin (`CTF:Arena` ×6,
+`Strongholds:Arena` ×2) et **6 par la branche Other** (`CTF:Arena Neutral Flag` —
+les DEUX côtés inconnus du classifieur de catégories) : le branchement
+`lusrChainForOther` (B1b.2) est un chemin ACTIF portant 6/26 movers, pas une simple
+robustesse.
 
 ### Lot 2 — Hygiène non-terminés / orphelins (batch auto-nettoyant)
 
@@ -298,6 +336,10 @@ simulées et les notes produites par le code réel sur les mêmes données doive
       d'entrée existant (CLI levelup backfill / enrichment_backfill — identifier la
       commande exacte, sinon mini-cmd diag) sur les DONNÉES RÉELLES depuis le worktree
       (binaire de la branche, LEVELUP_REPO_ROOT → checkout principal).
+      PIÈGE (découverte lot 1) : `cmd/levelup` ne câble PAS les classifiers (LUSR ni
+      famille objectif) — un recompute depuis un binaire non câblé classerait tout le
+      ranked en ranked_slayer EN SILENCE. Exigence : le binaire du recompute pose les
+      seams (Set*Classifier) et le vérifie (Validate*Wired) AVANT tout calcul.
 - [ ] B4.2 Contrôles diag_q post-recompute : 0 score sur outcome=4 ; 0 chaîne `ranked`
       restante ; distribution des chaînes conforme au rapport lot 0 ; comptes purgés =
       comptes prédits.
