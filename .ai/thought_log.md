@@ -1,3 +1,33 @@
+## [2026-08-28] Rejeu 2D fiches : icones PLEINES des armes (miroir) et grenades — Complete
+
+**Contexte** : retour utilisateur sur le lot 577746ef3 (refonte option 2a) — la maquette
+utilisait la version PLEINE des icones d'armes et de grenades, armes dans le sens du kill
+feed (miroir de nos atlas). Les fiches servaient l'atlas contour et les images versionnees
+de grenades (planche 16/08).
+
+**Decision technique principale** : (1) armes des fiches = atlas `silhouette` (version
+pleine, indexe A L'IDENTIQUE du contour — verifie 40/40 memes tags weap sur jeu/index.json)
+par echange de stem COTE CLIENT (weaponFullIcon.ts — l'URL est cuite dans l'artefact au
+build, le Go n'atteindrait que les artefacts recuits ; meme argument que feu grenadeIcon.ts),
+rendu en MIROIR scaleX(-1) : contour/silhouette pointent a GAUCHE, le kill feed du jeu et
+la maquette a DROITE. Vignettes hors atlas (2 dessins finis, concepts) inchangees, non
+retournees. Garde-rail weaponFullIcon.guard.test.ts (alignement d'index + disque).
+(2) grenades des fiches = MASQUE de HUD du document (version pleine, currentColor),
+l'image versionnee du 16/08 est SUPPRIMEE avec tout son attirail (grenadeIcon.ts, garde,
+kind 'grenade' de staticAssets.ts, static/grenades-assets/ — 0 lecteur restant, regle 7) ;
+vignette grenade 14px (maquette). Les rateliers de la carte (useReplayWeaponPads) gardent
+le contour : hors perimetre du handoff.
+
+**Resultats observes** : vitest complet 5037 verts ; tsc, eslint (0 erreur), lint couleurs
+OK. DECOUVERTE hors perimetre, NON traitee : le cliquet placementFamily.guard
+(ReplayCanvas.tsx <= 691 lignes) est ROUGE sur feat/v75 depuis le merge 839ce6b51 (lot
+couronne VIP, session concurrente) — 692 lignes a HEAD, mon diff ne touche pas ce fichier.
+A signaler au lot proprietaire : extraction requise, jamais relever le plafond.
+
+**Conclusion / prochaine etape** : gate visuel utilisateur (fiches : armes pleines vers la
+droite, cellule en main, grenades en masque) ; cliquet ReplayCanvas a resoudre par le lot
+VIP avant cloture CI de la branche.
+
 ## [2026-08-27] Couronne VIP PUBLIEE (schema 22) — Complete
 
 **Contexte** : chantier modes a porteur, voie statborg. Le film ne porte pas le bit VIP

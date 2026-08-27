@@ -235,9 +235,11 @@ describe('ReplayTeams — boîte de grenades : quelle lecture, et de quel âge',
       },
       60,
     )
+    // Les libellés de test n'ont pas de vignette : la puce garde le LIBELLÉ (le module
+    // d'images versionnées est parti avec l'option 2a — la vignette vient du document seul).
     const box = screen.getByTitle(/Grenades lues il y a 1\.0 s/)
-    expect(within(box).getByRole('img', { name: 'Fragmentation' })).toBeTruthy()
-    expect(within(box).getByRole('img', { name: 'Plasma' })).toBeTruthy()
+    expect(within(box).getByTitle('Fragmentation')).toBeTruthy()
+    expect(within(box).getByTitle('Plasma')).toBeTruthy()
     expect(box.textContent).toContain('×1')
     expect(box.textContent).toContain('×2')
   })
@@ -254,14 +256,16 @@ describe('ReplayTeams — boîte de grenades : quelle lecture, et de quel âge',
       },
       30,
     )
+    // Seul type porté : la puce est marquée « équipé », son infobulle est donc PRÉFIXÉE
+    // par le nom — d'où la regex (title exact = nom seul uniquement hors sélection).
     const box = screen.getByTitle(/Grenades lues il y a 0\.5 s/)
     expect(
-      within(box).getByRole('img', { name: 'Fragmentation' }),
+      within(box).getByTitle(/^Fragmentation/),
       'les compteurs de l’inventaire passé',
     ).toBeTruthy()
     expect(box.textContent).toContain('×2')
     expect(box.textContent, 'jamais la lecture à venir').not.toContain('×5')
-    expect(within(box).queryByRole('img', { name: 'Plasma' })).toBeNull()
+    expect(within(box).queryByTitle(/^Plasma/)).toBeNull()
   })
 
   it('lecture À VENIR sans RIEN de passé : elle s’affiche, et l’infobulle dit « dans »', () => {

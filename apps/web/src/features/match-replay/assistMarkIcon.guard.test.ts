@@ -1,7 +1,7 @@
 /// <reference types="node" />
 // @vitest-environment node
 /**
- * Garde-rail (CLAUDE.md n° 6, même patron que `grenadeIcon.guard.test.ts`) : la vignette
+ * Garde-rail (CLAUDE.md n° 6, même patron que `weaponFullIcon.guard.test.ts`) : la vignette
  * d'assistance codée en dur dans `ReplayKillFeed.tsx` (`ASSIST_ICON_STEM`, cf. `AssistMark`)
  * doit exister sur disque ET rester CE que `jeu/index.json` déclare à cet index.
  *

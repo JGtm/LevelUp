@@ -37,17 +37,14 @@ import type { CSSProperties } from 'react'
 import { WeaponIcon } from '@/components/ui/WeaponIcon'
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 
-import { useTitleSlug } from '@/lib/title-routing/useTitleSlug'
-import { useSettingsDraftStore } from '@/stores/settingsDraftStore'
-
 import { catalogText } from './catalogLabel'
 import { drawnSwapAt, type EquippedReading } from './equippedLogic'
 import { GRENADE_THROW_HOLD_MS, grenadeThrowActive } from './grenadeFx'
-import { grenadeIconOf } from './grenadeIcon'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
 import { formatSeconds, frameToMs, freshness, msToFrames, READING_FADE } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
 import type { PlayerState } from './rosterLogic'
+import { MIRROR_STYLE, weaponFullIcon } from './weaponFullIcon'
 
 /** Durée de l'animation d'échange — celle du POC, calée sur la rémanence des lancers. */
 const SWAP_ANIM_MS = 340
@@ -175,15 +172,14 @@ function GrenadeThrowBadge({
   locale: ReplayLocale
 }) {
   const t = REPLAY_TEXT[locale]
-  const titleSlug = useTitleSlug()
-  const theme = useSettingsDraftStore((s) => s.localUiPrefs.theme)
   const lbl = doc.grenadeLabels[rank]
   const name = catalogText(lbl, locale) ?? `${rank}`
   const tooltip = `${t.grenadeThrown} — ${name}`
-  // MÊME VIGNETTE QUE LA CELLULE DE GRENADE (grenadeIcon.ts) : le type qui part est le même
-  // objet que celui qu'on compte dans la même rangée — deux dessins différents pour la même
-  // grenade se liraient comme deux grenades.
-  const icon = grenadeIconOf(lbl, titleSlug, theme)
+  // MÊME VIGNETTE QUE LA CELLULE DE GRENADE : le masque de HUD cuit dans l'artefact
+  // (option 2a du handoff 2026-08-27 — la version PLEINE, teinte par currentColor, a
+  // remplacé l'image versionnée du 16/08). Deux dessins différents pour la même grenade
+  // se liraient comme deux grenades.
+  const icon = lbl?.img ? { url: lbl.img, tinted: !!lbl.tinted } : null
   return (
     <span
       key={`gic-${throwFrame}`}
@@ -238,6 +234,9 @@ function WeaponChip({
 }) {
   const lbl = doc.weaponLabels?.[id]
   const name = catalogText(lbl, locale)
+  // LA VERSION PLEINE, RETOURNÉE (option 2a) : l'atlas silhouette à la place du contour
+  // cuit dans l'artefact, rendue dans le sens du kill feed du jeu (cf. weaponFullIcon.ts).
+  const icon = lbl?.img ? weaponFullIcon(lbl.img) : null
   const style: CSSProperties = {
     width: WEAPON_CELL_W,
     height: CELL_H,
@@ -257,14 +256,15 @@ function WeaponChip({
       style={style}
       title={hint}
     >
-      {lbl?.img ? (
+      {icon ? (
         <WeaponIcon
-          imageUrl={lbl.img}
-          tinted={lbl.tinted}
+          imageUrl={icon.url}
+          tinted={lbl?.tinted}
           label={name ?? id}
           width={ICON_W}
           height={ICON_H}
           className={inHand ? 'text-foreground' : undefined}
+          style={icon.mirrored ? MIRROR_STYLE : undefined}
         />
       ) : (
         <span
