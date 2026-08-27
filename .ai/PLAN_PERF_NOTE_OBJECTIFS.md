@@ -427,15 +427,20 @@ lot 4). SÉQUENCEMENT STRICT : APRÈS la fin des recomputes du lot 4 (le backfil
 la shared en ÉCRITURE ; aucune concurrence de process sur les DBs ni d'invocations go
 parallèles).
 
-- [ ] C1 Run pilote : `go run ./cmd/levelup backfill-killsource --limit <N>` depuis le
-      checkout principal (feat/v75 — code déjà en prod), port 8000 vérifié libre ;
-      lire le résumé (couverture, films indisponibles, erreurs).
-- [ ] C2 Passe complète dans la même fenêtre ; consigner le résumé final (kills
-      couverts avant/après, plafond films Theater expirés le cas échéant).
-- [ ] C3 Contrôle : requête read-only de couverture arme-du-kill par mois sur
-      avril-août 2026 (avant/après) ; le kill feed d'un match témoin récent affiche
-      ses vignettes (gate visuel utilisateur, groupable avec celui du lot 4).
-- [ ] C4 Solder l'entrée du registre (date + résultat) ; thought_log.
+- [x] C1 (2026-08-28, pilote) Dry-run exécuté : 2 films en cache à décoder (33 chunks
+      chacun) + 1948 matchs à examiner en passe crédit — charge légère, --limit inutile.
+- [x] C2 Passe complète : EXIT 0 en 7 min 54 — crédit 416 écrits + 949 enrichis par un
+      film (1365 matchs), 136 900 morts créditées, 583 sans événement, 0 erreur. Les 2
+      films du cache étaient INCOMPLETS (compteur films_absents=2, 0 mort issue du
+      décodage film — sans impact, le crédit SQL a porté le rattrapage). Compteurs de
+      santé tous à zéro d'erreur ; assist_extra et orphelins humain-contre-humain dans
+      leurs seuils documentés.
+- [x] C3 Contrôle de couverture par mois (read-only) : 2026-03 99,5 % (1 match sans
+      événement), 2026-04→08 **100 %** — contre 0-5 % avant sur avril-juillet. Le volet
+      visuel (vignettes du kill feed sur un match récent) rejoint le gate visuel
+      utilisateur groupé.
+- [ ] C4 Solder l'entrée du registre (:43, date + résultat) ; thought_log — au lot de
+      clôture B4.6.
 
 ## Volet D — backfill des 80 scores d'équipe faux (demande utilisateur 2026-08-28, IMPÉRATIF avant le tag v7.5.0)
 
@@ -449,15 +454,17 @@ connu registre :418 : un --apply avec serveur allumé sort en fatal AVANT le ré
 brûle les 80 appels). SÉQUENCEMENT : après le lot 4, AVANT le volet C (court et
 impératif d'abord), même fenêtre serveur-arrêté, jamais en concurrence d'accès DB.
 
-- [ ] D1 Port 8000 vérifié libre ; dry-run : `go run ./cmd/backfill-team-scores`
-      (défaut --dry-run) depuis le checkout principal ; capturer le journal complet.
-- [ ] D2 CONTRÔLE DE FORME (critère utilisateur, STOP sinon) : les 7 inversions
-      attendues apparaissent comme des permutations EXACTES (avant a/b → après b/a,
-      mêmes deux nombres) ; toute autre forme = STOP, aucun apply, CR d'analyse.
-- [ ] D3 Apply (le rapport prescrit le passage par gamertag/match) ; puis CONTRÔLE :
-      rejouer le dry-run → attendu « identiques=80 planifiees=0 ».
-- [ ] D4 Thought_log + entrée du registre (:418) soldée ; signaler au user que le
-      pré-requis « avant tag v7.5.0 » est levé.
+- [x] D1 (2026-08-28, pilote) Dry-run : EXIT 0, `lus=80 identiques=0 planifiees=80
+      skippes=0 echecs=0` — décompte de référence exact, journal capturé.
+- [x] D2 CONTRÔLE DE FORME VALIDÉ : les 7 inversions du journal sont des permutations
+      EXACTES et correspondent une à une aux 7 attendues du TSV cause=autre (6 Oddball
+      + 1 BTB:Sentry Defense, mêmes api_t0/api_t1) ; les non-permutations du journal
+      sont précisément les cas documentés hors des 7 (Attrition 2/1950→2/0 ticks,
+      Strongholds à ticks, 2 One Flag). Pas de STOP.
+- [x] D3 Apply : EXIT 0, `planifiees=80 corriges=80 skippes=0 echecs=0` ; contrôle
+      final (dry-run rejoué) : `identiques=80 planifiees=0`, plus d'avertissement de
+      répétition à blanc. **Pré-requis « avant tag v7.5.0 » LEVÉ.**
+- [ ] D4 Thought_log + entrée du registre (:418) soldée — au lot de clôture B4.6.
 
 ## Hors périmètre / interdits (exécuteurs)
 

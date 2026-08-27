@@ -74403,3 +74403,27 @@ d equipe, IMPERATIF avant tag v7.5.0, dry-run avec controle de forme STOP) puis 
 (backfill-killsource) dans la meme fenetre serveur-arrete ; ensuite relance serveur +
 gate visuel utilisateur groupe, cloture (registre, delivery-checklist), et balayage VPS
 annonce.
+
+## [2026-08-28] Volets D et C EXECUTES par le pilote — 80 scores d equipe corriges, killsource a 100 %
+
+**Statut** : Complete (operations CLI, zero code). Lot 4 commite/pousse (`77631d50b`)
+avant execution.
+
+**Volet D (80 scores d equipe, IMPERATIF avant tag v7.5.0) — SOLDE** : dry-run
+`lus=80 planifiees=80 skippes=0 echecs=0` ; CONTROLE DE FORME valide (les 7 inversions
+= permutations EXACTES, croisees une a une avec le TSV cause=autre — 6 Oddball + 1
+Sentry Defense ; les non-permutations sont les cas documentes hors des 7) ; apply
+`corriges=80 echecs=0` ; controle final `identiques=80 planifiees=0`, plus
+d avertissement de repetition a blanc. Pre-requis tag v7.5.0 LEVE.
+
+**Volet C (backfill-killsource, registre lot 6 item 6.5) — SOLDE** : dry-run 2 films
+cache + 1948 matchs credit ; passe complete EXIT 0 en 7 min 54 — 1365 matchs credites
+(416 nouveaux + 949 enrichis par un film), 136 900 morts, 0 erreur ; les 2 films du
+cache etaient incomplets (sans impact). Couverture arme-du-kill par mois :
+avril-juillet 2026 passent de 0-5 % a 100 % (mars 99,5 %).
+
+**Conclusion / prochaine etape** : serveur air relance pour l utilisateur ; gate visuel
+groupe a lui presenter (temoins perf du CR lot 4 §6 + vignettes kill feed d un match
+recent) ; puis cloture B4.6/C4/D4 (registre : killsource :43 et jour-J :418 soldes,
+BTB D-F, buildFormTab D-G, causes racines h5_arena et index PSA) et balayage VPS
+annonce (PSA + h5_arena, read-only d abord).
