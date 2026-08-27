@@ -308,9 +308,7 @@ export function ReplayCanvas({
     lives: doc.objectiveObjects, view: canvasView, ink: neutralInk, edge: floorStyle.edge,
   })
   // LA COURONNE VIP (schéma 22) : marqueur sur le VIP courant, relu image par image (useReplayVipCrown).
-  const vipCrown = useReplayVipCrown({
-    doc, view: canvasView, enabled: showVipCrown, ink: neutralInk, reducedMotion,
-  })
+  const vipCrown = useReplayVipCrown({ doc, view: canvasView, enabled: showVipCrown, ink: neutralInk, reducedMotion })
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current

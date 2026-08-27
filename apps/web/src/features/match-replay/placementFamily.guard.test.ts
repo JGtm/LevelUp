@@ -222,10 +222,16 @@ describe('garde-rail : le vocabulaire des familles de pose', () => {
  * memo `objectivePulses` REJOINT donc `useReplayFx.ts` — il est de la meme nature que les cinq
  * autres (une liste d'evenements en monde, precalculee une fois, qui ne dessine rien) : douzieme
  * extraction imposee par ce cliquet, nom inchange, aucune ligne de tracé deplacee.
+ *
+ * 691 -> 690 le 2026-08-28 (correctif CI) : le decompte du lot VIP etait faux d'UNE ligne —
+ * le fichier a atteint origin a 692 et ce test etait le seul rouge de la branche. L'appel
+ * `useReplayVipCrown` est resserre sur une ligne (patron des appels longs voisins du tiroir),
+ * le fichier retombe a 690 et le cliquet SUIT le fichier, comme a chaque fois : lui laisser
+ * la ligne d'ecart aurait offert une ligne gratuite a la prochaine addition.
  */
 describe('garde-rail : la taille du canvas du rejeu ne remonte pas', () => {
   it('ReplayCanvas.tsx reste sous son plafond', () => {
     const src = readFileSync(resolve(__dirname, 'ReplayCanvas.tsx'), 'utf8')
-    expect(src.split('\n').length - 1).toBeLessThanOrEqual(691)
+    expect(src.split('\n').length - 1).toBeLessThanOrEqual(690)
   })
 })
