@@ -27,6 +27,12 @@
  * `WeaponIcon` (masque teint par CSS). L'alignement des deux horloges est traité dans
  * `killFeedLogic.ts`, avec sa mesure.
  *
+ * LE FIL ALIGNÉ LUI EST DONNÉ, IL NE L'ASSEMBLE PLUS (planche 2a, 2026-08-28) : `buildFeedEntries`
+ * est appelé UNE fois par la page, et sa sortie sert ici ET aux pistes de la frise. Ce n'est pas
+ * une optimisation — c'est la garantie que les deux vues montrent LE MÊME fil : deux alignements
+ * indépendants auraient chacun leur recalage, et une élimination pointée sur la frise ne serait
+ * pas exactement celle qu'on lit dans la colonne. Le rendu, lui, ne bouge pas d'un pixel.
+ *
  * SA HAUTEUR EST CELLE DE LA RANGÉE, JAMAIS LA SIENNE (mise en page du 2026-08-16) : le fil
  * vit dans une colonne à côté de la carte, et c'est la CARTE qui impose la hauteur. Le
  * composant ne borne donc plus sa liste (`max-h-64` supprimé) ; il occupe ce qu'on lui donne
@@ -57,7 +63,6 @@
 import { useEffect, useMemo, useRef } from 'react'
 
 import { WeaponIcon } from '@/components/ui/WeaponIcon'
-import type { KillEvent } from '@/features/match-view/_momentum'
 import { teamColorResolver, type TeamColorResolver } from '@/features/match-view/teamColor'
 import type { XuidMeta } from '@/features/match-view/xuidMeta'
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
@@ -75,15 +80,12 @@ import { NO_MARKS, type PlayerMarkKind } from './playerMarks'
 import { FeedName } from './ReplayFeedName'
 import { HUD_BAND_CLASS, hudBandStyle } from './hudBand'
 import {
-  buildFeedEntries,
   feedAt,
-  type MedalEvent,
   type ReplayDeath,
   type ReplayFeedEntry,
   type ReplayKill,
 } from './killFeedLogic'
 import { formatClock } from './replayLogic'
-import type { ReplayDocumentReady } from './replayNormalize'
 import { displayClockMs, type ReplayWindowBounds } from './replayWindow'
 
 /** Gabarit d'une icône d'arme : le format bandeau de l'atlas kill feed (option 2a : 22×10). */
@@ -131,21 +133,15 @@ const FEED_ROW =
   'replay-feed-row flex shrink-0 flex-nowrap items-center gap-2 overflow-hidden py-[5px] pr-2 text-xs'
 
 interface Props {
-  /** Kills du match, tels que `collectKillEvents` les a lus (horloge gameplay). */
-  kills: KillEvent[]
-  /** Médailles du match, telles que `collectMedalEvents` les a lues. */
-  medals: MedalEvent[]
-  /** Offset du countdown pré-match, en ms (`header.t0_ms`). 0 = inconnu. */
-  t0Ms: number
+  /**
+   * LE FIL ALIGNÉ, assemblé par la page (`buildFeedEntries`) : kills recalés sur l'axe du
+   * rejeu, morts neutres et médailles seules, triés. Trié est un PRÉ-REQUIS — `feedAt` coupe
+   * au premier élément postérieur à l'instant courant.
+   */
+  entries: ReplayFeedEntry[]
   /** Instant courant sur l'axe BRUT du film (il décide du VISIBLE) ; `playWindow` recale l'AFFICHÉ (D-A2). */
   nowMs: number
   playWindow: ReplayWindowBounds | null
-  /**
-   * Le document du rejeu : ses pistes datent les fins de vie, le référentiel sur lequel
-   * le fil se recale (cf. killFeedLogic.ts) et dont sortent les lignes de mort neutre.
-   * Absent : recalage brut `+t0Ms`, aucune mort neutre.
-   */
-  doc?: ReplayDocumentReady | null
   scoreboard: MatchScoreboardRow[] | null | undefined
   xuidMeta: XuidMeta
   locale: ReplayLocale
@@ -164,15 +160,9 @@ interface Props {
 }
 
 export function ReplayKillFeed({
-  kills, medals, t0Ms, nowMs, playWindow, doc, scoreboard, xuidMeta, locale, marks, colorOf,
+  entries, nowMs, playWindow, scoreboard, xuidMeta, locale, marks, colorOf,
 }: Props) {
   const t = REPLAY_TEXT[locale]
-  // L'assemblage ne dépend PAS de l'image courante : le refaire soixante fois par
-  // seconde coûterait le budget d'animation pour un résultat identique.
-  const entries = useMemo(
-    () => buildFeedEntries(kills, medals, t0Ms, doc),
-    [kills, medals, t0Ms, doc],
-  )
   const fallbackColorOf = useMemo(() => teamColorResolver(scoreboard), [scoreboard])
   const colorOfTeam = colorOf ?? fallbackColorOf
   // team_id par xuid, pour colorer le défunt d'une mort neutre — la piste ne porte pas
