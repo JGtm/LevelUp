@@ -24,6 +24,7 @@ import { collectMedalEvents } from '@/features/match-replay/killFeedLogic'
 import { buildPlayerMarks } from '@/features/match-replay/playerMarks'
 import { ReplayCanvas } from '@/features/match-replay/ReplayCanvas'
 import { ReplayKillFeed } from '@/features/match-replay/ReplayKillFeed'
+import { ReplayMatchRecall } from '@/features/match-replay/ReplayMatchRecall'
 import { frameToMs } from '@/features/match-replay/replayLogic'
 import { replayWindow } from '@/features/match-replay/replayWindow'
 import { ReplayScoreBanner } from '@/features/match-replay/ReplayScoreBanner'
@@ -145,17 +146,46 @@ function ReplayPage() {
 
   const hasReplay = !!data && data.tracks.length > 0
 
+  // CE QUI DÉBORDAIT N'ÉTAIT PAS DU CONTENU (retour du 2026-08-27 : « je peux descendre
+  // alors qu'il n'y a rien »). Cette page est une pile RIGIDE — titre, bandeau de score, et
+  // une carte dont la hauteur est constante — dans un shell où seul le <main> défile. Quand
+  // le dépassement de la pile est PLUS PETIT que la marge basse de la page, défiler ne révèle
+  // que du vide : c'est le fantôme, et il ne peut pas disparaître tant que la page a une
+  // marge basse et une carte fixe — il peut rétrécir. Les marges verticales tombent donc de
+  // 24 à 12 px (le vide défilable au pire des cas est divisé par deux), et la ligne de rappel
+  // gagnée ci-dessous vit dans une hauteur RÉSERVÉE : la pile ne gagne pas un pixel sur
+  // l'avant-correctif — aucune fenêtre qui tenait juste ne se met à défiler (revue R1).
+  // CE QUE ÇA NE RÈGLE PAS : sous ~730 px de fenêtre (1366x768, ou 1080p à 150 %), c'est la
+  // carte elle-même qui ne tient plus dans l'écran. Là, le scroll a quelque chose à montrer,
+  // et le corriger demanderait une hauteur de carte qui s'adapte — hors périmètre ici (D8).
   return (
-    <div className="space-y-4 p-6">
-      <div className="flex items-center justify-between gap-2">
-        <h1 className="flex items-center gap-2 text-lg font-semibold">
-          <img src={themedIconSrc('replay', theme)} alt="" aria-hidden className="h-5 w-auto" />
-          {t.title}
-        </h1>
+    <div className="space-y-4 px-6 py-3">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <h1 className="flex items-center gap-2 text-lg font-semibold">
+            <img src={themedIconSrc('replay', theme)} alt="" aria-hidden className="h-5 w-auto" />
+            {t.title}
+          </h1>
+          {/* DE QUEL MATCH PARLE-T-ON ? (retour du 2026-08-27) La page match le dit en tête ;
+              le rejeu montrait un terrain sans jamais le nommer. Les libellés sont déjà en
+              mémoire — c'est la vue du match que la page monte pour ses fiches et son fil.
+              LA HAUTEUR EST RÉSERVÉE dès le premier rendu (revue R1) : cette vue peut arriver
+              APRÈS le rejeu, et une ligne qui pousse de 20 px ce qu'on est en train de lire
+              est un saut — le vide réservé, lui, ne promet rien et ne fait rien bouger. */}
+          <div className="mt-1 min-h-6">
+            <ReplayMatchRecall
+              mapUI={matchView?.header.map_ui}
+              modeUI={matchView?.header.mode_ui}
+              startTimeLabel={matchView?.header.start_time_label}
+              playlistLabel={matchView?.header.playlist_label}
+              locale={locale}
+            />
+          </div>
+        </div>
         <Link
           to="/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId"
           params={params}
-          className="inline-flex h-8 items-center justify-center gap-2 rounded-md border border-border bg-transparent px-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="inline-flex h-8 shrink-0 items-center justify-center gap-2 rounded-md border border-border bg-transparent px-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           {t.back}
         </Link>
@@ -245,8 +275,14 @@ function ReplayPage() {
               rejeu se lit en balayant du terrain vers les joueurs, puis vers l'événement.
               Les fiches gardent leur hauteur naturelle (bornée à 62 % de la colonne, elles
               défilent au-delà — BTB) ; le fil PERMANENT (verdict user 2026-08-13) remplit
-              tout le reste et défile dedans. */}
-          <aside className="relative min-h-[12rem] xl:min-h-0">
+              tout le reste et défile dedans.
+
+              AUCUNE HAUTEUR MINIMALE ICI : la colonne en portait une (12 rem), qui ne mordait
+              que dans le trou où le rejeu est arrivé avant la vue du match — fiches et fil y
+              tiennent en ~160 px, et les 32 px manquants étaient du vide sous lequel il n'y
+              avait rien. C'est exactement le scroll fantôme qu'on chasse. Hors de ce trou,
+              fiches + fil dépassent toujours cette borne : elle ne servait rien. */}
+          <aside className="relative">
             <div className="flex max-h-[80vh] flex-col gap-3 xl:absolute xl:inset-0 xl:max-h-none">
               <div className="flex max-h-[60vh] min-h-0 shrink-0 flex-col overflow-hidden xl:max-h-[62%]">
                 {/* PAS DE `marks` ICI (2026-08-25) : les fiches ne portent plus de glyphe

@@ -141,7 +141,10 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     flagOpenNote:
       "Rien ne date la fin de ce portage : l'intervalle court jusqu'à la fin du film — c'est une borne haute, pas une durée mesurée.",
     padCountdownFmt: (seconds) => `${Math.ceil(seconds)} s`,
-    padRespawnFmt: (seconds) => `Réapparition dans ≈ ${Math.ceil(seconds)} s`,
+    padRespawnMeasuredFmt: (seconds) =>
+      `Réapparition dans ${Math.ceil(seconds)} s (vue dans le film)`,
+    padRespawnExpectedFmt: (seconds) =>
+      `Réapparition dans ≈ ${Math.ceil(seconds)} s (cycle attendu)`,
     layerHeatmap: 'Carte de chaleur',
     layerHeatmapHint:
       "Où le match s'est joué, sur tout le match. Une cellule jamais atteinte reste vide : « froid » veut dire peu fréquenté, l'absence de couleur veut dire jamais vu.",
@@ -403,7 +406,8 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     flagOpenNote:
       'Nothing dates the end of this carry: the interval runs to the end of the film — an upper bound, not a measured duration.',
     padCountdownFmt: (seconds) => `${Math.ceil(seconds)} s`,
-    padRespawnFmt: (seconds) => `Respawn in ≈ ${Math.ceil(seconds)} s`,
+    padRespawnMeasuredFmt: (seconds) => `Respawn in ${Math.ceil(seconds)} s (seen in the film)`,
+    padRespawnExpectedFmt: (seconds) => `Respawn in ≈ ${Math.ceil(seconds)} s (expected cycle)`,
     layerHeatmap: 'Heat map',
     layerHeatmapHint:
       'Where the match was played, over the whole match. A cell never reached stays empty: "cold" means seldom visited, no colour at all means never seen.',

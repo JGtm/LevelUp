@@ -1,10 +1,11 @@
 /**
- * ReplayWeaponPadTip — L'INFOBULLE D'UN EMPLACEMENT D'ARME, au survol de son anneau.
+ * ReplayWeaponPadTip — L'INFOBULLE D'UN EMPLACEMENT D'ARME, au survol de sa pile.
  *
  * CE QU'ELLE DIT, ET DANS CET ORDRE : l'ARME (nom bilingue du catalogue, ou son identifiant
  * quand rien ne la nomme — jamais le nom d'une arme voisine), son ÉTAT à cet instant, le
- * COMPTE À REBOURS quand un cycle établi le permet, et la réserve de lecture : la mesure ne
- * distingue pas un socle au sol d'un râtelier mural.
+ * COMPTE À REBOURS dès qu'une source le permet — la prochaine apparition MESURÉE d'abord, le
+ * cycle en repli — et la réserve de lecture : la mesure ne distingue pas un socle au sol d'un
+ * râtelier mural.
  *
  * UN SOCLE DE POWER-UP N'EST PAS UNE ARME (schéma 17) : son nom vient de la table des familles
  * non-arme (`padNameFor`), jamais de la clé brute du document, et sa réserve de lecture change
@@ -15,15 +16,22 @@
  * plus facile à violer par inadvertance, puisque le champ SE LIT sans qu'on voie qu'il est vide :
  * ce composant ne le lit pas.
  *
- * PAS DE CYCLE = PAS DE LIGNE. Une famille sans cycle établi n'affiche ni chiffre ni tiret : un
- * tiret suggérerait qu'on saurait.
+ * DEUX COMPTES À REBOURS, ET ELLE DOIT LES SÉPARER (D3, 2026-08-27). Celui qui vise la prochaine
+ * apparition VUE DANS LE FILM est EXACT — le rejeu connaît la suite — et se dit tel quel ; celui
+ * que le CYCLE prédit, pour le dernier trou qu'aucune apparition ne ferme, garde son « ≈ » et se
+ * dit ATTENDU. La carte, elle, n'affiche qu'un chiffre : à 8 px il n'y a pas la place d'une
+ * réserve, et c'est ici qu'elle se lit.
+ *
+ * PAS DE SOURCE = PAS DE LIGNE. Ni apparition suivante, ni cycle établi : ni chiffre, ni tiret —
+ * un tiret suggérerait qu'on saurait.
  *
  * NI MÉDIANE NI ÉCARTS (verdict du 2026-08-18) : l'infobulle portait aussi la médiane du cycle
  * et ses deux dénominateurs (écarts mesurés, écarts manqués). Ces trois nombres disaient la
  * CONFIANCE dans le cycle — une lecture d'analyse, pas un repère de carte. Le compte à rebours,
  * lui, répond à la seule question qu'on se pose devant un socle vide : dans combien de temps.
- * La réserve n'est pas perdue pour autant : elle vit dans le « ≈ » du libellé, et le compte ne
- * s'affiche QUE quand le cycle est établi.
+ * LA RÉSERVE VIT DANS LE « ≈ » DU SEUL LIBELLÉ ATTENDU (amendé le 2026-08-27) : le compte
+ * MESURÉ n'en porte pas, parce qu'il n'a rien à réserver — c'est une apparition que le film
+ * montre, pas une moyenne.
  *
  * Purement présentationnel : l'état et le compte à rebours sont calculés au survol
  * (useReplayWeaponPads), la géométrie dans weaponPadsLayer.
@@ -46,7 +54,10 @@ interface ReplayWeaponPadTipProps {
 
 export function ReplayWeaponPadTip({ locale, hover, width }: ReplayWeaponPadTipProps) {
   const t = REPLAY_TEXT[locale]
-  const { at, name, state, respawnS } = hover
+  const { at, name, state, respawn } = hover
+  const respawnText = respawn
+    ? (respawn.measured ? t.padRespawnMeasuredFmt : t.padRespawnExpectedFmt)(respawn.seconds)
+    : null
   // LA RÉSERVE SUIT LA NATURE DU SOCLE : « socle au sol ou râtelier mural » n'a aucun sens
   // pour un power-up — il ne s'accroche pas à un mur. Même table que la taille et le nom.
   const note = padEquipmentFamilyOf(hover.pad.weapon)
@@ -66,7 +77,7 @@ export function ReplayWeaponPadTip({ locale, hover, width }: ReplayWeaponPadTipP
       <span className="block font-medium">{name}</span>
       <span className="block text-muted-foreground">
         {t.padState[state]}
-        {respawnS !== null ? ` · ${t.padRespawnFmt(respawnS)}` : ''}
+        {respawnText !== null ? ` · ${respawnText}` : ''}
       </span>
       <span className="mt-0.5 block text-[0.65rem] text-muted-foreground opacity-80">
         {note}

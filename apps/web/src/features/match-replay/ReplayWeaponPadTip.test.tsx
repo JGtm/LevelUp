@@ -26,7 +26,7 @@ function hover(weapon: string, locale: ReplayLocale): WeaponPadHover {
     at: { x: 10, y: 10 },
     name: padNameFor(weapon, undefined, REPLAY_TEXT[locale], locale),
     state: 'full',
-    respawnS: null,
+    respawn: null,
   }
 }
 
@@ -50,6 +50,40 @@ describe('l’infobulle d’un socle de POWER-UP', () => {
     )
     expect(container.textContent).toContain(REPLAY_TEXT.fr.padPlacementNotePowerUp)
     expect(container.textContent).not.toContain('râtelier')
+  })
+})
+
+/**
+ * LES DEUX COMPTES À REBOURS (D3, 2026-08-27). La carte n'affiche qu'un nombre — à 8 px il n'y a
+ * pas la place d'une réserve — et c'est donc l'infobulle, et elle seule, qui doit dire si ce
+ * nombre vient d'une apparition VUE dans le film ou d'un cycle qui la PRÉDIT. Les confondre
+ * ferait lire une moyenne comme une mesure.
+ */
+describe('l’infobulle dit D’OÙ VIENT le compte à rebours', () => {
+  const vide = (measured: boolean): WeaponPadHover => ({
+    ...hover('0x0A1992BC', 'fr'),
+    state: 'empty',
+    respawn: { seconds: 12.2, measured },
+  })
+
+  it('MESURÉ : le chiffre est exact et ne porte AUCUNE réserve', () => {
+    const { container } = render(<ReplayWeaponPadTip locale="fr" hover={vide(true)} width={400} />)
+    expect(container.textContent).toContain(REPLAY_TEXT.fr.padRespawnMeasuredFmt(12.2))
+    expect(container.textContent, 'une mesure ne s’écrit pas « ≈ »').not.toContain('≈')
+  })
+
+  it('ATTENDU : le cycle garde son « ≈ », et le texte DIFFÈRE de celui de la mesure', () => {
+    const { container } = render(<ReplayWeaponPadTip locale="fr" hover={vide(false)} width={400} />)
+    expect(container.textContent).toContain(REPLAY_TEXT.fr.padRespawnExpectedFmt(12.2))
+    expect(container.textContent).toContain('≈')
+    expect(container.textContent).not.toContain(REPLAY_TEXT.fr.padRespawnMeasuredFmt(12.2))
+  })
+
+  it('SANS SOURCE : aucune ligne de réapparition — ni chiffre, ni tiret', () => {
+    const rien: WeaponPadHover = { ...hover('0x0A1992BC', 'fr'), state: 'empty', respawn: null }
+    const { container } = render(<ReplayWeaponPadTip locale="fr" hover={rien} width={400} />)
+    expect(container.textContent).toContain(REPLAY_TEXT.fr.padState.empty)
+    expect(container.textContent).not.toContain('Réapparition')
   })
 })
 

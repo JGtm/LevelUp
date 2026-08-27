@@ -6,9 +6,11 @@
  * quelqu'un le porte, et DEPUIS QUAND cet état dure.
  *
  * LA RÉSERVE DE `carried_open` EST À L'ÉCRAN, pas dans un commentaire : quand rien ne date la fin
- * du portage, l'intervalle court jusqu'à la fin du film et c'est une BORNE HAUTE. Le glyphe est
- * déjà atténué ; l'infobulle le dit en toutes lettres, parce qu'une atténuation seule se lit
- * comme un effet de style.
+ * du portage, l'intervalle court jusqu'à la fin du film et c'est une BORNE HAUTE. Le glyphe la
+ * porte par sa FORME — un fanion CREUX — pendant que son battement dit tout autre chose (il est
+ * hors de sa base, comme tout objet sorti depuis le lot du 2026-08-27, qui a retiré l'atténuation
+ * de cet état au profit du clignotement). L'infobulle, elle, la dit EN TOUTES LETTRES, parce
+ * qu'une forme seule se lit comme un effet de style.
  *
  * UN ÉTAT INCONNU N'INVENTE PAS DE LIBELLÉ : un artefact plus récent que ce client peut publier
  * un état que la table de texte ne couvre pas — la ligne est alors omise plutôt que remplie d'un
