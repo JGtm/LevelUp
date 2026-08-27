@@ -33,7 +33,7 @@ export interface SquadText {
     allExperiences: string
     allPlaylists: string
     analyse: string
-    /** Option « composition exacte » (désactivée par défaut) + son explication. */
+    /** Option « composition exacte » (activée par défaut) + son explication. */
     exactComposition: string
     exactCompositionTitle: string
   }
@@ -371,7 +371,7 @@ const FR_TEXT: SquadText = {
     analyse: 'Analyser',
     exactComposition: 'Composition stricte',
     exactCompositionTitle:
-      'Par défaut, tous les matchs commencés ensemble sont comptés, même si un autre joueur connu vous accompagnait. Cochez pour ne garder que les matchs joués avec exactement cette composition.',
+      'Cochée par défaut : seuls les matchs joués avec exactement cette composition sont comptés. Décochez pour inclure tous les matchs commencés ensemble, même si un autre joueur connu vous accompagnait.',
   },
   dataIssues: {
     title: 'Données partielles : certains chiffres sont incomplets.',
@@ -715,7 +715,7 @@ const EN_TEXT: SquadText = {
     analyse: 'Analyse',
     exactComposition: 'Strict line-up',
     exactCompositionTitle:
-      'By default every match started together is counted, even if another known player was with you. Tick to keep only matches played with exactly this line-up.',
+      'Ticked by default: only matches played with exactly this line-up are counted. Untick to include every match started together, even if another known player was with you.',
   },
   dataIssues: {
     title: 'Partial data: some numbers are incomplete.',
