@@ -75,6 +75,12 @@ export interface ReplayPlaybackOptions {
    * elle y était déjà (cf. l'en-tête). Le son de fin de partie s'y branche.
    */
   onEnded: () => void
+  /**
+   * UN GESTE DE TRANSPORT VIENT D'AVOIR LIEU (« Lecture »/« Pause », « Recommencer »). Le son
+   * s'en sert pour reprendre vie après un rechargement de page : un AudioContext ne naît que
+   * dans un geste utilisateur, et ces deux boutons en sont (cf. `useReplaySound.wake`).
+   */
+  onTransportGesture: () => void
 }
 
 /** Ce que la barre de lecture reçoit — l'état à afficher et les commandes. */
@@ -99,7 +105,8 @@ export interface ReplayPlayback {
 }
 
 export function useReplayPlayback(o: ReplayPlaybackOptions): ReplayPlayback {
-  const { doc, playWindow, baseFps, speed, renderWidth, frameRef, draw, soundTick, onEnded } = o
+  const { doc, playWindow, baseFps, speed, renderWidth, frameRef, draw } = o
+  const { soundTick, onEnded, onTransportGesture } = o
   const sliderRef = useRef<HTMLInputElement>(null)
   const [playing, setPlaying] = useState(true)
   const lastFrame = Math.max(doc.frameCount - 1, 0)
@@ -168,12 +175,17 @@ export function useReplayPlayback(o: ReplayPlaybackOptions): ReplayPlayback {
     if (sliderRef.current) sliderRef.current.value = String(startFrame)
   }
 
+  // LES DEUX COMMANDES DE TRANSPORT PRÉVIENNENT LE SON, en PREMIER : ce sont des gestes
+  // utilisateur, la seule fenêtre où un AudioContext démarre en marche. C'est ce qui rend son
+  // son à un rejeu rechargé dont la préférence était restée à « activé » (cf. useReplaySound).
   const restart = () => {
+    onTransportGesture()
     rewind()
     setPlaying(true)
   }
 
   const togglePlay = () => {
+    onTransportGesture()
     // REPARTIR DU DÉBUT SUR UN REJEU TERMINÉ (cf. l'en-tête) : sans ce rembobinage, la boucle
     // relancée à `endFrame` conclurait « fin » à son premier pas et se rendormirait — le bouton
     // « Lecture » n'aurait aucun effet visible.

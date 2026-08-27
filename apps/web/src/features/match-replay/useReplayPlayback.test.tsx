@@ -64,6 +64,7 @@ function mount(
   draw = vi.fn(),
   soundTick = vi.fn(),
   onEnded = vi.fn(),
+  onTransportGesture = vi.fn(),
 ) {
   const view = renderHook(() =>
     useReplayPlayback({
@@ -76,9 +77,10 @@ function mount(
       draw,
       soundTick,
       onEnded,
+      onTransportGesture,
     }),
   )
-  return { ...view, draw, soundTick, onEnded }
+  return { ...view, draw, soundTick, onEnded, onTransportGesture }
 }
 
 /** Une fenêtre de gameplay dans le document de test : le match court de l'image 10 à la 40. */
@@ -298,6 +300,44 @@ describe('useReplayPlayback — l’arrivée en fin de match s’annonce', () =>
     tick(11_000)
     expect(frameRef.current).toBe(50)
     expect(onEnded).toHaveBeenCalledTimes(1)
+  })
+})
+
+/**
+ * LES GESTES DE TRANSPORT PRÉVIENNENT LE SON (correctif du 2026-08-27) — c'est par là qu'un
+ * rejeu rechargé, dont la préférence était restée à « activé », retrouve son lecteur : un
+ * AudioContext ne naît que dans un geste utilisateur, et ces deux boutons en sont.
+ */
+describe('useReplayPlayback — les commandes de transport préviennent le son', () => {
+  it('« Lecture »/« Pause » est un geste : le son en est averti', () => {
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 20
+    const { result, onTransportGesture } = mount(frameRef)
+    act(() => {
+      result.current.togglePlay()
+    })
+    expect(onTransportGesture).toHaveBeenCalledTimes(1)
+  })
+
+  it('« Recommencer » aussi, et le rembobinage se fait quand même', () => {
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 33
+    const { result, onTransportGesture } = mount(frameRef, FENETRE)
+    act(() => {
+      result.current.restart()
+    })
+    expect(onTransportGesture).toHaveBeenCalledTimes(1)
+    expect(frameRef.current).toBe(10)
+    expect(result.current.playing).toBe(true)
+  })
+
+  it('la boucle d’animation, elle, ne prévient personne : ce n’est pas un geste', () => {
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 0
+    const { onTransportGesture } = mount(frameRef)
+    tick(1_000)
+    tick(2_000)
+    expect(onTransportGesture).not.toHaveBeenCalled()
   })
 })
 

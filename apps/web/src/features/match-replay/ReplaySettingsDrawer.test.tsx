@@ -58,6 +58,7 @@ function makeSound(over: Partial<ReplaySound> = {}): ReplaySound {
     available: true,
     on: false,
     toggle: vi.fn(),
+    wake: vi.fn(),
     volume: 0.7,
     setVolume: vi.fn(),
     mutedBySpeed: false,
