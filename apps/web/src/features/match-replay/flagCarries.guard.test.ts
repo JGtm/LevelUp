@@ -21,7 +21,10 @@
  *
  * 4. LA RÉSERVE DE `carried_open` PERDUE. Ce que la mesure ne ferme pas doit se dire à l'écran :
  *    l'état porte sa réserve dans son libellé ET dans une note. Les deux sont vérifiées ici,
- *    parce qu'une atténuation seule se lit comme un effet de style.
+ *    parce qu'une FORME seule se lit comme un effet de style — et depuis le lot du 2026-08-27, la
+ *    forme est tout ce qui reste au glyphe pour la porter : le fanion CREUX. L'atténuation qui
+ *    doublait ce signal lui a été retirée (le clignotement, lui, dit « hors de sa base », pas
+ *    « fin non datée »), et le creux lui-même ne tient que par l'écrêtage du liseré.
  */
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
@@ -30,9 +33,14 @@ import { describe, expect, it } from 'vitest'
 import type { FlagState } from './flagCarriesLayer'
 import { REPLAY_TEXT } from './i18n'
 
-/** Les fichiers de ce lot : le calque, le hook, l'infobulle, le regroupement des infobulles. */
+/**
+ * Les fichiers de ce lot : le calque, l'onde de capture (2026-08-27), le hook, l'infobulle, le
+ * regroupement des infobulles. L'onde y entre le jour où elle naît — c'est un tracé de plus sur
+ * le même calque, soumis aux mêmes trois interdits.
+ */
 const FICHIERS = [
   'flagCarriesLayer.ts',
+  'flagCaptureFx.ts',
   'useReplayFlagCarries.ts',
   'ReplayFlagTip.tsx',
   'ReplayCanvasTips.tsx',
