@@ -32,3 +32,15 @@ export const EMPTY_ZONES: CalloutZoneReady[] = []
  * perçoit comme un retard sur un compteur, et divise le travail de React par dix.
  */
 export const FRAME_PUBLISH_MS = 150
+
+/**
+ * LE SAUT DES DEUX BOUTONS qui encadrent la lecture, en secondes — et celui des flèches ←/→
+ * (cf. `useReplayShortcuts`). Dix secondes est la convention des lecteurs vidéo, et le libellé
+ * des boutons PORTE la durée (`skipBackFmt`/`skipForwardFmt`) : la changer ici change les deux
+ * commandes, leur nom accessible et le raccourci, sans qu'aucun texte ne mente.
+ *
+ * ELLE VIT ICI ET NON DANS `ReplayTransport.tsx` (où le design l'avait posée) : un export qui
+ * n'est pas un composant, depuis un fichier de composant, déclenche `react-refresh/
+ * only-export-components` — la même raison qui a sorti `SlidersIcon` et les hooks du canvas.
+ */
+export const SKIP_SECONDS = 10

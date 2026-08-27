@@ -95,8 +95,9 @@ export interface ReplayText {
   /**
    * LES DEUX NOTES DU MENU DE VITESSE. `speedNormal` marque la vitesse de référence (on
    * cherche « comment je reviens à la normale ? », pas « qu'est-ce que 1× »). `speedMuted`
-   * marque celles où le son se tait — la borne est `SOUND_MAX_SPEED` (replaySoundCursor.ts),
-   * et ce texte la dit en toutes lettres plutôt que de laisser un silence inexpliqué.
+   * marque celles où le son se tait — le menu ne la pose que sur les vitesses que
+   * `soundPlaysAtSpeed` (replaySoundCursor.ts) refuse, donc la borne n'est écrite nulle part
+   * dans le texte : elle se lit sur les entrées qui portent la note.
    */
   speedNormal: string
   speedMuted: string
@@ -429,13 +430,19 @@ export interface ReplayText {
   trackDominance: string
   dominanceOfFmt: (team: string) => string
   /**
-   * LA PISTE DES MÉDIAS, et son état VIDE. La donnée arrive en phase 2 (endpoint par match) :
-   * la piste s'affiche dès maintenant avec un état vide HONNÊTE — « aucun média » est un fait
-   * vrai aujourd'hui pour tous les matchs, pas un trou masqué. Ce qui n'est PAS livré ici :
-   * l'ouverture d'un média (lightbox) et ses libellés, qui viendront avec la donnée.
+   * LA PISTE DES MÉDIAS, son état VIDE, et la lightbox qui ouvre un média.
+   *
+   * LE RENDU EST COMPLET, LA DONNÉE ARRIVE APRÈS (endpoint par match — cf. registre des
+   * reports) : la piste s'affiche avec un état vide HONNÊTE, et « aucun média » est un fait
+   * vrai aujourd'hui pour tous les matchs, pas un trou masqué. `mediaPausedHint` est la
+   * pastille de la lightbox : ouvrir un média met le rejeu en pause, et sans ce mot un lecteur
+   * qui referme ne saurait pas pourquoi le film n'a pas avancé.
    */
   mediaTrack: string
   mediaEmpty: string
+  mediaOpen: string
+  mediaClose: string
+  mediaPausedHint: string
   unknownPlayer: string
   /**
    * Marques d'identité devant un nom. Le glyphe « moi » ne se DESSINE plus nulle part

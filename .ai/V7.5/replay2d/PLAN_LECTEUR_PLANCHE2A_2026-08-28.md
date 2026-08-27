@@ -10,6 +10,35 @@
 > base feat/v75 @ 86b9087c9. 1 commit par lot sur wt/lecteur. AUCUN merge vers feat/v75,
 > AUCUN push — autorisation utilisateur attendue apres gate visuel.
 
+## AMENDEMENT DU 2026-08-28 — port de `planche2a_impl/` acte
+
+L'utilisateur a fourni le handoff ORIGINAL de la session Claude Design en cours de lot 2 :
+`.ai/V7.5/replay2d/planche2a_impl/` (7 fichiers de code + `IMPLEMENTATION.md` + le canvas
+`.dc.html`). REGLE QUI PREVAUT DESORMAIS sur la spec derivee : les 5 nouveaux composants/hooks
+et les 2 remplacements sont PORTES TELS QUELS, ils ne sont pas reecrits. Adaptations
+obligatoires, et elles seules :
+
+1. En-tete « DESTINATION : ... » retiree de chaque fichier (metadonnee de handoff).
+2. **Medias — decision revisee** : `ReplayMediaLightbox.tsx` EST livre dans ce chantier, avec
+   ses trois cles `mediaOpen`/`mediaClose`/`mediaPausedHint`. Le perimetre ferme ci-dessous est
+   amende en consequence ; ne reste en phase 2 que la DONNEE (endpoint + passage de la prop).
+3. i18n : les tables fr/en du §3 d'`IMPLEMENTATION.md` MOT POUR MOT (les libelles de la spec
+   derivee etaient des approximations sans accents).
+4. `SKIP_SECONDS` : le design l'exporte depuis `ReplayTransport.tsx` ; la constante vit dans
+   `replayCanvasConfig.ts` (un export non-composant depuis un fichier de composant declenche
+   `react-refresh/only-export-components`). Transport et `useReplayTimeline` l'importent de la.
+5. `ReplaySpeedMenu` : la constante locale `SOUND_MAX_SPEED` est remplacee par
+   `soundPlaysAtSpeed` (`replaySoundCursor.ts`, verifie sur pieces) — pas de 3e copie de la
+   regle du son.
+6. `ReplayMediaLightbox` : `bg-black` (classe Tailwind couleur en `features/`) devient un token.
+7. Le cablage du §4 inline les memos dans le canvas : NON — l'assemblage reste dans
+   `useReplayTimeline.ts` (cliquet 691, deja rouge a la base).
+8. Les deux deviations playback du lot 1 tiennent (`stepFrames` met en pause ; `writeCursor`
+   aussi dans `onScrub` et la pose initiale).
+9. Tests ecrits CONTRE les fichiers portes, plus : clic media avec `playing` appelle
+   `onRequestPause` ; etat vide medias ; menu vitesse ferme sur Echap/clic dehors ; raccourcis
+   J/K/L/M/R du fichier porte.
+
 ## Objectif et critere de succes
 
 La barre de lecture du rejeu passe au design valide (planche 2a) : sauts -/+10 s, frise a
@@ -71,29 +100,45 @@ bornes de gameplay), gate visuel utilisateur en fin de chantier.
 
 ## LOT 2 — Logique pure des pistes
 
-- [ ] 2-1 `replayTimelineTracks.ts` : types `TrackKill`/`TrackDeath` (key, replayMs, xuid),
+- [x] 2-1 `replayTimelineTracks.ts` : types `TrackKill`/`TrackDeath` (key, replayMs, xuid),
       `DominanceSpan`, `ReplayMediaItem`, `PlacedMedia` ; `trackScale(playWindow,
       frameCount)` ; `buildEventTracks(entries, marks, frameIntervalMs, scale, fmt)` →
       { own, allies } (regles produit spec §5) ; `buildDominance(changes, scale)` ;
       `placeMedia(media, frameIntervalMs, scale)`. Fichier <= 500 L, fonctions <= 80 L.
-- [ ] 2-2 `replayTimelineTracks.test.ts` : les 5 cas de la spec §8 + bornes de fenetre +
-      cles stables.
-- [ ] 2-3 `SKIP_SECONDS = 10` dans `replayCanvasConfig.ts` (commentaire : convention
-      lecteur video, libelle porte la duree).
-- [ ] 2-G Gate : tsc VERT ; vitest `replayTimelineTracks` VERT. Commit lot 2.
+      PORTE de `planche2a_impl/` (amendement), donc plus riche que la description ci-dessus :
+      il porte AUSSI `THUMB_PX`/`trackLeft`/`trackWidth` (geometrie du curseur natif),
+      `ratioOfMs` et `clipFrameCount`. Signatures reelles : `buildEventTracks(kills, deaths,
+      marks, frameIntervalMs, scale, clockOf)` (deux listes DEJA reduites, pas les entries — la
+      reduction se fait dans `useReplayTimeline`), `buildDominance(changes, scale)`,
+      `DominanceSegment` (pas `Span`), `kind: 'image' | 'clip'`. Une version maison ecrite
+      avant l'arrivee du handoff a ete REMPLACEE par le port. 236 L.
+- [x] 2-2 `replayTimelineTracks.test.ts` : les 5 cas de la spec §8 + bornes de fenetre +
+      cles stables. 26 cas — dont la geometrie `trackLeft`/`trackWidth` et `clipFrameCount`,
+      qui n'existaient pas dans la spec derivee.
+- [x] 2-3 `SKIP_SECONDS = 10` dans `replayCanvasConfig.ts` (commentaire : convention
+      lecteur video, libelle porte la duree). Adaptation 4 de l'amendement : le design
+      l'exportait depuis `ReplayTransport.tsx`.
+- [x] 2-G Gate : tsc VERT ; vitest `replayTimelineTracks` VERT. Commit lot 2.
+      MESURE : tsc exit 0 ; 26 tests verts ; ESLint 0 sur les 5 fichiers touches.
+      Inclus dans ce lot : correction i18n du lot 1 (adaptation 3) — `speedMuted` devient
+      'son coupé'/'sound off' (la borne est dite par les entrees qui portent la note, pas par
+      le texte), et les trois cles de la lightbox sont ajoutees.
 
 ## LOT 3 — Composants, cablage, suppression LeadMarks
 
 - [ ] 3-1 `ReplayTimelineTracks.tsx` : frise (input range habille `--played`) + 4 pistes
       etiquetees (trackYou/trackAllies/trackDominance/mediaTrack), THUMB_PX = 16, encres
       par tokens (`tokenCssVar`), etat vide medias (`mediaEmpty`), infobulles horloge.
-      Styles pseudo-elements du range dans `globals.css` (classe dediee, vars du theme,
-      patron replay-feed-row) — AUCUN hex dans features/.
+      PORT du fichier design : les pseudo-elements du range sont habilles par variantes
+      Tailwind arbitraires `[&::-webkit-slider-*]` avec les vars du theme, PAS par une classe
+      de `globals.css` — la feuille n'est donc pas touchee (item du plan derive caduc).
 - [ ] 3-2 `ReplaySpeedMenu.tsx` (spec §6) + `ReplaySoundControls.tsx` remplace (volume en
-      popover, regles du 25/08 conservees) + `useReplayShortcuts.ts` (spec §7).
+      popover, regles du 25/08 conservees) + `useReplayShortcuts.ts` (spec §7). PORTS.
+- [ ] 3-2b `ReplayMediaLightbox.tsx` (amendement point 2) : PORT, avec l'adaptation 6
+      (`bg-black` -> token de thème). Non branchee a une donnee — ouverte par la piste medias.
 - [ ] 3-3 `ReplayTransport.tsx` remplace (spec §6) : sauts -/+10 s, horloge tabular-nums
       sans font-mono, `timeline` (objet unique), pastilles nommees, REC conditionnel,
-      aria conserves.
+      aria conserves. PORT + adaptation 4 (`SKIP_SECONDS` importe de replayCanvasConfig).
 - [ ] 3-4 `useReplayTimeline.ts` (13e extraction) : assemblage complet (spec §4), appel
       `useReplayShortcuts` inclus. `ReplayCanvas.tsx` : prop `feedEntries`, appel du hook,
       passe `timeline` — et RESTE <= 691 lignes (extraire davantage si necessaire, jamais
@@ -103,7 +148,9 @@ bornes de gameplay), gate visuel utilisateur en fin de chantier.
       `leadChangeAtFmt` retirees du contrat et des DEUX tables ; aucun import orphelin
       (`grep ReplayLeadMarks` = 0 hors historique).
 - [ ] 3-6 Tests : `ReplayTimelineTracks.test.tsx`, `ReplaySpeedMenu.test.tsx`,
-      `useReplayShortcuts.test.ts`, mise a jour `ReplayTransport.test.tsx` (spec §8).
+      `useReplayShortcuts.test.ts`, mise a jour `ReplayTransport.test.tsx` (spec §8), plus les
+      quatre cas de l'amendement point 9 (clic media -> `onRequestPause` ; etat vide medias ;
+      menu vitesse ferme sur Echap et clic dehors ; raccourcis J/K/L/M/R).
 - [ ] 3-G Gate : tsc VERT ; vitest `src/features/match-replay` COMPLET vert ; vitest
       `src/routes` vert ; ESLint 0 sur tous les fichiers touches ; cliquet
       `placementFamily.guard` VERT ; `grep -r "#[0-9a-fA-F]\{6\}"` muet sur les nouveaux
@@ -115,17 +162,20 @@ bornes de gameplay), gate visuel utilisateur en fin de chantier.
 - [ ] 4-1 Journal : entree datee dans `.ai/V7.5/replay2d/thought_log_replay.md` (decisions,
       chiffres de tests, deviations assumees) ; statuts du present plan tous poses.
 - [ ] 4-2 Report REGISTRE : `.ai/V7.5/REGISTRE_REPORTS.md` — « Medias du rejeu phase 2 »
-      (endpoint { id, kind, replayMs, durationMs, thumbUrl, url, label } par match/joueur,
-      recalage t0/displayClockMs comme le fil ; condition de reprise : decision utilisateur
-      apres livraison planche 2a) et « Lightbox medias + cles mediaOpen/mediaClose/
-      mediaPausedHint » livrees avec la phase 2. Noter aussi : fichiers originaux de la
-      session Claude Design non recuperes — si l'utilisateur les fournit, diff de
-      reconciliation avant le gate visuel.
+      REDUIT PAR L'AMENDEMENT a la seule DONNEE : endpoint { id, kind, replayMs, durationMs,
+      thumbUrl, url, label } par match/joueur (recalage t0/displayClockMs comme le fil) et
+      passage de la prop `media` au canvas. Le rendu — piste, placement, lightbox, cles — est
+      LIVRE. Condition de reprise : decision utilisateur apres livraison planche 2a.
+      Noter aussi : les fichiers originaux de la session Claude Design ONT ete recuperes en
+      cours de lot 2 et portes (cf. amendement) ; le dossier `planche2a_impl/` reste dans
+      `.ai/` comme reference du gate visuel.
 - [ ] 4-3 Commit final (docs) sur wt/lecteur. PAS de merge, PAS de push.
 
-## Ce que ce plan NE fait PAS (perimetre ferme)
+## Ce que ce plan NE fait PAS (perimetre ferme — amende le 2026-08-28)
 
-- Pas d'endpoint medias, pas de `ReplayMediaLightbox`, pas de cles i18n d'ouverture media.
+- Pas d'endpoint medias, et aucune donnee de media n'est branchee : la piste et la lightbox
+  sont livrees, la LISTE reste vide (`EMPTY_MEDIA`). La lightbox et ses trois cles NE SONT
+  PLUS hors perimetre (amendement, point 2).
 - Pas d'Archivo ni d'aucune declaration de police.
 - Aucun changement de comportement du fil de kills a l'ecran, des regles de son du
   2026-08-25, des bornes de gameplay, du tiroir de reglages.
