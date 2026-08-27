@@ -172,15 +172,25 @@ AUCUN code de production Go).
       proche 0,36 m, p90 107 m). CONCENTRATION : 2 films (`084a804d`, `06dfe6d9`) portent
       ~72-75 % des contradictions ; hors eux ~10-13 % ; mediane par film 6,51 % — le
       MINIMUM de toutes les respécifications reste > 5 %.
-- [!] A-3 **Implantation D2 cote client** : REFUSEE par la mesure A-2 (seuil 5 % non tenu
-      par aucune lecture — minimum 6,51 %). La these « sans passage possible, l'etat n'a
-      pas change » est contredite par la donnee ~1 fois sur 3 (base autoritaire), et ce
-      n'est PAS un artefact de mesure (sonde 0/5). CONDITION DE REPRISE : enquete Go sur
-      les occupations « achevees a tort » (les 2 films dominants + rabattement `lifeEnd`
-      de NoLaterKF + fenetres qui chevauchent la reapparition suivante + ~10 % des
-      contradictions resolues par ±6 s de bornes) — si un artefact assaini fait passer un
-      corpus sous 5 %, rouvrir cet item. Rien d'implante (`padPresenceRefine.ts` n'existe
-      pas), decision utilisateur possible en connaissance de cause.
+- [x] A-3 **Implantation D2 cote client** — ROUVERT ET IMPLANTE le 2026-08-27 (2e passe)
+      SUR DECISION UTILISATEUR, avec un cadre corrige : la mesure A-2 ne REFUTAIT pas la
+      these, son oracle etait CIRCULAIRE — la « preuve d'absence » vient du recensement
+      d'images-cles, lui-meme borne par la proximite des joueurs (les 2 films a ~75 % des
+      contradictions sont les deux BTB 24-25 joueurs, distances minimales medianes
+      18-25 m ; arenes a ~0-10 %). Le negatif d'A-2 reste vrai tel qu'enonce (l'artefact
+      ne CONFIRME pas la regle la-bas) mais ne la contredit pas.
+      REGLE D'AFFICHAGE livree (`padPresenceRefine.ts`, pur, R = 2 m documente sur la base
+      autoritaire 1064 : 69,1 % d'approches <= 2 m, passage median 0,36 m) : socle PLEIN
+      tant qu'aucune approche depuis tLow, incertain a partir de la PREMIERE approche
+      (distance au segment, geometrie TS ≡ instrument Go fonction par fonction), bascule
+      « vide » a tHigh et compteur INCHANGES ; aucune approche sur toute la fenetre ->
+      tLow = tHigh − 1/64 d'image (frontiere : le sentinelle « jamais vide » de padStateAt
+      reste libre, la lame lisible par une frame fractionnaire tombe a ~1,6 ms de film).
+      COUT ASSUME (decision produit, documente) : une vraie disparition sans approche
+      s'affichera pleine jusqu'a tHigh. Revue adversariale dediee : 1 P1 (chiffres du
+      rayon melant les deux denominateurs) + 4 P2, tous corriges, mutations prouvees
+      (clip retire -> rouge ; lame 0,5 -> rouge). CONDITION DE REPRISE inchangee :
+      l'enquete artefact BTB (Decouvertes) reste la voie pour fiabiliser tHigh.
 - [x] A-4 **Compteur D3** : `padRespawnSecondsAt` vise `presence[i+1].t0` (mesure) ; repli
       cycle sur le dernier trou ; libelles infobulle distincts mesure/attendu (`i18n.ts` +
       `i18nContract.ts`, FR **et** EN, parite typee). Tests : trou median (mesure), dernier
@@ -386,3 +396,10 @@ perimetre se consignent ci-dessous, pas en code.
   `WEAPON_CADENCE_CORPUS`) : 2e copie signalee, la 3e exigera un helper partage +
   garde-rail (regle 6). Et la constante 1,2 s (duree des assets d'arme) a desormais 3
   traces (2 proses + 1 constante de test) — un 4e usage exigera une constante partagee.
+- (A-3' 2e passe, revue) une CORDE au-dessus d'un trou de replication (vie survivant
+  jusqu'a ~5 s sans position) peut « approcher » un socle sans passage reel et rallumer
+  l'incertain — non corrige : le rejeu DESSINE cette meme corde (le marqueur la parcourt
+  a l'ecran), l'affichage reste coherent avec ce qui est montre ; frequence non mesuree.
+- (A-3' 2e passe) la geometrie segment-socle existe en Go (instrument de recherche) ET en
+  TS (production) — copie inter-langages assumee, la reference est le Go ; une 3e copie
+  exigerait un partage.
