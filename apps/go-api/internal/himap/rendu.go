@@ -99,6 +99,10 @@ type Rendu struct {
 	// que la voie haute. On ne retire rien : on regarde d en dessous.
 	zBas []float64
 	nBas [][3]float64
+	// couvertureNavmesh : les cellules que le maillage de navigation couvre. Memorisee au
+	// moment ou la reference est armee, parce que les tampons de reference sont liberes des
+	// que la substitution a decide.
+	couvertureNavmesh []bool
 	// SeuilArete : denivele entre voisins au-dela duquel on trace un bord. Zero = le defaut
 	// (SeuilAreteMetres). Reglage PAR CARTE, cf. rendu_couleur.go.
 	SeuilArete float64

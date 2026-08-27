@@ -27,6 +27,7 @@ import (
 	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/analysis/replay/mapvar"
 	"levelup/go-api/internal/himap"
+	"levelup/go-api/internal/hinavmesh"
 )
 
 // sourceCuisson documente la chaîne dans chaque sidecar.
@@ -204,7 +205,18 @@ func (e *environnement) cuitForge(ctx context.Context) []bilanAsset {
 			out = append(out, e.publie(ctx, c, rendu, bilan))
 			continue
 		}
+		var navRef *hinavmesh.Maillage
+		if e.navmeshReferenceDe(carte.MapID) {
+			m, errNav := e.chargeNavmesh(carte)
+			if errNav != nil {
+				slog.WarnContext(ctx, "maillage de navigation indisponible, reference laissee aux ancres", "err", errNav, "carte", carte.Nom)
+			} else {
+				navRef = m
+			}
+		}
 		rendu, bilan, err := himap.CuitCarteForge(ctx, himap.OptionsCuissonForge{
+			NavmeshReference:    navRef,
+			RogneAuNavmesh:      e.rogneAuNavmeshDe(carte.MapID),
 			RacineDeploy:        e.racineJeu,
 			Objets:              objets,
 			Ancres:              c.ancres,
@@ -475,4 +487,23 @@ func (e *environnement) cuitDepuisNavmesh(ctx context.Context, carte himap.Carte
 		Echelle:      e.echelleDe(carte.MapID),
 		CibleCadrePx: himap.CibleCadrePx,
 	})
+}
+
+// blobNavmesh lit le navmesh.blob d'une carte dans le depot hors ligne.
+func (e *environnement) blobNavmesh(carte himap.CarteForge) ([]byte, error) {
+	chemin := filepath.Join(e.repoRoot, himap.DepotNavmesh, carte.MapID+".blob")
+	blob, err := os.ReadFile(chemin) //nolint:gosec // entree d'outillage hors ligne
+	if err != nil {
+		return nil, fmt.Errorf("maillage de navigation illisible (%s) : %w", chemin, err)
+	}
+	return blob, nil
+}
+
+// chargeNavmesh lit et decode le maillage de navigation d'une carte.
+func (e *environnement) chargeNavmesh(carte himap.CarteForge) (*hinavmesh.Maillage, error) {
+	blob, err := e.blobNavmesh(carte)
+	if err != nil {
+		return nil, err
+	}
+	return hinavmesh.Decode(blob)
 }

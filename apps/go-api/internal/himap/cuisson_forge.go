@@ -42,6 +42,7 @@ import (
 
 	"levelup/go-api/internal/analysis/replay/mapvar"
 	"levelup/go-api/internal/himodule"
+	"levelup/go-api/internal/hinavmesh"
 )
 
 // TypesVolumesDeMort : empreinte fonctionnelle des volumes de mort, etablie sur 101 `.mvar`
@@ -110,6 +111,13 @@ type OptionsCuissonForge struct {
 	// Mesure sur Isolation : les 32 exemplaires du type qui peint 82,7 pour cent de l image sont
 	// poses entre Z 136,0 et 160,6 quand le sol joue est a Z 117 — de 19 a 44 m au-dessus.
 	PlafondObjets float64
+	// NavmeshReference, s il est fourni, sert de SURFACE DE REFERENCE a la place de
+	// l interpolation des ancres. Le rendu reste celui de la geometrie ordinaire — on ne
+	// change que ce a quoi on compare les surfaces. C est ce qui rend a une carte a ciel
+	// ferme ses structures, la ou le fond tire du seul navmesh ne montrait que le sol nu.
+	NavmeshReference *hinavmesh.Maillage
+	// RogneAuNavmesh efface la matiere hors du maillage de navigation, dilate de MargeNavmesh.
+	RogneAuNavmesh bool
 	// SolVuDuDessous : retenir la surface la plus BASSE au-dessus du sol joue au lieu de la plus
 	// haute. Voir Rendu.ArmeSurfaceBasse — la reponse aux cartes a ciel ferme.
 	SolVuDuDessous bool
@@ -176,7 +184,13 @@ func CuitCarteForge(ctx context.Context, opts OptionsCuissonForge) (*Rendu, Bila
 	// (rendu_reference.go). Une carte Forge a ciel ouvert reste sous le seuil et n'est pas
 	// touchee ; la regle est universelle, pas une affaire de chaine.
 	s := NewSurfaceReference(opts.Ancres)
-	r.ArmeReference(s)
+	if opts.NavmeshReference != nil {
+		couvertes := r.ArmeReferenceDepuisNavmesh(opts.NavmeshReference)
+		slog.InfoContext(ctx, "mapfond: reference prise sur le maillage de navigation",
+			"carte", opts.Cle, "cellules", couvertes)
+	} else {
+		r.ArmeReference(s)
+	}
 
 	r.ArmeTypeGagnant()
 	if opts.SolVuDuDessous {
@@ -203,6 +217,10 @@ func CuitCarteForge(ctx context.Context, opts OptionsCuissonForge) (*Rendu, Bila
 		b.CarteCouverte = b.TauxCouverture > SeuilCarteCouverte
 	} else {
 		b.TauxCouverture, b.CellulesSubstituees, b.CarteCouverte = r.AppliqueReference(s, opts.SubstitutionSansPortee)
+	}
+	if opts.RogneAuNavmesh && opts.NavmeshReference != nil {
+		n := r.EffaceHorsNavmesh(MargeNavmesh)
+		slog.InfoContext(ctx, "mapfond: matiere effacee hors du maillage de navigation", "carte", opts.Cle, "cellules", n)
 	}
 	borneALaBoite(ctx, r, &b, boiteForge(ctx, opts))
 	if b.VolumesDeMort == 0 {
