@@ -262,10 +262,19 @@ export interface ReplayText {
    * match — l'infobulle ne doit pas laisser croire à un catalogue de carte.
    */
   padPlacementNotePowerUp: string
-  /** Compte à rebours COMPACT, celui de la carte (« 12 s »). */
+  /** Compte à rebours COMPACT, celui de la carte (« 12 s ») — il ne dit pas sa source. */
   padCountdownFmt: (seconds: number) => string
-  /** Compte à rebours de l'infobulle, en toutes lettres. */
-  padRespawnFmt: (seconds: number) => string
+  /**
+   * LES DEUX COMPTES À REBOURS DE L'INFOBULLE, et leur différence est la seule chose qui compte
+   * (D3, 2026-08-27) : `Measured` vise la prochaine apparition VUE dans le film — le rejeu
+   * connaît la suite, le chiffre est EXACT et n'a pas à porter de « ≈ » ; `Expected` vise ce que
+   * le CYCLE prédit, pour le dernier trou qu'aucune apparition ne ferme, et garde sa réserve.
+   *
+   * DEUX CLÉS ET NON UN DRAPEAU dans une seule phrase : les deux langues n'insèrent pas la
+   * réserve au même endroit, et une phrase à trous se serait figée sur l'ordre du français.
+   */
+  padRespawnMeasuredFmt: (seconds: number) => string
+  padRespawnExpectedFmt: (seconds: number) => string
   /**
    * Carte de chaleur : le calque, ce qu'il mesure, et sa légende. JAMAIS « heatmap » à
    * l'écran (règle FR sans anglicismes) — « carte de chaleur » partout.

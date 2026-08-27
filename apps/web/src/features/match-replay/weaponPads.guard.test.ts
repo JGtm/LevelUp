@@ -23,11 +23,17 @@ import { describe, expect, it } from 'vitest'
 
 import { REPLAY_TEXT } from './i18n'
 import { PAD_EQUIPMENT_FAMILIES } from './weaponPadFamilies'
-import type { PadState } from './weaponPadsLayer'
+import type { PadState } from './weaponPadTime'
 
-/** Les fichiers de ce lot : le calque, la liste des tailles, le hook, l'infobulle. */
+/**
+ * Les fichiers de ce lot : le calque, la lecture temporelle, la liste des tailles, le hook,
+ * l'infobulle. `weaponPadTime.ts` a rejoint la liste le 2026-08-27, quand la lecture des états
+ * et du compte à rebours a été extraite du calque — un fichier sorti du périmètre du garde-rail
+ * en sortirait aussi les règles qu'il porte.
+ */
 const FICHIERS = [
   'weaponPadsLayer.ts',
+  'weaponPadTime.ts',
   'weaponPadFamilies.ts',
   'useReplayWeaponPads.ts',
   'ReplayWeaponPadTip.tsx',
@@ -70,8 +76,27 @@ describe('garde-rail : chaque état de socle a son libellé, en FR et en EN', ()
       expect(t.layerWeaponPadsHint, `aide ${locale}`).toBeTruthy()
       expect(t.padPlacementNote, `note ${locale}`).toBeTruthy()
       expect(t.padCountdownFmt(12.2), `compte à rebours ${locale}`).toContain('13')
-      expect(t.padRespawnFmt(12.2), `réapparition ${locale}`).toContain('13')
+      expect(t.padRespawnMeasuredFmt(12.2), `réapparition mesurée ${locale}`).toContain('13')
+      expect(t.padRespawnExpectedFmt(12.2), `réapparition attendue ${locale}`).toContain('13')
     }
+  })
+
+  /**
+   * LA RÉSERVE EST DANS LE SIGNE (D3, 2026-08-27) : le compte MESURÉ vise une apparition vue
+   * dans le film, il est exact et ne doit PAS porter le « ≈ » ; celui du CYCLE le garde. Deux
+   * libellés identiques feraient lire une prédiction comme une mesure — c'est précisément la
+   * confusion que la décision supprime.
+   */
+  it('le compte MESURÉ et le compte ATTENDU ne se disent pas de la même façon', () => {
+    for (const locale of ['fr', 'en'] as const) {
+      const t = REPLAY_TEXT[locale]
+      expect(t.padRespawnMeasuredFmt(12.2), `mesuré ${locale} porte la réserve`).not.toContain('≈')
+      expect(t.padRespawnExpectedFmt(12.2), `attendu ${locale} sans réserve`).toContain('≈')
+      expect(t.padRespawnMeasuredFmt(12.2)).not.toBe(t.padRespawnExpectedFmt(12.2))
+    }
+    expect(REPLAY_TEXT.fr.padRespawnMeasuredFmt(12)).not.toBe(
+      REPLAY_TEXT.en.padRespawnMeasuredFmt(12),
+    )
   })
 
   it('les deux langues DIFFÈRENT là où elles le doivent (pas de FR recopié en EN)', () => {
@@ -116,6 +141,21 @@ describe('garde-rail : une famille NON-ARME de socle est nommée, jamais servie 
       expect(REPLAY_TEXT[locale].padPlacementNotePowerUp, `réserve ${locale}`).toBeTruthy()
     }
     expect(REPLAY_TEXT.fr.padPlacementNotePowerUp).not.toBe(REPLAY_TEXT.en.padPlacementNotePowerUp)
+  })
+})
+
+/**
+ * GARDE-RAIL DU LISERÉ (2026-08-27, retour utilisateur « icône AVEC contour »).
+ *
+ * La cuisson refusait le liseré aux images FINIES du jeu (`outline: null`) au motif qu'on ne
+ * peut pas les reteindre — vrai pour leur corps, faux pour leur contour : cerner ne demande que
+ * la SILHOUETTE. Le type `PadIcon.outline` n'est plus nullable, donc le compilateur tient déjà
+ * l'invariant ; ce cas garde la TRACE de la règle à l'endroit où on l'a violée, pour qu'un
+ * `outline: null` réintroduit avec un `as` ou un `?? null` ne passe pas en silence.
+ */
+describe('garde-rail : toute vignette de socle est CERNÉE, image finie comprise', () => {
+  it('la cuisson ne sert jamais un liseré absent', () => {
+    expect(source('useReplayWeaponPads.ts')).not.toMatch(/outline:\s*null/)
   })
 })
 
