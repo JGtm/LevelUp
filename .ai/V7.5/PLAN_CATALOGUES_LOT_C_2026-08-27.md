@@ -174,13 +174,28 @@
 
 ### C4 — Land Grab : cablage du role (ex-lot L)
 
-- [ ] C4.1 Role `landgrab_zone` au decodeur `mapvar` + entree `objective_roles.toml`
+- [x] C4.1 Role `landgrab_zone` au decodeur `mapvar` + entree `objective_roles.toml`
       (match Land Grab), degradation par absence de donnee — patron des roles existants,
       zero special-case dans le code.
-- [ ] C4.2 GATE C4 : tests unitaires du decodeur/roles verts ; sur une carte porteuse de
+      — Fait 2026-08-27. Les NOMS sont RESOLUS (pas des hashs muets comme KOTH) : chasse
+      murmur3 rejouable (TestHuntLabels sur cliffhanger_map.mvar versionne) —
+      landgrab_include = -886053664 (18 objets), landgrab_zone = 996801386 (9 volumes a
+      forme) + 9 marqueurs [-941529218] non resolus (n'attribuent aucun role, regle de
+      Bastion/KOTH) ; motif volume+marqueur identique a Bastion ; census : 29 entrees du
+      catalogue porteuses du marqueur. labelNames + RoleLandGrabZone + roleByLabel
+      (auto-verifies par TestLabelTableIsSelfConsistent), roles admis + surfaciques du
+      loader, entree [[modes]] Land Grab neutral=true avec l'avertissement VIVIER (9
+      declarees, 3 actives par vague — la lecon Total Control ecrite dans le TOML).
+- [x] C4.2 GATE C4 : tests unitaires du decodeur/roles verts ; sur une carte porteuse de
       hashs `landgrab_zone`, les formes sortent du catalogue (verification statique par
       test, pas de film requis) ; le commentaire d'incoherence du §2.8 (dans
       `service/replay_map_objectives.go`) est mis a jour dans le MEME commit.
+      — Fait 2026-08-27 : `TestLandGrabZonesCliffhanger` (9 zones, toutes avec forme, sur
+      la fixture versionnee) + tests mapvar/mappings/service verts (le verrou
+      FichierDuDepot passe a 8 modes avec assertion positive landgrab servi+neutre) ;
+      Cliffhanger RE-EXTRAITE par la chaine (map.mvar version 5a78537e du jour) : l'entree
+      du catalogue porte 9 landgrab_zone/9 avec forme, hashs sortis du census unresolved ;
+      commentaire §2.8 SOLDE dans le meme commit.
 
 ### C5 — Cloture
 
