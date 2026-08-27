@@ -145,12 +145,19 @@ admis. Sinon : P1 INFIRMEE, le lot s'arrete en O3/O4 et le CR le dit.
 
 ### O3 — P3 : elucider ce que DATENT les evenements `th=10` du crane (diagnostic borne)
 
-- [ ] O3.1 Sur les films admis : confronter chaque `th=10` de crane aux instants de
+- [x] O3.1 Sur les films admis : confronter chaque `th=10` de crane aux instants de
       transition de la chaine (naissances/morts de vies libres, debuts/fins de trous) ;
       publier l'histogramme des ecarts et le rapport compte-`th=10` / tics API par joueur.
-- [ ] O3.2 Verdict nomme : « les `th=10` datent X » avec accord chiffre, ou « non etabli ».
+      — Fait 2026-08-27 (`oddball_th10_d10_test.go`, log `D10_P3_th10.log`) : histogramme
+      BIMODAL — pic a <= 100 ms (11-41 evenements par film) puis masse au-dela de 5 s ;
+      rapports tics/th10 par joueur 1,43-4,75 (l'ordre du 3,1-3,7 du handoff).
+- [x] O3.2 Verdict nomme : « les `th=10` datent X » avec accord chiffre, ou « non etabli ».
       S'ils datent ramassages et/ou lachers avec accord >= 80 %, ils deviennent l'ANCRAGE
       candidat de O2 (une seule remesure autorisee, protocole amende et commite avant).
+      — Fait 2026-08-27 : **NON ETABLI sur 4/4 films** — accord naissances 13,8-26,6 %,
+      silences 8,8-21,8 %, union 22,5-41,1 % (seuil 80). Le profil (pic exact minoritaire
+      + masse loin des transitions, compte proportionnel au temps de portage) est celui
+      d'un HEARTBEAT de possession, pas d'un marqueur de transition. Pas d'ancrage O2.
 
 ### O4 — P4 : inventaire du statborg Oddball (l'outil de balayage est a REECRIRE)
 

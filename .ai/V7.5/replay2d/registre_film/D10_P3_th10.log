@@ -1,0 +1,90 @@
+===== FILM 24dbb67d =====
+=== RUN   TestOddballTh10D10
+2026/08/27 14:55:39 INFO plafond memoire arme pour ce decodage outil=d10-th10 souple_gib=2 dur_octets=2684354560
+2026/08/27 14:55:43 WARN empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte (mise a jour du jeu ?) ; le film reste decode empreinte=7307582345129211936 empreinte_connue=7053924395561516366 blocs=118 slots_non_vides=1068
+    oddball_th10_d10_test.go:74: 24dbb67d : 7051 ancres, 269 creations acceptees, 248 pistes delta ; 23 vie(s) du mot elu
+    oddball_th10_d10_test.go:74: 24dbb67d : 23 vie(s) libre(s), 1 socle(s), pont 87/97 slot(s) nomme(s) = 89.7 % (plancher 50 %)
+    oddball_th10_d10_test.go:84: 24dbb67d : 87 evenement(s) `th=10`, 23 naissance(s), 23 silence(s) confrontables
+    oddball_th10_d10_test.go:87: HISTOGRAMME 24dbb67d (ecart au plus proche des deux classes) : <=100 ms 20 · <=250 0 · <=500 2 · <=1000 1 · <=2000 7 · <=5000 7 · au-dela 50
+    oddball_th10_d10_test.go:87: ACCORD 24dbb67d (tolerance 1000 ms) : NAISSANCES 15/87 = 17.2 % · SILENCES 12/87 = 13.8 % · UNION 23/87 = 26.4 %
+    oddball_th10_d10_test.go:87: VERDICT 24dbb67d : NON ETABLI — aucun accord ne depasse 80 %.
+    oddball_th10_d10_test.go:88: TICS 24dbb67d : joueur 9321 — 8 th=10, 29 tic(s) API, rapport tics/th10 3.63
+    oddball_th10_d10_test.go:88: TICS 24dbb67d : joueur 8549 — 18 th=10, 79 tic(s) API, rapport tics/th10 4.39
+    oddball_th10_d10_test.go:88: TICS 24dbb67d : joueur 0022 — 17 th=10, 74 tic(s) API, rapport tics/th10 4.35
+    oddball_th10_d10_test.go:88: TICS 24dbb67d : joueur 3686 — 7 th=10, 10 tic(s) API, rapport tics/th10 1.43
+    oddball_th10_d10_test.go:88: TICS 24dbb67d : joueur 1079 — 15 th=10, 53 tic(s) API, rapport tics/th10 3.53
+    oddball_th10_d10_test.go:88: TICS 24dbb67d : joueur 2034 — 11 th=10, 39 tic(s) API, rapport tics/th10 3.55
+    oddball_th10_d10_test.go:88: TICS 24dbb67d : joueur 4517 — 2 th=10, 5 tic(s) API, rapport tics/th10 2.5
+    oddball_th10_d10_test.go:88: TICS 24dbb67d : joueur 9936 — 9 th=10, 32 tic(s) API, rapport tics/th10 3.56
+    oddball_th10_d10_test.go:71: 24dbb67d : pic memoire observe 0.14 Gio
+--- PASS: TestOddballTh10D10 (45.66s)
+PASS
+ok  	levelup/go-api/internal/analysis/replay	46.087s
+EXIT_24dbb67d=0
+===== FILM 43716616 =====
+=== RUN   TestOddballTh10D10
+2026/08/27 14:56:26 INFO plafond memoire arme pour ce decodage outil=d10-th10 souple_gib=2 dur_octets=2684354560
+    oddball_th10_d10_test.go:74: 43716616 : 6943 ancres, 332 creations acceptees, 376 pistes delta ; 16 vie(s) du mot elu
+    oddball_th10_d10_test.go:74: 43716616 : 16 vie(s) libre(s), 1 socle(s), pont 62/72 slot(s) nomme(s) = 86.1 % (plancher 50 %)
+    oddball_th10_d10_test.go:84: 43716616 : 60 evenement(s) `th=10`, 16 naissance(s), 16 silence(s) confrontables
+    oddball_th10_d10_test.go:87: HISTOGRAMME 43716616 (ecart au plus proche des deux classes) : <=100 ms 17 · <=250 2 · <=500 0 · <=1000 3 · <=2000 1 · <=5000 10 · au-dela 27
+    oddball_th10_d10_test.go:87: ACCORD 43716616 (tolerance 1000 ms) : NAISSANCES 12/60 = 20.0 % · SILENCES 10/60 = 16.7 % · UNION 22/60 = 36.7 %
+    oddball_th10_d10_test.go:87: VERDICT 43716616 : NON ETABLI — aucun accord ne depasse 80 %.
+    oddball_th10_d10_test.go:88: TICS 43716616 : joueur 2136 — 16 th=10, 62 tic(s) API, rapport tics/th10 3.88
+    oddball_th10_d10_test.go:88: TICS 43716616 : joueur 0421 — 4 th=10, 19 tic(s) API, rapport tics/th10 4.75
+    oddball_th10_d10_test.go:88: TICS 43716616 : joueur 5944 — 3 th=10, 5 tic(s) API, rapport tics/th10 1.67
+    oddball_th10_d10_test.go:88: TICS 43716616 : joueur 9469 — 8 th=10, 26 tic(s) API, rapport tics/th10 3.25
+    oddball_th10_d10_test.go:88: TICS 43716616 : joueur 2349 — 22 th=10, 93 tic(s) API, rapport tics/th10 4.23
+    oddball_th10_d10_test.go:88: TICS 43716616 : joueur 5114 — 2 th=10, 8 tic(s) API, rapport tics/th10 4
+    oddball_th10_d10_test.go:88: TICS 43716616 : joueur 9936 — 3 th=10 mais AUCUN tic API (hors oracle)
+    oddball_th10_d10_test.go:88: TICS 43716616 : joueur 5425 — 2 th=10 mais AUCUN tic API (hors oracle)
+    oddball_th10_d10_test.go:71: 43716616 : pic memoire observe 0.08 Gio
+--- PASS: TestOddballTh10D10 (38.35s)
+PASS
+ok  	levelup/go-api/internal/analysis/replay	38.761s
+EXIT_43716616=0
+===== FILM 92f18088 =====
+=== RUN   TestOddballTh10D10
+2026/08/27 14:57:06 INFO plafond memoire arme pour ce decodage outil=d10-th10 souple_gib=2 dur_octets=2684354560
+2026/08/27 14:57:10 WARN empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte (mise a jour du jeu ?) ; le film reste decode empreinte=11979330793883025789 empreinte_connue=7053924395561516366 blocs=118 slots_non_vides=1067
+    oddball_th10_d10_test.go:74: 92f18088 : 5342 ancres, 265 creations acceptees, 369 pistes delta ; 35 vie(s) du mot elu
+    oddball_th10_d10_test.go:74: 92f18088 : carte 1a6cfc2e-ec86-48e1-9464-1ce1bff6ed48 absente du catalogue d'objectifs (replay: carte absente du catalogue d'objectifs : "1a6cfc2e-ec86-48e1-9464-1ce1bff6ed48")
+    oddball_th10_d10_test.go:74: 92f18088 : 35 vie(s) libre(s), 0 socle(s), pont 106/117 slot(s) nomme(s) = 90.6 % (plancher 50 %)
+    oddball_th10_d10_test.go:84: 92f18088 : 80 evenement(s) `th=10`, 35 naissance(s), 35 silence(s) confrontables
+    oddball_th10_d10_test.go:87: HISTOGRAMME 92f18088 (ecart au plus proche des deux classes) : <=100 ms 11 · <=250 0 · <=500 2 · <=1000 5 · <=2000 8 · <=5000 19 · au-dela 35
+    oddball_th10_d10_test.go:87: ACCORD 92f18088 (tolerance 1000 ms) : NAISSANCES 11/80 = 13.8 % · SILENCES 7/80 = 8.8 % · UNION 18/80 = 22.5 %
+    oddball_th10_d10_test.go:87: VERDICT 92f18088 : NON ETABLI — aucun accord ne depasse 80 %.
+    oddball_th10_d10_test.go:88: TICS 92f18088 : joueur 0022 — 12 th=10, 52 tic(s) API, rapport tics/th10 4.33
+    oddball_th10_d10_test.go:88: TICS 92f18088 : joueur 3686 — 31 th=10, 143 tic(s) API, rapport tics/th10 4.61
+    oddball_th10_d10_test.go:88: TICS 92f18088 : joueur 1924 — 8 th=10, 16 tic(s) API, rapport tics/th10 2
+    oddball_th10_d10_test.go:88: TICS 92f18088 : joueur 9662 — 7 th=10, 18 tic(s) API, rapport tics/th10 2.57
+    oddball_th10_d10_test.go:88: TICS 92f18088 : joueur 3060 — 4 th=10, 14 tic(s) API, rapport tics/th10 3.5
+    oddball_th10_d10_test.go:88: TICS 92f18088 : joueur 2034 — 16 th=10, 65 tic(s) API, rapport tics/th10 4.06
+    oddball_th10_d10_test.go:88: TICS 92f18088 : joueur 9936 — 2 th=10, 5 tic(s) API, rapport tics/th10 2.5
+    oddball_th10_d10_test.go:71: 92f18088 : pic memoire observe 0.20 Gio
+--- PASS: TestOddballTh10D10 (57.07s)
+PASS
+ok  	levelup/go-api/internal/analysis/replay	57.490s
+EXIT_92f18088=0
+===== FILM d9781168 =====
+=== RUN   TestOddballTh10D10
+2026/08/27 14:58:04 INFO plafond memoire arme pour ce decodage outil=d10-th10 souple_gib=2 dur_octets=2684354560
+    oddball_th10_d10_test.go:74: d9781168 : 15016 ancres, 665 creations acceptees, 945 pistes delta ; 47 vie(s) du mot elu
+    oddball_th10_d10_test.go:74: d9781168 : 47 vie(s) libre(s), 1 socle(s), pont 140/160 slot(s) nomme(s) = 87.5 % (plancher 50 %)
+    oddball_th10_d10_test.go:84: d9781168 : 124 evenement(s) `th=10`, 47 naissance(s), 47 silence(s) confrontables
+    oddball_th10_d10_test.go:87: HISTOGRAMME d9781168 (ecart au plus proche des deux classes) : <=100 ms 41 · <=250 3 · <=500 2 · <=1000 5 · <=2000 13 · <=5000 16 · au-dela 44
+    oddball_th10_d10_test.go:87: ACCORD d9781168 (tolerance 1000 ms) : NAISSANCES 33/124 = 26.6 % · SILENCES 27/124 = 21.8 % · UNION 51/124 = 41.1 %
+    oddball_th10_d10_test.go:87: VERDICT d9781168 : NON ETABLI — aucun accord ne depasse 80 %.
+    oddball_th10_d10_test.go:88: TICS d9781168 : joueur 0022 — 14 th=10, 34 tic(s) API, rapport tics/th10 2.43
+    oddball_th10_d10_test.go:88: TICS d9781168 : joueur 1007 — 27 th=10, 113 tic(s) API, rapport tics/th10 4.19
+    oddball_th10_d10_test.go:88: TICS d9781168 : joueur 0162 — 16 th=10, 50 tic(s) API, rapport tics/th10 3.13
+    oddball_th10_d10_test.go:88: TICS d9781168 : joueur 3823 — 4 th=10, 8 tic(s) API, rapport tics/th10 2
+    oddball_th10_d10_test.go:88: TICS d9781168 : joueur 9376 — 17 th=10, 47 tic(s) API, rapport tics/th10 2.76
+    oddball_th10_d10_test.go:88: TICS d9781168 : joueur 6950 — 13 th=10, 23 tic(s) API, rapport tics/th10 1.77
+    oddball_th10_d10_test.go:88: TICS d9781168 : joueur 3276 — 27 th=10, 102 tic(s) API, rapport tics/th10 3.78
+    oddball_th10_d10_test.go:88: TICS d9781168 : joueur 0067 — 6 th=10, 10 tic(s) API, rapport tics/th10 1.67
+    oddball_th10_d10_test.go:71: d9781168 : pic memoire observe 0.20 Gio
+--- PASS: TestOddballTh10D10 (68.06s)
+PASS
+ok  	levelup/go-api/internal/analysis/replay	68.473s
+EXIT_d9781168=0
