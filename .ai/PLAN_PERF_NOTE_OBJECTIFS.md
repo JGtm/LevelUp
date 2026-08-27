@@ -372,7 +372,7 @@ batch passera par un sous-package.
 
 ### Lot 4 — Recompute réel + gate visuel + clôture
 
-- [ ] B4.1 Serveur :8000 arrêté vérifié ; recompute force des 4 joueurs via le point
+- [x] B4.1 Serveur :8000 arrêté vérifié ; recompute force des 4 joueurs via le point
       d'entrée existant (CLI levelup backfill / enrichment_backfill — identifier la
       commande exacte, sinon mini-cmd diag) sur les DONNÉES RÉELLES depuis le worktree
       (binaire de la branche, LEVELUP_REPO_ROOT → checkout principal).
@@ -380,12 +380,12 @@ batch passera par un sous-package.
       famille objectif) — un recompute depuis un binaire non câblé classerait tout le
       ranked en ranked_slayer EN SILENCE. Exigence : le binaire du recompute pose les
       seams (Set*Classifier) et le vérifie (Validate*Wired) AVANT tout calcul.
-- [ ] B4.2 Contrôles diag_q post-recompute : 0 score sur outcome=4 ; 0 chaîne `ranked`
+- [x] B4.2 Contrôles diag_q post-recompute : 0 score sur outcome=4 ; 0 chaîne `ranked`
       restante ; distribution des chaînes conforme au rapport lot 0 ; comptes purgés =
       comptes prédits.
 - [ ] B4.3 Gate visuel utilisateur (témoins à faire nommer : un match objectif « écrasé
       mais actif », un DNF sans note, un ranked de Madina97294).
-- [ ] B4.4 Recompute LUSR complet des 4 joueurs (`RecomputeLUSRCanonicalForPlayer`,
+- [x] B4.4 Recompute LUSR complet des 4 joueurs (`RecomputeLUSRCanonicalForPlayer`,
       chemin canonique v2 — réutiliser l'orchestration existante type
       `recompute_after_art_rebuild.go` si adaptée) APRÈS la reclassification 1bis ;
       contrôles : comptes `match_skill_rank_latest` par chaîne avant/après (~25 sociaux
@@ -396,9 +396,68 @@ batch passera par un sous-package.
       D'OFFICE (constat B2.4 : les 4 DBs locales étaient TOUTES corrompues — la prod,
       même code, est à considérer atteinte jusqu'à preuve du contraire ; l'outil
       `cmd/repair_psa_index` avec -dry-run puis -repair est prêt).
-- [ ] B4.6 Registre des reports : BTB non scindé (D-F) + sort de buildFormTab (D-G).
-      thought_log. delivery-checklist. Autorisation utilisateur puis push de la branche
-      (PAS de merge main — deploy prod).
+- [ ] B4.6 Registre des reports : BTB non scindé (D-F) + sort de buildFormTab (D-G) +
+      cause racine corruption h5_arena (découverte B4.4) + cause racine désync index
+      PSA (découverte B2.4). thought_log. delivery-checklist. Autorisation utilisateur
+      puis push de la branche (PAS de merge main — deploy prod).
+
+**B4.1/B4.2/B4.4 EXÉCUTÉS ET VALIDÉS le 2026-08-28** (backup 429,6 Mo vérifié — dont la
+shared : `RecomputeLUSRCanonicalForPlayer` écrit AUSSI en shared (sentinelle +
+player_skill_state_v2, lusr_full_recompute.go:44) — écart de périmètre assumé et
+documenté ; le mode perf garde la shared en read_only). Point d'entrée :
+`cmd/recompute_perfnote` (jetable) + wrapper `RecomputePerformanceScoresWithMedals`
+(performance.go, chemin backfill AVEC médailles), seams câblés + validés fail-fast +
+3 gardes anti-no-op LUSR (SlugHasLUSR/IsLUSRV2Enabled/IsLUSRV2Canonical). RÉSULTATS,
+contre-sondés par le pilote : purge = prédiction À L'UNITÉ 4/4 (78/41/118/10) ; zéro
+note sur outcome=4 ; zéro chaîne `ranked` ; aucune perte de ligne (arithmétique
+append-only exacte) ; 26 movers confirmés perf ET LUSR (concordance
+performance_chain↔playlist_group : 0 divergence) ; médianes dans [45,55] hors 2 cas
+pré-existants documentés (chaos Madina 41,8 amélioré ; ranked_slayer n=2) ;
+ranked_objectif Madina 38,8 → 45,25 ; oracle sentinelle diag_perfsim : purge=0,
+1041/502/1128/12 notes = stockées, écarts médians ±1,2 pt (effet medal_exploit
+attendu). Témoins gate visuel prêts (section 6 du CR lot 4) — B4.3 après volets D/C,
+serveur relancé.
+
+## Volet C — backfill-killsource (demande utilisateur 2026-08-27, solde le registre lot 6 item 6.5)
+
+Entrée du registre `.ai/V7.5/REGISTRE_REPORTS.md:43` : re-run `backfill-killsource`
+COMPLET (couverture arme-du-kill 0-5 % sur les matchs récents avril-juillet 2026).
+Condition de reprise remplie : serveur arrêté avec accord utilisateur (fenêtre du
+lot 4). SÉQUENCEMENT STRICT : APRÈS la fin des recomputes du lot 4 (le backfill tient
+la shared en ÉCRITURE ; aucune concurrence de process sur les DBs ni d'invocations go
+parallèles).
+
+- [ ] C1 Run pilote : `go run ./cmd/levelup backfill-killsource --limit <N>` depuis le
+      checkout principal (feat/v75 — code déjà en prod), port 8000 vérifié libre ;
+      lire le résumé (couverture, films indisponibles, erreurs).
+- [ ] C2 Passe complète dans la même fenêtre ; consigner le résumé final (kills
+      couverts avant/après, plafond films Theater expirés le cas échéant).
+- [ ] C3 Contrôle : requête read-only de couverture arme-du-kill par mois sur
+      avril-août 2026 (avant/après) ; le kill feed d'un match témoin récent affiche
+      ses vignettes (gate visuel utilisateur, groupable avec celui du lot 4).
+- [ ] C4 Solder l'entrée du registre (date + résultat) ; thought_log.
+
+## Volet D — backfill des 80 scores d'équipe faux (demande utilisateur 2026-08-28, IMPÉRATIF avant le tag v7.5.0)
+
+Mode d'emploi source : `.ai/V7.5/replay2d/RAPPORT_QUALITE_SCORE_EQUIPE.md` (CLI
+`cmd/backfill-team-scores`, JAMAIS exécutée à ce jour — ni dry-run ni apply). Résidu
+API 343 pré-mai 2026 : 80 matchs à scores d'équipe faux (participants corrects), dont
+7 inversions exactes des deux camps (6 Oddball + 1 BTB:Sentry Defense) et 1 cas
+inversion+ticks. Le dry-run fait 80 APPELS API (tokens valides requis) et lit la
+shared ; l'apply ouvre la shared en RW sous lease → serveur arrêté OBLIGATOIRE (piège
+connu registre :418 : un --apply avec serveur allumé sort en fatal AVANT le résumé et
+brûle les 80 appels). SÉQUENCEMENT : après le lot 4, AVANT le volet C (court et
+impératif d'abord), même fenêtre serveur-arrêté, jamais en concurrence d'accès DB.
+
+- [ ] D1 Port 8000 vérifié libre ; dry-run : `go run ./cmd/backfill-team-scores`
+      (défaut --dry-run) depuis le checkout principal ; capturer le journal complet.
+- [ ] D2 CONTRÔLE DE FORME (critère utilisateur, STOP sinon) : les 7 inversions
+      attendues apparaissent comme des permutations EXACTES (avant a/b → après b/a,
+      mêmes deux nombres) ; toute autre forme = STOP, aucun apply, CR d'analyse.
+- [ ] D3 Apply (le rapport prescrit le passage par gamertag/match) ; puis CONTRÔLE :
+      rejouer le dry-run → attendu « identiques=80 planifiees=0 ».
+- [ ] D4 Thought_log + entrée du registre (:418) soldée ; signaler au user que le
+      pré-requis « avant tag v7.5.0 » est levé.
 
 ## Hors périmètre / interdits (exécuteurs)
 
@@ -441,6 +500,22 @@ batch passera par un sous-package.
 - (lot 2) `batchComputePerformanceScores` : 189 → 180 L (dette funlen réduite, pas
   accrue). Commentaire orphelin préexistant en fin de performance_helpers.go (doc
   détachée de BatchComputePerformanceScores) — non traité.
+- (lot 4, 2026-08-28) **MAJEURE — corruption LUSR `h5_arena`** : 2 461 lignes
+  match_skill_rank_latest des 4 DBs halo_infinite (jusqu'à 80 % de l'historique LUSR,
+  JGtm 895 / Madina 1064 / Choco 471 / Daemon 31) portaient la chaîne Halo 5
+  `h5_arena`, écrites dans la fenêtre 26-28 juin 2026 — signature d'un binaire h5 (ou
+  classifier h5 par défaut) exécuté sur les données Infinite. RÉPARÉE à 99,9 % par le
+  replay canonique du lot 4 (résidu : 2 lignes Madina, matchs à équipes non binaires,
+  non rejouables). Cause racine + exposition PROD à investiguer (registre B4.6 ; le
+  balayage VPS B4.5 vérifiera aussi `playlist_group='h5_arena'` en read-only).
+- (lot 4) `RecomputeLUSRCanonicalForPlayer` écrit dans la SHARED (sentinelle + états
+  skill), pas seulement la player DB — à retenir pour tout futur périmètre.
+- (lot 4) Replay LUSR : WARN « EP n'a pas convergé en 500 itérations » sur 11 matchs
+  JGtm (équipes déséquilibrées 4v8), sautés — comportement pré-existant identique au
+  post-sync.
+- (lot 4) Texte narratif de la section concordance de diag_perfsim figé au lot 0
+  (« écart 0.00 » alors que ses tableaux recalculés disent 0,71) — cosmétique,
+  trompeur si l'outil resert.
 
 ## Protocole de reprise
 

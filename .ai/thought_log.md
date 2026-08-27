@@ -74374,3 +74374,32 @@ Piege capture : SUM(INTEGER) DuckDB rend un HUGEINT non scannable en float64 -> 
 (recompute force perf + recompute LUSR des 4 joueurs sur DONNEES REELLES, backup des 4
 DBs avant, oracle sim avec tolerance medal_exploit documentee, binaire cable et
 verifie). B4.5 (balayage VPS) reste au pilote avec avertissement prealable.
+
+## [2026-08-28] Chantier note de perf — LOT 4 EXECUTE : recomputes reels VALIDES, corruption LUSR h5_arena decouverte et reparee
+
+**Statut** : En cours (plan `.ai/PLAN_PERF_NOTE_OBJECTIFS.md`). Lot 3 commite/pousse
+(`a9925659a`) avant execution.
+
+**Lot 4 execute sur les 4 DBs reelles** (backup 429,6 Mo verifie, shared comprise —
+RecomputeLUSRCanonicalForPlayer ecrit AUSSI en shared, ecart assume documente).
+Point d entree : cmd/recompute_perfnote (jetable) + wrapper
+RecomputePerformanceScoresWithMedals (chemin backfill AVEC medailles), seams cables et
+valides fail-fast, 3 gardes anti-no-op LUSR. RESULTATS contre-sondes pilote : purge =
+prediction A L UNITE 4/4 (78/41/118/10) ; zero note sur outcome=4 ; zero chaine
+`ranked` restante ; aucune perte de ligne ; 26 movers confirmes perf ET LUSR (0
+divergence performance_chain vs playlist_group) ; ranked_objectif Madina 38,8 -> 45,25 ;
+oracle sentinelle diag_perfsim : purge=0, notes stockees = simulees (ecarts medians
+±1,2 pt, effet medal_exploit attendu). Temoins gate visuel prets (CR lot 4 §6 : 2/13
+CTF 11->21 ; VIP 11/5 90->77 ; DNF sans note ; Oddball ranked 28,7->42,4).
+
+**DECOUVERTE MAJEURE** : 2 461 lignes LUSR des DBs halo_infinite portaient la chaine
+Halo 5 `h5_arena` (jusqu a 80 % de l historique, ecrites 26-28 juin 2026 — signature
+d un binaire h5 sur donnees Infinite). REPAREE a 99,9 % par le replay canonique
+(residu 2 lignes Madina non rejouables). Cause racine + exposition prod a investiguer
+(registre) ; le balayage VPS verifiera aussi h5_arena.
+
+**Conclusion / prochaine etape** : autorisation commit lot 4 + volets D (80 scores
+d equipe, IMPERATIF avant tag v7.5.0, dry-run avec controle de forme STOP) puis C
+(backfill-killsource) dans la meme fenetre serveur-arrete ; ensuite relance serveur +
+gate visuel utilisateur groupe, cloture (registre, delivery-checklist), et balayage VPS
+annonce.
