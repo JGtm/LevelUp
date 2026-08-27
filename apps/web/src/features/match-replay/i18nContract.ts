@@ -101,6 +101,13 @@ export interface ReplayText {
    */
   speedNormal: string
   speedMuted: string
+  /**
+   * LE NOM DE LA BARRE D'ESPACE, et c'est la SEULE touche du lecteur qui se traduit. Les autres
+   * rappels de la barre — R, M, ←, → — sont des touches physiques : leur nom est le glyphe
+   * gravé dessus, identique dans les deux langues. « Espace » ne l'est pas ; l'écrire en dur
+   * aurait laissé un mot français dans une interface anglaise.
+   */
+  keySpace: string
   /** Kill feed synchronisé sur l'horloge du rejeu. */
   killFeedTitle: string
   killFeedEmpty: string

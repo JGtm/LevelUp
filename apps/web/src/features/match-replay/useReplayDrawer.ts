@@ -51,8 +51,16 @@ export type ReplayDrawer = ComponentProps<typeof ReplaySettingsDrawer>
 
 export function useReplayDrawer(o: ReplayDrawerOptions): ReplayDrawer {
   const { settings: s, sound, available, heat, locale, onClose, triggerRef } = o
-  // MÉMOÏSÉ SUR SES SOURCES : le tiroir se remonte à chaque rendu du canvas sinon, c'est-à-dire
-  // à chaque geste de souris sur la carte (le survol des poses passe par un état React).
+  // CE MÉMO NE RETIENT RIEN AUJOURD'HUI, et le dire vaut mieux que le laisser croire (revue R1) :
+  // `available` et `heat` sont des littéraux que l'appelant reconstruit à chaque rendu, et
+  // `useReplaySettings` rend lui aussi un objet neuf à chaque fois. Ses dépendances changent
+  // donc d'identité en permanence, et l'objet est refabriqué à chaque rendu du canvas.
+  //
+  // IL RESTE PARCE QU'IL EST GRATUIT ET QU'IL DEVIENDRA VRAI : le jour où la source amont se
+  // stabilise, la mémoïsation prend effet sans qu'on touche à ce fichier. La rendre effective
+  // MAINTENANT demanderait de mémoïser `useReplaySettings` (hors périmètre de ce lot, cf. les
+  // Découvertes du plan) — et le tiroir n'est de toute façon monté que lorsqu'il est OUVERT,
+  // donc le coût réel est un objet par rendu, pas un panneau reconstruit.
   return useMemo(
     () => ({
       locale,

@@ -233,7 +233,7 @@ export function ReplayCanvas({
   // L'ÉTAT VIVANT DES ZONES (schémas 16-18) : encres, jointure du catalogue, tenue de la jauge (useZoneStates).
   const zones = useZoneStates(mapObjectives, scoreboard, teamColorOf, neutralInk, doc)
 
-  const leadMarks = useLeadMarks(doc, scoreboard, xuidMeta, locale, playWindow)
+  const leadMarks = useLeadMarks(doc, scoreboard, xuidMeta, locale)
 
   // Traînée, cône, croix de mort, apparition, rémanences et fins de vol : toutes les durées
   // du rejeu, converties une fois pour ce document (useReplayTiming).
