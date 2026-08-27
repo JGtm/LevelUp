@@ -193,26 +193,6 @@ func secPurge(b *strings.Builder, results []*playerResult) {
 	fmt.Fprintf(b, "\n")
 }
 
-// missedObjectiveLabels — sous-modes objectif que la liste de classify.go:78-80
-// ne reconnait PAS aujourd'hui (constat, pas correctif : le lot 0 ne touche a
-// aucun fichier produit). `arena` vient de pair_names inverses type
-// `Strongholds:Arena on Behemoth`.
-var missedObjectiveLabels = map[string]bool{
-	"neutral bomb": true, "one bomb": true, "neutral bomb squad": true,
-	"vip": true, "ctf 3 captures": true, "arena": true,
-}
-
-// missClassified compte les matchs d'un mode objectif evident tombes en famille slayer.
-func missClassified(rows []*subModeRow) int {
-	n := 0
-	for _, r := range rows {
-		if missedObjectiveLabels[r.Label] && !isObjectiveChain(r.Chain) {
-			n += r.N
-		}
-	}
-	return n
-}
-
 // subModeRow agrege un sous-mode normalise et la famille qui lui est attribuee.
 type subModeRow struct {
 	Label  string
@@ -222,12 +202,24 @@ type subModeRow struct {
 }
 
 // secSubModes expose la classification effective des sous-modes des categories
-// ou la liste objectif est consultee (Assassin et Ranked). Sert de piece de
-// verification au lot 1 : toute ligne « objectif evident classee slayer » est une
-// lacune de la liste de classify.go:78-80.
+// ou la liste objectif est consultee (Assassin et Ranked). Piece de verification
+// du lot 1bis, avec son TEMOIN : un match est mal classe si et seulement si l'une
+// des deux moities de son pair_name (partie GAUCHE du premier ':' ou sous-mode
+// droit) est un mode objectif ALORS QUE la famille attribuee reste slayer.
+//
+// Le temoin croise donc la lecture locale (isObjectiveSubMode, miroir) et la
+// famille produite (chainSplit → skillchain.ClassifyLUSRChain pour le social) :
+// il vaut 0 tant que le miroir et la production sont d'accord.
+//
+// Un sous-mode droit « arena » ne suffit PAS a designer un match objectif : les
+// inverses `CTF:Arena` / `Strongholds:Arena` le sont par leur partie gauche, mais
+// `Team Slayer:Arena` et `Slayer:Arena` sont des modes SLAYER inverses et restent
+// en famille slayer a bon droit (l'ancien temoin, base sur le seul label droit,
+// les comptait a tort — d'ou son « 6 » residuel).
 func secSubModes(b *strings.Builder, results []*playerResult) {
 	type key struct{ label, chain string }
 	agg := map[key]*subModeRow{}
+	missed := 0
 	for _, pr := range results {
 		for i := range pr.Universe {
 			m := &pr.Universe[i]
@@ -235,7 +227,11 @@ func secSubModes(b *strings.Builder, results []*playerResult) {
 			if cat != halo_infinite.ModeCategoryAssassin && cat != halo_infinite.ModeCategoryRanked {
 				continue
 			}
-			k := key{strings.ToLower(analysis.NormalizeModeLabel(m.PairName)), chainSplit(m)}
+			chain := chainSplit(m)
+			if isObjectiveSubMode(m.PairName) && !isObjectiveChain(chain) {
+				missed++
+			}
+			k := key{strings.ToLower(analysis.NormalizeModeLabel(m.PairName)), chain}
 			r := agg[k]
 			if r == nil {
 				r = &subModeRow{Label: k.label, Chain: k.chain, Sample: m.PairName}
@@ -253,13 +249,17 @@ func secSubModes(b *strings.Builder, results []*playerResult) {
 	fmt.Fprintf(b, "## Annexe — classification effective des sous-modes (categories Assassin + Ranked)\n\n")
 	fmt.Fprintf(b, "Sous-modes normalises par `analysis.NormalizeModeLabel`, avec la famille que leur\n")
 	fmt.Fprintf(b, "attribue le NOUVEAU regime. Corpus des 4 joueurs, univers complet.\n\n")
-	fmt.Fprintf(b, "**Lacunes de la liste objectif reperees ici** (PRE-EXISTANTES : elles affectent deja\n")
-	fmt.Fprintf(b, "`lusrChainForAssassin` et donc les chaines LUSR d'aujourd'hui — NON corrigees par ce\n")
-	fmt.Fprintf(b, "lot 0, a statuer au lot 1) : %d matchs d'un mode objectif evident tombent en famille\n", missClassified(rows))
-	fmt.Fprintf(b, "slayer — Assaut (`neutral bomb`, `one bomb`, `neutral bomb squad`), `vip`,\n")
-	fmt.Fprintf(b, "`ctf 3 captures`, et surtout `arena` (14 matchs dont le pair_name est INVERSE :\n")
-	fmt.Fprintf(b, "`Strongholds:Arena on Behemoth` — le mode est a GAUCHE du deux-points, la\n")
-	fmt.Fprintf(b, "normalisation retient donc « Arena » comme sous-mode).\n\n")
+	fmt.Fprintf(b, "**Temoin de classification** — un match compte comme mal classe si l'une des deux\n")
+	fmt.Fprintf(b, "moities de son pair_name (partie GAUCHE du premier `:` ou sous-mode droit) est un\n")
+	fmt.Fprintf(b, "mode objectif alors que la famille attribuee reste slayer. Lacunes D-I corrigees au\n")
+	fmt.Fprintf(b, "lot 1bis (liste a 17 entrees + regle du prefixe) : **%d** match(s) mal classe(s) —\n", missed)
+	fmt.Fprintf(b, "attendu 0.\n\n")
+	fmt.Fprintf(b, "Lecture : un sous-mode droit `arena` ne designe PAS un match objectif. Les 26 matchs\n")
+	fmt.Fprintf(b, "reclasses par le lot 1bis le sont par leur partie GAUCHE (`CTF:Arena`,\n")
+	fmt.Fprintf(b, "`Strongholds:Arena`) ou par un sous-mode ajoute a la liste (Assaut `neutral bomb` /\n")
+	fmt.Fprintf(b, "`one bomb` / `neutral bomb squad`, `vip`, `ctf 3 captures`). A l'inverse,\n")
+	fmt.Fprintf(b, "`Team Slayer:Arena` (x5) et `Slayer:Arena` (x1) sont des modes SLAYER inverses :\n")
+	fmt.Fprintf(b, "ils restent en famille slayer a bon droit et ne sont PAS des lacunes.\n\n")
 	fmt.Fprintf(b, "| Sous-mode normalise | Famille attribuee | n matchs | Exemple de pair_name |\n")
 	fmt.Fprintf(b, "|---|---|---:|---|\n")
 	for _, r := range rows {

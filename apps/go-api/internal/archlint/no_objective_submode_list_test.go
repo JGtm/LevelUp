@@ -8,6 +8,11 @@
 // ajout de sous-mode fait d'un seul côté, et le MÊME match tomberait en famille
 // objectif pour le LUSR et en famille slayer pour la performance.
 //
+// La source unique porte 17 entrées depuis le lot 1bis (2026-08-27 : ajout de
+// `vip`, `neutral bomb`, `one bomb`, `neutral bomb squad`, `ctf 3 captures`) ainsi
+// que la RÈGLE DU PRÉFIXE pour les pair_name inversés. Les marqueurs de détection
+// ci-dessous sont inchangés : ils signent la liste, pas ses règles de lecture.
+//
 // DÉTECTION — 3 littéraux MARQUEURS, variantes CTF propres à cette liste :
 // "neutral flag ctf", "one flag ctf", "covert one flag". Mesuré le 2026-08-27 :
 // ces 3 chaînes n'apparaissent QUE dans la source unique et dans l'outil de
@@ -51,7 +56,9 @@ var objectiveListAllowlist = map[string]bool{
 	// Ce ratchet lui-même (il porte les marqueurs pour les chercher).
 	"internal/archlint/no_objective_submode_list_test.go": true,
 	// Outil de simulation offline du lot 0 (2026-08-27, plan PERF_NOTE_OBJECTIFS
-	// B0.1) : copie locale assumée par le plan — l'outil précède la factorisation.
+	// B0.1) : copie locale assumée par le plan — l'outil ne dépend pas du seam
+	// title-aware câblé au boot. MIROIR à resynchroniser à chaque évolution de la
+	// liste (fait au lot 1bis, 2026-08-27).
 	// Retrait de cette entrée avec l'outil (jetable, non versionné à ce jour).
 	"cmd/diag_perfsim/score.go": true,
 }

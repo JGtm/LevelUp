@@ -35,12 +35,15 @@ func TestGetPerformanceChain(t *testing.T) {
 		{name: "ranked + firefight sur sous-mode objectif → ranked_objectif", pairName: "Ranked:CTF on Recharge", isRanked: true, isFirefight: true, want: PerfChainRankedObjectif},
 		{name: "famille lue dans le sous-mode, pas dans le préfixe", pairName: "BTB:CTF on Highpower", isRanked: true, want: PerfChainRankedObjectif},
 
-		// LACUNE CONNUE D-I (.ai/PLAN_PERF_NOTE_OBJECTIFS.md, 2026-08-27) : ce match
-		// EST un match d'objectif, mais « ctf 3 captures » n'est pas dans la liste
-		// partagée — l'élargir déplacerait aussi des chaînes LUSR déjà persistées
-		// (recompute LUSR hors périmètre). Verrouillé pour que la correction future
-		// soit délibérée.
-		{name: "ranked CTF 3 Captures → ranked_slayer (lacune D-I)", pairName: "Ranked:CTF 3 Captures on Argyle", isRanked: true, want: PerfChainRankedSlayer},
+		// LACUNE D-I CORRIGÉE (lot 1bis du plan .ai/PLAN_PERF_NOTE_OBJECTIFS.md,
+		// 2026-08-27) : « ctf 3 captures » est entré dans la liste partagée, et la
+		// règle du préfixe rattrape les pair_name inversés. Le recompute LUSR des
+		// chaînes déjà persistées est traité au lot 4.
+		{name: "ranked CTF 3 Captures → ranked_objectif (D-I corrigé)", pairName: "Ranked:CTF 3 Captures on Argyle", isRanked: true, want: PerfChainRankedObjectif},
+		{name: "ranked VIP → ranked_objectif (D-I corrigé)", pairName: "Ranked:VIP on Catalyst", isRanked: true, want: PerfChainRankedObjectif},
+		{name: "ranked Assaut Neutral Bomb → ranked_objectif (D-I corrigé)", pairName: "Assault:Neutral Bomb on Origin", isRanked: true, want: PerfChainRankedObjectif},
+		{name: "ranked pair_name inversé → ranked_objectif (règle du préfixe)", pairName: "Strongholds:Arena on Behemoth", isRanked: true, want: PerfChainRankedObjectif},
+		{name: "ranked préfixe non objectif inversé → ranked_slayer", pairName: "Slayer:Arena on Behemoth", isRanked: true, want: PerfChainRankedSlayer},
 
 		// Priorité 2 — Firefight.
 		{name: "firefight flag", pairName: "Firefight:King of the Hill", isFirefight: true, want: PerfChainFirefight},
@@ -65,6 +68,12 @@ func TestGetPerformanceChain(t *testing.T) {
 		{name: "Tactical Slayer → arena_slayer", pairName: "Tactical:Slayer", want: LUSRChainArenaSlayer},
 		{name: "Community Slayer → arena_slayer", pairName: "Community:Slayer", want: LUSRChainArenaSlayer},
 		{name: "Rumble Pit → arena_slayer (fallback Other)", pairName: "Rumble Pit", want: LUSRChainArenaSlayer},
+		// Corpus D-I corrigé côté social (lot 1bis) : la délégation suit la même
+		// source de famille que le classé.
+		{name: "Assaut Neutral Bomb → arena_objectif", pairName: "Assault:Neutral Bomb on Origin", want: LUSRChainArenaObjectif},
+		{name: "Arena VIP → arena_objectif", pairName: "Arena:VIP on Catalyst", want: LUSRChainArenaObjectif},
+		{name: "pair_name inversé → arena_objectif", pairName: "Strongholds:Arena on Behemoth", want: LUSRChainArenaObjectif},
+		{name: "préfixe non objectif inversé → arena_slayer", pairName: "Slayer:Arena on Behemoth", want: LUSRChainArenaSlayer},
 
 		// Priorité 4 — fallback ultime sur pair_name vide / inconnu.
 		{name: "pair_name vide (aucun flag) → arena_slayer", pairName: "", want: LUSRChainArenaSlayer},
