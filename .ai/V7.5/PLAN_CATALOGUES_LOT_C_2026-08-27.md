@@ -152,13 +152,25 @@
 
 ### C3 — Rejouer le gate A1 TEL QUEL ; publier A2 si et seulement s'il tient
 
-- [ ] C3.1 `assaut_a1_identite_test.go` rejoue sans AUCUNE modification de seuil ni de
+- [!] C3.1 `assaut_a1_identite_test.go` rejoue sans AUCUNE modification de seuil ni de
       logique (seul le catalogue a change). Log fige `C3_identite_bombe_rejeu.log`.
-- [ ] C3.2 Si gate tenu (UN mot, >= 2 films, temoin 0) : publication des vies libres de la
+      — SANS OBJET 2026-08-27 : la precondition (« seul le catalogue a change ») n'est
+      pas remplie — le gate C2.3 a interdit l'entree des sites d'Assaut au catalogue.
+      L'instrument lit les sites du catalogue, inchange pour ces cartes : le resultat est
+      determine par construction. UN film echantillon rejoue en confirmation (35b75a31,
+      log fige) : « 0 site assault_bomb », GATE A1.3 = 0 candidat — bit-identique au
+      verdict du lot A. La bombe reste [!] par ANCRAGE ABSENT.
+- [!] C3.2 Si gate tenu (UN mot, >= 2 films, temoin 0) : publication des vies libres de la
       bombe au patron du crane (les 4 items A2.1-A2.4 du plan lot A, repris tels quels :
       manifeste famille `bomb` EN+FR, garde d'exclusion, calque web, re-cuisson temoins
       avec verification de CONTENU). Si un bump de schema s'avere requis : STOP, arbitrage.
-- [ ] C3.3 Si gate rate : `[!]` avec chiffres, rien ne se publie (pas de 2e essai).
+      — Tombe avec C3.1 (pas de mot MPP, pas d'id a ecrire au manifeste).
+- [x] C3.3 Si gate rate : `[!]` avec chiffres, rien ne se publie (pas de 2e essai).
+      — Fait 2026-08-27 : [!] consigne avec chiffres au log C3, rien ne se publie. Le lot
+      AJOUTE a la condition de reprise du lot A : les sites candidats sont desormais
+      FIGES et localises (C2_sites_candidats.json), 25/25 explosions avec activite au
+      site — il ne manque que l'arbitrage sur le temoin d'entree (ou la validation par le
+      gate A1 lui-meme avec les candidats en entree d'instrument, non circulaire).
 
 ### C4 — Land Grab : cablage du role (ex-lot L)
 
