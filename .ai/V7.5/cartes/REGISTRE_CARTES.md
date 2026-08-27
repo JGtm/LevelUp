@@ -941,3 +941,34 @@ un reglage qui ne fait rien est une dette, pas une precaution.
 
 **Reste ouvert** : le vrai nom de `944396dd-5661-4a16-b1d8-a6053f762c55` (un agent le cherche),
 et les cartes a bouillie, qui attendent le resultat des enquetes sur Reclaimer.
+
+### 2026-08-27 — « Quelle est la difference ? » : trois mesures, trois refutations
+
+**Verbatim** : « On a des maps Forge qui sont nickels et pas d'autres, quelle est la
+difference ? »
+
+Bonne question, et j'ai voulu y repondre par un chiffre plutot que par une impression. Trois
+candidats mesures sur les 84 fonds publies (`cmd/mapfond-cadrage`, deux colonnes nouvelles) :
+
+| mesure | tes 18 cartes propres | Isolation, la bouillie averee | verdict |
+|---|---|---|---|
+| **bruit** (ruptures de luminance entre voisins) | 2,0 a 28,3 % (mediane 12,0) | **11,1 %** | REFUTE : Isolation tombe sur la MEDIANE des propres |
+| **alignement des contours** (part des bords suivant un axe) | 61,9 a 94,7 % (mediane 79,1) | **62,2 %** | REFUTE : Isolation est a 0,3 point du plancher des propres |
+| **taux de couverture** et **densite d'objets** | mediane 31,6 % et 863 obj/Mpx | 36,4 % et 850 | REFUTE : indiscernables |
+
+**Aucune statistique globale de l'image ne separe les deux familles.** Le bruit monte surtout
+sur les cartes NATIVES tres detaillees mais parfaitement lisibles — Cliffhanger 43 %, Highpower
+38,9, Forest 38,4 — ce qui montre qu'il mesure la richesse, pas le defaut.
+
+**Ce qui reste, et qui colle a tout ce qu'on a vu** : la difference n'est pas dans la quantite
+de detail mais dans le ROLE du type dominant. Sur une carte propre, celui qui peint le plus est
+un SOL plat ; sur Isolation, c'est une COQUE qui enferme l'arene (82,7 % des pixels avec
+32 exemplaires, et sous elle une deuxieme couche, puis une troisieme). La mesure qui le dirait
+est la VARIANCE DE LA NORMALE du type dominant : un sol a toutes ses normales vers le haut,
+une coque les a dans toutes les directions. Le rendu porte deja les normales et sait deja quel
+type gagne chaque pixel — c'est une demi-heure.
+
+**Sous-produit utile** : le classement par alignement designe les cartes Forge les plus
+desalignees, donc les plus suspectes, que l'utilisateur n'a pas encore jugees — Elevation 55,2 ·
+Nemesis 57,2 · Opulence 58,0 · Absolution 58,7 · Thunderhead 58,7 · Flood Gulch 58,8 ·
+Snowbound 59,5 · High Ground 60,0 · Fortitude 60,4 · Threshold 60,9.
