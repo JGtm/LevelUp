@@ -4881,3 +4881,24 @@ Chiffres du gate lot 3 : `npm run typecheck` exit 0 ; vitest 102 fichiers / **15
 (baseline du lot 0 : 1502 tests dont 1 rouge) ; ESLint 0 erreur sur `src/features/match-replay` et
 `src/routes` — 2 warnings, tous deux verifies PRE-EXISTANTS sur `86b9087c9` ; cliquet 6/6 ; greps
 hex, archivo et classes Tailwind couleur muets.
+
+**LOT 4 — CLOTURE.** Statut du chantier : **Complete** cote technique, EN ATTENTE du gate visuel
+utilisateur. Tous les items du plan sont statues (aucune case vide, aucun `[!]`). Quatre commits
+sur `wt/lecteur`, aucun merge, aucun push — la branche attend l'autorisation apres le gate visuel.
+
+Deux entrees au registre des reports : (1) **medias du rejeu**, reduits a la seule DONNEE — le
+rendu complet est livre (piste, placement, lightbox, cles i18n), il ne manque qu'un endpoint et
+le remplacement de `EMPTY_MEDIA` par une prop ; (2) **gate visuel non passe** — l'executeur ne
+rend pas de verdict a l'ecran, et la planche de reference reste dans `planche2a_impl/` pour la
+comparaison.
+
+**Ce qui n'a PAS ete traite, et c'est deliberé.** Le `package-lock.json` reecrit par `npm install`
+(30 blocs `libc` retires par la version locale de npm) a ete restaure et n'entre dans aucun
+commit : c'est une derive d'environnement, potentiellement nuisible a la CI Linux, et elle
+n'appartient pas a ce lot. Les deux warnings ESLint du perimetre sont pre-existants, verifies sur
+`86b9087c9` — ils n'ont pas ete corriges, pour la meme raison.
+
+**La lecon a retenir de ce chantier**, au-dela de la barre : une commande de gate peut mentir. Deux
+lots avaient ete valides par un `tsc` qui ne compilait aucun fichier, et les deux vrais defauts
+(collision de casse, cliquet a 708) sont restes invisibles jusqu'au moment ou la bonne commande a
+tourne. Un gate qui sort 0 sans avoir rien lu est pire qu'un gate absent : il donne une confiance.

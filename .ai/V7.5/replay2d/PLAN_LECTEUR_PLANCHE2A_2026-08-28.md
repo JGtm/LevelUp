@@ -181,9 +181,11 @@ bornes de gameplay), gate visuel utilisateur en fin de chantier.
 
 ## LOT 4 — Cloture
 
-- [ ] 4-1 Journal : entree datee dans `.ai/V7.5/replay2d/thought_log_replay.md` (decisions,
+- [x] 4-1 Journal : entree datee dans `.ai/V7.5/replay2d/thought_log_replay.md` (decisions,
       chiffres de tests, deviations assumees) ; statuts du present plan tous poses.
-- [ ] 4-2 Report REGISTRE : `.ai/V7.5/REGISTRE_REPORTS.md` — « Medias du rejeu phase 2 »
+      Ecrite AU FIL DE L'EAU (une section par lot, dans le commit du lot) plutot qu'en une fois
+      a la cloture : le contrat `plan-execution` demande une entree a CHAQUE cloture d'etape.
+- [x] 4-2 Report REGISTRE : `.ai/V7.5/REGISTRE_REPORTS.md` — « Medias du rejeu phase 2 »
       REDUIT PAR L'AMENDEMENT a la seule DONNEE : endpoint { id, kind, replayMs, durationMs,
       thumbUrl, url, label } par match/joueur (recalage t0/displayClockMs comme le fil) et
       passage de la prop `media` au canvas. Le rendu — piste, placement, lightbox, cles — est
@@ -191,7 +193,10 @@ bornes de gameplay), gate visuel utilisateur en fin de chantier.
       Noter aussi : les fichiers originaux de la session Claude Design ONT ete recuperes en
       cours de lot 2 et portes (cf. amendement) ; le dossier `planche2a_impl/` reste dans
       `.ai/` comme reference du gate visuel.
-- [ ] 4-3 Commit final (docs) sur wt/lecteur. PAS de merge, PAS de push.
+- [x] 4-3 Commit final (docs) sur wt/lecteur. PAS de merge, PAS de push.
+      DEUX entrees ajoutees au registre (medias phase 2 reduits a la donnee ; gate visuel non
+      passe). Aucun merge, aucun push : la branche `wt/lecteur` attend l'autorisation
+      utilisateur apres le gate visuel.
 
 ## Ce que ce plan NE fait PAS (perimetre ferme — amende le 2026-08-28)
 
