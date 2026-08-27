@@ -399,3 +399,54 @@ func markersOf(mo *replay.MapObjectives) []replay.ObjectiveMarkerDTO {
 	}
 	return mo.Markers
 }
+
+// TestMapObjectives_TotalControl_NeSertPlusRien — LE TEST INVERSE du retrait du 2026-08-27.
+//
+// POURQUOI UN TEST QUI VÉRIFIE UNE ABSENCE. Le vivier de Total Control (13 à 18 formes par
+// carte, 302 zones sur 21 entrées du catalogue) a été RETIRÉ par décision utilisateur : l'état
+// vivant des zones BTB est `[!]` définitif pour la v7.5, et servir 13 à 18 formes que le joueur
+// lit comme « les zones du match » alors que le mode n'en active que 3 était le moindre mal
+// tant qu'on espérait combler l'écart. On ne l'espère plus.
+//
+// UNE ABSENCE NE SE GARDE PAS TOUTE SEULE : sans ce test, remettre l'entrée dans le TOML
+// passerait sans bruit, et le vivier reviendrait. Le test échoue alors, et le message renvoie
+// à la condition de reprise, écrite à l'endroit exact du retrait.
+//
+// LES DEUX MOITIÉS COMPTENT. Le rôle ne doit plus être servi (première boucle), ET la carte
+// réellement jouée en Total Control ne doit plus rendre AUCUNE forme (seconde moitié) : la
+// première seule laisserait passer un rôle réintroduit sous un autre nom de mode.
+func TestMapObjectives_TotalControl_NeSertPlusRien(t *testing.T) {
+	root, err := testutil.RepoRoot()
+	if err != nil {
+		t.Fatalf("racine du dépôt introuvable : %v", err)
+	}
+	svc := &replayService{titleSlug: title.DefaultSlug, repoRoot: root}
+	ctx := context.Background()
+	for _, pair := range []string{
+		"Arena:Total Control on Command",
+		"BTB:Total Control on Command",
+		"BTB:Fiesta Total Control on Command",
+	} {
+		if specs := svc.objectiveRoleSpecs(ctx, pair); len(specs) != 0 {
+			t.Fatalf("%q : specs = %+v, attendu AUCUNE — l'entrée Total Control est retirée "+
+				"(cf. objective_roles.toml, bloc « TOTAL CONTROL — ENTREE RETIREE »). La "+
+				"remettre exige d'abord un ancrage ti=13 fiable sur BTB.", pair, specs)
+		}
+	}
+	// LA CARTE RÉELLEMENT JOUÉE : Command porte 18 zones `totalcontrol_zone` au catalogue.
+	// Aucune ne doit sortir.
+	res := title.NewPathResolver(root)
+	cat, err := replay.LoadMapObjectives(res.MapObjectivesPath(title.DefaultSlug))
+	if err != nil {
+		t.Fatalf("catalogue versionné illisible : %v", err)
+	}
+	entry, err := cat.Lookup("2c9f3490-6be2-4d90-9015-02095651e91e") // Command
+	if err != nil {
+		t.Fatalf("Command absent du catalogue : %v", err)
+	}
+	mo := replay.BuildMapObjectives(entry, svc.objectiveRoleSpecs(ctx, "BTB:Total Control on Command"))
+	if mo != nil {
+		t.Fatalf("Command en Total Control : zones=%d markers=%d, attendu AUCUN objectif servi",
+			zonesCount(mo), markersCount(mo))
+	}
+}

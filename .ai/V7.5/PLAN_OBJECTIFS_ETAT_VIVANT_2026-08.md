@@ -743,24 +743,24 @@ trous a porteur unique, temoin <= 5 %. Commandes NUES :
 
 Cette phase ne mesure rien : elle publie ce que les gates precedents ont valide, et RIEN d'autre.
 
-- [ ] D5.1 Producteurs, un par verdict tenu (KOTH `Owner` sur les intervalles de colline ; Total
+- [x] D5.1 Producteurs, un par verdict tenu (KOTH `Owner` sur les intervalles de colline ; Total
       Control : `totalcontrol_zone` dans `heldZoneRoles` + la voie des 3 actives ; Oddball : entree
       `[[objective_objects]]` `family = "ball"` EN+FR + calque de portage du crane). Un verdict non
       tenu n'a AUCUN code.
-- [ ] D5.2 `Coverage` : chaque calque publie ses DENOMINATEURS et ses rejets par cause. Regle du
+- [x] D5.2 `Coverage` : chaque calque publie ses DENOMINATEURS et ses rejets par cause. Regle du
       depot : un calque sans couverture se lit comme une exhaustivite ; l'ABSENCE du bloc doit
       rester distincte du zero.
-- [ ] D5.3 Le TRIPLET de version (§3.2) : `replay.SchemaVersion` (numero libre au moment du lot,
+- [x] D5.3 Le TRIPLET de version (§3.2) : `replay.SchemaVersion` (numero libre au moment du lot,
       >= 20) avec sa chronique en tete de `document.go` ET dans le fichier de contrat du calque ;
       `wantReplayDocumentFields` + sa ligne de chronique ; `EXPECTED_REPLAY_SCHEMA_VERSION`.
-- [ ] D5.4 Contrat client : `go run ./cmd/openapi-gen` (jamais d'edition a la main de
+- [x] D5.4 Contrat client : `go run ./cmd/openapi-gen` (jamais d'edition a la main de
       `api/openapi.yaml`), `make generate-types`, frontiere de nullabilite web
       (`NULLABLE_ARRAYS` / `NULLABLE_ARRAY_PATHS` et `normalizeReplayDocument` — tableaux
       IMBRIQUES compris).
-- [ ] D5.5 Golden d'assemblage re-congele (`testdata/assembly_000d5950.golden`) et TEMOINS
+- [x] D5.5 Golden d'assemblage re-congele (`testdata/assembly_000d5950.golden`) et TEMOINS
       re-cuits : les films des gates D2-D4 UNIQUEMENT, **un film par processus**, via
       `cmd/replay-build --map <carte> --facts <faits.json> <matchId>` (aucune base ouverte).
-- [ ] D5.6 Tests : producteurs testes PURS (sans film) ; un test de non-regression par calque.
+- [x] D5.6 Tests : producteurs testes PURS (sans film) ; un test de non-regression par calque.
 
 **Gate D5** : commandes NUES (depuis `apps/go-api` puis `apps/web`) :
 
@@ -1927,3 +1927,81 @@ aucune base ouverte, `a349fea8` exclu d'office.
 
 **CONTENU FINAL DE D5** : **A (proprietaire de colline KOTH) + C (vies libres du crane)**, bump
 unique au schema **21**. B reste hors publication.
+
+- 2026-08-27 — **D5 LIVRE : schema 21, contenu A + B + C.** Bump unique, triptyque bumpe
+  ensemble, temoins re-cuits et VERIFIES sur pieces.
+
+  **A — LE PROPRIETAIRE DE LA COLLINE EST PUBLIE.** Verifie dans les artefacts re-cuits :
+
+  | temoin KOTH | zones | intervalles | AVEC proprietaire | camps | methode |
+  |---|---|---|---|---|---|
+  | `01e1f945` Catalyst | 4 | 100 | **50** | 0 et 1 | `designator+geometry` |
+  | `606d9844` Chasm | 3 | 14 | **7** | 0 et 1 | `designator+geometry` |
+  | `8076f97f` Shogun | 3 | 36 | **18** | 0 et 1 | `designator+geometry` |
+
+  Le 4e film du corpus KOTH, `0a247154`, joue sur **Solitude, absente du catalogue de formes** :
+  il n'a aucune zone a peindre et ne sert pas de temoin.
+
+  **B — L'ENTREE TOTAL CONTROL EST RETIREE** (decision utilisateur, option (a)). Le mode ne
+  declare plus aucun role : le vivier de 13 a 18 formes par carte ne s'affiche plus. Le bloc de
+  retrait est DATE dans `objective_roles.toml`, avec les trois mesures qui le motivent et la
+  condition de reprise (ancrage `ti=13` fiable sur BTB = chantier de decodage). **L'ancienne
+  entree est conservee en commentaire** : le jour de la reprise, c'est ce qu'il faudra relire.
+
+  Trois gardes posees, parce qu'une ABSENCE ne se garde pas toute seule :
+  1. `TestObjectiveRoles_FichierDuDepot` : **7 modes** au lieu de 8, et l'assertion
+     « `totalcontrol_zone` doit etre servi » est **INVERSEE** — elle exige desormais qu'il ne le
+     soit PLUS, avec un message qui renvoie a la condition de reprise.
+  2. `TestMapObjectives_TotalControl_NeSertPlusRien` (neuf) : les trois libelles de mode
+     (`Arena:`, `BTB:`, `BTB:Fiesta`) ne rendent AUCUNE spec, et **Command** — qui porte 18
+     zones `totalcontrol_zone` au catalogue — ne rend AUCUN objectif.
+  3. Le commentaire de `replay_map_objectives.go` qui se disait « deja vieilli deux fois » a
+     vieilli une troisieme : il est mis a jour dans le commit qui le perime.
+
+  **Temoin TC re-cuit et verifie** : `66aa5f0b` (Command, BTB:Total Control) — la cle
+  `zoneStates` est **ABSENTE** du document et `coverage.zones` vaut `null`. Ni zones ni vivier.
+
+  **C — LE CRANE : identite au manifeste et exclusion GARDEE. La publication des vies libres n'a
+  PAS ete faite, et la raison n'est pas un renoncement.**
+
+  Livre : l'entree `[[objective_objects]]` `0x0017592c` famille `ball` EN+FR, la famille `ball`
+  ouverte dans la liste fermee, et la table renommee `FlagObjects` -> `ObjectiveObjects` partout
+  (20 occurrences, 11 fichiers) — garder `FlagObjects` aurait fait dire au code que le crane est
+  un drapeau. Verifie dans les artefacts re-cuits, et le controle est fort : le compteur
+  `coverage.groundWeapons.objectives` rend **23 / 16 / 21 / 47** sur les quatre films Oddball,
+  c'est-a-dire EXACTEMENT les comptes de creations que la mesure D4 avait attribues a
+  `0x0017592C` (23 / 16 / 21 / 47). L'exclusion des socles d'armes est passee d'ACCIDENTELLE a
+  VOULUE ET GARDEE, et `TestLeManifesteNommeSesObjetsDObjectifDansLesDeuxLangues` exige
+  desormais CHAQUE famille separement — un comptage global aurait laisse disparaitre une famille
+  entiere en silence.
+
+  **NON LIVRE, ET C'EST UNE DECOUVERTE, PAS UN ARBITRAGE DE MA PART** : les vies libres ne sont
+  publiees NULLE PART, ni pour le crane ni pour le drapeau. Verifie sur pieces : `scan.Free` n'a
+  que deux consommateurs (`closeByFreeLives`, `repositionFlagDrops`, `flag_objects.go`), aucune
+  cle `free` n'existe au document, et `objectivesLive` n'existe pas davantage. Le fichier le dit
+  lui-meme depuis le 2026-08-18 : « Elles ne sont PAS publiees — elles CORRIGENT le calque ».
+  **Mon inventaire D5 du 2026-08-27 affirmait le contraire** (« `objectivesLive.free` existe deja
+  pour le drapeau »), avec la mention « a verifier au moment de coder » ; la verification a eu
+  lieu, et elle infirme. « Comme pour le drapeau » signifie donc, litteralement, « pas publie du
+  tout ».
+
+  Publier les vies libres du crane demanderait une cle de document NEUVE, un champ de contrat en
+  plus (39 au lieu de 38), un rendu web, et le passage de la garde de mode `IsFlagFilm` qui
+  arrete aujourd'hui tout ce chemin hors CTF. C'est une SURFACE PRODUIT que personne n'a
+  specifiee. Je ne l'ai pas inventee : elle revient au superviseur et a l'utilisateur.
+
+  **LE TRIPTYQUE, BUMPE ENSEMBLE** : `replay.SchemaVersion` 20 -> **21** (avec sa chronique en
+  tete de `document.go` ET l'entree v20->v21 du cliquet de `structure_test.go`),
+  `EXPECTED_REPLAY_SCHEMA_VERSION` 20 -> **21** (garde de parite verte).
+  `wantReplayDocumentFields` reste a **38** et `api/openapi.yaml` est INCHANGE (`openapi-gen
+  -check` vert) : aucune cle ne bouge, `generated.ts` ne bouge pas. Golden d'assemblage re-congele
+  — son diff est la SEULE ligne `schema 20` -> `schema 21`, ce qui confirme qu'aucun champ n'a
+  bouge.
+
+  **UN PIEGE D'EXECUTION, RENCONTRE ET CORRIGE** : la premiere re-cuisson lisait le manifeste du
+  depot PRINCIPAL (`LEVELUP_REPO_ROOT` y pointait pour les donnees) et non celui du worktree —
+  les artefacts sortaient donc avec `objectives=0`, c'est-a-dire SANS l'entree du crane, tout en
+  portant `schema=21` puisque la version est compilee dans le binaire. **Un artefact peut porter
+  la bonne version et l'ancienne configuration** ; seule la verification sur pieces l'a montre.
+  Corrige par une racine temporaire (jonctions : `config` du worktree, `data` du principal), et
+  les sept temoins ont ete re-cuits avec.
