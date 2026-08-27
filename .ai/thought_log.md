@@ -73501,3 +73501,44 @@ seul process de cuisson a la fois). LE RENDU N'A PAS ETE GATE : `gateLe` porte l
 decision factuelle (ou vit la geometrie), pas celle d'un gate visuel. A prevoir : le cadre sera
 de 134 x 125 m pour une arene de 63 x 64 m (ancres 34,3 x 25,0 m + 50 m de marge), donc une
 `boiteUtile` proche des bornes du bsp est le premier reglage a essayer si l'image est trop vide.
+
+## [2026-08-27] Le maillage de navigation ferme le chantier des cartes organiques
+
+**Statut** : Complete pour Isolation, validee par l'utilisateur. La methode vaut pour les
+66 cartes Forge qui publient un navmesh.
+
+**Decision technique principale** : cesser de soustraire, changer de source. Chaque carte Forge
+publie un `navmesh.blob` a cote de sa variante — la surface ou l'on marche. Format etabli et
+teste (`internal/hinavmesh`) : en-tete de 12 octets, puis LE MEME CONTENEUR QUE LES `.mvar`,
+decode par `cb2.go` sans une ligne nouvelle, dont un champ porte un flux zlib **a fenetre de
+8 Ko** — en-tete `58 09`, ce qui l'avait rendu invisible aux recherches de `78 9c`. Inflate :
+quatre tagfiles Havok 2022.1.0 dont un `hkaiNavMesh` (2 348 faces, 3 350 sommets, 2 200 m2).
+
+**L'oracle a ete pose AVANT le code** : une ancre d'objectif est du terrain joue par definition.
+24 des 25 ancres d'Isolation tombent dans un polygone, ecart d'altitude median 7,4 cm ; 13 sur 13
+sur Kiken'na, dans un repere tout autre — ce qui exclut tout codage en dur.
+
+**Trois usages, du plus simple au plus juste** : dessiner le maillage (lisible mais nu) ;
+**en faire la SURFACE DE REFERENCE** de la chaine ordinaire, ce qui garde les structures et fait
+disparaitre le dome sans qu'on le touche ; rogner la matiere hors de lui, pendant Forge du
+masque de callouts. Plus une tolerance au sol qui fait un plan d'etage. Isolation close a
+25 ancres sur 25.
+
+**LA LECON, ET ELLE VAUT AU-DELA DE CE CHANTIER** : pendant deux jours j'ai cherche QUOI RETIRER
+— ecretage a 4, 2 et 1 m, tranche plafonnee a +3, +6 et +12, bornage aux volumes de mort,
+substitution sans portee, exclusion par emprise du modele, par aire de maillage, par couverture
+au sol, par drapeau, par altitude de pose, pelage type par type. Toutes ces tentatives partagent
+une hypothese que je n'ai jamais mise en doute : que la reference etait bonne et que le defaut
+etait dans la matiere. Le defaut etait dans la REFERENCE — une interpolation de 25 points la ou
+il fallait l'altitude du sol en chaque point. **Quand dix corrections echouent, c'est l'hypothese
+commune qu'il faut suspecter, pas la onzieme correction qu'il faut trouver.**
+
+**Ce que l'utilisateur a apporte** : trois fois, sa lecture a corrige la mienne — « il y a des
+formes sous ce gribouillis » (c'etait l'habillage), « ce doit etre une variante et le poids leger
+doit etre la diff » (Live Fire), « ce ne sont pas des blocs, peut-etre un mur transparent » (le
+drapeau des objets, qui isole le dome). Et c'est sa demande de « decouper par zones de callout »
+qui a fait chercher un equivalent Forge — trouve dans le navmesh.
+
+**Conclusion / prochaine etape** : appliquer la recette aux cartes Forge en bouillie ;
+telecharger leurs navmesh (route anonyme, deux requetes) ; instruire le
+`hkaiTraversalAnnotationLibrary`, seul endroit ou de vrais noms de lieux Forge pourraient vivre.

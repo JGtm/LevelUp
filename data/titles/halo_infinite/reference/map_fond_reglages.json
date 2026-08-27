@@ -176,9 +176,9 @@
       "style": "encre",
       "navmeshReference": true,
       "rogneAuNavmesh": true,
-      "raison": "Gate du 2026-08-27. Reference et rognage pris sur le maillage de navigation. Le gribouillis residuel dans les espaces de l arene ne vient PAS de la geometrie — la tolerance au sol a 1,5 m ne vide que 121 976 cellules et le laisse entier : ces surfaces sont A HAUTEUR DE SOL. Il vient de l habillage, qui souligne un bord des que deux voisins different de 50 cm et quantifie l eclairement en paliers. On fait donc varier l habillage, pas la geometrie.",
-      "gateLe": "2026-08-27",
-      "seuilArete": 4
+      "toleranceNavmesh": 1.5,
+      "raison": "VALIDEE par l utilisateur le 2026-08-27 : « La 4 a 1,5 m est nickel ». Trois leviers, tous tires du MAILLAGE DE NAVIGATION publie avec la carte. (1) navmeshReference : le maillage donne l altitude du sol en chaque point — 845 552 cellules — la ou la reference etait interpolee depuis 25 ancres ; le dome, qui vit onze metres plus haut, ne peut plus gagner un pixel. (2) rogneAuNavmesh : 2 175 499 cellules effacees hors du maillage, dilate de 3 m pour garder les murs qui bordent le sol — c est le pendant Forge du masque de callouts, sans un polygone a dessiner. (3) toleranceNavmesh 1,5 m : les surfaces qui s ecartent du sol sont vidées, ce qui fait un plan d etage. Resultat : 25 ancres sur 25 au sol, cadre 1 638 x 1 368. Deux jours de soustractions avaient echoue sur cette carte — ecretage a 4, 2 et 1 m, tranche plafonnee a +3, +6 et +12, bornage aux volumes de mort, exclusion par emprise, aire, couverture, drapeau et altitude de pose — parce que le probleme n etait pas ce qu il fallait retirer mais ce a quoi on comparait.",
+      "gateLe": "2026-08-27"
     }
   }
 }
