@@ -236,6 +236,8 @@ func main() {
 		err = auditModesConteneurs(chemin, parserHexa(*banksSup))
 	case "audit-actions":
 		err = auditActions(chemin, parserHexa(*banksSup), *sortie)
+	case "chaines":
+		err = extraireChaines(chemin, temoins)
 	case "audit-boucles":
 		err = auditBoucles(chemin, parserHexa(*banksSup))
 	case "blend":
