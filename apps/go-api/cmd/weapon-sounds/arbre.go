@@ -55,10 +55,21 @@ type brancheRendue struct {
 	// Absente quand aucun noeud du chemin n'en declare : la couche se joue alors telle
 	// quelle, ce qui est le cas le plus frequent.
 	Variation *variationRendue `json:"variation,omitempty"`
-	// DelaiS : decalage de DEBUT de la couche, en secondes — somme des delais du chemin.
-	// Zero (donc absent) partout ou la mesure ne trouve rien, ce qui etait le cas sur les
-	// armes ; une valeur non nulle est ce qui autoriserait un `adelay` au mixage.
+	// DelaiS : decalage de DEBUT de la couche, en secondes — delai de l'ACTION qui la
+	// declenche, plus les delais des noeuds traverses. Une valeur non nulle veut dire que
+	// l'evenement ENCHAINE ses couches au lieu de les empiler : elle impose un `adelay`
+	// au mixage, faute de quoi la couche retardee s'entend « en trop » au debut du geste.
 	DelaiS float32 `json:"delai_s,omitempty"`
+	// Repetitions : nombre de lectures de la couche. Absent = une seule (le cas courant) ;
+	// `0` = BOUCLE INFINIE, que le rendu doit repeter pour une duree d'ecoute au lieu de
+	// servir un fragment. Mesure et preuve d'offset : `audit_boucles.go`.
+	Repetitions *int `json:"repetitions,omitempty"`
+	// ModeEnchainement / TransitionS : COMMENT les lectures se suivent (`AkTransitionMode`)
+	// et sur quelle duree. Le mode change le rendu autant que le compteur : trois lectures
+	// bout a bout et trois lectures declenchees toutes les 850 ms ne durent pas la meme
+	// chose et ne sonnent pas pareil. N'a de sens que si `Repetitions` est present.
+	ModeEnchainement int     `json:"mode_enchainement,omitempty"`
+	TransitionS      float32 `json:"transition_s,omitempty"`
 }
 
 type eventCouches struct {
@@ -103,7 +114,10 @@ func (b *bank) couchesDeEvent(id uint32) []brancheRendue {
 	var out []brancheRendue
 	for _, idAction := range b.Events[id] {
 		if cible, ok := b.Actions[idAction]; ok {
-			out = append(out, b.descendre(cible, etatChemin{}, map[uint32]bool{})...)
+			// Le delai de l'ACTION amorce l'etat du chemin : c'est le decalage de debut de
+			// la couche. Les delais de NOEUD (`DelaiNoeud`) s'y ajoutent en descendant.
+			depart := etatChemin{Delai: float64(b.DelaiAction[idAction])}
+			out = append(out, b.descendre(cible, depart, map[uint32]bool{})...)
 		}
 	}
 	return out
@@ -141,6 +155,35 @@ func (b *bank) descendre(n uint32, etat etatChemin, vus map[uint32]bool) []branc
 		}
 		out = append(out, b.descendre(e, suivant, vus)...)
 	}
+	return out
+}
+
+// boucleDeCouche rend le nombre de lectures d'une couche : `0` si un conteneur de son
+// sous-arbre est declare en boucle infinie, sinon le plus grand nombre de repetitions
+// rencontre, et `1` par defaut. Une boucle imbriquee dans une couche fait boucler la
+// couche : c'est pourquoi l'infini l'emporte des qu'il apparait sur le chemin.
+func (b *bank) boucleDeCouche(cible uint32) boucleLue {
+	out := boucleLue{Repetitions: 1}
+	vus := map[uint32]bool{}
+	var descendre func(uint32)
+	descendre = func(n uint32) {
+		if vus[n] || (out.Lu && out.Repetitions == 0) {
+			return
+		}
+		vus[n] = true
+		if bl, ok := b.Repetitions[n]; ok {
+			if bl.Repetitions == 0 || bl.Repetitions > out.Repetitions {
+				out = bl
+			}
+			if bl.Repetitions == 0 {
+				return
+			}
+		}
+		for _, e := range b.Enfants[n] {
+			descendre(e)
+		}
+	}
+	descendre(cible)
 	return out
 }
 
@@ -199,6 +242,12 @@ func (b *bank) brancheDe(cible uint32, etats map[uint32]etatChemin) brancheRendu
 	br := brancheRendue{
 		Cible: fmt.Sprintf("%08x", cible), TypeNoeud: t, Wems: wems, Gains: gs,
 		DelaiS: float32(delaiMin),
+	}
+	if bl := b.boucleDeCouche(cible); bl.Lu && bl.Repetitions != 1 {
+		r := bl.Repetitions
+		br.Repetitions = &r
+		br.ModeEnchainement = bl.Mode
+		br.TransitionS = bl.TransitionS
 	}
 	if variation.Lu && !variation.Nulle() {
 		br.Variation = &variationRendue{

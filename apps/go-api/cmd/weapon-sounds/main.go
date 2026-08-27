@@ -234,6 +234,23 @@ func main() {
 		err = dependancesEnOrdre(chemin, temoins[0], *limite)
 	case "audit-modes":
 		err = auditModesConteneurs(chemin, parserHexa(*banksSup))
+	case "audit-actions":
+		err = auditActions(chemin, parserHexa(*banksSup), *sortie)
+	case "audit-boucles":
+		err = auditBoucles(chemin, parserHexa(*banksSup))
+	case "blend":
+		err = dumperBlend(chemin, uint32(*sbnkGid), parserHexa(*eqipIDs))
+	case "orphelins":
+		var cibles []uint32
+		if strings.TrimSpace(*wem) != "" {
+			cibles = temoins
+		}
+		var gids []uint32
+		for id := range parserHexa(*banksSup) {
+			gids = append(gids, id)
+		}
+		sort.Slice(gids, func(i, j int) bool { return gids[i] < gids[j] })
+		err = diagnostiquerOrphelins(chemin, gids, cibles)
 	case "banks-noms":
 		dossier := *sfx
 		if dossier == "" {

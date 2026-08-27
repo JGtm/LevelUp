@@ -282,3 +282,51 @@ modules dans le meme processus ; les modes s'echangent leurs resultats par JSON.
 
 Regle demandee par l'utilisateur : **une seule adresse**, republiee en place. Ne pas creer
 d'artefact supplementaire.
+
+---
+
+## 11. STATUT AU SOIR DU 2026-08-27 — ce handoff est SOLDE pour l'essentiel
+
+Mesures et rendu : `RE_GESTES_SONORES_2026-08-27.md`. Statut de chaque hypothese et de chaque
+sonde, avec son denominateur.
+
+	H1 boucles              CONFIRMEE, et sans passer par les `lsnd` : le nombre de lectures
+	                        est DANS la banque (`sLoopCount`). 210 boucles infinies sur 1 753
+	                        conteneurs de `common`.
+	H2 actions multiples    CONFIRMEE. Offset prouve a 100 % contre 0 % pour deux temoins
+	                        negatifs ; idProp 15 = delai en ms ENTIERES. 340 evenements de
+	                        `common` (3,91 %) etaient sommes a t = 0 a tort.
+	H3 conteneurs SEQUENCE  toujours vraie mais SANS OBJET sur les banques ciblees (0 sequence,
+	                        deja mesure). Ce qui manquait vraiment etait le MODE
+	                        D'ENCHAINEMENT des repetitions, decouvert en verifiant un « x3 »
+	                        suspect : 119 conteneurs sur 212 sont en CADENCE DE DECLENCHEMENT.
+	H4 Blend pilote RTPC    CONFIRMEE, et c'est LA reponse pour le translocateur : ses deux
+	                        plus longs sons entrent a x = 0,797 et dominent a x = 0,940 du
+	                        parametre 3236399890.
+	H5 geste = N evenements NON NECESSAIRE. Les trois champs manquants suffisent a expliquer
+	                        tous les symptomes signales. L'hypothese n'est pas refutee, elle
+	                        n'a plus de symptome a expliquer.
+
+	S1 le `hsc*` du chemin      NON LANCEE — reste la seule piste de NOMMAGE ouverte
+	S2 actions par evenement    FAITE, mode `audit-actions`
+	S3 les `lsnd` des zones     SANS OBJET — la reponse etait dans la banque
+	S4 le tag de MODE           NON LANCEE
+	S5 orphelins translocateur  RESOLUE, mode `orphelins` + mode `blend`
+	S6 rendre en boucle         FAITE — et le rendu sait aussi ENCHAINER et CADENCER
+
+**PRIORITES DE §0, ou elles en sont** :
+
+1. HAUTE, sons reconstitues : **413 gestes rendus**, un fichier par geste. Les cibles nommees
+   sont servies (zones : 88 gestes ; translocateur : 23 + sa phase sous condition).
+2. HAUTE, nom et description : **56 cartes portent un libelle francais**, dont 45 un nom Wwise
+   casse. Les autres gardent leur identifiant — le hachage y est epuise (§3.3), S1 reste la
+   voie.
+3. NORMALE, ramassage sur socle : **TOUJOURS BLOQUE**, et pour la raison deja ecrite (§7) —
+   `padPickups` publie un intervalle, pas un instant. Le son existe et est rendu ; il n'a pas
+   d'instant ou se poser. Travail de DECODEUR.
+4. EN ATTENTE, branchement des sons isoles : la reconstitution demandee est faite, la decision
+   revient a l'utilisateur apres ecoute de la planche.
+
+**EFFET DE BORD LIVRE, non demande mais impose par la mesure** : quatre des huit `.wav`
+d'objectif deja branches dans le rejeu etaient rendus a plat (couches sommees a t = 0) et sont
+remplaces. Detail : `RE_GESTES_SONORES_2026-08-27.md` §5.2.
