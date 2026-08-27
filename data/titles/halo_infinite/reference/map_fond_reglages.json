@@ -174,9 +174,10 @@
     "01af558d-53ab-4f05-ba68-92d805fc6260": {
       "carte": "Isolation",
       "style": "encre",
-      "sourceNavmesh": true,
-      "raison": "Gate du 2026-08-27 : Isolation est cuite depuis son MAILLAGE DE NAVIGATION et non depuis sa geometrie de rendu. Deux jours de soustractions avaient echoue — ecretage a 4, 2 et 1 m, tranche plafonnee a +3, +6 et +12, bornage aux volumes de mort, substitution de reference, exclusion par emprise, par aire de maillage, par couverture au sol, par drapeau, par altitude de pose — parce que la carte est un empilement de coques et que le pelage coute une ancre des le premier retrait. Le navmesh, lui, vit entre Z 112,54 et 124,08, soit 11,9 m SOUS la premiere couche de coques : il ne les contient pas, il n y a rien a peler. Decodage etabli et teste (internal/hinavmesh) : en-tete de 12 octets, conteneur Bond identique a celui des .mvar, flux zlib a fenetre de 8 Ko, quatre tagfiles Havok 2022.1.0 dont un hkaiNavMesh — 2 348 faces, 8 218 aretes, 3 350 sommets, 2 200 m2 au sol. ORACLE : 24 des 25 ancres d objectif tombent DANS un polygone, ecart d altitude median 7,4 cm ; la 25e (assault_bomb) est a 2,03 m du bord. Verifie sur une deuxieme carte, Kiken na, 13 sur 13 dans un repere tout autre.",
-      "gateLe": "2026-08-27"
+      "navmeshReference": true,
+      "raison": "Essai du 2026-08-27 : le maillage de navigation sert de SURFACE DE REFERENCE, la geometrie ordinaire restant la source du dessin. Le fond tire du seul navmesh est lisible mais nu — l utilisateur reconnait la carte et signale des elements manquants, parce que le maillage ne porte que le sol MARCHABLE, ni murs ni structures. Ici on garde le rendu habituel et on ne remplace que ce a quoi les surfaces sont comparees : la reference passe d une interpolation de 25 ancres a l altitude REELLE du sol en chaque point. Les cellules que le maillage ne couvre pas restent NaN, donc jamais substituees : le hors-arene se borne de lui-meme.",
+      "gateLe": "2026-08-27",
+      "rogneAuNavmesh": true
     }
   }
 }

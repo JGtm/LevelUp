@@ -93,6 +93,12 @@ type reglageCarte struct {
 	// PlafondObjets : ecarter les objets Forge POSES plus haut que N metres au-dessus du sol
 	// joue. Voir OptionsCuissonForge.PlafondObjets — ce n est ni l ecretage ni la tranche.
 	PlafondObjets float64 `json:"plafondObjets,omitempty"`
+	// NavmeshReference prend le maillage de navigation pour SURFACE DE REFERENCE, en gardant la
+	// geometrie ordinaire comme source du dessin.
+	NavmeshReference bool `json:"navmeshReference,omitempty"`
+	// RogneAuNavmesh efface la matiere hors du maillage de navigation : le pendant Forge du
+	// masque des callouts, sans rien a dessiner a la main.
+	RogneAuNavmesh bool `json:"rogneAuNavmesh,omitempty"`
 	// SourceNavmesh cuit la carte depuis son MAILLAGE DE NAVIGATION au lieu de sa geometrie de
 	// rendu. Reservee aux cartes Forge : elles seules publient un navmesh.blob.
 	SourceNavmesh bool `json:"sourceNavmesh,omitempty"`
@@ -522,5 +528,34 @@ func (e *environnement) sourceNavmeshDe(cle string) bool {
 		return false
 	}
 	slog.Info("mapfond: cuisson depuis le maillage de navigation", "carte", cle, "gateLe", c.GateLe)
+	return true
+}
+
+// navmeshReferenceDe dit si cette carte prend sa surface de reference sur son maillage de
+// navigation. A distinguer de sourceNavmeshDe, qui dessine le maillage lui-meme : ici on garde
+// la geometrie ordinaire comme source du dessin, donc les structures, et on ne change que ce a
+// quoi les surfaces sont comparees.
+func (e *environnement) navmeshReferenceDe(cle string) bool {
+	if e.reglages == nil {
+		return false
+	}
+	c, ok := e.reglages.Cartes[cle]
+	if !ok || !c.NavmeshReference {
+		return false
+	}
+	slog.Info("mapfond: reference prise sur le maillage de navigation", "carte", cle, "gateLe", c.GateLe)
+	return true
+}
+
+// rogneAuNavmeshDe dit si cette carte se rogne a son maillage de navigation.
+func (e *environnement) rogneAuNavmeshDe(cle string) bool {
+	if e.reglages == nil {
+		return false
+	}
+	c, ok := e.reglages.Cartes[cle]
+	if !ok || !c.RogneAuNavmesh {
+		return false
+	}
+	slog.Info("mapfond: rognage au maillage de navigation", "carte", cle, "gateLe", c.GateLe)
 	return true
 }
