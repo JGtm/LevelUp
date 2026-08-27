@@ -56,22 +56,40 @@ au patron du crane libre, et — si son gate tient — **l'etat des SITES d'amor
 
 ### A0 — Recensement sur pieces + protocole COMMITE (aucune mesure avant le commit)
 
-- [ ] A0.1 Lire : le plan chantier (§3 LOT A), le registre (entrees lot O du 27/08), les
+- [x] A0.1 Lire : le plan chantier (§3 LOT A), le registre (entrees lot O du 27/08), les
       en-tetes de `flag_objects.go`, `build_objectives_live.go`, `ground_weapon_rules.go`
       (recette ti=42), `cmd/statnames-sweep/*.go`, l'entree `assault_bomb` de
       `objective_roles.toml` et ce que `service/replay_map_objectives.go` sert pour les
       cartes du corpus.
-- [ ] A0.2 Qualifier les 9 films : bornes de quantification presentes ? catalogue
+      — Fait 2026-08-27. Constat cle de la lecture sur pieces : les 4 sites
+      `assault_bomb` du catalogue vivent sur Isolation/Snowbound/The Pit/High Ground —
+      AUCUNE carte du corpus ; l'entree `[[modes]]` Assaut de `objective_roles.toml` ne
+      sert donc RIEN sur ces matchs aujourd'hui.
+- [x] A0.2 Qualifier les 9 films : bornes de quantification presentes ? catalogue
       d'objectifs present (sites `assault_bomb` par carte) ? pont bipede >= 50 % de slots
       nommes (meme instrument que le lot O) ? Publier le tableau film -> verdict
       admis/exclu + raison DANS le protocole. Husky Raid : exclu attendu (Forge) — le
       constater, pas le presumer.
-- [ ] A0.3 Relever pour chaque film admis les manches et le score de mode
+      — Fait 2026-08-27 (`TestAssautA0Qualification`, un film/processus, log
+      `A_P0_qualification.log`) : 8 films ADMIS (pont 75,0-95,1 %), `ce083875` EXCLU
+      (pont 19/180 = 10,6 %). Bornes presentes 9/9 (y compris Urban Raid — le Forge
+      etait annonce exclu, le CONSTAT le garde : sa carte est absente du catalogue
+      d'OBJECTIFS, comme Rat's Nest). Sites `assault_bomb` : 0 sur 9/9 films — le
+      corpus d'ANCRAGE AU SITE de A1/A3 est VIDE (decouverte au §5, pas de reparation).
+- [x] A0.3 Relever pour chaque film admis les manches et le score de mode
       (`scoreTimeline`, schema 12) : les increments d'armement/explosion existent-ils et
       se datent-ils ? C'est la corroboration d'A3 — figer ces releves au protocole.
-- [ ] A0.4 Ecrire et COMMITTER `.ai/V7.5/replay2d/registre_film/A_PROTOCOLE.md` :
+      — Fait 2026-08-27 (meme passe, releves figes au protocole §2) : chaque EXPLOSION
+      se date (1 increment = 1 point), score film = score API sur 9/9 ; l'ARMEMENT n'a
+      aucun increment propre ; `RealRounds` refuse les manches de One Bomb (1 emission
+      par manche) — releve BRUT publie, decouverte au §5.
+- [x] A0.4 Ecrire et COMMITTER `.ai/V7.5/replay2d/registre_film/A_PROTOCOLE.md` :
       corpus admis fige, seuils recopies du §3 SANS modification, temoins, repartition
       moities disjointes pour A4. Citer le hash au CR.
+      — Fait 2026-08-27 : protocole + log de qualification + oracle participants fige
+      (`A_oracle_participants.tsv`, 104 lignes) commites ensemble (hash au CR). Moities
+      A4 : recherche `1c01e34f`,`35b75a31`,`69b16f5d`,`c75f33b8` / verification
+      `34bb3bc8`,`3d58eb37`,`9f57c612`,`df8fcbef`.
 
 ### A1 — Identite de l'objet bombe (gate ECRIT, herite du crane/drapeau)
 
@@ -139,4 +157,24 @@ REGISTRE_REPORTS ; decouvertes du §5.
 
 ## 5. DECOUVERTES (a consigner, ne pas traiter)
 
-- (vide a l'ouverture)
+- (A0, 2026-08-27) **Le catalogue d'objectifs n'a de sites `assault_bomb` que sur 4
+  cartes sans film (Isolation, Snowbound, The Pit, High Ground)** ; Origin, Curfew et
+  Absolution sont au catalogue SANS objet de ce role, Rat's Nest et Urban Raid en sont
+  absentes. Deux hypotheses non departagees ici : la variante `.mvar` extraite le 25/08
+  ne porte pas les objets d'Assaut, OU les cartes recentes les portent sous un label de
+  role NON RESOLU (patron KOTH : hash sans nom, cf. `mapvar/objectives.go`). Toute
+  reprise de A1/A2/A3 passe par la re-extraction/chasse au hash — chantier catalogue,
+  PAS ce lot.
+- (A0, 2026-08-27) **`RealRounds` refuse structurellement les manches de One Bomb** :
+  une manche s'y termine sur UN point de mode, sous le critere de suite coherente
+  (`statMinRoundRun`). Consequence : `SeriesByRound`/`SeriesTotal` (et tout ce qui les
+  consomme — courbe de score du rejeu, TSV de `statnames-sweep`) ne retiennent que la
+  manche 0 sur les films One Bomb ; le bandeau de score du rejeu est donc PARTIEL sur
+  ces matchs (meme classe que l'entree KOTH du registre du 26/08). Le releve BRUT du log
+  A0 date pourtant les 4 manches et leurs explosions, somme = score API 9/9.
+- (A0, 2026-08-27) `ce083875` (Origin, 949 s) : une emission de score de mode PARASITE
+  (valeur 127, slot 8, t=273547 ms) ecartee par la plus longue sous-suite croissante —
+  noter que le canal du score n'est pas exempt de parasites sur Assaut.
+- (A0, 2026-08-27) Urban Raid (carte Forge) A ses bornes de quantification au catalogue
+  (`map_quant_bounds.json`) et son film decode proprement (pont 93,5 %) — le piege
+  « carte Forge = canevas+rack » vaut pour la GEOMETRIE/objectifs, pas pour les bornes.

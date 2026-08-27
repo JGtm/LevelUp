@@ -51,6 +51,20 @@ var attCartes = map[string]struct{ Nom, MapID string }{
 	"92f18088": {"Lattice - Ranked", "1a6cfc2e-ec86-48e1-9464-1ce1bff6ed48"},
 	"c88ec007": {"Live Fire", "6c01f693-c968-4a71-b157-efc35ffcf71f"},
 	"d9781168": {"Dredge", "e4bb06db-065f-4902-b93b-d8dac315eac4"},
+
+	// LES NEUF FILMS ASSAUT DU LOT A, releves le 2026-08-27 sur `match_registry` (lecture
+	// seule via `cmd/diag_q`, depot principal) — meme convention que les sept films Oddball
+	// ci-dessus : TOUS les films du corpus entrent ici, y compris ceux que les catalogues ne
+	// couvrent pas, pour que l'exclusion soit MESUREE par l'instrument et jamais presumee.
+	"35b75a31": {"Origin", "b302eb62-da9a-480b-a409-3c89df8c1a04"},
+	"ce083875": {"Origin", "b302eb62-da9a-480b-a409-3c89df8c1a04"},
+	"69b16f5d": {"Origin", "b302eb62-da9a-480b-a409-3c89df8c1a04"},
+	"3d58eb37": {"Absolution", "78da545f-a168-4a5e-9c8d-dd379067c352"},
+	"34bb3bc8": {"Rat's Nest", "133c0185-24ed-4bc2-b834-62db5c936257"},
+	"df8fcbef": {"Curfew", "63d634be-0319-489d-8c21-9c4e012f664f"},
+	"c75f33b8": {"Curfew", "63d634be-0319-489d-8c21-9c4e012f664f"},
+	"9f57c612": {"Curfew", "63d634be-0319-489d-8c21-9c4e012f664f"},
+	"1c01e34f": {"Urban Raid", "be848f91-3d87-4b80-8eb9-df3b52cb8d10"},
 }
 
 // attRefDir rend le répertoire des données de référence du titre.
