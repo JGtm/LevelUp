@@ -27,6 +27,7 @@ import {
   installFakeAudio,
   okAudioResponse,
 } from './test/fakeAudio'
+import { gainFromDb } from './weaponSoundLogic'
 
 let ctx: FakeContext
 let fetchMock: ReturnType<typeof vi.fn>
@@ -189,5 +190,153 @@ describe('ReplayAudioPlayer — voix et volume', () => {
     const p = new ReplayAudioPlayer(1)
     p.dispose()
     expect(ctx.closed).toBe(1)
+  })
+})
+
+/**
+ * LA RAFALE (lot C du 2026-08-27) — trois départs du même fichier pour un seul tir.
+ *
+ * Ce qui se vérifie ici est ce qui ne s'entend PAS quand c'est faux : qu'une rafale coûte UNE
+ * voix et non trois (sinon le plafond se vide trois fois plus vite, et l'échange nourri devient
+ * lacunaire sans que rien ne le dise), que ses balles partent aux bons instants, que chacune
+ * porte SON tirage, et qu'elle rende sa voix quand la dernière s'est tue. Le rendu, lui, se
+ * juge au gate d'écoute.
+ */
+describe('ReplayAudioPlayer — rafale', () => {
+  const GAP = 0.033
+  /** Rafale de 3 au tirage NEUTRE — les cas qui observent le tirage lui-même fournissent le leur. */
+  const rafale = () => ({
+    count: 3,
+    gapS: GAP,
+    drawEach: () => ({ gainDb: 0, playbackRate: 1 }),
+  })
+
+  it('trois départs échelonnés à t0, t0+gap, t0+2gap depuis UN seul appel', async () => {
+    const p = new ReplayAudioPlayer(1)
+    p.preload(['/a.wav'])
+    await flush()
+    p.play('/a.wav', undefined, rafale())
+    const t0 = ctx.currentTime
+    expect(ctx.sources).toHaveLength(3)
+    expect(ctx.sources.map((s) => s.started)).toEqual([t0, t0 + GAP, t0 + 2 * GAP])
+  })
+
+  it('une rafale ne coûte QU UNE voix, et la rend quand la DERNIÈRE balle s est tue', async () => {
+    const p = new ReplayAudioPlayer(1)
+    p.preload(['/a.wav'])
+    await flush()
+    p.play('/a.wav', undefined, rafale())
+    // Une seule voix consommée : il en reste assez pour SOUND_MAX_VOICES - 1 sons simples.
+    for (let i = 0; i < SOUND_MAX_VOICES - 1; i++) p.play('/a.wav')
+    expect(ctx.sources).toHaveLength(3 + SOUND_MAX_VOICES - 1)
+    // Refusé au-delà : la voix de la rafale compte bien pour une, ni zéro ni trois.
+    p.play('/a.wav')
+    expect(ctx.sources).toHaveLength(3 + SOUND_MAX_VOICES - 1)
+    // Deux balles finies sur trois : la voix N EST PAS encore rendue.
+    ctx.sources[0].end()
+    ctx.sources[1].end()
+    p.play('/a.wav')
+    expect(ctx.sources).toHaveLength(3 + SOUND_MAX_VOICES - 1)
+    // La troisième libère la voix.
+    ctx.sources[2].end()
+    p.play('/a.wav')
+    expect(ctx.sources).toHaveLength(3 + SOUND_MAX_VOICES)
+  })
+
+  it('la voix rendue démonte TOUTE la chaîne (sources, gains par balle, enveloppe)', async () => {
+    const p = new ReplayAudioPlayer(1)
+    p.preload(['/a.wav'])
+    await flush()
+    p.play('/a.wav', undefined, rafale())
+    const gainsRafale = ctx.gains.slice(1) // le maître naît avec le lecteur
+    expect(gainsRafale).toHaveLength(4) // 1 enveloppe + 3 gains par balle
+    expect(gainsRafale.every((g) => g.disconnected === 0)).toBe(true)
+    for (const s of ctx.sources) s.end()
+    expect(ctx.sources.every((s) => s.disconnected === 1)).toBe(true)
+    expect(gainsRafale.every((g) => g.disconnected === 1)).toBe(true)
+  })
+
+  it('au plafond, la rafale est refusée ENTIÈREMENT : jamais une demi-rafale', async () => {
+    const p = new ReplayAudioPlayer(1)
+    p.preload(['/a.wav'])
+    await flush()
+    for (let i = 0; i < SOUND_MAX_VOICES; i++) p.play('/a.wav')
+    expect(ctx.sources).toHaveLength(SOUND_MAX_VOICES)
+    p.play('/a.wav', undefined, rafale())
+    expect(ctx.sources).toHaveLength(SOUND_MAX_VOICES) // pas une source de plus
+  })
+
+  it('CHAQUE balle porte son propre tirage : gain ET vitesse distincts, balle par balle', async () => {
+    const p = new ReplayAudioPlayer(1)
+    p.preload(['/a.wav'])
+    await flush()
+    // LES DEUX MOITIÉS DU TIRAGE SONT OBSERVÉES, et le gain n'est PAS à 0 dB : un tirage neutre
+    // est indiscernable d'un gain non appliqué, et laissait donc passer la mutation
+    // `gainFromDb(d.gainDb)` -> `1` (constat de revue, 2026-08-27).
+    const draws = [
+      { gainDb: -3, playbackRate: 1.01 },
+      { gainDb: -1.5, playbackRate: 1.02 },
+      { gainDb: 0.5, playbackRate: 1.03 },
+    ]
+    let i = 0
+    const drawEach = vi.fn(() => draws[i++])
+    p.play('/a.wav', undefined, { count: 3, gapS: GAP, drawEach })
+    expect(drawEach).toHaveBeenCalledTimes(3)
+    expect(ctx.sources.map((s) => s.playbackRate.value)).toEqual([1.01, 1.02, 1.03])
+    // Le gain de CHAQUE balle vit sur son propre nœud, après le maître (gains[0]) et
+    // l'enveloppe commune (gains[1]).
+    const parBalle = ctx.gains.slice(2)
+    expect(parBalle.map((g) => g.gain.value)).toEqual(draws.map((d) => gainFromDb(d.gainDb)))
+    // Trois valeurs réellement DISTINCTES : sans quoi l'égalité ci-dessus tiendrait encore si
+    // toutes les balles partageaient un gain unique.
+    expect(new Set(parBalle.map((g) => g.gain.value)).size).toBe(3)
+  })
+
+  it('l enveloppe couvre la rafale ENTIÈRE : aucun fondu avant le troisième départ', async () => {
+    const p = new ReplayAudioPlayer(1)
+    p.preload(['/a.wav']) // 3 s de source
+    await flush()
+    p.play('/a.wav', undefined, rafale())
+    const t0 = ctx.currentTime
+    const totale = 2 * GAP + 3
+    const env = ctx.gains[1] // le premier gain créé par la rafale est l'enveloppe commune
+    expect(env.gain.calls).toEqual([
+      ['set', 1, t0],
+      ['set', 1, t0 + totale - SOUND_FADE_S],
+      ['ramp', 0, t0 + totale],
+    ])
+    // Le fondu commence APRÈS le dernier départ : sinon la troisième balle naîtrait déjà en
+    // train de s'éteindre.
+    expect(t0 + totale - SOUND_FADE_S).toBeGreaterThan(t0 + 2 * GAP)
+  })
+
+  it('le plafond de sûreté borne une rafale trop longue, fondu compris', async () => {
+    const p = new ReplayAudioPlayer(1)
+    fetchMock.mockResolvedValueOnce(okResponse(3))
+    p.preload(['/long.wav'])
+    await flush()
+    // 3 balles espacées de 2 s sur un fichier de 3 s : 7 s demandées, 4 s de plafond.
+    p.play('/long.wav', undefined, { count: 3, gapS: 2, drawEach: () => ({ gainDb: 0, playbackRate: 1 }) })
+    const t0 = ctx.currentTime
+    const env = ctx.gains[1]
+    expect(env.gain.calls).toEqual([
+      ['set', 1, t0],
+      ['set', 1, t0 + SOUND_CUT_MAX_S - SOUND_FADE_S],
+      ['ramp', 0, t0 + SOUND_CUT_MAX_S],
+    ])
+    // La troisième balle tomberait à t0+4 s, soit l extinction exacte : elle n est pas créée.
+    expect(ctx.sources).toHaveLength(2)
+    expect(ctx.sources.every((s) => s.stopped === t0 + SOUND_CUT_MAX_S)).toBe(true)
+  })
+
+  it('count <= 1 reprend le chemin d un son simple (une source, un tirage d événement)', async () => {
+    const p = new ReplayAudioPlayer(1)
+    p.preload(['/a.wav'])
+    await flush()
+    const drawEach = vi.fn(() => ({ gainDb: 0, playbackRate: 1 }))
+    p.play('/a.wav', undefined, { count: 1, gapS: GAP, drawEach })
+    expect(ctx.sources).toHaveLength(1)
+    expect(ctx.sources[0].started).toBe(ctx.currentTime)
+    expect(drawEach).not.toHaveBeenCalled()
   })
 })

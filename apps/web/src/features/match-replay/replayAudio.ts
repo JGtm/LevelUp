@@ -88,6 +88,23 @@ export function soundEnvelope(durationS: number): { fadeStartS: number; stopS: n
 }
 
 /**
+ * Une RAFALE : N départs du même fichier pour UN seul événement de tir.
+ *
+ * `drawEach` est appelée UNE FOIS PAR BALLE, et c'est tout l'intérêt : le moteur du jeu tire
+ * sa variation à chaque coup, pas à chaque pression de détente. Passer un tirage unique
+ * rejouerait trois fois le même échantillon à l'identique — précisément ce que la variation
+ * existe pour éviter (weaponSoundLogic.ts).
+ */
+export interface SoundBurst {
+  /** Nombre de balles. `<= 1` : le lecteur reprend le chemin d'un son simple. */
+  count: number
+  /** Écart entre deux balles, en secondes. */
+  gapS: number
+  /** Le tirage de CETTE balle-ci (fourchettes RANGED de l'arme). */
+  drawEach: () => SoundDraw
+}
+
+/**
  * ReplayAudioPlayer — contexte, volume maître, cache de buffers, lecture enveloppée.
  *
  * Le constructeur DOIT être appelé dans un geste utilisateur (clic sur le bouton son).
@@ -192,11 +209,20 @@ export class ReplayAudioPlayer {
    * play joue une URL déjà chargée : tenue pleine puis fondu (soundEnvelope). Pas encore
    * chargée (scrub avant la fin du preload) ou absente : silence, jamais d'attente — un
    * son en retard sur son image est pire qu'un son manqué.
+   *
+   * `burst` (lot C du 2026-08-27) programme N départs du MÊME fichier au lieu d'un seul —
+   * doctrine et mécanique : `playBurst` ci-dessous. Sans lui, ou avec `count <= 1`, le
+   * chemin suivi est celui d'avant, inchangé : la rafale n'est pas un mode du lecteur,
+   * c'est une branche que rien ne prend par défaut.
    */
-  play(url: string, draw?: SoundDraw): void {
+  play(url: string, draw?: SoundDraw, burst?: SoundBurst): void {
     const buf = this.buffers.get(url)
     if (!buf || this.voices >= SOUND_MAX_VOICES) {
       if (buf === undefined) this.preload([url])
+      return
+    }
+    if (burst && burst.count > 1) {
+      this.playBurst(buf, burst)
       return
     }
     const t0 = this.ctx.currentTime
@@ -221,5 +247,95 @@ export class ReplayAudioPlayer {
     }
     src.start(t0)
     src.stop(t0 + stopS)
+  }
+
+  /**
+   * playBurst joue UN événement de tir comme une RAFALE de N balles.
+   *
+   * LE RETOUR QUI L'A DEMANDÉ (utilisateur, 2026-08-27, mot pour mot) : « L'arme MA40 est une
+   * auto donc les sons joués doivent chacun tirer 3 balles, un fire event pour cette arme
+   * c'est une rafale de 3 balles (comportement normalement par défaut pour les armes
+   * automatiques) ».
+   *
+   * POURQUOI À LA LECTURE ET PAS DANS L'ASSET (décision D7 du plan) : re-cuire un `.wav` en
+   * rafale figerait la variation INTERNE de la salve — les trois coups y seraient à jamais le
+   * même échantillon au même gain et à la même hauteur. Le moteur du jeu, lui, tire une
+   * variation PAR BALLE ; trois départs du même fichier avec trois tirages la rejouent, et
+   * l'asset reste ce que la doctrine des sons d'armes dit qu'il est : UN coup reconstitué
+   * (replaySound.ts). Aucun fichier n'est touché par cette mécanique.
+   *
+   * UNE SEULE VOIX LOGIQUE, et c'est la propriété qui compte : `voices` monte de 1, pas de N.
+   * Une rafale est un geste, pas trois sons — la compter trois fois viderait le plafond
+   * SOUND_MAX_VOICES trois fois plus vite et rendrait l'échange nourri encore plus lacunaire.
+   * Le refus est TOTAL (au plafond, rien ne part), comme pour un son simple : servir une
+   * demi-rafale ferait entendre un tir qui n'a pas eu lieu.
+   *
+   * UNE SEULE ENVELOPPE, calculée sur la durée TOTALE de la rafale — du premier départ à la
+   * fin du dernier fichier. `soundEnvelope` lui applique le PLAFOND DE SÛRETÉ (4 s) : une
+   * table qui demanderait une rafale plus longue serait coupée là, avec son fondu propre, et
+   * les balles programmées au-delà ne partiraient pas du tout (garde ci-dessous) plutôt que
+   * de sonner après l'extinction. Le gain par BALLE ne peut pas vivre sur cette enveloppe
+   * partagée — un `AudioParam` ne porte qu'une valeur à un instant donné : chaque balle a
+   * donc son propre petit GainNode, inséré entre sa source et l'enveloppe commune.
+   */
+  private playBurst(buf: AudioBuffer, burst: SoundBurst): void {
+    const t0 = this.ctx.currentTime
+    const count = Math.floor(burst.count)
+    const gapS = Math.max(burst.gapS, 0)
+    const { fadeStartS, stopS } = soundEnvelope((count - 1) * gapS + buf.duration)
+    const env = this.ctx.createGain()
+    env.gain.setValueAtTime(1, t0)
+    env.gain.setValueAtTime(1, t0 + fadeStartS)
+    env.gain.linearRampToValueAtTime(0, t0 + stopS)
+    env.connect(this.master)
+    const sources: AudioBufferSourceNode[] = []
+    const gains: GainNode[] = []
+    for (let i = 0; i < count; i++) {
+      const at = t0 + i * gapS
+      // Une balle programmée APRÈS l'extinction de l'enveloppe ne sonnerait rien : on ne la
+      // crée pas, plutôt que de tenir une source muette jusqu'à son `stop`.
+      if (i > 0 && at >= t0 + stopS) break
+      const d = burst.drawEach()
+      const gain = this.ctx.createGain()
+      gain.gain.setValueAtTime(gainFromDb(d.gainDb), at)
+      const src = this.ctx.createBufferSource()
+      src.buffer = buf
+      if (d.playbackRate !== 1) src.playbackRate.value = d.playbackRate
+      src.connect(gain)
+      gain.connect(env)
+      sources.push(src)
+      gains.push(gain)
+      src.start(at)
+      src.stop(t0 + stopS)
+    }
+    this.voices++
+    this.releaseWhenAllEnded(sources, gains, env)
+  }
+
+  /**
+   * releaseWhenAllEnded rend la voix et démonte les nœuds quand la DERNIÈRE balle s'est tue.
+   *
+   * ON COMPTE LES FINS, on ne se fie pas à la dernière source programmée : chaque balle porte
+   * SA vitesse de lecture, et une balle tirée vers le haut finit son fichier plus tôt qu'une
+   * précédente tirée vers le bas. L'ordre des `onended` n'est donc pas celui des départs, et
+   * libérer la voix sur une source arbitraire la libérerait pendant que la rafale sonne encore.
+   */
+  private releaseWhenAllEnded(
+    sources: AudioBufferSourceNode[],
+    gains: GainNode[],
+    env: GainNode,
+  ): void {
+    // `sources` n'est JAMAIS vide : `playBurst` n'est atteint qu'avec `count > 1`, et la garde
+    // de rupture de sa boucle ne s'applique qu'à partir de la deuxième balle (`i > 0`).
+    let restants = sources.length
+    const fin = () => {
+      restants--
+      if (restants > 0) return
+      this.voices--
+      for (const s of sources) s.disconnect()
+      for (const g of gains) g.disconnect()
+      env.disconnect()
+    }
+    for (const s of sources) s.onended = fin
   }
 }

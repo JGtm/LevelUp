@@ -26,6 +26,7 @@ import { persistPreference, readStoredFlag, readStoredNumber } from './replayPre
 import { ReplayAudioPlayer } from './replayAudio'
 import type { ReplayDocumentReady } from './replayNormalize'
 import { distanceChain, drawVariation } from './weaponSoundLogic'
+import { WEAPON_BURST_SPECS } from './weaponBurstSpecs'
 import { WEAPON_SOUND_VARIATIONS } from './weaponSoundVariations'
 import {
   buildSoundTimeline,
@@ -285,7 +286,23 @@ export function useReplaySound(
       if (!url) continue
       // Le tirage de variation ne concerne que les ARMES : la table est keyee par stem
       // d'arme, tout autre stem se joue tel quel (drawVariation rend le neutre exact).
-      player.play(url, drawVariation(WEAPON_SOUND_VARIATIONS[stem], tuning.variationPercentRef.current))
+      //
+      // LES ARMES A RAFALE (lot C du 2026-08-27, retour utilisateur sur la MA40) passent par
+      // l'autre branche : leur tir programme N departs du meme fichier, et le tirage y a lieu
+      // PAR BALLE — c'est ce que fait le moteur du jeu, et c'est pour cela que `drawEach` est
+      // une fonction et non une valeur. Tout stem hors de la table garde le chemin ci-dessous
+      // a l'identique.
+      const rafale = WEAPON_BURST_SPECS[stem]
+      const tirage = () => drawVariation(WEAPON_SOUND_VARIATIONS[stem], tuning.variationPercentRef.current)
+      if (rafale) {
+        player.play(url, undefined, {
+          count: rafale.coups,
+          gapS: rafale.ecartMs / 1000,
+          drawEach: tirage,
+        })
+        continue
+      }
+      player.play(url, tirage())
     }
   }, [tuning])
 
