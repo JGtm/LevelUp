@@ -94,6 +94,13 @@ type OptionsCuissonForge struct {
 	// balaie la carte et qu aucune coupe geometrique ne peut l atteindre — voir le diagnostic
 	// « types les plus etendus » journalise a chaque cuisson.
 	TypesExclus map[int32]bool
+	// DessineCanevas pose AUSSI la geometrie du canevas, avant les objets de la variante.
+	//
+	// L etat de l art disait qu un canevas ne porte aucune instance — vrai pour fo11_blank
+	// (0 instance, mesure), FAUX pour fo08_wetland qui en porte 13 281 sur son bsp lointain et
+	// 814 sur son bsp d ile. Une carte Forge batie SUR le terrain du canevas etait donc rendue
+	// sans son sol. Question posee par l utilisateur le 2026-08-27.
+	DessineCanevas bool
 	// PlancherTranche / PlafondTranche : memes roles que dans OptionsCuisson.
 	PlancherTranche float64
 	PlafondTranche  float64
@@ -134,6 +141,9 @@ func CuitCarteForge(ctx context.Context, opts OptionsCuissonForge) (*Rendu, Bila
 	s := NewSurfaceReference(opts.Ancres)
 	r.ArmeReference(s)
 
+	if opts.DessineCanevas {
+		poseCanevasForge(ctx, r, &b, opts)
+	}
 	poseObjetsForge(ctx, r, &b, opts.Objets, idx, forge, opts.TypesExclus)
 	if b.ObjetsDessines == 0 {
 		return nil, b, fmt.Errorf("aucun des %d objets Forge n'a de modele rtgo", len(opts.Objets))
@@ -486,4 +496,43 @@ func journaliseTypesEtendus(ctx context.Context, b *BilanCuisson, etendues map[i
 	}
 	slog.InfoContext(ctx, "mapfond: types les plus etendus", "carte", b.Module,
 		"types", len(etendues), "top", strings.Join(detail, " "))
+}
+
+// poseCanevasForge dessine la geometrie du CANEVAS sous les objets de la variante. Le bsp est
+// choisi par les ancres, exactement comme dans la chaine native : un canevas porte un bsp de
+// decor lointain (jusqu'a 1 900 m) et un bsp d'ile jouable, et seul le second nous interesse.
+//
+// Best-effort declare : un canevas absent ou illisible n'empeche PAS de cuire la carte, il la
+// rend seulement sans son sol — ce qui etait le comportement de tous les fonds Forge jusqu'au
+// 2026-08-27.
+func poseCanevasForge(ctx context.Context, r *Rendu, b *BilanCuisson, opts OptionsCuissonForge) {
+	if opts.CheminModuleCanevas == "" {
+		b.degrade(ctx, "canevas demande mais introuvable : la carte sera rendue sans son sol")
+		return
+	}
+	bsps, err := ReadModuleInstances(opts.CheminModuleCanevas)
+	if err != nil {
+		b.degrade(ctx, "canevas illisible (%v) : la carte sera rendue sans son sol", err)
+		return
+	}
+	idx, err := NewModuleIndex(cheminsCanevas(opts)...)
+	if err != nil {
+		b.degrade(ctx, "index du canevas illisible (%v)", err)
+		return
+	}
+	bsp := ChoisitBSP(bsps, opts.Ancres)
+	dessinees, decor := PeupleRendu(ctx, r, idx, bsp)
+	b.CanevasDessinees, b.CanevasEcartees = dessinees, decor
+	slog.InfoContext(ctx, "mapfond: canevas dessine sous la carte", "carte", opts.Cle,
+		"bsps", len(bsps), "instances", len(bsp.Instances), "dessinees", dessinees, "decor", decor)
+}
+
+// cheminsCanevas rend l'index de tags a employer pour resoudre les modeles du canevas : le
+// canevas lui-meme d'abord, puis les globals.
+func cheminsCanevas(opts OptionsCuissonForge) []string {
+	chemins := []string{opts.CheminModuleCanevas}
+	globs, _ := filepath.Glob(filepath.Join(opts.RacineDeploy, "pc", "globals", "*.module"))
+	chemins = append(chemins, globs...)
+	globsAny, _ := filepath.Glob(filepath.Join(opts.RacineDeploy, "any", "globals", "*.module"))
+	return append(chemins, globsAny...)
 }

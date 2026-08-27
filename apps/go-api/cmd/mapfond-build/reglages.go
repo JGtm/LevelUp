@@ -62,6 +62,9 @@ type reglageCarte struct {
 	// PlancherTranche : profondeur en metres SOUS le niveau de jeu (valeur NEGATIVE) en deca
 	// de laquelle la matiere sort de la carte. Zero = -12 m. Voir OptionsCuisson.
 	PlancherTranche float64 `json:"plancherTranche,omitempty"`
+	// DessineCanevas : poser AUSSI la geometrie du canevas sous les objets de la variante
+	// Forge. Voir OptionsCuissonForge.DessineCanevas.
+	DessineCanevas bool `json:"dessineCanevas,omitempty"`
 	// PlafondTranche : hauteur en metres AU-DESSUS du niveau de jeu au-dela de laquelle la
 	// matiere n est meme pas projetee. Zero = tranche par defaut. Voir OptionsCuisson.
 	PlafondTranche float64 `json:"plafondTranche,omitempty"`
@@ -388,4 +391,17 @@ func (e *environnement) plafondTrancheDe(cle string) float64 {
 	slog.Info("mapfond: tranche plafonnee pour cette carte", "carte", cle,
 		"plafond", c.PlafondTranche, "gateLe", c.GateLe)
 	return c.PlafondTranche
+}
+
+// dessineCanevasDe dit si cette carte Forge demande que son canevas soit dessine sous elle.
+func (e *environnement) dessineCanevasDe(cle string) bool {
+	if e.reglages == nil {
+		return false
+	}
+	c, ok := e.reglages.Cartes[cle]
+	if !ok || !c.DessineCanevas {
+		return false
+	}
+	slog.Info("mapfond: canevas dessine pour cette carte", "carte", cle, "gateLe", c.GateLe)
+	return true
 }

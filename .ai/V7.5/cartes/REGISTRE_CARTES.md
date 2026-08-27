@@ -738,3 +738,38 @@ c'est probablement la meilleure piste restante, pour Isolation comme pour les 40
 
 **Isolation reste refusee**, son entree de reglage est retiree : rien ne doit publier un fond
 qu'on sait mauvais.
+
+### 2026-08-27 — « Et si on avait la mauvaise approche ? » — la base existe, mais elle est DESSOUS
+
+**Verbatim** : « Les cartes Forge ont une base sans doute, sur laquelle dessiner, et nous on ne
+doit avoir que cette base. Ou inversement. »
+
+**L'hypothese etait juste sur un point que l'etat de l'art niait.** `cartes_forge.go` affirmait
+qu'un canevas ne porte AUCUNE instance de geometrie — c'est meme ce qui avait servi a
+identifier Corpo. Mesure du jour :
+
+| canevas | fichiers | sbsp | instances du bsp lointain | instances du bsp d ile |
+|---|---|---|---|---|
+| `fo11_blank` | 15 | 2 | **0** | **0** |
+| `fo08_wetland` | 9 866 | 2 | **13 281** | **814** |
+
+L'affirmation n'etait vraie que pour le canevas VIERGE. `fo08_wetland` porte un terrain complet
+que la cuisson Forge n'a jamais dessine — une carte batie SUR ce terrain etait donc rendue sans
+son sol.
+
+**Levier livre** : `dessineCanevas`, qui pose la geometrie du canevas sous les objets de la
+variante (bsp choisi par les ancres, comme la chaine native ; best-effort declare).
+
+**Ce que l'essai sur Isolation etablit** : avec le canevas arme, 2 169 instances ont ete
+dessinees — et le PNG produit est **identique a l'octet**. Ses ancres vivent entre Z +112,6 et
++121,5, tres au-dessus du terrain : **la carte est batie AU-DESSUS de sa base, pas dessus**. Un
+rendu vu de dessus ne verra donc jamais le canevas, qui est sous l'arene. « Ne garder que la
+base » rendrait le marecage, pas la carte.
+
+Le levier reste : il servira aux cartes Forge reellement posees sur leur terrain, et le test
+`TestCanevasForgePorteTIlDuTerrain` garde la mesure.
+
+**Le gribouillis reste donc entier**, et sa cause se resserre : ce n'est ni un toit, ni le
+canevas, ni du decor hors zone — ce sont les PIECES FORGE DE L'ARENE ELLE-MEME, a hauteur de
+sol. Le seul angle restant est l'exclusion par type, avec un critere mesure sur la
+CONTRIBUTION EN PIXELS et non sur l'emprise du modele.
