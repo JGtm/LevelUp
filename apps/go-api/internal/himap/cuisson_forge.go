@@ -118,6 +118,9 @@ type OptionsCuissonForge struct {
 	NavmeshReference *hinavmesh.Maillage
 	// RogneAuNavmesh efface la matiere hors du maillage de navigation, dilate de MargeNavmesh.
 	RogneAuNavmesh bool
+	// ToleranceNavmesh vide les cellules dont la surface retenue s ecarte de plus de N metres
+	// du sol donne par le maillage. Zero = ne rien vider.
+	ToleranceNavmesh float64
 	// SolVuDuDessous : retenir la surface la plus BASSE au-dessus du sol joue au lieu de la plus
 	// haute. Voir Rendu.ArmeSurfaceBasse — la reponse aux cartes a ciel ferme.
 	SolVuDuDessous bool
@@ -221,6 +224,10 @@ func CuitCarteForge(ctx context.Context, opts OptionsCuissonForge) (*Rendu, Bila
 	if opts.RogneAuNavmesh && opts.NavmeshReference != nil {
 		n := r.EffaceHorsNavmesh(MargeNavmesh)
 		slog.InfoContext(ctx, "mapfond: matiere effacee hors du maillage de navigation", "carte", opts.Cle, "cellules", n)
+	}
+	if opts.ToleranceNavmesh > 0 {
+		n := r.EffaceLoinDuNavmesh(opts.ToleranceNavmesh)
+		slog.InfoContext(ctx, "mapfond: surfaces loin du sol vidées", "carte", opts.Cle, "tolerance", opts.ToleranceNavmesh, "cellules", n)
 	}
 	borneALaBoite(ctx, r, &b, boiteForge(ctx, opts))
 	if b.VolumesDeMort == 0 {

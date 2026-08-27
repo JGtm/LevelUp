@@ -217,6 +217,7 @@ func (e *environnement) cuitForge(ctx context.Context) []bilanAsset {
 		rendu, bilan, err := himap.CuitCarteForge(ctx, himap.OptionsCuissonForge{
 			NavmeshReference:    navRef,
 			RogneAuNavmesh:      e.rogneAuNavmeshDe(carte.MapID),
+			ToleranceNavmesh:    e.toleranceNavmeshDe(carte.MapID),
 			RacineDeploy:        e.racineJeu,
 			Objets:              objets,
 			Ancres:              c.ancres,

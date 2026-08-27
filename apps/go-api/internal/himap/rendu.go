@@ -103,6 +103,9 @@ type Rendu struct {
 	// moment ou la reference est armee, parce que les tampons de reference sont liberes des
 	// que la substitution a decide.
 	couvertureNavmesh []bool
+	// referenceNavmesh : l altitude du sol donnee par le maillage, gardee apres que la voie de
+	// reference a libere ses tampons. NaN hors du maillage.
+	referenceNavmesh []float64
 	// SeuilArete : denivele entre voisins au-dela duquel on trace un bord. Zero = le defaut
 	// (SeuilAreteMetres). Reglage PAR CARTE, cf. rendu_couleur.go.
 	SeuilArete float64
