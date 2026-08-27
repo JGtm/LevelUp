@@ -73,13 +73,18 @@ stagés explicitement, jamais `git add -A`).
   NON touché par ce chantier. Candidat code mort à statuer séparément avec l'utilisateur.
 - D-H **Seuils inchangés** : fenêtre 50, `MinMatchesPerChainForRelative` 10, pas de
   fallback global.
-- D-I **Lacunes de la liste des sous-modes objectif — NON corrigées dans ce chantier**
-  (annexe du rapport lot 0 : 26 matchs objectifs classés slayer — Assaut `neutral/one
-  bomb`, `vip`, `ctf 3 captures`, et 14 pair_names INVERSÉS type `Strongholds:Arena on
-  Behemoth`). La liste partagée B1.1 reste VERBATIM : la corriger changerait aussi les
-  chaînes LUSR existantes (recompute LUSR hors périmètre). Consigner au registre des
-  reports (lot 4) avec condition de reprise : livraison des modes Assaut/VIP (chantier
-  modes porteurs) ou décision dédiée incluant le recompute LUSR.
+- D-I **Lacunes de la liste des sous-modes objectif — CORRIGÉES dans ce chantier**
+  (décision utilisateur du 2026-08-27, remplace le report initial). Constat (annexe du
+  rapport lot 0) : 26 matchs objectifs classés slayer — Assaut `neutral bomb` /
+  `one bomb` / `neutral bomb squad`, `vip`, `ctf 3 captures`, et 14 pair_names INVERSÉS
+  type `Strongholds:Arena on Behemoth` (mode à GAUCHE du deux-points, catégorie Other).
+  Traitement en DEUX temps assumés : le lot 1 pose le helper avec la liste VERBATIM
+  (diff byte-identique hors ranked, régression impossible à confondre), puis le
+  **lot 1bis** corrige la classification dans son propre diff. Conséquence LUSR assumée :
+  ~25 matchs sociaux changent de chaîne LUSR → recompute LUSR complet des 4 joueurs au
+  lot 4 via `RecomputeLUSRCanonicalForPlayer` (sync/lusr_full_recompute.go:26, replay
+  complet watermark-safe, garde append_only_state_guard_test). CSR non concerné (l'API
+  est la source). Le recompute force de perf du lot 4 absorbe l'effet fenêtres.
 - D-J **Poids FIGÉS au gate 0 (2026-08-27)** : ospm = 0.12, profil objectif D-C
   confirmé sans modification. Lecture PSA du lot 3 : vue
   `personal_score_awards_latest` (dédup génération max + non-tombstone, ADR 0026),
@@ -174,18 +179,18 @@ symétrique +4.7/−4.4, médianes stables).
 
 ### Lot 1 — Scission ranked par famille
 
-- [ ] B1.1 Helper partagé de famille objectif dans `games/halo_infinite/skillchain`
+- [x] B1.1 Helper partagé de famille objectif dans `games/halo_infinite/skillchain`
       (ex. `IsObjectiveSubMode(pairName)`) — SEULE occurrence de la liste ;
       `lusrChainForAssassin` migre dessus.
-- [ ] B1.2 Garde-rail grep : test qui interdit une 2e occurrence du littéral de liste
+- [x] B1.2 Garde-rail grep : test qui interdit une 2e occurrence du littéral de liste
       (même esprit que les ratchets existants).
-- [ ] B1.3 `GetPerformanceChain` (skill_config.go:185-196) : `isRanked` →
+- [x] B1.3 `GetPerformanceChain` (skill_config.go:185-196) : `isRanked` →
       `ranked_slayer`/`ranked_objectif` via un seam title-aware de famille (miroir de
       `SetLUSRChainClassifier` ; halo_5 : vérifier son wiring, fallback `ranked_slayer`
       documenté). Constantes `PerfChainRankedSlayer`/`PerfChainRankedObjectif` ;
       l'ancienne valeur `ranked` ne survit que comme donnée stockée à recalculer
       (mécanisme skip existant performance.go:372-379).
-- [ ] B1.4 Tests : extension `perf_chain_test.go` (Ranked:CTF/Oddball/Strongholds/KotH →
+- [x] B1.4 Tests : extension `perf_chain_test.go` (Ranked:CTF/Oddball/Strongholds/KotH →
       ranked_objectif ; Ranked:Slayer → ranked_slayer ; pair NULL ranked →
       ranked_slayer), cross-check sync_test, cas H5.
 
@@ -196,6 +201,51 @@ go test ./internal/sync/... ./internal/games/...
 go vet ./...
 go test -tags=integration -count=1 -p 1 ./...   # sync touché → OBLIGATOIRE, exit code vérifié
 ```
+
+**Gate 1 PASSÉ le 2026-08-27.** Unit scope / vet / build / gofmt exit 0 ; intégration
+complète `-p 1` en 24,8 min — périmètre vert (sync 162 s, persist 22 s, duckdb 117 s,
+migration 23 s ok), 2 échecs HORS périmètre : (a) ratchet `start_time` déclenché par
+`cmd/diag_perfsim/load.go` (outil lot 0) — soldé par le pilote : entrée allowlist datée
+avec justification « oracle-réplique de performance_helpers.go, à migrer ensemble »,
+ratchet rejoué vert ; (b) timeout local `himap` (>10 min), lenteur locale connue — la CI
+Linux fait foi. `PerfChainRanked` conservée (2 usages vivants hors classification :
+playlist_group CSR, parsing de nom de playlist) avec commentaire 3-statuts. Migration
+des notes stockées : GRATUITE par le skip de chaîne (performance.go:372-379, vérifié sur
+pièces — `ranked` n'étant plus jamais recalculée, tout match classé noté repasse au
+calcul dès le premier batch, sans force). Câblage seam : serveur en fail-fast
+(`ValidateObjectiveFamilyClassifierWired`), binaires LUSR/h5 par symétrie, fallback
+ranked_slayer documenté pour les binaires non câblés.
+
+### Lot 1bis — Correction de la classification objectif (D-I, décision user 2026-08-27)
+
+Pré-requis : lot 1 clos (le helper unique existe). Périmètre : la classification de
+FAMILLE uniquement — `NormalizeModeLabel` et `InferModeCategoryFromPairName` (catégories
+UI) ne changent PAS.
+
+- [ ] B1b.1 Le helper unique devient `IsObjectiveMode(pairName)` (ou équivalent) avec
+      deux règles : (1) sous-mode normalisé (partie droite) ∈ liste objectif ; (2) sinon,
+      si le PRÉFIXE (partie gauche du `:`, normalisée) ∈ liste objectif → objectif
+      (couvre les pair_names inversés type `Strongholds:Arena`). Ajouts à la liste :
+      `vip`, `neutral bomb`, `one bomb`, `neutral bomb squad`, `ctf 3 captures`.
+      `arena` n'entre dans AUCUNE liste.
+- [ ] B1b.2 Brancher les trois consommateurs sur le helper : `lusrChainForAssassin`
+      (déjà fait au lot 1), `lusrChainForOther` (les inversés sont en catégorie Other —
+      test IsObjectiveMode APRÈS les règles chaos, avant le fallback arena_slayer), et
+      le classifieur de famille ranked (lot 1).
+- [ ] B1b.3 Tests : les 26 cas du corpus (annexe rapport lot 0) deviennent des fixtures —
+      `Assault:Neutral Bomb on Origin` → arena_objectif, `Arena:VIP on Catalyst` →
+      arena_objectif, `Strongholds:Arena on Behemoth` → arena_objectif,
+      `Ranked:CTF 3 Captures on Argyle` → ranked_objectif (remplace le cas « limitation
+      connue » du lot 1), etc. + cas de non-régression (Fiesta/chaos prioritaires sur la
+      règle préfixe ; `Arena:Slayer` intact). Garde-rail B1.2 mis à jour si nécessaire.
+- [ ] B1b.4 Rejouer `cmd/diag_perfsim` (lecture seule, serveur arrêté) et vérifier le
+      delta : exactement les 26 matchs changent de famille sur le corpus des 4 joueurs
+      (14 `arena` + 4 `neutral bomb` + 3 `vip` + 3 `one bomb` + 1 `neutral bomb squad` +
+      1 `ctf 3 captures`) — toute autre bascule = STOP et analyse. Consigner les comptes
+      LUSR impactés (~25 sociaux) pour le recompute du lot 4.
+
+Gate 1bis : gates go du lot 1 rejoués (unit + vet + build + intégration -p 1) + le delta
+de B1b.4 conforme (26 matchs, pas un de plus).
 
 ### Lot 2 — Hygiène non-terminés / orphelins (batch auto-nettoyant)
 
@@ -253,7 +303,15 @@ simulées et les notes produites par le code réel sur les mêmes données doive
       comptes prédits.
 - [ ] B4.3 Gate visuel utilisateur (témoins à faire nommer : un match objectif « écrasé
       mais actif », un DNF sans note, un ranked de Madina97294).
-- [ ] B4.4 Registre des reports : BTB non scindé (D-F) + sort de buildFormTab (D-G).
+- [ ] B4.4 Recompute LUSR complet des 4 joueurs (`RecomputeLUSRCanonicalForPlayer`,
+      chemin canonique v2 — réutiliser l'orchestration existante type
+      `recompute_after_art_rebuild.go` si adaptée) APRÈS la reclassification 1bis ;
+      contrôles : comptes `match_skill_rank_latest` par chaîne avant/après (~25 sociaux
+      déplacés arena_slayer → arena_objectif), aucune perte de lignes, watermarks sains.
+- [ ] B4.5 Balayage PSA des DBs de PROD (VPS) : même vérification d'index que B2.4 sur
+      les DBs joueur du VPS — UNIQUEMENT après validation locale complète, et PRÉVENIR
+      L'UTILISATEUR AVANT toute opération VPS (règle). Réparation identique si écart.
+- [ ] B4.6 Registre des reports : BTB non scindé (D-F) + sort de buildFormTab (D-G).
       thought_log. delivery-checklist. Autorisation utilisateur puis push de la branche
       (PAS de merge main — deploy prod).
 
@@ -280,7 +338,8 @@ simulées et les notes produites par le code réel sur les mêmes données doive
   `PersonalScoreAwardsRepo` (colonne Score personnel) est exposé dès AUJOURD'HUI sur
   cette DB.
 - (lot 0) 26 matchs objectifs classés slayer par la liste actuelle (affecte aussi les
-  chaînes LUSR depuis toujours) → décision D-I (report, registre au lot 4).
+  chaînes LUSR depuis toujours) → décision D-I RÉVISÉE par l'utilisateur le 2026-08-27 :
+  correction dans ce chantier (lot 1bis) + recompute LUSR au lot 4.
 - (lot 0) DB JGtm : 15 lignes `personal_score_awards` avec xuid vide sur 6 matchs
   (filtrées par la sélection sur xuid — sans effet sur les calculs).
 - (lot 0) L'annexe corpus du plan disait Madina 22 objectif / 12 slayer en ranked ; la

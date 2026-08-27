@@ -1,3 +1,40 @@
+## [2026-08-27] Tuiles Home : lien rejeu 2D a droite de la playlist — Complete
+
+**Contexte** : demande utilisateur — acceder au rejeu 2D directement depuis les tuiles de
+matchs de la page d'accueil (logo a droite du label de playlist). Question annexe : la
+Resistance defensive s'affiche en gris au lieu du bleu d'avant.
+
+**Decision technique principale** : reutilisation integrale du pipeline Explorer —
+`RecentMatchItem.HasReplay` (domain/home.go), `HomeService.WithReplay` +
+`applyReplayAvailabilityToRecentItems` (UN AvailableSet par requete pour les DEUX listes
+recents + favoris, jamais un os.Stat par tuile), cablage `HomeCtx` sur
+`replayServiceFor(pdb)` (meme service que /replay et l'Explorer). Front : composant
+partage `MatchReplayLink` insere dans la ligne playlist de MatchCard (prop `playerSlug`
+optionnelle — sans elle, aucun lien : la route de rejeu est par joueur) ; cle i18n
+`common.match_card.replay_aria` (fr/en) ; `has_replay?: boolean` sur le type manuscrit
+(RecentMatchItem n'est pas decrit dans openapi.yaml — regeneration verifiee sans diff).
+
+**Resultats observes** : tests Go verts (has_replay pose sur la bonne tuile, 1 seul
+listing par requete via stub compteur, degradation propre sans service/listing en echec) ;
+21 tests vitest match-card verts dont 4 nouveaux (href /players/{slug}/matches/{id}/replay,
+pas de lien sans artefact ni sans playerSlug, ligne dediee sans playlist) ; go vet +
+eslint cibles propres. Typecheck web : seules erreurs dans ReplayTeams.tsx — chantier
+CONCURRENT d'une autre session sur ce worktree (i18n.ts / i18nContract.ts /
+placementTeleport.ts / ReplayTeams.tsx modifies hors de cette session), non touche.
+
+**Question Resistance grise** : reponse trouvee, aucune modif. Commit a13d83233
+(2026-08-04, palette squad-player) a change `divergent-neutral` #60A5FA (bleu) -> #8A9099
+(gris bleute) dans palettes/default.ts, avec justification (le neutre ne doit pas porter
+de direction ; le bleu se lisait positif et entrait en concurrence avec le bleu joueur
+principal ; les 3 palettes daltoniennes ont deja un gris a ce poste). Decouverte hors
+perimetre NON traitee : le fallback CSS no-JS de globals.css:211 est reste #60A5FA,
+desynchronise de la palette JS.
+
+**Conclusion / prochaine etape** : livre non committe (regle : demander avant commit) ;
+verification visuelle sur la session utilisateur (le device-code flow du navigateur
+integre n'a pas ete utilise). Option produit ouverte : revenir au bleu de la Resistance
+si le gris ne convient pas (1 ligne dans palettes/default.ts).
+
 ## [2026-08-27] Lot A — Assaut (bombe) : corpus qualifie, bombe [!] (catalogue sans site), statborg nomme le POSEUR — Complete
 
 **Contexte** : lot A du chantier modes porteurs (PLAN_ASSAUT_LOT_A_2026-08-27), execute par un
@@ -74038,3 +74075,29 @@ ecrases-mais-actifs 2x le bruit ; 0.16 punirait les porteurs de combat).
 **Conclusion / prochaine etape** : lancement de l executeur du lot 1 (scission
 ranked_slayer/ranked_objectif). Commits lot 0 + lot 1 a autoriser ensemble au prochain
 point.
+
+## [2026-08-27] Chantier note de perf — lot 1 LIVRE (scission ranked), D-I REVISEE, lot 1bis lance
+
+**Statut** : En cours (plan `.ai/PLAN_PERF_NOTE_OBJECTIFS.md`).
+
+**Lot 1 livre et pousse** : branche `feat/perf-note-objectifs` publiee avec `c2ad944df`
+(lot 0 : cmd/diag_perfsim + rapport + allowlist ratchet start_time justifiee
+oracle-replique) et `d3081524c` (lot 1 : scission — helper unique
+skillchain.IsObjectiveSubMode + ratchet anti-2e-copie verifie mordant, seam title-aware
+IsObjectiveFamilyForTitle miroir du seam LUSR avec fail-fast au boot serveur,
+PerfChainRanked conservee documentee 3 statuts, 11+4+33 cas de tests). Revue pilote sur
+pieces (diffs coeur relus) ; gates verts, integration complete 24,8 min — 2 echecs hors
+perimetre : ratchet start_time du diag (solde par allowlist datee, rejoue vert) et
+timeout local himap (connu, CI Linux fait foi). Migration des notes stockees GRATUITE
+par le skip de chaine (performance.go:372-379, verifie).
+
+**Decision utilisateur (revision D-I)** : les 2 decouvertes du lot 0 se traitent DANS le
+chantier — (1) reparation d index PSA (B2.4, lot 2) + balayage PROD VPS ajoute (B4.5,
+avec PREVENIR-avant regle) ; (2) les 26 matchs objectifs mal classes se corrigent au
+nouveau LOT 1BIS (liste + regle prefixe inverse via la branche Other), avec recompute
+LUSR complet des 4 joueurs au lot 4 (RecomputeLUSRCanonicalForPlayer, chemin canonique
+v2). Gate 1bis chiffre : exactement 26 matchs changent de famille au rejeu du simulateur.
+
+**Conclusion / prochaine etape** : executeur lot 1bis lance ; puis lot 2 (hygiene +
+index). Volet A : CI feat/v75 verte au niveau JOB sur `6b7c5402b` — reste le gate visuel
+utilisateur.
