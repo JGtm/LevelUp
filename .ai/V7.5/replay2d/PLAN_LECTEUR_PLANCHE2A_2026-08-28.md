@@ -264,3 +264,15 @@ sur wt/lecteur. Reprendre a la premiere case non statuee du lot ouvert.
 - (executeur, 2026-08-28, lot 0) `ReplayKillFeed` porte six props que le plan ne cite pas
   (`nowMs`, `playWindow`, `scoreboard`, `xuidMeta`, `marks`, `colorOf`) : elles restent, la
   remontee ne concerne que l'assemblage du fil (kills/medals/t0Ms/doc -> `entries`).
+
+## Journal des revues (2026-08-28, pilote)
+
+- R1 (contexte frais, gates rejoues par le relecteur) : 2 P1 + 6 P2 recevables, 20
+  conditions tiennent. Triage pilote : C1-C6 -> lot 5 (`95f53d6b1`) ; 3 constats consignes
+  sans correction (Decouvertes).
+- R2 (2e contexte frais, perimetre = lot 5 seul) : les 6 corrections TIENNENT — mutation
+  reduceFeed (swap tueur/victime) : 4 tests rouges puis restauration propre ; 0 constat
+  recevable ; P0+P1 : 2 -> 0. Gates : vitest match-replay 100 fichiers / 1546 / 0 echec ;
+  typecheck cache purge exit 0 ; arbre propre.
+- Boucle close (2 rondes, decroissance stricte). Reste : gate visuel utilisateur +
+  autorisation de merge/push (CI de branche au push).

@@ -1,3 +1,36 @@
+## [2026-08-28] Lecteur du rejeu (planche 2a) : frise a pistes, sauts, menu vitesse, raccourcis — Complete
+
+**Contexte** : design valide par l'utilisateur (Claude Design, planche 2a) ; handoff recupere
+(7 fichiers + canvas) et copie dans `.ai/V7.5/replay2d/planche2a_impl/`. Execution Opus
+pilotee sur worktree dedie `wt/lecteur` (base feat/v75 86b9087c9), plan
+`PLAN_LECTEUR_PLANCHE2A_2026-08-28.md`, spec annotee des decisions utilisateur (police de
+l'app conservee, kill feed conserve, donnee medias en phase 2).
+
+**Decision technique principale** : PORT des fichiers du handoff — pas de reinvention — avec
+adaptations minimales (SKIP_SECONDS deplace vers replayCanvasConfig, react-refresh ;
+`soundPlaysAtSpeed` reutilise au lieu d'une copie du seuil ; `bg-muted` au lieu de bg-black ;
+en-tetes DESTINATION retires). Fil aligne `buildFeedEntries` calcule UNE fois dans la page et
+partage fil + pistes (aucun second alignement). Cliquet canvas : DEUX extractions
+(useReplayTimeline 13e, useReplayDrawer 14e) — 692 lignes (rouge herite du merge VIP) -> 674,
+plafond ABAISSE a 674. ReplayLeadMarks supprime (la piste Dominance montre les durees) ;
+useLeadMarks reduit a ses 3 champs consommes. Logique renommee
+`replayTimelineTracksLogic.ts` (collision de casse Windows TS1149 avec le composant).
+Lightbox medias livree dormante (endpoint = phase 2, registre des reports).
+
+**Resultats observes** : typecheck (cache purge) exit 0 ; vitest match-replay + routes
+103 fichiers / 1576 tests / 0 echec ; ESLint 0 erreur (1 warning pre-existant) ; greps
+hex/Archivo muets. Revue adversariale R1 (contexte frais, gates rejoues) : 2 P1 + 6 P2
+recevables, 20 conditions tiennent ; corrections en lot 5 (cle i18n keySpace, garde
+`available` sur toggle du son, code mort useLeadMarks, 2 commentaires faux, 15 tests dont
+reduceFeed PROUVE par mutation — 4 rouges puis restauration). Ronde 2 (2e contexte frais,
+perimetre = lot 5 seul) : les 6 corrections TIENNENT, 0 constat recevable, P0+P1 2 -> 0.
+5 commits e11560f00..95f53d6b1 sur wt/lecteur ; aucun merge, aucun push.
+
+**Conclusion / prochaine etape** : gate visuel utilisateur (reference
+`planche2a_impl/Barre de lecture replay.dc.html`), decision produit « raccourcis quand la
+frise garde le focus » (consignee aux Decouvertes), puis autorisation de merge
+wt/lecteur -> feat/v75 + push (CI de branche au niveau JOB). Phase 2 medias au registre.
+
 ## [2026-08-28] Rejeu 2D fiches : icones PLEINES des armes (miroir) et grenades — Complete
 
 **Contexte** : retour utilisateur sur le lot 577746ef3 (refonte option 2a) — la maquette
