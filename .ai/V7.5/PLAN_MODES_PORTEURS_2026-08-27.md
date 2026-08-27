@@ -116,22 +116,28 @@ aucun seuil different de ceux ecrits ici.
 
 ### O1 — P1 : instrumenter les vies libres INTERIEURES aux longs portages API (diagnostic)
 
-- [ ] O1.1 Nouvel instrument `oddball_fragmentation_d10_test.go` (meme package que les D4-D9,
+- [x] O1.1 Nouvel instrument `oddball_fragmentation_d10_test.go` (meme package que les D4-D9,
       meme garde d'environnement, jamais en CI), qui pour chaque film admis : (a) prend le
       plus gros porteur API du film (oracle `_latest`) ; (b) rejoue la reconstruction D9
       (premiere traversee, parametres FIGES de D9 — rien ne se regle) ; (c) pour chaque vie
       libre du crane, publie : duree, position de naissance, ramasseur reconstruit, porteur
       reconstruit precedent, distance du porteur precedent a la position de re-prise a
       l'instant de la traversee, meme-joueur (oui/non).
-- [ ] O1.2 Ventiler les SECONDES MANQUANTES du plus gros porteur API de chaque film en 4
+      — Fait 2026-08-27 : auto-controle contre `d9Reconstruit` inchangee OK sur 4/4 films.
+- [x] O1.2 Ventiler les SECONDES MANQUANTES du plus gros porteur API de chaque film en 4
       causes nommees d'avance : (a) vie libre interieure re-attribuee a un TIERS alors que le
       porteur precedent est a <= 1,5 m de la re-prise ; (b) vie libre interieure re-ramassee
       par le MEME joueur mais comptee comme nouveau portage (fragmentation sans vol) ;
       (c) trou sans traversee (aucune attribution) ; (d) autre / hors intervalle. Log fige
       `D10_P1_ventilation.log` + tableau par film dans le CR.
-- [ ] O1.3 Distribution des durees des vies libres interieures (q50/q75/q90/max), publiee —
+      — Fait 2026-08-27 : (a)+(b) = 0,0 / 0,0 / 3,5 / 0,0 % — la cause dominante est (d)
+      (84,3-100 %) : le manquant vit HORS des trous dont le porteur precedent est P.
+- [x] O1.3 Distribution des durees des vies libres interieures (q50/q75/q90/max), publiee —
       c'est elle qui fixera le N de chainage de O2 (N = q90 arrondi a la seconde superieure,
       REGLE ECRITE ICI, avant mesure).
+      — Fait 2026-08-27 : corpus n=50, q50 2,85 / q75 3,88 / q90 5,05 / max 6,50 s ;
+      N = 6 s PUBLIE, non utilise : le seuil d'ouverture de O2 est tenu sur 0/4 films
+      (2/4 exiges) — **P1 INFIRMEE**, le lot s'arrete en O3/O4 comme le plan l'ecrit.
 
 **Seuil d'ouverture de O2 (ECRIT AVANT MESURE, ne se rebaisse pas)** : causes (a)+(b)
 couvrent >= 50 % des secondes manquantes du plus gros porteur sur >= la moitie des films
