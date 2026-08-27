@@ -14,16 +14,27 @@
  * `crossedWeaponPads`). Ce calque ne le sait pas et n'a pas à le savoir — il dessine ce
  * qu'on lui donne, et tout le reste (présence, états, cycle) reste la mesure du match.
  *
- * TROIS ÉTATS, ET LE TROISIÈME EST L'HONNÊTETÉ DU CALQUE. Une occupation publie trois
- * instants : `t0` l'apparition (mesurée), `tLow` le dernier instant où l'arme est PROUVÉE
- * présente, `tHigh` le premier où son absence est prouvée. Entre les deux, le film ne dit
- * rien — les images-clés sont espacées de ~20 s. Une icône qui s'éteindrait pile à un instant
- * affirmerait une datation que la source n'a pas : le socle est donc PLEIN jusqu'à `tLow`,
- * INCERTAIN jusqu'à `tHigh` (icône fantôme, anneau pointillé), VIDE ensuite.
+ * UNE PILE VERTICALE, ET LE LOSANGE EST SON PIED (retour utilisateur du 2026-08-27 : « l'icône
+ * doit être au-dessus du petit losange, pas dedans »). De bas en haut : le LOSANGE à la position
+ * exacte du socle, la VIGNETTE posée au-dessus de lui (son bas au sommet du losange, augmenté de
+ * `PAD_GAP_PX`), le COMPTEUR au-dessus. Trois marques, une seule colonne, un seul lieu.
+ *
+ * L'ANNEAU-BORDURE D'A13 N'EXISTE PLUS, et c'est le même retour : ce liseré losange, posé autour
+ * de la vignette à l'encre de la nature, ENFERMAIT l'image — l'écran disait « l'icône dans le
+ * losange » là où la donnée dit « une arme au-dessus d'un lieu ». Sa fonction — rendre la nature
+ * du socle vive sur n'importe quel fond — revient au losange, désormais TOUJOURS PLEIN à cette
+ * encre : un aplat de 6 px se lit mieux qu'un liseré de 1,4 px, et il ne cerne rien.
+ *
+ * LES TROIS ÉTATS SE LISENT AILLEURS (`weaponPadTime.ts`) : ce fichier ne fait que les
+ * DESSINER, et il les dessine sur le LOSANGE, qui garde sa forme et son encre dans les trois
+ * cas — plein à 0,95 (présence prouvée) ; plein atténué à 0,55, cerné d'un halo losange
+ * POINTILLÉ (le film ne dit rien) ; plein très atténué à 0,35 et sans vignette (absence
+ * prouvée).
  *
  * LE POINTILLÉ GARDE SON SENS — celui que `placementShapes` lui a donné : « cette limite n'est
  * pas affirmée ». Ici la limite est TEMPORELLE et non spatiale, mais le message est le même, et
- * c'est pour cela que l'anneau du socle plein est plein : sa présence, elle, est prouvée.
+ * c'est pour cela qu'il n'apparaît QUE sur l'état incertain : le losange plein, lui, dit une
+ * présence ou une absence que la mesure tient.
  *
  * CE QUE CE CALQUE NE DESSINE JAMAIS :
  *  - LE RAMASSEUR. Le champ existe au contrat (`padPickups[].xuid`) et vaut `null` partout :
@@ -32,9 +43,8 @@
  *    des socles et ne sont pas publiées ici (décision utilisateur du 18/08).
  *  - LA DIFFÉRENCE SOCLE AU SOL / RÂTELIER MURAL. La donnée ne porte qu'une position : rien
  *    ne les sépare, et l'écran dit « emplacement d'arme » plutôt que d'en choisir un.
- *  - UN COMPTE À REBOURS SANS CYCLE. La clé `cycle` est ABSENTE quand il n'est pas établi
- *    (10 socles sur 31 seulement en portent un sur les quatre témoins) : ni chiffre, ni tiret
- *    qui suggérerait qu'on saurait.
+ *  - UN COMPTE À REBOURS SANS SOURCE. Ni prochaine apparition mesurée, ni cycle établi : rien
+ *    ne s'écrit — un tiret suggérerait qu'on saurait (cf. `padRespawnAt`).
  *
  * Pas de React : géométrie pure + un CanvasRenderingContext2D, comme les calques voisins.
  * L'encre arrive de l'appelant, qui la tient des variables du thème.
@@ -43,23 +53,17 @@ import type { ReplayWeaponPadReady } from './replayNormalize'
 import { project, UNCERTAIN_DASH, type PlacementView } from './placementShapes'
 import type { PadScale } from './weaponPadFamilies'
 import type { XY } from './replayLogic'
+import { padRespawnAt, padStateAt, type PadState } from './weaponPadTime'
 
 /** Le cadrage est celui des poses : les deux calques projettent la même scène. */
 export type { PlacementView as PadView } from './placementShapes'
 
 /**
- * L'état d'un socle à un instant : plein (présence prouvée), incertain (le film ne dit rien),
- * vide (absence prouvée). `empty` couvre aussi l'avant-première-apparition.
- */
-export type PadState = 'full' | 'uncertain' | 'empty'
-
-/**
- * Rayon du POINT du socle, en pixels d'ÉCRAN, par taille.
+ * Rayon du LOSANGE du socle, en pixels d'ÉCRAN, par taille (avant compensation d'aire).
  *
- * UN POINT, PLUS UN ANNEAU (verdict du 2026-08-18) : « point disponible + icône de l'arme en
- * dessous + compteur au-dessus ». L'anneau enfermait la vignette, ce qui donnait à chaque
- * socle l'emprise d'une cible et faisait de l'icône un contenu illisible à 8 px. Le point dit
- * le LIEU et l'ÉTAT ; l'icône, posée dessous et libre, dit ce qu'on y trouve.
+ * LE LOSANGE DIT LE LIEU ET L'ÉTAT, la vignette dit ce qu'on y trouve (verdict du 2026-08-18,
+ * amendé le 2026-08-27) : la vignette est posée AU-DESSUS, libre, et plus jamais dans un
+ * anneau — un contenu enfermé à 8 px n'est pas lisible.
  */
 const PAD_DOT_PX: Record<PadScale, number> = { power: 4.6, classic: 3.2 }
 
@@ -76,18 +80,17 @@ const PAD_ICON_H_PX: Record<PadScale, number> = { power: 13, classic: 8 }
 /** Une vignette d'arme est large : au-delà de ce rapport, la largeur est bornée. */
 const PAD_ICON_MAX_ASPECT = 3.2
 
-/** Épaisseur du contour du point (états incertain et vide), en pixels d'écran. */
-const PAD_DOT_WIDTH = 1.2
-
-/** Écart entre le bord du point et ce qu'on pose au-dessus ou en dessous, en pixels d'écran. */
+/** Écart entre deux étages de la pile (losange, vignette, compteur), en pixels d'écran. */
 const PAD_GAP_PX = 2.5
+
 /**
- * LA BORDURE DU SOCLE (A13, 2026-08-26) : l'anneau qui enferme la marque, à l'encre de sa
- * nature. `GAP` l'écarte de la vignette pour qu'il la cerne sans la mordre ; `WIDTH` est le
- * plus fin qui se lise encore sur un fond de carte imprimé.
+ * LE HALO DE L'INCERTITUDE : un losange POINTILLÉ concentrique au socle, écarté de `GAP` pour
+ * qu'on le distingue du plein qu'il cerne, tracé au plus fin qui se lise encore sur un fond de
+ * carte imprimé. Il ne paraît QUE sur l'état incertain — c'est son seul rôle.
  */
-const PAD_BORDER_GAP_PX = 2
-const PAD_BORDER_WIDTH = 1.4
+const PAD_HALO_GAP_PX = 2
+const PAD_HALO_WIDTH = 1.2
+
 /**
  * LE SOCLE EST UN LOSANGE, PLUS UN ROND (A14, retour utilisateur du 2026-08-26 : « les socles
  * d'armes et de power up je veux pas de cercles, des points en losanges ce serait mieux, ça
@@ -108,9 +111,9 @@ const PAD_DIAMOND_GROWTH = 1.25
 /**
  * traceDiamond pose le contour d'un losange centré, de demi-diagonale `half` (sommet en haut).
  *
- * UNE SEULE COPIE POUR LES DEUX USAGES — la marque et sa bordure de nature. Deux tracés de la
- * même forme divergeraient au premier réglage, et l'écart serait invisible : un liseré
- * légèrement désaligné de son point reste crédible.
+ * UNE SEULE COPIE POUR LES DEUX USAGES — la marque et son halo d'incertitude. Deux tracés de la
+ * même forme divergeraient au premier réglage, et l'écart serait invisible : un halo légèrement
+ * désaligné de son losange reste crédible.
  */
 function traceDiamond(ctx: CanvasRenderingContext2D, c: XY, half: number): void {
   ctx.beginPath()
@@ -128,7 +131,7 @@ function traceDiamond(ctx: CanvasRenderingContext2D, c: XY, half: number): void 
 const PAD_OUTLINE_PX = 1.2
 const PAD_OUTLINE_STEPS = 8
 
-/** Opacités du point et de la vignette, par état. `empty` n'a pas de vignette. */
+/** Opacités du losange et de la vignette, par état. `empty` n'a pas de vignette. */
 const PAD_ALPHA: Record<PadState, { dot: number; icon: number }> = {
   full: { dot: 0.95, icon: 0.95 },
   uncertain: { dot: 0.55, icon: 0.3 },
@@ -139,8 +142,17 @@ const PAD_ALPHA: Record<PadState, { dot: number; icon: number }> = {
 const PAD_COUNTDOWN_FONT_PX = 8
 const PAD_COUNTDOWN_STROKE_PX = 2.4
 
-/** Rayon minimal de la zone sensible au survol : un point de 3,2 px ne se vise pas. */
-const PAD_HOVER_MIN_RADIUS_PX = 9
+/**
+ * Marge de confort autour de la pile, en pixels d'écran : on vise près, pas au pixel.
+ *
+ * IL N'Y A PLUS DE PLANCHER DE VISABILITÉ (2026-08-27, revue adversariale). La zone portait un
+ * `Math.max(..., 9 px)` hérité du temps où elle ne couvrait que le losange — un losange de
+ * 3,2 px ne se vise pas. Depuis qu'elle couvre la pile, son premier terme vaut 12,25 px pour la
+ * PLUS PETITE taille (4 + 5,25 + 3) et 16,5 px pour la grande : le plancher ne pouvait plus
+ * jamais l'emporter. Un `Math.max` dont une branche est inatteignable est du code mort qui
+ * ment sur la règle, pas une sécurité.
+ */
+const PAD_HOVER_MARGIN_PX = 3
 
 /** Ce que le calque a besoin de savoir de l'instant courant. */
 export interface PadTime {
@@ -155,13 +167,14 @@ export interface PadTime {
  * Une vignette d'arme prête à poser : son CORPS et son LISERÉ, déjà teints hors écran.
  *
  * DEUX IMAGES ET NON UNE, parce qu'un canvas ne sait pas cerner une image : le liseré
- * s'obtient en reposant la MÊME forme, teinte de l'encre du fond, tout autour du corps.
- * `outline` vaut null quand la source n'est pas un masque (image finie du jeu) : on ne peut
- * alors ni la reteindre ni la cerner, et elle se pose telle quelle.
+ * s'obtient en reposant la MÊME forme, teinte de l'encre du fond, tout autour du corps. Les
+ * DEUX sont toujours servies depuis le 2026-08-27, y compris pour une image finie du jeu : un
+ * liseré n'a besoin que de la SILHOUETTE, que la composition `source-in` rend de n'importe
+ * quelle image à alpha (cf. `tintedIconCanvas`).
  */
 export interface PadIcon {
   fill: CanvasImageSource
-  outline: CanvasImageSource | null
+  outline: CanvasImageSource
 }
 
 /** Ce que le calque emprunte au thème et au catalogue du document. */
@@ -176,7 +189,7 @@ export interface PadStyle {
    */
   fill: string
   outline: string
-  /** Vignette TEINTE de la famille, ou null : le socle garde alors un glyphe neutre. */
+  /** Vignette TEINTE de la famille, ou null : le socle garde alors son seul losange. */
   iconOf: (weapon: string) => PadIcon | null
   /** La taille à donner au socle, d'après ce qu'il porte (cf. weaponPadFamilies). */
   scaleOf: (weapon: string) => PadScale
@@ -186,78 +199,71 @@ export interface PadStyle {
    * connaît aucun token, il ne fait qu'employer la chaîne qu'on lui donne.
    */
   inkOf: (weapon: string) => string
-  /** Le compte à rebours déjà localisé ; appelé seulement quand un cycle est établi. */
+  /**
+   * Le compte à rebours déjà localisé, dans son écriture COMPACTE (celle de la carte).
+   *
+   * APPELÉ SUR TOUT SOCLE VIDE QUI A UNE SOURCE (D3, 2026-08-27) : une prochaine apparition
+   * mesurée, ou à défaut un cycle établi. La précondition d'avant — « seulement quand un cycle
+   * est établi » — est précisément le défaut que D3 corrige, la moitié des socles n'en portant
+   * aucun. Ce libellé ne dit PAS d'où vient le chiffre : c'est l'infobulle qui le distingue.
+   */
   countdownLabel: (seconds: number) => string
 }
 
-/**
- * padOccupancyAt — l'occupation en cours à cette image, c'est-à-dire la DERNIÈRE dont
- * l'apparition a eu lieu. Null avant la première : le socle n'a alors rien porté du tout.
- */
-export function padOccupancyAt(
-  pad: ReplayWeaponPadReady,
-  frame: number,
-): ReplayWeaponPadReady['presence'][number] | null {
-  let found: ReplayWeaponPadReady['presence'][number] | null = null
-  for (const occ of pad.presence) {
-    if (occ.t0 > frame) break
-    found = occ
-  }
-  return found
-}
-
-/**
- * padStateAt — l'état du socle à cette image.
- *
- * L'ordre des comparaisons EST la règle : plein tant que la présence est prouvée, incertain
- * tant que l'absence ne l'est pas, vide ensuite.
- *
- * LE CAS « JAMAIS VIDÉ » EST À PART, et il est fréquent (8 occupations sur 28 sur un des
- * témoins) : quand l'arme est encore recensée à la DERNIÈRE image-clé, `tHigh` ne dépasse pas
- * `tLow` — aucune absence n'a jamais été prouvée. Le socle reste alors PLEIN jusqu'au bout.
- * L'écrire vide, fût-ce une image, affirmerait un ramassage que rien n'a observé.
- */
-export function padStateAt(pad: ReplayWeaponPadReady, frame: number): PadState {
-  const occ = padOccupancyAt(pad, frame)
-  if (!occ) return 'empty'
-  if (frame < occ.tLow || occ.tHigh <= occ.tLow) return 'full'
-  return frame < occ.tHigh ? 'uncertain' : 'empty'
-}
-
-/**
- * padRespawnSecondsAt — les secondes restantes avant la réapparition ATTENDUE, ou null.
- *
- * TROIS CONDITIONS, ET AUCUNE N'EST NÉGOCIABLE : le socle est VIDE (avant `tHigh`, rien n'est
- * fini), il porte un CYCLE ÉTABLI (clé absente sinon — jamais un chiffre instable), et le
- * compte n'est pas déjà épuisé. Le départ est `tHigh`, la borne HAUTE de la disparition :
- * partir de `tLow` avancerait la prédiction d'un intervalle que la source ne date pas.
- */
-export function padRespawnSecondsAt(
-  pad: ReplayWeaponPadReady,
-  frame: number,
-  frameMs: number,
-): number | null {
-  const cycle = pad.cycle
-  if (!cycle || !(frameMs > 0) || !(cycle.medianS > 0)) return null
-  if (padStateAt(pad, frame) !== 'empty') return null
-  const occ = padOccupancyAt(pad, frame)
-  if (!occ) return null
-  const elapsedS = ((frame - occ.tHigh) * frameMs) / 1000
-  const left = cycle.medianS - elapsedS
-  return left > 0 ? left : null
-}
-
-/** padRadiusPx — le rayon d'écran du POINT d'un socle (sa taille suit ce qu'il porte). */
+/** padRadiusPx — le rayon d'écran du LOSANGE d'un socle (sa taille suit ce qu'il porte). */
 export function padRadiusPx(pad: ReplayWeaponPadReady, style: PadStyle, k: number): number {
   return PAD_DOT_PX[style.scaleOf(pad.weapon)] * k
+}
+
+/** Les trois mesures d'écran de la pile : le losange, la vignette, l'écart qui les sépare. */
+interface PadStackPx {
+  /** Demi-diagonale du losange, compensation d'aire comprise. */
+  half: number
+  /** Hauteur de la vignette posée au-dessus. */
+  iconH: number
+  /** Écart entre deux étages. */
+  gap: number
+}
+
+/**
+ * padStackPx — LA PILE D'UN SOCLE en pixels d'écran, à la densité courante. UNE SEULE SOURCE
+ * POUR LE TRACÉ ET LE SURVOL : deux copies de ces trois lignes divergeraient au premier réglage,
+ * et l'écart se paierait en infobulles qui n'apparaissent pas là où l'œil vise.
+ */
+function padStackPx(pad: ReplayWeaponPadReady, style: PadStyle, k: number): PadStackPx {
+  return {
+    half: padRadiusPx(pad, style, k) * PAD_DIAMOND_GROWTH,
+    iconH: PAD_ICON_H_PX[style.scaleOf(pad.weapon)] * k,
+    gap: PAD_GAP_PX * k,
+  }
 }
 
 /**
  * padAt — le socle sous un point du canvas, ou null.
  *
+ * LA ZONE EST UN DISQUE CENTRÉ SUR LA COLONNE DE LA PILE (2026-08-27), assez haut pour couvrir
+ * du bas du losange au sommet de la vignette : viser l'image et n'attraper que le losange, dix
+ * pixels plus bas, serait exactement le défaut que la nouvelle grammaire crée si on ne relève
+ * pas la zone avec elle.
+ *
+ * CE QU'IL FAUT SAVOIR DE CE DISQUE, parce qu'un disque n'est pas une pile : il couvre la
+ * COLONNE CENTRALE sur toute la hauteur, mais les FLANCS EXTRÊMES d'une vignette très large
+ * (rapport proche de la borne `PAD_ICON_MAX_ASPECT`, soit ~3) en sortent — de quelques pixels à
+ * mi-hauteur, d'une dizaine aux coins hauts. C'est ASSUMÉ (revue adversariale du 2026-08-27) :
+ * un rectangle rendrait l'arbitrage entre socles voisins nettement moins simple pour un gain qui
+ * ne concerne que les extrémités d'une image, là où l'œil ne vise pas.
+ *
+ * ELLE NE DÉPEND NI DE L'ÉTAT NI DU CHARGEMENT des vignettes : un socle vide occupe le même lieu
+ * qu'un socle plein, et une cible qui bougerait avec l'instant lu serait impossible à viser.
+ *
  * Le survol se rejoue sur la DONNÉE, jamais sur les pixels : ce sont les mêmes positions
  * projetées que le tracé. Le plus proche l'emporte quand deux socles se recouvrent — deux
  * armes peuvent partager un mètre carré sur une petite arène.
+ *
+ * DEUX DISTANCES, ET C'EST VOLONTAIRE : l'APPARTENANCE se juge sur la pile (centre relevé),
+ * l'ARBITRAGE entre deux socles atteints se juge sur le LIEU. Départager sur les piles ferait
+ * gagner le voisin le plus petit — sa pile est plus basse, donc son centre plus proche du sol —
+ * alors même que le pointeur est pile sur le losange de l'autre. Un socle est sa position.
  */
 export function padAt(
   pads: readonly ReplayWeaponPadReady[],
@@ -270,9 +276,14 @@ export function padAt(
   let bestD2 = Infinity
   for (const pad of pads) {
     const c = project({ x: pad.x, y: pad.y }, view)
-    const reach = Math.max(padRadiusPx(pad, style, k) + 3 * k, PAD_HOVER_MIN_RADIUS_PX * k)
+    const { half, iconH, gap } = padStackPx(pad, style, k)
+    // La pile monte de `iconH + gap` au-dessus du losange : son centre monte donc de la
+    // moitié, et son demi-hauteur vaut celle du losange augmentée de la même moitié.
+    const rise = (iconH + gap) / 2
+    const reach = half + rise + PAD_HOVER_MARGIN_PX * k
+    const inPile = (at.x - c.x) ** 2 + (at.y - (c.y - rise)) ** 2 <= reach * reach
     const d2 = (at.x - c.x) ** 2 + (at.y - c.y) ** 2
-    if (d2 <= reach * reach && d2 < bestD2) {
+    if (inPile && d2 < bestD2) {
       best = pad
       bestD2 = d2
     }
@@ -281,85 +292,88 @@ export function padAt(
 }
 
 /**
- * drawDot — LE POINT du socle : plein quand l'arme est prouvée là, pointillé quand le film ne
- * dit rien, discret quand l'absence est prouvée.
+ * drawDot — LE LOSANGE du socle : TOUJOURS PLEIN à l'encre de sa nature, et c'est l'OPACITÉ qui
+ * dit l'état (2026-08-27).
  *
- * L'ÉTAT SE LIT SANS LA COULEUR (le point n'en a qu'une, l'encre neutre du terrain) : c'est le
- * REMPLISSAGE qui dit « disponible », le POINTILLÉ qui dit « on ne sait pas » — la même
- * grammaire que `placementShapes`, où le pointillé a toujours voulu dire « non affirmé ».
+ * POURQUOI PLEIN DANS LES TROIS CAS. Il portait un remplissage à l'état plein et un simple
+ * contour aux deux autres : un trait de 1,2 px à 3 px de rayon, qui disparaissait sur un fond de
+ * carte chargé — le lieu devenait invisible dès que l'arme était prise, c'est-à-dire au moment
+ * précis où l'on cherche le socle. L'aplat tient dans tous les cas ; l'opacité le range derrière
+ * la scène sans l'effacer.
+ *
+ * LE POINTILLÉ N'EST PAS PERDU, il est déplacé : l'état incertain gagne un HALO losange
+ * pointillé concentrique, qui garde le sens que `placementShapes` lui donne partout ailleurs —
+ * « cette limite n'est pas affirmée » — sans le payer de la lisibilité du lieu.
  */
 function drawDot(
   ctx: CanvasRenderingContext2D,
   c: XY,
-  radius: number,
+  half: number,
   state: PadState,
-  time: PadTime,
+  k: number,
 ): void {
   ctx.globalAlpha = PAD_ALPHA[state].dot
-  traceDiamond(ctx, c, radius * PAD_DIAMOND_GROWTH)
-  if (state === 'full') {
-    ctx.fill()
-    return
-  }
-  ctx.lineWidth = PAD_DOT_WIDTH * time.k
-  ctx.setLineDash(state === 'uncertain' ? UNCERTAIN_DASH.map((d) => d * time.k) : [])
+  traceDiamond(ctx, c, half)
+  ctx.fill()
+  if (state !== 'uncertain') return
+  ctx.lineWidth = PAD_HALO_WIDTH * k
+  ctx.setLineDash(UNCERTAIN_DASH.map((d) => d * k))
+  traceDiamond(ctx, c, half + PAD_HALO_GAP_PX * k)
   ctx.stroke()
   ctx.setLineDash([])
 }
 
 /**
- * drawPadIcon — la vignette de l'arme, posée SOUS le point, remplie et cernée.
+ * drawPadIcon — la vignette de l'arme, posée AU-DESSUS du losange, remplie et cernée.
  *
  * Hauteur imposée, largeur déduite du rapport de l'image (bornée : une vignette d'arme est
  * très large). Le liseré est la même image reposée tout autour, à l'encre du fond : c'est ce
  * qui la détache d'un fond de carte clair comme d'un fond sombre.
  *
- * Sans vignette — famille hors catalogue du titre, ou visuel absent — un GLYPHE NEUTRE prend
- * sa place : jamais l'icône d'une arme voisine. Le nom (ou, à défaut, l'hexadécimal) reste
- * lisible au survol.
+ * Sans vignette — famille hors catalogue du titre, ou visuel absent — RIEN ne prend sa place :
+ * jamais l'icône d'une arme voisine, et pas davantage un glyphe de repli (retour utilisateur du
+ * 2026-08-26 : « j'ai l'impression qu'il y en a deux »). Le losange porte déjà le lieu et
+ * l'état ; le nom reste lisible au survol.
  */
 function drawPadIcon(
   ctx: CanvasRenderingContext2D,
-  c: XY,
-  scale: PadScale,
-  time: PadTime,
-  icon: PadIcon | null,
+  centre: XY,
+  h: number,
+  icon: PadIcon,
+  k: number,
 ): void {
-  const h = PAD_ICON_H_PX[scale] * time.k
-  // PAS DE GLYPHE DE REPLI (retour utilisateur du 2026-08-26 : « j'ai l'impression qu'il y en
-  // a deux »). Sans vignette, ce bloc posait un DISQUE PLEIN du même rayon que le point, à une
-  // dizaine de pixels sous lui : deux ronds empilés pour un seul socle, que l'œil lisait comme
-  // deux socles. Le point porte déjà la position ET l'état — il se suffit.
-  if (!icon) return
   const source = icon.fill
   const natW = 'width' in source && typeof source.width === 'number' ? source.width : 0
   const natH = 'height' in source && typeof source.height === 'number' ? source.height : 0
   const aspect = natW > 0 && natH > 0 ? Math.min(natW / natH, PAD_ICON_MAX_ASPECT) : 1
   const w = h * aspect
-  const x = c.x - w / 2
-  const y = c.y - h / 2
-  if (icon.outline) {
-    const d = PAD_OUTLINE_PX * time.k
-    for (let i = 0; i < PAD_OUTLINE_STEPS; i++) {
-      const a = (i / PAD_OUTLINE_STEPS) * Math.PI * 2
-      ctx.drawImage(icon.outline, x + Math.cos(a) * d, y + Math.sin(a) * d, w, h)
-    }
+  const x = centre.x - w / 2
+  const y = centre.y - h / 2
+  const d = PAD_OUTLINE_PX * k
+  for (let i = 0; i < PAD_OUTLINE_STEPS; i++) {
+    const a = (i / PAD_OUTLINE_STEPS) * Math.PI * 2
+    ctx.drawImage(icon.outline, x + Math.cos(a) * d, y + Math.sin(a) * d, w, h)
   }
   ctx.drawImage(source, x, y, w, h)
 }
 
 /**
- * drawCountdown — le compte à rebours AU-DESSUS du point, rempli et cerné comme la vignette.
+ * drawCountdown — le compte à rebours AU SOMMET DE LA PILE, rempli et cerné comme la vignette.
  *
  * SEULEMENT LE COMPTE (verdict du 2026-08-18) : ni médiane, ni nombre d'écarts, ni marge —
  * ces trois-là disaient la CONFIANCE dans le cycle, ce qui est une lecture d'analyse, pas un
  * repère de carte. Le compte, lui, répond à la seule question qu'on se pose en regardant un
  * socle vide : dans combien de temps.
+ *
+ * `topY` est le sommet de ce qui est RÉELLEMENT dessiné, et l'appelant n'a en pratique qu'un
+ * candidat à lui passer : le sommet du LOSANGE. Un compte à rebours ne s'écrit que sur un socle
+ * vide, et un socle vide n'a pas de vignette — ancrer plus haut ferait flotter le chiffre
+ * au-dessus d'un trou, détaché du socle qu'il annonce.
  */
 function drawCountdown(
   ctx: CanvasRenderingContext2D,
   c: XY,
-  radius: number,
+  topY: number,
   text: string,
   style: { fill: string; outline: string; k: number },
 ): void {
@@ -367,7 +381,7 @@ function drawCountdown(
   ctx.font = `600 ${PAD_COUNTDOWN_FONT_PX * style.k}px ui-sans-serif, system-ui, sans-serif`
   ctx.textAlign = 'center'
   ctx.textBaseline = 'bottom'
-  const y = c.y - radius - PAD_GAP_PX * style.k
+  const y = topY - PAD_GAP_PX * style.k
   if (style.outline) {
     ctx.lineJoin = 'round'
     ctx.lineWidth = PAD_COUNTDOWN_STROKE_PX * style.k
@@ -376,6 +390,53 @@ function drawCountdown(
   }
   ctx.fillStyle = style.fill
   ctx.fillText(text, c.x, y)
+}
+
+/**
+ * drawOnePad — LA PILE D'UN SOCLE, de bas en haut : le losange au lieu mesuré, la vignette
+ * au-dessus (son bas au sommet du losange augmenté d'un écart, jamais sur lui), le compteur au
+ * sommet. L'ordre vertical EST la règle du retour du 2026-08-27.
+ */
+function drawOnePad(
+  ctx: CanvasRenderingContext2D,
+  pad: ReplayWeaponPadReady,
+  c: XY,
+  time: PadTime,
+  style: PadStyle,
+): void {
+  const { half, iconH, gap } = padStackPx(pad, style, time.k)
+  const state = padStateAt(pad, time.frame)
+  // LE LOSANGE, À L'ENCRE DE SA NATURE (A13, 2026-08-26 : « bordure et couleur plus vive, une
+  // couleur pour chaque type »). Il portait l'encre neutre du terrain, la même pour les trois :
+  // un socle de surbouclier ne se distinguait d'un râtelier que par sa taille. `style.ink` reste
+  // servi et reste le NEUTRE — il ne teint plus la marque, et le râtelier ordinaire retombe sur
+  // une encre propre par sa propre famille.
+  const encre = style.inkOf(pad.weapon)
+  ctx.strokeStyle = encre
+  ctx.fillStyle = encre
+  drawDot(ctx, c, half, state, time.k)
+  const iconAlpha = PAD_ALPHA[state].icon
+  const icon = iconAlpha > 0 ? style.iconOf(pad.weapon) : null
+  const iconBottom = c.y - half - gap
+  if (icon) {
+    ctx.globalAlpha = iconAlpha
+    drawPadIcon(ctx, { x: c.x, y: iconBottom - iconH / 2 }, iconH, icon, time.k)
+  }
+  // LE COMPTEUR NE DIT PAS SA SOURCE SUR LA CARTE, et c'est voulu : à 8 px, un chiffre suffit.
+  // La distinction mesurée / attendue se lit au survol, dans l'infobulle (D3, 2026-08-27).
+  //
+  // IL S'ANCRE SUR LE LOSANGE, ET C'EST UNE CONSÉQUENCE, PAS UN CHOIX (revue adversariale du
+  // 2026-08-27) : un compte à rebours n'existe que sur un socle VIDE (`padRespawnAt`), et un
+  // socle vide n'a PAS de vignette (`PAD_ALPHA.empty.icon` vaut 0). Le sommet de la pile EST
+  // donc toujours celui du losange ici. Le code portait un `icon ? … : …` dont la première
+  // branche était inatteignable — il décrivait une pile que ce cas ne produit jamais.
+  const respawn = padRespawnAt(pad, time.frame, time.frameMs)
+  if (respawn === null) return
+  drawCountdown(ctx, c, c.y - half, style.countdownLabel(respawn.seconds), {
+    fill: style.fill,
+    outline: style.outline,
+    k: time.k,
+  })
 }
 
 /**
@@ -395,56 +456,7 @@ export function drawWeaponPadsLayer(
   if (pads.length === 0 || view.width === 0) return
   ctx.save()
   for (const pad of pads) {
-    const c = project({ x: pad.x, y: pad.y }, view)
-    const scale = style.scaleOf(pad.weapon)
-    const radius = PAD_DOT_PX[scale] * time.k
-    const state = padStateAt(pad, time.frame)
-    // LE POINT, À L'ENCRE DE SA NATURE (A13, 2026-08-26 : « bordure et couleur plus vive, une
-    // couleur pour chaque type »). Il portait l'encre neutre du terrain, la même pour les
-    // trois : un socle de surbouclier ne se distinguait d'un râtelier que par sa taille.
-    // `style.ink` reste servi et reste le NEUTRE — il ne teint plus le point, mais l'appelant
-    // le passe toujours, et le râtelier ordinaire y retombe par sa propre famille.
-    const encre = style.inkOf(pad.weapon)
-    ctx.strokeStyle = encre
-    ctx.fillStyle = encre
-    drawDot(ctx, c, radius, state, time)
-    // LA VIGNETTE SUR LE POINT, PLUS SOUS LUI (retour utilisateur du 2026-08-26). Elle était
-    // posée une dizaine de pixels plus bas — un point ici, une image là — et les deux se
-    // lisaient comme DEUX socles voisins plutôt que comme un seul. Centrée, elle coiffe le
-    // point : UN socle, UNE marque. Le point reste dessous et garde son rôle, qui n'a jamais
-    // été d'être vu pour lui-même : il porte l'ÉTAT (plein / incertain / vide) par sa forme.
-    const iconAlpha = PAD_ALPHA[state].icon
-    if (iconAlpha > 0) {
-      ctx.globalAlpha = iconAlpha
-      ctx.fillStyle = style.fill
-      drawPadIcon(ctx, c, scale, time, style.iconOf(pad.weapon))
-    }
-    // LA BORDURE, par-dessus tout le reste : un anneau à l'encre de la nature, qui ENFERME la
-    // marque (A13). C'est elle qui fait la « couleur plus vive » demandée — un liseré se lit sur
-    // n'importe quel fond de carte, là où un aplat se dilue. Elle suit l'opacité du POINT, pas
-    // celle de la vignette : elle appartient au socle, pas à ce qu'il porte, et un socle vide
-    // doit garder un contour visible.
-    // ELLE SUIT LA FORME DE LA MARQUE (A14) : un liseré LOSANGE, concentrique au point. Un
-    // anneau autour d'un losange aurait rendu la distinction avec un marqueur de joueur
-    // illisible — c'est le contour extérieur que l'œil attrape en premier.
-    ctx.globalAlpha = PAD_ALPHA[state].dot
-    ctx.strokeStyle = encre
-    ctx.lineWidth = PAD_BORDER_WIDTH * time.k
-    traceDiamond(
-      ctx,
-      c,
-      (PAD_ICON_H_PX[scale] / 2 + PAD_BORDER_GAP_PX) * time.k * PAD_DIAMOND_GROWTH,
-    )
-    ctx.stroke()
-    // LE COMPTE À REBOURS, AU-DESSUS du point.
-    const left = padRespawnSecondsAt(pad, time.frame, time.frameMs)
-    if (left !== null) {
-      drawCountdown(ctx, c, radius, style.countdownLabel(left), {
-        fill: style.fill,
-        outline: style.outline,
-        k: time.k,
-      })
-    }
+    drawOnePad(ctx, pad, project({ x: pad.x, y: pad.y }, view), time, style)
   }
   ctx.globalAlpha = 1
   ctx.restore()
