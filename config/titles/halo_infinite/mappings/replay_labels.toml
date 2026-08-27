@@ -466,12 +466,15 @@ name_id    = "0xed76a664"
 provenance = "sofa_string_id"
 kind       = "carried"
 
-# Rang 10 de la palette famille A : rattache, non nomme. Cf. la note ci-dessus.
+# Rang 10 de la palette famille A. NOMME LE 2026-08-27, et par une voie neuve : sa banque
+# sonore est `sb_007_abl_shroud`, casse par hachage FNV-1 de l identifiant Wwise (banque
+# `92c830f5`, celle que le lot du 18/08 lui avait deja rattachee sans pouvoir la nommer).
+# C est l ECRAN OCCULTANT.
 [[equipment_objects]]
 id         = "0x4396db42"
-family     = "other"
+family     = "shroud_screen"
 name_id    = "0xb328c9fa"
-provenance = "sofa_anonyme"
+provenance = "banque_nommee"
 kind       = "carried"
 
 [[equipment_objects]]
