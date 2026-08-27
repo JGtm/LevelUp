@@ -1819,13 +1819,13 @@ aurait ecarte les films maigres et flatte le taux.
 n'etre qu'une difference de definition. Le releve KOTH et la mesure TC passent par le meme code,
 et le releve est publie avant le verdict TC.
 
-- [ ] D3t2.1 **RELEVE KOTH** : sur `01e1f945`, `606d9844`, `8076f97f`, `0a247154` — nombre
+- [x] D3t2.1 **RELEVE KOTH** : sur `01e1f945`, `606d9844`, `8076f97f`, `0a247154` — nombre
       d'emissions de tag 5 chainees, nombre de slots porteurs, couverture. **N en decoule par la
       regle ci-dessus.**
-- [ ] D3t2.2 **MESURE TC** : les six films du recensement, `a349fea8` EXCLU D'OFFICE.
+- [x] D3t2.2 **MESURE TC** : les six films du recensement, `a349fea8` EXCLU D'OFFICE.
       Precondition d'abord ; un film qui ne la passe pas ne compte NI POUR NI CONTRE, et la cause
       est nommee.
-- [ ] D3t2.3 **VERDICT** : seuil du superviseur, inchange.
+- [x] D3t2.3 **VERDICT** : seuil du superviseur, inchange.
 
 **LA MESURE, RENDUE OPERATOIRE.** L'ensemble DESIGNE a l'instant t est l'ensemble des valeurs de
 tag 5 chainees EN VIGUEUR a t — pour chaque slot porteur, sa derniere emission a `<= t`. Un slot
@@ -1856,3 +1856,74 @@ v7.5**, CR avec le verrou nomme, et la decision d'affichage du vivier repart a l
 
 **EXECUTION** : un film par processus, sentinelle memoire armee dans le processus qui decode,
 aucune base ouverte, `a349fea8` exclu d'office.
+
+- 2026-08-27 — **D3-ter VERROU 2 : NON TENU sur les quatre films exploitables. TC est `[!]`
+  DEFINITIF pour v7.5.** Protocole commite avant la mesure (`1c866d01d`). Un film par processus.
+  Sorties brutes figees dans `registre_film/D3TER_releve_koth.log` et `D3TER_instant_tc.log`.
+
+  **1. LE RELEVE KOTH FIXE `N`, ET IL DONNE EN PRIME LE CONTROLE POSITIF QUI MANQUAIT A TOUTE LA
+  CAMPAGNE.**
+
+  | film KOTH | emissions tag 5 chainees | slots | couverture | cardinal dominant |
+  |---|---|---|---|---|
+  | `01e1f945` | 7 | 4 | 79,9 % | **1 pendant 100,0 %** |
+  | `606d9844` | **5** | 4 | 55,5 % | **1 pendant 100,0 %** |
+  | `8076f97f` | 8 | 5 | 48,9 % | **1 pendant 98,4 %** |
+  | `0a247154` | 8 | 4 | 74,7 % | **1 pendant 100,0 %** |
+
+  Par la regle ecrite d'avance, **`N` = 5** (le plus petit des quatre).
+
+  **LE CONTROLE POSITIF EST LE RESULTAT LE PLUS IMPORTANT DE CE VOLET.** King of the Hill n'a
+  qu'UNE colline a la fois. L'instrument, applique tel quel a ce corpus, rend **cardinal 1 pendant
+  98,4 a 100 % du temps exploitable, sur 4 films sur 4**. Il mesure donc bien ce qu'il pretend
+  mesurer, et le canal est lisible avec seulement 5 a 8 emissions. **D3-bis n'avait aucun controle
+  de ce genre** : son negatif etait invalidable, celui-ci ne l'est pas de la meme facon.
+
+  **2. LA MESURE TC.** Precondition `N >= 5` et couverture `>= 50 %` :
+
+  | film | emissions | slots | couverture | precondition | cardinal 3 | cardinal max observe |
+  |---|---|---|---|---|---|---|
+  | `bf831a6b` | 3 | 3 | 58,4 % | **ECHOUE** (3 < 5) | (1 pendant 100 %) | 1 |
+  | `66aa5f0b` | 4 | 4 | 60,2 % | **ECHOUE** (4 < 5) | (1 pendant 100 %) | 1 |
+  | `a521164d` | 59 | 40 | 86,3 % | passe | **0,0 %** | **36** |
+  | `2f05dc98` | 22 | 18 | 93,1 % | passe | **27,8 %** | 16 |
+  | `0862dce4` | 168 | 79 | 94,6 % | passe | **0,2 %** | **77** |
+  | `d2c64f8c` | 27 | 24 | 93,9 % | passe | **3,9 %** | 22 |
+
+  **Seuil : 80 % du temps exploitable, sur >= 2 films. Mesure : 0,0 a 27,8 % sur les quatre films
+  exploitables. NON TENU.**
+
+  **LE VERDICT EST ROBUSTE A LA PRECONDITION** : en comptant AUSSI les deux films ecartes (0,0 %
+  chacun), la serie devient 0,0 / 0,0 / 0,0 / 0,2 / 3,9 / 27,8 % — meme verdict. `N` n'a donc
+  sauve aucun chiffre, dans aucun sens.
+
+  **3. LE VERROU, NOMME.** Le sous-canal tag 5 chaine reste CONTAMINE sur les films BTB, et le
+  chiffre qui le dit est le **cardinal maximal simultane : 16, 22, 36 et 77**. Un objet de mode a
+  trois zones ne peut pas designer soixante-dix-sept choses a la fois. Et ce maximum **croit avec
+  la taille du film** (77 sur le plus lourd, 16 sur le plus leger des exploitables) — la meme
+  signature que le nombre de slots en D3-bis. **Le filtre de chainage est NECESSAIRE mais PAS
+  SUFFISANT sur BTB** : il nettoie assez pour que l'arene (KOTH) rende un cardinal stable, pas
+  assez pour que le BTB en rende un.
+
+  Ce n'est donc ni les largeurs (refute a l'unite pres au verrou 1), ni l'unite de mesure
+  (corrigee ici, et validee par le controle positif KOTH), ni la metrique de lisibilite
+  (redefinie et satisfaite : couverture 86 a 95 % sur les quatre exploitables). **C'est
+  l'ANCRAGE sur les payloads BTB**, et il faudrait un ancrage plus fort — une bande de slots
+  restreinte a l'objet de mode plutot que tous les slots `ti=13` des images-cles — ce qui est un
+  chantier de decodage, pas un ajustement de protocole.
+
+  **4. CE QUE JE NE CONCLUS PAS.** Les deux films legers rendent cardinal 1 pendant 100 % du
+  temps, exactement comme KOTH. Il serait tentant d'en tirer que Total Control designe UNE zone a
+  la fois et non trois. **Je ne le fais pas** : ces deux films ECHOUENT la precondition (3 et 4
+  emissions), ils ne comptent ni pour ni contre, et une serie de 3 points ne decrit pas un match
+  de 5 minutes. C'est une observation, pas un resultat — et elle rejoint l'interdit que je m'etais
+  ecrit avant de mesurer.
+
+- [x] D3t2.1 Releve KOTH : fait, `N` = 5, controle positif obtenu (cardinal 1 sur 4/4).
+- [x] D3t2.2 Mesure TC : faite sur 6 films, 4 exploitables, 2 ecartes par la precondition.
+- [x] D3t2.3 Verdict : **NON TENU**. `totalcontrol_zone` ne rejoint PAS `heldZoneRoles`, les 3
+      actives n'entrent PAS en D5, **TC `[!]` DEFINITIF pour v7.5**. La decision d'affichage du
+      vivier repart a l'utilisateur.
+
+**CONTENU FINAL DE D5** : **A (proprietaire de colline KOTH) + C (vies libres du crane)**, bump
+unique au schema **21**. B reste hors publication.
