@@ -907,3 +907,37 @@ de 90 secondes et se juge a l'oeil.
 
 **Etat** : Isolation reste refusee, son entree de reglage retiree. L'outil, lui, est acquis et
 vaut pour toutes les cartes organiques.
+
+### 2026-08-27 — Le lot des dix-huit cartes sans bouillie
+
+Planche : https://claude.ai/code/artifact/90777230-9715-45fe-8190-0f617f29d36c
+
+**Verbatim** : « j'ai releve a l'oeil le reste des maps sans gribouillis (et tu verras qu'il n'y
+en a pas beaucoup qui peuvent etre traitees tant qu'on a pas regle ce souci de bouillies) »
+
+Les dix-huit sont toutes declarees et cuites. **Toutes gardent 100 pour cent de leurs ancres au
+sol.** La passe de mesure a releve, pour chacune, ce qui decide des reglages plutot que de les
+choisir a l'oeil.
+
+**Le taux de couverture, qui decide de l'ecretage** (regle des deux regimes du 26/08) :
+
+| sous 1/3 — la voie native ne s'y declenche jamais | au-dessus — elle fait deja le travail |
+|---|---|
+| Domicile 15,7 · Warehouse 17,9 · Lattice-Ranked 23,1 · The Pit 25,0 · Empyrean 26,9 · Ronin 27,0 · Rat's Nest 27,6 · Disciple 29,4 · Outlook 30,1 · Banished Narrows 31,6 | Starboard 36,4 · Dredge 40,3 · Urban Raid 43,4 · Corpo 45,8 · Scarlett's Landing 46,0 · Solution 49,7 · 944396dd 53,2 · Goliath 54,7 |
+
+**Le bornage aux volumes de mort gagne sur CINQ**, sans couter une ancre :
+
+| carte | avant | apres | surface |
+|---|---|---|---|
+| The Pit | 2551x1894 | 1792x1718 | **-36 %** |
+| Warehouse | 2207x2363 | 1818x2103 | **-27 %** |
+| Goliath | 1600x2210 | 1600x1640 | **-26 %** |
+| Ronin | 2011x3001 | 2011x2611 | **-13 %** |
+| Rat's Nest | 1892x2520 | 1892x2264 | **-10 %** |
+
+Sur les treize autres il est **inerte** : la boite que forment leurs volumes est plus grande
+que le cadre des ancres. Leur entree de reglage a ete RETIREE plutot que gardee sans effet —
+un reglage qui ne fait rien est une dette, pas une precaution.
+
+**Reste ouvert** : le vrai nom de `944396dd-5661-4a16-b1d8-a6053f762c55` (un agent le cherche),
+et les cartes a bouillie, qui attendent le resultat des enquetes sur Reclaimer.

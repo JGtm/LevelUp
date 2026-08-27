@@ -129,6 +129,41 @@
       "style": "encre",
       "raison": "Gate du 2026-08-26, carte 12. Vagabond est la carte que l utilisateur a designee comme demandant un GROS RETRAVAIL, et son fond de production le confirme : de grandes dalles sombres — canevas Forge et decor de fond — couvrent l image, l arene jouee n etant que l amas de detail du centre. C est une carte FORGE, donc ZERO zone de callout : le masque des zones n existe pas ici, et les leviers disponibles sont l ecretage, la boite utile et l echelle. Premiere intention : mesurer le taux de couverture et les ancres avant tout reglage. EN COURS.",
       "gateLe": "2026-08-26"
+    },
+    "648ae7aa-c5d0-4f80-861a-79eb30440fcb": {
+      "carte": "The Pit",
+      "style": "encre",
+      "rogneAuxVolumesDeMort": true,
+      "raison": "Lot du 2026-08-27 : les dix-huit cartes Forge relevees par l utilisateur comme exemptes de bouillie, donc traitables. BORNAGE AUX VOLUMES DE MORT arme ici parce qu il GAGNE, mesure a l appui : le cadre passe de 2551x1894 a 1792x1718 px, soit 36 pour cent de surface en moins, sans perdre une seule ancre (toutes au sol). C est l equivalent Forge du masque de callouts : les callouts disent ou l on joue, les volumes de mort disent ou l on meurt. Sur les treize autres cartes du lot il est INERTE — la boite qu ils forment est plus grande que le cadre des ancres — et leur entree de reglage a donc ete retiree plutot que gardee sans effet.",
+      "gateLe": "2026-08-27"
+    },
+    "504ebf22-12b6-46c3-a9c1-ea20ca5bf03c": {
+      "carte": "Goliath",
+      "style": "encre",
+      "rogneAuxVolumesDeMort": true,
+      "raison": "Lot du 2026-08-27 : les dix-huit cartes Forge relevees par l utilisateur comme exemptes de bouillie, donc traitables. BORNAGE AUX VOLUMES DE MORT arme ici parce qu il GAGNE, mesure a l appui : le cadre passe de 1600x2210 a 1600x1640 px, soit 26 pour cent de surface en moins, sans perdre une seule ancre (toutes au sol). C est l equivalent Forge du masque de callouts : les callouts disent ou l on joue, les volumes de mort disent ou l on meurt. Sur les treize autres cartes du lot il est INERTE — la boite qu ils forment est plus grande que le cadre des ancres — et leur entree de reglage a donc ete retiree plutot que gardee sans effet.",
+      "gateLe": "2026-08-27"
+    },
+    "133c0185-24ed-4bc2-b834-62db5c936257": {
+      "carte": "Rat's Nest",
+      "style": "encre",
+      "rogneAuxVolumesDeMort": true,
+      "raison": "Lot du 2026-08-27 : les dix-huit cartes Forge relevees par l utilisateur comme exemptes de bouillie, donc traitables. BORNAGE AUX VOLUMES DE MORT arme ici parce qu il GAGNE, mesure a l appui : le cadre passe de 1892x2520 a 1892x2264 px, soit 10 pour cent de surface en moins, sans perdre une seule ancre (toutes au sol). C est l equivalent Forge du masque de callouts : les callouts disent ou l on joue, les volumes de mort disent ou l on meurt. Sur les treize autres cartes du lot il est INERTE — la boite qu ils forment est plus grande que le cadre des ancres — et leur entree de reglage a donc ete retiree plutot que gardee sans effet.",
+      "gateLe": "2026-08-27"
+    },
+    "f459867d-7457-4397-a332-dbbb6812792a": {
+      "carte": "Ronin",
+      "style": "encre",
+      "rogneAuxVolumesDeMort": true,
+      "raison": "Lot du 2026-08-27 : les dix-huit cartes Forge relevees par l utilisateur comme exemptes de bouillie, donc traitables. BORNAGE AUX VOLUMES DE MORT arme ici parce qu il GAGNE, mesure a l appui : le cadre passe de 2011x3001 a 2011x2611 px, soit 13 pour cent de surface en moins, sans perdre une seule ancre (toutes au sol). C est l equivalent Forge du masque de callouts : les callouts disent ou l on joue, les volumes de mort disent ou l on meurt. Sur les treize autres cartes du lot il est INERTE — la boite qu ils forment est plus grande que le cadre des ancres — et leur entree de reglage a donc ete retiree plutot que gardee sans effet.",
+      "gateLe": "2026-08-27"
+    },
+    "5b12d6d9-1b5c-4eac-b2a9-de4c36b8a6d3": {
+      "carte": "Warehouse",
+      "style": "encre",
+      "rogneAuxVolumesDeMort": true,
+      "raison": "Lot du 2026-08-27 : les dix-huit cartes Forge relevees par l utilisateur comme exemptes de bouillie, donc traitables. BORNAGE AUX VOLUMES DE MORT arme ici parce qu il GAGNE, mesure a l appui : le cadre passe de 2207x2363 a 1818x2103 px, soit 27 pour cent de surface en moins, sans perdre une seule ancre (toutes au sol). C est l equivalent Forge du masque de callouts : les callouts disent ou l on joue, les volumes de mort disent ou l on meurt. Sur les treize autres cartes du lot il est INERTE — la boite qu ils forment est plus grande que le cadre des ancres — et leur entree de reglage a donc ete retiree plutot que gardee sans effet.",
+      "gateLe": "2026-08-27"
     }
   }
 }
