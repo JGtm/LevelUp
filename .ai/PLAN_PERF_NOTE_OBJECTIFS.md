@@ -287,18 +287,18 @@ robustesse.
 
 ### Lot 2 — Hygiène non-terminés / orphelins (batch auto-nettoyant)
 
-- [ ] B2.1 Dans `batchComputePerformanceScores` : après la boucle, NULLer
+- [x] B2.1 Dans `batchComputePerformanceScores` : après la boucle, NULLer
       (score + chain) toute ligne `player_match_enrichment_latest` scorée dont le
       match_id n'est PAS dans l'ensemble qualifié du run (couvre DNF, is_excluded,
       sous-seuil). Écriture via `PostSyncEnrichmentPersister.BatchUpdateMulti`
       (patterns persist existants, jamais d'UPSERT concurrent), observabilité slog
       (compte NULLés par cause).
-- [ ] B2.2 Tests d'intégration (tags=integration) : DNF scoré → NULLé ; sous-seuil
+- [x] B2.2 Tests d'intégration (tags=integration) : DNF scoré → NULLé ; sous-seuil
       scoré → NULLé ; qualifié → conservé ; is_excluded scoré → NULLé ; idempotence
       (2e run = 0 changement).
-- [ ] B2.3 Garde-rail pérenne : assertion d'intégration « aucun performance_score sur
+- [x] B2.3 Garde-rail pérenne : assertion d'intégration « aucun performance_score sur
       outcome=4 » après un run de batch sur fixture.
-- [ ] B2.4 Réparation d'index PSA (découverte lot 0, CONFIRMÉE sur pièces par le pilote
+- [x] B2.4 Réparation d'index PSA (découverte lot 0, CONFIRMÉE sur pièces par le pilote
       le 2026-08-27) : sur la DB `XxDaemonGamerxX`, `idx_psa_match` est incohérent —
       `WHERE match_id='05fffb2a-...'` rend 2 lignes, le scan forcé (`match_id||''=`)
       en rend 4. Item : balayer les 4 DBs joueur (comparaison lookup indexé vs scan
@@ -308,6 +308,25 @@ robustesse.
       lot 3 : le loader ospm lit par prédicat indexé via `personal_score_awards_latest`.
 
 Gate 2 : mêmes commandes que gate 1 (integration -p 1 incluse).
+
+**Gate 2 PASSÉ le 2026-08-27.** Batch auto-nettoyant livré (extraction
+`runPerfCleanupPass`, chargement des notes stockées dans les DEUX modes, ensembles
+qualified/below, NULLage via `PostSyncEnrichmentPersister.BatchUpdateMulti` — NULL SQL
+natif, INSERT-only stage perf, vecteur ART éliminé). DEUX resserrements nécessaires
+tranchés en exécution et testés : le SEUIL prime sur le skip (un match sous-seuil
+portant une note dans la bonne chaîne est nettoyé — la population a pu rétrécir), et
+les retours anticipés (univers vide / tout exclu) nettoient aussi
+(`cleanupAllScoredAsOrphans`). 6 tests d'intégration + garde-rail pérenne
+`TestBatchPerformance_NoStoredScoreSurvivesOnUnfinishedMatch` (modes normal ET force).
+Gates verts : unit/vet/build/gofmt exit 0, intégration -p 1 en tranches 305/305
+packages zéro `--- FAIL:` (himap timeout local toléré).
+**B2.4 exécuté sur les 4 DBs réelles** (port 8000 vérifié libre, dry-run → repair →
+re-vérif par process neuf + contre-sondes pilote) : la corruption touchait LES QUATRE
+DBs sur `idx_psa_match` ET `idx_psa_category` (JGtm : 220/3830 lignes invisibles à
+l'index, 5,7 % ; Choco 37 ; Madina 32 ; Daemon 7) ; `idx_psa_gen` sain partout.
+DROP+CREATE+CHECKPOINT, row counts identiques avant/après, zéro divergence après
+(témoin 05fffb2a : 2/4 → 4/4). Cause racine de la désync NON élucidée (hors périmètre,
+famille bug ART) — consignée en Découvertes.
 
 ### Lot 3 — Métrique ospm + profils de poids par chaîne
 
@@ -353,6 +372,9 @@ simulées et les notes produites par le code réel sur les mêmes données doive
 - [ ] B4.5 Balayage PSA des DBs de PROD (VPS) : même vérification d'index que B2.4 sur
       les DBs joueur du VPS — UNIQUEMENT après validation locale complète, et PRÉVENIR
       L'UTILISATEUR AVANT toute opération VPS (règle). Réparation identique si écart.
+      D'OFFICE (constat B2.4 : les 4 DBs locales étaient TOUTES corrompues — la prod,
+      même code, est à considérer atteinte jusqu'à preuve du contraire ; l'outil
+      `cmd/repair_psa_index` avec -dry-run puis -repair est prêt).
 - [ ] B4.6 Registre des reports : BTB non scindé (D-F) + sort de buildFormTab (D-G).
       thought_log. delivery-checklist. Autorisation utilisateur puis push de la branche
       (PAS de merge main — deploy prod).
@@ -387,6 +409,17 @@ simulées et les notes produites par le code réel sur les mêmes données doive
 - (lot 0) L'annexe corpus du plan disait Madina 22 objectif / 12 slayer en ranked ; la
   classification fidèle au code donne 21/13 (l'écart = `Ranked:CTF 3 Captures`, cf.
   D-I). Totaux ranked 50 et comptes JGtm 8 / Choco 8 / Daemon 0 confirmés.
+- (lot 2, 2026-08-27) La corruption d'index PSA touchait LES 4 DBs locales (pas
+  seulement Daemon), sur idx_psa_match ET idx_psa_category — réparée (B2.4), mais la
+  CAUSE RACINE de la désynchronisation n'est pas élucidée (famille bug ART, hors
+  périmètre). Piste d'investigation future : reproduire sur une DB fixture avec le
+  pattern d'écriture INSERT+tombstone de personal_score_awards.
+- (lot 2) Ratchet `TestSyncRootPackageFrozen` : `internal/sync/` gelé à 80 fichiers
+  racine non-test — tout fichier neuf y est refusé. Impact lots 3-4 : étendre les
+  fichiers existants (performance*.go) plutôt que d'en créer.
+- (lot 2) `batchComputePerformanceScores` : 189 → 180 L (dette funlen réduite, pas
+  accrue). Commentaire orphelin préexistant en fin de performance_helpers.go (doc
+  détachée de BatchComputePerformanceScores) — non traité.
 
 ## Protocole de reprise
 
