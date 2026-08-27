@@ -1434,3 +1434,58 @@ ci-dessus comme n'importe quel autre, sans traitement de faveur.
   objet d'objectif ne au meme socle. La falsification n'est pas a chercher ailleurs — c'est le
   seuil (2) : si ce mot n'est pas le crane, ses trous de replication ne coincideront pas avec le
   portage. La mesure suivante est donc aussi le controle de celle-ci.
+
+#### D4.3 — LE SEUIL (2) : les definitions operatoires, ECRITES AVANT LA MESURE
+
+> Aucun chiffre de resultat dans cette section. Le seuil (2) du §2.4 dit « **>= 90 %** des trous
+> ont EXACTEMENT UN joueur dont le score personnel s'incremente sur toute leur duree, temoin
+> **<= 5 %** ». « S'incremente sur toute sa duree » et « hors trou » sont des phrases, pas des
+> predicats : les voici rendus operatoires avant d'etre appliques.
+
+**LE TROU.** Les vies LIBRES du mot `0x0017592C` se construisent par `flagFreeLives` — la MEME
+regle d'appariement creation -> piste que les armes au sol, deja en production. Un TROU est
+l'intervalle entre la fin d'une vie libre et le debut de la suivante : l'objet a cesse de
+repliquer sa position, donc quelqu'un le porte (principe etabli, `flag_objects.go` § « Le
+principe »). L'intervalle AVANT la premiere vie et celui APRES la derniere ne sont pas des
+trous : rien ne les ferme, et un intervalle ouvert n'a pas de duree.
+
+**LES DEUX HORLOGES.** Les vies sont datees en microsecondes MOTEUR, les emissions de score en
+millisecondes depuis le PREMIER PAQUET du film. La conversion est celle du seuil (1),
+`matchMS = (moteurUS - origineUS) / 1000`, et elle n'est plus une hypothese : le seuil (1) vient
+de faire coincider des creations converties par cette formule avec des evenements `th=10` a
+3-6 ms. C'est une VALIDATION de la conversion, obtenue en chemin.
+
+**« S'INCREMENTE SUR TOUTE SA DUREE », RENDU OPERATOIRE.** Le trou est decoupe en TRANCHES
+consecutives de `d4TrancheMS = 5000` ms ; la derniere tranche incomplete est fusionnee a la
+precedente, de sorte que toute tranche dure au moins 5 s. Un slot QUALIFIE si son score
+personnel cumule croit STRICTEMENT dans CHAQUE tranche. Un slot qui gagne cent points au debut
+puis plus rien ne qualifie pas — c'est exactement ce que « sur toute sa duree » doit exclure, et
+c'est le piege que D2-ter a paye au prix fort.
+
+**LA TRANCHE VAUT 5 s, ET LA VALEUR SE JUSTIFIE** : le score d'Oddball monte a ~1 Hz pendant le
+portage, donc 5 s laissent attendre environ cinq increments — assez pour qu'une absence
+d'increment signifie quelque chose, assez peu pour qu'un trou de 20 s porte quatre verdicts
+independants. Un trou de moins de 5 s n'a pas une seule tranche pleine : il n'est PAS
+exploitable et ne compte ni pour ni contre.
+
+**EXACTEMENT UN.** Le trou est REUSSI si le nombre de slots qualifiants vaut exactement 1. Zero
+(personne ne marque) et deux ou plus (plusieurs marquent en continu) sont l'un et l'autre des
+echecs, et ils se comptent SEPAREMENT : ils ne disent pas la meme chose sur l'oracle.
+
+**LE TEMOIN, DEFINI AVANT DE COMPTER.** Pour chaque trou exploitable : un intervalle de MEME
+DUREE, place entierement HORS de tout trou (donc a l'interieur d'une vie libre, la ou l'objet
+replique et n'est donc porte par personne), soumis au MEME predicat. Le meme code, la meme
+duree, le meme decoupage en tranches. L'intervalle temoin est choisi de facon DETERMINISTE (le
+premier intervalle libre assez long rencontre a partir d'un rang tire par un generateur de
+graine FIXE, `d4GraineTemoin`), pour que deux executions rendent la meme sortie. Un trou dont
+aucun intervalle libre de meme duree n'existe n'a pas de temoin, et cela se DIT — le
+denominateur du temoin est publie a part de celui de la mesure.
+
+**LE DIAGNOSTIC DE L'ORACLE EST PUBLIE AVANT LE VERDICT** (reserve du superviseur, §D4). Pour
+chaque trou reussi, le delta de score personnel du porteur retenu, rapporte a la DUREE du trou :
+des points par seconde. Un oracle qui mesure du PORTAGE rend une valeur proche de 1 pt/s et
+proportionnelle a la duree ; un oracle domine par les FRAGS rend des sauts de l'ordre de la
+centaine, sans rapport avec la duree. Publier la mediane des points par seconde ET la mediane du
+delta brut separe les deux cas sans avoir a en prejuger. **Si le diagnostic dit « frags », le
+seuil (2) n'est pas evalue et Oddball passe `[!]` ORACLE** — le protocole du §D4 le dit deja, et
+il ne se renegocie pas a la lecture du chiffre.
