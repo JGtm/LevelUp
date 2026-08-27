@@ -1,10 +1,39 @@
 /**
  * Tests unitaires — MatchCard (Sprint 56).
  *
- * Vérifie : image map, hiérarchie titre/sous-titre, score et badges narratifs.
+ * Vérifie : image map, hiérarchie titre/sous-titre, score, badges narratifs et
+ * lien rejeu 2D à droite de la playlist.
  */
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
+
+// TanStack Router : <Link> (MatchReplayLink) exige un RouterProvider, absent en test
+// unitaire. Remplacé par un <a> qui INTERPOLE les params dans le template de route —
+// ce que le test vérifie (la route ciblée et ses params), pas le rendu du routeur.
+// Patron : features/explorer/ExplorerMatchesTable.test.tsx.
+vi.mock('@tanstack/react-router', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-router')>()
+  type LinkStubProps = {
+    children?: React.ReactNode
+    to: string
+    params?: Record<string, string>
+  } & React.AnchorHTMLAttributes<HTMLAnchorElement>
+  return {
+    ...actual,
+    Link: ({ children, to, params, ...rest }: LinkStubProps) => {
+      let href = to
+      for (const [key, value] of Object.entries(params ?? {})) {
+        href = href.replace(`$${key}`, value)
+      }
+      return (
+        <a href={href} {...rest}>
+          {children}
+        </a>
+      )
+    },
+  }
+})
+
 import { MatchCard } from './match-card'
 import type { RecentMatchItem } from '@/lib/api/types'
 
@@ -139,6 +168,37 @@ describe('MatchCard', () => {
     const matchNoKDA: RecentMatchItem = { ...LOSS_MATCH, kills: null, assists: null, deaths: null }
     render(<MatchCard match={matchNoKDA} />)
     expect(screen.queryByTestId('match-card-kda-bar')).toBeNull()
+  })
+
+  // Lien rejeu 2D à droite de la playlist : rendu UNIQUEMENT si l'artefact existe
+  // (has_replay) ET que la tuile connaît le joueur (playerSlug — route par joueur).
+  describe('lien rejeu 2D', () => {
+    const REPLAY_LABEL = 'Ouvrir le rejeu 2D du match'
+
+    it('affiche le lien vers le rejeu à côté de la playlist quand has_replay', () => {
+      render(<MatchCard match={{ ...WIN_MATCH, has_replay: true }} playerSlug="chief" />)
+      const link = screen.getByLabelText(REPLAY_LABEL)
+      expect(link.getAttribute('href')).toContain('/matches/match-001/replay')
+      expect(link.getAttribute('href')).toContain('/players/chief/')
+      // À droite du label de playlist : même conteneur que le sous-titre.
+      expect(link.parentElement?.textContent).toContain('Arène classée')
+    })
+
+    it('n\'affiche rien sans artefact de rejeu (pas de lien mort)', () => {
+      render(<MatchCard match={WIN_MATCH} playerSlug="chief" />)
+      expect(screen.queryByLabelText(REPLAY_LABEL)).toBeNull()
+    })
+
+    it('n\'affiche rien sans playerSlug (la route de rejeu est par joueur)', () => {
+      render(<MatchCard match={{ ...WIN_MATCH, has_replay: true }} />)
+      expect(screen.queryByLabelText(REPLAY_LABEL)).toBeNull()
+    })
+
+    it('affiche le lien même sans playlist (ligne dédiée)', () => {
+      const noPlaylist: RecentMatchItem = { ...WIN_MATCH, playlist_ui: null, has_replay: true }
+      render(<MatchCard match={noPlaylist} playerSlug="chief" />)
+      expect(screen.getByLabelText(REPLAY_LABEL)).toBeTruthy()
+    })
   })
 
   // V72-34 : la perf peut être structurellement absente (chaîne de performance en

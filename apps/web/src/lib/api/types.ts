@@ -1030,6 +1030,9 @@ export interface RecentMatchItem {
   session_label?: string | null
   /** True si la playlist est classée (CSR officiel). Source : match_registry.is_ranked. */
   is_ranked?: boolean | null
+  /** Un artefact de rejeu 2D existe pour ce match : la tuile porte le lien vers la page
+   *  de rejeu (résolu côté back en un listing de dossier par requête, cf. Explorer). */
+  has_replay?: boolean
 }
 
 export type MatchCitationSnippet = components['schemas']['MatchCitationSnippet']
