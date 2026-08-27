@@ -73307,3 +73307,35 @@ etre la diff » pour Live Fire.
 
 **Conclusion / prochaine etape** : verdict sur l'habillage des cartes organiques ; puis
 proposition d'instruction pour la source des callouts Forge.
+
+## [2026-08-27] « Qui peint l'image » — la mesure qui manquait aux fonds Forge
+
+**Statut** : outil livre ; Isolation toujours refusee.
+
+**Decision technique principale** : le rendu retient, pour chaque pixel, le TYPE d'objet qui a
+gagne le z-buffer (`Rendu.ArmeTypeGagnant`, `PixelsParType`), et la cuisson Forge journalise le
+classement. Une ligne de log remplace desormais une journee de tatonnements : sur Isolation,
+UN type a 32 exemplaires peint 82,7 pour cent de l'image, et seuls 46 types sur 292 sont
+visibles.
+
+**Ce que ca corrige dans ma facon de chercher** : trente rendus, cinq coupes geometriques et
+trois criteres portes par le modele ont echoue pour une raison commune — ils decrivent ce qu'un
+objet EST, aucun ne dit ce qu'il PEINT. J'ai meme designe un coupable a tort : les 349 branches
+d'Isolation, vues en ne dessinant qu'elles, n'occupent AUCUN pixel ; les exclure ne changeait
+pas un octet.
+
+**Trois criteres automatiques refutes sur ce cas** : emprise du modele (attrape les rochers
+legitimes), aire du maillage sur emprise au carre (le coupable sort au rang 222 sur 271, parmi
+les plus pleins), part de l'emprise au sol couverte (0,499, rang 145 sur 270). Aucun invariant
+de forme ne separe une coque d'arene d'un decor.
+
+**Piege paye** : un identifiant NEGATIF passe en argument a `node -e` est pris pour une option
+de node. Deux types differents ont rendu la meme image, ce qui l'a revele.
+
+**Hypotheses utilisateur fermees ce jour** : le champ 6 des objets Forge, jamais lu et candidat
+naturel pour une echelle, est ABSENT sur les 5 042 objets ; le repere de chaque objet est
+orthonorme au 1/10 000 ; les maillages sont sains.
+
+**Conclusion / prochaine etape** : le pelage type par type est desormais dirigeable — chaque
+retrait est une cuisson de 90 s et se juge a l'oeil. Isolation est un empilement de coques :
+retirer le premier type decouvre le deuxieme, et ainsi de suite.

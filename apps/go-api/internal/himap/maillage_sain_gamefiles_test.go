@@ -93,6 +93,101 @@ func TestMaillageSainDesObjetsForge(t *testing.T) {
 	}
 }
 
+// TestModelesFilairesDesObjetsForge — QUELS TYPES DESSINENT DES BRANCHES.
+//
+// Le 2026-08-27, isoler un seul type d objet a montre que le plus nombreux d Isolation
+// (349 exemplaires) dessine de longues BRANCHES : ce sont elles, multipliees par des
+// centaines, qui font le gribouillis. Un premier essai d exclusion avait echoue parce qu il
+// classait les types par EMPRISE du modele — ce qui attrape les gros rochers et laisse passer
+// les branches, longues mais minuscules en matiere.
+//
+// Le bon critere est la MINCEUR : l aire du maillage rapportee au carre de son emprise. Une
+// branche de 8 m d envergure porte quelques dixiemes de metre carre ; un rocher de meme
+// emprise en porte des dizaines. Ce test mesure la distribution pour choisir le seuil sur
+// piece, et verifie que le type des branches y tombe bien dans le bas du classement.
+func TestModelesFilairesDesObjetsForge(t *testing.T) {
+	racine, err := DeployRoot()
+	if err != nil {
+		t.Skip(err)
+	}
+	var carte CarteForge
+	for _, c := range CartesForge {
+		if c.Nom == "Isolation" {
+			carte = c
+		}
+	}
+	if carte.MapID == "" {
+		t.Skip("Isolation n est pas declaree dans CartesForge")
+	}
+	depot, err := cheminDepuisDepot(DepotVariantesCarte)
+	if err != nil {
+		t.Skip(err)
+	}
+	brut, err := os.ReadFile(filepath.Join(depot, carte.FichierMvar))
+	if err != nil {
+		t.Skipf("variante absente : %v", err)
+	}
+	v, err := mapvar.Parse(brut)
+	if err != nil {
+		t.Skipf("variante illisible : %v", err)
+	}
+	opts := OptionsCuissonForge{
+		RacineDeploy: racine, Objets: v.Objects,
+		CheminModuleCanevas: CheminCanevasForge(carte), Cle: carte.MapID,
+	}
+	idx, forge, err := indexForge(opts)
+	if err != nil {
+		t.Skipf("index Forge indisponible : %v", err)
+	}
+	modeles := modeleParType(t.Context(), v.Objects, idx, forge)
+	compte := map[int32]int{}
+	for _, o := range v.Objects {
+		compte[o.TypeID]++
+	}
+
+	type ligne struct {
+		typeID  int32
+		minceur float64
+		n       int
+	}
+	var l []ligne
+	for typeID, m := range modeles {
+		a := ouvreAsset(t.Context(), idx, m.id, m.groupe)
+		if a == nil {
+			continue
+		}
+		mn, ok := MinceurDuModele(a)
+		if !ok {
+			continue
+		}
+		l = append(l, ligne{typeID, mn, compte[typeID]})
+	}
+	sort.Slice(l, func(i, j int) bool { return l[i].minceur < l[j].minceur })
+	t.Logf("%d modeles mesures — minceur = part de l emprise au sol reellement couverte", len(l))
+	for i, x := range l {
+		if i >= 10 {
+			break
+		}
+		t.Logf("  LES PLUS FILAIRES  type %12d  minceur %.4f  x%d exemplaires", x.typeID, x.minceur, x.n)
+	}
+	for i := len(l) - 3; i < len(l); i++ {
+		if i >= 0 {
+			t.Logf("  LES PLUS PLEINS    type %12d  minceur %.4f  x%d exemplaires", l[i].typeID, l[i].minceur, l[i].n)
+		}
+	}
+	for _, x := range l {
+		if x.typeID == 2050581668 {
+			rang := 0
+			for _, y := range l {
+				if y.minceur < x.minceur {
+					rang++
+				}
+			}
+			t.Logf("  LE TYPE DES BRANCHES (349 exemplaires) : minceur %.4f, rang %d sur %d", x.minceur, rang, len(l))
+		}
+	}
+}
+
 // rapportAreteDiagonale rend le rapport entre l'arete MEDIANE des triangles et la diagonale de
 // la boite du modele, plus le nombre de triangles mesures.
 func rapportAreteDiagonale(a *RuntimeGeoAsset) (float64, int) {

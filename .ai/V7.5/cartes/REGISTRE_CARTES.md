@@ -870,3 +870,40 @@ on dessine tout au mauvais gabarit.
 **Prochain angle de rendu si aucune vignette ne convient** : ne plus retenir la surface la plus
 HAUTE par pixel mais la plus proche du sol joue, partout. C'est un mode de rendu, pas un
 reglage.
+
+### 2026-08-27 — « QUI PEINT L'IMAGE » : la mesure qui manquait
+
+**Verbatim** : « Aucune ne convient malheureusement » (sur les 30 rendus)
+
+**Le probleme etait de methode.** Trente rendus, cinq coupes geometriques et trois criteres
+portes par le modele ont echoue pour une raison commune : ils decrivent ce qu'un objet EST,
+aucun ne dit ce qu'il PEINT. Le rendu retient desormais, pour chaque pixel, le TYPE qui a
+gagne le z-buffer, et la cuisson journalise le classement.
+
+**Sur Isolation, une ligne de log a repondu a une journee de tatonnements** :
+
+```
+typesVisibles=46 sur 292   pixels=3 459 674
+-1342618612 : 82,7 %  avec 32 exemplaires
+ 1574763282 :  5,2 %  avec  3 exemplaires
+```
+
+**Un type, 32 exemplaires, peint 83 pour cent de l'image.** Et le type que j'avais designe
+comme coupable — les 349 branches, identifiees en ne dessinant qu'elles — **n'occupe AUCUN
+pixel** : les exclure ne changeait pas un octet du fichier, ce que j'ai verifie.
+
+**Trois criteres automatiques essayes et refutes** pour separer ces coques du reste :
+
+| critere | ce qu il donne sur le type coupable |
+|---|---|
+| emprise du modele | attrape les gros rochers legitimes |
+| aire du maillage / emprise au carre | rang 222 sur 271, parmi les plus PLEINS |
+| part de l emprise au sol couverte | 0,499, rang 145 sur 270 |
+
+**Ce que le pelage montre** : retirer le premier type decouvre le deuxieme (45,6 % avec
+3 exemplaires), retirer les quatre premiers decouvre le cinquieme (40,7 % avec 117). Isolation
+est un EMPILEMENT DE COQUES organiques au-dessus de son arene. Chaque pelage est une cuisson
+de 90 secondes et se juge a l'oeil.
+
+**Etat** : Isolation reste refusee, son entree de reglage retiree. L'outil, lui, est acquis et
+vaut pour toutes les cartes organiques.
