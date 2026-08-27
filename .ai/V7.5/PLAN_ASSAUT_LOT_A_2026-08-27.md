@@ -174,11 +174,28 @@ au patron du crane libre, et — si son gate tient — **l'etat des SITES d'amor
 
 ### A4 — Statborg Assaut (inventaire borne avec l'outil du lot O)
 
-- [ ] A4.1 `cmd/statnames-sweep` sur les films admis ; confrontation aux compteurs
+- [x] A4.1 `cmd/statnames-sweep` sur les films admis ; confrontation aux compteurs
       derivables SANS API : morts du porteur presume (kill feed), armements/explosions
       dates par le score de mode, sur les moities disjointes ecrites en A0.4.
-- [ ] A4.2 Verdict nomme (replique / ne replique pas quoi), log fige
+      — Fait 2026-08-27 : balayage 8/8 films OK (`A4_statborg_sweep.tsv`, pics 0,00-0,01
+      Gio, pont statborg 4-8 slots nommes par film — l'asymetrie redoutee du registre ne
+      s'est pas presentee). La jambe « morts du porteur presume » est tombee avec A1
+      (pas d'identite -> pas de porteur presume, ecrit au protocole §5) ; confrontation
+      (i) sommes contre explosions retenues + controle (ii) morts, instrument
+      `assaut_a4_confront_test.go` (TSV x releves figes, aucun film decode).
+- [x] A4.2 Verdict nomme (replique / ne replique pas quoi), log fige
       `A4_statborg_assaut.log`. Diagnostic seulement — aucune publication depuis A4.
+      — Verdict 2026-08-27 : **LE STATBORG REPLIQUE le compteur des points de mode PAR
+      JOUEUR** — emplacement comp 0 A des slots joueurs, candidat UNIQUE sur 43
+      emplacements, sommes exactes 4/4 films de recherche ET 4/4 de verification (garde
+      anti-zero : attendu 1-4 partout). Lecture sur pieces des TSV figes : les valeurs
+      (1-2 par joueur) se repartissent par CAMP en accord avec le score API — le comp 0 A
+      d'un slot joueur porte les points de mode CREDITES A CE JOUEUR, c'est-a-dire que
+      chaque explosion retenue NOMME SON POSEUR via le pont des morts. Controle positif :
+      comp 2 B contre morts du releve participants 37/37 = 100 % (seuil 90) — lecture
+      saine. Limite ecrite : les finals passent par RealRounds, donc manche 0 seulement
+      sur One Bomb (decouverte §5). AUCUNE publication depuis A4 — mais la voie « poseur
+      de bombe sans API » existe pour une reprise, et c'est un acquis nomme.
 
 ## 3. GATES DU LOT (a rejouer dans le worktree, codes de sortie au CR)
 
