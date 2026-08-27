@@ -2518,3 +2518,71 @@ change apres coup, aucun oracle choisi pour ce qu'il rendrait.
 **CONDITION DE REPRISE (hors v7.5)** : une reconstruction fondee sur la PREMIERE TRAVERSEE du lieu
 de repos — couverture mesuree 84,8 a 93,3 % — confrontee au meme oracle et au meme seuil de 80 %.
 Tout est instrumente ; il n'y manque qu'un protocole ecrit d'avance et une decision.
+
+### D9 — RECONSTRUCTION PAR LA PREMIERE TRAVERSEE : protocole ECRIT ET COMMITE AVANT LA MESURE
+
+> Aucun chiffre de resultat. **DERNIERE campagne sur le portage Oddball** : verdict final quel
+> qu'il soit, et pas de D10. Oracle et gate INCHANGES — recouvrement
+> `time_as_skull_carrier_seconds` **>= 80 %** et porteur principal identifie sur **>= 3** films
+> exploitables.
+
+**D'OU VIENT CETTE PISTE, ET POURQUOI ELLE N'EST PAS UN CINQUIEME REGLAGE.** D6 cherchait le
+porteur A L'INSTANT du silence et n'en trouvait qu'a 45,5 et 47,8 % des trous. D8 a mesure, sans
+s'en servir, que **84,8 a 93,3 %** des trous voient un joueur traverser le lieu de repos PENDANT
+leur duree, avec un quartile superieur de delai a 2,2-3,6 s. Le predicat change : ce n'est plus
+« qui est la quand l'objet se tait » mais « qui passe le PREMIER sur l'objet pose ». D8 a aussi
+REFUTE le sommeil (l'objet est porte, pas endormi) : les trous sont donc bien des portages, et il
+ne manquait qu'un point d'entree.
+
+**LA FENETRE DE DELAI EST FIXEE A PRIORI, ET SA VALEUR SORT DE LA MESURE D8 — PAS D'UN REGLAGE.**
+
+    d9FenetreMS = 8 000 ms
+
+**JUSTIFICATION, ECRITE AVANT DE MESURER.** Les q90 du delai silence -> premiere traversee valent
+**7,90 / 3,40 / 6,00 s** sur les trois films sains ; 8 s couvre donc le q90 de CHACUN, le plus
+exigeant compris. Au-dela s'etend une queue jusqu'a 22,6 s, et cette queue est precisement la
+zone ou « quelqu'un passe » cesse d'etre un ramassage pour devenir une COINCIDENCE : plus on
+attend, plus la probabilite qu'un joueur traverse un point donne pour une raison sans rapport
+augmente. Fixer la fenetre au q90 mesure, c'est prendre tout le signal que D8 a vu sans acheter
+la queue ou le temoin va rattraper le signal.
+
+**UN TROU SANS TRAVERSEE DANS LA FENETRE N'EST PAS ATTRIBUE.** Jamais devine, jamais rattrape par
+un elargissement apres coup. Il est compte, classe, et il pese au denominateur.
+
+**PUBLIE EN DIAGNOSTIC, EXPLICITEMENT HORS GATE** : le meme recouvrement calcule a 22 600 ms (la
+queue complete de D8). Il ne peut RIEN valider — il est la pour montrer ce que la queue ajoute,
+et si elle ajoute surtout du bruit, le temoin le dira au meme endroit.
+
+- [ ] D9.1 **Reconstruction** : le ramasseur d'un trou est le PREMIER joueur nomme dont la piste
+      passe a <= **1,5 m** (seuil CONSTATE de D6 — q25 0,20-0,43 m contre q75 5,5-7,9 m) de la
+      position de repos, dans les 8 s qui suivent le silence. Le portage court de cette traversee
+      jusqu'a `t0` de la vie suivante, ou jusqu'a la MORT du porteur si elle tombe avant (regle
+      fondee par la mesure D6 a 22/24 = 91,7 %).
+- [ ] D9.2 **Les deux temoins**, et ils ne controlent pas la meme chose :
+      **(a) TEMOIN DE JOUEUR** — un joueur tire au hasard parmi les PRESENTS remplace le premier
+      traversant. Il controle « le PREMIER a passer est-il le bon ? ».
+      **(b) TEMOIN SPATIAL** — la position de repos est DECALEE de **12 m** en x et en y, et toute
+      la chaine est rejouee dessus. C'est le controle que D8 n'avait pas : il repond a « une
+      position quelconque de la carte rendrait-elle le meme signal ? ». Les 12 m sont le decalage
+      de temoin deja etabli au depot (`defaultWitnessOffsetM`) — assez pour sortir du rayon de
+      ramassage d'un facteur huit, assez peu pour rester sur du sol foule.
+- [ ] D9.3 **Verdict** : recouvrement **>= 80 %**, **les DEUX temoins <= 0,50**, et porteur
+      principal identifie sur **>= 3** films exploitables.
+
+**LE CORPUS EST DE TROIS FILMS, ET LE CRITERE DU PORTEUR PRINCIPAL EXIGE DONC LES TROIS.** Je
+l'ecris sans l'adoucir : `51ebbc0f` est ecarte par la precondition de pont (**>= 50 %** de slots
+nommes — 10,7 % contre 89,7 / 86,1 / 87,5 %), le denominateur vaut trois, et « >= 3 sur les
+exploitables » se lit trois sur trois. Un porteur principal manque sur un seul film et le gate
+tombe.
+
+**SI LE GATE PASSE** : publication du porteur par vie de portage dans `objectiveObjects` — a
+verifier en codant si une CLE s'ajoute au contrat (39 -> 40 alors, avec `openapi-gen` et
+`generate-types`), schema 21 a RE-VERIFIER local avant tout, temoins re-cuits et CONTENU verifie
+(recette du registre : un artefact peut porter la bonne version et l'ancienne configuration),
+rendu crane-sur-porteur au patron du drapeau porte.
+
+**SI LE GATE RATE** : `[!]` FINAL, les sept acquis consignes, et la v7.5 n'y revient plus. Pas de
+D10, pas de sixieme oracle, pas d'elargissement de fenetre.
+
+**EXECUTION** : les 3 films exploitables, un par processus, sentinelle memoire armee dans le
+processus qui decode, oracle API FIGE en entree, aucune base ouverte par la mesure.
