@@ -62,6 +62,9 @@ type reglageCarte struct {
 	// PlancherTranche : profondeur en metres SOUS le niveau de jeu (valeur NEGATIVE) en deca
 	// de laquelle la matiere sort de la carte. Zero = -12 m. Voir OptionsCuisson.
 	PlancherTranche float64 `json:"plancherTranche,omitempty"`
+	// PlafondTranche : hauteur en metres AU-DESSUS du niveau de jeu au-dela de laquelle la
+	// matiere n est meme pas projetee. Zero = tranche par defaut. Voir OptionsCuisson.
+	PlafondTranche float64 `json:"plafondTranche,omitempty"`
 	// RogneAuxZones : effacer la matiere hors des zones nommees dilatees
 	// (himap/masque_zones.go). A ne poser qu apres avoir regarde le taux mesure.
 	RogneAuxZones bool `json:"rogneAuxZones,omitempty"`
@@ -77,6 +80,10 @@ type reglageCarte struct {
 	// Forge. Equivalent Forge du rognage aux zones de callout, qui n existent que sur les
 	// cartes natives (22 cartes, toutes natives).
 	RogneAuxVolumesDeMort bool `json:"rogneAuxVolumesDeMort,omitempty"`
+	// TypesExclus : identifiants de TYPE d objet Forge a ne pas dessiner. Dernier recours,
+	// quand un modele balaie la carte et qu aucune coupe geometrique ne peut l atteindre. Les
+	// candidats se lisent dans le log « types les plus etendus » de chaque cuisson Forge.
+	TypesExclus []int32 `json:"typesExclus,omitempty"`
 	// BoiteUtile : rectangle monde [minX, minY, maxX, maxY] hors duquel la matiere est effacee.
 	// LEVIER MANUEL — voir OptionsCuisson.BoiteUtile.
 	BoiteUtile []float64 `json:"boiteUtile,omitempty"`
@@ -348,4 +355,37 @@ func (e *environnement) rogneAuxVolumesDeMortDe(cle string) bool {
 	slog.Info("mapfond: bornage aux volumes de mort arme pour cette carte", "carte", cle,
 		"gateLe", c.GateLe)
 	return true
+}
+
+// typesExclusDe rend les types d objet Forge ecartes du dessin pour cette carte.
+func (e *environnement) typesExclusDe(cle string) map[int32]bool {
+	if e.reglages == nil {
+		return nil
+	}
+	c, ok := e.reglages.Cartes[cle]
+	if !ok || len(c.TypesExclus) == 0 {
+		return nil
+	}
+	m := make(map[int32]bool, len(c.TypesExclus))
+	for _, t := range c.TypesExclus {
+		m[t] = true
+	}
+	slog.Info("mapfond: types d objet ecartes pour cette carte", "carte", cle,
+		"types", len(m), "gateLe", c.GateLe)
+	return m
+}
+
+// plafondTrancheDe rend la hauteur de coupe HAUTE de cette carte, en metres au-dessus du
+// niveau de jeu. Zero = la tranche par defaut.
+func (e *environnement) plafondTrancheDe(cle string) float64 {
+	if e.reglages == nil {
+		return 0
+	}
+	c, ok := e.reglages.Cartes[cle]
+	if !ok || c.PlafondTranche <= 0 {
+		return 0
+	}
+	slog.Info("mapfond: tranche plafonnee pour cette carte", "carte", cle,
+		"plafond", c.PlafondTranche, "gateLe", c.GateLe)
+	return c.PlafondTranche
 }

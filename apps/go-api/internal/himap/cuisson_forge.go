@@ -37,6 +37,8 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 
 	"levelup/go-api/internal/analysis/replay/mapvar"
 	"levelup/go-api/internal/himodule"
@@ -88,6 +90,13 @@ type OptionsCuissonForge struct {
 	// joue, les volumes de mort disent ou l on meurt, et les 22 cartes a callouts sont toutes
 	// natives. Sans effet si la variante n en declare aucun avec une forme.
 	RogneAuxVolumesDeMort bool
+	// TypesExclus ecarte des TYPES d objet Forge du dessin. Dernier recours, quand un modele
+	// balaie la carte et qu aucune coupe geometrique ne peut l atteindre — voir le diagnostic
+	// « types les plus etendus » journalise a chaque cuisson.
+	TypesExclus map[int32]bool
+	// PlancherTranche / PlafondTranche : memes roles que dans OptionsCuisson.
+	PlancherTranche float64
+	PlafondTranche  float64
 }
 
 // CuitCarteForge rend le fond de carte d'une carte Forge en posant les modeles de ses objets.
@@ -110,7 +119,14 @@ func CuitCarteForge(ctx context.Context, opts OptionsCuissonForge) (*Rendu, Bila
 	// desormais la meme regle (cf. `TrancheDeJeu`).
 	zJeu := MedianeZ(opts.Ancres) - AncrageDecalageSol
 	b.NiveauDeJeu = zJeu
-	r.Tranche(TrancheDeJeu(zJeu))
+	minT, maxT := TrancheDeJeu(zJeu)
+	if opts.PlancherTranche < 0 {
+		minT = zJeu + opts.PlancherTranche
+	}
+	if opts.PlafondTranche > 0 {
+		maxT = zJeu + opts.PlafondTranche
+	}
+	r.Tranche(minT, maxT)
 	r.NiveauDeJeu(zJeu)
 	// MEME regle que la chaine native : la voie de reference contre les toits
 	// (rendu_reference.go). Une carte Forge a ciel ouvert reste sous le seuil et n'est pas
@@ -118,7 +134,7 @@ func CuitCarteForge(ctx context.Context, opts OptionsCuissonForge) (*Rendu, Bila
 	s := NewSurfaceReference(opts.Ancres)
 	r.ArmeReference(s)
 
-	poseObjetsForge(ctx, r, &b, opts.Objets, idx, forge)
+	poseObjetsForge(ctx, r, &b, opts.Objets, idx, forge, opts.TypesExclus)
 	if b.ObjetsDessines == 0 {
 		return nil, b, fmt.Errorf("aucun des %d objets Forge n'a de modele rtgo", len(opts.Objets))
 	}
@@ -173,9 +189,16 @@ func indexForge(opts OptionsCuissonForge) (*ModuleIndex, *himodule.Module, error
 
 // poseObjetsForge resout le modele de chaque type d'objet, puis pose ses triangles.
 func poseObjetsForge(ctx context.Context, r *Rendu, b *BilanCuisson,
-	objets []mapvar.Object, idx *ModuleIndex, forge *himodule.Module) {
+	objets []mapvar.Object, idx *ModuleIndex, forge *himodule.Module, exclus map[int32]bool) {
 	modeleDuType := modeleParType(ctx, objets, idx, forge)
 	assets := map[uint32]*RuntimeGeoAsset{}
+	// DIAGNOSTIC DES TYPES ETENDUS. Le « gribouillis » d Isolation ne cede ni a l ecretage ni
+	// au bornage : il vit A HAUTEUR DE SOL. Reste une cause possible — un TYPE d objet dont le
+	// modele balaie la carte. On mesure donc, une fois par type, l emprise du premier exemplaire
+	// pose ; le classement se lit dans les logs et sert a remplir le reglage typesExclus.
+	etendues := map[int32]float64{}
+	comptes := map[int32]int{}
+	defer func() { journaliseTypesEtendus(ctx, b, etendues, comptes) }()
 	for _, o := range objets {
 		if _, mort := TypesVolumesDeMort[o.TypeID]; mort {
 			b.VolumesDeMort++
@@ -196,6 +219,14 @@ func poseObjetsForge(ctx context.Context, r *Rendu, b *BilanCuisson,
 			continue
 		}
 		in := InstanceForge(o)
+		if _, vu := etendues[o.TypeID]; !vu {
+			etendues[o.TypeID] = etendueMondeDe(a, in)
+		}
+		comptes[o.TypeID]++
+		if exclus[o.TypeID] {
+			b.ObjetsExclus++
+			continue
+		}
 		for mi := 0; mi < a.MeshCount(); mi++ {
 			if mesh := a.Mesh(mi); mesh != nil {
 				r.AddMesh(mesh, in)
@@ -406,4 +437,53 @@ func boiteForge(ctx context.Context, opts OptionsCuissonForge) [4]float64 {
 	slog.InfoContext(ctx, "mapfond: bornage aux volumes de mort", "carte", opts.Cle,
 		"volumes", n, "boite", fmt.Sprintf("[%.1f %.1f %.1f %.1f]", boite[0], boite[1], boite[2], boite[3]))
 	return boite
+}
+
+// etendueMondeDe rend le plus grand cote XY, en metres, de l'emprise MONDE du premier
+// exemplaire d'un modele. Une valeur de l'ordre du metre est un objet de decor ; plusieurs
+// dizaines de metres sur une arene de cent, c'est un modele qui balaie la carte.
+func etendueMondeDe(a *RuntimeGeoAsset, in Instance) float64 {
+	lo := [2]float64{math.Inf(1), math.Inf(1)}
+	hi := [2]float64{math.Inf(-1), math.Inf(-1)}
+	for mi := 0; mi < a.MeshCount(); mi++ {
+		m := a.Mesh(mi)
+		if m == nil {
+			continue
+		}
+		for _, v := range m.Vertices {
+			w := in.LocalToWorld(v)
+			for k := 0; k < 2; k++ {
+				lo[k] = math.Min(lo[k], w[k])
+				hi[k] = math.Max(hi[k], w[k])
+			}
+		}
+	}
+	if math.IsInf(lo[0], 1) {
+		return 0
+	}
+	return math.Max(hi[0]-lo[0], hi[1]-lo[1])
+}
+
+// journaliseTypesEtendus classe les types par emprise et journalise les dix premiers. C'est la
+// SEULE sortie qui permette de designer un type fautif : les objets Forge n'ont pas de nom.
+func journaliseTypesEtendus(ctx context.Context, b *BilanCuisson, etendues map[int32]float64, comptes map[int32]int) {
+	type ligne struct {
+		typeID  int32
+		etendue float64
+		n       int
+	}
+	var l []ligne
+	for t, e := range etendues {
+		l = append(l, ligne{t, e, comptes[t]})
+	}
+	sort.Slice(l, func(i, j int) bool { return l[i].etendue > l[j].etendue })
+	if len(l) > 10 {
+		l = l[:10]
+	}
+	var detail []string
+	for _, x := range l {
+		detail = append(detail, fmt.Sprintf("%d:%.0fm x%d", x.typeID, x.etendue, x.n))
+	}
+	slog.InfoContext(ctx, "mapfond: types les plus etendus", "carte", b.Module,
+		"types", len(etendues), "top", strings.Join(detail, " "))
 }
