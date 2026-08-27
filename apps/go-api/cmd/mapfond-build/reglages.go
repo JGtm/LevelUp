@@ -99,6 +99,9 @@ type reglageCarte struct {
 	// RogneAuNavmesh efface la matiere hors du maillage de navigation : le pendant Forge du
 	// masque des callouts, sans rien a dessiner a la main.
 	RogneAuNavmesh bool `json:"rogneAuNavmesh,omitempty"`
+	// ToleranceNavmesh vide les surfaces qui s ecartent de plus de N metres du sol donne par le
+	// maillage de navigation. C est ce qui fait un PLAN D ETAGE plutot qu une vue de dessus.
+	ToleranceNavmesh float64 `json:"toleranceNavmesh,omitempty"`
 	// SourceNavmesh cuit la carte depuis son MAILLAGE DE NAVIGATION au lieu de sa geometrie de
 	// rendu. Reservee aux cartes Forge : elles seules publient un navmesh.blob.
 	SourceNavmesh bool `json:"sourceNavmesh,omitempty"`
@@ -558,4 +561,17 @@ func (e *environnement) rogneAuNavmeshDe(cle string) bool {
 	}
 	slog.Info("mapfond: rognage au maillage de navigation", "carte", cle, "gateLe", c.GateLe)
 	return true
+}
+
+// toleranceNavmeshDe rend l ecart au sol au-dela duquel une surface est videe.
+func (e *environnement) toleranceNavmeshDe(cle string) float64 {
+	if e.reglages == nil {
+		return 0
+	}
+	c, ok := e.reglages.Cartes[cle]
+	if !ok || c.ToleranceNavmesh <= 0 {
+		return 0
+	}
+	slog.Info("mapfond: tolerance au sol du maillage", "carte", cle, "tolerance", c.ToleranceNavmesh, "gateLe", c.GateLe)
+	return c.ToleranceNavmesh
 }

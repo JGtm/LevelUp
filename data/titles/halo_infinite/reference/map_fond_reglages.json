@@ -175,9 +175,10 @@
       "carte": "Isolation",
       "style": "encre",
       "navmeshReference": true,
-      "raison": "Essai du 2026-08-27 : le maillage de navigation sert de SURFACE DE REFERENCE, la geometrie ordinaire restant la source du dessin. Le fond tire du seul navmesh est lisible mais nu — l utilisateur reconnait la carte et signale des elements manquants, parce que le maillage ne porte que le sol MARCHABLE, ni murs ni structures. Ici on garde le rendu habituel et on ne remplace que ce a quoi les surfaces sont comparees : la reference passe d une interpolation de 25 ancres a l altitude REELLE du sol en chaque point. Les cellules que le maillage ne couvre pas restent NaN, donc jamais substituees : le hors-arene se borne de lui-meme.",
+      "rogneAuNavmesh": true,
+      "raison": "Gate du 2026-08-27. Reference et rognage pris sur le maillage de navigation. Le gribouillis residuel dans les espaces de l arene ne vient PAS de la geometrie — la tolerance au sol a 1,5 m ne vide que 121 976 cellules et le laisse entier : ces surfaces sont A HAUTEUR DE SOL. Il vient de l habillage, qui souligne un bord des que deux voisins different de 50 cm et quantifie l eclairement en paliers. On fait donc varier l habillage, pas la geometrie.",
       "gateLe": "2026-08-27",
-      "rogneAuNavmesh": true
+      "seuilArete": 4
     }
   }
 }

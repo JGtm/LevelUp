@@ -54,6 +54,8 @@ func (r *Rendu) ArmeReferenceDepuisNavmesh(m *hinavmesh.Maillage) int {
 	// sortant : sans cela, le rognage qui vient apres ne trouverait plus rien et effacerait zero
 	// cellule — piege paye le 2026-08-27.
 	r.couvertureNavmesh = make([]bool, n)
+	r.referenceNavmesh = make([]float64, n)
+	copy(r.referenceNavmesh, r.ref)
 	for k, v := range r.ref {
 		r.couvertureNavmesh[k] = !math.IsNaN(v)
 	}
@@ -165,4 +167,44 @@ func (r *Rendu) dilateCouverture(marge float64) []bool {
 		}
 	}
 	return out
+}
+
+// EffaceLoinDuNavmesh vide les cellules dont la surface retenue s'ecarte de plus de `tolerance`
+// metres de l'altitude du sol donnee par le maillage, et rend le nombre de cellules vidées.
+//
+// CE QUE CA TRAITE. Une fois la reference prise sur le navmesh et le hors-maillage efface, il
+// reste, DANS l'arene, des surfaces qui ne sont pas le sol : passerelles vues par en dessous,
+// rebords, coques basses. Elles remplissent les espaces d'un fin gribouillis — c'est ce que
+// l'utilisateur a decrit le 2026-08-27 par « c'est comme si les espaces etaient remplis de
+// gribouillis ».
+//
+// A NE PAS CONFONDRE AVEC L'ECRETAGE. Celui-ci compare a une reference INTERPOLEE depuis les
+// ancres et ne sait donc pas ou est le sol a plus de vingt-cinq metres d'une d'elles. Ici la
+// reference est le sol MESURE en chaque point : la comparaison est vraie partout.
+//
+// Un etage superieur legitime est a plus de `tolerance` du sol et disparait donc lui aussi :
+// c'est le prix d'un PLAN D'ETAGE, et c'est ce qu'on veut sur une carte a ciel ferme.
+func (r *Rendu) EffaceLoinDuNavmesh(tolerance float64) int {
+	if r.referenceNavmesh == nil {
+		return 0
+	}
+	vidées := 0
+	for k := range r.z {
+		if math.IsInf(r.z[k], -1) {
+			continue
+		}
+		ref := r.referenceNavmesh[k]
+		if math.IsNaN(ref) {
+			continue
+		}
+		if math.Abs(r.z[k]-ref) <= tolerance {
+			continue
+		}
+		r.z[k] = math.Inf(-1)
+		if r.solSuppose != nil {
+			r.solSuppose[k] = false
+		}
+		vidées++
+	}
+	return vidées
 }
