@@ -47,6 +47,10 @@ type evenementStructure struct {
 	Nature  string          `json:"nature"`
 	Couches []brancheRendue `json:"couches"`
 	Wems    []uint32        `json:"wems"`
+	// Conditionnelles : les sous-arbres que les filtres du parcours ECARTENT, chacun avec
+	// la condition sous laquelle le jeu les joue. Ce ne sont pas des dechets : ce sont les
+	// PHASES du geste que le rendu au point de reference ne peut pas servir.
+	Conditionnelles []varianteConditionnelle `json:"variantes_conditionnelles,omitempty"`
 }
 
 // banqueStructure : une banque, ses evenements, et ce que ses evenements laissent de cote.
@@ -236,11 +240,16 @@ func structureDUneBanque(
 // evenementDeBanque assemble la vue d'un evenement : ses couches, sa nature, ses `.wem`.
 func evenementDeBanque(bk *bank, id uint32, snds []SndSon) evenementStructure {
 	couches := bk.couchesDeEvent(id)
+	cond := bk.variantesConditionnelles(id)
 	ev := evenementStructure{
-		Event:   fmt.Sprintf("%08x", id),
-		Couches: couches,
-		Wems:    bk.wemsDeEvent(id),
-		Nature:  natureEvenement(couches),
+		Event:           fmt.Sprintf("%08x", id),
+		Couches:         couches,
+		Wems:            bk.wemsDeEvent(id),
+		Nature:          natureEvenement(couches),
+		Conditionnelles: cond,
+	}
+	if len(cond) > 0 {
+		ev.Nature += fmt.Sprintf(" + %d PHASE(S) SOUS CONDITION", len(cond))
 	}
 	for _, s := range snds {
 		for _, mot := range s.Mots {
@@ -264,21 +273,56 @@ func natureEvenement(couches []brancheRendue) string {
 		return "aucune couche"
 	}
 	if len(couches) == 1 {
-		c := couches[0]
-		if len(c.Wems) == 1 {
-			return "1 couche, 1 son"
-		}
-		return fmt.Sprintf("1 couche, UN son tire parmi %d (%s)", len(c.Wems), c.TypeNoeud)
+		return "1 couche, " + descriptionCouche(couches[0])
 	}
 	var parts []string
+	enchaine := false
 	for _, c := range couches {
-		if len(c.Wems) == 1 {
-			parts = append(parts, "1 son")
-			continue
+		if c.DelaiS > 0 {
+			enchaine = true
 		}
-		parts = append(parts, fmt.Sprintf("1 parmi %d", len(c.Wems)))
+		parts = append(parts, descriptionCouche(c))
 	}
-	return fmt.Sprintf("%d couches SIMULTANEES [%s]", len(couches), strings.Join(parts, " + "))
+	liaison := "SIMULTANEES"
+	if enchaine {
+		liaison = "ENCHAINEES"
+	}
+	return fmt.Sprintf("%d couches %s [%s]", len(couches), liaison, strings.Join(parts, " + "))
+}
+
+// descriptionCouche dit ce qu'une couche joue, et ce qu'elle en fait : combien de variantes,
+// a quel instant elle demarre, si elle se repete. Rien qui ne soit porte par la couche.
+func descriptionCouche(c brancheRendue) string {
+	base := "1 son"
+	if len(c.Wems) != 1 {
+		base = fmt.Sprintf("1 parmi %d", len(c.Wems))
+	}
+	if c.DelaiS > 0 {
+		base += fmt.Sprintf(" a +%.2fs", c.DelaiS)
+	}
+	if c.Repetitions != nil {
+		if *c.Repetitions == 0 {
+			base += " EN BOUCLE"
+		} else {
+			base += fmt.Sprintf(" x%d", *c.Repetitions)
+		}
+		base += " " + nomEnchainement(c.ModeEnchainement, c.TransitionS)
+	}
+	return base
+}
+
+// nomEnchainement dit, en clair, comment les lectures successives se suivent.
+func nomEnchainement(mode int, transitionS float32) string {
+	switch mode {
+	case transitionCadence:
+		return fmt.Sprintf("(toutes les %.2fs)", transitionS)
+	case transitionDelai:
+		return fmt.Sprintf("(silence de %.2fs entre)", transitionS)
+	case transitionFonduAmp, transitionFonduPuiss:
+		return fmt.Sprintf("(fondu enchaine %.2fs)", transitionS)
+	default:
+		return "(bout a bout)"
+	}
 }
 
 // ecrireTousEmbarques ecrit l'INTEGRALITE des medias d'une banque, orphelins compris.
