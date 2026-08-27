@@ -30,7 +30,9 @@ const (
 	chainRankedObjectif = "ranked_objectif"
 	chainFirefight      = "firefight"
 
-	metricKeyOSPM  = "objective_participation"
+	// Clé de la métrique ospm : celle du PRODUIT depuis le lot 3 (plus de littéral
+	// local — le nom de la métrique ne peut plus diverger).
+	metricKeyOSPM  = skill.MetricKeyObjectiveParticipation
 	keyRankPerfDif = "rank_perf_diff"
 )
 
@@ -120,34 +122,33 @@ var weightsMinusDamage = func() map[string]float64 {
 
 func weightsMinusDamageFor(string) map[string]float64 { return weightsMinusDamage }
 
-// weightsObjective — profil objectif (D-C), poids ospm paramétrable.
+// weightsObjective — profil objectif du PRODUIT (skill.WeightsForChain, poids figés
+// au gate 0), avec le seul poids ospm rendu paramétrable pour les variantes de
+// sensibilité de l'outil.
+//
+// Depuis le lot 3, le profil objectif EXISTE côté production : l'outil le suit au
+// lieu d'en garder une 2e copie — à ospm = 0.12 (le poids figé), la map rendue est
+// donc identique à celle du batch de notes, par construction et non par recopie.
 func weightsObjective(ospm float64) map[string]float64 {
-	return map[string]float64{
-		metricKeyOSPM:                   ospm,
-		skill.MetricKeyKPM:              0.10,
-		skill.MetricKeyKDA:              0.09,
-		skill.MetricKeyAccuracy:         0.03,
-		skill.MetricKeyPSPM:             0.08,
-		skill.MetricKeyDPMDeaths:        0.10,
-		skill.MetricKeyAPM:              0.06,
-		skill.MetricKeyDPMDamage:        0.06,
-		skill.MetricKeyRankPerf:         0.04,
-		skill.MetricKeyKillsVsExpected:  0.09,
-		skill.MetricKeyDeathsVsExpected: 0.07,
-		skill.MetricKeyMedalExploit:     0.06,
-		skill.MetricKeyOffensiveConv:    0.09,
-		skill.MetricKeyDefensiveResist:  0.05,
+	src := skill.WeightsForChain(skill.LUSRChainArenaObjectif)
+	out := make(map[string]float64, len(src))
+	for k, v := range src {
+		out[k] = v
 	}
+	out[metricKeyOSPM] = ospm
+	return out
 }
 
-// weightsFor rend la fonction chaîne → profil du régime NOUVEAU.
+// weightsFor rend la fonction chaîne → profil du régime NOUVEAU. Hors famille
+// objectif, le profil vient directement du produit (skill.WeightsForChain) ; sur les
+// deux chaînes objectif, l'outil substitue sa variante de poids ospm.
 func weightsFor(ospm float64) func(string) map[string]float64 {
 	obj := weightsObjective(ospm)
 	return func(chain string) map[string]float64 {
 		if isObjectiveChain(chain) {
 			return obj
 		}
-		return skill.RelativeWeights
+		return skill.WeightsForChain(chain)
 	}
 }
 

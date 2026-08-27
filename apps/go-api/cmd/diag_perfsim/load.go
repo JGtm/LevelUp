@@ -142,7 +142,13 @@ type psaRow struct {
 // loadObjectiveByMatch calcule, par match, la somme des award_score de catégorie
 // `objective` en répliquant EN GO la sémantique de la vue
 // personal_score_awards_latest (DENSE_RANK sur generation_id par (match_id,xuid),
-// tombstones exclus). Scan complet sans prédicat : cf. entête du fichier.
+// tombstones exclus, filtre xuid strict) — la MÊME que celle du loader de production
+// skill.LoadObjectiveParticipation, qui lit la vue directement.
+//
+// Le scan complet sans prédicat est CONSERVÉ après la réparation d'index du lot 2 :
+// il rend cet oracle indépendant de l'état des index ART, dont la cause de
+// désynchronisation n'est pas élucidée. Une divergence outil/produit au lot 4
+// signalerait donc une re-corruption, pas un écart de règle.
 func loadObjectiveByMatch(ctx context.Context, playerDB *sql.DB, xuid string) (map[string]psaMatch, psaStats, error) {
 	var st psaStats
 	rows, err := playerDB.QueryContext(ctx, `

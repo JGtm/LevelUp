@@ -70,6 +70,10 @@ const (
 	MetricKeyPSPM             = "pspm"
 	MetricKeyDPMDamage        = "dpm_damage"
 	MetricKeyRankPerf         = "rank_perf"
+	// MetricKeyObjectiveParticipation (ospm) — points d'awards de catégorie
+	// `objective` par minute (source personal_score_awards, DB joueur). Active
+	// UNIQUEMENT sur les chaînes de famille objectif (cf. WeightsForChain).
+	MetricKeyObjectiveParticipation = "objective_participation"
 )
 
 // ── Score composite ─────────────────────────────────────────────────────────
@@ -125,6 +129,52 @@ var RelativeWeights = map[string]float64{
 	MetricKeyMedalExploit:     0.06,
 	MetricKeyOffensiveConv:    0.09,
 	MetricKeyDefensiveResist:  0.05,
+}
+
+// objectiveChainWeights — profil de poids des chaînes de FAMILLE OBJECTIF
+// (LUSRChainArenaObjectif, PerfChainRankedObjectif).
+//
+// FIGÉ au gate 0 du 2026-08-27 (décision D-J de .ai/PLAN_PERF_NOTE_OBJECTIFS.md,
+// argumentaire chiffré dans RAPPORT_SIM_PERF_NOTE_2026-08.md) : la participation à
+// l'objectif entre à 0.12, financée par les quatre métriques de combat pur
+// (kpm 0.14→0.10, kda 0.11→0.09, accuracy 0.04→0.03, pspm 0.10→0.08). TOUTES les
+// autres métriques sont identiques à RelativeWeights. Somme = 1.04, renormalisée
+// par computeRelativePerformanceScore comme le profil par défaut.
+//
+// À 0.16 les porteurs de combat perdaient jusqu'à 12 points et la marge de
+// non-inversion tombait au niveau du bruit : ne pas modifier ces poids sans
+// re-simuler (cmd/diag_perfsim) et les re-figer avec l'utilisateur.
+var objectiveChainWeights = map[string]float64{
+	MetricKeyObjectiveParticipation: 0.12,
+	MetricKeyKPM:                    0.10,
+	MetricKeyKDA:                    0.09,
+	MetricKeyAccuracy:               0.03,
+	MetricKeyPSPM:                   0.08,
+	MetricKeyDPMDeaths:              0.10,
+	MetricKeyAPM:                    0.06,
+	MetricKeyDPMDamage:              0.06,
+	MetricKeyRankPerf:               0.04,
+	MetricKeyKillsVsExpected:        0.09,
+	MetricKeyDeathsVsExpected:       0.07,
+	MetricKeyMedalExploit:           0.06,
+	MetricKeyOffensiveConv:          0.09,
+	MetricKeyDefensiveResist:        0.05,
+}
+
+// WeightsForChain rend le profil de poids du score relatif applicable à une chaîne
+// de performance.
+//
+// Les deux chaînes de famille objectif intègrent `objective_participation` ; toutes
+// les autres (arena_slayer, btb, chaos, firefight, ranked_slayer) gardent le profil
+// historique, où la métrique est ABSENTE — et une métrique absente du profil n'est
+// ni calculée ni comptée dans la renormalisation par la somme des poids présents.
+// Une chaîne inconnue retombe sur le profil par défaut (jamais de profil vide : un
+// score reste calculable).
+func WeightsForChain(chain string) map[string]float64 {
+	if chain == LUSRChainArenaObjectif || chain == PerfChainRankedObjectif {
+		return objectiveChainWeights
+	}
+	return RelativeWeights
 }
 
 // ── Chaînes LUSR ─────────────────────────────────────────────────────────────
