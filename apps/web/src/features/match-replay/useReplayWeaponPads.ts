@@ -35,6 +35,7 @@ import { useTitleSlug } from '@/lib/title-routing'
 
 import { catalogText } from './catalogLabel'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
+import { refinePadPresence } from './padPresenceRefine'
 import type { ReplayText } from './i18nContract'
 import type { PlacementView } from './placementShapes'
 import { tintedIconCanvas } from './replayDraw'
@@ -221,11 +222,22 @@ export function useReplayWeaponPads({
   redraw,
 }: WeaponPadsInput): WeaponPads {
   // LES SOCLES DU MATCH, POSÉS AUX EMPLACEMENTS DE LA CARTE quand le serveur les a croisés
-  // (cf. crossedWeaponPads). Mémoïsé sur les deux sources : le tableau change d'identité à
-  // chaque croisement, et il commande le tracé, le survol ET la cuisson des vignettes.
+  // (cf. crossedWeaponPads), PUIS leur incertitude ramenée à ce qu'un joueur a pu faire
+  // (cf. refinePadPresence, décision utilisateur du 2026-08-27).
+  //
+  // L'ORDRE DES DEUX EST LE BON, et il n'est pas indifférent : le raffinement mesure des
+  // DISTANCES au socle, il doit donc travailler sur la position FINALE. Le croisement ne la
+  // déplace que de moins d'un mètre par construction — le serveur ne sert un emplacement de
+  // carte que si un socle du match le confirme à moins d'un mètre — mais c'est justement
+  // l'échelle du rayon d'approche, et l'inversion se paierait aux limites.
+  //
+  // UNE SEULE PASSE PAR DOCUMENT, jamais par image : le raffinement parcourt les segments de
+  // trace de chaque fenêtre d'incertitude, ce qui est trop cher à refaire soixante fois par
+  // seconde. Mémoïsé sur les trois sources, comme le tableau qu'il rend.
   const pads = useMemo(
-    () => crossedWeaponPads(doc.weaponPads, doc.mapWeaponPads),
-    [doc.weaponPads, doc.mapWeaponPads],
+    () =>
+      refinePadPresence(crossedWeaponPads(doc.weaponPads, doc.mapWeaponPads), doc.tracks),
+    [doc.weaponPads, doc.mapWeaponPads, doc.tracks],
   )
   const [hover, setHover] = useState<WeaponPadHover | null>(null)
   const iconsRef = useRef<Map<string, PadIcon>>(new Map())

@@ -72622,3 +72622,32 @@ ecretage ; C rafale. 7 revues adversariales fraiches au total, P0+P1 partout a 0
 (fichiers disjoints, 4 commits proposes) ; (2) verifications ECRAN utilisateur (D/A/B,
 listes aux gates [!] du plan) et ECOUTE (C-5) ; (3) fusion : brancher depuis feat/v75 —
 attention a la divergence origin (chantier rejeu-capture, zones evitees par construction).
+
+## [2026-08-27] Retours rejeu — 2e passe utilisateur : A-3 ROUVERT et implante (regle d'affichage)
+
+**Statut** : Complete (worktree `replay-retours-0827`, en attente d'autorisation de commit).
+
+**Decision technique principale** : l'utilisateur a contredit la conclusion d'A-3 avec un cas
+vecu (socle incertain alors que tous les joueurs etaient a l'autre bout de la map) — et il a
+raison : l'oracle d'A-2 etait CIRCULAIRE (la preuve d'absence vient du recensement
+d'images-cles, borne par la proximite des joueurs ; ~75 % des contradictions sur les 2 seuls
+films BTB 24-25 joueurs, arenes a ~0-10 %). La these n'etait pas refutee, seulement non
+confirmable par l'artefact. Implante comme REGLE D'AFFICHAGE : `padPresenceRefine.ts` (pur,
+R = 2 m sur base autoritaire 1064 — 69,1 % d'approches, passage median 0,36 m) — socle PLEIN
+tant qu'aucune approche, incertain a la premiere approche (segment clippe, geometrie TS ≡
+Go), vide a tHigh et compteur inchanges ; aucune approche -> tLow = tHigh − 1/64 d'image
+(sentinelle « jamais vide » libre, lame fractionnaire ~1,6 ms). Cout assume documente : une
+vraie disparition sans approche s'affiche pleine.
+
+**Resultats observes** : revue adversariale dediee = 1 P1 (chiffres du rayon melant les
+denominateurs — reecrits sur 1064) + 4 P2 (clip sans test discriminant -> assertion ajoutee,
+mutation prouvee ; lame 0,5 lisible par frames fractionnaires -> 1/64 + commentaire honnete ;
+plafond Math.min inatteignable supprime ; corde de trou de replication documentee sans
+correction, coherente avec le rendu), 16 conditions tiennent. Gates : tsc vert, vitest
+match-replay 83 fichiers / 1235 verts, ESLint 0. Aussi clarifie a l'utilisateur : le contour
+d'icone est une SILHOUETTE (aucun cercle — mauvais mot du resume), et le rappel du match est
+localise (en-tete X-LevelUp-Locale, memes libelles serveur que la page match).
+
+**Conclusion / prochaine etape** : 5e commit a autoriser ; verification ecran de son cas
+(socle plein quand tout le monde est loin, doute au premier passage) ; l'enquete artefact BTB
+reste la condition pour fiabiliser tHigh.
