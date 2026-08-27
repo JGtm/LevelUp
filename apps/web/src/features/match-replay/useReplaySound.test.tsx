@@ -16,6 +16,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { KillEvent } from '@/features/match-view/_momentum'
 
+import type { EndMatchSoundSpec } from './endMatchSound'
 import { SOUND_MAX_SPEED } from './replaySoundCursor'
 import { type FakeContext, flushAudio, installFakeAudio } from './test/fakeAudio'
 import { testReplayDoc } from './test/testDoc'
@@ -215,6 +216,71 @@ describe('useReplaySound — préférences', () => {
     expect(result.current.volume).toBe(1)
     act(() => result.current.setVolume(-2))
     expect(result.current.volume).toBe(0)
+  })
+})
+
+/**
+ * LA FIN DE PARTIE (lot C, 2026-08-27). Les règles de SÉLECTION ont leurs tests
+ * (endMatchSound.test.ts) ; ici on ne juge que le câblage — que la conclusion obéisse aux mêmes
+ * silences que le reste (son coupé, avance rapide), que ses prises soient DÉJÀ chargées quand
+ * elle part (un fichier demandé à l'arrivée sonnerait après le silence), et que la voix et la
+ * fanfare partent bien ENSEMBLE, deux voix du lecteur et non un fichier pré-mixé.
+ */
+describe('useReplaySound — la fin de partie', () => {
+  const VICTOIRE_FR: EndMatchSoundSpec = { outcome: 'win', ffa: false, locale: 'fr' }
+
+  /** Le hook, monté sur le même match d'un kill, avec une fin de partie à annoncer. */
+  function mountWithEnd(spec: EndMatchSoundSpec | null = VICTOIRE_FR) {
+    const doc = docWithCouple()
+    const kills = [kill()]
+    return renderHook(() => useReplaySound(doc, kills, 0, 1, spec))
+  }
+
+  it('son coupé : la conclusion ne sonne pas, et n’ouvre aucun contexte au passage', () => {
+    const { result } = mountWithEnd()
+    act(() => result.current.endMatch())
+    expect(ctx.sources).toHaveLength(0)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('les prises sont préchargées AVEC la piste, tirage compris', async () => {
+    const { result } = mountWithEnd()
+    act(() => result.current.toggle())
+    await act(async () => { await flushAudio() })
+    const charges = fetchMock.mock.calls.map((c) => String(c[0]))
+    expect(charges).toContain('/static/sounds/halo_infinite/end_victory_voice_fr_01.wav')
+    expect(charges).toContain('/static/sounds/halo_infinite/end_victory_voice_fr_02.wav')
+    expect(charges).toContain('/static/sounds/halo_infinite/end_victory_music_01.wav')
+    expect(charges).toContain('/static/sounds/halo_infinite/hinf_br75.wav')
+  })
+
+  it('à l’arrivée, la voix et la fanfare partent ensemble — deux voix, pas une', async () => {
+    const { result } = mountWithEnd()
+    act(() => result.current.toggle())
+    await act(async () => { await flushAudio() })
+    act(() => result.current.endMatch())
+    expect(ctx.sources).toHaveLength(2)
+  })
+
+  it('avance rapide : la conclusion se tait aussi, comme l’annonce le panneau', async () => {
+    const doc = docWithCouple()
+    const { result } = renderHook(() =>
+      useReplaySound(doc, [kill()], 0, SOUND_MAX_SPEED * 2, VICTOIRE_FR),
+    )
+    act(() => result.current.toggle())
+    await act(async () => { await flushAudio() })
+    expect(result.current.mutedBySpeed).toBe(true)
+    act(() => result.current.endMatch())
+    expect(ctx.sources).toHaveLength(0)
+  })
+
+  it('fin non lisible : rien à charger, rien à jouer — le reste du son est intact', async () => {
+    const { result } = mountWithEnd(null)
+    act(() => result.current.toggle())
+    await act(async () => { await flushAudio() })
+    expect(fetchMock).toHaveBeenCalledTimes(1) // le seul son du match : le kill au BR
+    act(() => result.current.endMatch())
+    expect(ctx.sources).toHaveLength(0)
   })
 })
 

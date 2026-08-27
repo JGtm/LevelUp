@@ -23,6 +23,11 @@
  * image), et le `soundTick` de cette même image (le curseur du son suit toujours la lecture,
  * cf. useReplaySound — le laisser en arrière ferait repartir un son enjambé au prochain clic).
  *
+ * L'ARRIVÉE EST AUSSI UN ÉVÉNEMENT (`onEnded`, lot C du 2026-08-27) : c'est d'ici que part le
+ * son de fin de partie, parce que c'est le seul endroit qui sait distinguer une lecture qui
+ * FRANCHIT la borne d'une frise qu'on a tirée jusqu'au bout. La condition tient en trois mots —
+ * l'image d'AVANT le pas était en deçà de la borne.
+ *
  * RELANCER RESTE À UN CLIC, et c'est la convention des lecteurs vidéo : « Lecture » sur un
  * rejeu terminé repart du début plutôt que de rester bloqué sur la dernière image, où la boucle
  * se rendormirait aussitôt. « Recommencer » ne change pas — il ramène au début à tout instant.
@@ -65,6 +70,11 @@ export interface ReplayPlaybackOptions {
   draw: () => void
   /** Le battement du son : l'instant courant du rejeu, en ms (cf. useReplaySound.tick). */
   soundTick: (ms: number) => void
+  /**
+   * L'ARRIVÉE EN FIN DE MATCH : appelé quand la lecture FRANCHIT la borne de fin, jamais quand
+   * elle y était déjà (cf. l'en-tête). Le son de fin de partie s'y branche.
+   */
+  onEnded: () => void
 }
 
 /** Ce que la barre de lecture reçoit — l'état à afficher et les commandes. */
@@ -89,7 +99,7 @@ export interface ReplayPlayback {
 }
 
 export function useReplayPlayback(o: ReplayPlaybackOptions): ReplayPlayback {
-  const { doc, playWindow, baseFps, speed, renderWidth, frameRef, draw, soundTick } = o
+  const { doc, playWindow, baseFps, speed, renderWidth, frameRef, draw, soundTick, onEnded } = o
   const sliderRef = useRef<HTMLInputElement>(null)
   const [playing, setPlaying] = useState(true)
   const lastFrame = Math.max(doc.frameCount - 1, 0)
@@ -120,7 +130,8 @@ export function useReplayPlayback(o: ReplayPlaybackOptions): ReplayPlayback {
       if (last === 0) last = ts
       const dtSec = (ts - last) / 1000
       last = ts
-      let next = frameRef.current + dtSec * fps
+      const from = frameRef.current
+      let next = from + dtSec * fps
       // LA FIN DU FILM : on borne à la dernière image, on la PEINT, puis on s'arrête (cf.
       // l'en-tête). L'ordre compte — sortir avant le tracé laisserait la scène une image en
       // arrière, et sortir avant le curseur laisserait la frise mentir.
@@ -131,6 +142,13 @@ export function useReplayPlayback(o: ReplayPlaybackOptions): ReplayPlayback {
       soundTick(frameToMs(next, doc))
       draw()
       if (ended) {
+        // FRANCHIR LA BORNE, PAS Y ÊTRE. `from < endFrame` est ce qui distingue une ARRIVÉE
+        // d'un simple constat : une frise tirée jusqu'au bout pose déjà le curseur sur la
+        // borne, et le pas suivant conclurait « fin » sans que la lecture ait rien parcouru.
+        // C'est la décision D-C1 (« pas de son sur un scrub qui atteint la fin ») ; l'unicité,
+        // elle, est structurelle — la boucle s'arrête ici, et repartir passe par un rembobinage
+        // ou une position en deçà de la borne.
+        if (from < endFrame) onEnded()
         setPlaying(false)
         return
       }
@@ -138,7 +156,7 @@ export function useReplayPlayback(o: ReplayPlaybackOptions): ReplayPlayback {
     }
     raf = requestAnimationFrame(step)
     return () => cancelAnimationFrame(raf)
-  }, [playing, baseFps, speed, doc, renderWidth, draw, soundTick, endFrame, frameRef])
+  }, [playing, baseFps, speed, doc, renderWidth, draw, soundTick, onEnded, endFrame, frameRef])
 
   const onScrub = (e: ChangeEvent<HTMLInputElement>) => {
     frameRef.current = Number(e.currentTarget.value)

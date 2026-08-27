@@ -12,6 +12,7 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { useCallback, useMemo, useState } from 'react'
 
 import { normalizeCallouts } from '@/features/match-replay/calloutsLayer'
+import { endMatchSoundSpec } from '@/features/match-replay/endMatchSound'
 import { REPLAY_TEXT } from '@/features/match-replay/i18n'
 import {
   useMatchReplay,
@@ -133,6 +134,15 @@ function ReplayPage() {
     [data, matchView?.header],
   )
 
+  // LA FIN DE PARTIE SONORE (lot C), lue ICI comme le cadrage et pour la même raison : elle
+  // croise l'en-tête (l'issue du joueur de la page) et le scoreboard (ses camps), deux données
+  // qui ne se rejoignent qu'à ce niveau. C'est la MÊME lecture que l'écran de fin ci-dessous —
+  // `endMatchSoundSpec` s'appuie sur `readVictory`, il ne re-décode pas `outcome_code`.
+  const endMatchSound = useMemo(
+    () => endMatchSoundSpec(scoreboard, matchView?.header.outcome_code, locale),
+    [scoreboard, matchView?.header.outcome_code, locale],
+  )
+
   const hasReplay = !!data && data.tracks.length > 0
 
   return (
@@ -214,6 +224,7 @@ function ReplayPage() {
               scoreboard={scoreboard}
               xuidMeta={xuidMeta}
               marks={marks}
+              endMatch={endMatchSound}
             />
             {/* L'ÉCRAN DE FIN DE MATCH, dérivé de la position de lecture (D-B5) : il apparaît
                 quand la lecture atteint la borne de fin et disparaît dès qu'on remonte la

@@ -63,6 +63,7 @@ function mount(
   playWindow: ReplayWindowBounds | null = null,
   draw = vi.fn(),
   soundTick = vi.fn(),
+  onEnded = vi.fn(),
 ) {
   const view = renderHook(() =>
     useReplayPlayback({
@@ -74,9 +75,10 @@ function mount(
       frameRef,
       draw,
       soundTick,
+      onEnded,
     }),
   )
-  return { ...view, draw, soundTick }
+  return { ...view, draw, soundTick, onEnded }
 }
 
 /** Une fenêtre de gameplay dans le document de test : le match court de l'image 10 à la 40. */
@@ -239,6 +241,63 @@ describe('useReplayPlayback — la fenêtre de gameplay borne la lecture', () =>
       result.current.restart()
     })
     expect(frameRef.current).toBe(0)
+  })
+})
+
+/**
+ * L'ARRIVÉE EN FIN DE MATCH (lot C, 2026-08-27) — c'est d'ici que part le son de fin de partie.
+ *
+ * CE QUE CES CAS TIENNENT, et ce sont deux erreurs qui ne se voient pas à la relecture : une
+ * annonce qui partirait DEUX fois (fanfare doublée), et une annonce qui partirait sur une frise
+ * tirée jusqu'au bout alors que la décision D-C1 la réserve à la LECTURE. La distinction est
+ * dans un seul mot du code — l'image d'AVANT le pas était-elle en deçà de la borne.
+ */
+describe('useReplayPlayback — l’arrivée en fin de match s’annonce', () => {
+  it('la lecture qui FRANCHIT la borne annonce, une fois et une seule', () => {
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 39
+    const { onEnded } = mount(frameRef, FENETRE)
+    tick(1_000) // amorce : rien n'a encore été parcouru
+    expect(onEnded).not.toHaveBeenCalled()
+    tick(11_000) // la lecture passe 39 -> 40
+    expect(onEnded).toHaveBeenCalledTimes(1)
+    // La boucle s'est arrêtée : plus une image demandée, donc plus une annonce possible.
+    expect(pending).toHaveLength(0)
+  })
+
+  it('une frise tirée JUSQU’AU BOUT n’annonce rien (D-C1)', () => {
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 40 // le curseur est DÉJÀ sur la borne : le pas ne parcourt rien
+    const { result, onEnded } = mount(frameRef, FENETRE)
+    tick(1_000)
+    expect(result.current.playing).toBe(false)
+    expect(onEnded).not.toHaveBeenCalled()
+  })
+
+  it('« Recommencer » réarme : la prochaine arrivée s’annonce de nouveau', () => {
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 39
+    const { result, onEnded } = mount(frameRef, FENETRE)
+    tick(1_000)
+    tick(11_000)
+    expect(onEnded).toHaveBeenCalledTimes(1)
+    act(() => {
+      result.current.restart()
+    })
+    tick(20_000) // amorce de la nouvelle lecture, au coup d'envoi
+    tick(24_000) // 4 s à 10 images/s : la borne est de nouveau franchie
+    expect(frameRef.current).toBe(40)
+    expect(onEnded).toHaveBeenCalledTimes(2)
+  })
+
+  it('sans fenêtre, c’est la fin du FILM qui s’annonce — même règle', () => {
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 49
+    const { onEnded } = mount(frameRef)
+    tick(1_000)
+    tick(11_000)
+    expect(frameRef.current).toBe(50)
+    expect(onEnded).toHaveBeenCalledTimes(1)
   })
 })
 

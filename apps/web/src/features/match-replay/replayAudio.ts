@@ -5,9 +5,11 @@
  * par catégorie (décision utilisateur du 2026-08-16, lot R2.1) : une arme, un lancer et
  * la mêlée sont livrés à 1,2 s ; une explosion de grenade et un équipement vont jusqu'à
  * 4 s, parce que leur source dure 1,8 à 4,8 s et que les couper à la seconde les rendait
- * « écourtés » à l'oreille. Le lecteur n'impose donc plus SA seconde à tout le monde : il
- * joue ce qu'on lui livre, et `SOUND_CUT_MAX_S` n'est plus qu'un PLAFOND DE SÛRETÉ contre
- * un fichier livré trop long.
+ * « écourtés » à l'oreille ; les répliques et les fanfares de FIN DE PARTIE (lot C,
+ * 2026-08-27) sont livrées entières, jusqu'à 11,67 s — une fanfare coupée n'est plus une
+ * fanfare. Le lecteur n'impose donc plus SA seconde à tout le monde : il joue ce qu'on lui
+ * livre, et `SOUND_CUT_MAX_S` n'est plus qu'un PLAFOND DE SÛRETÉ contre un fichier livré trop
+ * long.
  *
  * LA COUPE RESTE UNE ENVELOPPE DE GAIN : tenue pleine, puis fondu de sortie sur les
  * dernières 0,25 s. Un `stop()` sec au milieu d'une onde claquerait (discontinuité) — le
@@ -34,14 +36,20 @@ import {
 /**
  * PLAFOND de durée jouée, en secondes — pas la coupe : la durée d'un son est celle de son
  * FICHIER (règle par catégorie, appliquée à la livraison des assets : armes/lancers/mêlée
- * 1,2 s, explosions et équipements jusqu'à 4 s). Ce plafond ne mord donc sur AUCUN fichier
- * livré aujourd'hui — il existe pour qu'un asset livré par erreur en pleine longueur (une
- * source de 30 s) ne tienne pas une voix pendant tout un échange.
+ * 1,2 s, explosions et équipements jusqu'à 4 s, répliques et fanfares de FIN DE PARTIE
+ * entières). Ce plafond ne mord donc sur AUCUN fichier livré aujourd'hui — il existe pour
+ * qu'un asset livré par erreur en pleine longueur (une source de 30 s) ne tienne pas une voix
+ * pendant tout un échange.
  *
- * Il vaut exactement la borne de la recette de coupe (4 s) : deux nombres qui divergeraient
- * feraient un son tronqué SANS que rien ne le dise.
+ * LA RÈGLE EST « PLAFOND = PLUS LONG FICHIER LIVRÉ », arrondi au-dessus : un nombre plus bas
+ * tronquerait un son SANS que rien ne le dise, un nombre bien plus haut ne protégerait plus de
+ * rien. Il valait 4,0 s tant que les explosions et les équipements étaient les plus longs
+ * (borne de leur recette de coupe) ; il vaut 12,0 s depuis le lot C du 2026-08-27, où les
+ * fanfares de fin de partie entrent au catalogue — la plus longue, l'égalité, fait 11,67 s.
+ * Ces trois-là sont les seuls fichiers du dossier au-dessus de 4 s, et le garde-rail d'assets
+ * tient toujours les autres sous leur propre borne (`replaySoundAssets.guard.test.ts`).
  */
-export const SOUND_CUT_MAX_S = 4.0
+export const SOUND_CUT_MAX_S = 12.0
 
 /** Durée du fondu de sortie, en secondes (borné à la moitié du son pour les très courts). */
 export const SOUND_FADE_S = 0.25

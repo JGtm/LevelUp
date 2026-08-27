@@ -24,6 +24,7 @@ function makeSound(over: Partial<ReplaySound> = {}): ReplaySound {
     categories: { weapon: true, grenade: true, melee: true, equipment: true },
     toggleCategory: vi.fn(),
     tick: vi.fn(),
+    endMatch: vi.fn(),
     recordingTrack: () => null,
     ...over,
   }
