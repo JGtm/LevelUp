@@ -93,6 +93,9 @@ type reglageCarte struct {
 	// PlafondObjets : ecarter les objets Forge POSES plus haut que N metres au-dessus du sol
 	// joue. Voir OptionsCuissonForge.PlafondObjets — ce n est ni l ecretage ni la tranche.
 	PlafondObjets float64 `json:"plafondObjets,omitempty"`
+	// SourceNavmesh cuit la carte depuis son MAILLAGE DE NAVIGATION au lieu de sa geometrie de
+	// rendu. Reservee aux cartes Forge : elles seules publient un navmesh.blob.
+	SourceNavmesh bool `json:"sourceNavmesh,omitempty"`
 	// SolVuDuDessous : retenir la surface la plus BASSE au-dessus du sol joue. Pour les cartes
 	// a ciel ferme, ou la voie haute ne montre que le plafond.
 	SolVuDuDessous bool `json:"solVuDuDessous,omitempty"`
@@ -507,4 +510,17 @@ func (e *environnement) drapeauxExclusDe(cle string) map[uint8]bool {
 	slog.Info("mapfond: drapeaux d objet ecartes pour cette carte", "carte", cle,
 		"drapeaux", c.DrapeauxExclus, "gateLe", c.GateLe)
 	return m
+}
+
+// sourceNavmeshDe dit si cette carte se cuit depuis son maillage de navigation.
+func (e *environnement) sourceNavmeshDe(cle string) bool {
+	if e.reglages == nil {
+		return false
+	}
+	c, ok := e.reglages.Cartes[cle]
+	if !ok || !c.SourceNavmesh {
+		return false
+	}
+	slog.Info("mapfond: cuisson depuis le maillage de navigation", "carte", cle, "gateLe", c.GateLe)
+	return true
 }
