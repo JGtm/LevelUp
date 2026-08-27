@@ -161,17 +161,25 @@ admis. Sinon : P1 INFIRMEE, le lot s'arrete en O3/O4 et le CR le dit.
 
 ### O4 — P4 : inventaire du statborg Oddball (l'outil de balayage est a REECRIRE)
 
-- [ ] O4.1 Reecrire l'outil de balayage des emplacements du statborg en CLI durable
+- [x] O4.1 Reecrire l'outil de balayage des emplacements du statborg en CLI durable
       `cmd/statnames-sweep` (remplace `cmd/tmp_statnames` disparu ; cite par
       `objectiveevents/named.go`) — lecture de film via `filmproc` OBLIGATOIRE, un film par
       processus, aucune ouverture de base en ecriture.
-- [ ] O4.2 Balayer les films admis ; confronter les compteurs par joueur aux colonnes oracle
+      — Fait 2026-08-27 : 3 fichiers (main/sweep/confront), parent filmproc + enfant sous
+      sentinelle 2 Gio + mode -confront pur ; la reference de `named.go` est mise a jour.
+- [x] O4.2 Balayer les films admis ; confronter les compteurs par joueur aux colonnes oracle
       des 7 matchs (58 lignes `match_objective_stats`) sur MOITIES DISJOINTES (moitie pour
       chercher, moitie pour verifier — repartition ecrite au protocole O0.3).
-- [ ] O4.3 Verdict nomme : « le statborg replique / ne replique pas un compteur de crane »,
+      — Fait 2026-08-27 : 4/4 films balayes (pics 0,01 Gio), 1792 valeurs finales, pont
+      statborg 8/7/2/3 slots nommes ; confrontation sur les moities du protocole.
+- [x] O4.3 Verdict nomme : « le statborg replique / ne replique pas un compteur de crane »,
       avec, si oui, l'emplacement et son accord chiffre sur la moitie de verification.
       (Le negatif du 18/08 portait sur 26 images-cles d'UN film — ce balayage-ci est la
       mesure complete que le handoff §4-P4 demande.)
+      — Fait 2026-08-27 : **NE REPLIQUE PAS** — 0 candidat sur 56 emplacements x 5 colonnes
+      x encodages (meilleurs accords 13,3-80,0 % pour 90 exige, 15 paires de recherche) ;
+      controle positif interne : le pont nomme les slots par `comp 2 B` (morts), la lecture
+      est saine. La piste P4 du handoff est SOLDEE (log `D10_P4_statborg.log`).
 
 **Gate du lot (O0-O4)** : les 3 logs figes existent (`D10_P1_ventilation.log`, `D10_P3_th10.log`,
 `D10_P4_statborg.log`), chaque phase a son verdict ecrit, le protocole n'a pas bouge apres
@@ -228,7 +236,20 @@ couronne). Chaque effet suit la DONNEE livree de son mode — rien en avance.
 
 ## 4. DECOUVERTES (a consigner ici, ne pas traiter)
 
-- (vide a l'ouverture)
+- (lot O, 2026-08-27) **Live Fire est hors du catalogue de bornes de quantification**
+  (`map_quant_bounds.json`) : les 2 films Oddball de cette carte (`60ae07c4`, `c88ec007`)
+  sont indecodables en coordonnees monde — c'est ce qui les a exclus du corpus D10. Et
+  **Lattice est hors du catalogue d'objectifs** (`map_objectives.json`) : `92f18088` n'a
+  aucun socle `oddball_spawn`, la classe « retour » y est indisponible. Completer ces deux
+  catalogues agrandirait le corpus Oddball mesurable de 4 a 6 films. NON TRAITE ici.
+- (lot O, 2026-08-27) **Asymetrie des deux ponts d'identite sur 2 films** : le pont
+  STATBORG par instants de mort (`SlotIdentityByDeaths`) ne nomme que 2 slots sur
+  `43716616` et 3 sur `d9781168`, alors que le pont BIPEDE des memes films est sain
+  (86,1 / 87,5 %). Cause non instruite (prudence du pont ? morts communes < 3 ? marge x2 ?).
+  NON TRAITE ici — mais toute mesure statborg par joueur sur ces films en herite.
+- (lot O, 2026-08-27) Des joueurs a 0 tic API portent des evenements `th=10` de crane
+  (`43716616` : 2 joueurs) — coherent avec une possession plus courte qu'un tic, et avec la
+  nature heartbeat etablie en O3. Simple note de denominateur.
 
 ## 5. REPRISE DE SESSION
 
