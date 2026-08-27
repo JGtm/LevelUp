@@ -907,6 +907,36 @@ func consumeByName(br *BitReader, name string, typeIndex uint32, level uint32) (
 	case compManagedObjectiveSubEntity: // ti=11 i16..i31 (FUN_142ed5974) — R(32) GlobalID, publie
 		consumeManagedObjectiveU32(br, ManagedObjectiveSubEntity)
 		return variant, nil, true
+	case "managed-objective-formatted-text-component": // ti=11 i2 (FUN_14080b034) — texte formate VARIABLE
+		consumeObjectiveFormattedText(br)
+		return variant, nil, true
+	case "managed-objective-secondary-formatted-text-component": // ti=11 i9 (meme corps FUN_14080b034)
+		consumeObjectiveFormattedText(br)
+		return variant, nil, true
+	case "managed-objective-interaction-filter-component": // ti=11 i4 (FUN_140dbe170) — filtre VARIABLE/RECURSIF
+		consumeObjectiveInteractionFilter(br, level)
+		return variant, nil, true
+	case "managed-objective-enabled-component": // ti=11 i6 (FUN_1411615f8) — R(1)
+		consumeManagedObjectiveEnabled(br)
+		return variant, nil, true
+	case "managed-objective-priority-component": // ti=11 i7 (FUN_14116d2b8) — R(8)
+		consumeManagedObjectivePriority(br)
+		return variant, nil, true
+	case "managed-objective-message-type-component": // ti=11 i8 (FUN_14116c844) — R(4)
+		consumeManagedObjectiveMessageType(br)
+		return variant, nil, true
+	case "managed-objective-is-new-and-unseen-component": // ti=11 i10 (FUN_142ed5510) — R(1)
+		consumeManagedObjectiveIsNew(br)
+		return variant, nil, true
+	case "managed-objective-is-only-one-item-unlocked-component": // ti=11 i11 (FUN_142ed5530) — R(1)
+		consumeManagedObjectiveOnlyOne(br)
+		return variant, nil, true
+	case "managed-objective-outro-phase-duration-component": // ti=11 i32 (FUN_142ed5634) — R(8) quant f32
+		consumeManagedObjectiveOutroPhase(br)
+		return variant, nil, true
+	case "managed-objective-forced-update-component": // ti=11 i33 (FUN_142ed54f0) — R(1)
+		consumeManagedObjectiveForcedUpdate(br)
+		return variant, nil, true
 	case "device-position-component": // ti43 (FUN_140bef320) — R(14)+R(1)
 		consumeDevicePosition(br)
 		return variant, nil, true

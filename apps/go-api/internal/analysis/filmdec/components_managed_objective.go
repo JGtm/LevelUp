@@ -47,11 +47,17 @@ const (
 
 // Largeurs des feuilles (immediats du desassemblage, cf. en-tete).
 const (
-	managedObjectiveTimerBits    = 7  // i0 : 2 lectures
-	managedObjectiveColorBits    = 8  // i1 : 4 lectures RGBA
-	managedObjectiveRefBits      = 32 // i3/i5/i12/i13/i15/i16-31 : R(32)
-	managedObjectiveStateBits    = 3  // i14 : R(3)
-	managedObjectiveSubEntityMax = 16 // borne DURE du tableau (offset d'i32 le prouve)
+	managedObjectiveTimerBits       = 7  // i0 : 2 lectures
+	managedObjectiveColorBits       = 8  // i1 : 4 lectures RGBA
+	managedObjectiveRefBits         = 32 // i3/i5/i12/i13/i15/i16-31 : R(32)
+	managedObjectiveStateBits       = 3  // i14 : R(3)
+	managedObjectiveSubEntityMax    = 16 // borne DURE du tableau (offset d'i32 le prouve)
+	managedObjectivePriorityBits    = 8  // i7  : R(8) inline (FUN_14116d2b8)
+	managedObjectiveMessageTypeBits = 4  // i8  : R(4) inline (FUN_14116c844)
+	managedObjectiveOutroBits       = 8  // i32 : R(8) QUANTIFIE f32 [0,3] (FUN_142ed5634)
+	managedObjectiveFilterMaskBits  = 4  // i4  : R(4) masque de slots (FUN_140dbe598)
+	managedObjectiveFilterSelBits   = 4  // i4  : R(4) selecteur de slot arme (FUN_141e98e10)
+	managedObjectiveFilterNodeBits  = 3  // i4  : R(3) compte du sous-noeud recursif (FUN_141e9a9c0)
 )
 
 // ManagedObjectiveField designe le champ publie de ti=11. Enumeration STABLE et NOMMEE, jamais
@@ -165,4 +171,93 @@ func ManagedObjectiveSubEntitySlot(occurrence int) int {
 // meme convention (milieu d'intervalle) que ti=10 boundary-color.
 func ManagedObjectiveColorValue(q uint64) float32 {
 	return dequantMidpoint(q, managedObjectiveColorBits, 0, 1)
+}
+
+// --- Feuilles RESTANTES de ti=11 (spec .ai/V7.5/replay2d/TI11_SPEC_10_FEUILLES.md) ---
+//
+// Ces feuilles sont CONSOMMEES pour l'atterrissage bit-exact du cadre d'image-cle ; elles ne
+// PUBLIENT PAS (aucun consommateur semantique : seuls i1 couleur, i3 porteur et i16-31
+// sous-zones alimentent la validation T2). Largeurs immediates du desassemblage, adresse par
+// adresse. Les feuilles FIXES (i6/i7/i8/i10/i11/i32/i33) ont une largeur constante quand
+// presentes au masque ; i2/i9 (formatted-text) reutilisent consumeObjectiveFormattedText
+// (components_batch3.go) ; i4 (interaction-filter) est VARIABLE/RECURSIVE (helpers ci-dessous).
+
+// consumeManagedObjectiveEnabled (i6) — FUN_1411615f8 -> FUN_1406cf008 : R(1) -> byte +0x154.
+func consumeManagedObjectiveEnabled(br *BitReader) { br.ReadBit() }
+
+// consumeManagedObjectivePriority (i7) — FUN_14116d2b8 : R(8) inline (CMP EAX,0x8) -> +0x158.
+func consumeManagedObjectivePriority(br *BitReader) { br.ReadBits(managedObjectivePriorityBits) }
+
+// consumeManagedObjectiveMessageType (i8) — FUN_14116c844 : R(4) inline (CMP EAX,0x4) -> +0x15c.
+func consumeManagedObjectiveMessageType(br *BitReader) { br.ReadBits(managedObjectiveMessageTypeBits) }
+
+// consumeManagedObjectiveIsNew (i10) — FUN_142ed5510 -> FUN_1406cf008 : R(1) -> byte +0x188.
+func consumeManagedObjectiveIsNew(br *BitReader) { br.ReadBit() }
+
+// consumeManagedObjectiveOnlyOne (i11) — FUN_142ed5530 -> FUN_1406cf008 : R(1) -> byte +0x189.
+func consumeManagedObjectiveOnlyOne(br *BitReader) { br.ReadBit() }
+
+// consumeManagedObjectiveOutroPhase (i32) — FUN_142ed5634 : R(8) QUANTIFIE f32 [0,3] (pas 3/255)
+// via FUN_1406d84b4 -> MOVSS +0x1dc. Ici seuls les 8 bits sont consommes (pas de dequant publie).
+func consumeManagedObjectiveOutroPhase(br *BitReader) { br.ReadBits(managedObjectiveOutroBits) }
+
+// consumeManagedObjectiveForcedUpdate (i33) — FUN_142ed54f0 -> FUN_1406cf008 : R(1) -> byte +0x1e0.
+func consumeManagedObjectiveForcedUpdate(br *BitReader) { br.ReadBit() }
+
+// consumeObjectiveInteractionFilter (i4) — miroir de FUN_140dbe170 -> FUN_140dbe400. VARIABLE :
+// R(4) masque de slots, puis un scalaire GATE par la version du composant (level>1: R(1), sinon
+// R(32)), puis pour chaque bit bas allume du masque un slot arme (R(4) selecteur + charge). Le
+// parametre `level` = param_4 (version) que l'EXE passe a FUN_140dbe170. CONSOMME, ne publie pas.
+func consumeObjectiveInteractionFilter(br *BitReader, level uint32) {
+	mask := br.ReadBits(managedObjectiveFilterMaskBits) // FUN_140dbe598
+	if level > 1 {
+		br.ReadBit() // scalaire version>1 : R(1)
+	} else {
+		br.ReadBits(managedObjectiveRefBits) // scalaire version<=1 : R(32)
+	}
+	for k := uint(0); k < managedObjectiveFilterMaskBits; k++ {
+		if (mask>>k)&1 != 0 {
+			consumeObjectiveInteractionFilterSlot(br)
+		}
+	}
+}
+
+// consumeObjectiveInteractionFilterSlot lit un slot arme du filtre i4 : R(4) selecteur puis la
+// charge dispatchee par FUN_141e98e10. sel0 = rien ; sel1..5 = R(1) commun + charge propre ;
+// sel6..15 = assert EXE (FUN_141e98c70) : flux invalide, rien a consommer.
+func consumeObjectiveInteractionFilterSlot(br *BitReader) {
+	switch br.ReadBits(managedObjectiveFilterSelBits) {
+	case 0: // rien
+	case 1: // commun R(1) + FUN_141e9d6d0 R(1)
+		br.ReadBit()
+		br.ReadBit()
+	case 2: // commun R(1) + FUN_141e9d120 R(32)
+		br.ReadBit()
+		br.ReadBits(managedObjectiveRefBits)
+	case 3: // commun R(1) + FUN_1407ef804 R(4)
+		br.ReadBit()
+		br.ReadBits(managedObjectiveMessageTypeBits)
+	case 4: // commun R(1) + FUN_141e9d670 R(9)
+		br.ReadBit()
+		br.ReadBits(9)
+	case 5: // commun R(1) + FUN_141e9a9c0 R(3) compte + recursion du sous-noeud
+		br.ReadBit()
+		cnt := br.ReadBits(managedObjectiveFilterNodeBits)
+		for i := uint64(0); i < cnt; i++ {
+			consumeObjectiveInteractionFilterNode(br)
+		}
+	default: // sel 6..15 : assert EXE, aucune charge
+	}
+}
+
+// consumeObjectiveInteractionFilterNode — sous-noeud RECURSIF du filtre i4 (FUN_141e9a9c0 ->
+// *vtable+0x28). Grammaire REPRISE de la resolution i4 (R(3) compte + recursion), NON re-verifiee
+// independamment (spec §Bloquants) ; elle ne FIRE PAS dans les frames minimales du corpus (KOTH
+// lande a i4=5 b, Oddball 79 b sans sel5). Si la re-mesure sous-lit encore sur i4 apres cablage,
+// c'est ici que la grammaire du sous-noeud est a confirmer au Ghidra.
+func consumeObjectiveInteractionFilterNode(br *BitReader) {
+	cnt := br.ReadBits(managedObjectiveFilterNodeBits)
+	for i := uint64(0); i < cnt; i++ {
+		consumeObjectiveInteractionFilterNode(br)
+	}
 }
