@@ -83,7 +83,7 @@ exports[`palette "default" > snapshot stable — toute modification doit être i
   "compare-c": "#10B981",
   "destructive": "#EF4444",
   "divergent-neg": "#EF4444",
-  "divergent-neutral": "#8A9099",
+  "divergent-neutral": "#60A5FA",
   "divergent-pos": "#22C55E",
   "extreme": "#C026D3",
   "heatmap-cold": "#EF4444",
