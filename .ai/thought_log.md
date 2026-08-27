@@ -74319,3 +74319,28 @@ process neuf) : zero divergence apres, row counts intacts, contre-sondes pilote 
 **Conclusion / prochaine etape** : autorisation de commit lot 2 demandee, puis lot 3
 (metrique ospm + profils de poids par chaine — attention ratchet sync gele a 80
 fichiers racine : etendre performance*.go, pas de fichier neuf).
+
+## [2026-08-27] Chantier note de perf — lot 3 LIVRE : metrique ospm + profils de poids par chaine
+
+**Statut** : En cours (plan `.ai/PLAN_PERF_NOTE_OBJECTIFS.md`). Lot 2 commite/pousse
+(`43049d772`) apres contre-sondes pilote (temoin Daemon 4/4, JGtm objective 662/662).
+
+**Lot 3 livre (worktree perfnote, en attente de commit)** : metrique
+`objective_participation` (ospm = points d awards categorie objective par minute, vue
+`personal_score_awards_latest`, pointeur = couverture — couvert-a-0 est une valeur,
+non-couvert = poids redistribue) ; profils de poids PAR CHAINE (`WeightsForChain` —
+profil objectif FIGE ospm 0.12/kpm 0.10/kda 0.09/accuracy 0.03/pspm 0.08, metriques de
+survie intactes, chaines non-objectif inchangees SANS ospm) ; filtrage par profil AVANT
+renormalisation ; signature du batch inchangee (5 call-sites herites, post-sync
+engine_postsync_scoring.go:83 confirme sur pieces). 12 tests neufs dont jumeaux « futur
+match » (actif objectif > inactif ; exigence user). Gates verts (303/303 packages
+integration -p 1, himap tolere). Arbitrages VALIDES : loader dans sync/skill (gel de
+sync, precedent LoadExcludedMatchIDs) ; diag_perfsim aligne sur WeightsForChain mais
+maintenu en scan complet = sentinelle de re-corruption d index pour l oracle lot 4.
+Piege capture : SUM(INTEGER) DuckDB rend un HUGEINT non scannable en float64 -> cast
+::DOUBLE dans le loader.
+
+**Conclusion / prochaine etape** : autorisation commit lot 3 + GO lot 4 demandes
+(recompute force perf + recompute LUSR des 4 joueurs sur DONNEES REELLES, backup des 4
+DBs avant, oracle sim avec tolerance medal_exploit documentee, binaire cable et
+verifie). B4.5 (balayage VPS) reste au pilote avec avertissement prealable.
