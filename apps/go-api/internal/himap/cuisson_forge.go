@@ -151,6 +151,18 @@ type OptionsCuissonForge struct {
 	PlafondTranche  float64
 	// SeuilArete : voir Rendu.SeuilArete.
 	SeuilArete float64
+	// RogneAuxZones EFFACE la matiere hors des zones de callout de la carte, dilatees de
+	// `MargeZones`. Les zones sont lues dans les OBJETS de la variante (`ZonesNommeesForge`) —
+	// rien a fournir, rien a telecharger. La mesure, elle, est INCONDITIONNELLE : elle seule
+	// dit si le rognage est defendable sur cette carte.
+	//
+	// A ARBITRER CONTRE `RogneAuNavmesh`, qui rogne au maillage de navigation. Les deux
+	// disent « ou l on joue » par deux sources independantes ; ils se cumulent sans se
+	// contredire, mais une carte n a en general besoin que d un des deux.
+	RogneAuxZones bool
+	// MargeZones : dilatation du masque des zones, en metres. ZERO = `MargeMasqueZones` (4 m),
+	// negatif = ne pas dilater du tout.
+	MargeZones float64
 }
 
 // CuitCarteForge rend le fond de carte d'une carte Forge en posant les modeles de ses objets.
@@ -229,6 +241,7 @@ func CuitCarteForge(ctx context.Context, opts OptionsCuissonForge) (*Rendu, Bila
 		n := r.EffaceLoinDuNavmesh(opts.ToleranceNavmesh)
 		slog.InfoContext(ctx, "mapfond: surfaces loin du sol vidées", "carte", opts.Cle, "tolerance", opts.ToleranceNavmesh, "cellules", n)
 	}
+	mesureEtRogneZonesForge(ctx, r, &b, opts)
 	borneALaBoite(ctx, r, &b, boiteForge(ctx, opts))
 	if b.VolumesDeMort == 0 {
 		b.degrade(ctx, "aucun volume de mort reconnu — l'empreinte des types a peut-etre bouge")
@@ -752,4 +765,34 @@ func journalisePixelsParType(ctx context.Context, r *Rendu, b BilanCuisson, obje
 	}
 	slog.InfoContext(ctx, "mapfond: qui peint l image", "carte", b.Module,
 		"typesVisibles", len(pix), "pixels", total, "top", strings.Join(detail, " "))
+}
+
+// mesureEtRogneZonesForge mesure la matiere hors des zones de callout de la carte, et ne
+// l efface que si la carte le demande. Jumeau exact de `mesureEtRogneZones` sur la chaine
+// native — meme masque, meme dilatation, meme journal — a ceci pres que les zones ne sont pas
+// fournies mais LUES DANS LES OBJETS deja charges.
+func mesureEtRogneZonesForge(ctx context.Context, r *Rendu, b *BilanCuisson, opts OptionsCuissonForge) {
+	zs := ZonesNommeesForge(opts.Objets)
+	if len(zs) == 0 {
+		return
+	}
+	marge := MargeMasqueZones
+	if opts.MargeZones > 0 {
+		marge = opts.MargeZones
+	} else if opts.MargeZones < 0 {
+		marge = 0
+	}
+	m := MasqueZones(r, ContoursDeZones(zs), marge)
+	matiere, dehors := r.MesureHorsZones(m)
+	b.MatiereHorsZones = dehors
+	part := 0.0
+	if matiere > 0 {
+		part = float64(dehors) / float64(matiere)
+	}
+	slog.InfoContext(ctx, "mapfond: matiere hors des zones de callout (Forge)", "carte", b.Module,
+		"zones", len(zs), "matiere", matiere, "dehors", dehors,
+		"part", fmt.Sprintf("%.1f%%", 100*part), "rogne", opts.RogneAuxZones, "marge", marge)
+	if opts.RogneAuxZones {
+		b.CellulesHorsZones = r.EffaceHorsZones(m)
+	}
 }

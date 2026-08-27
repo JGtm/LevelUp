@@ -84,7 +84,7 @@ metres (attendu : -0,29). `matchs` = somme des matchs de tous les map_id servis 
 | Shiro | `2890782c` | 18 | 84.0 | -0,01 | forge | REFUSEE 13/08 |
 | Domicile | `921aebb1` | 17 | 88.3 | -8,62 | forge | REFUSEE 13/08 |
 | Goliath | `504ebf22` | 17 | 52.2 | -0,02 | forge | REFUSEE 13/08 |
-| Isolation | `01af558d` | 17 | 93.9 | -0,04 | forge | VALIDEE BETA `encre` 27/08 — navmesh : reference + rognage + tolerance 1,5 m |
+| Isolation | `01af558d` | 17 | 93.9 | -0,04 | forge | VALIDEE `encre` 27/08 — navmesh (reference + rognage + tolerance 1,5 m) + zones de callout marge 1 m |
 | Fortress | `0d1c9255` | 17 | 87.4 | -10,60 | forge | REFUSEE 13/08 |
 | Dredge | `e4bb06db` | 16 | 91.5 | -0,25 | forge | REFUSEE 13/08 |
 | Vagabond | `105f5d84` | 16 | 74.3 | -0,01 | forge | A RETRAVAILLER — gros |
@@ -1100,3 +1100,67 @@ separera du sol puisqu'elles SONT le sol. Les aplatir demanderait de ne plus des
 geometrie mais le seul maillage, lisse par construction — au prix des structures.
 
 **Il n'y a pas de troisieme levier cache.**
+
+### 2026-08-27 — LES CARTES FORGE ONT DES CALLOUTS (l'utilisateur avait raison)
+
+**Verbatim** : « T'es sur pour les callouts ? En jeu je les vois, c'est peut-etre un fichier non
+telecharge aussi ? »
+
+**Il avait raison, et aucun fichier ne manquait.** Les zones nommees d'une carte Forge sont dans
+son `map.mvar` — celui que la cuisson lit deja. Chaque zone est un objet de type
+**-696190206** portant son StringId de lieu au chemin `#8/4[]/0/0`, qui se resout contre le
+tableau de 778 entrees du tag global `locs` : **le meme vocabulaire que les cartes natives**.
+
+**Isolation : 18 zones, 18/18 resolues** — *bottom mid*, *cave* (x4), *top mid*, *north base*,
+*south base*, *pipes* (x2), et 8 lieux que `callouts_i18n.csv` ne nomme pas encore.
+
+**L'erreur n'etait pas une mesure fausse mais une GENERALISATION fausse** : le zero mesure porte
+sur les CANEVAS (leurs 12 volumes anonymes sont des barrieres) ; nos en-tetes en avaient conclu
+le zero des CARTES. Un balayage d'entiers LE32 rend zero — les entiers Bond sont des varint
+zigzag — ce qui confirmait l'absence a qui cherchait naivement. Trois en-tetes corriges le meme
+jour (`callouts_catalog.go`, `replay_map_callouts.go`, `himap/callouts.go`).
+
+**Mesure du rognage sur Isolation** (1 162 199 cellules de matiere) :
+
+| marge | hors zones | part | ancres au sol |
+|---|---|---|---|
+| 1 m | 306 128 | 26,3 % | 24/25 |
+| 4 m | 198 738 | 17,1 % | 24/25 |
+| 8 m | 117 889 | 10,1 % | 24/25 |
+
+**L'ORACLE MORD** : la recette validee tient 25/25 ancres, le rognage aux zones en coute une, et
+8 m de marge ne la recuperent pas. Les zones de callout d'Isolation ne couvrent donc pas tout le
+terrain joue — le rognage aux zones est un levier de plus, pas un remplacant du maillage.
+
+**Piste `hkaiTraversalAnnotationLibrary` : FERMEE.** La region 3 du navmesh est une table de
+liens de saut (190 sur Isolation), sans aucune chaine — prouve par la reflexion du fichier-tag,
+pas par sondage. Temoin `hinavmesh.TestNavmeshNePorteAucuneChaine`.
+
+**Reste** : 274 des 434 StringId employes n'ont pas encore de texte joueur (extraction `uslg`) ;
+le rejeu 2D n'affiche toujours pas les callouts Forge (catalogue cle `map_id` + essai au service
+a ecrire). Detail : `.ai/V7.5/cartes/CALLOUTS_FORGE_2026-08-27.md`.
+
+### 2026-08-27 — Isolation : VALIDEE, la formule est complete
+
+Planche des cinq cuissons : https://claude.ai/code/artifact/7aef9c15-4034-4238-8f0f-915927684397
+
+**Verbatim** : « valide avec + zones, marge 1 m ».
+
+**La recette retenue cumule les deux sources qui disent ou l'on joue** :
+
+1. le MAILLAGE DE NAVIGATION comme reference d'altitude (845 552 cellules), puis effacement de
+   ce qui est hors de lui (2 175 499 cellules : dome, decor du canevas, dalles de ciel) et
+   vidage des surfaces qui flottent loin du sol (tolerance 1,5 m, 121 976 cellules) ;
+2. les ZONES DE CALLOUT de la carte, lues dans son propre `map.mvar`, en rognage SERRE
+   (marge 1 m, 306 128 cellules effacees, 26,3 % de la matiere restante).
+
+L'utilisateur a compare 1, 4 et 8 m et a choisi la plus serree — celle qui laisse le moins de
+gribouillis autour des zones.
+
+**Prix mesure, accepte** : 24/25 ancres au sol contre 25/25 sans le rognage aux zones, et 8 m de
+marge ne recuperent pas l'ancre perdue. Les zones de callout d'Isolation ne couvrent pas tout
+son terrain joue. Ecart connu et ecrit ; le verdict porte sur l'image.
+
+**Ce que ca ouvre pour les autres cartes Forge** : le levier `rogneAuxZones` ne demande aucun
+fichier a telecharger — les zones sont dans le `.mvar` que la cuisson lit deja. Toute carte
+Forge qui en porte peut recevoir le meme traitement, a mesurer carte par carte.

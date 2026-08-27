@@ -81,7 +81,7 @@ func sectionsDeReflexion(t *testing.T, charge []byte) []plageSection {
 	// par la capacite restante, ce qui evite de recalculer le preambule.
 	base := 0
 	for _, region := range decoupe {
-		if len(region) >= 8 && string(region[4:8]) == "TAG0" {
+		if len(region) >= 8 && string(region[4:8]) == sectionTAG0 {
 			sections := map[string][2]int{}
 			if err := parcoursSections(region, 0, len(region), sections, 0); err == nil {
 				if _, ok := sections["TNA1"]; ok {

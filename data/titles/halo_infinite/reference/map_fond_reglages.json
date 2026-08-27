@@ -177,7 +177,9 @@
       "navmeshReference": true,
       "rogneAuNavmesh": true,
       "toleranceNavmesh": 1.5,
-      "raison": "Recherche de marge sur le gribouillis residuel, 2026-08-27, apres validation en beta par l utilisateur. On garde la recette validee et on fait varier les deux seuls leviers qui restent : la tolerance au sol, qui vide ce qui n est pas le sol, et le seuil d arete, qui decide de ce qu on souligne. MARGE EXPLOREE ENSUITE, a la demande de l utilisateur : descendre la tolerance de 1,5 a 0,6 m ne fait passer les cellules vidées que de 121 976 a 173 434, soit six dixiemes de pour cent de l image, sans changement visible — ces surfaces sont A HAUTEUR DE SOL. Le seuil d arete releve a 2 m donne un gain leger et reel. Aucun troisieme levier.",
+      "rogneAuxZones": true,
+      "margeZones": 1,
+      "raison": "Recette RETENUE PAR L UTILISATEUR le 2026-08-27 (verbatim : « valide avec + zones, marge 1 m »), sur la planche des cinq cuissons. Deux sources independantes disent ou l on joue et elles se cumulent : le MAILLAGE DE NAVIGATION sert de reference d altitude (845 552 cellules) puis efface ce qui est hors de lui (2 175 499 cellules : dome, decor du canevas, dalles de ciel), et la tolerance de 1,5 m vide les surfaces qui flottent loin du sol (121 976 cellules). Les ZONES DE CALLOUT de la carte, lues dans son propre map.mvar (18 zones, 18 StringId resolus contre le tag locs : bottom mid, cave, top mid, north base, south base, pipes), rognent ensuite au ras du terrain nomme : marge 1 m, 306 128 cellules hors zones effacees, soit 26,3 pour cent de la matiere restante. MARGE SERREE ASSUMEE : l utilisateur a compare 1, 4 et 8 m et a choisi la plus serree, celle qui laisse le moins de gribouillis autour des zones. PRIX MESURE, ECRIT POUR NE PAS ETRE REDECOUVERT : le rognage aux zones coute UNE ancre au sol (24/25 contre 25/25 sans lui), et 8 m de marge ne la recuperent pas. Les zones de callout d Isolation ne couvrent donc pas tout son terrain joue. C est un ecart connu et accepte, pas une regression : le verdict porte sur l image, et l image est celle que l utilisateur a validee.",
       "gateLe": "2026-08-27"
     }
   }

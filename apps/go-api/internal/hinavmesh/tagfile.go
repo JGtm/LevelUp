@@ -45,6 +45,10 @@ const (
 	masqueTypeItem = 0xFFFFFF
 	// modeleElement est le parametre de modele qui porte le type element d'un hkArray.
 	modeleElement = "tT"
+	// sectionTAG0 est l etiquette de la section racine d un fichier-tag Havok : ses quatre
+	// octets a l offset 4 sont la SIGNATURE qui distingue une region tagfile d une region
+	// binaire brute.
+	sectionTAG0 = "TAG0"
 	// profondeurSectionsMax borne la recursion du parcours des sections.
 	profondeurSectionsMax = 8
 )
@@ -178,7 +182,7 @@ func lireFichierTag(region []byte) (*fichierTag, error) {
 	if err := parcoursSections(region, 0, len(region), sections, 0); err != nil {
 		return nil, err
 	}
-	if _, ok := sections["TAG0"]; !ok {
+	if _, ok := sections[sectionTAG0]; !ok {
 		return nil, fmt.Errorf("hinavmesh: region sans section TAG0")
 	}
 	data, ok := sections["DATA"]

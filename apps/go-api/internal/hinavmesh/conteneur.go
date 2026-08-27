@@ -7,7 +7,8 @@
 //
 //	[0..11]  en-tete GROS-BOUTISTE : u32 version (=2) | u32 taille_fichier-12 | u32 0x001FFFFF
 //	[12..]   conteneur Bond CompactBinary v2 — LE MEME que les `.mvar`, lu tel quel par
-//	         mapvar.DecodeRoot, sans la moindre retouche. Racine = struct a 3 champs :
+//	         le lecteur dedie de enveloppe.go (meme conteneur, meme emballage que les
+//	         autres blobs de l asset). Racine = struct a 3 champs :
 //	         champ0 i32 (=1) | champ1 liste d'int8 (la charge compressee) |
 //	         champ2 u32 (taille inflatee, verifiee apres inflate).
 //	champ1   flux ZLIB d'en-tete `58 09` : CM=8 (deflate), CINFO=5 donc fenetre de 8 Ko.
@@ -33,8 +34,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
-
-	"levelup/go-api/internal/analysis/replay/mapvar"
 )
 
 const (
@@ -52,17 +51,6 @@ const (
 	// tailleInflateeMax borne l'allocation d'inflate : un blob corrompu ne doit pas
 	// pouvoir demander une allocation arbitraire. Reference : Isolation inflate a 1,1 Mo.
 	tailleInflateeMax = 128 << 20
-	// tailleComprimeeMax borne la charge COMPRIMEE, et ce plafond-la est une contrainte de
-	// MEMOIRE, pas de securite. On lit le conteneur avec le decodeur Bond generique de
-	// mapvar (c'est la bonne dependance : le meme conteneur, un seul lecteur), mais il
-	// materialise un mapvar.Value par element de liste, soit ~104 octets par octet de
-	// charge. Mesure : 39,6 Mo alloues pour les 363 854 octets d'Isolation
-	// (BenchmarkDecodeIsolation). A 8 Mo de charge on culmine donc vers 850 Mo — au-dela,
-	// mieux vaut echouer avec ce message qu'epuiser la machine. Les plus gros navmesh
-	// observes font 364 Ko (Isolation) et 99 Ko (Kiken'na) : la marge est de 20x. Si un
-	// jour une carte depasse ce plafond, la correction n'est PAS de le relever mais
-	// d'apprendre a mapvar a exposer une suite d'int8 comme une tranche d'octets.
-	tailleComprimeeMax = 8 << 20
 )
 
 // Identifiants des champs de la racine Bond. Le conteneur n'est pas auto-descriptif :
@@ -71,75 +59,6 @@ const (
 	champCharge         = 1 // liste d'int8 : le flux zlib
 	champTailleInflatee = 2 // u32 : taille attendue apres inflate
 )
-
-// decompresse deroule l'emballage d'un `navmesh.blob` et rend la charge utile inflatee.
-//
-// La taille inflatee declaree par le conteneur est VERIFIEE contre la taille obtenue :
-// un ecart signifie que le flux n'est pas celui que le conteneur annonce, et il vaut
-// mieux echouer que rendre une charge tronquee dont le parcours produirait des
-// coordonnees plausibles et fausses.
-func decompresse(blob []byte) ([]byte, error) {
-	if len(blob) < tailleEntete {
-		return nil, fmt.Errorf("hinavmesh: blob de %d octets, en-tete de %d attendue", len(blob), tailleEntete)
-	}
-	version := binary.BigEndian.Uint32(blob[0:])
-	if version != versionAttendue {
-		return nil, fmt.Errorf("hinavmesh: version de blob %d inconnue (attendu %d)", version, versionAttendue)
-	}
-	if declaree := int(binary.BigEndian.Uint32(blob[4:])); declaree != len(blob)-tailleEntete {
-		return nil, fmt.Errorf("hinavmesh: l'en-tete annonce %d octets de charge, le fichier en porte %d",
-			declaree, len(blob)-tailleEntete)
-	}
-	if len(blob) > tailleComprimeeMax {
-		return nil, fmt.Errorf("hinavmesh: blob de %d octets au-dela du plafond de %d "+
-			"(cout memoire du decodage Bond, voir tailleComprimeeMax)", len(blob), tailleComprimeeMax)
-	}
-	// Le troisieme champ (0x001FFFFF) est CONSTANT sur les deux cartes mesurees, et sa
-	// signification est inconnue : on ne s'en sert pas, et on ne le suppose pas non plus
-	// invariant en echouant dessus.
-
-	racine, err := mapvar.DecodeRoot(blob[tailleEntete:])
-	if err != nil {
-		return nil, fmt.Errorf("hinavmesh: conteneur Bond illisible: %w", err)
-	}
-	comprime, err := chargeComprimee(racine)
-	if err != nil {
-		return nil, err
-	}
-	tailleDeclaree, ok := racine.Field(champTailleInflatee)
-	if !ok {
-		return nil, fmt.Errorf("hinavmesh: le conteneur Bond ne porte pas le champ %d (taille inflatee)", champTailleInflatee)
-	}
-	if tailleDeclaree.Uint > tailleInflateeMax {
-		return nil, fmt.Errorf("hinavmesh: taille inflatee declaree %d au-dela du plafond %d",
-			tailleDeclaree.Uint, tailleInflateeMax)
-	}
-	charge, err := inflate(comprime, int(tailleDeclaree.Uint))
-	if err != nil {
-		return nil, err
-	}
-	if len(charge) != int(tailleDeclaree.Uint) {
-		return nil, fmt.Errorf("hinavmesh: inflate rend %d octets, le conteneur en declare %d",
-			len(charge), tailleDeclaree.Uint)
-	}
-	return charge, nil
-}
-
-// chargeComprimee extrait le flux zlib du champ 1 de la racine Bond.
-func chargeComprimee(racine mapvar.Value) ([]byte, error) {
-	liste, ok := racine.Field(champCharge)
-	if !ok {
-		return nil, fmt.Errorf("hinavmesh: le conteneur Bond ne porte pas le champ %d (charge)", champCharge)
-	}
-	if len(liste.Items) == 0 {
-		return nil, fmt.Errorf("hinavmesh: charge vide")
-	}
-	comprime := make([]byte, len(liste.Items))
-	for i, it := range liste.Items {
-		comprime[i] = byte(int8(it.Int))
-	}
-	return comprime, nil
-}
 
 // inflate deroule le flux zlib. `attendu` ne sert qu'a pre-dimensionner le tampon.
 func inflate(comprime []byte, attendu int) ([]byte, error) {

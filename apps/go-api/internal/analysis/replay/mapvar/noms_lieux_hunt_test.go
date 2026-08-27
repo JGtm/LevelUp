@@ -273,11 +273,11 @@ var champsLus = map[string]bool{
 	"/8/0[]/1":       true, // categorie
 	"/8/0[]/8":       true, // team index
 	"/8/0[]/9[]/0":   true, // labels
-	"/8/0[]/0/0[]/0": true, // shape family (cf. shape.go)
-	"/8/0[]/0/0[]/5": true,
-	"/8/0[]/0/0[]/6": true,
-	"/8/0[]/0/0[]/7": true,
-	"/8/0[]/0/0[]/8": true,
+	"/8/0[]/0[]/0":   true, // famille de forme (cf. shape.go)
+	"/8/0[]/0[]/5/0": true, // dimensions de forme
+	"/8/0[]/0[]/6/0": true,
+	"/8/0[]/0[]/7/0": true,
+	"/8/0[]/0[]/8/0": true,
 }
 
 func TestBalayageChampsObjetsIsolation(t *testing.T) {
