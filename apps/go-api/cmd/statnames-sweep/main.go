@@ -51,6 +51,7 @@ func main() {
 	match := flag.String("match", "", "ENFANT : l'unique film balaye par ce processus")
 	child := flag.Bool("child", false, "ENFANT d'une passe (pose par le parent, pas par l'operateur)")
 	confront := flag.Bool("confront", false, "confrontation TSV x oracle (aucun film decode)")
+	vip := flag.Bool("vip", false, "confrontation VIP (avec -confront) : gate 2/3 + stabilite + somme-film")
 	sweepPath := flag.String("sweep", "", "confrontation : fichier TSV produit par le balayage")
 	oraclePath := flag.String("oracle", "", "confrontation : oracle JSON film -> xuid -> colonne -> valeur")
 	search := flag.String("search", "", "confrontation : films de la moitie de RECHERCHE")
@@ -59,7 +60,7 @@ func main() {
 
 	code, err := run(runArgs{
 		cache: *cache, films: splitIDs(*films), match: *match, child: *child,
-		confront: *confront, sweepPath: *sweepPath, oraclePath: *oraclePath,
+		confront: *confront, vip: *vip, sweepPath: *sweepPath, oraclePath: *oraclePath,
 		search: splitIDs(*search), verify: splitIDs(*verify),
 	})
 	if err != nil {
@@ -73,12 +74,15 @@ func main() {
 type runArgs struct {
 	cache, match          string
 	films, search, verify []string
-	child, confront       bool
+	child, confront, vip  bool
 	sweepPath, oraclePath string
 }
 
 func run(a runArgs) (int, error) {
 	if a.confront {
+		if a.vip {
+			return 0, runConfrontVIP(a)
+		}
 		return 0, runConfront(a)
 	}
 	repoRoot, err := title.FindRepoRoot()

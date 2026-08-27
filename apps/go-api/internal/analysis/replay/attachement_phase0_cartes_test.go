@@ -65,6 +65,14 @@ var attCartes = map[string]struct{ Nom, MapID string }{
 	"c75f33b8": {"Curfew", "63d634be-0319-489d-8c21-9c4e012f664f"},
 	"9f57c612": {"Curfew", "63d634be-0319-489d-8c21-9c4e012f664f"},
 	"1c01e34f": {"Urban Raid", "be848f91-3d87-4b80-8eb9-df3b52cb8d10"},
+
+	// LES TROIS FILMS VIP DU LOT RESOLUTION, releves le 2026-08-27 sur les payloads bruts
+	// GetMatchStats des trois matchs (MapVariant.AssetId ; meme convention que ci-dessus).
+	// Deux cartes seulement : Bazaar (deux films) et Catalyst — toutes deux au catalogue de
+	// bornes `map_quant_bounds.json`, donc qualifiables. Mode GameVariantCategory=23.
+	"00761d27": {"Bazaar", "3e1e4cec-4f2c-44c6-b8d2-96b85c66c702"},
+	"9903b1c5": {"Bazaar", "3e1e4cec-4f2c-44c6-b8d2-96b85c66c702"},
+	"99553e4a": {"Catalyst", "f7e8cde9-0c0a-487c-94a3-61bfa0f20465"},
 }
 
 // attRefDir rend le répertoire des données de référence du titre.
