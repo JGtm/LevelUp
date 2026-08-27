@@ -1697,14 +1697,14 @@ indirect**, et le dernier lot a montre ce que coute de supposer (« le score d'O
 ~1 Hz » : suppose, jamais mesure, faux). La sonde MESURE donc l'independance au lieu de la
 deduire.
 
-- [ ] D3t.1 **TEST A — le bouton fait-il quelque chose ?** Balayer `ScanFilmManagedProperties`
+- [x] D3t.1 **TEST A — le bouton fait-il quelque chose ?** Balayer `ScanFilmManagedProperties`
       sur le MEME film sous TROIS decoupages MPP installes par `SetMPPWidths` : le defaut
       **9/5**, le decoupage **8/3** mesure sur les films BTB du lot armes-au-sol, et un
       decoupage volontairement ABSURDE **12/7**. Comparer `Records`, `Walked`, `Chained` et le
       nombre de lectures, a l'unite pres.
-- [ ] D3t.2 **CRITERE DU VERROU 1**, tel que fixe : chainage `Chained/Walked` **>= 80 %** sur les
+- [x] D3t.2 **CRITERE DU VERROU 1**, tel que fixe : chainage `Chained/Walked` **>= 80 %** sur les
       deux films sondes. En dessous : verrou 1 NON TENU, arret, CR.
-- [ ] D3t.3 **DIAGNOSTIC DU VERROU REEL** — c'est ce que le superviseur demande en cas d'echec
+- [x] D3t.3 **DIAGNOSTIC DU VERROU REEL** — c'est ce que le superviseur demande en cas d'echec
       (« CR avec le verrou reel nomme »), et il se definit AVANT de mesurer pour ne pas se
       choisir a la lecture du chiffre. L'ancrage de `scanPayload` est un balayage EXHAUSTIF de
       toutes les positions de bit, valide par une signature FAIBLE (1 bit de prefixe, 13 bits de
@@ -1728,3 +1728,55 @@ decider si le verrou reel ainsi nomme change le plan.
 superviseur, et ce sont ceux dont l'ancrage etait le moins mauvais en D3-bis. `a349fea8` EXCLU
 D'OFFICE. Un film par processus, sentinelle memoire armee dans le processus qui decode, aucune
 base ouverte.
+
+- 2026-08-27 — **D3-ter VERROU 1 : NON TENU, et l'hypothese des largeurs est REFUTEE PAR LA
+  MESURE.** Protocole commite avant la sonde (`5381ada22`). Deux films, un par processus, pic
+  memoire 0,04 et 0,06 Gio. Sortie brute figee dans `registre_film/D3TER_largeurs_mpp.log`.
+
+  **TEST A — le bouton des largeurs MPP ne fait RIEN sur `ti=13`.** Le MEME film balaye sous
+  TROIS decoupages (defaut 9/5, BTB 8/3, absurde 12/7) rend des releves **identiques a l'unite
+  pres**, sur les deux films :
+
+  | film | slots | records | walked | chained | lectures | chainage |
+  |---|---|---|---|---|---|---|
+  | `66aa5f0b` | 528 | 100 918 | 44 849 | 6 486 | 93 915 | **14,5 %** |
+  | `bf831a6b` | 669 | 165 518 | 78 529 | 9 771 | 158 186 | **12,4 %** |
+
+  Trois decoupages, trois fois la meme ligne. **Le precedent M3 ne se transpose pas** : le bloc
+  MPP appartient aux default-states de `ti=35/36/37/38/39/42/43`, `ti=13` n'en porte pas, et sa
+  grammaire est integralement determinee par 4 bits lus dans le flux. Ce n'etait pas une piste
+  faible, c'etait une piste NULLE — et elle est close par la mesure, pas par un argument de
+  lecture.
+
+  **CRITERE DU VERROU 1 : 14,5 % et 12,4 %, seuil >= 80 %. NON TENU sur les deux films.** Arret,
+  comme mandate.
+
+  **DIAGNOSTIC — et il ne conclut PAS ce qu'il devait conclure.** Discriminant ecrit d'avance :
+  sous-ensemble chaine CONCENTRE = artefact d'ancrage ; DISPERSE = le bruit survit au filtre.
+  Mesure : 314 et 491 slots portent des lectures chainees, les 5 plus fournis n'en portent que
+  **50,3 %** et **46,6 %** (seuil 80 %). Verdict de mon propre discriminant : **DISPERSE**.
+
+  **LA LIMITE EST DANS MON INSTRUMENT, ET JE LA NOMME PLUTOT QUE DE LA CONTOURNER.** J'ai defini
+  la concentration sur TOUTES les lectures chainees. Or la population `ti=13` est ecrasee par le
+  canal PAR JOUEUR (`i2..i33`, 32 instances par record), dont on sait deja qu'il chaine a 33 %
+  contre 97 % pour le canal SCALAIRE (mesure du lot C-bis). Une dispersion mesuree sur cette
+  population melangee ne dit presque rien du sous-canal scalaire — celui du tag 5, le seul que le
+  designateur lise. **Mon discriminant n'etait donc pas le bon instrument pour la question qu'il
+  devait trancher.** Je ne le rejoue PAS avec une population restreinte : le protocole interdit
+  de choisir l'instrument apres avoir vu le chiffre, et cette regle vaut aussi contre moi.
+
+  **CE QUE LA SONDE MONTRE QUAND MEME, ET QUI N'EST PAS RIEN.** Le tag 5 CHAINE est minuscule et
+  propre : **4 slots / 4 valeurs distinctes** sur `66aa5f0b`, **3 slots / 3 valeurs distinctes**
+  sur `bf831a6b`. Le bruit de 300 a 500 slots ne le touche pas. Je m'arrete la : dire ce que
+  « 3 valeurs sur un mode a 3 zones » pourrait signifier serait exactement la conclusion que le
+  verrou 2 est fait pour mesurer, et le verrou 2 n'est pas ouvert.
+
+  **VERROU REEL, NOMME** : ce n'est NI les largeurs (refute a l'unite pres), NI le filtre de
+  chainage du canal scalaire (le tag 5 chaine sort propre). Le taux global de 12-14 % est produit
+  par la population MELANGEE du balayage — dominee par le canal par joueur, structurellement peu
+  chainant — et **le critere « chainage >= 80 % » porte sur cette population melangee, donc sur
+  une grandeur qui ne mesure pas la lisibilite du canal du designateur.** Le verrou est un verrou
+  de METRIQUE avant d'etre un verrou de donnee. C'est au superviseur de decider si cela change le
+  plan ; je ne rouvre rien de moi-meme.
+
+  **TC reste `[!]`** et la decision d'affichage du vivier repart a l'utilisateur, comme prevu.
