@@ -106,6 +106,8 @@ var replaySchemas = []struct {
 	{"FlagCarry", replay.FlagCarry{}},
 	{"FlagSpan", replay.FlagSpan{}},
 	{"FlagCarriesCoverage", replay.FlagCarriesCoverage{}},
+	{"VipPeriod", replay.VipPeriod{}},
+	{"VipCrownCoverage", replay.VipCrownCoverage{}},
 	{"ZoneState", replay.ZoneState{}},
 	{"ZoneSpan", replay.ZoneSpan{}},
 	{"GaugePoint", replay.GaugePoint{}},
@@ -349,9 +351,27 @@ var replaySchemas = []struct {
 //	                      meme lot et n a quitte ni le poste ni les temoins locaux — aucun
 //	                      artefact 21 n existe ailleurs, le bump unique reste unique.
 //
+//	39 -> 40  2026-08-27  `vipCrown` (lot VIP COURONNE, `.ai/V7.5/replay2d/registre_film/
+//	                      VIP_COURONNE_PROTOCOLE.md`) : LES PERIODES DE PORT DE LA COURONNE VIP,
+//	                      en intervalles de frames nommes par le xuid du VIP. Un champ de
+//	                      document, un schema de plus (`VipPeriod`) et un bloc de couverture
+//	                      (`VipCrownCoverage`). Source, toute dans le film : les SELECTIONS
+//	                      `vip_selected` (`comp 22 A` = `TimesSelectedAsVip`, resolu au gate
+//	                      corrige — 100 % par joueur x3 films, temoin decale 0) et le fil des
+//	                      morts ; le VIP nomme par le pont d INSTANTS DE MORT (aucune base). La
+//	                      reconstruction a ete MESUREE : les periodes somment, par joueur, a
+//	                      `TimeAsVip` de l API au SUB-SECONDE (recouv 100 % 3/3, 24/24 joueurs a
+//	                      +0,2-0,3 s), contre un temoin d attribution aleatoire effondre
+//	                      (exactitude 8/8 contre 0-1/8). GARDE DE MODE chez l appelant : `comp
+//	                      22 A` vaut `flag_grabs` en CTF, donc la couronne n est lue que sur un
+//	                      film reconnu VIP par `game_variant_name` — jamais devinee dans le film.
+//	                      Le SchemaVersion d artefact monte a 22 (reprise du backfill).
+//	                      `Coverage` gagne son bloc `vipCrown` : un film non-VIP (bloc absent) et
+//	                      un film VIP sans periode publiee se distinguent par lui.
+//
 // Les douze fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
 // chiffre ne le dise. Contrat regenere (`make openapi-gen`), jamais ecrit a la main.
-const wantReplayDocumentFields = 39
+const wantReplayDocumentFields = 40
 
 // TestReplayContractDescribesEveryPublishedField : AUCUN CHAMP PUBLIE SANS DESCRIPTION, ET
 // AUCUNE DESCRIPTION SANS CHAMP.

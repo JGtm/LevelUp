@@ -179,8 +179,11 @@ Si un gate de periodes rate : `[!]` chiffre, pas de publication, dire ce qui man
 - [x] E3 — Periodes : ObjectiveTypeVip a `namedStatSlots` + TSV, `TestVIPPeriodes`, 3 films
   sous filmproc, `VIP_periodes.log`, verdict chiffre. GATE TENU 3/3 (dates OUI, recouv 100 %,
   temoin exactitude 8/8 vs 0-1/8). Commits `c517caacc` (instrument+correction).
-- [ ] E4 — Publication couronne SI E2 ET E3 tiennent : triplet schema + calque + i18n + temoins
-  re-cuits + gates verts. Commit `vip-couronne(couronne):`. SINON `[!]` chiffre, pas de calque.
+- [x] E4 — Publication couronne (E2 ET E3 tiennent) : triplet schema (Go 22 / contrat regenere /
+  web 22) + calque `vipCrown` + hook + toggle + i18n FR+EN (« VIP »/« VIP ») + garde de mode
+  appelant + golden re-cuit (schema 22). Gates verts : go test replay/objectiveevents/replaybuild/
+  contracttest, gofmt, openapi golden ; tsc -b, vitest match-replay (1317), lint web (0 err),
+  parite schema. Commit `vip-couronne(couronne):`.
 
 ## Journal d'execution
 
@@ -202,3 +205,19 @@ Si un gate de periodes rate : `[!]` chiffre, pas de publication, dire ce qui man
   pre-enregistree (commit `c517caacc`) puis re-mesure : TEMOIN CORRIGE (exactitude) 8/8 vs 0-1/8,
   marge 7-8 joueurs. **GATE PERIODES TENU 3/3.** Log `VIP_periodes.log`. La couronne peut etre
   publiee (E2 ET E3 tiennent).
+- **E4 (2026-08-27)** `[x]` — COURONNE PUBLIEE. Go : type `VipPeriod` + `VipCrownCoverage`,
+  `buildVipCrown`/`attachVipCrown` (patron flag_carries), `VipInput` dans Options, SchemaVersion
+  21 -> 22 + chronique. Appelant `replaybuild` : `isVipVariant` (mot-clef `vip`, garde de mode —
+  `comp 22 A` = `flag_grabs` en CTF), `VipInput` cable. Contrat : openapi regenere (VipPeriod +
+  VipCrownCoverage + `vipCrown`), `wantReplayDocumentFields` 39 -> 40, garde de version 22, golden
+  re-cuit (schema 22, film non-VIP donc pas de couronne). Web : calque `vipCrownLayer.ts` (glyphe
+  couronne dessine, tokens semantiques, atténué si port non ferme) + hook `useReplayVipCrown` +
+  toggle `useReplaySettings`/`ReplaySettingsDrawer` + i18n FR+EN (« VIP »/« VIP » + hint) +
+  frontiere `replayNormalize` + `EXPECTED_REPLAY_SCHEMA_VERSION` 22. Cliquet de taille du canvas
+  tenu (691) par extraction de `objectivePulses` vers `useReplayFx` (12e extraction). Gates tous
+  verts (Go tests, gofmt, openapi golden ; tsc, vitest 1317, lint 0 err, parite schema). Aucun
+  push.
+  RESERVE VERIFIABLE : la garde de mode `isVipVariant` est un mot-clef (`vip`) — le marqueur
+  canonique `GameVariantCategory=23` n'est pas porte par `MatchFacts`. La garde ECHOUE FERMEE
+  (un film VIP mal nomme ne montre pas de couronne ; une couronne sur un film non-VIP exigerait un
+  nom non-VIP contenant `vip`, inexistant). A confirmer sur un vrai backfill VIP en prod.

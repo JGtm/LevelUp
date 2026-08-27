@@ -344,8 +344,20 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   témoin placé HORS trou qui rend le même signal dans 66,7 et 71,4 % des cas. Les ZONES DE
 	//   TOTAL CONTROL non plus : le désignateur y rend jusqu'à 77 désignations simultanées sur un
 	//   mode à trois zones. Détail : .ai/V7.5/PLAN_OBJECTIFS_ETAT_VIVANT_2026-08.md.
-	if SchemaVersion != 21 {
-		t.Fatalf("SchemaVersion = %d, attendu 21 : incrémenter exige une raison écrite ci-dessus "+
+	//   v21 -> v22 (2026-08-27, lot VIP COURONNE) : LA COURONNE VIP. `vipCrown` publie les
+	//   PÉRIODES DE PORT — chaque sélection `vip_selected` (`comp 22 A` = `TimesSelectedAsVip`,
+	//   résolu au gate corrigé : 100 % par joueur x3 films, témoin décalé 0) ouvre une période,
+	//   fermée par la mort du VIP ou la sélection suivante. Le champ est optionnel, mais la
+	//   version monte pour la raison exacte des montées v14/v16/v21 : la reprise du backfill se
+	//   fait par SchemaVersion, et un artefact 21 doit se lire « à re-cuire » — sans quoi aucun
+	//   rejeu VIP déjà cuit ne montrerait la couronne.
+	//   NIVEAU DE PREUVE : les périodes somment, par joueur, à `TimeAsVip` de l'API au SUB-SECONDE
+	//   (recouv 100 % 3/3, 24/24 joueurs à +0,2-0,3 s), contre un témoin d'attribution aléatoire
+	//   effondré (exactitude 8/8 contre 0-1/8). GARDE DE MODE chez l'appelant : `comp 22 A` vaut
+	//   `flag_grabs` en CTF, donc la couronne n'est lue que sur un film reconnu VIP par
+	//   `game_variant_name`. Détail : .ai/V7.5/replay2d/registre_film/VIP_COURONNE_PROTOCOLE.md.
+	if SchemaVersion != 22 {
+		t.Fatalf("SchemaVersion = %d, attendu 22 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

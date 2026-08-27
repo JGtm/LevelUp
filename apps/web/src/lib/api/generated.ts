@@ -5368,6 +5368,7 @@ export interface components {
             verdict?: {
                 [key: string]: string;
             };
+            vipCrown?: components["schemas"]["VipCrownCoverage"];
             zones?: components["schemas"]["ZonesCoverage"];
         };
         CreatePlayerProfileResponse: {
@@ -9466,6 +9467,7 @@ export interface components {
             structureBounds?: components["schemas"]["Bounds"];
             titleSlug: string;
             tracks: components["schemas"]["Track"][] | null;
+            vipCrown?: components["schemas"]["VipPeriod"][] | null;
             weaponLabels?: {
                 [key: string]: components["schemas"]["WeaponLabel"];
             };
@@ -11310,6 +11312,33 @@ export interface components {
             y: number;
             /** Format: double */
             z: number;
+        };
+        VipCrownCoverage: {
+            /** Format: int64 */
+            closed: number;
+            /** Format: int64 */
+            closedByDeath: number;
+            /** Format: int64 */
+            closedBySelection: number;
+            /** Format: int64 */
+            noBridge: number;
+            /** Format: int64 */
+            open: number;
+            /** Format: int64 */
+            outOfWindow: number;
+            /** Format: int64 */
+            periods: number;
+            /** Format: int64 */
+            selections: number;
+            vipFilm: boolean;
+        };
+        VipPeriod: {
+            closed: boolean;
+            /** Format: int64 */
+            t0: number;
+            /** Format: int64 */
+            t1: number;
+            xuid: string;
         };
         WatcherAuthStartResponse: {
             attempt_id: string;

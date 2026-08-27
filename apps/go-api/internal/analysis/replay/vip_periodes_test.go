@@ -61,22 +61,6 @@ const (
 	vipPeriodesGraine = 20260827
 )
 
-// vipPeriode est une periode de port de couronne, bornee.
-type vipPeriode struct {
-	slot   int
-	xuid   string
-	t0, t1 int64 // horloge du MATCH, ms
-	cause  string
-}
-
-// dureeS rend la duree de la periode, en secondes.
-func (p vipPeriode) dureeS() float64 {
-	if p.t1 <= p.t0 {
-		return 0
-	}
-	return float64(p.t1-p.t0) / 1000
-}
-
 // TestVIPPeriodes — LA MESURE. Un film par processus.
 func TestVIPPeriodes(t *testing.T) {
 	root := attRequireRoot(t)
@@ -115,10 +99,13 @@ func TestVIPPeriodes(t *testing.T) {
 
 	vipDatesDiag(t, id, events)
 
-	matchEnd := vipFinMatch(events, deaths)
-	rec := vipParJoueur(vipFerme(vipSelections(events, identity), deaths, matchEnd))
+	// LA RECONSTRUCTION EST CELLE DE PRODUCTION (`vipReconstructPeriods`, vip_crown.go) : la
+	// mesure et le calque partagent la MEME regle, une seule source. La mesure travaille en
+	// horloge du MATCH (secondes), le build convertira en frames.
+	matchEnd := vipMatchEndMS(events, deaths)
+	rec := vipParJoueur(vipReconstructPeriods(events, identity, deaths, matchEnd))
 	rng := rand.New(rand.NewSource(vipPeriodesGraine)) //nolint:gosec // temoin reproductible
-	tem := vipParJoueur(vipFerme(vipSelections(events, vipTemoinIdentity(identity, rng)), deaths, matchEnd))
+	tem := vipParJoueur(vipReconstructPeriods(events, vipTemoinIdentity(identity, rng), deaths, matchEnd))
 	vipPeriodesVerdict(t, id, rec, tem, oracle)
 }
 
@@ -201,76 +188,16 @@ func vipDatesDiag(t *testing.T, id string, events []objectiveevents.NamedEvent) 
 	}
 }
 
-// vipSelections rend, triees, les selections VIP nommees par le pont statborg.
-func vipSelections(events []objectiveevents.NamedEvent, identity map[int]string) []vipPeriode {
-	out := make([]vipPeriode, 0, len(events))
-	for _, e := range events {
-		if e.Stat != objectiveevents.StatVipSelected {
-			continue
-		}
-		out = append(out, vipPeriode{slot: e.Slot, xuid: identity[e.Slot], t0: int64(e.TimeMS)})
-	}
-	sort.SliceStable(out, func(i, j int) bool {
-		if out[i].t0 != out[j].t0 {
-			return out[i].t0 < out[j].t0
-		}
-		return out[i].slot < out[j].slot
-	})
-	return out
-}
-
-// vipFerme borne chaque selection au PREMIER de : la MORT du VIP (il perd la couronne), la
-// selection suivante du MEME slot, la fin du match. Patron `flag_carries` (boundFlagCarries).
-func vipFerme(sels []vipPeriode, deaths []Death, matchEnd int64) []vipPeriode {
-	byXUID := deathTimesByXUID(deaths)
-	next := map[int]int64{}
-	lastIdx := map[int]int{}
-	for i := range sels {
-		if prev, ok := lastIdx[sels[i].slot]; ok {
-			next[prev] = sels[i].t0
-		}
-		lastIdx[sels[i].slot] = i
-	}
-	out := make([]vipPeriode, 0, len(sels))
-	for i, s := range sels {
-		t1, cause := matchEnd, "fin"
-		if d, ok := firstAfter(byXUID[s.xuid], s.t0); ok && d < t1 {
-			t1, cause = d, "mort"
-		}
-		if n, ok := next[i]; ok && n < t1 {
-			t1, cause = n, "selection"
-		}
-		s.t1, s.cause = t1, cause
-		out = append(out, s)
-	}
-	return out
-}
-
-// vipFinMatch rend une borne STRICTEMENT posterieure a tout fait date (selection ou mort).
-func vipFinMatch(events []objectiveevents.NamedEvent, deaths []Death) int64 {
-	var end int64
-	for _, e := range events {
-		if int64(e.TimeMS) > end {
-			end = int64(e.TimeMS)
-		}
-	}
-	for _, d := range deaths {
-		if d.TimeMS > end {
-			end = d.TimeMS
-		}
-	}
-	return end + 1
-}
-
-// vipParJoueur somme les durees de periode par xuid decimal. Les slots non pontes (xuid vide)
-// ne comptent pas — ils ne peuvent porter aucune couronne attribuee.
-func vipParJoueur(periodes []vipPeriode) map[string]float64 {
+// vipParJoueur somme les durees de periode par xuid decimal, depuis les periodes brutes de
+// PRODUCTION (`vipRawPeriod`). Les slots non pontes (xuid vide) ne comptent pas — ils ne
+// peuvent porter aucune couronne attribuee.
+func vipParJoueur(periodes []vipRawPeriod) map[string]float64 {
 	out := map[string]float64{}
 	for _, p := range periodes {
-		if p.xuid == "" {
+		if p.xuid == "" || p.t1MS <= p.t0MS {
 			continue
 		}
-		out[p.xuid] += p.dureeS()
+		out[p.xuid] += float64(p.t1MS-p.t0MS) / 1000
 	}
 	return out
 }

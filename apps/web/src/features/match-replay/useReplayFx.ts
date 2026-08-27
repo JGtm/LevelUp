@@ -23,6 +23,7 @@ import { buildFireMarks } from './fireMark'
 import { buildGrappleFx } from './grappleLayer'
 import { buildGrenadeRestFx } from './grenadeFx'
 import { buildKillFx } from './killFx'
+import { buildObjectivePulses, type ObjectiveElementReady } from './objectivesLayer'
 import type { ReplayDocumentReady } from './replayNormalize'
 import { buildShotFx } from './shotFx'
 
@@ -31,6 +32,7 @@ export function useReplayFx(
   kills: KillEvent[] | undefined,
   t0Ms: number | undefined,
   aimHold: number,
+  mapObjectives: ObjectiveElementReady[],
 ) {
   // Les tirs : famille, teinte et REGARD du tireur résolus une fois au chargement (mesure : la
   // couverture d'orientation passe de 18,6 % à 100 % sur le film témoin en relisant le regard
@@ -45,6 +47,12 @@ export function useReplayFx(
   const grenadeRestFx = useMemo(() => buildGrenadeRestFx(doc), [doc])
   // Les tractions de grappin, jointes une fois aux points de leur vie (schéma 8).
   const grappleFx = useMemo(() => buildGrappleFx(doc), [doc])
+  // Les PULSES d'action d'objectif (capture, retour, prise de zone) : précalculés en monde,
+  // comme les effets de mort. Ils dépendent aussi des objectifs statiques servis à la requête.
+  const objectivePulses = useMemo(
+    () => buildObjectivePulses(doc, mapObjectives),
+    [doc, mapObjectives],
+  )
 
-  return { shotFx, fireMarks, killFx, grenadeRestFx, grappleFx }
+  return { shotFx, fireMarks, killFx, grenadeRestFx, grappleFx, objectivePulses }
 }

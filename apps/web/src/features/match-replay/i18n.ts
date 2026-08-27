@@ -139,6 +139,9 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     flagSinceFmt: (seconds) => `Depuis ${Math.round(seconds)} s`,
     flagOpenNote:
       "Rien ne date la fin de ce portage : l'intervalle court jusqu'à la fin du film — c'est une borne haute, pas une durée mesurée.",
+    layerVipCrown: 'VIP',
+    layerVipCrownHint:
+      "La couronne du VIP courant, lue dans le film : chaque désignation ouvre une période de port, fermée par la mort du VIP ou la désignation suivante. La couronne suit son porteur image par image. Un port dont RIEN ne date la fin s'affiche atténué : son intervalle court jusqu'à la fin du film — c'est une borne haute, pas une mesure.",
     padCountdownFmt: (seconds) => `${Math.ceil(seconds)} s`,
     padRespawnFmt: (seconds) => `Réapparition dans ≈ ${Math.ceil(seconds)} s`,
     layerHeatmap: 'Carte de chaleur',
@@ -400,6 +403,9 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     flagSinceFmt: (seconds) => `For ${Math.round(seconds)} s`,
     flagOpenNote:
       'Nothing dates the end of this carry: the interval runs to the end of the film — an upper bound, not a measured duration.',
+    layerVipCrown: 'VIP',
+    layerVipCrownHint:
+      'The crown of the current VIP, read from the film: each selection opens a wearing period, closed by the VIP’s death or the next selection. The crown follows its bearer frame by frame. A wearing whose end NOTHING dates is faded: its interval runs to the end of the film — an upper bound, not a measurement.',
     padCountdownFmt: (seconds) => `${Math.ceil(seconds)} s`,
     padRespawnFmt: (seconds) => `Respawn in ≈ ${Math.ceil(seconds)} s`,
     layerHeatmap: 'Heat map',
