@@ -74470,12 +74470,19 @@ Zero conflit ; gates post-merge : build complet 0, tests sync+skillchain+archlin
 CGO complet 25m34, build+test ubuntu et windows, lease ADR 0013, contract OpenAPI,
 golangci) + Deploy Pre-Check et Secrets verts. UN job rouge : Frontend Vitest — 1 test
 sur 5052, le garde-rail de taille `placementFamily.guard.test.ts` (« ReplayCanvas.tsx
-reste sous son plafond » : 692 lignes pour un cliquet a 691). ATTRIBUE SUR PIECES au
-chantier rejeu (dernier commit touchant le fichier ET le garde-rail = `ce92544ab`
-couronne VIP, ANTERIEUR au merge ; aucun fichier match-replay dans le chantier note de
-perf). Signalement precis envoye a la session rejeu (replay-retours-0827) pour
-reverdir la branche ; le chantier note de perf est integralement vert sur tout ce
-qu il possede.
+reste sous son plafond » : 692 lignes pour un cliquet a 691). ATTRIBUE SUR PIECES :
+dernier commit touchant le fichier ET le garde-rail = `ce92544ab` — **lot VIP COURONNE
+(schema 22)**, pas le chantier retours-rejeu (precision de la session rejeu, exacte :
+son propre message de commit annoncait « cliquet tenu (691) » pour un fichier arrive a
+692 ; retours-rejeu a tenu le cliquet a chacun de ses lots). ANTERIEUR au merge ;
+aucun fichier match-replay dans le chantier note de perf. Signalement envoye a la
+session rejeu, CORRECTIF LIVRE par elle dans la foulee : `a1d85aa8f` (ReplayCanvas
+692 -> 690, cliquet suiveur 691 -> 690, chronique datee) + `d9bc59601` (journal) —
+gates locaux verts (1472 vitest match-replay, tsc, ESLint), CI de reverdissement en
+cours. Decouverte consignee par elle, A REPRENDRE PAR LE LOT VIP : warning
+`react-hooks/exhaustive-deps` a ReplayCanvas.tsx:504 (dep `objectiveObjects` manquante
+du useCallback `draw`, 12e extraction du lot VIP — risque de calque fige). Le chantier
+note de perf est integralement vert sur tout ce qu il possede.
 
 **Bilan du chantier** (plan .ai/PLAN_PERF_NOTE_OBJECTIFS.md, tout statue) : volet A
 Escouade composition stricte par defaut (CLOS, CI verte, gate visuel) ; volet B lots
