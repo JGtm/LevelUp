@@ -229,6 +229,12 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       camo: 'Camouflage actif — le joueur est invisible à l’écran de jeu',
       overshield: 'Surbouclier actif',
     },
+    translocationFlash: 'Passage par translocateur quantique',
+    zonePresence: {
+      field: 'Dans un champ de réparation',
+      shroud: 'Dans un écran occultant',
+      sensor: 'Détecté — dans la zone d’un capteur de menaces adverse',
+    },
     equipmentUsage: {
       title: "Usages d'équipement",
       colPlayer: 'Joueur',
@@ -489,6 +495,12 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     equipmentActive: {
       camo: 'Active camo — the player is invisible on the game screen',
       overshield: 'Overshield active',
+    },
+    translocationFlash: 'Quantum translocator jump',
+    zonePresence: {
+      field: 'Inside a repair field',
+      shroud: 'Inside a shroud screen',
+      sensor: 'Detected — inside an enemy threat sensor zone',
     },
     equipmentUsage: {
       title: 'Equipment usage',

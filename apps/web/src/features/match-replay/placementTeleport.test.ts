@@ -10,7 +10,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { ReplayEquipmentPlacement } from '@/lib/api/types'
 
-import { riftTeleports } from './placementTeleport'
+import { lastTeleportAge, riftTeleports, type RiftTeleport } from './placementTeleport'
 import type { ReplayDocumentReady, ReplayTrackReady } from './replayNormalize'
 
 type Abilities = ReplayDocumentReady['abilities']
@@ -153,5 +153,28 @@ describe('riftTeleports — la vitesse, la faille, et l ordre', () => {
       vieQuiSaute(2, { x: 0, y: 100 }, { x: 0, y: 80 }, 20),
     ]
     expect(riftTeleports([], passages, PORTEURS).map((t) => t.frame)).toEqual([20, 50])
+  })
+})
+
+describe('lastTeleportAge — l âge du passage le plus récent d un slot', () => {
+  const passage = (slot: number, frame: number): RiftTeleport => ({
+    slot,
+    frame,
+    from: { x: 0, y: 0 },
+    to: { x: 20, y: 0 },
+    viaRift: false,
+  })
+
+  it('aucun passage advenu, ou passage d un autre slot : -1', () => {
+    expect(lastTeleportAge([], 3, 50)).toBe(-1)
+    expect(lastTeleportAge([passage(7, 10)], 3, 50)).toBe(-1)
+  })
+
+  it('un passage À VENIR ne compte pas — l éclat date un événement advenu', () => {
+    expect(lastTeleportAge([passage(3, 60)], 3, 50)).toBe(-1)
+  })
+
+  it('deux passages advenus : l âge du plus récent', () => {
+    expect(lastTeleportAge([passage(3, 10), passage(3, 40)], 3, 50)).toBe(10)
   })
 })

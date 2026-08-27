@@ -11,7 +11,7 @@
  *      une toutes les ~20 s, et le faire passer pour l'instant courant était un défaut réel.
  *   3. Aucun littéral de couleur : les rôles passent par des tokens sémantiques.
  */
-import { useMemo, type CSSProperties } from 'react'
+import { useMemo } from 'react'
 
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import {
@@ -24,10 +24,14 @@ import type { MatchScoreboardRow } from '@/lib/api/types'
 
 import { ReplayTeamHeader } from './ReplayTeamHeader'
 import { activeEquipmentAt } from './equipmentFx'
+import type { PlacementWindowTime } from './equipmentPlacementsLayer'
+import { NO_ZONES, zonePresenceAt, type ZonePresence, type ZoneScene } from './equipmentZones'
 import { equippedWeapons } from './equippedLogic'
+import { lastTeleportAge, riftTeleports, type RiftTeleport } from './placementTeleport'
+import { hasUnderLayer, playerCardFx } from './playerCardFx'
 import { ReplayCountersBadge } from './ReplayCountersBadge'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
-import { msToFrames, trackWindow } from './replayLogic'
+import { frameToMs, msToFrames, positionAt, trackWindow } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
 import { ReplayInventoryRow } from './ReplayInventoryRow'
 import { RespawnRow, VitalityBar } from './ReplayVitality'
@@ -37,6 +41,7 @@ import {
   groupByTeam,
   playerName,
   playerStateAt,
+  sideBySlot,
   vitalityPresence,
   type ReplayPlayer,
   type VitalityPresence,
@@ -56,51 +61,13 @@ const VITALITY_FADE_MS = 6_000
  */
 const READING_FULL_MS = 20_000
 /**
- * Durée des DEUX éclats d'événement (coup fatal, réapparition), en temps réel — assez pour
- * être vus sans être subis, calée sur la rémanence des lancers. L'état de mort, lui, est
- * porté en continu par le fond de la fiche.
+ * Durée des éclats d'événement (coup fatal, réapparition, translocation), en temps réel —
+ * assez pour être vus sans être subis, calée sur la rémanence des lancers. L'état de mort,
+ * lui, est porté en continu par le fond de la fiche. LA COMPOSITION DES EFFETS (éclats,
+ * verre du camouflage, encadrés, voile de l'écran occultant) vit dans `playerCardFx.ts`
+ * depuis le 2026-08-27 : ce composant ne fait plus que lui donner les âges et rendre.
  */
 const FLASH_MS = 1_400
-/**
- * Durées CSS des deux animations d'éclat (cf. globals.css) — le délai négatif s'y rapporte.
- * CES DEUX NOMBRES SONT LE MIROIR DE LA FEUILLE DE STYLE : les changer ici sans les changer
- * là-bas désaligne le délai négatif, et l'éclat reprend au mauvais endroit.
- *
- * L'ÉCLAT DE RÉAPPARITION EST PASSÉ DE 0,55 s À 1,2 s le 2026-08-17 (« plus lent l'éclat »,
- * planche du 16/08) : à 0,55 s le vert avait disparu avant qu'on ait fini de lire le nom de
- * la fiche. La mesure ne change pas — c'est toujours l'image de départ de la vie suivante qui
- * date le retour ; seule la durée du repère à l'écran change.
- */
-const DEATH_FLASH_TOTAL_S = 1.86
-const RESPAWN_FLASH_S = 1.2
-/**
- * Effet de VERRE de la fiche pendant un épisode de CAMOUFLAGE actif (cahier des charges
- * Notion, item 21.1) : translucidité + flou léger, PAS une opacité réduite sur toute la
- * fiche — le texte et les icônes restent lisibles, seul le FOND se dépolit.
- * `BLUR_PX` est le flou du verre (`backdrop-filter`, sans effet visible tant que rien de
- * texturé ne passe dessous — la colonne des fiches n'est jamais posée sur la carte, cf.
- * l'en-tête du fichier — mais la technique canonique d'un "verre" CSS reste correcte et
- * bon marché si ce contexte change). `VEIL_PCT` mélange `--foreground` (PAS `--card`) au
- * fond ambiant : teinter le fond avec SA PROPRE couleur serait invisible (0 contraste),
- * `--foreground` est justement le token conçu pour contraster sur `--card` dans les DEUX
- * thèmes — le voile s'éclaircit en sombre, s'assombrit en clair, toujours visible. Le
- * liseré reprend `--border` À PLEINE FORCE (déjà le ton subtil-mais-visible du système,
- * cf. le même token sur le panneau d'équipe) plutôt que de le diluer encore.
- */
-const CAMO_GLASS_BLUR_PX = 6
-const CAMO_GLASS_VEIL_PCT = 12
-/**
- * ENCADRÉ DORÉ de la fiche pendant un épisode de SURBOUCLIER (cahier des charges Notion,
- * item 21.1) : un CADRE, pas un fond teinté — `FRAME_PX` (2 px) est le plus fin qui se
- * lise comme un encadrement plutôt qu'un simple contour de sélection ; `GLOW_PCT` un halo
- * externe discret. Token `legendary` (skill color-tokens) : un surbouclier est un état de
- * jeu rare et précieux, la même famille sémantique que le "légendaire" du Battlepass —
- * PAS le token `info` de la jauge de bouclier (qui, lui, reste bleu : cf. VitalityBar).
- * Aucun fond propre : composé avec le verre du camouflage, le cadre doré ne doit pas
- * écraser la translucidité de l'autre effet (cf. leur composition ci-dessous).
- */
-const OVERSHIELD_FRAME_PX = 2
-const OVERSHIELD_GLOW_PCT = 60
 
 interface ReplayTeamsProps {
   doc: ReplayDocumentReady
@@ -119,14 +86,32 @@ export function ReplayTeams({
   doc, scoreboard, frame, locale, xuidMeta,
 }: ReplayTeamsProps) {
   const t = REPLAY_TEXT[locale]
-  const groups = useMemo(
-    () => groupByTeam(buildPlayers(doc, scoreboard)),
-    [doc, scoreboard],
-  )
+  const players = useMemo(() => buildPlayers(doc, scoreboard), [doc, scoreboard])
+  const groups = useMemo(() => groupByTeam(players), [players])
   const vitalityFade = useMemo(() => msToFrames(VITALITY_FADE_MS, doc), [doc])
   const readingFull = useMemo(() => msToFrames(READING_FULL_MS, doc), [doc])
   const flashFrames = useMemo(() => Math.max(1, msToFrames(FLASH_MS, doc)), [doc])
   const presence = useMemo(() => vitalityPresence(doc), [doc])
+  // LA SCÈNE DES EFFETS D'ÉQUIPEMENT : les camps par vie (le capteur adverse en a besoin,
+  // même contrat que le calque), l'axe de temps des fenêtres de pose, et les passages par
+  // faille — un balayage de toutes les pistes, donc UNE FOIS par document, jamais par image
+  // (le canvas fait le sien de son côté : deux consommateurs, un seul foyer `riftTeleports`).
+  const sides = useMemo(() => sideBySlot(players), [players])
+  const teleports = useMemo(
+    () => riftTeleports(doc.equipmentPlacements, doc.tracks, doc.abilities),
+    [doc],
+  )
+  const fxScene = useMemo<CardFxScene>(
+    () => ({
+      zones: {
+        placements: doc.equipmentPlacements,
+        sideOfSlot: (slot) => sides.get(slot) ?? null,
+      },
+      time: { frameMs: frameToMs(1, doc), frames: doc.frameCount },
+      teleports,
+    }),
+    [doc, sides, teleports],
+  )
   // LE CALQUE DE SCORE PASSE PAR SA GARDE D'HORLOGE, une seule fois pour toute la colonne :
   // absent = artefact antérieur au schéma 12, mode sans compteur, ou origine non recalée
   // (cf. lib/replay/scoreTimeline.filmClockTrusted). Les fiches et les en-têtes n'ont alors
@@ -174,6 +159,7 @@ export function ReplayTeams({
                 flashFrames={flashFrames}
                 locale={locale}
                 scoreTimeline={scoreTimeline}
+                fxScene={fxScene}
               />
             ))}
           </div>
@@ -181,6 +167,17 @@ export function ReplayTeams({
       ))}
     </div>
   )
+}
+
+/**
+ * Ce que les EFFETS d'une fiche lisent en dehors d'elle-même : la scène des zones (poses +
+ * camps), l'axe de temps des fenêtres de pose, et les passages par faille. Construite UNE
+ * FOIS par la colonne — les fiches la consomment, aucune ne la recalcule.
+ */
+interface CardFxScene {
+  zones: ZoneScene
+  time: PlacementWindowTime
+  teleports: readonly RiftTeleport[]
 }
 
 interface PlayerCardProps {
@@ -194,9 +191,10 @@ interface PlayerCardProps {
   locale: ReplayLocale
   /** Calque de score du film, déjà passé par la garde d'horloge. */
   scoreTimeline?: ReplayScoreTimelineReady
+  fxScene: CardFxScene
 }
 
-function PlayerCard({ player, doc, frame, presence, vitalityFade, readingFull, flashFrames, locale, scoreTimeline }: PlayerCardProps) {
+function PlayerCard({ player, doc, frame, presence, vitalityFade, readingFull, flashFrames, locale, scoreTimeline, fxScene }: PlayerCardProps) {
   const t = REPLAY_TEXT[locale]
   // LES COMPTEURS DU FILM, quand ce joueur est publié. `null` veut dire « pas publié », pas
   // « à zéro » : sur le témoin Slayer 6 joueurs sur 8 en portent, et le mode Oddball n'en
@@ -222,59 +220,51 @@ function PlayerCard({ player, doc, frame, presence, vitalityFade, readingFull, f
   const equipment = state.alive && state.life
     ? activeEquipmentAt(doc, state.life.slot, frame)
     : null
-  let flashClass = ''
-  const style: CSSProperties = {}
-  if (!state.alive) {
-    // PAS DE LISERÉ GAUCHE (demande utilisateur du 2026-08-25 : « virer l'accentuation sur la
-    // bordure gauche de la fiche quand le joueur est mort »). L'état de mort reste dit TROIS
-    // fois — le fond teinté ci-dessous, le nom à l'encre `destructive`, et le compte de retour
-    // à la place des jauges. Le liseré était un quatrième signe pour le même fait, et c'est
-    // celui qui découpait la colonne en tranches dès qu'un joueur sur deux était mort.
-    style.background = `color-mix(in srgb, ${tokenCssVar('destructive')} 12%, transparent)`
-    if (deathAge >= 0 && deathAge <= flashFrames) {
-      flashClass = 'replay-flash-death'
-      style.animationDelay = `${(-(deathAge / flashFrames) * DEATH_FLASH_TOTAL_S).toFixed(3)}s`
-    }
-  } else {
-    if (lifeAge >= 0 && lifeAge <= flashFrames) {
-      flashClass = 'replay-flash-respawn'
-      style.animationDelay = `${(-(lifeAge / flashFrames) * RESPAWN_FLASH_S).toFixed(3)}s`
-    }
-    // Le camouflage rend la fiche VITREUSE (translucidité + flou) ; le surbouclier
-    // l'ENCADRE d'or. Les deux peuvent se composer (états indépendants) : les ombres
-    // s'ACCUMULENT (box-shadow accepte plusieurs couches) plutôt que de s'écraser, et
-    // seul le camouflage pose un fond — le cadre doré n'en a pas de propre — pour
-    // qu'une fiche vitreuse ET encadrée dise exactement ce que l'écran de jeu montre.
-    const shadows: string[] = []
-    if (equipment?.camo) {
-      style.backdropFilter = `blur(${CAMO_GLASS_BLUR_PX}px)`
-      style.WebkitBackdropFilter = style.backdropFilter
-      style.background = `color-mix(in srgb, var(--foreground) ${CAMO_GLASS_VEIL_PCT}%, var(--card))`
-      shadows.push('inset 0 0 0 1px var(--border)')
-    }
-    if (equipment?.overshield) {
-      shadows.push(`inset 0 0 0 ${OVERSHIELD_FRAME_PX}px ${tokenCssVar('legendary')}`)
-      shadows.push(`0 0 10px color-mix(in srgb, ${tokenCssVar('legendary')} ${OVERSHIELD_GLOW_PCT}%, transparent)`)
-    }
-    if (shadows.length > 0) {
-      style.boxShadow = shadows.join(', ')
-    }
-  }
-  const equipTitle = [
-    equipment?.camo ? t.equipmentActive.camo : null,
-    equipment?.overshield ? t.equipmentActive.overshield : null,
-  ].filter(Boolean).join(' · ')
+  // LES ZONES SOUS LE JOUEUR et le dernier PASSAGE par faille de cette vie : mêmes portes
+  // que la carte (equipmentZones.ts), position interpolée de la vie courante. Sans position
+  // lisible — et sur une fiche morte — aucune zone n'est affirmée.
+  const pos = state.alive && state.life ? positionAt(state.life.points, frame) : null
+  const zones = pos && state.life
+    ? zonePresenceAt(fxScene.zones, { slot: state.life.slot, x: pos.x, y: pos.y, frame }, fxScene.time)
+    : NO_ZONES
+  const teleportAge = state.alive && state.life
+    ? lastTeleportAge(fxScene.teleports, state.life.slot, frame)
+    : -1
+  // LA COMPOSITION DES EFFETS vit dans playerCardFx.ts (mort, éclats à délai négatif,
+  // verre trempé du camouflage, encadrés, voile de l'écran occultant) : la fiche lui donne
+  // les âges et rend ce qu'il dit, réparti sur ses DEUX couches (dessous / incrustation).
+  const fx = playerCardFx({
+    alive: state.alive,
+    deathAge,
+    lifeAge,
+    teleportAge,
+    flashFrames,
+    equipment,
+    zones,
+    text: t,
+  })
   return (
     <div
-      className={`flex flex-col gap-0.5 border-t border-border py-1 first:border-t-0 ${flashClass}`}
-      style={style}
-      title={equipTitle || undefined}
+      className="relative flex flex-col gap-0.5 border-t border-border py-1 first:border-t-0"
+      title={fx.title}
     >
+      {/* LA COUCHE D'EFFETS, EN RETRAIT ET ARRONDIE (retour utilisateur du 2026-08-27 :
+          « pas de padding, tout est bord à bord ») : fonds, voiles, flou et cadres vivent
+          sur cette couche `inset-0.5 rounded-md`, SOUS le contenu — les rangées sont en
+          `relative` pour peindre au-dessus d'elle. Les éclats de mort/réapparition animent
+          SON fond, jamais celui de la fiche. */}
+      {hasUnderLayer(fx) && (
+        <div
+          aria-hidden
+          className={`replay-card-fx pointer-events-none absolute inset-0.5 rounded-md ${fx.flashClass}`}
+          style={fx.underStyle}
+        />
+      )}
       {/* AUCUNE MARQUE D'IDENTITÉ SUR LA FICHE (demande utilisateur du 2026-08-25) : le glyphe
           « ami » a été retiré de la colonne. Il reste au FIL des éliminations, où il sert à
           reconnaître un nom au milieu d'événements qui défilent ; sur une fiche, la colonne
           d'équipe et le nom disent déjà tout ce qu'il y a à savoir. */}
-      <div className="flex items-baseline gap-1.5">
+      <div className="relative flex items-baseline gap-1.5">
         <span
           className="min-w-0 flex-1 truncate text-[11.5px] font-medium"
           style={state.alive ? undefined : { color: tokenCssVar('destructive') }}
@@ -289,7 +279,7 @@ function PlayerCard({ player, doc, frame, presence, vitalityFade, readingFull, f
           zone, jamais la zone — une fiche qui change de hauteur fait sauter toute la
           colonne à chaque mort (retour utilisateur du 2026-08-24 : la fiche morte
           paraissait plus haute). `overflow-hidden` est la garantie, pas un ornement. */}
-      <div className="flex h-3.5 flex-col justify-center gap-0.5 overflow-hidden">
+      <div className="relative flex h-3.5 flex-col justify-center gap-0.5 overflow-hidden">
         {state.alive ? (
           <>
             {/* Le bouclier AU-DESSUS de la santé : l'ordre dans lequel le jeu les encaisse. */}
@@ -304,7 +294,7 @@ function PlayerCard({ player, doc, frame, presence, vitalityFade, readingFull, f
           2026-08-24) : chaque rangée émet des cellules à largeur constante — deux armes,
           munitions de la main, grenades, capacité — pour que les fiches s'alignent en
           colonnes. `flex-nowrap` + `overflow-hidden` : la rangée ne se replie jamais. */}
-      <div className="flex h-[18px] flex-nowrap items-center gap-x-1 overflow-hidden">
+      <div className="relative flex h-[18px] flex-nowrap items-center gap-x-1 overflow-hidden">
         {state.alive && (
           <ReplayWeaponsRow
             doc={doc}
@@ -327,6 +317,81 @@ function PlayerCard({ player, doc, frame, presence, vitalityFade, readingFull, f
           />
         )}
       </div>
+      <ZoneFxOverlay zones={zones} translocationDelay={fx.translocationDelay} />
+    </div>
+  )
+}
+
+/**
+ * Décalages des trois croix du champ de réparation : désynchronisés (délais NÉGATIFS, donc
+ * déjà en vol au premier rendu) pour qu'elles ne montent pas au pas. Trois, pas plus : la
+ * fiche reste une fiche, l'effet un signe.
+ */
+const REPAIR_CROSSES = [
+  { left: '16%', delay: '-0.3s' },
+  { left: '46%', delay: '-1.1s' },
+  { left: '74%', delay: '-1.9s' },
+] as const
+
+/**
+ * ZoneFxOverlay — l'INCRUSTATION au-dessus du contenu : le nuage noir de l'écran occultant
+ * (« par-dessus les infos, mais légèrement »), le contour « détecté » du capteur adverse,
+ * les mini croix du champ de réparation, et le FOURREAU de translocation — la lumière qui
+ * court sur la bordure, en rotation continue jusqu'à son fondu. (Les fonds, voiles et
+ * cadres, eux, vivent sur la couche d'effets SOUS le contenu : playerCardFx.underStyle.)
+ *
+ * SUR SA PROPRE COUCHE, ET C'EST LE POINT : la couche du dessous anime déjà son fond (une
+ * seule animation par élément et par propriété) — la pulsation du capteur et le fourreau
+ * vivent donc chacun sur leur enfant. MÊME GÉOMÉTRIE que la couche du dessous
+ * (`inset-0.5 rounded-md`) : les deux dessinent le même encart en retrait, jamais deux
+ * cadres décalés. `pointer-events-none` : l'infobulle et le survol restent ceux de la
+ * fiche. `aria-hidden` : tout ce que l'incrustation montre est déjà dit en texte par
+ * l'infobulle (title de la fiche).
+ *
+ * LE DÉLAI NÉGATIF DU CAPTEUR cale la pulsation sur l'horloge des pings du capteur le plus
+ * fraîchement pingé (equipmentZones.sensorSincePingMs) : le contour de la fiche bat AVEC
+ * l'onde de la carte, à la cadence officielle — jamais un rythme inventé. Celui du fourreau
+ * suit le contrat des éclats (reprise à l'avancement réel après un saut de lecture).
+ */
+function ZoneFxOverlay({
+  zones,
+  translocationDelay,
+}: {
+  zones: ZonePresence
+  translocationDelay: string | null
+}) {
+  const rien =
+    !zones.repair && !zones.shroud && zones.sensorSincePingMs === null &&
+    translocationDelay === null
+  if (rien) return null
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-0.5 overflow-hidden rounded-md">
+      {zones.shroud && <div className="replay-zone-cloud absolute inset-0" />}
+      {zones.sensorSincePingMs !== null && (
+        <div
+          className="replay-zone-sensor absolute inset-0 rounded-md border-[1.5px] border-dashed"
+          style={{
+            borderColor: tokenCssVar('destructive'),
+            animationDelay: `${(-zones.sensorSincePingMs / 1000).toFixed(3)}s`,
+          }}
+        />
+      )}
+      {zones.repair &&
+        REPAIR_CROSSES.map((c) => (
+          <span
+            key={c.left}
+            className="replay-zone-cross absolute top-[40%] text-[10px] font-bold leading-none"
+            style={{ left: c.left, color: tokenCssVar('success'), animationDelay: c.delay }}
+          >
+            +
+          </span>
+        ))}
+      {translocationDelay !== null && (
+        <div
+          className="replay-flash-translocation absolute inset-0 rounded-md"
+          style={{ animationDelay: translocationDelay }}
+        />
+      )}
     </div>
   )
 }

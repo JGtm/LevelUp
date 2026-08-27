@@ -171,6 +171,28 @@ function portaitLeTranslocateur(
 }
 
 /**
+ * lastTeleportAge — l'âge (en frames) du passage le plus RÉCENT d'un SLOT à cette image,
+ * ou -1 s'il n'en a aucun d'advenu.
+ *
+ * La recherche porte sur le slot — une vie — comme tout report de lecture : un passage ne
+ * peut pas survivre à son porteur, donc une fiche morte n'en portera jamais l'éclat. Un
+ * passage À VENIR ne compte pas : l'éclat date un événement advenu, jamais annoncé.
+ */
+export function lastTeleportAge(
+  teleports: readonly RiftTeleport[],
+  slot: number,
+  frame: number,
+): number {
+  let age = -1
+  for (const t of teleports) {
+    if (t.slot !== slot || t.frame > frame) continue
+    const a = frame - t.frame
+    if (age === -1 || a < age) age = a
+  }
+  return age
+}
+
+/**
  * riftTeleports — tous les passages du film, dans l'ordre des frames d'arrivée.
  *
  * Pure et sans état : le calque la fait passer par un mémo, jamais par image.
