@@ -933,10 +933,10 @@ par le lot.
 
 ### D8 — CLOTURE DU LOT
 
-- [ ] D8.1 Tous les items du plan statues, aucune case vide.
-- [ ] D8.2 CR de lot : mesures, seuils tenus ou non, chiffres, et les TEXTES prets a coller pour
+- [x] D8.1 Tous les items du plan statues, aucune case vide.
+- [x] D8.2 CR de lot : mesures, seuils tenus ou non, chiffres, et les TEXTES prets a coller pour
       `.ai/thought_log.md` et `.ai/V7.5/REGISTRE_REPORTS.md` (le superviseur les consigne).
-- [ ] D8.3 Les lignes de registre a AMENDER sont nommees : crane d'Oddball, `ti=11` objectifs
+- [!] D8.3 Les lignes de registre a AMENDER sont nommees : crane d'Oddball, `ti=11` objectifs
       vivants, VIP, et toute condition de reprise creee par une phase `[!]`.
 
 ---
@@ -2380,12 +2380,12 @@ predicat, et le volet 1 le teste AVANT de s'en servir.
 
 #### Volet 1 — ETABLIR LE SOMMEIL
 
-- [ ] D8.1 **Naissances reclassees SANS ORDRE DE PRIORITE.** Chaque naissance de vie libre est
+- [x] D8.1 **Naissances reclassees SANS ORDRE DE PRIORITE.** Chaque naissance de vie libre est
       notee sur les TROIS attributs a la fois — au socle (<= 3 m) ? aux pieds d'un joueur
       (<= 1,5 m) ? au LIEU EXACT du silence precedent (<= 1,0 m) ? — et les recouvrements sont
       publies tels quels. C'est la correction directe du defaut que D7 a nomme dans sa propre
       sonde.
-- [ ] D8.2 **Traversee du lieu de repos.** Pour chaque trou : un joueur nomme passe-t-il a
+- [x] D8.2 **Traversee du lieu de repos.** Pour chaque trou : un joueur nomme passe-t-il a
       <= 1,5 m de la position de repos PENDANT le trou, et au bout de combien de temps ?
       Distribution du delai silence -> premiere traversee.
 
@@ -2410,12 +2410,12 @@ dans la v7.5. Le volet 2 ne s'execute pas.
 
 #### Volet 2 — LA RECONSTRUCTION CORRIGEE (seulement si le sommeil est etabli)
 
-- [ ] D8.3 **Le ramassage est la PREMIERE TRAVERSEE**, pas le silence : le porteur est le premier
+- [!] D8.3 **Le ramassage est la PREMIERE TRAVERSEE**, pas le silence : le porteur est le premier
       joueur nomme dont la piste passe a <= **1,5 m** (le seuil CONSTATE de D6 — q25 a 0,20-0,43 m
       contre q75 a 5,5-7,9 m, il ne se regle pas) de la position de repos pendant le trou. Le
       portage court de cette traversee jusqu'a `t0` de la vie suivante, ou jusqu'a la MORT du
       porteur si elle tombe avant — regle fondee par la mesure D6 a **22/24 = 91,7 %**.
-- [ ] D8.4 **Verdict** contre l'oracle API, memes seuils.
+- [!] D8.4 **Verdict** contre l'oracle API, memes seuils.
 
 **AMBIGUITE** : si deux joueurs traversent dans la MEME image a moins de 1,0 m l'un de l'autre, le
 porteur est **null** — doctrine des occupations de socle, inchangee.
@@ -2442,3 +2442,79 @@ registre), rendu crane-sur-porteur au patron du drapeau.
 
 **EXECUTION** : les 4 films, un par processus, sentinelle memoire armee dans le processus qui
 decode, oracle API FIGE en entree, aucune base ouverte par la mesure.
+
+- 2026-08-27 — **D8 VOLET 1 : LE SOMMEIL N'EST PAS ETABLI. Le volet 2 ne s'execute PAS, et le
+  portage Oddball est `[!]` FINAL pour la v7.5.** Protocole commite avant la mesure
+  (`6262dc221`). Sortie figee dans `registre_film/D8_sommeil.log`.
+
+  **LA PRECONDITION DE PONT A FONCTIONNE DES LE PREMIER FILM QU'ELLE VISAIT.** `51ebbc0f` sort
+  proprement a **10,7 %** de slots nommes contre un plancher de 50 % — les trois autres sont a
+  89,7 / 86,1 / 87,5 %. La mesure porte donc sur **TROIS** films, et il ne sera pas dit quatre.
+  C'est la lecon de D6 ecrite en garde plutot qu'en regret.
+
+  **D8.1 — LES NAISSANCES, RECLASSEES SANS ORDRE DE PRIORITE** (la correction du defaut que D7
+  avait nomme dans sa propre sonde) :
+
+  | film | au socle | aux pieds d'un joueur | **AU LIEU DU SILENCE** | aucun des trois | recouvrements |
+  |---|---|---|---|---|---|
+  | `24dbb67d` | 13,0 % | 78,3 % | **8,7 %** | 13,0 % | socle+joueur 1 ; lieu+joueur 2 |
+  | `43716616` | 25,0 % | 75,0 % | **6,2 %** | 12,5 % | socle+joueur 2 ; lieu+joueur 1 |
+  | `d9781168` | 27,7 % | 72,3 % | **0,0 %** | 10,6 % | socle+joueur 5 ; lieu+joueur 0 |
+
+  **LA CORROBORATION DU SOMMEIL EST REFUTEE, ET PLUS NETTEMENT ENCORE QUE LE CRITERE.** Si
+  l'objet s'endormait et se reveillait sur place, les naissances se serreraient a ZERO metre du
+  silence precedent. Elles n'y sont pas : distance **mediane 3,95 / 7,42 / 9,35 m**, et le
+  MINIMUM sur les trois films vaut deja 0,44 / 0,83 / **1,40 m**. **L'objet a bouge entre son
+  silence et sa renaissance — il a ete PORTE, pas endormi.**
+
+  **D8.2 — LES DEUX CONDITIONS DU CRITERE, ET ELLES SE SEPARENT :**
+
+  | film | trous TRAVERSES (seuil 70 %) | delai median (seuil >= 1,0 s) | verdict |
+  |---|---|---|---|
+  | `24dbb67d` | **90,9 %** OUI | **0,00 s** NON | SOMMEIL NON ETABLI |
+  | `43716616` | **93,3 %** OUI | **0,00 s** NON | SOMMEIL NON ETABLI |
+  | `d9781168` | **84,8 %** OUI | **0,00 s** NON | SOMMEIL NON ETABLI |
+
+  **LES DEUX ETAIENT EXIGEES. La seconde tombe sur les trois films : le delai median vaut ZERO.**
+  Plus de la moitie des trous voient un joueur sur le lieu de repos A L'INSTANT MEME du silence —
+  c'est-a-dire le ramassage au silence, deja mesure par D6 et deja insuffisant. Le sommeil aurait
+  exige que ce delai soit substantiel ; il ne l'est pas. **Sommeil NON ETABLI, volet 2 non
+  execute, comme le protocole l'engageait.**
+
+  **CE QUE LA MESURE REND QUAND MEME, ET QUE JE SIGNALE SANS L'EXPLOITER.** La part de trous
+  traverses PENDANT leur duree vaut **84,8 a 93,3 %**, la ou D6 n'en trouvait que **45,5 et
+  47,8 %** a l'instant du silence seul. Le quartile superieur du delai vaut 2,2 a 3,6 s et la
+  queue monte a 22,6 s : **il existe donc une population reelle de trous ou le passage a lieu
+  NETTEMENT plus tard.** Une reconstruction fondee sur la premiere traversee couvrirait presque
+  tous les trous au lieu de la moitie. **Je ne l'ai pas mesuree** : mon protocole la conditionnait
+  a un sommeil etabli, il ne l'est pas, et lancer le volet 2 apres avoir vu ce chiffre serait
+  exactement le « changer d'instrument apres coup » que j'ai refuse quatre fois. C'est au
+  superviseur d'en decider, avec un protocole neuf s'il le veut.
+
+- [x] D8.1 Naissances sans ordre de priorite : faites ; le reveil sur place est REFUTE
+      (mediane 3,95 a 9,35 m, minimum 0,44 a 1,40 m).
+- [x] D8.2 Traversees : faites ; couverture 84,8-93,3 % mais delai median NUL.
+- [!] D8.3 / D8.4 Reconstruction corrigee et verdict : **NON EXECUTES** — le volet 2 etait
+      conditionne a un sommeil etabli, et il ne l'est pas.
+
+**CLOTURE DU PORTAGE ODDBALL POUR LA v7.5 — `[!]` FINAL.** Quatre campagnes, quatre protocoles
+ecrits d'avance, quatre negatifs, et une regle tenue : aucun seuil abaisse, aucun instrument
+change apres coup, aucun oracle choisi pour ce qu'il rendrait.
+
+**LES ACQUIS, QUI EUX RESTENT :**
+
+1. **L'identite du crane** : `0x0017592C`, elue 4 films sur 4, au manifeste, avec son exclusion
+   des socles d'armes desormais VOULUE ET GARDEE (D4, D5).
+2. **Le calque du crane LIBRE, publie et dessine** (D5-bis, schema 21, contrat 39) : ou se trouve
+   l'objet quand personne ne le porte, avec son refus explicite de dessiner pendant les portages.
+3. **« Mourir, c'est lacher » : 22/24 = 91,7 %** (D6).
+4. **Un tic de score de crane vaut une seconde de portage** (D6) — ce qui referme le « ~1 Hz » du
+   §2.4, faux sur le score personnel et juste sur le canal du mode.
+5. **La primitive de proximite discrimine** : q25 a 0,20-0,43 m contre q75 a 5,5-7,9 m (D6).
+6. **Le sommeil de l'objet est REFUTE** : l'objet est porte, pas endormi (D8).
+7. **Un oracle independant du film existe** pour qui reprendra : `time_as_skull_carrier_seconds`,
+   par joueur, dans `match_objective_stats_latest`.
+
+**CONDITION DE REPRISE (hors v7.5)** : une reconstruction fondee sur la PREMIERE TRAVERSEE du lieu
+de repos — couverture mesuree 84,8 a 93,3 % — confrontee au meme oracle et au meme seuil de 80 %.
+Tout est instrumente ; il n'y manque qu'un protocole ecrit d'avance et une decision.
