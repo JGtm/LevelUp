@@ -199,10 +199,20 @@
 
 ### C5 — Cloture
 
-- [ ] C5.1 Gates du lot : `go build ./...` exit 0, `go vet` propre sur packages touches,
+- [x] C5.1 Gates du lot : `go build ./...` exit 0, `go vet` propre sur packages touches,
       `go test` des packages touches ; si C3.2 a publie : contracttest + `tsc -b` (cache
       purge) + vitest `match-replay` + lint web 0 erreur.
-- [ ] C5.2 Plan statue (0 case vide), logs figes commites, CR avec textes journal/registre.
+      — Fait 2026-08-27 : build exit 0 ; vet propre (filmdec, replay, mapvar, mappings,
+      service, himap, cmd/mapquant-build) ; tests verts -count=1 : filmdec, replay,
+      replay/mapvar, games/mappings, service, contracttest, himap cible (les preuves —
+      le paquet himap COMPLET depasse structurellement le timeout local par ses balayages
+      de cuisson gamefiles, etat connu du depot, anterieur au lot). C3.2 n'a PAS publie
+      et aucun fichier web n'a change : gates web sans objet (verifie : le calque
+      objectivesLayer traite `role` en générique, un role inconnu degrade proprement).
+- [x] C5.2 Plan statue (0 case vide), logs figes commites, CR avec textes journal/registre.
+      — Fait 2026-08-27 : 3 logs figes commites (C1_livefire_qualification.log,
+      C2_sites_controle.log + C2_sites_candidats.json, C3_identite_bombe_rejeu.log) ;
+      textes thought_log et REGISTRE_REPORTS livres au CR (le superviseur les consigne).
 
 ## 2. COMPTE-RENDU ATTENDU
 
