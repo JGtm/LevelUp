@@ -13,7 +13,7 @@
 # (analysis.NormalizeModeLabel : "Arena:CTF on Aquarius" -> "CTF") puis cherche chaque
 # jeton de `match` comme MOT ENTIER, insensible a la casse, dans le libelle normalise
 # (analysis.ExtractKnownMode). "Fiesta CTF", "One Flag CTF", "CTF 3 Captures" matchent
-# donc "CTF" sans etre listes. Un libelle sans aucun jeton (Slayer, Land Grab,
+# donc "CTF" sans etre listes. Un libelle sans aucun jeton (Slayer,
 # un UUID brut) = aucun role = aucun calque. Plusieurs entrees peuvent matcher : leurs
 # roles s'additionnent.
 #
@@ -45,7 +45,8 @@
 # regeneration du catalogue qui leur en donnerait une ne rouvrirait pas le defaut.
 #
 # GARDE-FOU AU CHARGEMENT : `points_only` est REFUSE sur un role surfacique
-# (`strongholds_zone`, `extraction_zone`, `hill`, `totalcontrol_zone`, `firefight_objective`).
+# (`strongholds_zone`, `extraction_zone`, `hill`, `totalcontrol_zone`, `firefight_objective`,
+# `landgrab_zone`).
 # Sans ce refus, une ligne de configuration ferait disparaitre les trois bases d'une carte de
 # Bastion en les reduisant a des marqueurs — une regression majeure et silencieuse.
 #
@@ -59,7 +60,8 @@
 #
 # Les roles admis sont ceux du decodeur (mapvar) : flag_spawn, flag_delivery,
 # stockpile_socket, stockpile_navpoint, strongholds_zone, extraction_zone,
-# oddball_spawn, assault_bomb, hill, totalcontrol_zone, firefight_objective. Un role
+# oddball_spawn, assault_bomb, hill, totalcontrol_zone, firefight_objective,
+# landgrab_zone. Un role
 # inconnu est une erreur de configuration (validation stricte au chargement), jamais un
 # silence.
 #
@@ -126,6 +128,30 @@ points_only = true
 # sont l'affaire de zoneStates (etat vivant), jamais du team_index du fichier.
 match   = ["King of the Hill", "KOTH"]
 roles   = ["hill"]
+neutral = true
+
+[[modes]]
+# Land Grab (lot C catalogues, 2026-08-27 — ex-lot L ; decision produit du plan chantier
+# PLAN_MODES_PORTEURS §1.5 : cablage de DONNEE seul, les matchs FUTURS le servent — le seul
+# match connu, 19f1028b de 2024-02, a son film EXPIRE, l'oracle ZonesStats vit deja en base).
+#
+# CE QUE CETTE ENTREE SERT : les zones declarees par le fichier de carte sous le role
+# `landgrab_zone` (noms resolus par chasse murmur3 rejouable : landgrab_include -886053664,
+# landgrab_zone 996801386 ; motif volume+marqueur identique a Bastion — mapvar/objectives.go).
+# ATTENTION AU VIVIER, la lecon de Total Control : le fichier declare 9 zones par carte
+# quand une VAGUE du mode n'en active que 3 (trois vagues successives). Le choix des 3
+# n'est PAS dans le fichier : ce role publie des FORMES, jamais un etat. Si un futur match
+# montre que le vivier de 9 LIT MAL a l'ecran (le precedent Total Control a fini RETIRE
+# pour ca), la decision de retrait appartient a l'utilisateur — pas a une regeneration.
+#
+# neutral = true : la possession d'une zone de Land Grab est dynamique (une zone capturee
+# disparait), le team_index du fichier n'affirme rien — meme regle que Bastion et KOTH.
+#
+# NOTE CATALOGUE : les entrees extraites AVANT le 2026-08-27 n'ont pas ce role (leurs hashs
+# etaient non resolus au parse) — degradation par absence jusqu'a re-extraction. Cliffhanger
+# est re-extraite (le temoin statique du cablage) ; le census compte 29 cartes porteuses.
+match   = ["Land Grab"]
+roles   = ["landgrab_zone"]
 neutral = true
 
 # TOTAL CONTROL — ENTREE RETIREE LE 2026-08-27 (decision utilisateur, option (a)).

@@ -268,6 +268,9 @@ export interface ReplayText {
   flagSinceFmt: (seconds: number) => string
   /** La réserve de `carried_open`, en toutes lettres. */
   flagOpenNote: string
+  /** LA COURONNE VIP (schéma 22) : le nom du calque et sa réserve, identiques FR/EN (« VIP »). */
+  layerVipCrown: string
+  layerVipCrownHint: string
   padState: Record<'full' | 'uncertain' | 'empty', string>
   /**
    * LE NOM D'UN SOCLE QUI NE PORTE PAS UNE ARME (schéma 17). Les clés sont les familles

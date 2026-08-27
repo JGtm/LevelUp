@@ -216,6 +216,12 @@ describe('garde-rail : le vocabulaire des familles de pose', () => {
  * grappin — partent donc dans `useReplayFx.ts`, onzieme extraction imposee par ce cliquet :
  * ils ne dependent que du FILM, ne lisent ni theme ni cadrage, et ne dessinent rien. Les noms
  * sortent inchanges, comme a la neuvieme.
+ *
+ * 691 -> 691 le 2026-08-27 (lot VIP COURONNE) : le canvas etait PILE a son plafond et le lot y
+ * fait entrer la COURONNE VIP (hook `useReplayVipCrown`, un paint et une prop de tiroir). Le
+ * memo `objectivePulses` REJOINT donc `useReplayFx.ts` — il est de la meme nature que les cinq
+ * autres (une liste d'evenements en monde, precalculee une fois, qui ne dessine rien) : douzieme
+ * extraction imposee par ce cliquet, nom inchange, aucune ligne de tracé deplacee.
  */
 describe('garde-rail : la taille du canvas du rejeu ne remonte pas', () => {
   it('ReplayCanvas.tsx reste sous son plafond', () => {

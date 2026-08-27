@@ -65,6 +65,14 @@ var attCartes = map[string]struct{ Nom, MapID string }{
 	"c75f33b8": {"Curfew", "63d634be-0319-489d-8c21-9c4e012f664f"},
 	"9f57c612": {"Curfew", "63d634be-0319-489d-8c21-9c4e012f664f"},
 	"1c01e34f": {"Urban Raid", "be848f91-3d87-4b80-8eb9-df3b52cb8d10"},
+
+	// LES TROIS FILMS VIP DU LOT RESOLUTION, releves le 2026-08-27 sur les payloads bruts
+	// GetMatchStats des trois matchs (MapVariant.AssetId ; meme convention que ci-dessus).
+	// Deux cartes seulement : Bazaar (deux films) et Catalyst — toutes deux au catalogue de
+	// bornes `map_quant_bounds.json`, donc qualifiables. Mode GameVariantCategory=23.
+	"00761d27": {"Bazaar", "3e1e4cec-4f2c-44c6-b8d2-96b85c66c702"},
+	"9903b1c5": {"Bazaar", "3e1e4cec-4f2c-44c6-b8d2-96b85c66c702"},
+	"99553e4a": {"Catalyst", "f7e8cde9-0c0a-487c-94a3-61bfa0f20465"},
 }
 
 // attRefDir rend le répertoire des données de référence du titre.
@@ -81,12 +89,12 @@ func attRefDir(root string) string {
 // L'APPELANT DOIT DÉTENIR `LockProcessDecode` ET RESTAURER `WorldObjectPrecision` : c'est un
 // global de paquet, et le correctif du 2026-08-15 a mesuré ce que coûte de l'oublier (tous
 // les objets déquantifiés aux largeurs de la carte précédente).
-func attBornes(t *testing.T, root, id string) (filmdec.Vec3Range, bool) {
+func attBornes(t *testing.T, root, id string) (filmdec.Vec3Range, filmdec.I0Layout, bool) {
 	t.Helper()
 	c, ok := attCartes[id]
 	if !ok {
 		t.Logf("%s : carte inconnue du fixture — bornes indisponibles", id)
-		return filmdec.Vec3Range{}, false
+		return filmdec.Vec3Range{}, filmdec.I0Layout{}, false
 	}
 	cat, err := filmdec.LoadMapQuantCatalog(filepath.Join(attRefDir(root), "map_quant_bounds.json"))
 	if err != nil {
@@ -95,11 +103,14 @@ func attBornes(t *testing.T, root, id string) (filmdec.Vec3Range, bool) {
 	e, err := cat.Lookup(c.Nom)
 	if err != nil {
 		t.Logf("%s : carte %q absente du catalogue de bornes (%v)", id, c.Nom, err)
-		return filmdec.Vec3Range{}, false
+		return filmdec.Vec3Range{}, filmdec.I0Layout{}, false
 	}
-	filmdec.SetWorldObjectPrecisionFromLayout(filmdec.I0Layout{AxisW: [3]uint{
-		uint(e.AxisWidths[0]), uint(e.AxisWidths[1]), uint(e.AxisWidths[2])}})
-	return e.Range(), true
+	// e.Layout() porte largeurs d'axe, largeur d'index de région et région attendue —
+	// trois constantes par carte du MÊME catalogue (Live Fire : région 1 sur 2 bits, lot C
+	// catalogues 2026-08-27). Il est rendu à l'appelant pour le chemin BIPÈDE, et installé
+	// ici pour le chemin WORLD-OBJECT, comme avant.
+	filmdec.SetWorldObjectPrecisionFromLayout(e.Layout())
+	return e.Range(), e.Layout(), true
 }
 
 // attMarqueurs rend les objectifs PONCTUELS d'un rôle donné sur la carte d'un film. Rend une

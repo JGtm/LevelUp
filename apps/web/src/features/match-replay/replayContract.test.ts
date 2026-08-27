@@ -130,6 +130,11 @@ const NULLABLE_ARRAYS = [
   // quand PERSONNE ne tient la zone, et c'est une MESURE (la valeur neutre du canal), pas une
   // absence de donnée. `zoneRef` indexe `mapObjectives.zones`, le calque servi à la requête.
   'zoneStates',
+  // `vipCrown` : LES PÉRIODES DE PORT DE LA COURONNE VIP (schéma 22, 2026-08-27) — une entrée
+  // PLATE par période (xuid, t0, t1, closed), sans tableau imbriqué. `closed` faux = rien ne
+  // ferme le port (borne haute à la fin de l'axe). La garde de mode est côté serveur : `comp
+  // 22 A` vaut `flag_grabs` en CTF, donc le calque n'est rempli que sur un film reconnu VIP.
+  'vipCrown',
 ] as const
 
 /** (1) La liste couvre EXACTEMENT les tableaux nullables du contrat — ni plus, ni moins. */
@@ -170,7 +175,7 @@ type NullableArrayPaths<T, D extends number = 6> = [D] extends [never]
       }[keyof T & string]
 
 /**
- * NULLABLE_ARRAY_PATHS — la CARTE du contrat : 50 chemins, racine et profondeurs confondues.
+ * NULLABLE_ARRAY_PATHS — la CARTE du contrat : 51 chemins, racine et profondeurs confondues.
  *
  * Elle n'est pas décorative : l'assertion (3) la confronte au contrat généré. Le Go publie un
  * tableau de plus, où que ce soit, et `tsc -b` refuse de compiler en nommant le chemin.
@@ -199,6 +204,8 @@ const NULLABLE_ARRAY_PATHS = [
   'tracks',
   'weaponPads',
   'zoneStates',
+  // `vipCrown` (schéma 22) : période PLATE, aucun tableau imbriqué — un seul chemin, la racine.
+  'vipCrown',
   // Dans les ÉLÉMENTS d'un tableau de tête — ce que la garde de racine ne voyait pas.
   'flagCarries[].spans',
   // La trajectoire d'une vie libre d'objet d'objectif (schema 21) : comblee par la

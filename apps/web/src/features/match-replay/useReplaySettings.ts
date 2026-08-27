@@ -35,6 +35,7 @@ const SHOW_UNNAMED_PLACEMENTS_KEY = 'replay-show-unnamed-placements'
 const SHOW_DROPPED_PLACEMENTS_KEY = 'replay-show-dropped-placements'
 const SHOW_WEAPON_PADS_KEY = 'replay-show-weapon-pads'
 const SHOW_FLAG_CARRIES_KEY = 'replay-show-flag-carries'
+const SHOW_VIP_CROWN_KEY = 'replay-show-vip-crown'
 const MARKER_COLORS_KEY = 'replay-marker-colors'
 
 /** Multiplicateurs de vitesse proposés (repris du POC, réglés à l'écran). */
@@ -134,6 +135,7 @@ const SHOW_WEAPON_PADS_DEFAULT = true
  * RÉGLAGE D'AFFICHAGE offert au lecteur — un BTB de capture reste dense.
  */
 const SHOW_FLAG_CARRIES_DEFAULT = true
+const SHOW_VIP_CROWN_DEFAULT = true
 
 /** Les deux lectures de couleur des points, dans l'ordre où le tiroir les propose. */
 export type MarkerColorsMode = 'team' | 'player'
@@ -211,6 +213,12 @@ export interface ReplaySettings {
    */
   showFlagCarries: boolean
   toggleFlagCarries: () => void
+  /**
+   * Calque de la COURONNE VIP (schéma 22). Allumé par défaut : c'est l'enjeu du mode
+   * (cf. SHOW_VIP_CROWN_DEFAULT). Un film hors VIP n'en publie aucune.
+   */
+  showVipCrown: boolean
+  toggleVipCrown: () => void
   /** Couleur des points des joueurs : par équipe (défaut) ou distincte par joueur. */
   markerColors: MarkerColorsMode
   setMarkerColors: (mode: MarkerColorsMode) => void
@@ -285,6 +293,10 @@ export function useReplaySettings(): ReplaySettings {
     SHOW_FLAG_CARRIES_KEY,
     SHOW_FLAG_CARRIES_DEFAULT,
   )
+  const [showVipCrown, toggleVipCrown] = usePersistedFlag(
+    SHOW_VIP_CROWN_KEY,
+    SHOW_VIP_CROWN_DEFAULT,
+  )
   const [heatmapMode, setHeatmapModeState] = useState(() =>
     readStoredChoice(HEATMAP_MODE_KEY, HEATMAP_MODE_DEFAULT, HEATMAP_MODES),
   )
@@ -347,6 +359,8 @@ export function useReplaySettings(): ReplaySettings {
     toggleWeaponPads,
     showFlagCarries,
     toggleFlagCarries,
+    showVipCrown,
+    toggleVipCrown,
     markerColors,
     setMarkerColors,
     speed,

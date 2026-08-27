@@ -69,7 +69,7 @@ func TestAssautA0Qualification(t *testing.T) {
 	}
 
 	// (1) BORNES de quantification — sans elles, le verdict tombe ici.
-	wr, okB := d6Bornes(t, root, id)
+	wr, lay, okB := d6Bornes(t, root, id)
 	if !okB {
 		t.Logf("VERDICT %s : EXCLU — bornes de quantification absentes du catalogue "+
 			"(film indecodable en coordonnees monde, lecon Live Fire du lot O)", id)
@@ -85,7 +85,7 @@ func TestAssautA0Qualification(t *testing.T) {
 	}
 
 	// (3) PONT bipede — la precondition du lot O, meme calcul que `d8Charge`.
-	pos, err := d6Positions(objChunkDir(root, id), wr)
+	pos, err := d6Positions(objChunkDir(root, id), wr, lay)
 	if err != nil {
 		t.Fatalf("%s : positions de bipede illisibles : %v", id, err)
 	}

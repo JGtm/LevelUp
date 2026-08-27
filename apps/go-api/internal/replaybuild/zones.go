@@ -125,6 +125,22 @@ func isHillVariant(variant string) bool {
 	return objectiveevents.ObjectiveTypeOf(variant) == objectiveevents.ObjectiveTypeHill
 }
 
+// isVipVariant dit si la variante du match est un mode VIP — la GARDE DE MODE de la couronne
+// (`replay.VipInput.Scanned`). Elle est ICI, chez l'appelant, parce que `comp 22 A` vaut
+// `flag_grabs` en CTF : lu sur un film CTF, il rendrait de fausses couronnes ; le paquet `replay`
+// ne devine aucun mode.
+//
+// CRITERE : le jeton `vip` dans le nom de variante, MEME approche par mot-clef que les autres
+// modes (`ctf`, `koth`, `oddball`...). Le marqueur canonique du mode est `GameVariantCategory=23`
+// (verifie sur les payloads bruts, `VIP_COURONNE_PROTOCOLE.md`), mais la categorie n'est pas
+// portee par `MatchFacts` — le nom l'est. LA GARDE ECHOUE FERMEE : un film VIP dont le nom ne
+// porterait pas `vip` ne montre simplement pas de couronne (degradation gracieuse) ; la seule
+// erreur dangereuse — une couronne sur un film non-VIP — exigerait un nom non-VIP contenant
+// `vip`, ce qu'aucune variante Halo ne fait.
+func isVipVariant(variant string) bool {
+	return strings.Contains(strings.ToLower(variant), "vip")
+}
+
 // tableRoles projette la table du titre sur la variante du match : les memes entrees, le meme
 // matcher et le meme ordre que le service.
 //

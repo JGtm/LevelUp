@@ -18,10 +18,12 @@ package filmdec
 //
 // CE QU'IL NE PEUT PAS DIRE, dit d'avance : `DetectI0Layout` suppose `DefaultI0GateBits`
 // (5 bits d'en-tête = 3 spine + 1 useDefault + 1 index de région). Une carte à plus de deux
-// BSP valides porterait un index plus large et décalerait la PREMIÈRE largeur d'autant ; les
-// deux autres, lues comme des écarts entre frontières, restent justes. Aucun module de
-// l'installation n'est dans ce cas (mesuré : 29 modules, au plus 3 tags sbsp dont un seul
-// couple de régions déclaré), mais le jour où l'un le sera, l'axe X sera le premier à mentir.
+// BSP valides porte un index plus large et décale la PREMIÈRE largeur d'autant ; les
+// deux autres, lues comme des écarts entre frontières, restent justes. CE CAS EXISTE depuis
+// le 2026-08-27 (lot C catalogues) : Live Fire déclare 4 régions (index 2 bits,
+// `regionIndexBits` de l'entrée), et le contrôle compare donc le découpage lu à
+// [W0 + (bits-1), W1, W2] — l'écart d'index est une donnée du catalogue, jamais un
+// ajustement au film.
 //
 // LECTURE SEULE, gardé par MAPQUANT_CTRL_PAIRES, sauté partout ailleurs (CI comprise). UN SEUL
 // décodage filmdec par process : le verrou est pris pour toute la durée du contrôle.
@@ -73,9 +75,15 @@ func TestControleBornesFilms(t *testing.T) {
 			sansEntree = append(sansEntree, p.carte+" ("+p.film+")")
 			continue
 		}
+		// Le détecteur lit avec un gate fixe de DefaultI0GateBits : sur une carte dont
+		// l'index de région est plus large (regionIndexBits > 1, donnée du catalogue),
+		// l'excédent d'index est lu comme des bits de X. L'attendu du contrôle intègre cet
+		// écart — il vient du catalogue, jamais du film.
+		attendu := entry.AxisWidths
+		attendu[0] += entry.EffectiveRegionIndexBits() - 1
 		b := bilans[p.carte]
 		if b == nil {
-			b = &ctrlBilan{attendu: entry.AxisWidths, lus: map[[3]uint]int{}}
+			b = &ctrlBilan{attendu: attendu, lus: map[[3]uint]int{}}
 			bilans[p.carte] = b
 		}
 		lay, rep, err := DetectI0Layout(filepath.Join(root, p.film))
@@ -86,13 +94,13 @@ func TestControleBornesFilms(t *testing.T) {
 			continue
 		}
 		b.lus[lay.AxisW]++
-		if lay.AxisW == entry.AxisWidths {
+		if lay.AxisW == attendu {
 			b.accord++
 			continue
 		}
 		b.desaccord++
 		t.Errorf("  %-38s %-10s DÉSACCORD : catalogue %v · film %v (module %s)",
-			p.carte, p.film, entry.AxisWidths, lay.AxisW, entry.Module)
+			p.carte, p.film, attendu, lay.AxisW, entry.Module)
 	}
 	ctrlPublie(t, bilans, sansEntree, len(paires))
 }

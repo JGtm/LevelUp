@@ -33,11 +33,7 @@ import type { CalloutZoneReady } from './calloutsLayer'
 import { ReplayHeatmapLegend } from './ReplayHeatmapLegend'
 import { ReplayTransport } from './ReplayTransport'
 import { useLeadMarks } from './useLeadMarks'
-import {
-  buildObjectivePulses,
-  drawObjectivePulses,
-  normalizeMapObjectives,
-} from './objectivesLayer'
+import { drawObjectivePulses, normalizeMapObjectives } from './objectivesLayer'
 import { drawZoneStates } from './zoneStatesLayer'
 import { drawFireMarks } from './fireMark'
 import { drawGrappleLayer } from './grappleLayer'
@@ -46,6 +42,7 @@ import { ReplayCanvasTips } from './ReplayCanvasTips'
 import { useReplayPlacements } from './useReplayPlacements'
 import { EMPTY_ZONES, SERIES_TOKENS } from './replayCanvasConfig'
 import { useReplayObjectiveObjects } from './useReplayObjectiveObjects'
+import { useReplayVipCrown } from './useReplayVipCrown'
 import { useReplayFlagCarries } from './useReplayFlagCarries'
 import { useGrenadeIcons } from './useGrenadeIcons'
 import { useZoneStates } from './useZoneStates'
@@ -163,6 +160,7 @@ export function ReplayCanvas({
     showUnnamedPlacements, toggleUnnamedPlacements,
     showDroppedPlacements, toggleDroppedPlacements,
     showWeaponPads, toggleWeaponPads, showFlagCarries, toggleFlagCarries,
+    showVipCrown, toggleVipCrown,
     speed: multiplier, setSpeed: setMultiplier,
     markerColors, setMarkerColors,
   } = useReplaySettings()
@@ -225,12 +223,6 @@ export function ReplayCanvas({
   // Les OBJECTIFS STATIQUES du mode arrivent AVEC le document (`mapObjectives`, servi à
   // la requête) : normalisés une fois, comme les callouts. Absents = pas de calque.
   const mapObjectives = useMemo(() => normalizeMapObjectives(doc.mapObjectives), [doc.mapObjectives])
-  // Les PULSES d'action d'objectif (doc.objectives, rendu nulle part avant le lot 4.4) :
-  // précalculés en monde, comme les effets de mort.
-  const objectivePulses = useMemo(
-    () => buildObjectivePulses(doc, mapObjectives),
-    [doc, mapObjectives],
-  )
   // L'ÉTAT VIVANT DES ZONES (schémas 16-18) : encres, jointure du catalogue, tenue de la jauge (useZoneStates).
   const zones = useZoneStates(mapObjectives, scoreboard, teamColorOf, neutralInk, doc)
 
@@ -242,7 +234,8 @@ export function ReplayCanvas({
   // LES EFFETS PRÉCALCULÉS DU FILM (tirs, « ! » du tireur, morts, fins de vol, grappin) : cinq
   // listes en coordonnées monde, cuites une fois pour ce document. Elles vivent dans
   // `useReplayFx` — onzième extraction imposée par le cliquet de taille, noms inchangés.
-  const { shotFx, fireMarks, killFx, grenadeRestFx, grappleFx } = useReplayFx(doc, kills, t0Ms, timing.aimHold)
+  const { shotFx, fireMarks, killFx, grenadeRestFx, grappleFx, objectivePulses } =
+    useReplayFx(doc, kills, t0Ms, timing.aimHold, mapObjectives)
   // La CARTE DE CHALEUR : grille cuite, rampe du thème et lecture réellement servie —
   // toute la logique vit dans le hook, le canvas ne fait que poser le calque.
   const heat = useReplayHeatmap(doc, bounds, killFx, {
@@ -313,6 +306,10 @@ export function ReplayCanvas({
 
   const objectiveObjects = useReplayObjectiveObjects({
     lives: doc.objectiveObjects, view: canvasView, ink: neutralInk, edge: floorStyle.edge,
+  })
+  // LA COURONNE VIP (schéma 22) : marqueur sur le VIP courant, relu image par image (useReplayVipCrown).
+  const vipCrown = useReplayVipCrown({
+    doc, view: canvasView, enabled: showVipCrown, ink: neutralInk, reducedMotion,
   })
 
   const draw = useCallback(() => {
@@ -485,6 +482,8 @@ export function ReplayCanvas({
     // LE CRÂNE là où il est quand PERSONNE ne le porte : même rang que les drapeaux, et il
     // DISPARAÎT pendant les portages — le document ne dit pas qui porte (cf. le hook).
     objectiveObjects.paint(ctx, frame)
+    // LA COURONNE VIP sur le porteur courant de chaque camp, au-dessus de son marqueur.
+    vipCrown.paint(ctx, frame)
     // Le PULSE D'ACTION D'OBJECTIF (capture, retour, prise de zone) : un anneau qui
     // s'ouvre depuis la zone/le marqueur concerné à l'instant de l'action (lot 4.4).
     if (objectivePulses.length > 0) {
@@ -532,6 +531,7 @@ export function ReplayCanvas({
     placements.teleports,
     zones,
     flags,
+    vipCrown,
     floorStyle.edge,
     slotColors,
     colorOfSlot,
@@ -666,6 +666,7 @@ export function ReplayCanvas({
               onToggle: toggleWeaponPads,
             }}
             flagCarries={{ available: flags.available, show: showFlagCarries, onToggle: toggleFlagCarries }}
+            vipCrown={{ available: vipCrown.available, show: showVipCrown, onToggle: toggleVipCrown }}
             heatmap={{
               show: showHeatmap,
               onToggle: toggleHeatmap,

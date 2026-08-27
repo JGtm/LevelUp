@@ -87,6 +87,7 @@ var objectiveRolesAdmis = map[mapvar.Role]bool{
 	mapvar.RoleHill:               true,
 	mapvar.RoleTotalControlZone:   true,
 	mapvar.RoleFirefightObjective: true,
+	mapvar.RoleLandGrabZone:       true,
 }
 
 // objectiveRolesSurfaciques — les roles dont l'objectif EST une aire qu'on tient, et qui ne
@@ -103,6 +104,7 @@ var objectiveRolesSurfaciques = map[mapvar.Role]bool{
 	mapvar.RoleHill:               true,
 	mapvar.RoleTotalControlZone:   true,
 	mapvar.RoleFirefightObjective: true,
+	mapvar.RoleLandGrabZone:       true,
 }
 
 // Modes retourne les entrees DANS L'ORDRE DU FICHIER (copie).
