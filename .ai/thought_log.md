@@ -1,4 +1,38 @@
-﻿## [2026-08-27] Tuiles Home : lien rejeu 2D a droite de la playlist — Complete
+﻿## [2026-08-27] Rejeu 2D : refonte visuelle fiches + kill feed (handoff option 2a) — Complete
+
+**Contexte** : implementation du handoff de design « Redesign fiche joueur Halo.zip »
+(design_handoff_replay_fiches_killfeed, option 2a « HUD + liste ») — refonte VISUELLE
+uniquement de la colonne de droite du rejeu 2D : fiches joueur et fil des eliminations.
+Aucun changement de donnees, d'API ni d'interaction ; la route replay.tsx est inchangee.
+
+**Decision technique principale** : (1) chaque fiche devient une TUILE autonome (bordure,
+radius 8px, degrade court autour de card) — le chrome vit dans playerCardFx.cardChrome
+(pur, teste) ; la MORT quitte la couche d'effets (voile+lavis supprimes) pour la tuile
+(fond/bordure destructive) + encadre « Eliminé » (ReplayVitality.EliminatedBox remplace
+RespawnRow) dans un corps a hauteur FIXE h-[35px] — parite vivant/mort par construction
+(regle 2026-08-24 maintenue face au mock qui avait 3px d'ecart). (2) L'en-tete d'equipe
+sort de la carte : bandeau HUD partage (hudBand.ts, fichier dedie pour react-refresh)
+avec le titre du fil. (3) Fil : gouttiere d'horloge fixe 42px en TETE des 3 formes de
+ligne, filet separateur via classe globals.css (.replay-feed-row — garde le test « pas de
+color-mix inline » des lignes non assistees), part d'assistant sans tiret, marque assist
+a l'encre bonus (plus la couleur d'equipe). (4) Ecran occultant : 3 ECLAIRS
+(replay-zone-bolt) dans l'incrustation, delais negatifs cales sur l'horloge de la POSE —
+ZonePresence.shroud (bool) remplace par shroudSinceMs (meme regle « plus recente gagne »
+que le capteur). (5) Couches d'effets inset-0 rounded-lg (epousent la tuile). Toutes les
+valeurs oklch de la maquette approchees par tokens/color-mix (0 litteral, lint vert).
+
+**Resultats observes** : vitest complet 504 fichiers / 5038 tests verts ; tsc propre ;
+eslint 0 erreur (2 warnings preexistants hors perimetre) ; lint-no-hardcoded-colors 0
+violation. Tests mis a jour : mort/reapparition (encadre Eliminé, bordure symetrique,
+couche reduite a l'eclat — a 60 fps l'eclat couvre encore l'image 140 des scenarios),
+en-tete neutre (lisere border), eclairs (3, delais negatifs), equipmentZones
+(shroudSinceMs + cas deux ecrans superposes), part « 37 % ».
+
+**Conclusion / prochaine etape** : gate visuel utilisateur sur un match reel (fiches
+vivantes/mortes, effets d'equipement, ecran occultant avec eclairs, fil) puis commit sur
+feat/v75. i18n : cle eliminatedLabel ajoutee (fr/en), killFeedAssistShare sans tiret.
+
+## [2026-08-27] Tuiles Home : lien rejeu 2D a droite de la playlist — Complete
 
 **Contexte** : demande utilisateur — acceder au rejeu 2D directement depuis les tuiles de
 matchs de la page d'accueil (logo a droite du label de playlist). Question annexe : la
@@ -74200,3 +74234,27 @@ classifiers -> le binaire du recompute doit poser et VERIFIER les seams.
 **Conclusion / prochaine etape** : executeur lot 2 lance (batch auto-nettoyant des notes
 orphelines + garde-rail + reparation index PSA de la DB Daemon, corruption ART verifiee
 sur pieces). Serveur dev laisse ARRETE pendant les phases DB du chantier.
+
+## [2026-08-27] Chantier note de perf — lot 2 LIVRE : batch auto-nettoyant + index PSA repares sur les 4 DBs
+
+**Statut** : En cours (plan `.ai/PLAN_PERF_NOTE_OBJECTIFS.md`).
+
+**Lot 2 livre (worktree perfnote, en attente de commit)** : le batch de notes est
+auto-nettoyant (D-D/D-E) — toute note stockee dont le match ne qualifie plus (DNF,
+exclu, sous-seuil) est NULLee a chaque run via le persister existant (NULL SQL natif,
+INSERT-only). Deux resserrements necessaires tranches en execution : le SEUIL prime sur
+le skip, et les retours anticipes nettoient aussi. 6 tests d integration + garde-rail
+perenne « aucune note sur outcome=4 » (normal ET force). Gates verts : 305/305 packages
+en integration -p 1, zero --- FAIL: (himap timeout local tolere).
+
+**DECOUVERTE MAJEURE B2.4** : la corruption d index de personal_score_awards touchait
+LES QUATRE DBs locales (idx_psa_match ET idx_psa_category) — JGtm perdait 220/3830
+lignes (5,7 %) a tout lookup indexe, la colonne Score personnel servait des donnees
+amputees en local. Reparation par cmd/repair_psa_index (dry-run -> repair -> re-verif
+process neuf) : zero divergence apres, row counts intacts, contre-sondes pilote OK
+(temoin Daemon 2/4 -> 4/4 ; JGtm objective 662/662). Cause racine NON elucidee
+(consignee). Consequence : balayage prod VPS (B4.5) requalifie D OFFICE.
+
+**Conclusion / prochaine etape** : autorisation de commit lot 2 demandee, puis lot 3
+(metrique ospm + profils de poids par chaine — attention ratchet sync gele a 80
+fichiers racine : etendre performance*.go, pas de fichier neuf).
