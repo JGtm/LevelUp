@@ -10,11 +10,13 @@ package service
 //	nom de carte -> module (map_quant_bounds.json)   filmdec.LoadMapQuantCatalog
 //	module -> zones nommées (map_callouts.json)      replay.LoadMapCallouts
 //
-// PAS D'ESSAI map_id ICI, et c'est voulu : les zones nommées vivent dans le tag levl du
-// module — une carte Forge n'en a AUCUNE (son canevas n'en porte pas, mesuré sur les
-// 8 canevas installés). Sa résolution s'arrête donc proprement : soit le nom ne résout
-// pas de module, soit le module (canevas) est absent du catalogue de callouts. Champ
-// absent, jamais d'erreur.
+// PAS D'ESSAI map_id ICI — et ce n'est PLUS un choix, c'est un manque daté. L'en-tête
+// affirmait jusqu'au 2026-08-27 qu'une carte Forge n'a aucune zone nommée ; c'est faux, seul
+// son CANEVAS n'en porte pas. Ses zones vivent dans son map.mvar (18 sur Isolation), et
+// port.MatchMapKeys porte déjà le MapID dont l'essai aurait besoin —
+// replay_map_objectives.go s'en sert. Il manque le catalogue côté données : tant qu'il
+// n'existe pas, la résolution s'arrête proprement (champ absent, jamais d'erreur) et une
+// carte Forge n'affiche pas ses callouts alors que le jeu, lui, les affiche.
 //
 // OFFLINE PUR : deux fichiers versionnés et une table. Rien n'ouvre le jeu, rien ne va
 // sur le réseau.

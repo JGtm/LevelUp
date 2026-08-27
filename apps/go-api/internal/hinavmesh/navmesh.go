@@ -109,7 +109,7 @@ func Decode(blob []byte) (*Maillage, error) {
 		return nil, err
 	}
 	for i, region := range decoupe {
-		if len(region) < 8 || string(region[4:8]) != "TAG0" {
+		if len(region) < 8 || string(region[4:8]) != sectionTAG0 {
 			continue
 		}
 		f, err := lireFichierTag(region)

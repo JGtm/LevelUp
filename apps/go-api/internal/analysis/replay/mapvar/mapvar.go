@@ -58,6 +58,17 @@ type Object struct {
 	// n'a pas de forme (cas normal des objectifs ponctuels). Voir shape.go —
 	// la conversion en mètres passe par Object.Shape().
 	ShapeRaw *ShapeRaw
+	// LocationID : le StringId de LIEU porte au chemin `#8/4[]/0/0`. Non nul sur les seuls
+	// objets « zone nommee » (TypeID `TypeIDZoneNommee`), il se resout contre le tableau du
+	// tag global `locs` — le MEME vocabulaire que les callouts des cartes natives (mesure du
+	// 2026-08-27 : 439 des 463 chaines connues y figurent, et 18/18 des StringId d Isolation
+	// s y resolvent).
+	//
+	// POURQUOI PERSONNE NE L AVAIT VU : un balayage d entiers LE32 du fichier rend ZERO
+	// occurrence — les entiers Bond sont des varint zigzag, il faut decoder l arbre. D ou
+	// l affirmation, longtemps ecrite dans nos en-tetes, qu une carte Forge n a pas de
+	// callouts. Elle est FAUSSE : le zero ne vaut que pour les CANEVAS.
+	LocationID uint32
 }
 
 // Variant est une variante de carte décodée.
@@ -126,6 +137,7 @@ func parseObject(index int, raw Value) Object {
 // readGameplayBag lit le sous-arbre gameplay du sac #8 : catégorie, index d'équipe
 // et labels de mode de jeu.
 func readGameplayBag(o *Object, bag Value) {
+	o.LocationID = readLocationID(bag)
 	sub, ok := bag.Field(0)
 	if !ok || len(sub.Items) == 0 {
 		return
@@ -145,6 +157,28 @@ func readGameplayBag(o *Object, bag Value) {
 			}
 		}
 	}
+}
+
+// readLocationID lit le StringId de lieu du sac #8, au chemin `4[]/0/0`.
+//
+// CHEMIN UNIQUE, MESURE : sur les 257 variantes du dump, `root/3[]/8/4[]/0/0` porte 4 151
+// occurrences et aucun autre chemin n en porte, a une exception pres (`root/3[]/10/0`, une
+// seule, sur `chasm`). La liste `#4` ne contient qu un element sur toutes les zones vues ;
+// on lit le premier et on ne suppose rien des suivants.
+func readLocationID(bag Value) uint32 {
+	lst, ok := bag.Field(4)
+	if !ok || len(lst.Items) == 0 {
+		return 0
+	}
+	st, ok := lst.Items[0].Field(0)
+	if !ok {
+		return 0
+	}
+	sid, ok := st.Field(0)
+	if !ok {
+		return 0
+	}
+	return uint32(sid.Int)
 }
 
 func readVec(raw Value, field uint16) Vec3 {

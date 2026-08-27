@@ -73542,3 +73542,107 @@ qui a fait chercher un equivalent Forge — trouve dans le navmesh.
 **Conclusion / prochaine etape** : appliquer la recette aux cartes Forge en bouillie ;
 telecharger leurs navmesh (route anonyme, deux requetes) ; instruire le
 `hkaiTraversalAnnotationLibrary`, seul endroit ou de vrais noms de lieux Forge pourraient vivre.
+
+## [2026-08-27] Zones de callout des cartes Forge : elles sont dans le .mvar (statut : Complete)
+
+**Decision technique** : ne pas ouvrir le `hkaiTraversalAnnotationLibrary` du navmesh (piste de
+l'entree precedente) avant d'avoir epuise le .mvar. Deux mesures : (1) recensement exhaustif de
+TOUS les chemins de champ des objets de la variante (117 chemins sur Isolation, 5 042 objets) ;
+(2) croisement des entiers DECODES de l'arbre Bond avec le tableau de StringId du tag `locs`.
+Le croisement au niveau octet ne vaut rien ici : les entiers .mvar sont des varint zigzag Bond,
+un balayage LE32 du fichier rend zero.
+
+**Resultats** : le champ `#8/4[]/0/0` d'un objet porte un StringId de lieu. 4 161 zones sur 104
+des 257 variantes du dump, TOUTES du meme `type_id -696190206`, 4 151 dont le StringId est une
+entree du tag `locs` (tableau dense de 778 u32 a locs+0x120, stride 4). Elles portent la forme
+Forge standard (3 933 boites, 228 cylindres) : position, orientation et demi-extents se lisent
+avec le decodeur existant. Isolation : 18 zones, 14 noms distincts, 18/18 resolus dans locs
+(Bottom Mid, Cave x4, Top Mid, North Base, South Base, Pipes x2, plus 8 entrees que
+`callouts_i18n.csv` ne nomme pas encore). Les cartes NATIVES n'en portent pas dans leur .mvar :
+leurs zones vivent dans le tag `levl` du module — les deux sources sont complementaires, pas
+redondantes.
+
+**Elimine** : `Variant.Names` (root[10][1]) est la table des noms d'AUTEUR (115 chaines sur
+Isolation, « Prefab », « SH_cones-01 ») ; root[6] est l'arborescence des dossiers Forge
+(« 02 Gameplay », « 06.Volumes ») ; root[7] est le graphe de script en JSON. Aucun de ces trois
+ne porte de nom de lieu. Aucune chaine lisible n'existe dans l'arbre d'un objet.
+
+**Conclusion / prochaine etape** : le catalogue de zones nommees peut couvrir les cartes Forge
+sans nouveau telechargement (le `map.mvar` suffit). Reste a nommer : 434 StringId distincts
+employes par les variantes, 160 seulement portent deja un libelle dans `callouts_i18n.csv` —
+les 274 autres demandent une resolution `uslg`.
+
+## [2026-08-27] Callouts Forge : les trois autres portes sont fermees (statut : Complete)
+
+**Decision technique** : pendant que la piste `.mvar` aboutissait (entree precedente), fermer par
+la mesure les trois autres hypotheses, pour qu'aucune ne revienne : les deux blobs de l'asset UGC
+que nous ne lisions pas, la completude du manifeste reseau, et le tag `levl` du CANEVAS Forge.
+Prealable : les blobs partagent l'emballage du `navmesh.blob`, mais `lightprobes.blob` (9,1 Mo)
+depassait le plafond `tailleComprimeeMax` de 8 Mo — plafond impose par le cout memoire de
+`mapvar.DecodeRoot` (~104 octets par octet de charge). D'ou un lecteur Bond dedie a cette
+racine-la (`internal/hinavmesh/enveloppe.go`), qui TRANCHE le flux zlib au lieu de le
+materialiser : cout constant, plafond supprime, meme stricte (tout champ inattendu = erreur).
+
+**Resultats** (Isolation 01af558d, version 365ec58b) :
+- `audioocclusion.blob` 399 164 o -> 19 469 438 o inflates. Pas de fichier-tag Havok, pas le
+  preambule a 5 regions. 84,2 % d'octets nuls, 244 valeurs distinctes, ZERO chaine imprimable de
+  5 caracteres ou plus dans 19,5 Mo. Champ numerique creux, aucune piece nommee.
+- `lightprobes.blob` 9 565 295 o -> 17 023 240 o inflates, 1,8 % de nuls. Le balayage de chaines
+  rend 307 010 fausses entrees (artefacts de flottants) : c'est la recherche de VOCABULAIRE qui
+  tranche — 0 occurrence de `location`, `callout`, `zone`, `room`, `portal`, `label`, ...
+- Manifeste : le `/hi/Maps/{assetId}` AUTHENTIFIE rend exactement les memes 9 fichiers et le meme
+  prefixe que le `__NEXT_DATA__` anonyme. `PrefabLinks` et `Tags` vides. 12 noms plausibles testes
+  sur le stockage blob (callouts/locations/metadata/nodegraph/audio/zones/levl/... .blob) : 12 x
+  HTTP 404 `BlobNotFound` ; le listage de conteneur est refuse (400 `InvalidUri`). A noter :
+  `CustomData.HasNodeGraph = true` sans `nodegraph.blob` — c'est le `hkaiClusterGraph` du navmesh.
+- Canevas : le tag `levl` de `fo08_wetland` porte 0 named location. Le zero est une MESURE, pas un
+  artefact de lecture : root block de 3 184 octets sur les 31 modules installes (natifs compris),
+  blocs `names` et `volumes` presents des deux cotes. Les 8 canevas portent 12 volumes ANONYMES,
+  tous `kind=1` (les zones nommees sont `kind=6`), aux memes StringId d'un canevas a l'autre, aux
+  bornes de la boite +/- 212,5 / 250 m : ce sont les barrieres du canevas, pas des callouts.
+  Aucun `.mvar` de l'asset ne porte de texte de lieu non plus (les 100 `label` de `map.mvar` sont
+  les broches du graphe de script Forge : `"label" : "Position"`).
+
+**Conclusion / prochaine etape** : le `.mvar` est la SEULE source de zones nommees pour les cartes
+Forge — l'entree precedente le montre, ces trois mesures montrent qu'il n'y en a pas d'autre. Ne
+plus rouvrir les blobs ni chercher un fichier non telecharge. Sondes versionnees :
+`internal/hinavmesh/sonde_blobs_ugc_test.go` (blobs a rapatrier via LEVELUP_UGC_BLOBS, non
+versionnes) et `internal/himap/sonde_levl_canevas_gamefiles_test.go`.
+
+## [2026-08-27] Rogner un fond Forge a ses zones de callout : le levier, et ce que l'oracle en dit — Complete
+
+**Decision technique** : la decouverte de la veille (les zones nommees vivent dans le `map.mvar`)
+est devenue un LEVIER DE CUISSON, pas seulement un fait. Trois pieces :
+
+1. `mapvar.Object.LocationID` — le StringId de lieu, lu au chemin `#8/4[]/0/0` du sac gameplay.
+   Le parseur passait deja par ce sac ; le champ ne coute rien et rend la zone reconnaissable
+   partout ou un `.mvar` est deja decode.
+2. `himap/zones_forge.go` — la geometrie : polygone ORIENTE par le vecteur avant de l'objet
+   (une zone tournee lue alignee sur les axes declare dedans des coins qui sont dehors : la
+   chaine des objectifs a paye 31 % de faux positifs sur ce point, on ne le repaie pas), et le
+   tri des RATELIERS (palettes d'objets non poses d'`illusion` et `forbidden`).
+3. `OptionsCuissonForge.RogneAuxZones` / `MargeZones` — jumeaux exacts des leviers natifs, a
+   ceci pres que les zones ne sont pas fournies mais lues dans les objets DEJA CHARGES par la
+   cuisson. Aucun fichier a telecharger, aucun cablage de chemin.
+
+**Resultats observes** (Isolation, 1 162 199 cellules de matiere apres rognage au maillage) :
+marge 1 m -> 306 128 hors zones (26,3 %) ; 4 m -> 198 738 (17,1 %) ; 8 m -> 117 889 (10,1 %).
+**Les trois cuissons tombent a 24/25 ancres au sol, quand la recette validee tient 25/25.** Une
+ancre d'objectif est du terrain joue par definition : les zones de callout d'Isolation ne
+couvrent donc pas tout son terrain joue, et 8 m de marge ne suffisent pas a rattraper l'ancre
+perdue. Le rognage aux zones est un levier de PLUS, pas un remplacant du maillage de navigation.
+
+**Doc inversee corrigee dans le meme commit** (anti-pattern n°9) : `callouts_catalog.go` et
+`service/replay_map_callouts.go` affirmaient qu'une carte Forge n'a aucune zone nommee et que
+l'absence d'essai `map_id` etait « voulue ». C'est desormais ecrit comme ce que c'est : un
+manque date, avec le chemin pour le combler.
+
+**Conclusion / prochaine etape** : VERDICT RENDU le meme jour — « valide avec + zones, marge 1 m ».
+La recette d Isolation cumule desormais les deux sources qui disent ou l on joue : le maillage de
+navigation (reference d altitude + effacement hors maillage + tolerance 1,5 m) et les zones de
+callout en rognage serre (marge 1 m, 306 128 cellules, 26,3 % de la matiere restante). L ecart
+d une ancre (24/25) est accepte en connaissance de cause : il est ecrit dans la raison du reglage
+pour ne pas etre redecouvert comme une regression. Fond de production recuit. Reste hors perimetre
+de ce lot : les 274 StringId sans texte joueur (extraction uslg) et l affichage des callouts Forge
+dans le rejeu 2D (catalogue cle map_id). A instruire ensuite : combien des 40 autres cartes Forge
+portent des zones exploitables — le levier ne demande aucun telechargement.
