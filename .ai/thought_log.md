@@ -1,3 +1,65 @@
+## [2026-08-27] Rejeu 2D — lot C : sons de fin de partie (annonceur + fanfare) — Complete
+
+**Contexte** : extension du plan PLAN_REPLAY_CADRAGE_VICTOIRE (lots A/B clos la veille),
+commit `b792e3a4e` sur wt/replay-cadrage-victoire. Assets fabriques par le pilote :
+extraction des packs annonceur FR/EN + musique du jeu Steam local (recette sons-armes),
+identification par TRANSCRIPTION locale (Vosk FR/EN — 1229 repliques par langue ;
+correspondance d'ids inter-langues refutee : 0 id commun, appariement par rang refute
+sur pieces), selection VOTEE par l'utilisateur (vote_fin_partie.json), normalisation
+voix -16 LUFS / musiques -18 LUFS (« audible sans hurler »), plafond -1 dBTP.
+
+**Decision technique principale** : la conclusion sonore est un domaine A PART
+(`endMatchSound.ts`, modele grenadeSound) — premiere entree LOCALE-AWARE du catalogue
+(voix FR/EN selon la locale UI, fanfare neutre), voix + fanfare ensemble, tirage
+aleatoire entre prises (rand injecte), issue lue par LA MEME lecture que l'ecran
+(readVictory + lib/outcome). Declenchement : franchissement de la borne de fin par la
+LECTURE (`from < endFrame`), jamais au scrub — unicite sans compteur. FFA gagne :
+« Vainqueur » FR / repli « Victory » EN (« Winner » isole inexistant dans le pack,
+documente). Plafond lecteur 4 -> 12 s avec garde separee LONG_MAX_S=4 pour les
+evenements + regle « plafond >= plus long fichier livre » testee.
+
+**Resultats observes** : gate vert rejoue par le pilote (typecheck 0, 1258 tests, lint 0,
+21 warnings anterieurs) ; garde-rail d'assets prouve rouge/vert sur stem retire ;
+onzieme extraction du cliquet canvas (useReplayFx.ts, 697 -> 691). Decouverte consignee :
+son actif au rechargement => premier clic coupe au lieu d'activer (dette anterieure,
+notee au plan). Backlog alimente : fins multi-equipes par couleur (16 ids releves),
+musique d'intro (queue de build-up, option refusee en defaut).
+
+**Prochaine etape** : gate visuel + d'ECOUTE utilisateur sur les 4 temoins, puis merge
+de wt/replay-cadrage-victoire dans feat/v75.
+
+## [2026-08-26] Rejeu 2D — cadrage T0/fin reelle + ecran de victoire : cloture du plan — Complete
+
+**Contexte** : plan .ai/V7.5/PLAN_REPLAY_CADRAGE_VICTOIRE.md sur wt/replay-cadrage-victoire
+(worktree dedie depuis feat/v75). Deux lots, deux commits (3a29f2e2f, 50d24e848), pilote
+Fable / executeur Opus. Aucun push, aucun merge.
+
+**Decision technique principale** : la fenetre de gameplay est calculee cote client
+(replayWindow.ts) a partir de trois donnees deja servies — doc.originMs (schema >= 4),
+header.t0_ms, header.playable_duration_seconds — sans toucher au Go ni recuire un artefact.
+Formules validees sur pieces AVANT le plan (4 temoins x base) : debut = max(0, t0-origin),
+fin = t0 + playable*1000 - origin (valide meme sans T0, l'ancrage se compense cote Go ;
+le film ne garde que ~5-6 s apres la fin declaree). La borne de fin n'utilise JAMAIS le
+score timeline (match fini au temps : dernier point 133 s avant la fin). Ecran de fin au
+POINT DE VUE du joueur de la page (amendement utilisateur en cours de lot B, applique
+avant commit) : titre = header.outcome_label, habillage = SON equipe (logo + couleur
+identite via teamColorResolver, exception D1 documentee), recette 22%/55% extraite en
+teamTintStyles() + garde-rail, constantes d'outcome reutilisees (lib/outcome.ts).
+
+**Resultats observes** : gates par lot verts et REJOUES par le pilote (lot A : 1190 tests ;
+lot B : 1462) ; cloture C1 : typecheck 0, 4784 tests passes / 14 skips anterieurs, lint 0 ;
+C2 : aucune horloge affichee sur l'axe brut (verification site par site), litteral de
+recette uniquement dans teamColor.ts + guard. Decouvertes consignees sans correction :
+ReplayKillFeed.tsx pile a 500 L, killFeedLogic.ts 541 L (dette anterieure), i18n rejeu
+534 L, ligne de score de l'ecran muette sans xuidMeta (asymetrie connue).
+
+**Prochaine etape** : gate visuel UTILISATEUR sur les 4 temoins (000d5950 victoire au
+score, e94163af clamp debut, 606d9844 sans T0, 64e8adfa fini au temps) puis merge dans
+feat/v75. Lot C envisage (sons de fin de partie) : extraction en cours hors plan —
+annonceur FR/EN localise (sb_001_vo_ai_mp_announcer.pck par langue, 1236 repliques,
+sources externes Wwise donc sans noms : identification par transcription Whisper locale),
+fanfares candidates dans sb_130_mus_multiplayer_global.pck (paire ~10,6 s).
+
 ## [2026-08-26] feat/v75 — merge origin/main + reparation des sentinelles auth — Complete
 
 **Contexte** : apres le merge du lot capture dans feat/v75, la CI de branche etait deja

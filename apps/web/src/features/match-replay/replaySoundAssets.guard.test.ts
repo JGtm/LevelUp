@@ -20,15 +20,21 @@
  *
  * LE TROISIÈME GARDE-RAIL tient la RÈGLE DE DURÉE PAR CATÉGORIE (lot R2, 2026-08-16), qui
  * ne vit plus dans le lecteur mais dans les FICHIERS : armes, lancers et mêlée à 1,2 s ;
- * explosions et équipements jusqu'à 4 s. Cette règle-là s'efface toute seule — il suffit
- * qu'une re-livraison retronque tout à 1,2 s (c'est exactement ce que fait le script de
- * livraison des armes) pour que les explosions redeviennent « écourtées » sans qu'aucun
+ * explosions et équipements jusqu'à 4 s ; répliques et fanfares de FIN DE PARTIE entières
+ * (lot C, 2026-08-27), la plus longue à 11,67 s. Cette règle-là s'efface toute seule — il
+ * suffit qu'une re-livraison retronque tout à 1,2 s (c'est exactement ce que fait le script
+ * de livraison des armes) pour que les explosions redeviennent « écourtées » sans qu'aucun
  * test ne bouge. Ici, elle devient rouge.
  */
 import { describe, expect, it } from 'vitest'
 import { readdirSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
+import {
+  END_FFA_WIN_VOICE_STEMS,
+  END_MUSIC_STEMS,
+  END_VOICE_STEMS,
+} from './endMatchSound'
 import { EXPLOSION_SOUND_STEMS, THROW_SOUND_STEMS } from './grenadeSound'
 import { SOUND_CUT_MAX_S } from './replayAudio'
 import {
@@ -53,6 +59,22 @@ const shipped = new Set(
     .map((f) => f.slice(0, -'.wav'.length)),
 )
 
+/**
+ * LES SONS DE FIN DE PARTIE (lot C, 2026-08-27) : voix d'annonceur DANS LES DEUX LANGUES,
+ * fanfares, et la réplique du FFA gagné. Les deux langues sont livrées ENSEMBLE et vérifiées
+ * ENSEMBLE — un pack FR complet et un pack EN troué passerait inaperçu de tout ce qui monte
+ * l'application en français.
+ *
+ * `end_victory_voice_en_01` figure DEUX fois dans ces tables (voix de victoire EN, et repli du
+ * FFA gagné EN faute de « Winner » isolé dans le pack) : le `Set` du manifeste l'absorbe, et
+ * c'est bien un seul fichier.
+ */
+const endMatchStems = [
+  ...Object.values(END_VOICE_STEMS).flatMap((byLocale) => Object.values(byLocale).flat()),
+  ...Object.values(END_MUSIC_STEMS),
+  ...Object.values(END_FFA_WIN_VOICE_STEMS).flat(),
+]
+
 describe('garde-rail : manifeste sonore = dossier d assets', () => {
   const referenced = new Set([
     ...Object.values(WEAPON_SOUND_STEMS),
@@ -67,6 +89,8 @@ describe('garde-rail : manifeste sonore = dossier d assets', () => {
     ...Object.values(EQUIPMENT_PLACEMENT_SOUND_STEMS),
     // Le TIR de grappin (lot G, 2026-08-20) : UN SEUL stem, aucune famille.
     GRAPPLE_SOUND_STEM,
+    // La FIN DE PARTIE (lot C, 2026-08-27) : voix FR et EN, fanfares, réplique du FFA gagné.
+    ...endMatchStems,
   ])
 
   it('chaque stem du manifeste a son fichier .wav', () => {
@@ -106,6 +130,18 @@ function wavDurationS(file: string): number {
 describe('garde-rail : durée livrée par catégorie', () => {
   /** La coupe historique du lot 5, celle que gardent les sons COURTS par décision produit. */
   const COURT_S = 1.2
+  /**
+   * LA BORNE DES SONS D'ÉVÉNEMENT, ex-plafond du lecteur (4 s) — elle est ÉCRITE ICI depuis le
+   * lot C (2026-08-27) et ce n'est pas un doublon de `SOUND_CUT_MAX_S`.
+   *
+   * Jusqu'à ce lot, les deux nombres étaient le même : le plafond du lecteur bornait de fait
+   * les explosions et les équipements, et un asset re-livré en pleine longueur devenait rouge.
+   * Les fanfares de fin de partie ont fait monter le plafond à 12 s — sans cette borne-ci, une
+   * explosion de grenade pourrait désormais passer à 9 s sans qu'aucun test ne bouge. Les deux
+   * quantités ont cessé d'être la même chose le jour où le catalogue a porté deux familles de
+   * durée : celle des ÉVÉNEMENTS du match, et celle de sa CONCLUSION.
+   */
+  const LONG_MAX_S = 4.0
   const dureeDe = (stem: string) => wavDurationS(resolve(SOUNDS_DIR, `${stem}.wav`))
 
   // Les catégories, reconstruites depuis le manifeste lui-même : la mêlée partage la table
@@ -172,6 +208,29 @@ describe('garde-rail : durée livrée par catégorie', () => {
       .map((s) => ({ stem: s, s: dureeDe(s) }))
       .filter((d) => d.s <= COURT_S)
     expect(retronques).toEqual([])
+  })
+
+  it('aucun son d ÉVÉNEMENT ne profite du plafond relevé par les fanfares', () => {
+    const trop = [...courts, ...longs]
+      .map((s) => ({ stem: s, s: dureeDe(s) }))
+      .filter((d) => d.s > LONG_MAX_S + 0.001)
+    expect(trop).toEqual([])
+  })
+
+  /**
+   * LA CONCLUSION EST UNE TROISIÈME FAMILLE DE DURÉE, et elle n'a pas de coupe : une réplique
+   * d'annonceur dure ce qu'elle dure (0,98 à 1,58 s), une fanfare ce qu'elle joue (9,93 à
+   * 11,67 s). Ce qui se vérifie ici n'est donc pas une borne éditoriale mais la règle du
+   * lecteur, « plafond = plus long fichier livré » : le jour où une fanfare plus longue
+   * arriverait sans que `SOUND_CUT_MAX_S` bouge, elle serait tronquée EN SILENCE — et le jour
+   * où le plafond monterait sans raison, il cesserait de protéger de quoi que ce soit.
+   */
+  it('les sons de fin de partie tiennent sous le plafond, qui les serre de près', () => {
+    const durees = endMatchStems.map((s) => dureeDe(s))
+    const plusLong = Math.max(...[...shipped].map((s) => dureeDe(s)))
+    expect(Math.max(...durees)).toBeLessThanOrEqual(SOUND_CUT_MAX_S)
+    expect(plusLong).toBeLessThanOrEqual(SOUND_CUT_MAX_S)
+    expect(SOUND_CUT_MAX_S - plusLong, 'plafond décollé du plus long fichier livré').toBeLessThan(1)
   })
 
   it('une source déclarée courte a bien la durée déclarée (sinon la dispense ne vaut plus)', () => {

@@ -28,6 +28,7 @@ import { PLACEMENT_RENDER, type PlacementKind } from './equipmentPlacementsLayer
 import { PLACEMENT_ORIGIN_DROPPED } from './placementDropped'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
 import { formatClock } from './replayLogic'
+import { displayClockMs, type ReplayWindowBounds } from './replayWindow'
 import type { PlacementHover } from './usePlacementHover'
 import { padEquipmentFamilyOf } from './weaponPadFamilies'
 
@@ -43,6 +44,8 @@ interface ReplayPlacementTipProps {
   ownerName: string | null
   /** Largeur du canvas : elle borne l'infobulle du côté droit. */
   width: number
+  /** La fenêtre de gameplay : l'instant du lâcher se lit sur l'horloge du match (D-A2). */
+  playWindow: ReplayWindowBounds | null
 }
 
 /**
@@ -67,7 +70,13 @@ function namedKind(kind: PlacementKind | null | undefined) {
   return kind && kind !== 'unnamed' && kind !== 'dropped' ? kind : null
 }
 
-export function ReplayPlacementTip({ locale, hover, ownerName, width }: ReplayPlacementTipProps) {
+export function ReplayPlacementTip({
+  locale,
+  hover,
+  ownerName,
+  width,
+  playWindow,
+}: ReplayPlacementTipProps) {
   const t = REPLAY_TEXT[locale]
   const { placement, at, atMs } = hover
   const kind = PLACEMENT_RENDER[placement.family]
@@ -96,7 +105,7 @@ export function ReplayPlacementTip({ locale, hover, ownerName, width }: ReplayPl
       <span className="block text-muted-foreground">{owner}</span>
       {dropped && (
         <span className="block text-muted-foreground">
-          {t.placementDroppedAtFmt(formatClock(atMs))}
+          {t.placementDroppedAtFmt(formatClock(displayClockMs(atMs, playWindow)))}
         </span>
       )}
     </div>

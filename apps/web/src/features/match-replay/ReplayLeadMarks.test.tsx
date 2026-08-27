@@ -23,6 +23,7 @@ function renderMarks(over: Partial<Parameters<typeof ReplayLeadMarks>[0]> = {}) 
       changes={CHANGES}
       frameCount={5137}
       frameIntervalMs={100}
+      playWindow={null}
       allyOf={(teamId) => teamId === 0}
       labelOf={(teamId) => `Équipe ${teamId}`}
       locale="fr"
@@ -84,6 +85,18 @@ describe('ReplayLeadMarks', () => {
   it('document d’une seule image : aucune échelle, donc aucune marque', () => {
     const view = renderMarks({ frameCount: 1 })
     expect(view.container.firstChild).toBeNull()
+  })
+
+  it('CADRÉE SUR LE GAMEPLAY : la marque suit l’échelle de la frise et l’horloge du match', () => {
+    // Fenêtre [500, 4600] : la frise ne montre plus le film entier, la marque doit suivre.
+    const view = renderMarks({
+      playWindow: { startFrame: 500, endFrame: 4_600, startMs: 50_000, endMs: 460_000 },
+    })
+    const first = view.getAllByLabelText('Retournement')[0] as HTMLElement
+    // (653 − 500) / (4600 − 500) = 0,0373 — et non 653 / 5136 = 0,127.
+    expect(first.style.left).toContain('0.037')
+    // 653 images = 65,3 s de film, soit 15,3 s de jeu une fois le countdown retranché.
+    expect(view.getByTitle('Retournement à 0:15 — Équipe 0 passe devant')).toBeTruthy()
   })
 
   it('EN : l’infobulle et le libellé accessible passent en anglais', () => {
