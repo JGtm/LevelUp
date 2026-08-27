@@ -143,17 +143,34 @@ au patron du crane libre, et — si son gate tient — **l'etat des SITES d'amor
 
 ### A3 — Etat des sites d'amorcage (diagnostic puis publication conditionnelle)
 
-- [ ] A3.1 Chercher le canal `ti=13` aux sites d'amorcage des films admis (structure de
+- [x] A3.1 Chercher le canal `ti=13` aux sites d'amorcage des films admis (structure de
       rampe/jauge comme la capture de Bastion ; tag 4 de propriete ; designateur type
       colline). Diagnostic d'abord : quels slots, quels tags, quelle correlation aux
       armements dates par le score de mode (releves A0.3).
-- [ ] A3.2 GATE de publication (ecrit ici) : accord canal <-> armements dates >= **90 %**
+      — Fait 2026-08-27 (`assaut_a3_ti13_test.go` : balayage p2a + `findZoneRamps` de
+      production + explosions datees, log `A3_sites_amorcage.log`). VERDICT NEGATIF NET
+      sur 8/8 films : (1) l'ANCRAGE `ti=13` est au niveau du HASARD STRUCTUREL — chainage
+      1,9-16,4 % contre 87-99 % en KOTH arene, et surtout indistinguable du temoin decale
+      de 3 bits (2,8-7,1 %) sur 7/8 films (seule exception : `69b16f5d`, 16,4 vs 2,9 %) ;
+      (2) ZERO rampe de jauge (definition Bastion intacte : >= 3 echantillons, >= 4096
+      quanta) sur les 8 films ; (3) donc 0 confrontation aux explosions possible. La
+      contamination d'ancrage documentee sur BTB (registre 27/08) se retrouve ici SUR
+      CARTES ARENE : en Assaut, la bande ti=13 lue est fantome ou le mode n'emet pas de
+      propriete geree de type jauge/designateur.
+- [!] A3.2 GATE de publication (ecrit ici) : accord canal <-> armements dates >= **90 %**
       des confrontations possibles sur >= **2** films admis ; temoin spatial (formes
       decalees de 12 m) <= **20 %** ; sinon `[!]` diagnostic consigne, rien ne se publie.
       Log fige `A3_sites_amorcage.log`.
-- [ ] A3.3 Si gate tenu : publication au patron `zoneStates` (roles/table du titre,
+      — GATE NON TENU 2026-08-27, doublement : 0 confrontation possible (aucune rampe,
+      denominateur nul — 90 % de rien n'existe pas) ET temoin spatial inmesurable (aucune
+      forme de site au catalogue, protocole §1/§4). RIEN ne se publie. Conditions de
+      reprise : (a) sites `assault_bomb` au catalogue (la meme condition que A1) ET
+      (b) un ancrage ti=13 fiabilise sur ces films (le chantier de decodage d'adressage
+      des slots deja consigne au registre pour BTB — il couvre desormais l'Assaut arene).
+- [!] A3.3 Si gate tenu : publication au patron `zoneStates` (roles/table du titre,
       degradation par absence de donnee), rendu jauge sur la forme (patron Bastion),
       re-cuisson temoins avec verification de contenu.
+      — Tombe avec A3.2 (gate non tenu).
 
 ### A4 — Statborg Assaut (inventaire borne avec l'outil du lot O)
 
