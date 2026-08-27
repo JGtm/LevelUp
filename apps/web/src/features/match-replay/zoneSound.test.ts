@@ -58,7 +58,9 @@ describe('capture en cours — la jauge dit QUAND, le propriétaire d arrivée d
     ])
   })
 
-  it('MUET quand la rampe retombe sans changer le propriétaire — c est le cas « contestée »', () => {
+  it('une rampe qui retombe sans changer le propriétaire sonne la CONTESTATION', () => {
+    // Définition de l utilisateur : on prend une zone adverse, un adversaire entre et la
+    // conteste. Le son part à l instant où la jauge CESSE de monter, pas au début de la rampe.
     const d = doc([
       {
         spans: [span(0, 200, 0)],
@@ -69,10 +71,23 @@ describe('capture en cours — la jauge dit QUAND, le propriétaire d arrivée d
         ],
       },
     ])
-    expect(zoneSoundEvents(d, 1)).toEqual([])
+    expect(zoneSoundEvents(d, 1)).toEqual([{ ms: 3000, stem: ZONE_SOUND_STEMS.contested }])
   })
 
-  it('MUET sans camp allié résolu : le rejeu ne devine jamais un camp', () => {
+  it('la contestation sonne SANS camp allié résolu : le jeu n en a qu un son', () => {
+    const d = doc([
+      {
+        spans: [span(0, 200, 0)],
+        gauge: [
+          { t: 10, v: 0.2 },
+          { t: 30, v: 0.8 },
+        ],
+      },
+    ])
+    expect(zoneSoundEvents(d, null)).toEqual([{ ms: 3000, stem: ZONE_SOUND_STEMS.contested }])
+  })
+
+  it('la CAPTURE EN COURS est muette sans camp allié résolu : on ne devine jamais un camp', () => {
     const d = doc([
       {
         spans: [span(0, 49, null), span(50, 200, 1)],

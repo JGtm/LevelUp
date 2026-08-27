@@ -47,6 +47,7 @@ import {
   SOUND_VARIANTS,
   WEAPON_SOUND_STEMS,
   ZONE_SOUND_STEMS,
+  PAD_PICKUP_SOUND_STEM,
 } from './replaySound'
 
 /** Les stems d une entree d objectif : une PAIRE PEUT ETRE INCOMPLETE (le camp non design00e9 a
@@ -120,6 +121,7 @@ describe('garde-rail : manifeste sonore = dossier d assets', () => {
     // déplacement de la colline. Source doc.zoneStates, pas doc.objectives — mais même
     // dossier d'assets et même garde-rail.
     ...stemsZone(),
+    PAD_PICKUP_SOUND_STEM,
     // La FIN DE PARTIE (lot C, 2026-08-27) : voix FR et EN, fanfares, réplique du FFA gagné.
     ...endMatchStems,
   ])
@@ -216,6 +218,7 @@ describe('garde-rail : durée livrée par catégorie', () => {
     // le seul son de la chaîne livré TRONQUÉ à dessein (1,2 s) et ATTÉNUÉ (-12 dBTP) : il se
     // joue une fois par seconde, un geste de 3,6 s s'y empilerait sur lui-même.
     ...stemsZone(),
+    PAD_PICKUP_SOUND_STEM,
     // Les VARIANTES d'un geste suivent la règle de leur geste : ce sont les autres tirages du
     // MÊME `RandomSequence`, pas d'autres sons.
     ...Object.values(SOUND_VARIANTS).flat(),
@@ -262,6 +265,11 @@ describe('garde-rail : durée livrée par catégorie', () => {
     // 2026-08-27). Le geste du jeu dure 3,62 s côté allié et 4,36 s côté adverse — servi
     // entier, il s empilerait quatre fois sur lui-même. Il est donc coupé à 1,2 s avec un
     // fondu de 0,25 s, et atténué à -12 dBTP (« je les trouve un peu fort »).
+    // DEUX SOURCES NATURELLEMENT COURTES, et ce ne sont pas des sons retronqués : le geste du
+    // jeu fait cette durée-là. La zone contestée est « 1 couche, 1 son » (événement c3327c0b,
+    // 1,180 s) ; le ramassage sur socle est « 1 parmi 2 » (événement c73036e4, 0,804 s).
+    objective_zone_contested: 1.18,
+    objective_pad_pickup: 0.804,
     objective_zone_tick_team: 1.2,
     objective_zone_tick_enemy: 1.2,
     grapple_fire: 0.745,
@@ -337,6 +345,14 @@ describe('garde-rail : vignettes du son de kill = table killicon (Go)', () => {
     'killfeed-49': { genre: 'GGGL', key: '3' },
     'killfeed-65': { genre: 'CLASSE', key: 'MELEE' },
     'killfeed-56': { genre: 'NOM', key: 'Repulsor' },
+    // LES QUATRE BOBINES (2026-08-27) : genre BANQUE, clé = le nom de banque ENTIER. C est la
+    // nouveauté — la racine courte à trois segments les rendait toutes identiques
+    // (`exp_single_small`), donc indistinguables et sans icône. Le resolveur essaie désormais
+    // la racine longue d abord.
+    'killfeed-42': { genre: 'BANQUE', key: 'exp_single_small_shock' },
+    'killfeed-43': { genre: 'BANQUE', key: 'exp_single_small_hardlight' },
+    'killfeed-44': { genre: 'BANQUE', key: 'exp_single_small_kineticunsc' },
+    'killfeed-45': { genre: 'BANQUE', key: 'exp_single_small_plasma' },
   }
 
   it('la table sonore couvre exactement les vignettes attendues', () => {

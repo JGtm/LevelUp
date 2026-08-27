@@ -169,6 +169,7 @@ import { placementIsDeployedObject } from './equipmentPlacementsLayer'
 import { grenadeSoundEvents } from './grenadeSound'
 import { alignFeed } from './killFeedLogic'
 import { objectiveSoundEvents, type ObjectiveSide } from './objectiveSound'
+import { padPickupSoundEvents } from './padSound'
 import { zoneSoundEvents } from './zoneSound'
 import { frameToMs } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
@@ -177,6 +178,7 @@ import { soundEvent, type ReplaySoundEvent } from './replaySoundVariants'
 export { pickVariantStem, SOUND_VARIANTS, stemsOf, type ReplaySoundEvent } from './replaySoundVariants'
 export { OBJECTIVE_SOUND_STEMS, objectiveSoundStem, type ObjectiveSide } from './objectiveSound'
 export { ZONE_SOUND_STEMS, zoneSoundEvents } from './zoneSound'
+export { PAD_PICKUP_SOUND_STEM, padPickupSoundEvents } from './padSound'
 
 /**
  * Catégorie d'un son, pour le filtre du tiroir de réglages (phase 2, décision utilisateur
@@ -284,6 +286,20 @@ export const KILL_SPRITE_SOUND_STEMS: Readonly<Record<string, KillSound>> = {
   'killfeed-49': { stem: 'explosion_spike', category: 'grenade' },
   'killfeed-65': { stem: 'melee_kill', category: 'melee' },
   'killfeed-56': { stem: 'repulsor_kill', category: 'weapon' },
+  // LES QUATRE BOBINES (2026-08-27). Un kill de bobine n'avait AUCUNE icône jusqu'ici, et la
+  // cause était technique, pas doctrinale : la coupe à trois segments qui extrait la racine de
+  // banque rendait `exp_single_small_{shock,plasma,kineticunsc,hardlight}` toutes identiques.
+  // La racine LONGUE les distingue, et l'atlas porte leurs quatre vignettes depuis la passe de
+  // nommage du 2026-08-09. Le son est l'événement à CINQ COUCHES SIMULTANÉES de chaque banque
+  // — le seul des trois qu'elle porte qui soit l'explosion complète, les deux autres étant des
+  // perspectives (RE du 2026-08-26, §5).
+  //
+  // CATÉGORIE ARME, comme le répulseur : une bobine tue par explosion, mais c'est une source de
+  // dégât du décor, pas une grenade lancée — et le tiroir de réglages n'a pas de case « décor ».
+  'killfeed-42': { stem: 'coil_shock', category: 'weapon' },
+  'killfeed-43': { stem: 'coil_blast', category: 'weapon' },
+  'killfeed-44': { stem: 'coil_fusion', category: 'weapon' },
+  'killfeed-45': { stem: 'coil_plasma', category: 'weapon' },
 }
 
 /**
@@ -397,6 +413,29 @@ export const EQUIPMENT_PLACEMENT_SOUND_STEMS: Readonly<Record<string, string>> =
   threat_seeker: 'sensor_activate',
   // Extrait du jeu le 2026-08-18 par la chaîne `eqip -> effe -> snd! -> sbnk` (cf. ci-dessus).
   repair_field: 'repair_field_activate',
+  // LE TRANSLOCATEUR SONNE DEPUIS LE 2026-08-27, ET SA SOURCE N'EST NI LA CHAÎNE DE TAGS NI LE
+  // HACHAGE : c'est l'UTILISATEUR qui a extrait le son du jeu et l'a désigné. Après deux jours
+  // de recherche dans sa banque (`sb_007_abl_quantum`, 23 événements, 4 noms cassés) et l'échec
+  // mesuré d'une comparaison spectrale contre une capture vidéo, c'est la voie qui a abouti —
+  // et c'est la règle du chantier depuis le début : « les votes priment sur tout critère »
+  // (`RECETTE_SONS_ARMES` §5). Le fichier est son extraction, ré-échantillonnée à 48 kHz et
+  // plafonnée à -1 dBTP comme tous les autres, rien de plus.
+  //
+  // CE QUE LE SON EST, dans ses mots : « la première activation, la dépose de la faille
+  // spatio-temporelle ». Ce n'est donc PAS une balise lancée — l'équipement se porte au poignet
+  // et ouvre une faille sur la position exacte du joueur. Le nom de famille du calque
+  // (`translocator_beacon`) et son libellé (« balise ») portent encore l'ancienne lecture ;
+  // les corriger touche le manifeste ET le dessin, c'est un lot à part.
+  //
+  // L'USAGE (la téléportation elle-même) est livré sous `translocator_teleport` mais N'EST PAS
+  // branché : le film ne publie aucun événement pour le retour, seulement la POSE. Le livrer
+  // sans déclencheur en ferait un asset mort, que le garde-rail refuse à juste titre.
+  translocator_beacon: 'translocator_deploy',
+  // L ECRAN OCCULTANT, nomme le 2026-08-27. Il etait la DERNIERE famille dessinee sans son, et
+  // ce qui le tenait muet n etait pas le son — `play_007_abl_shroud_deploy_player` est casse
+  // depuis le 2026-08-26 — mais la FAMILLE : l objet s appelait `other` au manifeste, faute
+  // d une voie de nommage. Sa banque sonore l a donnee (`sb_007_abl_shroud`).
+  shroud_screen: 'shroud_deploy',
 }
 
 /**
@@ -577,6 +616,11 @@ export function buildSoundTimeline(
     for (const g of doc.grappleLines) {
       out.push(soundEvent(frameToMs(g.t0, doc), GRAPPLE_SOUND_STEM))
     }
+    // Le RAMASSAGE SUR SOCLE : même catégorie que les équipements (le son vient de
+    // `sb_007_abl_shared`, et l'utilisateur le désigne comme « le ramassage des armes sur socles
+    // de power up »). Il ne vient ni d'une pose ni d'une traction : sa source est le croisement
+    // des TIRS et des SOCLES — détail et mesures dans `padSound.ts`.
+    out.push(...padPickupSoundEvents(doc))
   }
   // Les ACTIONS D'OBJECTIF : chacune sonne à sa frame, dans le camp de son auteur. Sans
   // résolveur de camp (appelant qui n'a pas le tableau de score), les seules actions qui

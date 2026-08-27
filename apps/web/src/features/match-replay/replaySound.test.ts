@@ -320,12 +320,15 @@ describe('buildSoundTimeline', () => {
    * une banque que le jeu nomme lui-même (`sb_007_abl_repairfield.pck`). Ce n'est pas un
    * emprunt, c'est sa source.
    *
-   * LA BALISE DU TRANSLOCATEUR SE TAIT ENCORE, et la raison a changé : sa banque est trouvée
-   * (`dcfaa487`, 70 `.wem`) mais elle porte ONZE gestes et rien dans les tags ne dit lequel est
-   * la pose. Ce test épingle ce silence pour qu'aucun lot ne lui prête le son d'un voisin par
-   * commodité — le jour où une écoute désigne le geste, c'est UNE ligne à écrire.
+   * LE TRANSLOCATEUR SONNE DEPUIS LE 2026-08-27, et il a fallu la voie la moins technique de
+   * toutes. Sa banque était trouvée depuis longtemps (`dcfaa487`, 70 `.wem`, quatre noms cassés
+   * par hachage) mais rien n'y désignait la pose ; une comparaison spectrale contre une capture
+   * vidéo du jeu a échoué trois fois de suite (la musique par-dessus le geste). C'est
+   * l'UTILISATEUR qui a extrait le son du jeu et l'a nommé : « la première activation, la dépose
+   * de la faille spatio-temporelle ». Une ligne à écrire, comme la version précédente de ce
+   * commentaire l'annonçait.
    */
-  it('le TRAQUEUR sonne comme le capteur, le CHAMP a le sien, la BALISE reste MUETTE', () => {
+  it('le TRAQUEUR sonne comme le capteur, le CHAMP a le sien, le TRANSLOCATEUR sa dépose', () => {
     const tl = buildSoundTimeline(
       docWithCouple({
         equipmentPlacements: [
@@ -339,6 +342,9 @@ describe('buildSoundTimeline', () => {
     )
     expect(tl).toEqual([
       { ms: 1_000, stem: 'sensor_activate' },
+      // La DÉPOSE de la faille spatio-temporelle, à `t0` de la pose. Un seul fichier : c'est
+      // une extraction de l'utilisateur, pas un `RandomSequence` reconstruit.
+      { ms: 4_000, stem: 'translocator_deploy' },
       // Le champ de réparation TIRE une variante (lot du 2026-08-26) : l'événement porte les
       // trois fichiers, le choix se fait à la lecture.
       { ms: 7_000, stem: 'repair_field_activate', variants: SOUND_VARIANTS.repair_field_activate },
