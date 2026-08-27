@@ -8,6 +8,12 @@
  * composant coûte un avertissement `react-refresh`, d'où ce module (même convention que
  * useSlotIdentity.ts).
  *
+ * CE QU'IL ALIMENTE A CHANGÉ LE 2026-08-28, PAS CE QU'IL CALCULE. Il servait `ReplayLeadMarks`,
+ * qui posait un trait sur la frise à chaque retournement ; ce composant est SUPPRIMÉ — la piste
+ * DOMINANCE de la nouvelle frise montre les mêmes retournements en DURÉES (`buildDominance`),
+ * ce qui dit davantage et occupe la même hauteur. Les trois sorties sont inchangées : les
+ * changements bruts, le camp et le libellé d'une équipe.
+ *
  * Les cascades employées sont celles du dépôt, sans troisième copie : `allyOfTeamId` pour le
  * camp (grammaire de xuidMeta) et `resolveTeamLabel` pour le nom (celle du scoreboard, des
  * objectifs et des colonnes du rejeu).
@@ -16,13 +22,32 @@ import { useCallback, useMemo } from 'react'
 
 import type { XuidMeta } from '@/features/match-view/xuidMeta'
 import { resolveTeamLabel } from '@/lib/halo/teamLabel'
-import { allyOfTeamId, leadChanges, scoreTimelineOf } from '@/lib/replay/scoreTimeline'
+import { allyOfTeamId, leadChanges, scoreTimelineOf, type LeadChange } from '@/lib/replay/scoreTimeline'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
-import type { ReplayLeadMarksProps } from './ReplayLeadMarks'
 import type { ReplayDocumentReady } from './replayNormalize'
 import type { ReplayWindowBounds } from './replayWindow'
+
+/**
+ * Ce que la frise reçoit des retournements. Le type vivait dans `ReplayLeadMarks.tsx` tant que
+ * ce composant existait ; il a suivi son seul producteur à sa suppression.
+ */
+export interface ReplayLeadMarks {
+  /** Les instants où le meneur change (cf. `leadChanges`). Vide = aucun retournement mesuré. */
+  changes: readonly LeadChange[]
+  /** Nombre d'images du document : l'échelle de la frise quand le match n'est pas cadré. */
+  frameCount: number
+  /** Durée d'une image, pour dater un retournement en mm:ss. */
+  frameIntervalMs?: number
+  /** La fenêtre de gameplay : elle donne l'échelle de la frise ET l'origine de l'horloge. */
+  playWindow: ReplayWindowBounds | null
+  /** Camp du meneur, du point de vue du joueur de la page (`null` = inconnu). */
+  allyOf: (teamId: number) => boolean | null
+  /** Libellé de l'équipe qui passe devant, tel que la colonne l'écrit. */
+  labelOf: (teamId: number) => string
+  locale: ReplayLocale
+}
 
 export function useLeadMarks(
   doc: ReplayDocumentReady,
@@ -30,7 +55,7 @@ export function useLeadMarks(
   xuidMeta: XuidMeta | undefined,
   locale: ReplayLocale,
   playWindow: ReplayWindowBounds | null,
-): ReplayLeadMarksProps {
+): ReplayLeadMarks {
   const t = REPLAY_TEXT[locale]
   // Le balayage des paliers ne dépend QUE du document : la frise ne se recalcule pas
   // soixante fois par seconde de lecture.

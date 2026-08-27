@@ -264,6 +264,7 @@ function ReplayPage() {
               xuidMeta={xuidMeta}
               marks={marks}
               endMatch={endMatchSound}
+              feedEntries={feedEntries}
             />
             {/* L'ÉCRAN DE FIN DE MATCH, dérivé de la position de lecture (D-B5) : il apparaît
                 quand la lecture atteint la borne de fin et disparaît dès qu'on remonte la

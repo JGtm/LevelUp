@@ -27,7 +27,7 @@ import {
   type ReplayMediaItem,
   type TrackDeath,
   type TrackKill,
-} from './replayTimelineTracks'
+} from './replayTimelineTracksLogic'
 import type { ReplayWindowBounds } from './replayWindow'
 
 /** Un document 10 Hz : une image toutes les 100 ms. */
