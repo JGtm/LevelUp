@@ -7,6 +7,23 @@
  * fichier n'est que la couture React entre les deux, pour que le composant canvas n'ait
  * pas à connaître Web Audio (anti-pattern « logique dans le composant »).
  *
+ * DEUX ÉTATS, PAS UN — ET C'EST LA LEÇON DU CORRECTIF DU 2026-08-27. La PRÉFÉRENCE (« je veux
+ * du son », persistée) et le LECTEUR (l'AudioContext, qui ne peut naître que dans un geste)
+ * sont deux choses distinctes, et un rechargement de page les désaccorde forcément : la
+ * préférence revient du stockage local, le lecteur non. Pendant cette fenêtre le panneau
+ * affichait « son activé » alors que rien ne pouvait sonner, et le clic suivant — le geste qui
+ * aurait pu tout réparer — basculait la préférence à « coupé ». Il fallait donc DEUX clics pour
+ * entendre quoi que ce soit, ce qui ressemblait à une panne.
+ *
+ * LE DÉSACCORD SE RÉSOUT DANS LE PREMIER GESTE, quel qu'il soit, et jamais avant :
+ *  - le bouton du son ACTIVE quand rien ne joue, au lieu de couper une préférence déjà à
+ *    « activé » (`toggle`) ;
+ *  - un geste de transport — « Lecture », « Recommencer » — éveille le lecteur si la
+ *    préférence le demande (`wake`, appelé par `useReplayPlayback`), pour que le son revienne
+ *    sans même passer par le bouton.
+ * Dans les deux cas l'AudioContext naît DANS un geste utilisateur : la doctrine ne bouge pas,
+ * c'est la liste des gestes qui comptent qui s'allonge.
+ *
  * TROIS SILENCES SONT VOULUS, et aucun n'est un bug :
  *  - COUPÉ PAR DÉFAUT : rien ne sonne, rien ne se télécharge même, tant que l'utilisateur
  *    n'a pas cliqué. L'AudioContext naît DANS ce clic (politique d'autoplay : un contexte
@@ -15,6 +32,14 @@
  *    `tick` n'est plus appelé. Au retour, le saut de temps recale le curseur en silence
  *    (SOUND_RESYNC_JUMP_MS) : ce qui a été enjambé ne se rejoue pas ;
  *  - AVANCE RAPIDE : au-delà de SOUND_MAX_SPEED, le curseur suit sans jouer.
+ *
+ * LE SON DE FIN DE PARTIE (lot C, 2026-08-27) EST LE SEUL QUI NE VIENNE PAS DE LA PISTE. Il
+ * n'a pas d'instant sur l'horloge du film : c'est la LECTURE qui l'appelle en arrivant sur la
+ * borne de fin (`useReplayPlayback.onEnded`), une fois par arrivée. Il passe par le même
+ * lecteur, donc par la même préférence et le même volume — son coupé, rien ; et il obéit aussi
+ * au silence d'avance rapide, sans quoi le panneau annoncerait « son coupé par la vitesse »
+ * pendant qu'une fanfare joue. Ses prises sont PRÉCHARGÉES avec la piste : le tirage a lieu à
+ * l'arrivée en fin, et un fichier demandé à cet instant arriverait trop tard.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
@@ -23,6 +48,7 @@ import { useSettings } from '@/features/settings/queries'
 import { staticAssetURL } from '@/lib/staticAssets'
 
 import { persistPreference, readStoredFlag, readStoredNumber } from './replayPreferences'
+import { endMatchSounds, endMatchSoundStems, type EndMatchSoundSpec } from './endMatchSound'
 import { ReplayAudioPlayer } from './replayAudio'
 import type { ReplayDocumentReady } from './replayNormalize'
 import { distanceChain, drawVariation } from './weaponSoundLogic'
@@ -64,6 +90,12 @@ export interface ReplaySound {
   available: boolean
   on: boolean
   toggle: () => void
+  /**
+   * À appeler dans un GESTE DE TRANSPORT (lecture, recommencer) : rend son lecteur à un rejeu
+   * dont la préférence est restée à « activé » d'une session à l'autre. Sans effet si le son
+   * est coupé ou si le lecteur vit déjà.
+   */
+  wake: () => void
   volume: number
   setVolume: (v: number) => void
   /** Le son est activé mais tu par la vitesse de lecture (à dire, pas à cacher). */
@@ -73,6 +105,23 @@ export interface ReplaySound {
   toggleCategory: (category: SoundCategory) => void
   /** À appeler à chaque pas d'animation avec l'instant courant du rejeu, en ms. */
   tick: (ms: number) => void
+  /**
+   * LA CONCLUSION : voix de l'annonceur + fanfare, à appeler UNE fois quand la lecture atteint
+   * la borne de fin du match. Rien ne sonne si le son est coupé, si la fin n'est pas lisible
+   * (cf. `endMatchSoundSpec`) ou si la vitesse dépasse SOUND_MAX_SPEED.
+   */
+  endMatch: () => void
+  /**
+   * LA PISTE AUDIO À JOINDRE À UNE VIDÉO enregistrée, ou `null`.
+   *
+   * `null` dans deux cas qui n'en font qu'un du point de vue de l'utilisateur : le son est
+   * coupé, ou le lecteur n'est pas né (il ne naît que dans le geste qui active le son). Le
+   * clip sort alors muet, et c'est la décision 6 du plan — la piste est câblée AU DÉMARRAGE
+   * de l'enregistrement, donc activer le son ensuite ne l'ajoute pas au clip en cours. La
+   * raison n'est pas technique mais de lisibilité : un fichier dont le son démarrerait en
+   * cours de route passerait pour un fichier abîmé.
+   */
+  recordingTrack: () => MediaStreamTrack | null
 }
 
 /** Lit les catégories COUPÉES ; une valeur inconnue (ancienne clé, JSON corrompu) est
@@ -131,9 +180,12 @@ function hasSoundEvents(doc: ReplayDocumentReady, kills: KillEvent[], t0Ms: numb
 }
 
 /** Les URL des sons EFFECTIVEMENT présents dans une piste : on ne précharge jamais le pack
- *  entier (27 fichiers) pour un match qui n'en joue que cinq. */
+ *  entier (58 fichiers) pour un match qui n'en joue que cinq. `extra` porte les stems qui
+ *  n'ont pas d'instant sur l'horloge — les prises de la fin de partie, dont le tirage n'aura
+ *  lieu qu'à l'arrivée en fin. */
 function soundURLsFor(
   timeline: readonly { stem: string; variants?: readonly string[] }[],
+  extra: readonly string[],
 ): Map<string, string> {
   const urls = new Map<string, string>()
   for (const e of timeline) {
@@ -142,6 +194,9 @@ function soundURLsFor(
     for (const stem of stemsOf(e)) {
       if (!urls.has(stem)) urls.set(stem, staticAssetURL('sound', stem, '.wav'))
     }
+  }
+  for (const stem of extra) {
+    if (!urls.has(stem)) urls.set(stem, staticAssetURL('sound', stem, '.wav'))
   }
   return urls
 }
@@ -182,6 +237,7 @@ export function useReplaySound(
   // deux variantes d'équipe restent MUETTES — le rejeu ne devine jamais un camp, même règle
   // que l'encre des calques.
   scoreboard?: readonly ScoreboardSide[],
+  endMatch: EndMatchSoundSpec | null = null,
 ): ReplaySound {
   const sideOfXuid = useMemo(() => sideResolverFromScoreboard(scoreboard), [scoreboard])
   // Le camp allié EN NUMÉRO : les sons d'état de zone joignent sur le propriétaire d'une zone,
@@ -205,7 +261,12 @@ export function useReplaySound(
     () => hasSoundEvents(doc, kills ?? [], t0Ms ?? 0),
     [doc, kills, t0Ms],
   )
-  const urls = useMemo(() => soundURLsFor(timeline), [timeline])
+  // Les prises de la FIN entrent dans le préchargement avec la piste : le tirage n'a lieu qu'à
+  // l'arrivée en fin, et un fichier demandé à cet instant sonnerait après le silence.
+  const urls = useMemo(
+    () => soundURLsFor(timeline, endMatchSoundStems(endMatch)),
+    [timeline, endMatch],
+  )
 
   const cursorRef = useRef<SoundCursor>({ ms: 0, idx: 0 })
   // Le prochain battement POSE le curseur sans rien jouer. Vrai à l'activation et à tout
@@ -215,12 +276,20 @@ export function useReplaySound(
   // Lus par le battement sans en être des dépendances : couper le son ou changer de vitesse
   // ne doit pas recréer la boucle d'animation du canvas.
   const onRef = useRef(on)
+  // Le NIVEAU réglé, lu par les gestes qui ouvrent le lecteur : le mettre en dépendance de
+  // leurs rappels les recréerait à chaque pas du curseur de volume. Il s'écrit dans
+  // `setVolume`, son seul point d'entrée.
+  const volumeRef = useRef(volume)
   const speedRef = useRef(speed)
   const timelineRef = useRef(timeline)
   const urlsRef = useRef(urls)
+  // La lecture de fin suit la même règle : `onEnded` doit rester STABLE, sans quoi la boucle
+  // d'animation se recréerait le jour où l'en-tête du match arrive.
+  const endMatchRef = useRef(endMatch)
 
   useEffect(() => { onRef.current = on }, [on])
   useEffect(() => { speedRef.current = speed }, [speed])
+  useEffect(() => { endMatchRef.current = endMatch }, [endMatch])
   useEffect(() => {
     timelineRef.current = timeline
     urlsRef.current = urls
@@ -236,35 +305,76 @@ export function useReplaySound(
     playerRef.current = null
   }, [])
 
+  /**
+   * openPlayer — LE LECTEUR PREND VIE. À N'APPELER QUE DANS UN GESTE UTILISATEUR : c'est la
+   * seule fenêtre où un AudioContext démarre en marche (politique d'autoplay).
+   *
+   * Il lit le volume dans une REF et non dans l'état : cette fonction est appelée par des
+   * rappels stables (bascule du bouton, gestes de transport), et en faire une dépendance du
+   * volume les recréerait à chaque mouvement du curseur.
+   */
+  const openPlayer = useCallback(() => {
+    const level = volumeRef.current
+    let player = playerRef.current
+    if (!player) {
+      player = new ReplayAudioPlayer(level)
+      playerRef.current = player
+      tuning.apply(player)
+    }
+    player.resume()
+    player.setVolume(level)
+    player.preload(urlsRef.current.values())
+    resyncRef.current = true
+  }, [tuning])
+
+  /**
+   * wake — CE QUE FAIT UN GESTE DE TRANSPORT QUAND LA PRÉFÉRENCE EST DÉJÀ À « ACTIVÉ ».
+   *
+   * Rien du tout dans le cas nominal : le lecteur existe déjà, ou le son est coupé. Il ne sert
+   * qu'à la situation décrite plus haut — préférence restaurée à `true` par le stockage local,
+   * aucun lecteur, donc aucun son. Le premier « Lecture » ou « Recommencer » est un geste
+   * utilisateur ; il vaut donc pour la politique d'autoplay, et il rend au rejeu le son que
+   * l'utilisateur n'a jamais coupé.
+   */
+  const wake = useCallback(() => {
+    if (!onRef.current || playerRef.current) return
+    openPlayer()
+  }, [openPlayer])
+
   const toggle = useCallback(() => {
-    setOn((prev) => {
-      const next = !prev
-      persistPreference(SOUND_ON_KEY, String(next))
-      if (next) {
-        // DANS LE GESTE : c'est la seule fenêtre où un AudioContext démarre en marche.
-        if (!playerRef.current) {
-          playerRef.current = new ReplayAudioPlayer(volume)
-          tuning.apply(playerRef.current)
-        }
-        playerRef.current.resume()
-        playerRef.current.setVolume(volume)
-        playerRef.current.preload(urlsRef.current.values())
-        resyncRef.current = true
-      } else {
-        // Coupure IMMÉDIATE (rampe du maître) : ce qui est en vol s'éteint avec, plutôt que
-        // de traîner une seconde après le clic.
-        playerRef.current?.setVolume(0)
-      }
-      onRef.current = next
-      return next
-    })
-  }, [volume, tuning])
+    // LE PREMIER CLIC APRÈS UN RECHARGEMENT ACTIVE, IL NE COUPE PAS (correctif du 2026-08-27).
+    // La préférence est à « activé » mais aucun lecteur n'existe : l'état affiché et l'état
+    // réel se contredisent, et basculer la préférence à « coupé » ferait payer à l'utilisateur
+    // une incohérence dont il n'est pas l'auteur — il faudrait DEUX clics pour entendre quelque
+    // chose. Ce clic-ci réconcilie les deux : le son se met à jouer, la préférence ne bouge pas.
+    if (onRef.current && !playerRef.current) {
+      openPlayer()
+      return
+    }
+    const next = !onRef.current
+    onRef.current = next
+    persistPreference(SOUND_ON_KEY, String(next))
+    // DANS LE GESTE, toujours. Coupure IMMÉDIATE dans l'autre sens (rampe du maître) : ce qui
+    // est en vol s'éteint avec, plutôt que de traîner une seconde après le clic.
+    if (next) openPlayer()
+    else playerRef.current?.setVolume(0)
+    setOn(next)
+  }, [openPlayer])
 
   const setVolume = useCallback((v: number) => {
     const clamped = Math.min(Math.max(v, 0), 1)
+    volumeRef.current = clamped
     setVolumeState(clamped)
     persistPreference(SOUND_VOLUME_KEY, String(clamped))
     if (onRef.current) playerRef.current?.setVolume(clamped)
+  }, [])
+
+  // La piste d'enregistrement se lit sur les REFS (`onRef`, `playerRef`) et non sur l'état :
+  // elle est demandée au moment d'un clic sur « Enregistrer », jamais pendant un rendu, et
+  // cette fonction doit rester stable pour ne pas recréer l'objet de capture à chaque son.
+  const recordingTrack = useCallback((): MediaStreamTrack | null => {
+    if (!onRef.current) return null
+    return playerRef.current?.recordingTrack() ?? null
   }, [])
 
   const tick = useCallback((ms: number) => {
@@ -296,15 +406,35 @@ export function useReplaySound(
     }
   }, [tuning])
 
+  // LA CONCLUSION. Elle ne passe PAS par le curseur : elle n'a pas d'instant sur la piste, et
+  // le curseur existe pour ne pas rejouer ce qu'on a enjambé — une question qui n'a pas de sens
+  // pour un événement qui n'arrive qu'au bout. C'est l'appelant qui garantit l'unicité (la
+  // lecture n'atteint sa borne qu'une fois par passage, cf. `useReplayPlayback`).
+  //
+  // AUCUNE VARIATION RANGED ICI : ces fourchettes sont celles du moteur du jeu pour les ARMES
+  // (weaponSoundVariations.ts). Une réplique d'annonceur et une fanfare se jouent telles quelles.
+  const playEndMatch = useCallback(() => {
+    const spec = endMatchRef.current
+    const player = playerRef.current
+    if (!spec || !onRef.current || !player || !soundPlaysAtSpeed(speedRef.current)) return
+    for (const stem of endMatchSounds(spec.outcome, spec.ffa, spec.locale)) {
+      const url = urlsRef.current.get(stem)
+      if (url) player.play(url)
+    }
+  }, [])
+
   return {
     available: hasAnySound,
     on,
     toggle,
+    wake,
     volume,
     setVolume,
     mutedBySpeed: on && !soundPlaysAtSpeed(speed),
     categories,
     toggleCategory,
     tick,
+    endMatch: playEndMatch,
+    recordingTrack,
   }
 }

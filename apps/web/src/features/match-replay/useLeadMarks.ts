@@ -22,12 +22,14 @@ import type { MatchScoreboardRow } from '@/lib/api/types'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
 import type { ReplayLeadMarksProps } from './ReplayLeadMarks'
 import type { ReplayDocumentReady } from './replayNormalize'
+import type { ReplayWindowBounds } from './replayWindow'
 
 export function useLeadMarks(
   doc: ReplayDocumentReady,
   scoreboard: MatchScoreboardRow[] | undefined,
   xuidMeta: XuidMeta | undefined,
   locale: ReplayLocale,
+  playWindow: ReplayWindowBounds | null,
 ): ReplayLeadMarksProps {
   const t = REPLAY_TEXT[locale]
   // Le balayage des paliers ne dépend QUE du document : la frise ne se recalcule pas
@@ -51,6 +53,7 @@ export function useLeadMarks(
     changes,
     frameCount: doc.frameCount,
     frameIntervalMs: doc.frameIntervalMs,
+    playWindow,
     allyOf,
     labelOf,
     locale,

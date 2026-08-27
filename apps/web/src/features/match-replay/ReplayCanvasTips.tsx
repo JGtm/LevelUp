@@ -19,6 +19,7 @@ import { ReplayFlagTip } from './ReplayFlagTip'
 import { ReplayPlacementTip } from './ReplayPlacementTip'
 import { ReplayWeaponPadTip } from './ReplayWeaponPadTip'
 import type { ReplayLocale } from './i18n'
+import type { ReplayWindowBounds } from './replayWindow'
 import type { FlagHover } from './useReplayFlagCarries'
 import type { PlacementHover } from './usePlacementHover'
 import type { WeaponPadHover } from './useReplayWeaponPads'
@@ -27,6 +28,11 @@ interface ReplayCanvasTipsProps {
   locale: ReplayLocale
   /** Largeur du canvas : elle borne chaque infobulle du côté droit. */
   width: number
+  /**
+   * La fenêtre de gameplay : la seule infobulle qui DATE quelque chose (le lâcher d'un objet)
+   * doit le dire sur l'horloge du match, comme le bandeau et le fil (D-A2).
+   */
+  playWindow: ReplayWindowBounds | null
   /** Une POSE d'équipement survolée : ce que l'objet est, et qui l'a posé. */
   placement: PlacementHover | null
   /** Le nom du poseur, par slot — la pose ne porte que son numéro. */
@@ -40,6 +46,7 @@ interface ReplayCanvasTipsProps {
 export function ReplayCanvasTips({
   locale,
   width,
+  playWindow,
   placement,
   ownerNameOf,
   pad,
@@ -53,6 +60,7 @@ export function ReplayCanvasTips({
           hover={placement}
           ownerName={ownerNameOf(placement.placement.owner)}
           width={width}
+          playWindow={playWindow}
         />
       )}
       {/* JAMAIS qui a pris l'arme : le champ existe au contrat et vaut `null` partout. */}

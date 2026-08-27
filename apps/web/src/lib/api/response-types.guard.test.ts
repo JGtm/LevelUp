@@ -54,7 +54,6 @@ const ALLOWLIST = new Set<string>([
   'SessionContextResponse',     // POST /session/context — non migré Huma
   'HealthResponse',             // GET /health — endpoint infra hors openapi.yaml
   'FilterMatchIdsResponse',     // POST /filters/match-ids — wrapper trivial { match_ids }
-  'SetupStatusResponse',        // @deprecated artefact mort, à supprimer avec useSetupStatus
   'DeviceFlowStartResponse',    // POST /auth/device-flow/start — champ deprecated alias
   'SettingsResponse',           // GET /settings — large struct settings, non migrée
   'CareerPageResponse',         // sous-types view-model (CareerSummary/LusrSection) hors schéma
