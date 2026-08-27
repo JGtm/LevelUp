@@ -55,7 +55,14 @@ export interface ZoneQuery {
 /** Ce que la fiche doit dire à une frame : chaque zone, indépendamment. */
 export interface ZonePresence {
   repair: boolean
-  shroud: boolean
+  /**
+   * ms depuis la POSE de l'écran occultant qui couvre le joueur — la plus récente quand
+   * plusieurs se recouvrent (même règle que le capteur : deux horloges superposées ne
+   * diraient rien de plus). C'est l'horloge des ÉCLAIRS de la fiche (délai négatif,
+   * cf. ReplayTeams.ZoneFxOverlay) : le scintillement reprend à son avancement réel
+   * après un saut de lecture, jamais sur un rythme inventé. Null = hors de tout écran.
+   */
+  shroudSinceMs: number | null
   /**
    * ms depuis le dernier ping du capteur ADVERSE qui couvre le joueur — le plus fraîchement
    * pingé quand plusieurs se recouvrent (même règle que la marque de révélation : deux
@@ -67,7 +74,7 @@ export interface ZonePresence {
 /** Aucune allocation par frame : la valeur « hors de toute zone » est partagée. */
 export const NO_ZONES: ZonePresence = Object.freeze({
   repair: false,
-  shroud: false,
+  shroudSinceMs: null,
   sensorSincePingMs: null,
 })
 
@@ -104,7 +111,7 @@ export function zonePresenceAt(
   time: PlacementWindowTime,
 ): ZonePresence {
   let repair = false
-  let shroud = false
+  let shroudSinceMs: number | null = null
   let sensorSincePingMs: number | null = null
   const side = scene.sideOfSlot(query.slot)
   for (const p of scene.placements) {
@@ -117,8 +124,11 @@ export function zonePresenceAt(
     const dy = query.y - p.y
     if (dx * dx + dy * dy > radius * radius) continue
     if (kind === 'field') repair = true
-    else if (kind === 'shroud') shroud = true
-    else {
+    else if (kind === 'shroud') {
+      // L'ÂGE DE LA POSE, pas un booléen : les éclairs de la fiche se calent dessus.
+      const since = (query.frame - p.t0) * time.frameMs
+      if (shroudSinceMs === null || since < shroudSinceMs) shroudSinceMs = since
+    } else {
       // CAPTEUR : adverse seulement, les deux camps CONNUS — la règle de sensorReveals,
       // à l'identique. Sans poseur mesuré ou sans camp, le disque se dessine mais la fiche
       // n'affirme aucune inimitié.
@@ -129,6 +139,6 @@ export function zonePresenceAt(
       if (sensorSincePingMs === null || since < sensorSincePingMs) sensorSincePingMs = since
     }
   }
-  if (!repair && !shroud && sensorSincePingMs === null) return NO_ZONES
-  return { repair, shroud, sensorSincePingMs }
+  if (!repair && shroudSinceMs === null && sensorSincePingMs === null) return NO_ZONES
+  return { repair, shroudSinceMs, sensorSincePingMs }
 }

@@ -4,6 +4,8 @@
  * Extrait de ReplayTeams.tsx quand ce fichier a franchi le seuil de taille du dépôt en
  * recevant les compteurs vivants (même découpage que ReplayWeaponsRow).
  */
+import { Fragment } from 'react'
+
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
@@ -27,7 +29,8 @@ import { REPLAY_TEXT, type ReplayLocale } from './i18n'
  *
  * LE SCORE PERSONNEL n'apparaît QUE dans le cas vivant : la base ne le porte pas à cet
  * endroit, et un score de match posé à côté de frags à l'instant lu mélangerait deux
- * horloges sur une même ligne.
+ * horloges sur une même ligne. Il vient APRÈS les compteurs (option 2a du handoff
+ * 2026-08-27) : les trois nombres colorés d'abord, le score en encre discrète ensuite.
  */
 export function ReplayCountersBadge({
   board,
@@ -52,25 +55,25 @@ export function ReplayCountersBadge({
         [board?.assists, 'info'],
       ]
   return (
-    <span className="inline-flex shrink-0 items-baseline gap-1 font-mono text-[10px] tabular-nums">
-      {live && (
-        <span className="font-normal text-muted-foreground" title={t.playerScoreLive}>
-          {live.score}
-        </span>
-      )}
+    <span className="inline-flex shrink-0 items-baseline font-mono text-[10px] tabular-nums">
       <span
-        className="inline-flex items-baseline gap-0.5"
+        className="inline-flex items-baseline gap-[3px]"
         title={live ? t.countersLive : t.countersMatch}
       >
         {parts.map(([v, token], i) => (
-          <span key={token}>
-            {i > 0 && <span className="opacity-50">/</span>}
-            <span className="font-semibold" style={{ color: tokenCssVar(token as 'success') }}>
+          <Fragment key={token}>
+            {i > 0 && <span className="opacity-[.35]">/</span>}
+            <span className="font-bold" style={{ color: tokenCssVar(token as 'success') }}>
               {v ?? '?'}
             </span>
-          </span>
+          </Fragment>
         ))}
       </span>
+      {live && (
+        <span className="ml-1 font-normal text-muted-foreground" title={t.playerScoreLive}>
+          {live.score}
+        </span>
+      )}
     </span>
   )
 }

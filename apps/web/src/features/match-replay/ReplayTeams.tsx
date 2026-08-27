@@ -28,13 +28,13 @@ import type { PlacementWindowTime } from './equipmentPlacementsLayer'
 import { NO_ZONES, zonePresenceAt, type ZonePresence, type ZoneScene } from './equipmentZones'
 import { equippedWeapons } from './equippedLogic'
 import { lastTeleportAge, riftTeleports, type RiftTeleport } from './placementTeleport'
-import { hasUnderLayer, playerCardFx } from './playerCardFx'
+import { cardChrome, hasUnderLayer, playerCardFx } from './playerCardFx'
 import { ReplayCountersBadge } from './ReplayCountersBadge'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
 import { frameToMs, msToFrames, positionAt, trackWindow } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
 import { ReplayInventoryRow } from './ReplayInventoryRow'
-import { RespawnRow, VitalityBar } from './ReplayVitality'
+import { EliminatedBox, VitalityBar } from './ReplayVitality'
 import { ReplayWeaponsRow } from './ReplayWeaponsRow'
 import {
   buildPlayers,
@@ -128,17 +128,22 @@ export function ReplayTeams({
 
   return (
     // LA HAUTEUR VIENT DE LA RANGÉE, JAMAIS DES FICHES (technique du POC) : `h-full min-h-0`
-    // laisse la colonne se rétrécir, et le défilement vit À L'INTÉRIEUR de chaque carte. Hors
-    // rangée (repli étroit), aucune hauteur n'est imposée : rien ne défile, comportement
-    // d'origine.
+    // laisse la colonne se rétrécir, et le défilement vit À L'INTÉRIEUR de chaque colonne.
+    // Hors rangée (repli étroit), aucune hauteur n'est imposée : rien ne défile,
+    // comportement d'origine.
+    //
+    // PLUS DE CARTE DE COLONNE (option 2a du handoff 2026-08-27) : chaque fiche est une
+    // TUILE autonome, le bandeau d'équipe est posé AU-DESSUS de la pile — la boîte qui les
+    // enfermait ne disait rien de plus. Gaps de la maquette : 10 px entre colonnes, 6 px
+    // sous le bandeau, 4 px entre tuiles.
     <div
-      className="grid h-full min-h-0 gap-2"
+      className="grid h-full min-h-0 gap-2.5"
       style={{ gridTemplateColumns: `repeat(${groups.length}, 1fr)` }}
     >
       {groups.map((group, gi) => (
         <div
           key={group.side ?? `sans-equipe-${gi}`}
-          className="flex h-full min-h-0 flex-col rounded-lg border border-border bg-card p-2"
+          className="flex h-full min-h-0 flex-col gap-1.5"
         >
           <ReplayTeamHeader
             players={group.players}
@@ -146,7 +151,7 @@ export function ReplayTeams({
             xuidMeta={xuidMeta}
             locale={locale}
           />
-          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+          <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto">
             {group.players.map((p) => (
               <PlayerCard
                 key={p.xuid}
@@ -244,19 +249,23 @@ function PlayerCard({ player, doc, frame, presence, vitalityFade, readingFull, f
     text: t,
   })
   return (
+    // LA TUILE (option 2a du handoff 2026-08-27) : chaque fiche porte sa bordure et son
+    // fond — dégradé court autour de `card` en vie, `card` teinté destructive en mort
+    // (cf. playerCardFx.cardChrome). `shrink-0` : une tuile ne se tasse jamais, la colonne
+    // défile.
     <div
-      className="relative flex flex-col gap-0.5 border-t border-border py-1 first:border-t-0"
+      className="relative flex shrink-0 flex-col rounded-lg border px-2.5 py-2"
+      style={cardChrome(state.alive)}
       title={fx.title}
     >
-      {/* LA COUCHE D'EFFETS, EN RETRAIT ET ARRONDIE (retour utilisateur du 2026-08-27 :
-          « pas de padding, tout est bord à bord ») : fonds, voiles, flou et cadres vivent
-          sur cette couche `inset-0.5 rounded-md`, SOUS le contenu — les rangées sont en
-          `relative` pour peindre au-dessus d'elle. Les éclats de mort/réapparition animent
-          SON fond, jamais celui de la fiche. */}
+      {/* LA COUCHE D'EFFETS ÉPOUSE LA TUILE (option 2a) : fonds, voiles, flou et cadres
+          vivent sur cette couche `inset-0 rounded-lg`, SOUS le contenu — les rangées sont
+          en `relative` pour peindre au-dessus d'elle. Les éclats de mort/réapparition
+          animent SON fond, jamais celui de la fiche. */}
       {hasUnderLayer(fx) && (
         <div
           aria-hidden
-          className={`replay-card-fx pointer-events-none absolute inset-0.5 rounded-md ${fx.flashClass}`}
+          className={`replay-card-fx pointer-events-none absolute inset-0 rounded-lg ${fx.flashClass}`}
           style={fx.underStyle}
         />
       )}
@@ -266,55 +275,59 @@ function PlayerCard({ player, doc, frame, presence, vitalityFade, readingFull, f
           d'équipe et le nom disent déjà tout ce qu'il y a à savoir. */}
       <div className="relative flex items-baseline gap-1.5">
         <span
-          className="min-w-0 flex-1 truncate text-[11.5px] font-medium"
-          style={state.alive ? undefined : { color: tokenCssVar('destructive') }}
+          className={`min-w-0 flex-1 truncate text-[11.5px] font-bold uppercase tracking-[.06em] ${
+            state.alive ? 'text-foreground' : 'text-muted-foreground'
+          }`}
           title={name}
         >
           {name}
         </span>
         <ReplayCountersBadge board={player.board} live={live} locale={locale} />
       </div>
-      {/* HAUTEUR CONSTANTE vivant/mort : les deux zones ci-dessous ont une hauteur FIXE
-          dans les DEUX états (h-3.5 puis h-[18px]). La mort remplace le CONTENU d'une
-          zone, jamais la zone — une fiche qui change de hauteur fait sauter toute la
-          colonne à chaque mort (retour utilisateur du 2026-08-24 : la fiche morte
-          paraissait plus haute). `overflow-hidden` est la garantie, pas un ornement. */}
-      <div className="relative flex h-3.5 flex-col justify-center gap-0.5 overflow-hidden">
+      {/* HAUTEUR CONSTANTE vivant/mort : le CORPS de la fiche est une zone à hauteur FIXE
+          (35 px = barres 11 + marge 6 + inventaire 18) dans les DEUX états. La mort
+          remplace son CONTENU — l'encadré « Éliminé » remplit toute la zone — jamais la
+          zone : une fiche qui change de hauteur fait sauter toute la colonne à chaque mort
+          (retour utilisateur du 2026-08-24). `overflow-hidden` est la garantie, pas un
+          ornement. */}
+      <div className="relative mt-[7px] h-[35px] overflow-hidden">
         {state.alive ? (
           <>
-            {/* Le bouclier AU-DESSUS de la santé : l'ordre dans lequel le jeu les encaisse. */}
-            <VitalityBar reading={state.shield} fade={vitalityFade} name={t.shieldLabel} token="info" />
-            <VitalityBar reading={state.health} fade={vitalityFade} name={t.healthLabel} token="success" />
+            {/* Le bouclier (5 px) AU-DESSUS de la santé (3 px) : l'ordre dans lequel le jeu
+                les encaisse, dit aussi par l'épaisseur. */}
+            <div className="flex flex-col gap-[3px]">
+              <VitalityBar reading={state.shield} fade={vitalityFade} name={t.shieldLabel} token="info" heightPx={5} />
+              <VitalityBar reading={state.health} fade={vitalityFade} name={t.healthLabel} token="success" heightPx={3} />
+            </div>
+            {/* ARMES ET INVENTAIRE SUR UNE GRILLE À CELLULES FIXES (demande utilisateur du
+                2026-08-24) : chaque rangée émet des cellules à largeur constante — deux
+                armes, munitions de la main, grenades, capacité — pour que les fiches
+                s'alignent en colonnes. `flex-nowrap` + `overflow-hidden` : la rangée ne se
+                replie jamais. */}
+            <div className="mt-[6px] flex h-[18px] flex-nowrap items-center gap-x-[5px] overflow-hidden">
+              <ReplayWeaponsRow
+                doc={doc}
+                state={state}
+                read={equipped}
+                frame={frame}
+                readingFull={readingFull}
+                filmIndex={filmIndex}
+                locale={locale}
+              />
+              {state.life && (
+                <ReplayInventoryRow
+                  doc={doc}
+                  slot={state.life.slot}
+                  equipped={equipped}
+                  frame={frame}
+                  readingFull={readingFull}
+                  locale={locale}
+                />
+              )}
+            </div>
           </>
         ) : (
-          <RespawnRow state={state} doc={doc} frame={frame} locale={locale} />
-        )}
-      </div>
-      {/* ARMES ET INVENTAIRE SUR UNE GRILLE À CELLULES FIXES (demande utilisateur du
-          2026-08-24) : chaque rangée émet des cellules à largeur constante — deux armes,
-          munitions de la main, grenades, capacité — pour que les fiches s'alignent en
-          colonnes. `flex-nowrap` + `overflow-hidden` : la rangée ne se replie jamais. */}
-      <div className="relative flex h-[18px] flex-nowrap items-center gap-x-1 overflow-hidden">
-        {state.alive && (
-          <ReplayWeaponsRow
-            doc={doc}
-            state={state}
-            read={equipped}
-            frame={frame}
-            readingFull={readingFull}
-            filmIndex={filmIndex}
-            locale={locale}
-          />
-        )}
-        {state.alive && state.life && (
-          <ReplayInventoryRow
-            doc={doc}
-            slot={state.life.slot}
-            equipped={equipped}
-            frame={frame}
-            readingFull={readingFull}
-            locale={locale}
-          />
+          <EliminatedBox state={state} doc={doc} frame={frame} locale={locale} />
         )}
       </div>
       <ZoneFxOverlay zones={zones} translocationDelay={fx.translocationDelay} />
@@ -334,24 +347,40 @@ const REPAIR_CROSSES = [
 ] as const
 
 /**
- * ZoneFxOverlay — l'INCRUSTATION au-dessus du contenu : le nuage noir de l'écran occultant
- * (« par-dessus les infos, mais légèrement »), le contour « détecté » du capteur adverse,
- * les mini croix du champ de réparation, et le FOURREAU de translocation — la lumière qui
- * court sur la bordure, en rotation continue jusqu'à son fondu. (Les fonds, voiles et
- * cadres, eux, vivent sur la couche d'effets SOUS le contenu : playerCardFx.underStyle.)
+ * Les TROIS ÉCLAIRS de l'écran occultant (option 2a du handoff 2026-08-27) : abscisse,
+ * largeur, et décalage de scintillement dans le cycle de 2,6 s (cf. globals.css,
+ * `replay-zone-bolt`). Le décalage se SOUSTRAIT à l'horloge de la pose (`shroudSinceMs`) :
+ * à la pose, les délais valent exactement 0 / −1,3 / −2,05 s — la composition de la
+ * maquette — et après un saut de lecture chaque éclair reprend à son avancement réel,
+ * jamais sur un rythme inventé (même contrat que le capteur et les éclats).
+ */
+const SHROUD_BOLTS = [
+  { left: '10%', width: 42, offsetS: 0 },
+  { left: '56%', width: 34, offsetS: 1.3 },
+  { left: '33%', width: 28, offsetS: 2.05 },
+] as const
+
+/**
+ * ZoneFxOverlay — l'INCRUSTATION au-dessus du contenu : le nuage noir et les ÉCLAIRS de
+ * l'écran occultant (« par-dessus les infos, mais légèrement »), le contour « détecté » du
+ * capteur adverse, les mini croix du champ de réparation, et le FOURREAU de translocation —
+ * la lumière qui court sur la bordure, en rotation continue jusqu'à son fondu. (Les fonds,
+ * voiles et cadres, eux, vivent sur la couche d'effets SOUS le contenu :
+ * playerCardFx.underStyle.)
  *
  * SUR SA PROPRE COUCHE, ET C'EST LE POINT : la couche du dessous anime déjà son fond (une
- * seule animation par élément et par propriété) — la pulsation du capteur et le fourreau
- * vivent donc chacun sur leur enfant. MÊME GÉOMÉTRIE que la couche du dessous
- * (`inset-0.5 rounded-md`) : les deux dessinent le même encart en retrait, jamais deux
- * cadres décalés. `pointer-events-none` : l'infobulle et le survol restent ceux de la
- * fiche. `aria-hidden` : tout ce que l'incrustation montre est déjà dit en texte par
- * l'infobulle (title de la fiche).
+ * seule animation par élément et par propriété) — la pulsation du capteur, les éclairs et
+ * le fourreau vivent donc chacun sur leur enfant. MÊME GÉOMÉTRIE que la couche du dessous
+ * (`inset-0 rounded-lg`, la tuile elle-même — option 2a) : les deux épousent la fiche,
+ * jamais deux cadres décalés. `pointer-events-none` : l'infobulle et le survol restent
+ * ceux de la fiche. `aria-hidden` : tout ce que l'incrustation montre est déjà dit en
+ * texte par l'infobulle (title de la fiche).
  *
  * LE DÉLAI NÉGATIF DU CAPTEUR cale la pulsation sur l'horloge des pings du capteur le plus
  * fraîchement pingé (equipmentZones.sensorSincePingMs) : le contour de la fiche bat AVEC
- * l'onde de la carte, à la cadence officielle — jamais un rythme inventé. Celui du fourreau
- * suit le contrat des éclats (reprise à l'avancement réel après un saut de lecture).
+ * l'onde de la carte, à la cadence officielle — jamais un rythme inventé. Ceux des éclairs
+ * suivent l'horloge de la POSE de l'écran (shroudSinceMs) ; celui du fourreau, le contrat
+ * des éclats (reprise à l'avancement réel après un saut de lecture).
  */
 function ZoneFxOverlay({
   zones,
@@ -361,15 +390,30 @@ function ZoneFxOverlay({
   translocationDelay: string | null
 }) {
   const rien =
-    !zones.repair && !zones.shroud && zones.sensorSincePingMs === null &&
+    !zones.repair && zones.shroudSinceMs === null && zones.sensorSincePingMs === null &&
     translocationDelay === null
   if (rien) return null
   return (
-    <div aria-hidden className="pointer-events-none absolute inset-0.5 overflow-hidden rounded-md">
-      {zones.shroud && <div className="replay-zone-cloud absolute inset-0" />}
+    <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden rounded-lg">
+      {zones.shroudSinceMs !== null && (
+        <>
+          <div className="replay-zone-cloud absolute inset-0" />
+          {SHROUD_BOLTS.map((b) => (
+            <span
+              key={b.left}
+              className="replay-zone-bolt absolute top-[-8%] h-[116%]"
+              style={{
+                left: b.left,
+                width: b.width,
+                animationDelay: `${(-((zones.shroudSinceMs ?? 0) / 1000 + b.offsetS)).toFixed(3)}s`,
+              }}
+            />
+          ))}
+        </>
+      )}
       {zones.sensorSincePingMs !== null && (
         <div
-          className="replay-zone-sensor absolute inset-0 rounded-md border-[1.5px] border-dashed"
+          className="replay-zone-sensor absolute inset-0 rounded-lg border-[1.5px] border-dashed"
           style={{
             borderColor: tokenCssVar('destructive'),
             animationDelay: `${(-zones.sensorSincePingMs / 1000).toFixed(3)}s`,
@@ -388,7 +432,7 @@ function ZoneFxOverlay({
         ))}
       {translocationDelay !== null && (
         <div
-          className="replay-flash-translocation absolute inset-0 rounded-md"
+          className="replay-flash-translocation absolute inset-0 rounded-lg"
           style={{ animationDelay: translocationDelay }}
         />
       )}

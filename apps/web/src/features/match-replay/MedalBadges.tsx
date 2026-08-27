@@ -11,8 +11,8 @@
  */
 import type { MedalEvent } from './killFeedLogic'
 
-/** Côté d'un badge de médaille, en px (POC : 15 px pour un raster de 45 px). */
-const MEDAL_PX = 15
+/** Côté d'un badge de médaille, en px (option 2a du handoff 2026-08-27 : 16 px). */
+const MEDAL_PX = 16
 
 export function MedalBadges({ medals }: { medals: MedalEvent[] }) {
   return (

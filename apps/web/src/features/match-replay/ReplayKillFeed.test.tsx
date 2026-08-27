@@ -381,9 +381,10 @@ describe('ReplayKillFeed — les TROIS états de l’assistance, jamais confondu
       20_000,
     )
     expect(screen.getByText('Aidant77')).toBeTruthy()
-    // La part de l'assistant s'écrit « - 37 % » depuis la planche du 16/08, et la ligne
-    // n'écrit PLUS « assisté par » : une MARQUE le dit, en pictogramme.
-    expect(screen.getByText('- 37 %')).toBeTruthy()
+    // La part de l'assistant s'écrit « 37 % » (option 2a du handoff 2026-08-27 — le tiret
+    // de la planche du 16/08 est parti), et la ligne n'écrit PLUS « assisté par » : une
+    // MARQUE le dit, en pictogramme.
+    expect(screen.getByText('37 %')).toBeTruthy()
     // LA MARQUE EST LA VIGNETTE DU JEU (killfeed-62), pas le glyphe SVG du lot R1 : un
     // masque teint, comme l'icône d'arme du fil — même technique, même composant.
     const mark = screen.getByRole('img', { name: 'Assistance' })
@@ -628,7 +629,7 @@ describe('ReplayKillFeed — tout sur UNE ligne (V5, 2026-08-18)', () => {
     // Et tout y est encore : le tueur, la victime, la médaille, l'assistant et sa part.
     expect(screen.getByText('Cible')).toBeTruthy()
     expect(screen.getByText('Aidant77')).toBeTruthy()
-    expect(screen.getByText('- 37 %')).toBeTruthy()
+    expect(screen.getByText('37 %')).toBeTruthy()
     expect(screen.getByAltText('Perfection')).toBeTruthy()
   })
 

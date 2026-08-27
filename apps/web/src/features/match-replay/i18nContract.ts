@@ -97,7 +97,7 @@ export interface ReplayText {
    * marque DIT (infobulle + lecteur d'écran) — elle ne se lit pas toute seule.
    */
   killFeedAssistMark: string
-  /** Part de participation de l'assistant, telle que la ligne l'écrit : « - 37 % ». */
+  /** Part de participation de l'assistant, telle que la ligne l'écrit : « 37 % ». */
   killFeedAssistShare: (pct: number) => string
   /** Ligne de mort NEUTRE (suicide, chute, sortie) : le mot affiché et son infobulle. */
   killFeedDeathLabel: string
@@ -404,6 +404,8 @@ export interface ReplayText {
   weaponSecondaryHint: string
   /** Badge de lancer sur la fiche (le `.gic` du POC) : l'auteur est écrit dans le film. */
   grenadeThrown: string
+  /** L'encadré de la fiche morte (option 2a) : le mot d'état, puis le décompte lu. */
+  eliminatedLabel: string
   respawnIn: string
   respawnUnknown: string
   /** Ligne d'inventaire : grenades, capacité, munitions. */

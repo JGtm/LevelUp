@@ -56,9 +56,9 @@ import { familyOf } from './shotEffects'
 
 /** Boîte d'une vignette de HUD (grenade, capacité) : la hauteur de la ligne. */
 const HUD_ICON_PX = 16
-/** Largeurs FIXES des cellules — la grille des fiches en dépend (cf. en-tête). */
-const AMMO_CELL_W = 34
-const GRENADES_BOX_W = 62
+/** Largeurs FIXES des cellules — la grille des fiches en dépend (option 2a : 32 / 56). */
+const AMMO_CELL_W = 32
+const GRENADES_BOX_W = 56
 
 /** Les familles d'arme À CHARGE : pas de chargeur, une jauge (cf. en-tête). */
 const CHARGE_FX = new Set(['plasma', 'melee', 'light'])
@@ -130,7 +130,7 @@ export function ReplayInventoryRow({
 
   return (
     <div
-      className="flex items-center gap-1 font-mono text-[9.5px] text-muted-foreground"
+      className="flex items-center gap-[5px] font-mono text-[9.5px] text-muted-foreground"
       // LA RANGÉE N'IMPOSE PLUS SON ÂGE À TOUTE LA GRILLE. L'estompage vivait ici tant que
       // l'inventaire était la seule lecture de la ligne ; il ne l'est plus (capacité par i48,
       // grenades par l'axe `grenadeReads`). Laissé au conteneur, il MULTIPLIAIT l'opacité
