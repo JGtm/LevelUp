@@ -20,6 +20,7 @@ import { SOUND_MAX_SPEED } from './replaySoundCursor'
 import { type FakeContext, flushAudio, installFakeAudio } from './test/fakeAudio'
 import { testReplayDoc } from './test/testDoc'
 import { SOUND_VOLUME_DEFAULT, useReplaySound } from './useReplaySound'
+import { WEAPON_BURST_SPECS } from './weaponBurstSpecs'
 
 let ctx: FakeContext
 let fetchMock: ReturnType<typeof vi.fn>
@@ -191,6 +192,46 @@ describe('useReplaySound — catégories (tiroir de réglages, phase 2)', () => 
     const { result } = mount()
     expect(result.current.categories.equipment).toBe(false)
     expect(result.current.categories.weapon).toBe(true)
+  })
+})
+
+/**
+ * LA RAFALE, VUE DU CÂBLAGE (lot C du 2026-08-27) — le moteur a ses propres tests
+ * (replayAudio.test.ts) ; ce qui se joue ici est l'AIGUILLAGE : que le stem tiré décide, et
+ * que les armes hors table gardent leur unique départ.
+ */
+describe('useReplaySound — rafale des armes automatiques', () => {
+  /** Un match d'un seul TIR à 500 ms, de l'arme demandée. */
+  function docWithShot(weaponKey: string) {
+    return testReplayDoc({
+      frameIntervalMs: 100,
+      tracks: [
+        { slot: 1, team: -1, xuid: 'K', points: [{ t: 0, x: 0, y: 0 }, { t: 100, x: 10, y: 0 }], startFrame: 0, endFrame: 100 },
+      ],
+      shots: [{ t: 5, slot: 1, x: 0, y: 0, w: '0xAA' }],
+      weaponLabels: { '0xAA': { en: 'arme', fr: 'arme', key: weaponKey } },
+    })
+  }
+
+  async function tickPastShot(doc: ReturnType<typeof docWithShot>) {
+    const { result } = renderHook(() => useReplaySound(doc, [], 0, 1))
+    act(() => result.current.toggle())
+    await act(async () => { await flushAudio() })
+    act(() => result.current.tick(100)) // recalage silencieux, AVANT le tir
+    act(() => result.current.tick(600)) // le tir est passé
+  }
+
+  it('un tir de MA40 part en TROIS balles échelonnées (retour utilisateur du 2026-08-27)', async () => {
+    await tickPastShot(docWithShot('hinf_ma40_ar'))
+    expect(ctx.sources).toHaveLength(3)
+    const t0 = ctx.currentTime
+    const gap = WEAPON_BURST_SPECS.hinf_ma40_ar.ecartMs / 1000
+    expect(ctx.sources.map((s) => s.started)).toEqual([t0, t0 + gap, t0 + 2 * gap])
+  })
+
+  it('une arme HORS table garde son unique départ (le chemin d avant, intact)', async () => {
+    await tickPastShot(docWithShot('hinf_s7_sniper'))
+    expect(ctx.sources).toHaveLength(1)
   })
 })
 

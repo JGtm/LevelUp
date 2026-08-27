@@ -22,8 +22,11 @@ export class FakeParam {
 
 export class FakeGain {
   gain = new FakeParam()
+  /** Démontages reçus : une chaîne laissée branchée après la fin d'un son est une fuite, et
+   *  c'est exactement le genre de chose qui ne s'entend pas. */
+  disconnected = 0
   connect() {}
-  disconnect() {}
+  disconnect() { this.disconnected++ }
 }
 
 export class FakeSource {
@@ -31,8 +34,12 @@ export class FakeSource {
   onended: (() => void) | null = null
   started: number | null = null
   stopped: number | null = null
+  /** La VITESSE DE LECTURE, portée comme un AudioParam par le vrai WebAudio (`.value`) :
+   *  c'est par elle que passe la variation de hauteur d'un tirage (weaponSoundLogic). */
+  playbackRate = new FakeParam()
+  disconnected = 0
   connect() {}
-  disconnect() {}
+  disconnect() { this.disconnected++ }
   start(t: number) { this.started = t }
   stop(t: number) { this.stopped = t }
   /** Fin naturelle de la source : c'est le navigateur qui l'appelle, ici le test. */
