@@ -137,10 +137,16 @@ var rawOrderByStartTimeAllowlist = map[string]bool{
 	"cmd/backfill_quit_timestamps/main.go":                            true,
 	"cmd/diag_citation_counters/main.go":                              true,
 	"cmd/diag_lusr_player/loaders.go":                                 true,
-	"cmd/diag_orphan_session/main.go":                                 true,
-	"cmd/levelup/cmd_backfill.go":                                     true,
-	"cmd/lusr_v2_phase0/replay.go":                                    true,
-	"cmd/seed-medal/main.go":                                          true,
+	// diag_perfsim (2026-08-27, lot 0 du plan PLAN_PERF_NOTE_OBJECTIFS) : oracle de
+	// concordance qui REPLIQUE VERBATIM le SQL de sync/performance_helpers.go
+	// (lui-même dans cette allowlist) — adopter le fragment canonique ici seul
+	// casserait la propriété de réplique. À migrer ENSEMBLE si
+	// performance_helpers.go passe à StartTimeCanonicalSQL.
+	"cmd/diag_perfsim/load.go":        true,
+	"cmd/diag_orphan_session/main.go": true,
+	"cmd/levelup/cmd_backfill.go":     true,
+	"cmd/lusr_v2_phase0/replay.go":    true,
+	"cmd/seed-medal/main.go":          true,
 }
 
 func TestNoNewRawStartTimeLiteral(t *testing.T) {

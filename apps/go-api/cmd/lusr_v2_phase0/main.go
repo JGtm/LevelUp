@@ -46,7 +46,8 @@ const sharedDBPath = "data/titles/halo_infinite/warehouse/shared_matches_v2.duck
 var defaultPlayers = []string{"Madina97294", "Chocoboflor", "JGtm", "XxDaemonGamerxX"}
 
 func main() {
-	lusync.SetLUSRChainClassifier(skillchain.ClassifyLUSRChain) // MT-15 (fail-loud)
+	lusync.SetLUSRChainClassifier(skillchain.ClassifyLUSRChain)        // MT-15 (fail-loud)
+	lusync.SetObjectiveFamilyClassifier(skillchain.IsObjectiveSubMode) // famille de la chaîne de perf classée
 
 	dbPath := flag.String("db", sharedDBPath, "chemin vers shared_matches_v2.duckdb")
 	flag.Parse()

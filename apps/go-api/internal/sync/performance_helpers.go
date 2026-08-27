@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/ctxkeys"
+	"levelup/go-api/internal/persist"
 )
 
 func computeRankPerformance(rank, teamMMR, enemyMMR float64, histMetrics map[string][]float64) *float64 {
@@ -21,6 +22,53 @@ func computeRankPerformance(rank, teamMMR, enemyMMR float64, histMetrics map[str
 	}
 	p := percentileRank(diff, series)
 	return &p
+}
+
+// applyPerfEnrichments complète les rows chargées depuis la shared DB avec ce
+// qu'elle ne porte pas : le score d'exploitation des médailles (calculé en amont
+// par l'appelant du batch) et les points d'objectif (lus ici sur la DB joueur, sans
+// changement de signature du batch — ses 5 call-sites en héritent).
+//
+// Une clé absente rend la zéro-value, et c'est VOULU dans les deux cas : 0 pour le
+// score médailles (métrique dont 0 est le neutre), nil pour ObjectiveScore — nil
+// signifiant « match sans couverture personal_score_awards », ce qui fait
+// redistribuer le poids d'ospm au lieu de noter le match 0 à l'objectif (D-J).
+func applyPerfEnrichments(ctx context.Context, playerDB *sql.DB, xuid string, matches []historyRow, medalExploitByMatch map[string]float64) {
+	objectiveByMatch := loadObjectiveParticipation(ctx, playerDB, xuid)
+	for i := range matches {
+		matches[i].MedalExploitScore = medalExploitByMatch[matches[i].MatchID]
+		matches[i].ObjectiveScore = objectiveByMatch[matches[i].MatchID]
+	}
+}
+
+// addStandardPercentile classe une métrique « plus = mieux » (percentile direct)
+// si le match la porte et que l'historique en a une série non vide. Appelée par
+// collectWeightedPercentiles UNIQUEMENT pour les métriques du profil de la chaîne.
+func addStandardPercentile(m *matchMetrics, hist map[string][]float64, key string, w float64, percentiles, weightsUsed map[string]float64) {
+	val, ok := getMetricValue(m, key)
+	if !ok {
+		return
+	}
+	series := hist[key]
+	if len(series) == 0 {
+		return
+	}
+	percentiles[key] = percentileRank(val, series)
+	weightsUsed[key] = w
+}
+
+// addRankPercentile classe rank_perf — nécessite le rang du joueur ET les deux MMR
+// (sinon la performance attendue n'est pas calculable).
+func addRankPercentile(m *matchMetrics, hist map[string][]float64, w float64, percentiles, weightsUsed map[string]float64) {
+	if m.Rank == nil || m.TeamMMR == nil || m.EnemyMMR == nil {
+		return
+	}
+	rankPerf := computeRankPerformance(*m.Rank, *m.TeamMMR, *m.EnemyMMR, hist)
+	if rankPerf == nil {
+		return
+	}
+	percentiles[MetricKeyRankPerf] = *rankPerf
+	weightsUsed[MetricKeyRankPerf] = w
 }
 
 // getMetricValue extrait la valeur d'une métrique par clé.
@@ -74,6 +122,11 @@ func getMetricValue(m *matchMetrics, key string) (float64, bool) {
 			return *m.MedalExploit, true
 		}
 		return 0, false
+	case MetricKeyObjectiveParticipation:
+		if m.OSPM != nil {
+			return *m.OSPM, true
+		}
+		return 0, false
 	}
 	return 0, false
 }
@@ -95,6 +148,10 @@ func prepareHistoryMetrics(history []historyRow) map[string][]float64 {
 		MetricKeyOffensiveConv:    make([]float64, 0, n),
 		MetricKeyDefensiveResist:  make([]float64, 0, n),
 		MetricKeyMedalExploit:     make([]float64, 0, n),
+		// ospm : la série ne reçoit QUE les matchs à couverture PSA. Un match non
+		// couvert n'y entre pas (il ne vaut pas 0), la population de référence de la
+		// métrique est donc celle des matchs réellement mesurés.
+		MetricKeyObjectiveParticipation: make([]float64, 0, n),
 	}
 
 	for _, row := range history {
@@ -134,6 +191,9 @@ func prepareHistoryMetrics(history []historyRow) map[string][]float64 {
 		}
 		if m.MedalExploit != nil {
 			result[MetricKeyMedalExploit] = append(result[MetricKeyMedalExploit], *m.MedalExploit)
+		}
+		if m.OSPM != nil {
+			result[MetricKeyObjectiveParticipation] = append(result[MetricKeyObjectiveParticipation], *m.OSPM)
 		}
 	}
 
@@ -223,7 +283,7 @@ func loadHistoryForPerf(ctx context.Context, sharedDB *sql.DB, xuid string) ([]h
 // Retourne le nombre de matchs mis à jour.
 //
 // Sémantique : chaque match est rattaché à une chaîne via GetPerformanceChain
-// (6 chaînes possibles). Le percentile pondéré est calculé sur les 50 derniers
+// (7 chaînes possibles). Le percentile pondéré est calculé sur les 50 derniers
 // matchs de la **même chaîne** uniquement. Un score n'est calculé qu'à partir
 // du MinMatchesPerChainForRelative-ième match de la chaîne (pas de fallback
 // global, préservation de la sémantique "relatif à ta chaîne").
@@ -234,3 +294,194 @@ func loadHistoryForPerf(ctx context.Context, sharedDB *sql.DB, xuid string) ([]h
 //
 // medalExploit override is set to nil — callers that need the exploit-aware
 // variant (sync engine) still use the unexported helper.
+
+// ── Hygiène des notes orphelines (lot 2 — décisions D-D / D-E) ──────────────
+//
+// **Pourquoi** : une note stockée survit à la disparition de son match de
+// l'univers de calcul. Trois causes constatées sur le corpus (diagnostic
+// 2026-08-27) : le match est devenu non terminé (outcome=4, exclu du SQL de
+// chargement), il a été exclu manuellement (is_excluded — match_exclusion_service
+// ne nettoie pas la note), ou la population de sa chaîne est repassée sous le
+// seuil (exclusions, reclassification de famille). D-D tranche : purge sèche,
+// score ET chaîne remis à NULL.
+//
+// **D-E** : le batch est AUTO-NETTOYANT — la passe tourne à chaque run (force
+// compris), pas seulement lors d'une purge one-shot.
+//
+// **Écriture** : append-only (#23046) via PostSyncEnrichmentPersister — une row
+// partielle stage='perf' portant NULL. La vue player_match_enrichment_latest
+// rend bien ce NULL (merge-on-read PAR GROUPE : « si l'étape propriétaire a une
+// row, sa valeur, NULL inclus » — cf. buildPMELatestViewSQL). Aucun UPDATE, aucun
+// ON CONFLICT : le vecteur ART reste éliminé.
+//
+// **Idempotence** : une note NULLée ne matche plus le filtre
+// `performance_score IS NOT NULL`, donc le run suivant ne la voit plus et ne
+// réécrit rien.
+
+// loadScoredPerfChains charge les matchs qui portent déjà une note, avec la
+// chaîne stockée (chaîne NULL → "", note legacy à recalculer).
+//
+// Chargé dans les DEUX modes (D-E) : en mode !force il pilote le skip des matchs
+// déjà à jour ; dans tous les cas il définit l'ensemble des notes stockées que la
+// passe de nettoyage confronte à l'ensemble qualifié du run.
+//
+// Best-effort : une lecture en échec rend une map vide (le batch dégrade en
+// recompute-all et ne nettoie rien) — jamais silencieusement, l'erreur est loguée.
+func loadScoredPerfChains(ctx context.Context, playerDB *sql.DB, xuid string) map[string]string {
+	scored := make(map[string]string)
+	rows, err := playerDB.QueryContext(ctx,
+		`SELECT match_id, performance_chain
+		   FROM player_match_enrichment_latest
+		  WHERE performance_score IS NOT NULL`)
+	if err != nil {
+		slog.WarnContext(ctx, "batchComputePerformanceScores: query existing scores failed — fallback recompute-all, aucun nettoyage",
+			"xuid", xuid, "err", err)
+		return scored
+	}
+	defer rows.Close()
+
+	scanErrors := 0
+	for rows.Next() {
+		var mid string
+		var chain sql.NullString
+		if err := rows.Scan(&mid, &chain); err != nil {
+			scanErrors++
+			continue
+		}
+		if chain.Valid {
+			scored[mid] = chain.String
+		} else {
+			// Score legacy sans chaîne stockée → recompute pour peupler.
+			scored[mid] = ""
+		}
+	}
+	if err := rows.Err(); err != nil {
+		slog.WarnContext(ctx, "batchComputePerformanceScores: existing rows iteration error",
+			"xuid", xuid, "err", err)
+	}
+	if scanErrors > 0 {
+		slog.WarnContext(ctx, "batchComputePerformanceScores: scan errors on existing scores",
+			"xuid", xuid, "scan_errors", scanErrors)
+	}
+	return scored
+}
+
+// perfCleanupSets porte les ensembles construits par le run courant, dont la
+// confrontation désigne les notes orphelines. `below` et `excluded` ne servent
+// qu'à ventiler la cause dans les logs.
+type perfCleanupSets struct {
+	scored    map[string]string   // notes stockées : match_id → chaîne stockée
+	qualified map[string]struct{} // matchs qui qualifient au terme de ce run
+	below     map[string]struct{} // matchs sous le seuil de leur chaîne
+	excluded  map[string]bool     // matchs is_excluded (filtrés de l'univers)
+}
+
+// runPerfCleanupPass exécute la passe auto-nettoyante en fin de batch : toute
+// note stockée hors de l'ensemble qualifié du run repasse à NULL (score +
+// chaîne). Retourne le nombre de notes nettoyées.
+//
+// La passe est SAUTÉE si le flush des notes calculées a échoué (execErrors > 0) :
+// on n'empile pas d'écritures sur une DB qui vient de refuser la précédente, et
+// le prochain run rattrapera le nettoyage.
+//
+// Best-effort : un échec du nettoyage est logué et n'invalide pas les notes
+// calculées par ce run.
+func runPerfCleanupPass(ctx context.Context, playerDB *sql.DB, xuid string, execErrors int, sets perfCleanupSets) int {
+	if execErrors > 0 {
+		slog.WarnContext(ctx, "batchComputePerformanceScores: nettoyage des notes orphelines sauté (flush en erreur)",
+			"xuid", xuid, "exec_errors", execErrors)
+		return 0
+	}
+	cleaned, err := nullifyOrphanPerfScores(ctx, playerDB, xuid, sets)
+	if err != nil {
+		slog.ErrorContext(ctx, "batchComputePerformanceScores: nettoyage des notes orphelines échoué",
+			"xuid", xuid, "err", err)
+	}
+	return cleaned
+}
+
+// nullifyOrphanPerfScores remet à NULL (score + chaîne) toute note stockée dont
+// le match n'est pas dans l'ensemble qualifié du run. Retourne le nombre de
+// lignes nettoyées.
+//
+// Ce que « non qualifié » couvre, par construction :
+//   - outcome=4 (DNF) : exclu par le SQL de loadHistoryForPerf, donc jamais vu
+//     par la boucle → jamais qualifié ;
+//   - is_excluded : filtré de allMatches en amont ;
+//   - sous le seuil de sa chaîne : classé dans `below` par la boucle ;
+//   - match disparu de l'univers (purge, re-sync) : plus aucune ligne le porte.
+func nullifyOrphanPerfScores(ctx context.Context, playerDB *sql.DB, xuid string, sets perfCleanupSets) (int, error) {
+	orphans := make([]string, 0, len(sets.scored))
+	var causeBelow, causeExcluded, causeOther int
+	for mid := range sets.scored {
+		if _, ok := sets.qualified[mid]; ok {
+			continue
+		}
+		orphans = append(orphans, mid)
+		switch {
+		case sets.excluded[mid]:
+			causeExcluded++
+		case containsMatch(sets.below, mid):
+			causeBelow++
+		default:
+			// DNF (jamais chargé) ou match sorti de l'univers.
+			causeOther++
+		}
+	}
+	if len(orphans) == 0 {
+		return 0, nil
+	}
+	sort.Strings(orphans) // déterminisme des logs et des tests
+
+	rows := make([]persist.EnrichmentMultiColumnUpdate, 0, len(orphans))
+	for _, mid := range orphans {
+		rows = append(rows, persist.EnrichmentMultiColumnUpdate{
+			MatchID: mid,
+			Fields: map[string]any{
+				"performance_score": nil,
+				"performance_chain": nil,
+			},
+		})
+	}
+	p := persist.NewPostSyncEnrichmentPersister(playerDB)
+	if _, err := p.BatchUpdateMulti(ctx, rows); err != nil {
+		return 0, fmt.Errorf("nullifyOrphanPerfScores (%d lignes): %w", len(rows), err)
+	}
+
+	slog.InfoContext(ctx, "batchComputePerformanceScores: notes orphelines nettoyées",
+		"xuid", xuid,
+		"cleaned", len(orphans),
+		"cleaned_below_threshold", causeBelow,
+		"cleaned_excluded", causeExcluded,
+		"cleaned_other", causeOther)
+	slog.DebugContext(ctx, "batchComputePerformanceScores: détail des notes nettoyées",
+		"xuid", xuid, "match_ids", orphans)
+	return len(orphans), nil
+}
+
+// containsMatch — appartenance à un ensemble de match_ids.
+func containsMatch(set map[string]struct{}, matchID string) bool {
+	_, ok := set[matchID]
+	return ok
+}
+
+// cleanupAllScoredAsOrphans traite les deux sorties anticipées du batch (« aucun
+// match qualifiable » : univers vide, ou tous les matchs exclus). Sans elle,
+// l'invariant D-E aurait un trou — le run rendrait la main sans regarder les
+// notes stockées, qui sont pourtant TOUTES orphelines dans ce cas.
+// Best-effort : l'échec est logué, il n'invalide pas le batch.
+func cleanupAllScoredAsOrphans(ctx context.Context, playerDB *sql.DB, xuid string, excluded map[string]bool) {
+	scored := loadScoredPerfChains(ctx, playerDB, xuid)
+	if len(scored) == 0 {
+		return
+	}
+	if _, err := nullifyOrphanPerfScores(ctx, playerDB, xuid, perfCleanupSets{
+		scored:    scored,
+		qualified: map[string]struct{}{},
+		below:     map[string]struct{}{},
+		excluded:  excluded,
+	}); err != nil {
+		slog.ErrorContext(ctx, "batchComputePerformanceScores: nettoyage des notes orphelines échoué (aucun match qualifiable)",
+			"xuid", xuid, "err", err)
+	}
+}

@@ -33,6 +33,7 @@ func seedLUSRInteriorGaps(t *testing.T, repoRoot, gamertag, xuid string, nMatche
 	// démarrage du scheduler l.998, gated par ValidateLUSRChainClassifierWired). Le
 	// package de test ne boote pas le serveur → on pose le seam ici (idempotent).
 	syncpkg.SetLUSRChainClassifier(skillchain.ClassifyLUSRChain)
+	syncpkg.SetObjectiveFamilyClassifier(skillchain.IsObjectiveSubMode)
 	titleDir := filepath.Join(repoRoot, "data", "titles", "halo_infinite")
 
 	// Player DB migrée (match_skill_rank + vue _latest) + xuid.txt. Aucune ligne

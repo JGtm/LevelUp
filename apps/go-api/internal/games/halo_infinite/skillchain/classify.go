@@ -11,7 +11,6 @@
 package skillchain
 
 import (
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/games/halo_infinite"
 )
 
@@ -33,10 +32,14 @@ const (
 //   - BTB, BTB Heavies                           → btb
 //   - Fiesta, Super Fiesta, Husky Raid           → chaos
 //   - Other : Infection/Griffball/Rocket Hog/Action Sack/Event → chaos
+//     sous-mode objectif                 → arena_objectif
 //     Rumble Pit + préfixes inconnus     → arena_slayer (fallback)
 //   - Assassin (Arena/Tactical/Assault/Community) :
 //     sous-mode objectif (CTF, Strongholds…)  → arena_objectif
 //     tout le reste                            → arena_slayer
+//
+// Les deux branches consultent la MÊME source (IsObjectiveSubMode) : la famille ne
+// dépend pas de la catégorie, seules les règles chaos priment.
 func ClassifyLUSRChain(pairName string) string {
 	category := halo_infinite.InferModeCategoryFromPairName(pairName)
 	switch category {
@@ -57,31 +60,40 @@ func ClassifyLUSRChain(pairName string) string {
 }
 
 // lusrChainForOther classe les modes de catégorie Other.
-// Chaos : Infection, Griffball, Rocket Hog Race, Action Sack, Event.
-// Fallback arena_slayer : Rumble Pit et tout préfixe inconnu.
+// Ordre des priorités (le premier qui répond gagne) :
+//  1. Chaos : Infection, Griffball, Rocket Hog Race, Action Sack, Event — un mode
+//     chaos reste chaos même s'il porte un sous-mode objectif (Event:CTF) ;
+//  2. Famille objectif via IsObjectiveSubMode (source unique, objective_family.go) :
+//     un pair_name de préfixe inconnu peut porter un mode objectif d'un côté ou de
+//     l'autre du deux-points (lot 1bis, règle du préfixe) ;
+//  3. Fallback arena_slayer : Rumble Pit et tout préfixe inconnu.
 func lusrChainForOther(pairName string) string {
 	if containsI(pairName, "infection") || containsI(pairName, "griffball") ||
 		containsI(pairName, "rocket hog") || containsI(pairName, "action sack") ||
 		containsI(pairName, "event") {
 		return chainChaos
 	}
+	if IsObjectiveSubMode(pairName) {
+		return chainArenaObjectif
+	}
 	return chainArenaSlayer
 }
 
 // lusrChainForAssassin classe les sous-modes Arena/Tactical/Assault/Community.
-// Objectif reconnus : CTF, Oddball, Strongholds, KotH, Total Control,
-// Land Grab, Extraction, Stockpile, One Flag CTF, Covert One Flag.
-// Tout le reste (Slayer, Attrition, Elimination, inconnu) → arena_slayer.
+// La liste des sous-modes objectif reconnus vit dans IsObjectiveSubMode
+// (objective_family.go) — SOURCE UNIQUE partagée avec la chaîne de performance
+// classée (ranked_objectif). Tout le reste (Slayer, Attrition, Elimination,
+// inconnu) → arena_slayer.
+//
+// C'est aussi par ici que passent les pair_name INVERSÉS (`Strongholds:Arena on
+// Behemoth`) : InferModeCategoryFromPairName retient le préfixe connu quel que
+// soit son côté du deux-points et les range donc en Assassin — la famille est
+// tranchée par la règle du préfixe de IsObjectiveSubMode.
 func lusrChainForAssassin(pairName string) string {
-	subMode := toLowerASCII(analysis.NormalizeModeLabel(pairName))
-	switch subMode {
-	case "ctf", "capture the flag", "neutral flag ctf", "one flag ctf", "covert one flag",
-		"strongholds", "oddball", "king of the hill",
-		"total control", "land grab", "extraction", "stockpile":
+	if IsObjectiveSubMode(pairName) {
 		return chainArenaObjectif
-	default:
-		return chainArenaSlayer
 	}
+	return chainArenaSlayer
 }
 
 // containsI est un contains case-insensitive simplifié.
