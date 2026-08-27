@@ -180,9 +180,10 @@ func TestObjectiveRoles_FichierDuDepot(t *testing.T) {
 		t.Fatalf("le fichier versionné doit charger: %v", err)
 	}
 	modes := set.Modes()
-	if len(modes) != 7 {
-		t.Fatalf("modes = %d, attendu 7 (CTF, Strongholds, Oddball, Stockpile, Extraction, "+
-			"Assaut, KOTH) — Total Control est RETIRE depuis le 2026-08-27", len(modes))
+	if len(modes) != 8 {
+		t.Fatalf("modes = %d, attendu 8 (CTF, Strongholds, Oddball, Stockpile, Extraction, "+
+			"Assaut, KOTH, Land Grab — ce dernier cable au lot C catalogues le 2026-08-27) ; "+
+			"Total Control est RETIRE depuis le 2026-08-27", len(modes))
 	}
 	// La règle produit du lot 4 : Bastion et Extraction s'affichent NEUTRES (possession
 	// dynamique non décodée) ; le drapeau, lui, garde ses couleurs d'équipe.
@@ -198,6 +199,14 @@ func TestObjectiveRoles_FichierDuDepot(t *testing.T) {
 	}
 	if !neutres[mapvar.RoleStrongholdZone] || !neutres[mapvar.RoleExtractionZone] || !neutres[mapvar.RoleHill] {
 		t.Errorf("strongholds_zone, extraction_zone et hill doivent être neutres, reçu: %v", neutres)
+	}
+	// LAND GRAB EST SERVI ET NEUTRE depuis le 2026-08-27 (lot C catalogues, ex-lot L) : la
+	// possession d'une zone est dynamique (une zone capturée disparaît), même règle que
+	// Bastion et la colline. L'entrée soldera l'incohérence « hashs landgrab_zone dans le
+	// fichier de carte sans rôle ni entrée » au premier match FUTUR (aucun film n'existe).
+	if !servis[mapvar.RoleLandGrabZone] || !neutres[mapvar.RoleLandGrabZone] {
+		t.Errorf("landgrab_zone doit être servi ET neutre (lot C catalogues 2026-08-27), reçu servis=%v neutres=%v",
+			servis[mapvar.RoleLandGrabZone], neutres[mapvar.RoleLandGrabZone])
 	}
 	if neutres[mapvar.RoleFlagSpawn] || neutres[mapvar.RoleFlagDelivery] {
 		t.Errorf("les rôles drapeau ne doivent PAS être neutres: %v", neutres)
