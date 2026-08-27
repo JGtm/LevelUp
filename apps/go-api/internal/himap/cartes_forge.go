@@ -276,6 +276,20 @@ var CartesForge = []CarteForge{
 		FichierMvar:   "smallhalla_map.mvar",
 		ModuleCanevas: CanevasWetland,
 	},
+	// LE RELIQUAT, INSTRUIT LE 2026-08-26/27. Le lot du 13/08 et le reliquat du 16/08 avaient
+	// laisse dehors 29 cartes Forge JOUEES par les joueurs suivis. UNE SEULE a pu etre
+	// declaree : Solitude - Ranked. Les 28 autres n ont AUCUNE ancre d objectif dans
+	// map_objectives.json, et le cadre d un fond se construit sur les ancres — sans elles, la
+	// cuisson echoue par construction (« carte absente du catalogue d objectifs »). Avoir le
+	// .mvar et le canevas prouve ne suffit donc PAS : le catalogue d objectifs est la
+	// troisieme condition, et c est cmd/mapobj-build qui la remplit. Les 28 cartes attendent
+	// ce lot-la, elles sont listees dans .ai/V7.5/cartes/REGISTRE_CARTES.md.
+	{
+		MapID:         "4a5e5612-2b2e-4375-a0b3-9335a68815f3",
+		Nom:           "Solitude - Ranked",
+		FichierMvar:   "solitude_-_ranked_map.mvar",
+		ModuleCanevas: CanevasBlank,
+	},
 }
 
 // EstCanevasForge dit si un dossier installe est le CANEVAS d'une carte Forge declaree — donc

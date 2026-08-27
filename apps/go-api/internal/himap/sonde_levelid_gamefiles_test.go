@@ -73,6 +73,10 @@ var preuvesLevelID = []struct {
 	{"Goliath", "fo11_blank"},
 	{"Isolation", "fo08_wetland"},
 	{"Solitude", "fo11_blank"},
+	// Declaree le 2026-08-27 : la variante CLASSEE de Solitude est un autre asset UGC, jouee
+	// 5 fois, et elle n avait pas de fond. Seule des 29 cartes du reliquat a etre cuisinable —
+	// les 28 autres n ont aucune ancre dans le catalogue d objectifs.
+	{"Solitude - Ranked", "fo11_blank"},
 	{"Houseki", "fo09_academy"},
 	{"High Ground", "fo08_wetland"},
 	{"Salvation", "fo11_blank"},

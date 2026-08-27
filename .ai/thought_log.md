@@ -73067,3 +73067,97 @@ ailleurs, et on ignore pourquoi cette portion d'arene n'a pas de triangles) ; un
 pas un releve ; un petit fragment isole flotte sur le flanc ouest, la ou l'eau etait peinte.
 
 **Conclusion / prochaine etape** : Vagabond, puis la re-passe Cliffhanger.
+
+## [2026-08-26] Fonds de rejeu — les cartes qui manquaient, et pourquoi la cuisson ralentissait
+
+**Statut** : En cours (cuisson des 58 fonds Forge lancee par lots).
+
+**Decision technique principale — trois, toutes issues d'une mesure** :
+
+1. **L'echelle des fonds ne se regle plus a la main.** `himap.EchellePourCadre` vise 3 000 px
+   sur le plus grand cote de la GRILLE et en deduit le cote du pixel, borne a [0,025 ; 0,0920].
+   Le cadre monde vient des ancres, donc il est connu AVANT le rendu : la valeur n'exprimait
+   rien de propre a la carte. Douze entrees JSON portaient le meme calcul — « copy-paste
+   config » caracterise. Une `echelle` explicite reste prioritaire (garde-rail
+   `TestEchelleExpliciteGagneToujours`), les onze cartes deja gatees ne bougent pas. Les deux
+   `echelleOuDefaut` sans caller ont ete supprimees.
+2. **LA CUISSON PAGINAIT.** Mesure sur la premiere passe : le temps par carte passe de 137 s a
+   236 s et le process atteint 15 Go de memoire, la machine tombant a 0,1 Go libre. L'index
+   des modules s'accumule d'une carte a l'autre dans un meme process (chaque carte Forge
+   ouvre `forge_objects`, les globals et son canevas — jusqu'a 600 Mo pour `fo08_wetland`).
+   Correctif operationnel, pas de code : cuire par LOTS DE 3, un process par lot. A l'arret du
+   process, la machine est repassee de 0,1 a 16,2 Go libres — la preuve directe.
+3. **Loupe sur les planches de gate** : la vignette devient un bouton, l'image s'ouvre a
+   620 px, fermeture au clic ou par Echap, focus rendu. La grille sert a REPERER une carte, le
+   verdict se prend sur l'image agrandie.
+
+**Le gap des cartes, mesure** : 123 cartes jouees dans `shared_matches_v2` (lue sur COPIE, la
+base etant tenue en ecriture par un `server.exe` local), 35 sans fond de rejeu.
+
+- **29 declarables** — `.mvar` de carte et fichier-lien de canevas presents. Declarees dans
+  `CartesForge` ; leur canevas n'est pas devine, il est PROUVE par level_id
+  (`TestPreuveLevelIDCartes` vert sur les 29, unicite 1/1). Dont « Lattice - Ranked », carte du
+  pool classe 2026.
+- **Live Fire, bloquee par l'installation du jeu** : `sgh_interlock-rtx-new.module` pese
+  0,21 Mo (pc), 0,48 (any), 0,21 (ds), sans `_hd1`, quand `sgh_streets` pese 478 Mo. Le
+  diagnostic le dit par l'autre bout : `aucun tag sbsp`. La geometrie n'est pas sur le disque.
+  Le fait etait consigne le 13/08 (« NON CATALOGUEE malgre un module PROUVE ») sans que la
+  cause soit nommee. C'est la 6e carte du corpus, 51 matchs — le manque le plus couteux.
+- **Sans donnee** : Detachment et Argyle (pas de fichier-lien de canevas), TFF Night Of The
+  Undead (aucun `.mvar`). Vacancy, Serenity, Interference : jamais jouees par les joueurs
+  suivis, donc aucun asset en depot.
+
+**Piege de mesure paye** : la premiere planche triee par frequence donnait Catalyst a 2 matchs
+et Recharge a 8. Cause : un fond sert PLUSIEURS map_id (variante classee, Heavies, ancien asset
+d'avant refonte) et je prenais le premier nom venu, c'est-a-dire le moins joue. Les frequences
+sont desormais agregees par FOND.
+
+**Correction de statut** : Corpo portait `VALIDEE 26/08` sans verbatim. C'etait un statut
+d'OUTILLAGE (carte pilote du lot du 13/08) pris pour un verdict utilisateur. Repassee
+`A FINALISER` sur remarque de l'utilisateur. Regle qui en sort : un `VALIDEE` sans verbatim au
+journal est a re-verifier, pas a croire.
+
+**Conclusion / prochaine etape** : cuisson des 58 fonds par lots, puis republication de la
+planche d'etat des lieux a la meme adresse, puis commit des 29 declarations (le garde-rail
+`TestFondForgeJamaisSousCleModule` exige que chaque carte declaree ait son fond publie).
+
+## [2026-08-27] Fonds Forge : 38 cuits, 28 bloques, et deux fautes a consigner
+
+**Statut** : Complete pour ce qui etait cuisinable. 38 fonds Forge sur 38 recuits en encre a
+l'echelle automatique ; planche d'etat des lieux republiee, triee par frequence de jeu.
+
+**FAUTE 1 — j'ai declare 29 cartes sans verifier la condition qui compte.** Pour cuire un fond
+Forge il faut TROIS choses : le `.mvar`, le canevas (preuve level_id) et **les ancres
+d'objectif dans `map_objectives.json`**. Je n'ai verifie que les deux premieres, et j'ai
+annonce « 29 cartes declarees » avant qu'une seule ait ete cuite. **Vingt-huit ont echoue** :
+« carte absente du catalogue d'objectifs ». Le cadre d'un fond est construit sur les ancres
+(`CadreSurAncresEchelle`) — sans elles il n'y a pas d'image a rendre. Les 28 declarations ont
+ete retirees ; le garde-rail `TestFondForgeJamaisSousCleModule` les aurait attrapees si je
+l'avais joue avant d'annoncer. Une seule carte du reliquat etait reellement declarable :
+Solitude - Ranked, cuite. Le vrai prochain lot pour les 28 autres est `cmd/mapobj-build`.
+
+**FAUTE 2 — un garde-fou anti-regression a cree une boucle chaude de sept heures.** Le filet
+anti-boucle du script de cuisson n'ecartait un lot que si le binaire sortait avec le code 0,
+pour ne pas classer en echec un process tue de l'exterieur. Or `mapfond-build` sort en ERREUR
+quand une carte echoue : le filet ne pouvait donc JAMAIS se declencher sur le seul cas qu'il
+devait couvrir. De 01 h 00 a 08 h 17, le meme lot a ete rejoue — 135 000 lignes d'erreur,
+32 Mo de journal, zero carte produite. Correctif : compteur de TENTATIVES par carte (trois
+passages sans production = sortie de file), le code de sortie n'entre plus dans la decision.
+
+**Incident connexe, meme nuit** : arreter une tache de fond tue le processus enveloppe, PAS la
+boucle. Deux relances avaient donc laisse trois boucles vivantes sur la meme file — elles se
+battaient pour la memoire (0,4 Go libre, la machine paginait) et deux ecrivaient le meme PNG.
+Une heure pour une seule carte. Correctif : verrou par `mkdir` (atomique), refus de demarrer
+si un `mapfond-build` tourne deja, `trap` qui tue l'enfant et libere le verrou en sortant.
+Le script est desormais versionne : `.ai/V7.5/cartes/outils/cuisson_par_lots.sh`.
+
+**Ce qui a bien tenu** : la reprise. L'etat est relu sur le disque a chaque tour (sidecar plus
+recent que le jalon de campagne, jamais un compteur) — a travers trois arrets brutaux, aucune
+carte n'a ete recuite inutilement ni publiee a moitie.
+
+**Resultats mesures** : 57 fonds publies, 38 Forge recuits en encre, echelle automatique
+(environ 1 300 a 1 600 px publies contre 700 avant). Live Fire reste incuisable : son module
+`sgh_interlock` est un talon de 0,2 Mo, la geometrie n'est pas installee.
+
+**Conclusion / prochaine etape** : verdict utilisateur sur la planche ; puis lot
+`cmd/mapobj-build` pour faire entrer les 28 cartes dans le catalogue d'objectifs.
