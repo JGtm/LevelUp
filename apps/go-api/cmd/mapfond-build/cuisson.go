@@ -194,6 +194,16 @@ func (e *environnement) cuitForge(ctx context.Context) []bilanAsset {
 			out = append(out, bilanAsset{Cle: carte.MapID, Noms: []string{carte.Nom}, Err: err})
 			continue
 		}
+		if e.sourceNavmeshDe(carte.MapID) {
+			rendu, bilan, err := e.cuitDepuisNavmesh(ctx, carte, c)
+			if err != nil {
+				slog.ErrorContext(ctx, "cuisson depuis le navmesh", "err", err, "carte", carte.Nom)
+				out = append(out, bilanAsset{Cle: carte.MapID, Noms: c.noms, Err: err})
+				continue
+			}
+			out = append(out, e.publie(ctx, c, rendu, bilan))
+			continue
+		}
 		rendu, bilan, err := himap.CuitCarteForge(ctx, himap.OptionsCuissonForge{
 			RacineDeploy:        e.racineJeu,
 			Objets:              objets,
@@ -445,4 +455,24 @@ func (e *environnement) moduleDeCuisson(c cible) string {
 		return p
 	}
 	return c.chemin
+}
+
+// cuitDepuisNavmesh rend le fond d'une carte Forge a partir de son MAILLAGE DE NAVIGATION.
+//
+// C'est la seule source qui ne demande rien a soustraire : sur une carte a ciel ferme, le
+// maillage vit sous les coques et ne les contient pas. Le blob vit dans le depot hors ligne,
+// a cote des variantes.
+func (e *environnement) cuitDepuisNavmesh(ctx context.Context, carte himap.CarteForge, c cible) (*himap.Rendu, himap.BilanCuisson, error) {
+	chemin := filepath.Join(e.repoRoot, himap.DepotNavmesh, carte.MapID+".blob")
+	blob, err := os.ReadFile(chemin) //nolint:gosec // entrée d'outillage hors ligne
+	if err != nil {
+		return nil, himap.BilanCuisson{}, fmt.Errorf("maillage de navigation illisible (%s) : %w", chemin, err)
+	}
+	return himap.CuitCarteNavmesh(ctx, himap.OptionsCuissonNavmesh{
+		Blob:         blob,
+		Ancres:       c.ancres,
+		Cle:          carte.MapID,
+		Echelle:      e.echelleDe(carte.MapID),
+		CibleCadrePx: himap.CibleCadrePx,
+	})
 }

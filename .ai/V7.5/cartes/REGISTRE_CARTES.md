@@ -1011,3 +1011,41 @@ jamais enlevee — ecretage a 4, 2, 1 m, tranche plafonnee a +3, +6, +12, bornag
 exemplaires de 65 m, drapeau 21, categorie 3 — qui peint 46 % a lui seul. Isolation est un
 empilement, et le drapeau ne designe que la couche exterieure. Prochain essai : la categorie 3
 (289 objets), a laquelle appartient ce second peintre.
+
+### 2026-08-27 — ISOLATION EST LISIBLE : le fond vient du MAILLAGE DE NAVIGATION
+
+Planche : https://claude.ai/code/artifact/5fbb56c8-f7e8-4f3b-8f6d-62b0d79e147a
+
+**Verbatim** : « Ah oui Isolation je commence a reconnaitre !! Il y a des elements manquants
+encore mais ca devient reconnaissable par endroits ! »
+
+**La sortie n'etait pas de mieux soustraire mais de CHANGER DE SOURCE.** Chaque carte Forge
+publie un `navmesh.blob` a cote de sa variante. Decodage etabli et teste (`internal/hinavmesh`) :
+
+| couche | ce que c'est |
+|---|---|
+| 12 octets | en-tete gros-boutiste : version 2, taille-12, une constante 0x001FFFFF |
+| conteneur | **le MEME que les `.mvar`** — `cb2.go` le decode sans une ligne nouvelle |
+| champ 1 | flux **zlib a fenetre de 8 Ko** : en-tete `58 09`, ce qui l'a rendu invisible aux recherches de `78 9c` |
+| 1 128 372 o | 5 regions, dont **4 tagfiles Havok 2022.1.0** |
+| region 1 | **`hkaiNavMesh`** : 2 348 faces, 8 218 aretes, 3 350 sommets, 2 200 m2 |
+
+**POURQUOI LE PROBLEME DISPARAIT AU LIEU D'ETRE RESOLU** : le maillage vit entre Z 112,54 et
+124,08 ; la premiere couche de coques est posee entre Z 136 et 160 — **onze metres plus haut**.
+Le navmesh ne contient pas les coques. Rien a peler, rien a ecreter, rien a borner.
+
+**L'ORACLE, PASSE AVANT L'IMAGE** : 24 des 25 ancres d'objectif tombent DANS un polygone, ecart
+d'altitude median **7,4 cm**. La 25e (assault_bomb) est a 2,03 m du bord — le navmesh se retire
+le long des murs. Verifie sur Kiken'na : **13/13**, dans un repere tout autre (X -187..-155,
+Z 172..179), ce qui exclut tout codage en dur.
+
+**COUVERTURE** : le navmesh n'existe QUE pour les cartes Forge, et seulement au-dela d'environ
+1 000 objets — present sur 10 cartes testees sur 10 dans cette bande, absent (404) sur 13 sur 13
+en dessous. Sur les 101 cartes du referentiel, 66 sont dans la bande favorable.
+
+**RESTE, ET C'EST DU CADRAGE** : un ilot du maillage hors de l'arene etire le cadre (le grand
+polygone en bas a droite). Le bornage aux volumes de mort, ou garder la composante connexe qui
+porte les ancres, le retirera. Et l'utilisateur signale des **elements manquants** : le navmesh
+ne porte que le sol MARCHABLE — ni les murs, ni les structures. La suite naturelle est d'en
+faire la SURFACE DE REFERENCE de la chaine ordinaire : le rendu habituel, ramene a l'altitude du
+navmesh, rendrait le sol ET les structures sans le dome.

@@ -474,6 +474,11 @@ func EstCanevasForge(module string) bool {
 // autres.
 const DepotVariantesCarte = ".ai/re_dump/mapvar"
 
+// DepotNavmesh : ou sont les navmesh.blob publies avec les cartes Forge, RELATIVEMENT A LA
+// RACINE DU DEPOT. Meme statut que le depot de variantes : entree d outillage hors ligne, non
+// versionnee. Un blob absent fait retomber la carte sur la cuisson ordinaire, jamais echouer.
+const DepotNavmesh = ".ai/re_dump/navmesh"
+
 // CheminCanevasForge rend le chemin du `.module` du canevas d'une carte Forge, ou la chaine
 // vide s'il n'est pas installe (la cuisson s'en passe alors, cf. OptionsCuissonForge).
 func CheminCanevasForge(c CarteForge) string {
