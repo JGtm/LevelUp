@@ -49,6 +49,13 @@ type historyRow struct {
 	OffensiveConversion float64
 	DefensiveResistance float64
 	MedalExploitScore   float64
+	// ObjectiveScore : points d'awards de catégorie `objective` du match, source
+	// personal_score_awards (playerDB) — enrichi après chargement SQL, comme
+	// MedalExploitScore. Le POINTEUR porte la sémantique de COUVERTURE (D-J) :
+	// nil = aucune donnée PSA pour ce match (métrique ospm absente, son poids est
+	// redistribué) ; 0 = match couvert dont le joueur n'a fait aucune action
+	// d'objectif (valeur légitime, qui doit être classée par percentile).
+	ObjectiveScore *float64
 	// Chain est la chaîne de score de performance dérivée via GetPerformanceChain
 	// (pair_name + flags is_ranked/is_firefight). Toujours non vide.
 	Chain string
@@ -71,6 +78,8 @@ type matchMetrics struct {
 	OffensiveConversion *float64
 	DefensiveResistance *float64
 	MedalExploit        *float64
+	// OSPM : points d'objectif par minute. nil = match sans couverture PSA.
+	OSPM *float64
 }
 
 // ── Extraction des métriques ────────────────────────────────────────────────
@@ -144,6 +153,13 @@ func extractMatchMetrics(row *historyRow) *matchMetrics {
 		v := row.MedalExploitScore
 		m.MedalExploit = &v
 	}
+	// ospm : présent SSI le match a une couverture personal_score_awards. Le test
+	// porte sur le POINTEUR, pas sur `> 0` comme les métriques ci-dessus : un match
+	// couvert à 0 point d'objectif est une valeur à classer, pas une absence (D-J).
+	if row.ObjectiveScore != nil {
+		v := *row.ObjectiveScore / minutes
+		m.OSPM = &v
+	}
 	return m
 }
 
@@ -179,9 +195,28 @@ func percentileRankInverse(value float64, series []float64) float64 {
 
 // ── Calcul du score de performance relatif ──────────────────────────────────
 
+// standardPerfMetrics — métriques « plus = mieux » du score relatif, classées par
+// percentile direct. Deux métriques ont un traitement propre et ne figurent pas
+// ici : dpm_deaths (percentile inversé) et rank_perf (dérivée des MMR).
+//
+// La liste est le SUPERSET de toutes les chaînes ; c'est le profil de poids de la
+// chaîne (WeightsForChain) qui décide lesquelles comptent réellement — ospm n'est
+// au profil que des chaînes de famille objectif.
+var standardPerfMetrics = []string{
+	MetricKeyKPM, MetricKeyAPM, MetricKeyKDA, MetricKeyAccuracy, MetricKeyPSPM, MetricKeyDPMDamage,
+	MetricKeyKillsVsExpected, MetricKeyDeathsVsExpected,
+	MetricKeyOffensiveConv, MetricKeyDefensiveResist, MetricKeyMedalExploit,
+	MetricKeyObjectiveParticipation,
+}
+
 // computeRelativePerformanceScore calcule le score 0-100 d'un match
 // par rapport à l'historique du joueur.
-func computeRelativePerformanceScore(current *historyRow, history []historyRow) *float64 {
+//
+// `weights` est le profil de poids de la CHAÎNE du match (WeightsForChain) : une
+// métrique hors profil n'est ni calculée ni comptée dans la renormalisation par la
+// somme des poids retenus. C'est ce mécanisme — et non un test de chaîne dans le
+// calcul — qui réserve ospm aux chaînes de famille objectif.
+func computeRelativePerformanceScore(current *historyRow, history []historyRow, weights map[string]float64) *float64 {
 	if len(history) < MinMatchesForRelative {
 		return nil
 	}
@@ -194,43 +229,7 @@ func computeRelativePerformanceScore(current *historyRow, history []historyRow) 
 	// Préparer les séries historiques par métrique.
 	histMetrics := prepareHistoryMetrics(history)
 
-	percentiles := make(map[string]float64)
-	weightsUsed := make(map[string]float64)
-
-	// Métriques standard (plus = mieux)
-	standardMetrics := []string{
-		MetricKeyKPM, MetricKeyAPM, MetricKeyKDA, MetricKeyAccuracy, MetricKeyPSPM, MetricKeyDPMDamage,
-		MetricKeyKillsVsExpected, MetricKeyDeathsVsExpected,
-		MetricKeyOffensiveConv, MetricKeyDefensiveResist, MetricKeyMedalExploit,
-	}
-	for _, key := range standardMetrics {
-		val, ok := getMetricValue(metrics, key)
-		if !ok {
-			continue
-		}
-		series, ok2 := histMetrics[key]
-		if !ok2 || len(series) == 0 {
-			continue
-		}
-		percentiles[key] = percentileRank(val, series)
-		weightsUsed[key] = RelativeWeights[key]
-	}
-
-	// Métrique inversée : dpm_deaths (moins = mieux)
-	if series, ok := histMetrics[MetricKeyDPMDeaths]; ok && len(series) > 0 {
-		percentiles[MetricKeyDPMDeaths] = percentileRankInverse(metrics.DPMDeaths, series)
-		weightsUsed[MetricKeyDPMDeaths] = RelativeWeights[MetricKeyDPMDeaths]
-	}
-
-	// Rank performance (optionnel)
-	if metrics.Rank != nil && metrics.TeamMMR != nil && metrics.EnemyMMR != nil {
-		rankPerf := computeRankPerformance(*metrics.Rank, *metrics.TeamMMR, *metrics.EnemyMMR, histMetrics)
-		if rankPerf != nil {
-			percentiles[MetricKeyRankPerf] = *rankPerf
-			weightsUsed[MetricKeyRankPerf] = RelativeWeights[MetricKeyRankPerf]
-		}
-	}
-
+	percentiles, weightsUsed := collectWeightedPercentiles(metrics, histMetrics, weights)
 	if len(percentiles) == 0 {
 		return nil
 	}
@@ -250,6 +249,45 @@ func computeRelativePerformanceScore(current *historyRow, history []historyRow) 
 	score /= totalWeight
 	score = math.Round(score*10) / 10
 	return &score
+}
+
+// collectWeightedPercentiles classe le match dans son historique, métrique par
+// métrique, en ne retenant que celles du profil de poids de sa chaîne. Rend les
+// percentiles retenus et les poids correspondants (la renormalisation par leur
+// somme est faite par l'appelant).
+func collectWeightedPercentiles(m *matchMetrics, hist map[string][]float64, weights map[string]float64) (map[string]float64, map[string]float64) {
+	percentiles := make(map[string]float64, len(weights))
+	weightsUsed := make(map[string]float64, len(weights))
+
+	// Métriques standard (plus = mieux).
+	for _, key := range standardPerfMetrics {
+		if w, inProfile := profileWeight(weights, key); inProfile {
+			addStandardPercentile(m, hist, key, w, percentiles, weightsUsed)
+		}
+	}
+
+	// Métrique inversée : dpm_deaths (moins = mieux).
+	if w, inProfile := profileWeight(weights, MetricKeyDPMDeaths); inProfile {
+		if series := hist[MetricKeyDPMDeaths]; len(series) > 0 {
+			percentiles[MetricKeyDPMDeaths] = percentileRankInverse(m.DPMDeaths, series)
+			weightsUsed[MetricKeyDPMDeaths] = w
+		}
+	}
+
+	// Rank performance (optionnel).
+	if w, inProfile := profileWeight(weights, MetricKeyRankPerf); inProfile {
+		addRankPercentile(m, hist, w, percentiles, weightsUsed)
+	}
+	return percentiles, weightsUsed
+}
+
+// profileWeight rend le poids d'une métrique dans le profil de la chaîne courante.
+// inProfile=false quand la métrique n'y figure pas (cas d'ospm hors famille
+// objectif) ou qu'elle y porte un poids nul : elle n'est alors ni calculée ni
+// comptée dans la renormalisation.
+func profileWeight(weights map[string]float64, key string) (float64, bool) {
+	w, inProfile := weights[key]
+	return w, inProfile && w != 0
 }
 
 // computeRankPerformance calcule le percentile de rank_perf_diff.
@@ -293,12 +331,8 @@ func batchComputePerformanceScores(ctx context.Context, playerDB, sharedDB *sql.
 		}
 	}
 
-	// Enrichir avec les scores médailles
-	for i := range allMatches {
-		if score, ok := medalExploitByMatch[allMatches[i].MatchID]; ok {
-			allMatches[i].MedalExploitScore = score
-		}
-	}
+	// Enrichir avec ce que la shared DB ne porte pas : médailles + objectif.
+	applyPerfEnrichments(ctx, playerDB, xuid, allMatches, medalExploitByMatch)
 
 	// Charger les matchs qui ont déjà un score ET la chaîne stockée.
 	// En mode !force, on skippe si la chaîne stockée correspond à la chaîne
@@ -375,7 +409,9 @@ func batchComputePerformanceScores(ctx context.Context, playerDB, sharedDB *sql.
 			}
 			window := history[start:]
 
-			score := computeRelativePerformanceScore(&match, window)
+			// Le profil de poids suit la CHAÎNE du match : les chaînes de famille
+			// objectif intègrent ospm, les autres gardent le profil historique.
+			score := computeRelativePerformanceScore(&match, window, WeightsForChain(chain))
 			if score != nil {
 				// Accumuler en RAM, flush via PostSyncEnrichmentPersister
 				// (1 UPDATE multi-row en fin de boucle).
