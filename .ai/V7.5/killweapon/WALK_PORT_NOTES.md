@@ -1235,3 +1235,121 @@ Deux tiers des marches finissent TROP TOT, un cinquieme franchit la frontiere pe
 composant. Aucun composant intermediaire ne concentre le decrochage. C'est le meme diagnostic que
 R7-b phase 4bis — une derive DISPERSEE qui s'accumule — et aucune des cinq variables de cadre
 de ce lot ne l'ecrase : elles deplacent la mediane, elles ne resserrent pas la distribution.
+
+---
+# LE LECTEUR/ECRIVAIN DU JEU — carte exhaustive des serialiseurs d'etat complet (lot G, 2026-08-27)
+
+> Acces Ghidra : instance HaloInfinite.exe (D:/SteamLibrary, 311 103 fonctions analysees,
+> base 140000000), API HTTP du plugin http://127.0.0.1:8089 (/decompile_function,
+> /get_xrefs_to, /read_memory), LECTURE SEULE. Aucun rename, aucun script, aucune analyse.
+> Angle du lot (borne d'arret R7-e LEVEE par l'utilisateur pour cet angle precis, 2026-08-27) :
+> puisque le jeu ne RELIT jamais le payload type-2 (R6), remonter le format par le cote qui le
+> definit — le code de serialisation lui-meme (lecteur ET ecrivain), et non plus mesurer une
+> grammaire portee a l'aveugle contre l'oracle.
+
+## 1. CORRECTION SUR PIECES : FUN_142f2e174 n'est PAS l'encodeur de snapshot
+
+R6 s5 et R7-d s5 le nommaient « l'encodeur de snapshot » sans le decompiler (recherche bornee,
+« aucun appel direct »). Decompile integrale ce jour : c'est le constructeur de la liste de
+REFERENCE/PRIORITE de la vue du gestionnaire d'entites de replication
+(...\engine\source\blofeld\networking\replication\replication_entity_manager_view.cpp).
+
+- Il boucle sur les entites (tableau param_1+0x38..+0x40, stride 0xa0 = 160 octets, bitmap
+  de presence param_1+0x58) et ecrit, PAR entite, une paire de 2 mots dans param_4 :
+  *puVar12 = gen<<0x1e | flags | slot & 0x1fff | ... puis FUN_140bbd808(puVar12, valeur).
+- Le mot 0 est l'id [gen:2 @bit30][flags:2 @bit23-24][slot:13] — exactement l'id:32 de
+  l'en-tete type-2 [id:32][field:26][ti:6] (gen = id>>30, slot = id & 0x3FFFFFFF confirme
+  keyframe_world.go). Les flags a bit 23-24 (0x800000 / 0x1000000 / 0x1800000) distinguent
+  reference / NEW / etat-complet.
+- Le mot 1 (la « valeur ») vient de FUN_142f24dd4 (entite kind==3 avec bloc d'etat 32 o) ou
+  FUN_142f24d1c (autres) -> FUN_142e2b734 -> FUN_143138d30. FUN_143138d30 calcule un
+  FLOAT (table par typeIndex &DAT_14498ab44 stride 0x5c, comparaisons a 0.0, aucun etat de
+  bit-writer) : c'est une PRIORITE/pertinence, pas une serialisation de composants.
+
+Consequence : FUN_142f2e174 produit UNIQUEMENT les en-tetes 64 bits (id + priorite/ref).
+Il n'ecrit AUCUN corps de composant. Ceci explique enfin pourquoi, depuis R5, l'en-tete de 64 bits
+decode toujours mais le corps jamais : le corps que R5/R7 cherchaient a lire N'EST PAS ecrit par
+cet encodeur. Le fait que WalkKeyframeWorld retrouve 249/250 ENTITES contre l'oracle Cheat Engine
+est coherent avec une liste de reference complete (tous les ids vivants), pas avec un magasin de
+positions.
+
+## 2. La vtable de la vue de replication (0x1436a87e0), decodee /read_memory
+
+| slot | fonction | role |
+|---|---|---|
+| +0x08 | FUN_14076c27c | (init) |
+| +0x10 | FUN_142f2e174 | encodeur de la liste de REFERENCE/priorite (ci-dessus) |
+| +0x18 | FUN_142f24a78 -> FUN_142f2cee0 | ecrivain de RECORD du flux type-0 |
+| +0x40 | FUN_1406cd128 | boucle de records LECTURE (R6 : pousse la file par entite) |
+| +0x60 | FUN_142f2913c | drain de la file par entite (R6) |
+
+Instanciee par FUN_1411c7850 et FUN_140b87eec. Le slot +0x18 (FUN_142f24a78) mesure les bits
+ecrits autour de FUN_142f2cee0(vue, item) = le dispatcher d'ecriture de record, selecteur
+item[1] : 1 = NEW (etat complet), 2 = DEL, 0 = DELTA. Ecrivains :
+FUN_142f303bc (NEW), FUN_142f304a8 (DEL), FUN_142f30610 (DELTA). C'est le MIROIR ECRITURE
+exact de la boucle de records FUN_1406cd128 que R5 a portee cote lecture.
+
+## 3. Les TROIS familles de serialiseurs d'ETAT COMPLET (via DAT_144e61ea0, la portee pleine precision)
+
+DAT_144e61ea0 (leve pour toute boucle d'etat complet, lu par FUN_14076f91c) a 8 sites d'ecriture
+en dehors des lecteurs de composant. Ils se regroupent en TROIS familles, chacune une paire
+lecture/ecriture :
+
+| famille | LECTURE | ECRITURE | appelant | nature |
+|---|---|---|---|---|
+| A | FUN_142e2c690 (boucle comp) FUN_142e2bfd0 (en-tete) | FUN_142e2d6d4 (boucle comp) FUN_142e2d08c (en-tete) | FUN_1428e339c | baseline RESEAU : 3 vues, buffer de travail 0x4cad9a8 (~78 Mo), reconstruite tous les 20 s (20000 < FUN_1405f5008). C'est ce que R7-e a porte (cote lecture). |
+| B | FUN_142e309b4 | FUN_142e30b9c | FUN_142e2ed64, FUN_142e2efe8 | LECTEUR en grammaire NEW masquee : vtable[0x60] (etat par defaut) + vtable[0x88] (masque) + FUN_14076cb60 (la boucle masquee de R5) |
+| C | FUN_141f86704 (deser NEW bufferise) | FUN_142e31a0c | FUN_142e2eec0 | reserialise UNE entite en etat complet pendant la reconstruction delta->etat de PLAYBACK ; header FUN_140bbd84c (W(6) ti + ref niveau 7) + etat par defaut vtable[0x58] + composants FUN_141f85ce0. C'est le buffer RECONSTRUIT (keyframe_buffer_live.bin), grammaire NEW |
+
+## 4. LE RESULTAT DE FOND — les deux seules grammaires de composants sont TOUTES DEUX deja refutees
+
+Le corps d'un record type-2 fait ~888 bits (ti=37, R5) : il y a bien un corps. Or, cote composants,
+HaloInfinite.exe ne possede QUE deux boucles :
+
+1. masquee-NEW (FUN_14076cb60 : R(1) masque + composants presents) — grammaire de R5,
+   utilisee par le flux type-0 (familles B/C et l'ecrivain NEW FUN_142f303bc). REFUTEE pour
+   type-2 par R5 (128 decalages x 16 lectures x 3 films, jamais > 1,8 %).
+2. plate-64-sans-masque (FUN_142e2c690 : les 64 composants de la table, aucun masque) —
+   baseline reseau, famille A. REFUTEE pour type-2 par R7-e (0,51 %, borne d'arret).
+
+Le payload type-2 n'est NI l'une NI l'autre. R7-e concluait « la derive est DANS les
+deserialiseurs » ; le lot G en donne la cause plus profonde : R7 a porte la boucle plate-64 de la
+baseline RESEAU (famille A) et l'a appliquee a un payload dont les records 64 bits sont des entrees
+de REFERENCE (FUN_142f2e174), pas des blobs de composants. Il n'y a pas de derive a corriger
+dans les deserialiseurs parce que les records vises ne sont pas des blobs de composants de ce
+format. La suspicion de R6 (« l'ecrivain n'est pas dans ce binaire ») devient une EXHAUSTION
+MAPPEE : les trois familles d'etat complet du binaire sont enumerees et attribuees a leur role
+(A = baseline reseau, B = lecteur NEW masque, C = reconstruction playback), aucune ne produit la
+grammaire de corps du type-2.
+
+Precision d'ecrivain (positive, cote famille A) — le miroir ecriture FUN_142e2d6d4 PROUVE que les
+inquietudes « ordre de table / niveau decale » de R7-e etaient des artefacts du COTE LECTURE :
+l'ecriture parcourt un tableau PLAT de 64 pointeurs param_1[k], appelle directement
+vtable[0x18], sans table 0x104, sans recherche par nom, sans champ niveau ; le controle par
+composant est « si corrOn : W(1)[+W(32)=0xbcddcba] » APRES le corps.
+
+## 5. LE LEVIER POSITIF localise — l'ecrivain NEW du flux type-0
+
+Le flux type-0 est ce que le JEU utilise reellement (R6 : la baseline est le premier paquet type-0 ;
+le type-2 est saute). Sa chaine d'ECRITURE NEW, jamais confrontee jusqu'ici a la lecture portee, est
+maintenant localisee :
+
+- FUN_142f303bc (NEW) : FUN_142f2c754(writer, kind=1, id, refIndex) (en-tete) puis
+  FUN_142e35a58(vue, id, bloc-etat-32o, ..., writer) (corps : etat par defaut + composants).
+- Le bloc d'etat 32 o est entite+0xc et entite+0x1c (deux blocs de 16 o = position + suite).
+
+C'est le miroir ecriture des deserialiseurs NEW de R5 (TraverseEntity, etat par defaut par
+archetype, composants). Le mur reel de R6 (« etat par defaut par archetype, bit-exact ») se
+VALIDE desormais contre son ecrivain FUN_142e35a58, largeur pour largeur — la meme methode que
+R7-d a employee pour 5 composants du cote etat complet, jamais appliquee au chemin type-0 contre
+SON ecrivain, avec l'oracle jamais consomme .ai/V7.5/dumps/kf_capture_sample.txt (400 frontieres
+de records EXACTES, R6 s9).
+
+## 6. Adresses neuves citees (pour le compteur du garde-rail)
+
+FUN_142f2e174 FUN_142f24dd4 FUN_142f24d1c FUN_142f24d60 FUN_142e2b734 FUN_143138d30
+FUN_142f24a78 FUN_142f2cee0 FUN_142f303bc FUN_142f304a8 FUN_142f30610 FUN_142f2c754
+FUN_142e35a58 FUN_142e2d08c FUN_142e2d6d4 FUN_142e2c690 FUN_142e2bfd0 FUN_142e309b4
+FUN_142e30b9c FUN_142e31a0c FUN_142e31bf8 FUN_142e2eec0 FUN_142e2ed64 FUN_142e2efe8
+FUN_1428e339c FUN_140bbd84c FUN_140809d20 FUN_140bbd808 FUN_141f85ce0 FUN_1411c7850
+FUN_140b87eec vtable 0x1436a87e0 (+0x10 encodeur ref, +0x18 ecrivain record).
