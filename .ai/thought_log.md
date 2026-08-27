@@ -74427,3 +74427,29 @@ groupe a lui presenter (temoins perf du CR lot 4 §6 + vignettes kill feed d un 
 recent) ; puis cloture B4.6/C4/D4 (registre : killsource :43 et jour-J :418 soldes,
 BTB D-F, buildFormTab D-G, causes racines h5_arena et index PSA) et balayage VPS
 annonce (PSA + h5_arena, read-only d abord).
+
+## [2026-08-28] CHANTIER NOTE DE PERF CLOS — gate visuel valide, merge dans feat/v75, VPS requalifie en migration de BDD
+
+**Statut** : Complete.
+
+**Cloture** : gate visuel utilisateur VALIDE (temoins ecrase-mais-actif 11->21,
+contre-temoin VIP 90->77, DNF sans note, Ranked Oddball 28,7->42,4, vignettes kill
+feed). Registre mis a jour : killsource (:43) et jour-J 80 scores (:418) SOLDES avec
+resultats ; 4 entrees ajoutees (BTB non scinde D-F, buildFormTab D-G a supprimer sur
+decision dediee, causes racines h5_arena et index PSA — investigations ouvertes).
+DECISION USER : pas de balayage VPS — il migrera les BDD locales (source de verite
+complete : index repares, notes/LUSR recalcules, 80 scores corriges, killsource 100 %)
+vers la prod. B4.5 statue [~].
+
+**Merge** : feat/perf-note-objectifs (5 commits, c2ad944df..77631d50b) merge --no-ff
+dans feat/v75 (`6016aa346`) SANS attendre le tag v7.5.0 (decision user 2026-08-28).
+Zero conflit ; gates post-merge : build complet 0, tests sync+skillchain+archlint 0.
+CI de branche = gate d autorite au niveau JOB sur le push.
+
+**Bilan du chantier** (plan .ai/PLAN_PERF_NOTE_OBJECTIFS.md, tout statue) : volet A
+Escouade composition stricte par defaut (CLOS, CI verte, gate visuel) ; volet B lots
+0-4 (scission ranked par famille, 26 matchs reclasses, batch auto-nettoyant, ospm 0.12
+sur chaines objectif, index PSA repares 4 DBs, recomputes reels valides a l unite,
+corruption h5_arena reparee 99,9 %) ; volet C killsource 100 % ; volet D 80 scores
+corriges (pre-requis tag leve). Restent au registre : 2 investigations de cause racine
++ decision buildFormTab + BTB conditionnel.
