@@ -87,6 +87,12 @@ func TestInventaireModuleLiveFire(t *testing.T) {
 	partages := []string{
 		filepath.Join(racine, "pc", "globals", "multiplayer-rtx-new.module"),
 		filepath.Join(racine, "pc", "globals", "common-rtx-new.module"),
+		// LES CANEVAS FORGE. Question de l utilisateur du 2026-08-27 : « les cartes Forge ont
+		// une base sans doute, sur laquelle dessiner, et nous on ne doit avoir que cette base.
+		// Ou inversement. » La cuisson Forge ne pose QUE les objets de la variante et n a
+		// jamais dessine le canevas — savoir ce que celui-ci porte tranche la question.
+		filepath.Join(racine, "pc", "levels", "multi", "fo08_wetland", "fo08_wetland-rtx-new.module"),
+		filepath.Join(racine, "pc", "levels", "multi", "fo11_blank", "fo11_blank-rtx-new.module"),
 	}
 	for _, module := range append(cibles, partages...) {
 		chemin := module

@@ -215,6 +215,9 @@ type BilanCuisson struct {
 	VolumesDeMort    int
 	// ObjetsExclus : objets Forge ecartes par TypesExclus.
 	ObjetsExclus int
+	// CanevasDessinees / CanevasEcartees : instances du CANEVAS posees sous la carte Forge.
+	CanevasDessinees int
+	CanevasEcartees  int
 	// Degradations liste, en clair, ce qui a manque. Vide = chaine complete.
 	Degradations []string
 }

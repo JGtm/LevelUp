@@ -208,6 +208,7 @@ func (e *environnement) cuitForge(ctx context.Context) []bilanAsset {
 			TypesExclus:            e.typesExclusDe(carte.MapID),
 			PlancherTranche:        e.plancherTrancheDe(carte.MapID),
 			PlafondTranche:         e.plafondTrancheDe(carte.MapID),
+			DessineCanevas:         e.dessineCanevasDe(carte.MapID),
 		})
 		if err != nil {
 			slog.ErrorContext(ctx, "cuisson Forge", "err", err, "carte", carte.Nom, "map_id", carte.MapID)

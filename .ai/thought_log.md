@@ -73253,3 +73253,29 @@ piste restante, et elle vaut pour les 40 cartes Forge, pas seulement Isolation.
 **Conclusion / prochaine etape** : chercher la source des callouts Forge ; et pour le
 gribouillis, si on y revient, le seul angle restant est l'exclusion par type avec un critere
 mesure sur la CONTRIBUTION EN PIXELS de chaque type, pas sur son emprise.
+
+## [2026-08-27] Le canevas Forge porte un terrain — mais Isolation est batie au-dessus
+
+**Statut** : Complete pour la mesure ; Isolation toujours non close.
+
+**Decision technique principale** : sur hypothese de l'utilisateur (« les cartes Forge ont une
+base sur laquelle dessiner, et nous on ne doit avoir que cette base, ou inversement »), j'ai
+mesure ce que porte un canevas. L'etat de l'art affirmait qu'un canevas ne porte AUCUNE
+instance — vrai pour `fo11_blank` (0 instance mesuree), FAUX pour `fo08_wetland` : 13 281
+instances sur son bsp lointain, 814 sur son bsp d'ile, 9 866 fichiers. Une carte Forge batie
+SUR ce terrain etait donc rendue sans son sol depuis toujours. Levier livre : `dessineCanevas`.
+
+**Ce que l'essai etablit sur Isolation** : canevas arme, 2 169 instances dessinees, PNG
+IDENTIQUE A L'OCTET. Ses ancres vivent entre Z +112,6 et +121,5, au-dessus du terrain : la
+carte FLOTTE au-dessus de sa base. Vue de dessus, le canevas est cache par l'arene — et « ne
+garder que la base » rendrait le marecage.
+
+**Ce que ca resserre** : le gribouillis n'est ni un toit (cinq coupes en altitude l'ont laisse
+intact), ni le canevas, ni du decor hors zone. Ce sont les pieces Forge de l'arene elle-meme, a
+hauteur de sol. Seul angle restant : exclure par TYPE, avec un critere mesure sur la
+contribution en PIXELS et non sur l'emprise du modele (mon premier critere, qui attrapait les
+gros rochers legitimes).
+
+**Conclusion / prochaine etape** : la piste a plus forte valeur reste la source des callouts
+Forge (l'utilisateur confirme que le jeu en a pour toutes les cartes) : elle sert 40 cartes,
+la quand le gribouillis n'en sert qu'une.
