@@ -23,7 +23,7 @@ export function useTeammates(
       confirmedGts,
       sessionLabels,
       request.locale ?? '',
-      request.filter_exact_composition ?? false,
+      request.filter_exact_composition ?? true,
     ),
     queryFn: () =>
       api.post<TeammatesPageResponse>(

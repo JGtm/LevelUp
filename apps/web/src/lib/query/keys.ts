@@ -161,7 +161,7 @@ export const queryKeys = {
   // exactComposition : l'option « composition exacte » change la POPULATION servie
   // (matchs commencés ensemble vs composition exclusive) — sans elle dans la clé,
   // le cache resservirait les nombres de l'autre réglage.
-  teammates: (playerSlug: string, titleSlug: string, filterHash: string, selectedGts: string[], sessionLabels: string[] = [], locale = '', exactComposition = false) =>
+  teammates: (playerSlug: string, titleSlug: string, filterHash: string, selectedGts: string[], sessionLabels: string[] = [], locale = '', exactComposition = true) =>
     ['teammates', playerSlug, titleSlug, filterHash, [...selectedGts].sort().join(','), [...sessionLabels].sort().join(','), locale, exactComposition] as const,
   /** Préfixe broad — invalide toutes les queries teammates (ex. après ajout d'ami).
    *  Title-agnostic PAR DESIGN (balaie tous les joueurs/titres). */
