@@ -2360,3 +2360,85 @@ oracle API FIGE en entree (aucune base ouverte par la sonde).
 - [x] D7 verdict : **aucune des trois pistes ne domine.** La cause reste NON NOMMEE, et la sonde
       la CERNE : une asymetrie lacher/ramassage de ~26 points sur un canal symetrique. Le seuil
       de 80 % et l'oracle API restent le juge ; rien n'est publie, rien n'est reconstruit.
+
+### D8 — LE SOMMEIL DE L'OBJET : protocole ECRIT ET COMMITE AVANT LA MESURE
+
+> Aucun chiffre de resultat. Deux volets SEQUENTIELS : le second ne s'execute QUE si le premier
+> etablit le sommeil. Le seuil du gate final ne bouge pas d'un millimetre — recouvrement
+> **>= 80 %** et porteur principal sur **>= 3 films sur 4**, oracle `time_as_skull_carrier_seconds`.
+
+**L'HYPOTHESE, ET D'OU ELLE VIENT.** D7 a mesure que l'objet est A L'ARRET quand il se tait
+(vitesse mediane 0,00 et 0,28 m/s) et que le lacher est capte a 74 / 62 % quand le ramassage ne
+l'est qu'a 45 / 48 %. Une asymetrie de ~26 points sur un canal symetrique. L'explication qui
+colle a tout : **un objet immobile CESSE d'etre replique** — il se met en sommeil. La moitie des
+« trous » ne seraient alors pas des portages, et le ramassage n'aurait pas lieu a l'instant du
+silence mais PLUS TARD, quand un joueur passe.
+
+**CE QUI REND CE PROTOCOLE NEUF ET NON UN QUATRIEME REGLAGE.** D6 cherchait le porteur AU MOMENT
+du silence. Ici on cherche **QUAND** quelqu'un traverse le lieu de repos. Ce n'est pas le meme
+predicat, et le volet 1 le teste AVANT de s'en servir.
+
+#### Volet 1 — ETABLIR LE SOMMEIL
+
+- [ ] D8.1 **Naissances reclassees SANS ORDRE DE PRIORITE.** Chaque naissance de vie libre est
+      notee sur les TROIS attributs a la fois — au socle (<= 3 m) ? aux pieds d'un joueur
+      (<= 1,5 m) ? au LIEU EXACT du silence precedent (<= 1,0 m) ? — et les recouvrements sont
+      publies tels quels. C'est la correction directe du defaut que D7 a nomme dans sa propre
+      sonde.
+- [ ] D8.2 **Traversee du lieu de repos.** Pour chaque trou : un joueur nomme passe-t-il a
+      <= 1,5 m de la position de repos PENDANT le trou, et au bout de combien de temps ?
+      Distribution du delai silence -> premiere traversee.
+
+**CRITERE DE « SOMMEIL ETABLI », ECRIT D'AVANCE — LES DEUX CONDITIONS SONT EXIGEES :**
+
+1. **La part de trous traverses pendant leur duree est >= 70 %.** Le point de comparaison n'est
+   pas choisi ici, il est DEJA MESURE : a l'instant du silence seul, D6 et D7 rendent **45,5 %**
+   et **47,8 %**. Si le ramassage avait lieu au silence, elargir a tout le trou ne changerait
+   presque rien (c'est exactement ce que S1 de D7 a montre sur +/- 10 images). Un saut a 70 %
+   dit que quelqu'un passe, mais PLUS TARD.
+2. **Le delai median silence -> premiere traversee est >= 1,0 s.** Un delai quasi nul rendrait
+   l'hypothese vide : ce serait le ramassage au silence, deja mesure et deja insuffisant.
+
+**PUBLIE EN CORROBORATION, MAIS NON EXIGE** : la part de naissances au LIEU EXACT du silence
+precedent (« l'objet se reveille sur place »), avec la distribution complete des distances. Elle
+n'entre pas au critere parce qu'elle est CONFONDUE : un joueur qui ramasse puis meurt aussitot
+lache l'objet tout pres, ce qui imite le reveil sur place. La distribution la separera peut-etre,
+le critere ne s'y appuie pas.
+
+**SI LE SOMMEIL N'EST PAS ETABLI** : arret, `[!]` final avec les acquis, et on n'y revient plus
+dans la v7.5. Le volet 2 ne s'execute pas.
+
+#### Volet 2 — LA RECONSTRUCTION CORRIGEE (seulement si le sommeil est etabli)
+
+- [ ] D8.3 **Le ramassage est la PREMIERE TRAVERSEE**, pas le silence : le porteur est le premier
+      joueur nomme dont la piste passe a <= **1,5 m** (le seuil CONSTATE de D6 — q25 a 0,20-0,43 m
+      contre q75 a 5,5-7,9 m, il ne se regle pas) de la position de repos pendant le trou. Le
+      portage court de cette traversee jusqu'a `t0` de la vie suivante, ou jusqu'a la MORT du
+      porteur si elle tombe avant — regle fondee par la mesure D6 a **22/24 = 91,7 %**.
+- [ ] D8.4 **Verdict** contre l'oracle API, memes seuils.
+
+**AMBIGUITE** : si deux joueurs traversent dans la MEME image a moins de 1,0 m l'un de l'autre, le
+porteur est **null** — doctrine des occupations de socle, inchangee.
+
+**RETOUR** : aucune traversee et la vie suivante nait au socle => RETOUR, aucun portage attribue.
+
+**PRECONDITION DE PONT, ECRITE CETTE FOIS — c'est la lecon de `51ebbc0f`.** Un film n'est
+exploitable que si **>= 50 %** de ses slots de bipede sont NOMMES par le pont. Le corpus mesure
+donne 89,7 %, 86,1 %, 87,5 % pour les films sains contre **10,7 %** pour `51ebbc0f` : les deux
+populations sont separees par un facteur huit, n'importe quel plancher entre 30 et 70 % rendrait
+le meme classement. En dessous, le film ne compte NI POUR NI CONTRE — et il ne sera pas dit
+« mesure sur quatre films » quand il l'aura ete sur trois.
+
+**TEMOIN** : la MEME chaine, mais le porteur d'un trou est tire AU HASARD parmi les joueurs
+PRESENTS (nommes), au lieu d'etre le premier a traverser. Graine fixe. Seuil **<= 0,50**.
+
+**CE QUE JE NE FERAI PAS** : ajuster un seuil apres l'avoir vu, changer d'oracle, ou publier un
+portage dont le recouvrement n'atteint pas 80 %. **Si le gate rate : `[!]` FINAL**, les acquis
+consignes, et la v7.5 n'y revient plus.
+
+**SI LE GATE PASSE** : le porteur entre dans `objectiveObjects` (un porteur par vie de portage),
+schema 21 A RE-VERIFIER local avant tout, temoins re-cuits et CONTENU verifie (recette du
+registre), rendu crane-sur-porteur au patron du drapeau.
+
+**EXECUTION** : les 4 films, un par processus, sentinelle memoire armee dans le processus qui
+decode, oracle API FIGE en entree, aucune base ouverte par la mesure.
