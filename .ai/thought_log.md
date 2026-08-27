@@ -74117,6 +74117,27 @@ ratchets, shared-social-gate). Push : `feat/replay-retours-0827` publie, `origin
 avance en fast-forward `5ab8a448d..0f666d499`. Restent a l'utilisateur : verifications
 ecran (gates [!] du plan) et gate d'ecoute C-5.
 
+## [2026-08-28] CI feat/v75 reverdie — cliquet ReplayCanvas (signalement inter-session)
+
+**Statut** : Complete (commit `a1d85aa8f`, pousse sur feat/v75).
+
+**Decision technique principale** : signalement du pilote perf-note — 1 seul test rouge sur
+la branche : `placementFamily.guard` (ReplayCanvas 692 lignes, plafond 691). Attribution
+CORRIGEE sur pieces : le fautif est `ce92544ab` (lot VIP COURONNE, schema 22), dont le
+propre decompte etait faux d'une ligne (son message annonce « cliquet tenu 691 ») — pas le
+chantier retours, qui a tenu le cliquet a chaque lot. Correctif minimal : appel
+`useReplayVipCrown` resserre sur une ligne (patron des appels longs voisins), fichier a
+690 ; le cliquet SUIT le fichier (691 -> 690, chronique datee dans le garde).
+
+**Resultats observes** : vitest match-replay 96 fichiers / 1472 verts (garde comprise),
+tsc vert, ESLint 0 erreur. DECOUVERTE signalee non traitee : warning
+react-hooks/exhaustive-deps preexistant (ReplayCanvas.tsx:504, dependance
+`objectiveObjects` manquante du useCallback `draw` — 12e extraction du lot VIP) : un calque
+potentiellement fige sur changement d'objets d'objectif, a reprendre par le chantier VIP.
+
+**Conclusion** : branche reverdie au niveau job attendu ; reponse envoyee a la session
+signalante.
+
 ## [2026-08-27] Diagnostic — Composition stricte par defaut (Escouade) + calibration note de perf modes objectifs
 
 **Statut** : Complete (diagnostic + recommandations + plan ; ZERO modif de code, a la demande).
