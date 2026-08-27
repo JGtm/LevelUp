@@ -74444,7 +74444,17 @@ vers la prod. B4.5 statue [~].
 **Merge** : feat/perf-note-objectifs (5 commits, c2ad944df..77631d50b) merge --no-ff
 dans feat/v75 (`6016aa346`) SANS attendre le tag v7.5.0 (decision user 2026-08-28).
 Zero conflit ; gates post-merge : build complet 0, tests sync+skillchain+archlint 0.
-CI de branche = gate d autorite au niveau JOB sur le push.
+
+**Verdict CI du push (run 33125168755)** : TOUS les jobs Go VERTS (coverage+baseline
+CGO complet 25m34, build+test ubuntu et windows, lease ADR 0013, contract OpenAPI,
+golangci) + Deploy Pre-Check et Secrets verts. UN job rouge : Frontend Vitest — 1 test
+sur 5052, le garde-rail de taille `placementFamily.guard.test.ts` (« ReplayCanvas.tsx
+reste sous son plafond » : 692 lignes pour un cliquet a 691). ATTRIBUE SUR PIECES au
+chantier rejeu (dernier commit touchant le fichier ET le garde-rail = `ce92544ab`
+couronne VIP, ANTERIEUR au merge ; aucun fichier match-replay dans le chantier note de
+perf). Signalement precis envoye a la session rejeu (replay-retours-0827) pour
+reverdir la branche ; le chantier note de perf est integralement vert sur tout ce
+qu il possede.
 
 **Bilan du chantier** (plan .ai/PLAN_PERF_NOTE_OBJECTIFS.md, tout statue) : volet A
 Escouade composition stricte par defaut (CLOS, CI verte, gate visuel) ; volet B lots
