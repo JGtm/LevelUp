@@ -1554,3 +1554,117 @@ il ne se renegocie pas a la lecture du chiffre.
    ne demande aucun oracle, seulement l'identite (acquise) et le canal (acquis). Ce serait un
    calque d'OBJET, pas un calque de PORTAGE. Le gate D4 ne l'autorise pas et je ne l'ai pas
    fait ; il revient au superviseur de decider s'il ouvre ce chantier a part.
+
+- 2026-08-27 — **`pair_name` AMPUTE : LA DONNEE STOCKEE EST DEJA TRONQUEE. Le normaliseur est
+  HORS DE CAUSE, FIX-NORMALIZE-S est SANS OBJET.** Lecture seule (`cmd/diag_q`, CLI existante,
+  `access_mode=read_only`). Match `007d53a4-1469-4174-be6b-3303c8e7bf36` :
+
+      pair_name          « urvive The Undead 3.0 on TFF | Night Of The Undead »   (50 car.)
+      game_variant_name  « TFF | Survive The Undead »                             INTACT
+      map_name           « TFF | Night Of The Undead »                            INTACT
+
+  **La chaine de preuve, maillon par maillon :**
+
+  1. Le `pair_name` du registre est ampute A LA SOURCE — le « S » de « Survive » manque DEJA en
+     base. `NormalizeModeLabel` n'a rien mange : il recoit une chaine deja coupee. **Ma reserve
+     du 2026-08-26 — « aucune branche de cette fonction ne retire un caractere de tete » — est
+     confirmee sur pieces.**
+  2. Ce n'est pas non plus `constructPairName` (`sync/enrich_registry.go:103`) : il fabrique
+     `gv + " on " + mp`, ce qui rendrait « TFF | Survive The Undead on TFF | Night Of The
+     Undead » — avec le prefixe et sans le « 3.0 ». Il ne s'est de toute facon pas declenche, sa
+     garde exigeant un `pair_name` egal au GUID.
+  3. La valeur vient de `asset_translations` (metadata.duckdb, asset `53a7f98d-...`, type
+     `pair`), et elle y est **IDENTIQUEMENT amputee dans les SEPT langues** (en-US comprise),
+     toutes cuites le 2026-03-30. Une amputation qui traverse toutes les locales a l'identique
+     n'est pas un accident de rendu : c'est la valeur recue.
+  4. **Le corpus donne le plafond : sur 503 paires en-US, `max(length(name))` vaut 50, ZERO
+     au-dela, quatre exactement a 50.** Les autres types plafonnent bien en dessous (playlist 37,
+     game_variant 36, map 25) — ils ne touchent jamais la borne. **Un plafond dur de 50
+     caracteres existe donc sur le nom de paire, et il garde la QUEUE, pas la tete.**
+  5. Les DEUX seuls noms visiblement amputes sont ceux qui depassaient 50 : « urvive The Undead
+     3.0 on ... » (57 car. attendus, 7 coupes en tete) et « ght:Heroic King of the Hill on
+     Vallaheim Firefight » (56 attendus, 6 coupes). Les deux autres noms a 50 (« BTB
+     Heavies:Total Control on Fragmentation Heavies ») sont COMPLETS et coherents : la
+     coincidence a 50 n'en est pas une.
+  6. Cote depot, **rien ne tronque** : `cmd/levelup/cmd_populate_assets.go:373` stocke
+     `asset.PublicName` verbatim, la colonne est un `VARCHAR` sans borne, et aucun `[:50]`
+     n'existe dans `internal/`.
+
+  **CE QUI EST ETABLI** : la troncature est en amont de tout ce que ce lot touche, et le
+  normaliseur est innocent. **CE QUI NE L'EST PAS** : si le plafond de 50 est celui de l'API Halo
+  ou celui de notre couche de fetch, je ne l'ai pas tranche — il faudrait lire une reponse
+  vivante, ce qui sort du perimetre hors ligne.
+
+  **CIBLE DU FIX, CONSIGNEE ET NON TRAITEE (chantier DONNEES, hors de ce lot)** : la piece de
+  reparation existe deja et n'a qu'une garde trop etroite. `constructPairName` reconstruit un nom
+  propre a partir des deux champs INTACTS ; il ne se declenche que si `pair_name` vaut `pair_id`.
+  Elargir sa garde au cas « `pair_name` ampute » (par exemple : le nom ne se termine pas par
+  `map_name`, ou il ne commence pas par `game_variant_name`) reparerait les deux lignes, sans
+  toucher au normaliseur. **Non fait : decision et lot du superviseur.**
+
+### D5 — INVENTAIRE DE PUBLICATION (etat au 2026-08-27, AVANT les deux decisions en vol)
+
+> D5 ne publie rien tant que les deux decisions utilisateur ne sont pas rendues. Cet inventaire
+> dit exactement ce qui entre selon chaque issue, pour que la decision se prenne sur la liste.
+
+**LE TRIPLET DE VERSION, RE-VERIFIE SUR PIECES CE JOUR** (les trois fichiers rouverts, pas de
+memoire) :
+
+| piece | fichier | valeur actuelle |
+|---|---|---|
+| `replay.SchemaVersion` | `internal/analysis/replay/document.go:173` | **20** |
+| `wantReplayDocumentFields` | `contracttest/replay_contract_test.go:331` | **38** |
+| `EXPECTED_REPLAY_SCHEMA_VERSION` | `apps/web/src/features/match-replay/replaySchemaLogic.ts:32` | **20** |
+
+**LE PROCHAIN NUMERO LIBRE EST DONC 21**, et c'est le SEUL bump du lot, quelles que soient les
+deux decisions.
+
+**A — ACQUIS, N'ATTEND AUCUNE DECISION.**
+
+- **Proprietaire de la colline KOTH.** Deja IMPLEMENTE (`zone_states_hill.go`, `hillStatesOf`
+  publie `Owner`, periodes subdivisees aux changements de main). **Aucune cle nouvelle** :
+  `ZoneSpan.Owner` existe deja, seul son CONTENU change sur la voie colline — donc
+  `wantReplayDocumentFields` reste a **38**. Le bump n'est PAS reclame par la forme, il l'est par
+  la REPRISE DU BACKFILL : un artefact 20 porte un `Owner` de colline toujours nul et doit se
+  lire « a re-cuire », pas « a jour ». Niveau de preuve accepte : decision utilisateur du
+  2026-08-26, 88-89 % contre temoin 56 %, erreur concentree aux bascules.
+
+**B — SUSPENDU A LA DECISION (1) : le vivier Total Control.**
+
+- Verdict D3 / D3-bis : `[!]` entier. **Aucun producteur, aucun champ, aucun bump imputable a
+  TC.**
+- Si l'entree est RETIREE (recommandation superviseur) : la modification porte sur
+  `config/titles/halo_infinite/mappings/objective_roles.toml` (role `totalcontrol_zone`), PAS sur
+  le schema. Elle change ce que le calque STATIQUE dessine — donc elle exige la re-cuisson des
+  temoins TC, ou rien du tout si l'on accepte que les artefacts TC existants gardent leur vivier.
+- Si l'entree est GARDEE : zero ligne de code, zero re-cuisson.
+
+**C — SUSPENDU A LA DECISION (2) : les vies libres du crane.**
+
+- Ce qui entre : UNE entree `[[objective_objects]]` dans `replay_labels.toml` — identifiant
+  `0x0017592C`, `family = "ball"`, libelles EN+FR. **Rien d'autre : pas de calque de portage**
+  (le seuil (2) l'a refuse), seulement l'objet LIBRE.
+- **DEUX effets, pas un**, et le second n'est pas evident :
+  1. `build_objectives_live.go:143` alimente `scan.Free` par `flagFreeLives` — le crane libre
+     devient une piste publiee (16 a 47 vies par film mesurees).
+  2. `ground_weapon_pads.go:192` consomme la MEME table via `weaponPadRule(cat.FlagObjects)` :
+     l'entree transforme une exclusion **ACCIDENTELLE** en exclusion **VOULUE ET GARDEE**.
+     Aujourd'hui le crane echappe aux socles d'armes seulement parce que son identifiant n'est
+     pas au catalogue d'armes — c'est exactement l'accident que
+     `ground_weapon_flag_exclusion_test.go` a ete ecrit pour empecher sur le drapeau.
+- Champs de document : `objectivesLive.free` existe deja pour le drapeau — **a verifier au
+  moment de coder** si la cle est partagee ou si le crane en demande une propre ; si elle est
+  partagee, `wantReplayDocumentFields` reste a 38.
+
+**D — TEMOINS A RE-CUIRE, un film par processus, via `cmd/replay-build` (aucune base ouverte).**
+
+| decision | films |
+|---|---|
+| A (KOTH, acquis) | `01e1f945`, `606d9844`, `8076f97f` — le 4e du corpus KOTH, `0a247154`, joue sur **Solitude, absente du catalogue de formes** : il n'a pas de zones a peindre et ne sert pas de temoin |
+| B (si retrait TC) | les films TC du recensement D1, `a349fea8` **EXCLU D'OFFICE** (bombe memoire, 3,17 Gio en 3,6 s) |
+| C (si oui crane) | `24dbb67d`, `43716616`, `51ebbc0f`, `d9781168` — les 4 films Oddball mesurables ; les 3 autres du recensement n'ont pas de catalogue et ne se cuisent pas |
+| tous cas | le golden d'assemblage `testdata/assembly_000d5950.golden` re-congele |
+
+**RAPPEL DE GATE, mesure deux fois (journaux du 18/08) : ne PAS cuire de film pendant le gate
+web.** Les garde-rails qui balaient `src/` expirent a 5 000 ms sur machine chargee, et ces echecs
+ne sont pas des regressions.
