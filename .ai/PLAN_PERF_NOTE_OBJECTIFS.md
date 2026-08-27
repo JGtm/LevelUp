@@ -383,23 +383,28 @@ batch passera par un sous-package.
 - [x] B4.2 Contrôles diag_q post-recompute : 0 score sur outcome=4 ; 0 chaîne `ranked`
       restante ; distribution des chaînes conforme au rapport lot 0 ; comptes purgés =
       comptes prédits.
-- [ ] B4.3 Gate visuel utilisateur (témoins à faire nommer : un match objectif « écrasé
-      mais actif », un DNF sans note, un ranked de Madina97294).
+- [x] B4.3 Gate visuel utilisateur VALIDÉ le 2026-08-28 (témoins présentés : CTF
+      drapeau neutre 2/13 11→21, contre-témoin VIP 11/5 90→77, DNF sans note, Ranked
+      Oddball 28,7→42,4, vignettes kill feed).
 - [x] B4.4 Recompute LUSR complet des 4 joueurs (`RecomputeLUSRCanonicalForPlayer`,
       chemin canonique v2 — réutiliser l'orchestration existante type
       `recompute_after_art_rebuild.go` si adaptée) APRÈS la reclassification 1bis ;
       contrôles : comptes `match_skill_rank_latest` par chaîne avant/après (~25 sociaux
       déplacés arena_slayer → arena_objectif), aucune perte de lignes, watermarks sains.
-- [ ] B4.5 Balayage PSA des DBs de PROD (VPS) : même vérification d'index que B2.4 sur
-      les DBs joueur du VPS — UNIQUEMENT après validation locale complète, et PRÉVENIR
-      L'UTILISATEUR AVANT toute opération VPS (règle). Réparation identique si écart.
-      D'OFFICE (constat B2.4 : les 4 DBs locales étaient TOUTES corrompues — la prod,
-      même code, est à considérer atteinte jusqu'à preuve du contraire ; l'outil
-      `cmd/repair_psa_index` avec -dry-run puis -repair est prêt).
-- [ ] B4.6 Registre des reports : BTB non scindé (D-F) + sort de buildFormTab (D-G) +
-      cause racine corruption h5_arena (découverte B4.4) + cause racine désync index
-      PSA (découverte B2.4). thought_log. delivery-checklist. Autorisation utilisateur
-      puis push de la branche (PAS de merge main — deploy prod).
+- [~] B4.5 Balayage PSA des DBs de PROD (VPS) — REQUALIFIÉ par décision utilisateur du
+      2026-08-28 : « on ne refait pas tout sur le VPS, je migrerai les BDD » — les DBs
+      locales (index réparés, notes et LUSR recalculés, 80 scores corrigés, killsource
+      100 %) deviennent la source de vérité et seront copiées vers la prod par
+      l'utilisateur. Aucune opération VPS par le pilote. L'outil `repair_psa_index
+      -dry-run` reste le détecteur si une vérification prod ponctuelle est voulue un
+      jour.
+- [x] B4.6 (2026-08-28) Registre des reports FAIT : entrées killsource (:43) et jour-J
+      80 scores (:418) SOLDÉES avec résultats ; 4 entrées ajoutées (BTB D-F,
+      buildFormTab D-G, cause racine h5_arena, cause racine index PSA — les deux
+      dernières avec « prod couverte par la migration des DBs »). C4/D4 couverts par
+      ces soldes + thought_log du 2026-08-28. MERGE dans feat/v75 autorisé par
+      l'utilisateur SANS attendre le tag (décision 2026-08-28) — exécuté par le pilote
+      avec delivery-checklist.
 
 **B4.1/B4.2/B4.4 EXÉCUTÉS ET VALIDÉS le 2026-08-28** (backup 429,6 Mo vérifié — dont la
 shared : `RecomputeLUSRCanonicalForPlayer` écrit AUSSI en shared (sentinelle +
