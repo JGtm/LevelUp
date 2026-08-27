@@ -10658,6 +10658,8 @@ components:
           $ref: '#/components/schemas/GroundWeaponCoverage'
         inventory:
           $ref: '#/components/schemas/InventoryCoverage'
+        objectiveObjects:
+          $ref: '#/components/schemas/ObjectiveObjectsCoverage'
         objectives:
           $ref: '#/components/schemas/LayerCoverage'
         originResolved:
@@ -18197,6 +18199,80 @@ components:
         - "y"
         - z
       type: object
+    ObjectiveObjectLife:
+      additionalProperties: false
+      properties:
+        en:
+          type: string
+        family:
+          type: string
+        fr:
+          type: string
+        pts:
+          items:
+            $ref: '#/components/schemas/ObjectiveObjectPoint'
+          type:
+            - array
+            - "null"
+        t0:
+          format: int64
+          type: integer
+        t1:
+          format: int64
+          type: integer
+      required:
+        - family
+        - en
+        - fr
+        - t0
+        - t1
+        - pts
+      type: object
+    ObjectiveObjectPoint:
+      additionalProperties: false
+      properties:
+        t:
+          format: int64
+          type: integer
+        x:
+          format: float
+          type: number
+        "y":
+          format: float
+          type: number
+      required:
+        - t
+        - x
+        - "y"
+      type: object
+    ObjectiveObjectsCoverage:
+      additionalProperties: false
+      properties:
+        declared:
+          format: int64
+          type: integer
+        lives:
+          format: int64
+          type: integer
+        motionless:
+          format: int64
+          type: integer
+        outOfAxis:
+          format: int64
+          type: integer
+        points:
+          format: int64
+          type: integer
+        scanned:
+          type: boolean
+      required:
+        - scanned
+        - declared
+        - lives
+        - points
+        - motionless
+        - outOfAxis
+      type: object
     ObjectivePoint:
       additionalProperties: false
       properties:
@@ -20299,6 +20375,12 @@ components:
         neutralDeaths:
           items:
             $ref: '#/components/schemas/NeutralDeath'
+          type:
+            - array
+            - "null"
+        objectiveObjects:
+          items:
+            $ref: '#/components/schemas/ObjectiveObjectLife'
           type:
             - array
             - "null"

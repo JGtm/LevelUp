@@ -394,6 +394,12 @@ type ReplayDocument struct {
 	// FlagCarries est LA VIE DE CHAQUE DRAPEAU de CTF, en intervalles d'état (forme, sources et refus :
 	// document_objectives_live.go). Absente hors CTF — `coverage.flagCarries` dit lequel des deux silences.
 	FlagCarries []FlagCarry `json:"flagCarries,omitempty"`
+	// ObjectiveObjects est OÙ SE TROUVE L'OBJET D'OBJECTIF QUAND PERSONNE NE LE PORTE — les vies
+	// LIBRES du crâne d'Oddball (forme, canal et refus : document_objective_objects.go). Un trou
+	// entre deux vies est un portage, mais le document ne dit PAS par qui : l'oracle du porteur a
+	// été mesuré et réfuté (phase D4). Absente quand le titre ne déclare aucun objet publiable ou
+	// quand le film n'en porte pas — `coverage.objectiveObjects` dit lequel des silences.
+	ObjectiveObjects []ObjectiveObjectLife `json:"objectiveObjects,omitempty"`
 	// ZoneStates est L'ÉTAT DE CHAQUE ZONE du mode, en intervalles de propriété (forme, sources et
 	// refus : document_zones.go). Chaque entrée pointe une zone de `mapObjectives.zones` par son
 	// index. Absente hors des modes à zones, et quand l'appelant n'a fourni aucun catalogue de

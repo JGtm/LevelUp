@@ -2005,3 +2005,64 @@ unique au schema **21**. B reste hors publication.
   la bonne version et l'ancienne configuration** ; seule la verification sur pieces l'a montre.
   Corrige par une racine temporaire (jonctions : `config` du worktree, `data` du principal), et
   les sept temoins ont ete re-cuits avec.
+
+- 2026-08-27 — **D5-bis LIVRE : le crane libre est PUBLIE et DESSINE. Schema 21 inchange,
+  contrat 38 -> 39.** Dernier lot de code du point 11.
+
+  **CE QUI EST PUBLIE.** Une cle de document neuve, `objectiveObjects` : une entree par VIE
+  LIBRE de l'objet — il apparait, replique sa position, puis se tait. Forme volontairement
+  GENERIQUE (`family`, `en`, `fr`, `t0`, `t1`, `pts`) pour que le drapeau puisse la rejoindre
+  sans qu'aucune cle ne bouge. Couverture `coverage.objectiveObjects` avec ses denominateurs.
+
+  **VERIFIE SUR LES QUATRE TEMOINS RE-CUITS**, et le controle est fort : le nombre de vies vaut
+  **23 / 16 / 21 / 47**, exactement les comptes de creations que la mesure D4 avait attribues a
+  `0x0017592C`. Zero vie hors axe sur les quatre.
+
+  | temoin | vies | dont MOBILES | dont immobiles | points | hors axe |
+  |---|---|---|---|---|---|
+  | `24dbb67d` Recharge | 23 | 21 | 2 | 730 | 0 |
+  | `43716616` Smallhalla | 16 | 14 | 2 | 454 | 0 |
+  | `51ebbc0f` Banished Narrows | 21 | 15 | 6 | 546 | 0 |
+  | `d9781168` Dredge | 47 | 33 | 14 | 1 157 | 0 |
+
+  Les vies MOBILES sont la preuve que le canal porte bien du mouvement et pas seulement des
+  apparitions : sur `43716616`, une vie court des frames 343 a 371 avec un point par frame.
+
+  **LA GARDE DE MODE EST LEVEE POUR CE CANAL SEULEMENT, ET SUR PIECES.** `attachFlagCarries`
+  s'arrete hors CTF pour proteger le pont d'identite (`SlotIdentityByDeaths`, 19 a 22 Go sur un
+  film d'un autre mode). Ce calque-ci ne lit NI le statborg, NI le fil des morts, NI l'identite
+  des joueurs : il ne consomme que le balayage `ti=42` de la chaine des socles, deja paye sur
+  TOUS les films. Le placer sous la garde du drapeau l'aurait eteint sur Oddball — la ou il sert.
+  **Aucune lecture de film n'est ajoutee par ce lot.**
+
+  **LE SCHEMA RESTE 21, ET LA JUSTIFICATION EST ECRITE AU CONTRAT** : le bump du lot a eu lieu
+  dans le meme lot, 21 n'a quitte ni le poste ni les temoins locaux, aucun artefact 21 n'existe
+  ailleurs. Le bump unique reste unique. Le triptyque est coherent : `SchemaVersion` 21,
+  `EXPECTED_REPLAY_SCHEMA_VERSION` 21, garde de parite verte.
+
+  **CE QUE LE CALQUE REFUSE DE FAIRE, et c'est sa propriete centrale** : dessiner le crane
+  pendant les portages. Entre deux vies il y a un trou ; quelqu'un porte, et le document ne dit
+  pas qui — l'oracle a ete mesure puis REFUTE en D4. Le calque se tait. Il n'interpole pas
+  davantage : le crane est a la DERNIERE position qu'il a emise, ou nulle part. Un test dedie
+  garde chacune de ces deux proprietes (`objectiveObjectAt` hors vie = `null`, y compris
+  au-dela de `t1`).
+
+  **LE DRAPEAU N'ENTRE PAS DANS CE CALQUE, ET CE N'EST PAS UN REPORT** : le CONTROLE 3 de son
+  propre lot a ECHOUE sur ses vies libres (149/197 = 75,6 % pour un seuil de 90 % ecrit avant la
+  mesure ; temoin a 12,8 %). Un quart de ses vies reste inexplique. Le jour ou ce negatif sera
+  leve, une ligne de `objectiveObjectPublished` suffira.
+
+  **RENDU WEB** : glyphe BOULE (disque cerne) — distinct de la hampe + fanion du drapeau, parce
+  que deux objets de mode au meme glyphe seraient indiscernables et que le rejeu se lit aussi en
+  niveaux de gris. Encre NEUTRE : le document ne publiant aucun porteur, une encre d'equipe
+  afficherait une appartenance que la mesure refuse. Aucun libelle ni bascule ajoute — donc
+  aucune chaine i18n neuve.
+
+  **DIXIEME EXTRACTION IMPOSEE PAR LE CLIQUET DU CANVAS**, en deux morceaux : le cablage du
+  calque part dans `useReplayObjectiveObjects.ts` (patron de `useReplayFlagCarries`), les trois
+  reglages constants dans `replayCanvasConfig.ts`. Le cliquet passe de **706 a 695** — il
+  descend, il ne remonte pas.
+
+  **GARDE-RAIL DE FRONTIERE** : `objectiveObjects` et `objectiveObjects[].pts` entrent dans
+  `NULLABLE_ARRAYS` / `NULLABLE_ARRAY_PATHS`. Le test de contrat les a EXIGES a la compilation
+  avant que je n'y pense — c'est exactement ce pour quoi il existe.

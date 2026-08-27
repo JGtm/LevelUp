@@ -68,7 +68,24 @@ func Load(repoRoot, titleSlug string) (replay.LabelCatalog, error) {
 	// dans son manifeste ; le paquet `replay` ne reçoit que « ces identifiants-là sont des objets
 	// d'objectif », jamais la chaîne.
 	cat.ObjectiveObjects = objectiveObjects(labels.ObjectiveObjects())
+	cat.ObjectiveFamilies = objectiveFamilies(labels.ObjectiveObjects())
 	return cat, nil
+}
+
+// objectiveFamilies rend la NATURE de chaque objet d'objectif porté, keyée comme son libellé.
+// Le paquet `replay` ne déduit jamais qu'un objet est un crâne de son nom — il le lit ici.
+func objectiveFamilies(in map[uint32]mappings.ObjectiveObject) map[uint32]string {
+	out := map[uint32]string{}
+	for id, o := range in {
+		if !objectiveObjectFamilies[o.Family] {
+			continue
+		}
+		out[id] = o.Family
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
 }
 
 // objectiveObjectFamilies — les familles d'objet d'objectif PORTÉ que la table projette.
