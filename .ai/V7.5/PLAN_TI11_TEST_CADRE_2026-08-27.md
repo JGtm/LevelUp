@@ -69,39 +69,45 @@ etat) de tous les modes.
       lecture keyframe seule (aucun BuildMatch/BuildFromFilm : hors perimetre du garde-rail
       filmproc, comme le harnais biped). Note : `kf_capture_sample.txt` non utilise
       (sparse objectifs, negatif deja publie ti=42) — `WalkKeyframeWorld` fait foi.
-- [!] T1.3 GATE T1 : atterrissage bit-exact des records ti=11 = **0,00 %** (0/1227 records, 3
-      familles Oddball/CTF/KOTH, toutes variantes de cadre C0-C6, corr off/on), temoin record
-      NEW **0,00 %**. GATE NON TENU (0 << 85). Log fige `TI11_T1_cadre.log`. NE PAS publier.
-      NUANCE DECISIVE (voir §3 D2) : le plan pre-ecrivait « SI RATE -> le mur est le format
-      type-2, echec non imputable aux feuilles (triviales) ». La MESURE REFUTE cette branche :
-      la marche COMPLETE (desync=0 en stub) et sous-lit d'un deficit PETIT et souvent CONSTANT
-      par film (103b Oddball, 66b KOTH, ~80b median CTF) = exactement les 10 feuilles NON
-      RESOLUES stubbees a 0. La premisse du plan « toutes les feuilles ti=11 sont triviales et
-      resolues » est FAUSSE (10/34 non resolues). Le mur bit-exact est les FEUILLES NON
-      RESOLUES, PAS prouve etre le cadre. Reprise = resoudre+cabler i2/i9/i32 + i4/i6/i7/i8/i10/
-      i11/i33 puis re-mesurer (et non le levier type-0 `FUN_142e35a58` seul, ni la voie statborg).
+- [x] T1.3 GATE T1 : **TENU apres cablage des 10 feuilles** (RE-MESURE 2026-08-27, commit
+      `4c21a2560`). Etat initial (avant cablage, commit `f91a3a521`) = **0,00 %** ; APRES cablage
+      des 10 feuilles resolues (i2/i9 formatted-text, i4 interaction-filter, i6/i7/i8/i10/i11/i32/
+      i33), sous le cadre gagnant **C5** (en-tete 108 + mots de taille + etat par defaut +
+      **LevelShift**), corr=false : **Oddball 24dbb67d 100,00 %** (115/115), **KOTH 01e1f945
+      100,00 %** (25/25), CTF 64e8adfa 83,58 % (168/201), **CUMUL 90,32 %** (308/341), temoin
+      record NEW **0,00 %**, tous les cadres faux (C0-C4, C6) a 0,00 %. GATE (>= 85 % sur >= 2
+      familles distinctes, temoin <= 20 %) TENU (Oddball + KOTH). Inventaire : 34/34 composants
+      ti=11 portes. Log fige `TI11_REMESURE_cadre.log`. **La premisse du T1 (le mur = les feuilles
+      NON resolues, contra la branche pre-ecrite du plan) est CONFIRMEE** : le cadre EST juste,
+      resoudre+cabler les 10 feuilles a leve 0 -> 90,32 %.
 
-### T2 — VALIDATION SEMANTIQUE (seulement si T1 passe) et PUBLICATION
+### T2 — VALIDATION SEMANTIQUE (T1 passe) — LE VIVANT N'EST PAS DANS LE KEYFRAME
 
-> T1 NON TENU (0,00 %) : T2 ne s'execute PAS (le plan conditionne T2 au gate T1). Tous les
-> items ci-dessous sont `[!]` non traites, cause = gate T1 non tenu.
+> T1 TENU : T2 s'execute. VERDICT GLOBAL : le cadre reproduit BIT-EXACT et l'alignement interne
+> est CONFIRME (i5 type discrimine correctement : Oddball/CTF-drapeau = 2947879880 « portable » ;
+> KOTH/CTF-zone = 1496018944 « zone »), MAIS tous les champs VIVANTS du keyframe ti=11 sont des
+> SENTINELLES (803 records, 7 films) : i3 object-reference (LE PORTEUR) = 0xFFFFFFFF null, i15
+> parent = null, i16-31 sous-objectifs = null, i12/i13 progression = 0, i1 couleur = gris
+> constant. Le keyframe stocke l'ETAT PAR DEFAUT de l'objectif ; le vivant vit dans le flux
+> DELTA. AUCUNE PUBLICATION. Log `TI11_T2_porteur.log`.
 
-- [!] T2.1 B1 auto-coherence (gratuit) : les GlobalID lus (i3, i16-31) sont-ils des entites
-      valides et stables dans le temps ? >= **90 %**. NON TRAITE : gate T1 non tenu.
-- [!] T2.2 B2 owner : confronter i1 (couleur -> camp par clustering RGBA <= 3) au proprietaire
-      DEJA publie (`zone_states` 93 %, `hillStates` 88-89 %). Seuil accord global >= **90 %**
-      ET >= **85 %** par equipe tenante prise SEPAREMENT. NON TRAITE : gate T1 non tenu.
-- [!] T2.3 B3 zones : sur un Bastion (3 zones connues), i16-31 apparie les 3 formes
-      (cardinal = 3, appariement >= **90 %**, temoin decale 12 m <= 20 %). Sur Total Control,
-      cardinal <= 16, 3 actives par manche, attribution >= **80 %**. NON TRAITE : gate T1 non
-      tenu (et blocage aval : §3 D1, les 3 films Strongholds/Bastion du cache rendent 0 record
-      ti=11 borne).
-- [!] T2.4 PORTEUR (le livrable phare) : i3 object-reference -> l'objet porte ; confronter au
-      gate historique Oddball `time_as_skull_carrier_seconds` >= **80 %** par joueur ET porteur
-      principal sur >= 3/4 (5) films. Log `TI11_T2_porteur.log`. NON TRAITE : gate T1 non tenu
-      (le porteur i3 se LIT mais son slot n'atterrit pas bit-exact ; pas de confrontation valide).
-- [!] T2.5 PUBLICATION. NON TRAITE : gate T1 non tenu, aucune publication (schema/contrat/calque/
-      i18n INTACTS, conformement au plan).
+- [~] T2.1 B1 auto-coherence : techniquement TENU (stabilite i3 **100,0 %**, validite 100,0 %,
+      temoin 0,0 %) mais **HOLLOW** — |obs|=1 (un seul i3 = 0xFFFFFFFF null sur 803 records) : un
+      null constant est stable et introuvable au hasard PAR CONSTRUCTION. Le gate ne detecte pas
+      la degenerescence. Verdict honnete : i3 est une sentinelle null dans le keyframe.
+- [!] T2.2 B2 owner : NON TENU. i1 couleur = gris constant (128,128,128,255) dans le keyframe —
+      ne porte pas le camp. La couleur/owner vit dans le delta, pas la baseline.
+- [!] T2.3 B3 zones : NON TENU. i16-31 = 0xFFFFFFFF null dans le keyframe — ne portent pas
+      l'identite de zone. (Blocage aval D1 inchange par ailleurs.)
+- [!] T2.4 PORTEUR (le livrable phare) : NON TENU. i3 se LIT bit-exact (atterrissage 100 % sur
+      les 5 Oddball) mais VAUT 0xFFFFFFFF (null) — il ne designe AUCUN objet porte dans le
+      keyframe. Confrontation a `time_as_skull_carrier_seconds` impossible (rien a confronter). Le
+      porteur (le [!] de 5 campagnes) reste OUVERT. Log `TI11_T2_porteur.log`.
+- [!] T2.5 PUBLICATION. NON TRAITE : les valeurs vivantes ne sont pas dans le keyframe. Aucune
+      publication (schema/contrat/calque/i18n INTACTS). **CONDITION DE REPRISE : appliquer la
+      grammaire ti=11 34-feuilles MAINTENANT VALIDEE (cadre C5 + LevelShift) aux records DELTA
+      (la sonde R4 balayait deja le delta), pas a la baseline keyframe.** Le lot a resolu le
+      CADRE ; le vivant demande le chemin delta.
 
 ## 2. GATES DU LOT
 Protocole commite avant mesure (un seul commit) ; logs figes ; T1 joue en premier et
