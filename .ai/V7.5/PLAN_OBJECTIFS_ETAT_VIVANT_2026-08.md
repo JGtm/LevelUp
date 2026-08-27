@@ -2518,3 +2518,156 @@ change apres coup, aucun oracle choisi pour ce qu'il rendrait.
 **CONDITION DE REPRISE (hors v7.5)** : une reconstruction fondee sur la PREMIERE TRAVERSEE du lieu
 de repos — couverture mesuree 84,8 a 93,3 % — confrontee au meme oracle et au meme seuil de 80 %.
 Tout est instrumente ; il n'y manque qu'un protocole ecrit d'avance et une decision.
+
+### D9 — RECONSTRUCTION PAR LA PREMIERE TRAVERSEE : protocole ECRIT ET COMMITE AVANT LA MESURE
+
+> Aucun chiffre de resultat. **DERNIERE campagne sur le portage Oddball** : verdict final quel
+> qu'il soit, et pas de D10. Oracle et gate INCHANGES — recouvrement
+> `time_as_skull_carrier_seconds` **>= 80 %** et porteur principal identifie sur **>= 3** films
+> exploitables.
+
+**D'OU VIENT CETTE PISTE, ET POURQUOI ELLE N'EST PAS UN CINQUIEME REGLAGE.** D6 cherchait le
+porteur A L'INSTANT du silence et n'en trouvait qu'a 45,5 et 47,8 % des trous. D8 a mesure, sans
+s'en servir, que **84,8 a 93,3 %** des trous voient un joueur traverser le lieu de repos PENDANT
+leur duree, avec un quartile superieur de delai a 2,2-3,6 s. Le predicat change : ce n'est plus
+« qui est la quand l'objet se tait » mais « qui passe le PREMIER sur l'objet pose ». D8 a aussi
+REFUTE le sommeil (l'objet est porte, pas endormi) : les trous sont donc bien des portages, et il
+ne manquait qu'un point d'entree.
+
+**LA FENETRE DE DELAI EST FIXEE A PRIORI, ET SA VALEUR SORT DE LA MESURE D8 — PAS D'UN REGLAGE.**
+
+    d9FenetreMS = 8 000 ms
+
+**JUSTIFICATION, ECRITE AVANT DE MESURER.** Les q90 du delai silence -> premiere traversee valent
+**7,90 / 3,40 / 6,00 s** sur les trois films sains ; 8 s couvre donc le q90 de CHACUN, le plus
+exigeant compris. Au-dela s'etend une queue jusqu'a 22,6 s, et cette queue est precisement la
+zone ou « quelqu'un passe » cesse d'etre un ramassage pour devenir une COINCIDENCE : plus on
+attend, plus la probabilite qu'un joueur traverse un point donne pour une raison sans rapport
+augmente. Fixer la fenetre au q90 mesure, c'est prendre tout le signal que D8 a vu sans acheter
+la queue ou le temoin va rattraper le signal.
+
+**UN TROU SANS TRAVERSEE DANS LA FENETRE N'EST PAS ATTRIBUE.** Jamais devine, jamais rattrape par
+un elargissement apres coup. Il est compte, classe, et il pese au denominateur.
+
+**PUBLIE EN DIAGNOSTIC, EXPLICITEMENT HORS GATE** : le meme recouvrement calcule a 22 600 ms (la
+queue complete de D8). Il ne peut RIEN valider — il est la pour montrer ce que la queue ajoute,
+et si elle ajoute surtout du bruit, le temoin le dira au meme endroit.
+
+- [x] D9.1 **Reconstruction** : le ramasseur d'un trou est le PREMIER joueur nomme dont la piste
+      passe a <= **1,5 m** (seuil CONSTATE de D6 — q25 0,20-0,43 m contre q75 5,5-7,9 m) de la
+      position de repos, dans les 8 s qui suivent le silence. Le portage court de cette traversee
+      jusqu'a `t0` de la vie suivante, ou jusqu'a la MORT du porteur si elle tombe avant (regle
+      fondee par la mesure D6 a 22/24 = 91,7 %).
+- [x] D9.2 **Les deux temoins**, et ils ne controlent pas la meme chose :
+      **(a) TEMOIN DE JOUEUR** — un joueur tire au hasard parmi les PRESENTS remplace le premier
+      traversant. Il controle « le PREMIER a passer est-il le bon ? ».
+      **(b) TEMOIN SPATIAL** — la position de repos est DECALEE de **12 m** en x et en y, et toute
+      la chaine est rejouee dessus. C'est le controle que D8 n'avait pas : il repond a « une
+      position quelconque de la carte rendrait-elle le meme signal ? ». Les 12 m sont le decalage
+      de temoin deja etabli au depot (`defaultWitnessOffsetM`) — assez pour sortir du rayon de
+      ramassage d'un facteur huit, assez peu pour rester sur du sol foule.
+- [x] D9.3 **Verdict** : recouvrement **>= 80 %**, **les DEUX temoins <= 0,50**, et porteur
+      principal identifie sur **>= 3** films exploitables.
+
+**LE CORPUS EST DE TROIS FILMS, ET LE CRITERE DU PORTEUR PRINCIPAL EXIGE DONC LES TROIS.** Je
+l'ecris sans l'adoucir : `51ebbc0f` est ecarte par la precondition de pont (**>= 50 %** de slots
+nommes — 10,7 % contre 89,7 / 86,1 / 87,5 %), le denominateur vaut trois, et « >= 3 sur les
+exploitables » se lit trois sur trois. Un porteur principal manque sur un seul film et le gate
+tombe.
+
+**SI LE GATE PASSE** : publication du porteur par vie de portage dans `objectiveObjects` — a
+verifier en codant si une CLE s'ajoute au contrat (39 -> 40 alors, avec `openapi-gen` et
+`generate-types`), schema 21 a RE-VERIFIER local avant tout, temoins re-cuits et CONTENU verifie
+(recette du registre : un artefact peut porter la bonne version et l'ancienne configuration),
+rendu crane-sur-porteur au patron du drapeau porte.
+
+**SI LE GATE RATE** : `[!]` FINAL, les sept acquis consignes, et la v7.5 n'y revient plus. Pas de
+D10, pas de sixieme oracle, pas d'elargissement de fenetre.
+
+**EXECUTION** : les 3 films exploitables, un par processus, sentinelle memoire armee dans le
+processus qui decode, oracle API FIGE en entree, aucune base ouverte par la mesure.
+
+- 2026-08-27 — **D9 : GATE NON TENU. Le portage Oddball est `[!]` FINAL pour la v7.5.** Protocole
+  commite avant la mesure (`1396bb2b4`). Trois films exploitables, un par processus. Sortie figee
+  dans `registre_film/D9_premiere_traversee.log`.
+
+  | film | trous | attribues | retour | sans traversee | reconstruit | API | **recouvrement** | temoin JOUEUR | temoin SPATIAL | principal |
+  |---|---|---|---|---|---|---|---|---|---|---|
+  | `24dbb67d` | 22 | 15 | 1 | 6 | 298 s | 331 s | **79,8 %** | 38,8 % | **3,3 %** | manque |
+  | `43716616` | 15 | 11 | 1 | 3 | 164 s | 218 s | **73,8 %** | 16,0 % | **0,0 %** | manque |
+  | `d9781168` | 46 | 32 | 6 | 8 | 308 s | 404 s | **64,9 %** | 34,7 % | **0,4 %** | manque |
+
+  **`51ebbc0f` est sorti par la precondition de pont** (10,7 % de slots nommes contre un plancher
+  de 50 %). Le denominateur vaut TROIS, et il n'est pas dit quatre.
+
+  **LE GATE TOMBE SUR SES DEUX CRITERES, ET LE SECOND EST LE PLUS DUR :**
+
+  1. **Recouvrement : 79,8 / 73,8 / 64,9 % contre 80 %.** Le premier film manque le seuil de
+     **DEUX DIXIEMES DE POINT**. **79,8 n'est pas 80.** Le seuil etait ecrit avant la mesure, il
+     ne s'arrondit pas, et la regle tenue neuf phases durant ne se plie pas au dernier chiffre
+     parce qu'il est frustrant.
+  2. **Porteur principal : MANQUE sur les TROIS films** — le critere SANS seuil reglable, celui
+     qui ne se negocie pas. Il exigeait trois sur trois ; il rend zero.
+
+  **LA CAMPAGNE EST POURTANT LA MEILLEURE DES QUATRE, ET DE LOIN.** Le recouvrement passe de
+  51,7 / 25,9 / 48,9 % (D6, ramassage a l'instant du silence) a **79,8 / 73,8 / 64,9 %** : le
+  changement de predicat — « qui passe le PREMIER sur l'objet pose » au lieu de « qui est la
+  quand il se tait » — valait bien ce que D8 laissait esperer.
+
+  **LE TEMOIN SPATIAL EST LE RESULTAT LE PLUS PROPRE DE TOUTE LA CAMPAGNE : 3,3 / 0,0 / 0,4 %.**
+  Deplacer le lieu de repos de douze metres et rejouer TOUTE la chaine dessus fait s'effondrer le
+  signal a presque rien. **Le signal est donc bien SPATIAL** — il tient a la position exacte de
+  l'objet, pas a une structure du match qu'une position quelconque reproduirait. C'est le
+  controle qui manquait a D6 et a D8, et il est sans ambiguite. Le temoin de JOUEUR (38,8 / 16,0 /
+  34,7 %) reste lui aussi sous sa borne, avec un ecart de 30 a 58 points au signal.
+
+  **CE QUI RATE, NOMME SUR PIECES : LE PLUS GROS PORTEUR EST SYSTEMATIQUEMENT SOUS-ATTRIBUE.**
+
+      film         plus gros porteur API      ce que la reconstruction lui donne
+      24dbb67d     80 s                       53 s
+      43716616     94 s                       41 s
+      d9781168     116 s                      66 s
+
+  Environ la MOITIE, sur les trois films, alors que les porteurs moyens et petits sortent justes
+  ou sur-attribues (29 -> 45, 10 -> 28, 37 -> 65). **Ce n'est pas du bruit, c'est un biais
+  oriente** : plus le portage est long, plus la chaine en perd. Et c'est exactement ce qui fait
+  tomber le critere du porteur principal sur les trois films — un autre joueur passe devant.
+  **Je ne cherche pas pourquoi : c'etait la derniere campagne, et l'engagement etait de ne pas
+  enchainer.**
+
+  **LE DIAGNOSTIC HORS GATE EST PUBLIE, ET IL NE CHANGE RIEN — C'EST TOUT SON INTERET.** A la
+  fenetre de la queue complete (22 600 ms au lieu de 8 000), le recouvrement vaut 80,7 / 73,8 /
+  71,4 %. Le premier film franchirait le seuil. **Cette valeur ne vaut RIEN et le protocole le
+  disait d'avance** : elle a ete calculee avec une fenetre choisie APRES coup, sur la queue meme
+  que le protocole ecartait comme zone de coincidence. La retenir serait le reglage apres coup
+  refuse neuf fois. Elle est ecrite ici pour que personne n'ait a la recalculer en croyant
+  trouver mieux — et pour qu'on voie qu'elle n'aide PAS les deux autres films (73,8 inchange,
+  71,4 contre 64,9), ce qui est la signature du bruit et non d'un signal.
+
+- [x] D9.1 Reconstruction par la premiere traversee : faite.
+- [x] D9.2 Les deux temoins : faits ; le temoin SPATIAL s'effondre a 0,0-3,3 %.
+- [x] D9.3 Verdict : **NON TENU** sur les deux criteres.
+
+**CLOTURE DEFINITIVE DU PORTAGE ODDBALL POUR LA v7.5 — `[!]` FINAL, pas de D10.**
+
+Cinq campagnes, cinq protocoles ecrits et commites avant mesure, cinq negatifs. Aucun seuil
+abaisse, aucune fenetre elargie apres coup, aucun instrument change une fois le chiffre vu,
+aucun oracle choisi pour ce qu'il rendrait. **Les 79,8 % ne sont pas devenus 80.**
+
+**LES ACQUIS, QUI RESTENT ET QUI SONT LE VRAI PRODUIT DE CE CHANTIER :**
+
+1. **L'identite du crane** : `0x0017592C`, elue 4 films sur 4, au manifeste, exclusion des socles
+   d'armes VOULUE ET GARDEE.
+2. **Le calque du crane LIBRE, publie et dessine** (schema 21, contrat 39) — le livrable.
+3. **« Mourir, c'est lacher » : 22/24 = 91,7 %.**
+4. **Un tic de score de crane vaut une seconde de portage.**
+5. **La primitive de proximite discrimine** (q25 0,20-0,43 m contre q75 5,5-7,9 m).
+6. **Le sommeil de l'objet est REFUTE** : l'objet est porte, pas endormi.
+7. **Un oracle independant du film existe** : `time_as_skull_carrier_seconds`, par joueur.
+8. **NOUVEAU — le signal de portage est SPATIAL** : temoin spatial a 0,0-3,3 % contre un signal a
+   64,9-79,8 %. Ce que la chaine attrape tient a la position exacte de l'objet.
+9. **NOUVEAU — le biais est NOMME** : la sous-attribution est ORIENTEE vers les longs portages
+   (moitie perdue sur le plus gros porteur des trois films).
+
+**CONDITION DE REPRISE (hors v7.5, si elle revient un jour)** : comprendre pourquoi un long
+portage se fragmente. Tout le reste est instrumente, mesure et fige.
