@@ -1,3 +1,64 @@
+## [2026-08-27] Derive d identifiant d asset des fonds de carte : index inverse + garde-rails — Complete
+
+**Contexte** : 84 fonds publies, 123 map_id joues au registre partage. Mesure du jour : 16 map_id
+(131 matchs) n avaient AUCUN fond resolvable a l ecran. Cause principale, invisible jusqu ici : la
+DERIVE D IDENTIFIANT D ASSET. Un fond Forge est publie sous le map_id qui a servi a le cuire, mais
+`match_registry` porte le map_id du jour du match — Salvation, Dynasty, Shogun, Houseki, Starboard
+et Shiro ont ete jouees sous un asset different de celui de leur fond. L image existait, la carte
+etait sans fond.
+
+**Decision technique principale** : PAS de table d alias map_id -> cle (donnee ecrite a la main,
+rattrapage apres coup, seconde verite a tenir). On lit ce que la cuisson DECLARE DEJA : chaque
+sidecar porte `mapNames` (noms affiches + noms de module du catalogue d objectifs), champ jusqu ici
+purement documentaire, lu par personne. Nouveau `replay.MapBackgroundIndex`
+(`internal/analysis/replay/map_background_index.go`) : index inverse identite -> cle, construit par
+lecture des sidecars versionnes, cache invalide par la signature du repertoire (nom+taille+date),
+hors ligne et deterministe. Une identite revendiquee par DEUX cles est AMBIGUE : ecartee des deux
+cotes, jamais resolue au hasard.
+
+Normalisation d identite VOLONTAIREMENT differente de `filmdec.NormalizeMapName` : elle ne rabote
+NI « - Ranked » NI « Heavies ». Le rabotage est juste pour les bornes de dequantification et FAUX
+ici — « Insolence » et « Insolence Heavies » sont deux assets Forge avec deux fonds distincts (idem
+Fortitude, Thunderhead, Refuge, Obituary, Origin, Solitude) : les fondre les priverait de fond
+toutes les deux.
+
+Le repli historique par `map_quant_bounds.json` est RETIRE de `resolveBackgroundKey` : pour une
+carte Forge il menait au CANEVAS, module qui n a jamais de fond publie — un cul-de-sac par
+construction. Mesure de non-regression avant retrait : sur les 123 map_id du registre ET sur les 78
+noms du catalogue de bornes, l index resout tout ce que le repli resolvait, avec ZERO divergence et
+ZERO carte resolue par le repli seul.
+
+**Resultats observes** : couverture 107 -> 116 map_id sur 123 (1809 -> 1820 matchs sur 1940). Les 6
+cartes derivees sont servies ; 3 variantes que le catalogue de bornes ne portait pas (Oasis Sentry
+Defense, Highpower Sentry Defense, Oasis Firefight) le sont aussi. Sur le catalogue de bornes : 19
+noms stables (meme cle), 57 noms nouvellement resolus, 0 perte. Index : 184 identites pour 84 cles,
+ZERO collision. Restent 7 map_id / 120 matchs sans fond, tous en allowlist datee : Live Fire (3
+assets, 71 matchs — module `sgh_interlock` sans sbsp), Detachment (25) et Argyle (22) sans ancres
+au catalogue d objectifs, Cole Protocol (1) cuisinable non cuit, « TFF | Night Of The Undead » (1)
+partie personnalisee.
+
+Garde-rails poses : `TestCatalogueDeFondsSansIdentiteAmbigue` + `TestCatalogueDeFondsIndexeChaqueCle`
+(catalogue publie, tournent en CI) ; `TestRegistreChaqueCarteJoueeATrouveSonFond` sur inventaire
+GELE (`internal/service/testdata/map_ids_joues_20260827.json`, meme convention que l oracle phase 0
+du rejeu — la base n existe pas en CI) ; `TestRegistreAllowlistSansEntreePerimee` (cliquet : une
+carte dont le fond est cuit DOIT sortir de la liste) ; `TestRegistreDeriveIdentifiantAssetCorrigee`
+(temoin nommant les 6 couples map_id joue / cle de fond) ; et la re-mesure sur base vivante
+`TestRegistreVivantCouvertureDesFonds`, garde `FOND_REGISTRE`, qui rend les lignes JSON a ajouter a
+l inventaire quand de nouveaux matchs sont synchronises.
+
+Deux tests existants encodaient l ancien contrat et ont ete repris SUR PIECES, pas desactives :
+`TestMapBackground_NomNormalise` (devenu `_NomDeVarianteDeclare`, avec sa contre-epreuve Heavies) et
+l assertion `bg.Module == entry.Module` de `TestMapBackground_TousLesModulesDuCatalogue`, qui ne
+tenait que parce que les cartes Forge se declaraient SKIP faute de fond.
+
+**Conclusion / prochaine etape** : go build ./... vert, tests des paquets touches verts, ratchet
+lint golangci `--new-from-merge-base=origin/main` sans aucune issue sur les fichiers de ce lot.
+DECOUVERTE HORS PERIMETRE, non traitee : `TestMapObjectives_ModesPonctuels_AucuneZoneSurTOUTLeCatalogue`
+echoue (CTF 28 cartes a forme contre 14 relevees le 2026-08-26) — cause etablie, la campagne de
+catalogage a fait entrer 27 cartes Forge (commit 35fbad20a) ; c est le releve du test qu il faut
+reprendre, pas le correctif. Prochaine etape naturelle : cuire Detachment, Argyle et Cole Protocol,
+puis retirer leur entree d allowlist — le cliquet le rendra obligatoire.
+
 ## [2026-08-26] Fusion train v7.5 : reprise des travaux de 3 agents + passe backfill-replay 18->20 — Complete
 
 **Contexte** : 3 agents interrompus avant leur fusion dans feat/v75. Reprise sur leurs derniers
@@ -73339,3 +73400,104 @@ orthonorme au 1/10 000 ; les maillages sont sains.
 **Conclusion / prochaine etape** : le pelage type par type est desormais dirigeable — chaque
 retrait est une cuisson de 90 s et se juge a l'oeil. Isolation est un empilement de coques :
 retirer le premier type decouvre le deuxieme, et ainsi de suite.
+
+## [2026-08-27] Cartes — MESURE des trois filtres de visibilite declares par le jeu (aucun n'etait lu)
+
+**Statut** : Complete — mesure seule, aucun filtre branche sur la cuisson, aucun fond recuit.
+
+**Decision technique principale** : lire, et EXPOSER sans les appliquer, trois declarations du
+format que la chaine ignorait — `exclude from intel map` (bit 12 du champ `flags` @0x78 d'une
+instance de bsp), `mesh is custom shadow caster` au niveau SECTION (bit 3 de `mesh flags`, +20
+du pas de 60 du bloc `meshes`), et `LOD has shadow proxies` (bit 0 de `lod render flags`,
+@0x8E du pas de 148). Les deux derniers offsets sont NEUFS : le walk du plugin rendait 138 au
+lieu de 148 pour `LOD render data` parce que `_39` y est tabule a 32 octets alors que
+`vertex buffer indices` declare 19 entrees de 2. En sommant les enfants du `_39`, la suite
+tombe juste et retrouve `index buffer index` @0x8A, la valeur deja cablee. Temoin independant
+sur les octets du jeu : @0x8E ne prend QUE 0 ou 1 sur 540 enregistrements (un seul drapeau
+declare), la ou 0x8A, 0x8C et 0x90 etalent 11 a 16 valeurs.
+
+**Le releve ne decode AUCUN maillage** : blob de ressources nil, triangles lus aux
+descripteurs. C'est ce qui le rend tenable — `himodule.Open` charge chaque `.module` ENTIER
+(`os.ReadFile`), et l'index de production coute ~12,6 Go de RSS a lui seul.
+
+**Resultats mesures**
+
+1. Le champ `flags` VIT (462 807 instances, 41 modules) : `disable play collision` 22,35 %,
+   `disable bullet collision` 14,93 %. Un zero sur le bit 12 aurait donc voulu dire
+   « inutilise », pas « offset faux ».
+2. `exclude from intel map` : **13 971 instances, 3,02 %**, mais TRES concentre — 0 sur 22
+   modules ; Recharge (sgh_blueprint) 25,97 %, Launch Site (va_launchsite) 21,43 %,
+   `common-rtx-new` 6 129/39 122, Illusion 490, Exiled 185, pve_house 36, Highpower 6,
+   Cliffhanger 3.
+3. Le drapeau est pose DANS le bsp qu'on dessine, pas seulement sur les decors lointains —
+   c'est ce qui en fait une piste : Recharge **25,44 % des instances dessinees / 23,19 % des
+   triangles**, Launch Site **21,28 % / 22,43 %**, et le bsp d'arene de `common-rtx-new`
+   (celui de Live Fire, 12 556 instances, emprise 63 x 64 m) 22,77 % de ses instances
+   retenues. Recharge et Launch Site n'ont QU'UN bsp : aucun choix de bsp ne peut les enlever.
+4. Sur les cinq cartes du releve initial : ctf_forbidden, chasm, catalyst, sgh_streets **0,00 %**
+   partout ; btb_exiled 1,03 % des dessinees / 0,29 % des triangles.
+5. Filtres de SECTION, cartes natives : `custom shadow caster` et `LOD has shadow proxies`
+   valent **0,00 %** sur les sept cartes natives mesurees ET sur le canevas fo08_wetland. Ils
+   ne mordent que sur les modeles `mode` poses par une carte Forge — **Isolation : proxies
+   d'ombre 44,92 % des couples objet x maillage et 19,62 % des triangles poses** ; section
+   projecteur d'ombre 3,85 % / 1,18 %.
+6. Filtre de LOD (aucun enregistrement au LOD 0) : 0,15 a 1,83 % des dessinees partout,
+   0,00 a 4,94 % des triangles. Marginal.
+
+**Conclusion / prochaine etape** : deux verdicts opposes selon la famille. Sur les cartes
+natives ORDINAIRES les trois filtres ne valent rien (0,00 %) ; sur TROIS cartes nommees
+(Recharge, Launch Site, Live Fire via common-rtx-new) le drapeau de carte designe un quart de
+ce qu'on dessine, et ces cartes sont precisement dans la liste des reglages par carte du
+26/08. Sur Isolation, ce sont les proxies d'ombre qui pesent (19,6 % des triangles). RESERVE A
+LEVER AVANT DE BRANCHER : « LOD has shadow proxies » peut vouloir dire « ce LOD POSSEDE des
+mandataires d'ombre » et non « ce LOD EST un mandataire » — a trancher sur l'image avant de
+retirer un cinquieme de la matiere d'Isolation. Le drapeau de carte, lui, ne souffre pas
+d'ambiguite de nom.
+
+## [2026-08-27] Live Fire cuisable : le departage des bsp par l'emprise au sol — Complete
+
+**Contexte** : Live Fire est la carte la plus jouee sans fond (71 matchs, 6e du corpus). Son
+module `sgh_interlock` pese 0,21 Mo, porte six fichiers et AUCUN sbsp : la cuisson y echouait
+sur `ErrAucunTagSbsp` et la carte etait classee « non cuisinable ». Sa geometrie vit dans
+`pc/globals/common-rtx-new.module`, qui porte quatre sbsp.
+
+**Ce que la mesure a corrige dans le diagnostic de depart** : il etait annonce que
+`ChoisitBSP` retenait le MAUVAIS bsp. C'est faux en l'etat — avec les 28 ancres de production,
+la regle courante retient deja tag#1429, l'arene. Mais elle le fait PAR HASARD : deux des
+quatre bsp contiennent les 28 ancres, et l'egalite se tranchait par l'ordre de lecture, donc
+par la taille decompressee du tag. Meme accident sur toutes les cartes natives : sur les cinq
+temoins a plusieurs bsp, TOUS les bsp contiennent TOUTES les ancres — un decor lointain englobe
+l'arene par construction.
+
+**Decision technique principale** : departage explicite a nombre d'ancres egal, par l'EMPRISE
+AU SOL la plus petite (nouveau fichier `internal/himap/choix_bsp.go`, sorti de `cuisson.go`).
+Parmi les boites qui contiennent les ancres, la plus petite est la plus specifique. Rapports
+mesures arene/horizon : forbidden x1 077, catalyst x381, cliffhanger x5 378, streets x92,
+common-rtx-new x15 211 — le plus serre vaut 92, aucune ambiguite. Un bsp SANS instance ne
+gagne jamais un departage (une boite vide plus serree rendrait un fond blanc).
+
+**Critere d'altitude REFUTE par la mesure** : « le bsp le plus proche du niveau de jeu »
+designe le bon bsp sur quatre temoins (ecart mediane-instances / mediane-ancres : 1,1 contre
+10,4 sur forbidden ; 1,1 contre 76,4 sur catalyst ; 0,2 contre 147,6 sur cliffhanger ; 1,9
+contre 27,6 sur streets) mais le MAUVAIS sur Live Fire (horizon a 0,5 m, arene a 1,7 m). Il
+est verrouille comme refute par `TestChoisitBSPNeSuitPasLAltitude`.
+
+**Resultats observes** : `TestChoixBSPCartesNativesInchange` rejoue l'ancienne regle a cote de
+la nouvelle sur les 26 cartes du catalogue installees, dont 15 a plusieurs bsp : aucun
+changement de bsp, temoins Forbidden / Chasm / Catalyst / Cliffhanger nommes explicitement.
+`TestChoixBSPLiveFireDesigneLArene` verrouille le cas Live Fire (63,2 x 63,8 m, 12 556
+instances, 6 561 dans la boite des ancres contre 0 pour l'horizon).
+
+**Ce qui rendait Live Fire non cuisable, et qui manquait vraiment** : l'entree de reglage.
+`moduleGeometrie` existait comme CHAMP mais aucune entree ne le declarait. Ajout de
+`sgh_interlock` dans `map_fond_reglages.json` -> `pc/globals/common-rtx-new.module`. Le
+garde-rail `TestReglagesFondJustifies` refusait une entree qui ne declare que ce champ (« ni
+habillage, ni echelle, ni ecretage ») : la liste ecrite a la main est remplacee par
+`reglageCarte.sansLevier()`, comparaison generique a la valeur nulle, avec un temoin qui balaie
+la structure par reflexion.
+
+**Conclusion / prochaine etape** : la cuisson de Live Fire appartient a l'agent principal (un
+seul process de cuisson a la fois). LE RENDU N'A PAS ETE GATE : `gateLe` porte la date de la
+decision factuelle (ou vit la geometrie), pas celle d'un gate visuel. A prevoir : le cadre sera
+de 134 x 125 m pour une arene de 63 x 64 m (ancres 34,3 x 25,0 m + 50 m de marge), donc une
+`boiteUtile` proche des bornes du bsp est le premier reglage a essayer si l'image est trop vide.

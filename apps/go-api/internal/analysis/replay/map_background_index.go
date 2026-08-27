@@ -55,11 +55,16 @@ const suffixeIdentiteModule = "_map"
 // NormalizeMapIdentity met une identité de carte sous sa forme de clé d'index : minuscules,
 // blancs resserrés puis remplacés par des soulignés, suffixe `_map` retiré.
 //
-// POURQUOI CETTE NORMALISATION EST VOLONTAIREMENT MINIMALE. Elle n'enlève NI « - Ranked » NI
-// « Heavies », contrairement à filmdec.NormalizeMapName : les sidecars déclarent ces variantes
-// EXPLICITEMENT (`aquarius_-_ranked_map`, `oasis_heavies_map`), donc les fondre n'apporterait
-// rien et créerait des ambiguïtés là où il n'y en a pas. Mesuré le 2026-08-27 sur les 84 fonds
-// publiés : 184 identités distinctes, ZÉRO collision.
+// POURQUOI ELLE N'ENLÈVE NI « - Ranked » NI « Heavies », contrairement à
+// filmdec.NormalizeMapName. Ce rabotage est JUSTE pour les bornes de déquantification (même
+// niveau, mêmes bornes monde) et FAUX ici : sur les 84 fonds publiés, « Insolence » et
+// « Insolence Heavies » sont deux assets Forge distincts avec deux fonds distincts — idem
+// Fortitude, Thunderhead, Refuge, Obituary (Heavies) et Origin, Solitude (- Ranked). Raboter le
+// suffixe les rendrait AMBIGUËS, donc sans fond toutes les deux. Ce que le rabotage apportait
+// est déjà là autrement : les sidecars déclarent les variantes EXPLICITEMENT
+// (`aquarius_-_ranked_map`, `oasis_heavies_map`), et la déclaration bat la règle devinée.
+//
+// Mesuré le 2026-08-27 sur les 84 fonds publiés : 184 identités distinctes, ZÉRO collision.
 func NormalizeMapIdentity(s string) string {
 	n := strings.ToLower(strings.Join(strings.Fields(s), "_"))
 	return strings.TrimSuffix(n, suffixeIdentiteModule)

@@ -219,6 +219,10 @@ type BilanCuisson struct {
 	ObjetsExclus int
 	// ObjetsFilaires : objets Forge ecartes par MinceurMin (branches, lianes, herbes).
 	ObjetsFilaires int
+	// ObjetsAuPlafond : objets Forge ecartes parce que POSES trop haut (PlafondObjets).
+	ObjetsAuPlafond int
+	// ObjetsDrapeauExclu : objets Forge ecartes par leur champ de drapeaux (DrapeauxExclus).
+	ObjetsDrapeauExclu int
 	// CanevasDessinees / CanevasEcartees : instances du CANEVAS posees sous la carte Forge.
 	CanevasDessinees int
 	CanevasEcartees  int

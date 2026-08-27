@@ -972,3 +972,42 @@ type gagne chaque pixel — c'est une demi-heure.
 desalignees, donc les plus suspectes, que l'utilisateur n'a pas encore jugees — Elevation 55,2 ·
 Nemesis 57,2 · Opulence 58,0 · Absolution 58,7 · Thunderhead 58,7 · Flood Gulch 58,8 ·
 Snowbound 59,5 · High Ground 60,0 · Fortitude 60,4 · Threshold 60,9.
+
+### 2026-08-27 — LE DOME EST MARQUE DANS LE FICHIER : le drapeau d'objet Forge
+
+Planche : https://claude.ai/code/artifact/8a978a60-10ee-44bc-99dc-de939fb2a6a0
+
+**Verbatim** : « Ce ne serait pas des effets de lumiere ces trucs qui nous posent probleme ? Ce
+doit etre des elements qui ne sont pas des blocs [...] peut-etre un genre de mur transparent ? »
+
+**L'intuition etait juste : ces objets sont marques differemment dans le `.mvar`.** Le champ 7
+de chaque objet (`Object.Flags`, un octet) etait lu par le parseur et n'avait JAMAIS servi.
+Mesure sur les 5 042 objets d'Isolation :
+
+| drapeau | objets | dont |
+|---|---|---|
+| **21** | 4 384 | la structure ordinaire, dont le 2e peintre (3 pieces de 65 m) |
+| **1** | 344 | **les 32 pieces du dome qui peignent 82,7 % de l'image** |
+| 7 / 16 / 23 / 30 / 24 / 4 | 88 / 75 / 40 / 36 / 19 / 18 | — |
+
+Categories (champ 1 du sac gameplay) : 2 pour 4 697 objets, 3 pour 289, -1 pour 55, 1 pour 1.
+Le dome est en categorie 2, la majoritaire : **la categorie ne le separe pas, le drapeau si.**
+
+**Ce que la mesure geometrique avait deja etabli** : les 32 pieces sont posees entre Z 136,0 et
+160,6 quand le sol joue est a Z 117 — de 19 a 44 m au-dessus de l'arene, toutes Up vers le
+haut, la plus petite distance entre deux d'entre elles etant de 29 cm. C'est une voute, ajustee
+bord a bord. Et sa PAROI DESCEND JUSQU'AU SOL : c'est pourquoi aucune coupe de SURFACE ne l'a
+jamais enlevee — ecretage a 4, 2, 1 m, tranche plafonnee a +3, +6, +12, bornage.
+
+**Trois leviers livres, tous mesures sur Isolation** :
+
+| levier | ce qu'il fait | resultat |
+|---|---|---|
+| `plafondObjets` | ecarte un objet par l altitude ou il est POSE, non par celle de ses surfaces | 221 objets retires, dome parti, cadre 2 628 -> 1 727 px, 25/25 ancres |
+| `drapeauxExclus` | ecarte un objet par son champ de drapeaux | 355 objets retires, dome parti, cadre -> 1 873 px, 25/25 ancres |
+| `solVuDuDessous` | retient la surface la plus BASSE au-dessus du sol joue au lieu de la plus haute | image nettement plus lisse, 701 -> 515 Ko, mais la jupe du dome gagne encore |
+
+**CE QUI RESTE, ET C'EST HONNETE** : le dome parti, le peintre suivant est `1574763282` — TROIS
+exemplaires de 65 m, drapeau 21, categorie 3 — qui peint 46 % a lui seul. Isolation est un
+empilement, et le drapeau ne designe que la couche exterieure. Prochain essai : la categorie 3
+(289 objets), a laquelle appartient ce second peintre.

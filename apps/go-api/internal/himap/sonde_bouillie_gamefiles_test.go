@@ -90,7 +90,7 @@ func mesureBouillie(t *testing.T, root string, carte CarteForge, verdict string)
 		t.Skipf("index Forge : %v", err)
 	}
 	var b BilanCuisson
-	poseObjetsForge(context.Background(), r, &b, v.Objects, idx, forge, nil, 0)
+	poseObjetsForge(context.Background(), r, &b, v.Objects, idx, forge, nil, 0, 0, 0, nil)
 	if b.ObjetsDessines == 0 {
 		t.Fatal("aucun objet dessine")
 	}

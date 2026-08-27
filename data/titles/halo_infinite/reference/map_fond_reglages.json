@@ -2,6 +2,12 @@
   "schemaVersion": 1,
   "note": "Reglages de cuisson PAR CARTE des fonds de rejeu 2D. Entree de cmd/mapfond-build uniquement : l'application lit le PNG fige, jamais ce fichier. La cle est celle du fond publie (module installe pour une carte native, map_id pour une carte Forge). Toute entree porte sa raison ecrite et la date de son gate utilisateur : une entree sans les deux est refusee par TestReglagesFondJustifies. Un champ absent = la valeur de production (habillage jeu, echelle 0,0920 m/px).",
   "cartes": {
+    "sgh_interlock": {
+      "carte": "Live Fire",
+      "moduleGeometrie": "pc/globals/common-rtx-new.module",
+      "raison": "Live Fire n a PAS sa geometrie dans son propre module : pc/levels/multi/sgh_interlock pese 0,21 Mo et ne porte que six fichiers, dont un levl de 2,3 Mo et AUCUN sbsp. La cuisson y echouait sur ErrAucunTagSbsp et la carte etait classee non cuisinable, alors qu elle est la plus jouee du corpus sans fond (71 matchs). Correction du 2026-08-27, sur la remarque de l utilisateur (j y joue regulierement, ce doit etre une variante d une autre map et le poids leger doit etre la diff) : pc/globals/common-rtx-new.module porte QUATRE sbsp qu aucune carte ne reclame, et le premier — 63,2 x 63,8 m, 12 556 instances, tag#1429 — contient les 28 ancres d objectif de Live Fire, dont 6 561 instances tombent dans la boite des ancres. Les trois autres n en posent AUCUNE dans cette boite : deux sont des arenes voisines (74 x 83 m et 55 x 55 m — les modules d academie sont des talons de 0,2 Mo eux aussi) et le quatrieme est un decor lointain de 7 890 x 7 776 m. Ce decor contient LUI AUSSI les 28 ancres, ce qui a impose le departage par l emprise au sol dans himap.ChoisitBSP (choix_bsp.go, temoins choix_bsp_test.go et TestChoixBSPLiveFireDesigneLArene). ATTENTION : LE RENDU N A PAS ENCORE ETE GATE. gateLe porte ici la date de la decision FACTUELLE — ou vit la geometrie — et non celle d un gate visuel : le premier fond cuit doit etre soumis a l utilisateur avant d etre tenu pour bon.",
+      "gateLe": "2026-08-27"
+    },
     "catalyst": {
       "carte": "Catalyst",
       "style": "encre",

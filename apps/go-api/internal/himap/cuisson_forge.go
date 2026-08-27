@@ -90,6 +90,29 @@ type OptionsCuissonForge struct {
 	// joue, les volumes de mort disent ou l on meurt, et les 22 cartes a callouts sont toutes
 	// natives. Sans effet si la variante n en declare aucun avec une forme.
 	RogneAuxVolumesDeMort bool
+	// DrapeauxExclus ecarte les objets Forge dont le champ de DRAPEAUX (champ 7 du .mvar,
+	// Object.Flags) vaut l une de ces valeurs. Jamais lu jusqu au 2026-08-27.
+	//
+	// Ce qui a mis dessus : l utilisateur suppose que les coques ne sont pas des blocs mais
+	// « un genre de mur transparent » ou un effet. Mesure sur Isolation : sur 5 042 objets, le
+	// drapeau vaut 21 pour 4 384 d entre eux — et 1 pour les 32 pieces du dome, qui peignent
+	// 82,7 pour cent de l image. 344 objets en tout portent cette valeur.
+	DrapeauxExclus map[uint8]bool
+	// PlafondObjets ecarte les objets Forge POSES plus haut que ce nombre de metres au-dessus
+	// du sol joue. Zero = n en ecarter aucun.
+	//
+	// A NE PAS CONFONDRE AVEC L ECRETAGE NI AVEC LA TRANCHE, et c est la distinction qui a
+	// coute une journee le 2026-08-27. Les deux autres coupent des SURFACES par leur altitude ;
+	// celle-ci ecarte un OBJET par l altitude ou il est POSE. La difference decide tout quand
+	// l objet est un DOME : sa paroi descend jusqu au sol, donc toute coupe de surface en laisse
+	// passer la jupe, alors que son origine, elle, est franchement au-dessus de l arene.
+	//
+	// Mesure sur Isolation : les 32 exemplaires du type qui peint 82,7 pour cent de l image sont
+	// poses entre Z 136,0 et 160,6 quand le sol joue est a Z 117 — de 19 a 44 m au-dessus.
+	PlafondObjets float64
+	// SolVuDuDessous : retenir la surface la plus BASSE au-dessus du sol joue au lieu de la plus
+	// haute. Voir Rendu.ArmeSurfaceBasse — la reponse aux cartes a ciel ferme.
+	SolVuDuDessous bool
 	// MinceurMin ecarte les modeles FILAIRES : ceux dont l aire du maillage, rapportee au
 	// carre de leur emprise, tombe sous ce seuil. Zero = ne rien ecarter.
 	//
@@ -156,12 +179,24 @@ func CuitCarteForge(ctx context.Context, opts OptionsCuissonForge) (*Rendu, Bila
 	r.ArmeReference(s)
 
 	r.ArmeTypeGagnant()
+	if opts.SolVuDuDessous {
+		r.ArmeSurfaceBasse()
+	}
 	if opts.DessineCanevas {
 		poseCanevasForge(ctx, r, &b, opts)
 	}
-	poseObjetsForge(ctx, r, &b, opts.Objets, idx, forge, opts.TypesExclus, opts.MinceurMin)
+	poseObjetsForge(ctx, r, &b, opts.Objets, idx, forge, opts.TypesExclus, opts.MinceurMin,
+		zJeu, opts.PlafondObjets, opts.DrapeauxExclus)
+	if opts.PlafondObjets > 0 {
+		slog.InfoContext(ctx, "mapfond: objets poses au-dessus du plafond ecartes", "carte", opts.Cle,
+			"plafond", opts.PlafondObjets, "objets", b.ObjetsAuPlafond)
+	}
 	if b.ObjetsDessines == 0 {
 		return nil, b, fmt.Errorf("aucun des %d objets Forge n'a de modele rtgo", len(opts.Objets))
+	}
+	if opts.SolVuDuDessous {
+		n := r.AdopteSurfaceBasse()
+		slog.InfoContext(ctx, "mapfond: sol vu du dessous", "carte", opts.Cle, "pixels", n)
 	}
 	if opts.EcreteToits {
 		b.TauxCouverture, b.CellulesSubstituees, b.CellulesEcretees = r.EcretteToits(s, opts.PlafondArene)
@@ -216,7 +251,7 @@ func indexForge(opts OptionsCuissonForge) (*ModuleIndex, *himodule.Module, error
 // poseObjetsForge resout le modele de chaque type d'objet, puis pose ses triangles.
 func poseObjetsForge(ctx context.Context, r *Rendu, b *BilanCuisson,
 	objets []mapvar.Object, idx *ModuleIndex, forge *himodule.Module, exclus map[int32]bool,
-	minceurMin float64) {
+	minceurMin, zJeu, plafondObjets float64, drapeaux map[uint8]bool) {
 	minceurs := map[uint32]float64{}
 	modeleDuType := modeleParType(ctx, objets, idx, forge)
 	assets := map[uint32]*RuntimeGeoAsset{}
@@ -257,6 +292,14 @@ func poseObjetsForge(ctx context.Context, r *Rendu, b *BilanCuisson,
 		}
 		if a == nil {
 			b.ObjetsSansModele++
+			continue
+		}
+		if drapeaux[o.Flags] {
+			b.ObjetsDrapeauExclu++
+			continue
+		}
+		if plafondObjets > 0 && float64(o.Pos.Z) > zJeu+plafondObjets {
+			b.ObjetsAuPlafond++
 			continue
 		}
 		in := InstanceForge(o)

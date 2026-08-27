@@ -24,12 +24,20 @@ import (
 // cartesNativesMesurees : les cartes NATIVES du releve, avec leur cle de catalogue
 // d'objectifs. Le dossier installe et le nom du catalogue ne coincident pas (cf.
 // ChercheModuleInstalle) — les deux sont donc portes ici.
+//
+// LES DEUX DERNIERES NE SONT PAS LA PAR SYMETRIE. Recharge et Launch Site sont les deux
+// cartes ou `TestDrapeauCarteParBSP` trouve le drapeau `exclude from intel map` le plus pose
+// — 25,2 % et 21,0 % des instances retenues, contre 0 % sur quatre des cinq premieres. Un
+// releve qui ne mesurerait que des cartes a zero conclurait « filtre sans effet » en
+// n'ayant simplement pas regarde la ou il agit.
 var cartesNativesMesurees = []struct{ dossier, moduleCatalogue string }{
 	{"ctf_forbidden", "ctf_forbidden"},
 	{"chasm", "chasm_map"},
 	{"catalyst", "catalyst"},
 	{"sgh_streets", "streets_sgh_streets"},
 	{"btb_exiled", "btb_exiled"},
+	{"sgh_blueprint", "recharge_sgh_blueprint"},
+	{"va_launchsite", "launch_site_va_launchsite"},
 }
 
 // ---------------------------------------------------------------------------
@@ -40,6 +48,10 @@ var cartesNativesMesurees = []struct{ dossier, moduleCatalogue string }{
 // (ce qu'on ecarterait) et en triangles (ce que l'image y perdrait). Les deux divergent —
 // une instance ecartee qui ne porte que 12 triangles ne change rien a l'image.
 type releveFiltres struct {
+	// unite nomme ce que compte `instances` : un bsp compte des instances de geometrie, une
+	// variante Forge compte des objets poses. Sans ce nom, la meme ligne de journal ferait
+	// lire « instances du bsp » sur une carte qui n'a pas de bsp.
+	unite                            string
 	instances, retenues, dessinables int
 	sansRtgo, sansLOD                int
 	triangles                        int
@@ -59,11 +71,11 @@ func (r releveFiltres) journalise(t *testing.T, titre string) {
 		return fmt.Sprintf("%5.2f%%", 100*float64(n)/float64(d))
 	}
 	t.Logf("%s", titre)
-	t.Logf("   %d instances du bsp · %d retenues par les filtres ACTUELS · %d dessinables "+
+	t.Logf("   %d %s · %d retenues par les filtres ACTUELS · %d dessinables "+
 		"(%d sans rtgo, %d sans LOD) · %d triangles",
-		r.instances, r.retenues, r.dessinables, r.sansRtgo, r.sansLOD, r.triangles)
-	t.Logf("   exclude from intel map : %d/%d instances du bsp (%s) · %d/%d dessinables (%s) · %s des triangles",
-		r.intelToutes, r.instances, pc(r.intelToutes, r.instances),
+		r.instances, r.unite, r.retenues, r.dessinables, r.sansRtgo, r.sansLOD, r.triangles)
+	t.Logf("   exclude from intel map : %d/%d %s (%s) · %d/%d dessinables (%s) · %s des triangles",
+		r.intelToutes, r.instances, r.unite, pc(r.intelToutes, r.instances),
 		r.intelDess, r.dessinables, pc(r.intelDess, r.dessinables), pc(r.intelTri, r.triangles))
 	t.Logf("   section custom shadow caster : %d/%d dessinables (%s) · %s des triangles",
 		r.ombreSect, r.dessinables, pc(r.ombreSect, r.dessinables), pc(r.ombreTri, r.triangles))
@@ -221,7 +233,7 @@ func TestFiltresReclaimerNatives(t *testing.T) {
 func releveDuBSP(t *testing.T, idx *ModuleIndex, bsp BSPInstances) releveFiltres {
 	t.Helper()
 	var r releveFiltres
-	r.instances = len(bsp.Instances)
+	r.unite, r.instances = "instances du bsp", len(bsp.Instances)
 	parTag := map[uint32][]poseInstance{}
 	for _, in := range bsp.Instances {
 		if in.ExclueDeCarteIntel() {
@@ -353,6 +365,7 @@ func TestFiltresReclaimerIsolation(t *testing.T) {
 			}
 		}
 	}
+	r.unite = "objets de la variante"
 	r.instances, r.retenues = len(objets), len(objets)-sansModele
 	r.journalise(t, fmt.Sprintf("=== Isolation (Forge, %d objets, %d types, %d objets sans modele) ===",
 		len(objets), len(comptes), sansModele))
