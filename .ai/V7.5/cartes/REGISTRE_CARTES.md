@@ -703,3 +703,38 @@ par construction.**
 variante ; les types dont l'emprise depasse largement celle d'un objet de decor sont les
 fautifs ; les ecarter par un reglage `typesExclus`. C'est court, et c'est la seule voie qui
 attaque la cause.
+
+### 2026-08-27 — Isolation : quatre leviers essayes, le gribouillis est le SOL
+
+**Verbatim** : « bah c'est immonde pour isolation, tu me proposes quoi pour corriger ca ? C'est
+inexploitable. Et en jeu je te confirme qu'on a des zones de callout pour absolument toutes les
+cartes, y compris Forge »
+
+**Quatre leviers essayes, mesures, tous negatifs sur le gribouillis** :
+
+| levier | reglage | resultat |
+|---|---|---|
+| ecretage des toits | `plafondArene` 4, 2, 1 m | cadre reduit, gribouillis INTACT |
+| bornage aux volumes de mort | `rogneAuxVolumesDeMort` | boite [-86,9 -118,4 38,2 41,5] plus GRANDE que le cadre : inerte ici |
+| substitution sans portee | `substitutionSansPortee` | aucun effet visible |
+| **tranche plafonnee** (nouveau) | `plafondTranche` +6 m, +3 m | gribouillis INTACT |
+| exclusion des 10 types les plus etendus | `typesExclus` | quelques balayages en moins, gribouillis toujours la |
+
+**Ce que ces cinq mesures etablissent ensemble** : le gribouillis n'est ni un toit, ni du
+decor hors zone, ni de la matiere haute. Il vit A MOINS DE TROIS METRES du niveau de jeu —
+c'est-a-dire AU SOL. Aucune coupe geometrique ne peut l'en separer : c'est la geometrie de
+l'arene elle-meme, faite de centaines de pieces organiques qui se chevauchent, vue de dessus.
+
+**Correction d'une affirmation trop rapide de ma part** : j'avais ecrit que le bornage aux
+volumes de mort faisait passer le cadre de 2 628 a 1 727 px. C'etait FAUX — c'est l'ecretage
+qui reduisait le cadre. Les six volumes de mort d'Isolation bornent une region PLUS GRANDE que
+le cadre des ancres : le levier est correct et teste, mais il est sans effet sur cette carte.
+
+**A INSTRUIRE, information utilisateur** : « en jeu on a des zones de callout pour absolument
+toutes les cartes, y compris Forge ». Notre `map_callouts.json` n'en porte que 22, toutes
+natives — mais leur provenance est `decoupe`, c'est-a-dire que NOUS les avons derivees. Le jeu,
+lui, en a pour toutes. **Ou vivent-elles pour une carte Forge** est une question ouverte et
+c'est probablement la meilleure piste restante, pour Isolation comme pour les 40 autres Forge.
+
+**Isolation reste refusee**, son entree de reglage est retiree : rien ne doit publier un fond
+qu'on sait mauvais.

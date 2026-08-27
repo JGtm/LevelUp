@@ -73222,3 +73222,34 @@ cela par construction. Prochain pas ecrit : mesurer l'emprise des modeles TYPE P
 ecarter les types fautifs.
 
 **Conclusion / prochaine etape** : diagnostic par type sur Isolation, puis re-cuisson.
+
+## [2026-08-27] Isolation : cinq leviers, et la preuve que le gribouillis est le sol
+
+**Statut** : Isolation non close. Trois leviers nouveaux livres et testes ; le defaut, lui,
+n'est pas soluble par la geometrie.
+
+**Ce qui a ete livre** : `plafondTranche` (coupe HAUTE de la tranche, symetrique de
+`plancherTranche` — elle ecarte la geometrie AVANT projection, la ou l'ecretage choisit parmi
+des surfaces deja dessinees), `typesExclus` (ecarter des types d'objet Forge du dessin) et le
+diagnostic « types les plus etendus » qui donne les candidats. Plus, du tour precedent, le
+passage des leviers natifs a la chaine Forge et `BoiteDesVolumesDeMort`.
+
+**Ce que cinq mesures etablissent** : ecretage a 4/2/1 m, tranche plafonnee a +6/+3 m,
+substitution sans portee, bornage aux volumes de mort, exclusion des dix types les plus
+etendus — aucun ne retire le gribouillis. Il vit donc a moins de trois metres du niveau de
+jeu : c'est le SOL de l'arene, fait de centaines de pieces organiques qui se chevauchent.
+Aucune coupe geometrique ne peut l'en separer par construction.
+
+**Correction d'une de mes affirmations de ce matin** : j'avais attribue au bornage aux volumes
+de mort la reduction du cadre de 2 628 a 1 727 px. C'etait l'ecretage. Les six volumes de mort
+d'Isolation bornent une region PLUS GRANDE que le cadre des ancres — le levier est juste, mais
+inerte sur cette carte. Verifier a quoi on doit un changement avant de l'attribuer.
+
+**Information utilisateur a instruire** : le jeu a des zones de callout pour TOUTES les cartes,
+Forge comprises. Nos 22 entrees sont toutes natives et de provenance `decoupe` — c'est-a-dire
+derivees par nous. Trouver ou le jeu range les callouts d'une carte Forge est la meilleure
+piste restante, et elle vaut pour les 40 cartes Forge, pas seulement Isolation.
+
+**Conclusion / prochaine etape** : chercher la source des callouts Forge ; et pour le
+gribouillis, si on y revient, le seul angle restant est l'exclusion par type avec un critere
+mesure sur la CONTRIBUTION EN PIXELS de chaque type, pas sur son emprise.

@@ -111,6 +111,15 @@ type OptionsCuisson struct {
 	// forme qui traverse la carte de part en part, qu aucun joueur n atteint sans mourir.
 	// Remonter le plancher la fait sortir de la tranche, sans toucher a la geometrie jouee.
 	PlancherTranche float64
+	// PlafondTranche : hauteur, en metres AU-DESSUS du niveau de jeu, au-dela de laquelle la
+	// matiere n est meme pas PROJETEE. Zero = la tranche par defaut (+28 m).
+	//
+	// A ne pas confondre avec l ecretage : celui-ci choisit, pixel par pixel, parmi les
+	// surfaces DEJA dessinees ; la tranche, elle, ecarte la geometrie avant le rendu. Sur une
+	// carte entierement couverte — Isolation, 93,9 pour cent, une arene sous voute — l ecretage
+	// ne peut rien quand la voute descend jusqu au sol joue, alors qu une tranche basse la
+	// supprime par construction.
+	PlafondTranche float64
 	// ZonesNommees : polygones des callouts de la carte (contours + parties). Fournis, ils
 	// sont toujours MESURES (`BilanCuisson.MatiereHorsZones`) ; ils ne rognent que si
 	// `RogneAuxZones`. Vides sur une carte sans callouts — toutes les cartes Forge.
@@ -204,6 +213,8 @@ type BilanCuisson struct {
 	ObjetsDessines   int
 	ObjetsSansModele int
 	VolumesDeMort    int
+	// ObjetsExclus : objets Forge ecartes par TypesExclus.
+	ObjetsExclus int
 	// Degradations liste, en clair, ce qui a manque. Vide = chaine complete.
 	Degradations []string
 }
@@ -232,6 +243,9 @@ func CuitCarteNative(ctx context.Context, opts OptionsCuisson) (*Rendu, BilanCui
 	min, max := TrancheDeJeu(zJeu)
 	if opts.PlancherTranche < 0 {
 		min = zJeu + opts.PlancherTranche
+	}
+	if opts.PlafondTranche > 0 {
+		max = zJeu + opts.PlafondTranche
 	}
 	r.Tranche(min, max)
 	r.NiveauDeJeu(zJeu)
