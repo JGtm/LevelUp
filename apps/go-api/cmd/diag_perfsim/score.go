@@ -34,18 +34,33 @@ const (
 	keyRankPerfDif = "rank_perf_diff"
 )
 
-// objectiveSubModes — COPIE LOCALE de la liste de classify.go:78-80. La
-// factorisation en helper partagé unique est le lot B1.1 du plan : l'outil de
-// lot 0 ne touche à aucun fichier produit.
+// objectiveSubModes — MIROIR de skillchain.IsObjectiveSubMode
+// (internal/games/halo_infinite/skillchain/objective_family.go, 17 entrées depuis
+// le lot 1bis). Copie locale assumée par le plan pour la famille RANKED : l'outil
+// est JETABLE et ne doit pas dépendre du seam title-aware câblé au boot. La partie
+// SOCIALE, elle, importe skillchain.ClassifyLUSRChain et suit donc la production
+// sans miroir. Toute évolution de la liste produite se recopie ICI (allowlist du
+// ratchet internal/archlint/no_objective_submode_list_test.go).
 var objectiveSubModes = map[string]bool{
 	"ctf": true, "capture the flag": true, "neutral flag ctf": true,
-	"one flag ctf": true, "covert one flag": true, "strongholds": true,
-	"oddball": true, "king of the hill": true, "total control": true,
-	"land grab": true, "extraction": true, "stockpile": true,
+	"one flag ctf": true, "covert one flag": true, "ctf 3 captures": true,
+	"strongholds": true, "oddball": true, "king of the hill": true,
+	"total control": true, "land grab": true, "extraction": true, "stockpile": true,
+	"vip": true, "neutral bomb": true, "one bomb": true, "neutral bomb squad": true,
 }
 
+// isObjectiveSubMode — miroir des deux règles du helper : sous-mode (partie droite
+// normalisée) puis, à défaut, PRÉFIXE (partie gauche du premier ':') pour les
+// pair_name inversés type `Strongholds:Arena on Behemoth`.
 func isObjectiveSubMode(pairName string) bool {
-	return objectiveSubModes[strings.ToLower(analysis.NormalizeModeLabel(pairName))]
+	if objectiveSubModes[strings.ToLower(analysis.NormalizeModeLabel(pairName))] {
+		return true
+	}
+	prefix, _, hasSeparator := strings.Cut(pairName, ":")
+	if !hasSeparator {
+		return false
+	}
+	return objectiveSubModes[strings.ToLower(analysis.NormalizeModeLabel(prefix))]
 }
 
 func isObjectiveChain(chain string) bool {
