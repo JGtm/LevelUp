@@ -436,6 +436,20 @@ export interface ReplayText {
    */
   equipmentActive: Record<'camo' | 'overshield', string>
   /**
+   * LE PASSAGE PAR TRANSLOCATEUR (mesuré : deux canaux concordants, cf. placementTeleport.ts) —
+   * la phrase de l'éclat violet puis jaune-orangé que la fiche porte brièvement après le saut.
+   * Hors de `equipmentActive` PARCE QUE la clé n'est pas une famille d'épisode du document :
+   * c'est un ÉVÉNEMENT reconstruit des pistes, pas un état mesuré par le canal des épisodes.
+   */
+  translocationFlash: string
+  /**
+   * LE JOUEUR DANS UNE ZONE D'ÉQUIPEMENT (cf. equipmentZones.ts) : les trois états que la
+   * fiche sait dire — champ de réparation, écran occultant, capteur adverse. Les clés sont
+   * les RÈGLES DE RENDU du calque (`PlacementKind`), la même convention que `placementFamily`
+   * ci-dessus : la zone de la fiche et le disque de la carte sont le même objet.
+   */
+  zonePresence: Record<'field' | 'shroud' | 'sensor', string>
+  /**
    * LE TABLEAU DES USAGES D'ÉQUIPEMENT (page match, onglet Chronologie). Bloc à part parce que
    * ces textes ne servent PAS le rejeu lui-même : ils servent son BILAN, une autre surface.
    */

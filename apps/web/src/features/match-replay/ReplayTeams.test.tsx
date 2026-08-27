@@ -10,7 +10,11 @@ import { describe, expect, it } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 
 import { resolveXuidMeta } from '@/features/match-view/xuidMeta'
-import type { MatchScoreboardRow, ReplayDocument } from '@/lib/api/types'
+import type {
+  MatchScoreboardRow,
+  ReplayDocument,
+  ReplayEquipmentPlacement,
+} from '@/lib/api/types'
 
 import { ReplayTeams } from './ReplayTeams'
 import { testReplayDoc } from './test/testDoc'
@@ -369,7 +373,9 @@ describe('ReplayTeams — hauteur constante vivant/mort', () => {
     })
     const cardRows = (view: ReturnType<typeof render>) => {
       const card = view.getByText('Alpha').parentElement?.parentElement as HTMLElement
-      return card.childElementCount
+      // Hors couches d'effets (aria-hidden, absolues) : la mort en ajoute une depuis le
+      // 2026-08-27, et elle ne prend aucune hauteur — seules les RANGÉES comptent.
+      return [...card.children].filter((e) => !e.hasAttribute('aria-hidden')).length
     }
     const alive = render(<ReplayTeams doc={doc} scoreboard={[]} frame={10} locale="fr" />)
     const aliveRows = cardRows(alive)
@@ -426,22 +432,28 @@ describe('ReplayTeams — mort et réapparition', () => {
     expect(screen.getByText('Réapparition ?')).toBeTruthy()
   })
 
-  // (a) DU VERBATIM : plus de liseré gauche sur une fiche morte. Le `boxShadow` était le seul
-  // porteur de cet accent — sa disparition du style en ligne est donc la mesure exacte.
+  // (a) DU VERBATIM : plus de liseré gauche sur une fiche morte (2026-08-25). Depuis le
+  // 2026-08-27 la mort vit sur la COUCHE en retrait (voile + lavis + cadre) : la fiche
+  // elle-même ne porte plus aucun style, et le cadre de la couche fait le TOUR (`inset
+  // 0 0 0 1px`, symétrique) — jamais un accent directionnel collé au bord gauche.
   it('aucun liseré gauche sur une fiche morte', () => {
     const view = render(<ReplayTeams doc={docAvecRetour()} scoreboard={[]} frame={140} locale="fr" />)
     expect(carte(view).style.boxShadow).toBe('')
+    const layer = carte(view).querySelector('.replay-card-fx') as HTMLElement
+    expect(layer.style.boxShadow).toContain('inset 0 0 0 1px')
   })
 
-  // CE QUI RESTE, et qui doit rester : la mort se lit encore au fond teinté et au nom. Retirer
-  // le liseré ne devait pas rendre une fiche morte indistinguable d'une fiche vivante.
-  it('la mort reste DITE : fond teinté et nom à l’encre d’alerte', () => {
+  // CE QUI RESTE, et qui doit rester : la mort se lit encore — voile sombre, lavis rouge,
+  // nom à l'encre d'alerte. Une fiche vivante sans effet, elle, n'a AUCUNE couche.
+  it('la mort reste DITE : la couche d’effets teintée et le nom à l’encre d’alerte', () => {
     const mort = render(<ReplayTeams doc={docAvecRetour()} scoreboard={[]} frame={140} locale="fr" />)
-    expect(carte(mort).style.background).toContain('color-mix')
+    const layer = carte(mort).querySelector('.replay-card-fx') as HTMLElement
+    expect(layer.style.backgroundColor).toContain('color-mix')
+    expect(layer.style.backgroundImage).toContain('var(--ac-destructive)')
     expect(mort.getByText('Alpha').style.color).not.toBe('')
     mort.unmount()
     const vivant = render(<ReplayTeams doc={docAvecRetour()} scoreboard={[]} frame={10} locale="fr" />)
-    expect(carte(vivant).style.background).toBe('')
+    expect(carte(vivant).querySelector('.replay-card-fx')).toBeNull()
     expect(vivant.getByText('Alpha').style.color).toBe('')
   })
 })
@@ -546,28 +558,34 @@ describe('ReplayTeams — vitalité : plein d’apparition', () => {
 describe('ReplayTeams — état actif équipement (camo/surbouclier), cahier des charges 21.1', () => {
   const cardOf = (view: ReturnType<typeof render>) =>
     view.getByText('Alpha').parentElement?.parentElement as HTMLElement
+  // LES EFFETS VIVENT SUR LA COUCHE EN RETRAIT depuis le 2026-08-27 (« pas de padding,
+  // tout est bord à bord ») : c'est elle que ces tests inspectent, jamais la fiche.
+  const layerOf = (view: ReturnType<typeof render>) =>
+    cardOf(view).querySelector('.replay-card-fx') as HTMLElement
 
-  it('camouflage actif : effet de VERRE (flou + fond translucide), JAMAIS une opacité réduite', () => {
+  it('camouflage actif : VERRE TREMPÉ (flou + voile + reflets), JAMAIS une opacité réduite', () => {
     // Règle n°1.1 du fichier : un état se dit par un effet dédié, jamais en faisant
-    // fondre la fiche entière (l'ancien défaut que ce lot corrige).
+    // fondre la fiche entière (l'ancien défaut que ce lot corrige). Depuis le 2026-08-27
+    // le verre porte ses REFLETS diagonaux en couche image — le fond passe en longhands.
     const view = renderTeams({
       equipmentEpisodes: [{ slot: 512, fam: 'camo', t0: 0, t1: 50, endRead: true }],
     })
-    const card = cardOf(view)
-    expect(card.style.backdropFilter).toContain('blur')
-    expect(card.style.background).toContain('var(--card)')
-    expect(card.style.opacity).toBe('')
+    const layer = layerOf(view)
+    expect(layer.style.backdropFilter).toContain('blur')
+    expect(layer.style.backgroundColor).toContain('var(--card)')
+    expect(layer.style.backgroundImage).toContain('linear-gradient')
+    expect(cardOf(view).style.opacity).toBe('')
   })
 
   it('surbouclier actif : ENCADRÉ au token `legendary`, jamais `info` (réservé à la jauge de bouclier)', () => {
     const view = renderTeams({
       equipmentEpisodes: [{ slot: 512, fam: 'overshield', t0: 0, t1: 50, endRead: true }],
     })
-    const card = cardOf(view)
-    expect(card.style.boxShadow).toContain('var(--ac-legendary)')
-    expect(card.style.boxShadow).not.toContain('var(--ac-info)')
+    const layer = layerOf(view)
+    expect(layer.style.boxShadow).toContain('var(--ac-legendary)')
+    expect(layer.style.boxShadow).not.toContain('var(--ac-info)')
     // Le cadre n'a pas de fond propre : cf. la composition avec le verre ci-dessous.
-    expect(card.style.background).toBe('')
+    expect(layer.style.backgroundColor).toBe('')
   })
 
   it('les deux effets se COMPOSENT : les ombres s’accumulent, le fond reste celui du verre', () => {
@@ -577,28 +595,139 @@ describe('ReplayTeams — état actif équipement (camo/surbouclier), cahier des
         { slot: 512, fam: 'overshield', t0: 0, t1: 50, endRead: true },
       ],
     })
-    const card = cardOf(view)
-    expect(card.style.backdropFilter).toContain('blur')
-    expect(card.style.background).toContain('var(--card)')
-    expect(card.style.boxShadow).toContain('var(--ac-legendary)')
-    expect(card.style.boxShadow).toContain('var(--border)')
+    const layer = layerOf(view)
+    expect(layer.style.backdropFilter).toContain('blur')
+    expect(layer.style.backgroundColor).toContain('var(--card)')
+    expect(layer.style.boxShadow).toContain('var(--ac-legendary)')
+    expect(layer.style.boxShadow).toContain('var(--border)')
   })
 
-  it('hors de la fenêtre [t0,t1] mesurée : aucun des deux effets — la fiche reste normale', () => {
+  it('hors de la fenêtre [t0,t1] mesurée : AUCUNE couche d’effets — la fiche reste normale', () => {
     const view = renderTeams({
       equipmentEpisodes: [{ slot: 512, fam: 'camo', t0: 60, t1: 90, endRead: true }],
     }, 10)
-    const card = cardOf(view)
-    expect(card.style.backdropFilter).toBe('')
-    expect(card.style.boxShadow).toBe('')
+    expect(layerOf(view)).toBeNull()
   })
 
   it('une fiche MORTE ne porte jamais un effet d’équipement (un épisode se ferme à la mort au plus tard)', () => {
     const view = renderTeams({
       equipmentEpisodes: [{ slot: 512, fam: 'camo', t0: 0, t1: 99, endRead: false }],
     }, 140)
+    // La couche existe — elle porte la MORT — mais aucun verre : pas de flou.
+    const layer = layerOf(view)
+    expect(layer.style.backdropFilter).toBe('')
+    expect(layer.style.backgroundImage).not.toContain('115deg')
+  })
+})
+
+/**
+ * LES EFFETS DE ZONE (2026-08-27) : la fiche dit quand son joueur se tient dans le disque
+ * d'un objet posé — champ de réparation, écran occultant, capteur adverse — par les MÊMES
+ * portes que le calque de la carte (equipmentZones.ts). Et l'éclat de TRANSLOCATION, porté
+ * par les passages mesurés (placementTeleport.ts). La vie de test (TRACK) se tient en (0,0).
+ */
+describe('ReplayTeams — zones d’équipement et translocation', () => {
+  const cardOf = (view: ReturnType<typeof render>) =>
+    view.getByText('Alpha').parentElement?.parentElement as HTMLElement
+  const layerOf = (view: ReturnType<typeof render>) =>
+    cardOf(view).querySelector('.replay-card-fx') as HTMLElement
+
+  const field = (over: Partial<ReplayEquipmentPlacement> = {}) => ({
+    family: 'repair_field',
+    id: '0x32d97758',
+    owner: 9,
+    origin: 'deployed',
+    t0: 0,
+    t1: 50,
+    x: 1,
+    y: 0,
+    ...over,
+  })
+
+  it('champ de réparation sous le joueur : contour vert, croix flottantes, et la phrase', () => {
+    const view = renderTeams({ equipmentPlacements: [field()] })
     const card = cardOf(view)
-    expect(card.style.backdropFilter).toBe('')
+    expect(layerOf(view).style.boxShadow).toContain('var(--ac-success)')
+    expect(card.title).toContain('champ de réparation')
+    expect(card.querySelectorAll('.replay-zone-cross')).toHaveLength(3)
+  })
+
+  it('objet LÂCHÉ : aucune zone — la porte est celle du calque, un lâcher n’agit pas', () => {
+    const view = renderTeams({ equipmentPlacements: [field({ origin: 'dropped' })] })
+    expect(layerOf(view)).toBeNull()
+    expect(cardOf(view).querySelector('.replay-zone-cross')).toBeNull()
+  })
+
+  it('écran occultant : NUAGE NOIR par-dessus les infos, voile sombre discret, flou, contour', () => {
+    const view = renderTeams({
+      equipmentPlacements: [field({ family: 'shroud_screen', id: '0x5eeb1a13', x: 4 })],
+    })
+    const card = cardOf(view)
+    const layer = layerOf(view)
+    expect(card.querySelector('.replay-zone-cloud')).toBeTruthy()
+    expect(layer.style.backdropFilter).toContain('blur')
+    expect(layer.style.backgroundColor).toContain('var(--replay-label-stroke)')
+    expect(layer.style.boxShadow).toContain('var(--replay-label-stroke)')
+    expect(card.title).toContain('écran occultant')
+  })
+
+  it('capteur ADVERSE : le contour « détecté » pulse sur l’incrustation ; même camp : rien', () => {
+    const deuxCamps = (side: string) => {
+      const doc = testReplayDoc({
+        roster: [
+          { xuid: 'A', filmIndex: 0, name: 'Alpha' },
+          { xuid: 'B', filmIndex: 1, name: 'Bravo' },
+        ],
+        tracks: [TRACK, { ...TRACK, slot: 513, xuid: 'B', points: [{ t: 0, x: 9, y: 9 }] }],
+        equipmentPlacements: [
+          field({ family: 'sensor', id: '0x72b63d69', owner: 513, x: 0, y: 0 }),
+        ],
+      })
+      const board = [sbRow('A', 'Alpha', 't0'), sbRow('B', 'Bravo', side)]
+      return render(<ReplayTeams doc={doc} scoreboard={board} frame={10} locale="fr" />)
+    }
+    const adverse = deuxCamps('t1')
+    const card = cardOf(adverse)
+    expect(card.querySelector('.replay-zone-sensor')).toBeTruthy()
+    expect(card.title).toContain('capteur de menaces adverse')
+    // Bravo est HORS de portée (12,7 m > 4,25 m) : sa fiche ne porte rien.
+    const bravo = adverse.getByText('Bravo').parentElement?.parentElement as HTMLElement
+    expect(bravo.querySelector('.replay-zone-sensor')).toBeNull()
+    adverse.unmount()
+    const allie = deuxCamps('t0')
+    expect(cardOf(allie).querySelector('.replay-zone-sensor')).toBeNull()
+  })
+
+  it('translocation : le FOURREAU sur la bordure à l’arrivée du saut, à délai négatif', () => {
+    const saut = {
+      slot: 512,
+      team: -1,
+      xuid: 'A',
+      startFrame: 0,
+      endFrame: 100,
+      points: [
+        { t: 0, x: 0, y: 0 },
+        { t: 20, x: 0, y: 0 },
+        { t: 21, x: 20, y: 0 },
+      ],
+    }
+    const view = renderTeams({
+      tracks: [saut],
+      abilities: [{ t: 0, slot: 512, r: 11, src: 'i48' }],
+    }, 22)
+    const card = cardOf(view)
+    const fourreau = card.querySelector('.replay-flash-translocation') as HTMLElement
+    expect(fourreau).toBeTruthy()
+    expect(fourreau.style.animationDelay.startsWith('-')).toBe(true)
+    expect(card.title).toContain('translocateur')
+  })
+
+  it('une fiche MORTE ne porte ni zone ni croix — même posée en plein champ', () => {
+    const view = renderTeams({ equipmentPlacements: [field({ x: 0 })] }, 140)
+    const card = cardOf(view)
+    // La couche du dessous porte la MORT (cadre destructive), jamais la zone (success).
+    expect(layerOf(view).style.boxShadow).not.toContain('var(--ac-success)')
+    expect(card.querySelector('.replay-zone-cross')).toBeNull()
   })
 })
 
@@ -785,9 +914,14 @@ describe('ReplayTeams — la fiche unique', () => {
     return render(<ReplayTeams doc={doc} scoreboard={[]} frame={frame} locale="fr" />)
   }
 
-  /** Le nombre de RANGÉES d'une fiche : les enfants directs de la carte d'Alpha. */
+  /**
+   * Le nombre de RANGÉES d'une fiche : les enfants directs de la carte d'Alpha, HORS
+   * couches d'effets (`aria-hidden`, absolues — elles ne prennent aucune hauteur et la
+   * fiche morte en porte toujours une depuis le traitement de mort du 2026-08-27).
+   */
   const rangees = (view: ReturnType<typeof render>) =>
-    (view.getByText('Alpha').parentElement?.parentElement as HTMLElement).childElementCount
+    [...(view.getByText('Alpha').parentElement?.parentElement as HTMLElement).children]
+      .filter((e) => !e.hasAttribute('aria-hidden')).length
 
   it('sans sélecteur lu, AUCUNE munition n’est montrée — jamais une arme désignée au hasard', () => {
     const sansSelecteur = {
@@ -856,8 +990,11 @@ describe('ReplayTeams — la fiche unique', () => {
    * CONTENU et la couleur changent, et la couleur passe par `style`, pas par une classe.
    */
   it('les classes des rangées sont identiques morte et vivante', () => {
+    // Même exclusion des couches d'effets que `rangees` : la mort en ajoute une (absolue,
+    // aria-hidden, sans hauteur), et ce test ne parle que des RANGÉES.
     const classes = (view: ReturnType<typeof render>) =>
       [...((view.getByText('Alpha').parentElement?.parentElement as HTMLElement).children)]
+        .filter((e) => !e.hasAttribute('aria-hidden'))
         .map((e) => e.className)
     const vivante = renderCard({}, 10)
     const attendues = classes(vivante)

@@ -1,4 +1,4 @@
-## [2026-08-27] Tuiles Home : lien rejeu 2D a droite de la playlist — Complete
+﻿## [2026-08-27] Tuiles Home : lien rejeu 2D a droite de la playlist — Complete
 
 **Contexte** : demande utilisateur — acceder au rejeu 2D directement depuis les tuiles de
 matchs de la page d'accueil (logo a droite du label de playlist). Question annexe : la
@@ -74102,3 +74102,72 @@ v2). Gate 1bis chiffre : exactement 26 matchs changent de famille au rejeu du si
 **Conclusion / prochaine etape** : executeur lot 1bis lance ; puis lot 2 (hygiene +
 index). Volet A : CI feat/v75 verte au niveau JOB sur `6b7c5402b` — reste le gate visuel
 utilisateur.
+
+## [2026-08-27] Rejeu 2D — effets de fiche : verre trempe, translocation, zones d equipement
+
+**Statut** : Complete (planche validee par l utilisateur au 3e tour - commite sur feat/v75)
+
+**Demande utilisateur** : densifier le camo en « tempered glass » (2 planches de reference
+fournies), une animation violette + jaune-orange au translocateur (couleurs de la faille), et
+trois effets de ZONE sur les fiches : champ de reparation (contour vert + mini croix de
+pharmacie flottantes), ecran occultant (flou un peu sombre + contour noir), capteur ADVERSE
+(effet « detecte »).
+
+**Decision technique principale** : deux modules purs nouveaux plutot que de grossir la fiche.
+`equipmentZones.ts` (zonePresenceAt) reutilise les MEMES portes que le calque carte —
+placementKind (deploye seulement), isPlacementActive (15 s officielles du capteur), rayons
+REPAIR_FIELD/SHROUD/SENSOR_RADIUS_M, regle de camp de sensorReveals (team_side des deux cotes,
+sinon rien) — la fiche ne dit jamais autre chose que ce que la carte dessine. Champ/ecran valent
+pour TOUT LE MONDE (le dome du jeu soigne et cache les deux camps). `playerCardFx.ts` extrait
+de PlayerCard TOUTE la composition (mort, eclats a delai negatif, verre, encadres) et y ajoute :
+reflets diagonaux 115 deg + tranche eclairee (verre trempe, fond passe en longhands
+backgroundColor/backgroundImage), eclat translocation (bonus violet -> warning orange, 1,2 s,
+le plus RECENT des eclats gagne), cadre success + croix pour le champ, voile
+--replay-label-stroke (le sombre-des-deux-themes) + flou pour l ecran. Le capteur pulse sur une
+INCRUSTATION (ZoneFxOverlay, enfant dedie — une seule animation par element/propriete) a la
+cadence OFFICIELLE du ping (1,8 s, retombee a 41,7 % = 0,75 s de revelation), phase calee par
+delai negatif sur l horloge du capteur le plus frais. Translocation branchee sur riftTeleports
+existant (lastTeleportAge ajoute a placementTeleport.ts).
+
+**Resultats observes** : vitest 5034 verts / 0 rouge (504 fichiers, 34 tests nouveaux dont
+equipmentZones 12, playerCardFx 14) ; tsc -b exit 0 apres purge du cache ; eslint 0 erreur,
+aucun warning sur les fichiers touches. Planche de verification .ai/mock_effets_fiches_zones.html
+(gitignoree) : les 5 effets et leurs compositions rendus conformes, eclat orange capture.
+
+**Conclusion / prochaine etape** : gate visuel utilisateur sur un vrai rejeu (film avec champ de
+reparation ou capteur pose), puis autorisation de commit sur feat/v75. Reserve dite : champ et
+ecran restent actifs jusqu a la fin du rejeu comme sur la carte (le film ne date aucune
+disparition d equipement — regle placementEndFrame).
+
+**MAJ meme jour (2e tour, retours utilisateur sur la planche)** : (1) TOUS les effets migrent
+sur une COUCHE en retrait `inset-0.5 rounded-md` sous le contenu (rangees en relative) + une
+incrustation de meme geometrie au-dessus — fin du bord a bord ; helper `hasUnderLayer`,
+classe `replay-card-fx`. (2) Ecran occultant : RAYURES diagonales par-dessus les infos
+(`replay-zone-stripes`, opacite 0.45, aucune animation), voile allege 22->14 %.
+(3) Translocation : plus d eclat de fond — un FOURREAU sur la seule bordure, arc conique
+violet (`bonus`) -> jaune-orange (`warning`) qui fait 1,5 tour en 1,2 s puis s eteint
+(@property --replay-beam-angle + masque padding-box/exclude) ; coexiste desormais avec
+l eclat de reapparition (deux couches). (4) MORT redessinee : voile sombre
+(--replay-label-stroke 30 %) + lavis rouge degrade gauche->droite + fin cadre destructive —
+PAS un retour du lisere de 2026-08-25 (cadre symetrique, degrade de fond). Compteurs de
+rangees des tests de parite filtres sur aria-hidden (la couche ne prend aucune hauteur).
+Gates rejoues : vitest 5034 verts, tsc purge exit 0, eslint 0 erreur. CSS valide dans le
+moteur reel (conic + mask + @property computes) via la planche v2 — le volet apercu etait
+masque cote client, captures d ecran impossibles sur ce tour.
+
+**MAJ meme jour (3e tour)** : (1) Fourreau de translocation NE S INTERROMPT PLUS — deux
+animations separees : rotation en boucle SANS COUTURE (replay-translocation-spin 0,9 s
+infinite, 0->360°) + fondu distinct (replay-translocation-fade, 1 fois, opacite tenue 75 %
+puis extinction) : la lumiere disparait EN TOURNANT. Le delai negatif unique s applique aux
+deux (dephasage sans consequence sur la boucle). Coexiste avec l eclat de reapparition.
+(2) Ecran occultant : RAYURES REMPLACEES PAR UN NUAGE NOIR (replay-zone-cloud, 4 volutes
+radiales de --replay-label-stroke, positions en %) — les rayures se confondaient avec les
+reflets du verre (retour user). Premier reglage 38-60 % / opacite 0.5 INVISIBLE sur carte
+sombre (retour user immediat) -> densifie cœurs 85-92 % / opacite 0.72 : c est le CREUX
+entre volutes qui garde la fiche lisible, pas la paleur du noir. (3) Planche v2 corrigee en
+v3 : la vignette camo+ecran omettait les reflets du verre (composition infidele qui
+aggravait l illisibilite reprochee) — v3 reflete playerCardFx exactement, et le compose est
+juge discernable sur capture (bandes claires du verre SOUS volutes sombres). Gates rejoues
+apres le tour : vitest 5034 verts, tsc purge 0, eslint 0 erreur (le reglage final du nuage
+est un ajustement de valeurs CSS pur, hors couverture). Captures d ecran du volet obtenues
+sur ce tour (fourreau en rotation aux deux instants, nuage visible, flash de mort saisi).
