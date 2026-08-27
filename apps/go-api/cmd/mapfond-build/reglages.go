@@ -73,6 +73,10 @@ type reglageCarte struct {
 	// s etendre loin — sur Catalyst elles longent les bras de la station. Les exclure serre le
 	// masque au coeur des zones, au risque d amputer des zones reelles.
 	ZonesContourSeul bool `json:"zonesContourSeul,omitempty"`
+	// RogneAuxVolumesDeMort : borner la matiere a l emprise des volumes de mort de la variante
+	// Forge. Equivalent Forge du rognage aux zones de callout, qui n existent que sur les
+	// cartes natives (22 cartes, toutes natives).
+	RogneAuxVolumesDeMort bool `json:"rogneAuxVolumesDeMort,omitempty"`
 	// BoiteUtile : rectangle monde [minX, minY, maxX, maxY] hors duquel la matiere est effacee.
 	// LEVIER MANUEL — voir OptionsCuisson.BoiteUtile.
 	BoiteUtile []float64 `json:"boiteUtile,omitempty"`
@@ -329,4 +333,19 @@ func (e *environnement) moduleGeometrieDe(cle string) string {
 	slog.Info("mapfond: geometrie prise dans un AUTRE module", "carte", cle,
 		"module", c.ModuleGeometrie, "gateLe", c.GateLe)
 	return chemin
+}
+
+// rogneAuxVolumesDeMortDe dit si cette carte Forge demande le bornage aux volumes de mort.
+// Journalise comme toute voie qui SUPPRIME de la matiere.
+func (e *environnement) rogneAuxVolumesDeMortDe(cle string) bool {
+	if e.reglages == nil {
+		return false
+	}
+	c, ok := e.reglages.Cartes[cle]
+	if !ok || !c.RogneAuxVolumesDeMort {
+		return false
+	}
+	slog.Info("mapfond: bornage aux volumes de mort arme pour cette carte", "carte", cle,
+		"gateLe", c.GateLe)
+	return true
 }

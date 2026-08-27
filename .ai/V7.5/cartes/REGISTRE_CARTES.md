@@ -667,3 +667,39 @@ code reste en place, il est correct ; c'est son parametre qui n'est pas trouve.
 
 **Condition de reprise** : departager les quatre bsp de `common-rtx-new` (par la surface, par
 le nombre d'ancres AVEC SOL, ou en lisant les references du `levl`), puis rearmer le reglage.
+
+### 2026-08-27 — Isolation : la chaine Forge n'avait AUCUN levier
+
+Planche : https://claude.ai/code/artifact/a4034bb7-ee86-46b7-8043-63515e721bc9
+
+**Verbatim** : « isolation pas bon du tout, y a un gribouillis, fais le traitement quand on a
+fait avec l'ecretage et zone de callout stp »
+
+**Ce que la demande a mis au jour** : le traitement demande N'EXISTAIT PAS pour cette carte, et
+pas seulement parce qu'une carte Forge n'a aucune zone de callout (les 22 cartes qui en portent
+sont toutes natives). **La chaine Forge ne recevait AUCUN des leviers de la chaine native** —
+`EcreteToits`, `BoiteUtile`, `RogneAuxZones`, `CombleTrous` ne vivaient que dans `cuisson.go`.
+Un reglage declare pour une carte Forge etait donc silencieusement ignore. Trois cuissons
+d'Isolation a trois plafonds ont rendu le MEME octet : c'est ce qui l'a prouve.
+
+**Corrige** : les leviers passent aux cartes Forge, et l'equivalent du masque de callouts y est
+trouve — **les volumes de mort**. Les callouts disent ou l'on joue ; les volumes de mort disent
+ou l'on MEURT. La cuisson les reconnait depuis le 10/08 (`TypesVolumesDeMort`, empreinte etablie
+sur 101 `.mvar`) mais ne s'en servait que pour les ECARTER du dessin — leur position n'avait
+jamais servi. `BoiteDesVolumesDeMort` en tire l'emprise ; garde-rail `TestBoiteDesVolumesDeMort`.
+
+Sur Isolation : 6 volumes, boite [-86,9 -118,4 38,2 41,5]. Le disque du canevas Forge et ses
+dalles de ciel disparaissent, le cadre passe de **2 628 a 1 727 px**, couverture de 93,9 a
+36,4 %, et **25 ancres sur 25** restent au sol.
+
+**CE QUI RESISTE, et la carte n'est PAS close** : le gribouillis. L'ecretage tourne desormais
+pour de bon, mais a 4 m comme a 2 comme a 1 m il n'y touche pas. Ce n'est donc pas un toit
+au-dessus du sol joue : c'est de la matiere A HAUTEUR DE SOL — vraisemblablement des modeles de
+vegetation ou de lianes poses en centaines d'exemplaires, dont les traits balayes en longues
+courbes signent des maillages tres etendus. **Une coupe par altitude ne peut rien contre cela
+par construction.**
+
+**Condition de reprise** : mesurer, type par type, l'emprise des modeles poses dans la
+variante ; les types dont l'emprise depasse largement celle d'un objet de decor sont les
+fautifs ; les ecarter par un reglage `typesExclus`. C'est court, et c'est la seule voie qui
+attaque la cause.

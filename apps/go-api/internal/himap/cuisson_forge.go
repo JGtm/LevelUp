@@ -34,6 +34,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math"
 	"os"
 	"path/filepath"
 
@@ -75,6 +76,18 @@ type OptionsCuissonForge struct {
 	Echelle float64
 	// CibleCadrePx : meme role que OptionsCuisson.CibleCadrePx.
 	CibleCadrePx int
+	// LES LEVIERS DE RENDU, jusqu ici reserves a la chaine native (2026-08-27). Une carte
+	// Forge n en avait AUCUN : declarer un ecretage pour Isolation ne changeait pas un octet
+	// de son image, et rien ne le disait. Ils ont la meme semantique que dans OptionsCuisson.
+	EcreteToits            bool
+	PlafondArene           float64
+	SubstitutionSansPortee bool
+	BoiteUtile             [4]float64
+	// RogneAuxVolumesDeMort borne la matiere a l emprise des VOLUMES DE MORT de la variante.
+	// C est l equivalent Forge du rognage aux zones de callout : les callouts disent ou l on
+	// joue, les volumes de mort disent ou l on meurt, et les 22 cartes a callouts sont toutes
+	// natives. Sans effet si la variante n en declare aucun avec une forme.
+	RogneAuxVolumesDeMort bool
 }
 
 // CuitCarteForge rend le fond de carte d'une carte Forge en posant les modeles de ses objets.
@@ -109,7 +122,13 @@ func CuitCarteForge(ctx context.Context, opts OptionsCuissonForge) (*Rendu, Bila
 	if b.ObjetsDessines == 0 {
 		return nil, b, fmt.Errorf("aucun des %d objets Forge n'a de modele rtgo", len(opts.Objets))
 	}
-	b.TauxCouverture, b.CellulesSubstituees, b.CarteCouverte = r.AppliqueReference(s, false)
+	if opts.EcreteToits {
+		b.TauxCouverture, b.CellulesSubstituees, b.CellulesEcretees = r.EcretteToits(s, opts.PlafondArene)
+		b.CarteCouverte = b.TauxCouverture > SeuilCarteCouverte
+	} else {
+		b.TauxCouverture, b.CellulesSubstituees, b.CarteCouverte = r.AppliqueReference(s, opts.SubstitutionSansPortee)
+	}
+	borneALaBoite(ctx, r, &b, boiteForge(ctx, opts))
 	if b.VolumesDeMort == 0 {
 		b.degrade(ctx, "aucun volume de mort reconnu — l'empreinte des types a peut-etre bouge")
 	}
@@ -324,4 +343,67 @@ func InstanceForge(o mapvar.Object) Instance {
 func existeFichier(p string) bool {
 	_, err := os.Stat(p)
 	return err == nil
+}
+
+// BoiteDesVolumesDeMort rend l'emprise XY [minX, minY, maxX, maxY] des volumes de mort d'une
+// variante, et le nombre de volumes qui l'ont formee.
+//
+// POURQUOI. Une carte native se rogne a ses ZONES DE CALLOUT : elles disent ou l'on joue, et
+// c'est le levier qui a sauve Streets, Prism ou Forbidden. Une carte FORGE n'en a aucune — les
+// 22 cartes a callouts sont toutes natives. Son equivalent est ici : les volumes de mort
+// bornent le terrain par l'autre bout, en declarant ou l'on MEURT. Ils sont deja reconnus et
+// comptes par la cuisson (`TypesVolumesDeMort`, empreinte etablie sur 101 `.mvar`), et
+// jusqu'ici seulement pour etre ECARTES du dessin ; leur position n'avait jamais servi.
+//
+// La forme d'un objet donne des DEMI-EXTENTS (shape.go) : l'emprise d'un volume est donc son
+// centre plus ou moins sa demi-largeur. Un volume sans forme est ignore — il ne borne rien.
+func BoiteDesVolumesDeMort(objets []mapvar.Object) (boite [4]float64, n int) {
+	lo := [2]float64{math.Inf(1), math.Inf(1)}
+	hi := [2]float64{math.Inf(-1), math.Inf(-1)}
+	for _, o := range objets {
+		if _, mort := TypesVolumesDeMort[o.TypeID]; !mort {
+			continue
+		}
+		s := o.Shape()
+		if s == nil {
+			continue
+		}
+		demi := [2]float64{}
+		switch {
+		case s.Radius != nil:
+			demi = [2]float64{*s.Radius, *s.Radius}
+		case s.HalfX != nil && s.HalfY != nil:
+			// La boite est orientee par Forward ; on prend le PIRE cas, la demi-diagonale,
+			// plutot que de projeter — un bornage trop large ne retire rien a tort.
+			d := math.Hypot(*s.HalfX, *s.HalfY)
+			demi = [2]float64{d, d}
+		default:
+			continue
+		}
+		c := [2]float64{float64(o.Pos.X), float64(o.Pos.Y)}
+		for k := 0; k < 2; k++ {
+			lo[k] = math.Min(lo[k], c[k]-demi[k])
+			hi[k] = math.Max(hi[k], c[k]+demi[k])
+		}
+		n++
+	}
+	if n == 0 {
+		return [4]float64{}, 0
+	}
+	return [4]float64{lo[0], lo[1], hi[0], hi[1]}, n
+}
+
+// boiteForge rend le rectangle monde auquel borner la matiere : celui declare a la main s'il
+// l'est, sinon l'emprise des volumes de mort si on la demande, sinon aucun.
+func boiteForge(ctx context.Context, opts OptionsCuissonForge) [4]float64 {
+	if opts.BoiteUtile[2] > opts.BoiteUtile[0] && opts.BoiteUtile[3] > opts.BoiteUtile[1] {
+		return opts.BoiteUtile
+	}
+	if !opts.RogneAuxVolumesDeMort {
+		return [4]float64{}
+	}
+	boite, n := BoiteDesVolumesDeMort(opts.Objets)
+	slog.InfoContext(ctx, "mapfond: bornage aux volumes de mort", "carte", opts.Cle,
+		"volumes", n, "boite", fmt.Sprintf("[%.1f %.1f %.1f %.1f]", boite[0], boite[1], boite[2], boite[3]))
+	return boite
 }

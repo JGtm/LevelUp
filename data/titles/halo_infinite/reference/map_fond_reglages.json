@@ -129,6 +129,15 @@
       "style": "encre",
       "raison": "Gate du 2026-08-26, carte 12. Vagabond est la carte que l utilisateur a designee comme demandant un GROS RETRAVAIL, et son fond de production le confirme : de grandes dalles sombres — canevas Forge et decor de fond — couvrent l image, l arene jouee n etant que l amas de detail du centre. C est une carte FORGE, donc ZERO zone de callout : le masque des zones n existe pas ici, et les leviers disponibles sont l ecretage, la boite utile et l echelle. Premiere intention : mesurer le taux de couverture et les ancres avant tout reglage. EN COURS.",
       "gateLe": "2026-08-26"
+    },
+    "01af558d-53ab-4f05-ba68-92d805fc6260": {
+      "carte": "Isolation",
+      "style": "encre",
+      "ecreteToits": true,
+      "plafondArene": 4,
+      "raison": "Gate du 2026-08-27, EN COURS. Isolation est refusee depuis le 13/08 et l utilisateur la designe a la planche du 27/08 : « isolation pas bon du tout, y a un gribouillis ». DECOUVERTE FAITE EN LA TRAITANT : la chaine Forge ne recevait AUCUN levier de la chaine native — ecretage, bornage, masque etaient silencieusement ignores pour une carte Forge. Trois cuissons a trois plafonds ont rendu le MEME octet, ce qui l a prouve. Les leviers y passent desormais, et l equivalent Forge du masque de callouts est trouve : LES VOLUMES DE MORT (les callouts disent ou l on joue, eux disent ou l on meurt ; la cuisson les reconnaissait deja depuis le 10/08 sans jamais se servir de leur position). Six volumes bornent Isolation a [-86,9 -118,4 38,2 41,5] : le disque du canevas et ses dalles de ciel disparaissent, le cadre passe de 2 628 a 1 727 px, 25 ancres sur 25 restent au sol, la couverture tombe de 93,9 a 36,4 pour cent. CE QUI RESISTE : le gribouillis. L ecretage tourne desormais pour de bon mais a 4 m comme a 2 comme a 1 m il n y touche pas — ce n est donc pas un toit au-dessus du sol joue, c est de la matiere A HAUTEUR DE SOL, vraisemblablement des modeles de vegetation ou de lianes poses en centaines d exemplaires. La coupe par altitude ne peut rien contre cela par construction. PROCHAIN PAS : mesurer type par type l emprise des modeles poses, puis ecarter les types fautifs.",
+      "gateLe": "2026-08-27",
+      "rogneAuxVolumesDeMort": true
     }
   }
 }
