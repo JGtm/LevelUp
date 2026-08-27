@@ -126,36 +126,58 @@ bornes de gameplay), gate visuel utilisateur en fin de chantier.
 
 ## LOT 3 — Composants, cablage, suppression LeadMarks
 
-- [ ] 3-1 `ReplayTimelineTracks.tsx` : frise (input range habille `--played`) + 4 pistes
+- [x] 3-1 `ReplayTimelineTracks.tsx` : frise (input range habille `--played`) + 4 pistes
       etiquetees (trackYou/trackAllies/trackDominance/mediaTrack), THUMB_PX = 16, encres
       par tokens (`tokenCssVar`), etat vide medias (`mediaEmpty`), infobulles horloge.
       PORT du fichier design : les pseudo-elements du range sont habilles par variantes
       Tailwind arbitraires `[&::-webkit-slider-*]` avec les vars du theme, PAS par une classe
       de `globals.css` — la feuille n'est donc pas touchee (item du plan derive caduc).
-- [ ] 3-2 `ReplaySpeedMenu.tsx` (spec §6) + `ReplaySoundControls.tsx` remplace (volume en
+- [x] 3-2 `ReplaySpeedMenu.tsx` (spec §6) + `ReplaySoundControls.tsx` remplace (volume en
       popover, regles du 25/08 conservees) + `useReplayShortcuts.ts` (spec §7). PORTS.
-- [ ] 3-2b `ReplayMediaLightbox.tsx` (amendement point 2) : PORT, avec l'adaptation 6
-      (`bg-black` -> token de thème). Non branchee a une donnee — ouverte par la piste medias.
-- [ ] 3-3 `ReplayTransport.tsx` remplace (spec §6) : sauts -/+10 s, horloge tabular-nums
+      ECART DE LA SPEC DERIVEE, assume : le volume du design N'EST PAS en popover — c'est un
+      curseur habille de 58 px posé a cote du haut-parleur. Le fichier valide fait foi (amendement).
+      Les trois regles du 25/08 sont tenues telles quelles : `available` garde le bouton, le
+      curseur ne s'escamote pas (zero + estompe + infobulle), `mutedBySpeed` estompe et explique.
+- [x] 3-2b `ReplayMediaLightbox.tsx` (amendement point 2) : PORT, avec l'adaptation 6
+      (`bg-black` -> `bg-muted`). Non branchee a une donnee — ouverte par la piste medias.
+- [x] 3-3 `ReplayTransport.tsx` remplace (spec §6) : sauts -/+10 s, horloge tabular-nums
       sans font-mono, `timeline` (objet unique), pastilles nommees, REC conditionnel,
       aria conserves. PORT + adaptation 4 (`SKIP_SECONDS` importe de replayCanvasConfig).
-- [ ] 3-4 `useReplayTimeline.ts` (13e extraction) : assemblage complet (spec §4), appel
+- [x] 3-4 `useReplayTimeline.ts` (13e extraction) : assemblage complet (spec §4), appel
       `useReplayShortcuts` inclus. `ReplayCanvas.tsx` : prop `feedEntries`, appel du hook,
       passe `timeline` — et RESTE <= 691 lignes (extraire davantage si necessaire, jamais
       relever le cliquet).
-- [ ] 3-5 SUPPRESSION `ReplayLeadMarks.tsx` + `ReplayLeadMarks.test.tsx` ; le type de
+      IL A FALLU UNE 14e EXTRACTION : avec la seule 13e, le canvas retombait a 708 (il partait
+      de 692, deja au-dessus). `useReplayDrawer.ts` sort le montage du tiroir — une cinquantaine
+      de lignes qui RECOPIAIENT trente bascules sans rien decider. Resultat : 674 lignes, et le
+      plafond du cliquet DESCEND a 674 (patron du fichier depuis 861).
+- [x] 3-5 SUPPRESSION `ReplayLeadMarks.tsx` + `ReplayLeadMarks.test.tsx` ; le type de
       retour de `useLeadMarks` demenage dans `useLeadMarks.ts` ; cles `leadChange`/
       `leadChangeAtFmt` retirees du contrat et des DEUX tables ; aucun import orphelin
       (`grep ReplayLeadMarks` = 0 hors historique).
-- [ ] 3-6 Tests : `ReplayTimelineTracks.test.tsx`, `ReplaySpeedMenu.test.tsx`,
+      Le type s'appelle `ReplayLeadMarks` (etait `ReplayLeadMarksProps` — il ne decrit plus les
+      props d'un composant, mais ce que le hook rend). Les renvois documentaires au composant
+      supprime sont reecrits, pas laisses pendants.
+- [x] 3-6 Tests : `ReplayTimelineTracks.test.tsx`, `ReplaySpeedMenu.test.tsx`,
       `useReplayShortcuts.test.ts`, mise a jour `ReplayTransport.test.tsx` (spec §8), plus les
       quatre cas de l'amendement point 9 (clic media -> `onRequestPause` ; etat vide medias ;
       menu vitesse ferme sur Echap et clic dehors ; raccourcis J/K/L/M/R).
-- [ ] 3-G Gate : tsc VERT ; vitest `src/features/match-replay` COMPLET vert ; vitest
+      52 cas sur les quatre fichiers. Les deux cas « quatre boutons de vitesse » de l'ancien
+      ReplayTransport.test ont migre vers `ReplaySpeedMenu.test.tsx` ; la barre garde deux cas
+      (le declencheur montre la vitesse, aucun multiplicateur ne l'encombre).
+- [x] 3-G Gate : tsc VERT ; vitest `src/features/match-replay` COMPLET vert ; vitest
       `src/routes` vert ; ESLint 0 sur tous les fichiers touches ; cliquet
       `placementFamily.guard` VERT ; `grep -r "#[0-9a-fA-F]\{6\}"` muet sur les nouveaux
       fichiers ; `grep -ri archivo apps/web/src` muet ; aucune classe Tailwind couleur.
-      Commit lot 3.
+      MESURE : `npm run typecheck` exit 0 ; vitest 102 fichiers / **1561 tests verts, 0 echec**
+      (baseline : 1502 tests dont 1 rouge) ; ESLint 0 erreur sur `src/features/match-replay` et
+      `src/routes` (2 warnings, tous deux PRE-EXISTANTS et verifies sur la base : `exhaustive-deps`
+      objectiveObjects du canvas, `only-export-components` de ReplayFeedName) ; cliquet 6/6 ;
+      greps hex / archivo / classes couleur muets.
+      CORRECTION DE GATE : les lots 1 et 2 avaient ete valides avec `npx tsc -p apps/web --noEmit`,
+      qui ne compile RIEN (`tsconfig.json` n'a que des `references`, `files: []`). La commande
+      juste est `npm run typecheck` (= `tsc -b`), et c'est elle qui a revele les deux defauts
+      ci-dessous. Le gate 3 la passe sur l'ensemble, lots 1 et 2 compris.
 
 ## LOT 4 — Cloture
 
@@ -205,6 +227,16 @@ sur wt/lecteur. Reprendre a la premiere case non statuee du lot ouvert.
   une regression du present lot — elle preexiste. Le lot 3 la resorbe par construction
   (retrait des props sliderRef/minFrame/maxFrame/onScrub/leadMarks + extraction
   `useReplayTimeline`), et le gate exige le cliquet VERT : le plafond n'est PAS releve.
+- (executeur, 2026-08-28, lot 3) **LE GATE `tsc` DU PLAN NE VERIFIE RIEN.**
+  `npx tsc -p apps/web --noEmit` compile ZERO fichier : `apps/web/tsconfig.json` ne porte que
+  des `references` avec `files: []`. La commande d'autorite est `npm run typecheck` (`tsc -b`),
+  celle de `make check-types`. A corriger dans les plans qui recopient cette ligne.
+- (executeur, 2026-08-28, lot 3) **COLLISION DE CASSE WINDOWS.** Le handoff nommait la logique
+  `replayTimelineTracks.ts` et le composant `ReplayTimelineTracks.tsx` : sur un systeme de
+  fichiers insensible a la casse, TypeScript refuse les deux dans le meme programme (TS1149) et
+  l'import du composant resolvait vers le module de logique. La logique est renommee
+  `replayTimelineTracksLogic.ts` — patron du depot (killFeedLogic, victoryLogic, scoreBannerLogic).
+  A garder en tete pour tout futur couple logique/composant homonyme.
 - (executeur, 2026-08-28, lot 1) `npm install` (lot 0) a REECRIT `apps/web/package-lock.json`
   en retirant 30 blocs `libc` (metadonnees de plateforme des binaires optionnels rollup/esbuild) :
   derive de la version locale de npm, sans rapport avec le lot, et potentiellement nuisible sur

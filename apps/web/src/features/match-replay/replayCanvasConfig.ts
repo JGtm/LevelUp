@@ -9,6 +9,8 @@
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
 
 import type { CalloutZoneReady } from './calloutsLayer'
+import type { ReplayFeedEntry } from './killFeedLogic'
+import type { ReplayMediaItem } from './replayTimelineTracksLogic'
 
 /**
  * 8 tokens de série : une teinte par GRANDE ZONE NOMMÉE (cyclés au-delà de 8 via
@@ -22,6 +24,21 @@ export const SERIES_TOKENS: SemanticToken[] = [
 
 /** Référence STABLE pour « pas de zones » : un `?? []` inline recuirait le calque à chaque rendu. */
 export const EMPTY_ZONES: CalloutZoneReady[] = []
+
+/**
+ * Référence STABLE pour « pas de médias » — et, pour l'instant, la SEULE source de la piste
+ * Médias : la donnée arrive en phase 2 (endpoint par match, cf. registre des reports). Une
+ * référence nommée plutôt qu'un `[]` inline pour la même raison que les zones, et parce que le
+ * jour où les médias arrivent, ce nom est exactement l'endroit où la prop se branche.
+ */
+export const EMPTY_MEDIA: ReplayMediaItem[] = []
+
+/**
+ * Référence STABLE pour « pas de fil » : le canvas peut être monté sans que la page ait encore
+ * assemblé le fil aligné (la vue du match arrive après l'artefact). Un `?? []` inline
+ * reconstruirait les pistes de la frise à chaque rendu, pour un résultat identique.
+ */
+export const EMPTY_FEED: ReplayFeedEntry[] = []
 
 /**
  * Cadence de publication de l'image courante vers React, en millisecondes.

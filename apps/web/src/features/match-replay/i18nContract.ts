@@ -413,9 +413,6 @@ export interface ReplayText {
    */
   victoryPanelLabel: string
   victoryScoreLabel: string
-  /** RETOURNEMENT : l'instant où le match change de meneur (marque sur la frise). */
-  leadChange: string
-  leadChangeAtFmt: (time: string, team: string) => string
   /**
    * LES QUATRE PISTES DE LA FRISE (planche 2a, 2026-08-28). Les trois premières nomment ce
    * qu'on lit sous le curseur : tes éliminations et tes morts, celles de tes alliés, et qui

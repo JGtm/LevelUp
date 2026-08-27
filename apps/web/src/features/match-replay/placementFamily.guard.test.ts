@@ -222,10 +222,23 @@ describe('garde-rail : le vocabulaire des familles de pose', () => {
  * memo `objectivePulses` REJOINT donc `useReplayFx.ts` — il est de la meme nature que les cinq
  * autres (une liste d'evenements en monde, precalculee une fois, qui ne dessine rien) : douzieme
  * extraction imposee par ce cliquet, nom inchange, aucune ligne de tracé deplacee.
+ *
+ * 691 -> 674 le 2026-08-28 (lot LECTEUR, planche 2a). LE FICHIER ETAIT A 692 EN ARRIVANT, donc
+ * ce garde-rail etait DEJA ROUGE sur feat/v75 @ 86b9087c9 — une ligne au-dessus du plafond, sans
+ * que le lot qui l'a franchi soit identifie. La refonte de la barre de lecture y ajoutait par
+ * ailleurs une prop (`feedEntries`) et un hook. DEUX extractions, donc :
+ *   - TREIZIEME, `useReplayTimeline.ts` : la frise et son clavier — echelle des pistes,
+ *     reduction du fil aligne, dominance, medias, horloges de l'axe, raccourcis. Ils decrivent
+ *     LA FRISE, le canvas garde le DESSIN.
+ *   - QUATORZIEME, `useReplayDrawer.ts` : le montage du tiroir de reglages, une cinquantaine de
+ *     lignes qui ne decidaient rien — elles RECOPIAIENT trente bascules de `useReplaySettings`
+ *     vers le panneau. Le canvas garde desormais l'objet de reglages entier et n'en destructure
+ *     que les VALEURS, celles que le trace lit.
+ * Le plafond descend a la mesure du jour, comme a chaque extraction depuis 861.
  */
 describe('garde-rail : la taille du canvas du rejeu ne remonte pas', () => {
   it('ReplayCanvas.tsx reste sous son plafond', () => {
     const src = readFileSync(resolve(__dirname, 'ReplayCanvas.tsx'), 'utf8')
-    expect(src.split('\n').length - 1).toBeLessThanOrEqual(691)
+    expect(src.split('\n').length - 1).toBeLessThanOrEqual(674)
   })
 })

@@ -4843,3 +4843,41 @@ seule DONNEE (endpoint + passage de la prop) — le registre des reports est red
 
 Chiffres du gate lot 2 : tsc exit 0 ; `replayTimelineTracks.test.ts` 26 tests verts ; ESLint 0
 sur les 5 fichiers touches.
+
+**LOT 3 — DEUX DEFAUTS QUE SEUL LE VRAI TYPECHECK REVELE.** Les lots 1 et 2 avaient ete valides
+avec `npx tsc -p apps/web --noEmit`, ligne recopiee du plan. Cette commande ne compile RIEN :
+`apps/web/tsconfig.json` ne porte que des `references` et `files: []` — elle sort 0 sans avoir
+lu un fichier. La commande d'autorite est `npm run typecheck` (`tsc -b`), celle de
+`make check-types`. Lancee, elle a immediatement sorti deux problemes reels :
+
+1. **Collision de casse Windows.** Le handoff nommait la logique `replayTimelineTracks.ts` et le
+   composant `ReplayTimelineTracks.tsx`. Sur un FS insensible a la casse, TypeScript refuse les
+   deux dans le meme programme (TS1149) et `import { ReplayTimelineTracks } from
+   './ReplayTimelineTracks'` resolvait vers le module de LOGIQUE. La logique est renommee
+   `replayTimelineTracksLogic.ts` — c'est le patron du depot de toute facon (killFeedLogic,
+   victoryLogic, scoreBannerLogic).
+2. **Le cliquet du canvas exigeait DEUX extractions, pas une.** Le fichier partait de 692 (deja
+   au-dessus de son plafond de 691, cf. lot 0) ; la 13e extraction (`useReplayTimeline`) le
+   laissait a 708, parce que le lot y ajoute aussi une prop et un appel. La 14e — `useReplayDrawer`
+   — sort le montage du tiroir de reglages : une cinquantaine de lignes qui ne decidaient RIEN,
+   elles recopiaient trente bascules de `useReplaySettings` vers le panneau. Le canvas garde
+   desormais l'objet de reglages entier et n'en destructure que les VALEURS, celles que le trace
+   lit. Resultat 674 lignes, et le plafond DESCEND a 674 comme a chaque extraction depuis 861.
+
+**Ce qui a ete porte sans y toucher**, et c'est le fond de l'affaire : la barre (un seul bouton
+plein, les sauts qui l'encadrent, l'horloge en 21 px `tabular-nums`, les pastilles de sortie dans
+leur cartouche), la frise a quatre pistes avec son curseur habille par variantes Tailwind (pas de
+`globals.css` a toucher — l'item du plan derive etait caduc), le menu de vitesse, le son et la
+lightbox. Trois adaptations seulement, toutes justifiees ailleurs qu'en gout : `SKIP_SECONDS`
+deplace pour `react-refresh`, `soundPlaysAtSpeed` au lieu d'une troisieme copie de la borne du
+son, `bg-muted` au lieu de `bg-black` (classe de couleur brute interdite en `features/`).
+
+**`ReplayLeadMarks` est mort.** La piste DOMINANCE dit les memes retournements en DUREES, ce qui
+dit davantage pour la meme hauteur. Le hook `useLeadMarks` reste (il alimente la piste) et le type
+de retour l'a rejoint, renomme `ReplayLeadMarks` — il ne decrit plus les props d'un composant.
+Les cles `leadChange`/`leadChangeAtFmt` sortent du contrat et des deux tables : zero code mort.
+
+Chiffres du gate lot 3 : `npm run typecheck` exit 0 ; vitest 102 fichiers / **1561 tests, 0 echec**
+(baseline du lot 0 : 1502 tests dont 1 rouge) ; ESLint 0 erreur sur `src/features/match-replay` et
+`src/routes` — 2 warnings, tous deux verifies PRE-EXISTANTS sur `86b9087c9` ; cliquet 6/6 ; greps
+hex, archivo et classes Tailwind couleur muets.

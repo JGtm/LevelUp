@@ -1,22 +1,32 @@
 /**
- * replayTimelineTracks — CE QUE LA FRISE MONTRE, en dehors du temps : les marques des pistes
- * (les tiennes, celles de tes alliés), les segments de DOMINANCE, et les médias posés sur le
- * match. Logique pure, testable, sans JSX — les composants n'en font que le rendu.
+ * replayTimelineTracksLogic — CE QUE LA FRISE MONTRE, en dehors du temps : les marques des
+ * pistes (les tiennes, celles de tes alliés), les segments de DOMINANCE, et les médias posés
+ * sur le match. Logique pure, testable, sans JSX — les composants n'en font que le rendu.
  *
  * TROIS PISTES PLUTÔT QU'UNE FRISE : une frise seule donne la position dans le temps et rien
- * d'autre (cf. l'en-tête de ReplayLeadMarks). Empilées, les pistes disent la FORME du match
- * avant qu'on l'ait lu — où tu as marqué, où tu es tombé, quand ton équipe a pris l'ascendant.
+ * d'autre — c'est le constat qui avait donné les marques de retournement (`ReplayLeadMarks`,
+ * supprimé le 2026-08-28 : la piste DOMINANCE dit la même chose en DURÉES). Empilées, les
+ * pistes disent la FORME du match avant qu'on l'ait lu — où tu as marqué, où tu es tombé,
+ * quand ton équipe a pris l'ascendant.
  *
  * L'ÉCHELLE EST CELLE DE LA FRISE, donc celle de la FENÊTRE DE GAMEPLAY (`replayWindow.ts`) :
  * une marque calculée sur le film entier se poserait à côté de l'instant qu'elle désigne. Et
  * comme les pistes s'alignent sur un `input[type=range]`, elles héritent de sa géométrie : la
- * piste utile court de THUMB_PX / 2 à largeur − THUMB_PX / 2 (même raison, même constante que
- * ReplayLeadMarks — le navigateur ne publie pas la largeur du curseur).
+ * piste utile court de THUMB_PX / 2 à largeur − THUMB_PX / 2 — le navigateur ne publie pas la
+ * largeur du curseur.
+ *
+ * LE SUFFIXE `Logic` LÈVE UNE COLLISION DE NOMS, il n'est pas décoratif : Windows ne distingue
+ * pas ce fichier de `ReplayTimelineTracks.tsx`, et TypeScript refuse alors les deux dans le
+ * même programme (TS1149). C'est aussi le patron du dépôt (killFeedLogic, victoryLogic).
  */
 import type { PlayerMarkKind } from './playerMarks'
 import type { ReplayWindowBounds } from './replayWindow'
 
-/** Largeur supposée du curseur natif, en px (cf. ReplayLeadMarks — même valeur, même motif). */
+/**
+ * Largeur supposée du curseur natif, en px. Mesure héritée des marques de retournement : le
+ * navigateur ne publie pas cette valeur, 16 px est celle des thèmes par défaut, et l'écart
+ * résiduel se compte en pixels sur une frise qui en fait plusieurs centaines.
+ */
 export const THUMB_PX = 16
 
 /** Position CSS d'un ratio [0..1] sur la piste, curseur compris. */
