@@ -67,6 +67,17 @@ export const ZONE_SOUND_STEMS = {
     ally: 'objective_zone_tick_team',
     enemy: 'objective_zone_tick_enemy',
   },
+  /**
+   * La zone est CONTESTÉE. Définition donnée par l'utilisateur le 2026-08-27, mot pour mot :
+   * « c'est quand on va prendre une zone adverse et qu'un adversaire entre dans la zone pour la
+   * contester ». Ce que le film en montre : une RAMPE de jauge qui retombe SANS que le
+   * propriétaire change — la capture était en cours, elle a été interrompue.
+   *
+   * AUCUN CAMP, et ce n'est pas une lacune : le jeu n'a qu'UN son de contestation
+   * (`play_004_mod_mp_strongholds_contested`, sans jumeau `_team` / `_enemy`), exactement comme
+   * le retour de drapeau. Il sonne pareil pour tout le monde.
+   */
+  contested: 'objective_zone_contested',
   /** La colline se déplace (Roi de la colline). Aucun camp. */
   newZone: 'objective_zone_new',
 } as const
@@ -124,7 +135,13 @@ export function zoneSoundEvents(
   for (const z of zones) {
     for (const r of rampesDeJauge(z.gauge ?? [])) {
       const arrivee = proprietaireApres(z.spans, r.fin)
-      if (arrivee === undefined) continue
+      if (arrivee === undefined) {
+        // LA RAMPE N'A RIEN CHANGÉ : la capture était en cours et a été interrompue. C'est la
+        // CONTESTATION, et elle sonne à l'instant où la jauge cesse de monter — pas au début de
+        // la rampe, où rien n'était encore contesté. Aucun camp : le jeu n'en a qu'un son.
+        out.push(soundEvent(frameToMs(r.fin, doc), ZONE_SOUND_STEMS.contested))
+        continue
+      }
       const c = cote(arrivee)
       if (!c) continue
       out.push(soundEvent(frameToMs(r.debut, doc), ZONE_SOUND_STEMS.capturing[c]))
