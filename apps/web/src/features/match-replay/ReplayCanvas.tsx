@@ -308,7 +308,7 @@ export function ReplayCanvas({
   // calque statique, le drapeau porté suit son porteur image par image.
   const flags = useReplayFlagCarries({
     doc, view: canvasView, frameRef, enabled: showFlagCarries,
-    scoreboard, teamColorOf, neutral: floorStyle.edge, reducedMotion,
+    scoreboard, teamColorOf, neutral: floorStyle.edge, outline: markInk.outline, reducedMotion,
   })
 
   const objectiveObjects = useReplayObjectiveObjects({

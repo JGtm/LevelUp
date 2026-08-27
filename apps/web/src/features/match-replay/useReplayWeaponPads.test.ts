@@ -34,7 +34,8 @@ import {
   useReplayWeaponPads,
 } from './useReplayWeaponPads'
 import { padFamilyOf } from './weaponPadFamilies'
-import { drawWeaponPadsLayer, padStateAt, type PadStyle } from './weaponPadsLayer'
+import { padStateAt } from './weaponPadTime'
+import { drawWeaponPadsLayer, type PadStyle } from './weaponPadsLayer'
 
 /** Le S7 Sniper tel que le document le sert : clé canonique, libellé bilingue, masque. */
 const SNIPER = '0x0A1992BC'
@@ -412,11 +413,10 @@ describe('useReplayWeaponPads — quand, et SEULEMENT quand, le calque se tait',
  * était entièrement au tracé.
  */
 describe('useReplayWeaponPads — A9 : un socle ne se dessine JAMAIS deux fois', () => {
-  // L'INVARIANT EST LE NOMBRE DE LIEUX MARQUÉS, PAS LE NOMBRE D'ARCS. Depuis A13 un socle en
-  // émet deux — son point et sa bordure — mais CONCENTRIQUES : c'est une seule marque. Le
-  // défaut d'A9 était tout autre, deux arcs à des centres DIFFÉRENTS (le point ici, le glyphe
-  // dix pixels plus bas). Compter les centres distincts dit donc exactement ce qu'on veut, et
-  // continue de le dire quelle que soit la richesse du dessin.
+  // L'INVARIANT EST LE NOMBRE DE LIEUX MARQUÉS, PAS LE NOMBRE DE FORMES. Un socle n'en émet
+  // qu'une depuis le 2026-08-27 (anneau-bordure supprimé), deux au seul état INCERTAIN — marque
+  // et halo — mais CONCENTRIQUES. Le défaut d'A9 était tout autre : deux formes à des centres
+  // DIFFÉRENTS. Compter les centres distincts dit donc exactement ce qu'on veut.
   it('cinq socles réels, CINQ lieux marqués — plus dix', () => {
     const { result } = monterCalque(DOC_530820E5())
     const { ops, ctx } = recordingContext()
@@ -440,22 +440,37 @@ describe('useReplayWeaponPads — A9 : un socle ne se dessine JAMAIS deux fois',
     }
   })
 
-  it('la vignette se pose SUR le point, jamais en dessous', () => {
+  // RÈGLE INVERSÉE LE 2026-08-27 (retour utilisateur : « l'icône doit être au-dessus du petit
+  // losange, pas dedans ») : la vignette était CENTRÉE sur la marque, elle se pose désormais
+  // AU-DESSUS. Ce que ce cas garantit encore — le sujet d'A9 — est qu'elle reste sur la MÊME
+  // COLONNE : une image décalée latéralement se lirait comme un second socle.
+  it('la vignette se pose AU-DESSUS du losange, sur sa colonne', () => {
     const doc = DOC_530820E5()
     const { ops, ctx } = recordingContext()
     const image = { width: 40, height: 20 } as unknown as CanvasImageSource
     drawWeaponPadsLayer(ctx, doc.weaponPads, VUE_REELLE, { frame: 0, frameMs: 100, k: 1 }, {
       ...STYLE,
       scaleOf: () => 'classic',
-      iconOf: () => ({ fill: image, outline: null }),
+      iconOf: () => ({ fill: image, outline: image }),
     })
-    const c = worldToCanvas(
-      SOCLES_530820E5[0], VUE_REELLE.bounds, VUE_REELLE.width, VUE_REELLE.height, VUE_REELLE.pad,
+    const centres = SOCLES_530820E5.map((p) =>
+      worldToCanvas(p, VUE_REELLE.bounds, VUE_REELLE.width, VUE_REELLE.height, VUE_REELLE.pad),
     )
     const images = ops.filter((o) => o.op === 'drawImage').map((o) => o.args as number[])
-    // `drawImage(src, x, y, w, h)` : le centre vertical de la vignette est y + h/2.
-    const surLePoint = images.some(([, , y, , h]) => Math.abs(y + h / 2 - c.y) < 0.01)
-    expect(surLePoint, 'la vignette est décalée par rapport au point').toBe(true)
+    // `drawImage(src, x, y, w, h)` : neuf poses par socle — huit pour le liseré, une pour le
+    // corps. TOUTES doivent tenir sur la colonne de leur socle et au-dessus de son losange.
+    expect(images).toHaveLength(SOCLES_530820E5.length * 9)
+    for (const [, x, y, w, h] of images) {
+      const bas = { x: x + w / 2, y: y + h }
+      const socle = centres.reduce((meilleur, cc) =>
+        (cc.x - bas.x) ** 2 + (cc.y - bas.y) ** 2 < (meilleur.x - bas.x) ** 2 + (meilleur.y - bas.y) ** 2
+          ? cc
+          : meilleur,
+      )
+      // Le liseré s'écarte du corps de 1,2 px dans les huit directions : c'est la seule marge.
+      expect(Math.abs(bas.x - socle.x), 'la vignette a quitté la colonne du socle').toBeLessThan(1.3)
+      expect(bas.y, 'la vignette mord sur le losange').toBeLessThan(socle.y)
+    }
   })
 })
 
@@ -533,18 +548,25 @@ describe('useReplayWeaponPads — A14 : la marque d’un socle est un LOSANGE', 
     }
   })
 
-  it('la marque ET sa bordure sont deux losanges CONCENTRIQUES, la bordure la plus large', () => {
+  // AMENDÉ LE 2026-08-27 : ce cas verrouillait la marque ET SA BORDURE à TOUS les états.
+  // L'anneau-bordure est supprimé (il enfermait la vignette) ; le second losange n'existe plus
+  // que sur l'INCERTAIN, où il est un HALO POINTILLÉ. Même propriété — deux formes
+  // concentriques, la seconde la plus large — mais elle change d'état porteur.
+  it('au PLEIN, une seule forme ; à l’INCERTAIN, la marque et son halo concentriques', () => {
     const doc = testReplayDoc({
-      weaponPads: [{ x: 0, y: 0, z: 0, weapon: '0x0A1992BC', spawns: [0], presence: [{ t0: 0, tLow: 99, tHigh: 99 }] }],
+      weaponPads: [{ x: 0, y: 0, z: 0, weapon: '0x0A1992BC', spawns: [0], presence: [{ t0: 0, tLow: 50, tHigh: 150 }] }],
     })
     const { result } = monterCalque(doc)
-    const { ops, ctx } = recordingContext()
-    result.current.paint(ctx, 0, 1)
-    const centres = diamondCentres(ops)
+    const plein = recordingContext()
+    result.current.paint(plein.ctx, 0, 1)
+    expect(diamondCentres(plein.ops)).toHaveLength(1)
+    const incertain = recordingContext()
+    result.current.paint(incertain.ctx, 100, 1)
+    const centres = diamondCentres(incertain.ops)
     expect(centres).toHaveLength(2)
     expect(centres[0]).toEqual(centres[1])
-    // Les deux demi-diagonales, lues sur les sommets : la bordure enferme la marque.
-    const sommets = ops.filter((o) => o.op === 'moveTo').map((o) => (o.args as number[])[1])
+    // Les deux demi-diagonales, lues sur les sommets : le halo cerne la marque.
+    const sommets = incertain.ops.filter((o) => o.op === 'moveTo').map((o) => (o.args as number[])[1])
     expect(sommets[1]).toBeLessThan(sommets[0])
   })
 })

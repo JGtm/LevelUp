@@ -73756,3 +73756,200 @@ difference est du sens — le champ a une borne dont on doute, l'ecran n'a pas d
 bulle).
 
 **Prochaine etape** : synchroniser `feat/v75` avec origin (7 commits d'ecart) puis pousser.
+## [2026-08-27] Retours rejeu — LOT D clos (page : scroll fantome + rappel du match)
+
+**Statut** : Complete (worktree `replay-retours-0827`, branche `feat/replay-retours-0827`,
+AUCUN commit — autorisation utilisateur attendue). Plan :
+`.ai/V7.5/replay2d/PLAN_RETOURS_REJEU_2026-08-27.md` (cases D-1..D-4 statuees).
+
+**Decision technique principale** : le scroll fantome est un DEPASSEMENT PLUS PETIT QUE LA
+MARGE BASSE d'une pile rigide de 678 px — il ne peut que retrecir tant que la carte a une
+hauteur constante. Correctif minimal : `min-h-[12rem]` supprime (32 px de vide mort sous
+xl), marges `p-6` -> `px-6 py-3` (bande au pire des cas 24 -> 12 px), et la ligne de rappel
+carte/mode/date (`ReplayMatchRecall.tsx`, presentation pure, helper `buildMatchHeadingStr`
+reutilise, zero requete, zero cle i18n) vit dans une hauteur RESERVEE (`min-h-6`) : pile
+inchangee a 678 px, zero saut a l'arrivee de la vue du match.
+
+**Resultats observes** : revue adversariale R1 (relecteur frais) = 1 P1 (la ligne de rappel
+mangeait l'economie de marge : fantome deplace, pas supprime) + 2 P2 (saut de 20 px ;
+mutant survivant sur le garde gauche du separateur), 11 conditions tiennent — les 3
+corriges (pile constante, hauteur reservee, test orphelin symetrique). Gates : tsc vert,
+vitest match-replay 77 fichiers / 1150 verts, src/routes 30 verts, ESLint 0.
+
+**Conclusion / prochaine etape** : verification navigateur reportee a l'utilisateur ([!]
+au plan : env sans serveur ni donnees). Decouverte consignee : sous ~730 px de fenetre,
+seule une hauteur de carte adaptative supprime le scroll restant (D8). Suite : LOT A
+(socles — visuel, incertain par proximite, compteur par prochaine apparition mesuree).
+
+## [2026-08-27] Retours rejeu — LOT A (socles) : pile visuelle, raffinement REFUSE par la mesure, compteur mesure
+
+**Statut** : Complete pour A-1/A-2/A-4 ; A-3 NON IMPLANTE (refus mesure, statut au superviseur).
+Worktree `replay-retours-0827`, AUCUN commit (consigne). Plan :
+`.ai/V7.5/replay2d/PLAN_RETOURS_REJEU_2026-08-27.md`.
+
+**Decision technique principale** : trois choses, et la deuxieme est un NEGATIF.
+1. *Visuel (D1)* — la pile devient `compteur / vignette / losange` de haut en bas, la vignette
+POSEE AU-DESSUS du losange (son bas au sommet + `PAD_GAP_PX`) au lieu d'etre centree dessus ;
+l'anneau-bordure A13 qui l'ENFERMAIT est supprime avec ses constantes ; le losange est
+desormais TOUJOURS PLEIN a l'encre de sa nature (0,95 / 0,55 + halo losange pointille / 0,35),
+et le lisere de vignette est du a TOUTES les images — une image finie du jeu n'a pas besoin
+d'etre reteinte pour etre cernee, `tintedIconCanvas` rend sa silhouette (`PadIcon.outline`
+n'est plus nullable : c'est le compilateur qui tient la regle).
+2. *Raffinement de l'incertain (D2)* — REFUSE PAR LA MESURE ecrite avant elle (seuil 5 %).
+3. *Compteur (D3)* — `padRespawnAt` vise d'abord la PROCHAINE APPARITION MESUREE
+(`presence[i+1].t0`, exacte : le rejeu connait la suite du film) et ne retombe sur
+`cycle.medianS` que pour le DERNIER trou ; il rend `{seconds, measured}` et c'est l'INFOBULLE
+qui dit la provenance (« vue dans le film » sans reserve / « cycle attendu » avec son « ≈ »),
+la carte gardant un seul format compact.
+
+**Resultats observes** :
+- **MESURE A-2** (`pads_proximity_research_test.go`, garde env `PADS_PROX_CORPUS`, 30 artefacts
+  reels, 296 socles, 2 435 traces, 1 198 occupations) : denominateur 992 occupations ACHEVEES
+  (ecartees : 53 jamais videes, 153 bornees a la fin du film). Contradiction — occupations
+  achevees SANS aucune approche a moins de R, segment a segment : **28,93 % a 1,0 m ; 27,82 % a
+  1,5 m ; 26,71 % a 2,0 m**. Seuil 5 % NON TENU par aucun rayon.
+- **TEMOIN qui rend le negatif interpretable** : le passage le plus proche a une mediane de
+  **0,32 m** (la regle vise juste : la moitie des occupations ont bien quelqu'un qui marche
+  dessus) mais un **p90 a 91,33 m**, et la contradiction ne descend qu'a **17,82 % a 10 m** —
+  elle sature. Ce n'est donc pas un probleme de rayon : environ un cinquieme des disparitions
+  n'a AUCUN joueur a proximite pendant toute la fenetre. Seules 27 fenetres sur 992 sont sans
+  echantillon de trace : le trou n'est pas un trou de couverture.
+- **Offsets** (pour information, non retenus) : mediane 4,84 s / p90 15,56 s a 1,5 m,
+  retrecissement median 0,277.
+- **Extraction** : la lecture temporelle (etats, occupation, compte a rebours) quitte le calque
+  pour `weaponPadTime.ts` — `weaponPadsLayer.ts` repassait a 536 lignes (seuil 500).
+- **Gates** : `make check-types` vert ; vitest match-replay **78 fichiers / 1 159 tests verts**
+  (1 150 avant le lot) ; ESLint 0 sur les 11 fichiers touches ; `go vet` propre ; le test de
+  recherche saute proprement sans son env.
+
+**Conclusion / prochaine etape** : A-3 reste NON IMPLANTE — la these « sans passage possible,
+l'etat n'a pas change » est contredite par la donnee une fois sur quatre, et l'ouvrir a 10 m
+n'y change rien. Verification A L'ECRAN a faire par l'utilisateur (pile lisible aux deux
+themes, compteur present sur chaque trou referme, survol qui attrape la vignette). Suite :
+LOT B (drapeau).
+
+## [2026-08-27] Retours rejeu — LOT A CLOS apres double revue adversariale
+
+**Statut** : Complete (worktree `replay-retours-0827`, aucun commit). Complement de l'entree
+de livraison ci-dessus : cloture superviseur apres revues.
+
+**Decision technique principale** : 2 relecteurs frais paralleles (code / methodologie de la
+mesure). Le REFUS d'A-3 (raffinement de l'incertain par proximite) est CONFIRME sous toutes
+les respécifications : denominateur AUTORITAIRE = 1064 `padPickups` publies -> contradiction
+33,18/32,05/30,92 % a R=1/1,5/2 m (la reconstruction par Presence sous-estimait) ; sature a
+R=10 m ; distribution bimodale ; minimum toutes lectures = 6,51 % (mediane par film) > seuil
+5 %. Sonde de falsification 0/5 : propriete de la DONNEE, pas du code. NUANCE d'interpretation
+importante : 2 films portent ~72-75 % des contradictions (hors eux ~10-13 %, 7 films a 0 %) —
+la piste « occupations achevees a tort cote artefact » y est concentree (condition de reprise
+au plan, Decouvertes).
+
+**Resultats observes** : 10 constats recevables (7 P2 code : code mort du plancher de survol,
+4 docs inversees, 2 tests sans mordant, branche inatteignable ; 2 P1 + 1 P2 mesure :
+denominateur, temoin, composition de corpus) — 10 corriges par l'auteur, mutations prouvees
+puis restaurees, P0+P1 de 2 a 0. Gates finaux : tsc vert, vitest match-replay 79 fichiers /
+1163 tests verts, ESLint 0, go vet/gofmt propres, mesure reproduite avec env + skip sans.
+
+**Conclusion / prochaine etape** : verification ecran utilisateur listee au plan (A-5 [!]).
+Suite : LOT B (drapeau : contour, taille 1,45, clignotement hors base, onde de choc de
+capture ; crane par heritage via amendement du plan objectifs vivants).
+
+## [2026-08-27] Retours rejeu — LOT B CLOS (drapeau : lisere, taille, clignotement, onde)
+
+**Statut** : Complete (worktree `replay-retours-0827`, aucun commit).
+
+**Decision technique principale** : le glyphe drapeau gagne un LISERE a l'encre du fond et
+passe a l'echelle 1,45 ; le clignotement (`flagBlinkAlpha`, cosinus 0,35-0,95, periode 10
+images ~1 s, exporte pour le crane) remplace la respiration sur TOUT etat hors base
+(`carried`, `carried_open`, `dropped`) — l'incertitude de `carried_open` est desormais
+portee par le CREUX seul ; nouvelle onde de choc `flagCaptureFx.ts` (double anneau ~600 ms
+a la position de l'auteur d'un `flag_captures`, gate `filmClockTrusted`, encre du camp vu
+de la page, neutre si inconnu), cablee dans le hook sans crever le cliquet de ReplayCanvas
+(1 ligne modifiee en place, 742/742). Decision 7 du plan objectifs vivants amendee : le
+crane HERITE par import.
+
+**Resultats observes** : revue adversariale R1 = 1 P1 (le lisere CENTRE comblait le creux
+du fanion a ~87 % — corrige par ecretage `clip('evenodd')` strictement exterieur, 3
+mutations prouvees : clip retire, evenodd->nonzero, restore supprime) + 1 P2 (2 docs a
+l'ancienne grammaire « attenue » reecrites) ; 16 conditions tiennent (anti-doublon
+pulses/ondes dans les DEUX sens, encre neutre sans exception, frame fractionnaire, cosinus
+verifie numeriquement, memoisation, non-fuite du contexte). Gates : tsc vert, vitest
+match-replay 80 fichiers / 1200 verts, ESLint 0, cliquet vert.
+
+**Conclusion / prochaine etape** : verification ecran utilisateur au plan (B-5 [!], dont le
+controle « fanion creux au centre, pas un triangle plein cerne »). Decouvertes : marge de
+taille (452/500 et 742/742) avant l'implantation du crane ; heterogeneite images-vs-ms.
+Suite : LOT C (rafale MA40 a la lecture).
+
+## [2026-08-27] Retours rejeu — LOT C CLOS, PLAN ENTIEREMENT EXECUTE (commits en attente)
+
+**Statut** : Complete (worktree `replay-retours-0827`, branche `feat/replay-retours-0827`,
+AUCUN commit — autorisation utilisateur demandee). Les 4 lots du plan
+`.ai/V7.5/replay2d/PLAN_RETOURS_REJEU_2026-08-27.md` sont clos et statues.
+
+**Decision technique principale (lot C)** : rafale MA40 A LA LECTURE — `play` accepte un
+`burst` (N sources sur UNE enveloppe/voix, GainNode + tirage RANGED par balle, refus total
+au plafond, liberation au comptage des fins) ; table `WEAPON_BURST_SPECS` limitee a
+`hinf_ma40_ar: {coups: 3, ecartMs: 33}` — 33 ms = mediane de l'intervalle moyen par salve
+(100,0 ms sur 1 417 salves / 18 828 tirs MA40, 38 films) divisee par 3 ; garde-rail de
+duree incluant la duree d'asset (1,2 s, provenance citee). DECOUVERTE PRODUIT : les fire
+events MA40 arrivent DEJA a la cadence reelle de l'arme — la rafale est une mise en scene
+(tranchee par l'utilisateur), le gate d'ecoute C-5 est donc decisif et RESTE OUVERT [!]
+(protocole A/B au plan : 33/50/100 ms, extension candidate pulse_carbine et 3 autres,
+br75 et sentinel exclus).
+
+**Resultats observes** : revue adversariale C = 0 P0/P1 + 3 P2 (tous corriges, mutations
+prouvees), 19 conditions tiennent, zones a conflit origin (constructeur/setDistance/
+destination de replayAudio) intactes. Gates finaux TRANSVERSES : `make check-types` vert,
+`make test-web` COMPLET **488 fichiers / 4772 tests verts** (14 skips preexistants),
+ESLint 0 par lot, go vet/gofmt propres, 4 tests de recherche Go sous garde env (skip
+propre sans corpus). Bilan des 4 lots : D (page) 0 P0/P1 apres correction P1 revue ;
+A (socles) refus MESURE du raffinement (33/32/31 % de contradictions, seuil 5 %) + visuel
++ compteur mesure ; B (drapeau) lisere/1,45/clignotement/onde, creux restaure par
+ecretage ; C rafale. 7 revues adversariales fraiches au total, P0+P1 partout a 0.
+
+**Conclusion / prochaine etape** : (1) commits par lot a autoriser par l'utilisateur
+(fichiers disjoints, 4 commits proposes) ; (2) verifications ECRAN utilisateur (D/A/B,
+listes aux gates [!] du plan) et ECOUTE (C-5) ; (3) fusion : brancher depuis feat/v75 —
+attention a la divergence origin (chantier rejeu-capture, zones evitees par construction).
+
+## [2026-08-27] Retours rejeu — 2e passe utilisateur : A-3 ROUVERT et implante (regle d'affichage)
+
+**Statut** : Complete (worktree `replay-retours-0827`, en attente d'autorisation de commit).
+
+**Decision technique principale** : l'utilisateur a contredit la conclusion d'A-3 avec un cas
+vecu (socle incertain alors que tous les joueurs etaient a l'autre bout de la map) — et il a
+raison : l'oracle d'A-2 etait CIRCULAIRE (la preuve d'absence vient du recensement
+d'images-cles, borne par la proximite des joueurs ; ~75 % des contradictions sur les 2 seuls
+films BTB 24-25 joueurs, arenes a ~0-10 %). La these n'etait pas refutee, seulement non
+confirmable par l'artefact. Implante comme REGLE D'AFFICHAGE : `padPresenceRefine.ts` (pur,
+R = 2 m sur base autoritaire 1064 — 69,1 % d'approches, passage median 0,36 m) — socle PLEIN
+tant qu'aucune approche, incertain a la premiere approche (segment clippe, geometrie TS ≡
+Go), vide a tHigh et compteur inchanges ; aucune approche -> tLow = tHigh − 1/64 d'image
+(sentinelle « jamais vide » libre, lame fractionnaire ~1,6 ms). Cout assume documente : une
+vraie disparition sans approche s'affiche pleine.
+
+**Resultats observes** : revue adversariale dediee = 1 P1 (chiffres du rayon melant les
+denominateurs — reecrits sur 1064) + 4 P2 (clip sans test discriminant -> assertion ajoutee,
+mutation prouvee ; lame 0,5 lisible par frames fractionnaires -> 1/64 + commentaire honnete ;
+plafond Math.min inatteignable supprime ; corde de trou de replication documentee sans
+correction, coherente avec le rendu), 16 conditions tiennent. Gates : tsc vert, vitest
+match-replay 83 fichiers / 1235 verts, ESLint 0. Aussi clarifie a l'utilisateur : le contour
+d'icone est une SILHOUETTE (aucun cercle — mauvais mot du resume), et le rappel du match est
+localise (en-tete X-LevelUp-Locale, memes libelles serveur que la page match).
+
+**Conclusion / prochaine etape** : 5e commit a autoriser ; verification ecran de son cas
+(socle plein quand tout le monde est loin, doute au premier passage) ; l'enquete artefact BTB
+reste la condition pour fiabiliser tHigh.
+
+## [2026-08-27] Retours rejeu — FUSION dans feat/v75 et PUSH
+
+**Statut** : Complete. `feat/v75` (local reconcilie avec origin par une autre session, +
+capture/cadrage victoire/gestes sonores/Oddball) fusionne dans `feat/replay-retours-0827`
+(4 conflits : plan statue conserve contre sa copie originale committee cote v75 ;
+thought_log en union ; fakeAudio compose robinet+rafale ; replayAudio.test garde les deux
+describe). Plafond `SOUND_CUT_MAX_S` releve 4 -> 12 s par le chantier des gestes sonores :
+les 2 scenarios de refus de rafale suivent desormais la constante. Gates : tsc vert, suite
+web complete 4963 verts / 14 skips, ESLint 0, hooks pre-push verts (vet CGO, govulncheck,
+ratchets, shared-social-gate). Push : `feat/replay-retours-0827` publie, `origin/feat/v75`
+avance en fast-forward `5ab8a448d..0f666d499`. Restent a l'utilisateur : verifications
+ecran (gates [!] du plan) et gate d'ecoute C-5.

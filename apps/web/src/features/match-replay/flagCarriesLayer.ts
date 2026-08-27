@@ -10,14 +10,29 @@
  *
  *  - `carried` — un fait DATÉ ferme le portage. Le drapeau est collé au marqueur de son porteur.
  *  - `carried_open` — RIEN ne ferme le portage : l'intervalle court jusqu'à la fin de l'axe et
- *    c'est une BORNE HAUTE. Même icône, ATTÉNUÉE — l'incertitude est à l'écran, pas dans une note.
- *  - `dropped` — le drapeau est au sol, à la position publiée, avec une RESPIRATION : il n'est
- *    porté par personne mais il est toujours en jeu.
+ *    c'est une BORNE HAUTE. Même icône, CREUSE — l'incertitude est à l'écran, pas dans une note.
+ *  - `dropped` — le drapeau est au sol, à la position publiée : il n'est porté par personne mais
+ *    il est toujours en jeu.
  *  - `home` — il est à sa base.
+ *
+ * QUI CLIGNOTE, ET POURQUOI (retour utilisateur du 2026-08-27 : le drapeau doit « clignoter hors
+ * de son socle »). Les TROIS états hors base — `carried`, `carried_open`, `dropped` — clignotent ;
+ * `home` est stable. La lecture que cela sert est celle d'un match de CTF : ce qui compte, c'est
+ * de repérer d'un coup d'œil qu'un drapeau est SORTI, sans avoir à comparer deux positions. Un
+ * clignotement au socle dirait l'inverse — que la situation est en cours — alors qu'un drapeau
+ * chez lui est justement le repos. `prefers-reduced-motion` éteint le clignotement : opacité
+ * pleine et fixe, le glyphe reste localisable (même règle que tous les effets du rejeu).
+ *
+ * L'ATTÉNUATION NE PORTE PLUS L'INCERTITUDE, LE CREUX LA PORTE. `carried_open` clignote comme les
+ * autres états hors base et garde son fanion CREUX : deux signaux pour deux choses différentes —
+ * le clignotement dit « hors de sa base », le creux dit « fin non datée ». Une opacité faible en
+ * plus les aurait confondus, et le clignotement l'aurait de toute façon effacée.
  *
  * LA BASE PORTE UN ÉTAT PRÉSENT / ABSENT, et c'est la lecture que le plan demande : quand le
  * drapeau est `home`, le glyphe se pose PLEIN sur sa base ; quand il est ailleurs, la base garde
- * un glyphe ATTÉNUÉ — « le drapeau n'est pas là ». Rien de plus : ni anneau, ni compte à rebours.
+ * un glyphe ATTÉNUÉ et FIXE — « le drapeau n'est pas là ». Ce rappel d'absence NE clignote PAS :
+ * c'est un repère de lieu, pas un événement ; le faire battre ferait deux clignotements
+ * concurrents à l'écran pour un seul drapeau. Rien de plus : ni anneau, ni compte à rebours.
  *
  * POURQUOI LA BASE VIENT DES SPANS `home` ET NON DE `mapObjectives`. Les deux disent la même
  * position — le serveur résout les socles `flag_spawn` par `map_id` avant de publier le calque —
@@ -101,7 +116,12 @@ export function homeAnchorOf(carry: ReplayFlagCarryReady): XY | null {
 export interface FlagCarriesStyle {
   /** Encre du drapeau de cette équipe ; l'appelant sert le neutre du thème s'il ne sait pas. */
   colorOfTeam: (team: number) => string
-  /** Mouvement réduit : la respiration du drapeau au sol devient une opacité constante. */
+  /**
+   * Encre du FOND, résolue par l'appelant elle aussi : c'est celle du liseré posé sous le
+   * glyphe. Ce fichier ne connaît AUCUN token — il ne sait même pas quel thème est actif.
+   */
+  outline: string
+  /** Mouvement réduit : le clignotement hors base devient une opacité constante. */
   reducedMotion: boolean
 }
 
@@ -109,15 +129,16 @@ export interface FlagCarriesStyle {
 // il se pose À CÔTÉ du porteur, il ne doit pas le remplacer.
 //
 // ÉLARGI DE 20 % LE 2026-08-26 (retour utilisateur : « le drapeau faudrait les faire un tout
-// petit peu plus gros »). C'est un AJUSTEMENT, pas un changement d'échelle : à 13 px de hampe le
-// fanion faisait 9 × 6,5 px, et sur un fond de carte chargé il se confondait avec les repères
-// voisins. Les trois cotes du glyphe montent ensemble — les élargir séparément déformerait le
-// dessin — et le décalage ne bouge PAS : le glyphe grandit vers le haut et la droite, donc son
-// ancrage sur le point qu'il qualifie reste le même.
+// petit peu plus gros »), PUIS DE 21 % DE PLUS LE 2026-08-27 (même lecteur, même écran : « le
+// rendre aussi plus gros » — 1,2 ne suffisait pas). C'est toujours un AJUSTEMENT, pas un
+// changement d'échelle : à 13 px de hampe le fanion faisait 9 × 6,5 px, et sur un fond de carte
+// chargé il se confondait avec les repères voisins. Les trois cotes du glyphe montent ensemble —
+// les élargir séparément déformerait le dessin — et le décalage ne bouge PAS : le glyphe grandit
+// vers le haut et la droite, donc son ancrage sur le point qu'il qualifie reste le même.
 //
 // LE RAYON DE SURVOL SUIT, et il le doit : il couvre la hampe et le fanion. Le laisser à 12
 // aurait rendu insurvolable la part de glyphe gagnée par l'élargissement.
-const FLAG_GLYPH_SCALE = 1.2
+const FLAG_GLYPH_SCALE = 1.45
 const FLAG_POLE_H = 13 * FLAG_GLYPH_SCALE
 const FLAG_WING_W = 9 * FLAG_GLYPH_SCALE
 const FLAG_WING_H = 6.5 * FLAG_GLYPH_SCALE
@@ -125,17 +146,51 @@ const FLAG_WING_H = 6.5 * FLAG_GLYPH_SCALE
 const FLAG_OFFSET_X = 6
 const FLAG_OFFSET_Y = 2
 const FLAG_STROKE_WIDTH = 1.6
+/**
+ * LISERÉ À L'ENCRE DU FOND — débord de chaque côté du trait, en pixels d'écran.
+ *
+ * POURQUOI (retour utilisateur du 2026-08-27 : le drapeau veut « un contour »). Le glyphe se
+ * pose sur un fond de carte photographique : selon la zone, l'encre d'équipe passe sur du clair
+ * ou du sombre, et son bord se dissout. La MÊME silhouette reposée dessous, plus épaisse, à
+ * l'encre du fond, lui rend un bord franc sans lui inventer de couleur — c'est la technique
+ * déjà employée par les vignettes de socle, et la seule qui marche dans les DEUX thèmes.
+ */
+const FLAG_OUTLINE_PAD = 1.6
+/** Épaisseur du trait de liseré : le trait du glyphe, débordé des deux côtés. */
+const FLAG_OUTLINE_WIDTH = FLAG_STROKE_WIDTH + 2 * FLAG_OUTLINE_PAD
 /** Rayon de SURVOL, en pixels : il couvre la hampe et le fanion, sans déborder sur le voisin. */
 export const FLAG_HIT_RADIUS = 12 * FLAG_GLYPH_SCALE
 
-/** Opacité pleine : un fait daté (drapeau porté, ou à sa base). */
+/** Opacité pleine : le drapeau à sa base, et le haut du clignotement. */
 const ALPHA_SOLID = 0.95
-/** Opacité atténuée : `carried_open` (fin non datée) et la base d'un drapeau absent. */
+/**
+ * Opacité atténuée — elle ne sert PLUS QU'À LA BASE VIDE depuis le 2026-08-27 : c'est un rappel
+ * d'absence, il doit rester en retrait du glyphe vivant. `carried_open`, lui, dit son incertitude
+ * par son fanion creux (cf. l'en-tête) et non plus par une opacité faible.
+ */
 const ALPHA_FAINT = 0.38
-/** Bornes de la respiration du drapeau au sol, et sa période en images. */
-const BREATH_MIN = 0.55
-const BREATH_MAX = 0.95
-const BREATH_PERIOD_FRAMES = 22
+/**
+ * Bornes du CLIGNOTEMENT hors base. Le creux ne descend jamais sous `BLINK_MIN` : un glyphe qui
+ * s'éteint tout à fait deviendrait introuvable une demi-seconde sur deux, et le lecteur perdrait
+ * ce que le clignotement était censé lui montrer.
+ */
+const BLINK_MIN = 0.35
+const BLINK_MAX = ALPHA_SOLID
+/**
+ * Période du clignotement, EN IMAGES — 10 images ≈ 1 s au pas de 100 ms documenté du rejeu.
+ *
+ * Elle est en images et non en millisecondes pour la même raison que l'ancienne respiration : le
+ * calque ne reçoit que l'index d'image, jamais l'horloge du document. Conséquence assumée — un
+ * film au pas différent clignoterait plus vite ou plus lentement ; aucun n'a été mesuré à ce
+ * jour, et la lecture ne dépend pas de la période exacte.
+ *
+ * LE BATTEMENT EST UN COSINUS, ET C'EST MESURABLE : les images sont ENTIÈRES, et sur une période
+ * paire un sinus ne tombe sur aucun de ses extrema (ils arrivent à la demi-image 2,5 et 7,5).
+ * L'amplitude réellement affichée y perdait 5 % à chaque bord — 0,36..0,94 au lieu de 0,35..0,95.
+ * Le cosinus place ses deux extrema sur des images entières : le clignotement montre toute sa
+ * course, et les bornes ci-dessus sont ce qu'on voit, pas une intention.
+ */
+const BLINK_PERIOD_FRAMES = 10
 
 /**
  * ReplayFlagPaint — ce que le calque reçoit de l'appelant (`useReplayFlagCarries`).
@@ -166,13 +221,25 @@ export function flagPointAt(now: FlagNow, frame: number, posOf: FlagCarriesInput
   return { x: now.x, y: now.y }
 }
 
-/** Opacité du glyphe pour un état — la respiration du `dropped` comprise. */
-function alphaOf(state: string, frame: number, reducedMotion: boolean): number {
-  if (state === 'carried_open') return ALPHA_FAINT
-  if (state !== 'dropped') return ALPHA_SOLID
-  if (reducedMotion) return (BREATH_MIN + BREATH_MAX) / 2
-  const phase = (2 * Math.PI * frame) / BREATH_PERIOD_FRAMES
-  return BREATH_MIN + (BREATH_MAX - BREATH_MIN) * (0.5 + 0.5 * Math.sin(phase))
+/**
+ * flagBlinkAlpha — l'opacité du glyphe à cette image : STABLE à la base, CLIGNOTANTE ailleurs.
+ *
+ * FONCTION PURE, exportée : le calque du crâne d'Oddball la réutilisera telle quelle (renvoi
+ * écrit dans PLAN_OBJECTIFS_VIVANTS_2E_LECTURE.md, décision 7) — un objet porté hors de son socle
+ * se lit de la même façon, et deux copies de cette formule battraient à des rythmes différents.
+ *
+ * UN ÉTAT INCONNU SUIT LE COMPORTEMENT « PRÉSENT » — opacité pleine et fixe. C'est la règle déjà
+ * posée par l'en-tête pour les artefacts plus récents que ce code : l'objet EST quelque part,
+ * l'artefact le dit, et faire clignoter ce qu'on ne sait pas nommer affirmerait « il est sorti ».
+ *
+ * Elle remplace l'ancienne respiration du `dropped` (2026-08-27) : les deux auraient dit la même
+ * chose de deux façons, et l'utilisateur en a demandé une seule.
+ */
+export function flagBlinkAlpha(state: string, frame: number, reducedMotion: boolean): number {
+  if (reducedMotion) return ALPHA_SOLID
+  if (state !== 'carried' && state !== 'carried_open' && state !== 'dropped') return ALPHA_SOLID
+  const phase = (2 * Math.PI * frame) / BLINK_PERIOD_FRAMES
+  return BLINK_MIN + (BLINK_MAX - BLINK_MIN) * (0.5 + 0.5 * Math.cos(phase))
 }
 
 /**
@@ -195,16 +262,18 @@ export function drawFlagCarries(
     const now = flagSpanAt(carry, frame)
     if (!now) continue
     const ink = layer.style.colorOfTeam(carry.team)
+    const outline = layer.style.outline
     const anchor = homeAnchorOf(carry)
     // LA BASE D'ABORD, et seulement quand le drapeau n'y est pas : c'est le fond de la lecture,
     // le glyphe vivant se pose par-dessus (ils coïncident quand l'état est `home`).
     if (anchor && now.state !== 'home') {
-      drawFlagGlyph(ctx, px(anchor), { ink, alpha: ALPHA_FAINT, hollow: true })
+      drawFlagGlyph(ctx, px(anchor), { ink, outline, alpha: ALPHA_FAINT, hollow: true })
     }
     const at = px(flagPointAt(now, frame, layer.posOf))
     drawFlagGlyph(ctx, at, {
       ink,
-      alpha: alphaOf(now.state, frame, layer.style.reducedMotion),
+      outline,
+      alpha: flagBlinkAlpha(now.state, frame, layer.style.reducedMotion),
       hollow: now.state === 'carried_open',
     })
   }
@@ -212,15 +281,97 @@ export function drawFlagCarries(
 }
 
 /** Ce que le tracé d'un glyphe a besoin de savoir (règle des 5 paramètres). */
-interface FlagGlyphPaint {
+export interface FlagGlyphPaint {
   ink: string
+  /** Encre du FOND : celle du liseré posé sous la silhouette (cf. FLAG_OUTLINE_PAD). */
+  outline: string
   alpha: number
   /** Fanion CREUX (liseré seul) : l'état est incertain, ou la base est vide. */
   hollow: boolean
 }
 
+/** Chemin de la HAMPE — tracé deux fois par glyphe (liseré puis trait), jamais recopié. */
+function traceFlagPole(ctx: CanvasRenderingContext2D, x: number, foot: number, top: number): void {
+  ctx.beginPath()
+  ctx.moveTo(x, foot)
+  ctx.lineTo(x, top)
+}
+
 /**
- * drawFlagGlyph trace le drapeau : une HAMPE verticale et un FANION triangulaire.
+ * Contour du FANION posé sur le chemin COURANT, sans l'ouvrir : c'est la seule copie de cette
+ * géométrie du fichier. Elle sert seule (`traceFlagWing`) et composée avec l'emprise du glyphe
+ * (`strokeWingOutlineOutside`) — un troisième triangle écrit à la main dériverait des deux autres.
+ */
+function wingSubpath(ctx: CanvasRenderingContext2D, x: number, top: number): void {
+  ctx.moveTo(x, top)
+  ctx.lineTo(x + FLAG_WING_W, top + FLAG_WING_H / 2)
+  ctx.lineTo(x, top + FLAG_WING_H)
+  ctx.closePath()
+}
+
+/** Chemin du FANION — même raison que la hampe : une seule géométrie pour les deux passes. */
+function traceFlagWing(ctx: CanvasRenderingContext2D, x: number, top: number): void {
+  ctx.beginPath()
+  wingSubpath(ctx, x, top)
+}
+
+/**
+ * strokeWingOutlineOutside dépose le liseré du fanion CREUX en n'en gardant que la moitié
+ * EXTÉRIEURE, par écrêtage.
+ *
+ * POURQUOI CE DÉTOUR (revue adversariale R1 du 2026-08-27, P1). Un trait de canvas est CENTRÉ sur
+ * son chemin : à 4,8 px, le liseré déborde de 2,4 px DE CHAQUE CÔTÉ, donc 2,4 px vers l'intérieur
+ * du fanion, dont le trait d'encre (1,6 px, soit 0,8 px vers l'intérieur) ne recouvre qu'un tiers.
+ * Sur un fanion de rayon inscrit 3,31 px, il ne restait que 4,64 px² de creux visible contre
+ * 21,1 px² avant le lot — le creux était comblé à ~87 %, et c'est lui, depuis ce même lot, qui
+ * porte SEUL la fin non datée de `carried_open` (l'atténuation lui a été retirée).
+ *
+ * LA RÈGLE `evenodd` FAIT LE TRAVAIL : le chemin d'écrêtage compose l'emprise du glyphe ET le
+ * fanion ; un point intérieur au fanion est entouré par DEUX sous-chemins — compte pair, donc
+ * HORS région. Le liseré ne peut alors se déposer que dehors, et le creux reste entier.
+ *
+ * `save`/`restore` encadrent strictement l'écrêtage : une région d'écrêtage laissée ouverte
+ * rognerait TOUS les calques suivants, et cela ne se verrait pas ici.
+ */
+function strokeWingOutlineOutside(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  top: number,
+  foot: number,
+): void {
+  ctx.save()
+  ctx.beginPath()
+  const m = FLAG_OUTLINE_WIDTH
+  ctx.rect(x - m, top - m, FLAG_WING_W + 2 * m, foot - top + 2 * m)
+  wingSubpath(ctx, x, top)
+  ctx.clip('evenodd')
+  traceFlagWing(ctx, x, top)
+  ctx.stroke()
+  ctx.restore()
+}
+
+/**
+ * drawFlagGlyph trace le drapeau : une HAMPE verticale et un FANION triangulaire, posés sur un
+ * LISERÉ à l'encre du fond — la même silhouette, dessous, plus épaisse (2026-08-27).
+ *
+ * LE LISERÉ SE DÉPOSE PAR DEUX VOIES, ET LE FANION CREUX EXIGE LA SECONDE (revue R1 du
+ * 2026-08-27, P1) :
+ *
+ *  - FANION PLEIN et HAMPE — voie simple : le liseré est tracé AVANT, puis le remplissage (ou,
+ *    pour la hampe, le trait d'encre) recouvre ce qui déborde vers l'intérieur. Une hampe n'a
+ *    pas d'intérieur, un fanion plein est repeint : rien ne subsiste du débord intérieur.
+ *  - FANION CREUX — voie écrêtée (`strokeWingOutlineOutside`) : là, RIEN ne repeint l'intérieur.
+ *    Le trait de canvas étant CENTRÉ sur son chemin, la moitié intérieure du liseré (2,4 px) s'y
+ *    déposait et le trait d'encre n'en recouvrait que 0,8 px : il restait 4,64 px² de creux sur
+ *    les 21,1 px² d'avant le lot — comblé à ~87 %. L'écrêtage `evenodd` retire l'intérieur du
+ *    fanion de la région de dessin, et le creux redevient entier.
+ *
+ * CE N'EST PAS UN DÉTAIL DE STYLE : depuis ce même lot, le creux porte SEUL la fin non datée de
+ * `carried_open` (l'atténuation lui a été retirée au profit du clignotement). Un creux comblé,
+ * c'est un état qui ne se distingue plus de `carried`.
+ *
+ * IL SUIT L'OPACITÉ DU GLYPHE : un rappel d'absence atténué ne doit pas être cerné d'un trait
+ * franc, sinon c'est le liseré qu'on voit et l'atténuation ne dit plus rien.
  *
  * Le point servi est le pied de la hampe, décalé pour se poser à côté du marqueur qu'il
  * qualifie plutôt que dessus. Tracé au canvas, sans image : cf. l'en-tête du fichier.
@@ -234,20 +385,31 @@ export function drawFlagGlyph(
   const foot = at.y - FLAG_OFFSET_Y
   const top = foot - FLAG_POLE_H
   ctx.globalAlpha = paint.alpha
+  // La pointe du fanion est un angle aigu : en `miter` le liseré y pousserait une aiguille
+  // plusieurs fois plus longue que le débord demandé. `round` la borne au débord.
+  ctx.lineJoin = 'round'
+  ctx.strokeStyle = paint.outline
+  ctx.lineWidth = FLAG_OUTLINE_WIDTH
+  traceFlagPole(ctx, x, foot, top)
+  ctx.stroke()
+  // Le fanion CREUX écrête son liseré ; le plein n'en a pas besoin (son remplissage recouvre le
+  // débord intérieur), et l'écrêter pour rien coûterait un save/clip/restore par image et par
+  // drapeau.
+  if (paint.hollow) strokeWingOutlineOutside(ctx, x, top, foot)
+  else {
+    traceFlagWing(ctx, x, top)
+    ctx.stroke()
+  }
   ctx.strokeStyle = paint.ink
   ctx.fillStyle = paint.ink
   ctx.lineWidth = FLAG_STROKE_WIDTH
-  ctx.beginPath()
-  ctx.moveTo(x, foot)
-  ctx.lineTo(x, top)
+  traceFlagPole(ctx, x, foot, top)
   ctx.stroke()
-  ctx.beginPath()
-  ctx.moveTo(x, top)
-  ctx.lineTo(x + FLAG_WING_W, top + FLAG_WING_H / 2)
-  ctx.lineTo(x, top + FLAG_WING_H)
-  ctx.closePath()
+  traceFlagWing(ctx, x, top)
   if (paint.hollow) ctx.stroke()
   else ctx.fill()
+  // L'état du contexte ne fuit pas vers les calques suivants (même règle que `globalAlpha`).
+  ctx.lineJoin = 'miter'
 }
 
 /** Ce qu'un survol a trouvé : le drapeau, son état LU À CET INSTANT, et où poser l'infobulle. */

@@ -35,6 +35,7 @@ import { useTitleSlug } from '@/lib/title-routing'
 
 import { catalogText } from './catalogLabel'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
+import { refinePadPresence } from './padPresenceRefine'
 import type { ReplayText } from './i18nContract'
 import type { PlacementView } from './placementShapes'
 import { tintedIconCanvas } from './replayDraw'
@@ -49,13 +50,12 @@ import {
   type PadScale,
 } from './weaponPadFamilies'
 import {
-  drawWeaponPadsLayer,
-  padAt,
-  padRespawnSecondsAt,
+  padRespawnAt,
   padStateAt,
-  type PadIcon,
+  type PadRespawn,
   type PadState,
-} from './weaponPadsLayer'
+} from './weaponPadTime'
+import { drawWeaponPadsLayer, padAt, type PadIcon } from './weaponPadsLayer'
 
 /** Le catalogue d'ARMES du document, tel qu'il arrive : une table par identifiant, ou rien. */
 type PadLabels = ReplayDocumentReady['weaponLabels']
@@ -169,8 +169,14 @@ export interface WeaponPadHover {
   /** Nom de l'arme dans la langue du lecteur, ou son identifiant quand rien ne la nomme. */
   name: string
   state: PadState
-  /** Secondes avant la réapparition attendue, ou null (cycle non établi, socle non vide). */
-  respawnS: number | null
+  /**
+   * Le compte à rebours ET SA PROVENANCE, ou null (socle non vide, ou aucune source).
+   *
+   * L'OBJET PLUTÔT QU'UN NOMBRE depuis D3 (2026-08-27) : l'infobulle doit distinguer la
+   * prochaine apparition VUE dans le film de celle que le cycle PRÉDIT. Le nombre seul
+   * mélangeait les deux et faisait lire une prédiction comme une mesure.
+   */
+  respawn: PadRespawn | null
 }
 
 export interface WeaponPadsInput {
@@ -216,11 +222,22 @@ export function useReplayWeaponPads({
   redraw,
 }: WeaponPadsInput): WeaponPads {
   // LES SOCLES DU MATCH, POSÉS AUX EMPLACEMENTS DE LA CARTE quand le serveur les a croisés
-  // (cf. crossedWeaponPads). Mémoïsé sur les deux sources : le tableau change d'identité à
-  // chaque croisement, et il commande le tracé, le survol ET la cuisson des vignettes.
+  // (cf. crossedWeaponPads), PUIS leur incertitude ramenée à ce qu'un joueur a pu faire
+  // (cf. refinePadPresence, décision utilisateur du 2026-08-27).
+  //
+  // L'ORDRE DES DEUX EST LE BON, et il n'est pas indifférent : le raffinement mesure des
+  // DISTANCES au socle, il doit donc travailler sur la position FINALE. Le croisement ne la
+  // déplace que de moins d'un mètre par construction — le serveur ne sert un emplacement de
+  // carte que si un socle du match le confirme à moins d'un mètre — mais c'est justement
+  // l'échelle du rayon d'approche, et l'inversion se paierait aux limites.
+  //
+  // UNE SEULE PASSE PAR DOCUMENT, jamais par image : le raffinement parcourt les segments de
+  // trace de chaque fenêtre d'incertitude, ce qui est trop cher à refaire soixante fois par
+  // seconde. Mémoïsé sur les trois sources, comme le tableau qu'il rend.
   const pads = useMemo(
-    () => crossedWeaponPads(doc.weaponPads, doc.mapWeaponPads),
-    [doc.weaponPads, doc.mapWeaponPads],
+    () =>
+      refinePadPresence(crossedWeaponPads(doc.weaponPads, doc.mapWeaponPads), doc.tracks),
+    [doc.weaponPads, doc.mapWeaponPads, doc.tracks],
   )
   const [hover, setHover] = useState<WeaponPadHover | null>(null)
   const iconsRef = useRef<Map<string, PadIcon>>(new Map())
@@ -249,8 +266,14 @@ export function useReplayWeaponPads({
   //
   // DEUX TEINTURES PAR VIGNETTE depuis le 2026-08-18 : le CORPS à l'encre du texte, le LISERÉ
   // à celle du fond. Un canvas ne sait pas cerner une image ; le calque repose donc la même
-  // forme tout autour, et il lui faut les deux. Une image FINIE (non masque) n'a ni l'une ni
-  // l'autre : elle se pose telle quelle, sans liseré — on ne peut pas la reteindre.
+  // forme tout autour, et il lui faut les deux.
+  //
+  // LE LISERÉ EST SERVI POUR TOUTES LES IMAGES depuis le 2026-08-27, images FINIES comprises
+  // (retour utilisateur : « icône AVEC contour »). Il était refusé aux non-masques au motif
+  // qu'on ne peut pas les reteindre — vrai pour le CORPS, faux pour le liseré : cerner ne
+  // demande que la SILHOUETTE, et `tintedIconCanvas` la rend de n'importe quelle image à alpha
+  // (composition `source-in`, qui ne garde que l'alpha et le remplit de l'encre). Seul le
+  // corps distingue donc encore les deux cas.
   useEffect(() => {
     const map = new Map<string, PadIcon>()
     iconsRef.current = map
@@ -263,12 +286,10 @@ export function useReplayWeaponPads({
       const tinted = ref.tinted
       const im = new Image()
       im.onload = () => {
-        map.set(
-          weapon,
-          tinted
-            ? { fill: tintedIconCanvas(im, ink.fill), outline: tintedIconCanvas(im, ink.outline) }
-            : { fill: im, outline: null },
-        )
+        map.set(weapon, {
+          fill: tinted ? tintedIconCanvas(im, ink.fill) : im,
+          outline: tintedIconCanvas(im, ink.outline),
+        })
         redraw()
       }
       im.src = ref.url
@@ -330,13 +351,17 @@ export function useReplayWeaponPads({
           at,
           name: nameOf(found.weapon),
           state: padStateAt(found, frame),
-          respawnS: padRespawnSecondsAt(found, frame, frameMs),
+          respawn: padRespawnAt(found, frame, frameMs),
         }
+        // LE COMPTE SE COMPARE CHAMP À CHAMP depuis qu'il est un objet : `padRespawnAt` en
+        // construit un neuf à chaque appel, et une comparaison d'identité rendrait TOUJOURS un
+        // état différent — l'infobulle se recréerait à chaque mouvement de pointeur.
         if (
           prev &&
           prev.pad === next.pad &&
           prev.state === next.state &&
-          prev.respawnS === next.respawnS &&
+          prev.respawn?.seconds === next.respawn?.seconds &&
+          prev.respawn?.measured === next.respawn?.measured &&
           prev.at.x === at.x &&
           prev.at.y === at.y
         ) {
