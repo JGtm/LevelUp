@@ -93,28 +93,53 @@ au patron du crane libre, et — si son gate tient — **l'etat des SITES d'amor
 
 ### A1 — Identite de l'objet bombe (gate ECRIT, herite du crane/drapeau)
 
-- [ ] A1.1 Instrument sous garde d'environnement (patron des campagnes D) : mots MPP des
+- [x] A1.1 Instrument sous garde d'environnement (patron des campagnes D) : mots MPP des
       creations `ti=42` ecartees du catalogue d'armes, nes a <= 3 m d'un site
       `assault_bomb` du catalogue statique.
-- [ ] A1.2 Temoin de selectivite : aucun AUTRE mot ecarte ne reunit la naissance au site
+      — Fait 2026-08-27 (`assaut_a1_identite_test.go`, recette D4, classes temporelles du
+      protocole §3). 7 films mesures ; `34bb3bc8` NON EXPLOITABLE (0/617 creations
+      resolues au catalogue d'armes = bloc MPP lu aux mauvaises largeurs — la lecon D4,
+      ni pour ni contre). Denominateurs publies : 57-350 ecartees, 32-272 mots distincts
+      par film.
+- [x] A1.2 Temoin de selectivite : aucun AUTRE mot ecarte ne reunit la naissance au site
       ET la coincidence avec le debut de manche / la remise en jeu.
-- [ ] A1.3 GATE (ecrit ici, ne bouge pas) : **UN SEUL mot candidat, LE MEME sur >= 2
+      — Fait 2026-08-27 : les deux jambes publiees separement par mot. La jambe du SITE
+      est VIDE par construction (0 site au catalogue, protocole §1) ; la jambe
+      temporelle vit (mots recurrents a coincidences non nulles : `0x3FEE4FCF` sur 7/7
+      films mesures, `0xE9E7FF79` sur Absolution + les 3 Curfew) — aucun mot ne peut
+      reunir les deux, AUCUN candidat n'est elu.
+- [!] A1.3 GATE (ecrit ici, ne bouge pas) : **UN SEUL mot candidat, LE MEME sur >= 2
       films admis, temoin = 0 autre candidat.** Log fige `A1_identite_bombe.log`.
       Si rate : bombe `[!]` avec chiffres, le lot continue en A3/A4 (A2 tombe).
+      — GATE RATE 2026-08-27, chiffre : 0 candidat sur 7/7 films mesures (1 exige sur
+      >= 2), cause nommee = ancrage au site INDISPONIBLE (0 site `assault_bomb` au
+      catalogue pour les 5 cartes du corpus — §1 du protocole, decouverte §5). Ce zero
+      chiffre le catalogue manquant, il ne refute PAS l'objet bombe : condition de
+      reprise = sites `assault_bomb` des cartes du corpus au catalogue (re-extraction
+      mvar / chasse au hash), puis rejouer CET instrument tel quel. **BOMBE `[!]` — A2
+      TOMBE, le lot continue en A3/A4.**
 
 ### A2 — Publication des vies libres de la bombe (SEULEMENT si A1 tient)
 
-- [ ] A2.1 Entree `[[objective_objects]]` famille `bomb` au manifeste (EN+FR), exclusions
+> A2 TOMBE EN BLOC le 2026-08-27 : le gate A1.3 est rate (0 candidat, ancrage au site
+> indisponible — voir A1.3). La condition d'ouverture du plan (« SEULEMENT si A1 tient »)
+> n'est pas remplie ; aucun item ci-dessous n'est executable sans identite d'objet.
+
+- [!] A2.1 Entree `[[objective_objects]]` famille `bomb` au manifeste (EN+FR), exclusions
       de socles verifiees comme pour `ball` (`ground_weapon_flag_exclusion_test.go` :
       etendre le garde si necessaire).
-- [ ] A2.2 Verifier si un bump de schema est requis (a priori non : famille = donnee).
+      — Sans mot MPP etabli, il n'y a pas d'`id` a ecrire au manifeste.
+- [!] A2.2 Verifier si un bump de schema est requis (a priori non : famille = donnee).
       S'il l'est : STOP, arbitrage superviseur au CR (ne pas bumper seul).
-- [ ] A2.3 Rendu web : la famille `bomb` dans le calque `objectiveObjects` (glyphe
+      — Tombe avec A2.1.
+- [!] A2.3 Rendu web : la famille `bomb` dans le calque `objectiveObjects` (glyphe
       distinct, encre neutre, patron du crane). Strings i18n FR+EN si un libelle surface.
-- [ ] A2.4 Re-cuisson des TEMOINS seulement (>= 1 film admis par variante Neutral/One
+      — Tombe avec A2.1.
+- [!] A2.4 Re-cuisson des TEMOINS seulement (>= 1 film admis par variante Neutral/One
       Bomb), avec verification du CONTENU (recette du registre : bonne version != bonne
       configuration ; racine temporaire a jonctions — config du worktree, data du
       principal). Publier le compte de vies libres par temoin.
+      — Rien a re-cuire : aucune donnee nouvelle ne surface.
 
 ### A3 — Etat des sites d'amorcage (diagnostic puis publication conditionnelle)
 
