@@ -253,7 +253,7 @@ func CuitCarteNative(ctx context.Context, opts OptionsCuisson) (*Rendu, BilanCui
 	}
 	appliqueFrontiere(ctx, r, &b, opts, zJeu)
 	mesureEtRogneZones(ctx, r, &b, opts)
-	borneALaBoite(ctx, r, &b, opts)
+	borneALaBoite(ctx, r, &b, opts.BoiteUtile)
 	JugeParLesAncres(r, &b, opts.Ancres)
 	if !opts.SansEau {
 		PoseEauDepuisModule(ctx, r, &b, opts.CheminModule)
@@ -573,8 +573,7 @@ func mesureEtRogneZones(ctx context.Context, r *Rendu, b *BilanCuisson, opts Opt
 // borneALaBoite efface la matiere hors du rectangle monde declare, s'il l'est. LEVIER MANUEL :
 // il est journalise avec ses bornes, pour qu'un fond borne a la main se reconnaisse au premier
 // coup d'oeil dans les logs.
-func borneALaBoite(ctx context.Context, r *Rendu, b *BilanCuisson, opts OptionsCuisson) {
-	bo := opts.BoiteUtile
+func borneALaBoite(ctx context.Context, r *Rendu, b *BilanCuisson, bo [4]float64) {
 	if bo[2] <= bo[0] || bo[3] <= bo[1] {
 		return
 	}

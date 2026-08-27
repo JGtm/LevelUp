@@ -196,6 +196,14 @@ func (e *environnement) cuitForge(ctx context.Context) []bilanAsset {
 			Cle:                 carte.MapID,
 			Echelle:             e.echelleDe(carte.MapID),
 			CibleCadrePx:        himap.CibleCadrePx,
+			// Les memes leviers que la chaine native : jusqu au 2026-08-27 une carte Forge
+			// n en recevait aucun, et un reglage declare pour elle etait silencieusement
+			// ignore — trois cuissons d Isolation a trois plafonds ont rendu le MEME octet.
+			EcreteToits:            e.ecreteToitsDe(carte.MapID),
+			PlafondArene:           e.plafondAreneDe(carte.MapID),
+			SubstitutionSansPortee: e.substitutionSansPorteeDe(carte.MapID),
+			BoiteUtile:             e.boiteUtileDe(carte.MapID),
+			RogneAuxVolumesDeMort:  e.rogneAuxVolumesDeMortDe(carte.MapID),
 		})
 		if err != nil {
 			slog.ErrorContext(ctx, "cuisson Forge", "err", err, "carte", carte.Nom, "map_id", carte.MapID)

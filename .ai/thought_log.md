@@ -73197,3 +73197,28 @@ l'utilisateur a corrige avant moi.
 
 **Conclusion / prochaine etape** : departager les quatre bsp de `common-rtx-new` (surface,
 ancres AVEC SOL, ou references du `levl`), rearmer `moduleGeometrie`, cuire Live Fire.
+
+## [2026-08-27] Isolation : la chaine Forge n'avait aucun levier de rendu
+
+**Statut** : En cours (Isolation non close). Correctif de fond livre.
+
+**Decision technique principale** : les leviers de rendu (`EcreteToits`, `BoiteUtile`,
+`SubstitutionSansPortee`) ne vivaient que dans la chaine NATIVE. Declares pour une carte Forge,
+ils etaient silencieusement ignores — trois cuissons d'Isolation a trois plafonds ont rendu le
+MEME octet, ce qui l'a prouve. Ils passent desormais aux deux chaines.
+
+**Trouvaille** : l'equivalent Forge du masque de callouts, ce sont **les volumes de mort**. Les
+callouts disent ou l'on joue, les volumes de mort disent ou l'on meurt ; la cuisson les
+reconnait depuis le 10/08 mais ne s'en servait que pour les ecarter du dessin — leur POSITION
+n'avait jamais servi. `BoiteDesVolumesDeMort` en tire l'emprise (demi-extents de la forme, pire
+cas par la demi-diagonale). Sur Isolation : 6 volumes, le canevas et ses dalles de ciel
+disparaissent, cadre 2 628 -> 1 727 px, couverture 93,9 -> 36,4 %, 25/25 ancres conservees.
+Ce levier vaut pour les ~40 cartes Forge, pas seulement pour celle-ci.
+
+**Ce qui n'est pas resolu** : le « gribouillis » d'Isolation resiste a l'ecretage a 4, 2 et 1 m.
+Ce n'est donc pas un toit au-dessus du sol joue mais de la matiere A HAUTEUR DE SOL — des
+modeles de vegetation ou de lianes, poses en nombre. Une coupe par altitude ne peut rien contre
+cela par construction. Prochain pas ecrit : mesurer l'emprise des modeles TYPE PAR TYPE et
+ecarter les types fautifs.
+
+**Conclusion / prochaine etape** : diagnostic par type sur Isolation, puis re-cuisson.
