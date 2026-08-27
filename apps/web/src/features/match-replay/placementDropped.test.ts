@@ -28,19 +28,20 @@ const lache = (family: string, id = OVERSHIELD_ID) =>
   pose({ family, id, origin: PLACEMENT_ORIGIN_DROPPED })
 
 describe('PLACEMENT_DROPPED_FAMILIES — la liste de ce qui vaut le coup', () => {
-  it('porte les cinq équipements déployables du manifeste', () => {
+  it('porte les six équipements déployables du manifeste', () => {
     expect([...PLACEMENT_DROPPED_FAMILIES].sort()).toEqual(
       [
         'powerup_camo',
         'powerup_overshield',
         'repair_field',
         'sensor',
+        'shroud_screen',
         'threat_seeker',
         'translocator_beacon',
         'wall',
       ].sort(),
     )
-    expect(DROPPED_EQUIPMENT_FAMILIES).toHaveLength(5)
+    expect(DROPPED_EQUIPMENT_FAMILIES).toHaveLength(6)
   })
 
   it('ne porte NI grenade NI capacité — c’est la moitié de la règle', () => {

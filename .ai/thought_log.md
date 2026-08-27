@@ -73717,3 +73717,42 @@ le lien dans le calque.
 **Prochaine etape** : verdict utilisateur sur la planche `1b08c056` (item R3-1 recolore,
 R3-2 toujours en attente du choix parmi trois, R3-3 nouveau pour le passage), puis commit sur
 `feat/v75` — 30+ fichiers en attente du go.
+
+## [2026-08-27] Rejeu 2D — l'ECRAN OCCULTANT prend sa forme : opaque, pions au-dessus
+
+**Statut** : Complete
+
+**Decision** : verdict utilisateur rendu sur les trois propositions mises cote a cote sur la
+planche `1b08c056` (item R3-2) — « opaque et points au-dessus ». La famille `shroud_screen`
+passe donc du rendu neutre a une forme propre (`PLACEMENT_RENDER.shroud_screen = 'shroud'`),
+et l'objet acheve son parcours en trois etapes distinctes du meme jour : NOMME (par hachage
+FNV-1 de sa banque sonore `sb_007_abl_shroud`), SONORE (`shroud_deploy`), puis DESSINE.
+
+**Ce que la variante retenue a de particulier** : elle ne coute AUCUNE ligne de code pour la
+partie « pions au-dessus ». Le calque des poses est deja trace avant celui des pistes
+(`drawEquipmentPlacementsLayer` puis `drawTracksLayer` dans `ReplayCanvas`) — l'ordre du
+composant fait le travail. Les deux autres propositions, elles, auraient exige de tracer
+l'ecran APRES les pistes, donc de casser l'ordre des calques.
+
+**Le rayon est DECLARE, pas mesure**, et c'est ecrit tel quel dans le code : le film ne porte
+aucune portee pour cet objet, la source officielle qui chiffre le detecteur (4,25 m) ne le
+chiffre pas, et rien n'a ete mesure dans le corpus. `SHROUD_RADIUS_M = 6` est un choix d'ecran,
+volontairement le double du champ de reparation pour que les trois disques du calque (capteur
+4,25 m, champ 3 m, ecran 6 m) ne se confondent pas. Le BORD FLOU porte cette reserve a l'ecran,
+la ou le champ porte la sienne par un pointille : deux conventions pour la meme reserve, et la
+difference est du sens — le champ a une borne dont on doute, l'ecran n'a pas de borne du tout.
+
+**Garde-rails** : deux ont mordu, tous deux a raison, et ils ont ETENDU le lot.
+- `placementDropped.guard.test.ts` : toute famille qui se dessine DEPLOYEE doit se dessiner
+  LACHEE, sinon elle disparait de la carte a la mort de son porteur. `shroud_screen` entre donc
+  dans `DROPPED_EQUIPMENT_FAMILIES` (5 -> 6) dans le meme commit ;
+- le plafond de lignes de `equipmentPlacementsLayer.ts` (503 > 500) : l'echelle pixels/metre
+  est desormais lue UNE fois (`pxParM`) et partagee par les deux disques qui en dependent, ce
+  qui rend l'appel du champ de reparation a une seule ligne. 501 lignes — sous le seuil, et le
+  code y gagne : les deux disques ne peuvent plus diverger sur leur source d'echelle.
+
+**Gates** : `tsc -b` 0 (cache purge), `eslint src` 0 erreur, `vitest run` 4901 tests verts
+(3 nouveaux sur l'ecran : encre neutre, fondu sans anneau, zone sensible a la taille de la
+bulle).
+
+**Prochaine etape** : synchroniser `feat/v75` avec origin (7 commits d'ecart) puis pousser.
