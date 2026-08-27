@@ -21,6 +21,7 @@ const (
 	ObjectiveTypeZone  = "zone"  // Strongholds / Land Grab / Total Control
 	ObjectiveTypeHill  = "hill"  // King of the Hill
 	ObjectiveTypeSkull = "skull" // Oddball
+	ObjectiveTypeVip   = "vip"   // VIP (statborg-only : le film ne porte pas le bit VIP)
 )
 
 // Valeurs de domain.ObjectiveEvent.EventType (action).
