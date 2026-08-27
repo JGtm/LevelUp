@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "module": "1a6cfc2e-ec86-48e1-9464-1ce1bff6ed48",
+  "mapNames": [
+    "Lattice - Ranked",
+    "lattice_-_ranked_map"
+  ],
+  "image": "1a6cfc2e-ec86-48e1-9464-1ce1bff6ed48.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-27T07:41:35.5946802Z",
+  "style": "encre",
+  "calibration": {
+    "metersPerPixel": 0.043794167836507164,
+    "originX": -122.19000244140625,
+    "originY": 26.275698610941586,
+    "widthPx": 2911,
+    "heightPx": 2846,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 9,
+    "anchorsInFrame": 9,
+    "anchorsWithGround": 9,
+    "anchorMedianGapM": -0.35847199590043743,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 51.32000442504883,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.23064038195246145,
+    "covered": false,
+    "forgeObjects": 5032,
+    "forgeObjectsDrawn": 4980,
+    "forgeObjectsWithoutModel": 41,
+    "forgeDeathVolumes": 11
+  }
+}

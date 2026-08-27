@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "module": "c10c7e79-ec91-4f07-92e8-e570ed9ce79c",
+  "mapNames": [
+    "Refuge Heavies",
+    "refuge_heavies_map"
+  ],
+  "image": "c10c7e79-ec91-4f07-92e8-e570ed9ce79c.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-27T07:40:47.3338885Z",
+  "style": "encre",
+  "calibration": {
+    "metersPerPixel": 0.05148951975504557,
+    "originX": 60.06544335174561,
+    "originY": 156.52097778574625,
+    "widthPx": 2500,
+    "heightPx": 2767,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 33,
+    "anchorsInFrame": 33,
+    "anchorsWithGround": 33,
+    "anchorMedianGapM": -0.09416454894185478,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 51.73447509765625,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.3931445245451425,
+    "covered": true,
+    "cellsSubstituted": 1878120,
+    "forgeObjects": 5310,
+    "forgeObjectsDrawn": 5218,
+    "forgeObjectsWithoutModel": 56,
+    "forgeDeathVolumes": 36
+  }
+}

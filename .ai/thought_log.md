@@ -73161,3 +73161,39 @@ carte n'a ete recuite inutilement ni publiee a moitie.
 
 **Conclusion / prochaine etape** : verdict utilisateur sur la planche ; puis lot
 `cmd/mapobj-build` pour faire entrer les 28 cartes dans le catalogue d'objectifs.
+
+## [2026-08-27] 27 cartes Forge entrent au catalogue ; Live Fire localisee mais pas encore cuite
+
+**Statut** : Complete pour les 27 cartes. Live Fire : cause trouvee, cuisson non aboutie,
+report ecrit avec sa condition de reprise.
+
+**Decision technique principale** : la condition manquante des 28 cartes n'etait ni le `.mvar`
+ni le canevas mais **les ancres d'objectif**. `cmd/mapobj-build --from-file` les ingere HORS
+LIGNE depuis le `.mvar` deja en depot — aucun appel reseau, aucune authentification. 28 sur 28
+ingerees (de 0 a 50 objectifs), 27 declarees et cuites, zero echec. Cole Protocol reste dehors :
+son `.mvar` ne porte aucun objectif, donc aucun cadre a construire. Le catalogue de fonds passe
+de 57 a 84.
+
+**Correction d'un diagnostic errone, sur remarque de l'utilisateur** : « Live Fire j'y joue
+regulierement, ce doit etre une variante d'une autre map et le poids leger doit etre la diff. »
+J'avais conclu « geometrie non installee » a partir de la TAILLE du fichier (0,21 Mo contre 478
+pour sgh_streets) sans regarder son CONTENU. Mesure : le module de Live Fire porte 6 fichiers,
+dont un `levl` de 2,3 Mo — plus gros que celui de Recharge (664 Ko) — et aucun sbsp. C'est bien
+un delta. Et `common-rtx-new.module` porte QUATRE sbsp qu'aucune carte ne reclame, dont le
+premier (12 556 instances) CONTIENT les 24 ancres de Live Fire. La geometrie est installee,
+ailleurs. Leviers ajoutes : reglage `moduleGeometrie` (chemin d'un module porteur) et test
+`TestGeometrieLiveFireDansCommon` qui rejoue la preuve.
+
+**Ce qui n'a pas abouti, et pourquoi rien n'est publie** : la cuisson par ce chemin rend un
+decor qui n'est pas l'arene (antenne, escalier, vegetation ; 21/28 ancres au sol, couverture
+22 %). `ChoisitBSP` retient le bsp contenant le plus d'ancres, et deux des quatre les
+contiennent toutes — le critere ne les departage pas. Le fond a ete RETIRE et le reglage
+desarme : un mauvais fond vaut moins que pas de fond, parce qu'il se lit comme une carte juste.
+
+**Lecon a retenir** : deux diagnostics errones de suite (les 29 cartes « declarables », la
+geometrie « non installee ») ont la meme forme — conclure d'un indice indirect (le `.mvar`
+existe, le fichier est petit) sans ouvrir ce que l'indice pretend decrire. Les deux fois,
+l'utilisateur a corrige avant moi.
+
+**Conclusion / prochaine etape** : departager les quatre bsp de `common-rtx-new` (surface,
+ancres AVEC SOL, ou references du `levl`), rearmer `moduleGeometrie`, cuire Live Fire.

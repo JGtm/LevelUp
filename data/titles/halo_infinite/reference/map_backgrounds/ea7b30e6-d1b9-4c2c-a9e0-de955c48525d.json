@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "module": "ea7b30e6-d1b9-4c2c-a9e0-de955c48525d",
+  "mapNames": [
+    "Outlook",
+    "outlook_map"
+  ],
+  "image": "ea7b30e6-d1b9-4c2c-a9e0-de955c48525d.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-27T07:37:03.0968148Z",
+  "style": "encre",
+  "calibration": {
+    "metersPerPixel": 0.043616666634877524,
+    "originX": -74.25,
+    "originY": 50.96511654361089,
+    "widthPx": 3001,
+    "heightPx": 2371,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 9,
+    "anchorsInFrame": 9,
+    "anchorsWithGround": 9,
+    "anchorMedianGapM": -5.375138624530464,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 96.93999572753906,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.3010210566259018,
+    "covered": false,
+    "forgeObjects": 5617,
+    "forgeObjectsDrawn": 5583,
+    "forgeObjectsWithoutModel": 11,
+    "forgeDeathVolumes": 23
+  }
+}

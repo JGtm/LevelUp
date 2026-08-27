@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "module": "89dd4003-455c-4a1c-bcea-43acd514b20d",
+  "mapNames": [
+    "Dawnbreaker",
+    "dawnbreaker_map"
+  ],
+  "image": "89dd4003-455c-4a1c-bcea-43acd514b20d.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-27T07:59:03.3673186Z",
+  "style": "encre",
+  "calibration": {
+    "metersPerPixel": 0.061749422709147135,
+    "originX": -97.5647087097168,
+    "originY": 60.21752938842772,
+    "widthPx": 3001,
+    "heightPx": 2676,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 42,
+    "anchorsInFrame": 42,
+    "anchorsWithGround": 42,
+    "anchorMedianGapM": -0.02248789677615548,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 90.04656311035156,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.4995672528859031,
+    "covered": true,
+    "cellsSubstituted": 1657375,
+    "forgeObjects": 5196,
+    "forgeObjectsDrawn": 5075,
+    "forgeObjectsWithoutModel": 70,
+    "forgeDeathVolumes": 51
+  }
+}

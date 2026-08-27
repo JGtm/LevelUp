@@ -276,14 +276,176 @@ var CartesForge = []CarteForge{
 		FichierMvar:   "smallhalla_map.mvar",
 		ModuleCanevas: CanevasWetland,
 	},
-	// LE RELIQUAT, INSTRUIT LE 2026-08-26/27. Le lot du 13/08 et le reliquat du 16/08 avaient
-	// laisse dehors 29 cartes Forge JOUEES par les joueurs suivis. UNE SEULE a pu etre
-	// declaree : Solitude - Ranked. Les 28 autres n ont AUCUNE ancre d objectif dans
-	// map_objectives.json, et le cadre d un fond se construit sur les ancres — sans elles, la
-	// cuisson echoue par construction (« carte absente du catalogue d objectifs »). Avoir le
-	// .mvar et le canevas prouve ne suffit donc PAS : le catalogue d objectifs est la
-	// troisieme condition, et c est cmd/mapobj-build qui la remplit. Les 28 cartes attendent
-	// ce lot-la, elles sont listees dans .ai/V7.5/cartes/REGISTRE_CARTES.md.
+	// LES 27 CARTES DU RELIQUAT, DECLAREES LE 2026-08-27 apres leur entree au CATALOGUE
+	// D OBJECTIFS. Elles etaient jouees par les joueurs suivis sans avoir de fond : il leur
+	// manquait la troisieme condition de cuisson — le .mvar et le canevas ne suffisent pas,
+	// le cadre se construit sur les ancres d objectif. cmd/mapobj-build les a ingerees hors
+	// ligne depuis leur .mvar (aucun appel reseau). Cole Protocol reste dehors : son .mvar
+	// ne porte AUCUN objectif, il n y a donc pas de cadre a construire.
+	{
+		MapID:         "d5c5eb4f-0dcb-4677-a866-eae0dcbfde9b",
+		Nom:           "Insolence",
+		FichierMvar:   "insolence_map.mvar",
+		ModuleCanevas: CanevasAcademy,
+	},
+	{
+		MapID:         "7097bc4f-efcf-4c5a-a96e-4ddb03e84d2a",
+		Nom:           "Flood Gulch",
+		FichierMvar:   "flood_gulch_map.mvar",
+		ModuleCanevas: CanevasDesert,
+	},
+	{
+		MapID:         "944396dd-5661-4a16-b1d8-a6053f762c55",
+		Nom:           "944396dd-5661-4a16-b1d8-a6053f762c55",
+		FichierMvar:   "944396dd-5661-4a16-b1d8-a6053f762c55_map.mvar",
+		ModuleCanevas: CanevasFrost,
+	},
+	{
+		MapID:         "8816f240-9038-404b-bbd5-ef4f2b00f482",
+		Nom:           "Ecotone",
+		FichierMvar:   "ecotone_map.mvar",
+		ModuleCanevas: CanevasBlank,
+	},
+	{
+		MapID:         "ee43d273-8677-45c2-a8cd-aedd2c463dc9",
+		Nom:           "Solution",
+		FichierMvar:   "solution_map.mvar",
+		ModuleCanevas: CanevasDesert,
+	},
+	{
+		MapID:         "ddbb3a00-b109-4703-af07-00433512af38",
+		Nom:           "Threshold",
+		FichierMvar:   "threshold_map.mvar",
+		ModuleCanevas: CanevasBlank,
+	},
+	{
+		MapID:         "305b1bdd-9a7b-4975-bacf-8bd63c8c13d2",
+		Nom:           "Fortitude Heavies",
+		FichierMvar:   "fortitude_heavies_map.mvar",
+		ModuleCanevas: CanevasDesert,
+	},
+	{
+		MapID:         "37bc3df6-93e8-4d74-b16e-5ceaa30ebc23",
+		Nom:           "Thunderhead Heavies",
+		FichierMvar:   "thunderhead_heavies_map.mvar",
+		ModuleCanevas: CanevasWetland,
+	},
+	{
+		MapID:         "28a3ac28-f69d-4fa9-9ebf-a0449c89c8da",
+		Nom:           "Thunderhead",
+		FichierMvar:   "thunderhead_map.mvar",
+		ModuleCanevas: CanevasWetland,
+	},
+	{
+		MapID:         "88d45250-97dd-4a28-8fb2-b52baaeebb39",
+		Nom:           "Pharaoh",
+		FichierMvar:   "pharaoh_map.mvar",
+		ModuleCanevas: CanevasBlank,
+	},
+	{
+		MapID:         "e3681516-2930-491c-b94f-7dbfa161e000",
+		Nom:           "Obituary Heavies",
+		FichierMvar:   "obituary_heavies_map.mvar",
+		ModuleCanevas: CanevasAcademy,
+	},
+	{
+		MapID:         "7dfec55d-d968-4a38-aa68-bc31e8874cfd",
+		Nom:           "Merchant's Square",
+		FichierMvar:   "merchant's_square_map.mvar",
+		ModuleCanevas: CanevasAcademy,
+	},
+	{
+		MapID:         "0cc728d2-9b4d-4b80-95c9-18c77c095575",
+		Nom:           "Credence",
+		FichierMvar:   "credence_map.mvar",
+		ModuleCanevas: CanevasBlank,
+	},
+	{
+		MapID:         "e8268e75-6583-42ad-9e0c-2d2f043f5f0f",
+		Nom:           "Vallaheim Firefight",
+		FichierMvar:   "vallaheim_firefight_map.mvar",
+		ModuleCanevas: CanevasDesert,
+	},
+	{
+		MapID:         "be848f91-3d87-4b80-8eb9-df3b52cb8d10",
+		Nom:           "Urban Raid",
+		FichierMvar:   "urban_raid_map.mvar",
+		ModuleCanevas: CanevasAcademy,
+	},
+	{
+		MapID:         "525451ca-0bfa-4b5c-8a0f-29524e0f2834",
+		Nom:           "Disciple",
+		FichierMvar:   "disciple_map.mvar",
+		ModuleCanevas: CanevasBlank,
+	},
+	{
+		MapID:         "f459867d-7457-4397-a332-dbbb6812792a",
+		Nom:           "Ronin",
+		FichierMvar:   "ronin_map.mvar",
+		ModuleCanevas: CanevasWetland,
+	},
+	{
+		MapID:         "46a8319c-2c63-46ee-9382-788906dcb049",
+		Nom:           "Origin - Ranked",
+		FichierMvar:   "origin_-_ranked_map.mvar",
+		ModuleCanevas: CanevasWetland,
+	},
+	{
+		MapID:         "6dbd1c0d-a6c2-4697-8453-f0799d941741",
+		Nom:           "Nadair",
+		FichierMvar:   "nadair_map.mvar",
+		ModuleCanevas: CanevasBlank,
+	},
+	{
+		MapID:         "ea7b30e6-d1b9-4c2c-a9e0-de955c48525d",
+		Nom:           "Outlook",
+		FichierMvar:   "outlook_map.mvar",
+		ModuleCanevas: CanevasFrost,
+	},
+	{
+		MapID:         "c10c7e79-ec91-4f07-92e8-e570ed9ce79c",
+		Nom:           "Refuge Heavies",
+		FichierMvar:   "refuge_heavies_map.mvar",
+		ModuleCanevas: CanevasWetland,
+	},
+	{
+		MapID:         "1a6cfc2e-ec86-48e1-9464-1ce1bff6ed48",
+		Nom:           "Lattice - Ranked",
+		FichierMvar:   "lattice_-_ranked_map.mvar",
+		ModuleCanevas: CanevasFrost,
+	},
+	{
+		MapID:         "133c0185-24ed-4bc2-b834-62db5c936257",
+		Nom:           "Rat's Nest",
+		FichierMvar:   "rat's_nest_map.mvar",
+		ModuleCanevas: CanevasWetland,
+	},
+	{
+		MapID:         "2a339c65-5128-4457-88d4-0906e265034e",
+		Nom:           "Insolence Heavies",
+		FichierMvar:   "insolence_heavies_map.mvar",
+		ModuleCanevas: CanevasAcademy,
+	},
+	{
+		MapID:         "79042fc0-ba3d-4046-aa97-5a6902462531",
+		Nom:           "Scarlett's Landing",
+		FichierMvar:   "scarlett's_landing_map.mvar",
+		ModuleCanevas: CanevasWetland,
+	},
+	{
+		MapID:         "5b12d6d9-1b5c-4eac-b2a9-de4c36b8a6d3",
+		Nom:           "Warehouse",
+		FichierMvar:   "warehouse_map.mvar",
+		ModuleCanevas: CanevasBlank,
+	},
+	{
+		MapID:         "89dd4003-455c-4a1c-bcea-43acd514b20d",
+		Nom:           "Dawnbreaker",
+		FichierMvar:   "dawnbreaker_map.mvar",
+		ModuleCanevas: CanevasDesert,
+	},
+	// Solitude - Ranked, declaree le 2026-08-26 : seule carte du reliquat qui avait deja ses
+	// ancres au catalogue.
 	{
 		MapID:         "4a5e5612-2b2e-4375-a0b3-9335a68815f3",
 		Nom:           "Solitude - Ranked",

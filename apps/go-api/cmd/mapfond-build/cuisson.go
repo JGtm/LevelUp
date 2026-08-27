@@ -78,7 +78,7 @@ func (e *environnement) cuitNatives(ctx context.Context) []bilanAsset {
 	for _, c := range e.ciblesNatives() {
 		rendu, bilan, err := himap.CuitCarteNative(ctx, himap.OptionsCuisson{
 			RacineDeploy:           e.racineJeu,
-			CheminModule:           c.chemin,
+			CheminModule:           e.moduleDeCuisson(c),
 			Ancres:                 c.ancres,
 			Echelle:                e.echelleDe(c.cle),
 			CibleCadrePx:           himap.CibleCadrePx,
@@ -413,4 +413,13 @@ func extraitSousImage(src *image.RGBA, r image.Rectangle) *image.RGBA {
 	dst := image.NewRGBA(image.Rect(0, 0, r.Dx(), r.Dy()))
 	draw.Draw(dst, dst.Bounds(), src, r.Min, draw.Src)
 	return dst
+}
+
+// moduleDeCuisson rend le module d'ou tirer la geometrie de cette carte : le sien, sauf
+// reglage explicite (cf. reglageCarte.ModuleGeometrie — le cas de Live Fire).
+func (e *environnement) moduleDeCuisson(c cible) string {
+	if p := e.moduleGeometrieDe(c.cle); p != "" {
+		return p
+	}
+	return c.chemin
 }
