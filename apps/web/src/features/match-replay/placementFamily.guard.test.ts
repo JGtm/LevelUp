@@ -202,10 +202,17 @@ describe('garde-rail : le vocabulaire des familles de pose', () => {
  * courante partent donc dans `useReplayClock.ts`, dixieme extraction imposee par ce cliquet :
  * elles disent OU ON EN EST, pas ce qu'il faut peindre. Le canvas ne garde qu'un `clockTick`
  * en fin de trace.
+ *
+ * 697 -> 691 le 2026-08-27 (lot C, sons de fin de partie) : le canvas etait PILE a son plafond
+ * et le lot y fait entrer la CONCLUSION SONORE (une prop de plus, relayee au lecteur et a la
+ * lecture). Les cinq memos d'EFFETS PRECALCULES — tirs, « ! » du tireur, morts, fins de vol,
+ * grappin — partent donc dans `useReplayFx.ts`, onzieme extraction imposee par ce cliquet :
+ * ils ne dependent que du FILM, ne lisent ni theme ni cadrage, et ne dessinent rien. Les noms
+ * sortent inchanges, comme a la neuvieme.
  */
 describe('garde-rail : la taille du canvas du rejeu ne remonte pas', () => {
   it('ReplayCanvas.tsx reste sous son plafond', () => {
     const src = readFileSync(resolve(__dirname, 'ReplayCanvas.tsx'), 'utf8')
-    expect(src.split('\n').length - 1).toBeLessThanOrEqual(697)
+    expect(src.split('\n').length - 1).toBeLessThanOrEqual(691)
   })
 })

@@ -324,6 +324,134 @@ son logo, sa couleur — un test vérifie que le rouge Cobra n'apparaît nulle p
       vérifier le vainqueur affiché vs 2-2 au score). Le CR final liste ces 4 URLs
       locales `/…/matches/{id}/replay`.
 
+## Lot C — Sons de fin de partie (ajouté le 2026-08-27, vote utilisateur)
+
+Sélection VOTÉE par l'utilisateur (2026-08-27, `Desktop/Halo Infinite - Sons armes/_fin_partie/vote_fin_partie.json`) ;
+assets déjà extraits, identifiés (transcription locale) et normalisés par le pilote :
+`_fin_partie/livraison/*.wav` — voix −16 LUFS, musiques −18 LUFS (décision utilisateur
+« audible sans hurler »), plafond −1 dBTP, gain linéaire pur (recette du catalogue).
+
+Décisions TRANCHÉES :
+- D-C1 : à la fin du match (la LECTURE atteint `endFrame` — le même instant que l'écran),
+  jouent ENSEMBLE : une voix d'annonceur (selon l'issue) + la fanfare (selon l'issue).
+  Un seul déclenchement par arrivée en fin ; PAS de son quand on ATTEINT la fin par la
+  frise (le son du rejeu ne vit que pendant la lecture — cohérent avec useReplaySound).
+- D-C2 : issue → fichiers. Victoire : `end_victory_voice_{loc}_*` + `end_victory_music_01` ;
+  défaite : `end_defeat_voice_{loc}_*` + `end_defeat_music_01` ; égalité :
+  `end_tie_voice_{loc}_*` + `end_tie_music_01`. Plusieurs prises → tirage aléatoire à
+  chaque déclenchement. `{loc}` = locale de l'UI (fr/en) — PREMIÈRE entrée locale-aware
+  du catalogue son.
+- D-C3 : FFA (écran absent, D-B1) : le SON joue quand même si le joueur de la page GAGNE
+  (outcome_code 2) — FR `end_winner_voice_fr_01` (« Vainqueur »), EN : repli
+  `end_victory_voice_en_01` (« Winner » isolé introuvable dans le pack EN — documenté).
+  FFA perdu / égalité FFA : rien. Musique du FFA gagné : `end_victory_music_01`.
+- D-C4 : le son de fin respecte le réglage existant (coupé par défaut, volume des
+  réglages) — aucun son si le son du rejeu est désactivé.
+- D-C5 : plafond `SOUND_CUT_MAX_S` relevé à 12.0 s (fichier le plus long : 11,67 s) avec
+  mise à jour du COMMENTAIRE (la règle « plafond = plus long fichier livré » est
+  préservée) ; le fondu de sortie de 0,25 s reste inchangé.
+
+- [x] CS1. Copier les 14 wav de `_fin_partie/livraison/` vers
+      `apps/web/static/sounds/halo_infinite/` (noms inchangés).
+      CHEMIN CORRIGÉ SUR PIÈCES : `apps/web/static/` n'existe pas. Les sons du rejeu vivent
+      à la RACINE du dépôt, `static/sounds/halo_infinite/` — c'est ce que résout déjà
+      `replaySoundAssets.guard.test.ts` (`REPO_ROOT` = 5 niveaux au-dessus de la feature) et
+      c'est là que sont les 44 fichiers existants. 44 -> 58.
+- [x] CS2. NOUVEAU `endMatchSound.ts` (pur, testé) : table des fichiers par issue ×
+      locale (voix, prises multiples) + fanfares ; `endMatchSounds(outcome, ffa, locale,
+      rand)` → liste de chemins à jouer (`rand` injecté pour des tests déterministes).
+      Issue dérivée de la MÊME lecture que l'écran (`victoryLogic.readVictory` /
+      outcome_code pour le FFA) — pas de re-décodage parallèle.
+      Signature du plan tenue à la lettre, plus deux fonctions que le câblage impose :
+      `endMatchSoundSpec(scoreboard, outcomeCode, locale)` (la lecture, appuyée sur
+      `readVictory`) et `endMatchSoundStems(spec)` (TOUTES les prises, pour le préchargement).
+- [x] CS3. Déclenchement : quand la boucle de lecture passe à l'arrêt SUR endFrame
+      (transition `ended` de `useReplayPlayback`), publier l'événement de fin ; le
+      lecteur audio joue les fichiers de CS2 (voix et musique en même temps). Une seule
+      fois par arrivée ; « Recommencer » réarme.
+- [x] CS4. Manifeste + garde-rail : les 14 stems entrent dans la liste que
+      `replaySoundAssets.guard.test.ts` rejoue contre le dossier (un stem sans fichier
+      ou un fichier sans stem = test rouge).
+- [x] CS5. D-C5 : plafond à 12.0 + commentaire mis à jour dans `replayAudio.ts`.
+- [x] CS6. Tests : sélection (issue × locale × FFA × tirage), déclenchement unique,
+      silence quand le son est coupé.
+
+Gate Lot C : purge `node_modules\.tmp` ; `npm run typecheck` ; `npm run test -- --run
+src/features/match-replay` ; `npm run lint` — codes de sortie vérifiés un à un.
+Commit unique : `feat(v7.5-rejeu): lot C — sons de fin de partie (annonceur + fanfare)`.
+
+### Journal d'exécution — Lot C (2026-08-27, clos)
+
+Gate passé dans cette session, codes de sortie relevés un par un (`node_modules\.tmp` purgé
+avant) : `EXIT_TYPECHECK=0` · `EXIT_TEST=0` (80 fichiers, 1258 tests, 0 échec sur
+`src/features/match-replay` — le Lot A en relevait 77/1190 sur le même filtre) ·
+`EXIT_LINT=0` (21 warnings, le MÊME compte qu'aux lots A et B ; le seul du dossier porte sur
+`ReplayFeedName.tsx`, que le lot ne touche pas).
+
+**Ce que joue chaque fin**, mesuré par `endMatchSound.test.ts` (voix + fanfare, toujours
+ensemble) :
+
+| Issue | Deux camps FR | Deux camps EN | FFA (aucun camp lisible) |
+|---|---|---|---|
+| Victoire | `end_victory_voice_fr_01\|02` + `end_victory_music_01` | `end_victory_voice_en_01` + `end_victory_music_01` | `end_winner_voice_fr_01` (FR) / `end_victory_voice_en_01` (EN) + `end_victory_music_01` |
+| Défaite | `end_defeat_voice_fr_01\|02` + `end_defeat_music_01` | `end_defeat_voice_en_01\|02` + `end_defeat_music_01` | rien |
+| Égalité | `end_tie_voice_fr_01\|02` + `end_tie_music_01` | `end_tie_voice_en_01` + `end_tie_music_01` | rien |
+
+`|` = deux prises, tirage à chaque déclenchement (`rand` injecté ; production `Math.random`).
+Abandon (code 4), code absent, en-tête pas encore chargé : rien.
+
+**LE DRAPEAU `ffa` DIT « AUCUNE ÉQUIPE À NOMMER », PAS SEULEMENT « FFA »** (précision tranchée
+à l'exécution). Il est vrai dès que `readVictory` ne rend rien : FFA, plus de deux camps, ou
+scoreboard sans ligne `is_me`. Dans ces trois cas seule la VICTOIRE sonne, et par la réplique
+qui ne nomme personne — « Vainqueur » dit vrai sans rien supposer, là où « Défaite » et
+« Égalité » supposent un affrontement à deux camps. Un cas de test le fixe.
+
+**« ARRIVER » N'EST PAS « Y ÊTRE » — c'est ce qui fait tenir D-C1.** La condition du
+déclenchement est `from < endFrame` où `from` est l'image d'AVANT le pas d'animation : une
+lecture qui franchit la borne annonce, une frise tirée jusqu'au bout (qui pose déjà le curseur
+SUR la borne) n'annonce rien. L'unicité en découle sans compteur ni drapeau : la boucle
+s'arrête là, et en repartir passe soit par un rembobinage (« Recommencer », « Lecture » sur un
+rejeu terminé) soit par une position en deçà de la borne. Quatre cas dans
+`useReplayPlayback.test.tsx`.
+
+**LA CONCLUSION OBÉIT AUSSI AU SILENCE D'AVANCE RAPIDE**, et ce n'était pas écrit dans D-C4 :
+au-delà de `SOUND_MAX_SPEED`, le panneau de réglages AFFIRME « son coupé par la vitesse ». Y
+faire jouer une fanfare rendrait cette phrase fausse à l'écran. Le son coupé et le volume
+(D-C4) sont respectés par construction : la conclusion passe par le même `ReplayAudioPlayer`.
+
+**LES PRISES SONT PRÉCHARGÉES AVEC LA PISTE, tirage compris** — trois fichiers au lieu d'un.
+Le tirage n'a lieu qu'à l'arrivée en fin, et `ReplayAudioPlayer.play` rend le silence (puis
+charge) sur un buffer absent : précharger la seule prise tirée aurait donné un premier écran
+de fin muet, à chaque match.
+
+**Le plafond du lecteur et la borne des sons d'événement ont CESSÉ d'être le même nombre.**
+`SOUND_CUT_MAX_S` passe de 4,0 à 12,0 (D-C5) : sans autre garde, une explosion de grenade
+re-livrée à 9 s ne ferait plus rougir personne. `replaySoundAssets.guard.test.ts` porte donc
+désormais `LONG_MAX_S = 4.0` pour les sons d'ÉVÉNEMENT, plus un cas qui tient la règle de
+D-C5 elle-même : le plafond reste au-dessus du plus long fichier livré ET à moins d'une
+seconde de lui (11,667 s, `end_tie_music_01`). Un plafond qui décolle ne protège plus.
+
+**Onzième extraction imposée par le cliquet de taille** : `ReplayCanvas.tsx` était PILE à 697
+et le lot y fait entrer une prop (la fin de partie, relayée au lecteur et à la lecture). Les
+cinq mémos d'effets précalculés — tirs, « ! » du tireur, morts, fins de vol, grappin — partent
+dans `useReplayFx.ts` ; ils ne dépendent que du film, ne lisent ni thème ni cadrage et ne
+dessinent rien. Noms inchangés, pas une ligne du tracé ne bouge. Le cliquet descend à **691**.
+
+**Preuve du garde-rail relevée en session** : `end_winner_voice_fr_01.wav` retiré du dossier →
+`EXIT=1`, 2 tests rouges (`expected [ 'end_winner_voice_fr_01' ] to deeply equal []` sur
+« chaque stem du manifeste a son fichier .wav », plus le cas de plafond qui lit toutes les
+durées) ; fichier remis → `EXIT=0`, 14 tests verts.
+
+**Aucune string UI nouvelle**, donc aucune clé i18n : le lot n'ajoute ni réglage ni libellé.
+La LANGUE, elle, entre pour la première fois dans le catalogue sonore — c'est la prop `locale`
+de la page rejeu, la même que le fil, les fiches et le tiroir.
+
+Extension future consignée (HORS lot C) : fins multi-équipes par couleur — 8 répliques
+FR (« Partie terminée, l'équipe bleue/rouge/cyan/mauve/verte/citron/jaune/orange est
+déclarée vainqueur ») et 8 EN (« Game over — <color> team wins ») identifiées dans les
+packs annonceur ; correspondance constructible via `team_id` → couleur officielle
+(`lib/halo/teamNames.ts`). À traiter avec l'écran multi-équipes s'il voit le jour.
+
 ## Découvertes hors périmètre
 
 (À consigner ici pendant l'exécution — ne rien corriger.)
@@ -348,6 +476,17 @@ son logo, sa couleur — un test vérifie que le rouge Cobra n'apparaît nulle p
   VAINQUEUR, lui, reste affiché (il ne dépend que de `outcome_code` et de `is_me`). Ce n'est
   pas incohérent — le titre affirme moins que deux nombres — mais c'est une asymétrie à
   connaître si un témoin montre un panneau sans chiffres.
+- **Lot C, 2026-08-27 — le son reste MUET après un rechargement de page tant qu'on n'a pas
+  rebasculé le bouton deux fois.** La préférence `replay-sound-on` est restaurée à `true` au
+  montage, mais le `ReplayAudioPlayer` ne naît QUE dans `toggle()` (politique d'autoplay) :
+  `playerRef` est donc nul, le battement se tait, et le premier clic du bouton — qui semble
+  « activer » — coupe en réalité une préférence déjà à `true`. Dette ANTÉRIEURE au lot (elle
+  vaut pour tous les sons du rejeu, pas seulement la fin de partie) ; elle touche aussi la
+  conclusion sonore, qui ne partira pas sur un rejeu ouvert par un rechargement. Le correctif
+  naturel serait un premier geste QUELCONQUE de la page qui crée le lecteur quand la
+  préférence est déjà à `true`. Non traité : hors périmètre.
+- **Lot C, 2026-08-27 — `i18n.ts` du rejeu reste à 534 lignes** (découverte du lot B). Le lot C
+  n'y touche pas : il n'ajoute aucune string UI.
 - **Lot A, 2026-08-26 — invariant utile pour le Lot B** : quand la fenêtre existe et que le
   début n'est pas clampé, l'instant AFFICHÉ du fil retombe exactement sur `event_time_ms` de
   l'API — le recalage `+t0−originMs` de `killFeedLogic` est annulé par le retrait de
