@@ -22,7 +22,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { getSeriesColors } from '@/lib/accessibility/plotlyColorscale'
-import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
 import { useColorPaletteVersion } from '@/lib/accessibility/useColorPaletteVersion'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
@@ -46,6 +45,8 @@ import { buildGrappleFx, drawGrappleLayer } from './grappleLayer'
 import { drawEquipmentPlacementsLayer } from './equipmentPlacementsLayer'
 import { ReplayCanvasTips } from './ReplayCanvasTips'
 import { useReplayPlacements } from './useReplayPlacements'
+import { EMPTY_ZONES, FRAME_PUBLISH_MS, SERIES_TOKENS } from './replayCanvasConfig'
+import { useReplayObjectiveObjects } from './useReplayObjectiveObjects'
 import { useReplayFlagCarries } from './useReplayFlagCarries'
 import { useGrenadeIcons } from './useGrenadeIcons'
 import { useZoneStates } from './useZoneStates'
@@ -78,26 +79,7 @@ import { drawTracksLayer } from './replayMarkers'
 import { useReplayTiming } from './useReplayTiming'
 import { CANVAS_HEIGHT, CANVAS_PAD, useReplayView, type ReplayMapBackgroundLayer } from './useReplayView'
 
-// 8 tokens de série : une teinte par GRANDE ZONE NOMMÉE (cyclés au-delà de 8 via
-// getSeriesColors), et — depuis le 2026-08-24 — la palette des COULEURS DISTINCTES PAR
-// JOUEUR quand l'option du tiroir la choisit. Par défaut un joueur porte la couleur de
-// son ÉQUIPE (D1).
-const SERIES_TOKENS: SemanticToken[] = [
-  'chart-series-1', 'chart-series-2', 'chart-series-3', 'chart-series-4',
-  'chart-series-5', 'chart-series-6', 'chart-series-7', 'chart-series-8',
-]
-/** Référence STABLE pour « pas de zones » : un `?? []` inline recuirait le calque à chaque rendu. */
-const EMPTY_ZONES: CalloutZoneReady[] = []
 
-/**
- * Cadence de publication de l'image courante vers React, en millisecondes.
- *
- * POURQUOI PAS À CHAQUE IMAGE. Le canvas se redessine à la cadence de l'écran ; les fiches
- * joueur, elles, sont du DOM. Les re-rendre 60 fois par seconde coûterait tout le budget
- * d'animation pour un contenu qui change à peine. 150 ms reste bien en deçà de ce que l'œil
- * perçoit comme un retard sur un compteur, et divise le travail de React par dix.
- */
-const FRAME_PUBLISH_MS = 150
 
 interface ReplayCanvasProps {
   doc: ReplayDocumentReady
@@ -328,6 +310,10 @@ export function ReplayCanvas({
     scoreboard, teamColorOf, neutral: floorStyle.edge, reducedMotion,
   })
 
+  const objectiveObjects = useReplayObjectiveObjects({
+    lives: doc.objectiveObjects, view: canvasView, ink: neutralInk, edge: floorStyle.edge,
+  })
+
   const draw = useCallback(() => {
     const canvas = canvasRef.current
     if (!canvas || renderWidth === 0) return
@@ -495,6 +481,9 @@ export function ReplayCanvas({
     // LES DRAPEAUX par-dessus les zones et SOUS les morts : l'enjeu du mode prime sur le
     // terrain, mais une élimination reste l'événement le plus lourd de sens du calque.
     flags.paint(ctx, frame)
+    // LE CRÂNE là où il est quand PERSONNE ne le porte : même rang que les drapeaux, et il
+    // DISPARAÎT pendant les portages — le document ne dit pas qui porte (cf. le hook).
+    objectiveObjects.paint(ctx, frame)
     // Le PULSE D'ACTION D'OBJECTIF (capture, retour, prise de zone) : un anneau qui
     // s'ouvre depuis la zone/le marqueur concerné à l'instant de l'action (lot 4.4).
     if (objectivePulses.length > 0) {

@@ -470,6 +470,10 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	// La VIE DES DRAPEAUX, sur les pistes PUBLIEES (le drapeau porte est a la position de son
 	// porteur, et c'est celle-la que le client dessine) — cf. build_objectives_live.go.
 	attachFlagCarries(&doc, opt, own, replayClock{origin: origin, step: step, frames: doc.FrameCount})
+	// LES OBJETS D'OBJECTIF LIBRES SONT POSÉS HORS DE LA GARDE DE MODE DU DRAPEAU, et c'est
+	// délibéré : ce calque ne lit ni le statborg ni le fil des morts, donc rien de ce que cette
+	// garde protège. La placer devant l'éteindrait sur Oddball — là où il sert.
+	attachObjectiveObjects(&doc, opt, replayClock{origin: origin, step: step, frames: doc.FrameCount})
 	// L'ETAT DES ZONES, sur la MEME horloge que les positions et sur les captures DEJA posees
 	// (`doc.Objectives`) — cf. build_zones.go.
 	attachZoneStates(&doc, opt, replayClock{origin: origin, step: step, frames: doc.FrameCount})

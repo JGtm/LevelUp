@@ -26,6 +26,7 @@ import type {
   ReplayDocument,
   ReplayFlagCarry,
   ReplayGrenadeRead,
+  ReplayObjectiveObjectLife,
   ReplayInventory,
   ReplayLoadout,
   ReplayProjectile,
@@ -74,6 +75,14 @@ export type ReplayWeaponPadReady = Filled<ReplayWeaponPad, 'spawns' | 'presence'
  */
 export type ReplayFlagCarryReady = Filled<ReplayFlagCarry, 'spans'>
 /**
+ * ReplayObjectiveObjectReady — une vie libre d'objet d'objectif, trajectoire comblée.
+ *
+ * MÊME PATRON QUE `flagCarries` : le tableau de tête et le tableau IMBRIQUÉ (`pts`) sont tous
+ * deux nullables au contrat, et une vie qui arriverait avec `pts: null` ferait tomber le calque
+ * à l'exécution, pas à la compilation.
+ */
+export type ReplayObjectiveObjectReady = Filled<ReplayObjectiveObjectLife, 'pts'>
+/**
  * ReplayZoneStateReady — l'état d'une zone dont les intervalles ET la jauge en direct sont comblés.
  *
  * MÊME PATRON QUE `flagCarries` et `weaponPads` : le tableau de tête et les tableaux IMBRIQUÉS
@@ -105,6 +114,7 @@ export type ReplayDocumentReady = Omit<
   | 'inventory'
   | 'loadouts'
   | 'neutralDeaths'
+  | 'objectiveObjects'
   | 'objectives'
   | 'padPickups'
   | 'projectiles'
@@ -120,6 +130,12 @@ export type ReplayDocumentReady = Omit<
   equipmentEpisodes: NonNullable<ReplayDocument['equipmentEpisodes']>
   equipmentPlacements: NonNullable<ReplayDocument['equipmentPlacements']>
   flagCarries: ReplayFlagCarryReady[]
+  /**
+   * LES OBJETS D'OBJECTIF LIBRES (schéma 21) : où se trouve le crâne d'Oddball quand PERSONNE
+   * ne le porte. Vide = artefact antérieur au schéma 21, mode sans objet porté, ou film qui n'en
+   * porte pas — `coverage.objectiveObjects` distingue les trois.
+   */
+  objectiveObjects: ReplayObjectiveObjectReady[]
   geometry: NonNullable<ReplayDocument['geometry']>
   grappleLines: NonNullable<ReplayDocument['grappleLines']>
   grenadeLabels: NonNullable<ReplayDocument['grenadeLabels']>
@@ -186,6 +202,11 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     // contrat le déclare nullable, et un drapeau qui arriverait avec `spans: null` ferait
     // tomber le calque à l'exécution — pas à la compilation.
     flagCarries: (raw.flagCarries ?? []).map((f) => ({ ...f, spans: f.spans ?? [] })),
+    // LES OBJETS D'OBJECTIF LIBRES (schéma 21) : une entrée par VIE de l'objet hors portage.
+    // Absent = artefact antérieur, mode sans objet porté, ou film qui n'en porte pas —
+    // `coverage.objectiveObjects` distingue les trois, et c'est pour cela qu'il est publié.
+    // Le tableau IMBRIQUÉ (`pts`) se comble aussi, même raison que `spans` ci-dessus.
+    objectiveObjects: (raw.objectiveObjects ?? []).map((o) => ({ ...o, pts: o.pts ?? [] })),
     geometry: raw.geometry ?? [],
     // Les TRACTIONS de grappin (schéma 8) : fenêtre mesurée [t0, t1] par vie + point
     // d'accroche en coordonnées monde. Absent = aucune traction lue sur ce film : rien

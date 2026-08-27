@@ -326,9 +326,32 @@ var replaySchemas = []struct {
 //	                      (decision utilisateur du 2026-08-19) ; `catalogN` dit combien la carte
 //	                      en porte, pour que le calque avoue ce qu il n affiche pas.
 //
+//	38 -> 39  2026-08-27  `objectiveObjects` (plan PLAN_OBJECTIFS_ETAT_VIVANT, phase D5-bis) :
+//	                      OU SE TROUVE L OBJET D OBJECTIF QUAND PERSONNE NE LE PORTE — les vies
+//	                      LIBRES du crane d Oddball. Le canal est une PRESENCE, pas une
+//	                      deduction : un objet du monde replique sa position tant qu il est
+//	                      libre et CESSE de la repliquer des qu on le porte. Le champ publie
+//	                      donc exactement les positions que le film a emises.
+//	                      L IDENTITE DU CRANE EST MESUREE (phase D4) : mot MPP `0x0017592C`,
+//	                      elu sur 4 films sur 4, ne a 0,0 m du socle `oddball_spawn` unique de
+//	                      sa carte et coincidant a 3-6 ms d un evenement `th=10`. Le compteur
+//	                      `coverage.groundWeapons.objectives` le corrobore a l unite pres :
+//	                      23 / 16 / 21 / 47 creations, exactement les comptes de D4.
+//	                      CE QUE LE CHAMP NE DIT PAS, ET C EST ECRIT DANS SON SCHEMA : QUI porte
+//	                      l objet pendant les trous. L oracle du porteur a ete mesure et REFUSE
+//	                      par son propre protocole (40,6 a 66,7 % de trous a porteur unique
+//	                      contre un seuil de 90 %, temoin hors trou a 66,7 et 71,4 %).
+//	                      LE DRAPEAU N Y EST PAS, et ce n est pas un report : le controle 3 de
+//	                      son propre lot a ECHOUE sur ses vies libres (149/197 = 75,6 % pour un
+//	                      seuil de 90 %). La forme publiee porte `family` pour qu il puisse la
+//	                      rejoindre sans qu aucune cle ne bouge.
+//	                      SCHEMA D ARTEFACT INCHANGE A 21 : le bump du lot a eu lieu dans le
+//	                      meme lot et n a quitte ni le poste ni les temoins locaux — aucun
+//	                      artefact 21 n existe ailleurs, le bump unique reste unique.
+//
 // Les douze fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
 // chiffre ne le dise. Contrat regenere (`make openapi-gen`), jamais ecrit a la main.
-const wantReplayDocumentFields = 38
+const wantReplayDocumentFields = 39
 
 // TestReplayContractDescribesEveryPublishedField : AUCUN CHAMP PUBLIE SANS DESCRIPTION, ET
 // AUCUNE DESCRIPTION SANS CHAMP.
