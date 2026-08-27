@@ -90,6 +90,17 @@ type OptionsCuissonForge struct {
 	// joue, les volumes de mort disent ou l on meurt, et les 22 cartes a callouts sont toutes
 	// natives. Sans effet si la variante n en declare aucun avec une forme.
 	RogneAuxVolumesDeMort bool
+	// MinceurMin ecarte les modeles FILAIRES : ceux dont l aire du maillage, rapportee au
+	// carre de leur emprise, tombe sous ce seuil. Zero = ne rien ecarter.
+	//
+	// C est la reponse au « gribouillis » : isoler un seul type d objet a montre le
+	// 2026-08-27 que le plus nombreux d Isolation — 349 exemplaires — dessine de longues
+	// BRANCHES. Multipliees par des centaines, ce sont elles qui couvrent l arene de traits.
+	// Un premier essai avait echoue en classant les types par EMPRISE : ca attrape les gros
+	// rochers et laisse passer les branches, longues mais minuscules en matiere. La minceur,
+	// elle, les separe — une branche de 8 m d envergure porte quelques dixiemes de metre
+	// carre, un rocher de meme emprise en porte des dizaines.
+	MinceurMin float64
 	// TypesExclus ecarte des TYPES d objet Forge du dessin. Dernier recours, quand un modele
 	// balaie la carte et qu aucune coupe geometrique ne peut l atteindre — voir le diagnostic
 	// « types les plus etendus » journalise a chaque cuisson.
@@ -144,10 +155,11 @@ func CuitCarteForge(ctx context.Context, opts OptionsCuissonForge) (*Rendu, Bila
 	s := NewSurfaceReference(opts.Ancres)
 	r.ArmeReference(s)
 
+	r.ArmeTypeGagnant()
 	if opts.DessineCanevas {
 		poseCanevasForge(ctx, r, &b, opts)
 	}
-	poseObjetsForge(ctx, r, &b, opts.Objets, idx, forge, opts.TypesExclus)
+	poseObjetsForge(ctx, r, &b, opts.Objets, idx, forge, opts.TypesExclus, opts.MinceurMin)
 	if b.ObjetsDessines == 0 {
 		return nil, b, fmt.Errorf("aucun des %d objets Forge n'a de modele rtgo", len(opts.Objets))
 	}
@@ -162,6 +174,7 @@ func CuitCarteForge(ctx context.Context, opts OptionsCuissonForge) (*Rendu, Bila
 		b.degrade(ctx, "aucun volume de mort reconnu — l'empreinte des types a peut-etre bouge")
 	}
 	JugeParLesAncres(r, &b, opts.Ancres)
+	journalisePixelsParType(ctx, r, b, opts.Objets)
 	slog.InfoContext(ctx, "carte Forge cuite", "cle", b.Module,
 		"objets", fmt.Sprintf("%d/%d", b.ObjetsDessines, b.ObjetsForge),
 		"sansModele", b.ObjetsSansModele, "volumesDeMort", b.VolumesDeMort,
@@ -202,7 +215,9 @@ func indexForge(opts OptionsCuissonForge) (*ModuleIndex, *himodule.Module, error
 
 // poseObjetsForge resout le modele de chaque type d'objet, puis pose ses triangles.
 func poseObjetsForge(ctx context.Context, r *Rendu, b *BilanCuisson,
-	objets []mapvar.Object, idx *ModuleIndex, forge *himodule.Module, exclus map[int32]bool) {
+	objets []mapvar.Object, idx *ModuleIndex, forge *himodule.Module, exclus map[int32]bool,
+	minceurMin float64) {
+	minceurs := map[uint32]float64{}
 	modeleDuType := modeleParType(ctx, objets, idx, forge)
 	assets := map[uint32]*RuntimeGeoAsset{}
 	// DIAGNOSTIC DES TYPES ETENDUS. Le « gribouillis » d Isolation ne cede ni a l ecretage ni
@@ -222,6 +237,19 @@ func poseObjetsForge(ctx context.Context, r *Rendu, b *BilanCuisson,
 			b.ObjetsSansModele++
 			continue
 		}
+		if minceurMin > 0 {
+			mn, connue := minceurs[m.id]
+			if !connue {
+				if a := ouvreAsset(ctx, idx, m.id, m.groupe); a != nil {
+					mn, _ = MinceurDuModele(a)
+				}
+				minceurs[m.id] = mn
+			}
+			if mn > 0 && mn < minceurMin {
+				b.ObjetsFilaires++
+				continue
+			}
+		}
 		a, deja := assets[m.id]
 		if !deja {
 			a = ouvreAsset(ctx, idx, m.id, m.groupe)
@@ -232,6 +260,7 @@ func poseObjetsForge(ctx context.Context, r *Rendu, b *BilanCuisson,
 			continue
 		}
 		in := InstanceForge(o)
+		r.TypeCourant = o.TypeID
 		if _, vu := etendues[o.TypeID]; !vu {
 			etendues[o.TypeID] = etendueMondeDe(a, in)
 		}
@@ -538,4 +567,121 @@ func cheminsCanevas(opts OptionsCuissonForge) []string {
 	chemins = append(chemins, globs...)
 	globsAny, _ := filepath.Glob(filepath.Join(opts.RacineDeploy, "any", "globals", "*.module"))
 	return append(chemins, globsAny...)
+}
+
+// MinceurDuModele rend la part de son EMPRISE AU SOL que le modele couvre reellement, vue de
+// dessus : on projette ses triangles sur une grille de 32 x 32 et on compte les cases pleines.
+//
+// POURQUOI CETTE MESURE ET PAS UNE AUTRE. Le gribouillis des cartes organiques vient de
+// modeles de BRANCHES poses par centaines (349 exemplaires du seul type le plus nombreux
+// d Isolation, etabli le 2026-08-27 en n en dessinant qu un seul). Deux criteres ont ete
+// essayes et ont ECHOUE a les distinguer :
+//
+//  1. l EMPRISE du modele — elle attrape les gros rochers, qui sont legitimes ;
+//  2. l AIRE DU MAILLAGE rapportee a l emprise — le type des branches y sort au rang 222
+//     sur 271, parmi les plus PLEINS : une branche est un tube a nombreuses facettes, sa
+//     surface est grande meme si elle ne couvre rien.
+//
+// Ce qui separe vraiment une branche d un rocher, c est que vue de dessus elle ne remplit
+// presque rien de sa boite : quelques traits dans un carre vide.
+func MinceurDuModele(a *RuntimeGeoAsset) (float64, bool) {
+	const cotesGrille = 32
+	lo := [2]float64{math.Inf(1), math.Inf(1)}
+	hi := [2]float64{math.Inf(-1), math.Inf(-1)}
+	tris := 0
+	for mi := 0; mi < a.MeshCount(); mi++ {
+		m := a.Mesh(mi)
+		if m == nil {
+			continue
+		}
+		for _, v := range m.Vertices {
+			for k := 0; k < 2; k++ {
+				lo[k] = math.Min(lo[k], v[k])
+				hi[k] = math.Max(hi[k], v[k])
+			}
+		}
+		tris += len(m.Triangles)
+	}
+	l, h := hi[0]-lo[0], hi[1]-lo[1]
+	if tris == 0 || l <= 0 || h <= 0 {
+		return 0, false
+	}
+	grille := make([]bool, cotesGrille*cotesGrille)
+	pleines := 0
+	marque := func(x, y float64) {
+		i := int((x - lo[0]) / l * cotesGrille)
+		j := int((y - lo[1]) / h * cotesGrille)
+		if i < 0 || j < 0 || i >= cotesGrille || j >= cotesGrille {
+			return
+		}
+		if k := j*cotesGrille + i; !grille[k] {
+			grille[k] = true
+			pleines++
+		}
+	}
+	for mi := 0; mi < a.MeshCount(); mi++ {
+		m := a.Mesh(mi)
+		if m == nil {
+			continue
+		}
+		// On echantillonne CHAQUE triangle en son centre et a ses sommets : suffisant a
+		// cette resolution, et sans rasterisation a ecrire.
+		for _, tr := range m.Triangles {
+			p, q, s := m.Vertices[tr[0]], m.Vertices[tr[1]], m.Vertices[tr[2]]
+			marque(p[0], p[1])
+			marque(q[0], q[1])
+			marque(s[0], s[1])
+			marque((p[0]+q[0]+s[0])/3, (p[1]+q[1]+s[1])/3)
+		}
+	}
+	return float64(pleines) / float64(cotesGrille*cotesGrille), true
+}
+
+// aireTriangleMonde rend l'aire d'un triangle par la demi-norme du produit vectoriel.
+func aireTriangleMonde(a, b, c [3]float64) float64 {
+	u := [3]float64{b[0] - a[0], b[1] - a[1], b[2] - a[2]}
+	v := [3]float64{c[0] - a[0], c[1] - a[1], c[2] - a[2]}
+	x, y, z := u[1]*v[2]-u[2]*v[1], u[2]*v[0]-u[0]*v[2], u[0]*v[1]-u[1]*v[0]
+	return 0.5 * math.Sqrt(x*x+y*y+z*z)
+}
+
+// journalisePixelsParType dit QUELS TYPES OCCUPENT L'IMAGE, en pixels et en part du total.
+//
+// C'est la mesure qui manquait. Le « gribouillis » des cartes organiques a resiste a trente
+// rendus, a cinq coupes geometriques et a trois criteres portes par le modele. La raison est
+// simple : tous ces criteres decrivent ce qu'un objet EST, aucun ne dit ce qu'il PEINT.
+// Ecarter les 349 branches d'Isolation ne changeait pas un octet du fichier — elles etaient
+// sous d'autres surfaces. Ici, on demande a l'image elle-meme.
+func journalisePixelsParType(ctx context.Context, r *Rendu, b BilanCuisson, objets []mapvar.Object) {
+	pix := r.PixelsParType()
+	if len(pix) == 0 {
+		return
+	}
+	compte := map[int32]int{}
+	for _, o := range objets {
+		compte[o.TypeID]++
+	}
+	total := 0
+	for _, n := range pix {
+		total += n
+	}
+	type ligne struct {
+		typeID int32
+		pixels int
+	}
+	l := make([]ligne, 0, len(pix))
+	for t, n := range pix {
+		l = append(l, ligne{t, n})
+	}
+	sort.Slice(l, func(i, j int) bool { return l[i].pixels > l[j].pixels })
+	var detail []string
+	for i, x := range l {
+		if i >= 8 {
+			break
+		}
+		detail = append(detail, fmt.Sprintf("%d:%.1f%%(x%d)", x.typeID,
+			100*float64(x.pixels)/float64(total), compte[x.typeID]))
+	}
+	slog.InfoContext(ctx, "mapfond: qui peint l image", "carte", b.Module,
+		"typesVisibles", len(pix), "pixels", total, "top", strings.Join(detail, " "))
 }

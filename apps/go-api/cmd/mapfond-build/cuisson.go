@@ -207,6 +207,7 @@ func (e *environnement) cuitForge(ctx context.Context) []bilanAsset {
 			BoiteUtile:             e.boiteUtileDe(carte.MapID),
 			RogneAuxVolumesDeMort:  e.rogneAuxVolumesDeMortDe(carte.MapID),
 			TypesExclus:            e.typesExclusDe(carte.MapID),
+			MinceurMin:             e.minceurMinDe(carte.MapID),
 			PlancherTranche:        e.plancherTrancheDe(carte.MapID),
 			PlafondTranche:         e.plafondTrancheDe(carte.MapID),
 			DessineCanevas:         e.dessineCanevasDe(carte.MapID),

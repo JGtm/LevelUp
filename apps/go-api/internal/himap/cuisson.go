@@ -217,6 +217,8 @@ type BilanCuisson struct {
 	VolumesDeMort    int
 	// ObjetsExclus : objets Forge ecartes par TypesExclus.
 	ObjetsExclus int
+	// ObjetsFilaires : objets Forge ecartes par MinceurMin (branches, lianes, herbes).
+	ObjetsFilaires int
 	// CanevasDessinees / CanevasEcartees : instances du CANEVAS posees sous la carte Forge.
 	CanevasDessinees int
 	CanevasEcartees  int

@@ -77,6 +77,14 @@ func TrancheDeJeu(zJeu float64) (min, max float64) {
 
 // Rendu porte un z-buffer et la normale retenue par pixel.
 type Rendu struct {
+	// TypeCourant / typeGagnant : DIAGNOSTIC. La cuisson Forge annonce, avant de poser un
+	// objet, de quel TYPE il est ; le rendu retient alors, pour chaque pixel, le type qui a
+	// gagne le z-buffer. C est la seule facon de nommer ce qui peint reellement une zone de
+	// l image — trente rendus et une dizaine d exclusions n y sont pas parvenus, et le type
+	// le plus soupconne (les branches d Isolation) s est revele n occuper AUCUN pixel : son
+	// exclusion ne changeait pas un octet du fichier.
+	TypeCourant int32
+	typeGagnant []int32
 	// SeuilArete : denivele entre voisins au-dela duquel on trace un bord. Zero = le defaut
 	// (SeuilAreteMetres). Reglage PAR CARTE, cf. rendu_couleur.go.
 	SeuilArete float64
@@ -195,6 +203,9 @@ func (r *Rendu) triangleBorne(a, b, c [3]float64, lo, hi [3]float64) {
 			k := j*r.NX + i
 			if z > r.z[k] {
 				r.z[k], r.n[k] = z, nrm
+				if r.typeGagnant != nil {
+					r.typeGagnant[k] = r.TypeCourant
+				}
 			}
 			// Voie de reference (rendu_reference.go) : retenir AUSSI la surface la plus
 			// proche du sol de reference. Strictement `<` : la premiere face gagne les
@@ -313,4 +324,40 @@ func (r *Rendu) EcartAuNiveauDeJeu(i, j int) (float64, bool) {
 		return 0, false
 	}
 	return z - r.niveauJeu, true
+}
+
+// ArmeTypeGagnant fait retenir, pour chaque pixel, le TYPE d'objet qui a gagne le z-buffer.
+// Diagnostic pur : il ne change rien au rendu, il permet seulement de demander a l'image
+// « qui t'a peint ici ».
+func (r *Rendu) ArmeTypeGagnant() {
+	r.typeGagnant = make([]int32, r.NX*r.NY)
+}
+
+// TypeGagnant rend le type qui occupe ce pixel, et s'il y en a un.
+func (r *Rendu) TypeGagnant(i, j int) (int32, bool) {
+	if r.typeGagnant == nil || i < 0 || j < 0 || i >= r.NX || j >= r.NY {
+		return 0, false
+	}
+	k := j*r.NX + i
+	if math.IsInf(r.z[k], -1) {
+		return 0, false
+	}
+	return r.typeGagnant[k], true
+}
+
+// PixelsParType compte, pour chaque type, le nombre de pixels qu'il occupe dans l'image.
+// C'est la mesure qui DESIGNE ce qui couvre l'arene, la ou aucun critere porte par le modele
+// (emprise, aire du maillage, couverture de son emprise au sol) n'y est parvenu.
+func (r *Rendu) PixelsParType() map[int32]int {
+	out := map[int32]int{}
+	if r.typeGagnant == nil {
+		return out
+	}
+	for k := range r.z {
+		if math.IsInf(r.z[k], -1) {
+			continue
+		}
+		out[r.typeGagnant[k]]++
+	}
+	return out
 }

@@ -87,6 +87,9 @@ type reglageCarte struct {
 	// Forge. Equivalent Forge du rognage aux zones de callout, qui n existent que sur les
 	// cartes natives (22 cartes, toutes natives).
 	RogneAuxVolumesDeMort bool `json:"rogneAuxVolumesDeMort,omitempty"`
+	// MinceurMin : seuil d aire rapportee au carre de l emprise sous lequel un modele Forge
+	// n est PAS dessine. Zero = tout dessiner. Voir OptionsCuissonForge.MinceurMin.
+	MinceurMin float64 `json:"minceurMin,omitempty"`
 	// TypesExclus : identifiants de TYPE d objet Forge a ne pas dessiner. Dernier recours,
 	// quand un modele balaie la carte et qu aucune coupe geometrique ne peut l atteindre. Les
 	// candidats se lisent dans le log « types les plus etendus » de chaque cuisson Forge.
@@ -422,4 +425,18 @@ func (e *environnement) seuilAreteDe(cle string) float64 {
 	slog.Info("mapfond: seuil d arete propre a la carte", "carte", cle, "seuil", c.SeuilArete,
 		"gateLe", c.GateLe)
 	return c.SeuilArete
+}
+
+// minceurMinDe rend le seuil de minceur sous lequel les modeles filaires sont ecartes.
+func (e *environnement) minceurMinDe(cle string) float64 {
+	if e.reglages == nil {
+		return 0
+	}
+	c, ok := e.reglages.Cartes[cle]
+	if !ok || c.MinceurMin <= 0 {
+		return 0
+	}
+	slog.Info("mapfond: modeles filaires ecartes sous ce seuil", "carte", cle,
+		"minceurMin", c.MinceurMin, "gateLe", c.GateLe)
+	return c.MinceurMin
 }
