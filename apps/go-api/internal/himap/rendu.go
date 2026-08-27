@@ -85,6 +85,20 @@ type Rendu struct {
 	// exclusion ne changeait pas un octet du fichier.
 	TypeCourant int32
 	typeGagnant []int32
+	// zBas / nBas : LA SURFACE LA PLUS BASSE AU-DESSUS DU SOL JOUE, par pixel.
+	//
+	// Le z-buffer ordinaire retient la surface la plus HAUTE : sur une carte a ciel ferme, il
+	// ne montre donc jamais que le plafond. Mesure du 2026-08-27 sur Isolation : le type qui
+	// peint 82,7 pour cent de l image est pose entre Z 136 et 160 quand le sol joue est a
+	// Z 117 — c est un DOME. Et comme sa paroi descend jusqu au sol, aucune coupe en altitude
+	// ne l en separe : c est ce qui a fait echouer l ecretage a 4, 2 et 1 m, la tranche
+	// plafonnee a +3, +6 et +12, et le bornage.
+	//
+	// D ou cette seconde voie : garder, pour chaque pixel, la surface la plus BASSE qui reste
+	// au-dessus du sol joue. Sous un dome, c est le sol ; a ciel ouvert, c est la meme surface
+	// que la voie haute. On ne retire rien : on regarde d en dessous.
+	zBas []float64
+	nBas [][3]float64
 	// SeuilArete : denivele entre voisins au-dela duquel on trace un bord. Zero = le defaut
 	// (SeuilAreteMetres). Reglage PAR CARTE, cf. rendu_couleur.go.
 	SeuilArete float64
@@ -201,6 +215,9 @@ func (r *Rendu) triangleBorne(a, b, c [3]float64, lo, hi [3]float64) {
 				continue
 			}
 			k := j*r.NX + i
+			if r.zBas != nil && z >= r.plancherSolVu() && z < r.zBas[k] {
+				r.zBas[k], r.nBas[k] = z, nrm
+			}
 			if z > r.z[k] {
 				r.z[k], r.n[k] = z, nrm
 				if r.typeGagnant != nil {
@@ -360,4 +377,45 @@ func (r *Rendu) PixelsParType() map[int32]int {
 		out[r.typeGagnant[k]]++
 	}
 	return out
+}
+
+// MargeSolVuDuDessous : de combien on descend SOUS le niveau de jeu pour accepter une surface
+// comme candidate au sol. Le sol d'une arene n'est pas plan — 4 m couvrent les marches et les
+// creux sans laisser entrer un sous-sol.
+const MargeSolVuDuDessous = 4.0
+
+// ArmeSurfaceBasse fait retenir, pour chaque pixel, la surface la plus BASSE au-dessus du sol
+// joue. A appeler apres NiveauDeJeu et avant de projeter.
+func (r *Rendu) ArmeSurfaceBasse() {
+	r.zBas = make([]float64, r.NX*r.NY)
+	r.nBas = make([][3]float64, r.NX*r.NY)
+	for i := range r.zBas {
+		r.zBas[i] = math.Inf(1)
+	}
+}
+
+// plancherSolVu rend l'altitude sous laquelle une surface n'est plus candidate au sol.
+func (r *Rendu) plancherSolVu() float64 {
+	if math.IsNaN(r.niveauJeu) {
+		return math.Inf(-1)
+	}
+	return r.niveauJeu - MargeSolVuDuDessous
+}
+
+// AdopteSurfaceBasse remplace la surface haute par la surface basse, la ou il y en a une, et
+// rend le nombre de pixels changes. Un pixel sans candidate garde ce qu'il avait : on ne cree
+// ni ne supprime jamais de matiere.
+func (r *Rendu) AdopteSurfaceBasse() int {
+	if r.zBas == nil {
+		return 0
+	}
+	changes := 0
+	for k := range r.z {
+		if math.IsInf(r.z[k], -1) || math.IsInf(r.zBas[k], 1) || r.zBas[k] == r.z[k] {
+			continue
+		}
+		r.z[k], r.n[k] = r.zBas[k], r.nBas[k]
+		changes++
+	}
+	return changes
 }

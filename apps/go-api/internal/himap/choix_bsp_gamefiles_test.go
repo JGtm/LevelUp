@@ -166,7 +166,16 @@ func TestChoixBSPCartesNativesInchange(t *testing.T) {
 	}
 	sort.Strings(modules)
 
-	temoins := map[string]bool{"ctf_forbidden": false, "chasm_map": false, "catalyst_map": false}
+	// `cliffhanger_ridgeline` est le quatrieme temoin, et il n'est pas la par symetrie :
+	// c'est la carte du banc de non-regression au pixel (`TestBancCliffhanger`). Constater ici
+	// qu'elle retient le MEME tag qu'avant, c'est prouver que le banc recoit exactement les
+	// memes instances — et donc qu'un ecart du banc ne vient pas de ce departage.
+	temoins := map[string]bool{
+		"ctf_forbidden":         false,
+		"chasm_map":             false,
+		"catalyst_map":          false,
+		"cliffhanger_ridgeline": false,
+	}
 	mesurees, multi := 0, 0
 	for _, mod := range modules {
 		p, ok := ChercheModuleInstalle(mod)

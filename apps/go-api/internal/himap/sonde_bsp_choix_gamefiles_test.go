@@ -77,12 +77,7 @@ func TestSondeBSPCartesNatives(t *testing.T) {
 
 func imprimeBSP(t *testing.T, i int, b BSPInstances, ancres [][3]float64, zMed float64) {
 	t.Helper()
-	n := 0
-	for _, a := range ancres {
-		if contientPoint(b.Bounds, a) {
-			n++
-		}
-	}
+	n := CompteAncresDansBoite(b.Bounds, ancres)
 	empriseX := b.Bounds.Extent(0)
 	empriseY := b.Bounds.Extent(1)
 	zs := make([]float64, 0, len(b.Instances))
@@ -105,12 +100,6 @@ func fmtNaN(v float64) string {
 		return "   n/a"
 	}
 	return fmt.Sprintf("%6.1f", v)
-}
-
-func contientPoint(b Bounds, p [3]float64) bool {
-	return p[0] >= b.Min[0] && p[0] <= b.Max[0] &&
-		p[1] >= b.Min[1] && p[1] <= b.Max[1] &&
-		p[2] >= b.Min[2] && p[2] <= b.Max[2]
 }
 
 func ancresXYZ(t *testing.T, module string) [][3]float64 {

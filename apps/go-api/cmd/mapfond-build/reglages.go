@@ -21,6 +21,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"reflect"
 
 	"levelup/go-api/internal/himap"
 )
@@ -87,6 +88,14 @@ type reglageCarte struct {
 	// Forge. Equivalent Forge du rognage aux zones de callout, qui n existent que sur les
 	// cartes natives (22 cartes, toutes natives).
 	RogneAuxVolumesDeMort bool `json:"rogneAuxVolumesDeMort,omitempty"`
+	// DrapeauxExclus : valeurs du champ de drapeaux des objets Forge a ne pas dessiner.
+	DrapeauxExclus []int `json:"drapeauxExclus,omitempty"`
+	// PlafondObjets : ecarter les objets Forge POSES plus haut que N metres au-dessus du sol
+	// joue. Voir OptionsCuissonForge.PlafondObjets — ce n est ni l ecretage ni la tranche.
+	PlafondObjets float64 `json:"plafondObjets,omitempty"`
+	// SolVuDuDessous : retenir la surface la plus BASSE au-dessus du sol joue. Pour les cartes
+	// a ciel ferme, ou la voie haute ne montre que le plafond.
+	SolVuDuDessous bool `json:"solVuDuDessous,omitempty"`
 	// MinceurMin : seuil d aire rapportee au carre de l emprise sous lequel un modele Forge
 	// n est PAS dessine. Zero = tout dessiner. Voir OptionsCuissonForge.MinceurMin.
 	MinceurMin float64 `json:"minceurMin,omitempty"`
@@ -99,6 +108,19 @@ type reglageCarte struct {
 	BoiteUtile []float64 `json:"boiteUtile,omitempty"`
 	Raison     string    `json:"raison"`
 	GateLe     string    `json:"gateLe"`
+}
+
+// sansLevier dit si l'entrée ne déclare AUCUN réglage : elle ne porte alors que son identité
+// (carte, raison, date de gate) et n'a strictement aucun effet sur la cuisson.
+//
+// LE CONTRÔLE EST GÉNÉRIQUE, ET C'EST LE POINT. `TestReglagesFondJustifies` énumérait trois
+// champs à la main — habillage, échelle, écrêtage — et cette liste avait cessé de suivre la
+// structure : une entrée qui ne déclare que `moduleGeometrie` était refusée comme « sans
+// effet » alors qu'elle change le module d'où la géométrie est lue. C'est exactement le cas de
+// Live Fire. Une liste écrite à la main re-divergera ; la comparaison à la valeur nulle, non.
+func (c reglageCarte) sansLevier() bool {
+	c.Carte, c.Raison, c.GateLe = "", "", ""
+	return reflect.DeepEqual(c, reglageCarte{})
 }
 
 type reglagesFond struct {
@@ -439,4 +461,50 @@ func (e *environnement) minceurMinDe(cle string) float64 {
 	slog.Info("mapfond: modeles filaires ecartes sous ce seuil", "carte", cle,
 		"minceurMin", c.MinceurMin, "gateLe", c.GateLe)
 	return c.MinceurMin
+}
+
+// solVuDuDessousDe dit si cette carte se rend par la surface basse.
+func (e *environnement) solVuDuDessousDe(cle string) bool {
+	if e.reglages == nil {
+		return false
+	}
+	c, ok := e.reglages.Cartes[cle]
+	if !ok || !c.SolVuDuDessous {
+		return false
+	}
+	slog.Info("mapfond: sol vu du dessous arme pour cette carte", "carte", cle, "gateLe", c.GateLe)
+	return true
+}
+
+// plafondObjetsDe rend la hauteur au-dessus du sol joue au-dela de laquelle un objet Forge
+// n est pas pose. Zero = les poser tous.
+func (e *environnement) plafondObjetsDe(cle string) float64 {
+	if e.reglages == nil {
+		return 0
+	}
+	c, ok := e.reglages.Cartes[cle]
+	if !ok || c.PlafondObjets <= 0 {
+		return 0
+	}
+	slog.Info("mapfond: plafond des objets propre a la carte", "carte", cle,
+		"plafond", c.PlafondObjets, "gateLe", c.GateLe)
+	return c.PlafondObjets
+}
+
+// drapeauxExclusDe rend les valeurs de drapeau d objet Forge a ecarter du dessin.
+func (e *environnement) drapeauxExclusDe(cle string) map[uint8]bool {
+	if e.reglages == nil {
+		return nil
+	}
+	c, ok := e.reglages.Cartes[cle]
+	if !ok || len(c.DrapeauxExclus) == 0 {
+		return nil
+	}
+	m := make(map[uint8]bool, len(c.DrapeauxExclus))
+	for _, d := range c.DrapeauxExclus {
+		m[uint8(d)] = true
+	}
+	slog.Info("mapfond: drapeaux d objet ecartes pour cette carte", "carte", cle,
+		"drapeaux", c.DrapeauxExclus, "gateLe", c.GateLe)
+	return m
 }

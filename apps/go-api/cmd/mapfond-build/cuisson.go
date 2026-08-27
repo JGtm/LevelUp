@@ -66,10 +66,14 @@ type bilanAsset struct {
 	HauteurPx int
 	OctetsPNG int64
 	Err       error
-	// NonCuisinable : la carte ne PEUT PAS être cuite, et on le sait — `live_fire`
-	// (sgh_interlock) ne porte aucun tag sbsp, exception instruite au §1 ter du handoff. Ce
+	// NonCuisinable : le module ne porte aucun tag sbsp, donc aucune géométrie à projeter. Ce
 	// n'est pas un échec : le compter comme tel rendrait le code de sortie rouge à chaque
 	// exécution, donc illisible.
+	//
+	// `live_fire` (sgh_interlock) en était l'exemple de référence — il ne l'est PLUS depuis le
+	// 2026-08-27 : sa géométrie vit dans `common-rtx-new.module` et son réglage
+	// `moduleGeometrie` l'y envoie. Un module sans sbsp qui atterrit ici est donc désormais une
+	// carte dont on n'a pas encore trouvé où la géométrie est rangée, pas une fatalité.
 	NonCuisinable bool
 }
 
@@ -208,6 +212,9 @@ func (e *environnement) cuitForge(ctx context.Context) []bilanAsset {
 			RogneAuxVolumesDeMort:  e.rogneAuxVolumesDeMortDe(carte.MapID),
 			TypesExclus:            e.typesExclusDe(carte.MapID),
 			MinceurMin:             e.minceurMinDe(carte.MapID),
+			SolVuDuDessous:         e.solVuDuDessousDe(carte.MapID),
+			PlafondObjets:          e.plafondObjetsDe(carte.MapID),
+			DrapeauxExclus:         e.drapeauxExclusDe(carte.MapID),
 			PlancherTranche:        e.plancherTrancheDe(carte.MapID),
 			PlafondTranche:         e.plafondTrancheDe(carte.MapID),
 			DessineCanevas:         e.dessineCanevasDe(carte.MapID),

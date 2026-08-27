@@ -12,6 +12,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"testing"
 
@@ -48,8 +49,11 @@ func TestReglagesFondJustifies(t *testing.T) {
 			t.Errorf("réglage %q : gateLe = %q, attendu AAAA-MM-JJ — la date du gate qui l'a décidé",
 				cle, c.GateLe)
 		}
-		if c.Style == "" && c.Echelle <= 0 && !c.EcreteToits {
-			t.Errorf("réglage %q : ne déclare ni habillage, ni échelle, ni écrêtage — entrée sans effet, à retirer", cle)
+		// Le contrôle vit dans `reglageCarte.sansLevier` : la liste de champs qui était
+		// énumérée ici avait cessé de suivre la structure et refusait une entrée qui ne
+		// déclare que `moduleGeometrie`.
+		if c.sansLevier() {
+			t.Errorf("réglage %q : ne déclare aucun levier — entrée sans effet, à retirer", cle)
 		}
 		if c.Style != "" && !himap.StyleFondValide(himap.StyleFond(c.Style)) {
 			t.Errorf("réglage %q : habillage inconnu %q", cle, c.Style)
@@ -81,4 +85,82 @@ func TestChargeReglagesAbsentEstNominal(t *testing.T) {
 	if len(r.Cartes) != 0 {
 		t.Fatalf("réglages non vides sur fichier absent : %v", r.Cartes)
 	}
+}
+
+// TestSansLevierReconnaitChaqueLevier : le garde-rail « entrée sans effet » ne doit refuser
+// QUE les entrées vides. Une liste de champs écrite à la main s'est déjà désynchronisée de la
+// structure — ce témoin balaie tous les champs par réflexion, donc il attrapera aussi le
+// prochain levier ajouté.
+func TestSansLevierReconnaitChaqueLevier(t *testing.T) {
+	if !(reglageCarte{Carte: "X", Raison: "...", GateLe: "2026-08-27"}).sansLevier() {
+		t.Fatal("une entrée qui ne porte que son identité doit être vue SANS levier")
+	}
+	typ := reflect.TypeOf(reglageCarte{})
+	identite := map[string]bool{"Carte": true, "Raison": true, "GateLe": true}
+	leviers := 0
+	for i := 0; i < typ.NumField(); i++ {
+		champ := typ.Field(i)
+		if identite[champ.Name] {
+			continue
+		}
+		leviers++
+		c := reglageCarte{Carte: "X", Raison: "...", GateLe: "2026-08-27"}
+		v := reflect.ValueOf(&c).Elem().Field(i)
+		switch champ.Type.Kind() {
+		case reflect.String:
+			v.SetString("valeur")
+		case reflect.Bool:
+			v.SetBool(true)
+		case reflect.Float64:
+			v.SetFloat(1)
+		case reflect.Slice:
+			v.Set(reflect.MakeSlice(champ.Type, 1, 1))
+		default:
+			t.Fatalf("champ %s de type %s non couvert par ce témoin", champ.Name, champ.Type)
+		}
+		if c.sansLevier() {
+			t.Errorf("le champ %s est un levier, il n'est pas reconnu comme tel", champ.Name)
+		}
+	}
+	if leviers < 10 {
+		t.Fatalf("%d leviers balayés : le témoin ne lit pas la structure", leviers)
+	}
+}
+
+// TestModuleGeometrieExisteDansLInstallation : un `moduleGeometrie` mal orthographie ne se
+// verrait qu a la cuisson, sous la forme d un « module introuvable » au milieu de 160 cartes.
+// Le chemin est une DONNEE, il se verifie comme une donnee.
+//
+// Le test verifie AUSSI que la cle de l entree est bien un dossier installe : la cle de
+// publication d une carte native est le nom du dossier du module (`filepath.Base` de son
+// repertoire), et une cle qui ne correspond a rien serait un reglage silencieusement ignore.
+func TestModuleGeometrieExisteDansLInstallation(t *testing.T) {
+	racine, err := himap.DeployRoot()
+	if err != nil {
+		t.Skip(err)
+	}
+	reg, err := chargeReglages(filepath.FromSlash(cheminReglagesPublies))
+	if err != nil {
+		t.Fatal(err)
+	}
+	vus := 0
+	for cle, c := range reg.Cartes {
+		if c.ModuleGeometrie == "" {
+			continue
+		}
+		vus++
+		chemin := filepath.Join(racine, filepath.FromSlash(c.ModuleGeometrie))
+		if _, err := os.Stat(chemin); err != nil {
+			t.Errorf("reglage %q : moduleGeometrie %q introuvable (%v)", cle, c.ModuleGeometrie, err)
+		}
+		propre, ok := himap.ChercheModuleInstalle(cle)
+		if !ok {
+			t.Errorf("reglage %q : aucun module installe ne porte cette cle — le reglage serait ignore", cle)
+			continue
+		}
+		if filepath.Base(filepath.Dir(propre)) != cle {
+			t.Errorf("reglage %q : la cle de publication serait %q", cle, filepath.Base(filepath.Dir(propre)))
+		}
+	}
+	t.Logf("%d reglage(s) declarent un moduleGeometrie", vus)
 }
