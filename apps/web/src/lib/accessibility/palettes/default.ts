@@ -27,11 +27,11 @@ export const defaultPalette: Palette = {
 
   // ── Divergent (source : match-card.tsx, delta-card.tsx) ────────────────────
   'divergent-pos':     '#22C55E', // green-500
-  // Gris légèrement bleuté : la zone « non significative » ne doit porter aucune
-  // direction. L'ancien bleu #60A5FA se lisait comme une valeur positive et
-  // entrait en concurrence avec les couleurs joueurs. Les 3 autres palettes ont
-  // déjà un gris à ce poste.
-  'divergent-neutral': '#8A9099',
+  // Bleu (blue-400) — décision produit 2026-08-27 : retour au bleu historique pour
+  // la Résistance défensive, jugé plus lisible que le gris #8A9099 essayé le
+  // 2026-08-04 (le gris se confondait avec les libellés muted voisins). Les 3
+  // palettes daltoniennes gardent leur gris à ce poste (neutre sans direction).
+  'divergent-neutral': '#60A5FA',
   'divergent-neg':     '#EF4444', // red-500
 
   // ── Statuts UI ─────────────────────────────────────────────────────────────

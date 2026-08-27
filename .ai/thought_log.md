@@ -22,18 +22,19 @@ eslint cibles propres. Typecheck web : seules erreurs dans ReplayTeams.tsx — c
 CONCURRENT d'une autre session sur ce worktree (i18n.ts / i18nContract.ts /
 placementTeleport.ts / ReplayTeams.tsx modifies hors de cette session), non touche.
 
-**Question Resistance grise** : reponse trouvee, aucune modif. Commit a13d83233
-(2026-08-04, palette squad-player) a change `divergent-neutral` #60A5FA (bleu) -> #8A9099
-(gris bleute) dans palettes/default.ts, avec justification (le neutre ne doit pas porter
-de direction ; le bleu se lisait positif et entrait en concurrence avec le bleu joueur
-principal ; les 3 palettes daltoniennes ont deja un gris a ce poste). Decouverte hors
-perimetre NON traitee : le fallback CSS no-JS de globals.css:211 est reste #60A5FA,
-desynchronise de la palette JS.
+**Question Resistance grise** : cause identifiee — commit a13d83233 (2026-08-04, palette
+squad-player) avait change `divergent-neutral` #60A5FA (bleu) -> #8A9099 (gris bleute)
+dans palettes/default.ts (justification d'epoque : neutre sans direction, concurrence
+avec le bleu joueur principal). DECISION PRODUIT 2026-08-27 (utilisateur) : retour au
+bleu #60A5FA dans la palette default (commentaire mis a jour, snapshot coverage.test
+regenere intentionnellement, 181 tests accessibility verts). Les 3 palettes daltoniennes
+gardent leur gris. Effet de bord positif : le fallback CSS no-JS de globals.css:211
+(#60A5FA, jamais change) redevient synchrone — chip de resync retire.
 
-**Conclusion / prochaine etape** : livre non committe (regle : demander avant commit) ;
-verification visuelle sur la session utilisateur (le device-code flow du navigateur
-integre n'a pas ete utilise). Option produit ouverte : revenir au bleu de la Resistance
-si le gris ne convient pas (1 ligne dans palettes/default.ts).
+**Conclusion / prochaine etape** : livre en 2 commits sur feat/v75 (lien rejeu tuiles ;
+retour au bleu Resistance) — les fichiers du chantier concurrent (match-replay) laisses
+hors staging. Verification visuelle finale sur la session utilisateur (le device-code
+flow du navigateur integre n'a pas ete utilise).
 
 ## [2026-08-27] Lot A — Assaut (bombe) : corpus qualifie, bombe [!] (catalogue sans site), statborg nomme le POSEUR — Complete
 
