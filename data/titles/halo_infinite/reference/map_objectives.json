@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "title_slug": "halo_infinite",
-  "generated_at": "2026-08-25T08:57:44.4070796Z",
+  "generated_at": "2026-08-27T15:30:44.0515702Z",
   "maps": {
     "003c828e-c2b3-43b5-b482-4005f9d4ec25": {
       "map_id": "003c828e-c2b3-43b5-b482-4005f9d4ec25",
@@ -9682,6 +9682,485 @@
           -169.09999084472656,
           -94.29943084716797,
           39.38895034790039
+        ]
+      }
+    },
+    "1a6cfc2e-ec86-48e1-9464-1ce1bff6ed48": {
+      "map_id": "1a6cfc2e-ec86-48e1-9464-1ce1bff6ed48",
+      "version_id": "3a382104-9b89-4e6e-aa18-0affaa98f478",
+      "public_name": "Lattice - Ranked",
+      "mvar_file": "map.mvar",
+      "module": "map",
+      "level_id": -992358985,
+      "objects_n": 5032,
+      "fetched_at": "2026-08-27T15:30:44.1148637Z",
+      "objectives": [
+        {
+          "role": "hill",
+          "type_id": -1476457415,
+          "pos": {
+            "x": -55.920013427734375,
+            "y": -16.979999542236328,
+            "z": 50
+          },
+          "forward": {
+            "x": 5.960465898624534e-8,
+            "y": -1,
+            "z": 0
+          },
+          "team_index": -1,
+          "instance_id": 0,
+          "labels": [],
+          "unresolved_labels": [
+            2133978317,
+            -767961569
+          ],
+          "object_index": 4363,
+          "shape": {
+            "family": "box",
+            "half_x": 2.149993896484375,
+            "half_y": 2.0499954223632812,
+            "up_z": 1.79998779296875,
+            "down_z": 0,
+            "forward": {
+              "x": 5.960465898624534e-8,
+              "y": -1,
+              "z": 0
+            },
+            "up": {
+              "x": 0,
+              "y": 0,
+              "z": 1
+            },
+            "raw": {
+              "family": 3,
+              "s5": 281804,
+              "s6": 268697,
+              "s7": 117964,
+              "s8": 0
+            }
+          }
+        },
+        {
+          "role": "hill",
+          "type_id": -1476457415,
+          "pos": {
+            "x": -72.19000244140625,
+            "y": -33.209999084472656,
+            "z": 51.410011291503906
+          },
+          "forward": {
+            "x": -1,
+            "y": 0,
+            "z": 0
+          },
+          "team_index": -1,
+          "instance_id": 0,
+          "labels": [],
+          "unresolved_labels": [
+            2133978317,
+            -767961569
+          ],
+          "object_index": 4364,
+          "shape": {
+            "family": "box",
+            "half_x": 1.774993896484375,
+            "half_y": 3.3499984741210938,
+            "up_z": 1.6999969482421875,
+            "down_z": 0,
+            "forward": {
+              "x": -1,
+              "y": 0,
+              "z": 0
+            },
+            "up": {
+              "x": 0,
+              "y": 0,
+              "z": 1
+            },
+            "raw": {
+              "family": 3,
+              "s5": 232652,
+              "s6": 439091,
+              "s7": 111411,
+              "s8": 0
+            }
+          }
+        },
+        {
+          "role": "hill",
+          "type_id": -1476457415,
+          "pos": {
+            "x": -49.400001525878906,
+            "y": -38.31999588012695,
+            "z": 51.61000442504883
+          },
+          "forward": {
+            "x": -1,
+            "y": 0,
+            "z": 0
+          },
+          "team_index": -1,
+          "instance_id": 0,
+          "labels": [],
+          "unresolved_labels": [
+            2133978317,
+            -767961569
+          ],
+          "object_index": 4366,
+          "shape": {
+            "family": "box",
+            "half_x": 2.0999984741210938,
+            "half_y": 1.3499984741210938,
+            "up_z": 1.6999969482421875,
+            "down_z": 0,
+            "forward": {
+              "x": -1,
+              "y": 0,
+              "z": 0
+            },
+            "up": {
+              "x": 0,
+              "y": 0,
+              "z": 1
+            },
+            "raw": {
+              "family": 3,
+              "s5": 275251,
+              "s6": 176947,
+              "s7": 111411,
+              "s8": 0
+            }
+          }
+        },
+        {
+          "role": "hill",
+          "type_id": -1476457415,
+          "pos": {
+            "x": -64.08751678466797,
+            "y": -48.36250305175781,
+            "z": 54.2500114440918
+          },
+          "forward": {
+            "x": -1,
+            "y": 0,
+            "z": 0
+          },
+          "team_index": -1,
+          "instance_id": 0,
+          "labels": [],
+          "unresolved_labels": [
+            2133978317,
+            -767961569
+          ],
+          "object_index": 4369,
+          "shape": {
+            "family": "box",
+            "half_x": 4.25,
+            "half_y": 1.25,
+            "up_z": 1.6999969482421875,
+            "down_z": 0,
+            "forward": {
+              "x": -1,
+              "y": 0,
+              "z": 0
+            },
+            "up": {
+              "x": 0,
+              "y": 0,
+              "z": 1
+            },
+            "raw": {
+              "family": 3,
+              "s5": 557056,
+              "s6": 163840,
+              "s7": 111411,
+              "s8": 0
+            }
+          }
+        },
+        {
+          "role": "hill",
+          "type_id": -1476457415,
+          "pos": {
+            "x": -66.5,
+            "y": -25.200000762939453,
+            "z": 52.20000076293945
+          },
+          "forward": {
+            "x": -1,
+            "y": 0,
+            "z": 0
+          },
+          "team_index": -1,
+          "instance_id": 0,
+          "labels": [],
+          "unresolved_labels": [
+            2133978317,
+            -767961569
+          ],
+          "object_index": 4370,
+          "shape": {
+            "family": "box",
+            "half_x": 1.9749984741210938,
+            "half_y": 2.274993896484375,
+            "up_z": 1.5,
+            "down_z": 0,
+            "forward": {
+              "x": -1,
+              "y": 0,
+              "z": 0
+            },
+            "up": {
+              "x": 0,
+              "y": 0,
+              "z": 1
+            },
+            "raw": {
+              "family": 3,
+              "s5": 258867,
+              "s6": 298188,
+              "s7": 98304,
+              "s8": 0
+            }
+          }
+        },
+        {
+          "role": "oddball_spawn",
+          "type_id": 848694842,
+          "pos": {
+            "x": -59.69819641113281,
+            "y": -34.42470169067383,
+            "z": 53.9069938659668
+          },
+          "forward": {
+            "x": 0.00004196167355985381,
+            "y": -1,
+            "z": 0
+          },
+          "team_index": -1,
+          "instance_id": 0,
+          "labels": [
+            "oddball_spawn"
+          ],
+          "object_index": 4320
+        },
+        {
+          "role": "strongholds_zone",
+          "type_id": 1818458590,
+          "pos": {
+            "x": -67.34000396728516,
+            "y": -25.335004806518555,
+            "z": 52.20000457763672
+          },
+          "forward": {
+            "x": 0,
+            "y": -1,
+            "z": 0
+          },
+          "team_index": 0,
+          "instance_id": 0,
+          "labels": [
+            "strongholds_include",
+            "strongholds_zone"
+          ],
+          "unresolved_labels": [
+            -2086997171
+          ],
+          "object_index": 4340,
+          "shape": {
+            "family": "box",
+            "half_x": 2.125,
+            "half_y": 2.5749969482421875,
+            "up_z": 1.6999969482421875,
+            "down_z": 0,
+            "forward": {
+              "x": 0,
+              "y": -1,
+              "z": 0
+            },
+            "up": {
+              "x": 0,
+              "y": 0,
+              "z": 1
+            },
+            "raw": {
+              "family": 3,
+              "s5": 278528,
+              "s6": 337510,
+              "s7": 111411,
+              "s8": 0
+            }
+          }
+        },
+        {
+          "role": "strongholds_zone",
+          "type_id": 1818458590,
+          "pos": {
+            "x": -64.11000061035156,
+            "y": -42.18999481201172,
+            "z": 50.410003662109375
+          },
+          "forward": {
+            "x": 0,
+            "y": -1,
+            "z": 0
+          },
+          "team_index": -1,
+          "instance_id": 0,
+          "labels": [
+            "strongholds_include",
+            "strongholds_zone"
+          ],
+          "unresolved_labels": [
+            -2086997171
+          ],
+          "object_index": 4343,
+          "shape": {
+            "family": "box",
+            "half_x": 1.899993896484375,
+            "half_y": 3.125,
+            "up_z": 2,
+            "down_z": 0,
+            "forward": {
+              "x": 0,
+              "y": -1,
+              "z": 0
+            },
+            "up": {
+              "x": 0,
+              "y": 0,
+              "z": 1
+            },
+            "raw": {
+              "family": 3,
+              "s5": 249036,
+              "s6": 409600,
+              "s7": 131072,
+              "s8": 0
+            }
+          }
+        },
+        {
+          "role": "strongholds_zone",
+          "type_id": 1818458590,
+          "pos": {
+            "x": -44.72974395751953,
+            "y": -27.93999671936035,
+            "z": 50.61000061035156
+          },
+          "forward": {
+            "x": 0,
+            "y": -1,
+            "z": 0
+          },
+          "team_index": 1,
+          "instance_id": 0,
+          "labels": [
+            "strongholds_include",
+            "strongholds_zone"
+          ],
+          "unresolved_labels": [
+            -2086997171
+          ],
+          "object_index": 4344,
+          "shape": {
+            "family": "box",
+            "half_x": 2.125,
+            "half_y": 1.274993896484375,
+            "up_z": 2,
+            "down_z": 0.5,
+            "forward": {
+              "x": 0,
+              "y": -1,
+              "z": 0
+            },
+            "up": {
+              "x": 0,
+              "y": 0,
+              "z": 1
+            },
+            "raw": {
+              "family": 3,
+              "s5": 278528,
+              "s6": 167116,
+              "s7": 131072,
+              "s8": 32768
+            }
+          }
+        }
+      ],
+      "unresolved_labels": {
+        "-1246645531": 3,
+        "-1482301937": 5,
+        "-2086997171": 3,
+        "-767961569": 5,
+        "-831896525": 1,
+        "2005903245": 11,
+        "2062593711": 11,
+        "2133978317": 10
+      },
+      "names": [
+        "1 Tim TV",
+        "1L Skybox",
+        "Aqua corner idea",
+        "3 H3 Floor",
+        "# Lighting Demo Room1",
+        "Ice buff",
+        "343Electrical Boxes ",
+        "Dell Machine 1",
+        "Prefab",
+        "Lattice Pie prop",
+        "Logo OTS",
+        "Texture - Concrete Road",
+        "1 Launch Site Big Wall Motif",
+        "4 Clutter small warning electrical",
+        "1 Lattice Prop Set Orange",
+        "1 ONI Logo Matte",
+        "# Starter Custom Rocks",
+        "4 Clutter wall fire hydrants",
+        "# Starter Glass Tech",
+        "7 Custom Railings",
+        "# Starter All Railings",
+        "4 Clutter string lights",
+        "7 Lattice Dell Space 2",
+        "AXYS - Logo Only",
+        "Live Fire Floor Tile B",
+        "ONI LOGO 10.25 x 10.25",
+        "ONI LOGO 25.5 X 25.5",
+        "1 Dell Skybox C1",
+        "Live Fire Floor Tile A-corner",
+        "1 ONI Room",
+        "1 Dell Skybox C2",
+        "Live Fire Wall 1",
+        "Mp unsc",
+        "Unreleased",
+        "Live Fire Wall 2",
+        "1 Dell Skybox C3",
+        "Live Fire Wall 4",
+        "1L Skybox 2",
+        "1L Gameplay All",
+        "Tennis Ball",
+        "Blockout Radar Box Idea",
+        "Live Fire Wall Lockers",
+        "Live Fire Detailed Pillar XL",
+        "Live Fire Concrete Stairs",
+        "Live Fire Ceiling Drop Large",
+        "Live Fire Ceiling Drop Small",
+        "1 beam",
+        "Skybox ATC tower thing",
+        ""
+      ],
+      "bounds": {
+        "max": [
+          264.2131042480469,
+          151.57733154296875,
+          96.49119567871094
+        ],
+        "min": [
+          -284.9906005859375,
+          -325.5668640136719,
+          -41.32991027832031
         ]
       }
     },
@@ -72815,6 +73294,10 @@
     "142a5e23-46de-4429-a232-aac4e6459a11": {
       "objectives": 41,
       "unresolved_label_hashes": 3
+    },
+    "1a6cfc2e-ec86-48e1-9464-1ce1bff6ed48": {
+      "objectives": 9,
+      "unresolved_label_hashes": 8
     },
     "1ede38fa-4d30-4dfa-a8b7-5d08bf4e46e3": {
       "objectives": 41,
