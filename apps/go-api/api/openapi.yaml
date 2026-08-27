@@ -10674,6 +10674,8 @@ components:
           additionalProperties:
             type: string
           type: object
+        vipCrown:
+          $ref: '#/components/schemas/VipCrownCoverage'
         zones:
           $ref: '#/components/schemas/ZonesCoverage'
       required:
@@ -20438,6 +20440,12 @@ components:
           type:
             - array
             - "null"
+        vipCrown:
+          items:
+            $ref: '#/components/schemas/VipPeriod'
+          type:
+            - array
+            - "null"
         weaponLabels:
           additionalProperties:
             $ref: '#/components/schemas/WeaponLabel'
@@ -25154,6 +25162,65 @@ components:
         - x
         - "y"
         - z
+      type: object
+    VipCrownCoverage:
+      additionalProperties: false
+      properties:
+        closed:
+          format: int64
+          type: integer
+        closedByDeath:
+          format: int64
+          type: integer
+        closedBySelection:
+          format: int64
+          type: integer
+        noBridge:
+          format: int64
+          type: integer
+        open:
+          format: int64
+          type: integer
+        outOfWindow:
+          format: int64
+          type: integer
+        periods:
+          format: int64
+          type: integer
+        selections:
+          format: int64
+          type: integer
+        vipFilm:
+          type: boolean
+      required:
+        - vipFilm
+        - selections
+        - periods
+        - closed
+        - open
+        - closedByDeath
+        - closedBySelection
+        - noBridge
+        - outOfWindow
+      type: object
+    VipPeriod:
+      additionalProperties: false
+      properties:
+        closed:
+          type: boolean
+        t0:
+          format: int64
+          type: integer
+        t1:
+          format: int64
+          type: integer
+        xuid:
+          type: string
+      required:
+        - xuid
+        - t0
+        - t1
+        - closed
       type: object
     WatcherAuthStartResponse:
       additionalProperties: false

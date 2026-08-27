@@ -160,6 +160,11 @@ type Coverage struct {
 	// publié rendent tous deux un calque vide. Son ABSENCE dit encore autre chose — l'appelant
 	// n'a rien fourni à lire.
 	FlagCarries *FlagCarriesCoverage `json:"flagCarries,omitempty"`
+	// VipCrown est la couverture de la COURONNE VIP (schéma 22, cf. document_vip_crown.go) :
+	// les sélections `vip_selected`, les périodes publiées partagées en fermées / ouvertes, la
+	// cause de fermeture (mort du VIP / sélection suivante) et les rejets par cause. Son ABSENCE
+	// dit que l'appelant n'a PAS reconnu un film VIP (la garde de mode est chez `replaybuild`).
+	VipCrown *VipCrownCoverage `json:"vipCrown,omitempty"`
 	// ObjectiveObjects est la couverture du calque des objets d'objectif LIBRES : combien le
 	// manifeste en déclare de publiables, combien de vies et de points sortent, et ce qui a été
 	// écarté hors axe (cf. document_objective_objects.go).

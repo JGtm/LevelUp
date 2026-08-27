@@ -50,6 +50,8 @@ interface ReplaySettingsDrawerProps {
   weaponPads: ReplayWeaponPadControls
   /** Les DRAPEAUX de capture (schéma 15) : un seul calque, allumé par défaut. */
   flagCarries: ReplayFlagControls
+  /** La COURONNE VIP (schéma 22) : un seul calque, allumé par défaut. */
+  vipCrown: ReplayVipCrownControls
   heatmap: ReplayHeatmapControls
   /** Éclairs de bouche (tous les tirs) et trait tueur -> victime : deux réglages distincts. */
   showShotFx: boolean
@@ -118,6 +120,13 @@ export interface ReplayFlagControls {
   onToggle: () => void
 }
 
+/** La COURONNE VIP (schéma 22) : un seul calque, allumé par défaut, comme les drapeaux. */
+export interface ReplayVipCrownControls {
+  available: boolean
+  show: boolean
+  onToggle: () => void
+}
+
 interface LayersSectionProps {
   locale: ReplayLocale
   showAim: boolean
@@ -132,11 +141,12 @@ interface LayersSectionProps {
   placements: ReplayPlacementControls
   weaponPads: ReplayWeaponPadControls
   flagCarries: ReplayFlagControls
+  vipCrown: ReplayVipCrownControls
 }
 
 function LayersSection({
   locale, showAim, onToggleAim, showZones, onToggleZones, showNames, onToggleNames,
-  showTrail, onToggleTrail, zonesAvailable, placements, weaponPads, flagCarries,
+  showTrail, onToggleTrail, zonesAvailable, placements, weaponPads, flagCarries, vipCrown,
 }: LayersSectionProps) {
   const t = REPLAY_TEXT[locale]
   return (
@@ -215,6 +225,16 @@ function LayersSection({
             pressed={flagCarries.show}
             onToggle={flagCarries.onToggle}
             hint={t.layerFlagCarriesHint}
+          />
+        )}
+        {/* LA COURONNE VIP est l'ENJEU du mode, comme les drapeaux : elle suit le porteur, sa
+            présence EST la lecture du match. Un film hors VIP n'en publie aucune. */}
+        {vipCrown.available && (
+          <SettingsToggle
+            label={t.layerVipCrown}
+            pressed={vipCrown.show}
+            onToggle={vipCrown.onToggle}
+            hint={t.layerVipCrownHint}
           />
         )}
       </div>
@@ -378,6 +398,7 @@ export function ReplaySettingsDrawer({
   placements,
   weaponPads,
   flagCarries,
+  vipCrown,
   heatmap,
   showShotFx,
   onToggleShotFx,
@@ -427,6 +448,7 @@ export function ReplaySettingsDrawer({
         placements={placements}
         weaponPads={weaponPads}
         flagCarries={flagCarries}
+        vipCrown={vipCrown}
       />
       <EffectsSection
         locale={locale}
