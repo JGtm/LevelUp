@@ -103,8 +103,8 @@ export interface PadIconRef {
 /**
  * padIconRefFor — QUELLE IMAGE pour ce socle, ou null (le calque pose alors un glyphe neutre).
  *
- * LES POWER-UPS SE RÉSOLVENT CÔTÉ CLIENT, comme les vignettes de grenade et pour la même
- * raison (cf. `grenadeIcon.ts`) : leur famille n'entre dans AUCUN catalogue du document — le
+ * LES POWER-UPS SE RÉSOLVENT CÔTÉ CLIENT, comme la version pleine des icônes d'arme des
+ * fiches (cf. `weaponFullIcon.ts`) : leur famille n'entre dans AUCUN catalogue du document — le
  * manifeste du titre ne déclare d'icône que sur ses grenades et ses capacités, jamais sur ses
  * `[[equipment_objects]]`. Le masque de HUD existe pourtant, livré sous
  * `static/weapons-assets/{slug}/hud/`, et c'est celui-là même que le manifeste nomme pour la

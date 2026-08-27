@@ -17,8 +17,8 @@ const PICTOGRAM_PX = 11
 /**
  * Stem (sans dossier ni extension) de la vignette d'assistance du KILL FEED DU JEU —
  * atlas killfeed, index 62. Exporté pour le garde-rail `assistMarkIcon.guard.test.ts`
- * (même patron que `GRENADE_ICON_STEMS`) : le fichier référencé doit exister sur disque
- * ET rester ce que `jeu/index.json` déclare à cet index.
+ * (même patron que `weaponFullIcon.guard.test.ts`) : le fichier référencé doit exister sur
+ * disque ET rester ce que `jeu/index.json` déclare à cet index.
  */
 export const ASSIST_ICON_STEM = 'killfeed-62'
 
