@@ -77,12 +77,15 @@ func TrancheDeJeu(zJeu float64) (min, max float64) {
 
 // Rendu porte un z-buffer et la normale retenue par pixel.
 type Rendu struct {
-	Cell     float64
-	Min      [2]float64
-	NX, NY   int
-	z        []float64
-	plafond  float64
-	plancher float64
+	// SeuilArete : denivele entre voisins au-dela duquel on trace un bord. Zero = le defaut
+	// (SeuilAreteMetres). Reglage PAR CARTE, cf. rendu_couleur.go.
+	SeuilArete float64
+	Cell       float64
+	Min        [2]float64
+	NX, NY     int
+	z          []float64
+	plafond    float64
+	plancher   float64
 	// niveauJeu : altitude du sol JOUE, deduite des ancres. NaN = inconnu.
 	niveauJeu float64
 	n         [][3]float64

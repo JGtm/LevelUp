@@ -73279,3 +73279,31 @@ gros rochers legitimes).
 **Conclusion / prochaine etape** : la piste a plus forte valeur reste la source des callouts
 Forge (l'utilisateur confirme que le jeu en a pour toutes les cartes) : elle sert 40 cartes,
 la quand le gribouillis n'en sert qu'une.
+
+## [2026-08-27] Isolation : le gribouillis venait de l'HABILLAGE, pas de la geometrie
+
+**Statut** : cause etablie, versions soumises au gate. Isolation non close.
+
+**Decision technique principale** : le « gribouillis » qui rend plusieurs cartes Forge
+illisibles n'est pas de la matiere parasite — c'est l'habillage. Preuve en une cuisson : le
+meme rendu, meme geometrie et meme cadre, en habillage `altitude`, montre l'arene intacte.
+L'habillage `encre` souligne un bord des que deux voisins different de plus de 0,5 m et
+quantifie l'eclairement en paliers ; sur des pieces organiques qui se chevauchent, les deux
+mecanismes se declenchent partout.
+
+**Ce que ca invalide** : les cinq coupes geometriques essayees la veille (ecretage 4/2/1 m,
+tranche plafonnee +6/+3 m, bornage aux volumes de mort, substitution sans portee, exclusion
+des dix types les plus etendus). Toutes negatives, et pour cause : le defaut n'etait pas dans
+la matiere. **Regle a retenir : avant de retirer de la matiere, changer d'habillage** — c'est
+une cuisson, et ca separe un defaut de rendu d'un defaut de geometrie.
+
+**Livre** : reglage `seuilArete` par carte (Rendu.SeuilArete, garde-rail
+TestSeuilAreteParCarte). Demi-remede : les aplats restent. Le remede complet est un choix
+d'habillage par carte, soumis au gate.
+
+**Ce que l'utilisateur a apporte** : deux fois de suite, sa lecture de l'image a corrige la
+mienne — « il y a des formes dessous » ici, « ce doit etre une variante et le poids leger doit
+etre la diff » pour Live Fire.
+
+**Conclusion / prochaine etape** : verdict sur l'habillage des cartes organiques ; puis
+proposition d'instruction pour la source des callouts Forge.

@@ -773,3 +773,42 @@ Le levier reste : il servira aux cartes Forge reellement posees sur leur terrain
 canevas, ni du decor hors zone — ce sont les PIECES FORGE DE L'ARENE ELLE-MEME, a hauteur de
 sol. Le seul angle restant est l'exclusion par type, avec un critere mesure sur la
 CONTRIBUTION EN PIXELS et non sur l'emprise du modele.
+
+### 2026-08-27 — LE GRIBOUILLIS EST UN HABILLAGE, PAS UNE GEOMETRIE
+
+Planche : https://claude.ai/code/artifact/021c9a57-0208-4c2b-be09-ea0e798c2d2c
+
+**Verbatim** : « ce qui m'intrigue c'est que j'ai l'impression qu'il y a des formes sous ce
+gribouillis. Et non on ne peut pas passer a autre chose, de trop nombreuses cartes ont le meme
+souci. »
+
+**L'intuition etait juste, et la preuve tient en une image** : le MEME rendu, la meme
+geometrie, le meme cadre, en habillage `altitude` — le gribouillis disparait et l'arene se
+lit. Rien n'a ete retire ; seule la mise en couleur a change.
+
+**La cause.** L'habillage `encre` tient sa lisibilite de deux mecanismes qui supposent tous
+deux des surfaces PLANES se rencontrant franchement :
+
+1. les **aretes** — on souligne un bord des que deux pixels voisins different de plus de
+   `SeuilAreteMetres` = 0,5 m ;
+2. les **aplats** — l'eclairement est quantifie en paliers.
+
+Sur une carte faite de pieces ORGANIQUES qui se chevauchent (les remakes Forge en rochers),
+deux voisins different de quelques centimetres PARTOUT : le predicat d'arete est vrai presque
+partout, et les paliers decoupent les surfaces courbes en bandes. `altitude` ne trace aucune
+arete et ne quantifie rien — d'ou le contraste.
+
+**C'est pourquoi cinq coupes geometriques n'avaient rien donne** : ecretage a 4/2/1 m, tranche
+plafonnee a +6/+3 m, bornage aux volumes de mort, substitution sans portee, exclusion des dix
+types les plus etendus. Je retirais de la matiere qui n'avait rien fait. **Lecon : avant de
+retirer de la matiere, verifier que le defaut est bien dans la matiere** — le meme rendu dans
+un autre habillage repond en une cuisson.
+
+**Levier livre** : `seuilArete` par carte (garde-rail `TestSeuilAreteParCarte`). Demi-remede
+seulement : a 2 et 5 m les grandes dalles perdent leurs traits parasites, mais les APLATS
+restent. Le remede complet est le choix d'habillage par carte, ou des aplats continus sur ces
+cartes-la.
+
+**A JUGER par l'utilisateur** : habillage `altitude` sur les cartes organiques (le plus
+lisible, mais quitte l'encre validee sur onze cartes), ou encre + seuil releve (garde
+l'identite, ne traite que la moitie du defaut).

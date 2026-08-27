@@ -120,6 +120,8 @@ type OptionsCuisson struct {
 	// ne peut rien quand la voute descend jusqu au sol joue, alors qu une tranche basse la
 	// supprime par construction.
 	PlafondTranche float64
+	// SeuilArete : voir Rendu.SeuilArete. Zero = le defaut.
+	SeuilArete float64
 	// ZonesNommees : polygones des callouts de la carte (contours + parties). Fournis, ils
 	// sont toujours MESURES (`BilanCuisson.MatiereHorsZones`) ; ils ne rognent que si
 	// `RogneAuxZones`. Vides sur une carte sans callouts — toutes les cartes Forge.
@@ -239,6 +241,7 @@ func CuitCarteNative(ctx context.Context, opts OptionsCuisson) (*Rendu, BilanCui
 		return nil, b, ErrSansAncre
 	}
 	r := CadreSurAncresEchelle(opts.Ancres, EchellePourCadre(opts.Ancres, opts.Echelle, opts.CibleCadrePx))
+	r.SeuilArete = opts.SeuilArete
 	zJeu := MedianeZ(opts.Ancres) - AncrageDecalageSol
 	b.NiveauDeJeu = zJeu
 	// La tranche est TRANSLATEE AU SOL JOUE — meme regle que la chaine Forge, et pour la meme

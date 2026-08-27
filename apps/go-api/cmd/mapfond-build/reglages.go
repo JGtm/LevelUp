@@ -62,6 +62,10 @@ type reglageCarte struct {
 	// PlancherTranche : profondeur en metres SOUS le niveau de jeu (valeur NEGATIVE) en deca
 	// de laquelle la matiere sort de la carte. Zero = -12 m. Voir OptionsCuisson.
 	PlancherTranche float64 `json:"plancherTranche,omitempty"`
+	// SeuilArete : denivele en metres entre deux pixels voisins au-dela duquel on souligne un
+	// bord. Zero = 0,5 m. A RELEVER sur les cartes en pieces organiques, ou le seuil par
+	// defaut couvre l image d un gribouillis de traits.
+	SeuilArete float64 `json:"seuilArete,omitempty"`
 	// DessineCanevas : poser AUSSI la geometrie du canevas sous les objets de la variante
 	// Forge. Voir OptionsCuissonForge.DessineCanevas.
 	DessineCanevas bool `json:"dessineCanevas,omitempty"`
@@ -404,4 +408,18 @@ func (e *environnement) dessineCanevasDe(cle string) bool {
 	}
 	slog.Info("mapfond: canevas dessine pour cette carte", "carte", cle, "gateLe", c.GateLe)
 	return true
+}
+
+// seuilAreteDe rend le seuil d arete propre a cette carte, ou zero pour le defaut.
+func (e *environnement) seuilAreteDe(cle string) float64 {
+	if e.reglages == nil {
+		return 0
+	}
+	c, ok := e.reglages.Cartes[cle]
+	if !ok || c.SeuilArete <= 0 {
+		return 0
+	}
+	slog.Info("mapfond: seuil d arete propre a la carte", "carte", cle, "seuil", c.SeuilArete,
+		"gateLe", c.GateLe)
+	return c.SeuilArete
 }
