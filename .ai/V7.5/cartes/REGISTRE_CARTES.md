@@ -812,3 +812,25 @@ cartes-la.
 **A JUGER par l'utilisateur** : habillage `altitude` sur les cartes organiques (le plus
 lisible, mais quitte l'encre validee sur onze cartes), ou encre + seuil releve (garde
 l'identite, ne traite que la moitie du defaut).
+
+### 2026-08-27 — Callouts Forge : la proposition, DESSINEE
+
+Planche : https://claude.ai/code/artifact/b37392c7-f6b0-4fd7-a224-950831ce5c1f
+
+**Verbatim** : « Mais ta proposition tu me l'as dessinee ou pas ? Je comprends rien »
+
+Le fichier Forge d'Isolation porte **237 objets qui declarent une FORME**, repartis en 26
+types. Trois ont la taille et le nombre d'une zone de callout :
+
+| type | nombre | taille mediane | emprise |
+|---|---|---|---|
+| `-696190206` | 18 | **14,9 m** | X [-43 ; -9] Y [-38 ; -7] |
+| `-722308271` | 17 | **12,0 m** | X [-49 ; -16] Y [-30 ; -15] |
+| `1223404046` | 25 | 5,0 m | etiquetes `firefight_include` — temoin |
+
+Les ancres d'objectif de la carte vivent en X [-40,3 ; -3,7] Y [-53,7 ; -10,8] : les deux
+premiers candidats couvrent bien l'arene. Les formes sont dessinees a leur position et a leur
+taille reelles, converties par le calage publie du fond — pas d'estimation.
+
+**Critere de verdict** : si l'un des deux epouse les salles de l'arene, on tient la source des
+callouts Forge, hors ligne, pour les 40 cartes.
