@@ -97,14 +97,33 @@
 
 ### C2 — Catalogue d'objectifs : sites d'Assaut + oddball_spawn de Lattice
 
-- [ ] C2.1 Departager H1/H2 sur pieces : ce que la variante `.mvar` des cartes du corpus
+- [x] C2.1 Departager H1/H2 sur pieces : ce que la variante `.mvar` des cartes du corpus
       contient reellement (Origin, Curfew, Absolution en priorite ; Rat's Nest et Urban
       Raid si le meme chemin les sert), et ce que le decodeur `mapvar` resout ou laisse en
       hash inconnu. Verdict ecrit avec fichiers/hashs a l'appui.
-- [ ] C2.2 Ajouter les sites `assault_bomb` des cartes du corpus au catalogue par la MEME
+      — Fait 2026-08-27. Les `map.mvar` des 5 cartes ont ete re-telecharges par la chaine
+      du CLI (dry-run + save-mvar, versions du jour) et dumpes objet par objet. VERDICT :
+      H1 et H2 sont TOUTES LES DEUX vraies, chacune a moitie — (H1) AUCUN objet ne porte
+      le role historique `assault_bomb` (-534119345) NI meme `assault_include` sur les 5
+      cartes (0/26 330 objets) ; (H2) le motif d'Assaut existe sous DEUX hashs de label
+      NON RESOLUS, stables sur les 5 cartes : -1537427652 = position CENTRALE neutre
+      (1/carte), -1843278509 = positions de BASE par equipe (2/carte) — topologie exacte
+      du mode (bombe neutre au centre, sites aux bases), objets co-portant oddball_spawn/
+      minigame_include (marqueurs generiques de spawn). Chasse murmur3 (TestHuntLabels,
+      66 radicaux x 32 suffixes = 2173 candidats) : AUCUN nom — patron KOTH (hash sans
+      nom). Au passage : minigame_exclude (-1047411729) et oddball_exclude (1191941951)
+      resolus sur Absolution (candidats a labelNames, decouverte §5). Lattice : son
+      map.mvar PORTE le socle oddball_spawn (label resolu) — la carte n'avait simplement
+      jamais ete extraite.
+- [~] C2.2 Ajouter les sites `assault_bomb` des cartes du corpus au catalogue par la MEME
       chaine que les autres roles (donnee, pas de code special-case) ; idem
       `oddball_spawn` de Lattice.
-- [ ] C2.3 GATE C2 (ecrit ici) : pour chaque carte reparee, les sites sont DANS les bornes
+      — Lattice : FAIT (mapobj-build --from-file, entree complete : 9 objectifs dont
+      1 oddball_spawn, level_id -992358985 = fo13_frost, version/nom completes depuis la
+      resolution reseau de la meme session). Sites d'Assaut : NON AJOUTES — gouverne par
+      le gate C2.3, non tenu (voir ci-dessous) ; les candidats restent figes au registre
+      (`C2_sites_candidats.json`) pour la reprise.
+- [!] C2.3 GATE C2 (ecrit ici) : pour chaque carte reparee, les sites sont DANS les bornes
       de la carte, leur COMPTE est publie (attendu : 1-2 sites d'armement par carte
       d'Assaut, 1-2 socles de crane pour Lattice), et un controle de coherence spatiale
       passe : en One Bomb/Neutral Bomb, chaque EXPLOSION datee par le score de mode (releves
@@ -112,6 +131,24 @@
       dans les secondes qui precedent — accord >= 75 % des explosions a <= 10 m d'un site
       ajoute, temoin sites decales de 12 m <= 25 %. Log fige `C2_sites_controle.log`.
       Si le controle spatial rate : les entrees ne rentrent PAS au catalogue, `[!]` chiffre.
+      — ASSAUT : GATE NON TENU 2026-08-27, chiffre : signal MAXIMAL (25/25 explosions des
+      8 films avec activite au site — V1 dmin mediane 0,91-3,54 m, V2 presence soutenue
+      d'un meme joueur au meme site 25/25) mais TEMOIN a 75-100 % contre <= 25 exige, sur
+      la V1 ET la V2 (amendement UNIQUE declare de la definition d'activite, seuils du
+      plan intacts). CAUSE NOMMEE par les dmin temoin de V1 (0,22-5,97 m sur les arenes) :
+      le temoin est INSATURABLE a cette echelle — decalage 12 m < 2 x rayon 10 m (disques
+      recouvrants) ET l'activite de 8-16 joueurs couvre le voisinage de tout point des
+      zones de combat dans une fenetre de 5-15 s. Ce zero refute l'INSTRUMENT « activite
+      de joueurs », pas les sites (motif structurel intact). RIEN n'entre au catalogue
+      pour l'Assaut. Condition de reprise (arbitrage superviseur au CR) : temoin
+      d'echelle coherente (decalage >= 4 x rayon d'activite), OU validation par la
+      naissance de l'OBJET (gate A1 : jambe temporelle independante des sites + temoin de
+      selectivite interne — non circulaire).
+      — LATTICE : GATE TENU — 1 socle (attendu 1-2), team -1, @ (-59.70, -34.42, 53.91),
+      DANS les bornes (X[-231;231.6] Y[-227;226.3] Z[-946;242.3]) ; le controle spatial
+      d'explosions ne s'applique qu'aux modes bombe (lettre du gate). L'entree Oddball
+      d'objective_roles.toml sert deja `oddball_spawn` : le film 92f18088 a desormais son
+      socle.
 
 ### C3 — Rejouer le gate A1 TEL QUEL ; publier A2 si et seulement s'il tient
 
@@ -161,3 +198,15 @@ etat Land Grab ; commits ; textes thought_log + registre ; decouvertes.
   (`SetAbsPerIndexAxisW`) existe pour le chemin sim-state ; l'etendre au lecteur
   world-object attendra une carte ou le cas pese. Limite ecrite dans
   SetWorldObjectPrecisionFromLayout.
+- (C2, 2026-08-27) **Deux labels resolus par la chasse murmur3, candidats a `labelNames`**
+  (garde-fou : coherence semantique OK, temoin d'execution a poser avant l'entree) :
+  `minigame_exclude` = -1047411729 et `oddball_exclude` = 1191941951 (observes sur
+  Absolution). NON AJOUTES ici (hors perimetre — aucun role, purs filtres).
+- (C2, 2026-08-27) **Rat's Nest et Urban Raid restent HORS du catalogue d'objectifs** :
+  leurs map.mvar sont telecharges (scratch de session) et parses (23 et 9 objectifs de
+  roles RESOLUS — hill, oddball_spawn, strongholds_zone...), l'ingestion est a une
+  commande pres (`mapobj-build --from-file`). Non faite ici : le plan ne demandait que
+  les sites d'Assaut (non tenus) et Lattice. A la prochaine passe catalogue.
+- (C2, 2026-08-27) Les map.mvar re-telecharges ne sont PAS versionnes (0,77-0,99 Mo
+  chacun ; les 3 .mvar du dump versionne font 17-94 Ko). Le catalogue porte map_id +
+  version_id + mvar_file : re-telechargeables par la chaine documentee du CLI.
