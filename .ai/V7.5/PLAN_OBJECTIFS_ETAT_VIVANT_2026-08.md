@@ -1306,3 +1306,96 @@ films exploitables, la mesure s'arrete : **TC entierement `[!]`**.
   **AUCUNE REMESURE N'EST ENGAGEE** : elle exigerait un protocole neuf (unite = la ROTATION et
   non la manche, plus un ancrage `ti=13` fiable sur BTB), c'est-a-dire la chasse au protocole
   suivant que l'arbitrage du 2026-08-27 ferme explicitement. Consigne, et laisse au superviseur.
+
+### D4 — ODDBALL : le PROTOCOLE, ecrit et commite AVANT la mesure
+
+> **PROTOCOLE ECRIT ET COMMITE AVANT LA MESURE.** Ce commit ne contient aucun chiffre de
+> RESULTAT. Les chiffres qu'il porte sont des DENOMINATEURS de corpus (combien de films, quelles
+> cartes, quels catalogues les couvrent) : ils disent sur quoi la mesure va porter, pas ce
+> qu'elle va rendre. Les seuils sont ceux du §2.4 et ne bougent pas.
+
+**LE CORPUS EST DIMENSIONNE D'ABORD, ET IL SE REDUIT DE SEPT A QUATRE.** Le recensement D1
+nommait 7 films Oddball. La recette d'identite du §2.4 exige DEUX catalogues par film : les
+bornes de quantification de sa carte (sans elles un objet du monde ne rend que des quanta, et
+« a moins de 3 m d'un socle » n'a aucun sens) et les objectifs ponctuels de sa carte (sans eux
+il n'y a pas de socle `oddball_spawn` a mesurer). Releve AVANT toute mesure :
+
+| film | carte | bornes de quantification | `oddball_spawn` au catalogue |
+|---|---|---|---|
+| `24dbb67d` | Recharge - Ranked | OUI | 1 |
+| `43716616` | Smallhalla | OUI | 1 |
+| `51ebbc0f` | Banished Narrows | OUI | 1 |
+| `d9781168` | Dredge | OUI | 1 |
+| `60ae07c4` | Live Fire - Ranked | **NON** (carte absente) | 1 |
+| `c88ec007` | Live Fire | **NON** (carte absente) | 1 |
+| `92f18088` | Lattice - Ranked | OUI | **carte absente du catalogue d'objectifs** |
+
+**QUATRE films mesurables**, et c'est >= 2 : le seuil d'identite reste atteignable. Les trois
+autres sont ecartes pour DEFAUT DE CATALOGUE, pas pour defaut de film — ils ne comptent ni pour
+ni contre, et la cause est nommee. La bombe memoire connue `a349fea8` n'est PAS au corpus
+Oddball : rien a exclure de ce cote. Chaque carte mesurable porte **exactement UN**
+`oddball_spawn` — le socle est unique, ce qui rend « naitre au socle » lisible sans ambiguite.
+
+- [ ] D4.0 **CONTROLE D'ALIGNEMENT DE LECTURE, avant tout le reste.** Le mot MPP de 32 bits se
+      lit derriere deux champs de largeur VARIABLE par film (decouverte 8 des armes au sol :
+      9/5 en Quick Play, 8/3 sur les films BTB). L'instrument du drapeau lit aux largeurs PAR
+      DEFAUT. **Le temoin est le compte de creations RESOLUES au catalogue d'armes** : un film
+      ou ce compte est nul est un film lu aux mauvaises largeurs, et il ne compte NI POUR NI
+      CONTRE. Sans ce controle, un film mal decoupe rendrait « aucun mot candidat » et ferait
+      passer une panne de lecture pour une refutation.
+- [ ] D4.1 **Identite.** Creations `ti=42` ECARTEES du catalogue d'armes ; par mot de 32 bits
+      distinct, (a) le nombre de creations nees a <= 3 m du `oddball_spawn` de la carte et (b)
+      l'ecart temporel minimal a un evenement `th=10` de crane. Meme instrument de forme que
+      `attachement_phase0_drapeau_test.go` — la tolerance de 3 m est celle, deja employee, de la
+      chaine des poses.
+- [ ] D4.2 **Temoin de SELECTIVITE.** Compter les mots ecartes qui reunissent les DEUX
+      conditions (naissance a <= 3 m d'un `oddball_spawn` ET coincidence a <= 1 s d'un
+      evenement `th=10` de crane). Le seuil exige que ce compte vaille **UN** : le candidat, et
+      aucun autre.
+- [ ] D4.3 **Portage.** Vies libres du mot candidat (`flagFreeLives`, meme regle d'appariement
+      creation -> piste que les armes au sol) ; un TROU est l'intervalle entre la fin d'une vie
+      libre et le debut de la suivante. Pour chaque trou, chercher le joueur dont le score
+      PERSONNEL s'incremente sur toute sa duree
+      (`objectiveevents.SeriesTotal(recs, PersonalScoreComponent, false)`, slot -> xuid par
+      `SlotIdentityResolved` / `SlotIdentityByDeaths`).
+- [ ] D4.4 **Verdict.** Les deux seuils du §2.4. Non tenu = NEGATIF ecrit, `[!]`, ligne du
+      registre des reports mise a JOUR (texte fourni au CR), et D5 ne publie rien pour Oddball.
+
+**L'ORACLE EST MESURE AVANT D'ETRE CRU — c'est la reserve du superviseur, et elle est fondee.**
+En D2-ter le score personnel s'est revele DOMINE PAR LES FRAGS (delta dominant median ~150 la ou
+un tic de colline en vaut quelques-uns), ce qui a coule l'oracle continu sur la colline. En
+Oddball le score personnel EST cense etre du portage (~1 point/s tenu), donc le diagnostic ne se
+transpose PAS tel quel — mais il ne s'ecarte pas non plus sur parole. **Le meme DIAGNOSTIC est
+donc publie A COTE du verdict, et avant lui** : l'AMPLEUR des deltas de score personnel par trou.
+Un delta median qui se compte en centaines dit que l'oracle mesure des frags ; un delta median
+proportionnel a la DUREE du trou dit qu'il mesure du portage. Si le diagnostic dit « frags »,
+le seuil (2) n'est pas evalue et Oddball passe `[!]` ORACLE — refuter avec un oracle dont on
+vient de montrer qu'il mesure autre chose ne prouverait rien.
+
+**SEUILS (ceux du §2.4, RECOPIES SANS MODIFICATION)** :
+
+1. **Identite** : UN SEUL mot candidat, LE MEME sur **>= 2** films mesurables, temoin de
+   selectivite = **0** autre candidat.
+2. **Portage** : **>= 90 %** des trous ont EXACTEMENT UN joueur dont le score personnel
+   s'incremente sur toute leur duree ; temoin « porteur tire au hasard hors trou » **<= 5 %**.
+
+**LE TEMOIN DE PORTAGE, DEFINI AVANT DE COMPTER** : pour chaque trou, un joueur tire parmi ceux
+que le pont nomme, a l'EXCLUSION du porteur retenu, teste par le MEME predicat sur un intervalle
+de MEME DUREE place hors de tout trou. Meme code, meme duree, meme predicat — sans quoi le temoin
+controlerait autre chose que la mesure.
+
+**ESCALADE, ECRITE D'AVANCE** : un film dont le controle D4.0 echoue, ou dont le pont ne nomme
+pas au moins deux joueurs, n'est pas exploitable et ne compte ni pour ni contre. S'il reste
+**moins de 2** films exploitables, le seuil (1) est repute NON TENU et la mesure s'arrete :
+Oddball entierement `[!]` CORPUS. Si le seuil (1) tombe, le seuil (2) n'est PAS evalue — sans
+identite, il n'y a pas d'objet dont decouper les trous.
+
+**LES DEUX ISSUES SONT DES RESULTATS.** OUI aux deux seuils => le crane entre dans
+`[[objective_objects]]` de `replay_labels.toml` avec sa justification DATEE (mandat du
+superviseur du 2026-08-27), et D5 publie son portage. NON => negatif ecrit, `[!]` MESURE, ligne
+du registre des reports mise a jour et non contournee, D5 ne publie rien pour Oddball.
+
+**EXECUTION** : un film par processus sous `filmproc` (plafond memoire, priorite basse), aucune
+base ouverte en ecriture, aucune re-cuisson d'artefact. Le film `24dbb67d` est TRONQUE (29
+chunks, `PLAN_REMEDIATION_CACHE.md`) : s'il rend un pont degrade, il sort par l'escalade
+ci-dessus comme n'importe quel autre, sans traitement de faveur.
