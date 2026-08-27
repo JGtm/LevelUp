@@ -330,24 +330,45 @@ famille bug ART) — consignée en Découvertes.
 
 ### Lot 3 — Métrique ospm + profils de poids par chaîne
 
-- [ ] B3.1 Loader interne au batch : `match_id → somme award_score objective` depuis
+- [x] B3.1 Loader interne au batch : `match_id → somme award_score objective` depuis
       playerDB (dédup selon règle B0.2 ; table absente → map vide + slog debug).
-- [ ] B3.2 `MetricKeyObjectiveParticipation = "objective_participation"` ; ospm câblé
+- [x] B3.2 `MetricKeyObjectiveParticipation = "objective_participation"` ; ospm câblé
       dans historyRow/matchMetrics/prepareHistoryMetrics/getMetricValue
       (performance.go + performance_helpers.go).
-- [ ] B3.3 `RelativeWeights` devient profil par chaîne : `WeightsForChain(chain)` —
+- [x] B3.3 `RelativeWeights` devient profil par chaîne : `WeightsForChain(chain)` —
       défaut = profil actuel ; chaînes `arena_objectif`/`ranked_objectif` = profil
       objectif aux poids FIGÉS au gate 0. ospm absent des profils slayer/btb/chaos/
       firefight/ranked_slayer.
-- [ ] B3.4 Tests unitaires : profils (somme, renormalisation, ospm absent → poids
+- [x] B3.4 Tests unitaires : profils (somme, renormalisation, ospm absent → poids
       redistribués), métrique ospm, match sans awards.
-- [ ] B3.5 Test d'intégration « futur match » : pipeline post-sync sur fixture (nouveau
+- [x] B3.5 Test d'intégration « futur match » : pipeline post-sync sur fixture (nouveau
       match objectif ranked) → chaîne `ranked_objectif` + note calculée avec ospm sans
       intervention (exigence utilisateur du 2026-08-27).
 
 Gate 3 : gates go complets (dont integration -p 1) + rejouer `diag_perfsim` : les notes
 simulées et les notes produites par le code réel sur les mêmes données doivent concorder
 (écart ≤ 0.1 attendu ; divergence = bug à élucider avant clôture).
+
+**Gate 3 PASSÉ (partie code) le 2026-08-27.** ospm + profils livrés : loader
+`skill.LoadObjectiveParticipation` (vue `_latest`, xuid strict aligné sur le lecteur
+canonique, cast ::DOUBLE — SUM(INTEGER) rend un HUGEINT), pointeur = couverture (D-J),
+`WeightsForChain` avec profil objectif FIGÉ documenté, filtrage par profil AVANT
+renormalisation, signature du batch inchangée (les 5 call-sites héritent). 12 tests
+neufs verts dont les jumeaux « futur match » (actif objectif note plus haut que
+l'inactif ; non-couvert = poids redistribué). Gates : unit/vet/build/gofmt exit 0,
+intégration -p 1 tranches 303/303 zéro `--- FAIL:` (himap timeout local toléré).
+DEUX arbitrages d'exécution VALIDÉS pilote : (a) loader dans
+`internal/sync/skill/objective_participation.go` (sync gelé à 80 fichiers racine +
+précédents LoadExcludedMatchIDs/isSchemaMissingErr dans skill) ; (b) `diag_perfsim`
+aligné sur `skill.WeightsForChain` (source unique, seul ospm parametrable pour ses
+variantes) mais MAINTENU en scan complet sans prédicat — sentinelle volontaire : une
+divergence outil/produit au lot 4 signalerait une re-corruption d'index.
+L'oracle « notes réelles vs simulées » sur données réelles est REPORTÉ AU LOT 4
+(B4.2) : ce lot n'a aucun droit d'écriture réel. Tolérance à prévoir au lot 4 : le
+recompute réel passe par le chemin backfill AVEC medal_exploit, la sim est sans —
+écart moyen attendu ~1,2-2,2 pt (sonde du rapport lot 0), médianes ±1,5 pt.
+Budget fichiers : performance.go 475 L / helpers 487 L — la prochaine évolution du
+batch passera par un sous-package.
 
 ### Lot 4 — Recompute réel + gate visuel + clôture
 
