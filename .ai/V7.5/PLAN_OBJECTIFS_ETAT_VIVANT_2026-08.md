@@ -1668,3 +1668,63 @@ deux decisions.
 **RAPPEL DE GATE, mesure deux fois (journaux du 18/08) : ne PAS cuire de film pendant le gate
 web.** Les garde-rails qui balaient `src/` expirent a 5 000 ms sur machine chargee, et ces echecs
 ne sont pas des regressions.
+
+### D3-ter, VERROU 1 — LA CALIBRATION DES LARGEURS : protocole ECRIT ET COMMITE AVANT LA SONDE
+
+> Aucun chiffre de resultat. Mandat du product owner (2026-08-27) : Total Control est ROUVERT,
+> l'arbitrage « pas de protocole suivant » est leve. Deux verrous dans l'ordre, arret au premier
+> qui tient. Critere du verrou 1 fixe par le superviseur et RECOPIE SANS MODIFICATION :
+> **chainage >= 80 % = canal lisible.**
+
+**D'ABORD, UNE CORRECTION DE MON PROPRE CR D3-BIS.** J'ai presente le chainage de 5,3 a 14,5 %
+comme une reserve invalidant la mesure. C'est INEXACT, et il faut le dire avant d'aller plus
+loin : ce taux est le taux GLOBAL du balayage (`Chained/Walked` sur toutes les lectures `ti=13`),
+alors que **l'election du designateur de D3-bis ne lisait DEJA que des lectures chainees**
+(`totalcontrol_designateur_d3bis_test.go:165`, `!r.Chained` -> `continue`), exactement comme la
+production (`zone_states.go:182`). Le taux global mesure la proportion de bruit dans le balayage ;
+il ne mesure pas la qualite de ce que l'instrument a consomme. Ma reserve etait donc surdimensionnee
+sur ce point precis. La seconde reserve — une seule manche par film, donc une unite de protocole
+inexistante — reste entiere, et c'est elle que le verrou 2 corrige.
+
+**L'HYPOTHESE DU SUPERVISEUR, ET POURQUOI ELLE SE TESTE AU LIEU DE SE PLAIDER.** Le precedent M3
+est reel : sur `ti=42`, l'identite lue aux largeurs MPP par defaut rendait ZERO socle en silence
+sur BTB. La question est de savoir si le balayage `ti=13` a la MEME dependance. La lecture du code
+dit non — le bloc MPP appartient aux default-states de `ti=35/36/37/38/39/42/43`, pas a `ti=13`,
+dont la grammaire porte en propre la mention « AUCUNE DESYNCHRONISATION N'EST POSSIBLE : la
+largeur est entierement determinee par 4 bits lus dans le flux »
+(`components_managed_property.go`). **Mais un argument de lecture peut manquer un chemin
+indirect**, et le dernier lot a montre ce que coute de supposer (« le score d'Oddball monte a
+~1 Hz » : suppose, jamais mesure, faux). La sonde MESURE donc l'independance au lieu de la
+deduire.
+
+- [ ] D3t.1 **TEST A — le bouton fait-il quelque chose ?** Balayer `ScanFilmManagedProperties`
+      sur le MEME film sous TROIS decoupages MPP installes par `SetMPPWidths` : le defaut
+      **9/5**, le decoupage **8/3** mesure sur les films BTB du lot armes-au-sol, et un
+      decoupage volontairement ABSURDE **12/7**. Comparer `Records`, `Walked`, `Chained` et le
+      nombre de lectures, a l'unite pres.
+- [ ] D3t.2 **CRITERE DU VERROU 1**, tel que fixe : chainage `Chained/Walked` **>= 80 %** sur les
+      deux films sondes. En dessous : verrou 1 NON TENU, arret, CR.
+- [ ] D3t.3 **DIAGNOSTIC DU VERROU REEL** — c'est ce que le superviseur demande en cas d'echec
+      (« CR avec le verrou reel nomme »), et il se definit AVANT de mesurer pour ne pas se
+      choisir a la lecture du chiffre. L'ancrage de `scanPayload` est un balayage EXHAUSTIF de
+      toutes les positions de bit, valide par une signature FAIBLE (1 bit de prefixe, 13 bits de
+      slot dans la bande, 2 bits de porte, 3 bits de compte, index croissants). Un tel ancrage
+      produit mecaniquement des FAUX ANCRAGES en proportion de la taille du payload — ce qui
+      predit exactement ce que D3-bis a observe : chainage qui BAISSE quand le film grossit, et
+      nombre de « slots designateurs » qui CROIT avec lui. **Discriminant, ecrit d'avance :** les
+      vrais records se concentrent sur peu de slots avec beaucoup de lectures, les faux se
+      dispersent sur beaucoup de slots avec une ou deux lectures. Publier donc, sur le
+      SOUS-ENSEMBLE CHAINE : le nombre de slots porteurs, et la part des lectures chainees portee
+      par les **5** slots les plus fournis. **Si cette part est >= 80 %**, le taux global bas est
+      un artefact d'ancrage et non une lecture fausse — le canal est lisible APRES filtrage.
+
+**CE QUE LE DIAGNOSTIC N'AUTORISE PAS.** Meme si D3t.3 montre un sous-ensemble chaine tres
+concentre, **le verrou 1 reste NON TENU si le critere >= 80 % de D3t.2 n'est pas atteint**, et
+la mission s'ARRETE la, au CR, comme mandate. Le diagnostic NOMME le verrou reel ; il ne se
+substitue pas au critere et il n'ouvre pas le verrou 2 de lui-meme. Ce sera au superviseur de
+decider si le verrou reel ainsi nomme change le plan.
+
+**CORPUS** : les deux films TC les plus LEGERS, `66aa5f0b` et `bf831a6b` — designes par le
+superviseur, et ce sont ceux dont l'ancrage etait le moins mauvais en D3-bis. `a349fea8` EXCLU
+D'OFFICE. Un film par processus, sentinelle memoire armee dans le processus qui decode, aucune
+base ouverte.
