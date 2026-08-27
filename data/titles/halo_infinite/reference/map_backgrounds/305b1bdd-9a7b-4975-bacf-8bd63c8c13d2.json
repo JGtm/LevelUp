@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "module": "305b1bdd-9a7b-4975-bacf-8bd63c8c13d2",
+  "mapNames": [
+    "Fortitude Heavies",
+    "fortitude_heavies_map"
+  ],
+  "image": "305b1bdd-9a7b-4975-bacf-8bd63c8c13d2.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-27T06:59:01.4602205Z",
+  "style": "encre",
+  "calibration": {
+    "metersPerPixel": 0.05538444455464681,
+    "originX": -77.69548988342285,
+    "originY": 63.17286466789247,
+    "widthPx": 3001,
+    "heightPx": 2787,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 26,
+    "anchorsInFrame": 26,
+    "anchorsWithGround": 26,
+    "anchorMedianGapM": -0.005886263900009681,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 90.43000122070312,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.6900434634440454,
+    "covered": true,
+    "cellsSubstituted": 2734638,
+    "forgeObjects": 5435,
+    "forgeObjectsDrawn": 5354,
+    "forgeObjectsWithoutModel": 38,
+    "forgeDeathVolumes": 43
+  }
+}

@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 
 	"levelup/go-api/internal/himap"
 )
@@ -30,6 +31,18 @@ type reglageCarte struct {
 	Carte   string  `json:"carte,omitempty"`
 	Style   string  `json:"style,omitempty"`
 	Echelle float64 `json:"echelle,omitempty"`
+	// ModuleGeometrie : chemin RELATIF A LA RACINE DU JEU d'un module qui porte la geometrie
+	// de cette carte, quand ce n'est pas le sien.
+	//
+	// Un seul cas connu, et il a coute une conclusion fausse : `sgh_interlock` (Live Fire) ne
+	// contient QUE six fichiers, dont un `levl` de 2,3 Mo — aucun sbsp, aucune bitmap. J'en
+	// avais deduit « geometrie non installee » ; l'utilisateur, qui joue la carte
+	// regulierement, a corrige : « ce doit etre une variante d'une autre map et le poids
+	// leger doit etre la diff ». Mesure : `common-rtx-new.module` porte QUATRE sbsp qu'aucune
+	// carte ne reclame, et le premier — 12 556 instances, X [-16,7 ; +46,5], Y [-10,1 ;
+	// +53,7] — CONTIENT les 24 ancres d'objectif de Live Fire. La geometrie est donc bien
+	// installee, ailleurs. Preuve rejouee par `TestGeometrieLiveFireDansCommon`.
+	ModuleGeometrie string `json:"moduleGeometrie,omitempty"`
 	// EcreteToits : vider les pixels dont aucune surface n est a hauteur de jeu
 	// (himap/ecretage_toits.go). Jamais un defaut — il efface les rochers hauts d une carte
 	// qui en fait son identite.
@@ -300,4 +313,20 @@ func (e *environnement) boiteUtileDe(cle string) [4]float64 {
 	}
 	copy(out[:], c.BoiteUtile)
 	return out
+}
+
+// moduleGeometrieDe rend le chemin ABSOLU du module qui porte la geometrie de cette carte,
+// ou la chaine vide quand c'est le sien — le cas de toutes les cartes sauf une.
+func (e *environnement) moduleGeometrieDe(cle string) string {
+	if e.reglages == nil {
+		return ""
+	}
+	c, ok := e.reglages.Cartes[cle]
+	if !ok || c.ModuleGeometrie == "" {
+		return ""
+	}
+	chemin := filepath.Join(e.racineJeu, filepath.FromSlash(c.ModuleGeometrie))
+	slog.Info("mapfond: geometrie prise dans un AUTRE module", "carte", cle,
+		"module", c.ModuleGeometrie, "gateLe", c.GateLe)
+	return chemin
 }

@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "module": "79042fc0-ba3d-4046-aa97-5a6902462531",
+  "mapNames": [
+    "Scarlett's Landing",
+    "scarlett's_landing_map"
+  ],
+  "image": "79042fc0-ba3d-4046-aa97-5a6902462531.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-27T07:50:44.6012855Z",
+  "style": "encre",
+  "calibration": {
+    "metersPerPixel": 0.04186666711171468,
+    "originX": -28.229422253533073,
+    "originY": 55.97573440519969,
+    "widthPx": 1869,
+    "heightPx": 2713,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 9,
+    "anchorsInFrame": 9,
+    "anchorsWithGround": 9,
+    "anchorMedianGapM": -0.06516522032858063,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 84.71,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.4599180996190963,
+    "covered": true,
+    "cellsSubstituted": 1432998,
+    "forgeObjects": 5558,
+    "forgeObjectsDrawn": 5503,
+    "forgeObjectsWithoutModel": 23,
+    "forgeDeathVolumes": 32
+  }
+}

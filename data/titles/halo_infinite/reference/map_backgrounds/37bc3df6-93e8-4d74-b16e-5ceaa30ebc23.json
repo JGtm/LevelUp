@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "module": "37bc3df6-93e8-4d74-b16e-5ceaa30ebc23",
+  "mapNames": [
+    "Thunderhead Heavies",
+    "thunderhead_heavies_map"
+  ],
+  "image": "37bc3df6-93e8-4d74-b16e-5ceaa30ebc23.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-27T07:02:00.9205192Z",
+  "style": "encre",
+  "calibration": {
+    "metersPerPixel": 0.0658952465057373,
+    "originX": -131.8672866821289,
+    "originY": 171.2522945098877,
+    "widthPx": 3001,
+    "heightPx": 2632,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 36,
+    "anchorsInFrame": 36,
+    "anchorsWithGround": 36,
+    "anchorMedianGapM": -0.10854619246295272,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 54.02853485107422,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.5673848803733843,
+    "covered": true,
+    "cellsSubstituted": 2330959,
+    "forgeObjects": 5004,
+    "forgeObjectsDrawn": 4807,
+    "forgeObjectsWithoutModel": 123,
+    "forgeDeathVolumes": 74
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "module": "133c0185-24ed-4bc2-b834-62db5c936257",
+  "mapNames": [
+    "Rat's Nest",
+    "rat's_nest_map"
+  ],
+  "image": "133c0185-24ed-4bc2-b834-62db5c936257.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-27T07:46:08.8338393Z",
+  "style": "encre",
+  "calibration": {
+    "metersPerPixel": 0.0457856453259786,
+    "originX": -132.7076471803983,
+    "originY": 67.68638293520611,
+    "widthPx": 1892,
+    "heightPx": 2520,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 23,
+    "anchorsInFrame": 23,
+    "anchorsWithGround": 23,
+    "anchorMedianGapM": -1.77921294580716,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 164.74500366210938,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.2755361096861189,
+    "covered": false,
+    "forgeObjects": 5342,
+    "forgeObjectsDrawn": 5302,
+    "forgeObjectsWithoutModel": 37,
+    "forgeDeathVolumes": 3
+  }
+}

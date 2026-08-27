@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "module": "e3681516-2930-491c-b94f-7dbfa161e000",
+  "mapNames": [
+    "Obituary Heavies",
+    "obituary_heavies_map"
+  ],
+  "image": "e3681516-2930-491c-b94f-7dbfa161e000.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-27T07:10:19.6454626Z",
+  "style": "encre",
+  "calibration": {
+    "metersPerPixel": 0.06510899607340495,
+    "originX": -97.6768913269043,
+    "originY": 78.23129304250082,
+    "widthPx": 2876,
+    "heightPx": 2375,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 31,
+    "anchorsInFrame": 31,
+    "anchorsWithGround": 31,
+    "anchorMedianGapM": 0.01176524818396274,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 100.60655303955077,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.5474925997316141,
+    "covered": true,
+    "cellsSubstituted": 2416612,
+    "forgeObjects": 5397,
+    "forgeObjectsDrawn": 5293,
+    "forgeObjectsWithoutModel": 65,
+    "forgeDeathVolumes": 39
+  }
+}

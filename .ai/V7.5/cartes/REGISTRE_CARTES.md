@@ -626,3 +626,44 @@ trois passages sans production et la carte sort de la file, quel que soit le cod
 
 **Bilan reel de la campagne** : 38 fonds Forge cuisinables, 38 cuits. Les 28 autres attendent
 le catalogue d'objectifs.
+
+## 2026-08-27 — 27 cartes entrent, et Live Fire cesse d'etre un mystere
+
+**Les 27** : `cmd/mapobj-build --from-file` a ingere leurs objectifs HORS LIGNE depuis leur
+`.mvar` (aucun appel reseau, aucune authentification), de 4 a 50 objectifs par carte. Elles
+ont ensuite ete declarees dans `CartesForge` — canevas prouve par level_id — et cuites : 27
+sur 27, zero echec. **Cole Protocol reste dehors** : son `.mvar` ne porte AUCUN objectif, donc
+aucune ancre, donc aucun cadre a construire.
+
+Le catalogue de fonds passe de 57 a **84**.
+
+### Live Fire : l'utilisateur avait raison, et la geometrie est trouvee
+
+**Verbatim** : « Live Fire j'y joue regulierement donc c'est bizarre, ce doit etre une variante
+d'une autre map et le poids leger doit etre la diff »
+
+Ma conclusion « geometrie non installee » venait du POIDS du fichier, pas de son contenu.
+Mesure du contenu :
+
+| module | fichiers | groupes de tags |
+|---|---|---|
+| `sgh_interlock` (Live Fire) | **6** | `levl=1` + 5 sans groupe — aucun sbsp, aucune bitmap |
+| `sgh_blueprint` (Recharge) | 1 976 | bitm=392, rtgo=169, sbsp=1 |
+| `sgh_streets` (Streets) | 8 949 | bitm=1 051, rtgo=1 049, sbsp=2 |
+
+Le `levl` de Live Fire pese **2,3 Mo — plus que celui de Recharge (664 Ko)**. Ce n'est donc pas
+un talon vide : c'est le DELTA, exactement ce que disait l'utilisateur.
+
+**Ou est la geometrie** : `common-rtx-new.module` porte QUATRE `sbsp` qu'aucune carte ne
+reclame. Le premier — 12 556 instances, X [-16,7 ; +46,5], Y [-10,1 ; +53,7] — **contient les
+24 ancres d'objectif de Live Fire**. Preuve rejouee par `TestGeometrieLiveFireDansCommon`.
+
+**Ce qui reste a faire** : la premiere cuisson par ce chemin rend un decor qui n'est PAS
+l'arene (antenne satellite, escalier, vegetation ; 21/28 ancres au sol, couverture 22 %). Le
+bon bsp reste a designer parmi les quatre — `ChoisitBSP` retient celui qui contient le plus
+d'ancres, et deux des quatre les contiennent toutes. Le fond produit a ete RETIRE et le
+reglage `moduleGeometrie` desarme : un mauvais fond vaut moins que pas de fond. Le levier de
+code reste en place, il est correct ; c'est son parametre qui n'est pas trouve.
+
+**Condition de reprise** : departager les quatre bsp de `common-rtx-new` (par la surface, par
+le nombre d'ancres AVEC SOL, ou en lisant les references du `levl`), puis rearmer le reglage.

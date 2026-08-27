@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "module": "8816f240-9038-404b-bbd5-ef4f2b00f482",
+  "mapNames": [
+    "Ecotone",
+    "ecotone_map"
+  ],
+  "image": "8816f240-9038-404b-bbd5-ef4f2b00f482.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-27T06:52:27.7227991Z",
+  "style": "encre",
+  "calibration": {
+    "metersPerPixel": 0.05417184480031331,
+    "originX": -61.64979648590088,
+    "originY": 72.23293237241108,
+    "widthPx": 2270,
+    "heightPx": 1916,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 11,
+    "anchorsInFrame": 11,
+    "anchorsWithGround": 10,
+    "anchorMedianGapM": -6.58471914470195,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 155.31000610351563,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.254463305135506,
+    "covered": false,
+    "forgeObjects": 5516,
+    "forgeObjectsDrawn": 5475,
+    "forgeObjectsWithoutModel": 20,
+    "forgeDeathVolumes": 21
+  }
+}

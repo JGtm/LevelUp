@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "module": "525451ca-0bfa-4b5c-8a0f-29524e0f2834",
+  "mapNames": [
+    "Disciple",
+    "disciple_map"
+  ],
+  "image": "525451ca-0bfa-4b5c-8a0f-29524e0f2834.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-27T07:22:36.4378808Z",
+  "style": "encre",
+  "calibration": {
+    "metersPerPixel": 0.04581888755162557,
+    "originX": -43.09610436121623,
+    "originY": 64.08944506645201,
+    "widthPx": 1442,
+    "heightPx": 2161,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 9,
+    "anchorsInFrame": 9,
+    "anchorsWithGround": 9,
+    "anchorMedianGapM": -15.551289297201947,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 129.14527221679688,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.29429701400828207,
+    "covered": false,
+    "forgeObjects": 5522,
+    "forgeObjectsDrawn": 5464,
+    "forgeObjectsWithoutModel": 35,
+    "forgeDeathVolumes": 23
+  }
+}
