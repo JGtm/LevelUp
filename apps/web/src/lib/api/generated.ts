@@ -5359,6 +5359,7 @@ export interface components {
             grenades: components["schemas"]["LayerCoverage"];
             groundWeapons?: components["schemas"]["GroundWeaponCoverage"];
             inventory?: components["schemas"]["InventoryCoverage"];
+            objectiveObjects?: components["schemas"]["ObjectiveObjectsCoverage"];
             objectives: components["schemas"]["LayerCoverage"];
             originResolved: boolean;
             placements?: components["schemas"]["EquipmentPlacementCoverage"];
@@ -8591,6 +8592,37 @@ export interface components {
             /** Format: float */
             z: number;
         };
+        ObjectiveObjectLife: {
+            en: string;
+            family: string;
+            fr: string;
+            pts: components["schemas"]["ObjectiveObjectPoint"][] | null;
+            /** Format: int64 */
+            t0: number;
+            /** Format: int64 */
+            t1: number;
+        };
+        ObjectiveObjectPoint: {
+            /** Format: int64 */
+            t: number;
+            /** Format: float */
+            x: number;
+            /** Format: float */
+            y: number;
+        };
+        ObjectiveObjectsCoverage: {
+            /** Format: int64 */
+            declared: number;
+            /** Format: int64 */
+            lives: number;
+            /** Format: int64 */
+            motionless: number;
+            /** Format: int64 */
+            outOfAxis: number;
+            /** Format: int64 */
+            points: number;
+            scanned: boolean;
+        };
         ObjectivePoint: {
             /** Format: int64 */
             assists: number;
@@ -9419,6 +9451,7 @@ export interface components {
             mapWeaponPads?: components["schemas"]["MapWeaponPads"];
             matchId: string;
             neutralDeaths?: components["schemas"]["NeutralDeath"][] | null;
+            objectiveObjects?: components["schemas"]["ObjectiveObjectLife"][] | null;
             objectives?: components["schemas"]["ObjectiveAction"][] | null;
             /** Format: int64 */
             originMs?: number;

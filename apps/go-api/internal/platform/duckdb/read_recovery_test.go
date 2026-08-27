@@ -1,10 +1,8 @@
 package duckdb
 
 import (
-	"bytes"
 	"database/sql"
 	"errors"
-	"log/slog"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -40,24 +38,9 @@ func readID(t *testing.T, r *RecoveringReader) (int, error) {
 	return n, err
 }
 
-// captureSlogText redirige le logger par défaut vers un buffer TEXTE pour la
-// durée du test et retourne le buffer. Les logs du helper passent par le logger
-// PACKAGE (slog.WarnContext / slog.ErrorContext), donc capturer le défaut suffit.
-//
-// Jumeau assumé : `captureSlog` (match_view_scoreboard_objective_degrade_test.go,
-// buffer JSON) fait la même chose, mais ce fichier-là porte `//go:build
-// integration` — ce test-ci doit tourner dans le gate PAR DÉFAUT, il ne peut donc
-// pas s'en servir. Factoriser les deux demande de sortir le helper vers un
-// fichier de test SANS tag (il serait alors compilé dans les deux configurations) :
-// hors périmètre de ce lot, consigné en découverte.
-func captureSlogText(t *testing.T) *bytes.Buffer {
-	t.Helper()
-	var buf bytes.Buffer
-	prev := slog.Default()
-	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})))
-	t.Cleanup(func() { slog.SetDefault(prev) })
-	return &buf
-}
+// captureSlogText : voir slog_capture_test.go (fichier SANS build tag — dédoublonné
+// avec captureSlog du lot D micro-hygiène, 2026-08-26 ; l'ex-« jumeau assumé »
+// avec match_view_scoreboard_objective_degrade_test.go est résorbé).
 
 // TestRecoveringReader_RecoversAfterOwnerClosesHandle reproduit la CAUSE RACINE
 // des deux familles best-effort observées en prod le 2026-08-25 (citations

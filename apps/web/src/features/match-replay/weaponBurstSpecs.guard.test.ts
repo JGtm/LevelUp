@@ -67,12 +67,13 @@ describe('WEAPON_BURST_SPECS — garde-rail de la table', () => {
    * n'en porte qu'une, très en dessous du plafond. Ce cas est la ligne qu'on n'écrira jamais —
    * il montre que la borne REFUSE ce qu'elle prétend refuser.
    *
-   * `{coups: 3, ecartMs: 1500}` fait 3,0 s d'écarts : une borne posée sur les seuls écarts la
-   * laisserait passer, alors que l'enveloppe réelle atteint 4,2 s et fait manger la dernière
-   * balle par le plafond de 4,0 s.
+   * `{coups: 3, ecartMs: 5500}` fait 11,0 s d'écarts : une borne posée sur les seuls écarts la
+   * laisserait passer, alors que l'enveloppe réelle atteint 12,2 s et fait manger la dernière
+   * balle par le plafond de 12,0 s (relevé de 4 à 12 s par le chantier des gestes sonores —
+   * ce cas suit la constante, pas un littéral).
    */
-  it('REFUSE une ligne dont le FICHIER fait déborder la rafale (3 coups à 1500 ms)', () => {
-    const trop = { coups: 3, ecartMs: 1500 }
+  it('REFUSE une ligne dont le FICHIER fait déborder la rafale (3 coups à 5500 ms)', () => {
+    const trop = { coups: 3, ecartMs: 5500 }
     expect(((trop.coups - 1) * trop.ecartMs) / 1000).toBeLessThan(SOUND_CUT_MAX_S) // écarts seuls : passe
     expect(dureeRafaleS(trop)).toBeGreaterThan(SOUND_CUT_MAX_S) // enveloppe réelle : refusée
   })

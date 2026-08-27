@@ -78,9 +78,12 @@ export const OBJECTIVE_SOUND_STEMS: Readonly<
   flag_steals: { ally: 'objective_flag_stolen_team', enemy: 'objective_flag_stolen_enemy' },
   flag_grabs: { ally: 'objective_flag_grabbed_team', enemy: 'objective_flag_grabbed_enemy' },
   flag_returns: { any: 'objective_flag_returned' },
-  // PAIRE INCOMPLÈTE, ASSUMÉE : seul le côté allié est désigné à l'oreille. Le côté adverse
-  // reste muet — jamais le son allié « faute de mieux ».
-  zone_captures: { ally: 'objective_zone_captured_team' },
+  // LA PAIRE EST COMPLÈTE DEPUIS LE 2026-08-27. Elle était à moitié vide : seul le côté allié
+  // était désigné, et le côté adverse restait MUET plutôt que de jouer le son allié « faute de
+  // mieux » — ce qui aurait annoncé un gain quand on perd une base. L'utilisateur a désigné le
+  // côté adverse à l'écoute de la planche (événements `4ebe99d6` / `8594aef7` / `9fad450d` de
+  // la banque `1c609526` : le même son déclaré une fois par mode de jeu).
+  zone_captures: { ally: 'objective_zone_captured_team', enemy: 'objective_zone_captured_enemy' },
 }
 
 /**
@@ -113,10 +116,24 @@ export interface ScoreboardSide {
  * `ReplayCanvas` n'a qu'à la brancher. Sans ligne « moi », ou pour un xuid absent du tableau,
  * elle rend `unknown` — et le son se tait plutôt que d'affirmer un camp.
  */
+/**
+ * allyTeamFromScoreboard — L'IDENTIFIANT D'ÉQUIPE ALLIÉE, ou `null` s'il n'est pas résolu.
+ *
+ * EXTRAITE DE `sideResolverFromScoreboard` LE 2026-08-27, et pas dupliquée : les sons d'ÉTAT
+ * DE ZONE (`zoneSound.ts`) joignent sur le camp PROPRIÉTAIRE d'une zone, pas sur le xuid d'un
+ * joueur — ils ont besoin du numéro, pas du résolveur. Deux lectures du tableau de score qui
+ * divergeraient feraient sonner l'ennemi pour l'allié sans que rien ne le signale.
+ */
+export function allyTeamFromScoreboard(
+  scoreboard: readonly ScoreboardSide[] | undefined,
+): number | null {
+  return parseTeamSideID(scoreboard?.find((r) => r.is_me)?.team_side ?? null)
+}
+
 export function sideResolverFromScoreboard(
   scoreboard: readonly ScoreboardSide[] | undefined,
 ): (xuid: string) => ObjectiveSide {
-  const allyTeam = parseTeamSideID(scoreboard?.find((r) => r.is_me)?.team_side ?? null)
+  const allyTeam = allyTeamFromScoreboard(scoreboard)
   const teamOf = new Map<string, number | null>()
   for (const r of scoreboard ?? []) teamOf.set(r.xuid, parseTeamSideID(r.team_side ?? null))
   return (xuid: string): ObjectiveSide => {

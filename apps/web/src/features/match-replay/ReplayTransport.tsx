@@ -26,6 +26,7 @@ import { ReplayLeadMarks } from './ReplayLeadMarks'
 import { ReplaySoundControls } from './ReplaySoundControls'
 import { SlidersIcon } from './SlidersIcon'
 import { SPEED_MULTIPLIERS } from './useReplaySettings'
+import type { ReplayCapture } from './useReplayCapture'
 import type { ReplaySound } from './useReplaySound'
 
 interface ReplayTransportProps {
@@ -36,11 +37,23 @@ interface ReplayTransportProps {
   clockRef: RefObject<HTMLSpanElement | null>
   /** Le curseur est piloté par la boucle de dessin ; React ne le contrôle pas. */
   sliderRef: RefObject<HTMLInputElement | null>
+  /**
+   * LES DEUX BORNES DE LA FRISE sont celles du GAMEPLAY (cf. `replayWindow.ts`) : un scrub ne
+   * peut pas sortir du match pour aller chercher le countdown d'avant-match ou la queue du
+   * film. Sans cadrage établi, elles redeviennent celles du film entier (0 .. dernière image).
+   */
+  minFrame: number
   maxFrame: number
   onScrub: (e: ChangeEvent<HTMLInputElement>) => void
   speed: number
   onSetSpeed: (speed: number) => void
   sound: ReplaySound
+  /**
+   * CE QUI SORT DU REJEU (image, vidéo), en UN objet comme le son — et pour la même raison :
+   * le canvas vit sous un cliquet de taille, et chaque commande ajoutée ici ne doit pas lui
+   * coûter une prop de plus (cf. `useReplayCapture`).
+   */
+  capture: ReplayCapture
   locale: ReplayLocale
   /** Les marques de retournement, posées SUR la piste (cf. ReplayLeadMarks). */
   leadMarks: ComponentProps<typeof ReplayLeadMarks>
@@ -57,8 +70,8 @@ interface ReplayTransportProps {
 }
 
 export function ReplayTransport({
-  playing, onTogglePlay, onRestart, clockRef, sliderRef, maxFrame, onScrub,
-  speed, onSetSpeed, sound, locale, leadMarks,
+  playing, onTogglePlay, onRestart, clockRef, sliderRef, minFrame, maxFrame, onScrub,
+  speed, onSetSpeed, sound, capture, locale, leadMarks,
   settingsOpen, onToggleSettings, settingsButtonRef,
 }: ReplayTransportProps) {
   const t = REPLAY_TEXT[locale]
@@ -102,9 +115,9 @@ export function ReplayTransport({
         <input
           ref={sliderRef}
           type="range"
-          min={0}
+          min={minFrame}
           max={maxFrame}
-          defaultValue={0}
+          defaultValue={minFrame}
           onChange={onScrub}
           className="block w-full"
           aria-label={t.time}
@@ -129,6 +142,37 @@ export function ReplayTransport({
         ))}
       </span>
       <ReplaySoundControls sound={sound} locale={locale} />
+      {/* CE QUI SORT DU REJEU, entre le son et les réglages : capturer l'image de la scène.
+          La place n'est pas arbitraire — ce sont des commandes de SORTIE, pas des réglages de
+          lecture, et un lecteur vidéo les groupe là, juste avant l'engrenage. */}
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={capture.captureImage}
+        className="h-8 w-9"
+        aria-label={t.captureImage}
+        title={t.captureImage}
+      >
+        <CameraIcon />
+      </Button>
+      {/* LE BOUTON D'ENREGISTREMENT NE SE REND PAS quand le navigateur ne sait pas filmer une
+          toile (décision 7) : une commande grisée laisserait croire à une panne réparable,
+          alors qu'il n'y a rien à réparer. Le bouton d'image, lui, reste — `toBlob` est
+          universel. Même patron d'état que lecture/pause : le nom accessible dit ce que le
+          CLIC va faire, l'icône dit où l'on en est. */}
+      {capture.recordingSupported && (
+        <Button
+          variant={capture.recording ? 'default' : 'ghost'}
+          size="sm"
+          onClick={capture.toggleRecording}
+          className="h-8 w-9"
+          aria-pressed={capture.recording}
+          aria-label={capture.recording ? t.stopRecording : t.recordVideo}
+          title={t.recordHint}
+        >
+          {capture.recording ? <StopIcon /> : <RecordIcon />}
+        </Button>
+      )}
       {/* LES RÉGLAGES FERMENT LA BARRE, tout à droite — là où tous les lecteurs les mettent. */}
       <Button
         ref={settingsButtonRef}
@@ -161,6 +205,43 @@ function PauseIcon() {
     <svg viewBox="0 0 16 16" className="h-4 w-4" fill="currentColor" aria-hidden="true">
       <rect x="3.5" y="2.5" width="3.4" height="11" rx="1" />
       <rect x="9.1" y="2.5" width="3.4" height="11" rx="1" />
+    </svg>
+  )
+}
+
+/** Icône appareil photo : le boîtier et son objectif. Décorative — le libellé vit sur le bouton. */
+function CameraIcon() {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M1.8 5.2h2.6l1.1-1.7h4.9l1.1 1.7h2.7v7.3H1.8z" />
+      <circle cx="8" cy="8.9" r="2.4" />
+    </svg>
+  )
+}
+
+/** Icône enregistrer : le disque plein, convention universelle du « REC ». */
+function RecordIcon() {
+  return (
+    <svg viewBox="0 0 16 16" className="h-4 w-4" fill="currentColor" aria-hidden="true">
+      <circle cx="8" cy="8" r="5" />
+    </svg>
+  )
+}
+
+/** Icône arrêter : le carré. Il remplace le disque pendant l'enregistrement. */
+function StopIcon() {
+  return (
+    <svg viewBox="0 0 16 16" className="h-4 w-4" fill="currentColor" aria-hidden="true">
+      <rect x="3.6" y="3.6" width="8.8" height="8.8" rx="1.2" />
     </svg>
   )
 }

@@ -20,7 +20,7 @@ package replay
 // calque des socles (`build_ground_weapons.go`) rend donc deja tout : les records de CREATION
 // (l'instant et le lieu ou l'objet apparait) et les PISTES delta de la meme bande de slots. Ce
 // fichier ne fait que les trier par identite, et l'identite vient du manifeste du titre
-// (`LabelCatalog.FlagObjects`) — jamais d'une constante ecrite ici.
+// (`LabelCatalog.ObjectiveObjects`) — jamais d'une constante ecrite ici.
 //
 // # Ce qu'est une VIE LIBRE, en une phrase
 //

@@ -153,6 +153,6 @@ func attachWeaponPads(
 	// et ne prend que les deux tables qu il consomme, jamais le catalogue entier du titre.
 	doc.WeaponPads, doc.PadPickups, doc.Coverage.GroundWeapons = buildWeaponPads(
 		scans, positions, clock,
-		padCatalogs{FlagObjects: cat.FlagObjects, EquipmentFamilies: cat.EquipmentFamilies})
+		padCatalogs{ObjectiveObjects: cat.ObjectiveObjects, EquipmentFamilies: cat.EquipmentFamilies})
 	logGroundWeaponCoverage(doc.Coverage.GroundWeapons)
 }

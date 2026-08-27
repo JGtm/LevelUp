@@ -1,0 +1,48 @@
+===== KOTH 01e1f945 =====
+=== RUN   TestTotalControlInstantCardinal
+2026/08/27 11:08:16 INFO plafond memoire arme pour ce decodage outil=d3ter-instant souple_gib=2 dur_octets=2684354560
+    totalcontrol_instant_d3ter_test.go:96: 01e1f945 : 7 emission(s) de tag 5 chainees sur 4 slot(s) ; serie [110004 ; 539265] ms sur un match de 537562 ms — couverture 79.9 %
+    totalcontrol_instant_d3ter_test.go:106: 01e1f945 : 5 point(s) de changement, 4 segment(s) hors fenetre de rotation (+/- 2000 ms) ; temps exploitable 413261 ms sur un match de 537562 ms
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 1 : 413261 ms (413261/413261 = 100.0 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106: SIGNAL 01e1f945 : cardinal 3 pendant 0/413261 = 0.0 % du temps exploitable (seuil 80 %) — SOUS LE SEUIL
+    totalcontrol_instant_d3ter_test.go:89: 01e1f945 : pic memoire observe 0.01 Gio
+--- PASS: TestTotalControlInstantCardinal (5.80s)
+PASS
+EXIT_01e1f945=0
+===== KOTH 606d9844 =====
+=== RUN   TestTotalControlInstantCardinal
+2026/08/27 11:08:21 INFO plafond memoire arme pour ce decodage outil=d3ter-instant souple_gib=2 dur_octets=2684354560
+    totalcontrol_instant_d3ter_test.go:96: 606d9844 : 5 emission(s) de tag 5 chainees sur 4 slot(s) ; serie [105056 ; 233537] ms sur un match de 231566 ms — couverture 55.5 %
+    totalcontrol_instant_d3ter_test.go:106: 606d9844 : 3 point(s) de changement, 2 segment(s) hors fenetre de rotation (+/- 2000 ms) ; temps exploitable 120481 ms sur un match de 231566 ms
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 1 : 120481 ms (120481/120481 = 100.0 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106: SIGNAL 606d9844 : cardinal 3 pendant 0/120481 = 0.0 % du temps exploitable (seuil 80 %) — SOUS LE SEUIL
+    totalcontrol_instant_d3ter_test.go:89: 606d9844 : pic memoire observe 0.01 Gio
+--- PASS: TestTotalControlInstantCardinal (2.19s)
+PASS
+EXIT_606d9844=0
+===== KOTH 8076f97f =====
+=== RUN   TestTotalControlInstantCardinal
+2026/08/27 11:08:24 INFO plafond memoire arme pour ce decodage outil=d3ter-instant souple_gib=2 dur_octets=2684354560
+2026/08/27 11:08:27 WARN empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte (mise a jour du jeu ?) ; le film reste decode empreinte=11979330793883025789 empreinte_connue=7053924395561516366 blocs=118 slots_non_vides=1067
+    totalcontrol_instant_d3ter_test.go:96: 8076f97f : 8 emission(s) de tag 5 chainees sur 5 slot(s) ; serie [184560 ; 354637] ms sur un match de 347493 ms — couverture 48.9 %
+    totalcontrol_instant_d3ter_test.go:102: COUVERTURE 8076f97f : 48.9 % < 50 % — la serie ne couvre pas assez le match.
+    totalcontrol_instant_d3ter_test.go:106: 8076f97f : 4 point(s) de changement, 3 segment(s) hors fenetre de rotation (+/- 2000 ms) ; temps exploitable 157243 ms sur un match de 347493 ms
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 1 : 154722 ms (154722/157243 = 98.4 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 4 : 2521 ms (2521/157243 = 1.6 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106: SIGNAL 8076f97f : cardinal 3 pendant 0/157243 = 0.0 % du temps exploitable (seuil 80 %) — SOUS LE SEUIL
+    totalcontrol_instant_d3ter_test.go:89: 8076f97f : pic memoire observe 0.01 Gio
+--- PASS: TestTotalControlInstantCardinal (3.80s)
+PASS
+EXIT_8076f97f=0
+===== KOTH 0a247154 =====
+=== RUN   TestTotalControlInstantCardinal
+2026/08/27 11:08:27 INFO plafond memoire arme pour ce decodage outil=d3ter-instant souple_gib=2 dur_octets=2684354560
+2026/08/27 11:08:34 WARN empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte (mise a jour du jeu ?) ; le film reste decode empreinte=2988684478930051889 empreinte_connue=7053924395561516366 blocs=116 slots_non_vides=1031
+    totalcontrol_instant_d3ter_test.go:96: 0a247154 : 8 emission(s) de tag 5 chainees sur 4 slot(s) ; serie [201062 ; 785524] ms sur un match de 782418 ms — couverture 74.7 %
+    totalcontrol_instant_d3ter_test.go:106: 0a247154 : 6 point(s) de changement, 5 segment(s) hors fenetre de rotation (+/- 2000 ms) ; temps exploitable 564462 ms sur un match de 782418 ms
+    totalcontrol_instant_d3ter_test.go:106:   cardinal 1 : 564462 ms (564462/564462 = 100.0 % du temps exploitable)
+    totalcontrol_instant_d3ter_test.go:106: SIGNAL 0a247154 : cardinal 3 pendant 0/564462 = 0.0 % du temps exploitable (seuil 80 %) — SOUS LE SEUIL
+    totalcontrol_instant_d3ter_test.go:89: 0a247154 : pic memoire observe 0.01 Gio
+--- PASS: TestTotalControlInstantCardinal (7.21s)
+PASS
+EXIT_0a247154=0

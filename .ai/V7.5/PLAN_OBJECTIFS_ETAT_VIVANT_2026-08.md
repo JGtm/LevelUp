@@ -743,24 +743,24 @@ trous a porteur unique, temoin <= 5 %. Commandes NUES :
 
 Cette phase ne mesure rien : elle publie ce que les gates precedents ont valide, et RIEN d'autre.
 
-- [ ] D5.1 Producteurs, un par verdict tenu (KOTH `Owner` sur les intervalles de colline ; Total
+- [x] D5.1 Producteurs, un par verdict tenu (KOTH `Owner` sur les intervalles de colline ; Total
       Control : `totalcontrol_zone` dans `heldZoneRoles` + la voie des 3 actives ; Oddball : entree
       `[[objective_objects]]` `family = "ball"` EN+FR + calque de portage du crane). Un verdict non
       tenu n'a AUCUN code.
-- [ ] D5.2 `Coverage` : chaque calque publie ses DENOMINATEURS et ses rejets par cause. Regle du
+- [x] D5.2 `Coverage` : chaque calque publie ses DENOMINATEURS et ses rejets par cause. Regle du
       depot : un calque sans couverture se lit comme une exhaustivite ; l'ABSENCE du bloc doit
       rester distincte du zero.
-- [ ] D5.3 Le TRIPLET de version (§3.2) : `replay.SchemaVersion` (numero libre au moment du lot,
+- [x] D5.3 Le TRIPLET de version (§3.2) : `replay.SchemaVersion` (numero libre au moment du lot,
       >= 20) avec sa chronique en tete de `document.go` ET dans le fichier de contrat du calque ;
       `wantReplayDocumentFields` + sa ligne de chronique ; `EXPECTED_REPLAY_SCHEMA_VERSION`.
-- [ ] D5.4 Contrat client : `go run ./cmd/openapi-gen` (jamais d'edition a la main de
+- [x] D5.4 Contrat client : `go run ./cmd/openapi-gen` (jamais d'edition a la main de
       `api/openapi.yaml`), `make generate-types`, frontiere de nullabilite web
       (`NULLABLE_ARRAYS` / `NULLABLE_ARRAY_PATHS` et `normalizeReplayDocument` — tableaux
       IMBRIQUES compris).
-- [ ] D5.5 Golden d'assemblage re-congele (`testdata/assembly_000d5950.golden`) et TEMOINS
+- [x] D5.5 Golden d'assemblage re-congele (`testdata/assembly_000d5950.golden`) et TEMOINS
       re-cuits : les films des gates D2-D4 UNIQUEMENT, **un film par processus**, via
       `cmd/replay-build --map <carte> --facts <faits.json> <matchId>` (aucune base ouverte).
-- [ ] D5.6 Tests : producteurs testes PURS (sans film) ; un test de non-regression par calque.
+- [x] D5.6 Tests : producteurs testes PURS (sans film) ; un test de non-regression par calque.
 
 **Gate D5** : commandes NUES (depuis `apps/go-api` puis `apps/web`) :
 
@@ -933,10 +933,10 @@ par le lot.
 
 ### D8 — CLOTURE DU LOT
 
-- [ ] D8.1 Tous les items du plan statues, aucune case vide.
-- [ ] D8.2 CR de lot : mesures, seuils tenus ou non, chiffres, et les TEXTES prets a coller pour
+- [x] D8.1 Tous les items du plan statues, aucune case vide.
+- [x] D8.2 CR de lot : mesures, seuils tenus ou non, chiffres, et les TEXTES prets a coller pour
       `.ai/thought_log.md` et `.ai/V7.5/REGISTRE_REPORTS.md` (le superviseur les consigne).
-- [ ] D8.3 Les lignes de registre a AMENDER sont nommees : crane d'Oddball, `ti=11` objectifs
+- [!] D8.3 Les lignes de registre a AMENDER sont nommees : crane d'Oddball, `ti=11` objectifs
       vivants, VIP, et toute condition de reprise creee par une phase `[!]`.
 
 ---
@@ -1668,3 +1668,1006 @@ deux decisions.
 **RAPPEL DE GATE, mesure deux fois (journaux du 18/08) : ne PAS cuire de film pendant le gate
 web.** Les garde-rails qui balaient `src/` expirent a 5 000 ms sur machine chargee, et ces echecs
 ne sont pas des regressions.
+
+### D3-ter, VERROU 1 — LA CALIBRATION DES LARGEURS : protocole ECRIT ET COMMITE AVANT LA SONDE
+
+> Aucun chiffre de resultat. Mandat du product owner (2026-08-27) : Total Control est ROUVERT,
+> l'arbitrage « pas de protocole suivant » est leve. Deux verrous dans l'ordre, arret au premier
+> qui tient. Critere du verrou 1 fixe par le superviseur et RECOPIE SANS MODIFICATION :
+> **chainage >= 80 % = canal lisible.**
+
+**D'ABORD, UNE CORRECTION DE MON PROPRE CR D3-BIS.** J'ai presente le chainage de 5,3 a 14,5 %
+comme une reserve invalidant la mesure. C'est INEXACT, et il faut le dire avant d'aller plus
+loin : ce taux est le taux GLOBAL du balayage (`Chained/Walked` sur toutes les lectures `ti=13`),
+alors que **l'election du designateur de D3-bis ne lisait DEJA que des lectures chainees**
+(`totalcontrol_designateur_d3bis_test.go:165`, `!r.Chained` -> `continue`), exactement comme la
+production (`zone_states.go:182`). Le taux global mesure la proportion de bruit dans le balayage ;
+il ne mesure pas la qualite de ce que l'instrument a consomme. Ma reserve etait donc surdimensionnee
+sur ce point precis. La seconde reserve — une seule manche par film, donc une unite de protocole
+inexistante — reste entiere, et c'est elle que le verrou 2 corrige.
+
+**L'HYPOTHESE DU SUPERVISEUR, ET POURQUOI ELLE SE TESTE AU LIEU DE SE PLAIDER.** Le precedent M3
+est reel : sur `ti=42`, l'identite lue aux largeurs MPP par defaut rendait ZERO socle en silence
+sur BTB. La question est de savoir si le balayage `ti=13` a la MEME dependance. La lecture du code
+dit non — le bloc MPP appartient aux default-states de `ti=35/36/37/38/39/42/43`, pas a `ti=13`,
+dont la grammaire porte en propre la mention « AUCUNE DESYNCHRONISATION N'EST POSSIBLE : la
+largeur est entierement determinee par 4 bits lus dans le flux »
+(`components_managed_property.go`). **Mais un argument de lecture peut manquer un chemin
+indirect**, et le dernier lot a montre ce que coute de supposer (« le score d'Oddball monte a
+~1 Hz » : suppose, jamais mesure, faux). La sonde MESURE donc l'independance au lieu de la
+deduire.
+
+- [x] D3t.1 **TEST A — le bouton fait-il quelque chose ?** Balayer `ScanFilmManagedProperties`
+      sur le MEME film sous TROIS decoupages MPP installes par `SetMPPWidths` : le defaut
+      **9/5**, le decoupage **8/3** mesure sur les films BTB du lot armes-au-sol, et un
+      decoupage volontairement ABSURDE **12/7**. Comparer `Records`, `Walked`, `Chained` et le
+      nombre de lectures, a l'unite pres.
+- [x] D3t.2 **CRITERE DU VERROU 1**, tel que fixe : chainage `Chained/Walked` **>= 80 %** sur les
+      deux films sondes. En dessous : verrou 1 NON TENU, arret, CR.
+- [x] D3t.3 **DIAGNOSTIC DU VERROU REEL** — c'est ce que le superviseur demande en cas d'echec
+      (« CR avec le verrou reel nomme »), et il se definit AVANT de mesurer pour ne pas se
+      choisir a la lecture du chiffre. L'ancrage de `scanPayload` est un balayage EXHAUSTIF de
+      toutes les positions de bit, valide par une signature FAIBLE (1 bit de prefixe, 13 bits de
+      slot dans la bande, 2 bits de porte, 3 bits de compte, index croissants). Un tel ancrage
+      produit mecaniquement des FAUX ANCRAGES en proportion de la taille du payload — ce qui
+      predit exactement ce que D3-bis a observe : chainage qui BAISSE quand le film grossit, et
+      nombre de « slots designateurs » qui CROIT avec lui. **Discriminant, ecrit d'avance :** les
+      vrais records se concentrent sur peu de slots avec beaucoup de lectures, les faux se
+      dispersent sur beaucoup de slots avec une ou deux lectures. Publier donc, sur le
+      SOUS-ENSEMBLE CHAINE : le nombre de slots porteurs, et la part des lectures chainees portee
+      par les **5** slots les plus fournis. **Si cette part est >= 80 %**, le taux global bas est
+      un artefact d'ancrage et non une lecture fausse — le canal est lisible APRES filtrage.
+
+**CE QUE LE DIAGNOSTIC N'AUTORISE PAS.** Meme si D3t.3 montre un sous-ensemble chaine tres
+concentre, **le verrou 1 reste NON TENU si le critere >= 80 % de D3t.2 n'est pas atteint**, et
+la mission s'ARRETE la, au CR, comme mandate. Le diagnostic NOMME le verrou reel ; il ne se
+substitue pas au critere et il n'ouvre pas le verrou 2 de lui-meme. Ce sera au superviseur de
+decider si le verrou reel ainsi nomme change le plan.
+
+**CORPUS** : les deux films TC les plus LEGERS, `66aa5f0b` et `bf831a6b` — designes par le
+superviseur, et ce sont ceux dont l'ancrage etait le moins mauvais en D3-bis. `a349fea8` EXCLU
+D'OFFICE. Un film par processus, sentinelle memoire armee dans le processus qui decode, aucune
+base ouverte.
+
+- 2026-08-27 — **D3-ter VERROU 1 : NON TENU, et l'hypothese des largeurs est REFUTEE PAR LA
+  MESURE.** Protocole commite avant la sonde (`5381ada22`). Deux films, un par processus, pic
+  memoire 0,04 et 0,06 Gio. Sortie brute figee dans `registre_film/D3TER_largeurs_mpp.log`.
+
+  **TEST A — le bouton des largeurs MPP ne fait RIEN sur `ti=13`.** Le MEME film balaye sous
+  TROIS decoupages (defaut 9/5, BTB 8/3, absurde 12/7) rend des releves **identiques a l'unite
+  pres**, sur les deux films :
+
+  | film | slots | records | walked | chained | lectures | chainage |
+  |---|---|---|---|---|---|---|
+  | `66aa5f0b` | 528 | 100 918 | 44 849 | 6 486 | 93 915 | **14,5 %** |
+  | `bf831a6b` | 669 | 165 518 | 78 529 | 9 771 | 158 186 | **12,4 %** |
+
+  Trois decoupages, trois fois la meme ligne. **Le precedent M3 ne se transpose pas** : le bloc
+  MPP appartient aux default-states de `ti=35/36/37/38/39/42/43`, `ti=13` n'en porte pas, et sa
+  grammaire est integralement determinee par 4 bits lus dans le flux. Ce n'etait pas une piste
+  faible, c'etait une piste NULLE — et elle est close par la mesure, pas par un argument de
+  lecture.
+
+  **CRITERE DU VERROU 1 : 14,5 % et 12,4 %, seuil >= 80 %. NON TENU sur les deux films.** Arret,
+  comme mandate.
+
+  **DIAGNOSTIC — et il ne conclut PAS ce qu'il devait conclure.** Discriminant ecrit d'avance :
+  sous-ensemble chaine CONCENTRE = artefact d'ancrage ; DISPERSE = le bruit survit au filtre.
+  Mesure : 314 et 491 slots portent des lectures chainees, les 5 plus fournis n'en portent que
+  **50,3 %** et **46,6 %** (seuil 80 %). Verdict de mon propre discriminant : **DISPERSE**.
+
+  **LA LIMITE EST DANS MON INSTRUMENT, ET JE LA NOMME PLUTOT QUE DE LA CONTOURNER.** J'ai defini
+  la concentration sur TOUTES les lectures chainees. Or la population `ti=13` est ecrasee par le
+  canal PAR JOUEUR (`i2..i33`, 32 instances par record), dont on sait deja qu'il chaine a 33 %
+  contre 97 % pour le canal SCALAIRE (mesure du lot C-bis). Une dispersion mesuree sur cette
+  population melangee ne dit presque rien du sous-canal scalaire — celui du tag 5, le seul que le
+  designateur lise. **Mon discriminant n'etait donc pas le bon instrument pour la question qu'il
+  devait trancher.** Je ne le rejoue PAS avec une population restreinte : le protocole interdit
+  de choisir l'instrument apres avoir vu le chiffre, et cette regle vaut aussi contre moi.
+
+  **CE QUE LA SONDE MONTRE QUAND MEME, ET QUI N'EST PAS RIEN.** Le tag 5 CHAINE est minuscule et
+  propre : **4 slots / 4 valeurs distinctes** sur `66aa5f0b`, **3 slots / 3 valeurs distinctes**
+  sur `bf831a6b`. Le bruit de 300 a 500 slots ne le touche pas. Je m'arrete la : dire ce que
+  « 3 valeurs sur un mode a 3 zones » pourrait signifier serait exactement la conclusion que le
+  verrou 2 est fait pour mesurer, et le verrou 2 n'est pas ouvert.
+
+  **VERROU REEL, NOMME** : ce n'est NI les largeurs (refute a l'unite pres), NI le filtre de
+  chainage du canal scalaire (le tag 5 chaine sort propre). Le taux global de 12-14 % est produit
+  par la population MELANGEE du balayage — dominee par le canal par joueur, structurellement peu
+  chainant — et **le critere « chainage >= 80 % » porte sur cette population melangee, donc sur
+  une grandeur qui ne mesure pas la lisibilite du canal du designateur.** Le verrou est un verrou
+  de METRIQUE avant d'etre un verrou de donnee. C'est au superviseur de decider si cela change le
+  plan ; je ne rouvre rien de moi-meme.
+
+  **TC reste `[!]`** et la decision d'affichage du vivier repart a l'utilisateur, comme prevu.
+
+### D3-ter, VERROU 2 — L'UNITE INSTANT T : protocole ECRIT ET COMMITE AVANT LA MESURE
+
+> Aucun chiffre de resultat. Le seuil du verrou 2 est celui du superviseur et **ne bouge pas d'un
+> millimetre** : cardinal 3 sur **>= 80 %** du temps exploitable, sur **>= 2 films**.
+
+**POURQUOI LA METRIQUE DE LISIBILITE EST REDEFINIE, ET POURQUOI CE N'EST PAS UN REGLAGE APRES
+COUP** (justification du superviseur, recopiee). Le critere « chainage global >= 80 % » a ete
+demontre **cable sur la mauvaise grandeur** : il mesurait une population MELANGEE dominee par le
+canal par-joueur (`i2..i33`, 32 instances par record, chainage connu **33 %**), alors que la
+lisibilite a trancher est celle du **sous-canal SCALAIRE tag 5 chaine**, le seul que le
+designateur lise en production (`zone_states.go:182`). Le 33 % du canal par-joueur est une mesure
+du lot C-bis, **anterieure a cette campagne** : la redefinition s'appuie sur des mesures
+anterieures au resultat, pas sur le resultat. C'est ce qui la distingue du reglage apres coup que
+le protocole interdit — et c'est la raison pour laquelle je ne me l'etais PAS autorisee moi-meme
+au CR precedent.
+
+**LA PRECONDITION DE LISIBILITE, REFORMULEE.** Le sous-canal tag 5 chaine doit rendre une SERIE
+EXPLOITABLE : au moins **N** emissions, couvrant **>= 50 %** du temps de match. La couverture est
+`(derniere emission - premiere emission) / (duree du match)`, le match etant borne par les
+enregistrements d'entite.
+
+**N EST FIXE PAR RELEVE, PAS PAR CHOIX — ET LE RELEVE EST FAIT SUR KOTH, JAMAIS SUR LES FILMS
+TC.** Regle ecrite ici, avant de mesurer quoi que ce soit :
+
+> **N := le PLUS PETIT nombre d'emissions de tag 5 chainees observe sur les quatre films du
+> corpus KOTH**, mesure par LE MEME instrument que celui qui mesurera les films TC.
+
+Deux raisons de prendre le MINIMUM et non la mediane. D'abord, le corpus KOTH est celui sur
+lequel la voie designateur est **elue 4 films sur 4 et SERVIE EN PRODUCTION** : son plancher est,
+par construction, le niveau d'emission auquel le depot accepte deja de lire un designateur.
+Ensuite, une precondition PERMISSIVE est le choix CONSERVATEUR pour le gate : elle laisse entrer
+plus de films TC dans la mesure, donc elle expose davantage l'hypothese a l'echec. Un N severe
+aurait ecarte les films maigres et flatte le taux.
+
+**LE MEME INSTRUMENT SUR LES DEUX CORPUS** : sans cela, « le TC emet moins que le KOTH » pourrait
+n'etre qu'une difference de definition. Le releve KOTH et la mesure TC passent par le meme code,
+et le releve est publie avant le verdict TC.
+
+- [x] D3t2.1 **RELEVE KOTH** : sur `01e1f945`, `606d9844`, `8076f97f`, `0a247154` — nombre
+      d'emissions de tag 5 chainees, nombre de slots porteurs, couverture. **N en decoule par la
+      regle ci-dessus.**
+- [x] D3t2.2 **MESURE TC** : les six films du recensement, `a349fea8` EXCLU D'OFFICE.
+      Precondition d'abord ; un film qui ne la passe pas ne compte NI POUR NI CONTRE, et la cause
+      est nommee.
+- [x] D3t2.3 **VERDICT** : seuil du superviseur, inchange.
+
+**LA MESURE, RENDUE OPERATOIRE.** L'ensemble DESIGNE a l'instant t est l'ensemble des valeurs de
+tag 5 chainees EN VIGUEUR a t — pour chaque slot porteur, sa derniere emission a `<= t`. Un slot
+qui n'a pas encore emis ne contribue pas ; **la valeur zero n'est pas une designation** (meme
+regle qu'en D3-bis).
+
+- Les **POINTS DE CHANGEMENT** sont les instants ou cet ensemble change, c'est-a-dire ou un slot
+  quelconque passe a une valeur differente de la sienne. **Ce sont les rotations** : plus besoin
+  de manches, et c'est tout l'objet de cette reformulation — l'unite « manche » n'existait pas sur
+  ce corpus (1 manche par film, mesure D3-bis).
+- Autour de chaque point de changement, une fenetre de **+/- 2 s est EXCLUE**, valeur inchangee
+  depuis D3-bis : a la bascule le jeu retire des zones et en pose d'autres, et compter cette
+  fenetre ferait mecaniquement un cardinal double.
+- Le **TEMPS EXPLOITABLE** court de la PREMIERE emission a la fin du match, moins les fenetres
+  exclues. Avant la premiere emission il n'y a pas de serie : cet intervalle n'est pas
+  exploitable, il n'est pas non plus compte contre.
+- Sur chaque intervalle restant, le cardinal est CONSTANT. On somme la duree des intervalles de
+  cardinal **exactement 3** et on la rapporte au temps exploitable.
+
+**INTERDIT, ECRIT ICI POUR M'Y TENIR** : ne rien conclure des « 3 et 4 valeurs distinctes »
+relevees par la sonde du verrou 1. Un ensemble de 3 valeurs sur TOUT le match et un ensemble de
+cardinal 3 A CHAQUE INSTANT sont deux enonces differents, et le second n'est pas implique par le
+premier — c'est exactement ce que cette mesure existe pour trancher.
+
+**ISSUES.** Tenu : les 3 actives (NEUTRES, sans possession — le seuil de possession n'a jamais
+ete evalue) entrent en D5, contenu final A+B'+C, bump 21. Rate : **TC `[!]` DEFINITIF pour
+v7.5**, CR avec le verrou nomme, et la decision d'affichage du vivier repart a l'utilisateur.
+
+**EXECUTION** : un film par processus, sentinelle memoire armee dans le processus qui decode,
+aucune base ouverte, `a349fea8` exclu d'office.
+
+- 2026-08-27 — **D3-ter VERROU 2 : NON TENU sur les quatre films exploitables. TC est `[!]`
+  DEFINITIF pour v7.5.** Protocole commite avant la mesure (`1c866d01d`). Un film par processus.
+  Sorties brutes figees dans `registre_film/D3TER_releve_koth.log` et `D3TER_instant_tc.log`.
+
+  **1. LE RELEVE KOTH FIXE `N`, ET IL DONNE EN PRIME LE CONTROLE POSITIF QUI MANQUAIT A TOUTE LA
+  CAMPAGNE.**
+
+  | film KOTH | emissions tag 5 chainees | slots | couverture | cardinal dominant |
+  |---|---|---|---|---|
+  | `01e1f945` | 7 | 4 | 79,9 % | **1 pendant 100,0 %** |
+  | `606d9844` | **5** | 4 | 55,5 % | **1 pendant 100,0 %** |
+  | `8076f97f` | 8 | 5 | 48,9 % | **1 pendant 98,4 %** |
+  | `0a247154` | 8 | 4 | 74,7 % | **1 pendant 100,0 %** |
+
+  Par la regle ecrite d'avance, **`N` = 5** (le plus petit des quatre).
+
+  **LE CONTROLE POSITIF EST LE RESULTAT LE PLUS IMPORTANT DE CE VOLET.** King of the Hill n'a
+  qu'UNE colline a la fois. L'instrument, applique tel quel a ce corpus, rend **cardinal 1 pendant
+  98,4 a 100 % du temps exploitable, sur 4 films sur 4**. Il mesure donc bien ce qu'il pretend
+  mesurer, et le canal est lisible avec seulement 5 a 8 emissions. **D3-bis n'avait aucun controle
+  de ce genre** : son negatif etait invalidable, celui-ci ne l'est pas de la meme facon.
+
+  **2. LA MESURE TC.** Precondition `N >= 5` et couverture `>= 50 %` :
+
+  | film | emissions | slots | couverture | precondition | cardinal 3 | cardinal max observe |
+  |---|---|---|---|---|---|---|
+  | `bf831a6b` | 3 | 3 | 58,4 % | **ECHOUE** (3 < 5) | (1 pendant 100 %) | 1 |
+  | `66aa5f0b` | 4 | 4 | 60,2 % | **ECHOUE** (4 < 5) | (1 pendant 100 %) | 1 |
+  | `a521164d` | 59 | 40 | 86,3 % | passe | **0,0 %** | **36** |
+  | `2f05dc98` | 22 | 18 | 93,1 % | passe | **27,8 %** | 16 |
+  | `0862dce4` | 168 | 79 | 94,6 % | passe | **0,2 %** | **77** |
+  | `d2c64f8c` | 27 | 24 | 93,9 % | passe | **3,9 %** | 22 |
+
+  **Seuil : 80 % du temps exploitable, sur >= 2 films. Mesure : 0,0 a 27,8 % sur les quatre films
+  exploitables. NON TENU.**
+
+  **LE VERDICT EST ROBUSTE A LA PRECONDITION** : en comptant AUSSI les deux films ecartes (0,0 %
+  chacun), la serie devient 0,0 / 0,0 / 0,0 / 0,2 / 3,9 / 27,8 % — meme verdict. `N` n'a donc
+  sauve aucun chiffre, dans aucun sens.
+
+  **3. LE VERROU, NOMME.** Le sous-canal tag 5 chaine reste CONTAMINE sur les films BTB, et le
+  chiffre qui le dit est le **cardinal maximal simultane : 16, 22, 36 et 77**. Un objet de mode a
+  trois zones ne peut pas designer soixante-dix-sept choses a la fois. Et ce maximum **croit avec
+  la taille du film** (77 sur le plus lourd, 16 sur le plus leger des exploitables) — la meme
+  signature que le nombre de slots en D3-bis. **Le filtre de chainage est NECESSAIRE mais PAS
+  SUFFISANT sur BTB** : il nettoie assez pour que l'arene (KOTH) rende un cardinal stable, pas
+  assez pour que le BTB en rende un.
+
+  Ce n'est donc ni les largeurs (refute a l'unite pres au verrou 1), ni l'unite de mesure
+  (corrigee ici, et validee par le controle positif KOTH), ni la metrique de lisibilite
+  (redefinie et satisfaite : couverture 86 a 95 % sur les quatre exploitables). **C'est
+  l'ANCRAGE sur les payloads BTB**, et il faudrait un ancrage plus fort — une bande de slots
+  restreinte a l'objet de mode plutot que tous les slots `ti=13` des images-cles — ce qui est un
+  chantier de decodage, pas un ajustement de protocole.
+
+  **4. CE QUE JE NE CONCLUS PAS.** Les deux films legers rendent cardinal 1 pendant 100 % du
+  temps, exactement comme KOTH. Il serait tentant d'en tirer que Total Control designe UNE zone a
+  la fois et non trois. **Je ne le fais pas** : ces deux films ECHOUENT la precondition (3 et 4
+  emissions), ils ne comptent ni pour ni contre, et une serie de 3 points ne decrit pas un match
+  de 5 minutes. C'est une observation, pas un resultat — et elle rejoint l'interdit que je m'etais
+  ecrit avant de mesurer.
+
+- [x] D3t2.1 Releve KOTH : fait, `N` = 5, controle positif obtenu (cardinal 1 sur 4/4).
+- [x] D3t2.2 Mesure TC : faite sur 6 films, 4 exploitables, 2 ecartes par la precondition.
+- [x] D3t2.3 Verdict : **NON TENU**. `totalcontrol_zone` ne rejoint PAS `heldZoneRoles`, les 3
+      actives n'entrent PAS en D5, **TC `[!]` DEFINITIF pour v7.5**. La decision d'affichage du
+      vivier repart a l'utilisateur.
+
+**CONTENU FINAL DE D5** : **A (proprietaire de colline KOTH) + C (vies libres du crane)**, bump
+unique au schema **21**. B reste hors publication.
+
+- 2026-08-27 — **D5 LIVRE : schema 21, contenu A + B + C.** Bump unique, triptyque bumpe
+  ensemble, temoins re-cuits et VERIFIES sur pieces.
+
+  **A — LE PROPRIETAIRE DE LA COLLINE EST PUBLIE.** Verifie dans les artefacts re-cuits :
+
+  | temoin KOTH | zones | intervalles | AVEC proprietaire | camps | methode |
+  |---|---|---|---|---|---|
+  | `01e1f945` Catalyst | 4 | 100 | **50** | 0 et 1 | `designator+geometry` |
+  | `606d9844` Chasm | 3 | 14 | **7** | 0 et 1 | `designator+geometry` |
+  | `8076f97f` Shogun | 3 | 36 | **18** | 0 et 1 | `designator+geometry` |
+
+  Le 4e film du corpus KOTH, `0a247154`, joue sur **Solitude, absente du catalogue de formes** :
+  il n'a aucune zone a peindre et ne sert pas de temoin.
+
+  **B — L'ENTREE TOTAL CONTROL EST RETIREE** (decision utilisateur, option (a)). Le mode ne
+  declare plus aucun role : le vivier de 13 a 18 formes par carte ne s'affiche plus. Le bloc de
+  retrait est DATE dans `objective_roles.toml`, avec les trois mesures qui le motivent et la
+  condition de reprise (ancrage `ti=13` fiable sur BTB = chantier de decodage). **L'ancienne
+  entree est conservee en commentaire** : le jour de la reprise, c'est ce qu'il faudra relire.
+
+  Trois gardes posees, parce qu'une ABSENCE ne se garde pas toute seule :
+  1. `TestObjectiveRoles_FichierDuDepot` : **7 modes** au lieu de 8, et l'assertion
+     « `totalcontrol_zone` doit etre servi » est **INVERSEE** — elle exige desormais qu'il ne le
+     soit PLUS, avec un message qui renvoie a la condition de reprise.
+  2. `TestMapObjectives_TotalControl_NeSertPlusRien` (neuf) : les trois libelles de mode
+     (`Arena:`, `BTB:`, `BTB:Fiesta`) ne rendent AUCUNE spec, et **Command** — qui porte 18
+     zones `totalcontrol_zone` au catalogue — ne rend AUCUN objectif.
+  3. Le commentaire de `replay_map_objectives.go` qui se disait « deja vieilli deux fois » a
+     vieilli une troisieme : il est mis a jour dans le commit qui le perime.
+
+  **Temoin TC re-cuit et verifie** : `66aa5f0b` (Command, BTB:Total Control) — la cle
+  `zoneStates` est **ABSENTE** du document et `coverage.zones` vaut `null`. Ni zones ni vivier.
+
+  **C — LE CRANE : identite au manifeste et exclusion GARDEE. La publication des vies libres n'a
+  PAS ete faite, et la raison n'est pas un renoncement.**
+
+  Livre : l'entree `[[objective_objects]]` `0x0017592c` famille `ball` EN+FR, la famille `ball`
+  ouverte dans la liste fermee, et la table renommee `FlagObjects` -> `ObjectiveObjects` partout
+  (20 occurrences, 11 fichiers) — garder `FlagObjects` aurait fait dire au code que le crane est
+  un drapeau. Verifie dans les artefacts re-cuits, et le controle est fort : le compteur
+  `coverage.groundWeapons.objectives` rend **23 / 16 / 21 / 47** sur les quatre films Oddball,
+  c'est-a-dire EXACTEMENT les comptes de creations que la mesure D4 avait attribues a
+  `0x0017592C` (23 / 16 / 21 / 47). L'exclusion des socles d'armes est passee d'ACCIDENTELLE a
+  VOULUE ET GARDEE, et `TestLeManifesteNommeSesObjetsDObjectifDansLesDeuxLangues` exige
+  desormais CHAQUE famille separement — un comptage global aurait laisse disparaitre une famille
+  entiere en silence.
+
+  **NON LIVRE, ET C'EST UNE DECOUVERTE, PAS UN ARBITRAGE DE MA PART** : les vies libres ne sont
+  publiees NULLE PART, ni pour le crane ni pour le drapeau. Verifie sur pieces : `scan.Free` n'a
+  que deux consommateurs (`closeByFreeLives`, `repositionFlagDrops`, `flag_objects.go`), aucune
+  cle `free` n'existe au document, et `objectivesLive` n'existe pas davantage. Le fichier le dit
+  lui-meme depuis le 2026-08-18 : « Elles ne sont PAS publiees — elles CORRIGENT le calque ».
+  **Mon inventaire D5 du 2026-08-27 affirmait le contraire** (« `objectivesLive.free` existe deja
+  pour le drapeau »), avec la mention « a verifier au moment de coder » ; la verification a eu
+  lieu, et elle infirme. « Comme pour le drapeau » signifie donc, litteralement, « pas publie du
+  tout ».
+
+  Publier les vies libres du crane demanderait une cle de document NEUVE, un champ de contrat en
+  plus (39 au lieu de 38), un rendu web, et le passage de la garde de mode `IsFlagFilm` qui
+  arrete aujourd'hui tout ce chemin hors CTF. C'est une SURFACE PRODUIT que personne n'a
+  specifiee. Je ne l'ai pas inventee : elle revient au superviseur et a l'utilisateur.
+
+  **LE TRIPTYQUE, BUMPE ENSEMBLE** : `replay.SchemaVersion` 20 -> **21** (avec sa chronique en
+  tete de `document.go` ET l'entree v20->v21 du cliquet de `structure_test.go`),
+  `EXPECTED_REPLAY_SCHEMA_VERSION` 20 -> **21** (garde de parite verte).
+  `wantReplayDocumentFields` reste a **38** et `api/openapi.yaml` est INCHANGE (`openapi-gen
+  -check` vert) : aucune cle ne bouge, `generated.ts` ne bouge pas. Golden d'assemblage re-congele
+  — son diff est la SEULE ligne `schema 20` -> `schema 21`, ce qui confirme qu'aucun champ n'a
+  bouge.
+
+  **UN PIEGE D'EXECUTION, RENCONTRE ET CORRIGE** : la premiere re-cuisson lisait le manifeste du
+  depot PRINCIPAL (`LEVELUP_REPO_ROOT` y pointait pour les donnees) et non celui du worktree —
+  les artefacts sortaient donc avec `objectives=0`, c'est-a-dire SANS l'entree du crane, tout en
+  portant `schema=21` puisque la version est compilee dans le binaire. **Un artefact peut porter
+  la bonne version et l'ancienne configuration** ; seule la verification sur pieces l'a montre.
+  Corrige par une racine temporaire (jonctions : `config` du worktree, `data` du principal), et
+  les sept temoins ont ete re-cuits avec.
+
+- 2026-08-27 — **D5-bis LIVRE : le crane libre est PUBLIE et DESSINE. Schema 21 inchange,
+  contrat 38 -> 39.** Dernier lot de code du point 11.
+
+  **CE QUI EST PUBLIE.** Une cle de document neuve, `objectiveObjects` : une entree par VIE
+  LIBRE de l'objet — il apparait, replique sa position, puis se tait. Forme volontairement
+  GENERIQUE (`family`, `en`, `fr`, `t0`, `t1`, `pts`) pour que le drapeau puisse la rejoindre
+  sans qu'aucune cle ne bouge. Couverture `coverage.objectiveObjects` avec ses denominateurs.
+
+  **VERIFIE SUR LES QUATRE TEMOINS RE-CUITS**, et le controle est fort : le nombre de vies vaut
+  **23 / 16 / 21 / 47**, exactement les comptes de creations que la mesure D4 avait attribues a
+  `0x0017592C`. Zero vie hors axe sur les quatre.
+
+  | temoin | vies | dont MOBILES | dont immobiles | points | hors axe |
+  |---|---|---|---|---|---|
+  | `24dbb67d` Recharge | 23 | 21 | 2 | 730 | 0 |
+  | `43716616` Smallhalla | 16 | 14 | 2 | 454 | 0 |
+  | `51ebbc0f` Banished Narrows | 21 | 15 | 6 | 546 | 0 |
+  | `d9781168` Dredge | 47 | 33 | 14 | 1 157 | 0 |
+
+  Les vies MOBILES sont la preuve que le canal porte bien du mouvement et pas seulement des
+  apparitions : sur `43716616`, une vie court des frames 343 a 371 avec un point par frame.
+
+  **LA GARDE DE MODE EST LEVEE POUR CE CANAL SEULEMENT, ET SUR PIECES.** `attachFlagCarries`
+  s'arrete hors CTF pour proteger le pont d'identite (`SlotIdentityByDeaths`, 19 a 22 Go sur un
+  film d'un autre mode). Ce calque-ci ne lit NI le statborg, NI le fil des morts, NI l'identite
+  des joueurs : il ne consomme que le balayage `ti=42` de la chaine des socles, deja paye sur
+  TOUS les films. Le placer sous la garde du drapeau l'aurait eteint sur Oddball — la ou il sert.
+  **Aucune lecture de film n'est ajoutee par ce lot.**
+
+  **LE SCHEMA RESTE 21, ET LA JUSTIFICATION EST ECRITE AU CONTRAT** : le bump du lot a eu lieu
+  dans le meme lot, 21 n'a quitte ni le poste ni les temoins locaux, aucun artefact 21 n'existe
+  ailleurs. Le bump unique reste unique. Le triptyque est coherent : `SchemaVersion` 21,
+  `EXPECTED_REPLAY_SCHEMA_VERSION` 21, garde de parite verte.
+
+  **CE QUE LE CALQUE REFUSE DE FAIRE, et c'est sa propriete centrale** : dessiner le crane
+  pendant les portages. Entre deux vies il y a un trou ; quelqu'un porte, et le document ne dit
+  pas qui — l'oracle a ete mesure puis REFUTE en D4. Le calque se tait. Il n'interpole pas
+  davantage : le crane est a la DERNIERE position qu'il a emise, ou nulle part. Un test dedie
+  garde chacune de ces deux proprietes (`objectiveObjectAt` hors vie = `null`, y compris
+  au-dela de `t1`).
+
+  **LE DRAPEAU N'ENTRE PAS DANS CE CALQUE, ET CE N'EST PAS UN REPORT** : le CONTROLE 3 de son
+  propre lot a ECHOUE sur ses vies libres (149/197 = 75,6 % pour un seuil de 90 % ecrit avant la
+  mesure ; temoin a 12,8 %). Un quart de ses vies reste inexplique. Le jour ou ce negatif sera
+  leve, une ligne de `objectiveObjectPublished` suffira.
+
+  **RENDU WEB** : glyphe BOULE (disque cerne) — distinct de la hampe + fanion du drapeau, parce
+  que deux objets de mode au meme glyphe seraient indiscernables et que le rejeu se lit aussi en
+  niveaux de gris. Encre NEUTRE : le document ne publiant aucun porteur, une encre d'equipe
+  afficherait une appartenance que la mesure refuse. Aucun libelle ni bascule ajoute — donc
+  aucune chaine i18n neuve.
+
+  **DIXIEME EXTRACTION IMPOSEE PAR LE CLIQUET DU CANVAS**, en deux morceaux : le cablage du
+  calque part dans `useReplayObjectiveObjects.ts` (patron de `useReplayFlagCarries`), les trois
+  reglages constants dans `replayCanvasConfig.ts`. Le cliquet passe de **706 a 695** — il
+  descend, il ne remonte pas.
+
+  **GARDE-RAIL DE FRONTIERE** : `objectiveObjects` et `objectiveObjects[].pts` entrent dans
+  `NULLABLE_ARRAYS` / `NULLABLE_ARRAY_PATHS`. Le test de contrat les a EXIGES a la compilation
+  avant que je n'y pense — c'est exactement ce pour quoi il existe.
+
+### D6-PORTAGE — LA VOIE DE LA PROXIMITE : protocole ECRIT ET COMMITE AVANT LA MESURE
+
+> Mandat utilisateur du 2026-08-27 : le portage Oddball rouvre par une voie NOUVELLE. Ce n'est
+> PAS un quatrieme passage du meme oracle — l'oracle change de NATURE (il sort du film), et le
+> canal change de PRINCIPE (la proximite geometrique, pas la correlation d'une serie).
+
+**VOLET 2 D'ABORD, PARCE QU'IL DECIDE DU GATE. L'ORACLE EST INSTRUIT SUR PIECES, ET IL EXISTE.**
+La table `match_objective_stats_latest` porte, PAR JOUEUR et pour Oddball :
+
+    skull_grabs                              prises
+    time_as_skull_carrier_seconds            TEMPS DE PORTAGE, en secondes
+    longest_time_as_skull_carrier_seconds    plus long portage
+    skull_scoring_ticks                      tics de score
+    kills_as_skull_carrier / skull_carriers_killed
+
+Releve sur les quatre films du corpus (lecture seule) :
+
+| film | lignes | `skull_grabs` | `skull_scoring_ticks` | `time_as_skull_carrier_seconds` | porteurs tues |
+|---|---|---|---|---|---|
+| `24dbb67d` | 8 | 2 | 321 | **331** | 12 |
+| `43716616` | 10 | 2 | 213 | **218** | 10 |
+| `51ebbc0f` | 8 | 4 | 255 | **266** | 13 |
+| `d9781168` | 8 | 10 | 387 | **404** | 25 |
+
+**DEUX CHOSES SE LISENT DEJA, ET ELLES COMPTENT.** (1) `skull_scoring_ticks` suit
+`time_as_skull_carrier_seconds` a 3-4 % pres sur les quatre films : **un tic vaut une seconde de
+portage**, ce qui CONFIRME enfin le « ~1 Hz » que le §2.4 supposait — supposition que D4 avait
+mesuree fausse SUR LE SCORE PERSONNEL, et qui se revele juste sur le canal du MODE. Les deux
+constats ne se contredisent pas : le score personnel melange le portage a tout le reste, le tic
+de crane ne compte que le portage. (2) `skull_grabs` est MINUSCULE (2 a 10) devant les 16 a 47
+vies libres : ce compteur ne compte donc PAS chaque ramassage, et il ne sera PAS l'oracle.
+
+**L'ORACLE RETENU EST `time_as_skull_carrier_seconds`, PAR JOUEUR.** Trois raisons, dans l'ordre
+de force : il mesure EXACTEMENT la grandeur que la reconstruction produit (une duree de portage
+par joueur) ; il est **INDEPENDANT DU FILM** — il vient de l'API, il n'a jamais vu nos chunks, et
+aucune erreur de decodage ne peut le contaminer ; il est DENSE (6 a 8 porteurs par film) la ou
+`skull_grabs` ne rendrait que 2 a 10 points.
+
+**LES EVENEMENTS `th=10` NE SERONT PAS L'ORACLE, et ce que je sais d'eux est dit ici.** Leur
+compte (87 / 60 / 75 / 124) ne vaut ni les prises, ni les tics, ni les porteurs tues ; il suit
+les tics dans un rapport de 3,1 a 3,7. **Je n'ai pas etabli ce qu'ils datent**, et le protocole
+ne le leur demande pas : leur repartition PAR JOUEUR sera publiee a cote du verdict, comme
+diagnostic, pour que la question se referme ou se pose proprement plus tard. Choisir un oracle
+qu'on ne comprend pas quand il en existe un qu'on comprend serait la faute exacte de D4.
+
+- [x] D6.1 **RECONSTRUCTION** par proximite aux bornes des vies libres.
+- [x] D6.2 **CE QUE FAIT LA MORT** : mesure, pas hypothese.
+- [x] D6.3 **VERDICT** contre l'oracle API, avec temoin.
+
+**LA RECONSTRUCTION, RENDUE OPERATOIRE.** Les vies libres du crane sont deja publiees (schema
+21). Entre la fin d'une vie (`t1`, DERNIERE POSITION REPLIQUEE — precise a l'image, pas le
+plafond de 20 s des images-cles qui a coule l'item 2.5 des socles) et le debut de la suivante
+(`t0`), il y a un TROU. Pour chaque trou :
+
+1. **QUI** : le bipede dont la position a `t1` est la plus proche de la derniere position de
+   l'objet. La position du bipede est prise a l'echantillon le plus proche de `t1`, et l'ecart
+   temporel doit valoir **<= 250 ms** (`d6EcartMaxMS`) — au-dela, on compare deux instants, pas
+   deux lieux.
+2. **SEUIL DE DISTANCE : 1,5 m** (`d6RayonRamassageM`). **CE SEUIL N'EST PAS INVENTE ICI** : c'est
+   `originDropMaxDist`, deja au depot, deja valide DES DEUX COTES sur la chaine des poses — les
+   lachers y sont a 0,63 m de mediane, les deploiements a 5,6-21,3 m. Un objet ramasse est aux
+   pieds de qui le ramasse, exactement comme un objet lache. **LA DISTRIBUTION COMPLETE des
+   distances au plus proche sera PUBLIEE** : si les deux populations ne se separent pas, le seuil
+   ne vaut rien et il faudra le dire plutot que de s'en servir.
+3. **AMBIGUITE** : si le DEUXIEME plus proche est lui aussi sous le seuil ET a moins de
+   **1,0 m** (`d6AmbiguiteM`) du premier, le porteur est **null** — le trou est compte, mais
+   attribue a personne. C'est la doctrine deja tenue par les occupations de socle, dont le `xuid`
+   vaut TOUJOURS null parce que l'oracle plafonnait a 79,7 %.
+4. **RETOUR, PAS PORTAGE** — c'est ma reserve d'hier, transformee en cas CLASSE : si AUCUN joueur
+   n'est sous le seuil a `t1` ET que la vie suivante nait a **<= 3 m** du socle `oddball_spawn`,
+   le trou est un RETOUR. Aucun portage n'est attribue, et il ne compte pas contre.
+5. **INEXPLIQUE** : aucun joueur proche, et la vie suivante ne nait pas au socle. Compte a part.
+6. **FIN DU PORTAGE** : `t0` de la vie suivante, ou la MORT du porteur si elle tombe avant.
+
+**D6.2 — CE QUE FAIT LA MORT SE MESURE, ET LE PROTOCOLE DIT QUOI.** Hypothese a tester : un
+porteur qui meurt LACHE le crane, donc une vie libre doit naitre pres du lieu de sa mort. On
+publie la part des morts de porteur suivies, dans les **3 s**, d'une naissance de vie libre a
+**<= 3 m** du lieu de la mort. Ce chiffre ne conditionne pas le gate : il DIT si la regle de
+cloture 6 est fondee.
+
+**LE TEMOIN, DEFINI AVANT DE COMPTER** : la MEME chaine, du debut a la fin, mais le porteur d'un
+trou est tire AU HASARD parmi les joueurs nommes (graine fixe, `d6GraineTemoin`) au lieu d'etre
+le plus proche. Meme code, meme cloture, meme oracle, meme metrique. Si la proximite ne porte
+rien, les deux scores se rejoindront.
+
+**LE GATE, CHIFFRE ET ECRIT D'AVANCE — DEUX CONDITIONS, LES DEUX EXIGEES.**
+
+1. **RECOUVREMENT DU TEMPS DE PORTAGE** : `somme sur les joueurs de min(reconstruit, API)` divise
+   par `somme des temps API`. Seuil **>= 0,80**, et **temoin <= 0,50**.
+
+   **POURQUOI 0,80 ET NON 0,90, ECRIT AVANT DE VOIR LE CHIFFRE.** Les deux grandeurs ne sont pas
+   la MEME grandeur physique : le temps API compte le portage, le temps de trou compte
+   l'absence de replication — laquelle inclut aussi les retours et les re-creations. Exiger 0,90
+   testerait l'egalite de deux choses dont on sait deja qu'elles different. 0,80 avec un temoin
+   trente points plus bas teste ce qui est reellement en question : **la proximite designe-t-elle
+   le bon joueur ?**
+2. **LE PORTEUR PRINCIPAL, criterium SANS SEUIL REGLABLE** : le joueur au plus grand temps API
+   est-il aussi celui au plus grand temps reconstruit ? Exige sur **>= 3 des 4 films**.
+
+**ESCALADE** : un film dont le pont ne nomme pas au moins deux joueurs, ou dont l'oracle API est
+absent, n'est pas exploitable et ne compte ni pour ni contre. Moins de 2 films exploitables =
+arret. **Si le gate tombe, STOP au CR** — pas de cinquieme oracle.
+
+**SI LE GATE TIENT** : le porteur entre dans `objectiveObjects` (le champ generique est pret),
+SANS nouveau bump — le schema 21 n'a toujours pas quitte le poste — et le rendu pose le crane sur
+son porteur, patron du drapeau porte.
+
+**EXECUTION** : les 4 films D4, un par processus, sentinelle memoire armee dans le processus qui
+decode, base en LECTURE SEULE pour le seul oracle.
+
+- 2026-08-27 — **D6-PORTAGE : GATE NON TENU. Le portage n'est PAS publie.** Protocole commite
+  avant la mesure (`d7dd3c19c`). Quatre films, un par processus, pic 0,06 a 0,13 Gio. Sorties
+  figees : `registre_film/D6_portage_proximite.log` et `D6_oracle_api_portage.json`.
+
+  | film | trous | PORTE | ambigu | retour | inexplique | reconstruit | API | **recouvrement** | temoin | principal |
+  |---|---|---|---|---|---|---|---|---|---|---|
+  | `24dbb67d` | 22 | 7 | 3 | 2 | 10 | 190 s | 331 s | **51,7 %** | 11,3 % | manque |
+  | `43716616` | 15 | 7 | 1 | 1 | 6 | 56 s | 218 s | **25,9 %** | 17,1 % | manque |
+  | `51ebbc0f` | 20 | 3 | 0 | 2 | 15 | 7 s | 266 s | **2,6 %** | 4,1 % | manque |
+  | `d9781168` | 46 | 18 | 4 | 8 | 16 | 206 s | 404 s | **48,9 %** | 27,8 % | **identifie** |
+
+  **Seuil : recouvrement >= 80 % ET porteur principal sur >= 3 films sur 4. Mesure : 2,6 a
+  51,7 %, principal sur 1 film sur 4. NON TENU, deux fois.** Aucune publication, comme ecrit.
+
+  **CE QUI EST POSITIF, ET QUI NE DOIT PAS DISPARAITRE DANS LE NEGATIF :**
+
+  1. **LA PRIMITIVE DE PROXIMITE FONCTIONNE, et la distribution le montre au lieu de l'affirmer.**
+     Les distances au plus proche a l'instant du trou se separent nettement en DEUX populations :
+     q25 entre **0,20 et 0,43 m** (quelqu'un est exactement la) contre q75 entre **5,5 et 7,9 m**
+     (personne). Mediane **0,77 m** sur `d9781168` — la valeur meme que la doctrine du 12/08
+     citait. **Le seuil de 1,5 m ne se regle pas, il se constate** : n'importe quelle valeur entre
+     1 et 3 m rendrait le meme classement. Le seuil n'est donc PAS la cause de l'echec.
+  2. **CE QUE FAIT LA MORT EST ETABLI, ET C'EST UN OUI FRANC : 22 sur 24 = 91,7 %.** Un portage
+     ferme par la mort de son porteur est suivi, dans les 3 s, d'une naissance de vie libre a
+     moins de 3 m du lieu de la mort — 5/5, 7/7, 10/10, et 1/2 sur le film au pont casse. **La
+     regle « mourir, c'est lacher » n'est plus une hypothese de protocole : elle est mesuree.**
+     C'est acquis quel que soit le sort du reste.
+  3. **LE TEMOIN SE COMPORTE COMME IL DOIT sur les trois films au pont sain** : 51,7 contre 11,3
+     (x4,6), 25,9 contre 17,1 (x1,5), 48,9 contre 27,8 (x1,8). La proximite PORTE de
+     l'information — elle n'en porte simplement pas assez.
+
+  **POURQUOI LE GATE TOMBE, NOMME SUR PIECES.** Deux causes distinctes, et il faut les separer.
+
+  **(a) UN FILM EST HORS D'ETAT, ET CE N'EST PAS LA PROXIMITE.** `51ebbc0f` : le pont ne nomme
+  que **9 slots de bipede sur 84**, contre 87/97, 62/72 et 140/160 ailleurs. Sans joueurs nommes,
+  aucune proximite ne peut designer qui que ce soit — d'ou 2,6 %, et le seul film ou le temoin
+  BAT le signal (4,1 contre 2,6). Ce film aurait du sortir par une precondition de pont que mon
+  protocole n'a pas ecrite : je l'ai bornee a « au moins deux slots nommes », ce qui est
+  beaucoup trop laxiste. **Defaut de mon protocole, pas de la donnee.**
+
+  **(b) LA RECONSTRUCTION SOUS-ATTRIBUE, MASSIVEMENT ET SYSTEMATIQUEMENT.** Sur les trois films
+  sains elle rend 190/331, 56/218 et 206/404 secondes — environ la MOITIE. La classe
+  `inexplique` (personne a moins de 1,5 m, et la vie suivante ne nait pas au socle) pese 10/22,
+  6/15 et 16/46 des trous. Et le detail par joueur est sans appel : sur `43716616`, deux gros
+  porteurs de l'oracle (94 s et 62 s) recoivent 3 s et 0 s. **Ce ne sont pas des erreurs
+  d'attribution, ce sont des portages entiers que la chaine ne voit pas commencer.**
+
+  **CE QUE JE NE CONCLUS PAS.** Je n'ecris pas « la voie de la proximite est refutee ». Les deux
+  positifs ci-dessus disent le contraire : la primitive discrimine, et la mort est comprise. Ce
+  qui est refute, c'est **cette reconstruction-ci**, dont le point d'entree — « la derniere
+  position repliquee est le lieu du ramassage » — rate la moitie des ramassages. Pourquoi, je ne
+  l'ai pas mesure : il faudrait instrumenter ce que fait l'objet dans les quelques images qui
+  precedent son silence, et ce serait un protocole neuf.
+
+  **STOP AU VERDICT, comme mandate.** Pas de cinquieme oracle, pas de reglage du seuil apres
+  coup — et surtout pas de publication d'un portage dont la moitie manque.
+
+- [x] D6.1 Reconstruction par proximite : faite, sous-attribution massive, `[!]`.
+- [x] D6.2 Ce que fait la mort : **MESURE ET ACQUIS — 22/24 = 91,7 %**.
+- [x] D6.3 Verdict contre l'oracle API : **NON TENU** (2,6 a 51,7 % contre 80 % ; principal 1/4
+      contre 3/4). Le portage n'entre PAS dans `objectiveObjects`, aucun rendu de porteur, aucun
+      bump. Le calque du crane LIBRE, lui, reste tel qu'il a ete livre en D5-bis.
+
+### D7 — SONDE DIAGNOSTIQUE : pourquoi la moitie des ramassages est invisible
+
+> **PROTOCOLE ECRIT ET COMMITE AVANT LA MESURE.** Aucun chiffre de resultat. Arbitrage
+> superviseur du 2026-08-27 : UNE sonde bornee, pas une cinquieme campagne. Elle NE PROPOSE PAS
+> de reconstruction — elle NOMME une cause. L'oracle API et le seuil de 80 % restent le juge, et
+> ils ne sont pas rejoues ici.
+>
+> **CORPUS : les DEUX films au pont sain, `24dbb67d` et `d9781168`.** `51ebbc0f` est exclu
+> d'office (9 slots nommes sur 84 — c'est le defaut de precondition que D6 a nomme), et
+> `43716616` n'entre pas : deux films suffisent a departager trois signatures, et la sonde est
+> bornee par mandat.
+
+**CE QUI EST DEJA ETABLI ET QU'ON NE REMESURE PAS** : la primitive de proximite discrimine (q25 a
+0,20-0,43 m contre q75 a 5,5-7,9 m), la mort fait lacher (22/24 = 91,7 %), et la reconstruction
+D6 rend environ la moitie du temps de portage de l'API. **La question est UNIQUEMENT : ou passe
+l'autre moitie ?**
+
+**TROIS PISTES, TROIS SIGNATURES ECRITES D'AVANCE. Chacune dit ce qui la CONFIRMERAIT et ce qui
+l'ECARTERAIT — sans quoi la sonde trouverait ce qu'elle cherche.**
+
+- [x] **S1 — LA DERNIERE POSITION EST PERIMEE (ramassage en mouvement).** Si l'objet roule ou
+      vole quand on le ramasse, sa derniere position REPLIQUEE est en retard de quelques images
+      sur le lieu reel du ramassage, et chercher le joueur le plus proche a ce point-la vise a
+      cote.
+      **Mesure** : pour chaque trou, la distance minimale a un joueur nomme non plus au seul
+      instant `t1`, mais sur une FENETRE `t1 ± W` avec **W = 0, 1, 2, 5, 10 images**. Publiee
+      aussi : la VITESSE de l'objet sur ses trois dernieres images.
+      **CONFIRME SI** la part de trous ayant un joueur sous 1,5 m monte NETTEMENT avec `W` —
+      convention ecrite d'avance : **+15 points ou plus entre W = 0 et W = 5**. **ECARTEE SI**
+      elle bouge de moins de 5 points : le joueur n'est alors pas « un peu plus loin dans le
+      temps », il n'est nulle part.
+- [x] **S2 — DEUX PORTAGES FUSIONNES EN UN.** Si l'objet est relache puis repris trop vite pour
+      emettre une vie libre lisible, deux portages n'en font qu'un, et la moitie des ramassages
+      n'existe simplement pas dans la chaine des vies.
+      **Mesure** : la duree des portages reconstruits confrontee a
+      `longest_time_as_skull_carrier_seconds` de l'API pour CE film — un portage reconstruit plus
+      long que le plus long portage que l'API connaisse est necessairement une fusion. Publiees
+      aussi : la distribution des durees de vie libre et le compte de vies a UN seul point.
+      **CONFIRME SI** au moins un portage reconstruit depasse le maximum de l'API, ou si la part
+      des vies libres de moins d'une image est notable (**>= 20 %**). **ECARTEE SI** aucun
+      portage ne depasse le maximum API et que les vies courtes sont marginales.
+- [x] **S3 — DES VIES NAISSENT SANS ETRE APPARIEES.** Si des vies libres apparaissent loin du
+      socle, loin d'un joueur et loin du silence precedent, la chaine « une vie, un trou, une
+      vie » est rompue et des trous entiers sont mal bornes.
+      **Mesure** : classer la NAISSANCE de chaque vie libre — au socle (<= 3 m), aux pieds d'un
+      joueur (<= 1,5 m), au lieu du silence precedent (<= 3 m), ou INEXPLIQUEE.
+      **CONFIRME SI** la part de naissances inexpliquees est **>= 30 %**. **ECARTEE SI** elle
+      est **<= 10 %**.
+
+**LES TROIS NE S'EXCLUENT PAS**, et le protocole ne les force pas a le faire : la sonde publie
+les trois signatures, et le CR dit laquelle domine — ou dit qu'aucune ne domine, ce qui serait un
+resultat en soi.
+
+**CE QUE LA SONDE NE FERA PAS.** Elle ne modifie AUCUN seuil de D6, ne rejoue AUCUN verdict, ne
+propose AUCUNE reconstruction et ne publie RIEN dans l'artefact. Le mandat est de rendre la cause,
+pas de la corriger dans la foulee — et la decision finale (nouvelle reconstruction, ou `[!]` avec
+les acquis consignes) revient au superviseur, l'oracle API et le seuil de 80 % restant le juge.
+
+**EXECUTION** : un film par processus, sentinelle memoire armee dans le processus qui decode,
+oracle API FIGE en entree (aucune base ouverte par la sonde).
+
+- 2026-08-27 — **D7, SONDE DIAGNOSTIQUE : AUCUNE des trois pistes ne domine — et la sonde rend
+  autre chose, de plus precis.** Protocole commite avant la mesure (`cce4468d6`). Deux films au
+  pont sain, un par processus, pic 0,10 et 0,14 Gio. Sortie figee dans
+  `registre_film/D7_sonde_diagnostique.log`.
+
+  | signature | `24dbb67d` | `d9781168` | verdict |
+  |---|---|---|---|
+  | **S1** derniere position perimee | gain **+4,5** pt | gain **+2,2** pt | **ECARTEE** (confirme >= 15, ecarte < 5) |
+  | **S2** portages fusionnes | 0 depassement, 8,7 % de vies d'un instant | 0 depassement, **29,8 %** | ECARTEE / **CONFIRMEE** |
+  | **S3** naissances non appariees | **8,7 %** inexpliquees | **10,6 %** | ECARTEE / indecise |
+
+  **S1 EST ECARTEE, ET LA SONDE DIT POURQUOI — c'est le resultat le plus net.** Elargir la
+  fenetre de recherche autour du silence ne rattrape presque rien : 45,5 % -> 50,0 % et
+  47,8 % -> 56,5 % en poussant jusqu'a DIX images de part et d'autre. Et la cause mecanique est
+  mesuree a cote : **l'objet est A L'ARRET quand il se tait** — vitesse mediane sur ses trois
+  dernieres images **0,00 et 0,28 m/s** (q90 : 1,04 et 2,26). Une derniere position ne peut pas
+  etre perimee si l'objet ne bougeait pas. **L'hypothese du ramassage en mouvement est morte, et
+  elle l'est pour une raison, pas par un seuil.**
+
+  **S2 n'est confirmee que sur le PLUS GROS film**, et par sa seule seconde branche : 29,8 % de
+  vies libres reduites a un instant contre 8,7 % sur l'autre. La premiere branche, elle, est
+  NEGATIVE des deux cotes — **aucun portage reconstruit ne depasse le plus long portage que
+  l'API connaisse** (72 s contre 80, 55 s contre 116). Il y a donc bien de la fusion sur les
+  films denses, mais elle ne peut pas expliquer la moitie manquante : si elle le faisait, des
+  portages trop longs sortiraient, et il n'y en a aucun.
+
+  **S3 est ecartee** : 8,7 % et 10,6 % de naissances inexpliquees. La chaine « une vie, un trou,
+  une vie » tient.
+
+  **CE QUE LA SONDE REND EN PLUS, ET QUI EST LE VRAI RESULTAT : UNE ASYMETRIE.**
+
+      NAISSANCES aux pieds d'un joueur    17/23 = 73,9 %      29/47 = 61,7 %
+      SILENCES   aux pieds d'un joueur    10/22 = 45,5 %      22/46 = 47,8 %
+
+  **Le LACHER est bien capte, le RAMASSAGE ne l'est qu'une fois sur deux** — et ce n'est ni un
+  probleme de fraicheur (S1), ni de chainage (S3), ni de fusion seule (S2). Les deux evenements
+  sont pourtant symetriques et lus par la MEME primitive, sur les MEMES pistes, avec le MEME
+  seuil. **C'est cette asymetrie qu'il faut expliquer, et je ne l'explique pas.**
+
+  **UNE LIMITE DE MA PROPRE SONDE, QUE JE NOMME PLUTOT QUE DE LA CONTOURNER.** Le classement des
+  naissances de S3 est ORDONNE (socle, puis joueur, puis lieu du silence precedent) : une
+  naissance aux pieds d'un joueur QUI SERAIT AUSSI au lieu du silence precedent est comptee dans
+  la premiere colonne et disparait de la seconde. Les 1 et 0 de la colonne « lieu du silence »
+  ne prouvent donc PAS que l'objet a bouge entre son silence et sa renaissance — ils ne prouvent
+  rien du tout. Une hypothese que cela laisse entiere : **la replication d'un objet AU REPOS
+  pourrait simplement CESSER** (mise en sommeil), auquel cas la moitie des « trous » ne seraient
+  pas des portages du tout — ce qui expliquerait a la fois la sous-attribution et le plafond du
+  recouvrement autour de 50 %. **Je ne l'ai pas mesuree.** La trancher demanderait de reclasser
+  les naissances SANS ordre de priorite, c'est-a-dire de changer l'instrument apres avoir vu le
+  chiffre — ce que le protocole interdit, y compris quand cela m'arrangerait.
+
+- [x] D7 S1 : **ECARTEE** sur les deux films, avec sa cause mecanique (objet a l'arret).
+- [x] D7 S2 : ecartee sur un film, confirmee sur l'autre par sa seule branche « vies courtes » ;
+      la branche des durees est negative des deux cotes — la fusion existe, elle n'explique pas
+      la moitie manquante.
+- [x] D7 S3 : **ECARTEE** — la chaine des vies tient.
+- [x] D7 verdict : **aucune des trois pistes ne domine.** La cause reste NON NOMMEE, et la sonde
+      la CERNE : une asymetrie lacher/ramassage de ~26 points sur un canal symetrique. Le seuil
+      de 80 % et l'oracle API restent le juge ; rien n'est publie, rien n'est reconstruit.
+
+### D8 — LE SOMMEIL DE L'OBJET : protocole ECRIT ET COMMITE AVANT LA MESURE
+
+> Aucun chiffre de resultat. Deux volets SEQUENTIELS : le second ne s'execute QUE si le premier
+> etablit le sommeil. Le seuil du gate final ne bouge pas d'un millimetre — recouvrement
+> **>= 80 %** et porteur principal sur **>= 3 films sur 4**, oracle `time_as_skull_carrier_seconds`.
+
+**L'HYPOTHESE, ET D'OU ELLE VIENT.** D7 a mesure que l'objet est A L'ARRET quand il se tait
+(vitesse mediane 0,00 et 0,28 m/s) et que le lacher est capte a 74 / 62 % quand le ramassage ne
+l'est qu'a 45 / 48 %. Une asymetrie de ~26 points sur un canal symetrique. L'explication qui
+colle a tout : **un objet immobile CESSE d'etre replique** — il se met en sommeil. La moitie des
+« trous » ne seraient alors pas des portages, et le ramassage n'aurait pas lieu a l'instant du
+silence mais PLUS TARD, quand un joueur passe.
+
+**CE QUI REND CE PROTOCOLE NEUF ET NON UN QUATRIEME REGLAGE.** D6 cherchait le porteur AU MOMENT
+du silence. Ici on cherche **QUAND** quelqu'un traverse le lieu de repos. Ce n'est pas le meme
+predicat, et le volet 1 le teste AVANT de s'en servir.
+
+#### Volet 1 — ETABLIR LE SOMMEIL
+
+- [x] D8.1 **Naissances reclassees SANS ORDRE DE PRIORITE.** Chaque naissance de vie libre est
+      notee sur les TROIS attributs a la fois — au socle (<= 3 m) ? aux pieds d'un joueur
+      (<= 1,5 m) ? au LIEU EXACT du silence precedent (<= 1,0 m) ? — et les recouvrements sont
+      publies tels quels. C'est la correction directe du defaut que D7 a nomme dans sa propre
+      sonde.
+- [x] D8.2 **Traversee du lieu de repos.** Pour chaque trou : un joueur nomme passe-t-il a
+      <= 1,5 m de la position de repos PENDANT le trou, et au bout de combien de temps ?
+      Distribution du delai silence -> premiere traversee.
+
+**CRITERE DE « SOMMEIL ETABLI », ECRIT D'AVANCE — LES DEUX CONDITIONS SONT EXIGEES :**
+
+1. **La part de trous traverses pendant leur duree est >= 70 %.** Le point de comparaison n'est
+   pas choisi ici, il est DEJA MESURE : a l'instant du silence seul, D6 et D7 rendent **45,5 %**
+   et **47,8 %**. Si le ramassage avait lieu au silence, elargir a tout le trou ne changerait
+   presque rien (c'est exactement ce que S1 de D7 a montre sur +/- 10 images). Un saut a 70 %
+   dit que quelqu'un passe, mais PLUS TARD.
+2. **Le delai median silence -> premiere traversee est >= 1,0 s.** Un delai quasi nul rendrait
+   l'hypothese vide : ce serait le ramassage au silence, deja mesure et deja insuffisant.
+
+**PUBLIE EN CORROBORATION, MAIS NON EXIGE** : la part de naissances au LIEU EXACT du silence
+precedent (« l'objet se reveille sur place »), avec la distribution complete des distances. Elle
+n'entre pas au critere parce qu'elle est CONFONDUE : un joueur qui ramasse puis meurt aussitot
+lache l'objet tout pres, ce qui imite le reveil sur place. La distribution la separera peut-etre,
+le critere ne s'y appuie pas.
+
+**SI LE SOMMEIL N'EST PAS ETABLI** : arret, `[!]` final avec les acquis, et on n'y revient plus
+dans la v7.5. Le volet 2 ne s'execute pas.
+
+#### Volet 2 — LA RECONSTRUCTION CORRIGEE (seulement si le sommeil est etabli)
+
+- [!] D8.3 **Le ramassage est la PREMIERE TRAVERSEE**, pas le silence : le porteur est le premier
+      joueur nomme dont la piste passe a <= **1,5 m** (le seuil CONSTATE de D6 — q25 a 0,20-0,43 m
+      contre q75 a 5,5-7,9 m, il ne se regle pas) de la position de repos pendant le trou. Le
+      portage court de cette traversee jusqu'a `t0` de la vie suivante, ou jusqu'a la MORT du
+      porteur si elle tombe avant — regle fondee par la mesure D6 a **22/24 = 91,7 %**.
+- [!] D8.4 **Verdict** contre l'oracle API, memes seuils.
+
+**AMBIGUITE** : si deux joueurs traversent dans la MEME image a moins de 1,0 m l'un de l'autre, le
+porteur est **null** — doctrine des occupations de socle, inchangee.
+
+**RETOUR** : aucune traversee et la vie suivante nait au socle => RETOUR, aucun portage attribue.
+
+**PRECONDITION DE PONT, ECRITE CETTE FOIS — c'est la lecon de `51ebbc0f`.** Un film n'est
+exploitable que si **>= 50 %** de ses slots de bipede sont NOMMES par le pont. Le corpus mesure
+donne 89,7 %, 86,1 %, 87,5 % pour les films sains contre **10,7 %** pour `51ebbc0f` : les deux
+populations sont separees par un facteur huit, n'importe quel plancher entre 30 et 70 % rendrait
+le meme classement. En dessous, le film ne compte NI POUR NI CONTRE — et il ne sera pas dit
+« mesure sur quatre films » quand il l'aura ete sur trois.
+
+**TEMOIN** : la MEME chaine, mais le porteur d'un trou est tire AU HASARD parmi les joueurs
+PRESENTS (nommes), au lieu d'etre le premier a traverser. Graine fixe. Seuil **<= 0,50**.
+
+**CE QUE JE NE FERAI PAS** : ajuster un seuil apres l'avoir vu, changer d'oracle, ou publier un
+portage dont le recouvrement n'atteint pas 80 %. **Si le gate rate : `[!]` FINAL**, les acquis
+consignes, et la v7.5 n'y revient plus.
+
+**SI LE GATE PASSE** : le porteur entre dans `objectiveObjects` (un porteur par vie de portage),
+schema 21 A RE-VERIFIER local avant tout, temoins re-cuits et CONTENU verifie (recette du
+registre), rendu crane-sur-porteur au patron du drapeau.
+
+**EXECUTION** : les 4 films, un par processus, sentinelle memoire armee dans le processus qui
+decode, oracle API FIGE en entree, aucune base ouverte par la mesure.
+
+- 2026-08-27 — **D8 VOLET 1 : LE SOMMEIL N'EST PAS ETABLI. Le volet 2 ne s'execute PAS, et le
+  portage Oddball est `[!]` FINAL pour la v7.5.** Protocole commite avant la mesure
+  (`6262dc221`). Sortie figee dans `registre_film/D8_sommeil.log`.
+
+  **LA PRECONDITION DE PONT A FONCTIONNE DES LE PREMIER FILM QU'ELLE VISAIT.** `51ebbc0f` sort
+  proprement a **10,7 %** de slots nommes contre un plancher de 50 % — les trois autres sont a
+  89,7 / 86,1 / 87,5 %. La mesure porte donc sur **TROIS** films, et il ne sera pas dit quatre.
+  C'est la lecon de D6 ecrite en garde plutot qu'en regret.
+
+  **D8.1 — LES NAISSANCES, RECLASSEES SANS ORDRE DE PRIORITE** (la correction du defaut que D7
+  avait nomme dans sa propre sonde) :
+
+  | film | au socle | aux pieds d'un joueur | **AU LIEU DU SILENCE** | aucun des trois | recouvrements |
+  |---|---|---|---|---|---|
+  | `24dbb67d` | 13,0 % | 78,3 % | **8,7 %** | 13,0 % | socle+joueur 1 ; lieu+joueur 2 |
+  | `43716616` | 25,0 % | 75,0 % | **6,2 %** | 12,5 % | socle+joueur 2 ; lieu+joueur 1 |
+  | `d9781168` | 27,7 % | 72,3 % | **0,0 %** | 10,6 % | socle+joueur 5 ; lieu+joueur 0 |
+
+  **LA CORROBORATION DU SOMMEIL EST REFUTEE, ET PLUS NETTEMENT ENCORE QUE LE CRITERE.** Si
+  l'objet s'endormait et se reveillait sur place, les naissances se serreraient a ZERO metre du
+  silence precedent. Elles n'y sont pas : distance **mediane 3,95 / 7,42 / 9,35 m**, et le
+  MINIMUM sur les trois films vaut deja 0,44 / 0,83 / **1,40 m**. **L'objet a bouge entre son
+  silence et sa renaissance — il a ete PORTE, pas endormi.**
+
+  **D8.2 — LES DEUX CONDITIONS DU CRITERE, ET ELLES SE SEPARENT :**
+
+  | film | trous TRAVERSES (seuil 70 %) | delai median (seuil >= 1,0 s) | verdict |
+  |---|---|---|---|
+  | `24dbb67d` | **90,9 %** OUI | **0,00 s** NON | SOMMEIL NON ETABLI |
+  | `43716616` | **93,3 %** OUI | **0,00 s** NON | SOMMEIL NON ETABLI |
+  | `d9781168` | **84,8 %** OUI | **0,00 s** NON | SOMMEIL NON ETABLI |
+
+  **LES DEUX ETAIENT EXIGEES. La seconde tombe sur les trois films : le delai median vaut ZERO.**
+  Plus de la moitie des trous voient un joueur sur le lieu de repos A L'INSTANT MEME du silence —
+  c'est-a-dire le ramassage au silence, deja mesure par D6 et deja insuffisant. Le sommeil aurait
+  exige que ce delai soit substantiel ; il ne l'est pas. **Sommeil NON ETABLI, volet 2 non
+  execute, comme le protocole l'engageait.**
+
+  **CE QUE LA MESURE REND QUAND MEME, ET QUE JE SIGNALE SANS L'EXPLOITER.** La part de trous
+  traverses PENDANT leur duree vaut **84,8 a 93,3 %**, la ou D6 n'en trouvait que **45,5 et
+  47,8 %** a l'instant du silence seul. Le quartile superieur du delai vaut 2,2 a 3,6 s et la
+  queue monte a 22,6 s : **il existe donc une population reelle de trous ou le passage a lieu
+  NETTEMENT plus tard.** Une reconstruction fondee sur la premiere traversee couvrirait presque
+  tous les trous au lieu de la moitie. **Je ne l'ai pas mesuree** : mon protocole la conditionnait
+  a un sommeil etabli, il ne l'est pas, et lancer le volet 2 apres avoir vu ce chiffre serait
+  exactement le « changer d'instrument apres coup » que j'ai refuse quatre fois. C'est au
+  superviseur d'en decider, avec un protocole neuf s'il le veut.
+
+- [x] D8.1 Naissances sans ordre de priorite : faites ; le reveil sur place est REFUTE
+      (mediane 3,95 a 9,35 m, minimum 0,44 a 1,40 m).
+- [x] D8.2 Traversees : faites ; couverture 84,8-93,3 % mais delai median NUL.
+- [!] D8.3 / D8.4 Reconstruction corrigee et verdict : **NON EXECUTES** — le volet 2 etait
+      conditionne a un sommeil etabli, et il ne l'est pas.
+
+**CLOTURE DU PORTAGE ODDBALL POUR LA v7.5 — `[!]` FINAL.** Quatre campagnes, quatre protocoles
+ecrits d'avance, quatre negatifs, et une regle tenue : aucun seuil abaisse, aucun instrument
+change apres coup, aucun oracle choisi pour ce qu'il rendrait.
+
+**LES ACQUIS, QUI EUX RESTENT :**
+
+1. **L'identite du crane** : `0x0017592C`, elue 4 films sur 4, au manifeste, avec son exclusion
+   des socles d'armes desormais VOULUE ET GARDEE (D4, D5).
+2. **Le calque du crane LIBRE, publie et dessine** (D5-bis, schema 21, contrat 39) : ou se trouve
+   l'objet quand personne ne le porte, avec son refus explicite de dessiner pendant les portages.
+3. **« Mourir, c'est lacher » : 22/24 = 91,7 %** (D6).
+4. **Un tic de score de crane vaut une seconde de portage** (D6) — ce qui referme le « ~1 Hz » du
+   §2.4, faux sur le score personnel et juste sur le canal du mode.
+5. **La primitive de proximite discrimine** : q25 a 0,20-0,43 m contre q75 a 5,5-7,9 m (D6).
+6. **Le sommeil de l'objet est REFUTE** : l'objet est porte, pas endormi (D8).
+7. **Un oracle independant du film existe** pour qui reprendra : `time_as_skull_carrier_seconds`,
+   par joueur, dans `match_objective_stats_latest`.
+
+**CONDITION DE REPRISE (hors v7.5)** : une reconstruction fondee sur la PREMIERE TRAVERSEE du lieu
+de repos — couverture mesuree 84,8 a 93,3 % — confrontee au meme oracle et au meme seuil de 80 %.
+Tout est instrumente ; il n'y manque qu'un protocole ecrit d'avance et une decision.
+
+### D9 — RECONSTRUCTION PAR LA PREMIERE TRAVERSEE : protocole ECRIT ET COMMITE AVANT LA MESURE
+
+> Aucun chiffre de resultat. **DERNIERE campagne sur le portage Oddball** : verdict final quel
+> qu'il soit, et pas de D10. Oracle et gate INCHANGES — recouvrement
+> `time_as_skull_carrier_seconds` **>= 80 %** et porteur principal identifie sur **>= 3** films
+> exploitables.
+
+**D'OU VIENT CETTE PISTE, ET POURQUOI ELLE N'EST PAS UN CINQUIEME REGLAGE.** D6 cherchait le
+porteur A L'INSTANT du silence et n'en trouvait qu'a 45,5 et 47,8 % des trous. D8 a mesure, sans
+s'en servir, que **84,8 a 93,3 %** des trous voient un joueur traverser le lieu de repos PENDANT
+leur duree, avec un quartile superieur de delai a 2,2-3,6 s. Le predicat change : ce n'est plus
+« qui est la quand l'objet se tait » mais « qui passe le PREMIER sur l'objet pose ». D8 a aussi
+REFUTE le sommeil (l'objet est porte, pas endormi) : les trous sont donc bien des portages, et il
+ne manquait qu'un point d'entree.
+
+**LA FENETRE DE DELAI EST FIXEE A PRIORI, ET SA VALEUR SORT DE LA MESURE D8 — PAS D'UN REGLAGE.**
+
+    d9FenetreMS = 8 000 ms
+
+**JUSTIFICATION, ECRITE AVANT DE MESURER.** Les q90 du delai silence -> premiere traversee valent
+**7,90 / 3,40 / 6,00 s** sur les trois films sains ; 8 s couvre donc le q90 de CHACUN, le plus
+exigeant compris. Au-dela s'etend une queue jusqu'a 22,6 s, et cette queue est precisement la
+zone ou « quelqu'un passe » cesse d'etre un ramassage pour devenir une COINCIDENCE : plus on
+attend, plus la probabilite qu'un joueur traverse un point donne pour une raison sans rapport
+augmente. Fixer la fenetre au q90 mesure, c'est prendre tout le signal que D8 a vu sans acheter
+la queue ou le temoin va rattraper le signal.
+
+**UN TROU SANS TRAVERSEE DANS LA FENETRE N'EST PAS ATTRIBUE.** Jamais devine, jamais rattrape par
+un elargissement apres coup. Il est compte, classe, et il pese au denominateur.
+
+**PUBLIE EN DIAGNOSTIC, EXPLICITEMENT HORS GATE** : le meme recouvrement calcule a 22 600 ms (la
+queue complete de D8). Il ne peut RIEN valider — il est la pour montrer ce que la queue ajoute,
+et si elle ajoute surtout du bruit, le temoin le dira au meme endroit.
+
+- [x] D9.1 **Reconstruction** : le ramasseur d'un trou est le PREMIER joueur nomme dont la piste
+      passe a <= **1,5 m** (seuil CONSTATE de D6 — q25 0,20-0,43 m contre q75 5,5-7,9 m) de la
+      position de repos, dans les 8 s qui suivent le silence. Le portage court de cette traversee
+      jusqu'a `t0` de la vie suivante, ou jusqu'a la MORT du porteur si elle tombe avant (regle
+      fondee par la mesure D6 a 22/24 = 91,7 %).
+- [x] D9.2 **Les deux temoins**, et ils ne controlent pas la meme chose :
+      **(a) TEMOIN DE JOUEUR** — un joueur tire au hasard parmi les PRESENTS remplace le premier
+      traversant. Il controle « le PREMIER a passer est-il le bon ? ».
+      **(b) TEMOIN SPATIAL** — la position de repos est DECALEE de **12 m** en x et en y, et toute
+      la chaine est rejouee dessus. C'est le controle que D8 n'avait pas : il repond a « une
+      position quelconque de la carte rendrait-elle le meme signal ? ». Les 12 m sont le decalage
+      de temoin deja etabli au depot (`defaultWitnessOffsetM`) — assez pour sortir du rayon de
+      ramassage d'un facteur huit, assez peu pour rester sur du sol foule.
+- [x] D9.3 **Verdict** : recouvrement **>= 80 %**, **les DEUX temoins <= 0,50**, et porteur
+      principal identifie sur **>= 3** films exploitables.
+
+**LE CORPUS EST DE TROIS FILMS, ET LE CRITERE DU PORTEUR PRINCIPAL EXIGE DONC LES TROIS.** Je
+l'ecris sans l'adoucir : `51ebbc0f` est ecarte par la precondition de pont (**>= 50 %** de slots
+nommes — 10,7 % contre 89,7 / 86,1 / 87,5 %), le denominateur vaut trois, et « >= 3 sur les
+exploitables » se lit trois sur trois. Un porteur principal manque sur un seul film et le gate
+tombe.
+
+**SI LE GATE PASSE** : publication du porteur par vie de portage dans `objectiveObjects` — a
+verifier en codant si une CLE s'ajoute au contrat (39 -> 40 alors, avec `openapi-gen` et
+`generate-types`), schema 21 a RE-VERIFIER local avant tout, temoins re-cuits et CONTENU verifie
+(recette du registre : un artefact peut porter la bonne version et l'ancienne configuration),
+rendu crane-sur-porteur au patron du drapeau porte.
+
+**SI LE GATE RATE** : `[!]` FINAL, les sept acquis consignes, et la v7.5 n'y revient plus. Pas de
+D10, pas de sixieme oracle, pas d'elargissement de fenetre.
+
+**EXECUTION** : les 3 films exploitables, un par processus, sentinelle memoire armee dans le
+processus qui decode, oracle API FIGE en entree, aucune base ouverte par la mesure.
+
+- 2026-08-27 — **D9 : GATE NON TENU. Le portage Oddball est `[!]` FINAL pour la v7.5.** Protocole
+  commite avant la mesure (`1396bb2b4`). Trois films exploitables, un par processus. Sortie figee
+  dans `registre_film/D9_premiere_traversee.log`.
+
+  | film | trous | attribues | retour | sans traversee | reconstruit | API | **recouvrement** | temoin JOUEUR | temoin SPATIAL | principal |
+  |---|---|---|---|---|---|---|---|---|---|---|
+  | `24dbb67d` | 22 | 15 | 1 | 6 | 298 s | 331 s | **79,8 %** | 38,8 % | **3,3 %** | manque |
+  | `43716616` | 15 | 11 | 1 | 3 | 164 s | 218 s | **73,8 %** | 16,0 % | **0,0 %** | manque |
+  | `d9781168` | 46 | 32 | 6 | 8 | 308 s | 404 s | **64,9 %** | 34,7 % | **0,4 %** | manque |
+
+  **`51ebbc0f` est sorti par la precondition de pont** (10,7 % de slots nommes contre un plancher
+  de 50 %). Le denominateur vaut TROIS, et il n'est pas dit quatre.
+
+  **LE GATE TOMBE SUR SES DEUX CRITERES, ET LE SECOND EST LE PLUS DUR :**
+
+  1. **Recouvrement : 79,8 / 73,8 / 64,9 % contre 80 %.** Le premier film manque le seuil de
+     **DEUX DIXIEMES DE POINT**. **79,8 n'est pas 80.** Le seuil etait ecrit avant la mesure, il
+     ne s'arrondit pas, et la regle tenue neuf phases durant ne se plie pas au dernier chiffre
+     parce qu'il est frustrant.
+  2. **Porteur principal : MANQUE sur les TROIS films** — le critere SANS seuil reglable, celui
+     qui ne se negocie pas. Il exigeait trois sur trois ; il rend zero.
+
+  **LA CAMPAGNE EST POURTANT LA MEILLEURE DES QUATRE, ET DE LOIN.** Le recouvrement passe de
+  51,7 / 25,9 / 48,9 % (D6, ramassage a l'instant du silence) a **79,8 / 73,8 / 64,9 %** : le
+  changement de predicat — « qui passe le PREMIER sur l'objet pose » au lieu de « qui est la
+  quand il se tait » — valait bien ce que D8 laissait esperer.
+
+  **LE TEMOIN SPATIAL EST LE RESULTAT LE PLUS PROPRE DE TOUTE LA CAMPAGNE : 3,3 / 0,0 / 0,4 %.**
+  Deplacer le lieu de repos de douze metres et rejouer TOUTE la chaine dessus fait s'effondrer le
+  signal a presque rien. **Le signal est donc bien SPATIAL** — il tient a la position exacte de
+  l'objet, pas a une structure du match qu'une position quelconque reproduirait. C'est le
+  controle qui manquait a D6 et a D8, et il est sans ambiguite. Le temoin de JOUEUR (38,8 / 16,0 /
+  34,7 %) reste lui aussi sous sa borne, avec un ecart de 30 a 58 points au signal.
+
+  **CE QUI RATE, NOMME SUR PIECES : LE PLUS GROS PORTEUR EST SYSTEMATIQUEMENT SOUS-ATTRIBUE.**
+
+      film         plus gros porteur API      ce que la reconstruction lui donne
+      24dbb67d     80 s                       53 s
+      43716616     94 s                       41 s
+      d9781168     116 s                      66 s
+
+  Environ la MOITIE, sur les trois films, alors que les porteurs moyens et petits sortent justes
+  ou sur-attribues (29 -> 45, 10 -> 28, 37 -> 65). **Ce n'est pas du bruit, c'est un biais
+  oriente** : plus le portage est long, plus la chaine en perd. Et c'est exactement ce qui fait
+  tomber le critere du porteur principal sur les trois films — un autre joueur passe devant.
+  **Je ne cherche pas pourquoi : c'etait la derniere campagne, et l'engagement etait de ne pas
+  enchainer.**
+
+  **LE DIAGNOSTIC HORS GATE EST PUBLIE, ET IL NE CHANGE RIEN — C'EST TOUT SON INTERET.** A la
+  fenetre de la queue complete (22 600 ms au lieu de 8 000), le recouvrement vaut 80,7 / 73,8 /
+  71,4 %. Le premier film franchirait le seuil. **Cette valeur ne vaut RIEN et le protocole le
+  disait d'avance** : elle a ete calculee avec une fenetre choisie APRES coup, sur la queue meme
+  que le protocole ecartait comme zone de coincidence. La retenir serait le reglage apres coup
+  refuse neuf fois. Elle est ecrite ici pour que personne n'ait a la recalculer en croyant
+  trouver mieux — et pour qu'on voie qu'elle n'aide PAS les deux autres films (73,8 inchange,
+  71,4 contre 64,9), ce qui est la signature du bruit et non d'un signal.
+
+- [x] D9.1 Reconstruction par la premiere traversee : faite.
+- [x] D9.2 Les deux temoins : faits ; le temoin SPATIAL s'effondre a 0,0-3,3 %.
+- [x] D9.3 Verdict : **NON TENU** sur les deux criteres.
+
+**CLOTURE DEFINITIVE DU PORTAGE ODDBALL POUR LA v7.5 — `[!]` FINAL, pas de D10.**
+
+Cinq campagnes, cinq protocoles ecrits et commites avant mesure, cinq negatifs. Aucun seuil
+abaisse, aucune fenetre elargie apres coup, aucun instrument change une fois le chiffre vu,
+aucun oracle choisi pour ce qu'il rendrait. **Les 79,8 % ne sont pas devenus 80.**
+
+**LES ACQUIS, QUI RESTENT ET QUI SONT LE VRAI PRODUIT DE CE CHANTIER :**
+
+1. **L'identite du crane** : `0x0017592C`, elue 4 films sur 4, au manifeste, exclusion des socles
+   d'armes VOULUE ET GARDEE.
+2. **Le calque du crane LIBRE, publie et dessine** (schema 21, contrat 39) — le livrable.
+3. **« Mourir, c'est lacher » : 22/24 = 91,7 %.**
+4. **Un tic de score de crane vaut une seconde de portage.**
+5. **La primitive de proximite discrimine** (q25 0,20-0,43 m contre q75 5,5-7,9 m).
+6. **Le sommeil de l'objet est REFUTE** : l'objet est porte, pas endormi.
+7. **Un oracle independant du film existe** : `time_as_skull_carrier_seconds`, par joueur.
+8. **NOUVEAU — le signal de portage est SPATIAL** : temoin spatial a 0,0-3,3 % contre un signal a
+   64,9-79,8 %. Ce que la chaine attrape tient a la position exacte de l'objet.
+9. **NOUVEAU — le biais est NOMME** : la sous-attribution est ORIENTEE vers les longs portages
+   (moitie perdue sur le plus gros porteur des trois films).
+
+**CONDITION DE REPRISE (hors v7.5, si elle revient un jour)** : comprendre pourquoi un long
+portage se fragmente. Tout le reste est instrumente, mesure et fige.

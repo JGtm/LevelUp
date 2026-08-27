@@ -51,10 +51,22 @@ type bank struct {
 	Gains   map[uint32]float32
 	Events  map[uint32][]uint32 // idEvent -> ids d'Action
 	Actions map[uint32]uint32   // idAction -> id de la cible
-	Enfants map[uint32][]uint32 // idConteneur -> ids enfants
+	// DelaiAction : delai propre d'une Event Action, en secondes. Une couche = une action ;
+	// ce delai est donc le DECALAGE DE DEBUT de la couche, et il fait la difference entre
+	// un empilement et un enchainement. Detail et preuve d'offset : `actions_delai.go`.
+	DelaiAction map[uint32]float32
+	// Repetitions : nombre de lectures d'un conteneur de type 5, `0` = BOUCLE INFINIE.
+	// Absent de la table = une seule lecture. Un rendu qui joue une fois un conteneur
+	// declare infini ne rend pas le geste, il en rend un fragment (`audit_boucles.go`).
+	Repetitions map[uint32]boucleLue
+	Enfants     map[uint32][]uint32 // idConteneur -> ids enfants
 	// Switchs : conteneurs pilotes par un etat de jeu, decodes. `Enfants` n'en retient que
 	// l'etat par defaut ; cette table garde la vue complete pour l'inspection.
 	Switchs map[uint32]conteneurSwitch
+	// Blends : table de fondu complete des conteneurs `Blend`. `Enfants` n'en retient que
+	// les enfants audibles au point de reference ; cette table garde la vue complete, sans
+	// laquelle on ne peut ni nommer la condition d'un enfant ecarte ni rendre sa phase.
+	Blends map[uint32]conteneurBlend
 	// VolNoeud : volume propre de CHAQUE noeud (Sound comme conteneur). Mesure de l'etape
 	// 18 : 5 063 ActorMixer, 5 180 RandomSequence, 181 Blend et 128 Switch portent un
 	// volume non nul, jusqu'a -96 dB. Le gain d'un `.wem` est donc la SOMME du chemin
@@ -163,18 +175,21 @@ func parserBank(brut []byte, estWem func(uint32) bool) (*bank, error) {
 		return nil, err
 	}
 	b := &bank{
-		Embarques:  embarques,
-		Objets:     make(map[uint32]objetHIRC, len(objs)),
-		Sons:       map[uint32]uint32{},
-		Gains:      map[uint32]float32{},
-		Events:     map[uint32][]uint32{},
-		Actions:    map[uint32]uint32{},
-		Enfants:    map[uint32][]uint32{},
-		Switchs:    map[uint32]conteneurSwitch{},
-		VolNoeud:   map[uint32]float32{},
-		VarNoeud:   map[uint32]fourchetteSon{},
-		DelaiNoeud: map[uint32]float32{},
-		GainsFondu: map[uint32]map[uint32]float64{},
+		Embarques:   embarques,
+		Objets:      make(map[uint32]objetHIRC, len(objs)),
+		Sons:        map[uint32]uint32{},
+		Gains:       map[uint32]float32{},
+		Events:      map[uint32][]uint32{},
+		Actions:     map[uint32]uint32{},
+		DelaiAction: map[uint32]float32{},
+		Repetitions: map[uint32]boucleLue{},
+		Enfants:     map[uint32][]uint32{},
+		Switchs:     map[uint32]conteneurSwitch{},
+		Blends:      map[uint32]conteneurBlend{},
+		VolNoeud:    map[uint32]float32{},
+		VarNoeud:    map[uint32]fourchetteSon{},
+		DelaiNoeud:  map[uint32]float32{},
+		GainsFondu:  map[uint32]map[uint32]float64{},
 	}
 	for _, o := range objs {
 		b.Objets[o.ID] = o
@@ -197,6 +212,11 @@ func parserBank(brut []byte, estWem func(uint32) bool) (*bank, error) {
 			// a empiler dans le mixage la cible d'un `Stop` ou d'un `Break`.
 			if cible, estPlay, ok := lireCibleAction(o.Data, connu); ok && estPlay {
 				b.Actions[o.ID] = cible
+				// Le DELAI de l'action, s'il est lisible. Sans lui, deux actions d'un
+				// meme evenement se somment a t = 0 alors que le moteur les enchaine.
+				if s, lu := lireDelaiAction(o.Data); lu && s > 0 {
+					b.DelaiAction[o.ID] = s
+				}
 			}
 		case typeEvent:
 			if acts, ok := lireActionsEvent(o.Data, b.Objets); ok {
@@ -215,6 +235,14 @@ func parserBank(brut []byte, estWem func(uint32) bool) (*bank, error) {
 			// correctif, 31 coups reconstitues sur 107 en portaient un, jusqu'a 71 % du
 			// melange. On ne retient donc que l'etat par defaut.
 			b.resoudreSwitch(o, connu)
+		case typeRandomSeq:
+			b.noterProps(o.ID, lireProprietesConteneur(o.Data))
+			if enf := lireEnfants(o.Data, connu); len(enf) > 0 {
+				b.Enfants[o.ID] = enf
+			}
+			if bl := lireBoucleRanSeq(o.Data, connu); bl.Lu && bl.Repetitions != 1 {
+				b.Repetitions[o.ID] = bl
+			}
 		default:
 			b.noterProps(o.ID, lireProprietesConteneur(o.Data))
 			if enf := lireEnfants(o.Data, connu); len(enf) > 0 {
@@ -280,6 +308,9 @@ func (b *bank) resoudreBlend(o objetHIRC, connu func(uint32) bool) {
 		return
 	}
 	c := lireBlend(o.Data, connu)
+	if c.Lu {
+		b.Blends[o.ID] = c
+	}
 	if !c.Lu || !c.PiloteParRTPC() {
 		b.Enfants[o.ID] = enf
 		return

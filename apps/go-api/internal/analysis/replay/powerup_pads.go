@@ -77,9 +77,9 @@ func powerupPadRule(families map[uint32]string) padRule {
 // padCatalogs porte les DEUX tables d'identité que la chaîne des socles consomme — une par voie.
 // Elles voyagent ensemble parce que l'assemblage les prend ensemble (règle des 5 paramètres).
 type padCatalogs struct {
-	// FlagObjects est la table GlobalID `weap` -> NOM du drapeau : les objets d'objectif que la
+	// ObjectiveObjects est la table GlobalID `weap` -> NOM du drapeau : les objets d'objectif que la
 	// voie des ARMES doit reconnaître pour NE PAS les publier comme des socles.
-	FlagObjects map[uint32]Label
+	ObjectiveObjects map[uint32]Label
 	// EquipmentFamilies est la table GlobalID `eqip` -> FAMILLE du manifeste. C'est elle qui
 	// fait toute la sélectivité de la voie des POWER-UPS : sans elle, aucune création `ti=37`
 	// ne se résout, et le calque publie zéro socle de power-up en silence (le compteur

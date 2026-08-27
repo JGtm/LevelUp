@@ -105,6 +105,10 @@ const NULLABLE_ARRAYS = [
   'inventory',
   'loadouts',
   'neutralDeaths',
+  // `objectiveObjects` : les vies LIBRES du crane d'Oddball (schema 21) — ou l'objet se trouve
+  // quand PERSONNE ne le porte. Nullable au contrat comme les autres tableaux de tete ; son
+  // tableau IMBRIQUE (`pts`) l'est aussi, d'ou la seconde entree dans NULLABLE_ARRAY_PATHS.
+  'objectiveObjects',
   'objectives',
   // `padPickups` : les occupations de socle ACHEVÉES (schéma 11, 2026-08-17) — le socle s'est
   // vidé quelque part dans [tLow, tHigh]. Un INTERVALLE, pas un instant : le film ne porte aucun
@@ -185,6 +189,7 @@ const NULLABLE_ARRAY_PATHS = [
   'inventory',
   'loadouts',
   'neutralDeaths',
+  'objectiveObjects',
   'objectives',
   'padPickups',
   'projectiles',
@@ -196,6 +201,10 @@ const NULLABLE_ARRAY_PATHS = [
   'zoneStates',
   // Dans les ÉLÉMENTS d'un tableau de tête — ce que la garde de racine ne voyait pas.
   'flagCarries[].spans',
+  // La trajectoire d'une vie libre d'objet d'objectif (schema 21) : comblee par la
+  // frontiere, comme `flagCarries[].spans` — une vie qui arriverait avec `pts: null` ferait
+  // tomber le calque a l'execution, pas a la compilation.
+  'objectiveObjects[].pts',
   'zoneStates[].spans',
   // `zoneStates[].gauge` : LA JAUGE DE CAPTURE EN DIRECT (schéma 18, 2026-08-18 — le 17 est
   // parti aux socles de power-up, fusionnés avant nous) — la série datée `[{t, v}]` de la

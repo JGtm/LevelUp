@@ -170,7 +170,28 @@ package replay
 // 0,10 s contre 93,19 % a 2 s), ce qu'une consommation reelle entre les deux mesures ferait a
 // l'envers. `Inventory.Am` reste donc alimente par les seules images-cles. Chronique complete,
 // chiffres et porte par film : .ai/V7.5/replay2d/LOT4_SUIVI_DELTA_2026-08-25.md.
-const SchemaVersion = 20
+// CE QUE LA VERSION 21 PORTE, ET POURQUOI ELLE MONTE ALORS QU'AUCUNE CLE NE BOUGE. Le
+// PROPRIETAIRE DE LA COLLINE est desormais publie sur la voie du designateur (KOTH) : une
+// periode de colline se SUBDIVISE aux changements de main et chaque morceau porte son camp dans
+// `ZoneSpan.Owner`, la ou un artefact 20 le laisse toujours nul. Le champ existait deja, seul son
+// CONTENU change — la forme du document est identique, et le compte de champs ne bouge pas. La
+// version monte pour la raison exacte des montees v6, v13 et v19 : la reprise du backfill se fait
+// par SchemaVersion, et un artefact v20 doit se lire « a re-cuire », pas « a jour ». Sans ce
+// bump, aucun rejeu deja cuit ne montrerait jamais la possession de la colline.
+//
+// NIVEAU DE PREUVE, ecrit ici parce que c'est ce qu'un lecteur doit trouver sur place : 88-89 %
+// d'accord contre un temoin a 56 %, canal jamais refute, elu 4 films sur 4, erreur concentree aux
+// BASCULES. Accepte par decision utilisateur du 2026-08-26 (precedent : la garde de l'ouvrier a
+// 88 %). Les trois campagnes d'oracle et leurs negatifs sont en tete de `hillStatesOf`.
+//
+// CE QUE LA VERSION 21 NE PORTE PAS. Le portage du CRANE d'Oddball : son identite est etablie
+// (`0x0017592C`, 4 films sur 4) et elle entre au manifeste, mais l'oracle du portage a ete
+// REFUTE par sa propre mesure (40,6 a 66,7 % de trous a porteur unique contre un seuil de 90 %,
+// temoin hors trou a 66,7 et 71,4 %). Aucun calque de portage de crane n'existe. Et les zones de
+// TOTAL CONTROL : le designateur y rend jusqu'a 77 designations simultanees sur un mode a trois
+// zones, la mesure est close `[!]` pour v7.5. Chronique complete : .ai/V7.5/PLAN_OBJECTIFS_
+// ETAT_VIVANT_2026-08.md.
+const SchemaVersion = 21
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {
@@ -373,6 +394,12 @@ type ReplayDocument struct {
 	// FlagCarries est LA VIE DE CHAQUE DRAPEAU de CTF, en intervalles d'état (forme, sources et refus :
 	// document_objectives_live.go). Absente hors CTF — `coverage.flagCarries` dit lequel des deux silences.
 	FlagCarries []FlagCarry `json:"flagCarries,omitempty"`
+	// ObjectiveObjects est OÙ SE TROUVE L'OBJET D'OBJECTIF QUAND PERSONNE NE LE PORTE — les vies
+	// LIBRES du crâne d'Oddball (forme, canal et refus : document_objective_objects.go). Un trou
+	// entre deux vies est un portage, mais le document ne dit PAS par qui : l'oracle du porteur a
+	// été mesuré et réfuté (phase D4). Absente quand le titre ne déclare aucun objet publiable ou
+	// quand le film n'en porte pas — `coverage.objectiveObjects` dit lequel des silences.
+	ObjectiveObjects []ObjectiveObjectLife `json:"objectiveObjects,omitempty"`
 	// ZoneStates est L'ÉTAT DE CHAQUE ZONE du mode, en intervalles de propriété (forme, sources et
 	// refus : document_zones.go). Chaque entrée pointe une zone de `mapObjectives.zones` par son
 	// index. Absente hors des modes à zones, et quand l'appelant n'a fourni aucun catalogue de

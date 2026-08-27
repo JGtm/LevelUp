@@ -180,9 +180,9 @@ func TestObjectiveRoles_FichierDuDepot(t *testing.T) {
 		t.Fatalf("le fichier versionné doit charger: %v", err)
 	}
 	modes := set.Modes()
-	if len(modes) != 8 {
-		t.Fatalf("modes = %d, attendu 8 (CTF, Strongholds, Oddball, Stockpile, Extraction, "+
-			"Assaut, KOTH, Total Control)", len(modes))
+	if len(modes) != 7 {
+		t.Fatalf("modes = %d, attendu 7 (CTF, Strongholds, Oddball, Stockpile, Extraction, "+
+			"Assaut, KOTH) — Total Control est RETIRE depuis le 2026-08-27", len(modes))
 	}
 	// La règle produit du lot 4 : Bastion et Extraction s'affichent NEUTRES (possession
 	// dynamique non décodée) ; le drapeau, lui, garde ses couleurs d'équipe.
@@ -202,14 +202,24 @@ func TestObjectiveRoles_FichierDuDepot(t *testing.T) {
 	if neutres[mapvar.RoleFlagSpawn] || neutres[mapvar.RoleFlagDelivery] {
 		t.Errorf("les rôles drapeau ne doivent PAS être neutres: %v", neutres)
 	}
-	// Total Control : le fichier déclare un VIVIER de 14 à 18 zones par carte quand une
-	// manche n'en active que 3, et l'activation n'est pas dans la variante de carte. La
-	// zone doit donc être servie NEUTRE, comme Bastion et la colline.
-	if !servis[mapvar.RoleTotalControlZone] {
-		t.Error("totalcontrol_zone doit être servi : 13 cartes ont des matchs Total Control")
-	}
-	if !neutres[mapvar.RoleTotalControlZone] {
-		t.Error("totalcontrol_zone doit être neutre : la possession d'une zone est dynamique")
+	// TOTAL CONTROL N'EST PLUS SERVI — L'ASSERTION EST INVERSÉE LE 2026-08-27, et c'est une
+	// DÉCISION UTILISATEUR (option (a)), pas un effet de bord.
+	//
+	// Le fichier déclarait un VIVIER de 13 à 18 zones par carte quand une manche n'en active
+	// que 3, en pariant que l'état vivant viendrait combler l'écart. Il ne viendra pas en
+	// v7.5 : le canal du désignateur ne survit pas aux films BTB (jusqu'à 77 désignations
+	// simultanées sur un mode à trois zones, phases D3/D3-bis/D3-ter du plan). Plutôt que de
+	// servir 13 à 18 formes que le joueur lit comme « les zones du match », on ne sert RIEN —
+	// une absence propre.
+	//
+	// CE TEST EST LE GARDE-FOU DE CETTE DÉCISION : il rougit le jour où quelqu'un remet le rôle
+	// sans avoir levé le verrou d'ancrage. La condition de reprise est écrite dans le TOML, à
+	// l'endroit exact du retrait.
+	if servis[mapvar.RoleTotalControlZone] {
+		t.Error("totalcontrol_zone ne doit PLUS être servi : le vivier de 13 à 18 formes est " +
+			"retiré (décision utilisateur du 2026-08-27). Le remettre exige d'abord un ancrage " +
+			"ti=13 fiable sur BTB — cf. objective_roles.toml, bloc « TOTAL CONTROL — ENTREE " +
+			"RETIREE »")
 	}
 	// LE DRAPEAU `points_only` DU FICHIER VERSIONNÉ (correctif du 2026-08-26). Les quatre
 	// modes dont l'objectif se TOUCHE le portent ; les quatre dont l'objectif se TIENT ne

@@ -189,7 +189,7 @@ func buildWeaponPads(
 		return nil, nil, cov
 	}
 	in := padChainInputs{lives: equipmentLives(positions), positions: positions, clock: clock}
-	pads, picks, wc := buildPadChain(scans.Weapons, weaponPadRule(cat.FlagObjects), in, cov)
+	pads, picks, wc := buildPadChain(scans.Weapons, weaponPadRule(cat.ObjectiveObjects), in, cov)
 	cov.Kept, cov.Rejected, cov.Objectives = wc.kept, wc.rejected, wc.objectives
 	cov.Dropped, cov.Spawned, cov.AtRest = wc.dropped, wc.spawned, wc.atRest
 	cov.Clusters, cov.Pads = wc.clusters, wc.pads
