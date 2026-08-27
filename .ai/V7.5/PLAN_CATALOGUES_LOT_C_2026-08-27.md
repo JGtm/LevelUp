@@ -54,16 +54,46 @@
 
 ### C1 — Bornes de quantification : Live Fire
 
-- [ ] C1.1 Etablir POURQUOI Live Fire manque a `map_quant_bounds.json` (lire l'outil qui
+- [x] C1.1 Etablir POURQUOI Live Fire manque a `map_quant_bounds.json` (lire l'outil qui
       l'a produit et sa source ; Live Fire est une carte du jeu de base — l'absence a une
       cause, la nommer).
-- [ ] C1.2 Produire les bornes de Live Fire avec l'outil existant, MEME METHODE que les
+      — Fait 2026-08-27. Cause a DEUX etages : (1) le module prouve `sgh_interlock`
+      (level_id 1253388187, unicite 1/1) ne porte AUCUN tag sbsp — ses 4 regions de
+      compression vivent dans `ds/globals/common`, referencees par GlobalID depuis le levl
+      (deux blocs du levl donnent le meme ordre : 7047b96f, d88e1d88, a59f5052, 91c336c1) ;
+      (2) la region JOUEE est la 1 (d88e1d88), pas la 0, et l'index de region d'i0 fait
+      2 bits (4 regions) la ou toute la chaine supposait 1 bit — sans cette extension,
+      une simple entree de bornes n'aurait PAS fait decoder les films (le decodeur exige
+      l'en-tete d'i0 nul, donc region 0). Preuves : ancres d'objectifs toutes dans d88e1d88
+      (plus petite englobante), index 01 sur 59 376/59 377 records i0 des 2 films,
+      decoupage lu [13 12 11] au gate 5 = [12 12 11] a l'index pres.
+- [x] C1.2 Produire les bornes de Live Fire avec l'outil existant, MEME METHODE que les
       cartes presentes (aucune borne bricolee a la main).
-- [ ] C1.3 GATE C1 : les 2 films Oddball Live Fire DECODENT (un film par processus) et leur
+      — Fait 2026-08-27 : `himap.RegionsBSPExternes` (le critere moteur de sbsp_region.go
+      resolu a travers ds/globals), declaration explicite de la region dans
+      `cmd/mapquant-build` (patron des preuves de mapModule), preuve statique rejouee en
+      continu par `himap.TestPreuveRegionsLiveFire` (ordre des regions + 48 ancres +
+      plus petite englobante). Catalogue etendu : champs `region`/`regionIndexBits`
+      (omitempty — les 78 entrees existantes ne changent pas d'un octet, diff verifie),
+      chaine de decodage etendue (layout bipede depuis le catalogue dans BuildFromFilm et
+      les instruments, filtre de region dans matchBipedHeader, IndexW world-object pose par
+      SetWorldObjectPrecisionFromLayout), controle TestControleBornesFilms amende (attendu
+      X += bits-1 — le cas que son en-tete predisait). Regeneration complete par le CLI :
+      seule l'entree `live fire` s'ajoute (79 cartes).
+- [x] C1.3 GATE C1 : les 2 films Oddball Live Fire DECODENT (un film par processus) et leur
       pont bipede se mesure (instrument de qualification du lot O rejoue TEL QUEL) ; publier
       film -> taux -> admis/exclu au critere 50 % inchange. Log fige
       `C1_livefire_qualification.log`. (Qualification SEULEMENT — le corpus Oddball passe de
       4 a N films consigne pour une reprise future ; aucune remesure D9/D10.)
+      — Fait 2026-08-27, log fige + controle standard du catalogue ACCORD 2/2. Tableau :
+      `c88ec007` -> pont 124/147 = 84,4 % -> ADMIS (34 vies libres du crane, 1 socle) ;
+      `60ae07c4` (2024-10) -> DECODE en monde (13 430 ancres, 146 creations, 502 pistes
+      delta — le catalogue n'est plus la cause) mais EXCLU : empreinte ECS du film
+      INCONNUE (version de film anterieure), 0 creation au mot elu du crane, l'instrument
+      s'arrete proprement AVANT le pont (le cas prevu par O0.2 : « un film indecodable est
+      EXCLU avec sa raison, pas repare » — decouverte au §5). Corpus Oddball mesurable :
+      4 -> 5 films. Les sorties diagnostiques D8.x du log sont la sortie de l'instrument
+      rejoue : elles n'amendent AUCUN verdict de campagne (interdit respecte).
 
 ### C2 — Catalogue d'objectifs : sites d'Assaut + oddball_spawn de Lattice
 
@@ -119,4 +149,15 @@ etat Land Grab ; commits ; textes thought_log + registre ; decouvertes.
 
 ## 5. DECOUVERTES (a consigner, ne pas traiter)
 
-- (vide a l'ouverture)
+- (C1, 2026-08-27) **`60ae07c4` (Oddball Live Fire, 2024-10) porte une empreinte de
+  registre ECS INCONNUE** (5686524277687893529, connue 7053924395561516366) : le film
+  decode en monde (ancres, creations ti=42, pistes delta) mais AUCUNE creation ne se
+  resout au mot MPP du crane — grammaire des composants d'une version de jeu anterieure.
+  Qualifier les vieux films exige un travail de grammaire PAR VERSION (largeurs MPP,
+  tables de composants) — chantier de fond, PAS ce lot. Le film reste exclu avec sa raison.
+- (C1, 2026-08-27) Le lecteur world-object dequantifie tous les records aux largeurs de LA
+  region cataloguee ; un record d'une AUTRE region (ordre du 1/59 377 observe) consomme en
+  realite d'autres largeurs et desaligne SON record. La table par region
+  (`SetAbsPerIndexAxisW`) existe pour le chemin sim-state ; l'etendre au lecteur
+  world-object attendra une carte ou le cas pese. Limite ecrite dans
+  SetWorldObjectPrecisionFromLayout.

@@ -189,6 +189,17 @@ func BuildFromFilm(matchID, titleSlug, filmDir string, opt Options) (ReplayDocum
 		scan = *opt.Scan
 	}
 	scan.WorldRange = &worldRange
+	// Le DÉCOUPAGE d'i0 vient du CATALOGUE, comme les bornes dont il est déduit — le
+	// découpage lu dans le film (DetectI0Layout) est le contrôle, jamais l'entrée (doctrine
+	// écrite sur WorldObjectPrecision, appliquée au bipède depuis le lot C catalogues
+	// 2026-08-27 : sur une carte à plus de 2 régions, l'auto-détection lit l'index de
+	// région comme un bit d'axe et le décodeur rejetterait tous les records — Live Fire).
+	// Un opt.Scan qui force déjà son Layout (instruments) reste maître ; une entrée sans
+	// largeurs (catalogue antérieur au champ) laisse l'auto-détection, comme le chemin
+	// world-object laisse son défaut — jamais des largeurs nulles.
+	if lay := opt.MapQuant.Layout(); scan.Layout == nil && lay.Valid() {
+		scan.Layout = &lay
+	}
 	// Le cap de visée (Point.H) se lit dans le MÊME record que la position : la capture des
 	// directions est donc toujours active pour l'artefact. Elle n'altère aucune position
 	// (lecture seule après le vec3 d'i0).

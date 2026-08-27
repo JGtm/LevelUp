@@ -67,13 +67,13 @@ func TestOddballSondeDiagnostique(t *testing.T) {
 	if !ok {
 		return
 	}
-	wr, ok := d6Bornes(t, root, id)
+	wr, lay, ok := d6Bornes(t, root, id)
 	if !ok {
 		return
 	}
 	dir := objChunkDir(root, id)
 	pont := objBridgeOf(t, root, id)
-	pos, err := d6Positions(dir, wr)
+	pos, err := d6Positions(dir, wr, lay)
 	if err != nil {
 		t.Fatalf("%s : positions de bipede illisibles : %v", id, err)
 	}

@@ -81,12 +81,12 @@ func d8Charge(t *testing.T, root, id string) (d8Etat, bool) {
 	if !ok {
 		return d8Etat{}, false
 	}
-	wr, ok := d6Bornes(t, root, id)
+	wr, lay, ok := d6Bornes(t, root, id)
 	if !ok {
 		return d8Etat{}, false
 	}
 	dir := objChunkDir(root, id)
-	pos, err := d6Positions(dir, wr)
+	pos, err := d6Positions(dir, wr, lay)
 	if err != nil {
 		t.Fatalf("%s : positions de bipede illisibles : %v", id, err)
 	}
