@@ -1,3 +1,276 @@
+## [2026-08-27] Sons : les ZONES sonnent (capture en cours, domination, colline), et la mesure video du translocateur ECHOUE — Complete
+
+**Contexte** : l'utilisateur designe deux sons a l'oreille (Zone 15 = capture adverse, Zone 17 =
+capture en cours adverse), donne une regle produit pour les tics de score (« un par seconde
+selon l'equipe, quand un camp a toutes les zones », mode Bastion), ecarte la sortie de zone
+(« on s'en fiche »), definit la zone contestee, valide les sept sons d'Oddball, et fournit une
+video du jeu pour le translocateur.
+
+**Decision technique principale** : sortir les sons d'ETAT DE ZONE dans leur propre fichier
+(`zoneSound.ts`). Leur source est `doc.zoneStates` et leur cle de jointure est le PROPRIETAIRE
+d'une zone — pas `doc.objectives` ni le xuid d'un joueur. Source differente, cle differente,
+doctrine differente : fichier different, comme `grenadeSound.ts` et `objectiveSound.ts` avant
+eux.
+
+**Resultats observes** :
+- **LES DEUX PAIRES DU MODE ZONES SONT COMPLETES** : la capture adverse (`4ebe99d6` et ses deux
+  jumeaux) et la capture en cours adverse (`b2af5c02`, `bd7462ce`) sont designees. Le cote
+  adverse etait MUET depuis le 26/08 par decision assumee.
+- **TROIS REGLES CABLEES**, chacune avec son silence : capture en cours (rampe de jauge dont la
+  fin coincide avec un changement de proprietaire — une rampe qui retombe reste MUETTE, c'est le
+  cas « contestee ») ; tic de score (un par seconde tant qu'un camp tient TOUTES les zones,
+  garde double : >= 2 zones et aucun intervalle `active`) ; nouvelle colline (chaque debut
+  d'intervalle `active` sauf le premier). **15 tests neufs, dont quatre epinglent des SILENCES.**
+- **LE TIC DE SCORE EST LE SEUL SON LIVRE TRONQUE**, et les deux ecarts sont declares : coupe a
+  1,2 s (le geste fait 3,62 s / 4,36 s — servi entier a un par seconde il s'empilerait quatre
+  fois) et attenue a -12 dBTP au lieu de -1 (« je les trouve un peu fort »).
+- **`SOUND_CUT_MAX_S` 5,0 -> 6,0**, et la REGLE est desormais ecrite dans la constante : le
+  plafond suit la plus longue SOURCE livree, arrondie a la seconde superieure. En cause :
+  `objective_zone_new` (5,15 s). Deuxieme fois de la journee que le garde-rail pose la question.
+- **LA MESURE VIDEO DU TRANSLOCATEUR EST REFUTEE, en trois tours de temoin.** Comparateur
+  spectral ecrit (mono 16 kHz, 20 bandes log, correlation normalisee maximisee sur le decalage).
+  1re version : 1er 0,964 / 10e 0,954 sur des banques sans rapport — aucune separation.
+  2e version (normalisation par trame, recouvrement complet exige) : le classement se remplit de
+  sons de 0,16 a 1,04 s — biais de LONGUEUR. 3e version (plancher 1,8 s, 567 candidats) : 1er
+  0,639, mais le classement suit encore la duree. **Cause structurelle** : la bande son de la
+  video porte la musique PAR-DESSUS le geste, et une correlation de forme spectrale ne separe
+  pas une couche d'un melange. Le classement n'est pas publie comme un resultat.
+- **A LA PLACE** : l'extrait video (2,2 s -> 6,6 s) et les 8 premieres secondes sont servis EN
+  TETE DE PLANCHE. La comparaison redevient une ecoute, mais dans la meme page que les 14
+  candidats. Section translocateur rouverte pour ca.
+- **ODDBALL : les sept sons sont valides, le cablage ne l'est pas.** `doc.objectives` vient de
+  `IdentifyNamedEvents`, qui lit `namedStatSlots` — table limitee a `ObjectiveTypeFlag` et
+  `ObjectiveTypeZone`. `extractFromTh10` produit bien des `ObjectiveEvent` de type `skull`, mais
+  ce canal n'alimente pas le document de rejeu. Le lot est une MESURE (balayage
+  `cmd/tmp_statnames` + controle sur moities disjointes), pas un cablage.
+
+**Gates** : `tsc -b` exit 0 (cache purge), `npm run lint` 0 erreur (21 avertissements
+pre-existants), vitest `src/features/match-replay` **77 fichiers / 1 160 tests, 0 echec**.
+
+**Conclusion / prochaine etape** : l'utilisateur ecoute la reference video face aux 14 candidats
+et donne un numero. Cote modes, restent : la table de slots statborg d'Oddball (7 sons prets),
+puis celles d'Assaut et d'Extraction (23 sons prets). Detail :
+`.ai/V7.5/RE_GESTES_SONORES_2026-08-27.md` §10.
+
+## [2026-08-27] Sons : l'inventaire par MODE, trois banques qui manquaient dont ODDBALL, 22 noms de plus — Complete
+
+**Contexte** : l'utilisateur ecarte la piste du translocateur (« beaucoup de sons qui n'ont
+rien a voir, c'est pas la bonne piste sur laquelle tu t'acharnes ») et demande l'inventaire qui
+compte : « pour les modes de jeu il nous manque quoi ? A identifier ou cabler ? »
+
+**Decision technique principale** : avant de repondre, verifier que l'inventaire des BANQUES
+etait complet. Il ne l'etait pas — et c'est le meme outil de composition curie qui l'a montre,
+applique cette fois aux NOMS DE BANQUES et non aux noms d'evenements.
+
+**Resultats observes** :
+- **TROIS BANQUES DE MODE JAMAIS INVENTORIEES**, trouvees par 79 noms candidats confrontes aux
+  identifiants Wwise des 1 697 banques (esperance 3,1e-5) : `sb_004_mod_mp_oddball`
+  (`b0c651ea`, 28 evenements, 53 sons — LE CRANE), `sb_004_mod_mp_elimination` (`6a9ba454`,
+  27/40) et `sb_004_mod_mp_vip` (`e3ba2522`, 40/62). La passe retrouve au passage
+  `sb_007_abl_quantum` et `sb_007_abl_grapplinghook` a leurs banques connues : calibration
+  gratuite.
+- **VINGT-DEUX NOMS DE PLUS** : CTF `flag_return_contested` ; Assaut `bomb_carrier_killed` ;
+  Extraction `zone_spawn_alert` + `arming_{start,loop,stop,complete}_{team,enemy}` ; Landgrab
+  `zone_spawn`, `contested`, `contested_win`, `contested_lose` ; Oddball
+  `skull_{spawn,despawn,taken,pickup,dropped}` et `scoring_{team,enemy}`. **Le controle est la
+  REGULARITE des familles** : huit noms d'extraction forment une grille complete
+  4 phases x 2 camps — une collision fortuite ne remplit pas une grille. Esperance cumulee de
+  la journee ~0,34 pour 29 noms, soit ~1,2 % par nom.
+- **L'INVENTAIRE PAR MODE, et il separe TROIS problemes qui ne se traitent pas pareil** :
+  (A) un SON manque, c'est une ecoute — capture de zone ADVERSE et `zone_secures` ;
+  (B) le CABLAGE est possible tout de suite, son ET declencheur existent, aucun travail Go —
+  capture en cours (`zoneStates[].gauge`, rampes deja publiees schema 18), nouvelle colline
+  (`zoneStates[].spans[].active`), tic de score (`scoreTimeline.teams[].total`) ;
+  (C) le DECODEUR manque — Assaut, Extraction et Oddball n'ont AUCUN evenement dans le film
+  (`namedStatSlots` ne porte que `ObjectiveTypeFlag` et `ObjectiveTypeZone`), la zone
+  « contestee » est a DERIVER de la jauge, et la sortie de zone demanderait de croiser les
+  positions avec la geometrie des zones.
+- **Cause racine du (B), et elle est en une ligne** : `objectiveSoundEvents` ne lit que
+  `doc.objectives`. Ni `zoneStates`, ni `scoreTimeline`. C'est la seule raison pour laquelle
+  trois sons deja identifies ne sonnent pas.
+- **CTF est complet pour ce que le film publie** : 7 sons cables sur 10 nommes, les 3 restants
+  (`flag_spawn`, `flag_return_contested`) n'ont pas de declencheur.
+- **Translocateur mis en veille** (section repliee). Reste acquis : la banque est bien la
+  sienne (nom casse ET chaine de tags, deux voies independantes), 4 evenements nommes,
+  14 candidats marques. REFUTE : que le geste cherche soit l'un des 32 sons de ces banques.
+
+**Conclusion / prochaine etape** : trois lots se detachent, par cout croissant — (1) lire
+`zoneStates` et `scoreTimeline` dans le moteur sonore, trois sons qui sonnent sans toucher au
+Go ; (2) une ecoute pour designer la capture de zone ADVERSE, qui ferme la paire ;
+(3) la table de slots statborg d'Assaut et d'Extraction, qui rendrait sonores 23 sons deja
+nommes. Detail complet : `.ai/V7.5/RE_GESTES_SONORES_2026-08-27.md` §9.
+
+## [2026-08-27] Sons, seconde passe : la planche etait inutilisable, sept noms de plus, champ de reparation corrige — Complete
+
+**Contexte** : retour utilisateur sur la planche du matin — « la quasi totalite des sons ont
+des noms inintelligibles comme 0b2a938e, comment veux-tu que je travaille avec ca ? Y en a plus
+de 400. » Trois demandes precises en plus : jouer le son d'ACTIVATION du champ de reparation
+quand un joueur le pose, identifier le retour du drapeau, replier ce qui est deja acquis.
+
+**Decision technique principale** : traiter le probleme comme un defaut de LIVRAISON, pas de
+mesure — 413 cartes portant des identifiants ne sont pas un inventaire. Trois corrections qui
+RETIRENT du travail : dedoublonnage par materiau (deux evenements qui jouent les memes `.wem`
+jouent le meme son), propagation du nom dans le groupe, et un NUMERO lisible en titre.
+Puis rouvrir la voie du hachage, declaree epuisee a tort.
+
+**Resultats observes** :
+- **413 rendus -> 328 cartes**, dont 140 ouvertes et 188 repliees. Sur la banque des zones :
+  88 evenements, **49 jeux de medias distincts** — le meme geste est declare une fois PAR MODE
+  DE JEU. Le nom d'un membre nomme tout le groupe : `c3327c0b` nomme ses trois jumeaux.
+- **LA VOIE DU HACHAGE N'ETAIT PAS EPUISEE**, et le negatif precedent portait sur autre chose :
+  ce qui etait epuise, c'etait la composition a DEUX jetons pris dans les 187 496 mots du
+  binaire. La forme reelle en prend TROIS
+  (`play_007_abl_quantum_teleport_player_start`). Trois jetons parmi 187 496 font 6,6e15
+  candidats — hors d'atteinte ; un VOCABULAIRE CURIE de 120 a 180 mots en fait 2 a 5 millions,
+  esperance de quelques centiemes. **Le pari est sur le CHOIX des mots, pas sur la taille.**
+- **SEPT NOMS**, esperance cumulee 0,149 sur la journee (~2 % par nom) :
+  translocateur `teleport_player_start`, `ready_player_loop`, `portal_warning` ; zones
+  `strongholds_contested_win`, `..._contested_lose`, `..._scoring_tick_team`, `..._tick_enemy`.
+  **Le controle qui vaut mieux que l'esperance** : ils sortent en PAIRES COHERENTES
+  (`win`/`lose`, `team`/`enemy`, deux `_player`) — une collision fortuite ne produit pas une
+  paire `_team`/`_enemy` sur le meme radical.
+- **TROIS PRECISIONS UTILISATEUR SUR LE TRANSLOCATEUR, qui valent des mesures** : pas de balise
+  (equipement de poignet qui cree une faille sur la position du joueur), duree 2 a 4 s, et
+  « seulement moi, un autre joueur entendra un autre son ». **ELIMINATION** : la phase sous
+  condition (6,22 s et 6,77 s) est ECARTEE — elle reste une mesure exacte du format, elle n'est
+  pas le geste cherche. Reste **14 candidats**, marques et places en tete de la planche : deux
+  minutes d'ecoute au lieu de quatre cents cartes.
+- **LE CHAMP DE REPARATION LIVRE ETAIT LE MAUVAIS EVENEMENT** : `repair_field_activate.wav`
+  faisait 0,38 s — c'etait `play_007_abl_repairfield_deploy_player` (le « pop » de l'objet
+  lache). L'ACTIVATION est `c48cf171`, 3,26 s. Les deux ne se distinguaient pas avant le
+  nommage des banques par hachage. Trois variantes relivrees, crete a -1,0 dBTP.
+- **DEUX GARDE-RAILS ONT MORDU AVANT LA LIVRAISON** : `SOURCES_COURTES` declarait
+  `repair_field_activate` a 0,38 s (entree supprimee avec sa raison) ; `SOUND_CUT_MAX_S` valait
+  4,0 s et `objective_flag_stolen_team` en fait 4,588 (trois declenchements a 850 ms) — releve
+  a 5,0 s, parce que garder 4 aurait tronque la troisieme alerte EN SILENCE, ce que le
+  commentaire de la constante interdit nommement.
+- **LE RETOUR DU DRAPEAU ETAIT DEJA FAIT** : `b2a0d0f0` = `play_004_mod_mp_ctf_flag_returned`,
+  verifie par recalcul du hachage, rendu, livre et cable sur `flag_returns` depuis le 26/08.
+- **Outillage** : `_outils/composer` (cassage par composition d'un vocabulaire curie, esperance
+  imprimee avant tout resultat) et `gestes/noms_evenements.json` — TABLE DES NOMS, source
+  unique lue par la planche : un nom casse apres coup entre sans re-rendre un fichier audio.
+
+**Gates** : `tsc -b` exit 0 (cache purge), `npm run lint` 0 erreur (21 avertissements
+pre-existants), vitest `src/features/match-replay` **76 fichiers / 1 144 tests, 0 echec**.
+Go : `go build`, `go vet` et `go test ./cmd/weapon-sounds` verts.
+
+**Hors perimetre, note et NON traite** : `internal/filmproc/runner.go:239` fait echouer
+`make go-api-lint` (errcheck), introduit par le lot BUILDALL.
+
+**Conclusion / prochaine etape** : l'utilisateur ecoute les 14 candidats du translocateur et
+donne un numero ; si aucun ne colle SEUL, le geste est compose de plusieurs evenements
+(hypothese H5) et il faudra monter les enchainements candidats. Restent ouverts : les 78 sons
+de zone non nommes, S1 (le `hsc*`), et le ramassage sur socle toujours non datable.
+
+## [2026-08-27] Sons : TROIS champs du format manquaient — le geste est reconstitue, 413 rendus — Complete
+
+**Contexte** : reprise du handoff `HANDOFF_SONS_RECONSTITUTION_2026-08-27.md`, priorite
+utilisateur « les sons RECONSTITUES, pas isoles ». La question du handoff etait « quelle est
+l'unite de GESTE dans ce format ». Reponse : l'unite etait la bonne (l'evenement), mais le
+parseur ne lisait pas trois champs, et chacun explique un symptome signale a l'oreille.
+
+**Decision technique principale** : ne rien postuler sur les offsets, et faire porter a chaque
+lecture un controle REFUTABLE ecrit AVANT la mesure. Pour les actions, le controle est une
+EGALITE (une action « jouer » doit laisser exactement 5 octets specifiques) avec deux temoins
+negatifs faux d'un octet. Pour les conteneurs, le vidage des octets d'abord, puis un temoin de
+coherence interne (compteur de boucle contre drapeau `bIsContinuous`).
+
+**Resultats observes** :
+- **LE DELAI DE L'ACTION (H2 confirmee)**. Offset 7 : 8 701 actions « jouer » sur 8 701 ;
+  temoins negatifs aux offsets 6 et 8 : 0 sur 8 701. Deux proprietes seulement, 15 et 16, et
+  leurs valeurs ne sont PAS des flottants — lues en `int32` elles donnent 20, 400, 10 800 ms.
+  `71cb04b8` porte une seconde couche a +400 ms : c'est le « tres court son au debut qui me
+  parait EN TROP » signale par l'utilisateur. 340 evenements de `common` (3,91 %) etaient
+  sommes a t = 0 a tort.
+- **LE NOMBRE DE LECTURES (H1 confirmee, S3 sans objet)**. `sLoopCount` est DANS la banque : la
+  sonde par les 20 `lsnd` etait inutile. 210 boucles infinies sur 1 753 conteneurs lisibles.
+  Temoin de coherence : P(continu | infini) = 81,4 % contre 6,9 % sinon. La « base en cours de
+  capture » (`6b8081a2`) porte DEUX couches en boucle — on en servait un fragment.
+- **LE MODE D'ENCHAINEMENT**, trouve en verifiant un « x3 » suspect qui donnait 7,86 s au
+  drapeau pris. Le meme bloc porte `eTransitionMode` = 5 (cadence) et 850 ms : les trois
+  lectures se CHEVAUCHENT, le geste dure 4,59 s. Calibration : 212 conteneurs qui se repetent,
+  212 valeurs brutes dans {0,1,3,4,5}, zero ailleurs.
+- **S5 RESOLUE, et c'est H4**. Les deux plus longs sons du translocateur (6,77 s et 6,22 s)
+  pendent sous un `Blend` pilote par le parametre 3236399890 : ils entrent a x = 0,797 et
+  dominent a x = 0,940. « Ca monte en intensite, et ensuite il est pose » EST cette courbe.
+  Meme mecanique pour 2 orphelins du drapeau, et un `Switch` (etat 163696720) pour les 16
+  orphelins de CHACUNE des quatre banques de bobine.
+- **Deux parametres de fondu NOMMES** par FNV-1 contre les 187 496 jetons du binaire, esperance
+  0,0003 : `landing_magnitude` et `cluster_num_sounds`. **Negatif avec denominateur** : les cinq
+  autres resistent a 52 498 880 candidats (esperance 0,0611, sous le seuil 0,10).
+- **413 GESTES RENDUS**, un fichier par geste : 43 en boucle, 31 enchaines, 7 phases sous
+  condition, 0 silencieux, 0 ecrete. 56 cartes portent un libelle francais, dont 45 un nom
+  Wwise casse. Planche republiee EN PLACE (artefact `6aadf3d5`, une seule adresse).
+- **UN DEFAUT DE RENDU TROUVE DANS LA PASSE** : `volumedetect` ne mesure que des echantillons
+  entiers ; sur un intermediaire flottant ffmpeg convertit d'abord en 16 bits et ECRETE, donc
+  rapporte 0,0 dB. La capture de drapeau alliee (couche a +15 dB) sortait ecretee. Corrige par
+  une mesure en deux passes — attenuer systematiquement casserait les melanges faibles.
+- **EFFET DE BORD LIVRE** : quatre des huit `.wav` d'objectif deja branches dans le rejeu
+  etaient rendus a plat et sont remplaces (`flag_scored_*` a +100 ms, `flag_stolen_team`
+  2,49 s -> 4,59 s, `flag_stolen_enemy` 3,41 s -> 3,81 s). `objective_zone_captured_team` etait
+  deja identique au bit pres — controle de reproductibilite de la chaine.
+
+**Hors perimetre, note et NON traite** : `internal/filmproc/runner.go:239` fait echouer
+`make go-api-lint` (errcheck sur `fmt.Fprintln`). Introduit par le lot BUILDALL, pas par ce
+lot.
+
+**Conclusion / prochaine etape** : la reconstitution est faite et la planche est a ecouter.
+Restent ouverts : S1 (le `hsc*` qui reference un son de la banque des zones — seule piste de
+NOMMAGE encore vivante), S4 (le tag de mode), le nommage de l'etat de commutation des bobines,
+et le RAMASSAGE SUR SOCLE qui reste non datable (`padPickups` publie un intervalle, pas un
+instant — travail de decodeur). Detail complet : `.ai/V7.5/RE_GESTES_SONORES_2026-08-27.md`.
+
+## [2026-08-27] Handoff sons : la reconstitution devient la priorite, et deux erreurs de methode sont corrigees — Complete
+
+**Contexte** : l'utilisateur arrete le branchement au coup par coup et reoriente. Priorite
+HAUTE : retrouver les sons RECONSTITUES (pas isoles), poursuivre la RE jusqu'a un inventaire
+SOLIDE, cibles nommees Bastion / Controle total / Roi de la colline et le TRANSLOCATEUR
+QUANTIQUE ; donner aussi a chaque son deja trouve sa reconstitution et son nom/description.
+Priorite NORMALE : le ramassage sur socle. EN ATTENTE : le branchement des sons isoles.
+
+**Decision technique principale** : ecrire un handoff qui porte les trois categories separement
+— ETABLI, REFUTE (avec denominateur, pour ne pas le refaire), VIVANT — et y inscrire les
+sondes deja redigees plutot que de les lancer a court de budget.
+`.ai/V7.5/HANDOFF_SONS_RECONSTITUTION_2026-08-27.md`.
+
+**Resultats observes** :
+- **Le probleme est nomme** : la recette des armes produisait UN fichier par GESTE ; la planche
+  d'exploration produit une carte par couple (evenement x variante). Deux symptomes le
+  mesurent : le translocateur (« ca monte en intensite, puis c'est pose » — aucun des 23
+  evenements ne le reproduit) et `71cb04b8` (un court son « en trop » sur deux couches sommees
+  a t = 0).
+- **Cinq negatifs neufs, chacun avec son denominateur** : les identifiants d'evenement sont
+  ABSENTS du binaire (3 temoins, 0 occurrence — le moteur les lit dans les tags) ; le binaire
+  ne porte que 3 noms d'evenement Wwise en clair sur ~6 800 ; le hachage est epuise sur les
+  reperes de zone (162 831 744 candidats, esperance 0,1516, seul le temoin sort) ;
+  `sdzg 00037692` est un registre GLOBAL (622 groupes, ancres aux rangs 205/297/516, non
+  contigus) ; `sgrp` est 1:1 avec `snd!` (3 mesures) — le groupe sonore n'est PAS l'unite de
+  geste.
+- **Cinq hypotheses vivantes classees par cout** : boucles `lsnd` (20 referencent la banque des
+  zones), actions multiples d'un evenement avec delai porte par l'ACTION, conteneurs SEQUENCE
+  (defaut PROUVE : 237 dans le jeu, 196 continus, rendus comme des variantes), couches Blend
+  pilotees par RTPC (evaluees au repos), et le geste = plusieurs evenements groupes ailleurs
+  que dans `sgrp`/`sdzg` — donc dans les `hsc*` ou le tag de mode.
+- **Six sondes ecrites** dont S1 (identifier le `hsc*` qui reference un son de la banque des
+  zones — la seule piste de NOMMAGE encore ouverte, et celle que l'utilisateur designe par
+  « remonter dans le code ») et S5 (les 2 orphelins du translocateur, 6,77 s et 6,22 s, les
+  DEUX PLUS LONGS sons de sa banque, qu'aucun de ses 23 evenements n'atteint).
+- **DEUX ERREURS DE METHODE CORRIGEES, et elles sont ecrites comme telles** : (1) j'ai affirme
+  que le film ne portait l'inventaire qu'aux images-cles ; `ecs_table.tsv` dit l'inverse pour
+  i22/i30/i31 — le canal DELTA existe, « bloque par la derive du curseur amont, pas par la
+  grammaire ». C'est nommement la faute que `RE_LOG_KILLWEAPON.md` 7ter.58 interdit, et elle
+  vaut aussi pour la bombe et l'extraction (table de slots incomplete, pas film muet).
+  (2) j'ai servi des rendus a l'ecoute sans les mesurer : intermediaire en 16 bits detruisant
+  les couches a -96 dB (11 rendus silencieux sur 135), une seule variante rendue, orphelins
+  jamais rendus.
+- **Outillage neuf commite** : mode `deps-ordre` (les dependances d'un tag DANS L'ORDRE DU
+  FICHIER — `deps` les triait, ce qui detruit la donnee ; precedent `gggl`).
+
+**Conclusion / prochaine etape** : reprendre par S1 (les `hsc*`) et S5 (les orphelins du
+translocateur), puis S3 (les boucles `lsnd`) — c'est le trio qui peut rendre l'inventaire
+solide. Le branchement des sons isoles reste EN ATTENTE par decision utilisateur. Commits :
+`3f9ffeb65` (lot son), `6e167535e` (mode `deps-ordre`).
+
 ## [2026-08-26] Sons du jeu branches sur le rejeu : objectifs CTF, variantes tirees, et la banque de Bastion trouvee — Complete
 
 **Contexte** : suite directe de la RE du meme jour (banques Wwise nommees par hachage). Demande
@@ -181,6 +454,217 @@ OK, `golangci-lint` 0 issue.
 
 Document : `.ai/V7.5/RE_BANQUES_SONORES_NOMMEES_2026-08-26.md` ; fiches de rendu :
 `.ai/V7.5/RE_FICHES_RENDU_SONS_2026-08-26.txt`.
+## [2026-08-27] Rejeu 2D — lot C : sons de fin de partie (annonceur + fanfare) — Complete
+
+**Contexte** : extension du plan PLAN_REPLAY_CADRAGE_VICTOIRE (lots A/B clos la veille),
+commit `b792e3a4e` sur wt/replay-cadrage-victoire. Assets fabriques par le pilote :
+extraction des packs annonceur FR/EN + musique du jeu Steam local (recette sons-armes),
+identification par TRANSCRIPTION locale (Vosk FR/EN — 1229 repliques par langue ;
+correspondance d'ids inter-langues refutee : 0 id commun, appariement par rang refute
+sur pieces), selection VOTEE par l'utilisateur (vote_fin_partie.json), normalisation
+voix -16 LUFS / musiques -18 LUFS (« audible sans hurler »), plafond -1 dBTP.
+
+**Decision technique principale** : la conclusion sonore est un domaine A PART
+(`endMatchSound.ts`, modele grenadeSound) — premiere entree LOCALE-AWARE du catalogue
+(voix FR/EN selon la locale UI, fanfare neutre), voix + fanfare ensemble, tirage
+aleatoire entre prises (rand injecte), issue lue par LA MEME lecture que l'ecran
+(readVictory + lib/outcome). Declenchement : franchissement de la borne de fin par la
+LECTURE (`from < endFrame`), jamais au scrub — unicite sans compteur. FFA gagne :
+« Vainqueur » FR / repli « Victory » EN (« Winner » isole inexistant dans le pack,
+documente). Plafond lecteur 4 -> 12 s avec garde separee LONG_MAX_S=4 pour les
+evenements + regle « plafond >= plus long fichier livre » testee.
+
+**Resultats observes** : gate vert rejoue par le pilote (typecheck 0, 1258 tests, lint 0,
+21 warnings anterieurs) ; garde-rail d'assets prouve rouge/vert sur stem retire ;
+onzieme extraction du cliquet canvas (useReplayFx.ts, 697 -> 691). Decouverte consignee :
+son actif au rechargement => premier clic coupe au lieu d'activer (dette anterieure,
+notee au plan). Backlog alimente : fins multi-equipes par couleur (16 ids releves),
+musique d'intro (queue de build-up, option refusee en defaut).
+
+**Prochaine etape** : gate visuel + d'ECOUTE utilisateur sur les 4 temoins, puis merge
+de wt/replay-cadrage-victoire dans feat/v75.
+
+## [2026-08-26] Rejeu 2D — cadrage T0/fin reelle + ecran de victoire : cloture du plan — Complete
+
+**Contexte** : plan .ai/V7.5/PLAN_REPLAY_CADRAGE_VICTOIRE.md sur wt/replay-cadrage-victoire
+(worktree dedie depuis feat/v75). Deux lots, deux commits (3a29f2e2f, 50d24e848), pilote
+Fable / executeur Opus. Aucun push, aucun merge.
+
+**Decision technique principale** : la fenetre de gameplay est calculee cote client
+(replayWindow.ts) a partir de trois donnees deja servies — doc.originMs (schema >= 4),
+header.t0_ms, header.playable_duration_seconds — sans toucher au Go ni recuire un artefact.
+Formules validees sur pieces AVANT le plan (4 temoins x base) : debut = max(0, t0-origin),
+fin = t0 + playable*1000 - origin (valide meme sans T0, l'ancrage se compense cote Go ;
+le film ne garde que ~5-6 s apres la fin declaree). La borne de fin n'utilise JAMAIS le
+score timeline (match fini au temps : dernier point 133 s avant la fin). Ecran de fin au
+POINT DE VUE du joueur de la page (amendement utilisateur en cours de lot B, applique
+avant commit) : titre = header.outcome_label, habillage = SON equipe (logo + couleur
+identite via teamColorResolver, exception D1 documentee), recette 22%/55% extraite en
+teamTintStyles() + garde-rail, constantes d'outcome reutilisees (lib/outcome.ts).
+
+**Resultats observes** : gates par lot verts et REJOUES par le pilote (lot A : 1190 tests ;
+lot B : 1462) ; cloture C1 : typecheck 0, 4784 tests passes / 14 skips anterieurs, lint 0 ;
+C2 : aucune horloge affichee sur l'axe brut (verification site par site), litteral de
+recette uniquement dans teamColor.ts + guard. Decouvertes consignees sans correction :
+ReplayKillFeed.tsx pile a 500 L, killFeedLogic.ts 541 L (dette anterieure), i18n rejeu
+534 L, ligne de score de l'ecran muette sans xuidMeta (asymetrie connue).
+
+**Prochaine etape** : gate visuel UTILISATEUR sur les 4 temoins (000d5950 victoire au
+score, e94163af clamp debut, 606d9844 sans T0, 64e8adfa fini au temps) puis merge dans
+feat/v75. Lot C envisage (sons de fin de partie) : extraction en cours hors plan —
+annonceur FR/EN localise (sb_001_vo_ai_mp_announcer.pck par langue, 1236 repliques,
+sources externes Wwise donc sans noms : identification par transcription Whisper locale),
+fanfares candidates dans sb_130_mus_multiplayer_global.pck (paire ~10,6 s).
+
+## [2026-08-26] feat/v75 — merge origin/main + reparation des sentinelles auth — Complete
+
+**Contexte** : apres le merge du lot capture dans feat/v75, la CI de branche etait deja
+rouge AVANT ce merge (push 21e19260f, campagne soaks du matin) : deux sentinelles du
+package auth. Diagnostic sur pieces : (1) feat/v75 portait l'iteration ANTERIEURE de
+seed_demo_sync_meta.go (lot A) alors que main a recu l'iteration finale revue R1 —
+TestSentinel_NoNewDuckDBAuthReaders ; (2) le commit d'hygiene b9df08807 a ecrit le
+litteral du secret Azure dans deux COMMENTAIRES de cmd/backfill-csr-history/main.go,
+et la garde 5 greppe ce litteral hors allowlist — TestSentinel_NoNewClientSecretReaders.
+
+**Decision technique principale** : merge origin/main (9c64fc751) dans feat/v75 — seul
+delta reel : seed_demo_sync_meta.go, 9 lignes, version finale revue ; conflits resolus
+(add/add = version main, thought_log = union). Pour la garde 5 : REFORMULATION des deux
+commentaires sans le litteral (le sens est conserve, renvoi vers azure_credentials.go),
+PAS d'elargissement de l'allowlist — elle protege contre de vrais lecteurs et un cmd/
+allowliste pour un commentaire laisserait passer un futur Getenv reel.
+
+**Resultats observes** : sentinelles auth OK (package complet TestSentinel, exit 0),
+go build ops + backfill-csr-history OK, go test ./internal/ops/ OK. Le startup_failure
+du run 32984936255 etait une panne majeure GitHub Actions (incident 15:11 UTC), pas le
+code.
+
+**Prochaine etape** : push feat/v75 et verdict CI au niveau job des la fin de l'incident
+GitHub Actions ; gate visuel utilisateur de la capture/enregistrement (5 temoins au plan).
+
+## [2026-08-26] Rejeu 2D — capture et enregistrement : cloture du plan (lot 4/4) — Complete
+
+**Contexte** : cloture du plan .ai/V7.5/PLAN_CAPTURE_EXPORT_REJEU.md sur
+wt/rejeu-capture-image-video. Quatre lots, quatre commits, aucun push, aucun merge.
+
+**Decision technique principale** : la relecture de seuils a trouve un depassement DANS le
+perimetre — useReplayCapture faisait 115 lignes pour un seuil de 80. Corrige plutot que
+justifie par exemption : deux sous-hooks (useImageCapture, useVideoRecording) plus un
+assembleur HORS React (openRecording, qui monte le flux et l'enregistreur sans toucher a un
+etat de composant). C'est le patron que useReplaySound.ts avait deja pose pour la meme raison
+en extrayant useSoundCategoryFilter et useInstanceSoundTuning. Mesures finales : 37 / 19 / 63 /
+18 lignes, plus useReplayView a 38. Les gates ont ete REJOUES apres cette decoupe, pas avant.
+
+**Resultats observes** : npm run lint sur tout apps/web = 0 erreur et 21 warnings, soit
+exactement la baseline consignee au journal du meme jour — zero warning nouveau. make
+check-types = 0. make test-web = 0 (483 fichiers, 4721 tests, 14 skips). Diff relu : aucune
+valeur hex, aucune classe Tailwind de couleur (icones en currentColor), aucun emoji, aucune
+string UI hors i18n.ts. ReplayCanvas.tsx a fini a 706 lignes contre 742 au depart, cliquet
+abaisse d'autant et tenu sans une seule remontee sur les trois lots.
+
+Quatre decouvertes consignees au plan, dont deux NON TRAITEES par decision : le gate
+`eslint --max-warnings 0` du plan est plus strict que la politique du depot (un warning
+react-refresh de baseline sur ReplayFeedName.tsx, fichier non touche ; le script du depot est
+`eslint .` sans seuil), et i18n.ts repasse au-dessus de 500 lignes — il y etait deja a 520
+avant ce chantier, les quatre libelles x deux langues l'amenent a 530.
+
+**Conclusion / prochaine etape** : GATE VISUEL UTILISATEUR, hors portee agent (cinq temoins
+listes au plan : PNG net en lecture et en pause, clip de 15 s lisible, son present et
+synchrone, telechargement automatique en fin de film, libelles FR/EN + focus clavier + themes
+sombre et clair). Rien ne part vers main avant ce gate.
+
+## [2026-08-26] Rejeu 2D — le son rejoint la video enregistree (lot 3/4) — Complete
+
+**Contexte** : suite du plan .ai/V7.5/PLAN_CAPTURE_EXPORT_REJEU.md, apres l'image (lot 1) et la
+video muette (lot 2). Le clip doit porter le son du rejeu quand celui-ci est actif.
+
+**Decision technique principale** : le lecteur Web Audio ouvre un ROBINET — un
+MediaStreamAudioDestinationNode branche EN PARALLELE de ctx.destination — dont la piste part au
+MediaRecorder. Le piege etait le point de branchement : la classe atteignait ctx.destination a
+TROIS endroits (constructeur, et les deux branches de setDistance), et brancher le robinet sur
+le maitre alors que la chaine de distance est posee aurait donne un clip MUET pendant que les
+haut-parleurs continuent de sortir du son — une panne qui ne leve rien et que rien n'affiche.
+Les trois sites passent donc par un connectOut(node) prive qui branche les deux sorties et
+memorise le dernier noeud avant la sortie. Le robinet naît a la premiere demande seulement (un
+rejeu qu'on ne filme pas ne paie pas un noeud) et RESTE ensuite (le recreer par clip laisserait
+des noeuds derriere lui). Regle d'appartenance a l'arret : on coupe les pistes de la TOILE, pas
+la piste audio — celle-ci appartient au lecteur de son, qui vit plus longtemps que le clip, et
+la fermer rendrait muet tout enregistrement suivant. Decision 6 tenue : la piste est demandee au
+DEMARRAGE, donc activer le son en cours de route n'ajoute rien au clip courant — un fichier dont
+le son demarrerait a mi-course passerait pour un fichier abime.
+
+**Resultats observes** : la doublure Web Audio partagee (test/fakeAudio.ts) a du gagner le suivi
+des BRANCHEMENTS, le passe-bas et le robinet — sans quoi la question « le clip sort-il du meme
+endroit que les haut-parleurs ? » n'est pas mesurable. tsc -b = 0 (apres ajout du champ manquant
+dans la fixture ReplaySound de ReplaySettingsDrawer.test.tsx) ; vitest match-replay = 0 (76
+fichiers, 1164 tests, +10) ; eslint --max-warnings 0 sur les 10 fichiers du perimetre = 0 ;
+ReplayCanvas.tsx toujours a 706 lignes, l'appel du hook s'etendant une troisieme fois sans
+s'allonger.
+
+**Conclusion / prochaine etape** : lot 4 — cloture (lint web entier, make check-types,
+make test-web, relecture du diff, statut de tous les items). Puis GATE VISUEL UTILISATEUR :
+c'est lui qui a la main sur le navigateur, jamais un agent.
+
+## [2026-08-26] Rejeu 2D — enregistrement video du canvas (lot 2/4) — Complete
+
+**Contexte** : suite du plan .ai/V7.5/PLAN_CAPTURE_EXPORT_REJEU.md, apres le lot 1 (image PNG).
+Un bouton REC dans la barre de lecture filme la toile via captureStream + MediaRecorder et
+depose le clip a l'arret.
+
+**Decision technique principale** : UN SEUL CHEMIN DE SORTIE. Trois gestes arretent
+l'enregistrement — second clic, pause manuelle, fin du film — et les trois passent par le meme
+stopRecording, donc un clip est toujours assemble et remis UNE fois : jamais zero (un
+enregistrement oublie qui tourne dans le vide), jamais deux. L'auto-arret guette la TRANSITION
+de `playing` (vrai -> faux), jamais l'etat : demarrer depuis une pause laisse `playing` a faux
+le temps d'un rendu, et lire l'etat refermerait le clip dans la seconde qui suit son ouverture
+— le bouton serait inutilisable sur un rejeu en pause. L'assemblage et le telechargement vivent
+dans `onstop`, pas apres `stop()` : la derniere tranche arrive APRES ce retour, et les pistes du
+flux ne se coupent qu'a ce moment-la, sans quoi le clip perdrait sa fin. Choix du conteneur dans
+replayRecording.ts, pur et teste sans navigateur : mp4/avc1 -> mp4 -> webm/vp9 -> webm, et
+l'EXTENSION SUIT le type retenu (un .mp4 contenant du WebM ne s'ouvrirait nulle part). Decision
+7 tenue litteralement : sans MediaRecorder, sans captureStream ou sans conteneur accepte, le
+bouton ne se rend PAS — une commande grisee laisserait croire a une panne reparable.
+ReplayCanvas.tsx n'a gagne AUCUNE ligne : l'appel du hook s'est etendu, pas allonge (c'etait la
+condition posee au lot 1 pour que le cliquet a 706 tienne sur les trois lots).
+
+**Resultats observes** : tsc -b = 0 (apres correction d'un TS1294 — `erasableSyntaxOnly`
+interdit les proprietes de parametre de constructeur dans la doublure MediaRecorder) ; vitest
+match-replay = 0 (76 fichiers, 1154 tests, +13) ; eslint --max-warnings 0 sur les 8 fichiers du
+perimetre = 0 ; ReplayCanvas.tsx toujours a 706 lignes.
+
+**Conclusion / prochaine etape** : lot 3 — la piste audio du rejeu rejoint la video, cablee au
+DEMARRAGE de l'enregistrement et seulement si le son est alors actif (decision 6).
+
+## [2026-08-26] Rejeu 2D — capture d'image PNG du canvas (lot 1/4) — Complete
+
+**Contexte** : plan .ai/V7.5/PLAN_CAPTURE_EXPORT_REJEU.md, branche wt/rejeu-capture-image-video
+(worktree dedie, base f4fcbfa72). Deux commandes nouvelles sur la page de rejeu : capturer
+l'image, enregistrer la video. Lot 1 = l'image seule.
+
+**Decision technique principale** : le cliquet de taille de ReplayCanvas.tsx etait a ZERO
+marge (742 lignes pour un plafond de 742), ce que l'etat des lieux du plan n'avait pas mesure.
+La doctrine du garde-rail (« le franchir se corrige en extrayant, pas en relevant le nombre »)
+impose donc d'extraire AVANT d'ajouter : le CADRAGE — fond retenu ou ecarte, bornes de scene,
+largeur de dessin, amplitude verticale, projection partagee, trame d'altitudes — part dans
+useReplayView.ts, neuvieme extraction. Les six noms sortent inchanges via destructuration,
+donc pas une ligne du dessin ne bouge. 742 -> 706, cliquet abaisse d'autant. Conception qui
+en decoule et qui tient les lots suivants : le hook useReplayCapture rend UN objet
+(ReplayCapture, patron exact de ReplaySound) que le canvas repasse tel quel a la barre —
+l'enregistrement video puis son audio s'y branchent en ETENDANT l'appel, pas en l'allongeant,
+donc le canvas ne gagnera plus une ligne. Logique de sortie (nom de fichier, telechargement,
+lecture des pixels) isolee dans replayCapture.ts, sans React. Le nom porte l'INSTANT DU MATCH
+(rejeu-<matchId>-12m34s.png) et jamais « 0m00s » par defaut : un instant inconnu bascule sur
+le repli horodate plutot que d'affirmer le coup d'envoi. L'identifiant vient de doc.matchId
+(le document le porte deja), rien a descendre de la route.
+
+**Resultats observes** : tsc -b = 0 ; vitest src/features/match-replay = 0 (76 fichiers,
+1141 tests, +14) ; eslint sur les 11 fichiers du perimetre avec --max-warnings 0 = 0. Le gate
+litteral du plan (eslint sur tout le dossier, --max-warnings 0) sort a 1 : 0 erreur, 1 warning
+react-refresh/only-export-components pre-existant sur ReplayFeedName.tsx, fichier non touche —
+la regle est en `warn` par decision documentee du depot (eslint.config.js), le script du depot
+est `eslint .` sans seuil. Consigne en Decouverte D2, non traite.
+
+**Conclusion / prochaine etape** : lot 2 — enregistrement video (captureStream + MediaRecorder),
+ordre de types mp4 avc1 -> mp4 -> webm vp9 -> webm, auto-arret quand la lecture s'arrete.
 
 ## [2026-08-26] Fusion train v7.5 : reprise des travaux de 3 agents + passe backfill-replay 18->20 — Complete
 
@@ -288,6 +772,275 @@ la capture de base et la pose du translocateur.
 sur le rejeu, mode de lecture des conteneurs, banque de la balise).
 Document : `.ai/V7.5/RE_BANQUES_SONORES_NOMMEES_2026-08-26.md` ; fiches de rendu :
 `.ai/V7.5/RE_FICHES_RENDU_SONS_2026-08-26.txt`.
+**Conclusion / prochaine etape** : **BLOCAGE POUR L'ECOUTE** — les `.wem` sont en Wwise Vorbis
+(`fmt` = `0xFFFF`, verifie sur piece) ; `ffmpeg` 8.0.1 ne les decode pas
+(`unknown codec`), et `vgmstream-cli.exe` n'est plus sur cette machine (le dossier
+`Desktop/Halo Infinite - Sons armes/_outils/` n'existe pas ici). Aucun `.wav` sans lui.
+Suites, dans l'ordre : (1) retrouver ou reinstaller vgmstream ; (2) rendre les 39 fiches
+(somme des couches aux gains releves) ; (3) trancher la banque du bastion par la chaine de
+tags du mode ; (4) designer le geste de pose du translocateur (23 evenements, un seul nomme
+et au second rang) par l'ecoute, comme le lot du 18/08 le prevoyait deja.
+Document : `.ai/V7.5/RE_BANQUES_SONORES_NOMMEES_2026-08-26.md`.
+## [2026-08-26] Hygiene secrets — seed de demo n'extrait plus aucun credential — Complete
+
+**Contexte** : lot A, worktree dedie `wt/lot-a-secrets-demo` (base 3177a57a2). La revue du
+lot ADR 0023 Phase 5 signalait que l'extraction `sync_meta` du seed de demo excluait
+`msal_token_cache` mais PAS `oauth_refresh_token`. Verifie sur pieces avant correction :
+`internal/ops/seed_demo.go:200`, `{name: "sync_meta", where: "key NOT IN ('msal_token_cache')"}`
+— le refresh token OAuth du joueur source traversait donc VRAIMENT vers le jeu de donnees
+de demo (conteneur public). Les colonnes auth de `sync_meta` ne sont plus ni lues ni ecrites
+depuis la Phase 5 (2026-08-25) mais elles portent encore leurs dernieres valeurs jusqu'au
+drop physique (recette ADR 0026, prochain rebuild, hors perimetre de ce lot).
+
+**Decision technique principale** : liste d'EXCLUSION remplacee par une liste d'INCLUSION a
+defaut-refus (`internal/ops/seed_demo_sync_meta.go`, nouveau fichier — le god-file
+seed_demo.go n'est pas grossi). Le raisonnement qui tranche : une exclusion laisse passer
+PAR DEFAUT toute cle future, credential compris, et rien n'oblige celui qui l'introduit a
+venir l'exclure ; l'inclusion inverse la charge de la preuve. Inventaire exhaustif des cles
+`sync_meta` fait avant de choisir (grep des ecritures + archeologie git sur 250 revisions) :
+credentials `oauth_refresh_token` / `msal_token_cache` ; identite `xuid` / `player_xuid` ;
+horodatages `last_sync` / `last_delta_sync` / `last_post_sync_at` / `last_career_sync_at` ;
+`current_rank`, `live_update`, `last_seen_app_version`, `title_ready_announced_<slug>` ;
+sentinelles de migration. Liste retenue = 3 cles : `xuid` (necessaire — duckdb.ResolveXUID,
+et extractPlayerTables la reecrit en DemoXUID) + les 2 sentinelles de migration player
+`career_progression_rebuilt_v1` / `career_xp_total_default_fixed_v1`. Les sentinelles
+voyagent DELIBEREMENT : sans elles, applyMigrationsOnPath rejouerait sur la base de demo
+`rebuild_career_progression`, dont le DDL est un CLICHE FIGE (avertissement date du
+2026-08-05 en tete de la fonction) — toute colonne non enumeree y est perdue. Tout le reste
+est ecarte : la demo a la synchronisation coupee, ces cles n'y ont aucun lecteur.
+
+**Resultats observes** : garde-rail `seed_demo_sync_meta_guard_test.go` (6 tests unitaires,
+package ops, sans CGO) — credentials connus refuses, defaut-refus prouve sur 15 cles hors
+liste dont des credentials futurs plausibles, liste elle-meme interdite d'accueillir une cle
+de forme credential, clause SQL derivee de la liste (un retour au `NOT IN` casse), et
+verification que les 2 sentinelles autorisees existent encore cote migrations (une entree
+perimee ferait rejouer un rebuild silencieusement). Mordant prouve par 3 MUTATIONS REELLES,
+pas mentales : retour a la liste d'exclusion -> FAIL ; `oauth_refresh_token` ajoute a la
+liste -> FAIL sur 2 tests ; meme mutation sous tag integration -> FAIL
+`oauth_refresh_token LEAKED dans sync_meta demo`, ce qui prouve aussi que le RT atterrissait
+bien dans la base publiee. Fixture d'integration etendue (RT + `player_xuid` + une cle
+inconnue). Gates : gofmt -l vide (EXIT 0), go build ./... 0, go vet ./... 0,
+go test -count=1 ./internal/ops/... 0, go test -tags=integration -run TestSeedDemo
+./internal/ops/ 0, golangci-lint --new-from-merge-base=origin/feat/v75 0 apres correction
+d'un goconst (litteral "xuid" -> constante dediee `syncMetaKeyXUID` : le meme litteral
+designe ailleurs dans le package une colonne SQL et un champ JSON, la constante nomme
+laquelle des trois est visee). `go test ./...` : EXIT 1, unique echec
+`internal/himap` en timeout a 601 s (defaut 10 min). C'est le rouge local documente
+(reference himap : le paquet balaie les modules de carte du JEU INSTALLE, mesure > 3602 s
+sans finir, et il SKIPPE en CI faute de jeu — le verdict d'autorite reste la CI). Conduite
+tenue, conforme a la reference : aucun fichier du diff n'est dans `internal/himap` ni dans
+ses trois imports internes (`analysis/replay`, `analysis/replay/mapvar`, `himodule`) —
+verifie par grep ; le rejeu isole `-timeout 45m` a ete lance puis ABANDONNE a ~30 min sans
+verdict (il n'en aurait pas rendu avant l'heure), on ne bloque donc pas la livraison dessus.
+Arbre de travail verifie propre apres coup (aucun artefact `.png` de himap embarque).
+
+**Conclusion / prochaine etape** : le CODE ne copie plus aucun credential. MAIS le jeu de
+donnees de demo DEJA PUBLIE en prod a ete genere par l'ancien code : verification SQL du
+superviseur (copie locale, 2026-08-26) — il porte un RT REEL de 417 caracteres (M.C525...,
+source JGtm, re-seede au deploy du 25/08 12:41). Remediation ACTEE (revue R1) : (a) un RT
+expose se traite par ROTATION, pas par effacement de la copie — elle est automatique
+(~50 min, les vieux RT meurent a la rotation), la valeur publiee est tres vraisemblablement
+deja morte ; JAMAIS de re-capture (ADR 0023) ; (b) le prochain `seed-demo` remplace de toute
+facon l'inode (`removeDuckDBForFreshWrite` + CTAS) ; (c) MAIS chaque deploy `main` re-copie
+un RT frais tant que ce lot n'atteint pas main → decision superviseur : portage en hotfix
+`fix/*` vers main (un correctif securite n'attend pas le train v7.5.0), GO utilisateur en
+attente.
+
+**Ronde R1 (revue adversariale, 2026-08-26)** : verrou VALIDE (12 conditions tiennent),
+4 P2 corriges — (1) `xuid` SORT de la liste d'inclusion : sa justification citait du code
+mort (ResolveXUID/Q3ResolveXUID, seuls appelants en test ; le xuid demo vient de
+db_profiles.json) → liste reduite aux 2 sentinelles de migration, taille verrouillee par
+test ; (2) ce retrait supprime aussi la reecriture DemoXUID conditionnee a une egalite non
+verifiee (`WHERE key='xuid' AND value=?` sans RowsAffected) qui pouvait publier le xuid
+REEL en silence ; (3) doc inversee corrigee (la migration boot lit encore
+`sync_meta.oauth_refresh_token` a chaque demarrage jusqu'au kill-switch 2026-10-01) ;
+(4) ce paragraphe (rotation, pas purge). Chemin synthetique statue (aucune donnee de prod
+ne le traverse, residu `sync_meta.xuid` de parite de schema signale non traite). Decouvertes non traitees (regle zero fix
+opportuniste) : (1) `player_xuid` portait le xuid REEL du joueur source et n'etait PAS
+anonymise par extractPlayerTables (seule la cle `xuid` l'est) — la liste d'inclusion le
+neutralise au passage, mais la meme classe de fuite est a re-auditer sur les autres tables
+extraites ; (2) le drop physique des colonnes auth de `sync_meta` (ADR 0026) reste du.
+## [2026-08-26] Ouvertures RO hors invariant provider — 3 sites routes — Complete
+
+**Contexte** : lot B des decouvertes de la campagne soaks (decision user). Trois sites
+violaient l'invariant du sharedprovider (« unique owner du handle », read_recovery.go) :
+une ouverture RO forcee sur un chemin gere echoue en « different configuration » si la DB
+est tenue RW, et laisse une entree `ro:` qui fait echouer l'OpenReadWrite du swap
+(StateError, 503).
+
+**Les 3 remedes** (le plus simple qui respecte l'invariant, par site) :
+- `ops/healthcheck.go` (checkDuckDB) : sql.Open force RO -> emprunt `OpenReadForQuery`
+  borne au COUNT de diagnostic.
+- `sync/citations_backfill.go` (RunBackfillCompositeOnlyCitations) : `OpenReadOnly` force
+  sur shared_matches_v2 pendant TOUTE la boucle -> emprunt `OpenReadForQuery` borne a la
+  seule requete de tri (`sortMatchIDsChronoOnShared`). Les 2 regimes d'erreur preexistants
+  CONSERVES : acquisition impossible = erreur dure (l'ordre conditionne le cumulPre des
+  paliers composites), requete de tri en echec = WARN + ordre d'origine (best-effort).
+- `ops/media.go` (IndexMedia) : emprunt LookupCachedDB NON POSSEDANT + fallback sql.Open
+  nu -> `OpenReadWriteShared` refcounte (cache hit = handle du pool refCount++, cache miss
+  = ouverture RW via le MEME connecteur custom, meme cle `rw:`). RW requis (DDL, INSERT,
+  CHECKPOINT) ; SET TimeZone conserve (un cache hit porte la tz du pool, pas la notre).
+
+**Garde-rail etendu** (`shared_read_recovery_routing_test.go`) : socle commun d'interdits
+(sql.Open, OpenReadForQuery instantane, LookupCachedDB nu) module par fichier — exemptions
+NOMINATIVES datees (OpenReadForQuery exempte sur healthcheck : c'est le remede prescrit,
+acquisition bornee) + interdits propres (OpenReadOnly sur les chemins provider) + mustCall
+par fichier. Allowlist a la ligne pres inchangee (emprunts metadata preexistants).
+
+**Gates** (etat complet avant mutation) : gofmt 0, build 0, vet 0, unit sync+ops+duckdb
+0 FAIL, integration -p 1 0 FAIL, lint --new-from-merge-base 0. **Mordant prouve par
+mutation COMPILABLE** (bascule healthcheck vers OpenReadOnly) : 2 assertions rouges
+(mustCall absent + interdit detecte ligne exacte avec message de remediation),
+restauration verte, arbre propre.
+
+**Note d'execution** : lot code par un executeur interrompu par la limite de quota AVANT
+gates et commit ; verifie sur pieces, gate, prouve et committe par le superviseur.
+Incident de supervision consigne : une restauration `git checkout` post-mutation sur des
+fichiers NON COMMITES a efface deux fois des editions (lot A r1 puis healthcheck) —
+reconstruites a l'identique depuis les diffs lus ; protocole corrige : COMMITTER avant
+toute mutation de preuve.
+
+**Revue adversariale (2026-08-26)** : le code TIENT (14 conditions — refcount cache
+hit/miss, ordre des defers, aucune entree residuelle, regimes d'erreur preserves,
+allowlists vivantes, portee exacte de forbiddenFor). 3 P2 de JUSTESSE DOCUMENTAIRE
+corriges en r1 : (C1) healthcheck — le routage est un no-op au site d'appel reel (CLI,
+cache vide -> meme ouverture RO qu'avant ; le KO cross-process est un diagnostic correct) ;
+le commentaire revendiquait une reparation sans declencheur -> reecrit (apport reel =
+uniformite + securite in-process future + connecteur custom). (C2) citations_backfill —
+le vrai mecanisme est le VERROU FICHIER cross-process : la CLI tenait shared_matches_v2
+en RO pendant toute la boucle et bloquait le swapToRW du SERVEUR ; la justification
+in-process (StateError) etait fausse (provider nil dans la CLI) -> reecrite, raisons du
+garde-rail alignees. (C3) media — sur cache miss le handle d'IndexMedia devient
+empruntable par les emprunteurs NUS du cache (ticker checkpoint main.go, attach du
+backup) : WARN best-effort benin possible a la fermeture, fenetre ASSUMEE et documentee.
+
+**Decouvertes consignees non traitees** : (1) les emprunteurs NUS du cache —
+`cmd/server/main.go` (ticker checkpoint 5 min, sans indexLock ni refcount) et
+`ops/backup_service.go` (`attachExistingHandles`, release no-op pendant tout l'export) —
+exactement la classe « emprunt nu » que le socle du garde-rail interdit : lot dedie ;
+(2) les autres `sql.Open("duckdb"` d'internal/ops (archive, backup, diagnose, media_hls,
+restore, seed*, snapshot_read) — hors chemins provider, a auditer si besoin.
+
+---
+## [2026-08-26] provider.log — le cycle B-swap nominal passe en Debug, seuil de lenteur en Info
+
+**Statut** : Complete (lot C de-bruitage, worktree `wt/lot-c-provider-log`, aucun push).
+
+**Contexte (mesure superviseur 2026-08-25, fait acquis)** : `provider.log` prenait ~100 Mo/JOUR
+en prod (rotation quotidienne pleine, 4 fichiers retenus ~430 Mo permanents sur un VPS au
+disque contraint) : 77 331 INFO en 8 h (~2,7 lignes/s), dont 77 329 pour QUATRE messages — le
+cycle B-swap journalisait 4 lignes a CHAQUE prise du writer, pour ~40 acquisitions/minute
+(`AcquireWriter demarre` 19 423, `readers draines` 19 304, `swap RO->RW termine` 19 301,
+`swap RW->RO termine` 19 301). Le signal utile de la meme fenetre (121 WARN « drain timeout,
+rollback vers RO » + 2 recoveries StateError) etait noye a 1 pour 640.
+
+**Decision technique principale** : demotion CONDITIONNELLE, jamais suppression. Nouveau seuil
+nomme `defaultSlowSwapThreshold = 2 * time.Second` (provider.go) + champ `slowSwapThreshold`
+injectable en test, et un helper unique `logSwapPhase(ctx, msg, duree, attrs...)`
+(provider_writer.go) par lequel passent les 3 phases CHRONOMETREES du cycle : DEBUG tant que
+la duree est nominale, INFO des qu'elle atteint le seuil, avec sa duree ET `threshold_ms` —
+une anomalie reste donc lisible SANS reactiver le niveau debug. Le 4e message (`AcquireWriter
+demarre`) n'a aucune duree a qualifier : DEBUG inconditionnel, et son `label` de detenteur est
+desormais reporte sur les logs de fin de phase ET sur le WARN de drain timeout, qui ne le
+portait pas — aucune anomalie ne perd son attribution. Seuil calque sur `defaultRWHoldWatchdog`
+(meme frontiere « sain vs suspect » : fenetres saines sub-seconde, budget de lecture
+user-facing fail-fast a 3 s, `middleware.DefaultUserFacingReadBudget`), donc pre-alerte AVANT
+l'impact utilisateur. Regle CLAUDE.md n.3 tenue : AUCUN log d'erreur touche — les WARN/ERROR du
+cycle (drain timeout, echec d'open RW, reopen RO echoue, watchdog de detention) ne passent pas
+par le helper et restent inconditionnels. La demotion est effective au niveau fichier car
+`logging.Config.FileLevel` vaut INFO par defaut.
+
+**Resultats observes** : gofmt -l ./internal vide ; `go build ./...` exit 0 ; `go vet ./...`
+COMPLET exit 0 ; `go test -count=1 ./internal/platform/duckdb/...` exit 0 ;
+`go test -tags=integration -count=1 -p 1 -timeout 1800s ./internal/platform/duckdb/...` exit 0 ;
+`golangci-lint run --new-from-merge-base=origin/feat/v75` 0 issues (et 0 issue aussi en lint
+COMPLET du paquet, verifie expressement : la fonction AcquireWriter, allongee de 6 lignes, ne
+franchit pas funlen). Deux tests neufs : `provider_log_levels_integration_test.go` (capture
+slog JSON niveau DEBUG + SetDefault, records filtres sur le `path` de la base du test) — cycle
+nominal = 0 INFO pour cette base ET les 4 messages presents en DEBUG (contre-epreuve : une
+suppression pure passerait la 1re assertion, pas la 2e) ; cycle au-dela du seuil = les 3 phases
+en INFO avec duree + threshold_ms. Et `no_nominal_info_log_test.go`, ratchet du gate PAR DEFAUT
+(allowlist explicite a 2 entrees) qui interdit la reapparition d'un INFO nominal dans le
+paquet — la factorisation porte son garde-rail, regle des <= 2 copies. MORDANT PROUVE PAR
+MUTATION REELLE, committee AVANT la mutation : re-INFO inconditionnel dans `logSwapPhase` ->
+les DEUX tests rougissent (3 INFO inattendus au nominal, `INFO sans threshold_ms` au lent),
+restauration `git checkout --`, re-vert.
+
+**Reduction estimee** : ~232 000 lignes/jour de bruit nominal (77 329 INFO / 8 h x 3) -> ~0 au
+niveau par defaut. Ne subsistent que le signal (~363 WARN + ~6 INFO de recovery par jour a la
+cadence mesuree) et les cycles reellement lents. Soit ~100 Mo/jour -> < 1 Mo/jour, et les
+~430 Mo permanents de `provider.log*` ramenes a quelques Mo.
+
+**Decouvertes (non traitees, hors perimetre)** : (1) sur Windows, une phase de drain sans
+reader en vol mesure 0 ns — un seuil abaisse a 1 ns ne suffit donc PAS a qualifier un cycle de
+« lent » dans un test ; le test retient un vrai reader 20 ms (les deux autres phases portent des
+I/O fichier et sont mesurables sans artifice). (2) `golangci-lint` emet un warning global
+« unknown linters in //nolint directives: plr0913 » — directive heritee du monde Python
+(PLR0913), inoperante depuis la migration. (3) `internal/observability/logging/README.md`
+(l.177, historique des 2,1 Go de 2026-07-26) reste exact apres ce lot : aucune MAJ doc due.
+
+**Conclusion / prochaine etape** : livre sur `wt/lot-c-provider-log` (2 commits), aucun push —
+le superviseur fusionne. A verifier au deploiement : que `LEVELUP_LOGS_FILE_LEVEL` n'est pas
+force a `debug` en prod, sinon les 4 messages continueraient d'ecrire (en DEBUG cette fois).
+## [2026-08-26] Micro-hygiène — type front mort, commentaire MSAL, statut captureSlog — Complete
+
+**Contexte** : lot D « micro-hygiène mécanique », worktree dédié `wt/lot-d-micro-hygiene`
+(base `3177a57a2`). 3 items mécaniques consignés par des revues precedentes, chacun
+RE-VÉRIFIÉ sur pièces avant action (consigne explicite : le code a pu bouger).
+
+**Décisions techniques principales** :
+1. `apps/web/src/lib/api/types.ts` — `SetupAuthInfo` et `SetupStatusResponse`
+   (`@deprecated` sprint 29) : zéro consommateur confirmé (grep `apps/web/src`, seule
+   mention restante = un commentaire non-importeur dans `setupFlowStore.ts`, laissé en
+   l'état, hors périmètre). Supprimés avec leur entrée dans l'allowlist de
+   `response-types.guard.test.ts` (26 → 25 entrées). `SetupPlayerInfo`/`SetupNextStep`
+   deviennent orphelins par ricochet (seuls consommateurs = le type supprimé) : NON
+   traités (hors périmètre explicite de l'item), consignés en découverte.
+2. `apps/go-api/cmd/backfill-csr-history/main.go` — le commentaire ne se trompait pas
+   que sur « MSALProvider » (retiré 2026-07-15) : `SPNKR_AZURE_CLIENT_ID` n'est PLUS LU
+   DU TOUT (remplacé par `LEVELUP_OAUTH_CLIENT_ID`/`SPNKR_AZURE_CLIENT_SECRET` via
+   `ResolveAzureOAuthClient` ; ADR 0023 Phase 5, 2026-08-25, a retiré toute branche env
+   var legacy). Les 2 commentaires du fichier (flag `-env-file` + doc `loadEnvLocal`)
+   corrigés pour décrire le pipeline réel : SISUProvider + MultiUserTokenStore.
+3. `captureSlog`/`captureSlogText` (package `internal/platform/duckdb`) — la prémisse du
+   lot (« packages différents ») était FAUSSE : les deux vivent dans le MÊME package
+   `duckdb`, seulement séparés par le tag `integration`. Vraie duplication intra-package,
+   déjà documentée comme « jumeau assumé » par une revue antérieure dans
+   `read_recovery_test.go`. Dédupliquée vers `slog_capture_test.go` (SANS tag) : le
+   helper générique `captureSlogWith` + le wrapper `captureSlogText` (consommé par du
+   code non-taggé) y vivent ; le wrapper `captureSlog` (JSON) RESTE dans le fichier taggé
+   `integration` et délègue à `captureSlogWith` — sinon golangci-lint (linter `unused`,
+   qui ne voit que le build PAR DÉFAUT) classe `captureSlog` comme mort puisque son seul
+   appelant est invisible sans le tag. Piège découvert en cours de route, contourné sans
+   `//nolint`.
+
+**Résultats observés** : gofmt -l vide ; `go build ./...` exit 0 ; `go vet ./...` exit 0 ;
+`go vet -tags=integration ./internal/platform/duckdb/...` exit 0 ; `go test -count=1
+./internal/platform/duckdb/...` exit 0 (37,7s) ; `go test -tags=integration -p 1 -run
+'^(TestGetMatchScoreboard_MissingObjectiveView_ServesScoreboardAndWarns|TestGetMatch
+Scoreboard_ObjectiveViewPresent_PopulatesObjective)$' ./internal/platform/duckdb/...`
+exit 0 (PASS explicite des 2 tests consommant `captureSlog`) ; `go build`/`go test` de
+`cmd/backfill-csr-history` (tag cgo) exit 0 ; `golangci-lint run
+--new-from-merge-base=origin/feat/v75` exit 0 (1er essai : 1 issue `unused` sur
+`captureSlog` avant le réaménagement ci-dessus). Front : `npm ci` (node_modules absent
+malgré un premier grep trompeur), `make check-types` exit 0, `make test-web` exit 0,
+`response-types.guard.test.ts` exit 0 (5/5, allowlist réduite), `eslint` ciblé exit 0.
+
+**Découvertes consignées (hors périmètre, non traitées)** :
+- `SetupPlayerInfo`/`SetupNextStep` orphelins depuis la suppression de
+  `SetupStatusResponse` (voir item 1 ci-dessus).
+- Commentaire de `setupFlowStore.ts` (ligne 9) décrit un flux déjà mort
+  (`useSetupStatus()`/clé `['setup-status']`, supprimés sprint 29) — doc-drift
+  préexistant, non touché.
+- Le pattern stale « SPNKR_AZURE_CLIENT_ID requis par MSAL(Provider) » existe aussi dans
+  `cmd/get-token/main.go`, `cmd/probe-world-stats/main.go`,
+  `cmd/populate-playlists-catalog/main.go`, `cmd/refresh_golden_fixture/main.go`,
+  `scripts/warm_bp_assets/main.go` — hors périmètre (item 2 ne visait que
+  `backfill-csr-history`).
+
+**Conclusion / prochaine étape** : les 3 items sont clos, aucun report invalide. Prêt pour
+commit(s) `chore(hygiene): ...` dans le worktree dédié. Pas de push/merge (hors périmètre
+de ce lot).
 
 ## [2026-08-25] Hotfix CI branche (2e) : appelant de test cgo oublie du retrait ErrorStats — Complete
 
@@ -72466,6 +73219,193 @@ couverts ailleurs portes sur `grenadesCarriedFrom`) — regle « 0 code mort ».
 **Conclusion / prochaine etape** : les 5 constats sont clos, rien d autre n a ete touche ; les
 decouvertes hors perimetre du §8 du rapport de lot restent ouvertes. Detail par constat :
 `.ai/V7.5/replay2d/LOT4_SUIVI_DELTA_2026-08-25.md` §9. Aucun commit (consigne).
+
+## [2026-08-27] Rejeu 2D — plan des retours utilisateur (socles, drapeau, MA40, page)
+
+**Statut** : Complete (planification seule — AUCUN code touche, branche feat/v75 occupee par
+le lot sons en cours).
+
+**Decision technique principale** : les 5 retours du 2026-08-27 sont cadres dans
+`.ai/V7.5/replay2d/PLAN_RETOURS_REJEU_2026-08-27.md`, 4 lots (D page -> A socles ->
+B drapeau -> C rafale MA40), TOUT cote web, zero changement d'artefact/SchemaVersion (pas de
+re-cuisson du cache). Points saillants : etat « incertain » des socles raffine par PROXIMITE
+des joueurs (mesure Go de recherche d'abord, seuil contradiction <= 5 %, calcul client pur) ;
+compteur vise la PROCHAINE APPARITION MESUREE (le rejeu connait la suite du film) au lieu du
+seul cycle predictif (etabli sur 24/57 socles seulement) ; rafale MA40 a la LECTURE (3 departs
+sur 1 voix logique, variation RANGED par balle) et non par asset re-cuit ; onde de choc de
+capture depuis doc.objectives/flag_captures (gate filmClockTrusted) ; crane statue [~] —
+herite des helpers du lot B via l'item 4 (PLAN_OBJECTIFS_VIVANTS, decision 7 a amender).
+
+**Resultats observes (exploration)** : scroll fantome = pile de hauteurs fixes ~678 px
+(CANVAS_HEIGHT=480 constant, aside absolue des xl, min-h-[12rem]/max-h-[80vh] sous xl) dans
+le main overflow-y-auto de AppShell — diagnostic navigateur en premiere case du lot D ;
+rappel carte/mode/date GRATUIT sur la page rejeu (matchView.header deja en cache, meme query
+key que la page match, helper buildMatchHeadingStr reutilisable) ; aucun ballCarries dans le
+document (le crane n'a pas d'objet vivant aujourd'hui) ; padPickups.xuid null partout
+(oracle 79,7 % < 90 %, inchange).
+
+**Conclusion / prochaine etape** : PREREQUIS BLOQUANT — committer/fusionner le lot sons en
+cours sur feat/v75 avant toute execution, puis brancher `feat/replay-retours-0827`. Decisions
+par defaut D1-D9 dans le plan, a confirmer par l'utilisateur au lancement (surtout D7 rafale
+lecture-vs-asset et D4/D5 clignotement/taille du drapeau).
+---
+
+## [2026-08-26] Cartes — etat de l'art verifie sur pieces, registre de revue et mesure de cadrage
+
+**Statut** : Complete (branche `wt/cartes-revue-par-carte`, non committe — attente du go commit).
+
+**Decision technique principale** : ouverture du chantier « revue carte par carte » sur la
+decision utilisateur d'abandonner une formule valable pour toutes les cartes. Les regles
+universelles restent la BASE, le reglage final est PAR CARTE, et il vit EN DONNEE (entree +
+raison ecrite + date de gate), jamais en branche de code — precedent `CarteForge.FondFige`.
+Le suivi repose sur deux objets : `REGISTRE_CARTES.md` (source de verite, un statut par ligne,
+journal des verdicts avec verbatim) et une planche avant/apres par lot d'environ 10 cartes.
+Regle anti-derive posee : toute cuisson qui modifie un PNG repasse sa ligne en `ATTENTE`.
+
+**Resultats observes** : corpus `match_registry` **123 map_id / 1 940 matchs** ; **56 fonds
+publies** (19 natifs keyes par module, 37 Forge keyes par map_id), tous servis ; couverture
+**79 map_id / 1 731 matchs (89,2 %)**, **44 map_id / 209 matchs sans fond**. Verdicts reels
+reconstitues : **14 fonds valides sur 56** (12 natifs 10/08, 2 Forge geles 13/08), 7 natifs
+re-cuits le 13/08 JAMAIS soumis, 35 Forge refuses en bloc le 13/08. Nouvel instrument
+`cmd/mapfond-cadrage` (lecture seule, hors ligne, sans CGO) : la matiere dessinee occupe en
+mediane **53,5 % de la largeur du cadre sur les natifs** contre **88,3 % sur les Forge** —
+les deux familles ont le defaut INVERSE. Pires natifs : sgh_blueprint 28,8 %, ctf_aquarius
+33,7 %, forest 35,8 %, catalyst 50,0 % (12,0 % en aire). Cause identifiee : `CadreSurAncres`
+pose le cadre a la boite des ancres plus une CONSTANTE (`MargeCadre` = 50 m, `cuisson.go:47`)
+et la coquille de mort efface ensuite hors frontiere **sans que le cadre soit recalcule**.
+Confirme la remarque utilisateur sortie de l'enquete socles (match `530820e5` = Catalyst).
+Second constat : le temoin `Desktop/COULEUR_jeu_catalyst_COQUILLE.png` (10/08 12:24) est
+ANTERIEUR a l'entree en production de la coquille (`f78f2ebfa`, 12:41) et a sa correction par
+parite de rayon (`7652fff83`, 14:46) — il n'a jamais ete en production ; le `catalyst.png`
+publie porte pourtant memes style, coquille, `playLevelZ` et `instancesDrawn`, et les deux
+images ne coincident pas a l'oeil. Ecart NON explique, mesure prevue en phase 1.
+
+**Conclusion / prochaine etape** : plan `PLAN_REVUE_CARTE_PAR_CARTE.md` (6 phases, gates
+nommes) et `REGISTRE_CARTES.md` ecrits. Prochaine etape = phase 1 (re-cuire Catalyst vers un
+`--out-dir` scratch et comparer au publie, puis reproduire le temoin du 10/08 pour nommer
+l'ecart). Rien de committe : le go commit reste a demander.
+
+---
+
+## [2026-08-26] Rejeu 2D — la carte s'affichait en timbre : le cadre suivait des props INVISIBLES
+
+**Statut** : Complete (branche `wt/cartes-revue-par-carte`, non committe — attente du go commit).
+
+**Decision technique principale** : defaut signale par l'utilisateur sur capture (carte
+minuscule et decentree dans le cadre du rejeu). Cause etablie sur pieces, pas devinee :
+`sceneBounds` (`apps/web/src/features/match-replay/replayLogic.ts`) cadrait sur l'union
+`doc.bounds` + `doc.geometryBounds`, or `geometryBounds` est l'etendue des props Forge, qui
+« debordent de la zone parcourue » — c'est ecrit dans la godoc de
+`ReplayDocument.GeometryBounds` (`internal/analysis/replay/document.go:217`). Et quand un fond
+de carte est pose, `ReplayCanvas` ne dessine PAS ces props : ils sont le `else if` du fond
+(`ReplayCanvas.tsx:399`). Le cadre etait donc dimensionne sur de la matiere INVISIBLE, et
+l'image se reduisait a un timbre dans un canvas vide. La regle qui corrige existait deja,
+ecrite pour `structure` (« avec un sol reconstruit, le cadre est la zone jouee, sinon le
+terrain se reduit a un timbre au centre de l'ecran ») : elle est ETENDUE au fond de carte,
+`sceneBounds(doc, hasMapImage)`, plutot que d'en ecrire une seconde. `ReplayCanvas` calcule
+desormais `mapImage` AVANT `bounds` (aucun cycle : `mapImage` ne depend que de `doc.bounds`).
+
+**Resultats observes** : trois temoins neufs dans `replayLogic.test.ts` (« ecarte les props du
+cadre », « sans image, les props cadrent encore », « le cadre avec image est stable meme quand
+les props explosent »). **Mordant prouve par mutation** : le retrait de `hasMapImage` de la
+condition rend 2 des 3 rouges, restaure ensuite. Gates : vitest `src/features/match-replay/`
+**74 fichiers / 1 127 tests verts**, `npm run typecheck` vert sur cache `.tsbuildinfo` PURGE,
+ESLint 0 sur les 3 fichiers touches. Le garde-rail de taille de `ReplayCanvas.tsx`
+(`placementFamily.guard.test.ts`, plafond 742 lignes) a d'abord rougi a 744 : il n'a PAS ete
+releve — le commentaire ajoute a ete resserre pour retomber a **741**. Effet de bord utile :
+le cadre devenant la zone jouee et `coversPlayedArea` garantissant que l'image la couvre, les
+marges vides des fonds natifs sont rognees a l'affichage.
+
+**Conclusion / prochaine etape** : le defaut de VUE est corrige ; le defaut d'ASSET reste entier
+(le cadre des PNG publies est la boite des ancres plus 50 m constants, jamais recalcule apres
+la coquille — mediane 53,5 % de largeur utile sur les natifs). C'est la phase 2 du
+`PLAN_REVUE_CARTE_PAR_CARTE.md`. Consigne au registre : `REGISTRE_CARTES.md`, section
+« Decouvertes hors fonds ».
+
+---
+
+## [2026-08-26] Cartes phase 1 — la re-cuisson de Catalyst, et le defaut qu'elle a fait sortir
+
+**Statut** : Complete (branche `wt/cartes-revue-par-carte`, non committe — attente du go commit).
+
+**Decision technique principale** : phase 1 du `PLAN_REVUE_CARTE_PAR_CARTE.md`. Catalyst
+re-cuit avec la chaine d'aujourd'hui vers un `--out-dir` scratch : **NON identique au publie**
+(`heightPx` 1553 -> 1546, `originY` 71,476 -> 71,120, ancres **24 -> 19**, `playLevelZ`
+24,410 -> 24,907, `mapNames` perd `catalyst_map`). Cause : le catalogue d'objectifs a ete
+regenere depuis par les lots KOTH (`a96db3048` 19/08, `fec6b9bf9` 20/08, `d50f3b728` 25/08).
+**Consequence pour tout le chantier : les fonds publies sont perimes vis-a-vis du catalogue**,
+une re-cuisson de masse deplacera d'autres cartes que Catalyst. A l'oeil la re-cuisson est
+indiscernable du publie : l'ecart est metrique, il n'explique PAS la difference avec le temoin
+du 10/08 12:24, qui reste NON expliquee et est declaree telle quelle.
+
+Ce que la mesure a trouve A LA PLACE, et qui vaut plus que l'archeologie : `zJeu` est un
+SCALAIRE, `MedianeZ(ancres) - AncrageDecalageSol` (`cuisson.go:140`, `cuisson_forge.go:93`),
+et la constante `AncrageDecalageSol = 0,29 m` est etalonnee sur UNE carte (Cliffhanger). Sur
+une carte dont les objectifs vivent a plusieurs etages, la mediane des ancres n'est le sol
+d'aucun d'eux. Le sidecar mesurait deja l'erreur sans que personne la lise
+(`anchorMedianGapM`, `cuisson.go:355`).
+
+**Resultats observes** : sur les 56 fonds, **43 sont entre -0,40 et +0,03 m** (l'etalonnage
+tient) mais **13 sont hors clou** : Behemoth -17,51 m, The Pit -15,53, Empyrean -14,41,
+Catalyst -13,33, Fragmentation -11,71, Fortress -10,60, Domicile -8,62, Banished Narrows
+-6,05, Recharge -5,29, Oasis -4,38, Streets -4,33, Bazaar -4,22, Breaker -3,29. Or
+`TeinteNiveauDeJeu` ecrete a `PorteeNiveauDeJeu = 10 m` : au-dela, la surface JOUEE est peinte
+au maximum de recul (`recul = 0,38`, teinte froide) — **exactement l'inversion de hierarchie
+visuelle que cette teinte a ete ecrite pour supprimer**. Six cartes depassent la portee et
+rendent donc leur arene au recul maximal. Le correctif n'est PAS un reglage par carte : la
+surface de reference par pixel existe deja (`SurfaceReference`, armee au rendu par
+`ArmeReference`) — il suffit que la teinte lise cette surface au lieu du scalaire.
+
+Second livrable : `cmd/mapfond-planche` (sans CGO, hors ligne) — manifeste TSV -> une page
+HTML autonome, vignettes en data URI, reduction par MOYENNE DE BLOC en alpha premultiplie (un
+plus-proche-voisin perdrait la moitie des traits fins d'une carte). Le cadre de chaque image
+est trace et le damier rend le vide transparent VISIBLE : c'est ce qui fait lire le defaut de
+cadrage, qu'aucun oracle ne voit. Premiere planche publiee (4,95 Mo, 57 fiches, 59 vignettes) :
+https://claude.ai/code/artifact/5e8fa28d-da9e-4eba-898d-33174158be40
+
+**Conclusion / prochaine etape** : gate 1 rendu — l'ecart au temoin reste ouvert et ecrit comme
+tel, un defaut distinct est mesure sur 13 cartes avec son correctif nomme. Attente du verdict
+utilisateur sur la planche, puis phase 2 (cadrage de l'asset) et le correctif de la teinte,
+groupes en UNE re-cuisson pour ne pas faire juger deux fois les memes cartes.
+
+---
+
+## [2026-08-26] Cartes — gate utilisateur : 9 valides, 9 a finaliser, et le style devient par carte
+
+**Statut** : Complete (branche `wt/cartes-revue-par-carte`, non committe — attente du go commit).
+
+**Decision technique principale** : premiere planche de gate publiee et JUGEE
+(https://claude.ai/code/artifact/5e8fa28d-da9e-4eba-898d-33174158be40, 57 fiches). Le verdict
+est entre au registre avec son verbatim. Repartition des 56 fonds apres gate : **9 VALIDEE, 9
+A FINALISER, 1 A TRANCHER, 2 A RETRAVAILLER, 35 REFUSEE**. L'ambiguite du 13/08 est LEVEE :
+les 7 natifs re-cuits sont juges (Scarr valide, les six autres a finaliser), et trois natifs
+tenus pour valides depuis le 10/08 en sortent (Streets, Bazaar, Recharge).
+
+Ce que le gate a ouvert, et qui n'etait pas au plan : **le style est un choix PAR CARTE**.
+L'utilisateur veut `encre` sur Cliffhanger et le rendu du temoin sur Catalyst. Verifie sur
+pieces : le fond `ridgeline.png` en production est en style `jeu` (fond noir, arene claire) ;
+`Desktop/COULEUR_encre_cliffhanger.png` est en style `encre` (quasi monochrome sur blanc,
+riviere bleue) — ce ne sont pas les memes, et le style prefere n'est pas celui qui est livre.
+Or `StyleJeu` et `StyleEncre` existent DEJA en production (`fond_png.go`), le sidecar publie
+deja le style retenu, et seul `mapfond-build --style` est global. Une table de reglages par
+carte en DONNEE (style + raison + date de gate) suffit : aucune regle de rendu neuve, aucune
+branche. C'est le levier « chaque carte a sa maniere » le moins cher, et il devient le point A
+du plan.
+
+**Resultats observes** : Catalyst est declare REGRESSION — le temoin du 10/08, jamais livre,
+est meilleur que la production ; la cible de la carte est donc « reproduire ce temoin », pas
+« faire mieux ». Vagabond perd son gel `CarteForge.FondFige` (pose le 13/08 « a revoir » ; le
+gate a eu lieu, gros retravail demande). Honnetete de la correlation, ecrite au plan : sur les
+8 natifs dont l'ecart mediane-ancres/sol depasse l'etalonnage, **4 sont sur la liste a
+finaliser et 4 sont acceptes** — le defaut de teinte mesure a la phase 1.3 est reel mais
+n'explique pas a lui seul les verdicts. Demande produit hors perimetre : un ZOOM dans la page
+de rejeu ; verifie qu'il n'en existe aucun (`CANVAS_HEIGHT` fige a 480 px, `fitWidth` ajuste
+la scene a cette hauteur) — lot a part, il touche la projection partagee dessin/survol et le
+cache des calques cuits.
+
+**Conclusion / prochaine etape** : point A du plan (style par carte en donnee + garde-rail +
+planche de comparaison `jeu`/`encre` sur les 11 cartes non closes). Les zones jamais foulees
+restent une SECONDE BASE DE TRAVAIL (precision utilisateur), pas une regle de rendu final.
 
 ## [2026-08-27] Retours rejeu — LOT D clos (page : scroll fantome + rappel du match)
 

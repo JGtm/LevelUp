@@ -169,12 +169,14 @@ import { placementIsDeployedObject } from './equipmentPlacementsLayer'
 import { grenadeSoundEvents } from './grenadeSound'
 import { alignFeed } from './killFeedLogic'
 import { objectiveSoundEvents, type ObjectiveSide } from './objectiveSound'
+import { zoneSoundEvents } from './zoneSound'
 import { frameToMs } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
 import { soundEvent, type ReplaySoundEvent } from './replaySoundVariants'
 
 export { pickVariantStem, SOUND_VARIANTS, stemsOf, type ReplaySoundEvent } from './replaySoundVariants'
 export { OBJECTIVE_SOUND_STEMS, objectiveSoundStem, type ObjectiveSide } from './objectiveSound'
+export { ZONE_SOUND_STEMS, zoneSoundEvents } from './zoneSound'
 
 /**
  * Catégorie d'un son, pour le filtre du tiroir de réglages (phase 2, décision utilisateur
@@ -338,13 +340,20 @@ export const EQUIPMENT_SOUND_STEMS: Readonly<
  * dont 4 `.wem` tombent dans le pack `sb_007_abl_repairfield.pck` — le jeu la nomme lui-même.
  * Son unique `snd!` (`22c2323a`) désigne deux événements qui rendent LES MÊMES trois `.wem`,
  * variantes uniformes d'un seul `RandomSequence` : il n'y a pas de choix à faire, seulement un
- * tirage. La variante de plus petit identifiant est retenue (894865279, 0,38 s).
+ * tirage.
  *
- * ÉGALISATION : gain LINÉAIRE de -1,4 dB, crête vraie à -1,0 dBTP — le plafond du lot R2-S.
- * LA MOITIÉ « -16 LUFS » DE LA RÈGLE N'EST PAS MESURABLE ICI et c'est dit plutôt que masqué :
- * la fenêtre de porte d'EBU R128 fait 400 ms, la source en fait 380 — `ebur128` rend -70 LUFS,
- * c'est-à-dire « porte jamais atteinte », pas « très faible ». Le fichier rejoint donc les
- * 15 fichiers que le lot R2-S avait déjà plafonnés par leur facteur de crête.
+ * CE QUI A CHANGÉ LE 2026-08-27, ET C'EST UNE ERREUR CORRIGÉE, PAS UN RÉGLAGE. Le fichier
+ * livré depuis le 2026-08-18 était le geste de POSE (`play_007_abl_repairfield_deploy_player`,
+ * événement `8ed46d21`, 0,38 s) — un claquement d'objet lâché. L'ACTIVATION du champ est un
+ * autre événement, `play_007_abl_repairfield_activate` (`c48cf171`, 3,26 s), et c'est celui
+ * que l'utilisateur veut entendre quand un joueur pose le champ (décision du 2026-08-27,
+ * après écoute de la planche). Les deux événements ne se distinguaient pas avant le nommage
+ * des banques par hachage : la chaîne de tags menait aux deux sans dire lequel était lequel.
+ * Les trois variantes livrées sont désormais les trois `.wem` de `c48cf171`
+ * (143632032 / 222530989 / 640887009), gain de chemin +1 dB appliqué.
+ *
+ * ÉGALISATION : crête vraie plafonnée à -1,0 dBTP par gain LINÉAIRE (-0,8 / -1,0 / -2,0 dB),
+ * plafond du lot R2-S, même convention que `repair_field_end`.
  *
  * LA BALISE DU TRANSLOCATEUR RESTE MUETTE, ET SON SILENCE A CHANGÉ DE RAISON. Sa banque est
  * TROUVÉE (`dcfaa487`, 70 `.wem`, atteinte par les deux seuls `eqip` `quantum_translocator` du
@@ -508,6 +517,10 @@ export function buildSoundTimeline(
   t0Ms: number,
   categories: SoundCategoryFilter = SOUND_CATEGORIES_DEFAULT,
   sideOfXuid?: (xuid: string) => ObjectiveSide,
+  // Le camp ALLIÉ, en numéro d'équipe — la clé des sons d'ÉTAT DE ZONE, qui joignent sur le
+  // propriétaire d'une zone et non sur le xuid d'un joueur (`zoneSound.ts`). `null` = camp non
+  // résolu : capture en cours et tics de score se taisent, la nouvelle colline sonne quand même.
+  allyTeam: number | null = null,
 ): ReplaySoundEvent[] {
   const out: ReplaySoundEvent[] = []
   if (categories.weapon) {
@@ -568,6 +581,12 @@ export function buildSoundTimeline(
   // Les ACTIONS D'OBJECTIF : chacune sonne à sa frame, dans le camp de son auteur. Sans
   // résolveur de camp (appelant qui n'a pas le tableau de score), les seules actions qui
   // sonnent sont celles sans variante d'équipe — le rejeu ne devine jamais un camp.
-  if (categories.objective) out.push(...objectiveSoundEvents(doc, sideOfXuid))
+  if (categories.objective) {
+    out.push(...objectiveSoundEvents(doc, sideOfXuid))
+    // Les sons d'ÉTAT DE ZONE : capture en cours, domination, déplacement de la colline. Ils ne
+    // viennent d'aucun joueur — leur source est `doc.zoneStates`, pas `doc.objectives` — mais
+    // ils appartiennent à la même catégorie du tiroir, et se coupent donc avec elle.
+    out.push(...zoneSoundEvents(doc, allyTeam))
+  }
   return out.sort((a, b) => a.ms - b.ms)
 }

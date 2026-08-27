@@ -58,6 +58,7 @@ function renderBanner(over: Partial<Parameters<typeof ReplayScoreBanner>[0]> = {
       xuidMeta={META}
       frame={500}
       nowMs={65_000}
+      playWindow={null}
       locale="fr"
       {...over}
     />,
@@ -81,6 +82,15 @@ describe('ReplayScoreBanner — ce qui est écrit', () => {
   it('affiche la position de lecture au format du rejeu', () => {
     renderBanner()
     expect(screen.getByText('1:05')).toBeInTheDocument()
+  })
+
+  it('CADRÉ : l’horloge est celle du GAMEPLAY, pas celle du film (D-A2)', () => {
+    // Coup d'envoi à 14,861 s de film : 65 s de film = 50,139 s de jeu.
+    renderBanner({
+      playWindow: { startFrame: 149, endFrame: 4_929, startMs: 14_861, endMs: 492_861 },
+    })
+    expect(screen.getByText('0:50')).toBeInTheDocument()
+    expect(screen.queryByText('1:05')).not.toBeInTheDocument()
   })
 })
 

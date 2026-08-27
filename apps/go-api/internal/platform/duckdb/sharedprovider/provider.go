@@ -42,6 +42,25 @@ const defaultCloseDrainTimeout = 3 * time.Second
 // Fire par ACQUISITION (une fois), pas en boucle : pas de spam.
 const defaultRWHoldWatchdog = 2 * time.Second
 
+// defaultSlowSwapThreshold est la durée à partir de laquelle une phase du cycle
+// B-swap (drain des readers, swap RO→RW, swap RW→RO) cesse d'être nominale : en
+// dessous elle est journalisée en DEBUG, à partir du seuil elle repasse en INFO
+// avec sa durée et threshold_ms (cf. logSwapPhase).
+//
+// Pourquoi démoter le nominal — mesure prod du 2026-08-25 : provider.log prenait
+// ~100 Mo/JOUR (rotation quotidienne pleine, ~430 Mo retenus sur un VPS au disque
+// contraint), soit 77 331 INFO en 8 h (~2,7 lignes/s) pour ~40 acquisitions du
+// writer par minute journalisées 4 fois chacune. 99,8 % de ce volume était du
+// cycle nominal, qui noyait le signal utile de la même fenêtre (121 WARN « drain
+// timeout » + 2 recoveries StateError).
+//
+// Pourquoi 2s : même frontière « sain vs suspect » que defaultRWHoldWatchdog —
+// les fenêtres saines sont sub-seconde (Get brefs, drain quasi-immédiat) et le
+// budget de lecture user-facing fail-fast est de 3s
+// (middleware.DefaultUserFacingReadBudget), donc le seuil alerte AVANT l'impact
+// utilisateur. <= 0 désactive la remontée INFO (tout en DEBUG).
+const defaultSlowSwapThreshold = 2 * time.Second
+
 // Provider est le contrat exposé aux consommateurs. Une implémentation owne
 // le handle DuckDB pour un chemin donné et arbitre l'accès lecture/écriture.
 //
@@ -151,6 +170,9 @@ type providerImpl struct {
 	retryBaseBackoff time.Duration
 	drainTimeout     time.Duration
 	rwHoldWatchdog   time.Duration
+	// slowSwapThreshold : au-delà de cette durée, une phase du cycle B-swap est
+	// journalisée en INFO au lieu de DEBUG (cf. defaultSlowSwapThreshold).
+	slowSwapThreshold time.Duration
 
 	failNextReopen atomic.Bool
 
@@ -182,6 +204,8 @@ func New(path string, timezone ...string) (Provider, error) {
 		retryBaseBackoff: defaultRetryBaseBackoff,
 		drainTimeout:     defaultDrainTimeout,
 		rwHoldWatchdog:   defaultRWHoldWatchdog,
+
+		slowSwapThreshold: defaultSlowSwapThreshold,
 	}
 	p.state.Store(int32(StateRO))
 	recordStateTransition(StateRO, StateRO)

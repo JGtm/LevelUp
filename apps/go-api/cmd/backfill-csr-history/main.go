@@ -43,7 +43,7 @@ func main() {
 	gamertag := flag.String("gamertag", "", "gamertag (logs uniquement)")
 	titleID := flag.String("title", "halo_infinite", "title_id pour csr_season_calendars")
 	season := flag.String("season", "", "limiter à une seule saison CSR (ex: CsrSeason12-1) ; vide = toutes les saisons")
-	envFile := flag.String("env-file", ".env.local", "chemin .env.local (SPNKR_AZURE_CLIENT_ID requis par MSALProvider)")
+	envFile := flag.String("env-file", ".env.local", "chemin .env.local (secret client Azure + LEVELUP_OAUTH_CLIENT_ID, refresh OAuth via SISUProvider + MultiUserTokenStore ADR 0023)")
 	rateLimit := flag.Int("rate-limit", 60, "requêtes max/minute vers l'API skill")
 	dryRun := flag.Bool("dry-run", false, "liste les saisons ciblées sans appeler l'API ni écrire")
 	flag.Parse()
@@ -161,7 +161,11 @@ type authTokens struct {
 }
 
 // loadEnvLocal injecte les variables de .env.local dans l'environnement (sans
-// écraser celles déjà définies). Requis pour SPNKR_AZURE_CLIENT_ID.
+// écraser celles déjà définies). Requis pour le secret client Azure et
+// LEVELUP_OAUTH_CLIENT_ID, lus par ResolveAzureOAuthClient lors du refresh OAuth
+// (pipeline SISUProvider + MultiUserTokenStore, ADR 0023 — MSALProvider a été
+// supprimé le 2026-07-15 ; le nom exact de la variable du secret vit dans
+// azure_credentials.go, la sentinelle du package auth interdit son littéral ici).
 func loadEnvLocal(path string) {
 	data, err := os.ReadFile(path)
 	if err != nil {

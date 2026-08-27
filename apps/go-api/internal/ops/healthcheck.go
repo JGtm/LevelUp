@@ -15,7 +15,6 @@ package ops
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"os"
 	"os/exec"
@@ -25,8 +24,7 @@ import (
 	"time"
 
 	titlePkg "levelup/go-api/internal/domain/title"
-
-	_ "github.com/duckdb/duckdb-go/v2"
+	platform_duckdb "levelup/go-api/internal/platform/duckdb"
 )
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -217,15 +215,28 @@ func checkBinary(name string) HealthCheck {
 }
 
 // checkDuckDB vérifie qu'une DB DuckDB s'ouvre et répond à COUNT(*).
+//
+// HONNÊTETÉ sur ce routage (revue 2026-08-26) : au seul site d'appel réel —
+// le CLI `levelup healthcheck`, process séparé qui n'a ouvert aucune DB —
+// le cache est vide, donc `OpenReadForQuery` dégrade en ouverture RO exactement
+// comme l'ancien `sql.Open` forcé. Le comportement cross-process est INCHANGÉ :
+// une DB tenue RW par le serveur rend toujours un KO (verrou fichier DuckDB,
+// « Could not set lock on file ») — et ce KO est une information de diagnostic
+// correcte. Ce que ce routage apporte : (1) l'uniformité avec le canal canonique
+// (anti-pattern n°5 « bare connect » éliminé, garde-rail de routage applicable) ;
+// (2) la sécurité IN-PROCESS si un futur appelant héberge un jour le pool ou un
+// provider (emprunt du handle tenu au lieu d'un refus d'ouverture) ; (3) le
+// connecteur custom (bornes mémoire/threads) au lieu du driver nu. Le release
+// rendu ne ferme QUE le handle ouvert ici (refcount).
 func checkDuckDB(ctx context.Context, name, path string) HealthCheck {
 	if _, err := os.Stat(path); err != nil {
 		return HealthCheck{Name: name, OK: false, Message: "fichier absent"}
 	}
-	db, err := sql.Open("duckdb", path+"?access_mode=read_only")
+	db, release, err := platform_duckdb.OpenReadForQuery(path)
 	if err != nil {
 		return HealthCheck{Name: name, OK: false, Message: fmt.Sprintf("ouverture: %v", err)}
 	}
-	defer db.Close()
+	defer release()
 
 	var count int
 	if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM information_schema.tables WHERE table_type = 'BASE TABLE'").Scan(&count); err != nil {

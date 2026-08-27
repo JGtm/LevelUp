@@ -12,6 +12,7 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { useCallback, useMemo, useState } from 'react'
 
 import { normalizeCallouts } from '@/features/match-replay/calloutsLayer'
+import { endMatchSoundSpec } from '@/features/match-replay/endMatchSound'
 import { REPLAY_TEXT } from '@/features/match-replay/i18n'
 import {
   useMatchReplay,
@@ -25,8 +26,10 @@ import { ReplayCanvas } from '@/features/match-replay/ReplayCanvas'
 import { ReplayKillFeed } from '@/features/match-replay/ReplayKillFeed'
 import { ReplayMatchRecall } from '@/features/match-replay/ReplayMatchRecall'
 import { frameToMs } from '@/features/match-replay/replayLogic'
+import { replayWindow } from '@/features/match-replay/replayWindow'
 import { ReplayScoreBanner } from '@/features/match-replay/ReplayScoreBanner'
 import { ReplayTeams } from '@/features/match-replay/ReplayTeams'
+import { ReplayVictoryOverlay } from '@/features/match-replay/ReplayVictoryOverlay'
 import { collectKillEvents } from '@/features/match-view/_momentum'
 import { useMatchView } from '@/features/match-view/queries'
 import type { TeamColorResolver } from '@/features/match-view/teamColor'
@@ -122,6 +125,24 @@ function ReplayPage() {
   // Les deux horloges ne coïncident pas : cf. killFeedLogic.ts et header.t0_ms.
   const t0Ms = matchView?.header.t0_ms ?? 0
   const nowMs = data ? frameToMs(frame, data) : 0
+  // LE CADRAGE SUR LE MATCH RÉEL, CALCULÉ UNE FOIS ICI (et nulle part ailleurs) : le film
+  // déborde le match du countdown d'avant-partie et d'une queue de 5-6 s, et les deux bornes
+  // demandent l'artefact ET l'en-tête — deux requêtes distinctes qui ne se rejoignent qu'à ce
+  // niveau. La lecture, la frise, l'horloge, le fil et les infobulles la reçoivent ; aucun ne
+  // la recalcule. `null` = pas de cadrage établi, tout le monde retombe sur le film entier.
+  const playWindow = useMemo(
+    () => (data ? replayWindow(data, matchView?.header) : null),
+    [data, matchView?.header],
+  )
+
+  // LA FIN DE PARTIE SONORE (lot C), lue ICI comme le cadrage et pour la même raison : elle
+  // croise l'en-tête (l'issue du joueur de la page) et le scoreboard (ses camps), deux données
+  // qui ne se rejoignent qu'à ce niveau. C'est la MÊME lecture que l'écran de fin ci-dessous —
+  // `endMatchSoundSpec` s'appuie sur `readVictory`, il ne re-décode pas `outcome_code`.
+  const endMatchSound = useMemo(
+    () => endMatchSoundSpec(scoreboard, matchView?.header.outcome_code, locale),
+    [scoreboard, matchView?.header.outcome_code, locale],
+  )
 
   const hasReplay = !!data && data.tracks.length > 0
 
@@ -197,7 +218,10 @@ function ReplayPage() {
         <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,30rem)] xl:items-stretch">
           {/* `min-w-0` : sans lui, un contenu large ferait déborder la colonne au lieu de la
               contraindre — c'est la colonne que le ResizeObserver du canvas mesure. */}
-          <section className="min-w-0">
+          {/* `relative` : c'est le repère de l'ÉCRAN DE VICTOIRE, qui coiffe toute la colonne
+              de la carte (bandeau, terrain, frise) à la fin du match. Il se monte ICI et non
+              dans le canvas, qui est déjà au plafond de taille du dépôt. */}
+          <section className="relative min-w-0">
             {/* LE BANDEAU DE SCORE COIFFE LE TERRAIN (demande utilisateur du 2026-08-20) :
                 score des deux camps à l'image lue, de part et d'autre de l'horloge. Il est
                 DANS la colonne du canvas, et non en frère de celle-ci : la rangée est une
@@ -215,11 +239,13 @@ function ReplayPage() {
               xuidMeta={xuidMeta}
               frame={frame}
               nowMs={nowMs}
+              playWindow={playWindow}
               locale={locale}
             />
             <ReplayCanvas
               doc={data}
               locale={locale}
+              playWindow={playWindow}
               kills={kills}
               t0Ms={t0Ms}
               onFrameChange={setFrame}
@@ -228,6 +254,21 @@ function ReplayPage() {
               scoreboard={scoreboard}
               xuidMeta={xuidMeta}
               marks={marks}
+              endMatch={endMatchSound}
+            />
+            {/* L'ÉCRAN DE FIN DE MATCH, dérivé de la position de lecture (D-B5) : il apparaît
+                quand la lecture atteint la borne de fin et disparaît dès qu'on remonte la
+                frise. Il laisse passer les clics — la frise est dessous. */}
+            <ReplayVictoryOverlay
+              doc={data}
+              scoreboard={scoreboard}
+              xuidMeta={xuidMeta}
+              outcomeCode={matchView?.header.outcome_code}
+              outcomeLabel={matchView?.header.outcome_label}
+              playWindow={playWindow}
+              frame={frame}
+              titleSlug={params.titleSlug}
+              locale={locale}
             />
           </section>
           {/* FICHES AU-DESSUS, FIL EN DESSOUS, même largeur (demande du 2026-08-24) : un
@@ -261,6 +302,7 @@ function ReplayPage() {
                   medals={medalEvents}
                   t0Ms={t0Ms}
                   nowMs={nowMs}
+                  playWindow={playWindow}
                   doc={data}
                   scoreboard={scoreboard}
                   xuidMeta={xuidMeta}

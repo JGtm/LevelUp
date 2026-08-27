@@ -137,29 +137,12 @@ export interface FilterMatchIdsResponse {
 // Setup / Auth (Slice 1)
 // ---------------------------------------------------------------------------
 
-export interface SetupAuthInfo {
-  has_client_id: boolean
-  has_refresh_token: boolean
-  has_msal_cache: boolean
-  preferred_method: 'refresh_token' | 'device_code' | 'unknown'
-}
-
 export interface SetupPlayerInfo {
   has_any_profile: boolean
   default_player_slug: string | null
 }
 
 export type SetupNextStep = 'choose_mode' | 'auth' | 'player' | 'initial_sync' | 'smoke_test' | 'done'
-
-// @deprecated sprint 29 — GET /setup/status est un artefact mort (absent FastAPI + Go).
-// Conserver temporairement pour ne pas casser les imports existants.
-// À supprimer avec useSetupStatus() au Sprint 32.
-export interface SetupStatusResponse {
-  needs_setup: boolean
-  auth: SetupAuthInfo
-  player: SetupPlayerInfo
-  next_blocking_step: SetupNextStep
-}
 
 export interface DeviceFlowStartResponse {
   attempt_id: string
@@ -2736,6 +2719,15 @@ export type ReplayScoreCoverage = components['schemas']['ScoreCoverage']
 // trajectoire serait republier celle du joueur.
 export type ReplayFlagCarry = components['schemas']['FlagCarry']
 export type ReplayFlagSpan = components['schemas']['FlagSpan']
+// LES OBJETS D'OBJECTIF LIBRES (schéma 21) : où se trouve l'objet quand PERSONNE ne le porte.
+// Une entrée par VIE — l'objet apparaît, réplique sa position, puis se tait parce qu'on l'a
+// ramassé ou qu'il s'est immobilisé. `family` dit ce qu'il est (`ball` aujourd'hui) et `en`/`fr`
+// le nomment ; `pts` est sa trajectoire réelle, jamais interpolée.
+//
+// UN TROU ENTRE DEUX VIES EST UN PORTAGE, MAIS LE DOCUMENT NE DIT PAS PAR QUI : l'oracle du
+// porteur a été mesuré et réfuté (phase D4). Ne pas en déduire un porteur côté client.
+export type ReplayObjectiveObjectLife = components['schemas']['ObjectiveObjectLife']
+export type ReplayObjectiveObjectPoint = components['schemas']['ObjectiveObjectPoint']
 // L'ÉTAT DE CHAQUE ZONE du mode (schéma 16) : qui la tient, depuis quand, et jusqu'à quel niveau
 // de jauge elle a été contestée. `zoneRef` est un INDEX dans `mapObjectives.zones` — le calque
 // statique servi avec le document —, jamais un nom : la lettre A/B/C affichée en jeu n'existe

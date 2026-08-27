@@ -128,7 +128,39 @@ match   = ["King of the Hill", "KOTH"]
 roles   = ["hill"]
 neutral = true
 
-[[modes]]
+# TOTAL CONTROL — ENTREE RETIREE LE 2026-08-27 (decision utilisateur, option (a)).
+#
+# CE QUI EST RETIRE ET CE QUE CELA FAIT : le mode ne declare plus aucun role, donc le rejeu ne
+# sert plus le VIVIER de 13 a 18 formes par carte. Un match de Total Control n'affiche plus
+# aucune zone — une ABSENCE PROPRE, choisie, plutot qu'un vivier que le joueur lisait comme
+# « voici les zones du match » alors que le mode n'en active que trois.
+#
+# LE MOTIF, ET IL EST MESURE. L'etat vivant des zones de Total Control est `[!]` DEFINITIF pour
+# la v7.5 : le canal du designateur (tag 5 de `ti=13`), qui donne la colline de KOTH, ne survit
+# pas aux films BTB. Trois mesures independantes, chacune avec son protocole ecrit d'avance
+# (.ai/V7.5/PLAN_OBJECTIFS_ETAT_VIVANT_2026-08.md, phases D3, D3-bis, D3-ter) :
+#
+#   ATTRIBUTION    38,2 % sur le corpus, seuil 80 % (D3).
+#   LARGEURS       REFUTEES a l'unite pres : trois decoupages MPP (9/5, 8/3, 12/7) rendent des
+#                  releves identiques — `ti=13` n'en depend pas (D3-ter verrou 1).
+#   CARDINAL       0,0 a 27,8 % du temps a exactement 3 zones designees, seuil 80 % — alors que
+#                  le MEME instrument rend cardinal 1 pendant 98,4 a 100 % du temps sur les
+#                  quatre films KOTH, ou il y a bien UNE colline (D3-ter verrou 2, controle
+#                  positif).
+#
+# LE VERROU A UN CHIFFRE : sur les films BTB, le designateur rend jusqu'a 77 designations
+# SIMULTANEES sur un mode a trois zones, et ce maximum CROIT avec la taille du film. C'est un
+# defaut d'ANCRAGE du balayage `ti=13` sur les gros payloads, pas un defaut de canal.
+#
+# CONDITION DE REPRISE : un ancrage plus fort — une bande de slots restreinte a l'objet de mode
+# plutot que tous les slots `ti=13` des images-cles. C'est un CHANTIER DE DECODAGE, pas un
+# ajustement de configuration : ne pas remettre cette entree sans lui.
+#
+# L'ANCIENNE ENTREE EST CONSERVEE CI-DESSOUS EN COMMENTAIRE, avec son analyse d'origine, parce
+# que le jour de la reprise c'est exactement ce qu'il faudra relire — et que la reecrire de
+# memoire la deformerait.
+#
+# [[modes]]
 # Total Control (lot catalogue, 2026-08-25). Le jeton attrape les pair_name
 # "Arena:Total Control on X" / "BTB:Total Control on X" une fois normalises.
 #
@@ -152,6 +184,6 @@ neutral = true
 # MESURE l'exige en plus de la symetrie : 296 des 302 zones sont neutres dans le fichier, mais
 # 3 sont en equipe 0, 2 en equipe 2 et UNE en equipe 7 — une equipe 7 sur un mode a deux camps
 # etablit que ce champ ne porte rien pour ce role.
-match   = ["Total Control"]
-roles   = ["totalcontrol_zone"]
-neutral = true
+# match   = ["Total Control"]
+# roles   = ["totalcontrol_zone"]
+# neutral = true
