@@ -263,6 +263,8 @@ func batchComputePerformanceScores(ctx context.Context, playerDB, sharedDB *sql.
 		return 0, err
 	}
 	if len(allMatches) == 0 {
+		// Univers vide : toute note stockée est orpheline par construction (D-E).
+		cleanupAllScoredAsOrphans(ctx, playerDB, xuid, nil)
 		return 0, nil
 	}
 
@@ -285,6 +287,8 @@ func batchComputePerformanceScores(ctx context.Context, playerDB, sharedDB *sql.
 		slog.DebugContext(ctx, "batchComputePerformanceScores: matchs exclus filtrés",
 			"xuid", xuid, "filtered", before-len(allMatches), "remaining", len(allMatches))
 		if len(allMatches) == 0 {
+			// Tous les matchs exclus : idem, plus rien ne qualifie (D-E).
+			cleanupAllScoredAsOrphans(ctx, playerDB, xuid, excluded)
 			return 0, nil
 		}
 	}
@@ -296,46 +300,13 @@ func batchComputePerformanceScores(ctx context.Context, playerDB, sharedDB *sql.
 		}
 	}
 
-	// Charger les matchs qui ont déjà un score ET la chaîne stockée (ignoré en mode force).
-	// On skippe uniquement si la chaîne déjà stockée correspond à la chaîne actuelle calculée.
-	// Si la classification a changé rétroactivement (cas rare), on recompute.
-	existingChain := make(map[string]string)
-	if !force {
-		existRows, queryErr := playerDB.QueryContext(ctx,
-			`SELECT match_id, performance_chain
-			   FROM player_match_enrichment_latest
-			  WHERE performance_score IS NOT NULL`)
-		if queryErr != nil {
-			// Non bloquant : on continue en recompute-tout, mais on signale.
-			slog.WarnContext(ctx, "batchComputePerformanceScores: query existing scores failed — fallback recompute-all",
-				"xuid", xuid, "err", queryErr)
-		} else {
-			defer existRows.Close()
-			scanErrors := 0
-			for existRows.Next() {
-				var mid string
-				var chain sql.NullString
-				if err := existRows.Scan(&mid, &chain); err != nil {
-					scanErrors++
-					continue
-				}
-				if chain.Valid {
-					existingChain[mid] = chain.String
-				} else {
-					// Score legacy sans chaîne stockée → recompute pour peupler.
-					existingChain[mid] = ""
-				}
-			}
-			if err := existRows.Err(); err != nil {
-				slog.WarnContext(ctx, "batchComputePerformanceScores: existing rows iteration error",
-					"xuid", xuid, "err", err)
-			}
-			if scanErrors > 0 {
-				slog.WarnContext(ctx, "batchComputePerformanceScores: scan errors on existing scores",
-					"xuid", xuid, "scan_errors", scanErrors)
-			}
-		}
-	}
+	// Charger les matchs qui ont déjà un score ET la chaîne stockée.
+	// En mode !force, on skippe si la chaîne stockée correspond à la chaîne
+	// actuelle calculée ; si la classification a changé rétroactivement (cas rare),
+	// on recompute. Le chargement a lieu dans les DEUX modes (D-E) : la passe de
+	// nettoyage des notes orphelines a besoin de l'ensemble des notes stockées à
+	// chaque run, force compris.
+	existingChain := loadScoredPerfChains(ctx, playerDB, xuid)
 
 	const windowSize = 50
 
@@ -362,6 +333,10 @@ func batchComputePerformanceScores(ctx context.Context, playerDB, sharedDB *sql.
 		skippedExist   int // matchs déjà scorés avec la bonne chaîne (mode !force)
 		updatedByChain = make(map[string]int)
 		totalByChain   = make(map[string]int)
+		// Ensembles de la passe de nettoyage (D-D/D-E) : les matchs qui qualifient
+		// au terme de ce run, et ceux écartés par le seuil de leur chaîne (cause).
+		qualified    = make(map[string]struct{})
+		belowMatches = make(map[string]struct{})
 	)
 
 	for _, match := range allMatches {
@@ -369,20 +344,29 @@ func batchComputePerformanceScores(ctx context.Context, playerDB, sharedDB *sql.
 		totalByChain[chain]++
 		history := chainHistory[chain]
 
+		// Le SEUIL prime sur le skip : un match sous le seuil de sa chaîne ne
+		// qualifie plus, même s'il porte déjà une note dans la BONNE chaîne — la
+		// population de référence a pu rétrécir (exclusion, DNF, reclassification
+		// de famille). Il tombe alors dans `belowMatches` et sa note stockée est
+		// NULLée par la passe de nettoyage (D-D).
+		belowThreshold := len(history) < MinMatchesPerChainForRelative
+
 		// Skip si déjà calculé pour la MÊME chaîne (mode !force).
 		shouldSkip := false
-		if !force {
+		if !force && !belowThreshold {
 			if stored, ok := existingChain[match.MatchID]; ok && stored == chain {
 				shouldSkip = true
 				skippedExist++
+				qualified[match.MatchID] = struct{}{}
 			}
 		}
 
 		switch {
 		case shouldSkip:
-			// nothing to do
-		case len(history) < MinMatchesPerChainForRelative:
+			// nothing to do : la note stockée est à jour (chaîne inchangée).
+		case belowThreshold:
 			skippedBelow++
+			belowMatches[match.MatchID] = struct{}{}
 		default:
 			// On ne calcule un score qu'après MinMatchesPerChainForRelative matchs dans la chaîne.
 			start := len(history) - windowSize
@@ -398,6 +382,7 @@ func batchComputePerformanceScores(ctx context.Context, playerDB, sharedDB *sql.
 				pendingUpdates = append(pendingUpdates, perfUpdate{
 					MatchID: match.MatchID, Score: *score, Chain: chain,
 				})
+				qualified[match.MatchID] = struct{}{}
 				updated++
 				updatedByChain[chain]++
 				chainHistory[chain] = append(history, match)
@@ -430,6 +415,11 @@ func batchComputePerformanceScores(ctx context.Context, playerDB, sharedDB *sql.
 		}
 	}
 
+	// Passe auto-nettoyante (D-E) — cf. runPerfCleanupPass.
+	cleaned := runPerfCleanupPass(ctx, playerDB, xuid, execErrors, perfCleanupSets{
+		scored: existingChain, qualified: qualified, below: belowMatches, excluded: excluded,
+	})
+
 	// Résumé final : observabilité de la distribution réelle.
 	if updated > 0 || execErrors > 0 || len(totalByChain) > 0 {
 		slog.InfoContext(ctx, "batchComputePerformanceScores: batch terminé",
@@ -441,6 +431,7 @@ func batchComputePerformanceScores(ctx context.Context, playerDB, sharedDB *sql.
 			"total_by_chain", totalByChain,
 			"skipped_below_threshold", skippedBelow,
 			"skipped_existing", skippedExist,
+			"cleaned", cleaned,
 			"exec_errors", execErrors,
 			"min_per_chain_threshold", MinMatchesPerChainForRelative)
 	}
