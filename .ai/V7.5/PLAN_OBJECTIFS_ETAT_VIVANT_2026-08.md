@@ -2239,3 +2239,64 @@ decode, base en LECTURE SEULE pour le seul oracle.
 - [x] D6.3 Verdict contre l'oracle API : **NON TENU** (2,6 a 51,7 % contre 80 % ; principal 1/4
       contre 3/4). Le portage n'entre PAS dans `objectiveObjects`, aucun rendu de porteur, aucun
       bump. Le calque du crane LIBRE, lui, reste tel qu'il a ete livre en D5-bis.
+
+### D7 — SONDE DIAGNOSTIQUE : pourquoi la moitie des ramassages est invisible
+
+> **PROTOCOLE ECRIT ET COMMITE AVANT LA MESURE.** Aucun chiffre de resultat. Arbitrage
+> superviseur du 2026-08-27 : UNE sonde bornee, pas une cinquieme campagne. Elle NE PROPOSE PAS
+> de reconstruction — elle NOMME une cause. L'oracle API et le seuil de 80 % restent le juge, et
+> ils ne sont pas rejoues ici.
+>
+> **CORPUS : les DEUX films au pont sain, `24dbb67d` et `d9781168`.** `51ebbc0f` est exclu
+> d'office (9 slots nommes sur 84 — c'est le defaut de precondition que D6 a nomme), et
+> `43716616` n'entre pas : deux films suffisent a departager trois signatures, et la sonde est
+> bornee par mandat.
+
+**CE QUI EST DEJA ETABLI ET QU'ON NE REMESURE PAS** : la primitive de proximite discrimine (q25 a
+0,20-0,43 m contre q75 a 5,5-7,9 m), la mort fait lacher (22/24 = 91,7 %), et la reconstruction
+D6 rend environ la moitie du temps de portage de l'API. **La question est UNIQUEMENT : ou passe
+l'autre moitie ?**
+
+**TROIS PISTES, TROIS SIGNATURES ECRITES D'AVANCE. Chacune dit ce qui la CONFIRMERAIT et ce qui
+l'ECARTERAIT — sans quoi la sonde trouverait ce qu'elle cherche.**
+
+- [ ] **S1 — LA DERNIERE POSITION EST PERIMEE (ramassage en mouvement).** Si l'objet roule ou
+      vole quand on le ramasse, sa derniere position REPLIQUEE est en retard de quelques images
+      sur le lieu reel du ramassage, et chercher le joueur le plus proche a ce point-la vise a
+      cote.
+      **Mesure** : pour chaque trou, la distance minimale a un joueur nomme non plus au seul
+      instant `t1`, mais sur une FENETRE `t1 ± W` avec **W = 0, 1, 2, 5, 10 images**. Publiee
+      aussi : la VITESSE de l'objet sur ses trois dernieres images.
+      **CONFIRME SI** la part de trous ayant un joueur sous 1,5 m monte NETTEMENT avec `W` —
+      convention ecrite d'avance : **+15 points ou plus entre W = 0 et W = 5**. **ECARTEE SI**
+      elle bouge de moins de 5 points : le joueur n'est alors pas « un peu plus loin dans le
+      temps », il n'est nulle part.
+- [ ] **S2 — DEUX PORTAGES FUSIONNES EN UN.** Si l'objet est relache puis repris trop vite pour
+      emettre une vie libre lisible, deux portages n'en font qu'un, et la moitie des ramassages
+      n'existe simplement pas dans la chaine des vies.
+      **Mesure** : la duree des portages reconstruits confrontee a
+      `longest_time_as_skull_carrier_seconds` de l'API pour CE film — un portage reconstruit plus
+      long que le plus long portage que l'API connaisse est necessairement une fusion. Publiees
+      aussi : la distribution des durees de vie libre et le compte de vies a UN seul point.
+      **CONFIRME SI** au moins un portage reconstruit depasse le maximum de l'API, ou si la part
+      des vies libres de moins d'une image est notable (**>= 20 %**). **ECARTEE SI** aucun
+      portage ne depasse le maximum API et que les vies courtes sont marginales.
+- [ ] **S3 — DES VIES NAISSENT SANS ETRE APPARIEES.** Si des vies libres apparaissent loin du
+      socle, loin d'un joueur et loin du silence precedent, la chaine « une vie, un trou, une
+      vie » est rompue et des trous entiers sont mal bornes.
+      **Mesure** : classer la NAISSANCE de chaque vie libre — au socle (<= 3 m), aux pieds d'un
+      joueur (<= 1,5 m), au lieu du silence precedent (<= 3 m), ou INEXPLIQUEE.
+      **CONFIRME SI** la part de naissances inexpliquees est **>= 30 %**. **ECARTEE SI** elle
+      est **<= 10 %**.
+
+**LES TROIS NE S'EXCLUENT PAS**, et le protocole ne les force pas a le faire : la sonde publie
+les trois signatures, et le CR dit laquelle domine — ou dit qu'aucune ne domine, ce qui serait un
+resultat en soi.
+
+**CE QUE LA SONDE NE FERA PAS.** Elle ne modifie AUCUN seuil de D6, ne rejoue AUCUN verdict, ne
+propose AUCUNE reconstruction et ne publie RIEN dans l'artefact. Le mandat est de rendre la cause,
+pas de la corriger dans la foulee — et la decision finale (nouvelle reconstruction, ou `[!]` avec
+les acquis consignes) revient au superviseur, l'oracle API et le seuil de 80 % restant le juge.
+
+**EXECUTION** : un film par processus, sentinelle memoire armee dans le processus qui decode,
+oracle API FIGE en entree (aucune base ouverte par la sonde).
