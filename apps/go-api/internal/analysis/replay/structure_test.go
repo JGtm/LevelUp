@@ -325,8 +325,27 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   quand on rapproche les deux lectures (88,06 % à 0,10 s contre 93,19 % à 2 s), ce qu'une
 	//   consommation réelle entre les deux mesures ferait à l'envers. `Inventory.Am` reste donc
 	//   alimenté par les seules images-clés. Détail : .ai/V7.5/replay2d/LOT4_SUIVI_DELTA_2026-08-25.md.
-	if SchemaVersion != 20 {
-		t.Fatalf("SchemaVersion = %d, attendu 20 : incrémenter exige une raison écrite ci-dessus "+
+	//   v20 -> v21 (2026-08-27, phase D5 du plan des objectifs vivants) : LE PROPRIÉTAIRE DE LA
+	//   COLLINE. Sur la voie du désignateur (KOTH), une période de colline se SUBDIVISE aux
+	//   changements de main et chaque morceau porte son camp dans `ZoneSpan.Owner`.
+	//   AUCUNE CLÉ NE BOUGE, ET C'EST LE CAS LE PLUS DANGEREUX : le champ `Owner` existait déjà,
+	//   seul son CONTENU change. Un artefact v20 est donc STRUCTURELLEMENT valide et
+	//   SÉMANTIQUEMENT périmé — il porte un `Owner` de colline toujours nul. Sans ce bump, la
+	//   reprise du backfill (qui se fait par SchemaVersion) ne le rattraperait jamais et aucun
+	//   rejeu déjà cuit ne montrerait la possession. C'est exactement pourquoi la règle du dépôt
+	//   dit « un artefact vN doit se lire à re-cuire, pas à jour ».
+	//   NIVEAU DE PREUVE : 88-89 % d'accord contre un témoin à 56 %, canal jamais réfuté, élu 4
+	//   films sur 4, erreur concentrée aux BASCULES. Accepté par décision utilisateur du
+	//   2026-08-26 (précédent : la garde de l'ouvrier à 88 %).
+	//   CE QUI N'EST PAS PUBLIÉ, ET POURQUOI : le PORTAGE du crâne d'Oddball. Son identité est
+	//   établie (`0x0017592C`, élu 4 films sur 4, né à 0,0 m du socle, à 3-6 ms d'un événement
+	//   `th=10`) et elle entre au manifeste du titre — mais l'oracle du portage a été REFUSÉ par
+	//   sa propre mesure : 40,6 à 66,7 % de trous à porteur unique contre un seuil de 90 %, et un
+	//   témoin placé HORS trou qui rend le même signal dans 66,7 et 71,4 % des cas. Les ZONES DE
+	//   TOTAL CONTROL non plus : le désignateur y rend jusqu'à 77 désignations simultanées sur un
+	//   mode à trois zones. Détail : .ai/V7.5/PLAN_OBJECTIFS_ETAT_VIVANT_2026-08.md.
+	if SchemaVersion != 21 {
+		t.Fatalf("SchemaVersion = %d, attendu 21 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

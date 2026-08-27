@@ -67,7 +67,7 @@ func TestUnObjetDObjectifNeFaitJamaisUnSocle(t *testing.T) {
 
 	// LA REGLE — le meme identifiant declare DRAPEAU par le titre : aucun socle.
 	pads, picks, cov := buildWeaponPads(PadScans{Weapons: scan}, pos, gwTestClock(),
-		padCatalogs{FlagObjects: map[uint32]Label{fam: {En: "Flag", Fr: "Drapeau"}}})
+		padCatalogs{ObjectiveObjects: map[uint32]Label{fam: {En: "Flag", Fr: "Drapeau"}}})
 	for _, p := range pads {
 		if p.Weapon == formatWeaponFamily(fam) {
 			t.Errorf("un socle porte la famille DRAPEAU %q — un drapeau n'est pas un socle d'arme",
@@ -91,15 +91,15 @@ func TestUnObjetDObjectifNeFaitJamaisUnSocle(t *testing.T) {
 // l'identifiant qu'il declare ne peut pas devenir un socle.
 func TestLeDrapeauDuManifesteNeFaitJamaisUnSocle(t *testing.T) {
 	cat := goldenCatalog(t)
-	if len(cat.FlagObjects) == 0 {
+	if len(cat.ObjectiveObjects) == 0 {
 		t.Fatal("le manifeste du titre ne declare AUCUN objet d'objectif de famille drapeau — " +
 			"la chaine des socles ne peut alors rien reconnaitre (cf. replay_labels.toml, " +
 			"[[objective_objects]])")
 	}
-	for id := range cat.FlagObjects {
+	for id := range cat.ObjectiveObjects {
 		scan, pos := gwFlagScan(id)
 		pads, _, cov := buildWeaponPads(PadScans{Weapons: scan}, pos, gwTestClock(),
-			padCatalogs{FlagObjects: cat.FlagObjects})
+			padCatalogs{ObjectiveObjects: cat.ObjectiveObjects})
 		if len(pads) != 0 {
 			t.Errorf("l'identifiant de drapeau %s du manifeste a produit %d socle(s)",
 				formatWeaponFamily(id), len(pads))
@@ -111,21 +111,30 @@ func TestLeDrapeauDuManifesteNeFaitJamaisUnSocle(t *testing.T) {
 	}
 }
 
-// TestLeManifesteNommeSonDrapeauDansLesDeuxLangues : le nom vit dans le TOML, jamais en Go.
-func TestLeManifesteNommeSonDrapeauDansLesDeuxLangues(t *testing.T) {
+// TestLeManifesteNommeSesObjetsDObjectifDansLesDeuxLangues : le nom vit dans le TOML, jamais en
+// Go — et CHAQUE famille portee doit avoir au moins un representant nomme.
+//
+// LES DEUX FAMILLES SONT EXIGEES SEPAREMENT (2026-08-27). Compter globalement laisserait passer
+// la disparition d'une famille entiere tant que l'autre survit : le jour ou l'entree du crane
+// serait retiree du manifeste, l'exclusion des socles d'armes redeviendrait ACCIDENTELLE sur
+// Oddball sans qu'aucun test ne l'annonce — exactement le defaut que ce fichier existe pour
+// empecher sur le drapeau.
+func TestLeManifesteNommeSesObjetsDObjectifDansLesDeuxLangues(t *testing.T) {
 	labels := goldenReplayLabels(t)
-	nb := 0
+	attendues := []string{mappings.ObjectiveFamilyFlag, mappings.ObjectiveFamilyBall}
+	nb := map[string]int{}
 	for id, o := range labels.ObjectiveObjects() {
-		if o.Family != mappings.ObjectiveFamilyFlag {
-			continue
-		}
-		nb++
+		nb[o.Family]++
 		if o.Label.En == "" || o.Label.Fr == "" {
-			t.Errorf("objet d'objectif %s nomme dans une seule langue (en=%q fr=%q)",
-				formatWeaponFamily(id), o.Label.En, o.Label.Fr)
+			t.Errorf("objet d'objectif %s (famille %q) nomme dans une seule langue (en=%q fr=%q)",
+				formatWeaponFamily(id), o.Family, o.Label.En, o.Label.Fr)
 		}
 	}
-	if nb == 0 {
-		t.Fatal("aucun objet d'objectif de famille drapeau au manifeste du titre")
+	for _, f := range attendues {
+		if nb[f] == 0 {
+			t.Errorf("aucun objet d'objectif de famille %q au manifeste du titre — la chaine des "+
+				"socles ne reconnaitrait plus cet objet, elle l'ecarterait par accident "+
+				"(cf. replay_labels.toml, [[objective_objects]])", f)
+		}
 	}
 }
