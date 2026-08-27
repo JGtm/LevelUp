@@ -2112,9 +2112,9 @@ ne le leur demande pas : leur repartition PAR JOUEUR sera publiee a cote du verd
 diagnostic, pour que la question se referme ou se pose proprement plus tard. Choisir un oracle
 qu'on ne comprend pas quand il en existe un qu'on comprend serait la faute exacte de D4.
 
-- [ ] D6.1 **RECONSTRUCTION** par proximite aux bornes des vies libres.
-- [ ] D6.2 **CE QUE FAIT LA MORT** : mesure, pas hypothese.
-- [ ] D6.3 **VERDICT** contre l'oracle API, avec temoin.
+- [x] D6.1 **RECONSTRUCTION** par proximite aux bornes des vies libres.
+- [x] D6.2 **CE QUE FAIT LA MORT** : mesure, pas hypothese.
+- [x] D6.3 **VERDICT** contre l'oracle API, avec temoin.
 
 **LA RECONSTRUCTION, RENDUE OPERATOIRE.** Les vies libres du crane sont deja publiees (schema
 21). Entre la fin d'une vie (`t1`, DERNIERE POSITION REPLIQUEE — precise a l'image, pas le
@@ -2176,3 +2176,66 @@ son porteur, patron du drapeau porte.
 
 **EXECUTION** : les 4 films D4, un par processus, sentinelle memoire armee dans le processus qui
 decode, base en LECTURE SEULE pour le seul oracle.
+
+- 2026-08-27 — **D6-PORTAGE : GATE NON TENU. Le portage n'est PAS publie.** Protocole commite
+  avant la mesure (`d7dd3c19c`). Quatre films, un par processus, pic 0,06 a 0,13 Gio. Sorties
+  figees : `registre_film/D6_portage_proximite.log` et `D6_oracle_api_portage.json`.
+
+  | film | trous | PORTE | ambigu | retour | inexplique | reconstruit | API | **recouvrement** | temoin | principal |
+  |---|---|---|---|---|---|---|---|---|---|---|
+  | `24dbb67d` | 22 | 7 | 3 | 2 | 10 | 190 s | 331 s | **51,7 %** | 11,3 % | manque |
+  | `43716616` | 15 | 7 | 1 | 1 | 6 | 56 s | 218 s | **25,9 %** | 17,1 % | manque |
+  | `51ebbc0f` | 20 | 3 | 0 | 2 | 15 | 7 s | 266 s | **2,6 %** | 4,1 % | manque |
+  | `d9781168` | 46 | 18 | 4 | 8 | 16 | 206 s | 404 s | **48,9 %** | 27,8 % | **identifie** |
+
+  **Seuil : recouvrement >= 80 % ET porteur principal sur >= 3 films sur 4. Mesure : 2,6 a
+  51,7 %, principal sur 1 film sur 4. NON TENU, deux fois.** Aucune publication, comme ecrit.
+
+  **CE QUI EST POSITIF, ET QUI NE DOIT PAS DISPARAITRE DANS LE NEGATIF :**
+
+  1. **LA PRIMITIVE DE PROXIMITE FONCTIONNE, et la distribution le montre au lieu de l'affirmer.**
+     Les distances au plus proche a l'instant du trou se separent nettement en DEUX populations :
+     q25 entre **0,20 et 0,43 m** (quelqu'un est exactement la) contre q75 entre **5,5 et 7,9 m**
+     (personne). Mediane **0,77 m** sur `d9781168` — la valeur meme que la doctrine du 12/08
+     citait. **Le seuil de 1,5 m ne se regle pas, il se constate** : n'importe quelle valeur entre
+     1 et 3 m rendrait le meme classement. Le seuil n'est donc PAS la cause de l'echec.
+  2. **CE QUE FAIT LA MORT EST ETABLI, ET C'EST UN OUI FRANC : 22 sur 24 = 91,7 %.** Un portage
+     ferme par la mort de son porteur est suivi, dans les 3 s, d'une naissance de vie libre a
+     moins de 3 m du lieu de la mort — 5/5, 7/7, 10/10, et 1/2 sur le film au pont casse. **La
+     regle « mourir, c'est lacher » n'est plus une hypothese de protocole : elle est mesuree.**
+     C'est acquis quel que soit le sort du reste.
+  3. **LE TEMOIN SE COMPORTE COMME IL DOIT sur les trois films au pont sain** : 51,7 contre 11,3
+     (x4,6), 25,9 contre 17,1 (x1,5), 48,9 contre 27,8 (x1,8). La proximite PORTE de
+     l'information — elle n'en porte simplement pas assez.
+
+  **POURQUOI LE GATE TOMBE, NOMME SUR PIECES.** Deux causes distinctes, et il faut les separer.
+
+  **(a) UN FILM EST HORS D'ETAT, ET CE N'EST PAS LA PROXIMITE.** `51ebbc0f` : le pont ne nomme
+  que **9 slots de bipede sur 84**, contre 87/97, 62/72 et 140/160 ailleurs. Sans joueurs nommes,
+  aucune proximite ne peut designer qui que ce soit — d'ou 2,6 %, et le seul film ou le temoin
+  BAT le signal (4,1 contre 2,6). Ce film aurait du sortir par une precondition de pont que mon
+  protocole n'a pas ecrite : je l'ai bornee a « au moins deux slots nommes », ce qui est
+  beaucoup trop laxiste. **Defaut de mon protocole, pas de la donnee.**
+
+  **(b) LA RECONSTRUCTION SOUS-ATTRIBUE, MASSIVEMENT ET SYSTEMATIQUEMENT.** Sur les trois films
+  sains elle rend 190/331, 56/218 et 206/404 secondes — environ la MOITIE. La classe
+  `inexplique` (personne a moins de 1,5 m, et la vie suivante ne nait pas au socle) pese 10/22,
+  6/15 et 16/46 des trous. Et le detail par joueur est sans appel : sur `43716616`, deux gros
+  porteurs de l'oracle (94 s et 62 s) recoivent 3 s et 0 s. **Ce ne sont pas des erreurs
+  d'attribution, ce sont des portages entiers que la chaine ne voit pas commencer.**
+
+  **CE QUE JE NE CONCLUS PAS.** Je n'ecris pas « la voie de la proximite est refutee ». Les deux
+  positifs ci-dessus disent le contraire : la primitive discrimine, et la mort est comprise. Ce
+  qui est refute, c'est **cette reconstruction-ci**, dont le point d'entree — « la derniere
+  position repliquee est le lieu du ramassage » — rate la moitie des ramassages. Pourquoi, je ne
+  l'ai pas mesure : il faudrait instrumenter ce que fait l'objet dans les quelques images qui
+  precedent son silence, et ce serait un protocole neuf.
+
+  **STOP AU VERDICT, comme mandate.** Pas de cinquieme oracle, pas de reglage du seuil apres
+  coup — et surtout pas de publication d'un portage dont la moitie manque.
+
+- [x] D6.1 Reconstruction par proximite : faite, sous-attribution massive, `[!]`.
+- [x] D6.2 Ce que fait la mort : **MESURE ET ACQUIS — 22/24 = 91,7 %**.
+- [x] D6.3 Verdict contre l'oracle API : **NON TENU** (2,6 a 51,7 % contre 80 % ; principal 1/4
+      contre 3/4). Le portage n'entre PAS dans `objectiveObjects`, aucun rendu de porteur, aucun
+      bump. Le calque du crane LIBRE, lui, reste tel qu'il a ete livre en D5-bis.
