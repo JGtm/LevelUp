@@ -73953,3 +73953,58 @@ web complete 4963 verts / 14 skips, ESLint 0, hooks pre-push verts (vet CGO, gov
 ratchets, shared-social-gate). Push : `feat/replay-retours-0827` publie, `origin/feat/v75`
 avance en fast-forward `5ab8a448d..0f666d499`. Restent a l'utilisateur : verifications
 ecran (gates [!] du plan) et gate d'ecoute C-5.
+
+## [2026-08-27] Diagnostic — Composition stricte par defaut (Escouade) + calibration note de perf modes objectifs
+
+**Statut** : Complete (diagnostic + recommandations + plan ; ZERO modif de code, a la demande).
+
+**Point 1 (Composition stricte)** : la case vit dans la barre de filtres de SquadLayout
+(defaut OFF, persistance localStorage par joueur, contrat backend inchangeable
+filter_exact_composition defaut off). Flip = init `stored===null -> true` + reecriture des
+textes i18n FR/EN (actuellement inversifs) + fallback queries.ts + tests. Lot express.
+
+**Point 2 (note de perf)** : mecanisme etabli — 6 chaines (GetPerformanceChain), fenetre 50,
+seuil 10/chaine, 13 metriques SANS aucune metrique objectif ; isRanked court-circuite la
+famille. Corpus (diag_q read-only, serveur arrete, 4 joueurs, 2948 participations) :
+ranked minuscule (JGtm 8, Choco 8, Madina 34, Daemon 0) ; ecart de famille porte par le
+score personnel/min (+28 % en objectif, combat quasi plat) MAIS pspm ~95 % combat (awards
+JGtm : kills+assists 1,52 M pts vs objective 85 k) -> il faut isoler la part objectif ;
+personal_score_awards (categorie `objective` explicite, 1101/1120 matchs JGtm) = LA source ;
+sous-modes intra-famille : ecarts +-14 % et volumes morts (Oddball 19, KOTH 68) -> PAS de
+chaines par mode ni par dominante. Fuite « non termines » : le batch exclut DEJA outcome=4,
+mais 33 notes DNF residuelles + 45 notes orphelines sous-seuil (ranked/btb legacy) trainent
+dans player_match_enrichment ; l exclusion manuelle ne nettoie pas la note ; matchs
+sous seuil gardent chaine NULL. Decouverte : buildFormTab (onglet API `form`) sans
+consommateur UI (confirme user) — candidat code mort, a statuer separement.
+
+**Conclusion / prochaine etape** : recommandations remises (scission ranked_slayer/
+ranked_objectif via helper de familles partage + garde-rail ; metrique ospm par chaine
+objectif avec poids par famille, morts/degats intouches ; purge one-shot + batch qui NULL
+les non-qualifies + garde-rail integration ; BTB non scinde, au registre des reports).
+Plan en 5 lots (simulation offline d abord) propose pour chantier isole post-v7.5
+(branche feat/perf-note-objectifs) ; point 1 peut rider feat/v75. Attente validation user.
+
+## [2026-08-27] CI feat/v75 — deux issues golangci rattrapees apres la fusion
+
+**Statut** : Complete
+
+**Contexte** : le push de f127dbd27 a rendu le job « Go Lint (golangci-lint) » rouge. Les deux
+issues NE VIENNENT PAS de mes commits — elles arrivent avec les 7 commits fusionnes depuis
+origin (lot Oddball et lot filmproc). Le ratchet CI etant `--new-from-merge-base=origin/main`,
+c est la tete de branche qui les porte, donc mon push qui les revele.
+
+**Pourquoi le gate local ne les avait pas vues** : le pre-commit ne lance PAS golangci-lint
+(piege deja consigne). Rejoue ici avec la commande EXACTE de la CI, qui rend 0 issue apres
+correction.
+
+**Les deux corrections** :
+- `filmproc/runner.go:239` (errcheck) — l erreur d ecriture du relais est desormais ECARTEE
+  EXPLICITEMENT, avec la raison : cette sortie EST le canal de rapport du parent, donc un log
+  de l incident partirait dans le meme tube casse ; et s arreter la bloquerait l enfant sur son
+  ecriture suivante, ce qui serait pire que la ligne perdue ;
+- `analysis/replay/build_objective_objects.go:53` (goconst, « ball » x7) — constante
+  `familleCrane` posee a cote de la table qui l emploie, et les 6 litteraux des tests du paquet
+  y sont ramenes. Le litteral disperse aurait ete le premier a diverger si le manifeste
+  renommait la famille.
+
+**Prochaine etape** : verifier la CI au niveau JOB sur le nouveau commit.
