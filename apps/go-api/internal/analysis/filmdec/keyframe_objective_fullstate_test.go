@@ -440,3 +440,223 @@ func TestTI11GapProfile(t *testing.T) {
 		kf35LogTopInt(t, "ecart signe want-EndBit (bits), + = sous-lecture", gapHist, 10)
 	}
 }
+
+// ti11WinningCadre est la variante de cadre qui LANDE (C5 : en-tete 108 + mots de taille + etat
+// par defaut + LevelShift), etablie par TestTI11CadreLanding (gate T1 tenu). T2 s'appuie dessus.
+var ti11WinningCadre = KeyframeFullStateOpt{HeaderBits: 108, SizeWords: true, DefaultState: true, LevelShift: true}
+
+// TestTI11B1AutoCoherence — GATE T2.1 (B1) : les GlobalID lus (i3 object-reference, i16-31
+// sous-objectifs) sont-ils des ENTITES STABLES DANS LE TEMPS ? On ne confronte a aucun oracle
+// externe : c'est une auto-coherence (gratuite). Pour chaque objectif (Gen,Slot), i3 doit garder
+// la MEME valeur image-cle apres image-cle (un objectif suit le meme objet physique). Denominateur
+// = records ti=11 qui ATTERRISSENT bit-exact sous le cadre gagnant. TEMOIN : des GlobalID 32b
+// tires au hasard ne doivent PAS tomber dans l'ensemble observe (<= 1 %). Gate : stabilite+validite
+// >= 90 %.
+func TestTI11B1AutoCoherence(t *testing.T) {
+	root := ti11Root(t)
+	release := LockProcessDecode()
+	defer release()
+	prev := filmComponentCorruptionCheck
+	SetFilmComponentCorruptionCheck(false) // le cadre gagnant est corr=false
+	defer SetFilmComponentCorruptionCheck(prev)
+
+	// Capture par le hook nomme de ti=11 : i3 et les 16 slots i16-31 du record en cours.
+	var curI3 uint64
+	var curI3Set bool
+	var curSubs []uint64
+	SetManagedObjectiveHook(func(f ManagedObjectiveField, values []uint64) {
+		switch f {
+		case ManagedObjectiveObjectRef:
+			if len(values) > 0 {
+				curI3, curI3Set = values[0], true
+			}
+		case ManagedObjectiveSubEntity:
+			if len(values) > 0 {
+				curSubs = append(curSubs, values[0])
+			}
+		}
+	})
+	defer SetManagedObjectiveHook(nil)
+
+	var cumLanded, cumWithI3, cumStable, cumValid int
+	observed := map[uint64]bool{} // ensemble des i3 observes (pour le temoin)
+	for _, name := range ti11FilmNames() {
+		f := kf35Load(t, root+"/"+name)
+		f.Name = name
+		fb := ti11ComputeBounds(f.Pays)
+		bySlot := map[[2]int][]uint64{} // (Gen,Slot) -> suite des i3 dans le temps
+		landed, withI3 := 0, 0
+		for _, pb := range fb {
+			for _, b := range pb.bounds {
+				curI3, curI3Set, curSubs = 0, false, curSubs[:0]
+				tr := WalkKeyframeFullState(pb.pay, b.Rec.Bit, f.Reg, ti11WinningCadre)
+				if tr.DesyncAt >= 0 || tr.EndBit != b.Want {
+					continue // record non atterri : son etat n'est pas fiable
+				}
+				landed++
+				if !curI3Set {
+					continue // i3 absent du masque de ce record
+				}
+				withI3++
+				key := [2]int{b.Rec.Gen, b.Rec.Slot}
+				bySlot[key] = append(bySlot[key], curI3)
+				observed[curI3] = true
+			}
+		}
+		// Stabilite : part des records dont l'i3 == la valeur MODALE de son (Gen,Slot).
+		stable, valid := 0, 0
+		for _, seq := range bySlot {
+			modeVal, modeCnt := ti11Mode(seq)
+			stable += modeCnt
+			for _, v := range seq {
+				if v != 0 {
+					valid++
+				}
+			}
+			_ = modeVal
+		}
+		rate := func(n int) float64 {
+			if withI3 == 0 {
+				return 0
+			}
+			return 100 * float64(n) / float64(withI3)
+		}
+		t.Logf("  [%s] records atterris %d · avec i3 present %d · objectifs distincts %d | STABILITE i3 %.1f %% · VALIDITE (i3!=0) %.1f %%",
+			name, landed, withI3, len(bySlot), rate(stable), rate(valid))
+		cumLanded += landed
+		cumWithI3 += withI3
+		cumStable += stable
+		cumValid += valid
+	}
+	// TEMOIN : 4096 GlobalID 32b tires au hasard (graine fixe) — combien tombent dans l'ensemble
+	// observe ? Un ensemble d'entites reelles est creux dans 2^32, donc ~0 %.
+	rng := newTI11Rand(0x71114221)
+	const draws = 4096
+	hits := 0
+	for i := 0; i < draws; i++ {
+		if observed[uint64(rng())] {
+			hits++
+		}
+	}
+	t.Logf("======== CUMUL B1 (%d films) ========", len(ti11FilmNames()))
+	t.Logf("  records atterris %d · avec i3 %d · STABILITE i3 cumulee %s · VALIDITE cumulee %s",
+		cumLanded, cumWithI3, ti11Pct(cumStable, cumWithI3), ti11Pct(cumValid, cumWithI3))
+	t.Logf("  TEMOIN : %d GlobalID 32b au hasard, %d dans l'ensemble observe (|obs|=%d) | %.3f %%",
+		draws, hits, len(observed), 100*float64(hits)/float64(draws))
+}
+
+// TestTI11FieldDiversity — DIAGNOSTIC d'ALIGNEMENT INTERNE. L'atterrissage bit-exact ne teste
+// que le TOTAL de bits consommes (reserve D2 de la spec) ; il ne prouve pas que CHAQUE feuille lit
+// son vrai champ. Ce diagnostic publie, pour chaque champ capture (i1 couleur, i3 porteur, i5
+// type, i12/i13 progression, i16-31 sous-objectifs), le nombre de valeurs DISTINCTES et un
+// echantillon, sur les records qui atterrissent. Un champ qui varie comme attendu (i12 progression
+// change dans le temps ; i5 type constant par objectif ; i1 change de camp) atteste l'alignement ;
+// un champ FIGE la ou il devrait varier signale un mesalignement interne (ou un champ non peuple).
+func TestTI11FieldDiversity(t *testing.T) {
+	root := ti11Root(t)
+	release := LockProcessDecode()
+	defer release()
+	prev := filmComponentCorruptionCheck
+	SetFilmComponentCorruptionCheck(false)
+	defer SetFilmComponentCorruptionCheck(prev)
+
+	cur := map[ManagedObjectiveField][]uint64{}
+	SetManagedObjectiveHook(func(f ManagedObjectiveField, values []uint64) {
+		cur[f] = append(cur[f], values...)
+	})
+	defer SetManagedObjectiveHook(nil)
+
+	fields := []ManagedObjectiveField{
+		ManagedObjectiveColor, ManagedObjectiveObjectRef, ManagedObjectiveType,
+		ManagedObjectiveProgress, ManagedObjectiveRequired, ManagedObjectiveParent,
+		ManagedObjectiveSubEntity,
+	}
+	for _, name := range ti11FilmNames() {
+		f := kf35Load(t, root+"/"+name)
+		f.Name = name
+		fb := ti11ComputeBounds(f.Pays)
+		distinct := map[ManagedObjectiveField]map[uint64]int{}
+		for _, fld := range fields {
+			distinct[fld] = map[uint64]int{}
+		}
+		landed := 0
+		for _, pb := range fb {
+			for _, b := range pb.bounds {
+				for k := range cur {
+					delete(cur, k)
+				}
+				tr := WalkKeyframeFullState(pb.pay, b.Rec.Bit, f.Reg, ti11WinningCadre)
+				if tr.DesyncAt >= 0 || tr.EndBit != b.Want {
+					continue
+				}
+				landed++
+				for _, fld := range fields {
+					for _, v := range cur[fld] {
+						distinct[fld][v]++
+					}
+				}
+			}
+		}
+		t.Logf("  [%s] records atterris %d :", name, landed)
+		for _, fld := range fields {
+			t.Logf("      %-42s : %3d valeurs distinctes %s", fld, len(distinct[fld]), ti11SampleVals(distinct[fld], 6))
+		}
+	}
+}
+
+// ti11SampleVals rend un echantillon (au plus k) des valeurs les plus frequentes d'un histogramme.
+func ti11SampleVals(h map[uint64]int, k int) string {
+	type kv struct {
+		v uint64
+		n int
+	}
+	xs := make([]kv, 0, len(h))
+	for v, n := range h {
+		xs = append(xs, kv{v, n})
+	}
+	sort.Slice(xs, func(i, j int) bool { return xs[i].n > xs[j].n })
+	s := "["
+	for i := 0; i < len(xs) && i < k; i++ {
+		if i > 0 {
+			s += " "
+		}
+		s += fmt.Sprintf("%d×%d", xs[i].v, xs[i].n)
+	}
+	if len(xs) > k {
+		s += " ..."
+	}
+	return s + "]"
+}
+
+// ti11Mode rend la valeur la plus frequente d'une suite et son compte.
+func ti11Mode(vs []uint64) (uint64, int) {
+	c := map[uint64]int{}
+	var best uint64
+	bestN := 0
+	for _, v := range vs {
+		c[v]++
+		if c[v] > bestN {
+			best, bestN = v, c[v]
+		}
+	}
+	return best, bestN
+}
+
+// ti11Pct formate n/d en pourcentage lisible (garde le denominateur visible).
+func ti11Pct(n, d int) string {
+	if d == 0 {
+		return "0/0"
+	}
+	return fmt.Sprintf("%d/%d = %.1f %%", n, d, 100*float64(n)/float64(d))
+}
+
+// newTI11Rand rend un generateur xorshift32 deterministe (graine != 0) pour le temoin B1.
+func newTI11Rand(seed uint32) func() uint32 {
+	s := seed
+	return func() uint32 {
+		s ^= s << 13
+		s ^= s >> 17
+		s ^= s << 5
+		return s
+	}
+}
