@@ -1780,3 +1780,79 @@ base ouverte.
   plan ; je ne rouvre rien de moi-meme.
 
   **TC reste `[!]`** et la decision d'affichage du vivier repart a l'utilisateur, comme prevu.
+
+### D3-ter, VERROU 2 — L'UNITE INSTANT T : protocole ECRIT ET COMMITE AVANT LA MESURE
+
+> Aucun chiffre de resultat. Le seuil du verrou 2 est celui du superviseur et **ne bouge pas d'un
+> millimetre** : cardinal 3 sur **>= 80 %** du temps exploitable, sur **>= 2 films**.
+
+**POURQUOI LA METRIQUE DE LISIBILITE EST REDEFINIE, ET POURQUOI CE N'EST PAS UN REGLAGE APRES
+COUP** (justification du superviseur, recopiee). Le critere « chainage global >= 80 % » a ete
+demontre **cable sur la mauvaise grandeur** : il mesurait une population MELANGEE dominee par le
+canal par-joueur (`i2..i33`, 32 instances par record, chainage connu **33 %**), alors que la
+lisibilite a trancher est celle du **sous-canal SCALAIRE tag 5 chaine**, le seul que le
+designateur lise en production (`zone_states.go:182`). Le 33 % du canal par-joueur est une mesure
+du lot C-bis, **anterieure a cette campagne** : la redefinition s'appuie sur des mesures
+anterieures au resultat, pas sur le resultat. C'est ce qui la distingue du reglage apres coup que
+le protocole interdit — et c'est la raison pour laquelle je ne me l'etais PAS autorisee moi-meme
+au CR precedent.
+
+**LA PRECONDITION DE LISIBILITE, REFORMULEE.** Le sous-canal tag 5 chaine doit rendre une SERIE
+EXPLOITABLE : au moins **N** emissions, couvrant **>= 50 %** du temps de match. La couverture est
+`(derniere emission - premiere emission) / (duree du match)`, le match etant borne par les
+enregistrements d'entite.
+
+**N EST FIXE PAR RELEVE, PAS PAR CHOIX — ET LE RELEVE EST FAIT SUR KOTH, JAMAIS SUR LES FILMS
+TC.** Regle ecrite ici, avant de mesurer quoi que ce soit :
+
+> **N := le PLUS PETIT nombre d'emissions de tag 5 chainees observe sur les quatre films du
+> corpus KOTH**, mesure par LE MEME instrument que celui qui mesurera les films TC.
+
+Deux raisons de prendre le MINIMUM et non la mediane. D'abord, le corpus KOTH est celui sur
+lequel la voie designateur est **elue 4 films sur 4 et SERVIE EN PRODUCTION** : son plancher est,
+par construction, le niveau d'emission auquel le depot accepte deja de lire un designateur.
+Ensuite, une precondition PERMISSIVE est le choix CONSERVATEUR pour le gate : elle laisse entrer
+plus de films TC dans la mesure, donc elle expose davantage l'hypothese a l'echec. Un N severe
+aurait ecarte les films maigres et flatte le taux.
+
+**LE MEME INSTRUMENT SUR LES DEUX CORPUS** : sans cela, « le TC emet moins que le KOTH » pourrait
+n'etre qu'une difference de definition. Le releve KOTH et la mesure TC passent par le meme code,
+et le releve est publie avant le verdict TC.
+
+- [ ] D3t2.1 **RELEVE KOTH** : sur `01e1f945`, `606d9844`, `8076f97f`, `0a247154` — nombre
+      d'emissions de tag 5 chainees, nombre de slots porteurs, couverture. **N en decoule par la
+      regle ci-dessus.**
+- [ ] D3t2.2 **MESURE TC** : les six films du recensement, `a349fea8` EXCLU D'OFFICE.
+      Precondition d'abord ; un film qui ne la passe pas ne compte NI POUR NI CONTRE, et la cause
+      est nommee.
+- [ ] D3t2.3 **VERDICT** : seuil du superviseur, inchange.
+
+**LA MESURE, RENDUE OPERATOIRE.** L'ensemble DESIGNE a l'instant t est l'ensemble des valeurs de
+tag 5 chainees EN VIGUEUR a t — pour chaque slot porteur, sa derniere emission a `<= t`. Un slot
+qui n'a pas encore emis ne contribue pas ; **la valeur zero n'est pas une designation** (meme
+regle qu'en D3-bis).
+
+- Les **POINTS DE CHANGEMENT** sont les instants ou cet ensemble change, c'est-a-dire ou un slot
+  quelconque passe a une valeur differente de la sienne. **Ce sont les rotations** : plus besoin
+  de manches, et c'est tout l'objet de cette reformulation — l'unite « manche » n'existait pas sur
+  ce corpus (1 manche par film, mesure D3-bis).
+- Autour de chaque point de changement, une fenetre de **+/- 2 s est EXCLUE**, valeur inchangee
+  depuis D3-bis : a la bascule le jeu retire des zones et en pose d'autres, et compter cette
+  fenetre ferait mecaniquement un cardinal double.
+- Le **TEMPS EXPLOITABLE** court de la PREMIERE emission a la fin du match, moins les fenetres
+  exclues. Avant la premiere emission il n'y a pas de serie : cet intervalle n'est pas
+  exploitable, il n'est pas non plus compte contre.
+- Sur chaque intervalle restant, le cardinal est CONSTANT. On somme la duree des intervalles de
+  cardinal **exactement 3** et on la rapporte au temps exploitable.
+
+**INTERDIT, ECRIT ICI POUR M'Y TENIR** : ne rien conclure des « 3 et 4 valeurs distinctes »
+relevees par la sonde du verrou 1. Un ensemble de 3 valeurs sur TOUT le match et un ensemble de
+cardinal 3 A CHAQUE INSTANT sont deux enonces differents, et le second n'est pas implique par le
+premier — c'est exactement ce que cette mesure existe pour trancher.
+
+**ISSUES.** Tenu : les 3 actives (NEUTRES, sans possession — le seuil de possession n'a jamais
+ete evalue) entrent en D5, contenu final A+B'+C, bump 21. Rate : **TC `[!]` DEFINITIF pour
+v7.5**, CR avec le verrou nomme, et la decision d'affichage du vivier repart a l'utilisateur.
+
+**EXECUTION** : un film par processus, sentinelle memoire armee dans le processus qui decode,
+aucune base ouverte, `a349fea8` exclu d'office.
