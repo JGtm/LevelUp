@@ -176,9 +176,9 @@ Si un gate de periodes rate : `[!]` chiffre, pas de publication, dire ce qui man
 - [x] E1 — Ce protocole commite AVANT mesure (`vip-couronne(protocole):`, `2038557e8`).
 - [x] E2 — Temoin corrige : vip.go (plancher analytique + gate corrige), re-mesure sur TSV
   fige, `VIP_temoin_corrige.log`, verdict chiffre. GATE TENU (comp 22 A REPLIQUE).
-- [ ] E3 — Periodes : ObjectiveTypeVip a `namedStatSlots` + TSV, `TestVIPPeriodes`, 3 films
-  sous filmproc, `VIP_periodes.log`, verdict chiffre (dates ? recouv ? temoin ?). Commit
-  `vip-couronne(periodes):`.
+- [x] E3 — Periodes : ObjectiveTypeVip a `namedStatSlots` + TSV, `TestVIPPeriodes`, 3 films
+  sous filmproc, `VIP_periodes.log`, verdict chiffre. GATE TENU 3/3 (dates OUI, recouv 100 %,
+  temoin exactitude 8/8 vs 0-1/8). Commits `c517caacc` (instrument+correction).
 - [ ] E4 — Publication couronne SI E2 ET E3 tiennent : triplet schema + calque + i18n + temoins
   re-cuits + gates verts. Commit `vip-couronne(couronne):`. SINON `[!]` chiffre, pas de calque.
 
@@ -194,3 +194,11 @@ Si un gate de periodes rate : `[!]` chiffre, pas de publication, dire ce qui man
   plancher), stabilite 3/3, somme-film decale 0. **VIP est valide nativement.** Log
   `VIP_temoin_corrige.log`. Cibles secondaires : VipKills (comp 0 A) tient, KillsAsVip (comp 21 B)
   echoue au decale — non bloquant.
+- **E3 (2026-08-27)** `[x]` — ObjectiveTypeVip cable (namedStatSlots + TSV concordante).
+  `TestVIPPeriodes` : 3 films decodes sous filmproc, chaque selection ouvre une periode fermee
+  par la mort du VIP. **Comp 22 A DATE bien les selections** (etalements jusqu'a 391 s). Periodes
+  reconstruites au SUB-SECONDE : recouv 100 % 3/3, exactitude 24/24 joueurs a +0,2-0,3 s de
+  TimeAsVip. Premier passage : temoin de couverture inapt (~72 %, piege E2) ; correction §3-bis
+  pre-enregistree (commit `c517caacc`) puis re-mesure : TEMOIN CORRIGE (exactitude) 8/8 vs 0-1/8,
+  marge 7-8 joueurs. **GATE PERIODES TENU 3/3.** Log `VIP_periodes.log`. La couronne peut etre
+  publiee (E2 ET E3 tiennent).
