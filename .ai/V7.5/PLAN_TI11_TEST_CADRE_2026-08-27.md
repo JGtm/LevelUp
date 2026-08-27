@@ -32,17 +32,22 @@ etat) de tous les modes.
 
 ### T0 — Protocole COMMITE avant mesure
 
-- [ ] T0.1 Lire les deux docs de conception (PISTE_A, PISTE_B) + `keyframe_fullstate_loop.go`
+- [x] T0.1 Lire les deux docs de conception (PISTE_A, PISTE_B) + `keyframe_fullstate_loop.go`
       (`WalkKeyframeFullState`, `traverseComponentLoop`), `traverse.go` (`consumeByName`,
       patron ti=10 i1), `default_state_ti42.go` (patron d'etat par defaut d'objet),
       `keyframe_biped_fullstate_test.go` (l'instrument de cadre a transposer),
       `keyframe_world.go` (`WalkKeyframeWorld`, l'oracle d'atterrissage), le format de
       `.ai/V7.5/dumps/kf_capture_sample.txt` (400 frontieres de records).
-- [ ] T0.2 Ecrire et COMMITTER `.ai/V7.5/replay2d/registre_film/TI11_PROTOCOLE.md` : corpus
+      FAIT : lus + capture.go, components_managed_object.go, components_managed_property.go,
+      default_state_arch.go, bitreader.go, ecs_table.tsv (34 composants ti=11 confirmes).
+- [x] T0.2 Ecrire et COMMITTER `.ai/V7.5/replay2d/registre_film/TI11_PROTOCOLE.md` : corpus
       admis (films a records ti=11 : CTF `24dbb67d`? non — CTF est un autre corpus ; prendre
       des films de CHAQUE famille qui porte des objectifs ti=11 : au moins un CTF, un
       Strongholds/KOTH, un Oddball du corpus 5), les seuils T1/T2 recopies SANS modification,
       les temoins. Citer le hash au CR.
+      FAIT : protocole ecrit ; corpus par famille (Oddball 5 / CTF 64e8adfa,530820e5,53ce4390 /
+      Strongholds 696a9d7c,7344d24f,10ed320d / KOTH 01e1f945,606d9844,8076f97f,0a247154), tous
+      verifies presents ; seuils recopies verbatim ; 2 temoins figes (record NEW + cadre faux).
 
 ### T1 — CABLAGE + TEST DE CADRE (le gate maitre, ecrit AVANT)
 
