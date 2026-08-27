@@ -37,6 +37,12 @@ interface ReplayTransportProps {
   clockRef: RefObject<HTMLSpanElement | null>
   /** Le curseur est piloté par la boucle de dessin ; React ne le contrôle pas. */
   sliderRef: RefObject<HTMLInputElement | null>
+  /**
+   * LES DEUX BORNES DE LA FRISE sont celles du GAMEPLAY (cf. `replayWindow.ts`) : un scrub ne
+   * peut pas sortir du match pour aller chercher le countdown d'avant-match ou la queue du
+   * film. Sans cadrage établi, elles redeviennent celles du film entier (0 .. dernière image).
+   */
+  minFrame: number
   maxFrame: number
   onScrub: (e: ChangeEvent<HTMLInputElement>) => void
   speed: number
@@ -64,7 +70,7 @@ interface ReplayTransportProps {
 }
 
 export function ReplayTransport({
-  playing, onTogglePlay, onRestart, clockRef, sliderRef, maxFrame, onScrub,
+  playing, onTogglePlay, onRestart, clockRef, sliderRef, minFrame, maxFrame, onScrub,
   speed, onSetSpeed, sound, capture, locale, leadMarks,
   settingsOpen, onToggleSettings, settingsButtonRef,
 }: ReplayTransportProps) {
@@ -109,9 +115,9 @@ export function ReplayTransport({
         <input
           ref={sliderRef}
           type="range"
-          min={0}
+          min={minFrame}
           max={maxFrame}
-          defaultValue={0}
+          defaultValue={minFrame}
           onChange={onScrub}
           className="block w-full"
           aria-label={t.time}

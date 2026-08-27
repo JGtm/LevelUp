@@ -87,6 +87,7 @@ function renderFeed(
       medals={medals}
       t0Ms={t0Ms}
       nowMs={nowMs}
+      playWindow={null}
       doc={doc}
       scoreboard={scoreboard}
       xuidMeta={META}
@@ -126,6 +127,27 @@ describe('ReplayKillFeed — synchronisation et permanence', () => {
     const { container } = renderFeed(kills, 35_400)
     expect(screen.queryByText('1 / 2')).toBeNull()
     expect(container.textContent).not.toMatch(/\d+\s*\/\s*\d+/)
+  })
+
+  it('CADRÉ : l’instant AFFICHÉ est celui du gameplay, le VISIBLE reste sur l’axe du film', () => {
+    // Fenêtre dont le coup d'envoi tombe à T0 sur l'axe du film (artefact d'origine zéro) :
+    // le kill lu à 35,3 s de film s'écrit 0:16 — son instant de match (D-A2).
+    render(
+      <ReplayKillFeed
+        kills={kills}
+        medals={[]}
+        t0Ms={T0}
+        nowMs={35_400}
+        playWindow={{ startFrame: 184, endFrame: 4_000, startMs: T0, endMs: 400_000 }}
+        doc={null}
+        scoreboard={SCOREBOARD}
+        xuidMeta={META}
+        locale="fr"
+      />,
+    )
+    expect(screen.getByText('JGtm')).toBeTruthy()
+    expect(screen.getByText('0:16')).toBeTruthy()
+    expect(screen.queryByText('0:35')).toBeNull()
   })
 
   it('SANS RECALAGE, le même kill serait affiché ~18 s trop tôt — le témoin le montre', () => {
@@ -439,6 +461,7 @@ describe('ReplayKillFeed — marques « moi » et « ami »', () => {
         medals={[]}
         t0Ms={0}
         nowMs={20_000}
+        playWindow={null}
         doc={null}
         scoreboard={BOARD}
         xuidMeta={META}

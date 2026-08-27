@@ -34,15 +34,14 @@ import type { CalloutZoneReady } from './calloutsLayer'
 import { ReplayHeatmapLegend } from './ReplayHeatmapLegend'
 import { ReplayTransport } from './ReplayTransport'
 import { useLeadMarks } from './useLeadMarks'
-import { buildShotFx } from './shotFx'
 import {
   buildObjectivePulses,
   drawObjectivePulses,
   normalizeMapObjectives,
 } from './objectivesLayer'
 import { drawZoneStates } from './zoneStatesLayer'
-import { buildFireMarks, drawFireMarks } from './fireMark'
-import { buildGrappleFx, drawGrappleLayer } from './grappleLayer'
+import { drawFireMarks } from './fireMark'
+import { drawGrappleLayer } from './grappleLayer'
 import { drawEquipmentPlacementsLayer } from './equipmentPlacementsLayer'
 import { ReplayCanvasTips } from './ReplayCanvasTips'
 import { useReplayPlacements } from './useReplayPlacements'
@@ -50,15 +49,16 @@ import { useReplayFlagCarries } from './useReplayFlagCarries'
 import { useGrenadeIcons } from './useGrenadeIcons'
 import { useZoneStates } from './useZoneStates'
 import { useReplayWeaponPads } from './useReplayWeaponPads'
-import { buildGrenadeRestFx } from './grenadeFx'
 import type { ReplayLocale } from './i18n'
-import { buildKillFx } from './killFx'
+import type { EndMatchSoundSpec } from './endMatchSound'
+import { useReplayFx } from './useReplayFx'
 import type { PlayerMarkKind } from './playerMarks'
 import { useSlotIdentity } from './useSlotIdentity'
 import { ReplaySettingsDrawer } from './ReplaySettingsDrawer'
 import { useReplayHeatmap } from './useReplayHeatmap'
 import { useReplayInks } from './useReplayInks'
 import { useReplayCapture } from './useReplayCapture'
+import { useReplayClock } from './useReplayClock'
 import { useReplayPlayback } from './useReplayPlayback'
 import { useReplayStaticLayers } from './useReplayStaticLayers'
 import { useReplaySettings } from './useReplaySettings'
@@ -72,7 +72,8 @@ import {
   drawShotsLayer,
 } from './replayDraw'
 import { drawGrenadeRestLayer } from './grenadeRestLayer'
-import { formatClock, frameToMs } from './replayLogic'
+import { frameToMs } from './replayLogic'
+import type { ReplayWindowBounds } from './replayWindow'
 import { drawProjectilesLayer } from './replayProjectiles'
 import { drawTracksLayer } from './replayMarkers'
 import { useReplayTiming } from './useReplayTiming'
@@ -89,19 +90,15 @@ const SERIES_TOKENS: SemanticToken[] = [
 /** Référence STABLE pour « pas de zones » : un `?? []` inline recuirait le calque à chaque rendu. */
 const EMPTY_ZONES: CalloutZoneReady[] = []
 
-/**
- * Cadence de publication de l'image courante vers React, en millisecondes.
- *
- * POURQUOI PAS À CHAQUE IMAGE. Le canvas se redessine à la cadence de l'écran ; les fiches
- * joueur, elles, sont du DOM. Les re-rendre 60 fois par seconde coûterait tout le budget
- * d'animation pour un contenu qui change à peine. 150 ms reste bien en deçà de ce que l'œil
- * perçoit comme un retard sur un compteur, et divise le travail de React par dix.
- */
-const FRAME_PUBLISH_MS = 150
-
 interface ReplayCanvasProps {
   doc: ReplayDocumentReady
   locale: ReplayLocale
+  /**
+   * LA FENÊTRE DE GAMEPLAY, calculée UNE fois par la page (`replayWindow.ts`) : elle borne la
+   * lecture et la frise, et recale l'horloge affichée. `null` = pas de cadrage établi (artefact
+   * sans origine, en-tête sans durée jouable) : le film se lit entier, comme avant.
+   */
+  playWindow: ReplayWindowBounds | null
   /**
    * Kills du match (mêmes events que le fil, horloge gameplay) : la carte en tire les
    * EFFETS DE MORT orientés tueur -> victime. Absents = pas d'effet, jamais une erreur.
@@ -133,16 +130,24 @@ interface ReplayCanvasProps {
   xuidMeta?: XuidMeta
   /** Marques d'identité par xuid (« moi », « ami ») : elles décident de la FORME du point. */
   marks?: ReadonlyMap<string, PlayerMarkKind>
+  /**
+   * LA FIN DE PARTIE SONORE (lot C) : l'issue du joueur de la page et la langue, lues UNE fois
+   * par la page — la même lecture que l'écran de fin (`endMatchSound.ts`). Le canvas ne fait
+   * que la relayer au lecteur, qui préchargera les prises et les jouera quand la lecture
+   * atteindra la borne de fin. Absente = aucune conclusion sonore, le reste est inchangé.
+   */
+  endMatch?: EndMatchSoundSpec | null
 }
 
 export function ReplayCanvas({
-  doc, locale, kills, t0Ms, onFrameChange, background, callouts, scoreboard, xuidMeta, marks,
+  doc, locale, playWindow, kills, t0Ms, onFrameChange, background, callouts, scoreboard, xuidMeta, marks, endMatch,
 }: ReplayCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
-  const clockRef = useRef<HTMLSpanElement>(null)
   const frameRef = useRef(0)
-  const publishedAtRef = useRef(0)
+  // L'HORLOGE AFFICHÉE (recalée sur le gameplay) et la publication bridée de l'image courante
+  // vivent dans useReplayClock — dixième extraction imposée par le cliquet de taille.
+  const { clockRef, tick: clockTick } = useReplayClock({ doc, playWindow, onFrameChange })
 
   const [width, setWidth] = useState(0)
   // TIROIR DE RÉGLAGES (décision utilisateur du 16/08) : fermé par défaut, ouvert par un
@@ -171,7 +176,7 @@ export function ReplayCanvas({
   } = useReplaySettings()
   // SON : coupé par défaut, préférence, volume et filtre par catégorie persistés, tout le
   // câblage dans le hook (règles dans replaySound.ts, lecture Web Audio dans replayAudio.ts).
-  const sound = useReplaySound(doc, kills, t0Ms, multiplier)
+  const sound = useReplaySound(doc, kills, t0Ms, multiplier, endMatch ?? null)
 
   const paletteVersion = useColorPaletteVersion()
   // TOUTES LES ENCRES DU REJEU, résolues une fois par palette (useReplayInks) : couleurs
@@ -182,8 +187,6 @@ export function ReplayCanvas({
     teamColorOf, geometry: geometryColor, shot: shotColor, grenade: grenadeColor, neutral: neutralInk, pad: padInk,
     floor: floorStyle, fx: fxInk, grapple: grappleInk, labelStroke, self: selfInk, wall: wallInk, mark: markInk,
   } = useReplayInks(paletteVersion)
-  // Les tractions de grappin, jointes une fois aux points de leur vie (schéma 8).
-  const grappleFx = useMemo(() => buildGrappleFx(doc), [doc])
   // COULEURS DISTINCTES PAR JOUEUR (option du tiroir, 2026-08-24) : une couleur de série
   // stable par joueur du roster, à la place de la couleur d'équipe — pour suivre quelqu'un
   // dans la mêlée. Le camp reste dit par les fiches, le fil et le bandeau.
@@ -239,24 +242,15 @@ export function ReplayCanvas({
   // L'ÉTAT VIVANT DES ZONES (schémas 16-18) : encres, jointure du catalogue, tenue de la jauge (useZoneStates).
   const zones = useZoneStates(mapObjectives, scoreboard, teamColorOf, neutralInk, doc)
 
-  const leadMarks = useLeadMarks(doc, scoreboard, xuidMeta, locale)
+  const leadMarks = useLeadMarks(doc, scoreboard, xuidMeta, locale, playWindow)
 
   // Traînée, cône, croix de mort, apparition, rémanences et fins de vol : toutes les durées
   // du rejeu, converties une fois pour ce document (useReplayTiming).
   const { baseFps, timing, eventHoldFrames, shotHoldFrames, restWindow } = useReplayTiming(doc)
-  // Les tirs sont PRÉCALCULÉS comme les morts : famille, teinte et REGARD du tireur résolus
-  // une fois au chargement (mesure : la couverture d'orientation passe de 18,6 % à 100 % sur
-  // le film témoin en relisant le regard plutôt que le champ de l'événement).
-  const shotFx = useMemo(() => buildShotFx(doc, timing.aimHold), [doc, timing.aimHold])
-  // Le « ! » dans le point du tireur (demande du 2026-08-24) : mêmes tirs, même fenêtre
-  // que l'éclair de bouche — deux effets du même événement (cf. fireMark.ts).
-  const fireMarks = useMemo(() => buildFireMarks(doc), [doc])
-  // Les effets de mort sont PRÉCALCULÉS en monde (positions relues une fois, patron POC) :
-  // pendant la lecture, seul le passage monde -> pixels reste à faire.
-  const killFx = useMemo(
-    () => buildKillFx(doc, kills ?? [], t0Ms ?? 0),
-    [doc, kills, t0Ms],
-  )
+  // LES EFFETS PRÉCALCULÉS DU FILM (tirs, « ! » du tireur, morts, fins de vol, grappin) : cinq
+  // listes en coordonnées monde, cuites une fois pour ce document. Elles vivent dans
+  // `useReplayFx` — onzième extraction imposée par le cliquet de taille, noms inchangés.
+  const { shotFx, fireMarks, killFx, grenadeRestFx, grappleFx } = useReplayFx(doc, kills, t0Ms, timing.aimHold)
   // La CARTE DE CHALEUR : grille cuite, rampe du thème et lecture réellement servie —
   // toute la logique vit dans le hook, le canvas ne fait que poser le calque.
   const heat = useReplayHeatmap(doc, bounds, killFx, {
@@ -265,9 +259,6 @@ export function ReplayCanvas({
     span: heatmapSpan,
     frameRef,
   })
-  // Fins de vol de grenade : le lien lancer -> projectile est dans l'artefact (v3).
-  const grenadeRestFx = useMemo(() => buildGrenadeRestFx(doc), [doc])
-  const totalLabel = formatClock(doc.durationMs ?? frameToMs(doc.frameCount, doc))
 
   // Largeur responsive (ResizeObserver du conteneur).
   useEffect(() => {
@@ -511,18 +502,11 @@ export function ReplayCanvas({
       })
     }
 
-    if (clockRef.current) {
-      clockRef.current.textContent = `${formatClock(frameToMs(frame, doc))} / ${totalLabel}`
-    }
-    if (onFrameChange) {
-      const now = performance.now()
-      if (now - publishedAtRef.current >= FRAME_PUBLISH_MS) {
-        publishedAtRef.current = now
-        onFrameChange(Math.floor(frame))
-      }
-    }
+    // L'HORLOGE ET LA PUBLICATION DE L'IMAGE, en dernier : elles disent où en est la scène
+    // qu'on vient de peindre (cf. useReplayClock).
+    clockTick(frame)
   }, [
-    doc, geometryColor, bounds, zRange, timing, totalLabel, wallInk,
+    doc, geometryColor, bounds, zRange, timing, clockTick, wallInk,
     // Refs STABLES : la regle de dependances ne le sait pas d'un hook maison.
     floorRef, zonesRef, heatRef, objectivesRef, grenadeIconsRef,
     renderWidth, canvasView,
@@ -563,7 +547,6 @@ export function ReplayCanvas({
     showZones,
     showShotFx,
     showKillFx,
-    onFrameChange,
     mapImage,
   ])
 
@@ -576,8 +559,9 @@ export function ReplayCanvas({
 
   // LA LECTURE (état lu/pause, boucle rAF, curseur de la frise, ARRÊT SUR L'ÉTAT FINAL) vit
   // dans useReplayPlayback : le canvas garde le DESSIN, le hook porte le TEMPS.
-  const { playing, endFrame, sliderRef, togglePlay, restart, onScrub } = useReplayPlayback({
-    doc, baseFps, speed: multiplier, renderWidth, frameRef, draw, soundTick: sound.tick,
+  const { playing, startFrame, endFrame, sliderRef, togglePlay, restart, onScrub } = useReplayPlayback({
+    doc, playWindow, baseFps, speed: multiplier, renderWidth, frameRef, draw,
+    soundTick: sound.tick, onEnded: sound.endMatch, onTransportGesture: sound.wake,
   })
   // CE QUI SORT DU REJEU (image, vidéo) vit dans useReplayCapture : le canvas prête sa TOILE, son
   // HORLOGE et sa lecture. `play` reçoit `togglePlay` — appelé sur une PAUSE seule, il vaut lecture.
@@ -621,7 +605,7 @@ export function ReplayCanvas({
               />
               {/* Les infobulles des trois calques survolables (cf. ReplayCanvasTips). */}
               <ReplayCanvasTips
-                locale={locale} width={renderWidth} ownerNameOf={nameOfSlot}
+                locale={locale} width={renderWidth} ownerNameOf={nameOfSlot} playWindow={playWindow}
                 placement={placements.hover.hover} pad={weaponPads.hover} flag={flags.hover}
               />
               {heat.grid && <ReplayHeatmapLegend locale={locale} mode={heat.grid.mode} />}
@@ -634,6 +618,7 @@ export function ReplayCanvas({
               onRestart={restart}
               clockRef={clockRef}
               sliderRef={sliderRef}
+              minFrame={startFrame}
               maxFrame={endFrame}
               onScrub={onScrub}
               speed={multiplier}

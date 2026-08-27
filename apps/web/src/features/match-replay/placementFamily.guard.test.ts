@@ -195,10 +195,24 @@ describe('garde-rail : le vocabulaire des familles de pose', () => {
  * hook rend UN objet (`ReplayCapture`, patron de `ReplaySound`) que le canvas repasse tel quel
  * a la barre. L'enregistrement video puis le son de la video se branchent en ETENDANT l'appel
  * existant, pas en l'allongeant — c'est ce qui permet a ce plafond de tenir sur les trois lots.
+ *
+ * 706 -> 697 le 2026-08-26 (cadrage de la lecture sur le match reel) : le canvas etait PILE a
+ * son plafond, a la ligne pres, et le lot y fait entrer la FENETRE DE GAMEPLAY (bornes de la
+ * lecture, de la frise et de l'horloge). L'HORLOGE AFFICHEE et la publication bridee de l'image
+ * courante partent donc dans `useReplayClock.ts`, dixieme extraction imposee par ce cliquet :
+ * elles disent OU ON EN EST, pas ce qu'il faut peindre. Le canvas ne garde qu'un `clockTick`
+ * en fin de trace.
+ *
+ * 697 -> 691 le 2026-08-27 (lot C, sons de fin de partie) : le canvas etait PILE a son plafond
+ * et le lot y fait entrer la CONCLUSION SONORE (une prop de plus, relayee au lecteur et a la
+ * lecture). Les cinq memos d'EFFETS PRECALCULES — tirs, « ! » du tireur, morts, fins de vol,
+ * grappin — partent donc dans `useReplayFx.ts`, onzieme extraction imposee par ce cliquet :
+ * ils ne dependent que du FILM, ne lisent ni theme ni cadrage, et ne dessinent rien. Les noms
+ * sortent inchanges, comme a la neuvieme.
  */
 describe('garde-rail : la taille du canvas du rejeu ne remonte pas', () => {
   it('ReplayCanvas.tsx reste sous son plafond', () => {
     const src = readFileSync(resolve(__dirname, 'ReplayCanvas.tsx'), 'utf8')
-    expect(src.split('\n').length - 1).toBeLessThanOrEqual(706)
+    expect(src.split('\n').length - 1).toBeLessThanOrEqual(691)
   })
 })
