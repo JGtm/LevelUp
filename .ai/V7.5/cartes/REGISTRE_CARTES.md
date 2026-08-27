@@ -84,7 +84,7 @@ metres (attendu : -0,29). `matchs` = somme des matchs de tous les map_id servis 
 | Shiro | `2890782c` | 18 | 84.0 | -0,01 | forge | REFUSEE 13/08 |
 | Domicile | `921aebb1` | 17 | 88.3 | -8,62 | forge | REFUSEE 13/08 |
 | Goliath | `504ebf22` | 17 | 52.2 | -0,02 | forge | REFUSEE 13/08 |
-| Isolation | `01af558d` | 17 | 93.9 | -0,04 | forge | REFUSEE 13/08 |
+| Isolation | `01af558d` | 17 | 93.9 | -0,04 | forge | VALIDEE `encre` 27/08 — navmesh : reference + rognage + tolerance 1,5 m |
 | Fortress | `0d1c9255` | 17 | 87.4 | -10,60 | forge | REFUSEE 13/08 |
 | Dredge | `e4bb06db` | 16 | 91.5 | -0,25 | forge | REFUSEE 13/08 |
 | Vagabond | `105f5d84` | 16 | 74.3 | -0,01 | forge | A RETRAVAILLER — gros |
@@ -1049,3 +1049,32 @@ porte les ancres, le retirera. Et l'utilisateur signale des **elements manquants
 ne porte que le sol MARCHABLE — ni les murs, ni les structures. La suite naturelle est d'en
 faire la SURFACE DE REFERENCE de la chaine ordinaire : le rendu habituel, ramene a l'altitude du
 navmesh, rendrait le sol ET les structures sans le dome.
+
+### 2026-08-27 — ISOLATION EST CLOSE, par le maillage de navigation
+
+Planche : https://claude.ai/code/artifact/1880d73c-5942-45bd-9a0e-baab5a423454
+
+**Verbatim** : « Alors la je reconnais carrement !!! » puis « La 4 a 1,5 m est nickel ».
+
+**Reglage retenu** : `encre`, `navmeshReference`, `rogneAuNavmesh`, `toleranceNavmesh` 1,5 m.
+Cadre 1 638 x 1 368, **25 ancres sur 25 au sol**.
+
+| levier | mesure |
+|---|---|
+| reference prise sur le maillage | **845 552 cellules** recoivent l'altitude REELLE du sol |
+| rognage au maillage | **2 175 499 cellules** effacees, dilatation 3 m |
+| tolerance au sol 1,5 m | 121 976 cellules vidées |
+
+**Ce que deux jours d'echecs ont appris** : le probleme n'etait pas ce qu'il fallait RETIRER
+mais ce a quoi on COMPARAIT. La reference etait interpolee depuis 25 ancres ; le dome vit onze
+metres au-dessus du sol et gagnait donc partout. Avec une reference qui EST le sol, il ne gagne
+plus un pixel — sans qu'on le touche.
+
+**LA QUESTION DES ZONES DE CALLOUT, VERIFIEE** : `map_callouts.json` porte 22 cartes, **toutes
+natives, zero Forge**, et Isolation n'y est pas. Le decoupage demande n'a donc PAS pu se faire
+par les callouts — il s'est fait par le maillage de navigation, qui dit la meme chose et mieux :
+il EST la zone jouable, au polygone pres, sans qu'on ait rien a dessiner a la main.
+
+**Piste ouverte pour les vrais callouts Forge** : le blob porte QUATRE tagfiles Havok, dont un
+`hkaiTraversalAnnotationLibrary` que nous n'ouvrons pas. Une bibliotheque d'annotations de
+traversee est l'endroit ou des noms de lieux vivraient. A instruire.
