@@ -6,19 +6,15 @@ package filmdec
 // rare for the death-frame slots).
 
 // objective formatted-text + secondary share the same shape (R(1) presence + value + tagged list).
-// Lecteur de DEUX composants de l'archétype OBJECTIFS (ti=11), couvert 0/34 par le dispatch :
+// Lecteur de DEUX composants de l'archétype OBJECTIFS (ti=11) :
 // `managed-objective-formatted-text-component` (i2) et son jumeau
-// `managed-objective-secondary-formatted-text-component` (i9). Les deux noms sont écrits EN
-// ENTIER parce que la table ECS les déclare `deser_non_cable` en pointant ce fichier, et que
-// son garde-rail G1 exige que le nom du composant y apparaisse (`checkCodeSource`).
+// `managed-objective-secondary-formatted-text-component` (i9, même corps, seul l'offset dst
+// diffère). Corps partagé du jeu : FUN_14080b034 (i2 ADD RCX,0x18 / i9 ADD RCX,0x160).
 //
-// GARDÉE SANS APPELANT le 2026-08-01 (lot C, PLAN_DETTE_AVANT_MERGE) : ti=11 est PLANIFIÉ
-// mais non décodé — le traverseur s'arrête à i0 (traverse.go:1187), la brancher seule ne
-// changerait donc rien, et le gate du lot exige des artefacts identiques.
-// CONDITION DE RETRAIT : branchée ou supprimée quand ti=11 sera décodé (master plan J6-A,
-// ordre interne §4 « Objectifs étape 3 » / PLAN_OBJECTIFS_TEMPS_REEL).
-//
-//nolint:unused // grammaire d'un composant de ti=11 — voir la condition de retrait ci-dessus.
+// BRANCHÉE le 2026-08-27 (lot ti11-cadre, spec TI11_SPEC_10_FEUILLES.md) : les deux `case` de
+// consumeByName (i2/i9) l'appellent désormais. Cela SATISFAIT l'ancienne condition de retrait
+// (« branchée ou supprimée quand ti=11 sera décodé ») — le `//nolint:unused` et le statut
+// `deser_non_cable` de la table ECS (i2/i9) sont retirés dans le même commit.
 func consumeObjectiveFormattedText(br *BitReader) {
 	if !br.ReadBit() {
 		return
