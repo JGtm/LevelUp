@@ -1,3 +1,54 @@
+## [2026-08-27] Handoff sons : la reconstitution devient la priorite, et deux erreurs de methode sont corrigees — Complete
+
+**Contexte** : l'utilisateur arrete le branchement au coup par coup et reoriente. Priorite
+HAUTE : retrouver les sons RECONSTITUES (pas isoles), poursuivre la RE jusqu'a un inventaire
+SOLIDE, cibles nommees Bastion / Controle total / Roi de la colline et le TRANSLOCATEUR
+QUANTIQUE ; donner aussi a chaque son deja trouve sa reconstitution et son nom/description.
+Priorite NORMALE : le ramassage sur socle. EN ATTENTE : le branchement des sons isoles.
+
+**Decision technique principale** : ecrire un handoff qui porte les trois categories separement
+— ETABLI, REFUTE (avec denominateur, pour ne pas le refaire), VIVANT — et y inscrire les
+sondes deja redigees plutot que de les lancer a court de budget.
+`.ai/V7.5/HANDOFF_SONS_RECONSTITUTION_2026-08-27.md`.
+
+**Resultats observes** :
+- **Le probleme est nomme** : la recette des armes produisait UN fichier par GESTE ; la planche
+  d'exploration produit une carte par couple (evenement x variante). Deux symptomes le
+  mesurent : le translocateur (« ca monte en intensite, puis c'est pose » — aucun des 23
+  evenements ne le reproduit) et `71cb04b8` (un court son « en trop » sur deux couches sommees
+  a t = 0).
+- **Cinq negatifs neufs, chacun avec son denominateur** : les identifiants d'evenement sont
+  ABSENTS du binaire (3 temoins, 0 occurrence — le moteur les lit dans les tags) ; le binaire
+  ne porte que 3 noms d'evenement Wwise en clair sur ~6 800 ; le hachage est epuise sur les
+  reperes de zone (162 831 744 candidats, esperance 0,1516, seul le temoin sort) ;
+  `sdzg 00037692` est un registre GLOBAL (622 groupes, ancres aux rangs 205/297/516, non
+  contigus) ; `sgrp` est 1:1 avec `snd!` (3 mesures) — le groupe sonore n'est PAS l'unite de
+  geste.
+- **Cinq hypotheses vivantes classees par cout** : boucles `lsnd` (20 referencent la banque des
+  zones), actions multiples d'un evenement avec delai porte par l'ACTION, conteneurs SEQUENCE
+  (defaut PROUVE : 237 dans le jeu, 196 continus, rendus comme des variantes), couches Blend
+  pilotees par RTPC (evaluees au repos), et le geste = plusieurs evenements groupes ailleurs
+  que dans `sgrp`/`sdzg` — donc dans les `hsc*` ou le tag de mode.
+- **Six sondes ecrites** dont S1 (identifier le `hsc*` qui reference un son de la banque des
+  zones — la seule piste de NOMMAGE encore ouverte, et celle que l'utilisateur designe par
+  « remonter dans le code ») et S5 (les 2 orphelins du translocateur, 6,77 s et 6,22 s, les
+  DEUX PLUS LONGS sons de sa banque, qu'aucun de ses 23 evenements n'atteint).
+- **DEUX ERREURS DE METHODE CORRIGEES, et elles sont ecrites comme telles** : (1) j'ai affirme
+  que le film ne portait l'inventaire qu'aux images-cles ; `ecs_table.tsv` dit l'inverse pour
+  i22/i30/i31 — le canal DELTA existe, « bloque par la derive du curseur amont, pas par la
+  grammaire ». C'est nommement la faute que `RE_LOG_KILLWEAPON.md` 7ter.58 interdit, et elle
+  vaut aussi pour la bombe et l'extraction (table de slots incomplete, pas film muet).
+  (2) j'ai servi des rendus a l'ecoute sans les mesurer : intermediaire en 16 bits detruisant
+  les couches a -96 dB (11 rendus silencieux sur 135), une seule variante rendue, orphelins
+  jamais rendus.
+- **Outillage neuf commite** : mode `deps-ordre` (les dependances d'un tag DANS L'ORDRE DU
+  FICHIER — `deps` les triait, ce qui detruit la donnee ; precedent `gggl`).
+
+**Conclusion / prochaine etape** : reprendre par S1 (les `hsc*`) et S5 (les orphelins du
+translocateur), puis S3 (les boucles `lsnd`) — c'est le trio qui peut rendre l'inventaire
+solide. Le branchement des sons isoles reste EN ATTENTE par decision utilisateur. Commits :
+`3f9ffeb65` (lot son), `6e167535e` (mode `deps-ordre`).
+
 ## [2026-08-26] Sons du jeu branches sur le rejeu : objectifs CTF, variantes tirees, et la banque de Bastion trouvee — Complete
 
 **Contexte** : suite directe de la RE du meme jour (banques Wwise nommees par hachage). Demande
@@ -72466,3 +72517,32 @@ couverts ailleurs portes sur `grenadesCarriedFrom`) — regle « 0 code mort ».
 **Conclusion / prochaine etape** : les 5 constats sont clos, rien d autre n a ete touche ; les
 decouvertes hors perimetre du §8 du rapport de lot restent ouvertes. Detail par constat :
 `.ai/V7.5/replay2d/LOT4_SUIVI_DELTA_2026-08-25.md` §9. Aucun commit (consigne).
+
+## [2026-08-27] Rejeu 2D — plan des retours utilisateur (socles, drapeau, MA40, page)
+
+**Statut** : Complete (planification seule — AUCUN code touche, branche feat/v75 occupee par
+le lot sons en cours).
+
+**Decision technique principale** : les 5 retours du 2026-08-27 sont cadres dans
+`.ai/V7.5/replay2d/PLAN_RETOURS_REJEU_2026-08-27.md`, 4 lots (D page -> A socles ->
+B drapeau -> C rafale MA40), TOUT cote web, zero changement d'artefact/SchemaVersion (pas de
+re-cuisson du cache). Points saillants : etat « incertain » des socles raffine par PROXIMITE
+des joueurs (mesure Go de recherche d'abord, seuil contradiction <= 5 %, calcul client pur) ;
+compteur vise la PROCHAINE APPARITION MESUREE (le rejeu connait la suite du film) au lieu du
+seul cycle predictif (etabli sur 24/57 socles seulement) ; rafale MA40 a la LECTURE (3 departs
+sur 1 voix logique, variation RANGED par balle) et non par asset re-cuit ; onde de choc de
+capture depuis doc.objectives/flag_captures (gate filmClockTrusted) ; crane statue [~] —
+herite des helpers du lot B via l'item 4 (PLAN_OBJECTIFS_VIVANTS, decision 7 a amender).
+
+**Resultats observes (exploration)** : scroll fantome = pile de hauteurs fixes ~678 px
+(CANVAS_HEIGHT=480 constant, aside absolue des xl, min-h-[12rem]/max-h-[80vh] sous xl) dans
+le main overflow-y-auto de AppShell — diagnostic navigateur en premiere case du lot D ;
+rappel carte/mode/date GRATUIT sur la page rejeu (matchView.header deja en cache, meme query
+key que la page match, helper buildMatchHeadingStr reutilisable) ; aucun ballCarries dans le
+document (le crane n'a pas d'objet vivant aujourd'hui) ; padPickups.xuid null partout
+(oracle 79,7 % < 90 %, inchange).
+
+**Conclusion / prochaine etape** : PREREQUIS BLOQUANT — committer/fusionner le lot sons en
+cours sur feat/v75 avant toute execution, puis brancher `feat/replay-retours-0827`. Decisions
+par defaut D1-D9 dans le plan, a confirmer par l'utilisateur au lancement (surtout D7 rafale
+lecture-vs-asset et D4/D5 clignotement/taille du drapeau).
