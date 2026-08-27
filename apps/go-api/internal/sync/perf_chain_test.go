@@ -1,7 +1,9 @@
 // Package sync — tests de GetPerformanceChain.
 //
 // Verrouille la table de correspondance (pair_name, is_ranked, is_firefight) →
-// chaîne du score de performance. Couvre les 6 chaînes possibles + le fallback.
+// chaîne du score de performance. Couvre les 7 chaînes possibles + le fallback
+// (le classé est scindé par famille depuis 2026-08-27 : ranked_slayer et
+// ranked_objectif remplacent l'ancienne chaîne unique "ranked").
 package sync
 
 import "testing"
@@ -15,11 +17,30 @@ func TestGetPerformanceChain(t *testing.T) {
 		isFirefight bool
 		want        string
 	}{
-		// Priorité 1 — Ranked court-circuite tout (peu importe pair_name).
-		{name: "ranked flag prend la priorité sur pair_name BTB", pairName: "BTB:Slayer", isRanked: true, want: PerfChainRanked},
-		{name: "ranked flag avec pair_name vide", pairName: "", isRanked: true, want: PerfChainRanked},
-		{name: "ranked Arena Slayer", pairName: "Ranked:Slayer", isRanked: true, want: PerfChainRanked},
-		{name: "ranked + firefight (incohérent) → ranked gagne", pairName: "", isRanked: true, isFirefight: true, want: PerfChainRanked},
+		// Priorité 1 — Ranked court-circuite tout (peu importe la catégorie du
+		// pair_name), mais depuis la scission D-A le SOUS-MODE tranche la famille :
+		// ranked_objectif si objectif, ranked_slayer sinon.
+		{name: "ranked flag prend la priorité sur pair_name BTB", pairName: "BTB:Slayer", isRanked: true, want: PerfChainRankedSlayer},
+		{name: "ranked flag avec pair_name vide", pairName: "", isRanked: true, want: PerfChainRankedSlayer},
+		{name: "ranked Arena Slayer", pairName: "Ranked:Slayer", isRanked: true, want: PerfChainRankedSlayer},
+		{name: "ranked + firefight (incohérent) → ranked gagne", pairName: "", isRanked: true, isFirefight: true, want: PerfChainRankedSlayer},
+		{name: "ranked Slayer sur carte", pairName: "Ranked:Slayer on Aquarius", isRanked: true, want: PerfChainRankedSlayer},
+
+		// Priorité 1 bis — famille objectif du classé (les 4 sous-modes du corpus
+		// réel des 4 joueurs : oddball 13, strongholds 5, ctf 4, koth 3).
+		{name: "ranked CTF → ranked_objectif", pairName: "Ranked:CTF on Recharge", isRanked: true, want: PerfChainRankedObjectif},
+		{name: "ranked Oddball → ranked_objectif", pairName: "Ranked:Oddball on Streets", isRanked: true, want: PerfChainRankedObjectif},
+		{name: "ranked Strongholds → ranked_objectif", pairName: "Ranked:Strongholds on Live Fire", isRanked: true, want: PerfChainRankedObjectif},
+		{name: "ranked King of the Hill → ranked_objectif", pairName: "Ranked:King of the Hill on Solitude", isRanked: true, want: PerfChainRankedObjectif},
+		{name: "ranked + firefight sur sous-mode objectif → ranked_objectif", pairName: "Ranked:CTF on Recharge", isRanked: true, isFirefight: true, want: PerfChainRankedObjectif},
+		{name: "famille lue dans le sous-mode, pas dans le préfixe", pairName: "BTB:CTF on Highpower", isRanked: true, want: PerfChainRankedObjectif},
+
+		// LACUNE CONNUE D-I (.ai/PLAN_PERF_NOTE_OBJECTIFS.md, 2026-08-27) : ce match
+		// EST un match d'objectif, mais « ctf 3 captures » n'est pas dans la liste
+		// partagée — l'élargir déplacerait aussi des chaînes LUSR déjà persistées
+		// (recompute LUSR hors périmètre). Verrouillé pour que la correction future
+		// soit délibérée.
+		{name: "ranked CTF 3 Captures → ranked_slayer (lacune D-I)", pairName: "Ranked:CTF 3 Captures on Argyle", isRanked: true, want: PerfChainRankedSlayer},
 
 		// Priorité 2 — Firefight.
 		{name: "firefight flag", pairName: "Firefight:King of the Hill", isFirefight: true, want: PerfChainFirefight},

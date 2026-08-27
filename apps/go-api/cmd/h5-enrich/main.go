@@ -79,6 +79,10 @@ func main() {
 	// donc requis MÊME pour l'enrichment hors-LUSR (sinon panic au 1er perf).
 	lusync.SetLUSRChainClassifier(skillchain.ClassifyLUSRChain)
 	lusync.SetLUSRChainClassifierForTitle(halo5.TitleSlug, halo5.ClassifyLUSRChain)
+	// Famille de la chaîne de perf classée (ranked_slayer / ranked_objectif) : h5
+	// n'a pas de sous-mode → classifier dédié qui répond false.
+	lusync.SetObjectiveFamilyClassifier(skillchain.IsObjectiveSubMode)
+	lusync.SetObjectiveFamilyClassifierForTitle(halo5.TitleSlug, halo5.IsObjectiveSubMode)
 
 	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
 	sharedPath := pr.SharedDBPath(halo5.TitleSlug)

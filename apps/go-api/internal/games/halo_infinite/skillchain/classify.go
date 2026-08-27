@@ -11,7 +11,6 @@
 package skillchain
 
 import (
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/games/halo_infinite"
 )
 
@@ -69,19 +68,15 @@ func lusrChainForOther(pairName string) string {
 }
 
 // lusrChainForAssassin classe les sous-modes Arena/Tactical/Assault/Community.
-// Objectif reconnus : CTF, Oddball, Strongholds, KotH, Total Control,
-// Land Grab, Extraction, Stockpile, One Flag CTF, Covert One Flag.
-// Tout le reste (Slayer, Attrition, Elimination, inconnu) → arena_slayer.
+// La liste des sous-modes objectif reconnus vit dans IsObjectiveSubMode
+// (objective_family.go) — SOURCE UNIQUE partagée avec la chaîne de performance
+// classée (ranked_objectif). Tout le reste (Slayer, Attrition, Elimination,
+// inconnu) → arena_slayer.
 func lusrChainForAssassin(pairName string) string {
-	subMode := toLowerASCII(analysis.NormalizeModeLabel(pairName))
-	switch subMode {
-	case "ctf", "capture the flag", "neutral flag ctf", "one flag ctf", "covert one flag",
-		"strongholds", "oddball", "king of the hill",
-		"total control", "land grab", "extraction", "stockpile":
+	if IsObjectiveSubMode(pairName) {
 		return chainArenaObjectif
-	default:
-		return chainArenaSlayer
 	}
+	return chainArenaSlayer
 }
 
 // containsI est un contains case-insensitive simplifié.

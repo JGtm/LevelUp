@@ -41,8 +41,10 @@ const (
 	LUSRChainBTB           = skill.LUSRChainBTB
 	LUSRChainChaos         = skill.LUSRChainChaos
 
-	PerfChainRanked    = skill.PerfChainRanked
-	PerfChainFirefight = skill.PerfChainFirefight
+	PerfChainRanked         = skill.PerfChainRanked // valeur stockée historique (cf. skill_config.go)
+	PerfChainRankedSlayer   = skill.PerfChainRankedSlayer
+	PerfChainRankedObjectif = skill.PerfChainRankedObjectif
+	PerfChainFirefight      = skill.PerfChainFirefight
 
 	TierBronze   = skill.TierBronze
 	TierSilver   = skill.TierSilver
@@ -118,8 +120,14 @@ var (
 	SetLUSRChainClassifier         = skill.SetLUSRChainClassifier
 	SetLUSRChainClassifierForTitle = skill.SetLUSRChainClassifierForTitle
 
-	SimulationVariants               = skill.SimulationVariants
-	DefaultLUSRModeIfUnset           = skill.DefaultLUSRModeIfUnset
-	LogLUSRModeAtBoot                = skill.LogLUSRModeAtBoot
-	ValidateLUSRChainClassifierWired = skill.ValidateLUSRChainClassifierWired
+	// Seam famille objectif (chaîne de performance classée, scission D-A).
+	SetObjectiveFamilyClassifier         = skill.SetObjectiveFamilyClassifier
+	SetObjectiveFamilyClassifierForTitle = skill.SetObjectiveFamilyClassifierForTitle
+	IsObjectiveFamilyForTitle            = skill.IsObjectiveFamilyForTitle
+
+	SimulationVariants                     = skill.SimulationVariants
+	DefaultLUSRModeIfUnset                 = skill.DefaultLUSRModeIfUnset
+	LogLUSRModeAtBoot                      = skill.LogLUSRModeAtBoot
+	ValidateLUSRChainClassifierWired       = skill.ValidateLUSRChainClassifierWired
+	ValidateObjectiveFamilyClassifierWired = skill.ValidateObjectiveFamilyClassifierWired
 )

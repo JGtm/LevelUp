@@ -223,7 +223,7 @@ func loadHistoryForPerf(ctx context.Context, sharedDB *sql.DB, xuid string) ([]h
 // Retourne le nombre de matchs mis à jour.
 //
 // Sémantique : chaque match est rattaché à une chaîne via GetPerformanceChain
-// (6 chaînes possibles). Le percentile pondéré est calculé sur les 50 derniers
+// (7 chaînes possibles). Le percentile pondéré est calculé sur les 50 derniers
 // matchs de la **même chaîne** uniquement. Un score n'est calculé qu'à partir
 // du MinMatchesPerChainForRelative-ième match de la chaîne (pas de fallback
 // global, préservation de la sémantique "relatif à ta chaîne").
