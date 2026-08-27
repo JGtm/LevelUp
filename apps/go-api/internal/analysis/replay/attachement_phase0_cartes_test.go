@@ -34,6 +34,23 @@ var attCartes = map[string]struct{ Nom, MapID string }{
 	"53ce4390": {"Behemoth", "e9a5a982-6c4e-4db6-9383-7b03671460eb"},
 	"084a804d": {"Fortitude Heavies", "305b1bdd-9a7b-4975-bacf-8bd63c8c13d2"},
 	"a349fea8": {"Fragmentation Heavies", "0d849a52-fedb-4aea-b5a3-caee268f1f49"},
+
+	// LES SEPT FILMS ODDBALL DU RECENSEMENT D1, relevés le 2026-08-27 par
+	// `cmd/zone-attribution -census` (lecture seule de `match_registry`, sortie figée dans
+	// `registre_film/D1_recensement_modes.log`) — et non plus sur l'instantané parquet, qui
+	// date de juillet et ne connaît pas ces matchs.
+	//
+	// LES SEPT SONT LÀ, Y COMPRIS LES TROIS QUE LES CATALOGUES NE COUVRENT PAS. Live Fire n'a
+	// pas de bornes de quantification, Lattice n'est pas au catalogue d'objectifs : ces trois
+	// films sortiront par le chemin NON EXPLOITABLE de l'instrument, qui NOMME la cause. Les
+	// omettre ici ferait disparaître l'exclusion au lieu de la mesurer.
+	"24dbb67d": {"Recharge - Ranked", "336b5174-3579-4fd8-b2f0-922e4a5f7628"},
+	"43716616": {"Smallhalla", "98783453-ce40-4020-9e87-62099a290b62"},
+	"51ebbc0f": {"Banished Narrows", "9ad226d8-8947-4c5b-95bc-d220187698c1"},
+	"60ae07c4": {"Live Fire - Ranked", "309253f8-7a75-48ff-83e1-e7fb3db2ac47"},
+	"92f18088": {"Lattice - Ranked", "1a6cfc2e-ec86-48e1-9464-1ce1bff6ed48"},
+	"c88ec007": {"Live Fire", "6c01f693-c968-4a71-b157-efc35ffcf71f"},
+	"d9781168": {"Dredge", "e4bb06db-065f-4902-b93b-d8dac315eac4"},
 }
 
 // attRefDir rend le répertoire des données de référence du titre.
