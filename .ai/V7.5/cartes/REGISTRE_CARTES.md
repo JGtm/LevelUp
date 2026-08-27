@@ -834,3 +834,39 @@ taille reelles, converties par le calage publie du fond — pas d'estimation.
 
 **Critere de verdict** : si l'un des deux epouse les salles de l'arene, on tient la source des
 callouts Forge, hors ligne, pour les 40 cartes.
+
+### 2026-08-27 — Isolation : trente rendus, et la recette du 10/08 mise a l'epreuve
+
+Planche : https://claude.ai/code/artifact/8cab9a4b-0a53-436a-a9c2-e5fccd952a97
+
+**Verbatim** : « Forbidden la est extremement differente et toujours valide, je me demande si la
+recette utilisee ne serait pas meilleure pour l'anti-gribouillis »
+
+**La recette du 10/08, retrouvee sur pieces** (sidecar de `ctf_forbidden`, commit `9b8f6cca3`) :
+habillage `jeu`, **0,0920 m/px**, aucun levier. Contre aujourd'hui : `encre`, 0,0450, ecretage
+4 m, masque des 63 zones.
+
+**Appliquee a Isolation (vignette 28) : la bouillie reste**, un peu moins criante parce que le
+pixel est deux fois plus gros — c'est exactement ce qui etait publie le 13/08. **La recette
+n'est donc pas ce qui sauve Forbidden : c'est sa GEOMETRIE.** Forbidden est faite de dalles
+planes qui se rencontrent franchement ; Isolation, de coques organiques qui se chevauchent.
+
+**Ce que l'echelle fait quand meme** — comparer 01 contre 21, ou 10 contre 23 : a habillage
+constant, le pixel de production adoucit le gribouillis sans le supprimer. **L'echelle
+automatique introduite le 26/08 l'a donc rendu PLUS visible sur les cartes organiques.** Effet
+reel, mesurable, et signale par l'utilisateur avant moi.
+
+**Deux hypotheses de l'utilisateur, testees et ecartees** :
+
+| hypothese | mesure | verdict |
+|---|---|---|
+| un parametre mal interprete (repere de l'objet) | `\|up\|` et `\|forward\|` = 1,0000 sur les 5 042 objets ; produit scalaire 0,0000 | repere lu correctement |
+| maillages mal decodes (indices) | rapport arete mediane / diagonale : **mediane 0,026** sur 260 modeles | maillages sains |
+
+**Reste a mesurer** : l'ECHELLE des objets Forge. `InstanceForge` force `Scale = {1,1,1}` ; si
+Forge encode un redimensionnement dans le sac de proprietes — la ou vivent deja les formes —
+on dessine tout au mauvais gabarit.
+
+**Prochain angle de rendu si aucune vignette ne convient** : ne plus retenir la surface la plus
+HAUTE par pixel mais la plus proche du sol joue, partout. C'est un mode de rendu, pas un
+reglage.
