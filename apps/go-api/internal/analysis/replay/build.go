@@ -113,6 +113,11 @@ type Options struct {
 	// build_zones.go). Le CATALOGUE de zones vient de l'appelant — c'est lui qui sait joindre la
 	// carte du match — et il commande le balayage : sans zones, `ti=13` n'est pas lu.
 	Zone ZoneInput
+	// Vip : de quoi construire LA COURONNE VIP (entrée de DONNÉES comme Flag ; cf. vip_crown.go).
+	// `Scanned` faux = ni couronne ni couverture. La GARDE DE MODE est chez l'appelant : `comp
+	// 22 A` vaut `flag_grabs` en CTF, donc seul un appelant qui reconnaît le match VIP par
+	// `game_variant_name` le pose — ce paquet ne devine aucun mode.
+	Vip VipInput
 	// NeutralDeaths : les morts que personne ne revendique, AVEC LEUR TYPE DÉJÀ RÉSOLU
 	// (cf. NeutralDeath). Entrée de DONNÉES comme Deaths et Objectives.
 	//
@@ -189,6 +194,17 @@ func BuildFromFilm(matchID, titleSlug, filmDir string, opt Options) (ReplayDocum
 		scan = *opt.Scan
 	}
 	scan.WorldRange = &worldRange
+	// Le DÉCOUPAGE d'i0 vient du CATALOGUE, comme les bornes dont il est déduit — le
+	// découpage lu dans le film (DetectI0Layout) est le contrôle, jamais l'entrée (doctrine
+	// écrite sur WorldObjectPrecision, appliquée au bipède depuis le lot C catalogues
+	// 2026-08-27 : sur une carte à plus de 2 régions, l'auto-détection lit l'index de
+	// région comme un bit d'axe et le décodeur rejetterait tous les records — Live Fire).
+	// Un opt.Scan qui force déjà son Layout (instruments) reste maître ; une entrée sans
+	// largeurs (catalogue antérieur au champ) laisse l'auto-détection, comme le chemin
+	// world-object laisse son défaut — jamais des largeurs nulles.
+	if lay := opt.MapQuant.Layout(); scan.Layout == nil && lay.Valid() {
+		scan.Layout = &lay
+	}
 	// Le cap de visée (Point.H) se lit dans le MÊME record que la position : la capture des
 	// directions est donc toujours active pour l'artefact. Elle n'altère aucune position
 	// (lecture seule après le vec3 d'i0).
@@ -470,6 +486,9 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	// La VIE DES DRAPEAUX, sur les pistes PUBLIEES (le drapeau porte est a la position de son
 	// porteur, et c'est celle-la que le client dessine) — cf. build_objectives_live.go.
 	attachFlagCarries(&doc, opt, own, replayClock{origin: origin, step: step, frames: doc.FrameCount})
+	// LA COURONNE VIP, sur les pistes PUBLIEES (la couronne est a la position de son porteur) —
+	// gardee de mode par l'appelant (opt.Vip.Scanned), cf. vip_crown.go.
+	attachVipCrown(&doc, opt, own, replayClock{origin: origin, step: step, frames: doc.FrameCount})
 	// LES OBJETS D'OBJECTIF LIBRES SONT POSÉS HORS DE LA GARDE DE MODE DU DRAPEAU, et c'est
 	// délibéré : ce calque ne lit ni le statborg ni le fil des morts, donc rien de ce que cette
 	// garde protège. La placer devant l'éteindrait sur Oddball — là où il sert.

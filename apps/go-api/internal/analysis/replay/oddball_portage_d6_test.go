@@ -113,7 +113,7 @@ func TestOddballPortageProximite(t *testing.T) {
 		return
 	}
 	dir := objChunkDir(root, id)
-	wr, ok := d6Bornes(t, root, id)
+	wr, lay, ok := d6Bornes(t, root, id)
 	if !ok {
 		return
 	}
@@ -122,7 +122,7 @@ func TestOddballPortageProximite(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%s : fil des morts illisible : %v", id, err)
 	}
-	pos, err := d6Positions(dir, wr)
+	pos, err := d6Positions(dir, wr, lay)
 	if err != nil {
 		t.Fatalf("%s : positions de bipede illisibles : %v", id, err)
 	}
@@ -194,16 +194,23 @@ func d6ViesEtSocles(t *testing.T, root, id string) ([]flagFreeLife, []PointObjec
 // bipedes en QUANTA — ce que fait le pont d'identite, qui n'a besoin que des slots et des
 // instants — comparerait des metres a des quanta et rendrait des distances sans aucun sens, sans
 // que rien ne le signale. La proximite exige LA MEME echelle des deux cotes.
-func d6Positions(dir string, wr filmdec.Vec3Range) ([]filmdec.BipedPosition, error) {
+func d6Positions(dir string, wr filmdec.Vec3Range, lay filmdec.I0Layout) ([]filmdec.BipedPosition, error) {
 	release := filmdec.LockProcessDecode()
 	defer release()
 	opt := filmdec.DefaultScanFilmOptions()
 	opt.WorldRange = &wr
+	// Le découpage d'i0 vient du CATALOGUE quand il est complet (même doctrine que le
+	// chemin world-object ; indispensable sur les cartes à plus de 2 régions — Live Fire,
+	// lot C catalogues 2026-08-27). Un layout incomplet laisse l'auto-détection historique.
+	if lay.Valid() {
+		opt.Layout = &lay
+	}
 	return filmdec.ScanFilmBipedPositions(dir, opt)
 }
 
-// d6Bornes rend les bornes monde de la carte du film, sous verrou de processus.
-func d6Bornes(t *testing.T, root, id string) (filmdec.Vec3Range, bool) {
+// d6Bornes rend les bornes monde et le découpage d'i0 de la carte du film, sous verrou de
+// processus.
+func d6Bornes(t *testing.T, root, id string) (filmdec.Vec3Range, filmdec.I0Layout, bool) {
 	t.Helper()
 	release := filmdec.LockProcessDecode()
 	defer release()

@@ -39,6 +39,39 @@ type MapQuantEntry struct {
 	// la loi du moteur. C'est une valeur de contrôle : elle doit égaler le découpage lu
 	// dans le film par DetectI0Layout, sans quoi les bornes ne sont pas celles de la carte.
 	AxisWidths [3]uint `json:"axisWidths"`
+	// Region est l'INDEX DE RÉGION de compression que les bornes ci-dessus décrivent, dans
+	// l'ordre du bloc structure-BSP du tag de niveau. Zéro (l'absence historique du champ)
+	// = région 0, le cas de toutes les cartes dont le module porte ses propres sbsp. Live
+	// Fire (2026-08-27, lot C catalogues) est la première carte où la région JOUÉE n'est
+	// pas la 0 : son levl déclare 4 régions portées par ds/globals/common, l'arène est la
+	// région 1 (les 59 376/59 377 records i0 de ses 2 films portent l'index 01, et c'est la
+	// seule région dont l'AABB contient les ancres d'objectifs du catalogue).
+	Region uint32 `json:"region,omitempty"`
+	// RegionIndexBits est la largeur du champ d'index de région dans i0 :
+	// ceilLog2(nb de régions déclarées), jamais moins de 1 (la valeur historique, vérifiée
+	// par le contrôle film sur toutes les cartes à 1-2 régions). Zéro (champ absent) = 1.
+	RegionIndexBits uint `json:"regionIndexBits,omitempty"`
+}
+
+// EffectiveRegionIndexBits rend la largeur d'index de région, défauts historiques compris.
+func (e MapQuantEntry) EffectiveRegionIndexBits() uint {
+	if e.RegionIndexBits == 0 {
+		return 1
+	}
+	return e.RegionIndexBits
+}
+
+// Layout rend le découpage d'i0 que le CATALOGUE impose pour cette carte : l'en-tête
+// (spine + useDefault + index de région à sa vraie largeur), la région attendue et les
+// largeurs d'axe déduites des bornes. C'est la source d'autorité du décodage — le découpage
+// lu dans le film (DetectI0Layout) reste le CONTRÔLE, jamais l'entrée (la même doctrine que
+// celle du descripteur world-object, traverse.go).
+func (e MapQuantEntry) Layout() I0Layout {
+	return I0Layout{
+		GateBits: i0SpineBits + i0UseDefaultBits + int(e.EffectiveRegionIndexBits()),
+		AxisW:    e.AxisWidths,
+		Region:   e.Region,
+	}
 }
 
 // Range convertit l'entrée en plage de déquantification.

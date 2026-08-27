@@ -47,6 +47,10 @@ type filmStats struct {
 	// enregistrements d'entite (les memes que la courbe de score) et les bursts de capture. Les
 	// SOCLES s'y ajoutent chez l'appelant (ils viennent du catalogue de carte, pas du film).
 	flag replay.FlagInput
+	// vip porte la COURONNE VIP : les memes enregistrements d'entite, plus la garde de mode
+	// (`Scanned`) posee par l'appelant selon `game_variant_name` — `comp 22 A` vaut `flag_grabs`
+	// en CTF, donc la couronne n'est lue que sur un film reconnu VIP.
+	vip replay.VipInput
 }
 
 // readFilmStats decode les enregistrements d'entite et assemble les entrees des deux calques.
@@ -87,7 +91,18 @@ func readFilmStats(ctx context.Context, matchID, filmDir string, facts port.Matc
 		},
 		objectives: identifiedEvents(ctx, matchID, recs, lines, facts.GameVariantName),
 		flag:       flagInput(recs, src),
+		vip:        vipInput(recs, isVipVariant(facts.GameVariantName)),
 	}
+}
+
+// vipInput assemble ce que la COURONNE VIP lit dans le film — les memes enregistrements d'entite
+// que la courbe de score et le drapeau, gardes par le mode. Hors VIP, elle rend un input VIDE
+// (ni records ni Scanned) : le calque ne sera ni construit ni publie.
+func vipInput(recs []objectiveevents.StatRecord, isVip bool) replay.VipInput {
+	if !isVip {
+		return replay.VipInput{}
+	}
+	return replay.VipInput{Scanned: true, Records: recs}
 }
 
 // flagInput assemble ce que le calque du DRAPEAU VIVANT lit dans le film.

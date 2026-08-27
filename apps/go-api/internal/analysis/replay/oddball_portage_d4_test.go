@@ -126,7 +126,7 @@ func d4ViesLibres(t *testing.T, root, id string) ([]flagFreeLife, bool) {
 	prev := filmdec.WorldObjectPrecision
 	defer func() { filmdec.WorldObjectPrecision = prev }()
 
-	wr, ok := attBornes(t, root, id)
+	wr, _, ok := attBornes(t, root, id)
 	if !ok {
 		t.Logf("NON EXPLOITABLE %s : bornes de quantification indisponibles. NI POUR NI CONTRE.", id)
 		return nil, false

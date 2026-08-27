@@ -31,8 +31,13 @@ import (
 
 	"levelup/go-api/internal/analysis/filmdec"
 	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/analysis/replay/mapvar"
 	"levelup/go-api/internal/filmproc"
 )
+
+// a1SitesEnv designe le fichier de sites CANDIDATS a donner en entree (arbitrage lot C). Sans
+// lui, le test retombe sur `attMarqueurs` (catalogue), qui rend 0 site pour ces cartes.
+const a1SitesEnv = "A1_SITES"
 
 const (
 	// a1DebutMancheMS : une creation est « au debut de manche » si elle suit le premier
@@ -83,6 +88,15 @@ func TestAssautA1Identite(t *testing.T) {
 	if !ok {
 		t.Logf("NON EXPLOITABLE %s : bornes de quantification indisponibles. NI POUR NI CONTRE.", id)
 		return
+	}
+	// ARBITRAGE lot C : le catalogue ne porte AUCUN site `assault_bomb` pour ces cartes (les
+	// hashs candidats -1843278509/-1537427652 sont des navpoints base/centre GENERIQUES,
+	// mesures identiques sur Catalyst, carte NON Assaut — un role global les mislabellerait).
+	// Les sites CANDIDATS FIGES (`C2_sites_candidats.json`) sont donc donnes EN ENTREE ici,
+	// scoped a ce test, sans polluer le catalogue partage. Le gate A1.3 (site ET coincidence,
+	// >= 2 films, temoin 0) est INCHANGE : c'est lui qui juge l'identite, pas le choix spatial.
+	if cand := a1SitesCandidats(t, id); cand != nil {
+		sites = cand
 	}
 	t.Logf("%s : denominateurs du balayage — %d ancres, %d acceptees, %d RESOLUES au catalogue "+
 		"d'armes, %d ecartees, %d mots distincts parmi les ecartees ; %d site(s) `%s`",
@@ -264,3 +278,25 @@ func a1Publie(t *testing.T, id string, cands []a1Candidat) {
 // formatM / formatMS : rendus « - » compatibles du tableau ci-dessus.
 func formatM(v float64) string { return fmt.Sprintf("%.2f m", v) }
 func formatMS(v int64) string  { return fmt.Sprintf("%d ms", v) }
+
+// a1SitesCandidats rend les sites CANDIDATS figes de la carte du film (arbitrage lot C), ou
+// nil si `A1_SITES` n'est pas pose. Reutilise `c2ChargeSites` (le chargeur du controle C2.3)
+// pour ne pas dupliquer le parse du JSON du registre — les positions sont deja en coordonnees
+// monde, la meme echelle que les creations `ti=42` dequantifiees.
+func a1SitesCandidats(t *testing.T, id string) []PointObjective {
+	t.Helper()
+	path := os.Getenv(a1SitesEnv)
+	if path == "" {
+		return nil
+	}
+	sites := c2ChargeSites(t, path, id)
+	out := make([]PointObjective, 0, len(sites))
+	for _, s := range sites {
+		out = append(out, PointObjective{
+			Role:      mapvar.Role(a0RoleSite),
+			TeamIndex: s.Team,
+			Center:    mapvar.Vec3{X: s.X, Y: s.Y, Z: s.Z},
+		})
+	}
+	return out
+}
