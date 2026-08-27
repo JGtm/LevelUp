@@ -140,7 +140,7 @@ func attachFlagCarries(doc *ReplayDocument, opt Options, own OwnerReport, clock 
 	// l'identifiant du manifeste n'apparait dans aucune creation `ti=42`. Elles ne sont PAS
 	// publiees (cf. document_objectives_live.go) — elles CORRIGENT le calque, et seules celles
 	// nees aux pieds d'un porteur y servent.
-	scan.Free = flagFreeLives(opt.Pads.Weapons, opt.Labels.FlagObjects)
+	scan.Free = flagFreeLives(opt.Pads.Weapons, opt.Labels.ObjectiveObjects)
 	carries, cov := buildFlagCarries(scan, flagCarryCtx{
 		origin: clock.origin, step: clock.step, frames: clock.frames,
 		tracks: doc.Tracks, deaths: opt.Deaths,
