@@ -880,6 +880,33 @@ func consumeByName(br *BitReader, name string, typeIndex uint32, level uint32) (
 	case compManagedObjectPlayerMaskedProperty: // ti=13 i2..i33 (FUN_140ce593c -> FUN_140ce59bc) — variant mode B, publie
 		consumeManagedObjectPlayerMaskedProperty(br)
 		return variant, nil, true
+	case compManagedObjectiveTimers: // ti=11 i0 (FUN_142ed5a6c -> FUN_1410d9088) — 2xR(7), publie
+		consumeManagedObjectiveTimers(br)
+		return variant, nil, true
+	case compManagedObjectiveColor: // ti=11 i1 (FUN_142ed544c) — 4xR(8) RGBA, publie
+		consumeManagedObjectiveColor(br)
+		return variant, nil, true
+	case compManagedObjectiveObjectRef: // ti=11 i3 (FUN_142ed5550) — R(32) GlobalID (LE PORTEUR), publie
+		consumeManagedObjectiveU32(br, ManagedObjectiveObjectRef)
+		return variant, nil, true
+	case compManagedObjectiveType: // ti=11 i5 (FUN_1410fc4a4) — R(32), publie
+		consumeManagedObjectiveU32(br, ManagedObjectiveType)
+		return variant, nil, true
+	case compManagedObjectiveProgress: // ti=11 i12 (FUN_142ed575c) — R(32), publie
+		consumeManagedObjectiveU32(br, ManagedObjectiveProgress)
+		return variant, nil, true
+	case compManagedObjectiveRequired: // ti=11 i13 (FUN_142ed5844) — R(32), publie
+		consumeManagedObjectiveU32(br, ManagedObjectiveRequired)
+		return variant, nil, true
+	case compManagedObjectiveState: // ti=11 i14 (FUN_142ed5948) — R(3), publie
+		consumeManagedObjectiveState(br)
+		return variant, nil, true
+	case compManagedObjectiveParent: // ti=11 i15 (FUN_142ed5674) — R(32) GlobalID, publie
+		consumeManagedObjectiveU32(br, ManagedObjectiveParent)
+		return variant, nil, true
+	case compManagedObjectiveSubEntity: // ti=11 i16..i31 (FUN_142ed5974) — R(32) GlobalID, publie
+		consumeManagedObjectiveU32(br, ManagedObjectiveSubEntity)
+		return variant, nil, true
 	case "device-position-component": // ti43 (FUN_140bef320) — R(14)+R(1)
 		consumeDevicePosition(br)
 		return variant, nil, true
