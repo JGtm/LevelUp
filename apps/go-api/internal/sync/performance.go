@@ -295,6 +295,25 @@ func BatchComputePerformanceScores(ctx context.Context, playerDB, sharedDB *sql.
 	return batchComputePerformanceScores(ctx, playerDB, sharedDB, xuid, nil, force)
 }
 
+// RecomputePerformanceScoresWithMedals recalcule les notes en incluant le bonus
+// médailles — la variante que RunBackfillPerf (engine_backfills.go:352) applique
+// au backfill, exposée SANS SyncEngine pour les binaires de recompute hors
+// serveur (lot 4 du plan PERF_NOTE_OBJECTIFS).
+//
+// À préférer à BatchComputePerformanceScores pour tout recompute RÉEL : cette
+// dernière passe medalExploit nil, donc la métrique medal_exploit y vaut 0 pour
+// tous les matchs et les notes stockées divergeraient de celles que produit le
+// post-sync (écart mesuré ~1,2-2,2 pt).
+//
+// metadataDBPath vide ou illisible → dégradation gracieuse (map nil, cf.
+// loadMedalExploitMap). playerDB doit être ouvert en RW ; sharedDB est lu.
+func RecomputePerformanceScoresWithMedals(ctx context.Context, playerDB, sharedDB *sql.DB,
+	metadataDBPath, xuid string, force bool,
+) (int, error) {
+	medalMap := loadMedalExploitMap(ctx, metadataDBPath, sharedDB, xuid)
+	return batchComputePerformanceScores(ctx, playerDB, sharedDB, xuid, medalMap, force)
+}
+
 func batchComputePerformanceScores(ctx context.Context, playerDB, sharedDB *sql.DB, xuid string, medalExploitByMatch map[string]float64, force bool) (int, error) {
 	allMatches, err := loadHistoryForPerf(ctx, sharedDB, xuid)
 	if err != nil {
