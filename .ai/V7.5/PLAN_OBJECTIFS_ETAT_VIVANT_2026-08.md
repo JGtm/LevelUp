@@ -99,7 +99,7 @@ pourquoi et a quelle condition il pourra y entrer (« sans designateur, un etat 
 | **seuils (ECRITS AVANT MESURE)** | (1) attribution : >= **80 %** des prises nommees tombent dans UNE forme du catalogue, temoin decale <= **20 %** ; (2) cardinalite : l'ensemble des zones appariees par manche vaut **exactement 3** sur >= **2** films ; (3) proprietaire : accord tag 4 / equipe du capteur >= **90 %** (le chiffre tenu par Bastion : 48/48 et 51/56). Les trois doivent passer pour que `totalcontrol_zone` rejoigne `heldZoneRoles`. |
 | **verdict** | **FAISABLE SOUS RESERVE DE CORPUS** — tout l'outillage existe ; il faut des films de Total Control (recensement, phase D1). |
 
-### 2.4 Oddball — `[ ]` LE CRANE : la voie du MARQUEUR est morte, une AUTRE voie s'est ouverte
+### 2.4 Oddball — `[!]` LE CRANE : identite ETABLIE, canal ETABLI, ORACLE REFUTE (mesure D4, 2026-08-27)
 
 Trois negatifs independants sont acquis et ne se rejouent pas (registre des reports, ligne « Le
 CRANE d'Oddball n'est ni lu ni publie ») : le marqueur de portage du drapeau est TOTALEMENT absent
@@ -127,7 +127,7 @@ Ce qui a CHANGE depuis ce report (2026-08-18), et qui le rouvre :
 | **corroboration** | les 87 evenements `th=10` de crane du film `24dbb67d`, 87 acteurs, **87/87 nommes par le pont bipede** (mesure du 2026-08-18, saine). |
 | **temoins negatifs** | (a) SELECTIVITE : aucun AUTRE mot ecarte ne reunit « naitre a <= 3 m d'un `oddball_spawn` » ET « coincider a <= 1 s d'un evenement `th=10` de crane » — c'est le temoin exact qui a etabli le drapeau ; (b) PORTEUR : un joueur tire au hasard hors trou <= 5 %. |
 | **seuils (ECRITS AVANT MESURE)** | (1) identite : **UN SEUL** mot candidat, LE MEME sur >= **2** films Oddball, temoin (a) = **0** autre candidat ; (2) portage : >= **90 %** des trous ont EXACTEMENT UN joueur dont le score personnel s'incremente sur toute leur duree, temoin (b) <= **5 %**. |
-| **verdict** | **FAISABLE SOUS RESERVE DE CORPUS** (>= 2 films Oddball exiges ; un seul est cite au corpus historique, `24dbb67d`). Si l'identite ne sort pas : `[!]` MESURE, et la ligne du registre est mise a jour, pas contournee. |
+| **verdict** | **MESURE LE 2026-08-27 — seuil (1) TENU, seuil (2) NON TENU.** L'identite est etablie (`0x0017592C`, 4 films sur 4) et le canal se lit (15 a 46 trous fermes par film), mais l'oracle du score personnel NE DISCRIMINE PAS le portage (40,6 a 66,7 % contre un seuil de 90 % ; temoin hors trou a 66,7 et 71,4 % contre 5 %). Oddball reste `[!]`, le crane n'entre PAS au manifeste, D5 ne publie rien. Detail et reserves : journal du plan, entrees D4 du 2026-08-27. |
 
 ### 2.5 Extraction — `[!]` NI CANAL NI ORACLE, ET PROBABLEMENT NI CORPUS
 
@@ -724,11 +724,11 @@ sur les zones. Elle se CITE, elle ne se redemande pas. Elle ne couvre en revanch
       de forme que `attachement_phase0_drapeau_test.go`.
 - [x] D4.2 Temoin de SELECTIVITE : compter les AUTRES mots qui reunissent les deux conditions.
       Le seuil exige **zero**.
-- [ ] D4.3 Portage : decouper la vie du crane en TROUS (l'objet cesse d'emettre) ; pour chaque
+- [x] D4.3 Portage : decouper la vie du crane en TROUS (l'objet cesse d'emettre) ; pour chaque
       trou, chercher le joueur dont le score PERSONNEL s'incremente sur toute sa duree
       (`objectiveevents.SeriesTotal(recs, objectiveevents.PersonalScoreComponent, false)`, slot ->
       xuid par `SlotIdentityResolved`). Temoin : un joueur tire au hasard hors trou.
-- [ ] D4.4 Verdict : les deux seuils du §2.4. Non tenu = NEGATIF ecrit, `[!]`, la ligne du registre
+- [x] D4.4 Verdict : les deux seuils du §2.4. Non tenu = NEGATIF ecrit, `[!]`, la ligne du registre
       des reports est mise a JOUR (texte fourni au CR), et D5 ne publie rien pour Oddball.
 
 **Gate D4** : (1) UN seul mot candidat, le meme sur >= 2 films, 0 autre candidat ; (2) >= 90 % des
@@ -1352,13 +1352,13 @@ Oddball : rien a exclure de ce cote. Chaque carte mesurable porte **exactement U
       conditions (naissance a <= 3 m d'un `oddball_spawn` ET coincidence a <= 1 s d'un
       evenement `th=10` de crane). Le seuil exige que ce compte vaille **UN** : le candidat, et
       aucun autre.
-- [ ] D4.3 **Portage.** Vies libres du mot candidat (`flagFreeLives`, meme regle d'appariement
+- [x] D4.3 **Portage.** Vies libres du mot candidat (`flagFreeLives`, meme regle d'appariement
       creation -> piste que les armes au sol) ; un TROU est l'intervalle entre la fin d'une vie
       libre et le debut de la suivante. Pour chaque trou, chercher le joueur dont le score
       PERSONNEL s'incremente sur toute sa duree
       (`objectiveevents.SeriesTotal(recs, PersonalScoreComponent, false)`, slot -> xuid par
       `SlotIdentityResolved` / `SlotIdentityByDeaths`).
-- [ ] D4.4 **Verdict.** Les deux seuils du §2.4. Non tenu = NEGATIF ecrit, `[!]`, ligne du
+- [x] D4.4 **Verdict.** Les deux seuils du §2.4. Non tenu = NEGATIF ecrit, `[!]`, ligne du
       registre des reports mise a JOUR (texte fourni au CR), et D5 ne publie rien pour Oddball.
 
 **L'ORACLE EST MESURE AVANT D'ETRE CRU — c'est la reserve du superviseur, et elle est fondee.**
@@ -1489,3 +1489,68 @@ centaine, sans rapport avec la duree. Publier la mediane des points par seconde 
 delta brut separe les deux cas sans avoir a en prejuger. **Si le diagnostic dit « frags », le
 seuil (2) n'est pas evalue et Oddball passe `[!]` ORACLE** — le protocole du §D4 le dit deja, et
 il ne se renegocie pas a la lecture du chiffre.
+
+- 2026-08-27 — **D4, SEUIL (2) : NON TENU SUR LES QUATRE FILMS. Oddball passe `[!]`, et le
+  crane N'ENTRE PAS au manifeste.** Definitions operatoires commitees avant la mesure
+  (`f51c7fd5d`). Sortie brute figee dans `registre_film/D4_oddball_portage.log`.
+
+  | film | vies libres | trous fermes | exploitables (>= 5 s) | porteur UNIQUE | aucun | plusieurs | part | temoin INTERVALLE | temoin JOUEUR | diagnostic |
+  |---|---|---|---|---|---|---|---|---|---|---|
+  | `24dbb67d` | 23 | 22 | 15 | 10 | 3 | 2 | **66,7 %** | 2/3 = 66,7 % | 1/3 = 33,3 % | 9,95 pt/s, delta 360 |
+  | `43716616` | 16 | 15 | 11 | 7 | 2 | 2 | **63,6 %** | pas de denominateur | pas de denominateur | 8,98 pt/s, delta 160 |
+  | `51ebbc0f` | 21 | 20 | 13 | 6 | 4 | 3 | **46,2 %** | 0/2 = 0,0 % | 0/2 = 0,0 % | 10,58 pt/s, delta 260 |
+  | `d9781168` | 47 | 46 | 32 | 13 | 8 | 11 | **40,6 %** | 5/7 = 71,4 % | 1/7 = 14,3 % | 9,27 pt/s, delta 160 |
+
+  **Seuil : >= 90 %. Mesure : 40,6 a 66,7 %. NON TENU, sur les quatre films, sans exception.**
+  Ce verdict ne depend d'AUCUN temoin : la part seule le rend.
+
+  **LE TEMOIN, QUAND IL A UN DENOMINATEUR, EST ACCABLANT.** Sur `d9781168` et `24dbb67d`, un
+  intervalle de MEME DUREE place a l'interieur d'une vie libre — c'est-a-dire quand l'objet
+  REPLIQUE, donc quand personne ne le porte — rend un marqueur continu unique dans **71,4 %** et
+  **66,7 %** des cas, contre un seuil de 5 %. Le predicat n'est pas specifique aux trous : il
+  attrape a peu pres autant de monde hors portage que pendant. **Denominateurs minuscules (7, 3,
+  2, et 0 sur un film), et c'est dit** — trop peu de vies libres durent aussi longtemps que les
+  trous. Le temoin CORROBORE, il ne porte pas le verdict a lui seul.
+
+  **LE DIAGNOSTIC DE L'ORACLE, PUBLIE AVANT LE VERDICT COMME PROMIS : 9 a 10,6 points par
+  seconde de trou** (deltas bruts de 160 a 360 sur des trous de 17 a 36 s). Le protocole du §2.4
+  posait « ~1 pt/s pendant le portage ». **La mesure est dix fois au-dessus.**
+
+  **CE QUE JE NE CONCLURAI PAS.** Je n'ecris PAS « donc c'est du frag », comme en D2-ter. Les
+  deux lectures restent ouvertes et ce corpus ne les separe pas : soit le score personnel
+  d'Oddball vaut reellement ~10 pt/s de portage (et le « ~1 Hz » du §2.4 etait une supposition de
+  plan, jamais mesuree — elle l'est desormais, et elle est fausse), soit il melange le portage a
+  tout le reste. Le temoin penche pour la seconde, mais avec 7 essais on ne tranche pas. **CE QUI
+  EST ETABLI, c'est que l'oracle ne DISCRIMINE pas** : il ne distingue pas « quelqu'un porte » de
+  « personne ne porte ». C'est suffisant pour le refuser, et insuffisant pour le nommer.
+
+  **UNE LIMITE DE LA MESURE QUI M'EST PROPRE, ET QUI COMPTE.** Mon « trou » est l'intervalle
+  entre deux vies libres. Il confond DEUX choses que le protocole supposait identiques : (a)
+  quelqu'un porte l'objet, et (b) l'objet a ete rendu / reinitialise et re-cree a son socle. Le
+  §2.4 tenait (b) pour negligeable ; rien ne l'a verifie, et 23 a 47 vies libres par match
+  suggerent des re-creations frequentes. Une partie des trous « rates » peut n'etre pas des
+  portages du tout. **Cela n'annule pas le negatif** (le seuil est rate de 25 a 50 points, pas de
+  deux), mais cela interdit d'imputer l'echec au seul oracle.
+
+- [x] D4.3 Portage : mesure faite sur les 4 films exploitables, `[!]` — seuil rate.
+- [x] D4.4 Verdict : **les deux seuils du §2.4 ne sont PAS tous deux tenus** — (1) TENU,
+      (2) NON TENU. Oddball reste `[!]`. Le crane N'ENTRE PAS dans `[[objective_objects]]` :
+      le mandat d'amender le manifeste etait conditionne au gate, et le gate est le COUPLE
+      des deux seuils. **D5 ne publie rien pour Oddball.**
+
+**CE QUE D4 LAISSE D'ACQUIS MALGRE LE NEGATIF** — et ce n'est pas rien, parce que le report du
+2026-08-18 disait « ni canal ni oracle » :
+
+1. **L'IDENTITE DU CRANE EST ETABLIE** : `0x0017592C`, elu sur 4 films sur 4, ne a 0,0 m du socle,
+   a 3-6 ms d'un evenement `th=10`. Le report ne peut plus dire « aucun candidat unique ».
+2. **LE CANAL EXISTE ET SE LIT** : 16 a 47 vies libres par film, 15 a 46 trous fermes. Ce qui
+   manque n'est PAS le canal.
+3. **L'ORACLE, LUI, EST REFUTE** : le score personnel ne discrimine pas le portage. La condition
+   de reprise du registre nommait « (a) le SCORE PAR SECONDE DE PORTAGE » — c'est exactement ce
+   qui vient d'etre essaye, et ce qui vient d'echouer. **Cette condition de reprise est donc
+   CONSOMMEE et doit etre REECRITE**, pas laissee en l'etat.
+4. **UNE DECISION PRODUIT DISTINCTE RESTE OUVERTE, ET ELLE N'EST PAS COUVERTE PAR CE GATE** :
+   publier les vies LIBRES du crane seules — ou l'objet se trouve quand personne ne le porte —
+   ne demande aucun oracle, seulement l'identite (acquise) et le canal (acquis). Ce serait un
+   calque d'OBJET, pas un calque de PORTAGE. Le gate D4 ne l'autorise pas et je ne l'ai pas
+   fait ; il revient au superviseur de decider s'il ouvre ce chantier a part.
