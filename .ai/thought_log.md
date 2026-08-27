@@ -1,3 +1,225 @@
+## [2026-08-27] Sons : les ZONES sonnent (capture en cours, domination, colline), et la mesure video du translocateur ECHOUE — Complete
+
+**Contexte** : l'utilisateur designe deux sons a l'oreille (Zone 15 = capture adverse, Zone 17 =
+capture en cours adverse), donne une regle produit pour les tics de score (« un par seconde
+selon l'equipe, quand un camp a toutes les zones », mode Bastion), ecarte la sortie de zone
+(« on s'en fiche »), definit la zone contestee, valide les sept sons d'Oddball, et fournit une
+video du jeu pour le translocateur.
+
+**Decision technique principale** : sortir les sons d'ETAT DE ZONE dans leur propre fichier
+(`zoneSound.ts`). Leur source est `doc.zoneStates` et leur cle de jointure est le PROPRIETAIRE
+d'une zone — pas `doc.objectives` ni le xuid d'un joueur. Source differente, cle differente,
+doctrine differente : fichier different, comme `grenadeSound.ts` et `objectiveSound.ts` avant
+eux.
+
+**Resultats observes** :
+- **LES DEUX PAIRES DU MODE ZONES SONT COMPLETES** : la capture adverse (`4ebe99d6` et ses deux
+  jumeaux) et la capture en cours adverse (`b2af5c02`, `bd7462ce`) sont designees. Le cote
+  adverse etait MUET depuis le 26/08 par decision assumee.
+- **TROIS REGLES CABLEES**, chacune avec son silence : capture en cours (rampe de jauge dont la
+  fin coincide avec un changement de proprietaire — une rampe qui retombe reste MUETTE, c'est le
+  cas « contestee ») ; tic de score (un par seconde tant qu'un camp tient TOUTES les zones,
+  garde double : >= 2 zones et aucun intervalle `active`) ; nouvelle colline (chaque debut
+  d'intervalle `active` sauf le premier). **15 tests neufs, dont quatre epinglent des SILENCES.**
+- **LE TIC DE SCORE EST LE SEUL SON LIVRE TRONQUE**, et les deux ecarts sont declares : coupe a
+  1,2 s (le geste fait 3,62 s / 4,36 s — servi entier a un par seconde il s'empilerait quatre
+  fois) et attenue a -12 dBTP au lieu de -1 (« je les trouve un peu fort »).
+- **`SOUND_CUT_MAX_S` 5,0 -> 6,0**, et la REGLE est desormais ecrite dans la constante : le
+  plafond suit la plus longue SOURCE livree, arrondie a la seconde superieure. En cause :
+  `objective_zone_new` (5,15 s). Deuxieme fois de la journee que le garde-rail pose la question.
+- **LA MESURE VIDEO DU TRANSLOCATEUR EST REFUTEE, en trois tours de temoin.** Comparateur
+  spectral ecrit (mono 16 kHz, 20 bandes log, correlation normalisee maximisee sur le decalage).
+  1re version : 1er 0,964 / 10e 0,954 sur des banques sans rapport — aucune separation.
+  2e version (normalisation par trame, recouvrement complet exige) : le classement se remplit de
+  sons de 0,16 a 1,04 s — biais de LONGUEUR. 3e version (plancher 1,8 s, 567 candidats) : 1er
+  0,639, mais le classement suit encore la duree. **Cause structurelle** : la bande son de la
+  video porte la musique PAR-DESSUS le geste, et une correlation de forme spectrale ne separe
+  pas une couche d'un melange. Le classement n'est pas publie comme un resultat.
+- **A LA PLACE** : l'extrait video (2,2 s -> 6,6 s) et les 8 premieres secondes sont servis EN
+  TETE DE PLANCHE. La comparaison redevient une ecoute, mais dans la meme page que les 14
+  candidats. Section translocateur rouverte pour ca.
+- **ODDBALL : les sept sons sont valides, le cablage ne l'est pas.** `doc.objectives` vient de
+  `IdentifyNamedEvents`, qui lit `namedStatSlots` — table limitee a `ObjectiveTypeFlag` et
+  `ObjectiveTypeZone`. `extractFromTh10` produit bien des `ObjectiveEvent` de type `skull`, mais
+  ce canal n'alimente pas le document de rejeu. Le lot est une MESURE (balayage
+  `cmd/tmp_statnames` + controle sur moities disjointes), pas un cablage.
+
+**Gates** : `tsc -b` exit 0 (cache purge), `npm run lint` 0 erreur (21 avertissements
+pre-existants), vitest `src/features/match-replay` **77 fichiers / 1 160 tests, 0 echec**.
+
+**Conclusion / prochaine etape** : l'utilisateur ecoute la reference video face aux 14 candidats
+et donne un numero. Cote modes, restent : la table de slots statborg d'Oddball (7 sons prets),
+puis celles d'Assaut et d'Extraction (23 sons prets). Detail :
+`.ai/V7.5/RE_GESTES_SONORES_2026-08-27.md` §10.
+
+## [2026-08-27] Sons : l'inventaire par MODE, trois banques qui manquaient dont ODDBALL, 22 noms de plus — Complete
+
+**Contexte** : l'utilisateur ecarte la piste du translocateur (« beaucoup de sons qui n'ont
+rien a voir, c'est pas la bonne piste sur laquelle tu t'acharnes ») et demande l'inventaire qui
+compte : « pour les modes de jeu il nous manque quoi ? A identifier ou cabler ? »
+
+**Decision technique principale** : avant de repondre, verifier que l'inventaire des BANQUES
+etait complet. Il ne l'etait pas — et c'est le meme outil de composition curie qui l'a montre,
+applique cette fois aux NOMS DE BANQUES et non aux noms d'evenements.
+
+**Resultats observes** :
+- **TROIS BANQUES DE MODE JAMAIS INVENTORIEES**, trouvees par 79 noms candidats confrontes aux
+  identifiants Wwise des 1 697 banques (esperance 3,1e-5) : `sb_004_mod_mp_oddball`
+  (`b0c651ea`, 28 evenements, 53 sons — LE CRANE), `sb_004_mod_mp_elimination` (`6a9ba454`,
+  27/40) et `sb_004_mod_mp_vip` (`e3ba2522`, 40/62). La passe retrouve au passage
+  `sb_007_abl_quantum` et `sb_007_abl_grapplinghook` a leurs banques connues : calibration
+  gratuite.
+- **VINGT-DEUX NOMS DE PLUS** : CTF `flag_return_contested` ; Assaut `bomb_carrier_killed` ;
+  Extraction `zone_spawn_alert` + `arming_{start,loop,stop,complete}_{team,enemy}` ; Landgrab
+  `zone_spawn`, `contested`, `contested_win`, `contested_lose` ; Oddball
+  `skull_{spawn,despawn,taken,pickup,dropped}` et `scoring_{team,enemy}`. **Le controle est la
+  REGULARITE des familles** : huit noms d'extraction forment une grille complete
+  4 phases x 2 camps — une collision fortuite ne remplit pas une grille. Esperance cumulee de
+  la journee ~0,34 pour 29 noms, soit ~1,2 % par nom.
+- **L'INVENTAIRE PAR MODE, et il separe TROIS problemes qui ne se traitent pas pareil** :
+  (A) un SON manque, c'est une ecoute — capture de zone ADVERSE et `zone_secures` ;
+  (B) le CABLAGE est possible tout de suite, son ET declencheur existent, aucun travail Go —
+  capture en cours (`zoneStates[].gauge`, rampes deja publiees schema 18), nouvelle colline
+  (`zoneStates[].spans[].active`), tic de score (`scoreTimeline.teams[].total`) ;
+  (C) le DECODEUR manque — Assaut, Extraction et Oddball n'ont AUCUN evenement dans le film
+  (`namedStatSlots` ne porte que `ObjectiveTypeFlag` et `ObjectiveTypeZone`), la zone
+  « contestee » est a DERIVER de la jauge, et la sortie de zone demanderait de croiser les
+  positions avec la geometrie des zones.
+- **Cause racine du (B), et elle est en une ligne** : `objectiveSoundEvents` ne lit que
+  `doc.objectives`. Ni `zoneStates`, ni `scoreTimeline`. C'est la seule raison pour laquelle
+  trois sons deja identifies ne sonnent pas.
+- **CTF est complet pour ce que le film publie** : 7 sons cables sur 10 nommes, les 3 restants
+  (`flag_spawn`, `flag_return_contested`) n'ont pas de declencheur.
+- **Translocateur mis en veille** (section repliee). Reste acquis : la banque est bien la
+  sienne (nom casse ET chaine de tags, deux voies independantes), 4 evenements nommes,
+  14 candidats marques. REFUTE : que le geste cherche soit l'un des 32 sons de ces banques.
+
+**Conclusion / prochaine etape** : trois lots se detachent, par cout croissant — (1) lire
+`zoneStates` et `scoreTimeline` dans le moteur sonore, trois sons qui sonnent sans toucher au
+Go ; (2) une ecoute pour designer la capture de zone ADVERSE, qui ferme la paire ;
+(3) la table de slots statborg d'Assaut et d'Extraction, qui rendrait sonores 23 sons deja
+nommes. Detail complet : `.ai/V7.5/RE_GESTES_SONORES_2026-08-27.md` §9.
+
+## [2026-08-27] Sons, seconde passe : la planche etait inutilisable, sept noms de plus, champ de reparation corrige — Complete
+
+**Contexte** : retour utilisateur sur la planche du matin — « la quasi totalite des sons ont
+des noms inintelligibles comme 0b2a938e, comment veux-tu que je travaille avec ca ? Y en a plus
+de 400. » Trois demandes precises en plus : jouer le son d'ACTIVATION du champ de reparation
+quand un joueur le pose, identifier le retour du drapeau, replier ce qui est deja acquis.
+
+**Decision technique principale** : traiter le probleme comme un defaut de LIVRAISON, pas de
+mesure — 413 cartes portant des identifiants ne sont pas un inventaire. Trois corrections qui
+RETIRENT du travail : dedoublonnage par materiau (deux evenements qui jouent les memes `.wem`
+jouent le meme son), propagation du nom dans le groupe, et un NUMERO lisible en titre.
+Puis rouvrir la voie du hachage, declaree epuisee a tort.
+
+**Resultats observes** :
+- **413 rendus -> 328 cartes**, dont 140 ouvertes et 188 repliees. Sur la banque des zones :
+  88 evenements, **49 jeux de medias distincts** — le meme geste est declare une fois PAR MODE
+  DE JEU. Le nom d'un membre nomme tout le groupe : `c3327c0b` nomme ses trois jumeaux.
+- **LA VOIE DU HACHAGE N'ETAIT PAS EPUISEE**, et le negatif precedent portait sur autre chose :
+  ce qui etait epuise, c'etait la composition a DEUX jetons pris dans les 187 496 mots du
+  binaire. La forme reelle en prend TROIS
+  (`play_007_abl_quantum_teleport_player_start`). Trois jetons parmi 187 496 font 6,6e15
+  candidats — hors d'atteinte ; un VOCABULAIRE CURIE de 120 a 180 mots en fait 2 a 5 millions,
+  esperance de quelques centiemes. **Le pari est sur le CHOIX des mots, pas sur la taille.**
+- **SEPT NOMS**, esperance cumulee 0,149 sur la journee (~2 % par nom) :
+  translocateur `teleport_player_start`, `ready_player_loop`, `portal_warning` ; zones
+  `strongholds_contested_win`, `..._contested_lose`, `..._scoring_tick_team`, `..._tick_enemy`.
+  **Le controle qui vaut mieux que l'esperance** : ils sortent en PAIRES COHERENTES
+  (`win`/`lose`, `team`/`enemy`, deux `_player`) — une collision fortuite ne produit pas une
+  paire `_team`/`_enemy` sur le meme radical.
+- **TROIS PRECISIONS UTILISATEUR SUR LE TRANSLOCATEUR, qui valent des mesures** : pas de balise
+  (equipement de poignet qui cree une faille sur la position du joueur), duree 2 a 4 s, et
+  « seulement moi, un autre joueur entendra un autre son ». **ELIMINATION** : la phase sous
+  condition (6,22 s et 6,77 s) est ECARTEE — elle reste une mesure exacte du format, elle n'est
+  pas le geste cherche. Reste **14 candidats**, marques et places en tete de la planche : deux
+  minutes d'ecoute au lieu de quatre cents cartes.
+- **LE CHAMP DE REPARATION LIVRE ETAIT LE MAUVAIS EVENEMENT** : `repair_field_activate.wav`
+  faisait 0,38 s — c'etait `play_007_abl_repairfield_deploy_player` (le « pop » de l'objet
+  lache). L'ACTIVATION est `c48cf171`, 3,26 s. Les deux ne se distinguaient pas avant le
+  nommage des banques par hachage. Trois variantes relivrees, crete a -1,0 dBTP.
+- **DEUX GARDE-RAILS ONT MORDU AVANT LA LIVRAISON** : `SOURCES_COURTES` declarait
+  `repair_field_activate` a 0,38 s (entree supprimee avec sa raison) ; `SOUND_CUT_MAX_S` valait
+  4,0 s et `objective_flag_stolen_team` en fait 4,588 (trois declenchements a 850 ms) — releve
+  a 5,0 s, parce que garder 4 aurait tronque la troisieme alerte EN SILENCE, ce que le
+  commentaire de la constante interdit nommement.
+- **LE RETOUR DU DRAPEAU ETAIT DEJA FAIT** : `b2a0d0f0` = `play_004_mod_mp_ctf_flag_returned`,
+  verifie par recalcul du hachage, rendu, livre et cable sur `flag_returns` depuis le 26/08.
+- **Outillage** : `_outils/composer` (cassage par composition d'un vocabulaire curie, esperance
+  imprimee avant tout resultat) et `gestes/noms_evenements.json` — TABLE DES NOMS, source
+  unique lue par la planche : un nom casse apres coup entre sans re-rendre un fichier audio.
+
+**Gates** : `tsc -b` exit 0 (cache purge), `npm run lint` 0 erreur (21 avertissements
+pre-existants), vitest `src/features/match-replay` **76 fichiers / 1 144 tests, 0 echec**.
+Go : `go build`, `go vet` et `go test ./cmd/weapon-sounds` verts.
+
+**Hors perimetre, note et NON traite** : `internal/filmproc/runner.go:239` fait echouer
+`make go-api-lint` (errcheck), introduit par le lot BUILDALL.
+
+**Conclusion / prochaine etape** : l'utilisateur ecoute les 14 candidats du translocateur et
+donne un numero ; si aucun ne colle SEUL, le geste est compose de plusieurs evenements
+(hypothese H5) et il faudra monter les enchainements candidats. Restent ouverts : les 78 sons
+de zone non nommes, S1 (le `hsc*`), et le ramassage sur socle toujours non datable.
+
+## [2026-08-27] Sons : TROIS champs du format manquaient — le geste est reconstitue, 413 rendus — Complete
+
+**Contexte** : reprise du handoff `HANDOFF_SONS_RECONSTITUTION_2026-08-27.md`, priorite
+utilisateur « les sons RECONSTITUES, pas isoles ». La question du handoff etait « quelle est
+l'unite de GESTE dans ce format ». Reponse : l'unite etait la bonne (l'evenement), mais le
+parseur ne lisait pas trois champs, et chacun explique un symptome signale a l'oreille.
+
+**Decision technique principale** : ne rien postuler sur les offsets, et faire porter a chaque
+lecture un controle REFUTABLE ecrit AVANT la mesure. Pour les actions, le controle est une
+EGALITE (une action « jouer » doit laisser exactement 5 octets specifiques) avec deux temoins
+negatifs faux d'un octet. Pour les conteneurs, le vidage des octets d'abord, puis un temoin de
+coherence interne (compteur de boucle contre drapeau `bIsContinuous`).
+
+**Resultats observes** :
+- **LE DELAI DE L'ACTION (H2 confirmee)**. Offset 7 : 8 701 actions « jouer » sur 8 701 ;
+  temoins negatifs aux offsets 6 et 8 : 0 sur 8 701. Deux proprietes seulement, 15 et 16, et
+  leurs valeurs ne sont PAS des flottants — lues en `int32` elles donnent 20, 400, 10 800 ms.
+  `71cb04b8` porte une seconde couche a +400 ms : c'est le « tres court son au debut qui me
+  parait EN TROP » signale par l'utilisateur. 340 evenements de `common` (3,91 %) etaient
+  sommes a t = 0 a tort.
+- **LE NOMBRE DE LECTURES (H1 confirmee, S3 sans objet)**. `sLoopCount` est DANS la banque : la
+  sonde par les 20 `lsnd` etait inutile. 210 boucles infinies sur 1 753 conteneurs lisibles.
+  Temoin de coherence : P(continu | infini) = 81,4 % contre 6,9 % sinon. La « base en cours de
+  capture » (`6b8081a2`) porte DEUX couches en boucle — on en servait un fragment.
+- **LE MODE D'ENCHAINEMENT**, trouve en verifiant un « x3 » suspect qui donnait 7,86 s au
+  drapeau pris. Le meme bloc porte `eTransitionMode` = 5 (cadence) et 850 ms : les trois
+  lectures se CHEVAUCHENT, le geste dure 4,59 s. Calibration : 212 conteneurs qui se repetent,
+  212 valeurs brutes dans {0,1,3,4,5}, zero ailleurs.
+- **S5 RESOLUE, et c'est H4**. Les deux plus longs sons du translocateur (6,77 s et 6,22 s)
+  pendent sous un `Blend` pilote par le parametre 3236399890 : ils entrent a x = 0,797 et
+  dominent a x = 0,940. « Ca monte en intensite, et ensuite il est pose » EST cette courbe.
+  Meme mecanique pour 2 orphelins du drapeau, et un `Switch` (etat 163696720) pour les 16
+  orphelins de CHACUNE des quatre banques de bobine.
+- **Deux parametres de fondu NOMMES** par FNV-1 contre les 187 496 jetons du binaire, esperance
+  0,0003 : `landing_magnitude` et `cluster_num_sounds`. **Negatif avec denominateur** : les cinq
+  autres resistent a 52 498 880 candidats (esperance 0,0611, sous le seuil 0,10).
+- **413 GESTES RENDUS**, un fichier par geste : 43 en boucle, 31 enchaines, 7 phases sous
+  condition, 0 silencieux, 0 ecrete. 56 cartes portent un libelle francais, dont 45 un nom
+  Wwise casse. Planche republiee EN PLACE (artefact `6aadf3d5`, une seule adresse).
+- **UN DEFAUT DE RENDU TROUVE DANS LA PASSE** : `volumedetect` ne mesure que des echantillons
+  entiers ; sur un intermediaire flottant ffmpeg convertit d'abord en 16 bits et ECRETE, donc
+  rapporte 0,0 dB. La capture de drapeau alliee (couche a +15 dB) sortait ecretee. Corrige par
+  une mesure en deux passes — attenuer systematiquement casserait les melanges faibles.
+- **EFFET DE BORD LIVRE** : quatre des huit `.wav` d'objectif deja branches dans le rejeu
+  etaient rendus a plat et sont remplaces (`flag_scored_*` a +100 ms, `flag_stolen_team`
+  2,49 s -> 4,59 s, `flag_stolen_enemy` 3,41 s -> 3,81 s). `objective_zone_captured_team` etait
+  deja identique au bit pres — controle de reproductibilite de la chaine.
+
+**Hors perimetre, note et NON traite** : `internal/filmproc/runner.go:239` fait echouer
+`make go-api-lint` (errcheck sur `fmt.Fprintln`). Introduit par le lot BUILDALL, pas par ce
+lot.
+
+**Conclusion / prochaine etape** : la reconstitution est faite et la planche est a ecouter.
+Restent ouverts : S1 (le `hsc*` qui reference un son de la banque des zones — seule piste de
+NOMMAGE encore vivante), S4 (le tag de mode), le nommage de l'etat de commutation des bobines,
+et le RAMASSAGE SUR SOCLE qui reste non datable (`padPickups` publie un intervalle, pas un
+instant — travail de decodeur). Detail complet : `.ai/V7.5/RE_GESTES_SONORES_2026-08-27.md`.
+
 ## [2026-08-27] Handoff sons : la reconstitution devient la priorite, et deux erreurs de methode sont corrigees — Complete
 
 **Contexte** : l'utilisateur arrete le branchement au coup par coup et reoriente. Priorite
