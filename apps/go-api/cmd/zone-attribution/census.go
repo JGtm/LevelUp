@@ -31,7 +31,6 @@ import (
 	"fmt"
 	"os"
 	"sort"
-	"strings"
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain/title"
@@ -49,11 +48,23 @@ type censusMode struct {
 	avecArtefact int
 	// schemas : combien d'artefacts par version de schema.
 	schemas map[int]int
-	// films : les identifiants COURTS des matchs dont le film est en cache. Ils ne sont
-	// imprimes que pour les modes RARES (cf. censusMaxListe) : un mode a quatre films, c'est
-	// un corpus qu'on va nommer film par film pour le mesurer ; un mode a deux cents, c'est un
-	// agregat. La liste est gardee pour tous, le filtre est a l'impression.
-	films []string
+	// films : les matchs dont le film est en cache. Ils ne sont imprimes que pour les modes
+	// RARES (cf. censusMaxListe) : un mode a quatre films, c'est un corpus qu'on va nommer film
+	// par film pour le mesurer ; un mode a deux cents, c'est un agregat. La liste est gardee
+	// pour tous, le filtre est a l'impression.
+	films []censusFilm
+}
+
+// censusFilm nomme UN film du corpus d'un mode rare.
+//
+// LA CARTE VOYAGE AVEC L'IDENTIFIANT, et ce n'est pas un ornement. Les instruments de mesure
+// hors ligne (`attCartes`, phase 0 attachement) ont besoin du NOM de carte pour ses bornes de
+// quantification et de son IDENTIFIANT D'ASSET pour ses objectifs ponctuels ; ni l'un ni
+// l'autre n'est dans le film, qui « ne nomme ni la carte ni le mode » (map_objectives.go).
+// Sans ces deux colonnes ici, ouvrir un mode a la mesure obligeait a rouvrir la base a la
+// main — et une lecture a la main ne se rejoue pas.
+type censusFilm struct {
+	short, mapName, mapID string
 }
 
 // censusMaxListe : au-dela de ce nombre de films, un mode reste agrege. Douze est le seuil ou
@@ -86,7 +97,7 @@ func runCensus(ctx context.Context, db *sql.DB, slug, cacheDir, repoRoot string)
 		m.matchs++
 		if st, err := os.Stat(filmcache.ChunkDir(cacheDir, c.short)); err == nil && st.IsDir() {
 			m.avecFilm++
-			m.films = append(m.films, c.short)
+			m.films = append(m.films, censusFilm{short: c.short, mapName: c.mapName, mapID: c.mapID})
 		}
 		if v, ok := artifactSchema(res.ReplayArtifactPath(slug, c.full)); ok {
 			m.avecArtefact++
@@ -136,12 +147,14 @@ func printCensus(byMode map[string]*censusMode, total, sansMode int) {
 	for _, m := range modes {
 		fmt.Printf("  %-34s %8d %8d %10d  %s\n",
 			m.label, m.matchs, m.avecFilm, m.avecArtefact, formatSchemas(m.schemas))
-		// LES MODES RARES SONT NOMMES FILM PAR FILM : c'est leur corpus entier, et c'est ce
-		// qu'une phase de mesure a besoin de citer. Trie pour que deux recensements se
-		// comparent.
+		// LES MODES RARES SONT NOMMES FILM PAR FILM, AVEC LEUR CARTE : c'est leur corpus
+		// entier, et c'est ce qu'une phase de mesure a besoin de citer. Trie par identifiant
+		// pour que deux recensements se comparent ligne a ligne.
 		if n := len(m.films); n > 0 && n <= censusMaxListe {
-			sort.Strings(m.films)
-			fmt.Printf("  %-34s %s\n", "", strings.Join(m.films, " "))
+			sort.Slice(m.films, func(i, j int) bool { return m.films[i].short < m.films[j].short })
+			for _, f := range m.films {
+				fmt.Printf("  %-34s %-10s %-24s %s\n", "", f.short, f.mapName, f.mapID)
+			}
 		}
 	}
 }
