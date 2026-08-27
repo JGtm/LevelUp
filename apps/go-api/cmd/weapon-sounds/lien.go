@@ -262,6 +262,11 @@ func remonter(cheminModule string, depart uint32, maxNiveaux int) error {
 			fmt.Printf(" | '%s' x%d", g, n)
 		}
 		fmt.Println()
+		// LES IDENTIFIANTS, ET PAS SEULEMENT LES COMPTES. Sans eux, la remontee dit qu'un
+		// `hsc*` reference un son mais ne dit pas LEQUEL — et c'est precisement le tag qu'il
+		// faut ensuite ouvrir. Les groupes nombreux (les `snd!` d'une banque) sont bornes ;
+		// les groupes rares, ceux qu'on cherche, sortent entiers.
+		imprimerIDsParGroupe(parID)
 
 		suivant := map[uint32]bool{}
 		var armes []uint32
@@ -401,4 +406,35 @@ func rapporterMemoire(etape string) {
 	runtime.ReadMemStats(&st)
 	fmt.Printf("[memoire] %-22s alloue %5.1f Go | systeme %5.1f Go\n",
 		etape, float64(st.Alloc)/(1<<30), float64(st.Sys)/(1<<30))
+}
+
+// plafondIDsParGroupe : au-dela, un groupe n'est plus une piste mais un annuaire.
+const plafondIDsParGroupe = 24
+
+// imprimerIDsParGroupe liste les identifiants trouves, groupe par groupe, tries. Les groupes
+// au-dela du plafond sont tronques ET LE DISENT — une liste coupee en silence ferait croire a
+// une exhaustivite que la sortie n'a pas.
+func imprimerIDsParGroupe(parID map[uint32]string) {
+	parGroupe := map[string][]uint32{}
+	for id, g := range parID {
+		parGroupe[g] = append(parGroupe[g], id)
+	}
+	groupes := make([]string, 0, len(parGroupe))
+	for g := range parGroupe {
+		groupes = append(groupes, g)
+	}
+	sort.Strings(groupes)
+	for _, g := range groupes {
+		ids := parGroupe[g]
+		sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
+		fmt.Printf("    %s :", g)
+		for i, id := range ids {
+			if i >= plafondIDsParGroupe {
+				fmt.Printf(" ... (+%d non listes)", len(ids)-plafondIDsParGroupe)
+				break
+			}
+			fmt.Printf(" %08x", id)
+		}
+		fmt.Println()
+	}
 }
