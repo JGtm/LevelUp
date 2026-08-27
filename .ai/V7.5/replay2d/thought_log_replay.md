@@ -4819,3 +4819,27 @@ laissait `--played` vide et la frise s'affichait creuse jusqu'au premier pas de 
 Chiffres du gate lot 1 : `tsc --noEmit` exit 0 ; vitest `useReplayPlayback` (29 tests, +11),
 `ReplayKillFeed` (36 tests), `src/routes` — 5 fichiers / 95 tests verts ; ESLint 0 sur les
 7 fichiers touches.
+
+**LOT 2 — le handoff original est arrive en cours de route, et il PREVAUT.** L'utilisateur a
+fourni `.ai/V7.5/replay2d/planche2a_impl/` (7 fichiers de code + IMPLEMENTATION.md + le canvas
+Claude Design). Regle actee : on PORTE, on ne reecrit pas. La version maison de
+`replayTimelineTracks.ts`, ecrite une heure plus tot depuis la spec derivee, a ete REMPLACEE
+par le port — et le port est plus riche : il apporte la geometrie du curseur natif
+(`THUMB_PX`, `trackLeft`, `trackWidth`), `ratioOfMs` et `clipFrameCount`, que la spec derivee
+ne mentionnait pas. Sa signature differe aussi : `buildEventTracks(kills, deaths, ...)` prend
+DEUX listes deja reduites, la reduction depuis `ReplayFeedEntry` revenant a `useReplayTimeline`.
+
+**Trois adaptations decidees sur pieces, pas par gout.** (a) `SKIP_SECONDS` sort de
+`ReplayTransport.tsx` pour `replayCanvasConfig.ts` : un export non-composant depuis un fichier
+de composant declenche `react-refresh/only-export-components` — la meme regle qui a jadis sorti
+`SlidersIcon` du canvas. (b) `ReplaySpeedMenu` redefinissait `SOUND_MAX_SPEED = 2` en local :
+`replaySoundCursor.ts` exporte deja `soundPlaysAtSpeed`, donc la note « son coupe » se pose sur
+les vitesses que CETTE fonction refuse — pas de troisieme copie de la regle. (c) `bg-black` de
+la lightbox est une classe Tailwind couleur en `features/` : token de theme a la place.
+
+**Decision produit revisee : la lightbox medias EST livree.** Le design etant complet, la
+retenir aurait laisse une piste cliquable sans rien derriere. Ce qui reste en phase 2 est la
+seule DONNEE (endpoint + passage de la prop) — le registre des reports est reduit d'autant.
+
+Chiffres du gate lot 2 : tsc exit 0 ; `replayTimelineTracks.test.ts` 26 tests verts ; ESLint 0
+sur les 5 fichiers touches.
