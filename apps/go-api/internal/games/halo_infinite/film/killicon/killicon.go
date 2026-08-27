@@ -111,8 +111,35 @@ var banqueRe = regexp.MustCompile(`sb_\d+_([a-z]+_[a-z]+_[a-z0-9]+)`)
 // effet PARTAGE par quatre chassis : lui donner l icone de l un des quatre serait faux trois
 // fois sur quatre. Meme regle que pour les noms alternatifs << A / B >>.
 func uniqueBanque(detail string) (string, bool) {
+	return racineUnique(banqueRe, detail)
+}
+
+// banqueLongueRe capture le nom de banque ENTIER, prive de son seul numero de paquet.
+//
+// POURQUOI DEUX REGEX PLUTOT QU UNE PLUS LARGE. `banqueRe` s arrete a trois segments, et pour
+// un chassis c est exactement le nom (`sb_010_veh_cv_ghost` -> `veh_cv_ghost`). Mais quatre
+// banques du jeu ne different QUE par leur quatrieme segment :
+//
+//	sb_008_exp_single_small_hardlight / _kineticunsc / _plasma / _shock
+//
+// Ce sont les BOBINES, et la coupe a trois segments les rend toutes les quatre identiques
+// (`exp_single_small`) : impossible de leur donner leur icone, alors que l atlas en porte
+// quatre distinctes. Elargir `banqueRe` aurait change la cle d autres racines deja en service
+// (`lvl_moments_ge`, `chm_ge_weaanim`, dont les lignes citent PLUSIEURS banques qui ne se
+// distinguent qu au-dela du troisieme segment) : la garde d unicite les aurait alors rejetees.
+// On ESSAIE donc la racine longue d abord, la courte ensuite — additif, sans rien casser.
+var banqueLongueRe = regexp.MustCompile(`sb_\d+_([a-z0-9_]+)`)
+
+// uniqueBanqueLongue rend le nom de banque entier d une ligne, s il est unique.
+func uniqueBanqueLongue(detail string) (string, bool) {
+	return racineUnique(banqueLongueRe, detail)
+}
+
+// racineUnique rend la racine capturee par `re`, et SEULEMENT si toutes les occurrences de la
+// ligne donnent la meme. C est la garde partagee par les deux formes.
+func racineUnique(re *regexp.Regexp, detail string) (string, bool) {
 	seen := ""
-	for _, m := range banqueRe.FindAllStringSubmatch(detail, -1) {
+	for _, m := range re.FindAllStringSubmatch(detail, -1) {
 		if seen == "" {
 			seen = m[1]
 			continue
@@ -201,6 +228,14 @@ func matchRule(l damagetag.Label, idx map[Genre]map[string]Rule) (Rule, bool) {
 	}
 	if m := ggglRe.FindStringSubmatch(l.Detail); m != nil {
 		if r, ok := idx[GenreGGGL][m[1]]; ok {
+			return r, true
+		}
+	}
+	// La racine LONGUE d abord : c est la seule qui distingue les quatre bobines. Elle ne peut
+	// pas voler une regle a la courte — une cle longue absente de la table retombe simplement
+	// sur l essai suivant.
+	if racine, ok := uniqueBanqueLongue(l.Detail); ok {
+		if r, ok := idx[GenreBanque][racine]; ok {
 			return r, true
 		}
 	}

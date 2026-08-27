@@ -47,7 +47,7 @@
 # donc aucune icone. Une icone absente est un repli ; une icone fausse est un mensonge.
 # Les 5 noms alternatifs ecartes pour cette raison sont listes en fin de fichier.
 #
-# date=2026-08-25 regles=51
+# date=2026-08-27 regles=55
 genre	cle	sprite	weapon_key	justification
 NOM	BR75	killfeed-00	hinf_br75	NOMMAGE_GATE index 00 ; nom interne battle_rifle concordant
 NOM	VK78 Commando	killfeed-01	hinf_vk78_commando	NOMMAGE_GATE index 01 ; nom interne commando_rifle concordant
@@ -99,6 +99,10 @@ BANQUE	veh_un_falcongrenadelauncher	killfeed-87		vignette 87 nommee falcon_grena
 BANQUE	tur_un_machinegun	killfeed-05		vignette 05 nommee turret_chaingun : meme tourelle UNSC
 BANQUE	tur_cv_plasmacannon	killfeed-21		vignette 21 nommee turret_plasma
 BANQUE	tur_cv_shadeturret	killfeed-39		vignette 39, nommee << Banished Shade Turret >> par la passe humaine ; toutes les racines `cv` d Infinite sont des engins Banished (ghost, banshee, wraith, phantom), la Shade `cv` est donc la version Banished — tranche par l utilisateur le 2026-08-11
+BANQUE	exp_single_small_shock	killfeed-42		BOBINE A CHOC. La coupe a trois segments de banqueRe rendait les quatre bobines identiques (exp_single_small) ; la racine LONGUE les distingue. Concordance textuelle directe entre la flaveur de banque (shock) et la vignette 42, nommee Shock coil par la passe humaine du 2026-08-09.
+BANQUE	exp_single_small_plasma	killfeed-45		BOBINE A PLASMA. Meme voie, meme concordance textuelle : flaveur plasma, vignette 45 nommee Plasma coil.
+BANQUE	exp_single_small_kineticunsc	killfeed-44		BOBINE CINETIQUE UNSC. Vignette 44 nommee UNSC fusion coil : les deux disent UNSC, la concordance porte sur la faction et non sur une elimination.
+BANQUE	exp_single_small_hardlight	killfeed-43		BOBINE A LUMIERE DURE. SEULE LIGNE PAR ELIMINATION des quatre, et il faut le dire : la vignette 43 est nommee Blast coil, ce qui ne cite ni la lumiere dure ni aucune autre flaveur. Les trois autres bobines sont attribuees par concordance textuelle, celle-ci prend ce qui reste. A confirmer a l ecran.
 CLASSE	MELEE	killfeed-65		la classe EST la reponse : l effet est partage par tout l arsenal (12 a 65 weap selon la ligne), aucune arme particuliere ne peut etre nommee — la vignette 65 est le pictogramme generique de melee du jeu
 #
 # NOMS ALTERNATIFS ECARTES — branches designant des vignettes DIFFERENTES. Aucune regle,

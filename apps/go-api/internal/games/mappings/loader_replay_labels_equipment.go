@@ -83,6 +83,8 @@ var equipmentFamilies = map[string]bool{
 	// Capacites d'armure deployees par un joueur.
 	"wall": true, "sensor": true, "threat_seeker": true, "grapple": true,
 	"thruster": true, "repulsor": true, "translocator_beacon": true, "repair_field": true,
+	// ECRAN OCCULTANT, nomme le 2026-08-27 : cf. la provenance `banque_nommee` ci-dessous.
+	"shroud_screen": true,
 	// Bonus ramasses au sol.
 	"powerup_overshield": true, "powerup_camo": true,
 	// Grenades au sol : les quatre entrees de la liste `gggl` du jeu, dans son ordre.
@@ -110,6 +112,16 @@ var equipmentProvenances = map[string]bool{
 	// Rattache a un `sofa` dont l'identifiant de chaine resiste au dictionnaire, sans modele
 	// commun avec un `sofa` nomme. La pose est mesuree, la nature ne l'est pas.
 	equipProvSofaAnonyme: true,
+	// La BANQUE SONORE de l objet porte son nom, et ce nom se casse. Voie ouverte le
+	// 2026-08-26 : l identifiant Wwise d une banque est le FNV-1 32 bits de son nom de
+	// fichier en minuscules, verifie sur 647 banques temoins avant qu un seul nom ne soit
+	// casse. Elle nomme ce que les trois voies `sofa` ne nommaient pas — le rang 10 de la
+	// palette A tenait sa banque `92c830f5` depuis le 18/08, mais pas son nom ; celui-ci est
+	// `sb_007_abl_shroud`, l ecran occultant.
+	//
+	// C EST UNE VOIE DE STRUCTURE, pas une opinion : elle passe donc l invariant qui exige
+	// une provenance de structure pour toute famille nommee.
+	"banque_nommee": true,
 	// Aucun rattachement structurel trouve.
 	equipProvAucune: true,
 }
