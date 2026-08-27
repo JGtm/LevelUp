@@ -1,3 +1,64 @@
+## [2026-08-27] Couronne VIP PUBLIEE (schema 22) — Complete
+
+**Contexte** : chantier modes a porteur, voie statborg. Le film ne porte pas le bit VIP
+(script-side) ; l'oracle `VipStats.TimesSelectedAsVip` est un entier discret additif.
+
+**Decision technique** : comp 22 A du statborg reproduit `TimesSelectedAsVip` exactement par
+joueur (le MEME slot que CTF `flag_grabs`). Le gate frozen achoppait sur un temoin PERMUTE
+inapte aux compteurs a faible variance (self-similarite ~sum(p_v²)) ; remplace, pre-enregistre,
+par le plancher analytique correct (accord - sum(p_v²) >> marge) — pas un abaissement. Periodes
+VIP reconstruites au patron `flag_carries` (selection -> mort du VIP au kill feed).
+
+**Resultats** : comp 22 A REPLIQUE 3/3 films (marges 65,6/53,1/37,5 pp) ; periodes recouvrement
+100 %, 24/24 joueurs a +0,2-0,3 s de `TimeAsVip`, temoin d'exactitude par-joueur 8/8 vs 0-1/8.
+PUBLIE : `ObjectiveTypeVip` (comp 22 A -> vip_selected) dans named.go, `vip_crown.go`/
+`document_vip_crown.go`, calque `vipCrownLayer.ts` (glyphe couronne) + toggle + i18n FR/EN,
+garde de mode `isVipVariant` (echoue fermee). Schema 22, contrat 40, gates verts (vitest 1317).
+
+**Conclusion** : couronne livree. Reprise = confirmer `isVipVariant` sur un backfill VIP prod
+(GameVariantCategory=23 non porte par MatchFacts). Assaut : bombe [!] (sites candidats = navpoints
+generiques, la bombe vit dans la variante de MODE) ; poseur A4 acquis. Oddball : porteur [!]
+toutes voies offline epuisees -> corpus (rejouer) + verite terrain Cheat Engine.
+
+## [2026-08-27] ti=11 (descripteur d'objectif) — cadre RESOLU, mais etat vivant HORS du film — Complete
+
+**Contexte** : recherche RE pour rendre natifs le porteur/owner/zones (5 campagnes Oddball
+ratees). La grammaire du cadre d'image-cle etait gelee depuis R7 (bipede ti=35 plafonnait 0,51 %).
+
+**Decision technique** : ti=11 (managed-objective) a des feuilles TRIVIALES. Resolution complete
+des 34 feuilles au Ghidra (i1 color 4xR8, i3 object-ref R32, i16-31 16xR32 GlobalID, etc.),
+cablage dans `keyframe_fullstate_loop`, cadre C5 (108b + LevelShift). Puis application au flux delta.
+
+**Resultats** : atterrissage bit-exact **90,32 % (100 % Oddball/KOTH)** — le cadre REPRODUIT, le
+mystere R7 est ferme, « le mur = feuilles non resolues » confirme. MAIS dans la keyframe tous les
+champs vivants sont des SENTINELLES (i3 porteur = null, progression 0) : la keyframe stocke l'ETAT
+PAR DEFAUT. Et dans le DELTA, ti=11 chaine 3,8 % (bruit, indistinguable du fantome ; frere ti=13
+chaine 61 % sur KOTH mais ti=11 y rend 38 records/match). VERDICT : `managed-objective` est un
+descripteur de HUD CALCULE COTE CLIENT — son etat vivant n'est ni keyframe ni delta.
+
+**Conclusion** : grammaire ti=11 = asset de recherche (branche wt/ti11-cadre, non fusionnee, publie
+rien). Owner de zone deja publie via ti=13 (88-89 %), crane/drapeau via ti=42. NE PAS rejouer.
+La vraie cause des 5 campagnes : on cherchait dans la baseline, le vivant est ailleurs (statborg
+sous-puissant, ou verite terrain).
+
+## [2026-08-27] Lot C catalogues — Live Fire decodable, Lattice, Land Grab cable, sites Assaut leurres — Complete
+
+**Contexte** : catalogues de cartes incomplets bloquant Oddball (Live Fire) et Assaut (sites).
+
+**Decision technique** : le nombre de regions de compression devient une DONNEE du catalogue de
+bornes (`region`/`regionIndexBits`) ; resolution des sbsp a travers `ds/globals` ; roles
+`landgrab_*` resolus par chasse murmur3.
+
+**Resultats** : Live Fire decode (region jouee 1, index i0 2 bits), **corpus Oddball 4->5**
+(c88ec007 admis 84,4 % ; 60ae07c4 exclu empreinte ECS inconnue). Lattice au catalogue (1 socle
+oddball_spawn). **Land Grab cable** (landgrab_zone 996801386, Cliffhanger 9 zones, incoherence
+§2.8 soldee). Sites d'Assaut NON entres : les hashs candidats sont des navpoints GENERIQUES
+(mesures identiques sur Catalyst, carte non-Assaut) — temoin spatial insaturable ; la bombe vit
+dans la variante de MODE, pas la carte.
+
+**Conclusion** : Land Grab sert les matchs futurs ; corpus Oddball a 5 ; reprise Assaut = ancrage
+variante-de-mode.
+
 ﻿## [2026-08-27] Rejeu 2D : refonte visuelle fiches + kill feed (handoff option 2a) — Complete
 
 **Contexte** : implementation du handoff de design « Redesign fiche joueur Halo.zip »
