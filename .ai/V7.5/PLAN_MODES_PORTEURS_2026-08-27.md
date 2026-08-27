@@ -86,20 +86,30 @@ queue (80,7 % = bruit demontre) et l'oracle du score personnel comme gate.
 
 ### O0 — Qualification du corpus + protocole COMMITE (aucune mesure avant le commit)
 
-- [ ] O0.1 Lire, dans l'ordre : le handoff Oddball ; les entrees 2026-08-26/27 de fin de
+- [x] O0.1 Lire, dans l'ordre : le handoff Oddball ; les entrees 2026-08-26/27 de fin de
       `REGISTRE_REPORTS.md` ; les en-tetes des instruments `oddball_*_test.go`
       (`internal/analysis/replay/`) ; l'en-tete de la garde de mode qui protege le pont
       d'identite (19-22 Go hors CTF — la trouver via les references du handoff §4-P4).
-- [ ] O0.2 Qualifier le PONT des 7 films du §0 : taux de slots de bipede nommes par film
+      — Fait 2026-08-27. La garde de mode est `attachFlagCarries` (`build_objectives_live.go`,
+      « HORS CTF, LE CALQUE S'ARRETE ICI ») ; le vrai correctif est le plafond
+      `objectiveevents.maxDeathsPerSlot` (slotidentity_deaths.go), qui borne le pont
+      d'identite SUR TOUT FILM — les instruments D4-D9 l'appellent deja sur Oddball.
+- [x] O0.2 Qualifier le PONT des 7 films du §0 : taux de slots de bipede nommes par film
       (instrument existant de la campagne D6/D9, reutilise tel quel). Admis si >= 50 %.
       `51ebbc0f` exclu d'office (9/84, lecon commitee). Publier le tableau film -> taux ->
       admis/exclu DANS le protocole. Les 3 films jamais mesures (`60ae07c4` 2024-10,
       `92f18088`, `c88ec007`) peuvent echouer au DECODAGE (version de film plus ancienne) :
       un film indecodable est EXCLU avec sa raison, pas repare.
-- [ ] O0.3 Ecrire et COMMITTER `.ai/V7.5/replay2d/registre_film/D10_PROTOCOLE.md` : corpus
+      — Fait 2026-08-27 (`TestOddballSommeilD8` un film/processus, log `D10_P0_pont.log`) :
+      ADMIS `24dbb67d` 89,7 %, `43716616` 86,1 %, `92f18088` 90,6 %, `d9781168` 87,5 % ;
+      EXCLUS `60ae07c4` et `c88ec007` (bornes de quantification absentes — Live Fire hors
+      catalogue, pas une version de film), `51ebbc0f` d'office. Corpus admis = 4 films.
+- [x] O0.3 Ecrire et COMMITTER `.ai/V7.5/replay2d/registre_film/D10_PROTOCOLE.md` : corpus
       admis fige, definitions (vie libre interieure, micro-lacher, causes a/b/c/d de O1),
       seuil d'ouverture de O2 (repris du §O1 ci-dessous, sans le modifier), temoins, et
       l'interdit de la fenetre de queue. Le hash du commit est cite au CR.
+      — Fait 2026-08-27 : protocole + log de qualification + 3 oracles figes (releves de
+      `match_objective_stats_latest`, 58 lignes) commites ensemble (hash au CR).
 
 **Gate O0** : protocole commite AVANT toute mesure de O1 ; tableau de qualification publie ;
 aucun seuil different de ceux ecrits ici.
