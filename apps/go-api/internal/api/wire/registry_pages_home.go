@@ -31,6 +31,10 @@ func (r *ServiceRegistry) HomeCtx(ctx context.Context, slug string) (port.HomeSe
 		WithSquadSessionTeammates(duckdb.NewSquadRepo(pdb), r.friendGamertagsResolver()).
 		WithCareerLive(r.newCareerLiveService(pdb, homeRepo)).
 		WithSkillBadgeResolver(skillBadgeResolverFor(pdb.TitleSlug)).
+		// Rejeu 2D des tuiles de match (lien à côté de la playlist) : MÊME service que
+		// l'endpoint /replay et l'Explorer — une seule résolution de chemin dans le
+		// dépôt. Seul AvailableSet est appelé : un listing de dossier par requête.
+		WithReplay(r.replayServiceFor(pdb)).
 		WithDemoMode(r.cfg.DemoMode)
 	return svc, pdb.XUID, pdb.Gamertag, nil
 }

@@ -277,6 +277,7 @@ export const commonManifest = {
   "common.match_card.perfect_kills": { fr: "Parfaits", en: "Perfect" },
   "common.match_card.performance": { fr: "Performance", en: "Performance" },
   "common.match_card.placement_prefix": { fr: "Placement : #", en: "Placement: #" },
+  "common.match_card.replay_aria": { fr: "Ouvrir le rejeu 2D du match", en: "Open the 2D replay of the match" },
   "common.match_card.solo": { fr: "Solo", en: "Solo" },
   "common.match_card.squad": { fr: "Escouade", en: "Squad" },
   "common.match_card.team": { fr: "Équipe", en: "Team" },

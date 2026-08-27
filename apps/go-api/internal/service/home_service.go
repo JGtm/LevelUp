@@ -74,6 +74,11 @@ type HomeService struct {
 	// sessionFriendsResolver (optionnel) : restreint les coéquipiers de session aux
 	// amis configurés (settings.friend_gamertags). nil → tous les coéquipiers alliés.
 	sessionFriendsResolver teammates.FriendGamertagsResolver
+	// replaySvc (optionnel) : service de rejeu 2D — MÊME service que l'endpoint /replay
+	// et l'Explorer. Seul AvailableSet est appelé : un listing de dossier par requête,
+	// jamais un accès disque par tuile. Nil → HasReplay reste faux partout (titre sans
+	// rejeu construit — dégradation gracieuse, aucun lien mort sur les tuiles).
+	replaySvc port.ReplayService
 }
 
 // NewHomeService crÃ©e un HomeService avec le repository et le provider Halo.
@@ -424,6 +429,9 @@ func (s *HomeService) GetHomePage(ctx context.Context, gamertag, locale string) 
 	// l'Explorer (« En placement (X/Y) » au lieu d'un vide ou d'un 0 fabriqué pour une
 	// perf structurellement absente). Comptage par chaîne sur TOUT l'historique.
 	applyPerfPlacementsToRecentItems(ctx, d.canonicalRows, recentMatches, favoriteMatches)
+	// Lien « Rejeu 2D » des tuiles : présence d'artefact résolue en UN listing de
+	// dossier pour les deux listes (jamais un accès disque par tuile).
+	applyReplayAvailabilityToRecentItems(s.replayAvailability(ctx), recentMatches, favoriteMatches)
 	soloSession := analysis.BuildSessionSummaryFromCanonical(d.canonicalRows, false, locale, hp)
 	squadSession := analysis.BuildSessionSummaryFromCanonical(d.canonicalRows, true, locale, hp)
 	soloSessions := analysis.BuildSessionSummariesFromCanonical(d.canonicalRows, false, 20, locale, hp)
