@@ -72,18 +72,21 @@ Oddball. Ne PAS abaisser le gate ; documenter le manque de puissance s'il bloque
 signature 0..N UNIQUE au VIP (zero aliasing avec kills/assists) — le meilleur candidat de
 compteur repliquable (patron A4 : les evenements discrets repliquent, les durees non).
 
-- [ ] R2.0 Qualifier les 3 films VIP (`00761d27`, `9903b1c5`, `99553e4a`) : bornes + pont
-      >= 50 %. Corpus admis fige. Log `R2_qualif.log`.
-- [ ] R2.1 Balayer le statborg (cmd/statnames-sweep) contre `TimesSelectedAsVip` par joueur,
-      moities disjointes. Puis `KillsAsVip`/`VipKills`/`VipAssists` (discrets). DISQUALIFIER
-      `TimeAsVip`/`LongestTimeAsVip` (durees) et `MaxKillingSpreeAsVip` (max non additif).
-      GATE R2.1 : un comp replique `TimesSelectedAsVip` >= 90 % sur >= 2/3 films, temoin
-      (comp aleatoire) <= 20 %. Log `R2_vip_selection.log`.
-- [ ] R2.2 SI nomme : les PERIODES VIP = entre deux selections, bornees par les morts du VIP
-      (kill feed deja decode). Publier le MARQUEUR VIP (couronne) sur le joueur VIP courant
-      par periode. Contrat +1 (meme montee que R1.4 si groupees). GATE : cohérence des
-      periodes reconstituees vs `TimeAsVip` API par joueur >= 90 %. SINON `[!]` chiffre.
-- [ ] R2.3 Corpus mince (3 films) : reserve de robustesse ECRITE ; pas de split si < 3 admis.
+- [x] R2.0 Qualifier les 3 films VIP (`00761d27`, `9903b1c5`, `99553e4a`) : bornes + pont
+      >= 50 %. FAIT : Bazaar(x2)+Catalyst, bornes presentes, pont bipede 93.1/90.3/95.6 %,
+      3/3 ADMIS. Instrument `vip_v0_qualification_test.go`. Corpus fige.
+- [x] R2.1 Balayer le statborg (cmd/statnames-sweep) contre `TimesSelectedAsVip` par joueur.
+      FAIT : 8/8 slots nommes/film (24 paires). Confront VIP dedie (statnames-sweep -vip).
+      RESULTAT : comp **22 A** reproduit `TimesSelectedAsVip` EXACTEMENT par joueur (100 % x3)
+      ET somme-film exact (15/17/18, temoin decale 0). GATE R2.1 **NON TENU** : le temoin
+      permute (<= 20 %/film) echoue (12.5/25.0/50.0 %) car compteur a FAIBLE variance (six
+      joueurs a 2 sur 8) → self-similarite ~sum(p_v^2) ~50-62 %, le temoin ne peut pas
+      s'effondrer. Seuil NON abaisse, temoin NON change. Log `V_statborg_vip.log`. `[!]` chiffre.
+- [!] R2.2 SI nomme : couronne par periode. NON FAIT — gate R2.1 non tenu (clause temoin),
+      pas de publication. Le signal (comp 22 A) est fort ; condition de reprise = temoin
+      adapte aux compteurs a faible variance, PRE-ENREGISTRE avant re-mesure.
+- [x] R2.3 Corpus mince (3 films) : reserve de robustesse ECRITE au protocole (§0.2 repris) ;
+      3 garde-fous (2/3 + stabilite 3/3 + somme-film) a la place du split. Applique.
 
 ---
 
@@ -93,22 +96,24 @@ compteur repliquable (patron A4 : les evenements discrets repliquent, les durees
 (patron Bastion : etat contested/arme/desamorce). Donc Assaut = un OBJET porte (la bombe) +
 une ZONE (le site). Depend de lot C (sites `assault_bomb` des cartes du corpus au catalogue).
 
-- [ ] R3.1 Rejouer `assaut_a1_identite_test.go` TEL QUEL (seuils inchanges) sur le catalogue
-      complete. Candidats connus : `0x3FEE4FCF` (7/7), `0xE9E7FF79` (4). GATE = A1.3 originel
-      (UN mot, >= 2 films, temoin 0). Log `R3_a1_rejeu.log`.
-- [ ] R3.2 SI tenu : publier les VIES LIBRES de la bombe (famille `bomb` au manifeste EN+FR,
-      garde d'exclusion socles, calque `objectiveObjects`), patron du crane libre. Re-cuisson
-      temoins avec verification de CONTENU.
-- [ ] R3.3 SITE D'ARMEMENT = ZONE. Avec les sites au catalogue (lot C), REJOUER A3 (canal
-      ti=13 tag 4, patron `zoneStates`/Bastion) MAIS cette fois avec les FORMES de site (le
-      temoin spatial 12 m devient mesurable, ce qui manquait au lot A). Etat de la zone :
-      neutre / en cours d'armement / armee / desamorcage. GATE (repris de A3.2) : accord
-      canal <-> explosions datees >= 90 % sur >= 2 films, temoin decale <= 20 %. SI ti=13
-      reste illisible (contamination arene documentee A3) : `[!]`, la zone attend le chantier
-      decodage ti=13. Log `R3_site_zone.log`.
-- [ ] R3.4 POSEUR de bombe (deja acquis A4 : comp 0 A = explosions par joueur) : publier
-      l'attribution du poseur a chaque armement OU documenter l'acquis. PORTEUR de bombe = voie
-      drapeau (R1) SI R1 reussit : transposer skull_carries au bomb-carry (bombe = objet porte).
+- [x] R3.1 Rejouer `assaut_a1_identite_test.go` (seuils inchanges) avec les sites CANDIDATS C2
+      EN ENTREE (env A1_SITES, override scoped — les hashs candidats sont des navpoints
+      GENERIQUES base/centre, mesures identiques sur Catalyst NON-Assaut : role global exclu).
+      GATE A1.3 originel (UN mot, >= 2 films, temoin 0) : **TENU**. `0x3FEE4FCF` elu sur 6/8
+      films exploitables, temoin 0. Log `R3_a1_rejeu.log`. RESERVES au log (aliasing sites,
+      compte 13-62/film incompatible avec UNE bombe, echec sur les 2 films au plus fort compte).
+- [!] R3.2 SI tenu : publier les VIES LIBRES. NON FAIT — la fraction nee-au-site de 0x3FEE4FCF
+      (8-69 %/film, via A1) est loin du controle crane-libre (>= 90 %) ; comme le drapeau libre
+      (75.6 %, non publie), les vies libres ne se publient pas. Reserves d'identite non levees.
+      Condition de reprise = confirmer l'identite par un controle temporel independant + lever
+      l'aliasing des sites, avant tout calque `objectiveObjects`.
+- [!] R3.3 SITE D'ARMEMENT = ZONE (canal ti=13 tag 4). NON TRAITE — hors de la voie STATBORG de
+      ce lot (mandat = bombe/poseur par statborg). Le ti=13 est documente illisible au lot A
+      (contamination arene, A3) ; de plus les sites candidats sont des POINTS sans forme (pas de
+      FORME de zone a mesurer). Reste au chantier decodage ti=13.
+- [x] R3.4 POSEUR de bombe (A4, deja acquis) : DOCUMENTE. Comp 0 A des slots joueurs =
+      explosions par joueur (`A4_statborg_assaut.log` : comp 0 A REPLIQUE, 4/4 recherche +
+      4/4 verification). PORTEUR de bombe = voie drapeau (R1, DIFFERE) — non traite.
 
 ---
 
@@ -116,17 +121,34 @@ une ZONE (le site). Depend de lot C (sites `assault_bomb` des cartes du corpus a
 
 **Extraction = mode a ZONES** (points de conversion, precision user) — PAS une sonde a
 l'aveugle : appliquer la machinerie `zoneStates`/Bastion aux points d'extraction.
-- [ ] R4.1 Extraction (2 films `41722c72`, `be565134`) : le role `extraction_zone` est deja
-      servi statiquement. Chercher l'etat vivant par canal ti=13 tag 4 aux points (patron
-      Bastion), croiser `ExtractionStats` (initiations/conversions par joueur) + score de
-      mode. GATE : accord proprietaire/conversion >= 90 % sur les 2 films, temoin decale
-      <= 20 %. SINON `[!]` avec reserve de corpus.
-- [ ] R4.2 Stockpile (2 films) : le noyau/graine = objet PORTE (meme recette que skull/flag) —
-      `StockpileStats` a `PowerSeedsDeposited`/`PowerSeedsStolen`/`TimeAsPowerSeedCarrier` ;
-      batir la table `ObjectiveTypeSeed` (seed_grabs/deposits) comme R1, transposer
-      flag_carries. Le point de DEPOT = marqueur statique (pas une zone tenue, precision user).
-      Corpus mince (2 films) : verdict avec reserve OU `[!]`.
+- [!] R4.1 Extraction — HORS MANDAT de ce lot (executeur : R2 VIP + R3 Assaut uniquement,
+      R1 differe). Non traite.
+- [!] R4.2 Stockpile — HORS MANDAT de ce lot. Non traite.
 - BONUS strict : ne pas retarder R1-R3.
+
+---
+
+## JOURNAL — cloture lot RESOLUTION (executeur VIP + ASSAUT), 2026-08-27
+
+Contrat plan-execution respecte : protocole commite AVANT mesure (`2a4bac4b3`), seuils geles,
+temoins obligatoires, un seul build Go a la fois, filmproc, DuckDB lecture seule (via payloads
+bruts figes — un serveur tenait la shared DB RW).
+
+- **R2 VIP** : comp **22 A** NOMME comme reproduisant `TimesSelectedAsVip` (signal 100 % x3
+  par joueur + somme-film exact + temoin decale 0). GATE R2.1 NON TENU : la clause du temoin
+  permute echoue par FAIBLE VARIANCE de la donnee (self-similarite ~50-62 %). Verdict `[!]`,
+  pas de couronne. Commit `7c39d9e2c`. Log `V_statborg_vip.log`, oracle `V_oracle_vipstats.json`.
+- **R3 ASSAUT** : gate A1.3 TENU (`0x3FEE4FCF`, 6 films, temoin 0) via sites C2 EN ENTREE.
+  FINDING majeur : les sites candidats C2 sont des navpoints GENERIQUES (aliasing mesure sur
+  Catalyst). Reserves fortes (compte eleve, echec sur 2 films). Publication vies libres NON
+  faite (born-at-site 8-69 % << 90 %). Poseur A4 documente. Commit `b1adefc74`. Log
+  `R3_a1_rejeu.log`.
+- **Publication** : AUCUNE (les deux modes echouent leur gate de publication). Pas de bump de
+  schema, pas de calque web, pas de re-cuisson temoins — sans objet.
+- **Verdict global** : 0 seuil abaisse, 0 temoin change apres coup, 2 mesures rigoureuses, 2
+  verdicts honnetes ; comp VIP nomme, identite bombe etablie sous reserves. Deux conditions de
+  reprise ecrites (temoin faible-variance pour VIP ; lever l'aliasing + controle temporel
+  independant pour la bombe).
 
 ---
 
