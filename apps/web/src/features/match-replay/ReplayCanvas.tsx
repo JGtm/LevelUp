@@ -177,7 +177,7 @@ export function ReplayCanvas({
   // l'en-tête du hook.
   const {
     teamColorOf, geometry: geometryColor, shot: shotColor, grenade: grenadeColor, neutral: neutralInk, pad: padInk,
-    floor: floorStyle, fx: fxInk, grapple: grappleInk, labelStroke, self: selfInk, wall: wallInk, mark: markInk,
+    floor: floorStyle, fx: fxInk, grapple: grappleInk, labelStroke, self: selfInk, wall: wallInk, rift: riftInk, mark: markInk,
   } = useReplayInks(paletteVersion)
   // COULEURS DISTINCTES PAR JOUEUR (option du tiroir, 2026-08-24) : une couleur de série
   // stable par joueur du roster, à la place de la couleur d'équipe — pour suivre quelqu'un
@@ -382,7 +382,7 @@ export function ReplayCanvas({
         // Les VIES et leur CAMP voyagent avec les poses : le ping du capteur révèle les
         // adversaires du poseur, et « adversaire » est une relation entre deux vies. Le camp
         // est celui de la base (`team_side`), jamais le drapeau « allié » vu de la page.
-        { placements: doc.equipmentPlacements, lives: doc.tracks, sideOfSlot },
+        { placements: doc.equipmentPlacements, lives: doc.tracks, sideOfSlot, teleports: placements.teleports },
         view,
         {
           frame,
@@ -394,7 +394,7 @@ export function ReplayCanvas({
           reducedMotion,
           ...placements.toggles,
         },
-        { colorOfSlot: (slot) => slotColors.get(slot) ?? null, neutral: floorStyle.edge, wall: wallInk },
+        { colorOfSlot: (slot) => slotColors.get(slot) ?? null, neutral: floorStyle.edge, wall: wallInk, rift: riftInk },
       )
     }
     drawTracksLayer(ctx, doc.tracks, view, {
@@ -505,7 +505,7 @@ export function ReplayCanvas({
     // qu'on vient de peindre (cf. useReplayClock).
     clockTick(frame)
   }, [
-    doc, geometryColor, bounds, zRange, timing, clockTick, wallInk,
+    doc, geometryColor, bounds, zRange, timing, clockTick, wallInk, riftInk,
     // Refs STABLES : la regle de dependances ne le sait pas d'un hook maison.
     floorRef, zonesRef, heatRef, objectivesRef, grenadeIconsRef,
     renderWidth, canvasView,
@@ -529,6 +529,7 @@ export function ReplayCanvas({
     grenadeRestFx,
     restWindow,
     objectivePulses,
+    placements.teleports,
     zones,
     flags,
     floorStyle.edge,

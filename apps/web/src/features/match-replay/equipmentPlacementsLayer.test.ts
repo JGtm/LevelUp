@@ -59,13 +59,17 @@ const RIEN: PlacementToggles = { showUnnamed: false, showDropped: false }
 const TOUT: PlacementToggles = { showUnnamed: true, showDropped: true }
 
 describe('PLACEMENT_RENDER — la table, famille par famille', () => {
-  it('les cinq familles DÉPLOYABLES ont chacune leur règle de rendu', () => {
+  it('les six familles DÉPLOYABLES ont chacune leur règle de rendu', () => {
     expect(PLACEMENT_RENDER.wall).toBe('wall')
     expect(PLACEMENT_RENDER.sensor).toBe('sensor')
-    expect(PLACEMENT_RENDER.translocator_beacon).toBe('beacon')
+    // La FAMILLE garde son nom (identifiant stable du document) ; c est le RENDU qui change.
+    expect(PLACEMENT_RENDER.translocator_beacon).toBe('rift')
     expect(PLACEMENT_RENDER.threat_seeker).toBe('seeker')
     expect(PLACEMENT_RENDER.repair_field).toBe('field')
     expect(PLACEMENT_RENDER.other).toBe('unnamed')
+    // L ECRAN OCCULTANT est nomme depuis le 2026-08-27 et il SONNE, mais il garde le rendu
+    // neutre : lui donner sa forme est un travail de dessin, pas de nommage.
+    expect(PLACEMENT_RENDER.shroud_screen).toBe('unnamed')
   })
 
   it('les sept familles PORTÉES sont à `null` — connues, et volontairement muettes', () => {
@@ -260,6 +264,7 @@ describe('la marque « révélé », tracée dans ce calque', () => {
       colorOfSlot: (slot: number) => `slot${slot}`,
       neutral: 'neutre',
       wall: 'mur',
+      rift: { rim: 'faille-bord', core: 'faille-coeur' },
     })
     expect(ops.some((o) => o.op === 'set strokeStyle' && o.args[0] === 'slot3')).toBe(true)
     expect(ops.some((o) => o.op === 'set strokeStyle' && o.args[0] === 'slot7')).toBe(false)
@@ -422,5 +427,49 @@ describe('countDrawablePlacements — la porte du comptage est celle du tracé',
   it('un film SANS lâcher de puissance rend `dropped: 0` — le tiroir n’affiche alors rien', () => {
     const n = countDrawablePlacements([pose(), pose({ family: 'grenade_spike', origin: 'dropped' })])
     expect(n.dropped).toBe(0)
+  })
+})
+
+describe('le LIEN de téléportation', () => {
+  const passage = { slot: 3, frame: 48, from: { x: 1, y: 1 }, to: { x: 9, y: 9 }, viaRift: false }
+
+  /** Les opérations d un tracé de lien : le pointillé est sa signature. */
+  function liens(frame: number) {
+    return draw([], { ...TIME, frame }, { teleports: [passage] })
+      .filter((o) => o.op === 'setLineDash' && Array.isArray(o.args[0]) && o.args[0].length > 0)
+  }
+
+  it('se trace pendant les 600 ms qui suivent le passage, et pas au-delà', () => {
+    // frameMs vaut 100 dans la fixture : la fenêtre couvre les frames 48 à 53. La frame 54
+    // tombe EXACTEMENT sur les 600 ms — l effacement y est complet, donc plus rien n est tracé.
+    expect(liens(48)).toHaveLength(1)
+    expect(liens(53)).toHaveLength(1)
+    expect(liens(54)).toHaveLength(0)
+    expect(liens(55)).toHaveLength(0)
+  })
+
+  it('ne se trace pas AVANT le passage — un lien n annonce rien', () => {
+    expect(liens(47)).toHaveLength(0)
+  })
+
+  it('porte les encres de la faille, jamais la couleur d équipe du joueur', () => {
+    const encres = draw([], { ...TIME, frame: 49 }, { teleports: [passage] })
+      .filter((o) => o.op === 'set strokeStyle')
+      .map((o) => o.args[0])
+    expect(encres).toContain('faille-coeur')
+    expect(encres).not.toContain('equipe')
+  })
+
+  it('relie les DEUX positions mesurées : le départ et l arrivée', () => {
+    const ops = draw([], { ...TIME, frame: 49 }, { teleports: [passage] })
+    const depart = projected(1, 1)
+    const arrivee = projected(9, 9)
+    const courbe = ops.find((o) => o.op === 'quadraticCurveTo' && o.args[2] === arrivee.x)
+    expect(courbe).toBeDefined()
+    expect(ops.some((o) => o.op === 'moveTo' && o.args[0] === depart.x && o.args[1] === depart.y)).toBe(true)
+  })
+
+  it('sans passage, le calque n émet rien de plus qu avant', () => {
+    expect(draw([], TIME, { teleports: [] }).filter((o) => o.op === 'setLineDash')).toHaveLength(0)
   })
 })

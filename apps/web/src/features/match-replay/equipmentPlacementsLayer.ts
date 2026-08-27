@@ -42,9 +42,10 @@
  */
 import type { ReplayEquipmentPlacement } from '@/lib/api/types'
 
+import { drawRift, drawTeleportLinks, type RiftInk } from './placementRift'
+import type { RiftTeleport } from './placementTeleport'
 import { placementIsDroppedPower } from './placementDropped'
 import {
-  drawBeacon,
   drawDroppedObject,
   drawRepairField,
   drawRevealMark,
@@ -93,7 +94,7 @@ export type { PlacementView } from './placementShapes'
 export type PlacementKind =
   | 'wall'
   | 'sensor'
-  | 'beacon'
+  | 'rift'
   | 'seeker'
   | 'field'
   | 'unnamed'
@@ -127,7 +128,16 @@ export const PLACEMENT_RENDER: Readonly<Record<string, PlacementKind | null>> = 
   // Les objets que la mesure voit DÉPLOYÉS, chacun avec sa forme propre.
   wall: 'wall',
   sensor: 'sensor',
-  translocator_beacon: 'beacon',
+  // LA FAMILLE GARDE SON NOM `translocator_beacon` — c est un identifiant STABLE du document,
+  // et des milliers d artefacts deja cuits le portent ; le renommer serait une rupture de
+  // contrat, pas une correction de libelle. Ce qui change est ce que le calque en DESSINE et
+  // ce qu il en DIT : une faille, pas une balise (correction de l utilisateur, 2026-08-27).
+  translocator_beacon: 'rift',
+  // L ECRAN OCCULTANT est NOMME depuis le 2026-08-27 (sa banque sonore le dit) et il SONNE ;
+  // il garde pourtant le rendu neutre, et c est un choix explicite : lui donner sa forme propre
+  // est un travail de DESSIN, pas de nommage. Le nom et le son n attendaient pas le dessin,
+  // le dessin ne bloque ni l un ni l autre.
+  shroud_screen: 'unnamed',
   threat_seeker: 'seeker',
   repair_field: 'field',
   // L'objet posé dont la nature n'est pas établie : un point neutre, et seulement sur bascule.
@@ -264,6 +274,11 @@ export interface PlacementScene {
   lives: readonly ReplayTrackReady[]
   /** Camp d'une vie (`team_side`) ; null = camp inconnu, donc jamais révélé ni révélateur. */
   sideOfSlot: (slot: number) => string | null
+  /**
+   * Passages par une faille (cf. `placementTeleport`). Calculés UNE FOIS par l'appelant : la
+   * détection balaye toutes les pistes, ce qu'on ne refait pas à chaque image.
+   */
+  teleports?: readonly RiftTeleport[]
 }
 
 /** Les encres du calque : la couleur d'équipe du poseur, et le neutre quand il n'y en a pas. */
@@ -276,6 +291,12 @@ export interface PlacementInk {
    * que qui l'a posé — l'utilisateur a explicitement accepté de perdre le camp sur celui-là.
    */
   wall: string
+  /**
+   * Encres FIXES de la faille du translocateur (2026-08-27). Comme `wall`, elles ne passent
+   * PAS par `inkOf` : l'utilisateur veut que la faille lise comme un « portail
+   * interdimensionnel », et une teinte d'équipe la ferait lire comme un marqueur de camp.
+   */
+  rift: RiftInk
   /** Encre neutre du thème (`--muted-foreground`), servie aux poses sans poseur. */
   neutral: string
 }
@@ -398,7 +419,7 @@ function drawPlacement(
   const c = project({ x: p.x, y: p.y }, view)
   const ageMs = (time.frame - p.t0) * time.frameMs
   if (kind === 'dropped') drawDroppedObject(ctx, c, time, color)
-  else if (kind === 'beacon') drawBeacon(ctx, c, time, color)
+  else if (kind === 'rift') drawRift(ctx, c, time, ink.rift)
   else if (kind === 'seeker') drawSeekerImpulse(ctx, c, ageMs, time, color)
   else if (kind === 'field')
     drawRepairField(
@@ -436,6 +457,7 @@ export function drawEquipmentPlacementsLayer(
     drawPlacement(ctx, { p, kind, lives: scene.lives }, view, time, ink)
     if (kind === 'sensor') sensors.push(p)
   }
+  drawTeleportLinks(ctx, scene.teleports ?? [], view, time, ink.rift)
   if (sensors.length === 0) return
   for (const reveal of sensorReveals(sensors, scene, time)) {
     const color = ink.colorOfSlot(reveal.owner) ?? ink.neutral
