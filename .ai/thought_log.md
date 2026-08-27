@@ -1,3 +1,257 @@
+## [2026-08-27] Lot A — Assaut (bombe) : corpus qualifie, bombe [!] (catalogue sans site), statborg nomme le POSEUR — Complete
+
+**Contexte** : lot A du chantier modes porteurs (PLAN_ASSAUT_LOT_A_2026-08-27), execute par un
+agent dedie sur wt/assaut, fusion b14140106. Protocole A_PROTOCOLE.md commite avant toute
+mesure (a56072138).
+
+**Decision technique principale** : qualification 8 films admis sur 9 (ce083875 exclu, pont
+10,6 %) ; DECOUVERTE structurante : 0 site assault_bomb au catalogue d'objectifs pour les 5
+cartes du corpus (les 4 seuls sites du catalogue sont sur des cartes sans film) — le corpus
+d'ancrage au site de A1/A3 est VIDE, catalogue non repare (regle du chantier : decouverte,
+pas de fix hors perimetre).
+
+**Resultats observes** : A1 gate RATE avec chiffres (0 candidat 7/7 ; 34bb3bc8 non exploitable
+aux largeurs MPP) — le zero chiffre l'ancrage manquant, il ne refute pas l'objet ; 2 mots
+recurrents publies pour la reprise (0x3FEE4FCF 7/7 films, 0xE9E7FF79 sur 4) ; A2 tombe.
+A3 gate NON TENU : ancrage ti=13 au hasard structurel sur 8/8 films ARENE (chainage
+1,9-16,4 % ~ temoin decale 2,8-7,1 %), 0 rampe de jauge — la contamination BTB s'etend a
+l'arene en Assaut. A4 POSITIF : le statborg REPLIQUE les points de mode PAR JOUEUR (comp 0 A,
+candidat unique/43, sommes = explosions retenues 4/4 recherche + 4/4 verification, controle
+morts 37/37 = 100 %) — chaque explosion nomme son POSEUR sans API. Score de mode : explosions
+datees, score film = score API 9/9 ; RealRounds refuse les manches One Bomb (bandeau partiel).
+
+**Conclusion / prochaine etape** : lot C (catalogues) ouvert pour lever le verrou commun —
+bornes Live Fire (corpus Oddball 4 -> 6), sites assault_bomb des cartes du corpus (rejouer
+A1 tel quel, publier les vies libres de la bombe si le gate tient), oddball_spawn de Lattice,
+et cablage landgrab_zone (ex-lot L absorbe). Commits 606afad39..a1bae1dcd.
+
+## [2026-08-27] Lot O — campagne D10 « fragmentation des longs portages » (Oddball) : 3 verdicts, 3 pistes refermees — Complete
+
+**Contexte** : commande utilisateur « finaliser le suivi des objectifs » (Oddball porteur en
+priorite, puis VIP/Assaut/Extraction/Land Grab, puis effets). Session superviseur : etat des
+lieux verifie par sondes API du jour (corpus Oddball = 7 films DEFINITIF, les 19 vieux films
+sont EXPIRES 404/410 — la note « 19 recuperables » du journal sons etait fausse ; Assaut n'a
+AUCUN bloc AssaultStats dans l'API, verifie sur les 9 payloads bruts ; VIP a un VipStats riche
+au 1/10 s ; Land Grab utilise ZonesStats), plan de chantier ecrit
+(.ai/V7.5/PLAN_MODES_PORTEURS_2026-08-27.md), lot O execute par un agent dedie sur
+wt/oddball-porteur, fusion 42d553fc0.
+
+**Decision technique principale** : protocole D10 commite avant toute mesure (5f5cd0305, un
+seul commit dans son historique) — corpus qualifie par le pont (4 admis : 24dbb67d 89,7 %,
+43716616 86,1 %, 92f18088 90,6 %, d9781168 87,5 % ; exclus : Live Fire x2 sans bornes de
+quantification, 51ebbc0f d'office), oracles figes (58 lignes match_objective_stats_latest),
+chaine D9 rejouee FIGEE avec auto-controle 4/4, causes de ventilation et moities disjointes
+ecrites d'avance ; cmd/tmp_statnames reecrit en CLI durable cmd/statnames-sweep (filmproc,
+plafond 2 Gio).
+
+**Resultats observes** : (1) P1 INFIRMEE — vol de re-prise par un tiers + meme-joueur
+re-compte = 0-3,5 % des secondes manquantes du plus gros porteur (seuil d'ouverture de O2 :
+0/4 films pour 2/4 exiges) ; le manquant vit en cause (d), hors des trous dont le porteur
+precedent est P, lui-meme presque toujours MORT a la traversee ; vies interieures n=50, q90
+5,05 s. (2) th=10 NON ETABLI 4/4 (accords 8,8-41,1 % pour 80) : heartbeat de possession, pas
+un marqueur de transition. (3) Statborg : NE REPLIQUE PAS un compteur de crane (0 candidat sur
+56 emplacements x 5 colonnes, controle positif de lecture sain) — condition de reprise (a) de
+D4 consommee.
+
+**Conclusion / prochaine etape** : les trois pistes mesurables du handoff (P1, P3, P4) sont
+refermees avec leurs denominateurs ; P2 tombe avec P1 ; O2/O5 ne s'ouvrent pas — le porteur
+Oddball reste [!], le crane LIBRE publie reste le livrable. Decouvertes consignees au plan §4
+(catalogues Live Fire/Lattice a completer -> corpus 4 -> 6 ; asymetrie pont statborg vs pont
+bipede). Suite du chantier : lot A (Assaut) — vies libres de la bombe + sites d'amorcage,
+temoins internes (pas d'oracle API).
+
+## [2026-08-27] Sons : BOBINES cablees (la cause etait une regex), ECRAN OCCULTANT nomme, FAILLE dessinee — Complete
+
+**Contexte** : l'utilisateur conteste mon « les bobines ne sont pas cablables » — « pourtant on
+les a identifiees au niveau des kills, on a les icones et tout ». Il a raison, et mon premier
+grep etait trop etroit. Puis : faire les points 1, 2 et 3 et conclure.
+
+**Decision technique principale** : ne PAS elargir `banqueRe`. La racine de banque est coupee a
+trois segments, ce qui rend `exp_single_small_{hardlight,kineticunsc,plasma,shock}` identiques —
+mais l'elargir aurait change la cle d'autres racines DEJA EN SERVICE (`lvl_moments_ge`,
+`chm_ge_weaanim`, dont les lignes citent plusieurs banques qui ne se distinguent qu'au-dela du
+troisieme segment) : la garde d'unicite les aurait alors REJETEES. On ESSAIE donc la racine
+longue d'abord, la courte ensuite — additif, sans rien casser.
+
+**Resultats observes** :
+- **LES BOBINES ETAIENT BLOQUEES PAR UNE REGEX, pas par une doctrine.** L'atlas porte leurs
+  quatre vignettes depuis la passe de nommage du 2026-08-09 (42 Shock, 43 Blast, 44 UNSC fusion,
+  45 Plasma) ; `rules.tsv` notait « CLASSE SANS REGLE : la flaveur de banque donne le TYPE
+  D ENERGIE, pas l identite » — vrai a trois segments, faux a quatre. Quatre regles `BANQUE`
+  ajoutees, trois par CONCORDANCE TEXTUELLE (shock, plasma, et `kineticunsc` <-> « UNSC fusion
+  coil ») et **UNE par elimination, dite comme telle** : `hardlight` <-> « Blast coil », a
+  confirmer a l'ecran. Couverture d'OBJET_EXPLOSIF : 8 icones sur 19 lignes publiables — les
+  onze autres ne citent AUCUNE banque (elles designent un hlmt, un effe ou un weap), donc rien
+  ne dit laquelle des quatre c'est.
+- **DEUX GARDE-RAILS ELARGIS, PAS AFFAIBLIS** : `TestChaqueRegleTrouveSaSource` ne construisait
+  l'ensemble des racines qu'a la forme COURTE — il rendait rouges des regles justes ; il lit
+  desormais les deux formes, comme le resolveur. Et `TestCouvertureParClasse` figeait
+  « OBJET_EXPLOSIF : 0 icone » comme un invariant doctrinal : c'etait un CONSTAT, il devient
+  {19, 8} avec sa raison.
+- **L'ECRAN OCCULTANT EST NOMME**, et par une voie NEUVE dans ce loader : sa banque sonore est
+  `sb_007_abl_shroud`, cassee par hachage FNV-1 (banque `92c830f5`, celle que le lot du 18/08
+  lui avait deja rattachee sans pouvoir la nommer). Provenance `banque_nommee` ajoutee a la
+  liste fermee — c'est une voie de STRUCTURE, elle passe donc l'invariant qui l'exige pour toute
+  famille nommee. Le rang 10 anonyme de la palette A devient `shroud_screen`, et il SONNE.
+- **LA BALISE DEVIENT UNE FAILLE**, et la distinction est faite ou elle doit l'etre : la FAMILLE
+  garde son nom `translocator_beacon` (identifiant STABLE du document — des artefacts deja cuits
+  le portent, le renommer serait une rupture de contrat) ; ce qui change est ce que le calque en
+  DESSINE et ce qu'il en DIT. `drawRift` remplace `drawBeacon` : deux levres quadratiques
+  opposees et un coeur droit, plus haute que large. AUCUNE ANIMATION — meme regle que le losange
+  qu'elle remplace : rien dans le film ne bat au rythme de cet objet.
+- **CODE MORT SUPPRIME** (regle 7) : `drawBeacon`, `beaconDiamond`, leurs quatre constantes, la
+  branche du repartiteur, le rayon de survol et les deux tests du losange. Le libelle passe de
+  `beacon` a `rift` dans le contrat i18n et ses deux traductions.
+
+**Gates** : `tsc -b` exit 0 (cache purge), `npm run lint` 0 erreur (22 avertissements
+pre-existants), vitest COMPLET **493 fichiers / 4 879 tests, 0 echec** (14 skips
+pre-existants). Go : `go vet` et `go test` verts sur `internal/games/...`,
+`internal/analysis/replay/...` et `cmd/weapon-sounds`.
+
+**Reparti a l'utilisateur, et ce n'est plus a ma charge** : les decodeurs Landgrab, Assaut,
+Extraction et Oddball. Le repulseur attend qu'il trouve des kills pour que le son soit branche
+sur eux.
+
+**Conclusion / prochaine etape** : les trois points sont faits. Restent, hors perimetre demande,
+la forme propre de l'ecran occultant (il garde le rendu neutre — nommer et dessiner sont deux
+travaux) et la seconde moitie de S1 (apparier les 76 `snd!` que le script `a35c6ce9` cite dans
+l'ordre avec ses variables, pour nommer les ~42 sons de zone restants).
+
+## [2026-08-27] Sons : ramassage sur socle DATE PAR LES TIRS, zone contestee, S1 rendue, translocateur livre — Complete
+
+**Contexte** : trois reproches de l'utilisateur, tous fondes. (1) je lui ai pose une question
+win/lose sur la zone contestee alors qu'il m'avait DONNE la definition ; (2) la sonde S1 etait
+ecrite depuis deux jours et jamais lancee, alors qu'il avait demande des titres et des
+descriptions ; (3) je repetais que le ramassage sur socle n'etait pas datable au lieu de
+chercher un canal qui date.
+
+**Decision technique principale** : pour le ramassage, arreter de raisonner sur le canal
+EVIDENT et mesurer les trois canaux disponibles. `padPickups` et `loadouts` vivent sur la meme
+grille d'images-cles ; les TIRS, eux, sont dates a la frame. Un joueur qui TIRE avec une arme la
+TIENT — c'est une preuve de possession, pas une estimation.
+
+**Resultats observes** :
+- **LES TROIS CANAUX, MESURES SUR 39 ARTEFACTS** : `padPickups` 1 234 ramassages, ecart
+  `tHigh - tLow` de mediane **20,00 s** (3,2 % sous 2 s) ; `loadouts` 597 changements d'arme,
+  **0 sur 597** dates a moins de 5 s ; les tirs, dates a la frame. La regle retenue : le son part
+  au PREMIER TIR d'une famille d'arme qui appartient a un socle du match, une fois par couple
+  (joueur, famille). **464 evenements sur 34 artefacts, ~14 par match.** Deux limites ecrites :
+  une arme jamais tiree ne sonne pas, et une arme de la meme famille ramassee au sol sonne aussi
+  (le calque REFUSE de publier le ramasseur — 88,1 %, sous son propre seuil de 90 %).
+- **ZONE CONTESTEE** : la definition de l'utilisateur (« on va prendre une zone adverse et un
+  adversaire entre pour la contester ») se lit directement dans le film — une RAMPE de jauge qui
+  retombe SANS changement de proprietaire. Le jeu n'a qu'UN son de contestation, sans camp,
+  comme le retour de drapeau ; la question win/lose n'avait pas lieu d'etre.
+- **S1 EST RENDUE, ET ELLE PAIE** : les `hsc*` sont des scripts Lua COMPILES (magie `ucsh`) et
+  ils gardent leur texte, la ou les modules ont `stringsSize = 0`. Le script du chemin
+  (`a35c6ce9`, 170 443 octets) nomme les slots sonores des zones :
+  `ZoneConvertingLoop{Team,Enemy}`, `ControlledLoop{Team,Enemy}`, `ScoringLoop{Team,Enemy}`,
+  `ZoneExtractingLoop*`, `ZoneHackLoop*`, `suddenDeathCaptureLoop*Reverse`, `HillContestedSound`,
+  `HillMovedSound`, plus les deux tags de VO d'annonceur. **`HillMovedSound` confirme
+  independamment le `71cb04b8` que l'utilisateur avait designe a l'oreille.**
+  NEGATIF avec denominateur : ce vocabulaire passe au casseur (560 348 candidats, esperance
+  0,0107, trois bases) ne rend AUCUN nom neuf — les noms Wwise ne suivent pas les noms Lua.
+  La suite est l'appariement des 76 `snd!`/`lsnd` que le script cite DANS L'ORDRE DU FICHIER
+  avec l'ordre de ses variables (precedent `gggl`) ; le dump est fait, l'appariement non.
+- **TRANSLOCATEUR** : ma comparaison spectrale a echoue une TROISIEME fois, y compris sur des
+  sons ISOLES fournis par l'utilisateur (les tetes de classement sortent de banques sans
+  rapport). La mesure est abandonnee. C'est l'utilisateur qui a extrait le son du jeu et l'a
+  nomme — « la premiere activation, la depose de la faille spatio-temporelle ». Livre en
+  `translocator_deploy` (48 kHz stereo, -1 dBTP) et branche sur la pose. La teleportation est
+  harmonisee mais NON LIVREE : aucun declencheur dans le film, un asset sans declencheur est un
+  asset mort que le garde-rail refuse.
+- **DEUX MODES NEUFS ecrits dans l'outil** : `chaines` (les chaines lisibles d'un tag, avec ses
+  64 premiers octets AVANT toute interpretation — un tag compresse se voit la) et l'affichage
+  des IDENTIFIANTS par groupe dans `remonter` (il ne rendait que des comptes : on savait qu'un
+  `hsc*` referencait un son, pas LEQUEL).
+
+**Gates** : `tsc -b` exit 0 (cache purge), `npm run lint` 0 erreur, vitest
+`src/features/match-replay` **85 fichiers / 1 324 tests**, 0 echec. `go vet` et
+`go test ./cmd/weapon-sounds` verts.
+
+**Conclusion / prochaine etape** : trois trous connus et nommes — les BOBINES ne sont pas
+cablees (et leur cle de jointure, la vignette de kill feed, n'a aucune ligne dans `rules.tsv`) ;
+l'ECRAN OCCULTANT a son son identifie mais sa famille s'appelle encore `other` au manifeste ;
+l'effet UI de faille et le renommage `translocator_beacon` -> faille restent a faire.
+
+## [2026-08-27] Encadre Notion « REPLAY 2D » — CLOTURE du chantier — Complete
+
+**Contexte** : pilotage complet de l'encadre Notion 11 points (plan
+`.ai/V7.5/PLAN_REPLAY2D_NOTION_2026-08-25.md`), 3 executeurs Opus sur worktrees freres,
+~25 lots fusionnes en 3 jours.
+
+**Livre** : pts 3-9 (UI rejeu : fiches, kill feed, volume, fin de rejeu, cone, zones
+grisees) + retours utilisateur A7-A14 et FIX socles/CTF ; pt 5 notif Discord groupee ;
+pt 10 clos par refutation mesuree (instrument mapplafond-mesure) ; pt 11 : Bastion
+complet (possession + jauge + capture SUR la forme), KOTH colline + PROPRIETAIRE
+(decision user 88-89 %), crane d'Oddball au manifeste + vies libres publiees et dessinees
+(schema 21, contrat 39), vivier TC retire (BTB zones hors scope, decision user).
+
+**Decisions techniques principales** : executeur canonique un-film-par-processus BORNE
+(filmproc : 2 plafonds, priorite basse) + garde-rail archlint apres 3e bombe RAM (2e
+film-bombe a349fea8 neutralise en conditions reelles) ; buildAll du serveur delegue a un
+enfant auto-execute (plus aucun decodage in-process serveur — bloquant release audite) ;
+merge a deux sessions coordonne par messages croises (sons + retours : union semantique,
+SOUND_CUT_MAX_S 12, signature useReplaySound a 6 parametres).
+
+**Resultats observes** : portage Oddball [!] FINAL apres 5 campagnes a protocole commite
+avant mesure (meilleur : 79,8 % / 80 exige, temoin spatial 0-3,3 % = signal spatial
+etabli, biais des longs portages nomme) ; etat vivant TC [!] (ancrage BTB, controle
+positif KOTH) ; 9 acquis consignes au registre avec conditions de reprise.
+
+**Conclusion / prochaine etape** : gate visuel utilisateur (temoins re-cuits schema 21),
+CI de branche au niveau job sur la tete poussee, puis la sequence de release Notion
+(1er point = audit anti-bombe-RAM, en partie solde par filmproc+BUILDALL). Re-cuisson de
+masse = fenetre ops de la release.
+
+## [2026-08-27] Sons : coupe en 3 commits, merge a deux sessions, et le RECENSEMENT du corpus Oddball — Complete
+
+**Contexte** : la session « replay 2D » etait bloquee par mon WIP sur l'arbre PARTAGE (branches
+divergees de 35/38 commits). Coupe demandee, puis fusion menee par elle — six conflits, dont
+quatre dans mes fichiers.
+
+**Decision technique principale** : ne PAS resoudre un merge que quelqu'un d'autre pilote. J'ai
+resolu le seul conflit mecanique (`thought_log`, pur ajout des deux cotes), constate que la
+session voisine resolvait EN DIRECT (le fichier est passe de conflictuel a resolu entre deux de
+mes commandes), et je me suis arrete pour lui envoyer les resolutions EXACTES de mes trois
+autres fichiers plutot que d'editer a deux mains.
+
+**Resultats observes** :
+- **TROIS COMMITS** : `fd4334dfd` outillage RE, `3b833ffca` sons livres + cablage zones,
+  `4e0b97991` journal. Gates au moment de la coupe : go build/vet/test verts, tsc 0, lint 0
+  erreur, vitest 77 fichiers / 1 160 tests.
+- **DEUX PIEGES SILENCIEUX signales a la session voisine, et ils etaient REELS** : perdre
+  `stemsOf` dans `soundURLsFor` (une variante non decodee au moment du tirage est un SILENCE,
+  pas une erreur de compilation) et perdre le 6e argument `allyTeam` de `buildSoundTimeline`
+  (les sons d'etat de zone ne partiraient jamais). Les deux sont couverts a l'arrivee.
+- **VERIFICATION SUR PIECES du compte-rendu voisin, et pas sur parole** : mes trois commits sont
+  ancetres de HEAD, arbre propre, zero marqueur de conflit dans tout l'arbre, `stemsOf` present,
+  `scoreboard` 5e et `endMatch` 6e, `allyTeam` toujours passe, `stemsZone()` dans les deux
+  listes du garde-rail, mes deux entrees `SOURCES_COURTES` intactes. `SOUND_CUT_MAX_S` = 12,0
+  (leurs fanfares a 11,67 s dominent mes 5,15 s) avec l'historique des deux lots fusionne dans
+  un seul commentaire. **84 fichiers / 1 314 tests verts, rejoues moi-meme.**
+- **PIEGE DE REPERTOIRE, le mien** : un premier `npx vitest` lance depuis `apps/` au lieu de
+  `apps/web` rendait 47 fichiers en echec sur 84 — une racine fausse, pas une regression. Le
+  symptome qui le trahit est la DUREE (2,4 s au lieu de 15 s) et le nombre de tests (494 au lieu
+  de 1 314). A relire avant de crier au rouge.
+- **RECENSEMENT DU CORPUS, par `cmd/diag_q` (CLI read-only deja testee, pas une sonde jetable)** :
+  Oddball **26 matchs** au registre, dont **7 films deja en cache** (manifests ET chunks) et 19
+  recuperables par `cmd/fetch_film_chunks`. Assaut 9, VIP 3, Extraction 2, Land Grab 1 — trop
+  peu pour un controle sur moities disjointes, ce qui confirme le « j'y joue quasi jamais » de
+  l'utilisateur et donne l'ordre de priorite : Oddball, et de loin.
+- **L'ORACLE DU LOT ODDBALL EXISTE DEJA** : `match_objective_stats` porte `skull_grabs`,
+  `skull_scoring_ticks`, `skull_carriers_killed`, `time_as_skull_carrier_seconds` —
+  58 lignes sur les 7 matchs en cache. C'est exactement la contrepartie que le balayage
+  confronte aux emplacements du statborg.
+- **CE QUI MANQUE, et c'est le seul manque** : `cmd/tmp_statnames`, l'outil de balayage cite par
+  `named.go`, N'EXISTE PLUS dans l'arbre (son nom disait qu'il etait jetable). Le lot Oddball est
+  donc : le reecrire, le lancer sur les 7 films (26 apres recuperation), confronter, controler
+  sur moities disjointes.
+
+**Conclusion / prochaine etape** : la matiere est la, l'utilisateur n'a rien a decortiquer.
+Le lot Oddball se lance des qu'on veut ; recuperer d'abord les 19 films manquants rendrait le
+controle sur moities disjointes solide au lieu d'etre tenu par 3 contre 4.
+
 ## [2026-08-27] Sons : les ZONES sonnent (capture en cours, domination, colline), et la mesure video du translocateur ECHOUE — Complete
 
 **Contexte** : l'utilisateur designe deux sons a l'oreille (Zone 15 = capture adverse, Zone 17 =
@@ -73406,3 +73660,60 @@ cache des calques cuits.
 **Conclusion / prochaine etape** : point A du plan (style par carte en donnee + garde-rail +
 planche de comparaison `jeu`/`encre` sur les 11 cartes non closes). Les zones jamais foulees
 restent une SECONDE BASE DE TRAVAIL (precision utilisateur), pas une regle de rendu final.
+
+## [2026-08-27] Rejeu 2D — la faille devient un portail, et le PASSAGE se date par le canal equipement
+
+**Statut** : Complete (gates verts, non commite — attente du go utilisateur)
+
+**Demande** : (1) recolorer la faille du translocateur pour qu'elle lise comme un portail
+interdimensionnel plutot que comme un marqueur de camp ; (2) ajouter un effet bref reliant
+l'ancienne position a la nouvelle quand un joueur se teleporte.
+
+**Decision technique principale** : la detection du passage repose sur DEUX verrous, et la
+premiere version n'en avait aucun de bon.
+- Version 1 (refutee) : « saut de piste arrivant pres d'une faille ACTIVE du meme joueur ».
+  Rendement ZERO sur les 39 films. Cause mesuree : les 7 poses de translocateur du corpus sont
+  toutes d'origine `dropped` — lachees a la mort du porteur, jamais deployees. Aucune faille
+  n'est donc jamais dessinee. Le balayage des seuils (3/8/12 m de saut x 6/10/15/20/30 m
+  d'arrivee) ne bougeait pas d'un cran : distance minimale saut-faille 22,5 m, invariante.
+- Version 2 (utilisateur : « on le voit a un deplacement instantane plus rapide que la
+  course ») : 32 sauts intra-vie relevés, tous a 120-470 m/s (frame de 100 ms, course a 8 m/s,
+  grappin a 25 m/s). Mais 28 d'entre eux portent DANS UN MEME FILM le meme vecteur au signe
+  pres — ±(38,0 / 12,0) sur l'un, ±(32,3 / -0,7) sur l'autre — emprunte par plusieurs vies
+  dans les deux sens : ce sont les PORTES DE LA CARTE. D'ou le verrou B (vecteur non partage).
+- Version 3, retenue (utilisateur : « on n'a pas un composant qui dit quand un joueur a
+  l'equipement et quand il l'active ? ») : le canal `abilities` publie la capacite portee par
+  slot, et le translocateur y occupe le rang 11 (`abilityLabels` le confirme dans le document ;
+  le rang est etabli cote serveur par `filmdec/translocateur_test.go`). Verrou A = derniere
+  lecture du slot au moment du saut vaut 11, age POSITIF (une lecture a venir ne prouve rien).
+  Lecture via `nearestReading` de `rosterLogic` — reutilise, pas reecrit.
+
+**Resultats observes** : verrou A seul en retient 6 (le slot 742 de `06dfe6d9` franchit deux
+fois une porte pendant qu'il porte l'equipement) ; verrou B seul en retient 4 mais par
+heuristique de forme ; les DEUX ensemble en retiennent 4, et les quatre tombent dans une
+fenetre de tenue du translocateur (slot 742 : rang 11 a t5928, remplace a t6496, saut a t6196 ;
+slot 754 : 11 a t6226, saut a t6517 ; slot 607 : 11 a t5627, sauts a t5863 et t5899). Deux
+canaux independants, quatre concordances sur quatre, zero faux positif restant.
+
+**Couleurs** : la faille sort du systeme d'encre d'equipe et prend deux tokens FIXES —
+`extreme` (fuchsia) pour les levres, `bonus` (violet plus clair) pour le coeur et le halo
+elliptique. Precedent explicite : le mur de protection (verdict R2-5), seul autre objet pose
+dont la couleur dit ce qu'il EST. Ce qu'on perd est identique : le camp du poseur, qui reste
+lisible a l'infobulle.
+
+**Garde-rails** : deux sont passes au rouge, aucun n'a ete affaibli.
+- plafond de lignes de `ReplayCanvas.tsx` (699 > 691) : le memo des passages a demenage dans
+  `useReplayPlacements` — sa famille — au lieu de relever le plafond. Retour a 691.
+- `placementShapes.test.ts` interdisait tout `arc` dans la faille (le losange en avait un).
+  Le halo en emploie un desormais : le test enonce maintenant ce qui est vrai — UN arc, REMPLI
+  d'un degrade radial, jamais trace, le corps restant fait de courbes.
+`placementShapes.ts` depassait 500 lignes : la faille est extraite dans `placementRift.ts`
+(precedent `placementWall.ts`), et le trace du lien y vit aussi pour garder le calque a 500.
+
+**Gates** : `tsc -b` 0 (cache purge), `eslint src` 0 erreur (22 warnings preexistants),
+`vitest run` 494 fichiers / 4898 tests verts, dont 14 nouveaux sur `placementTeleport` et 5 sur
+le lien dans le calque.
+
+**Prochaine etape** : verdict utilisateur sur la planche `1b08c056` (item R3-1 recolore,
+R3-2 toujours en attente du choix parmi trois, R3-3 nouveau pour le passage), puis commit sur
+`feat/v75` — 30+ fichiers en attente du go.

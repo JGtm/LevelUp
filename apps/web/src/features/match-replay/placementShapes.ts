@@ -193,64 +193,6 @@ export function drawRevealMark(
 
 // --- BALISE DU TRANSLOCATEUR --------------------------------------------------------------
 
-/**
- * Demi-diagonale du losange de la balise, en pixels d'ÉCRAN.
- *
- * EN PIXELS, ET C'EST UNE MESURE ABSENTE QU'ON REFUSE D'INVENTER : le film ne porte aucune
- * dimension de cet objet, et la balise n'a de toute façon pas de portée — c'est un point de
- * retour. Un rayon en mètres laisserait croire à une zone d'effet. 5,5 px la posent entre le
- * point neutre (2,5 px) et la marque de révélation (12 px) : lisible, jamais dominante.
- */
-export const BEACON_RADIUS_PX = 5.5
-
-/** Le cœur du losange : il fixe le LIEU exact, que le contour ne fait qu'entourer. */
-const BEACON_DOT_RADIUS_PX = 1.5
-const BEACON_LINE_WIDTH = 1.5
-const BEACON_ALPHA = 0.85
-
-/**
- * beaconDiamond — les quatre sommets du losange, en pixels d'écran.
- *
- * UN LOSANGE PARCE QU'IL EST LE SEUL À NE RESSEMBLER À RIEN D'AUTRE DANS CE CALQUE : le cercle
- * est pris (capteur, objet non identifié, marque de révélation), l'arc aussi (mur). Il est
- * symétrique par ses deux axes, donc il ne suggère aucune direction — ce qui est exactement ce
- * que la mesure autorise à dire d'une balise.
- */
-export function beaconDiamond(c: XY, radiusPx: number): XY[] {
-  return [
-    { x: c.x, y: c.y - radiusPx },
-    { x: c.x + radiusPx, y: c.y },
-    { x: c.x, y: c.y + radiusPx },
-    { x: c.x - radiusPx, y: c.y },
-  ]
-}
-
-/**
- * drawBeacon — le losange de la balise et son cœur, à demeure sur toute la fenêtre [t0, t1].
- *
- * AUCUNE PULSATION : rien n'est mesuré qui batte. Une balise de translocation attend d'être
- * rappelée ; elle ne balaie pas, ne recharge pas, n'émet pas. Un marqueur qui clignoterait
- * affirmerait une activité qu'aucune lecture ne soutient.
- */
-export function drawBeacon(
-  ctx: CanvasRenderingContext2D,
-  c: XY,
-  style: ShapeStyle,
-  color: string,
-): void {
-  ctx.save()
-  ctx.globalAlpha = BEACON_ALPHA
-  ctx.strokeStyle = color
-  ctx.fillStyle = color
-  ctx.lineJoin = 'round'
-  ctx.lineWidth = BEACON_LINE_WIDTH * style.k
-  strokePolyline(ctx, beaconDiamond(c, BEACON_RADIUS_PX * style.k), true)
-  ctx.beginPath()
-  ctx.arc(c.x, c.y, BEACON_DOT_RADIUS_PX * style.k, 0, Math.PI * 2)
-  ctx.fill()
-  ctx.restore()
-}
-
 // --- TRAQUEUR DE MENACES ------------------------------------------------------------------
 
 /**
@@ -446,3 +388,5 @@ export function drawRepairField(
   ctx.fill()
   ctx.restore()
 }
+
+// La FAILLE du translocateur et son arc de téléportation vivent dans `placementRift.ts`.

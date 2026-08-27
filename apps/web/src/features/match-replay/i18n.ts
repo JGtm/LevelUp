@@ -97,7 +97,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     placementFamily: {
       wall: 'Mur de protection',
       sensor: 'Capteur de menaces',
-      beacon: 'Balise du translocateur quantique',
+      rift: 'Faille du translocateur quantique',
       seeker: 'Traqueur de menaces',
       field: 'Champ de réparation',
     },
@@ -358,7 +358,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     placementFamily: {
       wall: 'Drop wall',
       sensor: 'Threat sensor',
-      beacon: 'Quantum translocator beacon',
+      rift: 'Quantum translocator rift',
       seeker: 'Threat seeker',
       field: 'Repair field',
     },

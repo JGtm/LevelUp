@@ -16,13 +16,13 @@
  */
 import type { ReplayEquipmentPlacement } from '@/lib/api/types'
 
+import { RIFT_HALF_HEIGHT_PX } from './placementRift'
 import {
   type PlacementHoverTime,
   type PlacementKind,
   placementKind,
 } from './equipmentPlacementsLayer'
 import {
-  BEACON_RADIUS_PX,
   DROPPED_RADIUS_PX,
   type PlacementView,
   project,
@@ -53,7 +53,7 @@ export function hoverRadiusPx(kind: PlacementKind, view: PlacementView): number 
   if (kind === 'field') return REPAIR_FIELD_RADIUS_M * scale
   if (kind === 'wall') return Math.max(wallRadiusM(view) * scale, HOVER_MIN_RADIUS_PX)
   if (kind === 'seeker') return Math.max(SEEKER_IMPULSE_RADIUS_PX, HOVER_MIN_RADIUS_PX)
-  if (kind === 'beacon') return Math.max(BEACON_RADIUS_PX, HOVER_MIN_RADIUS_PX)
+  if (kind === 'rift') return Math.max(RIFT_HALF_HEIGHT_PX, HOVER_MIN_RADIUS_PX)
   if (kind === 'dropped') return Math.max(DROPPED_RADIUS_PX, HOVER_MIN_RADIUS_PX)
   return Math.max(UNNAMED_DOT_RADIUS_PX, HOVER_MIN_RADIUS_PX)
 }

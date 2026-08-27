@@ -27,6 +27,7 @@ import {
   type PlacementView,
   type PlacementWindowTime,
 } from './equipmentPlacementsLayer'
+import { riftTeleports, type RiftTeleport } from './placementTeleport'
 import { frameToMs } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
 import { usePlacementHover, type PlacementHoverHandlers } from './usePlacementHover'
@@ -58,6 +59,8 @@ export interface ReplayPlacements {
   toggles: PlacementToggles
   /** La pose sous le curseur et ses gestionnaires de pointeur. */
   hover: PlacementHoverHandlers
+  /** Les passages par une faille du film (cf. `placementTeleport`). */
+  teleports: readonly RiftTeleport[]
 }
 
 export function useReplayPlacements({
@@ -82,6 +85,14 @@ export function useReplayPlacements({
     [doc],
   )
 
+  // Les PASSAGES par une faille : un balayage de toutes les pistes, donc calculé une fois par
+  // document et jamais par image. Il vit ici et non dans le composant pour la même raison que
+  // les comptes : c'est une lecture des poses, et le composant n'a pas à la refaire.
+  const teleports = useMemo(
+    () => riftTeleports(doc.equipmentPlacements, doc.tracks, doc.abilities),
+    [doc.equipmentPlacements, doc.tracks, doc.abilities],
+  )
+
   const toggles = useMemo<PlacementToggles>(
     () => ({ showUnnamed, showDropped }),
     [showUnnamed, showDropped],
@@ -97,5 +108,5 @@ export function useReplayPlacements({
     showDropped,
   })
 
-  return { counts, windowTime, toggles, hover }
+  return { counts, windowTime, toggles, hover, teleports }
 }

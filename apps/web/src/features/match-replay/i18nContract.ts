@@ -214,7 +214,7 @@ export interface ReplayText {
   layerPlacementsDroppedHint: string
   layerPlacementsUnnamed: string
   layerPlacementsUnnamedHint: string
-  placementFamily: Record<'wall' | 'sensor' | 'beacon' | 'seeker' | 'field', string>
+  placementFamily: Record<'wall' | 'sensor' | 'rift' | 'seeker' | 'field', string>
   /** Ce que dit le point neutre d'un objet dont la nature n'est pas établie. */
   placementUnnamedLabel: string
   /** Ligne « posé par <joueur> » de l'infobulle ; le poseur est une MESURE (proximité). */

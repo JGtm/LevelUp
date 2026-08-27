@@ -25,6 +25,7 @@ import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
 
 import { readInk } from './canvasInk'
 import { readFxInk, type FxInk } from './fxInk'
+import type { RiftInk } from './placementRift'
 import type { PadFamily } from './weaponPadFamilies'
 
 /** Fond de carte : token neutre, sans connotation directionnelle (le sujet = les joueurs). */
@@ -82,6 +83,28 @@ const SELF_TOKEN: SemanticToken = 'success'
 const WALL_TOKEN: SemanticToken = 'warning'
 
 /**
+ * LA FAILLE DU TRANSLOCATEUR (2026-08-27 : « fais en sorte que ça ressemble plus à un portail
+ * interdimensionnel au niveau des couleurs »).
+ *
+ * MÊME RAISONNEMENT QUE LE MUR ci-dessus, poussé d'un cran : la faille n'est pas un objet du
+ * jeu qui appartiendrait à un camp, c'est une DÉCHIRURE. Lui donner la teinte d'équipe du
+ * poseur la ferait lire comme un marqueur tactique de plus. Le camp reste lisible à
+ * l'infobulle ; ce qu'on gagne, c'est qu'elle ne ressemble à RIEN d'autre sur la carte.
+ *
+ * DEUX TOKENS, parce qu'un portail a un bord et une lumière qui en sort :
+ *  - `extreme` (fuchsia) pour les LÈVRES — c'est le token le plus saturé de la palette, et le
+ *    seul dont aucune donnée du rejeu ne se sert : il n'entre en conflit avec aucune lecture ;
+ *  - `bonus` (violet, plus CLAIR) pour le CŒUR et le halo — plus clair que les lèvres, ce qui
+ *    fait lire le centre comme une ouverture éclairée plutôt qu'un trait plein.
+ *
+ * Les deux sont voisins en teinte (271° et 292°), donc l'objet reste UNE couleur vue de loin,
+ * et se sépare en bord + lumière quand on s'approche.
+ */
+const RIFT_RIM_TOKEN: SemanticToken = 'extreme'
+const RIFT_CORE_TOKEN: SemanticToken = 'bonus'
+
+
+/**
  * LES ENCRES DES TROIS NATURES DE SOCLE (retour utilisateur du 2026-08-26 : « une couleur pour
  * chaque type, en respectant les couleurs accessibles »).
  *
@@ -135,6 +158,8 @@ export interface ReplayInks {
   self: string
   /** Arc du mur de protection : un token FIXE, plus la couleur d'équipe (cf. WALL_TOKEN). */
   wall: string
+  /** Les deux encres FIXES de la faille du translocateur (cf. RIFT_RIM_TOKEN). */
+  rift: RiftInk
   /**
    * LE MARQUAGE DES SOCLES : ce qui est REMPLI, et ce qui le CERNE (verdict du 2026-08-18 —
    * « icône blanche remplie, contour noir »). Ce sont les deux encres du THÈME, pas des
@@ -174,6 +199,7 @@ export function useReplayInks(paletteVersion: number): ReplayInks {
       labelStroke: readInk('--replay-label-stroke'),
       self: resolveToken(SELF_TOKEN),
       wall: resolveToken(WALL_TOKEN),
+      rift: { rim: resolveToken(RIFT_RIM_TOKEN), core: resolveToken(RIFT_CORE_TOKEN) },
       mark: { fill: readInk('--foreground'), outline: readInk('--background') },
     }
   }, [paletteVersion])
