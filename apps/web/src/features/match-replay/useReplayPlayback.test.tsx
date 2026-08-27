@@ -359,3 +359,137 @@ describe('useReplayPlayback — la frise', () => {
     expect(draw).toHaveBeenCalledTimes(1)
   })
 })
+
+/**
+ * LES SAUTS (planche 2a, 2026-08-28) — `seekBy` en SECONDES, `stepFrames` en images.
+ *
+ * CE QUE CES CAS TIENNENT : le bornage à la fenêtre de gameplay (un saut de 10 s près d'un
+ * bout ne doit pas sortir du match), la conversion secondes -> images par `baseFps` (10 ici),
+ * et la mise en PAUSE du pas d'image — sans elle, la boucle écraserait le pas au rendu suivant
+ * et le bouton n'aurait aucun effet visible.
+ */
+describe('useReplayPlayback — les sauts', () => {
+  it('`seekBy` convertit les secondes en images par la cadence du document', () => {
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 20
+    const { result, draw, soundTick } = mount(frameRef, FENETRE)
+    draw.mockClear()
+    soundTick.mockClear()
+    act(() => {
+      result.current.seekBy(1) // 1 s à 10 images/s
+    })
+    expect(frameRef.current).toBe(30)
+    // Un saut REPEINT et fait battre le son : sinon la scène montrerait l'instant d'avant.
+    expect(draw).toHaveBeenCalledTimes(1)
+    expect(soundTick).toHaveBeenCalledTimes(1)
+  })
+
+  it('`seekBy` est borné aux DEUX bouts de la fenêtre de gameplay', () => {
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 20
+    const { result } = mount(frameRef, FENETRE)
+    act(() => {
+      result.current.seekBy(-10) // 100 images en arrière : bien avant le coup d'envoi
+    })
+    expect(frameRef.current).toBe(10)
+    act(() => {
+      result.current.seekBy(10) // 100 images en avant : bien après la fin déclarée
+    })
+    expect(frameRef.current).toBe(40)
+  })
+
+  it('`stepFrames` met la lecture EN PAUSE et avance d’une image', () => {
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 20
+    const { result } = mount(frameRef, FENETRE)
+    expect(result.current.playing).toBe(true)
+    act(() => {
+      result.current.stepFrames(1)
+    })
+    expect(frameRef.current).toBe(21)
+    expect(result.current.playing).toBe(false)
+  })
+
+  it('`stepFrames` ne sort pas de la fenêtre, à l’une ou l’autre borne', () => {
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 40
+    const { result } = mount(frameRef, FENETRE)
+    act(() => {
+      result.current.stepFrames(1)
+    })
+    expect(frameRef.current).toBe(40)
+    act(() => {
+      result.current.stepFrames(-40)
+    })
+    expect(frameRef.current).toBe(10)
+  })
+})
+
+/**
+ * LE REMPLISSAGE DE LA FRISE (`--played`) — la part parcourue, écrite par `writeCursor`.
+ *
+ * POURQUOI UN TEST PAR CHEMIN : la variable ne se met à jour pour personne toute seule. Chaque
+ * chemin qui déplace le curseur doit passer par `writeCursor`, et c'est exactement ce qu'un
+ * oubli ferait perdre — une frise remplie jusqu'à la position d'avant le geste.
+ */
+describe('useReplayPlayback — le remplissage de la frise suit le curseur', () => {
+  /** Le champ n'existe pas dans un test de hook : on l'attache à la ref rendue par le hook. */
+  function attachSlider(ref: RefObject<HTMLInputElement | null>): HTMLInputElement {
+    const el = document.createElement('input')
+    el.type = 'range'
+    ref.current = el
+    return el
+  }
+
+  function played(el: HTMLInputElement): string {
+    return el.style.getPropertyValue('--played')
+  }
+
+  it('un saut écrit la part parcourue de la FENÊTRE, pas du film', () => {
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 10
+    const { result } = mount(frameRef, FENETRE)
+    const el = attachSlider(result.current.sliderRef)
+    act(() => {
+      result.current.seekBy(1.5) // 15 images : la moitié des 30 de la fenêtre
+    })
+    expect(el.value).toBe('25')
+    expect(played(el)).toBe('50%')
+  })
+
+  it('« Recommencer » ramène le remplissage à zéro', () => {
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 25
+    const { result } = mount(frameRef, FENETRE)
+    const el = attachSlider(result.current.sliderRef)
+    act(() => {
+      result.current.restart()
+    })
+    expect(el.value).toBe('10')
+    expect(played(el)).toBe('0%')
+  })
+
+  it('un glissé manuel le met à jour lui aussi', () => {
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 10
+    const { result } = mount(frameRef, FENETRE)
+    const el = attachSlider(result.current.sliderRef)
+    act(() => {
+      result.current.onScrub({
+        currentTarget: { value: '40' },
+      } as unknown as React.ChangeEvent<HTMLInputElement>)
+    })
+    expect(played(el)).toBe('100%')
+  })
+
+  it('la boucle de lecture l’écrit à chaque pas', () => {
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 10
+    const { result } = mount(frameRef, FENETRE)
+    const el = attachSlider(result.current.sliderRef)
+    tick(1_000) // amorce
+    tick(3_000) // 2 s à 10 images/s : 20 images, soit les deux tiers de la fenêtre
+    expect(el.value).toBe('30')
+    expect(played(el)).toBe(`${((30 - 10) / 30) * 100}%`)
+  })
+})

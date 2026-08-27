@@ -4786,3 +4786,36 @@ appelle `equipmentOwner`, LA fonction de production — donc il mesure ce qui es
 une approximation qui pourrait deriver. Le decoupage des vies reutilise `lifeGapUS` de lives.go
 et reproduit son compte sur le film de reference (105 vies pour 99 slots), ce qui est un
 controle gratuit qu'un second decoupage du meme fait ne divergeait pas.
+
+## 2026-08-28 — Lecteur du rejeu (planche 2a) : sauts, frise a pistes, menu vitesse, raccourcis
+
+Statut : **En cours** (lots 1-4 du plan `PLAN_LECTEUR_PLANCHE2A_2026-08-28.md`, branche
+`wt/lecteur`, worktree dedie). Spec produit : `SPEC_LECTEUR_PLANCHE2A_2026-08-28.md`.
+
+**LOT 0 — l'etat de depart est deja rouge, et ce n'est pas nous.** Baseline mesuree AVANT
+toute modification (vitest `src/features/match-replay src/routes`, hors sandbox) : 99 fichiers,
+1502 tests, **1 seul echec** — le cliquet de taille du canvas (`placementFamily.guard.test.ts`)
+attend 691 lignes et `ReplayCanvas.tsx` en fait 692 sur `feat/v75 @ 86b9087c9`. Le plan
+supposait « 691 pile ». Consequence pour le chantier : le lot 3 doit non seulement ne pas
+faire grossir le fichier, mais lui rendre au moins une ligne — le plafond ne se releve pas.
+
+**LOT 1 — la donnee du fil remonte d'un niveau, et c'est une question de JUSTESSE, pas de
+performance.** `buildFeedEntries` est desormais appele UNE fois dans `replay.tsx` ; le fil
+recoit `entries`, et la frise du lot 3 tirera ses pistes de la MEME liste. Deux appels auraient
+chacun leur recalage d'horloge (origine publiee ou appariement statistique selon l'artefact) :
+la marque d'une elimination sur la frise n'aurait pas ete garantie identique a la ligne lue
+dans la colonne. Le rendu du fil, lui, ne bouge pas d'un pixel — 36 tests le tiennent.
+
+**`writeCursor` : un seul endroit qui deplace le curseur.** Il ecrit la valeur du champ ET la
+variable CSS `--played` (part parcourue de la fenetre de gameplay). Cinq chemins l'appellent —
+boucle d'animation, `seekTo`, rembobinage, glisse manuel, pose initiale. La pose initiale
+l'appelle MEME quand elle ne repositionne rien : sans cela, un montage deja au bon endroit
+laissait `--played` vide et la frise s'affichait creuse jusqu'au premier pas de la boucle.
+
+**Deviations assumees vs memo de la session design**, toutes deux ecrites dans la spec :
+`stepFrames` met la lecture EN PAUSE avant de bouger (un pas d'image sous rAF serait ecrase en
+16 ms) ; le bornage de `seekTo` est celui de la fenetre de gameplay, pas du film.
+
+Chiffres du gate lot 1 : `tsc --noEmit` exit 0 ; vitest `useReplayPlayback` (29 tests, +11),
+`ReplayKillFeed` (36 tests), `src/routes` — 5 fichiers / 95 tests verts ; ESLint 0 sur les
+7 fichiers touches.

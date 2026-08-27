@@ -84,6 +84,22 @@ export interface ReplayText {
   empty: string
   speed: string
   time: string
+  /**
+   * LES SAUTS DE LA BARRE (planche 2a, 2026-08-28) : le libellé PORTE LA DURÉE plutôt que de
+   * la répéter à côté du bouton — l'icône dit le sens, le nom accessible dit combien. La
+   * valeur vient de `SKIP_SECONDS` (replayCanvasConfig.ts) : changer la convention à un seul
+   * endroit change les deux libellés.
+   */
+  skipBackFmt: (seconds: number) => string
+  skipForwardFmt: (seconds: number) => string
+  /**
+   * LES DEUX NOTES DU MENU DE VITESSE. `speedNormal` marque la vitesse de référence (on
+   * cherche « comment je reviens à la normale ? », pas « qu'est-ce que 1× »). `speedMuted`
+   * marque celles où le son se tait — la borne est `SOUND_MAX_SPEED` (replaySoundCursor.ts),
+   * et ce texte la dit en toutes lettres plutôt que de laisser un silence inexpliqué.
+   */
+  speedNormal: string
+  speedMuted: string
   /** Kill feed synchronisé sur l'horloge du rejeu. */
   killFeedTitle: string
   killFeedEmpty: string
@@ -153,6 +169,16 @@ export interface ReplayText {
    * `sound` / `soundHint`).
    */
   recordHint: string
+  /**
+   * LES PASTILLES DE SORTIE (planche 2a, 2026-08-28) : les trois commandes portent désormais
+   * un TEXTE COURT à côté de leur icône. Il ne remplace pas le nom accessible — `captureImage`,
+   * `recordVideo` et `stopRecording` restent en aria-label, et ce sont eux qu'un lecteur
+   * d'écran annonce. Ce mot-ci est ce que l'ŒIL lit sans survoler : trois icônes muettes côte
+   * à côte se ressemblent toutes, un mot les départage d'un coup.
+   */
+  captureImageShort: string
+  recordVideoShort: string
+  stopRecordingShort: string
   /** Le tiroir de réglages (décision utilisateur du 16/08) : bouton et panneau partagent
    *  le même intitulé — ouvrir dit ce qu'on va trouver derrière. */
   settingsButton: string
@@ -389,6 +415,27 @@ export interface ReplayText {
   /** RETOURNEMENT : l'instant où le match change de meneur (marque sur la frise). */
   leadChange: string
   leadChangeAtFmt: (time: string, team: string) => string
+  /**
+   * LES QUATRE PISTES DE LA FRISE (planche 2a, 2026-08-28). Les trois premières nomment ce
+   * qu'on lit sous le curseur : tes éliminations et tes morts, celles de tes alliés, et qui
+   * menait à cet instant. Ce sont des ÉTIQUETTES DE LIGNE, pas des titres — d'où des mots
+   * seuls, à l'échelle d'une frise haute de quelques pixels.
+   *
+   * `dominanceOfFmt` date une bande de dominance dans son infobulle : l'équipe y est nommée
+   * par la cascade du scoreboard (`labelOf`), la même que les colonnes et le bandeau.
+   */
+  trackYou: string
+  trackAllies: string
+  trackDominance: string
+  dominanceOfFmt: (team: string) => string
+  /**
+   * LA PISTE DES MÉDIAS, et son état VIDE. La donnée arrive en phase 2 (endpoint par match) :
+   * la piste s'affiche dès maintenant avec un état vide HONNÊTE — « aucun média » est un fait
+   * vrai aujourd'hui pour tous les matchs, pas un trou masqué. Ce qui n'est PAS livré ici :
+   * l'ouverture d'un média (lightbox) et ses libellés, qui viendront avec la donnée.
+   */
+  mediaTrack: string
+  mediaEmpty: string
   unknownPlayer: string
   /**
    * Marques d'identité devant un nom. Le glyphe « moi » ne se DESSINE plus nulle part

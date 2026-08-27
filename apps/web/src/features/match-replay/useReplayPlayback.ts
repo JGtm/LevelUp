@@ -43,8 +43,21 @@
  * LE CURSEUR SE POSE AU DÉBUT QUAND LA FENÊTRE SE CONNAÎT, et pas avant : elle vient de la
  * Match View, qui arrive APRÈS le document du rejeu. Le repositionnement ne va donc que vers
  * l'AVANT (jamais un retour en arrière sous les doigts de qui a déjà déplacé la frise).
+ *
+ * # SE DÉPLACER SANS VISER : LES SAUTS, ET LE REMPLISSAGE DE LA FRISE
+ *
+ * Deux commandes s'ajoutent le 2026-08-28 avec la barre de lecture (planche 2a) : `seekBy`,
+ * un saut de ±N SECONDES converti en images par la cadence du document, et `stepFrames`,
+ * l'image par image. Les deux passent par le même `seekTo` borné à la fenêtre de gameplay —
+ * une seule définition de « où le curseur a le droit d'aller ».
+ *
+ * `writeCursor` EST LE SEUL ENDROIT QUI DÉPLACE LE CURSEUR, et il en écrit DEUX choses : la
+ * valeur du champ (ce que le navigateur dessine) et la variable CSS `--played` (ce que la
+ * frise habillée remplit derrière lui). Les séparer les ferait diverger au premier chemin
+ * oublié — c'est pourquoi la boucle, les sauts, le rembobinage, le glissé manuel et la pose
+ * initiale l'appellent tous, sans exception.
  */
-import { useEffect, useRef, useState, type ChangeEvent, type RefObject } from 'react'
+import { useCallback, useEffect, useRef, useState, type ChangeEvent, type RefObject } from 'react'
 
 import { frameToMs } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
@@ -102,6 +115,14 @@ export interface ReplayPlayback {
   togglePlay: () => void
   restart: () => void
   onScrub: (e: ChangeEvent<HTMLInputElement>) => void
+  /** Saut de ±N SECONDES sur l'axe réel (converti en images par `baseFps`). */
+  seekBy: (seconds: number) => void
+  /**
+   * Image par image, bornée à la fenêtre de gameplay. ELLE MET LA LECTURE EN PAUSE : un pas
+   * d'image sous la boucle d'animation serait écrasé en 16 ms, et avancer d'une image est un
+   * geste d'arrêt sur image par nature.
+   */
+  stepFrames: (frames: number) => void
 }
 
 export function useReplayPlayback(o: ReplayPlaybackOptions): ReplayPlayback {
@@ -113,15 +134,43 @@ export function useReplayPlayback(o: ReplayPlaybackOptions): ReplayPlayback {
   const startFrame = playWindow?.startFrame ?? 0
   const endFrame = playWindow?.endFrame ?? lastFrame
 
+  /**
+   * writeCursor POSE LE CURSEUR : la valeur du champ, et le REMPLISSAGE de la frise habillée.
+   *
+   * `--played` est la part parcourue, en pourcentage de la fenêtre — la feuille de style s'en
+   * sert pour peindre la piste jusqu'au curseur (cf. `replay-timeline` dans globals.css). Elle
+   * s'écrit ICI et nulle part ailleurs : un chemin qui déplacerait le curseur sans elle
+   * laisserait un remplissage figé sur la position précédente.
+   */
+  const writeCursor = useCallback(
+    (frame: number) => {
+      const el = sliderRef.current
+      if (!el) return
+      el.value = String(Math.round(frame))
+      const span = endFrame - startFrame
+      const pct = span > 0 ? ((frame - startFrame) / span) * 100 : 0
+      // Borné : la frise ne se remplit ni en deçà de son début ni au-delà de sa fin, même si
+      // un appelant lui sert une image hors fenêtre.
+      el.style.setProperty('--played', `${Math.min(100, Math.max(0, pct))}%`)
+    },
+    [startFrame, endFrame],
+  )
+
   // LE COUP D'ENVOI, DÈS QUE LA FENÊTRE SE CONNAÎT (cf. l'en-tête) : elle arrive avec la Match
   // View, donc après le premier rendu. On ne pose le curseur que s'il est encore EN DEÇÀ du
   // début — le repositionnement ne recule jamais la lecture.
   useEffect(() => {
-    if (frameRef.current >= startFrame) return
-    frameRef.current = startFrame
-    if (sliderRef.current) sliderRef.current.value = String(startFrame)
-    draw()
-  }, [startFrame, frameRef, draw])
+    if (frameRef.current < startFrame) {
+      frameRef.current = startFrame
+      writeCursor(startFrame)
+      draw()
+      return
+    }
+    // LE REMPLISSAGE SE POSE MÊME SANS REPOSITIONNEMENT : sans cet appel, un montage où la
+    // lecture est déjà au bon endroit (cas nominal sans fenêtre) laisserait `--played` vide,
+    // et la frise s'afficherait creuse jusqu'au premier pas de la boucle.
+    writeCursor(frameRef.current)
+  }, [startFrame, frameRef, draw, writeCursor])
 
   // Boucle de lecture (requestAnimationFrame) uniquement quand `playing`.
   //
@@ -145,7 +194,7 @@ export function useReplayPlayback(o: ReplayPlaybackOptions): ReplayPlayback {
       const ended = next >= endFrame
       if (ended) next = endFrame
       frameRef.current = next
-      if (sliderRef.current) sliderRef.current.value = String(Math.round(next))
+      writeCursor(next)
       soundTick(frameToMs(next, doc))
       draw()
       if (ended) {
@@ -163,16 +212,43 @@ export function useReplayPlayback(o: ReplayPlaybackOptions): ReplayPlayback {
     }
     raf = requestAnimationFrame(step)
     return () => cancelAnimationFrame(raf)
-  }, [playing, baseFps, speed, doc, renderWidth, draw, soundTick, onEnded, endFrame, frameRef])
+  }, [playing, baseFps, speed, doc, renderWidth, draw, soundTick, onEnded, endFrame, frameRef, writeCursor])
 
   const onScrub = (e: ChangeEvent<HTMLInputElement>) => {
     frameRef.current = Number(e.currentTarget.value)
+    // LE REMPLISSAGE SUIT LE GLISSÉ : le champ porte déjà sa valeur (c'est lui qui l'émet),
+    // mais `--played` ne se met à jour pour personne — sans cet appel, la piste resterait
+    // remplie jusqu'à la position d'AVANT le geste.
+    writeCursor(frameRef.current)
     if (!playing) draw()
   }
 
   const rewind = () => {
     frameRef.current = startFrame
-    if (sliderRef.current) sliderRef.current.value = String(startFrame)
+    writeCursor(startFrame)
+  }
+
+  /**
+   * seekTo — LE SEUL CHEMIN DE DÉPLACEMENT DIRECT, et il porte le bornage : la lecture ne
+   * sort pas de la fenêtre de gameplay, quel que soit le geste qui l'y envoie. Il peint
+   * (`draw`) et fait battre le son (`soundTick`) comme un pas de boucle : un curseur déplacé
+   * sans repeindre montrerait la scène de l'instant précédent.
+   */
+  const seekTo = (frame: number) => {
+    const next = Math.min(endFrame, Math.max(startFrame, frame))
+    frameRef.current = next
+    writeCursor(next)
+    soundTick(frameToMs(next, doc))
+    draw()
+  }
+
+  const seekBy = (seconds: number) => seekTo(frameRef.current + seconds * baseFps)
+
+  const stepFrames = (frames: number) => {
+    // EN PAUSE D'ABORD (cf. l'en-tête) : sous la boucle, le pas d'image serait écrasé à la
+    // frame suivante et le geste n'aurait aucun effet visible.
+    setPlaying(false)
+    seekTo(Math.round(frameRef.current) + frames)
   }
 
   // LES DEUX COMMANDES DE TRANSPORT PRÉVIENNENT LE SON, en PREMIER : ce sont des gestes
@@ -193,5 +269,5 @@ export function useReplayPlayback(o: ReplayPlaybackOptions): ReplayPlayback {
     setPlaying((p) => !p)
   }
 
-  return { playing, startFrame, endFrame, sliderRef, togglePlay, restart, onScrub }
+  return { playing, startFrame, endFrame, sliderRef, togglePlay, restart, onScrub, seekBy, stepFrames }
 }

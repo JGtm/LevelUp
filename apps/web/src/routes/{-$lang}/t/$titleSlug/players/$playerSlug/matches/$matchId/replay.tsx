@@ -20,7 +20,7 @@ import {
   useReplayMapCallouts,
   useReplayMapImage,
 } from '@/features/match-replay/queries'
-import { collectMedalEvents } from '@/features/match-replay/killFeedLogic'
+import { buildFeedEntries, collectMedalEvents } from '@/features/match-replay/killFeedLogic'
 import { buildPlayerMarks } from '@/features/match-replay/playerMarks'
 import { ReplayCanvas } from '@/features/match-replay/ReplayCanvas'
 import { ReplayKillFeed } from '@/features/match-replay/ReplayKillFeed'
@@ -124,6 +124,15 @@ function ReplayPage() {
   )
   // Les deux horloges ne coïncident pas : cf. killFeedLogic.ts et header.t0_ms.
   const t0Ms = matchView?.header.t0_ms ?? 0
+  // LE FIL ALIGNÉ, ASSEMBLÉ ICI ET NULLE PART AILLEURS (planche 2a, 2026-08-28) : la colonne
+  // de droite l'affiche, la frise du lecteur en tire ses pistes « Toi » et « Alliés ». Un
+  // second appel côté canvas referait tout le recalage — et surtout, deux recalages menés
+  // séparément peuvent diverger : la marque d'une élimination sur la frise ne serait alors
+  // plus exactement la ligne qu'on lit dans le fil.
+  const feedEntries = useMemo(
+    () => buildFeedEntries(kills, medalEvents, t0Ms, data),
+    [kills, medalEvents, t0Ms, data],
+  )
   const nowMs = data ? frameToMs(frame, data) : 0
   // LE CADRAGE SUR LE MATCH RÉEL, CALCULÉ UNE FOIS ICI (et nulle part ailleurs) : le film
   // déborde le match du countdown d'avant-partie et d'une queue de 5-6 s, et les deux bornes
@@ -298,12 +307,9 @@ function ReplayPage() {
               </div>
               <div className="flex min-h-0 flex-1 flex-col">
                 <ReplayKillFeed
-                  kills={kills}
-                  medals={medalEvents}
-                  t0Ms={t0Ms}
+                  entries={feedEntries}
                   nowMs={nowMs}
                   playWindow={playWindow}
-                  doc={data}
                   scoreboard={scoreboard}
                   xuidMeta={xuidMeta}
                   locale={locale}
