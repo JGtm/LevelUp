@@ -8,13 +8,13 @@
  * chaînes CSS et des noms de classe, pas de React — donc testée directement
  * (playerCardFx.test.ts), et la fiche ne garde que le rendu.
  *
- * LES EFFETS VIVENT SUR UNE COUCHE EN RETRAIT, PAS SUR LA FICHE (retour utilisateur du
- * 2026-08-27 : « pas de padding, tout est bord à bord, c'est trop bizarre ») : la fiche rend
- * une couche absolue `inset-0.5 rounded-md` SOUS son contenu — c'est elle qui reçoit
- * `underStyle` et la classe d'éclat — et une INCRUSTATION au-dessus (rayures de l'écran,
- * croix du champ, anneau du capteur, fourreau de translocation : ReplayTeams.ZoneFxOverlay).
- * Les cadres et les fonds s'arrêtent donc à 2 px du bord, arrondis, au lieu de buter sur les
- * fiches voisines.
+ * LES EFFETS VIVENT SUR UNE COUCHE SOUS LE CONTENU, POSÉE SUR LA BORDURE DE LA TUILE
+ * (option 2a du handoff 2026-08-27) : depuis que chaque fiche est une tuile autonome
+ * (bordure, coins arrondis au rayon de l'app), la couche absolue est `inset-0 rounded-lg` —
+ * cadres et voiles épousent la tuile au lieu de dessiner un second anneau en retrait.
+ * C'est elle qui reçoit `underStyle` et la classe d'éclat ; l'INCRUSTATION au-dessus
+ * (nuage et éclairs de l'écran, croix du champ, anneau du capteur, fourreau de
+ * translocation) vit dans ReplayTeams.ZoneFxOverlay, à la même géométrie.
  *
  * LA GRAMMAIRE DES EFFETS, telle qu'elle s'est fixée lot après lot :
  *  - un ÉTAT continu se porte par le FOND (mort, verre, voile sombre) ou par un CADRE
@@ -57,21 +57,22 @@ const TRANSLOCATION_FLASH_S = 1.2
 const DARK_INK = 'var(--replay-label-stroke)'
 
 /**
- * LA MORT, redessinée le 2026-08-27 (retour utilisateur : « la fiche morte est ultra basique
- * j'aime pas du tout ») : la fiche S'ÉTEINT — un voile de l'encre sombre — sous un LAVIS
- * rouge qui part fort du bord gauche et se dissout vers la droite, cerclée d'un fin cadre
- * `destructive`. Trois signes composés au lieu d'un aplat à 12 %.
- *
- * CE N'EST PAS LE LISERÉ GAUCHE REVENU (retiré le 2026-08-25) : le liseré était une barre
- * OPAQUE collée au bord, quatrième redite du même fait, qui tranchait la colonne ; le lavis
- * est un dégradé du fond de la couche arrondie, et le cadre fait le tour. L'éclat du coup
- * fatal (animation de background-color) reste lisible À TRAVERS : le lavis et le voile sont
- * des couches d'image semi-transparentes, la couleur animée passe dessous.
+ * LE CHROME DE LA TUILE — le fond et la bordure que la fiche porte ELLE-MÊME, hors de la
+ * couche d'effets (option 2a du handoff 2026-08-27 : « chaque fiche est une tuile
+ * autonome »). Les pourcentages APPROCHENT les valeurs de la maquette par les tokens du
+ * thème (jamais un littéral, règle color-tokens) :
+ *  - vivant : un dégradé très court AUTOUR de `card` — un souffle de `foreground` en haut
+ *    (~oklch 0.225), une pointe d'encre sombre en bas (~oklch 0.20) ;
+ *  - mort : `card` teinté `destructive` sur une base légèrement éteinte (~oklch 0.19 0.012 25),
+ *    bordure au même rouge affaibli. La mort a QUITTÉ la couche d'effets (l'ancien
+ *    voile + lavis du 2026-08-27) : c'est la tuile qui la dit, plus l'encadré « Éliminé »
+ *    (ReplayVitality) — la couche ne garde que l'éclat du coup fatal.
  */
-const DEATH_VEIL_PCT = 30
-const DEATH_WASH_STRONG_PCT = 30
-const DEATH_WASH_WEAK_PCT = 6
-const DEATH_FRAME_PCT = 55
+const TILE_TOP_LIFT_PCT = 3
+const TILE_BOTTOM_DIP_PCT = 8
+const DEAD_TINT_PCT = 6
+const DEAD_DIM_PCT = 10
+const DEAD_BORDER_PCT = 28
 
 /**
  * Effet de VERRE TREMPÉ de la fiche pendant un épisode de CAMOUFLAGE actif (cahier des
@@ -171,6 +172,29 @@ export function hasUnderLayer(fx: CardFx): boolean {
   return fx.flashClass !== '' || Object.keys(fx.underStyle).length > 0
 }
 
+/**
+ * cardChrome — le fond et la bordure de la TUILE selon l'état vital (cf. TILE_* / DEAD_*).
+ * Rendu par la fiche sur son conteneur (`borderColor` + `background`), pas par la couche
+ * d'effets : le chrome est un état PERMANENT de la tuile, il ne s'empile ni ne s'anime.
+ */
+export function cardChrome(alive: boolean): CSSProperties {
+  if (alive) {
+    return {
+      borderColor: 'var(--border)',
+      background:
+        `linear-gradient(180deg, color-mix(in srgb, var(--foreground) ${TILE_TOP_LIFT_PCT}%, var(--card)), ` +
+        `color-mix(in srgb, ${DARK_INK} ${TILE_BOTTOM_DIP_PCT}%, var(--card)))`,
+    }
+  }
+  const rouge = tokenCssVar('destructive')
+  return {
+    borderColor: `color-mix(in srgb, ${rouge} ${DEAD_BORDER_PCT}%, transparent)`,
+    background:
+      `color-mix(in srgb, ${rouge} ${DEAD_TINT_PCT}%, ` +
+      `color-mix(in srgb, ${DARK_INK} ${DEAD_DIM_PCT}%, var(--card)))`,
+  }
+}
+
 /** Le délai négatif d'un éclat : l'animation reprend à son avancement réel. */
 function negativeDelay(age: number, flashFrames: number, totalS: number): string {
   return `${(-(age / flashFrames) * totalS).toFixed(3)}s`
@@ -192,16 +216,6 @@ function flashOf(i: CardFxInput, style: CSSProperties): string {
   return 'replay-flash-respawn'
 }
 
-/** La MORT redessinée : voile qui éteint, lavis rouge dégradé, fin cadre (cf. DEATH_*). */
-function deathStyleOf(style: CSSProperties): void {
-  const rouge = tokenCssVar('destructive')
-  style.backgroundColor = `color-mix(in srgb, ${DARK_INK} ${DEATH_VEIL_PCT}%, transparent)`
-  style.backgroundImage =
-    `linear-gradient(90deg, color-mix(in srgb, ${rouge} ${DEATH_WASH_STRONG_PCT}%, transparent), ` +
-    `color-mix(in srgb, ${rouge} ${DEATH_WASH_WEAK_PCT}%, transparent) 55%, transparent)`
-  style.boxShadow = `inset 0 0 0 1px color-mix(in srgb, ${rouge} ${DEATH_FRAME_PCT}%, transparent)`
-}
-
 /**
  * LE FOND ET LE FLOU d'une fiche vivante : verre du camouflage, voile de l'écran, ou les
  * deux composés — le voile sombre teinte alors le verre, comme l'écran du jeu assombrit ce
@@ -211,7 +225,7 @@ function deathStyleOf(style: CSSProperties): void {
  */
 function glassAndVeilOf(i: CardFxInput, style: CSSProperties, shadows: string[]): void {
   const camo = i.equipment?.camo === true
-  const shroud = i.zones.shroud
+  const shroud = i.zones.shroudSinceMs !== null
   if (!camo && !shroud) return
   const blur = Math.max(camo ? CAMO_GLASS_BLUR_PX : 0, shroud ? SHROUD_CARD_BLUR_PX : 0)
   style.backdropFilter = `blur(${blur}px)`
@@ -240,7 +254,7 @@ function titleOf(i: CardFxInput): string | undefined {
     i.equipment?.overshield ? i.text.equipmentActive.overshield : null,
     i.teleportAge >= 0 && i.teleportAge <= i.flashFrames ? i.text.translocationFlash : null,
     i.zones.repair ? i.text.zonePresence.field : null,
-    i.zones.shroud ? i.text.zonePresence.shroud : null,
+    i.zones.shroudSinceMs !== null ? i.text.zonePresence.shroud : null,
     i.zones.sensorSincePingMs !== null ? i.text.zonePresence.sensor : null,
   ].filter(Boolean)
   return parts.length > 0 ? parts.join(' · ') : undefined
@@ -249,16 +263,16 @@ function titleOf(i: CardFxInput): string | undefined {
 /**
  * playerCardFx — la composition complète des effets d'une fiche à une image.
  *
- * UNE FICHE MORTE NE PORTE QUE LA MORT : le traitement de `deathStyleOf` et, dans la
- * fenêtre, l'éclat du coup fatal. Les effets d'équipement et de zone, eux, n'existent que
- * sur une fiche vivante (les épisodes se ferment à la mort au plus tard, et les zones sont
+ * UNE FICHE MORTE NE PORTE AUCUN EFFET, hors l'éclat du coup fatal dans sa fenêtre : la
+ * mort continue est dite par le chrome de la tuile (`cardChrome`) et l'encadré « Éliminé »,
+ * pas par cette couche. Les effets d'équipement et de zone, eux, n'existent que sur une
+ * fiche vivante (les épisodes se ferment à la mort au plus tard, et les zones sont
  * calculées sur la vie courante).
  */
 export function playerCardFx(i: CardFxInput): CardFx {
   const underStyle: CSSProperties = {}
   const flashClass = flashOf(i, underStyle)
   if (!i.alive) {
-    deathStyleOf(underStyle)
     return { flashClass, underStyle, translocationDelay: null, title: undefined }
   }
   const shadows: string[] = []

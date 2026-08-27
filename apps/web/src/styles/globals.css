@@ -523,12 +523,43 @@
 }
 .replay-zone-cross { opacity: 0.7; animation: replay-zone-cross-rise 2.4s linear infinite; }
 
+/* Les ÉCLAIRS de l'écran occultant (option 2a du handoff 2026-08-27) : trois décharges
+   traversent la fiche de haut en bas et SCINTILLENT — un double battement bref dans un
+   cycle de 2,6 s, décalé par éclair (délais négatifs posés par la fiche, calés sur
+   l'horloge de la POSE de l'écran : ReplayTeams.ZoneFxOverlay). La forme est un polygone
+   d'éclair découpé au clip-path ; l'encre va d'`info` au bleu profond de l'échelle de
+   fréquence (`heatmap-freq-low`) — l'électricité bleue de l'objet du jeu, en tokens.
+   Sous mouvement réduit ils restent éteints (opacité 0 de base) : le nuage, le voile et
+   l'infobulle disent déjà l'état sans clignoter. */
+@keyframes replay-zone-bolt {
+  0%, 6%, 100% { opacity: 0; }
+  8%  { opacity: 0.95; }
+  11% { opacity: 0.15; }
+  14% { opacity: 0.8; }
+  22% { opacity: 0; }
+}
+.replay-zone-bolt {
+  clip-path: polygon(45% 0%, 20% 55%, 42% 55%, 25% 100%, 70% 40%, 46% 40%, 62% 0%);
+  background: linear-gradient(180deg, var(--ac-info), var(--ac-heatmap-freq-low));
+  filter: drop-shadow(0 0 6px var(--ac-info));
+  opacity: 0;
+  animation: replay-zone-bolt 2.6s linear infinite;
+}
+
+/* La ligne du fil des éliminations (option 2a) : un filet séparateur ENTRE `background`
+   et `border` — assez présent pour structurer la liste, jamais autant qu'une bordure de
+   carte. Classe et non style inline : la couleur composée vit à UN endroit. */
+.replay-feed-row {
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, var(--background));
+}
+
 @media (prefers-reduced-motion: reduce) {
   .replay-flash-death,
   .replay-flash-respawn,
   .replay-flash-translocation,
   .replay-zone-sensor,
   .replay-zone-cross,
+  .replay-zone-bolt,
   .replay-wswap-l,
   .replay-wswap-r,
   .replay-gpop { animation: none; }

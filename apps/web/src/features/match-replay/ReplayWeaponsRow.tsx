@@ -14,8 +14,11 @@
  * ou qu'il dit « rien de dégainé » (D=2, l'état d'avant le départ), l'ordre reste celui des
  * emplacements et rien n'est marqué.
  *
- * UNE SEULE MARQUE, ET ELLE DIT « EN MAIN » : l'arme dégainée est soulignée et en pleine
- * encre, l'autre s'estompe. Sans sélecteur lu, les deux gardent la même encre.
+ * UNE SEULE MARQUE, ET ELLE DIT « EN MAIN » (option 2a du handoff 2026-08-27) : la cellule
+ * de l'arme dégainée s'ALLUME — un fond à l'encre du thème très diluée, coins 2 px — et
+ * l'icône reste en pleine encre ; l'arme rangée s'estompe, sans fond. Le souligné vert
+ * d'avant empruntait le token `success` à la jauge de santé pour dire autre chose.
+ * Sans sélecteur lu, les deux cellules gardent la même encre, aucune ne s'allume.
  *
  * L'ÉCHANGE D'ARME RESTE ANIMÉ (les deux vignettes permutent en se croisant) — c'est LUI
  * qui dit la permutation. Le libellé « échange » qui doublait cet effet est SUPPRIMÉ
@@ -49,9 +52,16 @@ import type { PlayerState } from './rosterLogic'
 /** Durée de l'animation d'échange — celle du POC, calée sur la rémanence des lancers. */
 const SWAP_ANIM_MS = 340
 
-/** Cellule d'arme : LARGEUR FIXE (la grille des fiches en dépend), hauteur de la ligne. */
+/** Cellule d'arme : GABARIT FIXE (la grille des fiches en dépend) — 40 × 16. */
 export const WEAPON_CELL_W = 40
-const ICON_H = 16
+const CELL_H = 16
+/** L'icône dans sa cellule : 38 × 13, centrée — la cellule allumée garde une marge d'encre. */
+const ICON_W = 38
+const ICON_H = 13
+/** Fond de la cellule « en main » : l'encre du thème diluée (remplace le souligné vert). */
+const HAND_BG_PCT = 7
+/** Estompage de l'arme RANGÉE quand le sélecteur est lu (option 2a : .35). */
+const STOWED_OPACITY = 0.35
 /** Hauteur de la vignette du badge de lancer (POC .gic : 15 px). */
 const GIC_H = 15
 
@@ -86,7 +96,7 @@ export function ReplayWeaponsRow({
     // Loadout non lu : les DEUX cellules restent, vides en pointillés — la grille des
     // fiches ne bouge pas, la lacune est dite en infobulle.
     return (
-      <span className="inline-flex items-center gap-1" title={t.loadoutUnread}>
+      <span className="inline-flex items-center gap-[5px]" title={t.loadoutUnread}>
         <span className="relative inline-flex">
           <EmptyWeaponCell />
           {gic}
@@ -108,7 +118,7 @@ export function ReplayWeaponsRow({
   const cells: (typeof read.weapons[number] | null)[] = [read.weapons[0] ?? null, read.weapons[1] ?? null]
   return (
     <div
-      className="flex items-center gap-1 font-mono text-[9.5px] text-muted-foreground"
+      className="flex items-center gap-[5px] font-mono text-[9.5px] text-muted-foreground"
       style={{ opacity: freshness(read.age, readingFull, READING_FADE) }}
       title={ageTxt}
     >
@@ -141,8 +151,8 @@ function EmptyWeaponCell() {
   return (
     <span
       aria-hidden
-      className="inline-block rounded-sm border border-dashed border-border/50"
-      style={{ width: WEAPON_CELL_W, height: ICON_H }}
+      className="inline-block rounded-[2px] border border-dashed border-border/50"
+      style={{ width: WEAPON_CELL_W, height: CELL_H }}
     />
   )
 }
@@ -206,7 +216,8 @@ function GrenadeThrowBadge({
  * WeaponChip — UNE vignette d'arme dans sa cellule fixe : l'icône extraite quand le
  * document en pointe une, le libellé sinon (jamais le visuel d'une arme voisine, tronqué
  * plutôt que débordant — le nom complet vit dans l'aria-label). La marque « en main » est
- * un souligné plein encre ; l'autre arme s'estompe quand le sélecteur est lu.
+ * la cellule ALLUMÉE (fond à l'encre diluée, icône en pleine encre) ; l'arme rangée
+ * s'estompe quand le sélecteur est lu.
  */
 function WeaponChip({
   doc,
@@ -229,8 +240,11 @@ function WeaponChip({
   const name = catalogText(lbl, locale)
   const style: CSSProperties = {
     width: WEAPON_CELL_W,
-    borderBottom: `2px solid ${inHand ? tokenCssVar('success') : 'transparent'}`,
-    opacity: dimmed ? 0.45 : 1,
+    height: CELL_H,
+    background: inHand
+      ? `color-mix(in srgb, var(--foreground) ${HAND_BG_PCT}%, transparent)`
+      : undefined,
+    opacity: dimmed ? STOWED_OPACITY : 1,
   }
   if (swap) {
     // Délai négatif = avancement réel : l'animation reprend où elle en était malgré les
@@ -239,7 +253,7 @@ function WeaponChip({
   }
   return (
     <span
-      className={`inline-flex items-center justify-center overflow-hidden ${swap ? swap.cls : ''}`}
+      className={`inline-flex items-center justify-center overflow-hidden rounded-[2px] ${swap ? swap.cls : ''}`}
       style={style}
       title={hint}
     >
@@ -248,7 +262,7 @@ function WeaponChip({
           imageUrl={lbl.img}
           tinted={lbl.tinted}
           label={name ?? id}
-          width={WEAPON_CELL_W}
+          width={ICON_W}
           height={ICON_H}
           className={inHand ? 'text-foreground' : undefined}
         />

@@ -11,7 +11,7 @@ import { describe, expect, it } from 'vitest'
 
 import { NO_ZONES, type ZonePresence } from './equipmentZones'
 import { REPLAY_TEXT } from './i18n'
-import { hasUnderLayer, playerCardFx, type CardFxInput } from './playerCardFx'
+import { cardChrome, hasUnderLayer, playerCardFx, type CardFxInput } from './playerCardFx'
 
 function input(over: Partial<CardFxInput> = {}): CardFxInput {
   return {
@@ -29,13 +29,13 @@ function input(over: Partial<CardFxInput> = {}): CardFxInput {
 
 const zones = (over: Partial<ZonePresence>): ZonePresence => ({ ...NO_ZONES, ...over })
 
-describe('playerCardFx — la mort, redessinée', () => {
-  it('la fiche s’éteint (voile sombre), lavis rouge dégradé, fin cadre — pas un aplat', () => {
+describe('playerCardFx — la mort sur la TUILE, plus sur la couche (option 2a)', () => {
+  it('hors de la fenêtre du coup fatal, une fiche morte ne porte AUCUNE couche', () => {
+    // La mort continue vit dans le chrome de la tuile (cardChrome) et l'encadré
+    // « Éliminé » — la couche d'effets n'a plus rien à peindre.
     const fx = playerCardFx(input({ alive: false, deathAge: 100 }))
-    expect(fx.underStyle.backgroundColor).toContain('var(--replay-label-stroke)')
-    expect(fx.underStyle.backgroundImage).toContain('linear-gradient(90deg')
-    expect(fx.underStyle.backgroundImage).toContain('var(--ac-destructive)')
-    expect(fx.underStyle.boxShadow).toContain('var(--ac-destructive)')
+    expect(fx.underStyle).toEqual({})
+    expect(hasUnderLayer(fx)).toBe(false)
     expect(fx.flashClass).toBe('')
     expect(fx.title).toBeUndefined()
     expect(fx.translocationDelay).toBeNull()
@@ -45,6 +45,24 @@ describe('playerCardFx — la mort, redessinée', () => {
     const fx = playerCardFx(input({ alive: false, deathAge: 7 }))
     expect(fx.flashClass).toBe('replay-flash-death')
     expect(fx.underStyle.animationDelay).toBe('-0.930s')
+  })
+})
+
+describe('cardChrome — le fond et la bordure de la tuile', () => {
+  it('vivant : bordure `border`, dégradé court autour de `card` — que des tokens', () => {
+    const chrome = cardChrome(true)
+    expect(chrome.borderColor).toBe('var(--border)')
+    expect(chrome.background).toContain('linear-gradient(180deg')
+    expect(chrome.background).toContain('var(--card)')
+    expect(chrome.background).not.toMatch(/#[0-9a-fA-F]{3,8}/)
+  })
+
+  it('mort : bordure et fond teintés `destructive` — la tuile dit la mort, pas la couche', () => {
+    const chrome = cardChrome(false)
+    expect(chrome.borderColor).toContain('var(--ac-destructive)')
+    expect(chrome.background).toContain('var(--ac-destructive)')
+    expect(chrome.background).toContain('var(--card)')
+    expect(chrome.background).not.toMatch(/#[0-9a-fA-F]{3,8}/)
   })
 })
 
@@ -115,7 +133,7 @@ describe('playerCardFx — écran occultant', () => {
   it('sur la couche d’effets : flou léger, voile sombre discret, contour de la même encre', () => {
     // Le NUAGE NOIR, lui, vit sur l'incrustation (classe replay-zone-cloud) : la
     // couche du dessous ne porte que le versant discret.
-    const fx = playerCardFx(input({ zones: zones({ shroud: true }) }))
+    const fx = playerCardFx(input({ zones: zones({ shroudSinceMs: 0 }) }))
     expect(fx.underStyle.backdropFilter).toBe('blur(3px)')
     expect(fx.underStyle.backgroundColor).toContain('var(--replay-label-stroke)')
     expect(fx.underStyle.boxShadow).toContain('var(--replay-label-stroke)')
@@ -125,7 +143,7 @@ describe('playerCardFx — écran occultant', () => {
   it('composé au camouflage : le flou le plus fort, le voile sombre TEINTE le verre', () => {
     const fx = playerCardFx(input({
       equipment: { camo: true, overshield: false },
-      zones: zones({ shroud: true }),
+      zones: zones({ shroudSinceMs: 0 }),
     }))
     expect(fx.underStyle.backdropFilter).toBe('blur(6px)')
     expect(fx.underStyle.backgroundColor).toContain('var(--replay-label-stroke)')

@@ -6,9 +6,11 @@
  *    tête, dans une liste qui DÉFILE — les événements passés restent lisibles. On ne
  *    remonte en tête que si le lecteur y était déjà : une nouvelle ligne ne lui arrache
  *    pas sa position de lecture (règle du POC).
- *  - CHAQUE LIGNE : TUEUR (couleur de son équipe) — ICÔNE de l'arme, TEINTE de la
- *    couleur d'équipe du tueur (masque + currentColor, la technique de `WeaponIcon`) —
- *    VICTIME (couleur de SON équipe), horodatage à droite ; puis les MÉDAILLES du kill
+ *  - CHAQUE LIGNE : l'HORODATAGE EN TÊTE, dans une gouttière fixe (option 2a du handoff
+ *    2026-08-27 — l'horloge alignée en colonne se balaie d'un regard, en fin de ligne
+ *    elle flottait au gré des longueurs) ; puis TUEUR (couleur de son équipe) — ICÔNE de
+ *    l'arme, TEINTE de la couleur d'équipe du tueur (masque + currentColor, la technique
+ *    de `WeaponIcon`) — VICTIME (couleur de SON équipe) ; puis les MÉDAILLES du kill
  *    (image + libellé et description en infobulle), puis l'ASSISTANCE quand elle est
  *    nommée.
  *  - MÉDAILLE SEULE : une médaille sans kill du même acteur à ±500 ms fait sa propre
@@ -71,6 +73,7 @@ import { ASSIST_ICON_STEM, AssistMark } from './ReplayAssistMark'
 import { MedalBadges } from './MedalBadges'
 import { NO_MARKS, type PlayerMarkKind } from './playerMarks'
 import { FeedName } from './ReplayFeedName'
+import { HUD_BAND_CLASS, hudBandStyle } from './hudBand'
 import {
   buildFeedEntries,
   feedAt,
@@ -83,9 +86,9 @@ import { formatClock } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
 import { displayClockMs, type ReplayWindowBounds } from './replayWindow'
 
-/** Gabarit d'une icône d'arme : le format bandeau de l'atlas kill feed. */
+/** Gabarit d'une icône d'arme : le format bandeau de l'atlas kill feed (option 2a : 22×10). */
 const ICON_W = 22
-const ICON_H = 9
+const ICON_H = 10
 /** Diamètre du repère servi quand l'arme est inconnue — jamais l'icône d'une autre arme. */
 const DOT_PX = 7
 /**
@@ -95,7 +98,9 @@ const DOT_PX = 7
  * arme fait ~108×36. Les mettre dans le bandeau les réduirait à la hauteur d'une lettre —
  * `contain` ajuste sur la plus petite dimension.
  */
-const PICTOGRAM_PX = 12
+const PICTOGRAM_PX = 13
+/** Largeur de la GOUTTIÈRE D'HORLOGE (option 2a) : fixe, les lignes s'alignent dessus. */
+const CLOCK_W = 42
 /** Seuil sous lequel le lecteur est considéré « en tête de fil » (POC : 4 px). */
 const AT_TOP_PX = 4
 
@@ -118,9 +123,12 @@ const AT_TOP_PX = 4
  * débordé donc plus rien n'a défilé. La demande de V5 portait sur CHAQUE ENTRÉE, pas sur la
  * liste : `shrink-0` rend aux rangées leur hauteur naturelle et au fil son défilement, sans
  * toucher au couple qui les tient sur une ligne.
+ *
+ * LE FILET SÉPARATEUR (`replay-feed-row`, globals.css — option 2a) remplace le fond arrondi
+ * d'avant : un trait fin entre `background` et `border`, qui structure la liste sans peser.
  */
 const FEED_ROW =
-  'flex shrink-0 flex-nowrap items-center gap-2 overflow-hidden rounded-sm py-0.5 pl-2 text-xs'
+  'replay-feed-row flex shrink-0 flex-nowrap items-center gap-2 overflow-hidden py-[5px] pr-2 text-xs'
 
 interface Props {
   /** Kills du match, tels que `collectKillEvents` les a lus (horloge gameplay). */
@@ -198,24 +206,25 @@ export function ReplayKillFeed({
   }, [count])
 
   return (
-    <div className="flex h-full min-h-0 flex-col rounded-lg border border-border bg-card px-3 py-2">
+    // PLUS DE CARTE AUTOUR DU FIL (option 2a du handoff 2026-08-27) : le titre est le même
+    // BANDEAU HUD que les en-têtes d'équipe, en neutre — liseré `border`, encre pleine —
+    // et les lignes se séparent par leur filet, pas par une boîte.
+    <div className="flex h-full min-h-0 flex-col">
       {/* LE TITRE SEUL (demande utilisateur du 2026-08-25 : retirer le compteur total
           d'éliminations en haut à droite). Ce que le compteur disait — « le fil est court
           parce qu'on est en début de match, pas parce que le décodage a échoué » — reste dit,
           et mieux : par la ligne « Rien à cet instant » quand le fil est vide, et par la
           FRISE de lecture, qui montre où on en est du match. Un rapport « affichées / total »
           n'ajoutait qu'un nombre à lire. */}
-      <div className="flex shrink-0 items-baseline">
-        <span className="text-3xs uppercase tracking-wider text-muted-foreground">
-          {t.killFeedTitle}
-        </span>
+      <div className={`${HUD_BAND_CLASS} text-foreground`} style={hudBandStyle(null)}>
+        {t.killFeedTitle}
       </div>
       <ul
         ref={listRef}
         onScroll={(e) => {
           atTopRef.current = e.currentTarget.scrollTop <= AT_TOP_PX
         }}
-        className="mt-1 flex min-h-[4.5rem] flex-1 flex-col gap-0.5 overflow-y-auto"
+        className="mt-2 flex min-h-[4.5rem] flex-1 flex-col overflow-y-auto"
         aria-live="off"
       >
         {count === 0 && <li className="text-xs text-muted-foreground">{t.killFeedEmpty}</li>}
@@ -249,6 +258,22 @@ function deathKindLabel(kind: string, t: (typeof REPLAY_TEXT)['fr']): string {
 /** allyOf : le camp d'un joueur, lu du scoreboard indexé ; repli fourni par l'appelant. */
 function allyOf(xuidMeta: XuidMeta, xuid: string, fallback: boolean): boolean {
   return xuidMeta.get(xuid)?.ally ?? fallback
+}
+
+/**
+ * FeedClock — la GOUTTIÈRE D'HORLOGE en tête de ligne (option 2a) : largeur fixe, chiffres
+ * tabulaires, encre discrète. Les trois formes de ligne l'ouvrent — c'est la colonne qui
+ * rend le fil balayable d'un regard.
+ */
+function FeedClock({ ms }: { ms: number }) {
+  return (
+    <span
+      className="shrink-0 font-mono text-[10.5px] tabular-nums text-muted-foreground"
+      style={{ width: CLOCK_W }}
+    >
+      {formatClock(ms)}
+    </span>
+  )
 }
 
 /**
@@ -299,12 +324,10 @@ function FeedLine({
     const color = colorOf(m.teamID, allyOf(xuidMeta, m.xuid, true))
     return (
       <li className={FEED_ROW}>
+        <FeedClock ms={entry.replayMs} />
         <FeedName kind={marks.get(m.xuid)} color={color} locale={locale} className="font-medium"
           name={displayPlayerName(m.gamertag || xuidMeta.get(m.xuid)?.gamertag, m.xuid)} />
         <MedalBadges medals={[m]} />
-        <span className="ml-auto shrink-0 font-mono tabular-nums text-muted-foreground">
-          {formatClock(entry.replayMs)}
-        </span>
       </li>
     )
   }
@@ -361,6 +384,7 @@ function DeathLine({
       className={FEED_ROW}
       title={kindLabel ? `${kindLabel} — ${t.killFeedDeathHint}` : t.killFeedDeathHint}
     >
+      <FeedClock ms={replayMs} />
       {death.img ? (
         /* LE TYPE DE MORT, à l'encre neutre : personne n'a tué, aucune couleur d'équipe
            n'a de sens sur cette ligne. */
@@ -389,9 +413,6 @@ function DeathLine({
       <FeedName kind={marks.get(death.xuid)} color={color} locale={locale} className="font-medium"
         name={displayPlayerName(xuidMeta.get(death.xuid)?.gamertag, death.xuid)} />
       <span className="shrink-0 text-3xs text-muted-foreground">{t.killFeedDeathLabel}</span>
-      <span className="ml-auto shrink-0 font-mono tabular-nums text-muted-foreground">
-        {formatClock(replayMs)}
-      </span>
     </li>
   )
 }
@@ -427,10 +448,11 @@ function KillLine({
     <li
       className={FEED_ROW}
       style={{
-        background: assisted ? `color-mix(in srgb, ${tokenCssVar('info')} 10%, transparent)` : undefined,
+        background: assisted ? `color-mix(in srgb, ${tokenCssVar('info')} 9%, transparent)` : undefined,
       }}
       title={lineHint}
     >
+      <FeedClock ms={replayMs} />
       <FeedName kind={marks.get(k.xuid)} color={killerColor} locale={locale} className="font-medium"
         name={displayPlayerName(xuidMeta.get(k.xuid)?.gamertag, k.xuid)} />
         {/* L'ARME entre le tueur et la victime — elle remplace la croix (POC). L'icône
@@ -472,16 +494,17 @@ function KillLine({
           <MedalBadges medals={k.medals} />
         </span>
       )}
-      {/* L'ASSISTANCE DANS LA MÊME RANGÉE : la marque, l'assistant, SA part seule — la part
-          du tueur est sortie de la rangée (demande utilisateur du 2026-08-24 : « celui de
-          l'assistant suffit »). Le nom de l'assistant est le seul élément qui cède — comme
-          celui du tueur et de la victime. */}
+      {/* L'ASSISTANCE DANS LA MÊME RANGÉE : la marque à l'encre `bonus` (option 2a — la
+          couleur d'équipe de l'assistant colorait une DEUXIÈME fois ce que son nom dit
+          déjà), l'assistant, SA part seule — la part du tueur est sortie de la rangée
+          (demande utilisateur du 2026-08-24 : « celui de l'assistant suffit »). Le nom de
+          l'assistant est le seul élément qui cède — comme celui du tueur et de la victime. */}
       {assisted && (
         <span
-          className="flex min-w-0 items-center gap-1 text-3xs text-muted-foreground"
+          className="flex min-w-0 items-center gap-1 text-[10.5px] text-muted-foreground"
           title={t.killFeedAssistHint}
         >
-          <AssistMark label={t.killFeedAssistMark} color={colorOf(k.assistTeamID, k.ally)} />
+          <AssistMark label={t.killFeedAssistMark} />
           <FeedName name={k.assistGamertag} locale={locale}
             kind={marksByGamertag.get(normalizeGamertagKey(k.assistGamertag))} />
           {k.assistDamagePct != null && (
@@ -491,9 +514,6 @@ function KillLine({
           )}
         </span>
       )}
-      <span className="ml-auto shrink-0 font-mono tabular-nums text-muted-foreground">
-        {formatClock(replayMs)}
-      </span>
     </li>
   )
 }

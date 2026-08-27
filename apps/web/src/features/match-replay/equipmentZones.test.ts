@@ -40,16 +40,23 @@ describe('zonePresenceAt — champ de réparation et écran occultant', () => {
     // Champ : rayon 3 m. À 1 m du centre : dedans ; à 3,5 m : dehors.
     expect(zonePresenceAt(sceneOf([field()]), at(6, 5), TIME).repair).toBe(true)
     expect(zonePresenceAt(sceneOf([field()]), at(8.5, 5), TIME).repair).toBe(false)
-    // Écran : rayon 6 m. À 5 m : dedans ; à 7 m : dehors.
-    expect(zonePresenceAt(sceneOf([shroud()]), at(10, 5), TIME).shroud).toBe(true)
-    expect(zonePresenceAt(sceneOf([shroud()]), at(5, 12.5), TIME).shroud).toBe(false)
+    // Écran : rayon 6 m. À 5 m : dedans ; à 7 m : dehors. La présence porte L'ÂGE DE LA
+    // POSE (l'horloge des éclairs de la fiche) : t0 = 10, image 50, 100 ms la frame → 4 s.
+    expect(zonePresenceAt(sceneOf([shroud()]), at(10, 5), TIME).shroudSinceMs).toBe(4_000)
+    expect(zonePresenceAt(sceneOf([shroud()]), at(5, 12.5), TIME).shroudSinceMs).toBeNull()
   })
 
   it('aucun camp requis : le dôme du jeu soigne et cache tout le monde', () => {
     // La table des camps est VIDE (tout le monde à null) : les deux zones valent quand même.
     const p = zonePresenceAt(sceneOf([field(), shroud()]), at(5, 5), TIME)
     expect(p.repair).toBe(true)
-    expect(p.shroud).toBe(true)
+    expect(p.shroudSinceMs).not.toBeNull()
+  })
+
+  it('deux écrans superposés : l’horloge de la pose la plus RÉCENTE — jamais deux horloges', () => {
+    // Même règle que le capteur : la plus fraîche gagne. t0 = 10 et t0 = 40, image 50 → 1 s.
+    const p = zonePresenceAt(sceneOf([shroud(), shroud({ t0: 40 })]), at(5, 5), TIME)
+    expect(p.shroudSinceMs).toBe(1_000)
   })
 
   it('avant t0, rien — la pose n’existe pas encore', () => {

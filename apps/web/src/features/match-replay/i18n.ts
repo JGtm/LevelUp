@@ -33,7 +33,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       'Assistant lu dans le film, avec sa part de dégâts quand elle est mesurée. Les parts ne sont pas bornées à 100 %.',
     killFeedKillerShare: (pct) => `tueur ${pct} %`,
     killFeedAssistMark: 'Assistance',
-    killFeedAssistShare: (pct) => `- ${pct} %`,
+    killFeedAssistShare: (pct) => `${pct} %`,
     killFeedDeathLabel: 'mort',
     killFeedDeathHint:
       'Mort sans tueur crédité (suicide, chute ou sortie), lue dans les trajectoires du film.',
@@ -212,6 +212,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       'Armes de la première image-clé de cette vie, lue dans',
     weaponSecondaryHint: 'secondaire (arme rangée à la dernière lecture)',
     grenadeThrown: 'Grenade lancée',
+    eliminatedLabel: 'Éliminé',
     respawnIn: 'Réapparition dans',
     respawnUnknown: 'Réapparition ?',
     inventoryAge: 'Inventaire lu il y a',
@@ -304,7 +305,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       'Assist read from the film, with its damage share when measured. Shares are not capped at 100%.',
     killFeedKillerShare: (pct) => `killer ${pct}%`,
     killFeedAssistMark: 'Assist',
-    killFeedAssistShare: (pct) => `- ${pct}%`,
+    killFeedAssistShare: (pct) => `${pct}%`,
     killFeedDeathLabel: 'died',
     killFeedDeathHint:
       'Death with no credited killer (suicide, fall or leaving), read from the film trails.',
@@ -479,6 +480,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     loadoutAhead: 'Weapons from the first keyframe of this life, read in',
     weaponSecondaryHint: 'secondary (weapon holstered at the last reading)',
     grenadeThrown: 'Grenade thrown',
+    eliminatedLabel: 'Eliminated',
     respawnIn: 'Respawn in',
     respawnUnknown: 'Respawn ?',
     inventoryAge: 'Inventory read',
