@@ -40,12 +40,20 @@ import {
   OBJECTIVE_SOUND_STEMS,
   SOUND_VARIANTS,
   WEAPON_SOUND_STEMS,
+  ZONE_SOUND_STEMS,
 } from './replaySound'
 
 /** Les stems d une entree d objectif : une PAIRE PEUT ETRE INCOMPLETE (le camp non design00e9 a
  *  l oreille reste muet), et le garde-rail ne doit pas r00e9clamer un fichier pour un stem absent. */
 function stemsObjectif(v: { ally?: string; enemy?: string } | { any: string }): string[] {
   return 'any' in v ? [v.any] : [v.ally, v.enemy].filter((s): s is string => s !== undefined)
+}
+
+/** Tous les stems de ZONE_SOUND_STEMS, paires et stem seul confondus. */
+function stemsZone(): string[] {
+  return Object.values(ZONE_SOUND_STEMS).flatMap((v) =>
+    typeof v === 'string' ? [v] : [v.ally, v.enemy],
+  )
 }
 
 const REPO_ROOT = resolve(__dirname, '..', '..', '..', '..', '..')
@@ -86,6 +94,10 @@ describe('garde-rail : manifeste sonore = dossier d assets', () => {
     // et `_v3` seraient des « assets morts » aux yeux du deuxième test — alors qu'ils sont
     // exactement ce que la table déclare jouer.
     ...Object.values(SOUND_VARIANTS).flat(),
+    // Les sons d'ÉTAT DE ZONE (lot du 2026-08-27) : capture en cours, tic de domination,
+    // déplacement de la colline. Source doc.zoneStates, pas doc.objectives — mais même
+    // dossier d'assets et même garde-rail.
+    ...stemsZone(),
   ])
 
   it('chaque stem du manifeste a son fichier .wav', () => {
@@ -161,6 +173,10 @@ describe('garde-rail : durée livrée par catégorie', () => {
     // les équipements — elles gardent la durée de leur source (1,31 à 3,41 s), jamais
     // retronquée. Un jingle de capture coupé à 1,2 s s'entendrait amputé de sa queue.
     ...Object.values(OBJECTIVE_SOUND_STEMS).flatMap(stemsObjectif),
+    // Les sons d'ÉTAT DE ZONE : même catégorie, même règle de durée. Le tic de domination est
+    // le seul son de la chaîne livré TRONQUÉ à dessein (1,2 s) et ATTÉNUÉ (-12 dBTP) : il se
+    // joue une fois par seconde, un geste de 3,6 s s'y empilerait sur lui-même.
+    ...stemsZone(),
     // Les VARIANTES d'un geste suivent la règle de leur geste : ce sont les autres tirages du
     // MÊME `RandomSequence`, pas d'autres sons.
     ...Object.values(SOUND_VARIANTS).flat(),
@@ -189,24 +205,26 @@ describe('garde-rail : durée livrée par catégorie', () => {
    *
    * Chaque entrée porte donc la durée MESURÉE de sa source et la raison.
    *
-   * `repair_field_activate` et ses variantes : les trois tirages du `RandomSequence` de
-   * l'événement `play_007_abl_repairfield_deploy_player` (banque `5724312f`) font 0,380 /
-   * 0,313 / 0,349 s dans le jeu — c'est un « pop » de déploiement, pas un son écourté.
-   * CORRECTION DU 2026-08-26, et elle change la source du fichier : le lot du 18/08 écrivait
-   * que les DEUX événements du `snd!` `22c2323a` « rendent LES MÊMES trois `.wem` ». C'est
-   * faux, mesure à l'appui — `_activate` tire dans {143632032, 222530989, 640887009} (2,8 à
-   * 3,9 s) et `_deploy_player` dans {894865279, 899552962, 1001730562} (0,31 à 0,38 s). Le
-   * fichier livré en août était bien celui de la POSE, ce que cette table joue ; c'est
-   * l'affirmation d'équivalence qui était fausse, pas le fichier.
+   * `repair_field_activate` EST SORTI DE CETTE TABLE LE 2026-08-27, et il faut dire pourquoi
+   * plutôt que de laisser une entrée périmée : le fichier livré n'est plus le même son. Il
+   * portait le geste de POSE (`play_007_abl_repairfield_deploy_player`, 0,380 / 0,313 /
+   * 0,349 s — un « pop » d'objet lâché) ; l'utilisateur, à l'écoute de la planche, a désigné
+   * l'ACTIVATION (`play_007_abl_repairfield_activate`, 3,263 / 2,812 / 3,933 s) comme le son
+   * qu'il veut entendre quand un joueur pose le champ. Les trois variantes livrées sont
+   * désormais celles-là, et elles dépassent largement la coupe : plus de dispense à déclarer.
    *
    * `grapple_fire` et ses variantes (2026-08-26) : le geste du jeu
    * (`play_007_abl_grapplinghook_deploy_player`) fait 0,745 / 0,765 / 0,757 s. Il remplace le
    * fichier de l'archive utilisateur, qui faisait 1,687 s — d'où l'apparition de ces entrées.
    */
   const SOURCES_COURTES: Readonly<Record<string, number>> = {
-    repair_field_activate: 0.38,
-    repair_field_activate_v2: 0.313,
-    repair_field_activate_v3: 0.349,
+    // LE SEUL SON LIVRÉ TRONQUÉ À DESSEIN, et il faut dire pourquoi : le tic de domination se
+    // joue UNE FOIS PAR SECONDE tant qu un camp tient toutes les zones (règle produit du
+    // 2026-08-27). Le geste du jeu dure 3,62 s côté allié et 4,36 s côté adverse — servi
+    // entier, il s empilerait quatre fois sur lui-même. Il est donc coupé à 1,2 s avec un
+    // fondu de 0,25 s, et atténué à -12 dBTP (« je les trouve un peu fort »).
+    objective_zone_tick_team: 1.2,
+    objective_zone_tick_enemy: 1.2,
     grapple_fire: 0.745,
     grapple_fire_v2: 0.765,
     grapple_fire_v3: 0.757,

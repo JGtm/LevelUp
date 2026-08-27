@@ -43,13 +43,19 @@ describe('objectiveSoundStem — la statistique désigne le geste, le camp dési
     expect(objectiveSoundStem('kills', 'ally')).toBeUndefined()
   })
 
-  it('une PAIRE INCOMPLÈTE ne joue pas son autre moitié faute de mieux', () => {
-    // `zone_captures` n a que son côté allié (désigné à l oreille le 2026-08-26). Le côté
-    // adverse doit rester MUET : jouer le son allié sur une capture adverse serait la pire
-    // erreur possible sur un son d objectif — annoncer un gain quand on perd une base.
+  it('la capture de zone a ses DEUX camps depuis le 2026-08-27', () => {
+    // La paire était à moitié vide : seul le côté allié était désigné à l oreille. Le côté
+    // adverse l a été le 2026-08-27 (événements `4ebe99d6` / `8594aef7` / `9fad450d`).
     expect(objectiveSoundStem('zone_captures', 'ally')).toBe('objective_zone_captured_team')
-    expect(objectiveSoundStem('zone_captures', 'enemy')).toBeUndefined()
+    expect(objectiveSoundStem('zone_captures', 'enemy')).toBe('objective_zone_captured_enemy')
+  })
+
+  it('un camp INCONNU se tait sur une action à deux variantes, même paire complète', () => {
+    // C est la règle qui survit à la complétion des paires, et c est elle qu il faut épingler :
+    // sans ligne « moi » au tableau de score, choisir un camp serait l affirmer. Le rejeu se
+    // tait — annoncer un gain quand on perd une base est la pire erreur possible ici.
     expect(objectiveSoundStem('zone_captures', 'unknown')).toBeUndefined()
+    expect(objectiveSoundStem('flag_captures', 'unknown')).toBeUndefined()
   })
 })
 

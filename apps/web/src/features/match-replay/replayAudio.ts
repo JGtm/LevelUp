@@ -38,10 +38,30 @@ import {
  * livré aujourd'hui — il existe pour qu'un asset livré par erreur en pleine longueur (une
  * source de 30 s) ne tienne pas une voix pendant tout un échange.
  *
- * Il vaut exactement la borne de la recette de coupe (4 s) : deux nombres qui divergeraient
- * feraient un son tronqué SANS que rien ne le dise.
+ * Il vaut la borne de la recette de coupe : deux nombres qui divergeraient feraient un son
+ * tronqué SANS que rien ne le dise.
+ *
+ * RELEVÉ DE 4 À 6 S LE 2026-08-27, en deux temps et pour la même raison de fond : la
+ * reconstitution des gestes a révélé qu'un conteneur Wwise déclare COMBIEN de fois il se joue
+ * ET À QUEL RYTHME, ce qui ALLONGE des gestes que le rendu précédent écrasait à t = 0.
+ *
+ *   4 -> 5 s   `play_004_mod_mp_ctf_flag_taken_team` déclenche son alerte TROIS fois, toutes
+ *              les 850 ms à partir de +400 ms : 4,588 s (le fichier livré en donnait 2,49).
+ *   5 -> 6 s   `objective_zone_new` (le déplacement de la colline) enchaîne deux couches à
+ *              +0,40 s : 5,15 s.
+ *
+ * LA RÈGLE, désormais explicite : LE PLAFOND SUIT LA PLUS LONGUE SOURCE LIVRÉE, arrondie à la
+ * seconde supérieure. Il n'est pas là pour raccourcir un geste — le tronquer en silence est
+ * exactement ce que ce commentaire interdit — mais pour qu'un asset livré par erreur en pleine
+ * longueur (une source de 30 s) ne tienne pas une voix pendant tout un échange. C'est le
+ * garde-rail `replaySoundAssets.guard.test.ts` qui pose la question à chaque livraison, et il
+ * l'a posée deux fois aujourd'hui.
+ *
+ * CE QUE ÇA NE CHANGE PAS : ce qui sature les voix est le TIR, et un tir tient toujours 1,2 s.
+ * Les gestes de 4 à 6 s sont les plus rares de la piste (un vol de drapeau, un déplacement de
+ * colline par manche).
  */
-export const SOUND_CUT_MAX_S = 4.0
+export const SOUND_CUT_MAX_S = 6.0
 
 /** Durée du fondu de sortie, en secondes (borné à la moitié du son pour les très courts). */
 export const SOUND_FADE_S = 0.25
