@@ -97,6 +97,19 @@ type LabelCatalog struct {
 	// TABLE VIDE = le titre ne déclare aucun objet d'objectif : la chaîne des socles se comporte
 	// comme avant et les vies libres restent vides. Une dégradation, jamais une erreur.
 	ObjectiveObjects map[uint32]Label
+	// ObjectiveFamilies dit CE QU'EST chaque objet de la table précédente (`flag`, `ball`),
+	// keyée par le MÊME GlobalID. Posée par la couche titre, comme `EquipmentFamilies` et pour
+	// la même raison : ce paquet ne doit pas déduire la nature d'un objet de son libellé.
+	//
+	// POURQUOI UNE SECONDE CARTE PLUTÔT QU'UN CHAMP DANS `Label`. `Label` est le type de LIBELLÉ
+	// du document, partagé par les grenades, les capacités et les armes ; y ajouter une famille
+	// d'objectif le ferait porter un concept qui n'a de sens que pour deux entrées. La paire
+	// (libellé, famille) keyée pareil est la convention déjà tenue par les poses d'équipement.
+	//
+	// VIDE = aucune famille connue : le calque des objets d'objectif ne publie rien, et la
+	// chaîne des socles continue d'écarter les identifiants de `ObjectiveObjects`. Dégradation,
+	// jamais erreur.
+	ObjectiveFamilies map[uint32]string
 }
 
 // Empty dit si le catalogue ne nomme rien. Utile aux appelants qui veulent journaliser

@@ -160,6 +160,10 @@ type Coverage struct {
 	// publié rendent tous deux un calque vide. Son ABSENCE dit encore autre chose — l'appelant
 	// n'a rien fourni à lire.
 	FlagCarries *FlagCarriesCoverage `json:"flagCarries,omitempty"`
+	// ObjectiveObjects est la couverture du calque des objets d'objectif LIBRES : combien le
+	// manifeste en déclare de publiables, combien de vies et de points sortent, et ce qui a été
+	// écarté hors axe (cf. document_objective_objects.go).
+	ObjectiveObjects *ObjectiveObjectsCoverage `json:"objectiveObjects,omitempty"`
 	// Inventory est la couverture du calque INVENTAIRE (munitions, grenades, capacité,
 	// emplacement dégainé, cf. inventory.go) : lectures décodées, écartées avant l'origine du
 	// rejeu, écartées faute de trajectoire publiée, et publiées. TÉLÉMÉTRIE PURE — absente des

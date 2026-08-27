@@ -191,6 +191,13 @@ describe('garde-rail : le vocabulaire des familles de pose', () => {
  * partagee et trame d'altitudes — part dans `useReplayView.ts`, neuvieme extraction imposee
  * par ce cliquet. Les noms sortent inchanges, donc pas une ligne du dessin ne bouge.
  *
+ * 706 -> 695 le 2026-08-27 (crane d'Oddball libre, schema 21) : le lot branche un calque de
+ * plus — l'objet d'objectif la ou il est quand personne ne le porte. DIXIEME extraction imposee
+ * par ce cliquet, en deux morceaux : le CABLAGE du calque (encre neutre + decision de peindre)
+ * part dans `useReplayObjectiveObjects.ts`, patron de `useReplayFlagCarries` ; les trois
+ * REGLAGES CONSTANTS (tokens de serie, reference vide de zones, cadence de publication) partent
+ * dans `replayCanvasConfig.ts`. Aucun des deux ne deplace une ligne de logique.
+ *
  * LE CABLAGE DE LA CAPTURE TIENT EN QUATRE LIGNES, et il n'en prendra pas une de plus : le
  * hook rend UN objet (`ReplayCapture`, patron de `ReplaySound`) que le canvas repasse tel quel
  * a la barre. L'enregistrement video puis le son de la video se branchent en ETENDANT l'appel
