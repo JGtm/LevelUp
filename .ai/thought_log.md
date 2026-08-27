@@ -74008,3 +74008,33 @@ correction.
   renommait la famille.
 
 **Prochaine etape** : verifier la CI au niveau JOB sur le nouveau commit.
+
+## [2026-08-27] Chantier note de perf + volet Escouade — Volet A LIVRE, lot 0 PASSE, poids figes
+
+**Statut** : En cours (pilotage multi-lots, plan `.ai/PLAN_PERF_NOTE_OBJECTIFS.md`).
+
+**Volet A livre** : Composition stricte cochee par defaut sur la page Escouade — commit
+`6b7c5402b` (wt/squad-compo, executeur Opus) merge fast-forward dans feat/v75 et pousse,
+avec autorisation utilisateur. Helper pur exactCompositionDefault (decochage explicite
+respecte), i18n FR/EN reecrits, les DEUX fallbacks de cle de query alignes (queries.ts
++ keys.ts:164, extension d exec verifiee sur pieces). Gates rejoues par le pilote :
+typecheck/lint/vitest 1321 verts, exit 0. Reste : gate visuel utilisateur + CI de branche.
+
+**Lot 0 (simulation offline) PASSE** : outil cmd/diag_perfsim (worktree
+LevelUp-wt-perfnote, non commite a ce stade) + rapport RAPPORT_SIM_PERF_NOTE_2026-08.md.
+Replique du regime actuel exacte a 0.00 chez JGtm/Daemon ; ecarts Choco/Madina expliques
+(medal_exploit absent du chemin post-sync). Purge prevue 78/41/118/10 — recoupe le
+diagnostic a l unite. Zero note sur outcome=4. **POIDS FIGES : ospm = 0.12** (gain des
+ecrases-mais-actifs 2x le bruit ; 0.16 punirait les porteurs de combat).
+
+**Decouvertes majeures du lot 0, verifiees sur pieces par le pilote** :
+- Index ART `idx_psa_match` CORROMPU sur la DB XxDaemonGamerxX (2 lignes indexees vs 4
+  au scan force — confirme par diag_q). Le lecteur prod PersonalScoreAwardsRepo (colonne
+  Score personnel) est expose des aujourd hui. Reparation = item B2.4 du plan.
+- 26 matchs objectifs classes slayer par la liste de classify.go (Assaut/VIP/ctf 3
+  captures/pair_names inverses) — pre-existant, touche aussi les chaines LUSR. Decision
+  D-I : liste VERBATIM dans ce chantier, correction au registre des reports.
+
+**Conclusion / prochaine etape** : lancement de l executeur du lot 1 (scission
+ranked_slayer/ranked_objectif). Commits lot 0 + lot 1 a autoriser ensemble au prochain
+point.
