@@ -2005,3 +2005,174 @@ unique au schema **21**. B reste hors publication.
   la bonne version et l'ancienne configuration** ; seule la verification sur pieces l'a montre.
   Corrige par une racine temporaire (jonctions : `config` du worktree, `data` du principal), et
   les sept temoins ont ete re-cuits avec.
+
+- 2026-08-27 — **D5-bis LIVRE : le crane libre est PUBLIE et DESSINE. Schema 21 inchange,
+  contrat 38 -> 39.** Dernier lot de code du point 11.
+
+  **CE QUI EST PUBLIE.** Une cle de document neuve, `objectiveObjects` : une entree par VIE
+  LIBRE de l'objet — il apparait, replique sa position, puis se tait. Forme volontairement
+  GENERIQUE (`family`, `en`, `fr`, `t0`, `t1`, `pts`) pour que le drapeau puisse la rejoindre
+  sans qu'aucune cle ne bouge. Couverture `coverage.objectiveObjects` avec ses denominateurs.
+
+  **VERIFIE SUR LES QUATRE TEMOINS RE-CUITS**, et le controle est fort : le nombre de vies vaut
+  **23 / 16 / 21 / 47**, exactement les comptes de creations que la mesure D4 avait attribues a
+  `0x0017592C`. Zero vie hors axe sur les quatre.
+
+  | temoin | vies | dont MOBILES | dont immobiles | points | hors axe |
+  |---|---|---|---|---|---|
+  | `24dbb67d` Recharge | 23 | 21 | 2 | 730 | 0 |
+  | `43716616` Smallhalla | 16 | 14 | 2 | 454 | 0 |
+  | `51ebbc0f` Banished Narrows | 21 | 15 | 6 | 546 | 0 |
+  | `d9781168` Dredge | 47 | 33 | 14 | 1 157 | 0 |
+
+  Les vies MOBILES sont la preuve que le canal porte bien du mouvement et pas seulement des
+  apparitions : sur `43716616`, une vie court des frames 343 a 371 avec un point par frame.
+
+  **LA GARDE DE MODE EST LEVEE POUR CE CANAL SEULEMENT, ET SUR PIECES.** `attachFlagCarries`
+  s'arrete hors CTF pour proteger le pont d'identite (`SlotIdentityByDeaths`, 19 a 22 Go sur un
+  film d'un autre mode). Ce calque-ci ne lit NI le statborg, NI le fil des morts, NI l'identite
+  des joueurs : il ne consomme que le balayage `ti=42` de la chaine des socles, deja paye sur
+  TOUS les films. Le placer sous la garde du drapeau l'aurait eteint sur Oddball — la ou il sert.
+  **Aucune lecture de film n'est ajoutee par ce lot.**
+
+  **LE SCHEMA RESTE 21, ET LA JUSTIFICATION EST ECRITE AU CONTRAT** : le bump du lot a eu lieu
+  dans le meme lot, 21 n'a quitte ni le poste ni les temoins locaux, aucun artefact 21 n'existe
+  ailleurs. Le bump unique reste unique. Le triptyque est coherent : `SchemaVersion` 21,
+  `EXPECTED_REPLAY_SCHEMA_VERSION` 21, garde de parite verte.
+
+  **CE QUE LE CALQUE REFUSE DE FAIRE, et c'est sa propriete centrale** : dessiner le crane
+  pendant les portages. Entre deux vies il y a un trou ; quelqu'un porte, et le document ne dit
+  pas qui — l'oracle a ete mesure puis REFUTE en D4. Le calque se tait. Il n'interpole pas
+  davantage : le crane est a la DERNIERE position qu'il a emise, ou nulle part. Un test dedie
+  garde chacune de ces deux proprietes (`objectiveObjectAt` hors vie = `null`, y compris
+  au-dela de `t1`).
+
+  **LE DRAPEAU N'ENTRE PAS DANS CE CALQUE, ET CE N'EST PAS UN REPORT** : le CONTROLE 3 de son
+  propre lot a ECHOUE sur ses vies libres (149/197 = 75,6 % pour un seuil de 90 % ecrit avant la
+  mesure ; temoin a 12,8 %). Un quart de ses vies reste inexplique. Le jour ou ce negatif sera
+  leve, une ligne de `objectiveObjectPublished` suffira.
+
+  **RENDU WEB** : glyphe BOULE (disque cerne) — distinct de la hampe + fanion du drapeau, parce
+  que deux objets de mode au meme glyphe seraient indiscernables et que le rejeu se lit aussi en
+  niveaux de gris. Encre NEUTRE : le document ne publiant aucun porteur, une encre d'equipe
+  afficherait une appartenance que la mesure refuse. Aucun libelle ni bascule ajoute — donc
+  aucune chaine i18n neuve.
+
+  **DIXIEME EXTRACTION IMPOSEE PAR LE CLIQUET DU CANVAS**, en deux morceaux : le cablage du
+  calque part dans `useReplayObjectiveObjects.ts` (patron de `useReplayFlagCarries`), les trois
+  reglages constants dans `replayCanvasConfig.ts`. Le cliquet passe de **706 a 695** — il
+  descend, il ne remonte pas.
+
+  **GARDE-RAIL DE FRONTIERE** : `objectiveObjects` et `objectiveObjects[].pts` entrent dans
+  `NULLABLE_ARRAYS` / `NULLABLE_ARRAY_PATHS`. Le test de contrat les a EXIGES a la compilation
+  avant que je n'y pense — c'est exactement ce pour quoi il existe.
+
+### D6-PORTAGE — LA VOIE DE LA PROXIMITE : protocole ECRIT ET COMMITE AVANT LA MESURE
+
+> Mandat utilisateur du 2026-08-27 : le portage Oddball rouvre par une voie NOUVELLE. Ce n'est
+> PAS un quatrieme passage du meme oracle — l'oracle change de NATURE (il sort du film), et le
+> canal change de PRINCIPE (la proximite geometrique, pas la correlation d'une serie).
+
+**VOLET 2 D'ABORD, PARCE QU'IL DECIDE DU GATE. L'ORACLE EST INSTRUIT SUR PIECES, ET IL EXISTE.**
+La table `match_objective_stats_latest` porte, PAR JOUEUR et pour Oddball :
+
+    skull_grabs                              prises
+    time_as_skull_carrier_seconds            TEMPS DE PORTAGE, en secondes
+    longest_time_as_skull_carrier_seconds    plus long portage
+    skull_scoring_ticks                      tics de score
+    kills_as_skull_carrier / skull_carriers_killed
+
+Releve sur les quatre films du corpus (lecture seule) :
+
+| film | lignes | `skull_grabs` | `skull_scoring_ticks` | `time_as_skull_carrier_seconds` | porteurs tues |
+|---|---|---|---|---|---|
+| `24dbb67d` | 8 | 2 | 321 | **331** | 12 |
+| `43716616` | 10 | 2 | 213 | **218** | 10 |
+| `51ebbc0f` | 8 | 4 | 255 | **266** | 13 |
+| `d9781168` | 8 | 10 | 387 | **404** | 25 |
+
+**DEUX CHOSES SE LISENT DEJA, ET ELLES COMPTENT.** (1) `skull_scoring_ticks` suit
+`time_as_skull_carrier_seconds` a 3-4 % pres sur les quatre films : **un tic vaut une seconde de
+portage**, ce qui CONFIRME enfin le « ~1 Hz » que le §2.4 supposait — supposition que D4 avait
+mesuree fausse SUR LE SCORE PERSONNEL, et qui se revele juste sur le canal du MODE. Les deux
+constats ne se contredisent pas : le score personnel melange le portage a tout le reste, le tic
+de crane ne compte que le portage. (2) `skull_grabs` est MINUSCULE (2 a 10) devant les 16 a 47
+vies libres : ce compteur ne compte donc PAS chaque ramassage, et il ne sera PAS l'oracle.
+
+**L'ORACLE RETENU EST `time_as_skull_carrier_seconds`, PAR JOUEUR.** Trois raisons, dans l'ordre
+de force : il mesure EXACTEMENT la grandeur que la reconstruction produit (une duree de portage
+par joueur) ; il est **INDEPENDANT DU FILM** — il vient de l'API, il n'a jamais vu nos chunks, et
+aucune erreur de decodage ne peut le contaminer ; il est DENSE (6 a 8 porteurs par film) la ou
+`skull_grabs` ne rendrait que 2 a 10 points.
+
+**LES EVENEMENTS `th=10` NE SERONT PAS L'ORACLE, et ce que je sais d'eux est dit ici.** Leur
+compte (87 / 60 / 75 / 124) ne vaut ni les prises, ni les tics, ni les porteurs tues ; il suit
+les tics dans un rapport de 3,1 a 3,7. **Je n'ai pas etabli ce qu'ils datent**, et le protocole
+ne le leur demande pas : leur repartition PAR JOUEUR sera publiee a cote du verdict, comme
+diagnostic, pour que la question se referme ou se pose proprement plus tard. Choisir un oracle
+qu'on ne comprend pas quand il en existe un qu'on comprend serait la faute exacte de D4.
+
+- [ ] D6.1 **RECONSTRUCTION** par proximite aux bornes des vies libres.
+- [ ] D6.2 **CE QUE FAIT LA MORT** : mesure, pas hypothese.
+- [ ] D6.3 **VERDICT** contre l'oracle API, avec temoin.
+
+**LA RECONSTRUCTION, RENDUE OPERATOIRE.** Les vies libres du crane sont deja publiees (schema
+21). Entre la fin d'une vie (`t1`, DERNIERE POSITION REPLIQUEE — precise a l'image, pas le
+plafond de 20 s des images-cles qui a coule l'item 2.5 des socles) et le debut de la suivante
+(`t0`), il y a un TROU. Pour chaque trou :
+
+1. **QUI** : le bipede dont la position a `t1` est la plus proche de la derniere position de
+   l'objet. La position du bipede est prise a l'echantillon le plus proche de `t1`, et l'ecart
+   temporel doit valoir **<= 250 ms** (`d6EcartMaxMS`) — au-dela, on compare deux instants, pas
+   deux lieux.
+2. **SEUIL DE DISTANCE : 1,5 m** (`d6RayonRamassageM`). **CE SEUIL N'EST PAS INVENTE ICI** : c'est
+   `originDropMaxDist`, deja au depot, deja valide DES DEUX COTES sur la chaine des poses — les
+   lachers y sont a 0,63 m de mediane, les deploiements a 5,6-21,3 m. Un objet ramasse est aux
+   pieds de qui le ramasse, exactement comme un objet lache. **LA DISTRIBUTION COMPLETE des
+   distances au plus proche sera PUBLIEE** : si les deux populations ne se separent pas, le seuil
+   ne vaut rien et il faudra le dire plutot que de s'en servir.
+3. **AMBIGUITE** : si le DEUXIEME plus proche est lui aussi sous le seuil ET a moins de
+   **1,0 m** (`d6AmbiguiteM`) du premier, le porteur est **null** — le trou est compte, mais
+   attribue a personne. C'est la doctrine deja tenue par les occupations de socle, dont le `xuid`
+   vaut TOUJOURS null parce que l'oracle plafonnait a 79,7 %.
+4. **RETOUR, PAS PORTAGE** — c'est ma reserve d'hier, transformee en cas CLASSE : si AUCUN joueur
+   n'est sous le seuil a `t1` ET que la vie suivante nait a **<= 3 m** du socle `oddball_spawn`,
+   le trou est un RETOUR. Aucun portage n'est attribue, et il ne compte pas contre.
+5. **INEXPLIQUE** : aucun joueur proche, et la vie suivante ne nait pas au socle. Compte a part.
+6. **FIN DU PORTAGE** : `t0` de la vie suivante, ou la MORT du porteur si elle tombe avant.
+
+**D6.2 — CE QUE FAIT LA MORT SE MESURE, ET LE PROTOCOLE DIT QUOI.** Hypothese a tester : un
+porteur qui meurt LACHE le crane, donc une vie libre doit naitre pres du lieu de sa mort. On
+publie la part des morts de porteur suivies, dans les **3 s**, d'une naissance de vie libre a
+**<= 3 m** du lieu de la mort. Ce chiffre ne conditionne pas le gate : il DIT si la regle de
+cloture 6 est fondee.
+
+**LE TEMOIN, DEFINI AVANT DE COMPTER** : la MEME chaine, du debut a la fin, mais le porteur d'un
+trou est tire AU HASARD parmi les joueurs nommes (graine fixe, `d6GraineTemoin`) au lieu d'etre
+le plus proche. Meme code, meme cloture, meme oracle, meme metrique. Si la proximite ne porte
+rien, les deux scores se rejoindront.
+
+**LE GATE, CHIFFRE ET ECRIT D'AVANCE — DEUX CONDITIONS, LES DEUX EXIGEES.**
+
+1. **RECOUVREMENT DU TEMPS DE PORTAGE** : `somme sur les joueurs de min(reconstruit, API)` divise
+   par `somme des temps API`. Seuil **>= 0,80**, et **temoin <= 0,50**.
+
+   **POURQUOI 0,80 ET NON 0,90, ECRIT AVANT DE VOIR LE CHIFFRE.** Les deux grandeurs ne sont pas
+   la MEME grandeur physique : le temps API compte le portage, le temps de trou compte
+   l'absence de replication — laquelle inclut aussi les retours et les re-creations. Exiger 0,90
+   testerait l'egalite de deux choses dont on sait deja qu'elles different. 0,80 avec un temoin
+   trente points plus bas teste ce qui est reellement en question : **la proximite designe-t-elle
+   le bon joueur ?**
+2. **LE PORTEUR PRINCIPAL, criterium SANS SEUIL REGLABLE** : le joueur au plus grand temps API
+   est-il aussi celui au plus grand temps reconstruit ? Exige sur **>= 3 des 4 films**.
+
+**ESCALADE** : un film dont le pont ne nomme pas au moins deux joueurs, ou dont l'oracle API est
+absent, n'est pas exploitable et ne compte ni pour ni contre. Moins de 2 films exploitables =
+arret. **Si le gate tombe, STOP au CR** — pas de cinquieme oracle.
+
+**SI LE GATE TIENT** : le porteur entre dans `objectiveObjects` (le champ generique est pret),
+SANS nouveau bump — le schema 21 n'a toujours pas quitte le poste — et le rendu pose le crane sur
+son porteur, patron du drapeau porte.
+
+**EXECUTION** : les 4 films D4, un par processus, sentinelle memoire armee dans le processus qui
+decode, base en LECTURE SEULE pour le seul oracle.
