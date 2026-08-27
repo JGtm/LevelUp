@@ -56,8 +56,13 @@ type MapObjectivesEntry struct {
 	// (ex. `catalyst.mvar`). Il est LU depuis le 2026-08-19 : c'est la seule chose qui
 	// relie un map_id à un `.mvar` du dépôt local, et le producteur du catalogue des
 	// SOCLES (cmd/mapopads-build) joint dessus plutôt que de deviner un nom de fichier.
-	MvarFile   string             `json:"mvar_file"`
-	Module     string             `json:"module"`
+	MvarFile string `json:"mvar_file"`
+	Module   string `json:"module"`
+	// LevelID est le level_id lu dans le .mvar — la même clé que la preuve de module du
+	// catalogue de bornes (TestPreuveLevelIDCartes). Écrit par cmd/mapobj-build depuis
+	// toujours ; lu depuis le 2026-08-27 (lot C catalogues : la preuve des régions de
+	// Live Fire sélectionne les ancres d'objectifs par level_id, jamais par nom).
+	LevelID    int64              `json:"level_id,omitempty"`
 	ObjectsN   int                `json:"objects_n"`
 	Objectives []mapvar.Objective `json:"objectives"`
 	// CarriedFromSchema : la carte a été REPORTÉE d'un schéma antérieur sans re-parse.

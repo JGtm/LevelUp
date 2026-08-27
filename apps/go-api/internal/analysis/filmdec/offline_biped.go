@@ -300,14 +300,20 @@ func ScanBipedRecords(payload []byte, slots map[uint32]bool, lay I0Layout, opt S
 }
 
 // matchBipedHeader teste la grammaire d'en-tête biped à la position bit p, exige un i0
-// ABSOLU (en-tête d'i0 entièrement nul) et renvoie l'offset bit de i0, le slot et la liste
-// des index de composants du masque.
+// ABSOLU (spine + useDefault nuls) DE LA RÉGION ATTENDUE (lay.Region — zéro partout sauf
+// sur les cartes dont la région jouée n'est pas la première du bloc structure-BSP) et
+// renvoie l'offset bit de i0, le slot et la liste des index de composants du masque.
+// Un record d'une autre région est écarté : ses quanta vivent dans une autre AABB.
 func matchBipedHeader(pay []byte, p, total int, slots map[uint32]bool, needTag1 bool, lay I0Layout) (int, uint32, []int, bool) {
 	i0, slot, idx, ok := matchBipedHeaderRaw(pay, p, total, slots, needTag1, lay.TotalBits())
 	if !ok {
 		return 0, 0, nil, false
 	}
-	if readBitsAt(pay, i0, lay.GateBits) != 0 { // i0 absolu, région explicite : en-tête nul
+	const preGate = i0SpineBits + i0UseDefaultBits
+	if readBitsAt(pay, i0, preGate) != 0 { // i0 absolu : spine + useDefault nuls
+		return 0, 0, nil, false
+	}
+	if readBitsAt(pay, i0+preGate, lay.GateBits-preGate) != lay.Region {
 		return 0, 0, nil, false
 	}
 	return i0, slot, idx, true

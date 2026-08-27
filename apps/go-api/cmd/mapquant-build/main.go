@@ -16,6 +16,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"log/slog"
@@ -66,11 +67,19 @@ const deployVariant = "ds"
 //	Recharge  -687782121 (0xD7014717) -> sgh_blueprint
 //	Scarr     799711266  (0x2FAAA022) -> btb_engine
 //
-// NON CATALOGUÉE malgré un module PROUVÉ : Live Fire (level_id 1253388187 / 0x4AB52F9B
-// -> `sgh_interlock`, unicité 1/1, rejouée par le même test). Son module ds ne porte
-// AUCUN tag sbsp (mesuré le 2026-08-13 : `himap.ErrAucunTagSbsp` — même exception que la
-// cuisson des fonds, handoff cartes §1 ter) : la source déclarée des bornes n'existe pas
-// pour cette carte, et une entrée sans bornes vraies serait une coordonnée devinée.
+// Live Fire (level_id 1253388187 / 0x4AB52F9B -> `sgh_interlock`, unicité 1/1, rejouée par
+// le même test) : son module ds ne porte AUCUN tag sbsp (mesuré le 2026-08-13,
+// `himap.ErrAucunTagSbsp`) — la carte est restée hors catalogue jusqu'au 2026-08-27 (lot C
+// catalogues). Ses régions de compression sont portées par `ds/globals/common` et résolues
+// par `himap.RegionsBSPExternes` (le levl les référence par GlobalID, deux blocs donnent le
+// même ordre — le critère moteur de sbsp_region.go, résolu à travers l'installation). La
+// carte déclare 4 régions (index d'i0 sur 2 bits) et la région JOUÉE est la 1 — pas la 0 :
+// preuve statique rejouée en continu par `himap.TestPreuveRegionsLiveFire` (les 48 ancres
+// d'objectifs du catalogue tombent toutes dans la région 1, qui est aussi la plus petite
+// englobante — le contrôle croisé historique), corroborée par ses 2 films (59 376/59 377
+// records i0 à l'index 01, découpage lu [13 12 11] au gate 5 = [12 12 11] à l'index près).
+// La déclaration vit dans `regionExterneDeclarations` ; toute carte dans ce cas SANS
+// déclaration reste refusée : une région choisie par défaut serait une coordonnée devinée.
 //
 // Les 2 pilotes du lot fonds par map_id (2026-08-13), même méthode level_id, unicité 1/1
 // chacun, rejoués en continu par `TestPreuveLevelIDCartes` :
@@ -182,6 +191,7 @@ var mapModule = map[string]string{
 	"Kiken'na":            "fo08_wetland",
 	"Lattice - Ranked":    "fo13_frost",
 	"Launch Site":         "va_launchsite",
+	"Live Fire":           "sgh_interlock",
 	"Merchant's Square":   "fo09_academy",
 	"Nadair":              "fo11_blank",
 	"Nemesis":             "fo08_wetland",
@@ -222,6 +232,14 @@ var mapModule = map[string]string{
 	"944396dd-5661-4a16-b1d8-a6053f762c55": "fo13_frost",
 }
 
+// regionExterneDeclarations : cartes dont le module ne porte aucun tag sbsp — les regions
+// vivent dans `ds/globals` et la region JOUEE est DECLAREE ici avec sa preuve (voir le
+// paragraphe Live Fire de l'en-tete ; test de preuve `himap.TestPreuveRegionsLiveFire`).
+// Une carte `ErrAucunTagSbsp` sans declaration reste REFUSEE.
+var regionExterneDeclarations = map[string]uint32{
+	"Live Fire": 1,
+}
+
 // avertitSiEcarte publie, en AVERTISSEMENT, les cas où le critère de région a écarté le plus
 // gros tag sbsp. C'est la trace qui rend le catalogue relisible : sur les six canevas Forge de
 // l'installation, cet avertissement est la ligne qui dit que les bornes ont changé de BSP.
@@ -237,6 +255,44 @@ func avertitSiEcarte(name, mod string, q himap.BSP, candidats []himap.BSP) {
 		"plusGrosTag", fmt.Sprintf("gid=%08x W=%d/%d/%d étendue=%.1f/%.1f/%.1f",
 			candidats[0].GlobalID, wPlusGros[0], wPlusGros[1], wPlusGros[2],
 			candidats[0].Bounds.Extent(0), candidats[0].Bounds.Extent(1), candidats[0].Bounds.Extent(2)))
+}
+
+// entreeRegionExterne construit l'entrée d'une carte dont les régions vivent dans
+// `ds/globals` (module sans sbsp, région jouée déclarée). La largeur de l'index d'i0 est
+// ceilLog2(nb de régions), jamais moins de 1 — la loi du moteur (himap.BSPQuantification,
+// i0RegionIndexBits).
+func entreeRegionExterne(name, mod, modulePath, levels string, region uint32) (filmdec.MapQuantEntry, error) {
+	globals, err := filepath.Glob(filepath.Join(levels, "..", "..", "globals", "*.module"))
+	if err != nil || len(globals) == 0 {
+		return filmdec.MapQuantEntry{}, fmt.Errorf("globals introuvables sous %s (%w)", levels, err)
+	}
+	regions, err := himap.RegionsBSPExternes(modulePath, globals)
+	if err != nil {
+		return filmdec.MapQuantEntry{}, err
+	}
+	if int(region) >= len(regions) {
+		return filmdec.MapQuantEntry{}, fmt.Errorf("région déclarée %d hors des %d régions résolues", region, len(regions))
+	}
+	b := regions[region].BSP
+	if !b.Bounds.Valid() {
+		return filmdec.MapQuantEntry{}, fmt.Errorf("AABB dégénérée (région %d)", region)
+	}
+	bits := uint(1)
+	for (1 << bits) < len(regions) {
+		bits++
+	}
+	e := filmdec.MapQuantEntry{Module: mod, Region: region, RegionIndexBits: bits}
+	w := b.Bounds.AxisWidths()
+	for ax := 0; ax < 3; ax++ {
+		e.Min[ax] = float32(b.Bounds.Min[ax])
+		e.Max[ax] = float32(b.Bounds.Max[ax])
+		e.AxisWidths[ax] = uint(w[ax])
+	}
+	slog.Info("bornes lues (régions externes)", "carte", name, "module", mod,
+		"porteur", regions[region].Module, "region", region, "regions", len(regions),
+		"indexBits", bits, "W", fmt.Sprintf("%d/%d/%d", w[0], w[1], w[2]),
+		"extent", fmt.Sprintf("%.3f/%.3f/%.3f", b.Bounds.Extent(0), b.Bounds.Extent(1), b.Bounds.Extent(2)))
+	return e, nil
 }
 
 func main() {
@@ -288,10 +344,23 @@ func main() {
 		// LE BSP DE DÉQUANTIFICATION EST LA RÉGION 0 DU TAG DE NIVEAU, jamais le plus gros
 		// tag : `BSPQuantification` refuse plutôt que de deviner quand l'ordre des régions
 		// est illisible, et ce refus doit rester une erreur qui arrête le catalogue.
+		// Cas EXTERNE (module sans aucun sbsp, régions dans ds/globals) : seulement sur
+		// déclaration explicite de la région jouée — cf. `regionExterneDeclarations`.
 		q, candidats, err := himap.BSPQuantification(mods[0])
 		if err != nil {
-			slog.Error("choix du BSP de déquantification", "err", err, "carte", name, "module", mod)
-			missing++
+			region, declaree := regionExterneDeclarations[name]
+			if !errors.Is(err, himap.ErrAucunTagSbsp) || !declaree {
+				slog.Error("choix du BSP de déquantification", "err", err, "carte", name, "module", mod)
+				missing++
+				continue
+			}
+			e, err := entreeRegionExterne(name, mod, mods[0], *levels, region)
+			if err != nil {
+				slog.Error("régions externes", "err", err, "carte", name, "module", mod)
+				missing++
+				continue
+			}
+			cat.Maps[filmdec.NormalizeMapName(name)] = e
 			continue
 		}
 		if !q.Bounds.Valid() {
