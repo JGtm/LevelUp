@@ -34,7 +34,11 @@ import {
   type SoundCategory,
   type SoundCategoryFilter,
 } from './replaySound'
-import { sideResolverFromScoreboard, type ScoreboardSide } from './objectiveSound'
+import {
+  allyTeamFromScoreboard,
+  sideResolverFromScoreboard,
+  type ScoreboardSide,
+} from './objectiveSound'
 import { pickVariantStem, stemsOf } from './replaySoundVariants'
 import {
   advanceSoundCursor,
@@ -180,6 +184,9 @@ export function useReplaySound(
   scoreboard?: readonly ScoreboardSide[],
 ): ReplaySound {
   const sideOfXuid = useMemo(() => sideResolverFromScoreboard(scoreboard), [scoreboard])
+  // Le camp allié EN NUMÉRO : les sons d'état de zone joignent sur le propriétaire d'une zone,
+  // pas sur le xuid d'un joueur. Même lecture du tableau de score que le résolveur ci-dessus.
+  const allyTeam = useMemo(() => allyTeamFromScoreboard(scoreboard), [scoreboard])
   const [on, setOn] = useState(() => readStoredFlag(SOUND_ON_KEY, false))
   const [volume, setVolumeState] = useState(() =>
     readStoredNumber(SOUND_VOLUME_KEY, SOUND_VOLUME_DEFAULT, (v) => v > 0 && v <= 1),
@@ -191,8 +198,8 @@ export function useReplaySound(
   // Piste JOUÉE, catégories coupées retirées À LA CONSTRUCTION (jamais en aval, dans le
   // lecteur) ; DISPONIBILITÉ DU PANNEAU indépendante de ce filtre (hasSoundEvents ci-dessus).
   const timeline = useMemo(
-    () => buildSoundTimeline(doc, kills ?? [], t0Ms ?? 0, categories, sideOfXuid),
-    [doc, kills, t0Ms, categories, sideOfXuid],
+    () => buildSoundTimeline(doc, kills ?? [], t0Ms ?? 0, categories, sideOfXuid, allyTeam),
+    [doc, kills, t0Ms, categories, sideOfXuid, allyTeam],
   )
   const hasAnySound = useMemo(
     () => hasSoundEvents(doc, kills ?? [], t0Ms ?? 0),
