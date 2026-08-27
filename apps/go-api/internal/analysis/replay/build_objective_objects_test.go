@@ -46,7 +46,7 @@ func ooTables(fams map[uint32]string) (map[uint32]Label, map[uint32]string) {
 // RESULTAT DE MESURE, pas une preference : le controle 3 du lot du drapeau a echoue sur ses
 // vies libres (75,6 % contre un seuil de 90 %), celui du crane a tenu.
 func TestObjectiveObjects_PublieLeCraneEtPasLeDrapeau(t *testing.T) {
-	labels, fams := ooTables(map[uint32]string{ooTestCrane: "ball", ooTestDrapeau: "flag"})
+	labels, fams := ooTables(map[uint32]string{ooTestCrane: familleCrane, ooTestDrapeau: "flag"})
 	lives, cov := buildObjectiveObjects(ooScan(ooTestCrane, ooTestDrapeau), labels, fams, ooClock())
 	if cov.Declared != 1 {
 		t.Fatalf("declares = %d, attendu 1 (le crane seul est publiable)", cov.Declared)
@@ -54,7 +54,7 @@ func TestObjectiveObjects_PublieLeCraneEtPasLeDrapeau(t *testing.T) {
 	if len(lives) != 1 {
 		t.Fatalf("%d vie(s) publiee(s), attendu 1", len(lives))
 	}
-	if lives[0].Family != "ball" {
+	if lives[0].Family != familleCrane {
 		t.Errorf("famille publiee = %q, attendu \"ball\" — le drapeau ne doit PAS sortir "+
 			"(controle 3 de son lot : 75,6 %% contre un seuil de 90 %%)", lives[0].Family)
 	}
@@ -63,7 +63,7 @@ func TestObjectiveObjects_PublieLeCraneEtPasLeDrapeau(t *testing.T) {
 // TestObjectiveObjects_NeNommeJamaisLObjetEnDur : le libelle vient du manifeste, jamais du Go.
 func TestObjectiveObjects_NeNommeJamaisLObjetEnDur(t *testing.T) {
 	labels := map[uint32]Label{ooTestCrane: {En: "Oddball", Fr: "Crane"}}
-	fams := map[uint32]string{ooTestCrane: "ball"}
+	fams := map[uint32]string{ooTestCrane: familleCrane}
 	lives, _ := buildObjectiveObjects(ooScan(ooTestCrane), labels, fams, ooClock())
 	if len(lives) != 1 || lives[0].En != "Oddball" || lives[0].Fr != "Crane" {
 		t.Fatalf("libelles publies = %+v, attendus ceux du manifeste (Oddball / Crane)", lives)
@@ -73,7 +73,7 @@ func TestObjectiveObjects_NeNommeJamaisLObjetEnDur(t *testing.T) {
 // TestObjectiveObjects_UneVieImmobileEstUneVieReelle : nee au socle et jamais bougee, elle a UN
 // point — et elle se COMPTE, parce que c'est le cas qui ressemble le plus a un defaut.
 func TestObjectiveObjects_UneVieImmobileEstUneVieReelle(t *testing.T) {
-	labels, fams := ooTables(map[uint32]string{ooTestCrane: "ball"})
+	labels, fams := ooTables(map[uint32]string{ooTestCrane: familleCrane})
 	lives, cov := buildObjectiveObjects(ooScan(ooTestCrane), labels, fams, ooClock())
 	if len(lives) != 1 || len(lives[0].Pts) != 1 {
 		t.Fatalf("vies = %+v, attendu une vie a un point", lives)
@@ -89,7 +89,7 @@ func TestObjectiveObjects_UneVieImmobileEstUneVieReelle(t *testing.T) {
 // TestObjectiveObjects_HorsAxeEstECARTE_ET_COMPTE : une vie hors de l'axe n'est pas dessinable.
 // La taire SANS la compter ferait passer un decalage d'horloge pour une absence d'objet.
 func TestObjectiveObjects_HorsAxeEstECARTE_ET_COMPTE(t *testing.T) {
-	labels, fams := ooTables(map[uint32]string{ooTestCrane: "ball"})
+	labels, fams := ooTables(map[uint32]string{ooTestCrane: familleCrane})
 	scan := WorldObjectScan{Scanned: true, Creations: []filmdec.EquipmentCreation{
 		gwTestCreation(10, 0, 5_000_000_000, ooTestCrane, 1, 1), // frame 5000 : hors des 100
 	}}
@@ -105,7 +105,7 @@ func TestObjectiveObjects_HorsAxeEstECARTE_ET_COMPTE(t *testing.T) {
 // TestObjectiveObjects_TroisSilencesDistincts : la couverture doit distinguer « pas balaye »,
 // « rien de declare » et « declare mais absent du film ». Sans elle, les trois se confondent.
 func TestObjectiveObjects_TroisSilencesDistincts(t *testing.T) {
-	labels, fams := ooTables(map[uint32]string{ooTestCrane: "ball"})
+	labels, fams := ooTables(map[uint32]string{ooTestCrane: familleCrane})
 
 	_, pasBalaye := buildObjectiveObjects(WorldObjectScan{}, labels, fams, ooClock())
 	if pasBalaye.Scanned || pasBalaye.Lives != 0 {

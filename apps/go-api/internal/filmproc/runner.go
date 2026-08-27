@@ -236,7 +236,11 @@ func (r *Runner) relay(src io.Reader) uint64 {
 			peak = v
 			continue // protocole : jamais relaye
 		}
-		fmt.Fprintln(r.out, line)
+		// L'ERREUR D'ECRITURE EST ECARTEE, ET C'EST LE SEUL ENDROIT OU C'EST LEGITIME : cette
+		// sortie EST le canal de rapport du parent. S'il est rompu, un log de l'incident partirait
+		// vers le meme tube casse. Le relais continue de vider le tube de l'enfant — s'arreter ici
+		// bloquerait l'enfant sur son ecriture suivante, ce qui serait pire que la ligne perdue.
+		_, _ = fmt.Fprintln(r.out, line)
 	}
 	return peak
 }
