@@ -73591,3 +73591,16 @@ localise (en-tete X-LevelUp-Locale, memes libelles serveur que la page match).
 **Conclusion / prochaine etape** : 5e commit a autoriser ; verification ecran de son cas
 (socle plein quand tout le monde est loin, doute au premier passage) ; l'enquete artefact BTB
 reste la condition pour fiabiliser tHigh.
+
+## [2026-08-27] Retours rejeu — FUSION dans feat/v75 et PUSH
+
+**Statut** : Complete. `feat/v75` (local reconcilie avec origin par une autre session, +
+capture/cadrage victoire/gestes sonores/Oddball) fusionne dans `feat/replay-retours-0827`
+(4 conflits : plan statue conserve contre sa copie originale committee cote v75 ;
+thought_log en union ; fakeAudio compose robinet+rafale ; replayAudio.test garde les deux
+describe). Plafond `SOUND_CUT_MAX_S` releve 4 -> 12 s par le chantier des gestes sonores :
+les 2 scenarios de refus de rafale suivent desormais la constante. Gates : tsc vert, suite
+web complete 4963 verts / 14 skips, ESLint 0, hooks pre-push verts (vet CGO, govulncheck,
+ratchets, shared-social-gate). Push : `feat/replay-retours-0827` publie, `origin/feat/v75`
+avance en fast-forward `5ab8a448d..0f666d499`. Restent a l'utilisateur : verifications
+ecran (gates [!] du plan) et gate d'ecoute C-5.
