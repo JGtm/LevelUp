@@ -718,11 +718,11 @@ sur les zones. Elle se CITE, elle ne se redemande pas. Elle ne couvre en revanch
 
 ### D4 — ODDBALL : MESURER l'identite du crane puis son portage (ouverte seulement si D1 le permet)
 
-- [ ] D4.1 Identite : sur chaque film Oddball, les creations `ti=42` ECARTEES du catalogue d'armes ;
+- [x] D4.1 Identite : sur chaque film Oddball, les creations `ti=42` ECARTEES du catalogue d'armes ;
       pour chaque mot de 32 bits distinct, la distance de naissance au plus proche `oddball_spawn`
       du catalogue de carte et l'ecart au plus proche evenement `th=10` de crane. Meme instrument
       de forme que `attachement_phase0_drapeau_test.go`.
-- [ ] D4.2 Temoin de SELECTIVITE : compter les AUTRES mots qui reunissent les deux conditions.
+- [x] D4.2 Temoin de SELECTIVITE : compter les AUTRES mots qui reunissent les deux conditions.
       Le seuil exige **zero**.
 - [ ] D4.3 Portage : decouper la vie du crane en TROUS (l'objet cesse d'emettre) ; pour chaque
       trou, chercher le joueur dont le score PERSONNEL s'incremente sur toute sa duree
@@ -1336,19 +1336,19 @@ ni contre, et la cause est nommee. La bombe memoire connue `a349fea8` n'est PAS 
 Oddball : rien a exclure de ce cote. Chaque carte mesurable porte **exactement UN**
 `oddball_spawn` — le socle est unique, ce qui rend « naitre au socle » lisible sans ambiguite.
 
-- [ ] D4.0 **CONTROLE D'ALIGNEMENT DE LECTURE, avant tout le reste.** Le mot MPP de 32 bits se
+- [x] D4.0 **CONTROLE D'ALIGNEMENT DE LECTURE, avant tout le reste.** Le mot MPP de 32 bits se
       lit derriere deux champs de largeur VARIABLE par film (decouverte 8 des armes au sol :
       9/5 en Quick Play, 8/3 sur les films BTB). L'instrument du drapeau lit aux largeurs PAR
       DEFAUT. **Le temoin est le compte de creations RESOLUES au catalogue d'armes** : un film
       ou ce compte est nul est un film lu aux mauvaises largeurs, et il ne compte NI POUR NI
       CONTRE. Sans ce controle, un film mal decoupe rendrait « aucun mot candidat » et ferait
       passer une panne de lecture pour une refutation.
-- [ ] D4.1 **Identite.** Creations `ti=42` ECARTEES du catalogue d'armes ; par mot de 32 bits
+- [x] D4.1 **Identite.** Creations `ti=42` ECARTEES du catalogue d'armes ; par mot de 32 bits
       distinct, (a) le nombre de creations nees a <= 3 m du `oddball_spawn` de la carte et (b)
       l'ecart temporel minimal a un evenement `th=10` de crane. Meme instrument de forme que
       `attachement_phase0_drapeau_test.go` — la tolerance de 3 m est celle, deja employee, de la
       chaine des poses.
-- [ ] D4.2 **Temoin de SELECTIVITE.** Compter les mots ecartes qui reunissent les DEUX
+- [x] D4.2 **Temoin de SELECTIVITE.** Compter les mots ecartes qui reunissent les DEUX
       conditions (naissance a <= 3 m d'un `oddball_spawn` ET coincidence a <= 1 s d'un
       evenement `th=10` de crane). Le seuil exige que ce compte vaille **UN** : le candidat, et
       aucun autre.
@@ -1399,3 +1399,38 @@ du registre des reports mise a jour et non contournee, D5 ne publie rien pour Od
 base ouverte en ecriture, aucune re-cuisson d'artefact. Le film `24dbb67d` est TRONQUE (29
 chunks, `PLAN_REMEDIATION_CACHE.md`) : s'il rend un pont degrade, il sort par l'escalade
 ci-dessus comme n'importe quel autre, sans traitement de faveur.
+
+- 2026-08-27 — **D4, SEUIL (1) : L'IDENTITE DU CRANE EST TENUE — `0x0017592C`.** Protocole
+  commite avant la mesure (`1a29fe756`). Quatre films mesurables, un par processus, sentinelle
+  memoire armee DANS le processus qui decode (pic observe 0,01 Gio sur les quatre — ces films
+  d'arene ne sont pas des bombes). Sortie brute figee dans
+  `registre_film/D4_oddball_identite.log`.
+
+  | film | resolues au catalogue d'armes (controle D4.0) | ecartees / mots distincts | evenements `th=10` | mot elu | creations | au socle (min) | ecart min | AUTRES candidats |
+  |---|---|---|---|---|---|---|---|---|
+  | `24dbb67d` | 136 | 133 / 69 | 87 | **`0x0017592C`** | 23 | 3 (0,0 m) | **6 ms** | 1 (`0xCBA072DC`) |
+  | `43716616` | 195 | 137 / 107 | 60 | **`0x0017592C`** | 16 | 4 (0,0 m) | **3 ms** | **0** |
+  | `51ebbc0f` | 206 | 144 / 82 | 75 | **`0x0017592C`** | 21 | 4 (0,0 m) | **3 ms** | **0** |
+  | `d9781168` | 409 | 256 / 199 | 124 | **`0x0017592C`** | 47 | 13 (0,0 m) | **5 ms** | 1 (`0x042100A6`) |
+
+  **LE CONTROLE D'ALIGNEMENT D4.0 PASSE SUR LES QUATRE** (136 a 409 creations resolues au
+  catalogue d'armes) : le bloc MPP est lu aux bonnes largeurs, aucun film n'est ecarte pour
+  panne de lecture. **LE MEME MOT EST ELU SUR 4 FILMS SUR 4**, toujours en tete par le nombre de
+  creations, toujours ne A 0,0 m du socle unique `oddball_spawn`, toujours a 3-6 ms d'un
+  evenement `th=10` de crane. Le seuil exigeait « le meme sur >= 2 films » : il est tenu avec le
+  double.
+
+  **LE TEMOIN DE SELECTIVITE EST TENU SUR DEUX FILMS, ET REFUTE SUR DEUX — ecrit tel quel.** Le
+  seuil demande « 0 autre candidat » ; `43716616` et `51ebbc0f` rendent exactement cela, et ces
+  deux films suffisent au « >= 2 films » du protocole. Les deux autres portent CHACUN un second
+  mot, et **ce n'est pas le meme des deux cotes** (`0xCBA072DC` sur l'un, `0x042100A6` sur
+  l'autre) : ce n'est donc pas une identite rivale, c'est du bruit de singleton. Les deux se
+  separent du mot elu sur les DEUX criteres a la fois — 1 seule creation contre 16 a 47, ne a
+  1,7 et 2,9 m contre 0,0 m, coincidant a 157 et 177 ms contre 3 a 6 ms. **Le seuil n'est pas
+  abaisse pour les absorber** : il est tenu par les deux films qui le tiennent litteralement, et
+  les deux parasites sont publies avec leurs chiffres plutot que gommes.
+
+  **CE QUE LA MESURE NE PROUVE PAS ENCORE** : que `0x0017592C` soit le crane PLUTOT QU'UN autre
+  objet d'objectif ne au meme socle. La falsification n'est pas a chercher ailleurs — c'est le
+  seuil (2) : si ce mot n'est pas le crane, ses trous de replication ne coincideront pas avec le
+  portage. La mesure suivante est donc aussi le controle de celle-ci.
