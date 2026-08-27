@@ -67,9 +67,10 @@ describe('PLACEMENT_RENDER — la table, famille par famille', () => {
     expect(PLACEMENT_RENDER.threat_seeker).toBe('seeker')
     expect(PLACEMENT_RENDER.repair_field).toBe('field')
     expect(PLACEMENT_RENDER.other).toBe('unnamed')
-    // L ECRAN OCCULTANT est nomme depuis le 2026-08-27 et il SONNE, mais il garde le rendu
-    // neutre : lui donner sa forme est un travail de dessin, pas de nommage.
-    expect(PLACEMENT_RENDER.shroud_screen).toBe('unnamed')
+    // L ECRAN OCCULTANT a suivi trois etapes distinctes le 2026-08-27, dans cet ordre : nomme
+    // (sa banque sonore le dit), sonore, puis DESSINE une fois le verdict rendu sur les trois
+    // propositions de la planche — opaque, et les pions au-dessus.
+    expect(PLACEMENT_RENDER.shroud_screen).toBe('shroud')
   })
 
   it('les sept familles PORTÉES sont à `null` — connues, et volontairement muettes', () => {
@@ -471,5 +472,33 @@ describe('le LIEN de téléportation', () => {
 
   it('sans passage, le calque n émet rien de plus qu avant', () => {
     expect(draw([], TIME, { teleports: [] }).filter((o) => o.op === 'setLineDash')).toHaveLength(0)
+  })
+})
+
+
+describe("l ECRAN OCCULTANT — une bulle opaque, et les pions au-dessus", () => {
+  const ecran = () => pose({ family: 'shroud_screen', id: 'sh1' })
+
+  it('trace un disque plein a l encre NEUTRE, jamais a celle de l equipe', () => {
+    const ops = draw([ecran()])
+    const encres = ops.filter((o) => o.op === 'set fillStyle').map((o) => o.args[0])
+    expect(encres).toContain('neutre')
+    expect(encres).not.toContain('equipe')
+  })
+
+  it('le bord est un FONDU, pas une borne : un degrade et AUCUN anneau trace', () => {
+    const ops = draw([ecran()])
+    expect(ops.filter((o) => o.op === 'createRadialGradient')).toHaveLength(1)
+    // Le champ de reparation borne son disque d un pointille parce qu il a une portee dont on
+    // doute ; l ecran n a pas de borne du tout, parce qu il n a pas de portee connue.
+    expect(ops.filter((o) => o.op === 'stroke')).toHaveLength(0)
+    expect(ops.filter((o) => o.op === 'setLineDash')).toHaveLength(0)
+  })
+
+  it('sa zone sensible suit sa bulle — on le designe partout, pas seulement au centre', () => {
+    const p = ecran()
+    const centre = projected(5, 5)
+    // 6 m a 10 px par metre : un point a 4 m du centre est DANS la bulle.
+    expect(placementAt([p], VIEW, TIME, { x: centre.x + 40, y: centre.y })?.id).toBe('sh1')
   })
 })

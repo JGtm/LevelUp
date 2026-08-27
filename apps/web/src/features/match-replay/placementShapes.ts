@@ -390,3 +390,71 @@ export function drawRepairField(
 }
 
 // La FAILLE du translocateur et son arc de téléportation vivent dans `placementRift.ts`.
+
+// --- ÉCRAN OCCULTANT (shroud screen) --------------------------------------------------------
+
+/**
+ * Rayon de l'écran occultant, en mètres monde. VALEUR DÉCLARÉE, PAS MESURÉE, PAS OFFICIELLE —
+ * même statut que celui du champ de réparation, et il faut le dire aussi franchement.
+ *
+ * LES TROIS SOURCES SONT VIDES, ET C'EST LA RAISON D'ÊTRE DU BORD FLOU. Le film ne porte
+ * aucune portée pour cet objet ; la source officielle qui chiffre le détecteur (4,25 m) ne
+ * chiffre pas cet écran ; et rien n'a été mesuré dans le corpus. 6 m — 12 m de diamètre — est
+ * un choix d'ÉCRAN, calibré sur ce que la bulle du jeu couvre en pratique (un couloir, un
+ * passage étroit), et volontairement DEUX FOIS le champ de réparation pour que les trois
+ * disques du calque (capteur 4,25 m, champ 3 m, écran 6 m) ne se confondent jamais.
+ *
+ * LE BORD FLOU PORTE CETTE RÉSERVE À L'ÉCRAN, comme le pointillé la porte pour le champ. Deux
+ * conventions différentes pour la même réserve, et c'est voulu : le champ a une BORNE dont on
+ * doute (un anneau, en pointillé), l'écran n'a pas de borne du tout (un dégradé, sans anneau).
+ * Une limite nette dirait « au-delà de ce trait on se voit », ce que personne n'a établi.
+ */
+export const SHROUD_RADIUS_M = 6
+
+/** Part du rayon occupée par le fondu du bord (verdict R2-6 : 22 %). */
+const SHROUD_FADE_RATIO = 0.22
+/** Opacité du cœur. Presque plein : le verdict du 2026-08-27 est « opaque ». */
+const SHROUD_CORE_ALPHA = 0.94
+
+/**
+ * drawShroud — LA BULLE de l'écran occultant.
+ *
+ * OPAQUE, ET LES PIONS AU-DESSUS (verdict utilisateur du 2026-08-27, parmi trois propositions
+ * mises côte à côte sur la planche). Ce que ce choix règle : l'opacité dit « ici, on ne se voit
+ * pas » — c'est la fonction même de l'objet, et une bulle semi-transparente l'aurait affadie en
+ * laissant transparaître le décor. Ce qu'il évite : perdre les joueurs sous la bulle, car un
+ * rejeu dont on perd les pions ne se lit plus.
+ *
+ * LES PIONS PASSENT AU-DESSUS SANS UNE LIGNE DE CODE ICI, et c'est pour cela que la variante
+ * était réalisable telle quelle : le calque des poses est tracé AVANT celui des pistes
+ * (`drawEquipmentPlacementsLayer` puis `drawTracksLayer`). L'ordre du composant fait le travail
+ * — les deux autres variantes, elles, auraient exigé de tracer l'écran APRÈS les pistes.
+ *
+ * PAS D'ANIMATION : rien dans le film ne bat au rythme de cet objet. Sa fenêtre d'activité est
+ * portée par `isPlacementActive`, comme pour toutes les poses.
+ */
+export function drawShroud(
+  ctx: CanvasRenderingContext2D,
+  c: XY,
+  radiusPx: number,
+  color: string,
+): void {
+  if (!(radiusPx > 0)) return
+  const plein = radiusPx * (1 - SHROUD_FADE_RATIO)
+  ctx.save()
+  ctx.fillStyle = color
+  ctx.globalAlpha = SHROUD_CORE_ALPHA
+  ctx.beginPath()
+  ctx.arc(c.x, c.y, plein, 0, Math.PI * 2)
+  ctx.fill()
+  // Le fondu : du cœur plein jusqu'au néant, sans jamais poser de trait. C'est l'ABSENCE
+  // d'anneau qui dit que la portée n'est pas connue.
+  const g = ctx.createRadialGradient(c.x, c.y, plein, c.x, c.y, radiusPx)
+  g.addColorStop(0, color)
+  g.addColorStop(1, 'transparent')
+  ctx.fillStyle = g
+  ctx.beginPath()
+  ctx.arc(c.x, c.y, radiusPx, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.restore()
+}

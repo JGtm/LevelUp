@@ -50,10 +50,12 @@ import {
   drawRepairField,
   drawRevealMark,
   drawSeekerImpulse,
+  drawShroud,
   drawUnnamedDot,
   type PlacementView,
   project,
   REPAIR_FIELD_RADIUS_M,
+  SHROUD_RADIUS_M,
   viewScale,
 } from './placementShapes'
 import { drawWall, wallHeading, WALL_PANEL_IDS } from './placementWall'
@@ -95,6 +97,7 @@ export type PlacementKind =
   | 'wall'
   | 'sensor'
   | 'rift'
+  | 'shroud'
   | 'seeker'
   | 'field'
   | 'unnamed'
@@ -133,11 +136,10 @@ export const PLACEMENT_RENDER: Readonly<Record<string, PlacementKind | null>> = 
   // contrat, pas une correction de libelle. Ce qui change est ce que le calque en DESSINE et
   // ce qu il en DIT : une faille, pas une balise (correction de l utilisateur, 2026-08-27).
   translocator_beacon: 'rift',
-  // L ECRAN OCCULTANT est NOMME depuis le 2026-08-27 (sa banque sonore le dit) et il SONNE ;
-  // il garde pourtant le rendu neutre, et c est un choix explicite : lui donner sa forme propre
-  // est un travail de DESSIN, pas de nommage. Le nom et le son n attendaient pas le dessin,
-  // le dessin ne bloque ni l un ni l autre.
-  shroud_screen: 'unnamed',
+  // L ECRAN OCCULTANT : nomme le 2026-08-27 par sa banque sonore, dessine le meme jour apres
+  // le verdict de l utilisateur sur les trois propositions de la planche — « opaque et points
+  // au-dessus ». Nommer, sonner et dessiner ont ete trois travaux distincts, dans cet ordre.
+  shroud_screen: 'shroud',
   threat_seeker: 'seeker',
   repair_field: 'field',
   // L'objet posé dont la nature n'est pas établie : un point neutre, et seulement sur bascule.
@@ -418,16 +420,15 @@ function drawPlacement(
   }
   const c = project({ x: p.x, y: p.y }, view)
   const ageMs = (time.frame - p.t0) * time.frameMs
+  // Les deux disques dont la portée est en MÈTRES partagent la même échelle : la lire une fois
+  // évite qu'ils divergent le jour où le cadrage changerait de source.
+  const pxParM = viewScale(view)
   if (kind === 'dropped') drawDroppedObject(ctx, c, time, color)
   else if (kind === 'rift') drawRift(ctx, c, time, ink.rift)
+  else if (kind === 'shroud') drawShroud(ctx, c, SHROUD_RADIUS_M * pxParM, ink.neutral)
   else if (kind === 'seeker') drawSeekerImpulse(ctx, c, ageMs, time, color)
   else if (kind === 'field')
-    drawRepairField(
-      ctx,
-      { c, radiusPx: REPAIR_FIELD_RADIUS_M * viewScale(view), ageMs },
-      time,
-      color,
-    )
+    drawRepairField(ctx, { c, radiusPx: REPAIR_FIELD_RADIUS_M * pxParM, ageMs }, time, color)
   else drawUnnamedDot(ctx, c, time, color)
 }
 
