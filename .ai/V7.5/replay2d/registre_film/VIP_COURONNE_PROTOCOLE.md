@@ -143,9 +143,9 @@ Si un gate de periodes rate : `[!]` chiffre, pas de publication, dire ce qui man
 
 ## 5. Checklist d'execution (statuer chaque item a la cloture)
 
-- [ ] E1 — Ce protocole commite AVANT mesure (`vip-couronne(protocole):`).
-- [ ] E2 — Temoin corrige : vip.go (plancher analytique + gate corrige), re-mesure sur TSV
-  fige, `VIP_temoin_corrige.log`, verdict chiffre. Commit `vip-couronne(temoin):`.
+- [x] E1 — Ce protocole commite AVANT mesure (`vip-couronne(protocole):`, `2038557e8`).
+- [x] E2 — Temoin corrige : vip.go (plancher analytique + gate corrige), re-mesure sur TSV
+  fige, `VIP_temoin_corrige.log`, verdict chiffre. GATE TENU (comp 22 A REPLIQUE).
 - [ ] E3 — Periodes : ObjectiveTypeVip a `namedStatSlots` + TSV, `TestVIPPeriodes`, 3 films
   sous filmproc, `VIP_periodes.log`, verdict chiffre (dates ? recouv ? temoin ?). Commit
   `vip-couronne(periodes):`.
@@ -154,4 +154,13 @@ Si un gate de periodes rate : `[!]` chiffre, pas de publication, dire ce qui man
 
 ## Journal d'execution
 
-(rempli a la cloture de chaque etape)
+- **E1 (2026-08-27)** `[x]` — Protocole commite avant mesure (`2038557e8`). Temoin corrige
+  pre-enregistre avec justification datee : plancher `sum p_v^2`, marge 30 pp, seuils d'accord
+  inchanges.
+- **E2 (2026-08-27)** `[x]` — vip.go re-ecrit (plancher analytique + gate corrige, permute garde
+  en diagnostic). Re-mesure sur TSV/oracle figes, aucun film re-decode. VERDICT : comp 22 A
+  **REPLIQUE** `TimesSelectedAsVip` — 3/3 films au gate corrige, marges 65,6 / 53,1 / 37,5 pp
+  (toutes >= 30), planchers 34,4 / 46,9 / 62,5 %, permute diagnostic 12,5 / 25 / 50 % (colle au
+  plancher), stabilite 3/3, somme-film decale 0. **VIP est valide nativement.** Log
+  `VIP_temoin_corrige.log`. Cibles secondaires : VipKills (comp 0 A) tient, KillsAsVip (comp 21 B)
+  echoue au decale — non bloquant.

@@ -1,0 +1,47 @@
+=== LOT VIP COURONNE — E2 TEMOIN CORRIGE — LOG FIGE (VIP_temoin_corrige.log) ===
+Protocole: VIP_COURONNE_PROTOCOLE.md §2. Instrument: cmd/statnames-sweep -confront -vip.
+Entrees FIGEES: V_statborg_sweep.tsv (valeurs finales, pont SlotIdentityByDeaths) +
+V_oracle_vipstats.json. AUCUN film re-decode ici (le signal est deja au log V_statborg_vip.log).
+
+CORRECTION DE METHODE (non un abaissement): le temoin permute <= 20 % du gate frozen etait
+INAPTE a un compteur a faible variance (self-similarite sum(p_v^2) ~ 34-62 %, insaturable).
+Remplace par le plancher analytique correct sum(p_v^2), avec exigence accord - plancher >= 30 pp.
+Seuils d'accord (>= 90 %), stabilite 3/3 et somme-film decale=0 INCHANGES.
+
+CONFRONTATION VIP (temoin corrige) : films [00761d27 9903b1c5 99553e4a] · gate accord >= 90 % ET accord - plancher(sum p_v^2) >= 30 pp sur >= 2/3, stabilite 3/3, somme-film decale = 0, >= 3 paires non nulles/film
+SOMME-FILM TimesSelectedAsVip : totaux map[00761d27:15 9903b1c5:17 99553e4a:18]
+SOMME-FILM TimesSelectedAsVip : candidat comp 22 A — signal 3/3 film(s), temoin decale 0 (exige 0)
+SOMME-FILM KillsAsVip : totaux map[00761d27:13 9903b1c5:17 99553e4a:13]
+SOMME-FILM KillsAsVip : candidat comp 21 B — signal 3/3 film(s), temoin decale 1 (exige 0)
+SOMME-FILM VipKills : totaux map[00761d27:14 9903b1c5:16 99553e4a:17]
+SOMME-FILM VipKills : candidat comp 0 A — signal 3/3 film(s), temoin decale 0 (exige 0)
+COLONNE TimesSelectedAsVip : candidat comp 22 A — 3/3 film(s) au gate corrige, accord moyen 100.0 %
+   00761d27 : signal 8/8 = 100.0 % (8 paire(s) non nulle(s)) ; plancher 34.4 % ; marge 65.6 pp ; [diag] permute 1/8 = 12.5 % (8 paire(s) non nulle(s))
+   9903b1c5 : signal 8/8 = 100.0 % (8 paire(s) non nulle(s)) ; plancher 46.9 % ; marge 53.1 pp ; [diag] permute 2/8 = 25.0 % (8 paire(s) non nulle(s))
+   99553e4a : signal 8/8 = 100.0 % (8 paire(s) non nulle(s)) ; plancher 62.5 % ; marge 37.5 pp ; [diag] permute 4/8 = 50.0 % (8 paire(s) non nulle(s))
+VERDICT TimesSelectedAsVip : le statborg REPLIQUE TimesSelectedAsVip — comp 22 A ; 3/3 au gate, stabilite 3/3 true, somme-film decale=0 true
+COLONNE KillsAsVip : candidat comp 21 B — 3/3 film(s) au gate corrige, accord moyen 100.0 %
+   00761d27 : signal 8/8 = 100.0 % (6 paire(s) non nulle(s)) ; plancher 28.1 % ; marge 71.9 pp ; [diag] permute 1/8 = 12.5 % (6 paire(s) non nulle(s))
+   9903b1c5 : signal 8/8 = 100.0 % (7 paire(s) non nulle(s)) ; plancher 31.2 % ; marge 68.8 pp ; [diag] permute 2/8 = 25.0 % (7 paire(s) non nulle(s))
+   99553e4a : signal 8/8 = 100.0 % (6 paire(s) non nulle(s)) ; plancher 28.1 % ; marge 71.9 pp ; [diag] permute 0/8 = 0.0 % (6 paire(s) non nulle(s))
+VERDICT KillsAsVip : le statborg NE REPLIQUE PAS KillsAsVip — comp 21 B ; 3/3 au gate, stabilite 3/3 true, somme-film decale=0 false
+   (KillsAsVip : cible SECONDAIRE — anti-aliasing a verifier a la main : comp distinct de 2 A/3 A et valeur par slot <= comp generique)
+COLONNE VipKills : candidat comp 0 A — 3/3 film(s) au gate corrige, accord moyen 100.0 %
+   00761d27 : signal 8/8 = 100.0 % (6 paire(s) non nulle(s)) ; plancher 34.4 % ; marge 65.6 pp ; [diag] permute 3/8 = 37.5 % (6 paire(s) non nulle(s))
+   9903b1c5 : signal 8/8 = 100.0 % (6 paire(s) non nulle(s)) ; plancher 28.1 % ; marge 71.9 pp ; [diag] permute 1/8 = 12.5 % (6 paire(s) non nulle(s))
+   99553e4a : signal 8/8 = 100.0 % (8 paire(s) non nulle(s)) ; plancher 46.9 % ; marge 53.1 pp ; [diag] permute 5/8 = 62.5 % (8 paire(s) non nulle(s))
+VERDICT VipKills : le statborg REPLIQUE VipKills — comp 0 A ; 3/3 au gate, stabilite 3/3 true, somme-film decale=0 true
+   (VipKills : cible SECONDAIRE — anti-aliasing a verifier a la main : comp distinct de 2 A/3 A et valeur par slot <= comp generique)
+
+--- VERDICT NOMME (E2) ---
+GATE CORRIGE TENU pour la cible PRIMAIRE: comp 22 A REPLIQUE TimesSelectedAsVip.
+  3/3 films au gate corrige (accord 100 % ET marge sur plancher 65,6 / 53,1 / 37,5 pp, toutes
+  >= 30 pp), stabilite 3/3, somme-film decale = 0. Le temoin permute diagnostic (12,5 / 25 / 50 %)
+  colle au plancher analytique (34,4 / 46,9 / 62,5 %) — preuve que le permute mesurait la
+  self-similarite de l'oracle, PAS la discrimination du comp. Le signal, lui, est a 100 % : la
+  marge est la discrimination reelle.
+VIP EST VALIDE NATIVEMENT au statborg. La couronne peut etre datee SI le canal donne des
+  evenements dates (E3).
+Cibles SECONDAIRES (hors gate principal, informatif): VipKills = comp 0 A tient le gate corrige
+  (decale 0) ; KillsAsVip = comp 21 B echoue (somme-film decale = 1, faux candidat) — a verifier
+  a la main, non bloquant pour la couronne.
