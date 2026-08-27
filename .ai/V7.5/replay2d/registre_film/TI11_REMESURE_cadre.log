@@ -1,0 +1,102 @@
+# RE-MESURE ATTERRISSAGE ti=11 (gate T1) — 2026-08-27 19:20
+# corpus T1 : 24dbb67d Oddball / 64e8adfa CTF / 01e1f945 KOTH ; TI11_ROOT=depot principal
+# GATE : atterrissage bit-exact >= 85 % sur >= 2 familles distinctes, temoin faux <= 20 %
+
+=== RUN   TestTI11Inventory
+2026/08/27 19:18:11 WARN empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte (mise a jour du jeu ?) ; le film reste decode empreinte=7307582345129211936 empreinte_connue=7053924395561516366 blocs=118 slots_non_vides=1068
+    keyframe_objective_fullstate_test.go:307: film 24dbb67d : 34 composants ti=11 · 0 non portes · 27 images-cle · 115 records ti=11 BORNES
+    keyframe_objective_fullstate_test.go:307: film 64e8adfa : 34 composants ti=11 · 0 non portes · 43 images-cle · 201 records ti=11 BORNES
+    keyframe_objective_fullstate_test.go:307: film 01e1f945 : 34 composants ti=11 · 0 non portes · 28 images-cle · 25 records ti=11 BORNES
+--- PASS: TestTI11Inventory (21.48s)
+=== RUN   TestTI11CadreLanding
+    keyframe_objective_fullstate_test.go:341:   [24dbb67d corr=false] TEMOIN record NEW : bornes 115 · exactes 0 · desync 0 | 0.00 % (stub 0)
+    keyframe_objective_fullstate_test.go:348:   [24dbb67d corr=false] C0 en-tete 64 nu : bornes 115 · exactes 0 · chainees 0 · perdues 115 · desync 0 | ATTERRISSAGE 0.00 %
+    keyframe_objective_fullstate_test.go:348:   [24dbb67d corr=false] C1 en-tete 108 nu : bornes 115 · exactes 0 · chainees 0 · perdues 115 · desync 0 | ATTERRISSAGE 0.00 %
+    keyframe_objective_fullstate_test.go:348:   [24dbb67d corr=false] C2 108 + etat par defaut : bornes 115 · exactes 0 · chainees 0 · perdues 115 · desync 0 | ATTERRISSAGE 0.00 %
+    keyframe_objective_fullstate_test.go:348:   [24dbb67d corr=false] C3 108 + mots de taille : bornes 115 · exactes 0 · chainees 0 · perdues 115 · desync 0 | ATTERRISSAGE 0.00 %
+    keyframe_objective_fullstate_test.go:348:   [24dbb67d corr=false] C4 108 + taille + etat par defaut (cadre JEU FUN_142e2bfd0) : bornes 115 · exactes 0 · chainees 0 · perdues 115 · desync 0 | ATTERRISSAGE 0.00 %
+    keyframe_objective_fullstate_test.go:348:   [24dbb67d corr=false] C5 cadre JEU + LevelShift : bornes 115 · exactes 115 · chainees 0 · perdues 0 · desync 0 | ATTERRISSAGE 100.00 %
+    keyframe_objective_fullstate_test.go:348:   [24dbb67d corr=false] C6 en-tete 64 + etat par defaut : bornes 115 · exactes 0 · chainees 0 · perdues 115 · desync 0 | ATTERRISSAGE 0.00 %
+    keyframe_objective_fullstate_test.go:341:   [24dbb67d corr=true] TEMOIN record NEW : bornes 115 · exactes 0 · desync 0 | 0.00 % (stub 0)
+    keyframe_objective_fullstate_test.go:348:   [24dbb67d corr=true] C0 en-tete 64 nu : bornes 115 · exactes 0 · chainees 0 · perdues 115 · desync 0 | ATTERRISSAGE 0.00 %
+    keyframe_objective_fullstate_test.go:348:   [24dbb67d corr=true] C1 en-tete 108 nu : bornes 115 · exactes 0 · chainees 0 · perdues 115 · desync 0 | ATTERRISSAGE 0.00 %
+    keyframe_objective_fullstate_test.go:348:   [24dbb67d corr=true] C2 108 + etat par defaut : bornes 115 · exactes 0 · chainees 0 · perdues 115 · desync 0 | ATTERRISSAGE 0.00 %
+    keyframe_objective_fullstate_test.go:348:   [24dbb67d corr=true] C3 108 + mots de taille : bornes 115 · exactes 0 · chainees 0 · perdues 115 · desync 0 | ATTERRISSAGE 0.00 %
+    keyframe_objective_fullstate_test.go:348:   [24dbb67d corr=true] C4 108 + taille + etat par defaut (cadre JEU FUN_142e2bfd0) : bornes 115 · exactes 0 · chainees 0 · perdues 115 · desync 0 | ATTERRISSAGE 0.00 %
+    keyframe_objective_fullstate_test.go:348:   [24dbb67d corr=true] C5 cadre JEU + LevelShift : bornes 115 · exactes 0 · chainees 0 · perdues 115 · desync 0 | ATTERRISSAGE 0.00 %
+    keyframe_objective_fullstate_test.go:348:   [24dbb67d corr=true] C6 en-tete 64 + etat par defaut : bornes 115 · exactes 0 · chainees 0 · perdues 115 · desync 0 | ATTERRISSAGE 0.00 %
+    keyframe_objective_fullstate_test.go:341:   [64e8adfa corr=false] TEMOIN record NEW : bornes 201 · exactes 0 · desync 0 | 0.00 % (stub 0)
+    keyframe_objective_fullstate_test.go:348:   [64e8adfa corr=false] C0 en-tete 64 nu : bornes 201 · exactes 0 · chainees 0 · perdues 201 · desync 0 | ATTERRISSAGE 0.00 %
+    keyframe_objective_fullstate_test.go:348:   [64e8adfa corr=false] C1 en-tete 108 nu : bornes 201 · exactes 0 · chainees 0 · perdues 201 · desync 0 | ATTERRISSAGE 0.00 %
+    keyframe_objective_fullstate_test.go:348:   [64e8adfa corr=false] C2 108 + etat par defaut : bornes 201 · exactes 0 · chainees 0 · perdues 201 · desync 0 | ATTERRISSAGE 0.00 %
+    keyframe_objective_fullstate_test.go:348:   [64e8adfa corr=false] C3 108 + mots de taille : bornes 201 · exactes 0 · chainees 0 · perdues 201 · desync 0 | ATTERRISSAGE 0.00 %
+    keyframe_objective_fullstate_test.go:348:   [64e8adfa corr=false] C4 108 + taille + etat par defaut (cadre JEU FUN_142e2bfd0) : bornes 201 · exactes 0 · chainees 0 · perdues 201 · desync 0 | ATTERRISSAGE 0.00 %
+    keyframe_objective_fullstate_test.go:348:   [64e8adfa corr=false] C5 cadre JEU + LevelShift : bornes 201 · exactes 168 · chainees 0 · perdues 33 · desync 0 | ATTERRISSAGE 83.58 %
+    keyframe_objective_fullstate_test.go:348:   [64e8adfa corr=false] C6 en-tete 64 + etat par defaut : bornes 201 · exactes 0 · chainees 0 · perdues 201 · desync 0 | ATTERRISSAGE 0.00 %
+    keyframe_objective_fullstate_test.go:341:   [64e8adfa corr=true] TEMOIN record NEW : bornes 201 · exactes 0 · desync 0 | 0.00 % (stub 0)
+    keyframe_objective_fullstate_test.go:348:   [64e8adfa corr=true] C0 en-tete 64 nu : bornes 201 · exactes 0 · chainees 0 · perdues 201 · desync 0 | ATTERRISSAGE 0.00 %
+    keyframe_objective_fullstate_test.go:348:   [64e8adfa corr=true] C1 en-tete 108 nu : bornes 201 · exactes 0 · chainees 0 · perdues 201 · desync 0 | ATTERRISSAGE 0.00 %
+    keyframe_objective_fullstate_test.go:348:   [64e8adfa corr=true] C2 108 + etat par defaut : bornes 201 · exactes 0 · chainees 0 · perdues 201 · desync 0 | ATTERRISSAGE 0.00 %
+    keyframe_objective_fullstate_test.go:348:   [64e8adfa corr=true] C3 108 + mots de taille : bornes 201 · exactes 0 · chainees 0 · perdues 201 · desync 0 | ATTERRISSAGE 0.00 %
+    keyframe_objective_fullstate_test.go:348:   [64e8adfa corr=true] C4 108 + taille + etat par defaut (cadre JEU FUN_142e2bfd0) : bornes 201 · exactes 0 · chainees 0 · perdues 201 · desync 0 | ATTERRISSAGE 0.00 %
+    keyframe_objective_fullstate_test.go:348:   [64e8adfa corr=true] C5 cadre JEU + LevelShift : bornes 201 · exactes 0 · chainees 0 · perdues 201 · desync 0 | ATTERRISSAGE 0.00 %
+    keyframe_objective_fullstate_test.go:348:   [64e8adfa corr=true] C6 en-tete 64 + etat par defaut : bornes 201 · exactes 0 · chainees 0 · perdues 201 · desync 0 | ATTERRISSAGE 0.00 %
+    keyframe_objective_fullstate_test.go:341:   [01e1f945 corr=false] TEMOIN record NEW : bornes 25 · exactes 0 · desync 0 | 0.00 % (stub 0)
+    keyframe_objective_fullstate_test.go:348:   [01e1f945 corr=false] C0 en-tete 64 nu : bornes 25 · exactes 0 · chainees 0 · perdues 25 · desync 0 | ATTERRISSAGE 0.00 %
+    keyframe_objective_fullstate_test.go:348:   [01e1f945 corr=false] C1 en-tete 108 nu : bornes 25 · exactes 0 · chainees 0 · perdues 25 · desync 0 | ATTERRISSAGE 0.00 %
+    keyframe_objective_fullstate_test.go:348:   [01e1f945 corr=false] C2 108 + etat par defaut : bornes 25 · exactes 0 · chainees 0 · perdues 25 · desync 0 | ATTERRISSAGE 0.00 %
+    keyframe_objective_fullstate_test.go:348:   [01e1f945 corr=false] C3 108 + mots de taille : bornes 25 · exactes 0 · chainees 0 · perdues 25 · desync 0 | ATTERRISSAGE 0.00 %
+    keyframe_objective_fullstate_test.go:348:   [01e1f945 corr=false] C4 108 + taille + etat par defaut (cadre JEU FUN_142e2bfd0) : bornes 25 · exactes 0 · chainees 0 · perdues 25 · desync 0 | ATTERRISSAGE 0.00 %
+    keyframe_objective_fullstate_test.go:348:   [01e1f945 corr=false] C5 cadre JEU + LevelShift : bornes 25 · exactes 25 · chainees 0 · perdues 0 · desync 0 | ATTERRISSAGE 100.00 %
+    keyframe_objective_fullstate_test.go:348:   [01e1f945 corr=false] C6 en-tete 64 + etat par defaut : bornes 25 · exactes 0 · chainees 0 · perdues 25 · desync 0 | ATTERRISSAGE 0.00 %
+    keyframe_objective_fullstate_test.go:341:   [01e1f945 corr=true] TEMOIN record NEW : bornes 25 · exactes 0 · desync 0 | 0.00 % (stub 0)
+    keyframe_objective_fullstate_test.go:348:   [01e1f945 corr=true] C0 en-tete 64 nu : bornes 25 · exactes 0 · chainees 0 · perdues 25 · desync 0 | ATTERRISSAGE 0.00 %
+    keyframe_objective_fullstate_test.go:348:   [01e1f945 corr=true] C1 en-tete 108 nu : bornes 25 · exactes 0 · chainees 0 · perdues 25 · desync 0 | ATTERRISSAGE 0.00 %
+    keyframe_objective_fullstate_test.go:348:   [01e1f945 corr=true] C2 108 + etat par defaut : bornes 25 · exactes 0 · chainees 0 · perdues 25 · desync 0 | ATTERRISSAGE 0.00 %
+    keyframe_objective_fullstate_test.go:348:   [01e1f945 corr=true] C3 108 + mots de taille : bornes 25 · exactes 0 · chainees 0 · perdues 25 · desync 0 | ATTERRISSAGE 0.00 %
+    keyframe_objective_fullstate_test.go:348:   [01e1f945 corr=true] C4 108 + taille + etat par defaut (cadre JEU FUN_142e2bfd0) : bornes 25 · exactes 0 · chainees 0 · perdues 25 · desync 0 | ATTERRISSAGE 0.00 %
+    keyframe_objective_fullstate_test.go:348:   [01e1f945 corr=true] C5 cadre JEU + LevelShift : bornes 25 · exactes 0 · chainees 0 · perdues 25 · desync 0 | ATTERRISSAGE 0.00 %
+    keyframe_objective_fullstate_test.go:348:   [01e1f945 corr=true] C6 en-tete 64 + etat par defaut : bornes 25 · exactes 0 · chainees 0 · perdues 25 · desync 0 | ATTERRISSAGE 0.00 %
+    keyframe_objective_fullstate_test.go:363: ======== CUMUL MULTI-FAMILLES (3 films) ========
+    keyframe_objective_fullstate_test.go:364:   TEMOIN record NEW cumule : bornes 341 · exactes 0 | 0.00 %
+    keyframe_objective_fullstate_test.go:370:   corr=false C0 en-tete 64 nu : bornes 341 · exactes 0 · chainees 0 | ATTERRISSAGE 0.00 %
+    keyframe_objective_fullstate_test.go:370:   corr=false C1 en-tete 108 nu : bornes 341 · exactes 0 · chainees 0 | ATTERRISSAGE 0.00 %
+    keyframe_objective_fullstate_test.go:370:   corr=false C2 108 + etat par defaut : bornes 341 · exactes 0 · chainees 0 | ATTERRISSAGE 0.00 %
+    keyframe_objective_fullstate_test.go:370:   corr=false C3 108 + mots de taille : bornes 341 · exactes 0 · chainees 0 | ATTERRISSAGE 0.00 %
+    keyframe_objective_fullstate_test.go:370:   corr=false C4 108 + taille + etat par defaut (cadre JEU FUN_142e2bfd0) : bornes 341 · exactes 0 · chainees 0 | ATTERRISSAGE 0.00 %
+    keyframe_objective_fullstate_test.go:370:   corr=false C5 cadre JEU + LevelShift : bornes 341 · exactes 308 · chainees 0 | ATTERRISSAGE 90.32 %
+    keyframe_objective_fullstate_test.go:370:   corr=false C6 en-tete 64 + etat par defaut : bornes 341 · exactes 0 · chainees 0 | ATTERRISSAGE 0.00 %
+    keyframe_objective_fullstate_test.go:370:   corr=true C0 en-tete 64 nu : bornes 341 · exactes 0 · chainees 0 | ATTERRISSAGE 0.00 %
+    keyframe_objective_fullstate_test.go:370:   corr=true C1 en-tete 108 nu : bornes 341 · exactes 0 · chainees 0 | ATTERRISSAGE 0.00 %
+    keyframe_objective_fullstate_test.go:370:   corr=true C2 108 + etat par defaut : bornes 341 · exactes 0 · chainees 0 | ATTERRISSAGE 0.00 %
+    keyframe_objective_fullstate_test.go:370:   corr=true C3 108 + mots de taille : bornes 341 · exactes 0 · chainees 0 | ATTERRISSAGE 0.00 %
+    keyframe_objective_fullstate_test.go:370:   corr=true C4 108 + taille + etat par defaut (cadre JEU FUN_142e2bfd0) : bornes 341 · exactes 0 · chainees 0 | ATTERRISSAGE 0.00 %
+    keyframe_objective_fullstate_test.go:370:   corr=true C5 cadre JEU + LevelShift : bornes 341 · exactes 0 · chainees 0 | ATTERRISSAGE 0.00 %
+    keyframe_objective_fullstate_test.go:370:   corr=true C6 en-tete 64 + etat par defaut : bornes 341 · exactes 0 · chainees 0 | ATTERRISSAGE 0.00 %
+--- PASS: TestTI11CadreLanding (21.71s)
+=== RUN   TestTI11DiagnosticNoStub
+    keyframe_objective_fullstate_test.go:400:   [24dbb67d] cadre JEU sans stub : bornes 115 · exactes 0 · desync 0
+    keyframe_objective_fullstate_test.go:400:   [64e8adfa] cadre JEU sans stub : bornes 201 · exactes 0 · desync 0
+    keyframe_objective_fullstate_test.go:400:   [01e1f945] cadre JEU sans stub : bornes 25 · exactes 0 · desync 0
+--- PASS: TestTI11DiagnosticNoStub (21.60s)
+=== RUN   TestTI11GapProfile
+    keyframe_objective_fullstate_test.go:438:   [24dbb67d] cadre JEU C4 (stub) : records 115 · longueur REELLE mediane 997 · longueur CONSOMMEE mediane 995 · ecart SIGNE median 2
+    keyframe_objective_fullstate_test.go:440:       ecart signe want-EndBit (bits), + = sous-lecture : 1 valeurs distinctes
+    keyframe_objective_fullstate_test.go:440:                2 :  115 fois
+    keyframe_objective_fullstate_test.go:438:   [64e8adfa] cadre JEU C4 (stub) : records 201 · longueur REELLE mediane 974 · longueur CONSOMMEE mediane 995 · ecart SIGNE median -21
+    keyframe_objective_fullstate_test.go:440:       ecart signe want-EndBit (bits), + = sous-lecture : 9 valeurs distinctes
+    keyframe_objective_fullstate_test.go:440:                2 :   47 fois
+    keyframe_objective_fullstate_test.go:440:              -31 :   41 fois
+    keyframe_objective_fullstate_test.go:440:              -54 :   40 fois
+    keyframe_objective_fullstate_test.go:440:              -21 :   40 fois
+    keyframe_objective_fullstate_test.go:440:             1946 :   23 fois
+    keyframe_objective_fullstate_test.go:440:             1730 :    6 fois
+    keyframe_objective_fullstate_test.go:440:              434 :    2 fois
+    keyframe_objective_fullstate_test.go:440:              218 :    1 fois
+    keyframe_objective_fullstate_test.go:440:              650 :    1 fois
+    keyframe_objective_fullstate_test.go:438:   [01e1f945] cadre JEU C4 (stub) : records 25 · longueur REELLE mediane 960 · longueur CONSOMMEE mediane 991 · ecart SIGNE median -31
+    keyframe_objective_fullstate_test.go:440:       ecart signe want-EndBit (bits), + = sous-lecture : 1 valeurs distinctes
+    keyframe_objective_fullstate_test.go:440:              -31 :   25 fois
+--- PASS: TestTI11GapProfile (21.48s)
+PASS
+ok  	levelup/go-api/internal/analysis/filmdec	(cached)

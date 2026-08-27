@@ -1,0 +1,78 @@
+# T2 DIAGNOSTIC ti=11 — 2026-08-27 19:30
+# corpus : 5 Oddball + CTF 64e8adfa + KOTH 01e1f945 ; cadre gagnant C5 (108+taille+defaut+LevelShift) corr=false
+# T2.1 B1 auto-coherence (gate >=90 %, temoin <=1 %) + diagnostic d'alignement interne (diversite des champs)
+
+=== RUN   TestTI11B1AutoCoherence
+2026/08/27 19:30:03 WARN empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte (mise a jour du jeu ?) ; le film reste decode empreinte=7307582345129211936 empreinte_connue=7053924395561516366 blocs=118 slots_non_vides=1068
+    keyframe_objective_fullstate_test.go:524:   [24dbb67d] records atterris 115 · avec i3 present 115 · objectifs distincts 10 | STABILITE i3 100.0 % · VALIDITE (i3!=0) 100.0 %
+    keyframe_objective_fullstate_test.go:524:   [43716616] records atterris 70 · avec i3 present 70 · objectifs distincts 10 | STABILITE i3 100.0 % · VALIDITE (i3!=0) 100.0 %
+2026/08/27 19:30:12 WARN empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte (mise a jour du jeu ?) ; le film reste decode empreinte=11979330793883025789 empreinte_connue=7053924395561516366 blocs=118 slots_non_vides=1067
+    keyframe_objective_fullstate_test.go:524:   [92f18088] records atterris 135 · avec i3 present 135 · objectifs distincts 10 | STABILITE i3 100.0 % · VALIDITE (i3!=0) 100.0 %
+    keyframe_objective_fullstate_test.go:524:   [d9781168] records atterris 166 · avec i3 present 166 · objectifs distincts 16 | STABILITE i3 100.0 % · VALIDITE (i3!=0) 100.0 %
+    keyframe_objective_fullstate_test.go:524:   [c88ec007] records atterris 124 · avec i3 present 124 · objectifs distincts 15 | STABILITE i3 100.0 % · VALIDITE (i3!=0) 100.0 %
+    keyframe_objective_fullstate_test.go:524:   [64e8adfa] records atterris 168 · avec i3 present 168 · objectifs distincts 10 | STABILITE i3 100.0 % · VALIDITE (i3!=0) 100.0 %
+    keyframe_objective_fullstate_test.go:524:   [01e1f945] records atterris 25 · avec i3 present 25 · objectifs distincts 1 | STABILITE i3 100.0 % · VALIDITE (i3!=0) 100.0 %
+    keyframe_objective_fullstate_test.go:541: ======== CUMUL B1 (7 films) ========
+    keyframe_objective_fullstate_test.go:542:   records atterris 803 · avec i3 803 · STABILITE i3 cumulee 803/803 = 100.0 % · VALIDITE cumulee 803/803 = 100.0 %
+    keyframe_objective_fullstate_test.go:544:   TEMOIN : 4096 GlobalID 32b au hasard, 0 dans l'ensemble observe (|obs|=1) | 0.000 %
+--- PASS: TestTI11B1AutoCoherence (43.95s)
+=== RUN   TestTI11FieldDiversity
+    keyframe_objective_fullstate_test.go:600:   [24dbb67d] records atterris 115 :
+    keyframe_objective_fullstate_test.go:602:       managed-objective-color-component          :   2 valeurs distinctes [128×345 255×115]
+    keyframe_objective_fullstate_test.go:602:       managed-objective-object-reference-component :   1 valeurs distinctes [4294967295×115]
+    keyframe_objective_fullstate_test.go:602:       managed-objective-type-component           :   1 valeurs distinctes [2947879880×115]
+    keyframe_objective_fullstate_test.go:602:       managed-objective-progress-component       :   1 valeurs distinctes [0×115]
+    keyframe_objective_fullstate_test.go:602:       managed-objective-required-progress-component :   1 valeurs distinctes [0×115]
+    keyframe_objective_fullstate_test.go:602:       managed-objective-parent-objective-component :   1 valeurs distinctes [4294967295×115]
+    keyframe_objective_fullstate_test.go:602:       managed-objective-sub-objective-entities-component :   1 valeurs distinctes [4294967295×1840]
+    keyframe_objective_fullstate_test.go:600:   [43716616] records atterris 70 :
+    keyframe_objective_fullstate_test.go:602:       managed-objective-color-component          :   2 valeurs distinctes [128×210 255×70]
+    keyframe_objective_fullstate_test.go:602:       managed-objective-object-reference-component :   1 valeurs distinctes [4294967295×70]
+    keyframe_objective_fullstate_test.go:602:       managed-objective-type-component           :   1 valeurs distinctes [2947879880×70]
+    keyframe_objective_fullstate_test.go:602:       managed-objective-progress-component       :   1 valeurs distinctes [0×70]
+    keyframe_objective_fullstate_test.go:602:       managed-objective-required-progress-component :   1 valeurs distinctes [0×70]
+    keyframe_objective_fullstate_test.go:602:       managed-objective-parent-objective-component :   1 valeurs distinctes [4294967295×70]
+    keyframe_objective_fullstate_test.go:602:       managed-objective-sub-objective-entities-component :   1 valeurs distinctes [4294967295×1120]
+    keyframe_objective_fullstate_test.go:600:   [92f18088] records atterris 135 :
+    keyframe_objective_fullstate_test.go:602:       managed-objective-color-component          :   2 valeurs distinctes [128×405 255×135]
+    keyframe_objective_fullstate_test.go:602:       managed-objective-object-reference-component :   1 valeurs distinctes [4294967295×135]
+    keyframe_objective_fullstate_test.go:602:       managed-objective-type-component           :   1 valeurs distinctes [2947879880×135]
+    keyframe_objective_fullstate_test.go:602:       managed-objective-progress-component       :   1 valeurs distinctes [0×135]
+    keyframe_objective_fullstate_test.go:602:       managed-objective-required-progress-component :   1 valeurs distinctes [0×135]
+    keyframe_objective_fullstate_test.go:602:       managed-objective-parent-objective-component :   1 valeurs distinctes [4294967295×135]
+    keyframe_objective_fullstate_test.go:602:       managed-objective-sub-objective-entities-component :   1 valeurs distinctes [4294967295×2160]
+    keyframe_objective_fullstate_test.go:600:   [d9781168] records atterris 166 :
+    keyframe_objective_fullstate_test.go:602:       managed-objective-color-component          :   2 valeurs distinctes [128×498 255×166]
+    keyframe_objective_fullstate_test.go:602:       managed-objective-object-reference-component :   1 valeurs distinctes [4294967295×166]
+    keyframe_objective_fullstate_test.go:602:       managed-objective-type-component           :   1 valeurs distinctes [2947879880×166]
+    keyframe_objective_fullstate_test.go:602:       managed-objective-progress-component       :   1 valeurs distinctes [0×166]
+    keyframe_objective_fullstate_test.go:602:       managed-objective-required-progress-component :   1 valeurs distinctes [0×166]
+    keyframe_objective_fullstate_test.go:602:       managed-objective-parent-objective-component :   1 valeurs distinctes [4294967295×166]
+    keyframe_objective_fullstate_test.go:602:       managed-objective-sub-objective-entities-component :   1 valeurs distinctes [4294967295×2656]
+    keyframe_objective_fullstate_test.go:600:   [c88ec007] records atterris 124 :
+    keyframe_objective_fullstate_test.go:602:       managed-objective-color-component          :   2 valeurs distinctes [128×372 255×124]
+    keyframe_objective_fullstate_test.go:602:       managed-objective-object-reference-component :   1 valeurs distinctes [4294967295×124]
+    keyframe_objective_fullstate_test.go:602:       managed-objective-type-component           :   1 valeurs distinctes [2947879880×124]
+    keyframe_objective_fullstate_test.go:602:       managed-objective-progress-component       :   1 valeurs distinctes [0×124]
+    keyframe_objective_fullstate_test.go:602:       managed-objective-required-progress-component :   1 valeurs distinctes [0×124]
+    keyframe_objective_fullstate_test.go:602:       managed-objective-parent-objective-component :   1 valeurs distinctes [4294967295×124]
+    keyframe_objective_fullstate_test.go:602:       managed-objective-sub-objective-entities-component :   1 valeurs distinctes [4294967295×1984]
+    keyframe_objective_fullstate_test.go:600:   [64e8adfa] records atterris 168 :
+    keyframe_objective_fullstate_test.go:602:       managed-objective-color-component          :   2 valeurs distinctes [128×504 255×168]
+    keyframe_objective_fullstate_test.go:602:       managed-objective-object-reference-component :   1 valeurs distinctes [4294967295×168]
+    keyframe_objective_fullstate_test.go:602:       managed-objective-type-component           :   2 valeurs distinctes [2947879880×87 1496018944×81]
+    keyframe_objective_fullstate_test.go:602:       managed-objective-progress-component       :   1 valeurs distinctes [0×168]
+    keyframe_objective_fullstate_test.go:602:       managed-objective-required-progress-component :   1 valeurs distinctes [0×168]
+    keyframe_objective_fullstate_test.go:602:       managed-objective-parent-objective-component :   1 valeurs distinctes [4294967295×168]
+    keyframe_objective_fullstate_test.go:602:       managed-objective-sub-objective-entities-component :   1 valeurs distinctes [4294967295×2688]
+    keyframe_objective_fullstate_test.go:600:   [01e1f945] records atterris 25 :
+    keyframe_objective_fullstate_test.go:602:       managed-objective-color-component          :   2 valeurs distinctes [128×75 255×25]
+    keyframe_objective_fullstate_test.go:602:       managed-objective-object-reference-component :   1 valeurs distinctes [4294967295×25]
+    keyframe_objective_fullstate_test.go:602:       managed-objective-type-component           :   1 valeurs distinctes [1496018944×25]
+    keyframe_objective_fullstate_test.go:602:       managed-objective-progress-component       :   1 valeurs distinctes [0×25]
+    keyframe_objective_fullstate_test.go:602:       managed-objective-required-progress-component :   1 valeurs distinctes [0×25]
+    keyframe_objective_fullstate_test.go:602:       managed-objective-parent-objective-component :   1 valeurs distinctes [4294967295×25]
+    keyframe_objective_fullstate_test.go:602:       managed-objective-sub-objective-entities-component :   1 valeurs distinctes [4294967295×400]
+--- PASS: TestTI11FieldDiversity (42.23s)
+PASS
+ok  	levelup/go-api/internal/analysis/filmdec	86.547s
