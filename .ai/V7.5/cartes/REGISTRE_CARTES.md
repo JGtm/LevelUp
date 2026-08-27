@@ -84,7 +84,7 @@ metres (attendu : -0,29). `matchs` = somme des matchs de tous les map_id servis 
 | Shiro | `2890782c` | 18 | 84.0 | -0,01 | forge | REFUSEE 13/08 |
 | Domicile | `921aebb1` | 17 | 88.3 | -8,62 | forge | REFUSEE 13/08 |
 | Goliath | `504ebf22` | 17 | 52.2 | -0,02 | forge | REFUSEE 13/08 |
-| Isolation | `01af558d` | 17 | 93.9 | -0,04 | forge | VALIDEE `encre` 27/08 — navmesh : reference + rognage + tolerance 1,5 m |
+| Isolation | `01af558d` | 17 | 93.9 | -0,04 | forge | VALIDEE BETA `encre` 27/08 — navmesh : reference + rognage + tolerance 1,5 m |
 | Fortress | `0d1c9255` | 17 | 87.4 | -10,60 | forge | REFUSEE 13/08 |
 | Dredge | `e4bb06db` | 16 | 91.5 | -0,25 | forge | REFUSEE 13/08 |
 | Vagabond | `105f5d84` | 16 | 74.3 | -0,01 | forge | A RETRAVAILLER — gros |
@@ -1078,3 +1078,25 @@ il EST la zone jouable, au polygone pres, sans qu'on ait rien a dessiner a la ma
 **Piste ouverte pour les vrais callouts Forge** : le blob porte QUATRE tagfiles Havok, dont un
 `hkaiTraversalAnnotationLibrary` que nous n'ouvrons pas. Une bibliotheque d'annotations de
 traversee est l'endroit ou des noms de lieux vivraient. A instruire.
+
+### 2026-08-27 — Isolation : la marge restante, mesuree
+
+Planche : https://claude.ai/code/artifact/d4cd0358-f907-499e-ba6d-feb156853fdd
+
+**Verbatim** : « il y a encore des formes un peu gribouillis et pas aplaties, tu peux checker si
+on a un peu de marge de manoeuvre la-dessus ? Autrement je la valide a ce stade, disons en
+beta ! »
+
+**Statut : VALIDEE BETA.**
+
+| levier | de -> a | cellules vidées | effet visible |
+|---|---|---|---|
+| tolerance au sol | 1,5 -> 1,0 -> 0,6 m | 121 976 -> 137 302 -> 173 434 | **quasi nul** — 0,6 % de l'image |
+| seuil d'arete | 0,5 -> 2 m | — | **leger mais reel** : les traits parasites autour des structures se taisent |
+
+**Ce que ca etablit** : les formes qui restent sont A HAUTEUR DE SOL — ce sont les pieces de
+l'arene elles-memes, qui se chevauchent a quelques centimetres. Aucune coupe verticale ne les
+separera du sol puisqu'elles SONT le sol. Les aplatir demanderait de ne plus dessiner la
+geometrie mais le seul maillage, lisse par construction — au prix des structures.
+
+**Il n'y a pas de troisieme levier cache.**
