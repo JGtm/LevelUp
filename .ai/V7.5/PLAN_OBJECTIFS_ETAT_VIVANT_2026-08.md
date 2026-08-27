@@ -1225,14 +1225,14 @@ pour des raisons independantes.
 
 **CE QUI EST TESTE, EN UNE PHRASE** : par MANCHE, le film designe-t-il exactement TROIS zones ?
 
-- [ ] D3b.1 Les DESIGNATEURS : les slots `ti=13` portant une serie de tag 5 CHAINEE (meme
+- [x] D3b.1 Les DESIGNATEURS : les slots `ti=13` portant une serie de tag 5 CHAINEE (meme
       predicat de chainage que le volet colline — le tag 5 non chaine est de la contamination
       d'ancrage). Denombrer les slots, leurs valeurs distinctes, leurs bascules.
-- [ ] D3b.2 Les MANCHES : `objectiveevents.RealRounds` sur les enregistrements d'entite. Un
+- [x] D3b.2 Les MANCHES : `objectiveevents.RealRounds` sur les enregistrements d'entite. Un
       film sans manche lisible n'est pas exploitable, et le dit.
-- [ ] D3b.3 Par manche, l'ENSEMBLE DESIGNE : les valeurs de tag 5 DISTINCTES en vigueur pendant
+- [x] D3b.3 Par manche, l'ENSEMBLE DESIGNE : les valeurs de tag 5 DISTINCTES en vigueur pendant
       la manche. Le verdict porte sur son CARDINAL.
-- [ ] D3b.4 Verdict et fermeture.
+- [x] D3b.4 Verdict et fermeture.
 
 **« EXACTEMENT 3 », DEFINI AVANT DE COMPTER.** Le cardinal de l'ensemble designe d'une manche
 vaut **3**. Ni « au moins 3 » (14 zones designees contiendraient 3 et passeraient), ni « 3 en
@@ -1267,3 +1267,42 @@ films exploitables, la mesure s'arrete : **TC entierement `[!]`**.
     go vet ./internal/analysis/replay/
     ZONE_FILM=<chunks d'un film> go test ./internal/analysis/replay/ -run TotalControlDesignateur -v -timeout 60m
     go test ./internal/analysis/replay/...
+
+- 2026-08-27 — **D3-bis : GATE NON ATTEINT (0/6). TOTAL CONTROL PASSE `[!]` EN ENTIER — mais le
+  designateur n'est PAS refute pour autant, et la difference compte.**
+
+  | film | manches reelles | slots « designateur » | zones designees | chainage `ti=13` |
+  |---|---|---|---|---|
+  | `bf831a6b` | 1 | 3 | **1** | 9 771 / 78 529 = 12,4 % |
+  | `66aa5f0b` | 1 | 4 | **1** | 6 486 / 44 849 = 14,5 % |
+  | `2f05dc98` | 1 | 18 | **19** | 77 355 / 700 578 = 11,0 % |
+  | `d2c64f8c` | 1 | 24 | **23** | 79 725 / 1 002 091 = 8,0 % |
+  | `a521164d` | 1 | 40 | **54** | 10 043 / 189 128 = 5,3 % |
+  | `0862dce4` | 1 | 79 | **119** | 79 741 / 895 626 = 8,9 % |
+
+  **Aucun film ne rend 3.** Seuil : cardinal 3 sur >= 80 % des manches, >= 2 films — obtenu
+  **0,0 % partout**. Par l'arbitrage du 2026-08-27, branche NON : **TC entierement `[!]`**,
+  `totalcontrol_zone` ne rejoint pas `heldZoneRoles`, et **l'affichage du vivier de 13-18 formes
+  repart en DECISION PRODUIT**.
+
+  **DEUX RESERVES QUI INTERDISENT DE LIRE CECI COMME UNE REFUTATION DU DESIGNATEUR**, et il faut
+  les ecrire plutot que d'encaisser un negatif trop propre :
+
+  1. **IL N'Y A QU'UNE MANCHE PAR FILM — la premisse du protocole est FAUSSE sur ce corpus.**
+     `RealRounds` rend 1 sur les six. L'ensemble designe est donc pris sur TOUT LE MATCH, et la
+     marge de rotation de +/- 2 s ne protege RIEN (il n'y a pas de borne interieure). Un
+     designateur PARFAIT qui ferait tourner son trio N fois dans le match rendrait 3N valeurs,
+     pas 3. La mesure, telle qu'ecrite, ne peut donc pas distinguer « designateur casse » de
+     « designateur sain qui tourne » — et son unite, la manche, n'existe pas ici.
+  2. **L'ANCRAGE `ti=13` EST MAUVAIS SUR CES FILMS** : 5,3 a 14,5 % de chainage, contre 87 a
+     99 % mesures sur le corpus KOTH. Et le nombre de « slots designateurs » CROIT AVEC LA
+     TAILLE DU FILM (3 et 4 sur les deux plus legers, 79 sur le plus lourd) — signature d'une
+     contamination d'ancrage, pas d'une structure fixe d'objet de mode.
+
+  **CE QUE CELA VAUT QUAND MEME** : les deux films les plus legers, ceux dont l'ancrage est le
+  moins mauvais, rendent 3 et 4 slots et **UNE seule** valeur designee sur tout le match. C'est
+  compatible avec un objet de mode unique — mais 1 n'est pas 3, et je n'en tire rien de plus.
+
+  **AUCUNE REMESURE N'EST ENGAGEE** : elle exigerait un protocole neuf (unite = la ROTATION et
+  non la manche, plus un ancrage `ti=13` fiable sur BTB), c'est-a-dire la chasse au protocole
+  suivant que l'arbitrage du 2026-08-27 ferme explicitement. Consigne, et laisse au superviseur.
