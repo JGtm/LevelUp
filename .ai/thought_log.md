@@ -1,3 +1,33 @@
+## [2026-08-27] Rejeu 2D — lot C : sons de fin de partie (annonceur + fanfare) — Complete
+
+**Contexte** : extension du plan PLAN_REPLAY_CADRAGE_VICTOIRE (lots A/B clos la veille),
+commit `b792e3a4e` sur wt/replay-cadrage-victoire. Assets fabriques par le pilote :
+extraction des packs annonceur FR/EN + musique du jeu Steam local (recette sons-armes),
+identification par TRANSCRIPTION locale (Vosk FR/EN — 1229 repliques par langue ;
+correspondance d'ids inter-langues refutee : 0 id commun, appariement par rang refute
+sur pieces), selection VOTEE par l'utilisateur (vote_fin_partie.json), normalisation
+voix -16 LUFS / musiques -18 LUFS (« audible sans hurler »), plafond -1 dBTP.
+
+**Decision technique principale** : la conclusion sonore est un domaine A PART
+(`endMatchSound.ts`, modele grenadeSound) — premiere entree LOCALE-AWARE du catalogue
+(voix FR/EN selon la locale UI, fanfare neutre), voix + fanfare ensemble, tirage
+aleatoire entre prises (rand injecte), issue lue par LA MEME lecture que l'ecran
+(readVictory + lib/outcome). Declenchement : franchissement de la borne de fin par la
+LECTURE (`from < endFrame`), jamais au scrub — unicite sans compteur. FFA gagne :
+« Vainqueur » FR / repli « Victory » EN (« Winner » isole inexistant dans le pack,
+documente). Plafond lecteur 4 -> 12 s avec garde separee LONG_MAX_S=4 pour les
+evenements + regle « plafond >= plus long fichier livre » testee.
+
+**Resultats observes** : gate vert rejoue par le pilote (typecheck 0, 1258 tests, lint 0,
+21 warnings anterieurs) ; garde-rail d'assets prouve rouge/vert sur stem retire ;
+onzieme extraction du cliquet canvas (useReplayFx.ts, 697 -> 691). Decouverte consignee :
+son actif au rechargement => premier clic coupe au lieu d'activer (dette anterieure,
+notee au plan). Backlog alimente : fins multi-equipes par couleur (16 ids releves),
+musique d'intro (queue de build-up, option refusee en defaut).
+
+**Prochaine etape** : gate visuel + d'ECOUTE utilisateur sur les 4 temoins, puis merge
+de wt/replay-cadrage-victoire dans feat/v75.
+
 ## [2026-08-26] Rejeu 2D — cadrage T0/fin reelle + ecran de victoire : cloture du plan — Complete
 
 **Contexte** : plan .ai/V7.5/PLAN_REPLAY_CADRAGE_VICTOIRE.md sur wt/replay-cadrage-victoire
