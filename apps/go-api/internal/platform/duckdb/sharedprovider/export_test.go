@@ -43,3 +43,12 @@ func SetDrainTimeoutForTest(p Provider, d time.Duration) {
 func SetRWHoldWatchdogForTest(p Provider, d time.Duration) {
 	p.(*providerImpl).rwHoldWatchdog = d
 }
+
+// SetSlowSwapThresholdForTest configure le seuil au-delà duquel une phase du
+// cycle B-swap est journalisée en INFO au lieu de DEBUG. Par défaut 2s
+// (defaultSlowSwapThreshold) — abaissé à ~1ns en tests pour qualifier n'importe
+// quel cycle de « lent » sans devoir en fabriquer un vraiment long. d <= 0
+// désactive la remontée INFO (tout le nominal reste en DEBUG).
+func SetSlowSwapThresholdForTest(p Provider, d time.Duration) {
+	p.(*providerImpl).slowSwapThreshold = d
+}

@@ -9,11 +9,16 @@
  * LA BOUCLE D'ANIMATION EST PILOTÉE À LA MAIN : `requestAnimationFrame` est remplacé par une
  * file qu'on vide pas à pas. Sans cela un test de fin de film dépendrait de la cadence réelle
  * du navigateur de test — c'est-à-dire de rien de reproductible.
+ *
+ * ET DEPUIS LE 2026-08-26, « le début » et « la fin » sont ceux du MATCH : la dernière série
+ * vérifie que la fenêtre de gameplay (`replayWindow.ts`) déplace les deux bornes — départ,
+ * arrêt, « Recommencer » et rembobinage — sans rien changer quand elle vaut `null`.
  */
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createRef, type RefObject } from 'react'
 
+import type { ReplayWindowBounds } from './replayWindow'
 import { testReplayDoc } from './test/testDoc'
 import { useReplayPlayback } from './useReplayPlayback'
 
@@ -53,19 +58,37 @@ function tick(ts: number) {
   })
 }
 
-function mount(frameRef: RefObject<number>, draw = vi.fn(), soundTick = vi.fn()) {
+function mount(
+  frameRef: RefObject<number>,
+  playWindow: ReplayWindowBounds | null = null,
+  draw = vi.fn(),
+  soundTick = vi.fn(),
+  onEnded = vi.fn(),
+  onTransportGesture = vi.fn(),
+) {
   const view = renderHook(() =>
     useReplayPlayback({
       doc: DOC,
+      playWindow,
       baseFps: 10,
       speed: 1,
       renderWidth: 480,
       frameRef,
       draw,
       soundTick,
+      onEnded,
+      onTransportGesture,
     }),
   )
-  return { ...view, draw, soundTick }
+  return { ...view, draw, soundTick, onEnded, onTransportGesture }
+}
+
+/** Une fenêtre de gameplay dans le document de test : le match court de l'image 10 à la 40. */
+const FENETRE: ReplayWindowBounds = {
+  startFrame: 10,
+  endFrame: 40,
+  startMs: 10_000,
+  endMs: 40_000,
 }
 
 describe('useReplayPlayback — la lecture avance', () => {
@@ -148,6 +171,173 @@ describe('useReplayPlayback — la fin du rejeu reste sur l’état final', () =
     })
     expect(frameRef.current).toBe(0)
     expect(result.current.playing).toBe(true)
+  })
+})
+
+describe('useReplayPlayback — la fenêtre de gameplay borne la lecture', () => {
+  it('expose les DEUX bornes du match, pas celles du film', () => {
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 0
+    const { result } = mount(frameRef, FENETRE)
+    expect(result.current.startFrame).toBe(10)
+    expect(result.current.endFrame).toBe(40)
+  })
+
+  it('la PREMIÈRE lecture démarre au coup d’envoi, et la scène y est peinte', () => {
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 0
+    const { draw } = mount(frameRef, FENETRE)
+    expect(frameRef.current).toBe(10)
+    expect(draw).toHaveBeenCalled()
+  })
+
+  it('ne RECULE jamais la lecture déjà engagée au-delà du coup d’envoi', () => {
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 25
+    mount(frameRef, FENETRE)
+    expect(frameRef.current).toBe(25)
+  })
+
+  it('s’arrête à la FIN DÉCLARÉE, pas à la dernière image du film', () => {
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 39
+    const { result } = mount(frameRef, FENETRE)
+    tick(1_000)
+    tick(11_000) // 100 images demandées : très au-delà des deux bornes
+    expect(frameRef.current).toBe(40)
+    expect(result.current.playing).toBe(false)
+    expect(pending).toHaveLength(0)
+  })
+
+  it('« Recommencer » ramène au coup d’envoi, pas à l’image zéro', () => {
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 33
+    const { result } = mount(frameRef, FENETRE)
+    act(() => {
+      result.current.restart()
+    })
+    expect(frameRef.current).toBe(10)
+    expect(result.current.playing).toBe(true)
+  })
+
+  it('« Lecture » sur un rejeu terminé repart du coup d’envoi', () => {
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 40
+    const { result } = mount(frameRef, FENETRE)
+    tick(1_000)
+    expect(result.current.playing).toBe(false)
+    act(() => {
+      result.current.togglePlay()
+    })
+    expect(frameRef.current).toBe(10)
+    expect(result.current.playing).toBe(true)
+  })
+
+  it('SANS fenêtre, les bornes restent celles du film — rien ne change', () => {
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 0
+    const { result } = mount(frameRef)
+    expect(result.current.startFrame).toBe(0)
+    expect(result.current.endFrame).toBe(50)
+    act(() => {
+      result.current.restart()
+    })
+    expect(frameRef.current).toBe(0)
+  })
+})
+
+/**
+ * L'ARRIVÉE EN FIN DE MATCH (lot C, 2026-08-27) — c'est d'ici que part le son de fin de partie.
+ *
+ * CE QUE CES CAS TIENNENT, et ce sont deux erreurs qui ne se voient pas à la relecture : une
+ * annonce qui partirait DEUX fois (fanfare doublée), et une annonce qui partirait sur une frise
+ * tirée jusqu'au bout alors que la décision D-C1 la réserve à la LECTURE. La distinction est
+ * dans un seul mot du code — l'image d'AVANT le pas était-elle en deçà de la borne.
+ */
+describe('useReplayPlayback — l’arrivée en fin de match s’annonce', () => {
+  it('la lecture qui FRANCHIT la borne annonce, une fois et une seule', () => {
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 39
+    const { onEnded } = mount(frameRef, FENETRE)
+    tick(1_000) // amorce : rien n'a encore été parcouru
+    expect(onEnded).not.toHaveBeenCalled()
+    tick(11_000) // la lecture passe 39 -> 40
+    expect(onEnded).toHaveBeenCalledTimes(1)
+    // La boucle s'est arrêtée : plus une image demandée, donc plus une annonce possible.
+    expect(pending).toHaveLength(0)
+  })
+
+  it('une frise tirée JUSQU’AU BOUT n’annonce rien (D-C1)', () => {
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 40 // le curseur est DÉJÀ sur la borne : le pas ne parcourt rien
+    const { result, onEnded } = mount(frameRef, FENETRE)
+    tick(1_000)
+    expect(result.current.playing).toBe(false)
+    expect(onEnded).not.toHaveBeenCalled()
+  })
+
+  it('« Recommencer » réarme : la prochaine arrivée s’annonce de nouveau', () => {
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 39
+    const { result, onEnded } = mount(frameRef, FENETRE)
+    tick(1_000)
+    tick(11_000)
+    expect(onEnded).toHaveBeenCalledTimes(1)
+    act(() => {
+      result.current.restart()
+    })
+    tick(20_000) // amorce de la nouvelle lecture, au coup d'envoi
+    tick(24_000) // 4 s à 10 images/s : la borne est de nouveau franchie
+    expect(frameRef.current).toBe(40)
+    expect(onEnded).toHaveBeenCalledTimes(2)
+  })
+
+  it('sans fenêtre, c’est la fin du FILM qui s’annonce — même règle', () => {
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 49
+    const { onEnded } = mount(frameRef)
+    tick(1_000)
+    tick(11_000)
+    expect(frameRef.current).toBe(50)
+    expect(onEnded).toHaveBeenCalledTimes(1)
+  })
+})
+
+/**
+ * LES GESTES DE TRANSPORT PRÉVIENNENT LE SON (correctif du 2026-08-27) — c'est par là qu'un
+ * rejeu rechargé, dont la préférence était restée à « activé », retrouve son lecteur : un
+ * AudioContext ne naît que dans un geste utilisateur, et ces deux boutons en sont.
+ */
+describe('useReplayPlayback — les commandes de transport préviennent le son', () => {
+  it('« Lecture »/« Pause » est un geste : le son en est averti', () => {
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 20
+    const { result, onTransportGesture } = mount(frameRef)
+    act(() => {
+      result.current.togglePlay()
+    })
+    expect(onTransportGesture).toHaveBeenCalledTimes(1)
+  })
+
+  it('« Recommencer » aussi, et le rembobinage se fait quand même', () => {
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 33
+    const { result, onTransportGesture } = mount(frameRef, FENETRE)
+    act(() => {
+      result.current.restart()
+    })
+    expect(onTransportGesture).toHaveBeenCalledTimes(1)
+    expect(frameRef.current).toBe(10)
+    expect(result.current.playing).toBe(true)
+  })
+
+  it('la boucle d’animation, elle, ne prévient personne : ce n’est pas un geste', () => {
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 0
+    const { onTransportGesture } = mount(frameRef)
+    tick(1_000)
+    tick(2_000)
+    expect(onTransportGesture).not.toHaveBeenCalled()
   })
 })
 

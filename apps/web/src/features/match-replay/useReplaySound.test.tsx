@@ -16,6 +16,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { KillEvent } from '@/features/match-view/_momentum'
 
+import type { EndMatchSoundSpec } from './endMatchSound'
 import { SOUND_MAX_SPEED } from './replaySoundCursor'
 import { type FakeContext, flushAudio, installFakeAudio } from './test/fakeAudio'
 import { testReplayDoc } from './test/testDoc'
@@ -215,5 +216,194 @@ describe('useReplaySound — préférences', () => {
     expect(result.current.volume).toBe(1)
     act(() => result.current.setVolume(-2))
     expect(result.current.volume).toBe(0)
+  })
+})
+
+/**
+ * LE RETOUR SUR UNE PAGE DONT LE SON ÉTAIT DÉJÀ ACTIVÉ (correctif du 2026-08-27).
+ *
+ * LE DÉFAUT QUE CES CAS FIXENT, signalé à l'usage : la préférence revient du stockage local, le
+ * lecteur non (un AudioContext ne naît que dans un geste). Le panneau annonçait donc « son
+ * activé » sur un rejeu muet, et le clic suivant — le seul geste qui pouvait tout réparer —
+ * basculait la préférence à « coupé ». Il fallait DEUX clics pour entendre quoi que ce soit.
+ *
+ * `localStorage` est posé À LA MAIN plutôt que par un premier montage : ce qu'on veut
+ * reproduire est un RECHARGEMENT DE PAGE, c'est-à-dire une préférence sans lecteur — un premier
+ * montage laisserait derrière lui un contexte audio déjà ouvert et testerait autre chose.
+ */
+describe('useReplaySound — le son déjà activé revit au premier geste', () => {
+  /** L'état exact d'un rechargement : la préférence dit « activé », rien n'est encore né. */
+  function reloadWithSoundOn() {
+    localStorage.setItem('replay-sound-on', 'true')
+    return mount()
+  }
+
+  it('au chargement, la préférence est là mais RIEN ne sonne — c’est le désaccord à réparer', () => {
+    const { result } = reloadWithSoundOn()
+    expect(result.current.on).toBe(true)
+    act(() => result.current.tick(1_900))
+    act(() => result.current.tick(2_050)) // le kill passe ici
+    expect(ctx.gains).toHaveLength(0) // aucun lecteur : pas même un gain maître
+    expect(ctx.sources).toHaveLength(0)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('LE PREMIER CLIC ACTIVE : le son part, et la préférence RESTE à « activé »', async () => {
+    const { result } = reloadWithSoundOn()
+    act(() => result.current.toggle())
+    await act(async () => { await flushAudio() })
+    expect(result.current.on).toBe(true)
+    expect(localStorage.getItem('replay-sound-on')).toBe('true')
+    expect(ctx.resumed).toBe(1)
+    act(() => result.current.tick(1_900))
+    act(() => result.current.tick(2_050))
+    expect(ctx.sources).toHaveLength(1)
+  })
+
+  it('le clic SUIVANT coupe, comme d’habitude : la bascule n’est pas cassée', async () => {
+    const { result } = reloadWithSoundOn()
+    act(() => result.current.toggle()) // celui-ci active
+    await act(async () => { await flushAudio() })
+    act(() => result.current.toggle()) // celui-ci coupe
+    expect(result.current.on).toBe(false)
+    expect(localStorage.getItem('replay-sound-on')).toBe('false')
+    act(() => result.current.tick(1_900))
+    act(() => result.current.tick(2_050))
+    expect(ctx.sources).toHaveLength(0)
+  })
+
+  it('un geste de transport suffit : le son revient sans passer par le bouton', async () => {
+    const { result } = reloadWithSoundOn()
+    act(() => result.current.wake())
+    await act(async () => { await flushAudio() })
+    expect(result.current.on).toBe(true)
+    act(() => result.current.tick(1_900))
+    act(() => result.current.tick(2_050))
+    expect(ctx.sources).toHaveLength(1)
+  })
+
+  it('son COUPÉ : un geste de transport n’ouvre aucun contexte (la doctrine tient)', () => {
+    const { result } = mount() // préférence par défaut : coupé
+    act(() => result.current.wake())
+    expect(ctx.gains).toHaveLength(0)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('un geste de transport de plus ne recrée rien : le lecteur né reste le seul', async () => {
+    const { result } = reloadWithSoundOn()
+    act(() => result.current.wake())
+    await act(async () => { await flushAudio() })
+    const gains = ctx.gains.length
+    act(() => result.current.wake())
+    act(() => result.current.wake())
+    expect(ctx.gains).toHaveLength(gains)
+    expect(ctx.resumed).toBe(1)
+  })
+
+  it('la CONCLUSION sonore en bénéficie : un rejeu réveillé qui atteint la fin sonne', async () => {
+    localStorage.setItem('replay-sound-on', 'true')
+    const doc = docWithCouple()
+    const { result } = renderHook(() =>
+      useReplaySound(doc, [kill()], 0, 1, undefined, { outcome: 'win', ffa: false, locale: 'fr' }),
+    )
+    act(() => result.current.wake())
+    await act(async () => { await flushAudio() })
+    act(() => result.current.endMatch())
+    expect(ctx.sources).toHaveLength(2) // la voix et la fanfare
+  })
+})
+
+/**
+ * LA FIN DE PARTIE (lot C, 2026-08-27). Les règles de SÉLECTION ont leurs tests
+ * (endMatchSound.test.ts) ; ici on ne juge que le câblage — que la conclusion obéisse aux mêmes
+ * silences que le reste (son coupé, avance rapide), que ses prises soient DÉJÀ chargées quand
+ * elle part (un fichier demandé à l'arrivée sonnerait après le silence), et que la voix et la
+ * fanfare partent bien ENSEMBLE, deux voix du lecteur et non un fichier pré-mixé.
+ */
+describe('useReplaySound — la fin de partie', () => {
+  const VICTOIRE_FR: EndMatchSoundSpec = { outcome: 'win', ffa: false, locale: 'fr' }
+
+  /** Le hook, monté sur le même match d'un kill, avec une fin de partie à annoncer. */
+  function mountWithEnd(spec: EndMatchSoundSpec | null = VICTOIRE_FR) {
+    const doc = docWithCouple()
+    const kills = [kill()]
+    return renderHook(() => useReplaySound(doc, kills, 0, 1, undefined, spec))
+  }
+
+  it('son coupé : la conclusion ne sonne pas, et n’ouvre aucun contexte au passage', () => {
+    const { result } = mountWithEnd()
+    act(() => result.current.endMatch())
+    expect(ctx.sources).toHaveLength(0)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('les prises sont préchargées AVEC la piste, tirage compris', async () => {
+    const { result } = mountWithEnd()
+    act(() => result.current.toggle())
+    await act(async () => { await flushAudio() })
+    const charges = fetchMock.mock.calls.map((c) => String(c[0]))
+    expect(charges).toContain('/static/sounds/halo_infinite/end_victory_voice_fr_01.wav')
+    expect(charges).toContain('/static/sounds/halo_infinite/end_victory_voice_fr_02.wav')
+    expect(charges).toContain('/static/sounds/halo_infinite/end_victory_music_01.wav')
+    expect(charges).toContain('/static/sounds/halo_infinite/hinf_br75.wav')
+  })
+
+  it('à l’arrivée, la voix et la fanfare partent ensemble — deux voix, pas une', async () => {
+    const { result } = mountWithEnd()
+    act(() => result.current.toggle())
+    await act(async () => { await flushAudio() })
+    act(() => result.current.endMatch())
+    expect(ctx.sources).toHaveLength(2)
+  })
+
+  it('avance rapide : la conclusion se tait aussi, comme l’annonce le panneau', async () => {
+    const doc = docWithCouple()
+    const { result } = renderHook(() =>
+      useReplaySound(doc, [kill()], 0, SOUND_MAX_SPEED * 2, undefined, VICTOIRE_FR),
+    )
+    act(() => result.current.toggle())
+    await act(async () => { await flushAudio() })
+    expect(result.current.mutedBySpeed).toBe(true)
+    act(() => result.current.endMatch())
+    expect(ctx.sources).toHaveLength(0)
+  })
+
+  it('fin non lisible : rien à charger, rien à jouer — le reste du son est intact', async () => {
+    const { result } = mountWithEnd(null)
+    act(() => result.current.toggle())
+    await act(async () => { await flushAudio() })
+    expect(fetchMock).toHaveBeenCalledTimes(1) // le seul son du match : le kill au BR
+    act(() => result.current.endMatch())
+    expect(ctx.sources).toHaveLength(0)
+  })
+})
+
+/**
+ * LA PISTE POUR LA VIDÉO (décision 6 du plan de capture). Ce que ces cas tiennent : un rejeu
+ * muet ne fabrique AUCUN nœud audio — le son est coupé par défaut, et filmer un match ne doit
+ * pas ouvrir un contexte que personne n'a demandé.
+ */
+describe('useReplaySound — la piste d’enregistrement', () => {
+  it('son coupé : pas de piste, et surtout aucun contexte ouvert au passage', () => {
+    const { result } = mount()
+    expect(result.current.recordingTrack()).toBeNull()
+    expect(ctx.streamDests).toHaveLength(0)
+  })
+
+  it('son activé : la piste existe et vient du lecteur en cours', async () => {
+    const { result } = mount()
+    act(() => result.current.toggle())
+    await act(async () => { await flushAudio() })
+    expect(result.current.recordingTrack()).toBe(ctx.streamDests[0].track)
+  })
+
+  it('couper le son après coup rend de nouveau `null`', async () => {
+    // Le clip EN COURS garde sa piste (elle est câblée au démarrage) : ce que ce cas dit,
+    // c'est qu'un enregistrement lancé APRÈS la coupure repart muet.
+    const { result } = mount()
+    act(() => result.current.toggle())
+    await act(async () => { await flushAudio() })
+    act(() => result.current.toggle())
+    expect(result.current.recordingTrack()).toBeNull()
   })
 })

@@ -58,12 +58,15 @@ function makeSound(over: Partial<ReplaySound> = {}): ReplaySound {
     available: true,
     on: false,
     toggle: vi.fn(),
+    wake: vi.fn(),
     volume: 0.7,
     setVolume: vi.fn(),
     mutedBySpeed: false,
     categories: { weapon: true, grenade: true, melee: true, equipment: true, objective: true },
     toggleCategory: vi.fn(),
     tick: vi.fn(),
+    endMatch: vi.fn(),
+    recordingTrack: () => null,
     ...over,
   }
 }

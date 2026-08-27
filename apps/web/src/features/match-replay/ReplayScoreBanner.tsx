@@ -40,6 +40,7 @@ import { scoreTimelineOf, type ReplayScoreDocument } from '@/lib/replay/scoreTim
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
 import { formatClock } from './replayLogic'
+import { displayClockMs, type ReplayWindowBounds } from './replayWindow'
 import { readScoreBanner, type ScoreBannerSide } from './scoreBannerLogic'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
 
@@ -54,12 +55,25 @@ interface Props {
   xuidMeta?: XuidMeta
   /** Image de lecture courante — le score est lu À CE frame, pas à la fin du match. */
   frame: number
-  /** Position de lecture en millisecondes, déjà calculée par la page pour le fil. */
+  /** Position de lecture en millisecondes sur l'axe BRUT du film, calculée par la page. */
   nowMs: number
+  /**
+   * La fenêtre de gameplay : l'horloge du bandeau se lit sur le MATCH, pas sur le film
+   * (D-A2) — 0:00 au coup d'envoi. `null` = pas de cadrage : l'axe du film, comme avant.
+   */
+  playWindow: ReplayWindowBounds | null
   locale: ReplayLocale
 }
 
-export function ReplayScoreBanner({ doc, scoreboard, xuidMeta, frame, nowMs, locale }: Props) {
+export function ReplayScoreBanner({
+  doc,
+  scoreboard,
+  xuidMeta,
+  frame,
+  nowMs,
+  playWindow,
+  locale,
+}: Props) {
   const t = REPLAY_TEXT[locale]
   const reading = useMemo(
     () => readScoreBanner(scoreTimelineOf(doc), scoreboard, xuidMeta, frame),
@@ -78,7 +92,7 @@ export function ReplayScoreBanner({ doc, scoreboard, xuidMeta, frame, nowMs, loc
           className="font-mono text-sm font-bold leading-none tabular-nums"
           aria-label={t.scoreBannerClock}
         >
-          {formatClock(nowMs)}
+          {formatClock(displayClockMs(nowMs, playWindow))}
         </span>
         {/* LA MANCHE, seulement quand le mode en a plusieurs : sur un mode à manche unique
             elle ne dirait rien que le total ne dise déjà. Discrète — c'est un repère. */}
