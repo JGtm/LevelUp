@@ -1,0 +1,135 @@
+# GATE D1 — ti=11 sur le flux DELTA — 2026-08-27 19:51
+# corpus : 5 Oddball (24dbb67d,43716616,92f18088,d9781168,c88ec007) + CTF 64e8adfa + KOTH 01e1f945
+# GATE : >= 80 % des records delta ti=11 parsent (chainage = temoin de largeur) ET >= 1 champ vivant non-sentinelle evolue
+# cadre delta = matchWorldObjectRecord + consumeByName (grammaire 34-feuilles) ; NON le cadre C5 keyframe
+
+=== RUN   TestTI11DeltaParse
+2026/08/27 19:51:28 WARN empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte (mise a jour du jeu ?) ; le film reste decode empreinte=7307582345129211936 empreinte_connue=7053924395561516366 blocs=118 slots_non_vides=1068
+    ti11_delta_test.go:297:   [24dbb67d] bande OBSERVEE 10 slots · records 641 · walked 388 (60.5 %) · chained 5 (1.3 % des walked) · broken 253 · hors-grammaire 39.3 %
+    ti11_delta_test.go:300:       TEMOIN fantome 10 slots · records 1208 · walked 723 (59.9 %) · chained 43
+    ti11_delta_test.go:297:   [43716616] bande OBSERVEE 10 slots · records 376 · walked 199 (52.9 %) · chained 15 (7.5 % des walked) · broken 177 · hors-grammaire 46.5 %
+    ti11_delta_test.go:300:       TEMOIN fantome 10 slots · records 730 · walked 515 (70.5 %) · chained 30
+2026/08/27 19:51:48 WARN empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte (mise a jour du jeu ?) ; le film reste decode empreinte=11979330793883025789 empreinte_connue=7053924395561516366 blocs=118 slots_non_vides=1067
+    ti11_delta_test.go:297:   [92f18088] bande OBSERVEE 11 slots · records 1337 · walked 591 (44.2 %) · chained 24 (4.1 % des walked) · broken 746 · hors-grammaire 55.5 %
+    ti11_delta_test.go:300:       TEMOIN fantome 11 slots · records 2364 · walked 1245 (52.7 %) · chained 318
+    ti11_delta_test.go:297:   [d9781168] bande OBSERVEE 16 slots · records 2667 · walked 1179 (44.2 %) · chained 72 (6.1 % des walked) · broken 1488 · hors-grammaire 51.9 %
+    ti11_delta_test.go:300:       TEMOIN fantome 16 slots · records 2858 · walked 1652 (57.8 %) · chained 77
+    ti11_delta_test.go:297:   [c88ec007] bande OBSERVEE 15 slots · records 71651 · walked 25014 (34.9 %) · chained 881 (3.5 % des walked) · broken 46637 · hors-grammaire 63.4 %
+    ti11_delta_test.go:300:       TEMOIN fantome 15 slots · records 1944 · walked 1156 (59.5 %) · chained 38
+    ti11_delta_test.go:297:   [64e8adfa] bande OBSERVEE 10 slots · records 4680 · walked 2513 (53.7 %) · chained 137 (5.5 % des walked) · broken 2167 · hors-grammaire 45.9 %
+    ti11_delta_test.go:300:       TEMOIN fantome 10 slots · records 6421 · walked 5472 (85.2 %) · chained 290
+    ti11_delta_test.go:297:   [01e1f945] bande OBSERVEE 1 slots · records 75 · walked 38 (50.7 %) · chained 12 (31.6 % des walked) · broken 37 · hors-grammaire 49.3 %
+    ti11_delta_test.go:300:       TEMOIN fantome 1 slots · records 55 · walked 20 (36.4 %) · chained 1
+    ti11_delta_test.go:313: ======== CUMUL PARSE (7 films) ========
+    ti11_delta_test.go:314:   records 81427 · walked 29922 (36.7 %) · chained 1146 (1.4 % des records, 3.8 % des walked) · hors-grammaire 61.6 %
+    ti11_delta_test.go:316:   GATE D1 volet parse : >= 80 % des records parsent proprement (chained est le temoin de largeur)
+--- PASS: TestTI11DeltaParse (80.93s)
+=== RUN   TestTI11DeltaLiving
+    ti11_delta_test.go:432:   [24dbb67d] (records marches 388)
+    ti11_delta_test.go:441:       i3  object-ref (PORTEUR) : present    20 · distinctes  13 · NON-sentinelle    20 · (Gen,Slot)  12 dont EVOLUENT   6 · seq max 4 · [2684496556×5 2147658528×4 805308013×1 1077020129×1 1620049955×1 670277489×1 ...]
+    ti11_delta_test.go:441:       i1  couleur R (camp)      : present     8 · distinctes   8 · NON-sentinelle     7 · (Gen,Slot)   7 dont EVOLUENT   1 · seq max 2 · [128×1 3×1 146×1 94×1 216×1 96×1 ...]
+    ti11_delta_test.go:441:       i12 progression           : present    12 · distinctes  12 · NON-sentinelle    12 · (Gen,Slot)  11 dont EVOLUENT   1 · seq max 2 · [11666908×1 11666918×1 1754267714×1 3269496424×1 1653342339×1 2147658528×1 ...]
+    ti11_delta_test.go:441:       i16-31 sous-entites       : present   168 · distinctes 135 · NON-sentinelle   168 · (Gen,Slot)  31 dont EVOLUENT  26 · seq max 19 · [1074025817×7 1284505666×5 1610795031×4 3934789833×3 349760×3 2147658528×3 ...]
+    ti11_delta_test.go:432:   [43716616] (records marches 199)
+    ti11_delta_test.go:441:       i3  object-ref (PORTEUR) : present     3 · distinctes   2 · NON-sentinelle     3 · (Gen,Slot)   2 dont EVOLUENT   0 · seq max 2 · [3969795584×2 3179528333×1]
+    ti11_delta_test.go:441:       i1  couleur R (camp)      : present     3 · distinctes   3 · NON-sentinelle     3 · (Gen,Slot)   3 dont EVOLUENT   0 · seq max 1 · [96×1 20×1 130×1]
+    ti11_delta_test.go:441:       i12 progression           : present     4 · distinctes   4 · NON-sentinelle     4 · (Gen,Slot)   4 dont EVOLUENT   0 · seq max 1 · [3684639008×1 3188199130×1 1879048314×1 8661479×1]
+    ti11_delta_test.go:441:       i16-31 sous-entites       : present    84 · distinctes  80 · NON-sentinelle    84 · (Gen,Slot)  33 dont EVOLUENT  23 · seq max 7 · [397482497×3 541066×2 145507800×2 1140133178×1 1061913984×1 576793664×1 ...]
+    ti11_delta_test.go:432:   [92f18088] (records marches 591)
+    ti11_delta_test.go:441:       i3  object-ref (PORTEUR) : present     8 · distinctes   8 · NON-sentinelle     8 · (Gen,Slot)   6 dont EVOLUENT   2 · seq max 2 · [2147658528×1 1573128069×1 4144014540×1 365126471×1 123852056×1 1652580913×1 ...]
+    ti11_delta_test.go:441:       i1  couleur R (camp)      : present    28 · distinctes  14 · NON-sentinelle    28 · (Gen,Slot)   9 dont EVOLUENT   3 · seq max 15 · [133×14 93×2 211×1 201×1 38×1 205×1 ...]
+    ti11_delta_test.go:441:       i12 progression           : present    20 · distinctes  20 · NON-sentinelle    20 · (Gen,Slot)  13 dont EVOLUENT   4 · seq max 4 · [1263534085×1 1261340741×1 1617546158×1 2377453658×1 1077019981×1 2152458789×1 ...]
+    ti11_delta_test.go:441:       i16-31 sous-entites       : present   271 · distinctes 248 · NON-sentinelle   271 · (Gen,Slot)  40 dont EVOLUENT  36 · seq max 32 · [953533184×11 1073829264×8 3127120656×3 11192343×2 234471488×2 805397516×2 ...]
+    ti11_delta_test.go:432:   [d9781168] (records marches 1179)
+    ti11_delta_test.go:441:       i3  object-ref (PORTEUR) : present    33 · distinctes  33 · NON-sentinelle    33 · (Gen,Slot)  22 dont EVOLUENT   8 · seq max 4 · [4045804096×1 2693171×1 2539787240×1 1103579503×1 2061293728×1 949674429×1 ...]
+    ti11_delta_test.go:441:       i1  couleur R (camp)      : present   173 · distinctes  52 · NON-sentinelle   172 · (Gen,Slot)  28 dont EVOLUENT  14 · seq max 68 · [55×36 119×30 53×16 183×13 123×8 118×5 ...]
+    ti11_delta_test.go:441:       i12 progression           : present    24 · distinctes  23 · NON-sentinelle    24 · (Gen,Slot)  18 dont EVOLUENT   4 · seq max 4 · [4263044×2 842627×1 367978955×1 8659093×1 4149288484×1 2348827152×1 ...]
+    ti11_delta_test.go:441:       i16-31 sous-entites       : present   615 · distinctes 517 · NON-sentinelle   615 · (Gen,Slot)  64 dont EVOLUENT  58 · seq max 75 · [2385057843×16 4091576815×13 4193272247×11 2684496556×10 4290806255×6 4091577199×5 ...]
+    ti11_delta_test.go:432:   [c88ec007] (records marches 25014)
+    ti11_delta_test.go:441:       i3  object-ref (PORTEUR) : present    39 · distinctes  39 · NON-sentinelle    39 · (Gen,Slot)  23 dont EVOLUENT   8 · seq max 5 · [2466433450×1 26436681×1 2370249886×1 1359845411×1 3245118991×1 922374446×1 ...]
+    ti11_delta_test.go:441:       i1  couleur R (camp)      : present   215 · distinctes  45 · NON-sentinelle   215 · (Gen,Slot)  34 dont EVOLUENT  12 · seq max 56 · [53×67 183×32 55×22 52×12 26×11 27×9 ...]
+    ti11_delta_test.go:441:       i12 progression           : present    39 · distinctes  39 · NON-sentinelle    39 · (Gen,Slot)  17 dont EVOLUENT   7 · seq max 14 · [8757863×1 965829120×1 868559107×1 523257×1 3203643118×1 9085543×1 ...]
+    ti11_delta_test.go:441:       i16-31 sous-entites       : present   836 · distinctes 642 · NON-sentinelle   836 · (Gen,Slot)  60 dont EVOLUENT  56 · seq max 297 · [4089479663×20 1810858507×18 4223697391×14 4112548335×12 4102062831×8 3465543746×7 ...]
+    ti11_delta_test.go:432:   [64e8adfa] (records marches 2513)
+    ti11_delta_test.go:441:       i3  object-ref (PORTEUR) : present   122 · distinctes 120 · NON-sentinelle   122 · (Gen,Slot)  15 dont EVOLUENT   8 · seq max 49 · [1962934342×3 2460212457×1 1738960297×1 3389494761×1 3668246536×1 2460087549×1 ...]
+    ti11_delta_test.go:441:       i1  couleur R (camp)      : present   185 · distinctes  67 · NON-sentinelle   184 · (Gen,Slot)  14 dont EVOLUENT   9 · seq max 70 · [217×17 33×16 119×14 107×11 70×10 144×8 ...]
+    ti11_delta_test.go:441:       i12 progression           : present   118 · distinctes  78 · NON-sentinelle   118 · (Gen,Slot)  15 dont EVOLUENT  10 · seq max 41 · [2931029035×41 1610795061×1 245796025×1 3882089689×1 4188031488×1 3169228976×1 ...]
+    ti11_delta_test.go:441:       i16-31 sous-entites       : present   855 · distinctes 803 · NON-sentinelle   855 · (Gen,Slot)  38 dont EVOLUENT  36 · seq max 354 · [754180096×28 89539010×4 540797632×3 402698764×3 1073829264×3 3197108293×3 ...]
+    ti11_delta_test.go:432:   [01e1f945] (records marches 38)
+    ti11_delta_test.go:441:       i3  object-ref (PORTEUR) : present     1 · distinctes   1 · NON-sentinelle     1 · (Gen,Slot)   1 dont EVOLUENT   0 · seq max 1 · [2148578317×1]
+    ti11_delta_test.go:441:       i1  couleur R (camp)      : present     2 · distinctes   2 · NON-sentinelle     2 · (Gen,Slot)   2 dont EVOLUENT   0 · seq max 1 · [96×1 244×1]
+    ti11_delta_test.go:441:       i12 progression           : present     0 · distinctes   0 · NON-sentinelle     0 · (Gen,Slot)   0 dont EVOLUENT   0 · seq max 0 · []
+    ti11_delta_test.go:441:       i16-31 sous-entites       : present    22 · distinctes  21 · NON-sentinelle    22 · (Gen,Slot)   4 dont EVOLUENT   4 · seq max 10 · [540672992×2 36351107×1 540672800×1 3221360063×1 2681018285×1 540680192×1 ...]
+    ti11_delta_test.go:372: ======== CUMUL VIVANT bande OBSERVEE (7 films, 29922 records marches) ========
+    ti11_delta_test.go:432:   [OBSERVEE] (records marches 29922)
+    ti11_delta_test.go:441:       i3  object-ref (PORTEUR) : present   226 · distinctes 214 · NON-sentinelle   226 · (Gen,Slot)  81 dont EVOLUENT  32 · seq max 49 · [2147658528×6 2684496556×5 1962934342×3 3969795584×2 2285703180×1 23630094×1 ...]
+    ti11_delta_test.go:441:       i1  couleur R (camp)      : present   614 · distinctes 134 · NON-sentinelle   611 · (Gen,Slot)  96 dont EVOLUENT  39 · seq max 70 · [53×86 55×59 183×53 119×48 217×18 33×16 ...]
+    ti11_delta_test.go:441:       i12 progression           : present   217 · distinctes 174 · NON-sentinelle   217 · (Gen,Slot)  77 dont EVOLUENT  26 · seq max 41 · [2931029035×41 2147658528×3 4263044×2 763715825×1 1512541637×1 885407041×1 ...]
+    ti11_delta_test.go:441:       i16-31 sous-entites       : present  2851 · distinctes 2405 · NON-sentinelle  2851 · (Gen,Slot) 266 dont EVOLUENT 236 · seq max 354 · [754180096×28 4089479663×20 1810858507×18 4091576815×17 2385057843×16 4223697391×14 ...]
+    ti11_delta_test.go:374: ======== CONTROLE bande FANTOME (10783 records marches) — doit paraitre AUSSI vivant si c'est du bruit ========
+    ti11_delta_test.go:432:   [FANTOME] (records marches 10783)
+    ti11_delta_test.go:441:       i3  object-ref (PORTEUR) : present   323 · distinctes 262 · NON-sentinelle   323 · (Gen,Slot)  89 dont EVOLUENT  34 · seq max 57 · [2147483648×10 1610795031×7 3949527044×6 2684496556×6 220300×5 692772385×4 ...]
+    ti11_delta_test.go:441:       i1  couleur R (camp)      : present   760 · distinctes 116 · NON-sentinelle   757 · (Gen,Slot)  95 dont EVOLUENT  41 · seq max 91 · [64×169 79×53 0×32 1×28 99×22 93×20 ...]
+    ti11_delta_test.go:441:       i12 progression           : present   108 · distinctes 100 · NON-sentinelle   108 · (Gen,Slot)  61 dont EVOLUENT  14 · seq max 11 · [1322633538×5 3106428944×2 2147658528×2 1653604418×2 11669024×2 11667454×1 ...]
+    ti11_delta_test.go:441:       i16-31 sous-entites       : present  7844 · distinctes 1745 · NON-sentinelle  7782 · (Gen,Slot) 258 dont EVOLUENT 221 · seq max 1375 · [109397312×5354 4294967295×62 3173065392×48 4225794539×28 398492139×22 36351105×21 ...]
+    ti11_delta_test.go:386:   TEMOIN aleatoire : 4096 GlobalID 32b au hasard, 0 dans l'ensemble non-sentinelle observe (|obs|=2615) | 0.000 %
+    ti11_delta_test.go:388:   GATE D1 volet vivant : >= 1 champ non-sentinelle qui EVOLUE dans le temps
+--- PASS: TestTI11DeltaLiving (67.47s)
+=== RUN   TestTI11DeltaSiblingRef
+    ti11_delta_test.go:414:   [24dbb67d] ti=13 (frere) : slots 286 · records 59030 · walked 31564 · chained 1207 (3.8 % des walked)
+    ti11_delta_test.go:414:   [43716616] ti=13 (frere) : slots 332 · records 69101 · walked 35401 · chained 1561 (4.4 % des walked)
+    ti11_delta_test.go:414:   [92f18088] ti=13 (frere) : slots 351 · records 57387 · walked 39362 · chained 2022 (5.1 % des walked)
+    ti11_delta_test.go:414:   [d9781168] ti=13 (frere) : slots 706 · records 170224 · walked 93698 · chained 4502 (4.8 % des walked)
+    ti11_delta_test.go:414:   [c88ec007] ti=13 (frere) : slots 705 · records 174445 · walked 93659 · chained 4086 (4.4 % des walked)
+    ti11_delta_test.go:414:   [64e8adfa] ti=13 (frere) : slots 911 · records 365210 · walked 176609 · chained 5587 (3.2 % des walked)
+    ti11_delta_test.go:414:   [01e1f945] ti=13 (frere) : slots 52 · records 10575 · walked 6867 · chained 4193 (61.1 % des walked)
+    ti11_delta_test.go:419: ======== CUMUL REFERENCE ti=13 : walked 477160 · chained 23158 (4.9 % des walked) ========
+    ti11_delta_test.go:421:   A COMPARER au chainage ti=11 de TestTI11DeltaParse (meme cadre, meme corpus).
+--- PASS: TestTI11DeltaSiblingRef (57.18s)
+PASS
+ok  	levelup/go-api/internal/analysis/filmdec	206.174s
+EXIT=0
+
+# ============================================================================
+# VERDICT D1 (ecrit apres mesure, 2026-08-27) — GATE NON TENU
+# ============================================================================
+#
+# VOLET PARSE : NON TENU. Chainage (SEUL temoin de largeur ; le "walked" ne teste
+#   que l'absence de debordement, les desers ti=11 rendent toujours ported=true) :
+#   CUMUL 3,8 % des walked (1,4 % des records) contre 80 % exige ; par film 1,3-7,5 %
+#   sur Oddball/CTF, 31,6 % sur KOTH mais n=38 records POUR TOUT LE MATCH. Hors-grammaire
+#   CUMUL 61,6 % (indices masque > 33 : contamination de bande, cf. R4 45,9 %). Bande
+#   FANTOME (slots jamais ti=11) INDISTINGUABLE ou SUPERIEURE (walked 36-85 %, chained
+#   30-318 vs observee 5-137) : aucun signal detachable du bruit.
+#
+# REFERENCE ti=13 (frere, MEME cadre delta matchWorldObjectRecord+consumeByName, EN PROD
+#   zone_state_scan.go) : le cadre N'EST PAS universellement casse — il chaine 61,1 %
+#   (4193/6867) sur KOTH 01e1f945, LE mode qui utilise les zones. Sur Oddball/CTF (modes
+#   SANS zones ni objectif-zone) ti=13 est AUSSI au bruit (3,2-5,1 %). Donc : le cadre
+#   objet-du-monde porte de l'etat LA OU le mode le replique, et sur KOTH — le seul cas
+#   ou il est prouve porter du signal — ti=11 rend 38 records/match, 0 progression, 1 seule
+#   valeur i3 : le DESCRIPTEUR d'objectif n'emet quasi AUCUN delta vivant.
+#
+# VOLET VIVANT : les champs i3/i1/i12/i16-31 PARAISSENT vivants (non-sentinelle, evoluent)
+#   MAIS la moisson sur la bande FANTOME est INDISTINGUABLE (i3 present 323 vs 226 ;
+#   i16-31 present 7844 vs 2851 ; meme profil non-sentinelle/evoluant). i12 "progression"
+#   rend des valeurs a ~3 milliards (une progression vaut 0..100). Ce sont des BITS
+#   ARBITRAIRES lus comme des R(32) par des marches qui NE CHAINENT PAS (3,8 %) : 32 bits
+#   au hasard ne valent presque jamais 0xFFFFFFFF (donc "non-sentinelle") et different a
+#   chaque fois (donc "evoluent"). Temoin aleatoire 0,000 % : l'ensemble observe est creux,
+#   mais creux = ce que produit AUSSI la lecture de bruit sur 2^32.
+#
+# CONCLUSION : l'etat VIVANT de ti=11 (porteur i3, owner i1, progression i12/i13, zones
+#   i16-31) n'est recuperable NI dans le keyframe (etat par defaut = sentinelles, T2 du lot
+#   cadre) NI dans le flux DELTA cadre objet-du-monde (ce lot). Il n'est PAS porte par un
+#   record ti=11 parsable. La grammaire 34-feuilles est juste (keyframe 90,32 %) ; l'archetype
+#   managed-objective est un DESCRIPTEUR de HUD dont les champs vivants sont vraisemblablement
+#   CALCULES cote client depuis d'autres etats repliques (ti=13 pour l'owner de zone, deja
+#   publie 88-89 % ; ti=42 objet physique pour le crane/drapeau, deja publie).
+#
+# i3 (porteur) : ne nomme meme PAS un objet stable ici (bruit), rien a croiser au calque ti=42.
+#
+# REPRISE (protocole) : bascule voie STATBORG pour le porteur — MAIS le registre montre que
+#   le statborg a DEJA ete inventorie NEGATIF (lot O/D10 O4, 2026-08-27 : 0 compteur de crane
+#   replique). Donc la reprise honnete du PORTEUR individuel est hors v7.5 (verite terrain
+#   Theater datee). Pour les ZONES : owner deja publie via ti=13. NE PAS s'acharner.
