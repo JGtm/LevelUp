@@ -104,6 +104,8 @@ type OptionsCuissonForge struct {
 	// PlancherTranche / PlafondTranche : memes roles que dans OptionsCuisson.
 	PlancherTranche float64
 	PlafondTranche  float64
+	// SeuilArete : voir Rendu.SeuilArete.
+	SeuilArete float64
 }
 
 // CuitCarteForge rend le fond de carte d'une carte Forge en posant les modeles de ses objets.
@@ -121,6 +123,7 @@ func CuitCarteForge(ctx context.Context, opts OptionsCuissonForge) (*Rendu, Bila
 	}
 
 	r := CadreSurAncresEchelle(opts.Ancres, EchellePourCadre(opts.Ancres, opts.Echelle, opts.CibleCadrePx))
+	r.SeuilArete = opts.SeuilArete
 	// LA TRANCHE, TRANSLATEE AU SOL DES ANCRES. Le sol de Vagabond vit vers z=52 : c'est ici
 	// qu'on a compris qu'une tranche absolue n'avait pas de sens, et la chaine native applique
 	// desormais la meme regle (cf. `TrancheDeJeu`).

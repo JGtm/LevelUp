@@ -89,6 +89,7 @@ func (e *environnement) cuitNatives(ctx context.Context) []bilanAsset {
 			CombleTrous:            e.combleTrousDe(c.cle),
 			PlancherTranche:        e.plancherTrancheDe(c.cle),
 			PlafondTranche:         e.plafondTrancheDe(c.cle),
+			SeuilArete:             e.seuilAreteDe(c.cle),
 			ZonesNommees:           e.zonesNommeesDe(c.cle),
 			RogneAuxZones:          e.rogneAuxZonesDe(c.cle),
 			MargeZones:             e.margeZonesDe(c.cle),
@@ -209,6 +210,7 @@ func (e *environnement) cuitForge(ctx context.Context) []bilanAsset {
 			PlancherTranche:        e.plancherTrancheDe(carte.MapID),
 			PlafondTranche:         e.plafondTrancheDe(carte.MapID),
 			DessineCanevas:         e.dessineCanevasDe(carte.MapID),
+			SeuilArete:             e.seuilAreteDe(carte.MapID),
 		})
 		if err != nil {
 			slog.ErrorContext(ctx, "cuisson Forge", "err", err, "carte", carte.Nom, "map_id", carte.MapID)
