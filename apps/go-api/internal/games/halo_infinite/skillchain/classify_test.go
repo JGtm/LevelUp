@@ -56,6 +56,30 @@ func TestClassifyLUSRChain_Golden(t *testing.T) {
 		{"BTB:CTF on Highpower", chainBTB}, // CTF dans BTB → btb (pas arena_objectif)
 		// pair_name vide → arena_slayer (fallback safe)
 		{"", chainArenaSlayer},
+
+		// ── Corpus D-I corrigé (lot 1bis, plan .ai/PLAN_PERF_NOTE_OBJECTIFS.md) ──
+		// Les 25 matchs SOCIAUX qui tombaient en arena_slayer : Assaut, VIP, et les
+		// pair_name INVERSÉS (mode à gauche du deux-points). Fixtures issues des
+		// exemples réels de l'annexe du rapport de lot 0.
+		{"Assault:Neutral Bomb on Origin", chainArenaObjectif},
+		{"Assault:One Bomb on Curfew", chainArenaObjectif},
+		{"Assault:Neutral Bomb Squad on Rat's Nest", chainArenaObjectif},
+		{"Arena:VIP on Catalyst", chainArenaObjectif},
+		{"Strongholds:Arena on Behemoth", chainArenaObjectif},
+		{"Arena:CTF 3 Captures on Argyle", chainArenaObjectif},
+		// Non-régressions de la règle du préfixe : un préfixe hors liste ne bascule
+		// pas, et les catégories chaos/BTB gardent la priorité sur la famille.
+		{"Slayer:Arena on Behemoth", chainArenaSlayer},
+		{"Community:Fiesta Slayer on High Ground", chainArenaSlayer},
+		{"Arena:Team Snipers on Isolation", chainArenaSlayer},
+		{"Husky Raid:Oddball on Pharaoh", chainChaos},
+		{"Fiesta:CTF on Bazaar", chainChaos},
+		{"Event:CTF on Streets", chainChaos},
+		{"Rocket Hog Race:Strongholds on Highpower", chainChaos},
+		{"BTB:Strongholds on Fragmentation", chainBTB},
+		// Catégorie Other : la famille est lue des deux côtés du deux-points
+		// (le fallback Rumble Pit:Slayer → arena_slayer est couvert plus haut).
+		{"Rumble Pit:Oddball on Bazaar", chainArenaObjectif},
 	}
 	for _, tc := range cases {
 		t.Run(tc.pairName, func(t *testing.T) {

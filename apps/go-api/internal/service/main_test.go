@@ -23,6 +23,7 @@ import (
 // d'intégration (achievements_integration_test.go).
 func TestMain(m *testing.M) {
 	sync.SetLUSRChainClassifier(skillchain.ClassifyLUSRChain)
+	sync.SetObjectiveFamilyClassifier(skillchain.IsObjectiveSubMode)
 	migration.SetTitleStepsProvider(halomigrations.StepsFor)
 	os.Exit(m.Run())
 }

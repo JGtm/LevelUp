@@ -1710,9 +1710,21 @@ func runMigrations(metaPath, sharedPath, sharedSocialPath, pvePath, prestigeConf
 	// les autres titres gardent le défaut Infinite. Sans ça, h5 collapserait tous
 	// ses modes dans arena_slayer (classifier Infinite sur pair_name vide).
 	syncpkg.SetLUSRChainClassifierForTitle(halo5.TitleSlug, halo5.ClassifyLUSRChain)
+	// Scission ranked par famille (D-A) : classifier title-owned de la famille
+	// objectif, consommé par GetPerformanceChain pour trancher entre les chaînes
+	// de performance ranked_slayer et ranked_objectif. h5 n'a pas de pair_name →
+	// classifier dédié qui répond false (tout son classé va en ranked_slayer).
+	syncpkg.SetObjectiveFamilyClassifier(skillchain.IsObjectiveSubMode)
+	syncpkg.SetObjectiveFamilyClassifierForTitle(halo5.TitleSlug, halo5.IsObjectiveSubMode)
 	// Lot B (audit robustesse) : fail-fast au boot si le classifier LUSR par
 	// défaut n'a pas été posé, au lieu du panic tardif au 1er match live.
 	if err := syncpkg.ValidateLUSRChainClassifierWired(); err != nil {
+		return fmt.Errorf("boot: %w", err)
+	}
+	// Idem pour la famille objectif : sans elle, tout le classé serait noté en
+	// ranked_slayer (le fallback existe pour les binaires hors chemin de scoring,
+	// pas pour le serveur).
+	if err := syncpkg.ValidateObjectiveFamilyClassifierWired(); err != nil {
 		return fmt.Errorf("boot: %w", err)
 	}
 

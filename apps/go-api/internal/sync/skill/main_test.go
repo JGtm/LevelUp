@@ -12,5 +12,6 @@ import (
 // du TestMain sync (migration_provider_test.go) pour le package skill extrait (K3c).
 func TestMain(m *testing.M) {
 	SetLUSRChainClassifier(skillchain.ClassifyLUSRChain)
+	SetObjectiveFamilyClassifier(skillchain.IsObjectiveSubMode)
 	os.Exit(m.Run())
 }

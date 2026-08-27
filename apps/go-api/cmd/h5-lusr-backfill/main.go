@@ -73,6 +73,9 @@ func main() {
 	// Classifier LUSR title-aware (défaut Infinite + h5).
 	lusync.SetLUSRChainClassifier(skillchain.ClassifyLUSRChain)
 	lusync.SetLUSRChainClassifierForTitle(halo5.TitleSlug, halo5.ClassifyLUSRChain)
+	// Famille de la chaîne de perf classée (ranked_slayer / ranked_objectif).
+	lusync.SetObjectiveFamilyClassifier(skillchain.IsObjectiveSubMode)
+	lusync.SetObjectiveFamilyClassifierForTitle(halo5.TitleSlug, halo5.IsObjectiveSubMode)
 
 	// Mode canonical (écrit match_skill_rank).
 	if err := os.Setenv("LEVELUP_LUSR_V2_ENABLED", "1"); err != nil {

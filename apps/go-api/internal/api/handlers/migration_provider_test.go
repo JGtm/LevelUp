@@ -20,5 +20,6 @@ func TestMain(m *testing.M) {
 	// MT-15 : des handlers atteignent sync.GetLUSRChain (placement match-history) →
 	// câbler le classifier (fail-loud par design).
 	sync.SetLUSRChainClassifier(skillchain.ClassifyLUSRChain)
+	sync.SetObjectiveFamilyClassifier(skillchain.IsObjectiveSubMode)
 	os.Exit(m.Run())
 }

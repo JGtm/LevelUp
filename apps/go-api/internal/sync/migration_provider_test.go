@@ -25,5 +25,10 @@ func TestMain(m *testing.M) {
 	// GetLUSRChain panique — fail-loud par design). Couvre TestGetLUSRChain,
 	// TestGetPerformanceChain et tous les tests d'intégration de scoring.
 	sync.SetLUSRChainClassifier(skillchain.ClassifyLUSRChain)
+	// Scission ranked par famille : classifier de famille objectif, consommé par
+	// GetPerformanceChain (ranked_slayer / ranked_objectif). Sans lui, le fallback
+	// classerait tout le classé en ranked_slayer et TestGetPerformanceChain
+	// échouerait — c'est voulu : les tests vérifient le régime CÂBLÉ.
+	sync.SetObjectiveFamilyClassifier(skillchain.IsObjectiveSubMode)
 	os.Exit(m.Run())
 }
