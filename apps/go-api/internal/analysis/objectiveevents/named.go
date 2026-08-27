@@ -104,6 +104,13 @@ var namedStatSlots = map[string]map[statSlotKey]statSlot{
 		{3, sideA}:  {Stat: StatAssists},
 		{12, sideB}: {Stat: StatAssists, Redundant: true},
 	},
+	// VIP : `comp 22 A` reproduit `TimesSelectedAsVip` EXACTEMENT par joueur (100 % x3 films,
+	// somme-film decale = 0, gate corrige `VIP_temoin_corrige.log`) — le MEME emplacement que
+	// `flag_grabs` en CTF, le sens change avec le mode. Chaque increment DATE une selection VIP,
+	// donc l'ouverture d'une periode de port de couronne (patron `flag_carries`).
+	ObjectiveTypeVip: {
+		{22, sideA}: {Stat: StatVipSelected},
+	},
 }
 
 // Noms canoniques des STATISTIQUES, tels que `match_objective_stats` les nomme et que le
@@ -133,6 +140,7 @@ const (
 	StatFlagCarriersKilled = "flag_carriers_killed"
 	StatZoneCaptures       = "zone_captures"
 	StatZoneSecures        = "zone_secures"
+	StatVipSelected        = "vip_selected"
 	StatKills              = "kills"
 	StatAssists            = "assists"
 )

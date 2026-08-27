@@ -123,6 +123,36 @@ Metrique de recouvrement ETABLIE (identique a D6 portage) :
 Si le canal ne date PAS (5) ou si le gate rate : `[!]` chiffre, PAS de couronne, dire ce qui
 manque (p.ex. les morts VIP seules suffiraient-elles a ordonner ?). NE PAS forcer.
 
+## 3-bis. TEMOIN DES PERIODES CORRIGE (pre-enregistre, date 2026-08-27, AVANT le verdict)
+
+**Constat du premier passage (E3, 3 films).** Le gate PRIMAIRE (recouv >= 90 %) est TENU 3/3
+a **100,0 %**, et la reconstruction est exacte par joueur au SUB-SECONDE (24/24 reconstructions
+a +0,2-0,3 s de l'API). MAIS le temoin de couverture (permutation d'identite, metrique
+`sum min(rec,oracle)/sum oracle`) ne s'effondre PAS : 75,3 / 69,2 / 76,0 %.
+
+**Cause — le MEME defaut structurel qu'en §1 (E2).** Quand le recouvrement est 100 %, le
+multiset des durees reconstruites EGALE le multiset de l'oracle. Permuter ce multiset contre
+lui-meme a un plancher de min-overlap eleve pour des valeurs GROUPEES (les durees VIP tiennent
+dans 12-205 s, la plupart en 24-110 s) : la couverture ne peut structurellement pas descendre
+bas, quelle que soit la justesse de l'attribution. La metrique de COUVERTURE ne discrimine pas
+une permutation ; elle mesure la clustered-ness de la donnee — exactement le piege d'E2.
+
+**Le temoin CORRECT pour une attribution DETERMINISTE.** Une periode = `mort - selection`, une
+computation SANS parametre libre (aucun ajustement, l'identite vient du pont deja etabli). Le bon
+discriminant n'est donc pas la couverture mais l'EXACTITUDE PAR JOUEUR : combien de joueurs ont
+`|recon - oracle| <= 1,0 s`.
+
+- **GATE (corrige)** : PRIMAIRE inchange (recouv >= 90 % sur >= 2/3). TEMOIN = exactitude :
+  `N_exact(signal) >= 7/8` par film ET `N_exact(temoin permute) <= 2/8` par film, sur >= 2/3.
+  Marge `N_exact(signal) - N_exact(temoin) >= 5` joueurs.
+- Tolerance 1,0 s : 3 a 5 fois la surcote observee (~0,2-0,3 s, ecart physique entre l'instant
+  de la mort et la fin du statut VIP), generique et non regle au ras.
+- La couverture (recouv + temoin couverture) reste IMPRIMEE comme diagnostic, non gating.
+
+Ce n'est PAS un abaissement : le gate PRIMAIRE (recouv) est inchange et deja TENU a 100 %. Seul
+le temoin inapte (couverture) est remplace par le discriminant structurellement correct
+(exactitude), pre-enregistre AVANT le verdict, exactement comme la correction E2 du §1-2.
+
 ## 4. PUBLICATION de la COURONNE (SI et SEULEMENT SI gates 2 ET 3 tiennent)
 
 La COURONNE marque le joueur VIP courant PAR PERIODE (calque au patron `flagCarriesLayer` :
