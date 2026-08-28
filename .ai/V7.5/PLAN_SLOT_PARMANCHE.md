@@ -34,7 +34,7 @@ joueur).
   `rosterLogic.test.ts` mis à jour + nouveaux tests mono-manche neutre PROUVÉ + multi-manche
   corrigé avec contre-épreuve (scénario « deux DinoR00 / SHROOM »).
 
-- [ ] **E2 — Hook `useSlotIdentity.ts`.** Retourner résolveurs frame-aware `(slot, frame)`.
+- [x] **E2 — Hook `useSlotIdentity.ts`.** Retourner résolveurs frame-aware `(slot, frame)`.
   Convertir `distinctSlotColors` en résolveur frame-aware. Retirer l'export `slotColors` map
   (remplacé par `colorOfSlot`). Gate : `useSlotIdentity.test.ts` + typecheck.
 
