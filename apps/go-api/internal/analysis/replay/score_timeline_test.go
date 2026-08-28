@@ -63,7 +63,7 @@ func TestScoreTimelineRoundsAndTotal(t *testing.T) {
 	recs = append(recs, modeRamp(6, 0, 2_000, 1_000, 1, 2, 3)...)
 	recs = append(recs, modeRamp(6, 1, 6_000, 1_000, 1, 2, 3)...)
 
-	tl, cov := buildScoreTimeline(&ScoreInput{Records: recs}, testClock())
+	tl, cov := buildScoreTimeline(&ScoreInput{Records: recs}, nil, testClock())
 	if tl == nil || len(tl.Teams) != 1 {
 		t.Fatalf("attendu 1 courbe d'equipe, obtenu %+v", tl)
 	}
@@ -103,7 +103,7 @@ func TestScoreTimelineRoundsAndTotal(t *testing.T) {
 // l'ecart entre les deux zeros (3,6 s a 50,8 s selon le match).
 func TestScoreTimelineSubtractsOrigin(t *testing.T) {
 	recs := modeRamp(6, 0, 2_000, 1_000, 1, 2, 3)
-	tl, _ := buildScoreTimeline(&ScoreInput{Records: recs}, testClock())
+	tl, _ := buildScoreTimeline(&ScoreInput{Records: recs}, nil, testClock())
 	if tl == nil || len(tl.Teams) != 1 {
 		t.Fatalf("aucune courbe d'equipe : %+v", tl)
 	}
@@ -121,7 +121,7 @@ func TestScoreTimelineSubtractsOrigin(t *testing.T) {
 // de frame ou aller ; les ecraser sur la frame 0 inventerait un score au coup d'envoi.
 func TestScoreTimelineDropsEmissionsBeforeFrameZero(t *testing.T) {
 	recs := modeRamp(6, 0, 500, 1_000, 1, 2, 3) // 500, 1 500, 2 500 ms de film
-	tl, _ := buildScoreTimeline(&ScoreInput{Records: recs}, testClock())
+	tl, _ := buildScoreTimeline(&ScoreInput{Records: recs}, nil, testClock())
 	if tl == nil || len(tl.Teams) != 1 {
 		t.Fatalf("aucune courbe d'equipe : %+v", tl)
 	}
@@ -141,7 +141,7 @@ func TestScoreTimelineTeamIdentityByFinalScore(t *testing.T) {
 	recs = append(recs, modeRamp(8, 0, 2_500, 1_000, 1, 2)...)    // final 2
 	scores := [2]int{2, 3}                                        // team_0 = 2, team_1 = 3
 
-	tl, cov := buildScoreTimeline(&ScoreInput{Records: recs, TeamScores: &scores}, testClock())
+	tl, cov := buildScoreTimeline(&ScoreInput{Records: recs, TeamScores: &scores}, nil, testClock())
 	if cov.TeamIdentity != ScoreIdentityFinal {
 		t.Fatalf("identite = %q, attendu %q", cov.TeamIdentity, ScoreIdentityFinal)
 	}
@@ -170,18 +170,18 @@ func TestScoreTimelineTargetScore(t *testing.T) {
 		return out
 	}
 
-	tl, _ := buildScoreTimeline(&ScoreInput{Records: recs(), TargetScore: 3}, testClock())
+	tl, _ := buildScoreTimeline(&ScoreInput{Records: recs(), TargetScore: 3}, nil, testClock())
 	if tl.TargetScore == nil || *tl.TargetScore != 3 {
 		t.Fatalf("cible = %v, attendu 3 (finals 3 et 2, cible respectee)", tl.TargetScore)
 	}
 
-	tl, _ = buildScoreTimeline(&ScoreInput{Records: recs(), TargetScore: 2}, testClock())
+	tl, _ = buildScoreTimeline(&ScoreInput{Records: recs(), TargetScore: 2}, nil, testClock())
 	if tl.TargetScore != nil {
 		t.Fatalf("cible = %d publiee alors qu'un final (3) la depasse : la table est perimee, "+
 			"le calque doit se taire", *tl.TargetScore)
 	}
 
-	tl, _ = buildScoreTimeline(&ScoreInput{Records: recs()}, testClock())
+	tl, _ = buildScoreTimeline(&ScoreInput{Records: recs()}, nil, testClock())
 	if tl.TargetScore != nil {
 		t.Fatalf("cible = %d publiee sans cible en entree", *tl.TargetScore)
 	}
@@ -191,7 +191,7 @@ func TestScoreTimelineTargetScore(t *testing.T) {
 // frags de chaque camp qui designe le slot d'equipe.
 func TestScoreTimelineTeamIdentityByFrags(t *testing.T) {
 	in := fragsIdentityInput()
-	tl, cov := buildScoreTimeline(in, testClock())
+	tl, cov := buildScoreTimeline(in, nil, testClock())
 	if cov.TeamIdentity != ScoreIdentityFrags {
 		t.Fatalf("identite = %q, attendu %q", cov.TeamIdentity, ScoreIdentityFrags)
 	}
@@ -213,7 +213,7 @@ func TestScoreTimelineTeamIdentityUnresolved(t *testing.T) {
 	in := fragsIdentityInput()
 	in.TeamByXUID = nil // le pont des camps disparait ; les scores etaient deja a egalite
 
-	tl, cov := buildScoreTimeline(in, testClock())
+	tl, cov := buildScoreTimeline(in, nil, testClock())
 	if cov.TeamIdentity != ScoreIdentityUnresolved {
 		t.Fatalf("identite = %q, attendu %q", cov.TeamIdentity, ScoreIdentityUnresolved)
 	}
@@ -231,7 +231,7 @@ func TestScoreTimelinePublishesOnlyPairedPlayers(t *testing.T) {
 	// La ligne du joueur du slot 16 disparait : son triplet ne designe plus aucune ligne.
 	in.Lines = in.Lines[:3]
 
-	tl, _ := buildScoreTimeline(in, testClock())
+	tl, _ := buildScoreTimeline(in, nil, testClock())
 	if len(tl.Players) != 3 {
 		t.Fatalf("%d joueur(s) publie(s), attendu 3 : %+v", len(tl.Players), tl.Players)
 	}
@@ -245,7 +245,7 @@ func TestScoreTimelinePublishesOnlyPairedPlayers(t *testing.T) {
 // TestScoreTimelinePlayerCounters — les quatre compteurs d'un joueur sont publies, chacun sous
 // ses deux formes, et leur total vaut la ligne de match.
 func TestScoreTimelinePlayerCounters(t *testing.T) {
-	tl, _ := buildScoreTimeline(fragsIdentityInput(), testClock())
+	tl, _ := buildScoreTimeline(fragsIdentityInput(), nil, testClock())
 	var p *PlayerScore
 	for i := range tl.Players {
 		if tl.Players[i].XUID == "x10" {
@@ -277,7 +277,7 @@ func TestScoreTimelinePlayerCounters(t *testing.T) {
 // un mensonge : la courbe s'arrete avant la fin du match.
 func TestScoreTimelinePropagatesTruncation(t *testing.T) {
 	recs := modeRamp(6, 0, 2_000, 1_000, 1, 2, 3)
-	_, cov := buildScoreTimeline(&ScoreInput{Records: recs, Truncated: true}, testClock())
+	_, cov := buildScoreTimeline(&ScoreInput{Records: recs, Truncated: true}, nil, testClock())
 	if !cov.Truncated {
 		t.Error("la troncature n'est pas propagee a la couverture")
 	}
@@ -286,7 +286,7 @@ func TestScoreTimelinePropagatesTruncation(t *testing.T) {
 // TestScoreTimelineWithoutInput — sans entree, ni calque NI couverture : l'absence de
 // couverture dit « rien n'a ete fourni a lire », ce qu'aucun compteur a zero ne dirait.
 func TestScoreTimelineWithoutInput(t *testing.T) {
-	tl, cov := buildScoreTimeline(nil, testClock())
+	tl, cov := buildScoreTimeline(nil, nil, testClock())
 	if tl != nil || cov != nil {
 		t.Errorf("sans entree : calque %v, couverture %v ; attendu nil et nil", tl, cov)
 	}
@@ -295,7 +295,7 @@ func TestScoreTimelineWithoutInput(t *testing.T) {
 // TestScoreTimelineEmptyFilmKeepsCoverage — un film sans enregistrement rend une couverture
 // PRESENTE et vide de courbes : c'est ce qui le distingue du cas precedent.
 func TestScoreTimelineEmptyFilmKeepsCoverage(t *testing.T) {
-	tl, cov := buildScoreTimeline(&ScoreInput{}, testClock())
+	tl, cov := buildScoreTimeline(&ScoreInput{}, nil, testClock())
 	if tl != nil {
 		t.Errorf("calque publie sur un film vide : %+v", tl)
 	}
@@ -381,7 +381,7 @@ func TestScoreTicksSameFrameDifferentValues(t *testing.T) {
 // TestScoreTimelinePlayerCountersHaveNoRepeats — le meme controle, mais SUR LE CALQUE ASSEMBLE :
 // aucune serie publiee ne doit porter deux points consecutifs de meme valeur.
 func TestScoreTimelinePlayerCountersHaveNoRepeats(t *testing.T) {
-	tl, cov := buildScoreTimeline(repeatedCountersInput(), testClock())
+	tl, cov := buildScoreTimeline(repeatedCountersInput(), nil, testClock())
 	if tl == nil || len(tl.Players) == 0 {
 		t.Fatal("aucun joueur publie")
 	}
@@ -461,7 +461,7 @@ func TestScoreTimelineIdentityWhenFilmDiffersFromRegistry(t *testing.T) {
 		TeamScores: &scores,
 	}
 
-	tl, cov := buildScoreTimeline(in, testClock())
+	tl, cov := buildScoreTimeline(in, nil, testClock())
 	if cov.TeamIdentity != ScoreIdentityFrags {
 		t.Fatalf("identite = %q, attendu %q : (a) doit DECLINER quand les finales du film ne "+
 			"valent aucun des scores du registre, et (b) doit resoudre",
