@@ -5013,3 +5013,46 @@ Chiffres du gate lot 1 : `go build ./...` exit 0 ; `go test -tags=integration
 ./internal/platform/duckdb/... ./internal/service/... ./internal/domain/...` 13 packages ok ;
 `go vet ./...` exit 0 ; openapi-gen + generate-types + openapi-check (les deux maillons) exit 0
 — diff de contrat = UN champ ; `npm run typecheck` exit 0.
+
+## 2026-08-28 — Lecteur, phase 2 : la piste Medias est vivante (lot 2, le mappeur)
+
+`EMPTY_MEDIA` n'est plus la source de la piste : elle en est le DEFAUT. Entre les deux, un
+mappeur pur de 120 lignes qui fait UNE soustraction et refuse d'en faire davantage.
+
+**TROIS HORLOGES, UNE SEULE SOUSTRACTION.** Un media porte des instants absolus (l'heure de la
+capture) ; le match commence a `header.start_time` ; le film cale son image zero `originMs`
+plus tard. D'ou `replayMs = (capture − start_time) − originMs`, qui est EXACTEMENT la doctrine
+du fil (`event_time_ms + t0Ms − originMs`) ecrite pour une source qui donne des dates au lieu
+d'un offset : `capture − start_time` est ce que `event_time_ms + t0Ms` reconstruit. Le recalage
+a lieu dans la PAGE, une fois, comme le fil — deux recalages menes separement divergent, et une
+vignette ne serait alors plus a l'instant de la ligne qu'on lit a cote.
+
+**CE QU'ON REFUSE D'INVENTER.** Un media sans le moindre horodatage est ecarte. Un en-tete sans
+heure de debut vide la piste entiere. Un horodatage illisible vaut une absence, pas un NaN pose
+sur la frise. Une pose au hasard serait pire que le vide : elle se lirait comme un fait.
+
+**CE QU'ON ACCEPTE DE DEGRADER.** Sans origine publiee (artefact anterieur au schema v4), on
+prend zero : la piste se decale du retard de l'image zero au lieu de disparaitre. Un clip sans
+debut ET sans duree se pose sur sa fin — au pire il apparait sa propre duree trop tard.
+
+**VIDE N'EST PAS ABSENTE, et les deux se ressemblent a l'ecran.** « Aucun media sur ce match »
+est un fait du match ; un titre qui n'a pas de medias n'a rien a dire, et la rangee y mentirait.
+La piste disparait donc quand le titre ne declare pas la capability `media` — le rejeu, lui,
+n'est garde que par `matchmaking`, les deux ne se recouvrent pas. Le hook `useCapability` est
+appele dans `useReplayTimeline` : `FeatureGate` est un composant, il aurait fallu envelopper une
+rangee de grille a deux colonnes.
+
+**LE CLIQUET A COUTE TROIS LIGNES ET ON LES A RENDUES.** `ReplayCanvas` etait a 672/672 : la
+prop `media` (import du type, declaration, commentaire) l'aurait mis a 675. Compense dans le
+perimetre — le commentaire de `feedEntries` couvre desormais les DEUX listes assemblees par la
+page (c'est la meme doctrine, donc la meme phrase), et celui de l'appel au hook perd son rappel
+d'historique. Fichier a 672 exactement.
+
+**L'IDENTITE EST `file_id`, jamais `file_path`** : le chemin est mute par la conversion et le
+transcodage HLS. Un identifiant qui bouge d'un rendu a l'autre casserait le rapprochement — et
+c'est precisement ce que le lot 3 va devoir affronter cote lecture.
+
+Chiffres du gate lot 2 (cache typecheck purge) : `npm run typecheck` exit 0 ; vitest
+`src/features/match-replay` + `src/routes` = 104 fichiers / **1598 tests, 0 echec** (+16 : 15
+pour le mappeur, 1 pour la rangee absente) ; ESLint 0 erreur sur 9 fichiers touches, 1 warning
+PRE-EXISTANT (exhaustive-deps objectiveObjects).

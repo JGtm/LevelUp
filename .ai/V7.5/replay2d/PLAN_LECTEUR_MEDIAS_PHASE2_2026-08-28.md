@@ -69,7 +69,7 @@ exit 0.
 
 ## LOT 2 — Web : mapper pur + branchement de la prop
 
-- [ ] 2-1 `replayMediaLogic.ts` (nouveau, match-replay) : `buildReplayMedia(mediaTab,
+- [x] 2-1 `replayMediaLogic.ts` (nouveau, match-replay) : `buildReplayMedia(mediaTab,
       header, originMs)` -> `ReplayMediaItem[]` pur. Regles : mapping kind
       (`video`->'clip', `image`->'image') ; regle temporelle ci-dessus ; `durationMs =
       duration_seconds*1000` (clip sans duree ET sans start = pose ponctuelle a end,
@@ -77,19 +77,38 @@ exit 0.
       carto) ; `thumbUrl = thumbnail_url ?? (image ? url : '')` ; `label = basename`
       (+ auteur si le DTO le porte — verifier sur pieces) ; item sans le moindre timestamp
       = ECARTE (jamais une pose inventee).
-- [ ] 2-2 Tests `replayMediaLogic.test.ts` : soustraction duree (clip end-only), start
+- [x] 2-2 Tests `replayMediaLogic.test.ts` : soustraction duree (clip end-only), start
       prioritaire, image ponctuelle, originMs absent, duration NULL, id stable, ecartes.
-- [ ] 2-3 Branchement : `replay.tsx` memo `buildReplayMedia(...)` -> prop `media` de
+- [x] 2-3 Branchement : `replay.tsx` memo `buildReplayMedia(...)` -> prop `media` de
       `ReplayCanvas` -> option `media` de `useReplayTimeline` (remplace `EMPTY_MEDIA` a
       l'unique ligne 99-104 ; la constante devient la VALEUR PAR DEFAUT de l'option, son
       commentaire mis a jour — phase 2 livree).
-- [ ] 2-4 Capability : la piste Medias ne se rend que si le titre porte `media`
+- [x] 2-4 Capability : la piste Medias ne se rend que si le titre porte `media`
       (le rejeu n'est garde que par `matchmaking` — piege releve par la carto) : prop
       `showMediaTrack` sur ReplayTimelineTracks, servie par le mecanisme capability web
       existant (FeatureGate/hook — verifier sur pieces lequel), rangée ABSENTE sinon
       (pas un etat vide menteur). Cross-joueur assume : un clip d'un coequipier apparait
       (meme regle que l'onglet medias du match).
-- [ ] 2-G Gate : typecheck ; vitest match-replay + routes ; ESLint. Commit lot 2.
+- [x] 2-G Gate : typecheck ; vitest match-replay + routes ; ESLint. Commit lot 2.
+
+Journal lot 2 (2026-08-28) : ancres verifiees sur pieces — `EMPTY_MEDIA` bien a
+useReplayTimeline.ts:99-104, `useMatchView` bien a replay.tsx:68, doctrine de recalage
+bien a killFeedLogic.ts:16. Mecanisme capability retenu : le hook `useCapability('media')`
+(lib/capabilities), appele DANS `useReplayTimeline` — `FeatureGate` est un composant, il
+aurait impose une rangee enveloppee dans la grille a 2 colonnes. Fail-open assume (c'est
+le contrat du hook) : bootstrap non charge = piste affichee, no-op mono-titre.
+DEUX DECISIONS non ecrites au plan, prises en lecture conservatrice : (a) en-tete sans
+`start_time` = AUCUN media place (rien a recaler, on n'invente pas) ; (b) `originMs` absent
+= 0, la pose se degrade du decalage de l'image zero plutot que de faire disparaitre la
+piste — meme choix que le reste du lecteur.
+CLIQUET ReplayCanvas : la prop `media` coutait 3 lignes sur un fichier a 672/672. Compense
+DANS LE PERIMETRE : le bloc de commentaire de `feedEntries` couvre desormais les deux listes
+(meme doctrine, meme phrase) et celui de l'appel au hook perd sa ligne de rappel historique.
+Fichier a 672 exactement, cliquet vert.
+Gates : `npm run typecheck` (cache purge) exit 0 ; vitest `src/features/match-replay` +
+`src/routes` = 104 fichiers / **1598 tests, 0 echec** (+16 : 15 mappeur, 1 rangee absente) ;
+ESLint 0 erreur sur les 9 fichiers touches, 1 warning PRE-EXISTANT (exhaustive-deps
+objectiveObjects, deja consigne au lot 5 du chantier lecteur).
 
 ## LOT 3 — Web : lightbox compatible HLS
 
@@ -161,3 +180,9 @@ wt/lecteur-medias. Un seul lot ouvert a la fois.
   test est `!== null` alors que le champ est `omitempty`, donc `undefined` quand absent —
   une image sans `kind` est classee 'clip'. Comportement INCHANGE par le lot 1 (une image
   n'a toujours pas de duree).
+- (lot 2, 2026-08-28) DEUX schemas media coexistent au contrat : `MatchAssociatedMedia`
+  (celui que `media_tab.media_items` sert reellement) et `AssociatedMediaItem` (un autre
+  schema Go, sans `capture_start_time`, avec `duration_seconds` en float). `MatchMediaTab.tsx`
+  se type sur le SECOND alors qu'il recoit le premier : les champs coincident aujourd'hui,
+  donc rien ne casse et `tsc` ne voit rien. HORS PERIMETRE — le mappeur du rejeu, lui, se
+  type sur `MatchMediaTab['media_items']`, c'est-a-dire sur ce qui arrive vraiment.

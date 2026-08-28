@@ -50,6 +50,7 @@ function makeTimeline(over: Partial<ReplayTimeline> = {}): ReplayTimeline {
     allyOf: () => null,
     labelOf: () => '',
     media: [],
+    showMediaTrack: true,
     playing: true,
     onRequestPause: vi.fn(),
     startClock: '0:00',
