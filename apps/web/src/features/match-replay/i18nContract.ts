@@ -436,17 +436,30 @@ export interface ReplayText {
   /**
    * LA PISTE DES MÉDIAS, son état VIDE, et la lightbox qui ouvre un média.
    *
-   * LE RENDU EST COMPLET, LA DONNÉE ARRIVE APRÈS (endpoint par match — cf. registre des
-   * reports) : la piste s'affiche avec un état vide HONNÊTE, et « aucun média » est un fait
-   * vrai aujourd'hui pour tous les matchs, pas un trou masqué. `mediaPausedHint` est la
-   * pastille de la lightbox : ouvrir un média met le rejeu en pause, et sans ce mot un lecteur
-   * qui referme ne saurait pas pourquoi le film n'a pas avancé.
+   * LA DONNÉE EST ARRIVÉE le 2026-08-28 (phase 2 : l'onglet médias du match, recalé sur l'axe
+   * du rejeu) : « aucun média » reste un état honnête, mais c'est désormais un fait DU MATCH
+   * et non plus l'attente d'une source. `mediaPausedHint` est la pastille de la lightbox :
+   * ouvrir un média met le rejeu en pause, et sans ce mot un lecteur qui referme ne saurait
+   * pas pourquoi le film n'a pas avancé.
+   *
+   * LES DEUX ÉCHECS DE LECTURE SONT DISTINCTS, et le lecteur n'y peut pas la même chose : un
+   * navigateur sans HLS ne lira JAMAIS ce clip (il faut en changer), tandis qu'un flux en
+   * erreur peut être réessayé. Un message unique les confondrait.
    */
   mediaTrack: string
   mediaEmpty: string
   mediaOpen: string
   mediaClose: string
   mediaPausedHint: string
+  mediaHlsUnsupported: string
+  mediaHlsError: string
+  /**
+   * REPLI DE LA FRISE (retour utilisateur du 2026-08-28). Les deux libellés portent le GESTE
+   * OFFERT, pas l'état courant : c'est ce que le lecteur va déclencher en cliquant, et c'est la
+   * convention des noms accessibles de commandes. L'état, lui, se lit dans `aria-expanded`.
+   */
+  tracksCollapse: string
+  tracksExpand: string
   unknownPlayer: string
   /**
    * Marques d'identité devant un nom. Le glyphe « moi » ne se DESSINE plus nulle part

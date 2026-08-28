@@ -4979,3 +4979,188 @@ Chiffres du gate lot 6 (cache typecheck purge) : `npm run typecheck` exit 0 ; vi
 `src/features/match-replay` 100 fichiers / **1552 tests, 0 echec** (+6 : 5 cas de la garde,
 1 garde-fou) ; `src/routes` 30 tests verts (non touchees, controle) ; ESLint 0 erreur, 0 warning
 sur les 4 fichiers touches.
+
+## 2026-08-28 — Lecteur, phase 2 : les medias arrivent sur la frise (lot 1, la donnee)
+
+La piste Medias de la frise etait posee au lot precedent, mais vide : `EMPTY_MEDIA`. Ce qui
+manquait n'etait pas un endpoint — la page rejeu appelle deja `useMatchView`, et le match sert
+deja ses medias associes — mais DEUX COLONNES que la requete ne demandait pas.
+
+**`capture_time` est une FIN de capture, et personne ne l'avait releve.** Poser un clip dessus
+le decale de sa propre duree : un clip de 30 s tourne autour d'un frag apparait 30 s APRES le
+frag. Q24 sert desormais aussi `capture_start_utc`, et le DTO le porte separement
+(`capture_start_time`) — `capture_time` reste la fin, l'onglet medias du match le consomme tel
+quel. Quand le debut manque, la duree permet de le reconstituer.
+
+**`duration_seconds` etait un bug latent parfait** : le champ existait au DTO, il etait meme au
+schema openapi, et il n'a JAMAIS ete peuple — Q24 ne le selectionnait pas. Un champ nul depuis
+toujours, servi a tout le monde, teste par rien. Le seul lecteur cote web
+(`MatchMediaTab.tsx:40`, repli de `kind`) s'en accommodait en classant tout en 'screenshot'.
+
+**La base le stocke en DOUBLE, le DTO l'expose en entier.** Changer le type du DTO aurait ete un
+troisieme changement de contrat pour rien : l'arrondi coute au pire une demi-seconde de
+placement, quand le recalage lui-meme (capture absolue moins coup d'envoi) est deja une
+approximation assumee. Scan en `sql.NullFloat64`, `math.Round`, commentaire a l'appui.
+
+**La fixture media est partagee avec les scenarios de galerie** — on ne la touche pas. Le
+nouveau test pose debut et duree par UPDATE cible sur med-A1 (29,6 s en base, 30 attendu au
+DTO : l'arrondi est teste, pas suppose) et laisse med-C1 en NULL/NULL, ce qui couvre l'absence
+sans ecrire un second dataset. Les horodatages se comparent sur l'INSTANT, pas sur la chaine :
+un TIMESTAMPTZ peut revenir avec un decalage explicite, equivalent mais ecrit autrement.
+
+Chiffres du gate lot 1 : `go build ./...` exit 0 ; `go test -tags=integration
+-run TestMatchViewRepo_GetMatchMedia` **6/6 PASS** (TeammateOnly reste vert) ; `go test
+./internal/platform/duckdb/... ./internal/service/... ./internal/domain/...` 13 packages ok ;
+`go vet ./...` exit 0 ; openapi-gen + generate-types + openapi-check (les deux maillons) exit 0
+— diff de contrat = UN champ ; `npm run typecheck` exit 0.
+
+## 2026-08-28 — Lecteur, phase 2 : la piste Medias est vivante (lot 2, le mappeur)
+
+`EMPTY_MEDIA` n'est plus la source de la piste : elle en est le DEFAUT. Entre les deux, un
+mappeur pur de 120 lignes qui fait UNE soustraction et refuse d'en faire davantage.
+
+**TROIS HORLOGES, UNE SEULE SOUSTRACTION.** Un media porte des instants absolus (l'heure de la
+capture) ; le match commence a `header.start_time` ; le film cale son image zero `originMs`
+plus tard. D'ou `replayMs = (capture − start_time) − originMs`, qui est EXACTEMENT la doctrine
+du fil (`event_time_ms + t0Ms − originMs`) ecrite pour une source qui donne des dates au lieu
+d'un offset : `capture − start_time` est ce que `event_time_ms + t0Ms` reconstruit. Le recalage
+a lieu dans la PAGE, une fois, comme le fil — deux recalages menes separement divergent, et une
+vignette ne serait alors plus a l'instant de la ligne qu'on lit a cote.
+
+**CE QU'ON REFUSE D'INVENTER.** Un media sans le moindre horodatage est ecarte. Un en-tete sans
+heure de debut vide la piste entiere. Un horodatage illisible vaut une absence, pas un NaN pose
+sur la frise. Une pose au hasard serait pire que le vide : elle se lirait comme un fait.
+
+**CE QU'ON ACCEPTE DE DEGRADER.** Sans origine publiee (artefact anterieur au schema v4), on
+prend zero : la piste se decale du retard de l'image zero au lieu de disparaitre. Un clip sans
+debut ET sans duree se pose sur sa fin — au pire il apparait sa propre duree trop tard.
+
+**VIDE N'EST PAS ABSENTE, et les deux se ressemblent a l'ecran.** « Aucun media sur ce match »
+est un fait du match ; un titre qui n'a pas de medias n'a rien a dire, et la rangee y mentirait.
+La piste disparait donc quand le titre ne declare pas la capability `media` — le rejeu, lui,
+n'est garde que par `matchmaking`, les deux ne se recouvrent pas. Le hook `useCapability` est
+appele dans `useReplayTimeline` : `FeatureGate` est un composant, il aurait fallu envelopper une
+rangee de grille a deux colonnes.
+
+**LE CLIQUET A COUTE TROIS LIGNES ET ON LES A RENDUES.** `ReplayCanvas` etait a 672/672 : la
+prop `media` (import du type, declaration, commentaire) l'aurait mis a 675. Compense dans le
+perimetre — le commentaire de `feedEntries` couvre desormais les DEUX listes assemblees par la
+page (c'est la meme doctrine, donc la meme phrase), et celui de l'appel au hook perd son rappel
+d'historique. Fichier a 672 exactement.
+
+**L'IDENTITE EST `file_id`, jamais `file_path`** : le chemin est mute par la conversion et le
+transcodage HLS. Un identifiant qui bouge d'un rendu a l'autre casserait le rapprochement — et
+c'est precisement ce que le lot 3 va devoir affronter cote lecture.
+
+Chiffres du gate lot 2 (cache typecheck purge) : `npm run typecheck` exit 0 ; vitest
+`src/features/match-replay` + `src/routes` = 104 fichiers / **1598 tests, 0 echec** (+16 : 15
+pour le mappeur, 1 pour la rangee absente) ; ESLint 0 erreur sur 9 fichiers touches, 1 warning
+PRE-EXISTANT (exhaustive-deps objectiveObjects).
+
+## 2026-08-28 — Lecteur, phase 2 : la lightbox sait lire un flux (lot 3, HLS)
+
+Une lightbox qui ouvre un clip transcode et n'affiche rien : c'est ce qui serait arrive au
+premier clic du lot 2. Le `file_path` d'un clip transcode MUE vers un `master.m3u8`, et un
+`<video src>` nu ne lit pas un manifest sur Chrome ni Firefox — ni l'un ni l'autre n'a de
+lecteur HLS natif.
+
+**LA GALERIE AVAIT DEJA RESOLU LE PROBLEME, ET N'EN EXPOSAIT RIEN.** L'attache vivait inline
+dans `ClipPlayer`. Recopier ces cinquante lignes aurait fabrique deux versions qui divergent au
+premier quirk de navigateur corrige d'un seul cote — et il y en a deja un au dossier : Chrome
+repond « maybe » a `canPlayType` pour du HLS tout en n'exposant pas `video.audioTracks`
+(incident 2026-06-14), ce qui impose de preferer hls.js des que MSE existe. D'ou une EXTRACTION
+vers `lib/media/useHlsVideo.ts`, et la galerie migree dessus DANS LE MEME LOT.
+
+**LES 116 TESTS DE LA GALERIE PASSENT SANS UNE MODIFICATION.** C'est la seule preuve qui vaille
+qu'une extraction est fidele : le comportement etait deja decrit, il l'est encore.
+
+**LE GARDE-RAIL N'ETAIT PAS DEMANDE, IL EST POSE.** `hlsSingleImport.guard.test.ts` interdit
+tout `import Hls from 'hls.js'` hors du helper. Une factorisation sans garde-rail re-diverge :
+un troisieme composant qui importe la bibliotheque compile, passe tous les autres tests, et
+personne ne voit la copie arriver. Morsure verifiee sur pieces — import temoin ajoute, le test
+rougit EN NOMMANT le fichier ; retire, il redevient vert.
+
+**UN DEFAUT QUE LE LOT 2 A REVEILLE.** `isClip = kind === 'clip' && !!durationMs` confondait
+deux questions : « est-ce une video ? » et « connait-on sa duree ? ». Un clip dont la base
+ignore la duree (ffprobe absent a l'ingestion) partait dans la branche IMAGE, donc rendait un
+`<img src=...mp4>` : un cadre vide, sans commande, sans message. Le defaut existait depuis la
+livraison de la lightbox et n'etait atteignable par personne tant que la piste etait vide. La
+duree ne commande plus desormais que la bande d'images et l'horloge.
+
+**DEUX MESSAGES D'ECHEC, PAS UN.** Un navigateur sans MSE ni HLS natif ne lira JAMAIS ce clip
+(il faut en changer) ; un flux en erreur peut etre reessaye. Les confondre en un « lecture
+impossible » retirerait au lecteur la seule information qui lui sert.
+
+**L'EXTRACTION A COUTE TROIS WARNINGS DE LINT, PAYES DANS LE LOT.** Ecrire une ref pendant le
+rendu est un effet de bord sur un rendu que React peut rejouer : la mise a jour des rappels
+passe dans un effet, declare AVANT celui de l'attache pour que l'ordre d'execution la rende
+vraie. Et `hlsRef`, venu d'un hook, doit etre declare en dependance des deux effets de la
+galerie — il est stable, cela ne relance rien.
+
+Chiffres du gate lot 3 (cache typecheck purge) : `npm run typecheck` exit 0 ; vitest
+`match-replay` + `media` + `lib/media` = 114 fichiers / **1693 tests, 0 echec** (+9 : 8 pour la
+lightbox, 1 garde-rail) ; ESLint 0 erreur ET 0 warning sur les 7 fichiers touches.
+
+## 2026-08-28 — Lecteur, phase 2 : la frise se replie (lot 4)
+
+Quatre pistes, c'est ce qu'on veut quand on analyse un match — et c'est trop quand on veut
+juste regarder le film. Le repli tient en un chevron, et il ne coute RIEN a la pile : il prend
+la place du `<div />` de remplissage qui faisait deja face au curseur dans la grille a deux
+colonnes. La seule rangee qui ne disparait jamais gagne enfin son libelle.
+
+**LE HELPER ETAIT PRIVE, IL EST EXPORTE — pas recopie.** `usePersistedFlag` porte un invariant
+qui a coute cher a etablir (ne jamais persister depuis l'updater de `setValue`, sous peine de
+bascule qui « revient en arriere » toute seule sous StrictMode). En refaire une copie de six
+lignes pour une preference qui ne passe pas par le tiroir, c'etait rouvrir exactement la
+divergence que sa centralisation avait fermee.
+
+**LE LIBELLE PORTE LE GESTE, L'ETAT VIT DANS `aria-expanded`.** « Replier les pistes » quand
+c'est deplie : c'est ce que le clic va faire. Un nom qui dirait l'etat contredirait l'attribut,
+et une technologie d'assistance lirait deux choses opposees sur le meme bouton.
+
+**LE GARDE-FOU DU LOT PRECEDENT A ETE REJOUE EN REPLI.** Les raccourcis clavier ne vivent sur
+la frise que parce que le curseur porte `TIMELINE_SHORTCUT_ATTR`. Un repli ecrit autrement — en
+masquant la rangee entiere plutot que les seules pistes — l'aurait emporte avec lui, et Espace
+serait redevenu muet apres un clic. Rien dans le typage ne le tient : il fallait un test qui
+verifie l'attribut A L'ETAT REPLIE, pas seulement deplie.
+
+**CE QUE LE REPLI NE TOUCHE PAS** : `ReplayCanvas`, reste a 672 lignes sans une ligne de diff.
+Le cablage passe par `useReplayTimeline`, qui produit deja les props de la frise.
+
+Chiffres du gate lot 4 (cache typecheck purge) : `npm run typecheck` exit 0 ; vitest
+`src/features/match-replay` + `src/routes` = 105 fichiers / **1613 tests, 0 echec** (+7 : 2 pour
+le repli, 2 pour le chevron, 3 pour la persistance) ; ESLint 0 erreur ET 0 warning sur les 8
+fichiers touches.
+
+## 2026-08-28 — Lecteur phase 2 CLOS : ce que le chantier a appris
+
+Quatre lots, quatre commits, et un report du registre solde sans qu'un seul endpoint ait ete
+ecrit. C'est le resultat le plus utile a retenir : **la donnee etait deja servie**. La page
+rejeu appelait deja `useMatchView`, le match servait deja ses medias associes ; ce qui manquait
+tenait en DEUX COLONNES qu'une requete ne demandait pas.
+
+**LE REPORT DISAIT « il faut un endpoint », ET C'ETAIT FAUX.** Le registre decrivait la forme
+exacte du payload attendu — `{ id, kind, replayMs, durationMs, thumbUrl, url, label }` — sans
+verifier si une source existante pouvait le nourrir. Elle le pouvait. Une condition de reprise
+qui prescrit la SOLUTION plutot que le BESOIN fait porter au lot suivant le cout d'un travail
+inutile. Ce que le report aurait du dire : « la piste attend une liste de medias dates sur
+l'axe du rejeu ; chercher d'abord si la vue du match en porte assez ».
+
+**DEUX BUGS LATENTS TROUVES EN CHEMIN, dont aucun n'etait le sujet.** `capture_time` etait une
+FIN de capture qu'on s'appretait a lire comme un debut. `duration_seconds` etait declare au DTO
+ET au schema openapi, servi a tout le monde, et n'a jamais valu autre chose que nul. Un champ
+que personne ne peuple et que personne ne teste ne se voit pas : il faut qu'un consommateur en
+ait besoin pour que son absence devienne un fait.
+
+**UN TROISIEME DEFAUT N'EXISTAIT QUE PARCE QUE LA PISTE ETAIT VIDE.** La lightbox rendait un
+`<img>` pour tout clip sans duree connue. Personne ne pouvait l'atteindre tant qu'aucun media
+n'arrivait sur la frise ; le lot 2 l'a rendu atteignable, le lot 3 l'a corrige. Un rendu livre
+« complet mais sans donnee » n'est pas un rendu valide — c'est un rendu non exerce.
+
+**CE QUI RESTE AU REGISTRE** : le gate visuel du lecteur, elargi de quatre points que les tests
+ne peuvent pas voir — vignettes animees, placement d'un clip AVANT le frag qu'il montre,
+lecture reelle d'un flux HLS dans Chrome, et le repli qui ne doit pas faire sauter la barre.
+
+Gates transverses de cloture : `npm run typecheck` (cache purge) exit 0 ; vitest
+`match-replay` + `routes` + `media` + `lib/media` = **117 fichiers / 1730 tests, 0 echec** ;
+`go test ./...` (apps/go-api) et `make openapi-check` : voir l'entree du thought_log racine.

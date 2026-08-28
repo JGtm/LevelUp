@@ -20,6 +20,11 @@
  * Médias qu'on affichera toujours »). C'est l'exception à la règle du dépôt « pas de commande
  * quand il n'y a rien à commander » : ce n'est pas une commande, c'est un emplacement — il dit
  * où les médias du match vivront, et son vide est une information.
+ *
+ * VIDE N'EST PAS ABSENTE. « Aucun média sur ce match » est un fait ; « ce jeu n'a pas de
+ * médias » n'en est pas un, et une rangée vide le dirait à tort. La rangée disparaît donc
+ * quand le titre ne déclare pas la capability `media` (`showMediaTrack`) — le rejeu, lui,
+ * n'est gardé que par `matchmaking`, les deux ne se recouvrent pas.
  */
 import { useState, type ChangeEvent, type RefObject } from 'react'
 
@@ -51,6 +56,11 @@ interface ReplayTimelineTracksProps {
   labelOf: (teamId: number) => string
   /** Les médias posés sur le match (cf. placeMedia). Vide = la piste reste, sans vignette. */
   media: readonly PlacedMedia[]
+  /** Le titre déclare-t-il `media` ? Faux = la rangée n'existe pas (cf. l'en-tête). */
+  showMediaTrack: boolean
+  /** Frise dépliée (les pistes) ou repliée (la seule barre de lecture). Préférence persistée. */
+  tracksExpanded: boolean
+  onToggleTracks: () => void
   /** Ouvrir un média met le rejeu EN PAUSE : la lightbox le dit, l'appelant l'applique. */
   playing: boolean
   onRequestPause: () => void
@@ -63,7 +73,8 @@ interface ReplayTimelineTracksProps {
 
 export function ReplayTimelineTracks({
   sliderRef, minFrame, maxFrame, onScrub,
-  own, allies, dominance, allyOf, labelOf, media,
+  own, allies, dominance, allyOf, labelOf, media, showMediaTrack,
+  tracksExpanded, onToggleTracks,
   playing, onRequestPause, startClock, midClock, endClock, locale,
 }: ReplayTimelineTracksProps) {
   const t = REPLAY_TEXT[locale]
@@ -78,70 +89,84 @@ export function ReplayTimelineTracks({
   return (
     <div className="relative">
       <div className="grid grid-cols-[76px_1fr] items-center gap-x-3 gap-y-[5px]">
-        <TrackLabel>{t.trackYou}</TrackLabel>
-        <MarkTrack marks={own} height="h-3.5" tall />
+        {tracksExpanded && (
+          <>
+            <TrackLabel>{t.trackYou}</TrackLabel>
+            <MarkTrack marks={own} height="h-3.5" tall />
 
-        <TrackLabel>{t.trackAllies}</TrackLabel>
-        <MarkTrack marks={allies} height="h-3.5" tall={false} />
+            <TrackLabel>{t.trackAllies}</TrackLabel>
+            <MarkTrack marks={allies} height="h-3.5" tall={false} />
 
-        <TrackLabel>{t.trackDominance}</TrackLabel>
-        <div className="relative h-2.5 overflow-hidden rounded-full bg-muted/40">
-          {dominance.map((s) => {
-            const ally = allyOf(s.teamId)
-            return (
-              <span
-                key={s.key}
-                className="absolute top-0 block h-2.5 opacity-55"
-                style={{
-                  left: trackLeft(s.from),
-                  width: trackWidth(s.from, s.to),
-                  background:
-                    ally === null ? 'var(--border)' : tokenCssVar(ally ? 'team-ally' : 'team-enemy'),
-                }}
-                title={t.dominanceOfFmt(labelOf(s.teamId))}
-              />
-            )
-          })}
-        </div>
-
-        <TrackLabel>{t.mediaTrack}</TrackLabel>
-        <div className="relative h-[26px] rounded-md border border-border bg-muted/30">
-          {media.length === 0 && (
-            <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-[10px] text-muted-foreground">
-              {t.mediaEmpty}
-            </span>
-          )}
-          {media.map(({ item, from, to }) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => openMedia(item.id)}
-              className="absolute top-[3px] flex h-[18px] overflow-hidden rounded-sm border border-input transition-colors hover:border-foreground"
-              style={
-                item.kind === 'clip'
-                  ? { left: trackLeft(from), width: trackWidth(from, to), minWidth: 14 }
-                  : { left: trackLeft(from), width: 30, marginLeft: -15 }
-              }
-              aria-label={item.label ?? t.mediaOpen}
-              title={item.label ?? t.mediaOpen}
-            >
-              {item.kind === 'clip' ? (
-                Array.from({ length: clipFrameCount(item.durationMs ?? 0) }).map((_, i) => (
-                  <img
-                    key={i}
-                    src={item.thumbUrl}
-                    alt=""
-                    className="h-full min-w-0 flex-1 object-cover"
+            <TrackLabel>{t.trackDominance}</TrackLabel>
+            <div className="relative h-2.5 overflow-hidden rounded-full bg-muted/40">
+              {dominance.map((s) => {
+                const ally = allyOf(s.teamId)
+                return (
+                  <span
+                    key={s.key}
+                    className="absolute top-0 block h-2.5 opacity-55"
+                    style={{
+                      left: trackLeft(s.from),
+                      width: trackWidth(s.from, s.to),
+                      background:
+                        ally === null
+                          ? 'var(--border)'
+                          : tokenCssVar(ally ? 'team-ally' : 'team-enemy'),
+                    }}
+                    title={t.dominanceOfFmt(labelOf(s.teamId))}
                   />
-                ))
-              ) : (
-                <img src={item.thumbUrl} alt="" className="h-full w-full object-cover" />
-              )}
-            </button>
-          ))}
-        </div>
+                )
+              })}
+            </div>
 
-        <div />
+            {showMediaTrack && (
+              <>
+                <TrackLabel>{t.mediaTrack}</TrackLabel>
+                <div className="relative h-[26px] rounded-md border border-border bg-muted/30">
+                  {media.length === 0 && (
+                    <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-[10px] text-muted-foreground">
+                      {t.mediaEmpty}
+                    </span>
+                  )}
+                  {media.map(({ item, from, to }) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => openMedia(item.id)}
+                      className="absolute top-[3px] flex h-[18px] overflow-hidden rounded-sm border border-input transition-colors hover:border-foreground"
+                      style={
+                        item.kind === 'clip'
+                          ? { left: trackLeft(from), width: trackWidth(from, to), minWidth: 14 }
+                          : { left: trackLeft(from), width: 30, marginLeft: -15 }
+                      }
+                      aria-label={item.label ?? t.mediaOpen}
+                      title={item.label ?? t.mediaOpen}
+                    >
+                      {item.kind === 'clip' ? (
+                        Array.from({ length: clipFrameCount(item.durationMs ?? 0) }).map((_, i) => (
+                          <img
+                            key={i}
+                            src={item.thumbUrl}
+                            alt=""
+                            className="h-full min-w-0 flex-1 object-cover"
+                          />
+                        ))
+                      ) : (
+                        <img src={item.thumbUrl} alt="" className="h-full w-full object-cover" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </>
+        )}
+
+        <TracksToggle
+          expanded={tracksExpanded}
+          onToggle={onToggleTracks}
+          label={tracksExpanded ? t.tracksCollapse : t.tracksExpand}
+        />
         {/* LE CURSEUR. `--played` est écrit par la boucle de dessin (useReplayPlayback) : le
             remplissage suit donc la lecture sans un seul rendu React. */}
         <div className="relative mt-[3px]">
@@ -188,6 +213,59 @@ export function ReplayTimelineTracks({
         />
       )}
     </div>
+  )
+}
+
+/**
+ * LE CHEVRON PREND LA PLACE DE L'ÉTIQUETTE VIDE qui faisait face au curseur : la colonne des
+ * libellés est là où l'œil cherche de quoi parle une rangée, et cette rangée-là est la seule
+ * qui ne disparaît jamais.
+ *
+ * LE LIBELLÉ PORTE LE GESTE OFFERT (« replier » quand c'est déplié), l'ÉTAT vit dans
+ * `aria-expanded` : c'est la convention des commandes, et les deux se contrediraient si le nom
+ * disait l'état.
+ */
+function TracksToggle({
+  expanded, onToggle, label,
+}: {
+  expanded: boolean
+  onToggle: () => void
+  label: string
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={expanded}
+      aria-label={label}
+      title={label}
+      className="mt-[3px] flex h-4 w-full items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+    >
+      <TracksChevron expanded={expanded} />
+    </button>
+  )
+}
+
+/**
+ * Chevron du repli, décoratif : le nom accessible vit sur le bouton. Il pointe vers le BAS
+ * quand la frise est dépliée (le geste offert est de refermer) et vers le HAUT quand elle est
+ * repliée. Deuxième dessin de chevron de la feature (l'autre ouvre le menu de vitesse) : sous
+ * le seuil de factorisation du dépôt, et les deux n'ont ni la même taille ni la même rotation.
+ */
+function TracksChevron({ expanded }: { expanded: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      className={`h-2.5 w-2.5 transition-transform ${expanded ? '' : 'rotate-180'}`}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M4 6.5 8 10.5 12 6.5" />
+    </svg>
   )
 }
 

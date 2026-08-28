@@ -14,10 +14,21 @@
  * s'ouvrent dans le même cadre ; sans la bande, rien à l'écran ne les distinguerait avant de
  * cliquer sur lecture. Le nombre d'images vient de `clipFrameCount` (une toutes les trois
  * secondes, bornée) — pas une par seconde, qui donnerait une bande illisible.
+ *
+ * UN CLIP EST UNE VIDÉO MÊME SANS DURÉE CONNUE (corrigé le 2026-08-28). La condition d'origine
+ * confondait « c'est un clip » et « on connaît sa durée » : un clip dont la base ignore la
+ * durée (ffprobe absent à l'ingestion) partait dans la branche image, et un `<img src=...mp4>`
+ * ne montre rien. Le défaut n'était pas atteignable tant que la piste était vide ; il l'est
+ * devenu avec la donnée. La durée ne commande plus que la BANDE et l'horloge.
+ *
+ * LES CLIPS TRANSCODÉS SONT DU HLS : leur `file_path` mue vers un `master.m3u8`, qu'un
+ * `<video src>` nu ne lit pas sur Chrome/Firefox. L'attache est celle de la galerie, extraite
+ * dans `@/lib/media/useHlsVideo` — pas une seconde copie.
  */
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import { formatClockMMSS } from '@/lib/formatters'
+import { useHlsVideo } from '@/lib/media/useHlsVideo'
 
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
 import { clipFrameCount, type ReplayMediaItem } from './replayTimelineTracksLogic'
@@ -31,7 +42,17 @@ interface ReplayMediaLightboxProps {
 export function ReplayMediaLightbox({ item, locale, onClose }: ReplayMediaLightboxProps) {
   const t = REPLAY_TEXT[locale]
   const panelRef = useRef<HTMLDivElement>(null)
-  const isClip = item.kind === 'clip' && !!item.durationMs
+  const videoRef = useRef<HTMLVideoElement | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const isClip = item.kind === 'clip'
+  const hasDuration = isClip && !!item.durationMs
+  // Un seul média à l'écran : les segments se chargent tout de suite (le coverflow, lui, monte
+  // cinq lecteurs et doit retenir les quatre autres).
+  const { isHls } = useHlsVideo({
+    videoRef,
+    src: item.url,
+    onFailure: (kind) => setError(kind === 'unsupported' ? t.mediaHlsUnsupported : t.mediaHlsError),
+  })
 
   useEffect(() => {
     panelRef.current?.focus({ preventScroll: true })
@@ -58,7 +79,7 @@ export function ReplayMediaLightbox({ item, locale, onClose }: ReplayMediaLightb
       >
         <div className="flex items-center gap-2.5">
           <span className="text-[13px] font-medium">{item.label ?? t.mediaOpen}</span>
-          {isClip && (
+          {hasDuration && (
             <span className="text-xs tabular-nums text-muted-foreground">
               {formatClockMMSS(item.durationMs ?? 0)}
             </span>
@@ -83,13 +104,24 @@ export function ReplayMediaLightbox({ item, locale, onClose }: ReplayMediaLightb
           /* LE FOND DU LECTEUR EST UN TOKEN, jamais une couleur brute : une classe de couleur
              Tailwind dans `features/` est interdite par la règle du dépôt (skill color-tokens),
              et un letterbox noir en thème clair jurerait avec le reste de la page. `bg-muted`
-             tient le rôle — une surface neutre derrière une vidéo qui ne remplit pas son cadre. */
-          <video src={item.url} controls autoPlay className="w-full rounded bg-muted" />
+             tient le rôle — une surface neutre derrière une vidéo qui ne remplit pas son cadre.
+
+             PAS D'ATTRIBUT `src` SUR UN FLUX : c'est hls.js qui alimente l'élément (MSE). Le
+             poser ferait tenter au navigateur une lecture directe du manifest, qui échoue. */
+          <video
+            ref={videoRef}
+            src={isHls ? undefined : item.url}
+            controls
+            autoPlay
+            className="w-full rounded bg-muted"
+          />
         ) : (
           <img src={item.url} alt={item.label ?? ''} className="w-full rounded" />
         )}
 
-        {isClip && (
+        {error && <p className="text-xs text-muted-foreground">{error}</p>}
+
+        {hasDuration && (
           <div className="flex flex-col gap-1.5">
             <div className="flex h-[34px] gap-[2px]">
               {Array.from({ length: clipFrameCount(item.durationMs ?? 0) }).map((_, i) => (

@@ -21,6 +21,7 @@ import {
   useReplayMapImage,
 } from '@/features/match-replay/queries'
 import { buildFeedEntries, collectMedalEvents } from '@/features/match-replay/killFeedLogic'
+import { buildReplayMedia } from '@/features/match-replay/replayMediaLogic'
 import { buildPlayerMarks } from '@/features/match-replay/playerMarks'
 import { ReplayCanvas } from '@/features/match-replay/ReplayCanvas'
 import { ReplayKillFeed } from '@/features/match-replay/ReplayKillFeed'
@@ -132,6 +133,15 @@ function ReplayPage() {
   const feedEntries = useMemo(
     () => buildFeedEntries(kills, medalEvents, t0Ms, data),
     [kills, medalEvents, t0Ms, data],
+  )
+  // LES MÉDIAS DU MATCH, RECALÉS ICI ET NULLE PART AILLEURS (phase 2, 2026-08-28) : ce sont
+  // ceux de l'onglet médias du match, déjà en mémoire — la page monte la vue du match pour ses
+  // fiches et son fil, aucun appel de plus. Leur horodatage est ABSOLU (l'heure de la capture),
+  // là où le fil compte en millisecondes de match : `buildReplayMedia` fait la soustraction,
+  // une seule fois, sur la même origine que le fil (`doc.originMs`).
+  const replayMedia = useMemo(
+    () => buildReplayMedia(matchView?.media_tab, matchView?.header, data?.originMs),
+    [matchView?.media_tab, matchView?.header, data?.originMs],
   )
   const nowMs = data ? frameToMs(frame, data) : 0
   // LE CADRAGE SUR LE MATCH RÉEL, CALCULÉ UNE FOIS ICI (et nulle part ailleurs) : le film
@@ -265,6 +275,7 @@ function ReplayPage() {
               marks={marks}
               endMatch={endMatchSound}
               feedEntries={feedEntries}
+              media={replayMedia}
             />
             {/* L'ÉCRAN DE FIN DE MATCH, dérivé de la position de lecture (D-B5) : il apparaît
                 quand la lecture atteint la borne de fin et disparaît dès qu'on remonte la
