@@ -39,8 +39,7 @@
  * l'autre « on passe à la suite » (à la reprise).
  */
 import {
-  scoreAtFrame,
-  teamSeriesFor,
+  teamRoundScoreAtFrame,
   type ReplayScoreTimelineReady,
 } from '@/lib/replay/scoreTimeline'
 
@@ -107,6 +106,42 @@ function orderedRounds(timeline: ReplayScoreTimelineReady): OrderedRound[] {
 /** roundCount rend le nombre de manches JOUÉES — 0 ou 1 quand le mode n'est pas multi-manche. */
 export function roundCount(timeline: ReplayScoreTimelineReady | undefined): number {
   return timeline ? orderedRounds(timeline).length : 0
+}
+
+/** La manche courante d'un MATCH (pas d'un camp), et ce qu'il faut pour la nommer. */
+export interface CurrentRound {
+  /** Numéro de manche du film (0-based) — sert au numérateur par-manche, jamais de libellé. */
+  round: number
+  /** Rang d'affichage à partir de 1 (« Manche 2 »). */
+  index: number
+  /** Nombre de manches JOUÉES. */
+  count: number
+}
+
+/**
+ * currentRoundAtFrame rend la manche EN COURS à l'image lue, ou `null` si aucune manche n'est
+ * ventilée (mode sans manche non déclaré, calque absent).
+ *
+ * LA BORNE EST PARTAGÉE : une manche commence au premier palier de l'un OU l'autre camp
+ * (`orderedRounds.start` prend déjà le min des deux). Les deux barres du bandeau basculent
+ * donc ENSEMBLE, jamais l'une avant l'autre. La manche courante est la DERNIÈRE dont le début
+ * est déjà passé ; avant le premier début, c'est la première (le match a commencé, pas le
+ * compteur). Dans la fenêtre inter-manche — entre la fin d'une manche et le début de la
+ * suivante — c'est encore la manche PRÉCÉDENTE : son compteur tient jusqu'à la reprise.
+ * Un mode à manche unique rend `{index: 1, count: 1}`.
+ */
+export function currentRoundAtFrame(
+  timeline: ReplayScoreTimelineReady | undefined,
+  frame: number,
+): CurrentRound | null {
+  if (!timeline) return null
+  const rounds = orderedRounds(timeline)
+  if (rounds.length === 0) return null
+  let idx = 0
+  for (let i = 0; i < rounds.length; i++) {
+    if (rounds[i].start <= frame) idx = i
+  }
+  return { round: rounds[idx].round, index: idx + 1, count: rounds.length }
 }
 
 /**
@@ -186,6 +221,9 @@ function winnerOfRound(
  * roundFinal rend le score d'un camp DANS une manche à la borne de clôture — son dernier
  * palier de la manche. 0 quand le camp n'a pas de série pour cette manche (il n'a pas marqué),
  * ce qui est une mesure et non une lacune (cf. la doctrine « une équipe sans série vaut zéro »).
+ *
+ * Délègue à `teamRoundScoreAtFrame` (le point unique du motif `find(round) + scoreAtFrame`) :
+ * lu à la borne de clôture, le score de manche EST son score final.
  */
 function roundFinal(
   timeline: ReplayScoreTimelineReady,
@@ -193,8 +231,5 @@ function roundFinal(
   roundNumber: number,
   endFrame: number,
 ): number {
-  const team = teamSeriesFor(timeline, teamId)
-  const r = team?.rounds.find((x) => x.round === roundNumber)
-  if (!r) return 0
-  return scoreAtFrame(r.points, endFrame)
+  return teamRoundScoreAtFrame(timeline, teamId, roundNumber, endFrame)
 }
