@@ -16,6 +16,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 
 import { ReplayTimelineTracks } from './ReplayTimelineTracks'
 import type { PlacedMedia, ReplayMediaItem, TrackMark } from './replayTimelineTracksLogic'
+import { TIMELINE_SHORTCUT_ATTR } from './useReplayShortcuts'
 
 function mark(over: Partial<TrackMark> = {}): TrackMark {
   return { key: 'm1', ratio: 0.5, kind: 'kill', clock: '2:30', ...over }
@@ -85,6 +86,20 @@ describe('ReplayTimelineTracks — les quatre pistes sont nommées', () => {
     expect(frise.tagName).toBe('INPUT')
     expect(frise).toHaveAttribute('min', '149')
     expect(frise).toHaveAttribute('max', '4929')
+  })
+
+  /**
+   * GARDE-FOU DU LIEN COMPOSANT <-> CLAVIER (décision utilisateur du 2026-08-28).
+   *
+   * L'exemption de la garde anti-frappe est NOMINATIVE : `useReplayShortcuts` cherche cet
+   * attribut, ce composant le pose. Rien dans le typage ne relie les deux — retirer l'attribut
+   * du champ compilerait, passerait tous les autres tests, et rendrait muets Espace et les
+   * flèches dès le premier clic sur la frise. C'est exactement ce qu'un garde-rail attrape, et
+   * la constante est importée du hook pour que le renommer casse ici aussi.
+   */
+  it('la frise PORTE l’attribut qui lui rend les raccourcis clavier', () => {
+    renderTracks()
+    expect(screen.getByLabelText('Temps de match')).toHaveAttribute(TIMELINE_SHORTCUT_ATTR)
   })
 })
 

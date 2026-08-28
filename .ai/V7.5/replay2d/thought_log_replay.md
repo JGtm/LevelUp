@@ -4950,3 +4950,32 @@ Chiffres du gate lot 5 (rejoues APRES corrections, cache typecheck purge) : `npm
 exit 0 ; vitest 103 fichiers / **1576 tests, 0 echec** (+15 : 12 reduceFeed, 2 pose initiale,
 1 garde du son) ; ESLint 0 erreur sur les 12 fichiers touches, 1 warning PRE-EXISTANT
 (`exhaustive-deps` objectiveObjects) ; cliquet 6/6, canvas toujours a 674.
+
+**LOT 6 — LES RACCOURCIS RESTENT VIVANTS SUR LA FRISE FOCALISEE (decision utilisateur, gate).**
+La Decouverte laissee ouverte au lot 5 est TRANCHEE. Rappel du defaut : `isTypingTarget` protege
+la frappe des champs de saisie, et un `input[type=range]` en est un pour le navigateur — les
+raccourcis mouraient donc des le premier clic sur la frise, c'est-a-dire au moment precis ou l'on
+analyse un match. Espace ne repondait plus, ←/→ avancaient d'UNE image (le pas natif du champ) au
+lieu de sauter 10 s.
+
+**L'EXEMPTION EST NOMINATIVE, ET C'EST TOUT LE SUJET.** Elle passe par un attribut
+(`data-replay-timeline`, constante `TIMELINE_SHORTCUT_ATTR` exportee par le hook et posee par
+`ReplayTimelineTracks`), pas par un test de type. Exempter `input[type=range]` en general aurait
+aussi exempte le VOLUME — le meme element HTML, a trois centimetres de la — et qui vient de
+cliquer dessus puis presse ← attend que le volume baisse, pas que le film saute de dix secondes.
+Les deux moities de la regle sont testees, celle qui autorise comme celle qui refuse.
+
+**LE DOUBLE PAS NE DEMANDAIT AUCUN CODE** : le `preventDefault` deja pose sur les touches traitees
+supprime le pas natif du champ. Un test le tient explicitement (fleche depuis la frise :
+`seekBy(+10)` ET `defaultPrevented`) — sans lui, la lecture avancerait de 10 s PLUS une image.
+
+**LE LIEN COMPOSANT<->GARDE EST LA PIECE FRAGILE**, rien dans le typage ne le tient : retirer
+l'attribut du champ compilerait et passerait tous les autres tests. D'ou un garde-fou dans
+`ReplayTimelineTracks.test.tsx`, qui importe la constante du hook. Sa MORSURE a ete verifiee sur
+pieces : attribut retire, le test rougit (1 failed / 27 passed) ; attribut restaure, 28 verts.
+Un garde-rail qu'on n'a pas vu echouer ne prouve rien.
+
+Chiffres du gate lot 6 (cache typecheck purge) : `npm run typecheck` exit 0 ; vitest
+`src/features/match-replay` 100 fichiers / **1552 tests, 0 echec** (+6 : 5 cas de la garde,
+1 garde-fou) ; `src/routes` 30 tests verts (non touchees, controle) ; ESLint 0 erreur, 0 warning
+sur les 4 fichiers touches.
