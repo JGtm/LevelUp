@@ -405,6 +405,25 @@ export interface ReplayText {
   roundNumberFmt: (index: number) => string
   roundOfCountFmt: (index: number, count: number) => string
   /**
+   * LES PASTILLES DE MANCHE, au-dessus du score (Oddball et tout mode multi-manche). Une
+   * rangée COMMUNE, une pastille par manche jouée, teintée au camp gagnant quand la manche est
+   * tranchée — pleine = gagnée, vide = en cours ou à jouer. `roundDotsLabel` nomme la rangée
+   * pour les lecteurs d'écran ; les trois formateurs disent l'état de chaque pastille (l'œil lit
+   * la couleur, le lecteur d'écran lit le mot). Le camp est nommé par son RAPPORT au joueur de
+   * la page (allié / adverse), comme le bandeau — jamais par une couleur ni un nom d'équipe.
+   */
+  roundDotsLabel: string
+  roundDotAllyFmt: (index: number) => string
+  roundDotEnemyFmt: (index: number) => string
+  roundDotPendingFmt: (index: number) => string
+  /**
+   * LE MESSAGE INTER-MANCHE : bref et non bloquant, il paraît à la bascule d'une manche à la
+   * suivante et dit la manche qui vient de se TERMINER. Dérivé de la position de lecture comme
+   * l'écran de fin — visible dans une courte fenêtre autour de la bascule, il se rejoue si l'on
+   * repasse dessus. C'est aussi le point de déclenchement du son « manche terminée ».
+   */
+  roundOverFmt: (index: number) => string
+  /**
    * L'ÉCRAN DE FIN DE MATCH, à l'instant où la lecture atteint la fin déclarée.
    *
    * IL N'Y A PAS DE CLÉ DE TITRE ICI, ET C'EST VOULU (amendement utilisateur du 2026-08-26) :
