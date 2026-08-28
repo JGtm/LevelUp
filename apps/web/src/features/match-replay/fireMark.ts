@@ -77,8 +77,12 @@ export interface FireMarkStyle {
   frame: number
   /** Rémanence d'un tir, en frames — la MÊME fenêtre que l'éclair de bouche. */
   hold: number
-  /** La PORTE du calque des joueurs : une vie sans couleur n'a pas de marqueur, donc pas de « ! ». */
-  colorOfSlot: (slot: number) => string | null
+  /**
+   * La PORTE du calque des joueurs : un slot sans propriétaire à l'image n'a pas de marqueur,
+   * donc pas de « ! ». Résolue PAR IMAGE (slot réattribué entre manches) — ici l'image courante,
+   * la vie étant vivante à cet instant (contrôlé ci-dessous).
+   */
+  colorOfSlot: (slot: number, frame: number) => string | null
   /** Encre du glyphe (contour des étiquettes ; l'appelant fournit son repli). */
   ink: string
   /** Densité du canevas. */
@@ -102,7 +106,9 @@ export function drawFireMarks(
     const age = style.frame - e.frame
     if (age < 0 || age > style.hold) continue
     if (!isAliveAt(e.track, style.frame)) continue
-    if (!style.colorOfSlot(e.track.slot)) continue
+    // La vie couvre l'image courante (contrôle ci-dessus) : y résoudre l'identité désigne bien
+    // le propriétaire de CETTE vie, jamais celui d'une autre manche.
+    if (!style.colorOfSlot(e.track.slot, style.frame)) continue
     const head = positionAt(e.track.points, style.frame)
     if (!head) continue
     const c = worldToCanvas(head, view.bounds, view.width, view.height, view.pad)

@@ -37,11 +37,12 @@ import {
 import { REPAIR_FIELD_RADIUS_M, SHROUD_RADIUS_M } from './placementShapes'
 import { SENSOR_RADIUS_M, sensorPingAgeMs } from './threatSensor'
 
-/** Ce que la fiche a besoin de LIRE : les poses, et le camp d'une vie (même contrat
- *  que `PlacementScene.sideOfSlot` — null = camp inconnu, donc jamais un ennemi). */
+/** Ce que la fiche a besoin de LIRE : les poses, et le camp de la vie qui occupe un slot À UNE
+ *  IMAGE (même contrat que `PlacementScene.sideOfSlot` — null = camp inconnu, donc jamais un
+ *  ennemi ; la frame lève l'ambiguïté d'un slot réattribué entre manches). */
 export interface ZoneScene {
   placements: readonly ReplayEquipmentPlacement[]
-  sideOfSlot: (slot: number) => string | null
+  sideOfSlot: (slot: number, frame: number) => string | null
 }
 
 /** Le joueur interrogé : sa vie (slot), sa position MONDE à l'image, et l'image. */
@@ -113,7 +114,9 @@ export function zonePresenceAt(
   let repair = false
   let shroudSinceMs: number | null = null
   let sensorSincePingMs: number | null = null
-  const side = scene.sideOfSlot(query.slot)
+  // Le joueur interrogé est vivant à l'image (la fiche l'a résolu depuis sa vie courante) : son
+  // camp se lit donc à `query.frame`, jamais figé pour tout le match.
+  const side = scene.sideOfSlot(query.slot, query.frame)
   for (const p of scene.placements) {
     const kind = placementKind(p, NO_TOGGLES)
     if (!kind) continue
@@ -133,7 +136,8 @@ export function zonePresenceAt(
       // à l'identique. Sans poseur mesuré ou sans camp, le disque se dessine mais la fiche
       // n'affirme aucune inimitié.
       if (p.owner < 0 || side === null) continue
-      const owner = scene.sideOfSlot(p.owner)
+      // Le poseur se lit à l'instant de sa POSE (`p.t0`), où il était vivant sur ce slot.
+      const owner = scene.sideOfSlot(p.owner, p.t0)
       if (owner === null || owner === side) continue
       const since = sensorPingAgeMs((query.frame - p.t0) * time.frameMs)
       if (sensorSincePingMs === null || since < sensorSincePingMs) sensorSincePingMs = since
