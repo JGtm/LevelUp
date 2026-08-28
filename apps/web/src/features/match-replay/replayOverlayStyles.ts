@@ -8,19 +8,25 @@
  * fin, plus le message). À la 3e copie, la règle CLAUDE.md n°6 impose de centraliser ET de poser
  * un garde-rail — c'est ce fichier, plus `replayOverlayStyles.guard.test.ts`.
  *
- * SANS ACCENT LATÉRAL GAUCHE, ET C'EST LE POINT DE CE LOT. L'écran de fin portait une barre
- * verticale à gauche (`borderLeft`, l'accent d'identité d'équipe) que l'utilisateur ne veut plus
- * (« faut le virer de ce style »). Elle n'est donc NULLE PART : ni l'écran de fin ni le message
- * inter-manche ne la portent. Les classes couleur restent interdites (color-tokens) — l'identité
- * d'équipe passe par un style inline résolu (fond + trait), le neutre par les tokens du thème.
+ * LE BLOC NE PORTE QUE LE STATUT (retour utilisateur du 2026-08-28, 2e passe) : « je ne veux que
+ * le statut de la partie dans un bloc de couleur ; le nom de l'équipe et le score restent juste
+ * du texte affiché librement ». Le bloc a donc absorbé la TYPOGRAPHIE du verdict — un bloc et un
+ * titre séparés inviteraient à y remettre une deuxième ligne, ce qui est précisément ce que le
+ * retour retire. Ce qui l'accompagne (nom, score) vit désormais HORS de lui.
+ *
+ * SANS ACCENT LATÉRAL GAUCHE, et c'est un invariant du lot précédent : l'écran de fin portait
+ * une barre verticale à gauche (`borderLeft`) que l'utilisateur ne veut plus (« faut le virer de
+ * ce style »). Elle n'est NULLE PART. Les classes couleur restent interdites (color-tokens) — la
+ * couleur d'équipe passe par un style inline résolu depuis un token, le neutre par les tokens du
+ * thème.
  */
 
-/** Le corps du panneau : coins, marges, centrage, ombre, flou — SANS bord ni fond (au panneau). */
-export const OVERLAY_PANEL_BODY = 'rounded-lg px-8 py-5 text-center shadow-lg backdrop-blur-sm'
+/**
+ * LE BLOC DU STATUT : sa forme, ses marges et LA POLICE DU VERDICT — sans bord ni fond, qui
+ * appartiennent à l'appelant (couleur d'équipe résolue, ou tokens du thème).
+ */
+export const OVERLAY_STATUS_BLOCK =
+  'rounded-lg px-8 py-4 text-center text-2xl font-bold uppercase tracking-wide text-foreground shadow-lg backdrop-blur-sm'
 
-/** Le panneau NEUTRE (égalité, message inter-manche) : bord et fond par tokens du thème. */
-export const OVERLAY_NEUTRAL_PANEL = `border-2 border-border bg-card ${OVERLAY_PANEL_BODY}`
-
-/** Le TITRE du panneau : la police du verdict de fin, reprise TELLE QUELLE par le message
- *  inter-manche (la demande de l'utilisateur). */
-export const OVERLAY_TITLE = 'text-2xl font-bold uppercase tracking-wide text-foreground'
+/** Le bloc NEUTRE (égalité, message inter-manche) : bord et fond par tokens du thème. */
+export const OVERLAY_STATUS_NEUTRAL = `border-2 border-border bg-card ${OVERLAY_STATUS_BLOCK}`

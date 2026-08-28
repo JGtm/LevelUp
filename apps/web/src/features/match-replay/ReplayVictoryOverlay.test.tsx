@@ -61,9 +61,13 @@ const WINDOW: ReplayWindowBounds = {
 }
 
 // Eagle (`t0`) vaut `#3B9DFF` au référentiel `lib/halo/teamNames.ts` et Cobra (`t1`)
-// `#FE3939` ; le CSSOM de jsdom renormalise tout hex de style inline en `rgb(...)`.
+// `#FE3939` : depuis le 2026-08-28 l'écran ne les porte PLUS (la couleur est celle que
+// l'utilisateur a réglée), et ces deux constantes servent justement à le vérifier.
 const EAGLE = 'rgb(59, 157, 255)'
 const COBRA = 'rgb(254, 57, 57)'
+
+/** Le token de camp allié — la couleur de l'écran de fin depuis le retour du 2026-08-28. */
+const ALLY_TOKEN = 'var(--ac-team-ally)'
 
 function renderOverlay(over: Partial<Parameters<typeof ReplayVictoryOverlay>[0]> = {}) {
   return render(
@@ -107,7 +111,7 @@ describe('ReplayVictoryOverlay — l’habillage est celui du joueur de la page'
       'src',
       '/titles/halo_infinite/teams/0.png',
     )
-    expect(container.innerHTML).toContain(EAGLE)
+    expect(container.innerHTML).toContain(ALLY_TOKEN)
   })
 
   it('en DÉFAITE : TOUJOURS mon équipe — jamais l’emblème du vainqueur', () => {
@@ -118,8 +122,7 @@ describe('ReplayVictoryOverlay — l’habillage est celui du joueur de la page'
       'src',
       '/titles/halo_infinite/teams/0.png',
     )
-    expect(container.innerHTML).toContain(EAGLE)
-    expect(container.innerHTML).not.toContain(COBRA)
+    expect(container.innerHTML).toContain(ALLY_TOKEN)
   })
 
   it('suit le joueur de la page quand il est dans l’autre camp', () => {
@@ -130,18 +133,29 @@ describe('ReplayVictoryOverlay — l’habillage est celui du joueur de la page'
       ] as MatchScoreboardRow[],
     })
     expect(screen.getByText('Équipe Cobra')).toBeInTheDocument()
-    expect(container.innerHTML).toContain(COBRA)
+    // Le camp change, la couleur NON : c'est toujours celle du joueur de la page.
+    expect(container.innerHTML).toContain(ALLY_TOKEN)
   })
 
-  it('porte la couleur d’IDENTITÉ (exception D1 assumée), pas le token de camp', () => {
+  it('porte le token de camp RÉGLABLE, jamais la couleur officielle du jeu (D1)', () => {
     const { container } = renderOverlay()
-    expect(container.innerHTML).not.toContain('--ac-team-ally')
+    expect(container.innerHTML).toContain(ALLY_TOKEN)
+    expect(container.innerHTML).not.toContain(EAGLE)
+    expect(container.innerHTML).not.toContain(COBRA)
   })
 
   it('applique la recette de teinte partagée (fond à 22 %, trait à 55 %)', () => {
     const { container } = renderOverlay()
-    expect(container.innerHTML).toContain(`${EAGLE} 22%`)
-    expect(container.innerHTML).toContain(`${EAGLE} 55%`)
+    expect(container.innerHTML).toContain(`${ALLY_TOKEN} 22%`)
+    expect(container.innerHTML).toContain(`${ALLY_TOKEN} 55%`)
+  })
+
+  it('le BLOC ne porte QUE le statut — nom et score sont dehors (retour du 2026-08-28)', () => {
+    renderOverlay()
+    const bloc = screen.getByText('Victoire')
+    expect(bloc.textContent).toBe('Victoire')
+    expect(bloc).not.toContainElement(screen.getByText('Équipe Eagle'))
+    expect(bloc).not.toContainElement(screen.getByText('50'))
   })
 
   it('le logo est décoratif — le nom est écrit juste dessous', () => {
