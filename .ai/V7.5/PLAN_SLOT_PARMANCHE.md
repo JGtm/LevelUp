@@ -47,7 +47,7 @@ joueur).
   (vie vivante à frame). killFx : `colorOfSlot(slot, e.frame)` (couleur du tueur à l'INSTANT
   du kill). Gate : `fireMark.test.ts`, `meleeStar.test.ts`.
 
-- [ ] **E5 — Équipement / capteur (`equipmentPlacementsLayer.ts`, `threatSensor.ts`,
+- [x] **E5 — Équipement / capteur (`equipmentPlacementsLayer.ts`, `threatSensor.ts`,
   `equipmentZones.ts`).** `sideOfSlot`/`colorOfSlot` → `(slot, frame)`. Poseur résolu à
   `p.t0` (instant de pose, poseur vivant) ; vie proche résolue à `pingFrame`/`query.frame`.
   Ajouter `ownerFrame` à `SensorReveal` pour colorer la marque de révélation par le poseur.
