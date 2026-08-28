@@ -58,8 +58,12 @@ export interface OverlayPanelDeps {
   outcome: ExportOutcome | null
   locale: ReplayLocale
   ink: OverlayInk
-  /** La teinte du camp du joueur de la page. `null` = égalité : le panneau reste neutre. */
-  teamStyle: OverlayStatusStyle | null
+  /**
+   * La teinte du camp du joueur de la page. TOUJOURS fournie : l'égalité est déjà traitée par
+   * l'absence de `victory.mine`, qui bascule seule sur le style neutre. Un `null` ici serait un
+   * second chemin vers la même chose, qu'aucun appelant ne peut produire.
+   */
+  teamStyle: OverlayStatusStyle
   /** Le filigrane DÉJÀ teinté, ou `null` tant qu'il n'est pas chargé. */
   logo: CanvasImageSource | null
 }
@@ -101,7 +105,7 @@ export function buildOverlayPanelSource(deps: OverlayPanelDeps): OverlayPanelSou
     return {
       status: label,
       // L'ÉGALITÉ N'EMPRUNTE RIEN (décision D-B1) : ni camp, ni logo, ni nom.
-      statusStyle: mine && deps.teamStyle ? deps.teamStyle : neutral,
+      statusStyle: mine ? deps.teamStyle : neutral,
       label: mine ? resolveTeamLabel(rows, mine.teamSide, t) : null,
       score: finalScore ? { ally: finalScore.ally.score, enemy: finalScore.enemy.score } : null,
       logo: mine ? deps.logo : null,
@@ -110,8 +114,14 @@ export function buildOverlayPanelSource(deps: OverlayPanelDeps): OverlayPanelSou
   }
 
   const panelAt = (frame: number): OverlayPanel | null => {
-    // LA FIN DE MATCH L'EMPORTE (cf. l'en-tête) : elle est testée en premier.
-    if (deps.playWindow && frame >= deps.playWindow.endFrame) return victoryPanel()
+    // LA FIN DE MATCH L'EMPORTE (cf. l'en-tête) : elle est testée en premier. MAIS elle ne
+    // CONFISQUE pas l'image quand elle n'a rien à dire — sans libellé d'issue, le DOM affiche
+    // quand même le message inter-manche, puisque ses deux surimpressions sont montées
+    // indépendamment. Un `return` sec ici faisait diverger l'export de la page.
+    if (deps.playWindow && frame >= deps.playWindow.endFrame) {
+      const fin = victoryPanel()
+      if (fin) return fin
+    }
     const active = activeRoundTransition(transitions, frame, breakFrames)
     if (!active) return null
     return {

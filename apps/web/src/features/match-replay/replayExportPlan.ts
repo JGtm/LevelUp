@@ -36,6 +36,17 @@ export interface ExportBounds {
   endFrame: number
 }
 
+/**
+ * DUREE MINIMALE DE MAINTIEN de la derniere image, en millisecondes de clip, quand la plage va
+ * jusqu'au bout du match.
+ *
+ * POURQUOI CE MAINTIEN EXISTE. L'ecran de fin de match ne se peint QU'A la borne de fin, et
+ * l'echantillonnage ne pose qu'UNE image sur cette borne : le clip se terminait donc sur un
+ * eclair de 1/30 s de verdict, imperceptible — l'objectif meme que `buildExportPlan` s'assigne
+ * n'etait pas atteint. Trois secondes suffisent a lire un verdict et un score.
+ */
+export const END_HOLD_MS = 3000
+
 /** Le plan complet : ce que la boucle parcourt, et ce que la progression affiche. */
 export interface ExportPlan {
   /**
@@ -46,8 +57,10 @@ export interface ExportPlan {
   frames: number[]
   /** Cadence du fichier produit, en images par seconde. */
   fps: number
-  /** Durée du clip, en millisecondes — celle de la PLAGE de match, pas celle du calcul. */
+  /** Durée de la PLAGE de match exportée, en millisecondes — jamais celle du calcul. */
   durationMs: number
+  /** Millisecondes de maintien de la derniere image, APRES la plage (0 = aucun). */
+  holdMs: number
 }
 
 /**
@@ -100,6 +113,13 @@ export function buildExportPlan(
   bounds: ExportBounds,
   doc: ReplayDocumentReady,
   fps: number = EXPORT_FPS,
+  /**
+   * Maintien de la DERNIERE image apres la plage. L'appelant le calcule : il vaut au moins
+   * `END_HOLD_MS` quand la plage atteint la fin du match, et au moins la queue du son (une
+   * fanfare de fin dure jusqu'a 11 s) — sans quoi la piste sonore jouerait sur un lecteur qui
+   * n'a plus d'image a montrer.
+   */
+  holdMs = 0,
 ): ExportPlan {
   const startMs = frameToMs(bounds.startFrame, doc)
   const endMs = frameToMs(bounds.endFrame, doc)
@@ -119,7 +139,11 @@ export function buildExportPlan(
     frames.push(bounds.startFrame + msToFrames(i * stepMs, doc))
   }
   frames.push(bounds.endFrame)
-  return { frames, fps, durationMs }
+  // LE MAINTIEN REPETE LA DERNIERE IMAGE : elle est deja peinte, le cout est celui de son
+  // encodage seul (une image identique se compresse a presque rien).
+  const held = Math.max(Math.floor(holdMs / stepMs + 1e-9), 0)
+  for (let i = 0; i < held; i++) frames.push(bounds.endFrame)
+  return { frames, fps, durationMs, holdMs: Math.max(holdMs, 0) }
 }
 
 /**

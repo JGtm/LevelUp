@@ -615,6 +615,12 @@ export interface ReplayText {
   exportRunningHint: string
   /** « Image 4 200 / 18 000 » : ce que la barre de progression dit en toutes lettres. */
   exportProgressFmt: (done: number, total: number) => string
-  /** « Durée du clip : 4:32 » — la durée du FICHIER, pas celle du calcul. */
+  /**
+   * « Plage exportée : 4:32 » — la durée de MATCH demandée, et non celle du fichier : quand la
+   * plage va jusqu'au bout, le clip tient sa dernière image quelques secondes de plus, le temps
+   * qu'on lise le verdict et que le son s'achève.
+   */
   exportLengthFmt: (clock: string) => string
+  /** L'export a ECHOUE : le dialogue le dit au lieu de se vider en silence. */
+  exportFailed: string
 }

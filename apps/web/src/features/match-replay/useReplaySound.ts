@@ -45,7 +45,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import type { KillEvent } from '@/features/match-view/_momentum'
 import { useSettings } from '@/features/settings/queries'
-import { staticAssetURL } from '@/lib/staticAssets'
+import { soundUrlOf } from './replayAudioMix'
 
 import { persistPreference, readStoredFlag, readStoredNumber } from './replayPreferences'
 import { endMatchSounds, endMatchSoundStems, type EndMatchSoundSpec } from './endMatchSound'
@@ -92,6 +92,12 @@ export interface ReplayExportTrack {
   endMatchStems: readonly string[]
   /** Reglage d'instance de la variation d'arme, lu a l'appel (page admin). */
   variationPercent: number
+  /**
+   * Reglage d'instance de DISTANCE (page admin). L'export pose la meme chaine attenuation +
+   * passe-bas que le lecteur : sans lui, le clip sonnerait plus fort et plus brillant que la
+   * page, ce qui contredit « la trace fidele ».
+   */
+  distancePercent: number
 }
 
 export interface ReplaySound {
@@ -209,11 +215,11 @@ function soundURLsFor(
     // TOUTES les variantes sont préchargées, pas seulement celle qui sortira du tirage : le
     // tirage a lieu à la lecture, et un fichier pas encore décodé y serait un silence.
     for (const stem of stemsOf(e)) {
-      if (!urls.has(stem)) urls.set(stem, staticAssetURL('sound', stem, '.wav'))
+      if (!urls.has(stem)) urls.set(stem, soundUrlOf(stem))
     }
   }
   for (const stem of extra) {
-    if (!urls.has(stem)) urls.set(stem, staticAssetURL('sound', stem, '.wav'))
+    if (!urls.has(stem)) urls.set(stem, soundUrlOf(stem))
   }
   return urls
 }
@@ -227,21 +233,26 @@ function soundURLsFor(
  */
 function useInstanceSoundTuning(playerRef: { current: ReplayAudioPlayer | null }): {
   variationPercentRef: { current: number }
+  /** MEME NATURE QUE LA VARIATION : une REF, parce que l'export la lit a son lancement et non
+   *  pendant un rendu (lire une ref au rendu rend une valeur arbitraire). */
+  distancePercentRef: { current: number }
   apply: (player: ReplayAudioPlayer) => void
 } {
   const { data: settings } = useSettings()
   const variationPercent = settings?.replay_sound_variation_percent ?? 100
   const distancePercent = settings?.replay_sound_distance_percent ?? 0
   const variationPercentRef = useRef(variationPercent)
+  const distancePercentRef = useRef(distancePercent)
   const apply = useCallback(
     (player: ReplayAudioPlayer) => player.setDistance(distanceChain(distancePercent)),
     [distancePercent],
   )
   useEffect(() => {
     variationPercentRef.current = variationPercent
+    distancePercentRef.current = distancePercent
     if (playerRef.current) apply(playerRef.current)
-  }, [variationPercent, apply, playerRef])
-  return { variationPercentRef, apply }
+  }, [variationPercent, distancePercent, apply, playerRef])
+  return { variationPercentRef, distancePercentRef, apply }
 }
 
 export function useReplaySound(
@@ -460,6 +471,7 @@ export function useReplaySound(
       timeline: timelineRef.current,
       endMatchStems: endMatchSoundStems(endMatchRef.current),
       variationPercent: tuning.variationPercentRef.current,
+      distancePercent: tuning.distancePercentRef.current,
     }),
     [tuning],
   )

@@ -59,6 +59,15 @@ export function ReplayExportDialog({ exporter, locale, onClose }: Props) {
       className="absolute inset-x-3 bottom-3 z-20 rounded-lg border border-border bg-card p-4 shadow-lg"
     >
       <p className="text-sm font-semibold text-foreground">{t.exportDialogTitle}</p>
+      {/* L'ECHEC SE DIT. Sans cette ligne, une panne d'encodeur faisait disparaitre la barre de
+          progression sans un mot et sans fichier — l'utilisateur ne pouvait pas distinguer
+          « ca a echoue » de « il ne s'est rien passe ». */}
+      {exporter.state.failed && (
+        <p role="alert" className="mt-2 text-[12.5px] text-destructive">
+          {t.exportFailed}
+          {exporter.state.message ? ` (${exporter.state.message})` : ''}
+        </p>
+      )}
       {running ? (
         <ExportProgress exporter={exporter} locale={locale} />
       ) : (

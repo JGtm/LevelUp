@@ -31,15 +31,27 @@
  * dérivée de l'ÉVÉNEMENT lui-même (son rang et son stem) : deux exports du même match sonnent
  * pareil, et deux occurrences du même geste sonnent quand même différemment.
  */
-import { drawVariation, gainFromDb, type SoundDraw } from './weaponSoundLogic'
+import { distanceChain, drawVariation, gainFromDb, type SoundDraw } from './weaponSoundLogic'
 import { SOUND_MAX_VOICES, soundEnvelope } from './replayAudio'
 import { WEAPON_SOUND_VARIATIONS } from './weaponSoundVariations'
 import { pickVariantStem, type ReplaySoundEvent } from './replaySoundVariants'
+import { staticAssetURL } from '@/lib/staticAssets'
 
 /** Fréquence d'échantillonnage du mixage. 48 kHz : la cadence native des assets livrés. */
 export const MIX_SAMPLE_RATE = 48_000
 /** Deux canaux : les sources sont mono, le conteneur et les lecteurs attendent de la stéréo. */
 export const MIX_CHANNELS = 2
+
+/**
+ * soundUrlOf — L'URL d'un stem de son, et LE SEUL ENDROIT qui la fabrique.
+ *
+ * Le littéral `staticAssetURL('sound', stem, '.wav')` en était à sa TROISIÈME copie (deux dans
+ * `soundURLsFor`, une ici) : la règle CLAUDE.md n° 6 impose alors de centraliser. Les deux
+ * copies du lecteur consomment desormais cette fonction.
+ */
+export function soundUrlOf(stem: string): string {
+  return staticAssetURL('sound', stem, '.wav')
+}
 
 /** Un son retenu par le mixage : quoi jouer, quand, et avec quelle variation. */
 export interface MixedSound {
@@ -59,6 +71,13 @@ export interface MixBounds {
 export interface MixOptions {
   /** Réglage d'instance de la variation d'arme (page admin), en pourcentage. */
   variationPercent: number
+  /**
+   * RÉGLAGE D'INSTANCE DE DISTANCE (page admin), en pourcentage. Il pose une atténuation et un
+   * passe-bas sur le maître, exactement comme `ReplayAudioPlayer.setDistance` le fait pour les
+   * haut-parleurs. Sans lui, un export sonnerait plus fort et plus brillant que la page —
+   * l'inverse de ce que « la trace fidèle » veut dire.
+   */
+  distancePercent?: number
   /**
    * Les prises de FIN DE PARTIE (voix d'annonceur + fanfare). Elles n'ont pas d'instant sur la
    * piste — elles se posent sur la borne de fin, et seulement si elle est dans la plage.
@@ -123,8 +142,10 @@ export function planAudioMix(
     const draw = drawVariation(WEAPON_SOUND_VARIATIONS[stem], options.variationPercent, rnd)
     out.push({ atMs: e.ms - bounds.startMs, stem, draw })
   }
-  // LA CONCLUSION SE POSE SUR LA BORNE DE FIN, et seulement si la plage l'atteint : un extrait
-  // de milieu de match ne se termine pas sur une fanfare de victoire.
+  // LA CONCLUSION SE POSE SUR LA BORNE DE FIN, et l'appelant ne la fournit QUE si la plage
+  // atteint vraiment la fin du match (cf. `mixExportAudio`) : un extrait de milieu de match ne
+  // se termine pas sur une fanfare de victoire. Ce module ne peut PAS trancher lui-meme — il ne
+  // connait que des millisecondes, pas la borne de fin du match.
   for (const stem of options.endMatchStems ?? []) {
     // AUCUNE VARIATION ICI, comme dans le lecteur : les fourchettes sont celles des armes, une
     // réplique d'annonceur et une fanfare se jouent telles quelles.
@@ -244,13 +265,29 @@ export async function renderAudioMix(
   buffers: MixBuffers,
   durationMs: number,
   masterGain: number,
+  distancePercent = 0,
 ): Promise<AudioBuffer> {
   const tailS = tailSeconds(sounds, buffers, durationMs)
   const frames = Math.max(1, Math.ceil(((durationMs / 1000 + tailS) * MIX_SAMPLE_RATE)))
   const ctx = new OfflineAudioContext(MIX_CHANNELS, frames, MIX_SAMPLE_RATE)
   const master = ctx.createGain()
   master.gain.value = Math.min(Math.max(masterGain, 0), 1)
-  master.connect(ctx.destination)
+  // LA CHAÎNE DE DISTANCE, MÊME RECETTE QUE LE LECTEUR (`ReplayAudioPlayer.setDistance`) :
+  // maître -> atténuation -> passe-bas -> sortie. À 0 %, `distanceChain` rend `null` et AUCUN
+  // nœud n'est posé — le chemin du signal reste celui d'origine, exigence « sons purs ».
+  const chain = distanceChain(distancePercent)
+  if (chain) {
+    const dist = ctx.createGain()
+    dist.gain.value = gainFromDb(chain.gainDb)
+    const filter = ctx.createBiquadFilter()
+    filter.type = 'lowpass'
+    filter.frequency.value = chain.cutoffHz
+    master.connect(dist)
+    dist.connect(filter)
+    filter.connect(ctx.destination)
+  } else {
+    master.connect(ctx.destination)
+  }
   scheduleMix(ctx, master, sounds, buffers)
   return ctx.startRendering()
 }
@@ -303,5 +340,5 @@ export async function mixReplayAudio(
   )
   const kept = applyVoiceCap(planned, (stem) => buffers.get(stem)?.duration ?? null)
   if (kept.length === 0) return null
-  return renderAudioMix(kept, buffers, durationMs, options.volume)
+  return renderAudioMix(kept, buffers, durationMs, options.volume, options.distancePercent ?? 0)
 }

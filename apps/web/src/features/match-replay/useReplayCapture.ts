@@ -247,7 +247,7 @@ export function useReplayCapture(o: ReplayCaptureOptions): ReplayCapture {
   )
   const captureImage = useImageCapture(canvasRef, filenameFor)
   const video = useVideoRecording(o, filenameFor)
-  const videoExport = useExportSeam(o, filenameFor)
+  const videoExport = useExportSeam(o)
 
   return {
     captureImage,
@@ -270,7 +270,7 @@ export function useReplayCapture(o: ReplayCaptureOptions): ReplayCapture {
  * derrière un `if` est interdit par React, et une page sans surimpressions reste une page qui
  * peut exporter son terrain.
  */
-function useExportSeam(o: ReplayCaptureOptions, filenameFor: FilenameFor): ReplayExport | null {
+function useExportSeam(o: ReplayCaptureOptions): ReplayExport | null {
   const { canvasRef, frameRef, doc, playing, play, redraw } = o
   const pause = useCallback(() => {
     if (playing) play()
@@ -288,7 +288,6 @@ function useExportSeam(o: ReplayCaptureOptions, filenameFor: FilenameFor): Repla
     outcome: o.outcome ?? null,
     titleSlug: doc.titleSlug ?? '',
     locale: o.locale ?? 'fr',
-    filenameFor,
     soundTrack: o.soundTrack,
     soundVolume: o.soundVolume,
   })

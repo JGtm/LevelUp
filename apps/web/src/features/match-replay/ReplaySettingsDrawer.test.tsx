@@ -67,7 +67,7 @@ function makeSound(over: Partial<ReplaySound> = {}): ReplaySound {
     tick: vi.fn(),
     endMatch: vi.fn(),
     recordingTrack: () => null,
-  exportTrack: () => ({ timeline: [], endMatchStems: [], variationPercent: 0 }),
+  exportTrack: () => ({ timeline: [], endMatchStems: [], variationPercent: 0, distancePercent: 0 }),
     ...over,
   }
 }

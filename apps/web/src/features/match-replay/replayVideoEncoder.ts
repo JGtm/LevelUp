@@ -185,6 +185,17 @@ export function canExportVideo(): boolean {
   return typeof VideoEncoder.isConfigSupported === 'function'
 }
 
+/**
+ * canExportAudio dit si ce navigateur sait encoder une piste sonore.
+ *
+ * SE TESTE AVANT D'OUVRIR LE CONTENEUR, jamais après : le MP4 annonce ses pistes une fois pour
+ * toutes. Déclarer une piste AAC puis découvrir qu'`AudioEncoder` manque produisait un fichier
+ * portant une piste VIDE — selon le lecteur : muette, avertissement, ou refus d'ouvrir.
+ */
+export function canExportAudio(): boolean {
+  return typeof AudioEncoder !== 'undefined' && typeof AudioData !== 'undefined'
+}
+
 /** Ce que la boucle d'export reçoit : trois gestes, et aucun état à tenir de son côté. */
 export interface VideoExportSink {
   /** Pousse la toile TELLE QU'ELLE EST à cet instant. Attend si la file est pleine. */
@@ -260,7 +271,10 @@ export async function openVideoExport(o: VideoExportOptions): Promise<VideoExpor
     },
   })
   encoder.configure(config)
-  return makeSink(encoder, muxer, fps, () => failure, o.audio ?? null)
+  return makeSink(encoder, muxer, fps, () => failure, o.audio ?? null, {
+    width: config.width,
+    height: config.height,
+  })
 }
 
 /**
@@ -274,6 +288,7 @@ function makeSink(
   fps: number,
   failureOf: () => Error | null,
   audio: AudioTrackShape | null,
+  size: { width: number; height: number },
 ): VideoExportSink {
   let closed = false
   const frameDurationUs = Math.round(1_000_000 / fps)
@@ -287,6 +302,11 @@ function makeSink(
     const frame = new VideoFrame(canvas, {
       timestamp: index * frameDurationUs,
       duration: frameDurationUs,
+      // LE RECADRAGE EST EXPLICITE. La toile fait souvent une taille IMPAIRE (largeur CSS x DPR
+      // fractionnaire) alors que la config est paire : sans `visibleRect`, on pousse une image
+      // 1919x601 dans un encodeur configuré en 1918x600, et le comportement dépend alors de la
+      // version du navigateur — mise à l'échelle implicite ici, erreur d'encodeur ailleurs.
+      visibleRect: { x: 0, y: 0, width: size.width, height: size.height },
     })
     try {
       encoder.encode(frame, { keyFrame: isKeyFrame(index) })
@@ -360,8 +380,13 @@ async function encodeAudioInto(
   buffer: AudioBuffer,
   shape: AudioTrackShape,
 ): Promise<void> {
-  if (typeof AudioEncoder === 'undefined' || typeof AudioData === 'undefined') return
+  if (!canExportAudio()) return
+  // LU PAR ACCESSEUR, jamais directement : `failure` n'est assigné que dans une closure, et
+  // TypeScript garde alors le narrowing d'initialisation — `if (failure)` serait typé
+  // « toujours null », donc supprimable par un lint ou un refactor confiant. Le chemin vidéo
+  // fait pareil, et pour la même raison.
   let failure: Error | null = null
+  const failureOf = (): Error | null => failure
   const encoder = new AudioEncoder({
     output: (chunk, meta) => muxer.addAudioChunk(chunk, meta),
     error: (err) => {
@@ -382,8 +407,9 @@ async function encodeAudioInto(
     // canal dupliqué.
     channels.push(buffer.getChannelData(Math.min(c, buffer.numberOfChannels - 1)))
   }
-  for (let offset = 0; offset < buffer.length; offset += AUDIO_CHUNK_FRAMES) {
-    if (failure) break
+  try {
+   for (let offset = 0; offset < buffer.length; offset += AUDIO_CHUNK_FRAMES) {
+    if (failureOf()) break
     const frames = Math.min(AUDIO_CHUNK_FRAMES, buffer.length - offset)
     const data = new Float32Array(frames * shape.numberOfChannels)
     for (let c = 0; c < shape.numberOfChannels; c++) {
@@ -405,8 +431,19 @@ async function encodeAudioInto(
       audio.close()
     }
     if (encoder.encodeQueueSize > ENCODE_QUEUE_MAX) await yieldToEvents()
+   }
+   await encoder.flush()
+  } finally {
+    // `flush()` REJETTE sur un encodeur en erreur fatale : sans ce `finally`, `close()` n'était
+    // jamais atteint et l'`AudioEncoder` fuyait avec son tampon jusqu'à la fermeture de
+    // l'onglet. Fermer un encodeur déjà fermé lève : on ne masque pas la cause par une
+    // seconde erreur.
+    try {
+      encoder.close()
+    } catch {
+      // Rien à dire : on referme, il n'y a pas d'appelant à prévenir de cette seconde panne.
+    }
   }
-  await encoder.flush()
-  encoder.close()
-  if (failure) throw failure
+  const failed = failureOf()
+  if (failed) throw failed
 }

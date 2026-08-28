@@ -35,7 +35,7 @@ function makeSound(over: Partial<ReplaySound> = {}): ReplaySound {
     tick: vi.fn(),
     endMatch: vi.fn(),
     recordingTrack: () => null,
-  exportTrack: () => ({ timeline: [], endMatchStems: [], variationPercent: 0 }),
+  exportTrack: () => ({ timeline: [], endMatchStems: [], variationPercent: 0, distancePercent: 0 }),
     ...over,
   }
 }
@@ -317,7 +317,7 @@ describe('ReplayTransport — les réglages ferment la barre', () => {
 function makeExport(over: Partial<ReplayExport> = {}): ReplayExport {
   return {
     supported: true,
-    state: { running: false, done: 0, total: 0, pct: 0 },
+    state: { running: false, done: 0, total: 0, pct: 0, failed: false },
     defaultBounds: () => ({ startFrame: 0, endFrame: 100 }),
     run: vi.fn(async () => {}),
     cancel: vi.fn(),

@@ -1,4 +1,3 @@
-import { useState } from 'react'
 /**
  * ReplayTransport — LA BARRE DE LECTURE du rejeu. Refonte validée le 2026-08-28 (planche 2a),
  * après « là ça fait basic de fou » : la barre disait onze commandes du même poids, sans
@@ -29,6 +28,8 @@ import { useState } from 'react'
  * aria-label/title — un symbole sans nom serait une régression d'accessibilité.
  */
 import type { ComponentProps, RefObject } from 'react'
+
+import { useState } from 'react'
 
 import { ReplayExportDialog } from './ReplayExportDialog'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
@@ -69,12 +70,21 @@ export function ReplayTransport({
   // vit ICI et pas dans le canvas : c'est le bouton qui la commande, et le canvas est à son
   // plafond de taille.
   const [exportOpen, setExportOpen] = useState(false)
+  // PENDANT UN EXPORT, LES COMMANDES DE LECTURE SONT NEUTRALISEES. La boucle d'export ecrit
+  // `frameRef` image par image ; la boucle de lecture, les sauts et le glisse de la frise
+  // ecrivent le MEME ref. Les laisser vivants permettait a l'utilisateur de corrompre son
+  // propre clip d'un clic, sans que rien ne le signale.
+  const busy = capture.videoExport?.state.running ?? false
   const t = REPLAY_TEXT[locale]
   return (
     // LE SOCLE SOMBRE sépare le lecteur de la carte : sans lui, la barre flottait sur le même
     // fond que le canvas et paraissait posée là par accident.
     <div className="mt-3 rounded-md bg-background/40 px-3.5 pb-3.5 pt-3">
-      <ReplayTimelineTracks {...timeline} />
+      {/* LA FRISE AUSSI : son curseur ecrit `frameRef`. `pointer-events-none` bloque le geste,
+          `aria-hidden` la retire des technologies d'assistance le temps du calcul. */}
+      <div className={busy ? 'pointer-events-none opacity-40' : undefined} aria-hidden={busy}>
+        <ReplayTimelineTracks {...timeline} />
+      </div>
 
       <div className="mt-5 flex items-center gap-3.5">
         {/* L'HORLOGE D'ABORD, en grand : « où j'en suis » avant « ce que je peux faire ». */}
@@ -85,10 +95,10 @@ export function ReplayTransport({
         />
 
         <div className="flex items-center gap-1.5">
-          <RoundButton onClick={onRestart} label={`${t.restart} (R)`} ghost>
+          <RoundButton onClick={onRestart} label={`${t.restart} (R)`} ghost disabled={busy}>
             <RestartIcon />
           </RoundButton>
-          <RoundButton onClick={() => onSeekBy(-SKIP_SECONDS)} label={`${t.skipBackFmt(SKIP_SECONDS)} (←)`} bordered>
+          <RoundButton onClick={() => onSeekBy(-SKIP_SECONDS)} label={`${t.skipBackFmt(SKIP_SECONDS)} (←)`} bordered disabled={busy}>
             <span className="text-[10.5px] font-medium tabular-nums">−{SKIP_SECONDS}</span>
           </RoundButton>
           {/* LE SEUL BOUTON PLEIN DE LA BARRE. Le nom accessible dit ce que le CLIC va faire,
@@ -96,13 +106,16 @@ export function ReplayTransport({
           <button
             type="button"
             onClick={onTogglePlay}
+            disabled={busy}
             aria-label={playing ? t.pause : t.play}
             title={`${playing ? t.pause : t.play} (${t.keySpace})`}
-            className="inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors hover:bg-primary/90 active:bg-primary/80"
+            className={`inline-flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors ${
+              busy ? 'cursor-not-allowed opacity-40' : 'cursor-pointer hover:bg-primary/90 active:bg-primary/80'
+            }`}
           >
             {playing ? <PauseIcon /> : <PlayIcon />}
           </button>
-          <RoundButton onClick={() => onSeekBy(SKIP_SECONDS)} label={`${t.skipForwardFmt(SKIP_SECONDS)} (→)`} bordered>
+          <RoundButton onClick={() => onSeekBy(SKIP_SECONDS)} label={`${t.skipForwardFmt(SKIP_SECONDS)} (→)`} bordered disabled={busy}>
             <span className="text-[10.5px] font-medium tabular-nums">+{SKIP_SECONDS}</span>
           </RoundButton>
         </div>
@@ -201,23 +214,28 @@ export function ReplayTransport({
  * de la planche 1a — validée le 2026-08-28 contre les rectangles de la première passe.
  */
 function RoundButton({
-  onClick, label, children, ghost, bordered,
+  onClick, label, children, ghost, bordered, disabled,
 }: {
   onClick: () => void
   label: string
   children: React.ReactNode
   ghost?: boolean
   bordered?: boolean
+  /** Neutralise pendant un export : la lecture et l'export se disputeraient l'image courante. */
+  disabled?: boolean
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
       aria-label={label}
       title={label}
-      className={`inline-flex h-[34px] w-[34px] cursor-pointer items-center justify-center rounded-full transition-colors ${
-        bordered ? 'border border-input hover:bg-accent' : ''
-      } ${ghost ? 'text-muted-foreground hover:bg-accent hover:text-accent-foreground' : ''}`}
+      className={`inline-flex h-[34px] w-[34px] items-center justify-center rounded-full transition-colors ${
+        disabled ? 'cursor-not-allowed opacity-40' : 'cursor-pointer'
+      } ${bordered ? 'border border-input hover:bg-accent' : ''} ${
+        ghost ? 'text-muted-foreground hover:bg-accent hover:text-accent-foreground' : ''
+      }`}
     >
       {children}
     </button>
