@@ -53,12 +53,20 @@ Gate : typecheck OK ; vitest 3 fichiers (33) OK ; eslint fichiers touchés 0 err
 
 ## Étape 5 — Son « manche terminée » FR/EN câblé
 Retour utilisateur + stub déjà écrit dans `replaySound.ts`.
-- [ ] 5.1 Copier les 2 wav de E:/ → `static/sounds/halo_infinite/round_over_fr.wav` / `_en.wav`.
-- [ ] 5.2 `roundOverSound.ts` : `roundOverSoundEvents(doc, locale)` daté sur `roundTransitions`,
-      stem par locale ; branché dans `buildSoundTimeline` (catégorie objective) via `locale`.
-- [ ] 5.3 Threader `locale` : `useReplaySound` → `buildSoundTimeline` ; `ReplayCanvas` passe la locale.
-- [ ] 5.4 Garde-rail `replaySoundAssets.guard.test.ts` : stems enregistrés (référencés + durée long).
-- [ ] 5.5 Tests logique son (`roundOverSound` + timeline).
+- [x] 5.1 Copiés : `round_over_fr.wav` (1,749 s) / `round_over_en.wav` (1,707 s) — 48 kHz PCM
+      16-bit stéréo, format canonique du dépôt (aucune ré-encodage nécessaire).
+- [x] 5.2 `roundOverSound.ts` : `roundOverSoundEvents(doc, locale)` daté sur `roundTransitions`
+      (même mesure que l'overlay), stem par locale ; branché dans `buildSoundTimeline`
+      (catégorie objective) `if (locale)`, stub remplacé.
+- [x] 5.3 `locale` threadé : `useReplaySound` (7e param) → `buildSoundTimeline` ; `ReplayCanvas`
+      passe `locale`.
+- [x] 5.4 Garde-rail : `ROUND_OVER_SOUND_STEMS` re-exporté + ajouté à `referenced` ET `longs`
+      (durée ≤6 s, non retronqué).
+- [x] 5.5 `roundOverSound.test.ts` (bascule, locale FR/EN, manche unique, garde d'horloge).
+Gate : typecheck OK ; vitest 4 fichiers son (101) OK ; eslint fichiers touchés 0 erreur
+(seul avert. `objectiveObjects` pré-existant).
+Réserve : les 2 wav ne sont PAS renormalisés à -16 LUFS (recette maison) — copie brute demandée ;
+niveau à re-mesurer au gate d'écoute si nécessaire (CR).
 
 ## Découvertes (à ne pas traiter — noter seulement)
 - `ReplayCanvas.draw()` n'a pas `objectiveObjects` dans son tableau de dépendances (avert.
@@ -71,3 +79,5 @@ Retour utilisateur + stub déjà écrit dans `replaySound.ts`.
 - 2026-08-28 : étapes 2 (respawn = data manquante) et 3 (crâne libre = salience, corrigé par
   étape 1) statuées sur pièces, aucun code neuf (pas de fabrication).
 - 2026-08-28 : étape 4 close — accent gauche retiré, message inter-manche aligné, style centralisé.
+- 2026-08-28 : étape 5 close — son « manche terminée » FR/EN câblé (piste, locale-aware), assets
+  copiés + garde-rail. Réserve loudness (copie brute, non renormalisée).

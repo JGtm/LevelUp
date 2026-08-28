@@ -167,9 +167,11 @@ import type { KillEvent } from '@/features/match-view/_momentum'
 
 import { placementIsDeployedObject } from './equipmentPlacementsLayer'
 import { grenadeSoundEvents } from './grenadeSound'
+import type { ReplayLocale } from './i18n'
 import { alignFeed } from './killFeedLogic'
 import { objectiveSoundEvents, type ObjectiveSide } from './objectiveSound'
 import { padPickupSoundEvents } from './padSound'
+import { roundOverSoundEvents } from './roundOverSound'
 import { zoneSoundEvents } from './zoneSound'
 import { frameToMs } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
@@ -179,6 +181,7 @@ export { pickVariantStem, SOUND_VARIANTS, stemsOf, type ReplaySoundEvent } from 
 export { OBJECTIVE_SOUND_STEMS, objectiveSoundStem, type ObjectiveSide } from './objectiveSound'
 export { ZONE_SOUND_STEMS, zoneSoundEvents } from './zoneSound'
 export { PAD_PICKUP_SOUND_STEM, padPickupSoundEvents } from './padSound'
+export { ROUND_OVER_SOUND_STEMS, roundOverSoundEvents } from './roundOverSound'
 
 /**
  * Catégorie d'un son, pour le filtre du tiroir de réglages (phase 2, décision utilisateur
@@ -560,6 +563,10 @@ export function buildSoundTimeline(
   // propriétaire d'une zone et non sur le xuid d'un joueur (`zoneSound.ts`). `null` = camp non
   // résolu : capture en cours et tics de score se taisent, la nouvelle colline sonne quand même.
   allyTeam: number | null = null,
+  // La LANGUE DE L'INTERFACE — la seule entrée locale-aware de la piste : le son « manche
+  // terminée » est une VOIX d'annonceur (`roundOverSound.ts`). Absente (anciens appels, mesure de
+  // disponibilité), ce son se tait : le rejeu ne devine pas une langue.
+  locale?: ReplayLocale,
 ): ReplaySoundEvent[] {
   const out: ReplaySoundEvent[] = []
   if (categories.weapon) {
@@ -631,15 +638,12 @@ export function buildSoundTimeline(
     // viennent d'aucun joueur — leur source est `doc.zoneStates`, pas `doc.objectives` — mais
     // ils appartiennent à la même catégorie du tiroir, et se coupent donc avec elle.
     out.push(...zoneSoundEvents(doc, allyTeam))
-    // LE SON « MANCHE TERMINÉE » SE BRANCHERAIT ICI, sur la même mesure que le message
-    // inter-manche : la bascule d'une manche à la suivante (`roundTransitions`, roundsLogic),
-    // datée par le calque de score. IL N'EST PAS CÂBLÉ faute d'asset : le jeu n'en fournit pas
-    // dans le pack, et on ne référence JAMAIS un stem sans fichier — le garde-rail
-    // `replaySoundAssets.guard.test.ts` le refuse à juste titre (un asset mort casse l'écoute),
-    // exactement comme le translocateur est resté muet jusqu'à ce que l'utilisateur l'extraie.
-    // Le point de déclenchement est établi et VIVANT (l'overlay inter-manche l'utilise déjà) ;
-    // le jour de l'asset, le son se câble comme `zoneSoundEvents` — une table de stem, un
-    // `out.push(...roundOverSoundEvents(doc))`, et la ligne de garde-rail correspondante.
+    // LE SON « MANCHE TERMINÉE », sur la même mesure que le message inter-manche : la bascule
+    // d'une manche à la suivante (`roundTransitions`, roundsLogic), datée par le calque de score.
+    // CÂBLÉ depuis le 2026-08-28 (l'asset annonceur FR/EN a été fourni) — exactement comme le
+    // stub qui vivait ici l'annonçait. Sans `locale`, il se tait : une voix a une langue, et le
+    // rejeu n'en devine pas une. Table de stem et doctrine : `roundOverSound.ts`.
+    if (locale) out.push(...roundOverSoundEvents(doc, locale))
   }
   return out.sort((a, b) => a.ms - b.ms)
 }
