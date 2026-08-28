@@ -1,3 +1,4 @@
+import { useState } from 'react'
 /**
  * ReplayTransport — LA BARRE DE LECTURE du rejeu. Refonte validée le 2026-08-28 (planche 2a),
  * après « là ça fait basic de fou » : la barre disait onze commandes du même poids, sans
@@ -29,6 +30,7 @@
  */
 import type { ComponentProps, RefObject } from 'react'
 
+import { ReplayExportDialog } from './ReplayExportDialog'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
 import { SKIP_SECONDS } from './replayCanvasConfig'
 import { ReplaySoundControls } from './ReplaySoundControls'
@@ -63,6 +65,10 @@ export function ReplayTransport({
   speed, onSetSpeed, sound, capture, locale,
   settingsOpen, onToggleSettings, settingsButtonRef,
 }: ReplayTransportProps) {
+  // LE DIALOGUE D'EXPORT s'ouvre depuis la barre et se pose au-dessus d'elle. Son ouverture
+  // vit ICI et pas dans le canvas : c'est le bouton qui la commande, et le canvas est à son
+  // plafond de taille.
+  const [exportOpen, setExportOpen] = useState(false)
   const t = REPLAY_TEXT[locale]
   return (
     // LE SOCLE SOMBRE sépare le lecteur de la carte : sans lui, la barre flottait sur le même
@@ -123,7 +129,23 @@ export function ReplayTransport({
             <CameraIcon />
             {t.captureImageShort}
           </button>
-          {capture.recordingSupported && (
+          {/* L'EXPORT HORS TEMPS RÉEL prend la place de l'enregistrement quand le navigateur
+              sait encoder (décision D5) : deux boutons qui font presque la même chose seraient
+              un piège à clic. Le repli reste offert là où WebCodecs manque. */}
+          {capture.videoExport?.supported && (
+            <button
+              type="button"
+              onClick={() => setExportOpen((v) => !v)}
+              aria-expanded={exportOpen}
+              aria-label={t.exportVideo}
+              title={t.exportHint}
+              className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full bg-primary px-3.5 text-[12.5px] font-semibold tracking-[0.03em] text-primary-foreground transition-colors hover:bg-primary/90"
+            >
+              <ExportIcon />
+              {t.exportVideoShort}
+            </button>
+          )}
+          {!capture.videoExport?.supported && capture.recordingSupported && (
             <button
               type="button"
               onClick={capture.toggleRecording}
@@ -161,6 +183,15 @@ export function ReplayTransport({
           <SlidersIcon />
         </button>
       </div>
+      {/* LE DIALOGUE COIFFE LA BARRE, dans son cadre : il n'a rien à faire dans le canvas, qui
+          ne saurait pas quand l'ouvrir. Il ne se rend que si l'export est possible. */}
+      {exportOpen && capture.videoExport && (
+        <ReplayExportDialog
+          exporter={capture.videoExport}
+          locale={locale}
+          onClose={() => setExportOpen(false)}
+        />
+      )}
     </div>
   )
 }
@@ -246,6 +277,30 @@ function RestartIcon() {
     >
       <path d="M2.5 8a5.5 5.5 0 1 0 1.6-3.9" />
       <path d="M4.1 1.6v2.9H7" />
+    </svg>
+  )
+}
+
+/**
+ * Icône d'export : la flèche qui SORT du plateau. Volontairement différente du disque rouge
+ * de l'enregistrement — les deux commandes ne se remplacent pas dans l'esprit de qui regarde,
+ * même si le code, lui, remplace l'une par l'autre.
+ */
+function ExportIcon() {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      className="h-[15px] w-[15px]"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M8 10.2V2.4" />
+      <path d="M5.2 5.2 8 2.4l2.8 2.8" />
+      <path d="M2.8 10.4v2.2a1 1 0 0 0 1 1h8.4a1 1 0 0 0 1-1v-2.2" />
     </svg>
   )
 }

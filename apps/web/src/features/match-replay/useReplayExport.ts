@@ -52,7 +52,7 @@ import {
 } from './exportOverlayPanels'
 import { paintOverlayPanel, type OverlayFonts, type OverlayInk } from './overlayPaint'
 import { MIX_CHANNELS, MIX_SAMPLE_RATE, mixReplayAudio } from './replayAudioMix'
-import { frameToMs } from './replayLogic'
+import { formatClock, frameToMs } from './replayLogic'
 import { triggerDownload } from './replayCapture'
 import { tintedIconCanvas } from './replayDraw'
 import {
@@ -63,7 +63,7 @@ import {
 } from './replayExportPlan'
 import type { ReplayDocumentReady } from './replayNormalize'
 import { canExportVideo, openVideoExport } from './replayVideoEncoder'
-import type { ReplayWindowBounds } from './replayWindow'
+import { displayClockMs, type ReplayWindowBounds } from './replayWindow'
 import type { ReplayLocale } from './i18n'
 import type { ReplaySoundEvent } from './replaySoundVariants'
 import { readVictory } from './victoryLogic'
@@ -124,6 +124,15 @@ export interface ReplayExport {
   defaultBounds: () => ExportBounds
   run: (bounds: ExportBounds, options?: ExportRunOptions) => Promise<void>
   cancel: () => void
+  /**
+   * L'HORLOGE DE MATCH d'une image, prête à afficher. Portée par l'export et non par le
+   * dialogue : le recalage sur la fenêtre de gameplay demande le document ET la fenêtre, que
+   * le dialogue n'a aucune raison de recevoir — et qui coûteraient deux props au canvas, déjà
+   * à son plafond de taille.
+   */
+  clockOf: (frame: number) => string
+  /** La durée du CLIP pour ces bornes, formatée. Même raison, même endroit. */
+  lengthClock: (bounds: ExportBounds) => string
 }
 
 const IDLE: ReplayExportState = { running: false, done: 0, total: 0, pct: 0 }
@@ -273,7 +282,16 @@ export function useReplayExport(o: ReplayExportOptions): ReplayExport {
     [o],
   )
 
-  return { supported: canExportVideo(), state, defaultBounds, run, cancel }
+  const clockOf = useCallback(
+    (frame: number) => formatClock(displayClockMs(frameToMs(frame, o.doc), o.playWindow)),
+    [o.doc, o.playWindow],
+  )
+  const lengthClock = useCallback(
+    (b: ExportBounds) => formatClock(frameToMs(b.endFrame, o.doc) - frameToMs(b.startFrame, o.doc)),
+    [o.doc],
+  )
+
+  return { supported: canExportVideo(), state, defaultBounds, run, cancel, clockOf, lengthClock }
 }
 
 /** Ce dont la boucle a besoin en plus des images : où pousser, et quand s'arrêter. */

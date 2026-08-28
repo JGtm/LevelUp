@@ -14,12 +14,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useReplayExport } from './useReplayExport'
 import { testReplayDoc } from './test/testDoc'
 
-// La SIGNATURE est portee par le mock : sans elle, `mock.calls` est un tuple vide et
-// l'assertion sur l'indice d'image ne compile pas.
-const addFrame = vi.fn(async (_canvas: HTMLCanvasElement, _index: number) => {})
+// La SIGNATURE est portee par le TYPE du mock, pas par des parametres nommes : sans elle,
+// `mock.calls` est un tuple vide et l'assertion sur l'indice d'image ne compile pas ; avec des
+// parametres nommes mais inutilises, c'est le lint qui proteste.
+const addFrame = vi.fn<(canvas: HTMLCanvasElement, index: number) => Promise<void>>(async () => {})
 const finish = vi.fn(async () => new Blob(['mp4']))
 const abort = vi.fn()
-const addAudioBuffer = vi.fn(async (_b: AudioBuffer) => {})
+const addAudioBuffer = vi.fn<(buffer: AudioBuffer) => Promise<void>>(async () => {})
 
 vi.mock('./replayVideoEncoder', async (orig) => ({
   ...(await orig<typeof import('./replayVideoEncoder')>()),

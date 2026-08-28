@@ -309,15 +309,32 @@ Chaines FR et EN par typage (`Record<Locale, T>`), regle CLAUDE.md n°1.
 
 Items :
 
-- [ ] Bouton « Exporter la video » dans `ReplayTransport`, icone SVG inline `currentColor`
-- [ ] Le bouton d'enregistrement temps reel ne se rend QUE sans `VideoEncoder` (D5)
-- [ ] Dialogue : deux bornes, case son, barre de progression, bouton Annuler
-- [ ] Bornes bornees a la fenetre de gameplay, fin toujours posterieure au debut
-- [ ] Toutes les chaines en FR ET EN dans `i18n.ts`, parite tenue par le typage
-- [ ] Aucune valeur hex ni classe Tailwind couleur (regle n°12)
+- [x] Bouton « Exporter la video » dans `ReplayTransport`, icone SVG inline `currentColor`
+- [x] Le bouton d'enregistrement temps reel ne se rend QUE sans `VideoEncoder` (D5), teste
+      dans les deux sens
+- [x] Dialogue : deux bornes, case son, barre de progression, bouton Annuler. PENDANT LE
+      CALCUL il n'offre plus que l'annulation — ni « Exporter » (relancer un export dans un
+      export), ni « Fermer » (laisser un calcul de plusieurs minutes tourner sans que rien ne
+      le dise)
+- [x] Bornes bornees a la fenetre de gameplay, fin toujours posterieure au debut — par
+      `clampExportBounds`, deja teste en E3, appele par le dialogue plutot que recopie
+- [x] Toutes les chaines en FR ET EN dans `i18n.ts`, parite tenue par le typage
+- [x] Aucune valeur hex ni classe Tailwind couleur (regle n°12) — tokens semantiques seuls
+      (`bg-primary`, `text-muted-foreground`, `border-border`...)
 
 **Gate** : `make check-types`, `make test-web`, `cd apps/web && npx eslint
 src/features/match-replay`, et le contrat i18n (`i18nContract.ts`) vert.
+
+**Etat 2026-08-28 : E5 CLOSE cote technique.** 11 tests neufs (3 sur la bascule et
+l'ouverture du dialogue, 8 sur le dialogue lui-meme) ; `make test-web` vert (527 fichiers,
+5349 tests, 14 skippes) ; `make check-types` vert ; eslint sans erreur sur la feature (deux
+avertissements PREEXISTANTS subsistent, hors perimetre : `objectiveObjects` dans
+`ReplayCanvas` et `react-refresh` dans `ReplayFeedName`).
+
+DECISION PRISE EN COURS D'ETAPE, non prevue par le plan : l'horloge de match du dialogue est
+portee par `ReplayExport` (`clockOf`, `lengthClock`) et non par le composant. Le recalage sur
+la fenetre de gameplay demande le document ET la fenetre — deux props de plus au canvas, qui
+est a son plafond. L'export les tient deja.
 
 ### E6 — Cloture
 

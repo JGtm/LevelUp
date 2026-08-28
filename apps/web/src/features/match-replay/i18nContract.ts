@@ -593,4 +593,28 @@ export interface ReplayText {
   inventoryFallbackHint: string
   inventoryNoPriorHint: string
   gaugeLabel: string
+  /**
+   * L'EXPORT HORS TEMPS REEL — la commande, son dialogue, et ce qu'il annonce pendant qu'il
+   * calcule.
+   *
+   * `exportHint` dit la SEULE chose qui distingue cette commande de l'enregistrement qu'elle
+   * remplace : le fichier ne se paie pas en temps de match. `exportRunningHint` prévient que
+   * le terrain va défiler très vite sous les yeux — sans cela, un utilisateur croirait à un
+   * emballement du rejeu.
+   */
+  exportVideo: string
+  exportVideoShort: string
+  exportHint: string
+  exportDialogTitle: string
+  exportFrom: string
+  exportTo: string
+  exportWithSound: string
+  exportStart: string
+  exportCancel: string
+  exportClose: string
+  exportRunningHint: string
+  /** « Image 4 200 / 18 000 » : ce que la barre de progression dit en toutes lettres. */
+  exportProgressFmt: (done: number, total: number) => string
+  /** « Durée du clip : 4:32 » — la durée du FICHIER, pas celle du calcul. */
+  exportLengthFmt: (clock: string) => string
 }
