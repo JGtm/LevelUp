@@ -1,3 +1,27 @@
+## [2026-08-28] Re-cuisson Oddball d9781168 — crane rendu VISIBLE + fix pipeline --one — Complete
+
+**Contexte** : porteur du crane merge (schema 23) mais artefact SERVI de d9781168 reste au schema 21
+-> invisible. Gate visuel utilisateur : crane absent, score inerte, dots vides.
+
+**Decision technique** : la cause de « carte hors catalogue ([]) » n'est PAS une donnee (map_name
+« Dredge » au registre ET au catalogue) mais un TROU DE CODE : `backfill-replay --one <id>` tape a la
+main ne resout pas la carte (resolution reservee au parent, transitant par `--map-name`). Fix cible :
+`candidatsCarte` (point de verite unique de l'ordre des candidats, regle <=2) + `mapNamesForOne`
+(resolution registre d'un match, RO relache) ; l'enfant prefere `--map-name` explicite (masse), resout
+depuis le registre seulement pour `--one` a la main -> zero surcout de masse ; + test TestCandidatsCarte.
+
+**Resultats** : d9781168 re-cuit AVEC facts -> **schema 23, skullCarries 36 portages (porteur par
+manche ; 1er = SHROOM = verite terrain), objectiveObjects 47 vies (crane libre), 2 EQUIPES RESOLUES
+(191/196 == registre, 3 manches)**. Le crane + le score + les dots ont enfin leur donnee. « 2 joueurs /
+respawn 20 s » = (a) VRAIE mecanique de fin de manche (respawn au reset ; bornes 206/417/698 s justes,
+majorite des frames a 4-8 joueurs) — pas un bug. Gates verts (build, vet, cmd/levelup). Fusionne feat/v75.
+
+**Conclusion / prochaine etape** : l'artefact d9781168 du principal est re-cuit (l'utilisateur peut
+recharger). Propagation a tous les Oddball servis = `backfill-replay --only-existing` (chemin parent,
+jamais bloque ; 26 matchs, 9 cartes toutes au catalogue). RESTE : `scoreTimeline.players` par TOTAUX
+(1 joueur apparie en multi-manche — meme dette que la suite P2, calque score a migrer par manche) ;
+le crane libre ne s'affichait pas cote UI (rendu, traite par le lot UI en cours) ; 18/160 tracks sans xuid.
+
 ## [2026-08-28] Calque Objectives identifie PAR MANCHE + nettoyage porteur (3 P2) — Complete
 
 **Contexte** : dernier calque encore sur l'identite par TOTAUX (`matchfacts.identifiedEvents`),
