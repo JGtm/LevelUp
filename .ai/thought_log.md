@@ -1,3 +1,38 @@
+## [2026-08-28] Schema media jumeau `AssociatedMediaItem` supprime + repli kind repare — Complete
+
+**Contexte** : l'onglet Medias de la page match (`MatchMediaTab.tsx`) se typait sur
+`AssociatedMediaItem` alors que le serveur sert `MatchAssociatedMedia` (openapi.yaml,
+`MatchMediaTab.media_items`). Rectificatif a la carto du plan lecteur-medias : le premier
+n'etait PAS un schema Go derive, c'etait un DOUBLON MANUEL saisi dans
+`openapi_manual_fragment.yaml` (fragment reserve au non-derivable) — aucun type Go, aucun
+producteur, pas de `capture_start_time` et une duree en float la ou le serveur sert un int.
+
+**Decision technique** : typer sur ce qui est REELLEMENT servi et supprimer le doublon plutot
+que de reconcilier deux formes. `MatchAssociatedMedia` exporte depuis `lib/api/types.ts` ;
+schema retire du fragment manuel puis regenere (`openapi-gen` -> `generate-types`, jamais
+d'edition a la main des fichiers generes) ; re-export mort de `types.ts` supprime (regle 7).
+Bug reel corrige au passage : le repli du `kind` testait `!== null` alors que
+`duration_seconds` est `omitempty` (donc `undefined` quand absent), ce qui classait en 'clip'
+toute image sans `kind` servie depuis un cache d'avant le fix kind — passe a `!= null`.
+`toMediaItemRow` extrait dans `_mediaItemRow.ts` (convention `_xxx.ts` du dossier match-view ;
+evite aussi le warning react-refresh qu'un export de fonction depuis un module de composant
+declenche).
+
+**Resultats** : gates verts — tsc 0 ; vitest match-view+media 38 fichiers / 356 tests ; vitest
+lib/api 5 / 32 ; eslint 0 erreur 0 warning ; knip 0 ; golden Go `TestOpenAPI*` ok ; openapi-check
+0 (yaml a jour, generated.ts derive). `AssociatedMediaItem` : 0 occurrence dans `apps/`, ne
+subsiste que dans les archives et journaux. Garde-rail `_mediaItemRow.test.ts` (4 cas), cas cible
+PROUVE rouge sous mutation `!== null` (« expected 'clip' to be 'screenshot' », les 3 autres verts).
+
+**Conclusion / prochaine etape** : livre sur `wt/media-schema` (1 commit, pas de merge).
+DECOUVERTE a arbitrer hors lot : `contract-surface.snapshot.json` est PERIME sur feat/v75 — son
+mecanisme officiel (`UPDATE_CONTRACT_SURFACE=1`) reecrit le snapshot ENTIER et y injecterait 67
+schemas / 11 operations / 11 chemins venus d'autres lots (build-queue, replay background+callouts,
+presence, couvertures objectifs). Le ratchet ne mordant que sur les DISPARITIONS, ces ajouts
+passaient sans bruit. Retrait applique ici en chirurgie (555 -> 554 schemas, un seul nom perdu,
+zero ajout) pour ne pas benir 67 noms hors perimetre ; reste a rafraichir le snapshot en entier
+dans un lot dedie.
+
 ## [2026-08-28] Porteur du crane d'Oddball PUBLIE (schema 23) + identite PAR MANCHE — Complete
 
 **Contexte** : le [!] de 5 campagnes spatiales (plafond 79,8 %, porteur principal 0/3). Debloque par

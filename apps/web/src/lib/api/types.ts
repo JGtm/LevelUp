@@ -1897,7 +1897,8 @@ export interface MatchTeamTab {
   encounters: MatchEncounterRow[]
 }
 
-export type AssociatedMediaItem = components['schemas']['AssociatedMediaItem']
+/** Un media associe a un match — la forme REELLEMENT servie dans `media_tab.media_items`. */
+export type MatchAssociatedMedia = components['schemas']['MatchAssociatedMedia']
 
 export type MatchMediaTab = components['schemas']['MatchMediaTab']
 

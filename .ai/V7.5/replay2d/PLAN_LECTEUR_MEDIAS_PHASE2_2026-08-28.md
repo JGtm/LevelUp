@@ -240,12 +240,22 @@ wt/lecteur-medias. Un seul lot ouvert a la fois.
   test est `!== null` alors que le champ est `omitempty`, donc `undefined` quand absent —
   une image sans `kind` est classee 'clip'. Comportement INCHANGE par le lot 1 (une image
   n'a toujours pas de duree).
+  TRAITEE par le lot `wt/media-schema` (2026-08-28) : le test passe a `!= null` (couvre
+  null ET undefined), commentaire remis au vrai. Garde-rail `_mediaItemRow.test.ts`, cas
+  « kind absent + duree absente => 'screenshot' » PROUVE rouge sous mutation `!== null`.
 - (lot 2, 2026-08-28) DEUX schemas media coexistent au contrat : `MatchAssociatedMedia`
   (celui que `media_tab.media_items` sert reellement) et `AssociatedMediaItem` (un autre
   schema Go, sans `capture_start_time`, avec `duration_seconds` en float). `MatchMediaTab.tsx`
   se type sur le SECOND alors qu'il recoit le premier : les champs coincident aujourd'hui,
   donc rien ne casse et `tsc` ne voit rien. HORS PERIMETRE — le mappeur du rejeu, lui, se
   type sur `MatchMediaTab['media_items']`, c'est-a-dire sur ce qui arrive vraiment.
+  TRAITEE par le lot `wt/media-schema` (2026-08-28). RECTIFICATIF a la carto ci-dessus :
+  `AssociatedMediaItem` n'etait PAS un schema Go — c'etait un DOUBLON MANUEL saisi dans
+  `openapi_manual_fragment.yaml` (fragment reserve au non-derivable), donc sans aucun type
+  Go ni producteur. Supprime du fragment + regenere (`openapi-gen`, `generate-types`) ;
+  `MatchMediaTab.tsx` se type desormais sur `MatchAssociatedMedia` (ce qu'il recoit) ;
+  re-export mort retire de `lib/api/types.ts`. Surface de contrat : 555 -> 554 schemas
+  (une BAISSE, un seul nom perdu, zero ajout).
 
 ## Journal des revues (2026-08-28, pilote)
 

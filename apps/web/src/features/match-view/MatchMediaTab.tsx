@@ -1,9 +1,10 @@
 import { useState, useMemo } from 'react'
-import type { AssociatedMediaItem, MediaItemRow } from '@/lib/api/types'
+import type { MatchAssociatedMedia, MediaItemRow } from '@/lib/api/types'
 import { MediaThumbnailCard, MediaLightbox } from '@/features/media/MediaViewer'
 import { MediaMatchPicker } from '@/features/media/MediaMatchPicker'
 import { useMediaPicker } from '@/features/media/useMediaPicker'
-import { useToggleMediaLike, normalizeMediaKind } from '@/features/media/queries'
+import { useToggleMediaLike } from '@/features/media/queries'
+import { toMediaItemRow } from './_mediaItemRow'
 import type { MatchViewLocale } from './i18n'
 import { MATCH_VIEW_TEXT } from './i18n'
 
@@ -28,33 +29,8 @@ function CameraOffIcon() {
   )
 }
 
-function toMediaItemRow(item: AssociatedMediaItem, matchId: string): MediaItemRow {
-  return {
-    basename: item.file_name,
-    file_path: item.file_path,
-    // kind authoritatif depuis l'API (mf.kind 'video'/'image'), normalisé en
-    // 'clip'/'screenshot' comme la galerie. Repli sur duration_seconds pour les
-    // réponses sans kind (cache navigateur d'avant ce fix).
-    kind: item.kind
-      ? normalizeMediaKind(item.kind)
-      : item.duration_seconds !== null
-        ? 'clip'
-        : 'screenshot',
-    thumbnail_path: item.thumbnail_url ?? null,
-    match_id: matchId,
-    capture_end_utc: item.capture_time ?? null,
-    match_start_time: null,
-    section: 'mine',
-    owner_gamertag: null,
-    map_name: null,
-    mode_name: null,
-    liked: item.liked,
-    like_count: 0,
-  }
-}
-
 interface MatchMediaTabProps {
-  items: AssociatedMediaItem[]
+  items: MatchAssociatedMedia[]
   playerSlug: string
   matchId: string
   locale: MatchViewLocale
