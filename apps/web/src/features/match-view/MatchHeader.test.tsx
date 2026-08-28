@@ -18,7 +18,13 @@ vi.mock('@/lib/accessibility/scales', () => ({
 }))
 
 vi.mock('@tanstack/react-router', () => ({
-  Link: ({ children }: { children: ReactNode }) => <a>{children}</a>,
+  // Le mock relaie les props : depuis que le lien de rejeu est icône seule, son nom
+  // accessible vit dans `aria-label` — et un <a> sans `href` n'a pas le rôle "link".
+  Link: ({ children, ...props }: { children: ReactNode; [key: string]: unknown }) => (
+    <a href="#" aria-label={props['aria-label'] as string | undefined} title={props.title as string | undefined}>
+      {children}
+    </a>
+  ),
   useNavigate: () => vi.fn(),
   useRouter: () => ({ history: { length: 1, back: vi.fn() }, navigate: vi.fn() }),
   useRouterState: () => undefined,
@@ -130,9 +136,9 @@ describe('MatchHeaderCard', () => {
     expect(screen.getByText('▲ +34')).toBeInTheDocument()
     expect(screen.getByText('Performance')).toBeInTheDocument()
     expect(screen.getByText('Rang')).toBeInTheDocument()
-    // Action labels FR (boutons courts)
-    expect(screen.getByText('Copier ID')).toBeInTheDocument()
-    expect(screen.getByText('Exclure')).toBeInTheDocument()
+    // Actions FR : boutons icône seule, le libellé ne vit plus que dans l'aria-label.
+    expect(screen.getByRole('button', { name: 'Copier ID' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Exclure' })).toBeInTheDocument()
   })
 
   it('affiche les libellés EN quand locale=en', () => {
@@ -148,8 +154,8 @@ describe('MatchHeaderCard', () => {
     )
     expect(screen.getByText('Performance')).toBeInTheDocument()
     expect(screen.getByText('Rank')).toBeInTheDocument()
-    expect(screen.getByText('Copy ID')).toBeInTheDocument()
-    expect(screen.getByText('Exclude')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Copy ID' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Exclude' })).toBeInTheDocument()
   })
 
   it('affiche le fallback texte si map_image_url est null', () => {
@@ -236,7 +242,7 @@ describe('MatchHeaderCard', () => {
         locale="fr"
       />,
     )
-    expect(screen.getByText('Réactiver')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Réactiver' })).toBeInTheDocument()
   })
 
   it('rating_type=none : ne rend pas la section rang', () => {
@@ -377,23 +383,23 @@ describe('MatchHeaderCard — lien vers le rejeu 2D', () => {
 
   it("n'affiche AUCUN lien quand le match n'a pas d'artefact", () => {
     renderHeader({ ...baseHeader, replay_available: false }, 'fr')
-    expect(screen.queryByText('Rejeu 2D')).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /rejeu 2D/i })).not.toBeInTheDocument()
   })
 
   it("n'affiche aucun lien quand le champ est absent (titre sans rejeu)", () => {
     renderHeader(baseHeader, 'fr')
-    expect(screen.queryByText('Rejeu 2D')).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /rejeu 2D/i })).not.toBeInTheDocument()
   })
 
   it('affiche le lien FR quand l’artefact existe', () => {
     renderHeader({ ...baseHeader, replay_available: true }, 'fr')
-    expect(screen.getByText('Rejeu 2D')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /rejeu 2D/i })).toBeInTheDocument()
   })
 
   it('affiche le lien EN quand l’artefact existe', () => {
     renderHeader({ ...baseHeader, replay_available: true }, 'en')
-    expect(screen.getByText('2D replay')).toBeInTheDocument()
-    expect(screen.queryByText('Rejeu 2D')).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /2D replay/i })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /rejeu 2D/i })).not.toBeInTheDocument()
   })
 
   // LE LOGO EST UN RASTER À DEUX VARIANTES (plan d'habillage 4.2) : un PNG ne se teinte pas

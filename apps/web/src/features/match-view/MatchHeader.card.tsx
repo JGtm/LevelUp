@@ -293,26 +293,25 @@ function TitleAndActionsRow({
 
         <Button
           variant="outline"
-          size="sm"
+          size="icon"
           onClick={onCopyId}
           title={t.copyTooltip}
-          className="h-8 gap-1.5 text-xs"
+          aria-label={copied ? t.copied : t.copyShort}
         >
           {copied ? (
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
             </svg>
           ) : (
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2" />
             </svg>
           )}
-          {copied ? t.copied : t.copyShort}
         </Button>
 
         <Button
           variant="outline"
-          size="sm"
+          size="icon"
           onClick={onOpenExclusionDialog}
           disabled={excludePending || excludeBlockedByRanked}
           title={
@@ -322,22 +321,22 @@ function TitleAndActionsRow({
                 ? t.reactivateTooltip
                 : t.excludeTooltip
           }
+          aria-label={header.is_excluded ? t.reactivate : t.excludeShort}
           className={
             header.is_excluded
-              ? 'h-8 gap-1.5 text-xs'
-              : 'h-8 gap-1.5 text-xs text-destructive border-destructive/50 hover:bg-destructive/10 hover:text-destructive'
+              ? ''
+              : 'text-destructive border-destructive/50 hover:bg-destructive/10 hover:text-destructive'
           }
         >
           {header.is_excluded ? (
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
             </svg>
           ) : (
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
             </svg>
           )}
-          {header.is_excluded ? t.reactivate : t.excludeShort}
         </Button>
       </div>
     </div>
