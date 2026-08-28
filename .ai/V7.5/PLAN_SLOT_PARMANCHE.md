@@ -38,7 +38,7 @@ joueur).
   Convertir `distinctSlotColors` en résolveur frame-aware. Retirer l'export `slotColors` map
   (remplacé par `colorOfSlot`). Gate : `useSlotIdentity.test.ts` + typecheck.
 
-- [ ] **E3 — Marqueurs joueurs (`replayMarkers.ts`).** `MarkerStyle.colorOfSlot/markOfSlot/
+- [x] **E3 — Marqueurs joueurs (`replayMarkers.ts`).** `MarkerStyle.colorOfSlot/markOfSlot/
   nameOfSlot` → `(slot, frame)`. Résoudre à la frame BORNÉE à la fenêtre de la vie (clamp) :
   vivant = frame ; croix de mort = fin de fenêtre (sinon régression : la croix ne se dessine
   plus). Gate : `replayMarkers.test.ts`.
