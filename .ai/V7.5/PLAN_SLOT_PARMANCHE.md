@@ -53,7 +53,7 @@ joueur).
   Ajouter `ownerFrame` à `SensorReveal` pour colorer la marque de révélation par le poseur.
   Gate : `equipmentPlacementsLayer.test.ts`, `threatSensor.test.ts`, `equipmentZones.test.ts`.
 
-- [ ] **E6 — Composants (`ReplayCanvas.tsx`, `ReplayCanvasTips.tsx`, `ReplayTeams.tsx`).**
+- [x] **E6 — Composants (`ReplayCanvas.tsx`, `ReplayCanvasTips.tsx`, `ReplayTeams.tsx`).**
   Passer la frame partout ; `ownerNameOf(slot, t0)` pour l'infobulle de pose ; `sideOfSlot`
   frame-aware pour le `fxScene` des fiches. Gate : typecheck.
 
