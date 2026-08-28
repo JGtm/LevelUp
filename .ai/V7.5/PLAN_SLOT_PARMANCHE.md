@@ -57,7 +57,7 @@ joueur).
   Passer la frame partout ; `ownerNameOf(slot, t0)` pour l'infobulle de pose ; `sideOfSlot`
   frame-aware pour le `fxScene` des fiches. Gate : typecheck.
 
-- [ ] **E7 — Gates finaux.** `npm run typecheck`, `npm run lint` (0 erreur),
+- [x] **E7 — Gates finaux.** `npm run typecheck`, `npm run lint` (0 erreur),
   `npm run test` (dossier match-replay + suite web).
 
 ## Découvertes (NON traitées — hors périmètre)
@@ -83,3 +83,11 @@ joueur).
   multi-manche avec CONTRE-ÉPREUVE (« deux DinoR00 / SHROOM », le slot 512 rend SHROOM à f=25 et
   DinoR00 à f=220 — impossible avec la Map figée). Env : junction node_modules vers le worktree
   principal (deps identiques). NB thought_log non touché (texte au CR, cf. consigne du lot).
+- [2026-08-28] E2 CLOS (useSlotIdentity frame-aware, `distinctColorResolver`, slotColors retirée) ;
+  E3 CLOS (marqueurs, résolution clampée à la fenêtre de vie + test contre-épreuve du clamp) ;
+  E4 CLOS (fireMark@frame, killFx@e.frame) ; E5 CLOS (poseur@t0, cible@pingFrame, `SensorReveal.
+  ownerFrame` ; contre-épreuves poseur/cible) ; E6 CLOS (composants, tsc -b --force vert).
+- [2026-08-28] E7 CLOS. Gates finaux : typecheck `tsc -b --force` EXIT=0 ; lint touché 0 erreur
+  (1 warning `objectiveObjects` PRÉ-EXISTANT à aa1245fa0, hors périmètre) ; vitest match-replay
+  1642/1642 ; suite web complète 5213 passed / 14 skipped / EXIT=0. LOT LIVRÉ. Avant merge :
+  ADVERSARIAL-REVIEW requise (calque roster/plaques partagé par tout le rejeu). Ne PAS pousser.
