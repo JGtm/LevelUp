@@ -40,10 +40,9 @@ export function ReplayLink({ available, matchId, playerSlug, locale }: ReplayLin
       params={{ titleSlug, playerSlug, matchId }}
       title={t.replayTooltip}
       aria-label={t.replayTooltip}
-      className="inline-flex h-8 items-center justify-center gap-1.5 rounded-md border border-border bg-transparent px-3 text-xs font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-transparent transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
-      <img src={themedIconSrc('replay', theme)} alt="" aria-hidden className="h-4 w-auto" />
-      {t.replayShort}
+      <img src={themedIconSrc('replay', theme)} alt="" aria-hidden className="h-5 w-auto" />
     </Link>
   )
 }

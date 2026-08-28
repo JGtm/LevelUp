@@ -19,7 +19,6 @@ export interface MatchViewText {
   copied: string
   copyShort: string
   copyTooltip: string
-  replayShort: string
   replayTooltip: string
   markIrrelevant: string
   reactivate: string
@@ -271,7 +270,6 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     copied: 'Copié',
     copyShort: 'Copier ID',
     copyTooltip: "Copier l'identifiant unique de ce match dans le presse-papier",
-    replayShort: 'Rejeu 2D',
     replayTooltip: 'Voir le rejeu 2D de ce match (vue du dessus)',
     markIrrelevant: 'Marquer comme non pertinent',
     reactivate: 'Réactiver',
@@ -551,7 +549,6 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     copied: 'Copied',
     copyShort: 'Copy ID',
     copyTooltip: "Copy this match's unique identifier to clipboard",
-    replayShort: '2D replay',
     replayTooltip: 'Watch the 2D replay of this match (top-down view)',
     markIrrelevant: 'Mark as irrelevant',
     reactivate: 'Reactivate',
