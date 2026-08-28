@@ -2,7 +2,8 @@
 
 > Cree le 2026-08-28. Branche : `feat/v75`. Chantier successeur de
 > `PLAN_CAPTURE_EXPORT_REJEU.md` (capture temps reel, livree le 2026-08-26).
-> Statut : REDIGE, en attente de validation utilisateur avant execution.
+> Statut : EXECUTE (E0 a E6 closes le 2026-08-28). Restent les trois recettes
+> utilisateur, qui demandent un navigateur connecte.
 
 ## Le probleme, tel que l'utilisateur l'a pose
 
@@ -340,14 +341,26 @@ est a son plafond. L'export les tient deja.
 
 Items :
 
-- [ ] Entree `.ai/thought_log.md` (date, titre, statut, decision, resultats, suite)
-- [ ] `.ai/V7.5/README.md` indexe ce plan
-- [ ] Chaque item de chaque etape porte un statut `[x]` / `[~]` / `[!]` — aucune case vide
-- [ ] Section « Decouvertes » remplie (ou explicitement vide)
-- [ ] Skill `delivery-checklist` passe avant de proposer le commit
+- [x] Entree `.ai/thought_log.md` — UNE PAR ETAPE (E0 a E6), pas une seule a la fin
+- [x] `.ai/V7.5/README.md` indexe ce plan, avec son predecesseur temps reel
+- [x] Chaque item de chaque etape porte un statut `[x]` / `[~]` / `[!]` — aucune case vide
+- [x] Section « Decouvertes » remplie : D-1 a D-6
+- [x] Skill `delivery-checklist` passe. DEUX PIEGES QU'IL A ATTRAPES : le faux vert du
+      typecheck incremental (`tsc -b` relance cache purge, `--force` : vert) et l'etat de la
+      CI de branche, qui est ROUGE et ne l'etait pas de mon fait (cf. D-6)
 
 **Gate** : `make gate-push` vert, puis recette visuelle ET sonore prononcee par
 l'utilisateur — c'est lui qui a le navigateur, jamais un agent.
+
+**Etat 2026-08-28 : E6 CLOSE cote technique**, avec DEUX reserves explicites :
+1. `make gate-push` a ete lance ; sa partie WEB est verte (lint 0 erreur / 22 avertissements
+   preexistants, typecheck, tests). Sa partie GO porte la baseline de tests du depot, qui
+   depend de code Go que ce chantier ne touche pas (0 fichier `.go` dans les cinq commits
+   `export-video`).
+2. Les TROIS RECETTES UTILISATEUR restent a prononcer : parite visuelle des surimpressions
+   (E2), export reel verifie a l'oeil (E3), ecoute du mixage (E4). Elles demandent un
+   navigateur CONNECTE a l'application, ce qu'aucun agent n'a — la page de rejeu redirige
+   vers `/login`, et saisir des identifiants n'est pas une action d'agent.
 
 ## Regles d'execution — elles priment sur l'envie d'avancer
 
@@ -434,6 +447,18 @@ de lecture, qui ne se rend qu'apres le montage du canvas, donc apres le lancemen
 cuissons ; et le mode de defaillance est benin (les premieres images d'un export lance dans
 la seconde du chargement sortiraient sans fond de carte). A rouvrir SI un utilisateur
 signale un artefact de debut de clip — pas avant.
+
+### D-6 (E6) — La CI de la branche est ROUGE, et ce n'est pas ce chantier
+
+`gh run list --branch feat/v75` : le dernier run « CI » est en echec. Le job qui tombe est
+« Go Coverage + Baseline non-regression », sur le test `TestNoLocalLongestRun` du package
+`internal/archlint`. Il vient du commit `c7da95dd9` (« score-parmanche »), qui appartient a
+un AUTRE chantier mene en parallele dans ce meme worktree.
+
+Les cinq commits `export-video` ne touchent AUCUN fichier `.go` (verifie : `git diff
+--name-only ... | grep -c '\.go$'` sur mes seuls commits). Non traite ici — regle « zero fix
+opportuniste hors perimetre », et c'est du travail en cours de quelqu'un d'autre. Signale a
+l'utilisateur.
 
 ### D-2 (E1) — Le lockfile perd des champs `libc` a l'installation
 

@@ -1,3 +1,39 @@
+## [2026-08-28] Export video hors temps reel (E6) : cloture du chantier — Complete
+
+**Contexte** : cloture du plan `.ai/V7.5/PLAN_EXPORT_VIDEO_HORS_TEMPS_REEL.md`, six etapes, cinq
+commits `export-video` sur `feat/v75`. Demande d'origine : « je parlais davantage d'un export que
+de cliquer sur un bouton qui enregistre et qu'on attende toute la duree du match ».
+
+**Decision technique** : ce que le chantier livre tient en une phrase — l'enregistrement FILMAIT
+l'ecran et coutait donc une duree de match, l'export RECALCULE le film. C'est possible parce que
+`draw()` est une fonction pure de l'image courante, et parce que WebCodecs est le seul chemin ou
+l'horodatage est un PARAMETRE et non une consequence. Mesure sur toile de test : 300 images en
+1280x720 encodees en 0,54 s, soit 18,6x le temps reel, onglet cache.
+
+**Resultats observes** : `make check-types` relance CACHE PURGE (`tsc -b --force`) : vert — le
+skill `delivery-checklist` avertit que le typecheck incremental donne des faux verts, et c'etait
+un piege reel a verifier. `make test-web` : 527 fichiers, 5349 tests, 14 skippes, 0 echec.
+eslint : 0 erreur sur la feature. `make gate-push` lance ; partie web verte.
+
+DEUX RESERVES ECRITES, ni l'une ni l'autre resolvable par un agent. (1) La CI de la BRANCHE est
+rouge — `TestNoLocalLongestRun` du package Go `internal/archlint`, sur le commit `c7da95dd9` d'un
+AUTRE chantier mene en parallele dans le meme worktree. Les cinq commits `export-video` ne
+touchent aucun fichier `.go`. Non traite : regle « zero fix opportuniste », et c'est du travail en
+cours de quelqu'un d'autre. (2) Les trois recettes utilisateur (parite visuelle des surimpressions,
+export reel verifie a l'oeil, ecoute du mixage) demandent un navigateur CONNECTE : la page de
+rejeu redirige vers `/login`, et saisir des identifiants n'est pas une action d'agent.
+
+DEUX ERREURS DE PROCESS DE MA PART, consignees pour ne pas les repeter. Le commit E3 est parti
+avec une erreur de typage, parce que le gate `check-types` avait ete lance AVANT l'ajout du dernier
+fichier de test et annonce vert sur cette base — la lecon est de relancer le gate APRES le dernier
+fichier touche. Et le premier gate d'E5 a ete annonce sans purge du cache `tsc`, ce que la
+checklist de livraison interdit nommement.
+
+**Conclusion / prochaine etape** : chantier clos cote technique, aucune case vide dans le plan
+(items `[x]`, deux `[~]` references, un `[!]` justifie en D-5). Revues adversariales lancees sur
+trois axes (correction, conventions du depot, fidelite au produit). Reste a l'utilisateur : les
+trois recettes, et la decision de pousser.
+
 ## [2026-08-28] Export video hors temps reel (E5) : l'UI, l'i18n, et le repli — Complete
 
 **Contexte** : etape E5 du plan `.ai/V7.5/PLAN_EXPORT_VIDEO_HORS_TEMPS_REEL.md`. Toute la

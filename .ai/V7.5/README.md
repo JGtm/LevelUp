@@ -125,6 +125,13 @@ arme-par-kill, et les plans/handoffs qui restent à traiter ou à terminer.
 Dette et merge : `PLAN_DETTE_AVANT_MERGE.md`, `PLAN_MASTER_FILM_KILLFEED_REJEU.md`
 (document d'autorité), `HANDOFF_SUPERVISEUR_2026-08-03.md` (point d'entrée du rôle superviseur).
 
+Sortie du rejeu (image, video) : `PLAN_CAPTURE_EXPORT_REJEU.md` (capture temps reel, livree le
+2026-08-26 — le bouton d'enregistrement FILME l'ecran, donc coute une duree de match) puis
+`PLAN_EXPORT_VIDEO_HORS_TEMPS_REEL.md` (livre le 2026-08-28 — l'export RECALCULE le film par
+WebCodecs, environ 18x plus vite que le temps reel, avec le son mixe hors ligne et les
+surimpressions repeintes dans la toile ; l'enregistrement temps reel y devient un repli pour les
+navigateurs sans `VideoEncoder`).
+
 Rejeu 2D : `PLAN_FINALISATION_REJEU_2D.md`, `SUIVI_REPLAY_2D.md`, `ETAT_DU_POC.md`,
 `CAHIER_DES_CHARGES_POC.md`, `HANDOFF_REPLAY_2D_2026-07-29.md`,
 `PLAN_OBJECTIFS_TEMPS_REEL.md`, `PLAN_CAPACITES_ACTIVES.md`,
