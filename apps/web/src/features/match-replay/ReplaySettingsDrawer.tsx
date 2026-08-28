@@ -52,6 +52,8 @@ interface ReplaySettingsDrawerProps {
   flagCarries: ReplayFlagControls
   /** La COURONNE VIP (schéma 22) : un seul calque, allumé par défaut. */
   vipCrown: ReplayVipCrownControls
+  /** Le PORTEUR DU CRÂNE d'Oddball (schéma 23) : un seul calque, allumé par défaut. */
+  skullCarrier: ReplaySkullCarrierControls
   heatmap: ReplayHeatmapControls
   /** Éclairs de bouche (tous les tirs) et trait tueur -> victime : deux réglages distincts. */
   showShotFx: boolean
@@ -127,6 +129,13 @@ export interface ReplayVipCrownControls {
   onToggle: () => void
 }
 
+/** Le PORTEUR DU CRÂNE d'Oddball (schéma 23) : un seul calque, allumé par défaut. */
+export interface ReplaySkullCarrierControls {
+  available: boolean
+  show: boolean
+  onToggle: () => void
+}
+
 interface LayersSectionProps {
   locale: ReplayLocale
   showAim: boolean
@@ -142,11 +151,13 @@ interface LayersSectionProps {
   weaponPads: ReplayWeaponPadControls
   flagCarries: ReplayFlagControls
   vipCrown: ReplayVipCrownControls
+  skullCarrier: ReplaySkullCarrierControls
 }
 
 function LayersSection({
   locale, showAim, onToggleAim, showZones, onToggleZones, showNames, onToggleNames,
   showTrail, onToggleTrail, zonesAvailable, placements, weaponPads, flagCarries, vipCrown,
+  skullCarrier,
 }: LayersSectionProps) {
   const t = REPLAY_TEXT[locale]
   return (
@@ -235,6 +246,16 @@ function LayersSection({
             pressed={vipCrown.show}
             onToggle={vipCrown.onToggle}
             hint={t.layerVipCrownHint}
+          />
+        )}
+        {/* LE PORTEUR DU CRÂNE est l'ENJEU d'Oddball : il suit le porteur, sa présence EST la
+            lecture du match. Un film hors Oddball n'en publie aucun. */}
+        {skullCarrier.available && (
+          <SettingsToggle
+            label={t.layerSkullCarrier}
+            pressed={skullCarrier.show}
+            onToggle={skullCarrier.onToggle}
+            hint={t.layerSkullCarrierHint}
           />
         )}
       </div>
@@ -399,6 +420,7 @@ export function ReplaySettingsDrawer({
   weaponPads,
   flagCarries,
   vipCrown,
+  skullCarrier,
   heatmap,
   showShotFx,
   onToggleShotFx,
@@ -449,6 +471,7 @@ export function ReplaySettingsDrawer({
         weaponPads={weaponPads}
         flagCarries={flagCarries}
         vipCrown={vipCrown}
+        skullCarrier={skullCarrier}
       />
       <EffectsSection
         locale={locale}

@@ -204,7 +204,24 @@ package replay
 // `flag_grabs` en CTF, donc la couronne n'est lue que sur les films que l'APPELANT reconnait VIP
 // par `game_variant_name` (comme la colline de KOTH) — jamais devinee dans le film.
 // Chronique complete : .ai/V7.5/replay2d/registre_film/VIP_COURONNE_PROTOCOLE.md.
-const SchemaVersion = 22
+//
+// CE QUE LA VERSION 23 PORTE, ET POURQUOI ELLE MONTE. Le PORTEUR DU CRANE d'Oddball est desormais
+// publie (`skullCarries`) : le porteur est le joueur dont les TICS DE SCORE DE MODE montent
+// (`comp 0 A` = `skull_scoring_ticks`), un TRAIN de tics d'un meme joueur ETANT une periode de
+// portage. Le porteur est nomme par le pont d'INSTANTS DE MORT PAR MANCHE (le slot est reattribue
+// d'une manche a l'autre). Ce que le crane LIBRE (`objectiveObjects`, v21) refusait de dire — PAR
+// QUI le crane est porte — est enfin dit : la couche LIBRE reste la POSITION du crane pose, ce
+// calque-ci est le PORTEUR par-dessus. Le portage avait resiste a CINQ campagnes (proximite,
+// traversee, score personnel : negatifs) ; le canal des TICS de score de mode, lui, tient — gate
+// oracle porteur PRINCIPAL correct 7/7 films, gate terrain manche 1 de d9781168 prises 9/9 et
+// porteurs d'intervalle 8/9 (seuil 8/9), emplacement identifie par l'oracle films confondus.
+// Champ optionnel, mais la version monte pour la raison exacte des montees v14 (drapeau), v16
+// (zones), v21 (colline) et v22 (couronne) : la reprise du backfill se fait par SchemaVersion, et
+// un artefact 22 doit se lire « a re-cuire », pas « a jour ». GARDE DE MODE : `comp 0 A` est le
+// score de mode de tout mode, donc le porteur n'est lu que sur un film que l'APPELANT reconnait
+// Oddball par `game_variant_name` — jamais devine dans le film. Chronique complete :
+// .ai/V7.5/replay2d/registre_film/ODDBALL_PORTEUR_PROTOCOLE.md.
+const SchemaVersion = 23
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {
@@ -423,6 +440,13 @@ type ReplayDocument struct {
 	// position de son porteur — le client la pose sur sa piste. Absente hors VIP —
 	// `coverage.vipCrown` dit lequel des silences (film non-VIP contre film VIP sans periode).
 	VipCrown []VipPeriod `json:"vipCrown,omitempty"`
+	// SkullCarries est LES PERIODES DE PORTAGE DU CRANE d'Oddball, en intervalles de frames nommes
+	// par le xuid du porteur (forme, sources et garde de mode : document_skull_carries.go). Le
+	// crane porte est a la position de son porteur — le client le pose sur sa piste, comme la
+	// couronne VIP. Absente hors Oddball — `coverage.skullCarries` dit lequel des silences (film
+	// non-Oddball contre film Oddball sans portage). Le crane LIBRE (`objectiveObjects`) reste la
+	// couche POSITION ; celle-ci est la couche PORTEUR.
+	SkullCarries []SkullCarry `json:"skullCarries,omitempty"`
 	// Coverage dit, pour chaque calque, COMBIEN il a rattaché SUR COMBIEN existaient, et
 	// pourquoi il a écarté le reste (cf. coverage.go).
 	//

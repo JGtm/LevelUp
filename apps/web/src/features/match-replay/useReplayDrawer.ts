@@ -34,6 +34,7 @@ export interface ReplayDrawerOptions {
     weaponPads: boolean
     flagCarries: boolean
     vipCrown: boolean
+    skullCarrier: boolean
   }
   /** La lecture de la carte de chaleur RÉELLEMENT servie, et si les morts sont localisables. */
   heat: { mode: ReplayHeatmapMode; killsAvailable: boolean }
@@ -99,6 +100,11 @@ export function useReplayDrawer(o: ReplayDrawerOptions): ReplayDrawer {
         available: available.vipCrown,
         show: s.showVipCrown,
         onToggle: s.toggleVipCrown,
+      },
+      skullCarrier: {
+        available: available.skullCarrier,
+        show: s.showSkullCarrier,
+        onToggle: s.toggleSkullCarrier,
       },
       heatmap: {
         show: s.showHeatmap,

@@ -153,6 +153,9 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     layerVipCrown: 'VIP',
     layerVipCrownHint:
       "La couronne du VIP courant, lue dans le film : chaque désignation ouvre une période de port, fermée par la mort du VIP ou la désignation suivante. La couronne suit son porteur image par image. Un port dont RIEN ne date la fin s'affiche atténué : son intervalle court jusqu'à la fin du film — c'est une borne haute, pas une mesure.",
+    layerSkullCarrier: 'Porteur du crâne',
+    layerSkullCarrierHint:
+      "Qui porte le crâne d'Oddball, lu dans le film : le porteur est le joueur dont les tics de score de mode montent, un train de tics étant une période de portage. Le crâne suit son porteur image par image. Un portage dont RIEN ne date la fin s'affiche atténué : son intervalle court jusqu'à la fin du film — c'est une borne haute, pas une mesure. Le crâne posé au sol, lui, reste dessiné par le calque des objets d'objectif.",
     padCountdownFmt: (seconds) => `${Math.ceil(seconds)} s`,
     padRespawnMeasuredFmt: (seconds) =>
       `Réapparition dans ${Math.ceil(seconds)} s (vue dans le film)`,
@@ -447,6 +450,9 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     layerVipCrown: 'VIP',
     layerVipCrownHint:
       'The crown of the current VIP, read from the film: each selection opens a wearing period, closed by the VIP’s death or the next selection. The crown follows its bearer frame by frame. A wearing whose end NOTHING dates is faded: its interval runs to the end of the film — an upper bound, not a measurement.',
+    layerSkullCarrier: 'Skull carrier',
+    layerSkullCarrierHint:
+      'Who carries the Oddball skull, read from the film: the carrier is the player whose mode-score ticks rise, a run of ticks being one carry period. The skull follows its carrier frame by frame. A carry whose end NOTHING dates is faded: its interval runs to the end of the film — an upper bound, not a measurement. The skull dropped on the ground is still drawn by the objective-objects layer.',
     padCountdownFmt: (seconds) => `${Math.ceil(seconds)} s`,
     padRespawnMeasuredFmt: (seconds) => `Respawn in ${Math.ceil(seconds)} s (seen in the film)`,
     padRespawnExpectedFmt: (seconds) => `Respawn in ≈ ${Math.ceil(seconds)} s (expected cycle)`,

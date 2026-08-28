@@ -36,6 +36,7 @@ const SHOW_DROPPED_PLACEMENTS_KEY = 'replay-show-dropped-placements'
 const SHOW_WEAPON_PADS_KEY = 'replay-show-weapon-pads'
 const SHOW_FLAG_CARRIES_KEY = 'replay-show-flag-carries'
 const SHOW_VIP_CROWN_KEY = 'replay-show-vip-crown'
+const SHOW_SKULL_CARRIER_KEY = 'replay-show-skull-carrier'
 const MARKER_COLORS_KEY = 'replay-marker-colors'
 
 /**
@@ -144,6 +145,7 @@ const SHOW_WEAPON_PADS_DEFAULT = true
  */
 const SHOW_FLAG_CARRIES_DEFAULT = true
 const SHOW_VIP_CROWN_DEFAULT = true
+const SHOW_SKULL_CARRIER_DEFAULT = true
 
 /** Les deux lectures de couleur des points, dans l'ordre où le tiroir les propose. */
 export type MarkerColorsMode = 'team' | 'player'
@@ -227,6 +229,12 @@ export interface ReplaySettings {
    */
   showVipCrown: boolean
   toggleVipCrown: () => void
+  /**
+   * Calque du PORTEUR DU CRÂNE d'Oddball (schéma 23). Allumé par défaut : c'est l'enjeu du mode
+   * (cf. SHOW_SKULL_CARRIER_DEFAULT). Un film hors Oddball n'en publie aucun.
+   */
+  showSkullCarrier: boolean
+  toggleSkullCarrier: () => void
   /** Couleur des points des joueurs : par équipe (défaut) ou distincte par joueur. */
   markerColors: MarkerColorsMode
   setMarkerColors: (mode: MarkerColorsMode) => void
@@ -310,6 +318,10 @@ export function useReplaySettings(): ReplaySettings {
     SHOW_VIP_CROWN_KEY,
     SHOW_VIP_CROWN_DEFAULT,
   )
+  const [showSkullCarrier, toggleSkullCarrier] = usePersistedFlag(
+    SHOW_SKULL_CARRIER_KEY,
+    SHOW_SKULL_CARRIER_DEFAULT,
+  )
   const [heatmapMode, setHeatmapModeState] = useState(() =>
     readStoredChoice(HEATMAP_MODE_KEY, HEATMAP_MODE_DEFAULT, HEATMAP_MODES),
   )
@@ -374,6 +386,8 @@ export function useReplaySettings(): ReplaySettings {
     toggleFlagCarries,
     showVipCrown,
     toggleVipCrown,
+    showSkullCarrier,
+    toggleSkullCarrier,
     markerColors,
     setMarkerColors,
     speed,
