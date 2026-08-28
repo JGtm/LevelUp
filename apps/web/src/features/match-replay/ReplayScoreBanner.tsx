@@ -180,7 +180,7 @@ interface BarProps {
  * Une barre de camp : la piste, l'aplat de remplissage, le score écrit dedans.
  *
  * `role="progressbar"` avec `aria-valuetext` FORCÉ AU SCORE : sans lui, un lecteur d'écran
- * annoncerait un pourcentage de la cible déduite (le score final du vainqueur — cf.
+ * annoncerait un pourcentage du plafond de manche (le dénominateur des barres — cf.
  * `scoreBannerLogic`), qui n'est pas une donnée publiée. Le pourcentage décrit la barre,
  * le `valuetext` dit la mesure.
  */
