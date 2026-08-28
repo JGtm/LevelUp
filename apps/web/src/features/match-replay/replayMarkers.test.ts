@@ -377,6 +377,29 @@ describe('couleur par SLOT (D1)', () => {
     }, singlePointTrack(517))
     expect(asked).toEqual([517])
   })
+
+  it('résout l identité à une image BORNÉE à la fenêtre de la vie, jamais à l image courante', () => {
+    // Une vie [0,50] dessinée à l'image 55 (croix de mort, 5 frames après la fin). Un slot de
+    // biped est réattribué entre manches : à l'image courante il peut être LIBRE ou repris par
+    // un AUTRE joueur — y résoudre effacerait la croix (null) ou lui prêterait une autre teinte.
+    // Le double ci-dessous ne rend une couleur que DANS la fenêtre de la vie ; la croix ne se
+    // dessine donc que si la porte a été interrogée à une image bornée à [start, end].
+    const dead = singlePointTrack(512, { startFrame: 0, endFrame: 50 })
+    const askedFrames: number[] = []
+    const ops = trace({
+      frame: 55,
+      colorOfSlot: (_slot, frame) => {
+        askedFrames.push(frame)
+        return frame <= 50 ? 'rgb(1 2 3)' : null
+      },
+    }, dead)
+    // La croix EST dessinée, à l'encre de mort — la porte a donc reçu une image dans la vie.
+    expect(count(ops, 'moveTo')).toBeGreaterThan(0)
+    expect(ops.filter((o) => o.op === 'set strokeStyle').map((o) => o.args[0])).toContain('rgb(5 5 5)')
+    // CONTRE-ÉPREUVE : jamais l'image courante 55 (hors de la vie), toujours dans [0, 50].
+    expect(askedFrames).not.toContain(55)
+    expect(askedFrames.every((f) => f >= 0 && f <= 50)).toBe(true)
+  })
 })
 
 /**
