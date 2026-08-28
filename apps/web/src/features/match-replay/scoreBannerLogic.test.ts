@@ -63,6 +63,69 @@ const ALLY_T0 = allies([
   ['eux', false],
 ])
 
+/**
+ * Oddball à deux manches, les DEUX camps ventilés (t0 gagne 100/78 puis 100/43). Le camp
+ * adverse porte lui aussi ses manches, sans quoi son score par-manche serait toujours nul.
+ */
+const ODDBALL_SPLIT = () =>
+  timelineOf({
+    teams: [
+      {
+        teamId: 0,
+        rounds: [
+          { round: 0, points: [[0, 0], [50, 100]].map(([t, v]) => ({ t, v })) },
+          { round: 1, points: [[100, 0], [150, 100]].map(([t, v]) => ({ t, v })) },
+        ],
+        total: [[0, 0], [50, 100], [150, 200]].map(([t, v]) => ({ t, v })),
+      },
+      {
+        teamId: 1,
+        rounds: [
+          { round: 0, points: [[0, 0], [50, 78]].map(([t, v]) => ({ t, v })) },
+          { round: 1, points: [[100, 0], [150, 43]].map(([t, v]) => ({ t, v })) },
+        ],
+        total: [[0, 0], [50, 78], [150, 121]].map(([t, v]) => ({ t, v })),
+      },
+    ],
+    players: [],
+  })
+
+/**
+ * Le témoin d9781168 (trois manches Oddball). t0 (allié) gagne M1 et M3 (80/80), perd M2
+ * (31/80) ; totaux 191/196. Les bornes de manche sont PARTAGÉES : r0=327, r1=2403, r2=4389.
+ * La manche 2 de t0 ne pose son premier palier qu'à f2500, APRÈS le début partagé f2403 (posé
+ * par t1) — c'est ce qui prouve la remise à zéro : à f2403, t0 lit 0 dans la manche, pas 80.
+ */
+const D9 = (targetScore?: number) =>
+  timelineOf({
+    ...(targetScore != null ? { targetScore } : {}),
+    teams: [
+      {
+        teamId: 0,
+        rounds: [
+          { round: 0, points: [[327, 1], [2350, 80]].map(([t, v]) => ({ t, v })) },
+          { round: 1, points: [[2500, 1], [4300, 31]].map(([t, v]) => ({ t, v })) },
+          { round: 2, points: [[4389, 1], [6800, 80]].map(([t, v]) => ({ t, v })) },
+        ],
+        total: [[327, 1], [2350, 80], [2500, 81], [4300, 111], [4389, 112], [6800, 191]].map(
+          ([t, v]) => ({ t, v }),
+        ),
+      },
+      {
+        teamId: 1,
+        rounds: [
+          { round: 0, points: [[327, 1], [2350, 49]].map(([t, v]) => ({ t, v })) },
+          { round: 1, points: [[2403, 1], [4300, 80]].map(([t, v]) => ({ t, v })) },
+          { round: 2, points: [[4389, 1], [6900, 67]].map(([t, v]) => ({ t, v })) },
+        ],
+        total: [[327, 1], [2350, 49], [2403, 50], [4300, 129], [4389, 130], [6900, 196]].map(
+          ([t, v]) => ({ t, v }),
+        ),
+      },
+    ],
+    players: [],
+  })
+
 describe('readScoreBanner — les deux camps au frame lu', () => {
   it('met le camp du joueur de la page à gauche, avec son score au frame', () => {
     const r = readScoreBanner(SLAYER(), SB_2V2, ALLY_T0, 500)
@@ -203,9 +266,12 @@ describe('readScoreBanner — les manches', () => {
     expect(readScoreBanner(ODDBALL(), SB_2V2, ALLY_T0, 150)?.round).toEqual({ index: 2, count: 2 })
   })
 
-  it('affiche le TOTAL du match, jamais la valeur de la manche', () => {
-    // Manche 2 en est à 100 ; le total, lui, dit 200 (l'écart du contresens : 100 points).
-    expect(readScoreBanner(ODDBALL(), SB_2V2, ALLY_T0, 150)?.ally.score).toBe(200)
+  it('affiche la MANCHE COURANTE, jamais le total du match', () => {
+    // Manche 2 en est à 100 ; le total, lui, dirait 200 (l'écart du contresens : 100 points).
+    // Témoin à DEUX camps ventilés : l'adverse aussi lit SA manche (43), pas son total (121).
+    const r = readScoreBanner(ODDBALL_SPLIT(), SB_2V2, ALLY_T0, 150)
+    expect(r?.ally.score).toBe(100)
+    expect(r?.enemy.score).toBe(43)
   })
 
   it('se tait sur un mode à manche unique (l\'indicateur répéterait le total)', () => {
@@ -213,31 +279,56 @@ describe('readScoreBanner — les manches', () => {
   })
 })
 
-describe('readScoreBanner — les pastilles de manche, dans le camp du joueur de la page', () => {
-  /** Oddball à deux manches, les DEUX équipes ayant leurs manches ventilées (t0 gagne 100/78 puis 100/43). */
-  const ODDBALL_SPLIT = () =>
-    timelineOf({
-      teams: [
-        {
-          teamId: 0,
-          rounds: [
-            { round: 0, points: [[0, 0], [50, 100]].map(([t, v]) => ({ t, v })) },
-            { round: 1, points: [[100, 0], [150, 100]].map(([t, v]) => ({ t, v })) },
-          ],
-          total: [[0, 0], [50, 100], [150, 200]].map(([t, v]) => ({ t, v })),
-        },
-        {
-          teamId: 1,
-          rounds: [
-            { round: 0, points: [[0, 0], [50, 78]].map(([t, v]) => ({ t, v })) },
-            { round: 1, points: [[100, 0], [150, 43]].map(([t, v]) => ({ t, v })) },
-          ],
-          total: [[0, 0], [50, 78], [150, 121]].map(([t, v]) => ({ t, v })),
-        },
-      ],
-      players: [],
-    })
+describe('readScoreBanner — le score REPART de zéro à chaque manche (témoin d9781168)', () => {
+  it('CONTRE-ÉPREUVE manche 3 : lit la MANCHE (80/67), jamais le total (191/196)', () => {
+    const r = readScoreBanner(D9(), SB_2V2, ALLY_T0, 6975)
+    expect(r?.ally.score).toBe(80) // et surtout PAS 191
+    expect(r?.enemy.score).toBe(67) // et surtout PAS 196
+    expect(r?.ally.fill).toBe(1) // 80/80, la manche est gagnée au plafond
+    expect(r?.enemy.fill).toBeCloseTo(67 / 80, 6)
+    expect(r?.round).toEqual({ index: 3, count: 3 })
+  })
 
+  it('RESET : au début de la manche 2, le compteur de manche est bien remis à zéro', () => {
+    // f2403 = début partagé de la manche 2 (posé par l'adverse). L'allié n'a pas encore marqué
+    // dans la manche : il lit 0, pas les 80 de sa manche 1. L'adverse vient de poser son 1.
+    const r = readScoreBanner(D9(), SB_2V2, ALLY_T0, 2403)
+    expect(r?.ally.score).toBe(0)
+    expect(r?.enemy.score).toBe(1)
+    expect(r?.round).toEqual({ index: 2, count: 3 })
+  })
+
+  it('DÉNOMINATEUR (a) : la cible PUBLIÉE (100) prime — fill = score de manche / 100', () => {
+    const r = readScoreBanner(D9(100), SB_2V2, ALLY_T0, 6975)
+    expect(r?.ally.fill).toBeCloseTo(80 / 100, 6)
+    expect(r?.enemy.fill).toBeCloseTo(67 / 100, 6)
+  })
+
+  it('DÉNOMINATEUR (b) : à défaut, le plus haut dernier-palier de manche (80)', () => {
+    const r = readScoreBanner(D9(), SB_2V2, ALLY_T0, 6975)
+    expect(r?.enemy.fill).toBeCloseTo(67 / 80, 6)
+  })
+
+  it('DÉNOMINATEUR (c) : le plafond de manche est CONSTANT de la manche 1 à la 3', () => {
+    // M2 : l'adverse atteint 80 (le plafond) -> barre pleine ; l'allié à 31 -> 31/80.
+    const m2 = readScoreBanner(D9(), SB_2V2, ALLY_T0, 4300)
+    expect(m2?.enemy.fill).toBe(1)
+    expect(m2?.ally.fill).toBeCloseTo(31 / 80, 6)
+    // M3 : l'allié atteint 80 -> plein ; l'adverse à 67 -> 67/80. MÊME dénominateur.
+    const m3 = readScoreBanner(D9(), SB_2V2, ALLY_T0, 6975)
+    expect(m3?.ally.fill).toBe(1)
+    expect(m3?.enemy.fill).toBeCloseTo(67 / 80, 6)
+  })
+
+  it('GARDE mono-manche : sur SLAYER, le score de manche EST le total (43)', () => {
+    const r = readScoreBanner(SLAYER(), SB_2V2, ALLY_T0, 500)
+    expect(r?.ally.score).toBe(43)
+    expect(r?.enemy.score).toBe(30)
+    expect(r?.round).toBeNull()
+  })
+})
+
+describe('readScoreBanner — les pastilles de manche, dans le camp du joueur de la page', () => {
   it('remplit les deux pastilles au camp allié en fin de match', () => {
     expect(readScoreBanner(ODDBALL_SPLIT(), SB_2V2, ALLY_T0, 200)?.dots).toEqual([
       { round: 0, winner: 'ally' },

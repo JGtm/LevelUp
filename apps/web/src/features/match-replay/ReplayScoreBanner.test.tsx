@@ -171,11 +171,14 @@ describe('ReplayScoreBanner — la manche', () => {
       ],
       total: [{ t: 0, v: 0 }, { t: 50, v: 100 }, { t: 150, v: 200 }],
     },
-    equipe(1, [
-      [0, 0],
-      [50, 78],
-      [150, 121],
-    ]),
+    {
+      teamId: 1,
+      rounds: [
+        { round: 0, points: [{ t: 0, v: 0 }, { t: 50, v: 78 }] },
+        { round: 1, points: [{ t: 100, v: 0 }, { t: 150, v: 43 }] },
+      ],
+      total: [{ t: 0, v: 0 }, { t: 50, v: 78 }, { t: 150, v: 121 }],
+    },
   ]
 
   it('annonce la manche en cours quand le mode en a plusieurs', () => {
@@ -184,9 +187,12 @@ describe('ReplayScoreBanner — la manche', () => {
     expect(screen.getByTitle('Manche 2 sur 2')).toBeInTheDocument()
   })
 
-  it('affiche le TOTAL du match à côté, jamais la valeur de la manche', () => {
+  it('affiche la valeur de la MANCHE COURANTE, jamais le total du match', () => {
+    // Manche 2 : l'allié en est à 100, l'adverse à 43 ; les totaux (200/121) ne s'affichent pas.
     renderBanner({ doc: docOf(ODDBALL), frame: 150 })
-    expect(screen.getByText('200')).toBeInTheDocument()
+    expect(screen.getByText('100')).toBeInTheDocument()
+    expect(screen.getByText('43')).toBeInTheDocument()
+    expect(screen.queryByText('200')).not.toBeInTheDocument()
   })
 
   it('se tait sur un mode à manche unique', () => {
