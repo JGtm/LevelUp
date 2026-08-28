@@ -27,8 +27,8 @@ interface UseReplaySkullCarrierArgs {
   enabled: boolean
   /** L'encre du crâne, déjà résolue par l'appelant (token du thème). */
   ink: string
-  /** L'encre du liseré, déjà résolue par l'appelant. */
-  edge: string
+  /** L'encre du FOND : le liseré du crâne, comme celui du drapeau (déjà résolue par l'appelant). */
+  outline: string
   reducedMotion: boolean
 }
 
@@ -44,7 +44,7 @@ export function useReplaySkullCarrier({
   view,
   enabled,
   ink,
-  edge,
+  outline,
   reducedMotion,
 }: UseReplaySkullCarrierArgs): ReplaySkullCarrier {
   const carries = doc.skullCarries
@@ -72,8 +72,8 @@ export function useReplaySkullCarrier({
   )
 
   const layer = useMemo<SkullCarrierInput>(
-    () => ({ style: { ink, edge, reducedMotion }, posOf }),
-    [ink, edge, reducedMotion, posOf],
+    () => ({ style: { ink, outline, reducedMotion }, posOf }),
+    [ink, outline, reducedMotion, posOf],
   )
 
   const paint = useCallback(

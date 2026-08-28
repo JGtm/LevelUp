@@ -20,30 +20,22 @@
  * à la DERNIÈRE position qu'il a émise, ou nulle part. Une position interpolée serait une
  * position inventée, et c'est exactement ce que ce lot a passé six phases à ne pas faire.
  *
- * AUCUNE VIGNETTE DU JEU : le crâne n'est pas un `weap`, il n'a pas de tag d'arme, donc pas
- * d'icône extraite. Le glyphe est tracé au canvas — une BOULE, distincte de la hampe + fanion du
- * drapeau — à l'encre sémantique servie par l'appelant. Aucune URL d'image n'est devinée.
+ * LE GLYPHE EST CELUI, PARTAGÉ, DU CRÂNE (`skullGlyph.ts`) : le MÊME dessin que le crâne porté
+ * (`skullCarrierLayer`), pour qu'on reconnaisse le même objet — seule sa place change (au sol /
+ * au-dessus d'un joueur). Habillé comme le drapeau depuis le 2026-08-28 (liseré à l'encre du
+ * fond, taille agrandie, deux orbites) : cf. l'en-tête de `skullGlyph.ts` pour le pourquoi et la
+ * limite (l'icône du jeu existe mais n'est pas cuite dans le document).
  *
  * AUCUN TEXTE, comme les calques voisins : ce qui se dit se dit dans l'infobulle.
  */
 import { worldToCanvas, type XY } from './replayLogic'
+import { drawSkullGlyph } from './skullGlyph'
 
 import type { CanvasView } from './objectivesLayer'
 import type { ReplayObjectiveObjectReady } from './replayNormalize'
 
-/**
- * OBJECTIVE_OBJECT_RADIUS — le rayon du glyphe, en pixels canvas.
- *
- * PLUS PETIT QUE LE MARQUEUR DE JOUEUR, et c'est délibéré : le crâne est un objet posé au sol,
- * pas un acteur. Un glyphe de la taille d'un joueur se lirait comme un joueur de plus.
- */
-export const OBJECTIVE_OBJECT_RADIUS = 5
-
 /** Le rayon de SURVOL : plus généreux que le tracé, comme pour le drapeau. */
 export const OBJECTIVE_OBJECT_HIT_RADIUS = 11
-
-/** Épaisseur du liseré. */
-const OBJECTIVE_OBJECT_STROKE = 1.5
 
 /**
  * ALPHA_AT_REST — le glyphe d'un crâne IMMOBILE (vie réduite à un point, ou dernier point d'une
@@ -62,8 +54,8 @@ export interface ObjectiveObjectsInput {
   style: {
     /** L'encre sémantique de l'objet, résolue par l'appelant — jamais une couleur en dur ici. */
     ink: string
-    /** L'encre du liseré, pour détacher le glyphe du fond de carte. */
-    edge: string
+    /** L'encre du FOND : le liseré du crâne, comme celui du drapeau (`skullGlyph.ts`). */
+    outline: string
   }
 }
 
@@ -113,7 +105,10 @@ export function objectiveObjectsAt(
   return out
 }
 
-/** drawObjectiveObjects trace les objets d'objectif libres de l'image servie. */
+/**
+ * drawObjectiveObjects trace les objets d'objectif libres de l'image servie — chacun avec le
+ * glyphe PARTAGÉ du crâne (`skullGlyph.ts`), le même que le crâne porté.
+ */
 export function drawObjectiveObjects(
   ctx: CanvasRenderingContext2D,
   layer: ObjectiveObjectsInput,
@@ -123,45 +118,13 @@ export function drawObjectiveObjects(
 ): void {
   for (const now of objectiveObjectsAt(lives, frame)) {
     const at = worldToCanvas(now.at, view.bounds, view.width, view.height, view.pad)
-    drawObjectiveObjectGlyph(ctx, at, {
+    drawSkullGlyph(ctx, at, {
       ink: layer.style.ink,
-      edge: layer.style.edge,
+      outline: layer.style.outline,
       alpha: now.rolling ? ALPHA_ROLLING : ALPHA_AT_REST,
     })
   }
   ctx.globalAlpha = 1
-}
-
-/** Ce que le tracé d'un glyphe a besoin de savoir. */
-interface ObjectiveObjectPaint {
-  ink: string
-  edge: string
-  alpha: number
-}
-
-/**
- * drawObjectiveObjectGlyph trace la BOULE : un disque plein, cerné.
- *
- * LA FORME EST CE QUI LE DISTINGUE DU DRAPEAU (hampe + fanion). Deux objets de mode dessinés du
- * même glyphe seraient indiscernables sur une carte où les deux peuvent apparaître, et la teinte
- * seule ne suffit pas — le rejeu se lit aussi en niveaux de gris à l'impression.
- *
- * LE CERNE N'EST PAS UN ORNEMENT : posé au sol, le glyphe passe sur des fonds de carte de toutes
- * valeurs, et un disque sans liseré disparaît sur un sol de sa propre teinte.
- */
-export function drawObjectiveObjectGlyph(
-  ctx: CanvasRenderingContext2D,
-  at: XY,
-  paint: ObjectiveObjectPaint,
-): void {
-  ctx.globalAlpha = paint.alpha
-  ctx.beginPath()
-  ctx.arc(at.x, at.y, OBJECTIVE_OBJECT_RADIUS, 0, Math.PI * 2)
-  ctx.fillStyle = paint.ink
-  ctx.fill()
-  ctx.lineWidth = OBJECTIVE_OBJECT_STROKE
-  ctx.strokeStyle = paint.edge
-  ctx.stroke()
 }
 
 /** Ce qu'un survol a trouvé : l'objet, sa position LUE À CET INSTANT, et où poser l'infobulle. */
