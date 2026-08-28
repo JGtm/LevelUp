@@ -275,6 +275,13 @@ function ReplayPage() {
               xuidMeta={xuidMeta}
               marks={marks}
               endMatch={endMatchSound}
+              outcome={{
+                // LE VERDICT, POUR L'EXPORT SEUL : l'écran de fin monté juste en dessous est du
+                // DOM, qu'aucun encodeur vidéo ne voit. L'export le repeint DANS la toile, et
+                // c'est ici qu'il reçoit de quoi le faire — la MÊME source que l'écran affiché.
+                code: matchView?.header.outcome_code,
+                label: matchView?.header.outcome_label,
+              }}
               feedEntries={feedEntries}
               media={replayMedia}
             />

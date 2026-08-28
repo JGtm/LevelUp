@@ -251,6 +251,20 @@ describe('garde-rail : le vocabulaire des familles de pose', () => {
  * lot, d'extraction coincidente pour absorber les cinq lignes de glue — les inventer aurait ete du
  * gonflage inverse. La prochaine addition retombe sous la regle : logique dans un hook, cablage au
  * canvas, et le plafond suit le fichier vers le BAS a la premiere extraction.
+ *
+ * 679 -> 679 le 2026-08-28 (lot EXPORT HORS TEMPS REEL, etape E3) : le fichier etait PILE a son
+ * plafond et le lot devait y brancher une commande de plus (le verdict du match, qui permet de
+ * repeindre l'ecran de fin DANS la toile — un encodeur video ne voit pas le DOM). Le plafond ne
+ * bouge pas d'une ligne, et c'est le point : l'addition a ete PAYEE, pas absorbee.
+ *   - EXTRACTION, `hoverLayers.ts` : la distribution du geste de survol aux trois calques
+ *     survolables. La decoupe etait deja ECRITE dans le canvas (« chacun rejoue le survol sur SA
+ *     donnee, le canvas passe le geste ») — il recopiait le meme geste trois fois, deux fois de
+ *     suite. Neuf lignes. Fonction pure et non hook : mémoïser un tableau reconstruit a chaque
+ *     rendu aurait demande une echappatoire de lint pour un gain nul.
+ *   - PAS DE SECOND HOOK AU CANVAS : l'export se branche DANS `useReplayCapture`, qui est deja
+ *     « ce qui sort du rejeu » (image, video) — l'export en est la troisieme sortie. Le canvas
+ *     ne gagne donc qu'une prop, une ligne d'options et un import.
+ * La prochaine addition se paie de la meme facon.
  */
 describe('garde-rail : la taille du canvas du rejeu ne remonte pas', () => {
   it('ReplayCanvas.tsx reste sous son plafond', () => {
