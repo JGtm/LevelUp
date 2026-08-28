@@ -7,19 +7,23 @@
  *  2. LES MORTS NE VONT QUE SUR `own`. Une piste alliée mêlant kills et morts serait illisible.
  *  3. LES BORNES DE LA FENÊTRE DE GAMEPLAY. Une marque hors match est ÉCARTÉE, pas rabattue sur
  *     un bord : collée à l'origine, elle se lirait comme un premier frag qui n'a pas eu lieu.
- *  4. AUCUN CHANGEMENT DE MENEUR = AUCUNE BANDE. La donnée dit qu'il n'y a pas eu de
- *     retournement, elle ne dit pas qui menait.
+ *  4. LA DOMINANCE SE COMPTE EN FRAGS (2026-08-28), et une ÉGALITÉ est un ÉTAT, pas un trou :
+ *     elle sort comme une bande `teamId: null` (peinte à l'encre d'égalité du dépôt), y compris
+ *     au coup d'envoi. Jamais la couleur du dernier meneur, qui mentirait.
  *  5. UN CLIP OCCUPE SA DURÉE. C'est ce qui le distingue d'une capture à l'œil, sans légende.
  */
 import { describe, expect, it } from 'vitest'
 
 import type { PlayerMarkKind } from './playerMarks'
 import {
-  buildDominance,
   buildEventTracks,
+  buildFragDominance,
+  buildScoreDominance,
   clipFrameCount,
   placeMedia,
   ratioOfMs,
+  roundSeparators,
+  scoreMirrorsFrags,
   THUMB_PX,
   trackLeft,
   trackScale,
@@ -75,7 +79,7 @@ describe('trackScale — l’échelle est celle de la frise', () => {
       own: [],
       allies: [],
     })
-    expect(buildDominance([{ frame: 10, teamId: 0 }], degenere)).toEqual([])
+    expect(buildFragDominance([{ replayMs: 12_000, teamId: 0 }], FRAME_MS, degenere)).toEqual([])
     expect(placeMedia([media()], FRAME_MS, degenere)).toEqual([])
   })
 })
@@ -173,30 +177,149 @@ describe('buildEventTracks — qui est sur quelle piste', () => {
   })
 })
 
-describe('buildDominance — les retournements deviennent des durées', () => {
-  it('AUCUN changement = AUCUNE bande (la donnée ne dit pas qui menait)', () => {
-    expect(buildDominance([], SCALE)).toEqual([])
+describe('buildFragDominance — quel camp a le plus de FRAGS, instant par instant', () => {
+  it('AUCUN frag apparié = AUCUNE bande, pas une égalité peinte de bout en bout', () => {
+    // Un match dont aucun tueur n'a de camp résolu est une ABSENCE DE MESURE. La bande bleue
+    // dirait « les deux camps se sont tenus » — une affirmation que la donnée ne porte pas.
+    expect(buildFragDominance([], FRAME_MS, SCALE)).toEqual([])
   })
 
-  it('chaque bande court jusqu’au changement suivant, la dernière jusqu’au bout', () => {
-    const spans = buildDominance(
+  it('le PREMIER frag prend la tête ; avant lui, 0-0 est une ÉGALITÉ, pas un vide', () => {
+    expect(buildFragDominance([{ replayMs: 25_000, teamId: 0 }], FRAME_MS, SCALE)).toEqual([
+      { key: 'start-tie', from: 0, to: 0.5, teamId: null },
+      { key: '25000-0', from: 0.5, to: 1, teamId: 0 },
+    ])
+  })
+
+  it('un RETOUR À PARITÉ est une bande d’égalité, pas la couleur du dernier meneur', () => {
+    const spans = buildFragDominance(
       [
-        { frame: 100, teamId: 0 },
-        { frame: 250, teamId: 1 },
+        { replayMs: 10_000, teamId: 0 },
+        { replayMs: 16_000, teamId: 1 },
+        { replayMs: 25_000, teamId: 1 },
+      ],
+      FRAME_MS,
+      SCALE,
+    )
+    // La bande d'ouverture est de largeur nulle : le premier frag tombe au coup d'envoi.
+    expect(spans).toEqual([
+      { key: '10000-0', from: 0, to: 0.2, teamId: 0 },
+      { key: '16000-tie', from: 0.2, to: 0.5, teamId: null },
+      { key: '25000-1', from: 0.5, to: 1, teamId: 1 },
+    ])
+  })
+
+  it('le fil peut arriver dans le désordre : le compte cumulé le remet dans le sens du match', () => {
+    const spans = buildFragDominance(
+      [
+        { replayMs: 25_000, teamId: 1 },
+        { replayMs: 10_000, teamId: 0 },
+        { replayMs: 16_000, teamId: 1 },
+      ],
+      FRAME_MS,
+      SCALE,
+    )
+    expect(spans.map((s) => s.teamId)).toEqual([0, null, 1])
+  })
+
+  it('un frag ANTÉRIEUR à la fenêtre compte, et sa bande est BORNÉE au bord de la frise', () => {
+    // Le fil couvre le match entier, la frise ne montre que le gameplay : un frag du décompte
+    // reste un frag — le rabattre au bord dit « ce camp menait déjà », ce qui est vrai.
+    expect(buildFragDominance([{ replayMs: 4_000, teamId: 1 }], FRAME_MS, SCALE)).toEqual([
+      { key: '4000-1', from: 0, to: 1, teamId: 1 },
+    ])
+  })
+
+  it('plus de deux camps : le meneur reste l’argmax UNIQUE', () => {
+    const spans = buildFragDominance(
+      [
+        { replayMs: 13_000, teamId: 2 },
+        { replayMs: 19_000, teamId: 2 },
+        { replayMs: 22_000, teamId: 0 },
+        { replayMs: 31_000, teamId: 1 },
+      ],
+      FRAME_MS,
+      SCALE,
+    )
+    expect(spans).toEqual([
+      { key: 'start-tie', from: 0, to: 0.1, teamId: null },
+      { key: '13000-2', from: 0.1, to: 1, teamId: 2 },
+    ])
+  })
+
+})
+
+describe('buildScoreDominance — la même lecture, sur le compteur du MODE', () => {
+  it('AUCUN état = AUCUNE bande : sans calque de score, la piste n’existe pas', () => {
+    expect(buildScoreDominance([], SCALE)).toEqual([])
+  })
+
+  it('ouvre sur une ÉGALITÉ (0-0), puis suit les états — égalités du calque comprises', () => {
+    const spans = buildScoreDominance(
+      [
+        { frame: 190, teamId: 0 },
+        { frame: 250, teamId: null },
+        { frame: 310, teamId: 1 },
       ],
       SCALE,
     )
     expect(spans).toEqual([
-      { key: '100-0', from: 0, to: 0.5, teamId: 0 },
-      { key: '250-1', from: 0.5, to: 1, teamId: 1 },
+      { key: 'start-tie', from: 0, to: 0.3, teamId: null },
+      { key: '190-0', from: 0.3, to: 0.5, teamId: 0 },
+      { key: '250-tie', from: 0.5, to: 0.7, teamId: null },
+      { key: '310-1', from: 0.7, to: 1, teamId: 1 },
+    ])
+  })
+})
+
+describe('roundSeparators — où les manches se touchent', () => {
+  it('place chaque bascule sur la frise, et garde le rang de la manche qui s’achève', () => {
+    expect(roundSeparators([{ endedIndex: 1, frame: 250 }], SCALE)).toEqual([
+      { key: 'r1-250', endedIndex: 1, ratio: 0.5 },
     ])
   })
 
-  it('un changement hors fenêtre est BORNÉ à la frise, pas rejeté', () => {
-    // Le calque de score est daté par l'horloge du film : une valeur en amont du coup d'envoi
-    // reste un fait du match, contrairement à une marque d'événement qu'on désignerait à côté.
-    const spans = buildDominance([{ frame: 20, teamId: 1 }], SCALE)
-    expect(spans).toEqual([{ key: '20-1', from: 0, to: 1, teamId: 1 }])
+  it('une bascule HORS FENÊTRE est écartée, pas collée au bord', () => {
+    // Rabattue à 0, elle se lirait « une manche s'est terminée au coup d'envoi ».
+    expect(roundSeparators([{ endedIndex: 1, frame: 20 }], SCALE)).toEqual([])
+  })
+
+  it('aucune bascule sur un mode à manche unique', () => {
+    expect(roundSeparators([], SCALE)).toEqual([])
+  })
+})
+
+/**
+ * LE TRI DE LA PISTE SCORE. Il se fait sur la DONNÉE et non sur le nom du mode : « en Slayer,
+ * le score EST le compte des frags » est une MESURE (état de l'art des modes, témoin
+ * `000d5950` : 43-50 au score = 43-50 frags). Comparer un libellé serait faux au premier mode
+ * dérivé et illisible sur un second titre.
+ */
+describe('scoreMirrorsFrags — le score de ce match n’est-il que les frags ?', () => {
+  const equipes = (a: number, b: number) => [
+    { teamId: 0, total: [{ v: a }] },
+    { teamId: 1, total: [{ v: b }] },
+  ]
+  const fragsDe = (a: number, b: number) => [
+    ...Array.from({ length: a }, (_, i) => ({ replayMs: 10_000 + i, teamId: 0 })),
+    ...Array.from({ length: b }, (_, i) => ({ replayMs: 20_000 + i, teamId: 1 })),
+  ]
+
+  it('SLAYER : chaque camp finit au score exact de ses frags — la piste serait un doublon', () => {
+    expect(scoreMirrorsFrags(equipes(43, 50), fragsDe(43, 50))).toBe(true)
+  })
+
+  it('MODE À OBJECTIF : le score dit autre chose que les duels — la piste a sa place', () => {
+    expect(scoreMirrorsFrags(equipes(3, 0), fragsDe(28, 31))).toBe(false)
+  })
+
+  it('PRUDENT : un fil incomplet fait apparaître la piste, jamais disparaître', () => {
+    // Un doublon se voit et se corrige ; une piste manquante ne se voit pas.
+    expect(scoreMirrorsFrags(equipes(43, 50), fragsDe(41, 50))).toBe(false)
+  })
+
+  it('sans aucun camp identifié, il n’y a rien à comparer : la piste ne se masque pas', () => {
+    expect(scoreMirrorsFrags([], [])).toBe(false)
   })
 })
 

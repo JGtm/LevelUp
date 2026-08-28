@@ -47,6 +47,7 @@ function makeTimeline(over: Partial<ReplayTimeline> = {}): ReplayTimeline {
     own: [],
     allies: [],
     dominance: [],
+    score: null,
     allyOf: () => null,
     labelOf: () => '',
     media: [],
