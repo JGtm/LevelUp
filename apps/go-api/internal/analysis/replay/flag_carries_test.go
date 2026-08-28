@@ -45,7 +45,7 @@ func TestFlagCarriesVolPuisCapture(t *testing.T) {
 			{TimeMS: 1000, Slot: 12, Stat: objectiveevents.StatFlagSteals},
 			{TimeMS: 4000, Slot: 12, Stat: objectiveevents.StatFlagCaptures},
 		},
-		Identity: map[int]string{12: "aaa"},
+		Identity: objectiveevents.FlatRoundIdentity(map[int]string{12: "aaa"}),
 		Spawns:   []FlagSpawn{{Team: 0, X: 0, Y: 0}, {Team: 1, X: 100, Y: 100}},
 	}
 	got, cov := buildFlagCarries(scan, flagTestCtx(tracks, nil, 100))
@@ -87,7 +87,7 @@ func TestFlagCarriesMortLachePuisReprise(t *testing.T) {
 			{TimeMS: 1000, Slot: 12, Stat: objectiveevents.StatFlagSteals},
 			{TimeMS: 5000, Slot: 14, Stat: objectiveevents.StatFlagGrabs},
 		},
-		Identity: map[int]string{12: "1", 14: "2"},
+		Identity: objectiveevents.FlatRoundIdentity(map[int]string{12: "1", 14: "2"}),
 		Spawns:   []FlagSpawn{{Team: 0, X: 0, Y: 0}, {Team: 1, X: 100, Y: 100}},
 	}
 	tracks[0].XUID, tracks[1].XUID = "1", "2"
@@ -123,7 +123,7 @@ func TestFlagCarriesPriseSansPontComptee(t *testing.T) {
 			{TimeMS: 1000, Slot: 12, Stat: objectiveevents.StatFlagSteals},
 			{TimeMS: 2000, Slot: 20, Stat: objectiveevents.StatFlagSteals}, // slot non apparie
 		},
-		Identity: map[int]string{12: "aaa"},
+		Identity: objectiveevents.FlatRoundIdentity(map[int]string{12: "aaa"}),
 		Spawns:   []FlagSpawn{{Team: 0}, {Team: 1, X: 100, Y: 100}},
 	}
 	_, cov := buildFlagCarries(scan, flagTestCtx(tracks, nil, 100))
@@ -145,7 +145,7 @@ func TestFlagCarriesFusionneLesPrisesJumelles(t *testing.T) {
 			{TimeMS: 1000, Slot: 12, Stat: objectiveevents.StatFlagGrabs},
 			{TimeMS: 1050, Slot: 12, Stat: objectiveevents.StatFlagSteals},
 		},
-		Identity: map[int]string{12: "aaa"},
+		Identity: objectiveevents.FlatRoundIdentity(map[int]string{12: "aaa"}),
 		Spawns:   []FlagSpawn{{Team: 0}, {Team: 1, X: 100, Y: 100}},
 	}
 	_, cov := buildFlagCarries(scan, flagTestCtx(tracks, nil, 100))
@@ -169,7 +169,7 @@ func TestFlagCarriesPorteurTueAmbigu(t *testing.T) {
 			{TimeMS: 1000, Slot: 14, Stat: objectiveevents.StatFlagSteals},
 			{TimeMS: 3000, Slot: 16, Stat: objectiveevents.StatFlagCarriersKilled},
 		},
-		Identity: map[int]string{12: "1", 14: "2", 16: "3"},
+		Identity: objectiveevents.FlatRoundIdentity(map[int]string{12: "1", 14: "2", 16: "3"}),
 		Spawns:   []FlagSpawn{{Team: 0}, {Team: 1, X: 100, Y: 100}},
 	}
 	got, cov := buildFlagCarries(scan, flagTestCtx(tracks, nil, 100))
@@ -195,7 +195,7 @@ func TestFlagCarriesPortageOuvert(t *testing.T) {
 		Events: []objectiveevents.NamedEvent{
 			{TimeMS: 1000, Slot: 12, Stat: objectiveevents.StatFlagSteals},
 		},
-		Identity: map[int]string{12: "aaa"},
+		Identity: objectiveevents.FlatRoundIdentity(map[int]string{12: "aaa"}),
 		Spawns:   []FlagSpawn{{Team: 0}, {Team: 1, X: 100, Y: 100}},
 	}
 	got, cov := buildFlagCarries(scan, flagTestCtx(tracks, nil, 100))
@@ -225,7 +225,7 @@ func TestFlagCarriesSimultaneiteFermeeComptee(t *testing.T) {
 			{TimeMS: 1000, Slot: 14, Stat: objectiveevents.StatFlagSteals},
 			{TimeMS: 1000, Slot: 16, Stat: objectiveevents.StatFlagSteals},
 		},
-		Identity: map[int]string{12: "1", 14: "2", 16: "3"},
+		Identity: objectiveevents.FlatRoundIdentity(map[int]string{12: "1", 14: "2", 16: "3"}),
 		Spawns:   []FlagSpawn{{Team: 0}, {Team: 1, X: 100, Y: 100}},
 	}
 	_, cov := buildFlagCarries(scan, flagTestCtx(tracks, nil, 100))
@@ -247,7 +247,7 @@ func TestFlagCarriesFilmNonCTF(t *testing.T) {
 		Events: []objectiveevents.NamedEvent{
 			{TimeMS: 1000, Slot: 12, Stat: objectiveevents.StatFlagSteals},
 		},
-		Identity: map[int]string{12: "aaa"},
+		Identity: objectiveevents.FlatRoundIdentity(map[int]string{12: "aaa"}),
 	}
 	got, cov := buildFlagCarries(scan, flagTestCtx(nil, nil, 100))
 	if got != nil {
@@ -282,7 +282,7 @@ func TestFlagCarriesMarqueurConfirme(t *testing.T) {
 			{TimeMS: 5000, Slot: 14, Stat: objectiveevents.StatFlagSteals},
 			{TimeMS: 7000, Slot: 14, Stat: objectiveevents.StatFlagCaptures},
 		},
-		Identity: map[int]string{12: "7", 14: "8"},
+		Identity: objectiveevents.FlatRoundIdentity(map[int]string{12: "7", 14: "8"}),
 		Spawns:   []FlagSpawn{{Team: 0}, {Team: 1, X: 100, Y: 100}},
 		Marks: filmdec.CarrierMarkScan{
 			KeyframeUS: []uint64{2_000_000, 6_000_000},
@@ -317,7 +317,7 @@ func TestFlagCarriesMarqueurSurLesFermesSeuls(t *testing.T) {
 		Events: []objectiveevents.NamedEvent{
 			{TimeMS: 1000, Slot: 12, Stat: objectiveevents.StatFlagSteals},
 		},
-		Identity: map[int]string{12: "7"},
+		Identity: objectiveevents.FlatRoundIdentity(map[int]string{12: "7"}),
 		Spawns:   []FlagSpawn{{Team: 0}, {Team: 1, X: 100, Y: 100}},
 		Marks:    filmdec.CarrierMarkScan{KeyframeUS: []uint64{2_000_000}},
 	}

@@ -50,7 +50,7 @@ func flagTestOpenScan(free []flagFreeLife) FlagCarryScan {
 		Events: []objectiveevents.NamedEvent{
 			{TimeMS: 1000, Slot: 12, Stat: objectiveevents.StatFlagSteals},
 		},
-		Identity: map[int]string{12: "1"},
+		Identity: objectiveevents.FlatRoundIdentity(map[int]string{12: "1"}),
 		Spawns:   flagTestSpawns(),
 		Free:     free,
 	}
@@ -130,7 +130,7 @@ func TestLeLacherPrendLaPositionDeLaPisteLibre(t *testing.T) {
 		Events: []objectiveevents.NamedEvent{
 			{TimeMS: 1000, Slot: 12, Stat: objectiveevents.StatFlagSteals},
 		},
-		Identity: map[int]string{12: "1"},
+		Identity: objectiveevents.FlatRoundIdentity(map[int]string{12: "1"}),
 		Spawns:   flagTestSpawns(),
 	}
 	ctx := flagTestCtx(tracks, deaths, 100)
