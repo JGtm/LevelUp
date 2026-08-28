@@ -246,3 +246,14 @@ wt/lecteur-medias. Un seul lot ouvert a la fois.
   se type sur le SECOND alors qu'il recoit le premier : les champs coincident aujourd'hui,
   donc rien ne casse et `tsc` ne voit rien. HORS PERIMETRE — le mappeur du rejeu, lui, se
   type sur `MatchMediaTab['media_items']`, c'est-a-dire sur ce qui arrive vraiment.
+
+## Journal des revues (2026-08-28, pilote)
+
+- R1 (contexte frais, gates rejoues integralement par le relecteur, cotes Go ET web) :
+  0 P0, 0 P1, 1 P2 recevable (doc-comment de ReplayMediaItem restee « pas encore
+  branchee ») — CORRIGE par le pilote dans ce commit (une ligne de doc, promue au motif
+  « rendue fausse par le lot », meme regle que C4/C5 du chantier lecteur). 23 conditions
+  tiennent ; 2 mutations prouvees (regle fin - duree : rouge cible ; garde-rail
+  hlsSingleImport : rouge nomme) ; restaurations verifiees arbre propre.
+- Pas de ronde 2 : rien a relire (la seule correction est une ligne de commentaire).
+  P0+P1 : 0 -> 0. Reste : gate visuel utilisateur + merge/push (CI d'autorite).
