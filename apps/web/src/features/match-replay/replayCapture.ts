@@ -58,23 +58,46 @@ function stampOf(now: Date): string {
 }
 
 /**
+ * DÉLAI AVANT DE RELÂCHER L'URL D'OBJET, en millisecondes.
+ *
+ * CE N'EST PAS UN CONFORT, C'EST LA CONDITION POUR QUE LE FICHIER ARRIVE. Un clic sur une
+ * ancre `download` ne COPIE pas le blob : il demande au navigateur d'aller LIRE l'URL, et
+ * cette lecture est asynchrone. Révoquer l'URL au retour du clic — ce que faisait ce module
+ * jusqu'au 2026-08-28 — coupe la source sous le téléchargement qui vient de démarrer. Une
+ * image PNG de quelques centaines de kilo-octets y survivait (elle tenait dans le premier
+ * souffle) ; un CLIP VIDÉO de plusieurs dizaines de méga-octets, non — le fichier n'arrivait
+ * jamais, sans la moindre erreur pour le dire.
+ *
+ * UNE SECONDE, ET PAS ZÉRO : le tick suivant suffirait à sortir du clic, mais pas à garantir
+ * que la lecture du blob est engagée sur une machine chargée. Une seconde est invisible pour
+ * l'utilisateur (le fichier est déjà en cours de dépôt) et large pour le navigateur. Ce n'est
+ * PAS une fuite : la révocation a bien lieu, elle attend simplement son tour.
+ */
+const URL_RELEASE_MS = 1000
+
+/**
  * triggerDownload remet un blob au navigateur sous le nom donné.
  *
- * MÊME PATRON QUE LE RESTE DU DÉPÔT (`queries.ts` pour le fond de carte, `lib/api/client.ts`
- * pour l'export CSV) : une URL d'objet, une ancre `download`, et la RÉVOCATION tout de suite
- * après. Sans elle le blob — plusieurs mégaoctets pour une vidéo — resterait retenu jusqu'à
- * la fermeture de l'onglet.
+ * DEUX PRÉCAUTIONS, ET AUCUNE N'EST DÉCORATIVE. L'ancre est ATTACHÉE au document le temps du
+ * clic : un clic sur un nœud détaché est ignoré par certains navigateurs, et le
+ * téléchargement n'y part alors jamais. Et l'URL d'objet se relâche PLUS TARD, jamais au
+ * retour du clic (cf. `URL_RELEASE_MS`).
  */
 export function triggerDownload(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.rel = 'noopener'
+  // Invisible et hors flux : l'ancre ne doit pas déplacer d'un pixel la page qu'elle traverse.
+  a.style.display = 'none'
+  document.body.appendChild(a)
   try {
-    const a = document.createElement('a')
-    a.href = url
-    a.download = filename
-    a.rel = 'noopener'
     a.click()
   } finally {
-    URL.revokeObjectURL(url)
+    // L'ANCRE PART TOUT DE SUITE, l'URL non : le clic est traité, le blob se lit encore.
+    a.remove()
+    setTimeout(() => URL.revokeObjectURL(url), URL_RELEASE_MS)
   }
 }
 
