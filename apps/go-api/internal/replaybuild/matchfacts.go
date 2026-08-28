@@ -32,6 +32,7 @@ package replaybuild
 import (
 	"context"
 	"log/slog"
+	"strconv"
 
 	"levelup/go-api/internal/analysis/objectiveevents"
 	"levelup/go-api/internal/analysis/replay"
@@ -93,7 +94,7 @@ func readFilmStats(ctx context.Context, matchID, filmDir string, facts port.Matc
 			TeamScores: facts.TeamScores,
 			Truncated:  truncated,
 		},
-		objectives: identifiedEvents(ctx, matchID, recs, lines, facts.GameVariantName),
+		objectives: identifiedEvents(ctx, matchID, filmDir, recs, facts.GameVariantName),
 		flag:       flagInput(recs, src),
 		vip:        vipInput(recs, isVipVariant(facts.GameVariantName)),
 		skull:      skullInput(recs, isSkullVariant(facts.GameVariantName)),
@@ -139,24 +140,55 @@ func flagInput(recs []objectiveevents.StatRecord, src objectiveevents.FilmSource
 	}
 }
 
-// identifiedEvents nomme les actions d'objectif du film et les attribue a un xuid.
+// identifiedEvents nomme les actions d'objectif du film et les attribue a un xuid PAR MANCHE.
 //
-// DEUX CONDITIONS, ET LES DEUX SONT DES REFUS EXPLICITES : sans famille d'objectif (mode sans
-// table nommee, ou variante inconnue) aucun nom n'est possible ; sans lignes de match, aucun
-// slot ne peut etre apparie — et poser une action sur un slot arbitraire est precisement
-// l'erreur que le pont d'identite existe pour eviter.
-func identifiedEvents(ctx context.Context, matchID string, recs []objectiveevents.StatRecord,
-	lines []objectiveevents.PlayerLine, variant string) []objectiveevents.IdentifiedEvent {
-	objType := objectiveevents.ObjectiveTypeOf(variant)
-	if objType == "" || len(lines) == 0 {
+// LE PONT EST PAR MANCHE, PAR LES SEULS INSTANTS DE MORT ([objectiveevents.ResolveRoundIdentity]),
+// comme la couronne VIP, le drapeau et le porteur du crane — et PLUS par les TOTAUX du match. Le
+// slot d'entite statborg est REATTRIBUE d'une manche a l'autre : un pont par totaux collait les
+// actions d'apres-bascule au mauvais joueur (le compteur de morts repart de zero a chaque manche,
+// si bien qu'il ne voyait que la premiere). Aucune ligne de match n'est requise — le calque est
+// publiable hors ligne, exactement comme le drapeau.
+//
+// TROIS REFUS EXPLICITES, ET AUCUN N'EST AVALE : sans famille d'objectif (mode sans table nommee,
+// variante inconnue) ou sans aucun emplacement nomme, aucun nom n'est possible ; sans fil des
+// morts lisible, aucun slot ne peut etre apparie par manche. Chacun rend nil, journalise.
+//
+// LE FIL DES MORTS EST RELU ICI (`replay.ScanFilmDeaths`) : c'est le meme chunk que
+// `BuildFromFilm` relira pour les autres calques (un seul fichier highlight, borne, sans verrou
+// filmdec). Le second decodage du statborg, lui, n'est PAS refait — `recs` est reutilise.
+func identifiedEvents(ctx context.Context, matchID, filmDir string,
+	recs []objectiveevents.StatRecord, variant string) []objectiveevents.IdentifiedEvent {
+	named := objectiveevents.NamedEventsFrom(recs, objectiveevents.ObjectiveTypeOf(variant))
+	if len(named) == 0 {
 		return nil
 	}
-	named := objectiveevents.NamedEventsFrom(recs, objType)
-	identity := objectiveevents.SlotIdentityFrom(recs, lines)
-	out := objectiveevents.IdentifyNamedEvents(named, identity)
-	slog.InfoContext(ctx, "replaybuild: actions d'objectif identifiees",
-		"match_id", matchID, "famille", objType, "nommees", len(named),
-		"identifiees", len(out), "slotsApparies", len(identity))
+	deaths, err := replay.ScanFilmDeaths(filmDir)
+	if err != nil {
+		slog.WarnContext(ctx, "replaybuild: fil des morts illisible — actions d'objectif non identifiees",
+			"err", err, "match_id", matchID, "nommees", len(named))
+		return nil
+	}
+	out := identifyRoundEvents(named, recs, deathInstantsOf(deaths))
+	slog.InfoContext(ctx, "replaybuild: actions d'objectif identifiees par manche",
+		"match_id", matchID, "nommees", len(named), "identifiees", len(out))
+	return out
+}
+
+// identifyRoundEvents resout l'identite PAR MANCHE (par les instants de mort) et attribue les
+// evenements nommes. Coeur PUR, sans I/O — testable sans film.
+func identifyRoundEvents(named []objectiveevents.NamedEvent, recs []objectiveevents.StatRecord,
+	deaths []objectiveevents.DeathInstant) []objectiveevents.IdentifiedEvent {
+	identity := objectiveevents.ResolveRoundIdentity(recs, deaths)
+	return objectiveevents.IdentifyNamedEventsByRound(named, identity)
+}
+
+// deathInstantsOf traduit le fil des morts du film dans la forme qu'attend le pont d'identite.
+func deathInstantsOf(deaths []replay.Death) []objectiveevents.DeathInstant {
+	out := make([]objectiveevents.DeathInstant, 0, len(deaths))
+	for _, d := range deaths {
+		out = append(out, objectiveevents.DeathInstant{
+			XUID: strconv.FormatUint(d.XUID, 10), TimeMS: int(d.TimeMS)})
+	}
 	return out
 }
 

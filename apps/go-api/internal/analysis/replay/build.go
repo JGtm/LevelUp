@@ -95,14 +95,16 @@ type Options struct {
 	// player_index.go). Second maillon du pont, et lui aussi une lecture. Absente, aucun tir
 	// ni lancer n'est publié.
 	PlayerIndices PlayerIndexTable
-	// Objectives : les actions d'objectif NOMMÉES ET IDENTIFIÉES (cf. objectives.go).
+	// Objectives : les actions d'objectif NOMMÉES ET IDENTIFIÉES PAR MANCHE (cf. objectives.go).
 	// Entrée de DONNÉES, comme Loadouts et Grenades.
 	//
-	// POURQUOI DÉJÀ IDENTIFIÉES, et pas décodées ici : le pont slot -> xuid a besoin des
-	// lignes de match (`match_participants`), donc de la BASE. Ce paquet et le CLI hors
-	// ligne n'en ouvrent aucune — l'appelant qui l'a résout le pont et fournit le
-	// résultat, exactement comme `objectiveevents.Extract` reçoit son `Roster`.
-	// Absente = rejeu sans calque d'objectifs.
+	// POURQUOI DÉJÀ IDENTIFIÉES, et pas décodées ici : le NOMMAGE et le pont d'identité sont un
+	// second décodage du statborg que l'appelant fait UNE fois (cf. replaybuild/matchfacts.go),
+	// et qu'il fait servir aussi à la courbe de score — les refaire ici rejouerait ce décodage.
+	// Le pont est PAR MANCHE, par les seuls INSTANTS DE MORT (aucune base, JUSTE en multi-manche
+	// où le slot d'entité est réattribué) — comme la couronne VIP et le drapeau vivant, à cette
+	// nuance près qu'eux se résolvent dans ce paquet parce qu'ils lisent `opt.Deaths` déjà scanné
+	// ici. Absente = rejeu sans calque d'objectifs.
 	Objectives []objectiveevents.IdentifiedEvent
 	// Score : de quoi construire LA COURBE DE SCORE (entrée de DONNÉES comme Objectives ; cf. score_timeline.go et build_score.go). Nil = ni calque ni couverture de score.
 	Score *ScoreInput

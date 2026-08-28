@@ -136,3 +136,33 @@ func TestSkullCarriesUnscanned(t *testing.T) {
 		t.Errorf("film non-Oddball : attendu (nil, nil), obtenu (%v, %v)", carries, cov)
 	}
 }
+
+// TestSkullCarrySecondsByXUID — la GRANDEUR DU GATE ORACLE (porteur principal) : la somme des
+// durees de portage par joueur, toutes manches confondues. Le temoin sur film reel skip en CI
+// (pas de corpus) ; ce test synthetique gate la fonction que le temoin re-cuit, sans film.
+//
+// Attendus de `skullFixture` : A = 3 s (1000-4000) + 1 s (9000-10000) = 4 s ; C = 2 s
+// (5000-7000) ; B = 2 s en manche 1 (20000-22000, slot 22 reattribue).
+func TestSkullCarrySecondsByXUID(t *testing.T) {
+	recs, deaths := skullFixture()
+	got := skullCarrySecondsByXUID(recs, objectiveevents.ResolveRoundIdentity(recs, deaths))
+	want := map[string]float64{"A": 4, "C": 2, "B": 2}
+	if len(got) != len(want) {
+		t.Fatalf("%d porteur(s), attendu %d : %+v", len(got), len(want), got)
+	}
+	for x, w := range want {
+		if got[x] != w {
+			t.Errorf("duree de portage de %q = %.1f s, attendu %.1f s (%+v)", x, got[x], w, got)
+		}
+	}
+	// Le porteur PRINCIPAL (argmax) est A — c'est ce que le gate oracle confronte a l'oracle fige.
+	best := ""
+	for x, s := range got {
+		if best == "" || s > got[best] {
+			best = x
+		}
+	}
+	if best != "A" {
+		t.Errorf("porteur principal = %q, attendu \"A\"", best)
+	}
+}
