@@ -174,8 +174,10 @@ export function ReplayCanvas({
     markerColors,
   } = settings
   // SON : coupé par défaut, préférences persistées, tout le câblage dans le hook (règles dans
-  // replaySound.ts, lecture replayAudio.ts, camps objectiveSound.ts, fin de partie endMatch).
-  const sound = useReplaySound(doc, kills, t0Ms, multiplier, scoreboard, endMatch ?? null)
+  // replaySound.ts, lecture replayAudio.ts, camps objectiveSound.ts, fin de partie endMatch). La
+  // `locale` ne sert qu'au son « manche terminée » (voix d'annonceur, seule entrée locale-aware
+  // de la piste).
+  const sound = useReplaySound(doc, kills, t0Ms, multiplier, scoreboard, endMatch ?? null, locale)
 
   const paletteVersion = useColorPaletteVersion()
   // TOUTES LES ENCRES DU REJEU, résolues une fois par palette (useReplayInks) : couleurs

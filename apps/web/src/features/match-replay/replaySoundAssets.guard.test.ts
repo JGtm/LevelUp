@@ -44,6 +44,7 @@ import {
   EQUIPMENT_PLACEMENT_SOUND_STEMS_END,
   KILL_SPRITE_SOUND_STEMS,
   OBJECTIVE_SOUND_STEMS,
+  ROUND_OVER_SOUND_STEMS,
   SOUND_VARIANTS,
   WEAPON_SOUND_STEMS,
   ZONE_SOUND_STEMS,
@@ -124,6 +125,9 @@ describe('garde-rail : manifeste sonore = dossier d assets', () => {
     PAD_PICKUP_SOUND_STEM,
     // La FIN DE PARTIE (lot C, 2026-08-27) : voix FR et EN, fanfares, réplique du FFA gagné.
     ...endMatchStems,
+    // Le son « MANCHE TERMINÉE » (2026-08-28) : voix d'annonceur FR et EN, sur la piste (daté à
+    // la bascule de manche), les deux langues livrées et vérifiées ensemble.
+    ...Object.values(ROUND_OVER_SOUND_STEMS),
   ])
 
   it('chaque stem du manifeste a son fichier .wav', () => {
@@ -219,6 +223,11 @@ describe('garde-rail : durée livrée par catégorie', () => {
     // joue une fois par seconde, un geste de 3,6 s s'y empilerait sur lui-même.
     ...stemsZone(),
     PAD_PICKUP_SOUND_STEM,
+    // Le son « MANCHE TERMINÉE » : voix d'annonceur sur la piste (catégorie Objectifs), même
+    // règle de durée que les autres annonceurs — il garde la durée de sa source (1,7 s), jamais
+    // retronqué à la coupe des armes. Ce n'est PAS un son de FIN DE PARTIE : il vit sur la piste,
+    // daté à la bascule, il tombe donc sous le plafond des ÉVÉNEMENTS (6 s), pas la conclusion.
+    ...Object.values(ROUND_OVER_SOUND_STEMS),
     // Les VARIANTES d'un geste suivent la règle de leur geste : ce sont les autres tirages du
     // MÊME `RandomSequence`, pas d'autres sons.
     ...Object.values(SOUND_VARIANTS).flat(),
