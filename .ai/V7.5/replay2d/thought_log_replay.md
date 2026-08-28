@@ -5131,3 +5131,36 @@ Chiffres du gate lot 4 (cache typecheck purge) : `npm run typecheck` exit 0 ; vi
 `src/features/match-replay` + `src/routes` = 105 fichiers / **1613 tests, 0 echec** (+7 : 2 pour
 le repli, 2 pour le chevron, 3 pour la persistance) ; ESLint 0 erreur ET 0 warning sur les 8
 fichiers touches.
+
+## 2026-08-28 — Lecteur phase 2 CLOS : ce que le chantier a appris
+
+Quatre lots, quatre commits, et un report du registre solde sans qu'un seul endpoint ait ete
+ecrit. C'est le resultat le plus utile a retenir : **la donnee etait deja servie**. La page
+rejeu appelait deja `useMatchView`, le match servait deja ses medias associes ; ce qui manquait
+tenait en DEUX COLONNES qu'une requete ne demandait pas.
+
+**LE REPORT DISAIT « il faut un endpoint », ET C'ETAIT FAUX.** Le registre decrivait la forme
+exacte du payload attendu — `{ id, kind, replayMs, durationMs, thumbUrl, url, label }` — sans
+verifier si une source existante pouvait le nourrir. Elle le pouvait. Une condition de reprise
+qui prescrit la SOLUTION plutot que le BESOIN fait porter au lot suivant le cout d'un travail
+inutile. Ce que le report aurait du dire : « la piste attend une liste de medias dates sur
+l'axe du rejeu ; chercher d'abord si la vue du match en porte assez ».
+
+**DEUX BUGS LATENTS TROUVES EN CHEMIN, dont aucun n'etait le sujet.** `capture_time` etait une
+FIN de capture qu'on s'appretait a lire comme un debut. `duration_seconds` etait declare au DTO
+ET au schema openapi, servi a tout le monde, et n'a jamais valu autre chose que nul. Un champ
+que personne ne peuple et que personne ne teste ne se voit pas : il faut qu'un consommateur en
+ait besoin pour que son absence devienne un fait.
+
+**UN TROISIEME DEFAUT N'EXISTAIT QUE PARCE QUE LA PISTE ETAIT VIDE.** La lightbox rendait un
+`<img>` pour tout clip sans duree connue. Personne ne pouvait l'atteindre tant qu'aucun media
+n'arrivait sur la frise ; le lot 2 l'a rendu atteignable, le lot 3 l'a corrige. Un rendu livre
+« complet mais sans donnee » n'est pas un rendu valide — c'est un rendu non exerce.
+
+**CE QUI RESTE AU REGISTRE** : le gate visuel du lecteur, elargi de quatre points que les tests
+ne peuvent pas voir — vignettes animees, placement d'un clip AVANT le frag qu'il montre,
+lecture reelle d'un flux HLS dans Chrome, et le repli qui ne doit pas faire sauter la barre.
+
+Gates transverses de cloture : `npm run typecheck` (cache purge) exit 0 ; vitest
+`match-replay` + `routes` + `media` + `lib/media` = **117 fichiers / 1730 tests, 0 echec** ;
+`go test ./...` (apps/go-api) et `make openapi-check` : voir l'entree du thought_log racine.

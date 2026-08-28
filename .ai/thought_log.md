@@ -74525,3 +74525,75 @@ sur chaines objectif, index PSA repares 4 DBs, recomputes reels valides a l unit
 corruption h5_arena reparee 99,9 %) ; volet C killsource 100 % ; volet D 80 scores
 corriges (pre-requis tag leve). Restent au registre : 2 investigations de cause racine
 + decision buildFormTab + BTB conditionnel.
+
+## [2026-08-28] Lecteur du rejeu — phase 2 MEDIAS : la piste porte les medias du match, sans un endpoint de plus ; frise repliable
+
+**Statut** : Complete (4 lots + cloture, branche `wt/lecteur-medias`, PAS de merge, PAS de push).
+
+**Contexte** : le lot « planche 2a » avait livre la piste Medias, son placement et sa lightbox,
+mais la liste servie etait `EMPTY_MEDIA` — le registre portait le report « Medias du rejeu : la
+DONNEE », dont la condition de reprise prescrivait un ENDPOINT par match. S'ajoutait un retour
+utilisateur : pouvoir replier la frise pour ne garder que la barre de lecture.
+
+**Decision technique principale — PAS de nouvel endpoint : le report prescrivait la SOLUTION,
+pas le BESOIN.** Verification sur pieces : la page rejeu appelle DEJA `useMatchView` et le match
+sert DEJA ses medias associes (Q24 -> `GetMatchMedia` -> `buildMediaTab` -> DTO -> URLs
+transformees). Ce qui manquait tenait en DEUX COLONNES que la requete ne demandait pas. Option A
+retenue : enrichir `match_view.media_tab`, mapper pur cote client, zero appel reseau de plus,
+cache partage avec la page match. Le diff de contrat total est UN champ.
+
+**Resultats observes** :
+- **Deux bugs latents soldes.** (1) `capture_time` est une FIN de capture : un clip pose dessus
+  apparaissait decale de sa propre duree (30 s apres le frag qu'il montre). Q24 sert desormais
+  aussi `capture_start_utc`, expose separement (`capture_start_time`) — `capture_time` reste la
+  fin, l'onglet medias du match la consomme telle quelle. (2) `duration_seconds` existait au DTO
+  ET au schema openapi, servi a tout le monde, et n'a JAMAIS ete peuple faute d'etre selectionne.
+  Un champ nul depuis toujours, teste par rien : il faut un consommateur pour que son absence
+  devienne un fait.
+- **DEVIATION assumee** : la base stocke la duree en DOUBLE (`ops/media_store.go`), le DTO en
+  entier. Scan `sql.NullFloat64` + `math.Round` plutot qu'un 3e changement de contrat — le cout
+  est au pire une demi-seconde de placement, sous l'approximation du recalage lui-meme.
+- **Le recalage a lieu UNE fois, dans la page** : `replayMs = (capture − header.start_time) −
+  originMs`, c'est-a-dire la doctrine du fil (`event_time_ms + t0Ms − originMs`) ecrite pour une
+  source qui donne des dates au lieu d'un offset. Deux recalages menes separement divergent.
+- **DECISIONS CONSERVATRICES, non ecrites au plan** : en-tete sans `start_time` = AUCUN media
+  place (rien a recaler, on n'invente pas de pose) ; `originMs` absent = 0, la pose se degrade du
+  retard de l'image zero plutot que de faire disparaitre la piste. Media sans horodatage ECARTE,
+  horodatage illisible = absence (jamais un NaN sur la frise).
+- **VIDE N'EST PAS ABSENTE** : la rangee disparait quand le titre ne declare pas la capability
+  `media` — le rejeu n'est garde que par `matchmaking`, les deux ne se recouvrent pas.
+- **HLS : extraction, pas 2e copie.** Les clips transcodes ont un `file_path` mue vers
+  `master.m3u8`, illisible par un `<video src>` nu sur Chrome/Firefox. L'attache de la galerie est
+  extraite dans `lib/media/useHlsVideo.ts` et LA GALERIE A MIGRE DESSUS dans le meme lot : ses 116
+  tests passent SANS modification, ce qui prouve la fidelite (quirk Chrome `canPlayType` = "maybe"
+  compris). Garde-rail pose au-dela de la demande (`hlsSingleImport.guard.test.ts`), MORSURE
+  VERIFIEE sur pieces.
+- **Un defaut revele par le branchement** : la lightbox confondait « c'est un clip » et « on
+  connait sa duree » — un clip sans duree partait dans la branche image et rendait un
+  `<img src=...mp4>`, soit un cadre vide. Inatteignable tant que la piste etait vide. Un rendu
+  livre « complet mais sans donnee » n'est pas un rendu valide : c'est un rendu non exerce.
+- **Repli de la frise** : chevron a la place du `<div />` de remplissage qui faisait deja face au
+  curseur — la pile ne gagne pas un pixel. `usePersistedFlag` etait prive, il est EXPORTE plutot
+  que recopie (il porte l'invariant « ne jamais persister depuis l'updater de setValue »). Le
+  garde-fou clavier du lot precedent a ete REJOUE EN REPLI : le curseur porte toujours
+  `TIMELINE_SHORTCUT_ATTR`. Cliquet `ReplayCanvas` tenu a 672/672, les 3 lignes de la nouvelle
+  prop ayant ete rendues dans le perimetre.
+- **DECOUVERTE consignee (non traitee)** : DEUX schemas media jumeaux coexistent au contrat —
+  `MatchAssociatedMedia` (ce que `media_tab` sert reellement) et `AssociatedMediaItem` (sans
+  `capture_start_time`, duree en float). `MatchMediaTab.tsx` se type sur le SECOND en recevant le
+  premier ; les champs coincident, donc `tsc` ne voit rien. Hors perimetre — le mappeur du rejeu
+  se type sur ce qui arrive vraiment.
+
+**Gates** : `npm run typecheck` (cache purge) exit 0 ; vitest match-replay + routes + media +
+lib/media = **117 fichiers / 1730 tests, 0 echec** (+32) ; `go test ./...` = **147 paquets ok, 1
+FAIL `internal/himap` a 601 s** — timeout LOCAL connu (balayage des 27 cartes du jeu installe,
+`t.Skip` sans les fichiers de jeu donc absent de la CI), **0 test individuel rouge, paquet hors
+diff**, autorite = baseline CI Linux ; `make openapi-check` : deux maillons exit 0 ; ESLint **0
+erreur** sur 19 fichiers web (1 warning PRE-EXISTANT `objectiveObjects`, deja consigne).
+
+**Conclusion / prochaine etape** : report « Medias du rejeu : la DONNEE » SOLDE au registre
+(reference des 4 commits) ; le report « gate visuel du lecteur » ELARGI de quatre points que les
+tests ne peuvent pas voir — vignettes WebP animees, clip pose AVANT le frag qu'il montre, lecture
+reelle d'un flux HLS dans Chrome, repli qui ne fait pas sauter la barre. Le gate visuel
+utilisateur est le seul reste. Aucun merge, aucun push : `wt/lecteur-medias` attend l'arbitrage
+du pilote.
