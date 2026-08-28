@@ -9,18 +9,14 @@ Gates par étape : `npm run typecheck`, `npm run lint`, `npm run test` (vitest, 
 
 ## Étape 1 — Le crâne (porteur + libre) rendu comme le drapeau : taille + contour/liseré
 Retour : « prendre son icône et le mettre comme on a mis le drapeau (taille et contour) ».
-- [ ] 1.1 Centraliser le glyphe du crâne dans `skullGlyph.ts` (une seule vérité pour les deux
-      calques — la doctrine « le MÊME disque » ne tenait que par vigilance).
-- [ ] 1.2 Habillage = celui du drapeau : liseré à l'encre du FOND (`markInk.outline`, cote
-      `FLAG_OUTLINE_PAD`) + disque agrandi (peser autant que l'aile du drapeau) + deux orbites
-      pour se lire « crâne ». Forme BOULE (distincte hampe+fanion), pas d'icône du jeu.
-- [ ] 1.3 `skullCarrierLayer.ts` + `objectiveObjectsLayer.ts` consomment le glyphe partagé ;
-      `edge` (muted-foreground) → `outline` (background) dans les deux calques et leurs hooks.
-- [ ] 1.4 Câblage `ReplayCanvas` : `outline: markInk.outline` aux deux calques.
-- [ ] 1.5 Tests : `skullGlyph.test.ts` (neuf) + MAJ `skullCarrierLayer.test.ts` /
-      `objectiveObjectsLayer.test.ts` (comptes arc/fill, style `outline`).
-- [ ] 1.6 CR : l'icône crâne dédiée EXISTE (`contour-25.png`, tag weap `0017592c`) mais son URL
-      n'est pas cuite dans le document — branchement = lot Go (jamais deviner un index d'atlas).
+- [x] 1.1 `skullGlyph.ts` centralise le glyphe (les deux calques l'appellent).
+- [x] 1.2 Habillage drapeau : liseré encre FOND (cote 1,6 = `FLAG_OUTLINE_PAD`), disque r=5→7,
+      deux orbites. Forme BOULE, pas d'icône du jeu.
+- [x] 1.3 `skullCarrierLayer` + `objectiveObjectsLayer` consomment le glyphe ; `edge` → `outline`.
+- [x] 1.4 `ReplayCanvas` : `outline: markInk.outline` aux deux calques.
+- [x] 1.5 Tests : `skullGlyph.test.ts` neuf + MAJ des deux tests de calque (arc/fill, `outline`).
+- [x] 1.6 CR : icône `contour-25.png` (tag weap `0017592c`) existe mais URL non cuite → lot Go.
+Gate : typecheck OK ; vitest 3 fichiers (17) OK ; eslint fichiers touchés 0 erreur.
 
 ## Étape 2 — Petit compteur de respawn du crâne libre (si la donnée existe)
 Retour : « quand il respawn un petit compteur s'il y a ».
@@ -53,7 +49,10 @@ Retour utilisateur + stub déjà écrit dans `replaySound.ts`.
 - [ ] 5.5 Tests logique son (`roundOverSound` + timeline).
 
 ## Découvertes (à ne pas traiter — noter seulement)
-- (rien pour l'instant)
+- `ReplayCanvas.draw()` n'a pas `objectiveObjects` dans son tableau de dépendances (avert.
+  exhaustive-deps PRÉ-EXISTANT, dette gelée) : latent, non traité (hors périmètre). En pratique
+  inoffensif — `draw` se recrée sur `doc`, dont dépend `objectiveObjects`.
 
 ## Journal
 - 2026-08-28 : plan écrit et commité avant toute modification (contrat plan-execution).
+- 2026-08-28 : étape 1 close — glyphe crâne centralisé + habillé comme le drapeau.

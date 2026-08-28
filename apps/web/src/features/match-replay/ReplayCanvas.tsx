@@ -313,13 +313,15 @@ export function ReplayCanvas({
     scoreboard, teamColorOf, neutral: floorStyle.edge, outline: markInk.outline, reducedMotion,
   })
 
+  // LE CRÂNE d'Oddball (libre ET porté) : glyphe partagé habillé comme le drapeau — liseré à
+  // l'encre du FOND (`markInk.outline`), le même que le drapeau, pour le détacher de la carte.
   const objectiveObjects = useReplayObjectiveObjects({
-    lives: doc.objectiveObjects, view: canvasView, ink: neutralInk, edge: floorStyle.edge,
+    lives: doc.objectiveObjects, view: canvasView, ink: neutralInk, outline: markInk.outline,
   })
   // LA COURONNE VIP (schéma 22) : marqueur sur le VIP courant, relu image par image (useReplayVipCrown).
   const vipCrown = useReplayVipCrown({ doc, view: canvasView, enabled: showVipCrown, ink: neutralInk, reducedMotion })
-  // LE PORTEUR DU CRÂNE d'Oddball (schéma 23) : disque sur le porteur courant, relu image par image.
-  const skullCarrier = useReplaySkullCarrier({ doc, view: canvasView, enabled: showSkullCarrier, ink: neutralInk, edge: floorStyle.edge, reducedMotion })
+  // LE PORTEUR DU CRÂNE d'Oddball (schéma 23) : crâne sur le porteur courant, relu image par image.
+  const skullCarrier = useReplaySkullCarrier({ doc, view: canvasView, enabled: showSkullCarrier, ink: neutralInk, outline: markInk.outline, reducedMotion })
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current
