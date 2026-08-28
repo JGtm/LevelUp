@@ -121,6 +121,7 @@ export type ReplayDocumentReady = Omit<
   | 'roster'
   | 'scoreTimeline'
   | 'shots'
+  | 'skullCarries'
   | 'structure'
   | 'tracks'
   | 'vipCrown'
@@ -174,10 +175,20 @@ export type ReplayDocumentReady = Omit<
    * VIP — `coverage.vipCrown` distingue les deux. Aucun tableau imbriqué : la période est plate.
    */
   vipCrown: NonNullable<ReplayDocument['vipCrown']>
+  /**
+   * LES PÉRIODES DE PORTAGE DU CRÂNE d'Oddball (schéma 23) : une entrée par période, nommée par le
+   * xuid du porteur. Vide = artefact antérieur au schéma 23, ou film que l'appelant n'a pas reconnu
+   * Oddball — `coverage.skullCarries` distingue les deux. Aucun tableau imbriqué : la période est
+   * plate. Le crâne LIBRE (`objectiveObjects`) reste la couche POSITION ; celle-ci est le PORTEUR.
+   */
+  skullCarries: NonNullable<ReplayDocument['skullCarries']>
 }
 
 /** ReplayVipPeriod — UNE période de port de la couronne, telle que le rendu la lit (plate). */
 export type ReplayVipPeriod = NonNullable<ReplayDocument['vipCrown']>[number]
+
+/** ReplaySkullCarry — UNE période de portage du crâne, telle que le rendu la lit (plate). */
+export type ReplaySkullCarry = NonNullable<ReplayDocument['skullCarries']>[number]
 
 /**
  * normalizeReplayDocument comble les tableaux absents et rétablit l'arité des coordonnées.
@@ -216,6 +227,10 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     // (xuid, t0, t1, closed), aucun tableau imbriqué. Absent = artefact antérieur, ou film
     // non reconnu VIP — `coverage.vipCrown` distingue les deux, et c'est pour cela qu'il existe.
     vipCrown: raw.vipCrown ?? [],
+    // LES PÉRIODES DE PORTAGE DU CRÂNE d'Oddball (schéma 23) : une entrée plate par période
+    // (xuid, t0, t1, closed), aucun tableau imbriqué. Absent = artefact antérieur, ou film non
+    // reconnu Oddball — `coverage.skullCarries` distingue les deux.
+    skullCarries: raw.skullCarries ?? [],
     // LES OBJETS D'OBJECTIF LIBRES (schéma 21) : une entrée par VIE de l'objet hors portage.
     // Absent = artefact antérieur, mode sans objet porté, ou film qui n'en porte pas —
     // `coverage.objectiveObjects` distingue les trois, et c'est pour cela qu'il est publié.

@@ -43,6 +43,7 @@ import { useReplayPlacements } from './useReplayPlacements'
 import { EMPTY_FEED, EMPTY_ZONES, SERIES_TOKENS } from './replayCanvasConfig'
 import { useReplayObjectiveObjects } from './useReplayObjectiveObjects'
 import { useReplayVipCrown } from './useReplayVipCrown'
+import { useReplaySkullCarrier } from './useReplaySkullCarrier'
 import { useReplayFlagCarries } from './useReplayFlagCarries'
 import { useGrenadeIcons } from './useGrenadeIcons'
 import { useZoneStates } from './useZoneStates'
@@ -168,7 +169,7 @@ export function ReplayCanvas({
   const {
     showAim, showZones, showNames, showTrail, showHeatmap, heatmapMode, heatmapSpan,
     showShotFx, showKillFx, showPlacements, showUnnamedPlacements, showDroppedPlacements,
-    showWeaponPads, showFlagCarries, showVipCrown, speed: multiplier,
+    showWeaponPads, showFlagCarries, showVipCrown, showSkullCarrier, speed: multiplier,
     markerColors,
   } = settings
   // SON : coupé par défaut, préférences persistées, tout le câblage dans le hook (règles dans
@@ -316,6 +317,8 @@ export function ReplayCanvas({
   })
   // LA COURONNE VIP (schéma 22) : marqueur sur le VIP courant, relu image par image (useReplayVipCrown).
   const vipCrown = useReplayVipCrown({ doc, view: canvasView, enabled: showVipCrown, ink: neutralInk, reducedMotion })
+  // LE PORTEUR DU CRÂNE d'Oddball (schéma 23) : disque sur le porteur courant, relu image par image.
+  const skullCarrier = useReplaySkullCarrier({ doc, view: canvasView, enabled: showSkullCarrier, ink: neutralInk, edge: floorStyle.edge, reducedMotion })
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current
@@ -489,6 +492,8 @@ export function ReplayCanvas({
     objectiveObjects.paint(ctx, frame)
     // LA COURONNE VIP sur le porteur courant de chaque camp, au-dessus de son marqueur.
     vipCrown.paint(ctx, frame)
+    // LE CRÂNE d'Oddball sur son porteur (le crâne LIBRE reste au sol via objectiveObjects).
+    skullCarrier.paint(ctx, frame)
     // Le PULSE D'ACTION D'OBJECTIF (capture, retour, prise de zone) : un anneau qui
     // s'ouvre depuis la zone/le marqueur concerné à l'instant de l'action (lot 4.4).
     if (objectivePulses.length > 0) {
@@ -537,6 +542,7 @@ export function ReplayCanvas({
     zones,
     flags,
     vipCrown,
+    skullCarrier,
     floorStyle.edge,
     slotColors,
     colorOfSlot,
@@ -590,6 +596,7 @@ export function ReplayCanvas({
       weaponPads: weaponPads.available,
       flagCarries: flags.available,
       vipCrown: vipCrown.available,
+      skullCarrier: skullCarrier.available,
     },
   })
   // CE QUI SORT DU REJEU (image, vidéo) vit dans useReplayCapture : le canvas prête sa TOILE, son
