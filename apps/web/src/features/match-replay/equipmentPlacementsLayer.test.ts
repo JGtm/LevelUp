@@ -32,6 +32,12 @@ import {
 } from './equipmentPlacementsLayer'
 import { placementAt } from './placementHitTest'
 import {
+  buildSlotOwnership,
+  colorResolver,
+  colorResolverOrLast,
+  type ReplayPlayer,
+} from './rosterLogic'
+import {
   BEACON_ID,
   DEVICE_ID,
   OVERSHIELD_ID,
@@ -292,6 +298,50 @@ describe('la marque « révélé », tracée dans ce calque', () => {
     const foe = life(7, 6, 5)
     const lache = pose({ family: 'sensor', id: SENSOR_ID, t0: 50, origin: 'dropped' })
     expect(arcsOf(draw([lache], TIME, { lives: [foe], sideOfSlot }))).toHaveLength(0)
+  })
+})
+
+/**
+ * RÉGRESSION DE FRONTIÈRE (revue adversariale 2026-08-28) — la couleur d'un objet LÂCHÉ À LA MORT.
+ *
+ * Un objet `origin='dropped'` porte `t0 = finVie du poseur + 1` : le poseur n'occupe DÉJÀ PLUS le
+ * slot à `t0`. Le double `colorOfSlot` doit donc être un résolveur de FRONTIÈRE
+ * (`ownerAtFrameOrLast`) : strict, il rendrait `null` → l'objet serait peint en NEUTRE au lieu de
+ * la couleur d'équipe du lâcheur. Le double est ici FRAME-DÉPENDANT (un vrai résolveur bâti sur
+ * une vie fournie), ce qui démasque le bug qu'un `(slot)=>couleur` figé cachait.
+ */
+describe('couleur d’un objet LÂCHÉ à la mort (t0 = finVie + 1)', () => {
+  const dropTime = { ...TIME, showDropped: true, frame: 60 }
+  // Le lâcheur : sa vie sur le slot 3 s'est terminée à l'image 49 (l'objet est lâché à 50).
+  const dropper: ReplayPlayer = {
+    xuid: 'A',
+    lives: [
+      { slot: 3, team: -1, startFrame: 1, endFrame: 49, points: [{ t: 1, x: 5, y: 5 }] },
+    ] as ReplayPlayer['lives'],
+  }
+  const own = buildSlotOwnership([dropper])
+  const teamColor = (ally: boolean) => (ally ? 'equipe' : 'adverse')
+  const dropped = pose({ family: 'sensor', id: SENSOR_ID, origin: 'dropped', owner: 3, t0: 50 })
+  const inkWith = (colorOfSlot: (slot: number, frame: number) => string | null) => ({
+    colorOfSlot, neutral: 'neutre', wall: 'mur', rift: { rim: 'faille-bord', core: 'faille-coeur' },
+  })
+  const strokesOf = (ops: ReturnType<typeof draw>) =>
+    ops.filter((o) => o.op === 'set strokeStyle').map((o) => o.args[0])
+
+  it('résolution STRICTE (ownerAtFrame) : peint en NEUTRE — la régression', () => {
+    const strokes = strokesOf(
+      draw([dropped], dropTime, {}, inkWith(colorResolver(own, teamColor, () => true, 'neutre'))),
+    )
+    expect(strokes).toContain('neutre')
+    expect(strokes).not.toContain('equipe')
+  })
+
+  it('résolution de FRONTIÈRE (ownerAtFrameOrLast) : prend la couleur d’équipe du LÂCHEUR', () => {
+    const strokes = strokesOf(
+      draw([dropped], dropTime, {}, inkWith(colorResolverOrLast(own, teamColor, () => true, 'neutre'))),
+    )
+    expect(strokes).toContain('equipe')
+    expect(strokes).not.toContain('neutre')
   })
 })
 

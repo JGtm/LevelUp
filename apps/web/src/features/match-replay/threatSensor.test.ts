@@ -237,4 +237,32 @@ describe('sensorReveals — qui le ping révèle, et qui il ne révèle pas', ()
     expect(out).toHaveLength(1)
     expect(out[0].y).toBeCloseTo(4, 6)
   })
+
+  // MULTI-MANCHE : un slot de biped est réattribué entre manches. Le camp doit se lire à
+  // l'image qui identifie le bon joueur — le POSEUR à sa pose, la CIBLE au ping — jamais à
+  // l'image courante, où le slot peut appartenir à quelqu'un d'un autre camp. Les deux tests
+  // ci-dessous le prouvent par CONTRE-ÉPREUVE : le double `sideOfSlot` renvoie, à l'image
+  // courante, un camp qui FERAIT ÉCHOUER la révélation ; elle n'a lieu que si la bonne image
+  // a été employée.
+  it('le POSEUR se lit à sa POSE (t0), jamais à l’image courante', () => {
+    // Slot 1 : poseur de camp « t0 » en manche 0 ; le slot revient à un joueur de camp « t1 »
+    // plus tard. La cible (slot 3) est de camp « t1 ». Résolu à t0=10 → t0, adversaire de la
+    // cible → révélation. Résolu à l'image courante 30 → t1 = la cible → aucune.
+    const sideAt = (slot: number, frame: number) =>
+      slot === 1 ? (frame < 20 ? 't0' : 't1') : slot === 3 ? 't1' : null
+    const out = sensorReveals([sensor()], { lives: [foeInside], sideOfSlot: sideAt }, { frame: 30, frameMs: FRAME_MS })
+    expect(out).toHaveLength(1)
+    // L'image de la pose voyage avec la révélation : le calque colore la marque par le poseur.
+    expect(out[0].ownerFrame).toBe(10)
+  })
+
+  it('la CIBLE se lit au PING, jamais à l’image courante', () => {
+    // Slot 3 : adversaire (« t1 ») au ping (image 28) ; le slot passe au camp du poseur (« t0 »)
+    // à l'image courante 30. Résolue au ping → t1, adversaire → révélation ; résolue à 30 → t0 =
+    // poseur → aucune.
+    const sideAt = (slot: number, frame: number) =>
+      slot === 1 ? 't0' : slot === 3 ? (frame < 29 ? 't1' : 't0') : null
+    const out = sensorReveals([sensor()], { lives: [foeInside], sideOfSlot: sideAt }, { frame: 30, frameMs: FRAME_MS })
+    expect(out).toHaveLength(1)
+  })
 })
