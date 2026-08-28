@@ -6,13 +6,15 @@ import type { ReplayTrackReady } from './replayNormalize'
 import { testReplayDoc as doc } from './test/testDoc'
 import {
   buildPlayers,
-  colorBySlot,
+  buildSlotOwnership,
+  colorResolver,
   groupByTeam,
   loadoutAt,
-  markBySlot,
-  nameBySlot,
+  markResolver,
+  nameResolver,
   playerName,
   playerStateAt,
+  sideResolver,
   vitalityPresence,
 } from './rosterLogic'
 
@@ -135,52 +137,122 @@ describe('groupByTeam', () => {
   })
 })
 
-describe('colorBySlot — la couleur appartient au JOUEUR, pas à la vie (D1)', () => {
+describe('colorResolver — la couleur appartient au JOUEUR à l’image, pas à la vie (D1)', () => {
   const teamColor = (ally: boolean) => (ally ? 'allie' : 'adverse')
+  const own = (players: ReturnType<typeof buildPlayers>) => buildSlotOwnership(players)
 
-  it('donne la MÊME couleur aux deux vies d’un même joueur', () => {
+  it('donne la MÊME couleur aux deux vies d’un même joueur, à toute image de la vie', () => {
     const d = doc({ tracks: [track(512, 'A', 0, 50), track(514, 'A', 70, 120)] })
-    const colors = colorBySlot(buildPlayers(d, [row('A', 'Alpha', 'Eagle')]), teamColor,
+    const color = colorResolver(own(buildPlayers(d, [row('A', 'Alpha', 'Eagle')])), teamColor,
       () => true, 'neutre')
-    expect(colors.get(512)).toBe('allie')
-    expect(colors.get(514)).toBe('allie')
+    expect(color(512, 25)).toBe('allie')
+    expect(color(514, 90)).toBe('allie')
   })
 
   it('sépare les camps : allié et adversaire n’ont pas la même teinte', () => {
     const d = doc({ tracks: [track(512, 'A', 0, 50), track(513, 'B', 0, 60)] })
     const players = buildPlayers(d, [row('A', 'Alpha', 'Eagle'), row('B', 'Bravo', 'Cobra')])
-    const colors = colorBySlot(players, teamColor, (xuid) => xuid === 'A', 'neutre')
-    expect(colors.get(512)).toBe('allie')
-    expect(colors.get(513)).toBe('adverse')
+    const color = colorResolver(own(players), teamColor, (xuid) => xuid === 'A', 'neutre')
+    expect(color(512, 25)).toBe('allie')
+    expect(color(513, 25)).toBe('adverse')
   })
 
-  it('laisse une vie SANS propriétaire hors de la table — l’appelant y sert son encre neutre', () => {
+  it('une vie SANS propriétaire ne se colore pas — l’appelant y sert son encre neutre', () => {
     const d = doc({ tracks: [track(512, undefined, 0, 50)] })
-    const colors = colorBySlot(buildPlayers(d, []), teamColor, () => true, 'neutre')
-    expect(colors.has(512)).toBe(false)
-    expect(colors.get(512) ?? 'neutre').toBe('neutre')
+    const color = colorResolver(own(buildPlayers(d, [])), teamColor, () => true, 'neutre')
+    expect(color(512, 25)).toBeNull()
+    expect(color(512, 25) ?? 'neutre').toBe('neutre')
+  })
+
+  it('un slot LIBRE à cette image (hors de toute vie) n’a pas de couleur', () => {
+    const d = doc({ tracks: [track(512, 'A', 0, 50)] })
+    const color = colorResolver(own(buildPlayers(d, [row('A', 'Alpha', 'Eagle')])), teamColor,
+      () => true, 'neutre')
+    expect(color(512, 25)).toBe('allie') // dans la vie
+    expect(color(512, 999)).toBeNull() // après la vie
   })
 })
 
-describe('markBySlot / nameBySlot — l’identité redescend sur chaque vie', () => {
-  it('porte la marque du propriétaire sur toutes ses vies, rien pour les autres', () => {
+describe('markResolver / nameResolver — l’identité résolue par slot ET par image', () => {
+  const own = (players: ReturnType<typeof buildPlayers>) => buildSlotOwnership(players)
+
+  it('porte la marque du propriétaire de la vie courante, rien pour les autres', () => {
     const d = doc({ tracks: [track(512, 'A', 0, 50), track(514, 'A', 70, 120), track(513, 'B', 0, 60)] })
     const players = buildPlayers(d, [row('A', 'Alpha', 'Eagle'), row('B', 'Bravo', 'Cobra')])
-    const marks = markBySlot(players, new Map([['A', 'me' as const]]))
-    expect(marks.get(512)).toBe('me')
-    expect(marks.get(514)).toBe('me')
-    expect(marks.get(513)).toBeUndefined()
+    const mark = markResolver(own(players), new Map([['A', 'me' as const]]))
+    expect(mark(512, 25)).toBe('me')
+    expect(mark(514, 90)).toBe('me')
+    expect(mark(513, 25)).toBeUndefined()
   })
 
   it('écrit le nom d’affichage du joueur, jamais un xuid brut', () => {
     const d = doc({ tracks: [track(512, '2533274800000000', 0, 50)] })
-    const names = nameBySlot(buildPlayers(d, []))
-    expect(names.get(512)).toBe('Joueur 0000')
+    const name = nameResolver(own(buildPlayers(d, [])))
+    expect(name(512, 25)).toBe('Joueur 0000')
   })
 
   it('ne nomme pas une vie anonyme', () => {
     const d = doc({ tracks: [track(512, undefined, 0, 50)] })
-    expect(nameBySlot(buildPlayers(d, [])).has(512)).toBe(false)
+    expect(nameResolver(own(buildPlayers(d, [])))(512, 25)).toBeNull()
+  })
+})
+
+describe('buildSlotOwnership — le propriétaire d’un slot À UNE IMAGE (multi-manche)', () => {
+  const teamColor = (ally: boolean) => (ally ? 'allie' : 'adverse')
+
+  it('mono-manche : un slot à plusieurs vies du MÊME joueur rend ce joueur à toute image de ses vies', () => {
+    // NEUTRALITÉ MONO-MANCHE : dans une manche, toutes les vies d’un slot sont au même joueur,
+    // donc frame-aware == l’ancien « dernier gagnant » — le résultat est identique à toute image.
+    const d = doc({ tracks: [track(512, 'A', 0, 50), track(512, 'A', 130, 190)] })
+    const own = buildSlotOwnership(buildPlayers(d, [row('A', 'Alpha', 'Eagle')]))
+    expect(own.ownerAtFrame(512, 10)?.xuid).toBe('A') // 1re vie
+    expect(own.ownerAtFrame(512, 160)?.xuid).toBe('A') // 2de vie
+    expect(own.ownerAtFrame(512, 80)).toBeNull() // entre deux vies : slot libre
+  })
+
+  it('multi-manche : un slot RÉATTRIBUÉ montre le joueur de LA MANCHE COURANTE (contre-épreuve)', () => {
+    // Le bug rapporté « deux DinoR00 et pas de SHROOM » : slot 512 = SHROOM en manche 0 puis
+    // DinoR00 en manche 2 ; slot 513 = DinoR00 partout. L’ancienne Map effondrée (DERNIER
+    // gagnant) attribuait 512 à DinoR00 pour TOUT le match → deux DinoR00, SHROOM jamais montré.
+    const d = doc({
+      roster: [
+        { xuid: 'S', filmIndex: 0 },
+        { xuid: 'D', filmIndex: 1 },
+      ],
+      tracks: [
+        track(512, 'S', 0, 50), // manche 0 : SHROOM
+        track(512, 'D', 200, 250), // manche 2 : le slot revient à DinoR00
+        track(513, 'D', 0, 250), // DinoR00 tient 513 tout du long
+      ],
+    })
+    const players = buildPlayers(d, [row('S', 'SHROOM', 'Eagle'), row('D', 'DinoR00', 'Eagle')])
+    const own = buildSlotOwnership(players)
+    const name = nameResolver(own)
+    // À 25 (manche 0) : 512 = SHROOM, 513 = DinoR00 → DEUX noms distincts, SHROOM PRÉSENT.
+    expect(name(512, 25)).toBe('SHROOM')
+    expect(name(513, 25)).toBe('DinoR00')
+    // CONTRE-ÉPREUVE : le slot 512 change de propriétaire selon l’image — impossible avec une
+    // Map figée, qui rendait le même nom aux deux images.
+    expect(name(512, 220)).toBe('DinoR00')
+    expect(name(512, 25)).not.toBe(name(512, 220))
+    // L’ancien comportement (dernier gagnant) aurait rendu DinoR00 aux DEUX images ; la couleur
+    // et le camp suivent la même règle par image.
+    const color = colorResolver(own, teamColor, () => true, 'neutre')
+    expect(color(512, 25)).toBe('allie')
+    const side = sideResolver(own)
+    expect(side(512, 25)).toBe('Eagle')
+    expect(side(512, 80)).toBeNull() // manche 1 : le slot est libre entre les deux vies
+  })
+
+  it('vies triées : l’ordre d’insertion ne change pas la résolution', () => {
+    // Les tracks arrivent dans le désordre ; l’index les trie par début.
+    const d = doc({
+      roster: [{ xuid: 'S', filmIndex: 0 }, { xuid: 'D', filmIndex: 1 }],
+      tracks: [track(512, 'D', 200, 250), track(512, 'S', 0, 50)],
+    })
+    const own = buildSlotOwnership(buildPlayers(d, []))
+    expect(own.ownerAtFrame(512, 25)?.xuid).toBe('S')
+    expect(own.ownerAtFrame(512, 220)?.xuid).toBe('D')
   })
 })
 

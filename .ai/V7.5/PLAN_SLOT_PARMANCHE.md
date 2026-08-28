@@ -27,7 +27,7 @@ joueur).
 
 ## Étapes
 
-- [ ] **E1 — Fondation `rosterLogic.ts`.** Ajouter `SlotOwnership` + `buildSlotOwnership(players)`
+- [x] **E1 — Fondation `rosterLogic.ts`.** Ajouter `SlotOwnership` + `buildSlotOwnership(players)`
   + `ownerAtFrame(slot, frame)`. Convertir les 4 dérivés de rendu (color/side/mark/name) en
   FACTORIES de résolveurs frame-aware `(slot, frame) => valeur`. GARDER `indexBySlot`
   (agrégat, consommé par `equipmentUsageLogic` — hors périmètre canvas). Gate :
@@ -77,3 +77,9 @@ joueur).
   (agrégat), 4 dérivés → frame-aware, frame threadée à chaque consommateur avec la frame
   CORRECTE (draw clampée pour marqueurs, `e.frame` pour kills, `t0` pour poseurs, `pingFrame`
   pour cibles capteur).
+- [2026-08-28] E1 CLOS. `buildSlotOwnership`/`ownerAtFrame` + `colorResolver`/`sideResolver`/
+  `markResolver`/`nameResolver` (frame-aware) ; `indexBySlot` conservé (doc clarifiée = agrégat).
+  Gate `rosterLogic.test.ts` : 36/36 vert, incluant neutralité mono-manche PROUVÉE + correction
+  multi-manche avec CONTRE-ÉPREUVE (« deux DinoR00 / SHROOM », le slot 512 rend SHROOM à f=25 et
+  DinoR00 à f=220 — impossible avec la Map figée). Env : junction node_modules vers le worktree
+  principal (deps identiques). NB thought_log non touché (texte au CR, cf. consigne du lot).
