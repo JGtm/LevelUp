@@ -38,10 +38,11 @@ import { EliminatedBox, VitalityBar } from './ReplayVitality'
 import { ReplayWeaponsRow } from './ReplayWeaponsRow'
 import {
   buildPlayers,
+  buildSlotOwnership,
   groupByTeam,
   playerName,
   playerStateAt,
-  sideBySlot,
+  sideResolver,
   vitalityPresence,
   type ReplayPlayer,
   type VitalityPresence,
@@ -96,7 +97,10 @@ export function ReplayTeams({
   // même contrat que le calque), l'axe de temps des fenêtres de pose, et les passages par
   // faille — un balayage de toutes les pistes, donc UNE FOIS par document, jamais par image
   // (le canvas fait le sien de son côté : deux consommateurs, un seul foyer `riftTeleports`).
-  const sides = useMemo(() => sideBySlot(players), [players])
+  // LE CAMP D'UNE VIE PAR SLOT ET PAR IMAGE (résolveur frame-aware) : un slot de biped est
+  // réattribué entre manches, le camp doit suivre l'occupant. Le capteur adverse le lit à
+  // l'image du joueur interrogé / à la pose du capteur (cf. equipmentZones).
+  const sideOfSlot = useMemo(() => sideResolver(buildSlotOwnership(players)), [players])
   const teleports = useMemo(
     () => riftTeleports(doc.equipmentPlacements, doc.tracks, doc.abilities),
     [doc],
@@ -105,12 +109,12 @@ export function ReplayTeams({
     () => ({
       zones: {
         placements: doc.equipmentPlacements,
-        sideOfSlot: (slot) => sides.get(slot) ?? null,
+        sideOfSlot,
       },
       time: { frameMs: frameToMs(1, doc), frames: doc.frameCount },
       teleports,
     }),
-    [doc, sides, teleports],
+    [doc, sideOfSlot, teleports],
   )
   // LE CALQUE DE SCORE PASSE PAR SA GARDE D'HORLOGE, une seule fois pour toute la colonne :
   // absent = artefact antérieur au schéma 12, mode sans compteur, ou origine non recalée

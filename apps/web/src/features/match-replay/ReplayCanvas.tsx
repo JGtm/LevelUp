@@ -193,10 +193,11 @@ export function ReplayCanvas({
     void paletteVersion
     return markerColors === 'player' ? getSeriesColors(doc.roster.length, SERIES_TOKENS) : null
   }, [markerColors, doc.roster.length, paletteVersion])
-  // Couleur, marque et nom PAR SLOT : un tir et une mort se dessinent dans la teinte de leur
-  // auteur, et c'est elle qui permet de suivre un joueur des yeux. Le calcul (jointure au
-  // scoreboard + descente sur les vies) vit dans useSlotIdentity.
-  const { colorOfSlot, slotColors, markOfSlot, nameOfSlot, sideOfSlot } = useSlotIdentity({
+  // Couleur, marque et nom PAR SLOT ET PAR IMAGE : un tir et une mort se dessinent dans la teinte
+  // de leur auteur À CET INSTANT, et c'est elle qui permet de suivre un joueur des yeux même
+  // quand un slot est réattribué entre manches. Le calcul (jointure au scoreboard + index de
+  // propriété par image) vit dans useSlotIdentity.
+  const { colorOfSlot, markOfSlot, nameOfSlot, sideOfSlot } = useSlotIdentity({
     doc,
     scoreboard,
     xuidMeta,
@@ -400,7 +401,7 @@ export function ReplayCanvas({
           reducedMotion,
           ...placements.toggles,
         },
-        { colorOfSlot: (slot) => slotColors.get(slot) ?? null, neutral: floorStyle.edge, wall: wallInk, rift: riftInk },
+        { colorOfSlot, neutral: floorStyle.edge, wall: wallInk, rift: riftInk },
       )
     }
     drawTracksLayer(ctx, doc.tracks, view, {
@@ -505,7 +506,7 @@ export function ReplayCanvas({
     // et le seul dont l'extrémité pointe une vraie victime (couple complet, règle 89/93).
     if (showKillFx && killFx.length > 0) {
       drawKillFxLayer(ctx, killFx, view, win, {
-        colorOfSlot: (slot) => slotColors.get(slot) ?? null,
+        colorOfSlot,
         fallback: shotColor,
         reducedMotion, k: dpr,
       })
@@ -545,7 +546,6 @@ export function ReplayCanvas({
     vipCrown,
     skullCarrier,
     floorStyle.edge,
-    slotColors,
     colorOfSlot,
     sideOfSlot,
     markOfSlot,
