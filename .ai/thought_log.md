@@ -1,3 +1,37 @@
+## [2026-08-28] Export video hors temps reel (E5) : l'UI, l'i18n, et le repli — Complete
+
+**Contexte** : etape E5 du plan `.ai/V7.5/PLAN_EXPORT_VIDEO_HORS_TEMPS_REEL.md`. Toute la
+mecanique existait depuis E4 mais n'etait declenchable par personne : c'est cette etape qui rend
+l'export utilisable, et qui debloque les trois recettes utilisateur en attente.
+
+**Decision technique** : `ReplayExportDialog.tsx` + bouton dans `ReplayTransport`. L'enregistrement
+temps reel DEVIENT UN REPLI (decision D5) : il ne se rend plus que sur un navigateur sans
+`VideoEncoder`. Deux boutons qui font presque la meme chose seraient un piege a clic ; le
+supprimer couperait Firefox/Safari anciens. Les deux sens sont testes.
+
+PENDANT LE CALCUL, LE DIALOGUE N'OFFRE PLUS QUE L'ANNULATION. Ni « Exporter » (relancer un export
+dans un export), ni « Fermer » (laisser un calcul de plusieurs minutes tourner sans que rien ne le
+dise). C'est la contrainte qui distingue un traitement long d'une commande.
+
+DECISION NON PREVUE PAR LE PLAN : l'horloge de match du dialogue est portee par `ReplayExport`
+(`clockOf`, `lengthClock`) et non par le composant. Le recalage sur la fenetre de gameplay demande
+le document ET la fenetre de gameplay — soit deux props de plus a faire descendre jusqu'au
+dialogue, en passant par un canvas qui est a son plafond de taille. L'export les tient deja : il
+les expose deja formatees. Le dialogue ne recoit donc que l'exporteur et la langue.
+
+Le bornage n'est PAS recopie dans le composant : il appelle `clampExportBounds`, deja teste en E3.
+Une borne qui se corrige dans un composant est une borne qu'on ne peut pas tester.
+
+**Resultats observes** : 11 tests neufs (3 sur la bascule et l'ouverture, 8 sur le dialogue) ;
+`make test-web` vert (527 fichiers, 5349 tests, 14 skippes) ; `make check-types` vert ; eslint sans
+erreur sur la feature. Deux avertissements preexistants subsistent hors perimetre et n'ont pas ete
+touches (regle « zero fix opportuniste ») : `objectiveObjects` dans `ReplayCanvas`, `react-refresh`
+dans `ReplayFeedName`.
+
+**Conclusion / prochaine etape** : E6 — cloture. Les trois recettes utilisateur (visuelle E2,
+visuelle E3, ecoute E4) sont desormais possibles et restent a prononcer par l'utilisateur, qui seul
+a le navigateur connecte.
+
 ## [2026-08-28] Export video hors temps reel (E4) : la piste sonore mixee hors du temps reel — Complete
 
 **Contexte** : etape E4 du plan `.ai/V7.5/PLAN_EXPORT_VIDEO_HORS_TEMPS_REEL.md`. Le rejeu sonore

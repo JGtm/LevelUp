@@ -14,10 +14,12 @@
 import { createRef } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 
 import { ReplayTransport } from './ReplayTransport'
 import type { ReplayTimeline } from './useReplayTimeline'
 import type { ReplaySound } from './useReplaySound'
+import type { ReplayExport } from './useReplayExport'
 
 function makeSound(over: Partial<ReplaySound> = {}): ReplaySound {
   return {
@@ -304,5 +306,71 @@ describe('ReplayTransport — les réglages ferment la barre', () => {
     expect(btn).toHaveAttribute('aria-expanded', 'false')
     fireEvent.click(btn)
     expect(onToggleSettings).toHaveBeenCalledTimes(1)
+  })
+})
+
+/**
+ * L'EXPORT PREND LA PLACE DE L'ENREGISTREMENT (décision D5 du plan d'export). Ces trois tests
+ * verrouillent la bascule : deux boutons qui font presque la même chose seraient un piège à
+ * clic, et supprimer le repli couperait les navigateurs sans WebCodecs.
+ */
+function makeExport(over: Partial<ReplayExport> = {}): ReplayExport {
+  return {
+    supported: true,
+    state: { running: false, done: 0, total: 0, pct: 0 },
+    defaultBounds: () => ({ startFrame: 0, endFrame: 100 }),
+    run: vi.fn(async () => {}),
+    cancel: vi.fn(),
+    clockOf: (f) => `0:0${f % 10}`,
+    lengthClock: () => '1:40',
+    ...over,
+  }
+}
+
+describe('ReplayTransport — export hors temps réel', () => {
+  it('offre l’export et RETIRE l’enregistrement quand le navigateur sait encoder', () => {
+    renderTransport({
+      capture: {
+        captureImage: vi.fn(),
+        recordingSupported: true,
+        recording: false,
+        toggleRecording: vi.fn(),
+        videoExport: makeExport(),
+      },
+    })
+    expect(screen.getByRole('button', { name: 'Exporter la vidéo' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Enregistrer la vidéo' })).not.toBeInTheDocument()
+  })
+
+  it('garde l’enregistrement en REPLI quand l’export n’est pas possible', () => {
+    renderTransport({
+      capture: {
+        captureImage: vi.fn(),
+        recordingSupported: true,
+        recording: false,
+        toggleRecording: vi.fn(),
+        videoExport: makeExport({ supported: false }),
+      },
+    })
+    expect(screen.queryByRole('button', { name: 'Exporter la vidéo' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Enregistrer la vidéo' })).toBeInTheDocument()
+  })
+
+  it('ouvre le dialogue au clic, et le referme au second', async () => {
+    const user = userEvent.setup()
+    renderTransport({
+      capture: {
+        captureImage: vi.fn(),
+        recordingSupported: true,
+        recording: false,
+        toggleRecording: vi.fn(),
+        videoExport: makeExport(),
+      },
+    })
+    const bouton = screen.getByRole('button', { name: 'Exporter la vidéo' })
+    await user.click(bouton)
+    expect(screen.getByRole('dialog', { name: 'Exporter le rejeu en vidéo' })).toBeInTheDocument()
+    await user.click(bouton)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 })
