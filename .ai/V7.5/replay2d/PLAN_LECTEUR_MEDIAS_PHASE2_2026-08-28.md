@@ -180,12 +180,29 @@ useReplayTimeline 214 L (seuils tenus).
 
 ## LOT 5 — Cloture
 
-- [ ] 5-1 REGISTRE_REPORTS : solder « Medias du rejeu : la DONNEE » (reference commits) ;
+- [x] 5-1 REGISTRE_REPORTS : solder « Medias du rejeu : la DONNEE » (reference commits) ;
       le report « gate visuel lecteur » s'enrichit des points medias + repli a verifier.
-- [ ] 5-2 Journal chantier + entree thought_log racine (patron des entrees existantes).
-- [ ] 5-G Gates transverses : typecheck cache purge ; vitest complet match-replay +
+- [x] 5-2 Journal chantier + entree thought_log racine (patron des entrees existantes).
+- [x] 5-G Gates transverses : typecheck cache purge ; vitest complet match-replay +
       routes + media ; `go test ./...` apps/go-api VERT ; `make openapi-check` propre ;
       ESLint 0 sur touches. Commit docs. PAS de merge, PAS de push.
+
+Journal lot 5 (2026-08-28) — CHIFFRES EXACTS DES GATES TRANSVERSES :
+- `npm run typecheck` (cache `node_modules/.tmp` purge) : exit 0.
+- vitest `src/features/match-replay` + `src/routes` + `src/features/media` + `src/lib/media` :
+  **117 fichiers / 1730 tests, 0 echec** (+32 sur les quatre lots).
+- `go test ./...` (apps/go-api) : **147 paquets `ok`, 1 FAIL = `internal/himap` a 601,261 s
+  (timeout local connu, 0 test individuel rouge, paquet HORS diff — autorite = baseline CI)**.
+  Nature verifiee sur pieces : `TestBalayageCoquille` balaie les 27 cartes du JEU INSTALLE
+  (~59 s par carte) et fait `t.Skip` sans les fichiers de jeu — il ne tourne donc pas en CI.
+  Le diff du chantier ne touche AUCUN fichier `himap` (6 fichiers Go, tous domain/duckdb/service).
+- `make openapi-check` : les DEUX maillons exit 0 (`openapi.yaml` a jour ; `generated.ts` en
+  derive bien).
+- ESLint sur les **19 fichiers web** touches : **0 erreur**, 1 warning PRE-EXISTANT
+  (`exhaustive-deps` / `objectiveObjects` de ReplayCanvas, consigne au thought_log racine du
+  2026-08-28 comme a reprendre par le lot VIP).
+- `origin/feat/v75` VERIFIE inchange depuis la base (`f87b4bf29`) : aucun rebase necessaire.
+- Cliquet `ReplayCanvas.tsx` : **672 / 672**.
 
 ## Perimetre ferme (ce plan NE fait PAS)
 
