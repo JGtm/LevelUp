@@ -21,7 +21,7 @@
  * l'encre neutre semait des pions gris qui ne désignaient personne (retour utilisateur du
  * 2026-08-20). La marque et le nom, eux, tombent déjà sur `undefined` / `null`.
  */
-import { useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
 
 import type { XuidMeta } from '@/features/match-view/xuidMeta'
 import type { MatchScoreboardRow } from '@/lib/api/types'
@@ -31,6 +31,7 @@ import {
   buildPlayers,
   buildSlotOwnership,
   colorResolver,
+  colorResolverOrLast,
   markResolver,
   nameResolver,
   sideResolver,
@@ -46,6 +47,13 @@ export interface SlotIdentity {
    * RIEN à dessiner (convention `MarkerStyle.colorOfSlot`).
    */
   colorOfSlot: (slot: number, frame: number) => string | null
+  /**
+   * MÊME couleur, mais qui retombe sur la vie JUSTE PRÉCÉDENTE quand aucune ne couvre l'image :
+   * pour les consommateurs de FRONTIÈRE dont l'événement est daté à l'instant où le propriétaire
+   * vient de quitter le slot — la couleur d'un objet LÂCHÉ à la mort (`t0 = finVie + 1`) et celle
+   * d'un effet de mort (kill posthume/échange). À ne PAS employer pour les marqueurs/vies.
+   */
+  colorOfSlotOrLast: (slot: number, frame: number) => string | null
   markOfSlot: (slot: number, frame: number) => PlayerMarkKind | undefined
   nameOfSlot: (slot: number, frame: number) => string | null
   /**
@@ -90,9 +98,31 @@ export function distinctColorResolver(
   players: readonly ReplayPlayer[],
   colors: readonly string[],
 ): (slot: number, frame: number) => string | null {
+  return distinctColorFactory((s, f) => ownership.ownerAtFrame(s, f), players, colors)
+}
+
+/**
+ * distinctColorResolverOrLast — MÊME rang par joueur, mais résolu via `ownerAtFrameOrLast` : la
+ * variante de FRONTIÈRE du mode « distinctes », pour que le mode couleur d'un objet lâché ou d'un
+ * effet de mort suive celui des marqueurs. À ne PAS employer pour les marqueurs/vies.
+ */
+export function distinctColorResolverOrLast(
+  ownership: SlotOwnership,
+  players: readonly ReplayPlayer[],
+  colors: readonly string[],
+): (slot: number, frame: number) => string | null {
+  return distinctColorFactory((s, f) => ownership.ownerAtFrameOrLast(s, f), players, colors)
+}
+
+/** distinctColorFactory — le foyer commun des deux résolveurs distincts : seul le `lookup` change. */
+function distinctColorFactory(
+  lookup: (slot: number, frame: number) => ReplayPlayer | null,
+  players: readonly ReplayPlayer[],
+  colors: readonly string[],
+): (slot: number, frame: number) => string | null {
   const rank = new Map<ReplayPlayer, number>(players.map((p, i) => [p, i]))
   return (slot, frame) => {
-    const p = ownership.ownerAtFrame(slot, frame)
+    const p = lookup(slot, frame)
     if (!p || colors.length === 0) return null
     return colors[(rank.get(p) ?? 0) % colors.length]
   }
@@ -106,16 +136,26 @@ export function useSlotIdentity({
   // L'INDEX DE PROPRIÉTÉ PAR IMAGE : slot -> vies triées, résolu à `ownerAtFrame`. Construit une
   // fois par jointure ; les résolveurs ci-dessous ne font que le lire.
   const ownership = useMemo(() => buildSlotOwnership(players), [players])
+  const isAlly = useCallback((xuid: string) => xuidMeta?.get(xuid)?.ally ?? false, [xuidMeta])
   const colorOfSlot = useMemo(
     () =>
       distinctColors && distinctColors.length > 0
         ? distinctColorResolver(ownership, players, distinctColors)
-        : colorResolver(ownership, teamColorOf, (xuid) => xuidMeta?.get(xuid)?.ally ?? false, neutral),
-    [ownership, players, distinctColors, teamColorOf, xuidMeta, neutral],
+        : colorResolver(ownership, teamColorOf, isAlly, neutral),
+    [ownership, players, distinctColors, teamColorOf, isAlly, neutral],
+  )
+  // LA VARIANTE DE FRONTIÈRE (objets lâchés, effets de mort) : même mode que `colorOfSlot`, mais
+  // qui retombe sur la vie juste précédente dans un trou — jamais le dernier-gagnant du match.
+  const colorOfSlotOrLast = useMemo(
+    () =>
+      distinctColors && distinctColors.length > 0
+        ? distinctColorResolverOrLast(ownership, players, distinctColors)
+        : colorResolverOrLast(ownership, teamColorOf, isAlly, neutral),
+    [ownership, players, distinctColors, teamColorOf, isAlly, neutral],
   )
   const markOfSlot = useMemo(() => markResolver(ownership, marks ?? NO_MARKS), [ownership, marks])
   const nameOfSlot = useMemo(() => nameResolver(ownership), [ownership])
   const sideOfSlot = useMemo(() => sideResolver(ownership), [ownership])
 
-  return { colorOfSlot, markOfSlot, nameOfSlot, sideOfSlot }
+  return { colorOfSlot, colorOfSlotOrLast, markOfSlot, nameOfSlot, sideOfSlot }
 }

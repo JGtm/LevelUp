@@ -60,6 +60,20 @@ joueur).
 - [x] **E7 — Gates finaux.** `npm run typecheck`, `npm run lint` (0 erreur),
   `npm run test` (dossier match-replay + suite web).
 
+- [x] **E8 — Régression P2 (revue adversariale) : couleur des objets LÂCHÉS à la mort.** Un
+  objet `origin='dropped'` (équipement déployable ET grenades) a `t0 = finVie du poseur + 1` :
+  `colorOfSlot(owner, t0)` strict rend `null` → l'objet est peint en `neutral` au lieu de la
+  couleur d'équipe du poseur. Régression VISIBLE PAR DÉFAUT (showDropped ON) et sur un film
+  MONO-manche → viole l'invariant. Même cause pour un P3 : killFx d'un kill posthume/échange
+  (`e.frame` au-delà de la fin de vie du tueur). FIX BORNÉ : `SlotOwnership.ownerAtFrameOrLast`
+  (vie couvrante, sinon la vie juste précédente = le lâcheur/tueur — frame-CORRECT, PAS le
+  dernier-gagnant), réservé à DEUX consommateurs de FRONTIÈRE via `colorOfSlotOrLast` :
+  (1) couleur du poseur des poses (`inkOf`), (2) couleur de l'effet de mort (killFx). Marqueurs
+  de vie / plaques / capteur GARDENT la résolution stricte (rien dans les trous). Corriger le
+  commentaire `inkOf` (doc inversée). Gate : rosterLogic + equipmentPlacementsLayer (double
+  frame-dépendant + contre-épreuve dropped@t0=finVie+1 : strict→neutre échoue, or-last→équipe
+  passe) + typecheck + lint + suite match-replay.
+
 ## Découvertes (NON traitées — hors périmètre)
 
 - `equipmentUsageLogic.ownerOfSlot` (via `indexBySlot`) : MÊME effondrement en multi-manche
@@ -91,3 +105,13 @@ joueur).
   (1 warning `objectiveObjects` PRÉ-EXISTANT à aa1245fa0, hors périmètre) ; vitest match-replay
   1642/1642 ; suite web complète 5213 passed / 14 skipped / EXIT=0. LOT LIVRÉ. Avant merge :
   ADVERSARIAL-REVIEW requise (calque roster/plaques partagé par tout le rejeu). Ne PAS pousser.
+- [2026-08-28] E8 CLOS. Revue adversariale : régression P2 réelle (couleur des objets LÂCHÉS à la
+  mort peints en neutre au lieu de la couleur d'équipe du poseur — `t0 = finVie+1`, `ownerAtFrame`
+  rend null ; visible par défaut, même mono-manche → violait l'invariant). Fix borné :
+  `ownerAtFrameOrLast` + `colorOfSlotOrLast`, câblés SEULEMENT aux 2 frontières (poses `inkOf`,
+  killFx). Marqueurs/vies/capteur gardent la résolution stricte. Commentaire `inkOf`/`PlacementInk`
+  corrigé (doc inversée). Contre-épreuve : dropped@t0=finVie+1 strict→NEUTRE (échoue) vs
+  or-last→ÉQUIPE (passe) ; unités `ownerAtFrameOrLast` (couvrante ; finVie+1→précédente ; trou
+  multi-vies→précédente pas suivante ; avant 1re vie→null). Cliquet de taille ReplayCanvas re-tenu
+  (679/679, commentaires condensés). Gates : tsc EXIT=0 ; lint 0 err (warning pré-existant) ;
+  vitest match-replay 1650/1650. Ne PAS pousser.
