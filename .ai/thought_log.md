@@ -1,3 +1,35 @@
+## [2026-08-28] Porteur du crane d'Oddball PUBLIE (schema 23) + identite PAR MANCHE — Complete
+
+**Contexte** : le [!] de 5 campagnes spatiales (plafond 79,8 %, porteur principal 0/3). Debloque par
+une VERITE TERRAIN : l'utilisateur a rejoue le film Dredge d9781168 en Theater et note qui porte le
+crane (les popups « +10 crane recupere » et « +50 controle de balle » l'ont guide). CE (pont v12)
+attache mais NON utilise (pas de scan valeur-inconnue) — c'est l'observation + le canal de score qui
+font le travail.
+
+**Decision technique** : le porteur N'EST PAS spatial, il est dans le SCORE — porteur = joueur dont
+les tics de score de MODE (comp 0 A) s'incrementent ; prises = comp 21 B. Signal identifie contre
+l'oracle sur 7 films (non ajuste a d9781168). Correction d'infra prealable : identite slot->joueur
+PAR MANCHE (`SlotIdentityByRound`/`RoundIdentity`), les slots d'entite etant REATTRIBUES entre manches
+(slot 22 = scuderiasven en M0 puis LadyJezz en M1-2) ; migration des calques LIVRES couronne VIP +
+drapeau CTF (bug latent multi-manche corrige au passage), neutralite mono-manche prouvee bit-identique.
+Mecanique du VIDE : mort hors-zone -> crane au SOCLE, mais n'affecte PAS l'attribution (les tics
+identifient le porteur ou que le crane retombe) — position seulement.
+
+**Resultats** : confrontation verite terrain manche 1 : prises 9/9, porteurs d'intervalle 8/9 (gate
+8/9 tenu). Gate oracle : porteur PRINCIPAL correct 7/7 films (d9781168 scuderiasven, c88ec007 Ratsolla)
+reproduit PAR LE CODE DE PRODUCTION, 3 manches gerees. Calque `skullCarrierLayer` web au patron
+couronne VIP, garde de mode par capability. Golden mono-manche = 1 ligne (schema). Gates verts (build,
+contracttest 40->41, replay/objectiveevents/replaybuild, tsc, vitest 1556, lint). REVUE ADVERSARIALE
+(4 relecteurs frais + verification) : 0 P0/P1, neutralite VIP/CTF confirmee bit-identique (14 conditions).
+3 P2 (dette) : `skullCarrySecondsByXUID` echafaudage temoin sans appelant prod ; ref godoc morte
+`incrementInstants` (score.go:79) ; `TestSkullCarrierWitness` SKIP en CI (regime du paquet, logique
+couverte par fixtures synthetiques).
+
+**Conclusion / prochaine etape** : porteur Oddball LIVRE, fusionne feat/v75 3efb23c76. Suit : (1) les
+3 P2 (nettoyage echafaudage, fix doc, temoin CI) ; (2) FOLLOW-UP UI multi-manche demande user (dots de
+manche gagnee au-dessus du score + message/son « manche terminee » — data par manche deja publiee) ;
+(3) calque Objectives (matchfacts identifiedEvents) encore par totaux = a migrer vers l'identite par manche.
+
 ## [2026-08-28] Lecteur du rejeu (planche 2a) : frise a pistes, sauts, menu vitesse, raccourcis — Complete
 
 **Contexte** : design valide par l'utilisateur (Claude Design, planche 2a) ; handoff recupere
