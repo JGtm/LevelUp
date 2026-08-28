@@ -88,6 +88,7 @@ function renderTransport(over: Partial<Parameters<typeof ReplayTransport>[0]> = 
         recordingSupported: true,
         recording: false,
         toggleRecording,
+        videoExport: null,
       }}
       locale="fr"
       settingsOpen={false}
@@ -247,6 +248,7 @@ describe('ReplayTransport — ce qui sort du rejeu', () => {
         recordingSupported: true,
         recording: true,
         toggleRecording: vi.fn(),
+    videoExport: null,
       },
     })
     expect(
@@ -269,6 +271,7 @@ describe('ReplayTransport — ce qui sort du rejeu', () => {
         recordingSupported: true,
         recording: true,
         toggleRecording: vi.fn(),
+    videoExport: null,
       },
     })
     const btn = screen.getByRole('button', { name: "Arrêter l'enregistrement" })
@@ -284,6 +287,7 @@ describe('ReplayTransport — ce qui sort du rejeu', () => {
         recordingSupported: false,
         recording: false,
         toggleRecording: vi.fn(),
+    videoExport: null,
       },
     })
     expect(screen.queryByRole('button', { name: 'Enregistrer la vidéo' })).toBeNull()

@@ -44,6 +44,13 @@ import {
 } from './replayRecording'
 import { frameToMs } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
+import { useReplayExport, type ReplayExport } from './useReplayExport'
+import type { ExportOutcome } from './exportOverlayPanels'
+import type { ReplayWindowBounds } from './replayWindow'
+import type { ReplayLocale } from './i18n'
+import type { XuidMeta } from '@/features/match-view/xuidMeta'
+import type { MatchScoreboardRow } from '@/lib/api/types'
+import type { ReplayScoreDocument } from '@/lib/replay/scoreTimeline'
 
 export interface ReplayCaptureOptions {
   /** La toile du rejeu : c'est elle, et elle seule, qui porte tout ce qui se voit. */
@@ -62,6 +69,17 @@ export interface ReplayCaptureOptions {
    * puisque le son du rejeu est coupé par défaut.
    */
   audioTrack?: () => MediaStreamTrack | null
+  /**
+   * CE QUE L'EXPORT HORS TEMPS REEL DEMANDE EN PLUS (cf. `useReplayExport`). Absents, seules
+   * l'image et la video temps reel restent disponibles — l'export ne se rend simplement pas.
+   */
+  redraw?: () => void
+  playWindow?: ReplayWindowBounds | null
+  scoreboard?: readonly MatchScoreboardRow[]
+  xuidMeta?: XuidMeta
+  /** Le verdict du backend : sans lui, pas d'ecran de fin dans le clip (parite DOM). */
+  outcome?: ExportOutcome | null
+  locale?: ReplayLocale
 }
 
 /** Ce que la barre de lecture reçoit (même forme que `ReplaySound` : un objet, pas des props). */
@@ -77,6 +95,11 @@ export interface ReplayCapture {
   recording: boolean
   /** Démarre, ou arrête ET télécharge. Le même bouton, les deux sens. */
   toggleRecording: () => void
+  /**
+   * L'EXPORT HORS TEMPS RÉEL. `null` quand la page ne lui a pas donné de quoi peindre les
+   * surimpressions — la barre de lecture n'affiche alors pas la commande.
+   */
+  videoExport: ReplayExport | null
 }
 
 /** Nomme un fichier de capture sur l'instant de match COURANT, dans l'extension demandée. */
@@ -221,11 +244,48 @@ export function useReplayCapture(o: ReplayCaptureOptions): ReplayCapture {
   )
   const captureImage = useImageCapture(canvasRef, filenameFor)
   const video = useVideoRecording(o, filenameFor)
+  const videoExport = useExportSeam(o, filenameFor)
 
   return {
     captureImage,
     recordingSupported: video.supported,
     recording: video.recording,
     toggleRecording: video.toggle,
+    videoExport,
   }
+}
+
+/**
+ * useExportSeam branche l'export hors temps réel — quand la page a donné de quoi peindre.
+ *
+ * LA PAUSE SE FABRIQUE ICI, elle n'est pas un paramètre de plus : `play` est le BASCULEUR de
+ * lecture (`togglePlay`), donc l'appeler pendant une lecture met en pause. C'est exactement ce
+ * dont l'export a besoin — la boucle d'animation écrit `frameRef` elle aussi, et les deux en
+ * même temps se disputeraient le curseur.
+ *
+ * LE HOOK EST APPELÉ SANS CONDITION, et seul son RÉSULTAT est retenu ou jeté : appeler un hook
+ * derrière un `if` est interdit par React, et une page sans surimpressions reste une page qui
+ * peut exporter son terrain.
+ */
+function useExportSeam(o: ReplayCaptureOptions, filenameFor: FilenameFor): ReplayExport | null {
+  const { canvasRef, frameRef, doc, playing, play, redraw } = o
+  const pause = useCallback(() => {
+    if (playing) play()
+  }, [playing, play])
+  const bidon = useCallback(() => {}, [])
+  const exportable = useReplayExport({
+    canvasRef,
+    frameRef,
+    redraw: redraw ?? bidon,
+    pause,
+    doc: doc as ReplayDocumentReady & ReplayScoreDocument,
+    playWindow: o.playWindow ?? null,
+    scoreboard: o.scoreboard ?? [],
+    xuidMeta: o.xuidMeta,
+    outcome: o.outcome ?? null,
+    titleSlug: doc.titleSlug ?? '',
+    locale: o.locale ?? 'fr',
+    filenameFor,
+  })
+  return redraw ? exportable : null
 }

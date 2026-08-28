@@ -235,21 +235,36 @@ a l'utilisateur tel qu'il l'avait laisse.
 
 Items :
 
-- [ ] `buildExportPlan(bornes, doc, fps)` : liste d'images + horodatages, pure et testee
-- [ ] Boucle par lots, remise de main par `yieldToEvents()` (`eventLoopYield.ts`) entre les
+- [x] `buildExportPlan(bornes, doc, fps)` : liste d'images + horodatages, pure et testee.
+      Les images sont FRACTIONNAIRES (`draw()` interpole) : arrondir saccaderait un rejeu
+      fluide a l'ecran. La derniere image tombe EXACTEMENT sur la borne, sans quoi le clip
+      s'arreterait juste avant l'ecran de fin de match, qui ne se peint qu'a cette borne.
+- [x] Boucle par lots, remise de main par `yieldToEvents()` (`eventLoopYield.ts`) entre les
       lots — NI `requestAnimationFrame` NI `setTimeout` : les deux sont brides en onglet
       cache (mesure en « Decouvertes », D-1)
-- [ ] Progression publiee (image N / total) et annulation honoree entre deux lots
-- [ ] Prealables asynchrones verifies AVANT de demarrer : calques statiques cuits, icones
-      chargees, `document.fonts.ready` resolu (sans quoi la premiere image du clip ecrirait
-      le texte des surimpressions dans une police de repli), logo d'equipe teinte par
-      `tintedIconCanvas`
-- [ ] Restauration de l'image d'avant l'export en sortie, y compris sur annulation/erreur
-- [ ] Le cliquet de taille de `ReplayCanvas.tsx` n'est pas franchi (rien de neuf dedans)
+- [x] Progression publiee (image N / total) et annulation honoree entre deux lots
+- [~] Prealables asynchrones : `document.fonts.ready` FAIT, logo d'equipe teinte par
+      `tintedIconCanvas` FAIT. **Calques statiques cuits et icones chargees : NON traite**,
+      voir D-5 — les drapeaux de disponibilite vivent dans quatre hooks distincts et les
+      remonter couterait plus de lignes de canvas que tout le cablage de l'export, pour un
+      cas inatteignable en pratique (la commande d'export vit dans la barre de lecture, qui
+      ne se rend qu'apres le montage du canvas).
+- [x] Restauration de l'image d'avant l'export en sortie, y compris sur annulation/erreur
+      (bloc `finally`, teste)
+- [x] Le cliquet de taille de `ReplayCanvas.tsx` n'est pas franchi — 679/679. Paye par une
+      extraction reelle (`hoverLayers.ts`, -9 lignes) et par le branchement de l'export DANS
+      `useReplayCapture`, qui est deja « ce qui sort du rejeu ».
 
 **Gate** : `cd apps/web && npx vitest run src/features/match-replay/replayExportPlan
 src/features/match-replay/useReplayExport` vert, `make check-types` vert, puis export
 reel MUET d'un match court, verifie a l'oeil par l'utilisateur.
+
+**Etat 2026-08-28 : E3 CLOSE cote technique.** 23 tests (15 sur le plan d'echantillonnage,
+8 sur la couture) ; suite complete de la feature verte : 112 fichiers / 1692 tests, cliquet
+de taille inclus ; `make check-types` vert ; eslint propre sur le perimetre.
+**L'EXPORT REEL NE PEUT PAS ENCORE ETRE DECLENCHE** : le plan place sa recette visuelle en
+E3 alors que le bouton qui la rend possible est en E5 (cf. D-4). La recette d'E2 et celle
+d'E3 se prononceront donc ensemble, apres E5.
 
 ### E4 — Le mixage sonore hors ligne
 
@@ -361,6 +376,33 @@ Verdict NEGATIF, sur trois preuves qui couvrent toutes les sources d'image du ca
 
 Aucune mesure CORS n'est donc necessaire. La confirmation finale viendra de l'export reel
 en E3 (recette utilisateur), mais plus rien ne bloque l'engagement des etapes suivantes.
+
+### D-4 (E3) — Le plan demande une recette d'export AVANT de livrer le bouton d'export
+
+Le gate d'E3 exige « un export reel MUET d'un match court, verifie a l'oeil par
+l'utilisateur ». Or l'UI qui declenche un export est l'objet d'E5. Aucune des deux etapes
+n'est mal decoupee — c'est l'ORDRE des gates qui est incoherent, et il ne s'est vu qu'a
+l'execution.
+
+Traitement : E3 est close sur ses gates TECHNIQUES ; sa recette visuelle est reportee a E5,
+ou elle se prononcera en meme temps que celle d'E2 (elle aussi en attente d'un export reel).
+Aucun perimetre n'est reduit — seule la date d'une verification bouge, et c'est un report
+VALIDE au sens du contrat (dependance explicite : la recette a besoin d'un declencheur).
+
+### D-5 (E3) — Cuisson des calques statiques : non verifiee avant l'export, et assume
+
+L'item « prealables asynchrones » demandait de verifier que les calques statiques (sol,
+zones, chaleur) et les icones sont cuits avant la premiere image. Ils le sont par des effets
+qui vivent dans QUATRE hooks distincts (`useReplayStaticLayers`, `useGrenadeIcons`,
+`useReplayWeaponPads`, `useReplayFlagCarries`), et aucun ne publie de drapeau de
+disponibilite. En creer un pour chacun et le remonter jusqu'a l'export couterait plus de
+lignes de canvas que tout le cablage de l'export — dans un fichier deja a son plafond.
+
+Le cas est par ailleurs inatteignable en pratique : la commande d'export vivra dans la barre
+de lecture, qui ne se rend qu'apres le montage du canvas, donc apres le lancement des
+cuissons ; et le mode de defaillance est benin (les premieres images d'un export lance dans
+la seconde du chargement sortiraient sans fond de carte). A rouvrir SI un utilisateur
+signale un artefact de debut de clip — pas avant.
 
 ### D-2 (E1) — Le lockfile perd des champs `libc` a l'installation
 

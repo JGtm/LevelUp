@@ -1,3 +1,52 @@
+## [2026-08-28] Export video hors temps reel (E3) : la boucle qui recalcule le film — Complete
+
+**Contexte** : etape E3 du plan `.ai/V7.5/PLAN_EXPORT_VIDEO_HORS_TEMPS_REEL.md`. C'est la piece
+qui assemble tout : poser une image, appeler `draw()`, peindre la surimpression, encoder, passer
+a la suivante — aussi vite que la machine suit.
+
+**Decision technique** : trois modules. `replayExportPlan.ts` (pur) echantillonne la plage a la
+cadence du FICHIER, pas a celle du film — les images produites sont FRACTIONNAIRES parce que
+`draw()` interpole, exactement comme la boucle de lecture ; arrondir a l'image entiere
+saccaderait un rejeu fluide a l'ecran. La derniere image tombe EXACTEMENT sur la borne de fin,
+et c'est une decision : l'echantillonnage regulier tombe presque toujours avant, or l'ecran de
+fin de match ne se peint QU'A cette borne — un clip de fin de match sans son ecran de fin serait
+le seul defaut que tout le monde remarquerait. `exportOverlayPanels.ts` (pur) transpose la
+condition des deux composants React (fin de match d'abord, fin de manche ensuite : sur un mode a
+manches la derniere bascule tombe au meme instant que la fin du match, et « Manche 3 terminee »
+par-dessus le verdict ferait passer la conclusion pour une transition). `useReplayExport.ts`
+porte la boucle.
+
+CE QUI A ETE VERIFIE DANS LE NAVIGATEUR AVANT DE CODER, et qui a change le code : un `fillStyle`
+qui recoit `var(--primary)` est SILENCIEUSEMENT IGNORE — le contexte garde la couleur precedente,
+sans erreur. Les tokens doivent donc etre resolus avant d'atteindre la toile. En revanche
+`color-mix()` sur un token deja resolu passe (`oklab(... / 0.22)`), ce qui permet de reutiliser
+`teamTintStyles` VERBATIM : la teinte du panneau exporte est la meme recette que celle du DOM,
+pas une approximation.
+
+LE CLIQUET DE TAILLE A ETE PAYE, PAS RELEVE. Le canvas etait pile a 679/679. Deux mouvements :
+extraction de `hoverLayers.ts` (la distribution du geste de survol aux trois calques — une
+decoupe deja ECRITE dans le canvas, qui recopiait le meme geste trois fois, deux fois de suite ;
+-9 lignes), et branchement de l'export DANS `useReplayCapture` plutot qu'en second hook du canvas
+— « ce qui sort du rejeu » comptait deja l'image et la video, l'export en est la troisieme
+sortie. Le canvas ne gagne qu'une prop, une ligne d'options et un import : il retombe a 679.
+La pause de lecture ne coute AUCUN parametre : `play` etant le basculeur, l'appeler pendant une
+lecture met en pause.
+
+**Resultats observes** : 23 tests neufs (15 sur l'echantillonnage, 8 sur la couture — dont la
+remise en place de l'image d'avant l'export, garantie qui casserait en silence). Suite complete
+de la feature : 112 fichiers, 1692 tests, verts, cliquet inclus. `make check-types` vert, eslint
+propre sur le perimetre.
+
+DEUX ITEMS NON FAITS, ET DITS. (1) La verification que les calques statiques sont cuits avant la
+premiere image n'est pas faite : les drapeaux vivraient dans quatre hooks distincts et les
+remonter couterait plus de lignes de canvas que tout le cablage de l'export, pour un cas
+inatteignable en pratique et au mode de defaillance benin (D-5 du plan). (2) La recette visuelle
+d'E3 ne peut pas se prononcer : le plan la place avant l'UI qui la rend possible (E5). Incoherence
+d'ORDRE des gates, pas de decoupage — consignee en D-4, recette reportee a E5 ou elle rejoindra
+celle d'E2.
+
+**Conclusion / prochaine etape** : E4 — le mixage sonore hors ligne (`OfflineAudioContext`).
+
 ## [2026-08-28] Export video hors temps reel (E2) : les surimpressions repeintes dans la toile — Complete
 
 **Contexte** : etape E2 du plan `.ai/V7.5/PLAN_EXPORT_VIDEO_HORS_TEMPS_REEL.md`. Un encodeur ne

@@ -60,6 +60,8 @@ import { useSlotIdentity } from './useSlotIdentity'
 import { ReplaySettingsDrawer } from './ReplaySettingsDrawer'
 import { useReplayHeatmap } from './useReplayHeatmap'
 import { useReplayInks } from './useReplayInks'
+import { hoverHandlers } from './hoverLayers'
+import type { ExportOutcome } from './exportOverlayPanels'
 import { useReplayCapture } from './useReplayCapture'
 import { useReplayClock } from './useReplayClock'
 import { useReplayPlayback } from './useReplayPlayback'
@@ -137,11 +139,17 @@ interface ReplayCanvasProps {
    * atteindra la borne de fin. Absente = aucune conclusion sonore, le reste est inchangé.
    */
   endMatch?: EndMatchSoundSpec | null
+  /**
+   * LE VERDICT DU MATCH, pour l'EXPORT seul : c'est lui qui permet de peindre l'ecran de fin
+   * DANS la toile, la ou l'ecran affiche (`ReplayVictoryOverlay`) est du DOM qu'aucun encodeur
+   * ne voit. Absent = clip sans ecran de fin, exactement comme une page sans libelle d'issue.
+   */
+  outcome?: ExportOutcome | null
 }
 
 export function ReplayCanvas({
   doc, locale, playWindow, kills, t0Ms, onFrameChange, background, callouts, scoreboard, xuidMeta, marks,
-  endMatch, feedEntries = EMPTY_FEED, media = EMPTY_MEDIA,
+  endMatch, outcome, feedEntries = EMPTY_FEED, media = EMPTY_MEDIA,
 }: ReplayCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -604,6 +612,7 @@ export function ReplayCanvas({
   const capture = useReplayCapture({
     canvasRef, doc, frameRef, playing: playback.playing, play: playback.togglePlay,
     audioTrack: sound.recordingTrack,
+    redraw, playWindow, scoreboard, xuidMeta, outcome, locale,
   })
 
   return (
@@ -631,16 +640,7 @@ export function ReplayCanvas({
                 ref={canvasRef}
                 className="block"
                 style={{ width: renderWidth || '100%', height: CANVAS_HEIGHT }}
-                onPointerMove={(e) => {
-                  placements.hover.onPointerMove(e)
-                  weaponPads.onPointerMove(e)
-                  flags.onPointerMove(e)
-                }}
-                onPointerLeave={() => {
-                  placements.hover.onPointerLeave()
-                  weaponPads.onPointerLeave()
-                  flags.onPointerLeave()
-                }}
+                {...hoverHandlers(placements.hover, weaponPads, flags)}
               />
               {/* Les infobulles des trois calques survolables (cf. ReplayCanvasTips). */}
               <ReplayCanvasTips
