@@ -10,7 +10,7 @@
 import { describe, expect, it, vi } from 'vitest'
 
 import {
-  drawObjectiveObjects,
+  drawFreeSkull,
   objectiveObjectAt,
   objectiveObjectHitAt,
   objectiveObjectsAt,
@@ -77,7 +77,7 @@ describe('objectiveObjectsAt — toutes les vies d une image', () => {
   })
 })
 
-describe('drawObjectiveObjects — le tracé', () => {
+describe('drawFreeSkull — le tracé d une présence libre', () => {
   function ctxEspion() {
     return {
       globalAlpha: 1, fillStyle: '', strokeStyle: '', lineWidth: 0,
@@ -85,21 +85,22 @@ describe('drawObjectiveObjects — le tracé', () => {
     } as unknown as CanvasRenderingContext2D & { arc: ReturnType<typeof vi.fn> }
   }
 
-  it('trace UN crâne par objet qui réplique (le glyphe partagé : liseré, disque, orbites)', () => {
+  it('trace le glyphe partagé du crâne à la position monde servie (liseré, disque, orbites)', () => {
     const ctx = ctxEspion()
-    drawObjectiveObjects(ctx, layer, [vieQuiRoule, vieImmobile], view, 11)
-    // Un seul objet réplique à l'image 11 (le rouleur) : le glyphe du crâne pose son disque au
-    // rayon partagé, plus le liseré au même rayon et les deux orbites (quatre arcs en tout).
+    drawFreeSkull(ctx, layer, { x: 1, y: 0 }, view, false)
+    // Le glyphe du crâne pose son disque au rayon partagé, plus le liseré au même rayon et les
+    // deux orbites (quatre arcs en tout).
     expect(ctx.arc).toHaveBeenCalledWith(
       expect.any(Number), expect.any(Number), SKULL_GLYPH_RADIUS, 0, Math.PI * 2,
     )
     expect(ctx.arc).toHaveBeenCalledTimes(4)
   })
 
-  it('ne trace RIEN pendant un portage — le calque se tait plutôt que de supposer', () => {
+  it('projette la position monde puis dessine (centre au monde = centre du canvas centré)', () => {
     const ctx = ctxEspion()
-    drawObjectiveObjects(ctx, layer, [vieQuiRoule, vieImmobile], view, 20)
-    expect(ctx.arc).not.toHaveBeenCalled()
+    // (0,0) monde est le centre d'une vue centrée sur zéro : (100, 100) canvas.
+    drawFreeSkull(ctx, layer, { x: 0, y: 0 }, view, true)
+    expect(ctx.arc).toHaveBeenCalledWith(100, 100, SKULL_GLYPH_RADIUS, 0, Math.PI * 2)
   })
 })
 

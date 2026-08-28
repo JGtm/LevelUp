@@ -1,24 +1,23 @@
 /**
- * objectiveObjectsLayer.ts — LES OBJETS D'OBJECTIF LIBRES (schéma 21) : le crâne d'Oddball
- * dessiné là où il est quand PERSONNE ne le porte.
+ * objectiveObjectsLayer.ts — LES POSITIONS ÉMISES du crâne d'Oddball (schéma 21) et son tracé au
+ * sol. Ce fichier est le SOCLE GÉOMÉTRIQUE : le primitif `objectiveObjectAt` (dernier point émis,
+ * et SEULEMENT dans [t0, t1]), le survol, et le tracé d'une présence libre. La RÈGLE de présence
+ * — carried / free / absent, avec le test du prochain événement — vit dans `skullPresence.ts`,
+ * qui consomme ce fichier en SENS UNIQUE (jamais l'inverse : ce socle n'importe pas la règle).
  *
  * POURQUOI IL VIT À CÔTÉ DE `flagCarriesLayer` ET NON DEDANS. Les deux dessinent un objet de
- * mode, mais ils ne lisent pas la même chose et ne peuvent pas mentir de la même façon :
+ * mode, mais ils ne lisent pas la même chose : `flagCarries` publie des INTERVALLES D'ÉTAT (le
+ * drapeau porté n'a pas de position propre, le calque le colle à son porteur) ; ici on publie des
+ * POSITIONS RÉELLEMENT ÉMISES par l'objet.
  *
- *  - `flagCarries` publie des INTERVALLES D'ÉTAT, dont deux états PORTÉS. Le drapeau porté n'a
- *    pas de position propre — le calque le colle au marqueur de son porteur.
- *  - ce calque-ci publie des POSITIONS RÉELLEMENT ÉMISES par l'objet. Il ne connaît aucun
- *    porteur et n'en dessine aucun.
- *
- * LE SILENCE PENDANT LE PORTAGE EST LA PROPRIÉTÉ CENTRALE DE CE CALQUE, et il est VOULU. Entre
- * deux vies libres il y a un trou : quelqu'un porte le crâne, et le document ne dit pas qui —
- * l'oracle du porteur a été mesuré puis RÉFUTÉ (phase D4 : 40,6 à 66,7 % de trous à porteur
- * unique pour un seuil de 90 %, témoin hors trou à 66,7 et 71,4 %). Dessiner le crâne sur un
- * joueur pendant ces trous afficherait une certitude que la mesure refuse. On ne dessine RIEN.
- *
- * AUCUNE INTERPOLATION ENTRE DEUX VIES, ni même entre deux points d'une même vie : le crâne est
- * à la DERNIÈRE position qu'il a émise, ou nulle part. Une position interpolée serait une
- * position inventée, et c'est exactement ce que ce lot a passé six phases à ne pas faire.
+ * L'INVARIANT, RÉÉCRIT AU SCHÉMA 23. Avant `skullCarries`, ce calque restait MUET dès qu'une vie
+ * finissait — « prolonger la dernière position au-delà de t1 laisserait le crâne posé pendant
+ * qu'un joueur court avec ». Cette justification est aujourd'hui INVERSÉE : le rendu SAIT désormais
+ * quand le crâne est porté (`skullCarries`). Le nouvel invariant, porté par `skullPresenceAt` :
+ * TENIR un repos qu'une PRISE corrobore (le porteur arrive sur la position tenue) ; rester MUET
+ * pendant les portages connus ; rester ABSENT pendant un respawn ou une retombée (le prochain
+ * début est alors une VIE, pas une prise — aucun fantôme au point de chute). AUCUNE INTERPOLATION,
+ * jamais : une position tenue est une position RÉELLEMENT émise (le dernier repos), pas inventée.
  *
  * LE GLYPHE EST CELUI, PARTAGÉ, DU CRÂNE (`skullGlyph.ts`) : le MÊME dessin que le crâne porté
  * (`skullCarrierLayer`), pour qu'on reconnaisse le même objet — seule sa place change (au sol /
@@ -72,10 +71,11 @@ export interface ObjectiveObjectNow {
 /**
  * objectiveObjectAt rend la position de l'objet à l'image servie, ou `null` s'il ne réplique pas.
  *
- * LA RÈGLE EST « LE DERNIER POINT ÉMIS, ET SEULEMENT À L'INTÉRIEUR DE LA VIE » : hors de
- * [t0, t1], l'objet ne réplique rien — quelqu'un le porte, ou il n'existe pas encore. Rendre sa
- * dernière position connue au-delà de `t1` le laisserait posé au sol pendant qu'un joueur court
- * avec, ce qui est précisément le mensonge que ce calque refuse.
+ * PRIMITIF PUR, INCHANGÉ : « LE DERNIER POINT ÉMIS, ET SEULEMENT À L'INTÉRIEUR DE LA VIE ». Hors
+ * de [t0, t1], il rend `null` — il ne sait rien du portage ni du repos tenu. C'est `skullPresenceAt`
+ * (cf. `skullPresence.ts`) qui compose ce primitif avec `skullCarries` pour décider s'il faut
+ * TENIR un dernier repos (une prise le corrobore) ou rester absent. Ne pas déplacer cette décision
+ * ici : ce fichier reste le socle géométrique, la règle vit une couche au-dessus.
  */
 export function objectiveObjectAt(
   life: ReplayObjectiveObjectReady,
@@ -106,24 +106,24 @@ export function objectiveObjectsAt(
 }
 
 /**
- * drawObjectiveObjects trace les objets d'objectif libres de l'image servie — chacun avec le
- * glyphe PARTAGÉ du crâne (`skullGlyph.ts`), le même que le crâne porté.
+ * drawFreeSkull trace le crâne LIBRE à la position MONDE `at` servie, avec le glyphe PARTAGÉ
+ * (`skullGlyph.ts`) — le même que le crâne porté. L'appelant (le hook) ne l'invoque qu'après avoir
+ * résolu une présence `free` via `skullPresenceAt` : ce fichier ne connaît ni le portage ni le
+ * repos tenu, il pose un glyphe là où on le lui dit. `rolling` choisit l'alpha (bouge / immobile).
  */
-export function drawObjectiveObjects(
+export function drawFreeSkull(
   ctx: CanvasRenderingContext2D,
   layer: ObjectiveObjectsInput,
-  lives: readonly ReplayObjectiveObjectReady[],
+  at: XY,
   view: CanvasView,
-  frame: number,
+  rolling: boolean,
 ): void {
-  for (const now of objectiveObjectsAt(lives, frame)) {
-    const at = worldToCanvas(now.at, view.bounds, view.width, view.height, view.pad)
-    drawSkullGlyph(ctx, at, {
-      ink: layer.style.ink,
-      outline: layer.style.outline,
-      alpha: now.rolling ? ALPHA_ROLLING : ALPHA_AT_REST,
-    })
-  }
+  const p = worldToCanvas(at, view.bounds, view.width, view.height, view.pad)
+  drawSkullGlyph(ctx, p, {
+    ink: layer.style.ink,
+    outline: layer.style.outline,
+    alpha: rolling ? ALPHA_ROLLING : ALPHA_AT_REST,
+  })
   ctx.globalAlpha = 1
 }
 
