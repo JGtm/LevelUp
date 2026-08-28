@@ -26,10 +26,11 @@ export const SERIES_TOKENS: SemanticToken[] = [
 export const EMPTY_ZONES: CalloutZoneReady[] = []
 
 /**
- * Référence STABLE pour « pas de médias » — et, pour l'instant, la SEULE source de la piste
- * Médias : la donnée arrive en phase 2 (endpoint par match, cf. registre des reports). Une
- * référence nommée plutôt qu'un `[]` inline pour la même raison que les zones, et parce que le
- * jour où les médias arrivent, ce nom est exactement l'endroit où la prop se branche.
+ * Référence STABLE pour « pas de médias » : depuis la phase 2 (2026-08-28), la donnée arrive
+ * bien de la page (`buildReplayMedia` sur l'onglet médias du match) et cette constante est le
+ * DÉFAUT de l'option `media` de `useReplayTimeline` — le canvas peut être monté avant que la
+ * vue du match soit là. Une référence nommée plutôt qu'un `[]` inline pour la même raison que
+ * les zones : il reconstruirait le placement de la piste à chaque rendu.
  */
 export const EMPTY_MEDIA: ReplayMediaItem[] = []
 

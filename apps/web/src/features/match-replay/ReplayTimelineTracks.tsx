@@ -20,6 +20,11 @@
  * Médias qu'on affichera toujours »). C'est l'exception à la règle du dépôt « pas de commande
  * quand il n'y a rien à commander » : ce n'est pas une commande, c'est un emplacement — il dit
  * où les médias du match vivront, et son vide est une information.
+ *
+ * VIDE N'EST PAS ABSENTE. « Aucun média sur ce match » est un fait ; « ce jeu n'a pas de
+ * médias » n'en est pas un, et une rangée vide le dirait à tort. La rangée disparaît donc
+ * quand le titre ne déclare pas la capability `media` (`showMediaTrack`) — le rejeu, lui,
+ * n'est gardé que par `matchmaking`, les deux ne se recouvrent pas.
  */
 import { useState, type ChangeEvent, type RefObject } from 'react'
 
@@ -51,6 +56,8 @@ interface ReplayTimelineTracksProps {
   labelOf: (teamId: number) => string
   /** Les médias posés sur le match (cf. placeMedia). Vide = la piste reste, sans vignette. */
   media: readonly PlacedMedia[]
+  /** Le titre déclare-t-il `media` ? Faux = la rangée n'existe pas (cf. l'en-tête). */
+  showMediaTrack: boolean
   /** Ouvrir un média met le rejeu EN PAUSE : la lightbox le dit, l'appelant l'applique. */
   playing: boolean
   onRequestPause: () => void
@@ -63,7 +70,7 @@ interface ReplayTimelineTracksProps {
 
 export function ReplayTimelineTracks({
   sliderRef, minFrame, maxFrame, onScrub,
-  own, allies, dominance, allyOf, labelOf, media,
+  own, allies, dominance, allyOf, labelOf, media, showMediaTrack,
   playing, onRequestPause, startClock, midClock, endClock, locale,
 }: ReplayTimelineTracksProps) {
   const t = REPLAY_TEXT[locale]
@@ -104,42 +111,46 @@ export function ReplayTimelineTracks({
           })}
         </div>
 
-        <TrackLabel>{t.mediaTrack}</TrackLabel>
-        <div className="relative h-[26px] rounded-md border border-border bg-muted/30">
-          {media.length === 0 && (
-            <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-[10px] text-muted-foreground">
-              {t.mediaEmpty}
-            </span>
-          )}
-          {media.map(({ item, from, to }) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => openMedia(item.id)}
-              className="absolute top-[3px] flex h-[18px] overflow-hidden rounded-sm border border-input transition-colors hover:border-foreground"
-              style={
-                item.kind === 'clip'
-                  ? { left: trackLeft(from), width: trackWidth(from, to), minWidth: 14 }
-                  : { left: trackLeft(from), width: 30, marginLeft: -15 }
-              }
-              aria-label={item.label ?? t.mediaOpen}
-              title={item.label ?? t.mediaOpen}
-            >
-              {item.kind === 'clip' ? (
-                Array.from({ length: clipFrameCount(item.durationMs ?? 0) }).map((_, i) => (
-                  <img
-                    key={i}
-                    src={item.thumbUrl}
-                    alt=""
-                    className="h-full min-w-0 flex-1 object-cover"
-                  />
-                ))
-              ) : (
-                <img src={item.thumbUrl} alt="" className="h-full w-full object-cover" />
+        {showMediaTrack && (
+          <>
+            <TrackLabel>{t.mediaTrack}</TrackLabel>
+            <div className="relative h-[26px] rounded-md border border-border bg-muted/30">
+              {media.length === 0 && (
+                <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-[10px] text-muted-foreground">
+                  {t.mediaEmpty}
+                </span>
               )}
-            </button>
-          ))}
-        </div>
+              {media.map(({ item, from, to }) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => openMedia(item.id)}
+                  className="absolute top-[3px] flex h-[18px] overflow-hidden rounded-sm border border-input transition-colors hover:border-foreground"
+                  style={
+                    item.kind === 'clip'
+                      ? { left: trackLeft(from), width: trackWidth(from, to), minWidth: 14 }
+                      : { left: trackLeft(from), width: 30, marginLeft: -15 }
+                  }
+                  aria-label={item.label ?? t.mediaOpen}
+                  title={item.label ?? t.mediaOpen}
+                >
+                  {item.kind === 'clip' ? (
+                    Array.from({ length: clipFrameCount(item.durationMs ?? 0) }).map((_, i) => (
+                      <img
+                        key={i}
+                        src={item.thumbUrl}
+                        alt=""
+                        className="h-full min-w-0 flex-1 object-cover"
+                      />
+                    ))
+                  ) : (
+                    <img src={item.thumbUrl} alt="" className="h-full w-full object-cover" />
+                  )}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
 
         <div />
         {/* LE CURSEUR. `--played` est écrit par la boucle de dessin (useReplayPlayback) : le

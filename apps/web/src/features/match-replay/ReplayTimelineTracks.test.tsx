@@ -53,6 +53,7 @@ function renderTracks(over: Partial<Parameters<typeof ReplayTimelineTracks>[0]> 
       allyOf={() => null}
       labelOf={(id) => `Équipe ${id}`}
       media={[]}
+      showMediaTrack
       playing
       onRequestPause={onRequestPause}
       startClock="0:00"
@@ -165,5 +166,22 @@ describe('ReplayTimelineTracks — la piste médias', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Capture Streets' }))
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  /**
+   * VIDE N'EST PAS ABSENTE. Les deux états se ressemblent à l'écran et ne disent pas la même
+   * chose : « aucun média sur ce match » est un fait du match, tandis qu'un titre sans médias
+   * n'a rien à dire du tout — la rangée y mentirait. Le rejeu n'étant gardé que par
+   * `matchmaking`, rien d'autre que cette prop ne retire la piste.
+   */
+  it('LA RANGÉE DISPARAÎT quand le titre ne porte pas les médias (ni piste, ni phrase de vide)', () => {
+    renderTracks({ media: [], showMediaTrack: false })
+    expect(screen.queryByText('Médias')).toBeNull()
+    expect(screen.queryByText('Aucun média sur ce match')).toBeNull()
+    // Les trois autres pistes et le curseur restent intacts.
+    for (const label of ['Toi', 'Alliés', 'Dominance']) {
+      expect(screen.getByText(label)).toBeTruthy()
+    }
+    expect(screen.getByLabelText('Temps de match')).toBeTruthy()
   })
 })

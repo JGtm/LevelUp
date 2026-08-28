@@ -20,6 +20,7 @@
  */
 import { useCallback, useMemo, type ChangeEvent, type ComponentProps, type RefObject } from 'react'
 
+import { useCapability } from '@/lib/capabilities'
 import { formatClockMMSS } from '@/lib/formatters'
 import type { LeadChange } from '@/lib/replay/scoreTimeline'
 
@@ -33,6 +34,7 @@ import {
   buildEventTracks,
   placeMedia,
   trackScale,
+  type ReplayMediaItem,
   type TrackDeath,
   type TrackKill,
 } from './replayTimelineTracksLogic'
@@ -56,6 +58,11 @@ export interface ReplayTimelineOptions {
   }
   /** La lecture, telle que `useReplayPlayback` la rend. */
   playback: ReplayPlaybackForTimeline
+  /**
+   * LES MÉDIAS DU MATCH, mappés une fois par la page (`buildReplayMedia`) : même doctrine que
+   * le fil. Défaut vide — le canvas peut être monté avant que la vue du match soit là.
+   */
+  media?: readonly ReplayMediaItem[]
   /** Bascule du son, pour le raccourci « M ». */
   toggleSound: () => void
   /** Largeur de dessin : 0 = pas de rejeu à l'écran, le clavier n'écoute rien. */
@@ -81,7 +88,12 @@ export type ReplayTimeline = ComponentProps<typeof ReplayTimelineTracks>
 
 export function useReplayTimeline(o: ReplayTimelineOptions): ReplayTimeline {
   const { doc, playWindow, feedEntries, marks, lead, playback, toggleSound, renderWidth, locale } = o
+  const { media: mediaItems = EMPTY_MEDIA } = o
   const { frameIntervalMs, frameCount } = doc
+  // LA RANGÉE MÉDIAS EST UNE AFFAIRE DE TITRE, pas de match : le rejeu n'est gardé que par
+  // `matchmaking`, et un titre sans médias afficherait sinon une piste éternellement vide —
+  // qui se lirait « aucun média sur ce match » au lieu de « ce jeu n'en a pas ».
+  const showMediaTrack = useCapability('media')
 
   const scale = useMemo(() => trackScale(playWindow, frameCount), [playWindow, frameCount])
   // L'HORLOGE AFFICHÉE, celle du GAMEPLAY (D-A2) : la même règle que le fil, le bandeau et les
@@ -96,11 +108,12 @@ export function useReplayTimeline(o: ReplayTimelineOptions): ReplayTimeline {
     [kills, deaths, marks, frameIntervalMs, scale, clockOf],
   )
   const dominance = useMemo(() => buildDominance(lead.changes, scale), [lead.changes, scale])
-  // LES MÉDIAS N'ONT PAS ENCORE DE DONNÉE (phase 2 : endpoint par match). La piste, son
-  // placement et sa lightbox sont livrés ; c'est la LISTE qui est vide, et la piste le dit.
+  // LES MÉDIAS ARRIVENT DE LA PAGE, déjà sur l'axe du rejeu (phase 2, 2026-08-28) : ce hook ne
+  // fait que les POSER sur l'échelle de la frise, comme il pose les marques du fil. Le recalage,
+  // lui, a eu lieu une seule fois dans `buildReplayMedia`.
   const media = useMemo(
-    () => placeMedia(EMPTY_MEDIA, frameIntervalMs ?? 0, scale),
-    [frameIntervalMs, scale],
+    () => placeMedia(mediaItems, frameIntervalMs ?? 0, scale),
+    [mediaItems, frameIntervalMs, scale],
   )
 
   const { startClock, midClock, endClock } = useMemo(
@@ -129,6 +142,7 @@ export function useReplayTimeline(o: ReplayTimelineOptions): ReplayTimeline {
     allyOf: lead.allyOf,
     labelOf: lead.labelOf,
     media,
+    showMediaTrack,
     playing: playback.playing,
     // OUVRIR UN MÉDIA MET LE REJEU EN PAUSE : la frise n'appelle ceci que lorsque la lecture
     // tourne, donc la bascule vaut « pause » — jamais un redémarrage inattendu.
