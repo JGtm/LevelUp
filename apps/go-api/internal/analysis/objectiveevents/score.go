@@ -70,7 +70,25 @@ var (
 	KillsComponent   = StatComponent{Comp: coreKillsComp}
 	DeathsComponent  = StatComponent{Comp: coreKillsComp, SideB: true}
 	AssistsComponent = StatComponent{Comp: coreAssistsComp}
+
+	// SkullTicksComponent : le canal du PORTEUR d'Oddball. C'est le score de MODE par joueur
+	// (`comp 0 A`), qui en Oddball compte les TICS DE POSSESSION du crane (`skull_scoring_ticks`,
+	// identifie par l'oracle films confondus : 47 accords non-nuls sur 7 films). C'est le
+	// ModeScoreComponent SANS la stricte croissance : le composant est reemis a valeur A EGALE
+	// quand sa valeur B bouge, et [longestRun] non strict garde ces repetitions ; c'est
+	// [incrementInstants] qui deduplique ensuite par valeur, en datant chaque tic a sa PREMIERE
+	// emission (la vraie), la ou la stricte croissance le daterait a la derniere. C'est
+	// l'instrument valide au gate du porteur (principal 7/7 films) — a ne pas changer sans
+	// remesurer.
+	SkullTicksComponent = StatComponent{Comp: modeScoreComp}
+	// SkullGrabsComponent : les PRISES du crane d'Oddball (`comp 21 B` = `skull_grabs`, identifie
+	// par l'oracle films confondus : 21 accords non-nuls, 56 accords totaux sur 7 films). Un
+	// compteur non decroissant, donc non strict.
+	SkullGrabsComponent = StatComponent{Comp: skullGrabsComp, SideB: true}
 )
+
+// skullGrabsComp est l'index du composant des prises du crane (`skull_grabs`), en valeur B.
+const skullGrabsComp = 21
 
 // key traduit l'emplacement exporte en cle interne.
 func (c StatComponent) key() statSlotKey {
