@@ -4435,19 +4435,6 @@ export interface components {
             };
             VersionID: string;
         };
-        AssociatedMediaItem: {
-            /** Format: date-time */
-            capture_time?: string | null;
-            /** Format: float */
-            duration_seconds?: number | null;
-            file_id: string;
-            file_name: string;
-            file_path: string;
-            kind: string;
-            /** @default false */
-            liked: boolean;
-            thumbnail_url?: string | null;
-        };
         AsyncJobStatus: {
             current_step?: string;
             error?: components["schemas"]["JobErrorDetail"];
