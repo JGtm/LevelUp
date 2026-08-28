@@ -1,3 +1,206 @@
+## [2026-08-28] Export video hors temps reel (E2) : les surimpressions repeintes dans la toile — Complete
+
+**Contexte** : etape E2 du plan `.ai/V7.5/PLAN_EXPORT_VIDEO_HORS_TEMPS_REEL.md`. Un encodeur ne
+voit QUE la toile ; or l'ecran de fin de match et le message inter-manche sont du DOM pose
+par-dessus. Sans peintre canvas, un export s'arreterait sur un terrain muet, sans jamais dire
+comment le match s'est termine — ce que l'utilisateur regarde en dernier.
+
+**Decision technique** : `overlayPaint.ts`, UN SEUL point d'entree (`paintOverlayPanel`) pour les
+trois panneaux — equipe, egalite, inter-manche — le style du bloc etant un parametre
+(`neutralStatusStyle` pour les deux derniers). Le plan en prevoyait deux ; un seul est la
+transposition exacte du DOM, ou les trois partagent deja `replayOverlayStyles.ts`. Deux peintres
+auraient recopie la meme carte, c'est-a-dire exactement l'anti-patron n°4 du CLAUDE.md.
+
+CE QUI EST PARTAGE AVEC LE DOM, ET CE QUI NE L'EST PAS : la VERITE l'est (le peintre ne lit
+aucune donnee — il recoit un panneau deja decide par `victoryLogic` / `roundsLogic` /
+`scoreBannerLogic`, donc il ne PEUT PAS annoncer un autre verdict que l'ecran) ; la PEINTURE ne
+l'est pas (les classes Tailwind n'ont pas d'equivalent en contexte 2D — les mesures sont
+transcrites en pixels une fois, la classe d'origine en commentaire). `backdrop-blur-sm` est
+volontairement absent : le reproduire demanderait de relire, flouter et recomposer la toile a
+chaque image, pour un effet invisible sous un panneau opaque a 70 %.
+
+Les encres arrivent RESOLUES en parametre (`readInk` / `resolveToken` cote appelant) : un peintre
+qui appellerait `getComputedStyle` lirait le theme trente fois par seconde de match, et ne serait
+pas testable sans DOM. Seule couleur ecrite en clair, l'ombre portee — elle n'est pas une couleur
+de theme mais un assombrissement de ce qu'il y a dessous, identique en clair et en sombre ; meme
+statut que les contours de texte de `calloutsLayer.ts` et `zoneStatesLayer.ts`.
+
+**Resultats observes** : 12 tests sur contexte 2D espionne, verts — ordre fond-vers-texte,
+capitales (le DOM les fait en CSS), tiret du score dans l'encre attenuee, texte JAMAIS dans la
+couleur de camp (une couleur d'equipe peut etre tres claire, le contraste ne se negocie pas),
+allie a gauche comme dans le bandeau, filigrane sous le texte a 20 %, aucun filigrane tant que le
+logo n'est pas charge, pas de voile sur l'inter-manche, rien peint du tout sans statut.
+`make check-types` et eslint verts.
+
+**Conclusion / prochaine etape** : E2 close cote technique ; la recette VISUELLE ne peut se
+prononcer que sur un export reel, donc apres E3. Deux items statues `[~]` : le masquage du logo
+(le helper `tintedIconCanvas` existe deja dans le depot, le branchement est un item de E3) et
+`document.fonts.ready` (prealable de la boucle, replie dans l'item « Prealables asynchrones » de
+E3 pour ne pas se perdre). Suite : E3 — le pilote d'export.
+
+## [2026-08-28] Export video hors temps reel (E1) : l'encodeur WebCodecs, et le piege du minuteur bride — Complete
+
+**Contexte** : etape E1 du plan `.ai/V7.5/PLAN_EXPORT_VIDEO_HORS_TEMPS_REEL.md`. Objectif : un
+encodeur qui produise un MP4 a partir d'images poussees a la main, et surtout LEVER le risque
+bloquant du plan (canvas teinte -> `new VideoFrame(canvas)` leve -> tout le chantier tombe).
+
+**Decision technique** : `replayVideoEncoder.ts` + dependance `mp4-muxer` (^5.2.2). Trois points
+qui ne sont pas des details : (a) dimensions arrondies au PAIR vers le bas — H.264 echantillonne
+la chrominance en 4:2:0 et refuse l'impair, or la toile du rejeu est dimensionnee en pixels
+physiques (largeur CSS x DPR) et tombe sur de l'impair une fois sur deux ; (b) le NIVEAU H.264
+est CALCULE (`avcLevelFor` : le plus bas niveau dont le tableau A-1 accepte la surface en
+macroblocs ET la cadence), pas choisi au juge — trop bas, les lecteurs stricts refusent le
+fichier ; trop haut, on ferme la porte aux lecteurs anciens pour rien ; (c) contre-pression sur
+`encodeQueueSize`, sans quoi une boucle de 18 000 images empile tout en memoire avant que
+l'encodeur en ait sorti la moitie.
+
+**Resultats observes** : gate vert (31 tests sur 3 fichiers, `make check-types`, eslint propre).
+Export manuel dans le navigateur : MP4 `ftypisom` valide, 641x361 ramene a 640x360, codec
+`avc1.64001e`.
+
+DEUX DECOUVERTES, dont une qui invalidait une prescription du plan. (1) **Le plan interdisait
+`requestAnimationFrame` en boucle d'export — bride en onglet cache — et prescrivait `setTimeout`
+a la place. C'est faux : les minuteurs sont brides EXACTEMENT PAREIL, a une seconde.** Mesure
+faite dans l'onglet cache, 20 tirages : `setTimeout(…, 0)` = 673,53 ms de moyenne (1009 ms au
+pire), `MessageChannel` = 0,06 ms (1 ms au pire). Consequence : le premier export d'essai, 30
+images, a pris 10,2 s — un DIXIEME du temps reel, l'inverse exact du but du chantier, et tout ce
+temps etait passe dans les attentes de contre-pression. D'ou un module non prevu au plan,
+`eventLoopYield.ts` (`yieldToEvents()`, MessageChannel avec repli minuteur), partage entre
+l'encodeur et la future boucle d'export — le recopier garantirait qu'une des deux copies
+redevienne un `setTimeout`, et le bridage NE SE VOIT PAS en developpement, ou l'onglet est au
+premier plan. Apres correction : 300 images en 1280x720 encodees en 0,54 s, soit **18,6x le temps
+reel**, onglet toujours cache. (2) **Le risque bloquant du plan n'existe pas** : aucune source
+d'image du canvas n'est distante. Le fond de carte passe par une URL `blob:` creee par la page
+(meme origine par construction), icones et emblemes sont en chemins racine ; verifie a
+l'execution, `getImageData()` et `new VideoFrame(canvas)` passent sur trois assets reels.
+
+**Conclusion / prochaine etape** : E0 et E1 closes cote technique, deux recettes utilisateur en
+attente (le bouton d'enregistrement temps reel depose-t-il un fichier ? l'export reel est-il
+fidele ?). Suite : E2 — les peintres canvas de l'ecran de fin de match et du message
+inter-manche.
+
+## [2026-08-28] Export video hors temps reel (E0) : le telechargement relachait le blob trop tot — Complete
+
+**Contexte** : retour utilisateur — « dans le mode replay l'enregistrement video marche pas, mais moi
+je parlais davantage d'un export que de cliquer sur un bouton qui enregistre et qu'on attende toute
+la duree du match ». Deux sujets distincts, traites separement : un bug de livraison de fichier
+(ici), et un chantier d'export hors temps reel (plan
+`.ai/V7.5/PLAN_EXPORT_VIDEO_HORS_TEMPS_REEL.md`, valide par l'utilisateur le meme jour).
+
+**Decision technique** : `triggerDownload` (`replayCapture.ts`) revoquait l'URL d'objet DANS LE
+`finally`, c'est-a-dire au retour de `a.click()`, et cliquait une ancre jamais attachee au document.
+Or un clic sur une ancre `download` ne copie pas le blob : il demande au navigateur d'aller le LIRE,
+et cette lecture est asynchrone. Revoquer tout de suite coupe la source sous un telechargement qui
+vient de demarrer. C'est ce qui explique l'asymetrie observee : la capture PNG (quelques centaines de
+ko) survivait au premier souffle, le clip video (des dizaines de Mo) n'arrivait jamais — et sans la
+moindre erreur pour le dire. Correctif : ancre attachee le temps du clic puis retiree, et revocation
+retenue 1 s (`URL_RELEASE_MS`). Une seconde et pas zero : le tick suivant suffit a sortir du clic,
+pas a garantir que la lecture du blob est engagee sur une machine chargee.
+
+**Resultats observes** : `npx vitest run src/features/match-replay/replayCapture
+src/features/match-replay/useReplayCapture` — 2 fichiers, 27 tests, tous verts. LE TEST EXISTANT
+EXIGEAIT LE BUG : il assertait `expect(revoked).toEqual(['blob:rejeu-test'])` au retour de la
+fonction, donc verrouillait la revocation synchrone. Il a ete retourne dans le meme commit (la
+revocation est maintenant verifiee APRES `vi.runAllTimers()`), et un second test verifie que l'ancre
+est bien CONNECTEE au document a l'instant du clic — le verifier apres coup ne dirait rien, elle est
+deja retiree.
+
+**Conclusion / prochaine etape** : E0 close cote technique ; la recette utilisateur (le bouton
+d'enregistrement temps reel depose-t-il maintenant un fichier lisible ?) demande le navigateur et
+reste a prononcer. Suite : E1 — l'encodeur WebCodecs, dont le premier travail est de LEVER LE RISQUE
+BLOQUANT du plan (toile teintee par le fond de carte ou les emblemes : un canvas teinte fait lever
+`new VideoFrame(canvas)` et couperait tout le chantier).
+
+## [2026-08-28] Socles du rejeu : infobulle degraissee + icones pleines cernees de leur nature — Complete
+
+**Contexte** : deux retours utilisateur sur les socles d'arme/power-up de la carte. (a) l'infobulle
+de survol dit trop : « je veux juste garder le nom de l'arme ou de l'equipement, et a la rigueur son
+timer ; je ne veux pas de blabla dedans » ; (b) « pour les contours des armes et powerup, le noir ca
+va pas — les dessins de carte sont en niveaux de gris avec contours noirs, c'est difficile de
+distinguer les armes ; pour les armes il faut utiliser les icones comme pour les fiches de joueurs
+et le killfeed ».
+
+**Decision technique** : (a) l'infobulle passe de 3-4 lignes a 2 au plus — NOM, puis compte a
+rebours s'il a une source. Supprimes : la ligne d'ETAT (elle se lit deja sur la carte : le losange
+s'attenue, la vignette disparait) et la NOTE DE LECTURE « socle au sol ou ratelier mural » (elle vit
+dans l'aide du calque, pas a chaque survol). Les parentheses d'explication des deux comptes a rebours
+tombent aussi : la reserve D3 tient dans le seul « ≈ ». Regle 7 (0 code mort) appliquee jusqu'au
+bout : `padState`, `padPlacementNote`, `padPlacementNotePowerUp` retires du contrat i18n ET des deux
+langues, garde-rails re-cadres (nouveau test : le compte a rebours reste court et sans parenthese).
+(b) les socles consomment desormais `weaponFullIcon` — la SILHOUETTE pleine, la meme icone que les
+fiches et le kill feed, miroir compris ; le miroir est CUIT dans le canvas hors ecran
+(`tintedIconCanvas`, nouvelles options `{mirrored, tinted}`) et non pose au trace : un canvas n'a pas
+de `transform` CSS, et retourner par socle et par image coutait un save/scale/restore. Le LISERE de
+la vignette quitte l'encre du FOND (noire en sombre) pour l'encre de la NATURE du socle — celle de
+son losange, `pad.powerup/power/classic` : halo colore autour d'une forme claire, lisible sur un fond
+gris. `mark.outline` ne sert plus qu'au COMPTE A REBOURS, qui est du texte.
+
+**Resultats** : typecheck 0, eslint 0 (11 fichiers), vitest match-replay 1624/1624. Assets verifies
+sur pieces : 40 `contour-XX` / 40 `silhouette-XX` sous `static/weapons-assets/halo_infinite/jeu/`
+(le garde-rail `weaponFullIcon.guard.test.ts` rejoue deja la correspondance).
+
+**Conclusion / prochaine etape** : gate VISUEL a l'oeil de l'utilisateur (l'app locale demande une
+auth Xbox) — verifier surtout la lisibilite du halo colore a 8 px sur une carte claire. NOTE : le
+worktree porte en parallele des modifs d'une AUTRE session (replayAudio / useReplaySound /
+test/fakeAudio, MatchHeader*, suppression de weaponBurstSpecs.guard.test.ts) : non touchees ici.
+
+## [2026-08-28] Rafale MA40 a la lecture : REVERT sur retour d'ecoute — Complete
+
+**Contexte** : le lot C du 2026-08-27 (4bc843904) faisait sonner un fire event MA40 en TROIS balles
+espacees de 33 ms, sur demande de l'utilisateur. Gate d'ecoute rendu : « j'aime pas le resultat et je
+prefere l'ancien ». Les votes d'ecoute priment sur tout critere (RECETTE_SONS_ARMES §5) : la mise en
+scene est retiree, sans discussion de la mesure qui l'avait calibree.
+
+**Decision technique** : revert CHIRURGICAL du seul mecanisme de rafale, pas du commit (qui portait
+aussi le plan des retours et le journal). Retires : `weaponBurstSpecs.ts` + son garde-rail,
+`SoundBurst`/`playBurst`/`releaseWhenAllEnded` et le 3e parametre de `ReplayAudioPlayer.play`, la
+branche d'aiguillage de `useReplaySound`, les deux blocs de tests de rafale, et les compteurs
+`disconnected` du double d'audio (nes pour ces tests seuls). Un tir = un depart, le chemin d'avant a
+l'identique. NON touche : `FakeSource.playbackRate` (modele fidele de l'API, sert au chemin simple)
+et les instruments de recherche Go `weapon_burst_{research,wave}_test.go` — sous garde
+`WEAPON_CADENCE_CORPUS`, hors production, ils portent la mesure de cadence (100,0 ms medians sur
+1 417 salves) qui reste vraie et re-executable.
+
+**Resultats** : `tsc -b --force` exit 0 ; vitest match-replay 108 fichiers / 1624 tests verts ;
+eslint 0 erreur sur la zone (2 warnings pre-existants hors sujet : ReplayCanvas deps, ReplayFeedName
+react-refresh).
+
+**Conclusion / prochaine etape** : le gate d'ecoute C-5 (protocole A/B 33/50/100 ms) et la liste des
+armes candidates a l'extension (pulse_carbine en tete) sont CADUQUES — la rafale a ete tranchee par
+l'oreille, pas par le reglage. Ne pas la reproposer sans demande explicite.
+
+## [2026-08-28] Ecran de fin de rejeu : regression de rendu + habillage (retours lot 2) — Complete
+
+**Contexte** : gate visuel utilisateur. 5 points : (a) « je n'ai plus le message qui indique la
+defaite ou victoire » ; (b) message + musique + voix des que le score/le chrono conclut la partie
+(distinct de la fin du FILM, qui porte une queue d'outro) ; (c) logo de l'equipe du joueur conserve
+mais « doit respecter les choix de couleur d'equipe choisie par le user » ; (d) seul le STATUT dans
+un bloc de couleur (sans accent gauche) — nom d'equipe et score en texte libre ; (e) « manche
+terminee » = meme affichage que le statut.
+
+**Decision technique** : (a) CAUSE sur pieces = `useReplayClock.tick` bride la publication de l'image
+a 150 ms ; la boucle peint la DERNIERE image de la fenetre puis s'arrete, donc a 60 fps ce dernier
+tick tombait presque toujours dans la fenetre de bridage et `frame` n'atteignait jamais `endFrame` —
+l'ecran, qui se derive de `frame >= endFrame`, ne se rendait pas. Le son partant par `onEnded`
+(chemin distinct), le rejeu sonnait la victoire sans l'ecrire. Correctif : la borne de fin passe le
+bridage. (b) AUCUN code neuf — `playWindow.endFrame` vaut deja `t0_ms + playable_duration_seconds`
+(fin declaree du jeu), la queue de film est hors fenetre ; message et son partagent cette borne.
+(c) l'exception D1 (couleur d'IDENTITE Eagle/Cobra empruntee au scoreboard) est LEVEE : l'ecran porte
+`team-ally`, le token que l'utilisateur regle, comme le reste de la page ; le logo, silhouette
+monochrome, est teinte au meme token via masque CSS avec sonde de chargement (un masque 404 ne masque
+plus rien -> aplat parasite). (d) `OVERLAY_STATUS_BLOCK` absorbe la typographie du verdict, nom et
+score sortent du bloc. (e) le message inter-manche consomme le bloc neutre.
+
+**Resultats** : typecheck 0, eslint 0 sur les 7 fichiers touches, vitest match-replay 1639/1639
+(109 fichiers). Tests neufs : `useReplayClock.test.tsx` (bridage + exception de borne) et
+l'invariant « le bloc ne porte QUE le statut ».
+
+**Conclusion / prochaine etape** : gate VISUEL non fait par l'agent — l'app locale demande une
+authentification Xbox (code d'appairage) : verification a l'oeil par l'utilisateur, en particulier la
+teinte du logo au masque et la lisibilite du nom/score hors bloc. Reserve : le message inter-manche
+reste NEUTRE (une manche n'est le verdict de personne) ; a basculer sur la couleur du camp si le
+retour le demande.
+
 ## [2026-08-28] Corrections rejeu 2D Oddball (5 retours visuels) — Complete
 
 **Contexte** : gate visuel utilisateur sur d9781168 re-cuit. 5 retours : icone crane, compteur respawn,
