@@ -321,7 +321,7 @@ export function ReplayCanvas({
   })
 
   const objectiveObjects = useReplayObjectiveObjects({
-    lives: doc.objectiveObjects, view: canvasView, ink: neutralInk, outline: markInk.outline,
+    lives: doc.objectiveObjects, carries: doc.skullCarries, view: canvasView, ink: neutralInk, outline: markInk.outline,
   })
   // LA COURONNE VIP (schéma 22) : marqueur sur le VIP courant, relu image par image (useReplayVipCrown).
   const vipCrown = useReplayVipCrown({ doc, view: canvasView, enabled: showVipCrown, ink: neutralInk, reducedMotion })
@@ -496,8 +496,8 @@ export function ReplayCanvas({
     // LES DRAPEAUX par-dessus les zones et SOUS les morts : l'enjeu du mode prime sur le
     // terrain, mais une élimination reste l'événement le plus lourd de sens du calque.
     flags.paint(ctx, frame)
-    // LE CRÂNE là où il est quand PERSONNE ne le porte : même rang que les drapeaux, et il
-    // DISPARAÎT pendant les portages — le document ne dit pas qui porte (cf. le hook).
+    // LE CRÂNE LIBRE : sa présence se résout par `skullPresenceAt` (cf. le hook) — tenu à son
+    // dernier repos qu'une prise corrobore, muet pendant les portages, absent aux respawns.
     objectiveObjects.paint(ctx, frame)
     // LA COURONNE VIP sur le porteur courant de chaque camp, au-dessus de son marqueur.
     vipCrown.paint(ctx, frame)
