@@ -18,21 +18,31 @@
   (`build_zones.go`) : il reste produit par `attachObjectiveActions`, forme inchangee.
 - Forme du document (`ObjectiveAction` t/xuid/stat/timeMs) INCHANGEE -> AUCUN bump de schema.
 
-## Etape 1 — MIGRATION Objectives par manche (touche du code LIVRE)
+## Etape 1 — MIGRATION Objectives par manche (touche du code LIVRE) — CLOSE
 
-- [ ] 1a. `objectiveevents` : ajouter `IdentifyNamedEventsByRound(evs, RoundIdentity)`
-  (miroir de `IdentifyNamedEvents` mais `.At(slot, timeMS)` par manche) ; factoriser le
-  tri commun. Test unitaire : mono-manche == pont plat ; multi-manche attribue la manche 1
-  au bon joueur (reutilise `twoRoundReassignedFixture`), et DIFFERE du pont plat.
-- [ ] 1b. `replay` : `Options.Objectives` passe de `[]IdentifiedEvent` a un `ObjectiveInput`
-  (Records + ObjType). `attachObjectiveActions` resout par manche via `opt.Deaths` — ne
-  paie le pont que s'il y a des evenements nommes (garde cout/RAM Slayer).
-- [ ] 1c. `replaybuild/matchfacts.go` : `identifiedEvents` -> `objectiveInput(recs, variant)`
-  (Records + `ObjectiveTypeOf(variant)`), plus de dependance aux lignes.
-- [ ] 1d. Tests : reecrire `matchfacts_test.go` (objectiveInput) ; adapter le cablage.
-- [ ] 1e. REGRESSION mono-manche : golden/temoins objectifs inchanges. Prouver la
-  neutralite mono-manche par construction (RoundIdentity.At une manche = pont plat) et par
-  les tests CI. Golden film reel = corpus-gated (env) : statuer honnetement.
+DECISION D'ARCHITECTURE (consignee) : `ResolveRoundIdentity` exige le fil des morts. Le
+changer de type `Options.Objectives` (approche « resoudre dans replay ») reshaperait
+DEUX consommateurs de RECHERCHE hors perimetre (`cmd/zone-attribution`, temoin zones p2b)
+qui INJECTENT des `[]IdentifiedEvent` par un pont d'identite DELIBERE (SlotIdentityResolved).
+Choix retenu : garder le type public `Options.Objectives []IdentifiedEvent` STABLE et
+resoudre par manche EN PLACE dans `matchfacts.go` (le fichier du perimetre), en relisant le
+fil des morts (`replay.ScanFilmDeaths`, un chunk highlight, borne). Zero outil de recherche
+touche ; forme du document et contrat INCHANGES.
+
+- [x] 1a. `objectiveevents` : `IdentifyNamedEventsByRound(evs, RoundIdentity)` ajoute (tri
+  factorise `sortIdentifiedEvents`). Tests : mono-manche == pont plat ; multi-manche manche 1
+  au bon joueur, DIFFERE du pont plat (`twoRoundReassignedFixture`). VERTS.
+- [x] 1b. `replaybuild/matchfacts.go` : `identifiedEvents` resout par manche
+  (`NamedEventsFrom` + `ScanFilmDeaths` + `ResolveRoundIdentity` + `IdentifyNamedEventsByRound`) ;
+  coeur pur `identifyRoundEvents` + `deathInstantsOf`. Garde de mode court-circuite l'I/O.
+- [~] 1c. (fusionne dans 1b — voir decision : pas de changement de type Options.)
+- [x] 1d. Tests `matchfacts_test.go` reecrits : garde de mode sans I/O, multi-manche
+  (capture manche 1 -> joueur B, contre-epreuve pont plat -> A), conversion. VERTS.
+- [x] 1e. REGRESSION mono-manche : neutralite PAR CONSTRUCTION prouvee (RoundIdentity.At une
+  manche = pont plat par morts ; `TestSlotIdentityByRoundMonoRoundNeutral`,
+  `TestIdentifyNamedEventsByRoundMonoNeutral` VERTS). La bascule totaux->morts repose sur
+  l'accord phase-0 (8/8, 0 desaccord) — MEME base que drapeau/VIP/crane deja livres. Golden
+  film reel = corpus-gated, PAS de cache local : non joue ici, statue au CR.
 
 ## Etape 2 — P2 #1 : `skullCarrySecondsByXUID` test-only
 

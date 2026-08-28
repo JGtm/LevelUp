@@ -108,6 +108,65 @@ func TestRoundIdentityResolveByTime(t *testing.T) {
 	}
 }
 
+// TestIdentifyNamedEventsByRoundReassignedSlot — LE CAS QUI FONDE LA MIGRATION DU CALQUE
+// OBJECTIFS : deux actions sur LE MEME slot 22, une par manche. Le pont par manche attribue la
+// manche 0 a "A" et la manche 1 a "B" ; le pont plat les donne TOUTES DEUX a "A" (il ne voit que
+// la manche 0). La difference sur l'action de manche 1 est la correction que le lot apporte.
+func TestIdentifyNamedEventsByRoundReassignedSlot(t *testing.T) {
+	recs, deaths := twoRoundReassignedFixture()
+	// Une capture par manche, sur le slot 22 (celui qui est reattribue).
+	named := []NamedEvent{
+		{TimeMS: 2000, Slot: 22, Stat: StatFlagCaptures},  // manche 0 -> A
+		{TimeMS: 12000, Slot: 22, Stat: StatFlagCaptures}, // manche 1 -> B
+	}
+
+	byRound := IdentifyNamedEventsByRound(named, ResolveRoundIdentity(recs, deaths))
+	if len(byRound) != 2 {
+		t.Fatalf("pont par manche : %d action(s) identifiee(s), attendu 2 : %+v", len(byRound), byRound)
+	}
+	if byRound[0].TimeMS != 2000 || byRound[0].XUID != "A" {
+		t.Errorf("action de manche 0 = %+v, attendu {2000, A}", byRound[0])
+	}
+	if byRound[1].TimeMS != 12000 || byRound[1].XUID != "B" {
+		t.Errorf("action de manche 1 = %+v, attendu {12000, B} (slot reattribue)", byRound[1])
+	}
+
+	// CONTRE-EPREUVE : le pont plat par instants de mort donne les DEUX actions a "A".
+	flat := IdentifyNamedEvents(named, SlotIdentityByDeaths(recs, deaths))
+	if len(flat) != 2 || flat[0].XUID != "A" || flat[1].XUID != "A" {
+		t.Fatalf("pont plat : attendu deux actions attribuees a A, obtenu %+v", flat)
+	}
+	if flat[1].XUID == byRound[1].XUID {
+		t.Error("le pont par manche ne DIFFERE PAS du pont plat sur l'action de manche 1 — " +
+			"la correction est nulle")
+	}
+}
+
+// TestIdentifyNamedEventsByRoundMonoNeutral — NEUTRALITE : sur un film mono-manche, l'identite
+// par manche rend EXACTEMENT ce que rend le pont plat par instants de mort. C'est la garantie
+// que le calque objectifs mono-manche ne bouge pas.
+func TestIdentifyNamedEventsByRoundMonoNeutral(t *testing.T) {
+	recs := []StatRecord{
+		modeRec(900, 22, 0, 10), modeRec(1900, 22, 0, 20), modeRec(2900, 22, 0, 30),
+		deathRec(1000, 22, 0, 1), deathRec(2000, 22, 0, 2), deathRec(3000, 22, 0, 3),
+		deathRec(1500, 20, 0, 1), deathRec(2500, 20, 0, 2), deathRec(3500, 20, 0, 3),
+	}
+	sort.SliceStable(recs, func(i, j int) bool { return recs[i].TimeMS < recs[j].TimeMS })
+	deaths := []DeathInstant{
+		{XUID: "A", TimeMS: 1000}, {XUID: "A", TimeMS: 2000}, {XUID: "A", TimeMS: 3000},
+		{XUID: "C", TimeMS: 1500}, {XUID: "C", TimeMS: 2500}, {XUID: "C", TimeMS: 3500},
+	}
+	named := []NamedEvent{
+		{TimeMS: 2000, Slot: 22, Stat: StatFlagCaptures},
+		{TimeMS: 2500, Slot: 20, Stat: StatFlagReturns},
+	}
+	byRound := IdentifyNamedEventsByRound(named, ResolveRoundIdentity(recs, deaths))
+	flat := IdentifyNamedEvents(named, SlotIdentityByDeaths(recs, deaths))
+	if !reflect.DeepEqual(byRound, flat) {
+		t.Errorf("mono-manche : par manche %+v != pont plat %+v", byRound, flat)
+	}
+}
+
 // TestSlotIdentityByRoundMonoRoundNeutral — NEUTRALITE : un film mono-manche rend EXACTEMENT le
 // pont plat, sous la seule manche. C'est ce qui garantit que la couronne VIP et le drapeau CTF
 // mono-manche ne bougent pas.
