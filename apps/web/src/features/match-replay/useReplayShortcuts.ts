@@ -10,10 +10,28 @@
  * `contenteditable`, ni avec un modificateur (Ctrl/Cmd/Alt) — sans quoi Espace dans une
  * recherche mettrait le rejeu en pause, et Cmd+R rechargerait ET rembobinerait.
  *
- * `preventDefault` N'EST APPELÉ QUE SUR LES TOUCHES QU'ON TRAITE : Espace ferait défiler la
- * page, ←/→ déplacerait le curseur natif de la frise EN PLUS de notre saut (double pas).
+ * ...SAUF DEPUIS LA FRISE DU LECTEUR, ET C'EST UNE DÉCISION UTILISATEUR (gate du 2026-08-28).
+ * Un `input[type=range]` est un champ de saisie pour le navigateur : la garde ci-dessus
+ * l'attrapait, et les raccourcis MOURAIENT dès qu'on avait cliqué sur la frise — c'est-à-dire
+ * exactement au moment où l'on analyse un match. Espace ne répondait plus, ←/→ avançaient d'UNE
+ * image (le pas natif du champ) au lieu de sauter 10 s. L'exemption est portée par un ATTRIBUT
+ * (`data-replay-timeline`) et non par un test de type : elle vise CE champ-là, pas la famille.
+ *
+ * LE VOLUME, LUI, RESTE UN CHAMP DE SAISIE — c'est le même élément HTML, et c'est pourquoi
+ * l'exemption devait être nominative : qui vient de cliquer sur le volume et presse ← attend
+ * que le volume baisse, pas que le film saute de dix secondes.
+ *
+ * `preventDefault` N'EST APPELÉ QUE SUR LES TOUCHES QU'ON TRAITE, et c'est lui qui supprime le
+ * double pas : sur la frise focalisée, ←/→ ferait NOTRE saut PLUS le pas natif du champ.
  */
 import { useEffect } from 'react'
+
+/**
+ * L'ATTRIBUT QUI REND SA FRAPPE À LA FRISE. Il est posé par `ReplayTimelineTracks` sur le seul
+ * champ concerné et lu ici — le lien entre les deux est la pièce fragile de ce mécanisme, il a
+ * son garde-fou dans `ReplayTimelineTracks.test.tsx`.
+ */
+export const TIMELINE_SHORTCUT_ATTR = 'data-replay-timeline'
 
 /** Ce que le clavier commande. Chaque entrée est une commande déjà existante du lecteur. */
 export interface ReplayShortcutHandlers {
@@ -31,6 +49,11 @@ export interface ReplayShortcutHandlers {
 function isTypingTarget(target: EventTarget | null): boolean {
   const el = target as HTMLElement | null
   if (!el) return false
+  // LA FRISE DU LECTEUR EST EXEMPTÉE, ET ELLE SEULE (cf. l'en-tête) : l'exemption est portée par
+  // un attribut, pas par un test de type — `input[type=range]` couvrirait aussi le volume, dont
+  // les flèches doivent rester natives. `hasAttribute` est appelé en optionnel : la cible d'un
+  // événement clavier peut être `window` ou `document`, qui n'ont pas de méthode d'attribut.
+  if (el.hasAttribute?.(TIMELINE_SHORTCUT_ATTR)) return false
   const tag = el.tagName
   if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true
   return el.isContentEditable === true

@@ -198,6 +198,33 @@ bornes de gameplay), gate visuel utilisateur en fin de chantier.
       passe). Aucun merge, aucun push : la branche `wt/lecteur` attend l'autorisation
       utilisateur apres le gate visuel.
 
+## LOT 5 — Revue adversariale R1 (ajoute le 2026-08-28)
+
+- [x] 5-G Six corrections du triage pilote, en un commit : C1 cle `keySpace` (« (Espace) » etait
+      en dur dans le title de lecture/pause — la SEULE touche du lecteur qui se traduit) ;
+      C2 garde `available` dans `useReplaySound.toggle` (« M » basculait et PERSISTAIT la
+      preference sur un match muet) ; C3 `useLeadMarks` reduit a ses 3 champs consommes ;
+      C4/C5 deux commentaires faux rectifies ; C6 deux trous de couverture combles
+      (`reduceFeed` exporte + teste, temoin de la pose initiale de `writeCursor`).
+      Gate rejoue cache purge : typecheck 0, 103 fichiers / 1576 tests, ESLint 0 erreur.
+
+## LOT 6 — Raccourcis sur la frise focalisee (decision gate du 2026-08-28)
+
+- [x] 6-1 `ReplayTimelineTracks.tsx` : l'input de la frise porte `data-replay-timeline`, avec le
+      POURQUOI en commentaire (apres un clic sur la frise, le geste d'analyse type est
+      Espace/fleches — la garde anti-champ-de-saisie l'eteignait).
+- [x] 6-2 `useReplayShortcuts.ts` : `isTypingTarget` exempte UNIQUEMENT le porteur de cet
+      attribut (constante exportee `TIMELINE_SHORTCUT_ATTR`). Un `input[type=range]` ordinaire —
+      le volume — reste une cible de saisie ; texte, textarea, select et contenteditable restent
+      proteges. Le `preventDefault` deja en place supprime le double pas natif (±1 image).
+- [x] 6-3 Tests : frise focalisee -> `seekBy(+10)` ET `defaultPrevented`, Espace -> `togglePlay`,
+      `,`/`.` -> `stepFrames` ; volume focalise -> aucun handler, evenement NON prevenu ; champ
+      texte -> toujours rien ; modificateur depuis la frise -> toujours ignore. GARDE-FOU du lien
+      composant<->garde dans `ReplayTimelineTracks.test.tsx`, et sa morsure est VERIFIEE :
+      l'attribut retire de la frise, le test rougit (mutation temporaire, restauree).
+- [x] 6-G Gate : vitest `src/features/match-replay` complet ; purge du cache + `npm run
+      typecheck` ; ESLint sur les fichiers touches. Un commit unique, pas de merge ni de push.
+
 ## Ce que ce plan NE fait PAS (perimetre ferme — amende le 2026-08-28)
 
 - Pas d'endpoint medias, et aucune donnee de media n'est branchee : la piste et la lightbox
@@ -232,14 +259,16 @@ sur wt/lecteur. Reprendre a la premiere case non statuee du lot ouvert.
   une regression du present lot — elle preexiste. Le lot 3 la resorbe par construction
   (retrait des props sliderRef/minFrame/maxFrame/onScrub/leadMarks + extraction
   `useReplayTimeline`), et le gate exige le cliquet VERT : le plafond n'est PAS releve.
-- (revue R1, 2026-08-28, lot 5 — CONSIGNE, NON CORRIGE) **LES RACCOURCIS SE TAISENT QUAND LA
-  FRISE GARDE LE FOCUS.** `isTypingTarget` (useReplayShortcuts) traite tout `INPUT` comme un
+- (revue R1, 2026-08-28 — **TRANCHEE**, livree au LOT 6) **LES RACCOURCIS SE TAISAIENT QUAND LA
+  FRISE GARDAIT LE FOCUS.** `isTypingTarget` (useReplayShortcuts) traitait tout `INPUT` comme un
   champ de saisie — le curseur de la frise en est un (`type=range`). Apres un clic sur la frise,
-  elle garde le focus : Espace ne fait plus rien, et ←/→ deplacent le curseur natif d'UNE image
-  au lieu de sauter 10 s. Ce n'est pas un bug de la garde (elle protege une vraie recherche
-  textuelle), c'est une DECISION PRODUIT non tranchee : faut-il exclure `type=range` de la garde,
-  ou rendre le focus au conteneur apres un scrub ? Condition de reprise : verdict utilisateur au
-  gate visuel, quand le comportement se constate a l'ecran.
+  elle garde le focus : Espace ne faisait plus rien, et ←/→ deplacaient le curseur natif d'UNE
+  image au lieu de sauter 10 s. **DECISION UTILISATEUR DU 2026-08-28 (gate) : les raccourcis
+  restent VIVANTS sur la frise focalisee.** L'exemption est NOMINATIVE — un attribut
+  `data-replay-timeline` pose par `ReplayTimelineTracks` et lu par la garde — et non un test de
+  type : le curseur de VOLUME est le meme element HTML, et ses fleches doivent continuer a regler
+  le volume. Le `preventDefault` deja en place supprime le double pas natif. Le lien
+  composant<->garde a son garde-fou (verifie sur pieces : retirer l'attribut fait rougir le test).
 - (revue R1, 2026-08-28, lot 5 — CONSIGNE, NON CORRIGE) `useReplaySettings` rend un OBJET NEUF a
   chaque rendu (pre-existant, anterieur a ce chantier). Consequence directe : le `useMemo` de
   `useReplayDrawer` ne retient rien — ses dependances changent d'identite en permanence. Le memo

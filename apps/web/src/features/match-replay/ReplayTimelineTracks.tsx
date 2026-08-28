@@ -145,9 +145,17 @@ export function ReplayTimelineTracks({
         {/* LE CURSEUR. `--played` est écrit par la boucle de dessin (useReplayPlayback) : le
             remplissage suit donc la lecture sans un seul rendu React. */}
         <div className="relative mt-[3px]">
+          {/* `data-replay-timeline` REND SA FRAPPE AU LECTEUR (décision utilisateur du
+              2026-08-28, gate de la planche 2a). Un `input[type=range]` est un champ de saisie
+              aux yeux du navigateur, et la garde anti-frappe de `useReplayShortcuts` l'attrapait :
+              les raccourcis mouraient dès qu'on avait cliqué sur la frise — c'est-à-dire au
+              moment précis où l'on analyse un match, là où Espace et les flèches sont les gestes
+              qu'on fait. Cet attribut exempte CE champ, nommément : le curseur de volume, lui,
+              reste un champ de saisie, et ses flèches continuent de régler le volume. */}
           <input
             ref={sliderRef}
             type="range"
+            data-replay-timeline=""
             min={minFrame}
             max={maxFrame}
             defaultValue={minFrame}

@@ -9,7 +9,11 @@
 import { renderHook } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { useReplayShortcuts, type ReplayShortcutHandlers } from './useReplayShortcuts'
+import {
+  TIMELINE_SHORTCUT_ATTR,
+  useReplayShortcuts,
+  type ReplayShortcutHandlers,
+} from './useReplayShortcuts'
 
 function mount(over: Partial<ReplayShortcutHandlers> = {}) {
   const handlers: ReplayShortcutHandlers = {
@@ -133,5 +137,76 @@ describe('useReplayShortcuts — preventDefault, mais seulement là où il faut'
     mount()
     expect(press(' ').defaultPrevented).toBe(true)
     expect(press('ArrowRight').defaultPrevented).toBe(true)
+  })
+})
+
+/**
+ * LA FRISE GARDE SA FRAPPE (décision utilisateur du 2026-08-28, gate de la planche 2a).
+ *
+ * CE QUE CES CAS FIXENT : un `input[type=range]` est un champ de saisie pour le navigateur, donc
+ * la garde anti-frappe l'attrapait — et les raccourcis mouraient dès le premier clic sur la
+ * frise, c'est-à-dire au moment même où l'on analyse un match. L'exemption est NOMINATIVE (un
+ * attribut posé sur ce champ-là), et les deux moitiés de la règle comptent autant l'une que
+ * l'autre : la frise répond, le VOLUME — le même élément HTML — continue de ne pas répondre.
+ */
+describe('useReplayShortcuts — la frise du lecteur est exemptée, elle seule', () => {
+  /** Un `input[type=range]` porteur de l'attribut : la frise du lecteur. */
+  function timelineInput(): HTMLInputElement {
+    const el = document.createElement('input')
+    el.type = 'range'
+    el.setAttribute(TIMELINE_SHORTCUT_ATTR, '')
+    document.body.appendChild(el)
+    return el
+  }
+
+  /** Un `input[type=range]` ORDINAIRE : le curseur de volume. */
+  function volumeInput(): HTMLInputElement {
+    const el = document.createElement('input')
+    el.type = 'range'
+    document.body.appendChild(el)
+    return el
+  }
+
+  it('FRISE FOCALISÉE : la flèche saute de 10 s, et le pas natif est supprimé', () => {
+    const h = mount()
+    const event = press('ArrowRight', { target: timelineInput() })
+    expect(h.seekBy).toHaveBeenCalledWith(10)
+    // Sans `preventDefault`, le champ avancerait AUSSI d'une image : un double pas.
+    expect(event.defaultPrevented).toBe(true)
+  })
+
+  it('FRISE FOCALISÉE : Espace met en pause, « , » et « . » avancent image par image', () => {
+    const h = mount()
+    const frise = timelineInput()
+    press(' ', { target: frise })
+    expect(h.togglePlay).toHaveBeenCalledTimes(1)
+    press(',', { target: frise })
+    press('.', { target: frise })
+    expect(h.stepFrames).toHaveBeenNthCalledWith(1, -1)
+    expect(h.stepFrames).toHaveBeenNthCalledWith(2, 1)
+  })
+
+  // L'AUTRE MOITIÉ DE LA RÈGLE, et elle n'est pas accessoire : qui vient de cliquer sur le
+  // volume et presse ← attend que le volume baisse, pas que le film saute de dix secondes.
+  it('VOLUME FOCALISÉ : rien n’est capté, la flèche reste au navigateur', () => {
+    const h = mount()
+    const event = press('ArrowLeft', { target: volumeInput() })
+    expect(h.seekBy).not.toHaveBeenCalled()
+    expect(h.togglePlay).not.toHaveBeenCalled()
+    expect(event.defaultPrevented).toBe(false)
+  })
+
+  it('un CHAMP TEXTE reste protégé, attribut ou pas', () => {
+    const h = mount()
+    const input = document.createElement('input')
+    document.body.appendChild(input)
+    press(' ', { target: input })
+    expect(h.togglePlay).not.toHaveBeenCalled()
+  })
+
+  it('depuis la frise, un raccourci avec modificateur n’est toujours pas capté', () => {
+    const h = mount()
+    press('r', { target: timelineInput(), metaKey: true })
+    expect(h.restart).not.toHaveBeenCalled()
   })
 })
