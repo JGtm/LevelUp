@@ -32,7 +32,9 @@ RACINE=/c/Users/Guillaume/Projects/LevelUp
 FONDS="$RACINE/data/titles/halo_infinite/reference/map_backgrounds"
 JALON="$SP/jalon_campagne"
 VERROU="$SP/cuisson.verrou"
-TAILLE_LOT=3
+# Taille du lot : 3 est la valeur mesuree (memoire rendue a chaque lot). Abaissable par
+# l environnement quand la machine est chargee — une campagne de 55 cartes se paie en RAM.
+TAILLE_LOT=${TAILLE_LOT:-3}
 cd "$RACINE" || exit 1
 
 [ -f "$JALON" ] || { echo "jalon de campagne absent : $JALON"; exit 1; }
