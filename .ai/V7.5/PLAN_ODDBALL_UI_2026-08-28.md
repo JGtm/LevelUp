@@ -20,24 +20,36 @@ Gate : typecheck OK ; vitest 3 fichiers (17) OK ; eslint fichiers touchés 0 err
 
 ## Étape 2 — Petit compteur de respawn du crâne libre (si la donnée existe)
 Retour : « quand il respawn un petit compteur s'il y a ».
-- [ ] 2.1 Vérifier sur pièces le schéma `ObjectiveObjectLife` (délai de respawn / borne de
-      ré-apparition ?).
-- [ ] 2.2 Si présent → afficher le compteur ; SINON → data manquante, ne rien fabriquer, statuer
-      au CR.
+- [!] 2.1 Schéma `ObjectiveObjectLife` = {en, family, fr, pts[], t0, t1} ; coverage =
+      {declared, lives, motionless, outOfAxis, points, scanned}. AUCUN délai de respawn / borne
+      de ré-apparition publié (vérifié `generated.ts` + `ObjectiveObjectLife` schema).
+- [!] 2.2 Donnée MANQUANTE → aucun compteur (ne pas fabriquer : le geste demandait « s'il y a »).
+      Le gap entre deux vies libres pourrait être un portage OU un respawn — indistinguables sans
+      donnée fiable (oracle porteur réfuté phase D4). Statué au CR ; branchement = lot Go si le
+      film publiait un jour la borne de ré-apparition.
 
 ## Étape 3 — Le crâne LIBRE ne s'affiche pas (investiguer + corriger, périmètre rendu)
 Retour : « investiguer pourquoi le crâne libre ne s'affiche pas alors que la donnée existe ».
-- [ ] 3.1 Écarter sur pièces : OFF par défaut ? toggle manquant ? filtre de mode ? garde de
-      schéma ? glyphe invisible (encre/token) ?
-- [ ] 3.2 Corriger la cause dans le périmètre du rendu du crâne.
+- [x] 3.1 Écarté SUR PIÈCES : (a) pas OFF par défaut — `objectiveObjects.paint` est appelé
+      INCONDITIONNELLEMENT dans `draw()` ; (b) pas de toggle manquant — le calque est ungated
+      (intentionnel) ; (c) pas de filtre de mode — `normalize` mappe `raw.objectiveObjects`
+      direct, `useMatchReplay` le sert tel quel ; (d) pas de garde de schéma ; (e) CAUSE = le
+      glyphe : disque r=5 NEUTRE + cerne muted-fg mince, il se dissolvait sur un fond de carte
+      photographique (exactement le problème du drapeau AVANT son liseré).
+- [~] 3.2 Corrigé par l'ÉTAPE 1 (périmètre rendu) : liseré à l'encre du fond + disque agrandi +
+      orbites → le crâne libre se détache de la carte comme le drapeau. Résidu hors code : si
+      l'artefact servi n'a PAS été re-cuit (pas d'`objectiveObjects`), rien ne s'affiche — data/
+      déploiement, à vérifier au gate visuel.
 
 ## Étape 4 — Message inter-manche = style victoire/défaite, SANS l'accent gauche
 Retour : « le message fin de manche doit avoir le même style que le texte de défaite ou victoire
 (SANS l'accent sur le côté gauche, faut le virer de ce style) ».
-- [ ] 4.1 Retirer l'accent latéral gauche (`borderLeft`) de `ReplayVictoryOverlay` (TeamPanel).
-- [ ] 4.2 `ReplayRoundBreakOverlay` adopte le style du panneau (carte neutre + titre), sans accent.
-- [ ] 4.3 Centraliser les classes de panneau/titre partagées (≤2 copies) + garde-rail.
-- [ ] 4.4 Tests overlays verts (aucun n'assied sur l'accent gauche — vérifié).
+- [x] 4.1 `borderLeft: 6px solid tint.accent` retiré du `TeamPanel` de `ReplayVictoryOverlay`.
+- [x] 4.2 `ReplayRoundBreakOverlay` = panneau neutre + titre (`OVERLAY_NEUTRAL_PANEL`+`OVERLAY_TITLE`).
+- [x] 4.3 `replayOverlayStyles.ts` centralise (corps/panneau neutre/titre) + garde-rail
+      `replayOverlayStyles.guard.test.ts` (le littéral de titre ne vit que dans le module).
+- [x] 4.4 Tests overlays verts (33) ; les tests victoire n'assoient pas sur l'accent (vérifié).
+Gate : typecheck OK ; vitest 3 fichiers (33) OK ; eslint fichiers touchés 0 erreur/0 warning.
 
 ## Étape 5 — Son « manche terminée » FR/EN câblé
 Retour utilisateur + stub déjà écrit dans `replaySound.ts`.
@@ -56,3 +68,6 @@ Retour utilisateur + stub déjà écrit dans `replaySound.ts`.
 ## Journal
 - 2026-08-28 : plan écrit et commité avant toute modification (contrat plan-execution).
 - 2026-08-28 : étape 1 close — glyphe crâne centralisé + habillé comme le drapeau.
+- 2026-08-28 : étapes 2 (respawn = data manquante) et 3 (crâne libre = salience, corrigé par
+  étape 1) statuées sur pièces, aucun code neuf (pas de fabrication).
+- 2026-08-28 : étape 4 close — accent gauche retiré, message inter-manche aligné, style centralisé.

@@ -28,6 +28,7 @@ import { scoreTimelineOf } from '@/lib/replay/scoreTimeline'
 
 import { msToFrames } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
+import { OVERLAY_NEUTRAL_PANEL, OVERLAY_TITLE } from './replayOverlayStyles'
 import { activeRoundTransition, roundTransitions } from './roundsLogic'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
 
@@ -61,9 +62,10 @@ export function ReplayRoundBreakOverlay({ doc, frame, locale }: Props) {
       aria-live="polite"
       className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center overflow-hidden"
     >
-      <p className="rounded-md border border-border bg-background/85 px-5 py-2 text-lg font-bold uppercase tracking-wide text-foreground shadow-lg backdrop-blur-sm">
-        {t.roundOverFmt(active.endedIndex)}
-      </p>
+      {/* MÊME STYLE QUE L'ÉCRAN DE FIN (retour utilisateur du 2026-08-28) : le panneau neutre et
+          le titre de `ReplayVictoryOverlay`, partagés par `replayOverlayStyles.ts` — SANS l'accent
+          latéral gauche, que l'utilisateur a fait retirer de ce style. */}
+      <p className={`${OVERLAY_NEUTRAL_PANEL} ${OVERLAY_TITLE}`}>{t.roundOverFmt(active.endedIndex)}</p>
     </div>
   )
 }
