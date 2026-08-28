@@ -101,6 +101,7 @@ import (
 	"database/sql"
 	"flag"
 	"fmt"
+	"log/slog"
 	"os"
 	"strings"
 
@@ -306,16 +307,65 @@ func registreParShort(ctx context.Context, cfg *config.AppConfig, pr *titlePkg.P
 		if err := rows.Scan(&id, &rawName, &mapID); err != nil {
 			return nil, fmt.Errorf("registre des matchs (scan): %w", err)
 		}
-		var names []string
-		if en := enParMapID[strings.TrimSpace(mapID.String)]; en != "" {
-			names = append(names, en)
-		}
-		if raw := strings.TrimSpace(rawName.String); raw != "" {
-			names = append(names, raw)
-		}
+		names := candidatsCarte(enParMapID[strings.TrimSpace(mapID.String)], rawName.String)
 		out[titlePkg.FilmShortMatchID(id)] = registreEntry{matchID: id, mapNames: names}
 	}
 	return out, rows.Err()
+}
+
+// candidatsCarte ordonne les identites de carte du plus fiable au moins fiable : nom d'asset
+// EN (resolu, fiable meme quand map_name porte un UUID brut) PUIS map_name brut. C'est l'ordre
+// que ResolveMapEntry essaie.
+//
+// UN SEUL point de verite pour cet ordre — le PARENT de masse (registreParShort) et l'ENFANT
+// tape a la main (mapNamesForOne) doivent produire EXACTEMENT les memes candidats, sans quoi le
+// meme film se resoudrait differemment selon la forme d'appel.
+func candidatsCarte(enName, rawName string) []string {
+	var names []string
+	if en := strings.TrimSpace(enName); en != "" {
+		names = append(names, en)
+	}
+	if raw := strings.TrimSpace(rawName); raw != "" {
+		names = append(names, raw)
+	}
+	return names
+}
+
+// mapNamesForOne resout les identites de carte candidates d'UN match depuis le registre, pour
+// la forme `--one` TAPEE A LA MAIN.
+//
+// POURQUOI ELLE EXISTE. La resolution de carte vit dans le PARENT (registreParShort), qui la
+// passe a l'enfant via `--map-name`. Un operateur qui tape `backfill-replay --one <id>` — usage
+// documente comme licite — n'a pas ce drapeau : sans elle, `o.mapNames` est vide et le film
+// echoue « carte hors catalogue ([]) » ALORS QUE sa carte est au catalogue. Elle rend a l'enfant
+// la meme auto-suffisance que pour ses faits (chargerFaitsUnMatch).
+//
+// UNE ouverture RO relachee AVANT tout decodage, comme chargerFaitsUnMatch — jamais deux
+// lecteurs, jamais un lecteur pendant un decodage. Base indisponible (serveur en ecriture) ou
+// match hors registre = candidats vides, JOURNALISE : l'echec de carte reste alors possible,
+// mais il n'est plus DU a l'absence de resolution.
+//
+// La masse (parent -> enfant) passe toujours `--map-name` : cette lecture ne se declenche QUE
+// pour le `--one` a la main, jamais dans une passe de masse (aucun surcout de corpus).
+func mapNamesForOne(ctx context.Context, pr *titlePkg.PathResolver, titleSlug, matchID string) []string {
+	sharedPath := pr.SharedDBPath(titleSlug)
+	db, release, err := duckdb.OpenReadForQuery(sharedPath)
+	if err != nil {
+		slog.WarnContext(ctx, "backfill-replay (enfant): registre indisponible — identite de carte "+
+			"non resolue (passer --map-name)", "err", err, "match_id", matchID)
+		return nil
+	}
+	defer release()
+	var rawName, mapID sql.NullString
+	row := db.QueryRowContext(ctx,
+		`SELECT map_name, map_id FROM match_registry WHERE match_id = ?`, matchID)
+	if err := row.Scan(&rawName, &mapID); err != nil {
+		slog.WarnContext(ctx, "backfill-replay (enfant): match absent du registre — identite de carte "+
+			"non resolue (passer --map-name)", "err", err, "match_id", matchID)
+		return nil
+	}
+	en := nomsAssetsEN(ctx, pr, titleSlug)[strings.TrimSpace(mapID.String)]
+	return candidatsCarte(en, rawName.String)
 }
 
 // nomsAssetsEN charge la table map_id -> nom EN depuis metadata.asset_translations.
