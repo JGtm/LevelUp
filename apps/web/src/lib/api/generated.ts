@@ -5365,6 +5365,7 @@ export interface components {
             placements?: components["schemas"]["EquipmentPlacementCoverage"];
             score?: components["schemas"]["ScoreCoverage"];
             shots: components["schemas"]["LayerCoverage"];
+            skullCarries?: components["schemas"]["SkullCarriesCoverage"];
             verdict?: {
                 [key: string]: string;
             };
@@ -9464,6 +9465,7 @@ export interface components {
             schemaVersion: number;
             scoreTimeline?: components["schemas"]["ScoreTimeline"];
             shots?: components["schemas"]["Shot"][] | null;
+            skullCarries?: components["schemas"]["SkullCarry"][] | null;
             structure?: components["schemas"]["Surface"][] | null;
             structureBounds?: components["schemas"]["Bounds"];
             titleSlug: string;
@@ -10083,6 +10085,31 @@ export interface components {
             date: string;
             /** Format: double */
             value: number;
+        };
+        SkullCarriesCoverage: {
+            /** Format: int64 */
+            carries: number;
+            /** Format: int64 */
+            closed: number;
+            /** Format: int64 */
+            grabs: number;
+            /** Format: int64 */
+            noBridge: number;
+            /** Format: int64 */
+            open: number;
+            /** Format: int64 */
+            outOfWindow: number;
+            skullFilm: boolean;
+            /** Format: int64 */
+            trains: number;
+        };
+        SkullCarry: {
+            closed: boolean;
+            /** Format: int64 */
+            t0: number;
+            /** Format: int64 */
+            t1: number;
+            xuid: string;
         };
         SoloSessionPerfBlock: {
             granularity: string;

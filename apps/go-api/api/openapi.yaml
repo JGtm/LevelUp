@@ -10670,6 +10670,8 @@ components:
           $ref: '#/components/schemas/ScoreCoverage'
         shots:
           $ref: '#/components/schemas/LayerCoverage'
+        skullCarries:
+          $ref: '#/components/schemas/SkullCarriesCoverage'
         verdict:
           additionalProperties:
             type: string
@@ -20426,6 +20428,12 @@ components:
           type:
             - array
             - "null"
+        skullCarries:
+          items:
+            $ref: '#/components/schemas/SkullCarry'
+          type:
+            - array
+            - "null"
         structure:
           items:
             $ref: '#/components/schemas/Surface'
@@ -21980,6 +21988,61 @@ components:
       required:
         - date
         - value
+      type: object
+    SkullCarriesCoverage:
+      additionalProperties: false
+      properties:
+        carries:
+          format: int64
+          type: integer
+        closed:
+          format: int64
+          type: integer
+        grabs:
+          format: int64
+          type: integer
+        noBridge:
+          format: int64
+          type: integer
+        open:
+          format: int64
+          type: integer
+        outOfWindow:
+          format: int64
+          type: integer
+        skullFilm:
+          type: boolean
+        trains:
+          format: int64
+          type: integer
+      required:
+        - skullFilm
+        - grabs
+        - trains
+        - carries
+        - closed
+        - open
+        - noBridge
+        - outOfWindow
+      type: object
+    SkullCarry:
+      additionalProperties: false
+      properties:
+        closed:
+          type: boolean
+        t0:
+          format: int64
+          type: integer
+        t1:
+          format: int64
+          type: integer
+        xuid:
+          type: string
+      required:
+        - xuid
+        - t0
+        - t1
+        - closed
       type: object
     SoloSessionPerfBlock:
       additionalProperties: false

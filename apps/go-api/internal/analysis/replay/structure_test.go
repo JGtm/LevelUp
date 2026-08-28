@@ -356,8 +356,22 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   effondré (exactitude 8/8 contre 0-1/8). GARDE DE MODE chez l'appelant : `comp 22 A` vaut
 	//   `flag_grabs` en CTF, donc la couronne n'est lue que sur un film reconnu VIP par
 	//   `game_variant_name`. Détail : .ai/V7.5/replay2d/registre_film/VIP_COURONNE_PROTOCOLE.md.
-	if SchemaVersion != 22 {
-		t.Fatalf("SchemaVersion = %d, attendu 22 : incrémenter exige une raison écrite ci-dessus "+
+	// - v23 (2026-08-28, lot PORTEUR ODDBALL) : `skullCarries` — LES PÉRIODES DE PORTAGE DU CRÂNE.
+	//   Le porteur est le joueur dont les TICS DE SCORE DE MODE montent (`comp 0 A` =
+	//   `skull_scoring_ticks`), un TRAIN de tics étant une période de portage ; nommé par le pont
+	//   d'INSTANTS DE MORT PAR MANCHE (le slot est réattribué d'une manche à l'autre). Le champ est
+	//   optionnel, mais la version monte pour la raison exacte des montées v14/v16/v21/v22 : la
+	//   reprise du backfill se fait par SchemaVersion, un artefact 22 doit se lire « à re-cuire ».
+	//   NIVEAU DE PREUVE : le portage a résisté à CINQ campagnes (proximité, traversée, score
+	//   personnel : négatifs) ; le canal des tics tient — gate oracle porteur PRINCIPAL correct
+	//   7/7 films, gate terrain manche 1 de d9781168 prises 9/9 et porteurs 8/9 (seuil 8/9),
+	//   emplacement identifié par l'oracle films confondus. GARDE DE MODE chez l'appelant : `comp
+	//   0 A` est le score de mode de tout mode, donc le porteur n'est lu que sur un film reconnu
+	//   Oddball par `game_variant_name`. Le crâne LIBRE (`objectiveObjects`, v21) reste la couche
+	//   POSITION ; celle-ci est la couche PORTEUR. Détail :
+	//   .ai/V7.5/replay2d/registre_film/ODDBALL_PORTEUR_PROTOCOLE.md.
+	if SchemaVersion != 23 {
+		t.Fatalf("SchemaVersion = %d, attendu 23 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

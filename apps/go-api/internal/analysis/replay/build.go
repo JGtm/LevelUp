@@ -118,6 +118,11 @@ type Options struct {
 	// 22 A` vaut `flag_grabs` en CTF, donc seul un appelant qui reconnaît le match VIP par
 	// `game_variant_name` le pose — ce paquet ne devine aucun mode.
 	Vip VipInput
+	// Skull : de quoi construire LE PORTEUR DU CRANE d'Oddball (entrée de DONNÉES comme Vip ; cf.
+	// skull_carries.go). `Scanned` faux = ni calque ni couverture. La GARDE DE MODE est chez
+	// l'appelant : `comp 0 A` est le score de mode de tout mode, donc seul un appelant qui
+	// reconnaît le match Oddball (par `game_variant_name`) le pose — ce paquet ne devine aucun mode.
+	Skull SkullInput
 	// NeutralDeaths : les morts que personne ne revendique, AVEC LEUR TYPE DÉJÀ RÉSOLU
 	// (cf. NeutralDeath). Entrée de DONNÉES comme Deaths et Objectives.
 	//
@@ -489,6 +494,11 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	// LA COURONNE VIP, sur les pistes PUBLIEES (la couronne est a la position de son porteur) —
 	// gardee de mode par l'appelant (opt.Vip.Scanned), cf. vip_crown.go.
 	attachVipCrown(&doc, opt, own, replayClock{origin: origin, step: step, frames: doc.FrameCount})
+	// LE PORTEUR DU CRANE d'Oddball, sur les pistes PUBLIEES (le crane est a la position de son
+	// porteur) — garde de mode par l'appelant (opt.Skull.Scanned), cf. skull_carries.go. Le crane
+	// LIBRE (attachObjectiveObjects, ci-dessous) reste la couche POSITION ; ce calque-ci est la
+	// couche VIVANTE par-dessus.
+	attachSkullCarries(&doc, opt, own, replayClock{origin: origin, step: step, frames: doc.FrameCount})
 	// LES OBJETS D'OBJECTIF LIBRES SONT POSÉS HORS DE LA GARDE DE MODE DU DRAPEAU, et c'est
 	// délibéré : ce calque ne lit ni le statborg ni le fil des morts, donc rien de ce que cette
 	// garde protège. La placer devant l'éteindrait sur Oddball — là où il sert.

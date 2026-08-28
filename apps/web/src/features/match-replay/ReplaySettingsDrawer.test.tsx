@@ -98,6 +98,7 @@ function renderDrawer(over: Partial<Parameters<typeof ReplaySettingsDrawer>[0]> 
       weaponPads={makeWeaponPads()}
       flagCarries={makeFlagCarries()}
       vipCrown={makeFlagCarries()}
+      skullCarrier={makeFlagCarries()}
       heatmap={makeHeatmap()}
       showShotFx
       onToggleShotFx={onToggleShotFx}

@@ -165,6 +165,12 @@ type Coverage struct {
 	// cause de fermeture (mort du VIP / sélection suivante) et les rejets par cause. Son ABSENCE
 	// dit que l'appelant n'a PAS reconnu un film VIP (la garde de mode est chez `replaybuild`).
 	VipCrown *VipCrownCoverage `json:"vipCrown,omitempty"`
+	// SkullCarries est la couverture du PORTEUR DU CRANE d'Oddball (schéma 23, cf.
+	// document_skull_carries.go) : les prises (`skull_grabs`), les trains de tics détectés, les
+	// portages publiés partagés en fermés / ouverts, et les rejets par cause (sans pont, hors
+	// fenêtre). Son ABSENCE dit que l'appelant n'a PAS reconnu un film Oddball (la garde de mode
+	// est chez `replaybuild`).
+	SkullCarries *SkullCarriesCoverage `json:"skullCarries,omitempty"`
 	// ObjectiveObjects est la couverture du calque des objets d'objectif LIBRES : combien le
 	// manifeste en déclare de publiables, combien de vies et de points sortent, et ce qui a été
 	// écarté hors axe (cf. document_objective_objects.go).

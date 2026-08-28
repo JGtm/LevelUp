@@ -108,6 +108,8 @@ var replaySchemas = []struct {
 	{"FlagCarriesCoverage", replay.FlagCarriesCoverage{}},
 	{"VipPeriod", replay.VipPeriod{}},
 	{"VipCrownCoverage", replay.VipCrownCoverage{}},
+	{"SkullCarry", replay.SkullCarry{}},
+	{"SkullCarriesCoverage", replay.SkullCarriesCoverage{}},
 	{"ZoneState", replay.ZoneState{}},
 	{"ZoneSpan", replay.ZoneSpan{}},
 	{"GaugePoint", replay.GaugePoint{}},
@@ -369,9 +371,28 @@ var replaySchemas = []struct {
 //	                      `Coverage` gagne son bloc `vipCrown` : un film non-VIP (bloc absent) et
 //	                      un film VIP sans periode publiee se distinguent par lui.
 //
-// Les douze fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
+//	40 -> 41  2026-08-28  `skullCarries` (lot PORTEUR ODDBALL, `.ai/V7.5/replay2d/registre_film/
+//	                      ODDBALL_PORTEUR_PROTOCOLE.md`) : LES PERIODES DE PORTAGE DU CRANE, en
+//	                      intervalles de frames nommes par le xuid du porteur. Un champ de
+//	                      document, un schema de plus (`SkullCarry`) et un bloc de couverture
+//	                      (`SkullCarriesCoverage`). Source, toute dans le film : le porteur est le
+//	                      joueur dont les TICS DE SCORE DE MODE montent (`comp 0 A` =
+//	                      `skull_scoring_ticks`), un TRAIN de tics ETANT une periode de portage ;
+//	                      le porteur nomme par le pont d INSTANTS DE MORT PAR MANCHE (le slot est
+//	                      reattribue d une manche a l autre, aucune base). Le portage avait resiste
+//	                      a CINQ campagnes (proximite, traversee, score personnel : negatifs) ; le
+//	                      canal des tics tient — gate oracle porteur PRINCIPAL correct 7/7 films,
+//	                      gate terrain manche 1 de d9781168 prises 9/9 et porteurs 8/9 (seuil 8/9),
+//	                      emplacement identifie par l oracle films confondus. GARDE DE MODE chez l
+//	                      appelant : `comp 0 A` est le score de mode de tout mode, donc le porteur
+//	                      n est lu que sur un film reconnu Oddball par `game_variant_name`. Le
+//	                      SchemaVersion d artefact monte a 23 (reprise du backfill). `Coverage`
+//	                      gagne son bloc `skullCarries`. Le crane LIBRE (`objectiveObjects`, v21)
+//	                      reste la couche POSITION ; celle-ci est la couche PORTEUR par-dessus.
+//
+// Les treize fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
 // chiffre ne le dise. Contrat regenere (`make openapi-gen`), jamais ecrit a la main.
-const wantReplayDocumentFields = 40
+const wantReplayDocumentFields = 41
 
 // TestReplayContractDescribesEveryPublishedField : AUCUN CHAMP PUBLIE SANS DESCRIPTION, ET
 // AUCUNE DESCRIPTION SANS CHAMP.
