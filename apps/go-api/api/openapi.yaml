@@ -8307,36 +8307,6 @@ components:
         - Labels
         - IconURL
       type: object
-    AssociatedMediaItem:
-      properties:
-        capture_time:
-          format: date-time
-          nullable: true
-          type: string
-        duration_seconds:
-          format: float
-          nullable: true
-          type: number
-        file_id:
-          type: string
-        file_name:
-          type: string
-        file_path:
-          type: string
-        kind:
-          type: string
-        liked:
-          default: false
-          type: boolean
-        thumbnail_url:
-          nullable: true
-          type: string
-      required:
-        - file_id
-        - file_name
-        - file_path
-        - kind
-      type: object
     AsyncJobStatus:
       additionalProperties: false
       properties:
