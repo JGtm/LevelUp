@@ -4786,3 +4786,196 @@ appelle `equipmentOwner`, LA fonction de production — donc il mesure ce qui es
 une approximation qui pourrait deriver. Le decoupage des vies reutilise `lifeGapUS` de lives.go
 et reproduit son compte sur le film de reference (105 vies pour 99 slots), ce qui est un
 controle gratuit qu'un second decoupage du meme fait ne divergeait pas.
+
+## 2026-08-28 — Lecteur du rejeu (planche 2a) : sauts, frise a pistes, menu vitesse, raccourcis
+
+Statut : **En cours** (lots 1-4 du plan `PLAN_LECTEUR_PLANCHE2A_2026-08-28.md`, branche
+`wt/lecteur`, worktree dedie). Spec produit : `SPEC_LECTEUR_PLANCHE2A_2026-08-28.md`.
+
+**LOT 0 — l'etat de depart est deja rouge, et ce n'est pas nous.** Baseline mesuree AVANT
+toute modification (vitest `src/features/match-replay src/routes`, hors sandbox) : 99 fichiers,
+1502 tests, **1 seul echec** — le cliquet de taille du canvas (`placementFamily.guard.test.ts`)
+attend 691 lignes et `ReplayCanvas.tsx` en fait 692 sur `feat/v75 @ 86b9087c9`. Le plan
+supposait « 691 pile ». Consequence pour le chantier : le lot 3 doit non seulement ne pas
+faire grossir le fichier, mais lui rendre au moins une ligne — le plafond ne se releve pas.
+
+**LOT 1 — la donnee du fil remonte d'un niveau, et c'est une question de JUSTESSE, pas de
+performance.** `buildFeedEntries` est desormais appele UNE fois dans `replay.tsx` ; le fil
+recoit `entries`, et la frise du lot 3 tirera ses pistes de la MEME liste. Deux appels auraient
+chacun leur recalage d'horloge (origine publiee ou appariement statistique selon l'artefact) :
+la marque d'une elimination sur la frise n'aurait pas ete garantie identique a la ligne lue
+dans la colonne. Le rendu du fil, lui, ne bouge pas d'un pixel — 36 tests le tiennent.
+
+**`writeCursor` : un seul endroit qui deplace le curseur.** Il ecrit la valeur du champ ET la
+variable CSS `--played` (part parcourue de la fenetre de gameplay). Cinq chemins l'appellent —
+boucle d'animation, `seekTo`, rembobinage, glisse manuel, pose initiale. La pose initiale
+l'appelle MEME quand elle ne repositionne rien : sans cela, un montage deja au bon endroit
+laissait `--played` vide et la frise s'affichait creuse jusqu'au premier pas de la boucle.
+
+**Deviations assumees vs memo de la session design**, toutes deux ecrites dans la spec :
+`stepFrames` met la lecture EN PAUSE avant de bouger (un pas d'image sous rAF serait ecrase en
+16 ms) ; le bornage de `seekTo` est celui de la fenetre de gameplay, pas du film.
+
+Chiffres du gate lot 1 : `tsc --noEmit` exit 0 ; vitest `useReplayPlayback` (29 tests, +11),
+`ReplayKillFeed` (36 tests), `src/routes` — 5 fichiers / 95 tests verts ; ESLint 0 sur les
+7 fichiers touches.
+
+**LOT 2 — le handoff original est arrive en cours de route, et il PREVAUT.** L'utilisateur a
+fourni `.ai/V7.5/replay2d/planche2a_impl/` (7 fichiers de code + IMPLEMENTATION.md + le canvas
+Claude Design). Regle actee : on PORTE, on ne reecrit pas. La version maison de
+`replayTimelineTracks.ts`, ecrite une heure plus tot depuis la spec derivee, a ete REMPLACEE
+par le port — et le port est plus riche : il apporte la geometrie du curseur natif
+(`THUMB_PX`, `trackLeft`, `trackWidth`), `ratioOfMs` et `clipFrameCount`, que la spec derivee
+ne mentionnait pas. Sa signature differe aussi : `buildEventTracks(kills, deaths, ...)` prend
+DEUX listes deja reduites, la reduction depuis `ReplayFeedEntry` revenant a `useReplayTimeline`.
+
+**Trois adaptations decidees sur pieces, pas par gout.** (a) `SKIP_SECONDS` sort de
+`ReplayTransport.tsx` pour `replayCanvasConfig.ts` : un export non-composant depuis un fichier
+de composant declenche `react-refresh/only-export-components` — la meme regle qui a jadis sorti
+`SlidersIcon` du canvas. (b) `ReplaySpeedMenu` redefinissait `SOUND_MAX_SPEED = 2` en local :
+`replaySoundCursor.ts` exporte deja `soundPlaysAtSpeed`, donc la note « son coupe » se pose sur
+les vitesses que CETTE fonction refuse — pas de troisieme copie de la regle. (c) `bg-black` de
+la lightbox est une classe Tailwind couleur en `features/` : token de theme a la place.
+
+**Decision produit revisee : la lightbox medias EST livree.** Le design etant complet, la
+retenir aurait laisse une piste cliquable sans rien derriere. Ce qui reste en phase 2 est la
+seule DONNEE (endpoint + passage de la prop) — le registre des reports est reduit d'autant.
+
+Chiffres du gate lot 2 : tsc exit 0 ; `replayTimelineTracks.test.ts` 26 tests verts ; ESLint 0
+sur les 5 fichiers touches.
+
+**LOT 3 — DEUX DEFAUTS QUE SEUL LE VRAI TYPECHECK REVELE.** Les lots 1 et 2 avaient ete valides
+avec `npx tsc -p apps/web --noEmit`, ligne recopiee du plan. Cette commande ne compile RIEN :
+`apps/web/tsconfig.json` ne porte que des `references` et `files: []` — elle sort 0 sans avoir
+lu un fichier. La commande d'autorite est `npm run typecheck` (`tsc -b`), celle de
+`make check-types`. Lancee, elle a immediatement sorti deux problemes reels :
+
+1. **Collision de casse Windows.** Le handoff nommait la logique `replayTimelineTracks.ts` et le
+   composant `ReplayTimelineTracks.tsx`. Sur un FS insensible a la casse, TypeScript refuse les
+   deux dans le meme programme (TS1149) et `import { ReplayTimelineTracks } from
+   './ReplayTimelineTracks'` resolvait vers le module de LOGIQUE. La logique est renommee
+   `replayTimelineTracksLogic.ts` — c'est le patron du depot de toute facon (killFeedLogic,
+   victoryLogic, scoreBannerLogic).
+2. **Le cliquet du canvas exigeait DEUX extractions, pas une.** Le fichier partait de 692 (deja
+   au-dessus de son plafond de 691, cf. lot 0) ; la 13e extraction (`useReplayTimeline`) le
+   laissait a 708, parce que le lot y ajoute aussi une prop et un appel. La 14e — `useReplayDrawer`
+   — sort le montage du tiroir de reglages : une cinquantaine de lignes qui ne decidaient RIEN,
+   elles recopiaient trente bascules de `useReplaySettings` vers le panneau. Le canvas garde
+   desormais l'objet de reglages entier et n'en destructure que les VALEURS, celles que le trace
+   lit. Resultat 674 lignes, et le plafond DESCEND a 674 comme a chaque extraction depuis 861.
+
+**Ce qui a ete porte sans y toucher**, et c'est le fond de l'affaire : la barre (un seul bouton
+plein, les sauts qui l'encadrent, l'horloge en 21 px `tabular-nums`, les pastilles de sortie dans
+leur cartouche), la frise a quatre pistes avec son curseur habille par variantes Tailwind (pas de
+`globals.css` a toucher — l'item du plan derive etait caduc), le menu de vitesse, le son et la
+lightbox. Trois adaptations seulement, toutes justifiees ailleurs qu'en gout : `SKIP_SECONDS`
+deplace pour `react-refresh`, `soundPlaysAtSpeed` au lieu d'une troisieme copie de la borne du
+son, `bg-muted` au lieu de `bg-black` (classe de couleur brute interdite en `features/`).
+
+**`ReplayLeadMarks` est mort.** La piste DOMINANCE dit les memes retournements en DUREES, ce qui
+dit davantage pour la meme hauteur. Le hook `useLeadMarks` reste (il alimente la piste) et le type
+de retour l'a rejoint, renomme `ReplayLeadMarks` — il ne decrit plus les props d'un composant.
+Les cles `leadChange`/`leadChangeAtFmt` sortent du contrat et des deux tables : zero code mort.
+
+Chiffres du gate lot 3 : `npm run typecheck` exit 0 ; vitest 102 fichiers / **1561 tests, 0 echec**
+(baseline du lot 0 : 1502 tests dont 1 rouge) ; ESLint 0 erreur sur `src/features/match-replay` et
+`src/routes` — 2 warnings, tous deux verifies PRE-EXISTANTS sur `86b9087c9` ; cliquet 6/6 ; greps
+hex, archivo et classes Tailwind couleur muets.
+
+**LOT 4 — CLOTURE.** Statut du chantier : **Complete** cote technique, EN ATTENTE du gate visuel
+utilisateur. Tous les items du plan sont statues (aucune case vide, aucun `[!]`). Quatre commits
+sur `wt/lecteur`, aucun merge, aucun push — la branche attend l'autorisation apres le gate visuel.
+
+Deux entrees au registre des reports : (1) **medias du rejeu**, reduits a la seule DONNEE — le
+rendu complet est livre (piste, placement, lightbox, cles i18n), il ne manque qu'un endpoint et
+le remplacement de `EMPTY_MEDIA` par une prop ; (2) **gate visuel non passe** — l'executeur ne
+rend pas de verdict a l'ecran, et la planche de reference reste dans `planche2a_impl/` pour la
+comparaison.
+
+**Ce qui n'a PAS ete traite, et c'est deliberé.** Le `package-lock.json` reecrit par `npm install`
+(30 blocs `libc` retires par la version locale de npm) a ete restaure et n'entre dans aucun
+commit : c'est une derive d'environnement, potentiellement nuisible a la CI Linux, et elle
+n'appartient pas a ce lot. Les deux warnings ESLint du perimetre sont pre-existants, verifies sur
+`86b9087c9` — ils n'ont pas ete corriges, pour la meme raison.
+
+**La lecon a retenir de ce chantier**, au-dela de la barre : une commande de gate peut mentir. Deux
+lots avaient ete valides par un `tsc` qui ne compilait aucun fichier, et les deux vrais defauts
+(collision de casse, cliquet a 708) sont restes invisibles jusqu'au moment ou la bonne commande a
+tourne. Un gate qui sort 0 sans avoir rien lu est pire qu'un gate absent : il donne une confiance.
+
+**LOT 5 — REVUE ADVERSARIALE R1 : 2 P1 + 6 P2 recevables, 20 conditions tiennent.** Un relecteur
+frais a rejoue les gates de son cote (typecheck cache purge, 1561 tests, ESLint, cliquet a 674)
+et conclut que le lot fait ce qu'il pretend. Six corrections retenues au triage pilote, appliquees
+ici en un commit ; rien d'autre.
+
+**C1 — un mot francais dans l'interface anglaise.** Le title du bouton lecture/pause ecrivait
+« (Espace) » en dur. Cle `keySpace` ('Espace' / 'Space'). Verifie sur pieces : c'est la SEULE
+touche du lecteur qui se traduit — R, M, ←, → sont des touches physiques, leur nom est le glyphe
+grave dessus.
+
+**C2 — le clavier contournait une regle de l'interface, et la preference en gardait la trace.**
+`toggle` n'avait aucune garde : sur un match SANS AUCUN SON, le bouton ne se rend pas (regle « pas
+de commande quand il n'y a rien a commander »), mais « M » basculait quand meme — il persistait
+`SOUND_ON_KEY` et ouvrait un AudioContext sans qu'un pixel ne change. Le rejeu SUIVANT, celui-la
+sonore, demarrait donc dans l'etat inverse de celui qu'on croyait avoir laisse. La garde est posee
+CHEZ LE PROPRIETAIRE DE L'ETAT (`useReplaySound.toggle`), pas dans le clavier : c'est le seul
+endroit qui la rend vraie pour tous les appelants, presents et a venir. Verifie sur pieces que le
+tiroir de reglages n'appelle jamais `toggle` (il ne touche qu'a `toggleCategory`, et ne se rend
+pas si `!available`) — donc aucun autre chemin n'etait concerne.
+
+**C3 — code mort cree par le lot lui-meme.** `useLeadMarks` rendait sept champs, tailles pour les
+props d'un composant supprime la veille ; son unique lecteur restant n'en lit que trois. Les
+quatre autres (`frameCount`, `frameIntervalMs`, `playWindow`, `locale`) etaient recopies pour
+personne — l'echelle et l'horloge sont desormais l'affaire de `useReplayTimeline`, qui les tient
+de premiere main. Le hook perd aussi son parametre `playWindow`, devenu inutile.
+
+**C4/C5 — deux commentaires qui mentaient.** L'un renvoyait a une classe `replay-timeline` de
+`globals.css` qui n'existe pas (le degrade vit dans les variantes Tailwind du champ lui-meme) ;
+l'autre promettait une memoisation qui n'a pas lieu (les dependances du memo sont des litteraux
+recrees a chaque rendu, `useReplaySettings` n'etant pas memoise — pre-existant). Le second est
+corrige EN TANT QUE COMMENTAIRE : le memo reste, il est gratuit et deviendra vrai le jour ou la
+source amont se stabilise. Une doc fausse coute plus cher qu'une doc absente : elle se croit.
+
+**C6 — deux trous de couverture du perimetre du lot.** (a) `reduceFeed` decide A QUI appartient
+une ligne, et rien ne le testait : inverser tueur et victime laissait les deux pistes peuplees
+avec les mauvais evenements, retirer la garde `victime = 'me'` y deversait les morts de la partie
+entiere — invisible a la relecture comme a l'ecran. Exporte et couvert par 12 cas, dont le tir ami
+(la meme ligne est le frag de l'un et la mort de l'autre). (b) L'appel `writeCursor` de la pose
+initiale n'avait pas de temoin, le helper de test attachant le champ apres le montage. Deux cas
+montent le SCENARIO REEL — la fenetre de gameplay arrive APRES le document, le champ existe deja
+quand elle se connait — et verifient que valeur et remplissage sont poses, y compris quand la
+lecture est deja engagee au-dela du coup d'envoi.
+
+Chiffres du gate lot 5 (rejoues APRES corrections, cache typecheck purge) : `npm run typecheck`
+exit 0 ; vitest 103 fichiers / **1576 tests, 0 echec** (+15 : 12 reduceFeed, 2 pose initiale,
+1 garde du son) ; ESLint 0 erreur sur les 12 fichiers touches, 1 warning PRE-EXISTANT
+(`exhaustive-deps` objectiveObjects) ; cliquet 6/6, canvas toujours a 674.
+
+**LOT 6 — LES RACCOURCIS RESTENT VIVANTS SUR LA FRISE FOCALISEE (decision utilisateur, gate).**
+La Decouverte laissee ouverte au lot 5 est TRANCHEE. Rappel du defaut : `isTypingTarget` protege
+la frappe des champs de saisie, et un `input[type=range]` en est un pour le navigateur — les
+raccourcis mouraient donc des le premier clic sur la frise, c'est-a-dire au moment precis ou l'on
+analyse un match. Espace ne repondait plus, ←/→ avancaient d'UNE image (le pas natif du champ) au
+lieu de sauter 10 s.
+
+**L'EXEMPTION EST NOMINATIVE, ET C'EST TOUT LE SUJET.** Elle passe par un attribut
+(`data-replay-timeline`, constante `TIMELINE_SHORTCUT_ATTR` exportee par le hook et posee par
+`ReplayTimelineTracks`), pas par un test de type. Exempter `input[type=range]` en general aurait
+aussi exempte le VOLUME — le meme element HTML, a trois centimetres de la — et qui vient de
+cliquer dessus puis presse ← attend que le volume baisse, pas que le film saute de dix secondes.
+Les deux moities de la regle sont testees, celle qui autorise comme celle qui refuse.
+
+**LE DOUBLE PAS NE DEMANDAIT AUCUN CODE** : le `preventDefault` deja pose sur les touches traitees
+supprime le pas natif du champ. Un test le tient explicitement (fleche depuis la frise :
+`seekBy(+10)` ET `defaultPrevented`) — sans lui, la lecture avancerait de 10 s PLUS une image.
+
+**LE LIEN COMPOSANT<->GARDE EST LA PIECE FRAGILE**, rien dans le typage ne le tient : retirer
+l'attribut du champ compilerait et passerait tous les autres tests. D'ou un garde-fou dans
+`ReplayTimelineTracks.test.tsx`, qui importe la constante du hook. Sa MORSURE a ete verifiee sur
+pieces : attribut retire, le test rougit (1 failed / 27 passed) ; attribut restaure, 28 verts.
+Un garde-rail qu'on n'a pas vu echouer ne prouve rien.
+
+Chiffres du gate lot 6 (cache typecheck purge) : `npm run typecheck` exit 0 ; vitest
+`src/features/match-replay` 100 fichiers / **1552 tests, 0 echec** (+6 : 5 cas de la garde,
+1 garde-fou) ; `src/routes` 30 tests verts (non touchees, controle) ; ESLint 0 erreur, 0 warning
+sur les 4 fichiers touches.

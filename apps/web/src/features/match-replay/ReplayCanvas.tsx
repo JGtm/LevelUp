@@ -40,7 +40,7 @@ import { drawGrappleLayer } from './grappleLayer'
 import { drawEquipmentPlacementsLayer } from './equipmentPlacementsLayer'
 import { ReplayCanvasTips } from './ReplayCanvasTips'
 import { useReplayPlacements } from './useReplayPlacements'
-import { EMPTY_ZONES, SERIES_TOKENS } from './replayCanvasConfig'
+import { EMPTY_FEED, EMPTY_ZONES, SERIES_TOKENS } from './replayCanvasConfig'
 import { useReplayObjectiveObjects } from './useReplayObjectiveObjects'
 import { useReplayVipCrown } from './useReplayVipCrown'
 import { useReplayFlagCarries } from './useReplayFlagCarries'
@@ -49,8 +49,11 @@ import { useZoneStates } from './useZoneStates'
 import { useReplayWeaponPads } from './useReplayWeaponPads'
 import type { ReplayLocale } from './i18n'
 import type { EndMatchSoundSpec } from './endMatchSound'
+import type { ReplayFeedEntry } from './killFeedLogic'
 import { useReplayFx } from './useReplayFx'
-import type { PlayerMarkKind } from './playerMarks'
+import { NO_MARKS, type PlayerMarkKind } from './playerMarks'
+import { useReplayDrawer } from './useReplayDrawer'
+import { useReplayTimeline } from './useReplayTimeline'
 import { useSlotIdentity } from './useSlotIdentity'
 import { ReplaySettingsDrawer } from './ReplaySettingsDrawer'
 import { useReplayHeatmap } from './useReplayHeatmap'
@@ -120,6 +123,12 @@ interface ReplayCanvasProps {
   /** Marques d'identité par xuid (« moi », « ami ») : elles décident de la FORME du point. */
   marks?: ReadonlyMap<string, PlayerMarkKind>
   /**
+   * LE FIL ALIGNÉ, assemblé une fois par la page (`buildFeedEntries`) : la même liste que la
+   * colonne de droite. Elle alimente les pistes « Toi » et « Alliés » de la frise — un second
+   * alignement ici pourrait diverger du fil affiché à côté.
+   */
+  feedEntries?: readonly ReplayFeedEntry[]
+  /**
    * LA FIN DE PARTIE SONORE (lot C) : l'issue du joueur de la page et la langue, lues UNE fois
    * par la page — la même lecture que l'écran de fin (`endMatchSound.ts`). Le canvas ne fait
    * que la relayer au lecteur, qui préchargera les prises et les jouera quand la lecture
@@ -129,7 +138,8 @@ interface ReplayCanvasProps {
 }
 
 export function ReplayCanvas({
-  doc, locale, playWindow, kills, t0Ms, onFrameChange, background, callouts, scoreboard, xuidMeta, marks, endMatch,
+  doc, locale, playWindow, kills, t0Ms, onFrameChange, background, callouts, scoreboard, xuidMeta, marks,
+  endMatch, feedEntries = EMPTY_FEED,
 }: ReplayCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -151,19 +161,16 @@ export function ReplayCanvas({
     setSettingsOpen(false)
     settingsButtonRef.current?.focus({ preventScroll: true })
   }, [])
+  // L'OBJET DE RÉGLAGES RESTE ENTIER (2026-08-28) : le tiroir en consomme la quasi-totalité, et
+  // le lui recopier bascule par bascule coûtait cinquante lignes au canvas (cf. useReplayDrawer).
+  // Le DESSIN, lui, ne lit que les valeurs — d'où cette destructuration-là, et pas les commandes.
+  const settings = useReplaySettings()
   const {
-    showAim, toggleAim, showZones, toggleZones, showNames, toggleNames,
-    showTrail, toggleTrail,
-    showHeatmap, toggleHeatmap, heatmapMode, setHeatmapMode, heatmapSpan, setHeatmapSpan,
-    showShotFx, toggleShotFx, showKillFx, toggleKillFx,
-    showPlacements, togglePlacements,
-    showUnnamedPlacements, toggleUnnamedPlacements,
-    showDroppedPlacements, toggleDroppedPlacements,
-    showWeaponPads, toggleWeaponPads, showFlagCarries, toggleFlagCarries,
-    showVipCrown, toggleVipCrown,
-    speed: multiplier, setSpeed: setMultiplier,
-    markerColors, setMarkerColors,
-  } = useReplaySettings()
+    showAim, showZones, showNames, showTrail, showHeatmap, heatmapMode, heatmapSpan,
+    showShotFx, showKillFx, showPlacements, showUnnamedPlacements, showDroppedPlacements,
+    showWeaponPads, showFlagCarries, showVipCrown, speed: multiplier,
+    markerColors,
+  } = settings
   // SON : coupé par défaut, préférences persistées, tout le câblage dans le hook (règles dans
   // replaySound.ts, lecture replayAudio.ts, camps objectiveSound.ts, fin de partie endMatch).
   const sound = useReplaySound(doc, kills, t0Ms, multiplier, scoreboard, endMatch ?? null)
@@ -226,7 +233,7 @@ export function ReplayCanvas({
   // L'ÉTAT VIVANT DES ZONES (schémas 16-18) : encres, jointure du catalogue, tenue de la jauge (useZoneStates).
   const zones = useZoneStates(mapObjectives, scoreboard, teamColorOf, neutralInk, doc)
 
-  const leadMarks = useLeadMarks(doc, scoreboard, xuidMeta, locale, playWindow)
+  const leadMarks = useLeadMarks(doc, scoreboard, xuidMeta, locale)
 
   // Traînée, cône, croix de mort, apparition, rémanences et fins de vol : toutes les durées
   // du rejeu, converties une fois pour ce document (useReplayTiming).
@@ -557,13 +564,40 @@ export function ReplayCanvas({
 
   // LA LECTURE (état lu/pause, boucle rAF, curseur de la frise, ARRÊT SUR L'ÉTAT FINAL) vit
   // dans useReplayPlayback : le canvas garde le DESSIN, le hook porte le TEMPS.
-  const { playing, startFrame, endFrame, sliderRef, togglePlay, restart, onScrub } = useReplayPlayback({
+  const playback = useReplayPlayback({
     doc, playWindow, baseFps, speed: multiplier, renderWidth, frameRef, draw,
     soundTick: sound.tick, onEnded: sound.endMatch, onTransportGesture: sound.wake,
   })
+  // LA FRISE ET SON CLAVIER (planche 2a) vivent dans useReplayTimeline — treizième extraction
+  // imposée par le cliquet de taille : pistes, dominance, médias, horloges de l'axe et
+  // raccourcis décrivent la FRISE, pas le dessin de la carte.
+  const timeline = useReplayTimeline({
+    doc, playWindow, feedEntries, marks: marks ?? NO_MARKS, renderWidth, locale,
+    lead: leadMarks, playback, toggleSound: sound.toggle,
+  })
+  // LE TIROIR, groupé de même (useReplayDrawer) : les disponibilités viennent des calques, les
+  // bascules de `useReplaySettings` — le canvas ne fait plus que les mettre en présence.
+  const drawer = useReplayDrawer({
+    settings, sound, locale, onClose: closeSettings, triggerRef: settingsButtonRef,
+    heat: { mode: heat.mode, killsAvailable: heat.killsAvailable },
+    available: {
+      zones: calloutZones.length > 0,
+      placements: {
+        drawable: placements.counts.drawable > 0,
+        unnamed: placements.counts.unnamed > 0,
+        dropped: placements.counts.dropped > 0,
+      },
+      weaponPads: weaponPads.available,
+      flagCarries: flags.available,
+      vipCrown: vipCrown.available,
+    },
+  })
   // CE QUI SORT DU REJEU (image, vidéo) vit dans useReplayCapture : le canvas prête sa TOILE, son
   // HORLOGE et sa lecture. `play` reçoit `togglePlay` — appelé sur une PAUSE seule, il vaut lecture.
-  const capture = useReplayCapture({ canvasRef, doc, frameRef, playing, play: togglePlay, audioTrack: sound.recordingTrack })
+  const capture = useReplayCapture({
+    canvasRef, doc, frameRef, playing: playback.playing, play: playback.togglePlay,
+    audioTrack: sound.recordingTrack,
+  })
 
   return (
     // RELATIVE + OVERFLOW-HIDDEN : le tiroir se pose EN SURIMPRESSION dans ce cadre (retour
@@ -611,20 +645,17 @@ export function ReplayCanvas({
             {/* LA BARRE DE LECTURE : icônes, vitesse et son au niveau de la lecture
                 (demandes du 2026-08-24) — extraite dans ReplayTransport. */}
             <ReplayTransport
-              playing={playing}
-              onTogglePlay={togglePlay}
-              onRestart={restart}
+              playing={playback.playing}
+              onTogglePlay={playback.togglePlay}
+              onRestart={playback.restart}
+              onSeekBy={playback.seekBy}
               clockRef={clockRef}
-              sliderRef={sliderRef}
-              minFrame={startFrame}
-              maxFrame={endFrame}
-              onScrub={onScrub}
+              timeline={timeline}
               speed={multiplier}
-              onSetSpeed={setMultiplier}
+              onSetSpeed={settings.setSpeed}
               sound={sound}
               capture={capture}
               locale={locale}
-              leadMarks={leadMarks}
               settingsOpen={settingsOpen}
               onToggleSettings={() => setSettingsOpen((v) => !v)}
               settingsButtonRef={settingsButtonRef}
@@ -634,56 +665,7 @@ export function ReplayCanvas({
         {/* Le panneau se pose SUR la carte, à droite (retour de planche du 16/08 : « je vois
             plus un panneau par dessus »). Il ne mange donc plus la largeur du canvas — et il
             laisse libre le coin BAS-GAUCHE, où vit la légende de la carte de chaleur. */}
-        {settingsOpen && (
-          <ReplaySettingsDrawer
-            locale={locale}
-            onClose={closeSettings}
-            showAim={showAim}
-            onToggleAim={toggleAim}
-            showZones={showZones}
-            onToggleZones={toggleZones}
-            showNames={showNames}
-            onToggleNames={toggleNames}
-            showTrail={showTrail}
-            onToggleTrail={toggleTrail}
-            zonesAvailable={calloutZones.length > 0}
-            placements={{
-              available: placements.counts.drawable > 0,
-              show: showPlacements,
-              onToggle: togglePlacements,
-              unnamedAvailable: placements.counts.unnamed > 0,
-              showUnnamed: showUnnamedPlacements,
-              onToggleUnnamed: toggleUnnamedPlacements,
-              droppedAvailable: placements.counts.dropped > 0,
-              showDropped: showDroppedPlacements,
-              onToggleDropped: toggleDroppedPlacements,
-            }}
-            weaponPads={{
-              available: weaponPads.available,
-              show: showWeaponPads,
-              onToggle: toggleWeaponPads,
-            }}
-            flagCarries={{ available: flags.available, show: showFlagCarries, onToggle: toggleFlagCarries }}
-            vipCrown={{ available: vipCrown.available, show: showVipCrown, onToggle: toggleVipCrown }}
-            heatmap={{
-              show: showHeatmap,
-              onToggle: toggleHeatmap,
-              mode: heat.mode,
-              onSetMode: setHeatmapMode,
-              span: heatmapSpan,
-              onSetSpan: setHeatmapSpan,
-              killsAvailable: heat.killsAvailable,
-            }}
-            showShotFx={showShotFx}
-            onToggleShotFx={toggleShotFx}
-            showKillFx={showKillFx}
-            onToggleKillFx={toggleKillFx}
-            sound={sound}
-            markerColors={markerColors}
-            onSetMarkerColors={setMarkerColors}
-            triggerRef={settingsButtonRef}
-          />
-        )}
+        {settingsOpen && <ReplaySettingsDrawer {...drawer} />}
       </div>
     </div>
   )

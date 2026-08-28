@@ -18,7 +18,7 @@ import { render, screen } from '@testing-library/react'
 import type { KillEvent } from '@/features/match-view/_momentum'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
-import type { MedalEvent } from './killFeedLogic'
+import { buildFeedEntries, type MedalEvent } from './killFeedLogic'
 import { ReplayKillFeed } from './ReplayKillFeed'
 import { testReplayDoc } from './test/testDoc'
 import type { ReplayDocumentReady } from './replayNormalize'
@@ -73,6 +73,12 @@ const META = new Map([
 
 const SCOREBOARD: MatchScoreboardRow[] = []
 
+/**
+ * LE FIL EST ASSEMBLÉ EN AMONT DEPUIS LE 2026-08-28 (planche 2a) : la page appelle
+ * `buildFeedEntries` une fois et sert la même liste au fil et aux pistes de la frise. Les cas
+ * ci-dessous gardent donc leurs entrées d'origine (kills, médailles, document) et font
+ * l'assemblage ici — ce que la page fait pour eux en vrai.
+ */
 function renderFeed(
   kills: KillEvent[],
   nowMs: number,
@@ -83,12 +89,9 @@ function renderFeed(
 ) {
   return render(
     <ReplayKillFeed
-      kills={kills}
-      medals={medals}
-      t0Ms={t0Ms}
+      entries={buildFeedEntries(kills, medals, t0Ms, doc)}
       nowMs={nowMs}
       playWindow={null}
-      doc={doc}
       scoreboard={scoreboard}
       xuidMeta={META}
       locale="fr"
@@ -134,12 +137,9 @@ describe('ReplayKillFeed — synchronisation et permanence', () => {
     // le kill lu à 35,3 s de film s'écrit 0:16 — son instant de match (D-A2).
     render(
       <ReplayKillFeed
-        kills={kills}
-        medals={[]}
-        t0Ms={T0}
+        entries={buildFeedEntries(kills, [], T0, null)}
         nowMs={35_400}
         playWindow={{ startFrame: 184, endFrame: 4_000, startMs: T0, endMs: 400_000 }}
-        doc={null}
         scoreboard={SCOREBOARD}
         xuidMeta={META}
         locale="fr"
@@ -458,12 +458,9 @@ describe('ReplayKillFeed — marques « moi » et « ami »', () => {
   function renderMarked(kills: KillEvent[], marks: ReadonlyMap<string, 'me' | 'friend'>) {
     return render(
       <ReplayKillFeed
-        kills={kills}
-        medals={[]}
-        t0Ms={0}
+        entries={buildFeedEntries(kills, [], 0, null)}
         nowMs={20_000}
         playWindow={null}
-        doc={null}
         scoreboard={BOARD}
         xuidMeta={META}
         locale="fr"

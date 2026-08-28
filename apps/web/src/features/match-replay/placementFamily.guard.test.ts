@@ -228,10 +228,23 @@ describe('garde-rail : le vocabulaire des familles de pose', () => {
  * `useReplayVipCrown` est resserre sur une ligne (patron des appels longs voisins du tiroir),
  * le fichier retombe a 690 et le cliquet SUIT le fichier, comme a chaque fois : lui laisser
  * la ligne d'ecart aurait offert une ligne gratuite a la prochaine addition.
+ *
+ * 690 -> 672 le 2026-08-28 (lot LECTEUR, planche 2a — fusionne avec le correctif ci-dessus,
+ * mene en parallele sur la meme base rouge a 692). La refonte de la barre de lecture ajoutait
+ * au canvas une prop (`feedEntries`) et un hook. DEUX extractions, donc :
+ *   - TREIZIEME, `useReplayTimeline.ts` : la frise et son clavier — echelle des pistes,
+ *     reduction du fil aligne, dominance, medias, horloges de l'axe, raccourcis. Ils decrivent
+ *     LA FRISE, le canvas garde le DESSIN.
+ *   - QUATORZIEME, `useReplayDrawer.ts` : le montage du tiroir de reglages, une cinquantaine de
+ *     lignes qui ne decidaient rien — elles RECOPIAIENT trente bascules de `useReplaySettings`
+ *     vers le panneau. Le canvas garde desormais l'objet de reglages entier et n'en destructure
+ *     que les VALEURS, celles que le trace lit.
+ * Au merge, l'appel VipCrown resserre du correctif s'ajoute aux deux extractions : le fichier
+ * tombe a 672 et le plafond descend a la mesure du jour, comme a chaque extraction depuis 861.
  */
 describe('garde-rail : la taille du canvas du rejeu ne remonte pas', () => {
   it('ReplayCanvas.tsx reste sous son plafond', () => {
     const src = readFileSync(resolve(__dirname, 'ReplayCanvas.tsx'), 'utf8')
-    expect(src.split('\n').length - 1).toBeLessThanOrEqual(690)
+    expect(src.split('\n').length - 1).toBeLessThanOrEqual(672)
   })
 })
