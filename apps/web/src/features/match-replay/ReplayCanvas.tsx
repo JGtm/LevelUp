@@ -173,10 +173,8 @@ export function ReplayCanvas({
     showWeaponPads, showFlagCarries, showVipCrown, showSkullCarrier, speed: multiplier,
     markerColors,
   } = settings
-  // SON : coupé par défaut, préférences persistées, tout le câblage dans le hook (règles dans
-  // replaySound.ts, lecture replayAudio.ts, camps objectiveSound.ts, fin de partie endMatch). La
-  // `locale` ne sert qu'au son « manche terminée » (voix d'annonceur, seule entrée locale-aware
-  // de la piste).
+  // SON : coupé par défaut, câblage dans le hook (replaySound.ts, lecture replayAudio.ts, camps
+  // objectiveSound.ts, fin endMatch, « manche terminée » locale-aware — la `locale` ne sert qu'à lui).
   const sound = useReplaySound(doc, kills, t0Ms, multiplier, scoreboard, endMatch ?? null, locale)
 
   const paletteVersion = useColorPaletteVersion()
@@ -315,8 +313,6 @@ export function ReplayCanvas({
     scoreboard, teamColorOf, neutral: floorStyle.edge, outline: markInk.outline, reducedMotion,
   })
 
-  // LE CRÂNE d'Oddball (libre ET porté) : glyphe partagé habillé comme le drapeau — liseré à
-  // l'encre du FOND (`markInk.outline`), le même que le drapeau, pour le détacher de la carte.
   const objectiveObjects = useReplayObjectiveObjects({
     lives: doc.objectiveObjects, view: canvasView, ink: neutralInk, outline: markInk.outline,
   })
