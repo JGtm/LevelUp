@@ -187,16 +187,36 @@ la premiere image.
 
 Items :
 
-- [ ] `paintVictoryOverlay(ctx, reading, score, ...)` — panneau d'equipe ET panneau neutre
-- [ ] `paintRoundBreak(ctx, endedIndex, ...)` — version neutre, meme bloc de statut
-- [ ] Le filigrane du logo consomme l'image en MASQUE (`source-in`), jamais en aplat
-- [ ] Logo absent ou non charge : pas de filigrane, le panneau reste entier (parite DOM)
-- [ ] Couleurs resolues depuis les tokens du theme, aucune valeur hex dans le module
-- [ ] `document.fonts.ready` attendu avant la premiere image
+- [x] `paintVictoryOverlay(ctx, reading, score, ...)` — panneau d'equipe ET panneau neutre.
+      ECART ASSUME : un seul point d'entree `paintOverlayPanel` sert les DEUX panneaux et le
+      message inter-manche, le style du bloc etant un parametre. C'est la transposition
+      exacte du DOM, ou les trois partagent deja `replayOverlayStyles.ts` — deux peintres
+      auraient recopie la meme carte.
+- [~] `paintRoundBreak(ctx, endedIndex, ...)` — version neutre, meme bloc de statut : couvert
+      par `paintOverlayPanel` + `neutralStatusStyle`, avec `veil: false` (teste)
+- [~] Le filigrane du logo consomme l'image en MASQUE (`source-in`), jamais en aplat : le
+      peintre recoit l'image DEJA teintee, et le helper qui teinte existe deja dans le depot
+      (`tintedIconCanvas`, employe par les socles d'arme et les vignettes de grenade). Rien a
+      ecrire ; le branchement est un item de E3.
+- [x] Logo absent ou non charge : pas de filigrane, le panneau reste entier (parite DOM)
+- [x] Couleurs resolues depuis les tokens du theme, aucune valeur hex dans le module — les
+      encres arrivent en parametre (`readInk` / `resolveToken` cote appelant). Seule couleur
+      ecrite en clair : le noir de l'OMBRE PORTEE, qui n'est pas une couleur de theme
+      (precedent de la meme feature : `calloutsLayer.ts`, `zoneStatesLayer.ts`)
+- [~] `document.fonts.ready` attendu avant la premiere image : le peintre ne charge aucune
+      police, c'est un prealable de la BOUCLE — porte par l'item « Prealables asynchrones »
+      de E3, ou il a ete ajoute
 
 **Gate** : `cd apps/web && npx vitest run src/features/match-replay/overlayPaint` vert,
 `cd apps/web && npx eslint src/features/match-replay/overlayPaint.ts` sans erreur, puis
 recette visuelle utilisateur (l'image exportee ressemble a ce que la page affiche).
+
+**Etat 2026-08-28 : E2 CLOSE cote technique.** Gate vert — 12 tests sur contexte espionne
+(ordre fond-vers-texte, capitales, tiret dans l'encre attenuee, texte JAMAIS dans la
+couleur de camp, allie a gauche, filigrane sous le texte a 20 %, pas de voile sur
+l'inter-manche, rien peint sans statut) ; `make check-types` vert ; eslint sans erreur.
+**Recette visuelle utilisateur EN ATTENTE** — elle ne peut se prononcer que sur un export
+reel, donc apres E3.
 
 ### E3 — Le pilote d'export
 
@@ -220,7 +240,10 @@ Items :
       lots — NI `requestAnimationFrame` NI `setTimeout` : les deux sont brides en onglet
       cache (mesure en « Decouvertes », D-1)
 - [ ] Progression publiee (image N / total) et annulation honoree entre deux lots
-- [ ] Prealables asynchrones (calques cuits, icones chargees) verifies AVANT de demarrer
+- [ ] Prealables asynchrones verifies AVANT de demarrer : calques statiques cuits, icones
+      chargees, `document.fonts.ready` resolu (sans quoi la premiere image du clip ecrirait
+      le texte des surimpressions dans une police de repli), logo d'equipe teinte par
+      `tintedIconCanvas`
 - [ ] Restauration de l'image d'avant l'export en sortie, y compris sur annulation/erreur
 - [ ] Le cliquet de taille de `ReplayCanvas.tsx` n'est pas franchi (rien de neuf dedans)
 
