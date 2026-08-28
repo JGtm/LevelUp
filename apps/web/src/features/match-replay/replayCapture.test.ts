@@ -70,19 +70,39 @@ describe('triggerDownload — le blob est rendu, puis relâché', () => {
     vi.unstubAllGlobals()
   })
 
-  it('pose une ancre nommée, la déclenche, et révoque l’URL', () => {
-    const clic = vi.fn()
-    const ancre = { href: '', download: '', rel: '', click: clic } as unknown as HTMLAnchorElement
+  it('pose une ancre nommée, l’attache au document, et la déclenche', () => {
+    const ancre = document.createElement('a')
+    const clic = vi.spyOn(ancre, 'click').mockImplementation(() => {
+      // L'ANCRE EST DANS LE DOCUMENT AU MOMENT DU CLIC, et c'est tout l'objet de l'assertion :
+      // un clic sur un nœud détaché est ignoré par certains navigateurs (le téléchargement n'y
+      // part jamais). La vérifier APRÈS coup ne dirait rien — elle est déjà retirée.
+      expect(ancre.isConnected).toBe(true)
+    })
     const create = vi.spyOn(document, 'createElement').mockReturnValue(ancre)
     triggerDownload(new Blob(['xy']), 'rejeu-m-0m04s.png')
     expect(create).toHaveBeenCalledWith('a')
     expect(ancre.download).toBe('rejeu-m-0m04s.png')
     expect(ancre.href).toBe('blob:rejeu-test')
     expect(clic).toHaveBeenCalledTimes(1)
-    // LA RÉVOCATION EST LE POINT DU TEST : sans elle le blob reste retenu tout l'onglet.
-    expect(revoked).toEqual(['blob:rejeu-test'])
     expect(created).toHaveLength(1)
+    // ET ELLE REPART : une ancre laissée derrière s'accumulerait à chaque capture.
+    expect(ancre.isConnected).toBe(false)
     create.mockRestore()
+  })
+
+  it('ne révoque PAS l’URL au retour du clic, mais plus tard', () => {
+    vi.useFakeTimers()
+    const ancre = document.createElement('a')
+    vi.spyOn(ancre, 'click').mockImplementation(() => {})
+    const create = vi.spyOn(document, 'createElement').mockReturnValue(ancre)
+    triggerDownload(new Blob(['xy']), 'rejeu-m-0m04s.mp4')
+    // LE POINT DU TEST (correctif du 2026-08-28) : révoquer tout de suite coupe la source sous
+    // le téléchargement qui démarre. Un PNG y survivait, un clip vidéo n'arrivait jamais.
+    expect(revoked).toEqual([])
+    vi.runAllTimers()
+    expect(revoked).toEqual(['blob:rejeu-test'])
+    create.mockRestore()
+    vi.useRealTimers()
   })
 })
 
