@@ -179,6 +179,30 @@ func TestArgsEnfantReplay_OrdreDesCartes(t *testing.T) {
 	}
 }
 
+// TestCandidatsCarte : l'ordre des identites de carte (asset EN d'abord, brut ensuite) et le
+// rejet des vides sont LE point de verite partage parent (masse) / enfant (--one a la main).
+func TestCandidatsCarte(t *testing.T) {
+	cas := []struct {
+		nom      string
+		en, brut string
+		veut     []string
+	}{
+		{"les deux, EN d abord", "Dredge", "e4bb06db-brut", []string{"Dredge", "e4bb06db-brut"}},
+		{"EN vide -> brut seul", "", "Dredge", []string{"Dredge"}},
+		{"brut vide -> EN seul", "Live Fire", "", []string{"Live Fire"}},
+		{"les deux vides -> aucun", "  ", "", nil},
+		{"espaces resserres au bord", "  Dredge  ", "  brut  ", []string{"Dredge", "brut"}},
+	}
+	for _, c := range cas {
+		t.Run(c.nom, func(t *testing.T) {
+			got := candidatsCarte(c.en, c.brut)
+			if strings.Join(got, "|") != strings.Join(c.veut, "|") {
+				t.Fatalf("candidatsCarte(%q,%q) = %v, veut %v", c.en, c.brut, got, c.veut)
+			}
+		})
+	}
+}
+
 // TestTraiterResultatEnfant_Ventilation : CHAQUE issue tombe dans SA ligne de recap, et une
 // mort d'enfant n'est jamais comptee comme une construction.
 func TestTraiterResultatEnfant_Ventilation(t *testing.T) {
