@@ -1,3 +1,22 @@
+## [2026-08-28] CI feat/v75 ROUGE au niveau JOB — attribution : archlint TestNoLocalLongestRun, lot Oddball terrain — En cours (chantier modes porteurs)
+
+**Contexte** : depuis le merge `3efb23c76` (wt/oddball-terrain, porteur Oddball schema 23,
+registre `193628aba`), le job « Go Coverage + Baseline (CGO ./... complet) » est ROUGE sur
+`internal/archlint` : `--- FAIL: TestNoLocalLongestRun` (garde interdisant une implantation
+locale de « plus longue serie » hors helper canonique). Trois runs consecutifs rouges sur la
+meme cause : `193628aba`, `3f93f70b5` (merge hygiene medias — AUCUN fichier Go touche, tous
+ses jobs de contenu verts : Frontend, OpenAPI Lint, Contract, Build+Test ubuntu ET windows),
+`f2d2a87a8` (manches-ui).
+
+**Attribution** : le lot Oddball terrain / manches (session modes porteurs) — tres
+probablement une « plus longue serie de portage » calculee localement. Les chantiers lecteur
+(planche 2a `6b6d0ffaf`, medias `ec31deb32` — CI 4/4 verte, hygiene `3f93f70b5`) ne sont pas
+en cause.
+
+**Conclusion / prochaine etape** : correctif attendu du chantier proprietaire (reutiliser le
+helper canonique vise par le garde, ou allowlist datee si le garde le prevoit) ; la branche
+ne revient au vert JOB qu'apres. Signale au journal, patron d'attribution inter-sessions.
+
 ## [2026-08-28] Rejeu 2D — PASTILLES de manche + message inter-manche (multi-manche) — Complete
 
 **Contexte** : Oddball est le premier mode multi-manche (2 gagnantes, 3 max) mis en replay ; demande
