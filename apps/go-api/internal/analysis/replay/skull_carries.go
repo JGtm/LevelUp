@@ -216,20 +216,6 @@ func skullGrabCount(recs []objectiveevents.StatRecord) int {
 	return total
 }
 
-// skullCarrySecondsByXUID reconstruit la duree de portage (s) par joueur : somme des durees des
-// trains de tics sur toutes les manches. C'est la grandeur du gate oracle (porteur principal) —
-// exposee pour la re-cuisson des temoins.
-func skullCarrySecondsByXUID(recs []objectiveevents.StatRecord, identity objectiveevents.RoundIdentity) map[string]float64 {
-	out := map[string]float64{}
-	for _, r := range skullCarryIntervals(recs, identity) {
-		if r.xuid == "" {
-			continue
-		}
-		out[r.xuid] += float64(r.t1MS-r.t0MS) / 1000
-	}
-	return out
-}
-
 // attachSkullCarries pose les periodes de portage du crane sur le document, avec leur couverture.
 //
 // LE PONT D'IDENTITE (slot statborg -> xuid) SE FAIT ICI, comme pour la couronne et le drapeau,

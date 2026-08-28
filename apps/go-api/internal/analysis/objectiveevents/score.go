@@ -75,9 +75,10 @@ var (
 	// (`comp 0 A`), qui en Oddball compte les TICS DE POSSESSION du crane (`skull_scoring_ticks`,
 	// identifie par l'oracle films confondus : 47 accords non-nuls sur 7 films). C'est le
 	// ModeScoreComponent SANS la stricte croissance : le composant est reemis a valeur A EGALE
-	// quand sa valeur B bouge, et [longestRun] non strict garde ces repetitions ; c'est
-	// [incrementInstants] qui deduplique ensuite par valeur, en datant chaque tic a sa PREMIERE
-	// emission (la vraie), la ou la stricte croissance le daterait a la derniere. C'est
+	// quand sa valeur B bouge, et [longestRun] non strict garde ces repetitions ; c'est la
+	// deduplication par valeur du consommateur (`skullTickInstants`, paquet replay) qui date
+	// ensuite chaque tic a sa PREMIERE emission (la vraie), la ou la stricte croissance le
+	// daterait a la derniere. C'est
 	// l'instrument valide au gate du porteur (principal 7/7 films) — a ne pas changer sans
 	// remesurer.
 	SkullTicksComponent = StatComponent{Comp: modeScoreComp}
