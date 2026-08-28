@@ -1,3 +1,27 @@
+## [2026-08-28] Rejeu 2D — PASTILLES de manche + message inter-manche (multi-manche) — Complete
+
+**Contexte** : Oddball est le premier mode multi-manche (2 gagnantes, 3 max) mis en replay ; demande
+utilisateur d'afficher les manches. Pur FRONT-END : la donnee par manche est deja publiee
+(`document_score.go` -> `teams[].rounds[]`), 0 Go, 0 bump de schema.
+
+**Decision technique** : `roundsLogic.ts` (pur, teste 223 l.) derive tout de la donnee : nombre de
+manches = manches JOUEES (`targetScore` = plafond intra-manche, PAS un seuil best-of -> aucun « 3 » en
+dur), vainqueur = score de FIN de manche le plus haut (egalite -> vide), pastille pleine au dernier
+palier (instant de victoire), bascule datee au debut de la manche suivante. Rangee commune teintee au
+camp gagnant (tokens `team-ally`/`team-enemy`). Message `ReplayRoundBreakOverlay` « Manche N terminee »
+/ « Round N over » (FR/EN) a la bascule, derive de la position de lecture comme l'ecran de fin.
+
+**Resultats** : dots LIVRES, message inter-manche LIVRE, SON « manche terminee » NON cable (aucun asset
+adapte ; trigger `roundTransitions` vivant, garde-rail refuse le stem sans fichier). Gates : typecheck
+OK, lint 0 erreur, vitest (5192 au lot, 1625 match-replay a la fusion), 0 hex, i18n FR+EN par contrat.
+Fusionne feat/v75.
+
+**Conclusion / prochaine etape** : le son « manche terminee » attend un ASSET de l'utilisateur (comme
+le translocateur) -> cablage 1 ligne au jour de l'asset. Suit : lot backend (migration calque Objectives
+`matchfacts.identifiedEvents` vers l'identite par manche + 3 P2 de la revue porteur). Decouverte : pas de
+champ serveur `roundsToWin` (impossible de pre-remplir des dots vides jusqu'au seuil de victoire) — non
+traite, pas de bump.
+
 ## [2026-08-28] Schema media jumeau `AssociatedMediaItem` supprime + repli kind repare — Complete
 
 **Contexte** : l'onglet Medias de la page match (`MatchMediaTab.tsx`) se typait sur
