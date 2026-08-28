@@ -631,6 +631,15 @@ export function buildSoundTimeline(
     // viennent d'aucun joueur — leur source est `doc.zoneStates`, pas `doc.objectives` — mais
     // ils appartiennent à la même catégorie du tiroir, et se coupent donc avec elle.
     out.push(...zoneSoundEvents(doc, allyTeam))
+    // LE SON « MANCHE TERMINÉE » SE BRANCHERAIT ICI, sur la même mesure que le message
+    // inter-manche : la bascule d'une manche à la suivante (`roundTransitions`, roundsLogic),
+    // datée par le calque de score. IL N'EST PAS CÂBLÉ faute d'asset : le jeu n'en fournit pas
+    // dans le pack, et on ne référence JAMAIS un stem sans fichier — le garde-rail
+    // `replaySoundAssets.guard.test.ts` le refuse à juste titre (un asset mort casse l'écoute),
+    // exactement comme le translocateur est resté muet jusqu'à ce que l'utilisateur l'extraie.
+    // Le point de déclenchement est établi et VIVANT (l'overlay inter-manche l'utilise déjà) ;
+    // le jour de l'asset, le son se câble comme `zoneSoundEvents` — une table de stem, un
+    // `out.push(...roundOverSoundEvents(doc))`, et la ligne de garde-rail correspondante.
   }
   return out.sort((a, b) => a.ms - b.ms)
 }

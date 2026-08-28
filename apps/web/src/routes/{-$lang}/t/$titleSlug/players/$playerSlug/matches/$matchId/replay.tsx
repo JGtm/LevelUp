@@ -28,6 +28,7 @@ import { ReplayKillFeed } from '@/features/match-replay/ReplayKillFeed'
 import { ReplayMatchRecall } from '@/features/match-replay/ReplayMatchRecall'
 import { frameToMs } from '@/features/match-replay/replayLogic'
 import { replayWindow } from '@/features/match-replay/replayWindow'
+import { ReplayRoundBreakOverlay } from '@/features/match-replay/ReplayRoundBreakOverlay'
 import { ReplayScoreBanner } from '@/features/match-replay/ReplayScoreBanner'
 import { ReplayTeams } from '@/features/match-replay/ReplayTeams'
 import { ReplayVictoryOverlay } from '@/features/match-replay/ReplayVictoryOverlay'
@@ -291,6 +292,11 @@ function ReplayPage() {
               titleSlug={params.titleSlug}
               locale={locale}
             />
+            {/* LE MESSAGE INTER-MANCHE (Oddball et modes multi-manche), dérivé de la position
+                de lecture comme l'écran de fin : « Manche N terminée » paraît brièvement à la
+                bascule d'une manche à la suivante et laisse passer les clics. Sur un mode à
+                manche unique, il ne se rend jamais. */}
+            <ReplayRoundBreakOverlay doc={data} frame={frame} locale={locale} />
           </section>
           {/* FICHES AU-DESSUS, FIL EN DESSOUS, même largeur (demande du 2026-08-24) : un
               rejeu se lit en balayant du terrain vers les joueurs, puis vers l'événement.

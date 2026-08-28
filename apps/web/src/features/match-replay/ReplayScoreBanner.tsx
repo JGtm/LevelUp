@@ -42,7 +42,9 @@ import type { MatchScoreboardRow } from '@/lib/api/types'
 import { formatClock } from './replayLogic'
 import { displayClockMs, type ReplayWindowBounds } from './replayWindow'
 import { readScoreBanner, type ScoreBannerSide } from './scoreBannerLogic'
+import type { RoundDot } from './roundsLogic'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
+import type { ReplayText } from './i18nContract'
 
 interface Props {
   /**
@@ -81,32 +83,85 @@ export function ReplayScoreBanner({
   )
   if (!reading) return null
   return (
+    <div className="mb-2">
+      {/* LES PASTILLES DE MANCHE COIFFENT LE SCORE (demande utilisateur : « au-dessus du score
+          des dots vides pour les manches, pleines pour les gagnées »). UNE RANGÉE COMMUNE,
+          centrée sur l'horloge, teintée au camp gagnant plutôt que deux rangées par équipe :
+          entre deux camps, « l'allié a gagné la manche 1 » et « l'adverse ne l'a pas gagnée »
+          sont la même information — la dédoubler prendrait le double de largeur pour ne rien
+          dire de plus. La couleur, elle, dit d'un coup d'œil QUI a pris chaque manche. */}
+      <RoundDots dots={reading.dots} t={t} />
+      <div role="group" aria-label={t.scoreBannerLabel} className="flex items-stretch gap-2">
+        <ScoreBar side={reading.ally} label={t.scoreBannerAlly} token="team-ally" anchor="left" />
+        <div className="flex shrink-0 flex-col items-center justify-center px-1">
+          <span
+            className="font-mono text-sm font-bold leading-none tabular-nums"
+            aria-label={t.scoreBannerClock}
+          >
+            {formatClock(displayClockMs(nowMs, playWindow))}
+          </span>
+          {/* LA MANCHE, seulement quand le mode en a plusieurs : sur un mode à manche unique
+              elle ne dirait rien que le total ne dise déjà. Discrète — c'est un repère. */}
+          {reading.round && (
+            <span
+              className="mt-0.5 text-[9px] font-normal leading-none tabular-nums text-muted-foreground"
+              title={t.roundOfCountFmt(reading.round.index, reading.round.count)}
+            >
+              {t.roundNumberFmt(reading.round.index)}
+            </span>
+          )}
+        </div>
+        <ScoreBar side={reading.enemy} label={t.scoreBannerEnemy} token="team-enemy" anchor="right" />
+      </div>
+    </div>
+  )
+}
+
+/**
+ * La rangée de pastilles de manche, centrée au-dessus du score. Ne rend RIEN sur un mode à
+ * manche unique (`dots` vide) : une seule pastille ne dirait rien que le total ne dise déjà.
+ */
+function RoundDots({ dots, t }: { dots: RoundDot[]; t: ReplayText }) {
+  if (dots.length === 0) return null
+  return (
     <div
       role="group"
-      aria-label={t.scoreBannerLabel}
-      className="mb-2 flex items-stretch gap-2"
+      aria-label={t.roundDotsLabel}
+      className="mb-1 flex items-center justify-center gap-1.5"
     >
-      <ScoreBar side={reading.ally} label={t.scoreBannerAlly} token="team-ally" anchor="left" />
-      <div className="flex shrink-0 flex-col items-center justify-center px-1">
-        <span
-          className="font-mono text-sm font-bold leading-none tabular-nums"
-          aria-label={t.scoreBannerClock}
-        >
-          {formatClock(displayClockMs(nowMs, playWindow))}
-        </span>
-        {/* LA MANCHE, seulement quand le mode en a plusieurs : sur un mode à manche unique
-            elle ne dirait rien que le total ne dise déjà. Discrète — c'est un repère. */}
-        {reading.round && (
-          <span
-            className="mt-0.5 text-[9px] font-normal leading-none tabular-nums text-muted-foreground"
-            title={t.roundOfCountFmt(reading.round.index, reading.round.count)}
-          >
-            {t.roundNumberFmt(reading.round.index)}
-          </span>
-        )}
-      </div>
-      <ScoreBar side={reading.enemy} label={t.scoreBannerEnemy} token="team-enemy" anchor="right" />
+      {dots.map((dot, i) => (
+        <RoundDotMark key={dot.round} dot={dot} index={i + 1} t={t} />
+      ))}
     </div>
+  )
+}
+
+/**
+ * Une pastille : pleine à la couleur du camp gagnant quand la manche est tranchée, sinon un
+ * anneau neutre (manche en cours ou à jouer). Les couleurs de camp sont les tokens de toute la
+ * page (`team-ally` / `team-enemy`, surchargeables par les réglages d'accessibilité) ; l'anneau
+ * vide emprunte le token neutre du thème. Le libellé dit l'état — l'œil lit la couleur, le
+ * lecteur d'écran lit le mot.
+ */
+function RoundDotMark({ dot, index, t }: { dot: RoundDot; index: number; t: ReplayText }) {
+  const token = dot.winner === 'ally' ? 'team-ally' : dot.winner === 'enemy' ? 'team-enemy' : null
+  const label =
+    dot.winner === 'ally'
+      ? t.roundDotAllyFmt(index)
+      : dot.winner === 'enemy'
+        ? t.roundDotEnemyFmt(index)
+        : t.roundDotPendingFmt(index)
+  const style: CSSProperties = token
+    ? { background: tokenCssVar(token), borderColor: tokenCssVar(token) }
+    : {}
+  return (
+    <span
+      role="img"
+      aria-label={label}
+      title={label}
+      className={`h-2.5 w-2.5 rounded-full border ${token ? '' : 'border-muted-foreground bg-transparent'}`}
+      style={style}
+    />
   )
 }
 

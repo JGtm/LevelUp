@@ -213,6 +213,59 @@ describe('readScoreBanner — les manches', () => {
   })
 })
 
+describe('readScoreBanner — les pastilles de manche, dans le camp du joueur de la page', () => {
+  /** Oddball à deux manches, les DEUX équipes ayant leurs manches ventilées (t0 gagne 100/78 puis 100/43). */
+  const ODDBALL_SPLIT = () =>
+    timelineOf({
+      teams: [
+        {
+          teamId: 0,
+          rounds: [
+            { round: 0, points: [[0, 0], [50, 100]].map(([t, v]) => ({ t, v })) },
+            { round: 1, points: [[100, 0], [150, 100]].map(([t, v]) => ({ t, v })) },
+          ],
+          total: [[0, 0], [50, 100], [150, 200]].map(([t, v]) => ({ t, v })),
+        },
+        {
+          teamId: 1,
+          rounds: [
+            { round: 0, points: [[0, 0], [50, 78]].map(([t, v]) => ({ t, v })) },
+            { round: 1, points: [[100, 0], [150, 43]].map(([t, v]) => ({ t, v })) },
+          ],
+          total: [[0, 0], [50, 78], [150, 121]].map(([t, v]) => ({ t, v })),
+        },
+      ],
+      players: [],
+    })
+
+  it('remplit les deux pastilles au camp allié en fin de match', () => {
+    expect(readScoreBanner(ODDBALL_SPLIT(), SB_2V2, ALLY_T0, 200)?.dots).toEqual([
+      { round: 0, winner: 'ally' },
+      { round: 1, winner: 'ally' },
+    ])
+  })
+
+  it('inverse le vainqueur des pastilles quand le joueur de la page est dans t1', () => {
+    const r = readScoreBanner(
+      ODDBALL_SPLIT(),
+      SB_2V2,
+      allies([
+        ['moi', false],
+        ['eux', true],
+      ]),
+      200,
+    )
+    expect(r?.dots).toEqual([
+      { round: 0, winner: 'enemy' },
+      { round: 1, winner: 'enemy' },
+    ])
+  })
+
+  it('ne rend aucune pastille sur un mode à manche unique', () => {
+    expect(readScoreBanner(SLAYER(), SB_2V2, ALLY_T0, 500)?.dots).toEqual([])
+  })
+})
+
 describe('readScoreBanner — ce que le bandeau REFUSE d\'afficher', () => {
   it('FFA (aucun camp au scoreboard) : pas de bandeau', () => {
     const ffa = board([
