@@ -13,6 +13,7 @@ import { normalizeScoreTimeline, type ReplayScoreTimelineReady } from '@/lib/rep
 
 import {
   activeRoundTransition,
+  currentRoundAtFrame,
   roundCount,
   roundDots,
   roundTransitions,
@@ -98,6 +99,53 @@ describe('roundCount — le nombre de manches jouées', () => {
       players: [],
     })
     expect(roundCount(slayer)).toBe(1)
+  })
+})
+
+describe('currentRoundAtFrame — la manche EN COURS du match (pas d\'un camp)', () => {
+  it('bascule à la borne PARTAGÉE : le premier palier de l\'un OU l\'autre camp', () => {
+    // La manche 1 de t0 ne commence qu\'à f130, mais celle de t1 dès f100 : la borne partagée
+    // est f100, et les deux barres basculent ensemble dès f110.
+    const shared = timelineOf({
+      teams: [
+        equipe(
+          0,
+          [manche(0, [[0, 0], [50, 100]]), manche(1, [[130, 0], [200, 100]])],
+          [[0, 0], [50, 100], [200, 200]],
+        ),
+        equipe(
+          1,
+          [manche(0, [[0, 0], [50, 78]]), manche(1, [[100, 0], [200, 60]])],
+          [[0, 0], [50, 78], [200, 138]],
+        ),
+      ],
+      players: [],
+    })
+    expect(currentRoundAtFrame(shared, 110)).toEqual({ round: 1, index: 2, count: 2 })
+  })
+
+  it('rend la manche PRÉCÉDENTE dans la fenêtre inter-manche', () => {
+    // f75 : la manche 0 est finie (dernier palier f50), la manche 1 n\'a pas commencé (f100).
+    expect(currentRoundAtFrame(ODDBALL(), 75)).toEqual({ round: 0, index: 1, count: 2 })
+  })
+
+  it('rend la première manche avant tout début, et le bon compte', () => {
+    expect(currentRoundAtFrame(BEST_OF_THREE(), 0)).toEqual({ round: 0, index: 1, count: 3 })
+    expect(currentRoundAtFrame(BEST_OF_THREE(), 250)).toEqual({ round: 2, index: 3, count: 3 })
+  })
+
+  it('rend {index:1, count:1} sur un mode à manche unique', () => {
+    const slayer = timelineOf({
+      teams: [equipe(0, [manche(0, [[0, 0], [500, 43]])], [[0, 0], [500, 43]])],
+      players: [],
+    })
+    expect(currentRoundAtFrame(slayer, 500)).toEqual({ round: 0, index: 1, count: 1 })
+  })
+
+  it('rend null quand aucune manche n\'est ventilée', () => {
+    const vide = timelineOf({ teams: [{ teamId: 0, rounds: [], total: [] }], players: [] })
+    expect(currentRoundAtFrame(vide, 100)).toBeNull()
+    expect(currentRoundAtFrame(undefined, 100)).toBeNull()
   })
 })
 

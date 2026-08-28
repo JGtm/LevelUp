@@ -260,6 +260,26 @@ export function teamScoreAtFrame(
   return scoreAtFrame(teamSeriesFor(timeline, teamId)?.total ?? [], frame)
 }
 
+/**
+ * teamRoundScoreAtFrame — le score d'un camp DANS une manche au frame courant.
+ *
+ * C'EST LA GRANDEUR QUI REPART DE ZÉRO à chaque manche, là où `teamScoreAtFrame` rend le
+ * cumul du match. Rend 0 avant le premier palier de la manche (le compteur de la manche
+ * n'a pas encore bougé) et 0 si le camp n'a pas cette manche du tout — une équipe muette
+ * sur une manche vaut zéro, exactement comme sur le total (témoin CTF 3-0). Le point unique
+ * du motif `find(round) + scoreAtFrame` : `roundFinal` (roundsLogic) y délègue.
+ */
+export function teamRoundScoreAtFrame(
+  timeline: ReplayScoreTimelineReady | undefined,
+  teamId: number | null,
+  roundNumber: number,
+  frame: number,
+): number {
+  const team = teamSeriesFor(timeline, teamId)
+  const r = team?.rounds.find((x) => x.round === roundNumber)
+  return r ? scoreAtFrame(r.points, frame) : 0
+}
+
 /** teamIdOfSide traduit le camp du scoreboard (`t{N}`) en identifiant d'équipe du film. */
 export function teamIdOfSide(side: string | null | undefined): number | null {
   return parseTeamSideID(side)
