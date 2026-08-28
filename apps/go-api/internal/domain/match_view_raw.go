@@ -444,8 +444,15 @@ type MediaAssocRaw struct {
 	FilePath      string
 	Kind          string
 	ThumbnailPath *string
-	CaptureTime   *string
-	Liked         bool
+	// CaptureStartTime : début de capture (RFC3339), nil si la base ne le connaît
+	// pas. CaptureTime, lui, est la FIN de la capture — les deux sont distincts
+	// pour un clip et confondus pour une image.
+	CaptureStartTime *string
+	CaptureTime      *string
+	// DurationSeconds : durée du média arrondie à la seconde (la base la stocke
+	// en DOUBLE). Nil pour une image ou quand ffprobe n'a rien pu dériver.
+	DurationSeconds *int
+	Liked           bool
 }
 
 // PlayerAssistsModel contient les coefs OLS per-mode d'un joueur pour expected_assists.

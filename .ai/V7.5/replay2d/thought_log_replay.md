@@ -4979,3 +4979,37 @@ Chiffres du gate lot 6 (cache typecheck purge) : `npm run typecheck` exit 0 ; vi
 `src/features/match-replay` 100 fichiers / **1552 tests, 0 echec** (+6 : 5 cas de la garde,
 1 garde-fou) ; `src/routes` 30 tests verts (non touchees, controle) ; ESLint 0 erreur, 0 warning
 sur les 4 fichiers touches.
+
+## 2026-08-28 — Lecteur, phase 2 : les medias arrivent sur la frise (lot 1, la donnee)
+
+La piste Medias de la frise etait posee au lot precedent, mais vide : `EMPTY_MEDIA`. Ce qui
+manquait n'etait pas un endpoint — la page rejeu appelle deja `useMatchView`, et le match sert
+deja ses medias associes — mais DEUX COLONNES que la requete ne demandait pas.
+
+**`capture_time` est une FIN de capture, et personne ne l'avait releve.** Poser un clip dessus
+le decale de sa propre duree : un clip de 30 s tourne autour d'un frag apparait 30 s APRES le
+frag. Q24 sert desormais aussi `capture_start_utc`, et le DTO le porte separement
+(`capture_start_time`) — `capture_time` reste la fin, l'onglet medias du match le consomme tel
+quel. Quand le debut manque, la duree permet de le reconstituer.
+
+**`duration_seconds` etait un bug latent parfait** : le champ existait au DTO, il etait meme au
+schema openapi, et il n'a JAMAIS ete peuple — Q24 ne le selectionnait pas. Un champ nul depuis
+toujours, servi a tout le monde, teste par rien. Le seul lecteur cote web
+(`MatchMediaTab.tsx:40`, repli de `kind`) s'en accommodait en classant tout en 'screenshot'.
+
+**La base le stocke en DOUBLE, le DTO l'expose en entier.** Changer le type du DTO aurait ete un
+troisieme changement de contrat pour rien : l'arrondi coute au pire une demi-seconde de
+placement, quand le recalage lui-meme (capture absolue moins coup d'envoi) est deja une
+approximation assumee. Scan en `sql.NullFloat64`, `math.Round`, commentaire a l'appui.
+
+**La fixture media est partagee avec les scenarios de galerie** — on ne la touche pas. Le
+nouveau test pose debut et duree par UPDATE cible sur med-A1 (29,6 s en base, 30 attendu au
+DTO : l'arrondi est teste, pas suppose) et laisse med-C1 en NULL/NULL, ce qui couvre l'absence
+sans ecrire un second dataset. Les horodatages se comparent sur l'INSTANT, pas sur la chaine :
+un TIMESTAMPTZ peut revenir avec un decalage explicite, equivalent mais ecrit autrement.
+
+Chiffres du gate lot 1 : `go build ./...` exit 0 ; `go test -tags=integration
+-run TestMatchViewRepo_GetMatchMedia` **6/6 PASS** (TeammateOnly reste vert) ; `go test
+./internal/platform/duckdb/... ./internal/service/... ./internal/domain/...` 13 packages ok ;
+`go vet ./...` exit 0 ; openapi-gen + generate-types + openapi-check (les deux maillons) exit 0
+— diff de contrat = UN champ ; `npm run typecheck` exit 0.

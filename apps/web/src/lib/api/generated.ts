@@ -7214,6 +7214,7 @@ export interface components {
             pairs: components["schemas"]["MatchAssistPair"][] | null;
         };
         MatchAssociatedMedia: {
+            capture_start_time?: string;
             capture_time?: string;
             /** Format: int64 */
             duration_seconds?: number;

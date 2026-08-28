@@ -713,7 +713,11 @@ type MatchAssociatedMedia struct {
 	Kind            string  `json:"kind"`
 	ThumbnailURL    *string `json:"thumbnail_url,omitempty"`
 	DurationSeconds *int    `json:"duration_seconds,omitempty"`
-	CaptureTime     *string `json:"capture_time,omitempty"`
+	// CaptureStartTime : DÉBUT de la capture (RFC3339). CaptureTime est la FIN —
+	// distinction indispensable à la piste Médias de la frise du rejeu, qui pose
+	// un clip sur son début (start si connu, sinon end − durée).
+	CaptureStartTime *string `json:"capture_start_time,omitempty"`
+	CaptureTime      *string `json:"capture_time,omitempty"`
 	// Liked : état du cœur DU VIEWER de la requête (comme MediaItem.Liked),
 	// pas un état global du média. Cf. Q24MatchMedia.
 	Liked bool `json:"liked"`
