@@ -43,7 +43,7 @@ joueur).
   vivant = frame ; croix de mort = fin de fenêtre (sinon régression : la croix ne se dessine
   plus). Gate : `replayMarkers.test.ts`.
 
-- [ ] **E4 — Événements (`fireMark.ts`, `replayDraw.ts`).** fireMark : `colorOfSlot(slot, frame)`
+- [x] **E4 — Événements (`fireMark.ts`, `replayDraw.ts`).** fireMark : `colorOfSlot(slot, frame)`
   (vie vivante à frame). killFx : `colorOfSlot(slot, e.frame)` (couleur du tueur à l'INSTANT
   du kill). Gate : `fireMark.test.ts`, `meleeStar.test.ts`.
 

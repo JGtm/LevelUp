@@ -250,7 +250,13 @@ export interface ShotStyle {
 
 /** Style du calque des morts : la couleur du tueur, et le repli quand il n'a pas de trace. */
 export interface KillFxStyle {
-  colorOfSlot: (slot: number) => string | null
+  /**
+   * Couleur du TUEUR, résolue par slot ET par image : elle est demandée à l'INSTANT DU KILL
+   * (`e.frame`), pas à l'image de dessin — un slot est réattribué entre manches, et l'effet de
+   * mort persiste plusieurs frames après le coup, pendant lesquelles le slot pourrait déjà
+   * appartenir à un autre joueur.
+   */
+  colorOfSlot: (slot: number, frame: number) => string | null
   fallback: string
   reducedMotion: boolean
   /** Densité du canevas : l'étoile de mêlée est déclarée en pixels d'ÉCRAN. */
@@ -284,7 +290,7 @@ export function drawKillFxLayer(
     if (age < 0 || age > win.hold) continue
     const fade = 1 - age / (win.hold + 1)
     const c = worldToCanvas(e, view.bounds, view.width, view.height, view.pad)
-    const color = (e.slot !== null ? style.colorOfSlot(e.slot) : null) ?? style.fallback
+    const color = (e.slot !== null ? style.colorOfSlot(e.slot, e.frame) : null) ?? style.fallback
     if (e.fam === 'melee') {
       // AU LIEU DE LA MORT : la victime quand elle est relue, l'origine sinon (elle vaut
       // alors la position du tueur, à un pas de corps près — c'est un corps à corps).
