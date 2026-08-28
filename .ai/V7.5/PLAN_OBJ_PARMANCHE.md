@@ -44,30 +44,38 @@ touche ; forme du document et contrat INCHANGES.
   l'accord phase-0 (8/8, 0 desaccord) — MEME base que drapeau/VIP/crane deja livres. Golden
   film reel = corpus-gated, PAS de cache local : non joue ici, statue au CR.
 
-## Etape 2 — P2 #1 : `skullCarrySecondsByXUID` test-only
+## Etape 2 — P2 #1 : `skullCarrySecondsByXUID` test-only — CLOSE
 
-- [ ] Deplacer `skull_carries.go:skullCarrySecondsByXUID` (aucun appelant de prod ; seul
-  `skull_carries_witness_test.go` l'appelle) vers le fichier de test. Zero changement de
-  comportement.
+- [x] `skullCarrySecondsByXUID` deplacee de `skull_carries.go` (PROD) vers
+  `skull_carries_witness_test.go` (seul appelant, meme paquet `replay`). Retiree du binaire
+  de prod, zero changement de comportement. Build/vet/tests VERTS.
 
-## Etape 3 — P2 #2 : doc `SkullTicksComponent`
+## Etape 3 — P2 #2 : doc `SkullTicksComponent` — CLOSE
 
-- [ ] `objectiveevents/score.go:~79` : la reference `[incrementInstants]` pointe un
-  identifiant qui n'existe QUE dans `cmd/oddball-terrain`. Corriger vers la vraie fonction
-  de dedup portee en prod (`replay.skullTickInstants`), en prose (lien cross-package
-  vers un non-exporte ne resout pas). Doc seulement.
+- [x] `objectiveevents/score.go` : reference morte `[incrementInstants]` (identifiant de
+  `cmd/oddball-terrain` hors perimetre publie) remplacee par une mention en prose de la vraie
+  fonction de dedup portee en prod : `skullTickInstants` (paquet replay). Doc seulement.
 
-## Etape 4 — P2 #3 : test synthetique porteur (si peu couteux)
+## Etape 4 — P2 #3 : test synthetique porteur — CLOSE
 
-- [ ] `TestSkullCarrierWitness` skip en CI (pas de corpus). SI peu couteux, ajouter un test
-  SYNTHETIQUE en memoire exercant `skullCarrySecondsByXUID`/le chemin porteur et gate en CI.
-  Sinon, laisser tel quel et le statuer au CR (pas d'action = valide).
+- [x] Peu couteux (reutilise `skullFixture`) : `TestSkullCarrySecondsByXUID` ajoute a
+  `skull_carries_test.go` — gate en CI la grandeur du gate oracle (somme durees/xuid,
+  porteur principal = A) que le temoin sur film reel skip. VERT.
 
 ## Gates (chaque etape)
 
-`go build ./...`, `go vet ./...`, `go test` des paquets touches (replaybuild, replay,
-objectiveevents) + contracttest (le contrat NE bouge PAS). Pas de web (contrat stable).
+`go build ./...`, `go vet ...`, `go test` des paquets touches (replaybuild, replay,
+objectiveevents) + contracttest (le contrat NE bouge PAS). Pas de web (contrat stable). TOUS VERTS.
 
-## Decouvertes
+## Decouvertes (non traitees — perimetre)
 
-(a remplir — non traitees dans ce lot)
+1. `deathInstantsOf` existe desormais en 2 copies quasi identiques (`replaybuild/matchfacts.go`
+   et `replay/build_objectives_live.go` : `[]Death` -> `[]DeathInstant`). Dans la regle des
+   <= 2 copies ; candidat a centralisation a la 3e occurrence.
+2. Chemin production : le chunk highlight des morts est desormais relu 2 fois par artefact
+   (matchfacts `ScanFilmDeaths` + le scan interne de `BuildFromFilm`). Cout borne (un chunk),
+   mais duplication. `BuildFromFilm` ecrase tout `opt.Deaths` fourni -> pas de partage trivial.
+3. `cmd/zone-attribution` et le temoin zones p2b INJECTENT encore des objectifs identifies par
+   l'ANCIEN pont (`SlotIdentityResolved`/`SlotIdentity`, par totaux) via `Options.Objectives` —
+   desormais incoherent avec le pont PAR MANCHE de la prod. Non touches (type public stable,
+   outils de recherche hors perimetre) ; a aligner sur le chemin prod dans un lot dedie.
