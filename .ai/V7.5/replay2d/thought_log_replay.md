@@ -5056,3 +5056,47 @@ Chiffres du gate lot 2 (cache typecheck purge) : `npm run typecheck` exit 0 ; vi
 `src/features/match-replay` + `src/routes` = 104 fichiers / **1598 tests, 0 echec** (+16 : 15
 pour le mappeur, 1 pour la rangee absente) ; ESLint 0 erreur sur 9 fichiers touches, 1 warning
 PRE-EXISTANT (exhaustive-deps objectiveObjects).
+
+## 2026-08-28 — Lecteur, phase 2 : la lightbox sait lire un flux (lot 3, HLS)
+
+Une lightbox qui ouvre un clip transcode et n'affiche rien : c'est ce qui serait arrive au
+premier clic du lot 2. Le `file_path` d'un clip transcode MUE vers un `master.m3u8`, et un
+`<video src>` nu ne lit pas un manifest sur Chrome ni Firefox — ni l'un ni l'autre n'a de
+lecteur HLS natif.
+
+**LA GALERIE AVAIT DEJA RESOLU LE PROBLEME, ET N'EN EXPOSAIT RIEN.** L'attache vivait inline
+dans `ClipPlayer`. Recopier ces cinquante lignes aurait fabrique deux versions qui divergent au
+premier quirk de navigateur corrige d'un seul cote — et il y en a deja un au dossier : Chrome
+repond « maybe » a `canPlayType` pour du HLS tout en n'exposant pas `video.audioTracks`
+(incident 2026-06-14), ce qui impose de preferer hls.js des que MSE existe. D'ou une EXTRACTION
+vers `lib/media/useHlsVideo.ts`, et la galerie migree dessus DANS LE MEME LOT.
+
+**LES 116 TESTS DE LA GALERIE PASSENT SANS UNE MODIFICATION.** C'est la seule preuve qui vaille
+qu'une extraction est fidele : le comportement etait deja decrit, il l'est encore.
+
+**LE GARDE-RAIL N'ETAIT PAS DEMANDE, IL EST POSE.** `hlsSingleImport.guard.test.ts` interdit
+tout `import Hls from 'hls.js'` hors du helper. Une factorisation sans garde-rail re-diverge :
+un troisieme composant qui importe la bibliotheque compile, passe tous les autres tests, et
+personne ne voit la copie arriver. Morsure verifiee sur pieces — import temoin ajoute, le test
+rougit EN NOMMANT le fichier ; retire, il redevient vert.
+
+**UN DEFAUT QUE LE LOT 2 A REVEILLE.** `isClip = kind === 'clip' && !!durationMs` confondait
+deux questions : « est-ce une video ? » et « connait-on sa duree ? ». Un clip dont la base
+ignore la duree (ffprobe absent a l'ingestion) partait dans la branche IMAGE, donc rendait un
+`<img src=...mp4>` : un cadre vide, sans commande, sans message. Le defaut existait depuis la
+livraison de la lightbox et n'etait atteignable par personne tant que la piste etait vide. La
+duree ne commande plus desormais que la bande d'images et l'horloge.
+
+**DEUX MESSAGES D'ECHEC, PAS UN.** Un navigateur sans MSE ni HLS natif ne lira JAMAIS ce clip
+(il faut en changer) ; un flux en erreur peut etre reessaye. Les confondre en un « lecture
+impossible » retirerait au lecteur la seule information qui lui sert.
+
+**L'EXTRACTION A COUTE TROIS WARNINGS DE LINT, PAYES DANS LE LOT.** Ecrire une ref pendant le
+rendu est un effet de bord sur un rendu que React peut rejouer : la mise a jour des rappels
+passe dans un effet, declare AVANT celui de l'attache pour que l'ordre d'execution la rende
+vraie. Et `hlsRef`, venu d'un hook, doit etre declare en dependance des deux effets de la
+galerie — il est stable, cela ne relance rien.
+
+Chiffres du gate lot 3 (cache typecheck purge) : `npm run typecheck` exit 0 ; vitest
+`match-replay` + `media` + `lib/media` = 114 fichiers / **1693 tests, 0 echec** (+9 : 8 pour la
+lightbox, 1 garde-rail) ; ESLint 0 erreur ET 0 warning sur les 7 fichiers touches.

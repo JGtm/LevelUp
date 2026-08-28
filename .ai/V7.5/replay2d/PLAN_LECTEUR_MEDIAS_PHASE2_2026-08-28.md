@@ -116,13 +116,36 @@ Piege carto n°5 : les clips transcodés ont `file_path` mue vers `master.m3u8` 
 `<video src>` nu de la lightbox ne les lira PAS sur Chrome/Firefox. La galerie a deja
 resolu (CoverFlowModal + hls.js, teste par `CoverFlowModal.hls.test.tsx`).
 
-- [ ] 3-1 Reutiliser le mecanisme HLS de la galerie dans `ReplayMediaLightbox` — par
+- [x] 3-1 Reutiliser le mecanisme HLS de la galerie dans `ReplayMediaLightbox` — par
       EXTRACTION d'un helper/hook partage si le code de la galerie n'en expose pas un
       (regle 6 : pas de 2e copie divergente ; si extraction, la galerie migre dessus dans
       le meme lot). MKV/AVI remux sans Range (pas de seek) : assume, commentaire.
-- [ ] 3-2 Tests : patron du test hls existant de la galerie applique a la lightbox
+- [x] 3-2 Tests : patron du test hls existant de la galerie applique a la lightbox
       (m3u8 -> hls.js attache ; mp4 -> src direct).
-- [ ] 3-G Gate : typecheck ; vitest match-replay + media ; ESLint. Commit lot 3.
+- [x] 3-G Gate : typecheck ; vitest match-replay + media ; ESLint. Commit lot 3.
+
+Journal lot 3 (2026-08-28) : la galerie n'exposait rien de reutilisable (attache inline dans
+`ClipPlayer`), donc EXTRACTION vers `lib/media/useHlsVideo.ts` + migration de la galerie dans
+le meme lot. Les 116 tests media passent SANS modification : c'est la preuve que l'extraction
+est fidele (quirk Chrome `canPlayType` = "maybe" compris). GARDE-RAIL pose au-dela de la
+demande : `hlsSingleImport.guard.test.ts` interdit tout import de `hls.js` hors du helper —
+morsure VERIFIEE sur pieces (import temoin ajoute -> test rouge en nommant le fichier, retire
+-> vert). Sans lui la factorisation se deferait au 3e composant, en silence.
+DEFAUT TROUVE ET CORRIGE (dans le perimetre, rendu ATTEIGNABLE par le lot 2) :
+`isClip = kind === 'clip' && !!durationMs` confondait « c'est un clip » et « on connait sa
+duree ». Un clip sans duree (ffprobe absent a l'ingestion) partait dans la branche image et
+rendait `<img src=...mp4>`, soit un cadre vide. La duree ne commande plus que la bande
+d'images et l'horloge. Invisible tant que la piste etait vide.
+i18n : 2 cles NEUVES (FR+EN, contrat type) — `mediaHlsUnsupported` / `mediaHlsError`. Deux
+messages et non un : un navigateur sans HLS ne lira JAMAIS ce clip, un flux en erreur peut
+etre reessaye.
+DETTE LINT : l'extraction a introduit 3 warnings (ecriture de ref pendant le rendu ; `hlsRef`
+absent de 2 tableaux de deps). Corriges dans le lot — la ref se met a jour dans un effet
+declare AVANT l'attache, et `hlsRef` (stable) entre en dependance. 0 warning net.
+MKV/AVI remuxes : pas de requetes Range, donc pas de seek — assume, non traite.
+Gates : `npm run typecheck` (cache purge) exit 0 ; vitest `match-replay` + `media` +
+`lib/media` = 114 fichiers / **1693 tests, 0 echec** (+9 : 8 lightbox, 1 garde-rail) ;
+ESLint 0 erreur ET 0 warning sur les 7 fichiers touches.
 
 ## LOT 4 — Web : repli des pistes (retouche utilisateur)
 
