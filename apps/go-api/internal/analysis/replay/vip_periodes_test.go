@@ -92,10 +92,14 @@ func TestVIPPeriodes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%s : fil des morts illisible : %v", id, err)
 	}
-	identity := objectiveevents.SlotIdentityByDeaths(recs, deathInstantsOf(deaths))
+	// LE PONT PLAT sert le TEMOIN (attribution aleatoire), la reconstruction reelle passe par
+	// l'identite PAR MANCHE. Sur ces films VIP mono-manche les deux coincident ; le temoin reste
+	// donc exactement celui du protocole.
+	flat := objectiveevents.SlotIdentityByDeaths(recs, deathInstantsOf(deaths))
+	identity := objectiveevents.ResolveRoundIdentity(recs, deathInstantsOf(deaths))
 	events := objectiveevents.NamedEventsFrom(recs, objectiveevents.ObjectiveTypeVip)
 	t.Logf("%s : %d record(s), %d selection(s) VIP, %d slot(s) nomme(s), %d mort(s), oracle sur "+
-		"%d joueur(s)", id, len(recs), vipCompte(events), len(identity), len(deaths), len(oracle))
+		"%d joueur(s)", id, len(recs), vipCompte(events), identity.NamedCount(), len(deaths), len(oracle))
 
 	vipDatesDiag(t, id, events)
 
@@ -105,7 +109,8 @@ func TestVIPPeriodes(t *testing.T) {
 	matchEnd := vipMatchEndMS(events, deaths)
 	rec := vipParJoueur(vipReconstructPeriods(events, identity, deaths, matchEnd))
 	rng := rand.New(rand.NewSource(vipPeriodesGraine)) //nolint:gosec // temoin reproductible
-	tem := vipParJoueur(vipReconstructPeriods(events, vipTemoinIdentity(identity, rng), deaths, matchEnd))
+	tem := vipParJoueur(vipReconstructPeriods(events,
+		objectiveevents.FlatRoundIdentity(vipTemoinIdentity(flat, rng)), deaths, matchEnd))
 	vipPeriodesVerdict(t, id, rec, tem, oracle)
 }
 
