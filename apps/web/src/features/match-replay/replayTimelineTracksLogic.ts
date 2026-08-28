@@ -139,48 +139,241 @@ export function buildEventTracks(
   return { own, allies }
 }
 
-/** Un segment de DOMINANCE : qui menait, de quand à quand (en ratios de frise). */
+/**
+ * Un segment de DOMINANCE : qui menait AUX FRAGS, de quand à quand (en ratios de frise).
+ *
+ * `teamId = null` VEUT DIRE ÉGALITÉ, et c'est un fait mesuré comme un autre — pas un trou :
+ * la piste le peint à l'encre d'égalité du dépôt (`outcome-draw`). Les deux camps à égalité
+ * de frags est l'état LE PLUS FRÉQUENT d'un début de match (0-0), et le laisser vide se
+ * lisait « on ne sait pas ».
+ */
 export interface DominanceSegment {
   key: string
   from: number
   to: number
-  teamId: number
+  teamId: number | null
 }
 
-/** Un changement de meneur, tel que `scoreTimeline` le publie. */
-export interface LeadChangeLike {
-  frame: number
+/**
+ * Un FRAG posé sur l'axe du rejeu, réduit à ce que la dominance demande : quand, et par quel
+ * camp. `teamId` est celui du TUEUR (`KillEvent.teamID`) — un kill dont le camp n'est pas
+ * résolu n'entre pas dans le compte (cf. `buildFragDominance`).
+ */
+export interface TrackFrag {
+  replayMs: number
   teamId: number
 }
 
 /**
- * buildDominance transforme les CHANGEMENTS de meneur en SEGMENTS pleins : un changement est
- * un instant, la dominance est une durée. Le premier segment part du début de la fenêtre (le
- * meneur d'avant le premier retournement n'est pas publié : c'est l'autre camp du premier
- * changement — on ne l'invente pas, on laisse le segment initial vide plutôt que de fabriquer
- * un camp), le dernier court jusqu'à la fin.
+ * buildFragDominance dit, à chaque instant du match, QUEL CAMP A LE PLUS DE FRAGS.
  *
- * Aucun changement = AUCUN segment, et non « une équipe a mené tout du long » : la donnée dit
- * seulement qu'il n'y a pas eu de retournement, pas qui menait.
+ * POURQUOI LES FRAGS ET NON LE SCORE (demande utilisateur du 2026-08-28). La piste lisait le
+ * calque de score (`leadChanges`), c'est-à-dire le compteur DU MODE : des captures en CTF, des
+ * secondes de balle en Oddball. Deux ennuis. D'abord elle ne disait pas ce que son nom promet
+ * — une équipe peut mener au score en ne tenant qu'un objectif, sans dominer un seul duel.
+ * Ensuite le calque de score joueur est absent de modes entiers (mesure de la phase 0 :
+ * Oddball 0 joueur sur 32 avec compteurs), là où le FIL DES ÉLIMINATIONS existe sur tous les
+ * matchs. Les frags viennent donc du fil déjà aligné (`buildFeedEntries`), pas d'un second
+ * calque : la bande et la ligne qu'on lit à côté parlent du même événement.
+ *
+ * LE MENEUR EST L'ARGMAX UNIQUE, comme partout dans le dépôt (`leaderAt`) : une ÉGALITÉ n'a
+ * pas de meneur, et elle sort ici comme un segment `teamId: null` — la piste la peint en
+ * BLEU (`outcome-draw`, demande utilisateur du 2026-08-28). Elle ne garde donc JAMAIS la
+ * couleur du dernier meneur, et elle ne laisse pas non plus un vide qui se lirait « on ne
+ * sait pas ». Généralise à plus de deux camps sans rien changer.
+ *
+ * AVANT LE PREMIER FRAG, personne ne mène : 0-0 EST une égalité, et la piste s'ouvre donc sur
+ * une bande bleue. Contrairement au calque de score, rien n'est ici « non publié » — le compte
+ * se fait de zéro, et le premier camp à frapper prend la tête à cet instant précis.
+ *
+ * AUCUN FRAG DU TOUT = AUCUNE BANDE, et c'est la seule sortie vide. Un match sans frag apparié
+ * (aucun camp résolu au fil) n'est pas « une égalité de bout en bout » : c'est une absence de
+ * mesure, et la peindre en bleu serait une affirmation.
+ *
+ * Un frag antérieur à la fenêtre de gameplay est BORNÉ à l'origine de la frise, pas rejeté :
+ * il compte dans le total, et sa bande commence au bord.
  */
-export function buildDominance(
-  changes: readonly LeadChangeLike[],
+export function buildFragDominance(
+  frags: readonly TrackFrag[],
+  frameIntervalMs: number,
   scale: TrackScale,
 ): DominanceSegment[] {
-  if (changes.length === 0 || scale.span <= 0) return []
-  const out: DominanceSegment[] = []
-  const ratio = (frame: number) => Math.min(1, Math.max(0, (frame - scale.from) / scale.span))
-  for (let i = 0; i < changes.length; i += 1) {
-    const c = changes[i]
-    const next = changes[i + 1]
-    out.push({
-      key: `${c.frame}-${c.teamId}`,
-      from: ratio(c.frame),
-      to: next ? ratio(next.frame) : 1,
-      teamId: c.teamId,
+  if (scale.span <= 0 || !frameIntervalMs || frags.length === 0) return []
+  const counts = new Map<number, number>()
+  // Le fil sort trié (`buildFeedEntries`), mais un compte cumulé lu à l'envers donnerait des
+  // meneurs faux sans rien casser à l'écran : cette fonction ne dépend pas de son appelant.
+  const ordered = [...frags].sort((a, b) => a.replayMs - b.replayMs)
+  // LE COUP D'ENVOI EST UNE ÉGALITÉ (0-0) : c'est le premier état, pas un préambule.
+  const states: DominanceState[] = [{ teamId: null, at: null, from: 0 }]
+  for (const frag of ordered) {
+    counts.set(frag.teamId, (counts.get(frag.teamId) ?? 0) + 1)
+    const leader = soleLeader(counts)
+    if (leader === states[states.length - 1].teamId) continue
+    states.push({
+      teamId: leader,
+      at: frag.replayMs,
+      from: clampRatio(frag.replayMs, frameIntervalMs, scale),
     })
   }
+  return toSegments(states)
+}
+
+/** Un état de la piste : qui mène (ou l'égalité), et depuis quand — instant brut et ratio. */
+interface DominanceState {
+  teamId: number | null
+  /** Instant du frag qui ouvre l'état, en ms ; `null` pour le coup d'envoi (clé stable). */
+  at: number | null
+  from: number
+}
+
+/**
+ * toSegments ferme chaque état sur l'ouverture du suivant, le dernier sur la fin de la frise.
+ * Les segments de LARGEUR NULLE sont écartés : deux frags dans la même image (ou avant le coup
+ * d'envoi) donnent le même ratio, et une bande invisible n'a rien à faire dans une liste.
+ */
+function toSegments(states: readonly DominanceState[]): DominanceSegment[] {
+  const out: DominanceSegment[] = []
+  for (let i = 0; i < states.length; i += 1) {
+    const s = states[i]
+    const to = states[i + 1]?.from ?? 1
+    if (to <= s.from) continue
+    out.push({ key: `${s.at ?? 'start'}-${s.teamId ?? 'tie'}`, from: s.from, to, teamId: s.teamId })
+  }
   return out
+}
+
+/** Ratio d'un instant, RABATTU sur la frise : hors fenêtre, une bande se borne (cf. ci-dessus). */
+function clampRatio(replayMs: number, frameIntervalMs: number, scale: TrackScale): number {
+  return Math.min(1, Math.max(0, ratioOfMs(replayMs, frameIntervalMs, scale)))
+}
+
+/** Le même rabattement, pour une donnée déjà datée en IMAGES (le calque de score l'est). */
+function clampFrameRatio(frame: number, scale: TrackScale): number {
+  return Math.min(1, Math.max(0, (frame - scale.from) / scale.span))
+}
+
+/**
+ * buildScoreDominance — LA MÊME LECTURE QUE LA DOMINANCE, MAIS SUR LE SCORE DU MODE.
+ *
+ * POURQUOI UNE SECONDE PISTE (demande utilisateur du 2026-08-28). Les frags disent qui gagne
+ * les duels ; le score dit qui gagne LE MATCH, et les deux se séparent exactement dans les
+ * modes qui ont un objectif — une équipe peut dominer les duels en perdant les captures. Les
+ * superposer répondrait à deux questions à la fois ; les empiler les fait comparer d'un coup
+ * d'œil, ce que ni le bandeau (une seule image) ni la courbe de la vue match (un autre écran)
+ * ne permettent.
+ *
+ * ELLE NE S'AFFICHE PAS EN SLAYER, et c'est mesuré, pas supposé : « le score du Slayer EST le
+ * compte de frags » (état de l'art des modes, témoin `000d5950` : score API 43-50 = somme des
+ * frags par équipe). La piste y répéterait celle du dessus. Le tri se fait sur la DONNÉE, pas
+ * sur un libellé de mode — cf. `scoreMirrorsFrags`.
+ *
+ * `states` vient de `leaderStates` (lib/replay/scoreTimeline) : un état par changement,
+ * ÉGALITÉS COMPRISES, daté en IMAGES du document. Le reste est la règle de la dominance —
+ * bande d'ouverture à égalité (0-0), fermeture sur l'ouverture de la suivante, rabattement sur
+ * la frise.
+ */
+export function buildScoreDominance(
+  states: readonly LeadStateLike[],
+  scale: TrackScale,
+): DominanceSegment[] {
+  if (scale.span <= 0 || states.length === 0) return []
+  const out: DominanceState[] = [{ teamId: null, at: null, from: 0 }]
+  for (const s of states) {
+    out.push({ teamId: s.teamId, at: s.frame, from: clampFrameRatio(s.frame, scale) })
+  }
+  return toSegments(out)
+}
+
+/** Un état de la course au score, tel que `leaderStates` le publie (daté en IMAGES). */
+export interface LeadStateLike {
+  frame: number
+  teamId: number | null
+}
+
+/** Un séparateur de manche posé sur la frise : où la manche `endedIndex` s'est terminée. */
+export interface RoundSeparator {
+  key: string
+  endedIndex: number
+  ratio: number
+}
+
+/**
+ * LA PISTE SCORE, ou son absence. `null` (côté appelant) veut dire « ce match n'a pas de piste
+ * score » — Slayer, calque absent, camps non identifiés — et NON « la piste est vide ».
+ */
+export interface ReplayScoreTrack {
+  segments: readonly DominanceSegment[]
+  rounds: readonly RoundSeparator[]
+}
+
+/**
+ * roundSeparators pose un repère à chaque BASCULE DE MANCHE, en ratios de frise.
+ *
+ * Sans eux, une piste de score multi-manche est illisible : le compteur repart de zéro et le
+ * meneur peut changer sans qu'aucune action ne l'explique. Les bascules viennent de
+ * `roundTransitions` (roundsLogic), le même foyer que les pastilles du bandeau et l'écran
+ * inter-manche — trois lectures, une seule définition de « où les manches se touchent ».
+ *
+ * Un repère hors fenêtre de gameplay est ÉCARTÉ, pas rabattu : collé au bord, il se lirait
+ * comme une manche qui commence au coup d'envoi.
+ */
+export function roundSeparators(
+  transitions: readonly { endedIndex: number; frame: number }[],
+  scale: TrackScale,
+): RoundSeparator[] {
+  if (scale.span <= 0) return []
+  const out: RoundSeparator[] = []
+  for (const tr of transitions) {
+    const ratio = (tr.frame - scale.from) / scale.span
+    if (ratio < 0 || ratio > 1) continue
+    out.push({ key: `r${tr.endedIndex}-${tr.frame}`, endedIndex: tr.endedIndex, ratio })
+  }
+  return out
+}
+
+/**
+ * scoreMirrorsFrags — LE SCORE DE CE MATCH N'EST-IL QUE LE COMPTE DES FRAGS ?
+ *
+ * C'est le tri qui décide de montrer la piste SCORE, et il se fait sur la DONNÉE plutôt que
+ * sur le nom du mode : comparer un libellé (« Slayer ») serait faux au premier mode dérivé
+ * (Super Fiesta est un Slayer, Attrition ne l'est pas) et illisible sur un second titre. La
+ * mesure de l'état de l'art est directe : en Slayer, le score final de chaque équipe EGALE sa
+ * somme de frags (témoin `000d5950`, 43-50).
+ *
+ * PRUDENT PAR CONSTRUCTION : à la moindre différence, on rend `false` et la piste s'affiche. Un
+ * fil incomplet (tueur hors scoreboard, kill non apparié) fait donc apparaître une piste
+ * redondante en Slayer — un doublon, jamais un mensonge. L'inverse (masquer la piste d'un mode
+ * à objectif) coûterait la lecture que ce lot ajoute.
+ */
+export function scoreMirrorsFrags(
+  teams: readonly { teamId?: number | null; total: readonly { v: number }[] }[],
+  frags: readonly TrackFrag[],
+): boolean {
+  const withId = teams.filter((t) => t.teamId != null)
+  if (withId.length === 0) return false
+  const counted = new Map<number, number>()
+  for (const f of frags) counted.set(f.teamId, (counted.get(f.teamId) ?? 0) + 1)
+  return withId.every((t) => {
+    const final = t.total.length === 0 ? 0 : t.total[t.total.length - 1].v
+    return final === (counted.get(t.teamId as number) ?? 0)
+  })
+}
+
+/** Le camp SEUL en tête au compte donné, ou `null` (égalité) — même règle que `leaderAt`. */
+function soleLeader(counts: ReadonlyMap<number, number>): number | null {
+  let best = -1
+  let bestTeam: number | null = null
+  let tied = false
+  for (const [teamId, n] of counts) {
+    if (n > best) {
+      best = n
+      bestTeam = teamId
+      tied = false
+    } else if (n === best) {
+      tied = true
+    }
+  }
+  return tied ? null : bestTeam
 }
 
 /**

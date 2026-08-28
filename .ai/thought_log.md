@@ -74779,3 +74779,120 @@ tests ne peuvent pas voir — vignettes WebP animees, clip pose AVANT le frag qu
 reelle d'un flux HLS dans Chrome, repli qui ne fait pas sauter la barre. Le gate visuel
 utilisateur est le seul reste. Aucun merge, aucun push : `wt/lecteur-medias` attend l'arbitrage
 du pilote.
+
+## [2026-08-28] Frise du rejeu : la piste DOMINANCE se compte en FRAGS
+
+**Statut** : Complete (gates verts, pas de commit — arbitrage pilote).
+
+**Demande** : « Dominance doit se faire sur les frags dans la frise sous le replay. Frise
+chronologique de quelle equipe a le plus de frags a l'instant du match. »
+
+**Ce que la piste lisait avant** : `leadChanges(scoreTimelineOf(doc))`, c'est-a-dire les
+retournements du COMPTEUR DU MODE (captures en CTF, secondes de balle en Oddball) transformes en
+durees par `buildDominance`. Deux ennuis : le nom promettait la domination et montrait la tenue
+d'objectif ; et le calque de score joueur manque sur des modes entiers (mesure phase 0 : Oddball
+0/32 joueurs avec compteurs) la ou le FIL DES ELIMINATIONS existe toujours.
+
+**Decision technique** : la dominance vient desormais du MEME fil que les deux pistes du dessus
+(`buildFeedEntries`, deja recale sur l'axe du rejeu) — aucun second calque, donc aucune seconde
+horloge. `reduceFeed` rend une troisieme liste (`frags` : instant + camp du TUEUR,
+`KillEvent.teamID`), et `buildFragDominance` (pur, `replayTimelineTracksLogic.ts`) cumule les
+frags par camp et ouvre une bande a chaque changement de meneur. Le meneur est l'ARGMAX UNIQUE
+(meme regle que `leaderAt`) : une egalite n'a pas de meneur et ouvre un TROU — 0-0 au coup
+d'envoi, donc la piste commence vide. Un frag hors fenetre de gameplay compte et sa bande est
+bornee au bord de la frise.
+
+**Code mort supprime** (regle 7) : `buildDominance` + `LeadChangeLike` n'avaient plus de lecteur.
+`useLeadMarks` perdait sa raison d'etre (il ne rendait plus que les deux cascades d'equipe) : il
+est RENOMME `useTeamCascades` et ne prend plus `doc`. `leadChanges` reste dans
+`lib/replay/scoreTimeline` — la courbe « Score dans le temps » de la vue match en est le seul
+consommateur restant.
+
+**i18n** : l'infobulle disait « Cobalt mene », ce qui se lirait comme le score du tableau. FR
+« Cobalt mene aux frags » / EN « Cobalt leads on kills » ; contrat i18n date en consequence.
+
+**Gates** : `tsc --noEmit` exit 0 ; vitest `match-replay` + `lib/replay` = **109 fichiers / 1657
+tests, 0 echec** ; ESLint 0 erreur sur les 4 fichiers touches (1 warning PRE-EXISTANT
+`objectiveObjects`, deja consigne). Tailles : logique 296 L, hook 224 L.
+
+**Conclusion / prochaine etape** : gate visuel utilisateur sur un match a retournements (le
+temoin Oddball `24dbb67d` menait au score sans dominer les duels — c'est exactement l'ecart que
+ce lot rend visible). Aucun commit, aucun push.
+
+## [2026-08-28] Frise du rejeu : egalite en BLEU + sens du chevron de repli
+
+**Statut** : Complete (gates verts, pas de commit).
+
+**Deux retours utilisateur sur le lot precedent.**
+
+1. **« Quand y a egalite je veux du bleu, le meme bleu qu'on utilise partout. »** L'egalite
+   sortait comme un TROU (aucun segment) : la piste laissait voir son fond `bg-muted/40`, ce qui
+   se lit « on ne sait pas » au lieu de « personne ne mene ». `DominanceSegment.teamId` accepte
+   desormais `null` = egalite, et `buildFragDominance` l'emet comme un etat a part entiere — y
+   compris AU COUP D'ENVOI (0-0 est une egalite, la piste s'ouvre donc en bleu). L'encre est le
+   token du depot `outcome-draw` (#3B82F6, celui des matchs nuls / tuiles neutres / barres de
+   bilan), pas une quatrieme couleur inventee ; l'infobulle nouvelle `dominanceTied` la nomme
+   (FR « Egalite aux frags » / EN « Tied on kills »), sans quoi la bande bleue aurait ete la
+   seule de la piste muette au survol. SEULE SORTIE VIDE CONSERVEE : zero frag appari — c'est
+   une absence de mesure, la peindre en bleu serait une affirmation.
+2. **« Le chevron de repli est dans le mauvais sens. »** Exact : les pistes sont AU-DESSUS du
+   bouton, la fleche montrait le curseur (qui ne bouge jamais). Rotation inversee — deplie elle
+   pointe vers le HAUT (la ou les pistes vont partir), replie vers le BAS. Test ajoute : rien
+   d'autre qu'un test ne tient un sens de fleche.
+
+**Extraction** : l'encre de la bande passe par `dominanceInk()` (trois cas : egalite, camp
+connu, camp non resolu) — le ternaire imbrique inline serait devenu illisible a trois branches.
+
+**Gates** : `tsc --noEmit` exit 0 ; vitest `match-replay` + `lib/replay` = **109 fichiers / 1660
+tests, 0 echec** (+3) ; ESLint 0 probleme sur les fichiers touches.
+
+**Conclusion / prochaine etape** : gate visuel utilisateur (couleur de l'egalite a l'ecran, sens
+du chevron). Aucun commit, aucun push.
+
+## [2026-08-28] Frise du rejeu : nouvelle piste SCORE (modes a objectif) + separateurs de manche
+
+**Statut** : Complete (gates verts, pas de commit).
+
+**Demande utilisateur** : « une frise SCORE sous dominance quand on n'est pas en mode slayer,
+avec un separateur s'il y a plusieurs manches — la meme idee que dominance mais pour le score ».
+
+**Ce que ca ajoute** : une cinquieme rangee, meme dessin que DOMINANCE mais sur le compteur du
+MODE. Les deux se lisent ensemble : la premiere dit qui gagne les DUELS, la seconde qui gagne le
+MATCH — et elles ne divergent que sur les modes a objectif, ce qui est exactement l'information.
+
+**Decision technique 1 — le tri « pas Slayer » se fait sur la DONNEE, pas sur un libelle de
+mode.** `scoreMirrorsFrags()` compare le score FINAL de chaque equipe a sa somme de frags : la
+mesure de l'etat de l'art (`.ai/ETAT_DE_L_ART_MODE_SCORE_EVENEMENTS.md`, temoin `000d5950`
+Slayer 43-50 au score = 43-50 frags) etablit que le score du Slayer EST le compte des frags. Un
+`mode_ui === 'Slayer'` aurait ete faux au premier mode derive (Super Fiesta EST un Slayer) et
+illisible sur un second titre. PRUDENT par construction : a la moindre difference on affiche —
+un fil incomplet donne un doublon visible, jamais une piste manquante invisible.
+
+**Decision technique 2 — une seule implementation du « qui mene ».** `leadChanges` (lib/replay,
+courbe de la vue match) est reecrit AU-DESSUS d'un nouveau `leaderStates()` qui publie tous les
+etats, EGALITES COMPRISES ; `leadChanges` n'en est plus que la projection « retournements
+seuls ». Sans ca, la piste SCORE aurait ete une 2e copie de la comparaison de scores.
+
+**Decision technique 3 — separateurs de manche** : `roundTransitions` (roundsLogic), le foyer
+qui sert deja les pastilles du bandeau et l'ecran inter-manche. Trois lectures, une definition de
+« ou les manches se touchent ». Une bascule hors fenetre de gameplay est ECARTEE, pas rabattue
+(collee au bord elle dirait « une manche s'est terminee au coup d'envoi »).
+
+**Extraction** : le dessin d'une piste de meneur est desormais `<LeadTrack>` (2 usages) — le
+texte reste a l'appelant, « mene aux frags » et « mene au score » ne sont pas la meme
+affirmation. i18n : `trackScore` / `scoreOfFmt` / `scoreTied` FR+EN ; les separateurs reutilisent
+`roundOverFmt`.
+
+**PIEGE RENCONTRE (a retenir)** : `npx tsc -p tsconfig.json --noEmit` sur le tsconfig SOLUTION
+(a references) sort 0 sans rien verifier — FAUX VERT. Il a masque 5 imports manquants que
+`npm run typecheck` (`tsc -b`, cache purge) a sortis immediatement. Seul `npm run typecheck` fait
+foi (deja au skill delivery-checklist §2 ; c'est la variante `-p ... --noEmit` qui manquait).
+
+**Gates** : `npm run typecheck` (cache `node_modules/.tmp` purge) exit 0 ; vitest match-replay +
+lib/replay = **111 fichiers / 1692 tests, 0 echec** (+32) ; ESLint **0 erreur** (2 warnings
+PRE-EXISTANTS : `objectiveObjects`, `ReplayFeedName`). Tailles : tracks 393 L, logique 437 L,
+hook 260 L, scoreTimeline 460 L — toutes sous 500.
+
+**Conclusion / prochaine etape** : gate visuel utilisateur sur un Oddball (3 manches : verifier
+les separateurs) et sur un CTF (verifier que la piste apparait), plus un Slayer (verifier qu'elle
+n'apparait PAS). Aucun commit, aucun push.

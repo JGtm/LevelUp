@@ -367,18 +367,52 @@ export interface LeadChange {
  * marque), Oddball `24dbb67d` 3 — c'est le témoin de cette marque.
  */
 export function leadChanges(timeline: ReplayScoreTimelineReady | undefined): LeadChange[] {
+  const out: LeadChange[] = []
+  let previous: number | null = null
+  for (const state of leaderStates(timeline)) {
+    // UNE ÉGALITÉ NE FERME PAS LE MENEUR PRÉCÉDENT ici : elle le suspend (cf. l'en-tête). Le
+    // comparatif se fait au dernier meneur CONNU, pas au dernier état.
+    if (state.teamId == null) continue
+    if (previous != null && state.teamId !== previous) out.push({ frame: state.frame, teamId: state.teamId })
+    previous = state.teamId
+  }
+  return out
+}
+
+/**
+ * Un ÉTAT de la course au score : à partir de cette frame, voilà qui mène — ou personne.
+ * `teamId: null` EST une mesure : les camps sont à égalité, pas « inconnus ».
+ */
+export interface LeadState {
+  frame: number
+  teamId: number | null
+}
+
+/**
+ * leaderStates rend la suite des états de la course au score : un état par CHANGEMENT, égalités
+ * comprises. C'est la lecture complète dont `leadChanges` n'est qu'une projection (les seuls
+ * retournements, l'égalité effacée) — les deux ne peuvent donc pas diverger, et il n'y a qu'une
+ * implémentation du « qui mène » dans le dépôt.
+ *
+ * POURQUOI LES ÉGALITÉS SORTENT ICI. La piste SCORE de la frise du rejeu les PEINT (encre
+ * d'égalité du dépôt) : un mode où les deux camps se tiennent longtemps a une piste bleue, et
+ * c'est un fait du match. `leadChanges`, lui, date des retournements — une égalité n'en est
+ * pas un.
+ *
+ * Le premier état est celui du PREMIER PALIER publié, quel qu'il soit : avant lui, le calque ne
+ * dit rien (0-0 est l'affaire de l'appelant, qui seul sait où commence sa frise).
+ */
+export function leaderStates(timeline: ReplayScoreTimelineReady | undefined): LeadState[] {
   // Une équipe SANS identifiant ne peut être ni meneuse ni menée : la comparer reviendrait
   // à couronner la seule qui en a un (`coverage.score.teamIdentity = "unresolved"`).
   const teams = (timeline?.teams ?? []).filter((t) => t.teamId != null)
   if (teams.length < 2) return []
   const frames = [...new Set(teams.flatMap((t) => t.total.map((p) => p.t)))].sort((a, b) => a - b)
-  const out: LeadChange[] = []
-  let previous: number | null = null
+  const out: LeadState[] = []
   for (const frame of frames) {
     const leader = leaderAt(teams, frame)
-    if (leader == null) continue
-    if (previous != null && leader !== previous) out.push({ frame, teamId: leader })
-    previous = leader
+    if (out.length > 0 && leader === out[out.length - 1].teamId) continue
+    out.push({ frame, teamId: leader })
   }
   return out
 }

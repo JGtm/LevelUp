@@ -11,7 +11,8 @@
  * dans `replay.tsx` et sert le fil de droite ET ces pistes. Un second assemblage aurait son
  * propre recalage d'horloge (origine publiée ou appariement statistique selon l'artefact) : une
  * marque de la frise ne serait alors plus garantie être la ligne qu'on lit à côté. Ce hook ne
- * fait que RÉDUIRE ces entrées à ce que les pistes demandent — un acteur, un instant, une clé.
+ * fait que RÉDUIRE ces entrées à ce que les pistes demandent — un acteur, un instant, une clé,
+ * et le CAMP du tueur depuis que la dominance se compte en frags (2026-08-28).
  *
  * QUI EST L'ACTEUR D'UNE LIGNE : pour une élimination, le TUEUR (`kill.xuid`) — la marque est à
  * lui ; pour une mort, le DÉFUNT (`death.xuid`). Une élimination dont on est la VICTIME est une
@@ -22,7 +23,7 @@ import { useCallback, useMemo, type ChangeEvent, type ComponentProps, type RefOb
 
 import { useCapability } from '@/lib/capabilities'
 import { formatClockMMSS } from '@/lib/formatters'
-import type { LeadChange } from '@/lib/replay/scoreTimeline'
+import { leaderStates, scoreTimelineOf } from '@/lib/replay/scoreTimeline'
 
 import type { ReplayFeedEntry } from './killFeedLogic'
 import type { ReplayLocale } from './i18n'
@@ -30,14 +31,21 @@ import type { PlayerMarkKind } from './playerMarks'
 import { EMPTY_MEDIA, SKIP_SECONDS } from './replayCanvasConfig'
 import type { ReplayTimelineTracks } from './ReplayTimelineTracks'
 import {
-  buildDominance,
   buildEventTracks,
+  buildFragDominance,
+  buildScoreDominance,
   placeMedia,
+  roundSeparators,
+  scoreMirrorsFrags,
   trackScale,
   type ReplayMediaItem,
+  type ReplayScoreTrack,
   type TrackDeath,
+  type TrackFrag,
   type TrackKill,
+  type TrackScale,
 } from './replayTimelineTracksLogic'
+import { roundTransitions } from './roundsLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
 import { displayClockMs, type ReplayWindowBounds } from './replayWindow'
 import { usePersistedFlag, TIMELINE_EXPANDED_KEY } from './useReplaySettings'
@@ -51,9 +59,8 @@ export interface ReplayTimelineOptions {
   feedEntries: readonly ReplayFeedEntry[]
   /** Marques d'identité par xuid : elles décident de la piste, jamais de la couleur. */
   marks: ReadonlyMap<string, PlayerMarkKind>
-  /** Les retournements et les deux cascades d'équipe (cf. `useLeadMarks`). */
+  /** Les deux cascades d'équipe de la piste Dominance (cf. `useTeamCascades`). */
   lead: {
-    changes: readonly LeadChange[]
     allyOf: (teamId: number) => boolean | null
     labelOf: (teamId: number) => string
   }
@@ -107,12 +114,18 @@ export function useReplayTimeline(o: ReplayTimelineOptions): ReplayTimeline {
     (replayMs: number) => formatClockMMSS(displayClockMs(replayMs, playWindow)),
     [playWindow],
   )
-  const { kills, deaths } = useMemo(() => reduceFeed(feedEntries, marks), [feedEntries, marks])
+  const { kills, deaths, frags } = useMemo(() => reduceFeed(feedEntries, marks), [feedEntries, marks])
   const tracks = useMemo(
     () => buildEventTracks(kills, deaths, marks, frameIntervalMs ?? 0, scale, clockOf),
     [kills, deaths, marks, frameIntervalMs, scale, clockOf],
   )
-  const dominance = useMemo(() => buildDominance(lead.changes, scale), [lead.changes, scale])
+  // LA DOMINANCE SE LIT SUR LES FRAGS (2026-08-28), plus sur le compteur du mode : elle vient
+  // donc du MÊME fil que les deux pistes du dessus, jamais d'un second calque.
+  const dominance = useMemo(
+    () => buildFragDominance(frags, frameIntervalMs ?? 0, scale),
+    [frags, frameIntervalMs, scale],
+  )
+  const score = useMemo(() => scoreTrack(doc, frags, scale), [doc, frags, scale])
   // LES MÉDIAS ARRIVENT DE LA PAGE, déjà sur l'axe du rejeu (phase 2, 2026-08-28) : ce hook ne
   // fait que les POSER sur l'échelle de la frise, comme il pose les marques du fil. Le recalage,
   // lui, a eu lieu une seule fois dans `buildReplayMedia`.
@@ -144,6 +157,7 @@ export function useReplayTimeline(o: ReplayTimelineOptions): ReplayTimeline {
     own: tracks.own,
     allies: tracks.allies,
     dominance,
+    score,
     allyOf: lead.allyOf,
     labelOf: lead.labelOf,
     media,
@@ -162,6 +176,33 @@ export function useReplayTimeline(o: ReplayTimelineOptions): ReplayTimeline {
 }
 
 /**
+ * scoreTrack assemble la piste SCORE, ou rend `null` quand elle n'a rien à dire.
+ *
+ * TROIS RAISONS DE NE PAS L'AFFICHER, et elles disent toutes la même chose — « cette piste
+ * répéterait ce qui est déjà à l'écran, ou n'est pas mesurée » :
+ *  1. AUCUN CALQUE DE SCORE exploitable : artefact antérieur au schéma 12, ou horloge du film
+ *     non recalée (`scoreTimelineOf` porte cette garde et rend `undefined`).
+ *  2. LE SCORE N'EST QUE LE COMPTE DES FRAGS (Slayer, mesuré) : la piste DOMINANCE le dit déjà.
+ *  3. MOINS DE DEUX CAMPS IDENTIFIÉS : `buildScoreDominance` rend alors une liste vide, et une
+ *     rangée vide se lirait « personne n'a marqué » au lieu de « on ne sait pas ».
+ *
+ * LES SÉPARATEURS DE MANCHE viennent de `roundTransitions` — le foyer des pastilles du bandeau
+ * et de l'écran inter-manche. Aucun sur un mode à manche unique, par construction.
+ */
+function scoreTrack(
+  doc: ReplayDocumentReady,
+  frags: readonly TrackFrag[],
+  scale: TrackScale,
+): ReplayScoreTrack | null {
+  const timeline = scoreTimelineOf(doc)
+  if (!timeline) return null
+  if (scoreMirrorsFrags(timeline.teams, frags)) return null
+  const segments = buildScoreDominance(leaderStates(timeline), scale)
+  if (segments.length === 0) return null
+  return { segments, rounds: roundSeparators(roundTransitions(timeline), scale) }
+}
+
+/**
  * reduceFeed ramène le fil à ce que les pistes demandent. Les MÉDAILLES SEULES n'y entrent pas :
  * elles n'ont ni tueur ni défunt, et une piste d'événements dit qui a marqué ou qui est tombé.
  *
@@ -172,9 +213,10 @@ export function useReplayTimeline(o: ReplayTimelineOptions): ReplayTimeline {
 export function reduceFeed(
   entries: readonly ReplayFeedEntry[],
   marks: ReadonlyMap<string, PlayerMarkKind>,
-): { kills: TrackKill[]; deaths: TrackDeath[] } {
+): { kills: TrackKill[]; deaths: TrackDeath[]; frags: TrackFrag[] } {
   const kills: TrackKill[] = []
   const deaths: TrackDeath[] = []
+  const frags: TrackFrag[] = []
   for (const entry of entries) {
     if (entry.death) {
       deaths.push({ key: entry.key, replayMs: entry.replayMs, xuid: entry.death.xuid })
@@ -183,6 +225,10 @@ export function reduceFeed(
     const kill = entry.kill
     if (!kill) continue
     kills.push({ key: entry.key, replayMs: entry.replayMs, xuid: kill.xuid })
+    // LES FRAGS COMPTENT TOUTE LA SALLE, pas seulement les joueurs marqués : la dominance
+    // oppose deux CAMPS. Un tueur dont le camp n'est pas résolu (acteur hors scoreboard) ne
+    // compte pour personne — l'attribuer par défaut fausserait le meneur.
+    if (kill.teamID != null) frags.push({ replayMs: entry.replayMs, teamId: kill.teamID })
     // LA MÊME LIGNE PEUT ÊTRE LES DEUX : le frag de l'un est la mort de l'autre. On ne la range
     // du côté des morts que si la victime porte une marque — sinon `buildEventTracks` l'écarte
     // de toute façon, et la clé dérivée ne servirait à rien.
@@ -190,7 +236,7 @@ export function reduceFeed(
       deaths.push({ key: `${entry.key}-v`, replayMs: entry.replayMs, xuid: kill.victimXuid })
     }
   }
-  return { kills, deaths }
+  return { kills, deaths, frags }
 }
 
 /**

@@ -1,6 +1,11 @@
 /**
  * ReplayTimelineTracks — LA FRISE ET SES PISTES : tes éliminations et tes morts, celles de tes
- * alliés, la DOMINANCE, les MÉDIAS, puis le curseur de lecture.
+ * alliés, la DOMINANCE (aux frags), le SCORE du mode, les MÉDIAS, puis le curseur de lecture.
+ *
+ * DOMINANCE ET SCORE SE LISENT ENSEMBLE, et c'est tout l'intérêt de les empiler : la première
+ * dit qui gagne les duels, la seconde qui gagne le match. Sur un mode à objectif elles se
+ * séparent — c'est là qu'on voit une équipe dominer les frags et perdre les captures. La
+ * seconde n'existe donc PAS en Slayer, où elle répéterait la première (cf. `scoreTrack`).
  *
  * ELLE REMPLACE LE `input[type=range]` NU de la barre de lecture (validé le 2026-08-28,
  * planche 2a). Le curseur reste ce même `input` — c'est lui que la boucle de dessin pilote
@@ -38,6 +43,8 @@ import {
   trackWidth,
   type DominanceSegment,
   type PlacedMedia,
+  type ReplayScoreTrack,
+  type RoundSeparator,
   type TrackMark,
 } from './replayTimelineTracksLogic'
 
@@ -50,8 +57,14 @@ interface ReplayTimelineTracksProps {
   /** Tes marques, celles de tes alliés (cf. buildEventTracks). */
   own: readonly TrackMark[]
   allies: readonly TrackMark[]
-  /** Les segments de dominance (cf. buildDominance) et le camp de chacun. */
+  /** Les segments de dominance AUX FRAGS (cf. buildFragDominance) et le camp de chacun. */
   dominance: readonly DominanceSegment[]
+  /**
+   * La piste SCORE, ou `null` quand ce match n'en a pas : Slayer (le score y EST le compte des
+   * frags), calque de score absent, camps non identifiés. `null` n'est pas « vide » — la
+   * rangée n'existe alors pas, et son absence dit quelque chose du mode.
+   */
+  score: ReplayScoreTrack | null
   allyOf: (teamId: number) => boolean | null
   labelOf: (teamId: number) => string
   /** Les médias posés sur le match (cf. placeMedia). Vide = la piste reste, sans vignette. */
@@ -73,7 +86,7 @@ interface ReplayTimelineTracksProps {
 
 export function ReplayTimelineTracks({
   sliderRef, minFrame, maxFrame, onScrub,
-  own, allies, dominance, allyOf, labelOf, media, showMediaTrack,
+  own, allies, dominance, score, allyOf, labelOf, media, showMediaTrack,
   tracksExpanded, onToggleTracks,
   playing, onRequestPause, startClock, midClock, endClock, locale,
 }: ReplayTimelineTracksProps) {
@@ -98,26 +111,31 @@ export function ReplayTimelineTracks({
             <MarkTrack marks={allies} height="h-3.5" tall={false} />
 
             <TrackLabel>{t.trackDominance}</TrackLabel>
-            <div className="relative h-2.5 overflow-hidden rounded-full bg-muted/40">
-              {dominance.map((s) => {
-                const ally = allyOf(s.teamId)
-                return (
-                  <span
-                    key={s.key}
-                    className="absolute top-0 block h-2.5 opacity-55"
-                    style={{
-                      left: trackLeft(s.from),
-                      width: trackWidth(s.from, s.to),
-                      background:
-                        ally === null
-                          ? 'var(--border)'
-                          : tokenCssVar(ally ? 'team-ally' : 'team-enemy'),
-                    }}
-                    title={t.dominanceOfFmt(labelOf(s.teamId))}
-                  />
-                )
-              })}
-            </div>
+            <LeadTrack
+              segments={dominance}
+              allyOf={allyOf}
+              titleOf={(teamId) =>
+                teamId == null ? t.dominanceTied : t.dominanceOfFmt(labelOf(teamId))
+              }
+            />
+
+            {/* LA PISTE SCORE N'EXISTE PAS SUR TOUS LES MATCHS (cf. `scoreTrack`) : en Slayer,
+                le score EST le compte des frags et la rangée répéterait celle du dessus. Son
+                absence est donc un fait du mode — pas une rangée vide à remplir plus tard. */}
+            {score && (
+              <>
+                <TrackLabel>{t.trackScore}</TrackLabel>
+                <LeadTrack
+                  segments={score.segments}
+                  allyOf={allyOf}
+                  titleOf={(teamId) =>
+                    teamId == null ? t.scoreTied : t.scoreOfFmt(labelOf(teamId))
+                  }
+                  rounds={score.rounds}
+                  roundTitleOf={(endedIndex) => t.roundOverFmt(endedIndex)}
+                />
+              </>
+            )}
 
             {showMediaTrack && (
               <>
@@ -247,16 +265,20 @@ function TracksToggle({
 }
 
 /**
- * Chevron du repli, décoratif : le nom accessible vit sur le bouton. Il pointe vers le BAS
- * quand la frise est dépliée (le geste offert est de refermer) et vers le HAUT quand elle est
- * repliée. Deuxième dessin de chevron de la feature (l'autre ouvre le menu de vitesse) : sous
- * le seuil de factorisation du dépôt, et les deux n'ont ni la même taille ni la même rotation.
+ * Chevron du repli, décoratif : le nom accessible vit sur le bouton. IL POINTE VERS LES PISTES
+ * QU'IL COMMANDE, et elles sont AU-DESSUS de lui — donc vers le HAUT quand la frise est dépliée
+ * (le geste offert les fait remonter et disparaître) et vers le BAS quand elle est repliée
+ * (elles vont redescendre). Le sens était inversé jusqu'au 2026-08-28 : la flèche montrait le
+ * curseur, qui ne bouge jamais.
+ *
+ * Deuxième dessin de chevron de la feature (l'autre ouvre le menu de vitesse) : sous le seuil
+ * de factorisation du dépôt, et les deux n'ont ni la même taille ni la même rotation.
  */
 function TracksChevron({ expanded }: { expanded: boolean }) {
   return (
     <svg
       viewBox="0 0 16 16"
-      className={`h-2.5 w-2.5 transition-transform ${expanded ? '' : 'rotate-180'}`}
+      className={`h-2.5 w-2.5 transition-transform ${expanded ? 'rotate-180' : ''}`}
       fill="none"
       stroke="currentColor"
       strokeWidth="1.8"
@@ -267,6 +289,75 @@ function TracksChevron({ expanded }: { expanded: boolean }) {
       <path d="M4 6.5 8 10.5 12 6.5" />
     </svg>
   )
+}
+
+/**
+ * UNE PISTE DE MENEUR : des bandes colorées bout à bout, et — pour le score d'un mode
+ * multi-manche — les repères de bascule de manche.
+ *
+ * DEUX PISTES, UN SEUL DESSIN (dominance aux frags, score du mode) : elles répondent à deux
+ * questions mais se lisent de la même façon, et les faire diverger à la main aurait fini par
+ * leur donner deux hauteurs, deux opacités et deux comportements de survol. Le TEXTE, lui,
+ * reste l'affaire de l'appelant (`titleOf`) : « mène aux frags » et « mène au score » ne sont
+ * pas la même affirmation.
+ *
+ * LES SÉPARATEURS DE MANCHE SONT AU-DESSUS DES BANDES et n'en coupent aucune : une manche qui
+ * se termine ne change pas qui mène — elle remet le compteur à zéro, et c'est justement ce que
+ * le repère explique à l'œil.
+ */
+function LeadTrack({
+  segments, allyOf, titleOf, rounds = [], roundTitleOf,
+}: {
+  segments: readonly DominanceSegment[]
+  allyOf: (teamId: number) => boolean | null
+  titleOf: (teamId: number | null) => string
+  rounds?: readonly RoundSeparator[]
+  roundTitleOf?: (endedIndex: number) => string
+}) {
+  return (
+    <div className="relative h-2.5 overflow-hidden rounded-full bg-muted/40">
+      {segments.map((s) => (
+        <span
+          key={s.key}
+          // PLEINE ENCRE, comme la piste « Toi » (retour utilisateur du 2026-08-28 : « les
+          // couleurs sont ternes, ce ne sont pas les mêmes que sur la frise Toi »). Les bandes
+          // portaient `opacity-55` — la même couleur délavée n'est plus la même couleur, et
+          // deux teintes pour un seul sens (allié / adverse) se lisent comme deux sens.
+          className="absolute top-0 block h-2.5"
+          style={{
+            left: trackLeft(s.from),
+            width: trackWidth(s.from, s.to),
+            background: dominanceInk(s.teamId, allyOf),
+          }}
+          title={titleOf(s.teamId)}
+        />
+      ))}
+      {rounds.map((r) => (
+        <span
+          key={r.key}
+          className="absolute top-0 block h-2.5 w-[2px] bg-background"
+          style={{ left: trackLeft(r.ratio), marginLeft: -1 }}
+          title={roundTitleOf?.(r.endedIndex)}
+        />
+      ))}
+    </div>
+  )
+}
+
+/**
+ * L'encre d'une bande de dominance. TROIS CAS, ET TROIS ENCRES DISTINCTES :
+ *  - ÉGALITÉ (`teamId === null`) : l'encre d'égalité DU DÉPÔT (`outcome-draw`, le bleu des
+ *    matchs nuls, des tuiles neutres et des barres de bilan) — demande utilisateur du
+ *    2026-08-28. Une quatrième couleur inventée ici ferait diverger le vocabulaire.
+ *  - CAMP CONNU : allié ou adverse, les deux encres du rejeu.
+ *  - CAMP NON RÉSOLU (`allyOf` rend `null`, joueur hors scoreboard) : la bordure neutre —
+ *    jamais l'une des deux couleurs par défaut, qui désignerait un camp au hasard.
+ */
+function dominanceInk(teamId: number | null, allyOf: (teamId: number) => boolean | null): string {
+  if (teamId == null) return tokenCssVar('outcome-draw')
+  const ally = allyOf(teamId)
+  if (ally === null) return 'var(--border)'
+  return tokenCssVar(ally ? 'team-ally' : 'team-enemy')
 }
 
 function TrackLabel({ children }: { children: React.ReactNode }) {

@@ -112,6 +112,33 @@ describe('reduceFeed — une mort, et ses deux formes', () => {
   })
 })
 
+describe('reduceFeed — les FRAGS de la piste Dominance', () => {
+  it('compte TOUTE la salle, pas seulement les joueurs marqués : la dominance oppose deux camps', () => {
+    const { frags } = reduceFeed(
+      [
+        killEntry({ key: 'a', replayMs: 10_000, xuid: 'me', teamID: 0 }),
+        killEntry({ key: 'b', replayMs: 20_000, xuid: 'inconnu', teamID: 1 }),
+      ],
+      MARKS,
+    )
+    expect(frags).toEqual([
+      { replayMs: 10_000, teamId: 0 },
+      { replayMs: 20_000, teamId: 1 },
+    ])
+  })
+
+  it('un tueur SANS camp résolu ne compte pour personne', () => {
+    // L'attribuer par défaut couronnerait le seul camp qui a un identifiant — le meneur
+    // affiché serait alors une conséquence du trou de données, pas du match.
+    const { frags } = reduceFeed([killEntry({ xuid: 'me', teamID: null })], MARKS)
+    expect(frags).toEqual([])
+  })
+
+  it('une MORT NEUTRE n’est le frag de personne', () => {
+    expect(reduceFeed([deathEntry('me')], MARKS).frags).toEqual([])
+  })
+})
+
 describe('reduceFeed — ce qui n’est ni un frag ni une mort', () => {
   it('une MÉDAILLE SEULE n’entre sur aucune piste', () => {
     const { kills, deaths } = reduceFeed([medalEntry()], MARKS)
@@ -119,8 +146,8 @@ describe('reduceFeed — ce qui n’est ni un frag ni une mort', () => {
     expect(deaths).toEqual([])
   })
 
-  it('un fil vide rend deux listes vides, jamais undefined', () => {
-    expect(reduceFeed([], MARKS)).toEqual({ kills: [], deaths: [] })
+  it('un fil vide rend trois listes vides, jamais undefined', () => {
+    expect(reduceFeed([], MARKS)).toEqual({ kills: [], deaths: [], frags: [] })
   })
 
   it('l’ordre du fil est conservé — les pistes se lisent dans le sens du match', () => {

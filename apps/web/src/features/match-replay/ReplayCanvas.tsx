@@ -32,7 +32,7 @@ import type { CalloutZoneReady } from './calloutsLayer'
 
 import { ReplayHeatmapLegend } from './ReplayHeatmapLegend'
 import { ReplayTransport } from './ReplayTransport'
-import { useLeadMarks } from './useLeadMarks'
+import { useTeamCascades } from './useTeamCascades'
 import { drawObjectivePulses, normalizeMapObjectives } from './objectivesLayer'
 import { drawZoneStates } from './zoneStatesLayer'
 import { drawFireMarks } from './fireMark'
@@ -235,7 +235,7 @@ export function ReplayCanvas({
   // L'ÉTAT VIVANT DES ZONES (schémas 16-18) : encres, jointure du catalogue, tenue de la jauge (useZoneStates).
   const zones = useZoneStates(mapObjectives, scoreboard, teamColorOf, neutralInk, doc)
 
-  const leadMarks = useLeadMarks(doc, scoreboard, xuidMeta, locale)
+  const teamCascades = useTeamCascades(scoreboard, xuidMeta, locale)
 
   // Traînée, cône, croix de mort, apparition, rémanences et fins de vol : toutes les durées
   // du rejeu, converties une fois pour ce document (useReplayTiming).
@@ -579,7 +579,7 @@ export function ReplayCanvas({
   // imposée par le cliquet : pistes, dominance, médias, horloges et raccourcis sont LA FRISE.
   const timeline = useReplayTimeline({
     doc, playWindow, feedEntries, media, marks: marks ?? NO_MARKS, renderWidth, locale,
-    lead: leadMarks, playback, toggleSound: sound.toggle,
+    lead: teamCascades, playback, toggleSound: sound.toggle,
   })
   // LE TIROIR, groupé de même (useReplayDrawer) : les disponibilités viennent des calques, les
   // bascules de `useReplaySettings` — le canvas ne fait plus que les mettre en présence.

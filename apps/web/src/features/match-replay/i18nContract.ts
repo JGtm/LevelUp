@@ -449,12 +449,33 @@ export interface ReplayText {
    * seuls, à l'échelle d'une frise haute de quelques pixels.
    *
    * `dominanceOfFmt` date une bande de dominance dans son infobulle : l'équipe y est nommée
-   * par la cascade du scoreboard (`labelOf`), la même que les colonnes et le bandeau.
+   * par la cascade du scoreboard (`labelOf`), la même que les colonnes et le bandeau. Elle
+   * dit AUX FRAGS depuis le 2026-08-28 : la piste ne lit plus le compteur du mode (captures,
+   * secondes de balle) mais le nombre d'éliminations de chaque camp — « mène » tout court
+   * laisserait croire au score du tableau.
+   *
+   * `dominanceTied` nomme la bande d'ÉGALITÉ (l'encre `outcome-draw`), qui est l'état du coup
+   * d'envoi et de tout retour à parité : sans elle, la bande bleue serait la seule de la piste
+   * dont le survol ne dirait rien.
    */
   trackYou: string
   trackAllies: string
   trackDominance: string
   dominanceOfFmt: (team: string) => string
+  dominanceTied: string
+  /**
+   * LA PISTE SCORE (2026-08-28) : la même lecture que la dominance, mais sur le compteur du
+   * MODE. Elle n'apparaît pas en Slayer, où le score EST le compte des frags — d'où trois
+   * chaînes jumelles et non partagées : « mène aux frags » et « mène au score » sont deux
+   * affirmations différentes, et les fondre en une seule (« mène ») rendrait les deux rangées
+   * indiscernables au survol, précisément là où on les compare.
+   *
+   * Les séparateurs de manche de cette piste réutilisent `roundOverFmt` — le même mot que
+   * l'écran inter-manche, pour la même chose.
+   */
+  trackScore: string
+  scoreOfFmt: (team: string) => string
+  scoreTied: string
   /**
    * LA PISTE DES MÉDIAS, son état VIDE, et la lightbox qui ouvre un média.
    *

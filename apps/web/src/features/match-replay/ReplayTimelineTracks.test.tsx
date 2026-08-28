@@ -51,6 +51,7 @@ function renderTracks(over: Partial<Parameters<typeof ReplayTimelineTracks>[0]> 
       own={[]}
       allies={[]}
       dominance={[]}
+      score={null}
       allyOf={() => null}
       labelOf={(id) => `Équipe ${id}`}
       media={[]}
@@ -124,7 +125,59 @@ describe('ReplayTimelineTracks — les marques et la dominance', () => {
       allyOf: () => true,
       labelOf: () => 'Cobalt',
     })
-    expect(screen.getByTitle('Cobalt mène')).toBeTruthy()
+    expect(screen.getByTitle('Cobalt mène aux frags')).toBeTruthy()
+  })
+
+  /**
+   * L'ÉGALITÉ EST BLEUE (demande utilisateur du 2026-08-28), et du MÊME bleu que partout
+   * ailleurs : `outcome-draw`, l'encre des matchs nuls, des tuiles neutres et des barres de
+   * bilan. Le test tient le TOKEN, pas la valeur — la palette daltonisme le change, le sens
+   * ne change pas.
+   */
+  it('une bande d’ÉGALITÉ porte l’encre d’égalité du dépôt, et se nomme dans l’infobulle', () => {
+    renderTracks({ dominance: [{ key: 'tie', from: 0, to: 0.4, teamId: null }] })
+    const bande = screen.getByTitle('Égalité aux frags')
+    expect(bande.getAttribute('style')).toContain('--ac-outcome-draw')
+  })
+
+  /**
+   * LA PISTE SCORE (demande utilisateur du 2026-08-28). Ce qu'elle protège : l'ABSENCE est un
+   * état à part entière — `score: null` veut dire « ce mode n'a pas de piste score » (Slayer),
+   * pas « la piste est vide ». Une rangée vide se lirait « personne n'a marqué ».
+   */
+  it('SANS piste score, la rangée n’existe pas — elle n’est pas vide, elle est absente', () => {
+    renderTracks({ score: null })
+    expect(screen.queryByText('Score')).toBeNull()
+  })
+
+  it('AVEC une piste score : sa rangée est nommée, et ses bandes se distinguent des frags', () => {
+    renderTracks({
+      score: {
+        segments: [
+          { key: 't', from: 0, to: 0.3, teamId: null },
+          { key: 's1', from: 0.3, to: 1, teamId: 1 },
+        ],
+        rounds: [],
+      },
+      dominance: [{ key: 'd1', from: 0, to: 1, teamId: 0 }],
+      allyOf: (id) => id === 1,
+      labelOf: (id) => (id === 1 ? 'Cobalt' : 'Ambre'),
+    })
+    expect(screen.getByText('Score')).toBeTruthy()
+    // Les deux rangées répondent à deux questions : leurs infobulles ne doivent pas se confondre.
+    expect(screen.getByTitle('Cobalt mène au score')).toBeTruthy()
+    expect(screen.getByTitle('Ambre mène aux frags')).toBeTruthy()
+    expect(screen.getByTitle('Égalité au score')).toBeTruthy()
+  })
+
+  it('un SÉPARATEUR DE MANCHE se pose sur la piste score et dit quelle manche s’achève', () => {
+    renderTracks({
+      score: {
+        segments: [{ key: 's1', from: 0, to: 1, teamId: 0 }],
+        rounds: [{ key: 'r1', endedIndex: 1, ratio: 0.5 }],
+      },
+    })
+    expect(screen.getByTitle('Manche 1 terminée')).toBeTruthy()
   })
 
   it('N’ÉCRIT AUCUN HEX : toutes les encres passent par les tokens du thème', () => {
@@ -230,6 +283,22 @@ describe('ReplayTimelineTracks — le repli des pistes', () => {
     expect(bouton).toHaveAttribute('aria-expanded', 'false')
     fireEvent.click(bouton)
     expect(onToggleTracks).toHaveBeenCalledTimes(1)
+  })
+
+  /**
+   * LE SENS DU CHEVRON (retour utilisateur du 2026-08-28 : « il est dans le mauvais sens »).
+   * Les pistes sont AU-DESSUS du bouton : déplié, la flèche doit montrer où elles vont partir
+   * (vers le haut) ; replié, d'où elles vont revenir (vers le bas). Le dessin de base pointe
+   * vers le bas, c'est donc l'état DÉPLIÉ qui porte la rotation — l'inverse de ce qui était
+   * livré, et rien d'autre qu'un test ne tient un sens de flèche.
+   */
+  it('DÉPLIÉ : le chevron pointe VERS LES PISTES (haut) ; REPLIÉ, vers le bas', () => {
+    const { container } = renderTracks()
+    expect(container.querySelector('button[aria-expanded="true"] svg')?.getAttribute('class'))
+      .toContain('rotate-180')
+    const replie = renderTracks({ tracksExpanded: false }).container
+    expect(replie.querySelector('button[aria-expanded="false"] svg')?.getAttribute('class'))
+      .not.toContain('rotate-180')
   })
 })
 
