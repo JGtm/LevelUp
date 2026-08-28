@@ -5100,3 +5100,34 @@ galerie — il est stable, cela ne relance rien.
 Chiffres du gate lot 3 (cache typecheck purge) : `npm run typecheck` exit 0 ; vitest
 `match-replay` + `media` + `lib/media` = 114 fichiers / **1693 tests, 0 echec** (+9 : 8 pour la
 lightbox, 1 garde-rail) ; ESLint 0 erreur ET 0 warning sur les 7 fichiers touches.
+
+## 2026-08-28 — Lecteur, phase 2 : la frise se replie (lot 4)
+
+Quatre pistes, c'est ce qu'on veut quand on analyse un match — et c'est trop quand on veut
+juste regarder le film. Le repli tient en un chevron, et il ne coute RIEN a la pile : il prend
+la place du `<div />` de remplissage qui faisait deja face au curseur dans la grille a deux
+colonnes. La seule rangee qui ne disparait jamais gagne enfin son libelle.
+
+**LE HELPER ETAIT PRIVE, IL EST EXPORTE — pas recopie.** `usePersistedFlag` porte un invariant
+qui a coute cher a etablir (ne jamais persister depuis l'updater de `setValue`, sous peine de
+bascule qui « revient en arriere » toute seule sous StrictMode). En refaire une copie de six
+lignes pour une preference qui ne passe pas par le tiroir, c'etait rouvrir exactement la
+divergence que sa centralisation avait fermee.
+
+**LE LIBELLE PORTE LE GESTE, L'ETAT VIT DANS `aria-expanded`.** « Replier les pistes » quand
+c'est deplie : c'est ce que le clic va faire. Un nom qui dirait l'etat contredirait l'attribut,
+et une technologie d'assistance lirait deux choses opposees sur le meme bouton.
+
+**LE GARDE-FOU DU LOT PRECEDENT A ETE REJOUE EN REPLI.** Les raccourcis clavier ne vivent sur
+la frise que parce que le curseur porte `TIMELINE_SHORTCUT_ATTR`. Un repli ecrit autrement — en
+masquant la rangee entiere plutot que les seules pistes — l'aurait emporte avec lui, et Espace
+serait redevenu muet apres un clic. Rien dans le typage ne le tient : il fallait un test qui
+verifie l'attribut A L'ETAT REPLIE, pas seulement deplie.
+
+**CE QUE LE REPLI NE TOUCHE PAS** : `ReplayCanvas`, reste a 672 lignes sans une ligne de diff.
+Le cablage passe par `useReplayTimeline`, qui produit deja les props de la frise.
+
+Chiffres du gate lot 4 (cache typecheck purge) : `npm run typecheck` exit 0 ; vitest
+`src/features/match-replay` + `src/routes` = 105 fichiers / **1613 tests, 0 echec** (+7 : 2 pour
+le repli, 2 pour le chevron, 3 pour la persistance) ; ESLint 0 erreur ET 0 warning sur les 8
+fichiers touches.

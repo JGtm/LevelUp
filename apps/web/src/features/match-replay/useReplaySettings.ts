@@ -38,6 +38,14 @@ const SHOW_FLAG_CARRIES_KEY = 'replay-show-flag-carries'
 const SHOW_VIP_CROWN_KEY = 'replay-show-vip-crown'
 const MARKER_COLORS_KEY = 'replay-marker-colors'
 
+/**
+ * LA FRISE EST-ELLE DÉPLIÉE ? Réglage du LECTEUR et non d'un calque : il ne passe donc pas
+ * par le tiroir, mais par un chevron sur la frise elle-même (retour utilisateur du
+ * 2026-08-28) — replié, il ne reste que la barre de progression et ses horloges. La clé vit
+ * avec les autres préférences du rejeu : c'est leur registre, et `useReplayTimeline` la lit.
+ */
+export const TIMELINE_EXPANDED_KEY = 'replay-timeline-expanded'
+
 /** Multiplicateurs de vitesse proposés (repris du POC, réglés à l'écran). */
 export const SPEED_MULTIPLIERS: readonly number[] = [0.5, 1, 2, 4]
 
@@ -250,8 +258,13 @@ export interface ReplaySettings {
  * une valeur nue ; la persistance vient APRÈS, depuis le gestionnaire d'événement. `value` est
  * de ce fait une dépendance de la bascule — c'est le prix, et il est juste : une bascule qui ne
  * connaît pas la valeur qu'elle inverse n'existe pas.
+ *
+ * EXPORTÉ depuis le 2026-08-28 : le repli de la frise est une préférence persistée comme les
+ * autres, mais elle ne passe pas par le tiroir (`useReplayTimeline` la lit directement). Faire
+ * une seconde copie du corps pour cette seule raison aurait rouvert exactement la divergence
+ * que cette centralisation a fermée.
  */
-function usePersistedFlag(key: string, fallback: boolean): [boolean, () => void] {
+export function usePersistedFlag(key: string, fallback: boolean): [boolean, () => void] {
   const [value, setValue] = useState(() => readStoredFlag(key, fallback))
   // L'ABONNEMENT REND LA CLÉ PARTAGEABLE : deux composants qui lisent la même préférence
   // bougent ensemble (cf. la note de `subscribePreference`). Sans lui, la bascule du tiroir

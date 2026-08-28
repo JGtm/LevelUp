@@ -40,6 +40,7 @@ import {
 } from './replayTimelineTracksLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
 import { displayClockMs, type ReplayWindowBounds } from './replayWindow'
+import { usePersistedFlag, TIMELINE_EXPANDED_KEY } from './useReplaySettings'
 import { useReplayShortcuts } from './useReplayShortcuts'
 
 /** Ce que le canvas prête à la frise : le document, le cadrage, le fil et la lecture. */
@@ -90,6 +91,10 @@ export function useReplayTimeline(o: ReplayTimelineOptions): ReplayTimeline {
   const { doc, playWindow, feedEntries, marks, lead, playback, toggleSound, renderWidth, locale } = o
   const { media: mediaItems = EMPTY_MEDIA } = o
   const { frameIntervalMs, frameCount } = doc
+  // LE REPLI EST UNE PRÉFÉRENCE DU LECTEUR, pas un calque : il ne passe pas par le tiroir mais
+  // par un chevron sur la frise. Persisté (patron des autres réglages), DÉPLIÉ par défaut — la
+  // frise à pistes est ce que le lot précédent a livré, on ne la cache pas d'office.
+  const [tracksExpanded, toggleTracks] = usePersistedFlag(TIMELINE_EXPANDED_KEY, true)
   // LA RANGÉE MÉDIAS EST UNE AFFAIRE DE TITRE, pas de match : le rejeu n'est gardé que par
   // `matchmaking`, et un titre sans médias afficherait sinon une piste éternellement vide —
   // qui se lirait « aucun média sur ce match » au lieu de « ce jeu n'en a pas ».
@@ -143,6 +148,8 @@ export function useReplayTimeline(o: ReplayTimelineOptions): ReplayTimeline {
     labelOf: lead.labelOf,
     media,
     showMediaTrack,
+    tracksExpanded,
+    onToggleTracks: toggleTracks,
     playing: playback.playing,
     // OUVRIR UN MÉDIA MET LE REJEU EN PAUSE : la frise n'appelle ceci que lorsque la lecture
     // tourne, donc la bascule vaut « pause » — jamais un redémarrage inattendu.

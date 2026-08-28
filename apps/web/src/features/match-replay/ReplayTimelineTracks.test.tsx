@@ -41,6 +41,7 @@ function placed(over: Partial<PlacedMedia> = {}): PlacedMedia {
 function renderTracks(over: Partial<Parameters<typeof ReplayTimelineTracks>[0]> = {}) {
   const onRequestPause = vi.fn()
   const onScrub = vi.fn()
+  const onToggleTracks = vi.fn()
   const utils = render(
     <ReplayTimelineTracks
       sliderRef={createRef<HTMLInputElement>()}
@@ -54,6 +55,8 @@ function renderTracks(over: Partial<Parameters<typeof ReplayTimelineTracks>[0]> 
       labelOf={(id) => `Équipe ${id}`}
       media={[]}
       showMediaTrack
+      tracksExpanded
+      onToggleTracks={onToggleTracks}
       playing
       onRequestPause={onRequestPause}
       startClock="0:00"
@@ -63,7 +66,7 @@ function renderTracks(over: Partial<Parameters<typeof ReplayTimelineTracks>[0]> 
       {...over}
     />,
   )
-  return { ...utils, onRequestPause, onScrub }
+  return { ...utils, onRequestPause, onScrub, onToggleTracks }
 }
 
 describe('ReplayTimelineTracks — les quatre pistes sont nommées', () => {
@@ -185,3 +188,48 @@ describe('ReplayTimelineTracks — la piste médias', () => {
     expect(screen.getByLabelText('Temps de match')).toBeTruthy()
   })
 })
+
+/**
+ * LE REPLI (retour utilisateur du 2026-08-28). Ce qu'il protège : replier ne doit RIEN coûter
+ * de ce qui fait le lecteur. Le curseur, ses horloges et — surtout — l'attribut qui lui rend
+ * les raccourcis clavier restent en place ; seules les pistes s'en vont.
+ */
+describe('ReplayTimelineTracks — le repli des pistes', () => {
+  it('REPLIÉ : plus une seule piste, mais le curseur et ses bornes restent', () => {
+    renderTracks({ tracksExpanded: false, media: [placed()] })
+    for (const label of ['Toi', 'Alliés', 'Dominance', 'Médias']) {
+      expect(screen.queryByText(label)).toBeNull()
+    }
+    expect(screen.queryByRole('button', { name: 'Capture Streets' })).toBeNull()
+    expect(screen.getByLabelText('Temps de match')).toBeTruthy()
+    expect(screen.getByText('0:00')).toBeTruthy()
+    expect(screen.getByText('5:00')).toBeTruthy()
+  })
+
+  /**
+   * GARDE-FOU : le repli ne doit pas emporter l'exemption clavier. L'attribut vit sur le
+   * curseur, qui survit au repli — mais rien dans le typage ne l'impose, et un repli écrit
+   * autrement (en masquant la rangée entière) l'aurait emporté sans qu'un test le voie.
+   */
+  it('REPLIÉ : le curseur PORTE toujours l’attribut des raccourcis clavier', () => {
+    renderTracks({ tracksExpanded: false })
+    expect(screen.getByLabelText('Temps de match')).toHaveAttribute(TIMELINE_SHORTCUT_ATTR)
+  })
+
+  it('DÉPLIÉ : le chevron propose de replier, et son état se lit dans aria-expanded', () => {
+    const { onToggleTracks } = renderTracks()
+    const bouton = screen.getByRole('button', { name: 'Replier les pistes' })
+    expect(bouton).toHaveAttribute('aria-expanded', 'true')
+    fireEvent.click(bouton)
+    expect(onToggleTracks).toHaveBeenCalledTimes(1)
+  })
+
+  it('REPLIÉ : le même chevron propose de déplier', () => {
+    const { onToggleTracks } = renderTracks({ tracksExpanded: false })
+    const bouton = screen.getByRole('button', { name: 'Déplier les pistes' })
+    expect(bouton).toHaveAttribute('aria-expanded', 'false')
+    fireEvent.click(bouton)
+    expect(onToggleTracks).toHaveBeenCalledTimes(1)
+  })
+})
+

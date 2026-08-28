@@ -149,14 +149,34 @@ ESLint 0 erreur ET 0 warning sur les 7 fichiers touches.
 
 ## LOT 4 — Web : repli des pistes (retouche utilisateur)
 
-- [ ] 4-1 Bouton de repli sur la frise (chevron, zone des libelles) : replie = SEULE la
+- [x] 4-1 Bouton de repli sur la frise (chevron, zone des libelles) : replie = SEULE la
       barre de progression (+ horloges de bornes) reste ; deplie = les 4 pistes.
       Preference PERSISTEE (patron `usePersistedFlag`, useReplaySettings.ts:254 — meme
       mecanisme que les autres reglages du lecteur), defaut DEPLIE. aria-expanded +
       libelles FR/EN (i18nContract + 2 tables, parite typee).
-- [ ] 4-2 Tests : repli masque les pistes et garde le curseur ; persistance ; aria ;
+- [x] 4-2 Tests : repli masque les pistes et garde le curseur ; persistance ; aria ;
       le garde-fou TIMELINE_SHORTCUT_ATTR reste vert (le curseur ne bouge pas de place).
-- [ ] 4-G Gate : typecheck ; vitest match-replay ; ESLint. Commit lot 4.
+- [x] 4-G Gate : typecheck ; vitest match-replay ; ESLint. Commit lot 4.
+
+Journal lot 4 (2026-08-28) : `usePersistedFlag` etait PRIVE (useReplaySettings.ts:254) —
+EXPORTE plutot que recopie, avec la note qui dit pourquoi. Le repli n'est pas un calque : il
+ne passe pas par le tiroir, donc `useReplayTimeline` lit le helper directement. Cle
+`replay-timeline-expanded`, posee au registre des cles du rejeu. Defaut DEPLIE.
+LE CHEVRON PREND LA PLACE DE L'ETIQUETTE VIDE qui faisait deja face au curseur (la grille a
+deux colonnes avait un `<div />` de remplissage) : rien n'est ajoute a la pile, et la seule
+rangee qui ne disparait jamais gagne son libelle. `ReplayCanvas` n'est PAS touche par ce lot —
+cliquet a 672, intact.
+Le libelle porte le GESTE OFFERT (« Replier les pistes » quand c'est deplie), l'etat vit dans
+`aria-expanded` : un nom qui dirait l'etat contredirait l'attribut.
+GARDE-FOU du lot 6 precedent verifie EN REPLI : le curseur porte toujours
+`TIMELINE_SHORTCUT_ATTR`, donc les raccourcis survivent au repli — un repli ecrit autrement
+(masquer la rangee entiere) l'aurait emporte sans qu'aucun test ne le voie.
+Bouton extrait en `TracksToggle` (patron des sous-composants du fichier) : le corps du
+composant principal ne grossit que de 5 lignes.
+Gates : `npm run typecheck` (cache purge) exit 0 ; vitest `src/features/match-replay` +
+`src/routes` = 105 fichiers / **1613 tests, 0 echec** (+7 : 2 repli, 2 chevron, 3 persistance) ;
+ESLint 0 erreur ET 0 warning sur les 8 fichiers touches ; ReplayTimelineTracks 284 L,
+useReplayTimeline 214 L (seuils tenus).
 
 ## LOT 5 — Cloture
 
