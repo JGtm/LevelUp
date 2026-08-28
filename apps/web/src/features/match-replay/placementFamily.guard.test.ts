@@ -241,10 +241,20 @@ describe('garde-rail : le vocabulaire des familles de pose', () => {
  *     que les VALEURS, celles que le trace lit.
  * Au merge, l'appel VipCrown resserre du correctif s'ajoute aux deux extractions : le fichier
  * tombe a 672 et le plafond descend a la mesure du jour, comme a chaque extraction depuis 861.
+ *
+ * 672 -> 679 le 2026-08-28 (lot PORTEUR ODDBALL, schema 23) : un CALQUE FRERE de plus, le porteur
+ * du crane. Sa LOGIQUE est deja extraite — tout vit dans `useReplaySkullCarrier.ts`, quinzieme
+ * hook de la meme famille que `useReplayVipCrown` et `useReplayFlagCarries`. Ne reste au canvas que
+ * le cablage IRREDUCTIBLE d'un calque : un import, l'appel du hook, une ligne de peinture, une
+ * dependance de `draw`, une entree de disponibilite du tiroir. C'est le SEUL cas ou le plafond
+ * remonte, et il est justifie : l'extraction a bien eu lieu (le hook), et il n'y avait pas, dans ce
+ * lot, d'extraction coincidente pour absorber les cinq lignes de glue — les inventer aurait ete du
+ * gonflage inverse. La prochaine addition retombe sous la regle : logique dans un hook, cablage au
+ * canvas, et le plafond suit le fichier vers le BAS a la premiere extraction.
  */
 describe('garde-rail : la taille du canvas du rejeu ne remonte pas', () => {
   it('ReplayCanvas.tsx reste sous son plafond', () => {
     const src = readFileSync(resolve(__dirname, 'ReplayCanvas.tsx'), 'utf8')
-    expect(src.split('\n').length - 1).toBeLessThanOrEqual(672)
+    expect(src.split('\n').length - 1).toBeLessThanOrEqual(679)
   })
 })

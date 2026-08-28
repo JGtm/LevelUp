@@ -135,6 +135,12 @@ const NULLABLE_ARRAYS = [
   // ferme le port (borne haute à la fin de l'axe). La garde de mode est côté serveur : `comp
   // 22 A` vaut `flag_grabs` en CTF, donc le calque n'est rempli que sur un film reconnu VIP.
   'vipCrown',
+  // `skullCarries` : LES PÉRIODES DE PORTAGE DU CRÂNE d'Oddball (schéma 23, 2026-08-28) — une
+  // entrée PLATE par période (xuid, t0, t1, closed), sans tableau imbriqué. Le porteur est le
+  // joueur dont les tics de score de mode montent (`comp 0 A`), nommé par le pont d'instants de
+  // mort PAR MANCHE. La garde de mode est côté serveur : `comp 0 A` est le score de mode de tout
+  // mode, donc le calque n'est rempli que sur un film reconnu Oddball.
+  'skullCarries',
 ] as const
 
 /** (1) La liste couvre EXACTEMENT les tableaux nullables du contrat — ni plus, ni moins. */
@@ -206,6 +212,8 @@ const NULLABLE_ARRAY_PATHS = [
   'zoneStates',
   // `vipCrown` (schéma 22) : période PLATE, aucun tableau imbriqué — un seul chemin, la racine.
   'vipCrown',
+  // `skullCarries` (schéma 23) : période PLATE, aucun tableau imbriqué — un seul chemin, la racine.
+  'skullCarries',
   // Dans les ÉLÉMENTS d'un tableau de tête — ce que la garde de racine ne voyait pas.
   'flagCarries[].spans',
   // La trajectoire d'une vie libre d'objet d'objectif (schema 21) : comblee par la
