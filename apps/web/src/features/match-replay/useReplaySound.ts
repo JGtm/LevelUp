@@ -49,6 +49,7 @@ import { staticAssetURL } from '@/lib/staticAssets'
 
 import { persistPreference, readStoredFlag, readStoredNumber } from './replayPreferences'
 import { endMatchSounds, endMatchSoundStems, type EndMatchSoundSpec } from './endMatchSound'
+import type { ReplayLocale } from './i18n'
 import { ReplayAudioPlayer } from './replayAudio'
 import type { ReplayDocumentReady } from './replayNormalize'
 import { distanceChain, drawVariation } from './weaponSoundLogic'
@@ -239,6 +240,9 @@ export function useReplaySound(
   // que l'encre des calques.
   scoreboard?: readonly ScoreboardSide[],
   endMatch: EndMatchSoundSpec | null = null,
+  // La LANGUE de l'interface : elle ne sert QU'au son « manche terminée » (voix d'annonceur,
+  // `roundOverSound.ts`), la seule entrée locale-aware de la piste. Absente, ce son se tait.
+  locale?: ReplayLocale,
 ): ReplaySound {
   const sideOfXuid = useMemo(() => sideResolverFromScoreboard(scoreboard), [scoreboard])
   // Le camp allié EN NUMÉRO : les sons d'état de zone joignent sur le propriétaire d'une zone,
@@ -255,8 +259,8 @@ export function useReplaySound(
   // Piste JOUÉE, catégories coupées retirées À LA CONSTRUCTION (jamais en aval, dans le
   // lecteur) ; DISPONIBILITÉ DU PANNEAU indépendante de ce filtre (hasSoundEvents ci-dessus).
   const timeline = useMemo(
-    () => buildSoundTimeline(doc, kills ?? [], t0Ms ?? 0, categories, sideOfXuid, allyTeam),
-    [doc, kills, t0Ms, categories, sideOfXuid, allyTeam],
+    () => buildSoundTimeline(doc, kills ?? [], t0Ms ?? 0, categories, sideOfXuid, allyTeam, locale),
+    [doc, kills, t0Ms, categories, sideOfXuid, allyTeam, locale],
   )
   const hasAnySound = useMemo(
     () => hasSoundEvents(doc, kills ?? [], t0Ms ?? 0),

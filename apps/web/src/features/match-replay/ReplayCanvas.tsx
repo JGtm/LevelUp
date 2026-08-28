@@ -173,9 +173,9 @@ export function ReplayCanvas({
     showWeaponPads, showFlagCarries, showVipCrown, showSkullCarrier, speed: multiplier,
     markerColors,
   } = settings
-  // SON : coupé par défaut, préférences persistées, tout le câblage dans le hook (règles dans
-  // replaySound.ts, lecture replayAudio.ts, camps objectiveSound.ts, fin de partie endMatch).
-  const sound = useReplaySound(doc, kills, t0Ms, multiplier, scoreboard, endMatch ?? null)
+  // SON : coupé par défaut, câblage dans le hook (replaySound.ts, lecture replayAudio.ts, camps
+  // objectiveSound.ts, fin endMatch, « manche terminée » locale-aware — la `locale` ne sert qu'à lui).
+  const sound = useReplaySound(doc, kills, t0Ms, multiplier, scoreboard, endMatch ?? null, locale)
 
   const paletteVersion = useColorPaletteVersion()
   // TOUTES LES ENCRES DU REJEU, résolues une fois par palette (useReplayInks) : couleurs
@@ -314,12 +314,12 @@ export function ReplayCanvas({
   })
 
   const objectiveObjects = useReplayObjectiveObjects({
-    lives: doc.objectiveObjects, view: canvasView, ink: neutralInk, edge: floorStyle.edge,
+    lives: doc.objectiveObjects, view: canvasView, ink: neutralInk, outline: markInk.outline,
   })
   // LA COURONNE VIP (schéma 22) : marqueur sur le VIP courant, relu image par image (useReplayVipCrown).
   const vipCrown = useReplayVipCrown({ doc, view: canvasView, enabled: showVipCrown, ink: neutralInk, reducedMotion })
-  // LE PORTEUR DU CRÂNE d'Oddball (schéma 23) : disque sur le porteur courant, relu image par image.
-  const skullCarrier = useReplaySkullCarrier({ doc, view: canvasView, enabled: showSkullCarrier, ink: neutralInk, edge: floorStyle.edge, reducedMotion })
+  // LE PORTEUR DU CRÂNE d'Oddball (schéma 23) : crâne sur le porteur courant, relu image par image.
+  const skullCarrier = useReplaySkullCarrier({ doc, view: canvasView, enabled: showSkullCarrier, ink: neutralInk, outline: markInk.outline, reducedMotion })
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current
