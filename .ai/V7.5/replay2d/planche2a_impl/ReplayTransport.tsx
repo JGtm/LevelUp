@@ -1,4 +1,6 @@
 /**
+ * DESTINATION : apps/web/src/features/match-replay/ReplayTransport.tsx  (REMPLACE l'existant)
+ *
  * ReplayTransport — LA BARRE DE LECTURE du rejeu. Refonte validée le 2026-08-28 (planche 2a),
  * après « là ça fait basic de fou » : la barre disait onze commandes du même poids, sans
  * hiérarchie ni matière.
@@ -30,13 +32,15 @@
 import type { ComponentProps, RefObject } from 'react'
 
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
-import { SKIP_SECONDS } from './replayCanvasConfig'
 import { ReplaySoundControls } from './ReplaySoundControls'
 import { ReplaySpeedMenu } from './ReplaySpeedMenu'
 import { ReplayTimelineTracks } from './ReplayTimelineTracks'
 import { SlidersIcon } from './SlidersIcon'
 import type { ReplayCapture } from './useReplayCapture'
 import type { ReplaySound } from './useReplaySound'
+
+/** Le saut des deux boutons qui encadrent la lecture, en secondes (et des flèches ←/→). */
+export const SKIP_SECONDS = 10
 
 interface ReplayTransportProps {
   playing: boolean
@@ -91,7 +95,7 @@ export function ReplayTransport({
             type="button"
             onClick={onTogglePlay}
             aria-label={playing ? t.pause : t.play}
-            title={`${playing ? t.pause : t.play} (${t.keySpace})`}
+            title={`${playing ? t.pause : t.play} (Espace)`}
             className="inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors hover:bg-primary/90 active:bg-primary/80"
           >
             {playing ? <PauseIcon /> : <PlayIcon />}

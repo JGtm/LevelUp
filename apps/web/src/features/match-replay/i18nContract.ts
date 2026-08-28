@@ -84,6 +84,30 @@ export interface ReplayText {
   empty: string
   speed: string
   time: string
+  /**
+   * LES SAUTS DE LA BARRE (planche 2a, 2026-08-28) : le libellé PORTE LA DURÉE plutôt que de
+   * la répéter à côté du bouton — l'icône dit le sens, le nom accessible dit combien. La
+   * valeur vient de `SKIP_SECONDS` (replayCanvasConfig.ts) : changer la convention à un seul
+   * endroit change les deux libellés.
+   */
+  skipBackFmt: (seconds: number) => string
+  skipForwardFmt: (seconds: number) => string
+  /**
+   * LES DEUX NOTES DU MENU DE VITESSE. `speedNormal` marque la vitesse de référence (on
+   * cherche « comment je reviens à la normale ? », pas « qu'est-ce que 1× »). `speedMuted`
+   * marque celles où le son se tait — le menu ne la pose que sur les vitesses que
+   * `soundPlaysAtSpeed` (replaySoundCursor.ts) refuse, donc la borne n'est écrite nulle part
+   * dans le texte : elle se lit sur les entrées qui portent la note.
+   */
+  speedNormal: string
+  speedMuted: string
+  /**
+   * LE NOM DE LA BARRE D'ESPACE, et c'est la SEULE touche du lecteur qui se traduit. Les autres
+   * rappels de la barre — R, M, ←, → — sont des touches physiques : leur nom est le glyphe
+   * gravé dessus, identique dans les deux langues. « Espace » ne l'est pas ; l'écrire en dur
+   * aurait laissé un mot français dans une interface anglaise.
+   */
+  keySpace: string
   /** Kill feed synchronisé sur l'horloge du rejeu. */
   killFeedTitle: string
   killFeedEmpty: string
@@ -153,6 +177,16 @@ export interface ReplayText {
    * `sound` / `soundHint`).
    */
   recordHint: string
+  /**
+   * LES PASTILLES DE SORTIE (planche 2a, 2026-08-28) : les trois commandes portent désormais
+   * un TEXTE COURT à côté de leur icône. Il ne remplace pas le nom accessible — `captureImage`,
+   * `recordVideo` et `stopRecording` restent en aria-label, et ce sont eux qu'un lecteur
+   * d'écran annonce. Ce mot-ci est ce que l'ŒIL lit sans survoler : trois icônes muettes côte
+   * à côte se ressemblent toutes, un mot les départage d'un coup.
+   */
+  captureImageShort: string
+  recordVideoShort: string
+  stopRecordingShort: string
   /** Le tiroir de réglages (décision utilisateur du 16/08) : bouton et panneau partagent
    *  le même intitulé — ouvrir dit ce qu'on va trouver derrière. */
   settingsButton: string
@@ -386,9 +420,33 @@ export interface ReplayText {
    */
   victoryPanelLabel: string
   victoryScoreLabel: string
-  /** RETOURNEMENT : l'instant où le match change de meneur (marque sur la frise). */
-  leadChange: string
-  leadChangeAtFmt: (time: string, team: string) => string
+  /**
+   * LES QUATRE PISTES DE LA FRISE (planche 2a, 2026-08-28). Les trois premières nomment ce
+   * qu'on lit sous le curseur : tes éliminations et tes morts, celles de tes alliés, et qui
+   * menait à cet instant. Ce sont des ÉTIQUETTES DE LIGNE, pas des titres — d'où des mots
+   * seuls, à l'échelle d'une frise haute de quelques pixels.
+   *
+   * `dominanceOfFmt` date une bande de dominance dans son infobulle : l'équipe y est nommée
+   * par la cascade du scoreboard (`labelOf`), la même que les colonnes et le bandeau.
+   */
+  trackYou: string
+  trackAllies: string
+  trackDominance: string
+  dominanceOfFmt: (team: string) => string
+  /**
+   * LA PISTE DES MÉDIAS, son état VIDE, et la lightbox qui ouvre un média.
+   *
+   * LE RENDU EST COMPLET, LA DONNÉE ARRIVE APRÈS (endpoint par match — cf. registre des
+   * reports) : la piste s'affiche avec un état vide HONNÊTE, et « aucun média » est un fait
+   * vrai aujourd'hui pour tous les matchs, pas un trou masqué. `mediaPausedHint` est la
+   * pastille de la lightbox : ouvrir un média met le rejeu en pause, et sans ce mot un lecteur
+   * qui referme ne saurait pas pourquoi le film n'a pas avancé.
+   */
+  mediaTrack: string
+  mediaEmpty: string
+  mediaOpen: string
+  mediaClose: string
+  mediaPausedHint: string
   unknownPlayer: string
   /**
    * Marques d'identité devant un nom. Le glyphe « moi » ne se DESSINE plus nulle part

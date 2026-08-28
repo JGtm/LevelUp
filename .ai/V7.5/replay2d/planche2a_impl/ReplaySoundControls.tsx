@@ -1,4 +1,6 @@
 /**
+ * DESTINATION : apps/web/src/features/match-replay/ReplaySoundControls.tsx  (REMPLACE l'existant)
+ *
  * ReplaySoundControls — l'interrupteur du son et son volume, à la barre de lecture.
  *
  * SEUL L'HABILLAGE CHANGE (planche 2a du 2026-08-28) : bouton ROND comme le reste du transport,

@@ -9,6 +9,8 @@
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
 
 import type { CalloutZoneReady } from './calloutsLayer'
+import type { ReplayFeedEntry } from './killFeedLogic'
+import type { ReplayMediaItem } from './replayTimelineTracksLogic'
 
 /**
  * 8 tokens de série : une teinte par GRANDE ZONE NOMMÉE (cyclés au-delà de 8 via
@@ -24,6 +26,21 @@ export const SERIES_TOKENS: SemanticToken[] = [
 export const EMPTY_ZONES: CalloutZoneReady[] = []
 
 /**
+ * Référence STABLE pour « pas de médias » — et, pour l'instant, la SEULE source de la piste
+ * Médias : la donnée arrive en phase 2 (endpoint par match, cf. registre des reports). Une
+ * référence nommée plutôt qu'un `[]` inline pour la même raison que les zones, et parce que le
+ * jour où les médias arrivent, ce nom est exactement l'endroit où la prop se branche.
+ */
+export const EMPTY_MEDIA: ReplayMediaItem[] = []
+
+/**
+ * Référence STABLE pour « pas de fil » : le canvas peut être monté sans que la page ait encore
+ * assemblé le fil aligné (la vue du match arrive après l'artefact). Un `?? []` inline
+ * reconstruirait les pistes de la frise à chaque rendu, pour un résultat identique.
+ */
+export const EMPTY_FEED: ReplayFeedEntry[] = []
+
+/**
  * Cadence de publication de l'image courante vers React, en millisecondes.
  *
  * POURQUOI PAS À CHAQUE IMAGE. Le canvas se redessine à la cadence de l'écran ; les fiches
@@ -32,3 +49,15 @@ export const EMPTY_ZONES: CalloutZoneReady[] = []
  * perçoit comme un retard sur un compteur, et divise le travail de React par dix.
  */
 export const FRAME_PUBLISH_MS = 150
+
+/**
+ * LE SAUT DES DEUX BOUTONS qui encadrent la lecture, en secondes — et celui des flèches ←/→
+ * (cf. `useReplayShortcuts`). Dix secondes est la convention des lecteurs vidéo, et le libellé
+ * des boutons PORTE la durée (`skipBackFmt`/`skipForwardFmt`) : la changer ici change les deux
+ * commandes, leur nom accessible et le raccourci, sans qu'aucun texte ne mente.
+ *
+ * ELLE VIT ICI ET NON DANS `ReplayTransport.tsx` (où le design l'avait posée) : un export qui
+ * n'est pas un composant, depuis un fichier de composant, déclenche `react-refresh/
+ * only-export-components` — la même raison qui a sorti `SlidersIcon` et les hooks du canvas.
+ */
+export const SKIP_SECONDS = 10
