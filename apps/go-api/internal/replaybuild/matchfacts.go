@@ -51,6 +51,10 @@ type filmStats struct {
 	// (`Scanned`) posee par l'appelant selon `game_variant_name` — `comp 22 A` vaut `flag_grabs`
 	// en CTF, donc la couronne n'est lue que sur un film reconnu VIP.
 	vip replay.VipInput
+	// skull porte le PORTEUR DU CRANE d'Oddball : les memes enregistrements d'entite, plus la
+	// garde de mode posee selon `game_variant_name` — `comp 0 A` est le score de mode de tout
+	// mode, donc le porteur n'est lu que sur un film reconnu Oddball.
+	skull replay.SkullInput
 }
 
 // readFilmStats decode les enregistrements d'entite et assemble les entrees des deux calques.
@@ -92,7 +96,18 @@ func readFilmStats(ctx context.Context, matchID, filmDir string, facts port.Matc
 		objectives: identifiedEvents(ctx, matchID, recs, lines, facts.GameVariantName),
 		flag:       flagInput(recs, src),
 		vip:        vipInput(recs, isVipVariant(facts.GameVariantName)),
+		skull:      skullInput(recs, isSkullVariant(facts.GameVariantName)),
 	}
+}
+
+// skullInput assemble ce que le PORTEUR DU CRANE lit dans le film — les memes enregistrements
+// d'entite que la courbe de score, garde par le mode. Hors Oddball, il rend un input VIDE (ni
+// records ni Scanned) : le calque ne sera ni construit ni publie.
+func skullInput(recs []objectiveevents.StatRecord, isSkull bool) replay.SkullInput {
+	if !isSkull {
+		return replay.SkullInput{}
+	}
+	return replay.SkullInput{Scanned: true, Records: recs}
 }
 
 // vipInput assemble ce que la COURONNE VIP lit dans le film — les memes enregistrements d'entite
