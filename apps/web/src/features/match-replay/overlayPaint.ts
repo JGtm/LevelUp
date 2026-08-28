@@ -184,7 +184,7 @@ function scoreParts(score: OverlayScore): { ally: string; enemy: string; sep: st
  * haut et flotterait au-dessus du centre dès qu'il porte un score.
  */
 function panelHeight(panel: OverlayPanel): number {
-  let h = STATUS_SIZE + BLOCK_PAD_Y * 2 + BLOCK_BORDER * 2
+  let h = statusBlockHeight()
   if (panel.label) h += ROW_GAP + LABEL_SIZE
   if (panel.score) h += ROW_GAP + SCORE_SIZE
   return h
@@ -215,6 +215,15 @@ function paintLogo(
   ctx.restore()
 }
 
+/**
+ * La hauteur de la carte de statut. UNE SEULE definition, consommee par la MESURE et par la
+ * PEINTURE : les deux divergeaient de `BLOCK_BORDER * 2`, et le panneau se peignait 2 px
+ * au-dessus du centre avec un ecart bloc-nom trop court de 4 px.
+ */
+function statusBlockHeight(): number {
+  return STATUS_SIZE + BLOCK_PAD_Y * 2 + BLOCK_BORDER * 2
+}
+
 /** paintStatusBlock peint la carte colorée et le verdict qu'elle porte. */
 function paintStatusBlock(
   ctx: CanvasRenderingContext2D,
@@ -227,7 +236,7 @@ function paintStatusBlock(
   const text = upper(panel.status)
   const font = statusFont(fonts)
   const w = textWidth(ctx, text, font, STATUS_TRACKING) + BLOCK_PAD_X * 2
-  const h = STATUS_SIZE + BLOCK_PAD_Y * 2
+  const h = statusBlockHeight()
   const x = (view.width - w) / 2
   ctx.save()
   ctx.shadowColor = SHADOW_COLOR

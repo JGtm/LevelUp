@@ -15,7 +15,7 @@ import type { ReplayExport } from './useReplayExport'
 function makeExport(over: Partial<ReplayExport> = {}): ReplayExport {
   return {
     supported: true,
-    state: { running: false, done: 0, total: 0, pct: 0 },
+    state: { running: false, done: 0, total: 0, pct: 0, failed: false },
     defaultBounds: () => ({ startFrame: 0, endFrame: 100 }),
     run: vi.fn(async () => {}),
     cancel: vi.fn(),
@@ -76,7 +76,7 @@ describe('ReplayExportDialog — au repos', () => {
 })
 
 describe('ReplayExportDialog — pendant le calcul', () => {
-  const enCours = { running: true, done: 300, total: 1200, pct: 25 }
+  const enCours = { running: true, done: 300, total: 1200, pct: 25, failed: false }
 
   it('montre la progression en toutes lettres, et la barre', () => {
     setup({ state: enCours })

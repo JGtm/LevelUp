@@ -32,7 +32,7 @@
  * passe, et cela évite une seconde toile de la taille de la première. À la fin, quoi qu'il
  * arrive, l'image d'avant l'export est reposée et repeinte.
  */
-import { useCallback, useRef, useState, type RefObject } from 'react'
+import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 
 import { teamTintStyles } from '@/features/match-view/teamColor'
 import type { XuidMeta } from '@/features/match-view/xuidMeta'
@@ -41,7 +41,7 @@ import { teamLogoPath } from '@/lib/halo/teamNames'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 import type { ReplayScoreDocument } from '@/lib/replay/scoreTimeline'
 
-import { staticAssetURL } from '@/lib/staticAssets'
+
 
 import { readInk } from './canvasInk'
 import { yieldToEvents } from './eventLoopYield'
@@ -51,18 +51,20 @@ import {
   type OverlayPanelSource,
 } from './exportOverlayPanels'
 import { paintOverlayPanel, type OverlayFonts, type OverlayInk } from './overlayPaint'
-import { MIX_CHANNELS, MIX_SAMPLE_RATE, mixReplayAudio } from './replayAudioMix'
+import { MIX_CHANNELS, MIX_SAMPLE_RATE, mixReplayAudio, soundUrlOf } from './replayAudioMix'
 import { formatClock, frameToMs } from './replayLogic'
-import { triggerDownload } from './replayCapture'
+import { buildCaptureFilename, triggerDownload } from './replayCapture'
 import { tintedIconCanvas } from './replayDraw'
 import {
+  END_HOLD_MS,
   buildExportPlan,
   defaultExportBounds,
   exportProgressPct,
   type ExportBounds,
+  type ExportPlan,
 } from './replayExportPlan'
 import type { ReplayDocumentReady } from './replayNormalize'
-import { canExportVideo, openVideoExport } from './replayVideoEncoder'
+import { EXPORT_FPS, canExportVideo, openVideoExport, type VideoExportSink } from './replayVideoEncoder'
 import { displayClockMs, type ReplayWindowBounds } from './replayWindow'
 import type { ReplayLocale } from './i18n'
 import type { ReplaySoundEvent } from './replaySoundVariants'
@@ -87,8 +89,6 @@ export interface ReplayExportOptions {
   outcome: ExportOutcome | null
   titleSlug: string
   locale: ReplayLocale
-  /** Nomme le fichier sur l'instant de match courant (partagé avec la capture). */
-  filenameFor: (ext: string) => string
   /**
    * LA PISTE SONORE DU REJEU, telle que la page la joue (`useReplaySound.exportTrack`). Absente
    * = clip muet. Elle n'est PAS reconstruite par l'export : c'est ce qui garantit qu'un clip
@@ -98,6 +98,7 @@ export interface ReplayExportOptions {
     timeline: readonly ReplaySoundEvent[]
     endMatchStems: readonly string[]
     variationPercent: number
+    distancePercent: number
   }
   /** Le volume réglé dans la page. Le mixage le suit, même haut-parleurs coupés (décision D6). */
   soundVolume?: number
@@ -114,6 +115,10 @@ export interface ReplayExportState {
   done: number
   total: number
   pct: number
+  /** `true` = le dernier export a ECHOUE. Le dialogue le dit au lieu de se vider en silence. */
+  failed: boolean
+  /** Le message technique de l'echec, pour la console et pour l'utilisateur averti. */
+  message?: string
 }
 
 export interface ReplayExport {
@@ -135,7 +140,7 @@ export interface ReplayExport {
   lengthClock: (bounds: ExportBounds) => string
 }
 
-const IDLE: ReplayExportState = { running: false, done: 0, total: 0, pct: 0 }
+const IDLE: ReplayExportState = { running: false, done: 0, total: 0, pct: 0, failed: false }
 
 /** Les encres du thème, résolues UNE fois par export (cf. piège 2 de l'en-tête). */
 function readOverlayInk(): OverlayInk {
@@ -175,8 +180,7 @@ async function loadTeamLogo(
 }
 
 /** Prépare tout ce qui ne change pas d'une image à l'autre. Hors React : aucun état ici. */
-async function buildSource(o: ReplayExportOptions): Promise<OverlayPanelSource> {
-  const ink = readOverlayInk()
+async function buildSource(o: ReplayExportOptions, ink: OverlayInk): Promise<OverlayPanelSource> {
   // LA COULEUR EST CELLE QUE L'UTILISATEUR A RÉGLÉE (décision D1 du DOM) : l'écran de fin est
   // TOUJOURS celui de son camp, donc toujours `team-ally`, surchargeable par l'accessibilité.
   const teamColor = resolveToken('team-ally')
@@ -203,8 +207,7 @@ function paintExportFrame(
   canvas: HTMLCanvasElement,
   o: ReplayExportOptions,
   source: OverlayPanelSource,
-  ink: OverlayInk,
-  fonts: OverlayFonts,
+  paint: OverlayPaintContext,
   frame: number,
 ): void {
   o.frameRef.current = frame
@@ -217,13 +220,24 @@ function paintExportFrame(
   // son tracé, mais rien ne garantit dans quel état ses calques la laissent.
   const dpr = window.devicePixelRatio || 1
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-  paintOverlayPanel(ctx, { width: canvas.width / dpr, height: canvas.height / dpr }, panel, fonts, ink)
+  paintOverlayPanel(ctx, { width: canvas.width / dpr, height: canvas.height / dpr }, panel, paint.fonts, paint.ink)
 }
 
 export function useReplayExport(o: ReplayExportOptions): ReplayExport {
   const [state, setState] = useState<ReplayExportState>(IDLE)
   const cancelRef = useRef(false)
   const runningRef = useRef(false)
+  // LE DÉMONTAGE ANNULE, ET NE TÉLÉCHARGE RIEN. Même invariant que l'enregistrement temps réel
+  // juste à côté (`useReplayCapture`, `liveRef`) : quitter la page d'un match pendant un export
+  // ne doit pas déposer, trois minutes plus tard, le fichier d'un match qu'on a quitté.
+  const liveRef = useRef(true)
+  useEffect(() => {
+    liveRef.current = true
+    return () => {
+      liveRef.current = false
+      cancelRef.current = true
+    }
+  }, [])
 
   const cancel = useCallback(() => {
     cancelRef.current = true
@@ -237,6 +251,8 @@ export function useReplayExport(o: ReplayExportOptions): ReplayExport {
   const run = useCallback(
     async (bounds: ExportBounds, options?: ExportRunOptions) => {
       const canvas = o.canvasRef.current
+      // `runningRef` est posé SYNCHRONEMENT, avant le moindre `await` : c'est ce qui rend le
+      // double-clic sur « Exporter » inoffensif.
       if (!canvas || runningRef.current || !canExportVideo()) return
       runningRef.current = true
       cancelRef.current = false
@@ -244,37 +260,69 @@ export function useReplayExport(o: ReplayExportOptions): ReplayExport {
       // L'IMAGE D'AVANT L'EXPORT est mise de côté MAINTENANT : la boucle va écrire `frameRef`
       // des milliers de fois, et l'utilisateur doit retrouver son rejeu où il l'avait laissé.
       const resume = o.frameRef.current
-      const plan = buildExportPlan(bounds, o.doc)
-      setState({ running: true, done: 0, total: plan.frames.length, pct: 0 })
+      // Un premier plan SANS maintien : il donne la duree de la plage, dont le mixage a besoin.
+      let plan = buildExportPlan(bounds, o.doc)
+      setState({ running: true, done: 0, total: plan.frames.length, pct: 0, failed: false })
+      let sink: VideoExportSink | null = null
       try {
         // Les polices AVANT la première image : sans cette attente, le début du clip écrirait
         // les surimpressions dans une police de repli, et le reste dans la bonne.
         await document.fonts.ready
-        const source = await buildSource(o)
         const ink = readOverlayInk()
         const fonts = readOverlayFonts()
+        const source = await buildSource(o, ink)
         // LE SON SE MIXE AVANT D'OUVRIR LE CONTENEUR : le MP4 annonce ses pistes une fois pour
         // toutes, donc il faut savoir AVANT s'il y en aura une. Le mixage hors ligne est rapide
         // (il ne joue rien, il calcule), et il rend `null` s'il n'y a rien a mixer.
-        const mix = options?.sound === false ? null : await mixExportAudio(o, bounds, plan.durationMs)
-        const sink = await openVideoExport({
+        const mix = options?.sound === false ? null : await mixExportAudio(o, bounds, plan)
+        // LE MAINTIEN SE CALCULE UNE FOIS LE SON CONNU (cf. `holdMsFor`), et le plan se refait :
+        // la derniere image doit tenir assez longtemps pour qu'on lise le verdict, et au moins
+        // aussi longtemps que le son continue.
+        plan = buildExportPlan(bounds, o.doc, EXPORT_FPS, holdMsFor(o, bounds, plan, mix))
+        setState({ running: true, done: 0, total: plan.frames.length, pct: 0, failed: false })
+        sink = await openVideoExport({
           width: canvas.width,
           height: canvas.height,
           audio: mix ? { sampleRate: MIX_SAMPLE_RATE, numberOfChannels: MIX_CHANNELS } : undefined,
         })
-        if (!sink) return
+        if (!sink) {
+          // Configuration refusée par le navigateur : ce n'est pas une panne, c'est une
+          // capacité absente — mais l'utilisateur doit le voir, pas regarder une barre
+          // disparaître sans un mot.
+          fail(setState, 'configuration video refusee par le navigateur')
+          return
+        }
         if (mix) await sink.addAudioBuffer(mix)
-        const ok = await encodeAll(canvas, o, source, ink, fonts, plan.frames, {
+        const ok = await encodeAll(canvas, o, source, { ink, fonts }, plan.frames, {
           cancelled: () => cancelRef.current,
           progress: (done) =>
-            setState({ running: true, done, total: plan.frames.length, pct: exportProgressPct(done, plan.frames.length) }),
+            setState({ running: true, done, total: plan.frames.length, pct: exportProgressPct(done, plan.frames.length), failed: false }),
           sink,
         })
-        if (ok) triggerDownload(await sink.finish(), o.filenameFor('mp4'))
-        else sink.abort()
-      } finally {
-        runningRef.current = false
+        const clip = ok ? await sink.finish() : null
+        // `sink` n'est lâché QUE si `finish()` l'a refermé. Sur annulation il reste ici, et
+        // c'est le `finally` qui l'abandonne — sans quoi l'encodeur et son muxeur restaient
+        // ouverts après un clic sur « Annuler ».
+        if (ok) sink = null
+        // LE DÉMONTAGE NE TÉLÉCHARGE PAS : le clip est assemblé (l'encodeur doit être vidé
+        // proprement quoi qu'il arrive) mais il ne part pas vers un onglet qui a changé de page.
+        if (clip && liveRef.current) triggerDownload(clip, exportFilename(o, bounds))
+        // RETOUR AU REPOS sur succès ET sur annulation. L'échec, lui, garde son état : c'est
+        // la seule chose qui distingue « ça n'a pas marché » de « il ne s'est rien passé ».
         setState(IDLE)
+      } catch (err) {
+        // JAMAIS D'ÉCHEC MUET (règle 3 du dépôt : logger AVANT toute dégradation). Sans ce
+        // bloc, une panne d'encodeur faisait disparaître la barre de progression sans un mot,
+        // sans fichier et sans trace — et laissait l'encodeur ouvert jusqu'à la fermeture de
+        // l'onglet.
+        console.error('[replay-export] export interrompu', err)
+        fail(setState, err instanceof Error ? err.message : String(err))
+      } finally {
+        // L'ENCODEUR SE REFERME SUR TOUS LES CHEMINS : `sink` n'est remis à `null` qu'une fois
+        // le fichier assemblé. S'il est encore là, c'est qu'on sort par une erreur ou une
+        // annulation, et il retient un muxeur entier en mémoire.
+        sink?.abort()
+        runningRef.current = false
         o.frameRef.current = resume
         o.redraw()
       }
@@ -292,6 +340,23 @@ export function useReplayExport(o: ReplayExportOptions): ReplayExport {
   )
 
   return { supported: canExportVideo(), state, defaultBounds, run, cancel, clockOf, lengthClock }
+}
+
+/**
+ * fail pose l'état d'échec. L'export s'arrête, mais le dialogue RESTE ouvert et le dit — c'est
+ * la seule différence qui compte entre « ça n'a pas marché » et « il ne s'est rien passé ».
+ */
+function fail(setState: (s: ReplayExportState) => void, message: string): void {
+  setState({ running: false, done: 0, total: 0, pct: 0, failed: true, message })
+}
+
+/**
+ * Les deux moities de la peinture, REGROUPEES : elles voyagent toujours ensemble, et les
+ * separer poussait quatre signatures a six parametres (seuil du depot : cinq).
+ */
+interface OverlayPaintContext {
+  ink: OverlayInk
+  fonts: OverlayFonts
 }
 
 /** Ce dont la boucle a besoin en plus des images : où pousser, et quand s'arrêter. */
@@ -312,14 +377,13 @@ async function encodeAll(
   canvas: HTMLCanvasElement,
   o: ReplayExportOptions,
   source: OverlayPanelSource,
-  ink: OverlayInk,
-  fonts: OverlayFonts,
+  paint: OverlayPaintContext,
   frames: readonly number[],
   hooks: EncodeHooks,
 ): Promise<boolean> {
   for (let i = 0; i < frames.length; i++) {
     if (hooks.cancelled()) return false
-    paintExportFrame(canvas, o, source, ink, fonts, frames[i])
+    paintExportFrame(canvas, o, source, paint, frames[i])
     await hooks.sink.addFrame(canvas, i)
     if (i % PROGRESS_EVERY !== 0) continue
     hooks.progress(i)
@@ -332,6 +396,23 @@ async function encodeAll(
 }
 
 /**
+ * exportFilename nomme le clip sur SES DEUX BORNES (décision D9 du plan).
+ *
+ * `filenameFor` de la capture ne connaît qu'un instant — celui de `frameRef`, qui vaut la borne
+ * de FIN au moment où le fichier part. Deux exports de plages différentes qui partagent leur
+ * fin porteraient alors le même nom et s'écraseraient dans le dossier de téléchargements.
+ */
+function exportFilename(o: ReplayExportOptions, bounds: ExportBounds): string {
+  return buildCaptureFilename(
+    o.doc.matchId,
+    frameToMs(bounds.startFrame, o.doc),
+    'mp4',
+    new Date(),
+    frameToMs(bounds.endFrame, o.doc),
+  )
+}
+
+/**
  * mixExportAudio rend la piste sonore de la plage, ou `null` s'il n'y a rien à mixer.
  *
  * LES BORNES PASSENT EN MILLISECONDES DE FILM, pas en images : la piste sonore est horodatée
@@ -340,7 +421,7 @@ async function encodeAll(
 async function mixExportAudio(
   o: ReplayExportOptions,
   bounds: ExportBounds,
-  durationMs: number,
+  plan: ExportPlan,
 ): Promise<AudioBuffer | null> {
   // LA PISTE SE LIT ICI, au lancement : elle porte des reglages d'instance qui vivent dans des
   // refs, et les lire au rendu rendrait des valeurs arbitraires.
@@ -349,14 +430,50 @@ async function mixExportAudio(
   const startMs = frameToMs(bounds.startFrame, o.doc)
   return mixReplayAudio(
     track.timeline,
-    { startMs, endMs: startMs + durationMs },
+    { startMs, endMs: startMs + plan.durationMs },
     {
       variationPercent: track.variationPercent,
-      endMatchStems: track.endMatchStems,
+      distancePercent: track.distancePercent,
+      // LA CONCLUSION N'EST FOURNIE QUE SI LA PLAGE ATTEINT VRAIMENT LA FIN DU MATCH. Sans
+      // cette garde, un extrait des minutes 2 a 4 se terminait sur la voix d'annonceur et la
+      // fanfare de victoire : le son affirmait un fait faux sur l'extrait.
+      endMatchStems: reachesMatchEnd(o, bounds) ? track.endMatchStems : [],
       volume: o.soundVolume ?? 1,
-      // MÊME RÈGLE D'URL QUE LE LECTEUR (`soundURLsFor`) : un stem, un `.wav` sous les assets
-      // statiques du titre. Deux copies de cette ligne, pas trois.
-      urlOf: (stem) => staticAssetURL('sound', stem, '.wav'),
+      urlOf: soundUrlOf,
     },
   )
+}
+
+/**
+ * holdMsFor — combien de temps la DERNIERE image doit rester a l'ecran, apres la plage.
+ *
+ * DEUX RAISONS, et on prend la plus longue. (1) L'ecran de fin de match ne se peint qu'A la
+ * borne : sans maintien, le clip se terminait sur un eclair de 1/30 s de verdict. (2) Le son
+ * deborde souvent la borne — une fanfare de fin dure jusqu'a 11 s — et une piste sonore qui
+ * joue apres la derniere image laisse le lecteur sur un ecran mort.
+ *
+ * Aucune des deux ne s'applique a un extrait muet de milieu de match : il s'arrete net, ce qui
+ * est le comportement attendu d'un extrait.
+ */
+function holdMsFor(
+  o: ReplayExportOptions,
+  bounds: ExportBounds,
+  plan: ExportPlan,
+  mix: AudioBuffer | null,
+): number {
+  const verdict = reachesMatchEnd(o, bounds) ? END_HOLD_MS : 0
+  const son = mix ? mix.duration * 1000 - plan.durationMs : 0
+  return Math.max(verdict, son, 0)
+}
+
+/**
+ * reachesMatchEnd — la plage va-t-elle jusqu'au bout du MATCH ?
+ *
+ * Sans fenetre de gameplay etablie, on ne sait pas ou le match finit : on repond NON. Poser une
+ * fanfare de victoire sur une plage dont on ignore si elle est la fin serait affirmer ce qu'on
+ * ne sait pas.
+ */
+function reachesMatchEnd(o: ReplayExportOptions, bounds: ExportBounds): boolean {
+  if (!o.playWindow) return false
+  return bounds.endFrame >= o.playWindow.endFrame
 }

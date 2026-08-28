@@ -120,3 +120,30 @@ describe('exportProgressPct — la barre ne ment pas', () => {
     expect(exportProgressPct(0, 0)).toBe(0)
   })
 })
+
+describe('buildExportPlan — le MAINTIEN de la dernière image', () => {
+  it('n’ajoute rien quand on ne le demande pas', () => {
+    const sans = buildExportPlan({ startFrame: 0, endFrame: 40 }, DOC, 30)
+    expect(sans.holdMs).toBe(0)
+    expect(sans.frames[sans.frames.length - 1]).toBe(40)
+  })
+
+  it('répète la dernière image le temps demandé', () => {
+    // Sans ce maintien, l'écran de fin de match — qui ne se peint QU'À la borne — durait une
+    // seule image, soit 1/30 s : un éclair imperceptible.
+    const sans = buildExportPlan({ startFrame: 0, endFrame: 40 }, DOC, 30)
+    const avec = buildExportPlan({ startFrame: 0, endFrame: 40 }, DOC, 30, 3000)
+    expect(avec.frames).toHaveLength(sans.frames.length + 90)
+    expect(avec.holdMs).toBe(3000)
+  })
+
+  it('les images de maintien sont TOUTES la borne de fin', () => {
+    const avec = buildExportPlan({ startFrame: 0, endFrame: 40 }, DOC, 30, 1000)
+    expect(avec.frames.slice(-30)).toEqual(Array.from({ length: 30 }, () => 40))
+  })
+
+  it('la durée annoncée reste celle de la PLAGE, maintien non compris', () => {
+    // Le dialogue annonce « Plage exportée » : le maintien est du rab, pas de la plage.
+    expect(buildExportPlan({ startFrame: 0, endFrame: 40 }, DOC, 30, 3000).durationMs).toBe(2000)
+  })
+})

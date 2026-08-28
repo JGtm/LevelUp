@@ -27,20 +27,32 @@ const FILENAME_SAFE = /[^A-Za-z0-9._-]+/g
  * buildCaptureFilename rend le nom du fichier téléchargé (décision 8 du plan).
  *
  * Nominal : `rejeu-<matchId>-<XmYYs>.<ext>`, où `XmYYs` est le temps de MATCH de l'instant
- * capturé (le début de l'enregistrement, pour une vidéo). Repli, quand le match n'est pas
- * identifiable OU que son instant est inconnu : `rejeu-<AAAAMMJJ-HHMMSS>.<ext>`.
+ * capturé (le début de l'enregistrement, pour une vidéo). Avec une SECONDE borne (export de
+ * plage) : `rejeu-<matchId>-<debut>-<fin>.<ext>`. Repli, quand le match n'est pas identifiable
+ * OU que son instant est inconnu : `rejeu-<AAAAMMJJ-HHMMSS>.<ext>`.
  */
 export function buildCaptureFilename(
   matchId: string | null,
   matchMs: number | null,
   ext: string,
   now: Date,
+  /**
+   * LA SECONDE BORNE, pour un EXPORT DE PLAGE : le nom devient
+   * `rejeu-<match>-4m10s-6m30s.mp4`. Absente pour une capture d'image ou un enregistrement,
+   * qui n'ont qu'un instant. SANS ELLE, deux exports de plages differentes qui partagent leur
+   * fin porteraient le MEME nom et s'ecraseraient dans le dossier de telechargements.
+   */
+  endMs?: number | null,
 ): string {
   const id = (matchId ?? '').trim().replace(FILENAME_SAFE, '-')
   if (id === '' || matchMs === null || !Number.isFinite(matchMs)) {
     return `rejeu-${stampOf(now)}.${ext}`
   }
-  return `rejeu-${id}-${matchClock(matchMs)}.${ext}`
+  const span =
+    endMs !== null && endMs !== undefined && Number.isFinite(endMs)
+      ? `${matchClock(matchMs)}-${matchClock(endMs)}`
+      : matchClock(matchMs)
+  return `rejeu-${id}-${span}.${ext}`
 }
 
 /** `XmYYs` : les minutes sans zéro de tête, les secondes toujours sur deux chiffres. */

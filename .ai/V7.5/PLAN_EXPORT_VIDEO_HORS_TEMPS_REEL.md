@@ -448,6 +448,65 @@ cuissons ; et le mode de defaillance est benin (les premieres images d'un export
 la seconde du chargement sortiraient sans fond de carte). A rouvrir SI un utilisateur
 signale un artefact de debut de clip — pas avant.
 
+### D-7 (revue) — Ce que trois relecteurs adversariaux ont trouve, et ce qui a ete corrige
+
+Trois relectures en parallele, aveugles l'une de l'autre, sur trois axes (correction,
+conventions du depot, fidelite au produit). **Onze constats recevables**, dont deux trouves
+INDEPENDAMMENT par deux relecteurs — signal fort.
+
+CORRIGES DANS LE LOT (P0/P1), chacun avec son test de non-regression :
+
+1. **La fanfare de fin de partie etait posee sur TOUTE plage** (2 relecteurs). Le commentaire
+   de `planAudioMix` annoncait une garde « seulement si la plage l'atteint » QUI N'EXISTAIT
+   PAS — anti-patron « doc inversee » de CLAUDE.md. Un extrait des minutes 2 a 4 se terminait
+   sur la voix d'annonceur et la fanfare de victoire : le son affirmait un fait faux. La garde
+   vit desormais chez l'appelant (`reachesMatchEnd`), seul a connaitre la borne du match.
+2. **Aucune gestion d'erreur autour de l'export** (2 relecteurs). `run` n'avait pas de `catch`
+   et le dialogue jetait la promesse par `void` : toute panne faisait disparaitre la barre de
+   progression sans un mot, sans fichier, sans trace — et laissait l'encodeur ouvert avec son
+   muxeur en memoire. Ajoutes : `catch` + `console.error`, etat `failed` dit dans le dialogue,
+   et `sink?.abort()` dans le `finally` (y compris sur ANNULATION, ou il manquait aussi).
+3. **Les commandes de lecture restaient vivantes pendant l'export.** La boucle de lecture et
+   l'export ecrivent le MEME `frameRef` : un clic sur Lecture ou un glisse de frise corrompait
+   le clip en cours, sans que rien ne le signale. Lecture, sauts, recommencer et frise sont
+   neutralises le temps du calcul.
+4. **Ni le demontage ni la fermeture du dialogue n'annulaient l'export.** Quitter la page
+   deposait, trois minutes plus tard, le fichier d'un match qu'on avait quitte. L'invariant
+   existait deja a cote (`useReplayCapture`, `liveRef`) : il est repris.
+5. **L'ecran de fin de match ne durait QU'UNE image** (33 ms). L'objectif que `buildExportPlan`
+   s'assigne en toutes lettres n'etait pas atteint. Ajout d'un MAINTIEN de la derniere image
+   (`END_HOLD_MS`, 3 s), etendu a la queue du son quand elle est plus longue — ce qui corrige
+   du meme geste le fait que la piste sonore jouait apres la derniere image.
+6. **D9 n'etait pas implementee** : le nom du fichier ne portait qu'UNE borne, et par effet de
+   bord (`frameRef` laisse sur la fin par la boucle). Deux exports de plages differentes qui
+   partagent leur fin s'ecrasaient. `buildCaptureFilename` accepte desormais une seconde borne.
+7. **D6 n'etait tenue qu'aux deux tiers** : la chaine de distance (reglage d'instance) n'etait
+   pas transmise au mixage, qui sonnait donc plus fort et plus brillant que la page.
+8. **`encodeAudioInto` fuyait son encodeur** : `flush()` rejette sur un encodeur en erreur
+   fatale, donc `close()` n'etait jamais atteint. Passe en `try/finally`.
+9. **Piste AAC declaree mais vide** sur un navigateur sans `AudioEncoder` : la capacite se
+   teste maintenant AVANT d'ouvrir le conteneur (`canExportAudio`).
+10. **La fin de match confisquait l'image** meme sans verdict a annoncer, la ou le DOM affiche
+    quand meme le message inter-manche (ses deux surimpressions sont montees independamment).
+11. Trois defauts mineurs : hauteur du bloc de statut mesuree et peinte differemment (2 px),
+    `readOverlayInk` appele deux fois alors que l'en-tete promet une resolution unique,
+    `staticAssetURL('sound', …)` passe a sa 3e copie avec un commentaire affirmant l'inverse
+    (centralise dans `soundUrlOf`), et `teamStyle: null` inatteignable.
+
+CONSIGNES, NON CORRIGES (P2, hors perimetre ou dette d'un autre lot) :
+
+- `rosterLogic.ts` (409 -> 537 lignes) et les cinq copies de `Math.min(1, Math.max(0, …))` dans
+  `replayTimelineTracksLogic.ts` : **ces fichiers n'appartiennent pas a ce chantier** (aucun
+  commit `export-video` ne les touche) — ils viennent du chantier mene en parallele dans le
+  meme worktree. Le diff fourni aux relecteurs englobait les deux.
+- `i18n.ts` (618 -> 638) et `i18nContract.ts` (581 -> 620) : deja au-dessus du seuil de 500
+  lignes avant ce lot, et ce lot les fait grossir de 13 cles. C'est la seule place ou une chaine
+  d'UI peut vivre ; la scission suivante devra separer par domaine, pas par contrat.
+- Taille du filigrane : le DOM le borne a `60vh` (hauteur de FENETRE), l'export a 60 % de la
+  hauteur de la TOILE. L'export n'a pas de fenetre — a trancher a la recette visuelle.
+- Bornes du dialogue figees a l'ouverture si `playWindow` arrive apres le montage (portee
+  faible : le document est pret avant que le bouton n'existe).
+
 ### D-6 (E6) — La CI de la branche est ROUGE, et ce n'est pas ce chantier
 
 `gh run list --branch feat/v75` : le dernier run « CI » est en echec. Le job qui tombe est

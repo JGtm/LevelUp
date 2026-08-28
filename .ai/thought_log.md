@@ -1,3 +1,48 @@
+## [2026-08-28] Export video hors temps reel : revue adversariale a trois axes, 11 constats corriges — Complete
+
+**Contexte** : le chantier etait clos cote technique et tous les gates verts. Trois relecteurs
+adversariaux ont ete lances EN PARALLELE et AVEUGLES l'un de l'autre, un par axe : correction,
+conventions du depot, fidelite au produit. Le contrat de chacun interdisait les preferences de
+style et exigeait pour chaque constat un `fichier:ligne`, une condition de declenchement et une
+consequence observable.
+
+**Resultat** : 11 constats recevables, dont DEUX trouves independamment par deux relecteurs — le
+signal le plus fort que produit ce dispositif. Tous les gates etaient verts AVANT la revue : ces
+onze defauts sont exactement ce qu'un gate ne peut pas voir.
+
+**Decision technique** : les deux constats convergents sont aussi les deux plus graves, et tous
+deux relevent de la meme faute — **du code qui affirme une chose et en fait une autre**. (1) Le
+commentaire de `planAudioMix` annoncait une garde « la fanfare seulement si la plage atteint la
+fin » qui n'existait nulle part : un extrait de milieu de match se terminait sur la voix de
+l'annonceur et la fanfare de victoire, c'est-a-dire que le son affirmait un fait faux sur ce
+qu'il accompagnait. La garde vit desormais chez l'appelant, seul a connaitre la borne du match ;
+le module de mixage ne connait que des millisecondes et ne POUVAIT pas trancher. (2) `run`
+n'avait aucun `catch` et le dialogue jetait sa promesse par `void` : toute panne d'encodeur
+faisait disparaitre la barre de progression sans un mot, sans fichier et sans trace, en laissant
+l'encodeur ouvert. C'est l'anti-patron n°10 du CLAUDE.md (erreur avalee) dans sa forme la plus
+couteuse, puisque l'utilisateur ne pouvait meme pas distinguer l'echec de l'inaction.
+
+Trois autres corrections meritent d'etre retenues comme lecons. Les commandes de lecture
+restaient vivantes pendant l'export alors que la boucle de lecture et l'export ecrivent le MEME
+`frameRef` — l'en-tete du hook annoncait pourtant ce piege et affirmait l'avoir traite : il ne
+l'etait qu'au premier instant, par un unique `pause()`. L'ecran de fin de match ne durait QU'UNE
+image (33 ms), alors que `buildExportPlan` justifie en toutes lettres son image supplementaire
+par « un clip de fin de match sans son ecran de fin serait le seul defaut que tout le monde
+remarquerait » : l'objectif etait ecrit, pas atteint. Et la decision D9 (nom de fichier portant
+les deux bornes) n'avait **aucun item dans aucune etape** : elle a donc echappe a la regle « aucune
+case vide a la cloture », qui etait vraie a la lettre et fausse en substance.
+
+**Resultats observes** : 11 constats corriges avec leurs tests de non-regression (13 tests sur le
+hook d'export, 19 sur le plan d'echantillonnage). `make test-web` vert : 527 fichiers, 5358 tests,
+14 skippes. `make check-types` vert. eslint sans erreur sur la feature. Quatre constats classes P2
+et consignes sans correction (regle « zero fix opportuniste ») — dont deux qui ne relevent PAS de
+ce chantier : le diff fourni aux relecteurs englobait les commits de l'autre session menee en
+parallele dans le meme worktree, et deux constats portent sur ses fichiers.
+
+**Conclusion / prochaine etape** : une seule ronde de revue a suffi pour les P0/P1 ; les bornes
+du skill `adversarial-review` (2 rondes maximum, decroissance stricte) n'ont pas eu a jouer. Les
+trois recettes utilisateur restent a prononcer.
+
 ## [2026-08-28] Export video hors temps reel (E6) : cloture du chantier — Complete
 
 **Contexte** : cloture du plan `.ai/V7.5/PLAN_EXPORT_VIDEO_HORS_TEMPS_REEL.md`, six etapes, cinq

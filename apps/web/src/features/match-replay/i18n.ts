@@ -314,7 +314,8 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     exportClose: 'Fermer',
     exportRunningHint: 'Le terrain défile pendant le calcul : le rejeu revient à sa position à la fin.',
     exportProgressFmt: (done, total) => `Image ${done} / ${total}`,
-    exportLengthFmt: (clock) => `Durée du clip : ${clock}`,
+    exportLengthFmt: (clock) => `Plage exportée : ${clock}`,
+    exportFailed: "L'export a échoué. Rien n'a été téléchargé.",
     ammoDrawnHint:
       'Emplacement DÉGAINÉ selon le sélecteur du record : la même lecture qui place cette arme en tête de rangée.',
     drawnUnknown: 'dégainée ?',
@@ -622,7 +623,8 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     exportClose: 'Close',
     exportRunningHint: 'The field scrolls while it computes: the replay returns to its position at the end.',
     exportProgressFmt: (done, total) => `Frame ${done} / ${total}`,
-    exportLengthFmt: (clock) => `Clip length: ${clock}`,
+    exportLengthFmt: (clock) => `Exported range: ${clock}`,
+    exportFailed: 'The export failed. Nothing was downloaded.',
     ammoDrawnHint:
       'Slot DRAWN according to the record selector: the same reading that puts this weapon first in the row.',
     drawnUnknown: 'drawn ?',
