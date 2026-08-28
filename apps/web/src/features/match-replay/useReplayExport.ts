@@ -41,6 +41,8 @@ import { teamLogoPath } from '@/lib/halo/teamNames'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 import type { ReplayScoreDocument } from '@/lib/replay/scoreTimeline'
 
+import { staticAssetURL } from '@/lib/staticAssets'
+
 import { readInk } from './canvasInk'
 import { yieldToEvents } from './eventLoopYield'
 import {
@@ -49,6 +51,8 @@ import {
   type OverlayPanelSource,
 } from './exportOverlayPanels'
 import { paintOverlayPanel, type OverlayFonts, type OverlayInk } from './overlayPaint'
+import { MIX_CHANNELS, MIX_SAMPLE_RATE, mixReplayAudio } from './replayAudioMix'
+import { frameToMs } from './replayLogic'
 import { triggerDownload } from './replayCapture'
 import { tintedIconCanvas } from './replayDraw'
 import {
@@ -61,6 +65,7 @@ import type { ReplayDocumentReady } from './replayNormalize'
 import { canExportVideo, openVideoExport } from './replayVideoEncoder'
 import type { ReplayWindowBounds } from './replayWindow'
 import type { ReplayLocale } from './i18n'
+import type { ReplaySoundEvent } from './replaySoundVariants'
 import { readVictory } from './victoryLogic'
 
 /** Cadence de publication de la progression, en images encodées. */
@@ -84,6 +89,23 @@ export interface ReplayExportOptions {
   locale: ReplayLocale
   /** Nomme le fichier sur l'instant de match courant (partagé avec la capture). */
   filenameFor: (ext: string) => string
+  /**
+   * LA PISTE SONORE DU REJEU, telle que la page la joue (`useReplaySound.exportTrack`). Absente
+   * = clip muet. Elle n'est PAS reconstruite par l'export : c'est ce qui garantit qu'un clip
+   * n'invente aucun son et n'en manque aucun.
+   */
+  soundTrack?: () => {
+    timeline: readonly ReplaySoundEvent[]
+    endMatchStems: readonly string[]
+    variationPercent: number
+  }
+  /** Le volume réglé dans la page. Le mixage le suit, même haut-parleurs coupés (décision D6). */
+  soundVolume?: number
+}
+
+/** Ce que l'appelant choisit au moment de lancer. Le son est INCLUS par défaut (décision D6). */
+export interface ExportRunOptions {
+  sound?: boolean
 }
 
 /** L'état que le dialogue affiche. `total` vaut 0 tant qu'aucun export n'a démarré. */
@@ -100,7 +122,7 @@ export interface ReplayExport {
   state: ReplayExportState
   /** La plage proposée par défaut : la fenêtre de gameplay entière. */
   defaultBounds: () => ExportBounds
-  run: (bounds: ExportBounds) => Promise<void>
+  run: (bounds: ExportBounds, options?: ExportRunOptions) => Promise<void>
   cancel: () => void
 }
 
@@ -204,7 +226,7 @@ export function useReplayExport(o: ReplayExportOptions): ReplayExport {
   )
 
   const run = useCallback(
-    async (bounds: ExportBounds) => {
+    async (bounds: ExportBounds, options?: ExportRunOptions) => {
       const canvas = o.canvasRef.current
       if (!canvas || runningRef.current || !canExportVideo()) return
       runningRef.current = true
@@ -222,8 +244,17 @@ export function useReplayExport(o: ReplayExportOptions): ReplayExport {
         const source = await buildSource(o)
         const ink = readOverlayInk()
         const fonts = readOverlayFonts()
-        const sink = await openVideoExport({ width: canvas.width, height: canvas.height })
+        // LE SON SE MIXE AVANT D'OUVRIR LE CONTENEUR : le MP4 annonce ses pistes une fois pour
+        // toutes, donc il faut savoir AVANT s'il y en aura une. Le mixage hors ligne est rapide
+        // (il ne joue rien, il calcule), et il rend `null` s'il n'y a rien a mixer.
+        const mix = options?.sound === false ? null : await mixExportAudio(o, bounds, plan.durationMs)
+        const sink = await openVideoExport({
+          width: canvas.width,
+          height: canvas.height,
+          audio: mix ? { sampleRate: MIX_SAMPLE_RATE, numberOfChannels: MIX_CHANNELS } : undefined,
+        })
         if (!sink) return
+        if (mix) await sink.addAudioBuffer(mix)
         const ok = await encodeAll(canvas, o, source, ink, fonts, plan.frames, {
           cancelled: () => cancelRef.current,
           progress: (done) =>
@@ -280,4 +311,34 @@ async function encodeAll(
   }
   hooks.progress(frames.length)
   return true
+}
+
+/**
+ * mixExportAudio rend la piste sonore de la plage, ou `null` s'il n'y a rien à mixer.
+ *
+ * LES BORNES PASSENT EN MILLISECONDES DE FILM, pas en images : la piste sonore est horodatée
+ * sur l'horloge du rejeu (celle du fil et des fiches), jamais sur l'axe des images.
+ */
+async function mixExportAudio(
+  o: ReplayExportOptions,
+  bounds: ExportBounds,
+  durationMs: number,
+): Promise<AudioBuffer | null> {
+  // LA PISTE SE LIT ICI, au lancement : elle porte des reglages d'instance qui vivent dans des
+  // refs, et les lire au rendu rendrait des valeurs arbitraires.
+  const track = o.soundTrack?.()
+  if (!track || track.timeline.length === 0) return null
+  const startMs = frameToMs(bounds.startFrame, o.doc)
+  return mixReplayAudio(
+    track.timeline,
+    { startMs, endMs: startMs + durationMs },
+    {
+      variationPercent: track.variationPercent,
+      endMatchStems: track.endMatchStems,
+      volume: o.soundVolume ?? 1,
+      // MÊME RÈGLE D'URL QUE LE LECTEUR (`soundURLsFor`) : un stem, un `.wav` sous les assets
+      // statiques du titre. Deux copies de cette ligne, pas trois.
+      urlOf: (stem) => staticAssetURL('sound', stem, '.wav'),
+    },
+  )
 }

@@ -66,7 +66,7 @@ import {
   sideResolverFromScoreboard,
   type ScoreboardSide,
 } from './objectiveSound'
-import { pickVariantStem, stemsOf } from './replaySoundVariants'
+import { pickVariantStem, stemsOf, type ReplaySoundEvent } from './replaySoundVariants'
 import {
   advanceSoundCursor,
   resyncSoundCursor,
@@ -85,6 +85,15 @@ const SOUND_CATEGORIES_OFF_KEY = 'replay-sound-categories-off'
 export const SOUND_VOLUME_DEFAULT = 0.7
 
 /** Ce que le composant reçoit : un état à afficher, des commandes, un battement. */
+/** Ce que l'export hors temps reel mixe : la piste que la page joue, telle quelle. */
+export interface ReplayExportTrack {
+  timeline: readonly ReplaySoundEvent[]
+  /** Les prises de FIN DE PARTIE : elles n'ont pas d'instant sur la piste. */
+  endMatchStems: readonly string[]
+  /** Reglage d'instance de la variation d'arme, lu a l'appel (page admin). */
+  variationPercent: number
+}
+
 export interface ReplaySound {
   /** La piste porte au moins un son : sinon, pas de commande à offrir. INDÉPENDANT du
    *  filtre par catégorie — tout décocher ne doit pas faire disparaître le panneau. */
@@ -123,6 +132,13 @@ export interface ReplaySound {
    * cours de route passerait pour un fichier abîmé.
    */
   recordingTrack: () => MediaStreamTrack | null
+  /**
+   * CE QUE L'EXPORT HORS TEMPS RÉEL MIXE (`replayAudioMix.ts`). La piste n'est PAS reconstruite
+   * là-bas : c'est celle que la page joue, donc le clip ne peut ni inventer un son ni en
+   * manquer un. `endMatchStems` porte les prises de fin de partie, qui n'ont pas d'instant sur
+   * la piste — elles se posent sur la borne de fin.
+   */
+  exportTrack: () => ReplayExportTrack
 }
 
 /** Lit les catégories COUPÉES ; une valeur inconnue (ancienne clé, JSON corrompu) est
@@ -435,6 +451,19 @@ export function useReplaySound(
     }
   }, [])
 
+  // LA PISTE POUR L'EXPORT SE LIT À L'APPEL, JAMAIS AU RENDU — même patron que
+  // `recordingTrack` juste au-dessus, et pour la même raison : `variationPercentRef` est une
+  // REF (réglage d'instance de la page admin). La lire pendant le rendu rendrait une valeur
+  // arbitraire et casserait la mémoïsation, ce que le lint du compilateur React signale.
+  const exportTrack = useCallback(
+    (): ReplayExportTrack => ({
+      timeline: timelineRef.current,
+      endMatchStems: endMatchSoundStems(endMatchRef.current),
+      variationPercent: tuning.variationPercentRef.current,
+    }),
+    [tuning],
+  )
+
   return {
     available: hasAnySound,
     on,
@@ -448,5 +477,6 @@ export function useReplaySound(
     tick,
     endMatch: playEndMatch,
     recordingTrack,
+    exportTrack,
   }
 }

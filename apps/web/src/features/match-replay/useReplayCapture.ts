@@ -44,7 +44,7 @@ import {
 } from './replayRecording'
 import { frameToMs } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
-import { useReplayExport, type ReplayExport } from './useReplayExport'
+import { useReplayExport, type ReplayExport, type ReplayExportOptions } from './useReplayExport'
 import type { ExportOutcome } from './exportOverlayPanels'
 import type { ReplayWindowBounds } from './replayWindow'
 import type { ReplayLocale } from './i18n'
@@ -80,6 +80,9 @@ export interface ReplayCaptureOptions {
   /** Le verdict du backend : sans lui, pas d'ecran de fin dans le clip (parite DOM). */
   outcome?: ExportOutcome | null
   locale?: ReplayLocale
+  /** La piste sonore du rejeu et son volume, pour le mixage hors ligne (`useReplaySound`). */
+  soundTrack?: ReplayExportOptions['soundTrack']
+  soundVolume?: number
 }
 
 /** Ce que la barre de lecture reçoit (même forme que `ReplaySound` : un objet, pas des props). */
@@ -286,6 +289,8 @@ function useExportSeam(o: ReplayCaptureOptions, filenameFor: FilenameFor): Repla
     titleSlug: doc.titleSlug ?? '',
     locale: o.locale ?? 'fr',
     filenameFor,
+    soundTrack: o.soundTrack,
+    soundVolume: o.soundVolume,
   })
   return redraw ? exportable : null
 }
