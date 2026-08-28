@@ -99,10 +99,12 @@ describe('padIconRefFor — quelle image, et d’où elle vient', () => {
     expect(padIconRefFor(POWERUP, LABELS, 'halo_infinite')).toEqual({
       url: '/static/weapons-assets/halo_infinite/hud/Overshield.png',
       tinted: true,
+      mirrored: false,
     })
     expect(padIconRefFor(CAMO, LABELS, 'halo_infinite')).toEqual({
       url: '/static/weapons-assets/halo_infinite/hud/ActiveCamouflage.png',
       tinted: true,
+      mirrored: false,
     })
   })
 
@@ -110,10 +112,13 @@ describe('padIconRefFor — quelle image, et d’où elle vient', () => {
     expect(padIconRefFor(POWERUP, LABELS, 'un_autre_titre')?.url).toContain('/un_autre_titre/')
   })
 
-  it('une ARME garde la vignette du document', () => {
+  it('une ARME prend la SILHOUETTE — la même icône que les fiches et le kill feed', () => {
+    // Retour utilisateur du 2026-08-28 : le trait à vide (`contour`) se perd sur un fond de
+    // carte en niveaux de gris. La forme pleine est celle des fiches, et elle se retourne.
     expect(padIconRefFor(SNIPER, LABELS, 'halo_infinite')).toEqual({
-      url: '/static/weapons-assets/halo_infinite/jeu/contour-05.png',
+      url: '/static/weapons-assets/halo_infinite/jeu/silhouette-05.png',
       tinted: true,
+      mirrored: true,
     })
   })
 

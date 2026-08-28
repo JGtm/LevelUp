@@ -161,11 +161,14 @@ export interface ReplayInks {
   /** Les deux encres FIXES de la faille du translocateur (cf. RIFT_RIM_TOKEN). */
   rift: RiftInk
   /**
-   * LE MARQUAGE DES SOCLES : ce qui est REMPLI, et ce qui le CERNE (verdict du 2026-08-18 —
-   * « icône blanche remplie, contour noir »). Ce sont les deux encres du THÈME, pas des
-   * tokens de données : en sombre le remplissage est clair et le liseré sombre, en clair
-   * l'inverse. La demande se lit donc telle quelle sur les deux fonds de carte, ce qu'un
-   * blanc et un noir écrits en dur n'auraient pas fait.
+   * LE MARQUAGE DES SOCLES : ce qui est REMPLI, et ce qui le CERNE. Ce sont les deux encres du
+   * THÈME, pas des tokens de données : en sombre le remplissage est clair et le liseré sombre,
+   * en clair l'inverse — ce qu'un blanc et un noir écrits en dur n'auraient pas fait.
+   *
+   * `outline` NE CERNE PLUS LES VIGNETTES depuis le 2026-08-28, seulement le COMPTE À REBOURS :
+   * un liseré sombre autour d'une arme se confondait avec les contours noirs des fonds de carte
+   * en niveaux de gris (retour utilisateur). Les vignettes sont cernées de l'encre de leur
+   * NATURE (`pad`), la même que leur losange.
    */
   mark: { fill: string; outline: string }
 }

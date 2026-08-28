@@ -308,7 +308,6 @@ export interface ReplayText {
   /** LE PORTEUR DU CRÂNE d'Oddball (schéma 23) : le nom du calque et sa réserve. */
   layerSkullCarrier: string
   layerSkullCarrierHint: string
-  padState: Record<'full' | 'uncertain' | 'empty', string>
   /**
    * LE NOM D'UN SOCLE QUI NE PORTE PAS UNE ARME (schéma 17). Les clés sont les familles
    * d'équipement publiées par le document (`weaponPads[].weapon`), énumérées une par une dans
@@ -323,14 +322,6 @@ export interface ReplayText {
    * rejoignent, avec les mêmes mots que le jeu.
    */
   padEquipmentFamily: Record<PadEquipmentFamilyKey, string>
-  /** Ce que la donnée ne distingue pas : socle au sol ou râtelier mural (position seule). */
-  padPlacementNote: string
-  /**
-   * La même réserve pour un socle NON-ARME : la question du râtelier mural n'y a pas de sens
-   * (un power-up n'est jamais accroché à un mur), mais la position reste une mesure de CE
-   * match — l'infobulle ne doit pas laisser croire à un catalogue de carte.
-   */
-  padPlacementNotePowerUp: string
   /** Compte à rebours COMPACT, celui de la carte (« 12 s ») — il ne dit pas sa source. */
   padCountdownFmt: (seconds: number) => string
   /**
@@ -341,6 +332,9 @@ export interface ReplayText {
    *
    * DEUX CLÉS ET NON UN DRAPEAU dans une seule phrase : les deux langues n'insèrent pas la
    * réserve au même endroit, et une phrase à trous se serait figée sur l'ordre du français.
+   *
+   * SANS PARENTHÈSE D'EXPLICATION depuis le 2026-08-28 (« je ne veux pas de blabla dedans ») :
+   * la source du chiffre tient dans le « ≈ », et l'infobulle ne porte plus que deux lignes.
    */
   padRespawnMeasuredFmt: (seconds: number) => string
   padRespawnExpectedFmt: (seconds: number) => string

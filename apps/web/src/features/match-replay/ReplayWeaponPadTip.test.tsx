@@ -44,12 +44,11 @@ describe('l’infobulle d’un socle de POWER-UP', () => {
     }
   })
 
-  it('sa réserve de lecture ne parle PAS de râtelier mural — un power-up ne s’y accroche pas', () => {
+  it('ne dit QUE le nom : ni état, ni note de lecture (retour du 2026-08-28)', () => {
     const { container } = render(
       <ReplayWeaponPadTip locale="fr" hover={hover('powerup_overshield', 'fr')} width={400} />,
     )
-    expect(container.textContent).toContain(REPLAY_TEXT.fr.padPlacementNotePowerUp)
-    expect(container.textContent).not.toContain('râtelier')
+    expect(container.textContent).toBe('Surbouclier')
   })
 })
 
@@ -82,16 +81,27 @@ describe('l’infobulle dit D’OÙ VIENT le compte à rebours', () => {
   it('SANS SOURCE : aucune ligne de réapparition — ni chiffre, ni tiret', () => {
     const rien: WeaponPadHover = { ...hover('0x0A1992BC', 'fr'), state: 'empty', respawn: null }
     const { container } = render(<ReplayWeaponPadTip locale="fr" hover={rien} width={400} />)
-    expect(container.textContent).toContain(REPLAY_TEXT.fr.padState.empty)
     expect(container.textContent).not.toContain('Réapparition')
+    // Le nom, et rien d'autre : l'état se lit sur la carte, pas ici.
+    expect(container.textContent).toBe('0x0A1992BC')
   })
 })
 
-describe('l’infobulle d’un socle d’ARME — inchangée', () => {
-  it('garde le nom servi par le survol et la réserve socle / râtelier', () => {
+describe('l’infobulle d’un socle d’ARME', () => {
+  it('le nom seul quand rien ne date la réapparition', () => {
     const arme: WeaponPadHover = { ...hover('0x0A1992BC', 'fr'), name: 'S7 Sniper' }
     const { container } = render(<ReplayWeaponPadTip locale="fr" hover={arme} width={400} />)
-    expect(container.textContent).toContain('S7 Sniper')
-    expect(container.textContent).toContain(REPLAY_TEXT.fr.padPlacementNote)
+    expect(container.textContent).toBe('S7 Sniper')
+  })
+
+  it('le nom PUIS le compte à rebours, et rien de plus, quand une source existe', () => {
+    const arme: WeaponPadHover = {
+      ...hover('0x0A1992BC', 'fr'),
+      name: 'S7 Sniper',
+      state: 'empty',
+      respawn: { seconds: 12.2, measured: true },
+    }
+    const { container } = render(<ReplayWeaponPadTip locale="fr" hover={arme} width={400} />)
+    expect(container.textContent).toBe(`S7 Sniper${REPLAY_TEXT.fr.padRespawnMeasuredFmt(12.2)}`)
   })
 })
