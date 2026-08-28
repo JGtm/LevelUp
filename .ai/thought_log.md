@@ -1,3 +1,26 @@
+## [2026-08-28] Corrections rejeu 2D Oddball (5 retours visuels) — Complete
+
+**Contexte** : gate visuel utilisateur sur d9781168 re-cuit. 5 retours : icone crane, compteur respawn,
+crane libre invisible, style du message inter-manche, son manche terminee.
+
+**Decision technique** : (1) glyphe crane centralise `skullGlyph.ts` habille COMME LE DRAPEAU (lisere
+a l'encre du FOND, disque r=7, deux orbites, edge->outline) pour les 2 calques (porteur + libre) ;
+(4) accent lateral GAUCHE (borderLeft) retire de l'ecran victoire/defaite ET repris par le message
+inter-manche (panneau neutre + titre de l'ecran de fin), style centralise `replayOverlayStyles.ts` +
+garde-rail ; (5) son « manche terminee » FR/EN `roundOverSound.ts` date sur `roundTransitions`, locale
+threadee dans `buildSoundTimeline` ; 2 wav copies (round_over_fr/en, 48 kHz PCM16 stereo) + garde-rail.
+
+**Resultats** : (3) crane libre invisible = SALIENCE du glyphe (disque neutre mince se dissolvait sur
+le fond carte), CORRIGE par (1) — verifie sur pieces que ce n'etait NI toggle NI mode NI schema.
+typecheck OK, lint 0, vitest 5205 (1634 match-replay a la fusion). Fusionne feat/v75.
+
+**Conclusion / prochaine etape** : RESERVES honnetes pour le gate visuel : (2) AUCUN compteur respawn
+(la donnee n'existe pas dans ObjectiveObjectLife — non fabrique) ; (1-bis) icone crane DEDIEE existe
+(jeu/contour-25.png, tag 0017592c) mais son URL n'est pas cuite au document -> lot Go a faire (d'ici la
+le glyphe canvas tient, comme le drapeau) ; (5-bis) les 2 wav copies BRUTS non renormalises a -16 LUFS
+-> re-mesure au gate d'ecoute, loudnorm si detonne (sans code). RESTE aussi : calque score par manche
+(scoreTimeline.players par totaux), re-cuisson de masse Oddball (backfill-replay --only-existing).
+
 ## [2026-08-28] Re-cuisson Oddball d9781168 — crane rendu VISIBLE + fix pipeline --one — Complete
 
 **Contexte** : porteur du crane merge (schema 23) mais artefact SERVI de d9781168 reste au schema 21
