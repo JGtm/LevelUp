@@ -1,3 +1,28 @@
+## [2026-08-28] Calque Objectives identifie PAR MANCHE + nettoyage porteur (3 P2) — Complete
+
+**Contexte** : dernier calque encore sur l'identite par TOTAUX (`matchfacts.identifiedEvents`),
+faux en multi-manche (slots reattribues). Alignement sur les calques deja livres (VIP/CTF/porteur).
+
+**Decision technique** : migre vers l'identite PAR MANCHE par les instants de mort
+(`ResolveRoundIdentity` + `objectiveevents.IdentifyNamedEventsByRound`), fil des morts relu via
+`replay.ScanFilmDeaths` (borne, 1 chunk highlight). VOIE B : type public `Options.Objectives`
+et forme du document GARDES STABLES (contrat 41/schema 23 inchanges) pour ne pas reshaper les
+outils de recherche (zone-attribution, temoin p2b). P2 : `skullCarrySecondsByXUID` en test-only,
+godoc `SkullTicksComponent` corrige, +test synthetique gate CI.
+
+**Resultats** : mono-manche == pont plat par morts (DeepEqual) ; multi-manche corrige avec
+contre-epreuve ; contrat/gates verts. REVUE ADVERSARIALE (3 relecteurs frais + verif) : 0 P0/P1.
+Confirme : le pont par morts EST celui deja en prod (VIP/CTF/porteur, `.At(slot,timeMS)`), donc
+Objectives devient COHERENT avec eux ; la neutralite mono-manche vs l'ANCIEN pont par totaux
+repose sur l'accord phase-0 (8/8, dette assumee), pas garantie octet-pour-octet.
+
+**Conclusion / prochaine etape** : fusionne feat/v75. RESTES (consignes) : (1) P2 — le test du
+court-circuit d'I/O (matchfacts_test.go:90) ne discrimine pas (dir absent -> nil dans les 2 cas) ;
+(2) le calque SCORE (`score_timeline.go:175`) reste sur l'identite par TOTAUX -> DIVERGENCE avec
+les objectifs par-manche dans le meme document en multi-manche : a migrer aussi ; (3) `deathInstantsOf`
+duplique (centraliser a la 3e occurrence) ; (4) golden objectifs film reel a jouer des qu'un corpus
+est dispo (confronter totaux vs morts sur mono-manche).
+
 ## [2026-08-28] CI feat/v75 ROUGE au niveau JOB — attribution : archlint TestNoLocalLongestRun, lot Oddball terrain — En cours (chantier modes porteurs)
 
 **Contexte** : depuis le merge `3efb23c76` (wt/oddball-terrain, porteur Oddball schema 23,
