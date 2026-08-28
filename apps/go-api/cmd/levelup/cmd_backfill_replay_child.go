@@ -50,13 +50,21 @@ func runBackfillReplayUn(cfg *config.AppConfig, o replayBackfillOptions, cacheRo
 	faits := chargerFaitsUnMatch(ctx, pr, o.titleSlug, o.one)
 	filmDir := filmcache.ChunkDir(cacheRoot, titlePkg.FilmShortMatchID(o.one))
 
-	out, berr := builder.BuildMatch(o.one, o.mapNames, filmDir, faits)
+	// Le PARENT passe les identites de carte via `--map-name` ; elles gagnent toujours. Sans
+	// elles (forme `--one` TAPEE A LA MAIN), l'enfant les resout lui-meme depuis le registre
+	// plutot que d'echouer « carte hors catalogue ([]) » sur une carte pourtant au catalogue.
+	mapNames := o.mapNames
+	if len(mapNames) == 0 {
+		mapNames = mapNamesForOne(ctx, pr, o.titleSlug, o.one)
+	}
+
+	out, berr := builder.BuildMatch(o.one, mapNames, filmDir, faits)
 	switch {
 	case berr == nil:
 		fmt.Printf("  %s : %d tracks, %d octets (%s)\n", o.one, out.Tracks, out.Bytes, out.Module)
 		return codeEnfantOK
 	case errors.Is(berr, replaybuild.ErrMapNotInCatalog):
-		fmt.Printf("  %s : carte hors catalogue (%v) — echec voulu\n", o.one, []string(o.mapNames))
+		fmt.Printf("  %s : carte hors catalogue (%v) — echec voulu\n", o.one, mapNames)
 		return codeEnfantHorsCatalogue
 	default:
 		slog.ErrorContext(ctx, "backfill-replay (enfant): decodage en echec",
