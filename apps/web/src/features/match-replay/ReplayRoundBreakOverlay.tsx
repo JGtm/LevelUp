@@ -28,7 +28,7 @@ import { scoreTimelineOf } from '@/lib/replay/scoreTimeline'
 
 import { msToFrames } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
-import { OVERLAY_NEUTRAL_PANEL, OVERLAY_TITLE } from './replayOverlayStyles'
+import { OVERLAY_STATUS_NEUTRAL } from './replayOverlayStyles'
 import { activeRoundTransition, roundTransitions } from './roundsLogic'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
 
@@ -62,10 +62,11 @@ export function ReplayRoundBreakOverlay({ doc, frame, locale }: Props) {
       aria-live="polite"
       className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center overflow-hidden"
     >
-      {/* MÊME STYLE QUE L'ÉCRAN DE FIN (retour utilisateur du 2026-08-28) : le panneau neutre et
-          le titre de `ReplayVictoryOverlay`, partagés par `replayOverlayStyles.ts` — SANS l'accent
-          latéral gauche, que l'utilisateur a fait retirer de ce style. */}
-      <p className={`${OVERLAY_NEUTRAL_PANEL} ${OVERLAY_TITLE}`}>{t.roundOverFmt(active.endedIndex)}</p>
+      {/* MÊME AFFICHAGE QUE LE STATUT DE FIN DE MATCH (retour utilisateur du 2026-08-28) : le
+          bloc de `ReplayVictoryOverlay`, partagé par `replayOverlayStyles.ts` — SANS l'accent
+          latéral gauche, que l'utilisateur a fait retirer de ce style. Version NEUTRE : une
+          manche qui se termine n'est le verdict de personne, elle n'a pas de camp à porter. */}
+      <p className={OVERLAY_STATUS_NEUTRAL}>{t.roundOverFmt(active.endedIndex)}</p>
     </div>
   )
 }

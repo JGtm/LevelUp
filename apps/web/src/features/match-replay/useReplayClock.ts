@@ -23,6 +23,15 @@
  * re-rendre 60 fois par seconde coûterait tout le budget d'animation pour un contenu qui change
  * à peine. 150 ms reste bien en deçà de ce que l'œil perçoit comme un retard sur un compteur,
  * et divise le travail de React par dix.
+ *
+ * # LA DERNIÈRE IMAGE PASSE LE BRIDAGE, ET C'EST UNE CORRECTION DE BUG (2026-08-28)
+ *
+ * Le bridage vaut pour un flux : la publication sautée est rattrapée 150 ms plus tard. À la
+ * BORNE DE FIN il n'y a pas de « plus tard » — la boucle de lecture peint cette image puis
+ * s'arrête (`useReplayPlayback`). Bridée, elle n'était jamais publiée, et l'ÉCRAN DE FIN de
+ * match, qui se dérive de `frame >= endFrame`, ne se rendait pas : à 60 fps le dernier pas
+ * tombe à ~16 ms du précédent, donc la neuf fois sur dix. Le son, lui, part par `onEnded` —
+ * un chemin distinct : d'où un rejeu qui sonnait la victoire sans jamais l'écrire.
  */
 import { useCallback, useMemo, useRef, type RefObject } from 'react'
 
@@ -68,7 +77,10 @@ export function useReplayClock({ doc, playWindow, onFrameChange }: ReplayClockOp
       }
       if (!onFrameChange) return
       const now = performance.now()
-      if (now - publishedAtRef.current < FRAME_PUBLISH_MS) return
+      // La borne de fin est publiée SANS DÉLAI (cf. l'en-tête) : c'est la dernière image que la
+      // boucle peindra, personne ne repassera derrière pour rattraper une publication sautée.
+      const atEnd = playWindow != null && frame >= playWindow.endFrame
+      if (!atEnd && now - publishedAtRef.current < FRAME_PUBLISH_MS) return
       publishedAtRef.current = now
       onFrameChange(Math.floor(frame))
     },
