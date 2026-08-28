@@ -134,14 +134,42 @@ func IdentifyNamedEvents(evs []NamedEvent, identity map[int]string) []Identified
 		}
 		out = append(out, IdentifiedEvent{NamedEvent: e, XUID: xuid})
 	}
-	sort.SliceStable(out, func(i, j int) bool {
-		if out[i].TimeMS != out[j].TimeMS {
-			return out[i].TimeMS < out[j].TimeMS
-		}
-		if out[i].XUID != out[j].XUID {
-			return out[i].XUID < out[j].XUID
-		}
-		return out[i].Stat < out[j].Stat
-	})
+	sortIdentifiedEvents(out)
 	return out
+}
+
+// IdentifyNamedEventsByRound traduit le slot de chaque evenement en XUID PAR MANCHE et ECARTE
+// ceux dont le slot n'a pas ete apparie — c'est le pont plat [IdentifyNamedEvents] rendu
+// SENSIBLE A LA MANCHE. L'instant de l'evenement ([RoundIdentity.At]) choisit la manche : le
+// slot d'entite statborg est reattribue d'une manche a l'autre, donc un slot ne veut rien dire
+// sans son instant en multi-manche.
+//
+// NEUTRALITE MONO-MANCHE, par construction : sur un film a une seule manche, [RoundIdentity.At]
+// ignore le temps et rend l'unique table — le resultat est alors celui du pont plat resolu par
+// les instants de mort ([SlotIdentityByDeaths]), a l'octet pres.
+func IdentifyNamedEventsByRound(evs []NamedEvent, identity RoundIdentity) []IdentifiedEvent {
+	out := make([]IdentifiedEvent, 0, len(evs))
+	for _, e := range evs {
+		xuid := identity.At(e.Slot, e.TimeMS)
+		if xuid == "" {
+			continue
+		}
+		out = append(out, IdentifiedEvent{NamedEvent: e, XUID: xuid})
+	}
+	sortIdentifiedEvents(out)
+	return out
+}
+
+// sortIdentifiedEvents ordonne par instant, puis xuid, puis nom : un ordre total, donc une
+// sortie reproductible malgre le parcours de map amont. Partage par les deux ponts d'identite.
+func sortIdentifiedEvents(evs []IdentifiedEvent) {
+	sort.SliceStable(evs, func(i, j int) bool {
+		if evs[i].TimeMS != evs[j].TimeMS {
+			return evs[i].TimeMS < evs[j].TimeMS
+		}
+		if evs[i].XUID != evs[j].XUID {
+			return evs[i].XUID < evs[j].XUID
+		}
+		return evs[i].Stat < evs[j].Stat
+	})
 }

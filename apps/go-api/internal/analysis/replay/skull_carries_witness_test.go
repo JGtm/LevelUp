@@ -28,6 +28,24 @@ import (
 // skullOracleEnv : chemin de l'oracle fige (film -> xuid -> stats de portage).
 const skullOracleEnv = "SKULL_ORACLE"
 
+// skullCarrySecondsByXUID reconstruit la duree de portage (s) par joueur : somme des durees des
+// trains de tics sur toutes les manches. C'est la grandeur du gate oracle (porteur principal).
+//
+// TEST-ONLY : cette re-cuisson du temoin n'a AUCUN appelant de production (le calque publie ne
+// somme pas les durees par joueur, il pose les intervalles). Elle vit donc a cote du seul gate qui
+// s'en sert, hors du binaire de prod, et reutilise `skullCarryIntervals` — le coeur PUBLIE que le
+// temoin doit precisement verifier.
+func skullCarrySecondsByXUID(recs []objectiveevents.StatRecord, identity objectiveevents.RoundIdentity) map[string]float64 {
+	out := map[string]float64{}
+	for _, r := range skullCarryIntervals(recs, identity) {
+		if r.xuid == "" {
+			continue
+		}
+		out[r.xuid] += float64(r.t1MS-r.t0MS) / 1000
+	}
+	return out
+}
+
 // skullOracleStat porte les colonnes de l'oracle employees ici.
 type skullOracleStat struct {
 	Time  float64 `json:"time_as_skull_carrier_seconds"`
