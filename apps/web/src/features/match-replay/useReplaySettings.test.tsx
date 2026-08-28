@@ -5,9 +5,14 @@
  */
 import { StrictMode } from 'react'
 import { act, fireEvent, render, renderHook, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 
-import { SPEED_MULTIPLIERS, useReplaySettings } from './useReplaySettings'
+import {
+  SPEED_MULTIPLIERS,
+  TIMELINE_EXPANDED_KEY,
+  usePersistedFlag,
+  useReplaySettings,
+} from './useReplaySettings'
 
 describe('useReplaySettings — valeurs par défaut', () => {
   it("visée, zones et noms allumés, vitesse à 1x — comportement inchangé sans préférence stockée", () => {
@@ -209,5 +214,41 @@ describe('useReplaySettings — la bascule partagée revient bien en arrière (a
     expect(screen.getByTestId('lecteur')).toHaveTextContent('true')
     expect(screen.getByTestId('bascule')).toHaveTextContent('true')
     expect(localStorage.getItem('replay-show-aim')).toBe('true')
+  })
+})
+
+/**
+ * LE REPLI DE LA FRISE (retour utilisateur du 2026-08-28) est une préférence persistée comme
+ * les autres, mais elle ne passe PAS par le tiroir : `useReplayTimeline` lit directement le
+ * helper. C'est la raison pour laquelle celui-ci est exporté — une seconde copie de son corps
+ * aurait rouvert la divergence que sa centralisation avait fermée.
+ */
+describe('repli de la frise — la préférence survit à la page', () => {
+  beforeEach(() => {
+    localStorage.removeItem(TIMELINE_EXPANDED_KEY)
+  })
+
+  it('DÉPLIÉE par défaut : la frise à pistes est ce qu on vient de livrer, on ne la cache pas', () => {
+    const { result } = renderHook(() => usePersistedFlag(TIMELINE_EXPANDED_KEY, true))
+    expect(result.current[0]).toBe(true)
+  })
+
+  it('replier ÉCRIT la préférence, et un remontage la relit', () => {
+    const { result, unmount } = renderHook(() => usePersistedFlag(TIMELINE_EXPANDED_KEY, true))
+    act(() => result.current[1]())
+    expect(result.current[0]).toBe(false)
+    expect(localStorage.getItem(TIMELINE_EXPANDED_KEY)).toBe('false')
+
+    unmount()
+    const remonte = renderHook(() => usePersistedFlag(TIMELINE_EXPANDED_KEY, true))
+    expect(remonte.result.current[0]).toBe(false)
+  })
+
+  it('la clé du repli est la SIENNE : replier ne touche à aucun calque', () => {
+    const settings = renderHook(() => useReplaySettings())
+    const { result } = renderHook(() => usePersistedFlag(TIMELINE_EXPANDED_KEY, true))
+    act(() => result.current[1]())
+    expect(settings.result.current.showAim).toBe(true)
+    expect(settings.result.current.showZones).toBe(true)
   })
 })

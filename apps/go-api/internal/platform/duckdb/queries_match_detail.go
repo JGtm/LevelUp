@@ -172,6 +172,12 @@ ORDER BY tm.xuid`
 // (item 3.1). Les lignes historiques ont status NULL et restent donc visibles —
 // d'où le COALESCE de MediaVisiblePredicate, qu'un `status <> 'deleted'` nu
 // aurait éliminées en silence.
+//
+// capture_start_utc et duration_seconds servent la piste Médias de la frise du
+// rejeu 2D : capture_end_utc est la FIN de la capture, poser un clip dessus le
+// décalerait de sa propre durée. Le client repositionne à partir du début
+// (start si connu, sinon end − durée). duration_seconds est un DOUBLE en base
+// (ops/media_store.go) et le DTO l'expose en secondes entières.
 var Q24MatchMedia = `
 SELECT
     mf.id               AS file_id,
@@ -179,7 +185,9 @@ SELECT
     mf.file_path,
     mf.kind,
     mf.thumbnail_path,
+    mf.capture_start_utc,
     mf.capture_end_utc,
+    mf.duration_seconds,
     COALESCE(mll.is_liked, FALSE) AS liked
 FROM media_files mf
 JOIN media_match_associations_latest mma ON mf.id = mma.media_file_id

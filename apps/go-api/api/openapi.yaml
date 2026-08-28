@@ -14968,6 +14968,8 @@ components:
     MatchAssociatedMedia:
       additionalProperties: false
       properties:
+        capture_start_time:
+          type: string
         capture_time:
           type: string
         duration_seconds:

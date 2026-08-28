@@ -184,10 +184,10 @@ export function buildDominance(
 }
 
 /**
- * UN MÉDIA DU JOUEUR posé sur le match : une capture (instant) ou un clip (durée). La feature
- * n'est pas encore branchée — le type existe pour que la piste, le placement et la lightbox
- * soient écrits une fois pour de bon, et que le jour où les médias arrivent il n'y ait qu'à
- * les passer en prop.
+ * UN MÉDIA DU JOUEUR posé sur le match : une capture (instant) ou un clip (durée). La source
+ * est le `media_tab` de la vue match, réduit à ce format par `buildReplayMedia`
+ * (replayMediaLogic.ts) — c'est LÀ que vivent la règle « début = fin − durée » et le recalage
+ * sur l'axe du rejeu ; ici, `replayMs` est déjà sur cet axe.
  */
 export interface ReplayMediaItem {
   id: string

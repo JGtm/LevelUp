@@ -40,7 +40,7 @@ import { drawGrappleLayer } from './grappleLayer'
 import { drawEquipmentPlacementsLayer } from './equipmentPlacementsLayer'
 import { ReplayCanvasTips } from './ReplayCanvasTips'
 import { useReplayPlacements } from './useReplayPlacements'
-import { EMPTY_FEED, EMPTY_ZONES, SERIES_TOKENS } from './replayCanvasConfig'
+import { EMPTY_FEED, EMPTY_MEDIA, EMPTY_ZONES, SERIES_TOKENS } from './replayCanvasConfig'
 import { useReplayObjectiveObjects } from './useReplayObjectiveObjects'
 import { useReplayVipCrown } from './useReplayVipCrown'
 import { useReplayFlagCarries } from './useReplayFlagCarries'
@@ -50,6 +50,7 @@ import { useReplayWeaponPads } from './useReplayWeaponPads'
 import type { ReplayLocale } from './i18n'
 import type { EndMatchSoundSpec } from './endMatchSound'
 import type { ReplayFeedEntry } from './killFeedLogic'
+import type { ReplayMediaItem } from './replayTimelineTracksLogic'
 import { useReplayFx } from './useReplayFx'
 import { NO_MARKS, type PlayerMarkKind } from './playerMarks'
 import { useReplayDrawer } from './useReplayDrawer'
@@ -123,11 +124,11 @@ interface ReplayCanvasProps {
   /** Marques d'identité par xuid (« moi », « ami ») : elles décident de la FORME du point. */
   marks?: ReadonlyMap<string, PlayerMarkKind>
   /**
-   * LE FIL ALIGNÉ, assemblé une fois par la page (`buildFeedEntries`) : la même liste que la
-   * colonne de droite. Elle alimente les pistes « Toi » et « Alliés » de la frise — un second
-   * alignement ici pourrait diverger du fil affiché à côté.
+   * LE FIL ALIGNÉ ET LES MÉDIAS, assemblés une fois par la page (`buildFeedEntries`,
+   * `buildReplayMedia`) : un second recalage ici divergerait de ce qu'on lit à côté.
    */
   feedEntries?: readonly ReplayFeedEntry[]
+  media?: readonly ReplayMediaItem[]
   /**
    * LA FIN DE PARTIE SONORE (lot C) : l'issue du joueur de la page et la langue, lues UNE fois
    * par la page — la même lecture que l'écran de fin (`endMatchSound.ts`). Le canvas ne fait
@@ -139,7 +140,7 @@ interface ReplayCanvasProps {
 
 export function ReplayCanvas({
   doc, locale, playWindow, kills, t0Ms, onFrameChange, background, callouts, scoreboard, xuidMeta, marks,
-  endMatch, feedEntries = EMPTY_FEED,
+  endMatch, feedEntries = EMPTY_FEED, media = EMPTY_MEDIA,
 }: ReplayCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -569,10 +570,9 @@ export function ReplayCanvas({
     soundTick: sound.tick, onEnded: sound.endMatch, onTransportGesture: sound.wake,
   })
   // LA FRISE ET SON CLAVIER (planche 2a) vivent dans useReplayTimeline — treizième extraction
-  // imposée par le cliquet de taille : pistes, dominance, médias, horloges de l'axe et
-  // raccourcis décrivent la FRISE, pas le dessin de la carte.
+  // imposée par le cliquet : pistes, dominance, médias, horloges et raccourcis sont LA FRISE.
   const timeline = useReplayTimeline({
-    doc, playWindow, feedEntries, marks: marks ?? NO_MARKS, renderWidth, locale,
+    doc, playWindow, feedEntries, media, marks: marks ?? NO_MARKS, renderWidth, locale,
     lead: leadMarks, playback, toggleSound: sound.toggle,
   })
   // LE TIROIR, groupé de même (useReplayDrawer) : les disponibilités viennent des calques, les
