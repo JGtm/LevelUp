@@ -20,8 +20,13 @@
  * main, les concepts) garde son URL et son sens — retourner un dessin fini n'a pas de
  * fondement dans le jeu.
  *
- * SEULES LES FICHES passent par ici : les râteliers d'armes de la carte
- * (`useReplayWeaponPads`) gardent le contour — ils sont hors du périmètre du handoff.
+ * LES SOCLES DE LA CARTE PASSENT PAR ICI DEPUIS LE 2026-08-28 (retour utilisateur : « pour les
+ * armes il faut utiliser les icônes comme pour les fiches de joueurs et le kill feed »). Ils
+ * gardaient le `contour` par périmètre de lot, et c'était le mauvais choix à leur échelle : un
+ * trait d'arme à vide, à 8 px, sur un fond de carte en niveaux de gris déjà cerné de noir, ne se
+ * distingue pas. La forme PLEINE, elle, tient. Le miroir vaut pour eux aussi — une même arme ne
+ * peut pas pointer à droite sur la fiche et à gauche sur la carte —, mais il est cuit dans le
+ * canvas hors écran (`tintedIconCanvas`) et non posé en CSS : un canvas n'a pas de `transform`.
  */
 import type { CSSProperties } from 'react'
 

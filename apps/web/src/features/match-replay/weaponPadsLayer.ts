@@ -182,10 +182,15 @@ export interface PadStyle {
   /** Encre neutre du thème : un socle est un objet du terrain, il n'a pas de camp. */
   ink: string
   /**
-   * Les DEUX encres du marquage (verdict du 2026-08-18) : la vignette et le compte à rebours
-   * sont REMPLIS de l'encre du texte et CERNÉS de celle du fond. En thème sombre cela donne
-   * le « blanc rempli, contour noir » demandé ; en thème clair, l'inverse — c'est la même
-   * règle, et c'est la seule qui reste lisible sur les deux fonds de carte.
+   * Les DEUX encres du marquage : ce qui est REMPLI à l'encre du texte, ce qui est CERNÉ à
+   * celle du fond. En thème sombre cela donne le « blanc rempli, contour sombre » ; en thème
+   * clair, l'inverse.
+   *
+   * ELLES NE VALENT PLUS QUE POUR LE COMPTE À REBOURS depuis le 2026-08-28. La VIGNETTE, elle,
+   * est cernée de l'encre de sa NATURE (celle de son losange) : sur un fond de carte en niveaux
+   * de gris déjà cerné de noir, un liseré noir se confondait avec le décor et l'arme devenait
+   * illisible (retour utilisateur). Le choix se fait à la cuisson (`useReplayWeaponPads`) — ce
+   * calque reçoit les deux images déjà teintes et n'a pas à connaître la règle.
    */
   fill: string
   outline: string

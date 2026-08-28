@@ -336,16 +336,45 @@ const GRENADE_ICON_PX = 18
  * une fois pour toutes dans un canvas hors écran. Un canvas ne connaît pas le
  * `mask-image` CSS de WeaponIcon : la teinte se fait par composition `source-in`, qui
  * préserve l'alpha et suit le thème par re-teinture (l'appelant re-teint au changement).
+ *
+ * LE MIROIR EST CUIT ICI, PAS AU TRACÉ (2026-08-28) : les vignettes d'arme des socles sont
+ * désormais les icônes PLEINES des fiches, et les deux atlas du jeu pointent vers la GAUCHE
+ * quand le kill feed — donc la fiche, donc le socle — pointe à droite. Retourner à chaque image
+ * demanderait un `save`/`scale`/`restore` par socle et par frame ; retourner une fois à la
+ * cuisson ne coûte rien et laisse le calque poser une image comme les autres.
+ *
+ * `tint: false` LAISSE L'IMAGE TELLE QUELLE (couleurs comprises) : c'est le cas d'un dessin fini
+ * qu'on ne fait que retourner. Sans cette porte, une image finie retournée perdrait ses couleurs.
  */
-export function tintedIconCanvas(img: HTMLImageElement, color: string): HTMLCanvasElement {
+export interface TintedIconOptions {
+  /** Retourner l'image horizontalement (le sens du kill feed du jeu). */
+  mirrored?: boolean
+  /** Teindre à l'encre donnée (défaut) ou garder les couleurs de l'image. */
+  tinted?: boolean
+}
+
+export function tintedIconCanvas(
+  img: HTMLImageElement,
+  color: string,
+  options: TintedIconOptions = {},
+): HTMLCanvasElement {
+  const { mirrored = false, tinted = true } = options
   const off = document.createElement('canvas')
   off.width = Math.max(1, img.naturalWidth)
   off.height = Math.max(1, img.naturalHeight)
   const octx = off.getContext('2d')
   if (!octx) return off
+  if (mirrored) {
+    octx.translate(off.width, 0)
+    octx.scale(-1, 1)
+  }
   octx.drawImage(img, 0, 0)
+  if (!tinted) return off
   octx.globalCompositeOperation = 'source-in'
   octx.fillStyle = color
+  // `source-in` s'applique au canvas ENTIER : le rectangle se pose donc dans le repère de
+  // départ, sinon le miroir le décalerait hors du cadre.
+  octx.setTransform(1, 0, 0, 1, 0, 0)
   octx.fillRect(0, 0, off.width, off.height)
   return off
 }

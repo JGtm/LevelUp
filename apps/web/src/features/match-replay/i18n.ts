@@ -121,17 +121,10 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     layerWeaponPads: "Emplacements d'arme",
     layerWeaponPadsHint:
       "Les endroits où une arme réapparaît au fil du match, mesurés sur ce match : l'arme y est dessinée en grand quand elle change une partie (fusil de précision, épée, marteau, roquettes, empaleur, crémateur, surbouclier, camouflage), en petit sinon. Socle au sol ou râtelier mural : la mesure ne porte qu'une position, elle ne les distingue pas. Le film ne date pas l'instant du ramassage — l'emplacement reste donc INCERTAIN pendant l'intervalle des relevés, environ vingt secondes, plutôt que de s'éteindre à un instant inventé. Un compte à rebours n'apparaît que là où le délai de réapparition a pu être établi ; ailleurs, aucun chiffre. Qui a pris l'arme n'est jamais affiché : la mesure n'atteint pas le niveau de certitude exigé.",
-    padState: {
-      full: 'Disponible',
-      uncertain: 'Incertain',
-      empty: 'Pris',
-    },
     padEquipmentFamily: {
       powerup_overshield: 'Surbouclier',
       powerup_camo: 'Camouflage actif',
     },
-    padPlacementNote: "Emplacement d'arme (socle au sol ou râtelier mural : non distingués)",
-    padPlacementNotePowerUp: 'Socle de bonus de puissance (position mesurée sur ce match)',
     layerFlagCarries: 'Drapeaux',
     layerFlagCarriesHint:
       "La vie des drapeaux de capture, lue dans le film : porté (le drapeau suit son porteur image par image), au sol à la dernière position mesurée, ou à sa base. La base garde un drapeau atténué tant que le sien est ailleurs. Un portage dont RIEN ne date la fin s'affiche atténué lui aussi : son intervalle court jusqu'à la fin du film, c'est une borne haute et non une mesure.",
@@ -157,10 +150,8 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     layerSkullCarrierHint:
       "Qui porte le crâne d'Oddball, lu dans le film : le porteur est le joueur dont les tics de score de mode montent, un train de tics étant une période de portage. Le crâne suit son porteur image par image. Un portage dont RIEN ne date la fin s'affiche atténué : son intervalle court jusqu'à la fin du film — c'est une borne haute, pas une mesure. Le crâne posé au sol, lui, reste dessiné par le calque des objets d'objectif.",
     padCountdownFmt: (seconds) => `${Math.ceil(seconds)} s`,
-    padRespawnMeasuredFmt: (seconds) =>
-      `Réapparition dans ${Math.ceil(seconds)} s (vue dans le film)`,
-    padRespawnExpectedFmt: (seconds) =>
-      `Réapparition dans ≈ ${Math.ceil(seconds)} s (cycle attendu)`,
+    padRespawnMeasuredFmt: (seconds) => `Réapparition dans ${Math.ceil(seconds)} s`,
+    padRespawnExpectedFmt: (seconds) => `Réapparition dans ≈ ${Math.ceil(seconds)} s`,
     layerHeatmap: 'Carte de chaleur',
     layerHeatmapHint:
       "Où le match s'est joué, sur tout le match. Une cellule jamais atteinte reste vide : « froid » veut dire peu fréquenté, l'absence de couleur veut dire jamais vu.",
@@ -427,17 +418,10 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     layerWeaponPads: 'Weapon spots',
     layerWeaponPadsHint:
       'The spots where a weapon reappears during the match, measured on this match: the weapon is drawn large when it changes a game (sniper, sword, hammer, rockets, skewer, cindershot, overshield, camo), small otherwise. Floor pad or wall rack: the measurement only carries a position, it does not tell them apart. The film never dates the moment of pickup — the spot therefore stays UNCERTAIN for the sampling interval, about twenty seconds, rather than going dark at an invented instant. A countdown only appears where the respawn delay could be established; nowhere else. Who took the weapon is never shown: the measurement falls short of the required certainty.',
-    padState: {
-      full: 'Available',
-      uncertain: 'Uncertain',
-      empty: 'Taken',
-    },
     padEquipmentFamily: {
       powerup_overshield: 'Overshield',
       powerup_camo: 'Active camouflage',
     },
-    padPlacementNote: 'Weapon spot (floor pad or wall rack: not told apart)',
-    padPlacementNotePowerUp: 'Power-up pad (position measured on this match)',
     layerFlagCarries: 'Flags',
     layerFlagCarriesHint:
       'The life of capture flags, read from the film: carried (the flag follows its carrier frame by frame), on the ground at the last measured position, or at its base. A base keeps a faded flag for as long as its own is elsewhere. A carry whose end NOTHING dates is faded too: its interval runs to the end of the film, an upper bound rather than a measurement.',
@@ -463,8 +447,8 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     layerSkullCarrierHint:
       'Who carries the Oddball skull, read from the film: the carrier is the player whose mode-score ticks rise, a run of ticks being one carry period. The skull follows its carrier frame by frame. A carry whose end NOTHING dates is faded: its interval runs to the end of the film — an upper bound, not a measurement. The skull dropped on the ground is still drawn by the objective-objects layer.',
     padCountdownFmt: (seconds) => `${Math.ceil(seconds)} s`,
-    padRespawnMeasuredFmt: (seconds) => `Respawn in ${Math.ceil(seconds)} s (seen in the film)`,
-    padRespawnExpectedFmt: (seconds) => `Respawn in ≈ ${Math.ceil(seconds)} s (expected cycle)`,
+    padRespawnMeasuredFmt: (seconds) => `Respawn in ${Math.ceil(seconds)} s`,
+    padRespawnExpectedFmt: (seconds) => `Respawn in ≈ ${Math.ceil(seconds)} s`,
     layerHeatmap: 'Heat map',
     layerHeatmapHint:
       'Where the match was played, over the whole match. A cell never reached stays empty: "cold" means seldom visited, no colour at all means never seen.',

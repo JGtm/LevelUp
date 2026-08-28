@@ -39,6 +39,7 @@ import { refinePadPresence } from './padPresenceRefine'
 import type { ReplayText } from './i18nContract'
 import type { PlacementView } from './placementShapes'
 import { tintedIconCanvas } from './replayDraw'
+import { weaponFullIcon } from './weaponFullIcon'
 import { frameToMs, type XY } from './replayLogic'
 import type { ReplayDocumentReady, ReplayWeaponPadReady } from './replayNormalize'
 import {
@@ -94,14 +95,24 @@ export function padNameFor(
   return catalogText(labels?.[weapon], locale) ?? weapon
 }
 
-/** Une vignette à charger : son URL et son mode (masque à teindre, ou image finie). */
+/** Une vignette à charger : son URL, son mode (masque à teindre ou image finie), son sens. */
 export interface PadIconRef {
   url: string
   tinted: boolean
+  /** Vrai = image d'atlas, à retourner pour le sens du kill feed du jeu (cf. weaponFullIcon). */
+  mirrored: boolean
 }
 
 /**
  * padIconRefFor — QUELLE IMAGE pour ce socle, ou null (le calque pose alors un glyphe neutre).
+ *
+ * UNE ARME PREND SA VERSION PLEINE, LA MÊME QUE LES FICHES ET LE KILL FEED (retour utilisateur
+ * du 2026-08-28 : « pour les armes il faut utiliser les icônes comme pour les fiches de joueurs
+ * et le kill feed »). Le document cuit l'atlas `contour` — un trait d'arme à vide, qui se perd
+ * sur un fond de carte en niveaux de gris déjà cerné de noir ; la `silhouette` est une forme
+ * PLEINE, lisible à 8 px. L'échange se fait côté client (`weaponFullIcon`), pour la même raison
+ * que sur les fiches : l'URL est figée dans l'artefact au build. Et comme sur les fiches,
+ * l'image d'atlas se rend RETOURNÉE — les deux atlas pointent à gauche, le jeu à droite.
  *
  * LES POWER-UPS SE RÉSOLVENT CÔTÉ CLIENT, comme la version pleine des icônes d'arme des
  * fiches (cf. `weaponFullIcon.ts`) : leur famille n'entre dans AUCUN catalogue du document — le
@@ -114,10 +125,13 @@ export function padIconRefFor(weapon: string, labels: PadLabels, titleSlug: stri
   const family = padEquipmentFamilyOf(weapon)
   if (family) {
     const url = staticAssetURL('weapon', `hud/${PAD_EQUIPMENT_FAMILIES[family].icon}`, '.png', titleSlug)
-    return url ? { url, tinted: true } : null
+    // Le masque de HUD d'un power-up n'est pas une image d'atlas : il garde son sens.
+    return url ? { url, tinted: true, mirrored: false } : null
   }
   const label = labels?.[weapon]
-  return label?.img ? { url: label.img, tinted: !!label.tinted } : null
+  if (!label?.img) return null
+  const full = weaponFullIcon(label.img)
+  return { url: full.url, tinted: !!label.tinted, mirrored: full.mirrored }
 }
 
 /**
@@ -268,6 +282,13 @@ export function useReplayWeaponPads({
   // à celle du fond. Un canvas ne sait pas cerner une image ; le calque repose donc la même
   // forme tout autour, et il lui faut les deux.
   //
+  // LE LISERÉ N'EST PLUS NOIR (retour utilisateur du 2026-08-28 : « pour les contours des armes
+  // et power-up, le noir ça va pas — les dessins de carte sont en niveaux de gris avec contours
+  // noirs, c'est difficile de distinguer les armes »). Il prend l'encre de la NATURE du socle,
+  // celle-là même que porte son losange : un halo coloré autour d'une silhouette claire se
+  // détache d'un fond gris, là où le noir sur noir se confondait. L'encre du fond (`ink.outline`)
+  // reste celle du COMPTE À REBOURS, qui est du texte et non une forme.
+  //
   // LE LISERÉ EST SERVI POUR TOUTES LES IMAGES depuis le 2026-08-27, images FINIES comprises
   // (retour utilisateur : « icône AVEC contour »). Il était refusé aux non-masques au motif
   // qu'on ne peut pas les reteindre — vrai pour le CORPS, faux pour le liseré : cerner ne
@@ -284,17 +305,19 @@ export function useReplayWeaponPads({
       seen.add(pad.weapon)
       const weapon = pad.weapon
       const tinted = ref.tinted
+      const mirrored = ref.mirrored
+      const outlineInk = inkOf(weapon)
       const im = new Image()
       im.onload = () => {
         map.set(weapon, {
-          fill: tinted ? tintedIconCanvas(im, ink.fill) : im,
-          outline: tintedIconCanvas(im, ink.outline),
+          fill: tinted || mirrored ? tintedIconCanvas(im, ink.fill, { mirrored, tinted }) : im,
+          outline: tintedIconCanvas(im, outlineInk, { mirrored }),
         })
         redraw()
       }
       im.src = ref.url
     }
-  }, [pads, labels, titleSlug, ink.fill, ink.outline, redraw])
+  }, [pads, labels, titleSlug, ink.fill, inkOf, redraw])
 
   const frameMs = useMemo(() => frameToMs(1, doc), [doc])
 

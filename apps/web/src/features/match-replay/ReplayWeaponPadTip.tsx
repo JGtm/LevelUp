@@ -1,15 +1,16 @@
 /**
  * ReplayWeaponPadTip — L'INFOBULLE D'UN EMPLACEMENT D'ARME, au survol de sa pile.
  *
- * CE QU'ELLE DIT, ET DANS CET ORDRE : l'ARME (nom bilingue du catalogue, ou son identifiant
- * quand rien ne la nomme — jamais le nom d'une arme voisine), son ÉTAT à cet instant, le
- * COMPTE À REBOURS dès qu'une source le permet — la prochaine apparition MESURÉE d'abord, le
- * cycle en repli — et la réserve de lecture : la mesure ne distingue pas un socle au sol d'un
- * râtelier mural.
+ * DEUX LIGNES AU PLUS, ET C'EST TOUT LE CONTRAT (retour utilisateur du 2026-08-28 : « je veux
+ * juste garder le nom de l'arme ou de l'équipement, et à la rigueur son timer ; je ne veux pas
+ * de blabla dedans ») : l'ARME (nom bilingue du catalogue, ou son identifiant quand rien ne la
+ * nomme — jamais le nom d'une arme voisine), puis le COMPTE À REBOURS quand une source le
+ * permet. L'infobulle portait en plus l'ÉTAT du socle et une NOTE DE LECTURE de deux lignes ;
+ * l'état se lit déjà sur la carte (le losange s'atténue, la vignette disparaît) et la note
+ * répétait à chaque survol une réserve qui vit dans l'aide du calque.
  *
  * UN SOCLE DE POWER-UP N'EST PAS UNE ARME (schéma 17) : son nom vient de la table des familles
- * non-arme (`padNameFor`), jamais de la clé brute du document, et sa réserve de lecture change
- * avec lui — le râtelier mural n'a pas de sens pour un objet qu'on ramasse au sol.
+ * non-arme (`padNameFor`), jamais de la clé brute du document.
  *
  * CE QU'ELLE NE DIT JAMAIS : QUI a pris l'arme. Le champ existe au contrat (`padPickups[].xuid`)
  * et vaut `null` partout — l'oracle plafonne à 79,7 % contre 90 % exigés. C'est la clause la
@@ -18,27 +19,19 @@
  *
  * DEUX COMPTES À REBOURS, ET ELLE DOIT LES SÉPARER (D3, 2026-08-27). Celui qui vise la prochaine
  * apparition VUE DANS LE FILM est EXACT — le rejeu connaît la suite — et se dit tel quel ; celui
- * que le CYCLE prédit, pour le dernier trou qu'aucune apparition ne ferme, garde son « ≈ » et se
- * dit ATTENDU. La carte, elle, n'affiche qu'un chiffre : à 8 px il n'y a pas la place d'une
- * réserve, et c'est ici qu'elle se lit.
+ * que le CYCLE prédit, pour le dernier trou qu'aucune apparition ne ferme, garde son « ≈ ». LA
+ * RÉSERVE TIENT DANS CE SEUL SIGNE depuis le 2026-08-28 : les deux libellés portaient une
+ * parenthèse d'explication (« vue dans le film » / « cycle attendu ») — c'était le blabla que le
+ * retour retire, et le « ≈ » dit la même chose en un caractère.
  *
  * PAS DE SOURCE = PAS DE LIGNE. Ni apparition suivante, ni cycle établi : ni chiffre, ni tiret —
  * un tiret suggérerait qu'on saurait.
- *
- * NI MÉDIANE NI ÉCARTS (verdict du 2026-08-18) : l'infobulle portait aussi la médiane du cycle
- * et ses deux dénominateurs (écarts mesurés, écarts manqués). Ces trois nombres disaient la
- * CONFIANCE dans le cycle — une lecture d'analyse, pas un repère de carte. Le compte à rebours,
- * lui, répond à la seule question qu'on se pose devant un socle vide : dans combien de temps.
- * LA RÉSERVE VIT DANS LE « ≈ » DU SEUL LIBELLÉ ATTENDU (amendé le 2026-08-27) : le compte
- * MESURÉ n'en porte pas, parce qu'il n'a rien à réserver — c'est une apparition que le film
- * montre, pas une moyenne.
  *
  * Purement présentationnel : l'état et le compte à rebours sont calculés au survol
  * (useReplayWeaponPads), la géométrie dans weaponPadsLayer.
  */
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
 import type { WeaponPadHover } from './useReplayWeaponPads'
-import { padEquipmentFamilyOf } from './weaponPadFamilies'
 
 /** Décalage de l'infobulle sous le pointeur, en pixels (même valeur que celle des poses). */
 const TIP_OFFSET = 12
@@ -54,15 +47,10 @@ interface ReplayWeaponPadTipProps {
 
 export function ReplayWeaponPadTip({ locale, hover, width }: ReplayWeaponPadTipProps) {
   const t = REPLAY_TEXT[locale]
-  const { at, name, state, respawn } = hover
+  const { at, name, respawn } = hover
   const respawnText = respawn
     ? (respawn.measured ? t.padRespawnMeasuredFmt : t.padRespawnExpectedFmt)(respawn.seconds)
     : null
-  // LA RÉSERVE SUIT LA NATURE DU SOCLE : « socle au sol ou râtelier mural » n'a aucun sens
-  // pour un power-up — il ne s'accroche pas à un mur. Même table que la taille et le nom.
-  const note = padEquipmentFamilyOf(hover.pad.weapon)
-    ? t.padPlacementNotePowerUp
-    : t.padPlacementNote
   const flip = at.x + TIP_OFFSET + TIP_WIDTH > width
   return (
     <div
@@ -75,13 +63,7 @@ export function ReplayWeaponPadTip({ locale, hover, width }: ReplayWeaponPadTipP
       }}
     >
       <span className="block font-medium">{name}</span>
-      <span className="block text-muted-foreground">
-        {t.padState[state]}
-        {respawnText !== null ? ` · ${respawnText}` : ''}
-      </span>
-      <span className="mt-0.5 block text-[0.65rem] text-muted-foreground opacity-80">
-        {note}
-      </span>
+      {respawnText !== null && <span className="block text-muted-foreground">{respawnText}</span>}
     </div>
   )
 }
