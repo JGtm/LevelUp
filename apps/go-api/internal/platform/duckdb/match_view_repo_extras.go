@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"math"
 	"strings"
 	"time"
 
@@ -341,25 +342,43 @@ func (r *MatchViewRepo) GetMatchMedia(ctx context.Context, matchID string) ([]do
 	var results []domain.MediaAssocRaw
 	for rows.Next() {
 		var m domain.MediaAssocRaw
-		var captureTime *time.Time
+		var captureStart, captureTime *time.Time
+		var durationSeconds sql.NullFloat64
 		if err := rows.Scan(
 			&m.FileID,
 			&m.FileName,
 			&m.FilePath,
 			&m.Kind,
 			&m.ThumbnailPath,
+			&captureStart,
 			&captureTime,
+			&durationSeconds,
 			&m.Liked,
 		); err != nil {
 			return nil, fmt.Errorf("MatchViewRepo.GetMatchMedia scan: %w", err)
 		}
-		if captureTime != nil {
-			s := captureTime.Format(time.RFC3339)
-			m.CaptureTime = &s
+		m.CaptureStartTime = rfc3339OrNil(captureStart)
+		m.CaptureTime = rfc3339OrNil(captureTime)
+		if durationSeconds.Valid {
+			// La base stocke un DOUBLE ; le DTO expose des secondes entières —
+			// l'arrondi coûte au pire une demi-seconde de placement sur la frise,
+			// négligeable devant l'approximation du recalage lui-même.
+			d := int(math.Round(durationSeconds.Float64))
+			m.DurationSeconds = &d
 		}
 		results = append(results, m)
 	}
 	return results, rows.Err()
+}
+
+// rfc3339OrNil sérialise un horodatage optionnel au format attendu par les DTO
+// médias. Nil en entrée = nil en sortie (colonne NULL en base).
+func rfc3339OrNil(t *time.Time) *string {
+	if t == nil {
+		return nil
+	}
+	s := t.Format(time.RFC3339)
+	return &s
 }
 
 // GetMatchExpectedStats retourne les stats attendues pour ce match (Q26).

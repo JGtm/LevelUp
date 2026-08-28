@@ -10,6 +10,7 @@ import (
 	"context"
 	"sort"
 	"testing"
+	"time"
 )
 
 // TestMatchViewRepo_GetMatchMedia_CrossPlayer vérifie que la query Q24
@@ -97,6 +98,98 @@ func TestMatchViewRepo_GetMatchMedia_OrderByCaptureTimeASC(t *testing.T) {
 	}
 	if rows[1].FilePath != "/C1.png" {
 		t.Errorf("rows[1].FilePath = %q, want /C1.png (later capture)", rows[1].FilePath)
+	}
+}
+
+// TestMatchViewRepo_GetMatchMedia_StartAndDuration vérifie que Q24 sert le DÉBUT
+// de capture et la durée, les deux colonnes dont la piste Médias de la frise du
+// rejeu a besoin pour poser un clip au bon endroit.
+//
+// Sans elles, un clip se posait sur sa FIN de capture, donc décalé de sa propre
+// durée ; duration_seconds n'était par ailleurs jamais peuplée alors que le champ
+// DTO existait (bug latent soldé le 2026-08-28).
+//
+// La fixture partagée laisse ces deux colonnes NULL — on les pose ici par UPDATE
+// ciblé plutôt qu'en la modifiant, pour ne pas déplacer les scénarios de galerie
+// qui s'appuient sur le même dataset.
+func TestMatchViewRepo_GetMatchMedia_StartAndDuration(t *testing.T) {
+	pdb := newTestPlayerDBForMediaScenario(t)
+	ctx := context.Background()
+
+	// med-A1 : clip commencé 30 s avant sa fin de capture (14:30). La durée est
+	// fractionnaire en base (DOUBLE) — le DTO doit l'arrondir à 30.
+	if _, err := pdb.SharedSocial.Exec(ctx,
+		`UPDATE media_files SET capture_start_utc = ?, duration_seconds = ? WHERE id = 'med-A1'`,
+		"2025-01-10 14:29:30+00", 29.6,
+	); err != nil {
+		t.Fatalf("update med-A1 (start + duration): %v", err)
+	}
+
+	repo := NewMatchViewRepo(pdb, mediaTestPlayerXUID)
+	rows, err := repo.GetMatchMedia(ctx, "m1")
+	if err != nil {
+		t.Fatalf("GetMatchMedia(m1): %v", err)
+	}
+	if len(rows) != 2 {
+		t.Fatalf("GetMatchMedia(m1) = %d rows, want 2", len(rows))
+	}
+
+	byPath := map[string]int{}
+	for i, r := range rows {
+		byPath[r.FilePath] = i
+	}
+	clip, ok := byPath["/A1.mp4"]
+	if !ok {
+		t.Fatalf("/A1.mp4 absent des médias de m1 (%v)", byPath)
+	}
+	image, ok := byPath["/C1.png"]
+	if !ok {
+		t.Fatalf("/C1.png absent des médias de m1 (%v)", byPath)
+	}
+
+	// Clip : start servi, distinct de end, durée arrondie.
+	if rows[clip].CaptureStartTime == nil {
+		t.Fatal("/A1.mp4 : CaptureStartTime nil — la colonne capture_start_utc n'est pas servie")
+	}
+	assertInstant(t, "/A1.mp4 CaptureStartTime", *rows[clip].CaptureStartTime, "2025-01-10T14:29:30Z")
+	if rows[clip].CaptureTime == nil {
+		t.Fatal("/A1.mp4 : CaptureTime nil — la fin de capture reste servie telle quelle")
+	}
+	assertInstant(t, "/A1.mp4 CaptureTime", *rows[clip].CaptureTime, "2025-01-10T14:30:00Z")
+	if rows[clip].DurationSeconds == nil {
+		t.Fatal("/A1.mp4 : DurationSeconds nil — la colonne duration_seconds n'est pas servie")
+	}
+	if got := *rows[clip].DurationSeconds; got != 30 {
+		t.Errorf("/A1.mp4 DurationSeconds = %d, want 30 (arrondi de 29.6)", got)
+	}
+
+	// Image laissée NULL/NULL : les deux champs restent nil, aucune valeur inventée.
+	if rows[image].CaptureStartTime != nil {
+		t.Errorf("/C1.png CaptureStartTime = %q, want nil (colonne NULL)", *rows[image].CaptureStartTime)
+	}
+	if rows[image].DurationSeconds != nil {
+		t.Errorf("/C1.png DurationSeconds = %d, want nil (colonne NULL)", *rows[image].DurationSeconds)
+	}
+	if rows[image].CaptureTime == nil {
+		t.Error("/C1.png : CaptureTime nil alors que capture_end_utc est renseignée")
+	}
+}
+
+// assertInstant compare deux horodatages RFC3339 sur l'INSTANT et non sur la
+// chaîne : le driver peut rendre un TIMESTAMPTZ avec un décalage explicite,
+// équivalent mais écrit autrement que la forme UTC attendue.
+func assertInstant(t *testing.T, label, got, want string) {
+	t.Helper()
+	gotTime, err := time.Parse(time.RFC3339, got)
+	if err != nil {
+		t.Fatalf("%s : %q n'est pas du RFC3339 (%v)", label, got, err)
+	}
+	wantTime, err := time.Parse(time.RFC3339, want)
+	if err != nil {
+		t.Fatalf("%s : horodatage attendu %q invalide (%v)", label, want, err)
+	}
+	if !gotTime.Equal(wantTime) {
+		t.Errorf("%s = %s, want %s", label, gotTime.UTC(), wantTime.UTC())
 	}
 }
 
