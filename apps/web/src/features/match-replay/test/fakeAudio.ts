@@ -27,14 +27,11 @@ export class FakeParam {
  */
 export class FakeGain {
   gain = new FakeParam()
-  /** Branchements NOTÉS (robinet d'enregistrement, 2026-08-26) ET démontages COMPTÉS
-   *  (rafale, 2026-08-27) : une chaîne laissée branchée après la fin d'un son est une
-   *  fuite, un clip branché au mauvais endroit est muet — deux défauts qui cassent en
-   *  silence, chacun lu par sa moitié du double. */
+  /** Branchements NOTÉS (robinet d'enregistrement, 2026-08-26) : un clip branché au mauvais
+   *  endroit est muet, et ça casse en silence — rien d'autre ne répond à la question. */
   connections: unknown[] = []
-  disconnected = 0
   connect(dest?: unknown) { this.connections.push(dest) }
-  disconnect() { this.disconnected++; this.connections.length = 0 }
+  disconnect() { this.connections.length = 0 }
 }
 
 /** Le passe-bas de la chaîne de distance ; il note ses branchements comme le gain. */
@@ -60,9 +57,8 @@ export class FakeSource {
   /** La VITESSE DE LECTURE, portée comme un AudioParam par le vrai WebAudio (`.value`) :
    *  c'est par elle que passe la variation de hauteur d'un tirage (weaponSoundLogic). */
   playbackRate = new FakeParam()
-  disconnected = 0
   connect() {}
-  disconnect() { this.disconnected++ }
+  disconnect() {}
   start(t: number) { this.started = t }
   stop(t: number) { this.stopped = t }
   /** Fin naturelle de la source : c'est le navigateur qui l'appelle, ici le test. */
