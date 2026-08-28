@@ -74478,8 +74478,9 @@ son propre message de commit annoncait « cliquet tenu (691) » pour un fichier 
 aucun fichier match-replay dans le chantier note de perf. Signalement envoye a la
 session rejeu, CORRECTIF LIVRE par elle dans la foulee : `a1d85aa8f` (ReplayCanvas
 692 -> 690, cliquet suiveur 691 -> 690, chronique datee) + `d9bc59601` (journal) —
-gates locaux verts (1472 vitest match-replay, tsc, ESLint), CI de reverdissement en
-cours. Decouverte consignee par elle, A REPRENDRE PAR LE LOT VIP : warning
+gates locaux verts (1472 vitest match-replay, tsc, ESLint). **CI de reverdissement
+VERTE** (run 33127170923 success + Deploy Pre-Check 5m37 + Secrets — feat/v75 revenue
+au vert au niveau JOB le 2026-08-28). Decouverte consignee par elle, A REPRENDRE PAR LE LOT VIP : warning
 `react-hooks/exhaustive-deps` a ReplayCanvas.tsx:504 (dep `objectiveObjects` manquante
 du useCallback `draw`, 12e extraction du lot VIP — risque de calque fige). Le chantier
 note de perf est integralement vert sur tout ce qu il possede.
