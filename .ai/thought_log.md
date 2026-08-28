@@ -1,3 +1,50 @@
+## [2026-08-28] Export video hors temps reel (E4) : la piste sonore mixee hors du temps reel — Complete
+
+**Contexte** : etape E4 du plan `.ai/V7.5/PLAN_EXPORT_VIDEO_HORS_TEMPS_REEL.md`. Le rejeu sonore
+de la page est un LECTEUR : un curseur avance avec la lecture et declenche les sons au passage.
+L'export n'a pas de lecture a suivre — il connait la piste entiere d'avance et peut donc la POSER
+d'un coup dans un `OfflineAudioContext`, qui rend le mixage complet bien plus vite que sa duree.
+
+**Decision technique** : `replayAudioMix.ts`. LA PISTE N'EST PAS RECONSTRUITE — elle vient de
+`buildSoundTimeline()`, celle-la meme que la page joue, donc le clip ne peut ni inventer un son
+ni en manquer un. Trois choses sont reprises a l'identique du lecteur, et chacune pour une
+raison : l'enveloppe (`soundEnvelope`, un stop() sec au milieu d'une onde claque), le plafond de
+voix (`SOUND_MAX_VOICES` — sans lui l'export sonnerait plus fort et plus confus que la page,
+alors qu'il doit en etre la trace fidele : 28,7 % des sources sont refusees en direct sur un
+echange nourri), et les deux fonctions de tirage. Le plafond, en direct, se calcule au fil de
+l'eau ; hors ligne il se calcule d'avance, une source occupant une voix de son instant jusqu'a
+la fin de son enveloppe.
+
+UNE SEULE CHOSE CHANGE : LE HASARD DEVIENT REPRODUCTIBLE. En direct, tirer une variante au
+hasard empeche un geste repete de sonner comme une boucle. Sur un FICHIER, le meme hasard rendrait
+deux exports du meme match subtilement differents — impossible a comparer, impossible a
+re-livrer a l'identique. La graine vient donc de l'EVENEMENT (rang dans la piste entiere + stem)
+et non d'un compteur : exporter une manche seule fait sonner ses tirs exactement comme dans
+l'export du match entier. `pickVariantStem` et `drawVariation` acceptaient deja un generateur
+injectable — aucune modification de l'existant n'a ete necessaire.
+
+Cote conteneur, la piste sonore se declare A L'OUVERTURE ou jamais : le MP4 ecrit sa table des
+pistes une fois pour toutes. Le mixage se fait donc AVANT d'ouvrir l'encodeur, ce qui est sans
+consequence puisqu'il ne joue rien, il calcule.
+
+**Resultats observes** : 18 tests sur le mixage ; `make test-web` vert (526 fichiers, 5338 tests,
+14 skippes) ; `make check-types` vert ; eslint sans erreur ni avertissement sur le perimetre.
+
+UN DEFAUT REEL TROUVE PAR LE LINT EN FIN D'ETAPE, et corrige : la piste exposee par
+`useReplaySound` lisait `variationPercentRef.current` PENDANT LE RENDU. Une ref lue au rendu rend
+une valeur arbitraire et casse la memoisation — `react-hooks/preserve-manual-memoization` l'a
+signale. `exportTrack` est devenu une FONCTION, lue au lancement de l'export : le patron de
+`recordingTrack` juste a cote, et pour la meme raison. A noter aussi une ERREUR DE PROCESS de ma
+part a l'etape precedente : le commit E3 est parti avec une erreur de typage, parce que
+`make check-types` avait ete lance AVANT l'ajout du dernier fichier de test et le gate annonce
+vert sur cette base. Corrige ici ; la lecon est de relancer le gate APRES le dernier fichier
+touche, pas avant.
+
+**Conclusion / prochaine etape** : E5 — l'UI (bouton, dialogue de plage, case son, progression,
+annulation), l'i18n FR/EN, et la bascule du bouton d'enregistrement temps reel en repli. C'est
+elle qui rendra enfin possibles les trois recettes utilisateur en attente (E2 visuelle, E3
+visuelle, E4 ecoute).
+
 ## [2026-08-28] Export video hors temps reel (E3) : la boucle qui recalcule le film — Complete
 
 **Contexte** : etape E3 du plan `.ai/V7.5/PLAN_EXPORT_VIDEO_HORS_TEMPS_REEL.md`. C'est la piece

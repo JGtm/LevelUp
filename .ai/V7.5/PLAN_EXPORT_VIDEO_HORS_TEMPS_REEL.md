@@ -276,16 +276,30 @@ instant, meme regle que le temps reel) ; `startRendering()` ; encodage AAC ; mux
 
 Items :
 
-- [ ] `planAudioMix(timeline, bornes, endMatch)` : evenements retenus, pur et teste
-- [ ] Plafond de voix applique en pur, MEME regle que le temps reel (`SOUND_MAX_VOICES`)
-- [ ] Enveloppe par `soundEnvelope()` reutilisee, jamais recopiee
-- [ ] Tirage des variantes a graine (D7), teste : deux appels donnent le meme resultat
-- [ ] Asset absent : silence memorise, aucun rejet de l'export entier
-- [ ] Piste AAC encodee et muxee avec la video ; case son decochee = MP4 sans piste audio
+- [x] `planAudioMix(timeline, bornes, endMatch)` : evenements retenus, pur et teste
+- [x] Plafond de voix applique en pur, MEME regle que le temps reel (`SOUND_MAX_VOICES`)
+- [x] Enveloppe par `soundEnvelope()` reutilisee, jamais recopiee — `gainFromDb` aussi
+- [x] Tirage des variantes a graine (D7), teste : deux appels donnent le meme resultat. La
+      graine vient du RANG DANS LA PISTE ENTIERE et du stem, pas d'un compteur : exporter une
+      manche seule fait sonner ses tirs comme dans l'export du match entier
+- [x] Asset absent : silence memorise, aucun rejet de l'export entier
+- [x] Piste AAC encodee et muxee avec la video ; case son decochee = MP4 sans piste audio
+      (le mixage rend `null`, et le conteneur n'annonce alors aucune piste sonore)
 
 **Gate** : `cd apps/web && npx vitest run src/features/match-replay/replayAudioMix` vert,
 `make test-web` vert, puis recette d'ECOUTE utilisateur (les sons tombent sur les bons
 instants, aucun mur de bruit sur un echange nourri).
+
+**Etat 2026-08-28 : E4 CLOSE cote technique.** 18 tests sur le mixage ; `make test-web` vert
+(526 fichiers, 5338 tests, 14 skippes) ; `make check-types` vert ; eslint sans erreur NI
+avertissement sur le perimetre. **Recette d'ecoute EN ATTENTE** : elle demande un clip, donc
+E5 — comme les recettes visuelles d'E2 et E3.
+
+Un defaut reel a ete trouve PAR LE LINT en fin d'etape, et corrige : la piste exposee par
+`useReplaySound` lisait `variationPercentRef.current` PENDANT LE RENDU. Une ref lue au rendu
+rend une valeur arbitraire et casse la memoisation (`react-hooks/preserve-manual-memoization`).
+`exportTrack` est donc devenu une FONCTION, lue au lancement de l'export — le patron de
+`recordingTrack` juste a cote, et pour la meme raison.
 
 ### E5 — L'UI, l'i18n et le repli
 

@@ -14,14 +14,17 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useReplayExport } from './useReplayExport'
 import { testReplayDoc } from './test/testDoc'
 
-const addFrame = vi.fn(async () => {})
+// La SIGNATURE est portee par le mock : sans elle, `mock.calls` est un tuple vide et
+// l'assertion sur l'indice d'image ne compile pas.
+const addFrame = vi.fn(async (_canvas: HTMLCanvasElement, _index: number) => {})
 const finish = vi.fn(async () => new Blob(['mp4']))
 const abort = vi.fn()
+const addAudioBuffer = vi.fn(async (_b: AudioBuffer) => {})
 
 vi.mock('./replayVideoEncoder', async (orig) => ({
   ...(await orig<typeof import('./replayVideoEncoder')>()),
   canExportVideo: () => true,
-  openVideoExport: async () => ({ addFrame, finish, abort }),
+  openVideoExport: async () => ({ addFrame, addAudioBuffer, finish, abort }),
 }))
 vi.mock('./replayCapture', async (orig) => ({
   ...(await orig<typeof import('./replayCapture')>()),
@@ -61,6 +64,7 @@ beforeEach(() => {
   addFrame.mockClear()
   finish.mockClear()
   abort.mockClear()
+  addAudioBuffer.mockClear()
   vi.mocked(triggerDownload).mockClear()
   // jsdom ne fournit pas `document.fonts` : la boucle l'attend avant la première image.
   Object.defineProperty(document, 'fonts', { value: { ready: Promise.resolve() }, writable: true })
@@ -87,7 +91,7 @@ describe('useReplayExport', () => {
     const { hook } = setup()
     await act(() => hook.result.current.run({ startFrame: 0, endFrame: 10 }))
     // C'est cet indice qui porte l'horodatage : un trou y décalerait tout le clip.
-    expect(addFrame.mock.calls.map((c) => c[1])).toEqual([...Array(16).keys()])
+    expect(addFrame.mock.calls.map((c) => c[1])).toEqual(Array.from({ length: 16 }, (_, i) => i))
   })
 
   it('REPOSE l’image d’avant l’export, et la repeint', async () => {
