@@ -453,6 +453,13 @@ export interface ReplayText {
   mediaPausedHint: string
   mediaHlsUnsupported: string
   mediaHlsError: string
+  /**
+   * REPLI DE LA FRISE (retour utilisateur du 2026-08-28). Les deux libellés portent le GESTE
+   * OFFERT, pas l'état courant : c'est ce que le lecteur va déclencher en cliquant, et c'est la
+   * convention des noms accessibles de commandes. L'état, lui, se lit dans `aria-expanded`.
+   */
+  tracksCollapse: string
+  tracksExpand: string
   unknownPlayer: string
   /**
    * Marques d'identité devant un nom. Le glyphe « moi » ne se DESSINE plus nulle part
