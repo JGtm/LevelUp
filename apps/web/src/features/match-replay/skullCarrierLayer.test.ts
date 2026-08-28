@@ -39,7 +39,7 @@ describe('drawSkullCarrier', () => {
       beginPath: vi.fn(), arc: vi.fn(), fill: vi.fn(), stroke: vi.fn(),
     } as unknown as CanvasRenderingContext2D
     const layer: SkullCarrierInput = {
-      style: { ink: '#fff', edge: '#000', reducedMotion: true },
+      style: { ink: '#fff', outline: '#000', reducedMotion: true },
       posOf: () => null,
     }
     drawSkullCarrier(ctx, layer, [carry({ t0: 0, t1: 100 })], view, 10)
@@ -52,11 +52,12 @@ describe('drawSkullCarrier', () => {
       beginPath: vi.fn(), arc: vi.fn(), fill, stroke: vi.fn(),
     } as unknown as CanvasRenderingContext2D
     const layer: SkullCarrierInput = {
-      style: { ink: '#fff', edge: '#000', reducedMotion: true },
+      style: { ink: '#fff', outline: '#000', reducedMotion: true },
       posOf: () => ({ x: 50, y: 50 }),
     }
     drawSkullCarrier(ctx, layer, [carry({ t0: 0, t1: 100 })], view, 10)
-    expect(fill).toHaveBeenCalledTimes(1)
+    // Le glyphe partagé remplit le disque puis ses deux orbites : trois remplissages pour UN crâne.
+    expect(fill).toHaveBeenCalledTimes(3)
   })
 
   it('ne dessine rien hors de la fenêtre du portage', () => {
@@ -65,7 +66,7 @@ describe('drawSkullCarrier', () => {
       beginPath: vi.fn(), arc: vi.fn(), fill, stroke: vi.fn(),
     } as unknown as CanvasRenderingContext2D
     const layer: SkullCarrierInput = {
-      style: { ink: '#fff', edge: '#000', reducedMotion: true },
+      style: { ink: '#fff', outline: '#000', reducedMotion: true },
       posOf: () => ({ x: 50, y: 50 }),
     }
     drawSkullCarrier(ctx, layer, [carry({ t0: 0, t1: 40 })], view, 80)

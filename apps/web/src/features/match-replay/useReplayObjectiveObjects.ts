@@ -22,9 +22,9 @@ interface UseReplayObjectiveObjectsArgs {
   /** Les vies libres publiées par l'artefact. Vide = rien à peindre, et c'est le cas nominal. */
   lives: readonly ReplayObjectiveObjectReady[]
   view: CanvasView
-  /** L'encre neutre du thème (remplissage) et celle du liseré, déjà résolues par l'appelant. */
+  /** L'encre neutre du thème (remplissage) et celle du FOND (liseré), déjà résolues par l'appelant. */
   ink: string
-  edge: string
+  outline: string
 }
 
 export interface ReplayObjectiveObjects {
@@ -33,9 +33,9 @@ export interface ReplayObjectiveObjects {
 }
 
 export function useReplayObjectiveObjects({
-  lives, view, ink, edge,
+  lives, view, ink, outline,
 }: UseReplayObjectiveObjectsArgs): ReplayObjectiveObjects {
-  const layer = useMemo<ObjectiveObjectsInput>(() => ({ style: { ink, edge } }), [ink, edge])
+  const layer = useMemo<ObjectiveObjectsInput>(() => ({ style: { ink, outline } }), [ink, outline])
   const paint = useCallback(
     (ctx: CanvasRenderingContext2D, frame: number) => {
       if (lives.length === 0) return

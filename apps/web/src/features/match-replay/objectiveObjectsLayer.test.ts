@@ -14,9 +14,9 @@ import {
   objectiveObjectAt,
   objectiveObjectHitAt,
   objectiveObjectsAt,
-  OBJECTIVE_OBJECT_RADIUS,
   type ObjectiveObjectsInput,
 } from './objectiveObjectsLayer'
+import { SKULL_GLYPH_RADIUS } from './skullGlyph'
 
 import type { CanvasView } from './objectivesLayer'
 import type { ReplayObjectiveObjectReady } from './replayNormalize'
@@ -38,7 +38,7 @@ const view: CanvasView = {
   width: 200, height: 200, pad: 0,
 } as CanvasView
 
-const layer: ObjectiveObjectsInput = { style: { ink: 'var(--ink)', edge: 'var(--edge)' } }
+const layer: ObjectiveObjectsInput = { style: { ink: 'var(--ink)', outline: 'var(--outline)' } }
 
 describe('objectiveObjectAt — la position lue à une image', () => {
   it('rend la dernière position ÉMISE, sans interpoler', () => {
@@ -85,13 +85,15 @@ describe('drawObjectiveObjects — le tracé', () => {
     } as unknown as CanvasRenderingContext2D & { arc: ReturnType<typeof vi.fn> }
   }
 
-  it('trace UN disque par objet qui réplique', () => {
+  it('trace UN crâne par objet qui réplique (le glyphe partagé : liseré, disque, orbites)', () => {
     const ctx = ctxEspion()
     drawObjectiveObjects(ctx, layer, [vieQuiRoule, vieImmobile], view, 11)
-    expect(ctx.arc).toHaveBeenCalledTimes(1)
+    // Un seul objet réplique à l'image 11 (le rouleur) : le glyphe du crâne pose son disque au
+    // rayon partagé, plus le liseré au même rayon et les deux orbites (quatre arcs en tout).
     expect(ctx.arc).toHaveBeenCalledWith(
-      expect.any(Number), expect.any(Number), OBJECTIVE_OBJECT_RADIUS, 0, Math.PI * 2,
+      expect.any(Number), expect.any(Number), SKULL_GLYPH_RADIUS, 0, Math.PI * 2,
     )
+    expect(ctx.arc).toHaveBeenCalledTimes(4)
   })
 
   it('ne trace RIEN pendant un portage — le calque se tait plutôt que de supposer', () => {

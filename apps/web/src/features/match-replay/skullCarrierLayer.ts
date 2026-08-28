@@ -16,14 +16,16 @@
  * LE CRÂNE LIBRE (`objectiveObjectsLayer`) DESSINE LE CRÂNE POSÉ AU SOL quand PERSONNE ne le porte ;
  * ce calque-ci le dessine SUR SON PORTEUR. Les deux ne sont jamais actifs au même instant pour le
  * même crâne : entre deux vies libres il y a un portage, et c'est exactement cet intervalle que ce
- * calque remplit. Le glyphe est le MÊME disque, pour qu'on reconnaisse le même objet — seule sa
- * place change (au sol / au-dessus d'un joueur).
+ * calque remplit. Le glyphe est le MÊME — celui, partagé, de `skullGlyph.ts` — pour qu'on
+ * reconnaisse le même objet ; seule sa place change (au sol / au-dessus d'un joueur).
  *
- * AUCUNE VIGNETTE DU JEU : le crâne n'est pas un `weap`, il n'a pas d'icône extraite. Le glyphe est
- * tracé au canvas — un disque cerné — à l'encre sémantique résolue par l'appelant (règle
- * color-tokens). Aucun texte : le porteur est déjà nommé par son marqueur.
+ * SON HABILLAGE EST CELUI DU DRAPEAU depuis le 2026-08-28 (liseré à l'encre du fond, taille
+ * agrandie, deux orbites) : le pourquoi, la cote et la limite (l'icône du jeu existe mais n'est
+ * pas cuite dans le document) vivent dans l'en-tête de `skullGlyph.ts`. Aucun texte : le porteur
+ * est déjà nommé par son marqueur.
  */
 import { worldToCanvas, type XY } from './replayLogic'
+import { drawSkullGlyph } from './skullGlyph'
 
 import type { CanvasView } from './objectivesLayer'
 import type { ReplaySkullCarry } from './replayNormalize'
@@ -32,8 +34,8 @@ import type { ReplaySkullCarry } from './replayNormalize'
 export interface SkullCarrierStyle {
   /** Encre du disque du crâne (token du thème déjà résolu par l'appelant). */
   ink: string
-  /** Encre du liseré, pour détacher le glyphe du marqueur et du fond. */
-  edge: string
+  /** Encre du FOND : le liseré du crâne, comme celui du drapeau (`skullGlyph.ts`). */
+  outline: string
   /** Mouvement réduit : la pulsation d'un portage « ouvert » devient une opacité constante. */
   reducedMotion: boolean
 }
@@ -50,11 +52,8 @@ export interface SkullCarrierInput {
   posOf: (xuid: string, frame: number) => XY | null
 }
 
-// Réglages du glyphe. Le crâne se pose AU-DESSUS du marqueur du joueur, un peu plus petit que lui.
-const SKULL_RADIUS = 5
 /** Décalage vertical au-dessus du point du joueur (le marqueur occupe le point lui-même). */
 const SKULL_OFFSET_Y = 12
-const SKULL_STROKE_WIDTH = 1.5
 
 /** Opacité pleine : un fait a fermé le portage avant la fin de l'axe. */
 const ALPHA_SOLID = 0.95
@@ -108,38 +107,14 @@ export function drawSkullCarrier(
     const w = layer.posOf(c.xuid, frame)
     if (!w) continue
     const at = worldToCanvas(w, view.bounds, view.width, view.height, view.pad)
-    drawSkullGlyph(ctx, at, {
+    // Le crâne se pose AU-DESSUS du marqueur (celui-ci occupe le point) : le décalage est appliqué
+    // ICI, le glyphe partagé ne connaît que son centre.
+    const center: XY = { x: at.x, y: at.y - SKULL_OFFSET_Y }
+    drawSkullGlyph(ctx, center, {
       ink: layer.style.ink,
-      edge: layer.style.edge,
+      outline: layer.style.outline,
       alpha: alphaOf(c.closed, frame, layer.style.reducedMotion),
     })
   }
   ctx.globalAlpha = 1
-}
-
-/** Ce que le tracé d'un glyphe a besoin de savoir. */
-interface SkullGlyphPaint {
-  ink: string
-  edge: string
-  alpha: number
-}
-
-/**
- * drawSkullGlyph trace le crâne porté : un disque cerné, posé AU-DESSUS du marqueur du porteur. Le
- * MÊME disque que le crâne libre (`objectiveObjectsLayer`), pour qu'on reconnaisse le même objet ;
- * seule sa place change.
- */
-export function drawSkullGlyph(
-  ctx: CanvasRenderingContext2D,
-  at: XY,
-  paint: SkullGlyphPaint,
-): void {
-  ctx.globalAlpha = paint.alpha
-  ctx.beginPath()
-  ctx.arc(at.x, at.y - SKULL_OFFSET_Y, SKULL_RADIUS, 0, Math.PI * 2)
-  ctx.fillStyle = paint.ink
-  ctx.fill()
-  ctx.lineWidth = SKULL_STROKE_WIDTH
-  ctx.strokeStyle = paint.edge
-  ctx.stroke()
 }

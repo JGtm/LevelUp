@@ -57,6 +57,7 @@ import type { MatchScoreboardRow } from '@/lib/api/types'
 
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
 import type { ReplayText } from './i18nContract'
+import { OVERLAY_NEUTRAL_PANEL, OVERLAY_PANEL_BODY, OVERLAY_TITLE } from './replayOverlayStyles'
 import type { ReplayWindowBounds } from './replayWindow'
 import { readScoreBanner, type ScoreBannerReading } from './scoreBannerLogic'
 import { readVictory, type VictoryTeam } from './victoryLogic'
@@ -149,10 +150,12 @@ function TeamPanel({ team, scoreboard, titleSlug, title, t, score }: TeamPanelPr
   const label = resolveTeamLabel(rows, team.teamSide, t)
   const tint = teamTintStyles(teamColorResolver(scoreboard)(team.teamID, team.ally))
   const logo = teamLogoPath(titleSlug, team.teamID)
+  // FOND ET TRAIT DE L'IDENTITÉ D'ÉQUIPE, résolus (exception D1 assumée). PLUS D'ACCENT LATÉRAL
+  // GAUCHE (`borderLeft`) : l'utilisateur ne le veut plus (« faut le virer de ce style »), et le
+  // message inter-manche, qui reprend ce style, n'en aura donc pas non plus.
   const panelStyle: CSSProperties = {
     background: tint.background,
     border: `2px solid ${tint.border}`,
-    borderLeft: `6px solid ${tint.accent}`,
   }
   return (
     <div className="relative flex max-w-[90%] items-center justify-center">
@@ -167,11 +170,8 @@ function TeamPanel({ team, scoreboard, titleSlug, title, t, score }: TeamPanelPr
           }}
         />
       )}
-      <div
-        className="relative rounded-lg px-8 py-5 text-center shadow-lg backdrop-blur-sm"
-        style={panelStyle}
-      >
-        <p className="text-2xl font-bold uppercase tracking-wide text-foreground">{title}</p>
+      <div className={`relative ${OVERLAY_PANEL_BODY}`} style={panelStyle}>
+        <p className={OVERLAY_TITLE}>{title}</p>
         <p className="mt-1 text-sm font-semibold uppercase tracking-wide text-foreground">
           {label}
         </p>
@@ -192,8 +192,8 @@ function NeutralPanel({
   score: ScoreBannerReading | null
 }) {
   return (
-    <div className="rounded-lg border-2 border-border bg-card px-8 py-5 text-center shadow-lg backdrop-blur-sm">
-      <p className="text-2xl font-bold uppercase tracking-wide text-foreground">{title}</p>
+    <div className={OVERLAY_NEUTRAL_PANEL}>
+      <p className={OVERLAY_TITLE}>{title}</p>
       <FinalScoreLine t={t} score={score} />
     </div>
   )
