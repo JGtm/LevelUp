@@ -72,6 +72,8 @@ import {
 } from '@/lib/replay/scoreTimeline'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
+import { roundDots, type RoundDot } from './roundsLogic'
+
 /**
  * Ce qu'il faut savoir d'un camp pour dessiner sa barre.
  *
@@ -99,6 +101,12 @@ export interface ScoreBannerReading {
   ally: ScoreBannerSide
   enemy: ScoreBannerSide
   round: ScoreBannerRound | null
+  /**
+   * Une pastille par manche JOUÉE, à l'image lue — pleine au camp gagnant quand la manche est
+   * tranchée, vide sinon (`roundsLogic`). Vide sur un mode à manche unique. Le camp est déjà
+   * traduit en allié / adverse : le rendu n'a qu'à teinter.
+   */
+  dots: RoundDot[]
 }
 
 /** Les lignes de scoreboard dont ce module a besoin : le camp et l'identité, rien d'autre. */
@@ -132,6 +140,7 @@ export function readScoreBanner(
     ally: { teamId: allyId, score: allyScore, fill: fillOf(allyScore, target) },
     enemy: { teamId: enemyId, score: enemyScore, fill: fillOf(enemyScore, target) },
     round: roundOf(timeline, allyId, enemyId, frame),
+    dots: roundDots(timeline, allyId, enemyId, frame),
   }
 }
 
