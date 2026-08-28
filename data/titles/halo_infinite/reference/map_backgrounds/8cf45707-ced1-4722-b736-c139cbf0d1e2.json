@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "module": "8cf45707-ced1-4722-b736-c139cbf0d1e2",
+  "mapNames": [
+    "Ardent Prayer",
+    "8cf45707-ced1-4722-b736-c139cbf0d1e2_map"
+  ],
+  "image": "8cf45707-ced1-4722-b736-c139cbf0d1e2.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-28T12:29:04.7531038Z",
+  "style": "encre",
+  "calibration": {
+    "metersPerPixel": 0.06344443559646606,
+    "originX": -105.61287915706635,
+    "originY": 84.6431120634079,
+    "widthPx": 2255,
+    "heightPx": 2254,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 5,
+    "anchorsInFrame": 5,
+    "anchorsWithGround": 5,
+    "anchorMedianGapM": -12.587249837451694,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 126.60028930664062,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.2696380224752439,
+    "covered": false,
+    "forgeObjects": 2852,
+    "forgeObjectsDrawn": 2749,
+    "forgeObjectsWithoutModel": 56,
+    "forgeDeathVolumes": 47
+  }
+}

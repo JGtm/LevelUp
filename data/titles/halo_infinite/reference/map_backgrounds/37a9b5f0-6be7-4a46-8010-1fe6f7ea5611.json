@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "module": "37a9b5f0-6be7-4a46-8010-1fe6f7ea5611",
+  "mapNames": [
+    "Ruujaya",
+    "37a9b5f0-6be7-4a46-8010-1fe6f7ea5611_map"
+  ],
+  "image": "37a9b5f0-6be7-4a46-8010-1fe6f7ea5611.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-28T12:00:36.0300101Z",
+  "style": "encre",
+  "calibration": {
+    "metersPerPixel": 0.04621000067392985,
+    "originX": -22.880539634068803,
+    "originY": 10.883951198259986,
+    "widthPx": 1349,
+    "heightPx": 672,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 9,
+    "anchorsInFrame": 9,
+    "anchorsWithGround": 9,
+    "anchorMedianGapM": -0.2899993079207661,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 72.46,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.9856227331778251,
+    "covered": true,
+    "cellsSubstituted": 207063,
+    "forgeObjects": 4335,
+    "forgeObjectsDrawn": 4284,
+    "forgeObjectsWithoutModel": 14,
+    "forgeDeathVolumes": 37
+  }
+}

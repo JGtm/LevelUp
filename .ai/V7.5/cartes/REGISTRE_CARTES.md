@@ -1418,3 +1418,88 @@ qui demande une mesure par region que la chaine ne produit pas encore.
 | Insolence Heavies | `2a339c65` | 1 | 3001x2867 | 31/31 | 41 | maillage illisible | A JUGER |
 | Outlook | `ea7b30e6` | 1 | 1516x1592 | 9/9 | 4 | 349 polys | A JUGER |
 | Rat's Nest | `133c0185` | 1 | 1399x2016 | 23/23 | 26 | 2423 polys | A JUGER |
+
+### 2026-08-28 — LES CARTES DU JEU QUI N ETAIENT PAS AU CATALOGUE
+
+Planche : https://claude.ai/code/artifact/158547b6-b528-411a-a716-1c4092b29c46
+
+**Verbatim** : « j'ai toujours pas vu Vacancy et les autres manquantes !!!!! faut les ajouter !! »
+puis « Si je veux les 25 les plus jouees en dehors de ce qu'on a deja, c'est possible ? », puis
+« Gardes pas les trois entrees douteuses ».
+
+**LA PORTE QUI MANQUAIT** : le navigateur public de Halo Waypoint s'interroge SANS JETON, trie par
+parties recentes et pagine (`/halo-infinite/ugc/browse?assetKind=Map&sort=playsrecent`). C'est la
+liste des cartes reellement jouees — donc, en pratique, les cartes du jeu. **Sur les 200 plus
+jouees, 109 etaient absentes de notre catalogue.** Vacancy n'en etait que la partie visible.
+
+**PERIMETRE RETENU** (verdicts utilisateur) : hors variantes « - Ranked » (meme dessin que leur
+base), hors variantes Firefight, hors cartes d'entrainement communautaires. Ecartees aussi les
+republications UGC de cartes natives que nous avons deja (Bazaar 0 objet, Fragmentation, Oasis,
+Breaker). **Vacancy et Showdown Arena entrent malgre la regle « pas de Ranked »** : ce sont les
+deux seules dont la BASE manquait aussi.
+
+**CE QUI A ETE RAPATRIE, SANS UN SEUL JETON** : 107 variantes `.mvar` et 89 `navmesh.blob` sur les
+109 cartes reperees, puis **27 miniatures** `images/thumbnail.jpg` — au format 560x320, exactement
+celui des images existantes de `static/maps/halo_infinite/`, sans retouche. Le dossier passe de
+102 a 129 images. Nouvelle commande : `cmd/mapnav-fetch` (drapeau `-fichier`).
+
+**LA CARTE 944396dd A ENFIN SON NOM** : sa page d'asset l'appelle **Narrows** (5 547 objets).
+
+**LE RATTRAPAGE, ET CE QU'IL AJOUTE A LA REGLE.** Douze des 22 cuites perdaient des ancres, dont
+cinq totalement (Security Zone 0/53, Showdown Arena 0/19, Ardent Prayer 0/5, Yuletide 0/4). La
+regle de la veille — retirer le rognage AU MAILLAGE des qu'il coute plusieurs ancres — en a
+rattrape huit d'un coup :
+
+| carte | avec le rognage | sans |
+|---|---|---|
+| Security Zone | 0/53 | **53/53** |
+| Showdown Arena | 0/19 | **19/19** |
+| Courtyard | 8/20 | **20/20** |
+| Alpha Site | 1/7 | **7/7** |
+| Ardent Prayer | 0/5 | **5/5** |
+| Yuletide | 0/4 | **4/4** |
+| Lone Wolf | 13/16 | **16/16** |
+| Ivory Tower | 19/21 | **21/21** |
+| Boulevard | 21/24 | **24/24** |
+
+**MEGAPOLIS EST LE PREMIER CAS INVERSE, et il complete la regle** : le rognage au maillage retire
+ne changeait rien (9/12 dans les deux cas) ; ce sont ses ZONES DE CALLOUT qui effaçaient du terrain
+joue — sans elles, **12/12**. Jusqu'ici les zones avaient toujours ete innocentees ; elles ne le
+sont donc pas par nature. **Le bon reflexe est le diagnostic a deux branches, pas un coupable par
+defaut.**
+
+**VACANCY GARDE 7 ANCRES SUR 9, ET AUCUN DES DEUX LEVIERS N'EN EST LA CAUSE** : sans le rognage au
+maillage 7/9, sans le rognage aux zones 7/9 aussi. Les deux ancres manquantes tombent la ou la
+carte ne dessine rien au niveau de jeu. Ecart connu, du meme ordre que celui d'Isolation.
+
+**TROIS CARTES BLOQUEES** : Munera Platform W4, Munera Platform H6 et Out With A Bang ne portent
+AUCUN objectif dans leur variante. Le cadre d'un fond se batit sur les ancres d'objectifs — sans
+elles il n'y a rien a cadrer. Meme mur que Cole Protocol.
+
+| carte | cle | parties | cadre | ancres | canevas | statut |
+|---|---|---:|---|---|---|---|
+| Vacancy | `4fb5b69f` | 11922 | 1290x1505 | 7/9 | fo09_academy | A JUGER — 2 ancre(s) perdue(s) |
+| Showdown Arena | `1042b738` | 9994 | 2478x2187 | 19/19 | fo11_blank | A JUGER |
+| Interference | `654dff62` | 3767 | 1228x1126 | 14/14 | fo13_frost | A JUGER |
+| Ardent Prayer | `8cf45707` | 3567 | 2255x2254 | 5/5 | fo11_blank | A JUGER |
+| Courtyard | `841242db` | 2795 | 2634x1404 | 20/20 | fo09_academy | A JUGER |
+| Diminished | `50a1a3b5` | 2711 | 1235x661 | 9/9 | fo11_blank | A JUGER |
+| Megapolis | `0c299a3a` | 2690 | 1689x2685 | 12/12 | fo03_space | A JUGER |
+| Ruujaya | `37a9b5f0` | 2654 | 1349x672 | 9/9 | fo11_blank | A JUGER |
+| Yuletide | `b6c7bdfa` | 2519 | 2173x2172 | 4/4 | fo13_frost | A JUGER |
+| Foundry | `66f4fe86` | 1993 | 1185x1363 | 19/19 | fo11_blank | A JUGER |
+| Guardian | `1441775d` | 1906 | 1152x1239 | 20/20 | fo05_desert | A JUGER |
+| Serenity | `b4d13418` | 1685 | 1402x1234 | 28/28 | fo08_wetland | A JUGER |
+| Powerhouse | `e6d73380` | 1573 | 1522x1738 | 5/5 | fo09_academy | A JUGER |
+| Canopy | `beedcb81` | 1567 | 1195x1077 | 14/14 | fo05_desert | A JUGER |
+| Ivory Tower | `2143a29c` | 1558 | 1109x1124 | 21/21 | fo10_deadland | A JUGER |
+| Lone Wolf | `fdde5715` | 1541 | 1815x1636 | 16/16 | fo09_academy | A JUGER |
+| Boulevard | `252e2a45` | 1498 | 1529x1310 | 24/24 | fo11_blank | A JUGER |
+| Alpha Site | `6c433ed1` | 1376 | 2220x2170 | 7/7 | fo11_blank | A JUGER |
+| Security Zone | `3922c263` | 1285 | 1683x1977 | 53/53 | fo11_blank | A JUGER |
+| Ghost Town | `71c3a721` | 1211 | 1454x1236 | 14/15 | fo08_wetland | A JUGER — 1 ancre(s) perdue(s) |
+| Cold Storage | `78cebfc7` | 1123 | 1204x1090 | 24/24 | fo11_blank | A JUGER |
+| Immolate | `47823612` | 725 | 1142x1218 | 13/13 | fo11_blank | A JUGER |
+| Munera Platform W4 | `55d09d90` | 3699 | 4352 | fo11_blank | BLOQUEE — aucun objectif dans la variante, donc aucune ancre pour batir le cadre |
+| Munera Platform H6 | `2c89dc96` | 3664 | 3925 | fo11_blank | BLOQUEE — aucun objectif dans la variante, donc aucune ancre pour batir le cadre |
+| Out With A Bang | `6dc27650` | 783 | 5204 | fo09_academy | BLOQUEE — aucun objectif dans la variante, donc aucune ancre pour batir le cadre |

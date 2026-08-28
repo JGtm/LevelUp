@@ -748,6 +748,236 @@
       "margeZones": 1,
       "raison": "CARTE : Scarlett's Landing (non statuee, 1 matchs). 8 zones de callout posees. Maillage de navigation decode : 308 polygones. Campagne du 2026-08-28 : la recette validee sur Isolation le 2026-08-27, appliquee aux cartes Forge refusees au gate du 13/08 et a celles restees sans statut. Elle cumule les DEUX sources qui disent ou l on joue. 1) LE MAILLAGE DE NAVIGATION, rapatrie de l asset UGC par cmd/mapnav-fetch : il sert de reference d altitude en chaque point (la reference interpolee depuis une vingtaine d ancres ignorait les etages, les rampes et les creux), puis efface ce qui est hors de lui, puis vide les surfaces qui flottent a plus de 1,5 m du sol. 2) LES ZONES DE CALLOUT de la carte, lues dans son propre map.mvar sans rien telecharger, en rognage SERRE a 1 m — la marge que l utilisateur a choisie sur la planche des cinq cuissons, celle qui laisse le moins de gribouillis autour des zones. L ECRETAGE DES TOITS N EST PAS ARME, et c est un choix mesure : sous le seuil de couverture la substitution par surface de reference ne se declenche jamais et l ecretage ne retire plus que du sol ; le maillage fait deja tomber les coques par comparaison juste. PRIX CONNU DU ROGNAGE AUX ZONES, mesure sur Isolation : il coute une ancre au sol (24/25 contre 25/25 sans lui) et 8 m de marge ne la rattrapent pas — les zones de callout ne couvrent pas tout le terrain joue. Ecart accepte : le verdict porte sur l image.",
       "gateLe": "2026-08-28"
+    },
+    "4fb5b69f-5104-450b-9ed0-a232f997e8f9": {
+      "carte": "Vacancy",
+      "style": "encre",
+      "navmeshReference": true,
+      "rogneAuNavmesh": false,
+      "rogneAuxZones": true,
+      "margeZones": 1,
+      "raison": "ROGNAGE AU MAILLAGE RETIRE SUR CETTE CARTE, ET C EST MESURE (2026-08-28). Avec lui, la carte tombait a 5 ancres au sol sur 9. Une ancre d objectif est du terrain joue par definition : le maillage de navigation de Vacancy ne couvre pas tout son terrain, et s en servir comme BORNE effacait du jeu. La regle appliquee est celle etablie la veille sur cinq cartes du lot precedent (Flood Gulch 7/22 -> 22/22, Rat s Nest 10/23 -> 23/23, Vallaheim 0/5 -> 5/5) : le rognage au maillage se garde tant qu il ne coute pas d ancre, il se retire des qu il en coute plusieurs. CE QUI EST CONSERVE : le maillage comme REFERENCE d altitude — c est lui qui fait tomber les coques par comparaison juste, et il ne coute rien en ancres — et le rognage aux zones de callout a 1 m. CONTEXTE : lot du 2026-08-28, les cartes les plus jouees du jeu absentes du catalogue, tirees du classement public de Halo Waypoint. Vacancy totalise 11922 parties recentes.",
+      "gateLe": "2026-08-28"
+    },
+    "1042b738-30d6-453b-a057-cec8bda009b3": {
+      "carte": "Showdown Arena",
+      "style": "encre",
+      "navmeshReference": true,
+      "rogneAuNavmesh": false,
+      "rogneAuxZones": true,
+      "margeZones": 1,
+      "raison": "ROGNAGE AU MAILLAGE RETIRE SUR CETTE CARTE, ET C EST MESURE (2026-08-28). Avec lui, la carte tombait a 0 ancres au sol sur 19. Une ancre d objectif est du terrain joue par definition : le maillage de navigation de Showdown Arena ne couvre pas tout son terrain, et s en servir comme BORNE effacait du jeu. La regle appliquee est celle etablie la veille sur cinq cartes du lot precedent (Flood Gulch 7/22 -> 22/22, Rat s Nest 10/23 -> 23/23, Vallaheim 0/5 -> 5/5) : le rognage au maillage se garde tant qu il ne coute pas d ancre, il se retire des qu il en coute plusieurs. CE QUI EST CONSERVE : le maillage comme REFERENCE d altitude — c est lui qui fait tomber les coques par comparaison juste, et il ne coute rien en ancres — et le rognage aux zones de callout a 1 m. CONTEXTE : lot du 2026-08-28, les cartes les plus jouees du jeu absentes du catalogue, tirees du classement public de Halo Waypoint. Showdown Arena totalise 9994 parties recentes.",
+      "gateLe": "2026-08-28"
+    },
+    "654dff62-d618-496a-8914-06ab73d991e3": {
+      "carte": "Interference",
+      "style": "encre",
+      "navmeshReference": true,
+      "rogneAuNavmesh": true,
+      "toleranceNavmesh": 1.5,
+      "rogneAuxZones": true,
+      "margeZones": 1,
+      "raison": "LOT DU 2026-08-28 — les vingt-cinq cartes les plus jouees du jeu qui n etaient pas au catalogue, tirees du classement public de Halo Waypoint (interrogeable sans jeton, trie par parties recentes). CARTE : Interference, 3767 parties recentes, 4743 objets, canevas fo13_frost, 14 objectifs ingeres hors ligne depuis sa variante. Maillage de navigation rapatrie : il sert de reference d altitude, borne le terrain joue, et la tolerance de 1,5 m vide les surfaces qui flottent. Les ZONES DE CALLOUT, lues dans son propre map.mvar, rognent au ras du terrain nomme a 1 m : la marge que l utilisateur a choisie le 2026-08-27 sur la planche des cinq cuissons d Isolation. L ecretage des toits n est pas arme — sous le seuil de couverture il ne retire plus que du sol. PRIX CONNU du rognage aux zones : il coute parfois une ancre au sol ; au-dela de plusieurs, c est le rognage AU MAILLAGE qu il faut retirer (regle etablie le 2026-08-28 sur cinq cartes).",
+      "gateLe": "2026-08-28"
+    },
+    "8cf45707-ced1-4722-b736-c139cbf0d1e2": {
+      "carte": "Ardent Prayer",
+      "style": "encre",
+      "navmeshReference": true,
+      "rogneAuNavmesh": false,
+      "rogneAuxZones": true,
+      "margeZones": 1,
+      "raison": "ROGNAGE AU MAILLAGE RETIRE SUR CETTE CARTE, ET C EST MESURE (2026-08-28). Avec lui, la carte tombait a 0 ancres au sol sur 5. Une ancre d objectif est du terrain joue par definition : le maillage de navigation de Ardent Prayer ne couvre pas tout son terrain, et s en servir comme BORNE effacait du jeu. La regle appliquee est celle etablie la veille sur cinq cartes du lot precedent (Flood Gulch 7/22 -> 22/22, Rat s Nest 10/23 -> 23/23, Vallaheim 0/5 -> 5/5) : le rognage au maillage se garde tant qu il ne coute pas d ancre, il se retire des qu il en coute plusieurs. CE QUI EST CONSERVE : le maillage comme REFERENCE d altitude — c est lui qui fait tomber les coques par comparaison juste, et il ne coute rien en ancres — et le rognage aux zones de callout a 1 m. CONTEXTE : lot du 2026-08-28, les cartes les plus jouees du jeu absentes du catalogue, tirees du classement public de Halo Waypoint. Ardent Prayer totalise 3567 parties recentes.",
+      "gateLe": "2026-08-28"
+    },
+    "841242db-013f-4b10-871e-c432379e852c": {
+      "carte": "Courtyard",
+      "style": "encre",
+      "navmeshReference": true,
+      "rogneAuNavmesh": false,
+      "rogneAuxZones": true,
+      "margeZones": 1,
+      "raison": "ROGNAGE AU MAILLAGE RETIRE SUR CETTE CARTE, ET C EST MESURE (2026-08-28). Avec lui, la carte tombait a 8 ancres au sol sur 20. Une ancre d objectif est du terrain joue par definition : le maillage de navigation de Courtyard ne couvre pas tout son terrain, et s en servir comme BORNE effacait du jeu. La regle appliquee est celle etablie la veille sur cinq cartes du lot precedent (Flood Gulch 7/22 -> 22/22, Rat s Nest 10/23 -> 23/23, Vallaheim 0/5 -> 5/5) : le rognage au maillage se garde tant qu il ne coute pas d ancre, il se retire des qu il en coute plusieurs. CE QUI EST CONSERVE : le maillage comme REFERENCE d altitude — c est lui qui fait tomber les coques par comparaison juste, et il ne coute rien en ancres — et le rognage aux zones de callout a 1 m. CONTEXTE : lot du 2026-08-28, les cartes les plus jouees du jeu absentes du catalogue, tirees du classement public de Halo Waypoint. Courtyard totalise 2795 parties recentes.",
+      "gateLe": "2026-08-28"
+    },
+    "50a1a3b5-c54d-4e40-8744-b92051d48897": {
+      "carte": "Diminished",
+      "style": "encre",
+      "navmeshReference": true,
+      "rogneAuNavmesh": true,
+      "toleranceNavmesh": 1.5,
+      "rogneAuxZones": true,
+      "margeZones": 1,
+      "raison": "LOT DU 2026-08-28 — les vingt-cinq cartes les plus jouees du jeu qui n etaient pas au catalogue, tirees du classement public de Halo Waypoint (interrogeable sans jeton, trie par parties recentes). CARTE : Diminished, 2711 parties recentes, 2018 objets, canevas fo11_blank, 9 objectifs ingeres hors ligne depuis sa variante. Maillage de navigation rapatrie : il sert de reference d altitude, borne le terrain joue, et la tolerance de 1,5 m vide les surfaces qui flottent. Les ZONES DE CALLOUT, lues dans son propre map.mvar, rognent au ras du terrain nomme a 1 m : la marge que l utilisateur a choisie le 2026-08-27 sur la planche des cinq cuissons d Isolation. L ecretage des toits n est pas arme — sous le seuil de couverture il ne retire plus que du sol. PRIX CONNU du rognage aux zones : il coute parfois une ancre au sol ; au-dela de plusieurs, c est le rognage AU MAILLAGE qu il faut retirer (regle etablie le 2026-08-28 sur cinq cartes).",
+      "gateLe": "2026-08-28"
+    },
+    "0c299a3a-260e-4f74-8111-d2c048d0b033": {
+      "carte": "Megapolis",
+      "style": "encre",
+      "navmeshReference": true,
+      "rogneAuNavmesh": false,
+      "rogneAuxZones": false,
+      "raison": "ROGNAGE AUX ZONES RETIRE SUR CETTE CARTE, ET C EST MESURE (2026-08-28). Megapolis est le seul cas du lot ou ce sont les ZONES DE CALLOUT, et non le maillage, qui effacent du terrain joue : avec elles 9 ancres au sol sur 12, sans elles 12 sur 12. Le rognage au maillage avait deja ete retire auparavant sans rien changer (9/12 dans les deux cas), ce qui a designe les zones par elimination. Ses zones de callout ne couvrent donc pas tout son terrain joue. CE QUI RESTE : le maillage de navigation en REFERENCE d altitude, qui ne coute aucune ancre et fait tomber les coques par comparaison juste. CONTEXTE : lot du 2026-08-28, les cartes les plus jouees du jeu absentes du catalogue, tirees du classement public de Halo Waypoint. Megapolis totalise 2690 parties recentes.",
+      "gateLe": "2026-08-28"
+    },
+    "37a9b5f0-6be7-4a46-8010-1fe6f7ea5611": {
+      "carte": "Ruujaya",
+      "style": "encre",
+      "navmeshReference": true,
+      "rogneAuNavmesh": true,
+      "toleranceNavmesh": 1.5,
+      "rogneAuxZones": true,
+      "margeZones": 1,
+      "raison": "LOT DU 2026-08-28 — les vingt-cinq cartes les plus jouees du jeu qui n etaient pas au catalogue, tirees du classement public de Halo Waypoint (interrogeable sans jeton, trie par parties recentes). CARTE : Ruujaya, 2654 parties recentes, 4369 objets, canevas fo11_blank, 9 objectifs ingeres hors ligne depuis sa variante. Maillage de navigation rapatrie : il sert de reference d altitude, borne le terrain joue, et la tolerance de 1,5 m vide les surfaces qui flottent. Les ZONES DE CALLOUT, lues dans son propre map.mvar, rognent au ras du terrain nomme a 1 m : la marge que l utilisateur a choisie le 2026-08-27 sur la planche des cinq cuissons d Isolation. L ecretage des toits n est pas arme — sous le seuil de couverture il ne retire plus que du sol. PRIX CONNU du rognage aux zones : il coute parfois une ancre au sol ; au-dela de plusieurs, c est le rognage AU MAILLAGE qu il faut retirer (regle etablie le 2026-08-28 sur cinq cartes).",
+      "gateLe": "2026-08-28"
+    },
+    "b6c7bdfa-0021-4ef7-b99f-332084f1060c": {
+      "carte": "Yuletide",
+      "style": "encre",
+      "navmeshReference": true,
+      "rogneAuNavmesh": false,
+      "rogneAuxZones": true,
+      "margeZones": 1,
+      "raison": "ROGNAGE AU MAILLAGE RETIRE SUR CETTE CARTE, ET C EST MESURE (2026-08-28). Avec lui, la carte tombait a 0 ancres au sol sur 4. Une ancre d objectif est du terrain joue par definition : le maillage de navigation de Yuletide ne couvre pas tout son terrain, et s en servir comme BORNE effacait du jeu. La regle appliquee est celle etablie la veille sur cinq cartes du lot precedent (Flood Gulch 7/22 -> 22/22, Rat s Nest 10/23 -> 23/23, Vallaheim 0/5 -> 5/5) : le rognage au maillage se garde tant qu il ne coute pas d ancre, il se retire des qu il en coute plusieurs. CE QUI EST CONSERVE : le maillage comme REFERENCE d altitude — c est lui qui fait tomber les coques par comparaison juste, et il ne coute rien en ancres — et le rognage aux zones de callout a 1 m. CONTEXTE : lot du 2026-08-28, les cartes les plus jouees du jeu absentes du catalogue, tirees du classement public de Halo Waypoint. Yuletide totalise 2519 parties recentes.",
+      "gateLe": "2026-08-28"
+    },
+    "66f4fe86-ba15-43d2-9270-bbd67dd22d8f": {
+      "carte": "Foundry",
+      "style": "encre",
+      "navmeshReference": true,
+      "rogneAuNavmesh": true,
+      "toleranceNavmesh": 1.5,
+      "rogneAuxZones": true,
+      "margeZones": 1,
+      "raison": "LOT DU 2026-08-28 — les vingt-cinq cartes les plus jouees du jeu qui n etaient pas au catalogue, tirees du classement public de Halo Waypoint (interrogeable sans jeton, trie par parties recentes). CARTE : Foundry, 1993 parties recentes, 5557 objets, canevas fo11_blank, 19 objectifs ingeres hors ligne depuis sa variante. Maillage de navigation rapatrie : il sert de reference d altitude, borne le terrain joue, et la tolerance de 1,5 m vide les surfaces qui flottent. Les ZONES DE CALLOUT, lues dans son propre map.mvar, rognent au ras du terrain nomme a 1 m : la marge que l utilisateur a choisie le 2026-08-27 sur la planche des cinq cuissons d Isolation. L ecretage des toits n est pas arme — sous le seuil de couverture il ne retire plus que du sol. PRIX CONNU du rognage aux zones : il coute parfois une ancre au sol ; au-dela de plusieurs, c est le rognage AU MAILLAGE qu il faut retirer (regle etablie le 2026-08-28 sur cinq cartes).",
+      "gateLe": "2026-08-28"
+    },
+    "1441775d-a1f1-4571-aa7f-1d1ebf6ae15c": {
+      "carte": "Guardian",
+      "style": "encre",
+      "navmeshReference": true,
+      "rogneAuNavmesh": true,
+      "toleranceNavmesh": 1.5,
+      "rogneAuxZones": true,
+      "margeZones": 1,
+      "raison": "LOT DU 2026-08-28 — les vingt-cinq cartes les plus jouees du jeu qui n etaient pas au catalogue, tirees du classement public de Halo Waypoint (interrogeable sans jeton, trie par parties recentes). CARTE : Guardian, 1906 parties recentes, 5541 objets, canevas fo05_desert, 20 objectifs ingeres hors ligne depuis sa variante. Maillage de navigation rapatrie : il sert de reference d altitude, borne le terrain joue, et la tolerance de 1,5 m vide les surfaces qui flottent. Les ZONES DE CALLOUT, lues dans son propre map.mvar, rognent au ras du terrain nomme a 1 m : la marge que l utilisateur a choisie le 2026-08-27 sur la planche des cinq cuissons d Isolation. L ecretage des toits n est pas arme — sous le seuil de couverture il ne retire plus que du sol. PRIX CONNU du rognage aux zones : il coute parfois une ancre au sol ; au-dela de plusieurs, c est le rognage AU MAILLAGE qu il faut retirer (regle etablie le 2026-08-28 sur cinq cartes).",
+      "gateLe": "2026-08-28"
+    },
+    "b4d13418-c0b5-47dc-9515-931dfda77d9f": {
+      "carte": "Serenity",
+      "style": "encre",
+      "navmeshReference": true,
+      "rogneAuNavmesh": true,
+      "toleranceNavmesh": 1.5,
+      "rogneAuxZones": true,
+      "margeZones": 1,
+      "raison": "LOT DU 2026-08-28 — les vingt-cinq cartes les plus jouees du jeu qui n etaient pas au catalogue, tirees du classement public de Halo Waypoint (interrogeable sans jeton, trie par parties recentes). CARTE : Serenity, 1685 parties recentes, 5195 objets, canevas fo08_wetland, 28 objectifs ingeres hors ligne depuis sa variante. Maillage de navigation rapatrie : il sert de reference d altitude, borne le terrain joue, et la tolerance de 1,5 m vide les surfaces qui flottent. Les ZONES DE CALLOUT, lues dans son propre map.mvar, rognent au ras du terrain nomme a 1 m : la marge que l utilisateur a choisie le 2026-08-27 sur la planche des cinq cuissons d Isolation. L ecretage des toits n est pas arme — sous le seuil de couverture il ne retire plus que du sol. PRIX CONNU du rognage aux zones : il coute parfois une ancre au sol ; au-dela de plusieurs, c est le rognage AU MAILLAGE qu il faut retirer (regle etablie le 2026-08-28 sur cinq cartes).",
+      "gateLe": "2026-08-28"
+    },
+    "e6d73380-fbe2-467d-a63f-427939411d13": {
+      "carte": "Powerhouse",
+      "style": "encre",
+      "navmeshReference": true,
+      "rogneAuNavmesh": true,
+      "toleranceNavmesh": 1.5,
+      "rogneAuxZones": true,
+      "margeZones": 1,
+      "raison": "LOT DU 2026-08-28 — les vingt-cinq cartes les plus jouees du jeu qui n etaient pas au catalogue, tirees du classement public de Halo Waypoint (interrogeable sans jeton, trie par parties recentes). CARTE : Powerhouse, 1573 parties recentes, 5397 objets, canevas fo09_academy, 5 objectifs ingeres hors ligne depuis sa variante. Maillage de navigation rapatrie : il sert de reference d altitude, borne le terrain joue, et la tolerance de 1,5 m vide les surfaces qui flottent. Les ZONES DE CALLOUT, lues dans son propre map.mvar, rognent au ras du terrain nomme a 1 m : la marge que l utilisateur a choisie le 2026-08-27 sur la planche des cinq cuissons d Isolation. L ecretage des toits n est pas arme — sous le seuil de couverture il ne retire plus que du sol. PRIX CONNU du rognage aux zones : il coute parfois une ancre au sol ; au-dela de plusieurs, c est le rognage AU MAILLAGE qu il faut retirer (regle etablie le 2026-08-28 sur cinq cartes).",
+      "gateLe": "2026-08-28"
+    },
+    "beedcb81-a43a-4810-b43c-a6e4949b64a6": {
+      "carte": "Canopy",
+      "style": "encre",
+      "navmeshReference": true,
+      "rogneAuNavmesh": true,
+      "toleranceNavmesh": 1.5,
+      "rogneAuxZones": true,
+      "margeZones": 1,
+      "raison": "LOT DU 2026-08-28 — les vingt-cinq cartes les plus jouees du jeu qui n etaient pas au catalogue, tirees du classement public de Halo Waypoint (interrogeable sans jeton, trie par parties recentes). CARTE : Canopy, 1567 parties recentes, 3667 objets, canevas fo05_desert, 14 objectifs ingeres hors ligne depuis sa variante. Maillage de navigation rapatrie : il sert de reference d altitude, borne le terrain joue, et la tolerance de 1,5 m vide les surfaces qui flottent. Les ZONES DE CALLOUT, lues dans son propre map.mvar, rognent au ras du terrain nomme a 1 m : la marge que l utilisateur a choisie le 2026-08-27 sur la planche des cinq cuissons d Isolation. L ecretage des toits n est pas arme — sous le seuil de couverture il ne retire plus que du sol. PRIX CONNU du rognage aux zones : il coute parfois une ancre au sol ; au-dela de plusieurs, c est le rognage AU MAILLAGE qu il faut retirer (regle etablie le 2026-08-28 sur cinq cartes).",
+      "gateLe": "2026-08-28"
+    },
+    "2143a29c-19ec-4671-8992-f15cbfeeab21": {
+      "carte": "Ivory Tower",
+      "style": "encre",
+      "navmeshReference": true,
+      "rogneAuNavmesh": false,
+      "rogneAuxZones": true,
+      "margeZones": 1,
+      "raison": "ROGNAGE AU MAILLAGE RETIRE SUR CETTE CARTE, ET C EST MESURE (2026-08-28). Avec lui, la carte tombait a 19 ancres au sol sur 21. Une ancre d objectif est du terrain joue par definition : le maillage de navigation de Ivory Tower ne couvre pas tout son terrain, et s en servir comme BORNE effacait du jeu. La regle appliquee est celle etablie la veille sur cinq cartes du lot precedent (Flood Gulch 7/22 -> 22/22, Rat s Nest 10/23 -> 23/23, Vallaheim 0/5 -> 5/5) : le rognage au maillage se garde tant qu il ne coute pas d ancre, il se retire des qu il en coute plusieurs. CE QUI EST CONSERVE : le maillage comme REFERENCE d altitude — c est lui qui fait tomber les coques par comparaison juste, et il ne coute rien en ancres — et le rognage aux zones de callout a 1 m. CONTEXTE : lot du 2026-08-28, les cartes les plus jouees du jeu absentes du catalogue, tirees du classement public de Halo Waypoint. Ivory Tower totalise 1558 parties recentes.",
+      "gateLe": "2026-08-28"
+    },
+    "fdde5715-cd2b-4f78-ad7d-9a83a4f968c6": {
+      "carte": "Lone Wolf",
+      "style": "encre",
+      "navmeshReference": true,
+      "rogneAuNavmesh": false,
+      "rogneAuxZones": true,
+      "margeZones": 1,
+      "raison": "ROGNAGE AU MAILLAGE RETIRE SUR CETTE CARTE, ET C EST MESURE (2026-08-28). Avec lui, la carte tombait a 13 ancres au sol sur 16. Une ancre d objectif est du terrain joue par definition : le maillage de navigation de Lone Wolf ne couvre pas tout son terrain, et s en servir comme BORNE effacait du jeu. La regle appliquee est celle etablie la veille sur cinq cartes du lot precedent (Flood Gulch 7/22 -> 22/22, Rat s Nest 10/23 -> 23/23, Vallaheim 0/5 -> 5/5) : le rognage au maillage se garde tant qu il ne coute pas d ancre, il se retire des qu il en coute plusieurs. CE QUI EST CONSERVE : le maillage comme REFERENCE d altitude — c est lui qui fait tomber les coques par comparaison juste, et il ne coute rien en ancres — et le rognage aux zones de callout a 1 m. CONTEXTE : lot du 2026-08-28, les cartes les plus jouees du jeu absentes du catalogue, tirees du classement public de Halo Waypoint. Lone Wolf totalise 1541 parties recentes.",
+      "gateLe": "2026-08-28"
+    },
+    "252e2a45-93fa-4661-a5cf-4a35803f9149": {
+      "carte": "Boulevard",
+      "style": "encre",
+      "navmeshReference": true,
+      "rogneAuNavmesh": false,
+      "rogneAuxZones": true,
+      "margeZones": 1,
+      "raison": "ROGNAGE AU MAILLAGE RETIRE SUR CETTE CARTE, ET C EST MESURE (2026-08-28). Avec lui, la carte tombait a 21 ancres au sol sur 24. Une ancre d objectif est du terrain joue par definition : le maillage de navigation de Boulevard ne couvre pas tout son terrain, et s en servir comme BORNE effacait du jeu. La regle appliquee est celle etablie la veille sur cinq cartes du lot precedent (Flood Gulch 7/22 -> 22/22, Rat s Nest 10/23 -> 23/23, Vallaheim 0/5 -> 5/5) : le rognage au maillage se garde tant qu il ne coute pas d ancre, il se retire des qu il en coute plusieurs. CE QUI EST CONSERVE : le maillage comme REFERENCE d altitude — c est lui qui fait tomber les coques par comparaison juste, et il ne coute rien en ancres — et le rognage aux zones de callout a 1 m. CONTEXTE : lot du 2026-08-28, les cartes les plus jouees du jeu absentes du catalogue, tirees du classement public de Halo Waypoint. Boulevard totalise 1498 parties recentes.",
+      "gateLe": "2026-08-28"
+    },
+    "6c433ed1-d56b-4ea1-9520-423ddf8e0f11": {
+      "carte": "Alpha Site",
+      "style": "encre",
+      "navmeshReference": true,
+      "rogneAuNavmesh": false,
+      "rogneAuxZones": true,
+      "margeZones": 1,
+      "raison": "ROGNAGE AU MAILLAGE RETIRE SUR CETTE CARTE, ET C EST MESURE (2026-08-28). Avec lui, la carte tombait a 1 ancres au sol sur 7. Une ancre d objectif est du terrain joue par definition : le maillage de navigation de Alpha Site ne couvre pas tout son terrain, et s en servir comme BORNE effacait du jeu. La regle appliquee est celle etablie la veille sur cinq cartes du lot precedent (Flood Gulch 7/22 -> 22/22, Rat s Nest 10/23 -> 23/23, Vallaheim 0/5 -> 5/5) : le rognage au maillage se garde tant qu il ne coute pas d ancre, il se retire des qu il en coute plusieurs. CE QUI EST CONSERVE : le maillage comme REFERENCE d altitude — c est lui qui fait tomber les coques par comparaison juste, et il ne coute rien en ancres — et le rognage aux zones de callout a 1 m. CONTEXTE : lot du 2026-08-28, les cartes les plus jouees du jeu absentes du catalogue, tirees du classement public de Halo Waypoint. Alpha Site totalise 1376 parties recentes.",
+      "gateLe": "2026-08-28"
+    },
+    "3922c263-396e-4686-8097-a6b43c3e11b7": {
+      "carte": "Security Zone",
+      "style": "encre",
+      "navmeshReference": true,
+      "rogneAuNavmesh": false,
+      "rogneAuxZones": true,
+      "margeZones": 1,
+      "raison": "ROGNAGE AU MAILLAGE RETIRE SUR CETTE CARTE, ET C EST MESURE (2026-08-28). Avec lui, la carte tombait a 0 ancres au sol sur 53. Une ancre d objectif est du terrain joue par definition : le maillage de navigation de Security Zone ne couvre pas tout son terrain, et s en servir comme BORNE effacait du jeu. La regle appliquee est celle etablie la veille sur cinq cartes du lot precedent (Flood Gulch 7/22 -> 22/22, Rat s Nest 10/23 -> 23/23, Vallaheim 0/5 -> 5/5) : le rognage au maillage se garde tant qu il ne coute pas d ancre, il se retire des qu il en coute plusieurs. CE QUI EST CONSERVE : le maillage comme REFERENCE d altitude — c est lui qui fait tomber les coques par comparaison juste, et il ne coute rien en ancres — et le rognage aux zones de callout a 1 m. CONTEXTE : lot du 2026-08-28, les cartes les plus jouees du jeu absentes du catalogue, tirees du classement public de Halo Waypoint. Security Zone totalise 1285 parties recentes.",
+      "gateLe": "2026-08-28"
+    },
+    "71c3a721-a4db-4866-a831-19991594f384": {
+      "carte": "Ghost Town",
+      "style": "encre",
+      "navmeshReference": true,
+      "rogneAuNavmesh": true,
+      "toleranceNavmesh": 1.5,
+      "rogneAuxZones": true,
+      "margeZones": 1,
+      "raison": "LOT DU 2026-08-28 — les vingt-cinq cartes les plus jouees du jeu qui n etaient pas au catalogue, tirees du classement public de Halo Waypoint (interrogeable sans jeton, trie par parties recentes). CARTE : Ghost Town, 1211 parties recentes, 5572 objets, canevas fo08_wetland, 15 objectifs ingeres hors ligne depuis sa variante. Maillage de navigation rapatrie : il sert de reference d altitude, borne le terrain joue, et la tolerance de 1,5 m vide les surfaces qui flottent. Les ZONES DE CALLOUT, lues dans son propre map.mvar, rognent au ras du terrain nomme a 1 m : la marge que l utilisateur a choisie le 2026-08-27 sur la planche des cinq cuissons d Isolation. L ecretage des toits n est pas arme — sous le seuil de couverture il ne retire plus que du sol. PRIX CONNU du rognage aux zones : il coute parfois une ancre au sol ; au-dela de plusieurs, c est le rognage AU MAILLAGE qu il faut retirer (regle etablie le 2026-08-28 sur cinq cartes).",
+      "gateLe": "2026-08-28"
+    },
+    "78cebfc7-980a-4e8f-86a7-cf22f55f670e": {
+      "carte": "Cold Storage",
+      "style": "encre",
+      "navmeshReference": true,
+      "rogneAuNavmesh": true,
+      "toleranceNavmesh": 1.5,
+      "rogneAuxZones": true,
+      "margeZones": 1,
+      "raison": "LOT DU 2026-08-28 — les vingt-cinq cartes les plus jouees du jeu qui n etaient pas au catalogue, tirees du classement public de Halo Waypoint (interrogeable sans jeton, trie par parties recentes). CARTE : Cold Storage, 1123 parties recentes, 3204 objets, canevas fo11_blank, 24 objectifs ingeres hors ligne depuis sa variante. Maillage de navigation rapatrie : il sert de reference d altitude, borne le terrain joue, et la tolerance de 1,5 m vide les surfaces qui flottent. Les ZONES DE CALLOUT, lues dans son propre map.mvar, rognent au ras du terrain nomme a 1 m : la marge que l utilisateur a choisie le 2026-08-27 sur la planche des cinq cuissons d Isolation. L ecretage des toits n est pas arme — sous le seuil de couverture il ne retire plus que du sol. PRIX CONNU du rognage aux zones : il coute parfois une ancre au sol ; au-dela de plusieurs, c est le rognage AU MAILLAGE qu il faut retirer (regle etablie le 2026-08-28 sur cinq cartes).",
+      "gateLe": "2026-08-28"
+    },
+    "47823612-9de0-4ca9-8a95-b3a6ebd7ca91": {
+      "carte": "Immolate",
+      "style": "encre",
+      "navmeshReference": true,
+      "rogneAuNavmesh": true,
+      "toleranceNavmesh": 1.5,
+      "rogneAuxZones": true,
+      "margeZones": 1,
+      "raison": "LOT DU 2026-08-28 — les vingt-cinq cartes les plus jouees du jeu qui n etaient pas au catalogue, tirees du classement public de Halo Waypoint (interrogeable sans jeton, trie par parties recentes). CARTE : Immolate, 725 parties recentes, 5633 objets, canevas fo11_blank, 13 objectifs ingeres hors ligne depuis sa variante. Maillage de navigation rapatrie : il sert de reference d altitude, borne le terrain joue, et la tolerance de 1,5 m vide les surfaces qui flottent. Les ZONES DE CALLOUT, lues dans son propre map.mvar, rognent au ras du terrain nomme a 1 m : la marge que l utilisateur a choisie le 2026-08-27 sur la planche des cinq cuissons d Isolation. L ecretage des toits n est pas arme — sous le seuil de couverture il ne retire plus que du sol. PRIX CONNU du rognage aux zones : il coute parfois une ancre au sol ; au-dela de plusieurs, c est le rognage AU MAILLAGE qu il faut retirer (regle etablie le 2026-08-28 sur cinq cartes).",
+      "gateLe": "2026-08-28"
     }
   }
 }

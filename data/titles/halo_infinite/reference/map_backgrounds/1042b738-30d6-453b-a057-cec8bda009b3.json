@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "module": "1042b738-30d6-453b-a057-cec8bda009b3",
+  "mapNames": [
+    "Showdown Arena",
+    "1042b738-30d6-453b-a057-cec8bda009b3_map"
+  ],
+  "image": "1042b738-30d6-453b-a057-cec8bda009b3.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-28T12:22:12.4004867Z",
+  "style": "encre",
+  "calibration": {
+    "metersPerPixel": 0.07366526222229004,
+    "originX": -32.4557624835968,
+    "originY": -39.94507515716552,
+    "widthPx": 2478,
+    "heightPx": 2187,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 19,
+    "anchorsInFrame": 19,
+    "anchorsWithGround": 19,
+    "anchorMedianGapM": -2.673308196437077,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 96.88767333984374,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.19243325215520463,
+    "covered": false,
+    "forgeObjects": 5473,
+    "forgeObjectsDrawn": 5436,
+    "forgeObjectsWithoutModel": 22,
+    "forgeDeathVolumes": 15
+  }
+}

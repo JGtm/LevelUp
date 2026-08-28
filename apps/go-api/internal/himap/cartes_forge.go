@@ -30,13 +30,14 @@ type CarteForge struct {
 // communautaires sont baties. Constantes nommees — le meme litteral en 20+ declarations
 // re-divergerait (regle des <= 2 copies).
 const (
-	CanevasSpace   = "fo03_space"
-	CanevasDesert  = "fo05_desert"
-	CanevasDeepsea = "fo06_deepsea"
-	CanevasWetland = "fo08_wetland"
-	CanevasAcademy = "fo09_academy"
-	CanevasBlank   = "fo11_blank"
-	CanevasFrost   = "fo13_frost"
+	CanevasSpace    = "fo03_space"
+	CanevasDesert   = "fo05_desert"
+	CanevasDeepsea  = "fo06_deepsea"
+	CanevasWetland  = "fo08_wetland"
+	CanevasAcademy  = "fo09_academy"
+	CanevasBlank    = "fo11_blank"
+	CanevasFrost    = "fo13_frost"
+	CanevasDeadland = "fo10_deadland"
 )
 
 // CartesForge : les cartes Forge dont l'asset est produit.
@@ -450,6 +451,173 @@ var CartesForge = []CarteForge{
 		MapID:         "4a5e5612-2b2e-4375-a0b3-9335a68815f3",
 		Nom:           "Solitude - Ranked",
 		FichierMvar:   "solitude_-_ranked_map.mvar",
+		ModuleCanevas: CanevasBlank,
+	},
+
+	// LOT DU 2026-08-28 — LES VINGT-CINQ CARTES LES PLUS JOUEES QUI N ETAIENT PAS AU CATALOGUE.
+	//
+	// Elles ne viennent pas du corpus de l utilisateur mais du CLASSEMENT PUBLIC du jeu : le
+	// navigateur de Halo Waypoint se laisse interroger sans jeton, trie par parties recentes et
+	// pagine. Sur les 200 cartes les plus jouees, 109 manquaient — Vacancy, que l utilisateur
+	// reclamait, n en etait que la partie visible.
+	//
+	// CE QUI EST ECARTE, ET POURQUOI : les variantes « - Ranked » (meme dessin que leur base
+	// — sauf Vacancy et Showdown Arena, dont la BASE manquait aussi, d ou leur presence ici),
+	// les variantes Firefight (meme geometrie, autre mode), les republications UGC de cartes
+	// natives que nous avons deja (Bazaar, Fragmentation, Oasis, Breaker — 0 a 1 000 objets),
+	// et les cartes d entrainement communautaires (verdict utilisateur du 2026-08-28).
+	//
+	// Le canevas de chacune est lu dans la LISTE DE FICHIERS de son asset : une carte Forge
+	// publie son canevas a cote de sa variante (`fo09_academy.mvar`). Pas de deduction par le
+	// nom, pas de table a maintenir.
+	{
+		MapID:         "4fb5b69f-5104-450b-9ed0-a232f997e8f9",
+		Nom:           "Vacancy",
+		FichierMvar:   "4fb5b69f-5104-450b-9ed0-a232f997e8f9_map.mvar",
+		ModuleCanevas: CanevasAcademy,
+	},
+	{
+		MapID:         "1042b738-30d6-453b-a057-cec8bda009b3",
+		Nom:           "Showdown Arena",
+		FichierMvar:   "1042b738-30d6-453b-a057-cec8bda009b3_map.mvar",
+		ModuleCanevas: CanevasBlank,
+	},
+	{
+		MapID:         "654dff62-d618-496a-8914-06ab73d991e3",
+		Nom:           "Interference",
+		FichierMvar:   "654dff62-d618-496a-8914-06ab73d991e3_map.mvar",
+		ModuleCanevas: CanevasFrost,
+	},
+	{
+		MapID:         "55d09d90-6bdc-4a4c-b54b-ad1dd1b83467",
+		Nom:           "Munera Platform W4",
+		FichierMvar:   "55d09d90-6bdc-4a4c-b54b-ad1dd1b83467_map.mvar",
+		ModuleCanevas: CanevasBlank,
+	},
+	{
+		MapID:         "2c89dc96-5bd9-4a16-a13f-958188fade8b",
+		Nom:           "Munera Platform H6",
+		FichierMvar:   "2c89dc96-5bd9-4a16-a13f-958188fade8b_map.mvar",
+		ModuleCanevas: CanevasBlank,
+	},
+	{
+		MapID:         "8cf45707-ced1-4722-b736-c139cbf0d1e2",
+		Nom:           "Ardent Prayer",
+		FichierMvar:   "8cf45707-ced1-4722-b736-c139cbf0d1e2_map.mvar",
+		ModuleCanevas: CanevasBlank,
+	},
+	{
+		MapID:         "841242db-013f-4b10-871e-c432379e852c",
+		Nom:           "Courtyard",
+		FichierMvar:   "841242db-013f-4b10-871e-c432379e852c_map.mvar",
+		ModuleCanevas: CanevasAcademy,
+	},
+	{
+		MapID:         "50a1a3b5-c54d-4e40-8744-b92051d48897",
+		Nom:           "Diminished",
+		FichierMvar:   "50a1a3b5-c54d-4e40-8744-b92051d48897_map.mvar",
+		ModuleCanevas: CanevasBlank,
+	},
+	{
+		MapID:         "0c299a3a-260e-4f74-8111-d2c048d0b033",
+		Nom:           "Megapolis",
+		FichierMvar:   "0c299a3a-260e-4f74-8111-d2c048d0b033_map.mvar",
+		ModuleCanevas: CanevasSpace,
+	},
+	{
+		MapID:         "37a9b5f0-6be7-4a46-8010-1fe6f7ea5611",
+		Nom:           "Ruujaya",
+		FichierMvar:   "37a9b5f0-6be7-4a46-8010-1fe6f7ea5611_map.mvar",
+		ModuleCanevas: CanevasBlank,
+	},
+	{
+		MapID:         "b6c7bdfa-0021-4ef7-b99f-332084f1060c",
+		Nom:           "Yuletide",
+		FichierMvar:   "b6c7bdfa-0021-4ef7-b99f-332084f1060c_map.mvar",
+		ModuleCanevas: CanevasFrost,
+	},
+	{
+		MapID:         "66f4fe86-ba15-43d2-9270-bbd67dd22d8f",
+		Nom:           "Foundry",
+		FichierMvar:   "66f4fe86-ba15-43d2-9270-bbd67dd22d8f_map.mvar",
+		ModuleCanevas: CanevasBlank,
+	},
+	{
+		MapID:         "1441775d-a1f1-4571-aa7f-1d1ebf6ae15c",
+		Nom:           "Guardian",
+		FichierMvar:   "1441775d-a1f1-4571-aa7f-1d1ebf6ae15c_map.mvar",
+		ModuleCanevas: CanevasDesert,
+	},
+	{
+		MapID:         "b4d13418-c0b5-47dc-9515-931dfda77d9f",
+		Nom:           "Serenity",
+		FichierMvar:   "b4d13418-c0b5-47dc-9515-931dfda77d9f_map.mvar",
+		ModuleCanevas: CanevasWetland,
+	},
+	{
+		MapID:         "e6d73380-fbe2-467d-a63f-427939411d13",
+		Nom:           "Powerhouse",
+		FichierMvar:   "e6d73380-fbe2-467d-a63f-427939411d13_map.mvar",
+		ModuleCanevas: CanevasAcademy,
+	},
+	{
+		MapID:         "beedcb81-a43a-4810-b43c-a6e4949b64a6",
+		Nom:           "Canopy",
+		FichierMvar:   "beedcb81-a43a-4810-b43c-a6e4949b64a6_map.mvar",
+		ModuleCanevas: CanevasDesert,
+	},
+	{
+		MapID:         "2143a29c-19ec-4671-8992-f15cbfeeab21",
+		Nom:           "Ivory Tower",
+		FichierMvar:   "2143a29c-19ec-4671-8992-f15cbfeeab21_map.mvar",
+		ModuleCanevas: CanevasDeadland,
+	},
+	{
+		MapID:         "fdde5715-cd2b-4f78-ad7d-9a83a4f968c6",
+		Nom:           "Lone Wolf",
+		FichierMvar:   "fdde5715-cd2b-4f78-ad7d-9a83a4f968c6_map.mvar",
+		ModuleCanevas: CanevasAcademy,
+	},
+	{
+		MapID:         "252e2a45-93fa-4661-a5cf-4a35803f9149",
+		Nom:           "Boulevard",
+		FichierMvar:   "252e2a45-93fa-4661-a5cf-4a35803f9149_map.mvar",
+		ModuleCanevas: CanevasBlank,
+	},
+	{
+		MapID:         "6c433ed1-d56b-4ea1-9520-423ddf8e0f11",
+		Nom:           "Alpha Site",
+		FichierMvar:   "6c433ed1-d56b-4ea1-9520-423ddf8e0f11_map.mvar",
+		ModuleCanevas: CanevasBlank,
+	},
+	{
+		MapID:         "3922c263-396e-4686-8097-a6b43c3e11b7",
+		Nom:           "Security Zone",
+		FichierMvar:   "3922c263-396e-4686-8097-a6b43c3e11b7_map.mvar",
+		ModuleCanevas: CanevasBlank,
+	},
+	{
+		MapID:         "71c3a721-a4db-4866-a831-19991594f384",
+		Nom:           "Ghost Town",
+		FichierMvar:   "71c3a721-a4db-4866-a831-19991594f384_map.mvar",
+		ModuleCanevas: CanevasWetland,
+	},
+	{
+		MapID:         "78cebfc7-980a-4e8f-86a7-cf22f55f670e",
+		Nom:           "Cold Storage",
+		FichierMvar:   "78cebfc7-980a-4e8f-86a7-cf22f55f670e_map.mvar",
+		ModuleCanevas: CanevasBlank,
+	},
+	{
+		MapID:         "6dc27650-715a-4b0f-a2f9-2bae7afa23a0",
+		Nom:           "Out With A Bang",
+		FichierMvar:   "6dc27650-715a-4b0f-a2f9-2bae7afa23a0_map.mvar",
+		ModuleCanevas: CanevasAcademy,
+	},
+	{
+		MapID:         "47823612-9de0-4ca9-8a95-b3a6ebd7ca91",
+		Nom:           "Immolate",
+		FichierMvar:   "47823612-9de0-4ca9-8a95-b3a6ebd7ca91_map.mvar",
 		ModuleCanevas: CanevasBlank,
 	},
 }

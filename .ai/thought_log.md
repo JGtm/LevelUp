@@ -73718,3 +73718,39 @@ de l image (26 exemplaires) et un second 20,8 % ; si les filaments viennent de l
 `typesExclus` les retire. Il faut d abord savoir lequel peint le hors-arene, ce qui demande une
 mesure PAR REGION que la chaine ne produit pas encore (elle ne journalise qu un total global).
 Les 19 cartes sans verdict attendent l utilisateur.
+
+## [2026-08-28] Les cartes du jeu absentes du catalogue : la porte publique, 22 fonds, 27 miniatures — Complete
+
+**Decision technique** : arreter de deduire les cartes manquantes du corpus joue et les prendre a
+la source. Le navigateur public de Halo Waypoint s interroge SANS JETON, trie par parties recentes
+et pagine — c est la liste des cartes reellement jouees. Sur les 200 plus jouees, **109 etaient
+absentes de notre catalogue** ; Vacancy, reclamee quatre fois par l utilisateur, n en etait que la
+partie visible.
+
+Trois pieces : `cmd/mapnav-fetch` gagne un drapeau `-fichier` (le `.mvar`, la miniature et le
+maillage descendent par le MEME chemin anonyme) ; 25 cartes declarees a `himap.CartesForge` avec
+leur canevas LU DANS LA LISTE DE FICHIERS de leur asset (pas deduit du nom, pas de table a
+maintenir) ; la constante `CanevasDeadland` qui manquait.
+
+**Resultats observes** : 107 variantes et 89 maillages rapatries sur 109 ; 22 fonds cuits (3
+bloquees sans objectif, donc sans ancre pour batir un cadre) ; **27 miniatures** posees dans
+`static/maps/halo_infinite/` au format 560x320 — celui des images existantes, sans retouche.
+La carte `944396dd` a enfin son nom : **Narrows**.
+
+**CE QUE LE RATTRAPAGE APPREND, ET QUI CORRIGE LA REGLE DE LA VEILLE.** Douze des 22 perdaient des
+ancres, cinq totalement. Retirer le rognage AU MAILLAGE en a rattrape huit d un coup (Security Zone
+0/53 -> 53/53, Showdown Arena 0/19 -> 19/19, Courtyard 8/20 -> 20/20, Ardent Prayer 0/5 -> 5/5).
+Mais **Megapolis est le premier cas inverse** : le maillage n y etait pour rien (9/12 avec et sans),
+ce sont ses ZONES DE CALLOUT qui effaçaient du terrain joue — sans elles 12/12. Jusqu ici les zones
+avaient toujours ete innocentees ; elles ne le sont donc pas par nature. La regle n est pas « le
+coupable est le maillage » mais **« diagnostiquer les deux branches avant de retirer quoi que ce
+soit »**.
+
+**Vacancy garde 7 ancres sur 9 et aucun des deux leviers n en est la cause** (7/9 dans les trois
+configurations) : ses deux ancres manquantes tombent la ou la carte ne dessine rien au niveau de
+jeu. Ecart du meme ordre que celui d Isolation, ecrit dans son reglage.
+
+**Conclusion / prochaine etape** : planche soumise
+(https://claude.ai/code/artifact/158547b6-b528-411a-a716-1c4092b29c46), 22 lignes A JUGER au
+registre, 3 BLOQUEES. Reste ouvert : les 84 autres cartes du top 200 non traitees, et le renommage
+de `944396dd` en Narrows dans le catalogue et le registre.

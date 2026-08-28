@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "module": "47823612-9de0-4ca9-8a95-b3a6ebd7ca91",
+  "mapNames": [
+    "Immolate",
+    "47823612-9de0-4ca9-8a95-b3a6ebd7ca91_map"
+  ],
+  "image": "47823612-9de0-4ca9-8a95-b3a6ebd7ca91.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-28T12:03:36.0458881Z",
+  "style": "encre",
+  "calibration": {
+    "metersPerPixel": 0.039461321671803794,
+    "originX": -16.4727708123525,
+    "originY": 23.08055204709371,
+    "widthPx": 1142,
+    "heightPx": 1218,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 13,
+    "anchorsInFrame": 13,
+    "anchorsWithGround": 13,
+    "anchorMedianGapM": -0.2622631915020577,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 105.11989685058593,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 1,
+    "covered": true,
+    "cellsSubstituted": 258601,
+    "forgeObjects": 5575,
+    "forgeObjectsDrawn": 5531,
+    "forgeObjectsWithoutModel": 28,
+    "forgeDeathVolumes": 16
+  }
+}

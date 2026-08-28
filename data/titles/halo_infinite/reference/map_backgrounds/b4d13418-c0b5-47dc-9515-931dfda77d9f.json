@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "module": "b4d13418-c0b5-47dc-9515-931dfda77d9f",
+  "mapNames": [
+    "Serenity",
+    "b4d13418-c0b5-47dc-9515-931dfda77d9f_map"
+  ],
+  "image": "b4d13418-c0b5-47dc-9515-931dfda77d9f.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-28T12:14:52.8191136Z",
+  "style": "encre",
+  "calibration": {
+    "metersPerPixel": 0.048478434880574545,
+    "originX": -29.822212142944338,
+    "originY": 163.6761546198527,
+    "widthPx": 1402,
+    "heightPx": 1234,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 28,
+    "anchorsInFrame": 28,
+    "anchorsWithGround": 28,
+    "anchorMedianGapM": -0.3378803852707932,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 49.71563049316406,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.8263759996244072,
+    "covered": true,
+    "cellsSubstituted": 634134,
+    "forgeObjects": 5004,
+    "forgeObjectsDrawn": 4900,
+    "forgeObjectsWithoutModel": 77,
+    "forgeDeathVolumes": 27
+  }
+}

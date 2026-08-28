@@ -74,6 +74,8 @@ func main() {
 		rateMS  = flag.Int("rate-ms", delaiParDefaut, "delai entre deux cartes, en millisecondes")
 		refaire = flag.Bool("refaire", false, "retelecharger meme si le blob est deja en depot")
 		dryRun  = flag.Bool("dry-run", false, "resoudre les assets sans rien ecrire")
+		fichier = flag.String("fichier", nomBlobNavmesh, "fichier publie a rapatrier (navmesh.blob, map.mvar, ...)")
+		suffixe = flag.String("suffixe", "", "extension du fichier ecrit (defaut : celle de -fichier)")
 		verbeux = flag.Bool("v", false, "journal de niveau debug")
 	)
 	flag.Var(&mapIDs, "map-id", "identifiant d'asset de carte (repetable)")
@@ -96,6 +98,8 @@ func main() {
 		rateMS:  *rateMS,
 		refaire: *refaire,
 		dryRun:  *dryRun,
+		fichier: *fichier,
+		suffixe: *suffixe,
 	}); err != nil {
 		slog.ErrorContext(ctx, "mapnav-fetch", "err", err)
 		os.Exit(codeSortieEchec)
@@ -110,6 +114,11 @@ type options struct {
 	rateMS  int
 	refaire bool
 	dryRun  bool
+	// fichier : lequel des fichiers publies par l asset on rapatrie. Le maillage par defaut,
+	// mais la variante (map.mvar) descend par le MEME chemin anonyme — c est le meme prefixe
+	// de stockage, et une carte jamais jouee n a ni l un ni l autre en depot.
+	fichier string
+	suffixe string
 }
 
 type bilan struct {
@@ -136,6 +145,14 @@ func executer(ctx context.Context, o options) error {
 		return errors.New("aucune carte demandee : -map-id, -depuis-fichier ou -toutes")
 	}
 
+	fichier := o.fichier
+	if fichier == "" {
+		fichier = nomBlobNavmesh
+	}
+	ext := o.suffixe
+	if ext == "" {
+		ext = filepath.Ext(fichier)
+	}
 	c := &client{http: &http.Client{Timeout: delaiRequete}}
 	b := bilan{demandes: len(liste)}
 	for i, id := range liste {
@@ -143,7 +160,7 @@ func executer(ctx context.Context, o options) error {
 			slog.WarnContext(ctx, "interrompu", "traitees", i, "sur", len(liste))
 			break
 		}
-		chemin := filepath.Join(dest, id+".blob")
+		chemin := filepath.Join(dest, id+ext)
 		if !o.refaire {
 			if st, err := os.Stat(chemin); err == nil && st.Size() > 0 {
 				b.deja++
@@ -151,7 +168,7 @@ func executer(ctx context.Context, o options) error {
 				continue
 			}
 		}
-		n, err := c.rapatrie(ctx, id, chemin, o.dryRun)
+		n, err := c.rapatrie(ctx, id, fichier, chemin, o.dryRun)
 		switch {
 		case errors.Is(err, ErrPasDeNavmesh):
 			b.sansNavmesh++
@@ -216,25 +233,25 @@ func cibles(o options) ([]string, error) {
 type client struct{ http *http.Client }
 
 // rapatrie resout l'asset puis ecrit son navmesh sur le disque. Rend le nombre d'octets ecrits.
-func (c *client) rapatrie(ctx context.Context, mapID, chemin string, dryRun bool) (int64, error) {
-	return c.rapatrieDepuis(ctx, pageAsset+mapID, chemin, dryRun)
+func (c *client) rapatrie(ctx context.Context, mapID, fichier, chemin string, dryRun bool) (int64, error) {
+	return c.rapatrieDepuis(ctx, pageAsset+mapID, fichier, chemin, dryRun)
 }
 
 // rapatrieDepuis est la meme chose depuis une URL de page explicite. La couture existe pour
 // que les temoins puissent servir une page et un blob sans sortir de la machine.
-func (c *client) rapatrieDepuis(ctx context.Context, urlAsset, chemin string, dryRun bool) (int64, error) {
+func (c *client) rapatrieDepuis(ctx context.Context, urlAsset, fichier, chemin string, dryRun bool) (int64, error) {
 	prefixe, fichiers, err := c.resoutDepuis(ctx, urlAsset)
 	if err != nil {
 		return 0, err
 	}
-	if !contient(fichiers, nomBlobNavmesh) {
+	if !contient(fichiers, fichier) {
 		return 0, ErrPasDeNavmesh
 	}
 	if dryRun {
 		slog.InfoContext(ctx, "resolu (dry-run)", "asset", urlAsset, "prefixe", prefixe)
 		return 0, nil
 	}
-	return c.telecharge(ctx, strings.TrimSuffix(prefixe, "/")+"/"+nomBlobNavmesh, chemin)
+	return c.telecharge(ctx, strings.TrimSuffix(prefixe, "/")+"/"+fichier, chemin)
 }
 
 // filesAsset est la seule partie du document `__NEXT_DATA__` que l'on lit.
