@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "module": "beedcb81-a43a-4810-b43c-a6e4949b64a6",
+  "mapNames": [
+    "Canopy",
+    "beedcb81-a43a-4810-b43c-a6e4949b64a6_map"
+  ],
+  "image": "beedcb81-a43a-4810-b43c-a6e4949b64a6.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-28T12:17:01.5936449Z",
+  "style": "encre",
+  "calibration": {
+    "metersPerPixel": 0.04065954844156901,
+    "originX": 75.01177107493083,
+    "originY": 120.18313549041747,
+    "widthPx": 1195,
+    "heightPx": 1077,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 14,
+    "anchorsInFrame": 14,
+    "anchorsWithGround": 14,
+    "anchorMedianGapM": 3.3776010814425206,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 172.22351928710938,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.8666627000654489,
+    "covered": true,
+    "cellsSubstituted": 200486,
+    "forgeObjects": 3592,
+    "forgeObjectsDrawn": 3532,
+    "forgeObjectsWithoutModel": 38,
+    "forgeDeathVolumes": 22
+  }
+}

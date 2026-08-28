@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "module": "e6d73380-fbe2-467d-a63f-427939411d13",
+  "mapNames": [
+    "Powerhouse",
+    "e6d73380-fbe2-467d-a63f-427939411d13_map"
+  ],
+  "image": "e6d73380-fbe2-467d-a63f-427939411d13.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-28T12:17:59.088417Z",
+  "style": "encre",
+  "calibration": {
+    "metersPerPixel": 0.04958060518900553,
+    "originX": -100.77013445409139,
+    "originY": 77.23411195437112,
+    "widthPx": 1522,
+    "heightPx": 1738,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 5,
+    "anchorsInFrame": 5,
+    "anchorsWithGround": 5,
+    "anchorMedianGapM": -2.270760438092424,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 129.88271423339845,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.947142618630222,
+    "covered": true,
+    "cellsSubstituted": 1005693,
+    "forgeObjects": 5288,
+    "forgeObjectsDrawn": 5235,
+    "forgeObjectsWithoutModel": 29,
+    "forgeDeathVolumes": 24
+  }
+}

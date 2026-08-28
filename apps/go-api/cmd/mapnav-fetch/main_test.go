@@ -63,7 +63,7 @@ func TestRapatrieEcritLeBlobEnEntier(t *testing.T) {
 
 	c := &client{http: srv.Client()}
 	dest := filepath.Join(t.TempDir(), "carte.blob")
-	n, err := c.rapatrieDepuis(context.Background(), srv.URL+"/asset", dest, false)
+	n, err := c.rapatrieDepuis(context.Background(), srv.URL+"/asset", nomBlobNavmesh, dest, false)
 	if err != nil {
 		t.Fatalf("rapatrie: %v", err)
 	}
@@ -93,7 +93,7 @@ func TestAssetSansNavmeshNEstPasUneErreur(t *testing.T) {
 	}))
 	defer srv.Close()
 	c := &client{http: srv.Client()}
-	_, err := c.rapatrieDepuis(context.Background(), srv.URL+"/asset", filepath.Join(t.TempDir(), "x.blob"), false)
+	_, err := c.rapatrieDepuis(context.Background(), srv.URL+"/asset", nomBlobNavmesh, filepath.Join(t.TempDir(), "x.blob"), false)
 	if !errors.Is(err, ErrPasDeNavmesh) {
 		t.Fatalf("err = %v, attendu ErrPasDeNavmesh", err)
 	}

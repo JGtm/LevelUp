@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "module": "0c299a3a-260e-4f74-8111-d2c048d0b033",
+  "mapNames": [
+    "Megapolis",
+    "0c299a3a-260e-4f74-8111-d2c048d0b033_map"
+  ],
+  "image": "0c299a3a-260e-4f74-8111-d2c048d0b033.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-28T12:37:25.4506977Z",
+  "style": "encre",
+  "calibration": {
+    "metersPerPixel": 0.04226780700683594,
+    "originX": 87.24285888671875,
+    "originY": -28.06094123840332,
+    "widthPx": 1689,
+    "heightPx": 2685,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 12,
+    "anchorsInFrame": 12,
+    "anchorsWithGround": 12,
+    "anchorMedianGapM": -0.2921629002025128,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 65.3421563720703,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.8781083822580149,
+    "covered": true,
+    "cellsSubstituted": 130132,
+    "forgeObjects": 2298,
+    "forgeObjectsDrawn": 2283,
+    "forgeObjectsWithoutModel": 12,
+    "forgeDeathVolumes": 3
+  }
+}
