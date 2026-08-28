@@ -1164,3 +1164,257 @@ son terrain joue. Ecart connu et ecrit ; le verdict porte sur l'image.
 **Ce que ca ouvre pour les autres cartes Forge** : le levier `rogneAuxZones` ne demande aucun
 fichier a telecharger — les zones sont dans le `.mvar` que la cuisson lit deja. Toute carte
 Forge qui en porte peut recevoir le meme traitement, a mesurer carte par carte.
+
+### 2026-08-27 — LE RESTE A TRAITER : 27 cartes refusees le 13/08, hors lot du jour
+
+Demande de l utilisateur apres la validation d Isolation : les cartes refusees au gate du 13/08,
+MOINS les dix-huit qu il a relevees le 2026-08-27 comme exemptes de bouillie (celles-la sont
+traitees dans leur propre lot). 34 refusees moins 7 recoupements = **27 cartes**.
+
+Les 7 retirees, deja au lot du jour : Empyrean, Starboard, The Pit, Domicile, Goliath, Dredge,
+Banished Narrows.
+
+**TOUTES LES 27 PORTENT DES ZONES DE CALLOUT** (mesure du 2026-08-27, lecteur de production,
+rateliers ecartes) : de 17 a 111 zones. Le levier `rogneAuxZones` livre ce jour s applique donc
+a chacune, sans aucun telechargement — les zones sont dans le `.mvar` que la cuisson lit deja.
+Le maillage de navigation, lui, demande un telechargement par carte : 2 blobs seulement sont
+en depot (Isolation, Kiken na).
+
+| carte | cle | matchs | cadrage | zones | navmesh |
+|---|---|---|---|---|---|
+| Origin | `b302eb62` | 24 | 85.7 % | 46 | a telecharger |
+| Snowbound | `410f1c01` | 23 | 100 % | 23 | a telecharger |
+| Absolution | `78da545f` | 21 | 89.9 % | 60 | a telecharger |
+| Curfew | `63d634be` | 20 | 61.7 % | 34 | a telecharger |
+| Dynasty | `cfd90b63` | 19 | 100 % | 35 | a telecharger |
+| Nemesis | `2be34415` | 18 | 98.6 % | 111 | a telecharger |
+| Cliffside | `4bffd021` | 18 | 98 % | 44 | a telecharger |
+| Shiro | `2890782c` | 18 | 84 % | 31 | a telecharger |
+| Fortress | `0d1c9255` | 17 | 87.4 % | 75 | a telecharger |
+| Houseki | `cf034ec8` | 15 | 86 % | 64 | a telecharger |
+| High Ground | `bb7b78ae` | 15 | 100 % | 24 | a telecharger |
+| Takamanohara | `edcd4467` | 15 | 94.1 % | 17 | a telecharger |
+| Elevation | `76043dc6` | 14 | 92.3 % | 64 | a telecharger |
+| Kiken'na | `df7dbf08` | 13 | 94.9 % | 52 | en depot |
+| Kaiketsu | `98a83f87` | 12 | 86.2 % | 105 | a telecharger |
+| Salvation | `cd08bc7a` | 12 | 73.9 % | 26 | a telecharger |
+| Solitude | `f1cc3b4e` | 12 | 55.4 % | 41 | a telecharger |
+| Opulence | `255bbe78` | 12 | 61.9 % | 64 | a telecharger |
+| Command | `2c9f3490` | 11 | 100 % | 36 | a telecharger |
+| Critical Dewpoint | `bae4df14` | 10 | 55.7 % | 44 | a telecharger |
+| Perilous | `c5ac9f12` | 10 | 100 % | 51 | a telecharger |
+| Sylvanus | `95b69e4b` | 10 | 87.5 % | 53 | a telecharger |
+| Refuge | `41217472` | 10 | 77 % | 83 | a telecharger |
+| Smallhalla | `98783453` | 9 | 100 % | 29 | a telecharger |
+| Obituary | `a289bafe` | 9 | 92.7 % | 60 | a telecharger |
+| Shogun | `33075df7` | 9 | 100 % | 26 | a telecharger |
+| Fortitude | `1ede38fa` | 7 | 99.1 % | 73 | a telecharger |
+
+Lecture : `cadrage` = part de la largeur occupee par la matiere. **100 % = l image deborde**
+(Snowbound, Dynasty, High Ground, Command, Perilous, Smallhalla, Shogun) ; **sous 65 % = la
+carte est perdue dans son cadre** (Solitude 55,4, Critical Dewpoint 55,7, Curfew 61,7,
+Opulence 61,9). Les deux defauts appellent le meme levier : rogner a ce qui est joue.
+
+### 2026-08-28 — CAMPAGNE : 55 fonds Forge cuits au maillage + zones de callout
+
+Planche de gate : https://claude.ai/code/artifact/2c7d0e4b-296a-4a4a-82c9-9d533e021367
+
+**Demande** : « recupere les maillages et les zones de callout pour ces 27 + les non statuee de
+l'artefact, puis genere proprement les fonds ». Perimetre reel : les 27 refusees du 13/08 et les
+28 sans statut sont DISJOINTES — **55 cartes**.
+
+**Ce qu'il a fallu rapatrier, et ce qui etait deja la** : les zones de callout n'ont demande
+AUCUN telechargement (elles vivent dans le `.mvar` que la cuisson lit deja) ; les 55 en portent,
+aucun ratelier. Seuls les maillages manquaient : **52 rapatries, 0 echec**, par la nouvelle
+commande `cmd/mapnav-fetch` (resolution anonyme, ecriture en flux, reprise par saut).
+
+Trois cas hors recette, ecrits dans leur reglage : **Thunderhead** et **Thunderhead Heavies**
+n'ont pas de maillage publie (sous le seuil des ~1 000 objets) ; **Absolution**, **Insolence** et
+**Insolence Heavies** en ont un que notre decodeur ne lit pas (`fichier-tag sans section TST1`).
+Ces cinq-la sont cuites aux seules zones de callout.
+
+**L'ECRETAGE DES TOITS N'EST PAS ARME**, et c'est un choix mesure : sous le seuil de couverture
+la substitution ne se declenche jamais et l'ecretage ne retire plus que du sol (lecon Launch
+Site). Le maillage fait tomber les coques par comparaison juste, pas par soustraction.
+
+**LA MEMOIRE, MESUREE** : deux cartes dans un meme processus montent a **14,9 Go** pour 1,8 Go
+libres ; une carte seule culmine a **17 Go** et rend tout a la sortie. Le cout est donc PAR
+CARTE, pas cumulatif — la taille de lot est passee a 1 et `cuisson_par_lots.sh` la lit
+desormais dans l'environnement. 55 cuites, **0 echec**.
+
+**LE RATTRAPAGE DES CINQ CARTES AMPUTEES, ET CE QU'IL ETABLIT.** Cinq cartes perdaient
+massivement des ancres. Deux diagnostics separes ont designe le coupable au lieu de le supposer :
+
+| carte | recette de campagne | sans rognage aux ZONES | sans rognage au MAILLAGE |
+|---|---|---|---|
+| Flood Gulch | 7/22 | 7/22 | **22/22** |
+| Rat's Nest | 10/23 | 10/23 | **23/23** |
+| Vallaheim Firefight | 0/5 | 0/5 | **5/5** |
+| Outlook | 6/9 | 6/9 | **9/9** |
+| 944396dd (Narrows) | 18/20 | 18/20 | **20/20** |
+
+**Les zones de callout sont innocentes** : a compte d'ancres identique, ce n'est pas elles. C'est
+le rognage AU MAILLAGE qui effaçait du terrain joue — sur ces cartes le navmesh ne couvre pas
+tout ce qui se joue. Les cinq sont republiees sans lui, maillage garde en REFERENCE.
+
+**Regle qui en sort, applicable aux prochaines** : le rognage au maillage se garde tant qu'il ne
+coute pas d'ancre, il se retire des qu'il en coute plusieurs. Neuf cartes perdent encore
+exactement UNE ancre (Snowbound, Absolution, High Ground, Elevation, Salvation, Critical
+Dewpoint, Refuge, Ecotone, Refuge Heavies) : c'est le meme prix qu'Isolation, accepte au gate du
+27/08.
+
+**Statut de toutes les lignes ci-dessous : A JUGER.** Aucune ne passe en VALIDEE sans verbatim.
+
+| carte | cle | matchs | cadre | ancres | zones | maillage |
+|---|---|---:|---|---|---:|---|
+| Origin | `b302eb62` | 24 | 1428x992 | 20/20 | 46 | 1484 polys |
+| Snowbound | `410f1c01` | 23 | 1349x1172 | 42/43 | 23 | 4521 polys |
+| Absolution | `78da545f` | 21 | 1188x1303 | 21/22 | 60 | maillage illisible |
+| Curfew | `63d634be` | 20 | 1224x1169 | 18/18 | 34 | 766 polys |
+| Dynasty | `cfd90b63` | 19 | 1191x1567 | 13/13 | 35 | 932 polys |
+| Cliffside | `4bffd021` | 18 | 1176x1348 | 14/14 | 44 | 1146 polys |
+| Nemesis | `2be34415` | 18 | 1355x1353 | 26/26 | 111 | 1259 polys |
+| Shiro | `2890782c` | 18 | 1363x1192 | 12/12 | 31 | 5778 polys |
+| Fortress | `0d1c9255` | 17 | 1147x1285 | 29/29 | 75 | 989 polys |
+| High Ground | `bb7b78ae` | 15 | 1754x1202 | 19/20 | 24 | 3596 polys |
+| Houseki | `cf034ec8` | 15 | 1981x2047 | 8/8 | 64 | 4556 polys |
+| Takamanohara | `edcd4467` | 15 | 1370x1183 | 12/12 | 17 | 778 polys |
+| Elevation | `76043dc6` | 14 | 1099x1433 | 19/20 | 64 | 1094 polys |
+| Kiken'na | `df7dbf08` | 13 | 1176x1240 | 13/13 | 52 | 689 polys |
+| Kaiketsu | `98a83f87` | 12 | 1298x1030 | 16/16 | 105 | 773 polys |
+| Opulence | `255bbe78` | 12 | 1331x1063 | 13/13 | 64 | 603 polys |
+| Salvation | `cd08bc7a` | 12 | 1240x1152 | 11/12 | 26 | 921 polys |
+| Solitude | `f1cc3b4e` | 12 | 1145x1323 | 19/19 | 41 | 758 polys |
+| Command | `2c9f3490` | 11 | 2068x1634 | 43/43 | 36 | 3120 polys |
+| Critical Dewpoint | `bae4df14` | 10 | 1286x1352 | 10/11 | 44 | 1038 polys |
+| Perilous | `c5ac9f12` | 10 | 1174x1239 | 9/9 | 51 | 723 polys |
+| Refuge | `41217472` | 10 | 1591x1611 | 45/46 | 83 | 2666 polys |
+| Sylvanus | `95b69e4b` | 10 | 1240x1410 | 17/17 | 53 | 1579 polys |
+| Obituary | `a289bafe` | 9 | 2295x1457 | 31/31 | 60 | 7514 polys |
+| Shogun | `33075df7` | 9 | 2920x2213 | 13/13 | 26 | 16683 polys |
+| Smallhalla | `98783453` | 9 | 1989x1431 | 52/52 | 29 | 1379 polys |
+| Ecotone | `8816f240` | 8 | 1088x1006 | 10/11 | 47 | 862 polys |
+| Fortitude | `1ede38fa` | 7 | 1839x2253 | 41/41 | 73 | 8927 polys |
+| Insolence | `d5c5eb4f` | 7 | 3001x2867 | 38/38 | 41 | maillage illisible |
+| Solution | `ee43d273` | 7 | 1297x1050 | 19/19 | 100 | 873 polys |
+| Flood Gulch | `7097bc4f` | 6 | 2153x2767 | 22/22 | 8 | 7125 polys |
+| Solitude - Ranked | `4a5e5612` | 5 | 1145x1323 | 19/19 | 41 | 758 polys |
+| Threshold | `ddbb3a00` | 5 | 1994x2034 | 20/20 | 62 | 6448 polys |
+| Fortitude Heavies | `305b1bdd` | 4 | 1840x2255 | 26/26 | 73 | 8927 polys |
+| Thunderhead | `28a3ac28` | 4 | 3001x2493 | 46/46 | 5 | pas de maillage |
+| Thunderhead Heavies | `37bc3df6` | 4 | 3001x2632 | 36/36 | 5 | pas de maillage |
+| Obituary Heavies | `e3681516` | 3 | 2295x1457 | 31/31 | 60 | 7514 polys |
+| Pharaoh | `88d45250` | 3 | 701x1196 | 9/9 | 6 | 66 polys |
+| Credence | `0cc728d2` | 2 | 1927x2019 | 50/50 | 40 | 5943 polys |
+| Disciple | `525451ca` | 2 | 895x1637 | 9/9 | 48 | 685 polys |
+| Merchant's Square | `7dfec55d` | 2 | 712x1200 | 9/9 | 9 | 153 polys |
+| Urban Raid | `be848f91` | 2 | 693x1292 | 9/9 | 5 | 517 polys |
+| Vallaheim Firefight | `e8268e75` | 2 | 1571x2573 | 5/5 | 48 | 17029 polys |
+| 944396dd-5661-4a16-b1d8-a6053f762c55 | `944396dd` | 1 | 2220x2638 | 20/20 | 21 | 944 polys |
+| Dawnbreaker | `89dd4003` | 1 | 1942x1479 | 42/42 | 29 | 5772 polys |
+| Insolence Heavies | `2a339c65` | 1 | 3001x2867 | 31/31 | 41 | maillage illisible |
+| Lattice - Ranked | `1a6cfc2e` | 1 | 1217x1196 | 9/9 | 131 | 857 polys |
+| Nadair | `6dbd1c0d` | 1 | 2133x947 | 4/4 | 41 | 2671 polys |
+| Origin - Ranked | `46a8319c` | 1 | 1428x992 | 20/20 | 46 | 1484 polys |
+| Outlook | `ea7b30e6` | 1 | 1516x1592 | 9/9 | 4 | 349 polys |
+| Rat's Nest | `133c0185` | 1 | 1399x2016 | 23/23 | 26 | 2423 polys |
+| Refuge Heavies | `c10c7e79` | 1 | 1637x1658 | 32/33 | 83 | 2666 polys |
+| Ronin | `f459867d` | 1 | 659x1288 | 9/9 | 15 | 624 polys |
+| Scarlett's Landing | `79042fc0` | 1 | 966x1100 | 9/9 | 8 | 308 polys |
+| Warehouse | `5b12d6d9` | 1 | 723x1352 | 7/7 | 9 | 588 polys |
+
+### 2026-08-28 — GATE : 36 fonds valides sur 55
+
+**Verbatim** : « Validees : Origin, Curfew, Dynasty, Nemesis, Shiro, Houseki (mais attention au
+« cadrage » sur celle-ci, elle est trop en haut a gauche de l'image, pas centree), Takamanohara,
+Elevation, kiken'na, kaiketsu, Opulence, Salvation, Solitude, Perilous, Sylvanus, Obituary,
+Ecotone, Fortitude, Solution, Solitude - ranked, threshold, Fortitude Heavies, Obituary Heavies,
+Pharao, Credence, Disciple, Merchant's square, Urban Raid, Dawnbreaker, Lattice - ranked, Nadair,
+Origin - ranked, Refuge heavies, Ronin, Scarlett's landing, Warehouse ».
+
+**35 validees, 20 non validees.** Houseki etait annoncee validee sous reserve ; l utilisateur a
+tranche apres la mesure : elle N EST PAS validee tant que son cadrage n est pas regle. Les 19
+autres sont sans verdict (elles restent A JUGER, aucune n'est declaree refusee) :
+Snowbound, Absolution, Cliffside, Fortress, High Ground, Command, Critical Dewpoint, Refuge,
+Smallhalla, Shogun, Insolence, Flood Gulch, 944396dd, Thunderhead, Thunderhead Heavies,
+Vallaheim Firefight, Insolence Heavies, Outlook, Rat's Nest.
+
+#### La reserve sur Houseki, mesuree
+
+Le cadre N'EST PAS en cause : `CadreUtile` a deja rogne l'image de 2946x3001 a 1981x2047, au ras
+de la matiere. Ce qui est en cause est la REPARTITION de cette matiere :
+
+- centre de masse a **(70,6 % ; 28,9 %)** de l'image au lieu de (50 ; 50) ;
+- **94,5 % de la matiere dans un seul quadrant** (haut-droite), 0,6 % en haut-gauche ;
+- la matiere ne couvre que **14,2 % des pixels**, mais sa boite touche presque les quatre bords :
+  des filaments epars etirent la boite pendant que l'arene tient dans un coin.
+
+Temoin de comparaison, Nemesis (validee sans reserve) : centre de masse (50,6 % ; 49,3 %),
+quadrants 26/25/22/26, matiere sur 52,4 % des pixels. C'est a quoi ressemble une carte centree.
+
+**Levier essaye et INOPERANT** : le bornage aux volumes de mort. La boite des 58 volumes de
+Houseki vaut `[-263,4 -288,4 286,0 289,1]`, soit 549 x 577 m — c'est le canevas entier, pas
+l'arene : **0 cellule effacee**, image identique au pixel pres. Le reglage a ete retire.
+
+**Piste restante, non engagee** : la carte est peinte a 61,4 % par UN type d'objet (703364958,
+26 exemplaires) et a 20,8 % par un second (-867485774, 5 exemplaires). Si les filaments viennent
+de l'un d'eux, `typesExclus` les retire ; il faut d'abord etablir lequel peint le hors-arene, ce
+qui demande une mesure par region que la chaine ne produit pas encore.
+
+| carte | cle | matchs | cadre | ancres | zones | maillage | statut |
+|---|---|---:|---|---|---:|---|---|
+| Origin | `b302eb62` | 24 | 1428x992 | 20/20 | 46 | 1484 polys | VALIDEE 28/08 |
+| Curfew | `63d634be` | 20 | 1224x1169 | 18/18 | 34 | 766 polys | VALIDEE 28/08 |
+| Dynasty | `cfd90b63` | 19 | 1191x1567 | 13/13 | 35 | 932 polys | VALIDEE 28/08 |
+| Nemesis | `2be34415` | 18 | 1355x1353 | 26/26 | 111 | 1259 polys | VALIDEE 28/08 |
+| Shiro | `2890782c` | 18 | 1363x1192 | 12/12 | 31 | 5778 polys | VALIDEE 28/08 |
+| Houseki | `cf034ec8` | 15 | 1981x2047 | 8/8 | 64 | 4556 polys | A RETRAVAILLER 28/08 — cadrage : matiere dans un seul quadrant |
+| Takamanohara | `edcd4467` | 15 | 1370x1183 | 12/12 | 17 | 778 polys | VALIDEE 28/08 |
+| Elevation | `76043dc6` | 14 | 1099x1433 | 19/20 | 64 | 1094 polys | VALIDEE 28/08 |
+| Kiken'na | `df7dbf08` | 13 | 1176x1240 | 13/13 | 52 | 689 polys | VALIDEE 28/08 |
+| Kaiketsu | `98a83f87` | 12 | 1298x1030 | 16/16 | 105 | 773 polys | VALIDEE 28/08 |
+| Salvation | `cd08bc7a` | 12 | 1240x1152 | 11/12 | 26 | 921 polys | VALIDEE 28/08 |
+| Solitude | `f1cc3b4e` | 12 | 1145x1323 | 19/19 | 41 | 758 polys | VALIDEE 28/08 |
+| Opulence | `255bbe78` | 12 | 1331x1063 | 13/13 | 64 | 603 polys | VALIDEE 28/08 |
+| Perilous | `c5ac9f12` | 10 | 1174x1239 | 9/9 | 51 | 723 polys | VALIDEE 28/08 |
+| Sylvanus | `95b69e4b` | 10 | 1240x1410 | 17/17 | 53 | 1579 polys | VALIDEE 28/08 |
+| Obituary | `a289bafe` | 9 | 2295x1457 | 31/31 | 60 | 7514 polys | VALIDEE 28/08 |
+| Fortitude | `1ede38fa` | 7 | 1839x2253 | 41/41 | 73 | 8927 polys | VALIDEE 28/08 |
+| Ecotone | `8816f240` | 8 | 1088x1006 | 10/11 | 47 | 862 polys | VALIDEE 28/08 |
+| Solution | `ee43d273` | 7 | 1297x1050 | 19/19 | 100 | 873 polys | VALIDEE 28/08 |
+| Solitude - Ranked | `4a5e5612` | 5 | 1145x1323 | 19/19 | 41 | 758 polys | VALIDEE 28/08 |
+| Threshold | `ddbb3a00` | 5 | 1994x2034 | 20/20 | 62 | 6448 polys | VALIDEE 28/08 |
+| Fortitude Heavies | `305b1bdd` | 4 | 1840x2255 | 26/26 | 73 | 8927 polys | VALIDEE 28/08 |
+| Obituary Heavies | `e3681516` | 3 | 2295x1457 | 31/31 | 60 | 7514 polys | VALIDEE 28/08 |
+| Pharaoh | `88d45250` | 3 | 701x1196 | 9/9 | 6 | 66 polys | VALIDEE 28/08 |
+| Credence | `0cc728d2` | 2 | 1927x2019 | 50/50 | 40 | 5943 polys | VALIDEE 28/08 |
+| Disciple | `525451ca` | 2 | 895x1637 | 9/9 | 48 | 685 polys | VALIDEE 28/08 |
+| Merchant's Square | `7dfec55d` | 2 | 712x1200 | 9/9 | 9 | 153 polys | VALIDEE 28/08 |
+| Urban Raid | `be848f91` | 2 | 693x1292 | 9/9 | 5 | 517 polys | VALIDEE 28/08 |
+| Dawnbreaker | `89dd4003` | 1 | 1942x1479 | 42/42 | 29 | 5772 polys | VALIDEE 28/08 |
+| Lattice - Ranked | `1a6cfc2e` | 1 | 1217x1196 | 9/9 | 131 | 857 polys | VALIDEE 28/08 |
+| Nadair | `6dbd1c0d` | 1 | 2133x947 | 4/4 | 41 | 2671 polys | VALIDEE 28/08 |
+| Origin - Ranked | `46a8319c` | 1 | 1428x992 | 20/20 | 46 | 1484 polys | VALIDEE 28/08 |
+| Refuge Heavies | `c10c7e79` | 1 | 1637x1658 | 32/33 | 83 | 2666 polys | VALIDEE 28/08 |
+| Ronin | `f459867d` | 1 | 659x1288 | 9/9 | 15 | 624 polys | VALIDEE 28/08 |
+| Scarlett's Landing | `79042fc0` | 1 | 966x1100 | 9/9 | 8 | 308 polys | VALIDEE 28/08 |
+| Warehouse | `5b12d6d9` | 1 | 723x1352 | 7/7 | 9 | 588 polys | VALIDEE 28/08 |
+| Snowbound | `410f1c01` | 23 | 1349x1172 | 42/43 | 23 | 4521 polys | A JUGER |
+| Absolution | `78da545f` | 21 | 1188x1303 | 21/22 | 60 | maillage illisible | A JUGER |
+| Cliffside | `4bffd021` | 18 | 1176x1348 | 14/14 | 44 | 1146 polys | A JUGER |
+| Fortress | `0d1c9255` | 17 | 1147x1285 | 29/29 | 75 | 989 polys | A JUGER |
+| High Ground | `bb7b78ae` | 15 | 1754x1202 | 19/20 | 24 | 3596 polys | A JUGER |
+| Command | `2c9f3490` | 11 | 2068x1634 | 43/43 | 36 | 3120 polys | A JUGER |
+| Critical Dewpoint | `bae4df14` | 10 | 1286x1352 | 10/11 | 44 | 1038 polys | A JUGER |
+| Refuge | `41217472` | 10 | 1591x1611 | 45/46 | 83 | 2666 polys | A JUGER |
+| Smallhalla | `98783453` | 9 | 1989x1431 | 52/52 | 29 | 1379 polys | A JUGER |
+| Shogun | `33075df7` | 9 | 2920x2213 | 13/13 | 26 | 16683 polys | A JUGER |
+| Insolence | `d5c5eb4f` | 7 | 3001x2867 | 38/38 | 41 | maillage illisible | A JUGER |
+| Flood Gulch | `7097bc4f` | 6 | 2153x2767 | 22/22 | 8 | 7125 polys | A JUGER |
+| 944396dd-5661-4a16-b1d8-a6053f762c55 | `944396dd` | 1 | 2220x2638 | 20/20 | 21 | 944 polys | A JUGER |
+| Thunderhead | `28a3ac28` | 4 | 3001x2493 | 46/46 | 5 | pas de maillage | A JUGER |
+| Thunderhead Heavies | `37bc3df6` | 4 | 3001x2632 | 36/36 | 5 | pas de maillage | A JUGER |
+| Vallaheim Firefight | `e8268e75` | 2 | 1571x2573 | 5/5 | 48 | 17029 polys | A JUGER |
+| Insolence Heavies | `2a339c65` | 1 | 3001x2867 | 31/31 | 41 | maillage illisible | A JUGER |
+| Outlook | `ea7b30e6` | 1 | 1516x1592 | 9/9 | 4 | 349 polys | A JUGER |
+| Rat's Nest | `133c0185` | 1 | 1399x2016 | 23/23 | 26 | 2423 polys | A JUGER |

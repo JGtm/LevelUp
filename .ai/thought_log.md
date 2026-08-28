@@ -73646,3 +73646,75 @@ pour ne pas etre redecouvert comme une regression. Fond de production recuit. Re
 de ce lot : les 274 StringId sans texte joueur (extraction uslg) et l affichage des callouts Forge
 dans le rejeu 2D (catalogue cle map_id). A instruire ensuite : combien des 40 autres cartes Forge
 portent des zones exploitables — le levier ne demande aucun telechargement.
+
+## [2026-08-28] Campagne : 55 fonds Forge au maillage de navigation + zones de callout — Complete
+
+**Decision technique** : appliquer la recette validee sur Isolation le 27/08 (maillage en
+reference d altitude, rognage, tolerance au sol, puis rognage aux zones de callout a 1 m) aux 27
+cartes refusees au gate du 13/08 et aux 28 restees sans statut — deux ensembles DISJOINTS, donc
+55 cartes. Trois pieces nouvelles :
+
+1. `cmd/mapnav-fetch` — les maillages ne sont pas dans l installation du jeu, ils vivent dans
+   l asset UGC. Resolution ANONYME par la page publique (`__NEXT_DATA__` -> `Files.Prefix`),
+   telechargement en FLUX vers un fichier temporaire renomme a la fin, reprise par saut des
+   blobs presents, 404 traite comme le cas nominal et non comme une panne. Temoins : file
+   dedoublonnee et ordre stable, blob ecrit en entier sans temporaire residuel, absence de
+   maillage distinguee d une panne, page sans bloc de donnees refusee.
+2. Les 55 reglages, chacun avec ses chiffres (zones, polygones du maillage, origine, matchs).
+   L ECRETAGE DES TOITS N EST PAS ARME : sous le seuil de couverture il ne retire plus que du
+   sol (lecon Launch Site), et le maillage fait deja tomber les coques par comparaison juste.
+3. `cuisson_par_lots.sh` : taille de lot lue dans l environnement.
+
+**Resultats observes** : 52 maillages rapatries, 0 echec ; 5 cartes hors recette et dites comme
+telles (2 sans maillage publie, 3 dont le fichier-tag n a pas de section TST1) ; 55 fonds cuits,
+0 echec.
+
+**LA MEMOIRE — la mise en garde de l utilisateur etait fondee.** Deux cartes dans un meme
+processus : 14,9 Go pour 1,8 Go libres, la machine pagine. Une carte seule : pic a 17 Go, tout
+rendu a la sortie. Le cout est PAR CARTE, pas cumulatif — donc un processus par carte, et rien
+d autre ne compile pendant ce temps.
+
+**LE RATTRAPAGE, ET CE QU IL ETABLIT.** Cinq cartes perdaient massivement des ancres au sol.
+Deux diagnostics separes plutot qu une hypothese : cuites sans le rognage aux ZONES, elles
+rendent EXACTEMENT le meme compte (les zones sont innocentes) ; cuites sans le rognage au
+MAILLAGE, elles remontent toutes a 100 % (Flood Gulch 7/22 -> 22/22, Rat s Nest 10/23 -> 23/23,
+Vallaheim 0/5 -> 5/5, Outlook 6/9 -> 9/9, Narrows 18/20 -> 20/20). Sur ces cartes le navmesh ne
+couvre pas tout le terrain joue : s en servir comme BORNE efface du jeu. Elles sont republiees
+sans le rognage, maillage garde en reference.
+
+**Regle degagee** : le rognage au maillage se garde tant qu il ne coute pas d ancre, il se
+retire des qu il en coute plusieurs. Neuf cartes perdent encore une ancre — le prix qu Isolation
+paie deja, accepte au gate du 27/08.
+
+**Conclusion / prochaine etape** : planche de gate soumise
+(https://claude.ai/code/artifact/2c7d0e4b-296a-4a4a-82c9-9d533e021367), les 55 lignes sont a
+JUGER au registre. Rien ne passe en VALIDEE sans verbatim. Reste ouvert : le decodeur de
+fichier-tag ne lit pas les maillages sans section TST1 (3 cartes), et les 274 StringId de lieu
+sans texte joueur (extraction uslg) restent hors perimetre.
+
+## [2026-08-28] Gate campagne : 36 fonds valides sur 55, la reserve Houseki mesuree — Complete
+
+**Decision technique** : consigner le verdict au registre carte par carte, et INSTRUIRE la seule
+reserve exprimee plutot que de la noter pour plus tard.
+
+**Resultats observes** — 35 validees, 20 non validees. Houseki avait ete annoncee validee sous
+reserve ; apres la mesure, l utilisateur a tranche : elle N EST PAS validee tant que son cadrage
+n est pas regle. Les 19 autres n ont simplement pas de verdict et restent A JUGER.
+
+**La reserve Houseki, sur mesure et non sur impression** : le cadre n'est pas en cause,
+`CadreUtile` avait deja rogne 2946x3001 -> 1981x2047 au ras de la matiere. C'est la REPARTITION
+qui l'est : centre de masse a (70,6 % ; 28,9 %), 94,5 % de la matiere dans un seul quadrant,
+matiere sur 14,2 % des pixels alors que sa boite touche presque les quatre bords — des filaments
+epars etirent la boite pendant que l arene tient dans un coin. Temoin oppose, Nemesis, validee
+sans reserve : centre (50,6 % ; 49,3 %), quadrants 26/25/22/26, 52,4 % de pixels.
+
+**Levier essaye et INOPERANT, ecrit comme tel** : le bornage aux volumes de mort. La boite des 58
+volumes vaut 549 x 577 m, soit le canevas entier — 0 cellule effacee, image identique. Le reglage
+a ete retire dans la foulee : un levier sans effet qui reste declare est un levier qu on croira
+actif au prochain passage.
+
+**Conclusion / prochaine etape** : piste restante non engagee — un seul type d objet peint 61,4 %
+de l image (26 exemplaires) et un second 20,8 % ; si les filaments viennent de l un d eux,
+`typesExclus` les retire. Il faut d abord savoir lequel peint le hors-arene, ce qui demande une
+mesure PAR REGION que la chaine ne produit pas encore (elle ne journalise qu un total global).
+Les 19 cartes sans verdict attendent l utilisateur.
