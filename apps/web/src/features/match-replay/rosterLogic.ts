@@ -166,6 +166,18 @@ export function indexBySlot<T>(
  */
 export interface SlotOwnership {
   ownerAtFrame(slot: number, frame: number): ReplayPlayer | null
+  /**
+   * ownerAtFrameOrLast — la vie qui COUVRE l'image, sinon la vie la plus récente TERMINÉE avant
+   * elle (la « vie juste précédente »). Réservé aux consommateurs de FRONTIÈRE dont l'événement
+   * est daté À l'INSTANT OÙ LE PROPRIÉTAIRE VIENT DE QUITTER LE SLOT : un objet LÂCHÉ à la mort
+   * porte `t0 = finVie + 1` (le poseur n'occupe plus le slot), et un kill posthume/échange
+   * peut tomber une image après la fin de vie du tueur. `ownerAtFrame` y rendrait `null` (donc
+   * une encre neutre au lieu de la couleur d'équipe) : c'est un TROU à combler par la vie qui
+   * précède, pas par le dernier-gagnant du match — en multi-manche, le résultat reste le joueur
+   * de LA manche concernée (SHROOM s'il vient de mourir, DinoR00 sinon). NE PAS l'employer pour
+   * le rendu continu des marqueurs/vies : eux doivent rester `null` dans les trous.
+   */
+  ownerAtFrameOrLast(slot: number, frame: number): ReplayPlayer | null
 }
 
 /** Une vie possédée, réduite à sa fenêtre et à son propriétaire (l'index n'a besoin de rien d'autre). */
@@ -204,6 +216,17 @@ export function buildSlotOwnership(players: readonly ReplayPlayer[]): SlotOwners
       }
       return null
     },
+    ownerAtFrameOrLast(slot, frame) {
+      const lives = bySlot.get(slot)
+      if (!lives) return null
+      let last: ReplayPlayer | null = null
+      for (const l of lives) {
+        if (frame < l.start) break // aucune vie couvrante ni précédente au-delà : on garde `last`
+        if (frame <= l.end) return l.player // vie couvrante
+        last = l.player // vie entièrement AVANT l'image : on retient la plus récente
+      }
+      return last // la vie juste précédente (le lâcheur / le tueur), ou null si aucune
+    },
   }
 }
 
@@ -226,11 +249,34 @@ export function colorResolver(
   isAlly: (xuid: string) => boolean,
   neutral: string,
 ): (slot: number, frame: number) => string | null {
-  return (slot, frame) => {
-    const p = ownership.ownerAtFrame(slot, frame)
-    if (!p) return null
-    return p.xuid ? colorOf(isAlly(p.xuid)) : neutral
-  }
+  return (slot, frame) => teamColorOfOwner(ownership.ownerAtFrame(slot, frame), colorOf, isAlly, neutral)
+}
+
+/**
+ * colorResolverOrLast — MÊME couleur d'équipe, mais résolue via `ownerAtFrameOrLast` : pour les
+ * consommateurs de FRONTIÈRE (couleur d'un objet LÂCHÉ à la mort, couleur d'un effet de mort)
+ * dont l'événement est daté à l'instant où le propriétaire vient de quitter le slot. Un objet
+ * lâché porte `t0 = finVie + 1` : la résolution stricte y rendrait `null` → encre neutre au lieu
+ * de la couleur du lâcheur. NE PAS l'employer pour les marqueurs/vies (rendu continu).
+ */
+export function colorResolverOrLast(
+  ownership: SlotOwnership,
+  colorOf: (ally: boolean) => string,
+  isAlly: (xuid: string) => boolean,
+  neutral: string,
+): (slot: number, frame: number) => string | null {
+  return (slot, frame) => teamColorOfOwner(ownership.ownerAtFrameOrLast(slot, frame), colorOf, isAlly, neutral)
+}
+
+/** teamColorOfOwner — la couleur d'équipe d'un propriétaire (neutre pour une entrée sans xuid, null s'il n'y en a pas). */
+function teamColorOfOwner(
+  p: ReplayPlayer | null,
+  colorOf: (ally: boolean) => string,
+  isAlly: (xuid: string) => boolean,
+  neutral: string,
+): string | null {
+  if (!p) return null
+  return p.xuid ? colorOf(isAlly(p.xuid)) : neutral
 }
 
 /**

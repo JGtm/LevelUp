@@ -290,9 +290,12 @@ export interface PlacementScene {
 /** Les encres du calque : la couleur d'équipe du poseur, et le neutre quand il n'y en a pas. */
 export interface PlacementInk {
   /**
-   * Couleur du poseur, résolue par slot ET par image ; null = pas de propriétaire à cette image,
-   * on tombe sur `neutral`. On la demande à l'instant de la POSE (le poseur y était vivant) — pas
-   * à l'image courante, où le slot peut appartenir à un autre joueur (manche suivante).
+   * Couleur du poseur, résolue par slot ET par image, demandée à l'instant de la POSE (`p.t0`) —
+   * pas à l'image courante, où le slot peut appartenir à un autre joueur (manche suivante).
+   * DOIT être un résolveur de FRONTIÈRE (`colorOfSlotOrLast`) : la classe dominante des poses est
+   * l'objet LÂCHÉ à la mort, dont `t0 = finVie + 1` — le poseur ne couvre plus l'image, et un
+   * résolveur strict rendrait `null` → encre neutre au lieu de la couleur du lâcheur. `null` =
+   * ni vie couvrante ni vie précédente : on tombe sur `neutral`.
    */
   colorOfSlot: (slot: number, frame: number) => string | null
   /**
@@ -341,7 +344,11 @@ export function placementKind(
 /** inkOf — la couleur d'équipe du poseur, ou le neutre quand la pose n'a pas de poseur connu. */
 function inkOf(p: ReplayEquipmentPlacement, ink: PlacementInk): string {
   if (p.owner < 0) return ink.neutral
-  // À L'INSTANT DE LA POSE (`p.t0`) : le poseur était alors vivant sur ce slot.
+  // À L'INSTANT DE LA POSE (`p.t0`). ATTENTION : pour la classe DOMINANTE — les objets LÂCHÉS à
+  // la mort — `t0 = finVie + 1`, le poseur n'occupe DÉJÀ PLUS le slot. `colorOfSlot` doit donc
+  // être un résolveur de FRONTIÈRE (`ownerAtFrameOrLast`, câblé par l'appelant) : il retombe sur
+  // la vie qui vient de finir — le lâcheur — au lieu de rendre `null` (encre neutre). Pour un
+  // objet DÉPLOYÉ, `t0` tombe dans la vie du poseur et la frontière rend la même chose que strict.
   return ink.colorOfSlot(p.owner, p.t0) ?? ink.neutral
 }
 

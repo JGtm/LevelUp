@@ -8,6 +8,7 @@ import {
   buildPlayers,
   buildSlotOwnership,
   colorResolver,
+  colorResolverOrLast,
   groupByTeam,
   loadoutAt,
   markResolver,
@@ -253,6 +254,58 @@ describe('buildSlotOwnership — le propriétaire d’un slot À UNE IMAGE (mult
     const own = buildSlotOwnership(buildPlayers(d, []))
     expect(own.ownerAtFrame(512, 25)?.xuid).toBe('S')
     expect(own.ownerAtFrame(512, 220)?.xuid).toBe('D')
+  })
+})
+
+describe('ownerAtFrameOrLast — la FRONTIÈRE : vie couvrante, sinon la vie juste précédente', () => {
+  it('image couverte par une vie : rend son propriétaire (comme ownerAtFrame)', () => {
+    const d = doc({ tracks: [track(512, 'A', 10, 50)] })
+    const own = buildSlotOwnership(buildPlayers(d, []))
+    expect(own.ownerAtFrameOrLast(512, 30)?.xuid).toBe('A')
+  })
+
+  it('image = finVie + 1 (l’objet lâché à la mort) : rend le propriétaire de la vie qui vient de finir', () => {
+    // C’est le cœur de la régression : un objet `dropped` porte t0 = finVie + 1. La résolution
+    // STRICTE y rend null (encre neutre) ; la frontière rend le lâcheur.
+    const d = doc({ tracks: [track(512, 'A', 10, 50)] })
+    const own = buildSlotOwnership(buildPlayers(d, []))
+    expect(own.ownerAtFrame(512, 51)).toBeNull() // strict : trou
+    expect(own.ownerAtFrameOrLast(512, 51)?.xuid).toBe('A') // frontière : le lâcheur
+  })
+
+  it('trou entre deux vies d’un même slot (multi-manche) : la vie PRÉCÉDENTE, jamais la suivante', () => {
+    // Slot 512 : A en manche 0 [0,50], B en manche 2 [200,250]. Dans le trou (frame 100),
+    // la frontière rend A (le lâcheur d’alors), PAS B (la vie à venir) — donc PAS le
+    // dernier-gagnant du match : « deux DinoR00 » n’est pas réintroduit.
+    const d = doc({
+      roster: [{ xuid: 'A', filmIndex: 0 }, { xuid: 'B', filmIndex: 1 }],
+      tracks: [track(512, 'A', 0, 50), track(512, 'B', 200, 250)],
+    })
+    const own = buildSlotOwnership(buildPlayers(d, []))
+    expect(own.ownerAtFrameOrLast(512, 100)?.xuid).toBe('A') // vie précédente
+    expect(own.ownerAtFrameOrLast(512, 220)?.xuid).toBe('B') // vie couvrante (manche 2)
+    expect(own.ownerAtFrameOrLast(512, 300)?.xuid).toBe('B') // après B : B est la dernière finie
+  })
+
+  it('avant la première vie du slot : aucune vie précédente → null', () => {
+    const d = doc({ tracks: [track(512, 'A', 10, 50)] })
+    const own = buildSlotOwnership(buildPlayers(d, []))
+    expect(own.ownerAtFrameOrLast(512, 5)).toBeNull()
+  })
+
+  it('slot sans aucune vie : null', () => {
+    const own = buildSlotOwnership(buildPlayers(doc({ tracks: [track(512, 'A', 10, 50)] }), []))
+    expect(own.ownerAtFrameOrLast(999, 30)).toBeNull()
+  })
+
+  it('colorResolverOrLast : un objet lâché à finVie+1 prend la couleur d’équipe du lâcheur, pas le neutre', () => {
+    const teamColor = (ally: boolean) => (ally ? 'allie' : 'adverse')
+    const d = doc({ tracks: [track(512, 'A', 10, 50)] })
+    const own = buildSlotOwnership(buildPlayers(d, [row('A', 'Alpha', 'Eagle')]))
+    const strict = colorResolver(own, teamColor, () => true, 'neutre')
+    const orLast = colorResolverOrLast(own, teamColor, () => true, 'neutre')
+    expect(strict(512, 51)).toBeNull() // strict : trou → l’appelant tomberait sur le neutre
+    expect(orLast(512, 51)).toBe('allie') // frontière : la couleur du lâcheur
   })
 })
 
