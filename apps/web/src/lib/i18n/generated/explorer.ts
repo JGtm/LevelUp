@@ -141,7 +141,7 @@ export const explorerManifest = {
   "explorer.matches.col_rating_tooltip": { fr: "Type de classement du match : CSR (classé en jeu) ou LUSR (classement maison).", en: "Match rating type: CSR (in-game ranked) or LUSR (in-house rating)." },
   "explorer.matches.col_replay_aria": { fr: "Ouvrir le rejeu 2D du match", en: "Open the 2D replay of the match" },
   "explorer.matches.col_score": { fr: "Score", en: "Score" },
-  "explorer.matches.col_score_tooltip": { fr: "Score final de la partie : l'équipe puis l'équipe adverse.", en: "Final match score: the team, then the opposing team." },
+  "explorer.matches.col_score_tooltip": { fr: "Score final de la partie : l'équipe puis l'équipe adverse. Sur les modes qui se jouent en manches, ce sont les MANCHES gagnées et perdues qui sont affichées — le score en points de l'API peut y donner l'avantage au camp qui a perdu.", en: "Final match score: the team, then the opposing team. In modes played in rounds, the ROUNDS won and lost are shown instead — the API point score can favour the losing side there." },
   "explorer.matches.col_squad": { fr: "Contexte", en: "Context" },
   "explorer.matches.col_squad_tooltip": { fr: "Partie jouée en solo ou en escouade (au moins un coéquipier connu).", en: "Match played solo or as a squad (at least one known teammate)." },
   "explorer.matches.col_team_mmr": { fr: "MMR équipe", en: "Team MMR" },

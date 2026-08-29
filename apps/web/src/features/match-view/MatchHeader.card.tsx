@@ -8,6 +8,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { AlertDialog } from '@/components/ui/alert-dialog'
 import { tokenCssVar } from '@/lib/accessibility'
 import type { SemanticToken } from '@/lib/accessibility'
@@ -21,6 +22,7 @@ import {
 import { NarrativeBadge } from '@/components/feedback/NarrativeBadge'
 import { tokenVar } from '@/lib/accessibility'
 import { ReplayLink } from './MatchHeader.replayLink'
+import { WaypointLink } from './MatchHeader.waypointLink'
 import { useToggleMatchFavorite } from './queries'
 import { useSetMatchExclusion } from '@/features/match-history/queries'
 import {
@@ -309,6 +311,8 @@ function TitleAndActionsRow({
           )}
         </Button>
 
+        <WaypointLink matchId={matchId} playerSlug={playerSlug} locale={locale} />
+
         <Button
           variant="outline"
           size="icon"
@@ -368,6 +372,7 @@ function OutcomeRow({ header, outcomeColor, locale }: OutcomeRowProps) {
           >
             {header.score_label}
           </span>
+          <ScoreRoundsAside header={header} locale={locale} />
         </>
       )}
       {header.dominance_badge && (
@@ -394,6 +399,42 @@ function OutcomeRow({ header, outcomeColor, locale }: OutcomeRowProps) {
         />
       )}
     </div>
+  )
+}
+
+// ── ScoreRoundsAside ───────────────────────────────────────────────────────
+
+/**
+ * L'AIDE ET LE SCORE DE L'API, quand le score affiché compte des MANCHES.
+ *
+ * Sur un mode qui se décide aux manches (Oddball et consorts), le score rendu par l'API est
+ * un CUMUL DE POINTS sur toutes les manches : il ne dit pas qui a gagné, et sur quatre
+ * matchs du corpus mesuré il donne même l'avantage au camp qui a perdu. L'en-tête affiche
+ * donc les manches, et relègue les points ici — en petit, grisé, à côté (demande
+ * utilisateur du 2026-08-29).
+ *
+ * NE REND RIEN sur un mode en points : le libellé principal EST déjà le score de l'API,
+ * l'écrire deux fois n'apprendrait rien. C'est le serveur qui tranche (`score_kind`), pas
+ * ce composant — la règle vit dans `analysis.ReadTeamScore`, elle n'est pas ré-écrite ici.
+ */
+function ScoreRoundsAside({
+  header,
+  locale,
+}: {
+  header: MatchViewHeaderData
+  locale: MatchViewLocale
+}) {
+  if (header.score_kind !== 'rounds') return null
+  const t = MATCH_VIEW_TEXT[locale]
+  return (
+    <>
+      <InfoTooltip content={t.scoreRoundsHint} iconClass="w-4 h-4" />
+      {header.score_points_label && (
+        <span className="text-sm tabular-nums text-muted-foreground">
+          {t.scorePointsAside(header.score_points_label)}
+        </span>
+      )}
+    </>
   )
 }
 
