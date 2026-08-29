@@ -235,14 +235,25 @@ egalite », perimetre initial reduit aux 3 variantes Oddball.
       non declare, manches a egalite, colonnes NULL) + 3 tests loader dont un qui EPINGLE le
       contenu livre (Oddball declare, CTF d'arene non).
 
-### E4 — Centralisation du libelle (dette regle 6)
+### E4 — Centralisation du libelle (dette regle 6) — **CLOS le 2026-08-29**
 
-- [ ] `analysis.BuildTeamScoreLabel(display) string` (format unique) — les 5 producteurs de
-      §3.2 delegent, aucun `fmt.Sprintf` de score residuel.
-- [ ] **Garde-rail** : test grep interdisant `"%d - %d"` / `"%d-%d"` sur un score d'equipe
-      hors du helper canonique (modele : `sync/no_art_patterns_test.go`).
-- **Gate** : le grep passe, les tests existants de `buildScoreLabel*` sont migres, pas
-  supprimes.
+- [x] `analysis.TeamScoreLabel(TeamScoreInput) string` + `FormatTeamScoreLabel(display)` —
+      les **5** producteurs de §3.2 delegent, plus aucun `fmt.Sprintf` de score ailleurs.
+      Refactor PUR : les manches ne sont pas encore cablees jusqu'a ces appelants (elles
+      arrivent en E5), donc `nil` partout et lecture en points, a l'identique.
+- [x] Effet de bord : trois `import "fmt"` devenus inutiles retires (analysis/home_locale,
+      service/teammates).
+- [x] **Garde-rail** `team_score_label_guard_test.go` : scan de `internal/analysis` +
+      `internal/service` (hors tests et hors fichier canonique) interdisant `%d-%d` et
+      `%d - %d`, commentaires retires avant scan, + un test qui prouve que le garde-rail
+      MORD. Perimetre volontairement limite a ces deux couches : un scan global mordrait sur
+      les `cmd/diag_*` sans rien proteger de plus.
+- [x] **CHANGEMENT VISIBLE ASSUME** : le format est unifie sur « X - Y » (espaces), celui
+      que 3 des 5 appelants utilisaient deja. La vue match et l'accueil passent donc de
+      « 50-30 » a « 50 - 30 ». 9 tests existants migres (pas supprimes) vers le nouveau
+      format.
+- **Gate PASSE** : `go test ./internal/analysis ./internal/service/... ./internal/api/...` ok,
+  garde-rail vert.
 
 ### E5 — Contrat API
 

@@ -213,7 +213,7 @@ func TestBuildScoreLabelFromMeta_Team0(t *testing.T) {
 	teamID := 0
 	stats := &domain.PlayerMatchStatsRaw{TeamID: &teamID}
 	label := buildScoreLabelFromMeta(meta, stats)
-	if label != "50-47" {
+	if label != "50 - 47" {
 		t.Errorf("expected 50-47, got %q", label)
 	}
 }
@@ -224,7 +224,7 @@ func TestBuildScoreLabelFromMeta_Team1(t *testing.T) {
 	teamID := 1
 	stats := &domain.PlayerMatchStatsRaw{TeamID: &teamID}
 	label := buildScoreLabelFromMeta(meta, stats)
-	if label != "47-50" {
+	if label != "47 - 50" {
 		t.Errorf("expected 47-50, got %q", label)
 	}
 }

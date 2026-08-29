@@ -155,8 +155,8 @@ func TestBuildHomeScoreLabel_TeamZero(t *testing.T) {
 	t.Parallel()
 	m := legacymatch.HomeMatchRow{TeamID: 0, Team0Score: 50, Team1Score: 30}
 	got := buildHomeScoreLabel(m)
-	if got == nil || *got != "50-30" {
-		t.Errorf("buildHomeScoreLabel(team0) = %v, want 50-30", got)
+	if got == nil || *got != "50 - 30" {
+		t.Errorf("buildHomeScoreLabel(team0) = %v, want 50 - 30", got)
 	}
 }
 
@@ -165,8 +165,8 @@ func TestBuildHomeScoreLabel_TeamOne_Swaps(t *testing.T) {
 	// TeamID=1 doit inverser l'ordre des scores (perspective du joueur).
 	m := legacymatch.HomeMatchRow{TeamID: 1, Team0Score: 50, Team1Score: 30}
 	got := buildHomeScoreLabel(m)
-	if got == nil || *got != "30-50" {
-		t.Errorf("buildHomeScoreLabel(team1) = %v, want 30-50", got)
+	if got == nil || *got != "30 - 50" {
+		t.Errorf("buildHomeScoreLabel(team1) = %v, want 30 - 50", got)
 	}
 }
 
@@ -184,8 +184,8 @@ func TestBuildHomeScoreLabel_ZeroZero(t *testing.T) {
 	// 0-0 reste un score valide (égalité, match court).
 	m := legacymatch.HomeMatchRow{TeamID: 0, Team0Score: 0, Team1Score: 0}
 	got := buildHomeScoreLabel(m)
-	if got == nil || *got != "0-0" {
-		t.Errorf("buildHomeScoreLabel(0-0) = %v, want 0-0", got)
+	if got == nil || *got != "0 - 0" {
+		t.Errorf("buildHomeScoreLabel(0-0) = %v, want 0 - 0", got)
 	}
 }
 

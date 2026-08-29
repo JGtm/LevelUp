@@ -286,13 +286,13 @@ func buildScoreLabelFromMeta(meta *domain.MatchMetaRaw, stats *domain.PlayerMatc
 		return ""
 	}
 	s0, s1 := int(*meta.Team0Score), int(*meta.Team1Score)
-	if s0 < 0 || s1 < 0 {
-		return ""
-	}
 	if stats != nil && stats.TeamID != nil && *stats.TeamID == 1 {
-		return fmt.Sprintf("%d-%d", s1, s0)
+		s0, s1 = s1, s0
 	}
-	return fmt.Sprintf("%d-%d", s0, s1)
+	// Délégation à la source unique du libellé (analysis.TeamScoreLabel) : elle porte aussi
+	// le refus des scores négatifs. Manches non encore câblées sur MatchMetaRaw — lecture
+	// en points, à l'identique.
+	return analysis.TeamScoreLabel(analysis.TeamScoreInput{MyPoints: &s0, EnemyPoints: &s1})
 }
 
 // resolveSkillIconURL retourne l'URL du badge CSR/LUSR depuis tier + sub_tier.

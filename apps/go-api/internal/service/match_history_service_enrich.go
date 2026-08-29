@@ -191,9 +191,14 @@ func enrichRow(r domain.MatchHistoryRawRow, mapWR map[string][2]int, fmts rowFor
 		kda = r.KDA
 	}
 
-	scoreLabel := "-"
-	if r.MyTeamScore != nil && r.EnemyTeamScore != nil {
-		scoreLabel = fmt.Sprintf("%d - %d", *r.MyTeamScore, *r.EnemyTeamScore)
+	// Libellé de score : source unique depuis le 2026-08-29
+	// (analysis.TeamScoreLabel). Les manches arrivent par la ligne de registre quand elles
+	// sont connues ; sinon nil, et la lecture reste celle des points.
+	scoreLabel := analysis.TeamScoreLabel(analysis.TeamScoreInput{
+		MyPoints: r.MyTeamScore, EnemyPoints: r.EnemyTeamScore,
+	})
+	if scoreLabel == "" {
+		scoreLabel = "-"
 	}
 
 	isOvertime, overtimeSeconds := fmts.overtimeFor(r)
