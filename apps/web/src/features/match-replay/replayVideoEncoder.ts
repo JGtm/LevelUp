@@ -196,6 +196,40 @@ export function canExportAudio(): boolean {
   return typeof AudioEncoder !== 'undefined' && typeof AudioData !== 'undefined'
 }
 
+/** La configuration AAC visee : AAC-LC, le profil que tout lecteur decode. */
+export function audioEncoderConfig(shape: AudioTrackShape): AudioEncoderConfig {
+  return {
+    codec: 'mp4a.40.2',
+    sampleRate: shape.sampleRate,
+    numberOfChannels: shape.numberOfChannels,
+    bitrate: AUDIO_BITRATE,
+  }
+}
+
+/**
+ * audioTrackUsable dit si ce navigateur sait REELLEMENT encoder cette piste.
+ *
+ * `canExportAudio` ne repond qu'a « l'API existe-t-elle ». Elle peut exister et REFUSER la
+ * configuration — et ce refus est ASYNCHRONE : `configure()` ne leve pas, il passe l'encodeur
+ * en erreur et le ferme, si bien que la panne n'apparait qu'au `flush()`, sous la forme
+ * trompeuse « Encoder must be configured first ». C'est exactement ce qui s'est produit en
+ * recette le 2026-08-28.
+ *
+ * La question se pose donc AVANT d'ouvrir le conteneur, qui declare ses pistes une fois pour
+ * toutes : mieux vaut un clip muet annonce qu'un export perdu.
+ */
+export async function audioTrackUsable(shape: AudioTrackShape): Promise<boolean> {
+  if (!canExportAudio()) return false
+  if (typeof AudioEncoder.isConfigSupported !== 'function') return false
+  try {
+    const probe = await AudioEncoder.isConfigSupported(audioEncoderConfig(shape))
+    return probe.supported === true
+  } catch {
+    // Une configuration REFUSEE leve ici (config invalide) : c'est une reponse, pas une panne.
+    return false
+  }
+}
+
 /** Ce que la boucle d'export reçoit : trois gestes, et aucun état à tenir de son côté. */
 export interface VideoExportSink {
   /** Pousse la toile TELLE QU'ELLE EST à cet instant. Attend si la file est pleine. */
@@ -203,8 +237,13 @@ export interface VideoExportSink {
   /** Vide la file, referme le conteneur, rend le fichier. */
   finish: () => Promise<Blob>
   /**
-   * Encode et muxe la piste sonore rendue hors ligne. À n'appeler QUE si `audio` a été déclaré
-   * à l'ouverture, et une seule fois. Sans piste déclarée, ne fait rien.
+   * `false` = la piste sonore demandee n'a PAS pu etre declaree (encodeur AAC absent ou
+   * configuration refusee). Le clip sortira muet, et l'appelant doit le DIRE.
+   */
+  audioEnabled: boolean
+  /**
+   * Encode et muxe la piste sonore rendue hors ligne. À n'appeler QUE si `audioEnabled`, et une
+   * seule fois. Sans piste déclarée, ne fait rien.
    */
   addAudioBuffer: (buffer: AudioBuffer) => Promise<void>
   /** Referme tout sans rien rendre (annulation, erreur). Ne lève jamais. */
@@ -242,16 +281,20 @@ export async function openVideoExport(o: VideoExportOptions): Promise<VideoExpor
   const config = videoEncoderConfig(o.width, o.height, fps)
   const support = await VideoEncoder.isConfigSupported(config)
   if (!support.supported) return null
+  // LA PISTE SONORE SE PROUVE AVANT D'ETRE DECLAREE (cf. `audioTrackUsable`) : le conteneur
+  // ecrit sa table des pistes une fois pour toutes, et une piste declaree que l'encodeur
+  // refusera ensuite perd TOUT l'export.
+  const audio = o.audio && (await audioTrackUsable(o.audio)) ? o.audio : null
 
   const muxer = new Muxer({
     target: new ArrayBufferTarget(),
     video: { codec: 'avc', width: config.width, height: config.height },
-    ...(o.audio
+    ...(audio
       ? {
           audio: {
             codec: 'aac' as const,
-            sampleRate: o.audio.sampleRate,
-            numberOfChannels: o.audio.numberOfChannels,
+            sampleRate: audio.sampleRate,
+            numberOfChannels: audio.numberOfChannels,
           },
         }
       : {}),
@@ -271,7 +314,7 @@ export async function openVideoExport(o: VideoExportOptions): Promise<VideoExpor
     },
   })
   encoder.configure(config)
-  return makeSink(encoder, muxer, fps, () => failure, o.audio ?? null, {
+  return makeSink(encoder, muxer, fps, () => failure, audio, {
     width: config.width,
     height: config.height,
   })
@@ -349,7 +392,7 @@ function makeSink(
   const addAudioBuffer = (buffer: AudioBuffer) =>
     audio ? encodeAudioInto(muxer, buffer, audio) : Promise.resolve()
 
-  return { addFrame, addAudioBuffer, finish, abort }
+  return { addFrame, addAudioBuffer, audioEnabled: audio !== null, finish, abort }
 }
 
 /**
@@ -393,13 +436,7 @@ async function encodeAudioInto(
       failure = err instanceof Error ? err : new Error(String(err))
     },
   })
-  encoder.configure({
-    // `mp4a.40.2` = AAC-LC, le profil que tout lecteur décode.
-    codec: 'mp4a.40.2',
-    sampleRate: shape.sampleRate,
-    numberOfChannels: shape.numberOfChannels,
-    bitrate: AUDIO_BITRATE,
-  })
+  encoder.configure(audioEncoderConfig(shape))
   const channels: Float32Array[] = []
   for (let c = 0; c < shape.numberOfChannels; c++) {
     // Un tampon rendu avec moins de canaux que la piste déclarée : on recopie le dernier
@@ -432,7 +469,9 @@ async function encodeAudioInto(
     }
     if (encoder.encodeQueueSize > ENCODE_QUEUE_MAX) await yieldToEvents()
    }
-   await encoder.flush()
+   // LE FLUSH SE GARDE PAR L'ETAT : sur un encodeur passe en erreur, il leve
+   // « Encoder must be configured first » et masque la vraie cause.
+   if (encoder.state === 'configured') await encoder.flush()
   } finally {
     // `flush()` REJETTE sur un encodeur en erreur fatale : sans ce `finally`, `close()` n'était
     // jamais atteint et l'`AudioEncoder` fuyait avec son tampon jusqu'à la fermeture de

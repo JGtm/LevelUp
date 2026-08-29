@@ -197,6 +197,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     playerScoreLive: "Score personnel à l'instant lu",
     countersLive: "Frags / morts / assistances à l'instant lu",
     countersMatch: 'Frags / morts / assistances du match',
+    fdaTooltipFmt: (counters, fda) => `${counters} — FDA ${fda}`,
     scoreBannerLabel: "Score des équipes à l'instant lu",
     scoreBannerAlly: 'Équipe alliée',
     scoreBannerEnemy: 'Équipe adverse',
@@ -319,6 +320,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     exportPreparing: 'Préparation du son et des images…',
     exportEtaFmt: (clock) => `environ ${clock} restantes`,
     exportDoneFmt: (filename) => `Fichier déposé : ${filename}`,
+    exportMutedFallback: "Clip MUET : ce navigateur a refusé la piste sonore.",
     ammoDrawnHint:
       'Emplacement DÉGAINÉ selon le sélecteur du record : la même lecture qui place cette arme en tête de rangée.',
     drawnUnknown: 'dégainée ?',
@@ -511,6 +513,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     playerScoreLive: 'Personal score at the moment being played',
     countersLive: 'Kills / deaths / assists at the moment being played',
     countersMatch: 'Kills / deaths / assists for the whole match',
+    fdaTooltipFmt: (counters, fda) => `${counters} — KDA ${fda}`,
     scoreBannerLabel: 'Team scores at the moment being played',
     scoreBannerAlly: 'Allied team',
     scoreBannerEnemy: 'Enemy team',
@@ -631,6 +634,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     exportPreparing: 'Preparing sound and frames…',
     exportEtaFmt: (clock) => `about ${clock} remaining`,
     exportDoneFmt: (filename) => `File saved: ${filename}`,
+    exportMutedFallback: 'MUTED clip: this browser refused the audio track.',
     ammoDrawnHint:
       'Slot DRAWN according to the record selector: the same reading that puts this weapon first in the row.',
     drawnUnknown: 'drawn ?',

@@ -22,11 +22,13 @@ const addFrame = vi.fn<(canvas: HTMLCanvasElement, index: number) => Promise<voi
 const finish = vi.fn(async () => new Blob(['mp4']))
 const abort = vi.fn()
 const addAudioBuffer = vi.fn<(buffer: AudioBuffer) => Promise<void>>(async () => {})
+/** Le navigateur accepte-t-il la piste sonore ? Pilote par test (cf. le repli muet). */
+const audioOk = { value: true }
 
 vi.mock('./replayVideoEncoder', async (orig) => ({
   ...(await orig<typeof import('./replayVideoEncoder')>()),
   canExportVideo: () => true,
-  openVideoExport: async () => ({ addFrame, addAudioBuffer, finish, abort }),
+  openVideoExport: async () => ({ addFrame, addAudioBuffer, finish, abort, audioEnabled: audioOk.value }),
 }))
 vi.mock('./replayAudioMix', async (orig) => {
   const vrai = await orig<typeof import('./replayAudioMix')>()
@@ -71,6 +73,7 @@ beforeEach(() => {
   finish.mockClear()
   abort.mockClear()
   addAudioBuffer.mockClear()
+  audioOk.value = true
   vi.mocked(triggerDownload).mockClear()
   // Le mock du mixage est PARTAGE entre les tests : sans ce nettoyage, `mock.calls[0]`
   // rendrait l'appel d'un test precedent.
@@ -226,5 +229,41 @@ describe('useReplayExport — non-régressions de la revue adversariale', () => 
     // Sans ce `abort`, le VideoEncoder et son muxeur restaient en mémoire jusqu'à la fermeture
     // de l'onglet.
     expect(abort).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('useReplayExport — le repli MUET quand le navigateur refuse la piste', () => {
+  it('sort un clip muet, le DIT, et n’echoue pas', async () => {
+    // Vecu en recette le 2026-08-28 : `AudioEncoder` existait, la configuration AAC etait
+    // refusee de facon ASYNCHRONE, et la panne ne surgissait qu'au `flush()` sous la forme
+    // trompeuse « Encoder must be configured first » — tout l'export etait perdu.
+    audioOk.value = false
+    vi.mocked(mixReplayAudio).mockResolvedValueOnce({ duration: 2 } as AudioBuffer)
+    const trace = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const canvas = document.createElement('canvas')
+    canvas.width = 320
+    canvas.height = 180
+    const hook = renderHook(() =>
+      useReplayExport({
+        canvasRef: { current: canvas },
+        frameRef: { current: 0 },
+        redraw: vi.fn(),
+        pause: vi.fn(),
+        doc: DOC,
+        playWindow: null,
+        scoreboard: [],
+        outcome: null,
+        titleSlug: 'halo_infinite',
+        locale: 'fr',
+        soundTrack: () => ({ timeline: [{ ms: 0, stem: 'x' }], endMatchStems: [], variationPercent: 0, distancePercent: 0 }),
+        soundVolume: 1,
+      }),
+    )
+    await act(() => hook.result.current.run({ startFrame: 0, endFrame: 10 }))
+    expect(addAudioBuffer).not.toHaveBeenCalled()
+    expect(hook.result.current.state.phase).toBe('done')
+    expect(hook.result.current.state.mutedFallback).toBe(true)
+    expect(trace).toHaveBeenCalled()
+    trace.mockRestore()
   })
 })

@@ -1,3 +1,102 @@
+## [2026-08-29] Rejeu 2D : le FDA des fiches, son fond colore, et pourquoi le triplet se fige — Complete
+
+**Contexte** : demande utilisateur — « dans le replay les fiches de joueur il y a le F/D/A mais
+il est fige au score final » + calculer le FDA dynamiquement et teinter le fond du triplet selon
+sa valeur (< 0 rouge, 0 a 1 bleu, > 1 vert).
+
+**La formule retenue, et pourquoi c'est celle-la**. Le FDA per-match canonique du depot est un
+NET, jamais un quotient :
+
+    FDA = (frags + assistances / 3 - morts) / nb_matchs   -> per-match : / 1
+
+C'est la valeur native de l'API Halo (`match_participants.kda`), la regle 9 de CLAUDE.md, et
+exactement ce que `analysis.AggregateKDA` divise par le nombre de matchs pour l'agregat. Le
+quotient `(frags + assistances/3) / max(1, morts)` existe en Go sous le nom `CombatEfficiency`
+(metrique INTERNE au score de performance) et il est toujours positif : il ne pourrait pas
+porter le palier rouge demande. Nouveau foyer pur `apps/web/src/lib/fda.ts` (`matchFda`,
+`fdaTone`), teste (12 cas), avec les bornes de l'enonce a la lettre — 0 et 1 appartiennent au
+palier median.
+
+**Le fond du triplet** suit la MEME horloge que les nombres qu'il colore (instant lu si le film
+publie ce joueur, totaux du match sinon), en `color-mix` a 22 % du token d'etat — aucun hex,
+aucune classe Tailwind couleur. Un triplet dont un compteur est une lacune n'a AUCUN fond : une
+couleur est une affirmation. L'infobulle donne le FDA en toutes lettres (une couleur seule n'est
+pas une mesure) ; sa chaine est formatee par cle i18n FR/EN.
+
+**LE FIGEMENT N'EST PAS UN DEFAUT DE LA FICHE — c'est une lacune de l'artefact, et elle est
+mesuree.** Le badge lit deja `playerCountersAt(scoreTimeline, xuid, frame)` et TIQUE correctement
+quand le film publie le joueur ; il retombe sur les totaux de la base sinon. Mesure sur les 39
+artefacts de `data/cache/replays/halo_infinite` : 16 portent au moins un joueur du roster de
+`db_profiles.json` NON publie ; le pire temoin est `00ba2e1c` — 26 joueurs avec des vies, 8
+publies, donc 18 fiches figees. Cause remontee jusqu'au producteur :
+`objectiveevents.SlotIdentityFrom` apparie un slot du film a une ligne de match par le TRIPLET
+exact (kills, deaths, assists) et n'attribue rien des qu'il y a collision — frequent des qu'un
+lobby depasse huit joueurs. Le chemin multi-manche, lui, dispose deja d'un second pont
+(`SlotIdentityByDeaths`, par instants de mort) qui leverait la plupart de ces collisions.
+
+**Ce qui n'a PAS ete fait, et pourquoi**. Un repli client (compteurs derives du fil + des vies du
+film) a ete evalue puis ecarte sur mesure : les morts derivees des vies closes ne tombent juste
+que sur 175 des 244 joueurs publies (72 %, ecarts a plus ou moins un), et les assistances du fil
+sont bornees a une par kill avec un etat « inconnu » — un compteur derive afficherait donc des
+nombres faux la ou la fiche affiche aujourd'hui des nombres vrais mais figes. Le remede juste est
+le second pont d'identite cote Go, hors perimetre d'une demande d'affichage (il suppose de
+recuire les artefacts).
+
+**Decouvertes notees, non traitees** (regle « zero fix opportuniste ») : `features/help/i18n.ts`
+documente le « Ratio FDA » comme le QUOTIENT (ligne 133 FR, 546 EN), en contradiction avec
+CLAUDE.md regle 9, l'ADR 0006 et `indicators.go`. Trois formules differentes circulent donc sous
+le meme nom dans le depot.
+
+**Resultats observes** : `make check-types` vert, lint web vert, 208 fichiers / 2747 tests verts
+sur `src/features/match-replay` + `src/lib` (dont 4 cas neufs sur la teinte et 12 sur `lib/fda`).
+
+**Conclusion / prochaine etape** : l'affichage est livre. La suite naturelle, si l'utilisateur la
+veut, est le second pont d'identite dans `buildPlayerScoresFlat` (desambiguiser par les instants
+de mort quand le triplet collisionne) — c'est ce qui degelerait reellement les fiches restantes.
+
+---
+
+## [2026-08-28] Export video : deux pannes trouvees EN RECETTE, que les tests jsdom ne pouvaient pas voir — Complete
+
+**Contexte** : premiere recette reelle par l'utilisateur. Deux pannes, l'une apres l'autre, sur du
+code dont TOUS les gates etaient verts. La critique de l'utilisateur — « je pense pas que tu aies
+fait suffisamment de tests » — est fondee, et la nature des deux defauts dit precisement en quoi.
+
+**Panne 1 : le bouton « ne fait rien ».** Le panneau etait monte en FRERE du cartouche qui porte
+`relative`, et non dedans. Son `bottom-full right-0` se resolvait donc sur le premier ancetre
+POSITIONNE — la carte entiere du rejeu — ce qui le placait au-dessus de son bord superieur, la ou
+`overflow-hidden` le decoupe. Il etait dans le DOM et invisible a l'ecran. C'est pour cela que mes
+tests passaient : `getByRole('dialog')` le TROUVAIT. jsdom ne calcule aucune mise en page, donc
+aucun test de ce dossier ne pouvait attraper ca.
+
+Le garde-rail pose n'essaie pas de mesurer une mise en page (impossible ici) : il verrouille la
+seule chose observable dont elle depend — la PARENTE. Le panneau doit etre un enfant de l'element
+qui porte `relative`, et cet element doit contenir le bouton.
+
+**Panne 2 : `AudioEncoder.flush: Encoder must be configured first`.** Le navigateur AVAIT l'API et
+a REFUSE la configuration AAC. Or ce refus est ASYNCHRONE : `configure()` ne leve pas, il passe
+l'encodeur en erreur et le ferme ; la panne ne surgit qu'au `flush()`, sous un message qui designe
+la mauvaise cause. J'avais traite l'ABSENCE d'`AudioEncoder` (constat d'un relecteur) mais pas son
+REFUS — le cas le plus probable des deux.
+
+Correctif en trois temps : `audioTrackUsable()` prouve la config par `isConfigSupported` AVANT
+d'ouvrir le conteneur (qui declare ses pistes une fois pour toutes) ; le `flush` se garde par
+`encoder.state === 'configured'` pour ne plus masquer la vraie cause ; et surtout l'export NE
+TOMBE PLUS — il sort un clip MUET et le DIT (`mutedFallback`), parce qu'un export perdu est pire
+qu'un clip sans son.
+
+**Resultats observes** : `make test-web` vert, 528 fichiers, 5379 tests. eslint 0 erreur. Deux
+tests de non-regression ajoutes, dont celui du repli muet.
+
+**Lecon, et elle est la vraie sortie de cette seance** : une suite jsdom verte ne dit RIEN de deux
+familles entieres de defauts — ce qui depend de la MISE EN PAGE, et ce qui depend des CAPACITES
+REELLES du navigateur. Les deux pannes de cette recette appartiennent chacune a l'une d'elles. Le
+seul remede est d'executer l'application ; je n'ai pas pu le faire (la page de rejeu redirige vers
+`/login`), et j'ai livre en le sachant sans le dire assez fort.
+
+**Conclusion / prochaine etape** : recette a reprendre par l'utilisateur sur l'export lui-meme
+(image, son, surimpressions).
+
 ## [2026-08-28] Export video : le retour a l'utilisateur pendant le calcul — Complete
 
 **Contexte** : question de l'utilisateur — « le temps que le film soit genere, on a un retour UI/UX ? ».

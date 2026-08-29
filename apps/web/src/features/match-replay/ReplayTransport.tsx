@@ -185,6 +185,19 @@ export function ReplayTransport({
               {capture.recording ? t.stopRecordingShort : t.recordVideoShort}
             </button>
           )}
+          {/* LE PANNEAU EST MONTÉ DANS LE CARTOUCHE, et c'est la seule position qui marche : son
+              `bottom-full right-0` se résout sur le premier ancêtre POSITIONNÉ, et le cartouche
+              est le seul à porter `relative`. Monté en frère (ce qu'il était jusqu'au
+              2026-08-28), il se calait sur la carte entière du rejeu et `bottom-full` le
+              plaçait au-dessus de son bord supérieur, où `overflow-hidden` le découpait : il
+              était dans le DOM, et invisible à l'écran. */}
+          {exportOpen && capture.videoExport && (
+            <ReplayExportDialog
+              exporter={capture.videoExport}
+              locale={locale}
+              onClose={() => setExportOpen(false)}
+            />
+          )}
         </div>
 
         {/* LES RÉGLAGES FERMENT LA BARRE, tout à droite — là où tous les lecteurs les mettent. */}
@@ -202,15 +215,6 @@ export function ReplayTransport({
           <SlidersIcon />
         </button>
       </div>
-      {/* LE DIALOGUE COIFFE LA BARRE, dans son cadre : il n'a rien à faire dans le canvas, qui
-          ne saurait pas quand l'ouvrir. Il ne se rend que si l'export est possible. */}
-      {exportOpen && capture.videoExport && (
-        <ReplayExportDialog
-          exporter={capture.videoExport}
-          locale={locale}
-          onClose={() => setExportOpen(false)}
-        />
-      )}
     </div>
   )
 }

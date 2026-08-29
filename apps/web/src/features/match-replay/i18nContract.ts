@@ -383,6 +383,12 @@ export interface ReplayText {
   countersLive: string
   countersMatch: string
   /**
+   * LE FDA du triplet affiché — le net canonique (frags + assistances/3 − morts, cf.
+   * `lib/fda.ts`). Le fond coloré du triplet le dit d'un coup d'oeil ; l'infobulle le dit
+   * en toutes lettres, parce qu'une couleur seule n'est pas une mesure.
+   */
+  fdaTooltipFmt: (counters: string, fda: string) => string
+  /**
    * LE BANDEAU DE SCORE au-dessus du terrain : deux barres de camp encadrant l'horloge de
    * lecture. Les deux camps s'y nomment par leur RAPPORT au joueur de la page (allié /
    * adverse) et non par leur nom d'équipe, qui est déjà en tête des colonnes de fiches —
@@ -633,4 +639,6 @@ export interface ReplayText {
   exportEtaFmt: (clock: string) => string
   /** « Fichier depose : rejeu-....mp4 » — la fin se dit, avec le nom du fichier. */
   exportDoneFmt: (filename: string) => string
+  /** Le son etait demande, le navigateur l'a refuse : le clip est muet, et on le DIT. */
+  exportMutedFallback: string
 }

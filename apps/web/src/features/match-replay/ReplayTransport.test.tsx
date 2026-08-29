@@ -401,3 +401,38 @@ describe('ReplayTransport — le bouton porte la progression', () => {
     expect(screen.getByRole('button', { name: 'Pause' })).toBeDisabled()
   })
 })
+
+/**
+ * LE DEFAUT QUE JSDOM NE VOIT PAS, verrouille par sa seule trace observable ici : la STRUCTURE.
+ *
+ * Le panneau se positionne en `absolute bottom-full right-0`. Monte ailleurs que dans le
+ * cartouche — le seul element qui porte `relative` —, il se resout sur la carte entiere du
+ * rejeu et `bottom-full` le place AU-DESSUS de son bord superieur, ou `overflow-hidden` le
+ * decoupe : present dans le DOM, invisible a l'ecran. Un test qui se contente de le TROUVER
+ * passe donc alors meme que l'utilisateur ne voit rien — c'est exactement ce qui est arrive.
+ *
+ * Ce test-ci ne mesure pas la mise en page (jsdom n'en calcule aucune) : il verrouille la seule
+ * chose dont la mise en page depend et qui, elle, est observable — la parente.
+ */
+describe('ReplayTransport — le panneau est ancre la ou il doit l etre', () => {
+  it('est monte DANS l element positionne qui porte le bouton', async () => {
+    const user = userEvent.setup()
+    renderTransport({
+      capture: {
+        captureImage: vi.fn(),
+        recordingSupported: true,
+        recording: false,
+        toggleRecording: vi.fn(),
+        videoExport: makeExport(),
+      },
+    })
+    await user.click(screen.getByRole('button', { name: 'Exporter la vidéo' }))
+    const panneau = screen.getByRole('dialog')
+    const ancre = panneau.parentElement
+    expect(ancre).not.toBeNull()
+    // L'ancre porte `relative` : sans quoi `bottom-full` se resout sur un autre element.
+    expect(ancre).toHaveClass('relative')
+    // Et c'est bien celle qui contient le bouton d'export.
+    expect(ancre).toContainElement(screen.getByRole('button', { name: 'Exporter la vidéo' }))
+  })
+})
