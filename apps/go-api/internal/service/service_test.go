@@ -376,3 +376,29 @@ func TestConvertCommonMatches_Enemies(t *testing.T) {
 		t.Error("expected were_teammates=false when different team IDs")
 	}
 }
+
+// La permutation des MANCHES pour un joueur du camp 1. Sans elle, il verrait « 1 - 2 » sur
+// une victoire 2-1 — le contresens même que ce chantier supprime, remis à l'envers pour la
+// moitié des joueurs. Le témoin du camp 0 ci-dessus ne l'aurait jamais vu : il ne passe pas
+// dans la branche de permutation (constat de revue adversariale du 2026-08-29).
+func TestApplyMatchHeaderScore_Team1PermuteLesManches(t *testing.T) {
+	s0, s1 := int16(181), int16(186)
+	r0, r1, tot := int16(2), int16(1), int16(3)
+	variant := "Arena:Oddball"
+	teamID := 1
+	h := headerScore(&domain.MatchMetaRaw{
+		Team0Score: &s0, Team1Score: &s1,
+		Team0RoundsWon: &r0, Team1RoundsWon: &r1, RoundsTotal: &tot,
+		GameVariantName: &variant,
+	}, &teamID, map[string]bool{"Arena:Oddball": true})
+	// Vu du camp 1 : il a gagné 1 manche contre 2, et marqué 186 points contre 181.
+	if h.ScoreLabel != "1 - 2" {
+		t.Errorf("ScoreLabel = %q, want \"1 - 2\" (manches vues du camp 1)", h.ScoreLabel)
+	}
+	if h.ScorePointsLabel != "186 - 181" {
+		t.Errorf("ScorePointsLabel = %q, want \"186 - 181\" (points permutés AVEC les manches)", h.ScorePointsLabel)
+	}
+	if h.ScoreMine == nil || *h.ScoreMine != 1 || h.ScoreTheirs == nil || *h.ScoreTheirs != 2 {
+		t.Errorf("nombres = %v/%v, want 1/2", h.ScoreMine, h.ScoreTheirs)
+	}
+}

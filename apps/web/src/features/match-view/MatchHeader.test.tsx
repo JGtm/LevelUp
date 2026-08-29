@@ -734,9 +734,13 @@ describe('MatchHeaderCard — score en manches', () => {
 
   it("n'ajoute NI aide NI second plan sur un mode en points", () => {
     // Le libellé principal EST déjà le score de l'API : l'écrire deux fois n'apprend rien.
+    // L'AIDE est assérée absente elle aussi : sans cette ligne, retirer la garde
+    // `score_kind !== 'rounds'` afficherait l'infobulle « ce score compte des manches » sur
+    // TOUS les en-têtes, Slayer et CTF compris (constat de revue adversariale).
     renderHeader({ ...baseHeader, score_kind: 'points' })
     expect(screen.getByText('87 - 62')).toBeInTheDocument()
     expect(screen.queryByText(/points$/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /aide|info/i })).not.toBeInTheDocument()
   })
 
   it('reste en points quand le serveur ne dit rien (ligne antérieure au backfill)', () => {

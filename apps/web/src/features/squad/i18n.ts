@@ -137,6 +137,11 @@ export interface SquadText {
     /** aria-label du bouton de tri d'un en-tête « Trier par {col} » (I16). */
     sortByAriaLabel: (col: string) => string
     /** Tooltips d'en-tête de colonne (V72-04, icône ⓘ). */
+    /**
+     * Aide de l'en-tete de la colonne Score : sur les modes qui se jouent en manches,
+     * ce sont les MANCHES qui sont affichees, pas les points de l'API (ADR 0032).
+     */
+    scoreTooltip: string
     winRateHistTooltip: string
     winProbTooltip: string
     teamMmrTooltip: string
@@ -296,6 +301,8 @@ export interface SquadText {
     description: string
     /** Ligne agrégée des armes gun au-delà du top-N dans « Outils de destruction ». */
     otherWeapons: string
+    /** Ligne agrégée des frags NON-arme (mêlée, grenade, engins) au-delà du top-N. */
+    otherKills: string
   }
   /** Comparatif « Précision par rôle » multi-joueurs (Halo 5) : barres groupées horizontales (1 barre/joueur/rôle, longueur = précision %). */
   weaponAccuracy: {
@@ -473,6 +480,8 @@ const FR_TEXT: SquadText = {
     waypointAriaLabel: 'Ouvrir sur Halo Waypoint',
     replayAriaLabel: 'Ouvrir le rejeu 2D du match',
     sortByAriaLabel: (col) => `Trier par ${col}`,
+    scoreTooltip:
+      "Score final de la partie : l'équipe puis l'équipe adverse. Sur les modes qui se jouent en manches, ce sont les MANCHES gagnées et perdues qui sont affichées — le score en points de l'API peut y donner l'avantage au camp qui a perdu.",
     winRateHistTooltip: 'Taux de victoire de cette escouade sur tous ses matchs communs.',
     winProbTooltip: 'Probabilité de victoire estimée avant le match, d\'après les MMR des deux équipes.',
     teamMmrTooltip: 'Niveau de compétence moyen estimé (MMR) de l\'équipe.',
@@ -643,6 +652,7 @@ const FR_TEXT: SquadText = {
     title: 'Outils de destruction',
     description: 'Frags cumulés par arme sur les matchs partagés. Tri ASC : armes peu utilisées en haut, principales en bas.',
     otherWeapons: 'Autres armes',
+    otherKills: 'Autres frags',
   },
   weaponAccuracy: {
     title: 'Précision par rôle',
@@ -816,6 +826,8 @@ const EN_TEXT: SquadText = {
     waypointAriaLabel: 'Open on Halo Waypoint',
     replayAriaLabel: 'Open the 2D replay of the match',
     sortByAriaLabel: (col) => `Sort by ${col}`,
+    scoreTooltip:
+      'Final match score: the team, then the opposing team. In modes played in rounds, the ROUNDS won and lost are shown instead — the API point score can favour the losing side there.',
     winRateHistTooltip: 'Win rate for this squad across all their shared matches.',
     winProbTooltip: 'Win probability estimated before the match, from both teams\' MMR.',
     teamMmrTooltip: 'Average estimated skill level (MMR) of the team.',
@@ -986,6 +998,7 @@ const EN_TEXT: SquadText = {
     title: 'Tools of destruction',
     description: 'Cumulative kills per weapon over shared matches. Sorted ASC: rare weapons on top, primaries at the bottom.',
     otherWeapons: 'Other weapons',
+    otherKills: 'Other kills',
   },
   weaponAccuracy: {
     title: 'Accuracy by role',

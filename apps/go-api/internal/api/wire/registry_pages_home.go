@@ -31,6 +31,9 @@ func (r *ServiceRegistry) HomeCtx(ctx context.Context, slug string) (port.HomeSe
 		WithSquadSessionTeammates(duckdb.NewSquadRepo(pdb), r.friendGamertagsResolver()).
 		WithCareerLive(r.newCareerLiveService(pdb, homeRepo)).
 		WithSkillBadgeResolver(skillBadgeResolverFor(pdb.TitleSlug)).
+		// Score en MANCHES des tuiles d'accueil : MÊME table que la vue match, l'historique
+		// et l'escouade — les quatre surfaces doivent dire le même nombre.
+		WithRoundsDecide(r.roundsDecideFor(pdb)).
 		// Rejeu 2D des tuiles de match (lien à côté de la playlist) : MÊME service que
 		// l'endpoint /replay et l'Explorer — une seule résolution de chemin dans le
 		// dépôt. Seul AvailableSet est appelé : un listing de dossier par requête.
@@ -209,7 +212,10 @@ func (r *ServiceRegistry) TeammatesCtx(ctx context.Context, slug string) (port.T
 		// Rejeu 2D du tableau historique de l'escouade : MÊME service que l'endpoint
 		// /replay et la Match View (une seule résolution de chemin dans le dépôt).
 		// Seul AvailableSet est appelé : un listing de dossier par requête.
-		WithReplay(r.replayServiceFor(pdb))
+		WithReplay(r.replayServiceFor(pdb)).
+		// Score en MANCHES du tableau historique de l'escouade : MÊME table que la vue
+		// match et l'Explorateur, pour que les trois surfaces s'accordent.
+		WithRoundsDecide(r.roundsDecideFor(pdb))
 	// Axe « Objectifs » par opportunité du radar synergie : gated par la capability
 	// match.objective.stats (Infinite ; absente pour Halo 5 → axe retiré de toutes
 	// les séries). Source SHARED → couvre aussi les coéquipiers non suivis.

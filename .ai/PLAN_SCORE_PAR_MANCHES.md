@@ -411,12 +411,84 @@ n'est ouvert pour elle (decision explicite, pas un oubli).
 
 ---
 
+## 8bis. E9 — COHERENCE DE TOUTES LES SURFACES + REVUE ADVERSARIALE — **CLOS le 2026-08-29**
+
+Demande utilisateur : « faut que les scores soient coherents dans leur affichage sur toute
+l'app » + « fais la revue quand meme ».
+
+### Inventaire VERIFIE des surfaces qui affichent un score d'EQUIPE
+
+| Surface | Composant | Etat |
+|---|---|---|
+| Vue match | `MatchHeader.card` | manches + (i) + points grises |
+| Explorateur / Historique / Carriere | `ExplorerMatchesTable` | manches + infobulle d'en-tete |
+| Rejeu 2D + export video | bandeau / ecran de fin | verdict = API, compte vivant = film |
+| Accueil | `match-card` | **cable en E9** |
+| Escouade (synergies) | `SquadSynergyHistoryTable` | **cable en E9** + infobulle |
+| Sessions (solo ET escouade) | `SessionMatchesTable` | **aucun score d'equipe** : `SessionDetailMatchRow` n'en porte pas, la colonne est masquee par `SESSION_HIDDEN_COLUMNS`. Rien a rendre coherent. |
+
+### Ce que E9 a cable
+- [x] Escouade : 4 colonnes de plus a Q30 (manches permutees par le MEME `CASE` que les
+      points + `game_variant_name`), `SquadMatchRow`, `buildSquadMatchHistory`,
+      `WithRoundsDecide` sur le service, `score_kind` au contrat, infobulle d'en-tete.
+- [x] Accueil : `canonical.TeamSnapshot.RoundsWon` + `MatchSummary.RoundsTotal` (additif,
+      ADR 0005), 3 colonnes de plus a la requete `player_matches`, `nonNegPtr` pour la
+      sentinelle -1, `buildScoreLabelCanonical` passe par `ReadTeamScore`.
+- [x] Dette REDUITE au passage : `BuildRecentMatchesWithFavoritesFromCanonical` passe de 6
+      parametres a 4 (`RecentMatchesOptions`) — le seuil du depot est 5.
+
+### Revue adversariale — 4 relecteurs en contexte frais, aveugles entre eux
+Lentilles L1 (ecritures DuckDB/anti-ART), L4 (correction des donnees), L2+L3 (multi-titre +
+anti-patterns), L6 (couverture reelle des tests). Chacun avec le contrat du lot et la liste
+explicite des fichiers a relire (le worktree est partage avec une autre session).
+
+**Bilan : 10 constats recevables, 48 conditions verifiees qui tiennent.**
+
+P0/P1 CORRIGES dans le lot :
+- [x] **P0 (trouve en verifiant un P2)** — `applyTeamScore` permutait les points sans
+      permuter les MANCHES : un joueur du camp 1 sur un Oddball voyait « 1 - 2 » sur une
+      victoire. La fonction n'avait AUCUN test ; 6 poses, mutation verifiee.
+- [x] **P1 (L2/L3)** — le cablage de l'accueil NE PRENAIT PAS : l'endpoint `/pages/home`
+      passe par `HomeCtxWithAuth`, factory qui n'avait pas `WithRoundsDecide` (seule
+      `HomeCtx`, qui ne sert que l'image OpenGraph, l'avait). Les 3 factories l'injectent
+      desormais.
+- [x] **P1 (L4)** — sur une variante declaree dont les manches finissent a EGALITE (temoin
+      `adb93fb7`), le serveur retombe sur les points et publie `score_kind = "points"` ;
+      `finalScoreFromHeader` filtrait sur « rounds » et renvoyait l'ecran de fin du rejeu
+      vers les points de la derniere manche. Le critere est desormais la PRESENCE des deux
+      nombres, jamais leur nature.
+- [x] **P1 (L6) x4** — quatre chemins n'etaient pines par aucun test : l'indexation par
+      `TeamId` (et non par position) de `ExtractTeamRoundsByID` *et* de sa jumelle
+      `ExtractTeamScoresByID` ; la permutation des manches en vue match pour le camp 1 ;
+      la lecture de la table `[rounds_decide]` par l'historique ; la meme par l'escouade.
+      12 tests ajoutes, chacun verifie par mutation.
+- [x] **P2 (L6) x2** — l'aide (i) de la vue match n'etait pas asseree ABSENTE en mode
+      points ; `exportFinalScore` (panneau repeint dans la video) n'avait aucun test.
+      Corriges tous les deux.
+- [x] **P2 (L2/L3)** — la chaine FR de l'infobulle escouade etait ecrite sans accents.
+
+P2 CONSIGNES, non traites (regle 7 du contrat d'execution) : cf. §9.
+
 ## 9. DECOUVERTES (hors perimetre — notees, NON traitees)
 
 - **2026-08-29 (E1)** — `go test ./...` sort DEUX echecs sans aucun rapport avec ce lot, deja
   presents avant : `internal/archlint TestNoLocalLongestRun` (balayage « plus longue serie »
   local dans `cmd/oddball-terrain/confront.go`, fichier non touche ici) et
   `internal/himap` qui depasse le timeout de 600 s. Notes, NON traites (regle 7).
+- **2026-08-29 (E9, revue L2/L3 + L4)** — `score_kind` est produit pour l'historique,
+  l'Explorateur et l'escouade mais AUCUN code web ne le lit sur ces trois surfaces (leur
+  infobulle d'en-tete est statique). Trois champs de contrat sans consommateur (regle 7).
+  A trancher : soit le front s'en sert pour marquer la ligne, soit on retire le champ de
+  ces trois contrats. NON traite.
+- **2026-08-29 (E9, revue L1 + L2/L3)** — `migration/steps_shared.go:236` avale l'erreur de
+  `CREATE OR REPLACE VIEW v_match_full` (`_, _ = db.ExecContext`). Si ce DDL echouait, le
+  step `refresh_views_after_team_rounds` serait enregistre comme applique sans avoir rien
+  fait, et ne rejouerait jamais. Pre-existant, mais ce lot en DEPEND. NON traite.
+- **2026-08-29 (E9, revue L1)** — divergence PRE-EXISTANTE sur les matchs FFA
+  (`team_id >= 2`) : `applyTeamScore` (historique) les traite comme le camp 1,
+  `buildScoreLabelFromMeta`/`applyMatchHeaderScore` (vue match) comme le camp 0. Les deux
+  comportements sont anterieurs au lot et ont ete PRESERVES a l'identique. Un score
+  d'equipe n'a de toute facon pas de sens en FFA. NON traite.
 - **2026-08-29 (E5b)** — `analysis.buildHomeScoreLabel` (chemin LEGACY de l'accueil) n'a plus
   AUCUN appelant de production : seul le chemin canonical (`buildScoreLabelCanonical`) est
   route. Code mort entretenu par ses propres tests — l'anti-pattern n°1 du CLAUDE.md.
@@ -437,6 +509,7 @@ n'est ouvert pour elle (decision explicite, pas un oubli).
 |---|---|---|---|
 | 2026-08-29 | Plan | Ecrit | Audit fait, 3 arbitrages tranches (§6). |
 | 2026-08-29 | E2b | **CLOS** | Filtre par variante declaree (question utilisateur) : 26 matchs au lieu de 1 942. `--apply` passe, 26/26 ecrits, 25 basculent en manches. |
+| 2026-08-29 | E9 | **CLOS** | Accueil + escouade cables (les 6 surfaces auditees, Sessions n'affiche aucun score d'equipe). Revue adversariale 4 relecteurs : 10 constats recevables, dont 1 P0 et 6 P1 corriges + 12 tests poses. |
 | 2026-08-29 | E8 | **CLOS** | ADR 0032, skill db-schema (piege des vues), COMMANDS EN+FR, tests de service migres, thought_log. `gate-push` et revue adversariale `[!]` : worktree partage. |
 | 2026-08-29 | E7 | **CLOS** | Ecran de fin et export : le resultat vient de l API, plus les points de la derniere manche. Bandeau : compte de manches en clair, derive du film. |
 | 2026-08-29 | E6 | **CLOS** | Vue match : manches + (i) + score API grise. Explorateur : infobulle d en-tete etendue. Accueil et coequipiers `[!]`. |

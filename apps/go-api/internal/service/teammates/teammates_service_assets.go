@@ -233,9 +233,11 @@ func computeMapBreakdown(matches []domain.SquadMatchRow) []domain.MapBreakdownRo
 //
 // replays : ensemble des matchs ayant un artefact de rejeu 2D, résolu UNE FOIS par
 // requête (nil = aucun rejeu publié sur les lignes).
+// roundsDecide : table `game_variant_name -> le resultat se lit en MANCHES` (ADR 0032).
+// Nil -> lecture en points, le comportement d'avant le 2026-08-29.
 func buildSquadMatchHistory(
 	matches []domain.SquadMatchRow, mapWR map[string][2]int, titleSlug string,
-	replays port.ReplayAvailability,
+	replays port.ReplayAvailability, roundsDecide map[string]bool,
 ) []domain.SquadMatchHistoryRow {
 	provideTeamMMR := games.ProvidesTeamMMR(titleSlug)
 	seen := make(map[string]struct{}, len(matches))
@@ -261,11 +263,19 @@ func buildSquadMatchHistory(
 				deltaMMR = &d
 			}
 		}
-		// Libellé de score : source unique (analysis.TeamScoreLabel), pas une 3e copie du
-		// format. Manches non portées par cette ligne — lecture en points, à l'identique.
-		scoreLabel := analysis.TeamScoreLabel(analysis.TeamScoreInput{
+		// Score de la ligne : points ou MANCHES, tranché par la source unique
+		// (analysis.ReadTeamScore) — la MÊME que la vue match et l'historique, pour que les
+		// trois surfaces ne puissent pas afficher trois nombres différents du même match.
+		scoreLabel, scoreKind := "", ""
+		if d, ok := analysis.ReadTeamScore(analysis.TeamScoreInput{
 			MyPoints: m.MyTeamScore, EnemyPoints: m.EnemyTeamScore,
-		})
+			MyRoundsWon: m.MyRoundsWon, EnemyRoundsWon: m.EnemyRoundsWon,
+			RoundsTotal:  m.RoundsTotal,
+			RoundsDecide: roundsDecide[strings.TrimSpace(m.GameVariantName)],
+		}); ok {
+			scoreLabel = analysis.FormatTeamScoreLabel(d)
+			scoreKind = string(d.Kind)
+		}
 		var winRate *float64
 		var winRateTotal *int
 		if mapWR != nil {
@@ -302,6 +312,7 @@ func buildSquadMatchHistory(
 			EnemyMMRAvg:             enemyMMR,
 			DeltaMMR:                deltaMMR,
 			ScoreLabel:              scoreLabel,
+			ScoreKind:               scoreKind,
 			HasReplay:               replays.Has(m.MatchID),
 			DurationSeconds:         m.DurationSeconds,
 			GameplayDurationSeconds: m.GameplayDurationSeconds,

@@ -51,11 +51,16 @@ type TeammatesService struct {
 	// utiliser squadLoader.LoadFor (resolution dynamique par gamertag).
 	playerMatchesRepo port.PlayerMatchesRepository
 	titleSlug         string
-	gamertag          string
+	// roundsDecide : variantes dont le RESULTAT se lit en manches (regulation.toml).
+	// Nil/absente -> lecture en points.
+	roundsDecide map[string]bool
+	gamertag     string
 	// squadLoader (optionnel) : utilise pour charger les canonical rows des
 	// coequipiers (mode squad du SessionBriefing). Si nil, le briefing degrade
 	// en mode solo (SoloKPIs uniquement, pas de squad verdict).
 	squadLoader squadagg.SquadV2Loader
+	// killSourceRepo (optionnel) : kills par SOURCE DE DÉGÂT du film. Cf. WithKillSourceRepo.
+	killSourceRepo port.KillSourceClassRepository
 	// medalDefs (optionnel) : résout les labels/descriptions anglais des médailles
 	// depuis metadata.medal_definitions. Si nil, le digest est retourné sans
 	// labels (medal_id et count seulement).
@@ -93,11 +98,30 @@ func (s *TeammatesService) WithPlayerMatchesRepo(repo port.PlayerMatchesReposito
 	return s
 }
 
+// WithRoundsDecide injecte la table `game_variant_name -> le resultat se lit en MANCHES`
+// (regulation.toml [rounds_decide], ADR 0032). Sans injection, le tableau de l'escouade
+// affiche le score de l'API — jamais une regression, mais une incoherence avec la vue match
+// si le titre en declare : c'est pourquoi le wiring l'injecte toujours.
+func (s *TeammatesService) WithRoundsDecide(roundsDecide map[string]bool) *TeammatesService {
+	s.roundsDecide = roundsDecide
+	return s
+}
+
 // WithSquadLoader injecte le loader per-gamertag utilise pour le SessionBriefing
 // mode squad (chargement des canonical rows de chaque coequipier en parallele
 // via TitlePlayerResolver). Si non cable, le briefing degrade en mode solo.
 func (s *TeammatesService) WithSquadLoader(loader squadagg.SquadV2Loader) *TeammatesService {
 	s.squadLoader = loader
+	return s
+}
+
+// WithKillSourceRepo injecte le loader des kills par SOURCE DE DÉGÂT du film — ceux que
+// l.attribution arme-à-feu ne peut pas voir (répulseur, bobines, chute), faute de record de
+// dégât du tireur. Optionnel : nil (ou titre sans capability `film.kill_source`, le câblage
+// n.injecte alors rien) => ces kills restent dans « Non attribué », exactement comme avant
+// le lot du 2026-08-29.
+func (s *TeammatesService) WithKillSourceRepo(repo port.KillSourceClassRepository) *TeammatesService {
+	s.killSourceRepo = repo
 	return s
 }
 
@@ -329,7 +353,8 @@ func (s *TeammatesService) GetPage(
 		}
 		mapBreakdown = enrichMapBreakdownWithSquadStats(mapBreakdown, squadStats)
 		matchHistory = buildSquadMatchHistory(
-			allSquadRows, squadStatsToWinTotal(squadStats), s.titleSlug, s.replayAvailability(ctx))
+			allSquadRows, squadStatsToWinTotal(squadStats), s.titleSlug,
+			s.replayAvailability(ctx), s.roundsDecide)
 		sessionTimeline = buildSquadSessionTimeline(allSquadRowsForTimeline)
 		mapHeatmap = s.buildSquadMapHeatmap(ctx, allSquadRows, req.SelectedGamertags, issues)
 		impactMatrix = s.buildSquadImpactMatrix(ctx, allSquadRows, playerXUID, s.gamertag, req.SelectedGamertags)

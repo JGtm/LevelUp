@@ -65,6 +65,10 @@ type HomeService struct {
 	// match (dégradation gracieuse, le label suffit). Signature (tierEN capitalisé,
 	// subTier 0..6 ; 0 = Onyx) → URL. Garde le package analysis title-agnostic.
 	skillBadgeResolver func(tierEN string, subTier int) string
+	// roundsDecide : game_variant_name -> le RÉSULTAT du match se lit en MANCHES
+	// (regulation.toml [rounds_decide], ADR 0032). Nil/absente -> les tuiles affichent le
+	// score de l'API, comme avant. Injectée par WithRoundsDecide.
+	roundsDecide map[string]bool
 	// sessionTeammatesLoader (optionnel) : charge les coéquipiers (même équipe que
 	// le joueur principal) sur une liste de matchs, pour renseigner
 	// SessionSummaryItem.Teammates des sessions escouade (deep-link card → /squad).
@@ -103,6 +107,15 @@ func (s *HomeService) WithDemoMode(demo bool) *HomeService {
 // pour permettre le chaînage.
 func (s *HomeService) WithSkillBadgeResolver(f func(tierEN string, subTier int) string) *HomeService {
 	s.skillBadgeResolver = f
+	return s
+}
+
+// WithRoundsDecide injecte la table `game_variant_name -> le résultat se lit en MANCHES`
+// (regulation.toml [rounds_decide], ADR 0032). Sans injection, les tuiles d'accueil
+// affichent le score de l'API — jamais une régression, mais une incohérence avec la vue
+// match si le titre en déclare : c'est pourquoi les TROIS factories l'injectent.
+func (s *HomeService) WithRoundsDecide(roundsDecide map[string]bool) *HomeService {
+	s.roundsDecide = roundsDecide
 	return s
 }
 
@@ -423,8 +436,15 @@ func (s *HomeService) GetHomePage(ctx context.Context, gamertag, locale string) 
 	hasRankedHistory, hasUnrankedHistory := analysis.InferHomeSkillHistoryFromCanonical(d.canonicalRows)
 	hero := analysis.BuildHeroCardFromCanonical(d.canonicalRows, gamertag, d.totalMatches, locale, hp)
 	highlights := analysis.BuildHighlightsFromCanonical(d.canonicalRows, locale)
-	recentMatches := analysis.BuildRecentMatchesWithFavoritesFromCanonical(d.canonicalRows, len(d.canonicalRows), d.favoriteIDs, locale, hp, s.skillBadgeResolver)
-	favoriteMatches := buildFavoriteMatchListCanonical(d.canonicalRows, d.favoriteIDs, locale, hp, s.skillBadgeResolver)
+	// Les tuiles d'accueil lisent le score par la MÊME règle que la vue match et les
+	// tableaux : `roundsDecide` porte les variantes qui se décident aux manches (ADR 0032).
+	recentOpts := analysis.RecentMatchesOptions{
+		Locale: locale, EffectiveHpToKill: hp,
+		SkillBadgeURL: s.skillBadgeResolver, RoundsDecide: s.roundsDecide,
+	}
+	recentMatches := analysis.BuildRecentMatchesWithFavoritesFromCanonical(
+		d.canonicalRows, len(d.canonicalRows), d.favoriteIDs, recentOpts)
+	favoriteMatches := buildFavoriteMatchListCanonical(d.canonicalRows, d.favoriteIDs, recentOpts)
 	// Placement de chaîne de PERFORMANCE sur les tuiles de match : même signal que
 	// l'Explorer (« En placement (X/Y) » au lieu d'un vide ou d'un 0 fabriqué pour une
 	// perf structurellement absente). Comptage par chaîne sur TOUT l'historique.

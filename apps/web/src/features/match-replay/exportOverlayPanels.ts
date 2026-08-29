@@ -48,7 +48,7 @@ import { readVictory, type FinalScoreReading } from './victoryLogic'
  * règle soit la MÊME ligne de code que celle du DOM (`FinalScoreLine`) — deux panneaux qui
  * annoncent le même match ne peuvent pas décider séparément.
  */
-function exportFinalScore(
+export function exportFinalScore(
   fromAPI: FinalScoreReading | null | undefined,
   fromFilm: { ally: { score: number }; enemy: { score: number } } | null,
 ): { ally: number; enemy: number } | null {
