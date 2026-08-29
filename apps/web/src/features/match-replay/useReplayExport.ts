@@ -100,6 +100,8 @@ export interface ReplayExportOptions {
     endMatchStems: readonly string[]
     variationPercent: number
     distancePercent: number
+    /** Quels stems sont de la voix, lesquels de la musique (cf. `useReplaySound.exportTrack`). */
+    families: { voice: readonly string[]; music: readonly string[] }
   }
   /** Le volume réglé dans la page. Le mixage le suit, même haut-parleurs coupés (décision D6). */
   soundVolume?: number
@@ -507,6 +509,7 @@ async function mixExportAudio(
       // cette garde, un extrait des minutes 2 a 4 se terminait sur la voix d'annonceur et la
       // fanfare de victoire : le son affirmait un fait faux sur l'extrait.
       endMatchStems: reachesMatchEnd(o, bounds) ? track.endMatchStems : [],
+      families: track.families,
       volume: o.soundVolume ?? 1,
       urlOf: soundUrlOf,
     },

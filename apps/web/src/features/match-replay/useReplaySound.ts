@@ -48,7 +48,14 @@ import { useSettings } from '@/features/settings/queries'
 import { seededRandom, soundUrlOf } from './replayAudioMix'
 
 import { persistPreference, readStoredFlag, readStoredNumber } from './replayPreferences'
-import { endMatchSounds, endMatchSoundStems, type EndMatchSoundSpec } from './endMatchSound'
+import {
+  END_FFA_WIN_VOICE_STEMS,
+  END_MUSIC_STEMS,
+  END_VOICE_STEMS,
+  endMatchSounds,
+  endMatchSoundStems,
+  type EndMatchSoundSpec,
+} from './endMatchSound'
 import type { ReplayLocale } from './i18n'
 import { ReplayAudioPlayer } from './replayAudio'
 import type { ReplayDocumentReady } from './replayNormalize'
@@ -66,6 +73,7 @@ import {
   sideResolverFromScoreboard,
   type ScoreboardSide,
 } from './objectiveSound'
+import { ROUND_OVER_SOUND_STEMS } from './roundOverSound'
 import { pickVariantStem, stemsOf, type ReplaySoundEvent } from './replaySoundVariants'
 import {
   advanceSoundCursor,
@@ -90,6 +98,15 @@ export interface ReplayExportTrack {
   timeline: readonly ReplaySoundEvent[]
   /** Les prises de FIN DE PARTIE : elles n'ont pas d'instant sur la piste. */
   endMatchStems: readonly string[]
+  /**
+   * QUELS STEMS SONT DE LA VOIX, ET LESQUELS SONT DE LA MUSIQUE — pour les pistes separees du
+   * clip exporte. Tout ce qui n'y figure pas est un BRUITAGE : c'est le cas de tres loin le plus
+   * courant, et le defaut le plus sur (un son mal classe reste dans le mixage complet).
+   *
+   * La VOIX ne se limite pas a la fin de match : l'annonceur dit aussi la fin de MANCHE, et ce
+   * son-la vit dans la piste, mele aux bruitages.
+   */
+  families: { voice: readonly string[]; music: readonly string[] }
   /** Reglage d'instance de la variation d'arme, lu a l'appel (page admin). */
   variationPercent: number
   /**
@@ -474,6 +491,7 @@ export function useReplaySound(
       // voix tiree, plus la musique. Les confondre faisait jouer les deux prises a la fois.
       // Le tirage est SEME pour que deux exports du meme match sonnent pareil (decision D7).
       endMatchStems: endMatchSoundsFor(endMatchRef.current),
+      families: soundFamiliesFor(endMatchRef.current, locale),
       variationPercent: tuning.variationPercentRef.current,
       distancePercent: tuning.distancePercentRef.current,
     }),
@@ -506,4 +524,29 @@ export function useReplaySound(
 function endMatchSoundsFor(spec: EndMatchSoundSpec | null): string[] {
   if (!spec) return []
   return endMatchSounds(spec.outcome, spec.ffa, spec.locale, seededRandom(spec.outcome.length))
+}
+
+/**
+ * soundFamiliesFor — quels stems sont de la VOIX, quels stems sont de la MUSIQUE.
+ *
+ * On liste TOUTES les prises possibles, pas seulement celle qui a ete tiree : le classement doit
+ * valoir quel que soit le tirage, et un stem de trop dans la liste ne coute rien (rien ne le
+ * jouera).
+ *
+ * LA VOIX DE FIN DE MANCHE EST DE LA VOIX. Elle vit dans la piste, melee aux bruitages, et c'est
+ * la seule voix qu'un extrait de milieu de match peut contenir.
+ */
+function soundFamiliesFor(
+  spec: EndMatchSoundSpec | null,
+  /** Absente (anciens appels), la voix de fin de manche n'est pas dans la piste non plus. */
+  locale: ReplayLocale | undefined,
+): { voice: readonly string[]; music: readonly string[] } {
+  const voice: string[] = locale ? [ROUND_OVER_SOUND_STEMS[locale]] : []
+  const music: string[] = []
+  if (spec) {
+    voice.push(...END_FFA_WIN_VOICE_STEMS[spec.locale])
+    for (const parIssue of Object.values(END_VOICE_STEMS)) voice.push(...parIssue[spec.locale])
+    music.push(...Object.values(END_MUSIC_STEMS))
+  }
+  return { voice, music }
 }
