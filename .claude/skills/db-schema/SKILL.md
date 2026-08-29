@@ -32,6 +32,18 @@ filepath.Join(repoRoot, "data", "warehouse", "shared_matches_v2.duckdb")
 ### match_registry — 1 ligne par match unique
 Colonnes clés : `match_id`, `start_time`, `end_time`, `map_id`, `pair_name`, `playlist_id`, `team_game`
 
+**Score et manches** : `team_0_score` / `team_1_score` = score du mode AFFICHÉ par le jeu
+(`CoreStats.Score`). `team_0_rounds_won` / `team_1_rounds_won` / `rounds_total` = les MANCHES
+(ADR 0032, 2026-08-29). Sur un mode qui se décide aux manches, le score est un CUMUL DE POINTS
+qui peut donner la victoire au camp qui en a le moins : lire les manches, via
+`analysis.ReadTeamScore` (jamais une comparaison de score à la main). `rounds_total` est le MAX
+des deux camps. NULL = inconnu (ligne antérieure au backfill, FFA, titre sans la donnée) → on
+retombe sur les points. Rattrapage : `cmd/backfill-team-rounds`.
+
+**Piège des vues** : `v_match_full` est un `SELECT mr.*` — DuckDB FIGE l'étoile à la création.
+Toute colonne ajoutée à `match_registry` ET lue par cette vue exige un second step de migration
+qui recrée la vue (modèle : `refresh_views_after_team_rounds`).
+
 ### match_participants — stats de tous les joueurs (31 colonnes)
 Colonnes clés : `match_id`, `xuid`, `gamertag`, `outcome` (1=Tie,2=Win,3=Loss,4=DNF), `kills`, `deaths`, `assists`, `shots_fired`, `shots_hit`, `damage_dealt`, `damage_taken`, `mmr`, `team_id`, `rank`
 

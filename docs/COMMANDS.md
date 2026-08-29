@@ -73,6 +73,18 @@ go run ./cmd/levelup backfill --all          --weapons        [--force]   # film
 go run ./cmd/levelup backfill --gamertag X --citations-recompute-all
 ```
 
+Rounds of round-decided modes (ADR 0032) — a column only the API can fill, so a re-sync
+never repairs it. **Server stopped** for `--apply` (single writer, ADR 0013):
+
+```bash
+# dry run: no write, no write lock taken
+go run ./cmd/backfill-team-rounds --gamertag X
+
+# apply — restricted BY DEFAULT to the variants declared in regulation.toml
+# [rounds_decide] (26 matches, ~7 s). --all covers the whole corpus (~1 900 API calls).
+go run ./cmd/backfill-team-rounds --gamertag X --apply [--all] [--limit N] [--match ID]
+```
+
 ### Backup / restore
 
 ```bash

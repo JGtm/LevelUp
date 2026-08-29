@@ -1,3 +1,103 @@
+## [2026-08-29] Kills hors arme a feu — etape 6 : cloture partielle (registre + delivery-checklist) — En cours (2 gates suspendus a un tiers)
+
+**Contexte** : etape 5 close cote code. L'etape 6 est faisable SAUF ses deux gates, qui
+passent tous deux par le paquet `internal/service` casse par une autre session.
+
+**Fait** : quatre lignes au registre `.ai/V7.5/REGISTRE_REPORTS.md` — le lot avec sa mesure
+d'entree et ses deux reserves ouvertes ; la reserve `SOUS_RESERVE` du repulseur avec son
+UNIQUE match datable ; la vignette impossible pour la chute ; les vehicules/tourelles laisses
+hors perimetre alors que le pont existe desormais (le commentaire `frag_distribution.go`
+disait « en attente du killsource » — ce lot pose exactement ce pont).
+
+**Skill `delivery-checklist` passe.** Zero `fmt.Println`/`log.Printf` introduit, zero
+TODO/FIXME, zero hex couleur sous `features/` ou `components/`. `tsc -b --force` (cache
+`.tsbuildinfo` PURGE, le piege du faux vert incremental documente par le skill) exit 0.
+`npm run lint` : 0 erreur, 24 avertissements PRE-EXISTANTS (TanStack Table). Tous les
+fichiers neufs sous 500 L (le plus gros : 264 L).
+
+**Une exception de seuil, assumee et ecrite** : `games/weapons/registry.go` passe de 599 a
+636 L. C'est une TABLE DE DONNEES et les 37 lignes sont 6 entrees + leur justification ; la
+decouper serait pire que la laisser. Aucun linter de longueur de FICHIER n'est actif
+(`funlen` porte sur les fonctions, `lll` sur les lignes).
+
+**Deux rouges qui ne sont pas les notres, a ne pas confondre.**
+
+1. **GATE 5 et GATE 6 bloques** : `internal/service` ne compile plus ses tests depuis
+   `68e44770b` (autre session, `buildScoreLabelFromMeta` retire, `service_test.go` l'appelle
+   encore trois fois). `make go-api-test`, `make gate-push` et les tests d'integration
+   complets attendent leur stabilisation. Verifie a nouveau apres leur commit `8ccc37263`
+   (« score-manches E6 ») : toujours casse. NON CORRIGE (regle 7).
+2. **CI de branche rouge, PRE-EXISTANTE** : le job `CI` de `feat/v75` echoue depuis le push
+   du 2026-08-28 16:05 (run 33188327807) — donc AVANT ce lot, et rien de ce chantier n'est
+   pousse. Le skill demande de le signaler avant de declarer un lot clos : c'est fait, et ce
+   n'est pas de ce lot.
+
+**Ce qui a ete joue a la main, et qui est vert** : `go build ./...`, `go vet` (hors paquet
+casse), `go test` sur fragdist / teammates / killsourceload / domain / port / games /
+api-wire, `make check-types`, `make test-web` complet (529 fichiers, 5 402 tests, 0 echec),
+et la verification VISUELLE de la vue match.
+
+**Conclusion / prochaine etape** : le lot est COMPLET cote code et cote documentation ; il
+n'est pas CLOS, faute de pouvoir jouer ses deux gates finaux. Rien n'est commite. Deux
+decisions attendent l'utilisateur : (a) que faire du lot SCINDE par `68e44770b`, qui a
+embarque quatre de ses fichiers sous son propre message ; (b) quand rejouer les gates une
+fois l'autre session stabilisee.
+
+## [2026-08-29] Kills hors arme a feu — etape 5 : les agregats — En cours (code complet, GATE 5 bloque par un tiers)
+
+**Contexte** : suite de l'etape 4 (vue match). Propagation aux cinq surfaces agregees, dans
+l'ordre prevu par D7 (la vue match d'abord, verifiee a l'ecran, puis les agregats).
+
+**Decision technique principale — UN SEUL foyer de chargement.** Six surfaces construisent
+le meme sunburst. Recopier six fois « valider les filtres, appeler le repo, avaler
+ErrCapabilityNotSupported, logguer le compteur » aurait garanti la divergence (regle
+CLAUDE.md n6). D'ou le paquet FEUILLE `internal/service/killsourceload` : feuille et non
+`service`, parce que `service/teammates` ne peut pas importer son parent. La vue match y a
+ete ramenee au passage — une seule copie au total, pas deux.
+
+**Deux pieges evites, et ils valent d'etre notes.**
+
+1. **L'interface nil de Go.** `killSourceClassRepoFor` rend desormais l'INTERFACE
+   `port.KillSourceClassRepository`, pas `*duckdb.KillSourceClassRepo`. Rendre un pointeur
+   concret nil aurait produit une interface NON nil cote appelant (interface non-vide
+   portant un pointeur nil) : le garde `if repo != nil` serait passe, et le premier appel
+   aurait dereference un receveur nil sur toute page d'un titre sans capability.
+2. **La signature de l'Escouade.** `squadFragClassesByPlayer` portait deja 6 parametres ; la
+   3e provenance en aurait fait 7. Regroupes en `squadFragInputs` — meme motif que
+   `killFeedInputs` cote service — ce qui REPASSE sous la regle des 5 au lieu de l'enfoncer.
+
+**Item 5.2 statue `[~]`, verifie sur pieces** : les cinq surfaces qui consomment
+`frag_distribution` rendent TOUTES le meme `FragSunburst`, qui dessine « Non attribue »
+comme les autres classes — le denominateur est donc structurellement a l'ecran partout ou
+ces classes apparaissent. Et aucun KPI ne les consomme : l'« arme favorite » lit
+`v_weapon_kills`, ou ces cles n'entrent pas (pas d'id numerique). Il n'y avait aucun
+compteur nu a habiller ; la reserve du GATE 0 est tenue sans code neuf.
+
+**Resultats observes** : `go build ./...` exit 0, `go vet` propre sur tout sauf le paquet
+bloque (ci-dessous), `go test` vert sur fragdist / teammates / killsourceload / domain /
+port / games / api-wire, `make check-types` exit 0, et `make test-web` COMPLET vert : 529 fichiers,
+5 402 tests, 0 echec.
+
+**GATE 5 BLOQUE, ET PAS DE NOTRE FAIT — arret propre (regle 9).** Le paquet racine
+`internal/service` ne compile plus ses TESTS : le commit `68e44770b` (« score-manches(E5) »,
+15:00:46), produit par une AUTRE session dans ce meme worktree, a retire
+`buildScoreLabelFromMeta` de `match_view_builders_header.go` alors que `service_test.go`
+l'appelle encore a trois endroits. Aucune ligne de ce lot ne touche ces deux fichiers. Ni
+`make go-api-test` ni `go test -tags=integration ./...` ne peuvent aboutir tant que leur
+refactor n'est pas stabilise. NON CORRIGE (regle 7).
+
+**INCIDENT A TRANCHER AVANT TOUT COMMIT** : ce meme commit `68e44770b` a embarque des
+fichiers de CE lot qui etaient en cours dans l'arbre de travail — `match_view_service.go`,
+`match_view_data_loaders.go`, `registry_pages.go`, `registry_pages_home.go` (verifie :
+`git show HEAD:...` contient bien `killSourceRepo` et `killSourceClassRepoFor`). Le lot est
+donc SCINDE entre ce commit et l'arbre courant. Rien n'est perdu, mais l'historique ne
+raconte pas ce qui s'est passe, et un `git revert` de ce commit emporterait une partie du
+lot. Decision utilisateur requise.
+
+**Conclusion / prochaine etape** : code de l'etape 5 complet, items statues. Etape 6
+(cloture) suspendue au deblocage du gate. Aucun commit fait — la regle du depot est de
+demander, et l'incident ci-dessus rend la question moins anodine que d'habitude.
+
 ## [2026-08-29] Kills hors arme a feu — etape 4 : la vue match — Complete (etape 4 close, verification visuelle CONFIRMEE)
 
 **VERIFICATION VISUELLE, faite le 2026-08-29 sur le `make dev` de l utilisateur** : match
@@ -75991,3 +76091,61 @@ variantes Oddball — les autres modes a manches affichent deja leur compte de m
 score, les declarer ne changerait rien a l'ecran et risquerait de casser les cas a manche
 nulle. Rapport : `.ai/V7.5/RAPPORT_MANCHES_2026-08-29.md`. Suite : E1 (colonnes
 `team_{0,1}_rounds_won` + `rounds_total`, extraction sync jumelle de `ExtractTeamScoresByID`).
+
+---
+
+## [2026-08-29] Score par manches — E1 a E8 : de la colonne au rejeu
+
+**Statut** : Complete cote code (plan `.ai/PLAN_SCORE_PAR_MANCHES.md`, E0 a E8 closes ; deux
+surfaces statuees `[!]`, cf. « prochaine etape »).
+
+**Contexte** : suite de l'entree E0 du meme jour. La mesure ayant refute la regle evidente,
+la detection est devenue une table MESUREE par variante (`regulation.toml [rounds_decide]`,
+schema 3) et non une heuristique.
+
+**Decision technique principale** : UNE regle, UN endroit — `analysis.ReadTeamScore`, pure et
+title-agnostic, a trois conditions cumulatives (variante declaree ET au moins deux manches
+jouees ET manches non a egalite). Tout echec revient aux points, c'est-a-dire au comportement
+d'avant. Corollaire impose par l'audit : les CINQ fabricants du libelle « X - Y » delèguent
+desormais a `analysis.TeamScoreLabel`, avec un garde-rail qui interdit la sixieme (le predicat
+bot etait passe de 8 a 36 copies apres centralisation — une factorisation sans garde-rail
+re-diverge).
+
+**Trois pieges rencontres, tous couteux s'ils avaient ete manques** :
+1. `v_match_full` est un `SELECT mr.*` et **DuckDB fige l'etoile a la creation** : les
+   colonnes ajoutees n'y apparaissaient pas, l'historique serait tombe en « Binder Error » en
+   prod. D'ou un SECOND step de migration qui recree la vue — separe du premier, parce qu'une
+   migration deja enregistree ne rejoue jamais.
+2. Points et manches se permutent ENSEMBLE selon `team_id` : les dissocier afficherait les
+   manches d'un camp a cote des points de l'autre.
+3. L'ecran de fin du rejeu (et son jumeau repeint dans la video exportee) lisait le calque du
+   film a la borne de fin — donc les points de la DERNIERE MANCHE presentes comme score du
+   match. Il prend maintenant le compte de manches de l'API. Doctrine posee : **vivant = film,
+   resultat = API**.
+
+**Decision de cout, sur question de l'utilisateur** (« pourquoi 1 942 matchs si seul Oddball
+est impacte ? ») : le backfill est restreint par defaut aux variantes declarees, lues dans le
+MEME fichier que celui qui commande l'affichage. **26 matchs au lieu de 1 942, 7 s au lieu de
+10 min.** Les matchs futurs sont renseignes a la sync pour toutes les variantes ; declarer une
+variante plus tard ne demande qu'un second passage.
+
+**Resultats observes** : 26/26 lignes ecrites, 25 basculent en affichage manches (la 26e est
+le temoin a manches egales, qui reste en points comme la regle le prescrit).
+
+**Gates** : `go test ./...` vert hors deux echecs PRE-EXISTANTS notes au plan
+(`archlint TestNoLocalLongestRun` sur `cmd/oddball-terrain`, `internal/himap` en timeout) ;
+`go test -tags=integration` persist+sync vert ; `npm run typecheck` vert ; vitest match-view +
+explorer 469 tests, match-replay + lib/replay 1 854 tests, 0 echec ; ESLint 0 erreur.
+Un flake observe une fois puis vert deux fois : `TestCareerLive_NilAPIResponse_NotCached`.
+
+**Piege de session, a retenir** : ce worktree etait partage avec une AUTRE session Claude. Son
+refactor en vol a casse la compilation du paquet `service` a deux reprises, et ses fichiers se
+melent aux miens dans `git status`. Consequence pratique : ne stager QUE des chemins nommes,
+jamais un repertoire (`git add features/match-replay/` a emporte son travail sur les sons).
+
+**Conclusion / prochaine etape** : deux surfaces restent en points, statuees `[!]` au plan —
+l'accueil (`match-card`) et la page coequipiers, dont les lignes ne portent pas les manches
+(3 chemins SQL + un champ canonical + un parametre au constructeur pur de l'accueil). A
+trancher avec l'utilisateur. Decouverte hors perimetre notee au plan : `buildHomeScoreLabel`
+n'a plus AUCUN appelant de production (chemin canonical seul en service) — code mort entretenu
+par ses tests, a supprimer dans un lot dedie.

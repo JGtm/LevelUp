@@ -1,7 +1,7 @@
 # PLAN — Afficher les MANCHES gagnees/perdues sur les modes a manches
 
 > Date : 2026-08-29 · Branche de travail : a creer depuis `feat/v75` · Statut : AUDIT FAIT,
-> EN COURS (E0 clos le 2026-08-29 ; arbitrages §6 tous tranches).
+> **TERMINE cote code le 2026-08-29** (E0 a E8 closes ; 2 gates et 2 surfaces statues `[!]`).
 >
 > Demande utilisateur : « Lorsqu'un mode compte les manches remportees pour determiner la
 > victoire ou la defaite, il faut mieux afficher les manches gagnees/perdues plutot que les
@@ -338,13 +338,26 @@ egalite », perimetre initial reduit aux 3 variantes Oddball.
 - **Gate PASSE** : `npm run typecheck` vert ; ESLint 0 erreur (4 warnings, tous dans des
   fichiers non touches : ReplayCanvas, ReplayExportDialog, ReplayFeedName, useReplaySound).
 
-### E8 — Cloture
+### E8 — Cloture — **CLOS le 2026-08-29** (sauf 2 gates, cf. ci-dessous)
 
-- [ ] ADR `docs/adr/0032-score-affiche-par-manches.md` (EN-only) : la regle, sa source, sa
-      degradation.
-- [ ] Skill `db-schema` : nouvelles colonnes. `docs/COMMANDS.md` : le backfill.
-- [ ] Entree `.ai/thought_log.md` (obligatoire) + `delivery-checklist` + `make gate-push`.
-- [ ] `adversarial-review` du diff (lot persist/sync a risque).
+- [x] ADR `docs/adr/0032-rounds-decided-score-display.md` (EN-only, regle 15) : la regle, la
+      mesure qui la fonde, la regle REFUTEE et pourquoi, les trois consequences (backfill
+      obligatoire, vue DuckDB figee, cout d'un titre = une table TOML), les 3 alternatives
+      ecartees. Reference ajoutee a l'index du CLAUDE.md.
+- [x] Skill `db-schema` : colonnes de manches + **le piege des vues** (`v_match_full` fige son
+      `SELECT *`), pour que le prochain qui ajoute une colonne ne le redecouvre pas en prod.
+- [x] `docs/COMMANDS.md` **et** `docs/FR/COMMANDS.md` (guide bilingue, regle 15) : le backfill,
+      son defaut restreint aux variantes declarees, et l'exigence serveur arrete.
+- [x] Tests de service MIGRES (pas supprimes) : les 3 ex-tests de `buildScoreLabelFromMeta`
+      deviennent 5 tests de `applyMatchHeaderScore`, dont le temoin Oddball 181-186 -> 2 - 1
+      et le contre-temoin CTF d'arene (variante non declaree -> points).
+- [x] Entree `.ai/thought_log.md`.
+- [!] `make gate-push` (~25 min) : **non lance**. Le worktree est partage avec une autre
+      session dont le travail non commite entre dans le perimetre du gate — son resultat ne
+      parlerait pas de ce lot. Les gates equivalents ont ete passes par paquet (cf. chaque
+      etape). A relancer quand le worktree est propre.
+- [!] `adversarial-review` du diff : **non lancee** (lot persist/sync a risque, elle est due).
+      A faire avant merge.
 
 ---
 
@@ -404,6 +417,12 @@ n'est ouvert pour elle (decision explicite, pas un oubli).
   presents avant : `internal/archlint TestNoLocalLongestRun` (balayage « plus longue serie »
   local dans `cmd/oddball-terrain/confront.go`, fichier non touche ici) et
   `internal/himap` qui depasse le timeout de 600 s. Notes, NON traites (regle 7).
+- **2026-08-29 (E5b)** — `analysis.buildHomeScoreLabel` (chemin LEGACY de l'accueil) n'a plus
+  AUCUN appelant de production : seul le chemin canonical (`buildScoreLabelCanonical`) est
+  route. Code mort entretenu par ses propres tests — l'anti-pattern n°1 du CLAUDE.md.
+  NON traite (regle 7) : a supprimer dans un lot dedie, avec ses tests.
+- **2026-08-29 (E8)** — `TestCareerLive_NilAPIResponse_NotCached` (internal/service) a echoue
+  UNE fois puis passe deux fois de suite : flake, probablement un TTL. Non traite.
 - **2026-08-29 (E1)** — une AUTRE session travaille dans le meme worktree (chantier « kills
   hors arme a feu ») : `.ai/thought_log.md`, `apps/web/src/features/match-replay/*` et
   `apps/web/src/lib/fda.ts` portent ses modifications non commitees. Consequence pour ce
@@ -418,6 +437,11 @@ n'est ouvert pour elle (decision explicite, pas un oubli).
 |---|---|---|---|
 | 2026-08-29 | Plan | Ecrit | Audit fait, 3 arbitrages tranches (§6). |
 | 2026-08-29 | E2b | **CLOS** | Filtre par variante declaree (question utilisateur) : 26 matchs au lieu de 1 942. `--apply` passe, 26/26 ecrits, 25 basculent en manches. |
+| 2026-08-29 | E8 | **CLOS** | ADR 0032, skill db-schema (piege des vues), COMMANDS EN+FR, tests de service migres, thought_log. `gate-push` et revue adversariale `[!]` : worktree partage. |
+| 2026-08-29 | E7 | **CLOS** | Ecran de fin et export : le resultat vient de l API, plus les points de la derniere manche. Bandeau : compte de manches en clair, derive du film. |
+| 2026-08-29 | E6 | **CLOS** | Vue match : manches + (i) + score API grise. Explorateur : infobulle d en-tete etendue. Accueil et coequipiers `[!]`. |
+| 2026-08-29 | E5 | **CLOS** | `score_kind` au contrat + cablage des deux chemins. Piege `v_match_full` (vue figee) attrape avant la prod. |
+| 2026-08-29 | E4 | **CLOS** | 5 copies du libelle centralisees + garde-rail. Format unifie sur « X - Y ». |
 | 2026-08-29 | E3 | **CLOS** | Table `[rounds_decide]` mesuree (3 variantes Oddball) + `analysis.ReadTeamScore`, regle unique aux 3 conditions cumulatives. Une entree TOML a `false` est refusee : l absence vaut deja non. |
 | 2026-08-29 | E2 | **PARTIEL** | Outil `cmd/backfill-team-rounds` livre et repete a blanc (20/20). `--apply` en attente : le serveur de dev tient la base, son arret est une decision utilisateur. La suite du plan n est pas bloquee. |
 | 2026-08-29 | E1 | **CLOS** | Colonnes + extraction + persist. 3 garde-rails de schema ont casse (auto-parite INSERT, seeder demo, bootstrap `sharedSchemaSQL`) et ont ete mis a jour. Halo 5 `[!]` : l'API carnage ne publie pas les manches. Entree thought_log groupee en fin de chantier (worktree partage avec une autre session). |
