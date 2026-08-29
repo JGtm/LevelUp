@@ -174,18 +174,30 @@ Livrable : `.ai/V7.5/RAPPORT_MANCHES_2026-08-29.md`.
 `rounds_total` pris comme `max` des deux camps, condition supplementaire « manches non a
 egalite », perimetre initial reduit aux 3 variantes Oddball.
 
-### E1 — Persistance (schema + sync)
+### E1 — Persistance (schema + sync) — **CLOS le 2026-08-29**
 
-- [ ] Migration additive `add_team_rounds` : `team_0_rounds_won`, `team_1_rounds_won`,
-      `rounds_total` sur `match_registry` (`AddColumnIfMissing`). `rounds_total` = **MAX** des
-      totaux des deux camps (E0 §4.1 : 4 matchs abandonnes portent 1 chez l'un, 0 chez
-      l'autre). La manche nulle se deduit, pas de colonne dediee.
-- [ ] `sync.ExtractTeamRoundsByID` dans `transforms_helpers.go`, **immediatement sous**
-      `ExtractTeamScoresByID`, meme doctrine (indexe par `TeamId`, jamais par position, nil
-      par camp absent, jamais de zero substitue) + tests unitaires.
-- [ ] Cablage dans `ExtractRegistry` (`transforms.go`) + persist INSERT.
-- [ ] Halo 5 : cabler si `TeamStats` porte l'equivalent, sinon laisser nil (constat ecrit).
-- **Gate** : `go test ./...` + `go test -tags=integration ./...` (persist anti-ART).
+- [x] Migration additive `add_team_rounds_to_match_registry` (fichier dedie
+      `steps_shared_team_rounds.go` — le god-file `steps_shared_core.go` est deja a 632 L,
+      regle 5 : ne pas accroitre la dette) : `team_0_rounds_won`, `team_1_rounds_won`,
+      `rounds_total` en SMALLINT via `AddColumnIfMissing`, + entree dans
+      `migration.canonicalOrder`, + `steps.go`. Aucun backfill SQL : la valeur n'existe que
+      dans le payload API (d'ou E2).
+- [x] `sync.ExtractTeamRoundsByID` dans `transforms_helpers.go`, juste sous
+      `ExtractTeamScoresByID` : indexe par `TeamId`, nil par camp absent, `rounds_total` =
+      MAX des deux camps. **7 tests** dont 4 temoins du corpus E0 (Oddball 3 manches, Slayer
+      a une manche, manche nulle, abandon 1 vs 0).
+- [x] Cablage `ExtractRegistry` (`transforms.go`) + INSERT `persistMatchRegistry` + champs
+      `domain.MatchRegistryRow`.
+- [x] Trois garde-rails de schema mis a jour **parce qu'ils ont casse** (et c'est leur role) :
+      `persist.MatchRegistryColumns` (auto-parite de l'INSERT), l'allowlist `persistOnly` du
+      seeder demo (justification ecrite : le corpus demo n'a aucun mode a manches), et
+      `sync.sharedSchemaSQL` (bootstrap des DB fraiches — 3 E2E echouaient a l'INSERT).
+- [!] Halo 5 : **non cable, faute de donnee**. `H5CarnageTeam` (`games/halo_5/dto_carnage.go`)
+      ne porte que `TeamId / Score / Rank` — l'API carnage ne publie AUCUN compteur de
+      manches. Les colonnes restent NULL pour ce titre, degradation = points (le comportement
+      actuel). A revoir si 343 expose la donnee ailleurs.
+- **Gate PASSE** : `go test ./...` (143 paquets ok), `go test -tags=integration ./internal/persist ./internal/sync` **ok**.
+      Deux echecs PRE-EXISTANTS, sans rapport avec ce lot, notes en §9 (non traites, regle 7).
 
 ### E2 — Backfill historique
 
@@ -307,7 +319,15 @@ n'est ouvert pour elle (decision explicite, pas un oubli).
 
 ## 9. DECOUVERTES (hors perimetre — notees, NON traitees)
 
-_(vide a l'ouverture)_
+- **2026-08-29 (E1)** — `go test ./...` sort DEUX echecs sans aucun rapport avec ce lot, deja
+  presents avant : `internal/archlint TestNoLocalLongestRun` (balayage « plus longue serie »
+  local dans `cmd/oddball-terrain/confront.go`, fichier non touche ici) et
+  `internal/himap` qui depasse le timeout de 600 s. Notes, NON traites (regle 7).
+- **2026-08-29 (E1)** — une AUTRE session travaille dans le meme worktree (chantier « kills
+  hors arme a feu ») : `.ai/thought_log.md`, `apps/web/src/features/match-replay/*` et
+  `apps/web/src/lib/fda.ts` portent ses modifications non commitees. Consequence pour ce
+  chantier : ne stager QUE ses propres fichiers, et grouper l'entree thought_log a la fin
+  pour ne pas emporter l'entree en cours de l'autre session.
 
 ---
 
@@ -316,4 +336,5 @@ _(vide a l'ouverture)_
 | Date | Etape | Statut | Note |
 |---|---|---|---|
 | 2026-08-29 | Plan | Ecrit | Audit fait, 3 arbitrages tranches (§6). |
+| 2026-08-29 | E1 | **CLOS** | Colonnes + extraction + persist. 3 garde-rails de schema ont casse (auto-parite INSERT, seeder demo, bootstrap `sharedSchemaSQL`) et ont ete mis a jour. Halo 5 `[!]` : l'API carnage ne publie pas les manches. Entree thought_log groupee en fin de chantier (worktree partage avec une autre session). |
 | 2026-08-29 | E0 | **CLOS** | 1 942/1 942 payloads, 0 erreur. Regle `rounds_total >= 2` REFUTEE ; detection declarative mesuree adoptee. 4 matchs Oddball prouvent le mensonge. Rapport `.ai/V7.5/RAPPORT_MANCHES_2026-08-29.md`. |

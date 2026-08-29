@@ -210,6 +210,67 @@ func ExtractTeamScoresByID(matchJSON map[string]any) (*int, *int) {
 	return p0, p1
 }
 
+// ExtractTeamRoundsByID extrait les MANCHES de team_0 et team_1 depuis le payload
+// GetMatchStats, en les indexant par `Teams[].TeamId` — jumelle exacte de
+// ExtractTeamScoresByID, et pour la même raison : l'ordre du tableau suit le rang, pas
+// l'identifiant de camp.
+//
+// SOURCE UNIQUE DES MANCHES. Le champ lu, `Teams[].Stats.CoreStats.RoundsWon` (et ses
+// voisins `RoundsLost` / `RoundsTied`), est publié par l'API depuis toujours et n'était lu
+// nulle part avant le 2026-08-29. Il porte la seule grandeur qui dise le résultat d'un mode à
+// manches : mesuré sur les 1 942 matchs à score du corpus
+// (`.ai/V7.5/RAPPORT_MANCHES_2026-08-29.md`), 4 matchs Oddball donnent la victoire à l'équipe
+// qui a le MOINS de points, et seul le compte de manches les départage.
+//
+// LE TOTAL EST LE MAX DES DEUX CAMPS, PAS LE TOTAL D'UN SEUL. Quatre matchs du corpus
+// (abandons) créditent 1 manche à un camp et 0 à l'autre : lire un seul camp les ferait
+// passer pour des matchs sans manche. Le max est la lecture sûre — il ne peut que
+// sous-estimer un camp muet, jamais inventer une manche.
+//
+// Retourne (nil, nil, nil) si aucun bloc `Teams` exploitable ; un pointeur nil par camp
+// absent (FFA, équipes au-delà de 0/1). L'appelant ne doit JAMAIS substituer un zéro à un
+// nil : « 0 manche gagnée » et « on ne sait pas » sont deux affirmations différentes.
+func ExtractTeamRoundsByID(matchJSON map[string]any) (won0, won1, total *int) {
+	teams, _ := matchJSON["Teams"].([]any)
+	wonByID := map[int]int{}
+	maxTotal := 0
+	found := false
+	for _, t := range teams {
+		team, ok := t.(map[string]any)
+		if !ok {
+			continue
+		}
+		stats, _ := team["Stats"].(map[string]any)
+		if stats == nil {
+			continue
+		}
+		core, _ := stats["CoreStats"].(map[string]any)
+		if core == nil {
+			continue
+		}
+		w := intFrom(core, "RoundsWon")
+		sum := w + intFrom(core, "RoundsLost") + intFrom(core, "RoundsTied")
+		if sum > maxTotal {
+			maxTotal = sum
+		}
+		found = true
+		wonByID[intFrom(team, "TeamId")] = w
+	}
+	if !found {
+		return nil, nil, nil
+	}
+	if w, ok := wonByID[0]; ok {
+		v := w
+		won0 = &v
+	}
+	if w, ok := wonByID[1]; ok {
+		v := w
+		won1 = &v
+	}
+	t := maxTotal
+	return won0, won1, &t
+}
+
 // parsePTDuration convertit une durée ISO 8601 "PT1H2M3.456S" en secondes.
 // Portage de _parse_duration_to_seconds() Python.
 func parsePTDuration(s string) *int {
