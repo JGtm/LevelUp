@@ -7,7 +7,6 @@
 package analysis
 
 import (
-	"fmt"
 	"regexp"
 	"strings"
 
@@ -135,19 +134,19 @@ func outcomeTone(code int) string {
 	return OutcomeToneDNF
 }
 
+// buildHomeScoreLabel — chemin LEGACY de l'accueil. Ne fabrique plus le libellé lui-même :
+// il délègue à TeamScoreLabel, source unique depuis le 2026-08-29 (cf.
+// team_score_display.go). Les manches ne sont pas encore portées par HomeMatchRow — nil
+// donc, et la lecture reste celle des points, à l'identique.
 func buildHomeScoreLabel(match legacymatch.HomeMatchRow) *string {
-	if match.Team0Score < 0 || match.Team1Score < 0 {
+	left, right := match.Team0Score, match.Team1Score
+	if match.TeamID == 1 {
+		left, right = match.Team1Score, match.Team0Score
+	}
+	label := TeamScoreLabel(TeamScoreInput{MyPoints: &left, EnemyPoints: &right})
+	if label == "" {
 		return nil
 	}
-
-	leftScore := match.Team0Score
-	rightScore := match.Team1Score
-	if match.TeamID == 1 {
-		leftScore = match.Team1Score
-		rightScore = match.Team0Score
-	}
-
-	label := fmt.Sprintf("%d-%d", leftScore, rightScore)
 	return &label
 }
 

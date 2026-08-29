@@ -173,8 +173,8 @@ func TestBuildScoreLabelCanonical_TeamZeroNotSwap(t *testing.T) {
 		Self: canonical.MatchParticipant{TeamID: &teamID},
 	}
 	got := buildScoreLabelCanonical(r)
-	if got == nil || *got != "50-30" {
-		t.Errorf("score team0: got %v, want 50-30", got)
+	if got == nil || *got != "50 - 30" {
+		t.Errorf("score team0: got %v, want 50 - 30", got)
 	}
 }
 
@@ -193,8 +193,8 @@ func TestBuildScoreLabelCanonical_TeamOneSwap(t *testing.T) {
 		Self: canonical.MatchParticipant{TeamID: &teamID},
 	}
 	got := buildScoreLabelCanonical(r)
-	if got == nil || *got != "30-50" {
-		t.Errorf("score team1: got %v, want 30-50 (perspective swapped)", got)
+	if got == nil || *got != "30 - 50" {
+		t.Errorf("score team1: got %v, want 30 - 50 (perspective swapped)", got)
 	}
 }
 
@@ -254,8 +254,8 @@ func TestBuildScoreLabelCanonical_TeamIDNilDefaultsZero(t *testing.T) {
 		},
 	}
 	got := buildScoreLabelCanonical(r)
-	if got == nil || *got != "50-30" {
-		t.Errorf("TeamID nil: got %v, want 50-30 (default team 0)", got)
+	if got == nil || *got != "50 - 30" {
+		t.Errorf("TeamID nil: got %v, want 50 - 30 (default team 0)", got)
 	}
 }
 
@@ -289,7 +289,7 @@ func TestBuildScoreLabelCanonical_ZeroScores(t *testing.T) {
 		},
 	}
 	got := buildScoreLabelCanonical(r)
-	if got == nil || *got != "0-0" {
+	if got == nil || *got != "0 - 0" {
 		t.Errorf("0-0 should be valid: got %v", got)
 	}
 }

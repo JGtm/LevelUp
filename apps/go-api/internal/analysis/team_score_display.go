@@ -1,5 +1,7 @@
 package analysis
 
+import "fmt"
+
 // team_score_display.go — CE QU'ON AFFICHE COMME SCORE D'UN MATCH : des points, ou des
 // MANCHES. Source UNIQUE de la règle, title-agnostic, sans I/O.
 //
@@ -117,4 +119,34 @@ func readPoints(in TeamScoreInput) ([2]int, bool) {
 		return [2]int{}, false
 	}
 	return [2]int{*in.MyPoints, *in.EnemyPoints}, true
+}
+
+// TeamScoreLabel rend le libellé « X - Y » d'un match, ou "" quand il n'y a rien à
+// afficher. C'est la SOURCE UNIQUE du libellé de score d'équipe.
+//
+// POURQUOI ELLE EXISTE. Avant le 2026-08-29, cinq endroits fabriquaient ce libellé —
+// en-tête de vue match, historique (qui alimente aussi l'Explorateur et la carrière), page
+// coéquipiers, et les deux chemins de l'accueil — avec DEUX formats différents (`%d-%d` et
+// `%d - %d`) et deux sources de données. Poser la règle « manches plutôt que points » sur
+// cinq copies l'aurait fait diverger cinq fois ; l'audit l'avait relevé comme la dette n°2
+// du chantier (règle 6 du CLAUDE.md, ≤ 2 copies).
+//
+// LE FORMAT EST UNIFIÉ sur « X - Y » (espaces autour du tiret) : c'était déjà celui de trois
+// des cinq appelants, et c'est le plus lisible sur un grand nombre.
+//
+// Le libellé ne dit PAS s'il parle de points ou de manches : cette information voyage
+// séparément (`ScoreKind` au contrat d'API) pour rester localisable côté client. Un libellé
+// qui porterait « manches » en dur serait un mot anglais ou français figé côté serveur.
+func TeamScoreLabel(in TeamScoreInput) string {
+	d, ok := ReadTeamScore(in)
+	if !ok {
+		return ""
+	}
+	return FormatTeamScoreLabel(d)
+}
+
+// FormatTeamScoreLabel écrit une lecture déjà tranchée. Utile à l'appelant qui a besoin de
+// la lecture ET du libellé sans repasser par la règle.
+func FormatTeamScoreLabel(d TeamScoreDisplay) string {
+	return fmt.Sprintf("%d - %d", d.Mine, d.Theirs)
 }

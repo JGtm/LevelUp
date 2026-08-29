@@ -7,7 +7,6 @@ package teammates
 import (
 	"cmp"
 	"context"
-	"fmt"
 	"log/slog"
 	"slices"
 	"sort"
@@ -262,10 +261,11 @@ func buildSquadMatchHistory(
 				deltaMMR = &d
 			}
 		}
-		var scoreLabel string
-		if m.MyTeamScore != nil && m.EnemyTeamScore != nil {
-			scoreLabel = fmt.Sprintf("%d - %d", *m.MyTeamScore, *m.EnemyTeamScore)
-		}
+		// Libellé de score : source unique (analysis.TeamScoreLabel), pas une 3e copie du
+		// format. Manches non portées par cette ligne — lecture en points, à l'identique.
+		scoreLabel := analysis.TeamScoreLabel(analysis.TeamScoreInput{
+			MyPoints: m.MyTeamScore, EnemyPoints: m.EnemyTeamScore,
+		})
 		var winRate *float64
 		var winRateTotal *int
 		if mapWR != nil {

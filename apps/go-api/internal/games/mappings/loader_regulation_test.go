@@ -4,6 +4,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"testing"
+
+	"levelup/go-api/internal/testutil"
 )
 
 // TestLoadRegulationTOMLsFromRepo — smoke test sur les VRAIS fichiers du repo :
@@ -243,7 +245,12 @@ func TestRegulationSet_NilRoundsDecide(t *testing.T) {
 // mesurées le 2026-08-29 sont déclarées, et le CTF d'arène (deux mi-temps) ne l'est PAS.
 // Sans ce test, un nettoyage de config retirerait la table sans que rien ne casse.
 func TestRegulationReelle_OddballDeclare(t *testing.T) {
-	set, err := LoadRegulationFromFile("../../../../../config/titles/halo_infinite/mappings/regulation.toml")
+	root, err := testutil.RepoRoot()
+	if err != nil {
+		t.Fatalf("racine du dépôt introuvable : %v", err)
+	}
+	set, err := LoadRegulationFromFile(
+		filepath.Join(root, "config", "titles", "halo_infinite", "mappings", "regulation.toml"))
 	if err != nil {
 		t.Fatalf("lecture de la config livrée : %v", err)
 	}

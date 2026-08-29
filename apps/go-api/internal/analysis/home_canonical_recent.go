@@ -235,13 +235,19 @@ func buildScoreLabelCanonical(r canonical.PlayerMatchRow) *string {
 			found1 = true
 		}
 	}
-	if !found0 || !found1 || score0 < 0 || score1 < 0 {
+	if !found0 || !found1 {
 		return nil
 	}
 	leftScore, rightScore := score0, score1
 	if r.Self.TeamID != nil && *r.Self.TeamID == 1 {
 		leftScore, rightScore = score1, score0
 	}
-	label := fmt.Sprintf("%d-%d", leftScore, rightScore)
+	// Délégation à la source unique du libellé (cf. team_score_display.go) : elle porte
+	// aussi le refus des scores négatifs, qui était dupliqué ici. Manches non portées par
+	// PlayerMatchRow.Summary — nil, donc lecture en points, à l'identique.
+	label := TeamScoreLabel(TeamScoreInput{MyPoints: &leftScore, EnemyPoints: &rightScore})
+	if label == "" {
+		return nil
+	}
 	return &label
 }
