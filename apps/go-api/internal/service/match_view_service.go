@@ -19,6 +19,8 @@ package service
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -321,16 +323,27 @@ func (s *MatchViewService) GetMatchView(ctx context.Context, matchID string) (do
 	// --- Appels séquentiels bloquants (meta est nécessaire pour la suite) ---
 	meta, err := s.repo.GetMatchMeta(ctx, matchID)
 	if err != nil {
-		// Match absent du substrat local (jamais synchronisé, ou pas encore) : 404
-		// propre et typé, title-agnostic (aucune comparaison de slug — HINF et Halo 5
-		// suivent EXACTEMENT le même chemin). AUCUN fetch live vers l'API du titre
-		// depuis cette page : décision user 2026-07-19 (BACKLOG "Retirer le fallback
-		// LIVE du Match view") — latence, dépendance token et échec réseau à
-		// l'affichage n'étaient pas acceptables. Le front affiche un état dédié
-		// « pas encore synchronisé » sur ce code (match_not_found).
-		slog.InfoContext(ctx, "match_view: match absent du substrat local (pas encore synchronisé)",
+		// L'ABSENCE ET LA PANNE NE SONT PAS LE MÊME 404 (correctif 2026-08-29).
+		//
+		// Absence (sql.ErrNoRows, préservé par le wrapping %w du repo) : match jamais
+		// synchronisé — 404 propre et typé, title-agnostic. AUCUN fetch live vers l'API
+		// du titre depuis cette page : décision user 2026-07-19 (BACKLOG "Retirer le
+		// fallback LIVE du Match view") — cette décision porte sur le refus du fetch,
+		// PAS sur le mapping des erreurs. Le front affiche « pas encore synchronisé »
+		// sur ce code (match_not_found).
+		if errors.Is(err, sql.ErrNoRows) {
+			slog.InfoContext(ctx, "match_view: match absent du substrat local (pas encore synchronisé)",
+				"match_id", matchID, "err", err)
+			return domain.MatchViewResponse{}, domain.ErrNotFound("match", matchID)
+		}
+		// Panne technique (schéma en retard, timeout, verrou, I/O) : la déguiser en
+		// « pas encore synchronisé » a masqué pendant des heures une panne TOTALE de la
+		// page (2026-08-29 : Binder Error sur snapshot au schéma en retard → 404 sur
+		// TOUS les matchs, log en Info que personne ne lit). Une panne se dit : 500,
+		// log ERROR, et l'état d'erreur générique du front.
+		slog.ErrorContext(ctx, "match_view: lecture des métadonnées en échec (pas une absence)",
 			"match_id", matchID, "err", err)
-		return domain.MatchViewResponse{}, domain.ErrNotFound("match", matchID)
+		return domain.MatchViewResponse{}, fmt.Errorf("match_view: métadonnées illisibles pour %s: %w", matchID, err)
 	}
 
 	// Couche B (ADR 0029) : fail-fast si le joueur courant n'a pas participé à ce
