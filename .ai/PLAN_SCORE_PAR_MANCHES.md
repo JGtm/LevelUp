@@ -199,13 +199,25 @@ egalite », perimetre initial reduit aux 3 variantes Oddball.
 - **Gate PASSE** : `go test ./...` (143 paquets ok), `go test -tags=integration ./internal/persist ./internal/sync` **ok**.
       Deux echecs PRE-EXISTANTS, sans rapport avec ce lot, notes en §9 (non traites, regle 7).
 
-### E2 — Backfill historique
+### E2 — Backfill historique — **OUTIL LIVRE, APPLICATION EN ATTENTE**
 
-- [ ] `cmd/backfill-team-rounds` calque sur `cmd/backfill-team-scores` : phase A sans droit
+- [x] `cmd/backfill-team-rounds` calque sur `cmd/backfill-team-scores` : phase A sans droit
       d'ecriture (fetch + decisions), phase B courte sous `--apply`, re-lecture avant
-      ecriture, jamais de NULL/negatif, serveur arrete.
-- [ ] Repetition a blanc, puis `--apply`, puis controle de couverture.
-- **Gate** : couverture mesuree (X matchs renseignes / Y attendus) consignee.
+      ecriture, jamais de NULL/negatif/hors-bornes, jamais un total inferieur aux manches
+      gagnees. 4 fichiers, 20 tests (decision, jonction SQL, garde-rail ART local).
+- [x] **Difference assumee avec son modele** : pas de fichier de liste. La population se
+      definit exactement par `rounds_total IS NULL` — la base sait le dire. L'outil est donc
+      reprenable apres interruption, et un second passage ne re-telecharge que le manquant.
+      (Effet de bord heureux : aucune copie de `ids.go`, la regle des 2 copies tient.)
+- [x] Repetition a blanc sur 20 matchs : `lus=20 planifiees=20 skippes=0 echecs=0`.
+- [!] **`--apply` NON EXECUTE** : le serveur de dev tient la base en ecriture (PID 31088 sur
+      :8000) et un `--apply` exige son arret (ADR 0013, un seul writer). Arreter le serveur
+      de l'utilisateur est sa decision, d'autant qu'une AUTRE session travaille dans le meme
+      worktree. **Demande posee, en attente.** Sans cette etape, les colonnes restent NULL
+      sur l'historique et l'affichage retombe sur les points — la degradation prevue : la
+      suite du plan n'est PAS bloquee.
+- **Gate** : partiel — la repetition a blanc passe ; la couverture reelle sera consignee
+  apres l'application.
 
 ### E3 — La regle, en UN seul endroit
 
@@ -336,5 +348,6 @@ n'est ouvert pour elle (decision explicite, pas un oubli).
 | Date | Etape | Statut | Note |
 |---|---|---|---|
 | 2026-08-29 | Plan | Ecrit | Audit fait, 3 arbitrages tranches (§6). |
+| 2026-08-29 | E2 | **PARTIEL** | Outil `cmd/backfill-team-rounds` livre et repete a blanc (20/20). `--apply` en attente : le serveur de dev tient la base, son arret est une decision utilisateur. La suite du plan n est pas bloquee. |
 | 2026-08-29 | E1 | **CLOS** | Colonnes + extraction + persist. 3 garde-rails de schema ont casse (auto-parite INSERT, seeder demo, bootstrap `sharedSchemaSQL`) et ont ete mis a jour. Halo 5 `[!]` : l'API carnage ne publie pas les manches. Entree thought_log groupee en fin de chantier (worktree partage avec une autre session). |
 | 2026-08-29 | E0 | **CLOS** | 1 942/1 942 payloads, 0 erreur. Regle `rounds_total >= 2` REFUTEE ; detection declarative mesuree adoptee. 4 matchs Oddball prouvent le mensonge. Rapport `.ai/V7.5/RAPPORT_MANCHES_2026-08-29.md`. |
