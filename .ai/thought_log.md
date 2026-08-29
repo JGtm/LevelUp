@@ -529,6 +529,43 @@ de mort quand le triplet collisionne) — c'est ce qui degelerait reellement les
 
 ---
 
+## [2026-08-29] Vue du match : l'absence et la panne ne sont plus le meme 404 — Complete
+
+**Contexte** : suite directe de l'incident du jour (snapshot au schema en retard). Le service
+transformait TOUTE erreur de `GetMatchMeta` en `ErrNotFound`, et le front affichait « Match pas
+encore synchronise » — un message qui accuse la synchronisation quand c'est une panne qui brule.
+Propose a l'utilisateur avec le constat que la decision du 2026-07-19 portait sur le refus du
+fetch live, PAS sur ce mapping — valide (« ok tu peux y aller »).
+
+**Decision technique** : trois pieces. (1) Le service distingue `errors.Is(err, sql.ErrNoRows)`
+(absence -> 404 type `not_found`, comportement et message inchanges) de toute autre erreur
+(panne -> 500 + `slog.ErrorContext`). Le correctif d'hier garantit que `ErrNoRows` traverse le
+wrapping `%w` du repo. (2) Le reniflage de chaine `strings.Contains(err.Error(), "no rows")` du
+handler est retire : l'absence etant typee, il ne restait que comme derniere echappatoire du
+masquage. (3) L'ancien test `MetaError` VERROUILLAIT le bug — il fabriquait
+`errors.New("no rows in result set")` (qui n'est pas `sql.ErrNoRows`) et exigeait un 404. Scinde
+en `MetaAbsent` (absence wrappee -> 404) et `MetaTechnicalErrorIsNot404` (Binder Error dont le
+message contient meme « no rows », pour prouver que le reniflage n'a plus de raison d'etre ->
+jamais un not_found). Meme patron que le test de triggerDownload qui exigeait la revocation
+synchrone : un test vert qui protege le bug.
+
+Zero changement front : la page possede deja ses deux etats (« pas encore synchronise » sur
+`match_not_found`, erreur generique sinon — tests V72-15.4).
+
+**Resultats observes** : 7 tests `GetMatchView` verts dont les 2 nouveaux, suite `service`
+complete verte (12 s), suite `handlers` complete verte (16 s), `go vet` propre. Particularite de
+seance : l'arbre etait INCOMPILABLE par intermittence (le chantier voisin editait `analysis` puis
+`domain/teammates.go` en vol) — les tests ont ete lances par une sonde de fond qui attendait la
+compilation, plutot que de toucher aux fichiers du voisin.
+
+**Verifie au passage, a la demande de l'utilisateur** : l'acces force par URL a un rejeu sans
+artefact est deja gere — prouve en direct sur `b955bf2a` (vue 200, artefact 404) : « Aucun rejeu
+2D disponible pour ce match. » + bouton retour, pas de canvas, `retry: false` ; et le bouton de
+la page match ne se rend que sur `replay_available`. FR et EN presents. Rien a ajouter.
+
+**Conclusion** : la prochaine panne de `GetMatchMeta` s'affichera comme une erreur technique avec
+un log ERROR des la premiere requete, au lieu de « reviens dans quelques minutes » sans trace.
+
 ## [2026-08-29] Vue du match morte pour TOUS les matchs : snapshot au schema en retard sur Q13 — Complete
 
 **Contexte** : la vue du match repondait 404 « match introuvable » pour tous les matchs, alors que
