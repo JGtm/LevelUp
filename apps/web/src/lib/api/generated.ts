@@ -7894,6 +7894,8 @@ export interface components {
             Outcome: string;
             PairMode: components["schemas"]["AssetReference"];
             Playlist: components["schemas"]["AssetReference"];
+            /** Format: int64 */
+            RoundsTotal: number | null;
             /** Format: date-time */
             StartedAtUTC: string;
             /** Format: int64 */
@@ -10334,6 +10336,7 @@ export interface components {
             /** Format: double */
             performance_score?: number;
             playlist_name?: string;
+            score_kind?: string;
             score_label?: string;
             session_label?: string;
             start_time: string;
@@ -10881,6 +10884,8 @@ export interface components {
             /** Format: double */
             MMR: number | null;
             ParticipantsXUIDs: string[] | null;
+            /** Format: int64 */
+            RoundsWon: number | null;
             /** Format: int64 */
             Score: number | null;
             /** Format: int64 */

@@ -16526,6 +16526,11 @@ components:
           $ref: '#/components/schemas/AssetReference'
         Playlist:
           $ref: '#/components/schemas/AssetReference'
+        RoundsTotal:
+          format: int64
+          type:
+            - integer
+            - "null"
         StartedAtUTC:
           format: date-time
           type: string
@@ -16554,6 +16559,7 @@ components:
         - Outcome
         - Teams
         - T0Ms
+        - RoundsTotal
       type: object
     MatchSummaryKpis:
       additionalProperties: false
@@ -22675,6 +22681,8 @@ components:
           type: number
         playlist_name:
           type: string
+        score_kind:
+          type: string
         score_label:
           type: string
         session_label:
@@ -23986,6 +23994,11 @@ components:
           type:
             - array
             - "null"
+        RoundsWon:
+          format: int64
+          type:
+            - integer
+            - "null"
         Score:
           format: int64
           type:
@@ -23997,6 +24010,7 @@ components:
       required:
         - TeamID
         - Score
+        - RoundsWon
         - MMR
         - ParticipantsXUIDs
       type: object

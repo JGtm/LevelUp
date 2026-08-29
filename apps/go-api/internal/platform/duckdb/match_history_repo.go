@@ -288,13 +288,19 @@ func (r *MatchHistoryRepo) mergeHistorySkillRanks(ctx context.Context, rows []do
 // l'autre. `RoundsTotal` ne se permute pas — c'est une grandeur du match.
 func applyTeamScore(row *domain.MatchHistoryRawRow, teamID *int, scores teamScorePair) {
 	row.RoundsTotal = scores.total
-	if teamID != nil && *teamID == 1 {
-		row.MyTeamScore, row.EnemyTeamScore = scores.team1, scores.team0
-		row.MyRoundsWon, row.EnemyRoundsWon = scores.rounds1, scores.rounds0
+	// LA FORME EST CELLE DU SQL, À LA BRANCHE PRÈS : `CASE WHEN team_id = 0 THEN … ELSE …`.
+	// Ce n'est pas un détail de style — un `team_id >= 2` (FFA : Halo Infinite numérote un
+	// camp par joueur) tombe dans le ELSE, et le chemin jumeau de l'escouade
+	// (queries_squad.go, le même CASE en SQL) doit lui répondre la même chose. Tester
+	// `== 1` au lieu de `!= 0` inverserait ces lignes-là et ferait diverger les deux
+	// surfaces sur les mêmes matchs.
+	if teamID == nil || *teamID == 0 {
+		row.MyTeamScore, row.EnemyTeamScore = scores.team0, scores.team1
+		row.MyRoundsWon, row.EnemyRoundsWon = scores.rounds0, scores.rounds1
 		return
 	}
-	row.MyTeamScore, row.EnemyTeamScore = scores.team0, scores.team1
-	row.MyRoundsWon, row.EnemyRoundsWon = scores.rounds0, scores.rounds1
+	row.MyTeamScore, row.EnemyTeamScore = scores.team1, scores.team0
+	row.MyRoundsWon, row.EnemyRoundsWon = scores.rounds1, scores.rounds0
 }
 
 // LoadMapWinRates calcule le win_rate historique par carte (sur tous les matchs).

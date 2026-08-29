@@ -109,6 +109,14 @@ SELECT
     p1.enemy_mmr,
     CASE WHEN p1.team_id = 0 THEN r.team_0_score ELSE r.team_1_score END AS my_team_score,
     CASE WHEN p1.team_id = 0 THEN r.team_1_score ELSE r.team_0_score END AS enemy_team_score,
+    -- Manches (ADR 0032) : sur un mode qui s'y décide, le score ci-dessus est un cumul de
+    -- points qui peut donner la victoire au camp qui en a le moins. Permutées par le MÊME
+    -- CASE que les points — les dissocier afficherait les manches d'un camp à côté des
+    -- points de l'autre. game_variant_name est la clé de la table [rounds_decide].
+    CASE WHEN p1.team_id = 0 THEN r.team_0_rounds_won ELSE r.team_1_rounds_won END AS my_rounds_won,
+    CASE WHEN p1.team_id = 0 THEN r.team_1_rounds_won ELSE r.team_0_rounds_won END AS enemy_rounds_won,
+    r.rounds_total                                                       AS rounds_total,
+    COALESCE(r.game_variant_name, '')                                    AS game_variant_name,
     COALESCE(r.map_id, '')                                               AS map_id,
     COALESCE(r.playlist_id, '')                                          AS playlist_id,
     -- pair_name_fr brut + pair_id : alimentent la cascade canonique de

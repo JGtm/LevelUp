@@ -104,14 +104,20 @@ describe('finalScoreFromHeader', () => {
     ).toEqual({ ally: 2, enemy: 1 })
   })
 
-  it('rend null sur un mode en points — le calque du film reste la source', () => {
+  // Le critère est la PRÉSENCE des deux nombres, jamais leur nature. Une variante à manches
+  // dont les camps finissent à égalité (témoin adb93fb7 : 1 partout + 1 nulle) retombe côté
+  // serveur sur les points et publie score_kind = "points" ; filtrer sur « rounds » renverrait
+  // alors l'écran de fin vers les points de la DERNIÈRE MANCHE, en contradiction avec la vue
+  // match qui affiche le total.
+  it("rend aussi le score quand il est en points (repli d'une égalité de manches)", () => {
     expect(
-      finalScoreFromHeader({ score_kind: 'points', score_mine: 50, score_theirs: 43 }),
-    ).toBeNull()
+      finalScoreFromHeader({ score_kind: 'points', score_mine: 277, score_theirs: 234 }),
+    ).toEqual({ ally: 277, enemy: 234 })
   })
 
   it('rend null quand les nombres manquent (ligne antérieure au backfill)', () => {
     expect(finalScoreFromHeader({ score_kind: 'rounds' })).toBeNull()
+    expect(finalScoreFromHeader({ score_kind: 'points', score_mine: 50 })).toBeNull()
     expect(finalScoreFromHeader(undefined)).toBeNull()
   })
 

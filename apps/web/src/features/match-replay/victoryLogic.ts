@@ -148,22 +148,29 @@ export interface FinalScoreHeader {
 }
 
 /**
- * finalScoreFromHeader rend le score final SERVI PAR L'API quand il ne se déduit pas du film,
- * et `null` sinon — auquel cas l'écran de fin garde sa lecture habituelle du calque.
+ * finalScoreFromHeader rend le score final SERVI PAR L'API, et `null` quand l'en-tête n'en
+ * publie pas — auquel cas l'écran de fin garde sa lecture du calque du film.
  *
- * POURQUOI L'API ICI, ALORS QUE TOUT LE RESTE DU REJEU VIENT DU FILM. Sur un mode qui se
- * décide aux MANCHES, la lecture du calque à la borne de fin rend les points de la DERNIÈRE
- * MANCHE (Oddball : « 100 - 43 »), présentés comme le score du match. C'est faux : le match
- * s'est joué en deux manches à une. Le compte de manches qui fait foi est celui de l'API,
- * déjà affiché en tête de la vue match — le prendre ici, c'est garantir que les deux surfaces
- * disent la MÊME chose. Le pendant vivant (le compte en cours pendant la lecture) reste
- * dérivé du film, cf. `roundsTally`.
+ * POURQUOI L'API ICI, ALORS QUE TOUT LE RESTE DU REJEU VIENT DU FILM. La lecture du calque à
+ * la borne de fin rend, sur un mode à manches, les points de la DERNIÈRE MANCHE (Oddball :
+ * « 100 - 43 ») présentés comme le score du match. C'est faux : le match s'est joué en deux
+ * manches à une. L'écran de fin annonce un RÉSULTAT, et le résultat est celui que toute
+ * l'app affiche par ailleurs — le prendre de l'en-tête garantit que les deux surfaces ne
+ * peuvent pas dire deux nombres différents du même match.
  *
- * NE S'APPLIQUE QU'AUX MANCHES : sur un mode en points, le calque du film est plus fin que
- * l'en-tête (il sait le score à n'importe quelle image) et reste la source.
+ * IL NE FAUT PAS LE RESTREINDRE AUX SEULES LECTURES EN MANCHES, et c'est un piège qui a
+ * réellement été posé puis retiré : sur une variante à manches dont les deux camps finissent
+ * à ÉGALITÉ de manches (témoin `adb93fb7` : 1 partout, plus une nulle), le serveur retombe
+ * volontairement sur les points et publie `score_kind = "points"`. Filtrer sur « rounds »
+ * renvoyait alors l'écran de fin vers le calque, donc vers les points de la dernière manche,
+ * pendant que la vue match affichait le total. Le critère est donc la PRÉSENCE des deux
+ * nombres, jamais leur nature.
+ *
+ * Le pendant vivant — le compte de manches qui monte pendant la lecture — reste dérivé du
+ * film : il doit suivre la position de lecture, ce que l'en-tête ne sait pas faire
+ * (cf. `roundsTally`).
  */
 export function finalScoreFromHeader(header: FinalScoreHeader | undefined): FinalScoreReading | null {
-  if (!header || header.score_kind !== 'rounds') return null
-  if (header.score_mine == null || header.score_theirs == null) return null
+  if (!header || header.score_mine == null || header.score_theirs == null) return null
   return { ally: header.score_mine, enemy: header.score_theirs }
 }

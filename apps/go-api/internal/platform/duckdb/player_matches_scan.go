@@ -98,6 +98,7 @@ func scanSharedPlayerMatchRow(rows *sql.Rows) (playerMatchScanResult, error) {
 		&s.timePlayedSeconds, &s.avgLifeSeconds, &s.damageDealt, &s.damageTaken,
 		&s.teamMMR, &s.enemyMMR,
 		&s.team0Score, &s.team1Score,
+		&s.team0RoundsWon, &s.team1RoundsWon, &s.roundsTotal,
 		&s.maxKillingSpree, &s.personalScore, &s.rankInMatch,
 		&s.grenadeKills, &s.meleeKills, &s.powerWeaponKills,
 		&s.assassinationKills, &s.groundPoundKills, &s.shoulderBashKills,
@@ -187,6 +188,7 @@ type playerMatchScanResult struct {
 	sessionID                                               sql.NullString // VARCHAR en prod (cf. ADR 0016 / commit 9d.4)
 	sessionLabel                                            sql.NullString
 	team0Score, team1Score                                  int
+	team0RoundsWon, team1RoundsWon, roundsTotal             int
 	skillRatingType                                         sql.NullString
 	skillRatingValue                                        sql.NullFloat64
 	skillTier                                               sql.NullString

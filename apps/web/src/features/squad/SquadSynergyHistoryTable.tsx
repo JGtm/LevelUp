@@ -304,6 +304,9 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
       {
         accessorKey: 'score_label',
         header: labels.score,
+        // Même aide que la colonne Score de l'Explorateur : la colonne montre les MANCHES
+        // sur les modes qui s'y jouent (ADR 0032). Les deux tableaux disent la même chose.
+        meta: { headerTooltip: labels.scoreTooltip },
         // Score « 50-30 » : tri alphanumérique naturel (comme ExplorerMatchesTable).
         sortingFn: 'alphanumeric',
         cell: (ctx) => (

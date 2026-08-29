@@ -1,3 +1,15 @@
+## [2026-08-29] LOT D — Fil d'Ariane sur la page rejeu — Complet
+
+**Contexte** : la page rejeu affichait un titre « Rejeu 2D » et le détail du match (map, mode, date), mais aucun fil d'Ariane (breadcrumb) pour revenir au contexte précédent. La vue match en affichait un depuis mai 2026.
+
+**Decision technique** : réutiliser le composant `MatchBreadcrumb` existant (exporté sans modification de MatchHeader.tsx) et le même label via `buildMatchHeadingStr(mapUI, modeUI, locale)`.
+
+**Fait** : importé `MatchBreadcrumb` et `buildMatchHeadingStr` depuis match-view. Calculé le matchLabel à partir de `matchView?.header`, affiché le breadcrumb comme premier enfant du wrapper flex col (même position visuelle que sur la vue match). Le contenu (titre + ReplayMatchRecall + canvas + kill feed) reste inchangé.
+
+**Resultats observes** : `npm run typecheck` exit 0 ; `npx eslint` sur replay.tsx : 0 erreur. Le breadcrumb s'affiche avec le label calculé, ou vide si le header n'a pas encore chargé (pas de crash). Le bouton « Retour au match » ligne 222 reste en place.
+
+**Conclusion** : LOT D complet. Aucun fichier de match-replay i18n touché (interdiction assumée). Aucune couleur hex, aucun emoji. Zéro impact sur match-view, le composant était déjà exporté.
+
 ## [2026-08-29] Rejeu — filigrane de porteur d'objectif sur les fiches joueur — Complete
 
 **Contexte** : la carte montrait deja le drapeau porte, le crane d'Oddball et la couronne VIP
@@ -76278,3 +76290,66 @@ l'accueil (`match-card`) et la page coequipiers, dont les lignes ne portent pas 
 trancher avec l'utilisateur. Decouverte hors perimetre notee au plan : `buildHomeScoreLabel`
 n'a plus AUCUN appelant de production (chemin canonical seul en service) — code mort entretenu
 par ses tests, a supprimer dans un lot dedie.
+
+---
+
+## [2026-08-29] Score par manches — E9 : cohérence de toutes les surfaces, et la revue mord
+
+**Statut** : Complété (plan `.ai/PLAN_SCORE_PAR_MANCHES.md`, E0 à E9 closes).
+
+**Contexte** : l'utilisateur a refusé le périmètre réduit de E6 (« faut que les scores soient
+cohérents dans leur affichage sur toute l'app »), demandé l'inventaire des pages Sessions et
+Solo, et demandé la revue adversariale malgré le worktree partagé.
+
+**Inventaire vérifié** : SIX surfaces peuvent afficher un score d'équipe. Quatre le faisaient
+déjà en manches (vue match, Explorateur/historique/carrière, rejeu, export vidéo) ; l'accueil
+et l'escouade ont été câblés ici. **La page Sessions n'affiche AUCUN score d'équipe** — sa
+ligne (`SessionDetailMatchRow`) n'en porte pas et la colonne est masquée par construction :
+il n'y avait rien à rendre cohérent, ni en solo ni en escouade.
+
+**Décision technique** : plutôt que d'ajouter un 7e paramètre à
+`BuildRecentMatchesWithFavoritesFromCanonical` (déjà à 6, au-dessus du seuil de 5), les
+options ont été groupées dans `RecentMatchesOptions` — la dette passe SOUS le seuil au lieu
+de s'aggraver.
+
+**LA REVUE ADVERSARIALE A PAYÉ, ET C'EST LE POINT À RETENIR.** Quatre relecteurs en contexte
+frais, aveugles entre eux, une lentille chacun (anti-ART, correction des données,
+multi-titre + anti-patterns, couverture réelle). **10 constats recevables, 48 conditions
+vérifiées qui tiennent.** Trois défauts auraient atteint la prod :
+1. **Le câblage de l'accueil ne prenait pas** : l'endpoint `/pages/home` passe par
+   `HomeCtxWithAuth`, une factory que j'avais oubliée — seule sa jumelle `HomeCtx` (image
+   OpenGraph) portait l'injection. Le commentaire affirmait « les quatre surfaces doivent
+   dire le même nombre » pendant que la tuile affichait les points. Leçon : **quand un
+   service a plusieurs factories, l'injection doit être vérifiée sur CHACUNE**, pas sur celle
+   qu'on a sous les yeux.
+2. **Une inversion silencieuse** : `applyTeamScore` permutait les points sans permuter les
+   manches — un joueur du camp 1 voyait « 1 - 2 » sur une victoire 2-1. La fonction n'avait
+   AUCUN test, et mon propre commentaire deux lignes plus haut affirmait le contraire. Le
+   relecteur L1 ne l'a pas vue (sa lentille portait sur l'ordre des colonnes SQL) : c'est en
+   vérifiant SON constat que je l'ai trouvée. Un constat de revue vaut aussi par ce qu'il
+   fait rouvrir.
+3. **L'égalité de manches renvoyait le rejeu au film** : sur une variante déclarée dont les
+   camps finissent à égalité, le serveur retombe volontairement sur les points et publie
+   `score_kind = "points"` ; le client filtrait sur « rounds » et repartait donc vers les
+   points de la dernière manche. Le critère est désormais la PRÉSENCE des deux nombres,
+   jamais leur nature.
+
+Le relecteur « couverture » a par ailleurs montré par MUTATION que quatre chemins n'étaient
+pinés par rien : l'indexation par `TeamId` (et non par position) de `ExtractTeamRoundsByID`
+et de sa jumelle historique, la permutation des manches en vue match pour le camp 1, et la
+lecture de la table `[rounds_decide]` par l'historique comme par l'escouade. **12 tests
+ajoutés, chacun vérifié en cassant le code puis en le remettant.**
+
+**PIÈGE DE SESSION, COÛTEUX** : le protocole de mutation du relecteur (« modifie, teste,
+`git checkout --` ») a ÉCRASÉ mes modifications non commitées sur deux fichiers déjà suivis
+(`home_service.go`, et une fausse alerte sur `teammates.go`). Leçon : **ne jamais lancer un
+relecteur avec droit d'écriture sur un arbre qui porte du travail non commité** — committer
+d'abord, ou lui interdire toute mutation.
+
+**Gates** : `npm run typecheck` vert ; ESLint 0 erreur (13 warnings, tous hors fichiers
+touchés) ; vitest 217 fichiers / 2 719 tests, 0 échec ; suite Go en cours de relance finale.
+
+**Conclusion / prochaine étape** : trois P2 consignés au plan §9 et non traités (le champ
+`score_kind` sans consommateur sur trois contrats ; l'erreur avalée sur la recréation de
+`v_match_full` ; la divergence FFA pré-existante entre historique et vue match). Restent
+`make gate-push` et la CI, à jouer quand le worktree ne sera plus partagé.

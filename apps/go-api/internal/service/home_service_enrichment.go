@@ -16,14 +16,12 @@ import (
 func buildFavoriteMatchListCanonical(
 	rows []canonical.PlayerMatchRow,
 	favoriteIDs map[string]bool,
-	locale string,
-	effectiveHpToKill float64,
-	skillBadgeURL func(tierEN string, subTier int) string,
+	opts analysis.RecentMatchesOptions,
 ) []domain.RecentMatchItem {
 	if len(favoriteIDs) == 0 {
 		return nil
 	}
-	allItems := analysis.BuildRecentMatchesWithFavoritesFromCanonical(rows, len(rows), favoriteIDs, locale, effectiveHpToKill, skillBadgeURL)
+	allItems := analysis.BuildRecentMatchesWithFavoritesFromCanonical(rows, len(rows), favoriteIDs, opts)
 	var favorites []domain.RecentMatchItem
 	for _, item := range allItems {
 		if item.IsFavorite {
