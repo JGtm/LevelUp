@@ -156,10 +156,25 @@ func (r *MatchViewRepo) GetMatchMeta(ctx context.Context, matchID string) (*doma
 	defer cancel()
 
 	row, err := r.scanMatchMeta(ctx, r.sharedRead(), matchID)
-	if errors.Is(err, sql.ErrNoRows) && r.sharedReader != nil && !r.forceLive {
-		slog.WarnContext(ctx, "match_view: match absent du snapshot immuable → bascule lecture live",
-			"match_id", matchID, "title", r.pdb.TitleSlug)
-		observability.IncCounterT(r.pdb.TitleSlug, "match_view_snapshot_miss_live_fallback_total")
+	if err != nil && r.sharedReader != nil && !r.forceLive {
+		// LA BASCULE COUVRE TOUTE ERREUR DU SNAPSHOT, pas seulement la ligne absente.
+		// Un snapshot est un artefact FIGE d'un schema passe : toute colonne ajoutee a
+		// Q13 apres son cut le fait echouer en Binder Error jusqu'au cut suivant — vecu
+		// le 2026-08-29 (colonnes de manches team_*_rounds_won ajoutees a Q13 le jour
+		// meme, snapshot du 27/08 sans elles : 404 « match introuvable » sur TOUS les
+		// matchs, l'erreur etant avalee en amont par le mapping not_found du service).
+		// Le live, lui, porte toujours le schema courant : c'est la degradation juste.
+		if errors.Is(err, sql.ErrNoRows) {
+			slog.WarnContext(ctx, "match_view: match absent du snapshot immuable → bascule lecture live",
+				"match_id", matchID, "title", r.pdb.TitleSlug)
+			observability.IncCounterT(r.pdb.TitleSlug, "match_view_snapshot_miss_live_fallback_total")
+		} else {
+			// ERREUR et pas Warn : chaque requete de vue de match paiera ce detour
+			// jusqu'au prochain cut de snapshot — c'est un signal d'exploitation.
+			slog.ErrorContext(ctx, "match_view: requete snapshot en echec (schema en retard ?) → bascule lecture live",
+				"match_id", matchID, "title", r.pdb.TitleSlug, "err", err)
+			observability.IncCounterT(r.pdb.TitleSlug, "match_view_snapshot_stale_schema_live_fallback_total")
+		}
 		r.forceLive = true
 		row, err = r.scanMatchMeta(ctx, r.pdb.SharedReadDB(), matchID)
 	}
