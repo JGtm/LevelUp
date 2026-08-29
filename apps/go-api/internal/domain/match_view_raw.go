@@ -66,6 +66,14 @@ type MatchMetaRaw struct {
 	// Ex: 50/47 pour Slayer, 3/1 pour CTF. Nil si FFA ou custom sans score.
 	Team0Score *int16
 	Team1Score *int16
+	// Team0RoundsWon / Team1RoundsWon / RoundsTotal : les MANCHES du match
+	// (match_registry, source CoreStats.RoundsWon/Lost/Tied). Sur une variante déclarée
+	// dans regulation.toml [rounds_decide], ce sont ELLES qui disent le résultat : le
+	// score en points y est un cumul sur toutes les manches, qui peut donner la victoire
+	// au perdant (mesure du 2026-08-29). Nil = inconnu → l'affichage garde les points.
+	Team0RoundsWon *int16
+	Team1RoundsWon *int16
+	RoundsTotal    *int16
 	// T0Ms : offset countdown pré-match en ms (Match Timeline T0, Phase 3).
 	// Dérivé de `epoch_ms(real_start_time AT TIME ZONE 'UTC') − epoch_ms(start_time)`.
 	// Nil si real_start_time absent → BuildForMatchMs retombe sur T0=0.

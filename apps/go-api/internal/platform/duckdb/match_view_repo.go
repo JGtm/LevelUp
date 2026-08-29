@@ -276,7 +276,7 @@ func (r *MatchViewRepo) attachElapsedSeconds(ctx context.Context, row *domain.Ma
 	}
 }
 
-// scanMatchMeta exécute Q13 sur le reader fourni et scanne les 19 colonnes brutes.
+// scanMatchMeta exécute Q13 sur le reader fourni et scanne les 22 colonnes brutes.
 // Isolé pour permettre le fallback snapshot→live de GetMatchMeta (on ré-exécute la
 // même query sur le live quand le snapshot immuable ne contient pas le match). Renvoie
 // l'erreur de Scan telle quelle (sql.ErrNoRows non enveloppé) pour que l'appelant
@@ -306,6 +306,9 @@ func (r *MatchViewRepo) scanMatchMeta(ctx context.Context, reader SharedReader, 
 		&row.PlaylistAssetID,
 		&row.Team0Score,
 		&row.Team1Score,
+		&row.Team0RoundsWon,
+		&row.Team1RoundsWon,
+		&row.RoundsTotal,
 		&row.PairNameFR,
 		&row.PairAssetID,
 		&row.GameVariantAssetID,

@@ -1107,6 +1107,16 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 		}
 	}
 
+	// Variantes dont le RÉSULTAT se lit en manches (même regulation.toml) → l'app affiche
+	// « 2 - 1 » plutôt que le cumul de points, qui peut donner la victoire au perdant
+	// (mesure du 2026-08-29). Titre sans déclaration → absent → tout reste en points.
+	roundsDecide := make(map[string]map[string]bool)
+	for _, slug := range multiTitleSlugs {
+		if rset, ok := fieldMappingsRegistry.GetRegulation(slug); ok {
+			roundsDecide[slug] = rset.RoundsDecideMap()
+		}
+	}
+
 	reg := wire.NewServiceRegistry(cfg, tokenProvider).
 		WithTitleResolver(titleResolver).
 		WithCapabilities(hiCaps).
@@ -1114,7 +1124,8 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 		WithRankCatalog(hiRanks).
 		WithRankImageURLsByTitle(rankImageURLsByTitle).
 		WithPlaylistLabelOverrides(playlistLabelOverrides).
-		WithRegulationSeconds(regulationSeconds)
+		WithRegulationSeconds(regulationSeconds).
+		WithRoundsDecide(roundsDecide)
 
 	// V72-27 : câble le résolveur de libellé de rang FR consommé par les
 	// notifications post-sync (career_rank) — même RankCatalog HI que

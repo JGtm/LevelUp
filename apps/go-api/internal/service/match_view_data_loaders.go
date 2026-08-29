@@ -18,6 +18,7 @@ import (
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/service/killsourceload"
 
 	"golang.org/x/sync/errgroup"
 )
@@ -73,7 +74,13 @@ type matchViewData struct {
 	matchCitations []domain.CitationMatchViewRow
 	richCitations  []domain.HomeMatchCitationRaw
 	histRows       []domain.MatchHistAvgRow
-	objectiveScore int
+	// killSourceClasses : kills du joueur AGREGES PAR CLASSE depuis la source de degat
+	// — ceux que l attribution arme-a-feu ne voit pas (repulseur, bobines, chute).
+	// A ne pas confondre avec `killSources` ci-dessus : celui-la est la source PAR MORT
+	// pour l icone du kill feed, celui-ci est un COMPTE PAR JOUEUR pour le sunburst.
+	// Vide = titre sans decodeur de film, match jamais decode, ou aucune de ces morts.
+	killSourceClasses []port.KillSourceClassRow
+	objectiveScore    int
 }
 
 // loadMatchViewDataParallel lance en parallèle (errgroup) tous les chargements
@@ -217,6 +224,17 @@ func (s *MatchViewService) loadMatchViewDataParallel(ctx context.Context, matchI
 		d.histRows, e = s.repo.GetHistoryForAvg(gctx, s.xuid)
 		return e
 	})
+	// Le GATE de capability est pose au CABLAGE (wire), la ou le TitleDataAdapter et sa
+	// CapabilityMap sont disponibles : `film.kill_source` est une capability DATA-LEVEL
+	// (games.CapabilityKey, capabilities.toml), pas une capability title-level. Ici, un
+	// repo non nil VEUT DIRE que le titre l a. Zero comparaison de slug.
+	if s.killSourceRepo != nil {
+		goLoad(gctx, g, matchID, "kill_source_classes", func() error {
+			var e error
+			d.killSourceClasses, e = s.loadMatchKillSourceClasses(gctx, matchID)
+			return e
+		})
+	}
 	if s.citationsRepo != nil {
 		goLoad(gctx, g, matchID, "citations", func() error {
 			var e error
@@ -335,6 +353,10 @@ func (s *MatchViewService) buildMatchViewFromData(
 	// portée par le service, pas par le builder — buildMatchHeader est déjà à la
 	// limite de paramètres). Titre sans table → no-op.
 	applyMatchHeaderOvertime(&header, meta, s.regulationSeconds)
+	// Score de l'en-tête : points ou MANCHES. Ici et pas dans le builder, pour la même
+	// raison que la ligne au-dessus — la table `[rounds_decide]` est portée par le
+	// service. Table absente → lecture en points, comportement d'avant le 2026-08-29.
+	applyMatchHeaderScore(&header, meta, d.stats, s.roundsDecide)
 	// Présence de l'artefact de rejeu 2D : un os.Stat, jamais une lecture. Même
 	// raison d'être ici que le flag « Prolongation » — la dépendance est portée par
 	// le service, pas par le builder.
@@ -468,7 +490,8 @@ func (s *MatchViewService) buildMatchViewFromData(
 	// scoreboard (compteurs natifs melee/grenade/spartan de la ligne is_me) + les bulk
 	// weapon kills du viewer (classes gun). hasMechanics via capability (jamais slug==).
 	combat.FragDistribution = buildViewerFragDistribution(
-		findViewerScoreboardRow(team.Scoreboard), d.bulkWeapons, titleHasNativeKillMechanics(s.titleSlug),
+		findViewerScoreboardRow(team.Scoreboard), d.bulkWeapons, d.killSourceClasses,
+		titleHasNativeKillMechanics(s.titleSlug),
 	)
 	if combat.FragDistribution != nil {
 		logFragDistribution(ctx, "match view", s.titleSlug, s.xuid, *combat.FragDistribution)
@@ -652,4 +675,16 @@ func strDeref(s *string) string {
 		return "<nil>"
 	}
 	return *s
+}
+
+// loadMatchKillSourceClasses charge les kills du joueur courant par source de degat.
+//
+// Perimetre volontairement etroit : CE match, CE joueur — ce qui satisfait aussi le
+// garde-fou anti-scan-complet des filtres. Le chargement lui-meme passe par le foyer
+// unique `loadKillSourceClasses` (killsource_load.go), partage avec les agregats.
+func (s *MatchViewService) loadMatchKillSourceClasses(
+	ctx context.Context, matchID string,
+) ([]port.KillSourceClassRow, error) {
+	return killsourceload.Load(ctx, s.killSourceRepo, "match view", s.titleSlug,
+		[]string{matchID}, []string{s.xuid}), nil
 }

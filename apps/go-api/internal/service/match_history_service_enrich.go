@@ -78,6 +78,9 @@ type rowFormatters struct {
 	// courant (regulation.toml). Nil/vide → aucun flag « Prolongation », jamais
 	// d'erreur. Injectée par MatchHistoryService.WithRegulation.
 	regulation map[string]int
+	// roundsDecide : table `game_variant_name → le résultat se lit en MANCHES`
+	// (regulation.toml). Nil/vide → lecture en points. Injectée par WithRoundsDecide.
+	roundsDecide map[string]bool
 	// skillBadgeURL : résolveur d'URL d'image de badge de palier du TITRE courant
 	// (même contrat que la home : (tier capitalisé, sous-palier 0=Onyx/1..6) → URL).
 	// Nil → aucune image, le front retombe sur le libellé texte du palier.
@@ -191,14 +194,18 @@ func enrichRow(r domain.MatchHistoryRawRow, mapWR map[string][2]int, fmts rowFor
 		kda = r.KDA
 	}
 
-	// Libellé de score : source unique depuis le 2026-08-29
-	// (analysis.TeamScoreLabel). Les manches arrivent par la ligne de registre quand elles
-	// sont connues ; sinon nil, et la lecture reste celle des points.
-	scoreLabel := analysis.TeamScoreLabel(analysis.TeamScoreInput{
+	// Score de la ligne : points ou MANCHES, tranché par la source unique
+	// (analysis.ReadTeamScore). Variante non déclarée ou manches inconnues → points,
+	// c'est-à-dire le comportement d'avant le 2026-08-29.
+	scoreLabel, scoreKind := "-", ""
+	if d, ok := analysis.ReadTeamScore(analysis.TeamScoreInput{
 		MyPoints: r.MyTeamScore, EnemyPoints: r.EnemyTeamScore,
-	})
-	if scoreLabel == "" {
-		scoreLabel = "-"
+		MyRoundsWon: r.MyRoundsWon, EnemyRoundsWon: r.EnemyRoundsWon,
+		RoundsTotal:  r.RoundsTotal,
+		RoundsDecide: fmts.roundsDecide[strings.TrimSpace(derefStr(r.GameVariantName))],
+	}); ok {
+		scoreLabel = analysis.FormatTeamScoreLabel(d)
+		scoreKind = string(d.Kind)
 	}
 
 	isOvertime, overtimeSeconds := fmts.overtimeFor(r)
@@ -210,6 +217,7 @@ func enrichRow(r domain.MatchHistoryRawRow, mapWR map[string][2]int, fmts rowFor
 		OutcomeCode:              r.Outcome,
 		OutcomeLabel:             fmts.outcomeLabelFor(r.Outcome),
 		ScoreLabel:               scoreLabel,
+		ScoreKind:                scoreKind,
 		MapUI:                    ptrStr(mapU),
 		ModeUI:                   modeUI,
 		PlaylistLabel:            ptrStr(playlist),

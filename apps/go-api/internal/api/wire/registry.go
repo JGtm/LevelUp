@@ -80,6 +80,11 @@ type ServiceRegistry struct {
 	// flag « Prolongation » (Match View + Explorateur). Titre sans fichier →
 	// absent de la map → aucun flag pour ce titre (dégradation sûre).
 	regulationSeconds map[string]map[string]int
+	// roundsDecide : PAR TITRE (slug → game_variant_name → le résultat se lit en
+	// MANCHES), chargé depuis la même regulation.toml au boot. Commande l'affichage
+	// « 2 - 1 manches » plutôt que le cumul de points. Titre sans fichier → absent de la
+	// map → tout reste en points (dégradation sûre).
+	roundsDecide map[string]map[string]bool
 	// MT-09 (PMT-12) : factory player-scoped PAR TITRE. Le slug est une CLÉ de
 	// map (lookup title-agnostic), jamais une comparaison littérale — un 2e titre
 	// enregistre son builder au boot, sans toucher aux factories. Remplace les
@@ -504,6 +509,24 @@ func (r *ServiceRegistry) WithPlaylistLabelOverrides(byTitle map[string]map[stri
 func (r *ServiceRegistry) WithRegulationSeconds(byTitle map[string]map[string]int) *ServiceRegistry {
 	r.regulationSeconds = byTitle
 	return r
+}
+
+// WithRoundsDecide injecte la table PAR TITRE des variantes dont le résultat se lit en
+// manches (slug → game_variant_name → true), chargée depuis regulation.toml au boot.
+// Retourne le registry pour chaînage.
+func (r *ServiceRegistry) WithRoundsDecide(byTitle map[string]map[string]bool) *ServiceRegistry {
+	r.roundsDecide = byTitle
+	return r
+}
+
+// roundsDecideFor retourne la table « se lit en manches » du titre du joueur, ou nil si le
+// titre n'en déclare pas (→ tout reste en points). Lookup par CLÉ de map, jamais de
+// comparaison de slug.
+func (r *ServiceRegistry) roundsDecideFor(pdb *duckdb.PlayerDB) map[string]bool {
+	if r.roundsDecide == nil || pdb == nil {
+		return nil
+	}
+	return r.roundsDecide[pdb.TitleSlug]
 }
 
 // regulationFor retourne la table réglementaire du titre du joueur, ou nil si le

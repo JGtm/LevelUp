@@ -12015,6 +12015,8 @@ components:
             - "null"
         rating_type:
           type: string
+        score_kind:
+          type: string
         score_label:
           type: string
         skill_rank_image_url:
@@ -15642,6 +15644,8 @@ components:
           type:
             - string
             - "null"
+        score_kind:
+          type: string
         score_label:
           type: string
         skill_rank_image_url:
@@ -16751,7 +16755,11 @@ components:
           type: string
         replay_available:
           type: boolean
+        score_kind:
+          type: string
         score_label:
+          type: string
+        score_points_label:
           type: string
         start_time:
           format: date-time

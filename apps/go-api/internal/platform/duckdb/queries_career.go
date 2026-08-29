@@ -100,6 +100,9 @@ SELECT
     p.team_id,
     r.team_0_score,
     r.team_1_score,
+    r.team_0_rounds_won,
+    r.team_1_rounds_won,
+    r.rounds_total,
     r.game_variant_id,
     r.game_variant_name,
     r.duration_seconds

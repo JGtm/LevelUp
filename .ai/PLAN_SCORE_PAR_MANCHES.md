@@ -261,15 +261,36 @@ egalite », perimetre initial reduit aux 3 variantes Oddball.
 - **Gate PASSE** : `go test ./internal/analysis ./internal/service/... ./internal/api/...` ok,
   garde-rail vert.
 
-### E5 — Contrat API
+### E5 — Contrat API — **CLOS le 2026-08-29**
 
-- [ ] Ajouter aux lignes porteuses (`MatchViewHeader`, `MatchHistoryRow`,
-      `ExplorerMatchesRow`, home, teammates) : `score_kind` (`"points"|"rounds"`) +
-      `my_score` / `enemy_score` numeriques. `score_label` conserve pour compat.
-- [ ] **Les DEUX grandeurs quand le mode est a manches** (arbitrage 6.2) : `my_points` /
-      `enemy_points` en plus des manches, pour que la vue match affiche le score API en
-      petit et grise a cote du compte de manches.
-- [ ] `make generate-types` + diff OpenAPI verifie.
+- [x] `score_kind` (`"points"|"rounds"`) sur `MatchViewHeader`, `MatchHistoryRow` et
+      `ExplorerMatchesRow`. `score_label` conserve, inchange pour les modes en points.
+- [~] `my_score`/`enemy_score` numeriques : **remplaces par `score_points_label`** sur la
+      seule surface qui en a besoin (la vue match, arbitrage 6.2 — score API en petit et
+      grise a cote). Un libellé pret a afficher au lieu de quatre nombres que le client
+      devrait reformater ; le format reste produit a UN endroit.
+- [x] Cablage complet de la donnee jusqu'au contrat :
+      - vue match : 3 colonnes de plus a `Q13MatchMeta`, `MatchMetaRaw`, et un
+        `applyMatchHeaderScore` pose APRES le builder (comme le flag « Prolongation » —
+        la table `[rounds_decide]` est portee par le service, pas par le builder) ;
+      - historique/Explorateur/carriere : 3 colonnes de plus a `Q5SharedHistory`,
+        `teamScorePair` porte desormais points ET manches (elles se permutent ENSEMBLE
+        selon `team_id` — les dissocier afficherait les manches d'un camp a cote des
+        points de l'autre) ;
+      - wiring : `WithRoundsDecide` sur les deux services, table PAR TITRE
+        (`roundsDecideFor(pdb)`), lookup par cle de map, jamais de comparaison de slug.
+- [x] **PIEGE RENCONTRE, ET C'EST UN VRAI** : `v_match_full` est un `SELECT mr.*` — une vue
+      DuckDB FIGE son etoile a la creation. Les colonnes ajoutees en E1 n'y apparaissaient
+      donc pas, et l'historique serait tombe en « Binder Error » en prod. D'ou un SECOND
+      step de migration (`refresh_views_after_team_rounds`) qui recree la vue. Il est separe
+      du premier a dessein : le step d'E1 est deja applique sur les bases de dev, or une
+      migration enregistree ne rejoue jamais.
+- [x] `openapi-gen` + `generate-types` : +8 lignes au contrat, +4 au `generated.ts`.
+- **Gate** : `go test` vert sur `platform/duckdb`, `api/...`, `analysis`, `domain/...`,
+  `games/...`. `internal/service` **NON GATE** : une autre session refactore
+  `buildViewerFragDistribution` dans ce meme worktree et son fichier de test ne compile pas
+  encore. Mon code du paquet compile (`go build ./internal/service/` vert) ; a re-gater des
+  que leur refactor est pose.
 
 ### E6 — Front (surfaces produit)
 

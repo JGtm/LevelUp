@@ -88,6 +88,20 @@ func (s *RegulationSet) RoundsDecideVariants() []string {
 	return out
 }
 
+// RoundsDecideMap retourne une copie de la table variante → « se lit en manches ». nil-safe
+// (map vide). Pendant de SecondsMap : le wiring injecte la table dans les services sans
+// exposer le type interne.
+func (s *RegulationSet) RoundsDecideMap() map[string]bool {
+	out := make(map[string]bool)
+	if s == nil {
+		return out
+	}
+	for k, v := range s.roundsDecide {
+		out[k] = v
+	}
+	return out
+}
+
 // SecondsMap retourne une copie de la table variante → secondes. nil-safe (map
 // vide). Utilisé par le wiring pour injecter la table dans les services sans
 // exposer le type interne.
