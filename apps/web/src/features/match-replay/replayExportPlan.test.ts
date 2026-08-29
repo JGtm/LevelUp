@@ -11,6 +11,7 @@ import {
   buildExportPlan,
   clampExportBounds,
   defaultExportBounds,
+  etaLabel,
   exportProgressPct,
 } from './replayExportPlan'
 import { testReplayDoc } from './test/testDoc'
@@ -145,5 +146,28 @@ describe('buildExportPlan — le MAINTIEN de la dernière image', () => {
   it('la durée annoncée reste celle de la PLAGE, maintien non compris', () => {
     // Le dialogue annonce « Plage exportée » : le maintien est du rab, pas de la plage.
     expect(buildExportPlan({ startFrame: 0, endFrame: 40 }, DOC, 30, 3000).durationMs).toBe(2000)
+  })
+})
+
+describe('etaLabel — une estimation qui ne dit rien ne s’affiche pas', () => {
+  it('se tait tant qu’il n’y a pas d’estimation', () => {
+    expect(etaLabel(undefined)).toBeNull()
+  })
+
+  it('se tait sous trois secondes', () => {
+    // Vu en recette : sur un export rapide, « environ 0:00 restantes » s'affichait tout du long
+    // et se lisait « c'est fini » alors que le calcul tournait encore.
+    expect(etaLabel(900)).toBeNull()
+    expect(etaLabel(2999)).toBeNull()
+  })
+
+  it('compte en SECONDES sous la minute — « 7 s » se lit mieux que « 0:07 »', () => {
+    expect(etaLabel(7000)).toBe('7 s')
+    expect(etaLabel(59_400)).toBe('59 s')
+  })
+
+  it('passe en m:ss au-delà de la minute', () => {
+    expect(etaLabel(80_000)).toBe('1:20')
+    expect(etaLabel(605_000)).toBe('10:05')
   })
 })
