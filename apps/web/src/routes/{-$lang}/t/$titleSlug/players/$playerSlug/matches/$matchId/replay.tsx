@@ -32,6 +32,7 @@ import { ReplayRoundBreakOverlay } from '@/features/match-replay/ReplayRoundBrea
 import { ReplayScoreBanner } from '@/features/match-replay/ReplayScoreBanner'
 import { ReplayTeams } from '@/features/match-replay/ReplayTeams'
 import { ReplayVictoryOverlay } from '@/features/match-replay/ReplayVictoryOverlay'
+import { finalScoreFromHeader } from '@/features/match-replay/victoryLogic'
 import { collectKillEvents } from '@/features/match-view/_momentum'
 import { useMatchView } from '@/features/match-view/queries'
 import type { TeamColorResolver } from '@/features/match-view/teamColor'
@@ -126,6 +127,14 @@ function ReplayPage() {
   )
   // Les deux horloges ne coïncident pas : cf. killFeedLogic.ts et header.t0_ms.
   const t0Ms = matchView?.header.t0_ms ?? 0
+  // LE SCORE FINAL DU MATCH, quand il ne se déduit PAS du film : sur un mode à manches, le
+  // calque rendrait à la borne de fin les points de la dernière manche (« 100 - 43 ») au lieu
+  // du résultat (« 2 - 1 »). L'écran de fin ET son jumeau repeint dans la vidéo exportée
+  // reçoivent donc la même valeur, celle que la vue match affiche déjà en tête.
+  const finalScore = useMemo(
+    () => finalScoreFromHeader(matchView?.header),
+    [matchView?.header],
+  )
   // LE FIL ALIGNÉ, ASSEMBLÉ ICI ET NULLE PART AILLEURS (planche 2a, 2026-08-28) : la colonne
   // de droite l'affiche, la frise du lecteur en tire ses pistes « Toi » et « Alliés ». Un
   // second appel côté canvas referait tout le recalage — et surtout, deux recalages menés
@@ -281,6 +290,7 @@ function ReplayPage() {
                 // c'est ici qu'il reçoit de quoi le faire — la MÊME source que l'écran affiché.
                 code: matchView?.header.outcome_code,
                 label: matchView?.header.outcome_label,
+                finalScore,
               }}
               feedEntries={feedEntries}
               media={replayMedia}
@@ -294,6 +304,7 @@ function ReplayPage() {
               xuidMeta={xuidMeta}
               outcomeCode={matchView?.header.outcome_code}
               outcomeLabel={matchView?.header.outcome_label}
+              finalScore={finalScore}
               playWindow={playWindow}
               frame={frame}
               titleSlug={params.titleSlug}

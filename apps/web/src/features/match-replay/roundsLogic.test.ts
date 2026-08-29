@@ -16,6 +16,7 @@ import {
   currentRoundAtFrame,
   roundCount,
   roundDots,
+  roundsTally,
   roundTransitions,
 } from './roundsLogic'
 
@@ -267,5 +268,32 @@ describe('activeRoundTransition — la fenêtre d\'affichage du message inter-ma
 
   it('aucune bascule active quand il n\'y en a pas', () => {
     expect(activeRoundTransition([], 100, 60)).toBeNull()
+  })
+})
+
+// ─── roundsTally : le compte de manches en clair, sous l'horloge ────────────
+
+describe('roundsTally', () => {
+  it('compte les manches tranchées de chaque camp', () => {
+    const tally = roundsTally([
+      { round: 0, winner: 'ally' },
+      { round: 1, winner: 'enemy' },
+      { round: 2, winner: 'ally' },
+    ])
+    expect(tally).toEqual({ ally: 2, enemy: 1 })
+  })
+
+  it('ne compte NI les manches en cours NI les égalités', () => {
+    // Une manche sans vainqueur n'appartient à personne : l'attribuer ferait mentir le total.
+    const tally = roundsTally([
+      { round: 0, winner: 'ally' },
+      { round: 1, winner: null },
+      { round: 2, winner: null },
+    ])
+    expect(tally).toEqual({ ally: 1, enemy: 0 })
+  })
+
+  it('rend 0-0 sur un mode à manche unique (aucune pastille)', () => {
+    expect(roundsTally([])).toEqual({ ally: 0, enemy: 0 })
   })
 })

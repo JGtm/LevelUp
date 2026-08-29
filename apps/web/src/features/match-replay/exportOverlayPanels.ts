@@ -40,13 +40,34 @@ import type { ReplayDocumentReady } from './replayNormalize'
 import type { ReplayWindowBounds } from './replayWindow'
 import { activeRoundTransition, roundTransitions } from './roundsLogic'
 import { readScoreBanner } from './scoreBannerLogic'
-import { readVictory } from './victoryLogic'
+import { readVictory, type FinalScoreReading } from './victoryLogic'
+
+/**
+ * exportFinalScore choisit ce que le panneau de fin écrit : le score SERVI PAR L'API quand il
+ * existe (mode à manches), sinon la lecture du calque à la borne de fin. Extrait pour que la
+ * règle soit la MÊME ligne de code que celle du DOM (`FinalScoreLine`) — deux panneaux qui
+ * annoncent le même match ne peuvent pas décider séparément.
+ */
+function exportFinalScore(
+  fromAPI: FinalScoreReading | null | undefined,
+  fromFilm: { ally: { score: number }; enemy: { score: number } } | null,
+): { ally: number; enemy: number } | null {
+  if (fromAPI) return fromAPI
+  return fromFilm ? { ally: fromFilm.ally.score, enemy: fromFilm.enemy.score } : null
+}
 
 /** Le verdict du match, tel que la page le reçoit du backend (jamais réécrit côté front). */
 export interface ExportOutcome {
   code: number | null | undefined
   /** Déjà localisé par le serveur. Sans lui, pas d'écran de fin — comme dans le DOM. */
   label: string | null | undefined
+  /**
+   * Le score final SERVI PAR L'API sur un mode à MANCHES (« 2 - 1 »), là où le calque du film
+   * rendrait les points de la dernière manche. `null` sur un mode en points : le calque reste
+   * la source. MÊME valeur que celle de l'écran affiché — l'export ne doit jamais raconter
+   * autre chose que la page. Cf. `finalScoreFromHeader`.
+   */
+  finalScore?: FinalScoreReading | null
 }
 
 /** Tout ce dont la construction d'un panneau a besoin, résolu une fois par export. */
@@ -107,7 +128,7 @@ export function buildOverlayPanelSource(deps: OverlayPanelDeps): OverlayPanelSou
       // L'ÉGALITÉ N'EMPRUNTE RIEN (décision D-B1) : ni camp, ni logo, ni nom.
       statusStyle: mine ? deps.teamStyle : neutral,
       label: mine ? resolveTeamLabel(rows, mine.teamSide, t) : null,
-      score: finalScore ? { ally: finalScore.ally.score, enemy: finalScore.enemy.score } : null,
+      score: exportFinalScore(deps.outcome?.finalScore, finalScore),
       logo: mine ? deps.logo : null,
       veil: true,
     }

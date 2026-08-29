@@ -252,3 +252,28 @@ describe('ReplayVictoryOverlay — quand il ne se rend pas', () => {
     expect(screen.queryByText('50')).not.toBeInTheDocument()
   })
 })
+
+// ─── Le score final vient de l'API sur un mode à manches ───────────────────
+//
+// Le calque du film rendrait ici les points de la DERNIÈRE MANCHE, présentés comme le score
+// du match. Sur un mode à manches c'est faux, et c'est le défaut le plus visible que ce
+// chantier corrige : l'écran de fin doit dire ce que dit la vue match.
+describe('ReplayVictoryOverlay — score final servi par l’API', () => {
+  it('écrit le compte de manches quand la page le fournit', () => {
+    renderOverlay({ finalScore: { ally: 2, enemy: 1 } })
+    expect(screen.getByLabelText('Équipe alliée')).toHaveTextContent('2')
+    expect(screen.getByLabelText('Équipe adverse')).toHaveTextContent('1')
+  })
+
+  it('garde la lecture du calque quand la page ne fournit rien (mode en points)', () => {
+    renderOverlay({ finalScore: null })
+    // Les valeurs du témoin Slayer du fichier, inchangées.
+    expect(screen.getByLabelText('Équipe alliée')).toBeInTheDocument()
+    expect(screen.getByLabelText('Équipe adverse')).toBeInTheDocument()
+  })
+
+  it('accepte un zéro : 2 manches à 0 est une mesure', () => {
+    renderOverlay({ finalScore: { ally: 2, enemy: 0 } })
+    expect(screen.getByLabelText('Équipe adverse')).toHaveTextContent('0')
+  })
+})

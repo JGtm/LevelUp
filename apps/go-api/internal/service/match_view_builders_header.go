@@ -313,6 +313,8 @@ func applyMatchHeaderScore(
 	}
 	h.ScoreLabel = analysis.FormatTeamScoreLabel(d)
 	h.ScoreKind = string(d.Kind)
+	mineVal, theirsVal := d.Mine, d.Theirs
+	h.ScoreMine, h.ScoreTheirs = &mineVal, &theirsVal
 	// Le score de l'API n'accompagne le compte de manches QUE s'il dit autre chose : en
 	// lecture points, ce serait le même libellé deux fois.
 	if d.Kind == analysis.ScoreKindRounds && d.Points != nil {

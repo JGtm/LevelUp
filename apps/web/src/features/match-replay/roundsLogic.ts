@@ -233,3 +233,32 @@ function roundFinal(
 ): number {
   return teamRoundScoreAtFrame(timeline, teamId, roundNumber, endFrame)
 }
+
+/** Le compte de manches gagnées par camp, à l'image lue. */
+export interface RoundsTally {
+  ally: number
+  enemy: number
+}
+
+/**
+ * roundsTally compte les manches DÉJÀ TRANCHÉES par camp, à l'image lue.
+ *
+ * C'est la lecture chiffrée des pastilles, et rien d'autre : mêmes données, même borne, même
+ * relativité au joueur de la page. Une manche en cours, à jouer, ou finie sur une égalité
+ * n'est comptée nulle part — elle n'a pas de vainqueur, et en inventer un ferait mentir le
+ * total.
+ *
+ * CE N'EST PAS LE VERDICT DU MATCH. Ce compte suit la lecture : il vaut 0-0 au coup d'envoi
+ * et se remplit à mesure. Le résultat final, lui, vient de l'API (`score_mine` /
+ * `score_theirs` de l'en-tête de la vue match) — la seule source qui fasse foi, et la même
+ * que celle affichée partout ailleurs dans l'app.
+ */
+export function roundsTally(dots: readonly RoundDot[]): RoundsTally {
+  let ally = 0
+  let enemy = 0
+  for (const dot of dots) {
+    if (dot.winner === 'ally') ally++
+    else if (dot.winner === 'enemy') enemy++
+  }
+  return { ally, enemy }
+}

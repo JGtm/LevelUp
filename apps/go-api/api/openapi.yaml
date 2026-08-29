@@ -16759,8 +16759,14 @@ components:
           type: string
         score_label:
           type: string
+        score_mine:
+          format: int64
+          type: integer
         score_points_label:
           type: string
+        score_theirs:
+          format: int64
+          type: integer
         start_time:
           format: date-time
           type: string
