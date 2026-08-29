@@ -20,6 +20,14 @@ export interface MatchViewText {
   copyShort: string
   copyTooltip: string
   replayTooltip: string
+  /**
+   * Aide du score quand le mode se joue en MANCHES : le nombre affiché est le compte de
+   * manches gagnées / perdues, pas le score en points de l'API — lequel, sur ces modes,
+   * peut donner la victoire au camp qui en a le moins.
+   */
+  scoreRoundsHint: string
+  /** Étiquette du score de l'API affiché en second plan, à côté du compte de manches. */
+  scorePointsAside: (label: string) => string
   markIrrelevant: string
   reactivate: string
   excludeShort: string
@@ -271,6 +279,9 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     copyShort: 'Copier ID',
     copyTooltip: "Copier l'identifiant unique de ce match dans le presse-papier",
     replayTooltip: 'Voir le rejeu 2D de ce match (vue du dessus)',
+    scoreRoundsHint:
+      "Ce mode se joue en manches : le score affiché est le nombre de manches gagnées et perdues. Le score en points renvoyé par l'API est indiqué à côté — sur ces modes, il peut donner l'avantage au camp qui a perdu.",
+    scorePointsAside: (label: string) => `${label} points`,
     markIrrelevant: 'Marquer comme non pertinent',
     reactivate: 'Réactiver',
     excludeShort: 'Exclure',
@@ -550,6 +561,9 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     copyShort: 'Copy ID',
     copyTooltip: "Copy this match's unique identifier to clipboard",
     replayTooltip: 'Watch the 2D replay of this match (top-down view)',
+    scoreRoundsHint:
+      'This mode is played in rounds: the score shown is the number of rounds won and lost. The point score returned by the API is shown next to it — in these modes it can favour the losing side.',
+    scorePointsAside: (label: string) => `${label} points`,
     markIrrelevant: 'Mark as irrelevant',
     reactivate: 'Reactivate',
     excludeShort: 'Exclude',

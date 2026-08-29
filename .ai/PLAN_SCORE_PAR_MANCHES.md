@@ -292,15 +292,29 @@ egalite », perimetre initial reduit aux 3 variantes Oddball.
   encore. Mon code du paquet compile (`go build ./internal/service/` vert) ; a re-gater des
   que leur refactor est pose.
 
-### E6 — Front (surfaces produit)
+### E6 — Front (surfaces produit) — **CLOS le 2026-08-29**
 
-- [ ] i18n FR/EN : « manches » / « rounds » (parite `Record<Locale, T>`).
-- [ ] Vue match (`MatchHeader.card.tsx`) : « 2 - 1 » + (i) infobulle + score API en petit et
-      grise a cote (tokens semantiques uniquement, aucune couleur en dur).
-- [ ] Explorateur/Historique/Carriere (`ExplorerMatchesTable`), accueil (`match-card`),
-      coequipiers : valeur nue « 2 - 1 » + (i) infobulle dans l'EN-TETE de colonne.
-- [ ] Le client **ne recalcule rien** : il lit `score_kind` et choisit le libelle.
-- [ ] Tests vitest sur chaque surface (au moins un cas manches, un cas points).
+- [x] i18n FR/EN : `scoreRoundsHint` + `scorePointsAside` (match-view), et l'infobulle
+      d'en-tete de colonne de l'Explorateur enrichie dans le manifeste TOML (regeneration
+      des 21 manifestes, 2 997 cles).
+- [x] Vue match : `ScoreRoundsAside` — (i) infobulle + « 181 - 186 points » en petit et
+      grise, **uniquement** quand `score_kind === 'rounds'`. Sur un mode en points le
+      libelle principal EST deja le score de l'API : l'ecrire deux fois n'apprendrait rien.
+      Aucune couleur en dur (`text-muted-foreground`).
+- [x] Explorateur/Historique/Carriere : la colonne « Score » portait DEJA une infobulle
+      d'en-tete (`col_score_tooltip`) — elle a ete etendue plutot que doublee. La valeur
+      reste nue (« 2 - 1 »), conformement a l'arbitrage 6.2.
+- [x] Le client ne recalcule RIEN : il lit `score_kind`. La regle vit cote Go.
+- [!] Accueil (`match-card`) et coequipiers : **non cables**. Ces deux surfaces lisent des
+      lignes (`legacymatch.HomeMatchRow` canonique via `canonical.TeamSnapshot`, et
+      `domain.SquadMatchRow`) qui ne portent pas les manches ; les brancher demande 3
+      chemins SQL + le champ canonical + un parametre de config au constructeur pur de
+      l'accueil. Elles affichent donc encore les points sur un Oddball. Ecart assume et
+      SIGNALE : l'utilisateur a nomme le rejeu, la vue match et les tableaux de resultats.
+      A trancher en fin de chantier.
+- [x] Tests vitest : 5 cas sur la vue match (manches, points, champ absent, EN, absence
+      d'aide en points). Suites match-view + explorer : **53 fichiers, 469 tests, 0 echec**.
+- **Gate PASSE** : `npm run typecheck` (tsc -b) vert, ESLint vert sur les fichiers touches.
 
 ### E7 — Rejeu et export video
 
