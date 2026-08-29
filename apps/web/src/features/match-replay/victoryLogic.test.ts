@@ -9,7 +9,7 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import { readVictory } from './victoryLogic'
+import { finalScoreFromHeader, readVictory } from './victoryLogic'
 
 /** Une ligne de scoreboard réduite à ce que la lecture regarde. */
 function row(side: string | null, isMe = false) {
@@ -91,5 +91,33 @@ describe('readVictory — les situations où aucun écran ne doit s’afficher',
 
   it('égalité en FFA : null aussi — le panneau annonce la fin d’un duel de camps', () => {
     expect(readVictory([row(null, true), row(null)], 1)).toBeNull()
+  })
+})
+
+// ─── finalScoreFromHeader : le résultat vient de l'API sur un mode à manches ─
+
+describe('finalScoreFromHeader', () => {
+  it("rend le compte de manches quand l'en-tête le dit", () => {
+    // Témoin 293a763e : 2 manches à 1, alors que le calque du film rendrait « 100 - 43 ».
+    expect(
+      finalScoreFromHeader({ score_kind: 'rounds', score_mine: 2, score_theirs: 1 }),
+    ).toEqual({ ally: 2, enemy: 1 })
+  })
+
+  it('rend null sur un mode en points — le calque du film reste la source', () => {
+    expect(
+      finalScoreFromHeader({ score_kind: 'points', score_mine: 50, score_theirs: 43 }),
+    ).toBeNull()
+  })
+
+  it('rend null quand les nombres manquent (ligne antérieure au backfill)', () => {
+    expect(finalScoreFromHeader({ score_kind: 'rounds' })).toBeNull()
+    expect(finalScoreFromHeader(undefined)).toBeNull()
+  })
+
+  it('accepte un zéro : 2 manches à 0 est une mesure, pas une absence', () => {
+    expect(
+      finalScoreFromHeader({ score_kind: 'rounds', score_mine: 2, score_theirs: 0 }),
+    ).toEqual({ ally: 2, enemy: 0 })
   })
 })

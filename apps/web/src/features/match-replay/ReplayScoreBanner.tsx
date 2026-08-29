@@ -42,7 +42,7 @@ import type { MatchScoreboardRow } from '@/lib/api/types'
 import { formatClock } from './replayLogic'
 import { displayClockMs, type ReplayWindowBounds } from './replayWindow'
 import { readScoreBanner, type ScoreBannerSide } from './scoreBannerLogic'
-import type { RoundDot } from './roundsLogic'
+import { roundsTally, type RoundDot } from './roundsLogic'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
 import type { ReplayText } from './i18nContract'
 
@@ -81,6 +81,7 @@ export function ReplayScoreBanner({
     () => readScoreBanner(scoreTimelineOf(doc), scoreboard, xuidMeta, frame),
     [doc, scoreboard, xuidMeta, frame],
   )
+  const tally = useMemo(() => roundsTally(reading?.dots ?? []), [reading])
   if (!reading) return null
   return (
     <div className="mb-2">
@@ -108,6 +109,19 @@ export function ReplayScoreBanner({
               title={t.roundOfCountFmt(reading.round.index, reading.round.count)}
             >
               {t.roundNumberFmt(reading.round.index)}
+            </span>
+          )}
+          {/* LE COMPTE DE MANCHES EN CLAIR (arbitrage utilisateur du 2026-08-29) : les
+              pastilles au-dessus le disent à l'œil, ce nombre le dit à qui lit. Il suit la
+              lecture — c'est un compte EN COURS, pas le verdict du match, lequel s'affiche
+              sur l'écran de fin depuis l'API. Absent sur un mode à manche unique, où
+              `dots` est vide. */}
+          {reading.dots.length > 0 && (
+            <span
+              className="mt-0.5 font-mono text-[10px] font-bold leading-none tabular-nums text-muted-foreground"
+              aria-label={t.roundsTallyLabel}
+            >
+              {t.roundsTallyFmt(tally.ally, tally.enemy)}
             </span>
           )}
         </div>

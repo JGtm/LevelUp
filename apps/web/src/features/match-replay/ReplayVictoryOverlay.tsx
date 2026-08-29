@@ -67,7 +67,7 @@ import type { ReplayText } from './i18nContract'
 import { OVERLAY_STATUS_BLOCK, OVERLAY_STATUS_NEUTRAL } from './replayOverlayStyles'
 import type { ReplayWindowBounds } from './replayWindow'
 import { readScoreBanner, type ScoreBannerReading } from './scoreBannerLogic'
-import { readVictory, type VictoryTeam } from './victoryLogic'
+import { readVictory, type FinalScoreReading, type VictoryTeam } from './victoryLogic'
 
 interface Props {
   /** Le document du rejeu — le score final s'y lit par le calque, à la borne de fin. */
@@ -84,6 +84,13 @@ interface Props {
   frame: number
   /** Slug du titre — paramètre du chemin d'asset du logo, jamais une branche de comportement. */
   titleSlug: string
+  /**
+   * Le score final SERVI PAR L'API, quand il ne se déduit pas du film — c'est-à-dire sur un
+   * mode à MANCHES, où la lecture du calque à la borne de fin rendrait les points de la
+   * dernière manche (« 100 - 43 ») au lieu du résultat (« 2 - 1 »). `null` sur un mode en
+   * points : le calque, plus fin, reste la source. Cf. `finalScoreFromHeader`.
+   */
+  finalScore?: FinalScoreReading | null
   locale: ReplayLocale
 }
 
@@ -96,6 +103,7 @@ export function ReplayVictoryOverlay({
   playWindow,
   frame,
   titleSlug,
+  finalScore,
   locale,
 }: Props) {
   const t = REPLAY_TEXT[locale]
@@ -125,9 +133,10 @@ export function ReplayVictoryOverlay({
           title={outcomeLabel}
           t={t}
           score={score}
+          finalScore={finalScore}
         />
       ) : (
-        <NeutralPanel title={outcomeLabel} t={t} score={score} />
+        <NeutralPanel title={outcomeLabel} t={t} score={score} finalScore={finalScore} />
       )}
     </div>
   )
@@ -141,6 +150,7 @@ interface TeamPanelProps {
   title: string
   t: ReplayText
   score: ScoreBannerReading | null
+  finalScore?: FinalScoreReading | null
 }
 
 /**
@@ -153,7 +163,7 @@ interface TeamPanelProps {
  * LE FILIGRANE EST DÉCORATIF et il le dit (`aria-hidden`) : le nom de l'équipe est écrit juste
  * en dessous, un lecteur d'écran n'a pas à l'entendre deux fois.
  */
-function TeamPanel({ team, scoreboard, titleSlug, title, t, score }: TeamPanelProps) {
+function TeamPanel({ team, scoreboard, titleSlug, title, t, score, finalScore }: TeamPanelProps) {
   const rows = scoreboard.filter((r) => r.team_side === team.teamSide)
   const label = resolveTeamLabel(rows, team.teamSide, t)
   // LA COULEUR DU JOUEUR DE LA PAGE, telle qu'il l'a réglée (D1, cf. l'en-tête) : l'écran est
@@ -174,7 +184,7 @@ function TeamPanel({ team, scoreboard, titleSlug, title, t, score }: TeamPanelPr
       <p className="relative mt-2 text-sm font-semibold uppercase tracking-wide text-foreground">
         {label}
       </p>
-      <FinalScoreLine t={t} score={score} />
+      <FinalScoreLine t={t} score={score} finalScore={finalScore} />
     </div>
   )
 }
@@ -223,15 +233,17 @@ function NeutralPanel({
   title,
   t,
   score,
+  finalScore,
 }: {
   title: string
   t: ReplayText
   score: ScoreBannerReading | null
+  finalScore?: FinalScoreReading | null
 }) {
   return (
     <div className="flex max-w-[90%] flex-col items-center justify-center">
       <p className={OVERLAY_STATUS_NEUTRAL}>{title}</p>
-      <FinalScoreLine t={t} score={score} />
+      <FinalScoreLine t={t} score={score} finalScore={finalScore} />
     </div>
   )
 }
@@ -244,14 +256,28 @@ function NeutralPanel({
  * Les deux surfaces sont visibles ensemble ; les inverser ici (« le vainqueur d'abord ») ferait
  * lire deux scores contradictoires à trois centimètres l'un de l'autre.
  */
-function FinalScoreLine({ t, score }: { t: ReplayText; score: ScoreBannerReading | null }) {
-  if (!score) return null
+function FinalScoreLine({
+  t,
+  score,
+  finalScore,
+}: {
+  t: ReplayText
+  score: ScoreBannerReading | null
+  finalScore?: FinalScoreReading | null
+}) {
+  // LE SCORE SERVI PAR L'API L'EMPORTE QUAND IL EXISTE : sur un mode à manches, le calque du
+  // film rendrait ici les points de la DERNIÈRE MANCHE, présentés comme le score du match.
+  // C'est la seule ligne du rejeu qui ne se lit pas dans le film, et c'est délibéré — elle
+  // annonce un RÉSULTAT, et le résultat est celui que toute l'app affiche par ailleurs.
+  const ally = finalScore ? finalScore.ally : score?.ally.score
+  const enemy = finalScore ? finalScore.enemy : score?.enemy.score
+  if (ally == null || enemy == null) return null
   return (
     <p className="relative mt-2 font-mono text-3xl font-bold tabular-nums text-foreground">
       <span className="sr-only">{t.victoryScoreLabel} : </span>
-      <span aria-label={t.scoreBannerAlly}>{score.ally.score}</span>
+      <span aria-label={t.scoreBannerAlly}>{ally}</span>
       <span className="px-3 text-muted-foreground">-</span>
-      <span aria-label={t.scoreBannerEnemy}>{score.enemy.score}</span>
+      <span aria-label={t.scoreBannerEnemy}>{enemy}</span>
     </p>
   )
 }

@@ -133,3 +133,37 @@ function myCampIndex(scoreboard: VictoryRows, camps: readonly Camp[]): 0 | 1 | n
   if (camps[1].id === id) return 1
   return null
 }
+
+/** Le score FINAL du match, du point de vue du joueur de la page. */
+export interface FinalScoreReading {
+  ally: number
+  enemy: number
+}
+
+/** Ce que l'écran de fin lit de l'en-tête de la vue match pour connaître le score final. */
+export interface FinalScoreHeader {
+  score_kind?: string
+  score_mine?: number
+  score_theirs?: number
+}
+
+/**
+ * finalScoreFromHeader rend le score final SERVI PAR L'API quand il ne se déduit pas du film,
+ * et `null` sinon — auquel cas l'écran de fin garde sa lecture habituelle du calque.
+ *
+ * POURQUOI L'API ICI, ALORS QUE TOUT LE RESTE DU REJEU VIENT DU FILM. Sur un mode qui se
+ * décide aux MANCHES, la lecture du calque à la borne de fin rend les points de la DERNIÈRE
+ * MANCHE (Oddball : « 100 - 43 »), présentés comme le score du match. C'est faux : le match
+ * s'est joué en deux manches à une. Le compte de manches qui fait foi est celui de l'API,
+ * déjà affiché en tête de la vue match — le prendre ici, c'est garantir que les deux surfaces
+ * disent la MÊME chose. Le pendant vivant (le compte en cours pendant la lecture) reste
+ * dérivé du film, cf. `roundsTally`.
+ *
+ * NE S'APPLIQUE QU'AUX MANCHES : sur un mode en points, le calque du film est plus fin que
+ * l'en-tête (il sait le score à n'importe quelle image) et reste la source.
+ */
+export function finalScoreFromHeader(header: FinalScoreHeader | undefined): FinalScoreReading | null {
+  if (!header || header.score_kind !== 'rounds') return null
+  if (header.score_mine == null || header.score_theirs == null) return null
+  return { ally: header.score_mine, enemy: header.score_theirs }
+}

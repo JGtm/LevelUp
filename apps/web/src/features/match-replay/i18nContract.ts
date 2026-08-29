@@ -413,6 +413,15 @@ export interface ReplayText {
    * la page (allié / adverse), comme le bandeau — jamais par une couleur ni un nom d'équipe.
    */
   roundDotsLabel: string
+  /**
+   * LE COMPTE DE MANCHES ÉCRIT EN CLAIR, à côté du rang de manche sous l'horloge (arbitrage
+   * utilisateur du 2026-08-29). Les pastilles le disent déjà à l'œil ; ce libellé le dit au
+   * lecteur d'écran et à qui compte mal des ronds. Toujours « allié - adverse », l'ordre du
+   * bandeau. Il se lit À L'IMAGE COURANTE, comme les pastilles : c'est un compte EN COURS,
+   * pas le verdict du match (celui-ci vient de l'API, sur l'écran de fin).
+   */
+  roundsTallyFmt: (ally: number, enemy: number) => string
+  roundsTallyLabel: string
   roundDotAllyFmt: (index: number) => string
   roundDotEnemyFmt: (index: number) => string
   roundDotPendingFmt: (index: number) => string

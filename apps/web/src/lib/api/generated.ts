@@ -7990,7 +7990,11 @@ export interface components {
             replay_available: boolean;
             score_kind?: string;
             score_label?: string;
+            /** Format: int64 */
+            score_mine?: number;
             score_points_label?: string;
+            /** Format: int64 */
+            score_theirs?: number;
             /** Format: date-time */
             start_time?: string;
             start_time_label: string;

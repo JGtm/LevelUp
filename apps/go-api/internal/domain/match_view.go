@@ -57,6 +57,12 @@ type MatchViewHeader struct {
 	// Le client s'en sert pour LOCALISER la mention « manches » : le serveur ne met aucun
 	// mot de langue dans le libellé.
 	ScoreKind string `json:"score_kind,omitempty"`
+	// ScoreMine / ScoreTheirs : les DEUX NOMBRES derrière ScoreLabel, dans l'unité de
+	// ScoreKind (des points, ou des manches gagnées). Le libellé suffit à l'en-tête, mais
+	// pas au rejeu : son écran de fin colore chaque camp séparément et a donc besoin des
+	// nombres, pas d'une chaîne à découper. Nil = aucun score connu.
+	ScoreMine   *int `json:"score_mine,omitempty"`
+	ScoreTheirs *int `json:"score_theirs,omitempty"`
 	// ScorePointsLabel : le score de l'API « X - Y », renseigné UNIQUEMENT quand
 	// ScoreKind vaut "rounds" — la vue match l'affiche en petit et grisé à côté du compte
 	// de manches (arbitrage utilisateur du 2026-08-29). Vide sinon : en lecture points, ce

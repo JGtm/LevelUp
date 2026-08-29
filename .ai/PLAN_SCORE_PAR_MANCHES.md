@@ -316,15 +316,27 @@ egalite », perimetre initial reduit aux 3 variantes Oddball.
       d'aide en points). Suites match-view + explorer : **53 fichiers, 469 tests, 0 echec**.
 - **Gate PASSE** : `npm run typecheck` (tsc -b) vert, ESLint vert sur les fichiers touches.
 
-### E7 — Rejeu et export video
+### E7 — Rejeu et export video — **CLOS le 2026-08-29**
 
-- [ ] Passer le compte de manches du registre a l'artefact (`replaybuild/matchfacts.go` ->
-      `ScoreInput`), le film restant le repli quand le registre est muet.
-- [ ] `ReplayVictoryOverlay` + `exportOverlayPanels` : sur un mode a manches, le « score
-      final » devient le compte de manches (2-1), pas les points de la derniere manche.
-- [ ] Bandeau (arbitrage §6.1) : points de manche + pastilles CONSERVES, et le compte de
-      manches ecrit en clair a cote de l'indicateur de manche.
-- [ ] Tests : le temoin Oddball du corpus doit rendre 2-1 en fin de match.
+- [~] Passer le compte de manches par l'ARTEFACT : **abandonne au profit d'une voie plus
+      simple ET plus sure**. La page de rejeu charge deja la vue match (elle en tire le
+      scoreboard et le verdict) : elle y lit donc `score_kind` / `score_mine` /
+      `score_theirs`, servis par l'API. Passer par l'artefact aurait impose de **RE-CUIRE
+      tous les artefacts existants** pour un nombre que l'API publie deja — et aurait cree
+      une seconde source pour une grandeur qui doit dire la meme chose partout.
+- [x] `ReplayVictoryOverlay` + `exportOverlayPanels` : le score final devient le compte de
+      manches quand l'API en publie un. Les deux surfaces passent par le MEME choix
+      (`finalScoreFromHeader` + un `exportFinalScore` extrait) — deux panneaux qui annoncent
+      le meme match ne peuvent pas trancher separement.
+- [x] Bandeau (arbitrage §6.1) : points de manche et pastilles CONSERVES, plus le compte de
+      manches ecrit en clair sous l'horloge (`roundsTally`, derive des pastilles). **Ce
+      compte-la vient du FILM, et c'est voulu** : il suit la lecture (0-0 au coup d'envoi,
+      il se remplit). Le verdict, lui, vient de l'API. Vivant = film, resultat = API.
+- [x] Tests : 3 cas `roundsTally`, 4 cas `finalScoreFromHeader`, 3 cas de rendu sur l'ecran
+      de fin (dont le temoin 2-1 et le cas « 2 manches a 0 »). Suites `match-replay` +
+      `lib/replay` : **118 fichiers, 1 854 tests, 0 echec**.
+- **Gate PASSE** : `npm run typecheck` vert ; ESLint 0 erreur (4 warnings, tous dans des
+  fichiers non touches : ReplayCanvas, ReplayExportDialog, ReplayFeedName, useReplaySound).
 
 ### E8 — Cloture
 
