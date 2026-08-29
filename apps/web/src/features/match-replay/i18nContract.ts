@@ -641,4 +641,16 @@ export interface ReplayText {
   exportDoneFmt: (filename: string) => string
   /** Le son etait demande, le navigateur l'a refuse : le clip est muet, et on le DIT. */
   exportMutedFallback: string
+  /**
+   * LES NOMS DES PISTES SONORES du clip. Ils sont ECRITS DANS LE FICHIER : c'est ce qu'un
+   * montage affiche dans sa liste de pistes, et la seule chose qui distingue « bruitages » de
+   * « voix » pour qui ouvre le clip six mois plus tard.
+   *
+   * `exportTrackMix` vient TOUJOURS EN PREMIER : un lecteur ordinaire ne joue que la premiere
+   * piste, et un navigateur n'expose meme pas les autres.
+   */
+  exportTrackMix: string
+  exportTrackSfx: string
+  exportTrackVoice: string
+  exportTrackMusic: string
 }

@@ -321,6 +321,10 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     exportEtaFmt: (clock) => `environ ${clock} restantes`,
     exportDoneFmt: (filename) => `Fichier déposé : ${filename}`,
     exportMutedFallback: "Clip MUET : ce navigateur a refusé la piste sonore.",
+    exportTrackMix: 'Mixage complet',
+    exportTrackSfx: 'Bruitages',
+    exportTrackVoice: 'Voix',
+    exportTrackMusic: 'Musique',
     ammoDrawnHint:
       'Emplacement DÉGAINÉ selon le sélecteur du record : la même lecture qui place cette arme en tête de rangée.',
     drawnUnknown: 'dégainée ?',
@@ -635,6 +639,10 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     exportEtaFmt: (clock) => `about ${clock} remaining`,
     exportDoneFmt: (filename) => `File saved: ${filename}`,
     exportMutedFallback: 'MUTED clip: this browser refused the audio track.',
+    exportTrackMix: 'Full mix',
+    exportTrackSfx: 'Sound effects',
+    exportTrackVoice: 'Voice',
+    exportTrackMusic: 'Music',
     ammoDrawnHint:
       'Slot DRAWN according to the record selector: the same reading that puts this weapon first in the row.',
     drawnUnknown: 'drawn ?',

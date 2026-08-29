@@ -51,7 +51,7 @@ import {
   type OverlayPanelSource,
 } from './exportOverlayPanels'
 import { paintOverlayPanel, type OverlayFonts, type OverlayInk } from './overlayPaint'
-import { MIX_CHANNELS, MIX_SAMPLE_RATE, mixReplayAudio, soundUrlOf } from './replayAudioMix'
+import { mixReplayAudio, soundUrlOf, type MixedTracks, type SoundFamily } from './replayAudioMix'
 import { formatClock, frameToMs } from './replayLogic'
 import { buildCaptureFilename, triggerDownload } from './replayCapture'
 import { tintedIconCanvas } from './replayDraw'
@@ -67,7 +67,7 @@ import type { ReplayDocumentReady } from './replayNormalize'
 import { EXPORT_FPS, canExportVideo, openVideoExport, type VideoExportSink } from './replayVideoEncoder'
 import { displayClockMs, type ReplayWindowBounds } from './replayWindow'
 import { EXPORT_SUPERSAMPLE, exportRenderScale } from './useReplayView'
-import type { ReplayLocale } from './i18n'
+import { REPLAY_TEXT, type ReplayLocale } from './i18n'
 import type { ReplaySoundEvent } from './replaySoundVariants'
 import { readVictory } from './victoryLogic'
 
@@ -320,7 +320,7 @@ export function useReplayExport(o: ReplayExportOptions): ReplayExport {
         sink = await openVideoExport({
           width: canvas.width,
           height: canvas.height,
-          audio: mix ? { sampleRate: MIX_SAMPLE_RATE, numberOfChannels: MIX_CHANNELS } : undefined,
+          audioTracks: mix ? trackNames(mix, o.locale) : undefined,
         })
         if (!sink) {
           // Configuration refusée par le navigateur : ce n'est pas une panne, c'est une
@@ -334,7 +334,7 @@ export function useReplayExport(o: ReplayExportOptions): ReplayExport {
         // phase finale le dit.
         const muet = mix !== null && !sink.audioEnabled
         if (muet) console.warn('[replay-export] piste sonore refusee par le navigateur, clip muet')
-        if (mix && sink.audioEnabled) await sink.addAudioBuffer(mix)
+        if (mix && sink.audioEnabled) await sink.addAudioTracks(exportTracks(mix, o.locale))
         // PHASE 2 : l'encodage. C'est seulement ici que le compte d'images veut dire quelque
         // chose, et que le temps restant peut s'estimer.
         const total = plan.frames.length
@@ -491,7 +491,7 @@ async function mixExportAudio(
   o: ReplayExportOptions,
   bounds: ExportBounds,
   plan: ExportPlan,
-): Promise<AudioBuffer | null> {
+): Promise<MixedTracks | null> {
   // LA PISTE SE LIT ICI, au lancement : elle porte des reglages d'instance qui vivent dans des
   // refs, et les lire au rendu rendrait des valeurs arbitraires.
   const track = o.soundTrack?.()
@@ -528,10 +528,10 @@ function holdMsFor(
   o: ReplayExportOptions,
   bounds: ExportBounds,
   plan: ExportPlan,
-  mix: AudioBuffer | null,
+  mix: MixedTracks | null,
 ): number {
   const verdict = reachesMatchEnd(o, bounds) ? END_HOLD_MS : 0
-  const son = mix ? mix.duration * 1000 - plan.durationMs : 0
+  const son = mix ? mix.full.duration * 1000 - plan.durationMs : 0
   return Math.max(verdict, son, 0)
 }
 
@@ -545,4 +545,27 @@ function holdMsFor(
 function reachesMatchEnd(o: ReplayExportOptions, bounds: ExportBounds): boolean {
   if (!o.playWindow) return false
   return bounds.endFrame >= o.playWindow.endFrame
+}
+
+/**
+ * LE NOM DES PISTES, ET LEUR ORDRE. Le MIXAGE COMPLET EN PREMIER — c'est la seule que joue un
+ * lecteur ordinaire, et un navigateur n'expose meme pas les autres. Les familles suivent, pour
+ * qui ouvre le clip dans un montage.
+ */
+function exportTracks(mix: MixedTracks, locale: ReplayLocale): { name: string; buffer: AudioBuffer }[] {
+  const t = REPLAY_TEXT[locale]
+  const nom: Record<SoundFamily, string> = {
+    sfx: t.exportTrackSfx,
+    voice: t.exportTrackVoice,
+    music: t.exportTrackMusic,
+  }
+  return [
+    { name: t.exportTrackMix, buffer: mix.full },
+    ...mix.families.map((f) => ({ name: nom[f.family], buffer: f.buffer })),
+  ]
+}
+
+/** Les seuls NOMS, pour declarer les pistes avant d'avoir quoi que ce soit a y ecrire. */
+function trackNames(mix: MixedTracks, locale: ReplayLocale): string[] {
+  return exportTracks(mix, locale).map((p) => p.name)
 }

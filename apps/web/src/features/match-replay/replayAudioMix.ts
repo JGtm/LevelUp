@@ -53,6 +53,16 @@ export function soundUrlOf(stem: string): string {
   return staticAssetURL('sound', stem, '.wav')
 }
 
+/**
+ * LES TROIS FAMILLES DE SON D'UN REJEU, telles qu'un montage veut les separer.
+ *
+ * Elles ne recouvrent PAS les categories du lecteur (`weapon`, `grenade`, `melee`, `equipment`,
+ * `objective`) : ces cinq-la sont TOUTES des bruitages. La voix et la musique n'existent qu'aux
+ * conclusions — l'annonceur de fin de manche et de fin de match, et la fanfare finale. Une piste
+ * « musique » d'un rejeu contient donc dix secondes a la fin, et du silence avant.
+ */
+export type SoundFamily = 'sfx' | 'voice' | 'music'
+
 /** Un son retenu par le mixage : quoi jouer, quand, et avec quelle variation. */
 export interface MixedSound {
   /** Instant sur l'axe du CLIP (0 = première image exportée), en millisecondes. */
@@ -70,6 +80,8 @@ export interface MixedSound {
    * fanfare tombait, si bien que le clip se terminait sans un mot.
    */
   conclusion?: boolean
+  /** La famille a laquelle ce son appartient, pour les pistes separees du clip. */
+  family: SoundFamily
 }
 
 /** La plage exportée, sur l'axe du rejeu. */
@@ -93,6 +105,12 @@ export interface MixOptions {
    * piste — elles se posent sur la borne de fin, et seulement si elle est dans la plage.
    */
   endMatchStems?: readonly string[]
+  /**
+   * QUELS STEMS APPARTIENNENT A QUELLE FAMILLE. Tout ce qui n'y figure pas est un BRUITAGE :
+   * c'est le cas le plus courant de tres loin, et le defaut le plus sur — un son mal classe se
+   * retrouve dans les bruitages, jamais absent du mixage complet.
+   */
+  families?: { voice: readonly string[]; music: readonly string[] }
 }
 
 /**
@@ -150,7 +168,7 @@ export function planAudioMix(
     // La variation RANGED ne concerne que les ARMES : la table est indexée par stem d'arme, et
     // `drawVariation` rend le neutre exact pour tout autre stem.
     const draw = drawVariation(WEAPON_SOUND_VARIATIONS[stem], options.variationPercent, rnd)
-    out.push({ atMs: e.ms - bounds.startMs, stem, draw })
+    out.push({ atMs: e.ms - bounds.startMs, stem, draw, family: familyOf(stem, options.families) })
   }
   // LA CONCLUSION SE POSE SUR LA BORNE DE FIN, et l'appelant ne la fournit QUE si la plage
   // atteint vraiment la fin du match (cf. `mixExportAudio`) : un extrait de milieu de match ne
@@ -164,9 +182,18 @@ export function planAudioMix(
       stem,
       draw: { gainDb: 0, playbackRate: 1 },
       conclusion: true,
+      family: familyOf(stem, options.families),
     })
   }
   return out.sort((a, b) => a.atMs - b.atMs)
+}
+
+/** familyOf classe un stem. Hors des deux listes connues, c'est un bruitage (cf. `MixOptions`). */
+function familyOf(stem: string, familles: MixOptions['families']): SoundFamily {
+  if (!familles) return 'sfx'
+  if (familles.music.includes(stem)) return 'music'
+  if (familles.voice.includes(stem)) return 'voice'
+  return 'sfx'
 }
 
 /**
@@ -284,12 +311,12 @@ export function scheduleMix(
 export async function renderAudioMix(
   sounds: readonly MixedSound[],
   buffers: MixBuffers,
+  /** Duree TOTALE a rendre, queue comprise — l'appelant la calcule une fois pour toutes. */
   durationMs: number,
   masterGain: number,
   distancePercent = 0,
 ): Promise<AudioBuffer> {
-  const tailS = tailSeconds(sounds, buffers, durationMs)
-  const frames = Math.max(1, Math.ceil(((durationMs / 1000 + tailS) * MIX_SAMPLE_RATE)))
+  const frames = Math.max(1, Math.ceil((durationMs / 1000) * MIX_SAMPLE_RATE))
   const ctx = new OfflineAudioContext(MIX_CHANNELS, frames, MIX_SAMPLE_RATE)
   const master = ctx.createGain()
   master.gain.value = Math.min(Math.max(masterGain, 0), 1)
@@ -334,25 +361,46 @@ export function tailSeconds(
 }
 
 /**
- * mixReplayAudio — LE POINT D'ENTRÉE UNIQUE : de la piste du rejeu au tampon prêt à encoder.
+ * LES PISTES D'UN CLIP, DANS L'ORDRE OU LE CONTENEUR LES ECRIRA.
  *
- * Il enchaîne les quatre étapes dans le seul ordre possible : retenir et tirer (pur), décoder
- * (les durées ne se connaissent qu'après), plafonner les voix (elle en a besoin), rendre.
+ * `full` VIENT EN PREMIER, et ce n'est pas un detail de presentation : un lecteur ordinaire
+ * ne joue QUE la premiere piste (un navigateur n'expose meme pas les autres). Livrer les
+ * familles sans le mixage ferait entendre les seuls bruitages, sans musique ni voix — une
+ * regression pour tout le monde sauf le monteur.
+ */
+export interface MixedTracks {
+  full: AudioBuffer
+  /** Les familles NON VIDES, dans l'ordre `sfx`, `voice`, `music`. */
+  families: { family: SoundFamily; buffer: AudioBuffer }[]
+}
+
+/** L'ordre d'ecriture des familles. Stable, pour que deux exports se ressemblent. */
+const FAMILY_ORDER: readonly SoundFamily[] = ['sfx', 'voice', 'music']
+
+/**
+ * mixReplayAudio — LE POINT D'ENTREE UNIQUE : de la piste du rejeu aux tampons prets a encoder.
  *
- * `null` quand il n'y a rien à mixer — piste vide, plage sans le moindre son, ou navigateur
- * sans `OfflineAudioContext`. L'appelant sort alors un clip MUET plutôt que pas de clip.
+ * Il enchaine les quatre etapes dans le seul ordre possible : retenir et tirer (pur), decoder
+ * (les durees ne se connaissent qu'apres), plafonner les voix (elle en a besoin), rendre.
+ *
+ * LES FAMILLES SONT RENDUES A PARTIR DES MEMES SONS RETENUS que le mixage complet — jamais
+ * replanifiees. C'est ce qui garantit qu'en superposant les pistes separees on retrouve
+ * exactement le mixage : meme tirage, meme plafond de voix, memes instants.
+ *
+ * `null` quand il n'y a rien a mixer — piste vide, plage sans le moindre son, ou navigateur
+ * sans `OfflineAudioContext`. L'appelant sort alors un clip MUET plutot que pas de clip.
  */
 export async function mixReplayAudio(
   timeline: readonly ReplaySoundEvent[],
   bounds: MixBounds,
   options: MixOptions & { volume: number; urlOf: (stem: string) => string | undefined },
-): Promise<AudioBuffer | null> {
+): Promise<MixedTracks | null> {
   if (typeof OfflineAudioContext !== 'function') return null
   const planned = planAudioMix(timeline, bounds, options)
   if (planned.length === 0) return null
   const durationMs = bounds.endMs - bounds.startMs
-  // UN CONTEXTE JETABLE POUR LE SEUL DÉCODAGE : `decodeAudioData` a besoin d'un contexte, mais
-  // pas de celui qui rendra le mixage — dont la longueur dépend justement des durées décodées.
+  // UN CONTEXTE JETABLE POUR LE SEUL DECODAGE : `decodeAudioData` a besoin d'un contexte, mais
+  // pas de celui qui rendra le mixage — dont la longueur depend justement des durees decodees.
   const probe = new OfflineAudioContext(MIX_CHANNELS, 1, MIX_SAMPLE_RATE)
   const buffers = await decodeMixSources(
     planned.map((s) => s.stem),
@@ -361,5 +409,17 @@ export async function mixReplayAudio(
   )
   const kept = applyVoiceCap(planned, (stem) => buffers.get(stem)?.duration ?? null)
   if (kept.length === 0) return null
-  return renderAudioMix(kept, buffers, durationMs, options.volume, options.distancePercent ?? 0)
+  // LA DUREE EST CELLE DU MIXAGE COMPLET POUR TOUTES LES PISTES : des pistes de longueurs
+  // differentes se decaleraient a la lecture dans un montage.
+  const total = durationMs + tailSeconds(kept, buffers, durationMs) * 1000
+  const rendre = (sons: readonly MixedSound[]) =>
+    renderAudioMix(sons, buffers, total, options.volume, options.distancePercent ?? 0)
+  const full = await rendre(kept)
+  const families: MixedTracks['families'] = []
+  for (const family of FAMILY_ORDER) {
+    const sons = kept.filter((s) => s.family === family)
+    if (sons.length === 0) continue
+    families.push({ family, buffer: await rendre(sons) })
+  }
+  return { full, families }
 }

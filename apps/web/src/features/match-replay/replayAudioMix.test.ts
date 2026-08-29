@@ -118,6 +118,7 @@ function simultanes(n: number, atMs = 0): MixedSound[] {
     atMs,
     stem: `s${i}`,
     draw: { gainDb: 0, playbackRate: 1 },
+    family: 'sfx' as const,
   }))
 }
 
@@ -144,7 +145,7 @@ describe('applyVoiceCap — la même comptabilité que le lecteur temps réel', 
   })
 
   it('un asset absent est un silence, et n’occupe AUCUNE voix', () => {
-    const sons = [...simultanes(2, 0), { atMs: 0, stem: 'absent', draw: { gainDb: 0, playbackRate: 1 } }]
+    const sons = [...simultanes(2, 0), { atMs: 0, stem: 'absent', draw: { gainDb: 0, playbackRate: 1 }, family: 'sfx' as const }]
     const out = applyVoiceCap(sons, (stem) => (stem === 'absent' ? null : 1))
     expect(out.map((s) => s.stem)).toEqual(['s0', 's1'])
   })
@@ -155,12 +156,12 @@ describe('tailSeconds — ce qui DÉPASSE la borne', () => {
 
   it('rend le dépassement, pas la fin absolue', () => {
     // Une fanfare de 10 s posée a 4 s d'un clip de 5 s deborde de 9 s, pas de 14.
-    const sons: MixedSound[] = [{ atMs: 4000, stem: 'fanfare', draw: { gainDb: 0, playbackRate: 1 } }]
+    const sons: MixedSound[] = [{ atMs: 4000, stem: 'fanfare', draw: { gainDb: 0, playbackRate: 1 }, family: 'music' }]
     expect(tailSeconds(sons, buffers, 5000)).toBe(9)
   })
 
   it('rend zéro quand tout tient dans la plage', () => {
-    const sons: MixedSound[] = [{ atMs: 0, stem: 'fanfare', draw: { gainDb: 0, playbackRate: 1 } }]
+    const sons: MixedSound[] = [{ atMs: 0, stem: 'fanfare', draw: { gainDb: 0, playbackRate: 1 }, family: 'music' }]
     expect(tailSeconds(sons, buffers, 60_000)).toBe(0)
   })
 })

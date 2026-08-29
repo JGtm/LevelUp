@@ -13,6 +13,25 @@
  * `VideoFrame` porte son instant (en microsecondes de match) ; le muxeur les remet dans l'ordre
  * du fichier. Le temps de calcul n'entre nulle part dans le résultat.
  *
+ * # POURQUOI `mediabunny` ET PLUS `mp4-muxer` (2026-08-28)
+ *
+ * Les deux viennent du meme auteur, et le second est le successeur du premier. Le changement
+ * n'est pas une preference : `mp4-muxer` declare `audio?:` AU SINGULIER — une piste video, une
+ * piste audio, pas plus. L'utilisateur veut ses bruitages, ses voix et sa musique SEPARES pour
+ * les remonter ; `mediabunny` accepte un nombre illimite de pistes audio en MP4 (verifie :
+ * `Mp4OutputFormat.getSupportedTrackCounts()` rend `audio.max = 2^32-1`).
+ *
+ * CE QUI N'A PAS CHANGE, ET C'EST DELIBERE : l'encodage VIDEO reste le notre — `VideoEncoder`,
+ * notre config, notre contre-pression, nos horodatages. `mediabunny` sait encoder lui-meme,
+ * mais tout cela est deja mesure et teste, et une reecriture aurait remis en jeu la seule
+ * partie du chantier verifiee de bout en bout dans un navigateur. Seule la couche de MUXAGE
+ * change, par `EncodedVideoPacketSource` qui prend nos paquets tels quels.
+ *
+ * L'AUDIO, LUI, PASSE PAR `AudioBufferSource` : on donne un tampon rendu, la bibliotheque
+ * encode. C'est ce qui supprime notre `encodeAudioInto` et, avec lui, toute la famille de
+ * pieges qu'il portait (configuration AAC refusee de facon asynchrone, `flush()` sur un
+ * encodeur ferme, piste declaree mais vide).
+ *
  * # CE QUE CE MODULE NE FAIT PAS
  *
  * Il ne dessine rien, ne connaît ni le document du rejeu ni React, et n'écrit aucun fichier :
@@ -36,7 +55,15 @@
  *    mille images dans la file avant que l'encodeur en ait sorti la moitié, et l'onglet meurt.
  *    On attend que la file redescende (cf. `shouldDrain`).
  */
-import { ArrayBufferTarget, Muxer } from 'mp4-muxer'
+import {
+  AudioBufferSource,
+  BufferTarget,
+  EncodedPacket,
+  EncodedVideoPacketSource,
+  Mp4OutputFormat,
+  Output,
+  QUALITY_HIGH,
+} from 'mediabunny'
 
 import { yieldToEvents } from './eventLoopYield'
 
@@ -196,6 +223,13 @@ export function canExportAudio(): boolean {
   return typeof AudioEncoder !== 'undefined' && typeof AudioData !== 'undefined'
 }
 
+/**
+ * Débit de la piste sonore, en bits par seconde. 128 kb/s en AAC stéréo : au-dessus du seuil
+ * où l'oreille distingue encore l'encodage sur des sons courts et secs (tirs, explosions),
+ * et sans commune mesure avec le débit vidéo — la piste ne pèse rien dans le fichier.
+ */
+const AUDIO_BITRATE = 128_000
+
 /** La configuration AAC visee : AAC-LC, le profil que tout lecteur decode. */
 export function audioEncoderConfig(shape: AudioTrackShape): AudioEncoderConfig {
   return {
@@ -237,15 +271,15 @@ export interface VideoExportSink {
   /** Vide la file, referme le conteneur, rend le fichier. */
   finish: () => Promise<Blob>
   /**
-   * `false` = la piste sonore demandee n'a PAS pu etre declaree (encodeur AAC absent ou
+   * `false` = les pistes sonores demandees n'ont PAS pu etre declarees (encodeur AAC absent ou
    * configuration refusee). Le clip sortira muet, et l'appelant doit le DIRE.
    */
   audioEnabled: boolean
   /**
-   * Encode et muxe la piste sonore rendue hors ligne. À n'appeler QUE si `audioEnabled`, et une
-   * seule fois. Sans piste déclarée, ne fait rien.
+   * Remet les tampons rendus, DANS L'ORDRE des noms declares a l'ouverture. A n'appeler QUE si
+   * `audioEnabled`, et une seule fois.
    */
-  addAudioBuffer: (buffer: AudioBuffer) => Promise<void>
+  addAudioTracks: (tracks: readonly AudioTrackInput[]) => Promise<void>
   /** Referme tout sans rien rendre (annulation, erreur). Ne lève jamais. */
   abort: () => void
 }
@@ -255,17 +289,34 @@ export interface VideoExportOptions {
   height: number
   fps?: number
   /**
-   * La PISTE SONORE, déclarée à l'ouverture ou jamais : le conteneur MP4 écrit sa table des
-   * pistes une fois pour toutes, et une piste ajoutée après coup n'y aurait pas de place.
-   * Absente = clip muet, ce qui reste un résultat.
+   * COMBIEN de pistes sonores le clip portera. Declare a l'ouverture ou jamais : le conteneur
+   * ecrit sa table des pistes une fois pour toutes. `0` = clip muet, ce qui reste un resultat.
+   *
+   * Les noms sont donnes ici parce qu'ils font partie de la DECLARATION ; les tampons, eux,
+   * arrivent plus tard (`addAudioTracks`), une fois le mixage rendu.
    */
-  audio?: AudioTrackShape
+  audioTracks?: readonly string[]
 }
 
-/** La forme de la piste sonore : ce que le conteneur doit annoncer avant le premier octet. */
+/** La forme d'une piste sonore : ce que le conteneur annonce avant le premier octet. */
 export interface AudioTrackShape {
   sampleRate: number
   numberOfChannels: number
+}
+
+/**
+ * Une piste sonore a ecrire dans le clip : son nom, et le tampon deja rendu.
+ *
+ * L'ORDRE DES PISTES N'EST PAS DECORATIF. La PREMIERE est celle que tout lecteur ordinaire
+ * joue — un navigateur n'expose pas les autres. C'est donc le MIXAGE COMPLET qui doit venir en
+ * premier ; les familles separees suivent, pour qui ouvre le fichier dans un montage. Livrer
+ * les familles SANS le mixage ferait entendre les seuls bruitages, sans musique ni voix : une
+ * regression pour tout le monde sauf le monteur.
+ */
+export interface AudioTrackInput {
+  /** Nom lisible de la piste (« Mixage », « Bruitages », « Voix », « Musique »). */
+  name: string
+  buffer: AudioBuffer
 }
 
 /**
@@ -275,46 +326,54 @@ export interface AudioTrackShape {
  * bascule sur le repli. On ne lève pas — un export impossible n'est pas une panne, c'est une
  * capacité absente, et le plan (D5) veut qu'elle se traite par un autre bouton.
  */
+/**
+ * La forme de reference des pistes sonores : celle que rend le mixage hors ligne
+ * (`replayAudioMix.ts`). Elle ne sert qu'a PROUVER que l'encodeur AAC l'accepte, AVANT de
+ * declarer quoi que ce soit dans le conteneur — une piste declaree puis refusee perd tout
+ * l'export.
+ */
+const MIX_TRACK_SHAPE: AudioTrackShape = { sampleRate: 48_000, numberOfChannels: 2 }
+
 export async function openVideoExport(o: VideoExportOptions): Promise<VideoExportSink | null> {
   if (!canExportVideo()) return null
   const fps = o.fps ?? EXPORT_FPS
   const config = videoEncoderConfig(o.width, o.height, fps)
   const support = await VideoEncoder.isConfigSupported(config)
   if (!support.supported) return null
-  // LA PISTE SONORE SE PROUVE AVANT D'ETRE DECLAREE (cf. `audioTrackUsable`) : le conteneur
-  // ecrit sa table des pistes une fois pour toutes, et une piste declaree que l'encodeur
-  // refusera ensuite perd TOUT l'export.
-  const audio = o.audio && (await audioTrackUsable(o.audio)) ? o.audio : null
+  const noms = o.audioTracks ?? []
+  // LES PISTES SONORES SE PROUVENT AVANT D'ETRE DECLAREES (cf. `audioTrackUsable`) : le
+  // conteneur ecrit sa table des pistes une fois pour toutes, et une piste declaree que
+  // l'encodeur refusera ensuite perd TOUT l'export.
+  const audioOk = noms.length > 0 && (await audioTrackUsable(MIX_TRACK_SHAPE))
 
-  const muxer = new Muxer({
-    target: new ArrayBufferTarget(),
-    video: { codec: 'avc', width: config.width, height: config.height },
-    ...(audio
-      ? {
-          audio: {
-            codec: 'aac' as const,
-            sampleRate: audio.sampleRate,
-            numberOfChannels: audio.numberOfChannels,
-          },
-        }
-      : {}),
-    // « in-memory » : l'en-tête de lecture se pose EN TÊTE du fichier une fois tout connu. Sans
-    // lui, l'index atterrit à la fin et un lecteur qui ouvre le fichier en flux ne sait pas
-    // combien de temps il dure — le clip s'ouvre alors sur une durée inconnue.
-    fastStart: 'in-memory',
-  })
+  const output = new Output({ format: new Mp4OutputFormat({ fastStart: 'in-memory' }), target: new BufferTarget() })
+  const videoSource = new EncodedVideoPacketSource('avc')
+  output.addVideoTrack(videoSource, { frameRate: fps })
+  // Les pistes AUDIO sont ajoutees ICI, vides : leur EXISTENCE et leur ORDRE se declarent avant
+  // le premier octet, leur contenu arrive plus tard (`addAudioTracks`).
+  const audioSources = audioOk
+    ? noms.map((name) => {
+        const src = new AudioBufferSource({ codec: 'aac', quality: QUALITY_HIGH })
+        output.addAudioTrack(src, { name })
+        return src
+      })
+    : []
+  await output.start()
+
   // La première erreur gagne et sera relancée par `finish` : une erreur d'encodeur arrive de
   // façon asynchrone, hors de la pile de l'appelant, et l'avaler rendrait un fichier tronqué
   // sans que rien ne le dise.
   let failure: Error | null = null
   const encoder = new VideoEncoder({
-    output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
+    output: (chunk, meta) => {
+      void videoSource.add(EncodedPacket.fromEncodedChunk(chunk), meta)
+    },
     error: (err) => {
       failure = err instanceof Error ? err : new Error(String(err))
     },
   })
   encoder.configure(config)
-  return makeSink(encoder, muxer, fps, () => failure, audio, {
+  return makeSink(encoder, output, videoSource, audioSources, fps, () => failure, {
     width: config.width,
     height: config.height,
   })
@@ -327,10 +386,11 @@ export async function openVideoExport(o: VideoExportOptions): Promise<VideoExpor
  */
 function makeSink(
   encoder: VideoEncoder,
-  muxer: Muxer<ArrayBufferTarget>,
+  output: Output,
+  videoSource: EncodedVideoPacketSource,
+  audioSources: readonly AudioBufferSource[],
   fps: number,
   failureOf: () => Error | null,
-  audio: AudioTrackShape | null,
   size: { width: number; height: number },
 ): VideoExportSink {
   let closed = false
@@ -367,14 +427,33 @@ function makeSink(
     }
   }
 
+  /**
+   * addAudioTracks remet les tampons rendus, DANS L'ORDRE des noms declares a l'ouverture.
+   *
+   * `AudioBufferSource.close()` est appele apres chaque tampon : sans lui, la piste reste
+   * ouverte et `output.finalize()` attendrait indefiniment de quoi la remplir.
+   */
+  const addAudioTracks = async (tracks: readonly AudioTrackInput[]) => {
+    for (let i = 0; i < audioSources.length; i++) {
+      const piste = tracks[i]
+      if (piste) await audioSources[i].add(piste.buffer)
+      audioSources[i].close()
+    }
+  }
+
   const finish = async (): Promise<Blob> => {
     await encoder.flush()
     const failed = failureOf()
     if (failed) throw failed
-    muxer.finalize()
+    // LES SOURCES SE FERMENT AVANT LA FINALISATION : une piste declaree mais jamais close
+    // laisse `finalize()` attendre un contenu qui ne viendra pas.
+    for (const src of audioSources) src.close()
+    videoSource.close()
+    await output.finalize()
     closed = true
     encoder.close()
-    return new Blob([muxer.target.buffer], { type: 'video/mp4' })
+    const buffer = (output.target as BufferTarget).buffer
+    return new Blob([buffer ?? new ArrayBuffer(0)], { type: 'video/mp4' })
   }
 
   const abort = () => {
@@ -389,100 +468,7 @@ function makeSink(
     }
   }
 
-  const addAudioBuffer = (buffer: AudioBuffer) =>
-    audio ? encodeAudioInto(muxer, buffer, audio) : Promise.resolve()
-
-  return { addFrame, addAudioBuffer, audioEnabled: audio !== null, finish, abort }
+  return { addFrame, addAudioTracks, audioEnabled: audioSources.length > 0, finish, abort }
 }
 
-/**
- * Débit de la piste sonore, en bits par seconde. 128 kb/s en AAC stéréo : au-dessus du seuil
- * où l'oreille distingue encore l'encodage sur des sons courts et secs (tirs, explosions),
- * et sans commune mesure avec le débit vidéo — la piste ne pèse rien dans le fichier.
- */
-const AUDIO_BITRATE = 128_000
 
-/**
- * Taille d'un paquet poussé à l'encodeur, en échantillons par canal. 1024 est la taille de
- * trame native de l'AAC : la choisir évite à l'encodeur de recouper ce qu'on lui donne.
- */
-const AUDIO_CHUNK_FRAMES = 1024
-
-/**
- * encodeAudioInto encode un tampon rendu hors ligne et le muxe.
- *
- * LE TAMPON EST DÉJÀ COMPLET quand on arrive ici : `OfflineAudioContext` a tout rendu d'un
- * coup, bien plus vite que la durée du clip. Il ne reste qu'à le découper en paquets et à les
- * horodater — comme pour l'image, l'horodatage est CALCULÉ, jamais mesuré.
- *
- * LES CANAUX SONT ENTRELACÉS EN `f32-planar` : c'est la disposition que rend `getChannelData`,
- * canal par canal, et la recopier telle quelle évite un entrelacement inutile.
- */
-async function encodeAudioInto(
-  muxer: Muxer<ArrayBufferTarget>,
-  buffer: AudioBuffer,
-  shape: AudioTrackShape,
-): Promise<void> {
-  if (!canExportAudio()) return
-  // LU PAR ACCESSEUR, jamais directement : `failure` n'est assigné que dans une closure, et
-  // TypeScript garde alors le narrowing d'initialisation — `if (failure)` serait typé
-  // « toujours null », donc supprimable par un lint ou un refactor confiant. Le chemin vidéo
-  // fait pareil, et pour la même raison.
-  let failure: Error | null = null
-  const failureOf = (): Error | null => failure
-  const encoder = new AudioEncoder({
-    output: (chunk, meta) => muxer.addAudioChunk(chunk, meta),
-    error: (err) => {
-      failure = err instanceof Error ? err : new Error(String(err))
-    },
-  })
-  encoder.configure(audioEncoderConfig(shape))
-  const channels: Float32Array[] = []
-  for (let c = 0; c < shape.numberOfChannels; c++) {
-    // Un tampon rendu avec moins de canaux que la piste déclarée : on recopie le dernier
-    // plutôt que de laisser un canal muet — un clip à moitié silencieux s'entend, pas un
-    // canal dupliqué.
-    channels.push(buffer.getChannelData(Math.min(c, buffer.numberOfChannels - 1)))
-  }
-  try {
-   for (let offset = 0; offset < buffer.length; offset += AUDIO_CHUNK_FRAMES) {
-    if (failureOf()) break
-    const frames = Math.min(AUDIO_CHUNK_FRAMES, buffer.length - offset)
-    const data = new Float32Array(frames * shape.numberOfChannels)
-    for (let c = 0; c < shape.numberOfChannels; c++) {
-      data.set(channels[c].subarray(offset, offset + frames), c * frames)
-    }
-    const audio = new AudioData({
-      format: 'f32-planar',
-      sampleRate: shape.sampleRate,
-      numberOfFrames: frames,
-      numberOfChannels: shape.numberOfChannels,
-      timestamp: Math.round((offset / shape.sampleRate) * 1_000_000),
-      data,
-    })
-    try {
-      encoder.encode(audio)
-    } finally {
-      // TOUJOURS refermer : un `AudioData` non fermé retient sa mémoire, et il en passe une
-      // cinquantaine par seconde de clip.
-      audio.close()
-    }
-    if (encoder.encodeQueueSize > ENCODE_QUEUE_MAX) await yieldToEvents()
-   }
-   // LE FLUSH SE GARDE PAR L'ETAT : sur un encodeur passe en erreur, il leve
-   // « Encoder must be configured first » et masque la vraie cause.
-   if (encoder.state === 'configured') await encoder.flush()
-  } finally {
-    // `flush()` REJETTE sur un encodeur en erreur fatale : sans ce `finally`, `close()` n'était
-    // jamais atteint et l'`AudioEncoder` fuyait avec son tampon jusqu'à la fermeture de
-    // l'onglet. Fermer un encodeur déjà fermé lève : on ne masque pas la cause par une
-    // seconde erreur.
-    try {
-      encoder.close()
-    } catch {
-      // Rien à dire : on referme, il n'y a pas d'appelant à prévenir de cette seconde panne.
-    }
-  }
-  const failed = failureOf()
-  if (failed) throw failed
-}

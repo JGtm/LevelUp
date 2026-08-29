@@ -31,7 +31,7 @@
     "echarts-for-react": "^3.0.6",
     "hls.js": "^1.7.1",
     "intl-messageformat": "^11.2.14",
-    "mp4-muxer": "^5.2.2",
+    "mediabunny": "^1.55.3",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-markdown": "^10.1.0",
