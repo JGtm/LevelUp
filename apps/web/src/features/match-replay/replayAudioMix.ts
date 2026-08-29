@@ -60,6 +60,16 @@ export interface MixedSound {
   /** Le fichier effectivement joué — variante déjà tirée. */
   stem: string
   draw: SoundDraw
+  /**
+   * `true` = LA CONCLUSION (voix d'annonceur, fanfare). Elle ECHAPPE au plafond de voix.
+   *
+   * POURQUOI CETTE EXCEPTION. Le plafond existe pour qu'un echange nourri ne devienne pas un
+   * mur de bruit : il arbitre entre des sons DE MELEE, tous equivalents. La conclusion n'est
+   * pas de la melee — c'est ce que le clip raconte en dernier. Vecu en recette le 2026-08-28 :
+   * sur une fin de match disputee, les huit voix etaient prises par les derniers tirs et la
+   * fanfare tombait, si bien que le clip se terminait sans un mot.
+   */
+  conclusion?: boolean
 }
 
 /** La plage exportée, sur l'axe du rejeu. */
@@ -149,7 +159,12 @@ export function planAudioMix(
   for (const stem of options.endMatchStems ?? []) {
     // AUCUNE VARIATION ICI, comme dans le lecteur : les fourchettes sont celles des armes, une
     // réplique d'annonceur et une fanfare se jouent telles quelles.
-    out.push({ atMs: bounds.endMs - bounds.startMs, stem, draw: { gainDb: 0, playbackRate: 1 } })
+    out.push({
+      atMs: bounds.endMs - bounds.startMs,
+      stem,
+      draw: { gainDb: 0, playbackRate: 1 },
+      conclusion: true,
+    })
   }
   return out.sort((a, b) => a.atMs - b.atMs)
 }
@@ -176,6 +191,12 @@ export function applyVoiceCap(
   for (const s of sounds) {
     const seconds = durationOf(s.stem)
     if (seconds === null) continue
+    // LA CONCLUSION PASSE TOUJOURS, et n'occupe aucune voix (cf. `MixedSound.conclusion`) :
+    // elle ne dispute rien a personne, elle conclut.
+    if (s.conclusion) {
+      kept.push(s)
+      continue
+    }
     busy = busy.filter((endsAt) => endsAt > s.atMs)
     if (busy.length >= SOUND_MAX_VOICES) continue
     const { stopS } = soundEnvelope(seconds)

@@ -1,3 +1,34 @@
+## [2026-08-29] Kills hors arme a feu — etape 1 : le pont source de degat -> registre — Complete (etape 1 close)
+
+**Contexte** : suite de l'entree precedente (cadrage + etape 0). Decision D1 confirmee par
+l'utilisateur : la classe `equipment` est creee MALGRE son unique kill mesure.
+
+**Decision technique principale** : le pont se fait sur la colonne `weapon_key` de
+`killicon/data/rules.tsv`, qui existait deja et etait vide sur ces lignes — aucune table
+neuve, aucun id numerique synthetique. Six entrees de registre HINF hors arsenal, sans
+`weapon_ids` : elles ne se resolvent pas par `weapon_id` mais par la source de degat `jpt!`.
+
+**Resultats observes** : `NOM Repulsor -> hinf_repulsor` (classe `equipment`), les 4 regles
+`BANQUE exp_single_small_* -> hinf_coil_{kinetic,plasma,shock,hardlight}` (classe
+`environmental`, nommees par le TYPE D'ENERGIE comme le kill feed du jeu), plus
+`hinf_environment`. Constantes `clsEquipment`/`clsEnvironmental`, famille `equipment`,
+enums class et role elargis, cardinalites du seed 84->90 / familles 51->52 / HINF 29->35.
+Libelles EN+FR des 6 cles dans `weapon_names.toml`. Justification devenue fausse corrigee
+dans le meme commit (`arme HORS registre, donc sans weapon_key` — anti-pattern « doc
+inversee »). GATE 1 vert : 19 paquets `ok`, `go build ./...` exit 0.
+
+**Item 1.3 statue `[!]`** : la regle `CLASSE DEGAT_GLOBAL` est REFUSEE PAR LA TABLE —
+`killicon.validate()` rejette a la lecture toute regle sans vignette, et les 9 tags
+`DEGAT_GLOBAL` sont indiscernables entre eux alors que l'atlas propose DEUX vignettes
+concurrentes (`killfeed-52 Fall`, `killfeed-55 environment`). En choisir une mettrait une
+icone fausse sur l'autre moitie des cas. Consequence de conception actee : la chute et
+l'environnement ne passent pas par `killicon`, leur classe vient directement de la CLASSE
+damagetag, resolue au repo de l'etape 2. L'entree `hinf_environment` porte le libelle de
+niveau 2, sans vignette. Question d'icone consignee en §8 du plan.
+
+**Conclusion / prochaine etape** : etape 1 close, aucun item sans statut. Etape 2 (port +
+repo de lecture sur `match_kill_events_latest`). Aucun commit demande a ce stade.
+
 ## [2026-08-29] Kills hors arme a feu (repulseur, bobines, chute) : cadrage, plan et etape 0 — En cours (mesure faite, zero ligne de production)
 
 **Contexte** : demande utilisateur — « le repulseur n'est pas une arme mais il permet de tuer,
@@ -105,6 +136,54 @@ veut, est le second pont d'identite dans `buildPlayerScoresFlat` (desambiguiser 
 de mort quand le triplet collisionne) — c'est ce qui degelerait reellement les fiches restantes.
 
 ---
+
+## [2026-08-28] Export video : la musique de fin ne jouait NULLE PART, et la nettete se joue sur le chroma — Complete
+
+**Contexte** : deux retours d'ecoute et de vue de l'utilisateur — « y a pas la musique et la voix
+en fin de partie », puis « j'ai la voix mais pas la musique, la qualite manque de nettete ».
+
+**Decision technique, retour 1 (le son de fin).** Deux causes distinctes, trouvees l'une apres
+l'autre.
+
+(a) J'utilisais `endMatchSoundStems`, qui est la liste de PRECHARGEMENT (toutes les prises
+possibles), la ou `endMatchSounds` rend ce qui JOUE reellement — une voix tiree, plus la musique.
+Et ces sons passaient par le PLAFOND DE VOIX : sur une fin de match disputee, les huit voix
+etaient prises par les derniers tirs et la conclusion tombait. La conclusion echappe desormais au
+plafond, avec sa raison ecrite : le plafond arbitre entre des sons DE MELEE, tous equivalents ;
+la conclusion n'est pas de la melee, c'est ce que le clip raconte en dernier.
+
+(b) La voix est revenue, la musique non — et la cause n'etait pas dans le code. Les TROIS musiques
+de fin de partie (`end_defeat`, `end_victory`, `end_tie`) sont livrees en `WAVE_FORMAT_EXTENSIBLE`
+(0xFFFE) a QUATRE canaux, que `decodeAudioData` refuse. Les 88 autres fichiers du pack sont du PCM
+stereo et passent. **Ces musiques n'ont donc jamais joue, ni dans l'export ni dans le rejeu de la
+page.** Converties en PCM stereo (elles decodent : 9,93 / 11,67 / 10,59 s) et QUATRIEME GARDE-RAIL
+pose sur le pack : tout WAV livre doit etre decodable par un navigateur. Les trois precedents
+verifiaient le stem, le fichier et la duree — aucun ne regardait le format. Detail qui pique : le
+commentaire de `SOUND_CUT_MAX_S` justifie son plafond par « la plus longue, l'egalite, fait
+11,67 s ». Quelqu'un avait mesure ces fichiers hors navigateur sans voir qu'ils n'y jouaient pas.
+
+**Decision technique, retour 2 (la nettete).** Mesuree, pas devinee. Meme image encodee puis
+decodee, comparee a sa source : natif 502x480 a 2 Mb/s -> ecart moyen 5,08, 7,9 % de pixels
+franchement alteres ; le MEME a 20 Mb/s -> 4,96 et 7,9 % ; rendu DOUBLE a 1004x960 -> 0,76 et 0 %.
+Multiplier le debit par dix ne gagne rien : la perte vient du sous-echantillonnage chroma 4:2:0 de
+H.264, qui a 502 px ne laisse qu'un demi-pixel de couleur — or un rejeu n'est fait que de traits
+fins et de petits chiffres colores. L'export rend donc la toile en x2 le temps du calcul
+(`exportRenderScale`, loge dans `useReplayView` que le canvas importe DEJA, ce qui ne lui coute
+aucune ligne : il est a son plafond). Verifie : clip en 1006x960, toile remise a 503x480 apres, y
+compris sur echec.
+
+**Resultats observes** : `make test-web` vert (528 fichiers, 5387 tests), typecheck et eslint
+propres. Deux tests de non-regression sur l'echelle (appliquee pendant, reposee apres, reposee
+meme en cas d'echec).
+
+**Reserve** : la musique convertie n'a PAS pu etre verifiee a l'ecoute — le serveur Go du port
+8000 est arrete, et Vite lui proxifie `/static` : toute requete fraiche de son renvoie 502. Les
+sons de mes exports precedents venaient du cache du navigateur. Je n'ai pas relance le serveur
+moi-meme : DuckDB n'accepte qu'un seul processus ecrivain et un autre chantier tourne dans ce
+worktree.
+
+**Conclusion / prochaine etape** : refaire un export de fin de match une fois l'API redemarree,
+pour confirmer la musique a la mesure.
 
 ## [2026-08-28] Export video : recette utilisateur PRONONCEE, chantier verifie de bout en bout — Complete
 

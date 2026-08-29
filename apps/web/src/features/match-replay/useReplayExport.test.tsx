@@ -13,6 +13,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useReplayExport } from './useReplayExport'
 import type { ReplayWindowBounds } from './replayWindow'
+import { EXPORT_SUPERSAMPLE, exportRenderScale } from './useReplayView'
 import { testReplayDoc } from './test/testDoc'
 
 // La SIGNATURE est portee par le TYPE du mock, pas par des parametres nommes : sans elle,
@@ -265,5 +266,58 @@ describe('useReplayExport — le repli MUET quand le navigateur refuse la piste'
     expect(hook.result.current.state.mutedFallback).toBe(true)
     expect(trace).toHaveBeenCalled()
     trace.mockRestore()
+  })
+})
+
+describe('useReplayExport — le surechantillonnage', () => {
+  it('rend la toile plus grande pendant l’export, et la REPOSE a la fin', async () => {
+    const vues: number[] = []
+    const canvas = document.createElement('canvas')
+    canvas.width = 320
+    canvas.height = 180
+    const hook = renderHook(() =>
+      useReplayExport({
+        canvasRef: { current: canvas },
+        frameRef: { current: 0 },
+        // Le trace note l'echelle en vigueur au moment ou on lui demande de peindre.
+        redraw: () => vues.push(exportRenderScale.current),
+        pause: vi.fn(),
+        doc: DOC,
+        playWindow: null,
+        scoreboard: [],
+        outcome: null,
+        titleSlug: 'halo_infinite',
+        locale: 'fr',
+      }),
+    )
+    await act(() => hook.result.current.run({ startFrame: 0, endFrame: 10 }))
+    expect(vues).toContain(EXPORT_SUPERSAMPLE)
+    // Laissee levee, elle rendrait la PAGE en double resolution jusqu'au prochain remontage.
+    expect(exportRenderScale.current).toBe(1)
+    expect(vues[vues.length - 1]).toBe(1)
+  })
+
+  it('la repose meme quand l’export ECHOUE', async () => {
+    const canvas = document.createElement('canvas')
+    canvas.width = 320
+    canvas.height = 180
+    addFrame.mockRejectedValueOnce(new Error('boum'))
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const hook = renderHook(() =>
+      useReplayExport({
+        canvasRef: { current: canvas },
+        frameRef: { current: 0 },
+        redraw: vi.fn(),
+        pause: vi.fn(),
+        doc: DOC,
+        playWindow: null,
+        scoreboard: [],
+        outcome: null,
+        titleSlug: 'halo_infinite',
+        locale: 'fr',
+      }),
+    )
+    await act(() => hook.result.current.run({ startFrame: 0, endFrame: 10 }))
+    expect(exportRenderScale.current).toBe(1)
   })
 })

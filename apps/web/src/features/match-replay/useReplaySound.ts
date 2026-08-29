@@ -45,7 +45,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import type { KillEvent } from '@/features/match-view/_momentum'
 import { useSettings } from '@/features/settings/queries'
-import { soundUrlOf } from './replayAudioMix'
+import { seededRandom, soundUrlOf } from './replayAudioMix'
 
 import { persistPreference, readStoredFlag, readStoredNumber } from './replayPreferences'
 import { endMatchSounds, endMatchSoundStems, type EndMatchSoundSpec } from './endMatchSound'
@@ -469,7 +469,11 @@ export function useReplaySound(
   const exportTrack = useCallback(
     (): ReplayExportTrack => ({
       timeline: timelineRef.current,
-      endMatchStems: endMatchSoundStems(endMatchRef.current),
+      // `endMatchSounds` et NON `endMatchSoundStems` : le second est la liste de
+      // PRECHARGEMENT (toutes les prises possibles), le premier ce qui JOUE reellement — une
+      // voix tiree, plus la musique. Les confondre faisait jouer les deux prises a la fois.
+      // Le tirage est SEME pour que deux exports du meme match sonnent pareil (decision D7).
+      endMatchStems: endMatchSoundsFor(endMatchRef.current),
       variationPercent: tuning.variationPercentRef.current,
       distancePercent: tuning.distancePercentRef.current,
     }),
@@ -491,4 +495,15 @@ export function useReplaySound(
     recordingTrack,
     exportTrack,
   }
+}
+
+/**
+ * endMatchSoundsFor — les prises de fin QUE L'EXPORT JOUERA, tirage seme.
+ *
+ * Le chemin temps reel tire au hasard a chaque arrivee en fin ; un fichier, lui, doit sonner
+ * pareil a chaque export du meme match (decision D7 du plan d'export).
+ */
+function endMatchSoundsFor(spec: EndMatchSoundSpec | null): string[] {
+  if (!spec) return []
+  return endMatchSounds(spec.outcome, spec.ffa, spec.locale, seededRandom(spec.outcome.length))
 }
