@@ -3,6 +3,7 @@ package mappings
 import (
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/pelletier/go-toml/v2"
@@ -70,6 +71,21 @@ func (s *RegulationSet) RoundsDecide(gameVariantName string) bool {
 		return false
 	}
 	return s.roundsDecide[strings.TrimSpace(gameVariantName)]
+}
+
+// RoundsDecideVariants retourne les variantes déclarées, triées (ordre déterministe pour
+// les appelants qui les injectent dans une requête ou un journal). nil-safe : liste vide.
+// Utilisé par `cmd/backfill-team-rounds` pour ne re-lire que l'historique qui en a besoin.
+func (s *RegulationSet) RoundsDecideVariants() []string {
+	if s == nil {
+		return nil
+	}
+	out := make([]string, 0, len(s.roundsDecide))
+	for k := range s.roundsDecide {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
 }
 
 // SecondsMap retourne une copie de la table variante → secondes. nil-safe (map

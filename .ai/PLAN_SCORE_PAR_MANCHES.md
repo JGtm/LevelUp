@@ -199,7 +199,7 @@ egalite », perimetre initial reduit aux 3 variantes Oddball.
 - **Gate PASSE** : `go test ./...` (143 paquets ok), `go test -tags=integration ./internal/persist ./internal/sync` **ok**.
       Deux echecs PRE-EXISTANTS, sans rapport avec ce lot, notes en §9 (non traites, regle 7).
 
-### E2 — Backfill historique — **OUTIL LIVRE, APPLICATION EN ATTENTE**
+### E2 — Backfill historique — **CLOS le 2026-08-29**
 
 - [x] `cmd/backfill-team-rounds` calque sur `cmd/backfill-team-scores` : phase A sans droit
       d'ecriture (fetch + decisions), phase B courte sous `--apply`, re-lecture avant
@@ -210,14 +210,20 @@ egalite », perimetre initial reduit aux 3 variantes Oddball.
       reprenable apres interruption, et un second passage ne re-telecharge que le manquant.
       (Effet de bord heureux : aucune copie de `ids.go`, la regle des 2 copies tient.)
 - [x] Repetition a blanc sur 20 matchs : `lus=20 planifiees=20 skippes=0 echecs=0`.
-- [!] **`--apply` NON EXECUTE** : le serveur de dev tient la base en ecriture (PID 31088 sur
-      :8000) et un `--apply` exige son arret (ADR 0013, un seul writer). Arreter le serveur
-      de l'utilisateur est sa decision, d'autant qu'une AUTRE session travaille dans le meme
-      worktree. **Demande posee, en attente.** Sans cette etape, les colonnes restent NULL
-      sur l'historique et l'affichage retombe sur les points — la degradation prevue : la
-      suite du plan n'est PAS bloquee.
-- **Gate** : partiel — la repetition a blanc passe ; la couverture reelle sera consignee
-  apres l'application.
+- [x] **Filtre par variante declaree, ajoute apres question de l'utilisateur** (« pourquoi
+      1 942 matchs si seul Oddball est impacte ? » — question juste). La liste de travail est
+      restreinte par defaut aux variantes de `[rounds_decide]`, lues dans le MEME
+      `regulation.toml` que celui qui commande l'affichage : impossible de rattraper une
+      population differente de celle qui en a besoin. **26 matchs au lieu de 1 942, 7 s au
+      lieu de 10 min.** Les matchs FUTURS sont renseignes a la sync pour TOUTES les variantes ;
+      le jour ou une variante est ajoutee, un second passage rattrape son historique.
+      `--all` reste disponible. Variantes liees en arguments, jamais interpolees.
+- [x] **`--apply` EXECUTE** (serveur arrete par l'utilisateur) : `lus=26 planifiees=26
+      ecrits=26 skippes=0 echecs=0`.
+- **Gate PASSE** : couverture verifiee en base — 26/26 lignes renseignees
+      (`Arena:Oddball` 13, `Ranked:Oddball` 9, `Oddball:Arena` 4), dont **25 basculent en
+      affichage manches** ; la 26e est le temoin `adb93fb7` (manches a egalite) qui reste en
+      points, exactement ce que la regle prescrit.
 
 ### E3 — La regle, en UN seul endroit — **CLOS le 2026-08-29**
 
@@ -364,6 +370,7 @@ n'est ouvert pour elle (decision explicite, pas un oubli).
 | Date | Etape | Statut | Note |
 |---|---|---|---|
 | 2026-08-29 | Plan | Ecrit | Audit fait, 3 arbitrages tranches (§6). |
+| 2026-08-29 | E2b | **CLOS** | Filtre par variante declaree (question utilisateur) : 26 matchs au lieu de 1 942. `--apply` passe, 26/26 ecrits, 25 basculent en manches. |
 | 2026-08-29 | E3 | **CLOS** | Table `[rounds_decide]` mesuree (3 variantes Oddball) + `analysis.ReadTeamScore`, regle unique aux 3 conditions cumulatives. Une entree TOML a `false` est refusee : l absence vaut deja non. |
 | 2026-08-29 | E2 | **PARTIEL** | Outil `cmd/backfill-team-rounds` livre et repete a blanc (20/20). `--apply` en attente : le serveur de dev tient la base, son arret est une decision utilisateur. La suite du plan n est pas bloquee. |
 | 2026-08-29 | E1 | **CLOS** | Colonnes + extraction + persist. 3 garde-rails de schema ont casse (auto-parite INSERT, seeder demo, bootstrap `sharedSchemaSQL`) et ont ete mis a jour. Halo 5 `[!]` : l'API carnage ne publie pas les manches. Entree thought_log groupee en fin de chantier (worktree partage avec une autre session). |

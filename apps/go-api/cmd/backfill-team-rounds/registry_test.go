@@ -136,7 +136,20 @@ func TestPendingIDsSQL_CibleLesLignesSansManches(t *testing.T) {
 	if !strings.Contains(pendingIDsSQL, "rounds_total IS NULL") {
 		t.Errorf("la liste de travail doit être « manches inconnues » : %q", pendingIDsSQL)
 	}
-	if !strings.Contains(pendingIDsSQL, "ORDER BY match_id") {
-		t.Errorf("l'ordre doit être déterministe pour que --limit soit reproductible : %q", pendingIDsSQL)
+	if !strings.Contains(orderClause, "ORDER BY match_id") {
+		t.Errorf("l'ordre doit être déterministe pour que --limit soit reproductible : %q", orderClause)
+	}
+}
+
+// Le filtre par variante est le DÉFAUT : sans lui, rattraper l'historique coûterait ~1 900
+// appels d'API pour une poignée de lignes utiles. Les variantes doivent partir en arguments
+// LIÉS, jamais interpolées dans le SQL — elles viennent d'un fichier de config, mais un
+// fichier de config reste une entrée.
+func TestPendingMatchIDs_FiltreParVarianteEstLie(t *testing.T) {
+	if got := placeholders(3); got != "?, ?, ?" {
+		t.Errorf("placeholders(3) = %q, want \"?, ?, ?\"", got)
+	}
+	if got := placeholders(0); got != "" {
+		t.Errorf("placeholders(0) = %q, want vide", got)
 	}
 }
