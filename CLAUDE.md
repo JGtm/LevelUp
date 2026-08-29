@@ -292,7 +292,10 @@ git commit -m "refactor(phase2): ..."
   `0028` template synthesis coach · `0029` ownership joueur multi-user ·
   `0030` **persist write aggregates** (durcissement compile-time anti-ART : batch opaque,
   allowlist datée `OpenReadWrite`, garde-rail lecture `_latest`) · `0031` frontière source
-  de données par titre (mutualisation HTTP `platform/httpx`, `TitleSyncRunner` ; amende 0027).
+  de données par titre (mutualisation HTTP `platform/httpx`, `TitleSyncRunner` ; amende 0027) ·
+  `0032` **score des modes à manches** (table mesurée `regulation.toml [rounds_decide]` +
+  `analysis.ReadTeamScore` : sur ces modes le score en points peut donner la victoire au
+  perdant — afficher les manches).
 
 READMEs catalogues : `apps/go-api/internal/analysis/{temporal,breakdown,narrative}/README.md`,
 `apps/web/src/components/charts/README.md` (wrappers ECharts).

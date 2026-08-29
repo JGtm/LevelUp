@@ -204,35 +204,88 @@ func TestComputeProgressPct_MaxRank(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// MatchViewService — buildScoreLabel
+// MatchViewService — le score de l'en-tête (points ou MANCHES)
+//
+// Ex-tests de buildScoreLabelFromMeta, MIGRÉS vers applyMatchHeaderScore : le libellé n'est
+// plus fabriqué ici (source unique analysis.TeamScoreLabel) et le score dépend désormais de
+// la table [rounds_decide], portée par le service.
 // ---------------------------------------------------------------------------
 
-func TestBuildScoreLabelFromMeta_Team0(t *testing.T) {
+func headerScore(meta *domain.MatchMetaRaw, teamID *int, roundsDecide map[string]bool) domain.MatchViewHeader {
+	var h domain.MatchViewHeader
+	var stats *domain.PlayerMatchStatsRaw
+	if teamID != nil {
+		stats = &domain.PlayerMatchStatsRaw{TeamID: teamID}
+	}
+	applyMatchHeaderScore(&h, meta, stats, roundsDecide)
+	return h
+}
+
+func TestApplyMatchHeaderScore_Team0(t *testing.T) {
 	s0, s1 := int16(50), int16(47)
-	meta := &domain.MatchMetaRaw{Team0Score: &s0, Team1Score: &s1}
 	teamID := 0
-	stats := &domain.PlayerMatchStatsRaw{TeamID: &teamID}
-	label := buildScoreLabelFromMeta(meta, stats)
-	if label != "50 - 47" {
-		t.Errorf("expected 50-47, got %q", label)
+	h := headerScore(&domain.MatchMetaRaw{Team0Score: &s0, Team1Score: &s1}, &teamID, nil)
+	if h.ScoreLabel != "50 - 47" || h.ScoreKind != "points" {
+		t.Errorf("got %q / %q, want \"50 - 47\" / \"points\"", h.ScoreLabel, h.ScoreKind)
 	}
 }
 
-func TestBuildScoreLabelFromMeta_Team1(t *testing.T) {
+func TestApplyMatchHeaderScore_Team1Swaps(t *testing.T) {
 	s0, s1 := int16(50), int16(47)
-	meta := &domain.MatchMetaRaw{Team0Score: &s0, Team1Score: &s1}
 	teamID := 1
-	stats := &domain.PlayerMatchStatsRaw{TeamID: &teamID}
-	label := buildScoreLabelFromMeta(meta, stats)
-	if label != "47 - 50" {
-		t.Errorf("expected 47-50, got %q", label)
+	h := headerScore(&domain.MatchMetaRaw{Team0Score: &s0, Team1Score: &s1}, &teamID, nil)
+	if h.ScoreLabel != "47 - 50" {
+		t.Errorf("got %q, want \"47 - 50\" (l'équipe du joueur d'abord)", h.ScoreLabel)
 	}
 }
 
-func TestBuildScoreLabelFromMeta_Nil(t *testing.T) {
-	label := buildScoreLabelFromMeta(nil, nil)
-	if label != "" {
-		t.Errorf("expected empty string, got %q", label)
+func TestApplyMatchHeaderScore_Nil(t *testing.T) {
+	h := headerScore(nil, nil, nil)
+	if h.ScoreLabel != "" || h.ScoreKind != "" {
+		t.Errorf("meta nil : got %q / %q, want vides", h.ScoreLabel, h.ScoreKind)
+	}
+}
+
+// Le cas qui justifie tout le chantier : témoin 293a763e (Arena:Oddball), victoire 2 manches
+// à 1 alors que les POINTS disent 181-186. La variante est déclarée dans [rounds_decide].
+func TestApplyMatchHeaderScore_VarianteADecideeEnManches(t *testing.T) {
+	s0, s1 := int16(181), int16(186)
+	r0, r1, tot := int16(2), int16(1), int16(3)
+	variant := "Arena:Oddball"
+	teamID := 0
+	h := headerScore(&domain.MatchMetaRaw{
+		Team0Score: &s0, Team1Score: &s1,
+		Team0RoundsWon: &r0, Team1RoundsWon: &r1, RoundsTotal: &tot,
+		GameVariantName: &variant,
+	}, &teamID, map[string]bool{"Arena:Oddball": true})
+	if h.ScoreLabel != "2 - 1" || h.ScoreKind != "rounds" {
+		t.Errorf("got %q / %q, want \"2 - 1\" / \"rounds\"", h.ScoreLabel, h.ScoreKind)
+	}
+	if h.ScorePointsLabel != "181 - 186" {
+		t.Errorf("score API en second plan = %q, want \"181 - 186\"", h.ScorePointsLabel)
+	}
+	if h.ScoreMine == nil || *h.ScoreMine != 2 || h.ScoreTheirs == nil || *h.ScoreTheirs != 1 {
+		t.Errorf("nombres = %v/%v, want 2/1 (le rejeu les colore séparément)", h.ScoreMine, h.ScoreTheirs)
+	}
+}
+
+// Variante NON déclarée : mêmes données de manches, mais on garde les points — c'est la
+// dégradation qui protège le CTF d'arène (deux mi-temps, score = captures).
+func TestApplyMatchHeaderScore_VarianteNonDeclareeGardeLesPoints(t *testing.T) {
+	s0, s1 := int16(2), int16(3)
+	r0, r1, tot := int16(0), int16(1), int16(2)
+	variant := "CTF:Arena"
+	teamID := 0
+	h := headerScore(&domain.MatchMetaRaw{
+		Team0Score: &s0, Team1Score: &s1,
+		Team0RoundsWon: &r0, Team1RoundsWon: &r1, RoundsTotal: &tot,
+		GameVariantName: &variant,
+	}, &teamID, map[string]bool{"Arena:Oddball": true})
+	if h.ScoreLabel != "2 - 3" || h.ScoreKind != "points" {
+		t.Errorf("got %q / %q, want \"2 - 3\" / \"points\"", h.ScoreLabel, h.ScoreKind)
+	}
+	if h.ScorePointsLabel != "" {
+		t.Errorf("aucun second plan attendu en lecture points, got %q", h.ScorePointsLabel)
 	}
 }
 
