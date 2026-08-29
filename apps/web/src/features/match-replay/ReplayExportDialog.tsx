@@ -85,6 +85,7 @@ export function ReplayExportDialog({ exporter, locale, onClose }: Props) {
       {state.phase === 'done' && (
         <p role="status" className="mt-2 break-all text-[12.5px] text-foreground">
           {t.exportDoneFmt(state.filename ?? '')}
+          {state.mutedFallback ? <span className="block text-muted-foreground">{t.exportMutedFallback}</span> : null}
         </p>
       )}
       {isExportBusy(state) ? (

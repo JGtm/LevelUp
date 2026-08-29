@@ -137,6 +137,11 @@ export interface ReplayExportState {
   etaMs?: number
   /** Le nom du fichier depose, en phase `done`. */
   filename?: string
+  /**
+   * `true` = le son etait demande mais le navigateur a REFUSE la piste : le clip est muet, et
+   * il faut le dire. Un clip silencieux qu'on croyait sonore se decouvre au montage.
+   */
+  mutedFallback?: boolean
   /** Le message technique de l'echec, pour la console et pour l'utilisateur averti. */
   message?: string
 }
@@ -315,7 +320,12 @@ export function useReplayExport(o: ReplayExportOptions): ReplayExport {
           fail(setState, 'configuration video refusee par le navigateur')
           return
         }
-        if (mix) await sink.addAudioBuffer(mix)
+        // LE SON DEMANDE MAIS IMPOSSIBLE NE SE TAIT PAS : le navigateur peut avoir l'API et
+        // REFUSER la configuration AAC. Le clip sort muet — mieux qu'un export perdu — et la
+        // phase finale le dit.
+        const muet = mix !== null && !sink.audioEnabled
+        if (muet) console.warn('[replay-export] piste sonore refusee par le navigateur, clip muet')
+        if (mix && sink.audioEnabled) await sink.addAudioBuffer(mix)
         // PHASE 2 : l'encodage. C'est seulement ici que le compte d'images veut dire quelque
         // chose, et que le temps restant peut s'estimer.
         const total = plan.frames.length
@@ -344,7 +354,7 @@ export function useReplayExport(o: ReplayExportOptions): ReplayExport {
         if (clip && liveRef.current) triggerDownload(clip, filename)
         // PHASE 3 : le fichier est depose, et on le DIT avec son nom. Une annulation, elle,
         // ramene au formulaire — il n'y a rien a annoncer d'un geste qu'on vient de faire.
-        setState(clip ? { phase: 'done', done: total, total, pct: 100, filename } : IDLE)
+        setState(clip ? { phase: 'done', done: total, total, pct: 100, filename, mutedFallback: muet } : IDLE)
       } catch (err) {
         // JAMAIS D'ÉCHEC MUET (règle 3 du dépôt : logger AVANT toute dégradation). Sans ce
         // bloc, une panne d'encodeur faisait disparaître la barre de progression sans un mot,
