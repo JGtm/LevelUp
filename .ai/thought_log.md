@@ -1,3 +1,48 @@
+## [2026-08-28] Export video : le retour a l'utilisateur pendant le calcul — Complete
+
+**Contexte** : question de l'utilisateur — « le temps que le film soit genere, on a un retour UI/UX ? ».
+Verification faite : il y en avait, mais avec trois trous, dont deux qui sont des defauts de ma
+part du meme genre que ceux trouves par la revue adversariale (du code qui dit une chose et en
+fait une autre).
+
+**Decision technique** : trois phases nommees a la place d'un booleen `running`.
+
+(1) `prepare` est la phase qui manquait et qui coutait le plus cher. Entre le clic et la premiere
+image encodee il faut attendre les polices, charger le logo, DECODER tous les fichiers sons,
+RENDRE le mixage hors ligne et ENCODER la piste AAC — plusieurs secondes sur un match charge en
+sons, pendant lesquelles la barre affichait « Image 0 / 18000 » sans bouger. C'est exactement
+l'instant ou l'on se demande si ca a plante. La barre y est desormais INDETERMINEE et le texte dit
+ce qu'on fait.
+
+(2) `done` manquait aussi : le panneau redevenait le formulaire et le fichier tombait dans les
+telechargements sans qu'un mot ne le dise. Il nomme maintenant le fichier depose.
+
+(3) L'ESTIMATION DU TEMPS RESTANT, calculee sur la cadence deja constatee — fiable ici parce que
+le cout par image est tres regulier (meme toile, meme encodeur, dessin dont la charge ne depend
+pas de l'instant du match). Elle est ABSENTE sous 30 images encodees : une estimation batie sur
+trois images danserait d'un facteur dix a chaque rafraichissement, et une estimation qui saute
+est pire que pas d'estimation.
+
+DEUX DEFAUTS DE PLACEMENT CORRIGES. Le texte « Le terrain defile pendant le calcul » s'affichait
+dans le FORMULAIRE, alors que sa cle s'appelle `exportRunningHint` : le nom disait l'intention, le
+placement faisait l'inverse. Et le panneau, declare `absolute` sans ancetre positionne dans la
+barre, se calait PAR ACCIDENT sur la carte entiere du rejeu (cinq cents lignes plus loin) et
+recouvrait la frise ; mon propre commentaire decrivait l'intention, pas le mecanisme. Le cartouche
+des commandes de sortie porte desormais `relative` : le panneau s'ouvre au-dessus du bouton qui
+l'a appele, aligne a droite sur lui (choix utilisateur).
+
+LE BOUTON PORTE LA PROGRESSION quand le panneau est referme (anneau + pourcentage, ellipse en
+preparation). Cela repond aussi a un constat de la revue : refermer le panneau faisait perdre A LA
+FOIS le retour et le bouton « Annuler », pendant un calcul de plusieurs minutes.
+
+**Resultats observes** : 8 tests neufs sur le retour UI. `make test-web` vert (5366 tests). Un
+piege attrape par la suite COMPLETE et invisible en execution ciblee : un de mes `cat >>` s'etait
+execute depuis le mauvais dossier et avait cree un second `ReplayTransport.test.tsx` a la racine
+de `apps/web`, qui echouait sur `renderTransport is not defined`. La suite par dossier passait,
+la suite complete non — la lecon est de faire tourner la suite complete avant de conclure.
+
+**Conclusion / prochaine etape** : les trois recettes utilisateur restent a prononcer.
+
 ## [2026-08-28] Export video hors temps reel : revue adversariale a trois axes, 11 constats corriges — Complete
 
 **Contexte** : le chantier etait clos cote technique et tous les gates verts. Trois relecteurs

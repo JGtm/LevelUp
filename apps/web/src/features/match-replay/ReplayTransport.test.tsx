@@ -317,7 +317,7 @@ describe('ReplayTransport — les réglages ferment la barre', () => {
 function makeExport(over: Partial<ReplayExport> = {}): ReplayExport {
   return {
     supported: true,
-    state: { running: false, done: 0, total: 0, pct: 0, failed: false },
+    state: { phase: 'idle', done: 0, total: 0, pct: 0 },
     defaultBounds: () => ({ startFrame: 0, endFrame: 100 }),
     run: vi.fn(async () => {}),
     cancel: vi.fn(),
@@ -372,5 +372,32 @@ describe('ReplayTransport — export hors temps réel', () => {
     expect(screen.getByRole('dialog', { name: 'Exporter le rejeu en vidéo' })).toBeInTheDocument()
     await user.click(bouton)
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+})
+
+describe('ReplayTransport — le bouton porte la progression', () => {
+  const avecExport = (state: ReplayExport['state']) => ({
+    captureImage: vi.fn(),
+    recordingSupported: true,
+    recording: false,
+    toggleRecording: vi.fn(),
+    videoExport: makeExport({ state }),
+  })
+
+  it('affiche le pourcentage DANS le bouton pendant l’encodage', () => {
+    renderTransport({ capture: avecExport({ phase: 'encode', done: 300, total: 1200, pct: 25 }) })
+    // Refermer le panneau ne doit pas faire perdre À LA FOIS le retour et le moyen d'annuler.
+    expect(screen.getByRole('button', { name: 'Exporter la vidéo' })).toHaveTextContent('25 %')
+  })
+
+  it('affiche une ellipse pendant la préparation, où aucun pourcentage n’est vrai', () => {
+    renderTransport({ capture: avecExport({ phase: 'prepare', done: 0, total: 1200, pct: 0 }) })
+    expect(screen.getByRole('button', { name: 'Exporter la vidéo' })).toHaveTextContent('…')
+  })
+
+  it('neutralise la lecture DÈS la préparation, pas seulement à l’encodage', () => {
+    renderTransport({ capture: avecExport({ phase: 'prepare', done: 0, total: 1200, pct: 0 }) })
+    // Le rejeu est en lecture dans ce montage : le bouton porte donc « Pause ».
+    expect(screen.getByRole('button', { name: 'Pause' })).toBeDisabled()
   })
 })

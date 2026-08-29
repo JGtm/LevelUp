@@ -135,8 +135,10 @@ describe('useReplayExport', () => {
   it('revient à l’état inerte une fois terminé', async () => {
     const { hook } = setup()
     await act(() => hook.result.current.run({ startFrame: 0, endFrame: 10 }))
-    await waitFor(() => expect(hook.result.current.state.running).toBe(false))
-    expect(hook.result.current.state.pct).toBe(0)
+    await waitFor(() => expect(hook.result.current.state.phase).toBe('done'))
+    // La FIN se dit, avec le nom du fichier : le clip part dans les telechargements, ou
+    // rien ne le rattache au geste qui vient d'etre fait.
+    expect(hook.result.current.state.filename).toBe('rejeu-m-0m00s-0m00s.mp4')
   })
 
   it('propose par défaut le film entier quand il n’y a pas de cadrage', () => {
@@ -209,7 +211,7 @@ describe('useReplayExport — non-régressions de la revue adversariale', () => 
     addFrame.mockRejectedValueOnce(erreur)
     const trace = vi.spyOn(console, 'error').mockImplementation(() => {})
     await act(() => hook.result.current.run({ startFrame: 0, endFrame: 40 }))
-    expect(hook.result.current.state.failed).toBe(true)
+    expect(hook.result.current.state.phase).toBe('failed')
     expect(hook.result.current.state.message).toBe('encodeur hors service')
     expect(trace).toHaveBeenCalled()
     expect(triggerDownload).not.toHaveBeenCalled()
