@@ -448,6 +448,38 @@ cuissons ; et le mode de defaillance est benin (les premieres images d'un export
 la seconde du chargement sortiraient sans fond de carte). A rouvrir SI un utilisateur
 signale un artefact de debut de clip — pas avant.
 
+### RECETTE UTILISATEUR — PRONONCEE le 2026-08-28, mesures a l'appui
+
+Les trois recettes en attente (parite visuelle E2, export reel E3, ecoute E4) ont ete faites
+dans le navigateur, sur le match `696a9d7c` (8 min 48 s), l'utilisateur ayant ouvert une session.
+
+**Ce qui a ete verifie, et comment :**
+
+- **Le panneau s'ouvre au bon endroit.** Ancre au cartouche `relative`, bas du panneau a 872 px
+  pour un bouton a 884 px (donc AU-DESSUS), aligne a droite a 4 px pres, et ENTIEREMENT dans la
+  carte (haut 661 >= 200, bas 872 <= 949). Plus de decoupe par `overflow-hidden`.
+- **Dimensions impaires.** La toile mesurait 503x480 : le clip sort en **502x480**. L'arrondi au
+  pair ET le recadrage explicite de la `VideoFrame` fonctionnent sur un cas reel.
+- **Duree.** Plage de 6 s -> clip de 6,03 s. Plage de 10 s finissant sur la fin du match ->
+  clip de 13,17 s, soit 3,17 s de maintien : l'ecran de fin dure bien ~3 s et non une image.
+- **Vitesse.** 6 s de match calculees en 1,9 s, 10 s en 1,4 s. Soit **3x a 7x le temps reel** sur
+  un match reel — nettement moins que les 18,6x mesures sur une toile de test synthetique, parce
+  que c'est le `draw()` du rejeu qui domine, pas l'encodeur. C'est le chiffre honnete a retenir.
+- **Nom du fichier.** `rejeu-696a9d7c-...-8m38s-8m48s.mp4` : les DEUX bornes (decision D9).
+- **Parite visuelle des surimpressions (E2).** Capture d'ecran comparant la derniere image du
+  clip et la page : meme verdict, meme equipe, meme score — `DEFAITE / EQUIPE COBRA / 94 - 200`,
+  voile compris.
+- **Son (E4).** Piste decodee depuis le MP4 : stereo 48 kHz, 13,14 s (alignee sur les 13,17 s de
+  la video), crete 1,006, moyenne 0,023 — du vrai son, pas une piste declaree vide.
+
+**UN DEFAUT TROUVE PAR L'USAGE, corrige :** l'estimation affichait « environ 0:00 restantes »
+pendant tout un export rapide, ce qui se lit « c'est fini » alors que le calcul tourne encore.
+`etaLabel` se tait desormais sous trois secondes et compte en SECONDES sous la minute.
+
+**RESERVE :** la crete audio mesuree est de 1,006, c'est-a-dire tout juste au plafond. Aucune
+distorsion audible attendue a ce niveau, mais le mixage n'a AUCUNE marge : un echange plus
+nourri saturerait. A surveiller a l'ecoute ; un gain de garde sur le maitre serait la reponse.
+
 ### D-7 (revue) — Ce que trois relecteurs adversariaux ont trouve, et ce qui a ete corrige
 
 Trois relectures en parallele, aveugles l'une de l'autre, sur trois axes (correction,

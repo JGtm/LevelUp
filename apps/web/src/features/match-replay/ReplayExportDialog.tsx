@@ -39,8 +39,7 @@ import { useState } from 'react'
 
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
 import type { ReplayText } from './i18nContract'
-import { formatClock } from './replayLogic'
-import { clampExportBounds, type ExportBounds } from './replayExportPlan'
+import { clampExportBounds, etaLabel, type ExportBounds } from './replayExportPlan'
 import type { ReplayExport, ReplayExportState } from './useReplayExport'
 
 interface Props {
@@ -214,6 +213,7 @@ function ExportProgress({ exporter, locale }: { exporter: ReplayExport; locale: 
   const t = REPLAY_TEXT[locale]
   const { phase, done, total, pct, etaMs } = exporter.state
   const preparing = phase === 'prepare'
+  const eta = etaLabel(etaMs)
   return (
     <div className="mt-3">
       <div
@@ -235,7 +235,7 @@ function ExportProgress({ exporter, locale }: { exporter: ReplayExport; locale: 
         ) : (
           <>
             <span className="font-mono tabular-nums">{t.exportProgressFmt(done, total)}</span>
-            {etaMs !== undefined ? <span> — {t.exportEtaFmt(formatClock(etaMs))}</span> : null}
+            {eta ? <span> — {t.exportEtaFmt(eta)}</span> : null}
           </>
         )}
       </p>

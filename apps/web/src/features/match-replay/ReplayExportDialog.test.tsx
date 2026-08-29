@@ -122,6 +122,12 @@ describe('ReplayExportDialog — les phases du calcul', () => {
     setup({ state: { phase: 'encode', done: 300, total: 1200, pct: 25, etaMs: 80_000 } })
     expect(screen.getByText('Image 300 / 1200')).toBeInTheDocument()
     expect(screen.getByText(/environ 1:20 restantes/)).toBeInTheDocument()
+  })
+
+  it('ne montre PAS une estimation qui ne dit rien', () => {
+    // « environ 0:00 restantes » se lit « c'est fini » alors que le calcul tourne encore.
+    setup({ state: { phase: 'encode', done: 300, total: 1200, pct: 25, etaMs: 900 } })
+    expect(screen.queryByText(/restantes/)).not.toBeInTheDocument()
     expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '25')
   })
 

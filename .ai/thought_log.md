@@ -1,3 +1,53 @@
+## [2026-08-29] Kills hors arme a feu (repulseur, bobines, chute) : cadrage, plan et etape 0 — En cours (mesure faite, zero ligne de production)
+
+**Contexte** : demande utilisateur — « le repulseur n'est pas une arme mais il permet de tuer,
+il faut introduire la possibilite de tuer par equipement (possiblement avec les bobines aussi)
+pour que ca apparaisse dans les stats de l'app ».
+
+**Etat verifie sur pieces**. L'identification EXISTE deja des deux cotes : le repulseur
+(`jpt! 07104b31`, classe ARME hors registre, `SOUS_RESERVE`) et les bobines (19 tags
+`OBJET_EXPLOSIF`, 4 vignettes `killfeed-42/43/44/45` par type d'energie). Ce qui manque est le
+PONT vers les statistiques, pas la mesure.
+
+**Decision technique principale**. Le producteur ne sera PAS `weapon_kills` : cette table a
+pour contrat l'arme A FEU par kill, elle est append-only sous garde-rails ART, et y injecter un
+second producteur avec des ids numeriques synthetiques serait un mensonge de schema. On ajoute
+une TROISIEME entree a `fragdist.Build`, lue par un repo dedie sur `match_kill_events_latest`.
+
+**Le fait qui rend le lot sain** : l'attribution arme-a-feu repose sur les records de degat
+`0xd2` du tireur. Un kill au repulseur, a la bobine ou par chute n'en emet AUCUN. Ces kills ne
+sont donc pas MAL attribues aujourd'hui, ils ne sont PAS attribues du tout et tombent dans le
+residu `unattributed`. Le lot DECOUPE le residu, il ne retire rien a aucune arme — d'ou le
+critere de succes n2 (aucune classe d'arme existante ne bouge d'une unite).
+
+**Deux points corriges au cadrage**. (1) La MELEE est ecartee malgre la selection initiale :
+elle vient des compteurs API en `Authoritative: true` (`buildAPIFragClasses`), la brancher aussi
+depuis le film la compterait deux fois. (2) La couverture n'est pas les 34,3 % du kill feed :
+ce taux vaut pour une publication LIGNE PAR LIGNE, or l'usage est AGREGE et le schema dit
+qu'une passe `publishable = FALSE` porte des lignes « justes en AGREGAT ». Le tueur vient du
+kill-feed avec son xuid, sans bijection. L'etape 0 du plan mesure le denominateur reel AVANT
+toute ligne de production, avec un gate d'arret a 40 %.
+
+**Resultats observes (etape 0, base de prod en lecture seule)** : 136 900 morts decodees, 74 569 a source
+mesuree (54,5 %), 1 365 matchs decodes sur 1 948. Repartition des sources : ARME 58 529, MELEE 8 745,
+GRENADE 4 534, VEHICULE 1 227, INCONNU 575, **OBJET_EXPLOSIF (bobines) 547**, **DEGAT_GLOBAL
+(chute/environnement) 403**, hors table 9. Couverture agregee : 54,0 % sur les matchs decodes,
+29,4 % sur tout le perimetre — le GATE 0 (seuil 40 %) PASSE en vue match et ECHOUE en agregat, ce qui
+valide le sequencement D7 (vue match d abord, agregats seulement avec le denominateur affiche).
+
+**LE RESULTAT DECISIF** : **UN SEUL kill au repulseur dans toute la base** (`0x07104b31`), sur
+74 569 sources mesurees — match `215e7022`, 2026-02-03, Argyle, t = 325 526 ms, Elmo910 -> aK2fResHv3,
+passe non publiable. La classe `equipment` de la decision D1 vaudrait donc 1 kill : une poussiere, pas
+un arc. D1 est rouverte, trois options ecrites au §10 du plan (recommandee : garder la classe sans arc —
+cout marginal, comptee automatiquement le jour ou un kill arrive). Le lot garde tout son sens pour les
+950 kills bobines + chute, aujourd hui invisibles dans « Non attribue ».
+
+**Conclusion / prochaine etape** : plan `.ai/V7.5/PLAN_KILLS_HORS_ARME.md` (6 etapes, 10 sections),
+etape 0 close, items 0.1-0.3 coches, mesures ecrites au §9. Trois matchs candidats a la verification
+Theater poses dans Notion (Backlog LevelUp, section « Pour la v7.5 ») : le kill de repulseur unique
+(leve la reserve SOUS_RESERVE) et deux matchs de bobines de nos propres joueurs, dont un couvrant les
+deux types d energie. Attente de la decision sur D1 avant l etape 1. Aucune ligne de production ecrite,
+aucun commit.
 ## [2026-08-29] Rejeu 2D : le FDA des fiches, son fond colore, et pourquoi le triplet se fige — Complete
 
 **Contexte** : demande utilisateur — « dans le replay les fiches de joueur il y a le F/D/A mais
@@ -55,6 +105,39 @@ veut, est le second pont d'identite dans `buildPlayerScoresFlat` (desambiguiser 
 de mort quand le triplet collisionne) — c'est ce qui degelerait reellement les fiches restantes.
 
 ---
+
+## [2026-08-28] Export video : recette utilisateur PRONONCEE, chantier verifie de bout en bout — Complete
+
+**Contexte** : l'utilisateur a ouvert une session dans le panneau navigateur, ce qui a enfin permis
+de faire les trois recettes en attente depuis E2 — et de verifier moi-meme au lieu de les lui
+deleguer.
+
+**Resultats observes**, sur le match `696a9d7c` (8 min 48 s) :
+
+- Panneau ancre au bon element : bas a 872 px pour un bouton a 884 px (au-dessus), aligne a
+  droite a 4 px pres, entierement dans la carte. Le bug de decoupe est bien mort.
+- Toile de 503x480 (largeur IMPAIRE) -> clip en 502x480 : l'arrondi au pair et le recadrage
+  explicite de la `VideoFrame` tiennent sur un cas reel.
+- Plage de 6 s -> 6,03 s. Plage de 10 s finissant sur la fin du match -> 13,17 s, soit 3,17 s de
+  maintien : l'ecran de fin dure ~3 s et non une image.
+- **Vitesse reelle : 3x a 7x le temps reel**, la ou une toile de test synthetique donnait 18,6x.
+  L'ecart n'est pas une regression : c'est le `draw()` du rejeu qui domine, pas l'encodeur. C'est
+  le chiffre honnete, et il remplace celui que j'annoncais.
+- Parite visuelle prononcee sur capture : derniere image du clip et page cote a cote, meme
+  verdict, meme equipe, meme score, voile compris.
+- Son decode depuis le MP4 : stereo 48 kHz, aligne a 30 ms pres sur la video, crete 1,006,
+  moyenne 0,023 — du vrai son.
+
+**Decision technique** : un defaut trouve par l'USAGE et par rien d'autre — l'estimation affichait
+« environ 0:00 restantes » pendant tout un export rapide, ce qui se lit « c'est fini » alors que ca
+tourne. `etaLabel` se tait sous trois secondes et compte en secondes sous la minute. Aucun test
+n'aurait pu attraper ca : il fallait regarder l'ecran pendant que ca tournait.
+
+**Reserve consignee** : crete audio a 1,006, soit tout juste au plafond. Rien d'audible a ce
+niveau, mais le mixage n'a aucune marge et un echange plus nourri saturerait. A surveiller a
+l'ecoute.
+
+**Conclusion** : chantier verifie de bout en bout. `make test-web` vert (528 fichiers, 5384 tests).
 
 ## [2026-08-28] Export video : deux pannes trouvees EN RECETTE, que les tests jsdom ne pouvaient pas voir — Complete
 
