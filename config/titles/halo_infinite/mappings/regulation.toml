@@ -30,7 +30,7 @@
 
 [meta]
 title_slug     = "halo_infinite"
-schema_version = 2
+schema_version = 3
 
 [regulation_seconds]
 "CTF:Arena"                   = 720
@@ -119,3 +119,35 @@ schema_version = 2
 "Arena:VIP"                  = 10
 "Arena:Escalation Slayer"    = 11
 "Event:Escalation Slayer"    = 11
+
+# ---------------------------------------------------------------------------------------
+# VARIANTES DONT LE RESULTAT SE LIT EN MANCHES (schema_version 3, mesure du 2026-08-29).
+#
+# Pour ces variantes, `CoreStats.Score` est un CUMUL DE POINTS sur toutes les manches : il
+# ne dit PAS qui a gagne. Sur 4 matchs Oddball du corpus, l'equipe VICTORIEUSE affiche
+# MOINS de points que la perdante (ex. 181-186 pour une victoire 2 manches a 1). L'app
+# affiche donc, pour ces variantes, les MANCHES gagnees/perdues, et relegue le score de
+# l'API en second plan.
+#
+# MEME DOCTRINE QUE LES DEUX TABLES CI-DESSUS : cle = game_variant_name exact, contenu
+# MESURE, jamais « au juge ». Une variante absente garde les points — degradation sure.
+# Mesure : `.ai/V7.5/RAPPORT_MANCHES_2026-08-29.md` (1 942 matchs re-lus, 0 erreur).
+#
+# VOLONTAIREMENT ABSENTS, et ce n'est pas un oubli :
+#   - One Flag CTF, Assault:One Bomb, Attrition : modes A MANCHES eux aussi, mais leur
+#     `Score` EST DEJA le compte de manches (3-1 = trois manches a une, verifie sur 14 des
+#     16 matchs). Les declarer ne changerait rien a l'ecran, et transformerait les 2 matchs
+#     a manche nulle (score 3-3 contre 2-2 manches gagnees) en un affichage dont rien ne
+#     prouve qu'il soit celui du jeu.
+#   - CTF:Arena et Ranked:CTF : deux MI-TEMPS, pas des manches decisives. Le score est le
+#     total de captures (2-3) et c'est LUI le score du jeu ; le compte de manches y vaut
+#     0-1, ce qui serait un contresens. En prime la meme variante est tantot a une manche
+#     tantot a deux — aucune regle par variante n'y tiendrait.
+#   - KOTH : mesure du 2026-08-24, une seule manche dans le corpus.
+#
+# Consommation : mappings.LoadRegulation -> RegulationSet.RoundsDecide(variante) ->
+# analysis.TeamScoreDisplay (source unique de la regle d'affichage).
+[rounds_decide]
+"Arena:Oddball"  = true
+"Ranked:Oddball" = true
+"Oddball:Arena"  = true
