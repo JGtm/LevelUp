@@ -5979,6 +5979,7 @@ export interface components {
             placement_total?: number;
             playlist_label: string | null;
             rating_type?: string;
+            score_kind?: string;
             score_label: string;
             skill_rank_image_url?: string;
             skill_tier_label?: string;
@@ -7485,6 +7486,7 @@ export interface components {
             /** Format: int64 */
             placement_total?: number;
             playlist_label: string | null;
+            score_kind?: string;
             score_label: string;
             skill_rank_image_url?: string;
             skill_rating_type?: string;
@@ -7986,7 +7988,9 @@ export interface components {
             playable_duration_seconds?: number;
             playlist_label: string;
             replay_available: boolean;
+            score_kind?: string;
             score_label?: string;
+            score_points_label?: string;
             /** Format: date-time */
             start_time?: string;
             start_time_label: string;

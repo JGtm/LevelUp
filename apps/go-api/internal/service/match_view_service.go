@@ -168,6 +168,16 @@ type MatchViewService struct {
 	// (titre sans mesure, ex. Halo 5). Jamais de comparaison de slug ici : la
 	// table injectée EST le titre.
 	regulationSeconds map[string]int
+	// roundsDecide (optionnel) : game_variant_name → le RÉSULTAT du match se lit en
+	// MANCHES et non en points (regulation.toml [rounds_decide]). Nil/absent → l'en-tête
+	// affiche le score de l'API, comportement d'avant le 2026-08-29.
+	roundsDecide map[string]bool
+	// killSourceRepo (optionnel) : loader des kills par SOURCE DE DEGAT du film
+	// (repulseur, bobines, chute). Nil, ou titre sans capability film.kill_source =>
+	// ces kills restent dans « Non attribue » du sunburst, comme avant le lot du
+	// 2026-08-29. Degradation gracieuse : ce n est pas une panne, c est un titre sans
+	// decodeur de film.
+	killSourceRepo port.KillSourceClassRepository
 	// replaySvc (optionnel) : service du rejeu 2D, interrogé UNIQUEMENT pour la
 	// présence de l'artefact (IsAvailable = un os.Stat). Nil → ReplayAvailable
 	// reste faux et le front ne pose aucun lien : un titre qui ne produit pas de
@@ -240,6 +250,17 @@ func (s *MatchViewService) WithReplay(svc port.ReplayService) *MatchViewService 
 	return s
 }
 
+// WithKillSourceRepo injecte le loader des kills par SOURCE DE DÉGÂT du film — ceux que
+// l'attribution arme-à-feu ne peut pas voir (répulseur, bobines, chute), parce qu'ils
+// n'émettent aucun record de dégât du tireur.
+//
+// Dégradation gracieuse si nil ou si le titre n'a pas la capability : ces kills restent
+// dans « Non attribué », exactement comme avant le lot du 2026-08-29.
+func (s *MatchViewService) WithKillSourceRepo(r port.KillSourceClassRepository) *MatchViewService {
+	s.killSourceRepo = r
+	return s
+}
+
 // WithPlayerPositionsRepo injecte le loader des positions joueurs keyframe v3
 // (match-level, §N) consommé par GetMatchPositions. Dégradation gracieuse si
 // nil : GetMatchPositions retourne games.ErrCapabilityNotSupported.
@@ -260,6 +281,14 @@ func (s *MatchViewService) WithAwardsRepo(r port.PersonalScoreAwardsRepository) 
 // restent vides côté response et le front affiche les fallbacks texte.
 func (s *MatchViewService) WithAssetURL(a games.TitleAssetURLAdapter) *MatchViewService {
 	s.assetURL = a
+	return s
+}
+
+// WithRoundsDecide injecte la table `game_variant_name → le résultat se lit en MANCHES`
+// (regulation.toml [rounds_decide]). Sans injection, l'en-tête affiche le score de l'API —
+// le comportement d'avant le 2026-08-29, jamais une régression.
+func (s *MatchViewService) WithRoundsDecide(roundsDecide map[string]bool) *MatchViewService {
+	s.roundsDecide = roundsDecide
 	return s
 }
 

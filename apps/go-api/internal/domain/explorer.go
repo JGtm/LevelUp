@@ -424,18 +424,22 @@ type ExplorerMatchesQueryRequest struct {
 
 // ExplorerMatchesRow : une ligne dans la liste des matchs filtrés (Explorer).
 type ExplorerMatchesRow struct {
-	MatchID             string    `json:"match_id"`
-	StartTime           time.Time `json:"start_time"`
-	StartTimeLabel      string    `json:"start_time_label"`
-	MapUI               *string   `json:"map_ui"`
-	ModeUI              *string   `json:"mode_ui"`
-	PlaylistLabel       *string   `json:"playlist_label"`
-	OutcomeCode         int       `json:"outcome_code"`
-	OutcomeLabel        string    `json:"outcome_label"`
-	ScoreLabel          string    `json:"score_label"`
-	IsWithFriends       bool      `json:"is_with_friends"`
-	ExperienceTypeLabel string    `json:"experience_type_label" default:"Non classé"`
-	MatchURL            string    `json:"match_url"`
+	MatchID        string    `json:"match_id"`
+	StartTime      time.Time `json:"start_time"`
+	StartTimeLabel string    `json:"start_time_label"`
+	MapUI          *string   `json:"map_ui"`
+	ModeUI         *string   `json:"mode_ui"`
+	PlaylistLabel  *string   `json:"playlist_label"`
+	OutcomeCode    int       `json:"outcome_code"`
+	OutcomeLabel   string    `json:"outcome_label"`
+	ScoreLabel     string    `json:"score_label"`
+	// ScoreKind dit CE QUE porte ScoreLabel : "points" (score du mode rendu par l'API) ou
+	// "rounds" (manches gagnées). L'en-tête de colonne porte une infobulle qui l'explique ;
+	// le client localise la mention, le serveur ne met aucun mot de langue dans le libellé.
+	ScoreKind           string `json:"score_kind,omitempty"`
+	IsWithFriends       bool   `json:"is_with_friends"`
+	ExperienceTypeLabel string `json:"experience_type_label" default:"Non classé"`
+	MatchURL            string `json:"match_url"`
 	// HasReplay : un artefact de rejeu 2D existe pour ce match → la ligne porte un
 	// lien vers la page de rejeu. Faux/absent = rien n'est rendu (pas de lien mort).
 	HasReplay bool `json:"has_replay,omitempty"`

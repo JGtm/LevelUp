@@ -46,5 +46,18 @@ func sharedTeamRoundsSteps() []migration.Migration {
 				return migration.AddColumnIfMissing(db, "match_registry", "rounds_total", "SMALLINT")
 			},
 		},
+		{
+			// UNE VUE DUCKDB FIGE SON `SELECT *` À SA CRÉATION. `v_match_full` est un
+			// `SELECT mr.* FROM match_registry` : sur une base existante, elle a été créée
+			// AVANT les trois colonnes ci-dessus et ne les expose donc PAS — l'historique
+			// (Q5SharedHistory, qui lit cette vue) échouerait sur un « Binder Error ». Ce
+			// step la recrée. Il est SÉPARÉ du précédent, et pas fusionné : le step
+			// au-dessus est déjà appliqué sur les bases de dev, or une migration déjà
+			// enregistrée ne rejoue jamais — modifier son corps ne rafraîchirait rien.
+			Name:        "refresh_views_after_team_rounds",
+			TargetDB:    migration.TargetShared,
+			Description: "Recree v_match_full apres l'ajout des colonnes de manches (une vue DuckDB fige son SELECT * a la creation)",
+			ApplySchema: migration.ApplyResolutionViews,
+		},
 	}
 }

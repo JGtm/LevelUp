@@ -49,6 +49,19 @@ type MatchViewHeader struct {
 	// tokenCssVar(token). Empty si outcome inconnu.
 	OutcomeColorToken string `json:"outcome_color_token,omitempty"`
 	ScoreLabel        string `json:"score_label,omitempty"`
+	// ScoreKind dit CE QUE porte ScoreLabel : "points" (le score du mode rendu par l'API)
+	// ou "rounds" (des MANCHES gagnées). Sur les variantes déclarées dans
+	// regulation.toml [rounds_decide], le cumul de points peut donner la victoire au
+	// perdant — c'est le compte de manches qui tranche (mesure du 2026-08-29,
+	// `.ai/V7.5/RAPPORT_MANCHES_2026-08-29.md`). Vide = aucun score affiché.
+	// Le client s'en sert pour LOCALISER la mention « manches » : le serveur ne met aucun
+	// mot de langue dans le libellé.
+	ScoreKind string `json:"score_kind,omitempty"`
+	// ScorePointsLabel : le score de l'API « X - Y », renseigné UNIQUEMENT quand
+	// ScoreKind vaut "rounds" — la vue match l'affiche en petit et grisé à côté du compte
+	// de manches (arbitrage utilisateur du 2026-08-29). Vide sinon : en lecture points, ce
+	// serait la même valeur que ScoreLabel.
+	ScorePointsLabel string `json:"score_points_label,omitempty"`
 	// DominanceFlag : true si un badge narratif (domination/humiliation/etc.)
 	// s'applique à ce match. Maintenu pour compatibilité ascendante avec les
 	// consommateurs front V0 qui n'attendent qu'un booléen.

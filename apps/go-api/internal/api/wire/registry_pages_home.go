@@ -81,6 +81,9 @@ func (r *ServiceRegistry) MatchHistoryCtx(ctx context.Context, slug string) (por
 		// Flag « Prolongation » des lignes Explorer/historique : table
 		// réglementaire du titre (regulation.toml). Titre sans table → nil.
 		WithRegulation(r.regulationFor(pdb)).
+		// Score en MANCHES sur les lignes Explorer/historique : même fichier de config,
+		// autre table. Titre qui n'en déclare aucune → nil → tout reste en points.
+		WithRoundsDecide(r.roundsDecideFor(pdb)).
 		// Image du badge de palier des lignes Explorer/historique : MÊME résolveur
 		// title-aware que la home (skill_rank_image_url de RecentMatchItem).
 		WithSkillBadgeResolver(skillBadgeResolverFor(pdb.TitleSlug)).
@@ -197,6 +200,7 @@ func (r *ServiceRegistry) TeammatesCtx(ctx context.Context, slug string) (port.T
 	svc := teammates.NewTeammatesService(duckdb.NewSquadRepo(pdb), r.friendGamertagsResolver()).
 		WithPlayerMatchesRepo(r.playerMatchesAdapterFor(pdb), pdb.TitleSlug, pdb.Gamertag).
 		WithSquadLoader(briefingLoader).
+		WithKillSourceRepo(r.killSourceClassRepoFor(pdb)).
 		WithMedalDefs(duckdb.NewMedalDefinitionsRepo(pdb)).
 		// Précision native par arme (Halo 5) : table weapon_accuracy SHARED par titre →
 		// le repo lié au PlayerDB du main charge la précision de tous les xuids de
@@ -293,6 +297,7 @@ func (r *ServiceRegistry) SynthesisCtx(ctx context.Context, slug string) (port.S
 		WithPlayerMatchesRepo(r.playerMatchesAdapterFor(pdb), pdb.TitleSlug, pdb.Gamertag).
 		WithPersonalScoreAwardsRepo(duckdb.NewPersonalScoreAwardsRepo(pdb), pdb.XUID).
 		WithWeaponKillsRepo(duckdb.NewWeaponKillsRepo(pdb)).
+		WithKillSourceRepo(r.killSourceClassRepoFor(pdb)).
 		WithWeaponAccuracyRepo(duckdb.NewWeaponAccuracyRepo(pdb))
 	if a := r.dataAdapterForPDB(pdb); a != nil {
 		svc = svc.WithDataAdapter(a)

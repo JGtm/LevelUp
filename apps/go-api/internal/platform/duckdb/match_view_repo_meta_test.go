@@ -54,7 +54,8 @@ func newMetaResolveTestPDB(t *testing.T) *PlayerDB {
 			playlist_name VARCHAR, playlist_name_fr VARCHAR,
 			is_firefight BOOLEAN DEFAULT FALSE, is_ranked BOOLEAN DEFAULT FALSE,
 			duration_seconds INTEGER, playable_duration_seconds INTEGER,
-			team_0_score INTEGER, team_1_score INTEGER)`,
+			team_0_score INTEGER, team_1_score INTEGER,
+			team_0_rounds_won SMALLINT, team_1_rounds_won SMALLINT, rounds_total SMALLINT)`,
 		// Vue root-level : les queries SharedReader migrées P5/P7 lisent
 		// `FROM match_registry` (sans préfixe), car la conn cible
 		// directement le catalogue shared_matches_v2 en prod. Le schéma
@@ -636,7 +637,8 @@ func newEmptySnapshotSharedReader(t *testing.T, seed ...string) SharedReader {
 		playlist_name VARCHAR, playlist_name_fr VARCHAR,
 		is_firefight BOOLEAN DEFAULT FALSE, is_ranked BOOLEAN DEFAULT FALSE,
 		duration_seconds INTEGER, playable_duration_seconds INTEGER,
-		team_0_score INTEGER, team_1_score INTEGER)`); err != nil {
+		team_0_score INTEGER, team_1_score INTEGER,
+		team_0_rounds_won SMALLINT, team_1_rounds_won SMALLINT, rounds_total SMALLINT)`); err != nil {
 		t.Fatalf("seed snapshot schema: %v", err)
 	}
 	for _, q := range seed {
