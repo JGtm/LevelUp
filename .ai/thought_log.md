@@ -1,3 +1,174 @@
+## [2026-08-29] Kills hors arme a feu — etape 3 : le builder (domain + fragdist) — Complete (etape 3 close)
+
+**Contexte** : suite des etapes 1 (pont) et 2 (lecture). Il fallait faire entrer la 3e
+provenance dans la « Repartition des frags » sans toucher aux deux autres.
+
+**DEUX CORRECTIONS DU PLAN, faites sur piece** — les deux protegent Halo 5 :
+
+1. **D5 etait une erreur de lecture.** Le plan disait de retirer `FragClassEnvironmental`
+   de `nonCombatFragClasses` « pour que la classe devienne visible au sunburst ». Or ce set
+   ne gate PAS le sunburst : ses seuls lecteurs sont `match_view_builders_combat.go:45`
+   (breakdown par-ARME, lu depuis `weapon_kills`) et `WeaponClassHasAccuracy`. Le retirer
+   aurait change le breakdown et le graphe de precision de HALO 5 — dont les lignes
+   `h5_environmental` ont un id numerique et vivent bien dans weapon_kills — sans rien
+   apporter au sunburst. FAIT A LA PLACE : `FragClassEquipment` AJOUTE a ce set (aucune
+   ligne weapon_kills ne porte cette classe, donc ca ne retire rien a personne, et ca garde
+   vraies les deux proprietes que le set sert vraiment).
+
+2. **Chemin a part plutot qu'elargissement de `isRegistryFragClass`.** Ajouter
+   `equipment`/`environmental` aux classes servies par le registre aurait fait remonter les
+   memes lignes `h5_environmental` dans le sunburst de Halo 5 — hors perimetre. Les deux
+   provenances restent separees, comme le sont deja registre et compteurs API.
+
+**Decision technique principale** : `fragdist.Build` prend une 3e entree
+`sources []port.KillSourceClassRow`, servie par `buildKillSourceFragClasses`. Niveau 2 par
+OBJET (weapon_key + libelle du registre) via `perWeaponRoles`, deja ecrit pour les engins :
+« Bobine a plasma » est une information, « environnement » n'en est pas une. Les 6
+appelants passent `nil` — la vue match sera cablee a l'etape 4, conformement au
+sequencement D7.
+
+**Resultats observes** : 6 tests purs neufs. Le plus important est celui de
+NON-REGRESSION : `sources` vide (nil, tranche vide, ou lignes non exploitables) rend une
+sortie BYTE-IDENTIQUE (`reflect.DeepEqual`) a l'ancienne — c'est ce qui protege Halo 5 et
+tous les matchs sans film. Le second verifie le critere de succes n2 du plan : les kills
+sortent du RESIDU et de nulle part ailleurs (aucune classe d'arme ne bouge d'une unite,
+somme des classes == total). Puis invariant (b) sur le niveau 2, invariant (c) (residu
+jamais negatif meme si les sources depassent le total), ordre canonique, et exclusion du
+breakdown par-arme / du graphe de precision.
+
+**GATE 3 PASSE** : `go test ./internal/service/... ./internal/domain/... ./contracttest/...`
+exit 0 — les 6 appelants et les goldens compris.
+
+**Decouverte hors perimetre, NON corrigee (regle 7)** : `cmd/backfill-team-rounds` ne
+compile plus (`main.go:205` appelle `pendingMatchIDs` avec 3 arguments, la fonction en
+attend 4 depuis `registry.go:147`). Ces trois fichiers ont ete modifies PENDANT cette
+session par un autre acteur du meme worktree ; aucune ligne du lot ne les touche.
+Consequence : `go build ./...` echoue sur ce paquet. Les gates du lot passent par paquet
+et ne sont pas affectes.
+
+**Conclusion / prochaine etape** : etape 3 close, aucun item sans statut. Etape 4 (vue
+match : cablage du chargement sous capability `film.kill_source`, libelles FR/EN, token de
+couleur, mention de couverture). Aucun commit demande.
+
+## [2026-08-29] Sons Oddball — les sept gestes du crane cables — Complete
+
+**Contexte** : la RE du 2026-08-27 (`RE_GESTES_SONORES_2026-08-27.md` §9.1 et §10.6) avait
+nomme les sept sons de la banque `b0c651ea` = `sb_004_mod_mp_oddball` et l'utilisateur les
+avait valides a l'ecoute. AUCUN n'etait branche, aucun `.wav` livre.
+
+**Le motif de blocage ecrit en §10.6 etait PERIME.** Il disait « pas cablable : `doc.objectives`
+vient de `namedStatSlots`, qui ne porte que flag et zone ». Toujours vrai de `named.go`, mais
+le schema 23 publie `doc.skullCarries` (periodes de portage) et `zoneSound.ts` avait etabli le
+precedent d'un son qui ne vient d'aucune statistique. Le canal existait, personne ne l'avait
+joint.
+
+**Rendu refait localement, et le controle valide le mappage.** `cmd/weapon-sounds -mode
+eqip-arbre -banks b0c651ea` redonne les sept evenements et leurs `.wem` de source sure — trois
+identifiants lus a l'oeil sur la planche etaient faux d'un chiffre (`491547251`, `630822685`,
+`11775750`). Les durees obtenues par vgmstream rejouent celles de la planche AU CENTIEME.
+
+**MESURE DU JOUR, ET ELLE EVITE DEUX FICHIERS EN DOUBLE.** Les couches de `scoring_team`
+portent le `.wem` 578850042 (1,81 s x2 bout a bout = 3,62 s) et celles de `scoring_enemy` le
+444143858 (2,18 s x2 = 4,36 s). Compares aux fichiers deja livres `objective_zone_tick_team` /
+`_enemy`, leurs enveloppes correlent a **+1,000**, contre +0,66 / +0,69 sur les temoins
+negatifs. C'est LE MEME SON declare une fois par mode de jeu — meme constat que la RE avait
+fait pour la capture de zone. Les deux gestes de marque pointent donc sur les stems existants,
+zero fichier ajoute. Et leur traitement (tronque a 1,2 s, attenue -12 dBTP) tombe juste : le
+tic de Bastion sonne une fois par seconde, et en Oddball on marque 1 point par seconde de
+portage.
+
+**Regles produit de l'utilisateur (2026-08-29)**, qui ont debloque les trois gestes que
+j'avais d'abord tenus dehors :
+- marque = « quand un joueur le porte et qu'il declenche un ticket de score ; on fait ca tres
+  bien quand on affiche le score au-dessus du canvas ». Donc REUTILISATION du meme mecanisme :
+  chaque palier MONTANT de `scoreTimeline.teams[].total` (le film transmet les changements,
+  pas un score echantillonne) est un ticket, dans le camp de son equipe ;
+- apparition/disparition = « quand il apparait sur son socle ou se retrouve hors map. Ce n'est
+  pas encore finalise comme evenements mais peut-etre que tu peux faire comme si pour le son ».
+  APPROXIMATION ASSUMEE, ecrite comme telle dans le module.
+
+**Livre** : `skullSound.ts` (+ 13 tests), 10 `.wav`, `SOUND_VARIANTS`, garde-rail d'assets.
+Sept gestes. La prise se partage entre `taken` (elle suit une vie ou `t0 === t1`, la signature
+du socle etablie par `skullPresence.ts`) et `pickup` sinon. La fermeture d'un portage se
+partage entre `dropped` (une vie se rouvre derriere : le crane roule au sol) et `despawn`
+(aucune : il est sorti de la carte) — EXCLUSIFS, jamais les deux au meme instant. Une periode
+`closed: false` ne joue rien : c'est le film qui s'arrete, personne n'a lache le crane.
+
+**LE POINT DUR : borner le nombre d'apparitions sans savoir combien de vies un film publie.**
+Poser `spawn` sur chaque debut de vie ferait sonner une fanfare de 5,47 s a chaque rebond du
+crane. La sortie est de CHAINER l'apparition a la disparition : premiere vie du film, puis
+premiere vie apres chaque `despawn`. Le compte vaut au plus 1 + nombre de disparitions, quelle
+que soit la granularite reelle des vies — propriete tenue par un test (huit vies, un seul
+lacher, une seule apparition).
+
+**Deux fautes trouvees par les tests, et elles valaient la peine** : (1) `retombeApres` rendait
+faux aussi bien pour « aucune vie apres le lacher » que pour « aucune vie du tout » — un
+artefact sans `objectiveObjects` se voyait donc affirmer une sortie de carte a partir d'une
+absence de donnee ; il degrade desormais vers le geste ORDINAIRE (la chute). (2) L'apparition
+d'ouverture doublonnait avec celle qui suit une disparition quand c'etait la meme vie (deux
+fanfares au meme instant) — les apparitions sont maintenant un ensemble d'instants.
+
+**Decouverte hors perimetre, notee et NON traitee** : `RECETTE_SONS_ARMES.md` §1 situe la
+chaine d'extraction dans `Desktop/Halo Infinite - Sons armes/` ; elle est en realite dans
+`~/Downloads/Halo Infinite - Sons armes/` (vgmstream compris).
+
+**Resultats** : `apps/web` typecheck propre, 117 fichiers / 1815 tests verts sur
+`src/features/match-replay`. **Prochaine etape** : ecoute sur un vrai film Oddball — c'est la
+seule chose qui puisse infirmer l'approximation apparition/disparition et la cadence de la
+marque.
+
+## [2026-08-29] Kills hors arme a feu — etape 2 : la lecture (port + repo) — Complete (etape 2 close)
+
+**Contexte** : suite de l'etape 1 (le pont source de degat -> cle de registre). Il fallait
+maintenant LIRE : agreger les morts de `match_kill_events_latest` par (tueur credite, cle).
+
+**Decision technique principale — le producteur n'est PAS `weapon_kills`**. Cette table a
+pour contrat « l'arme A FEU par kill », elle est append-only sous garde-rails ART, et y
+verser une seconde voie de mesure demanderait des `weapon_id` numeriques synthetiques pour
+des objets qui n'en ont pas. Nouveau port `KillSourceClassRepository` + repo dedie. La
+traduction tag -> cle est injectee derriere `port.KillSourceClassifier` (implementee dans
+`games/halo_infinite/killsource_registry.go`) : `platform/duckdb` reste title-agnostic,
+meme motif que la ModeTaxonomy injectee dans MatchViewRepo. La traduction se fait en Go
+APRES la requete — le tag reste un ENTIER cote SQL, zero comparaison de chaine.
+
+**LE POINT DUR, ET SA GARANTIE : le double-comptage.** Si une arme etait vue par les DEUX
+voies (attribution `0xd2` et source de degat), ses kills compteraient deux fois et
+l'invariant du sunburst (somme des classes == total) sauterait. Le filtre retenu est
+STRUCTUREL et non une liste de classes ecrite a la main : on ne remonte que les cles SANS
+identifiant numerique dans `weapon_ids` (`resolveOffArsenalKeys`, ajoute au passage
+canonique weapon_resolver.go). Une source sans id numerique est par CONSTRUCTION invisible
+a l'attribution arme-a-feu, qui ne sait resoudre qu'un `weapon_id`. Garde-rail pose pour
+que la propriete ne derive pas : `weapons/off_arsenal_guard_test.go` exige que l'ensemble
+des cles HINF sans id numerique soit EXACTEMENT les six entrees hors arsenal — plus une
+verification des deux classes attendues. Le test du repo le prouve de bout en bout : le
+double de test rend volontairement `hinf_br75` pour une source, et le repo l'ecarte.
+
+**La rangee est passee en GRILLE** (second aller-retour utilisateur, meme jour) : le score
+personnel passe A GAUCHE du triplet, et sa cellule est TOUJOURS rendue — vide et sans
+infobulle pour un joueur non publie. C est elle qui aligne les fiches entre elles : sans
+cellule reservee, le triplet d un joueur sans score glissait de 30 px par rapport a celui de
+son voisin publie. Chaque compteur porte en plus une largeur MINIMALE (pas ferme : un
+troisieme chiffre pousse sa cellule plutot que d etre rogne). Meme doctrine, et meme
+formulation de la demande, que la grille des armes du 2026-08-24 (ReplayWeaponsRow).
+
+**Resultats observes** : 6 tests d'integration `:memory:` sur les vraies migrations shared
++ le vrai registre. Le test qui porte le lot : une passe `publishable = FALSE` est COMPTEE
+(ces lignes sont justes en agregat ; les exclure ferait perdre 40 % de la mesure), avec un
+compteur `NonPublishableKills` expose pour dire d'ou vient la mesure — jamais pour
+filtrer. Les autres : la vue `_latest` ne melange pas deux passes, source non mesuree et
+tueur BOT ignores sans erreur, filtres refusant le scan complet, classificateur nil (titre
+sans film) = zero ligne sans erreur. Sortie triee (kills desc, xuid, cle) : une map n'est
+pas deterministe et une sortie qui change d'ordre casse les goldens. Test du
+classificateur ajoute cote `games/halo_infinite` (les 9 tags DEGAT_GLOBAL, les bobines,
+et le fait qu'une source inconnue ne rend JAMAIS de cle par defaut).
+
+**GATE 2 PASSE** : `go test ./internal/platform/duckdb/... ./internal/port/...
+./internal/games/...` vert, `-tags=integration` vert, `go vet` exit 0.
+
+**Conclusion / prochaine etape** : etape 2 close, aucun item sans statut. Etape 3 (domain
++ fragdist : classe `equipment`, sortie d'`environmental` des classes non-combat, 3e
+entree du builder, invariants et test d'identite byte-a-byte). Aucun commit demande.
+
 ## [2026-08-29] Kills hors arme a feu — etape 1 : le pont source de degat -> registre — Complete (etape 1 close)
 
 **Contexte** : suite de l'entree precedente (cadrage + etape 0). Decision D1 confirmee par
@@ -136,6 +307,55 @@ veut, est le second pont d'identite dans `buildPlayerScoresFlat` (desambiguiser 
 de mort quand le triplet collisionne) — c'est ce qui degelerait reellement les fiches restantes.
 
 ---
+
+## [2026-08-28] Export video : pistes sonores separees dans le MP4 (mp4-muxer -> mediabunny) — Complete
+
+**Contexte** : demande utilisateur — « on peut mettre les bruitages, musique et voix sur des pistes
+differentes ? ». Trois reserves ont ete posees AVANT de coder (le muxeur en place ne sait pas ; les
+navigateurs n'exposent pas les pistes supplementaires ; il n'y a presque pas de musique a separer,
+elle n'existe qu'a la fin de partie). L'utilisateur a maintenu son choix : c'est sa decision, elle
+est appliquee.
+
+**Decision technique** : `mp4-muxer` declare `audio?:` AU SINGULIER. Remplace par `mediabunny`,
+du meme auteur et son successeur, qui accepte un nombre illimite de pistes audio en MP4 (verifie
+a l'execution : `Mp4OutputFormat.getSupportedTrackCounts()` rend `audio.max = 2^32-1`).
+
+CE QUI N'A PAS CHANGE, ET C'EST DELIBERE : l'encodage VIDEO reste le notre (`VideoEncoder`, notre
+config, notre contre-pression, nos horodatages), branche par `EncodedVideoPacketSource`. Tout cela
+est deja mesure et verifie dans un navigateur ; une reecriture aurait remis en jeu la seule partie
+du chantier eprouvee de bout en bout. Seule la couche de MUXAGE change.
+
+L'AUDIO passe par `AudioBufferSource` : on donne un tampon rendu, la bibliotheque encode. Cela
+SUPPRIME notre `encodeAudioInto` et, avec lui, toute la famille de pieges qu'il portait — la
+configuration AAC refusee de facon asynchrone, le `flush()` sur un encodeur ferme, la piste
+declaree mais vide. Trois bugs corriges cette semaine disparaissent avec le code qui les portait.
+
+LA DECISION QUI DECIDE DE LA VALEUR DU RESULTAT : le clip porte QUATRE pistes, et le MIXAGE COMPLET
+vient EN PREMIER. Un lecteur ordinaire ne joue que la premiere piste — un navigateur n'expose meme
+pas les autres. Livrer les familles seules aurait fait entendre les bruitages sans musique ni voix :
+une regression pour tout le monde sauf le monteur. Les familles suivent, dans un ordre stable.
+
+LES FAMILLES SONT RENDUES A PARTIR DES MEMES SONS RETENUS que le mixage complet, jamais
+replanifiees : superposer les pistes separees redonne donc exactement le mixage — meme tirage, meme
+plafond de voix, memes instants. Et toutes les pistes ont la MEME duree, sans quoi elles se
+decaleraient dans un montage.
+
+Le classement par famille ne touche AUCUN module partage : `END_VOICE_STEMS`, `END_MUSIC_STEMS` et
+`ROUND_OVER_SOUND_STEMS` sont deja exportes, et tout stem hors de ces listes est un bruitage — le
+defaut le plus sur, puisqu'un son mal classe se retrouve dans les bruitages et jamais absent du
+mixage complet.
+
+**Resultats observes** : `make test-web` vert (529 fichiers, 5402 tests), typecheck et eslint
+propres. Test de non-regression sur l'ORDRE des pistes, qui est la seule chose qui puisse rendre ce
+lot nuisible.
+
+**Reserve** : rien n'a pu etre verifie dans un navigateur — le serveur Go (8000) puis Vite (5173)
+se sont arretes en cours de seance. Le multipiste n'est donc PAS confirme a la mesure, contrairement
+a tout le reste du chantier. A refaire des que `make dev` tourne : verifier que le clip porte quatre
+pistes nommees, que la premiere est bien le mixage, et que les familles se superposent au mixage.
+
+**Conclusion / prochaine etape** : recette multipiste a faire, dans un montage ou VLC (un
+navigateur ne montrera que la premiere piste).
 
 ## [2026-08-28] Export video : la musique de fin ne jouait NULLE PART, et la nettete se joue sur le chroma — Complete
 
