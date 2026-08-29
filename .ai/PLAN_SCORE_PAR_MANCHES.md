@@ -425,7 +425,7 @@ l'app » + « fais la revue quand meme ».
 | Rejeu 2D + export video | bandeau / ecran de fin | verdict = API, compte vivant = film |
 | Accueil | `match-card` | **cable en E9** |
 | Escouade (synergies) | `SquadSynergyHistoryTable` | **cable en E9** + infobulle |
-| Sessions (solo ET escouade) | `SessionMatchesTable` | **aucun score d'equipe** : `SessionDetailMatchRow` n'en porte pas, la colonne est masquee par `SESSION_HIDDEN_COLUMNS`. Rien a rendre coherent. |
+| Sessions — vue etendue ET vue compactee (drawer) | `SessionMatchesTable` | **aucun score d'equipe dans NI L'UNE NI L'AUTRE** : `SessionDetailMatchRow` n'en porte pas (elle a le score personnel et le score de perf), et la colonne est masquee dans les DEUX jeux de colonnes (`SESSION_HIDDEN_COLUMNS` et `COMPACT_HIDDEN_COLUMNS`). Invariant EPINGLE par 3 tests (question utilisateur du 2026-08-29). |
 
 ### Ce que E9 a cable
 - [x] Escouade : 4 colonnes de plus a Q30 (manches permutees par le MEME `CASE` que les

@@ -194,3 +194,41 @@ describe('SessionMatchesTable — colonne « Ouvrir sur Halo Waypoint » (I19, V
     expect(screen.queryByRole('link', { name: WAYPOINT_LABEL })).not.toBeInTheDocument()
   })
 })
+
+// ─── Le score d'ÉQUIPE est absent des DEUX vues ────────────────────────────
+//
+// La page Session a deux rendus : étendu (`full`) et compacté (`compact`, le drawer de
+// comparaison). Aucun des deux n'affiche de score d'équipe, et ce n'est pas un réglage
+// esthétique : `SessionDetailMatchRow` ne PORTE aucun score d'équipe (elle a le score
+// personnel et le score de performance), si bien que la colonne afficherait du vide.
+//
+// Ce test épingle l'invariant parce qu'il est la raison pour laquelle la page Session est
+// restée hors du chantier « afficher les manches » (ADR 0032) : on ne rend pas cohérent un
+// nombre qui n'existe pas. Le jour où la session portera un score d'équipe, ce test tombera
+// et rappellera qu'il faut alors le faire passer par analysis.ReadTeamScore comme les cinq
+// autres surfaces.
+describe('SessionMatchesTable — aucun score d’équipe, dans aucune des deux vues', () => {
+  it('vue étendue : la colonne Score d’équipe est masquée', () => {
+    renderWithProviders(
+      <SessionMatchesTable matches={[makeRow()]} playerSlug="me" variant="full" withFriends />,
+    )
+    expect(screen.getByTestId('explorer-matches-table')).toBeInTheDocument()
+    // L'en-tête « Score » de l'Explorer désigne le score d'ÉQUIPE ; il ne doit pas paraître.
+    // (« Score personnel » est un en-tête distinct, sur deux lignes, et reste affiché.)
+    expect(screen.queryByRole('columnheader', { name: /^Score$/ })).not.toBeInTheDocument()
+  })
+
+  it('vue compactée : la colonne Score d’équipe est masquée aussi', () => {
+    renderWithProviders(
+      <SessionMatchesTable matches={[makeRow()]} playerSlug="me" variant="compact" withFriends />,
+    )
+    expect(screen.getByTestId('explorer-matches-table')).toBeInTheDocument()
+    expect(screen.queryByRole('columnheader', { name: /^Score$/ })).not.toBeInTheDocument()
+  })
+
+  it('la ligne adaptée ne transporte AUCUN score d’équipe', () => {
+    // Ceinture et bretelles : même si la colonne était ré-affichée par erreur, il n'y
+    // aurait rien à montrer — c'est la donnée qui manque, pas seulement l'affichage.
+    expect(toExplorerRow(makeRow(), true).score_label).toBe('')
+  })
+})
