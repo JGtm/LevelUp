@@ -364,16 +364,30 @@ export async function openVideoExport(o: VideoExportOptions): Promise<VideoExpor
   // façon asynchrone, hors de la pile de l'appelant, et l'avaler rendrait un fichier tronqué
   // sans que rien ne le dise.
   let failure: Error | null = null
+  /**
+   * LES ECRITURES DE PAQUETS SONT ENCHAINEES, ET ATTENDUES AVANT LA FINALISATION.
+   *
+   * `videoSource.add()` est ASYNCHRONE — il rend une promesse — alors que le rappel `output`
+   * d'un `VideoEncoder` est synchrone et ne peut rien attendre. Les lancer sans les suivre
+   * (`void add(...)`) laissait `output.finalize()` fermer le fichier pendant que des paquets
+   * etaient encore en vol : le clip sortait AVEC SON SON ET SANS IMAGE. `encoder.flush()` ne
+   * protege pas de ca — il garantit que les paquets ont ete EMIS, pas qu'ils ont ete ECRITS.
+   *
+   * L'enchainement preserve aussi l'ORDRE : deux `add` concurrents pourraient s'ecrire dans le
+   * desordre, ce qu'un flux video ne pardonne pas.
+   */
+  let ecritures: Promise<unknown> = Promise.resolve()
   const encoder = new VideoEncoder({
     output: (chunk, meta) => {
-      void videoSource.add(EncodedPacket.fromEncodedChunk(chunk), meta)
+      const packet = EncodedPacket.fromEncodedChunk(chunk)
+      ecritures = ecritures.then(() => videoSource.add(packet, meta))
     },
     error: (err) => {
       failure = err instanceof Error ? err : new Error(String(err))
     },
   })
   encoder.configure(config)
-  return makeSink(encoder, output, videoSource, audioSources, fps, () => failure, {
+  return makeSink(encoder, output, videoSource, audioSources, fps, () => failure, () => ecritures, {
     width: config.width,
     height: config.height,
   })
@@ -391,6 +405,8 @@ function makeSink(
   audioSources: readonly AudioBufferSource[],
   fps: number,
   failureOf: () => Error | null,
+  /** La chaine des ecritures de paquets video, a attendre avant de finaliser. */
+  ecrituresEnCours: () => Promise<unknown>,
   size: { width: number; height: number },
 ): VideoExportSink {
   let closed = false
@@ -443,6 +459,8 @@ function makeSink(
 
   const finish = async (): Promise<Blob> => {
     await encoder.flush()
+    // `flush()` garantit que les paquets ont ete EMIS ; celle-ci, qu'ils ont ete ECRITS.
+    await ecrituresEnCours()
     const failed = failureOf()
     if (failed) throw failed
     // LES SOURCES SE FERMENT AVANT LA FINALISATION : une piste declaree mais jamais close

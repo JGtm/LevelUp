@@ -1,3 +1,72 @@
+## [2026-08-29] Kills hors arme a feu — etape 4 : la vue match — Complete (etape 4 close, verification visuelle CONFIRMEE)
+
+**VERIFICATION VISUELLE, faite le 2026-08-29 sur le `make dev` de l utilisateur** : match
+`78919882-f47d-4460-9e78-673f5afdd338` (Chocoboflor, High Ground, 14 frags). Le sunburst
+affiche la classe « Environnement — 14,3 % » (2 kills), son niveau 2 nomme « Bobine a fusion
+UNSC — 2 · 14,3 % » avec sa ligne de rappel et sa couleur propre, « Non attribue » retombe a
+71,4 %, et « Melee » reste a 14,3 % — le compteur API n a pas bouge d une unite. C est le
+critere de succes n2 du plan, verifie a l ecran et plus seulement en test.
+**Contexte** : suite de l'etape 3 (le builder). Premiere surface cablee, conformement au
+sequencement D7 : la vue match d'abord, les agregats seulement apres.
+
+**Decision technique principale — OU poser le gate de capability.** Le plan disait
+`HasCapability("film.kill_source")` dans le service. Impossible tel quel : `film.kill_source`
+est une capability DATA-LEVEL (`games.CapabilityKey`, capabilities.toml, portee par le
+TitleDataAdapter), pas une capability title-level (`titlePkg.Capability`, title.toml) — deux
+systemes distincts qui partagent des noms de constantes. Le service n'a pas de
+TitleDataAdapter. Le gate est donc pose au CABLAGE (`registry_pages.go`), la ou la
+CapabilityMap est disponible — meme motif que `engagementCapabilityFor`. Cote service, un
+repo non nil VEUT DIRE que le titre a la capability. Zero comparaison de slug.
+
+**Second point de conception : comment le cablage atteint le classificateur sans importer
+le titre.** `internal/api/wire` n'importe pas `games/halo_infinite` en production, et ce lot
+ne devait pas ouvrir cette porte. La methode `KillSourceRegistryKey` a donc ete posee SUR
+L'ADAPTER D'ASSETS du titre, qui porte deja `KillSourceIcon` et interroge les memes deux
+tables embarquees : meme table, autre question. Le cablage demande l'adapter qu'il a deja et
+teste s'il satisfait `port.KillSourceClassifier` (interface OPTIONNELLE, decouverte par
+assertion). Un titre qui ne l'implemente pas n'a pas de classificateur — pas de troisieme
+type d'adapter a ouvrir dans le resolver pour une seule fonction.
+
+**Piege evite** : `matchViewData` portait DEJA un champ `killSources` — la source de degat
+PAR MORT, pour l'icone du kill feed. Le nouveau champ (un COMPTE PAR JOUEUR, pour le
+sunburst) s'appelle `killSourceClasses`, et le commentaire dit explicitement de ne pas les
+confondre.
+
+**Resultats observes** : chargement parallele sous `goLoad` avec son propre libelle,
+`slog.InfoContext` du compteur (classes, kills, non publiables) quand il y a quelque chose a
+dire, `slog.ErrorContext` sur echec — jamais de degradation silencieuse.
+`ErrCapabilityNotSupported` n'est PAS traite comme une erreur : c'est un match dont le film
+n'a jamais ete decode. Cote web : deux libelles FR/EN au manifeste `frags.toml` (regenere,
+2 997 cles), et deux tokens de couleur choisis par MESURE et non au jugement — un script
+ad hoc a calcule le pire ΔE OKLab all-pairs sur les 15 tokens libres : `chart-series-1` +
+`narrative-remontada` donnent 12,05 (le garde-rail existant exige >= 8, et les 8 classes de
+combat actuelles sont a 12,53). Aucun hex, que des tokens semantiques.
+
+**Item 4.4 statue `[~]`** (mention de couverture) : sur UN match, la couverture est
+exactement le complement de l'arc « Non attribue », deja dessine. L'ecrire a cote serait la
+meme quantite deux fois, et le 54 % de l'etape 0 est un taux GLOBAL qui ne vaut pas pour ce
+match-la. La mention chiffree a du sens la ou le residu n'est pas lisible arc par arc : les
+agregats, c'est-a-dire l'item 5.2, qui la porte deja.
+
+**GATE 4 PASSE, SAUF LA VERIFICATION VISUELLE** : `make check-types` exit 0 ; `make test-web`
+529 fichiers / 5 402 tests, 0 echec ; tests Go service/api/domain/contracttest exit 0. Pas de
+regeneration OpenAPI : le DTO ne bouge pas (`class` est une chaine, deux valeurs de plus, pas
+deux champs). La verification visuelle est `[!]` : l'API de la vue match exige une session
+authentifiee du joueur (`player_forbidden`), que l'agent n'a pas et ne doit pas fabriquer.
+
+**Note d'environnement** : le serveur dev etait TOMBE (ni air ni server.exe en memoire au
+moment du gate). Redemarre avec `CGO_ENABLED=1 go run ./cmd/server` — le premier essai via
+PowerShell avait echoue faute de CGO (gcc msys64 absent de ce PATH). Il a repondu ~16 min
+puis est mort a son tour (`exit status 0xffffffff`, aucun panic au journal) : rien n ecoute
+plus sur :8000, et le front (vite) n a de toute facon jamais ete demarre. Ne pas relancer le
+serveur depuis un process d agent — `make dev` est le chemin de l utilisateur. A noter au
+passage, remonte par le serveur pendant sa breve vie : `disk_watch: espace disque faible sur
+le volume data`.
+
+**Conclusion / prochaine etape** : etape 4 close, aucun item sans statut. Verification
+visuelle a rendre a l'utilisateur (match `78919882-f47d-4460-9e78-673f5afdd338`, High Ground,
+2 kills a la bobine cinetique). Etape 5 (agregats + KPI) ensuite. Aucun commit demande.
+
 ## [2026-08-29] Kills hors arme a feu — etape 3 : le builder (domain + fragdist) — Complete (etape 3 close)
 
 **Contexte** : suite des etapes 1 (pont) et 2 (lecture). Il fallait faire entrer la 3e
@@ -307,6 +376,54 @@ veut, est le second pont d'identite dans `buildPlayerScoresFlat` (desambiguiser 
 de mort quand le triplet collisionne) — c'est ce qui degelerait reellement les fiches restantes.
 
 ---
+
+## [2026-08-28] Export video : l'image perdue par une course d'ecriture, et une recette qui verifie TOUT d'un coup — Complete
+
+**Contexte** : retour utilisateur excede, et il avait raison — « tu m'as rendu l'image mais je n'ai
+plus le message de defaite ni le score ni la voix ni la musique. Arrete de me fournir l'un ou
+l'autre. » Quatre allers-retours en une seance, chacun corrigeant une propriete et en cassant une
+autre sans que je le voie.
+
+**Decision technique, le vrai bug** : en migrant vers `mediabunny`, le rappel `output` du
+`VideoEncoder` faisait `void videoSource.add(...)`. Or ce rappel est SYNCHRONE et ne peut rien
+attendre, tandis que `add()` est ASYNCHRONE : `output.finalize()` fermait donc le conteneur pendant
+que des paquets etaient encore en vol, et le clip sortait AVEC SON SON ET SANS IMAGE.
+`encoder.flush()` ne protege pas de cela — il garantit que les paquets ont ete EMIS, pas ECRITS.
+Les ecritures sont desormais ENCHAINEES (`ecritures = ecritures.then(...)`) et attendues avant la
+finalisation ; l'enchainement preserve aussi l'ORDRE, que deux `add` concurrents pourraient rompre.
+Verifie : 209 paquets video, image revenue, capture a l'appui.
+
+**Decision technique, la cause des trois AUTRES manques** : elle est UNIQUE et elle n'est pas dans
+le code. La vue du match repond 404 (`/api/v1/players/JGtm/matches/<id>`), donc la PAGE n'a ni
+scoreboard, ni issue, ni fenetre de gameplay — visible a l'ecran : « SANS EQUIPE » et une horloge
+a 8:53 (duree du film) au lieu de 8:48 (duree jouee). Sans issue : pas de message de defaite ni de
+score. Sans fenetre : `reachesMatchEnd` refuse — a raison — d'affirmer que la plage est la fin du
+match, donc ni voix ni musique. L'export refletait fidelement une page degradee.
+
+**LA VRAIE SORTIE DE CETTE SEANCE**, et c'est un changement de methode, pas un correctif :
+`scripts/recette_export_rejeu.js`. L'export a HUIT proprietes observables qui se cassent
+INDEPENDAMMENT (image, dimensions, duree, maintien de fin, pistes sonores et leur ordre,
+surimpression, voix, musique). Les verifier une a une, c'est corriger l'une en cassant l'autre sans
+le voir — c'est litteralement ce qui s'est passe. La recette les verifie TOUTES en un passage et
+rend un verdict par ligne.
+
+Sa PREMIERE verification est le prealable : si la page n'a pas ses donnees de match, elle s'arrete
+la et le DIT, au lieu de laisser chercher un bug dans l'export. Elle vient de le faire du premier
+coup, la ou j'avais mis quatre allers-retours a comprendre la meme chose.
+
+Aucun test automatise ne peut la remplacer : jsdom ne calcule pas de mise en page, n'a pas
+WebCodecs et ne decode pas un MP4. C'est une recette de NAVIGATEUR, a lancer apres chaque
+changement du chantier.
+
+**Resultats observes** : `make test-web` vert (529 fichiers, 5402 tests), eslint propre. Le
+branchement des FAMILLES sonores, qui manquait (le mecanisme etait ecrit mais jamais alimente,
+d'ou une seule piste « Bruitages » au lieu de trois), est pose dans le meme lot.
+
+**Reserve** : la recette ne peut pas aller au bout tant que l'API du match repond 404. Le serveur
+Go s'arrete de lui-meme depuis le milieu de la seance (vu passer de 200 a 000 trois fois) ; il n'a
+pas ete relance ici — regle du writer unique DuckDB, et un autre chantier tourne dans ce worktree.
+
+**Conclusion / prochaine etape** : relancer l'API, lancer la recette UNE fois, lire les huit lignes.
 
 ## [2026-08-28] Export video : pistes sonores separees dans le MP4 (mp4-muxer -> mediabunny) — Complete
 

@@ -169,6 +169,7 @@ describe('useReplayExport — non-régressions de la revue adversariale', () => 
     endMatchStems: ['fanfare'],
     variationPercent: 0,
     distancePercent: 0,
+    families: { voice: [], music: [] },
   })
   const FENETRE = { startFrame: 0, endFrame: 100, startMs: 0, endMs: 5000 }
 
@@ -262,7 +263,7 @@ describe('useReplayExport — le repli MUET quand le navigateur refuse la piste'
         outcome: null,
         titleSlug: 'halo_infinite',
         locale: 'fr',
-        soundTrack: () => ({ timeline: [{ ms: 0, stem: 'x' }], endMatchStems: [], variationPercent: 0, distancePercent: 0 }),
+        soundTrack: () => ({ timeline: [{ ms: 0, stem: 'x' }], endMatchStems: [], variationPercent: 0, distancePercent: 0, families: { voice: [], music: [] } }),
         soundVolume: 1,
       }),
     )
@@ -353,7 +354,7 @@ describe('useReplayExport — les pistes sonores separees', () => {
         outcome: null,
         titleSlug: 'halo_infinite',
         locale: 'fr',
-        soundTrack: () => ({ timeline: [{ ms: 0, stem: 'x' }], endMatchStems: [], variationPercent: 0, distancePercent: 0 }),
+        soundTrack: () => ({ timeline: [{ ms: 0, stem: 'x' }], endMatchStems: [], variationPercent: 0, distancePercent: 0, families: { voice: [], music: [] } }),
         soundVolume: 1,
       }),
     )
