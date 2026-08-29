@@ -475,6 +475,33 @@ P2 CONSIGNES, non traites (regle 7 du contrat d'execution) : cf. §9.
   presents avant : `internal/archlint TestNoLocalLongestRun` (balayage « plus longue serie »
   local dans `cmd/oddball-terrain/confront.go`, fichier non touche ici) et
   `internal/himap` qui depasse le timeout de 600 s. Notes, NON traites (regle 7).
+- **2026-08-29 (question utilisateur : « pourquoi je ne vois pas le tableau des
+  assistances ? »)** — CE N'EST PAS UN BUG D'AFFICHAGE, c'est un TROU DE DONNEES, et il
+  touche DEUX surfaces. Le bloc « qui assiste qui » de la page Escouade
+  (`SquadAssistPairsTable`, monte sous condition `assist_pairs != nil`) et le bloc
+  assistances de la vue match (`match_view_repo_assist_pairs.go`) filtrent tous deux sur
+  `publishable AND assist_known` dans `match_kill_events_latest`. Or `assist_known`
+  s'effondre a partir d'avril 2026 :
+
+  | mois | kills | assist_known | feed_present |
+  |---|---|---|---|
+  | 2026-08 | 800 | **0** | 800 |
+  | 2026-07 | 13 638 | 896 | 13 636 |
+  | 2026-06 | 6 014 | **0** | 6 014 |
+  | 2026-05 | 7 721 | 92 | 7 721 |
+  | 2026-04 | 7 184 | 806 | 7 163 |
+  | 2026-03 | 15 918 | **12 730** | 15 753 |
+  | 2026-02 | 15 540 | **13 323** | 15 427 |
+
+  Le kill feed EST lu (`feed_present` a ~100 %) et les kills sont publiables : c'est
+  l'ATTRIBUTION DE L'ASSISTANT qui ne se resout plus. Consequence : sur toute session
+  recente, `measured == 0` -> `buildSquadAssistPairs` rend nil **sans aucun log** -> le bloc
+  disparait silencieusement de la page. Les donnees existent pourtant pour l'escouade
+  (JGtm/Chocoboflor : 250 et 161 paires, mais sur les mois anciens).
+  Producteurs a instruire : `internal/persist/kill_events_{film_pass,merge,credit}.go`,
+  `internal/sync/killcollector/`. **NON traite — hors perimetre de ce lot**, et merite son
+  propre chantier (mesure du basculement, cause, backfill).
+
 - **2026-08-29 (E9, revue L2/L3 + L4)** — `score_kind` est produit pour l'historique,
   l'Explorateur et l'escouade mais AUCUN code web ne le lit sur ces trois surfaces (leur
   infobulle d'en-tete est statique). Trois champs de contrat sans consommateur (regle 7).
