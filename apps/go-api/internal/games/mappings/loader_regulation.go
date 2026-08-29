@@ -27,13 +27,19 @@ type RegulationSet struct {
 	// du vainqueur au registre), variante inconnue → pas de cible, jamais une devinette.
 	// Consommateur : le constructeur d'artefact de rejeu (ScoreTimeline.TargetScore).
 	targets map[string]int
+	// roundsDecide : game_variant_name → la variante se décide aux MANCHES, donc son
+	// `CoreStats.Score` (un cumul de points sur toutes les manches) ne dit PAS le résultat.
+	// Même doctrine encore : contenu MESURÉ (`.ai/V7.5/RAPPORT_MANCHES_2026-08-29.md`),
+	// variante absente → on garde les points. Consommateur : analysis.TeamScoreDisplay.
+	roundsDecide map[string]bool
 }
 
 // regulationTOML — projection brute de regulation.toml.
 type regulationTOML struct {
-	Meta    metaSection    `toml:"meta"`
-	Seconds map[string]int `toml:"regulation_seconds"`
-	Targets map[string]int `toml:"score_target"`
+	Meta         metaSection     `toml:"meta"`
+	Seconds      map[string]int  `toml:"regulation_seconds"`
+	Targets      map[string]int  `toml:"score_target"`
+	RoundsDecide map[string]bool `toml:"rounds_decide"`
 }
 
 // Seconds retourne le temps réglementaire de la variante et true s'il est connu.
@@ -54,6 +60,16 @@ func (s *RegulationSet) ScoreTarget(gameVariantName string) (int, bool) {
 	}
 	v, ok := s.targets[strings.TrimSpace(gameVariantName)]
 	return v, ok
+}
+
+// RoundsDecide dit si le RÉSULTAT de la variante se lit en MANCHES plutôt qu'en points.
+// nil-safe et variante inconnue → false : l'appelant garde les points (dégradation sûre,
+// jamais un affichage inventé).
+func (s *RegulationSet) RoundsDecide(gameVariantName string) bool {
+	if s == nil {
+		return false
+	}
+	return s.roundsDecide[strings.TrimSpace(gameVariantName)]
 }
 
 // SecondsMap retourne une copie de la table variante → secondes. nil-safe (map
@@ -132,10 +148,25 @@ func LoadRegulationFromBytes(path string, raw []byte) (*RegulationSet, error) {
 		}
 		targets[key] = target
 	}
+	rounds := make(map[string]bool, len(doc.RoundsDecide))
+	for rawName, decides := range doc.RoundsDecide {
+		key := strings.TrimSpace(rawName)
+		if key == "" {
+			return nil, fmt.Errorf("%s: [rounds_decide] game_variant_name vide", path)
+		}
+		// Une entrée `false` n'existe pas : l'absence EST le « non ». L'accepter ferait
+		// croire qu'on peut désactiver quelque chose depuis cette table, alors que la
+		// dégradation se lit par l'absence de clé.
+		if !decides {
+			return nil, fmt.Errorf("%s: [rounds_decide] variante %q à false — retirer la ligne (l'absence vaut « non »)", path, key)
+		}
+		rounds[key] = true
+	}
 	return &RegulationSet{
 		titleSlug:     doc.Meta.TitleSlug,
 		schemaVersion: doc.Meta.SchemaVersion,
 		seconds:       seconds,
 		targets:       targets,
+		roundsDecide:  rounds,
 	}, nil
 }

@@ -219,16 +219,21 @@ egalite », perimetre initial reduit aux 3 variantes Oddball.
 - **Gate** : partiel — la repetition a blanc passe ; la couverture reelle sera consignee
   apres l'application.
 
-### E3 — La regle, en UN seul endroit
+### E3 — La regle, en UN seul endroit — **CLOS le 2026-08-29**
 
-- [ ] Section `[rounds_decide]` dans `config/titles/halo_infinite/mappings/regulation.toml`
-      (+ loader `loader_regulation.go`, `schema_version` 3) : les 3 variantes Oddball mesurees.
-- [ ] `internal/analysis/team_score_display.go` — fonction PURE, title-agnostic :
-      `TeamScoreDisplay(myScore, enemyScore, myRounds, enemyRounds *int, roundsTotal *int, roundsDecide bool) Display`
-      -> `{Kind: KindPoints|KindRounds, Mine, Theirs int, Points [2]int}`.
-- [ ] Regle E0 : variante non declaree, donnee manquante, `rounds_total < 2` ou manches a
-      EGALITE -> `KindPoints` (comportement actuel, jamais de regression).
-- [ ] Tests table-driven, dont les cas temoins du corpus E0.
+- [x] Section `[rounds_decide]` dans `config/titles/halo_infinite/mappings/regulation.toml`
+      (`schema_version` 3) : les 3 variantes Oddball mesurees, avec au-dessus la liste
+      EXPLICITE de ce qui est volontairement absent et pourquoi.
+- [x] Loader : `RegulationSet.roundsDecide` + accesseur `RoundsDecide(variante) bool`,
+      nil-safe, cle trimee. **Une entree `false` est REFUSEE** — l'absence de cle est deja
+      le « non », deux facons de dire non finiraient par se contredire.
+- [x] `internal/analysis/team_score_display.go` — `ReadTeamScore(TeamScoreInput)
+      (TeamScoreDisplay, bool)`, PURE, title-agnostic, sans I/O. `Points` reste renseigne
+      meme en lecture manches (le secondaire grise de la vue match, arbitrage 6.2).
+- [x] Regle E0 aux trois conditions cumulatives ; tout echec revient aux points.
+- [x] 11 cas table-driven, dont 4 temoins du corpus (Oddball 181-186 qui ment, CTF d'arene
+      non declare, manches a egalite, colonnes NULL) + 3 tests loader dont un qui EPINGLE le
+      contenu livre (Oddball declare, CTF d'arene non).
 
 ### E4 — Centralisation du libelle (dette regle 6)
 
@@ -348,6 +353,7 @@ n'est ouvert pour elle (decision explicite, pas un oubli).
 | Date | Etape | Statut | Note |
 |---|---|---|---|
 | 2026-08-29 | Plan | Ecrit | Audit fait, 3 arbitrages tranches (§6). |
+| 2026-08-29 | E3 | **CLOS** | Table `[rounds_decide]` mesuree (3 variantes Oddball) + `analysis.ReadTeamScore`, regle unique aux 3 conditions cumulatives. Une entree TOML a `false` est refusee : l absence vaut deja non. |
 | 2026-08-29 | E2 | **PARTIEL** | Outil `cmd/backfill-team-rounds` livre et repete a blanc (20/20). `--apply` en attente : le serveur de dev tient la base, son arret est une decision utilisateur. La suite du plan n est pas bloquee. |
 | 2026-08-29 | E1 | **CLOS** | Colonnes + extraction + persist. 3 garde-rails de schema ont casse (auto-parite INSERT, seeder demo, bootstrap `sharedSchemaSQL`) et ont ete mis a jour. Halo 5 `[!]` : l'API carnage ne publie pas les manches. Entree thought_log groupee en fin de chantier (worktree partage avec une autre session). |
 | 2026-08-29 | E0 | **CLOS** | 1 942/1 942 payloads, 0 erreur. Regle `rounds_total >= 2` REFUTEE ; detection declarative mesuree adoptee. 4 matchs Oddball prouvent le mensonge. Rapport `.ai/V7.5/RAPPORT_MANCHES_2026-08-29.md`. |
