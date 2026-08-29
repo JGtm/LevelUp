@@ -57,9 +57,13 @@
 //	go run ./cmd/backfill-team-rounds --match 293a763e-... --apply
 //	go run ./cmd/backfill-team-rounds --limit 50
 //
-// La liste de travail par défaut est lue DANS LA BASE (`rounds_total IS NULL`) : l'outil est
-// donc reprenable après interruption, et un second passage ne re-télécharge que ce qui
-// manque encore. Auth : `MultiUserTokenStore` (ADR 0023), aucune re-capture.
+// La liste de travail est lue DANS LA BASE (`rounds_total IS NULL`) et RESTREINTE PAR DÉFAUT
+// aux variantes déclarées dans `regulation.toml [rounds_decide]` — celles, et seulement
+// celles, dont l'affichage change. Rattraper le corpus entier coûterait ~1 900 appels d'API
+// pour une poignée de lignes utiles ; les matchs FUTURS, eux, sont renseignés à la sync pour
+// toutes les variantes. `--all` force le corpus entier. L'outil est reprenable après
+// interruption, et le jour où une variante est ajoutée à la table, un second passage rattrape
+// son historique. Auth : `MultiUserTokenStore` (ADR 0023), aucune re-capture.
 package main
 
 import (
@@ -69,10 +73,12 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"time"
 
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/mappings"
 	auth_platform "levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/dblease"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
@@ -114,8 +120,13 @@ func main() {
 		fatal("%v", err)
 	}
 
+	variants, err := declaredVariants(pr)
+	if err != nil {
+		fatal("%v", err)
+	}
+
 	// --- Phase A : aucun droit d'écriture n'est demandé ici. ---
-	plans, t, err := planPhase(ctx, client, sharedPath, opts)
+	plans, t, err := planPhase(ctx, client, sharedPath, variants, opts)
 	if err != nil {
 		fatal("%v", err)
 	}
@@ -136,7 +147,7 @@ func main() {
 // options porte les drapeaux, pour que main reste lisible et sous les seuils.
 type options struct {
 	gamertag, single string
-	apply            bool
+	apply, all       bool
 	rps, limit       int
 }
 
@@ -147,6 +158,7 @@ func parseFlags() options {
 	flag.BoolVar(&o.apply, "apply", false, "ÉCRIRE réellement. Sans ce drapeau : répétition à blanc, aucune écriture")
 	flag.IntVar(&o.rps, "rps", 4, "Requêtes API par seconde")
 	flag.IntVar(&o.limit, "limit", 0, "Ne traiter que les N premiers matchs de la liste (0 = tous)")
+	flag.BoolVar(&o.all, "all", false, "Renseigner TOUT le corpus au lieu des seules variantes declarees dans [rounds_decide] (~1 900 appels d'API pour une poignee de lignes utiles)")
 	flag.Parse()
 	return o
 }
@@ -171,7 +183,7 @@ func reportTally(ctx context.Context, apply bool, t tally) {
 // cohabite avec un serveur qui tient la base EN LECTURE, mais avorte proprement (« Could not
 // set lock ») s'il est en train d'y écrire. Limite acceptée : la répétition à blanc n'a rien
 // à réparer, on la relance.
-func planPhase(ctx context.Context, f matchFetcher, path string, opts options) ([]plannedWrite, tally, error) {
+func planPhase(ctx context.Context, f matchFetcher, path string, variants []string, opts options) ([]plannedWrite, tally, error) {
 	var t tally
 	db, closeDB, err := duckdbpkg.OpenReadForQuery(path)
 	if err != nil {
@@ -179,12 +191,13 @@ func planPhase(ctx context.Context, f matchFetcher, path string, opts options) (
 	}
 	defer closeDB()
 
-	ids, err := workList(ctx, db, opts)
+	ids, err := workList(ctx, db, variants, opts)
 	if err != nil {
 		return nil, t, err
 	}
 	slog.InfoContext(ctx, "backfill_team_rounds: démarrage",
-		"matchs", len(ids), "apply", opts.apply, "shared_db", path)
+		"matchs", len(ids), "apply", opts.apply, "corpus_entier", opts.all,
+		"variantes_declarees", len(variants), "shared_db", path)
 
 	reg := sqlRegistry{q: db}
 	var plans []plannedWrite
@@ -197,12 +210,19 @@ func planPhase(ctx context.Context, f matchFetcher, path string, opts options) (
 }
 
 // workList rend les matchs à traiter : le match unique s'il est fourni, sinon ceux dont les
-// manches sont encore inconnues.
-func workList(ctx context.Context, db *sql.DB, opts options) ([]string, error) {
+// manches sont encore inconnues — restreints par défaut aux variantes déclarées.
+func workList(ctx context.Context, db *sql.DB, variants []string, opts options) ([]string, error) {
 	if opts.single != "" {
 		return []string{opts.single}, nil
 	}
-	ids, err := pendingMatchIDs(ctx, db, opts.limit)
+	if !opts.all && len(variants) == 0 {
+		return nil, fmt.Errorf("aucune variante déclarée dans [rounds_decide] — rien à rattraper (utiliser --all pour renseigner tout le corpus)")
+	}
+	filter := variants
+	if opts.all {
+		filter = nil
+	}
+	ids, err := pendingMatchIDs(ctx, db, filter, opts.limit)
 	if err != nil {
 		return nil, err
 	}
@@ -210,6 +230,18 @@ func workList(ctx context.Context, db *sql.DB, opts options) ([]string, error) {
 		slog.InfoContext(ctx, "backfill_team_rounds: aucun match sans manches — rien à faire")
 	}
 	return ids, nil
+}
+
+// declaredVariants lit les variantes dont le résultat se lit en manches, depuis le
+// regulation.toml du titre. C'est la MÊME table que celle qui commande l'affichage : le
+// backfill ne peut donc pas rattraper une population différente de celle qui en a besoin.
+func declaredVariants(pr *titlePkg.PathResolver) ([]string, error) {
+	path := filepath.Join(pr.TitleMappingsDir(titlePkg.DefaultSlug), "regulation.toml")
+	set, err := mappings.LoadRegulationFromFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("lecture de %s : %w", path, err)
+	}
+	return set.RoundsDecideVariants(), nil
 }
 
 // planMatch traite UN match en phase A : lecture, fetch, décision. ok=true si une écriture

@@ -15,6 +15,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 )
 
 // selectRoundsSQL, updateRoundsSQL et pendingIDsSQL sont sortis des fonctions pour être
@@ -23,12 +24,14 @@ import (
 const (
 	selectRoundsSQL = `SELECT team_0_rounds_won, team_1_rounds_won, rounds_total FROM match_registry WHERE match_id = ?`
 	updateRoundsSQL = `UPDATE match_registry SET team_0_rounds_won = ?, team_1_rounds_won = ?, rounds_total = ? WHERE match_id = ?`
-	// pendingIDsSQL est la liste de travail par défaut : les matchs dont les manches sont
-	// encore inconnues. `team_0_score IS NOT NULL` écarte les lignes sans aucune donnée
-	// d'équipe (rien à espérer de leur payload côté camps).
+	// pendingIDsSQL est la liste de travail : les matchs dont les manches sont encore
+	// inconnues. `team_0_score IS NOT NULL` écarte les lignes sans aucune donnée d'équipe
+	// (rien à espérer de leur payload côté camps).
 	pendingIDsSQL = `SELECT match_id FROM match_registry
-		WHERE rounds_total IS NULL AND team_0_score IS NOT NULL
-		ORDER BY match_id`
+		WHERE rounds_total IS NULL AND team_0_score IS NOT NULL`
+	// orderClause rend l'ordre déterministe : `--limit` doit désigner deux fois les mêmes
+	// matchs.
+	orderClause = ` ORDER BY match_id`
 )
 
 // execer est le minimum dont l'écriture a besoin. `*dblease.LeasedWriter` et `*sql.DB` le
@@ -127,18 +130,33 @@ func (r sqlRegistry) WriteRounds(ctx context.Context, matchID string, won0, won1
 	return nil
 }
 
-// pendingMatchIDs rend la liste de travail par défaut, lue DANS LA BASE.
+// pendingMatchIDs rend la liste de travail, lue DANS LA BASE.
 //
 // Pas de fichier de liste ici, contrairement à `cmd/backfill-team-scores` : la population à
 // traiter se définit exactement par « rounds_total IS NULL », ce que la base sait dire. La
 // conséquence est heureuse — l'outil est reprenable tel quel après une interruption, et un
 // second passage ne re-télécharge que ce qui manque encore.
-func pendingMatchIDs(ctx context.Context, db *sql.DB, limit int) ([]string, error) {
-	q := pendingIDsSQL
+//
+// LE FILTRE PAR VARIANTE EST LE DÉFAUT, et il change tout sur le coût. Les manches ne
+// s'affichent que sur les variantes déclarées dans `regulation.toml [rounds_decide]` : re-lire
+// le corpus entier ferait ~1 900 appels d'API pour ~26 lignes utiles. On ne rattrape donc que
+// les variantes déclarées ; les matchs FUTURS, eux, sont renseignés à la sync pour TOUTES les
+// variantes (la colonne est remplie à l'INSERT). Le jour où une variante est ajoutée à la
+// table, un simple second passage rattrape son historique — l'outil est fait pour ça.
+// `--all` reste disponible pour renseigner tout le corpus.
+func pendingMatchIDs(ctx context.Context, db *sql.DB, variants []string, limit int) ([]string, error) {
+	q, args := pendingIDsSQL, []any{}
+	if len(variants) > 0 {
+		q += " AND game_variant_name IN (" + placeholders(len(variants)) + ")"
+		for _, v := range variants {
+			args = append(args, v)
+		}
+	}
+	q += orderClause
 	if limit > 0 {
 		q = fmt.Sprintf("%s LIMIT %d", q, limit)
 	}
-	rows, err := db.QueryContext(ctx, q)
+	rows, err := db.QueryContext(ctx, q, args...)
 	if err != nil {
 		return nil, fmt.Errorf("lecture de la liste de travail : %w", err)
 	}
@@ -160,4 +178,13 @@ func nullIntPtr(n sql.NullInt64) *int {
 	}
 	v := int(n.Int64)
 	return &v
+}
+
+// placeholders rend "?, ?, ?" pour un IN — les variantes ne sont JAMAIS interpolées dans le
+// SQL, elles viennent d'un fichier de config mais restent des valeurs liées.
+func placeholders(n int) string {
+	if n <= 0 {
+		return ""
+	}
+	return strings.TrimSuffix(strings.Repeat("?, ", n), ", ")
 }
