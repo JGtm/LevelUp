@@ -1,3 +1,51 @@
+## [2026-08-29] Rejeu — filigrane de porteur d'objectif sur les fiches joueur — Complete
+
+**Contexte** : la carte montrait deja le drapeau porte, le crane d'Oddball et la couronne VIP
+sur leur MARQUEUR ; la colonne des fiches, elle, ne disait rien de qui tient l'objet qui decide
+de la manche. Demande utilisateur, arbitree sur deux planches (artefacts du 2026-08-29).
+
+**Decision de canal — le seul libre.** Inventaire des canaux d'une fiche : la BORDURE porte
+trois cadres d'equipement (surbouclier `legendary`, champ de reparation `success`, capteur en
+pointilles), le FOND porte le verre du camouflage, le voile de l'ecran occultant et la teinte de
+mort, l'INCRUSTATION porte nuage/eclairs/croix/fourreau, les ECLATS sont reserves aux evenements
+de vie. Restait le FILIGRANE DERRIERE LE CONTENU : c'est lui qui est pris. Contrainte
+utilisateur explicite : aucune rangee nouvelle sur la fiche. Le nom n'est PAS recolore (sa
+couleur code deja vivant/mort et entrerait en concurrence avec la couleur de camp).
+
+**Deux regimes, parce que la donnee en a deux.** Portage = periode attribuee (`flagCarries`
+spans `carried`/`carried_open`, `skullCarries`, `vipCrown`) -> etat qui dure. Prise de base =
+INSTANT attribue seulement (`zone_captures` / `zone_secures`) : `zoneStates[].spans[]` ne publie
+que le proprietaire (equipe) et la jauge, AUCUN xuid -> marque tenue 2,5 s, jamais un « est en
+train de capturer » deduit de la position (regle « une valeur non lue s'affiche comme une
+lacune »). Meme garde d'horloge que `flagCaptureFx` (`filmClockTrusted`) sur l'evenement.
+
+**KOTH prepare avant sa source (demande utilisateur : c'est le prochain chantier).** Aucune
+donnee attribuee aujourd'hui — les emplacements de stats `hill` ne sont pas nommes,
+`objectiveevents.NamedEvents` rend nil pour KOTH. Le genre `hill` existe donc avec son glyphe,
+son encre, son libelle FR/EN et son test, et passe par le MEME resolveur de periodes que le
+crane et le VIP (`markFromPeriods`, exporte pour cela). A l'arrivee de la source : UNE ligne
+dans `carrySourcesOf`.
+
+**Encre** : `extreme` pour les cinq genres — le seul token qu'aucun autre effet de fiche
+n'emploie. C'est le GLYPHE qui dit lequel, pas la couleur ; la carte, elle, garde l'encre
+d'equipe (elle doit distinguer deux drapeaux sur un meme fond).
+
+**Fichiers** : `objectiveMark.ts` (+ test, 11 cas), `ReplayObjectiveMark.tsx`, `playerCardFx.ts`
+(champ `objective`, phrase en tete de l'infobulle), `ReplayTeams.tsx` (calcul + rendu),
+`i18nContract.ts` / `i18n.ts` (`objectiveCarry`, parite FR/EN par typage).
+
+**Resultats** : `vitest src/features/match-replay` 118 fichiers / 1837 tests verts ; `tsc
+--noEmit` exit 0 ; `eslint` sur les 5 fichiers touches : 0. Seuils tenus (ReplayTeams 462 L,
+playerCardFx 307 L). Aucune couleur litterale, aucun emoji, aucun `slug ==`.
+
+**Reserve assumee et ecrite dans l'en-tete du composant** : le filigrane vit SOUS le contenu,
+il se compose donc avec les fonds et perd de la presence sous l'ecran occultant — c'est le prix
+du seul canal libre ; l'infobulle, elle, dit la phrase en toutes lettres dans tous les cas.
+
+**Prochaine etape** : verification a l'oeil sur un film CTF/Oddball reel (aucun rendu visuel
+n'a ete confronte a un vrai document), puis branchement de `hill` quand le decodage KOTH
+publiera des occupations par joueur.
+
 ## [2026-08-29] Kills hors arme a feu — etape 6 : cloture partielle (registre + delivery-checklist) — En cours (2 gates suspendus a un tiers)
 
 **Contexte** : etape 5 close cote code. L'etape 6 est faisable SAUF ses deux gates, qui
@@ -78,7 +126,11 @@ bloque (ci-dessous), `go test` vert sur fragdist / teammates / killsourceload / 
 port / games / api-wire, `make check-types` exit 0, et `make test-web` COMPLET vert : 529 fichiers,
 5 402 tests, 0 echec.
 
-**GATE 5 BLOQUE, ET PAS DE NOTRE FAIT — arret propre (regle 9).** Le paquet racine
+**GATE 5 BLOQUE, ET PAS DE NOTRE FAIT — arret propre (regle 9).** DEUX symptomes, meme
+auteur. (a) Les tests d integration de `internal/platform/duckdb` echouent sur 4 cas avec
+`Binder Error: ... column named "team_0_rounds_won"` — la colonne du chantier
+« score-manches » de l autre session ; la MEME commande etait verte a l etape 2, avant leurs
+commits. (b) Le paquet racine
 `internal/service` ne compile plus ses TESTS : le commit `68e44770b` (« score-manches(E5) »,
 15:00:46), produit par une AUTRE session dans ce meme worktree, a retire
 `buildScoreLabelFromMeta` de `match_view_builders_header.go` alors que `service_test.go`
@@ -476,6 +528,46 @@ veut, est le second pont d'identite dans `buildPlayerScoresFlat` (desambiguiser 
 de mort quand le triplet collisionne) — c'est ce qui degelerait reellement les fiches restantes.
 
 ---
+
+## [2026-08-29] Vue du match morte pour TOUS les matchs : snapshot au schema en retard sur Q13 — Complete
+
+**Contexte** : la vue du match repondait 404 « match introuvable » pour tous les matchs, alors que
+le rejeu s'affichait — et l'export video sortait donc sans ecran de fin, sans voix et sans musique
+(ils dependent tous de cette vue). Diagnostic rendu couteux par un piege : le service transforme
+TOUTE erreur de `GetMatchMeta` en `ErrNotFound`, et le front affiche alors « Match pas encore
+synchronise » — un message qui accuse la synchronisation quand le vrai coupable est une requete.
+
+**Cause, prouvee sur pieces** : le commit `68e44770b` (score-manches E5, 2026-08-29 15:00, chantier
+parallele) ajoute a Q13 les colonnes `team_0_rounds_won` / `team_1_rounds_won` / `rounds_total`.
+Or la vue lit un SNAPSHOT parquet fige (v79, coupe le 27/08) qui ne possede pas ces colonnes —
+verifie par `parquet_schema` : absentes du parquet, presentes dans le live. Q13 y echoue en Binder
+Error, qui n'est PAS `sql.ErrNoRows` : la bascule snapshot->live (correctif GH2-A1) ne jouait pas,
+et le 404 tombait sur tous les matchs. Le match cible etait pourtant present dans les DEUX bases
+(sonde Go : snapshot 1858 lignes dont la cible, live 1948 dont la cible).
+
+**Decision technique** : la bascule live couvre desormais TOUTE erreur du snapshot, pas seulement
+la ligne absente. Un snapshot est un artefact fige d'un schema passe : toute colonne ajoutee a Q13
+apres son cut le casse jusqu'au cut suivant — c'est structurel, pas accidentel, et le live porte
+toujours le schema courant. Deux chemins distincts au log : le miss classique reste en Warn avec
+son compteur, le schema en retard passe en **ErrorContext** avec un compteur dedie
+(`match_view_snapshot_stale_schema_live_fallback_total`) — chaque requete paiera ce detour jusqu'au
+prochain cut, c'est un signal d'exploitation.
+
+**Resultats observes** : test `TestGetMatchMeta_SnapshotStaleSchemaFallsBackToLive` (snapshot au
+vieux schema CONTENANT le match -> bascule et service rendus) ; `go test` des packages duckdb et
+service verts (87 s + 43 s), `go vet` propre. En direct apres reconstruction air : vue du match
+200 avec « Defaite », page complete (equipes Eagle/Cobra), et la recette d'export passe
+**12/12** — quatre pistes nommees (Mixage complet | Bruitages | Voix | Musique), queue de 9,94 s
+(la musique entiere), ecart image-plage vs image-finale de 101,7 (ecran de fin bien tenu — le seul
+ECHEC de la premiere passe etait un artefact de la sonde : maintien plus long que la moitie du
+clip, donc « milieu » deja dans l'ecran de fin).
+
+**A escalader, pas corrige (decision produit)** : le mapping « toute erreur de GetMatchMeta ->
+404 pas encore synchronise » du service (`match_view_service.go:322`) a masque une panne totale
+pendant des heures. C'est une decision utilisateur datee (2026-07-19, retrait du fallback live) :
+la rediscuter appartient a l'utilisateur, pas a un correctif.
+
+**Conclusion** : chantier export video verifie de bout en bout, 12/12, musique et voix comprises.
 
 ## [2026-08-28] Export video : l'image perdue par une course d'ecriture, et une recette qui verifie TOUT d'un coup — Complete
 
