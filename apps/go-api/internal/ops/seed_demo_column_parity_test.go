@@ -93,6 +93,10 @@ func TestSeedDemoColumnParity(t *testing.T) {
 				"playlist_version_id", "map_version_id", "pair_version_id",
 				"game_variant_id", "game_variant_version_id", "is_firefight", "season_id",
 				"playable_duration_seconds", "real_start_time", "team_0_ps_score", "team_1_ps_score",
+				// Manches : le corpus démo ne fabrique aucun mode à manches (pas de variante
+				// Oddball dans son catalogue), donc rien à seeder — NULL y est la mesure juste
+				// (« on ne sait pas »), et l'affichage retombe sur les points comme en prod.
+				"team_0_rounds_won", "team_1_rounds_won", "rounds_total",
 				"match_intensity", "backfill_completed", "first_sync_by", "first_sync_at",
 				"last_updated_at", "created_at", "updated_at",
 			}),

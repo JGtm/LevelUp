@@ -162,6 +162,7 @@ func persistMatchRegistry(ctx context.Context, tx *sql.Tx, row *domain.MatchRegi
 			duration_seconds, playable_duration_seconds,
 			real_start_time, team_0_score, team_1_score,
 			team_0_ps_score, team_1_ps_score,
+			team_0_rounds_won, team_1_rounds_won, rounds_total,
 			match_intensity, backfill_completed, events_loaded,
 			first_sync_by, first_sync_at, last_updated_at,
 			player_count,
@@ -178,6 +179,7 @@ func persistMatchRegistry(ctx context.Context, tx *sql.Tx, row *domain.MatchRegi
 			?, ?,
 			?, ?, ?,
 			?, ?, ?,
+			?, ?, ?,
 			?,
 			?, ?
 		)`,
@@ -190,6 +192,7 @@ func persistMatchRegistry(ctx context.Context, tx *sql.Tx, row *domain.MatchRegi
 		row.DurationSeconds, row.PlayableDurationSeconds,
 		row.RealStartTime, row.Team0Score, row.Team1Score,
 		row.Team0PSScore, row.Team1PSScore,
+		row.Team0RoundsWon, row.Team1RoundsWon, row.RoundsTotal,
 		row.MatchIntensity, row.BackfillCompleted, eventsLoaded,
 		row.FirstSyncBy, now, now,
 		row.PlayerCount,
