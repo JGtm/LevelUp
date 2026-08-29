@@ -110,13 +110,33 @@ export interface ExportRunOptions {
 }
 
 /** L'état que le dialogue affiche. `total` vaut 0 tant qu'aucun export n'a démarré. */
+/**
+ * LES CINQ ETATS D'UN EXPORT, et pourquoi ils ne se resument pas a « en cours / pas en cours ».
+ *
+ * `prepare` est celui qui manquait et qui coutait le plus cher a l'utilisateur : entre le clic
+ * et la premiere image encodee, il faut attendre les polices, charger le logo, DECODER tous les
+ * fichiers sons, RENDRE le mixage hors ligne et ENCODER la piste AAC. Sur un match charge en
+ * sons, cela fait plusieurs secondes pendant lesquelles la barre affichait « Image 0 / 18000 »
+ * sans bouger — c'est-a-dire exactement l'instant ou l'on se demande si ca a plante.
+ *
+ * `done` manquait aussi : le dialogue redevenait le formulaire et le fichier tombait dans les
+ * telechargements sans qu'un mot ne le dise.
+ */
+export type ExportPhase = 'idle' | 'prepare' | 'encode' | 'done' | 'failed'
+
 export interface ReplayExportState {
-  running: boolean
+  phase: ExportPhase
   done: number
   total: number
   pct: number
-  /** `true` = le dernier export a ECHOUE. Le dialogue le dit au lieu de se vider en silence. */
-  failed: boolean
+  /**
+   * Temps restant ESTIME, en millisecondes, ou `undefined` tant qu'aucune image n'est encodee.
+   * Fiable ici parce que le cout par image est tres regulier : meme toile, meme encodeur, et
+   * un dessin dont la charge ne depend pas de l'instant du match.
+   */
+  etaMs?: number
+  /** Le nom du fichier depose, en phase `done`. */
+  filename?: string
   /** Le message technique de l'echec, pour la console et pour l'utilisateur averti. */
   message?: string
 }
@@ -140,7 +160,10 @@ export interface ReplayExport {
   lengthClock: (bounds: ExportBounds) => string
 }
 
-const IDLE: ReplayExportState = { running: false, done: 0, total: 0, pct: 0, failed: false }
+const IDLE: ReplayExportState = { phase: 'idle', done: 0, total: 0, pct: 0 }
+
+/** Nombre d'images encodees avant de risquer une estimation : sous ce seuil, elle danserait. */
+const ETA_MIN_FRAMES = 30
 
 /** Les encres du thème, résolues UNE fois par export (cf. piège 2 de l'en-tête). */
 function readOverlayInk(): OverlayInk {
@@ -262,7 +285,8 @@ export function useReplayExport(o: ReplayExportOptions): ReplayExport {
       const resume = o.frameRef.current
       // Un premier plan SANS maintien : il donne la duree de la plage, dont le mixage a besoin.
       let plan = buildExportPlan(bounds, o.doc)
-      setState({ running: true, done: 0, total: plan.frames.length, pct: 0, failed: false })
+      // PHASE 1 : la preparation. La barre n'affiche pas « image 0 » — elle dit ce qu'on fait.
+      setState({ phase: 'prepare', done: 0, total: plan.frames.length, pct: 0 })
       let sink: VideoExportSink | null = null
       try {
         // Les polices AVANT la première image : sans cette attente, le début du clip écrirait
@@ -279,7 +303,6 @@ export function useReplayExport(o: ReplayExportOptions): ReplayExport {
         // la derniere image doit tenir assez longtemps pour qu'on lise le verdict, et au moins
         // aussi longtemps que le son continue.
         plan = buildExportPlan(bounds, o.doc, EXPORT_FPS, holdMsFor(o, bounds, plan, mix))
-        setState({ running: true, done: 0, total: plan.frames.length, pct: 0, failed: false })
         sink = await openVideoExport({
           width: canvas.width,
           height: canvas.height,
@@ -293,10 +316,21 @@ export function useReplayExport(o: ReplayExportOptions): ReplayExport {
           return
         }
         if (mix) await sink.addAudioBuffer(mix)
+        // PHASE 2 : l'encodage. C'est seulement ici que le compte d'images veut dire quelque
+        // chose, et que le temps restant peut s'estimer.
+        const total = plan.frames.length
+        const debut = performance.now()
+        setState({ phase: 'encode', done: 0, total, pct: 0 })
         const ok = await encodeAll(canvas, o, source, { ink, fonts }, plan.frames, {
           cancelled: () => cancelRef.current,
           progress: (done) =>
-            setState({ running: true, done, total: plan.frames.length, pct: exportProgressPct(done, plan.frames.length), failed: false }),
+            setState({
+              phase: 'encode',
+              done,
+              total,
+              pct: exportProgressPct(done, total),
+              etaMs: etaFor(done, total, performance.now() - debut),
+            }),
           sink,
         })
         const clip = ok ? await sink.finish() : null
@@ -306,10 +340,11 @@ export function useReplayExport(o: ReplayExportOptions): ReplayExport {
         if (ok) sink = null
         // LE DÉMONTAGE NE TÉLÉCHARGE PAS : le clip est assemblé (l'encodeur doit être vidé
         // proprement quoi qu'il arrive) mais il ne part pas vers un onglet qui a changé de page.
-        if (clip && liveRef.current) triggerDownload(clip, exportFilename(o, bounds))
-        // RETOUR AU REPOS sur succès ET sur annulation. L'échec, lui, garde son état : c'est
-        // la seule chose qui distingue « ça n'a pas marché » de « il ne s'est rien passé ».
-        setState(IDLE)
+        const filename = exportFilename(o, bounds)
+        if (clip && liveRef.current) triggerDownload(clip, filename)
+        // PHASE 3 : le fichier est depose, et on le DIT avec son nom. Une annulation, elle,
+        // ramene au formulaire — il n'y a rien a annoncer d'un geste qu'on vient de faire.
+        setState(clip ? { phase: 'done', done: total, total, pct: 100, filename } : IDLE)
       } catch (err) {
         // JAMAIS D'ÉCHEC MUET (règle 3 du dépôt : logger AVANT toute dégradation). Sans ce
         // bloc, une panne d'encodeur faisait disparaître la barre de progression sans un mot,
@@ -347,7 +382,19 @@ export function useReplayExport(o: ReplayExportOptions): ReplayExport {
  * la seule différence qui compte entre « ça n'a pas marché » et « il ne s'est rien passé ».
  */
 function fail(setState: (s: ReplayExportState) => void, message: string): void {
-  setState({ running: false, done: 0, total: 0, pct: 0, failed: true, message })
+  setState({ phase: 'failed', done: 0, total: 0, pct: 0, message })
+}
+
+/**
+ * etaFor estime le temps restant depuis la cadence DEJA constatee.
+ *
+ * `undefined` sous `ETA_MIN_FRAMES` : une estimation batie sur trois images danserait d'un
+ * facteur dix a chaque rafraichissement, et une estimation qui saute est pire que pas
+ * d'estimation.
+ */
+function etaFor(done: number, total: number, elapsedMs: number): number | undefined {
+  if (done < ETA_MIN_FRAMES || elapsedMs <= 0) return undefined
+  return Math.max(0, Math.round((elapsedMs / done) * (total - done)))
 }
 
 /**

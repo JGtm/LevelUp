@@ -623,4 +623,14 @@ export interface ReplayText {
   exportLengthFmt: (clock: string) => string
   /** L'export a ECHOUE : le dialogue le dit au lieu de se vider en silence. */
   exportFailed: string
+  /**
+   * LA PHASE DE PREPARATION, avant la premiere image encodee : polices, logo, decodage des
+   * sons, mixage hors ligne, encodage de la piste. Elle dure plusieurs secondes sur un match
+   * charge en sons, et la barre y resterait sinon a zero sans rien expliquer.
+   */
+  exportPreparing: string
+  /** « ~1:20 restantes » — l'estimation, absente tant qu'elle danserait. */
+  exportEtaFmt: (clock: string) => string
+  /** « Fichier depose : rejeu-....mp4 » — la fin se dit, avec le nom du fichier. */
+  exportDoneFmt: (filename: string) => string
 }

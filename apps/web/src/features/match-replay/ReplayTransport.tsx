@@ -31,7 +31,7 @@ import type { ComponentProps, RefObject } from 'react'
 
 import { useState } from 'react'
 
-import { ReplayExportDialog } from './ReplayExportDialog'
+import { ReplayExportDialog, isExportBusy } from './ReplayExportDialog'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
 import { SKIP_SECONDS } from './replayCanvasConfig'
 import { ReplaySoundControls } from './ReplaySoundControls'
@@ -74,7 +74,7 @@ export function ReplayTransport({
   // `frameRef` image par image ; la boucle de lecture, les sauts et le glisse de la frise
   // ecrivent le MEME ref. Les laisser vivants permettait a l'utilisateur de corrompre son
   // propre clip d'un clic, sans que rien ne le signale.
-  const busy = capture.videoExport?.state.running ?? false
+  const busy = capture.videoExport ? isExportBusy(capture.videoExport.state) : false
   const t = REPLAY_TEXT[locale]
   return (
     // LE SOCLE SOMBRE sépare le lecteur de la carte : sans lui, la barre flottait sur le même
@@ -131,7 +131,10 @@ export function ReplayTransport({
         {/* CE QUI SORT DU REJEU, dans son propre cartouche et NOMMÉ. Le bouton d'enregistrement
             ne se rend pas quand le navigateur ne sait pas filmer une toile (décision 7) : une
             commande grisée laisserait croire à une panne réparable. */}
-        <div className="flex items-center gap-1.5 rounded-full border border-border bg-muted/40 p-1">
+        {/* `relative` : C'EST L'ANCRE DU PANNEAU D'EXPORT, et elle est écrite ici plutôt que
+            subie. Sans elle, le panneau se calait sur le premier ancêtre positionné — la carte
+            entière du rejeu, cinq cents lignes plus loin — et recouvrait la frise. */}
+        <div className="relative flex items-center gap-1.5 rounded-full border border-border bg-muted/40 p-1">
           <button
             type="button"
             onClick={capture.captureImage}
@@ -151,11 +154,14 @@ export function ReplayTransport({
               onClick={() => setExportOpen((v) => !v)}
               aria-expanded={exportOpen}
               aria-label={t.exportVideo}
-              title={t.exportHint}
+              title={busy ? t.exportRunningHint : t.exportHint}
               className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full bg-primary px-3.5 text-[12.5px] font-semibold tracking-[0.03em] text-primary-foreground transition-colors hover:bg-primary/90"
             >
-              <ExportIcon />
-              {t.exportVideoShort}
+              {/* LE BOUTON PORTE LA PROGRESSION quand le panneau est refermé : sans cela, un
+                  clic malheureux faisait perdre À LA FOIS le retour et le bouton « Annuler »,
+                  pendant un calcul de plusieurs minutes. */}
+              {busy ? <ExportSpinner /> : <ExportIcon />}
+              {busy ? exportBadge(capture.videoExport) : t.exportVideoShort}
             </button>
           )}
           {!capture.videoExport?.supported && capture.recordingSupported && (
@@ -319,6 +325,33 @@ function ExportIcon() {
       <path d="M8 10.2V2.4" />
       <path d="M5.2 5.2 8 2.4l2.8 2.8" />
       <path d="M2.8 10.4v2.2a1 1 0 0 0 1 1h8.4a1 1 0 0 0 1-1v-2.2" />
+    </svg>
+  )
+}
+
+/**
+ * exportBadge — ce que le bouton affiche pendant un export : le pourcentage dès qu'il veut dire
+ * quelque chose, et une ellipse pendant la préparation (où rien n'est encore encodé).
+ */
+function exportBadge(exporter: ReplayCapture['videoExport']): string {
+  if (!exporter || exporter.state.phase !== 'encode') return '…'
+  return `${Math.round(exporter.state.pct)} %`
+}
+
+/** L'anneau qui tourne, le temps du calcul. Même gabarit que l'icône qu'il remplace. */
+function ExportSpinner() {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      className="h-[15px] w-[15px] animate-spin"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      aria-hidden="true"
+    >
+      <circle cx="8" cy="8" r="6" className="opacity-30" />
+      <path d="M14 8a6 6 0 0 0-6-6" />
     </svg>
   )
 }

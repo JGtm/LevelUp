@@ -316,6 +316,9 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     exportProgressFmt: (done, total) => `Image ${done} / ${total}`,
     exportLengthFmt: (clock) => `Plage exportée : ${clock}`,
     exportFailed: "L'export a échoué. Rien n'a été téléchargé.",
+    exportPreparing: 'Préparation du son et des images…',
+    exportEtaFmt: (clock) => `environ ${clock} restantes`,
+    exportDoneFmt: (filename) => `Fichier déposé : ${filename}`,
     ammoDrawnHint:
       'Emplacement DÉGAINÉ selon le sélecteur du record : la même lecture qui place cette arme en tête de rangée.',
     drawnUnknown: 'dégainée ?',
@@ -625,6 +628,9 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     exportProgressFmt: (done, total) => `Frame ${done} / ${total}`,
     exportLengthFmt: (clock) => `Exported range: ${clock}`,
     exportFailed: 'The export failed. Nothing was downloaded.',
+    exportPreparing: 'Preparing sound and frames…',
+    exportEtaFmt: (clock) => `about ${clock} remaining`,
+    exportDoneFmt: (filename) => `File saved: ${filename}`,
     ammoDrawnHint:
       'Slot DRAWN according to the record selector: the same reading that puts this weapon first in the row.',
     drawnUnknown: 'drawn ?',
