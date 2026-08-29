@@ -75355,3 +75355,41 @@ hook 260 L, scoreTimeline 460 L — toutes sous 500.
 **Conclusion / prochaine etape** : gate visuel utilisateur sur un Oddball (3 manches : verifier
 les separateurs) et sur un CTF (verifier que la piste apparait), plus un Slayer (verifier qu'elle
 n'apparait PAS). Aucun commit, aucun push.
+
+---
+
+## [2026-08-29] Score par manches — E0 : la mesure refute la regle evidente
+
+**Statut** : En cours (plan `.ai/PLAN_SCORE_PAR_MANCHES.md`, etape E0 CLOSE).
+
+**Demande** : quand un mode compte les manches pour decider du vainqueur, afficher les manches
+gagnees/perdues plutot que les points de l'API — au rejeu, en vue match et dans les tableaux.
+
+**Constat d'audit qui commande tout le reste** : `CoreStats.RoundsWon/RoundsLost/RoundsTied` est
+declare dans `internal/openspartan/halo_api_payload.go:114-116` et **lu nulle part**. Aucune
+colonne, aucun champ canonical : la verite est jetee a chaque sync. Et `persistMatchRegistry`
+etant un INSERT nu (doctrine anti-ART), un re-sync ne repare rien -> backfill obligatoire.
+
+**Decision technique principale — la regle evidente est FAUSSE.** Le plan pariait sur
+`RoundsWon+RoundsLost+RoundsTied >= 2 => afficher les manches`. Mesure sur les 1 942 matchs a
+score (`diag_matchstats_dump`, 1 942/1 942, 0 erreur) : le CTF d'arene se joue en deux
+MI-TEMPS, donc `rounds_total = 2`, alors que son score EST le total de captures. La regle y
+aurait remplace « 2 - 3 » par « 0 - 1 ». Detection retenue : table MESUREE par variante
+(`regulation.toml [rounds_decide]`, meme doctrine que `[score_target]`) ET `rounds_total`
+(max des deux camps) >= 2 ET manches non a egalite.
+
+**Resultats observes** : 57 matchs multi-manches (2,9 %), 9 variantes. Trois familles —
+Oddball (26 matchs, score = cumul de points sans rapport avec les manches), One Flag CTF /
+One Bomb / Attrition (16 matchs, le score EST deja le compte de manches), CTF d'arene et
+classe (mi-temps). **4 matchs Oddball ou l'equipe VICTORIEUSE affiche MOINS de points que la
+perdante** : c'est le mensonge a corriger, et il ne concerne qu'Oddball. Deux pieges
+supplementaires : 4 matchs abandonnes ont des totaux de manches incoherents entre camps (d'ou
+le `max`), et 18 matchs portent une manche NULLE — sur l'un d'eux les manches sont a 1-1 et ne
+disent donc pas le resultat (repli sur les points). Effet de bord verifie : score en base ==
+score API sur 1 942/1 942 (le backfill du 2026-08-24 tient).
+
+**Conclusion / prochaine etape** : perimetre initial de `[rounds_decide]` reduit aux 3
+variantes Oddball — les autres modes a manches affichent deja leur compte de manches comme
+score, les declarer ne changerait rien a l'ecran et risquerait de casser les cas a manche
+nulle. Rapport : `.ai/V7.5/RAPPORT_MANCHES_2026-08-29.md`. Suite : E1 (colonnes
+`team_{0,1}_rounds_won` + `rounds_total`, extraction sync jumelle de `ExtractTeamScoresByID`).
