@@ -448,3 +448,51 @@ describe('garde-rail : le son du répulseur (résolu, lot R6 2026-08-25)', () =>
     expect(KILL_SPRITE_SOUND_STEMS[REPULSEUR]).toEqual({ stem: 'repulsor_kill', category: 'weapon' })
   })
 })
+
+/**
+ * QUATRIEME GARDE-RAIL : un fichier livre doit etre DECODABLE PAR UN NAVIGATEUR.
+ *
+ * Decouvert en recette le 2026-08-28, et c'est le defaut le plus discret de toute la chaine
+ * sonore : les TROIS musiques de fin de partie etaient livrees en `WAVE_FORMAT_EXTENSIBLE`
+ * (0xFFFE) a QUATRE canaux. Elles passaient les trois garde-rails precedents — le stem existe,
+ * le fichier existe, la duree est bonne — et `decodeAudioData` les refusait. Resultat : aucune
+ * musique de fin, ni dans le rejeu de la page ni dans l'export, et rien pour le dire hors un
+ * `console.warn` que personne ne lit.
+ *
+ * Le detail qui pique : le commentaire de `SOUND_CUT_MAX_S` justifie son plafond par « la plus
+ * longue, l'egalite, fait 11,67 s » — quelqu'un avait donc MESURE ces fichiers hors navigateur,
+ * sans voir qu'ils n'y jouaient jamais.
+ *
+ * Ce que ce test verifie est exactement ce que `decodeAudioData` exige d'un WAV : de la MIC-P
+ * (format 1) ou du flottant (format 3), et au plus deux canaux.
+ */
+describe('garde-rail : tout WAV livre est decodable par un navigateur', () => {
+  /** Rend `{ format, canaux }` du chunk `fmt ` d'un WAV, ou `null` si ce n'est pas un RIFF. */
+  function formatWav(bytes: Buffer): { format: number; canaux: number } | null {
+    if (bytes.subarray(0, 4).toString('ascii') !== 'RIFF') return null
+    let i = 12
+    while (i + 8 <= bytes.length) {
+      const id = bytes.subarray(i, i + 4).toString('ascii')
+      const taille = bytes.readUInt32LE(i + 4)
+      if (id === 'fmt ') return { format: bytes.readUInt16LE(i + 8), canaux: bytes.readUInt16LE(i + 10) }
+      i += 8 + taille + (taille % 2)
+    }
+    return null
+  }
+
+  it('aucun fichier en format exotique ni au-dela de la stereo', () => {
+    const fautifs: string[] = []
+    for (const nom of readdirSync(SOUNDS_DIR).filter((f) => f.endsWith('.wav'))) {
+      const f = formatWav(readFileSync(resolve(SOUNDS_DIR, nom)))
+      if (!f) {
+        fautifs.push(`${nom} : ce n'est pas un WAV RIFF`)
+        continue
+      }
+      // 1 = MIC-P entier, 3 = flottant. Tout le reste (0xFFFE extensible, ADPCM...) est refuse
+      // par `decodeAudioData`, silencieusement.
+      if (f.format !== 1 && f.format !== 3) fautifs.push(`${nom} : format ${f.format}`)
+      else if (f.canaux > 2) fautifs.push(`${nom} : ${f.canaux} canaux`)
+    }
+    expect(fautifs, `WAV indecodables par un navigateur :\n  ${fautifs.join('\n  ')}`).toEqual([])
+  })
+})

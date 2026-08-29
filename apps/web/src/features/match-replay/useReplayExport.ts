@@ -66,6 +66,7 @@ import {
 import type { ReplayDocumentReady } from './replayNormalize'
 import { EXPORT_FPS, canExportVideo, openVideoExport, type VideoExportSink } from './replayVideoEncoder'
 import { displayClockMs, type ReplayWindowBounds } from './replayWindow'
+import { EXPORT_SUPERSAMPLE, exportRenderScale } from './useReplayView'
 import type { ReplayLocale } from './i18n'
 import type { ReplaySoundEvent } from './replaySoundVariants'
 import { readVictory } from './victoryLogic'
@@ -246,7 +247,9 @@ function paintExportFrame(
   if (!ctx) return
   // LA MISE À L'ÉCHELLE SE REPOSE ICI, elle ne se suppose pas : `draw()` la pose au début de
   // son tracé, mais rien ne garantit dans quel état ses calques la laissent.
-  const dpr = window.devicePixelRatio || 1
+  // MEME ECHELLE QUE LE TRACE, surechantillonnage compris : une surimpression posee a
+  // l'echelle de l'ecran serait deux fois trop petite dans un export sureechantillonne.
+  const dpr = (window.devicePixelRatio || 1) * exportRenderScale.current
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
   paintOverlayPanel(ctx, { width: canvas.width / dpr, height: canvas.height / dpr }, panel, paint.fonts, paint.ink)
 }
@@ -303,6 +306,12 @@ export function useReplayExport(o: ReplayExportOptions): ReplayExport {
         // LE SON SE MIXE AVANT D'OUVRIR LE CONTENEUR : le MP4 annonce ses pistes une fois pour
         // toutes, donc il faut savoir AVANT s'il y en aura une. Le mixage hors ligne est rapide
         // (il ne joue rien, il calcule), et il rend `null` s'il n'y a rien a mixer.
+        // LA TOILE EST RENDUE PLUS GRANDE LE TEMPS DE L'EXPORT (cf. `exportRenderScale`) : la
+        // perte de nettete d'un clip vient du sous-echantillonnage chroma de H.264, qu'aucun
+        // debit ne rachete. Le redessin suivant applique la nouvelle taille au backing store,
+        // et c'est ELLE que l'encodeur doit recevoir — d'ou l'ordre : echelle, trace, ouverture.
+        exportRenderScale.current = EXPORT_SUPERSAMPLE
+        o.redraw()
         const mix = options?.sound === false ? null : await mixExportAudio(o, bounds, plan)
         // LE MAINTIEN SE CALCULE UNE FOIS LE SON CONNU (cf. `holdMsFor`), et le plan se refait :
         // la derniere image doit tenir assez longtemps pour qu'on lise le verdict, et au moins
@@ -363,6 +372,9 @@ export function useReplayExport(o: ReplayExportOptions): ReplayExport {
         console.error('[replay-export] export interrompu', err)
         fail(setState, err instanceof Error ? err.message : String(err))
       } finally {
+        // L'ECHELLE REDESCEND AVANT LE DERNIER TRACE, sur TOUS les chemins : la laisser levee
+        // rendrait la page entiere en double resolution jusqu'au prochain remontage.
+        exportRenderScale.current = 1
         // L'ENCODEUR SE REFERME SUR TOUS LES CHEMINS : `sink` n'est remis à `null` qu'une fois
         // le fichier assemblé. S'il est encore là, c'est qu'on sort par une erreur ou une
         // annulation, et il retient un muxeur entier en mémoire.

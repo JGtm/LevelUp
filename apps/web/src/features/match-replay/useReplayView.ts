@@ -35,6 +35,39 @@ import type { ReplayDocumentReady } from './replayNormalize'
 // `renderWidth`), sans quoi une carte étirée laisserait des marges latérales vides. Le PAD est
 // la marge intérieure du cadrage, en px. Les TOKENS des encres du canvas vivent avec elles,
 // dans useReplayInks ; les DURÉES et leur conversion en images, dans useReplayTiming.
+/**
+ * SURECHANTILLONNAGE DE L'EXPORT : le facteur par lequel la toile est rendue PENDANT un export,
+ * et 1 le reste du temps.
+ *
+ * # POURQUOI IL EXISTE, ET C'EST UNE MESURE, PAS UNE INTUITION
+ *
+ * H.264 echantillonne la CHROMINANCE a 4:2:0 : un demi-pixel de couleur sur chaque axe. Sur un
+ * rejeu — des traits fins, des petits chiffres, des aplats colores — c'est la que part la
+ * nettete, et AUCUN debit ne la rachete. Mesure faite dans le navigateur le 2026-08-28 sur une
+ * toile de 502x480, en comparant l'image decodee a sa source :
+ *
+ * | Rendu | Ecart moyen | Pixels franchement alteres | Poids |
+ * |---|---|---|---|
+ * | natif 502x480 a 2 Mb/s  | 5,08 | 7,9 % | 49 Ko |
+ * | natif 502x480 a 20 Mb/s | 4,96 | 7,9 % | 184 Ko |
+ * | double 1004x960         | 0,76 | 0 %   | 96 Ko |
+ *
+ * Multiplier le debit par DIX ne gagne rien ; doubler la resolution divise l'ecart par sept, et
+ * ne coute que le double du poids d'un fichier qui est de toute facon petit.
+ *
+ * # POURQUOI UN OBJET MUTABLE DE MODULE, ET PAS UNE PROP
+ *
+ * Le trace lit cette valeur au moment ou il dimensionne le backing store. La faire descendre en
+ * prop ou en etat traverserait `ReplayCanvas`, qui est A SON PLAFOND DE TAILLE
+ * (`placementFamily.guard.test.ts`) : le cablage couterait plus de lignes que la fonctionnalite.
+ * Elle vit donc ici, ou le canvas puise deja sa geometrie, et l'export la repose a 1 dans un
+ * `finally` — c'est le seul ecrivain, et il ne la laisse jamais levee.
+ */
+export const exportRenderScale = { current: 1 }
+
+/** Le facteur applique pendant un export (cf. `exportRenderScale`). */
+export const EXPORT_SUPERSAMPLE = 2
+
 export const CANVAS_HEIGHT = 480
 export const CANVAS_PAD = 24
 

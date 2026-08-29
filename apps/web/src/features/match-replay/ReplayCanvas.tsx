@@ -82,7 +82,7 @@ import type { ReplayWindowBounds } from './replayWindow'
 import { drawProjectilesLayer } from './replayProjectiles'
 import { drawTracksLayer } from './replayMarkers'
 import { useReplayTiming } from './useReplayTiming'
-import { CANVAS_HEIGHT, CANVAS_PAD, useReplayView, type ReplayMapBackgroundLayer } from './useReplayView'
+import { CANVAS_HEIGHT, CANVAS_PAD, exportRenderScale, useReplayView, type ReplayMapBackgroundLayer } from './useReplayView'
 
 
 
@@ -333,7 +333,7 @@ export function ReplayCanvas({
     if (!canvas || renderWidth === 0) return
     const ctx = canvas.getContext('2d')
     if (!ctx) return
-    const dpr = window.devicePixelRatio || 1
+    const dpr = (window.devicePixelRatio || 1) * exportRenderScale.current
     const pw = Math.round(renderWidth * dpr)
     const ph = Math.round(CANVAS_HEIGHT * dpr)
     if (canvas.width !== pw || canvas.height !== ph) {
