@@ -1,3 +1,30 @@
+## [2026-08-31] Percer la trame — les deux lecteurs composites du type 36 PERCÉS (workflow) ; en-tête tir PROUVÉ, visée plausible non prouvée — En cours
+
+**Contexte** : ultracode. Workflow multi-agents `type36-subreaders` (11 agents, 0 erreur,
+821 k tokens) : décompilation parallèle + vérification adverse au DÉSASSEMBLAGE + synthèse des
+deux lecteurs composites de la charge du type 36 (FUN_1406cd5b8, FUN_1408eff64). Une
+correction adverse intégrée (le vérificateur de FUN_140c9eabc a rendu confirmed=false et
+corrigé la grammaire). Grammaires câblées (lot1SkipCd5b8/lot1SkipEff64).
+
+**Décision technique** : valider par ORACLE DISCRIMINANT, pas par le vecteur de visée (qui
+s'est révélé NON discriminant à 30 bits — 6·gridSize²≈2³⁰, un offset faux valide aussi 100 %,
+mesuré). Oracle retenu : le champ catégoriel (peu de valeurs distinctes au bon offset,
+beaucoup pour du bruit).
+
+**Résultats chiffrés (2 films)** : (a) EN-TÊTE PROUVÉ — l'arme (variant_name) est catégorielle
+à **11,0 %** de distinctes (27/245) et **10,9 %** (30/276) contre un témoin de bruit à
+**79-81 %** ; type=36 et attaquant présents 100 %. Le tireur et son arme se décodent bit-exact
+pour les 2,5 M d'action_weapon_fire. (b) VISÉE R(30) PLAUSIBLE NON PROUVÉE — vecteur valide
+240/240 mais oracle non discriminant ; oracle catégoriel du code faiblement favorable (50,8 %
+vs 56,2 % ; 26,7 % vs 34,2 %) non concluant. Les composites ont une grammaire RE-vérifiée
+(chaîne indépendante) mais leur validation bout-en-bout attend l'ORACLE DE TRAME.
+
+**Conclusion / prochaine étape** : poser le juge définitif = décoder l'événement 36 EN ENTIER
+(champs post-visée + largeurs runtime calibrées par balayage) puis la TRAME de records, et
+vérifier masques 1..7 (99 % bon cadrage vs 10 % hasard) — le seul oracle discriminant pour
+les composites+visée. NE PAS surestimer la visée avant. Note :
+`film_re/NOTE_MODELE_EVENEMENTS_2026-08-30.md`.
+
 ## [2026-08-30] Percer la trame — LE MODÈLE DE PAQUET EST PERCÉ : [config][liste d'événements][trame] — et la LUNETTE REVIENT dans la bobine — Complété (modèle établi)
 
 **Contexte** : lot 1, poursuite en autonomie. Après la levée de réserve à monde propre

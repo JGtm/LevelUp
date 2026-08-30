@@ -161,7 +161,49 @@ via FUN_1407f0278, puis selon le tag un R(32) et/ou un R(6), plus des R(5) garde
 forme est lue mais l'ordre exact reste a fixer champ par champ. FUN_140c1e924 (dans la
 boucle des cibles) non lu. p5 (drapeau reseau) suppose 0 en mode film, A CONFIRMER.
 
-## LE JUGE DE LA CHAINE — la visee R(30), premier verdict (partiel)
+## LES DEUX LECTEURS COMPOSITES SONT PERCES (workflow type36-subreaders, 31/08)
+
+Un workflow multi-agents (11 agents, decompilation parallele + verification adverse au
+DESASSEMBLAGE + synthese) a rendu la grammaire bit-exacte des deux composites, une
+correction adverse integree (le verificateur de FUN_140c9eabc a rendu confirmed=false et
+corrige). Grammaires cablees dans lot1SkipCd5b8 / lot1SkipEff64 :
+
+- **FUN_1406cd5b8** : A=R(1) B=R(1) ; si B : sous-enreg FUN_140c9eabc [g0=R(1) ; si1 :
+  tag=R(2) ; tag1 : R(32)+[R(1);si1:R(6)] · tag2 : R(32)] ; si A : R(4)+R(4) ; R(3) drapeaux ;
+  si drapeaux&2 : g=R(1) ; si g==0 : R(20)+R(14) ; puis si A : C=R(1) ; si C : R(5).
+- **FUN_1408eff64** (p5==0) : main=R(1) ; si main : tag=R(2) ; tag1 : R(32)+[R(1);si1:R(6)] ·
+  tag2 : R(32).
+- Autres sous-lecteurs resolus : FUN_140c1e924 (par-cible = 3*R(w), w appelant),
+  FUN_1431a0abc (horodatage = R(1)+[si1:R(10)]), FUN_140c9e738 sel=1 (R(1)+[si0:R(20)+R(14)]),
+  FUN_1406d84b4 = R(4) dans ce caller. Detail : journal du workflow.
+
+## CE QUI EST PROUVE, ET CE QUI NE L'EST PAS (mesure discriminante, 2 films)
+
+- **EN-TETE (attaquant + arme) : PROUVE.** Oracle discriminant = l'arme (variant_name R(32))
+  est CATEGORIELLE : **11,0 % de valeurs distinctes** (27/245) sur 000d5950, **10,9 %**
+  (30/276) sur 00502e52, contre un temoin de bruit a **79-81 %**. Type lu = 36 sur 100 %,
+  attaquant present 100 %. Le tireur et son arme se decodent bit-exact pour les 2,5 M
+  d'evenements action_weapon_fire.
+- **VISEE R(30) : PLAUSIBLE, NON PROUVEE.** Le vecteur unitaire valide 240/240 mais l'oracle
+  est NON DISCRIMINANT a 30 bits (6*gridSize^2 ~ 2^30 : un offset FAUX valide aussi 100 %).
+  L'oracle categoriel du code de visee est faiblement favorable (50,8 % distinct vs bruit
+  56,2 % ; 26,7 % vs 34,2 %) mais pas concluant — a 30 bits une vraie visee ne se repete pas
+  exactement non plus. Les DEUX lecteurs composites ont une grammaire RE-verifiee (chaine
+  independante), mais leur validation bout-en-bout sur film attend l'ORACLE DE TRAME.
+- **CIBLES / composantes : le cadrage jusqu'a la visee est coherent** (les comptes 0/0 du cas
+  modal ne desalignent pas l'en-tete, prouve par l'oracle arme en amont), mais le decodage
+  des cibles elles-memes (victime) n'est pas fait.
+
+## LE JUGE DEFINITIF A POSER — l'oracle de trame
+
+Le seul oracle DISCRIMINANT pour les composites+visee : decoder l'evenement 36 EN ENTIER
+(y compris les champs post-visee : [R(1);si1:R(6)]+R(6) sous 0x2dd, R(2)+sous-lecteurs sous
+0x1c, R(6), R(1)+[si1:R(w)], vec3), puis le bit de continuation, puis la TRAME de records —
+et verifier qu'elle se ferme avec des masques 1..7 (99 % sous bon cadrage, 10 % au hasard,
+oracle deja eprouve). Les quelques largeurs runtime post-visee se calibrent par balayage
+contre cet oracle (technique idLowBits du depot). C'est le prochain geste, et il tranche.
+
+## (archive) le premier essai du juge visee
 
 Le controle decisif : dans le cas MODAL (0 cible, 0 composante, portes des sous-lecteurs a
 0), la visee R(30) est a 3 bits de la fin du preambule ; un vecteur UNITAIRE valide
