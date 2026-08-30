@@ -186,6 +186,11 @@ type Coverage struct {
 	// combien d'émissions ont été MANQUÉES (`missedEstimate`). Publiée même quand aucun
 	// changement ne l'est, pour la même raison que `weaponChanges`.
 	EquipmentChanges *EquipmentChangeCoverage `json:"equipmentChanges,omitempty"`
+	// GroundWeaponItems est la couverture des ARMES AU SOL individuelles (schéma 26, cf.
+	// document_ground_weapon_items.go) : combien d'objets, combien liés à leur lâcheur et à
+	// leur ramasseur, et comment leurs fins se répartissent entre observé et ouvert. Publiée
+	// même vide, même raison que `weaponChanges`.
+	GroundWeaponItems *GroundWeaponItemsCoverage `json:"groundWeaponItems,omitempty"`
 	// ObjectiveObjects est la couverture du calque des objets d'objectif LIBRES : combien le
 	// manifeste en déclare de publiables, combien de vies et de points sortent, et ce qui a été
 	// écarté hors axe (cf. document_objective_objects.go).

@@ -93,7 +93,7 @@ func puTestCreation(
 // socle, publie sous sa FAMILLE et non sous son identifiant `eqip`.
 func TestPowerupPadsGrappeUnSocle(t *testing.T) {
 	pos := gwTestPositions(nil, 0, 0)
-	pads, _, cov := buildWeaponPads(
+	pads, _, cov, _ := buildWeaponPads(
 		PadScans{Powerups: puTestScan(puTestOvershield, 10, 10)}, pos, gwTestClock(),
 		puTestCatalogs())
 	if len(pads) != 1 {
@@ -128,7 +128,7 @@ func TestPowerupPadsSeuilDeRecurrence(t *testing.T) {
 	scan := puTestScan(puTestOvershield, 10, 10)
 	scan.Creations = scan.Creations[:1]
 	scan.Stats.Accepted = 1
-	pads, _, cov := buildWeaponPads(
+	pads, _, cov, _ := buildWeaponPads(
 		PadScans{Powerups: scan}, gwTestPositions(nil, 0, 0), gwTestClock(), puTestCatalogs())
 	if len(pads) != 0 {
 		t.Fatalf("une apparition isolee ne fait pas un socle, %d publies : %+v", len(pads), pads)
@@ -149,7 +149,7 @@ func TestPowerupPadsSeuilDeRecurrence(t *testing.T) {
 func TestPowerupPadsEcarteLesCreationsAVieDelta(t *testing.T) {
 	scan := puTestScan(puTestOvershield, 10, 10)
 	scan.Tracks = puTestTracks(scan.Creations)
-	pads, _, cov := buildWeaponPads(
+	pads, _, cov, _ := buildWeaponPads(
 		PadScans{Powerups: scan}, gwTestPositions(nil, 0, 0), gwTestClock(), puTestCatalogs())
 	if len(pads) != 0 {
 		t.Fatalf("un objet qui a bouge n'est pas un socle, %d publies : %+v", len(pads), pads)
@@ -191,7 +191,7 @@ func TestPowerupPadsFamilleInconnueNeDonneRien(t *testing.T) {
 		{"famille connue mais pas un power-up", puTestMur},
 	} {
 		t.Run(cas.nom, func(t *testing.T) {
-			pads, _, cov := buildWeaponPads(
+			pads, _, cov, _ := buildWeaponPads(
 				PadScans{Powerups: puTestScan(cas.id, 10, 10)}, gwTestPositions(nil, 0, 0),
 				gwTestClock(), puTestCatalogs())
 			if len(pads) != 0 {
@@ -219,7 +219,7 @@ func TestPowerupPadsFamilleInconnueNeDonneRien(t *testing.T) {
 // ne se verrait qu'a l'ecran, sur la mauvaise infobulle.
 func TestPowerupPadsIndexDOccupationEstGlobal(t *testing.T) {
 	armes, pos := gwTestPadScan(t)
-	pads, picks, cov := buildWeaponPads(
+	pads, picks, cov, _ := buildWeaponPads(
 		PadScans{Weapons: armes, Powerups: puTestScan(puTestOvershield, 40, 40)},
 		pos, gwTestClock(), puTestCatalogs())
 	if len(pads) != 2 {
@@ -248,7 +248,7 @@ func TestPowerupPadsIndexDOccupationEstGlobal(t *testing.T) {
 // faux — le seul moyen de distinguer « pas de power-up » de « pas lu ».
 func TestPowerupPadsVoieNonLueNeDitPasZero(t *testing.T) {
 	armes, pos := gwTestPadScan(t)
-	_, _, cov := buildWeaponPads(PadScans{Weapons: armes}, pos, gwTestClock(), puTestCatalogs())
+	_, _, cov, _ := buildWeaponPads(PadScans{Weapons: armes}, pos, gwTestClock(), puTestCatalogs())
 	if cov.PowerupScanned {
 		t.Error("powerupScanned vrai alors qu'aucune lecture ti=37 n'a eu lieu")
 	}

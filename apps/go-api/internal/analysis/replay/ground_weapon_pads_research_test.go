@@ -163,7 +163,7 @@ func gwPadsWeapons(
 		if !a.HasDelta {
 			noDelta++
 		}
-		a.Class = gwPadsClass(lives, a)
+		a.Class, _ = gwPadsClass(lives, a)
 		out = append(out, a)
 	}
 	pcrossed := 0

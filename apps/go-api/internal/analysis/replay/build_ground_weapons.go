@@ -145,14 +145,18 @@ func gwInstallMPPWidths(w filmdec.MPPWidths) func() {
 // LES DEUX TABLES D IDENTITE viennent du manifeste du titre : les objets d objectif (que la voie
 // des ARMES ecarte) et les familles d equipement (dont la voie des POWER-UPS tire sa
 // selectivite). Tables vides = comportement d avant le 2026-08-18 / le 2026-08-19.
+// Le retour est la liste des OBJETS INDIVIDUELS de la voie des armes : le calque des armes au
+// sol (schéma 26) les consomme après coup — même chaîne, deux publications.
 func attachWeaponPads(
 	doc *ReplayDocument, scans PadScans, positions []filmdec.BipedPosition, clock replayClock,
 	cat LabelCatalog,
-) {
+) []gwPickupObject {
 	// L ADAPTATION DU CATALOGUE SE FAIT ICI, PAS DANS L ASSEMBLAGE : `buildWeaponPads` est PUR
 	// et ne prend que les deux tables qu il consomme, jamais le catalogue entier du titre.
-	doc.WeaponPads, doc.PadPickups, doc.Coverage.GroundWeapons = buildWeaponPads(
+	var objs []gwPickupObject
+	doc.WeaponPads, doc.PadPickups, doc.Coverage.GroundWeapons, objs = buildWeaponPads(
 		scans, positions, clock,
 		padCatalogs{ObjectiveObjects: cat.ObjectiveObjects, EquipmentFamilies: cat.EquipmentFamilies})
 	logGroundWeaponCoverage(doc.Coverage.GroundWeapons)
+	return objs
 }

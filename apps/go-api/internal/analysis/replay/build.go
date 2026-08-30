@@ -533,15 +533,23 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	// LES PRISES ET LES LACHERS d'arme, sur l'axe de frames du document. Les re-annonces d'une
 	// arme deja portee au spawn sont ECARTEES ici : ce ne sont pas des ramassages.
 	var wcCov WeaponChangeCoverage
-	doc.WeaponChanges, wcCov = buildWeaponChanges(opt.WeaponChanges, origin, step, doc.FrameCount)
+	doc.WeaponChanges, wcCov = buildWeaponChanges(opt.WeaponChanges, origin, step)
 	doc.Coverage.WeaponChanges = &wcCov
 	slog.Info("rejeu : prises et lachers d arme",
 		"decodes", wcCov.Decoded, "publies", wcCov.Published,
 		"prises", wcCov.Taken, "lachers", wcCov.Dropped, "echanges", wcCov.Swapped,
 		"reannonces", wcCov.Restated, "avantOrigine", wcCov.BeforeOrigin)
 	// Les SOCLES — armes au sol ET power-ups —, sur le meme nuage NON decime (build_ground_weapons.go).
-	attachWeaponPads(&doc, opt.Pads, sorted,
+	gwObjs := attachWeaponPads(&doc, opt.Pads, sorted,
 		replayClock{origin: origin, step: step, frames: doc.FrameCount}, opt.Labels)
+	// LES ARMES AU SOL INDIVIDUELLES (schema 26) : la meme chaine que les socles, publiee objet
+	// par objet, LIEE aux lachers et aux prises du flux delta, et bornee par l observation —
+	// jamais par une table de durees (document_ground_weapon_items.go).
+	var gwiCov GroundWeaponItemsCoverage
+	doc.GroundWeapons, gwiCov = buildGroundWeaponItems(gwObjs, opt.WeaponChanges, sorted,
+		replayClock{origin: origin, step: step, frames: doc.FrameCount})
+	doc.Coverage.GroundWeaponItems = &gwiCov
+	logGroundWeaponItems(gwiCov)
 	// La VIE DES DRAPEAUX, sur les pistes PUBLIEES (le drapeau porte est a la position de son
 	// porteur, et c'est celle-la que le client dessine) — cf. build_objectives_live.go.
 	attachFlagCarries(&doc, opt, own, replayClock{origin: origin, step: step, frames: doc.FrameCount})
