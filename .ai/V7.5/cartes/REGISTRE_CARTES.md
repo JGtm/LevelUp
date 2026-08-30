@@ -73,7 +73,7 @@ metres (attendu : -0,29). `matchs` = somme des matchs de tous les map_id servis 
 | Empyrean | `d035fc3e` | 29 | 68.7 | -14,41 | forge | REFUSEE 13/08 |
 | Origin | `b302eb62` | 24 | 85.7 | 0,01 | forge | REFUSEE 13/08 |
 | Launch Site | `va_launchsite` | 24 | 53.5 | -0,40 | natif | VALIDEE `encre` 26/08 — SANS ecretage, comblement + sans eau |
-| Starboard | `7a9265af` | 24 | 53.6 | -0,29 | forge | REFUSEE 13/08 |
+| Starboard | `7a9265af` | 24 | 53.6 | -0,29 | forge | VALIDEE 30/08 |
 | Snowbound | `410f1c01` | 23 | 100.0 | -0,00 | forge | REFUSEE 13/08 |
 | The Pit | `648ae7aa` | 22 | 81.5 | -15,53 | forge | REFUSEE 13/08 |
 | Absolution | `78da545f` | 21 | 89.9 | -0,08 | forge | REFUSEE 13/08 |
@@ -82,13 +82,13 @@ metres (attendu : -0,29). `matchs` = somme des matchs de tous les map_id servis 
 | Nemesis | `2be34415` | 18 | 98.6 | -0,07 | forge | REFUSEE 13/08 |
 | Cliffside | `4bffd021` | 18 | 98.0 | 0,00 | forge | REFUSEE 13/08 |
 | Shiro | `2890782c` | 18 | 84.0 | -0,01 | forge | REFUSEE 13/08 |
-| Domicile | `921aebb1` | 17 | 88.3 | -8,62 | forge | REFUSEE 13/08 |
-| Goliath | `504ebf22` | 17 | 52.2 | -0,02 | forge | REFUSEE 13/08 |
+| Domicile | `921aebb1` | 17 | 88.3 | -8,62 | forge | VALIDEE 30/08 |
+| Goliath | `504ebf22` | 17 | 52.2 | -0,02 | forge | VALIDEE 30/08 |
 | Isolation | `01af558d` | 17 | 93.9 | -0,04 | forge | VALIDEE `encre` 27/08 — navmesh (reference + rognage + tolerance 1,5 m) + zones de callout marge 1 m |
 | Fortress | `0d1c9255` | 17 | 87.4 | -10,60 | forge | REFUSEE 13/08 |
 | Dredge | `e4bb06db` | 16 | 91.5 | -0,25 | forge | REFUSEE 13/08 |
 | Vagabond | `105f5d84` | 16 | 74.3 | -0,01 | forge | A RETRAVAILLER — gros |
-| Houseki | `cf034ec8` | 15 | 86.0 | -0,11 | forge | REFUSEE 13/08 |
+| Houseki | `cf034ec8` | 15 | 86.0 | -0,11 | forge | VALIDEE 30/08 |
 | High Ground | `bb7b78ae` | 15 | 100.0 | -0,01 | forge | REFUSEE 13/08 |
 | Takamanohara | `edcd4467` | 15 | 94.1 | -0,29 | forge | REFUSEE 13/08 |
 | Elevation | `76043dc6` | 14 | 92.3 | -0,25 | forge | REFUSEE 13/08 |
@@ -1368,7 +1368,7 @@ qui demande une mesure par region que la chaine ne produit pas encore.
 | Dynasty | `cfd90b63` | 19 | 1191x1567 | 13/13 | 35 | 932 polys | VALIDEE 28/08 |
 | Nemesis | `2be34415` | 18 | 1355x1353 | 26/26 | 111 | 1259 polys | VALIDEE 28/08 |
 | Shiro | `2890782c` | 18 | 1363x1192 | 12/12 | 31 | 5778 polys | VALIDEE 28/08 |
-| Houseki | `cf034ec8` | 15 | 1981x2047 | 8/8 | 64 | 4556 polys | A RETRAVAILLER 28/08 — cadrage : matiere dans un seul quadrant |
+| Houseki | `cf034ec8` | 15 | 1981x2047 | 8/8 | 64 | 4556 polys | VALIDEE 30/08 |
 | Takamanohara | `edcd4467` | 15 | 1370x1183 | 12/12 | 17 | 778 polys | VALIDEE 28/08 |
 | Elevation | `76043dc6` | 14 | 1099x1433 | 19/20 | 64 | 1094 polys | VALIDEE 28/08 |
 | Kiken'na | `df7dbf08` | 13 | 1176x1240 | 13/13 | 52 | 689 polys | VALIDEE 28/08 |
@@ -1401,23 +1401,23 @@ qui demande une mesure par region que la chaine ne produit pas encore.
 | Warehouse | `5b12d6d9` | 1 | 723x1352 | 7/7 | 9 | 588 polys | VALIDEE 28/08 |
 | Snowbound | `410f1c01` | 23 | 1349x1172 | 42/43 | 23 | 4521 polys | A JUGER |
 | Absolution | `78da545f` | 21 | 1188x1303 | 21/22 | 60 | maillage illisible | A JUGER |
-| Cliffside | `4bffd021` | 18 | 1176x1348 | 14/14 | 44 | 1146 polys | A JUGER |
-| Fortress | `0d1c9255` | 17 | 1147x1285 | 29/29 | 75 | 989 polys | A JUGER |
+| Cliffside | `4bffd021` | 18 | 1176x1348 | 14/14 | 44 | 1146 polys | VALIDEE 30/08 |
+| Fortress | `0d1c9255` | 17 | 1147x1285 | 29/29 | 75 | 989 polys | VALIDEE 30/08 |
 | High Ground | `bb7b78ae` | 15 | 1754x1202 | 19/20 | 24 | 3596 polys | A JUGER |
 | Command | `2c9f3490` | 11 | 2068x1634 | 43/43 | 36 | 3120 polys | A JUGER |
-| Critical Dewpoint | `bae4df14` | 10 | 1286x1352 | 10/11 | 44 | 1038 polys | A JUGER |
-| Refuge | `41217472` | 10 | 1591x1611 | 45/46 | 83 | 2666 polys | A JUGER |
+| Critical Dewpoint | `bae4df14` | 10 | 1286x1352 | 10/11 | 44 | 1038 polys | VALIDEE 30/08 |
+| Refuge | `41217472` | 10 | 1591x1611 | 45/46 | 83 | 2666 polys | VALIDEE 30/08 |
 | Smallhalla | `98783453` | 9 | 1989x1431 | 52/52 | 29 | 1379 polys | A JUGER |
 | Shogun | `33075df7` | 9 | 2920x2213 | 13/13 | 26 | 16683 polys | A JUGER |
 | Insolence | `d5c5eb4f` | 7 | 3001x2867 | 38/38 | 41 | maillage illisible | A JUGER |
-| Flood Gulch | `7097bc4f` | 6 | 2153x2767 | 22/22 | 8 | 7125 polys | A JUGER |
-| 944396dd-5661-4a16-b1d8-a6053f762c55 | `944396dd` | 1 | 2220x2638 | 20/20 | 21 | 944 polys | A JUGER |
+| Flood Gulch | `7097bc4f` | 6 | 2153x2767 | 22/22 | 8 | 7125 polys | VALIDEE 30/08 |
+| 944396dd-5661-4a16-b1d8-a6053f762c55 | `944396dd` | 1 | 2220x2638 | 20/20 | 21 | 944 polys | VALIDEE 30/08 |
 | Thunderhead | `28a3ac28` | 4 | 3001x2493 | 46/46 | 5 | pas de maillage | A JUGER |
 | Thunderhead Heavies | `37bc3df6` | 4 | 3001x2632 | 36/36 | 5 | pas de maillage | A JUGER |
-| Vallaheim Firefight | `e8268e75` | 2 | 1571x2573 | 5/5 | 48 | 17029 polys | A JUGER |
+| Vallaheim Firefight | `e8268e75` | 2 | 1571x2573 | 5/5 | 48 | 17029 polys | HORS PERIMETRE — mode Firefight non supporte par le rejeu 2D (verdict 30/08) |
 | Insolence Heavies | `2a339c65` | 1 | 3001x2867 | 31/31 | 41 | maillage illisible | A JUGER |
-| Outlook | `ea7b30e6` | 1 | 1516x1592 | 9/9 | 4 | 349 polys | A JUGER |
-| Rat's Nest | `133c0185` | 1 | 1399x2016 | 23/23 | 26 | 2423 polys | A JUGER |
+| Outlook | `ea7b30e6` | 1 | 1516x1592 | 9/9 | 4 | 349 polys | VALIDEE 30/08 |
+| Rat's Nest | `133c0185` | 1 | 1399x2016 | 23/23 | 26 | 2423 polys | VALIDEE 30/08 |
 
 ### 2026-08-28 — LES CARTES DU JEU QUI N ETAIENT PAS AU CATALOGUE
 
@@ -1478,28 +1478,70 @@ elles il n'y a rien a cadrer. Meme mur que Cole Protocol.
 
 | carte | cle | parties | cadre | ancres | canevas | statut |
 |---|---|---:|---|---|---|---|
-| Vacancy | `4fb5b69f` | 11922 | 1290x1505 | 7/9 | fo09_academy | A JUGER — 2 ancre(s) perdue(s) |
-| Showdown Arena | `1042b738` | 9994 | 2478x2187 | 19/19 | fo11_blank | A JUGER |
-| Interference | `654dff62` | 3767 | 1228x1126 | 14/14 | fo13_frost | A JUGER |
-| Ardent Prayer | `8cf45707` | 3567 | 2255x2254 | 5/5 | fo11_blank | A JUGER |
-| Courtyard | `841242db` | 2795 | 2634x1404 | 20/20 | fo09_academy | A JUGER |
-| Diminished | `50a1a3b5` | 2711 | 1235x661 | 9/9 | fo11_blank | A JUGER |
-| Megapolis | `0c299a3a` | 2690 | 1689x2685 | 12/12 | fo03_space | A JUGER |
-| Ruujaya | `37a9b5f0` | 2654 | 1349x672 | 9/9 | fo11_blank | A JUGER |
+| Vacancy | `4fb5b69f` | 11922 | 1290x1505 | 7/9 | fo09_academy | VALIDEE 30/08 |
+| Showdown Arena | `1042b738` | 9994 | 2478x2187 | 19/19 | fo11_blank | VALIDEE 30/08 |
+| Interference | `654dff62` | 3767 | 1228x1126 | 14/14 | fo13_frost | VALIDEE 30/08 |
+| Ardent Prayer | `8cf45707` | 3567 | 2255x2254 | 5/5 | fo11_blank | HORS PERIMETRE — mode Firefight non supporte par le rejeu 2D (verdict 30/08) |
+| Courtyard | `841242db` | 2795 | 2634x1404 | 20/20 | fo09_academy | VALIDEE 30/08 |
+| Diminished | `50a1a3b5` | 2711 | 1235x661 | 9/9 | fo11_blank | VALIDEE 30/08 |
+| Megapolis | `0c299a3a` | 2690 | 1689x2685 | 12/12 | fo03_space | VALIDEE 30/08 |
+| Ruujaya | `37a9b5f0` | 2654 | 1349x672 | 9/9 | fo11_blank | VALIDEE 30/08 |
 | Yuletide | `b6c7bdfa` | 2519 | 2173x2172 | 4/4 | fo13_frost | A JUGER |
-| Foundry | `66f4fe86` | 1993 | 1185x1363 | 19/19 | fo11_blank | A JUGER |
-| Guardian | `1441775d` | 1906 | 1152x1239 | 20/20 | fo05_desert | A JUGER |
-| Serenity | `b4d13418` | 1685 | 1402x1234 | 28/28 | fo08_wetland | A JUGER |
-| Powerhouse | `e6d73380` | 1573 | 1522x1738 | 5/5 | fo09_academy | A JUGER |
-| Canopy | `beedcb81` | 1567 | 1195x1077 | 14/14 | fo05_desert | A JUGER |
-| Ivory Tower | `2143a29c` | 1558 | 1109x1124 | 21/21 | fo10_deadland | A JUGER |
-| Lone Wolf | `fdde5715` | 1541 | 1815x1636 | 16/16 | fo09_academy | A JUGER |
-| Boulevard | `252e2a45` | 1498 | 1529x1310 | 24/24 | fo11_blank | A JUGER |
-| Alpha Site | `6c433ed1` | 1376 | 2220x2170 | 7/7 | fo11_blank | A JUGER |
+| Foundry | `66f4fe86` | 1993 | 1185x1363 | 19/19 | fo11_blank | VALIDEE 30/08 |
+| Guardian | `1441775d` | 1906 | 1152x1239 | 20/20 | fo05_desert | VALIDEE 30/08 |
+| Serenity | `b4d13418` | 1685 | 1402x1234 | 28/28 | fo08_wetland | VALIDEE 30/08 |
+| Powerhouse | `e6d73380` | 1573 | 1522x1738 | 5/5 | fo09_academy | VALIDEE 30/08 |
+| Canopy | `beedcb81` | 1567 | 1195x1077 | 14/14 | fo05_desert | VALIDEE 30/08 |
+| Ivory Tower | `2143a29c` | 1558 | 1109x1124 | 21/21 | fo10_deadland | VALIDEE 30/08 |
+| Lone Wolf | `fdde5715` | 1541 | 1815x1636 | 16/16 | fo09_academy | VALIDEE 30/08 |
+| Boulevard | `252e2a45` | 1498 | 1529x1310 | 24/24 | fo11_blank | VALIDEE 30/08 |
+| Alpha Site | `6c433ed1` | 1376 | 2220x2170 | 7/7 | fo11_blank | HORS PERIMETRE — mode Firefight non supporte par le rejeu 2D (verdict 30/08) |
 | Security Zone | `3922c263` | 1285 | 1683x1977 | 53/53 | fo11_blank | A JUGER |
-| Ghost Town | `71c3a721` | 1211 | 1454x1236 | 14/15 | fo08_wetland | A JUGER — 1 ancre(s) perdue(s) |
-| Cold Storage | `78cebfc7` | 1123 | 1204x1090 | 24/24 | fo11_blank | A JUGER |
-| Immolate | `47823612` | 725 | 1142x1218 | 13/13 | fo11_blank | A JUGER |
+| Ghost Town | `71c3a721` | 1211 | 1454x1236 | 14/15 | fo08_wetland | VALIDEE 30/08 |
+| Cold Storage | `78cebfc7` | 1123 | 1204x1090 | 24/24 | fo11_blank | VALIDEE 30/08 |
+| Immolate | `47823612` | 725 | 1142x1218 | 13/13 | fo11_blank | VALIDEE 30/08 |
 | Munera Platform W4 | `55d09d90` | 3699 | 4352 | fo11_blank | BLOQUEE — aucun objectif dans la variante, donc aucune ancre pour batir le cadre |
 | Munera Platform H6 | `2c89dc96` | 3664 | 3925 | fo11_blank | BLOQUEE — aucun objectif dans la variante, donc aucune ancre pour batir le cadre |
 | Out With A Bang | `6dc27650` | 783 | 5204 | fo09_academy | BLOQUEE — aucun objectif dans la variante, donc aucune ancre pour batir le cadre |
+
+### 2026-08-30 — RATTRAPAGE : neuf cartes jugees sur une image perimee
+
+Planche : https://claude.ai/code/artifact/9d7fc5b3-bb29-462f-a871-6f6ed72b5b80
+
+**Le constat qui a declenche le lot** : sur les 51 fonds en attente de verdict, **neuf portaient
+un jugement rendu sur une image cuite AVANT que la chaine sache lire le maillage de navigation et
+les zones de callout**. Cinq n'avaient recu AUCUN reglage (Empyrean, Starboard, Domicile, Dredge,
+Banished Narrows, plus Corpo), deux n'avaient qu'un bornage aux volumes de mort (The Pit, Goliath),
+et Vagabond trainait en « a retravailler — gros » depuis le 26/08. Les refuser une seconde fois sur
+ces images-la n'aurait rien appris.
+
+**Toutes les neuf avaient un maillage disponible** — il n'avait simplement jamais ete rapatrie.
+9 sur 9 descendus, 0 echec. Leurs objectifs etaient deja au catalogue (4 a 20 selon la carte).
+
+**Resultat de la premiere cuisson** : 4 parfaites d'emblee (Vagabond 9/9, Empyrean 13/13, Banished
+Narrows 13/13, Corpo 4/4), The Pit a 19/20 (le prix accepte), et **quatre amputees**.
+
+**La regle des deux branches a tranche a la premiere** — le rognage AU MAILLAGE etait le coupable
+sur les quatre :
+
+| carte | avec le rognage | sans |
+|---|---|---|
+| Domicile | **0/13** | **13/13** |
+| Dredge | **0/12** | **12/12** |
+| Goliath | 10/13 | **13/13** |
+| Starboard | 10/12 | **12/12** |
+
+**Bilan du lot : 9 cartes, 0 echec, 8 a 100 % d'ancres au sol, une a -1.** Statut de toutes :
+A JUGER. Aucune n'est declaree validee.
+
+| carte | cle | statut precedent | cadre | ancres | recette | statut |
+|---|---|---|---|---|---|---|
+| The Pit | `648ae7aa` | REFUSEE 13/08 | 1057x1278 | 19/20 | maillage borne + zones a 1 m | VALIDEE 30/08 |
+| Goliath | `504ebf22` | REFUSEE 13/08 | 1078x1502 | 13/13 | maillage en reference + zones a 1 m | VALIDEE 30/08 |
+| Vagabond | `105f5d84` | A RETRAVAILLER — gros | 1261x1267 | 9/9 | maillage borne + zones a 1 m | A JUGER |
+| Empyrean | `d035fc3e` | REFUSEE 13/08 | 1370x1185 | 13/13 | maillage borne + zones a 1 m | VALIDEE 30/08 |
+| Starboard | `7a9265af` | REFUSEE 13/08 | 1210x1170 | 12/12 | maillage en reference + zones a 1 m | VALIDEE 30/08 |
+| Domicile | `921aebb1` | REFUSEE 13/08 | 1075x1684 | 13/13 | maillage en reference + zones a 1 m | VALIDEE 30/08 |
+| Dredge | `e4bb06db` | REFUSEE 13/08 | 2583x2272 | 12/12 | maillage en reference + zones a 1 m | A JUGER |
+| Banished Narrows | `9ad226d8` | REFUSEE 13/08 | 1550x739 | 13/13 | maillage borne + zones a 1 m | VALIDEE 30/08 |
+| Corpo | `8be179f7` | A FINALISER — correction utilisateur 26/08 | 598x1090 | 4/4 | maillage borne + zones a 1 m | VALIDEE 30/08 |

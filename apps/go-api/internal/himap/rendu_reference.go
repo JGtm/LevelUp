@@ -134,6 +134,21 @@ func (r *Rendu) tauxCouverture() float64 {
 
 // substitueParReference remplace, dans la portee des ancres, la surface haute par la surface
 // la plus proche de la reference, et rend le nombre de cellules touchees.
+// SeuilSubstitution : ecart minimal, en metres, entre la surface dessinee et la reference pour
+// que la substitution s applique. Zero = substituer des qu il y a un ecart (comportement
+// d origine).
+//
+// POURQUOI CE SEUIL EXISTE. La substitution ne distingue pas un DOME d une STRUCTURE : elle
+// rabat tout ce qui n est pas la reference. Sur Isolation le dome vit onze metres au-dessus du
+// sol, alors qu un muret, un auvent, un conteneur en font deux ou trois. Un seuil separe les
+// deux par la seule chose qui les distingue vraiment — la hauteur. En dessous, on garde ce qui
+// est dessine ; au-dessus, on rabat.
+//
+// MESURE DU 2026-08-30 QUI A CONDUIT ICI : renoncer completement a la substitution sur Vagabond
+// rend une image PIRE — une masse grise uniforme, les toits ayant tout recouvert. Le tout ou
+// rien ne convient donc pas ; il fallait un curseur.
+var SeuilSubstitution = 0.0
+
 func (r *Rendu) substitueParReference(s *SurfaceReference, sansPortee bool) int {
 	substituees := 0
 	for j := 0; j < r.NY; j++ {
@@ -141,6 +156,9 @@ func (r *Rendu) substitueParReference(s *SurfaceReference, sansPortee bool) int 
 		for i := 0; i < r.NX; i++ {
 			k := j*r.NX + i
 			if math.IsInf(r.z[k], -1) || math.IsNaN(r.zRef[k]) || r.z[k] == r.zRef[k] {
+				continue
+			}
+			if SeuilSubstitution > 0 && r.z[k]-r.zRef[k] < SeuilSubstitution {
 				continue
 			}
 			if !sansPortee && s.DistanceAncre(r.Min[0]+(float64(i)+0.5)*r.Cell, y) > PorteeAncre {
@@ -151,4 +169,16 @@ func (r *Rendu) substitueParReference(s *SurfaceReference, sansPortee bool) int 
 		}
 	}
 	return substituees
+}
+
+// TauxCouvertureMesure rend le taux de couverture SANS rien substituer, et libere les tampons
+// de reference comme le ferait AppliqueReference. Sert au mode `SansSubstitution` : le chiffre
+// reste publie au sidecar, ce qui permet de comparer une carte laissee brute a la meme carte
+// substituee.
+func (r *Rendu) TauxCouvertureMesure() float64 {
+	if r.zRef == nil {
+		return 0
+	}
+	defer func() { r.ref, r.dRef, r.zRef, r.nRef = nil, nil, nil, nil }()
+	return r.tauxCouverture()
 }

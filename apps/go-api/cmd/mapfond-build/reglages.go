@@ -60,6 +60,26 @@ type reglageCarte struct {
 	SubstitutionSansPortee bool `json:"substitutionSansPortee,omitempty"`
 	// CombleTrous : poser un aplat de sol suppose dans les trous des zones nommees.
 	CombleTrous bool `json:"combleTrous,omitempty"`
+	// CombleAuMaillage : peindre le sol suppose dans toute l emprise du maillage de navigation
+	CombleAuMaillage bool `json:"combleAuMaillage,omitempty"`
+	// RogneAuxComposantesAncrees : effacer les amas de matiere sans ancre, hors silhouette jouee
+	RogneAuxComposantesAncrees bool `json:"rogneAuxComposantesAncrees,omitempty"`
+	// CadreAuxZones : borner l image a l emprise des zones de callout
+	CadreAuxZones bool `json:"cadreAuxZones,omitempty"`
+	// CadreAuxAncres : borner l image a l emprise des ancres d objectifs
+	CadreAuxAncres bool `json:"cadreAuxAncres,omitempty"`
+	// MargeAncres : marge autour des ancres pour le cadrage, en metres (0 = 25 m)
+	MargeAncres float64 `json:"margeAncres,omitempty"`
+	// MaillageNiveauHaut : reference prise sur le niveau le plus haut du maillage
+	MaillageNiveauHaut bool `json:"maillageNiveauHaut,omitempty"`
+	// SansSubstitution : garder la surface haute telle que dessinee
+	SansSubstitution bool `json:"sansSubstitution,omitempty"`
+	// SeuilSubstitution : ecart minimal en metres pour rabattre une surface sur la reference
+	SeuilSubstitution float64 `json:"seuilSubstitution,omitempty"`
+	// MargeNavmesh : dilatation du masque de rognage au maillage, en metres (0 = 3 m)
+	MargeNavmesh float64 `json:"margeNavmesh,omitempty"`
+	// MargeSolBas : profondeur acceptee sous le niveau de jeu pour le sol vu du dessous
+	MargeSolBas float64 `json:"margeSolBas,omitempty"`
 	// PlancherTranche : profondeur en metres SOUS le niveau de jeu (valeur NEGATIVE) en deca
 	// de laquelle la matiere sort de la carte. Zero = -12 m. Voir OptionsCuisson.
 	PlancherTranche float64 `json:"plancherTranche,omitempty"`
@@ -574,4 +594,150 @@ func (e *environnement) toleranceNavmeshDe(cle string) float64 {
 	}
 	slog.Info("mapfond: tolerance au sol du maillage", "carte", cle, "tolerance", c.ToleranceNavmesh, "gateLe", c.GateLe)
 	return c.ToleranceNavmesh
+}
+
+// combleAuMaillageDe dit si cette carte comble le dessin dans l emprise de son maillage de
+// navigation. Journalise : peindre un aplat la ou rien n a ete mesure ne doit jamais passer
+// inapercu.
+func (e *environnement) combleAuMaillageDe(cle string) bool {
+	if e.reglages == nil {
+		return false
+	}
+	c, ok := e.reglages.Cartes[cle]
+	if !ok || !c.CombleAuMaillage {
+		return false
+	}
+	slog.Info("mapfond: comblement dans l emprise du maillage arme pour cette carte", "carte", cle,
+		"gateLe", c.GateLe)
+	return true
+}
+
+// rogneAuxComposantesAncreesDe dit si cette carte efface les amas qui ne portent pas d ancre.
+// Journalise : c est une voie qui SUPPRIME de la matiere, comme l ecretage et les autres
+// rognages.
+func (e *environnement) rogneAuxComposantesAncreesDe(cle string) bool {
+	if e.reglages == nil {
+		return false
+	}
+	c, ok := e.reglages.Cartes[cle]
+	if !ok || !c.RogneAuxComposantesAncrees {
+		return false
+	}
+	slog.Info("mapfond: rognage aux composantes ancrees arme pour cette carte", "carte", cle,
+		"gateLe", c.GateLe)
+	return true
+}
+
+// cadreAuxZonesDe dit si cette carte borne son image a l emprise de ses zones de callout.
+// Journalise : borner une image est une voie qui SUPPRIME de la matiere.
+func (e *environnement) cadreAuxZonesDe(cle string) bool {
+	if e.reglages == nil {
+		return false
+	}
+	c, ok := e.reglages.Cartes[cle]
+	if !ok || !c.CadreAuxZones {
+		return false
+	}
+	slog.Info("mapfond: cadrage a l emprise des zones arme pour cette carte", "carte", cle,
+		"gateLe", c.GateLe)
+	return true
+}
+
+// cadreAuxAncresDe dit si cette carte borne son image a l emprise de ses ancres d objectifs.
+func (e *environnement) cadreAuxAncresDe(cle string) bool {
+	if e.reglages == nil {
+		return false
+	}
+	c, ok := e.reglages.Cartes[cle]
+	if !ok || !c.CadreAuxAncres {
+		return false
+	}
+	slog.Info("mapfond: cadrage a l emprise des ancres arme pour cette carte", "carte", cle,
+		"gateLe", c.GateLe)
+	return true
+}
+
+// margeAncresDe rend la marge de cadrage aux ancres propre a une carte, ou zero pour celle de
+// production.
+func (e *environnement) margeAncresDe(cle string) float64 {
+	if e.reglages == nil {
+		return 0
+	}
+	c, ok := e.reglages.Cartes[cle]
+	if !ok || c.MargeAncres <= 0 {
+		return 0
+	}
+	slog.Info("mapfond: marge de cadrage aux ancres propre a la carte", "carte", cle,
+		"marge", c.MargeAncres, "gateLe", c.GateLe)
+	return c.MargeAncres
+}
+
+// maillageNiveauHautDe dit si cette carte prend la reference sur le niveau le plus haut du
+// maillage. Journalise : c est ce qui decide si ses etages survivent a la substitution.
+func (e *environnement) maillageNiveauHautDe(cle string) bool {
+	if e.reglages == nil {
+		return false
+	}
+	c, ok := e.reglages.Cartes[cle]
+	if !ok || !c.MaillageNiveauHaut {
+		return false
+	}
+	slog.Info("mapfond: reference prise sur le niveau HAUT du maillage", "carte", cle, "gateLe", c.GateLe)
+	return true
+}
+
+// sansSubstitutionDe dit si cette carte renonce a la substitution par surface de reference.
+// Journalise : c est le levier qui decide si les coques tombent ou si les structures restent.
+func (e *environnement) sansSubstitutionDe(cle string) bool {
+	if e.reglages == nil {
+		return false
+	}
+	c, ok := e.reglages.Cartes[cle]
+	if !ok || !c.SansSubstitution {
+		return false
+	}
+	slog.Info("mapfond: substitution desarmee pour cette carte", "carte", cle, "gateLe", c.GateLe)
+	return true
+}
+
+// seuilSubstitutionDe rend l ecart minimal de substitution propre a une carte, ou zero.
+func (e *environnement) seuilSubstitutionDe(cle string) float64 {
+	if e.reglages == nil {
+		return 0
+	}
+	c, ok := e.reglages.Cartes[cle]
+	if !ok || c.SeuilSubstitution <= 0 {
+		return 0
+	}
+	slog.Info("mapfond: seuil de substitution propre a la carte", "carte", cle,
+		"seuil", c.SeuilSubstitution, "gateLe", c.GateLe)
+	return c.SeuilSubstitution
+}
+
+// margeNavmeshDe rend la marge de rognage au maillage propre a une carte, ou zero.
+func (e *environnement) margeNavmeshDe(cle string) float64 {
+	if e.reglages == nil {
+		return 0
+	}
+	c, ok := e.reglages.Cartes[cle]
+	if !ok || c.MargeNavmesh <= 0 {
+		return 0
+	}
+	slog.Info("mapfond: marge de rognage au maillage propre a la carte", "carte", cle,
+		"marge", c.MargeNavmesh, "gateLe", c.GateLe)
+	return c.MargeNavmesh
+}
+
+// margeSolBasDe rend la profondeur acceptee sous le niveau de jeu, ou zero.
+func (e *environnement) margeSolBasDe(cle string) float64 {
+	if e.reglages == nil {
+		return 0
+	}
+	c, ok := e.reglages.Cartes[cle]
+	if !ok || c.MargeSolBas <= 0 {
+		return 0
+	}
+	slog.Info("mapfond: profondeur du sol vu du dessous propre a la carte", "carte", cle,
+		"marge", c.MargeSolBas, "gateLe", c.GateLe)
+	return c.MargeSolBas
 }

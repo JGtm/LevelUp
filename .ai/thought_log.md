@@ -73754,3 +73754,70 @@ jeu. Ecart du meme ordre que celui d Isolation, ecrit dans son reglage.
 (https://claude.ai/code/artifact/158547b6-b528-411a-a716-1c4092b29c46), 22 lignes A JUGER au
 registre, 3 BLOQUEES. Reste ouvert : les 84 autres cartes du top 200 non traitees, et le renommage
 de `944396dd` en Narrows dans le catalogue et le registre.
+
+## [2026-08-30] Rattrapage : neuf cartes jugees sur une image perimee — Complete
+
+**Decision technique** : avant de demander un nouveau verdict, verifier que chaque fond en attente
+a bien recu la recette courante. Neuf ne l avaient pas : cinq sans aucun reglage, deux avec le seul
+bornage aux volumes de mort, Vagabond et Corpo sur une recette anterieure. Leur verdict portait
+donc sur une image d avant le maillage de navigation et les zones de callout.
+
+**Resultats observes** : les neuf avaient un maillage disponible, jamais rapatrie — 9/9 descendus,
+0 echec. Cuisson : 4 parfaites d emblee (Vagabond 9/9, qui trainait en « a retravailler — gros »
+depuis le 26/08 ; Empyrean 13/13 ; Banished Narrows 13/13 ; Corpo 4/4), The Pit a 19/20, quatre
+amputees. La regle des deux branches a tranche a la PREMIERE : le rognage au maillage etait le
+coupable sur les quatre (Domicile 0/13 -> 13/13, Dredge 0/12 -> 12/12, Goliath 10/13 -> 13/13,
+Starboard 10/12 -> 12/12). Les quatre sont republiees sans lui, maillage garde en reference.
+
+**Ce que le lot confirme** : le rognage au maillage reste le coupable habituel — Megapolis, ou les
+ZONES etaient en cause, demeure l exception qui impose de diagnostiquer les deux branches plutot
+que d en supposer une.
+
+**Conclusion / prochaine etape** : planche soumise, 9 lignes A JUGER au registre. Le stock a juger
+passe a 51 fonds, tous cuits avec la recette courante — plus aucun verdict ne portera sur une image
+perimee. Reste ouvert : les 84 cartes du top 200 non traitees, le renommage de 944396dd en Narrows,
+Houseki et sa piste typesExclus, les 3 cartes sans objectif donc sans cadre.
+
+## [2026-08-30] Revue carte par carte : dix leviers, cinq refutations mesurees — Complete
+
+**Decision technique** : mener la revue au rythme des verdicts de l utilisateur, en repondant a
+chaque defaut nomme par un levier PROPRE A LA CARTE, et en ecrivant dans la raison du reglage ce
+que chaque levier coute. Dix leviers ont ete ajoutes ce jour :
+
+`combleAuMaillage` (aplat dans l emprise du maillage) · `rogneAuxComposantesAncrees` (effacer les
+amas sans ancre) · `cadreAuxAncres` + `margeAncres` (borner l image sur les objectifs) ·
+`maillageNiveauHaut` (reference prise sur le niveau praticable le plus haut) · `seuilSubstitution`
+(n arriver que par-dela un ecart) · `margeNavmesh` (dilatation du rognage, reglable) ·
+`margeSolBas` (profondeur du sol vu du dessous) · `cadreAuxZones` · `sansSubstitution`.
+
+**CINQ REFUTATIONS, toutes mesurees, toutes consignees dans le reglage de la carte concernee** —
+elles valent autant que les reussites parce qu elles ferment des portes :
+
+1. `cadreAuxZones` est INERTE partout ou `rogneAuxZones` est deja arme : borner a la boite des
+   zones apres avoir efface hors des zones ne peut rien retirer. Zero cellule sur Outlook.
+2. Les ZONES DE CALLOUT sont inutilisables comme cadre sur dix cartes : leur emprise vaut
+   266 x 266 m (Insolence, Smallhalla) — le canevas entier. Ces cartes nomment de grands volumes.
+3. La TRANCHE DE HAUTEUR a +8 m rend 0 ancre sur 13 sur Shogun : elle coupe le sol de l arene.
+4. L EXCLUSION PAR TYPE rend elle aussi 0/13 : les deux types qui peignent 65 % de l image en 31
+   exemplaires SONT le sol. Sur une carte Forge, « peu d exemplaires couvrant beaucoup » designe de
+   grandes pieces plates, pas un decor. L altitude de POSE ne discrimine pas davantage (+11 et
+   +23 m pour des pieces qui peignent le sol : le point de pose n est pas la surface).
+5. Le SOL VU DU DESSOUS a 14 m remplace 3 290 380 pixels et vide Vagabond (couverture 0,0 %) :
+   `AdopteSurfaceBasse` REMPLACE la surface haute, il ne l ajoute pas. On montre l etage du dessus
+   OU celui du dessous, jamais les deux. Repondre vraiment demanderait un rendu A DEUX COUCHES.
+
+**Resultats observes** : 89 fonds valides par l utilisateur, 14 en attente, 3 bloques, 3 hors
+perimetre (mode Firefight non supporte par le rejeu). Le seuil de substitution a ete RETIRE partout
+apres verdict : il ne rendait pas les structures manquantes et faisait revenir la bouillie —
+« affaiblir la substitution ne rend pas les structures, ca rend les coques » est un arbitrage, pas
+un reglage a trouver.
+
+**Garde-rail respecte plutot que contourne** : `TestFondForgeJamaisSousCleModule` refusait les trois
+cartes sans objectif (Munera Platform W4/H6, Out With A Bang), declarees mais incuisables. Elles
+sont RETIREES de `CartesForge` — declarer une carte dont on ne sait pas produire l asset, c est
+promettre ce qu on ne tient pas — et restent consignees BLOQUEES au registre avec leur motif.
+
+**Conclusion / prochaine etape** : reste ouvert — le decodeur de fichier-tag ne lit pas les
+maillages sans section TST1, ce qui condamne Absolution, Insolence et leurs variantes a la bouillie
+(seul correctif possible, et c est de la retro-ingenierie) ; le rendu a deux couches si le sous-sol
+de Vagabond doit etre visible ; le renommage de 944396dd en Narrows au catalogue.

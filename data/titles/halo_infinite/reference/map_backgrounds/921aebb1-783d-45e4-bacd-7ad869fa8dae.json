@@ -7,14 +7,14 @@
   ],
   "image": "921aebb1-783d-45e4-bacd-7ad869fa8dae.png",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
-  "generatedAt": "2026-08-26T20:49:26.0451557Z",
+  "generatedAt": "2026-08-30T08:53:57.1516033Z",
   "style": "encre",
   "calibration": {
     "metersPerPixel": 0.04122143236796061,
-    "originX": -38.23417899068197,
-    "originY": 52.796563915888456,
-    "widthPx": 2923,
-    "heightPx": 3001,
+    "originX": -0.5990112387339295,
+    "originY": 24.477439879099517,
+    "widthPx": 1075,
+    "heightPx": 1684,
     "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
   },
   "stats": {
@@ -30,7 +30,7 @@
     "boundaryCellsCleared": 0,
     "waterVolumes": 0,
     "waterCells": 0,
-    "coveredShare": 0.15668104836756291,
+    "coveredShare": 0,
     "covered": false,
     "forgeObjects": 5539,
     "forgeObjectsDrawn": 5478,

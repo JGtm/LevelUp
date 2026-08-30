@@ -32,6 +32,25 @@ const MargeNavmesh = 3.0
 //
 // Les cellules que le maillage ne couvre pas gardent NaN : elles ne seront jamais substituees,
 // ce qui est la bonne reponse — hors du sol jouable, on n'a rien a dire.
+// NiveauHautNavmesh, quand il est vrai, fait garder la surface la PLUS HAUTE du maillage la ou
+// deux niveaux se superposent, au lieu de la plus basse.
+//
+// POURQUOI CE CHOIX EXISTE, ET CE QU IL CORRIGE. La reference sert de cible a la substitution :
+// partout ou la carte est jugee couverte, la surface dessinee est REMPLACEE par celle qui est la
+// plus proche de la reference. Avec la reference basse, un etage, une passerelle, un pont sont
+// donc rabattus sur le sol du dessous et disparaissent — c est le defaut signale par l utilisateur
+// le 2026-08-30 sur sept cartes, et retirer la tolerance au sol n y avait rien change parce que
+// ce n etait pas elle la cause.
+//
+// Prendre le niveau HAUT ne ramene pas les toits pour autant : un toit, un dome, une dalle de
+// ciel ne sont PAS dans le maillage de navigation — on ne marche pas dessus. Le maillage ne
+// contient que du praticable, donc son niveau le plus haut est le dernier etage ou l on pose le
+// pied. C est ce qu une carte 2D doit montrer.
+//
+// Ce que ca coute, et il faut le savoir : la ou une passerelle survole une cour, c est la
+// passerelle qu on voit et la cour qui disparait. C est le choix normal d une vue de dessus.
+var NiveauHautNavmesh = false
+
 func (r *Rendu) ArmeReferenceDepuisNavmesh(m *hinavmesh.Maillage) int {
 	n := r.NX * r.NY
 	r.ref = make([]float64, n)
@@ -91,6 +110,12 @@ func (r *Rendu) poseReferenceTriangle(a, b, c [3]float64) int {
 			if math.IsNaN(r.ref[k]) {
 				r.ref[k] = z
 				nouvelles++
+				continue
+			}
+			if NiveauHautNavmesh {
+				if z > r.ref[k] {
+					r.ref[k] = z
+				}
 				continue
 			}
 			if z < r.ref[k] {
@@ -207,4 +232,42 @@ func (r *Rendu) EffaceLoinDuNavmesh(tolerance float64) int {
 		vidées++
 	}
 	return vidées
+}
+
+// CombleDansLeMaillage peint un SOL SUPPOSE partout ou le maillage de navigation dit qu on
+// marche mais ou la geometrie n a rien dessine. Rend le nombre de cellules comblees.
+//
+// POURQUOI CE COMBLEMENT-LA PLUTOT QUE LE COMBLEMENT TOPOLOGIQUE. `Rendu.CombleTrous` remplit
+// ce qu on ne peut pas atteindre depuis le bord de l image — la definition stricte de « dedans ».
+// Mesure du 2026-08-30 : elle ne rend presque rien sur les cartes Forge (0 cellule sur Vagabond,
+// 3 943 sur Dredge, moins d un millieme de l image). Leur silhouette n est pas un contour ferme
+// mais une DENTELLE : le remplissage venu du bord s infiltre partout, et il ne reste aucun
+// interieur a peindre. La demande de l utilisateur — « un fond plein, mais seulement a l interieur
+// de leur forme » — appelle donc une autre definition de la forme.
+//
+// LE MAILLAGE EN EST UNE, ET LA MEILLEURE QU ON AIT : il est la surface ou l on marche, il est
+// plein par construction, et il est deja mesure. Ce qu il couvre et que la geometrie n a pas
+// peint est un trou du DESSIN, pas un trou de la carte.
+//
+// La marge reprend celle du rognage : on comble exactement ce qu on aurait garde.
+func (r *Rendu) CombleDansLeMaillage(marge float64) int {
+	if r.couvertureNavmesh == nil {
+		return 0
+	}
+	couvert := r.dilateCouverture(marge)
+	comble := 0
+	for k := range r.z {
+		if !couvert[k] || !math.IsInf(r.z[k], -1) {
+			continue
+		}
+		if r.solSuppose == nil {
+			r.solSuppose = make([]bool, len(r.z))
+		}
+		if r.solSuppose[k] {
+			continue
+		}
+		r.solSuppose[k] = true
+		comble++
+	}
+	return comble
 }
