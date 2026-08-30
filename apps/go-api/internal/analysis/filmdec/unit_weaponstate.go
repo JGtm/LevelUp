@@ -65,15 +65,20 @@ func consumeID2(br *BitReader) {
 // is DAT_144706100 = 0x1FFF -> W = bitLen(0x1FFF) = 13, so the common cost is
 // R(13)+R(2) = 15 bits; per-slot ranges (DAT_1451f98d0 table, all-zero in retail)
 // would shorten W. range is supplied by the caller's descriptor.
-func readVarWidthInt(br *BitReader, rangeMax uint32, probe bool) {
+// LES RETOURS ONT ÉTÉ AJOUTÉS LE 2026-08-30 (sonde i26) SANS CHANGER UN BIT : la valeur et
+// les deux bits de queue étaient consommés puis jetés. Avec le rangeMax par défaut (0x1FFF),
+// la valeur fait 13 bits et la queue 2 — les largeurs EXACTES d'un slot d'entité et d'une
+// génération : c'est ce que la sonde d'i26 va vérifier.
+func readVarWidthInt(br *BitReader, rangeMax uint32, probe bool) (val uint64, tail uint64) {
 	if probe {
 		br.ReadBit() // FUN_1406cf008 probe bit (param_3==1 only)
 	}
 	w := bitLen(rangeMax) // FUN_1406d310c
 	if w > 0 {
-		br.ReadBits(uint(w))
+		val = br.ReadBits(uint(w))
 	}
-	br.ReadBits(2) // 2 trailing bits
+	tail = br.ReadBits(2) // 2 trailing bits
+	return val, tail
 }
 
 var defaultReplRange uint32 = 0x1FFF // DAT_144706100 (config du header film ; calibrable)
@@ -95,11 +100,16 @@ func consume1408f0ac4(br *BitReader) { consume1408f0ac4Probe(br, false) }
 // explicit. unit-actor-control's two slot calls pass param_3 == 1 (probe present);
 // all other call sites pass 0. CONFIRMED by disassembly of the call sites
 // (FUN_1408f0778 @1408f0948/1408f0962 push R8D=1; others push 0).
-func consume1408f0ac4Probe(br *BitReader, probe bool) {
+//
+// Les retours (valeur, queue, présence) existent pour la sonde d'i26 — mêmes bits, rien de
+// plus lu ni de moins.
+func consume1408f0ac4Probe(br *BitReader, probe bool) (val, tail uint64, present bool) {
 	if br.ReadBit() {
-		readVarWidthInt(br, defaultReplRange, probe) // FUN_1406d3140 probe iff param_3==1
+		val, tail = readVarWidthInt(br, defaultReplRange, probe) // FUN_1406d3140 probe iff param_3==1
 		// FUN_1406cb0cc consumes 0 bits (config check).
+		return val, tail, true
 	}
+	return 0, 0, false
 }
 
 // consume1411b1ac0 mirrors FUN_1411b1ac0 -> FUN_140e82b84: R(1); if set R(12).
@@ -638,13 +648,48 @@ func consumeUnitCommandTick(br *BitReader) {
 //
 // Largeur vraie : 22 bits à 100 % (n = 40). Cette forme les produit naturellement, là où
 // l'ancienne affectation exigeait une forme empirique inventée pour les imiter.
+//
+// LES VALEURS NE SONT PLUS JETÉES (2026-08-30, sonde i26) : chaque entrée de la liste est un
+// optionnel `porte(1) + valeur(13) + queue(2)` — les largeurs exactes d'un SLOT d'entité et
+// d'une GÉNÉRATION, ce que la sonde existe pour vérifier. Le parcours de bits est INCHANGÉ.
 func consumeUnitEquipment(br *BitReader) {
-	br.ReadBits(3)          // FUN_1406d0f20
-	count := br.ReadBits(3) // FUN_1424d0f48
+	var st UnitEquipmentRead
+	st.Head = uint32(br.ReadBits(3)) // FUN_1406d0f20
+	count := br.ReadBits(3)          // FUN_1424d0f48
 	for i := uint64(0); i < count; i++ {
-		consume1408f0ac4(br)
+		val, tail, present := consume1408f0ac4Probe(br, false)
+		st.Entries = append(st.Entries, UnitEquipmentEntry{
+			Val: uint32(val), Tail: uint32(tail), Present: present,
+		})
+	}
+	if unitEquipmentHook != nil {
+		unitEquipmentHook(st)
 	}
 }
+
+// UnitEquipmentEntry est UNE entrée de la liste d'i26, telle que le déserialiseur la lit.
+type UnitEquipmentEntry struct {
+	// Val est la valeur du champ à largeur variable (13 bits au rangeMax par défaut) ; Tail
+	// les deux bits de queue. L'hypothèse à mesurer : Val = slot d'entité, Tail = génération.
+	Val, Tail uint32
+	// Present dit que la porte de l'entrée était ouverte. Fermée : l'entrée existe dans la
+	// liste mais ne transmet rien.
+	Present bool
+}
+
+// UnitEquipmentRead est UNE lecture d'i26 : l'en-tête R(3) et la liste.
+type UnitEquipmentRead struct {
+	Head    uint32
+	Entries []UnitEquipmentEntry
+}
+
+// unitEquipmentHook, si non nil, reçoit CHAQUE lecture d'i26. Global de paquet, même contrat
+// que les autres sondes (SetAbilitySetHook, SetObjectParentStateHook).
+var unitEquipmentHook func(UnitEquipmentRead)
+
+// SetUnitEquipmentHook installe (ou retire, avec nil) la sonde d'i26. L'appelant doit détenir
+// LockProcessDecode.
+func SetUnitEquipmentHook(h func(UnitEquipmentRead)) { unitEquipmentHook = h }
 
 // consumeUnitStun porte i27, désérialiseur FUN_142ED75FC : 40 bits FIXES, sans aucune branche
 // (16 + 12 + 12). C'est cette invariabilité qui a permis d'éliminer l'ancienne affectation :
@@ -801,10 +846,24 @@ func consumeWeaponStateOverheated(br *BitReader) {
 //	FUN_1406d0f20 = R(3).
 //	FUN_1406d00ec = R(1)+optR(2).
 //	FUN_1406d00ec = R(1)+optR(2).
+//
+// desiredWeaponSetHook, si non nil, reçoit CHAQUE lecture d'i42 avec la valeur du R(3) de
+// tête (l'emplacement d'arme désiré). Global de paquet, donc UN SEUL décodage filmdec à la
+// fois par process — même règle que les autres sondes.
+var desiredWeaponSetHook func(sel uint32)
+
+// SetDesiredWeaponSetHook installe (ou retire, avec nil) la sonde d'i42. L'appelant restaure
+// la sonde précédente. AUCUN bit lu ne change : la sonde est appelée après les trois
+// lectures, et le déser ne branche jamais sur elle.
+func SetDesiredWeaponSetHook(h func(sel uint32)) { desiredWeaponSetHook = h }
+
 func consumeBipedDesiredWeaponSet(br *BitReader) {
-	br.ReadBits(3) // FUN_1406d0f20
-	consumeID2(br) // FUN_1406d00ec
-	consumeID2(br) // FUN_1406d00ec
+	sel := uint32(br.ReadBits(3)) // FUN_1406d0f20
+	consumeID2(br)                // FUN_1406d00ec
+	consumeID2(br)                // FUN_1406d00ec
+	if desiredWeaponSetHook != nil {
+		desiredWeaponSetHook(sel)
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -843,5 +902,32 @@ func consume1407f0550(br *BitReader) {
 		if br.ReadBit() { // g2
 			br.ReadBits(12) // dequant 0xc (symmetric far block)
 		}
+	}
+}
+
+// ---------------------------------------------------------------------------
+// ti=42 i20 weapon-ammo — les MUNITIONS d'une arme POSEE AU SOL
+// ---------------------------------------------------------------------------
+
+// groundWeaponAmmoHook, si non nil, reçoit chaque lecture d'i20 sur l'archétype ARME AU SOL.
+// Global de paquet, donc UN SEUL décodage filmdec à la fois par process — même règle que les
+// autres sondes.
+var groundWeaponAmmoHook func(a, b, c uint32)
+
+// SetGroundWeaponAmmoHook installe (ou retire, avec nil) la sonde d'i20. L'appelant restaure la
+// sonde précédente. AUCUN bit lu ne change : mêmes largeurs, même ordre, publication après coup.
+func SetGroundWeaponAmmoHook(h func(a, b, c uint32)) { groundWeaponAmmoHook = h }
+
+// consumeWeaponAmmo mirrors FUN_140fc3028 : R(8) + R(11) + R(12).
+//
+// LES CHAMPS RESTENT POSITIONNELS. Le déserialiseur connaît la GRAMMAIRE, pas le SENS : nommer
+// ici l'un des trois « chargeur » ou « réserve » serait écrire une conclusion avant la mesure.
+// La table ECS dit seulement « les munitions restantes dans l'arme au sol ».
+func consumeWeaponAmmo(br *BitReader) {
+	a := uint32(br.ReadBits(8))
+	b := uint32(br.ReadBits(11))
+	c := uint32(br.ReadBits(12))
+	if groundWeaponAmmoHook != nil {
+		groundWeaponAmmoHook(a, b, c)
 	}
 }

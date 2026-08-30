@@ -34,6 +34,7 @@ const SHOW_PLACEMENTS_KEY = 'replay-show-placements'
 const SHOW_UNNAMED_PLACEMENTS_KEY = 'replay-show-unnamed-placements'
 const SHOW_DROPPED_PLACEMENTS_KEY = 'replay-show-dropped-placements'
 const SHOW_WEAPON_PADS_KEY = 'replay-show-weapon-pads'
+const SHOW_GROUND_WEAPONS_KEY = 'replay-show-ground-weapons'
 const SHOW_FLAG_CARRIES_KEY = 'replay-show-flag-carries'
 const SHOW_VIP_CROWN_KEY = 'replay-show-vip-crown'
 const SHOW_SKULL_CARRIER_KEY = 'replay-show-skull-carrier'
@@ -156,6 +157,17 @@ const SHOW_DROPPED_PLACEMENTS_DEFAULT = true
 const SHOW_WEAPON_PADS_DEFAULT = true
 
 /**
+ * LES ARMES AU SOL SONT ALLUMÉES PAR DÉFAUT (schéma 27). Même raisonnement que les objets de
+ * puissance lâchés, décidé le 2026-08-18 : une arme ramassable par terre change la lecture de
+ * l'échange suivant, au même titre qu'une arme encore sur son socle. Le film qui n'en porte
+ * aucune n'affiche ni calque ni bascule.
+ *
+ * Ce n'est pas un demi-livrable (CLAUDE.md n°11) : le calque est complet, l'interrupteur est un
+ * RÉGLAGE D'AFFICHAGE offert au lecteur — une carte de Grande Bataille reste dense.
+ */
+const SHOW_GROUND_WEAPONS_DEFAULT = true
+
+/**
  * LES DRAPEAUX SONT ALLUMÉS PAR DÉFAUT. C'est l'ENJEU du match en capture de drapeau : savoir
  * où est le drapeau, qui le porte et depuis quand est la lecture même du mode — un rejeu de CTF
  * qui s'ouvrirait sans lui montrerait huit points qui courent sans raison. Le film qui n'en
@@ -238,6 +250,12 @@ export interface ReplaySettings {
   /** Calque des SOCLES D'ARME (schéma 11). Allumé par défaut (cf. SHOW_WEAPON_PADS_DEFAULT). */
   showWeaponPads: boolean
   toggleWeaponPads: () => void
+  /**
+   * Calque des ARMES AU SOL (schéma 27) — les armes abandonnées, distinctes des socles.
+   * Allumé par défaut (cf. SHOW_GROUND_WEAPONS_DEFAULT).
+   */
+  showGroundWeapons: boolean
+  toggleGroundWeapons: () => void
   /**
    * Calque des DRAPEAUX de capture (schéma 15). Allumé par défaut : c'est l'enjeu du mode
    * (cf. SHOW_FLAG_CARRIES_DEFAULT). Un film hors capture n'en publie aucun.
@@ -339,6 +357,10 @@ export function useReplaySettings(): ReplaySettings {
     SHOW_WEAPON_PADS_KEY,
     SHOW_WEAPON_PADS_DEFAULT,
   )
+  const [showGroundWeapons, toggleGroundWeapons] = usePersistedFlag(
+    SHOW_GROUND_WEAPONS_KEY,
+    SHOW_GROUND_WEAPONS_DEFAULT,
+  )
   const [showFlagCarries, toggleFlagCarries] = usePersistedFlag(
     SHOW_FLAG_CARRIES_KEY,
     SHOW_FLAG_CARRIES_DEFAULT,
@@ -412,6 +434,8 @@ export function useReplaySettings(): ReplaySettings {
     toggleDroppedPlacements,
     showWeaponPads,
     toggleWeaponPads,
+    showGroundWeapons,
+    toggleGroundWeapons,
     showFlagCarries,
     toggleFlagCarries,
     showVipCrown,

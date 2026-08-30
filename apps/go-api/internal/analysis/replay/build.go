@@ -77,8 +77,18 @@ type Options struct {
 	// LES STATISTIQUES VOYAGENT AVEC LA LISTE, et il le faut : elles portent le decoupage de
 	// bloc CALIBRE sur ce film. Une liste vide sans elles serait indistinguable d'un film
 	// sans equipement, alors que ce peut etre un film dont la calibration a echoue.
-	Placements     []filmdec.EquipmentPlacement
-	PlacementStats filmdec.EquipmentPlacementStats
+	// WeaponChanges : les PRISES ET LACHERS d'arme lus dans le flux delta (cf.
+	// filmdec/held_weapon_changes.go). Entree de DONNEES, comme GrappleReads. Absente =
+	// rejeu sans ramassages — jamais des ramassages devines.
+	WeaponChanges []filmdec.HeldWeaponChange
+	// EquipmentChanges / EquipmentChangeStats : les RAMASSAGES ET CONSOMMATIONS d'equipement
+	// lus dans le flux delta (cf. filmdec/equipment_changes.go). Entree de DONNEES, comme
+	// WeaponChanges. Les stats voyagent avec parce qu'elles portent le TEMOIN DE COMPLETUDE
+	// (compteur de rotation) : sans elles, la couverture ne saurait pas dire ce qui manque.
+	EquipmentChanges     []filmdec.EquipmentChange
+	EquipmentChangeStats filmdec.EquipmentChangeStats
+	Placements           []filmdec.EquipmentPlacement
+	PlacementStats       filmdec.EquipmentPlacementStats
 	// Pads : ce que le film rend sur les SOCLES — armes au sol (`ti=42`) et power-ups (`ti=37`),
 	// TROIS lectures chacun, `Scanned` disant qu'elles ont abouti (cf. build_ground_weapons.go).
 	// Entree de DONNEES, comme Placements. Absente = rejeu sans socles — jamais des socles devines.
@@ -242,6 +252,22 @@ func BuildFromFilm(matchID, titleSlug, filmDir string, opt Options) (ReplayDocum
 		loadouts = nil
 	}
 	opt.Loadouts = loadouts
+	// PRISES ET LACHERS D'ARME : le composant d'identite d'arme n'entre au masque du flux
+	// delta que lorsqu'un emplacement CHANGE (cf. filmdec/held_weapon_changes.go). Le
+	// predicat de spawn vient des loadouts qu'on vient de lire : sans lui, la PREMIERE
+	// emission d'un emplacement serait comptee comme une prise alors qu'elle peut n'etre que
+	// la re-annonce d'une arme deja portee. Absence non fatale — le rejeu sort sans
+	// ramassages, jamais avec des ramassages devines.
+	weaponChanges, wStats, err := filmdec.ScanFilmHeldWeaponChanges(filmDir, spawnSetFrom(loadouts))
+	if err != nil {
+		slog.Warn("changements d arme illisibles — rejeu sans ramassages", "err", err, "filmDir", filmDir)
+		weaponChanges = nil
+	} else {
+		slog.Info("ramassage : changements d arme lus",
+			"recordsDelta", wStats.Records, "masquePorteur", wStats.WithComponent,
+			"emissions", wStats.Emissions, "repetitions", wStats.Repeats)
+	}
+	opt.WeaponChanges = weaponChanges
 	// Inventaire complet : MÊMES images-clés, MÊME horloge, même record de biped que les armes
 	// portées. Absence non fatale — un rejeu sans grenades reste un rejeu valide.
 	inventory, invStats, err := ScanFilmKeyframeInventory(filmDir, loadoutFamilies(), 0)
@@ -286,6 +312,23 @@ func BuildFromFilm(matchID, titleSlug, filmDir string, opt Options) (ReplayDocum
 			"lues", aStats.Read, "illisibles", aStats.Unread, "sansIdentite", aStats.Gated)
 	}
 	opt.AbilityRanks = abilityRanks
+	// RAMASSAGES ET CONSOMMATIONS D'EQUIPEMENT : meme composant qu'au-dessus (i48), autre
+	// question — non plus « que porte ce joueur » mais « que vient-il de ramasser ou d'user ».
+	// Le temoin de NAISSANCE vient des positions BRUTES lues plus haut : sans lui, une
+	// reapparition equipee serait comptee comme un ramassage, ce qui double le decompte sur
+	// les modes ou les joueurs renaissent equipes. Absence non fatale.
+	equipChanges, eStats, err := filmdec.ScanFilmEquipmentChanges(filmDir, birthOfLives(positions))
+	if err != nil {
+		slog.Warn("changements d equipement illisibles — rejeu sans ramassages d equipement",
+			"err", err, "filmDir", filmDir)
+		equipChanges, eStats = nil, filmdec.EquipmentChangeStats{}
+	} else {
+		slog.Info("equipement : changements lus",
+			"emissions", eStats.Walk.Read, "vies", eStats.Lives,
+			"ramassages", eStats.Taken, "consommations", eStats.Spent,
+			"reapparitions", eStats.Spawned, "manqueesEstimees", eStats.MissedEstimate)
+	}
+	opt.EquipmentChanges, opt.EquipmentChangeStats = equipChanges, eStats
 	// Etat du camouflage : la voie i28 queue[1], lue dans les paquets DELTA, sur la MEME
 	// horloge (cf. filmdec/camo_state.go). Absence non fatale — le rejeu sort sans episodes
 	// de camouflage, jamais avec des episodes devines.
@@ -493,15 +536,34 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	}
 	// Les POSES d'equipement : famille par le manifeste du titre, poseur et cap MESURES sur le
 	// nuage NON decime (une pose dure quelques dizaines de millisecondes ; la decimation
-	// perdrait le record contemporain qui designe le poseur).
+	// perdrait le record contemporain qui designe le poseur). La FIN OBSERVEE (schema 28)
+	// vient du recensement ti=37 deja lu par la chaine des socles (opt.Pads.Powerups).
 	doc.EquipmentPlacements, doc.Coverage.Placements = buildEquipmentPlacements(
 		opt.Placements, opt.PlacementStats, sorted,
 		replayClock{origin: origin, step: step, frames: doc.FrameCount,
-			families: opt.Labels.EquipmentFamilies})
+			families: opt.Labels.EquipmentFamilies},
+		opt.Pads.Powerups.Keyframes)
 	logPlacementCoverage(doc.Coverage.Placements)
+	// LES PRISES ET LES LACHERS d'arme, sur l'axe de frames du document. Les re-annonces d'une
+	// arme deja portee au spawn sont ECARTEES ici : ce ne sont pas des ramassages.
+	var wcCov WeaponChangeCoverage
+	doc.WeaponChanges, wcCov = buildWeaponChanges(opt.WeaponChanges, origin, step)
+	doc.Coverage.WeaponChanges = &wcCov
+	slog.Info("rejeu : prises et lachers d arme",
+		"decodes", wcCov.Decoded, "publies", wcCov.Published,
+		"prises", wcCov.Taken, "lachers", wcCov.Dropped, "echanges", wcCov.Swapped,
+		"reannonces", wcCov.Restated, "avantOrigine", wcCov.BeforeOrigin)
 	// Les SOCLES — armes au sol ET power-ups —, sur le meme nuage NON decime (build_ground_weapons.go).
-	attachWeaponPads(&doc, opt.Pads, sorted,
+	gwObjs := attachWeaponPads(&doc, opt.Pads, sorted,
 		replayClock{origin: origin, step: step, frames: doc.FrameCount}, opt.Labels)
+	// LES ARMES AU SOL INDIVIDUELLES (schema 27) : la meme chaine que les socles, publiee objet
+	// par objet, LIEE aux lachers et aux prises du flux delta, et bornee par l observation —
+	// jamais par une table de durees (document_ground_weapon_items.go).
+	var gwiCov GroundWeaponItemsCoverage
+	doc.GroundWeapons, gwiCov = buildGroundWeaponItems(gwObjs, opt.WeaponChanges, sorted,
+		replayClock{origin: origin, step: step, frames: doc.FrameCount})
+	doc.Coverage.GroundWeaponItems = &gwiCov
+	logGroundWeaponItems(gwiCov)
 	// La VIE DES DRAPEAUX, sur les pistes PUBLIEES (le drapeau porte est a la position de son
 	// porteur, et c'est celle-la que le client dessine) — cf. build_objectives_live.go.
 	attachFlagCarries(&doc, opt, own, replayClock{origin: origin, step: step, frames: doc.FrameCount})
@@ -574,6 +636,14 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 		buildAbilityReads(opt.AbilityRanks, opt.Inventory, origin, step), doc.Tracks)
 	// LA PALETTE SE CLASSE AVANT DE NOMMER, et un film ambigu ne recoit AUCUN nom : le
 	// meme rang designe des capacites differentes d'une palette a l'autre.
+	// LES RAMASSAGES ET LES CONSOMMATIONS d'equipement, sur le meme axe et avec les MEMES
+	// rangs que doc.Abilities : c'est AbilityLabels qui les nomme, ou pas. Les annonces de
+	// reapparition sont ECARTEES ici — ce ne sont pas des ramassages.
+	ecChanges, ecCov := buildEquipmentChanges(
+		opt.EquipmentChanges, opt.EquipmentChangeStats, origin, step)
+	doc.EquipmentChanges = keepEquipmentChangesOfPublishedTracks(ecChanges, doc.Tracks)
+	doc.Coverage.EquipmentChanges = &ecCov
+	logEquipmentChangeCoverage(ecCov)
 	palette := classifyAbilityPalette(doc.Abilities, opt.Labels.Abilities)
 	doc.AbilityLabels = abilityLabelsUsed(doc.Abilities, palette)
 	slog.Info("rejeu : palette de capacites",

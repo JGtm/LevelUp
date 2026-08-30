@@ -17,6 +17,7 @@
 import type { MatchScoreboardRow } from '@/lib/api/types'
 import { displayPlayerName } from '@/lib/players/displayName'
 
+import { refineAbilityReading, refineWeaponsReading } from './changeRefine'
 import type { PlayerMarkKind } from './playerMarks'
 import { heldReading, isAliveAt, trackWindow } from './replayLogic'
 import type { ReplayDocumentReady, ReplayTrackReady } from './replayNormalize'
@@ -473,7 +474,17 @@ export interface LoadoutReading {
  */
 export function loadoutAt(doc: ReplayDocumentReady, slot: number, frame: number): LoadoutReading | null {
   const read = nearestReading(doc.loadouts ?? [], slot, frame)
-  return read ? { weapons: read.value.w, age: read.age } : null
+  if (!read) return null
+  // LA DATATION FINE (schéma 25) : le relevé d'image-clé donne l'ÉTAT, les changements d'arme
+  // datés donnent les TRANSITIONS survenues depuis. Ce qu'ils appliquent et ce qu'ils refusent
+  // d'appliquer est écrit dans changeRefine.ts — un artefact qui n'en porte aucun rend la
+  // lecture inchangée, c'est-à-dire exactement l'affichage d'avant.
+  return refineWeaponsReading(
+    { weapons: read.value.w, age: read.age },
+    doc.weaponChanges,
+    slot,
+    frame,
+  )
 }
 
 /**
@@ -526,12 +537,20 @@ export interface AbilityReading {
   src: string
 }
 
-/** abilityAt rend le dernier rang de capacité lu pour un SLOT, avec l'âge de la lecture. */
+/**
+ * abilityAt rend le dernier rang de capacité lu pour un SLOT, avec l'âge de la lecture.
+ *
+ * TROIS SOURCES DEPUIS LE SCHÉMA 25, ET LA PLUS RÉCENTE GAGNE : les deux canaux d'`abilities`
+ * (image-clé et paquet delta, qui disent ce que le joueur PORTE) et les CHANGEMENTS
+ * d'équipement (qui datent ce qui lui ARRIVE). Le départage — et le cas de la consommation,
+ * qui rend `null` parce que le joueur ne porte alors plus rien — vit dans changeRefine.ts.
+ */
 export function abilityAt(
   doc: ReplayDocumentReady,
   slot: number,
   frame: number,
 ): AbilityReading | null {
   const read = nearestReading(doc.abilities ?? [], slot, frame)
-  return read ? { rank: read.value.r, age: read.age, src: read.value.src } : null
+  const base = read ? { rank: read.value.r, age: read.age, src: read.value.src } : null
+  return refineAbilityReading(base, doc.equipmentChanges, slot, frame)
 }

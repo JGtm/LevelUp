@@ -123,6 +123,27 @@ type EquipmentPlacement struct {
 	// `deployed`.** Un repli sur `deployed` ferait dessiner, sur tout le parc non re-cuit,
 	// exactement le mur fantôme que ce champ existe pour supprimer.
 	Origin string `json:"origin,omitempty"`
+	// Until / UntilMax / End (schéma 28) : la FIN D'AFFICHAGE OBSERVÉE — ce que T1 n'a jamais
+	// été (T1 est la fin du MOUVEMENT, cf. son contrat). Même sémantique que
+	// `GroundWeapon.T1/T1Max/End` : pour End == "seen", la disparition est un INTERVALLE
+	// mesuré — Until est la dernière image-clé qui recense l'objet (dernière preuve de
+	// présence, à défaut sa création) et UntilMax la première qui ne le recense plus. Le
+	// client affiche plein jusqu'à Until, dégradé jusqu'à UntilMax, jamais au-delà. Pour
+	// End == "open", rien ne prouve la disparition : Until == UntilMax == dernière frame.
+	//
+	// PAS DE FIN "pickup" POUR L'ÉQUIPEMENT, et c'est une RÉFUTATION mesurée (2026-08-30,
+	// ground_link_research_test.go, mesure D) : l'équipement tombe à la mort AVEC les
+	// grenades du mort — plusieurs objets au mètre carré — et le lien spatial vers la prise
+	// i48 attrape le mauvais objet (matrice GlobalID x rang non diagonale : un même objet lié
+	// à trois rangs ; à candidat unique il reste 0 à 2 paires par film, incohérentes). Le
+	// ramassage d'équipement reste publié par `equipmentChanges`, qui dit QUI et QUAND — il
+	// ne dit juste pas QUEL objet du sol.
+	//
+	// End vide = artefact antérieur au schéma 28 : aucune fin observée, même règle de lecture
+	// qu'Origin absent.
+	Until    int    `json:"until,omitempty"`
+	UntilMax int    `json:"untilMax,omitempty"`
+	End      string `json:"end,omitempty"`
 }
 
 // EquipmentPlacementCoverage dit ce que le calque a lu et ce qu'il en a publié.
@@ -168,6 +189,10 @@ type EquipmentPlacementCoverage struct {
 	Deployed int `json:"deployed"`
 	Dropped  int `json:"dropped"`
 	Unknown  int `json:"unknown"`
+	// EndSeen / EndOpen (schema 28) : les fins d affichage observees — disparition bornee par
+	// le recensement, ou rien ne prouve la disparition. Somme == Placements sur un artefact 27.
+	EndSeen int `json:"endSeen"`
+	EndOpen int `json:"endOpen"`
 	// ByFamilyOrigin est le CROISEMENT famille x origine, clé `"<famille>/<origine>"` — la
 	// table que le lot de rendu doit voir avant de dessiner. Une clé composée plutôt qu'une
 	// carte de cartes : le contrat reste `additionalProperties: integer`, et la lecture reste
@@ -320,17 +345,19 @@ func logPlacementCoverage(c *EquipmentPlacementCoverage) {
 		"balaye", c.Scanned, "calibre", c.Calibrated, "decoupage", c.Widths, "poses", c.Placements,
 		"nommees", c.Named, "autres", c.Other,
 		"avecPoseur", c.WithOwner, "avecCap", c.WithHeading,
-		"deployees", c.Deployed, "lachees", c.Dropped, "origineInconnue", c.Unknown)
+		"deployees", c.Deployed, "lachees", c.Dropped, "origineInconnue", c.Unknown,
+		"finVue", c.EndSeen, "finOuverte", c.EndOpen)
 }
 
 // buildEquipmentPlacements assemble les poses : famille par le manifeste, poseur par
-// proximité mesurée, cap par la visée du poseur.
+// proximité mesurée, cap par la visée du poseur — et, depuis le schéma 28, la FIN OBSERVÉE
+// par le recensement des images-clés (`census`, la lecture `ti=37` de la chaîne des socles).
 //
 // `positions` doit être TRIÉ par instant (c'est le cas de `sorted` dans BuildFromFilm) : la
 // recherche du poseur est une fenêtre glissante, pas un balayage complet par pose.
 func buildEquipmentPlacements(
 	raw []filmdec.EquipmentPlacement, st filmdec.EquipmentPlacementStats,
-	positions []filmdec.BipedPosition, clock replayClock,
+	positions []filmdec.BipedPosition, clock replayClock, census filmdec.WorldObjectKeyframes,
 ) ([]EquipmentPlacement, *EquipmentPlacementCoverage) {
 	cov := &EquipmentPlacementCoverage{
 		Scanned:        st.Scanned,
@@ -348,8 +375,9 @@ func buildEquipmentPlacements(
 		return nil, cov
 	}
 	lives := equipmentLives(positions)
+	ends := placementEnds(raw, census, clock)
 	out := make([]EquipmentPlacement, 0, len(raw))
-	for _, p := range raw {
+	for i, p := range raw {
 		t0 := frameOf(p.T0US, clock.origin, clock.step)
 		t1 := frameOf(p.T1US, clock.origin, clock.step)
 		if t1 < 0 || t0 >= clock.frames {
@@ -362,6 +390,7 @@ func buildEquipmentPlacements(
 			ID:     fmt.Sprintf("0x%08x", p.GlobalID),
 			Owner:  -1,
 			Origin: OriginUnknown,
+			Until:  ends[i].until, UntilMax: ends[i].untilMax, End: ends[i].end,
 		}
 		if pl.Family == "" {
 			pl.Family = equipmentFamilyOther
@@ -380,6 +409,61 @@ func buildEquipmentPlacements(
 	})
 	tallyEquipmentPlacements(out, cov)
 	return out, cov
+}
+
+// placEnd est la fin d'affichage observée d'UNE pose, sur l'axe du document.
+type placEnd struct {
+	until, untilMax int
+	end             string
+}
+
+// placementEnds borne la disparition de chaque pose par le recensement des images-clés —
+// mêmes règles que la chaîne des socles (`gwPickupBoundsFrom`, un seul exemplaire), la vie
+// d'une clé étant fermée par la pose SUIVANTE de la même clé (le pool de clés reboucle).
+//
+// Rendu INDEXÉ sur `raw` : l'appelant filtre les poses hors axe après coup, l'index doit
+// survivre au filtre.
+func placementEnds(
+	raw []filmdec.EquipmentPlacement, census filmdec.WorldObjectKeyframes, clock replayClock,
+) []placEnd {
+	byLife := map[filmdec.EquipmentLifeKey][]int{}
+	for i, p := range raw {
+		byLife[p.Life] = append(byLife[p.Life], i)
+	}
+	// +1 : la fenêtre de recensement (`gwPickupSeenWithin`) est EXCLUSIVE sur sa borne haute.
+	// À la fin de film exacte, la DERNIÈRE image-clé serait retranchée et une pose encore
+	// recensée à cette image-clé sortirait « disparue » au lieu d'« ouverte ».
+	filmEnd := census.LastTimeUS() + 1
+	out := make([]placEnd, len(raw))
+	for life, idxs := range byLife {
+		sort.Slice(idxs, func(a, b int) bool { return raw[idxs[a]].T0US < raw[idxs[b]].T0US })
+		for j, i := range idxs {
+			lifeEnd := filmEnd
+			if j+1 < len(idxs) {
+				lifeEnd = raw[idxs[j+1]].T0US
+			}
+			seen := gwPickupSeenWithin(census.SeenUS[life], raw[i].T0US, lifeEnd)
+			b := gwPickupBoundsFrom(raw[i].T0US, lifeEnd, filmEnd, census.TimesUS, seen)
+			switch {
+			case b.NeverPicked || b.NoLaterKF:
+				out[i] = placEnd{
+					until: clock.frames - 1, untilMax: clock.frames - 1,
+					end: GroundWeaponEndOpen,
+				}
+			default:
+				e := placEnd{
+					until:    clampFrame(frameOf(b.LowUS, clock.origin, clock.step), clock.frames),
+					untilMax: clampFrame(frameOf(b.HighUS, clock.origin, clock.step), clock.frames),
+					end:      GroundWeaponEndSeen,
+				}
+				if e.untilMax < e.until {
+					e.untilMax = e.until
+				}
+				out[i] = e
+			}
+		}
+	}
+	return out
 }
 
 // replayClock porte l'axe de temps et la table de familles du document (règle des
@@ -423,6 +507,12 @@ func tallyEquipmentPlacements(out []EquipmentPlacement, cov *EquipmentPlacementC
 			cov.Dropped++
 		default:
 			cov.Unknown++
+		}
+		switch p.End {
+		case GroundWeaponEndSeen:
+			cov.EndSeen++
+		case GroundWeaponEndOpen:
+			cov.EndOpen++
 		}
 	}
 }

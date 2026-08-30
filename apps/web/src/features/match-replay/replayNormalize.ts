@@ -103,11 +103,13 @@ export type ReplayZoneStateReady = Filled<ReplayZoneState, 'spans' | 'gauge'>
 export type ReplayDocumentReady = Omit<
   ReplayDocument,
   | 'abilities'
+  | 'equipmentChanges'
   | 'equipmentEpisodes'
   | 'equipmentPlacements'
   | 'flagCarries'
   | 'geometry'
   | 'grappleLines'
+  | 'groundWeapons'
   | 'grenadeLabels'
   | 'grenadeReads'
   | 'grenades'
@@ -125,13 +127,35 @@ export type ReplayDocumentReady = Omit<
   | 'structure'
   | 'tracks'
   | 'vipCrown'
+  | 'weaponChanges'
   | 'weaponPads'
   | 'zoneStates'
 > & {
   abilities: NonNullable<ReplayDocument['abilities']>
+  /**
+   * LES RAMASSAGES ET LES CONSOMMATIONS D'ÉQUIPEMENT (schéma 26) : ce qui ARRIVE à un joueur,
+   * là où `abilities` dit ce qu'il PORTE. Datés à la milliseconde puis projetés sur l'axe de
+   * frames — c'est la source FINE qui affine `abilityAt` entre deux images-clés. Vide =
+   * artefact antérieur au schéma 26, ou film qui n'en porte aucun.
+   */
+  equipmentChanges: NonNullable<ReplayDocument['equipmentChanges']>
   equipmentEpisodes: NonNullable<ReplayDocument['equipmentEpisodes']>
   equipmentPlacements: NonNullable<ReplayDocument['equipmentPlacements']>
   flagCarries: ReplayFlagCarryReady[]
+  /**
+   * LES ARMES AU SOL individuelles (schéma 27) : une entrée par objet qui a BOUGÉ, avec sa
+   * position de repos et ses bornes d'affichage OBSERVÉES. Vide = artefact antérieur au schéma
+   * 26, ou film dont aucune arme ne tombe — `coverage.groundWeaponItems` distingue les deux.
+   * Les armes de SOCLE restent au calque `weaponPads` : les publier ici en double ferait deux
+   * vérités pour un même objet.
+   */
+  groundWeapons: NonNullable<ReplayDocument['groundWeapons']>
+  /**
+   * LES PRISES ET LES LÂCHERS D'ARME (schéma 25) : qui, quand, quelle arme. Datés à la
+   * milliseconde — c'est la source FINE qui affine `loadoutAt` entre deux images-clés. Vide =
+   * artefact antérieur au schéma 25, ou film qui n'en porte aucun.
+   */
+  weaponChanges: NonNullable<ReplayDocument['weaponChanges']>
   /**
    * LES OBJETS D'OBJECTIF LIBRES (schéma 21) : où se trouve le crâne d'Oddball quand PERSONNE
    * ne le porte. Vide = artefact antérieur au schéma 21, mode sans objet porté, ou film qui n'en
@@ -205,6 +229,19 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     // ce calque porte le RANG complet, et chaque lecture dit par quel canal elle est venue.
     // Absent = aucune lecture, la fiche montre l'inventaire sans capacité nommée.
     abilities: raw.abilities ?? [],
+    // LES RAMASSAGES ET LES CONSOMMATIONS d'équipement (schéma 26) : la source FINE de datation
+    // de ce que porte un joueur. `abilities` reste la LECTURE (ce qu'il porte, échantillonné) ;
+    // ceci est l'ÉVÉNEMENT (ce qui lui arrive, daté). Absent = artefact antérieur, ou film qui
+    // n'en porte aucun — `coverage.equipmentChanges` distingue les deux.
+    equipmentChanges: raw.equipmentChanges ?? [],
+    // LES PRISES ET LES LÂCHERS D'ARME (schéma 25) : même rapport à `loadouts` que ci-dessus —
+    // la lecture d'image-clé dit l'ÉTAT, ces événements datent le CHANGEMENT. Absent = artefact
+    // antérieur, ou film qui n'en porte aucun (`coverage.weaponChanges` distingue les deux).
+    weaponChanges: raw.weaponChanges ?? [],
+    // LES ARMES AU SOL individuelles (schéma 27) : une entrée par objet qui a bougé, bornée par
+    // l'OBSERVATION. Absent = artefact antérieur, ou film dont aucune arme ne tombe —
+    // `coverage.groundWeaponItems` distingue les deux. Aucun tableau imbriqué : l'objet est plat.
+    groundWeapons: raw.groundWeapons ?? [],
     // Les épisodes d'ÉTAT ACTIF d'équipement (schéma 7) : camouflage et surbouclier,
     // datés par vie — les deux seules familles dont l'état est MESURÉ. Absent = aucune
     // vie publiée n'en porte : les fiches restent sobres, jamais un effet deviné.

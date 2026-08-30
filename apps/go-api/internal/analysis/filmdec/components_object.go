@@ -341,12 +341,34 @@ func readOpt6Signed(br *BitReader) int8 {
 // variant itself is load-bearing for weapon attribution.
 // Le drapeau « présent » n'est pas rendu : noVariant (0xFFFFFFFF) EST le témoin
 // d'absence, et c'est déjà celui que le reste du paquet teste.
+// heldWeaponHook, si non nil, reçoit CHAQUE lecture d'i43..i46 (l'arme portée), y compris
+// les lectures d'emplacement ABSENT (variant == noVariant) : c'est la transition
+// présent/absent qui porte le lâcher, la retirer rendrait le signal borgne. Global de
+// paquet, donc UN SEUL décodage filmdec à la fois par process — même règle que les autres
+// sondes (SetAbilitySetHook, SetObjectParentStateHook, SetGrenadeCountsHook).
+var heldWeaponHook func(idHigh, idLow uint32)
+
+// SetHeldWeaponHook installe (ou retire, avec nil) la sonde d'i43..i46. L'appelant restaure
+// la sonde précédente. AUCUN bit lu ne change : la sonde est appelée en `defer`, après coup,
+// et le déser ne branche jamais sur elle.
+func SetHeldWeaponHook(h func(idHigh, idLow uint32)) { heldWeaponHook = h }
+
+// publishHeldWeapon transmet la lecture à la sonde, si elle est posée.
+func publishHeldWeapon(idHigh, idLow *uint32) {
+	if heldWeaponHook == nil {
+		return
+	}
+	heldWeaponHook(*idHigh, *idLow)
+}
+
 func consumeWeaponStateTypeInfoVariant(br *BitReader) (variant uint32) {
+	idHigh := noVariant
+	defer publishHeldWeapon(&idHigh, &variant)
 	if !br.ReadBit() { // FUN_14080d69c gate
 		consumeWeaponStateTail(br) // tail still runs (FUN_1407f08bc + FUN_1406d01fc)
 		return noVariant
 	}
-	br.ReadBits(32)                   // FUN_14080d6f0 optional local-handle id
+	idHigh = uint32(br.ReadBits(32))  // FUN_14080d6f0 : la MOITIE HAUTE de l id 64 bits
 	variant = uint32(br.ReadBits(32)) // FUN_14080dec4 "variant-name" == WEAPON
 	br.ReadBits(12)                   // comp+0x7c inline R(12)
 	consumeVarWidthMinus1(br, 7)      // FUN_140e9fadc R(7)

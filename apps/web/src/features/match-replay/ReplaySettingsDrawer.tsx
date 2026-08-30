@@ -40,6 +40,7 @@ import type { ReplaySound } from './useReplaySound'
 export type { ReplayHeatmapControls } from './ReplayHeatmapSection'
 export type {
   ReplayFlagControls,
+  ReplayGroundWeaponControls,
   ReplayPlacementControls,
   ReplaySkullCarrierControls,
   ReplayVipCrownControls,
@@ -48,6 +49,7 @@ export type {
 
 import type {
   ReplayFlagControls,
+  ReplayGroundWeaponControls,
   ReplayPlacementControls,
   ReplaySkullCarrierControls,
   ReplayVipCrownControls,
@@ -81,6 +83,8 @@ interface ReplaySettingsDrawerProps {
   placements: ReplayPlacementControls
   /** Les EMPLACEMENTS D'ARME (schéma 11) : un seul calque, allumé par défaut. */
   weaponPads: ReplayWeaponPadControls
+  /** Les ARMES AU SOL (schéma 27) : un seul calque, allumé par défaut. */
+  groundWeapons: ReplayGroundWeaponControls
   /** Les DRAPEAUX de capture (schéma 15) : un seul calque, allumé par défaut. */
   flagCarries: ReplayFlagControls
   /** La COURONNE VIP (schéma 22) : un seul calque, allumé par défaut. */
@@ -300,6 +304,7 @@ export function ReplaySettingsDrawer({
   zonesAvailable,
   placements,
   weaponPads,
+  groundWeapons,
   flagCarries,
   vipCrown,
   skullCarrier,
@@ -352,6 +357,7 @@ export function ReplaySettingsDrawer({
         zonesAvailable={zonesAvailable}
         placements={placements}
         weaponPads={weaponPads}
+        groundWeapons={groundWeapons}
         flagCarries={flagCarries}
         vipCrown={vipCrown}
         skullCarrier={skullCarrier}
