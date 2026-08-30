@@ -340,18 +340,22 @@ func gwPadsStdDev(v []float64) float64 {
 // MESURE (plan, item 1.1) : 1 275 `dropped` sur 1 790 apparitions retenues, part maximale sur un
 // Super Fiesta (82,3 %) et minimale sur les arènes classiques (62,3 % et 64,9 %) — le témoin que
 // le plan avait écrit. `dropped` implique une vie delta 1 275 fois sur 1 275.
-func gwPadsClass(lives map[uint32][]equipLife, a gwPadApparition) string {
-	for _, vs := range lives {
+// LE SECOND RETOUR EST LE SLOT DE LA VIE QUI S'ACHÈVE — le LÂCHEUR (-1 pour `spawned`). Il
+// existait implicitement depuis le début : la règle TROUVE cette vie pour classer, elle la
+// jetait. Le calque des armes au sol (schéma 26) le publie ; le nommer ici plutôt que par un
+// second appariement garantit que le lâcheur nommé est EXACTEMENT celui qui a fait la classe.
+func gwPadsClass(lives map[uint32][]equipLife, a gwPadApparition) (string, int) {
+	for slot, vs := range lives {
 		for _, v := range vs {
 			if equipTimeGap(a.TUS, v.to) > originDropWindowUS {
 				continue
 			}
 			if dist3([3]float32{a.X, a.Y, a.Z}, [3]float32{v.x, v.y, v.z}) < originDropMaxDist {
-				return gwClassDropped
+				return gwClassDropped, int(slot)
 			}
 		}
 	}
-	return gwClassSpawned
+	return gwClassSpawned, -1
 }
 
 // gwPadsIdentity rend le mot MPP de 32 bits du record de création — l'identité de l'arme.

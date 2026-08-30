@@ -177,23 +177,27 @@ type padChainCounts struct {
 //
 // `positions` doit être TRIÉ par instant (c'est le cas de `sorted` dans BuildFromPositions) : la
 // datation d'une disparition est une recherche dichotomique sur cette suite.
+// LE QUATRIÈME RETOUR est la liste des OBJETS INDIVIDUELS de la voie des armes, telle que
+// `padObjects` l'a bornée et datée. Les socles n'en publient que les grappes récurrentes ; le
+// calque des armes au sol (`document_ground_weapon_items.go`, schéma 26) publie les vies
+// individuelles — les deux consommateurs partagent LA MÊME chaîne au lieu d'en dérouler deux.
 func buildWeaponPads(
 	scans PadScans, positions []filmdec.BipedPosition, clock replayClock, cat padCatalogs,
-) ([]WeaponPad, []PadPickup, *GroundWeaponCoverage) {
+) ([]WeaponPad, []PadPickup, *GroundWeaponCoverage, []gwPickupObject) {
 	cov := &GroundWeaponCoverage{
 		Scanned: scans.Weapons.Scanned, Slots: scans.Weapons.Stats.Slots,
 		Anchors: scans.Weapons.Stats.Anchors, Accepted: scans.Weapons.Stats.Accepted,
 		PowerupScanned: scans.Powerups.Scanned, PowerupAccepted: scans.Powerups.Stats.Accepted,
 	}
 	if clock.step == 0 {
-		return nil, nil, cov
+		return nil, nil, cov, nil
 	}
 	in := padChainInputs{lives: equipmentLives(positions), positions: positions, clock: clock}
-	pads, picks, wc := buildPadChain(scans.Weapons, weaponPadRule(cat.ObjectiveObjects), in, cov)
+	pads, picks, wc, wObjs := buildPadChain(scans.Weapons, weaponPadRule(cat.ObjectiveObjects), in, cov)
 	cov.Kept, cov.Rejected, cov.Objectives = wc.kept, wc.rejected, wc.objectives
 	cov.Dropped, cov.Spawned, cov.AtRest = wc.dropped, wc.spawned, wc.atRest
 	cov.Clusters, cov.Pads = wc.clusters, wc.pads
-	pu, puPicks, pc := buildPadChain(
+	pu, puPicks, pc, _ := buildPadChain(
 		scans.Powerups, powerupPadRule(cat.EquipmentFamilies), in, cov)
 	cov.PowerupKept, cov.PowerupPads = pc.kept, pc.pads
 	for i := range puPicks {
@@ -201,9 +205,9 @@ func buildWeaponPads(
 	}
 	out := append(pads, pu...)
 	if len(out) == 0 {
-		return nil, nil, cov
+		return nil, nil, cov, wObjs
 	}
-	return out, append(picks, puPicks...), cov
+	return out, append(picks, puPicks...), cov, wObjs
 }
 
 // buildPadChain déroule UNE voie : identité, classement, grappes, socles, occupations.
@@ -212,10 +216,10 @@ func buildWeaponPads(
 // reste sort par `padChainCounts`, que l'appelant ventile.
 func buildPadChain(
 	scan WorldObjectScan, rule padRule, in padChainInputs, cov *GroundWeaponCoverage,
-) ([]WeaponPad, []PadPickup, padChainCounts) {
+) ([]WeaponPad, []PadPickup, padChainCounts, []gwPickupObject) {
 	var n padChainCounts
 	if !scan.Scanned {
-		return nil, nil, n
+		return nil, nil, n, nil
 	}
 	n.accepted = scan.Stats.Accepted
 	// `rejected` est COMPTÉ sur le chemin de rejet, jamais déduit d'`Accepted` : c'est ce qui
@@ -243,7 +247,7 @@ func buildPadChain(
 		out, picks = append(out, pad), append(picks, padPicks...)
 	}
 	n.pads = len(out)
-	return out, picks, n
+	return out, picks, n, objs
 }
 
 // gwAtRestOf sélectionne les apparitions « apparues au repos » — `spawned` SANS vie delta — et

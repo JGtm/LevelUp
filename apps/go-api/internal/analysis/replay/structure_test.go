@@ -408,8 +408,22 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   ramassage (médiane 16-18 s sur deux films d'arène, 0 % sous la seconde). Les
 	//   réapparitions sont ÉCARTÉES : les publier fausserait le décompte du simple au double.
 	//   Détail : internal/analysis/replay/document_equipment_changes.go.
-	if SchemaVersion != 25 {
-		t.Fatalf("SchemaVersion = %d, attendu 25 : incrémenter exige une raison écrite ci-dessus "+
+	//
+	// v26 — LES ARMES AU SOL OBSERVÉES (`groundWeapons`), ET LE RETRAIT DE LA MINUTERIE. La borne
+	//   `until` du schéma 24 était une durée de TABLE (10/20/30 s) — l'utilisateur l'a refusée :
+	//   « je veux juste voir quand elle est au sol et quand elle disparaît ». Le calque publie
+	//   l'OBJET : position de repos, origine mesurée (dropped/spawned, la règle des poses), fin
+	//   observée. TROIS FINS, TROIS PREUVES : `pickup` — une prise du flux delta tombe dans la
+	//   fenêtre de vie à moins de 1,5 m (mesure fondatrice du 2026-08-30 : l'objet le plus proche
+	//   d'une prise est à 0,61-0,75 m en médiane, témoin 4-7 m ; c'est la condition de reprise du
+	//   REGISTRE_REPORTS levée par le canal du schéma 24) ; `seen` — dernière image-clé qui le
+	//   recense, la disparition est dans les ~20 s suivantes non observées ; `open` — rien ne
+	//   prouve la disparition. Les armes de socle (jamais bougé) restent au calque `weaponPads` :
+	//   deux vérités pour un même objet seraient pires qu'une. Le champ `until` de
+	//   `weaponChanges` est RETIRÉ avec sa table — un artefact 25 porte encore la convention.
+	//   Détail : internal/analysis/replay/document_ground_weapon_items.go.
+	if SchemaVersion != 26 {
+		t.Fatalf("SchemaVersion = %d, attendu 26 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

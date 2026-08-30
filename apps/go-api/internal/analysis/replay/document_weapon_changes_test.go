@@ -5,8 +5,11 @@ package replay
 //
 // POURQUOI CES TESTS EXISTENT. Le golden d'assemblage ne couvre PAS ce calque : son fixture
 // d'entrées a été figé avant lui et ne porte aucun changement d'arme. Sans les tests ci-dessous,
-// la couche de projection — filtrage des ré-annonces, conversion en frames, borne d'affichage —
-// n'aurait aucune couverture de non-régression.
+// la couche de projection — filtrage des ré-annonces, conversion en frames — n'aurait aucune
+// couverture de non-régression.
+//
+// LES TESTS DE LA BORNE `until` ONT ÉTÉ RETIRÉS AVEC ELLE (schéma 26) : l'affichage de l'arme
+// au sol vit dans `groundWeapons`, borné par l'observation, et ses tests avec lui.
 
 import (
 	"testing"
@@ -27,7 +30,7 @@ func TestBuildWeaponChangesEcarteLesReannonces(t *testing.T) {
 		{TimestampUS: wcOrigin + 500_000, Slot: 7, Family: 0x11223344,
 			Previous: filmdec.NoWeaponVariant, Kind: filmdec.HeldWeaponRestated},
 	}
-	got, cov := buildWeaponChanges(in, wcOrigin, wcStep, 0)
+	got, cov := buildWeaponChanges(in, wcOrigin, wcStep)
 	if len(got) != 1 {
 		t.Fatalf("publiés = %d, attendu 1 : une ré-annonce d'arme déjà portée au spawn n'est "+
 			"PAS un ramassage et ne doit pas gonfler le compte", len(got))
@@ -45,21 +48,20 @@ func TestBuildWeaponChangesEcarteAvantOrigine(t *testing.T) {
 	in := []filmdec.HeldWeaponChange{
 		{TimestampUS: wcOrigin - 1, Slot: 3, Family: 0xAABBCCDD, Kind: filmdec.HeldWeaponTaken},
 	}
-	got, cov := buildWeaponChanges(in, wcOrigin, wcStep, 0)
+	got, cov := buildWeaponChanges(in, wcOrigin, wcStep)
 	if len(got) != 0 || cov.BeforeOrigin != 1 {
 		t.Fatalf("publiés=%d beforeOrigin=%d : un rejeu ne montre pas ce qui précède sa "+
 			"première frame", len(got), cov.BeforeOrigin)
 	}
 }
 
-func TestBuildWeaponChangesFrameEtBorneDAffichage(t *testing.T) {
+func TestBuildWeaponChangesFrameEtLacher(t *testing.T) {
 	// Le lâcher tombe à 2 s après l'origine, soit la frame 20 au pas de 100 ms.
-	const gravityHammer = 0x2C0E7F6C // hors catalogue de test : la table par défaut s'applique
 	in := []filmdec.HeldWeaponChange{
 		{TimestampUS: wcOrigin + 2_000_000, Slot: 5, Family: filmdec.NoWeaponVariant,
-			Previous: gravityHammer, Kind: filmdec.HeldWeaponDropped},
+			Previous: 0x2C0E7F6C, Kind: filmdec.HeldWeaponDropped},
 	}
-	got, _ := buildWeaponChanges(in, wcOrigin, wcStep, 0)
+	got, cov := buildWeaponChanges(in, wcOrigin, wcStep)
 	if len(got) != 1 {
 		t.Fatalf("publiés = %d, attendu 1", len(got))
 	}
@@ -69,45 +71,12 @@ func TestBuildWeaponChangesFrameEtBorneDAffichage(t *testing.T) {
 	if got[0].W != "" {
 		t.Errorf("W = %q, attendu vide : sur un lâcher l'emplacement n'a plus d'arme", got[0].W)
 	}
-	want := 20 + weaponDespawnDefaultSeconds*10
-	if got[0].Until != want {
-		t.Errorf("Until = %d, attendu %d (frame du lâcher + durée d'affichage)", got[0].Until, want)
+	if got[0].From != "2c0e7f6c" {
+		t.Errorf("From = %q, attendu la famille lâchée : c'est elle qui nomme l'arme au sol",
+			got[0].From)
 	}
-}
-
-func TestBuildWeaponChangesBorneAuDernierFrame(t *testing.T) {
-	in := []filmdec.HeldWeaponChange{
-		{TimestampUS: wcOrigin, Slot: 5, Family: filmdec.NoWeaponVariant, Previous: 0xDEADBEEF,
-			Kind: filmdec.HeldWeaponDropped},
-	}
-	got, _ := buildWeaponChanges(in, wcOrigin, wcStep, 4)
-	if len(got) != 1 || got[0].Until != 4 {
-		t.Fatalf("Until = %v, attendu 4 : la borne d'affichage ne dépasse jamais la dernière "+
-			"frame du document", got)
-	}
-}
-
-func TestBuildWeaponChangesLacherSansPrecedentNaPasDeBorne(t *testing.T) {
-	// Un lâcher dont l'arme précédente est inconnue ne peut pas nommer de durée d'affichage :
-	// publier une borne reviendrait à choisir une durée au hasard.
-	in := []filmdec.HeldWeaponChange{
-		{TimestampUS: wcOrigin, Slot: 5, Family: filmdec.NoWeaponVariant,
-			Previous: filmdec.NoWeaponVariant, Kind: filmdec.HeldWeaponDropped},
-	}
-	got, _ := buildWeaponChanges(in, wcOrigin, wcStep, 0)
-	if len(got) != 1 {
-		t.Fatalf("publiés = %d, attendu 1 : le lâcher reste publié, seule sa borne manque", len(got))
-	}
-	if got[0].Until != 0 {
-		t.Errorf("Until = %d, attendu 0 : sans arme précédente, aucune durée n'est nommable",
-			got[0].Until)
-	}
-}
-
-func TestDespawnSecondsFamilleInconnueRendLaPlusCourte(t *testing.T) {
-	if s := despawnSecondsFor(0xFFFFFFFE); s != weaponDespawnDefaultSeconds {
-		t.Errorf("durée = %d, attendu %d : une famille hors table s'efface TÔT plutôt que de "+
-			"rester affichée sur une carte où elle n'est peut-être plus", s, weaponDespawnDefaultSeconds)
+	if cov.Dropped != 1 {
+		t.Errorf("couverture dropped = %d, attendu 1", cov.Dropped)
 	}
 }
 

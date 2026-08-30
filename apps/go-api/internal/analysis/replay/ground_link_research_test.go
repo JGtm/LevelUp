@@ -98,9 +98,10 @@ func glAt(pos map[uint32][]filmdec.BipedPosition, slot uint32, at uint64) (filmd
 	return best, ok && bestGap <= 300_000
 }
 
+// glDist est l'adaptateur d'une ligne vers `dist3` (geometry.go) — la formule ne s'écrit
+// qu'une fois dans le paquet, et son garde-rail y veille.
 func glDist(ax, ay, az, bx, by, bz float32) float64 {
-	dx, dy, dz := float64(ax-bx), float64(ay-by), float64(az-bz)
-	return math.Sqrt(dx*dx + dy*dy + dz*dz)
+	return dist3([3]float32{ax, ay, az}, [3]float32{bx, by, bz})
 }
 
 // glLife est la fenetre de presence d'une vie d'objet au sol, vue des images-cles.

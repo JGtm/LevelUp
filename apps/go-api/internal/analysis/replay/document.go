@@ -270,7 +270,18 @@ package replay
 // la première émission d'une vie : `EquipmentChange.From` vaut alors `NoAbilityRank`, et le
 // film ne dit rien de plus.
 
-const SchemaVersion = 25
+// CE QUE LA VERSION 26 PORTE, ET CE QU'ELLE RETIRE. Les ARMES AU SOL individuelles
+// (`groundWeapons`) : chaque objet arme qui a bougé — l'arme d'un mort, l'arme de départ
+// abandonnée — avec sa position de repos, son origine mesurée, et une fin OBSERVÉE : `pickup`
+// (une prise du flux delta tombe dans sa fenêtre de vie à moins de 1,5 m — mesure fondatrice
+// du 2026-08-30 : l'objet le plus proche d'une prise est à 0,61-0,75 m en médiane contre 4-7 m
+// pour un témoin), `seen` (dernière image-clé qui le recense — la disparition est dans les
+// ~20 s suivantes), ou `open` (rien ne prouve sa disparition). EN CONTREPARTIE, LE CHAMP
+// `until` de `weaponChanges` (v24) EST RETIRÉ : c'était une durée de table (10/20/30 s), une
+// convention refusée par l'utilisateur — « je veux juste voir quand elle est au sol et quand
+// elle disparaît ». Un artefact 25 doit se lire « à re-cuire » : il porte encore la convention
+// et aucune arme au sol observée.
+const SchemaVersion = 26
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {
@@ -401,6 +412,12 @@ type ReplayDocument struct {
 	// ÉCARTÉES : ce ne sont pas des ramassages, et ce que le joueur porte à sa naissance est
 	// déjà dans `abilities`. Absent si le film n'en porte aucun.
 	EquipmentChanges []EquipmentChange `json:"equipmentChanges,omitempty"`
+	// GroundWeapons est la liste des ARMES AU SOL individuelles (cf.
+	// document_ground_weapon_items.go) : où chacune gît, de quand à quand l'afficher, qui l'a
+	// lâchée et qui l'a prise quand le flux delta le dit. Les fins sont OBSERVÉES (ramassage
+	// daté, ou recensement des images-clés) — jamais une durée de table. Les armes de socle
+	// restent au calque `weaponPads`. Absent si le film n'en porte aucune.
+	GroundWeapons []GroundWeapon `json:"groundWeapons,omitempty"`
 	// WeaponPads (les SOCLES D'ARME du match) et PadPickups (leurs occupations ACHEVÉES) : une
 	// donnée de MATCH et non de carte, publiée seulement là où la récurrence est mesurée.
 	// Forme, chronique et refus de publication : document_ground_weapons.go.

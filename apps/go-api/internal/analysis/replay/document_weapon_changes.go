@@ -17,8 +17,8 @@ package replay
 //     SOUS son propre témoin), son attachement au porteur (1/21), et l'appariement par les
 //     armes (5 à 12 % de gagnants nets contre 70 % exigés, avec 20 à 28 % de contradictions
 //     physiques). Le lâcher, LUI, fait naître une entité arme-au-sol dans le MÊME paquet.
-//   - la FIN DE VIE réelle de l'arme lâchée. Voir `WeaponChange.Until` : c'est une convention,
-//     pas une mesure.
+//   - la FIN DE VIE de l'arme lâchée : elle vit dans `groundWeapons` (schéma 26), bornée par
+//     l'observation — plus aucune durée conventionnelle ici.
 //   - la COMPLÉTUDE. Le canal est JUSTE — sur 5 627 tirs de trois films, il ne retire jamais
 //     une arme encore utilisée — mais rien ne prouve qu'il voit TOUTES les prises. Les oracles
 //     hors ligne disponibles sont soit trop grossiers (images-clés, 20 s), soit saturés (l'union
@@ -35,7 +35,6 @@ import (
 	"fmt"
 
 	"levelup/go-api/internal/analysis/filmdec"
-	"levelup/go-api/internal/analysis/weaponv3"
 )
 
 // WeaponChangeKind qualifie un changement d'arme en main, tel que le document le publie.
@@ -69,57 +68,12 @@ type WeaponChange struct {
 	// convention que `Loadout.W`. Vide sur un lâcher : l'emplacement n'a plus d'arme.
 	W string `json:"w,omitempty"`
 	// From est la famille précédente, quand elle est connue. Vide sinon.
+	//
+	// LE CHAMP `until` DU SCHÉMA 24 A ÉTÉ RETIRÉ AU SCHÉMA 26 : c'était une durée d'affichage
+	// tirée d'une table (10/20/30 s), une convention. L'affichage de l'arme au sol vit
+	// désormais dans `groundWeapons` (document_ground_weapon_items.go), borné par
+	// l'OBSERVATION — le ramassage daté ou le recensement des images-clés.
 	From string `json:"from,omitempty"`
-	// Until, sur un LÂCHER SEULEMENT, est la frame jusqu'à laquelle le client peut montrer
-	// l'arme au sol.
-	//
-	// C'EST UNE CONVENTION, PAS UNE MESURE, et le champ ne doit jamais être lu autrement.
-	// Le jeu n'applique aucune minuterie inconditionnelle : le compte à rebours ne démarre
-	// que lorsqu'un joueur s'éloigne sans regarder l'arme, il se gèle s'il revient, et un
-	// joueur qui reste à proximité empêche la disparition INDÉFINIMENT
-	// (cf. .ai/V7.5/reference/DESPAWN_ARMES_HALO_INFINITE.md). Mesure à l'appui : seules 5 à
-	// 14 % des armes au sol reçoivent un événement de disparition dans le film, et les durées
-	// observées n'ont aucune cohérence d'un match à l'autre — ce n'est pas un défaut de
-	// lecture, c'est le comportement du jeu.
-	//
-	// `Until` applique donc la durée PUBLIÉE par arme (10, 20 ou 30 s) comme une borne
-	// d'affichage raisonnable. Elle sera parfois trop courte — l'arme était encore là. Elle
-	// n'invente rien qu'on aurait pu mesurer : la mesure n'existe pas.
-	Until int `json:"until,omitempty"`
-}
-
-// weaponDespawnSeconds donne la durée de despawn PUBLIÉE par le jeu, par nom canonique d'arme.
-//
-// Source : guide communautaire relevé le 2026-08-30
-// (.ai/V7.5/reference/DESPAWN_ARMES_HALO_INFINITE.md). NON OFFICIELLE — repère d'affichage,
-// jamais vérité-terrain pour valider un décodage. Les variantes cosmétiques partagent la durée
-// de leur canon, et c'est cohérent avec notre clé : on publie la FAMILLE, pas la variante.
-var weaponDespawnSeconds = map[string]int{
-	// 30 s — les armes de puissance.
-	"S7 Sniper": 30, "Skewer": 30, "M41 SPNKr": 30, "Cindershot": 30,
-	"Gravity Hammer": 30, "Energy Sword": 30, "Ravager": 30, "Needler": 30,
-	// 20 s.
-	"Heatwave": 20, "MLRS-2 Hydra": 20,
-	// 10 s — les armes courantes.
-	"Shock Rifle": 10, "Stalker Rifle": 10, "Mangler": 10, "CQS48 Bulldog": 10,
-	"Sentinel Beam": 10, "BR75": 10, "VK78 Commando": 10, "MA40 AR": 10,
-	"MA5K Avenger": 10, "Mk51 Sidekick": 10, "Disruptor": 10, "Pulse Carbine": 10,
-	"Plasma Pistol": 10,
-}
-
-// weaponDespawnDefaultSeconds est la durée retenue pour une famille hors table : la plus
-// COURTE des durées publiées. Une arme inconnue s'efface donc tôt plutôt que de rester
-// affichée sur une carte où elle n'est peut-être plus.
-const weaponDespawnDefaultSeconds = 10
-
-// despawnSecondsFor rend la durée d'affichage d'une arme lâchée, par sa famille.
-func despawnSecondsFor(family uint32) int {
-	if name, ok := weaponv3.KnownWeaponHigh32[family]; ok {
-		if s, ok := weaponDespawnSeconds[name]; ok {
-			return s
-		}
-	}
-	return weaponDespawnDefaultSeconds
 }
 
 // buildWeaponChanges projette les changements lus dans le film sur l'axe de frames du document.
@@ -128,7 +82,7 @@ func despawnSecondsFor(family uint32) int {
 // antérieurs à l'origine du document le sont aussi — un rejeu ne montre pas ce qui précède sa
 // première frame.
 func buildWeaponChanges(
-	changes []filmdec.HeldWeaponChange, origin uint64, step uint64, endFrame int,
+	changes []filmdec.HeldWeaponChange, origin uint64, step uint64,
 ) ([]WeaponChange, WeaponChangeCoverage) {
 	var cov WeaponChangeCoverage
 	cov.Decoded = len(changes)
@@ -152,13 +106,6 @@ func buildWeaponChanges(
 		}
 		if c.Previous != filmdec.NoWeaponVariant {
 			w.From = fmt.Sprintf("%08x", c.Previous)
-		}
-		if w.Kind == WeaponDropped && c.Previous != filmdec.NoWeaponVariant {
-			until := frame + int(uint64(despawnSecondsFor(c.Previous))*1_000_000/step)
-			if endFrame > 0 && until > endFrame {
-				until = endFrame
-			}
-			w.Until = until
 		}
 		out = append(out, w)
 		cov.Published++
