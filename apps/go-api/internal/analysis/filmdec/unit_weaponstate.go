@@ -65,15 +65,20 @@ func consumeID2(br *BitReader) {
 // is DAT_144706100 = 0x1FFF -> W = bitLen(0x1FFF) = 13, so the common cost is
 // R(13)+R(2) = 15 bits; per-slot ranges (DAT_1451f98d0 table, all-zero in retail)
 // would shorten W. range is supplied by the caller's descriptor.
-func readVarWidthInt(br *BitReader, rangeMax uint32, probe bool) {
+// LES RETOURS ONT ÉTÉ AJOUTÉS LE 2026-08-30 (sonde i26) SANS CHANGER UN BIT : la valeur et
+// les deux bits de queue étaient consommés puis jetés. Avec le rangeMax par défaut (0x1FFF),
+// la valeur fait 13 bits et la queue 2 — les largeurs EXACTES d'un slot d'entité et d'une
+// génération : c'est ce que la sonde d'i26 va vérifier.
+func readVarWidthInt(br *BitReader, rangeMax uint32, probe bool) (val uint64, tail uint64) {
 	if probe {
 		br.ReadBit() // FUN_1406cf008 probe bit (param_3==1 only)
 	}
 	w := bitLen(rangeMax) // FUN_1406d310c
 	if w > 0 {
-		br.ReadBits(uint(w))
+		val = br.ReadBits(uint(w))
 	}
-	br.ReadBits(2) // 2 trailing bits
+	tail = br.ReadBits(2) // 2 trailing bits
+	return val, tail
 }
 
 var defaultReplRange uint32 = 0x1FFF // DAT_144706100 (config du header film ; calibrable)
@@ -95,11 +100,16 @@ func consume1408f0ac4(br *BitReader) { consume1408f0ac4Probe(br, false) }
 // explicit. unit-actor-control's two slot calls pass param_3 == 1 (probe present);
 // all other call sites pass 0. CONFIRMED by disassembly of the call sites
 // (FUN_1408f0778 @1408f0948/1408f0962 push R8D=1; others push 0).
-func consume1408f0ac4Probe(br *BitReader, probe bool) {
+//
+// Les retours (valeur, queue, présence) existent pour la sonde d'i26 — mêmes bits, rien de
+// plus lu ni de moins.
+func consume1408f0ac4Probe(br *BitReader, probe bool) (val, tail uint64, present bool) {
 	if br.ReadBit() {
-		readVarWidthInt(br, defaultReplRange, probe) // FUN_1406d3140 probe iff param_3==1
+		val, tail = readVarWidthInt(br, defaultReplRange, probe) // FUN_1406d3140 probe iff param_3==1
 		// FUN_1406cb0cc consumes 0 bits (config check).
+		return val, tail, true
 	}
+	return 0, 0, false
 }
 
 // consume1411b1ac0 mirrors FUN_1411b1ac0 -> FUN_140e82b84: R(1); if set R(12).
@@ -638,13 +648,48 @@ func consumeUnitCommandTick(br *BitReader) {
 //
 // Largeur vraie : 22 bits à 100 % (n = 40). Cette forme les produit naturellement, là où
 // l'ancienne affectation exigeait une forme empirique inventée pour les imiter.
+//
+// LES VALEURS NE SONT PLUS JETÉES (2026-08-30, sonde i26) : chaque entrée de la liste est un
+// optionnel `porte(1) + valeur(13) + queue(2)` — les largeurs exactes d'un SLOT d'entité et
+// d'une GÉNÉRATION, ce que la sonde existe pour vérifier. Le parcours de bits est INCHANGÉ.
 func consumeUnitEquipment(br *BitReader) {
-	br.ReadBits(3)          // FUN_1406d0f20
-	count := br.ReadBits(3) // FUN_1424d0f48
+	var st UnitEquipmentRead
+	st.Head = uint32(br.ReadBits(3)) // FUN_1406d0f20
+	count := br.ReadBits(3)          // FUN_1424d0f48
 	for i := uint64(0); i < count; i++ {
-		consume1408f0ac4(br)
+		val, tail, present := consume1408f0ac4Probe(br, false)
+		st.Entries = append(st.Entries, UnitEquipmentEntry{
+			Val: uint32(val), Tail: uint32(tail), Present: present,
+		})
+	}
+	if unitEquipmentHook != nil {
+		unitEquipmentHook(st)
 	}
 }
+
+// UnitEquipmentEntry est UNE entrée de la liste d'i26, telle que le déserialiseur la lit.
+type UnitEquipmentEntry struct {
+	// Val est la valeur du champ à largeur variable (13 bits au rangeMax par défaut) ; Tail
+	// les deux bits de queue. L'hypothèse à mesurer : Val = slot d'entité, Tail = génération.
+	Val, Tail uint32
+	// Present dit que la porte de l'entrée était ouverte. Fermée : l'entrée existe dans la
+	// liste mais ne transmet rien.
+	Present bool
+}
+
+// UnitEquipmentRead est UNE lecture d'i26 : l'en-tête R(3) et la liste.
+type UnitEquipmentRead struct {
+	Head    uint32
+	Entries []UnitEquipmentEntry
+}
+
+// unitEquipmentHook, si non nil, reçoit CHAQUE lecture d'i26. Global de paquet, même contrat
+// que les autres sondes (SetAbilitySetHook, SetObjectParentStateHook).
+var unitEquipmentHook func(UnitEquipmentRead)
+
+// SetUnitEquipmentHook installe (ou retire, avec nil) la sonde d'i26. L'appelant doit détenir
+// LockProcessDecode.
+func SetUnitEquipmentHook(h func(UnitEquipmentRead)) { unitEquipmentHook = h }
 
 // consumeUnitStun porte i27, désérialiseur FUN_142ED75FC : 40 bits FIXES, sans aucune branche
 // (16 + 12 + 12). C'est cette invariabilité qui a permis d'éliminer l'ancienne affectation :
