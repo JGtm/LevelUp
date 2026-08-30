@@ -524,11 +524,13 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	}
 	// Les POSES d'equipement : famille par le manifeste du titre, poseur et cap MESURES sur le
 	// nuage NON decime (une pose dure quelques dizaines de millisecondes ; la decimation
-	// perdrait le record contemporain qui designe le poseur).
+	// perdrait le record contemporain qui designe le poseur). La FIN OBSERVEE (schema 27)
+	// vient du recensement ti=37 deja lu par la chaine des socles (opt.Pads.Powerups).
 	doc.EquipmentPlacements, doc.Coverage.Placements = buildEquipmentPlacements(
 		opt.Placements, opt.PlacementStats, sorted,
 		replayClock{origin: origin, step: step, frames: doc.FrameCount,
-			families: opt.Labels.EquipmentFamilies})
+			families: opt.Labels.EquipmentFamilies},
+		opt.Pads.Powerups.Keyframes)
 	logPlacementCoverage(doc.Coverage.Placements)
 	// LES PRISES ET LES LACHERS d'arme, sur l'axe de frames du document. Les re-annonces d'une
 	// arme deja portee au spawn sont ECARTEES ici : ce ne sont pas des ramassages.
