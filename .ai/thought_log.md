@@ -77130,3 +77130,327 @@ soit ses records ne suivent pas la grammaire que le registre declare pour `ti=0`
   REFUTER, ce qu'aucune autre epreuve ne savait faire), et il reste la piste pour la detection
   de prolongation — 1/1 sur le seul match en prolongation du corpus, 0 faux positif sur 21
   temoins.
+
+## [2026-08-30] Visee a la lunette (ADS) — la queue d'i21 est LUE, et elle est CONSTANTE : NEGATIF PUBLIE — Complete
+
+**Contexte** : l'utilisateur tient que le film porte l'etat de lunette, parce qu'on voit
+l'epaulement dans Theater. Trois negatifs etaient deja ecrits (pas de composant `unit-zoom` dans
+le registre de replication ; `IsZoomed`/`GetZoomState` = data-binding d'interface ; le descope
+part en telemetrie Xbox). Restait UNE piste vivante : le composant i21
+`unit-desired-aiming-vector` porte, apres le couple (cap, elevation) deja publie, TROIS DRAPEAUX
+et un SECOND VECTEUR que le port Go lisait puis jetait. Ghidra via l'API HTTP du greffon
+(`127.0.0.1:8089`), le pont MCP natif ne se connectant pas sous Windows.
+
+**Decisions techniques** :
+
+1. *La queue d'i21 est nommee chez le PRODUCTEUR, pas devinee.* Regle 1 de la methode (suivre le
+   consommateur/producteur) appliquee au bloc de masque `0x200000` de `FUN_142ee09a8` — la passe
+   de collecte qui remplit l'etat replique de l'unite — et confrontee a `FUN_1404d4cb8`, qui le
+   recopie sur l'objet local :
+   - `flag0` (+0x724 bit0) = `! FUN_14071443c(unite)`. C'est un drapeau de COMPRESSION : a vrai,
+     la seconde direction est identique a la premiere et `FUN_1406c72e8` recopie le vecteur A
+     dans les DEUX emplacements de destination (+0x348 et +0x3e4).
+   - vecteur A = unite+0x348 ; vecteur B = unite+0x3e4. Deux directions de visee de meme forme,
+     la seconde transmise seulement si `flag0 == 0`.
+   - `flag1` (+0x724 bit1) = signe de `(unite+0x354) x A` ; `flag2` (+0x5f8 bit0) = signe de
+     `(unite+0x3d8) x B`. Ce sont les SIGNES d'un axe compagnon — ce que l'encodage 23 bits d'une
+     direction ne peut pas porter. De la geometrie, pas un etat de jeu.
+   Fermeture arithmetique gratuite : `1 + 23 + 1 = 25` et `1 + 23 + 1 + 23 + 1 = 49`, exactement
+   les deux largeurs de la table ECS.
+
+2. *Une seule edition de production, dans le lecteur OFFLINE.* `readAimingVectorComponent`
+   (`filmdec/offline_aim.go`) lit desormais la queue entiere et `componentDirs` publie
+   `AimFlag0/AimFlag1/AimFlag2`, `HasAimB`, `YawRawB/PitchRawB`. Choix du chemin OFFLINE plutot
+   que d'un hook sur `consumeUnitDesiredAimingVector` : c'est lui qui porte deja slot + instant +
+   position dans le meme record, donc le seul par lequel un drapeau peut etre DATE contre le
+   killfeed ; le hook du chemin de marche aurait exige un test dans `filmdec`, d'ou `killsource`
+   est inaccessible (cycle d'import). Effet de bord nul : aucun bit deja lu ne change, la lecture
+   s'arrete net a la fin du composant, chaque champ neuf a sa propre borne.
+
+3. *Seuil, temoin et verdict ecrits AVANT la mesure* (`replay/visee_lunette_research_test.go`,
+   sous garde `ADS_FILM`, saute en CI). Oracle : les kills au fusil a lunette (S7 Sniper, Skewer,
+   Stalker Rifle, etiquettes `damagetag`), fenetre amont 1 s, horloge `tMS + DeathOffsetMS`. DEUX
+   temoins : le FOND (hors fenetre de kill) et surtout le TEMOIN TIR (memes fenetres avant les
+   kills a une arme SANS lunette) — lui seul separe « je vise a la lunette » de « je tire ».
+   Gate declare : facteur >= 2 ET ecart >= 20 points, sur >= 30 fenetres et >= 200 echantillons.
+
+**Resultats** (5 films : 000d5950, 530820e5, 7344d24f, 89f86fe4, d245486a) :
+
+| mesure | valeur |
+|---|---|
+| records i21 lus | **607 258** |
+| `flag0` | **CONSTANT a 1** — 607 258 / 607 258 |
+| `flag1` | **CONSTANT a 0** — 0 / 607 258 |
+| second vecteur (branche 49 bits) | **JAMAIS transmis** — 0 / 607 258 |
+| `flag2` | jamais lu (il n'existe que sur la branche 49 bits) |
+| fenetres « fusil a lunette » | 23 au total (6, 6, 0, 11, 0) — **sous le seuil de 30** |
+
+L'oracle du fusil a lunette NE CONCLUT PAS (population insuffisante, et c'est journalise comme
+tel). Ce qui conclut, c'est le CONTROLE DE CONSTANCE — ajoute apres la premiere passe, et dit
+comme tel dans le fichier : ce n'est pas un seuil deplace, c'est une observation brute sans
+parametre, et elle est plus forte que le seuil qu'elle remplace. **Un bit constant ne code aucun
+etat** ; aucune population, si grande soit-elle, ne separerait quoi que ce soit.
+
+Controle croise INDEPENDANT de `flag0` : la table ECS donne une largeur mesuree de 25 bits pour
+i21, relevee par une tout autre voie (observation de largeur du decodeur de trame). 25 = la
+branche `flag0 == 1`. Deux chaines sans etape commune, meme reponse.
+
+**Piste secondaire statuee** : `object-frame-configuration-component` (i17, biped, 52 bits, usage
+produit « aucun ») = `FUN_1407f0534` -> `FUN_1407f0550`, qui ecrit unite+0x4f8 : TROIS entrees de
+`{identifiant R(6) sous porte + 2 scalaires dequantifies}`. C'est une configuration geometrique de
+reperes (niveau_jeu=0 dans la table), pas un etat discret. Aucun bit d'etat a y chercher ; la
+piste est fermee sans campagne dediee.
+
+**REPONSE A LA QUESTION POSEE — NON, MESURE.** Le film ne transmet pas l'etat de lunette : ni
+comme composant (le registre n'en porte aucun sur aucun archetype), ni cache dans la queue d'i21
+(trois bits constants sur 607 258 records). L'epaulement vu dans Theater est RECONSTRUIT cote
+client a partir de l'arme tenue et de l'animation — le jeu sait quelle arme le joueur tient
+(i43..i46) et il en deduit la pose ; il ne lui a jamais fallu un bit de zoom pour cela.
+
+**Decouverte hors perimetre, NON traitee** : sur `feat/v75`, `internal/service/match_view_data_loaders.go`
+importe `internal/service/killsourceload`, paquet ABSENT du depot -> `go test ./internal/games/...`
+casse en `[setup failed]` sur `halo_5/livesync`. Anterieur a ce lot (fichier touche pour la
+derniere fois par `68e44770b`), une session soeur le detient sans doute non commite. A committer
+par son auteur.
+
+**Gates** : `go vet` propre ; `go test ./internal/analysis/...` **0 echec** ; les trois garde-rails
+de la table ECS (G1/G2/G3) verts avec film. La table `ecs_table.tsv` est corrigee : la ligne i21
+affirmait « Plus rien de ce composant n'est jete », ce qui etait faux — elle porte maintenant la
+grammaire complete, l'adresse du deser et le resultat de la mesure.
+
+**Prochaine etape** : rien d'ouvert sur la lunette. Si l'utilisateur veut malgre tout une trace
+d'epaulement dans le rejeu, la seule voie honnete est une HEURISTIQUE affichee comme telle (arme a
+lunette tenue + cible dans l'axe), jamais presentee comme une donnee du film.
+
+## [2026-08-30] Visee a la lunette — phase 2 : l'oracle des MEDAILLES, et le balayage des composants — Complete
+
+**Contexte** : l'utilisateur refuse le negatif de la phase 1 et donne deux pistes qui se revelent
+toutes les deux justes : (1) les medailles Counter-snipe / No Scope disent l'etat de lunette, (2)
+Ghidra doit pouvoir montrer quel etat de composant le jeu verifie pour les attribuer. Il reproche
+aussi, a raison, la limitation a 5 films.
+
+**Ce que la phase 2 a etabli** :
+
+1. *L'etat de lunette a une adresse.* Fonction de script `Unit_IsZoomed` -> `FUN_142c82fd0` :
+   `unite+0x461` = niveau de zoom COURANT (`0xFF` = pas zoome), `unite+0x462` = niveau DESIRE,
+   `FUN_1404a4ab8` fait la transition. Le descripteur du composant `unit_zoom` (143d0da58) porte a
+   `+0x70` un pointeur vers `FUN_14110ec20`, qui ecrit `+0x462`. Le composant existe donc bel et
+   bien, avec sa fonction d'application.
+
+2. *Mais il n'est pas dans le registre du film.* Zero occurrence de « zoom » parmi les 325 noms de
+   composants de `ecs_table.tsv`, et le garde-rail G2 verifie que cette table EST le registre lu
+   dans les films. Replique en reseau live, absent de la bobine.
+
+3. *Le film porte les MEDAILLES, identifiees et datees.* Recensement sur **1369 films** (le corpus
+   en compte 1369, pas 954) via le seul chunk d'evenements, 34 s :
+
+   | etiquette | code film | instants | films |
+   |---|---|---|---|
+   | No Scope (« WITHOUT ZOOMING ») | (100,114) | **2378** | 857 |
+   | Counter-snipe (« while YOU BOTH ARE ZOOMED ») | (100,168) | **295** | 148 |
+
+   Deux etiquettes OPPOSEES, meme classe d'arme, instants exacts. C'est l'oracle que le proxy
+   « kill au sniper => sans doute zoome » de la phase 1 n'etait pas.
+
+4. *Le balayage des composants.* 68 films, 271 instants situes (151 sans lunette / 120 avec),
+   arret anticipe sur cible atteinte, 13 min 42. UN seul index franchit le seuil ecrit avant la
+   mesure : **i5 `object-shield-vitality`**, present a 52,98 % avant un kill SANS lunette contre
+   16,67 % avec (dernier record 47,62 / 13,51 ; temoin a -30 s 31,20 / 20,79, sous le seuil).
+
+**POURQUOI i5 N'EST PAS LA REPONSE, et c'est dit ici plutot qu'enterre** :
+- *Le sens est inverse.* Un composant porteur de la lunette apparaitrait davantage chez la classe
+  ZOOMEE (l'evenement de mise en lunette). On observe le contraire.
+- *Le composant est deja entierement decode.* i5 est la jauge de bouclier, publiee dans le rejeu
+  (`Point.Sh`). Ce n'est pas un composant d'etat inconnu.
+- *La confusion est evidente une fois nommee.* Un No Scope se joue au contact, dans un echange de
+  tirs : le bouclier du tueur bouge. Un Counter-snipe est un duel a distance : le tueur est
+  intouche, bouclier plein et stable. i5 separe le CONTEXTE DE COMBAT, pas la lunette.
+- *Et mon temoin ne pouvait pas l'attraper* : a -30 s il controle l'effet de joueur et de film,
+  pas l'effet « au contact vs a distance » a l'instant du kill. Le bon temoin aurait ete les kills
+  a une arme sans lunette au MEME instant, comme dans l'instrument de la phase 1. Faute de
+  conception, pas de mesure.
+
+**VERDICT** : negatif sur la question posee — aucun composant n'ENTRE au masque du bipede
+differemment selon l'etat de lunette.
+
+**PORTEE EXACTE, et elle est etroite** — deux choses que ce negatif n'exclut pas :
+1. un bit a l'interieur d'un composant deja present en permanence (le balayage regarde la
+   PRESENCE, pas la charge utile) ;
+2. l'archetype JOUEUR (ti=5), qui porte `player-aim-assist-component` et
+   `player-control-aiming-component` — l'assistance a la visee change avec la lunette.
+
+**Erreurs de conduite de ce lot, listees parce qu'elles ont coute des heures** :
+- 1er balayage : appariement masque<->position par le hook de diagnostic, qui tire AVANT
+  `DropIsolated` -> 144 films sur 148 rejetes par mon propre garde-fou. Corrige en faisant voyager
+  le masque DANS le record (`BipedPosition.MaskBits`).
+- 2e balayage : expire a 4 h vers 130/148 sans RIEN imprimer -> tout perdu. Cause : aucune sortie
+  progressive, et `ScanFilmPlayerIndices` (~90 s/film) appele pour rien — ce balayage n'a besoin
+  que de slot -> xuid, que `nameLivesByDeaths` donne a partir du seul fil des morts. Apres
+  retrait : **7,6 s/film**, facteur 12.
+- 3e balayage : sortie progressive tous les 5 films + arret anticipe sur cible + plafond de films.
+  13 min 42 pour une reponse.
+
+**Prochaine etape** : aucune n'est engagee. Les deux angles restants sont ecrits ci-dessus (bit a
+l'interieur d'un composant ; archetype joueur) ; ils demandent chacun un instrument neuf.
+
+## [2026-08-30] Visee lunette, phase 3 — le canal du zoom TROUVE dans le dispatcher, et JAMAIS emprunte par la bobine : NEGATIF TRIPLE-VERROUILLE — Complete
+
+**Contexte** : suite des phases 1 (i21 constant) et 2 (Opus : oracle medailles monte, balayage de
+presence negatif, adresse memoire du zoom trouvee : unite+0x461 courant / +0x462 desire).
+L'utilisateur maintient que l'info est dans le film et signale la dispersion de la phase 2. Cette
+phase 3 ne tire qu'un fil : QUI ECRIT +0x462, et le flux qui l'alimente est-il dans la bobine ?
+
+**Chaine de retro-ingenierie (Ghidra, API HTTP)** :
+
+1. *Ecrivains de +0x461/+0x462 enumeres par balayage d'instructions* (112 et 29 sites). Trois
+   familles : la transition (`FUN_1404a4ab8`, seule ecrivaine "legitime" de +0x461, appelee du
+   tick d'unite `FUN_1406dba04`), des copies save/restore, et les SOURCES de +0x462 :
+   - `FUN_1406db688` = "applique la COMMANDE joueur a l'unite" : `+0x462 = octet 6 de la
+     commande`. Appelee par `FUN_1404d5384` (commande stockee dans la structure joueur +0x68)
+     et par `FUN_1404d4f48` (commande neutre de reset).
+   - `FUN_14110ec20` = applicateur de PROPRIETE (poignee objet + valeur -> +0x462), pointe par
+     le descripteur `unit_zoom` (143d0da50, getName +0x08, apply +0x78).
+2. *Le descripteur unit_zoom n'a PAS de lecteur de bits* : ses cases +0x28/+0x38 pointent un
+   stub `return 1` (`FUN_1408d8220`). Il porte en revanche pertinence (`FUN_142e30074`) + log
+   (`"unit-zoom : relevance=%5.3f"`) : machinerie de replication live a pertinence.
+3. *LA CLE : la table des types d'event des paquets delta* (@0x144724A90, 128 entrees) pointe
+   vers ces MEMES descripteurs. Nommage par getName de chaque type observe :
+   type 105 = `action_weapon_fire`, 64 = `weapon_overheat`, 99 = `weapon_empty_click`,
+   115 = `projectile_detonate`, 114 = `biped_board_vehicle`, 68 = `PowerUpApplied`...
+   et **type 126 = `unit_zoom`**. Le zoom a donc SON PROPRE TYPE DE PAQUET dans le format.
+
+**Mesures (instrument `visee_tir_research_test.go`, garde TIR_FILMS_DIR, 3 tests)** :
+
+1. *Differentiel bit-a-bit de la tete du record de degat fatal* (113 bits a offsets fixes du
+   type 105), oracle medailles : *No Scope* = tueur PAS zoome, *Counter-snipe* = tueur zoome,
+   meme classe d'arme des deux cotes -> le confondeur "au contact vs a distance" de la phase 2
+   ne peut pas operer. Recalage d'horloge feed->film par VOTE DE MODE sur les kills (valide :
+   58 ms d'ecart avec la reference sur 000d5950). Corpus entier en 28 s :
+   **134 tirs zoomes vs 780 non zoomes apparies** (auto-controle : la famille S7 domine les
+   deux classes). **AUCUN bit ne separe** (seuil 0,50 ecrit avant). Seul ecart : bit 42 a
+   9 % vs 40 % = champ "cause du degat" = trace du TIR A LA TETE (Counter-snipe l'exige), pas
+   du zoom.
+2. *Recensement des types de paquets, corpus entier* (1369 films, 41 M de paquets delta, 34 s) :
+   TOUS les types freres presents partout (weapon_overheat 220 k, empty_click 1 M,
+   detonate 195 k, board_vehicle 197 k)... et **ZERO paquet de type 126 (unit_zoom)**.
+
+**VERDICT TRIPLE-VERROUILLE — le film ne transmet PAS l'etat de lunette** :
+- verrou 1 (registre) : aucun composant de zoom sur aucun des 118 archetypes ; queue d'i21
+  constante sur 607 258 records (phase 1) ;
+- verrou 2 (oracle du jeu lui-meme) : 134 tirs zoomes vs 780 non zoomes, aucun bit du record
+  fatal ne les separe ;
+- verrou 3 (par construction) : le jeu POSSEDE un type de paquet dedie au zoom (126,
+  descripteur complet avec applicateur vers unite+0x462), et la bobine ne l'emprunte JAMAIS —
+  0 sur 41 M de paquets — pendant que tous ses freres de canal y sont dans chaque film.
+  L'autre chemin d'ecriture (octet 6 de la commande joueur) supposerait un flux de commandes
+  dans le film : l'archetype joueur ti=5 n'en porte pas (27 composants inventories).
+
+**PISTES INDIRECTES RESTANTES, parkees et dites comme telles** : deux composants ti=5 a
+grammaire desormais CONNUE (resolue cette phase par la table des descripteurs, pas 0x50,
+deser en +0x30) : `player-aim-assist-component` = FUN_141139f30 (poignee de cible +
+UN drapeau comp+0xb8) et `player-desired-frame-configuration-component` = FUN_1410dcb34
+(= FUN_1407f0550, meme corps que biped i17). L'assistance a la visee change avec la lunette :
+un signal DERIVE y est concevable, mais ce serait une correlation, pas l'etat.
+
+**Geste de verification utilisateur (gate visuel)** : 3 scenes Counter-snipe etiquetees —
+film 00162144 a 0:46, 00ba2e1c a 4:12, 03ccbe42 a 3:30 (horloge du feed). Si Theater n'y
+montre PAS d'epaulement chez le tueur, la premisse tombe ; s'il le montre, c'est reconstruit
+cote client et les deux pistes parkees deviennent le prochain fil.
+
+**Gates** : go vet OK ; `go test filmdec+replay` 0 echec ; fichiers de recherche sous garde
+d'env (sautes en CI). Artefacts : `.ai/V7.5/film_re/visee_tir_differentiel.tsv` (taux par bit).
+Aucun code de production modifie dans cette phase (les 3 tests sont autonomes, parallelises
+sans verrou car ils ne touchent aucun global de decodage — justifie en tete de fichier).
+
+**Prochaine etape** : gate visuel utilisateur sur une scene Counter-snipe ; selon le resultat,
+soit cloture definitive, soit instrument sur le drapeau aim-assist (ti=5 i22).
+
+## [2026-08-30] Visee lunette, phase 4 — la piste utilisateur « c'est un point de vue » donne un CORRELAT mesure : le trafic camera s'effondre autour des kills zoomes — En cours
+
+**Contexte** : l'utilisateur maintient qu'en Theater PREMIERE personne le zoom se VOIT (surimpression
+de lunette, grossissement), donc que l'info est dans la bobine, « peut-etre codee autrement » ; et
+precise l'objectif produit : dans le rejeu 2D, LE CONE DE VISEE QUI S'ETRECIT quand le joueur est a
+la lunette. Sa toute premiere intuition (« peut-etre un changement de point de vue ») devient la
+piste de cette phase.
+
+**Ce que la phase 4 etablit** :
+
+1. *Filet a zoom « sous n'importe quel nom »* (`TestViseeCanalFenetres`) : pour CHACUN des 128
+   types d'event, presence dans la fenetre [-8 s, +2 s] des kills zoomes (Counter-snipe) vs non
+   zoomes (No Scope), corpus entier, 27 s. Seuils ecrits avant (ecart >= 0,35 ET ratio >= 2).
+   **UN candidat : le type 97**, les echantillons de camera.
+2. *Temoin de contexte* (lecon i5 de la phase 2, integre d'office) : 3e classe = fenetres des
+   AUTRES kills (arme quelconque, 2 112 fenetres). Resultat :
+   | classe | presence type 97 | moy paquets/fenetre |
+   |---|---|---|
+   | autres kills (temoin) | 95,4 % | ~15 |
+   | No Scope (pas zoome) | 88,3 % | 14,15 |
+   | **Counter-snipe (zoome)** | **42,9 %** | **1,93** |
+   L'anomalie est SPECIFIQUE a la classe zoomee (le temoin colle a No Scope), et l'effondrement
+   est GLOBAL (-86 % de paquets) : l'immobilite d'UN joueur sur huit ne peut pas le produire.
+   **L'absence de paquets camera est correlee a la lunette.** Mecanisme NON elucide — ce n'est
+   pas encore un etat lisible, c'est un correlat fort et reproductible.
+3. *Grammaire du type 97* (case +0x68 du descripteur, convention VALIDEE sur le type 105 qui rend
+   exactement FUN_14080C1F8) : lecteur FUN_142f160c4 = position vec3 (niveau 0x10) + DEUX flottants
+   dequantises (angles). PAS de champ de grossissement, PAS d'index de joueur a l'offset du record
+   de degat (histogramme bits 36..40 PLAT sur 1..15 — enveloppe differente). Ecrivain FUN_142f18ad0
+   (+0x60), reference par le seul descripteur : le site d'emission passe par un canal generique,
+   sa CONDITION d'emission reste a trouver.
+4. *Reponse a la question aim-assist de l'utilisateur* : oui, `player-aim-assist-component` = 
+   l'AIMANT (magnetisme). Grammaire resolue cette session (deser FUN_141139f30) : poignee de la
+   CIBLE aimantee + UN drapeau (comp+0xb8). Le reticule qui s'agrandit/retrecit a l'ecran est du
+   HUD reconstruit cote client (data-binding), pas un enregistrement.
+
+**CE QUI RESTE A FAIRE (prochain instrument, dimensionne)** :
+- Decoder position+angles des paquets 97 et les APPARIER aux pistes bipedes : si chaque paquet
+  suit la tete d'UN joueur, le sujet de chaque echantillon est identifiable ; alors verifier si
+  le flux d'un joueur S'INTERROMPT pendant ses periodes zoomees (bornees par les Counter-snipe).
+  Si oui : les periodes de lunette par joueur deviennent LISIBLES du film (par les trous du flux
+  camera) -> le cone du rejeu peut s'etrecir sur mesure, pas sur heuristique.
+- Gate visuel utilisateur EN PREMIERE PERSONNE sur une scene Counter-snipe etiquetee (00162144 a
+  0:46, 00ba2e1c a 4:12, 03ccbe42 a 3:30) : si la surimpression de lunette s'affiche vraiment,
+  un flux la pilote et l'appariement ci-dessus est le suspect n1 ; si elle ne s'affiche pas, la
+  premisse tombe et le triple verrou de la phase 3 cloture.
+
+**Gates** : go vet OK ; suites filmdec + replay 0 echec ; 2 fichiers de recherche sous garde
+(`visee_tir_research_test.go` 499 L, `visee_canal_zoom_research_test.go` 439 L), aucun code de
+production touche en phases 3-4.
+
+**Prochaine etape** : appariement paquets 97 <-> joueurs (instrument dedie), puis mesure des trous
+du flux pendant les periodes zoomees.
+
+## [2026-08-30] Visee lunette, phase 5 — ti=11 statue (HUD des OBJECTIFS, pas la vue), table ECS balayee exhaustivement, camera type 97 : grammaire lue, appariement angulaire NON verrouille — En cours
+
+**Contexte** : l'utilisateur propose ti=11 (« le flux HUD ») ou un autre composant des tables ECS.
+
+**Statue en trois points** :
+
+1. *ti=11 n'est pas la vue.* C'est l'archetype `managed-objective` : minuteurs, couleur, textes
+   formates, progression, sous-objectifs — le HUD DES OBJECTIFS. Et le chantier `wt/ti11-cadre`
+   (c8aaf4afb) avait deja gate : « le vivant n'est PAS dans le delta ti=11 ». Rien de la visee.
+2. *Balayage NOMINAL EXHAUSTIF de la table ECS* (hud|reticle|view|camera|fov|scope|screen|zoom|
+   nameplate|marker|aim sur les 325 noms) : ti=9 `managed-player` = profil/mission (equipe,
+   couleurs, saison, nom de mission + drapeau « afficher dans le HUD » R(1)) ; ti=34 `tacmap` =
+   carte tactique de CAMPAGNE (echelle, waypoints, voyage rapide, cap de camera de carte R(12)) ;
+   plus les connus (i21, player-control-aiming, player-aim-assist). AUCUN composant de vue
+   premiere personne, AUCUN zoom. Le registre est clos sur cet angle.
+3. *Camera type 97 — la grammaire est maintenant LUE dans l'exe* (disassemblage du lecteur
+   FUN_142f160c4 + bornes en .rdata) :
+   - position (chemin FUN_14076e524, sous porte, LARGEUR RUNTIME `DAT_144632be0` — non decodee) ;
+   - **tangage R(20) sur [-1,49226 ; +1,49226] rad (= ±85,5°, butee de camera FPS)** ;
+   - **cap R(20) sur [0 ; 2π[**.
+   C'est une camera premiere personne complete. MAIS l'appariement angulaire camera<->visee i21
+   ne se verrouille a AUCUN offset fixe (v1 : 21,6 % vs 17,5 % de fond ; v2 par tangage seul +
+   concentration de l'ecart de cap : bin modal 4-6 %, uniforme ~1,4 % — pas de concentration).
+   Cause la plus probable : la position a largeur variable en tete deplace les angles paquet par
+   paquet. Instrument : `visee_camera_pov_research_test.go` (garde CAM_FILM, seuils declares,
+   verdicts v1/v2 publies).
+
+**Prochaine etape (bornee)** : lire la grammaire complete de FUN_14076e524 + la semantique de
+`DAT_144632be0` (Ghidra), decoder la position des paquets 97, apparier par DISTANCE aux bipedes ;
+les angles serviront alors de verification par famille d'offsets. Si l'attribution tient : mesurer
+les TROUS du flux par joueur pendant les periodes zoomees (bornees par Counter-snipe) -> periodes
+de lunette par joueur lisibles du film -> le cone du rejeu s'etrecit sur donnee reelle.
+
+**Gates** : go vet OK, suites filmdec + replay 0 echec, 3 fichiers de recherche sous garde
+(tir 499 L, canal 439 L, camera ~300 L), production intacte.
