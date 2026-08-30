@@ -21,10 +21,20 @@ restaure) ; la largeur d'identifiant vient d'une table sélectionnée par le bit
 (source runtime du IDLowBits calibré : 11/14 selon film). Le 2e bit d'amorce reste non
 localisé statiquement (blocs « unreachable » désassemblés : nettoyage seulement).
 
+**Carte des composants (décodage intégré, monde unique, chaque famille sous son cadrage)** :
+les records aboutis de 0xD2 portent game-engine-screen-sequence, tacmap-areaofinterest,
+player-waypoint/vehicle-entrance-ban, et un record **ti=37 (équipement) avec
+object-dead-state-component i11** + equipment-control-signal/energy-delay — profil
+« événement d'objet/équipement », cohérent kill-events. RÉSERVE D'INSTRUMENT consignée : le
+balayage d'amorce partageait son monde entre familles décodées au même k (0xC2 : 135 records
+au balayage, 0 au décodage intégré propre) — les k gagnants tiennent (2 films, marges
+nettes), les POURCENTAGES sont à re-mesurer à monde propre avant de bâtir dessus.
+
 **Conclusion / prochaine étape** : table de synthèse publiée dans le miroir Notion (demande
-utilisateur). Suite du lot 1 : percer l'en-tête famille (6 bits sur 0xC2… que signifient-ils),
-faire tomber les familles NON CONCLUANT (plus de chunks/films), puis décoder les records
-après le transitoire de tête sur 0xD2/0xD3 et confronter au golden killsource.
+utilisateur), avec la réserve. Suite du lot 1 : re-mesure du balayage à monde propre, percer
+l'en-tête famille (6 bits sur 0xC2… que signifient-ils), faire tomber les familles NON
+CONCLUANT (plus de chunks/films), puis décoder les records après le transitoire de tête sur
+0xD2/0xD3 et confronter au golden killsource.
 
 ## [2026-08-30] Percer la trame — lot 1 ouvert : DEL de tête sur 0xD2/0xD3, vues 2/3, et l'amorce qui varie par famille — En cours
 

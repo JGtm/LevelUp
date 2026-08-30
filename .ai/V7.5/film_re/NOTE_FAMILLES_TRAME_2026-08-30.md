@@ -139,6 +139,27 @@ distincts (12 / 47) restent des mesures du meme champ d'identifiant.
   bit ; les blocs « unreachable » du decompile ont ete desassembles : nettoyage seulement).
   L'etabli reste empirique, comme le documentait deja `frame_records.go`.
 
+### Carte des composants de 0xD2 (decodage integre) — et une RESERVE d'instrument
+
+`TestLot1CarteComposants` decode les paquets DANS L'ORDRE DU CHUNK avec UN SEUL monde,
+chaque famille sous son cadrage (0xA0/0x89/0x80 a k=2 pour leurs liaisons, 0xC2 a k=6, 0xD2
+a k=8, les familles non cadrees SAUTEES). Sur `000d5950`, les records aboutis de 0xD2
+portent : `game-engine-screen-sequence` (ti=0 i9, x11), `tacmap-areaofinterest` (ti=32),
+`player-waypoint` / `player-vehicle-entrance-ban` (ti=5), et surtout un record **ti=37
+(equipement) avec `object-dead-state-component` i11**, `object-parent-state`,
+`equipment-control-signal`, `equipment-energy-delay-ticks-left`... — le profil d'une trame
+« evenement d'objet/equipement » (mort, rattachement, signal), coherent avec des kill-events.
+Les premiers records (transitoires non lies) ne traversent toujours pas : leur declaration
+NEW vit ailleurs (vraisemblablement dans les familles encore non cadrees, sautees ici).
+
+**RESERVE D'INSTRUMENT, a lever** : dans le balayage d'amorce, le monde etait PARTAGE entre
+toutes les familles decodees au MEME k — les liaisons accumulees par des decodages mal
+cadres (0xA0 a k=6...) ont pu porter des traversees de 0xC2/0xD2. Indice concret : dans le
+decodage integre PROPRE, 0xC2 ne rend AUCUN record abouti la ou le balayage en comptait 135.
+Les k gagnants restent les plus probables (reproduits sur 2 films, marges nettes,
+discriminant a niveau de hasard mesure), mais les POURCENTAGES du balayage portent cette
+reserve — re-mesure a monde propre par famille au prochain geste, AVANT de batir dessus.
+
 ## Decouvertes hors perimetre (non traitees, regle 7)
 
 - Le decompile Ghidra de FUN_1406cd128 revele DEUX grammaires de boucle de records,
