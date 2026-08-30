@@ -57,6 +57,20 @@ export interface ReplayWeaponPadControls {
 }
 
 /**
+ * Ce que le tiroir sait des ARMES AU SOL : une bascule, et si le film en porte.
+ *
+ *  suit la même règle que les socles — un film dont aucune arme ne tombe (ou un
+ * artefact antérieur au schéma 26) ne montre pas la bascule. Le calque est SÉPARÉ de celui des
+ * socles et ce n'est pas un doublon : un socle est un LIEU qui réapprovisionne, une arme au sol
+ * est un OBJET qui ne revient pas. On peut vouloir l'un sans l'autre.
+ */
+export interface ReplayGroundWeaponControls {
+  available: boolean
+  show: boolean
+  onToggle: () => void
+}
+
+/**
  * Ce que le tiroir sait des DRAPEAUX de capture : une bascule, et si le film en porte.
  * `available` suit la même règle que les zones et les socles — un film qui n'est pas reconnu
  * comme de la capture de drapeau ne publie aucun drapeau, et ne montre donc pas la bascule.
@@ -94,6 +108,7 @@ export interface LayersSectionProps {
   zonesAvailable: boolean
   placements: ReplayPlacementControls
   weaponPads: ReplayWeaponPadControls
+  groundWeapons: ReplayGroundWeaponControls
   flagCarries: ReplayFlagControls
   vipCrown: ReplayVipCrownControls
   skullCarrier: ReplaySkullCarrierControls
@@ -101,8 +116,8 @@ export interface LayersSectionProps {
 
 export function LayersSection({
   locale, showAim, onToggleAim, showZones, onToggleZones, showNames, onToggleNames,
-  showTrail, onToggleTrail, zonesAvailable, placements, weaponPads, flagCarries, vipCrown,
-  skullCarrier,
+  showTrail, onToggleTrail, zonesAvailable, placements, weaponPads, groundWeapons, flagCarries,
+  vipCrown, skullCarrier,
 }: LayersSectionProps) {
   const t = REPLAY_TEXT[locale]
   return (
@@ -173,6 +188,17 @@ export function LayersSection({
             pressed={weaponPads.show}
             onToggle={weaponPads.onToggle}
             hint={t.layerWeaponPadsHint}
+          />
+        )}
+        {/* LES ARMES AU SOL sont des OBJETS, pas des lieux : elles ne réapparaissent pas, elles
+            gisent là où elles sont tombées. D'où une bascule à part de celle des emplacements —
+            on peut vouloir voir les socles sans le fouillis des armes lâchées, et l'inverse. */}
+        {groundWeapons.available && (
+          <SettingsToggle
+            label={t.layerGroundWeapons}
+            pressed={groundWeapons.show}
+            onToggle={groundWeapons.onToggle}
+            hint={t.layerGroundWeaponsHint}
           />
         )}
         {/* Les DRAPEAUX sont l'ENJEU du mode, pas un meuble : ils bougent, ils changent de

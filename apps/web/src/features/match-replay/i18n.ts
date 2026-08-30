@@ -153,6 +153,9 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     layerSkullCarrier: 'Porteur du crâne',
     layerSkullCarrierHint:
       "Qui porte le crâne d'Oddball, lu dans le film : le porteur est le joueur dont les tics de score de mode montent, un train de tics étant une période de portage. Le crâne suit son porteur image par image. Un portage dont RIEN ne date la fin s'affiche atténué : son intervalle court jusqu'à la fin du film — c'est une borne haute, pas une mesure. Le crâne posé au sol, lui, reste dessiné par le calque des objets d'objectif.",
+    layerGroundWeapons: 'Armes au sol',
+    layerGroundWeaponsHint:
+      "Les armes abandonnées au sol, lues dans le film : l'arme d'un mort, celle qu'on laisse en ramassant autre chose, ou celle qu'un râtelier a éjectée. Chacune est dessinée là où elle s'est arrêtée, dès qu'elle y tombe. Les armes SUR LEUR EMPLACEMENT ne sont pas ici : elles appartiennent au calque des emplacements d'arme. LA FIN est celle que le film montre, jamais une durée de table : un ramassage daté l'arrête exactement ; sinon l'arme est dessinée pleine tant qu'un relevé la voit encore, puis S'ESTOMPE jusqu'au premier relevé qui ne la voit plus — la disparition a eu lieu quelque part entre les deux, et rien n'est dessiné au-delà de cette borne.",
     padCountdownFmt: (seconds) => `${Math.ceil(seconds)} s`,
     padRespawnMeasuredFmt: (seconds) => `Réapparition dans ${Math.ceil(seconds)} s`,
     padRespawnExpectedFmt: (seconds) => `Réapparition dans ≈ ${Math.ceil(seconds)} s`,
@@ -489,6 +492,9 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     layerSkullCarrier: 'Skull carrier',
     layerSkullCarrierHint:
       'Who carries the Oddball skull, read from the film: the carrier is the player whose mode-score ticks rise, a run of ticks being one carry period. The skull follows its carrier frame by frame. A carry whose end NOTHING dates is faded: its interval runs to the end of the film — an upper bound, not a measurement. The skull dropped on the ground is still drawn by the objective-objects layer.',
+    layerGroundWeapons: 'Weapons on the ground',
+    layerGroundWeaponsHint:
+      'Weapons abandoned on the ground, read from the film: a weapon dropped by a dead player, left behind while picking up another, or ejected from a rack. Each one is drawn where it came to rest, from the moment it lands. Weapons ON THEIR SPOT are not here — they belong to the weapon-spots layer. The END is what the film shows, never a duration from a table: a dated pickup ends the display exactly; otherwise the weapon is drawn solid for as long as a key frame still records it, then FADES to the first key frame that no longer does — the disappearance happened somewhere in between, and nothing is drawn past that bound.',
     padCountdownFmt: (seconds) => `${Math.ceil(seconds)} s`,
     padRespawnMeasuredFmt: (seconds) => `Respawn in ${Math.ceil(seconds)} s`,
     padRespawnExpectedFmt: (seconds) => `Respawn in ≈ ${Math.ceil(seconds)} s`,
