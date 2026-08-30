@@ -245,3 +245,53 @@ func TestHeldWeaponDeltaCensus(t *testing.T) {
 	t.Log("LECTURE : 0 repetition = la grammaire reserve i43..i46 au CHANGEMENT, donc chaque " +
 		"emission est une prise, un lacher ou un echange date a la ms du paquet.")
 }
+
+// TestHeldWeaponChangesProduction confronte le balayage de PRODUCTION
+// (ScanFilmHeldWeaponChanges) a l'instrument de mesure : ils doivent voir la meme chose.
+// Sans cette confrontation, le portage en production pourrait deriver en silence.
+func TestHeldWeaponChangesProduction(t *testing.T) {
+	dir := os.Getenv(hwFilmEnv)
+	if dir == "" {
+		t.Skipf("%s absent : instrument de mesure saute", hwFilmEnv)
+	}
+	release := LockProcessDecode()
+	defer release()
+
+	s := hwResolve(t, dir)
+	ref := hwKeyframeRef(t, dir)
+	want := hwIdentities(hwScanEvents(s))
+
+	got, st, err := ScanFilmHeldWeaponChanges(dir, ref.setAt)
+	if err != nil {
+		t.Fatalf("balayage de production : %v", err)
+	}
+	t.Logf("PRODUCTION : records=%d masquesPorteurs=%d emissions=%d repetitions=%d",
+		st.Records, st.WithComponent, st.Emissions, st.Repeats)
+	// LA PROPRIETE N'EST PAS ABSOLUE, ET C'EST MESURE. On a d'abord observe « 0 repetition »
+	// sur un film de 31 emissions et on en a fait une propriete du format. Sur des films plus
+	// fournis il en reste UNE par film : 1/229 et 1/100, soit 0,4 % et 1,0 %. La liste des
+	// prises reste donc une liste de prises a ~99 %, mais l'affirmation « zero repetition »
+	// etait une generalisation depuis un petit echantillon. Le seuil ci-dessous est un
+	// RATCHET : il casse si le taux se degrade, pas si l'exception connue subsiste.
+	if pct := 100 * float64(st.Repeats) / float64(max(st.Emissions, 1)); pct > 2.0 {
+		t.Errorf("REPETITIONS = %d sur %d emissions (%.1f %%) : au-dela de 2 %%, le composant "+
+			"n'entre plus au masque QUE sur changement et la liste cesse d'etre une liste de "+
+			"prises.", st.Repeats, st.Emissions, pct)
+	} else {
+		t.Logf("repetitions = %d sur %d emissions (%.1f %%) — sous le ratchet de 2 %%",
+			st.Repeats, st.Emissions, pct)
+	}
+	if len(got) != len(want) {
+		t.Fatalf("production=%d emissions, instrument=%d : les deux chemins divergent",
+			len(got), len(want))
+	}
+	byKind := map[HeldWeaponChangeKind]int{}
+	for i, c := range got {
+		if c.TimestampUS != want[i].TimestampUS || c.Slot != want[i].Slot ||
+			c.SlotIndex != want[i].CompIndex || c.Family != want[i].IDHigh {
+			t.Fatalf("divergence a l'index %d : production=%+v instrument=%+v", i, c, want[i])
+		}
+		byKind[c.Kind]++
+	}
+	t.Logf("PAR NATURE : %v", byKind)
+}
