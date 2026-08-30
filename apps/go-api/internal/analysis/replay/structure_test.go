@@ -422,8 +422,18 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   deux vérités pour un même objet seraient pires qu'une. Le champ `until` de
 	//   `weaponChanges` est RETIRÉ avec sa table — un artefact 25 porte encore la convention.
 	//   Détail : internal/analysis/replay/document_ground_weapon_items.go.
-	if SchemaVersion != 26 {
-		t.Fatalf("SchemaVersion = %d, attendu 26 : incrémenter exige une raison écrite ci-dessus "+
+	//
+	// v27 — LA FIN OBSERVÉE DES POSES D'ÉQUIPEMENT (`until`/`untilMax`/`end` sur
+	//   `equipmentPlacements`). La mécanique de v26 appliquée au recensement `ti=37` que la
+	//   chaîne des socles lisait déjà : dernière image-clé qui recense l'objet, première qui ne
+	//   le recense plus. `t1` (fin du mouvement) interdisait par contrat de servir de
+	//   disparition — un artefact 26 n'a AUCUNE fin d'affichage d'équipement. PAS de fin
+	//   `pickup` ici, et c'est une réfutation mesurée (mesure D du 2026-08-30) : l'équipement
+	//   tombe à la mort AVEC les grenades du mort, le lien spatial prise i48 -> pose attrape le
+	//   mauvais objet (matrice GlobalID x rang non diagonale ; à candidat unique, 0-2 paires par
+	//   film, incohérentes). Détail : internal/analysis/replay/equipment_placements.go.
+	if SchemaVersion != 27 {
+		t.Fatalf("SchemaVersion = %d, attendu 27 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }
