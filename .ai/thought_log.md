@@ -1,3 +1,293 @@
+## [2026-08-30] KOTH — la jauge de garde LIT le compteur du jeu (21/22 à 100 %) — Complété
+
+**Statut** : E2-bis / E3-bis / E4-bis closes, gates passés. Reste le gate visuel utilisateur et
+la CI de branche. Aucun commit.
+
+**Décision technique principale** : changement de SOURCE, pas de constante. Le liseré ne s'appuie
+plus sur le canal de propriété avec un seuil de 43 s ; il lit `scoreTimeline.holdTicks`, la série
+produite en Go depuis `comp 23 A` par l'UNION des instants de tic des joueurs d'un camp. Le
+dénominateur passe à 35 tics — un compte, pas un réglage. Remplacer 43 par 35 sur l'ancienne
+méthode aurait rendu la jauge pleine bien trop tôt : la propriété compte 43 là où le jeu compte 35.
+
+**Où vit quoi** : la formule d'union est de la logique métier, donc en Go (`hill_hold_ticks.go`,
+6 tests purs sans film) ; le client ne fait plus que lire, remettre à zéro aux paliers de score et
+diviser (`hillHoldLogic.ts`, 9 tests). L'intégration des intervalles de propriété est SUPPRIMÉE,
+pas désactivée — et la table `[hold_seconds_per_point]` avec elle.
+
+**Résultats observés** : 7 films re-cuits, 6 portent la série (le 7e est le KOTH classé, variante
+non déclarée : correct). Sur les artefacts réels, la jauge du camp qui marque atteint **100 % à
+l'image exacte du point sur 21 périodes sur 22** (l'écart unique vaut 94 %), et elle se remplit
+**0,0 s avant** — l'ancienne méthode arrivait pleine 3 à 23 s trop tôt. Deux films de plus sont
+couverts (`606d9844`, `8076f97f`) : l'ancienne méthode les écartait faute d'un second camp au
+calque de score, la nouvelle n'en a pas besoin.
+
+**Le garde-rail qui a servi** : `replayContract.test.ts` a refusé de compiler tant que
+`holdTicks` et `holdTicks[].ticks` n'étaient pas déclarés ET comblés par `normalizeScoreTimeline`.
+Deux tableaux nullables seraient arrivés bruts au rendu sans lui.
+
+**Conclusion / prochaine étape** : gate visuel utilisateur sur un des six films, CI de branche,
+puis les 40 films KOTH restants. Le seuil de 43 s et sa réserve n'existent plus nulle part.
+
+---
+
+## [2026-08-30] Sons manquants : le râtelier et le lâcher sont nommés, « KOTH » n'existe pas — Complété
+
+**Demande utilisateur** : trouver les sons qui manquent au rejeu — le point marqué en Roi de la
+colline (allié et adverse), le ramassage d'arme sur râtelier ou équipement, et (ajouté en cours)
+le lâcher. Méthodologie imposée : celle déjà éprouvée (hachage FNV-1 des noms Wwise, espérance
+de collision imprimée AVANT les résultats, seuil 0,10).
+
+**PRÉALABLE, et il coûtait la passe** : le dossier de travail
+`Downloads\Halo Infinite - Sons v75\` (413 rendus, `noms_evenements.json`, outils de rendu et de
+planche) **n'existait plus**, ni `Downloads\vgmstream\`. Ce qui l'a sauvé : **la planche publiée
+est une sauvegarde** — `WebFetch` sur l'artefact `6aadf3d5` rend les 12 Mo de la page, ses 430
+cartes et leurs audios en base64. La chaîne de rendu a été réécrite (3 outils Go dans le dossier
+recréé) et **validée par reproductibilité** : six gestes publiés le 27/08 re-rendus, durée
+retrouvée au centième (3,63 vs 3,62 ; 4,35 vs 4,36 ; 5,15 ; 2,89 ; 6,00 ; 1,18).
+
+**LE NÉGATIF CENTRAL, avec son dénominateur** : il n'existe **aucun espace de nommage `koth`**
+dans le jeu. Gabarits `play_004_mod_mp_koth_<jeton>` et `..._kingofthehill_<jeton>` contre les
+138 886 jetons du binaire, cibles = les 1 275 événements de `common` (espérance 0,0825) puis les
+6 142 de `globals` (0,1986) : **0 résultat**. Le jeton `koth` EST au dictionnaire
+(`page_objectives_koth`) — le négatif ne vient pas d'un vocabulaire trop pauvre. Aucune banque
+`sb_004_mod_mp_koth` non plus (39 noms x 1 496 banques, espérance 1,1e-5, calibrée par la
+redécouverte de `ctf`, `oddball` et `landgrab`).
+
+**Conséquence** : Roi de la colline joue les événements de la banque des zones `1c609526`, sous
+les deux seuls espaces qui s'y cassent — `strongholds` et `suddendeath` (ce dernier est neuf, et
+livre au passage `..._suddendeath_zone_spawn`). Le seul couple allié/adverse qui parle de SCORE y
+est `scoring_tick_team` / `_enemy` : c'est donc, à la mesure, le son du point marqué en KOTH. Le
+rejeu en sert aujourd'hui une **coupe de 1,2 s à −12 dBTP**, réglage voulu pour un tic par seconde
+en Bastion ; un point KOTH tombe toutes les 37 à 50 s et demande la version ENTIÈRE (3,62 s /
+4,35 s), rendue. La désignation finale reste une écoute.
+
+**DEUX BANQUES JAMAIS OUVERTES, et elles répondent aux deux autres demandes** :
+- `sb_004_mod_mp_shared_weaponpod` (`8a6cb59b`, 12 événements) — **le râtelier d'armes a sa propre
+  banque**. Sept noms cassés : `incoming`, `slam`, `slam_dirt`, `slam_water`, `electricity_open`,
+  `electricity_slam`, et **`empty` — le râtelier une fois l'arme prise** (espérances 0,0031 puis
+  0,0310).
+- `sb_006_chm_un_spartan` (`e9a52b26`, 230 événements) — **`play_006_chm_un_spartan_weapondrop`**,
+  0,31 s (espérance 0,0446). Le lâcher, sans ambiguïté.
+
+**En prime, une passe `moisson` systématique** (grammaire `play_<banque sans sb_>_<jeton>[_mod]`
+sur toutes les banques nommées des familles `sb_002_ui`, `sb_004_mod`, `sb_006`, `sb_007_abl` ;
+espérance par banque 0,0004 à 0,0171) casse **20 noms de plus**, dont les quatre du VIP
+(`vip_kill_team/_enemy`, `vip_killed_team/_enemy`) — directement utiles au chantier des modes
+porteurs, dont la couronne est livrée sans ses sons.
+
+**Livré** : `.ai/V7.5/RE_SONS_RATELIER_ET_KOTH_2026-08-30.md` (mesures, négatifs et dénominateurs)
+et la planche republiée EN PLACE (`6aadf3d5`, une seule adresse) avec deux sections neuves —
+« À DÉSIGNER — le point marqué en Roi de la colline » (14 candidats servis côte à côte) et
+« Râteliers d'armes et lâcher » (11 rendus neufs). Aucun code de production touché.
+
+**Prochaine étape** : l'écoute de la section « À DÉSIGNER » ; puis le câblage KOTH, qui a déjà son
+déclencheur (les bornes de période de colline SONT les instants de score, mesuré 4 films sur 4 —
+`PLAN_KOTH_GARDE_VIVANTE_2026-08-30.md`). Le râtelier et le lâcher, eux, n'ont **aucun
+déclencheur** dans le document de rejeu : c'est un travail de décodeur, pas de son.
+
+---
+
+## [2026-08-30] Borne de fin par le flux delta : REFUTEE, et la raison ferme le sujet — Complété
+
+**Hypothese utilisateur** : le flux delta etant plus fin que les images-cles, la derniere
+emission d une arme au sol y serait une meilleure borne de fin que l image-cle suivante.
+
+**Mesure** (3 films, cle = ID complet generation comprise) : duree de PRESENCE dans le flux
+entre la naissance de l entite et sa derniere emission, quel que soit le type de record.
+
+| film | entites distinctes | mediane | p75 | p90 |
+|---|---|---|---|---|
+| 64e8adfa | 86 | **0 ms** | 20,2 s | 279 s |
+| 53ce4390 | 78 | **0 ms** | 8,8 s | 60 s |
+| 000d5950 | 69 | **0 ms** | 29,1 s | 239 s |
+
+**VERDICT : refutee, et pour une raison structurelle qui clot la question.** Plus de la moitie
+des armes au sol n emettent QU UN SEUL record, celui de leur naissance. C est logique et il
+fallait le voir plus tot : le flux delta transporte des CHANGEMENTS, et une arme posee par terre
+ne change pas. Un objet immobile n a rien a dire. Le delta est plus fin que l image-cle pour tout
+ce qui BOUGE (bipedes, projectiles) et strictement muet pour ce qui ne bouge pas.
+
+**Note d outillage** : le comptage de naissances passe de 191 a 86 entites DISTINCTES sur
+64e8adfa — le premier comptage additionnait des records NEW repetes pour un meme ID. A garder en
+tete pour tout volume d entites du monde.
+
+**Conclusion** : l option 2 (borne par l image-cle) n est pas un pis-aller, c est la SEULE borne
+honnete disponible, parce que l image-cle est le seul canal qui re-enumere les objets immobiles.
+Et la machinerie existe deja en production : `replay/ground_weapon_bounds.go`
+(`gwPickupBoundsFrom`) encadre precisement la disparition d un objet au sol par le recensement
+des images-cles. Ce que le present chantier apporte est le DEBUT EXACT (l instant du lacher, a la
+ms) la ou le code actuel n a qu un intervalle ; la FIN reste bornee par l image-cle.
+
+## [2026-08-30] Despawn des armes au sol : NON DISPONIBLE (mesure, 3 films) — Complété
+
+**Demande** : avant d afficher une arme lachee « jusqu a ce qu elle disparaisse », s assurer
+qu on a bien le despawn.
+
+**Décision technique** : apparier chaque naissance d entite `ti=42` a sa mort. PREMIER JET FAUX —
+il appariait sur le SLOT, qui est recycle d une entite a l autre ; deux vies successives du meme
+emplacement etaient confondues, ce qui fabriquait de fausses fermetures et des durees de vie
+absurdes (jusqu a 638 s). Corrige : appariement sur l ID COMPLET, generation comprise (bits
+30-31 de `FrameRecord.ID`).
+
+**Résultats observés** (apres correction, donc plus severes que le premier jet) :
+
+| film | nees en delta | fermees par une disparition | encore ouvertes |
+|---|---|---|---|
+| 64e8adfa | 191 | 13 (6,8 %) | 178 |
+| 53ce4390 | 139 | 20 (14,4 %) | 119 |
+| 000d5950 | 195 | 10 (5,1 %) | 185 |
+
+**VERDICT : on n a PAS le despawn.** 5 a 14 % des armes au sol recoivent un evenement de
+disparition ; les 86-95 % restantes n en recoivent jamais. Les durees mesurees sur le maigre
+echantillon ferme (mediane 133 ms a 81 s) n ont aucune coherence entre films — ce n est pas une
+horloge de despawn, c est du bruit. Hypothese la plus probable, non testee : le film n emet un
+DEL que pour les entites qui etaient PERTINENTES pour le client enregistreur ; une arme qui sort
+du champ de pertinence disparait sans evenement.
+
+**Conclusion / prochaine étape** : l affichage « du lacher jusqu au despawn » n est pas
+realisable tel quel. Trois options, decision produit : (a) duree conventionnelle fixe (le timer
+du jeu, ~30 s) affichee comme une convention et non comme une mesure ; (b) afficher jusqu a la
+prochaine image-cle qui ne montre plus l arme (borne haute honnete, granularite 20 s) ;
+(c) n afficher que l instant du lacher, sans persistance. Le LACHER lui-meme reste solide
+(naissance de l entite dans le MEME paquet) : c est seulement la FIN qui manque.
+
+## [2026-08-30] KOTH — E1-ter : la barre du camp vaut 35 TICS, lus et non ajustés — Complété
+
+**Statut** : Complété. Ouvre E2-bis / E3-bis (publier la série de tics et la faire lire au client).
+
+**Décision technique principale** : la barre d'un camp n'est ni la SOMME des tics de ses joueurs
+(elle compterait deux fois le même instant) ni le MAXIMUM sur la période (il perd les relais sur
+la colline) — c'est l'UNION DE LEURS INSTANTS. La période se découpe aux instants d'émission, on
+prend le maximum par tranche, on somme.
+
+**Résultats observés** : **15 périodes sur 16 rendent exactement 35**, sur 4 films et 4 cartes
+(`01e1f945` 35/35/35/35/35, `21ece4d8` 35/35/35/35, `7f1bbf06` 35/35/35, `a36c8bed` 35/33/35/35).
+Le contrôle est dans la mesure : le camp qui NE marque pas rend 1, 3, 4, 4, 9, 10, 11, 12, 14,
+16, 16, 23, 25, 25 — jamais 35. Et 35 est aussi le chiffre annoncé par la documentation
+communautaire : deux chaînes indépendantes concordent.
+
+**Conséquence sur E1** : le seuil de 43 s mesuré sur le canal de PROPRIÉTÉ était bien une
+sur-estimation — mais pas pour la raison que j'avais avancée (le neutre est publié et n'était pas
+compté ; réfutation consignée). La cause de l'écart 43/35 reste à nommer et n'a plus d'importance
+pratique, puisqu'on cesse de passer par la propriété.
+
+**Conclusion / prochaine étape** : NE PAS se contenter de remplacer 43 par 35 — la méthode
+actuelle intègre la propriété, qui compte 43 là où le jeu compte 35 ; la jauge serait pleine trop
+tôt. Il faut publier la série de tics (`comp 23 A`) dans l'artefact et faire lire celle-là au
+client (E2-bis / E3-bis). L'existant reste en place d'ici là, comme repli mesuré et documenté.
+
+---
+
+## [2026-08-30] Blocage de push : `killsourceload` importe mais JAMAIS COMMITE — En cours
+
+**Constat, sur pieces** : `apps/go-api/internal/service/match_view_data_loaders.go:21` importe
+`levelup/go-api/internal/service/killsourceload`. Le fichier importeur est commite
+(`68e44770b score-manches(E5)`), mais le paquet `killsourceload/load.go` n a **aucun commit** :
+il existe uniquement, non suivi, dans le worktree PARTAGE `LevelUp-go-migration`. Toute branche
+partant de `feat/v75` hérite donc d un `internal/service` qui NE COMPILE PAS, et le hook de
+pre-push (qui lance `TestMediaE2E_RealDB` sur `internal/api/handlers`) echoue en `setup failed`.
+
+**Ce n est pas une regression de la branche `wt/ramassage`** : elle ne touche que
+`internal/analysis/filmdec`. Le push est bloque tant que la session qui porte le chantier
+score-manches n a pas commite son paquet. Aucun contournement (`--no-verify`) n a ete tente :
+la regle du depot l interdit sans demande explicite.
+
+**Note de tenue du journal** : `.ai/thought_log.md` vit dans l arbre PARTAGE, pas dans le
+worktree dedie — les commits de `wt/ramassage` ne le contiennent donc pas. C est voulu (journal
+unique), mais il faut le savoir en relisant l historique de la branche.
+
+## [2026-08-30] KOTH — E1-bis : `comp 23 A` est le compteur de garde (31/31) — Complété
+
+**Statut** : Complété (verdict), ouvre E1-ter. Instrument
+`internal/analysis/replay/colline_statborg_e1bis_test.go`, gate écrit avant mesure au plan §E1b.3.
+
+**Déclencheur** : objection utilisateur — j'avais proposé d'ajuster le seuil de 43 s pour que la
+jauge tombe juste à l'écran ; « soit une équipe marque soit elle marque pas ». L'objection est
+juste (c'était caler une mesure sur un rendu) et elle désignait la bonne piste : le statborg.
+
+**Décision technique principale** : balayage des 65 composants × 2 côtés × 2 régimes contre
+l'oracle par joueur de l'API (`zone_scoring_ticks`, `time_in_zones_seconds`), gelé dans
+l'instrument. Discriminant en deux phases : l'ensemble d'abord, puis — et c'est lui qui tranche —
+la valeur juste pour chaque joueur NOMMÉ après pont slot→xuid, comme pour VIP.
+
+**Résultats observés** : `comp 23 A` = `StrongholdScoringTicks`, **31 joueurs sur 31, 4 films sur
+4, zéro erreur**. Sur `01e1f945` il est le SEUL des 26 composants à 8 valeurs à reproduire
+l'ensemble. La phase 1 ne rend que 2 films sur 4 (elle en exigeait 3) pour deux limites
+d'instrument identifiées : un joueur à zéro tic n'émet rien, et certains matchs portent un
+participant de plus que le film n'a de slots (des BOTS, xuid corrompu en base : `bid(42.0`,
+`bid(2.0`). La phase 2 ne souffre d'aucune des deux et est plus dure.
+
+**Découverte à traiter ailleurs** : `match_objective_stats` porte des lignes dont le `xuid` est
+un fragment corrompu (`bid(42.0`, `bid(2.0`) — des bots. Elles faussent tout dénombrement par
+joueur qui joint `match_participants` (jointure interne : le bot disparaît ; jointure externe :
+il apparaît sans triplet).
+
+**Ce qui reste ouvert** : le tic est PAR JOUEUR, la barre du jeu est PAR CAMP. Le maximum sur les
+joueurs du camp qui marque n'est pas constant (18 à 35 selon la période) — attendu, un camp peut
+se relayer sur la colline. Candidat suivant : l'UNION des instants de tic du camp. Non mesuré.
+
+**Conclusion / prochaine étape** : le seuil de 43 s RESTE en place et le liseré reste une
+reconstruction — le composant est nommé, le pont « tics par joueur → barre du camp » ne l'est pas
+encore. E1-ter mesurera l'union des instants ; si elle rend une constante, le 43 s disparaît au
+profit d'un compte lu.
+
+---
+
+## [2026-08-30] RAMASSAGE — la liste sort, et elle est plausible
+
+(voir bloc « LA LISTE, ENFIN » plus bas dans l entree du jour)
+
+## [2026-08-30] KOTH — la GARDE de la colline : mesurée (43 s), publiée, affichée — Complété (E0→E4)
+
+**Statut** : E0 à E4 closes, gates passés. Plan et journal des mesures :
+`.ai/V7.5/PLAN_KOTH_GARDE_VIVANTE_2026-08-30.md`, `replay2d/registre_film/E1_seuil_garde*.log`,
+`E4_cuisson_koth.log`. Reste E5 (CI de branche, gate visuel utilisateur). Aucun commit.
+
+**Demande utilisateur** : « en KOTH il n'y a pas vraiment de capture ; c'est le temps de
+sécurisation qui marque — il faut le gérer et l'afficher ».
+
+**Décision technique principale — un DÉNOMINATEUR mesuré, une intégration côté client, aucune
+série de plus dans l'artefact.** La colline TOURNE à chaque point (vérifié : les périodes de
+`zoneStates` sont bornées exactement par les instants de score, 4 films sur 4), donc tout ce qui
+manquait était le nombre de secondes de garde qui valent un point. Il entre au TOML comme
+`targetScore` (`regulation.toml [hold_seconds_per_point]`), voyage par `scoreTimeline.
+holdSecondsPerPoint`, et le client intègre lui-même les intervalles de propriété qu'il dessine
+déjà (`hillHoldLogic.ts`, module pur). Pas de bump de schéma : le champ vit DANS un calque
+existant, exactement comme `targetScore` — `wantReplayDocumentFields` compte la racine.
+
+**Résultats observés** :
+- **Seuil = 43,0 s** (médiane, 68 périodes sur 16 films). Interquartile 40,3-47,1 soit
+  93,7 %-109,4 % de la médiane (gate ±15 % tenu). Témoin « camp d'en face » à 19,5 s, témoin
+  « périodes décalées de 60 s » à 33,1 s : les deux dehors. Appuis : le temps de garde varie
+  deux fois moins que la durée de période (CV 16,2 % contre 30,7 %), corrélation à cette durée
+  0,68 (elle vaudrait 1 si la garde n'était que du temps écoulé).
+- **Cibles de victoire mesurées sur le registre** : `KOTH:Arena` = 3 (45 matchs sur 46 y
+  finissent ; le 46e finit à 2 au chrono), `Ranked:King of the Hill` = 4 (3/3). Le motif qui
+  excluait KOTH de `[score_target]` (« l'oracle du film diffère de l'API ») est PÉRIMÉ : le
+  registre porte des collines depuis le backfill du 24/08 (`606d9844` 3-0, `8076f97f` 0-3, là où
+  il portait 105/8 et 78/105).
+- **7 films re-cuits** (3 récents + les 4 déjà cuits), 7/7 en schéma 23 avec `roles = hill` et
+  propriétaire. `01e1f945` passe d'identité `unresolved` à `a` (sans quoi aucune jauge),
+  `0a247154` gagne son propriétaire (112 intervalles) qu'il n'avait pas au schéma 20.
+
+**Trois corrections de MON plan, faites sur pièces plutôt qu'exécutées aveuglément** : (1) le
+témoin « décalage +20 s » NE PEUT PAS échouer sur une période à propriété stationnaire — défaut
+déjà consigné par D2-bis sur le même chiffre ; durci à +60 s, le +20 s reste publié comme
+contrôle ; (2) pas de bump de schéma (cf. ci-dessus) ; (3) E1 n'avait pas besoin de cuire les
+films — l'instrument lit le film sous garde `ZONE_FILM`, ce qui a économisé une passe de ~2 h.
+
+**Réserve écrite au contrat, et visible** : la jauge est une RECONSTRUCTION à partir d'un canal
+de propriété exact à 88-89 %, qui garde le propriétaire quand la colline est vide — 43 s est donc
+une borne haute (la doc communautaire annonce ~35 s cumulées). Simulée sur les artefacts
+re-cuits : la jauge atteint 87-100 % à l'instant du point, pleine 1 à 23 s trop tôt sur 10
+périodes de 16. Elle est clampée à 1 et ne décroît pas hors remise à zéro.
+
+**Conclusion / prochaine étape** : gate VISUEL utilisateur sur un KOTH re-cuit (`21ece4d8`,
+`7f1bbf06`, `a36c8bed`, `01e1f945`) — c'est là que se tranche si 43 s doit être recalibré, ce
+qui est UNE ligne de TOML. Puis CI de branche, et les 40 films KOTH restants à cuire.
+
+---
+
 ## [2026-08-30] Seeds de test duckdb : colonnes manches ADR 0032 absentes des stubs match_registry — Complété
 
 **Contexte** : `go test -tags=integration -p 1 ./internal/platform/duckdb/...` rouge sur ~20 tests

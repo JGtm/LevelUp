@@ -36,6 +36,10 @@ type ScoreInput struct {
 	// TargetScore est la cible de victoire de la variante (regulation.toml [score_target]).
 	// 0 = inconnue : rien n'est publie, le client retombe sur son repli.
 	TargetScore int
+	// HoldTicksPerPoint est le nombre de TICS de garde qui valent un point sur la variante
+	// (regulation.toml [hold_ticks_per_point]). 0 = inconnu : ni serie ni denominateur ne sont
+	// publies, et le client n'affiche aucune progression de garde.
+	HoldTicksPerPoint int
 	// Truncated propage le plafond de lecture des enregistrements : les courbes s'arretent
 	// alors avant la fin du match, et la couverture le dit.
 	Truncated bool
@@ -186,6 +190,12 @@ func buildScoreTimeline(in *ScoreInput, deaths []Death, c scoreClock) (*ScoreTim
 		Players: buildPlayerScores(recs, identity, deaths, c),
 	}
 	tl.TargetScore = publishableTarget(in.TargetScore, slots, teamScore, len(tl.Teams))
+	if in.HoldTicksPerPoint > 0 {
+		// GARDE DE MODE : la serie n'est construite que sur une variante DECLAREE — `comp 23 A`
+		// existe sur tous les modes, il ne porte des tics de colline que sur un mode a colline.
+		tl.HoldTicks = buildHoldTicks(recs, identity, in.TeamByXUID, c)
+		tl.HoldTicksPerPoint = publishableHold(in.HoldTicksPerPoint, len(tl.HoldTicks))
+	}
 	cov := &ScoreCoverage{
 		TeamIdentity:  method,
 		Rounds:        len(objectiveevents.RealRounds(recs)),
@@ -215,6 +225,23 @@ func publishableTarget(target int, slots []int, score scoreSeriesSet, teams int)
 		}
 	}
 	return &target
+}
+
+// publishableHold applique la garde du denominateur de garde (cf.
+// ScoreTimeline.HoldTicksPerPoint) : il n'est publie que s'il est connu (> 0) et si le calque
+// porte au moins une serie de garde.
+//
+// POURQUOI LA SECONDE CONDITION. Un denominateur sans numerateur ne norme rien : le client
+// aurait de quoi diviser mais rien a diviser, et une jauge a zero se lirait comme une mesure.
+//
+// AUCUNE GARDE « la valeur depasse ce que le film montre », contrairement a publishableTarget :
+// le film ne porte pas de total de reference pour la garde. La mesure qui fonde le 35 est en
+// tete de hill_hold_ticks.go.
+func publishableHold(ticks, series int) *int {
+	if ticks <= 0 || series == 0 {
+		return nil
+	}
+	return &ticks
 }
 
 // teamSlotsOf rend les slots d'entite d'equipe vus par le film, dans l'ordre.

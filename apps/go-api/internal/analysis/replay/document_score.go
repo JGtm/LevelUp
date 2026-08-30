@@ -157,6 +157,47 @@ type ScoreTimeline struct {
 	// vainqueur. Champ optionnel : son ajout n'incremente pas SchemaVersion (regle du depot,
 	// cf. build_test.go).
 	TargetScore *int `json:"targetScore,omitempty"`
+	// HoldTicks est la PROGRESSION DE GARDE par camp, en tics, cumulee sur le match et en
+	// escalier — la barre que le jeu remplit quand un camp tient la colline.
+	//
+	// ELLE EST LUE, PAS RECONSTRUITE : le compteur est `comp 23 A` du statborg, qui reproduit
+	// `StrongholdScoringTicks` de l'API exactement joueur par joueur (31/31 sur 4 films), et la
+	// barre d'un camp est l'UNION des instants de ses joueurs — cf. hill_hold_ticks.go pour les
+	// deux formules fausses (somme, maximum) et la mesure qui les ecarte.
+	//
+	// LE CLIENT LA LIT EN DIFFERENTIEL : la barre se remet a zero A CHAQUE POINT, et les instants
+	// de point sont les paliers de `Teams`. La valeur affichee est donc
+	// `(ticks(frame) - ticks(dernier point)) / HoldTicksPerPoint`.
+	//
+	// ABSENTE quand la variante n'est pas declaree a `[hold_ticks_per_point]` (garde de mode chez
+	// l'appelant : `comp 23 A` existe sur tous les modes, il ne porte des tics de colline que sur
+	// un mode a colline) ou quand aucun joueur n'est situe dans un camp.
+	HoldTicks []TeamHold `json:"holdTicks,omitempty"`
+	// HoldTicksPerPoint est le DENOMINATEUR DE LA GARDE : combien de tics valent UN point.
+	//
+	// IL NE VIENT PAS DU FILM, exactement comme TargetScore : c'est la table MESUREE de la
+	// variante (regulation.toml [hold_ticks_per_point]), fournie par l'appelant. ABSENT quand la
+	// variante n'est pas au catalogue ou quand aucune serie de garde n'a pu etre construite — et
+	// le client n'affiche alors AUCUNE progression, jamais une jauge sur un denominateur devine.
+	//
+	// 35, ET C'EST UN COMPTE, PAS UN REGLAGE : sur 4 films et 4 cartes, le camp qui marque rend
+	// exactement 35 tics d'union sur 15 periodes sur 16 (l'unique ecart vaut 33), tandis que le
+	// camp qui NE marque pas rend 1 a 25 et jamais 35. Detail et formule : hill_hold_ticks.go.
+	//
+	// Champ optionnel : son ajout n'incremente pas SchemaVersion, meme regle et meme raison
+	// que TargetScore ci-dessus — il vit DANS un calque existant, pas a la racine du document
+	// (cf. wantReplayDocumentFields).
+	HoldTicksPerPoint *int `json:"holdTicksPerPoint,omitempty"`
+}
+
+// TeamHold est la barre de garde d'un camp : ses tics cumules, en escalier.
+type TeamHold struct {
+	// TeamID est le camp du REGISTRE. Absent quand le camp n'est pas situe — mais le calque
+	// n'est alors pas construit du tout (cf. holdSlotsByTeam), donc il est en pratique toujours
+	// present ; le pointeur suit la convention de TeamScore.
+	TeamID *int `json:"teamId,omitempty"`
+	// Ticks sont les emissions RETENUES : une par instant ou la barre du camp avance.
+	Ticks []ScoreTick `json:"ticks,omitempty"`
 }
 
 // ScoreCoverage dit ce que vaut le calque du score — et ce qu'il ne vaut pas.
