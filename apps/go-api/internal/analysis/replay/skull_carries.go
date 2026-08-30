@@ -116,7 +116,14 @@ type skullRawCarry struct {
 //
 // Rend (nil, nil) quand rien n'a ete balaye (film non-Oddball), et (nil, couverture) quand le film
 // est Oddball mais qu'aucune periode ne sort — la couverture dit alors POURQUOI.
-func buildSkullCarries(scan SkullCarryScan, ctx skullCarryCtx) ([]SkullCarry, *SkullCarriesCoverage) {
+//
+// `presence` indexe, par xuid, les fenetres de vie bipede publiees. Un portage attribue a un joueur
+// dont AUCUNE vie ne couvre l'intervalle est une attribution FANTOME (le canal de score pointe un
+// joueur absent de la carte) : le calque n'aurait aucune position ou poser le crane, on l'ecarte
+// (`CarrierAbsent`). Un portage qui DEBORDE de la presence du porteur est ROGNE a elle (le crane
+// n'est porte que tant que le porteur est present). Un porteur inconnu de `presence` — jamais nomme
+// dans les tracks, ou `presence` nil en test — n'est PAS verifie : on ne rejette pas l'inconnu.
+func buildSkullCarries(scan SkullCarryScan, ctx skullCarryCtx, presence map[string][]presenceSpan) ([]SkullCarry, *SkullCarriesCoverage) {
 	if !scan.Scanned {
 		return nil, nil
 	}
@@ -139,6 +146,20 @@ func buildSkullCarries(scan SkullCarryScan, ctx skullCarryCtx) ([]SkullCarry, *S
 		if f1 < f0 {
 			f1 = f0
 		}
+		// Gate de PRESENCE : le porteur doit etre sur la carte pendant le portage.
+		if spans := presence[r.xuid]; len(spans) > 0 {
+			span, ok := bestOverlap(spans, f0, f1)
+			if !ok {
+				cov.CarrierAbsent++
+				continue
+			}
+			if f0 < span.f0 {
+				f0 = span.f0
+			}
+			if f1 > span.f1 {
+				f1 = span.f1
+			}
+		}
 		closed := f1 < openThreshold
 		out = append(out, SkullCarry{XUID: r.xuid, T0: f0, T1: f1, Closed: closed})
 		if closed {
@@ -149,6 +170,46 @@ func buildSkullCarries(scan SkullCarryScan, ctx skullCarryCtx) ([]SkullCarry, *S
 	}
 	cov.Carries = len(out)
 	return out, cov
+}
+
+// presenceSpan est une fenetre [f0,f1] fermee sur l'axe de frames publie.
+type presenceSpan struct{ f0, f1 int }
+
+// skullCarrierPresence indexe, par xuid, les fenetres [StartFrame, EndFrame] des vies bipedes
+// PUBLIEES (`doc.Tracks`). Les vies anonymes (xuid vide) n'entrent pas : une presence inconnue ne
+// doit pas se faire passer pour une absence. Meme axe de frames que les portages (les deux passent
+// par le meme `origin`/`step`), donc directement comparables.
+func skullCarrierPresence(tracks []Track) map[string][]presenceSpan {
+	out := map[string][]presenceSpan{}
+	for _, t := range tracks {
+		if t.XUID == "" {
+			continue
+		}
+		out[t.XUID] = append(out[t.XUID], presenceSpan{t.StartFrame, t.EndFrame})
+	}
+	return out
+}
+
+// bestOverlap rend la fenetre de presence qui recouvre le plus [f0,f1], et si un recouvrement
+// existe. Sans recouvrement (le porteur n'est present a AUCUN instant du portage), (presenceSpan{},
+// false) — le portage est un fantome.
+func bestOverlap(spans []presenceSpan, f0, f1 int) (presenceSpan, bool) {
+	best := presenceSpan{}
+	bestOv := 0
+	for _, s := range spans {
+		lo, hi := f0, f1
+		if s.f0 > lo {
+			lo = s.f0
+		}
+		if s.f1 < hi {
+			hi = s.f1
+		}
+		if ov := hi - lo + 1; ov > bestOv {
+			bestOv = ov
+			best = s
+		}
+	}
+	return best, bestOv > 0
 }
 
 // skullCarryIntervals reconstruit les periodes de portage : les trains de tics de score de mode,
@@ -234,7 +295,7 @@ func attachSkullCarries(doc *ReplayDocument, opt Options, own OwnerReport, clock
 	carries, cov := buildSkullCarries(scan, skullCarryCtx{
 		origin: clock.origin, step: clock.step, frames: clock.frames,
 		deathOffsetMS: own.DeathOffsetMS,
-	})
+	}, skullCarrierPresence(doc.Tracks))
 	doc.SkullCarries = carries
 	if doc.Coverage != nil {
 		doc.Coverage.SkullCarries = cov
@@ -250,5 +311,6 @@ func logSkullCarriesCoverage(cov *SkullCarriesCoverage) {
 	slog.Info("rejeu : portage du crane d'Oddball",
 		"prises", cov.Grabs, "trains", cov.Trains, "portages", cov.Carries,
 		"fermes", cov.Closed, "ouverts", cov.Open,
-		"sansPont", cov.NoBridge, "horsFenetre", cov.OutOfWindow)
+		"sansPont", cov.NoBridge, "horsFenetre", cov.OutOfWindow,
+		"porteurAbsent", cov.CarrierAbsent)
 }

@@ -68,7 +68,7 @@ func TestSkullCarriesTwoRounds(t *testing.T) {
 	recs, deaths := skullFixture()
 	// step = 1000 us/frame => 1 frame par ms (frame = instant en ms). frames grand : tout ferme.
 	carries, cov := buildSkullCarries(skullTestScan(recs, deaths),
-		skullCarryCtx{origin: 0, step: 1000, frames: 100000})
+		skullCarryCtx{origin: 0, step: 1000, frames: 100000}, nil)
 
 	if cov == nil || !cov.SkullFilm {
 		t.Fatalf("couverture absente ou SkullFilm faux : %+v", cov)
@@ -109,7 +109,7 @@ func TestSkullCarriesOpenAtAxisEnd(t *testing.T) {
 	recs, deaths := skullFixture()
 	// frames = 23000 : le dernier portage (fin 22000) tombe dans le mou de fin (3 s) -> ouvert.
 	carries, cov := buildSkullCarries(skullTestScan(recs, deaths),
-		skullCarryCtx{origin: 0, step: 1000, frames: 23000})
+		skullCarryCtx{origin: 0, step: 1000, frames: 23000}, nil)
 	if len(carries) != 4 {
 		t.Fatalf("portages = %d, attendu 4", len(carries))
 	}
@@ -131,9 +131,74 @@ func TestSkullCarriesOpenAtAxisEnd(t *testing.T) {
 
 // TestSkullCarriesUnscanned — hors Oddball (Scanned faux), ni calque ni couverture.
 func TestSkullCarriesUnscanned(t *testing.T) {
-	carries, cov := buildSkullCarries(SkullCarryScan{Scanned: false}, skullCarryCtx{step: 1000, frames: 100})
+	carries, cov := buildSkullCarries(SkullCarryScan{Scanned: false}, skullCarryCtx{step: 1000, frames: 100}, nil)
 	if carries != nil || cov != nil {
 		t.Errorf("film non-Oddball : attendu (nil, nil), obtenu (%v, %v)", carries, cov)
+	}
+}
+
+// TestSkullCarriesCarrierAbsent — le gate de PRESENCE : un portage attribue a un joueur ABSENT de la
+// carte pendant l'intervalle est ecarte (fantome), et un portage qui deborde de la presence est
+// rogne a elle. Contre-epreuve : sans presence (nil), les memes trains sortent tous (cf.
+// TestSkullCarriesTwoRounds, 4 portages).
+func TestSkullCarriesCarrierAbsent(t *testing.T) {
+	recs, deaths := skullFixture()
+	// A n'est present que [1500,3500] : couvre en PARTIE son 1er portage (1000-4000) mais PAS son
+	// 2e (9000-10000). C et B couvrent leurs portages.
+	presence := map[string][]presenceSpan{
+		"A": {{1500, 3500}},
+		"C": {{5000, 7000}},
+		"B": {{20000, 22000}},
+	}
+	carries, cov := buildSkullCarries(skullTestScan(recs, deaths),
+		skullCarryCtx{origin: 0, step: 1000, frames: 100000}, presence)
+
+	if len(carries) != 3 {
+		t.Fatalf("portages = %d, attendu 3 (le fantome A@9000 ecarte) : %+v", len(carries), carries)
+	}
+	if cov.CarrierAbsent != 1 {
+		t.Errorf("CarrierAbsent = %d, attendu 1", cov.CarrierAbsent)
+	}
+	// Le 1er portage de A est ROGNE a sa presence [1500,3500] (au lieu de 1000-4000).
+	if carries[0].XUID != "A" || carries[0].T0 != 1500 || carries[0].T1 != 3500 {
+		t.Errorf("portage A rogne = %+v, attendu {A 1500 3500}", carries[0])
+	}
+	// C et B intacts (leur presence couvre tout l'intervalle).
+	if carries[1].XUID != "C" || carries[1].T0 != 5000 || carries[1].T1 != 7000 {
+		t.Errorf("portage C = %+v, attendu {C 5000 7000}", carries[1])
+	}
+	if carries[2].XUID != "B" {
+		t.Errorf("porteur restant = %q, attendu \"B\"", carries[2].XUID)
+	}
+	if cov.Trains != 4 || cov.Carries != 3 {
+		t.Errorf("couverture = %+v, attendu 4 trains / 3 portages", cov)
+	}
+	if !cov.Balanced() {
+		t.Errorf("couverture desequilibree : %+v", cov)
+	}
+}
+
+// TestSkullCarrierPresence — l'index de presence groupe les vies bipedes par xuid, ignore les vies
+// anonymes.
+func TestSkullCarrierPresence(t *testing.T) {
+	tracks := []Track{
+		{XUID: "A", StartFrame: 10, EndFrame: 40},
+		{XUID: "A", StartFrame: 100, EndFrame: 130},
+		{XUID: "", StartFrame: 0, EndFrame: 999}, // anonyme : ignoree
+		{XUID: "B", StartFrame: 50, EndFrame: 70},
+	}
+	p := skullCarrierPresence(tracks)
+	if len(p) != 2 {
+		t.Fatalf("xuids indexes = %d, attendu 2 (anonyme ignoree) : %+v", len(p), p)
+	}
+	if len(p["A"]) != 2 || len(p["B"]) != 1 {
+		t.Errorf("A=%d vies, B=%d vies, attendu 2 et 1", len(p["A"]), len(p["B"]))
+	}
+	if _, ok := bestOverlap(p["A"], 20, 25); !ok {
+		t.Errorf("[20,25] devrait recouvrir la vie A [10,40]")
+	}
+	if _, ok := bestOverlap(p["A"], 60, 90); ok {
+		t.Errorf("[60,90] ne devrait recouvrir aucune vie A (trou entre [10,40] et [100,130])")
 	}
 }
 
