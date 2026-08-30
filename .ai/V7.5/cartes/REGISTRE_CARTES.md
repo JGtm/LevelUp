@@ -1399,16 +1399,16 @@ qui demande une mesure par region que la chaine ne produit pas encore.
 | Ronin | `f459867d` | 1 | 659x1288 | 9/9 | 15 | 624 polys | VALIDEE 28/08 |
 | Scarlett's Landing | `79042fc0` | 1 | 966x1100 | 9/9 | 8 | 308 polys | VALIDEE 28/08 |
 | Warehouse | `5b12d6d9` | 1 | 723x1352 | 7/7 | 9 | 588 polys | VALIDEE 28/08 |
-| Snowbound | `410f1c01` | 23 | 1349x1172 | 42/43 | 23 | 4521 polys | A JUGER |
+| Snowbound | `410f1c01` | 23 | 1349x1172 | 42/43 | 23 | 4521 polys | VALIDEE 30/08 |
 | Absolution | `78da545f` | 21 | 1188x1303 | 21/22 | 60 | maillage illisible | A JUGER |
 | Cliffside | `4bffd021` | 18 | 1176x1348 | 14/14 | 44 | 1146 polys | VALIDEE 30/08 |
 | Fortress | `0d1c9255` | 17 | 1147x1285 | 29/29 | 75 | 989 polys | VALIDEE 30/08 |
-| High Ground | `bb7b78ae` | 15 | 1754x1202 | 19/20 | 24 | 3596 polys | A JUGER |
-| Command | `2c9f3490` | 11 | 2068x1634 | 43/43 | 36 | 3120 polys | A JUGER |
+| High Ground | `bb7b78ae` | 15 | 1754x1202 | 19/20 | 24 | 3596 polys | VALIDEE 30/08 |
+| Command | `2c9f3490` | 11 | 2068x1634 | 43/43 | 36 | 3120 polys | VALIDEE 30/08 |
 | Critical Dewpoint | `bae4df14` | 10 | 1286x1352 | 10/11 | 44 | 1038 polys | VALIDEE 30/08 |
 | Refuge | `41217472` | 10 | 1591x1611 | 45/46 | 83 | 2666 polys | VALIDEE 30/08 |
-| Smallhalla | `98783453` | 9 | 1989x1431 | 52/52 | 29 | 1379 polys | A JUGER |
-| Shogun | `33075df7` | 9 | 2920x2213 | 13/13 | 26 | 16683 polys | A JUGER |
+| Smallhalla | `98783453` | 9 | 1989x1431 | 52/52 | 29 | 1379 polys | VALIDEE 30/08 |
+| Shogun | `33075df7` | 9 | 2920x2213 | 13/13 | 26 | 16683 polys | VALIDEE 30/08 |
 | Insolence | `d5c5eb4f` | 7 | 3001x2867 | 38/38 | 41 | maillage illisible | A JUGER |
 | Flood Gulch | `7097bc4f` | 6 | 2153x2767 | 22/22 | 8 | 7125 polys | VALIDEE 30/08 |
 | 944396dd-5661-4a16-b1d8-a6053f762c55 | `944396dd` | 1 | 2220x2638 | 20/20 | 21 | 944 polys | VALIDEE 30/08 |

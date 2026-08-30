@@ -80,6 +80,10 @@ type reglageCarte struct {
 	MargeNavmesh float64 `json:"margeNavmesh,omitempty"`
 	// MargeSolBas : profondeur acceptee sous le niveau de jeu pour le sol vu du dessous
 	MargeSolBas float64 `json:"margeSolBas,omitempty"`
+	// RogneAuxAltitudesProches : ne garder que ce qui est proche du niveau de jeu, plus une marge
+	RogneAuxAltitudesProches bool    `json:"rogneAuxAltitudesProches,omitempty"`
+	SeuilAltitude            float64 `json:"seuilAltitude,omitempty"`
+	MargeAltitude            float64 `json:"margeAltitude,omitempty"`
 	// PlancherTranche : profondeur en metres SOUS le niveau de jeu (valeur NEGATIVE) en deca
 	// de laquelle la matiere sort de la carte. Zero = -12 m. Voir OptionsCuisson.
 	PlancherTranche float64 `json:"plancherTranche,omitempty"`
@@ -740,4 +744,19 @@ func (e *environnement) margeSolBasDe(cle string) float64 {
 	slog.Info("mapfond: profondeur du sol vu du dessous propre a la carte", "carte", cle,
 		"marge", c.MargeSolBas, "gateLe", c.GateLe)
 	return c.MargeSolBas
+}
+
+// rogneAuxAltitudesProchesDe dit si cette carte n affiche que ce qui est proche du niveau de
+// jeu. Journalise : c est une voie qui SUPPRIME de la matiere.
+func (e *environnement) rogneAuxAltitudesProchesDe(cle string) (bool, float64, float64) {
+	if e.reglages == nil {
+		return false, 0, 0
+	}
+	c, ok := e.reglages.Cartes[cle]
+	if !ok || !c.RogneAuxAltitudesProches {
+		return false, 0, 0
+	}
+	slog.Info("mapfond: rognage a l altitude du niveau de jeu arme pour cette carte", "carte", cle,
+		"seuil", c.SeuilAltitude, "marge", c.MargeAltitude, "gateLe", c.GateLe)
+	return true, c.SeuilAltitude, c.MargeAltitude
 }
