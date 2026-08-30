@@ -80961,3 +80961,36 @@ seuil. Aucun n'a ete affaibli ; deux n'avaient meme rien a corriger.
 
 **Conclusion / prochaine etape** : la CI de branche ne devrait plus rougir sur ces sept paquets.
 Reprise du decodage TSTR/FSTR, qui debloquerait Absolution et les deux Insolence.
+
+## [2026-08-31] TSTR/FSTR : le blocage d'Absolution n'est PAS une origine d'indexation
+
+**Statut** : En cours (diagnostic corrige, cause non encore trouvee ; rien de casse, rien livre
+sur le decodeur lui-meme).
+
+**Decision technique principale** : ne rien changer au decodeur. La seule piste essayee a ete
+mesuree, refutee et consignee ; le code reste dans l'etat qui decode Isolation entierement.
+
+**Ce que la sonde a etabli, et qui CORRIGE le diagnostic precedent** : le decodeur echouait sur
+« type 68 (hkPropertyId), membre 50, indice de nom 98 hors des 98 chaines ». Cet ecart d'un etait
+lu comme une table indexee a partir de 1. C'est faux : hkPropertyId n'a pas cinquante membres.
+Le flux TBDY est DESYNCHRONISE bien avant, et l'indice hors bornes n'est que le premier symptome
+VISIBLE. Il faut chercher l'origine du DECALAGE, pas celle de l'indexation.
+
+**Mesures a reprendre telles quelles** (sonde_tbdy_test.go, versionnee pour cela) :
+- le flux est SAIN jusqu'a l'entree 66 incluse — indices de nom croissants (48..54, 55..58,
+  59..60), offsets et types coherents ;
+- l'entree 67 lit « 196609 membres » sur les octets `44 00 29 07 08 08 c3 00 01 ...` ;
+- l'entree suivante semble commencer 13 octets plus loin (`45 00 2b` = type 69, parent 0,
+  drapeaux 0x2b) : l'entree 68 occupe donc 13 octets ;
+- drapeaux de MEMBRE : Isolation ne connait que 0x20, 0x22, 0x24, 0x25 ; Absolution ajoute 0x21
+  (x1) et 0x23 (x3) ;
+- les sections sont UNIQUES par region dans les deux generations (hypothese « premiere occurrence
+  gagnante trompeuse » refutee) ;
+- FSTR d'Absolution : 98 entrees dont la derniere est le vide de queue, soit 97 chaines reelles.
+
+**Piste REFUTEE le 2026-08-31** : lire un entier de plus quand le drapeau de membre porte 0x01
+sans 0x04 (donc 0x21 et 0x23, jamais le 0x25 d'Isolation). Bien inerte sur Isolation, mais fait
+echouer Absolution PLUS TOT — offset 208 au lieu de 818.
+
+**Conclusion / prochaine etape** : reprendre a l'entree 68, dont on connait desormais la taille
+exacte (13 octets) et les octets exacts. Fixer sa grammaire d'abord, le reste suivra.
