@@ -235,9 +235,12 @@ func (s *MatchViewService) loadMatchViewDataParallel(ctx context.Context, matchI
 	// repo non nil VEUT DIRE que le titre l a. Zero comparaison de slug.
 	if s.killSourceRepo != nil {
 		goLoad(gctx, g, matchID, "kill_source_classes", func() error {
-			var e error
-			d.killSourceClasses, e = s.loadMatchKillSourceClasses(gctx, matchID)
-			return e
+			// SANS ERREUR, contrairement a ses voisins : le foyer `killsourceload.Load`
+			// est best-effort par contrat — il logge et degrade, la vue reste juste
+			// (ces kills retombent dans « Non attribue »). Rendre une erreur ici
+			// annulerait TOUT le groupe pour une degradation deja absorbee.
+			d.killSourceClasses = s.loadMatchKillSourceClasses(gctx, matchID)
+			return nil
 		})
 	}
 	// Même doctrine que kill_source_classes ci-dessus : le gate de capability est
@@ -425,7 +428,7 @@ func (s *MatchViewService) buildMatchViewFromData(
 	// elles sortent déjà comptées de Q21d et n'ont besoin que du scoreboard pour nommer
 	// le tueur. Posées ici pour la même raison que FragDistribution — hors de
 	// buildCombatTabFull, dont la signature est déjà à la limite de paramètres.
-	combat.AssistPairs = buildAssistPairs(d.assistPairs, d.assistScope, d.scoreboard)
+	combat.AssistPairs = buildAssistPairs(ctx, d.assistPairs, d.assistScope, d.scoreboard)
 	// Extras per-friend (panneau d'expander scoreboard) : best-effort, on
 	// charge depuis chaque player DB d'ami configuré. Si pas de loader injecté
 	// → map vide (section "Local" inactive sauf pour `is_me`).
@@ -701,9 +704,12 @@ func strDeref(s *string) string {
 // Perimetre volontairement etroit : CE match, CE joueur — ce qui satisfait aussi le
 // garde-fou anti-scan-complet des filtres. Le chargement lui-meme passe par le foyer
 // unique `loadKillSourceClasses` (killsource_load.go), partage avec les agregats.
+// Aucune erreur rendue : `killsourceload.Load` est best-effort par contrat (il logge la
+// panne puis degrade), et une erreur remontee ici annulerait tout le groupe de chargement
+// pour une degradation deja absorbee.
 func (s *MatchViewService) loadMatchKillSourceClasses(
 	ctx context.Context, matchID string,
-) ([]port.KillSourceClassRow, error) {
+) []port.KillSourceClassRow {
 	return killsourceload.Load(ctx, s.killSourceRepo, "match view", s.titleSlug,
-		[]string{matchID}, []string{s.xuid}), nil
+		[]string{matchID}, []string{s.xuid})
 }

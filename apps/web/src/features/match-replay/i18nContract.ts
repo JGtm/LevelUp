@@ -223,6 +223,18 @@ export interface ReplayText {
    *  le même intitulé — ouvrir dit ce qu'on va trouver derrière. */
   settingsButton: string
   settingsClose: string
+  /**
+   * LA LECTURE : la seule section du tiroir qui parle du LECTEUR et non de ce qu'il montre
+   * (demande utilisateur du 2026-08-29, point 22 — « lecture automatique dans les réglages,
+   * avec persistance du choix »).
+   *
+   * L'INFOBULLE PORTE LA RÉSERVE, et elle n'est pas décorative : ce réglage ne commande pas le
+   * rejeu ouvert, il décide de son état de DÉPART. Sans cette phrase, on l'essaierait comme un
+   * bouton « Lecture » et on conclurait qu'il ne marche pas.
+   */
+  playbackTitle: string
+  autoPlay: string
+  autoPlayHint: string
   /** Calques que le lecteur peut éteindre. */
   layers: string
   layerAim: string
@@ -434,6 +446,13 @@ export interface ReplayText {
   scoreBannerAlly: string
   scoreBannerEnemy: string
   scoreBannerClock: string
+  /**
+   * La progression de GARDE de la colline (KOTH) : le libelle d'un filet, pas d'un nombre.
+   * Il nomme la grandeur — sans lui, un lecteur d'ecran annoncerait un second pourcentage
+   * sans dire de quoi, a cote de celui du score.
+   */
+  hillHoldAlly: string
+  hillHoldEnemy: string
   roundNumberFmt: (index: number) => string
   roundOfCountFmt: (index: number, count: number) => string
   /**
@@ -609,6 +628,17 @@ export interface ReplayText {
    * ci-dessus : la zone de la fiche et le disque de la carte sont le même objet.
    */
   zonePresence: Record<'field' | 'shroud' | 'sensor', string>
+  /**
+   * LE PORTEUR D'OBJECTIF (cf. objectiveMark.ts) : la phrase que le filigrane de la fiche dit
+   * en toutes lettres dans l'infobulle. Les clés sont les GENRES DE MARQUE, jamais les modes —
+   * un même objet se retrouve d'un mode à l'autre, et la fiche ne connaît pas le mode.
+   *
+   * DEUX RÉGIMES DANS LA MÊME TABLE, ET LES LIBELLÉS DOIVENT LE DIRE : `flag`, `skull`, `vip`
+   * et `hill` sont des ÉTATS qui durent — « porte », « est » ; `zone` est un ÉVÉNEMENT tenu
+   * quelques secondes — « vient de prendre » — parce que la donnée n'attribue à un joueur que
+   * l'INSTANT de la prise, jamais la durée d'une capture.
+   */
+  objectiveCarry: Record<'flag' | 'skull' | 'vip' | 'hill' | 'zone', string>
   /**
    * LE TABLEAU DES USAGES D'ÉQUIPEMENT (page match, onglet Chronologie). Bloc à part parce que
    * ces textes ne servent PAS le rejeu lui-même : ils servent son BILAN, une autre surface.

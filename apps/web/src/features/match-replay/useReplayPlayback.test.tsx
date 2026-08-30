@@ -21,6 +21,7 @@ import { createRef, type RefObject } from 'react'
 import type { ReplayWindowBounds } from './replayWindow'
 import { testReplayDoc } from './test/testDoc'
 import { useReplayPlayback } from './useReplayPlayback'
+import { AUTOPLAY_KEY } from './useReplaySettings'
 
 /** Un document de 51 images (`endFrame` = 50) à la cadence par défaut. */
 const DOC = testReplayDoc({ frameCount: 51 })
@@ -29,6 +30,12 @@ const DOC = testReplayDoc({ frameCount: 51 })
 let pending: FrameRequestCallback[] = []
 
 beforeEach(() => {
+  // LA LECTURE AUTOMATIQUE EST UNE PRÉFÉRENCE PERSISTÉE depuis le 2026-08-29, et elle est
+  // ÉTEINTE par défaut. Tout ce fichier — sauf la série qui teste le réglage lui-même — éprouve
+  // la BOUCLE en marche : il l'allume donc explicitement, plutôt que de faire dépendre trente
+  // tests d'un défaut de produit qui peut rebasculer.
+  localStorage.clear()
+  localStorage.setItem(AUTOPLAY_KEY, 'true')
   pending = []
   vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
     pending.push(cb)
@@ -90,6 +97,57 @@ const FENETRE: ReplayWindowBounds = {
   startMs: 10_000,
   endMs: 40_000,
 }
+
+describe('useReplayPlayback — la lecture automatique (point 22 du 2026-08-29)', () => {
+  it('sans préférence stockée : le rejeu s ouvre EN PAUSE (défaut du 2026-08-29)', () => {
+    localStorage.removeItem(AUTOPLAY_KEY)
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 0
+    const { result } = mount(frameRef)
+    expect(result.current.playing).toBe(false)
+    expect(pending).toHaveLength(0)
+  })
+
+  it('préférence allumée : le rejeu démarre tout seul', () => {
+    localStorage.setItem(AUTOPLAY_KEY, 'true')
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 0
+    expect(mount(frameRef).result.current.playing).toBe(true)
+  })
+
+  it('préférence éteinte : le rejeu s ouvre EN PAUSE, et aucune image n est demandée', () => {
+    localStorage.setItem(AUTOPLAY_KEY, 'false')
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 0
+    const { result } = mount(frameRef)
+    expect(result.current.playing).toBe(false)
+    // La boucle ne tourne pas du tout : pas de rappel d'animation en attente. C'est ce qui
+    // distingue « en pause » de « en lecture sur une image qui ne bouge pas ».
+    expect(pending).toHaveLength(0)
+  })
+
+  it('en pause, le curseur se pose quand même AU COUP D ENVOI, et la scène est peinte', () => {
+    // SANS CE POSITIONNEMENT, un rejeu ouvert en pause resterait sur l'image zéro du FILM —
+    // c'est-à-dire sur le countdown d'avant-match, joueurs figés. Le cadrage vaut lecture ou
+    // pas ; seule la boucle dépend de la préférence.
+    localStorage.setItem(AUTOPLAY_KEY, 'false')
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 0
+    const { draw } = mount(frameRef, FENETRE)
+    expect(frameRef.current).toBe(FENETRE.startFrame)
+    expect(draw).toHaveBeenCalled()
+    expect(pending).toHaveLength(0)
+  })
+
+  it('en pause à l ouverture, « Lecture » démarre normalement', () => {
+    localStorage.setItem(AUTOPLAY_KEY, 'false')
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 0
+    const { result } = mount(frameRef)
+    act(() => result.current.togglePlay())
+    expect(result.current.playing).toBe(true)
+  })
+})
 
 describe('useReplayPlayback — la lecture avance', () => {
   it('la boucle fait courir l’image et peint à chaque pas', () => {

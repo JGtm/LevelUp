@@ -51,6 +51,25 @@
  * l'image par image. Les deux passent par le même `seekTo` borné à la fenêtre de gameplay —
  * une seule définition de « où le curseur a le droit d'aller ».
  *
+ * # LA LECTURE AUTOMATIQUE EST UN RÉGLAGE, ET IL SE LIT UNE SEULE FOIS
+ *
+ * Le rejeu partait en lecture au montage, sans que personne ne puisse le demander autrement
+ * (demande utilisateur du 2026-08-29, point 22). C'est désormais une préférence persistée
+ * (`AUTOPLAY_KEY`), ÉTEINTE par défaut à la demande de l'utilisateur : le rejeu s'ouvre en
+ * PAUSE, cadré au coup d'envoi, et attend « Lecture ». Elle se lit dans l'INITIALISEUR de
+ * l'état : une seule fois, au montage.
+ *
+ * LE CADRAGE, LUI, S'APPLIQUE QUAND MÊME (effet de bord qu'il faut nommer) : l'effet qui pose
+ * le curseur au coup d'envoi ne regarde pas `playing`. Sans cela, un rejeu ouvert en pause
+ * resterait sur l'image zéro du FILM — c'est-à-dire sur le countdown d'avant-match, joueurs
+ * figés à leur apparition — et la première image du match ne serait jamais celle qu'on voit.
+ *
+ * PAS D'ABONNEMENT ICI, ET C'EST LA DIFFÉRENCE AVEC TOUS LES AUTRES RÉGLAGES DU TIROIR. Un
+ * calque qu'on éteint s'éteint tout de suite ; « lecture automatique » ne décrit pas l'état
+ * courant du lecteur, il décrit son état de DÉPART. Le suivre en direct ferait partir — ou
+ * arrêter — la lecture sous les doigts de qui vient d'ouvrir le tiroir pour régler la fois
+ * suivante. Mettre en marche et mettre en pause restent le travail de la barre de lecture.
+ *
  * `writeCursor` EST LE SEUL ENDROIT QUI DÉPLACE LE CURSEUR, et il en écrit DEUX choses : la
  * valeur du champ (ce que le navigateur dessine) et la variable CSS `--played` (ce que la
  * frise habillée remplit derrière lui). Les séparer les ferait diverger au premier chemin
@@ -61,6 +80,8 @@ import { useCallback, useEffect, useRef, useState, type ChangeEvent, type RefObj
 
 import { frameToMs } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
+import { readStoredFlag } from './replayPreferences'
+import { AUTOPLAY_DEFAULT, AUTOPLAY_KEY } from './useReplaySettings'
 import type { ReplayWindowBounds } from './replayWindow'
 
 /** Ce dont la lecture a besoin (objet unique : la règle des 5 paramètres du dépôt). */
@@ -129,7 +150,8 @@ export function useReplayPlayback(o: ReplayPlaybackOptions): ReplayPlayback {
   const { doc, playWindow, baseFps, speed, renderWidth, frameRef, draw } = o
   const { soundTick, onEnded, onTransportGesture } = o
   const sliderRef = useRef<HTMLInputElement>(null)
-  const [playing, setPlaying] = useState(true)
+  // LA LECTURE AUTOMATIQUE EST UN RÉGLAGE, LU UNE FOIS (cf. l'en-tête, § du même nom).
+  const [playing, setPlaying] = useState(() => readStoredFlag(AUTOPLAY_KEY, AUTOPLAY_DEFAULT))
   const lastFrame = Math.max(doc.frameCount - 1, 0)
   const startFrame = playWindow?.startFrame ?? 0
   const endFrame = playWindow?.endFrame ?? lastFrame

@@ -47,6 +47,27 @@ const MARKER_COLORS_KEY = 'replay-marker-colors'
  */
 export const TIMELINE_EXPANDED_KEY = 'replay-timeline-expanded'
 
+/**
+ * LA LECTURE DÉMARRE-T-ELLE TOUTE SEULE ? (demande utilisateur du 2026-08-29, point 22 :
+ * « lecture automatique dans les réglages, avec persistance du choix »).
+ *
+ * EXPORTÉE POUR LA MÊME RAISON QUE LA CLÉ DE LA FRISE : c'est `useReplayPlayback` qui la lit,
+ * parce que lui seul tient l'état « en lecture », et il ne passe pas par le tiroir. La bascule,
+ * elle, vit bien dans le tiroir comme les autres réglages — d'où la clé partagée plutôt qu'une
+ * seconde copie du corps de `usePersistedFlag`.
+ *
+ * ÉTEINTE PAR DÉFAUT (décision utilisateur du 2026-08-29, dans le même échange que la demande) :
+ * le rejeu s'ouvre EN PAUSE, cadré au coup d'envoi, et attend le bouton Lecture. C'est un
+ * CHANGEMENT DE COMPORTEMENT assumé — la lecture partait toute seule au montage depuis l'origine
+ * du rejeu — et il se tient : on arrive sur cette page par un lien de match, souvent pour lire
+ * d'abord le rappel du match et le tableau de scores, pendant que le film, lui, courait déjà.
+ *
+ * CE N'EST PAS UN DEMI-LIVRABLE (CLAUDE.md n°11) : les deux comportements sont complets et
+ * l'interrupteur est un RÉGLAGE offert au lecteur, pas un interrupteur de chantier.
+ */
+export const AUTOPLAY_KEY = 'replay-autoplay'
+export const AUTOPLAY_DEFAULT = false
+
 /** Multiplicateurs de vitesse proposés (repris du POC, réglés à l'écran). */
 export const SPEED_MULTIPLIERS: readonly number[] = [0.5, 1, 2, 4]
 
@@ -238,6 +259,14 @@ export interface ReplaySettings {
   /** Couleur des points des joueurs : par équipe (défaut) ou distincte par joueur. */
   markerColors: MarkerColorsMode
   setMarkerColors: (mode: MarkerColorsMode) => void
+  /**
+   * LA LECTURE DÉMARRE-T-ELLE SEULE à l'ouverture du rejeu ? ÉTEINTE par défaut (cf.
+   * AUTOPLAY_DEFAULT). Ce n'est PAS une commande de transport : basculer ce réglage ne met
+   * ni en lecture ni en pause le rejeu ouvert — il ne décide que de l'état de DÉPART, lu une
+   * fois au montage par `useReplayPlayback`. « Lecture » et « Pause » restent à la barre.
+   */
+  autoPlay: boolean
+  toggleAutoPlay: () => void
   /** Multiplicateur de vitesse courant — toujours une valeur de SPEED_MULTIPLIERS. */
   speed: number
   setSpeed: (speed: number) => void
@@ -331,6 +360,7 @@ export function useReplaySettings(): ReplaySettings {
   const [markerColors, setMarkerColorsState] = useState(() =>
     readStoredChoice(MARKER_COLORS_KEY, MARKER_COLORS_DEFAULT, MARKER_COLORS_MODES),
   )
+  const [autoPlay, toggleAutoPlay] = usePersistedFlag(AUTOPLAY_KEY, AUTOPLAY_DEFAULT)
   const [speed, setSpeedState] = useState(() =>
     readStoredNumber(SPEED_KEY, SPEED_DEFAULT, (v) => SPEED_MULTIPLIERS.includes(v)),
   )
@@ -390,6 +420,8 @@ export function useReplaySettings(): ReplaySettings {
     toggleSkullCarrier,
     markerColors,
     setMarkerColors,
+    autoPlay,
+    toggleAutoPlay,
     speed,
     setSpeed,
   }

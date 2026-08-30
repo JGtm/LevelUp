@@ -136,6 +136,10 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen // liste DDL plate
 			playlist_name VARCHAR, playlist_name_fr VARCHAR,
 			is_firefight BOOLEAN DEFAULT FALSE, is_ranked BOOLEAN DEFAULT FALSE,
 			team_0_score INTEGER, team_1_score INTEGER,
+			-- Manches (ADR 0032, migration add_team_rounds_to_match_registry) :
+			-- SMALLINT comme en prod, NULL = inconnu. Lues par les queries qui
+			-- projettent r.team_0_rounds_won via v_match_full / match_registry.
+			team_0_rounds_won SMALLINT, team_1_rounds_won SMALLINT, rounds_total SMALLINT,
 			duration_seconds INTEGER,
 			playable_duration_seconds INTEGER,
 			-- season_id ajouté par la migration shared_backfill_is_ranked_and_season
@@ -574,6 +578,9 @@ func seedSharedDBSchema(t *testing.T, db *DB) {
 			playlist_name VARCHAR, playlist_name_fr VARCHAR,
 			is_firefight BOOLEAN DEFAULT FALSE, is_ranked BOOLEAN DEFAULT FALSE,
 			team_0_score INTEGER, team_1_score INTEGER,
+			-- Manches (ADR 0032, migration add_team_rounds_to_match_registry) :
+			-- SMALLINT comme en prod, NULL = inconnu.
+			team_0_rounds_won SMALLINT, team_1_rounds_won SMALLINT, rounds_total SMALLINT,
 			duration_seconds INTEGER,
 			playable_duration_seconds INTEGER)`,
 		// colonnes alignées sur seedPlayerSchema pour

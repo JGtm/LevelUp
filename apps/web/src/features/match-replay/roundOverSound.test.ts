@@ -17,7 +17,7 @@ function manche(round: number, points: Array<[number, number]>) {
   return { round, points: points.map(([t, v]) => ({ t, v })) }
 }
 
-/** Oddball à deux manches : la bascule tombe au DÉBUT de la manche 1 (frame 100). */
+/** Oddball à deux manches : la bascule tombe à la FIN de la manche 1 (frame 50). */
 const ODDBALL_TEAMS = [
   {
     teamId: 0,
@@ -31,7 +31,7 @@ const ODDBALL_TEAMS = [
   },
 ]
 
-/** Un document réduit à ce que la piste demande. `frameIntervalMs: 100` → la frame 100 = 10 000 ms. */
+/** Un document réduit à ce que la piste demande. `frameIntervalMs: 100` → la frame 50 = 5 000 ms. */
 function docOf(teams: unknown[], extra: Record<string, unknown> = {}): ReplayDocumentReady {
   return {
     frameIntervalMs: 100,
@@ -42,10 +42,12 @@ function docOf(teams: unknown[], extra: Record<string, unknown> = {}): ReplayDoc
 }
 
 describe('roundOverSoundEvents — quand et quoi', () => {
-  it('un son à la bascule, à la frame du début de la manche suivante', () => {
+  it('un son à la bascule, à la frame de FIN de la manche qui se termine', () => {
     const evs = roundOverSoundEvents(docOf(ODDBALL_TEAMS), 'fr')
     expect(evs).toHaveLength(1)
-    expect(evs[0].ms).toBe(10_000) // frame 100 × frameIntervalMs 100
+    // LA FIN DE LA MANCHE, PAS LA REPRISE (correctif du 2026-08-29) : la voix d'annonceur
+    // partait au premier point de la manche suivante, 19 à 34 s trop tard sur les témoins.
+    expect(evs[0].ms).toBe(5_000) // frame 50 × frameIntervalMs 100
   })
 
   it('joue le stem de la LANGUE de l interface', () => {

@@ -18,7 +18,14 @@ function manche(round: number, points: Array<[number, number]>) {
   return { round, points: points.map(([t, v]) => ({ t, v })) }
 }
 
-/** Oddball à deux manches : t0 gagne 100/78 puis 100/43. Bascule de manche au frame 100. */
+/**
+ * Oddball à deux manches : t0 gagne 100/78 puis 100/43.
+ *
+ * LA BASCULE TOMBE AU FRAME 50, la FIN de la manche 1 (correctif du 2026-08-29) — plus au frame
+ * 100, qui est le premier point de la manche 2, c'est-à-dire la REPRISE après l'entracte. Sur
+ * les témoins réels, cet entracte dure 19 à 34 s : le message paraissait par-dessus la manche
+ * suivante, déjà commencée (cf. l'en-tête de `roundsLogic`).
+ */
 const ODDBALL_TEAMS = [
   {
     teamId: 0,
@@ -48,27 +55,36 @@ function docOf(teams: unknown[], extra: Record<string, unknown> = {}): ReplayDoc
 
 function renderOverlay(over: Partial<Parameters<typeof ReplayRoundBreakOverlay>[0]> = {}) {
   return render(
-    <ReplayRoundBreakOverlay doc={docOf(ODDBALL_TEAMS)} frame={100} locale="fr" {...over} />,
+    <ReplayRoundBreakOverlay doc={docOf(ODDBALL_TEAMS)} frame={50} locale="fr" {...over} />,
   )
 }
 
 describe('ReplayRoundBreakOverlay — quand et quoi', () => {
-  it('affiche « Manche 1 terminée » à la bascule', () => {
-    renderOverlay({ frame: 100 })
+  it('affiche « Manche 1 terminée » à la FIN de la manche, pas à la reprise', () => {
+    renderOverlay({ frame: 50 })
     expect(screen.getByText('Manche 1 terminée')).toBeInTheDocument()
   })
 
   it('reste affiché dans sa fenêtre (30 frames à 10 fps)', () => {
-    renderOverlay({ frame: 129 })
+    renderOverlay({ frame: 79 })
     expect(screen.getByText('Manche 1 terminée')).toBeInTheDocument()
   })
 
   it('rien avant la bascule', () => {
-    const { container } = renderOverlay({ frame: 99 })
+    const { container } = renderOverlay({ frame: 49 })
     expect(container).toBeEmptyDOMElement()
   })
 
-  it('rien une fois la fenêtre passée', () => {
+  // ET LE FRAME 100 EST DEDANS : c'est la REPRISE de la manche 2, l'endroit d'où le message
+  // partait avant le 2026-08-29. Ce cas épingle le correctif — s'il repartait de là, la fenêtre
+  // du message serait rouverte 5 s (50 frames) après sa fermeture.
+  it('rien une fois la fenêtre passée — reprise de la manche suivante comprise', () => {
+    const { container } = renderOverlay({ frame: 80 })
+    expect(container).toBeEmptyDOMElement()
+    expect(renderOverlay({ frame: 100 }).container).toBeEmptyDOMElement()
+  })
+
+  it('rien bien après la fenêtre', () => {
     const { container } = renderOverlay({ frame: 130 })
     expect(container).toBeEmptyDOMElement()
   })
@@ -86,7 +102,7 @@ describe('ReplayRoundBreakOverlay — ce qui ne déclenche rien', () => {
   it('horloge du film non recalée : rien (garde de scoreTimelineOf)', () => {
     const { container } = renderOverlay({
       doc: docOf(ODDBALL_TEAMS, { originMs: undefined, coverage: { originResolved: false } }),
-      frame: 100,
+      frame: 50,
     })
     expect(container).toBeEmptyDOMElement()
   })
@@ -94,7 +110,7 @@ describe('ReplayRoundBreakOverlay — ce qui ne déclenche rien', () => {
 
 describe('ReplayRoundBreakOverlay — les deux langues', () => {
   it('dit « Round 1 over » sous la locale EN', () => {
-    renderOverlay({ locale: 'en', frame: 100 })
+    renderOverlay({ locale: 'en', frame: 50 })
     expect(screen.getByText('Round 1 over')).toBeInTheDocument()
   })
 })

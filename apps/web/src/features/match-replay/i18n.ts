@@ -74,6 +74,10 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     stopRecordingShort: 'Arrêter',
     settingsButton: 'Réglages',
     settingsClose: 'Fermer les réglages',
+    playbackTitle: 'Lecture',
+    autoPlay: 'Lecture automatique',
+    autoPlayHint:
+      "Allumé, le rejeu démarre tout seul à l'ouverture de la page. Éteint — le réglage par défaut — il s'ouvre en pause au coup d'envoi et attend le bouton Lecture. Le choix est retenu d'un match à l'autre ; il ne met ni en lecture ni en pause le rejeu déjà ouvert.",
     layers: 'Calques',
     layerAim: 'Visée',
     layerAimHint:
@@ -202,6 +206,8 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     scoreBannerAlly: 'Équipe alliée',
     scoreBannerEnemy: 'Équipe adverse',
     scoreBannerClock: 'Position de lecture',
+    hillHoldAlly: 'Garde de la colline — équipe alliée',
+    hillHoldEnemy: 'Garde de la colline — équipe adverse',
     roundNumberFmt: (index) => `Manche ${index}`,
     roundOfCountFmt: (index, count) => `Manche ${index} sur ${count}`,
     roundDotsLabel: 'Manches gagnées',
@@ -265,6 +271,13 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       field: 'Dans un champ de réparation',
       shroud: 'Dans un écran occultant',
       sensor: 'Détecté — dans la zone d’un capteur de menaces adverse',
+    },
+    objectiveCarry: {
+      flag: 'Porte le drapeau',
+      skull: 'Porte le crâne',
+      vip: 'Est le VIP',
+      hill: 'Tient la colline',
+      zone: 'Vient de prendre une base',
     },
     equipmentUsage: {
       title: "Usages d'équipement",
@@ -404,6 +417,10 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     stopRecordingShort: 'Stop',
     settingsButton: 'Settings',
     settingsClose: 'Close settings',
+    playbackTitle: 'Playback',
+    autoPlay: 'Auto-play',
+    autoPlayHint:
+      'Turned on, the replay starts on its own when the page opens. Turned off — the default — it opens paused at kickoff and waits for the Play button. The choice is kept from one match to the next; it neither plays nor pauses a replay that is already open.',
     layers: 'Layers',
     layerAim: 'Aim',
     layerAimHint:
@@ -531,6 +548,8 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     scoreBannerAlly: 'Allied team',
     scoreBannerEnemy: 'Enemy team',
     scoreBannerClock: 'Playback position',
+    hillHoldAlly: 'Hill hold — allied team',
+    hillHoldEnemy: 'Hill hold — enemy team',
     roundNumberFmt: (index) => `Round ${index}`,
     roundOfCountFmt: (index, count) => `Round ${index} of ${count}`,
     roundDotsLabel: 'Rounds won',
@@ -593,6 +612,13 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       field: 'Inside a repair field',
       shroud: 'Inside a shroud screen',
       sensor: 'Detected — inside an enemy threat sensor zone',
+    },
+    objectiveCarry: {
+      flag: 'Carrying the flag',
+      skull: 'Carrying the oddball',
+      vip: 'Is the VIP',
+      hill: 'Holding the hill',
+      zone: 'Just captured a stronghold',
     },
     equipmentUsage: {
       title: 'Equipment usage',

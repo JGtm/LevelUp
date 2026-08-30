@@ -11,6 +11,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"levelup/go-api/internal/observability"
 	"log/slog"
 	"time"
 )
@@ -187,6 +188,19 @@ func (c *KillSourceCollector) CollectMatches(ctx context.Context, matchIDs []str
 	sum := KillSourceSummary{Total: len(matchIDs)}
 
 	for _, id := range matchIDs {
+		// LE BUDGET N EST PAS UNE ANNULATION DE CONTEXTE, ET C EST DELIBERE. Une premiere
+		// version bornait la passe en passant un `context.WithTimeout` : a son expiration, le
+		// test « depassement de delai » de CollectMatch (qui exige `ctx.Err() == nil` pour
+		// distinguer l abandon du match de l arret de l appelant) devenait faux, et un arret
+		// NOMINAL se comptait en `killsource_erreurs_decodage`. La surface d alerte etait
+		// polluee par son propre garde-fou. Ici l arret est explicite, entre deux matchs.
+		if c.budget > 0 && time.Since(start) >= c.budget {
+			observability.AddInt(metricBudget, 1)
+			slog.InfoContext(ctx, "killsource: budget de passe epuise — le solde repart au cycle suivant",
+				"budget", c.budget, "traites", sum.Written+sum.NoFilm+sum.NoKillFeed+sum.Timeouts+sum.Errors,
+				"total", sum.Total)
+			break
+		}
 		if ctx.Err() != nil {
 			slog.InfoContext(ctx, "killsource: passe interrompue par l appelant",
 				"traites", sum.Written+sum.NoFilm+sum.NoKillFeed+sum.Timeouts+sum.Errors,

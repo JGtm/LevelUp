@@ -90,7 +90,7 @@ export function ReplayTransport({
         {/* L'HORLOGE D'ABORD, en grand : « où j'en suis » avant « ce que je peux faire ». */}
         <span
           ref={clockRef}
-          className="min-w-[6.5rem] text-[21px] font-medium tabular-nums tracking-[-0.02em]"
+          className="min-w-[4.5rem] text-[14.7px] font-medium tabular-nums tracking-[-0.02em]"
           aria-label={t.time}
         />
 
