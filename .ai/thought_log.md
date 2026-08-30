@@ -77454,3 +77454,108 @@ de lunette par joueur lisibles du film -> le cone du rejeu s'etrecit sur donnee 
 
 **Gates** : go vet OK, suites filmdec + replay 0 echec, 3 fichiers de recherche sous garde
 (tir 499 L, canal 439 L, camera ~300 L), production intacte.
+
+## [2026-08-30] Visee a la lunette — phase 3 : la chaine de l'octet de zoom est FERMEE par construction — Complete
+
+**Ce qui restait ouvert apres la phase 2** : la mesure disait « aucun composant du bipede ne separe
+zoome / pas zoome », mais un negatif de mesure ne dit jamais pourquoi. La question structurelle
+etait : QUI ECRIT l'octet de zoom, et l'un de ces ecrivains est-il un deserialiseur du film ?
+
+**Methode** : l'octet est `unite+0x461` (niveau courant, `0xFF` = pas zoome), etabli phase 2 par
+`Unit_IsZoomed` -> `FUN_142c82fd0`. Recherche exhaustive des instructions ecrivant cet offset, puis
+qualification de CHAQUE ecrivain.
+
+**Resultat — les ecrivains de `+0x461`, tous qualifies, aucun laisse dans le flou** :
+
+| fonction | nature | est-ce un deser du film ? |
+|---|---|---|
+| `FUN_1404a4ab8` | transition zoom courant <- zoom desire (`+0x462`) | non — logique de jeu |
+| `FUN_1408dda14` | initialisation de l'unite | non |
+| `FUN_1434a3ac0` | constructeur de copie de l'unite (recopie 0x460/0x461/0x462) | non |
+| `FUN_1411a9510` | setter d'une ligne, appele par `FUN_1434a39f4` | voir ligne suivante |
+| `FUN_1434a39f4` | **enregistre par `FUN_1403bb200` a cote de `IsPlayerItemFocused` / `IsTeamsEnabled`** | **non — DATA-BINDING D'INTERFACE** |
+| `FUN_140915c38` / `FUN_1432d7914` | autre structure, `+0x461` sans rapport | non |
+
+Et `FUN_14110ec20`, qui ecrit `+0x462`, est bien dans le descripteur du composant `unit_zoom`
+(pointeur a `143d0dac8`) — mais ce composant est ABSENT du registre de replication du film.
+
+**CONCLUSION STRUCTURELLE** : aucun deserialiseur du film n'ecrit l'octet de zoom. Le seul chemin
+qui l'ecrirait est le composant `unit_zoom`, qui n'est pas enregistre dans la bobine. `FUN_1434a39f4`
+est le TROISIEME piege data-binding de ce chantier, apres `IsZoomed`/`GetZoomState` et
+`KillerWeapon` : le motif est desormais assez etabli pour etre un reflexe — toute fonction dont
+l'unique reference est une table de noms UI n'est pas de la replication.
+
+**DEUX CHAINES INDEPENDANTES, MEME REPONSE** (regle 2 de la methode) :
+1. STRUCTURE (ci-dessus) : personne n'ecrit l'octet depuis le flux.
+2. MESURE (phase 2) : sur 271 instants etiquetes par le jeu, aucun composant ne separe.
+Aucune etape commune. La question est close pour l'octet de zoom.
+
+**CE QUI RESTE HONNETEMENT OUVERT** : que le film ne porte pas l'octet ne dit pas qu'il ne porte
+aucun PROXY de la lunette. Et la premisse visuelle — « on voit l'epaulement dans Theater » — n'a
+jamais ete testee. D'ou `TestViseeMedaillesScenes`, qui fabrique des rendez-vous : le film
+`02d39fa0` porte deux No Scope de JGtm (02:20.978, 02:26.817) et un Counter-snipe de Wratty
+(02:53.261) dans la MEME partie. Regarder la pose du tueur sur l'un et l'autre repond en deux
+minutes a une question que le decodage n'a pas tranchee. En attente de l'utilisateur.
+
+## [2026-08-30] Visee lunette, phase 6 — TROUVE : le zoom est l'evenement type 114 (« biped_board_vehicle ») — la lunette est un SIEGE — Complete (identification)
+
+**Contexte** : l'utilisateur relit 00162144 dans Theater en premiere personne et fournit une
+CHRONOLOGIE manuscrite : Nilton410 zoome [41-46,3] (frag Counter-snipe), [49-52], ~[61-61,8],
+~[68-68,8], [71-73], ~[85-86] ; Madina97294 [45-46,3] ; et « rien ne change en 3e personne ».
+Douze transitions etiquetees en 50 s — l'oracle le plus dense de toute la campagne.
+
+**Instrument** (`visee_chronologie_research_test.go`, garde CHRONO_FILM, fige sur 00162144) :
+trois mesures aux seuils declares (couverture >= 8/12, enrichissement >= x3) + un dump 114.
+
+**Pieges leves en route** :
+1. *Fragments de vie anonymes* : `nameLivesByDeaths` ne nomme une vie que par la mort qui la
+   TERMINE ; la plage etiquetee (avant la 1re mort de Nilton) vivait dans des fragments non
+   nommes (slot 513, film [1211,1 ; 1337,4] s) -> la mesure C regardait a cote (0 emission
+   partout = signature d'un pont troue, pas d'un negatif). Propagation par meme-slot ajoutee
+   dans l'instrument.
+2. *Seuil d'enrichissement mal pose pour un evenement multi-joueurs* : le fond contient les
+   zooms des 7 AUTRES joueurs -> l'enrichissement global plafonne (x1,7) meme pour le vrai
+   canal. C'est la COUVERTURE qui discrimine (9/12 au premier passage).
+
+**RESULTAT — le type 114 s'aligne sur la chronologie** :
+| transition (user) | paquet 114 | ecart |
+|---|---|---|
+| IN 0:41 | 1212810 | 48 ms |
+| OUT 0:46,3 | 1218245 | 87 ms |
+| IN 0:49 | 1219882 | 976 ms |
+| OUT 0:52 | 1223969 | 111 ms |
+| IN ~1:01 | 1233057 | 199 ms |
+| OUT ~1:01,5 | 1233558 | 100 ms (episode de 0,5 s — le « tres brievement » du releve) |
+| IN ~1:08 | 1239897 | 39 ms |
+| OUT ~1:09 | 1241049 | 391 ms |
+| IN ~1:11 | 1243818 | 960 ms |
+| OUT ~1:13 | 1244219 | 639 ms |
+| ~1:25 | 1259085/1259100 | ~1,2 s (borne user approximative) |
+11/12 sous la seconde, la plupart sous 200 ms ; les paquets intermediaires = les zooms des
+autres joueurs. 125 paquets sur une carte SANS vehicule ; 197 255 sur les 1367 films.
+
+**LECTURE MOTEUR** : `biped_board_vehicle` couvre l'entree/sortie de SIEGE, et la mise a la
+lunette est un siege de l'arme (meme mecanique que tourelle/vehicule dans ce moteur). Charge
+utile : enveloppe (bits 9..35, structuree — 60X44YZ/60X43YZ : QUI + objet/siege, a decoder) +
+R(6) a bit 36 (lecteur FUN_142f168c0, descripteur 143d0d330, +0x68 — meme convention que le
+type 105 validee sur FUN_14080C1F8). env2 (bits 7..8) = 3 constant sur la plage.
+
+**CE QUI RESTE (industrialisation, pas identification)** :
+1. decoder l'enveloppe : l'identite du bipede (attribution par joueur) + le sens (in/out) +
+   le siege (distinguer lunette vs vraie tourelle sur cartes a vehicules) ;
+2. valider au corpus contre l'oracle des medailles (Counter-snipe : un « in » non clos avant le
+   kill ; No Scope : aucun) ;
+3. brancher : periodes de lunette par joueur -> cone de visee du rejeu qui s'etrecit (objectif
+   produit nomme par l'utilisateur).
+
+**Honnetete de phase 4** : le « silence camera type 97 » ne se confirme PAS a l'echelle d'un
+joueur sur ce film (0,39/s dedans vs 0,23/s dehors) — artefact de contexte probable, note.
+
+**Git** : commit phases 1-5 = 379a98c69 ; le PUSH est bloque par le gate pre-push a cause du
+paquet `internal/service/killsourceload` importe par 68e44770b (feat/v75) mais existant
+uniquement NON COMMITE dans le worktree de la session ramassage (piege documente « hooks
+locaux = arbre, CI = commit »). A faire committer par sa session ; aucun contournement
+--no-verify sans demande explicite.
+
+**Prochaine etape** : enveloppe du 114 (Ghidra : lecteur d'enveloppe du dispatcher) puis
+validation corpus par medailles.
