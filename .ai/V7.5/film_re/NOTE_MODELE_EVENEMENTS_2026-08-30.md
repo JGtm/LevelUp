@@ -92,6 +92,98 @@ entree/sortie de lunette**, quasi equilibrees — la semantique attendue, mesure
 6. Les recensements passes par premier octet restent des mesures valides du COUPLE
    (type>>1) ; leurs etiquettes se corrigent par la table ci-dessus.
 
+## La distribution corpus entier (TestLot1TypesCorpus, 1 367 films, 3e chaine de validation)
+
+34 600 422 paquets sans evenement de tete (bit 1 = 0, trames pures) ; principaux types de
+tete : **action_weapon_fire 2 535 816** · Script 1 023 143 · PlayerGameEventSmall 922 722 ·
+**damage_aftermath 872 495** · projectile_detonate 458 933 · **weapon_reload 404 027** ·
+**unit_zoom 399 988** · **biped_pickup 236 860** (utile au chantier ramassage) · Dialogue2D
+195 107 · AIDialog 193 857 · impacts de projectile 245 358 · **biped_throw_initiate
+124 235** · damage_section_response 111 388 · … · PlayerKilledEvent 108. Tous les types
+observes < 123, distribution semantiquement plausible partout. **Fermeture arithmetique
+gratuite : 404 027 + 124 235 = 528 262 = le compte historique exact du « gisement 0xD3 »**
+(methode §5 : trois mesures qui se ferment sans ajustement).
+
+## Le squelette de la charge du type 36 (action_weapon_fire), lu au decompile
+
+`FUN_14080C1F8(out 0x328 octets, flux, drapeau reseau p5)` — ordre de lecture (p5 = 0
+suppose en mode film, A CONFIRMER ; sous-lecteurs marques ? a resoudre).
+
+EN AMONT, l'en-tete d'evenement du type 36 (domaines lus a vtable+0x58 = 0x14080a048,
+meme code froid que le type 21) :
+
+```
+[1 continuation][R(7) = 36]
+ref0 : R(1) porte ; si 1 : R(1) sonde ; R(sonde ? 9 : 13) index ; R(2) gen  <- L'ATTAQUANT (domaine 1)
+ref1 : R(1) ; si 1 : R(13) + R(2)                                            (domaine 8)
+ref2 : R(1) ; si 1 : R(13) + R(2)                                            (domaine 7)
+```
+
+Puis la charge :
+
+```
+R(1) -> out[0]        LE CHEMIN COURT : si 1, quelques champs puis RETOUR PRECOCE
+                      (la « variante courte » historique de fire_events — bit 7 sous
+                      leur cadrage = ce bit-ci sous le modele M)
+R(1) -> out[0x1c]     drapeau « bloc supplementaire » (garde plusieurs blocs plus bas)
+R(7) + R(1)  RESOLU   -> out[1] (7 bits bas + 1 bit haut)
+[R(1); si 1: R(5)]    -> out+0x0c
+[R(1): -1 | R(2)] RESOLU -> out+0x08 (index -1 ou 0..3 — slot/cause ?)
+[R(1); si 1: R(32)]   -> out+0x10
+R(32) "variant_name"  -> out+0x14   <- L'ARME (id de variante) — NOMME dans l'exe
+R(1) -> out[0x1d] · R(1) -> out[2] · [si 0x1c: R(1), R(1), si 1: horodatage 0x1431a0abc]
+--- chemin long seulement ---
+FUN_14080cc68 RESOLU  -> DEUX COMPTES en code a prefixe :
+                        R(1) toutVide ; si 1 : cibles=0 ET composantes=0
+                        sinon cibles      = [R(1) : 1 -> 1 | 0 -> R(4)]
+                        puis  composantes = [R(1) : 1 -> 0 | 0 -> [R(1) : 1 -> 1 | 0 -> R(4)]]
+                        (n1 = composantes -> out+0x34, n2 = cibles -> out+0xf8)
+BOUCLE 1 x n1         composantes de degat : R(2) + R(1) + [p5==0: R(32) | var-int dom 1]
+BOUCLE 2 x n2         LES CIBLES : R(4) + R(1) porte ; si 1 :
+                        R(w) avec w = FUN_1406d310c(6)  <- LA VICTIME (ref domaine 6, ~9 bits)
+                        + [n1<3 ? R(1) : R(4)] + R(16) + FUN_140c1e924(?)
+FUN_1406cd5b8         lecture quantifiee composite -> out+0x2a0
+FUN_1408eff64         ? -> out+0x2c8
+R(30) -> out+0x28     LA VISEE (cubemap 30 bits) — TOUJOURS PRESENTE en p5==0
+                      (le « 19 % » de fire_events = incapacite a traverser les boucles)
+[si !0x2dd: [R(1); si 1: R(6) dequant] + R(6) dequant] -> out+0x2e0/0x2e4
+[si 0x1c: horodatage + si drapeau build 0x24: R(n)]
+[si !0x1c: R(2)-1 -> out+0x1e · [R(1); si 1: R(n)] + 2 sous-lecteurs]
+R(6) -> out+0x30c · [R(1); si 1: R(n)] -> out+0x314 · [p5==0: R(1)] -> out[4]
+[R(1); si 1: vecteur quantifie 3 composantes] -> out+0x318 (position ?)
+```
+
+A resoudre pour un decodeur bit-exact : FUN_141fcf670, FUN_1406d00ec, FUN_14080cc68 (le
+format des deux comptes), FUN_140c1e924, FUN_1406cd5b8, FUN_1408eff64, la valeur de p5 en
+mode film, et la largeur runtime du domaine 6. Garde-fou inchange : validation contre le
+golden killsource AVANT tout branchement.
+
+## LA VOIE « PRECISION » (demande utilisateur du 30/08 au soir) — ou elle se calcule
+
+La question : peut-on savoir si un tir/projectile TOUCHE un joueur ? Ce que le modele offre,
+a noter en priorite pour un futur lot :
+
+1. **Le numerateur (touches)** : le type 36 `action_weapon_fire` (2 535 816 sur le corpus)
+   porte un **compte de cibles n2** (code a prefixe resolu, cf. squelette) puis la LISTE des
+   cibles — chaque cible = R(4) + une reference **domaine 6** (l'entite touchee : joueur,
+   vehicule, objet). Un evenement a n2 = 0 est un tir/degat sans cible. S'y ajoutent les
+   familles `damage_aftermath` (872 k) / `damage_section_response` (111 k) et les impacts
+   projectile (245 k) — plusieurs canaux de « touche » a recouper.
+2. **Le denominateur (tirs tires)** : PAS d'evenement de tir manque dans le film (doctrine
+   confirmee : type 35 request_weapon_fire = 0 occurrence sur le corpus). Le denominateur
+   vient des **decrements de munitions** (`weapon-state-rounds-inventory`, i37 du bipede,
+   deja lu par le traverseur — la methode du dossier l'utilise depuis juillet). Precision
+   par arme = touches(36, par variant_name) / decrements(i37), les deux OFFLINE.
+3. **Mesure preliminaire** (TestLot1TirsEtCibles, 000d5950, 12 chunks, en-tete du type 36
+   decode bit-exact jusqu'aux comptes) : type=36 sur 245/245 ; attaquant (ref0, domaine 1)
+   present 245/245 (31 index) ; chemin court 0 % ; **27 armes distinctes** (variant_name,
+   repartitions plausibles — le champ est bien accroche) ; comptes lus : **98 % toutVide
+   (0 cible)**, 5 evenements a (10 cibles, 5 composantes). RESERVE D'INTERPRETATION : le
+   98 % peut etre reel (listes remplies seulement sur certains tirs) ou trahir un decalage
+   residuel entre l'arme et les comptes — LE JUGE sera la visee R(30) en bout de chaine
+   (vecteur unitaire verifiable par DecodeAimVectorChecked) une fois FUN_1406cd5b8 et
+   FUN_1408eff64 resolus. NE PAS batir sur le 98 % avant ce controle.
+
 ## Ce qui reste ouvert
 
 - La charge des types a grammaire variable (36 en tete) : largeurs R(n) sur pile a
