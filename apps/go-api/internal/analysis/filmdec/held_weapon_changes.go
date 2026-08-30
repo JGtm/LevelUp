@@ -237,3 +237,8 @@ func heldWeaponMaskHas(idx []int, weaponIdx map[int]bool) bool {
 	}
 	return false
 }
+
+// NoWeaponVariant est la sentinelle d'EMPLACEMENT VIDE, telle que le déserialiseur l'écrit
+// quand la porte de présence est fermée. Exportée parce que les consommateurs
+// (`HeldWeaponChange.Family`, `.Previous`) doivent pouvoir la tester sans redéclarer la valeur.
+const NoWeaponVariant = noVariant

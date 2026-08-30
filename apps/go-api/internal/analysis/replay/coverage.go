@@ -171,6 +171,15 @@ type Coverage struct {
 	// fenêtre). Son ABSENCE dit que l'appelant n'a PAS reconnu un film Oddball (la garde de mode
 	// est chez `replaybuild`).
 	SkullCarries *SkullCarriesCoverage `json:"skullCarries,omitempty"`
+	// WeaponChanges est la couverture des PRISES ET LACHERS d'arme (schéma 24, cf.
+	// document_weapon_changes.go) : les changements décodés, ceux publiés, et ce qui a été
+	// écarté — les ré-annonces d'une arme déjà portée au spawn (qui ne sont PAS des prises) et
+	// les événements antérieurs à la première frame.
+	//
+	// ELLE EST PUBLIÉE MÊME QUAND AUCUN CHANGEMENT NE L'EST, pour la même raison que
+	// `placements` et `groundWeapons` : un film sans ramassage et un film qu'on n'a pas su
+	// balayer rendent tous deux zéro changement — seuls ces compteurs les distinguent.
+	WeaponChanges *WeaponChangeCoverage `json:"weaponChanges,omitempty"`
 	// ObjectiveObjects est la couverture du calque des objets d'objectif LIBRES : combien le
 	// manifeste en déclare de publiables, combien de vies et de points sortent, et ce qui a été
 	// écarté hors axe (cf. document_objective_objects.go).

@@ -77,6 +77,10 @@ type Options struct {
 	// LES STATISTIQUES VOYAGENT AVEC LA LISTE, et il le faut : elles portent le decoupage de
 	// bloc CALIBRE sur ce film. Une liste vide sans elles serait indistinguable d'un film
 	// sans equipement, alors que ce peut etre un film dont la calibration a echoue.
+	// WeaponChanges : les PRISES ET LACHERS d'arme lus dans le flux delta (cf.
+	// filmdec/held_weapon_changes.go). Entree de DONNEES, comme GrappleReads. Absente =
+	// rejeu sans ramassages — jamais des ramassages devines.
+	WeaponChanges  []filmdec.HeldWeaponChange
 	Placements     []filmdec.EquipmentPlacement
 	PlacementStats filmdec.EquipmentPlacementStats
 	// Pads : ce que le film rend sur les SOCLES — armes au sol (`ti=42`) et power-ups (`ti=37`),
@@ -235,6 +239,22 @@ func BuildFromFilm(matchID, titleSlug, filmDir string, opt Options) (ReplayDocum
 		loadouts = nil
 	}
 	opt.Loadouts = loadouts
+	// PRISES ET LACHERS D'ARME : le composant d'identite d'arme n'entre au masque du flux
+	// delta que lorsqu'un emplacement CHANGE (cf. filmdec/held_weapon_changes.go). Le
+	// predicat de spawn vient des loadouts qu'on vient de lire : sans lui, la PREMIERE
+	// emission d'un emplacement serait comptee comme une prise alors qu'elle peut n'etre que
+	// la re-annonce d'une arme deja portee. Absence non fatale — le rejeu sort sans
+	// ramassages, jamais avec des ramassages devines.
+	weaponChanges, wStats, err := filmdec.ScanFilmHeldWeaponChanges(filmDir, spawnSetFrom(loadouts))
+	if err != nil {
+		slog.Warn("changements d arme illisibles — rejeu sans ramassages", "err", err, "filmDir", filmDir)
+		weaponChanges = nil
+	} else {
+		slog.Info("ramassage : changements d arme lus",
+			"recordsDelta", wStats.Records, "masquePorteur", wStats.WithComponent,
+			"emissions", wStats.Emissions, "repetitions", wStats.Repeats)
+	}
+	opt.WeaponChanges = weaponChanges
 	// Inventaire complet : MÊMES images-clés, MÊME horloge, même record de biped que les armes
 	// portées. Absence non fatale — un rejeu sans grenades reste un rejeu valide.
 	inventory, invStats, err := ScanFilmKeyframeInventory(filmDir, loadoutFamilies(), 0)
@@ -487,6 +507,15 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 		replayClock{origin: origin, step: step, frames: doc.FrameCount,
 			families: opt.Labels.EquipmentFamilies})
 	logPlacementCoverage(doc.Coverage.Placements)
+	// LES PRISES ET LES LACHERS d'arme, sur l'axe de frames du document. Les re-annonces d'une
+	// arme deja portee au spawn sont ECARTEES ici : ce ne sont pas des ramassages.
+	var wcCov WeaponChangeCoverage
+	doc.WeaponChanges, wcCov = buildWeaponChanges(opt.WeaponChanges, origin, step, doc.FrameCount)
+	doc.Coverage.WeaponChanges = &wcCov
+	slog.Info("rejeu : prises et lachers d arme",
+		"decodes", wcCov.Decoded, "publies", wcCov.Published,
+		"prises", wcCov.Taken, "lachers", wcCov.Dropped, "echanges", wcCov.Swapped,
+		"reannonces", wcCov.Restated, "avantOrigine", wcCov.BeforeOrigin)
 	// Les SOCLES — armes au sol ET power-ups —, sur le meme nuage NON decime (build_ground_weapons.go).
 	attachWeaponPads(&doc, opt.Pads, sorted,
 		replayClock{origin: origin, step: step, frames: doc.FrameCount}, opt.Labels)

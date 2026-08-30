@@ -221,7 +221,29 @@ package replay
 // score de mode de tout mode, donc le porteur n'est lu que sur un film que l'APPELANT reconnait
 // Oddball par `game_variant_name` — jamais devine dans le film. Chronique complete :
 // .ai/V7.5/replay2d/registre_film/ODDBALL_PORTEUR_PROTOCOLE.md.
-const SchemaVersion = 23
+// CE QUE LA VERSION 24 PORTE. Les PRISES ET LES LÂCHERS D'ARME (`weaponChanges`), datés à la
+// milliseconde du paquet et nommés. Jusqu'ici le document ne portait, sur ce sujet, que
+// `padPickups` : « ce socle s'est vidé quelque part dans cet intervalle », sans le joueur. Le
+// négatif du 2026-08-12 (« le film ne porte aucun événement de ramassage ») visait l'archétype
+// ARME AU SOL ; le signal est sur le PORTEUR, et il y est daté.
+//
+// NIVEAU DE PREUVE, écrit ici parce que c'est ce qu'un lecteur doit trouver sur place. Le canal
+// est JUSTE : sur 5 627 tirs de trois films, il ne retire jamais une arme encore utilisée. Sa
+// COMPLÉTUDE n'est PAS établie — les oracles hors ligne sont soit trop grossiers (images-clés,
+// 20 s), soit saturés (l'union des inventaires plafonne à 98-100 % avant lui). Ce qui a été
+// mesuré à la place est la PLAUSIBILITÉ : hors drapeaux, 22 et 21 ramassages par match sur deux
+// CTF Arena, composés d'armes de socle et de râtelier (Gravity Hammer, S7 Sniper, M41 SPNKr,
+// Pulse Carbine, BR75) et jamais d'armes de départ, pour 10 et 13 socles sur ces cartes.
+//
+// CE QUE LA VERSION 24 NE PORTE PAS. Le SOCLE d'origine d'une prise : trois hypothèses de lien
+// vers l'objet du monde ont été mesurées et réfutées (suppression 1/71, attachement 1/21,
+// appariement par les armes 5-12 % contre 70 % exigés). Et la FIN DE VIE réelle d'une arme
+// lâchée : `WeaponChange.Until` applique la durée publiée par le jeu comme CONVENTION
+// d'affichage, parce que le jeu n'a pas de minuterie inconditionnelle — seules 5 à 14 % des
+// armes au sol reçoivent un événement de disparition dans le film, et c'est son comportement,
+// pas un défaut de lecture.
+
+const SchemaVersion = 24
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {
@@ -340,6 +362,12 @@ type ReplayDocument struct {
 	// Absent si le film n'a pas tranché la largeur de son bloc de réplication (la couverture
 	// le dit alors : `calibrated: false`) ou s'il ne porte aucune pose.
 	EquipmentPlacements []EquipmentPlacement `json:"equipmentPlacements,omitempty"`
+	// WeaponChanges est la liste des PRISES ET DES LÂCHERS d'arme (cf.
+	// document_weapon_changes.go) : qui, quand, quelle arme, et — sur un lâcher — jusqu'à
+	// quelle frame le client peut montrer l'arme au sol. Les ré-annonces d'une arme déjà
+	// portée au spawn en sont ÉCARTÉES : ce ne sont pas des ramassages. Absent si le film
+	// n'en porte aucun.
+	WeaponChanges []WeaponChange `json:"weaponChanges,omitempty"`
 	// WeaponPads (les SOCLES D'ARME du match) et PadPickups (leurs occupations ACHEVÉES) : une
 	// donnée de MATCH et non de carte, publiée seulement là où la récurrence est mesurée.
 	// Forme, chronique et refus de publication : document_ground_weapons.go.
