@@ -45,6 +45,11 @@ func (r *ServiceRegistry) HomeCtxWithAuth(ctx context.Context, slug string) (por
 		WithSquadSessionTeammates(duckdb.NewSquadRepo(pdb), r.friendGamertagsResolver()).
 		WithCareerLive(r.newCareerLiveService(pdb, homeRepo)).
 		WithSkillBadgeResolver(skillBadgeResolverFor(pdb.TitleSlug)).
+		// Score en MANCHES des tuiles d'accueil : MÊME table que la vue match, l'historique
+		// et l'escouade (ADR 0032). C'est CETTE factory que sert l'endpoint /pages/home ;
+		// l'oublier ici laissait la tuile afficher « 181 - 186 » là où la page du match
+		// affiche « 2 - 1 » — la jumelle HomeCtx ne sert que l'image OpenGraph.
+		WithRoundsDecide(r.roundsDecideFor(pdb)).
 		WithDemoMode(r.cfg.DemoMode)
 	r.notifiers.Store(pdb.XUID, port.SessionNotifier(svc))
 	enriched := forcePageIdentityXUID(r.enrichWithHaloTokens(ctx, pdb), pdb.XUID)
@@ -111,6 +116,10 @@ func (r *ServiceRegistry) SeasonPassCtxWithAuth(ctx context.Context, slug string
 		WithMatchesCache(r.homeMatchesCache, pdb.XUID).
 		WithPlayerMatchesRepo(r.playerMatchesAdapterFor(pdb), pdb.TitleSlug, pdb.Gamertag).
 		WithCareerLive(r.newCareerLiveService(pdb, homeRepo)).
+		// Injectée ici aussi, bien que ce HomeService-là serve la passe de saison : les
+		// TROIS factories construisent le même service, et c'est précisément l'oubli sur
+		// l'une d'elles qui laissait les tuiles d'accueil en points (ADR 0032).
+		WithRoundsDecide(r.roundsDecideFor(pdb)).
 		WithDemoMode(r.cfg.DemoMode)
 	r.notifiers.Store(pdb.XUID, port.SessionNotifier(homeSvc))
 	spRepo := duckdb.NewSeasonPassRepo(pdb)

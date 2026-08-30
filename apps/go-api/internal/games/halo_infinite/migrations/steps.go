@@ -1446,6 +1446,9 @@ func Steps() []migration.Migration {
 	steps = append(steps, metadataRootSteps()...)
 	// God-file shared (34 steps, RACINE shared_matches_v2 : match_registry/participants/…) → b23.
 	steps = append(steps, sharedCoreSteps()...)
+	// Manches gagnées par camp (source CoreStats.RoundsWon/Lost/Tied) : la seule grandeur
+	// qui dit le résultat sur un mode à manches. Cf. steps_shared_team_rounds.go.
+	steps = append(steps, sharedTeamRoundsSteps()...)
 	// Schéma de référence inter-titres : positions monde par kill (Halo 5 natif,
 	// Infinite plus tard). Cf. steps_shared_kill_positions.go.
 	steps = append(steps, sharedKillPositionsSteps()...)

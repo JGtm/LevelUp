@@ -53,6 +53,8 @@ func main() {
 	// MT-15 : câble le classifier LUSR (fail-loud). CRITIQUE — ce binaire ÉCRIT
 	// match_skill_rank.playlist_group via GetLUSRChain.
 	lusync.SetLUSRChainClassifier(skillchain.ClassifyLUSRChain)
+	// Famille de la chaîne de perf classée (ranked_slayer / ranked_objectif).
+	lusync.SetObjectiveFamilyClassifier(skillchain.IsObjectiveSubMode)
 
 	commit := flag.Bool("commit", false, "écrit match_skill_rank (canonical). Défaut: dry-run shadow-only (compte).")
 	dataRoot := flag.String("data-root", ".", "racine du repo (depuis apps/go-api : ../..)")

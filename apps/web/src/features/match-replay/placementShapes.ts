@@ -193,64 +193,6 @@ export function drawRevealMark(
 
 // --- BALISE DU TRANSLOCATEUR --------------------------------------------------------------
 
-/**
- * Demi-diagonale du losange de la balise, en pixels d'ÉCRAN.
- *
- * EN PIXELS, ET C'EST UNE MESURE ABSENTE QU'ON REFUSE D'INVENTER : le film ne porte aucune
- * dimension de cet objet, et la balise n'a de toute façon pas de portée — c'est un point de
- * retour. Un rayon en mètres laisserait croire à une zone d'effet. 5,5 px la posent entre le
- * point neutre (2,5 px) et la marque de révélation (12 px) : lisible, jamais dominante.
- */
-export const BEACON_RADIUS_PX = 5.5
-
-/** Le cœur du losange : il fixe le LIEU exact, que le contour ne fait qu'entourer. */
-const BEACON_DOT_RADIUS_PX = 1.5
-const BEACON_LINE_WIDTH = 1.5
-const BEACON_ALPHA = 0.85
-
-/**
- * beaconDiamond — les quatre sommets du losange, en pixels d'écran.
- *
- * UN LOSANGE PARCE QU'IL EST LE SEUL À NE RESSEMBLER À RIEN D'AUTRE DANS CE CALQUE : le cercle
- * est pris (capteur, objet non identifié, marque de révélation), l'arc aussi (mur). Il est
- * symétrique par ses deux axes, donc il ne suggère aucune direction — ce qui est exactement ce
- * que la mesure autorise à dire d'une balise.
- */
-export function beaconDiamond(c: XY, radiusPx: number): XY[] {
-  return [
-    { x: c.x, y: c.y - radiusPx },
-    { x: c.x + radiusPx, y: c.y },
-    { x: c.x, y: c.y + radiusPx },
-    { x: c.x - radiusPx, y: c.y },
-  ]
-}
-
-/**
- * drawBeacon — le losange de la balise et son cœur, à demeure sur toute la fenêtre [t0, t1].
- *
- * AUCUNE PULSATION : rien n'est mesuré qui batte. Une balise de translocation attend d'être
- * rappelée ; elle ne balaie pas, ne recharge pas, n'émet pas. Un marqueur qui clignoterait
- * affirmerait une activité qu'aucune lecture ne soutient.
- */
-export function drawBeacon(
-  ctx: CanvasRenderingContext2D,
-  c: XY,
-  style: ShapeStyle,
-  color: string,
-): void {
-  ctx.save()
-  ctx.globalAlpha = BEACON_ALPHA
-  ctx.strokeStyle = color
-  ctx.fillStyle = color
-  ctx.lineJoin = 'round'
-  ctx.lineWidth = BEACON_LINE_WIDTH * style.k
-  strokePolyline(ctx, beaconDiamond(c, BEACON_RADIUS_PX * style.k), true)
-  ctx.beginPath()
-  ctx.arc(c.x, c.y, BEACON_DOT_RADIUS_PX * style.k, 0, Math.PI * 2)
-  ctx.fill()
-  ctx.restore()
-}
-
 // --- TRAQUEUR DE MENACES ------------------------------------------------------------------
 
 /**
@@ -443,6 +385,76 @@ export function drawRepairField(
   ctx.beginPath()
   ctx.rect(c.x - reach, c.y - arm, reach * 2, arm * 2)
   ctx.rect(c.x - arm, c.y - reach, arm * 2, reach * 2)
+  ctx.fill()
+  ctx.restore()
+}
+
+// La FAILLE du translocateur et son arc de téléportation vivent dans `placementRift.ts`.
+
+// --- ÉCRAN OCCULTANT (shroud screen) --------------------------------------------------------
+
+/**
+ * Rayon de l'écran occultant, en mètres monde. VALEUR DÉCLARÉE, PAS MESURÉE, PAS OFFICIELLE —
+ * même statut que celui du champ de réparation, et il faut le dire aussi franchement.
+ *
+ * LES TROIS SOURCES SONT VIDES, ET C'EST LA RAISON D'ÊTRE DU BORD FLOU. Le film ne porte
+ * aucune portée pour cet objet ; la source officielle qui chiffre le détecteur (4,25 m) ne
+ * chiffre pas cet écran ; et rien n'a été mesuré dans le corpus. 6 m — 12 m de diamètre — est
+ * un choix d'ÉCRAN, calibré sur ce que la bulle du jeu couvre en pratique (un couloir, un
+ * passage étroit), et volontairement DEUX FOIS le champ de réparation pour que les trois
+ * disques du calque (capteur 4,25 m, champ 3 m, écran 6 m) ne se confondent jamais.
+ *
+ * LE BORD FLOU PORTE CETTE RÉSERVE À L'ÉCRAN, comme le pointillé la porte pour le champ. Deux
+ * conventions différentes pour la même réserve, et c'est voulu : le champ a une BORNE dont on
+ * doute (un anneau, en pointillé), l'écran n'a pas de borne du tout (un dégradé, sans anneau).
+ * Une limite nette dirait « au-delà de ce trait on se voit », ce que personne n'a établi.
+ */
+export const SHROUD_RADIUS_M = 6
+
+/** Part du rayon occupée par le fondu du bord (verdict R2-6 : 22 %). */
+const SHROUD_FADE_RATIO = 0.22
+/** Opacité du cœur. Presque plein : le verdict du 2026-08-27 est « opaque ». */
+const SHROUD_CORE_ALPHA = 0.94
+
+/**
+ * drawShroud — LA BULLE de l'écran occultant.
+ *
+ * OPAQUE, ET LES PIONS AU-DESSUS (verdict utilisateur du 2026-08-27, parmi trois propositions
+ * mises côte à côte sur la planche). Ce que ce choix règle : l'opacité dit « ici, on ne se voit
+ * pas » — c'est la fonction même de l'objet, et une bulle semi-transparente l'aurait affadie en
+ * laissant transparaître le décor. Ce qu'il évite : perdre les joueurs sous la bulle, car un
+ * rejeu dont on perd les pions ne se lit plus.
+ *
+ * LES PIONS PASSENT AU-DESSUS SANS UNE LIGNE DE CODE ICI, et c'est pour cela que la variante
+ * était réalisable telle quelle : le calque des poses est tracé AVANT celui des pistes
+ * (`drawEquipmentPlacementsLayer` puis `drawTracksLayer`). L'ordre du composant fait le travail
+ * — les deux autres variantes, elles, auraient exigé de tracer l'écran APRÈS les pistes.
+ *
+ * PAS D'ANIMATION : rien dans le film ne bat au rythme de cet objet. Sa fenêtre d'activité est
+ * portée par `isPlacementActive`, comme pour toutes les poses.
+ */
+export function drawShroud(
+  ctx: CanvasRenderingContext2D,
+  c: XY,
+  radiusPx: number,
+  color: string,
+): void {
+  if (!(radiusPx > 0)) return
+  const plein = radiusPx * (1 - SHROUD_FADE_RATIO)
+  ctx.save()
+  ctx.fillStyle = color
+  ctx.globalAlpha = SHROUD_CORE_ALPHA
+  ctx.beginPath()
+  ctx.arc(c.x, c.y, plein, 0, Math.PI * 2)
+  ctx.fill()
+  // Le fondu : du cœur plein jusqu'au néant, sans jamais poser de trait. C'est l'ABSENCE
+  // d'anneau qui dit que la portée n'est pas connue.
+  const g = ctx.createRadialGradient(c.x, c.y, plein, c.x, c.y, radiusPx)
+  g.addColorStop(0, color)
+  g.addColorStop(1, 'transparent')
+  ctx.fillStyle = g
+  ctx.beginPath()
+  ctx.arc(c.x, c.y, radiusPx, 0, Math.PI * 2)
   ctx.fill()
   ctx.restore()
 }

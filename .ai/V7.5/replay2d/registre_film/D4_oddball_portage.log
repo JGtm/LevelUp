@@ -1,0 +1,61 @@
+===== FILM 24dbb67d =====
+=== RUN   TestEtatVivantOddballPortage
+2026/08/27 02:26:44 INFO plafond memoire arme pour ce decodage outil=d4-oddball-portage souple_gib=2 dur_octets=2684354560
+2026/08/27 02:26:47 WARN empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte (mise a jour du jeu ?) ; le film reste decode empreinte=7307582345129211936 empreinte_connue=7053924395561516366 blocs=118 slots_non_vides=1068
+    oddball_portage_d4_test.go:85: 24dbb67d : 7051 ancres, 269 creations acceptees, 248 pistes delta ; 23 vie(s) du mot elu
+    oddball_portage_d4_test.go:94: 24dbb67d : 23 vie(s) libre(s) du mot 0x0017592C, 21 intervalle(s) LIBRE(s) mesurable(s), 22 trou(s) fermes
+    oddball_portage_d4_test.go:110: 24dbb67d : pont 8 slot(s) nomme(s) ; score personnel sur 8 slot(s)
+    oddball_portage_d4_test.go:118: 24dbb67d : 22 trou(s) dont 15 exploitable(s) (>= 5000 ms) — 10 a porteur UNIQUE, 3 sans aucun marqueur continu, 2 a plusieurs
+    oddball_portage_d4_test.go:118: DIAGNOSTIC 24dbb67d : sur les trous a porteur unique — 9.95 pt/s median, delta brut median 360 (le portage d'Oddball vaut ~1 pt/s ; un frag vaut ~100 d'un coup)
+    oddball_portage_d4_test.go:118: TEMOIN 24dbb67d : 3 intervalle(s) de meme duree places DANS une vie libre — INTERVALLE : 2/3 = 66.7 % rendent un marqueur continu unique ; JOUEUR (un slot tire hors porteur) : 1/3 = 33.3 % qualifient
+    oddball_portage_d4_test.go:118: SIGNAL 24dbb67d : 10/15 = 66.7 % des trous a porteur UNIQUE (seuil 90 %) ; temoin le plus DEFAVORABLE 2/3 = 66.7 % (seuil <= 5 %)
+    oddball_portage_d4_test.go:118: VERDICT 24dbb67d : la part de trous a porteur unique est SOUS le seuil.
+    oddball_portage_d4_test.go:80: 24dbb67d : pic memoire observe 0.02 Gio (plafond souple 2 Gio)
+--- PASS: TestEtatVivantOddballPortage (4.46s)
+PASS
+EXIT_24dbb67d=0
+===== FILM 43716616 =====
+=== RUN   TestEtatVivantOddballPortage
+2026/08/27 02:26:48 INFO plafond memoire arme pour ce decodage outil=d4-oddball-portage souple_gib=2 dur_octets=2684354560
+    oddball_portage_d4_test.go:85: 43716616 : 6943 ancres, 332 creations acceptees, 376 pistes delta ; 16 vie(s) du mot elu
+    oddball_portage_d4_test.go:94: 43716616 : 16 vie(s) libre(s) du mot 0x0017592C, 14 intervalle(s) LIBRE(s) mesurable(s), 15 trou(s) fermes
+    oddball_portage_d4_test.go:110: 43716616 : pont 2 slot(s) nomme(s) ; score personnel sur 8 slot(s)
+    oddball_portage_d4_test.go:118: 43716616 : 15 trou(s) dont 11 exploitable(s) (>= 5000 ms) — 7 a porteur UNIQUE, 2 sans aucun marqueur continu, 2 a plusieurs
+    oddball_portage_d4_test.go:118: DIAGNOSTIC 43716616 : sur les trous a porteur unique — 8.98 pt/s median, delta brut median 160 (le portage d'Oddball vaut ~1 pt/s ; un frag vaut ~100 d'un coup)
+    oddball_portage_d4_test.go:118: TEMOIN 43716616 : 0 intervalle(s) de meme duree places DANS une vie libre — INTERVALLE : pas de denominateur rendent un marqueur continu unique ; JOUEUR (un slot tire hors porteur) : pas de denominateur qualifient
+    oddball_portage_d4_test.go:118: SIGNAL 43716616 : 7/11 = 63.6 % des trous a porteur UNIQUE (seuil 90 %) ; temoin le plus DEFAVORABLE pas de denominateur (seuil <= 5 %)
+    oddball_portage_d4_test.go:118: VERDICT 43716616 : la part de trous a porteur unique est SOUS le seuil.
+    oddball_portage_d4_test.go:80: 43716616 : pic memoire observe 0.01 Gio (plafond souple 2 Gio)
+--- PASS: TestEtatVivantOddballPortage (4.60s)
+PASS
+EXIT_43716616=0
+===== FILM 51ebbc0f =====
+=== RUN   TestEtatVivantOddballPortage
+2026/08/27 02:26:53 INFO plafond memoire arme pour ce decodage outil=d4-oddball-portage souple_gib=2 dur_octets=2684354560
+    oddball_portage_d4_test.go:85: 51ebbc0f : 6582 ancres, 350 creations acceptees, 617 pistes delta ; 21 vie(s) du mot elu
+    oddball_portage_d4_test.go:94: 51ebbc0f : 21 vie(s) libre(s) du mot 0x0017592C, 15 intervalle(s) LIBRE(s) mesurable(s), 20 trou(s) fermes
+    oddball_portage_d4_test.go:110: 51ebbc0f : pont 8 slot(s) nomme(s) ; score personnel sur 8 slot(s)
+    oddball_portage_d4_test.go:118: 51ebbc0f : 20 trou(s) dont 13 exploitable(s) (>= 5000 ms) — 6 a porteur UNIQUE, 4 sans aucun marqueur continu, 3 a plusieurs
+    oddball_portage_d4_test.go:118: DIAGNOSTIC 51ebbc0f : sur les trous a porteur unique — 10.58 pt/s median, delta brut median 260 (le portage d'Oddball vaut ~1 pt/s ; un frag vaut ~100 d'un coup)
+    oddball_portage_d4_test.go:118: TEMOIN 51ebbc0f : 2 intervalle(s) de meme duree places DANS une vie libre — INTERVALLE : 0/2 = 0.0 % rendent un marqueur continu unique ; JOUEUR (un slot tire hors porteur) : 0/2 = 0.0 % qualifient
+    oddball_portage_d4_test.go:118: SIGNAL 51ebbc0f : 6/13 = 46.2 % des trous a porteur UNIQUE (seuil 90 %) ; temoin le plus DEFAVORABLE 0/2 = 0.0 % (seuil <= 5 %)
+    oddball_portage_d4_test.go:118: VERDICT 51ebbc0f : la part de trous a porteur unique est SOUS le seuil.
+    oddball_portage_d4_test.go:80: 51ebbc0f : pic memoire observe 0.02 Gio (plafond souple 2 Gio)
+--- PASS: TestEtatVivantOddballPortage (6.05s)
+PASS
+EXIT_51ebbc0f=0
+===== FILM d9781168 =====
+=== RUN   TestEtatVivantOddballPortage
+2026/08/27 02:26:59 INFO plafond memoire arme pour ce decodage outil=d4-oddball-portage souple_gib=2 dur_octets=2684354560
+    oddball_portage_d4_test.go:85: d9781168 : 15016 ancres, 665 creations acceptees, 945 pistes delta ; 47 vie(s) du mot elu
+    oddball_portage_d4_test.go:94: d9781168 : 47 vie(s) libre(s) du mot 0x0017592C, 33 intervalle(s) LIBRE(s) mesurable(s), 46 trou(s) fermes
+    oddball_portage_d4_test.go:110: d9781168 : pont 3 slot(s) nomme(s) ; score personnel sur 8 slot(s)
+    oddball_portage_d4_test.go:118: d9781168 : 46 trou(s) dont 32 exploitable(s) (>= 5000 ms) — 13 a porteur UNIQUE, 8 sans aucun marqueur continu, 11 a plusieurs
+    oddball_portage_d4_test.go:118: DIAGNOSTIC d9781168 : sur les trous a porteur unique — 9.27 pt/s median, delta brut median 160 (le portage d'Oddball vaut ~1 pt/s ; un frag vaut ~100 d'un coup)
+    oddball_portage_d4_test.go:118: TEMOIN d9781168 : 7 intervalle(s) de meme duree places DANS une vie libre — INTERVALLE : 5/7 = 71.4 % rendent un marqueur continu unique ; JOUEUR (un slot tire hors porteur) : 1/7 = 14.3 % qualifient
+    oddball_portage_d4_test.go:118: SIGNAL d9781168 : 13/32 = 40.6 % des trous a porteur UNIQUE (seuil 90 %) ; temoin le plus DEFAVORABLE 5/7 = 71.4 % (seuil <= 5 %)
+    oddball_portage_d4_test.go:118: VERDICT d9781168 : la part de trous a porteur unique est SOUS le seuil.
+    oddball_portage_d4_test.go:80: d9781168 : pic memoire observe 0.02 Gio (plafond souple 2 Gio)
+--- PASS: TestEtatVivantOddballPortage (7.61s)
+PASS
+EXIT_d9781168=0

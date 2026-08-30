@@ -78,6 +78,9 @@ type Hook struct {
 	Enqueue EnqueueFunc
 	// CacheRoot : racine du cache film (PathResolver.CacheRootDir).
 	CacheRoot string
+	// BuildOne : la strategie de cuisson, cablee par NewHook (cf. buildone.go). Elle voyage
+	// avec le hook pour que les DEUX sites de wiring la recoivent sans la redeclarer.
+	BuildOne BuildOneFunc
 }
 
 // SettingsReader : la lecture des réglages vivants dont le hook a besoin.
@@ -120,6 +123,9 @@ func NewHook(cfg *config.AppConfig, store SettingsReader, enqueue EnqueueFunc) *
 		},
 		Enqueue:   enqueue,
 		CacheRoot: titlePkg.NewPathResolver(cfg.RepoRoot).CacheRootDir(),
+		// LA CUISSON PART DANS UN ENFANT BORNE, TOUJOURS (lot BUILDALL) : le serveur ne
+		// decode plus un film dans son propre processus.
+		BuildOne: SpawnBuildOne,
 	}
 }
 
@@ -181,6 +187,15 @@ type Deps struct {
 	Placement replaybuild.Placement
 	// Enqueue : la mise en file, utilisée seulement si Placement == worker.
 	Enqueue EnqueueFunc
+	// BuildOne construit l'artefact d'un film HORS DU PROCESSUS et rend ses octets (cf.
+	// buildone.go). Le serveur la câble au boot.
+	//
+	// NIL = AUCUNE CONSTRUCTION, ET C'EST UNE DÉGRADATION VOULUE, PAS UN REPLI SILENCIEUX. Le
+	// pont disque continue (les films sont persistés — ils EXPIRENT côté serveur Halo, c'est
+	// l'irremplaçable) ; seule la cuisson est sautée, et elle est journalisée. Décoder
+	// in-process « pour ne pas perdre le cycle » est exactement ce que le lot BUILDALL
+	// supprime : c'est ainsi que la machine est morte trois fois.
+	BuildOne BuildOneFunc
 }
 
 // buildWork : un match à construire, avec ses identités de carte candidates et les faits que
@@ -265,15 +280,18 @@ func Run(ctx context.Context, d Deps, insertedIDs []string) {
 			"gamertag", d.Gamertag, "selected", len(work), "cap", maxPerCycle)
 		work = work[:maxPerCycle]
 	}
-	builder, err := replaybuild.NewBuilder(d.RepoRoot, d.TitleSlug)
-	if err != nil {
+	// SONDE DE TITRE, PAS UN CONSTRUCTEUR : depuis le lot BUILDALL la cuisson se fait dans un
+	// ENFANT, qui monte le sien. Ce que cet appel garde, c'est la degradation par ABSENCE de
+	// donnee — un titre sans catalogue de bornes ni libelles ne doit pas faire naitre sept
+	// processus pour sept echecs de preparation.
+	if _, err := replaybuild.NewBuilder(d.RepoRoot, d.TitleSlug); err != nil {
 		// Titre sans catalogue de bornes / labels : dégradation par absence de donnée
 		// (title-agnostic), journalisée une fois par cycle — jamais un échec de sync.
 		slog.DebugContext(ctx, "post-sync: rejeu 2D indisponible pour ce titre",
 			"gamertag", d.Gamertag, "titleSlug", d.TitleSlug, "err", err)
 		return
 	}
-	built, filmsSaved := buildAll(ctx, d, builder, work)
+	built, filmsSaved := buildAll(ctx, d, work)
 	observability.AddIntT(ctxkeys.TitleSlug(ctx), "postsync_replay_artifacts_built_total", int64(built))
 	observability.AddIntT(ctxkeys.TitleSlug(ctx), "postsync_replay_films_persisted_total", int64(filmsSaved))
 	if built > 0 || filmsSaved > 0 {
@@ -361,8 +379,15 @@ func enqueueAll(ctx context.Context, d Deps, work []buildWork) {
 
 // buildAll persiste le film puis construit l'artefact de chaque match du lot. Rend
 // (artefacts construits, films persistés).
-func buildAll(ctx context.Context, d Deps, builder *replaybuild.Builder, work []buildWork) (built, filmsSaved int) {
+func buildAll(ctx context.Context, d Deps, work []buildWork) (built, filmsSaved int) {
 	paths := titlePkg.NewPathResolver(d.RepoRoot)
+	// LE CAS « PAS DE CONSTRUCTION CÂBLÉE » SE DIT UNE FOIS PAR CYCLE, pas une fois par film :
+	// c'est un état de configuration, pas un incident de match. Le pont disque, lui, continue —
+	// un film persisté est irremplaçable (ils EXPIRENT côté serveur Halo).
+	if d.BuildOne == nil {
+		slog.WarnContext(ctx, "post-sync: aucune construction hors processus câblée — films persistés, cuisson SAUTÉE",
+			"gamertag", d.Gamertag, "titleSlug", d.TitleSlug, "selectionnes", len(work))
+	}
 	for _, w := range work {
 		if ctx.Err() != nil {
 			break
@@ -378,6 +403,9 @@ func buildAll(ctx context.Context, d Deps, builder *replaybuild.Builder, work []
 		// appauvri déposé par un ouvrier d'avant le transport des faits porte le bon numéro ;
 		// le sauter ici le figerait, sur le chemin même qui a les faits sous la main pour le
 		// réparer (ils sont passés à BuildMatch quinze lignes plus bas).
+		if d.BuildOne == nil {
+			continue // avertissement deja emis une fois pour le cycle
+		}
 		aJour, complet := etatArtefact(paths.ReplayArtifactPath(d.TitleSlug, w.matchID), w.facts)
 		if aJour && complet {
 			continue
@@ -387,7 +415,10 @@ func buildAll(ctx context.Context, d Deps, builder *replaybuild.Builder, work []
 				"gamertag", d.Gamertag, "match_id", w.matchID, "lignes_de_match", len(w.facts.Players))
 		}
 		short := titlePkg.FilmShortMatchID(w.matchID)
-		out, berr := builder.BuildMatch(w.matchID, w.mapNames, filmcache.ChunkDir(d.CacheRoot, short), w.facts)
+		// LA CUISSON PART HORS DU PROCESSUS (lot BUILDALL, 2026-08-26) : l'enfant décode et rend
+		// les OCTETS, le serveur les range. Le garde anti-régression et la notification restent
+		// dans `StoreArtifact`, donc exactement où ils étaient.
+		out, berr := buildAndStoreOne(ctx, d, w, filmcache.ChunkDir(d.CacheRoot, short))
 		if berr != nil {
 			// Carte hors catalogue = échec voulu (Forge) ; le reste = erreur réelle.
 			// Les deux sont best-effort, mais seuls les seconds méritent un WARN.

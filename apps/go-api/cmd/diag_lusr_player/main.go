@@ -33,7 +33,8 @@ import (
 const sharedDBPath = "data/titles/halo_infinite/warehouse/shared_matches_v2.duckdb"
 
 func main() {
-	lusync.SetLUSRChainClassifier(skillchain.ClassifyLUSRChain) // MT-15 (fail-loud)
+	lusync.SetLUSRChainClassifier(skillchain.ClassifyLUSRChain)        // MT-15 (fail-loud)
+	lusync.SetObjectiveFamilyClassifier(skillchain.IsObjectiveSubMode) // famille de la chaîne de perf classée
 
 	nMatches := flag.Int("n", 15, "nombre de matchs communs récents à afficher")
 	verbose := flag.Bool("v", false, "affiche le breakdown des 8 composantes du composite")

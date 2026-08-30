@@ -185,6 +185,17 @@ func SetWorldObjectPrecisionFromLayout(l I0Layout) {
 		return // layout non détecté : garder le défaut plutôt qu'installer des zéros
 	}
 	WorldObjectPrecision.AxisW = l.AxisW
+	// La largeur de l'INDEX DE RÉGION est elle aussi une constante par carte
+	// (ceilLog2(nb de régions) — 2 bits sur Live Fire, lot C catalogues 2026-08-27). Un
+	// layout sans gate (appels historiques qui ne posent que AxisW) laisse le défaut.
+	// LIMITE ASSUMÉE : le lecteur world-object déquantifie tous les records aux largeurs
+	// de LA région cataloguée ; un record d'une autre région (rarissime — l'ordre des
+	// 3/291 288 de Cliffhanger) consommerait des largeurs différentes et désalignerait
+	// SON record. La table par région (SetAbsPerIndexAxisW) existe pour le chemin
+	// sim-state ; l'y étendre ici attendra une carte où le cas pèse.
+	if l.GateBits > i0SpineBits+i0UseDefaultBits {
+		WorldObjectPrecision.IndexW = uint(l.GateBits - i0SpineBits - i0UseDefaultBits)
+	}
 }
 
 // consumeByName dispatches a component to its ported bit-consumer. It returns the
@@ -390,9 +401,7 @@ func consumeByName(br *BitReader, name string, typeIndex uint32, level uint32) (
 		br.ReadBits(96)
 		return variant, nil, true
 	case "weapon-ammo-component": // ti=42 i20 (FUN_140fc3028) — R(8)+R(11)+R(12)
-		br.ReadBits(8)
-		br.ReadBits(11)
-		br.ReadBits(12)
+		consumeWeaponAmmo(br)
 		return variant, nil, true
 	case "branch-script-results-component": // ti=16 i1 (FUN_142ed3dcc) — R(6)+R(32)
 		br.ReadBits(6)

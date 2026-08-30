@@ -196,6 +196,70 @@ export function tickInterval(n: number): number {
 }
 
 /**
+ * stackedAxisExtent — borne min/max d'un axe Y à barres EMPILÉES, calculée sur
+ * l'INTÉGRALITÉ des séries fournies plutôt que sur les séries actuellement
+ * visibles.
+ *
+ * Bug corrigé (retours utilisateur 2026-08-29, item 5) : un axe Y sans min/max
+ * explicite est recalculé par ECharts sur les séries VISIBLES à chaque rendu
+ * (`notMerge`) — masquer/afficher un type (bouton légende « Bonus ») ou un
+ * joueur fait donc bouger l'échelle entière d'un clic à l'autre, cassant la
+ * comparabilité visuelle. En fixant `yAxis.min`/`max` sur l'extent COMPLET
+ * (bonus et joueurs masqués INCLUS), l'échelle devient stable — seule la
+ * visibilité des barres change (ça corrige aussi le rescale au masquage d'un
+ * joueur : même cause).
+ *
+ * `positiveStacks` / `negativeStacks` : chaque élément est une PILE, c.-à-d. un
+ * ensemble de séries empilées ensemble (même `stack` ECharts — typiquement un
+ * joueur) ; une pile est un tableau de séries, une série un tableau de valeurs
+ * par index x (`null`/`undefined` comptent pour 0, comme ECharts). Une pile
+ * d'une seule série représente une barre non empilée (ex. les morts de
+ * TimeseriesKdaTrend, sans `stack`). `negativeStacks` attend des valeurs DÉJÀ
+ * NÉGATIVES — les mêmes tableaux que ceux passés en `data` à la série ECharts
+ * (ex. `-p.deaths`) — aucune transformation de signe supplémentaire :
+ *   - `max` = la plus grande somme empilée sur `positiveStacks`, toutes piles
+ *     et index confondus (0 si aucune pile ou aucune valeur positive).
+ *   - `min` = la plus grande somme empilée (en valeur absolue) sur
+ *     `negativeStacks` — 0 si omis (axe qui ne descend jamais sous zéro, ex.
+ *     TimeseriesKdaTrend où les morts restent positives).
+ *
+ * Marge : la borne est arrondie à la dizaine ENTIÈRE la plus proche vers
+ * l'extérieur — même principe que `oneLifeWindowBoundsForData` côté « une vie »
+ * (`lib/charts/oneLifeWindow.ts`) — pour qu'aucune barre ne touche le bord du
+ * cadre. Les deux vivent dans des modules distincts (celui-ci générique, l'autre
+ * spécifique au domaine « une vie ») : même règle d'arrondi, pas de dépendance
+ * croisée entre un util de charts générique et une logique métier.
+ */
+export function stackedAxisExtent(
+  positiveStacks: Array<Array<Array<number | null | undefined>>>,
+  negativeStacks: Array<Array<Array<number | null | undefined>>> = [],
+): { min: number; max: number } {
+  const max = extremeStackedSum(positiveStacks, Math.max)
+  const min = extremeStackedSum(negativeStacks, Math.min)
+  return {
+    max: max > 0 ? Math.ceil(max / 10) * 10 : 0,
+    min: min < 0 ? Math.floor(min / 10) * 10 : 0,
+  }
+}
+
+/** Somme empilée la plus extrême (`Math.max`/`Math.min`) sur un ensemble de piles. */
+function extremeStackedSum(
+  stacks: Array<Array<Array<number | null | undefined>>>,
+  pick: (a: number, b: number) => number,
+): number {
+  let extreme = 0
+  for (const stack of stacks) {
+    const length = stack.reduce((m, series) => Math.max(m, series.length), 0)
+    for (let i = 0; i < length; i++) {
+      let sum = 0
+      for (const series of stack) sum += series[i] ?? 0
+      extreme = pick(extreme, sum)
+    }
+  }
+  return extreme
+}
+
+/**
  * Format date FR court (DD/MM) pour les axes timeseries.
  * Source unique : `lib/formatters/date.ts` (réexport, plus de duplication).
  */

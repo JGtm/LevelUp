@@ -294,7 +294,7 @@ func objVerifieOracle(t *testing.T, root, id string, src *objDiskFilm, res objPo
 	}
 	b := objBridgeOf(t, root, id)
 	evs := objectiveevents.NamedEvents(src, objectiveevents.ObjectiveTypeFlag)
-	identity := objIdentites(src, b.Deaths)
+	identity := objRoundIdentites(src, b.Deaths)
 	porteurs := map[string]int{}
 	for _, f := range carries {
 		for _, s := range f.Spans {

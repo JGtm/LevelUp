@@ -190,3 +190,20 @@ condition = "AND"
 paths = ['''(^|/)\.ai/archive/V7/PLAYER_INDEX_FIRE-EVENTS_RESOLUTION\.md$''']
 regexTarget = "secret"
 regexes = ['''^grenade_kills=1$''']
+
+[[allowlists]]
+# 2026-08-30 — empreinte
+#   .ai/V7.5/killweapon/REFERENCE_VARIANTES_ARMES_REDDIT.md:generic-api-key:135
+# Document de référence des variantes d'armes (guide Reddit croisé avec notre
+# registre). La phrase « partagent tous les deux `weapon_key = hinf_m41_spnkr` »
+# fait lire le mot-clé « key » + l'identifiant d'arme comme une assignation
+# clé=valeur (entropie 3,52). C'est un identifiant PUBLIC du registre d'armes
+# (même famille que l'exception h5_vehicle_*/h5_turret_* ci-dessus), versionné
+# volontairement. Motif strict : un vrai secret collé dans ce document ne
+# matcherait pas ^hinf_[a-z0-9_]+$ et resterait détecté.
+description = "WeaponKey hinf_* du document de référence des variantes (registre public)"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''(^|/)\.ai/V7\.5/killweapon/REFERENCE_VARIANTES_ARMES_REDDIT\.md$''']
+regexTarget = "secret"
+regexes = ['''^hinf_[a-z0-9_]+$''']

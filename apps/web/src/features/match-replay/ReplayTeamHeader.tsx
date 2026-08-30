@@ -1,18 +1,25 @@
 /**
  * ReplayTeamHeader — LE TITRE D'UNE COLONNE D'ÉQUIPE, dans les fiches du rejeu.
  *
+ * UN BANDEAU HUD AU-DESSUS DE LA COLONNE, PLUS UN EN-TÊTE DANS LA CARTE (option 2a du
+ * handoff 2026-08-27) : la carte de colonne n'existe plus — les fiches sont des tuiles
+ * autonomes — et le nom d'équipe est SORTI du conteneur : un liseré de camp, un dégradé qui
+ * s'éteint vers la droite, une typo mono espacée. Le STYLE du bandeau vit dans `hudBand.ts`,
+ * partagé avec le titre du fil des éliminations : même objet visuel, une seule écriture
+ * (règle CLAUDE.md n°6).
+ *
  * CE QU'IL CORRIGE (demande utilisateur du 2026-08-16 : « chaque équipe devra retrouver son
  * nom (Équipe Cobra / Équipe Eagle sur le scoreboard, sans réinventer la roue ») : la colonne
  * affichait `t0` / `t1` bruts, c'est-à-dire l'identifiant de transport du backend. Le libellé
- * vient désormais de `resolveTeamLabel` — LA cascade du dépôt, celle du scoreboard et des
- * objectifs — sans qu'une troisième copie soit écrite ici (règle CLAUDE.md n°6).
+ * vient de `resolveTeamLabel` — LA cascade du dépôt, celle du scoreboard et des objectifs.
  *
  * LA COULEUR EST CELLE DES DEUX AUTRES PANNEAUX (décision D1 amendée) : `team-ally` /
  * `team-enemy`, les tokens que les réglages d'accessibilité peuvent surcharger. Un point bleu
  * sur la carte et un titre rouge pour la même équipe seraient une page cassée.
  *
- * UN GROUPE SANS CAMP CONNU N'EMPRUNTE AUCUNE DES DEUX COULEURS : encre et liseré neutres.
- * Le camp est une information, pas un défaut d'affichage à combler.
+ * UN GROUPE SANS CAMP CONNU N'EMPRUNTE AUCUNE DES DEUX COULEURS : liseré `border`, fond à
+ * l'encre du thème, texte `muted-foreground`. Le camp est une information, pas un défaut
+ * d'affichage à combler.
  *
  * LE TITRE NE PORTE PLUS AUCUN NOMBRE (demande utilisateur du 2026-08-24 : « pas besoin de
  * mettre le score et le deuxième chiffre à côté du nom de l'équipe ») : le score vivant, la
@@ -24,11 +31,9 @@ import type { XuidMeta } from '@/features/match-view/xuidMeta'
 import { resolveTeamLabel } from '@/lib/halo/teamLabel'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
+import { HUD_BAND_CLASS, hudBandStyle } from './hudBand'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
 import type { ReplayPlayer } from './rosterLogic'
-
-/** Part du fond qu'occupe la couleur d'équipe : assez pour teinter, jamais pour crier. */
-const TINT_PCT = 14
 
 /**
  * allyOfGroup dit de quel côté est un groupe : `true` allié, `false` adverse, `null` quand
@@ -64,17 +69,10 @@ export function ReplayTeamHeader({ players, side, xuidMeta, locale }: Props) {
   const accent = ally === null ? null : tokenCssVar(ally ? 'team-ally' : 'team-enemy')
   return (
     <h3
-      className={`mb-2 flex shrink-0 items-baseline rounded-sm px-1.5 py-1 text-[11px] font-semibold uppercase tracking-wide ${
-        accent ? 'text-foreground' : 'border-l-[3px] border-border text-muted-foreground'
+      className={`${HUD_BAND_CLASS} flex items-baseline ${
+        accent ? 'text-foreground' : 'text-muted-foreground'
       }`}
-      style={
-        accent
-          ? {
-              borderLeft: `3px solid ${accent}`,
-              background: `color-mix(in srgb, ${accent} ${TINT_PCT}%, transparent)`,
-            }
-          : undefined
-      }
+      style={hudBandStyle(accent)}
     >
       <span className="min-w-0 flex-1 truncate">{label}</span>
     </h3>

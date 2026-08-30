@@ -187,30 +187,6 @@ changes 6.x).
 
 ---
 
-### Kills environnementaux — catégorie dédiée (v8++)
-
-> ⚠️ **Spec à re-écrire pour Go (2026-06-09)** : les étapes ci-dessous référencent le code Python supprimé au cutover (`constants.py`, `_weapon_kills_repo.py`, `ParticipantBits`, `GRENADE_MEDALS`). L'idée reste valable mais doit être re-spécifiée côté Go (`apps/go-api`) avant toute implémentation. Priorité très basse (barrel kills extrêmement rares).
-
-**Contexte** : La médaille **Kong** (kill via baril projeté) est actuellement comptée dans `GRENADE_MEDALS` faute d'une meilleure catégorie. Ce classement est approximatif — il est impossible de savoir avec certitude si l'API inclut ces kills dans `GrenadeKills` ou non.
-
-**Idée** : Créer une catégorie `environmental_kills` (ou `environmental`) pour regrouper les kills causés par l'environnement sans arme tenue :
-- Baril projeté (médaille **Kong**)
-- Potentiellement : chutes provoquées, explosions de véhicules, etc.
-
-**Ce que ça impliquerait** :
-1. Nouvelle colonne `environmental_kills` dans `match_participants` (migration DuckDB)
-2. Nouveau bit `ParticipantBits.ENVIRONMENTAL_KILLS` dans `constants.py`
-3. Retirer `Kong` de `GRENADE_MEDALS` → nouvel ensemble `ENVIRONMENTAL_MEDALS`
-4. Logique de réconciliation filmshell dédiée dans `_weapon_kills_repo.py`
-5. Backfill pour l'historique existant
-6. Affichage UI éventuel
-
-**Complexité estimée** : Moyenne (surtout le backfill + validation que l'API expose bien des compteurs séparés)
-
-**Priorité** : Basse — les barrel kills sont extrêmement rares, l'impact sur les stats est négligeable. À faire uniquement si on veut une exhaustivité totale des catégories de kills.
-
----
-
 ## 🎮 Backlog — Coach proactif × Prestige (post-V2)
 
 Référence : ADR 0020 — Coach proactif : pont vers Prestige. ADR 0021 — Synthèse dynamique de Template et Arc ad-hoc.

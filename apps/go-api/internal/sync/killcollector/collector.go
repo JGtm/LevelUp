@@ -48,10 +48,12 @@ import (
 	"log/slog"
 	"time"
 
+	"levelup/go-api/internal/analysis/filmdec"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/halo_infinite/film/killsource"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
+	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/sync/haloclient"
 )
 
@@ -92,6 +94,9 @@ const (
 	metricNoKillFeed  = "killsource_sans_killfeed"
 	metricDecodeError = "killsource_erreurs_decodage"
 	metricTimeout     = "killsource_abandons_delai"
+	// metricBudget : passes arretees par leur budget. UN ARRET NOMINAL, pas une erreur —
+	// il se compte a part pour ne pas polluer `killsource_erreurs_decodage`.
+	metricBudget      = "killsource_budgets_epuises"
 	metricWriteError  = "killsource_erreurs_ecriture"
 	metricDeaths      = "killsource_morts_ecrites"
 	metricNotPublish  = "killsource_passes_non_publiables"
@@ -115,7 +120,16 @@ type KillSourceCollector struct {
 	roster        KillSourceRoster
 	acquireShared persist.SharedWriterFn
 	caps          games.CapabilityMap
-	timeout       time.Duration
+	// budget : duree maximale d une passe MULTI-MATCHS. 0 = sans borne (backfill de nuit).
+	// Verifie ENTRE deux matchs, jamais au milieu d une ecriture.
+	budget  time.Duration
+	timeout time.Duration
+	// mapNames / mapBounds : cablage OPTIONNEL de la capture des positions
+	// (`shared.kill_positions`, G.2bis). Les deux sont necessaires ensemble — cf.
+	// WithPositionCapture. nil = positions desactivees, degradation journalisee
+	// PAR MATCH en Debug (jamais une erreur : c est une configuration, pas une panne).
+	mapNames  port.ReplayMapNameRepo
+	mapBounds *filmdec.MapQuantCatalog
 }
 
 // NewKillSourceCollector construit le collecteur.
@@ -144,6 +158,36 @@ func NewKillSourceCollector(
 		caps:          caps,
 		timeout:       timeout,
 	}
+}
+
+// WithBudget borne la duree d une passe multi-matchs. 0 (defaut) = sans borne.
+//
+// A UTILISER PARTOUT OU LA PASSE PARTAGE SON TEMPS AVEC AUTRE CHOSE — typiquement le cycle de
+// sync, dont les etapes suivantes attendent derriere. Le solde est repris a la passe suivante,
+// la collecte etant idempotente (`decoder_rev` fait foi). Le backfill CLI, lui, ne borne rien.
+func (c *KillSourceCollector) WithBudget(d time.Duration) *KillSourceCollector {
+	c.budget = d
+	return c
+}
+
+// WithPositionCapture active la capture des positions monde par kill (`shared.kill_positions`,
+// G.2bis), EN PLUS des morts et des tirs. Chainable, meme patron que les Withers du rejeu 2D
+// (WithFrameInterval, WithLocalFilmCache) : un reglage optionnel qui ne grossit pas la liste de
+// parametres positionnels de [NewKillSourceCollector] (deja a 5, le plafond du depot).
+//
+// LES DEUX ARGUMENTS SONT NECESSAIRES ENSEMBLE. `mapNames` resout les identites de carte
+// candidates d un match (meme port que le rejeu 2D, `port.ReplayMapNameRepo` — implemente par
+// `platform/duckdb.ReplayMapRepo`) ; `mapBounds` est le catalogue de bornes de dequantification
+// (`filmdec.LoadMapQuantCatalog`, meme fichier que replaybuild). Passer l un sans l autre revient
+// a ne rien cabler : [collectPositions] verifie les deux et degrade proprement (Debug, pas
+// d erreur) si l un des deux manque.
+//
+// nil, nil DESACTIVE explicitement la capture (retour a l etat par defaut du constructeur).
+func (c *KillSourceCollector) WithPositionCapture(
+	mapNames port.ReplayMapNameRepo, mapBounds *filmdec.MapQuantCatalog,
+) *KillSourceCollector {
+	c.mapNames, c.mapBounds = mapNames, mapBounds
+	return c
 }
 
 // KillSourceOutcome : ce qui est arrive a UN match. Le collecteur ne rend jamais une erreur pour
@@ -268,6 +312,12 @@ func (c *KillSourceCollector) collect(ctx context.Context, matchID string) (Kill
 	// elles sont deja ecrites, elles sont justes, et les deux tables repondent a deux questions
 	// differentes. Il se journalise et se compte — jamais il n avale la passe.
 	c.collectShots(ctx, matchID, chunks, ids)
+
+	// LES POSITIONS, SUR LES MEMES CHUNKS ET LA MEME LISTE DE MORTS (G.2bis) — memes garanties
+	// que les tirs : best-effort, jamais de remise en cause des morts deja ecrites. `batch.Deaths`
+	// est la liste PRE-FUSION (avant MergeCreditAndFilm dans c.write) : seule population qui peut
+	// structurellement avoir une position (cf. l en-tete de positions.go).
+	c.collectPositions(ctx, matchID, chunks, ids, batch.Deaths)
 
 	return OutcomeWritten, publiees, nil
 }

@@ -22,3 +22,17 @@ const LUSRChainArena = "h5_arena"
 func ClassifyLUSRChain(_ string) string {
 	return LUSRChainArena
 }
+
+// IsObjectiveSubMode répond à la question « ce match classé est-il de la famille
+// objectif ? » pour Halo 5 : TOUJOURS false. Halo 5 n'a pas de pair_name (cf.
+// mapping.go : PairMode nil), donc aucun sous-mode à lire ; ses matchs classés
+// tombent tous dans la chaîne de performance ranked_slayer. Sans ce classifier
+// dédié, le seam appliquerait la liste Infinite à un pair_name h5 vide — même
+// résultat aujourd'hui, mais par accident plutôt que par décision.
+//
+// Une partition par mode h5 (dérivée de playlist_name, comme pour la chaîne LUSR)
+// est le raffinement ultérieur : le seam ne reçoit aujourd'hui que pair_name.
+// Posé via sync.SetObjectiveFamilyClassifierForTitle(halo5.TitleSlug, halo5.IsObjectiveSubMode).
+func IsObjectiveSubMode(_ string) bool {
+	return false
+}

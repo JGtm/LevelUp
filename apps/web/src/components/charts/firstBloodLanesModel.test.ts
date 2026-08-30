@@ -102,6 +102,37 @@ describe('buildFirstBloodLanes', () => {
     expect(lane.medianDeathSec).toBe(80)
   })
 
+  it('propage carte/mode/date de FirstBloodMatch vers chaque FirstBloodEventPoint (DEC-4)', () => {
+    const lanes = buildFirstBloodLanes([
+      {
+        player: 'Madina',
+        matches: [
+          {
+            matchId: 'a',
+            firstKillSec: 10,
+            firstDeathSec: 20,
+            mapUI: 'Aquarius',
+            modeUI: 'Slayer',
+            startTime: '2026-04-19T12:00:00Z',
+          },
+        ],
+      },
+    ])
+    const [kill] = lanes[0].kills
+    const [death] = lanes[0].deaths
+    expect(kill).toMatchObject({ mapUI: 'Aquarius', modeUI: 'Slayer', startTime: '2026-04-19T12:00:00Z' })
+    expect(death).toMatchObject({ mapUI: 'Aquarius', modeUI: 'Slayer', startTime: '2026-04-19T12:00:00Z' })
+  })
+
+  it('tolère carte/mode/date absents (dégradation, jamais de crash)', () => {
+    const lanes = buildFirstBloodLanes([
+      { player: 'Ghost', matches: [{ matchId: 'a', firstKillSec: 10, firstDeathSec: 20 }] },
+    ])
+    expect(lanes[0].kills[0].mapUI).toBeUndefined()
+    expect(lanes[0].kills[0].modeUI).toBeUndefined()
+    expect(lanes[0].kills[0].startTime).toBeUndefined()
+  })
+
   it('gère un joueur sans aucun événement exploitable', () => {
     const lanes = buildFirstBloodLanes([
       { player: 'Ghost', matches: [{ matchId: 'a', firstKillSec: null, firstDeathSec: null }] },

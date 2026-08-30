@@ -123,7 +123,7 @@ func (it objLancerItem) explique(r float64) bool { return it.socle || it.dist <=
 func TestDrapeauLancerControle(t *testing.T) {
 	root := objRequireRoot(t)
 	cat := goldenCatalog(t)
-	if len(cat.FlagObjects) == 0 {
+	if len(cat.ObjectiveObjects) == 0 {
 		t.Fatal("le manifeste du titre ne declare aucun drapeau — le controle n'a rien a mesurer")
 	}
 	var vies, temoins []objLancerItem
@@ -155,7 +155,7 @@ func objLancerFilm(t *testing.T, root, id string, src *objDiskFilm,
 		t.Fatalf("%s : axe de temps sans echelle — les instants ne se comparent pas", id)
 	}
 	refs := objDrapeauRefs(t, id, d, step)
-	for _, l := range flagFreeLives(d.gw, cat.FlagObjects) {
+	for _, l := range flagFreeLives(d.gw, cat.ObjectiveObjects) {
 		x, y := l.First()
 		vies = append(vies, objLancerMesure(refs, x, y, l.T0US, step, d.originUS))
 	}

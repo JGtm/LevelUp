@@ -29,7 +29,7 @@ func TestSquadModeResolution_ResolvesUUIDViaAssetAndModeNameTr(t *testing.T) {
 	}
 
 	enrichSquadMatchAssets(context.Background(), repo, rows)
-	hist := buildSquadMatchHistory(rows, nil, "halo_infinite", nil)
+	hist := buildSquadMatchHistory(rows, nil, "halo_infinite", nil, nil)
 
 	if len(hist) != 1 {
 		t.Fatalf("want 1 row, got %d", len(hist))
@@ -58,7 +58,7 @@ func TestSquadModeResolution_GuardsResidualUUID(t *testing.T) {
 	repo := &mockSquadRepo{} // aucune trad
 
 	enrichSquadMatchAssets(context.Background(), repo, rows)
-	hist := buildSquadMatchHistory(rows, nil, "halo_infinite", nil)
+	hist := buildSquadMatchHistory(rows, nil, "halo_infinite", nil, nil)
 
 	if hist[0].ModeUI != "" {
 		t.Errorf("ModeUI doit être vide (UUID masqué), got %q", hist[0].ModeUI)
@@ -89,7 +89,7 @@ func TestSquadModeResolution_GameVariantFallbackWhenNoPairName(t *testing.T) {
 	}
 
 	enrichSquadMatchAssets(context.Background(), repo, rows)
-	hist := buildSquadMatchHistory(rows, nil, "halo_5", nil)
+	hist := buildSquadMatchHistory(rows, nil, "halo_5", nil, nil)
 
 	if len(hist) != 1 {
 		t.Fatalf("want 1 row, got %d", len(hist))
@@ -120,7 +120,7 @@ func TestSquadModeResolution_PairNamePreferredOverGameVariant(t *testing.T) {
 	}
 
 	enrichSquadMatchAssets(context.Background(), repo, rows)
-	hist := buildSquadMatchHistory(rows, nil, "halo_infinite", nil)
+	hist := buildSquadMatchHistory(rows, nil, "halo_infinite", nil, nil)
 
 	if hist[0].ModeUI != "CTF" {
 		t.Errorf("ModeUI = %q, want \"CTF\" (pair_name prime sur game_variant)", hist[0].ModeUI)
@@ -142,7 +142,7 @@ func TestSquadModeResolution_FallsBackToNormalizedEN(t *testing.T) {
 	repo := &mockSquadRepo{} // aucune trad FR
 
 	enrichSquadMatchAssets(context.Background(), repo, rows)
-	hist := buildSquadMatchHistory(rows, nil, "halo_infinite", nil)
+	hist := buildSquadMatchHistory(rows, nil, "halo_infinite", nil, nil)
 
 	if hist[0].ModeUI != "CTF" {
 		t.Errorf("ModeUI = %q, want \"CTF\" (EN normalisé)", hist[0].ModeUI)

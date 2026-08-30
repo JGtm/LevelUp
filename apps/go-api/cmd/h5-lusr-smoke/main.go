@@ -38,6 +38,9 @@ func main() {
 	// (chaîne unique h5_arena ; h5 n'a pas de pair_name).
 	lusync.SetLUSRChainClassifier(skillchain.ClassifyLUSRChain)
 	lusync.SetLUSRChainClassifierForTitle(halo5.TitleSlug, halo5.ClassifyLUSRChain)
+	// Famille de la chaîne de perf classée (ranked_slayer / ranked_objectif).
+	lusync.SetObjectiveFamilyClassifier(skillchain.IsObjectiveSubMode)
+	lusync.SetObjectiveFamilyClassifierForTitle(halo5.TitleSlug, halo5.IsObjectiveSubMode)
 
 	// Copie isolée du shared h5 (lecture seule côté source).
 	tmp, err := os.MkdirTemp("", "h5lusr")

@@ -176,6 +176,25 @@ export function assistStolenLookup(pairs: MatchAssistPair[]): Map<string, number
   return out
 }
 
+/**
+ * assistAvgPctLookup — part moyenne de participation par paire, pour l'infobulle.
+ * Même clé que le lookup des volées (assistant, tueur affichés). Une paire SANS part
+ * mesurée (`avg_assist_pct` absent du contrat) n'entre pas dans la map : l'infobulle
+ * n'écrit jamais « 0 % » là où rien n'est mesuré.
+ */
+export function assistAvgPctLookup(pairs: MatchAssistPair[]): Map<string, number> {
+  const out = new Map<string, number>()
+  for (const p of pairs) {
+    if (p.avg_assist_pct == null) continue
+    const key = assistStolenKey(
+      displayPlayerName(p.assist_gamertag, p.assist_xuid),
+      displayPlayerName(p.killer_gamertag, p.killer_xuid),
+    )
+    out.set(key, p.avg_assist_pct)
+  }
+  return out
+}
+
 /** Point de la série "frags différentiel cumulé" pour un joueur. */
 export interface FragDiffPoint extends ChartPoint2D {
   x: number

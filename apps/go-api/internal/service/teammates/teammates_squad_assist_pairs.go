@@ -17,8 +17,17 @@ import (
 	"context"
 	"log/slog"
 
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/observability"
 )
+
+// compteurAssistPairsSansMesure : le nombre de fois où la page a RETIRÉ le tableau faute de
+// mesure. Publié en expvar (ADR 0009), donc lisible sur /debug/vars sans redéploiement.
+// Son jumeau côté vue match est `compteurMatchAssistSansMesure` (internal/service). Publié
+// TITRE-AWARE : `halo_5` est actif, et une clé nue confondrait « la passe de film s'est
+// arrêtée » avec « quelqu'un a navigué dans un autre titre ».
+const compteurAssistPairsSansMesure = "assist_pairs_squad_retire_sans_mesure_total"
 
 // buildSquadAssistPairs assemble le bloc `assist_pairs` de la page Escouade.
 //
@@ -62,6 +71,16 @@ func (s *TeammatesService) buildSquadAssistPairs(
 		return nil
 	}
 	if measured == 0 {
+		// UN BLOC QUI SE RETIRE LAISSE UNE TRACE — ET C EST LA LEÇON DU 2026-08-29.
+		// Ce `return nil` a fait disparaître le tableau de la page pendant CINQ MOIS sans
+		// qu'aucun log, compteur ni ligne d'admin ne le dise : l'effondrement de
+		// `assist_known` (cache de films gelé le 2026-04-07, registre
+		// `.ai/V7.5/REGISTRE_ASSISTANCES_2026-08-29.md`) n'a été découvert que parce qu'un
+		// utilisateur a demandé pourquoi un tableau manquait. Le silence était le défaut.
+		observability.IncCounterT(ctxkeys.TitleSlug(ctx), compteurAssistPairsSansMesure)
+		slog.InfoContext(ctx, "teammates_assist_pairs_bloc_retire_sans_mesure",
+			"matchs", len(matchIDs), "joueurs", len(xuidsOrdered),
+			"cause", "aucune mort de la sélection ne porte assist_known — passe de film absente")
 		return nil
 	}
 

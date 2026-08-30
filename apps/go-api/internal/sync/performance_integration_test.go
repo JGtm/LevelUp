@@ -96,12 +96,13 @@ func TestLoadHistoryForPerf_WithData(t *testing.T) {
 
 // TestLoadHistoryForPerf_PopulatesChain garantit que loadHistoryForPerf
 // dérive bien `Chain` depuis pair_name + is_ranked + is_firefight, en
-// déléguant à GetPerformanceChain. Couvre tous les cas de figure :
-// PvP non classé (chaînes LUSR), Ranked, Firefight, pair_name NULL (fallback).
+// déléguant à GetPerformanceChain. Couvre tous les cas de figure : PvP non classé
+// (chaînes LUSR), Firefight, pair_name NULL (fallback), et les DEUX familles du
+// classé (scission D-A : ranked_slayer / ranked_objectif selon le sous-mode).
 func TestLoadHistoryForPerf_PopulatesChain(t *testing.T) {
 	db := openPerfDB(t)
 
-	// 4 matchs avec des configurations différentes.
+	// 7 matchs avec des configurations différentes.
 	insert := func(mid, ts, pair string, ranked, ff bool, useNullPair bool) {
 		if useNullPair {
 			db.Exec(
@@ -117,23 +118,29 @@ func TestLoadHistoryForPerf_PopulatesChain(t *testing.T) {
 			mid)
 	}
 	insert("c1", "2025-01-01T01:00:00Z", "BTB:Slayer", false, false, false)    // → btb
-	insert("c2", "2025-01-01T02:00:00Z", "", true, false, false)               // → ranked (flag wins)
+	insert("c2", "2025-01-01T02:00:00Z", "", true, false, false)               // → ranked_slayer (flag + pair vide → famille slayer)
 	insert("c3", "2025-01-01T03:00:00Z", "Firefight:KOTH", false, true, false) // → firefight (flag wins)
 	insert("c4", "2025-01-01T04:00:00Z", "", false, false, true)               // → fallback arena_slayer (pair NULL)
+	insert("c5", "2025-01-01T05:00:00Z", "Ranked:Oddball", true, false, false) // → ranked_objectif (famille du sous-mode)
+	insert("c6", "2025-01-01T06:00:00Z", "Ranked:Slayer", true, false, false)  // → ranked_slayer
+	insert("c7", "2025-01-01T07:00:00Z", "", true, false, true)                // → ranked_slayer (ranked prime sur firefight)
 
 	rows, err := loadHistoryForPerf(t.Context(), db, "xuid1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(rows) != 4 {
-		t.Fatalf("expected 4 rows, got %d", len(rows))
+	if len(rows) != 7 {
+		t.Fatalf("expected 7 rows, got %d", len(rows))
 	}
 
 	want := map[string]string{
 		"c1": LUSRChainBTB,
-		"c2": PerfChainRanked,
+		"c2": PerfChainRankedSlayer,
 		"c3": PerfChainFirefight,
 		"c4": LUSRChainArenaSlayer, // fallback (pair_name NULL, no flag)
+		"c5": PerfChainRankedObjectif,
+		"c6": PerfChainRankedSlayer,
+		"c7": PerfChainRankedSlayer,
 	}
 	for _, r := range rows {
 		if r.Chain != want[r.MatchID] {

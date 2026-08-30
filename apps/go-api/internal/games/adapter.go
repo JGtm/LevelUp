@@ -141,6 +141,30 @@ const (
 	// documentation : il inverse l'ordre MA40/Sidekick). Un titre peut donc avoir
 	// celle-ci sans celle-là — c'est exactement pourquoi ce sont deux clés.
 	CapFilmWeaponShots CapabilityKey = "film.weapon_shots"
+
+	// CapFilmKillPositions — les COORDONNÉES MONDE tueur/victime par kill, décodées du
+	// MÊME film que le kill enrichi (`shared.kill_positions`, grain kill, jointes par
+	// (match_id, killer_xuid, time_ms)). Troisième famille de données du film, distincte
+	// du kill enrichi ET des tirs par arme : elle sort de la MÊME passe de décodage
+	// (`sync/killcollector`, G.2bis) mais répond à une troisième question (OÙ, pas QUI
+	// ni QUOI), et elle a ses propres réserves — plancher de couverture mesuré 75,8 %
+	// (36 artefacts, 1 994 couples), tolérance 120 ms, positions absentes JAMAIS
+	// approchées (règle de prudence, cf. analysis/replay/killpos.go).
+	//
+	// Halo Infinite : supported (décodeur du film + catalogue de bornes de
+	// déquantification par carte, 79 cartes). Halo 5 : ABSENTE — ses positions sont
+	// NATIVES dans le carnage (KillerWorldLocation/VictimWorldLocation, cf.
+	// `match.events.spatial` = supported, `games/halo_5/ingest/positions.go`) : il n'a
+	// aucun besoin d'un décodeur de film pour la même donnée.
+	//
+	// ⚠ Clé FINE, même doctrine que `film.kill_source`/`film.weapon_shots` : ne pas
+	// l'élargir pour couvrir un autre axe du film. ⚠ CETTE CLÉ GOUVERNE LA CAPTURE
+	// (l'écriture), PAS LA LECTURE : la lecture canonique (`match.events.spatial`) reste
+	// `not_exposed` pour Infinite tant qu'aucun consommateur ne lit `kill_positions`
+	// pour ce titre (G.3, hors périmètre G.2bis) — les deux clés répondent à des
+	// questions différentes, comme `film.weapon_shots` (stockage) et
+	// `match.weapon.accuracy` (publication) le font déjà.
+	CapFilmKillPositions CapabilityKey = "film.kill_positions"
 )
 
 // CapabilityMap décrit l'état des capabilities produit d'un adapter à un instant T.

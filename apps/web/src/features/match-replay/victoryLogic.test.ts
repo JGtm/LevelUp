@@ -9,7 +9,7 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import { readVictory } from './victoryLogic'
+import { finalScoreFromHeader, readVictory } from './victoryLogic'
 
 /** Une ligne de scoreboard réduite à ce que la lecture regarde. */
 function row(side: string | null, isMe = false) {
@@ -91,5 +91,39 @@ describe('readVictory — les situations où aucun écran ne doit s’afficher',
 
   it('égalité en FFA : null aussi — le panneau annonce la fin d’un duel de camps', () => {
     expect(readVictory([row(null, true), row(null)], 1)).toBeNull()
+  })
+})
+
+// ─── finalScoreFromHeader : le résultat vient de l'API sur un mode à manches ─
+
+describe('finalScoreFromHeader', () => {
+  it("rend le compte de manches quand l'en-tête le dit", () => {
+    // Témoin 293a763e : 2 manches à 1, alors que le calque du film rendrait « 100 - 43 ».
+    expect(
+      finalScoreFromHeader({ score_kind: 'rounds', score_mine: 2, score_theirs: 1 }),
+    ).toEqual({ ally: 2, enemy: 1 })
+  })
+
+  // Le critère est la PRÉSENCE des deux nombres, jamais leur nature. Une variante à manches
+  // dont les camps finissent à égalité (témoin adb93fb7 : 1 partout + 1 nulle) retombe côté
+  // serveur sur les points et publie score_kind = "points" ; filtrer sur « rounds » renverrait
+  // alors l'écran de fin vers les points de la DERNIÈRE MANCHE, en contradiction avec la vue
+  // match qui affiche le total.
+  it("rend aussi le score quand il est en points (repli d'une égalité de manches)", () => {
+    expect(
+      finalScoreFromHeader({ score_kind: 'points', score_mine: 277, score_theirs: 234 }),
+    ).toEqual({ ally: 277, enemy: 234 })
+  })
+
+  it('rend null quand les nombres manquent (ligne antérieure au backfill)', () => {
+    expect(finalScoreFromHeader({ score_kind: 'rounds' })).toBeNull()
+    expect(finalScoreFromHeader({ score_kind: 'points', score_mine: 50 })).toBeNull()
+    expect(finalScoreFromHeader(undefined)).toBeNull()
+  })
+
+  it('accepte un zéro : 2 manches à 0 est une mesure, pas une absence', () => {
+    expect(
+      finalScoreFromHeader({ score_kind: 'rounds', score_mine: 2, score_theirs: 0 }),
+    ).toEqual({ ally: 2, enemy: 0 })
   })
 })

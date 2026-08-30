@@ -74,24 +74,42 @@ type LabelCatalog struct {
 	// (diagonale 85 % contre le rang de capacité du poseur) vit dans le TOML, avec ses
 	// chiffres : c'est là qu'on juge, pas ici.
 	EquipmentFamilies map[uint32]string
-	// FlagObjects est la table GlobalID de tag `ti=42` -> NOM DU DRAPEAU, telle que le
-	// manifeste du titre la donne. Posée par la COUCHE TITRE après NewLabelCatalog, comme
-	// Icons, Tints et EquipmentFamilies : elle n'entre dans aucune jointure de construction.
+	// ObjectiveObjects est la table GlobalID de tag `ti=42` -> NOM D'UN OBJET D'OBJECTIF PORTÉ,
+	// telle que le manifeste du titre la donne. Posée par la COUCHE TITRE après NewLabelCatalog,
+	// comme Icons, Tints et EquipmentFamilies : elle n'entre dans aucune jointure de construction.
+	//
+	// ELLE S'APPELAIT `FlagObjects` JUSQU'AU 2026-08-27, et le nom a changé le jour où le crâne
+	// d'Oddball y est entré (phase D4). Garder `FlagObjects` aurait fait dire au code que le
+	// crâne est un drapeau — la table porte des objets d'objectif PORTÉS, dont le drapeau est le
+	// premier et non le seul.
 	//
 	// C'EST UNE TABLE D'IDENTITÉ, PAS UN LIBELLÉ À AFFICHER, et c'est elle qui rend la chaîne
-	// des socles capable de RECONNAÎTRE le drapeau au lieu de l'écarter par accident (« pas au
-	// catalogue d'armes »). Le titre y met les identifiants dont il a établi que ce sont des
-	// drapeaux ; ce paquet ne sait pas ce qu'est un drapeau de Halo — il sait seulement qu'un
-	// objet du monde de cette table n'est JAMAIS une arme au sol, et que ses vies LIBRES sont
-	// ce qu'il publie en `flagObjects`.
+	// des socles capable de RECONNAÎTRE ces objets au lieu de les écarter par accident (« pas au
+	// catalogue d'armes »). Le titre y met les identifiants dont il a établi la nature ; ce
+	// paquet ne sait pas ce qu'est un drapeau de Halo — il sait seulement qu'un objet du monde
+	// de cette table n'est JAMAIS une arme au sol.
 	//
 	// LE NOM VOYAGE AVEC L'IDENTIFIANT parce qu'ils sont UNE entrée de manifeste, et qu'un
-	// libellé rangé ailleurs se désynchronise. Il n'est pas encore publié à l'artefact : le
-	// rendu du drapeau vivant est la phase 3 du plan des objectifs vivants, hors de ce lot.
+	// libellé rangé ailleurs se désynchronise. Il n'est PAS publié à l'artefact : les vies
+	// LIBRES ne servent aujourd'hui qu'à CORRIGER le calque des portages de drapeau
+	// (`flag_objects.go`), elles ne sont écrites dans aucune clé du document.
 	//
-	// TABLE VIDE = le titre ne déclare aucun drapeau : la chaîne des socles se comporte comme
-	// avant et `flagObjects` reste vide. Une dégradation, jamais une erreur.
-	FlagObjects map[uint32]Label
+	// TABLE VIDE = le titre ne déclare aucun objet d'objectif : la chaîne des socles se comporte
+	// comme avant et les vies libres restent vides. Une dégradation, jamais une erreur.
+	ObjectiveObjects map[uint32]Label
+	// ObjectiveFamilies dit CE QU'EST chaque objet de la table précédente (`flag`, `ball`),
+	// keyée par le MÊME GlobalID. Posée par la couche titre, comme `EquipmentFamilies` et pour
+	// la même raison : ce paquet ne doit pas déduire la nature d'un objet de son libellé.
+	//
+	// POURQUOI UNE SECONDE CARTE PLUTÔT QU'UN CHAMP DANS `Label`. `Label` est le type de LIBELLÉ
+	// du document, partagé par les grenades, les capacités et les armes ; y ajouter une famille
+	// d'objectif le ferait porter un concept qui n'a de sens que pour deux entrées. La paire
+	// (libellé, famille) keyée pareil est la convention déjà tenue par les poses d'équipement.
+	//
+	// VIDE = aucune famille connue : le calque des objets d'objectif ne publie rien, et la
+	// chaîne des socles continue d'écarter les identifiants de `ObjectiveObjects`. Dégradation,
+	// jamais erreur.
+	ObjectiveFamilies map[uint32]string
 }
 
 // Empty dit si le catalogue ne nomme rien. Utile aux appelants qui veulent journaliser

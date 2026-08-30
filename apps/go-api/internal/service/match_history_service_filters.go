@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"unicode"
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
@@ -257,11 +258,21 @@ func filterByExplorerSquadScope(rows []domain.MatchHistoryRawRow, scope string) 
 
 // filterByExplorerMatchIDSearch garde les rows dont MatchID contient query (insensible à la casse).
 // query vide = pas de filtre.
+//
+// LES BLANCS SONT RETIRÉS AVANT COMPARAISON, TOUS, pas seulement ceux des bords. Un match ID
+// est un GUID : il n'en contient jamais un seul, donc aucun blanc de la requête ne peut être
+// significatif. Un identifiant collé depuis un log, une URL ou un message en ramène pourtant —
+// aux extrémités le plus souvent, à l'intérieur quand la source a replié la ligne — et sans ce
+// nettoyage la recherche ne rendait RIEN alors que l'identifiant saisi était le bon : le pire
+// des échecs, celui qui se lit « ce match n'existe pas ».
+//
+// CONSÉQUENCE ASSUMÉE : une requête qui se réduit à du blanc redevient une requête VIDE, donc
+// pas de filtre — c'est le seul sens qu'on puisse lui donner sans inventer un critère.
 func filterByExplorerMatchIDSearch(rows []domain.MatchHistoryRawRow, query string) []domain.MatchHistoryRawRow {
-	if query == "" {
+	q := strings.ToLower(stripAllSpaces(query))
+	if q == "" {
 		return rows
 	}
-	q := strings.ToLower(query)
 	out := rows[:0:0]
 	for _, r := range rows {
 		if strings.Contains(strings.ToLower(r.MatchID), q) {
@@ -269,6 +280,17 @@ func filterByExplorerMatchIDSearch(rows []domain.MatchHistoryRawRow, query strin
 		}
 	}
 	return out
+}
+
+// stripAllSpaces retire tout caractère d'espacement Unicode (espace, tabulation, saut de
+// ligne, espace insécable — celle que ramènent les collages depuis un navigateur).
+func stripAllSpaces(s string) string {
+	return strings.Map(func(r rune) rune {
+		if unicode.IsSpace(r) {
+			return -1
+		}
+		return r
+	}, s)
 }
 
 // filterByMatchIDsWhitelist garde uniquement les rows dont MatchID ∈ ids.

@@ -98,6 +98,7 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/analysis/filmdec"
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain/killscope"
 	titlePkg "levelup/go-api/internal/domain/title"
@@ -105,8 +106,8 @@ import (
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
 	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/migration"
-	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/sync/haloclient"
 	"levelup/go-api/internal/sync/killcollector"
 )
@@ -126,6 +127,13 @@ type killsourceOptions struct {
 	dryRun     bool
 	filmsOnly  bool
 	creditOnly bool
+	// online : va CHERCHER le film quand il n est pas en cache, et l archive au passage.
+	// Sans ce drapeau la passe reste 100 % hors ligne — c est le defaut, et il est
+	// deliberement conserve : une passe qui part sur le reseau sans qu on l ait demande
+	// exigerait une authentification vivante la ou l ancienne n en avait pas besoin.
+	online   bool
+	gamertag string
+	rps      int
 }
 
 func runBackfillKillSource(cfg *config.AppConfig, args []string) error {
@@ -138,11 +146,21 @@ func runBackfillKillSource(cfg *config.AppConfig, args []string) error {
 	fs.BoolVar(&o.dryRun, "dry-run", false, "afficher le plan de passe sans rien ecrire")
 	fs.BoolVar(&o.filmsOnly, "films-only", false, "ne jouer que la passe de decodage des films")
 	fs.BoolVar(&o.creditOnly, "credit-only", false, "ne jouer que la passe credit-seul (SQL -> SQL)")
+	fs.BoolVar(&o.online, "online", false, "telecharger les films absents du cache (et les y archiver) au lieu de s en tenir au cache")
+	fs.StringVar(&o.gamertag, "gamertag", "", "joueur dont les tokens servent la passe --online (obligatoire avec --online)")
+	fs.IntVar(&o.rps, "rps", 4, "debit maximal des requetes Halo de la passe --online")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 	if o.filmsOnly && o.creditOnly {
 		return fmt.Errorf("--films-only et --credit-only s excluent")
+	}
+	if o.online && o.gamertag == "" {
+		return fmt.Errorf("--online exige --gamertag : les films se telechargent avec les tokens " +
+			"d un joueur declare dans db_profiles.json")
+	}
+	if !o.online && o.gamertag != "" {
+		return fmt.Errorf("--gamertag n a de sens qu avec --online (la passe hors ligne n emet aucune requete)")
 	}
 
 	ctx := context.Background()
@@ -167,7 +185,11 @@ func runBackfillKillSource(cfg *config.AppConfig, args []string) error {
 	}
 
 	if !o.creditOnly {
-		if err := passeDesFilms(ctx, cfg, db, o); err != nil {
+		passe := passeDesFilms
+		if o.online {
+			passe = passeDesFilmsEnLigne
+		}
+		if err := passe(ctx, cfg, db, o); err != nil {
 			return err
 		}
 	}
@@ -177,42 +199,9 @@ func runBackfillKillSource(cfg *config.AppConfig, args []string) error {
 		}
 	}
 	if !o.dryRun {
-		afficherSante()
+		afficherSante(o.online)
 	}
 	return nil
-}
-
-// santeCompteurs : les compteurs a rendre en fin de passe.
-//
-// ILS SONT PUBLIES EN `expvar` (ADR 0009), ce qui les rend interrogeables sur un SERVEUR — mais
-// cette commande est un process qui s arrete : sans cette restitution, ses compteurs mourraient
-// avec lui. Un compteur qu on ne peut lire qu apres coup n alerte personne, et c est
-// precisement ce que le gate de cette phase demande de constater.
-var santeCompteurs = []string{
-	"killsource_matchs_collectes", "killsource_morts_ecrites",
-	"killsource_films_absents", "killsource_sans_killfeed",
-	"killsource_erreurs_decodage", "killsource_abandons_delai", "killsource_erreurs_ecriture",
-	"killsource_passes_non_publiables", "killsource_assist_extra_count",
-	"killsource_tirs_matchs_ventiles", "killsource_tirs_lignes_ecrites",
-	"killsource_tirs_indices_non_resolus", "killsource_tirs_erreurs_ecriture",
-	"killsource_credit_matchs_ecrits", "killsource_credit_morts_ecrites",
-	"killsource_credit_matchs_enrichis_par_un_film", "killsource_credit_matchs_sans_evenement",
-	"killsource_fusion_morts_enrichies", "killsource_fusion_orphelins_film",
-	"killsource_orphelins_film_humain_contre_humain", "killsource_fusion_instants_ambigus",
-}
-
-// afficherSante restitue les compteurs de sante de la passe.
-func afficherSante() {
-	fmt.Println("compteurs de sante de la passe :")
-	for _, nom := range santeCompteurs {
-		fmt.Printf("  %-52s %d\n", nom, observability.LoadCounter(nom))
-	}
-	fmt.Println("  ⚠ killsource_assist_extra_count : surplus d assistants observes. Mesure du " +
-		"2026-08-03 : 5 lignes a 1 sur 124 694 — anecdotique. Declencheur de migration vers une " +
-		"table fille (ADR 0026) : UNE ligne a >= 2, ou plus de 0,1 % des lignes a >= 1.")
-	fmt.Println("  ⚠ killsource_orphelins_film_humain_contre_humain : lignes de film sans mort " +
-		"de credit en face ET portant DEUX xuids. 13 sur 74 569 au 2026-08-02, mecanisme non " +
-		"demontre — la seule des trois populations d orphelins a surveiller.")
 }
 
 // migrerSchemaPartage : joue les migrations du shared sur le handle deja ouvert.
@@ -263,6 +252,16 @@ func passeDesFilms(ctx context.Context, cfg *config.AppConfig, db *sql.DB, o kil
 		caps,
 		0, // limite par match : le defaut du collecteur (45 min)
 	)
+	// CAPTURE DES POSITIONS (G.2bis), BEST-EFFORT : catalogue de bornes illisible ou metadata
+	// indisponible degrade en « positions desactivees » (le collecteur continue sans elles, la
+	// passe des morts/tirs n en depend pas). ACTIVEE PAR DEFAUT ici, PAS derriere un flag CLI —
+	// c est la seule commande de backfill de ce producteur, et une feature OFF « pour plus tard »
+	// est l anti-pattern que CLAUDE.md interdit (regle 11) : la capture est prete, elle capture.
+	mapNames, mapBounds, cleanupPositions := positionCaptureDeps(cfg, o.titleSlug, db)
+	defer cleanupPositions()
+	if mapNames != nil && mapBounds != nil {
+		collecteur = collecteur.WithPositionCapture(mapNames, mapBounds)
+	}
 
 	ids := make([]string, 0, len(candidats))
 	for _, c := range candidats {
@@ -275,6 +274,51 @@ func passeDesFilms(ctx context.Context, cfg *config.AppConfig, db *sql.DB, o kil
 		sum.Written, sum.Deaths, sum.NoFilm, sum.NoKillFeed, sum.Timeouts, sum.Errors,
 		sum.NotSupport, time.Since(debut).Round(time.Second))
 	return nil
+}
+
+// positionCaptureDeps construit les dependances de la capture des positions (G.2bis) :
+// resolution de carte (`port.ReplayMapNameRepo`, implementee par `duckdb.ReplayMapRepo`) et
+// catalogue de bornes de dequantification (le meme que `replaybuild`, DONNEE DE REFERENCE
+// VERSIONNEE — data/titles/{slug}/reference/map_quant_bounds.json, pas une sortie de sync).
+//
+// BEST-EFFORT PAR CONCEPTION : un catalogue illisible ou une metadata indisponible degrade en
+// « positions desactivees », jamais une erreur fatale — le backfill des morts et des tirs, la
+// raison d etre de cette commande, ne doit pas dependre d une brique tierce. `cleanup` ferme le
+// handle metadata ouvert ici ; elle est TOUJOURS non-nil (no-op si rien n a ete ouvert), donc
+// l appelant peut la `defer` inconditionnellement.
+func positionCaptureDeps(
+	cfg *config.AppConfig, titleSlug string, sharedDB *sql.DB,
+) (port.ReplayMapNameRepo, *filmdec.MapQuantCatalog, func()) {
+	noop := func() {}
+	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
+
+	catalog, err := filmdec.LoadMapQuantCatalog(pr.MapQuantBoundsPath(titleSlug))
+	if err != nil {
+		fmt.Printf("catalogue de bornes indisponible (%v) — positions desactivees pour cette passe\n", err)
+		return nil, nil, noop
+	}
+
+	// OpenReadOnly (pas OpenReadForQuery) : la precondition de CETTE commande est le SERVEUR
+	// ARRETE (comme pour le handle RW de shared), donc aucun autre process ne tient metadata en
+	// ecriture pendant la passe — la garde « different configuration » d OpenReadForQuery n a
+	// rien a proteger ici, et NewReplayMapRepo demande le type *duckdb.DB, pas *sql.DB brut.
+	metaDB, err := duckdb.OpenReadOnly(pr.MetadataDBPath(titleSlug))
+	if err != nil {
+		fmt.Printf("metadata illisible (%v) — positions desactivees pour cette passe\n", err)
+		return nil, nil, noop
+	}
+
+	repo := duckdb.NewReplayMapRepo(staticSharedReader{db: sharedDB}, metaDB)
+	return repo, catalog, func() { _ = metaDB.Close() }
+}
+
+// staticSharedReader adapte le handle shared DEJA OUVERT (le lease de cette commande) en
+// duckdb.SharedReader. Meme raison que writerDeja : le process est seul (serveur arrete), donc
+// release est un no-op — il n y a pas de second lease a poser par-dessus celui deja tenu.
+type staticSharedReader struct{ db *sql.DB }
+
+func (s staticSharedReader) Get(context.Context) (*sql.DB, func(), error) {
+	return s.db, func() {}, nil
 }
 
 // passeDuCredit : la transformation SQL -> SQL, sur TOUS les matchs du registre.

@@ -4,10 +4,12 @@
  * Affiche :
  *  - Image de la map (h-48, object-cover)
  *  - Titre centré `mode sur carte`
- *  - Playlist en sous-titre
+ *  - Playlist en sous-titre (+ lien vers le rejeu 2D quand l'artefact existe
+ *    ET que `playerSlug` est fourni — la route de rejeu est par joueur)
  *  - Section score colorée selon le résultat avec badges narratifs
  */
 import type { RecentMatchItem } from '@/lib/api/types'
+import { MatchReplayLink } from '@/lib/match-nav/MatchReplayLink'
 import { getPerfColor } from '@/lib/perf-color'
 import { getMatchCardOutcomeStyle, getMatchNarrativeBadgeMeta } from './match-card-presentation'
 import { CitationProgressRing } from './citation-progress-ring'
@@ -27,6 +29,9 @@ export interface MatchCardProps {
   match: RecentMatchItem
   locale?: Locale
   timezone?: string
+  /** Slug du joueur de la page : requis pour construire le lien vers le rejeu 2D
+   *  (route par joueur). Absent → aucun lien, même si l'artefact existe. */
+  playerSlug?: string
   onClick?: () => void
   onToggleFavorite?: () => void
   favoriteDisabled?: boolean
@@ -63,7 +68,7 @@ function buildMatchHeading(match: RecentMatchItem, locale: Locale): string {
   return normalizedMode ?? match.map_ui ?? match.title
 }
 
-export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, onToggleFavorite, favoriteDisabled }: MatchCardProps) {
+export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', playerSlug, onClick, onToggleFavorite, favoriteDisabled }: MatchCardProps) {
   const heading = buildMatchHeading(m, locale)
   const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
   // KDA NET ((k+a/3)−d) pour les 2 titres (API Infinite / FDA Halo 5), possiblement
@@ -181,9 +186,19 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
               {heading}
             </p>
           )}
-          {m.playlist_ui && (
-            <p className="text-xs text-muted-foreground leading-tight">
+          {(m.playlist_ui || (playerSlug && m.has_replay)) && (
+            <p className="inline-flex items-center justify-center gap-1.5 text-xs text-muted-foreground leading-tight">
               {m.playlist_ui}
+              {/* Lien rejeu 2D à droite de la playlist — rendu UNIQUEMENT si
+                  l'artefact existe (has_replay) : jamais de lien vers un 404. */}
+              {playerSlug && (
+                <MatchReplayLink
+                  available={m.has_replay === true}
+                  matchId={m.match_id}
+                  playerSlug={playerSlug}
+                  label={t('common.match_card.replay_aria')}
+                />
+              )}
             </p>
           )}
           <div

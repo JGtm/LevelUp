@@ -64,6 +64,10 @@ export const DROPPED_EQUIPMENT_FAMILIES: readonly string[] = [
   'wall',
   'sensor',
   'translocator_beacon',
+  // L ECRAN OCCULTANT entre ici le 2026-08-27, en meme temps qu il gagne sa forme posee. Le
+  // garde-rail l exige et il a raison : une famille qui se dessine DEPLOYEE doit se dessiner
+  // LACHEE, sinon elle disparait de la carte a la mort de son porteur.
+  'shroud_screen',
   'threat_seeker',
   'repair_field',
 ]

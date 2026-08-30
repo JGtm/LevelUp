@@ -59,6 +59,13 @@ type I0Layout struct {
 	GateBits int
 	// AxisW sont les largeurs de quantification de X, Y, Z, en bits.
 	AxisW [3]uint
+	// Region est la VALEUR d'index de région attendue sur les records décodés (l'index
+	// occupe GateBits-4 bits). Zéro partout sauf sur les cartes dont la région jouée n'est
+	// pas la première du bloc structure-BSP (Live Fire : région 1 sur 2 bits — lot C
+	// catalogues, 2026-08-27). Un record d'une AUTRE région est écarté : ses quanta sont
+	// exprimés dans une autre AABB, les déquantifier avec ces bornes produirait une
+	// coordonnée fausse silencieuse.
+	Region uint32
 }
 
 // DefaultI0GateBits est la longueur d'en-tête d'i0 sur le chemin dominant (région explicite).
@@ -92,6 +99,10 @@ func (l I0Layout) Valid() bool {
 }
 
 func (l I0Layout) String() string {
+	if l.Region != 0 {
+		return fmt.Sprintf("gate=%d region=%d %d/%d/%d (i0=%d bits)",
+			l.GateBits, l.Region, l.AxisW[0], l.AxisW[1], l.AxisW[2], l.TotalBits())
+	}
 	return fmt.Sprintf("gate=%d %d/%d/%d (i0=%d bits)", l.GateBits, l.AxisW[0], l.AxisW[1], l.AxisW[2], l.TotalBits())
 }
 

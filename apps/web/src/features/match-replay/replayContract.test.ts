@@ -105,6 +105,10 @@ const NULLABLE_ARRAYS = [
   'inventory',
   'loadouts',
   'neutralDeaths',
+  // `objectiveObjects` : les vies LIBRES du crane d'Oddball (schema 21) — ou l'objet se trouve
+  // quand PERSONNE ne le porte. Nullable au contrat comme les autres tableaux de tete ; son
+  // tableau IMBRIQUE (`pts`) l'est aussi, d'ou la seconde entree dans NULLABLE_ARRAY_PATHS.
+  'objectiveObjects',
   'objectives',
   // `padPickups` : les occupations de socle ACHEVÉES (schéma 11, 2026-08-17) — le socle s'est
   // vidé quelque part dans [tLow, tHigh]. Un INTERVALLE, pas un instant : le film ne porte aucun
@@ -126,6 +130,33 @@ const NULLABLE_ARRAYS = [
   // quand PERSONNE ne tient la zone, et c'est une MESURE (la valeur neutre du canal), pas une
   // absence de donnée. `zoneRef` indexe `mapObjectives.zones`, le calque servi à la requête.
   'zoneStates',
+  // `vipCrown` : LES PÉRIODES DE PORT DE LA COURONNE VIP (schéma 22, 2026-08-27) — une entrée
+  // PLATE par période (xuid, t0, t1, closed), sans tableau imbriqué. `closed` faux = rien ne
+  // ferme le port (borne haute à la fin de l'axe). La garde de mode est côté serveur : `comp
+  // 22 A` vaut `flag_grabs` en CTF, donc le calque n'est rempli que sur un film reconnu VIP.
+  'vipCrown',
+  // `skullCarries` : LES PÉRIODES DE PORTAGE DU CRÂNE d'Oddball (schéma 23, 2026-08-28) — une
+  // entrée PLATE par période (xuid, t0, t1, closed), sans tableau imbriqué. Le porteur est le
+  // joueur dont les tics de score de mode montent (`comp 0 A`), nommé par le pont d'instants de
+  // mort PAR MANCHE. La garde de mode est côté serveur : `comp 0 A` est le score de mode de tout
+  // mode, donc le calque n'est rempli que sur un film reconnu Oddball.
+  'skullCarries',
+  // `weaponChanges` : LES PRISES ET LES LÂCHERS D'ARME (schéma 25, 2026-08-30) — le composant
+  // d'état d'arme n'entre au masque du flux delta qu'au CHANGEMENT : chaque émission est donc
+  // une prise, un lâcher ou un échange, daté à la milliseconde et non dans un intervalle de
+  // vingt secondes. Il ne remplace pas `loadouts` : celui-ci reste l'ÉTAT lu à l'image-clé,
+  // ceci en date les transitions (cf. changeRefine.ts).
+  'weaponChanges',
+  // `equipmentChanges` : LES RAMASSAGES ET LES CONSOMMATIONS d'équipement (schéma 26,
+  // 2026-08-30) — même matière qu'`abilities` (i48), autre question : ce qui ARRIVE au joueur,
+  // et non ce qu'il PORTE. Les annonces de réapparition en sont écartées côté serveur.
+  'equipmentChanges',
+  // `groundWeapons` : LES ARMES AU SOL individuelles (schéma 27, 2026-08-30) — un objet par
+  // arme qui a BOUGÉ, sa position de repos, et des bornes d'affichage OBSERVÉES : ramassage
+  // daté (`pickup`), dernière preuve de présence (`seen`, avec `t1max` pour première preuve
+  // d'absence), ou aucune preuve de disparition (`open`). Les armes de SOCLE restent à
+  // `weaponPads` : deux vérités pour un même objet seraient une de trop.
+  'groundWeapons',
 ] as const
 
 /** (1) La liste couvre EXACTEMENT les tableaux nullables du contrat — ni plus, ni moins. */
@@ -166,7 +197,7 @@ type NullableArrayPaths<T, D extends number = 6> = [D] extends [never]
       }[keyof T & string]
 
 /**
- * NULLABLE_ARRAY_PATHS — la CARTE du contrat : 50 chemins, racine et profondeurs confondues.
+ * NULLABLE_ARRAY_PATHS — la CARTE du contrat : 54 chemins, racine et profondeurs confondues.
  *
  * Elle n'est pas décorative : l'assertion (3) la confronte au contrat généré. Le Go publie un
  * tableau de plus, où que ce soit, et `tsc -b` refuse de compiler en nommant le chemin.
@@ -185,6 +216,7 @@ const NULLABLE_ARRAY_PATHS = [
   'inventory',
   'loadouts',
   'neutralDeaths',
+  'objectiveObjects',
   'objectives',
   'padPickups',
   'projectiles',
@@ -194,8 +226,21 @@ const NULLABLE_ARRAY_PATHS = [
   'tracks',
   'weaponPads',
   'zoneStates',
+  // `vipCrown` (schéma 22) : période PLATE, aucun tableau imbriqué — un seul chemin, la racine.
+  'vipCrown',
+  // `skullCarries` (schéma 23) : période PLATE, aucun tableau imbriqué — un seul chemin, la racine.
+  'skullCarries',
+  // Schémas 25-27 : trois calques PLATS, aucun tableau imbriqué — un seul chemin chacun. Les
+  // objets qu'ils portent ne contiennent que des nombres et des chaînes.
+  'weaponChanges',
+  'equipmentChanges',
+  'groundWeapons',
   // Dans les ÉLÉMENTS d'un tableau de tête — ce que la garde de racine ne voyait pas.
   'flagCarries[].spans',
+  // La trajectoire d'une vie libre d'objet d'objectif (schema 21) : comblee par la
+  // frontiere, comme `flagCarries[].spans` — une vie qui arriverait avec `pts: null` ferait
+  // tomber le calque a l'execution, pas a la compilation.
+  'objectiveObjects[].pts',
   'zoneStates[].spans',
   // `zoneStates[].gauge` : LA JAUGE DE CAPTURE EN DIRECT (schéma 18, 2026-08-18 — le 17 est
   // parti aux socles de power-up, fusionnés avant nous) — la série datée `[{t, v}]` de la
@@ -234,6 +279,9 @@ const NULLABLE_ARRAY_PATHS = [
   'scoreTimeline.teams[].rounds',
   'scoreTimeline.teams[].rounds[].points',
   'scoreTimeline.teams[].total',
+  // La GARDE de la colline (KOTH) : la serie de tics par camp, lue et non reconstruite.
+  'scoreTimeline.holdTicks',
+  'scoreTimeline.holdTicks[].ticks',
   // Les objectifs STATIQUES du mode : servis à la requête, normalisés à l'entrée de leur
   // calque (`normalizeMapObjectives`) et non par la frontière du document — d'où leur
   // présence dans l'allowlist ci-dessous.

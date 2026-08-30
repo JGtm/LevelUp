@@ -34,6 +34,7 @@ import (
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/sync/killcollector"
 	"levelup/go-api/internal/sync/replayartifacts"
 
 	"golang.org/x/sync/errgroup"
@@ -112,6 +113,9 @@ type SyncEngine struct {
 	// (replaybuild). Nil = étape absente — le wiring ne l'installe qu'en LOCAL : « le
 	// VPS web ne décode JAMAIS » (cf. WithReplayArtifacts).
 	replayArtifacts *replayartifacts.Hook
+	// killSource (2026-08-29) — fil de l'eau de la source du kill (étape 1.57). Installé
+	// PAR DÉFAUT dans le constructeur, pas au wiring : cf. killcollector/postsync.go.
+	killSource *killcollector.PostSyncHook
 	// metaDB (optionnel) — connexion ouverte par run() au démarrage de la sync
 	// pour permettre l'enrichissement post-Extract des MatchRegistryRow via
 	// asset_translations (cf. EnrichRegistryFromMetadata, anti-régression UUIDs

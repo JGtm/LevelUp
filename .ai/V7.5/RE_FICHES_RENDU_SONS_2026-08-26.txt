@@ -1,0 +1,373 @@
+
+BOBINE a choc — EXPLOSION        (sb_008_exp_single_small_shock)
+  sbnk 6fd78d85  event ae8da132  |  5 couches SIMULTANEES [1 parmi 8 + 1 parmi 8 + 1 parmi 8 + 1 parmi 8 + 1 son]
+    couche 1  RandomSequence 
+       92004204     gain +6 dB
+       446896633    gain +6 dB
+       537658414    gain +6 dB
+       556403111    gain +6 dB
+       636018809    gain +6 dB
+       645594811    gain +6 dB
+       786640014    gain +6 dB
+       1067617604   gain +6 dB
+    couche 2  RandomSequence 
+       87688939     gain +7 dB
+       153066453    gain +7 dB
+       689956565    gain +7 dB
+       712117212    gain +7 dB
+       713201872    gain +7 dB
+       757010691    gain +7 dB
+       934695168    gain +7 dB
+       996889341    gain +7 dB
+    couche 3  RandomSequence 
+       47194562     gain +16 dB
+       123004357    gain +16 dB
+       300086500    gain +16 dB
+       348234888    gain +16 dB
+       350416867    gain +16 dB
+       535064543    gain +16 dB
+       875407038    gain +16 dB
+       1033691985   gain +16 dB
+    couche 4  RandomSequence 
+       81336259     gain +9 dB
+       97388370     gain +9 dB
+       164183597    gain +9 dB
+       296770111    gain +9 dB
+       515241916    gain +9 dB
+       587716042    gain +9 dB
+       832445209    gain +9 dB
+       1001172696   gain +9 dB
+    couche 5  RandomSequence 
+       224468375    gain -8 dB
+
+BOBINE explosive — EXPLOSION     (sb_008_exp_single_small_kineticunsc)
+  sbnk 3435ff42  event 30343586  |  5 couches SIMULTANEES [1 parmi 8 + 1 parmi 8 + 1 parmi 8 + 1 parmi 8 + 1 son]
+    couche 1  RandomSequence 
+       68794599     gain +10 dB
+       70885790     gain +10 dB
+       226124737    gain +10 dB
+       229256595    gain +10 dB
+       305564930    gain +10 dB
+       433384333    gain +10 dB
+       830838778    gain +10 dB
+       989430316    gain +10 dB
+    couche 2  RandomSequence 
+       262683051    gain +20 dB
+       338990243    gain +20 dB
+       560322568    gain +20 dB
+       606846506    gain +20 dB
+       637849389    gain +20 dB
+       646306036    gain +20 dB
+       802406493    gain +20 dB
+       929493168    gain +20 dB
+    couche 3  RandomSequence 
+       30978520     gain +18 dB
+       44715832     gain +18 dB
+       160069989    gain +18 dB
+       245009432    gain +18 dB
+       398790443    gain +18 dB
+       597082406    gain +18 dB
+       614192788    gain +18 dB
+       1056790875   gain +18 dB
+    couche 4  RandomSequence 
+       52512161     gain +11 dB
+       197758158    gain +11 dB
+       288907554    gain +11 dB
+       393447251    gain +11 dB
+       446078369    gain +11 dB
+       635531781    gain +11 dB
+       722669611    gain +11 dB
+       904130797    gain +11 dB
+    couche 5  RandomSequence 
+       224468375    gain -8 dB
+
+BOBINE lumiere dure — EXPLOSION  (sb_008_exp_single_small_hardlight)
+  sbnk 52ca7622  event 4429b959  |  5 couches SIMULTANEES [1 parmi 6 + 1 parmi 8 + 1 parmi 8 + 1 parmi 6 + 1 son]
+    couche 1  RandomSequence 
+       215683169    gain +12 dB
+       342263870    gain +12 dB
+       421914643    gain +12 dB
+       790796484    gain +12 dB
+       826330679    gain +12 dB
+       959143979    gain +12 dB
+    couche 2  RandomSequence 
+       115370168    gain +16 dB
+       294107855    gain +16 dB
+       309073552    gain +16 dB
+       430470932    gain +16 dB
+       508263327    gain +16 dB
+       572464068    gain +16 dB
+       772177983    gain +16 dB
+       775151117    gain +16 dB
+    couche 3  RandomSequence 
+       12993930     gain +16 dB
+       147132245    gain +16 dB
+       421305493    gain +16 dB
+       463252965    gain +16 dB
+       557421956    gain +16 dB
+       748124173    gain +16 dB
+       807501789    gain +16 dB
+       1070298400   gain +16 dB
+    couche 4  RandomSequence 
+       294041637    gain +12 dB
+       435387798    gain +12 dB
+       578342124    gain +12 dB
+       1027797749   gain +12 dB
+       1046598163   gain +12 dB
+       1072944913   gain +12 dB
+    couche 5  RandomSequence 
+       224468375    gain -8 dB
+
+BOBINE plasma — EXPLOSION        (sb_008_exp_single_small_plasma)
+  sbnk 9a28782d  event db64918e  |  5 couches SIMULTANEES [1 parmi 8 + 1 parmi 8 + 1 parmi 8 + 1 parmi 8 + 1 son]
+    couche 1  RandomSequence 
+       123193277    gain +4 dB
+       129104533    gain +4 dB
+       452044651    gain +4 dB
+       564950984    gain +4 dB
+       732912073    gain +4 dB
+       897753677    gain +4 dB
+       1021960963   gain +4 dB
+       1031818280   gain +4 dB
+    couche 2  RandomSequence 
+       94173483     gain +11 dB
+       176625660    gain +11 dB
+       230990238    gain +11 dB
+       283619485    gain +11 dB
+       382184913    gain +11 dB
+       735864660    gain +11 dB
+       819439613    gain +11 dB
+       927122279    gain +11 dB
+    couche 3  RandomSequence 
+       803709       gain +7 dB
+       30089343     gain +7 dB
+       270537265    gain +7 dB
+       474927243    gain +7 dB
+       765677273    gain +7 dB
+       860623452    gain +7 dB
+       1005960511   gain +7 dB
+       1007386822   gain +7 dB
+    couche 4  RandomSequence 
+       63140676     gain +2 dB
+       95110280     gain +2 dB
+       311105448    gain +2 dB
+       462520907    gain +2 dB
+       562573243    gain +2 dB
+       587194772    gain +2 dB
+       596511368    gain +2 dB
+       740133051    gain +2 dB
+    couche 5  RandomSequence 
+       224468375    gain -8 dB
+
+BOMBE apparait                   play_004_mod_mp_assault_bomb_spawn
+  sbnk 2b01f208  event e8ca00b8  |  1 couche, 1 son
+    couche 1  RandomSequence 
+       172978703    gain   0 dB
+
+BOMBE armee (BOUCLE)             play_004_mod_mp_assault_bomb_planted_loop
+  sbnk 2b01f208  event a38d8b3e  |  1 couche, UN son tire parmi 4 (RandomSequence)
+    couche 1  RandomSequence 
+       28736469     gain -6 dB
+       462503916    gain -6 dB
+       477828084    gain -6 dB
+       898296404    gain -6 dB
+
+BOMBE desamorcage (BOUCLE)       play_004_mod_mp_assault_bomb_disarm_loop
+  sbnk 2b01f208  event b57933f2  |  1 couche, 1 son
+    couche 1  RandomSequence 
+       10922279     gain -9 dB
+
+BOMBE detonation                 play_004_mod_mp_assault_bomb_detonated
+  sbnk 2b01f208  event 984f65e5  |  1 couche, 1 son
+    couche 1  RandomSequence 
+       538469998    gain   0 dB
+
+BOMBE disparait                  play_004_mod_mp_assault_bomb_despawn
+  sbnk 2b01f208  event 4cf90163  |  1 couche, 1 son
+    couche 1  RandomSequence 
+       442885781    gain   0 dB
+
+BOMBE prise (adversaire)         play_004_mod_mp_assault_bomb_taken_enemy
+  sbnk 2b01f208  event db424829  |  1 couche, 1 son
+    couche 1  RandomSequence 
+       403606755    gain   0 dB
+
+BOMBE prise (mon equipe)         play_004_mod_mp_assault_bomb_taken_team
+  sbnk 2b01f208  event 458c0a64  |  1 couche, 1 son
+    couche 1  RandomSequence 
+       286511876    gain   0 dB
+
+BOMBE ramassee (adversaire)      play_004_mod_mp_assault_bomb_pickup_enemy
+  sbnk 2b01f208  event d0eb18a6  |  1 couche, UN son tire parmi 2 (RandomSequence)
+    couche 1  RandomSequence 
+       57569316     gain   0 dB
+       74458406     gain   0 dB
+
+BOMBE ramassee (mon equipe)      play_004_mod_mp_assault_bomb_pickup_team
+  sbnk 2b01f208  event d636b2ad  |  1 couche, UN son tire parmi 2 (RandomSequence)
+    couche 1  RandomSequence 
+       57569316     gain   0 dB
+       74458406     gain   0 dB
+
+CHAMP DE REPARATION activation   play_007_abl_repairfield_activate
+  sbnk 5724312f  event c48cf171  |  1 couche, UN son tire parmi 3 (RandomSequence)
+    couche 1  RandomSequence 
+       143632032    gain +1 dB
+       222530989    gain +1 dB
+       640887009    gain +1 dB
+
+CHAMP DE REPARATION arret        play_007_abl_repairfield_deactivate
+  sbnk 5724312f  event 6aa63330  |  1 couche, UN son tire parmi 3 (RandomSequence)
+    couche 1  RandomSequence 
+       435361645    gain   0 dB
+       468163152    gain   0 dB
+       927911032    gain   0 dB
+
+CHAMP DE REPARATION pose         play_007_abl_repairfield_deploy_player
+  sbnk 5724312f  event 8ed46d21  |  1 couche, UN son tire parmi 3 (RandomSequence)
+    couche 1  RandomSequence 
+       894865279    gain   0 dB
+       899552962    gain   0 dB
+       1001730562   gain   0 dB
+
+DRAPEAU apparait                 play_004_mod_mp_ctf_flag_spawn
+  sbnk 61007dcf  event 58a5e7ba  |  1 couche, 1 son
+    couche 1  RandomSequence 
+       443573107    gain   0 dB
+
+DRAPEAU capture par MON equipe   play_004_mod_mp_ctf_flag_scored_team
+  sbnk 61007dcf  event 59223651  |  2 couches SIMULTANEES [1 son + 1 son]
+    couche 1  RandomSequence 
+       757373997    gain +15 dB
+    couche 2  RandomSequence 
+       728789050    gain   0 dB
+
+DRAPEAU capture par l ADVERSAIRE play_004_mod_mp_ctf_flag_scored_enemy
+  sbnk 61007dcf  event be7759aa  |  2 couches SIMULTANEES [1 son + 1 son]
+    couche 1  RandomSequence 
+       152978808    gain +13 dB
+    couche 2  RandomSequence 
+       468727005    gain   0 dB
+
+DRAPEAU pris par MON equipe      play_004_mod_mp_ctf_flag_taken_team
+  sbnk 61007dcf  event fefed142  |  2 couches SIMULTANEES [1 son + 1 son]
+    couche 1  RandomSequence 
+       226438283    gain +3 dB
+    couche 2  RandomSequence 
+       411873637    gain   0 dB
+
+DRAPEAU pris par l ADVERSAIRE    play_004_mod_mp_ctf_flag_taken_enemy
+  sbnk 61007dcf  event f4084c17  |  2 couches SIMULTANEES [1 son + 1 son]
+    couche 1  RandomSequence 
+       145749690    gain +3 dB
+    couche 2  RandomSequence 
+       162634095    gain   0 dB
+
+DRAPEAU ramasse (adversaire)     play_004_mod_mp_ctf_flag_pickup_enemy
+  sbnk 61007dcf  event 47b28508  |  1 couche, 1 son
+    couche 1  RandomSequence 
+       218740819    gain -3 dB
+
+DRAPEAU ramasse (mon equipe)     play_004_mod_mp_ctf_flag_pickup_team
+  sbnk 61007dcf  event ff3e5807  |  1 couche, 1 son
+    couche 1  RandomSequence 
+       505641465    gain -2 dB
+
+DRAPEAU rendu                    play_004_mod_mp_ctf_flag_returned
+  sbnk 61007dcf  event b2a0d0f0  |  1 couche, 1 son
+    couche 1  RandomSequence 
+       817170880    gain +2 dB
+
+ECRAN OCCULTANT accroche         play_007_abl_shroud_attach
+  sbnk 92c830f5  event 435d741b  |  1 couche, UN son tire parmi 3 (RandomSequence)
+    couche 1  RandomSequence 
+       420308399    gain +4 dB
+       630092343    gain +4 dB
+       1013130511   gain +4 dB
+
+ECRAN OCCULTANT entree           play_007_abl_shroud_enter
+  sbnk 92c830f5  event d6ee1fae  |  1 couche, UN son tire parmi 3 (RandomSequence)
+    couche 1  RandomSequence 
+       447943148    gain   0 dB
+       531929279    gain   0 dB
+       839353423    gain   0 dB
+
+ECRAN OCCULTANT pose             play_007_abl_shroud_deploy_player
+  sbnk 92c830f5  event ecd34df7  |  1 couche, UN son tire parmi 3 (RandomSequence)
+    couche 1  RandomSequence 
+       343194978    gain +7 dB
+       363137169    gain +7 dB
+       870547046    gain +7 dB
+
+ECRAN OCCULTANT sortie           play_007_abl_shroud_exit
+  sbnk 92c830f5  event 37d7abd4  |  1 couche, UN son tire parmi 3 (RandomSequence)
+    couche 1  RandomSequence 
+       202099448    gain -6 dB
+       217845765    gain -6 dB
+       711489398    gain -6 dB
+
+EQUIPEMENT detruit               play_007_abl_shared_device_explode
+  sbnk 15c5b355  event 9095fa10  |  1 couche, UN son tire parmi 3 (RandomSequence)
+    couche 1  RandomSequence 
+       701708923    gain +3 dB
+       836432443    gain +3 dB
+       954460118    gain +3 dB
+
+EQUIPEMENT ramasse               play_007_abl_shared_pickup
+  sbnk 15c5b355  event c73036e4  |  1 couche, UN son tire parmi 2 (RandomSequence)
+    couche 1  RandomSequence 
+       779938423    gain   0 dB
+       819662026    gain   0 dB
+
+EXTRACTION dispositif apparait   play_004_mod_mp_extraction_zone_spawn
+  sbnk 156c35d5  event 2aca2a6c  |  1 couche, 1 son
+    couche 1  RandomSequence 
+       1008250291   gain   0 dB
+
+EXTRACTION dispositif disparait  play_004_mod_mp_extraction_zone_despawn
+  sbnk 156c35d5  event 85b3f057  |  1 couche, 1 son
+    couche 1  RandomSequence 
+       546215262    gain -2 dB
+
+EXTRACTION marquee (adversaire)  play_004_mod_mp_extraction_point_scored_enemy
+  sbnk 156c35d5  event 66df9bfc  |  1 couche, 1 son
+    couche 1  RandomSequence 
+       255495828    gain +8 dB
+
+EXTRACTION marquee (mon equipe)  play_004_mod_mp_extraction_point_scored_team
+  sbnk 156c35d5  event cc22923b  |  1 couche, 1 son
+    couche 1  RandomSequence 
+       596675618    gain +8 dB
+
+GRAPPIN tir                      play_007_abl_grapplinghook_deploy_player
+  sbnk 385461e8  event 34df0941  |  1 couche, UN son tire parmi 3 (RandomSequence)
+    couche 1  RandomSequence 
+       646478996    gain +7 dB
+       880401016    gain +7 dB
+       970648875    gain +7 dB
+
+REPULSEUR impulsion              play_007_abl_knockback_pulse_player
+  sbnk 7bd0883c  event 5fa136df  |  1 couche, UN son tire parmi 3 (RandomSequence)
+    couche 1  RandomSequence 
+       429477947    gain +8 dB
+       625402148    gain +9 dB
+       856604309    gain +9 dB
+
+ZONE apparait                    play_004_mod_mp_landgrab_zone_spawn
+  sbnk 8369d532  event 23aa1d32  |  1 couche, 1 son
+    couche 1  RandomSequence 
+       643735766    gain -4 dB
+
+ZONE capturee par l adversaire   play_004_mod_mp_attrition_enemy_captured
+  sbnk 522404fa  event 4f53028a  |  1 couche, UN son tire parmi 3 (RandomSequence)
+    couche 1  RandomSequence 
+       24569287     gain +6 dB
+       541533092    gain +6 dB
+       987676827    gain +6 dB
+
+ZONE contestee                   play_004_mod_mp_landgrab_contested
+  sbnk 8369d532  event 82be7063  |  1 couche, 1 son
+    couche 1  RandomSequence 
+       538340296    gain -1 dB
+
+39 fiches | couches a delai non nul : 0 | couches a fourchette RANGED : 0

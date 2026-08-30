@@ -82,6 +82,26 @@ describe('useReplaySound — coupé par défaut', () => {
     const { result } = renderHook(() => useReplaySound(doc, [], 0, 1))
     expect(result.current.available).toBe(false)
   })
+
+  /**
+   * ET LA BASCULE REFUSE DE S'EXÉCUTER (correctif du 2026-08-28, revue R1).
+   *
+   * LE DÉFAUT QUE CE CAS FIXE : le bouton du son ne se rend pas sur un match muet, mais le
+   * RACCOURCI CLAVIER « M », lui, n'a pas de rendu à respecter. Il basculait donc la
+   * préférence, la PERSISTAIT dans le stockage local et ouvrait un AudioContext, sans qu'un
+   * seul pixel ne change à l'écran — et le rejeu SUIVANT, celui-là sonore, démarrait dans
+   * l'état inverse de celui qu'on croyait avoir laissé. La garde vit chez le propriétaire de
+   * l'état, donc elle vaut pour tous les appelants, clavier compris.
+   */
+  it('MATCH MUET : la bascule ne persiste rien et n’ouvre aucun contexte audio', () => {
+    const doc = docWithCouple()
+    const { result } = renderHook(() => useReplaySound(doc, [], 0, 1))
+    act(() => result.current.toggle())
+    expect(result.current.on).toBe(false)
+    expect(localStorage.getItem('replay-sound-on')).toBeNull()
+    expect(ctx.sources).toHaveLength(0)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
 })
 
 describe('useReplaySound — activation', () => {
@@ -145,10 +165,10 @@ describe('useReplaySound — silences voulus', () => {
 })
 
 describe('useReplaySound — catégories (tiroir de réglages, phase 2)', () => {
-  it('les quatre catégories sont actives par défaut', () => {
+  it('les cinq catégories sont actives par défaut', () => {
     const { result } = mount()
     expect(result.current.categories).toEqual({
-      weapon: true, grenade: true, melee: true, equipment: true,
+      weapon: true, grenade: true, melee: true, equipment: true, objective: true,
     })
   })
 
@@ -304,7 +324,7 @@ describe('useReplaySound — le son déjà activé revit au premier geste', () =
     localStorage.setItem('replay-sound-on', 'true')
     const doc = docWithCouple()
     const { result } = renderHook(() =>
-      useReplaySound(doc, [kill()], 0, 1, { outcome: 'win', ffa: false, locale: 'fr' }),
+      useReplaySound(doc, [kill()], 0, 1, undefined, { outcome: 'win', ffa: false, locale: 'fr' }),
     )
     act(() => result.current.wake())
     await act(async () => { await flushAudio() })
@@ -327,7 +347,7 @@ describe('useReplaySound — la fin de partie', () => {
   function mountWithEnd(spec: EndMatchSoundSpec | null = VICTOIRE_FR) {
     const doc = docWithCouple()
     const kills = [kill()]
-    return renderHook(() => useReplaySound(doc, kills, 0, 1, spec))
+    return renderHook(() => useReplaySound(doc, kills, 0, 1, undefined, spec))
   }
 
   it('son coupé : la conclusion ne sonne pas, et n’ouvre aucun contexte au passage', () => {
@@ -359,7 +379,7 @@ describe('useReplaySound — la fin de partie', () => {
   it('avance rapide : la conclusion se tait aussi, comme l’annonce le panneau', async () => {
     const doc = docWithCouple()
     const { result } = renderHook(() =>
-      useReplaySound(doc, [kill()], 0, SOUND_MAX_SPEED * 2, VICTOIRE_FR),
+      useReplaySound(doc, [kill()], 0, SOUND_MAX_SPEED * 2, undefined, VICTOIRE_FR),
     )
     act(() => result.current.toggle())
     await act(async () => { await flushAudio() })

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "source": "world bounds x/y/z du tag sbsp de la RÉGION 0 (ordre du bloc structure-BSP du tag de niveau), lus dans C:\\Program Files (x86)\\Steam\\steamapps\\common\\Halo Infinite\\deploy\\ds\\levels\\multi",
+  "source": "world bounds x/y/z du tag sbsp de la RÉGION 0 (ordre du bloc structure-BSP du tag de niveau), lus dans D:\\SteamLibrary\\steamapps\\common\\Halo Infinite\\deploy\\ds\\levels\\multi",
   "maps": {
     "944396dd-5661-4a16-b1d8-a6053f762c55": {
       "module": "fo13_frost",
@@ -775,6 +775,26 @@
         17,
         15
       ]
+    },
+    "live fire": {
+      "module": "sgh_interlock",
+      "min": [
+        -16.719454,
+        -10.102863,
+        -9.330649
+      ],
+      "max": [
+        46.513535,
+        53.67172,
+        13.5679
+      ],
+      "axisWidths": [
+        12,
+        12,
+        11
+      ],
+      "region": 1,
+      "regionIndexBits": 2
     },
     "merchant's square": {
       "module": "fo09_academy",

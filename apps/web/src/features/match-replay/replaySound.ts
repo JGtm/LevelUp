@@ -1,10 +1,12 @@
 /**
  * replaySound.ts — CE QUI SONNE, ET QUAND.
  *
- * DEUX VOISINS, EXTRAITS LE 2026-08-18 (lot R2-G) parce que ce fichier atteignait son
- * plafond : `replaySoundCursor.ts` tient le curseur de lecture (un événement ne part qu'une
- * fois), et `grenadeSound.ts` tient tout ce qui est propre à la GRENADE — ses deux tables,
- * la datation de l'explosion et le dédoublonnage, doctrine comprise.
+ * QUATRE VOISINS, EXTRAITS AU FIL DES LOTS parce que ce fichier atteint son plafond :
+ * `replaySoundCursor.ts` tient le curseur de lecture (un événement ne part qu'une fois) et
+ * `grenadeSound.ts` tout ce qui est propre à la GRENADE (2026-08-18, lot R2-G) ;
+ * `replaySoundVariants.ts` tient le TIRAGE d'une variante et `objectiveSound.ts` les sons
+ * d'OBJECTIF, leur camp et leurs silences (2026-08-26). Même règle à chaque fois : une famille
+ * qui a sa source, sa clé de jointure et sa doctrine mérite son fichier.
  *
  * LES SOURCES (deux, par nature — fusion du 2026-08-16) : les sons d'ARMES sont EXTRAITS
  * DU JEU (chantier sons-armes : banks Wwise decodees, coups reconstitues selon la
@@ -74,7 +76,18 @@
  *    choix de mise en scène — le gate d'écoute utilisateur tranchera ;
  *  - les TRACTIONS DE GRAPPIN (doc.grappleLines, schéma 8, lot G du 2026-08-20) : le TIR
  *    sonne à `t0`, un événement par traction. Rien ne sonne à `t1` : l'arrivée sur la
- *    trajectoire ferme la fenêtre du calque (`grappleLayer.ts`), ce n'est pas un geste.
+ *    trajectoire ferme la fenêtre du calque (`grappleLayer.ts`), ce n'est pas un geste ;
+ *  - les ACTIONS D'OBJECTIF (doc.objectives — lot du 2026-08-26) : chacune sonne à sa frame,
+ *    par NOM CANONIQUE DE STATISTIQUE et DANS LE CAMP DE SON AUTEUR. Détail, périmètre et
+ *    silences : `objectiveSound.ts`.
+ *
+ * UNE TROISIÈME SOURCE, DEPUIS LE 2026-08-26 : la RE des banques Wwise
+ * (`.ai/V7.5/RE_BANQUES_SONORES_NOMMEES_2026-08-26.md`) — banques NOMMÉES par hachage FNV-1 de
+ * leur identifiant, puis leurs événements par la même voie, puis chaque geste reconstruit
+ * couche par couche aux gains relevés. Elle apporte les sons d'objectif, et REMPLACE trois
+ * fichiers du pack utilisateur À STEM CONSTANT (`grapple_fire`, `repulsor_kill`,
+ * `repair_field_activate`) — même nom, source du jeu, et désormais plusieurs variantes tirées
+ * à chaque lecture (`replaySoundVariants.ts`).
  *
  * POURQUOI LA VIGNETTE, ET PAS LE weapon_key, POUR LES GRENADES ET LA MÊLÉE. Le registre
  * d'armes ne porte NI la grenade à pointes NI la mêlée générique : la table de pont
@@ -154,9 +167,27 @@ import type { KillEvent } from '@/features/match-view/_momentum'
 
 import { placementIsDeployedObject } from './equipmentPlacementsLayer'
 import { grenadeSoundEvents } from './grenadeSound'
+import type { ReplayLocale } from './i18n'
 import { alignFeed } from './killFeedLogic'
+import { objectiveSoundEvents, type ObjectiveSide } from './objectiveSound'
+import { padSpawnSoundEvents } from './padSpawnSound'
+import { weaponChangeSoundEvents } from './weaponChangeSound'
+import { equipmentChangeSoundEvents } from './equipmentChangeSound'
+import { roundOverSoundEvents } from './roundOverSound'
+import { skullSoundEvents } from './skullSound'
+import { zoneSoundEvents } from './zoneSound'
 import { frameToMs } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
+import { soundEvent, type ReplaySoundEvent } from './replaySoundVariants'
+
+export { pickVariantStem, SOUND_VARIANTS, stemsOf, type ReplaySoundEvent } from './replaySoundVariants'
+export { OBJECTIVE_SOUND_STEMS, objectiveSoundStem, type ObjectiveSide } from './objectiveSound'
+export { ZONE_SOUND_STEMS, zoneSoundEvents } from './zoneSound'
+export { SKULL_SOUND_STEMS, skullSoundEvents } from './skullSound'
+export { PAD_SPAWN_SOUND_STEM, EQUIPMENT_PAD_SPAWN_SOUND_STEM, padSpawnSoundEvents } from './padSpawnSound'
+export { WEAPON_CHANGE_SOUND_STEMS, weaponChangeSoundEvents } from './weaponChangeSound'
+export { EQUIPMENT_PICKUP_SOUND_STEM, equipmentChangeSoundEvents } from './equipmentChangeSound'
+export { ROUND_OVER_SOUND_STEMS, roundOverSoundEvents } from './roundOverSound'
 
 /**
  * Catégorie d'un son, pour le filtre du tiroir de réglages (phase 2, décision utilisateur
@@ -164,7 +195,7 @@ import type { ReplayDocumentReady } from './replayNormalize'
  * (lancers ET explosions : c'est le même objet, sous deux formes), MÊLÉE (le seul coup
  * fatal sonné, `melee_kill`), ÉQUIPEMENTS (camouflage, surbouclier).
  */
-export type SoundCategory = 'weapon' | 'grenade' | 'melee' | 'equipment'
+export type SoundCategory = 'weapon' | 'grenade' | 'melee' | 'equipment' | 'objective'
 
 /**
  * Son d'ARME par weapon_key -> stem de fichier sous static/sounds/{slug}/.
@@ -264,6 +295,20 @@ export const KILL_SPRITE_SOUND_STEMS: Readonly<Record<string, KillSound>> = {
   'killfeed-49': { stem: 'explosion_spike', category: 'grenade' },
   'killfeed-65': { stem: 'melee_kill', category: 'melee' },
   'killfeed-56': { stem: 'repulsor_kill', category: 'weapon' },
+  // LES QUATRE BOBINES (2026-08-27). Un kill de bobine n'avait AUCUNE icône jusqu'ici, et la
+  // cause était technique, pas doctrinale : la coupe à trois segments qui extrait la racine de
+  // banque rendait `exp_single_small_{shock,plasma,kineticunsc,hardlight}` toutes identiques.
+  // La racine LONGUE les distingue, et l'atlas porte leurs quatre vignettes depuis la passe de
+  // nommage du 2026-08-09. Le son est l'événement à CINQ COUCHES SIMULTANÉES de chaque banque
+  // — le seul des trois qu'elle porte qui soit l'explosion complète, les deux autres étant des
+  // perspectives (RE du 2026-08-26, §5).
+  //
+  // CATÉGORIE ARME, comme le répulseur : une bobine tue par explosion, mais c'est une source de
+  // dégât du décor, pas une grenade lancée — et le tiroir de réglages n'a pas de case « décor ».
+  'killfeed-42': { stem: 'coil_shock', category: 'weapon' },
+  'killfeed-43': { stem: 'coil_blast', category: 'weapon' },
+  'killfeed-44': { stem: 'coil_fusion', category: 'weapon' },
+  'killfeed-45': { stem: 'coil_plasma', category: 'weapon' },
 }
 
 /**
@@ -320,13 +365,20 @@ export const EQUIPMENT_SOUND_STEMS: Readonly<
  * dont 4 `.wem` tombent dans le pack `sb_007_abl_repairfield.pck` — le jeu la nomme lui-même.
  * Son unique `snd!` (`22c2323a`) désigne deux événements qui rendent LES MÊMES trois `.wem`,
  * variantes uniformes d'un seul `RandomSequence` : il n'y a pas de choix à faire, seulement un
- * tirage. La variante de plus petit identifiant est retenue (894865279, 0,38 s).
+ * tirage.
  *
- * ÉGALISATION : gain LINÉAIRE de -1,4 dB, crête vraie à -1,0 dBTP — le plafond du lot R2-S.
- * LA MOITIÉ « -16 LUFS » DE LA RÈGLE N'EST PAS MESURABLE ICI et c'est dit plutôt que masqué :
- * la fenêtre de porte d'EBU R128 fait 400 ms, la source en fait 380 — `ebur128` rend -70 LUFS,
- * c'est-à-dire « porte jamais atteinte », pas « très faible ». Le fichier rejoint donc les
- * 15 fichiers que le lot R2-S avait déjà plafonnés par leur facteur de crête.
+ * CE QUI A CHANGÉ LE 2026-08-27, ET C'EST UNE ERREUR CORRIGÉE, PAS UN RÉGLAGE. Le fichier
+ * livré depuis le 2026-08-18 était le geste de POSE (`play_007_abl_repairfield_deploy_player`,
+ * événement `8ed46d21`, 0,38 s) — un claquement d'objet lâché. L'ACTIVATION du champ est un
+ * autre événement, `play_007_abl_repairfield_activate` (`c48cf171`, 3,26 s), et c'est celui
+ * que l'utilisateur veut entendre quand un joueur pose le champ (décision du 2026-08-27,
+ * après écoute de la planche). Les deux événements ne se distinguaient pas avant le nommage
+ * des banques par hachage : la chaîne de tags menait aux deux sans dire lequel était lequel.
+ * Les trois variantes livrées sont désormais les trois `.wem` de `c48cf171`
+ * (143632032 / 222530989 / 640887009), gain de chemin +1 dB appliqué.
+ *
+ * ÉGALISATION : crête vraie plafonnée à -1,0 dBTP par gain LINÉAIRE (-0,8 / -1,0 / -2,0 dB),
+ * plafond du lot R2-S, même convention que `repair_field_end`.
  *
  * LA BALISE DU TRANSLOCATEUR RESTE MUETTE, ET SON SILENCE A CHANGÉ DE RAISON. Sa banque est
  * TROUVÉE (`dcfaa487`, 70 `.wem`, atteinte par les deux seuls `eqip` `quantum_translocator` du
@@ -345,6 +397,24 @@ export const EQUIPMENT_SOUND_STEMS: Readonly<
  * (`GRAPPLE_SOUND_STEM` ci-dessous, jointe à `doc.grappleLines`, schéma 8) — ce n'est pas un
  * objet posé au sens de CETTE table-ci.
  */
+export const EQUIPMENT_PLACEMENT_SOUND_STEMS_END: Readonly<Record<string, string>> = {
+  // Le champ de réparation SONNE SA FIN depuis le 2026-08-26, et c'est une décision produit
+  // de l'utilisateur (« y compris le champ de réparation qui disparaît »), pas une déduction.
+  //
+  // ELLE AMENDE UNE RÈGLE DE CE FICHIER, et il faut le dire plutôt que de la contourner en
+  // silence : « rien ne sonne à la fin — la disparition d'un mur n'est pas un acte, c'est la
+  // fin d'une durée ». Elle reste vraie POUR LE MUR ; le champ de réparation, lui, est un
+  // émetteur qui s'ÉTEINT, et le jeu lui donne un événement propre pour ça
+  // (`play_007_abl_repairfield_deactivate`, trois variantes).
+  //
+  // LA RÉSERVE D'HORLOGE EST ÉCRITE, parce qu'elle ne s'entend pas : `t1` d'une pose est sa
+  // MISE AU REPOS mesurée, c'est-à-dire une BORNE INFÉRIEURE de sa disparition (correctif de
+  // la revue des poses, 2026-08-17). Le son part donc au plus tôt à l'instant où le film
+  // cesse de voir l'objet actif, jamais après. Aucune autre famille n'entre ici sans la même
+  // vérification : une famille dont `t1` n'est pas mesuré sonnerait à un instant inventé.
+  repair_field: 'repair_field_end',
+}
+
 export const EQUIPMENT_PLACEMENT_SOUND_STEMS: Readonly<Record<string, string>> = {
   wall: 'wall_activate',
   sensor: 'sensor_activate',
@@ -352,6 +422,29 @@ export const EQUIPMENT_PLACEMENT_SOUND_STEMS: Readonly<Record<string, string>> =
   threat_seeker: 'sensor_activate',
   // Extrait du jeu le 2026-08-18 par la chaîne `eqip -> effe -> snd! -> sbnk` (cf. ci-dessus).
   repair_field: 'repair_field_activate',
+  // LE TRANSLOCATEUR SONNE DEPUIS LE 2026-08-27, ET SA SOURCE N'EST NI LA CHAÎNE DE TAGS NI LE
+  // HACHAGE : c'est l'UTILISATEUR qui a extrait le son du jeu et l'a désigné. Après deux jours
+  // de recherche dans sa banque (`sb_007_abl_quantum`, 23 événements, 4 noms cassés) et l'échec
+  // mesuré d'une comparaison spectrale contre une capture vidéo, c'est la voie qui a abouti —
+  // et c'est la règle du chantier depuis le début : « les votes priment sur tout critère »
+  // (`RECETTE_SONS_ARMES` §5). Le fichier est son extraction, ré-échantillonnée à 48 kHz et
+  // plafonnée à -1 dBTP comme tous les autres, rien de plus.
+  //
+  // CE QUE LE SON EST, dans ses mots : « la première activation, la dépose de la faille
+  // spatio-temporelle ». Ce n'est donc PAS une balise lancée — l'équipement se porte au poignet
+  // et ouvre une faille sur la position exacte du joueur. Le nom de famille du calque
+  // (`translocator_beacon`) et son libellé (« balise ») portent encore l'ancienne lecture ;
+  // les corriger touche le manifeste ET le dessin, c'est un lot à part.
+  //
+  // L'USAGE (la téléportation elle-même) est livré sous `translocator_teleport` mais N'EST PAS
+  // branché : le film ne publie aucun événement pour le retour, seulement la POSE. Le livrer
+  // sans déclencheur en ferait un asset mort, que le garde-rail refuse à juste titre.
+  translocator_beacon: 'translocator_deploy',
+  // L ECRAN OCCULTANT, nomme le 2026-08-27. Il etait la DERNIERE famille dessinee sans son, et
+  // ce qui le tenait muet n etait pas le son — `play_007_abl_shroud_deploy_player` est casse
+  // depuis le 2026-08-26 — mais la FAMILLE : l objet s appelait `other` au manifeste, faute
+  // d une voie de nommage. Sa banque sonore l a donnee (`sb_007_abl_shroud`).
+  shroud_screen: 'shroud_deploy',
 }
 
 /**
@@ -368,26 +461,25 @@ export const EQUIPMENT_PLACEMENT_SOUND_STEMS: Readonly<Record<string, string>> =
  */
 export const GRAPPLE_SOUND_STEM = 'grapple_fire'
 
-/** Un événement sonore posé sur l'horloge du rejeu. */
-export interface ReplaySoundEvent {
-  /** Instant en ms sur l'horloge du rejeu (celle du fil et des fiches). */
-  ms: number
-  /** Stem du fichier sous static/sounds/{titleSlug}/. */
-  stem: string
-}
-
-/** Les quatre catégories filtrables du tiroir de réglages (phase 2, décision du 16/08). */
-export const SOUND_CATEGORIES: readonly SoundCategory[] = ['weapon', 'grenade', 'melee', 'equipment']
+/** Les cinq catégories filtrables du tiroir de réglages (phase 2, décision du 16/08). */
+export const SOUND_CATEGORIES: readonly SoundCategory[] = [
+  'weapon',
+  'grenade',
+  'melee',
+  'equipment',
+  'objective',
+]
 
 /** Filtre par catégorie : une entrée par catégorie, `true` = catégorie audible. */
 export type SoundCategoryFilter = Readonly<Record<SoundCategory, boolean>>
 
-/** Le comportement D'AUJOURD'HUI, inchangé par défaut : les quatre catégories sonnent. */
+/** Le comportement D'AUJOURD'HUI, inchangé par défaut : les cinq catégories sonnent. */
 export const SOUND_CATEGORIES_DEFAULT: SoundCategoryFilter = {
   weapon: true,
   grenade: true,
   melee: true,
   equipment: true,
+  objective: true,
 }
 
 /**
@@ -472,13 +564,26 @@ export function buildSoundTimeline(
   kills: KillEvent[],
   t0Ms: number,
   categories: SoundCategoryFilter = SOUND_CATEGORIES_DEFAULT,
+  sideOfXuid?: (xuid: string) => ObjectiveSide,
+  // Le camp ALLIÉ, en numéro d'équipe — la clé des sons d'ÉTAT DE ZONE, qui joignent sur le
+  // propriétaire d'une zone et non sur le xuid d'un joueur (`zoneSound.ts`). `null` = camp non
+  // résolu : capture en cours et tics de score se taisent, la nouvelle colline sonne quand même.
+  allyTeam: number | null = null,
+  // La LANGUE DE L'INTERFACE — la seule entrée locale-aware de la piste : le son « manche
+  // terminée » est une VOIX d'annonceur (`roundOverSound.ts`). Absente (anciens appels, mesure de
+  // disponibilité), ce son se tait : le rejeu ne devine pas une langue.
+  locale?: ReplayLocale,
 ): ReplaySoundEvent[] {
   const out: ReplaySoundEvent[] = []
   if (categories.weapon) {
     for (const s of doc.shots) {
       const stem = shotSoundStem(doc, s.w)
-      if (stem) out.push({ ms: frameToMs(s.t, doc), stem })
+      if (stem) out.push(soundEvent(frameToMs(s.t, doc), stem))
     }
+    // Les RAMASSAGES ET LÂCHERS D'ARME (schéma 25) : datés par `weaponChanges`, plus rien à
+    // déduire — c'est ce canal qui a remplacé la règle « au premier tir » retirée le même
+    // jour. Doctrine, sons et choix du `swapped` : `weaponChangeSound.ts`.
+    out.push(...weaponChangeSoundEvents(doc))
   }
   // Les explosions programmées PAR UN KILL, retenues au passage : ce sont elles qui
   // dédoublonnent les fins de vol, et elles doivent donc être connues avant.
@@ -487,7 +592,7 @@ export function buildSoundTimeline(
     for (const k of alignFeed(kills, t0Ms, doc).kills) {
       const snd = killSound(k)
       if (!snd || !categories[snd.category]) continue
-      const ev = { ms: k.replayMs, stem: snd.stem }
+      const ev = soundEvent(k.replayMs, snd.stem)
       out.push(ev)
       if (snd.category === 'grenade') killExplosions.push(ev)
     }
@@ -502,8 +607,8 @@ export function buildSoundTimeline(
     for (const e of doc.equipmentEpisodes) {
       const stems = EQUIPMENT_SOUND_STEMS[e.fam]
       if (!stems) continue
-      out.push({ ms: frameToMs(e.t0, doc), stem: stems.activate })
-      if (e.endRead) out.push({ ms: frameToMs(e.t1, doc), stem: stems.deactivate })
+      out.push(soundEvent(frameToMs(e.t0, doc), stems.activate))
+      if (e.endRead) out.push(soundEvent(frameToMs(e.t1, doc), stems.deactivate))
     }
     // Les POSES d'équipement (schéma 10) : le GESTE sonne, à `t0`, et lui seul. La fin de vie
     // d'un mur n'est pas un acte — c'est la fin d'une durée mesurée, et rien ne la sonne.
@@ -516,13 +621,58 @@ export function buildSoundTimeline(
     for (const p of doc.equipmentPlacements) {
       if (!placementIsDeployedObject(p)) continue
       const stem = EQUIPMENT_PLACEMENT_SOUND_STEMS[p.family]
-      if (stem) out.push({ ms: frameToMs(p.t0, doc), stem })
+      if (stem) out.push(soundEvent(frameToMs(p.t0, doc), stem))
+      // La FIN de la pose, pour les seules familles qui ont un son d'extinction propre dans
+      // le jeu (`EQUIPMENT_PLACEMENT_SOUND_STEMS_END`) : elle suit la même porte que le début
+      // — un objet lâché à la mort ne s'est pas éteint, il est tombé.
+      const fin = EQUIPMENT_PLACEMENT_SOUND_STEMS_END[p.family]
+      if (fin) out.push(soundEvent(frameToMs(p.t1, doc), fin))
     }
     // Les TRACTIONS de grappin (schéma 8) : le TIR sonne à `t0`, un événement par traction —
     // aucune fin sonnée, `t1` ne fait que fermer la fenêtre du calque (`grappleLayer.ts`).
     for (const g of doc.grappleLines) {
-      out.push({ ms: frameToMs(g.t0, doc), stem: GRAPPLE_SOUND_STEM })
+      out.push(soundEvent(frameToMs(g.t0, doc), GRAPPLE_SOUND_STEM))
     }
+    // LE RAMASSAGE SUR SOCLE A ÉTÉ RETIRÉ LE 2026-08-30, et il faut dire pourquoi plutôt que de
+    // laisser un trou muet. Il sonnait au PREMIER TIR d'une famille d'arme de socle, faute de
+    // canal qui date le ramassage (`padPickups` : médiane de 20,00 s entre `tLow` et `tHigh` ;
+    // loadouts sur la même grille d'images-clés, 0 sur 597 datés à moins de 5 s). Les mesures
+    // étaient justes, la conclusion ne l'était pas : la doctrine de cette chaîne est que le rejeu
+    // SE TAIT plutôt que de deviner, et on avait déplacé le son sur un AUTRE geste — il partait
+    // en même temps qu'un tir, il partait pour une arme prise au sol ou sur un mort, et il ne
+    // partait jamais pour une arme ramassée sans être tirée. Décision utilisateur du 2026-08-30 :
+    // se taire jusqu'à ce qu'un canal DATE le ramassage. Le son, lui, reste identifié
+    // (`play_007_abl_shared_pickup`, événement `c73036e4`) et audible sur la planche
+    // `3c84fab7-5e36-4777-a2d9-bd1c90b08f65` ; il n'est plus livré tant que rien ne le déclenche.
+    //
+    // L'APPARITION SUR SOCLE — arme OU équipement, chacun son son : le calque DATE l'instant
+    // (`weaponPads[].spawns`) et publie la famille qui les sépare. Détail : `padSpawnSound.ts`.
+    out.push(...padSpawnSoundEvents(doc))
+    // LE RAMASSAGE D'ÉQUIPEMENT (schéma 26) : daté par `equipmentChanges`. Le son attendait cet
+    // instant depuis le 2026-08-27 ; la consommation reste muette (elle sonne déjà par sa
+    // famille). Doctrine : `equipmentChangeSound.ts`.
+    out.push(...equipmentChangeSoundEvents(doc))
+  }
+  // Les ACTIONS D'OBJECTIF : chacune sonne à sa frame, dans le camp de son auteur. Sans
+  // résolveur de camp (appelant qui n'a pas le tableau de score), les seules actions qui
+  // sonnent sont celles sans variante d'équipe — le rejeu ne devine jamais un camp.
+  if (categories.objective) {
+    out.push(...objectiveSoundEvents(doc, sideOfXuid))
+    // Les sons d'ÉTAT DE ZONE : capture en cours, domination, déplacement de la colline. Ils ne
+    // viennent d'aucun joueur — leur source est `doc.zoneStates`, pas `doc.objectives` — mais
+    // ils appartiennent à la même catégorie du tiroir, et se coupent donc avec elle.
+    out.push(...zoneSoundEvents(doc, allyTeam))
+    // LES SONS DU CRANE d'Oddball : prise et chute. Leur source est `doc.skullCarries`
+    // (schema 23), pas `doc.objectives` — le nommage statborg ne couvre pas Oddball. Ils
+    // n'ont pas de camp : la banque du mode ne porte pas de variante `_team`/`_enemy` sur
+    // ces gestes. Doctrine et inventaire de ce qui reste dehors : `skullSound.ts`.
+    out.push(...skullSoundEvents(doc, allyTeam))
+    // LE SON « MANCHE TERMINÉE », sur la même mesure que le message inter-manche : la bascule
+    // d'une manche à la suivante (`roundTransitions`, roundsLogic), datée par le calque de score.
+    // CÂBLÉ depuis le 2026-08-28 (l'asset annonceur FR/EN a été fourni) — exactement comme le
+    // stub qui vivait ici l'annonçait. Sans `locale`, il se tait : une voix a une langue, et le
+    // rejeu n'en devine pas une. Table de stem et doctrine : `roundOverSound.ts`.
+    if (locale) out.push(...roundOverSoundEvents(doc, locale))
   }
   return out.sort((a, b) => a.ms - b.ms)
 }

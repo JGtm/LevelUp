@@ -41,9 +41,32 @@ import {
   EQUIPMENT_PLACEMENT_SOUND_STEMS,
   EQUIPMENT_SOUND_STEMS,
   GRAPPLE_SOUND_STEM,
+  EQUIPMENT_PLACEMENT_SOUND_STEMS_END,
   KILL_SPRITE_SOUND_STEMS,
+  OBJECTIVE_SOUND_STEMS,
+  ROUND_OVER_SOUND_STEMS,
+  SKULL_SOUND_STEMS,
+  SOUND_VARIANTS,
   WEAPON_SOUND_STEMS,
+  ZONE_SOUND_STEMS,
+  PAD_SPAWN_SOUND_STEM,
+  EQUIPMENT_PAD_SPAWN_SOUND_STEM,
+  WEAPON_CHANGE_SOUND_STEMS,
+  EQUIPMENT_PICKUP_SOUND_STEM,
 } from './replaySound'
+
+/** Les stems d une entree d objectif : une PAIRE PEUT ETRE INCOMPLETE (le camp non design00e9 a
+ *  l oreille reste muet), et le garde-rail ne doit pas r00e9clamer un fichier pour un stem absent. */
+function stemsObjectif(v: { ally?: string; enemy?: string } | { any: string }): string[] {
+  return 'any' in v ? [v.any] : [v.ally, v.enemy].filter((s): s is string => s !== undefined)
+}
+
+/** Tous les stems de ZONE_SOUND_STEMS, paires et stem seul confondus. */
+function stemsZone(): string[] {
+  return Object.values(ZONE_SOUND_STEMS).flatMap((v) =>
+    typeof v === 'string' ? [v] : [v.ally, v.enemy],
+  )
+}
 
 const REPO_ROOT = resolve(__dirname, '..', '..', '..', '..', '..')
 const SOUNDS_DIR = resolve(REPO_ROOT, 'static', 'sounds', 'halo_infinite')
@@ -87,10 +110,38 @@ describe('garde-rail : manifeste sonore = dossier d assets', () => {
     ...Object.values(EQUIPMENT_SOUND_STEMS).flatMap((s) => [s.activate, s.deactivate]),
     // Les POSES d'équipement (lot du 2026-08-18) : UN stem par famille — le geste de pose.
     ...Object.values(EQUIPMENT_PLACEMENT_SOUND_STEMS),
+    // Et la FIN de pose, pour les familles qui ont un son d'extinction propre (2026-08-26).
+    ...Object.values(EQUIPMENT_PLACEMENT_SOUND_STEMS_END),
     // Le TIR de grappin (lot G, 2026-08-20) : UN SEUL stem, aucune famille.
     GRAPPLE_SOUND_STEM,
+    // Les ACTIONS D'OBJECTIF (lot du 2026-08-26) : un ou deux stems par statistique, selon
+    // que le jeu distingue les camps.
+    ...Object.values(OBJECTIVE_SOUND_STEMS).flatMap(stemsObjectif),
+    // Les VARIANTES (lot du 2026-08-26) : un geste que le jeu tire dans un `RandomSequence`
+    // livre TOUS ses fichiers, pas seulement le premier. Sans cette ligne, `grapple_fire_v2`
+    // et `_v3` seraient des « assets morts » aux yeux du deuxième test — alors qu'ils sont
+    // exactement ce que la table déclare jouer.
+    ...Object.values(SOUND_VARIANTS).flat(),
+    // Les sons d'ÉTAT DE ZONE (lot du 2026-08-27) : capture en cours, tic de domination,
+    // déplacement de la colline. Source doc.zoneStates, pas doc.objectives — mais même
+    // dossier d'assets et même garde-rail.
+    ...stemsZone(),
+    PAD_SPAWN_SOUND_STEM,
+    // Les CHANGEMENTS D'ARME ET D'ÉQUIPEMENT (schémas 25-26, 2026-08-30) : ramassage et
+    // lâcher d'arme, ramassage d'équipement, apparition d'équipement sur socle — les quatre
+    // gestes que le chantier ramassage a datés.
+    ...Object.values(WEAPON_CHANGE_SOUND_STEMS),
+    EQUIPMENT_PICKUP_SOUND_STEM,
+    EQUIPMENT_PAD_SPAWN_SOUND_STEM,
     // La FIN DE PARTIE (lot C, 2026-08-27) : voix FR et EN, fanfares, réplique du FFA gagné.
     ...endMatchStems,
+    // Le son « MANCHE TERMINÉE » (2026-08-28) : voix d'annonceur FR et EN, sur la piste (daté à
+    // la bascule de manche), les deux langues livrées et vérifiées ensemble.
+    ...Object.values(ROUND_OVER_SOUND_STEMS),
+    // LE CRANE d'Oddball (lot du 2026-08-29) : prise et chute. Source doc.skullCarries, pas
+    // doc.objectives — le nommage statborg ne couvre pas Oddball. Leurs variantes entrent par
+    // SOUND_VARIANTS ci-dessus, comme celles du grappin.
+    ...Object.values(SKULL_SOUND_STEMS),
   ])
 
   it('chaque stem du manifeste a son fichier .wav', () => {
@@ -141,7 +192,10 @@ describe('garde-rail : durée livrée par catégorie', () => {
    * quantités ont cessé d'être la même chose le jour où le catalogue a porté deux familles de
    * durée : celle des ÉVÉNEMENTS du match, et celle de sa CONCLUSION.
    */
-  const LONG_MAX_S = 4.0
+  // 4,0 -> 6,0 a la fusion du 2026-08-27 : la reconstitution des gestes Wwise livre des
+  // EVENEMENTS jusqu'a 5,15 s (flag_taken_team 4,588 s, objective_zone_new 5,15 s) — la regle
+  // « plafond = plus longue source livree, arrondie au-dessus » vaut aussi pour cette famille.
+  const LONG_MAX_S = 6.0
   const dureeDe = (stem: string) => wavDurationS(resolve(SOUNDS_DIR, `${stem}.wav`))
 
   // Les catégories, reconstruites depuis le manifeste lui-même : la mêlée partage la table
@@ -167,9 +221,40 @@ describe('garde-rail : durée livrée par catégorie', () => {
     // Les poses relèvent de la MÊME catégorie que les épisodes (Équipements) : elles gardent
     // la durée de leur source, jamais retronquée à la coupe des armes.
     ...Object.values(EQUIPMENT_PLACEMENT_SOUND_STEMS),
-    // Le grappin (lot G, 2026-08-20) : catégorie Équipement, même règle. Sa source fait
-    // 1,687 s, déjà au-dessus de la coupe des armes — aucune entrée SOURCES_COURTES requise.
+    ...Object.values(EQUIPMENT_PLACEMENT_SOUND_STEMS_END),
+    // Le grappin : catégorie Équipement, même règle. SA SOURCE A CHANGÉ LE 2026-08-26 — le
+    // fichier de l'archive utilisateur (1,687 s) est remplacé par le geste du JEU
+    // (`play_007_abl_grapplinghook_deploy_player`, 0,745 s). Il passe donc SOUS la coupe des
+    // armes et demande désormais une entrée `SOURCES_COURTES`, ce que l'ancienne rédaction de
+    // ce commentaire déclarait inutile.
     GRAPPLE_SOUND_STEM,
+    // Les ACTIONS D'OBJECTIF (lot du 2026-08-26) : catégorie Objectifs, même règle de durée que
+    // les équipements — elles gardent la durée de leur source (1,31 à 3,41 s), jamais
+    // retronquée. Un jingle de capture coupé à 1,2 s s'entendrait amputé de sa queue.
+    ...Object.values(OBJECTIVE_SOUND_STEMS).flatMap(stemsObjectif),
+    // Les sons d'ÉTAT DE ZONE : même catégorie, même règle de durée. Le tic de domination est
+    // le seul son de la chaîne livré TRONQUÉ à dessein (1,2 s) et ATTÉNUÉ (-12 dBTP) : il se
+    // joue une fois par seconde, un geste de 3,6 s s'y empilerait sur lui-même.
+    ...stemsZone(),
+    PAD_SPAWN_SOUND_STEM,
+    // Les GESTES DU CHANTIER RAMASSAGE (2026-08-30) : mêmes règles de durée — des sources
+    // naturellement courtes (0,31 à 0,80 s), déclarées une à une dans `SOURCES_COURTES`.
+    ...Object.values(WEAPON_CHANGE_SOUND_STEMS),
+    EQUIPMENT_PICKUP_SOUND_STEM,
+    EQUIPMENT_PAD_SPAWN_SOUND_STEM,
+    // Le son « MANCHE TERMINÉE » : voix d'annonceur sur la piste (catégorie Objectifs), même
+    // règle de durée que les autres annonceurs — il garde la durée de sa source (1,7 s), jamais
+    // retronqué à la coupe des armes. Ce n'est PAS un son de FIN DE PARTIE : il vit sur la piste,
+    // daté à la bascule, il tombe donc sous le plafond des ÉVÉNEMENTS (6 s), pas la conclusion.
+    ...Object.values(ROUND_OVER_SOUND_STEMS),
+    // LE CRANE d'Oddball : catégorie Objectifs, même règle de durée — les gestes gardent la
+    // durée de leur source (1,71 à 5,47 s). Les deux stems de MARQUE y pointent sur les
+    // fichiers du tic de zone (c'est le même son, mesuré à +1,000 de corrélation le
+    // 2026-08-29) : le `Set` les absorbe, et leur dispense de durée est déjà déclarée plus bas.
+    ...Object.values(SKULL_SOUND_STEMS),
+    // Les VARIANTES d'un geste suivent la règle de leur geste : ce sont les autres tirages du
+    // MÊME `RandomSequence`, pas d'autres sons.
+    ...Object.values(SOUND_VARIANTS).flat(),
   ]
 
   it('aucun son ne dépasse le plafond de sûreté du lecteur', () => {
@@ -193,13 +278,44 @@ describe('garde-rail : durée livrée par catégorie', () => {
    * re-livraison qui retronquerait tout à la coupe des armes. Un fichier dont la SOURCE fait
    * moins que la coupe ne peut pas en être la victime — mais il échoue quand même le proxy.
    *
-   * Chaque entrée porte donc la durée MESURÉE de sa source et la raison. `repair_field_activate`
-   * (2026-08-18) : les trois variantes du `RandomSequence` de la banque `5724312f` font 0,31 /
-   * 0,35 / 0,38 s dans le jeu — c'est un « pop » de déploiement, pas un son écourté. Allonger le
-   * fichier serait inventer de la matière ; l'exclure de la catégorie mentirait sur sa nature.
+   * Chaque entrée porte donc la durée MESURÉE de sa source et la raison.
+   *
+   * `repair_field_activate` EST SORTI DE CETTE TABLE LE 2026-08-27, et il faut dire pourquoi
+   * plutôt que de laisser une entrée périmée : le fichier livré n'est plus le même son. Il
+   * portait le geste de POSE (`play_007_abl_repairfield_deploy_player`, 0,380 / 0,313 /
+   * 0,349 s — un « pop » d'objet lâché) ; l'utilisateur, à l'écoute de la planche, a désigné
+   * l'ACTIVATION (`play_007_abl_repairfield_activate`, 3,263 / 2,812 / 3,933 s) comme le son
+   * qu'il veut entendre quand un joueur pose le champ. Les trois variantes livrées sont
+   * désormais celles-là, et elles dépassent largement la coupe : plus de dispense à déclarer.
+   *
+   * `grapple_fire` et ses variantes (2026-08-26) : le geste du jeu
+   * (`play_007_abl_grapplinghook_deploy_player`) fait 0,745 / 0,765 / 0,757 s. Il remplace le
+   * fichier de l'archive utilisateur, qui faisait 1,687 s — d'où l'apparition de ces entrées.
    */
   const SOURCES_COURTES: Readonly<Record<string, number>> = {
-    repair_field_activate: 0.381,
+    // LE SEUL SON LIVRÉ TRONQUÉ À DESSEIN, et il faut dire pourquoi : le tic de domination se
+    // joue UNE FOIS PAR SECONDE tant qu un camp tient toutes les zones (règle produit du
+    // 2026-08-27). Le geste du jeu dure 3,62 s côté allié et 4,36 s côté adverse — servi
+    // entier, il s empilerait quatre fois sur lui-même. Il est donc coupé à 1,2 s avec un
+    // fondu de 0,25 s, et atténué à -12 dBTP (« je les trouve un peu fort »).
+    // DEUX SOURCES NATURELLEMENT COURTES, et ce ne sont pas des sons retronqués : le geste du
+    // jeu fait cette durée-là. La zone contestée est « 1 couche, 1 son » (événement c3327c0b,
+    // 1,180 s) ; le ramassage sur socle est « 1 parmi 2 » (événement c73036e4, 0,804 s).
+    objective_zone_contested: 1.18,
+    objective_zone_tick_team: 1.2,
+    objective_zone_tick_enemy: 1.2,
+    // LES GESTES DU CHANTIER RAMASSAGE (2026-08-30), tous naturellement courts : le lâcher et
+    // le ramassage d'arme sont du bruitage de Spartan (« 1 parmi 3 », gain -6 dB, banque
+    // e9a52b26) ; le ramassage d'équipement est « 1 parmi 2 » (c73036e4) — le MÊME fichier
+    // qu'avant son retrait du 30/08, re-livré le jour où `equipmentChanges` a daté le geste ;
+    // l'apparition d'équipement sur socle est l'événement 4093f3c4 désigné à l'oreille.
+    weapon_drop: 0.312,
+    weapon_pickup: 0.34,
+    objective_pad_pickup: 0.804,
+    equipment_pad_spawn: 0.562,
+    grapple_fire: 0.745,
+    grapple_fire_v2: 0.765,
+    grapple_fire_v3: 0.757,
   }
 
   it('explosions et équipements gardent la durée de leur source, jamais retronquée à 1,2 s', () => {
@@ -270,6 +386,14 @@ describe('garde-rail : vignettes du son de kill = table killicon (Go)', () => {
     'killfeed-49': { genre: 'GGGL', key: '3' },
     'killfeed-65': { genre: 'CLASSE', key: 'MELEE' },
     'killfeed-56': { genre: 'NOM', key: 'Repulsor' },
+    // LES QUATRE BOBINES (2026-08-27) : genre BANQUE, clé = le nom de banque ENTIER. C est la
+    // nouveauté — la racine courte à trois segments les rendait toutes identiques
+    // (`exp_single_small`), donc indistinguables et sans icône. Le resolveur essaie désormais
+    // la racine longue d abord.
+    'killfeed-42': { genre: 'BANQUE', key: 'exp_single_small_shock' },
+    'killfeed-43': { genre: 'BANQUE', key: 'exp_single_small_hardlight' },
+    'killfeed-44': { genre: 'BANQUE', key: 'exp_single_small_kineticunsc' },
+    'killfeed-45': { genre: 'BANQUE', key: 'exp_single_small_plasma' },
   }
 
   it('la table sonore couvre exactement les vignettes attendues', () => {
@@ -354,5 +478,53 @@ describe('garde-rail : le son du répulseur (résolu, lot R6 2026-08-25)', () =>
 
   it('KILL_SPRITE_SOUND_STEMS répond pour le répulseur, catégorie ARME', () => {
     expect(KILL_SPRITE_SOUND_STEMS[REPULSEUR]).toEqual({ stem: 'repulsor_kill', category: 'weapon' })
+  })
+})
+
+/**
+ * QUATRIEME GARDE-RAIL : un fichier livre doit etre DECODABLE PAR UN NAVIGATEUR.
+ *
+ * Decouvert en recette le 2026-08-28, et c'est le defaut le plus discret de toute la chaine
+ * sonore : les TROIS musiques de fin de partie etaient livrees en `WAVE_FORMAT_EXTENSIBLE`
+ * (0xFFFE) a QUATRE canaux. Elles passaient les trois garde-rails precedents — le stem existe,
+ * le fichier existe, la duree est bonne — et `decodeAudioData` les refusait. Resultat : aucune
+ * musique de fin, ni dans le rejeu de la page ni dans l'export, et rien pour le dire hors un
+ * `console.warn` que personne ne lit.
+ *
+ * Le detail qui pique : le commentaire de `SOUND_CUT_MAX_S` justifie son plafond par « la plus
+ * longue, l'egalite, fait 11,67 s » — quelqu'un avait donc MESURE ces fichiers hors navigateur,
+ * sans voir qu'ils n'y jouaient jamais.
+ *
+ * Ce que ce test verifie est exactement ce que `decodeAudioData` exige d'un WAV : de la MIC-P
+ * (format 1) ou du flottant (format 3), et au plus deux canaux.
+ */
+describe('garde-rail : tout WAV livre est decodable par un navigateur', () => {
+  /** Rend `{ format, canaux }` du chunk `fmt ` d'un WAV, ou `null` si ce n'est pas un RIFF. */
+  function formatWav(bytes: Buffer): { format: number; canaux: number } | null {
+    if (bytes.subarray(0, 4).toString('ascii') !== 'RIFF') return null
+    let i = 12
+    while (i + 8 <= bytes.length) {
+      const id = bytes.subarray(i, i + 4).toString('ascii')
+      const taille = bytes.readUInt32LE(i + 4)
+      if (id === 'fmt ') return { format: bytes.readUInt16LE(i + 8), canaux: bytes.readUInt16LE(i + 10) }
+      i += 8 + taille + (taille % 2)
+    }
+    return null
+  }
+
+  it('aucun fichier en format exotique ni au-dela de la stereo', () => {
+    const fautifs: string[] = []
+    for (const nom of readdirSync(SOUNDS_DIR).filter((f) => f.endsWith('.wav'))) {
+      const f = formatWav(readFileSync(resolve(SOUNDS_DIR, nom)))
+      if (!f) {
+        fautifs.push(`${nom} : ce n'est pas un WAV RIFF`)
+        continue
+      }
+      // 1 = MIC-P entier, 3 = flottant. Tout le reste (0xFFFE extensible, ADPCM...) est refuse
+      // par `decodeAudioData`, silencieusement.
+      if (f.format !== 1 && f.format !== 3) fautifs.push(`${nom} : format ${f.format}`)
+      else if (f.canaux > 2) fautifs.push(`${nom} : ${f.canaux} canaux`)
+    }
+    expect(fautifs, `WAV indecodables par un navigateur :\n  ${fautifs.join('\n  ')}`).toEqual([])
   })
 })

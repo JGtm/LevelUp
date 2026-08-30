@@ -7,7 +7,7 @@
  * de choix (ce qu'on mesure, sur quelle durée) : elle pèse à elle seule autant que les
  * quatre autres, et c'est la seule dont l'affichage dépend de ce que le film porte.
  */
-import { SettingsToggle } from './ReplaySettingsToggle'
+import { SettingsChoice, SettingsToggle } from './ReplaySettingsToggle'
 
 import type { HeatmapMode, HeatmapSpan } from './heatmapLayer'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
@@ -51,11 +51,14 @@ export function HeatmapSection({
           onToggle={heatmap.onToggle}
           hint={t.layerHeatmapHint}
         />
+        {/* LES DEUX LECTURES SONT UN CHOIX EXCLUSIF, pas deux interrupteurs : d'ou
+            `SettingsChoice` et non `SettingsToggle` depuis le 2026-08-29 (cf. l'en-tete du
+            composant). Le CALQUE lui-meme, au-dessus, est bien un oui/non. */}
         {heatmap.show && modes.length > 1 && (
           <>
             <p className="pt-1 text-xs text-muted-foreground">{t.heatmapReading}</p>
             {modes.map((m) => (
-              <SettingsToggle
+              <SettingsChoice
                 key={m}
                 label={t.heatmapMode[m]}
                 pressed={heatmap.mode === m}
@@ -72,7 +75,7 @@ export function HeatmapSection({
           <>
             <p className="pt-1 text-xs text-muted-foreground">{t.heatmapSpanTitle}</p>
             {HEATMAP_SPANS.map((s) => (
-              <SettingsToggle
+              <SettingsChoice
                 key={s}
                 label={t.heatmapSpan[s]}
                 pressed={heatmap.span === s}

@@ -26,16 +26,25 @@ import (
 // proprietaire de la liste fermee, et nulle part ailleurs.
 const ObjectiveFamilyFlag = "flag"
 
+// ObjectiveFamilyBall — LE CRANE d'Oddball, admis le 2026-08-27 (phase D4 du plan des objectifs
+// vivants). Son identifiant a ete etabli par la MEME recette que le drapeau, sur quatre films :
+// naissance a 0,0 m du socle `oddball_spawn` unique de la carte, et coincidence a 3-6 ms d'un
+// evenement `th=10` de crane.
+const ObjectiveFamilyBall = "ball"
+
 // objectiveFamilies — les familles d'objet d'objectif ADMISES. Liste FERMEE, pour la meme
 // raison que les familles de pose : une valeur libre ferait tomber l'objet dans le rendu
 // neutre en silence, ce qui est indistinguable d'un objet volontairement non nomme.
 //
-// UNE SEULE ENTREE, ET C'EST UNE MESURE. Le crane d'Oddball n'y est pas : le marqueur de
-// portage est TOTALEMENT absent du film Oddball du corpus (0 porteur sur 26 images-cles) et
-// le statborg n'y replique aucun compteur de crane — il n'y a donc ni canal ni oracle pour
-// etablir son identifiant, et une famille sans identifiant serait du code mort en donnee.
+// CE QUE L'ENTREE `ball` APPORTE, ET CE QU'ELLE N'APPORTE PAS. Elle apporte l'IDENTITE et
+// l'EXCLUSION : le crane cesse d'echapper aux socles d'armes par accident (« identifiant hors
+// du catalogue d'armes ») pour en etre ecarte parce qu'on sait ce que c'est — c'est exactement
+// la raison d'etre de cette table. Elle n'apporte PAS le portage : la mesure D4 du seuil (2) a
+// REFUTE l'oracle du score personnel (40,6 a 66,7 % de trous a porteur unique contre un seuil de
+// 90 %, temoin hors trou a 66,7 et 71,4 %), et rien ici ne publie qui porte le crane.
 var objectiveFamilies = map[string]bool{
 	ObjectiveFamilyFlag: true,
+	ObjectiveFamilyBall: true,
 }
 
 // ObjectiveObject — un objet d'objectif du titre : sa famille et son nom bilingue.

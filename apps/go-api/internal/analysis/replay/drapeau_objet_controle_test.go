@@ -67,7 +67,7 @@ type objDrapeauRef struct {
 func TestDrapeauObjetControle(t *testing.T) {
 	root := objRequireRoot(t)
 	cat := goldenCatalog(t)
-	if len(cat.FlagObjects) == 0 {
+	if len(cat.ObjectiveObjects) == 0 {
 		t.Fatal("le manifeste du titre ne declare aucun drapeau — le controle n'a rien a mesurer")
 	}
 	joues, cumOK, cumN, cumTemOK, cumTemN := 0, 0, 0, 0, 0
@@ -110,7 +110,7 @@ func objDrapeauControleFilm(t *testing.T, root, id string, src *objDiskFilm,
 		t.Fatalf("%s : axe de temps sans echelle — les instants ne se comparent pas", id)
 	}
 	refs := objDrapeauRefs(t, id, d, step)
-	vies := flagFreeLives(d.gw, cat.FlagObjects)
+	vies := flagFreeLives(d.gw, cat.ObjectiveObjects)
 	var m objDrapeauMesure
 	m.viesN = len(vies)
 	socle, porteur, residu := 0, 0, 0

@@ -1,0 +1,72 @@
+===== FILM 24dbb67d =====
+=== RUN   TestOddballTraverseeD9
+2026/08/27 13:41:47 INFO plafond memoire arme pour ce decodage outil=d9-traversee souple_gib=2 dur_octets=2684354560
+2026/08/27 13:41:50 WARN empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte (mise a jour du jeu ?) ; le film reste decode empreinte=7307582345129211936 empreinte_connue=7053924395561516366 blocs=118 slots_non_vides=1068
+    oddball_traversee_d9_test.go:63: 24dbb67d : 7051 ancres, 269 creations acceptees, 248 pistes delta ; 23 vie(s) du mot elu
+    oddball_traversee_d9_test.go:63: 24dbb67d : 23 vie(s) libre(s), 1 socle(s), pont 87/97 slot(s) nomme(s) = 89.7 % (plancher 50 %)
+    oddball_traversee_d9_test.go:75: D9 24dbb67d : 22 trou(s) — 15 ATTRIBUE(s), 1 retour, 6 sans traversee dans 8000 ms ; 298 s de portage attribuees
+    oddball_traversee_d9_test.go:83:   9321 : API 29 s · reconstruit 45 s · temoin joueur 53 s · temoin spatial 0 s
+    oddball_traversee_d9_test.go:83:   8549 : API 80 s · reconstruit 53 s · temoin joueur 28 s · temoin spatial 0 s
+    oddball_traversee_d9_test.go:83:   0022 : API 75 s · reconstruit 72 s · temoin joueur 18 s · temoin spatial 0 s
+    oddball_traversee_d9_test.go:83:   3686 : API 10 s · reconstruit 28 s · temoin joueur 12 s · temoin spatial 7 s
+    oddball_traversee_d9_test.go:83:   1079 : API 54 s · reconstruit 51 s · temoin joueur 26 s · temoin spatial 4 s
+    oddball_traversee_d9_test.go:83:   2034 : API 44 s · reconstruit 19 s · temoin joueur 0 s · temoin spatial 0 s
+    oddball_traversee_d9_test.go:83:   4517 : API 7 s · reconstruit 3 s · temoin joueur 53 s · temoin spatial 0 s
+    oddball_traversee_d9_test.go:83:   9936 : API 34 s · reconstruit 26 s · temoin joueur 10 s · temoin spatial 0 s
+    oddball_traversee_d9_test.go:83: SIGNAL 24dbb67d : recouvrement 79.8 % (seuil 80 %) ; temoin JOUEUR 38.8 % ; temoin SPATIAL 3.3 % (seuil <= 50 %) ; porteur principal MANQUE
+    oddball_traversee_d9_test.go:83: VERDICT 24dbb67d : le recouvrement est SOUS le seuil.
+    oddball_traversee_d9_test.go:87: DIAGNOSTIC 24dbb67d (HORS GATE, fenetre 22600 ms) : 16 attribue(s), 302 s, recouvrement 80.7 %
+    oddball_traversee_d9_test.go:60: 24dbb67d : pic memoire observe 0.15 Gio
+--- PASS: TestOddballTraverseeD9 (46.48s)
+PASS
+EXIT_24dbb67d=0
+===== FILM 43716616 =====
+=== RUN   TestOddballTraverseeD9
+2026/08/27 13:42:33 INFO plafond memoire arme pour ce decodage outil=d9-traversee souple_gib=2 dur_octets=2684354560
+    oddball_traversee_d9_test.go:63: 43716616 : 6943 ancres, 332 creations acceptees, 376 pistes delta ; 16 vie(s) du mot elu
+    oddball_traversee_d9_test.go:63: 43716616 : 16 vie(s) libre(s), 1 socle(s), pont 62/72 slot(s) nomme(s) = 86.1 % (plancher 50 %)
+    oddball_traversee_d9_test.go:75: D9 43716616 : 15 trou(s) — 11 ATTRIBUE(s), 1 retour, 3 sans traversee dans 8000 ms ; 164 s de portage attribuees
+    oddball_traversee_d9_test.go:83:   2136 : API 62 s · reconstruit 63 s · temoin joueur 0 s · temoin spatial 0 s
+    oddball_traversee_d9_test.go:83:   0421 : API 20 s · reconstruit 22 s · temoin joueur 0 s · temoin spatial 0 s
+    oddball_traversee_d9_test.go:83:   5944 : API 6 s · reconstruit 6 s · temoin joueur 29 s · temoin spatial 0 s
+    oddball_traversee_d9_test.go:83:   9469 : API 27 s · reconstruit 28 s · temoin joueur 17 s · temoin spatial 0 s
+    oddball_traversee_d9_test.go:83:   2349 : API 94 s · reconstruit 41 s · temoin joueur 6 s · temoin spatial 0 s
+    oddball_traversee_d9_test.go:83:   5114 : API 8 s · reconstruit 4 s · temoin joueur 6 s · temoin spatial 0 s
+    oddball_traversee_d9_test.go:83: SIGNAL 43716616 : recouvrement 73.8 % (seuil 80 %) ; temoin JOUEUR 16.0 % ; temoin SPATIAL 0.0 % (seuil <= 50 %) ; porteur principal MANQUE
+    oddball_traversee_d9_test.go:83: VERDICT 43716616 : le recouvrement est SOUS le seuil.
+    oddball_traversee_d9_test.go:87: DIAGNOSTIC 43716616 (HORS GATE, fenetre 22600 ms) : 11 attribue(s), 164 s, recouvrement 73.8 %
+    oddball_traversee_d9_test.go:60: 43716616 : pic memoire observe 0.07 Gio
+--- PASS: TestOddballTraverseeD9 (40.49s)
+PASS
+EXIT_43716616=0
+===== FILM 51ebbc0f =====
+=== RUN   TestOddballTraverseeD9
+2026/08/27 13:43:14 INFO plafond memoire arme pour ce decodage outil=d9-traversee souple_gib=2 dur_octets=2684354560
+    oddball_traversee_d9_test.go:63: 51ebbc0f : 6582 ancres, 350 creations acceptees, 617 pistes delta ; 21 vie(s) du mot elu
+    oddball_traversee_d9_test.go:63: 51ebbc0f : 21 vie(s) libre(s), 1 socle(s), pont 9/84 slot(s) nomme(s) = 10.7 % (plancher 50 %)
+    oddball_traversee_d9_test.go:63: NON EXPLOITABLE 51ebbc0f : le pont nomme 10.7 % des slots, sous le plancher de 50 %. NI POUR NI CONTRE — et ce film ne sera pas compte au denominateur.
+    oddball_traversee_d9_test.go:60: 51ebbc0f : pic memoire observe 0.16 Gio
+--- PASS: TestOddballTraverseeD9 (52.72s)
+PASS
+EXIT_51ebbc0f=0
+===== FILM d9781168 =====
+=== RUN   TestOddballTraverseeD9
+2026/08/27 13:44:06 INFO plafond memoire arme pour ce decodage outil=d9-traversee souple_gib=2 dur_octets=2684354560
+    oddball_traversee_d9_test.go:63: d9781168 : 15016 ancres, 665 creations acceptees, 945 pistes delta ; 47 vie(s) du mot elu
+    oddball_traversee_d9_test.go:63: d9781168 : 47 vie(s) libre(s), 1 socle(s), pont 140/160 slot(s) nomme(s) = 87.5 % (plancher 50 %)
+    oddball_traversee_d9_test.go:75: D9 d9781168 : 46 trou(s) — 32 ATTRIBUE(s), 6 retour, 8 sans traversee dans 8000 ms ; 308 s de portage attribuees
+    oddball_traversee_d9_test.go:83:   0022 : API 37 s · reconstruit 65 s · temoin joueur 6 s · temoin spatial 0 s
+    oddball_traversee_d9_test.go:83:   1007 : API 116 s · reconstruit 66 s · temoin joueur 20 s · temoin spatial 0 s
+    oddball_traversee_d9_test.go:83:   0162 : API 51 s · reconstruit 40 s · temoin joueur 7 s · temoin spatial 0 s
+    oddball_traversee_d9_test.go:83:   3823 : API 10 s · reconstruit 28 s · temoin joueur 89 s · temoin spatial 0 s
+    oddball_traversee_d9_test.go:83:   9376 : API 49 s · reconstruit 10 s · temoin joueur 76 s · temoin spatial 2 s
+    oddball_traversee_d9_test.go:83:   6950 : API 26 s · reconstruit 20 s · temoin joueur 50 s · temoin spatial 0 s
+    oddball_traversee_d9_test.go:83:   3276 : API 105 s · reconstruit 78 s · temoin joueur 12 s · temoin spatial 0 s
+    oddball_traversee_d9_test.go:83:   0067 : API 10 s · reconstruit 0 s · temoin joueur 28 s · temoin spatial 0 s
+    oddball_traversee_d9_test.go:83: SIGNAL d9781168 : recouvrement 64.9 % (seuil 80 %) ; temoin JOUEUR 34.7 % ; temoin SPATIAL 0.4 % (seuil <= 50 %) ; porteur principal MANQUE
+    oddball_traversee_d9_test.go:83: VERDICT d9781168 : le recouvrement est SOUS le seuil.
+    oddball_traversee_d9_test.go:87: DIAGNOSTIC d9781168 (HORS GATE, fenetre 22600 ms) : 35 attribue(s), 340 s, recouvrement 71.4 %
+    oddball_traversee_d9_test.go:60: d9781168 : pic memoire observe 0.20 Gio
+--- PASS: TestOddballTraverseeD9 (73.54s)
+PASS
+EXIT_d9781168=0

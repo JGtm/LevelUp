@@ -280,13 +280,15 @@ func buildMediaTab(media []domain.MediaAssocRaw) domain.MatchMediaTab {
 	items := make([]domain.MatchAssociatedMedia, 0, len(media))
 	for _, m := range media {
 		items = append(items, domain.MatchAssociatedMedia{
-			FileID:       m.FileID,
-			FileName:     m.FileName,
-			FilePath:     m.FilePath,
-			Kind:         m.Kind,
-			ThumbnailURL: m.ThumbnailPath,
-			CaptureTime:  m.CaptureTime,
-			Liked:        m.Liked,
+			FileID:           m.FileID,
+			FileName:         m.FileName,
+			FilePath:         m.FilePath,
+			Kind:             m.Kind,
+			ThumbnailURL:     m.ThumbnailPath,
+			DurationSeconds:  m.DurationSeconds,
+			CaptureStartTime: m.CaptureStartTime,
+			CaptureTime:      m.CaptureTime,
+			Liked:            m.Liked,
 		})
 	}
 	return domain.MatchMediaTab{MediaItems: items}

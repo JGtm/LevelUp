@@ -21,6 +21,7 @@ import {
   scoreAtFrame,
   scoreTimelineOf,
   teamIdOfSide,
+  teamRoundScoreAtFrame,
   teamScoreAtFrame,
   teamSeriesFor,
 } from './scoreTimeline'
@@ -147,6 +148,51 @@ describe('roundAtFrame — la manche courante, qui n’est pas le total', () => 
 
   it('rend null sans série d’équipe', () => {
     expect(roundAtFrame(null, 100)).toBeNull()
+  })
+})
+
+describe('teamRoundScoreAtFrame — le score DANS une manche, qui repart de zéro', () => {
+  // Même témoin Oddball `24dbb67d` : team0 en deux manches (100 puis 100), total 200.
+  const oddball = timelineOf({
+    teams: [
+      {
+        teamId: 0,
+        rounds: [
+          { round: 0, points: [{ t: 595, v: 1 }, { t: 2787, v: 100 }] },
+          { round: 1, points: [{ t: 3100, v: 1 }, { t: 5060, v: 100 }] },
+        ],
+        total: [
+          { t: 595, v: 1 },
+          { t: 2787, v: 100 },
+          { t: 3100, v: 101 },
+          { t: 5060, v: 200 },
+        ],
+      },
+    ],
+    players: null,
+  })
+
+  it('rend la valeur DE LA MANCHE, pas le cumul du match', () => {
+    expect(teamRoundScoreAtFrame(oddball, 0, 0, 2787)).toBe(100)
+    // La manche 2 REPART de zéro : 100 dans la manche là où le total dit 200.
+    expect(teamRoundScoreAtFrame(oddball, 0, 1, 5060)).toBe(100)
+    expect(teamScoreAtFrame(oddball, 0, 5060)).toBe(200)
+  })
+
+  it('rend 0 AVANT le premier palier de la manche (le compteur de manche n’a pas bougé)', () => {
+    // f3000 est après la manche 1 mais avant le 1er palier de la manche 2 (f3100).
+    expect(teamRoundScoreAtFrame(oddball, 0, 1, 3000)).toBe(0)
+    expect(teamRoundScoreAtFrame(oddball, 0, 1, 3100)).toBe(1)
+  })
+
+  it('rend 0 pour une manche ABSENTE — le camp n’a pas cette manche', () => {
+    expect(teamRoundScoreAtFrame(oddball, 0, 2, 5060)).toBe(0)
+  })
+
+  it('rend 0 pour un camp sans série ou non identifié', () => {
+    expect(teamRoundScoreAtFrame(oddball, 5, 0, 2787)).toBe(0)
+    expect(teamRoundScoreAtFrame(oddball, null, 0, 2787)).toBe(0)
+    expect(teamRoundScoreAtFrame(undefined, 0, 0, 2787)).toBe(0)
   })
 })
 

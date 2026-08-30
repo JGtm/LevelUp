@@ -140,6 +140,9 @@ SELECT
     r.playlist_id,
     r.team_0_score,
     r.team_1_score,
+    r.team_0_rounds_won,
+    r.team_1_rounds_won,
+    r.rounds_total,
     COALESCE(r.pair_name_fr, r.pair_name) AS pair_name_fr,
     r.pair_id,
     r.game_variant_id,
@@ -499,18 +502,28 @@ ORDER BY he.time_ms ASC NULLS LAST`
 // dans kill_events_source.go).
 //
 // Paramètre : ?1 = match_id. Retourne 3 colonnes : feed_killer_xuid, time_ms, source_tag.
+// Q21b lit AUSSI `source_category` (G.1, 2026-08-30) — le modificateur de dégât fatal
+// (« tir à la tête » quand il vaut `killscope.CategoryHeadshot`, cf. ce paquet). MÊME garde
+// d'unanimité que l'arme, appliquée INDÉPENDAMMENT : un double kill au même (tueur, instant)
+// peut porter la MÊME arme mais des CATÉGORIES différentes (un tir perçant qui touche une tête
+// et un torse dans le même instant) — la HAVING sur `source_tag` seule ne le protégerait pas.
+// Publier une catégorie ambiguë serait le même mensonge qu'une arme fausse : indétectable à
+// l'écran. `source_category` est NULL ssi `source_tag` l'est (DDL, tenu par le persister), donc
+// aucun filtre NULL supplémentaire n'est nécessaire ici.
 const Q21bKillSources = `
 SELECT
     feed_killer_xuid,
     time_ms,
-    min(source_tag) AS source_tag
+    min(source_tag) AS source_tag,
+    min(source_category) AS source_category
 FROM ` + KillEventsCanonicalTable + `
 WHERE match_id = ?
   AND publishable
   AND source_tag IS NOT NULL
   AND feed_killer_xuid IS NOT NULL
 GROUP BY feed_killer_xuid, time_ms
-HAVING count(DISTINCT source_tag) = 1`
+HAVING count(DISTINCT source_tag) = 1
+   AND count(DISTINCT source_category) = 1`
 
 // Q21c : l'ASSISTANT de chaque mort du match et les deux parts de dégâts, pour le kill feed.
 //

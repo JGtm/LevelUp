@@ -50,6 +50,7 @@ import {
   mergeSessionCounts,
 } from './squadPending'
 import { formatDataIssues } from './squadDataIssues'
+import { exactCompositionDefault } from './exactComposition'
 
 import {
   FiltresPill,
@@ -160,16 +161,18 @@ export function SquadLayout() {
   const confirmedGts = selectedGts
   const [addFriendGamertag, setAddFriendGamertag] = useState<string | null>(null)
 
-  // ── Option « composition stricte » (défaut OFF) ──────────────────────────
-  // Règle canonique du contexte escouade : « matchs commencés ensemble »
-  // (intersection du roster). Cette option restreint en plus aux matchs joués
-  // avec exactement cette composition ; persistée par joueur, appliquée en
-  // direct (pas de passage par Analyser, comme les coéquipiers/sessions).
+  // ── Option « composition stricte » (cochée par défaut) ───────────────────
+  // Par défaut, seuls les matchs joués avec exactement cette composition sont
+  // comptés. La décocher élargit à la règle « matchs commencés ensemble »
+  // (intersection du roster), même si un autre joueur connu accompagnait
+  // l'équipe. Choix persisté par joueur (cf. exactCompositionDefault),
+  // appliqué en direct (pas de passage par Analyser, comme les
+  // coéquipiers/sessions).
   const exactCompositionStorageKey = `squad-exact-composition-${playerSlug}`
   const [exactComposition, setExactCompositionRaw] = useState<boolean>(() => {
     try {
-      return localStorage.getItem(exactCompositionStorageKey) === 'true'
-    } catch { return false }
+      return exactCompositionDefault(localStorage.getItem(exactCompositionStorageKey))
+    } catch { return exactCompositionDefault(null) }
   })
   const setExactComposition = (value: boolean) => {
     setExactCompositionRaw(value)
@@ -668,8 +671,9 @@ export function SquadLayout() {
             />
           )}
 
-          {/* Composition stricte — option OFF par défaut : la règle affichée est
-              « matchs commencés ensemble ». Appliquée en direct (pas d'Analyser). */}
+          {/* Composition stricte — option cochée par défaut : la règle affichée est
+              « exactement cette composition » ; la décocher élargit aux matchs
+              commencés ensemble. Appliquée en direct (pas d'Analyser). */}
           {hasTeammates && (
             <label
               className="shrink-0 inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-input bg-background px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted"

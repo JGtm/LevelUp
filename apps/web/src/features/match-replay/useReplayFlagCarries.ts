@@ -13,6 +13,11 @@
  * porteur court. `posOfPlayerAt` est le même utilitaire que les effets de mort et les pulses
  * d'objectif — une position relue, jamais devinée (cf. `flagPointAt` pour le repli).
  *
+ * L'ONDE DE CAPTURE ENTRE ICI, ET PAS DANS LE CANVAS (2026-08-27). Elle a besoin des mêmes trois
+ * choses que le glyphe — le document, la relecture de position, le camp vu de la page — et le
+ * canvas est sous cliquet de taille : la brancher ailleurs aurait recopié cette jointure. Elle se
+ * peint dans le MÊME `paint`, après le calque, et partage sa garde d'affichage.
+ *
  * LE CAMP ALLIÉ EST UN NUMÉRO ICI, PAS UN XUID, exactement comme pour les zones : l'équipe du
  * drapeau vient du film, le point de vue de la page se lit sur la ligne « moi » du tableau de
  * bord (`team_side` écrit `t{N}`). Sans cette ligne, AUCUN camp n'est allié — le drapeau garde
@@ -35,6 +40,12 @@ import {
   type FlagCarriesInput,
   type FlagNow,
 } from './flagCarriesLayer'
+import {
+  buildFlagCaptureFx,
+  drawFlagCaptureFx,
+  FLAG_CAPTURE_HOLD_FRAMES,
+  type FlagCaptureStyle,
+} from './flagCaptureFx'
 import type { CanvasView } from './objectivesLayer'
 import { frameToMs, msToFrames, type XY } from './replayLogic'
 import type { ReplayDocumentReady, ReplayTrackReady } from './replayNormalize'
@@ -65,6 +76,12 @@ export interface FlagCarriesHookInput {
   teamColorOf: (ally: boolean) => string
   /** Encre servie quand le camp est inconnu : ni équipe inventée, ni glyphe invisible. */
   neutral: string
+  /**
+   * Encre du FOND (tokens déjà résolus par l'appelant) : celle du liseré posé sous le glyphe.
+   * C'est LA MÊME que le canvas sert déjà aux vignettes de socle — une seule résolution pour
+   * les deux calques, sinon les deux contours divergeraient au premier réglage de thème.
+   */
+  outline: string
   reducedMotion: boolean
 }
 
@@ -86,6 +103,7 @@ export function useReplayFlagCarries({
   scoreboard,
   teamColorOf,
   neutral,
+  outline,
   reducedMotion,
 }: FlagCarriesHookInput): ReplayFlagCarries {
   const carries = doc.flagCarries
@@ -130,29 +148,64 @@ export function useReplayFlagCarries({
     return map
   }, [scoreboard])
 
+  // L'ENCRE SUIT LE CAMP VU DE LA PAGE, pas l'index d'équipe du film : c'est la couleur que
+  // l'utilisateur a choisie pour « allié » et « adverse » (règle d'accessibilité du rejeu). Sans
+  // ligne « moi », le neutre du thème — jamais une équipe supposée. DEUX calques la demandent
+  // désormais (le glyphe et l'onde de capture) : une seule règle, jamais deux copies.
+  const inkOfTeam = useCallback(
+    (team: number) => {
+      const side = sideOf(team)
+      return side === 'unknown' ? neutral : teamColorOf(side === 'ally')
+    },
+    [sideOf, neutral, teamColorOf],
+  )
+
   const layer = useMemo<FlagCarriesInput>(
+    () => ({ style: { colorOfTeam: inkOfTeam, outline, reducedMotion }, posOf }),
+    [inkOfTeam, outline, reducedMotion, posOf],
+  )
+
+  // LES CAPTURES (retour du 2026-08-27) : construites UNE fois par document, comme les autres
+  // effets ponctuels. Elles ne rallument PAS les pulses substituts retirés (`flagPulsesRetired`
+  // reste tel quel) — cet effet n'écoute qu'une stat, `flag_captures`, et la pose au lieu RELU de
+  // son auteur, là où le substitut posait toute la famille `flag_` sur le socle le plus proche.
+  const captures = useMemo(() => buildFlagCaptureFx(doc, posOf), [doc, posOf])
+
+  // LE CAMP DE L'AUTEUR SE LIT AU TABLEAU DE BORD, jamais dans le film : l'action ne porte que le
+  // xuid. Un auteur absent du tableau (ou dont le `team_side` ne se parse pas) n'a PAS de camp —
+  // l'onde prend le neutre du thème plutôt qu'une équipe devinée, même règle que le glyphe.
+  const teamOfXuid = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const r of scoreboard ?? []) {
+      const team = parseTeamSideID(r.team_side ?? null)
+      if (team !== null) map.set(r.xuid, team)
+    }
+    return map
+  }, [scoreboard])
+
+  const captureStyle = useMemo<FlagCaptureStyle>(
     () => ({
-      style: {
-        // L'ENCRE SUIT LE CAMP VU DE LA PAGE, pas l'index d'équipe du film : c'est la couleur
-        // que l'utilisateur a choisie pour « allié » et « adverse » (règle d'accessibilité du
-        // rejeu). Sans ligne « moi », le neutre du thème — jamais une équipe supposée.
-        colorOfTeam: (team: number) => {
-          const side = sideOf(team)
-          return side === 'unknown' ? neutral : teamColorOf(side === 'ally')
-        },
-        reducedMotion,
+      inkOf: (xuid: string) => {
+        const team = teamOfXuid.get(xuid)
+        return team === undefined ? neutral : inkOfTeam(team)
       },
-      posOf,
+      reducedMotion,
     }),
-    [sideOf, teamColorOf, neutral, reducedMotion, posOf],
+    [teamOfXuid, neutral, inkOfTeam, reducedMotion],
   )
 
   const paint = useCallback(
     (ctx: CanvasRenderingContext2D, frame: number) => {
+      // LA GARDE « AUCUN DRAPEAU PUBLIÉ » VAUT AUSSI POUR LES ONDES, et ce n'est pas un détail :
+      // les pulses substituts d'`objectivesLayer` ne se taisent QUE quand le document publie des
+      // drapeaux. Sur un film qui n'en publie pas, ils marquent encore les captures — dessiner
+      // l'onde en plus les doublerait, à deux endroits différents.
       if (!enabled || carries.length === 0) return
       drawFlagCarries(ctx, layer, carries, view, frame)
+      // Les ondes APRÈS le calque : l'anneau s'ouvre autour du glyphe, il ne passe pas dessous.
+      drawFlagCaptureFx(ctx, captures, view, { frame, hold: FLAG_CAPTURE_HOLD_FRAMES }, captureStyle)
     },
-    [enabled, carries, layer, view],
+    [enabled, carries, layer, view, captures, captureStyle],
   )
 
   const onPointerMove = useCallback(

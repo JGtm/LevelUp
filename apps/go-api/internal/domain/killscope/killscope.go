@@ -80,3 +80,35 @@ const (
 // importateur, et celle-ci décide de la préséance. Un appelant qui la muterait rendrait le
 // détecteur d'enrichissement aveugle pour tout le process.
 func FilmReadPaths() []string { return []string{ReadPathFilmWalk, ReadPathFilmScan} }
+
+// CategoryHeadshot : LA SEULE valeur de `source_category` qui compte comme tir à la tête à la
+// LECTURE (G.1, 2026-08-30).
+//
+// ─── POURQUOI UN SEUL NOM, ET PAS DEUX ─────────────────────────────────────────────────────
+//
+// `source_category` porte aussi `HeadshotMultiplier` — un nom de la MÊME famille, qui ressemble
+// à un headshot renforcé. Ce n'EN EST PAS un au sens produit : l'oracle contre
+// `match_participants.headshot_kills` (l'API officielle, la seule référence) donne 99,3 %
+// d'accord avec le filtre STRICT `= 'Headshot'` seul ; y ajouter `HeadshotMultiplier` fait
+// CHUTER l'accord à 84,4 % (rapport G.0, 2026-08-29). Ce n'est pas une nuance à raffiner plus
+// tard : c'est la mesure qui tranche, et elle tranche pour l'exclusion.
+//
+// Propriétaire typé : `games/halo_infinite/film/killsource` (`Category`, énumération gelée par
+// le format de film — même raison d'être que les voies de lecture ci-dessus, même paquet
+// title-specific que `persist`/`migration`/`platform/duckdb` ne peuvent pas importer). Le
+// verrou d'égalité avec le décodeur vit dans `sync/killcollector` (le seul paquet qui importe
+// les deux) : `TestCategoryHeadshotEgaleAuDecodeur`. Le ratchet qui interdit une copie brute
+// (notamment `HeadshotMultiplier`) ailleurs dans le dépôt est
+// `internal/archlint/no_raw_headshot_category_literal_test.go`.
+const CategoryHeadshot = "Headshot"
+
+// IsHeadshotCategory : LE SEUL comparateur de catégorie « tir à la tête » du dépôt.
+//
+// Volontairement une fonction d'UN caractère de complexité (une égalité) : le risque n'est pas
+// la logique, c'est la RÉÉCRITURE — un second endroit qui écrirait `== "Headshot"` ou, pire,
+// `strings.Contains(category, "Headshot")` (qui matcherait `HeadshotMultiplier`) romprait le
+// filtre STRICT sans qu'aucun test ne le voie passer. Tout lecteur de `source_category` doit
+// appeler CETTE fonction, jamais comparer la chaîne à la main.
+func IsHeadshotCategory(category string) bool {
+	return category == CategoryHeadshot
+}

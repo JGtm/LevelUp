@@ -13,7 +13,7 @@
 // ment donc jamais sur la présence du fichier.
 //
 // L'OUVRIER TIRE, IL N'EST JAMAIS APPELÉ. Aucun port entrant chez lui, aucun
-// système de fichiers partagé, aucun Redis : trois POST HTTPS suffisent. C'est le
+// système de fichiers partagé, aucun Redis : quatre POST HTTPS suffisent. C'est le
 // patron de csstat porté sur la pile Go existante.
 //
 // CE QUE CE JETON N'OUVRE PAS. Le jeton d'ouvrier (LEVELUP_BUILD_WORKER_TOKEN)
@@ -22,7 +22,7 @@
 // résolu le manifeste et mis des URL CDN PRÉ-SIGNÉES dans le job : c'est
 // précisément ce qui rend sûr de faire tourner un ouvrier n'importe où.
 //
-// SANS JETON CONFIGURÉ, LES TROIS ROUTES RÉPONDENT 503. Le dépôt est public :
+// SANS JETON CONFIGURÉ, LES QUATRE ROUTES RÉPONDENT 503. Le dépôt est public :
 // une installation par défaut ne doit hériter d'aucune porte ouverte.
 package handlers
 
@@ -245,7 +245,7 @@ func (h *BuildWorkerHandler) handleHeartbeat(ctx context.Context, in *buildQueue
 	return &buildQueueAckOutput{Body: BuildQueueAckResponse{OK: true}}, nil
 }
 
-// RequireWorkerToken ferme les trois routes du protocole derrière le jeton
+// RequireWorkerToken ferme les quatre routes du protocole derrière le jeton
 // d'ouvrier (Bearer). Comparaison à temps constant : un jeton partagé se devine à
 // l'oreille sur un comparateur naïf.
 //

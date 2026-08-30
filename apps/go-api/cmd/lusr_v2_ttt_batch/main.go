@@ -100,7 +100,8 @@ func (g *groupStats) deathStats() (mean, std float64) {
 }
 
 func main() {
-	lusync.SetLUSRChainClassifier(skillchain.ClassifyLUSRChain) // MT-15 (fail-loud)
+	lusync.SetLUSRChainClassifier(skillchain.ClassifyLUSRChain)        // MT-15 (fail-loud)
+	lusync.SetObjectiveFamilyClassifier(skillchain.IsObjectiveSubMode) // famille de la chaîne de perf classée
 
 	dbPath := flag.String("db", sharedDBPath, "chemin vers shared_matches_v2.duckdb")
 	dryRun := flag.Bool("dry-run", false, "n'écrit pas en DB, affiche le rapport seulement")

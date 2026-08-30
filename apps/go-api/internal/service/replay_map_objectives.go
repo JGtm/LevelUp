@@ -68,15 +68,17 @@ func (s *replayService) mapObjectivesForKeys(ctx context.Context, matchID string
 	}
 	specs := s.objectiveRoleSpecs(ctx, keys.PairName)
 	if len(specs) == 0 {
-		// Mode sans objectifs statiques : le cas nominal. Slayer, Land Grab — PAS King of
-		// the Hill (rôle `hill`, lot C-ter volet 2) ni Total Control (rôle
-		// `totalcontrol_zone`, lot catalogue 2026-08-25), que la table du titre déclare.
+		// Mode sans objectifs statiques : le cas nominal. Slayer — et TOTAL CONTROL, dont
+		// l'entrée a été RETIRÉE le 2026-08-27 (décision utilisateur) : son vivier de 13 à
+		// 18 formes ne s'affiche plus, faute d'état vivant sur BTB.
 		//
-		// CET EXEMPLE A DÉJÀ VIEILLI DEUX FOIS (KOTH en 2026-08-19, Total Control en
-		// 2026-08-25) : la liste des modes réellement sans objectif est
-		// objective_roles.toml en creux, pas ce commentaire. Le vérifier avant d'y ajouter
-		// un nom — Land Grab, par exemple, a bien ses hashs `landgrab_zone` dans le
-		// fichier de carte, il n'a simplement ni rôle ni entrée.
+		// CET EXEMPLE A VIEILLI QUATRE FOIS (KOTH ajouté 2026-08-19, Total Control ajouté
+		// 2026-08-25 puis RETIRÉ 2026-08-27, LAND GRAB câblé 2026-08-27 au lot C
+		// catalogues — l'incohérence « hashs `landgrab_zone` dans le fichier sans rôle ni
+		// entrée » est SOLDÉE : rôle au décodeur, entrée à la table, dégradation par
+		// absence sur les entrées de catalogue extraites avant cette date) : la liste des
+		// modes réellement sans objectif est objective_roles.toml en creux, pas ce
+		// commentaire. Le vérifier avant d'y ajouter un nom.
 		return nil
 	}
 	res := title.NewPathResolver(s.repoRoot)

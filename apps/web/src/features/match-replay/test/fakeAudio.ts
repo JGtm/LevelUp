@@ -27,6 +27,8 @@ export class FakeParam {
  */
 export class FakeGain {
   gain = new FakeParam()
+  /** Branchements NOTÉS (robinet d'enregistrement, 2026-08-26) : un clip branché au mauvais
+   *  endroit est muet, et ça casse en silence — rien d'autre ne répond à la question. */
   connections: unknown[] = []
   connect(dest?: unknown) { this.connections.push(dest) }
   disconnect() { this.connections.length = 0 }
@@ -52,6 +54,9 @@ export class FakeSource {
   onended: (() => void) | null = null
   started: number | null = null
   stopped: number | null = null
+  /** La VITESSE DE LECTURE, portée comme un AudioParam par le vrai WebAudio (`.value`) :
+   *  c'est par elle que passe la variation de hauteur d'un tirage (weaponSoundLogic). */
+  playbackRate = new FakeParam()
   connect() {}
   disconnect() {}
   start(t: number) { this.started = t }

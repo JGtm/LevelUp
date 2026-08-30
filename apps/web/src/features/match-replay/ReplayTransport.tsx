@@ -1,31 +1,43 @@
 /**
- * ReplayTransport — LA BARRE DE LECTURE du rejeu : lecture/pause et recommencer en ICÔNES,
- * les multiplicateurs de vitesse, le son, l'horloge et la frise.
+ * ReplayTransport — LA BARRE DE LECTURE du rejeu. Refonte validée le 2026-08-28 (planche 2a),
+ * après « là ça fait basic de fou » : la barre disait onze commandes du même poids, sans
+ * hiérarchie ni matière.
  *
- * EXTRAIT DE ReplayCanvas.tsx LE 2026-08-24 (septième extraction imposée par le cliquet de
- * taille), en exécutant trois demandes utilisateur du même jour : « des symboles pour la
- * lecture et recommencer », « les boutons de vitesse direct à côté des boutons lecture »,
- * « pareil pour le réglage du son, c'est plus simple si c'est au niveau de la lecture ».
- * La vitesse et l'interrupteur du son SORTENT donc du tiroir de réglages — le tiroir garde
- * les calques, les effets et le filtre de son par catégorie.
+ * CE QUI CHANGE, ET POURQUOI :
  *
- * LES ICÔNES PORTENT LEUR LIBELLÉ en aria-label/title (les mêmes clés i18n qu'avant) : un
- * symbole sans nom serait une régression d'accessibilité, pas une simplification. SVG
- * inline en currentColor, comme les autres icônes du dépôt (pas de librairie d'icônes).
+ *  - LA FRISE DEVIENT UNE TABLE DE MONTAGE (ReplayTimelineTracks) : au-dessus du curseur, tes
+ *    éliminations et tes morts, celles de tes alliés, la DOMINANCE, les MÉDIAS. On voit la
+ *    forme du match avant de l'avoir lu. Le curseur reste le même `input[type=range]` piloté
+ *    par la boucle de dessin — seul son habillage change.
+ *  - UN SEUL BOUTON PLEIN, la lecture, en rond de 44 px. Tout le reste est fantôme ou bordé :
+ *    la hiérarchie se lit avant les icônes.
+ *  - LES SAUTS ±10 s encadrent la lecture (demande du 2026-08-27) : c'est le geste le plus
+ *    fréquent d'un rejeu qu'on analyse, et il n'existait qu'en tirant la frise à la main.
+ *  - LA VITESSE PASSE EN MENU (ReplaySpeedMenu) : quatre boutons pour un réglage occupaient la
+ *    place de quatre commandes.
+ *  - LES SORTIES SONT MISES EN AVANT (demande du 2026-08-28) : « Image » et « REC » deviennent
+ *    deux pastilles NOMMÉES dans leur propre cartouche, REC en `destructive`. Ce sont les
+ *    seules commandes colorées de la barre — elles écrivent un fichier, les autres non.
+ *  - L'HORLOGE PERD LE MONOSPACE et gagne la taille : `tabular-nums` suffit à la stabiliser au
+ *    défilement, et elle devient l'ancre visuelle de la barre au lieu d'un détail gris.
+ *  - LES RACCOURCIS CLAVIER (useReplayShortcuts) sont câblés par le canvas ; les libellés des
+ *    boutons les rappellent entre parenthèses.
  *
- * L'ÉTAT NE VIT PAS ICI : la LECTURE (état lu/pause, boucle rAF, curseur de la frise, arrêt
- * sur la dernière image) vit dans `useReplayPlayback` ; l'image courante, l'horloge, la
- * vitesse et le son restent au canvas — cette barre ne fait que les afficher et les commander.
+ * L'ÉTAT NE VIT TOUJOURS PAS ICI : la LECTURE vit dans `useReplayPlayback` ; l'image courante,
+ * l'horloge, la vitesse et le son restent au canvas. Les icônes gardent leur libellé en
+ * aria-label/title — un symbole sans nom serait une régression d'accessibilité.
  */
-import type { ChangeEvent, ComponentProps, RefObject } from 'react'
+import type { ComponentProps, RefObject } from 'react'
 
-import { Button } from '@/components/ui/button'
+import { useState } from 'react'
 
+import { ReplayExportDialog, isExportBusy } from './ReplayExportDialog'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
-import { ReplayLeadMarks } from './ReplayLeadMarks'
+import { SKIP_SECONDS } from './replayCanvasConfig'
 import { ReplaySoundControls } from './ReplaySoundControls'
+import { ReplaySpeedMenu } from './ReplaySpeedMenu'
+import { ReplayTimelineTracks } from './ReplayTimelineTracks'
 import { SlidersIcon } from './SlidersIcon'
-import { SPEED_MULTIPLIERS } from './useReplaySettings'
 import type { ReplayCapture } from './useReplayCapture'
 import type { ReplaySound } from './useReplaySound'
 
@@ -33,167 +45,217 @@ interface ReplayTransportProps {
   playing: boolean
   onTogglePlay: () => void
   onRestart: () => void
+  /** Le saut ±10 s, en secondes signées (cf. useReplayPlayback.seekBy). */
+  onSeekBy: (seconds: number) => void
   /** L'horloge est écrite par la boucle de dessin (textContent), pas par React. */
   clockRef: RefObject<HTMLSpanElement | null>
-  /** Le curseur est piloté par la boucle de dessin ; React ne le contrôle pas. */
-  sliderRef: RefObject<HTMLInputElement | null>
-  /**
-   * LES DEUX BORNES DE LA FRISE sont celles du GAMEPLAY (cf. `replayWindow.ts`) : un scrub ne
-   * peut pas sortir du match pour aller chercher le countdown d'avant-match ou la queue du
-   * film. Sans cadrage établi, elles redeviennent celles du film entier (0 .. dernière image).
-   */
-  minFrame: number
-  maxFrame: number
-  onScrub: (e: ChangeEvent<HTMLInputElement>) => void
+  /** La frise et ses pistes, en UN objet (même motif que `leadMarks` avant elle). */
+  timeline: ComponentProps<typeof ReplayTimelineTracks>
   speed: number
   onSetSpeed: (speed: number) => void
   sound: ReplaySound
-  /**
-   * CE QUI SORT DU REJEU (image, vidéo), en UN objet comme le son — et pour la même raison :
-   * le canvas vit sous un cliquet de taille, et chaque commande ajoutée ici ne doit pas lui
-   * coûter une prop de plus (cf. `useReplayCapture`).
-   */
   capture: ReplayCapture
   locale: ReplayLocale
-  /** Les marques de retournement, posées SUR la piste (cf. ReplayLeadMarks). */
-  leadMarks: ComponentProps<typeof ReplayLeadMarks>
-  /**
-   * Le bouton du TIROIR DE RÉGLAGES, tout à droite de la barre (convention des lecteurs
-   * vidéo : les réglages ferment la barre). L'état et le tiroir restent au canvas ; la ref
-   * sert au « clic dehors » du tiroir et au retour de focus à sa fermeture. Props À PLAT
-   * (pas un objet) : la règle `react-hooks/refs` prend un accès membre `x.fooRef` en rendu
-   * pour une lecture de ref.
-   */
   settingsOpen: boolean
   onToggleSettings: () => void
   settingsButtonRef: RefObject<HTMLButtonElement | null>
 }
 
 export function ReplayTransport({
-  playing, onTogglePlay, onRestart, clockRef, sliderRef, minFrame, maxFrame, onScrub,
-  speed, onSetSpeed, sound, capture, locale, leadMarks,
+  playing, onTogglePlay, onRestart, onSeekBy, clockRef, timeline,
+  speed, onSetSpeed, sound, capture, locale,
   settingsOpen, onToggleSettings, settingsButtonRef,
 }: ReplayTransportProps) {
+  // LE DIALOGUE D'EXPORT s'ouvre depuis la barre et se pose au-dessus d'elle. Son ouverture
+  // vit ICI et pas dans le canvas : c'est le bouton qui la commande, et le canvas est à son
+  // plafond de taille.
+  const [exportOpen, setExportOpen] = useState(false)
+  // PENDANT UN EXPORT, LES COMMANDES DE LECTURE SONT NEUTRALISEES. La boucle d'export ecrit
+  // `frameRef` image par image ; la boucle de lecture, les sauts et le glisse de la frise
+  // ecrivent le MEME ref. Les laisser vivants permettait a l'utilisateur de corrompre son
+  // propre clip d'un clic, sans que rien ne le signale.
+  const busy = capture.videoExport ? isExportBusy(capture.videoExport.state) : false
   const t = REPLAY_TEXT[locale]
-  // L'ORDRE EST CELUI D'UN LECTEUR VIDÉO (retour utilisateur du 2026-08-24 : « réorganise,
-  // là c'est le bazar ») : les COMMANDES DE LECTURE à gauche (lecture, recommencer), puis
-  // l'horloge, la TIMELINE au centre — c'est elle qui prend la largeur — et à droite les
-  // RÉGLAGES de lecture (vitesse, son). L'œil trouve chaque commande là où tous les
-  // lecteurs la mettent.
   return (
-    <div className="mt-2 flex items-center gap-2">
-      <span className="flex items-center gap-1">
-        <Button
-          variant="default"
-          size="sm"
-          onClick={onTogglePlay}
-          className="h-8 w-9"
-          aria-label={playing ? t.pause : t.play}
-          title={playing ? t.pause : t.play}
-        >
-          {playing ? <PauseIcon /> : <PlayIcon />}
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onRestart}
-          className="h-8 w-9"
-          aria-label={t.restart}
-          title={t.restart}
-        >
-          <RestartIcon />
-        </Button>
-      </span>
-      <span
-        ref={clockRef}
-        className="min-w-[5.5rem] font-mono text-xs tabular-nums text-muted-foreground"
-        aria-label={t.time}
-      />
-      {/* LA TIMELINE AU CENTRE, seule à s'étirer ; les marques de retournement se posent
-          SUR la piste (cf. ReplayLeadMarks). */}
-      <span className="relative flex-1">
-        <input
-          ref={sliderRef}
-          type="range"
-          min={minFrame}
-          max={maxFrame}
-          defaultValue={minFrame}
-          onChange={onScrub}
-          className="block w-full"
+    // LE SOCLE SOMBRE sépare le lecteur de la carte : sans lui, la barre flottait sur le même
+    // fond que le canvas et paraissait posée là par accident.
+    <div className="mt-3 rounded-md bg-background/40 px-3.5 pb-3.5 pt-3">
+      {/* LA FRISE AUSSI : son curseur ecrit `frameRef`. `pointer-events-none` bloque le geste,
+          `aria-hidden` la retire des technologies d'assistance le temps du calcul. */}
+      <div className={busy ? 'pointer-events-none opacity-40' : undefined} aria-hidden={busy}>
+        <ReplayTimelineTracks {...timeline} />
+      </div>
+
+      <div className="mt-5 flex items-center gap-3.5">
+        {/* L'HORLOGE D'ABORD, en grand : « où j'en suis » avant « ce que je peux faire ». */}
+        <span
+          ref={clockRef}
+          className="min-w-[4.5rem] text-[14.7px] font-medium tabular-nums tracking-[-0.02em]"
           aria-label={t.time}
         />
-        <ReplayLeadMarks {...leadMarks} />
-      </span>
-      {/* LA VITESSE puis LE SON, à droite : des réglages de lecture, pas des commandes. Le
-          filtre de son par catégorie, plus rare, reste au tiroir. */}
-      <span className="flex items-center gap-0.5" role="group" aria-label={t.speed}>
-        {SPEED_MULTIPLIERS.map((m) => (
-          <Button
-            key={m}
+
+        <div className="flex items-center gap-1.5">
+          <RoundButton onClick={onRestart} label={`${t.restart} (R)`} ghost disabled={busy}>
+            <RestartIcon />
+          </RoundButton>
+          <RoundButton onClick={() => onSeekBy(-SKIP_SECONDS)} label={`${t.skipBackFmt(SKIP_SECONDS)} (←)`} bordered disabled={busy}>
+            <span className="text-[10.5px] font-medium tabular-nums">−{SKIP_SECONDS}</span>
+          </RoundButton>
+          {/* LE SEUL BOUTON PLEIN DE LA BARRE. Le nom accessible dit ce que le CLIC va faire,
+              l'icône dit où l'on en est (patron d'état inchangé). */}
+          <button
             type="button"
-            variant={speed === m ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => onSetSpeed(m)}
-            className="h-7 px-1.5 text-xs"
-            aria-pressed={speed === m}
+            onClick={onTogglePlay}
+            disabled={busy}
+            aria-label={playing ? t.pause : t.play}
+            title={`${playing ? t.pause : t.play} (${t.keySpace})`}
+            className={`inline-flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors ${
+              busy ? 'cursor-not-allowed opacity-40' : 'cursor-pointer hover:bg-primary/90 active:bg-primary/80'
+            }`}
           >
-            {m < 1 ? `${m.toFixed(1)}×` : `${m.toFixed(0)}×`}
-          </Button>
-        ))}
-      </span>
-      <ReplaySoundControls sound={sound} locale={locale} />
-      {/* CE QUI SORT DU REJEU, entre le son et les réglages : capturer l'image de la scène.
-          La place n'est pas arbitraire — ce sont des commandes de SORTIE, pas des réglages de
-          lecture, et un lecteur vidéo les groupe là, juste avant l'engrenage. */}
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={capture.captureImage}
-        className="h-8 w-9"
-        aria-label={t.captureImage}
-        title={t.captureImage}
-      >
-        <CameraIcon />
-      </Button>
-      {/* LE BOUTON D'ENREGISTREMENT NE SE REND PAS quand le navigateur ne sait pas filmer une
-          toile (décision 7) : une commande grisée laisserait croire à une panne réparable,
-          alors qu'il n'y a rien à réparer. Le bouton d'image, lui, reste — `toBlob` est
-          universel. Même patron d'état que lecture/pause : le nom accessible dit ce que le
-          CLIC va faire, l'icône dit où l'on en est. */}
-      {capture.recordingSupported && (
-        <Button
-          variant={capture.recording ? 'default' : 'ghost'}
-          size="sm"
-          onClick={capture.toggleRecording}
-          className="h-8 w-9"
-          aria-pressed={capture.recording}
-          aria-label={capture.recording ? t.stopRecording : t.recordVideo}
-          title={t.recordHint}
+            {playing ? <PauseIcon /> : <PlayIcon />}
+          </button>
+          <RoundButton onClick={() => onSeekBy(SKIP_SECONDS)} label={`${t.skipForwardFmt(SKIP_SECONDS)} (→)`} bordered disabled={busy}>
+            <span className="text-[10.5px] font-medium tabular-nums">+{SKIP_SECONDS}</span>
+          </RoundButton>
+        </div>
+
+        {/* LES RÉGLAGES DE LECTURE : le son, puis la vitesse. Des réglages, pas des commandes. */}
+        <div className="flex items-center gap-2">
+          <ReplaySoundControls sound={sound} locale={locale} />
+          <ReplaySpeedMenu speed={speed} onSetSpeed={onSetSpeed} locale={locale} />
+        </div>
+
+        <div className="flex-1" />
+
+        {/* CE QUI SORT DU REJEU, dans son propre cartouche et NOMMÉ. Le bouton d'enregistrement
+            ne se rend pas quand le navigateur ne sait pas filmer une toile (décision 7) : une
+            commande grisée laisserait croire à une panne réparable. */}
+        {/* `relative` : C'EST L'ANCRE DU PANNEAU D'EXPORT, et elle est écrite ici plutôt que
+            subie. Sans elle, le panneau se calait sur le premier ancêtre positionné — la carte
+            entière du rejeu, cinq cents lignes plus loin — et recouvrait la frise. */}
+        <div className="relative flex items-center gap-1.5 rounded-full border border-border bg-muted/40 p-1">
+          <button
+            type="button"
+            onClick={capture.captureImage}
+            aria-label={t.captureImage}
+            title={t.captureImage}
+            className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full bg-secondary px-3 text-[12.5px] font-medium text-secondary-foreground transition-colors hover:bg-secondary/80"
+          >
+            <CameraIcon />
+            {t.captureImageShort}
+          </button>
+          {/* L'EXPORT HORS TEMPS RÉEL prend la place de l'enregistrement quand le navigateur
+              sait encoder (décision D5) : deux boutons qui font presque la même chose seraient
+              un piège à clic. Le repli reste offert là où WebCodecs manque. */}
+          {capture.videoExport?.supported && (
+            <button
+              type="button"
+              onClick={() => setExportOpen((v) => !v)}
+              aria-expanded={exportOpen}
+              aria-label={t.exportVideo}
+              title={busy ? t.exportRunningHint : t.exportHint}
+              className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full bg-primary px-3.5 text-[12.5px] font-semibold tracking-[0.03em] text-primary-foreground transition-colors hover:bg-primary/90"
+            >
+              {/* LE BOUTON PORTE LA PROGRESSION quand le panneau est refermé : sans cela, un
+                  clic malheureux faisait perdre À LA FOIS le retour et le bouton « Annuler »,
+                  pendant un calcul de plusieurs minutes. */}
+              {busy ? <ExportSpinner /> : <ExportIcon />}
+              {busy ? exportBadge(capture.videoExport) : t.exportVideoShort}
+            </button>
+          )}
+          {!capture.videoExport?.supported && capture.recordingSupported && (
+            <button
+              type="button"
+              onClick={capture.toggleRecording}
+              aria-pressed={capture.recording}
+              aria-label={capture.recording ? t.stopRecording : t.recordVideo}
+              title={t.recordHint}
+              className={`inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full px-3.5 text-[12.5px] font-semibold tracking-[0.03em] transition-colors ${
+                capture.recording
+                  ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
+                  : 'bg-destructive/90 text-destructive-foreground hover:bg-destructive'
+              }`}
+            >
+              {capture.recording ? (
+                <span className="h-2.5 w-2.5 rounded-[2px] bg-current" />
+              ) : (
+                <span className="h-2.5 w-2.5 rounded-full bg-current" />
+              )}
+              {capture.recording ? t.stopRecordingShort : t.recordVideoShort}
+            </button>
+          )}
+          {/* LE PANNEAU EST MONTÉ DANS LE CARTOUCHE, et c'est la seule position qui marche : son
+              `bottom-full right-0` se résout sur le premier ancêtre POSITIONNÉ, et le cartouche
+              est le seul à porter `relative`. Monté en frère (ce qu'il était jusqu'au
+              2026-08-28), il se calait sur la carte entière du rejeu et `bottom-full` le
+              plaçait au-dessus de son bord supérieur, où `overflow-hidden` le découpait : il
+              était dans le DOM, et invisible à l'écran. */}
+          {exportOpen && capture.videoExport && (
+            <ReplayExportDialog
+              exporter={capture.videoExport}
+              locale={locale}
+              onClose={() => setExportOpen(false)}
+            />
+          )}
+        </div>
+
+        {/* LES RÉGLAGES FERMENT LA BARRE, tout à droite — là où tous les lecteurs les mettent. */}
+        <button
+          ref={settingsButtonRef}
+          type="button"
+          onClick={onToggleSettings}
+          aria-expanded={settingsOpen}
+          aria-label={t.settingsButton}
+          title={t.settingsButton}
+          className={`inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full transition-colors ${
+            settingsOpen ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+          }`}
         >
-          {capture.recording ? <StopIcon /> : <RecordIcon />}
-        </Button>
-      )}
-      {/* LES RÉGLAGES FERMENT LA BARRE, tout à droite — là où tous les lecteurs les mettent. */}
-      <Button
-        ref={settingsButtonRef}
-        variant={settingsOpen ? 'default' : 'ghost'}
-        size="sm"
-        onClick={onToggleSettings}
-        className="h-8 w-9"
-        aria-expanded={settingsOpen}
-        aria-label={t.settingsButton}
-        title={t.settingsButton}
-      >
-        <SlidersIcon />
-      </Button>
+          <SlidersIcon />
+        </button>
+      </div>
     </div>
+  )
+}
+
+/**
+ * Un bouton rond de la barre : fantôme (recommencer) ou bordé (les sauts). La forme ronde vient
+ * de la planche 1a — validée le 2026-08-28 contre les rectangles de la première passe.
+ */
+function RoundButton({
+  onClick, label, children, ghost, bordered, disabled,
+}: {
+  onClick: () => void
+  label: string
+  children: React.ReactNode
+  ghost?: boolean
+  bordered?: boolean
+  /** Neutralise pendant un export : la lecture et l'export se disputeraient l'image courante. */
+  disabled?: boolean
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      title={label}
+      className={`inline-flex h-[34px] w-[34px] items-center justify-center rounded-full transition-colors ${
+        disabled ? 'cursor-not-allowed opacity-40' : 'cursor-pointer'
+      } ${bordered ? 'border border-input hover:bg-accent' : ''} ${
+        ghost ? 'text-muted-foreground hover:bg-accent hover:text-accent-foreground' : ''
+      }`}
+    >
+      {children}
+    </button>
   )
 }
 
 /** Icône lecture : le triangle. Décorative — le libellé vit sur le bouton. */
 function PlayIcon() {
   return (
-    <svg viewBox="0 0 16 16" className="h-4 w-4" fill="currentColor" aria-hidden="true">
+    <svg viewBox="0 0 16 16" className="h-[17px] w-[17px]" fill="currentColor" aria-hidden="true">
       <path d="M4.5 2.8a.8.8 0 0 1 1.2-.7l8 5.2a.8.8 0 0 1 0 1.4l-8 5.2a.8.8 0 0 1-1.2-.7z" />
     </svg>
   )
@@ -202,19 +264,19 @@ function PlayIcon() {
 /** Icône pause : les deux barres. */
 function PauseIcon() {
   return (
-    <svg viewBox="0 0 16 16" className="h-4 w-4" fill="currentColor" aria-hidden="true">
+    <svg viewBox="0 0 16 16" className="h-[17px] w-[17px]" fill="currentColor" aria-hidden="true">
       <rect x="3.5" y="2.5" width="3.4" height="11" rx="1" />
       <rect x="9.1" y="2.5" width="3.4" height="11" rx="1" />
     </svg>
   )
 }
 
-/** Icône appareil photo : le boîtier et son objectif. Décorative — le libellé vit sur le bouton. */
+/** Icône appareil photo : le boîtier et son objectif. */
 function CameraIcon() {
   return (
     <svg
       viewBox="0 0 16 16"
-      className="h-4 w-4"
+      className="h-[15px] w-[15px]"
       fill="none"
       stroke="currentColor"
       strokeWidth="1.4"
@@ -228,30 +290,12 @@ function CameraIcon() {
   )
 }
 
-/** Icône enregistrer : le disque plein, convention universelle du « REC ». */
-function RecordIcon() {
-  return (
-    <svg viewBox="0 0 16 16" className="h-4 w-4" fill="currentColor" aria-hidden="true">
-      <circle cx="8" cy="8" r="5" />
-    </svg>
-  )
-}
-
-/** Icône arrêter : le carré. Il remplace le disque pendant l'enregistrement. */
-function StopIcon() {
-  return (
-    <svg viewBox="0 0 16 16" className="h-4 w-4" fill="currentColor" aria-hidden="true">
-      <rect x="3.6" y="3.6" width="8.8" height="8.8" rx="1.2" />
-    </svg>
-  )
-}
-
 /** Icône recommencer : la flèche qui reboucle vers le début. */
 function RestartIcon() {
   return (
     <svg
       viewBox="0 0 16 16"
-      className="h-4 w-4"
+      className="h-[15px] w-[15px]"
       fill="none"
       stroke="currentColor"
       strokeWidth="1.6"
@@ -261,6 +305,57 @@ function RestartIcon() {
     >
       <path d="M2.5 8a5.5 5.5 0 1 0 1.6-3.9" />
       <path d="M4.1 1.6v2.9H7" />
+    </svg>
+  )
+}
+
+/**
+ * Icône d'export : la flèche qui SORT du plateau. Volontairement différente du disque rouge
+ * de l'enregistrement — les deux commandes ne se remplacent pas dans l'esprit de qui regarde,
+ * même si le code, lui, remplace l'une par l'autre.
+ */
+function ExportIcon() {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      className="h-[15px] w-[15px]"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M8 10.2V2.4" />
+      <path d="M5.2 5.2 8 2.4l2.8 2.8" />
+      <path d="M2.8 10.4v2.2a1 1 0 0 0 1 1h8.4a1 1 0 0 0 1-1v-2.2" />
+    </svg>
+  )
+}
+
+/**
+ * exportBadge — ce que le bouton affiche pendant un export : le pourcentage dès qu'il veut dire
+ * quelque chose, et une ellipse pendant la préparation (où rien n'est encore encodé).
+ */
+function exportBadge(exporter: ReplayCapture['videoExport']): string {
+  if (!exporter || exporter.state.phase !== 'encode') return '…'
+  return `${Math.round(exporter.state.pct)} %`
+}
+
+/** L'anneau qui tourne, le temps du calcul. Même gabarit que l'icône qu'il remplace. */
+function ExportSpinner() {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      className="h-[15px] w-[15px] animate-spin"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      aria-hidden="true"
+    >
+      <circle cx="8" cy="8" r="6" className="opacity-30" />
+      <path d="M14 8a6 6 0 0 0-6-6" />
     </svg>
   )
 }

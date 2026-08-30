@@ -2902,36 +2902,6 @@ components:
       description: Stats objectifs par joueur (CTF/Zones/Oddball/Stockpile/Extraction/VIP) — blocs mutuellement exclusifs par mode, seuls les champs du mode joué sont renseignés.
     ObjectiveAggregate:
       description: Cumul (SUM) des stats objectifs (CTF/Zones/Oddball) d'un joueur sur un ensemble de matchs. Champs zéro omis.
-    AssociatedMediaItem:
-      type: object
-      required:
-        - file_id
-        - file_name
-        - file_path
-        - kind
-      properties:
-        file_id:
-          type: string
-        file_name:
-          type: string
-        file_path:
-          type: string
-        kind:
-          type: string
-        thumbnail_url:
-          type: string
-          nullable: true
-        duration_seconds:
-          type: number
-          format: float
-          nullable: true
-        capture_time:
-          type: string
-          format: date-time
-          nullable: true
-        liked:
-          type: boolean
-          default: false
     TeammatesQueryRequest:
       type: object
       description: >-

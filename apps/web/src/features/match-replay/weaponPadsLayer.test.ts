@@ -1,15 +1,19 @@
 /**
- * Tests — weaponPadsLayer : LES TROIS ÉTATS, LE COMPTE À REBOURS, LA TAILLE, LE SURVOL.
+ * Tests — weaponPadsLayer : LA PILE, LES ÉTATS DESSINÉS, LA TAILLE, LE SURVOL.
  *
  * CE QUE CE FICHIER VERROUILLE, et chaque point correspond à une clause écrite du plan :
- *  - PLEIN de `t0` à `tLow`, INCERTAIN jusqu'à `tHigh`, VIDE ensuite — et l'incertitude ne se
- *    masque PAS (l'icône reste, en fantôme). Une icône qui s'éteindrait pile à `tLow`
- *    affirmerait une datation que la source n'a pas ;
- *  - un socle « jamais vidé » (`tHigh` = fin du rejeu) finit INCERTAIN, jamais vide ;
- *  - AUCUN compte à rebours sans cycle établi — ni chiffre, ni tiret ;
- *  - la TAILLE suit l'arme : puissance grande, classique petite, et l'anneau est le repère
- *    qui reste quand le socle est vide ;
- *  - le SURVOL se rejoue sur la donnée, y compris sur un socle VIDE (c'est là qu'on inspecte).
+ *  - le LOSANGE est TOUJOURS PLEIN à l'encre de sa nature (retour utilisateur du 2026-08-27) :
+ *    c'est son OPACITÉ qui dit l'état, et le seul état incertain gagne un HALO POINTILLÉ ;
+ *  - l'incertitude ne se MASQUE pas : la vignette reste, en fantôme ;
+ *  - LA PILE, de bas en haut : losange au lieu mesuré, vignette AU-DESSUS, compteur au sommet.
+ *    L'anneau-bordure qui enfermait la vignette n'existe plus — c'est lui que l'utilisateur
+ *    lisait comme « l'icône dans le losange » ;
+ *  - la TAILLE suit l'arme : puissance grande, classique petite ;
+ *  - le SURVOL couvre la PILE ENTIÈRE (vignette comprise) et se rejoue sur la donnée, y compris
+ *    sur un socle VIDE (c'est là qu'on inspecte).
+ *
+ * LA LECTURE TEMPORELLE (états, occupations, compte à rebours) EST TESTÉE À PART, dans
+ * `weaponPadTime.test.ts` : elle a quitté ce calque le 2026-08-27 avec son module.
  *
  * Le contexte enregistreur observe la GÉOMÉTRIE ÉMISE, jamais un pixel (cf. recordingContext).
  */
@@ -18,15 +22,8 @@ import { describe, expect, it } from 'vitest'
 import { count, diamondCentres, recordingContext, valuesOf } from './test/recordingContext'
 import type { ReplayWeaponPadReady } from './replayNormalize'
 import { worldToCanvas } from './replayLogic'
-import {
-  drawWeaponPadsLayer,
-  padAt,
-  padOccupancyAt,
-  padRadiusPx,
-  padRespawnSecondsAt,
-  padStateAt,
-  type PadStyle,
-} from './weaponPadsLayer'
+import { padStateAt } from './weaponPadTime'
+import { drawWeaponPadsLayer, padAt, padRadiusPx, type PadStyle } from './weaponPadsLayer'
 
 /** 10 m de côté sur 100 px : 10 px par mètre — le même cadrage que les tests de poses. */
 const VIEW = { bounds: { minX: 0, minY: 0, maxX: 10, maxY: 10 }, width: 100, height: 100, pad: 0 }
@@ -42,6 +39,9 @@ const KEYS: Record<string, string> = { [SNIPER]: 'hinf_s7_sniper', [BR75]: 'hinf
 const IMAGE = { width: 40, height: 16 } as unknown as CanvasImageSource
 /** Une vignette prête à poser : son corps et son liseré (cf. PadIcon). */
 const ICON = { fill: IMAGE, outline: IMAGE }
+
+/** Le cycle des témoins : 40 s pile, pour que les comptes se lisent à l'œil nu. */
+const CYCLE = { medianS: 40, p10S: 40, p90S: 40, gaps: 2, missing: 0 }
 
 function style(over: Partial<PadStyle> = {}): PadStyle {
   return {
@@ -74,32 +74,77 @@ function draw(pads: ReplayWeaponPadReady[], frame: number, over: Partial<PadStyl
   return ops
 }
 
-describe('padStateAt — les trois états, et leurs frontières', () => {
-  const p = pad()
+/** La demi-diagonale d'un losange se lit sur son sommet : centre - sommet (cf. traceDiamond). */
+function demiDiagonales(ops: ReturnType<typeof draw>): number[] {
+  const centres = diamondCentres(ops)
+  const sommets = ops.filter((o) => o.op === 'moveTo').map((o) => (o.args as number[])[1])
+  return centres.map((c, i) => c.y - sommets[i])
+}
 
-  it('PLEIN de l’apparition au dernier instant prouvé', () => {
-    expect(padStateAt(p, 0)).toBe('full')
-    expect(padStateAt(p, 99)).toBe('full')
+/**
+ * LE TRACÉ, EN PILE (retour utilisateur du 2026-08-27 : « l'icône doit être au-dessus du petit
+ * losange, pas dedans ») : le LOSANGE au lieu mesuré, la VIGNETTE au-dessus de lui, le COMPTE À
+ * REBOURS au sommet. Le losange est TOUJOURS PLEIN à l'encre de sa nature ; l'anneau-bordure
+ * d'A13, qui enfermait la vignette, a été supprimé avec ses constantes.
+ */
+describe('le tracé — losange plein, vignette au-dessus, compte à rebours au sommet', () => {
+  it('PLEIN : UN SEUL losange, REMPLI, et la vignette à pleine encre', () => {
+    const ops = draw([pad()], 50)
+    // UNE marque, et une seule : plus d'anneau-bordure autour de la vignette.
+    expect(diamondCentres(ops)).toHaveLength(1)
+    expect(count(ops, 'arc')).toBe(0)
+    expect(count(ops, 'drawImage')).toBeGreaterThan(0)
+    // Le plein se suffit : ni contour, ni pointillé, aucun trait tracé.
+    expect(count(ops, 'setLineDash')).toBe(0)
+    expect(count(ops, 'stroke')).toBe(0)
+    expect(count(ops, 'fill')).toBe(1)
+    // LA REMISE À 1 FINALE EST EXCLUE (revue adversariale du 2026-08-27) : `drawWeaponPadsLayer`
+    // termine par un `globalAlpha = 1` inconditionnel, si bien que le maximum brut valait
+    // TOUJOURS 1 et que ce cas ne mordait sur rien — il serait resté vert avec une marque
+    // quasi transparente. Même patron que le cas INCERTAIN ci-dessous.
+    expect(Math.max(...valuesOf(ops, 'globalAlpha').slice(0, -1))).toBeGreaterThan(0.9)
   })
 
-  it('INCERTAIN entre la dernière preuve de présence et la première preuve d’absence', () => {
-    expect(padStateAt(p, 100)).toBe('uncertain')
-    expect(padStateAt(p, 119)).toBe('uncertain')
+  it('INCERTAIN : le losange reste PLEIN (atténué) et gagne un HALO POINTILLÉ concentrique', () => {
+    const ops = draw([pad()], 110)
+    expect(count(ops, 'drawImage'), "l'incertitude ne se masque pas").toBeGreaterThan(0)
+    // LE PLEIN N'A PAS DISPARU : c'est l'opacité qui dit l'incertitude, plus l'absence d'aplat.
+    expect(count(ops, 'fill')).toBe(1)
+    const dashes = ops.filter((o) => o.op === 'setLineDash').map((o) => o.args[0] as number[])
+    expect(dashes[0]?.length).toBeGreaterThan(0)
+    expect(count(ops, 'stroke')).toBe(1)
+    // Deux losanges CONCENTRIQUES — la marque et son halo — et le halo est le plus grand.
+    const centres = diamondCentres(ops)
+    expect(centres).toHaveLength(2)
+    expect(centres[0]).toEqual(centres[1])
+    const [marque, halo] = demiDiagonales(ops)
+    expect(halo).toBeGreaterThan(marque)
+    // Aucune opacité pleine : ni la marque ni la vignette n'affirment une présence.
+    expect(Math.max(...valuesOf(ops, 'globalAlpha').slice(0, -1))).toBeLessThan(0.6)
   })
 
-  it('VIDE dès que l’absence est prouvée', () => {
-    expect(padStateAt(p, 120)).toBe('empty')
-    expect(padStateAt(p, 500)).toBe('empty')
+  it('VIDE : plus de vignette, mais le losange PLEIN reste — le lieu ne disparaît pas', () => {
+    const ops = draw([pad()], 200)
+    expect(count(ops, 'drawImage')).toBe(0)
+    expect(diamondCentres(ops)).toHaveLength(1)
+    expect(count(ops, 'fill')).toBe(1)
+    // Atténué, jamais éteint : c'est la plus basse des trois opacités, et elle reste visible.
+    const alpha = valuesOf(ops, 'globalAlpha')[0]
+    expect(alpha).toBeGreaterThan(0.3)
+    expect(alpha).toBeLessThan(0.55)
   })
 
-  it('VIDE avant la première apparition : le socle n’a rien porté du tout', () => {
-    const tardif = pad({ spawns: [200], presence: [{ t0: 200, tLow: 300, tHigh: 320 }] })
-    expect(padStateAt(tardif, 0)).toBe('empty')
-    expect(padOccupancyAt(tardif, 0)).toBeNull()
-    expect(padStateAt(tardif, 200)).toBe('full')
+  it('VIDE avec cycle : le compte à rebours s’écrit, cerné pour rester lisible', () => {
+    const ops = draw([pad({ cycle: CYCLE })], 320)
+    expect(ops.filter((o) => o.op === 'fillText').map((o) => o.args[0])).toEqual(['20 s'])
+    expect(count(ops, 'strokeText')).toBe(1)
   })
 
-  it('une RÉAPPARITION reprend à plein : c’est la dernière occupation qui gouverne', () => {
+  // LE GAIN VISIBLE DE D3 (2026-08-27) : un trou MÉDIAN — refermé par une apparition que le film
+  // montre — porte désormais son compte à rebours, cycle ou pas. C'était le défaut signalé
+  // (« compteur pas toujours visible ») : 24 socles sur 57 n'ont aucun cycle établi et
+  // n'affichaient donc jamais rien, alors même que le rejeu connaissait la suite.
+  it('VIDE sans cycle mais avec une apparition SUIVANTE : le compte s’écrit quand même', () => {
     const deux = pad({
       spawns: [0, 300],
       presence: [
@@ -107,108 +152,19 @@ describe('padStateAt — les trois états, et leurs frontières', () => {
         { t0: 300, tLow: 400, tHigh: 420 },
       ],
     })
-    expect(padStateAt(deux, 250)).toBe('empty')
-    expect(padStateAt(deux, 300)).toBe('full')
-    expect(padOccupancyAt(deux, 350)?.t0).toBe(300)
+    expect(deux.cycle).toBeUndefined()
+    const ops = draw([deux], 200)
+    expect(ops.filter((o) => o.op === 'fillText').map((o) => o.args[0])).toEqual(['10 s'])
   })
 
-  it('un socle JAMAIS VIDÉ reste PLEIN jusqu’au bout : aucune absence n’a été prouvée', () => {
-    // Cas mesuré sur `bcb6d393` : 8 occupations sur 28 s'achèvent ainsi (tHigh = tLow = fin).
-    const jamais = pad({ presence: [{ t0: 0, tLow: 3464, tHigh: 3464 }] })
-    expect(padStateAt(jamais, 3463)).toBe('full')
-    expect(padStateAt(jamais, 3464)).toBe('full')
-    expect(padRespawnSecondsAt(jamais, 3464, FRAME_MS)).toBeNull()
-  })
-})
-
-describe('padRespawnSecondsAt — le compte à rebours n’existe qu’avec un cycle établi', () => {
-  const cycle = { medianS: 40, p10S: 40, p90S: 40, gaps: 2, missing: 0 }
-
-  it('SANS cycle : rien, à aucun instant — pas même un zéro', () => {
-    const p = pad()
-    expect(p.cycle).toBeUndefined()
-    for (const f of [0, 100, 120, 200, 5000]) expect(padRespawnSecondsAt(p, f, FRAME_MS)).toBeNull()
-  })
-
-  it('AVEC cycle : il part de tHigh, la borne HAUTE de la disparition', () => {
-    const p = pad({ cycle })
-    // tHigh = 120 ; 40 s = 400 images. À l'instant de tHigh, tout le cycle reste.
-    expect(padRespawnSecondsAt(p, 120, FRAME_MS)).toBeCloseTo(40, 6)
-    expect(padRespawnSecondsAt(p, 320, FRAME_MS)).toBeCloseTo(20, 6)
-  })
-
-  it('AVEC cycle : rien tant que le socle n’est pas VIDE — l’attente n’a pas commencé', () => {
-    const p = pad({ cycle })
-    expect(padRespawnSecondsAt(p, 50, FRAME_MS)).toBeNull()
-    expect(padRespawnSecondsAt(p, 110, FRAME_MS)).toBeNull()
-  })
-
-  it('le compte ÉPUISÉ s’efface : jamais un nombre négatif ni un zéro qui traîne', () => {
-    const p = pad({ cycle })
-    expect(padRespawnSecondsAt(p, 520, FRAME_MS)).toBeNull()
-    expect(padRespawnSecondsAt(p, 900, FRAME_MS)).toBeNull()
-  })
-
-  it('une durée d’image inconnue n’invente pas de compte', () => {
-    expect(padRespawnSecondsAt(pad({ cycle }), 200, 0)).toBeNull()
-  })
-})
-
-/**
- * LE TRACÉ, VERSION UNIQUE (verdict du 2026-08-18) : un POINT qui dit l'état, la VIGNETTE
- * dessous (remplie et cernée), le COMPTE À REBOURS dessus. L'anneau qui enfermait la vignette
- * n'existe plus.
- */
-describe('le tracé — losange de nature, vignette centrée, compte à rebours dessus', () => {
-  // DEUX ARCS DEPUIS A13, ET C'EST UNE SEULE MARQUE : le point, puis la BORDURE de sa nature
-  // posée autour. Ils sont CONCENTRIQUES — ce que le cas « un socle, une marque » vérifie chez
-  // l'appelant en comptant les centres distincts. Le point, lui, garde sa règle : plein.
-  it('PLEIN : le point est REMPLI, la bordure l’entoure, et la vignette à pleine encre', () => {
-    const ops = draw([pad()], 50)
-    // DEUX LOSANGES CONCENTRIQUES depuis A14 : la marque et sa bordure de nature.
-    expect(diamondCentres(ops)).toHaveLength(2)
-    expect(count(ops, 'arc')).toBe(0)
-    expect(count(ops, 'drawImage')).toBeGreaterThan(0)
-    // Un point PLEIN se remplit : il n'est ni tracé ni pointillé. Le seul `stroke` est la bordure.
-    expect(count(ops, 'setLineDash')).toBe(0)
-    expect(count(ops, 'stroke')).toBe(1)
-    expect(count(ops, 'fill')).toBe(1)
-    expect(Math.max(...valuesOf(ops, 'globalAlpha'))).toBeGreaterThan(0.9)
-  })
-
-  it('INCERTAIN : la vignette RESTE, en fantôme, et le point passe au pointillé', () => {
-    const ops = draw([pad()], 110)
-    expect(count(ops, 'drawImage'), "l'incertitude ne se masque pas").toBeGreaterThan(0)
-    const dashes = ops.filter((o) => o.op === 'setLineDash').map((o) => o.args[0] as number[])
-    expect(dashes[0]?.length).toBeGreaterThan(0)
-    expect(count(ops, 'fill')).toBe(0)
-    // Aucune opacité pleine : ni le point ni la vignette n'affirment une présence.
-    expect(Math.max(...valuesOf(ops, 'globalAlpha').slice(0, -1))).toBeLessThan(0.6)
-  })
-
-  it('VIDE : plus de vignette, mais le point ET sa bordure restent — le lieu ne disparaît pas', () => {
-    const ops = draw([pad()], 200)
-    expect(count(ops, 'drawImage')).toBe(0)
-    // Le point et sa bordure, concentriques : la marque du lieu tient sans ce qu'il portait.
-    expect(diamondCentres(ops)).toHaveLength(2)
-  })
-
-  it('VIDE avec cycle : le compte à rebours s’écrit, cerné pour rester lisible', () => {
-    const cycle = { medianS: 40, p10S: 40, p90S: 40, gaps: 2, missing: 0 }
-    const ops = draw([pad({ cycle })], 320)
-    expect(ops.filter((o) => o.op === 'fillText').map((o) => o.args[0])).toEqual(['20 s'])
-    expect(count(ops, 'strokeText')).toBe(1)
-  })
-
-  it('VIDE sans cycle : AUCUN texte — ni chiffre, ni tiret', () => {
+  it('VIDE sans cycle NI apparition suivante : AUCUN texte — ni chiffre, ni tiret', () => {
     const ops = draw([pad()], 320)
     expect(count(ops, 'fillText')).toBe(0)
     expect(count(ops, 'strokeText')).toBe(0)
   })
 
   it('sans contour de thème, le compte à rebours s’écrit quand même (sans cerne)', () => {
-    const cycle = { medianS: 40, p10S: 40, p90S: 40, gaps: 2, missing: 0 }
-    const ops = draw([pad({ cycle })], 320, { outline: '' })
+    const ops = draw([pad({ cycle: CYCLE })], 320, { outline: '' })
     expect(count(ops, 'fillText')).toBe(1)
     expect(count(ops, 'strokeText')).toBe(0)
   })
@@ -216,85 +172,81 @@ describe('le tracé — losange de nature, vignette centrée, compte à rebours 
   // AMENDÉ LE 2026-08-26 (retour utilisateur : « j'ai l'impression qu'il y en a deux »). Ce cas
   // verrouillait le GLYPHE DE REPLI : sans vignette, le calque posait un disque plein du même
   // rayon que le point, une dizaine de pixels sous lui. Deux ronds empilés pour UN socle — et
-  // c'est exactement ce que l'œil comptait deux fois. Le repli est supprimé : le point porte
+  // c'est exactement ce que l'œil comptait deux fois. Le repli est supprimé : le losange porte
   // déjà la position ET l'état. Ce qui reste garanti, et qui était le vrai sujet du cas :
   // aucune image n'est empruntée à une arme voisine.
-  it('SANS VIGNETTE : le point SEUL, et surtout jamais l’icône d’une arme voisine', () => {
+  it('SANS VIGNETTE : le losange SEUL, et surtout jamais l’icône d’une arme voisine', () => {
     const ops = draw([pad()], 50, { iconOf: () => null })
     expect(count(ops, 'drawImage')).toBe(0)
-    // Le point et sa bordure, CONCENTRIQUES : une seule marque pour un seul socle. Ce qui a
-    // disparu, c'est le disque décalé — pas un second losange au même endroit.
-    const centres = diamondCentres(ops)
-    expect(centres).toHaveLength(2)
-    expect(centres[0]).toEqual(centres[1])
+    expect(diamondCentres(ops)).toHaveLength(1)
     expect(count(ops, 'fill')).toBe(1)
   })
 
   /**
    * LE LISERÉ : la même forme reposée tout autour, à l'encre du FOND. C'est lui qui détache la
    * vignette d'un fond de carte clair comme d'un fond sombre — le « contour noir » demandé.
+   *
+   * IL EST DÛ À TOUTES LES IMAGES depuis le 2026-08-27 (retour utilisateur : « icône AVEC
+   * contour »). Une image FINIE du jeu se posait telle quelle, au motif qu'on ne peut pas la
+   * reteindre : vrai pour son CORPS, faux pour son contour — cerner ne demande que la
+   * SILHOUETTE, que `tintedIconCanvas` rend de n'importe quelle image à alpha. Le calque n'a
+   * donc plus de branche « sans liseré », et le TYPE l'interdit désormais (`PadIcon.outline`
+   * n'est plus nullable) : c'est le compilateur, et non ce cas, qui tient l'invariant.
    */
   it('la vignette est CERNÉE : son liseré est reposé huit fois autour du corps', () => {
     const ops = draw([pad()], 50)
     expect(count(ops, 'drawImage')).toBe(9)
   })
 
-  it('une image FINIE (non masque) se pose telle quelle, sans liseré inventé', () => {
-    const ops = draw([pad()], 50, { iconOf: () => ({ fill: IMAGE, outline: null }) })
-    expect(count(ops, 'drawImage')).toBe(1)
-  })
-
   it('la TAILLE suit l’arme : une arme de puissance est plus grande qu’une classique', () => {
     const puissance = draw([pad()], 50)
     const classique = draw([pad({ weapon: BR75 })], 50)
-    // La demi-diagonale du losange se lit sur son sommet : centre - sommet (cf. traceDiamond).
-    const rayon = (ops: ReturnType<typeof draw>) => {
-      const c = diamondCentres(ops)[0]
-      const sommet = ops.find((o) => o.op === 'moveTo')?.args as number[] | undefined
-      return c && sommet ? c.y - sommet[1] : 0
-    }
-    expect(rayon(puissance)).toBeGreaterThan(rayon(classique))
+    expect(demiDiagonales(puissance)[0]).toBeGreaterThan(demiDiagonales(classique)[0])
     const hauteur = (ops: ReturnType<typeof draw>) =>
       (ops.find((o) => o.op === 'drawImage')?.args[4] as number) ?? 0
     expect(hauteur(puissance)).toBeGreaterThan(hauteur(classique))
   })
 
   /**
-   * LA GÉOMÉTRIE DE LA VERSION UNIQUE : le POINT est à la position monde du socle, la
-   * VIGNETTE entièrement SOUS lui, le COMPTE À REBOURS entièrement AU-DESSUS. L'ordre
-   * vertical EST la règle du verdict.
+   * L'ORDRE DE LA PILE EST LA RÈGLE (2026-08-27) : le losange à la position monde du socle, la
+   * vignette ENTIÈREMENT au-dessus de lui — son bas strictement plus haut que le sommet du
+   * losange — et le compteur au-dessus de tout.
    */
-  it('point au socle, et compte à rebours DESSUS', () => {
-    const cycle = { medianS: 40, p10S: 40, p90S: 40, gaps: 2, missing: 0 }
-    const ops = draw([pad({ x: 2, y: 8, cycle })], 320)
-    const c = worldToCanvas({ x: 2, y: 8 }, VIEW.bounds, VIEW.width, VIEW.height, VIEW.pad)
-    const marque = diamondCentres(ops)[0]
-    const sommet = ops.find((o) => o.op === 'moveTo')!.args as number[]
-    const rayon = marque.y - sommet[1]
-    expect(marque.x).toBeCloseTo(c.x, 6)
-    expect(marque.y).toBeCloseTo(c.y, 6)
-    const [, , ty] = ops.find((o) => o.op === 'fillText')!.args as number[]
-    expect(ty).toBeLessThan(c.y - rayon)
-  })
-
-  // RÈGLE INVERSÉE LE 2026-08-26, et c'est le même retour utilisateur. La vignette était posée
-  // ENTIÈREMENT SOUS le point : un rond ici, une image dix pixels plus bas, deux marques pour un
-  // socle. Elle est désormais CENTRÉE sur le point — un socle, une marque. Le point ne disparaît
-  // pas pour autant : il reste dessous et continue de porter l'ÉTAT par sa forme (plein,
-  // pointillé, discret), ce que la vignette ne sait pas dire.
-  it('la vignette est CENTRÉE sur le point, jamais décalée dessous', () => {
+  it('LA PILE : losange au socle, vignette entièrement AU-DESSUS de lui', () => {
     const ops = draw([pad({ x: 2, y: 8 })], 50)
     const c = worldToCanvas({ x: 2, y: 8 }, VIEW.bounds, VIEW.width, VIEW.height, VIEW.pad)
-    // Le CORPS est le dernier posé (le liseré vient d'abord, tout autour).
+    const marque = diamondCentres(ops)[0]
+    expect(marque.x).toBeCloseTo(c.x, 6)
+    expect(marque.y).toBeCloseTo(c.y, 6)
+    const sommet = c.y - demiDiagonales(ops)[0]
+    // Le CORPS est le dernier posé (le liseré vient d'abord, tout autour) ; son BAS est au-dessus
+    // du sommet du losange, écart compris — la vignette ne le chevauche jamais.
     const images = ops.filter((o) => o.op === 'drawImage')
     const [, dx, dy, w, h] = images[images.length - 1].args as number[]
     expect(dx + w / 2).toBeCloseTo(c.x, 6)
-    expect(dy + h / 2).toBeCloseTo(c.y, 6)
+    expect(dy + h).toBeLessThan(sommet)
+    expect(dy + h / 2).toBeLessThan(c.y)
+  })
+
+  /**
+   * LE COMPTEUR S'ANCRE SUR LE LOSANGE, ET C'EST UNE CONSÉQUENCE (revue adversariale du
+   * 2026-08-27) : un compte à rebours n'existe que sur un socle VIDE, et un socle vide n'a PAS
+   * de vignette. Le sommet de la pile EST donc toujours celui du losange quand un chiffre
+   * s'écrit — le calque portait un `icon ? … : …` dont la branche « sous la vignette » était
+   * inatteignable. Ce cas vérifie les deux moitiés : rien n'est dessiné au-dessus du losange, et
+   * le chiffre est bien plus haut que lui.
+   */
+  it('le COMPTEUR s’ancre au sommet du LOSANGE, seule chose dessinée sous lui', () => {
+    const ops = draw([pad({ x: 2, y: 8, cycle: CYCLE })], 320)
+    const c = worldToCanvas({ x: 2, y: 8 }, VIEW.bounds, VIEW.width, VIEW.height, VIEW.pad)
+    expect(count(ops, 'drawImage'), 'un socle vide ne porte aucune vignette').toBe(0)
+    const sommet = c.y - demiDiagonales(ops)[0]
+    const [, , ty] = ops.find((o) => o.op === 'fillText')!.args as number[]
+    expect(ty).toBeLessThan(sommet)
   })
 
   it('aucune COULEUR n’est écrite ici : les encres viennent toutes de l’appelant', () => {
-    const cycle = { medianS: 40, p10S: 40, p90S: 40, gaps: 2, missing: 0 }
-    const ops = draw([pad({ cycle })], 320)
+    const ops = draw([pad({ cycle: CYCLE })], 320)
     const encres = ops
       .filter((o) => o.op === 'set fillStyle' || o.op === 'set strokeStyle')
       .map((o) => o.args[0])
@@ -309,7 +261,7 @@ describe('le tracé — losange de nature, vignette centrée, compte à rebours 
   })
 })
 
-describe('padAt — le survol se rejoue sur la donnée', () => {
+describe('padAt — le survol se rejoue sur la donnée, sur toute la pile', () => {
   const s = style()
   const at = (x: number, y: number) =>
     worldToCanvas({ x, y }, VIEW.bounds, VIEW.width, VIEW.height, VIEW.pad)
@@ -323,12 +275,34 @@ describe('padAt — le survol se rejoue sur la donnée', () => {
     expect(padAt([pad()], VIEW, s, 1, at(1, 1))).toBeNull()
   })
 
+  /**
+   * LA VIGNETTE EST SURVOLABLE (2026-08-27), et c'est la contrepartie de la pile : viser l'image
+   * — la seule chose lisible d'un socle à 10 px — doit ouvrir l'infobulle. La zone couvrait le
+   * seul losange, dix pixels plus bas : le pointeur sur la vignette ne trouvait rien.
+   */
+  it('le survol attrape la VIGNETTE, posée au-dessus du losange', () => {
+    const p = pad({ x: 5, y: 5 })
+    const ops = draw([p], 50)
+    const images = ops.filter((o) => o.op === 'drawImage')
+    const [, , dy, , h] = images[images.length - 1].args as number[]
+    const centreVignette = { x: 50, y: dy + h / 2 }
+    expect(centreVignette.y, 'la vignette doit être au-dessus du losange').toBeLessThan(50 - 5)
+    expect(padAt([p], VIEW, s, 1, centreVignette)).toBe(p)
+    // Et jusqu'à son bord haut : c'est toute la vignette qui se vise, pas son seul centre.
+    expect(padAt([p], VIEW, s, 1, { x: 50, y: dy })).toBe(p)
+  })
+
   it('un socle VIDE se survole aussi : c’est là qu’on veut savoir ce qui manque', () => {
     const p = pad()
     expect(padStateAt(p, 300)).toBe('empty')
     expect(padAt([p], VIEW, s, 1, at(5, 5))).toBe(p)
   })
 
+  /**
+   * L'ARBITRAGE SE FAIT SUR LE LIEU, pas sur la pile : deux socles de tailles différentes ont
+   * des piles de hauteurs différentes, et départager sur elles ferait gagner le plus petit
+   * voisin alors que le pointeur est pile sur le losange de l'autre.
+   */
   it('le PLUS PROCHE l’emporte quand deux socles se recouvrent', () => {
     const a = pad({ x: 5, y: 5 })
     const b = pad({ x: 5.4, y: 5, weapon: BR75 })
@@ -336,9 +310,23 @@ describe('padAt — le survol se rejoue sur la donnée', () => {
     expect(padAt([a, b], VIEW, s, 1, at(5, 5))).toBe(a)
   })
 
-  it('la zone sensible ne descend pas sous un plancher visable', () => {
-    // L'anneau d'une arme classique fait 5,5 px : la zone sensible est relevée à 9 px.
-    expect(padRadiusPx(pad({ weapon: BR75 }), s, 1)).toBeLessThan(9)
-    expect(padAt([pad({ weapon: BR75 })], VIEW, s, 1, { x: 50 + 8, y: 50 })).not.toBeNull()
+  /**
+   * LA PORTÉE EST CELLE DE LA PILE, ET RIEN D'AUTRE (revue adversariale du 2026-08-27).
+   *
+   * Ce cas annonçait un « plancher visable » de 9 px et passait pour une TOUTE AUTRE raison : la
+   * zone d'une arme classique vaut 12,25 px (4 + 5,25 + 3), le plancher ne pouvait plus jamais
+   * l'emporter, et il a été supprimé avec son `Math.max`. Ce qui restait vrai — la pile donne
+   * d'elle-même une cible trois fois plus large que son losange — est désormais vérifié SUR LA
+   * FORMULE RÉELLE, aux deux pixels qui l'encadrent.
+   */
+  it('la portée du survol est celle de la PILE : 12,25 px pour une arme classique', () => {
+    const classique = pad({ weapon: BR75 })
+    // Le losange seul ne se viserait pas : 3,2 px de rayon, 4 px de demi-diagonale après
+    // compensation d'aire.
+    expect(padRadiusPx(classique, s, 1)).toBeCloseTo(3.2, 6)
+    // Le centre de la zone est relevé de (8 + 2,5) / 2 = 5,25 px au-dessus du socle.
+    const cy = 50 - 5.25
+    expect(padAt([classique], VIEW, s, 1, { x: 50 + 12, y: cy })).not.toBeNull()
+    expect(padAt([classique], VIEW, s, 1, { x: 50 + 13, y: cy })).toBeNull()
   })
 })

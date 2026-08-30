@@ -97,6 +97,9 @@ func (r *ServiceRegistry) MatchView(ctx context.Context, slug string) (port.Matc
 		// Flag « Prolongation » : table réglementaire du titre (regulation.toml).
 		// Titre sans table → nil → jamais de flag.
 		WithRegulation(r.regulationFor(pdb)).
+		// Score en MANCHES : même fichier de config, autre table. Titre qui n'en déclare
+		// aucune → nil → l'en-tête garde le score de l'API.
+		WithRoundsDecide(r.roundsDecideFor(pdb)).
 		WithMetadataRepo(duckdb.NewMetadataRepo(pdb)).
 		// Loader unifié des highlight_events (MV4.A) : sans lui, d.canonicalEvents
 		// reste nil et la correction T0 (vrai début de match) est du code mort sur
@@ -113,6 +116,12 @@ func (r *ServiceRegistry) MatchView(ctx context.Context, slug string) (port.Matc
 		// chemin dans le dépôt). Seule IsAvailable est appelée par la Match View,
 		// pour publier `replay_available` sans lire l'artefact.
 		WithReplay(r.replayServiceFor(pdb))
+	if repo := r.killSourceClassRepoFor(pdb); repo != nil {
+		svc = svc.WithKillSourceRepo(repo)
+	}
+	if repo := r.killDistanceRepoFor(pdb); repo != nil {
+		svc = svc.WithKillDistanceRepo(repo)
+	}
 	if loader := r.buildFriendsExtrasResolver(pdb); loader != nil {
 		svc = svc.WithFriendsExtras(loader)
 	}
@@ -275,6 +284,7 @@ func (r *ServiceRegistry) SessionPage(ctx context.Context, slug string) (port.Se
 	svc := service.NewSessionPageService(duckdb.NewStatsRepo(pdb)).
 		WithPlayerMatchesRepo(r.playerMatchesAdapterFor(pdb), pdb.TitleSlug, pdb.Gamertag).
 		WithWeaponKillsRepo(duckdb.NewWeaponKillsRepo(pdb)).
+		WithKillSourceRepo(r.killSourceClassRepoFor(pdb)).
 		WithWeaponAccuracyRepo(duckdb.NewWeaponAccuracyRepo(pdb)).
 		WithHighlightEventsRepo(duckdb.NewHighlightEventsRepo(pdb), pdb.XUID)
 	// Axe « Objectifs » par opportunité (profil de participation Session) : gated par
@@ -328,6 +338,7 @@ func (r *ServiceRegistry) Timeseries(ctx context.Context, slug string) (port.Tim
 	svc := service.NewTimeseriesService(duckdb.NewStatsRepo(pdb)).
 		WithPlayerMatchesRepo(r.playerMatchesAdapterFor(pdb), pdb.TitleSlug, pdb.Gamertag).
 		WithWeaponKillsRepo(duckdb.NewWeaponKillsRepo(pdb)).
+		WithKillSourceRepo(r.killSourceClassRepoFor(pdb)).
 		WithWeaponAccuracyRepo(duckdb.NewWeaponAccuracyRepo(pdb)).
 		WithHighlightEventsRepo(duckdb.NewHighlightEventsRepo(pdb), pdb.XUID)
 	if a := r.dataAdapterForPDB(pdb); a != nil {
@@ -390,4 +401,67 @@ func (r *ServiceRegistry) CommendationTotalsCtx(ctx context.Context, slug string
 		}
 	}
 	return service.NewCommendationTotalsService(loader), pdb.XUID, pdb.Gamertag, nil
+}
+
+// killSourceClassRepoFor construit le loader des kills par SOURCE DE DEGAT, ou nil si ce
+// titre n'a rien a en dire.
+//
+// DEUX CONDITIONS, et les deux sont title-agnostic — aucune comparaison de slug :
+//
+//  1. le titre DECLARE la capability DATA-LEVEL `film.kill_source` (capabilities.toml,
+//     via la CapabilityMap de son TitleDataAdapter). C'est le gate demande par le plan ;
+//  2. son adapter d'assets sait TRADUIRE une source de degat en cle de registre
+//     (`port.KillSourceClassifier`, cf. games/halo_infinite/killsource_registry.go).
+//     Interface OPTIONNELLE, decouverte par assertion : un titre qui ne l'implemente pas
+//     n'ouvre pas de troisieme type d'adapter dans le resolver pour une seule fonction.
+//
+// Nil dans tous les autres cas : les kills au repulseur, a la bobine et par chute restent
+// dans « Non attribue », exactement comme avant le lot du 2026-08-29.
+// ATTENTION AU PIEGE GO : le type de retour est l INTERFACE, pas `*duckdb.KillSourceClassRepo`.
+// Rendre un pointeur concret nil produirait une interface NON nil cote appelant (interface
+// non-vide portant un pointeur nil), le garde `if repo != nil` passerait, et le premier appel
+// deferencerait un receveur nil. Retourner l interface rend un vrai nil.
+func (r *ServiceRegistry) killSourceClassRepoFor(pdb *duckdb.PlayerDB) port.KillSourceClassRepository {
+	if pdb == nil || r.titleResolver == nil {
+		return nil
+	}
+	data, err := r.titleResolver.Data(pdb.TitleSlug)
+	if err != nil || data == nil || !data.Capabilities().Has(games.CapFilmKillSource) {
+		return nil
+	}
+	classifier, ok := r.assetURLFor(pdb.TitleSlug).(port.KillSourceClassifier)
+	if !ok {
+		return nil
+	}
+	return duckdb.NewKillSourceClassRepo(pdb, classifier)
+}
+
+// killDistanceRepoFor construit le loader « distance par arme, par joueur »
+// (POC LOT G.3, plan retours-utilisateur §3bis DEC-8), ou nil si ce titre n'a
+// rien à en dire.
+//
+// MÊME GATE que killSourceClassRepoFor, et c'est un choix délibéré, PAS
+// `film.kill_positions` (qui gouverne la CAPTURE des positions, pas la
+// lecture — cf. games/adapter.go, doc de CapFilmKillPositions) ni
+// `match.events.spatial` (qui gouverne la timeline CANONIQUE cross-titre,
+// un pipeline distinct — cf. games/halo_infinite/events.go:
+// infiniteEventLimitations). Ce lecteur a besoin de exactement la même chose
+// que KillSourceClassRepo : `match_kill_events_latest.source_tag` (via
+// `film.kill_source`) ET le classificateur qui le traduit en weapon_key. Une
+// table `kill_positions_latest` vide (titre pas encore backfillé) dégrade
+// proprement via LoadMatch (zéro ligne, zéro erreur) — inutile de la gater
+// une deuxième fois ici.
+func (r *ServiceRegistry) killDistanceRepoFor(pdb *duckdb.PlayerDB) port.KillDistanceRepository {
+	if pdb == nil || r.titleResolver == nil {
+		return nil
+	}
+	data, err := r.titleResolver.Data(pdb.TitleSlug)
+	if err != nil || data == nil || !data.Capabilities().Has(games.CapFilmKillSource) {
+		return nil
+	}
+	classifier, ok := r.assetURLFor(pdb.TitleSlug).(port.KillSourceClassifier)
+	if !ok {
+		return nil
+	}
+	return duckdb.NewKillDistanceRepo(pdb, classifier)
 }

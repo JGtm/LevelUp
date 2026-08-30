@@ -221,9 +221,10 @@ func (h *MatchViewHandler) handleGetMatchView(ctx context.Context, in *matchView
 		if errors.As(err, &apiErr) && apiErr.Code == "not_found" {
 			return nil, humacore.NewError(http.StatusNotFound, "match_not_found", apiErr.Message)
 		}
-		if strings.Contains(err.Error(), "no rows") || strings.Contains(err.Error(), "no rows in result set") {
-			return nil, humacore.NewError(http.StatusNotFound, "match_not_found", "match introuvable : "+matchID)
-		}
+		// PAS DE RENIFLAGE DE CHAÎNE « no rows » ICI (retiré le 2026-08-29) : l'absence
+		// est désormais TYPÉE par le service (domain.ErrNotFound, branche ci-dessus).
+		// Cette branche textuelle était la dernière échappatoire par laquelle une panne
+		// technique dont le message contenait « no rows » se déguisait en 404.
 		return nil, humacore.NewError(http.StatusInternalServerError, "match_view_error", err.Error())
 	}
 	// Onglet médias : réécrire les chemins bruts en URLs servables (même

@@ -54,6 +54,18 @@
    objet lache dessine a sa position, socle avec etat present/absent, colline active en
    surbrillance et collines inactives estompees ; tokens uniquement, FR+EN ; les « pulses »
    substituts de `objectivesLayer.ts` sont RETIRES quand l'objet vivant est publie (0 code mort).
+   **HERITAGE DU LOT « retours du 2026-08-27 »** (lot B de
+   `.ai/V7.5/replay2d/PLAN_RETOURS_REJEU_2026-08-27.md`, decisions D4/D5/D6) : le glyphe du CRANE
+   ne refait PAS ses propres aides de presentation, il IMPORTE celles du drapeau —
+   (a) le lisere a l'encre du fond (`drawFlagGlyph` de `flagCarriesLayer.ts`, champ `outline` du
+   style, encre resolue par le canvas et deja servie aux socles) ; (b) le clignotement hors
+   socle (`flagBlinkAlpha`, exportee pour cet usage : un objet porte hors de sa base se lit de la
+   meme facon, `prefers-reduced-motion` compris) ; (c) l'echelle du glyphe (`FLAG_GLYPH_SCALE`,
+   passee a 1,45 le 2026-08-27, rayon de survol solidaire). Si une onde de choc est retenue pour
+   une action du crane, elle passe par `flagCaptureFx.ts` (`buildFlagCaptureFx` /
+   `drawFlagCaptureFx`, filtres par stat) et non par un second fichier d'anneaux. JAMAIS PAR
+   COPIE : regle des 2 copies du depot, et un lisere ou un battement recopie diverge du modele au
+   premier reglage — l'ecart est invisible parce que credible.
 8. Regles inchangees : seuils avant mesure, denominateurs publies, un seul decodage filmdec par
    process, aucune base en ecriture, JAMAIS `git add -A`, jamais d'attente passive, decouvertes au
    registre.

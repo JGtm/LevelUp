@@ -45,10 +45,18 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import type { KillEvent } from '@/features/match-view/_momentum'
 import { useSettings } from '@/features/settings/queries'
-import { staticAssetURL } from '@/lib/staticAssets'
+import { seededRandom, soundUrlOf } from './replayAudioMix'
 
 import { persistPreference, readStoredFlag, readStoredNumber } from './replayPreferences'
-import { endMatchSounds, endMatchSoundStems, type EndMatchSoundSpec } from './endMatchSound'
+import {
+  END_FFA_WIN_VOICE_STEMS,
+  END_MUSIC_STEMS,
+  END_VOICE_STEMS,
+  endMatchSounds,
+  endMatchSoundStems,
+  type EndMatchSoundSpec,
+} from './endMatchSound'
+import type { ReplayLocale } from './i18n'
 import { ReplayAudioPlayer } from './replayAudio'
 import type { ReplayDocumentReady } from './replayNormalize'
 import { distanceChain, drawVariation } from './weaponSoundLogic'
@@ -60,6 +68,13 @@ import {
   type SoundCategory,
   type SoundCategoryFilter,
 } from './replaySound'
+import {
+  allyTeamFromScoreboard,
+  sideResolverFromScoreboard,
+  type ScoreboardSide,
+} from './objectiveSound'
+import { ROUND_OVER_SOUND_STEMS } from './roundOverSound'
+import { pickVariantStem, stemsOf, type ReplaySoundEvent } from './replaySoundVariants'
 import {
   advanceSoundCursor,
   resyncSoundCursor,
@@ -78,6 +93,30 @@ const SOUND_CATEGORIES_OFF_KEY = 'replay-sound-categories-off'
 export const SOUND_VOLUME_DEFAULT = 0.7
 
 /** Ce que le composant reçoit : un état à afficher, des commandes, un battement. */
+/** Ce que l'export hors temps reel mixe : la piste que la page joue, telle quelle. */
+export interface ReplayExportTrack {
+  timeline: readonly ReplaySoundEvent[]
+  /** Les prises de FIN DE PARTIE : elles n'ont pas d'instant sur la piste. */
+  endMatchStems: readonly string[]
+  /**
+   * QUELS STEMS SONT DE LA VOIX, ET LESQUELS SONT DE LA MUSIQUE — pour les pistes separees du
+   * clip exporte. Tout ce qui n'y figure pas est un BRUITAGE : c'est le cas de tres loin le plus
+   * courant, et le defaut le plus sur (un son mal classe reste dans le mixage complet).
+   *
+   * La VOIX ne se limite pas a la fin de match : l'annonceur dit aussi la fin de MANCHE, et ce
+   * son-la vit dans la piste, mele aux bruitages.
+   */
+  families: { voice: readonly string[]; music: readonly string[] }
+  /** Reglage d'instance de la variation d'arme, lu a l'appel (page admin). */
+  variationPercent: number
+  /**
+   * Reglage d'instance de DISTANCE (page admin). L'export pose la meme chaine attenuation +
+   * passe-bas que le lecteur : sans lui, le clip sonnerait plus fort et plus brillant que la
+   * page, ce qui contredit « la trace fidele ».
+   */
+  distancePercent: number
+}
+
 export interface ReplaySound {
   /** La piste porte au moins un son : sinon, pas de commande à offrir. INDÉPENDANT du
    *  filtre par catégorie — tout décocher ne doit pas faire disparaître le panneau. */
@@ -116,6 +155,13 @@ export interface ReplaySound {
    * cours de route passerait pour un fichier abîmé.
    */
   recordingTrack: () => MediaStreamTrack | null
+  /**
+   * CE QUE L'EXPORT HORS TEMPS RÉEL MIXE (`replayAudioMix.ts`). La piste n'est PAS reconstruite
+   * là-bas : c'est celle que la page joue, donc le clip ne peut ni inventer un son ni en
+   * manquer un. `endMatchStems` porte les prises de fin de partie, qui n'ont pas d'instant sur
+   * la piste — elles se posent sur la borne de fin.
+   */
+  exportTrack: () => ReplayExportTrack
 }
 
 /** Lit les catégories COUPÉES ; une valeur inconnue (ancienne clé, JSON corrompu) est
@@ -150,6 +196,7 @@ function useSoundCategoryFilter(): {
     grenade: !categoriesOff.has('grenade'),
     melee: !categoriesOff.has('melee'),
     equipment: !categoriesOff.has('equipment'),
+    objective: !categoriesOff.has('objective'),
   }), [categoriesOff])
 
   const toggleCategory = useCallback((category: SoundCategory) => {
@@ -177,12 +224,19 @@ function hasSoundEvents(doc: ReplayDocumentReady, kills: KillEvent[], t0Ms: numb
  *  n'ont pas d'instant sur l'horloge — les prises de la fin de partie, dont le tirage n'aura
  *  lieu qu'à l'arrivée en fin. */
 function soundURLsFor(
-  timeline: readonly { stem: string }[],
+  timeline: readonly { stem: string; variants?: readonly string[] }[],
   extra: readonly string[],
 ): Map<string, string> {
   const urls = new Map<string, string>()
-  for (const stem of [...timeline.map((e) => e.stem), ...extra]) {
-    if (!urls.has(stem)) urls.set(stem, staticAssetURL('sound', stem, '.wav'))
+  for (const e of timeline) {
+    // TOUTES les variantes sont préchargées, pas seulement celle qui sortira du tirage : le
+    // tirage a lieu à la lecture, et un fichier pas encore décodé y serait un silence.
+    for (const stem of stemsOf(e)) {
+      if (!urls.has(stem)) urls.set(stem, soundUrlOf(stem))
+    }
+  }
+  for (const stem of extra) {
+    if (!urls.has(stem)) urls.set(stem, soundUrlOf(stem))
   }
   return urls
 }
@@ -196,21 +250,26 @@ function soundURLsFor(
  */
 function useInstanceSoundTuning(playerRef: { current: ReplayAudioPlayer | null }): {
   variationPercentRef: { current: number }
+  /** MEME NATURE QUE LA VARIATION : une REF, parce que l'export la lit a son lancement et non
+   *  pendant un rendu (lire une ref au rendu rend une valeur arbitraire). */
+  distancePercentRef: { current: number }
   apply: (player: ReplayAudioPlayer) => void
 } {
   const { data: settings } = useSettings()
   const variationPercent = settings?.replay_sound_variation_percent ?? 100
   const distancePercent = settings?.replay_sound_distance_percent ?? 0
   const variationPercentRef = useRef(variationPercent)
+  const distancePercentRef = useRef(distancePercent)
   const apply = useCallback(
     (player: ReplayAudioPlayer) => player.setDistance(distanceChain(distancePercent)),
     [distancePercent],
   )
   useEffect(() => {
     variationPercentRef.current = variationPercent
+    distancePercentRef.current = distancePercent
     if (playerRef.current) apply(playerRef.current)
-  }, [variationPercent, apply, playerRef])
-  return { variationPercentRef, apply }
+  }, [variationPercent, distancePercent, apply, playerRef])
+  return { variationPercentRef, distancePercentRef, apply }
 }
 
 export function useReplaySound(
@@ -218,8 +277,20 @@ export function useReplaySound(
   kills: KillEvent[] | undefined,
   t0Ms: number | undefined,
   speed: number,
+  // Le tableau de score, d'où se DÉDUIT le camp de l'auteur d'une action d'objectif (résolveur
+  // pur : `sideResolverFromScoreboard`). Absent, ou sans ligne « moi » : les actions qui ont
+  // deux variantes d'équipe restent MUETTES — le rejeu ne devine jamais un camp, même règle
+  // que l'encre des calques.
+  scoreboard?: readonly ScoreboardSide[],
   endMatch: EndMatchSoundSpec | null = null,
+  // La LANGUE de l'interface : elle ne sert QU'au son « manche terminée » (voix d'annonceur,
+  // `roundOverSound.ts`), la seule entrée locale-aware de la piste. Absente, ce son se tait.
+  locale?: ReplayLocale,
 ): ReplaySound {
+  const sideOfXuid = useMemo(() => sideResolverFromScoreboard(scoreboard), [scoreboard])
+  // Le camp allié EN NUMÉRO : les sons d'état de zone joignent sur le propriétaire d'une zone,
+  // pas sur le xuid d'un joueur. Même lecture du tableau de score que le résolveur ci-dessus.
+  const allyTeam = useMemo(() => allyTeamFromScoreboard(scoreboard), [scoreboard])
   const [on, setOn] = useState(() => readStoredFlag(SOUND_ON_KEY, false))
   const [volume, setVolumeState] = useState(() =>
     readStoredNumber(SOUND_VOLUME_KEY, SOUND_VOLUME_DEFAULT, (v) => v > 0 && v <= 1),
@@ -231,8 +302,8 @@ export function useReplaySound(
   // Piste JOUÉE, catégories coupées retirées À LA CONSTRUCTION (jamais en aval, dans le
   // lecteur) ; DISPONIBILITÉ DU PANNEAU indépendante de ce filtre (hasSoundEvents ci-dessus).
   const timeline = useMemo(
-    () => buildSoundTimeline(doc, kills ?? [], t0Ms ?? 0, categories),
-    [doc, kills, t0Ms, categories],
+    () => buildSoundTimeline(doc, kills ?? [], t0Ms ?? 0, categories, sideOfXuid, allyTeam, locale),
+    [doc, kills, t0Ms, categories, sideOfXuid, allyTeam, locale],
   )
   const hasAnySound = useMemo(
     () => hasSoundEvents(doc, kills ?? [], t0Ms ?? 0),
@@ -319,6 +390,14 @@ export function useReplaySound(
   }, [openPlayer])
 
   const toggle = useCallback(() => {
+    // RIEN À COMMANDER, RIEN NE BOUGE (correctif du 2026-08-28, revue R1). Le bouton du son ne
+    // se rend pas quand le match n'a aucun son — mais le RACCOURCI CLAVIER, lui, n'a pas de
+    // rendu à respecter : « M » sur un tel match basculait la préférence, la PERSISTAIT
+    // (`SOUND_ON_KEY`) et ouvrait un lecteur, sans qu'un seul pixel ne change à l'écran. Le
+    // rejeu suivant démarrait alors dans l'état inverse de celui qu'on croyait avoir laissé.
+    // La garde vit ICI, chez le propriétaire de l'état, et pas dans le clavier : c'est le seul
+    // endroit qui la rend vraie pour TOUS les appelants, présents et à venir.
+    if (!hasAnySound) return
     // LE PREMIER CLIC APRÈS UN RECHARGEMENT ACTIVE, IL NE COUPE PAS (correctif du 2026-08-27).
     // La préférence est à « activé » mais aucun lecteur n'existe : l'état affiché et l'état
     // réel se contredisent, et basculer la préférence à « coupé » ferait payer à l'utilisateur
@@ -336,7 +415,7 @@ export function useReplaySound(
     if (next) openPlayer()
     else playerRef.current?.setVolume(0)
     setOn(next)
-  }, [openPlayer])
+  }, [openPlayer, hasAnySound])
 
   const setVolume = useCallback((v: number) => {
     const clamped = Math.min(Math.max(v, 0), 1)
@@ -371,11 +450,15 @@ export function useReplaySound(
     const { cursor, fire } = advanceSoundCursor(tl, cursorRef.current, ms)
     cursorRef.current = cursor
     for (const e of fire) {
-      const url = urlsRef.current.get(e.stem)
+      // LE TIRAGE DE VARIANTE A LIEU ICI, pas à la construction de la piste : une piste est
+      // bâtie une fois pour tout le match, y tirer ferait rejouer le même fichier à chaque
+      // occurrence du geste — exactement ce que la variante évite (`replaySoundVariants.ts`).
+      const stem = pickVariantStem(e)
+      const url = urlsRef.current.get(stem)
       if (!url) continue
       // Le tirage de variation ne concerne que les ARMES : la table est keyee par stem
       // d'arme, tout autre stem se joue tel quel (drawVariation rend le neutre exact).
-      player.play(url, drawVariation(WEAPON_SOUND_VARIATIONS[e.stem], tuning.variationPercentRef.current))
+      player.play(url, drawVariation(WEAPON_SOUND_VARIATIONS[stem], tuning.variationPercentRef.current))
     }
   }, [tuning])
 
@@ -396,6 +479,25 @@ export function useReplaySound(
     }
   }, [])
 
+  // LA PISTE POUR L'EXPORT SE LIT À L'APPEL, JAMAIS AU RENDU — même patron que
+  // `recordingTrack` juste au-dessus, et pour la même raison : `variationPercentRef` est une
+  // REF (réglage d'instance de la page admin). La lire pendant le rendu rendrait une valeur
+  // arbitraire et casserait la mémoïsation, ce que le lint du compilateur React signale.
+  const exportTrack = useCallback(
+    (): ReplayExportTrack => ({
+      timeline: timelineRef.current,
+      // `endMatchSounds` et NON `endMatchSoundStems` : le second est la liste de
+      // PRECHARGEMENT (toutes les prises possibles), le premier ce qui JOUE reellement — une
+      // voix tiree, plus la musique. Les confondre faisait jouer les deux prises a la fois.
+      // Le tirage est SEME pour que deux exports du meme match sonnent pareil (decision D7).
+      endMatchStems: endMatchSoundsFor(endMatchRef.current),
+      families: soundFamiliesFor(endMatchRef.current, locale),
+      variationPercent: tuning.variationPercentRef.current,
+      distancePercent: tuning.distancePercentRef.current,
+    }),
+    [tuning],
+  )
+
   return {
     available: hasAnySound,
     on,
@@ -409,5 +511,42 @@ export function useReplaySound(
     tick,
     endMatch: playEndMatch,
     recordingTrack,
+    exportTrack,
   }
+}
+
+/**
+ * endMatchSoundsFor — les prises de fin QUE L'EXPORT JOUERA, tirage seme.
+ *
+ * Le chemin temps reel tire au hasard a chaque arrivee en fin ; un fichier, lui, doit sonner
+ * pareil a chaque export du meme match (decision D7 du plan d'export).
+ */
+function endMatchSoundsFor(spec: EndMatchSoundSpec | null): string[] {
+  if (!spec) return []
+  return endMatchSounds(spec.outcome, spec.ffa, spec.locale, seededRandom(spec.outcome.length))
+}
+
+/**
+ * soundFamiliesFor — quels stems sont de la VOIX, quels stems sont de la MUSIQUE.
+ *
+ * On liste TOUTES les prises possibles, pas seulement celle qui a ete tiree : le classement doit
+ * valoir quel que soit le tirage, et un stem de trop dans la liste ne coute rien (rien ne le
+ * jouera).
+ *
+ * LA VOIX DE FIN DE MANCHE EST DE LA VOIX. Elle vit dans la piste, melee aux bruitages, et c'est
+ * la seule voix qu'un extrait de milieu de match peut contenir.
+ */
+function soundFamiliesFor(
+  spec: EndMatchSoundSpec | null,
+  /** Absente (anciens appels), la voix de fin de manche n'est pas dans la piste non plus. */
+  locale: ReplayLocale | undefined,
+): { voice: readonly string[]; music: readonly string[] } {
+  const voice: string[] = locale ? [ROUND_OVER_SOUND_STEMS[locale]] : []
+  const music: string[] = []
+  if (spec) {
+    voice.push(...END_FFA_WIN_VOICE_STEMS[spec.locale])
+    for (const parIssue of Object.values(END_VOICE_STEMS)) voice.push(...parIssue[spec.locale])
+    music.push(...Object.values(END_MUSIC_STEMS))
+  }
+  return { voice, music }
 }

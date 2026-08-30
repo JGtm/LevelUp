@@ -1,0 +1,16 @@
+VERDICT GATE 3 (manche 1 de d9781168) : offset*=-2.0 s (aligne 9/9 prises) ; prises reproduites a*=9/9 ; porteurs d'intervalle b*=8/9 ; gate=min(a,b)=8/9 (seuil 8/9)
+
+=== CONFRONTATION MANCHE 1 (d9781168), intervalle par intervalle ===
+offset d'horloge applique : -2000 ms (film = terrain + offset)
+
+[ 48- 65s] terrain=SHROOM GOD3261   | prise decodee=true  | porteur reconstruit=SHROOM GOD3261   (11 tics) | prise=OK porteur=OK
+[ 65-124s] terrain=scuderiasven     | prise decodee=true  | porteur reconstruit=scuderiasven     (54 tics) | prise=OK porteur=OK
+[124-130s] terrain=LadyJezz         | prise decodee=true  | porteur reconstruit=LadyJezz         (2 tics) | prise=OK porteur=OK
+[130-155s] terrain=L0UDEN13         | prise decodee=true  | porteur reconstruit=L0UDEN13         (21 tics) | prise=OK porteur=OK
+[155-160s] terrain=scuderiasven     | prise decodee=true  | porteur reconstruit=L0UDEN13         (1 tics) | prise=OK porteur=X
+[160-180s] terrain=LadyJezz         | prise decodee=true  | porteur reconstruit=LadyJezz         (7 tics) | prise=OK porteur=OK
+[180-189s] terrain=L0UDEN13         | prise decodee=true  | porteur reconstruit=L0UDEN13         (1 tics) | prise=OK porteur=OK
+[189-219s] terrain=DinoR00          | prise decodee=true  | porteur reconstruit=DinoR00          (26 tics) | prise=OK porteur=OK
+[219-400s] terrain=SHROOM GOD3261   | prise decodee=true  | porteur reconstruit=SHROOM GOD3261   (4 tics) | prise=OK porteur=OK
+
+BILAN : prises a=9/9, porteurs b=8/9, gate=min=8/9 (seuil 8/9)

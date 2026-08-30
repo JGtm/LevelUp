@@ -1,0 +1,41 @@
+=== LOT RESOLUTION — R3 ASSAUT — A1 IDENTITE BOMBE — LOG FIGE (R3_a1_rejeu.log) ===
+Protocole: PROTOCOLE_RESOLUTION_VIP_ASSAUT.md (R3). assaut_a1_identite_test.go INCHANGE
+(seuils a1DebutMancheMS=5000, a1RemiseMaxMS=15000, attDrapeauRayonM=3.0). Sites CANDIDATS
+C2 donnes EN ENTREE (A1_SITES=C2_sites_candidats.json) — arbitrage lot C, scoped, sans
+polluer le catalogue partage. Corpus Assaut 9 films (attCartes).
+
+--- PAR FILM : mot 0x3FEE4FCF (site ET coincidence = 'les deux'), et GATE (candidats uniques) ---
+35b75a31 (Origin)     : 62 creations, 5 au site, 0 coinc, 0 les deux (ecart classe min 4074 ms) ; GATE 0 candidat
+ce083875 (Origin)     : 62 creations, 3 au site, 1 coinc, 0 les deux ; GATE 0 candidat
+69b16f5d (Origin)     : 25 creations, 3 au site, 4 coinc, 2 LES DEUX ; GATE 1 candidat
+3d58eb37 (Absolution) : 16 creations, 3 au site, 1 coinc, 1 LES DEUX ; GATE 1 candidat
+34bb3bc8 (Rat's Nest) : NON EXPLOITABLE (0 creation resolue au catalogue d'armes ; NI POUR NI CONTRE)
+df8fcbef (Curfew)     : 14 creations, 8 au site, 2 coinc, 2 LES DEUX ; GATE 1 candidat
+c75f33b8 (Curfew)     : 13 creations, 9 au site, 3 coinc, 2 LES DEUX ; GATE 1 candidat
+9f57c612 (Curfew)     : 16 creations, 10 au site, 3 coinc, 3 LES DEUX ; GATE 1 candidat
+1c01e34f (Urban Raid) : 32 creations, 20 au site, 4 coinc, 3 LES DEUX ; GATE 1 candidat
+
+--- TEMOIN (selectivite interne) ---
+Aucun AUTRE mot ecarte ne reunit site ET coincidence sur AUCUN film (272 mots ecartes sur
+35b75a31, 0 les deux hors 0x3FEE4FCF ; idem partout). Chaque film candidat a EXACTEMENT 1
+candidat, toujours 0x3FEE4FCF. Le proche 0xE9E7FF79 (site 2/coinc 4-8) reste a 0 les deux.
+TEMOIN = 0.
+
+--- VERDICT GATE A1.3 (frozen : UN mot, >= 2 films, temoin 0) : TENU ---
+Mot elu : 0x3FEE4FCF, sur 6/8 films exploitables (69b16f5d, 3d58eb37, df8fcbef, c75f33b8,
+9f57c612, 1c01e34f), temoin 0. C'est le mot Assaut-specifique deja publie (7/7 films au
+balayage lot A). Le gate frozen est TENU.
+
+--- RESERVES CONSIGNEES (a lever avant toute publication production) ---
+R1. ALIASING DES SITES : les hashs candidats C2 (-1843278509 base, -1537427652 centre) sont
+    des navpoints GENERIQUES, MESURES IDENTIQUES sur Catalyst (4 base + 2 centre) — carte NON
+    Assaut. Ils ne sont PAS specifiques a la bombe ; le 'site' est un anchor base/centre a
+    fort trafic. C'est pourquoi le temoin spatial 12 m du lot C etait insaturable.
+R2. COMPTE ELEVE : 0x3FEE4FCF a 13-62 creations par film — incompatible avec UNE bombe unique
+    (~3 spawns/manche). Beaucoup de creations ne sont NI au site NI coincidentes.
+R3. ECHEC SUR LES 2 FILMS AU PLUS FORT COMPTE : sur 35b75a31 et ce083875 (62 creations), 0 les
+    deux — la coincidence temporelle manque justement la ou l'objet est le plus present.
+Le gate frozen est TENU (je ne lui ajoute pas de critere apres coup), mais ces reserves
+empechent d'ancrer une PUBLICATION production des vies libres sur cette identite sans un
+controle de robustesse dedie (patron du crane libre : born-at-site >= 90 %, temoin qui
+s'effondre). Cf. verdict de publication R3.2 et condition de reprise.

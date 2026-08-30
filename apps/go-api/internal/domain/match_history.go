@@ -91,6 +91,13 @@ type MatchHistoryRawRow struct {
 	PerfPlacementTotal *int
 	MyTeamScore        *int // score de l'équipe du joueur (depuis team_id)
 	EnemyTeamScore     *int // score de l'équipe adverse
+	// MyRoundsWon / EnemyRoundsWon / RoundsTotal : les MANCHES du match, du point de vue
+	// du joueur. Sur une variante déclarée dans regulation.toml [rounds_decide], ce sont
+	// elles qui disent le résultat — le score en points y est un cumul qui peut donner la
+	// victoire au perdant. Nil = inconnu → l'affichage garde les points.
+	MyRoundsWon    *int
+	EnemyRoundsWon *int
+	RoundsTotal    *int
 	// DominanceFlag : 0=none, 1=domination, 2=humiliation, 3=remontada,
 	// 4=débandade, 5=contre-remontada (cf. canonical.DominanceFlag).
 	// Peuplé par sync.BackfillDominanceFlags via engine.RunBackfillComebackBadges.
@@ -114,28 +121,32 @@ type PaginationMeta struct {
 
 // MatchHistoryRow représente une ligne dans la table historique des parties.
 type MatchHistoryRow struct {
-	MatchID                  string    `json:"match_id"`
-	StartTime                time.Time `json:"start_time"`
-	StartTimeLabel           string    `json:"start_time_label"`
-	OutcomeCode              int       `json:"outcome_code"`
-	OutcomeLabel             string    `json:"outcome_label"`
-	ScoreLabel               string    `json:"score_label"`
-	MapUI                    *string   `json:"map_ui"`
-	ModeUI                   *string   `json:"mode_ui"`
-	PlaylistLabel            *string   `json:"playlist_label"`
-	TeamMMR                  *float64  `json:"team_mmr"`
-	EnemyMMR                 *float64  `json:"enemy_mmr"`
-	DeltaMMR                 *float64  `json:"delta_mmr"`
-	WinRateHist              *float64  `json:"win_rate_hist"`
-	WinRateHistTotal         *int      `json:"win_rate_hist_total"`
-	PerformanceScoreRelative *int      `json:"performance_score_relative"`
-	PerfTier                 int       `json:"perf_tier,omitempty"` // 1-5 ; 0 si score absent
-	KDA                      *float64  `json:"kda,omitempty"`
-	Kills                    int       `json:"kills,omitempty"`
-	Deaths                   int       `json:"deaths,omitempty"`
-	Assists                  int       `json:"assists,omitempty"`
-	SkillTierLabel           *string   `json:"skill_tier_label,omitempty"`  // "Diamant IV" ou nil
-	SkillRatingType          *string   `json:"skill_rating_type,omitempty"` // "CSR" | "LUSR" | nil
+	MatchID        string    `json:"match_id"`
+	StartTime      time.Time `json:"start_time"`
+	StartTimeLabel string    `json:"start_time_label"`
+	OutcomeCode    int       `json:"outcome_code"`
+	OutcomeLabel   string    `json:"outcome_label"`
+	ScoreLabel     string    `json:"score_label"`
+	// ScoreKind dit CE QUE porte ScoreLabel : "points" (score du mode rendu par l'API) ou
+	// "rounds" (manches gagnées). Alimente l'infobulle d'en-tête de colonne, qui explique
+	// que la colonne montre les manches quand le mode s'y joue. Vide = pas de score.
+	ScoreKind                string   `json:"score_kind,omitempty"`
+	MapUI                    *string  `json:"map_ui"`
+	ModeUI                   *string  `json:"mode_ui"`
+	PlaylistLabel            *string  `json:"playlist_label"`
+	TeamMMR                  *float64 `json:"team_mmr"`
+	EnemyMMR                 *float64 `json:"enemy_mmr"`
+	DeltaMMR                 *float64 `json:"delta_mmr"`
+	WinRateHist              *float64 `json:"win_rate_hist"`
+	WinRateHistTotal         *int     `json:"win_rate_hist_total"`
+	PerformanceScoreRelative *int     `json:"performance_score_relative"`
+	PerfTier                 int      `json:"perf_tier,omitempty"` // 1-5 ; 0 si score absent
+	KDA                      *float64 `json:"kda,omitempty"`
+	Kills                    int      `json:"kills,omitempty"`
+	Deaths                   int      `json:"deaths,omitempty"`
+	Assists                  int      `json:"assists,omitempty"`
+	SkillTierLabel           *string  `json:"skill_tier_label,omitempty"`  // "Diamant IV" ou nil
+	SkillRatingType          *string  `json:"skill_rating_type,omitempty"` // "CSR" | "LUSR" | nil
 	// SkillRankImageURL : URL de l'image du badge de palier, résolue par
 	// l'adaptateur d'assets du TITRE (analysis.SkillBadgeURL + résolveur injecté).
 	// Nil quand le titre n'expose pas de badge, que le palier est en placement ou

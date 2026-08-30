@@ -43,11 +43,19 @@ import {
  *
  * LA RÈGLE EST « PLAFOND = PLUS LONG FICHIER LIVRÉ », arrondi au-dessus : un nombre plus bas
  * tronquerait un son SANS que rien ne le dise, un nombre bien plus haut ne protégerait plus de
- * rien. Il valait 4,0 s tant que les explosions et les équipements étaient les plus longs
- * (borne de leur recette de coupe) ; il vaut 12,0 s depuis le lot C du 2026-08-27, où les
- * fanfares de fin de partie entrent au catalogue — la plus longue, l'égalité, fait 11,67 s.
- * Ces trois-là sont les seuls fichiers du dossier au-dessus de 4 s, et le garde-rail d'assets
- * tient toujours les autres sous leur propre borne (`replaySoundAssets.guard.test.ts`).
+ * rien. Historique des relevés (fusion du 2026-08-27, deux lots convergents) : 4,0 s tant que
+ * les explosions et équipements étaient les plus longs ; 4 -> 6 s quand la reconstitution des
+ * gestes Wwise a révélé qu'un conteneur déclare COMBIEN de fois il se joue ET À QUEL RYTHME
+ * (`play_004_mod_mp_ctf_flag_taken_team` 4,588 s, `objective_zone_new` 5,15 s) ; 6 -> 12 s
+ * quand les fanfares de FIN DE PARTIE entrent au catalogue — la plus longue, l'égalité, fait
+ * 11,67 s. Le plafond n'est pas là pour raccourcir un geste — le tronquer en silence est
+ * exactement ce que ce commentaire interdit — mais pour qu'un asset livré par erreur en pleine
+ * longueur (une source de 30 s) ne tienne pas une voix pendant tout un échange. C'est le
+ * garde-rail `replaySoundAssets.guard.test.ts` qui pose la question à chaque livraison.
+ *
+ * CE QUE ÇA NE CHANGE PAS : ce qui sature les voix est le TIR, et un tir tient toujours 1,2 s.
+ * Les gestes longs (vol de drapeau, déplacement de colline, fanfare de fin) sont les plus
+ * rares de la piste.
  */
 export const SOUND_CUT_MAX_S = 12.0
 

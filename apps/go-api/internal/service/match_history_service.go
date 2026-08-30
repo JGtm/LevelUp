@@ -112,6 +112,10 @@ type MatchHistoryService struct {
 	// du flag « Prolongation » des lignes Explorer/historique. Nil/vide → aucun
 	// flag (titre sans mesure). Jamais de comparaison de slug : la table EST le titre.
 	regulationSeconds map[string]int
+	// roundsDecide : game_variant_name → le RÉSULTAT se lit en MANCHES (même
+	// regulation.toml, table [rounds_decide]). Nil/vide → tout reste en points, le
+	// comportement d'avant le 2026-08-29. Jamais de comparaison de slug : la table EST le titre.
+	roundsDecide map[string]bool
 	// skillBadgeResolver : résolveur d'URL d'image de badge de palier du TITRE
 	// courant, injecté par le wiring (jamais dérivé d'un slug ici — ADR 0025).
 	// Nil → colonne « Rang » en texte localisé, comme avant (H5, titre sans badge).
@@ -166,6 +170,14 @@ func (s *MatchHistoryService) WithRegulation(regulationSeconds map[string]int) *
 	return s
 }
 
+// WithRoundsDecide injecte la table `game_variant_name → le résultat se lit en MANCHES`
+// (regulation.toml [rounds_decide]). Sans injection, les lignes affichent le score de
+// l'API — jamais une régression.
+func (s *MatchHistoryService) WithRoundsDecide(roundsDecide map[string]bool) *MatchHistoryService {
+	s.roundsDecide = roundsDecide
+	return s
+}
+
 // WithSkillBadgeResolver injecte le résolveur d'URL d'image de badge de palier du
 // titre courant — même résolveur title-aware que la home (RecentMatchItem.
 // skill_rank_image_url). Sans injection : aucune image, la colonne « Rang » reste
@@ -213,6 +225,7 @@ func (s *MatchHistoryService) rowFormatters(replays port.ReplayAvailability) row
 	cfg := s.playlistDisplay
 	f.playlistLabel = func(rawFR string) string { return cfg.Display(rawFR) }
 	f.regulation = s.regulationSeconds
+	f.roundsDecide = s.roundsDecide
 	f.skillBadgeURL = s.skillBadgeResolver
 	if s.assetURL != nil {
 		gt := s.waypointPlayer

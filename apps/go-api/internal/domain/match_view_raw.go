@@ -66,6 +66,14 @@ type MatchMetaRaw struct {
 	// Ex: 50/47 pour Slayer, 3/1 pour CTF. Nil si FFA ou custom sans score.
 	Team0Score *int16
 	Team1Score *int16
+	// Team0RoundsWon / Team1RoundsWon / RoundsTotal : les MANCHES du match
+	// (match_registry, source CoreStats.RoundsWon/Lost/Tied). Sur une variante déclarée
+	// dans regulation.toml [rounds_decide], ce sont ELLES qui disent le résultat : le
+	// score en points y est un cumul sur toutes les manches, qui peut donner la victoire
+	// au perdant (mesure du 2026-08-29). Nil = inconnu → l'affichage garde les points.
+	Team0RoundsWon *int16
+	Team1RoundsWon *int16
+	RoundsTotal    *int16
 	// T0Ms : offset countdown pré-match en ms (Match Timeline T0, Phase 3).
 	// Dérivé de `epoch_ms(real_start_time AT TIME ZONE 'UTC') − epoch_ms(start_time)`.
 	// Nil si real_start_time absent → BuildForMatchMs retombe sur T0=0.
@@ -327,6 +335,18 @@ type KillSourceRaw struct {
 	// SourceTag : identifiant `jpt!` de l'effet de dégât fatal. Ne dépend d'aucune table
 	// de nommage — c'est l'adapter du titre qui le traduit en icône.
 	SourceTag uint32
+	// Headshot : le modificateur de dégât fatal (`source_category`) valait EXACTEMENT
+	// `killscope.CategoryHeadshot`, ET était UNANIME sur le couple (tueur, instant) — même
+	// garde que SourceTag (Q21b : `count(DISTINCT source_category) = 1`, même clause `HAVING`
+	// que le tag). PAS de pointeur : la seule PRÉSENCE de cette ligne dans le résultat de
+	// Q21b affirme déjà « connu et non ambigu » (comme SourceTag) — l'absence de ligne EST
+	// l'état « non mesurable/ambigu », jamais `false`.
+	//
+	// G.1 (2026-08-29) : oracle contre `match_participants.headshot_kills` (API officielle),
+	// filtre STRICT `= 'Headshot'` = 99,3 % d'accord ; `HeadshotMultiplier` INCLUS fait chuter
+	// à 84,4 % — jamais l'ajouter (verrouillé par killscope.IsHeadshotCategory +
+	// internal/archlint/no_raw_headshot_category_literal_test.go).
+	Headshot bool
 }
 
 // KillAssistRaw : l'ASSISTANCE d'une mort (Q21c), telle que le décodeur de film l'a
@@ -444,8 +464,15 @@ type MediaAssocRaw struct {
 	FilePath      string
 	Kind          string
 	ThumbnailPath *string
-	CaptureTime   *string
-	Liked         bool
+	// CaptureStartTime : début de capture (RFC3339), nil si la base ne le connaît
+	// pas. CaptureTime, lui, est la FIN de la capture — les deux sont distincts
+	// pour un clip et confondus pour une image.
+	CaptureStartTime *string
+	CaptureTime      *string
+	// DurationSeconds : durée du média arrondie à la seconde (la base la stocke
+	// en DOUBLE). Nil pour une image ou quand ffprobe n'a rien pu dériver.
+	DurationSeconds *int
+	Liked           bool
 }
 
 // PlayerAssistsModel contient les coefs OLS per-mode d'un joueur pour expected_assists.

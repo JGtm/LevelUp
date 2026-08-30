@@ -49,6 +49,25 @@ type MatchViewHeader struct {
 	// tokenCssVar(token). Empty si outcome inconnu.
 	OutcomeColorToken string `json:"outcome_color_token,omitempty"`
 	ScoreLabel        string `json:"score_label,omitempty"`
+	// ScoreKind dit CE QUE porte ScoreLabel : "points" (le score du mode rendu par l'API)
+	// ou "rounds" (des MANCHES gagnées). Sur les variantes déclarées dans
+	// regulation.toml [rounds_decide], le cumul de points peut donner la victoire au
+	// perdant — c'est le compte de manches qui tranche (mesure du 2026-08-29,
+	// `.ai/V7.5/RAPPORT_MANCHES_2026-08-29.md`). Vide = aucun score affiché.
+	// Le client s'en sert pour LOCALISER la mention « manches » : le serveur ne met aucun
+	// mot de langue dans le libellé.
+	ScoreKind string `json:"score_kind,omitempty"`
+	// ScoreMine / ScoreTheirs : les DEUX NOMBRES derrière ScoreLabel, dans l'unité de
+	// ScoreKind (des points, ou des manches gagnées). Le libellé suffit à l'en-tête, mais
+	// pas au rejeu : son écran de fin colore chaque camp séparément et a donc besoin des
+	// nombres, pas d'une chaîne à découper. Nil = aucun score connu.
+	ScoreMine   *int `json:"score_mine,omitempty"`
+	ScoreTheirs *int `json:"score_theirs,omitempty"`
+	// ScorePointsLabel : le score de l'API « X - Y », renseigné UNIQUEMENT quand
+	// ScoreKind vaut "rounds" — la vue match l'affiche en petit et grisé à côté du compte
+	// de manches (arbitrage utilisateur du 2026-08-29). Vide sinon : en lecture points, ce
+	// serait la même valeur que ScoreLabel.
+	ScorePointsLabel string `json:"score_points_label,omitempty"`
 	// DominanceFlag : true si un badge narratif (domination/humiliation/etc.)
 	// s'applique à ce match. Maintenu pour compatibilité ascendante avec les
 	// consommateurs front V0 qui n'attendent qu'un booléen.
@@ -294,6 +313,16 @@ type MatchHighlightEvent struct {
 	WeaponImageURL    string `json:"weapon_image_url,omitempty"`
 	WeaponImageTinted bool   `json:"weapon_image_tinted,omitempty"`
 
+	// Headshot : le dégât fatal était-il un tir à la tête ? Peuplé ssi la source de dégât est
+	// connue ET non ambiguë (cf. domain.KillSourceRaw.Headshot) — INDÉPENDAMMENT de la
+	// résolution d'icône ci-dessus : une catégorie peut être connue même quand
+	// `TitleAssetURLAdapter.KillSourceIcon` ne trouve aucune image pour le tag. Nil = non
+	// mesurable (film absent, passe non publiable, ou double kill ambigu sur la catégorie),
+	// JAMAIS false — même doctrine que KillerDamagePct ci-dessous. G.1 (2026-08-30) : filtre
+	// STRICT `source_category = 'Headshot'` uniquement (killscope.IsHeadshotCategory) ;
+	// `HeadshotMultiplier` fait chuter l'accord oracle de 99,3 % à 84,4 %, JAMAIS l'inclure.
+	Headshot *bool `json:"headshot,omitempty"`
+
 	// AssistState : l'état de la lecture d'ASSISTANCE de ce kill — TROIS valeurs qui ne
 	// se confondent JAMAIS (décodeur de film, cf. domain.KillAssistRaw) :
 	//   ""      (champ omis)  ON NE SAIT PAS — aucun kill-event apparié à cette mort ;
@@ -448,6 +477,15 @@ type MatchCombatTab struct {
 	// scoreboard. Nil si le viewer n'a aucun kill (le front rend null). Cf.
 	// .ai/V7/PLAN_FRAG_DISTRIBUTION_V2.md P3.
 	FragDistribution *FragDistribution `json:"frag_distribution,omitempty"`
+
+	// KillDistanceByWeapon : POC (LOT G.3, 2026-08-30, plan retours-utilisateur
+	// §3bis DEC-8) — kills mesurés et distance tueur-victime moyenne par arme,
+	// PAR JOUEUR (pas seulement le viewer), pour ce match. Vide/nil si aucun kill
+	// n'a de position mesurée (titre/serveur sans capture positions, backfill non
+	// joué, ou couverture du match sous le plancher mesuré 75,8 %) — dégradation
+	// propre, jamais d'erreur : le front n'affiche alors aucune carte. Périmètre
+	// fermé : arme et distance de l'ASSISTANT hors scope (cadrage utilisateur).
+	KillDistanceByWeapon []MatchKillDistancePlayer `json:"kill_distance_by_weapon,omitempty"`
 }
 
 // ---------------------------------------------------------------------------
@@ -713,7 +751,11 @@ type MatchAssociatedMedia struct {
 	Kind            string  `json:"kind"`
 	ThumbnailURL    *string `json:"thumbnail_url,omitempty"`
 	DurationSeconds *int    `json:"duration_seconds,omitempty"`
-	CaptureTime     *string `json:"capture_time,omitempty"`
+	// CaptureStartTime : DÉBUT de la capture (RFC3339). CaptureTime est la FIN —
+	// distinction indispensable à la piste Médias de la frise du rejeu, qui pose
+	// un clip sur son début (start si connu, sinon end − durée).
+	CaptureStartTime *string `json:"capture_start_time,omitempty"`
+	CaptureTime      *string `json:"capture_time,omitempty"`
 	// Liked : état du cœur DU VIEWER de la requête (comme MediaItem.Liked),
 	// pas un état global du média. Cf. Q24MatchMedia.
 	Liked bool `json:"liked"`

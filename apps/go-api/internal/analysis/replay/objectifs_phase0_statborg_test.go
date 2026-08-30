@@ -56,6 +56,12 @@ func objIdentites(src objectiveevents.FilmSource, deaths []Death) map[int]string
 	return objectiveevents.SlotIdentityFromDeaths(src, objDeathInstants(deaths))
 }
 
+// objRoundIdentites rend le pont slot statborg -> xuid PAR MANCHE, tel que la production le
+// calcule desormais pour les calques d'objectifs vivants (drapeau, couronne, porteur du crane).
+func objRoundIdentites(src objectiveevents.FilmSource, deaths []Death) objectiveevents.RoundIdentity {
+	return objectiveevents.ResolveRoundIdentity(objectiveevents.StatRecords(src), objDeathInstants(deaths))
+}
+
 // objTriplets rend, par slot statborg, le triplet final (frags, morts, assistances).
 // Diagnostic : c'est lui qui montre POURQUOI l'appariement par totaux echoue sur un film.
 func objTriplets(recs []objectiveevents.StatRecord) map[int][3]int64 {

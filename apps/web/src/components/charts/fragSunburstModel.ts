@@ -4,6 +4,7 @@
  * (react-refresh/only-export-components) et testable sans DOM.
  */
 import type { FragClassEntry } from '@/lib/api/types'
+import type { Locale } from '@/lib/i18n/locale'
 import { fragRoleDisplayLabel } from './fragRoleLabel'
 
 // ── Géométrie du sunburst (reprise fidèle de la maquette validée) ────────────────
@@ -47,6 +48,8 @@ export interface FragSunburstLabels {
   roleLabel: (role: string) => string
   formatValue: (n: number) => string
   formatShare: (n: number) => string
+  /** Locale d'affichage courante — choisit label/label_en pour les rôles OBJET (D2). */
+  locale: Locale
 }
 
 export interface SunArc {
@@ -131,7 +134,7 @@ function buildArcs(
         const col = colors.roleColor(c.class, i, roles.length)
         // Libellé résolu UNE fois (rôle canonique traduit, ou nom d'engin servi par
         // l'API pour les classes véhicule/tourelle) — cf. fragRoleDisplayLabel.
-        const roleText = fragRoleDisplayLabel(r, labels.roleLabel)
+        const roleText = fragRoleDisplayLabel(r, labels.locale, labels.roleLabel)
         arcs.push({
           key: `r-${c.class}-${r.role}`,
           d: arcPath(R1, R2, ra0, ra1),

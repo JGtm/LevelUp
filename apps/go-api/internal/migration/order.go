@@ -233,6 +233,7 @@ var canonicalOrder = []string{
 	"add_title_slug_to_world_csr_leaderboard",                  // shared (PMT-7)
 	"add_xuid_to_world_csr_leaderboard",                        // shared (B1)
 	"shared_create_kill_positions",                             // shared (positions monde par kill, ref inter-titres)
+	"shared_append_only_kill_positions_v1",                     // shared (G.2 : id PK + written_at + vue kill_positions_latest, éradique ART sur re-décodage)
 	"shared_create_match_commendations",                        // shared (commendations natives par match, ref inter-titres, AXE B)
 	"shared_match_commendations_add_progress",                  // shared (total à vie absolu au match — totaux commendations)
 	"add_player_count_to_match_registry",                       // shared (roster API attendu — oracle d'intégrité, fix #10)
@@ -244,6 +245,8 @@ var canonicalOrder = []string{
 	"shared_objective_stats_add_stockpile_extraction",          // shared (V721-02 : +18 colonnes Stockpile/Extraction/VIP + vue _latest recréée)
 	"shared_weapon_kills_v3",                                   // shared (attribution d'arme par kill, voie v3 pur-film)
 	"shared_match_weapon_shots_v1",                             // shared (J4 : ventilation des tirs par arme, append-only + vue _latest)
+	"add_team_rounds_to_match_registry",                        // shared (manches gagnées par camp — le score en points ne dit pas le résultat sur un mode à manches)
+	"refresh_views_after_team_rounds",                          // shared (v_match_full fige son SELECT * à sa création : la recréer pour qu'elle expose les manches)
 	// S2 — DERNIERS de l'ordre A DESSEIN : ils réparent le DEFAULT de `written_at` sur
 	// les tables déjà créées, donc ils doivent suivre TOUTE création de table.
 	"written_at_default_utc_shared",        // shared

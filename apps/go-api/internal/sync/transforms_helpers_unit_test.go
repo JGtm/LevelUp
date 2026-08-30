@@ -387,3 +387,158 @@ func TestExtractTeamScoresByID_MissingStats(t *testing.T) {
 		t.Error("should return nil when Stats missing")
 	}
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ExtractTeamRoundsByID — les témoins viennent du corpus mesuré le 2026-08-29
+// (.ai/V7.5/RAPPORT_MANCHES_2026-08-29.md).
+// ─────────────────────────────────────────────────────────────────────────────
+
+// roundsPayload fabrique un payload à deux camps porteur des trois compteurs de manches.
+func roundsPayload(w0, l0, t0, w1, l1, t1 int) map[string]any {
+	team := func(id, w, l, tie int) map[string]any {
+		return map[string]any{
+			"TeamId": float64(id),
+			"Stats": map[string]any{
+				"CoreStats": map[string]any{
+					"RoundsWon":  float64(w),
+					"RoundsLost": float64(l),
+					"RoundsTied": float64(tie),
+				},
+			},
+		}
+	}
+	return map[string]any{"Teams": []any{team(0, w0, l0, t0), team(1, w1, l1, t1)}}
+}
+
+func TestExtractTeamRoundsByID_OddballTroisManches(t *testing.T) {
+	// Témoin 293a763e (Arena:Oddball) : 2 manches à 1, alors que les points disent 181-186.
+	w0, w1, total := ExtractTeamRoundsByID(roundsPayload(2, 1, 0, 1, 2, 0))
+	if w0 == nil || *w0 != 2 {
+		t.Errorf("manches équipe 0 = %v, want 2", w0)
+	}
+	if w1 == nil || *w1 != 1 {
+		t.Errorf("manches équipe 1 = %v, want 1", w1)
+	}
+	if total == nil || *total != 3 {
+		t.Errorf("total = %v, want 3", total)
+	}
+}
+
+func TestExtractTeamRoundsByID_ModeSansManche(t *testing.T) {
+	// Slayer : le vainqueur porte 1/0/0 — un total de 1, donc pas un mode à manches.
+	w0, w1, total := ExtractTeamRoundsByID(roundsPayload(1, 0, 0, 0, 1, 0))
+	if w0 == nil || *w0 != 1 || w1 == nil || *w1 != 0 {
+		t.Errorf("manches = %v/%v, want 1/0", w0, w1)
+	}
+	if total == nil || *total != 1 {
+		t.Errorf("total = %v, want 1", total)
+	}
+}
+
+func TestExtractTeamRoundsByID_MancheNulleComptee(t *testing.T) {
+	// Témoin adb93fb7 : 1 manche chacun + 1 nulle → 3 manches jouées, à égalité.
+	w0, w1, total := ExtractTeamRoundsByID(roundsPayload(1, 1, 1, 1, 1, 1))
+	if w0 == nil || *w0 != 1 || w1 == nil || *w1 != 1 {
+		t.Errorf("manches = %v/%v, want 1/1", w0, w1)
+	}
+	if total == nil || *total != 3 {
+		t.Errorf("total = %v, want 3 (la manche nulle compte comme jouée)", total)
+	}
+}
+
+func TestExtractTeamRoundsByID_AbandonTotalPrisAuMax(t *testing.T) {
+	// Témoin 27a69918 : un camp crédité 0/0/0, l'autre 1/0/0. Lire un seul camp
+	// ferait passer le match pour « sans manche » ; le max rend 1.
+	_, _, total := ExtractTeamRoundsByID(roundsPayload(0, 0, 0, 1, 0, 0))
+	if total == nil || *total != 1 {
+		t.Errorf("total = %v, want 1 (max des deux camps)", total)
+	}
+}
+
+func TestExtractTeamRoundsByID_SansTeams(t *testing.T) {
+	w0, w1, total := ExtractTeamRoundsByID(map[string]any{})
+	if w0 != nil || w1 != nil || total != nil {
+		t.Error("aucun bloc Teams exploitable doit rendre nil, nil, nil")
+	}
+}
+
+func TestExtractTeamRoundsByID_CampAbsentResteNil(t *testing.T) {
+	// FFA / camp au-delà de 0-1 : le camp absent reste nil, jamais un zéro substitué.
+	match := map[string]any{
+		"Teams": []any{
+			map[string]any{
+				"TeamId": float64(0),
+				"Stats": map[string]any{
+					"CoreStats": map[string]any{"RoundsWon": float64(2), "RoundsLost": float64(0), "RoundsTied": float64(0)},
+				},
+			},
+		},
+	}
+	w0, w1, total := ExtractTeamRoundsByID(match)
+	if w0 == nil || *w0 != 2 {
+		t.Errorf("manches équipe 0 = %v, want 2", w0)
+	}
+	if w1 != nil {
+		t.Error("équipe 1 absente doit rester nil")
+	}
+	if total == nil || *total != 2 {
+		t.Errorf("total = %v, want 2", total)
+	}
+}
+
+func TestExtractTeamRoundsByID_StatsManquantes(t *testing.T) {
+	match := map[string]any{"Teams": []any{map[string]any{"TeamId": float64(0)}}}
+	w0, w1, total := ExtractTeamRoundsByID(match)
+	if w0 != nil || w1 != nil || total != nil {
+		t.Error("un bloc Teams sans CoreStats ne doit rien affirmer")
+	}
+}
+
+// L'INDEXATION EST FAITE PAR TeamId, JAMAIS PAR POSITION — et ce témoin est le seul qui le
+// prouve : dans tous les autres, `Teams[0]` porte `TeamId: 0`, si bien qu'une indexation
+// positionnelle passerait tous les tests. Ici le tableau est à l'ENVERS. L'API classe ses
+// camps par RANG (le vainqueur d'abord), pas par identifiant : lire la position écrirait les
+// manches du camp 1 dans `team_0_rounds_won` EN BASE, à la sync comme au backfill
+// (constat de revue adversariale du 2026-08-29).
+func TestExtractTeamRoundsByID_IndexeParTeamIDPasParPosition(t *testing.T) {
+	team := func(id, w, l int) map[string]any {
+		return map[string]any{
+			"TeamId": float64(id),
+			"Stats": map[string]any{
+				"CoreStats": map[string]any{
+					"RoundsWon": float64(w), "RoundsLost": float64(l), "RoundsTied": float64(0),
+				},
+			},
+		}
+	}
+	// Le camp 1 est en PREMIER dans le tableau, et c'est lui qui a gagné 2 manches.
+	match := map[string]any{"Teams": []any{team(1, 2, 1), team(0, 1, 2)}}
+	w0, w1, total := ExtractTeamRoundsByID(match)
+	if w0 == nil || *w0 != 1 {
+		t.Errorf("manches équipe 0 = %v, want 1 (2e élément du tableau)", w0)
+	}
+	if w1 == nil || *w1 != 2 {
+		t.Errorf("manches équipe 1 = %v, want 2 (1er élément du tableau)", w1)
+	}
+	if total == nil || *total != 3 {
+		t.Errorf("total = %v, want 3", total)
+	}
+}
+
+// Même piège sur la jumelle des POINTS : elle porte la même promesse dans son en-tête.
+func TestExtractTeamScoresByID_IndexeParTeamIDPasParPosition(t *testing.T) {
+	team := func(id, score int) map[string]any {
+		return map[string]any{
+			"TeamId": float64(id),
+			"Stats":  map[string]any{"CoreStats": map[string]any{"Score": float64(score)}},
+		}
+	}
+	match := map[string]any{"Teams": []any{team(1, 186), team(0, 181)}}
+	t0, t1 := ExtractTeamScoresByID(match)
+	if t0 == nil || *t0 != 181 {
+		t.Errorf("score équipe 0 = %v, want 181 (2e élément du tableau)", t0)
+	}
+	if t1 == nil || *t1 != 186 {
+		t.Errorf("score équipe 1 = %v, want 186 (1er élément du tableau)", t1)
+	}
+}

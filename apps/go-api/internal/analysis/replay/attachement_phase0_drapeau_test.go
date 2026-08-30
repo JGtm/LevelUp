@@ -49,7 +49,7 @@ func TestAttachementPhase0DrapeauObjet(t *testing.T) {
 // attDrapeauObjetFilm mesure UN film.
 func attDrapeauObjetFilm(t *testing.T, root, id string) {
 	t.Helper()
-	cre, socles, ok := attCreationsEcartees(t, root, id)
+	cre, socles, ok := attCreationsEcartees(t, root, id, "flag_spawn")
 	if !ok {
 		return
 	}
@@ -73,13 +73,19 @@ type attCreations struct {
 
 // attCreationsEcartees balaye les créations `ti=42` d'un film et les trie par le croisement
 // d'identité (mot de 32 bits du bloc MPP contre le catalogue d'armes).
-func attCreationsEcartees(t *testing.T, root, id string) (attCreations, []PointObjective, bool) {
+//
+// LE RÔLE DE SOCLE EST UN PARAMÈTRE DEPUIS D4 (2026-08-27) : la recette est la même pour tout
+// objet d'objectif PORTÉ — le drapeau naît à son `flag_spawn`, le crâne à son `oddball_spawn`.
+// Seul change le rôle interrogé au catalogue de carte. Une seconde copie de ce balayage aurait
+// divergé au premier correctif, et le dépôt l'interdit.
+func attCreationsEcartees(t *testing.T, root, id, roleSocle string) (
+	attCreations, []PointObjective, bool) {
 	t.Helper()
 	release := filmdec.LockProcessDecode()
 	defer release()
 	prev := filmdec.WorldObjectPrecision
 	defer func() { filmdec.WorldObjectPrecision = prev }()
-	wr, ok := attBornes(t, root, id)
+	wr, _, ok := attBornes(t, root, id)
 	if !ok {
 		t.Logf("%s : bornes de carte indisponibles — volet objet non mesurable sur ce film", id)
 		return attCreations{}, nil, false
@@ -103,7 +109,7 @@ func attCreationsEcartees(t *testing.T, root, id string) (attCreations, []PointO
 		out.ecartees = append(out.ecartees, c)
 		out.mots[mot]++
 	}
-	return out, attMarqueurs(t, root, id, "flag_spawn"), true
+	return out, attMarqueurs(t, root, id, roleSocle), true
 }
 
 // attLogDistances publie, pour chaque mot de 32 bits écarté, sa distance minimale à un socle

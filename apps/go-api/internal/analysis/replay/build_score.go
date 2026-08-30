@@ -31,8 +31,12 @@ func replayScoreClock(doc *ReplayDocument, intervalMS int, matchID string) score
 // « l'appelant n'a rien fourni a lire » (CLI hors ligne sans faits de match) n'est pas « le film
 // n'a rien livre ». C'est pourquoi elle est rendue plutot que posee ici : `buildCoverage`
 // l'assemble avec les autres, et un nil reste un nil.
-func attachScoreTimeline(doc *ReplayDocument, in *ScoreInput, c scoreClock, matchID string) *ScoreCoverage {
-	tl, cov := buildScoreTimeline(in, c)
+// `deaths` est le fil des morts deja scanne par `BuildFromPositions` (opt.Deaths) : il sert a
+// l'identite PAR MANCHE des joueurs en multi-manche (le slot d'entite est reattribue d'une manche
+// a l'autre), exactement comme la couronne VIP et le drapeau le consomment. En mono-manche il
+// n'est pas lu — le chemin plat par totaux est conserve a l'octet.
+func attachScoreTimeline(doc *ReplayDocument, in *ScoreInput, deaths []Death, c scoreClock, matchID string) *ScoreCoverage {
+	tl, cov := buildScoreTimeline(in, deaths, c)
 	doc.ScoreTimeline = tl
 	logScoreCoverage(matchID, cov, tl)
 	return cov

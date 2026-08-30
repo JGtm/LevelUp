@@ -17,6 +17,7 @@
 import type { MatchScoreboardRow } from '@/lib/api/types'
 import { displayPlayerName } from '@/lib/players/displayName'
 
+import { refineAbilityReading, refineWeaponsReading } from './changeRefine'
 import type { PlayerMarkKind } from './playerMarks'
 import { heldReading, isAliveAt, trackWindow } from './replayLogic'
 import type { ReplayDocumentReady, ReplayTrackReady } from './replayNormalize'
@@ -67,10 +68,12 @@ export interface ReplayTeamGroup {
  * aucune des tables ci-dessous, le calque ne la dessine pas non plus (`colorOfSlot` rend
  * `null`, cf. useSlotIdentity) : ce sont les caméras et les spectateurs de fin de partie.
  *
- * CE QUI EST STABLE SUR TOUT LE REJEU (couleur, marque d'identité, nom) est attribué AU
- * JOUEUR, jamais à la vie : c'est `indexBySlot` ci-dessous qui redescend l'attribut sur
- * chacune de ses vies. Sans cela, un joueur changerait de couleur à chaque réapparition
- * (99 traces pour 8 joueurs) et suivre quelqu'un des yeux deviendrait impossible.
+ * CE QUI IDENTIFIE QUELQU'UN (couleur, marque d'identité, nom) appartient AU JOUEUR, jamais à
+ * la vie ; le calque le résout par SLOT et par IMAGE (`buildSlotOwnership` / `ownerAtFrame`
+ * ci-dessous, dérivés `colorResolver`/`markResolver`/`nameResolver`). Sans cela, un joueur
+ * changerait de couleur à chaque réapparition (99 traces pour 8 joueurs), et — un slot de
+ * biped étant réattribué entre manches — un slot montrerait un seul joueur pour tout le match :
+ * suivre quelqu'un des yeux deviendrait impossible.
  */
 export function buildPlayers(
   doc: ReplayDocumentReady,
@@ -125,12 +128,17 @@ export function groupByTeam(players: ReplayPlayer[]): ReplayTeamGroup[] {
 }
 
 /**
- * indexBySlot — LE PASSAGE « ce qui appartient au JOUEUR redescend sur chacune de ses VIES ».
+ * indexBySlot — AGRÉGAT MATCH : « ce qui appartient au JOUEUR redescend sur chacune de ses
+ * VIES », effondré en UNE valeur par slot (DERNIER GAGNANT sur l'ordre des joueurs puis des
+ * vies).
  *
- * Le calque de la carte ne connaît que des SLOTS (une vie = un slot de biped, réattribué à
- * chaque réapparition) ; tout ce qui identifie durablement quelqu'un — sa couleur d'équipe,
- * sa marque « moi / ami », son nom — appartient au JOUEUR. Trois attributs, une seule
- * descente : sans ce foyer, la même boucle serait recopiée trois fois (CLAUDE.md n°6).
+ * C'EST UN AGRÉGAT SUR TOUT LE MATCH, PAS UNE LECTURE PAR IMAGE. Il sert au comptage d'usage
+ * d'équipement (`equipmentUsageLogic`), où l'on veut « le joueur du slot » toutes vies
+ * confondues. Pour le RENDU par image, ne pas s'en servir : un slot de biped est réattribué
+ * entre réapparitions ET entre manches, il n'a donc pas UN propriétaire mais le propriétaire
+ * de la vie qui l'occupe À CETTE IMAGE — c'est `buildSlotOwnership` / `ownerAtFrame`. (En
+ * multi-manche, cet agrégat attribue au dernier propriétaire du slot : dette connue, assumée
+ * ici parce que le comptage d'usage est au niveau du match, pas de l'image.)
  *
  * Une vie SANS propriétaire (trace sans xuid) n'apparaît dans aucune table : l'appelant sert
  * alors son propre repli — encre neutre pour la couleur, aucune marque, aucun nom.
@@ -148,54 +156,175 @@ export function indexBySlot<T>(
 }
 
 /**
- * colorBySlot — LA COULEUR D'UNE VIE EST CELLE DE SON PROPRIÉTAIRE, et c'est sa couleur
- * d'ÉQUIPE (décision D1 du plan d'habillage, 2026-08-16, amendée par l'utilisateur) : les
- * tokens `team-ally` / `team-enemy` que les réglages d'accessibilité peuvent surcharger,
- * jamais une couleur de série indexée sur la trace. Un joueur gardait jusque-là une teinte
- * par VIE : il changeait de couleur à chaque réapparition.
+ * SlotOwnership — QUI OCCUPE UN SLOT À UNE IMAGE. Le remède à l'effondrement d'`indexBySlot`
+ * pour le rendu : un slot de biped est réattribué entre réapparitions ET entre manches, son
+ * propriétaire n'est donc pas une constante du match mais la VIE qui couvre l'image lue.
  *
- * `colorOf` rend la couleur d'un camp (l'appelant résout les tokens), `isAlly` dit le camp
- * d'un xuid (côté du joueur de la page), `neutral` sert quand on ne sait rien de l'identité.
+ * SANS AMBIGUÏTÉ : les vies d'un slot sont disjointes (un biped a un seul occupant à la fois),
+ * `buildPlayers` les a triées dans le temps, et la recherche rend la première vie qui couvre
+ * l'image. Un slot libre entre deux vies — ou avant la première, ou après la dernière — n'a
+ * pas de propriétaire à cette image : `ownerAtFrame` rend `null`, le calque ne dessine rien.
  */
-export function colorBySlot(
-  players: readonly ReplayPlayer[],
-  colorOf: (ally: boolean) => string,
-  isAlly: (xuid: string) => boolean,
-  neutral: string,
-): Map<number, string> {
-  return indexBySlot(players, (p) => (p.xuid ? colorOf(isAlly(p.xuid)) : neutral))
+export interface SlotOwnership {
+  ownerAtFrame(slot: number, frame: number): ReplayPlayer | null
+  /**
+   * ownerAtFrameOrLast — la vie qui COUVRE l'image, sinon la vie la plus récente TERMINÉE avant
+   * elle (la « vie juste précédente »). Réservé aux consommateurs de FRONTIÈRE dont l'événement
+   * est daté À l'INSTANT OÙ LE PROPRIÉTAIRE VIENT DE QUITTER LE SLOT : un objet LÂCHÉ à la mort
+   * porte `t0 = finVie + 1` (le poseur n'occupe plus le slot), et un kill posthume/échange
+   * peut tomber une image après la fin de vie du tueur. `ownerAtFrame` y rendrait `null` (donc
+   * une encre neutre au lieu de la couleur d'équipe) : c'est un TROU à combler par la vie qui
+   * précède, pas par le dernier-gagnant du match — en multi-manche, le résultat reste le joueur
+   * de LA manche concernée (SHROOM s'il vient de mourir, DinoR00 sinon). NE PAS l'employer pour
+   * le rendu continu des marqueurs/vies : eux doivent rester `null` dans les trous.
+   */
+  ownerAtFrameOrLast(slot: number, frame: number): ReplayPlayer | null
+}
+
+/** Une vie possédée, réduite à sa fenêtre et à son propriétaire (l'index n'a besoin de rien d'autre). */
+interface OwnedLife {
+  start: number
+  end: number
+  player: ReplayPlayer
 }
 
 /**
- * sideBySlot — LE CAMP D'UNE VIE, celui de son propriétaire (`team_side`, comme `groupByTeam`).
+ * buildSlotOwnership indexe, par slot, les vies qui l'ont occupé — triées par début — et rend
+ * le résolveur `ownerAtFrame`. Construit UNE FOIS par document (mémoïsé par l'appelant) ; la
+ * résolution est un balayage court (une poignée de vies par slot) avec sortie anticipée dès
+ * qu'une vie commence après l'image.
+ */
+export function buildSlotOwnership(players: readonly ReplayPlayer[]): SlotOwnership {
+  const bySlot = new Map<number, OwnedLife[]>()
+  for (const p of players) {
+    for (const life of p.lives) {
+      const w = trackWindow(life)
+      const entry: OwnedLife = { start: w.start, end: w.end, player: p }
+      const lives = bySlot.get(life.slot)
+      if (lives) lives.push(entry)
+      else bySlot.set(life.slot, [entry])
+    }
+  }
+  for (const lives of bySlot.values()) lives.sort((a, b) => a.start - b.start)
+  return {
+    ownerAtFrame(slot, frame) {
+      const lives = bySlot.get(slot)
+      if (!lives) return null
+      for (const l of lives) {
+        // Triées par début : dès qu'une vie commence après l'image, aucune de la suite ne la couvre.
+        if (frame < l.start) break
+        if (frame <= l.end) return l.player
+      }
+      return null
+    },
+    ownerAtFrameOrLast(slot, frame) {
+      const lives = bySlot.get(slot)
+      if (!lives) return null
+      let last: ReplayPlayer | null = null
+      for (const l of lives) {
+        if (frame < l.start) break // aucune vie couvrante ni précédente au-delà : on garde `last`
+        if (frame <= l.end) return l.player // vie couvrante
+        last = l.player // vie entièrement AVANT l'image : on retient la plus récente
+      }
+      return last // la vie juste précédente (le lâcheur / le tueur), ou null si aucune
+    },
+  }
+}
+
+/**
+ * colorResolver — LA COULEUR D'UNE VIE EST CELLE DE SON PROPRIÉTAIRE À CETTE IMAGE, et c'est sa
+ * couleur d'ÉQUIPE (décision D1 du plan d'habillage, 2026-08-16, amendée par l'utilisateur) :
+ * les tokens `team-ally` / `team-enemy` que les réglages d'accessibilité peuvent surcharger,
+ * jamais une couleur de série indexée sur la trace. Un joueur gardait jusque-là une teinte par
+ * VIE (il changeait à chaque réapparition) ; puis une teinte figée par SLOT, qui montrait un
+ * seul joueur pour tout le match quand un slot est réattribué entre manches. La couleur est
+ * désormais résolue À L'IMAGE, via le propriétaire de la vie qui occupe alors le slot.
+ *
+ * `colorOf` rend la couleur d'un camp (l'appelant résout les tokens), `isAlly` dit le camp d'un
+ * xuid (côté du joueur de la page), `neutral` sert quand on ne sait rien de l'identité. `null`
+ * = aucun propriétaire à cette image (slot libre, ou vie anonyme) : le calque ne dessine rien.
+ */
+export function colorResolver(
+  ownership: SlotOwnership,
+  colorOf: (ally: boolean) => string,
+  isAlly: (xuid: string) => boolean,
+  neutral: string,
+): (slot: number, frame: number) => string | null {
+  return (slot, frame) => teamColorOfOwner(ownership.ownerAtFrame(slot, frame), colorOf, isAlly, neutral)
+}
+
+/**
+ * colorResolverOrLast — MÊME couleur d'équipe, mais résolue via `ownerAtFrameOrLast` : pour les
+ * consommateurs de FRONTIÈRE (couleur d'un objet LÂCHÉ à la mort, couleur d'un effet de mort)
+ * dont l'événement est daté à l'instant où le propriétaire vient de quitter le slot. Un objet
+ * lâché porte `t0 = finVie + 1` : la résolution stricte y rendrait `null` → encre neutre au lieu
+ * de la couleur du lâcheur. NE PAS l'employer pour les marqueurs/vies (rendu continu).
+ */
+export function colorResolverOrLast(
+  ownership: SlotOwnership,
+  colorOf: (ally: boolean) => string,
+  isAlly: (xuid: string) => boolean,
+  neutral: string,
+): (slot: number, frame: number) => string | null {
+  return (slot, frame) => teamColorOfOwner(ownership.ownerAtFrameOrLast(slot, frame), colorOf, isAlly, neutral)
+}
+
+/** teamColorOfOwner — la couleur d'équipe d'un propriétaire (neutre pour une entrée sans xuid, null s'il n'y en a pas). */
+function teamColorOfOwner(
+  p: ReplayPlayer | null,
+  colorOf: (ally: boolean) => string,
+  isAlly: (xuid: string) => boolean,
+  neutral: string,
+): string | null {
+  if (!p) return null
+  return p.xuid ? colorOf(isAlly(p.xuid)) : neutral
+}
+
+/**
+ * sideResolver — LE CAMP D'UNE VIE À UNE IMAGE, celui de son propriétaire à cette image
+ * (`team_side`, comme `groupByTeam`).
  *
  * PAS LE DRAPEAU « allié », qui est relatif au joueur de la page et range tous les autres dans
  * un seul camp — faux dès qu'il y a plus de deux équipes (mêlée générale, BTB à quatre camps).
  * Ce que le capteur de menaces doit savoir, c'est si DEUX vies s'opposent ; `team_side` le dit.
  *
- * Sans ligne de scoreboard, une vie n'a PAS de camp (null) : ni alliée ni ennemie de personne,
- * et rien ne l'affirmera à sa place. Chaîne vide = absence (le DTO l'écrit pour un camp non
- * résolu).
+ * Sans propriétaire à cette image (slot libre) ou sans ligne de scoreboard, une vie n'a PAS de
+ * camp (null) : ni alliée ni ennemie de personne, et rien ne l'affirmera à sa place. Chaîne
+ * vide = absence (le DTO l'écrit pour un camp non résolu).
  */
-export function sideBySlot(players: readonly ReplayPlayer[]): Map<number, string | null> {
-  return indexBySlot(players, (p) => p.board?.team_side || null)
-}
-
-/** markBySlot redescend la marque d'identité (« moi », « ami ») du joueur sur ses vies. */
-export function markBySlot(
-  players: readonly ReplayPlayer[],
-  marks: ReadonlyMap<string, PlayerMarkKind>,
-): Map<number, PlayerMarkKind | undefined> {
-  return indexBySlot(players, (p) => marks.get(p.xuid))
+export function sideResolver(
+  ownership: SlotOwnership,
+): (slot: number, frame: number) => string | null {
+  return (slot, frame) => ownership.ownerAtFrame(slot, frame)?.board?.team_side || null
 }
 
 /**
- * nameBySlot redescend le NOM D'AFFICHAGE du joueur sur ses vies — celui des fiches et du
- * fil (`displayPlayerName`), jamais un xuid brut. Une vie sans propriétaire n'y figure pas :
- * l'étiquette de la carte reste alors vide plutôt que d'écrire « Joueur #### ».
+ * markResolver rend la marque d'identité (« moi », « ami ») du propriétaire de la vie qui
+ * occupe le slot à cette image ; `undefined` s'il n'y a pas de propriétaire ou pas de marque.
  */
-export function nameBySlot(players: readonly ReplayPlayer[]): Map<number, string> {
-  return indexBySlot(players, (p) => displayPlayerName(playerName(p), p.xuid))
+export function markResolver(
+  ownership: SlotOwnership,
+  marks: ReadonlyMap<string, PlayerMarkKind>,
+): (slot: number, frame: number) => PlayerMarkKind | undefined {
+  return (slot, frame) => {
+    const p = ownership.ownerAtFrame(slot, frame)
+    return p ? marks.get(p.xuid) : undefined
+  }
+}
+
+/**
+ * nameResolver rend le NOM D'AFFICHAGE du propriétaire de la vie qui occupe le slot à cette
+ * image — celui des fiches et du fil (`displayPlayerName`), jamais un xuid brut. Aucun
+ * propriétaire à cette image → `null` : l'étiquette de la carte reste alors vide plutôt que
+ * d'écrire « Joueur #### » ou, pire, le nom d'un joueur d'une AUTRE manche.
+ */
+export function nameResolver(
+  ownership: SlotOwnership,
+): (slot: number, frame: number) => string | null {
+  return (slot, frame) => {
+    const p = ownership.ownerAtFrame(slot, frame)
+    return p ? displayPlayerName(playerName(p), p.xuid) : null
+  }
 }
 
 /**
@@ -345,7 +474,17 @@ export interface LoadoutReading {
  */
 export function loadoutAt(doc: ReplayDocumentReady, slot: number, frame: number): LoadoutReading | null {
   const read = nearestReading(doc.loadouts ?? [], slot, frame)
-  return read ? { weapons: read.value.w, age: read.age } : null
+  if (!read) return null
+  // LA DATATION FINE (schéma 25) : le relevé d'image-clé donne l'ÉTAT, les changements d'arme
+  // datés donnent les TRANSITIONS survenues depuis. Ce qu'ils appliquent et ce qu'ils refusent
+  // d'appliquer est écrit dans changeRefine.ts — un artefact qui n'en porte aucun rend la
+  // lecture inchangée, c'est-à-dire exactement l'affichage d'avant.
+  return refineWeaponsReading(
+    { weapons: read.value.w, age: read.age },
+    doc.weaponChanges,
+    slot,
+    frame,
+  )
 }
 
 /**
@@ -398,12 +537,20 @@ export interface AbilityReading {
   src: string
 }
 
-/** abilityAt rend le dernier rang de capacité lu pour un SLOT, avec l'âge de la lecture. */
+/**
+ * abilityAt rend le dernier rang de capacité lu pour un SLOT, avec l'âge de la lecture.
+ *
+ * TROIS SOURCES DEPUIS LE SCHÉMA 25, ET LA PLUS RÉCENTE GAGNE : les deux canaux d'`abilities`
+ * (image-clé et paquet delta, qui disent ce que le joueur PORTE) et les CHANGEMENTS
+ * d'équipement (qui datent ce qui lui ARRIVE). Le départage — et le cas de la consommation,
+ * qui rend `null` parce que le joueur ne porte alors plus rien — vit dans changeRefine.ts.
+ */
 export function abilityAt(
   doc: ReplayDocumentReady,
   slot: number,
   frame: number,
 ): AbilityReading | null {
   const read = nearestReading(doc.abilities ?? [], slot, frame)
-  return read ? { rank: read.value.r, age: read.age, src: read.value.src } : null
+  const base = read ? { rank: read.value.r, age: read.age, src: read.value.src } : null
+  return refineAbilityReading(base, doc.equipmentChanges, slot, frame)
 }

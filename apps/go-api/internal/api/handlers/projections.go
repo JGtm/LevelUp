@@ -23,6 +23,7 @@ func BuildExplorerRowFromMatchHistory(item domain.MatchHistoryRow) domain.Explor
 		OutcomeCode:         item.OutcomeCode,
 		OutcomeLabel:        item.OutcomeLabel,
 		ScoreLabel:          item.ScoreLabel,
+		ScoreKind:           item.ScoreKind,
 		IsWithFriends:       item.IsWithFriends,
 		ExperienceTypeLabel: item.ExperienceTypeLabel,
 		MatchURL:            item.MatchURL,

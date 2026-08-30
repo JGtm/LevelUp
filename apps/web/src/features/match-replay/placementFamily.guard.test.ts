@@ -191,6 +191,13 @@ describe('garde-rail : le vocabulaire des familles de pose', () => {
  * partagee et trame d'altitudes — part dans `useReplayView.ts`, neuvieme extraction imposee
  * par ce cliquet. Les noms sortent inchanges, donc pas une ligne du dessin ne bouge.
  *
+ * 706 -> 695 le 2026-08-27 (crane d'Oddball libre, schema 21) : le lot branche un calque de
+ * plus — l'objet d'objectif la ou il est quand personne ne le porte. DIXIEME extraction imposee
+ * par ce cliquet, en deux morceaux : le CABLAGE du calque (encre neutre + decision de peindre)
+ * part dans `useReplayObjectiveObjects.ts`, patron de `useReplayFlagCarries` ; les trois
+ * REGLAGES CONSTANTS (tokens de serie, reference vide de zones, cadence de publication) partent
+ * dans `replayCanvasConfig.ts`. Aucun des deux ne deplace une ligne de logique.
+ *
  * LE CABLAGE DE LA CAPTURE TIENT EN QUATRE LIGNES, et il n'en prendra pas une de plus : le
  * hook rend UN objet (`ReplayCapture`, patron de `ReplaySound`) que le canvas repasse tel quel
  * a la barre. L'enregistrement video puis le son de la video se branchent en ETENDANT l'appel
@@ -209,10 +216,71 @@ describe('garde-rail : le vocabulaire des familles de pose', () => {
  * grappin — partent donc dans `useReplayFx.ts`, onzieme extraction imposee par ce cliquet :
  * ils ne dependent que du FILM, ne lisent ni theme ni cadrage, et ne dessinent rien. Les noms
  * sortent inchanges, comme a la neuvieme.
+ *
+ * 691 -> 691 le 2026-08-27 (lot VIP COURONNE) : le canvas etait PILE a son plafond et le lot y
+ * fait entrer la COURONNE VIP (hook `useReplayVipCrown`, un paint et une prop de tiroir). Le
+ * memo `objectivePulses` REJOINT donc `useReplayFx.ts` — il est de la meme nature que les cinq
+ * autres (une liste d'evenements en monde, precalculee une fois, qui ne dessine rien) : douzieme
+ * extraction imposee par ce cliquet, nom inchange, aucune ligne de tracé deplacee.
+ *
+ * 691 -> 690 le 2026-08-28 (correctif CI) : le decompte du lot VIP etait faux d'UNE ligne —
+ * le fichier a atteint origin a 692 et ce test etait le seul rouge de la branche. L'appel
+ * `useReplayVipCrown` est resserre sur une ligne (patron des appels longs voisins du tiroir),
+ * le fichier retombe a 690 et le cliquet SUIT le fichier, comme a chaque fois : lui laisser
+ * la ligne d'ecart aurait offert une ligne gratuite a la prochaine addition.
+ *
+ * 690 -> 672 le 2026-08-28 (lot LECTEUR, planche 2a — fusionne avec le correctif ci-dessus,
+ * mene en parallele sur la meme base rouge a 692). La refonte de la barre de lecture ajoutait
+ * au canvas une prop (`feedEntries`) et un hook. DEUX extractions, donc :
+ *   - TREIZIEME, `useReplayTimeline.ts` : la frise et son clavier — echelle des pistes,
+ *     reduction du fil aligne, dominance, medias, horloges de l'axe, raccourcis. Ils decrivent
+ *     LA FRISE, le canvas garde le DESSIN.
+ *   - QUATORZIEME, `useReplayDrawer.ts` : le montage du tiroir de reglages, une cinquantaine de
+ *     lignes qui ne decidaient rien — elles RECOPIAIENT trente bascules de `useReplaySettings`
+ *     vers le panneau. Le canvas garde desormais l'objet de reglages entier et n'en destructure
+ *     que les VALEURS, celles que le trace lit.
+ * Au merge, l'appel VipCrown resserre du correctif s'ajoute aux deux extractions : le fichier
+ * tombe a 672 et le plafond descend a la mesure du jour, comme a chaque extraction depuis 861.
+ *
+ * 672 -> 679 le 2026-08-28 (lot PORTEUR ODDBALL, schema 23) : un CALQUE FRERE de plus, le porteur
+ * du crane. Sa LOGIQUE est deja extraite — tout vit dans `useReplaySkullCarrier.ts`, quinzieme
+ * hook de la meme famille que `useReplayVipCrown` et `useReplayFlagCarries`. Ne reste au canvas que
+ * le cablage IRREDUCTIBLE d'un calque : un import, l'appel du hook, une ligne de peinture, une
+ * dependance de `draw`, une entree de disponibilite du tiroir. C'est le SEUL cas ou le plafond
+ * remonte, et il est justifie : l'extraction a bien eu lieu (le hook), et il n'y avait pas, dans ce
+ * lot, d'extraction coincidente pour absorber les cinq lignes de glue — les inventer aurait ete du
+ * gonflage inverse. La prochaine addition retombe sous la regle : logique dans un hook, cablage au
+ * canvas, et le plafond suit le fichier vers le BAS a la premiere extraction.
+ *
+ * 679 -> 679 le 2026-08-28 (lot EXPORT HORS TEMPS REEL, etape E3) : le fichier etait PILE a son
+ * plafond et le lot devait y brancher une commande de plus (le verdict du match, qui permet de
+ * repeindre l'ecran de fin DANS la toile — un encodeur video ne voit pas le DOM). Le plafond ne
+ * bouge pas d'une ligne, et c'est le point : l'addition a ete PAYEE, pas absorbee.
+ *   - EXTRACTION, `hoverLayers.ts` : la distribution du geste de survol aux trois calques
+ *     survolables. La decoupe etait deja ECRITE dans le canvas (« chacun rejoue le survol sur SA
+ *     donnee, le canvas passe le geste ») — il recopiait le meme geste trois fois, deux fois de
+ *     suite. Neuf lignes. Fonction pure et non hook : mémoïser un tableau reconstruit a chaque
+ *     rendu aurait demande une echappatoire de lint pour un gain nul.
+ *   - PAS DE SECOND HOOK AU CANVAS : l'export se branche DANS `useReplayCapture`, qui est deja
+ *     « ce qui sort du rejeu » (image, video) — l'export en est la troisieme sortie. Le canvas
+ *     ne gagne donc qu'une prop, une ligne d'options et un import.
+ * La prochaine addition se paie de la meme facon.
+ *
+ * 679 -> 678 le 2026-08-30 (lot des ARMES AU SOL, schema 27) : un CALQUE FRERE de plus, les
+ * armes abandonnees au sol. Sa logique est deja extraite — lecture temporelle dans
+ * `groundWeaponTime.ts`, trace dans `groundWeaponsLayer.ts`, cablage dans
+ * `useReplayGroundWeapons.ts` — mais le fichier etait PILE a son plafond et les six lignes de
+ * glue devaient etre PAYEES.
+ *   - SEIZIEME EXTRACTION, `useReplayDrawer.ts` : l'ETAT D'OUVERTURE du tiroir. Le canvas
+ *     gardait trois choses qui ne parlent que du tiroir — ouvert ou ferme, le bouton qui
+ *     l'ouvre, et la fermeture qui lui rend le focus — alors que le hook du tiroir existe
+ *     depuis la quatorzieme. Il rend desormais `{ open, toggle, buttonRef, panel }` ; le canvas
+ *     n'en garde que l'usage, et pas une ligne de logique ne se deplace.
+ * Le plafond SUIT le fichier vers le bas, comme a chaque extraction depuis 861.
  */
 describe('garde-rail : la taille du canvas du rejeu ne remonte pas', () => {
   it('ReplayCanvas.tsx reste sous son plafond', () => {
     const src = readFileSync(resolve(__dirname, 'ReplayCanvas.tsx'), 'utf8')
-    expect(src.split('\n').length - 1).toBeLessThanOrEqual(691)
+    expect(src.split('\n').length - 1).toBeLessThanOrEqual(678)
   })
 })

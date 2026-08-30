@@ -215,8 +215,8 @@ fr = "Score"
 en = "Score"
 
 [explorer.matches.col_score_tooltip]
-fr = "Score final de la partie : l'équipe puis l'équipe adverse."
-en = "Final match score: the team, then the opposing team."
+fr = "Score final de la partie : l'équipe puis l'équipe adverse. Sur les modes qui se jouent en manches, ce sont les MANCHES gagnées et perdues qui sont affichées — le score en points de l'API peut y donner l'avantage au camp qui a perdu."
+en = "Final match score: the team, then the opposing team. In modes played in rounds, the ROUNDS won and lost are shown instead — the API point score can favour the losing side there."
 
 [explorer.matches.col_personal_score]
 fr = "Score personnel"
