@@ -245,6 +245,39 @@ func chronoMesure114(t *testing.T, dir string, eps [][2]int64, trans []int64) {
 		t.Logf("    t=%d ms · Δ=%5d ms (%s) · env2=%d · cle=%07x · R6=%d · %d o",
 			r.tMS, bd, sens, r.bitsEnvelope, r.cle, r.siege, r.taille)
 	}
+	t.Log("  bits 0..71 alignes (le motif de variance dessine les champs) :")
+	for _, r := range dansPlage {
+		_ = r
+	}
+	compte := 0
+	for c := 1; c <= n; c++ {
+		chunk, err := filmdec.ReadFilmChunk(dir, c)
+		if err != nil {
+			continue
+		}
+		for _, p := range filmdec.WalkPackets(chunk) {
+			if p.Type != filmdec.PacketTypeDelta || p.Size < 10 {
+				continue
+			}
+			pay := p.Payload(chunk)
+			if int(pay[0]>>1) != 114 {
+				continue
+			}
+			tMS := int64(p.TimestampUS / 1000)
+			if tMS < eps[0][0]-8000 || tMS > eps[len(eps)-1][1]+8000 {
+				continue
+			}
+			var sb strings.Builder
+			for b := 0; b < 72; b++ {
+				if b == 7 || b == 8 || b == 24 || b == 40 || b == 56 {
+					sb.WriteByte(' ')
+				}
+				sb.WriteByte('0' + byte(filmdec.ReadBitsAtForDiag(pay, b, 1)))
+			}
+			t.Logf("    t=%d : %s", tMS, sb.String())
+			compte++
+		}
+	}
 }
 
 // chronoXUID resout un gamertag en xuid via le feed (kills, morts et medailles le portent).

@@ -77559,3 +77559,28 @@ locaux = arbre, CI = commit »). A faire committer par sa session ; aucun contou
 
 **Prochaine etape** : enveloppe du 114 (Ghidra : lecteur d'enveloppe du dispatcher) puis
 validation corpus par medailles.
+
+## [2026-08-30] Visee lunette, phase 6bis — enveloppe du type 114 : structure degrossie, deux sorties de lunette BIT-IDENTIQUES a partir du bit 24 — En cours
+
+**Acquis de la passe d'enveloppe (dispatcher FUN_14080a9d4 decompile + dump binaire aligne)** :
+1. *Grammaire generale des paquets d'event* : R(7) type ; puis TROIS references optionnelles
+   { R(1) porte ; si 1 : var-int FUN_1406d3140 } ; puis le payload specifique (vtable +0x68) ;
+   puis une queue optionnelle R(1)[+R(32)]. La case +0x58 du descripteur ne lit RIEN : elle
+   rend le DOMAINE de la reference i (type 114 : ref0->2, ref1->3, ref2->7 ; type 105 :
+   ref0->1), et la LARGEUR du var-int depend du domaine (calibration du header film, meme
+   mecanique que SetDefaultReplRange).
+2. *Dump aligne des 17 paquets 114 de la plage etiquetee* (00162144) :
+   - bits 0..6 = 114 ; bit 7 = 1 (porte ref0) ; bits 8..15 constants `11100000` ;
+   - bits ~16..21 : compteur par evenement (varie meme entre deux actions identiques) ;
+   - bits 21..23 `100` constants ;
+   - **bits 24..71+ : LE CONTENU — t=1218713 et t=1233558 (deux SORTIES de lunette) sont
+     BIT-IDENTIQUES sur toute cette plage** -> l'encodage (entite, siege) est stable par
+     (joueur, action). L'attribution peut commencer par SIGNATURE brute (bits 24+) avant meme
+     le decodage des largeurs par domaine.
+3. Le « R(6) a bit 36 » du premier dump etait un artefact de decoupe (les refs sont a largeur
+   variable) — ne pas le reutiliser.
+
+**Prochaine etape (instrument suivant)** : inference des frontieres de champs par variance
+croisee (constant / stable-par-joueur / par-evenement) sur tous les 114 du film, cle de
+signature bits 24+ -> attribution par joueur via la chronologie ; puis largeurs par domaine
+(1/2/3/7) par fermeture arithmetique, et validation corpus par medailles.
