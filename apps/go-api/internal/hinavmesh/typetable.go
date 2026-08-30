@@ -97,15 +97,48 @@ func (l *lecteurEmpaquete) fini() bool {
 	return true
 }
 
-// lireTypes construit la table des types a partir de TST1, TNA1, FST1 et TBDY.
+// sectionsChaines : les deux ecritures possibles des tables de chaines d un fichier-tag Havok.
+//
+// DEUX GENERATIONS, MESUREES LE 2026-08-30. Les blobs d Isolation et consorts portent TST1 et
+// FST1 ; ceux d Absolution et d Insolence portent TSTR et FSTR — memes voisins (TPTR, TNA1,
+// TBDY, THSH, TPAD), meme place dans la section TYPE, seul le nom des deux tables de chaines
+// change. Le decodeur refusait donc trois cartes pour un nom de section, pas pour un format :
+// le contenu se lit de la meme facon, chaines nul-terminees a la queue leu leu.
+//
+// C est ce qui condamnait Absolution, Insolence et Insolence Heavies a la bouillie — sans
+// maillage lisible, rien ne fait tomber leurs coques.
+//
+// UNE SECONDE DIFFERENCE, TROUVEE EN SUIVANT LA PREMIERE : les tables TSTR/FSTR sont indexees a
+// partir de 1, la chaine vide occupant l indice 0 sans etre stockee. Sur Absolution, un membre
+// demandait l indice 98 d une table qui en portait 98 (0 a 97) — l ecart d exactement un, sur la
+// borne haute, est la signature d un decalage d origine et non d une table tronquee.
+var sectionsChaines = [][2]string{
+	{"TST1", "FST1"},
+	{"TSTR", "FSTR"},
+}
+
+// lireTypes construit la table des types a partir des tables de chaines, de TNA1 et de TBDY.
 func lireTypes(buf []byte, sections map[string][2]int) (tableTypes, error) {
-	for _, tag := range []string{"TST1", "TNA1", "FST1", "TBDY"} {
+	var secTypes, secChamps [2]int
+	trouve := false
+	for _, paire := range sectionsChaines {
+		t, okT := sections[paire[0]]
+		f, okF := sections[paire[1]]
+		if okT && okF {
+			secTypes, secChamps, trouve = t, f, true
+			break
+		}
+	}
+	if !trouve {
+		return nil, fmt.Errorf("hinavmesh: fichier-tag sans table de chaines (ni TST1/FST1, ni TSTR/FSTR)")
+	}
+	for _, tag := range []string{"TNA1", "TBDY"} {
 		if _, ok := sections[tag]; !ok {
 			return nil, fmt.Errorf("hinavmesh: fichier-tag sans section %s", tag)
 		}
 	}
-	nomsTypes := chaines(buf, sections["TST1"])
-	nomsChamps := chaines(buf, sections["FST1"])
+	nomsTypes := chaines(buf, secTypes)
+	nomsChamps := chaines(buf, secChamps)
 
 	types, err := lireNomsTypes(buf, sections["TNA1"], nomsTypes)
 	if err != nil {
@@ -129,7 +162,7 @@ func lireNomsTypes(buf []byte, sec [2]int, nomsTypes []string) (tableTypes, erro
 	}
 	nom := func(i int) (string, error) {
 		if i < 0 || i >= len(nomsTypes) {
-			return "", fmt.Errorf("hinavmesh: indice de nom %d hors des %d chaines de TST1", i, len(nomsTypes))
+			return "", fmt.Errorf("hinavmesh: indice de nom %d hors des %d chaines de la table des types", i, len(nomsTypes))
 		}
 		return nomsTypes[i], nil
 	}
@@ -213,7 +246,7 @@ func lireUnCorps(l *lecteurEmpaquete, t *typeHavok, nomsChamps []string) error {
 				break
 			}
 			if iNom < 0 || iNom >= len(nomsChamps) {
-				return fmt.Errorf("membre %d: indice de nom %d hors des %d chaines de FST1",
+				return fmt.Errorf("membre %d: indice de nom %d hors des %d chaines de la table des noms de champs",
 					j, iNom, len(nomsChamps))
 			}
 			t.Membres = append(t.Membres, membreHavok{Nom: nomsChamps[iNom], Offset: offset, Type: typ})

@@ -142,3 +142,54 @@ Aucun polygone a dessiner a la main : **le maillage EST la zone jouable**.
   d'accroche — a instruire si on veut un jour les couverts ou les sauts.
 - La **couverture** : 35 cartes du referentiel sont sous le seuil des 1 000 objets et n'ont donc
   pas de navmesh. Elles gardent la chaine ordinaire, qui leur suffit.
+
+## 8. Deux ecritures de la table de chaines (2026-08-30)
+
+Trois cartes restaient en bouillie faute de maillage lisible : **Absolution, Insolence, Insolence
+Heavies**. Le decodeur les refusait sur « fichier-tag sans section TST1 ».
+
+**LA CAUSE : un nom de section, pas un format.** Leur section `TYPE` porte exactement les memes
+voisins que celle d'Isolation — `TPTR`, `TNA1`, `TBDY`, `THSH`, `TPAD` — mais nomme ses deux tables
+de chaines **`TSTR` et `FSTR`** au lieu de `TST1` et `FST1`. Deux generations de l'outil
+d'export. `internal/hinavmesh/typetable.go` accepte desormais les deux (`sectionsChaines`).
+
+**CE QUI RESTE, ET LES MESURES QUI LE CERNENT.** Le decodage va bien plus loin puis bute : un
+membre de `TBDY` demande l'indice 98 d'une table qui en porte 98.
+
+| | Isolation (TST1/FST1) | Absolution (TSTR/FSTR) |
+|---|---|---|
+| table des types | 1 044 o, 66 morceaux, 0 vide, queue `\xff\xff\xff` | 1 452 o, 99 morceaux, **3 vides**, queue `\x00\x00` |
+| table des champs | 704 o, 61 morceaux, 0 vide, queue `\xff\xff\xff` | 1 048 o, 98 morceaux, **1 vide** |
+| TBDY | 808 o | 1 472 o |
+
+Deux differences de forme sautent aux yeux : la generation TST1 **remplit sa fin avec `0xFF`**
+(le dernier morceau du decoupage n'est donc pas vide), la generation TSTR **termine par des
+nuls** (dernier morceau vide) et porte des **morceaux vides intercales**, ce qu'Isolation n'a pas.
+
+**DEUX PISTES ESSAYEES ET ECARTEES** :
+1. *Indexation a partir de 1* (prepender la chaine vide) : decale tout et corrompt les noms de
+   types — `hkPropertyId` devient `tITEM`. L'origine n'est donc pas en cause.
+2. *Table tronquee par le decoupage* : non, `chaines()` compte deja l'entree vide finale.
+
+**PISTE SUIVANTE, non engagee** : les morceaux vides intercales suggerent que cette generation
+n'encode pas ses chaines a la queue leu leu. Verifier si `TSTR`/`FSTR` sont a longueur prefixee,
+portent un en-tete de section, ou si les deux tables partagent un espace d'indices commun — dans
+ce dernier cas l'indice 98 d'un champ pointerait dans la table des TYPES.
+
+**Garde-rail** : `TestLesDeuxEcrituresDeTableDeChaines` exige qu'Isolation se decode entierement
+et qu'Absolution echoue PLUS LOIN que la section manquante. Retirer la reconnaissance de
+`TSTR/FSTR` le fait tomber.
+
+**Hors de portee du decodeur** : Thunderhead et Thunderhead Heavies ne publient AUCUN maillage.
+Rien a decoder, aucun travail sur le decodeur ne les debloquera.
+
+**TROISIEME PISTE, ESSAYEE ET ECARTEE le 2026-08-30** : un espace d'indices COMMUN aux deux
+tables, les champs etant indexes dans la concatenation types + champs. L'indice demande passe
+alors a **1 064 pour 197 chaines** — un ecart bien pire que celui qu'on cherchait a expliquer.
+Les deux tables ont donc chacune leur espace.
+
+**CE QU'IL RESTE A INSTRUIRE** : les morceaux vides INTERCALES sont le seul indice de forme
+restant, et Isolation n'en a aucun. Verifier si `TSTR`/`FSTR` sont a longueur prefixee ou portent
+un en-tete de section — dans les deux cas, un decoupage naif aux octets nuls produirait exactement
+ce qu'on observe : des morceaux vides la ou se trouvent des octets de longueur ou de remplissage,
+et un compte trop court.

@@ -214,6 +214,7 @@ func (e *environnement) cuitForge(ctx context.Context) []bilanAsset {
 				navRef = m
 			}
 		}
+		rogneAlt, seuilAlt, margeAlt := e.rogneAuxAltitudesProchesDe(carte.MapID)
 		rendu, bilan, err := himap.CuitCarteForge(ctx, himap.OptionsCuissonForge{
 			NavmeshReference:    navRef,
 			RogneAuNavmesh:      e.rogneAuNavmeshDe(carte.MapID),
@@ -255,6 +256,9 @@ func (e *environnement) cuitForge(ctx context.Context) []bilanAsset {
 			SeuilSubstitution:          e.seuilSubstitutionDe(carte.MapID),
 			MargeNavmeshCarte:          e.margeNavmeshDe(carte.MapID),
 			MargeSolBas:                e.margeSolBasDe(carte.MapID),
+			RogneAuxAltitudesProches:   rogneAlt,
+			SeuilAltitude:              seuilAlt,
+			MargeAltitude:              margeAlt,
 		})
 		if err != nil {
 			slog.ErrorContext(ctx, "cuisson Forge", "err", err, "carte", carte.Nom, "map_id", carte.MapID)

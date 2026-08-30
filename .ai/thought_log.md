@@ -73821,3 +73821,53 @@ promettre ce qu on ne tient pas — et restent consignees BLOQUEES au registre a
 maillages sans section TST1, ce qui condamne Absolution, Insolence et leurs variantes a la bouillie
 (seul correctif possible, et c est de la retro-ingenierie) ; le rendu a deux couches si le sous-sol
 de Vagabond doit etre visible ; le renommage de 944396dd en Narrows au catalogue.
+
+## [2026-08-30] Rognage a l altitude, et la seconde ecriture des tables de chaines Havok — Complete
+
+**Decision technique 1 — LE ROGNAGE A L ALTITUDE, propose par l utilisateur.** « Tu peux pas
+prendre les bords blancs, garder une petite marge et couper ce qui est a l exterieur ? » L idee
+s appuie sur une propriete que l habillage rendait visible sans qu on l ait exploitee : en encre la
+teinte vaut (0,30 + 0,70 x eclairement) x (1 - 0,45 x ecart au niveau de jeu), donc LA CLARTE EST
+UN THERMOMETRE D ALTITUDE et « les bords blancs » sont la mesure |z - niveau de jeu|.
+
+`RogneAuxAltitudesProches` garde les cellules a moins de N metres du niveau de jeu, DILATE ce
+masque d une marge — c est elle qui ramene les murs bordant le sol — et efface le reste. Il
+travaille sur la surface DEJA DESSINEE, contrairement aux deux leviers refutes avant lui sur les
+memes cartes : la tranche de hauteur (0 ancre sur 13) et l exclusion par type (0/13, les gros
+types SONT le sol). Le sol ne peut donc pas disparaitre : il est par definition au niveau de jeu.
+
+Reglages retenus par l utilisateur apres deux tours de propositions : **Shogun** seuil 2 m marge
+1 m (2 128 x 1 777 -> 1 248 x 1 268), **Smallhalla** seuil 2 m marge 1,5 m (1 524 x 995 ->
+1 408 x 779), ancres intactes (13/13 et 52/52).
+
+**Decision technique 2 — LA SECONDE ECRITURE DES TABLES DE CHAINES.** Trois cartes restaient en
+bouillie faute de maillage lisible (Absolution, Insolence, Insolence Heavies) ; le decodeur les
+refusait sur « fichier-tag sans section TST1 ». Leur section TYPE porte les MEMES voisins que
+celle d Isolation (TPTR, TNA1, TBDY, THSH, TPAD) mais nomme ses tables de chaines TSTR et FSTR.
+Un nom de section, pas un format. `sectionsChaines` accepte desormais les deux ecritures.
+
+**Resultats observes** : le decodage va bien plus loin puis bute — un membre de TBDY demande
+l indice 98 d une table qui en porte 98. TROIS EXPLICATIONS ESSAYEES ET ECARTEES, chacune mesuree :
+indexation a partir de 1 (corrompt les noms de types, hkPropertyId devient tITEM) ; table tronquee
+au decoupage (non, l entree vide finale est deja comptee) ; espace d indices commun aux deux tables
+(l indice demande passe a 1 064 pour 197 chaines). Le seul indice de forme restant est que la
+generation TSTR porte des morceaux VIDES INTERCALES qu Isolation n a pas — signature d une
+longueur prefixee ou d un en-tete de section. Consigne dans NAVMESH_FORGE_2026-08-27.md §8.
+
+**Perimetre corrige au passage** : ce n est pas cinq cartes mais trois. Thunderhead et Thunderhead
+Heavies ne publient AUCUN maillage — rien a decoder, aucun travail sur le decodeur ne les
+debloquera. Et les blobs d Insolence et Insolence Heavies sont identiques a l octet pres.
+
+**Garde-rail** : `TestLesDeuxEcrituresDeTableDeChaines` exige qu Isolation se decode entierement et
+qu Absolution echoue PLUS LOIN que la section manquante — retirer la reconnaissance de TSTR/FSTR le
+fait tomber.
+
+**Incident a ne pas repeter** : un script de validation ecrit par HEREDOC bash a mange les
+echappements de sa regex (« \| » devenu « | », une alternation vide) et a insere son remplacement
+entre chaque caractere du registre. Restaure depuis le commit precedent — c est ce qui a rendu la
+perte nulle. Les scripts a expression reguliere passent desormais par l outil d ecriture de
+fichier, et les verdicts se posent par decoupage de colonnes, pas par regex.
+
+**Conclusion / prochaine etape** : 94 fonds valides, 9 en attente de verdict. Reste ouvert : la
+forme exacte des tables TSTR/FSTR (trois pistes fermees, une quatrieme decrite), le rendu a deux
+couches si le sous-sol de Vagabond doit etre visible, le renommage de 944396dd en Narrows.

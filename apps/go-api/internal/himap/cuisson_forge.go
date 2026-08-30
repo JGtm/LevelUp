@@ -139,6 +139,13 @@ type OptionsCuissonForge struct {
 	// surface comme candidate. ZERO = 4 m, qui EXCLUENT deliberement un sous-sol. L elargir le
 	// fait entrer. Voir MargeSolVuDuDessousCarte.
 	MargeSolBas float64
+	// RogneAuxAltitudesProches efface ce qui s ecarte trop du niveau de jeu, en gardant une marge
+	// autour de ce qui reste. Voir altitude_proche.go — l idee vient de l utilisateur : garder les
+	// bords clairs et couper ce qui est dehors, la clarte etant un thermometre d altitude.
+	RogneAuxAltitudesProches bool
+	// SeuilAltitude, MargeAltitude : en metres. Zero = les valeurs de production (6 m et 4 m).
+	SeuilAltitude float64
+	MargeAltitude float64
 	// MinceurMin ecarte les modeles FILAIRES : ceux dont l aire du maillage, rapportee au
 	// carre de leur emprise, tombe sous ce seuil. Zero = ne rien ecarter.
 	//
@@ -337,6 +344,18 @@ func CuitCarteForge(ctx context.Context, opts OptionsCuissonForge) (*Rendu, Bila
 	}
 	mesureEtRogneZonesForge(ctx, r, &b, opts)
 	combleTrousForge(ctx, r, &b, opts)
+	if opts.RogneAuxAltitudesProches {
+		seuil, marge := SeuilAltitudeProche, MargeAltitudeProche
+		if opts.SeuilAltitude > 0 {
+			seuil = opts.SeuilAltitude
+		}
+		if opts.MargeAltitude > 0 {
+			marge = opts.MargeAltitude
+		}
+		n := r.RogneAuxAltitudesProches(seuil, marge)
+		slog.InfoContext(ctx, "mapfond: matiere loin du niveau de jeu effacee", "carte", opts.Cle,
+			"seuil", seuil, "marge", marge, "cellules", n)
+	}
 	if opts.RogneAuxComposantesAncrees {
 		n, gardees, total := r.GardeComposantesAncrees(opts.Ancres)
 		slog.InfoContext(ctx, "mapfond: composantes sans ancre effacees", "carte", opts.Cle,
