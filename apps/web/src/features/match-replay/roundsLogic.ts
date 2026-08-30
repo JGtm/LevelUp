@@ -33,10 +33,51 @@
  * donc AU MOMENT DE LA VICTOIRE, pas à l'ouverture de la manche suivante (il y a un entracte
  * entre les deux) — dérivée de la position de lecture, elle se vide quand on remonte la frise.
  *
- * LA BASCULE, elle, est datée AU DÉBUT DE LA MANCHE SUIVANTE (`roundTransitions`) : c'est là que
- * l'entracte se termine et que le message « manche terminée » a sa place. Pastille et message ne
- * partagent donc pas la même borne, et c'est voulu — l'une dit « gagnée » (au point décisif),
- * l'autre « on passe à la suite » (à la reprise).
+ * LA BASCULE PARTAGE CETTE BORNE (`roundTransitions`), ET C'EST UN CORRECTIF DU 2026-08-29.
+ * Elle était datée AU DÉBUT DE LA MANCHE SUIVANTE — « on passe à la suite », à la reprise — et
+ * c'est de là que partaient le message « Manche N terminée » et la voix de l'annonceur. Or ce
+ * début n'est pas un instant du déroulé : c'est le PREMIER PALIER DE SCORE de la manche
+ * suivante, donc le moment où quelqu'un marque à nouveau, après l'entracte ET après le temps
+ * qu'il faut pour reprendre le crâne. Mesure sur les quatre témoins multi-manches du dossier
+ * d'artefacts (2026-08-29, `data/cache/replays/halo_infinite`) : 24dbb67d +26,9 s ; 43716616
+ * +19,0 s ; 51ebbc0f +28,9 s ; d9781168 +34,1 s puis +21,5 s. L'annonce arrivait donc une
+ * demi-minute après la manche qu'elle annonçait, par-dessus la manche suivante déjà commencée.
+ *
+ * RÈGLE DU DÉPÔT (retour utilisateur du 2026-08-29) : un message, un son, une voix se déclenche
+ * SUR SON ÉVÉNEMENT quand cet événement est daté, et sur T0 sinon — jamais sur un instant
+ * voisin. L'événement, ici, c'est la fin de la manche : le dernier palier, celui-là même qui
+ * remplit la pastille. Les deux bornes n'en font donc plus qu'une, et il n'y a plus qu'un
+ * instant « fin de manche » dans tout le rejeu.
+ *
+ * # CE DERNIER PALIER N'EST PAS UN PIS-ALLER : C'EST LA MARQUE DE MANCHE DU FILM
+ *
+ * La question mérite d'être écrite parce qu'elle se reposera : le film ne publie AUCUN
+ * événement « manche terminée », alors sur quoi s'appuie-t-on vraiment ?
+ *
+ * Sur le fait que le film ÉTIQUETTE CHACUN DE SES ENREGISTREMENTS PAR UNE MANCHE
+ * (`StatRecord.Round`, statborg — cf. `analysis/objectiveevents/statborg.go`). Toutes les séries
+ * que l'artefact en tire sont donc bornées par la manche : le score de MODE de chaque camp, et
+ * les quatre compteurs de CHAQUE joueur (score personnel, frags, morts, assistances). Mesure du
+ * 2026-08-29 sur les 4 films multi-manches du dossier d'artefacts, 5 bascules :
+ * **toutes ces séries se figent sur la MÊME image, à zéro milliseconde près** (écart mesuré
+ * entre « dernier palier d'équipe » et « dernier palier toutes séries confondues » : 0,0 s, 5
+ * fois sur 5). Ce n'est donc pas « le dernier point marqué » qu'on lit, c'est **l'instant où le
+ * film cesse de décrire cette manche**.
+ *
+ * DEUX CONSÉQUENCES PRATIQUES :
+ *  - inutile de publier des bornes de manche depuis le décodeur Go : elles tomberaient sur
+ *    exactement cette image, au prix d'un champ de schéma et d'une re-cuisson de tous les
+ *    artefacts ;
+ *  - inutile d'aller chercher un signal « plus physique ». Le terrain se VIDE bien (le film
+ *    cesse de publier tout le monde pendant 0,5 à 1,7 s, le temps de la téléportation) mais
+ *    **7,6 à 9,1 s APRÈS** : c'est l'écran de fin de manche du jeu, pas sa fin. S'y caler
+ *    replacerait un décalage de huit secondes là où on vient d'en retirer trente.
+ *
+ * LA LIMITE QUI RESTE, NOMMÉE : une manche close AU CHRONO dont plus personne ne marque NI ne
+ * meurt dans les dernières secondes figerait ses séries un peu avant sa fin réelle. Le corpus
+ * n'en contient aucune (les 5 bascules finissent au plafond de manche — 80 ou 100 selon la
+ * variante), et l'erreur serait EN AVANCE de quelques secondes, pas de trente. On ne corrige pas
+ * ce qu'on n'a pas mesuré : le jour où un film le montre, c'est ici qu'il faudra revenir.
  */
 import {
   teamRoundScoreAtFrame,
@@ -57,11 +98,15 @@ export interface RoundDot {
   winner: RoundWinner | null
 }
 
-/** Une bascule de manche : l'instant où une manche se termine et où la suivante commence. */
+/** Une bascule de manche : l'instant où une manche se termine. */
 export interface RoundTransition {
   /** Rang d'affichage (1-based) de la manche qui vient de se terminer. */
   endedIndex: number
-  /** Frame du film où la manche suivante commence. */
+  /**
+   * Frame du film où la manche s'est terminée — son DERNIER PALIER de score, la même borne
+   * que la pastille pleine du bandeau (cf. l'en-tête). Ce n'est plus le début de la manche
+   * suivante : celui-ci tombe 19 à 34 s plus tard sur les témoins mesurés.
+   */
   frame: number
 }
 
@@ -166,8 +211,12 @@ export function roundDots(
 
 /**
  * roundTransitions rend les bascules de manche : une par passage d'une manche à la suivante.
- * Aucune bascule sur un mode à manche unique. La bascule est datée au DÉBUT de la manche
- * suivante — l'instant où le film ouvre un nouveau compteur, donc où le précédent est clos.
+ * Aucune bascule sur un mode à manche unique. La bascule est datée à la FIN de la manche qui
+ * se termine (son dernier palier), pas au début de la suivante — cf. l'en-tête et la mesure.
+ *
+ * LA DERNIÈRE MANCHE N'EN PRODUIT AUCUNE, et c'est inchangé : sa fin est la fin du MATCH, que
+ * l'écran de fin et la voix de conclusion annoncent déjà (`ReplayVictoryOverlay`,
+ * `endMatchSound.ts`). Deux annonces sur le même instant se marcheraient dessus.
  */
 export function roundTransitions(
   timeline: ReplayScoreTimelineReady | undefined,
@@ -176,7 +225,7 @@ export function roundTransitions(
   const rounds = orderedRounds(timeline)
   const out: RoundTransition[] = []
   for (let i = 1; i < rounds.length; i++) {
-    out.push({ endedIndex: i, frame: rounds[i].start })
+    out.push({ endedIndex: i, frame: rounds[i - 1].end })
   }
   return out
 }

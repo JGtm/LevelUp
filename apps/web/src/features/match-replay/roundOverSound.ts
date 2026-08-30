@@ -12,6 +12,11 @@
  * film dont l'origine n'est pas résolue) : un son qui partirait sur l'horloge brute sonnerait à
  * côté de son message. Sur un mode à manche unique, `roundTransitions` est vide : rien ne sonne.
  *
+ * ET CETTE BASCULE EST LA FIN DE LA MANCHE DEPUIS LE 2026-08-29, plus le début de la suivante :
+ * la voix arrivait 19 à 34 s en retard (mesure des quatre témoins multi-manches, cf. l'en-tête de
+ * `roundsLogic`) — l'annonceur disait « manche terminée » alors que la manche d'après était
+ * lancée. Rien à changer ici : ce fichier ne date rien lui-même, il lit la borne partagée.
+ *
  * LOCALE-AWARE, comme la voix de FIN DE PARTIE (`endMatchSound.ts`) : une VOIX d'annonceur a une
  * langue. Les deux packs (FR et EN) sont extraits du jeu, et la langue jouée est celle de
  * l'INTERFACE (prop `locale` de la page rejeu) — pas celle du jeu au moment du match, que le film
