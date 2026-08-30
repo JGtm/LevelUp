@@ -125,11 +125,14 @@ func TestLot1TirsEtCibles(t *testing.T) {
 	}
 	var (
 		paquets, mauvaisType, court, blocSup, ecartes int
-		refAbs, portesNonVides, viseeOK, viseeKO      int
+		refAbs, viseeOK, viseeKO                      int
 		cibles                                        = map[uint64]int{}
 		composantes                                   = map[uint64]int{}
 		attaquants                                    = map[uint64]int{}
 		armes                                         = map[uint64]int{}
+		armesFaux                                     = map[uint64]int{}
+		viseeCodes                                    = map[uint64]int{}
+		viseeFaux                                     = map[uint64]int{}
 	)
 	for c := 1; c <= n; c++ {
 		data, err := ReadFilmChunk(dir, c)
@@ -179,8 +182,20 @@ func TestLot1TirsEtCibles(t *testing.T) {
 			if br.ReadBit() {
 				br.Skip(32)
 			}
-			armes[br.ReadBits(32)]++ // variant_name
-			br.Skip(2)               // R(1) out[0x1d] + R(1) out[2]
+			// variant_name (l'arme) au BON offset ET a un offset FAUX (+5 bits) : oracle
+			// DISCRIMINANT. Peu de valeurs distinctes au bon offset (~27 armes du match),
+			// beaucoup a un offset faux (bruit 32 bits) — c'est ce qui prouve le cadrage,
+			// contrairement au vecteur de visee (non discriminant a 30 bits).
+			armes[br.ReadBits(32)]++ // variant_name (position exacte, cadrage suivi)
+			// TEMOIN DE BRUIT : 32 bits a un offset PROFOND FIXE (haute entropie, hors de
+			// tout champ categoriel). Un champ categoriel (l'arme) rend PEU de distinctes
+			// avec forte repetition ; le bruit en rend presque autant que d'evenements.
+			if 300+32 <= len(pay)*8 {
+				cb := NewBitReader(pay)
+				cb.Skip(300)
+				armesFaux[cb.ReadBits(32)]++
+			}
+			br.Skip(2) // R(1) out[0x1d] + R(1) out[2]
 			if estBloc {
 				blocSup++
 				br.Skip(1)
@@ -210,29 +225,31 @@ func TestLot1TirsEtCibles(t *testing.T) {
 			}
 			cibles[nCibles]++
 			composantes[nComp]++
-			// LE JUGE DU CADRAGE : dans le cas modal (0 composante, 0 cible, portes des
-			// deux sous-lecteurs a 0), la VISEE R(30) est a 3 bits d'ici. Un vecteur
-			// unitaire valide (DecodeAimVectorChecked) prouve la chaine ENTIERE.
+			// LE JUGE DU CADRAGE (workflow type36-subreaders, 31/08) : dans le cas modal
+			// (0 cible, 0 composante), apres les deux lecteurs COMPOSITES FUN_1406cd5b8 et
+			// FUN_1408eff64 (grammaires bit-exactes ci-dessous), la VISEE R(30) est lue en
+			// mode film. Un vecteur unitaire valide prouve toute la chaine.
 			if nCibles != 0 || nComp != 0 {
-				continue // les boucles exigent des sous-lecteurs non resolus
+				continue // les boucles cibles/composantes : sujet du prochain geste
 			}
-			if br.ReadBit() { // b1 de FUN_1406cd5b8
-				portesNonVides++
-				continue
-			}
-			if br.ReadBit() { // b2
-				portesNonVides++
-				continue
-			}
-			if br.ReadBit() { // porte de FUN_1408eff64
-				portesNonVides++
-				continue
-			}
-			if v, ok := DecodeAimVectorChecked(uint32(br.ReadBits(30)), 30); ok {
+			lot1SkipCd5b8(br)
+			lot1SkipEff64(br)
+			aimPos := br.BitPos()
+			aimCode := br.ReadBits(30)
+			if _, ok := DecodeAimVectorChecked(uint32(aimCode), 30); ok {
 				viseeOK++
-				_ = v
 			} else {
 				viseeKO++
+			}
+			// ORACLE DISCRIMINANT DE LA VISEE : le code de visee 30 bits est CATEGORIEL au
+			// bon offset (un joueur qui tient sa visee reemet la meme direction) — peu de
+			// valeurs distinctes ; a un offset FAUX c'est du bruit (tout distinct). Meme
+			// logique que l'arme (le vecteur unitaire, lui, est non discriminant a 30 bits).
+			viseeCodes[aimCode]++
+			if p := aimPos + 7; p+30 <= len(pay)*8 {
+				cb := NewBitReader(pay)
+				cb.Skip(p)
+				viseeFaux[cb.ReadBits(30)]++
 			}
 		}
 	}
@@ -251,10 +268,26 @@ func TestLot1TirsEtCibles(t *testing.T) {
 		zero, total, lot1Pct(zero, total))
 	t.Logf("composantes de degat : %s", lot1TopU64(composantes, 8))
 	t.Logf("armes (variant_name) : %d distinctes — %s", len(armes), lot1TopU64(armes, 8))
-	t.Logf("LE JUGE — visee R(30) au bout de la chaine (cas modal) : VALIDE %d · invalide %d · "+
-		"portes non vides (sautes) %d", viseeOK, viseeKO, portesNonVides)
-	t.Logf("VERDICT cadrage complet (>= 90 %% de vecteurs valides, n >= 50) : %s",
-		lot1Verdict(viseeOK >= 50 && lot1Pct(viseeOK, viseeOK+viseeKO) >= 90))
+	// ORACLE DISCRIMINANT : l'arme (variant_name) est un champ CATEGORIEL — peu de valeurs,
+	// forte repetition — au bon offset. Le temoin de bruit (offset profond) en rend presque
+	// autant que d'evenements. On compare les ratios distinctes/evenements.
+	nEvt := paquets - mauvaisType
+	ratioArme := lot1Pct(len(armes), nEvt)
+	ratioBruit := lot1Pct(len(armesFaux), nEvt)
+	t.Logf("ORACLE ARME (categoriel) : %d distinctes / %d evenements = %.1f %% · TEMOIN BRUIT : %.1f %% — %s",
+		len(armes), nEvt, ratioArme, ratioBruit,
+		lot1Verdict(len(armes) > 0 && ratioArme < 0.5*ratioBruit))
+	// VISEE : le VECTEUR unitaire est non discriminant a 30 bits (publie pour info). Mais le
+	// CODE de visee, lui, est categoriel — c'est l'oracle qui juge le cadrage complet
+	// (en-tete + les DEUX lecteurs composites + la visee).
+	rCode := lot1Pct(len(viseeCodes), viseeOK+viseeKO)
+	rBruit := lot1Pct(len(viseeFaux), viseeOK+viseeKO)
+	t.Logf("VISEE : vecteur unitaire valide %d / %d (oracle non discriminant a 30 bits)",
+		viseeOK, viseeOK+viseeKO)
+	t.Logf("ORACLE VISEE (code categoriel, JUGE des composites) : %d codes distincts = %.1f %% "+
+		"vs TEMOIN BRUIT (offset faux) %.1f %% — %s",
+		len(viseeCodes), rCode, rBruit,
+		lot1Verdict(viseeOK+viseeKO >= 50 && rCode < 0.6*rBruit))
 }
 
 // TestLot1Vehicules — ENTREES ET SORTIES DE VEHICULE (demande utilisateur). Octet de tete =
@@ -353,5 +386,60 @@ func TestLot1Vehicules(t *testing.T) {
 		t.Logf("  %-22s : %d evenements sur %d films · siege R(6) : %s · unites (ref0) : %d distinctes %s",
 			nom, compte[nom], filmsAvecVehic[nom], lot1TopU64(sieges[nom], 8),
 			len(unites[nom]), lot1TopU64(unites[nom], 6))
+	}
+}
+
+// lot1SkipCd5b8 consomme les bits du lecteur composite A (FUN_1406cd5b8) du type 36, en
+// mode film. Grammaire bit-exacte du workflow type36-subreaders (31/08), verifiee au
+// desassemblage : A=R(1) (donnees etendues), B=R(1) (element present) ; si B : sous-enreg
+// FUN_140c9eabc [g0=R(1) ; si 1 : tag=R(2) ; tag 1 : R(32)+[R(1);si1:R(6)] · tag 2 : R(32)]
+// puis si A : R(4)+R(4) ; R(3) drapeaux ; si (drapeaux&2) : g=R(1) ; si g==0 : R(20)+R(14) ;
+// enfin si A : C=R(1) ; si C : R(5).
+func lot1SkipCd5b8(br *BitReader) {
+	a := br.ReadBit()
+	b := br.ReadBit()
+	if b {
+		if br.ReadBit() { // g0
+			switch br.ReadBits(2) { // tag
+			case 1:
+				br.Skip(32)
+				if br.ReadBit() {
+					br.Skip(6)
+				}
+			case 2:
+				br.Skip(32)
+			}
+		}
+		if a {
+			br.Skip(8) // R(4) + R(4)
+		}
+		flags := br.ReadBits(3) // FUN_1407ef8e4
+		if flags&2 != 0 {
+			if !br.ReadBit() { // FUN_140c9e738, sel=1 : g==0 -> vecteur 20+14
+				br.Skip(34)
+			}
+		}
+	}
+	if a {
+		if br.ReadBit() { // C
+			br.Skip(5)
+		}
+	}
+}
+
+// lot1SkipEff64 consomme les bits du lecteur composite B (FUN_1408eff64) du type 36, en
+// mode film (p5==0). main=R(1) ; si main : tag=R(2) ; tag 1 : R(32)+[R(1);si1:R(6)] ·
+// tag 2 : R(32). Grammaire du workflow, confirmee decompile + desassemblage.
+func lot1SkipEff64(br *BitReader) {
+	if br.ReadBit() { // main
+		switch br.ReadBits(2) { // tag
+		case 1:
+			br.Skip(32)
+			if br.ReadBit() {
+				br.Skip(6)
+			}
+		case 2:
+			br.Skip(32)
+		}
 	}
 }
