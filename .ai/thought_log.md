@@ -1,3 +1,31 @@
+## [2026-08-30] Percer la trame — lot 1 suite : cadrage 0xC2/0xD2 ÉTABLI sur 2 films, RÉTRACTATION du DEL de tête — En cours
+
+**Contexte** : poursuite du lot 1 (session du soir). Trois instruments ajoutés au même
+fichier de recherche, un négatif publié pour chacun des deux qui ne tranchent pas.
+
+**Décision technique principale** : ne retenir comme arbitre QUE le discriminant de masques
+par famille (84,8 % vs 10,7 %), après avoir mesuré que (a) le cadrage PAR PAQUET diverge à
+en-tête identique (k=7/13/15/20 sur la même tête ; 0xE9 : 0 k acceptable sur 255 paquets) et
+(b) l'inférence de chaîne est NON CONCLUANTE par défaut d'instrument (métrique « fin propre »
+gagnée par les trames vides ; lecture au-delà du payload) — deux négatifs publiés tels quels.
+
+**Résultats chiffrés** : le balayage à discriminant de masques SE REPRODUIT sur `00502e52` :
+0xC2 -> k=6 (98,4 %, n=62 ; 99,3 %/135 sur 000d5950), 0xD2 -> k=8 (98,2 %, n=57 ; 86,2 %/80),
+témoin 0xA0 -> k=2 (99,4 %/23 658). **Cadrage établi sur deux films.** RÉTRACTATION : le
+« record DEL de tête » du commit précédent était un artefact du cadrage k=2 ; sous le cadrage
+propre, le 1er record est un DELTA sur un slot transitoire NON LIÉ (172/245 sur 0xD2@8,
+183/183 sur 0xC2@6, 125/125 sur 0xD3@6). 0xD3 : k=6 sur les deux films mais faible
+(41,5 %/36,5 %) — en-tête plus complexe, ouvert. Ghidra : la lecture normale tourne en
+branche B du record-loop (FUN_1428e24bc, chemin de restauration, force DAT_14474cd78=0 puis
+restaure) ; la largeur d'identifiant vient d'une table sélectionnée par le bit 0 du paquet
+(source runtime du IDLowBits calibré : 11/14 selon film). Le 2e bit d'amorce reste non
+localisé statiquement (blocs « unreachable » désassemblés : nettoyage seulement).
+
+**Conclusion / prochaine étape** : table de synthèse publiée dans le miroir Notion (demande
+utilisateur). Suite du lot 1 : percer l'en-tête famille (6 bits sur 0xC2… que signifient-ils),
+faire tomber les familles NON CONCLUANT (plus de chunks/films), puis décoder les records
+après le transitoire de tête sur 0xD2/0xD3 et confronter au golden killsource.
+
 ## [2026-08-30] Percer la trame — lot 1 ouvert : DEL de tête sur 0xD2/0xD3, vues 2/3, et l'amorce qui varie par famille — En cours
 
 **Contexte** : plan `.ai/V7.5/PLAN_PERCER_TRAME_FILM_2026-08-30.md`, lot 1 (les 528 262
