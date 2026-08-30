@@ -454,6 +454,13 @@ var CartesForge = []CarteForge{
 		ModuleCanevas: CanevasBlank,
 	},
 
+	// TROIS CARTES DU LOT DU 28/08 NE SONT PAS DECLAREES ICI, ET C EST VOULU : Munera Platform W4,
+	// Munera Platform H6 et Out With A Bang ne portent AUCUN objectif dans leur variante. Or le
+	// cadre d un fond se batit sur les ancres d objectifs — sans elles il n y a rien a cadrer. Les
+	// declarer ici reviendrait a promettre un asset qu on ne sait pas produire, ce que le garde-rail
+	// `TestFondForgeJamaisSousCleModule` refuse a juste titre. Elles sont consignees BLOQUEES au
+	// registre des cartes, avec ce motif.
+	//
 	// LOT DU 2026-08-28 — LES VINGT-CINQ CARTES LES PLUS JOUEES QUI N ETAIENT PAS AU CATALOGUE.
 	//
 	// Elles ne viennent pas du corpus de l utilisateur mais du CLASSEMENT PUBLIC du jeu : le
@@ -487,18 +494,6 @@ var CartesForge = []CarteForge{
 		Nom:           "Interference",
 		FichierMvar:   "654dff62-d618-496a-8914-06ab73d991e3_map.mvar",
 		ModuleCanevas: CanevasFrost,
-	},
-	{
-		MapID:         "55d09d90-6bdc-4a4c-b54b-ad1dd1b83467",
-		Nom:           "Munera Platform W4",
-		FichierMvar:   "55d09d90-6bdc-4a4c-b54b-ad1dd1b83467_map.mvar",
-		ModuleCanevas: CanevasBlank,
-	},
-	{
-		MapID:         "2c89dc96-5bd9-4a16-a13f-958188fade8b",
-		Nom:           "Munera Platform H6",
-		FichierMvar:   "2c89dc96-5bd9-4a16-a13f-958188fade8b_map.mvar",
-		ModuleCanevas: CanevasBlank,
 	},
 	{
 		MapID:         "8cf45707-ced1-4722-b736-c139cbf0d1e2",
@@ -607,12 +602,6 @@ var CartesForge = []CarteForge{
 		Nom:           "Cold Storage",
 		FichierMvar:   "78cebfc7-980a-4e8f-86a7-cf22f55f670e_map.mvar",
 		ModuleCanevas: CanevasBlank,
-	},
-	{
-		MapID:         "6dc27650-715a-4b0f-a2f9-2bae7afa23a0",
-		Nom:           "Out With A Bang",
-		FichierMvar:   "6dc27650-715a-4b0f-a2f9-2bae7afa23a0_map.mvar",
-		ModuleCanevas: CanevasAcademy,
 	},
 	{
 		MapID:         "47823612-9de0-4ca9-8a95-b3a6ebd7ca91",

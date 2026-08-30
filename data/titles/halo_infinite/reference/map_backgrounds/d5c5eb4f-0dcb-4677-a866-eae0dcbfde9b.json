@@ -7,14 +7,14 @@
   ],
   "image": "d5c5eb4f-0dcb-4677-a866-eae0dcbfde9b.png",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
-  "generatedAt": "2026-08-27T23:12:51.6820124Z",
+  "generatedAt": "2026-08-30T12:15:35.9731125Z",
   "style": "encre",
   "calibration": {
     "metersPerPixel": 0.05905832036336263,
-    "originX": -85.77497100830078,
-    "originY": 84.6889979693095,
-    "widthPx": 3001,
-    "heightPx": 2867,
+    "originX": -66.81725017166139,
+    "originY": 65.67221881230674,
+    "widthPx": 2358,
+    "heightPx": 2224,
     "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
   },
   "stats": {

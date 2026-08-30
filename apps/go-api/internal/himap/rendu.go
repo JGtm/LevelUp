@@ -391,6 +391,13 @@ func (r *Rendu) PixelsParType() map[int32]int {
 // creux sans laisser entrer un sous-sol.
 const MargeSolVuDuDessous = 4.0
 
+// MargeSolVuDuDessousCarte, quand elle est > 0, remplace la marge par defaut. Reglable par
+// carte parce que 4 m sont faits pour EXCLURE un sous-sol, et qu il existe des cartes ou le
+// sous-sol est justement ce qu on veut voir (Vagabond, verdict utilisateur du 2026-08-30 :
+// « on a surtout pas le sous-sol »). Elargir la marge le fait entrer — au prix du niveau du
+// dessus, la ou les deux se superposent : une vue de dessus ne montre qu une surface par pixel.
+var MargeSolVuDuDessousCarte = 0.0
+
 // ArmeSurfaceBasse fait retenir, pour chaque pixel, la surface la plus BASSE au-dessus du sol
 // joue. A appeler apres NiveauDeJeu et avant de projeter.
 func (r *Rendu) ArmeSurfaceBasse() {
@@ -406,7 +413,11 @@ func (r *Rendu) plancherSolVu() float64 {
 	if math.IsNaN(r.niveauJeu) {
 		return math.Inf(-1)
 	}
-	return r.niveauJeu - MargeSolVuDuDessous
+	m := MargeSolVuDuDessous
+	if MargeSolVuDuDessousCarte > 0 {
+		m = MargeSolVuDuDessousCarte
+	}
+	return r.niveauJeu - m
 }
 
 // AdopteSurfaceBasse remplace la surface haute par la surface basse, la ou il y en a une, et

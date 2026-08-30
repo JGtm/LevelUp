@@ -118,12 +118,27 @@ type OptionsCuissonForge struct {
 	NavmeshReference *hinavmesh.Maillage
 	// RogneAuNavmesh efface la matiere hors du maillage de navigation, dilate de MargeNavmesh.
 	RogneAuNavmesh bool
+	// MargeNavmeshCarte : dilatation du masque de rognage au maillage, en metres. ZERO =
+	// `MargeNavmesh` (3 m).
+	//
+	// La marge existe pour garder les MURS qui bordent le sol : le maillage se retire des parois,
+	// et rogner au ras rendrait une carte sans ses cloisons. Mais 3 m gardent aussi ce qui borde
+	// le sol sans en etre — un rocher pose contre l arene, une falaise. La resserrer est le seul
+	// levier qui distingue ces masses du terrain, apres que trois autres ont ete refutes sur
+	// Shogun le 2026-08-30 : la tranche de hauteur (0 ancre sur 13), l exclusion par type
+	// (0 ancre sur 13 — les gros types SONT le sol) et l altitude de pose (le point de pose d une
+	// piece Forge n est pas la ou sa surface se dessine).
+	MargeNavmeshCarte float64
 	// ToleranceNavmesh vide les cellules dont la surface retenue s ecarte de plus de N metres
 	// du sol donne par le maillage. Zero = ne rien vider.
 	ToleranceNavmesh float64
 	// SolVuDuDessous : retenir la surface la plus BASSE au-dessus du sol joue au lieu de la plus
 	// haute. Voir Rendu.ArmeSurfaceBasse — la reponse aux cartes a ciel ferme.
 	SolVuDuDessous bool
+	// MargeSolVuDuDessousCarte : de combien on descend sous le niveau de jeu pour accepter une
+	// surface comme candidate. ZERO = 4 m, qui EXCLUENT deliberement un sous-sol. L elargir le
+	// fait entrer. Voir MargeSolVuDuDessousCarte.
+	MargeSolBas float64
 	// MinceurMin ecarte les modeles FILAIRES : ceux dont l aire du maillage, rapportee au
 	// carre de leur emprise, tombe sous ce seuil. Zero = ne rien ecarter.
 	//
@@ -163,6 +178,66 @@ type OptionsCuissonForge struct {
 	// MargeZones : dilatation du masque des zones, en metres. ZERO = `MargeMasqueZones` (4 m),
 	// negatif = ne pas dilater du tout.
 	MargeZones float64
+	// CombleTrous peint un SOL SUPPOSE dans les trous INTERIEURS de la carte : les cellules vides
+	// que l on ne peut pas atteindre depuis le bord de l image. C est la definition topologique de
+	// « dedans », et c est exactement ce que l utilisateur a demande le 2026-08-30 — un fond plein
+	// a l interieur de la forme, pas au-dela.
+	//
+	// POURQUOI CA MANQUAIT AUX CARTES FORGE. La chaine native comble depuis le 26/08, mais bornee
+	// au masque des zones de callout, que les cartes Forge n avaient pas. Elles l ont depuis le
+	// 27/08 ; ici on ne s en sert MEME PAS comme borne : un trou peut tomber dans la silhouette
+	// sans tomber dans une zone nommee, et il faut le combler quand meme.
+	//
+	// SA SEULE FAIBLESSE, ET ELLE ECHOUE DU BON COTE : si le contour de la carte est ouvert, le
+	// remplissage depuis le bord atteint l interieur et rien n est comble. On ne peint alors rien
+	// plutot que de peindre dehors.
+	CombleTrous bool
+	// CombleAuMaillage peint le sol suppose partout ou le MAILLAGE dit qu on marche et ou la
+	// geometrie n a rien dessine. C est l autre definition de « la forme de la carte », et la
+	// seule qui rende quelque chose sur une silhouette en dentelle (voir CombleDansLeMaillage).
+	CombleAuMaillage bool
+	// RogneAuxComposantesAncrees efface les amas de matiere qui ne portent aucune ancre et n en
+	// touchent aucun qui en porte : du decor pose hors de la silhouette jouee. Voir
+	// composantes.go. Levier PAR CARTE — une carte dont les ancres ne couvrent pas tous ses
+	// ilots joues y perdrait du terrain.
+	RogneAuxComposantesAncrees bool
+	// CadreAuxZones borne l image a l emprise des ZONES DE CALLOUT, elargie de
+	// `MargeCadreZones`. A ne pas confondre avec `RogneAuxZones`, qui efface la matiere hors des
+	// zones : celui-la decide ce qu on efface, celui-ci ce qu on montre. Il repond aux cartes
+	// dont le cadre atteint la butee alors que le jeu tient dans un coin.
+	CadreAuxZones bool
+	// CadreAuxAncres borne l image a l emprise des ANCRES D OBJECTIFS, elargie de
+	// `MargeCadreAncres`. Recours quand les zones de callout sont trop grossieres pour cadrer
+	// (elles couvrent le canevas entier sur plusieurs cartes) et que le maillage manque ou ne se
+	// lit pas. Voir BoiteDesAncres.
+	CadreAuxAncres bool
+	// MargeCadreAncres : marge autour des ancres, en metres. ZERO = `MargeCadreAncres` (25 m).
+	//
+	// REGLABLE PAR CARTE parce que 25 m ne veut pas dire la meme chose partout : sur Shogun les
+	// ancres tiennent dans 31 x 30 m alors que l image en fait 93 x 78 — la marge par defaut
+	// rendait donc presque toute l image, et le decor du canevas restait. Sur une carte dont les
+	// objectifs sont alignes (Outlook : 31 x 3 m), une marge serree couperait au contraire
+	// l arene. Le chiffre se choisit apres avoir regarde.
+	MargeAncres float64
+	// MaillageNiveauHaut : prendre le niveau le PLUS HAUT du maillage comme reference la ou deux
+	// niveaux se superposent, pour que les etages et les passerelles survivent a la substitution.
+	// Voir NiveauHautNavmesh.
+	MaillageNiveauHaut bool
+	// SansSubstitution laisse la surface HAUTE telle qu elle a ete dessinee, au lieu de la
+	// remplacer par celle qui est la plus proche de la reference.
+	//
+	// A QUOI CA SERT. La substitution est ce qui fait tomber les coques et les domes sur les
+	// cartes couvertes ; c est elle qui a rendu Isolation lisible. Mais elle ne distingue pas un
+	// dome d une STRUCTURE EN HAUTEUR sur laquelle on ne marche pas — un mur, un auvent, un bloc
+	// plein. Prendre le niveau haut du maillage sauve les etages PRATICABLES ; ce qui n est pas
+	// praticable reste rabattu. Sur les cartes ou l utilisateur veut voir ces volumes-la, il faut
+	// renoncer a la substitution — et accepter que les toits reviennent avec eux.
+	//
+	// A n armer qu apres avoir regarde : sur une carte sous voute, ca rend l image illisible.
+	SansSubstitution bool
+	// SeuilSubstitution : ecart minimal en metres au-dessus de la reference pour qu une surface
+	// soit rabattue. Zero = rabattre des qu il y a un ecart. Voir SeuilSubstitution.
+	SeuilSubstitution float64
 }
 
 // CuitCarteForge rend le fond de carte d'une carte Forge en posant les modeles de ses objets.
@@ -198,9 +273,15 @@ func CuitCarteForge(ctx context.Context, opts OptionsCuissonForge) (*Rendu, Bila
 	// MEME regle que la chaine native : la voie de reference contre les toits
 	// (rendu_reference.go). Une carte Forge a ciel ouvert reste sous le seuil et n'est pas
 	// touchee ; la regle est universelle, pas une affaire de chaine.
+	precedentSeuil := SeuilSubstitution
+	SeuilSubstitution = opts.SeuilSubstitution
+	defer func() { SeuilSubstitution = precedentSeuil }()
 	s := NewSurfaceReference(opts.Ancres)
 	if opts.NavmeshReference != nil {
+		precedent := NiveauHautNavmesh
+		NiveauHautNavmesh = opts.MaillageNiveauHaut
 		couvertes := r.ArmeReferenceDepuisNavmesh(opts.NavmeshReference)
+		NiveauHautNavmesh = precedent
 		slog.InfoContext(ctx, "mapfond: reference prise sur le maillage de navigation",
 			"carte", opts.Cle, "cellules", couvertes)
 	} else {
@@ -209,6 +290,9 @@ func CuitCarteForge(ctx context.Context, opts OptionsCuissonForge) (*Rendu, Bila
 
 	r.ArmeTypeGagnant()
 	if opts.SolVuDuDessous {
+		precedentBas := MargeSolVuDuDessousCarte
+		MargeSolVuDuDessousCarte = opts.MargeSolBas
+		defer func() { MargeSolVuDuDessousCarte = precedentBas }()
 		r.ArmeSurfaceBasse()
 	}
 	if opts.DessineCanevas {
@@ -227,21 +311,61 @@ func CuitCarteForge(ctx context.Context, opts OptionsCuissonForge) (*Rendu, Bila
 		n := r.AdopteSurfaceBasse()
 		slog.InfoContext(ctx, "mapfond: sol vu du dessous", "carte", opts.Cle, "pixels", n)
 	}
-	if opts.EcreteToits {
+	switch {
+	case opts.SansSubstitution:
+		b.TauxCouverture = r.TauxCouvertureMesure()
+		b.CarteCouverte = b.TauxCouverture > SeuilCarteCouverte
+		slog.InfoContext(ctx, "mapfond: substitution NON appliquee sur demande", "carte", opts.Cle,
+			"couverture", fmt.Sprintf("%.1f%%", 100*b.TauxCouverture))
+	case opts.EcreteToits:
 		b.TauxCouverture, b.CellulesSubstituees, b.CellulesEcretees = r.EcretteToits(s, opts.PlafondArene)
 		b.CarteCouverte = b.TauxCouverture > SeuilCarteCouverte
-	} else {
+	default:
 		b.TauxCouverture, b.CellulesSubstituees, b.CarteCouverte = r.AppliqueReference(s, opts.SubstitutionSansPortee)
 	}
 	if opts.RogneAuNavmesh && opts.NavmeshReference != nil {
-		n := r.EffaceHorsNavmesh(MargeNavmesh)
-		slog.InfoContext(ctx, "mapfond: matiere effacee hors du maillage de navigation", "carte", opts.Cle, "cellules", n)
+		marge := MargeNavmesh
+		if opts.MargeNavmeshCarte > 0 {
+			marge = opts.MargeNavmeshCarte
+		}
+		n := r.EffaceHorsNavmesh(marge)
+		slog.InfoContext(ctx, "mapfond: matiere effacee hors du maillage de navigation", "carte", opts.Cle, "cellules", n, "marge", marge)
 	}
 	if opts.ToleranceNavmesh > 0 {
 		n := r.EffaceLoinDuNavmesh(opts.ToleranceNavmesh)
 		slog.InfoContext(ctx, "mapfond: surfaces loin du sol vidées", "carte", opts.Cle, "tolerance", opts.ToleranceNavmesh, "cellules", n)
 	}
 	mesureEtRogneZonesForge(ctx, r, &b, opts)
+	combleTrousForge(ctx, r, &b, opts)
+	if opts.RogneAuxComposantesAncrees {
+		n, gardees, total := r.GardeComposantesAncrees(opts.Ancres)
+		slog.InfoContext(ctx, "mapfond: composantes sans ancre effacees", "carte", opts.Cle,
+			"cellules", n, "composantes", fmt.Sprintf("%d/%d gardees", gardees, total))
+	}
+	if opts.CadreAuxAncres {
+		marge := MargeCadreAncres
+		if opts.MargeAncres > 0 {
+			marge = opts.MargeAncres
+		}
+		if ba, ok := BoiteDesAncres(opts.Ancres, marge); ok {
+			var bb BilanCuisson
+			borneALaBoite(ctx, r, &bb, ba)
+			slog.InfoContext(ctx, "mapfond: cadre borne a l emprise des ancres", "carte", opts.Cle,
+				"boite", fmt.Sprintf("%.1f %.1f %.1f %.1f", ba[0], ba[1], ba[2], ba[3]),
+				"cellules", bb.CellulesHorsBoite)
+		}
+	}
+	if opts.CadreAuxZones {
+		if bz, ok := BoiteDesZones(ZonesNommeesForge(opts.Objets), MargeCadreZones); ok {
+			var bz2 BilanCuisson
+			borneALaBoite(ctx, r, &bz2, bz)
+			n := bz2.CellulesHorsBoite
+			slog.InfoContext(ctx, "mapfond: cadre borne a l emprise des zones de callout", "carte", opts.Cle,
+				"boite", fmt.Sprintf("%.1f %.1f %.1f %.1f", bz[0], bz[1], bz[2], bz[3]), "cellules", n)
+		} else {
+			slog.WarnContext(ctx, "mapfond: cadre aux zones demande mais aucune zone lue", "carte", opts.Cle)
+		}
+	}
 	borneALaBoite(ctx, r, &b, boiteForge(ctx, opts))
 	if b.VolumesDeMort == 0 {
 		b.degrade(ctx, "aucun volume de mort reconnu — l'empreinte des types a peut-etre bouge")
@@ -795,4 +919,27 @@ func mesureEtRogneZonesForge(ctx context.Context, r *Rendu, b *BilanCuisson, opt
 	if opts.RogneAuxZones {
 		b.CellulesHorsZones = r.EffaceHorsZones(m)
 	}
+}
+
+// combleTrousForge peint le sol suppose dans les trous interieurs. Il passe APRES les rognages :
+// combler avant reviendrait a remplir des trous qu on s apprete a effacer.
+func combleTrousForge(ctx context.Context, r *Rendu, b *BilanCuisson, opts OptionsCuissonForge) {
+	if opts.CombleAuMaillage {
+		n := r.CombleDansLeMaillage(MargeNavmesh)
+		b.CellulesSolSuppose += n
+		slog.InfoContext(ctx, "mapfond: sol suppose pose dans l emprise du maillage", "carte", b.Module,
+			"cellules", n)
+	}
+	if !opts.CombleTrous {
+		return
+	}
+	// Masque TOUT VRAI : la borne n est pas une zone mais la silhouette elle-meme, et c est
+	// `CombleTrous` qui la determine en partant du bord de l image.
+	tout := make([]bool, r.NX*r.NY)
+	for i := range tout {
+		tout[i] = true
+	}
+	b.CellulesSolSuppose += r.CombleTrous(tout)
+	slog.InfoContext(ctx, "mapfond: sol suppose pose dans les trous interieurs", "carte", b.Module,
+		"cellules", b.CellulesSolSuppose)
 }
