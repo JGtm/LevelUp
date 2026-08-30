@@ -100,6 +100,7 @@ function renderDrawer(over: Partial<Parameters<typeof ReplaySettingsDrawer>[0]> 
       zonesAvailable
       placements={makePlacements()}
       weaponPads={makeWeaponPads()}
+      groundWeapons={makeWeaponPads()}
       flagCarries={makeFlagCarries()}
       vipCrown={makeFlagCarries()}
       skullCarrier={makeFlagCarries()}
