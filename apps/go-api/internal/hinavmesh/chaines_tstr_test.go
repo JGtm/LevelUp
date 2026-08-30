@@ -17,13 +17,13 @@ import (
 // au lieu de TST1 et FST1. Ce sont deux ecritures du meme format ; `sectionsChaines` accepte
 // desormais les deux, et le decodage va bien plus loin qu avant.
 //
-// CE QUI RESTE. La table des noms de champs se revele alors trop COURTE d une entree : un membre
-// demande l indice 98 d une table qui en porte 98. Deux pistes ont ete essayees et ECARTEES :
-// prepender la chaine vide (indexation a partir de 1) decale tout et corrompt les noms de types —
-// `hkPropertyId` devient `tITEM` — donc l origine n est pas en cause ; et la table n est pas
-// tronquee par le decoupage, qui compte deja l entree vide finale. Il reste a etablir comment
-// cette generation encode ses chaines : longueur prefixee, en-tete de section, ou table partagee
-// avec TSTR.
+// CE QUI RESTE, ET LE DIAGNOSTIC A ETE CORRIGE LE 2026-08-31. La table des noms de champs se
+// revele alors trop COURTE d une entree : un membre demande l indice 98 d une table qui en porte
+// 98. On a d abord lu cet ecart d un comme une ORIGINE D INDEXATION — c est FAUX. Le membre en
+// question est le cinquantieme de hkPropertyId, un type qui n a pas cinquante membres : le flux
+// TBDY est DESYNCHRONISE bien avant, et l indice hors bornes n est que le premier symptome
+// visible. La mesure detaillee vit dans sonde_tbdy_test.go, avec la piste des drapeaux de membre
+// 0x21/0x23 essayee et refutee.
 //
 // LE TEMOIN FIGE LES DEUX MOITIES : Isolation doit se decoder entierement, et Absolution doit
 // echouer PLUS LOIN que la section manquante. Si quelqu un retire la reconnaissance de TSTR/FSTR,
