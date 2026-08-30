@@ -153,10 +153,30 @@ R(6) -> out+0x30c · [R(1); si 1: R(n)] -> out+0x314 · [p5==0: R(1)] -> out[4]
 [R(1); si 1: vecteur quantifie 3 composantes] -> out+0x318 (position ?)
 ```
 
-A resoudre pour un decodeur bit-exact : FUN_141fcf670, FUN_1406d00ec, FUN_14080cc68 (le
-format des deux comptes), FUN_140c1e924, FUN_1406cd5b8, FUN_1408eff64, la valeur de p5 en
-mode film, et la largeur runtime du domaine 6. Garde-fou inchange : validation contre le
-golden killsource AVANT tout branchement.
+Etat des sous-lecteurs (31/08) : RESOLUS — FUN_141fcf670 = R(7)+R(1) ; FUN_1406d00ec =
+[R(1):-1 | R(2)] ; FUN_14080cc68 = les deux comptes (code a prefixe, voir ci-dessus) ;
+FUN_1407ef8e4 = R(3) ; FUN_1407f0278 = R(2) (un TAG). PARTIELS — FUN_1406cd5b8 et
+FUN_1408eff64 sont des lecteurs COMPOSITES multi-champs (chacun : R(1) porte, un tag R(2)
+via FUN_1407f0278, puis selon le tag un R(32) et/ou un R(6), plus des R(5) gardes) — la
+forme est lue mais l'ordre exact reste a fixer champ par champ. FUN_140c1e924 (dans la
+boucle des cibles) non lu. p5 (drapeau reseau) suppose 0 en mode film, A CONFIRMER.
+
+## LE JUGE DE LA CHAINE — la visee R(30), premier verdict (partiel)
+
+Le controle decisif : dans le cas MODAL (0 cible, 0 composante, portes des sous-lecteurs a
+0), la visee R(30) est a 3 bits de la fin du preambule ; un vecteur UNITAIRE valide
+(DecodeAimVectorChecked) prouverait toute la chaine d'un coup. Mesure (TestLot1TirsEtCibles,
+000d5950) : sur les 240 paquets a 0 cible, **229 ont au moins une porte non vide dans les
+deux sous-lecteurs composites** (attendu : ces lecteurs portent des champs) et sont donc
+SAUTES faute de leur ordre exact ; les 11 restants, portes toutes a zero, donnent
+**11 vecteurs unitaires VALIDES sur 11, zero invalide**. C'est un signal POSITIF pour le
+cadrage du preambule mais n=11 est trop faible pour un verdict — il faut fermer les deux
+lecteurs composites (ci-dessus) pour lever les 229 sautes et porter n a quelques centaines.
+NE PAS conclure sur la precision avant ce n.
+
+A resoudre pour un decodeur bit-exact et le garde-fou : ordre exact de FUN_1406cd5b8 /
+FUN_1408eff64 (champ par champ), FUN_140c1e924, p5, largeur runtime du domaine 6 — puis
+validation du decodeur type 36 contre le golden killsource AVANT tout branchement.
 
 ## LA VOIE « PRECISION » (demande utilisateur du 30/08 au soir) — ou elle se calcule
 
@@ -183,6 +203,24 @@ a noter en priorite pour un futur lot :
    residuel entre l'arme et les comptes — LE JUGE sera la visee R(30) en bout de chaine
    (vecteur unitaire verifiable par DecodeAimVectorChecked) une fois FUN_1406cd5b8 et
    FUN_1408eff64 resolus. NE PAS batir sur le 98 % avant ce controle.
+
+## VEHICULES — entrees et sorties (demande utilisateur, mesure corpus 1 367 films)
+
+Octet de tete = `0xC0 | (type>>1)`, bit8 dans l'octet suivant (PIEGE evite : base 0xC0, pas
+0x80 — le bit de continuation est a 1). En-tete decode (attaquant + charge R(6) = siege) :
+
+| Evenement | type | octet | corpus | films | siege R(6) dominant | unites (ref0) |
+|---|---|---|---|---|---|---|
+| biped_board_vehicle (embarquement) | 8 | 0xC4 | **374** | 154 | 16 (x197), 40, 0, 8, 41 | 243 distinctes |
+| unit_enter_vehicle | 53 | 0xDA | **0** | 0 | — | — (absent des films arene) |
+| unit_exit_vehicle (sortie) | 22 | 0xCB | **5 600** | 279 | 0 (x3 911), 1, 4, 8, 24 | 256 distinctes |
+
+Lecture : **les sorties (5 600) et les embarquements (374) sont dans la bobine et se
+decodent** ; le siege (charge R(6)) et l'unite qui monte/descend (ref0) sortent proprement.
+L'asymetrie board/exit (374 vs 5 600) est a expliquer (ejections forcees / morts en
+vehicule comptent en sortie ? embarquement limite a certains sieges ?) — non tranche. Le
+type 53 `unit_enter_vehicle` est absent (0) : sur ce corpus arene, l'embarquement passe par
+le type 8. C'est un signal produit neuf : temps passe en vehicule, par joueur, par siege.
 
 ## Ce qui reste ouvert
 
