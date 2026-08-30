@@ -353,6 +353,16 @@ export interface ReplayText {
   layerSkullCarrier: string
   layerSkullCarrierHint: string
   /**
+   * LES ARMES AU SOL (schéma 27) : le nom du calque et sa réserve.
+   *
+   * LA RÉSERVE EST LE SUJET, pas un ornement : ce calque affiche des objets dont la
+   * disparition n'est PAS toujours datée. La réserve doit dire, en toutes lettres, ce que
+   * l'estompage veut dire — sans quoi il se lit comme un effet de style, exactement le défaut
+   * que `flagOpenNote` corrige sur les portages ouverts.
+   */
+  layerGroundWeapons: string
+  layerGroundWeaponsHint: string
+  /**
    * LE NOM D'UN SOCLE QUI NE PORTE PAS UNE ARME (schéma 17). Les clés sont les familles
    * d'équipement publiées par le document (`weaponPads[].weapon`), énumérées une par une dans
    * `weaponPadFamilies.ts` — d'où le typage : une famille ajoutée là-bas sans libellé ici ne

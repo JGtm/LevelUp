@@ -141,6 +141,22 @@ const NULLABLE_ARRAYS = [
   // mort PAR MANCHE. La garde de mode est côté serveur : `comp 0 A` est le score de mode de tout
   // mode, donc le calque n'est rempli que sur un film reconnu Oddball.
   'skullCarries',
+  // `weaponChanges` : LES PRISES ET LES LÂCHERS D'ARME (schéma 25, 2026-08-30) — le composant
+  // d'état d'arme n'entre au masque du flux delta qu'au CHANGEMENT : chaque émission est donc
+  // une prise, un lâcher ou un échange, daté à la milliseconde et non dans un intervalle de
+  // vingt secondes. Il ne remplace pas `loadouts` : celui-ci reste l'ÉTAT lu à l'image-clé,
+  // ceci en date les transitions (cf. changeRefine.ts).
+  'weaponChanges',
+  // `equipmentChanges` : LES RAMASSAGES ET LES CONSOMMATIONS d'équipement (schéma 26,
+  // 2026-08-30) — même matière qu'`abilities` (i48), autre question : ce qui ARRIVE au joueur,
+  // et non ce qu'il PORTE. Les annonces de réapparition en sont écartées côté serveur.
+  'equipmentChanges',
+  // `groundWeapons` : LES ARMES AU SOL individuelles (schéma 27, 2026-08-30) — un objet par
+  // arme qui a BOUGÉ, sa position de repos, et des bornes d'affichage OBSERVÉES : ramassage
+  // daté (`pickup`), dernière preuve de présence (`seen`, avec `t1max` pour première preuve
+  // d'absence), ou aucune preuve de disparition (`open`). Les armes de SOCLE restent à
+  // `weaponPads` : deux vérités pour un même objet seraient une de trop.
+  'groundWeapons',
 ] as const
 
 /** (1) La liste couvre EXACTEMENT les tableaux nullables du contrat — ni plus, ni moins. */
@@ -181,7 +197,7 @@ type NullableArrayPaths<T, D extends number = 6> = [D] extends [never]
       }[keyof T & string]
 
 /**
- * NULLABLE_ARRAY_PATHS — la CARTE du contrat : 51 chemins, racine et profondeurs confondues.
+ * NULLABLE_ARRAY_PATHS — la CARTE du contrat : 54 chemins, racine et profondeurs confondues.
  *
  * Elle n'est pas décorative : l'assertion (3) la confronte au contrat généré. Le Go publie un
  * tableau de plus, où que ce soit, et `tsc -b` refuse de compiler en nommant le chemin.
@@ -214,6 +230,11 @@ const NULLABLE_ARRAY_PATHS = [
   'vipCrown',
   // `skullCarries` (schéma 23) : période PLATE, aucun tableau imbriqué — un seul chemin, la racine.
   'skullCarries',
+  // Schémas 25-27 : trois calques PLATS, aucun tableau imbriqué — un seul chemin chacun. Les
+  // objets qu'ils portent ne contiennent que des nombres et des chaînes.
+  'weaponChanges',
+  'equipmentChanges',
+  'groundWeapons',
   // Dans les ÉLÉMENTS d'un tableau de tête — ce que la garde de racine ne voyait pas.
   'flagCarries[].spans',
   // La trajectoire d'une vie libre d'objet d'objectif (schema 21) : comblee par la

@@ -379,8 +379,70 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   révisée) : GO à petite population — camo 35,2 % (25/71), surbouclier 55,6 % (10/18),
 	//   global 39,3 % (35/89) en lecture STRICTE (`LineByLinePublishable`, la population qui
 	//   affiche réellement des chiffres) ; re-mesure obligatoire après la cuisson de masse.
-	if SchemaVersion != 24 {
-		t.Fatalf("SchemaVersion = %d, attendu 24 : incrémenter exige une raison écrite ci-dessus "+
+	//
+	// v25 — LES PRISES ET LES LÂCHERS D'ARME (`weaponChanges`). Le composant d'identité d'arme
+	//   du bipède n'entre au masque du flux delta que lorsqu'un emplacement CHANGE : chaque
+	//   émission est donc un ramassage, un lâcher ou un échange, daté à la milliseconde. Jusqu'ici
+	//   le document ne portait que `padPickups` — « ce socle s'est vidé quelque part dans cet
+	//   intervalle », sans le joueur. Le champ est optionnel, mais la version monte pour la raison
+	//   exacte des montées v14/v16/v21/v22/v23/v24 : la reprise du backfill se fait par SchemaVersion,
+	//   un artefact 24 doit se lire « à re-cuire » — il ne peut porter aucun ramassage.
+	//   NIVEAU DE PREUVE, et il est INÉGAL, ce qui doit se lire ici : le canal est JUSTE (sur
+	//   5 627 tirs de trois films il ne retire jamais une arme encore utilisée) ; sa COMPLÉTUDE
+	//   n'est PAS établie, faute d'oracle hors ligne — les images-clés sont trop grossières (20 s)
+	//   et l'union des inventaires sature à 98-100 % avant même le canal. Ce qui a été mesuré à la
+	//   place est la PLAUSIBILITÉ : hors drapeaux, 22 et 21 ramassages par match sur deux CTF
+	//   Arena, composés d'armes de socle et de râtelier et jamais d'armes de départ, pour 10 et
+	//   13 socles sur ces cartes. TROIS RÉFUTATIONS écrites : le lien vers l'objet du monde ne
+	//   passe ni par la suppression de l'entité (1/71), ni par son attachement (1/21), ni par un
+	//   appariement par les armes (5-12 % contre 70 % exigés). Détail :
+	//   internal/analysis/replay/document_weapon_changes.go.
+	//
+	// v26 — LES RAMASSAGES ET LES CONSOMMATIONS D'ÉQUIPEMENT (`equipmentChanges`). La capacité
+	//   d'armure suit la règle de l'arme en main : son composant (i48) n'entre au masque du flux
+	//   delta que lorsqu'elle CHANGE. Le document portait déjà `abilities` — ce qu'un joueur
+	//   PORTE ; ce calque dit ce qui lui ARRIVE. Champ optionnel, mais la version monte pour la
+	//   raison exacte des montées v14/v16/v21/v22/v23/v24/v25 : un artefact 25 doit se lire
+	//   « à re-cuire », il ne peut porter aucun ramassage d'équipement.
+	//   NIVEAU DE PREUVE — MEILLEUR QUE CELUI DE v24, et pour une raison de format qu'il faut
+	//   lire ici : le compteur de rotation d'i48 avance de 1 à chaque émission (zéro répétition
+	//   sur 50 transitions, 3 films) et repart à 5 à la première émission de chaque vie (264 cas
+	//   sur 269). Ce calque porte donc son PROPRE TÉMOIN DE COMPLÉTUDE — un pas supérieur à 1
+	//   dénonce les émissions manquées et les compte : environ 16 pour 319 vues, soit ~95 % de
+	//   couverture LUE et non supposée, publiée dans la couverture (`missedEstimate`).
+	//   DEUX AUTRES MESURES fondent la sémantique : la porte ouverte est la CONSOMMATION et
+	//   jamais la mort (17 cas, zéro dans la dernière seconde de la vie, la plus tardive laissant
+	//   8,8 s à vivre) ; et la première émission d'une vie n'a pas un sens unique — à 0 ms de la
+	//   naissance c'est une réapparition équipée (83 % des vies d'un film), tardive c'est un
+	//   ramassage (médiane 16-18 s sur deux films d'arène, 0 % sous la seconde). Les
+	//   réapparitions sont ÉCARTÉES : les publier fausserait le décompte du simple au double.
+	//   Détail : internal/analysis/replay/document_equipment_changes.go.
+	//
+	// v27 — LES ARMES AU SOL OBSERVÉES (`groundWeapons`), ET LE RETRAIT DE LA MINUTERIE. La borne
+	//   `until` du schéma 25 était une durée de TABLE (10/20/30 s) — l'utilisateur l'a refusée :
+	//   « je veux juste voir quand elle est au sol et quand elle disparaît ». Le calque publie
+	//   l'OBJET : position de repos, origine mesurée (dropped/spawned, la règle des poses), fin
+	//   observée. TROIS FINS, TROIS PREUVES : `pickup` — une prise du flux delta tombe dans la
+	//   fenêtre de vie à moins de 1,5 m (mesure fondatrice du 2026-08-30 : l'objet le plus proche
+	//   d'une prise est à 0,61-0,75 m en médiane, témoin 4-7 m ; c'est la condition de reprise du
+	//   REGISTRE_REPORTS levée par le canal du schéma 25) ; `seen` — dernière image-clé qui le
+	//   recense, la disparition est dans les ~20 s suivantes non observées ; `open` — rien ne
+	//   prouve la disparition. Les armes de socle (jamais bougé) restent au calque `weaponPads` :
+	//   deux vérités pour un même objet seraient pires qu'une. Le champ `until` de
+	//   `weaponChanges` est RETIRÉ avec sa table — un artefact 26 porte encore la convention.
+	//   Détail : internal/analysis/replay/document_ground_weapon_items.go.
+	//
+	// v28 — LA FIN OBSERVÉE DES POSES D'ÉQUIPEMENT (`until`/`untilMax`/`end` sur
+	//   `equipmentPlacements`). La mécanique de v27 appliquée au recensement `ti=37` que la
+	//   chaîne des socles lisait déjà : dernière image-clé qui recense l'objet, première qui ne
+	//   le recense plus. `t1` (fin du mouvement) interdisait par contrat de servir de
+	//   disparition — un artefact 27 n'a AUCUNE fin d'affichage d'équipement. PAS de fin
+	//   `pickup` ici, et c'est une réfutation mesurée (mesure D du 2026-08-30) : l'équipement
+	//   tombe à la mort AVEC les grenades du mort, le lien spatial prise i48 -> pose attrape le
+	//   mauvais objet (matrice GlobalID x rang non diagonale ; à candidat unique, 0-2 paires par
+	//   film, incohérentes). Détail : internal/analysis/replay/equipment_placements.go.
+	if SchemaVersion != 28 {
+		t.Fatalf("SchemaVersion = %d, attendu 28 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

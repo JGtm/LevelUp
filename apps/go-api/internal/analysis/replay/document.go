@@ -232,7 +232,79 @@ package replay
 // (DEC-7 revisee) : GO a petite population (camo 35,2 % = 25/71, surbouclier 55,6 % = 10/18,
 // global 39,3 % = 35/89 en lecture STRICTE `LineByLinePublishable` — la population qui
 // affiche reellement des chiffres) ; re-mesure obligatoire apres la cuisson de masse.
-const SchemaVersion = 24
+// CE QUE LA VERSION 25 PORTE. Les PRISES ET LES LÂCHERS D'ARME (`weaponChanges`), datés à la
+// milliseconde du paquet et nommés. Jusqu'ici le document ne portait, sur ce sujet, que
+// `padPickups` : « ce socle s'est vidé quelque part dans cet intervalle », sans le joueur. Le
+// négatif du 2026-08-12 (« le film ne porte aucun événement de ramassage ») visait l'archétype
+// ARME AU SOL ; le signal est sur le PORTEUR, et il y est daté.
+//
+// NIVEAU DE PREUVE, écrit ici parce que c'est ce qu'un lecteur doit trouver sur place. Le canal
+// est JUSTE : sur 5 627 tirs de trois films, il ne retire jamais une arme encore utilisée. Sa
+// COMPLÉTUDE n'est PAS établie — les oracles hors ligne sont soit trop grossiers (images-clés,
+// 20 s), soit saturés (l'union des inventaires plafonne à 98-100 % avant lui). Ce qui a été
+// mesuré à la place est la PLAUSIBILITÉ : hors drapeaux, 22 et 21 ramassages par match sur deux
+// CTF Arena, composés d'armes de socle et de râtelier (Gravity Hammer, S7 Sniper, M41 SPNKr,
+// Pulse Carbine, BR75) et jamais d'armes de départ, pour 10 et 13 socles sur ces cartes.
+//
+// CE QUE LA VERSION 25 NE PORTE PAS. Le SOCLE d'origine d'une prise : trois hypothèses de lien
+// vers l'objet du monde ont été mesurées et réfutées (suppression 1/71, attachement 1/21,
+// appariement par les armes 5-12 % contre 70 % exigés). Et la FIN DE VIE réelle d'une arme
+// lâchée : `WeaponChange.Until` applique la durée publiée par le jeu comme CONVENTION
+// d'affichage, parce que le jeu n'a pas de minuterie inconditionnelle — seules 5 à 14 % des
+// armes au sol reçoivent un événement de disparition dans le film, et c'est son comportement,
+// pas un défaut de lecture.
+//
+// CE QUE LA VERSION 26 PORTE. Les RAMASSAGES ET LES CONSOMMATIONS D'ÉQUIPEMENT
+// (`equipmentChanges`) : la capacité d'armure suit la même règle que l'arme en main — son
+// composant (i48) n'entre au masque du flux delta que lorsqu'elle CHANGE, donc chaque émission
+// est un événement daté. Le document portait déjà `abilities[]`, qui dit ce qu'un joueur PORTE ;
+// ce calque dit ce qui lui ARRIVE. Champ optionnel, mais la version monte pour la raison exacte
+// des montées v14, v16, v21, v22 et v25 : la reprise du backfill se fait par SchemaVersion, et un
+// artefact 25 doit se lire « à re-cuire », pas « à jour ».
+//
+// NIVEAU DE PREUVE — ET IL EST MEILLEUR QUE CELUI DES ARMES, pour une raison de format. Le
+// compteur de rotation d'i48 avance de 1 à chaque émission (aucune répétition sur 50 transitions,
+// 3 films) et repart à 5 à la première émission de chaque vie (264 cas sur 269). Ce calque porte
+// donc son PROPRE TÉMOIN DE COMPLÉTUDE : un pas de compteur supérieur à 1 dénonce les émissions
+// manquées et les compte — environ 16 pour 319 vues sur le corpus, soit de l'ordre de 95 % de
+// couverture, LUE et non supposée. La couverture publie ce témoin (`missedEstimate`,
+// `counterJumps`, `livesFirstOffSpec`). Deux autres propriétés sont mesurées : la porte ouverte
+// est la CONSOMMATION et jamais la mort (17 cas sur 3 films, zéro dans la dernière seconde de la
+// vie, la plus tardive laissant 8,8 s à vivre) ; et la première émission d'une vie n'a PAS un
+// sens unique — contemporaine de la naissance du bipède c'est une réapparition équipée (83 % des
+// vies d'un film à 0 ms), tardive c'est un ramassage (médiane 16 à 18 s sur deux films d'arène,
+// 0 % sous la seconde). Les réapparitions sont donc ÉCARTÉES de la publication : les compter
+// pour des ramassages fausserait le décompte du simple au double.
+//
+// CE QUE LA VERSION 26 NE PORTE PAS. Le SOCLE d'où vient l'équipement ramassé — même impasse
+// que pour les armes, et pour les mêmes hypothèses réfutées. Ni ce que portait le joueur avant
+// la première émission d'une vie : `EquipmentChange.From` vaut alors `NoAbilityRank`, et le
+// film ne dit rien de plus.
+
+// CE QUE LA VERSION 27 PORTE, ET CE QU'ELLE RETIRE. Les ARMES AU SOL individuelles
+// (`groundWeapons`) : chaque objet arme qui a bougé — l'arme d'un mort, l'arme de départ
+// abandonnée — avec sa position de repos, son origine mesurée, et une fin OBSERVÉE : `pickup`
+// (une prise du flux delta tombe dans sa fenêtre de vie à moins de 1,5 m — mesure fondatrice
+// du 2026-08-30 : l'objet le plus proche d'une prise est à 0,61-0,75 m en médiane contre 4-7 m
+// pour un témoin), `seen` (dernière image-clé qui le recense — la disparition est dans les
+// ~20 s suivantes), ou `open` (rien ne prouve sa disparition). EN CONTREPARTIE, LE CHAMP
+// `until` de `weaponChanges` (v25) EST RETIRÉ : c'était une durée de table (10/20/30 s), une
+// convention refusée par l'utilisateur — « je veux juste voir quand elle est au sol et quand
+// elle disparaît ». Un artefact 26 doit se lire « à re-cuire » : il porte encore la convention
+// et aucune arme au sol observée.
+// CE QUE LA VERSION 28 PORTE, ET CE QU'ELLE REFUSE. Les POSES D'ÉQUIPEMENT gagnent leur FIN
+// D'AFFICHAGE OBSERVÉE (`until` / `untilMax` / `end` sur `equipmentPlacements`) : la même
+// mécanique que les armes au sol de v27 — dernière image-clé qui recense l'objet, première qui
+// ne le recense plus — appliquée au recensement `ti=37` que la chaîne des socles lisait déjà.
+// Jusqu'ici `t1` (fin du MOUVEMENT) était la seule borne et son contrat interdisait de s'en
+// servir comme disparition ; un artefact 27 doit se lire « à re-cuire ». CE QUE LA VERSION
+// REFUSE, mesure à l'appui (2026-08-30, mesure D) : la fin `pickup` pour l'équipement. Le lien
+// spatial prise i48 -> pose est RÉFUTÉ — l'équipement tombe à la mort AVEC les grenades du
+// mort, plusieurs objets naissent au mètre carré, et la matrice GlobalID x rang des liens
+// n'est pas diagonale (un même objet lié à trois rangs ; à candidat unique, 0 à 2 paires par
+// film, incohérentes). Le ramassage d'équipement reste dans `equipmentChanges` (QUI et QUAND),
+// sans lien vers l'objet du sol.
+const SchemaVersion = 28
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {
@@ -351,6 +423,24 @@ type ReplayDocument struct {
 	// Absent si le film n'a pas tranché la largeur de son bloc de réplication (la couverture
 	// le dit alors : `calibrated: false`) ou s'il ne porte aucune pose.
 	EquipmentPlacements []EquipmentPlacement `json:"equipmentPlacements,omitempty"`
+	// WeaponChanges est la liste des PRISES ET DES LÂCHERS d'arme (cf.
+	// document_weapon_changes.go) : qui, quand, quelle arme, et — sur un lâcher — jusqu'à
+	// quelle frame le client peut montrer l'arme au sol. Les ré-annonces d'une arme déjà
+	// portée au spawn en sont ÉCARTÉES : ce ne sont pas des ramassages. Absent si le film
+	// n'en porte aucun.
+	WeaponChanges []WeaponChange `json:"weaponChanges,omitempty"`
+	// EquipmentChanges est la liste des RAMASSAGES ET DES CONSOMMATIONS d'équipement (cf.
+	// document_equipment_changes.go) : qui, quand, quelle capacité — et, sur une
+	// consommation, laquelle vient d'être usée. Les annonces de RÉAPPARITION en sont
+	// ÉCARTÉES : ce ne sont pas des ramassages, et ce que le joueur porte à sa naissance est
+	// déjà dans `abilities`. Absent si le film n'en porte aucun.
+	EquipmentChanges []EquipmentChange `json:"equipmentChanges,omitempty"`
+	// GroundWeapons est la liste des ARMES AU SOL individuelles (cf.
+	// document_ground_weapon_items.go) : où chacune gît, de quand à quand l'afficher, qui l'a
+	// lâchée et qui l'a prise quand le flux delta le dit. Les fins sont OBSERVÉES (ramassage
+	// daté, ou recensement des images-clés) — jamais une durée de table. Les armes de socle
+	// restent au calque `weaponPads`. Absent si le film n'en porte aucune.
+	GroundWeapons []GroundWeapon `json:"groundWeapons,omitempty"`
 	// WeaponPads (les SOCLES D'ARME du match) et PadPickups (leurs occupations ACHEVÉES) : une
 	// donnée de MATCH et non de carte, publiée seulement là où la récurrence est mesurée.
 	// Forme, chronique et refus de publication : document_ground_weapons.go.
