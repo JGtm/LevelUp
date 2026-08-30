@@ -84,10 +84,17 @@ type SkullCarriesCoverage struct {
 	NoBridge int `json:"noBridge"`
 	// OutOfWindow : trains dont le debut tombe hors de l'axe de frames publie.
 	OutOfWindow int `json:"outOfWindow"`
+	// CarrierAbsent : trains dont le porteur ponte n'est PAS present sur la carte (aucune vie
+	// bipede ne couvre l'intervalle) — le canal de score a attribue le portage a un joueur absent
+	// (mort ou pas encore apparu). Un tel portage n'a AUCUNE position ou poser le crane : on
+	// l'ecarte plutot que de faire disparaitre l'icone. Un porteur jamais nomme dans les tracks
+	// (presence inconnue) n'entre PAS ici — on ne verifie pas ce qu'on ne connait pas.
+	CarrierAbsent int `json:"carrierAbsent"`
 }
 
 // Balanced verifie l'invariant : tout train est publie ou rejete sous une cause NOMMEE, et tout
 // portage publie est ferme ou ouvert.
 func (c SkullCarriesCoverage) Balanced() bool {
-	return c.Carries+c.NoBridge+c.OutOfWindow == c.Trains && c.Closed+c.Open == c.Carries
+	return c.Carries+c.NoBridge+c.OutOfWindow+c.CarrierAbsent == c.Trains &&
+		c.Closed+c.Open == c.Carries
 }
