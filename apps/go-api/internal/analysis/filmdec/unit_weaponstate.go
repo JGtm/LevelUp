@@ -859,3 +859,30 @@ func consume1407f0550(br *BitReader) {
 		}
 	}
 }
+
+// ---------------------------------------------------------------------------
+// ti=42 i20 weapon-ammo — les MUNITIONS d'une arme POSEE AU SOL
+// ---------------------------------------------------------------------------
+
+// groundWeaponAmmoHook, si non nil, reçoit chaque lecture d'i20 sur l'archétype ARME AU SOL.
+// Global de paquet, donc UN SEUL décodage filmdec à la fois par process — même règle que les
+// autres sondes.
+var groundWeaponAmmoHook func(a, b, c uint32)
+
+// SetGroundWeaponAmmoHook installe (ou retire, avec nil) la sonde d'i20. L'appelant restaure la
+// sonde précédente. AUCUN bit lu ne change : mêmes largeurs, même ordre, publication après coup.
+func SetGroundWeaponAmmoHook(h func(a, b, c uint32)) { groundWeaponAmmoHook = h }
+
+// consumeWeaponAmmo mirrors FUN_140fc3028 : R(8) + R(11) + R(12).
+//
+// LES CHAMPS RESTENT POSITIONNELS. Le déserialiseur connaît la GRAMMAIRE, pas le SENS : nommer
+// ici l'un des trois « chargeur » ou « réserve » serait écrire une conclusion avant la mesure.
+// La table ECS dit seulement « les munitions restantes dans l'arme au sol ».
+func consumeWeaponAmmo(br *BitReader) {
+	a := uint32(br.ReadBits(8))
+	b := uint32(br.ReadBits(11))
+	c := uint32(br.ReadBits(12))
+	if groundWeaponAmmoHook != nil {
+		groundWeaponAmmoHook(a, b, c)
+	}
+}

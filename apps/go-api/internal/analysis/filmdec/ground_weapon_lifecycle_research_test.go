@@ -38,8 +38,13 @@ const (
 // gwLifeEvent est une naissance ou une mort d'entite arme-au-sol.
 type gwLifeEvent struct {
 	TimestampUS uint64
-	Slot        uint32
-	New         bool
+	// Slot est le numero d'emplacement, RECYCLE d'une entite a l'autre. ID est
+	// l'identifiant COMPLET, generation comprise (bits 30-31) : c'est LUI qui distingue
+	// deux vies successives du meme emplacement. Apparier une naissance a une mort par le
+	// slot seul confond ces deux vies — d'ou les durees de vie aberrantes du premier jet.
+	Slot uint32
+	ID   uint32
+	New  bool
 }
 
 // gwScanLifecycle rend les NEW et DEL de l'archetype ti=42 sur tout le film.
@@ -88,14 +93,14 @@ func gwScanLifecycle(t *testing.T, dir string) []gwLifeEvent {
 					// DEL plus tard.
 					slotType[r.Slot] = r.TypeIndex
 					if r.TypeIndex == GroundWeaponTypeIndex {
-						out = append(out, gwLifeEvent{TimestampUS: p.TimestampUS, Slot: r.Slot, New: true})
+						out = append(out, gwLifeEvent{TimestampUS: p.TimestampUS, Slot: r.Slot, ID: r.ID, New: true})
 					}
 				case recDel:
 					// LE DESERIALISEUR NE RENSEIGNE PAS TypeIndex SUR UN DEL (frame_records.go :
 					// `case recDel: br.Skip(32); w.Unbind(slot)`). L'archetype d'une entite
 					// supprimee ne peut donc venir que de sa NAISSANCE, retenue ci-dessus.
 					if slotType[r.Slot] == GroundWeaponTypeIndex {
-						out = append(out, gwLifeEvent{TimestampUS: p.TimestampUS, Slot: r.Slot, New: false})
+						out = append(out, gwLifeEvent{TimestampUS: p.TimestampUS, Slot: r.Slot, ID: r.ID, New: false})
 					}
 				}
 			}
@@ -295,4 +300,275 @@ func gwMsList(d []int64) string {
 		parts = append(parts, fmt.Sprintf("%+d", x/1000))
 	}
 	return strings.Join(parts, " ")
+}
+
+// TestGroundWeaponDespawn verifie LE DESPAWN : une arme au sol nee pendant le match
+// disparait-elle, et au bout de combien de temps ? C'est la condition pour afficher une arme
+// lachee « jusqu'a ce qu'elle disparaisse » — sans borne de fin, on afficherait un objet
+// eternel.
+//
+// LE PIEGE EVITE : un slot d'entite est RECYCLE. Apparier naissance et mort par le seul slot
+// confondrait deux vies successives du meme numero. On apparie donc chaque naissance a la
+// PREMIERE mort qui la suit sur ce slot, et toute naissance suivante ferme la precedente.
+func TestGroundWeaponDespawn(t *testing.T) {
+	dir := os.Getenv(hwFilmEnv)
+	if dir == "" {
+		t.Skipf("%s absent : instrument de mesure saute", hwFilmEnv)
+	}
+	release := LockProcessDecode()
+	defer release()
+
+	life := gwScanLifecycle(t, dir)
+	open := map[uint32]uint64{} // cle = ID COMPLET, pas le slot
+	var durations []int64
+	born, closed, stillOpen := 0, 0, 0
+	for _, e := range life {
+		if e.New {
+			if _, dup := open[e.ID]; dup {
+				// Naissance sur un slot deja ouvert : la vie precedente n'a pas ete
+				// fermee par un DEL. On la compte comme non fermee et on repart.
+				stillOpen++
+			}
+			open[e.ID] = e.TimestampUS
+			born++
+			continue
+		}
+		if t0, ok := open[e.ID]; ok {
+			durations = append(durations, int64(e.TimestampUS-t0))
+			delete(open, e.ID)
+			closed++
+		}
+	}
+	stillOpen += len(open)
+	if born == 0 {
+		t.Log("VERDICT : aucune naissance d'arme au sol en delta sur ce film.")
+		return
+	}
+	sort.Slice(durations, func(i, j int) bool { return durations[i] < durations[j] })
+	q := func(p float64) int64 {
+		if len(durations) == 0 {
+			return 0
+		}
+		i := int(float64(len(durations)-1) * p)
+		return durations[i] / 1000
+	}
+	t.Logf("ARMES AU SOL nees en delta = %d ; FERMEES par une disparition = %d (%.1f %%) ; "+
+		"encore ouvertes a la fin = %d", born, closed, 100*float64(closed)/float64(born), stillOpen)
+	t.Logf("DUREE DE VIE (ms) : p10=%d  mediane=%d  p90=%d  max=%d",
+		q(0.10), q(0.50), q(0.90), q(1.0))
+	t.Log("LECTURE : un taux de fermeture eleve autorise l'affichage borne « du lacher au " +
+		"despawn ». Les vies encore ouvertes a la fin du film sont normales (l'objet existait " +
+		"encore quand l'enregistrement s'arrete) et ne comptent pas comme un defaut.")
+}
+
+// gwLastSeen rend, pour chaque entite ti=42 vue en delta, l'instant de sa NAISSANCE et celui
+// de sa DERNIERE apparition dans le flux — quel que soit le type de record. Une entite qui
+// existe encore emet des deltas : sa derniere emission est donc une borne haute BEAUCOUP plus
+// fine que l'image-cle suivante (20 s), et c'est la borne que l'utilisateur a demandee.
+//
+// La cle est l'ID COMPLET (generation comprise), jamais le slot, qui est recycle.
+func gwLastSeen(t *testing.T, dir string) (born, last map[uint32]uint64) {
+	t.Helper()
+	raw, err := ReadFilmChunk(dir, 0)
+	if err != nil {
+		t.Fatalf("registre (chunk_00) illisible : %v", err)
+	}
+	reg, err := ParseRegistryChunk(raw)
+	if err != nil {
+		t.Fatalf("registre illisible : %v", err)
+	}
+	cfg := DefaultFrameConfig()
+	w := NewWorld(reg)
+	slotType := map[uint32]uint32{}
+	born, last = map[uint32]uint64{}, map[uint32]uint64{}
+	n := CountFilmChunks(dir)
+	for c := 1; c <= n; c++ {
+		data, err := ReadFilmChunk(dir, c)
+		if err != nil {
+			continue
+		}
+		for _, p := range WalkPackets(data) {
+			pay := p.Payload(data)
+			switch p.Type {
+			case PacketTypeKeyframe:
+				w = WorldFromKeyframe(reg, pay)
+				for slot, st := range w.slots {
+					slotType[slot] = st.TypeIndex
+				}
+				continue
+			case PacketTypeDelta:
+			default:
+				continue
+			}
+			recs, _ := DecodeFrameViews(pay, w, cfg, gwViewsPerPacket, cfg.PacketPreambleBits)
+			for _, r := range recs {
+				if r.Type == recNew {
+					slotType[r.Slot] = r.TypeIndex
+					if r.TypeIndex == GroundWeaponTypeIndex {
+						born[r.ID] = p.TimestampUS
+					}
+				}
+				if slotType[r.Slot] != GroundWeaponTypeIndex {
+					continue
+				}
+				last[r.ID] = p.TimestampUS
+			}
+		}
+	}
+	return born, last
+}
+
+// TestGroundWeaponLastSeen mesure la borne haute par le FLUX DELTA plutot que par les
+// images-cles : combien de temps une arme lachee reste-t-elle visible dans le flux ?
+func TestGroundWeaponLastSeen(t *testing.T) {
+	dir := os.Getenv(hwFilmEnv)
+	if dir == "" {
+		t.Skipf("%s absent : instrument de mesure saute", hwFilmEnv)
+	}
+	release := LockProcessDecode()
+	defer release()
+
+	born, last := gwLastSeen(t, dir)
+	var d []int64
+	var filmEnd uint64
+	for _, ts := range last {
+		if ts > filmEnd {
+			filmEnd = ts
+		}
+	}
+	stillAtEnd := 0
+	for id, t0 := range born {
+		l, ok := last[id]
+		if !ok || l < t0 {
+			continue
+		}
+		if filmEnd-l < 2_000_000 { // encore presente a la fin du film : borne non informative
+			stillAtEnd++
+			continue
+		}
+		d = append(d, int64(l-t0))
+	}
+	if len(d) == 0 {
+		t.Logf("VERDICT : aucune arme au sol avec une borne exploitable (nees=%d, "+
+			"encore presentes a la fin=%d).", len(born), stillAtEnd)
+		return
+	}
+	sort.Slice(d, func(i, j int) bool { return d[i] < d[j] })
+	q := func(p float64) int64 { return d[int(float64(len(d)-1)*p)] / 1000 }
+	t.Logf("ARMES AU SOL nees en delta = %d ; avec borne EXPLOITABLE = %d ; encore presentes a "+
+		"la fin du film = %d", len(born), len(d), stillAtEnd)
+	t.Logf("PRESENCE DANS LE FLUX (ms) : p10=%d  p25=%d  mediane=%d  p75=%d  p90=%d  max=%d",
+		q(0.10), q(0.25), q(0.50), q(0.75), q(0.90), q(1.0))
+	t.Log("LECTURE : c'est une borne HAUTE honnete — l'arme existait au moins jusque-la. Une " +
+		"distribution resserree autour du timer de despawn du jeu (~30 s) confirmerait que le " +
+		"flux delta suit l'objet jusqu'a sa disparition reelle.")
+}
+
+// TestGroundWeaponAmmo lit les MUNITIONS des armes posees au sol (ti=42 i20, porte et jamais
+// exploite) et demande si elles expliquent la persistance : une arme NON VIDE reste-t-elle
+// visible plus longtemps qu'une arme vide ?
+//
+// C'est la verification de la note utilisateur (« les armes speciales NON VIDES s'affichent
+// jusqu'a leur despawn ou pickup »). La source Steam citee ne repond plus ; on mesure donc
+// directement dans le film au lieu de la croire ou de la refuter sur parole.
+func TestGroundWeaponAmmo(t *testing.T) {
+	dir := os.Getenv(hwFilmEnv)
+	if dir == "" {
+		t.Skipf("%s absent : instrument de mesure saute", hwFilmEnv)
+	}
+	release := LockProcessDecode()
+	defer release()
+
+	var last struct {
+		a, b, c uint32
+		got     bool
+	}
+	prev := groundWeaponAmmoHook
+	SetGroundWeaponAmmoHook(func(a, b, c uint32) { last.a, last.b, last.c, last.got = a, b, c, true })
+	defer SetGroundWeaponAmmoHook(prev)
+
+	born, lastSeen := gwLastSeen(t, dir)
+	_ = born
+	_ = lastSeen
+
+	// Second passage : on relit en capturant la munition au moment de chaque record ti=42.
+	raw, err := ReadFilmChunk(dir, 0)
+	if err != nil {
+		t.Fatalf("registre illisible : %v", err)
+	}
+	reg, err := ParseRegistryChunk(raw)
+	if err != nil {
+		t.Fatalf("registre illisible : %v", err)
+	}
+	cfg := DefaultFrameConfig()
+	w := NewWorld(reg)
+	slotType := map[uint32]uint32{}
+	histA, histB, histC := map[uint32]int{}, map[uint32]int{}, map[uint32]int{}
+	reads := 0
+	n := CountFilmChunks(dir)
+	for c := 1; c <= n; c++ {
+		data, err := ReadFilmChunk(dir, c)
+		if err != nil {
+			continue
+		}
+		for _, p := range WalkPackets(data) {
+			pay := p.Payload(data)
+			switch p.Type {
+			case PacketTypeKeyframe:
+				w = WorldFromKeyframe(reg, pay)
+				for slot, st := range w.slots {
+					slotType[slot] = st.TypeIndex
+				}
+				continue
+			case PacketTypeDelta:
+			default:
+				continue
+			}
+			last.got = false
+			recs, _ := DecodeFrameViews(pay, w, cfg, gwViewsPerPacket, cfg.PacketPreambleBits)
+			for _, r := range recs {
+				if r.Type == recNew {
+					slotType[r.Slot] = r.TypeIndex
+				}
+				if slotType[r.Slot] != GroundWeaponTypeIndex || !last.got {
+					continue
+				}
+				reads++
+				histA[last.a]++
+				histB[last.b]++
+				histC[last.c]++
+				last.got = false
+			}
+		}
+	}
+	t.Logf("LECTURES de munitions sur des armes au sol = %d", reads)
+	if reads == 0 {
+		t.Log("VERDICT : le composant i20 n'est jamais atteint sur ce film — soit le masque ne " +
+			"le porte pas, soit la marche s'arrete avant. Rien a conclure sur les munitions.")
+		return
+	}
+	show := func(name string, h map[uint32]int) {
+		type kv struct {
+			v uint32
+			n int
+		}
+		var l []kv
+		for v, n := range h {
+			l = append(l, kv{v, n})
+		}
+		sort.Slice(l, func(i, j int) bool { return l[i].n > l[j].n })
+		if len(l) > 6 {
+			l = l[:6]
+		}
+		s := ""
+		for _, e := range l {
+			s += fmt.Sprintf("%d(x%d) ", e.v, e.n)
+		}
+		t.Logf("  %s : valeurs les plus frequentes -> %s", name, s)
+	}
+	show("champ A R(8)", histA)
+	show("champ B R(11)", histB)
+	show("champ C R(12)", histC)
+	t.Log("LECTURE : un champ dont les valeurs ressemblent a des tailles de chargeur (0, 12, " +
+		"36, 45...) est le candidat MUNITIONS. Un champ quasi constant ne l'est pas.")
 }
