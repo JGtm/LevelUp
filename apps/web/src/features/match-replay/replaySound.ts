@@ -172,6 +172,7 @@ import { alignFeed } from './killFeedLogic'
 import { objectiveSoundEvents, type ObjectiveSide } from './objectiveSound'
 import { padPickupSoundEvents } from './padSound'
 import { roundOverSoundEvents } from './roundOverSound'
+import { skullSoundEvents } from './skullSound'
 import { zoneSoundEvents } from './zoneSound'
 import { frameToMs } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
@@ -180,6 +181,7 @@ import { soundEvent, type ReplaySoundEvent } from './replaySoundVariants'
 export { pickVariantStem, SOUND_VARIANTS, stemsOf, type ReplaySoundEvent } from './replaySoundVariants'
 export { OBJECTIVE_SOUND_STEMS, objectiveSoundStem, type ObjectiveSide } from './objectiveSound'
 export { ZONE_SOUND_STEMS, zoneSoundEvents } from './zoneSound'
+export { SKULL_SOUND_STEMS, skullSoundEvents } from './skullSound'
 export { PAD_PICKUP_SOUND_STEM, padPickupSoundEvents } from './padSound'
 export { ROUND_OVER_SOUND_STEMS, roundOverSoundEvents } from './roundOverSound'
 
@@ -638,6 +640,11 @@ export function buildSoundTimeline(
     // viennent d'aucun joueur — leur source est `doc.zoneStates`, pas `doc.objectives` — mais
     // ils appartiennent à la même catégorie du tiroir, et se coupent donc avec elle.
     out.push(...zoneSoundEvents(doc, allyTeam))
+    // LES SONS DU CRANE d'Oddball : prise et chute. Leur source est `doc.skullCarries`
+    // (schema 23), pas `doc.objectives` — le nommage statborg ne couvre pas Oddball. Ils
+    // n'ont pas de camp : la banque du mode ne porte pas de variante `_team`/`_enemy` sur
+    // ces gestes. Doctrine et inventaire de ce qui reste dehors : `skullSound.ts`.
+    out.push(...skullSoundEvents(doc, allyTeam))
     // LE SON « MANCHE TERMINÉE », sur la même mesure que le message inter-manche : la bascule
     // d'une manche à la suivante (`roundTransitions`, roundsLogic), datée par le calque de score.
     // CÂBLÉ depuis le 2026-08-28 (l'asset annonceur FR/EN a été fourni) — exactement comme le
