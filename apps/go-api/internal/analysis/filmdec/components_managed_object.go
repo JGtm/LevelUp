@@ -41,8 +41,9 @@ const (
 
 // ManagedObjectField designe le champ publie de ti=10. Enumeration STABLE et NOMMEE, jamais un
 // index de registre : le lot 0 a mesure que le decoupage du registre CHANGE AVEC LE BUILD
-// (`06dfe6d9` : 116 blocs / 1 031 slots contre 118 / 1 067 ailleurs), donc un index de composant
-// ne designe pas la meme chose d'un film a l'autre.
+// (`06dfe6d9` : 49 blocs / 1 031 slots contre 50 / 1 067 ailleurs — comptes re-mesures au
+// lot 3 apres la borne structurelle), donc un index de composant ne designe pas la meme chose
+// d'un film a l'autre.
 type ManagedObjectField int
 
 // Les champs publies, et leur compte.

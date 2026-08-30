@@ -102,3 +102,16 @@ Lot 3, puis lot 1, puis lot 2. Chaque lot se clôt par : entrée `.ai/thought_lo
 résultats chiffrés, prochaine étape), mise à jour du registre
 (`.ai/V7.5/REGISTRE_REPORTS.md`) si quelque chose est reporté avec sa condition de reprise, et
 commit sur une branche dédiée.
+
+## Journal d'exécution
+
+- **[2026-08-30] Lot 3 : CLOS `[x]`** — branche `wt/trame-film`, worktree dédié
+  `LevelUp-wt-trame-film` (le worktree `wt-visee` était OCCUPÉ par une autre session en cours
+  de travail — restitué intact). Verdict : le registre fait **50 blocs** (1 067 slots) sur les
+  builds `HI_1_12/13`, **49 blocs** avant ; le « 118 » était `len(fichier)/taille_bloc`.
+  G2 n'arbitrait rien : il tombait ROUGE sur `00162144` (slot fantôme bloc 71) dès qu'on le
+  lui donnait. Correctif `parseRegistry` (fin structurelle), critères C1/C2'/C3 tenus à 100 %
+  sur 1 367 films, C2 (prévalence < 1 %) RÉFUTÉ et publié tel quel (397 films pollués, 29 %).
+  `ecs_table.tsv` : INCHANGÉ (déjà juste, ti ≤ 49). Goldens killsource : sortie publiée
+  inchangée (98 kills, accord 85/0, ancres, contrôle négatif), 4 compteurs de diagnostic ±1,
+  régénérés. Détail : `film_re/NOTE_COMPTE_REGISTRE_2026-08-30.md`.

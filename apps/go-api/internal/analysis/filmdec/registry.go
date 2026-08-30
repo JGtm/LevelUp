@@ -114,6 +114,15 @@ func ParseRegistryChunk(raw []byte) (*Registry, error) {
 	return parseRegistry(data), nil
 }
 
+// parseRegistry lit les blocs d'archetype et S'ARRETE A LA FIN STRUCTURELLE du registre : un
+// bloc de registre est une suite de slots nommes en tete, puis un slot de terminaison dont
+// SEUL le champ flags peut etre non nul (0x01/0x02 mesures — le niveau lu « un cran plus
+// loin », meme decalage que R7-e), puis des zeros jusqu'au bout du bloc (bloc vide = zero
+// slot, ex. bloc 8). Le premier bloc qui viole cette regle appartient a la section suivante de
+// chunk_00 (table par type + identification du build, puis corps propre au match) — diviser le
+// FICHIER ENTIER par la taille d'un bloc donnait « 118 blocs » et ramassait des faux positifs
+// dans le corps (mesure lot 3 du plan « percer la trame », 2026-08-30 : registre = 50 blocs
+// sur le build de reference, verdict corpus dans lot3_registre_compte_research_test.go).
 func parseRegistry(data []byte) *Registry {
 	reg := &Registry{}
 	fp := registryHasher()
@@ -129,13 +138,46 @@ func parseRegistry(data []byte) *Registry {
 			}
 			arch.Components = append(arch.Components, name)
 			arch.Flags = append(arch.Flags, binary.LittleEndian.Uint32(data[off+4:])) // flags @ slot+4 = level
-			fp.addSlot(data, off, name)
+		}
+		if !registryBlockTail(data, base, len(arch.Components)) {
+			break // fin du registre : ce bloc est le debut de la section suivante
+		}
+		for i, name := range arch.Components {
+			fp.addSlot(data, base+i*registrySlotSize, name)
 		}
 		reg.Archetypes = append(reg.Archetypes, arch)
 	}
 	reg.fingerprint = fp.sum()
-	warnUnknownRegistry(reg.fingerprint, nBlocks, fp.slots)
+	warnUnknownRegistry(reg.fingerprint, len(reg.Archetypes), fp.slots)
 	return reg
+}
+
+// registryBlockTail dit si, apres la suite nommee de `run` slots, le bloc n'est que du
+// bourrage de registre : kind nul et zone de nom nulle sur le slot de terminaison, zeros
+// jusqu'au bout du bloc. Le champ flags du slot de terminaison (4 octets a run*260+4) est
+// exempte : il porte 0x01/0x02 sur la plupart des blocs du registre de reference.
+func registryBlockTail(data []byte, base, run int) bool {
+	if run >= archetypeBlockSlots {
+		return true // bloc plein : pas de slot de terminaison
+	}
+	term := base + run*registrySlotSize
+	return zeroTail(data, term, term+4) && zeroTail(data, term+8, base+archetypeBlockSize)
+}
+
+// zeroTail dit si data[from:to) ne contient que des octets nuls (bornes ecretees au buffer).
+func zeroTail(data []byte, from, to int) bool {
+	if from < 0 {
+		from = 0
+	}
+	if to > len(data) {
+		to = len(data)
+	}
+	for _, c := range data[from:to] {
+		if c != 0 {
+			return false
+		}
+	}
+	return true
 }
 
 // slotName extracts the NUL-terminated ASCII name at slot offset off+8.

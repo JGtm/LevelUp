@@ -1,3 +1,31 @@
+## [2026-08-30] Percer la trame — lot 3 : le registre fait 50 blocs, pas 118 — Complété
+
+**Contexte** : plan `.ai/V7.5/PLAN_PERCER_TRAME_FILM_2026-08-30.md`, lot 3 (à faire en premier).
+Conflit : le dossier tenait 118 blocs d'archétype, le lot D en trouvait 50. Branche
+`wt/trame-film`, worktree dédié `LevelUp-wt-trame-film` (wt-visee occupé par une autre session,
+restitué intact après une bascule de branche malencontreuse de ma part, annulée).
+
+**Décision technique** : `parseRegistry` s'arrête désormais à la FIN STRUCTURELLE du registre
+(helper `registryBlockTail` : suite de slots nommés, slot de terminaison dont seul `flags` peut
+être non nul — c'est le niveau « un cran plus loin » du décalage R7-e —, zéros jusqu'au bout du
+bloc). Le « 118 » était `len(fichier)/taille_bloc` : il annexait table par type, identification
+du build et corps du match au registre.
+
+**Résultats chiffrés** (instrument `lot3_registre_compte_research_test.go`, 1 367 films) :
+C1 fin structurelle = bloc d'identification : 1362/1362 (100 %). C3 builds `HI_1_12/13` :
+50 blocs, 1 067 slots sur 1253/1253. Builds antérieurs : 49 blocs, 1 029..1 034 slots
+(`06dfe6d9` : 49/1 031, empreinte `0x5827362c37d2adb3` inchangée). C2 (prévalence prédite
+< 1 %) RÉFUTÉ et publié : 397 films (29 %) portaient 541 slots fantômes, 100 % au-delà du bloc
+d'identification (C2') — l'alerte « empreinte inconnue » se déclenchait à tort sur eux, dont
+`00162144` que G2 n'avait jamais vu (ROUGE dès qu'on le lui donne, slot « B » bloc 71).
+Goldens killsource : 98 kills publiés, accord 85/0, ancres Theater, contrôle négatif INCHANGÉS ;
+4 compteurs de diagnostic ±1 (plus d'essais sur 68 archétypes vides), régénérés. Gates :
+filmdec/replay/killsource verts (fixtures armées), gofmt/vet/golangci 0.
+
+**Conclusion / prochaine étape** : l'inventaire 325 noms / 1 067 couples est CONFIRMÉ corpus
+entier — rien à rouvrir côté lunette. Doctrine corrigée (commentaires 118→50, 116→49). Détail :
+`film_re/NOTE_COMPTE_REGISTRE_2026-08-30.md`. Suite : lot 1 (les 528 262 paquets écartés).
+
 ## [2026-08-28] Rejeu Oddball — 4 lots intégrés dans feat/v75 (score par joueur/manche, deux-DinoR00, bandeau par manche, crâne socle) — Complété
 
 **Contexte** : chantier modes porteurs. Demande utilisateur : le score de manche doit repartir de 0,
