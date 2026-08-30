@@ -77807,3 +77807,57 @@ seule voie statique encore ouverte.
 359 et 311 lignes, deux executions reelles conservees (la seconde apres durcissement de
 l'instrument : distinction hors-fenetre / bandes de garde, mesure de puissance, domaine elargi).
 Test PASS en 1,4 s, saute hors garde d'environnement.
+
+## [2026-08-30] Visee lunette, phase 7 CLOSE — onde carree NEGATIVE avec puissance mesuree ; emetteur cartographie ; canaux a position fixe EPUISES — Complete (negatif fort)
+
+**Lot C (onde carree, commit 414e0272c) — le negatif le plus solide du dossier.** L'onde de zoom
+complete de Nilton (releve utilisateur, ~1 100 echantillons/bit) correlee bit a bit a TOUTES les
+positions fixes [7..1024] du debut ET de la fin des payloads, 7 variantes (toutes tetes / tete 80 /
+tetes 96+97+116 / fin de payload / domaine elargi). Meilleur score 0,77 (toutes tetes) a 0,93
+(96+97+116) ; controle par translation : p(max) de 6 % a 42 % contre seuil 1 % -> TOUTES NEGATIVES.
+INEDIT ET DECISIF : la PUISSANCE est mesuree — un canal PARFAIT serait detecte (< 0,5 % des
+decalages temoins atteignent 1,0000 partout). Ce n'est donc pas un aveuglement : il n'y a AUCUN bit
+a position fixe, dans les 1024 premiers ni les 1024 derniers bits, qui porte l'etat de lunette.
+Le controle a aussi rattrape un faux positif que le lot A aurait publie (bit 183, p(pos)=0,19 % mais
+p(max)=6 %) — le flux d'etat est si autocorrele qu'une position atteint 0,80-0,99 sur une onde qui
+ne decrit RIEN. Lecon de methode : p(position) seul ne vaut rien, seul p(max) sur translation compte.
+
+**Lot B2 (emetteur, note NOTE_EMETTEUR_114_2026-08-30.md) :**
+- Chaine d'emission cartographiee (FUN_1424d80bc -> ecrivain +0x60). Bit de CONTINUATION avant le
+  R(7) du type (acc = type | 0x80) : la liste d'evenements se lit « 1 = un event suit, 0 = fin ».
+  Pas de sous-en-tete de 16 bits (hypothese du pilote refutee).
+- « lunette = siege de l'arme » REFUTE : l'applicateur du 114 exige un masque de type = 2 sur sa
+  ref (un seul type d'objet), une arme echoue la resolution. Sortie de vehicule symetrique = type
+  103 (FUN_142f11e04). unit_zoom (126) ecrit un octet d'etat unite+0x462, ce n'est pas un siege.
+
+**Taxonomie NON TRANCHEE (a ne pas surinterpreter) :** le bit de continuation impliquerait que nos
+paquets « 114 » (payload[0]=0xE4) sont en realite du type 100 weapon_effect (0xE4 & 0x7f = 100), et
+« 105 » du type 82. MAIS le pipeline valide fire_events/killsource lit « 105 » en payload[0]>>1 et
+marche 59/59 en Theater : les deux cadrages coexistent sans etre reconcilies. Le lecteur du type
+100 (FUN_142f17eec) lit R(1)+R(12) direction = une direction d'EFFET, pas un etat de zoom. Quoi
+qu'il en soit, l'alignement des « 114 » sur la chronologie etait deja REFUTE par la translation
+(lot A) INDEPENDAMMENT du label — le relabel ne rachete rien.
+
+**BILAN DES CANAUX (tous mesures, tous negatifs) :**
+1. Composant du registre ECS : aucun (325 inventories) ;
+2. Queue d'i21 : constante (607 258 records) ;
+3. Evenement dedie unit_zoom (126) : 0 sur 41 M de paquets ;
+4. Tete du record de degat fatal : aucun bit ne separe (134 vs 780) ;
+5. Alignement d'un type d'evenement sur la chronologie : non significatif (p=1,04 %) ;
+6. Bit a POSITION FIXE (onde carree, 1024 bits debut+fin, 7 variantes) : aucun, PUISSANCE MESUREE.
+
+Il ne reste, pour un etat de lunette lisible du film, qu'un emplacement a OFFSET VARIABLE dans la
+trame d'etat du tick — atteignable UNIQUEMENT par un decodage reel de la trame (grammaire complete
+des records non-bipedes du paquet delta), pas par un balayage. C'est un chantier lourd au resultat
+incertain, ET l'hypothese « les commandes ne sont pas dans le film » (intuition utilisateur) reste
+ouverte : rien ne prouve encore que ce canal EXISTE.
+
+**Point de decision utilisateur** (pose, non tranche) : (A) engager le decodage de la trame d'etat
+complete ; (B) accepter le negatif et piloter le cone du rejeu par heuristique client (arme a
+lunette tenue + reticule sur cible), affichee comme estimation ; (C) parquer. Recommandation du
+pilote : B a court terme (livrable produit tout de suite), A seulement si le zoom par joueur devient
+un objectif prioritaire.
+
+**Commits wt/visee** : b2a059c4a (lot A), d481acc85 (retractation+note B), 414e0272c (lot C). Notes
+RE : NOTE_ENVELOPPE + NOTE_EMETTEUR (cette derniere non encore committee). Push toujours bloque
+(killsourceload, session ramassage).
