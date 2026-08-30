@@ -281,7 +281,19 @@ package replay
 // convention refusée par l'utilisateur — « je veux juste voir quand elle est au sol et quand
 // elle disparaît ». Un artefact 25 doit se lire « à re-cuire » : il porte encore la convention
 // et aucune arme au sol observée.
-const SchemaVersion = 26
+// CE QUE LA VERSION 27 PORTE, ET CE QU'ELLE REFUSE. Les POSES D'ÉQUIPEMENT gagnent leur FIN
+// D'AFFICHAGE OBSERVÉE (`until` / `untilMax` / `end` sur `equipmentPlacements`) : la même
+// mécanique que les armes au sol de v26 — dernière image-clé qui recense l'objet, première qui
+// ne le recense plus — appliquée au recensement `ti=37` que la chaîne des socles lisait déjà.
+// Jusqu'ici `t1` (fin du MOUVEMENT) était la seule borne et son contrat interdisait de s'en
+// servir comme disparition ; un artefact 26 doit se lire « à re-cuire ». CE QUE LA VERSION
+// REFUSE, mesure à l'appui (2026-08-30, mesure D) : la fin `pickup` pour l'équipement. Le lien
+// spatial prise i48 -> pose est RÉFUTÉ — l'équipement tombe à la mort AVEC les grenades du
+// mort, plusieurs objets naissent au mètre carré, et la matrice GlobalID x rang des liens
+// n'est pas diagonale (un même objet lié à trois rangs ; à candidat unique, 0 à 2 paires par
+// film, incohérentes). Le ramassage d'équipement reste dans `equipmentChanges` (QUI et QUAND),
+// sans lien vers l'objet du sol.
+const SchemaVersion = 27
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {
