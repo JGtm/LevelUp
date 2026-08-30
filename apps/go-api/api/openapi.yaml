@@ -21991,6 +21991,9 @@ components:
     SkullCarriesCoverage:
       additionalProperties: false
       properties:
+        carrierAbsent:
+          format: int64
+          type: integer
         carries:
           format: int64
           type: integer
@@ -22023,6 +22026,7 @@ components:
         - open
         - noBridge
         - outOfWindow
+        - carrierAbsent
       type: object
     SkullCarry:
       additionalProperties: false
