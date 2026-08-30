@@ -133,12 +133,13 @@ describe('tic de score — un par seconde tant qu un camp tient TOUTES les zones
     expect(zoneSoundEvents(d, 1)).toEqual([])
   })
 
-  it('MUET en Roi de la colline — le marqueur `active` est la garde', () => {
+  it('AUCUN TIC en Roi de la colline — le marqueur `active` est la garde', () => {
     const d = doc([
       { spans: [span(0, 30, 1, true)] },
       { spans: [span(0, 30, 1, true)] },
     ])
-    expect(zoneSoundEvents(d, 1).every((e) => e.stem === ZONE_SOUND_STEMS.newZone)).toBe(true)
+    const tics: readonly string[] = [ZONE_SOUND_STEMS.tick.ally, ZONE_SOUND_STEMS.tick.enemy]
+    expect(zoneSoundEvents(d, 1).filter((e) => tics.includes(e.stem))).toEqual([])
   })
 
   it('MUET sur une zone unique : une zone n est pas une domination', () => {
@@ -180,5 +181,58 @@ describe('cas dégénérés', () => {
     const evs = zoneSoundEvents(d, 1)
     expect(evs.every((e) => e.stem === ZONE_SOUND_STEMS.tick.ally)).toBe(true)
     expect(evs.length).toBeGreaterThan(0)
+  })
+})
+
+/**
+ * SÉCURISATION DE LA COLLINE (2026-08-30) — la sirène de garde.
+ *
+ * CE QUE CES TESTS ÉPINGLENT, encore une fois, ce sont les SILENCES : la colline neutre, le
+ * camp non résolu, et le transfert trop court. Le quatrième test tient la disjonction avec la
+ * capture en cours — les deux règles ne peuvent pas sonner ensemble parce que la jauge n'existe
+ * jamais sur une colline, et il vaut mieux le prouver que le supposer.
+ */
+describe('sécurisation de la colline — l intervalle `active` possédé', () => {
+  it('sonne au DÉBUT de la garde, du camp qui tient la colline', () => {
+    const d = doc([{ spans: [span(40, 400, 1, true)] }])
+    const evts = zoneSoundEvents(d, 1).filter(
+      (e) => e.stem === ZONE_SOUND_STEMS.securing.ally,
+    )
+    expect(evts).toEqual([{ ms: 4000, stem: ZONE_SOUND_STEMS.securing.ally }])
+  })
+
+  it('distingue les deux camps', () => {
+    const d = doc([{ spans: [span(0, 400, 2, true)] }])
+    const stems = zoneSoundEvents(d, 1).map((e) => e.stem)
+    expect(stems).toContain(ZONE_SOUND_STEMS.securing.enemy)
+    expect(stems).not.toContain(ZONE_SOUND_STEMS.securing.ally)
+  })
+
+  it('MUET sur une colline NEUTRE : personne ne sécurise', () => {
+    const d = doc([{ spans: [span(0, 400, null, true)] }])
+    expect(zoneSoundEvents(d, 1).some((e) => e.stem.startsWith('objective_zone_securing'))).toBe(
+      false,
+    )
+  })
+
+  it('MUET sans camp allié résolu : le rejeu ne devine pas un camp', () => {
+    const d = doc([{ spans: [span(0, 400, 1, true)] }])
+    expect(zoneSoundEvents(d, null).some((e) => e.stem.startsWith('objective_zone_securing'))).toBe(
+      false,
+    )
+  })
+
+  it('MUET sur un TRANSFERT trop court : le plancher de 3 s tient', () => {
+    const d = doc([{ spans: [span(0, 20, 1, true)] }])
+    expect(zoneSoundEvents(d, 1).some((e) => e.stem.startsWith('objective_zone_securing'))).toBe(
+      false,
+    )
+  })
+
+  it('MUET hors colline : un intervalle possédé SANS `active` ne sécurise rien', () => {
+    const d = doc([{ spans: [span(0, 400, 1)] }, { spans: [span(0, 400, null)] }])
+    expect(zoneSoundEvents(d, 1).some((e) => e.stem.startsWith('objective_zone_securing'))).toBe(
+      false,
+    )
   })
 })

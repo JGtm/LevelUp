@@ -49,7 +49,10 @@ import {
   SOUND_VARIANTS,
   WEAPON_SOUND_STEMS,
   ZONE_SOUND_STEMS,
-  PAD_PICKUP_SOUND_STEM,
+  PAD_SPAWN_SOUND_STEM,
+  EQUIPMENT_PAD_SPAWN_SOUND_STEM,
+  WEAPON_CHANGE_SOUND_STEMS,
+  EQUIPMENT_PICKUP_SOUND_STEM,
 } from './replaySound'
 
 /** Les stems d une entree d objectif : une PAIRE PEUT ETRE INCOMPLETE (le camp non design00e9 a
@@ -123,7 +126,13 @@ describe('garde-rail : manifeste sonore = dossier d assets', () => {
     // déplacement de la colline. Source doc.zoneStates, pas doc.objectives — mais même
     // dossier d'assets et même garde-rail.
     ...stemsZone(),
-    PAD_PICKUP_SOUND_STEM,
+    PAD_SPAWN_SOUND_STEM,
+    // Les CHANGEMENTS D'ARME ET D'ÉQUIPEMENT (schémas 25-26, 2026-08-30) : ramassage et
+    // lâcher d'arme, ramassage d'équipement, apparition d'équipement sur socle — les quatre
+    // gestes que le chantier ramassage a datés.
+    ...Object.values(WEAPON_CHANGE_SOUND_STEMS),
+    EQUIPMENT_PICKUP_SOUND_STEM,
+    EQUIPMENT_PAD_SPAWN_SOUND_STEM,
     // La FIN DE PARTIE (lot C, 2026-08-27) : voix FR et EN, fanfares, réplique du FFA gagné.
     ...endMatchStems,
     // Le son « MANCHE TERMINÉE » (2026-08-28) : voix d'annonceur FR et EN, sur la piste (daté à
@@ -227,7 +236,12 @@ describe('garde-rail : durée livrée par catégorie', () => {
     // le seul son de la chaîne livré TRONQUÉ à dessein (1,2 s) et ATTÉNUÉ (-12 dBTP) : il se
     // joue une fois par seconde, un geste de 3,6 s s'y empilerait sur lui-même.
     ...stemsZone(),
-    PAD_PICKUP_SOUND_STEM,
+    PAD_SPAWN_SOUND_STEM,
+    // Les GESTES DU CHANTIER RAMASSAGE (2026-08-30) : mêmes règles de durée — des sources
+    // naturellement courtes (0,31 à 0,80 s), déclarées une à une dans `SOURCES_COURTES`.
+    ...Object.values(WEAPON_CHANGE_SOUND_STEMS),
+    EQUIPMENT_PICKUP_SOUND_STEM,
+    EQUIPMENT_PAD_SPAWN_SOUND_STEM,
     // Le son « MANCHE TERMINÉE » : voix d'annonceur sur la piste (catégorie Objectifs), même
     // règle de durée que les autres annonceurs — il garde la durée de sa source (1,7 s), jamais
     // retronqué à la coupe des armes. Ce n'est PAS un son de FIN DE PARTIE : il vit sur la piste,
@@ -288,9 +302,17 @@ describe('garde-rail : durée livrée par catégorie', () => {
     // jeu fait cette durée-là. La zone contestée est « 1 couche, 1 son » (événement c3327c0b,
     // 1,180 s) ; le ramassage sur socle est « 1 parmi 2 » (événement c73036e4, 0,804 s).
     objective_zone_contested: 1.18,
-    objective_pad_pickup: 0.804,
     objective_zone_tick_team: 1.2,
     objective_zone_tick_enemy: 1.2,
+    // LES GESTES DU CHANTIER RAMASSAGE (2026-08-30), tous naturellement courts : le lâcher et
+    // le ramassage d'arme sont du bruitage de Spartan (« 1 parmi 3 », gain -6 dB, banque
+    // e9a52b26) ; le ramassage d'équipement est « 1 parmi 2 » (c73036e4) — le MÊME fichier
+    // qu'avant son retrait du 30/08, re-livré le jour où `equipmentChanges` a daté le geste ;
+    // l'apparition d'équipement sur socle est l'événement 4093f3c4 désigné à l'oreille.
+    weapon_drop: 0.312,
+    weapon_pickup: 0.34,
+    objective_pad_pickup: 0.804,
+    equipment_pad_spawn: 0.562,
     grapple_fire: 0.745,
     grapple_fire_v2: 0.765,
     grapple_fire_v3: 0.757,

@@ -32,14 +32,19 @@
  * « avant l'apparition d'une NOUVELLE zone », pas l'ouverture du match. Il n'a pas de camp —
  * la colline n'appartient à personne quand elle se déplace.
  *
- * ## Sans camp allié, deux des trois se taisent
+ * **SÉCURISATION DE LA COLLINE** (2026-08-30). En Roi de la colline il n'y a pas de capture :
+ * la colline se prend instantanément et c'est la GARDE qui marque. Le déclencheur est donc
+ * l'intervalle `active` POSSÉDÉ, pas une rampe de jauge — laquelle n'existe jamais sur une
+ * colline (`ZoneState.Gauge` côté Go). Détail et plancher : `ZONE_SECURING_MIN_MS`.
+ *
+ * ## Sans camp allié, trois des quatre se taisent
  *
  * Même règle que partout dans la chaîne sonore : sans ligne « moi » au tableau de score, le
  * rejeu ne devine pas un camp. La capture en cours et les tics se taisent ; la nouvelle
  * colline sonne quand même, elle n'affirme rien.
  */
 import type { ReplayDocumentReady } from './replayNormalize'
-import { frameToMs } from './replayLogic'
+import { frameToMs, msToFrames } from './replayLogic'
 import { soundEvent, type ReplaySoundEvent } from './replaySoundVariants'
 
 /** Le camp d'un état de zone, vu de la page — la même notion que dans `objectiveSound.ts`. */
@@ -80,6 +85,38 @@ export const ZONE_SOUND_STEMS = {
   contested: 'objective_zone_contested',
   /** La colline se déplace (Roi de la colline). Aucun camp. */
   newZone: 'objective_zone_new',
+  /**
+   * LA SÉCURISATION DE LA COLLINE, en Roi de la colline. Désigné à l'oreille par l'utilisateur
+   * le 2026-08-30 (`93f632c0` allié, `dcf980a5` adverse — deux gestes de forme identique et de
+   * médias disjoints, la signature d'un couple `_team`/`_enemy`).
+   *
+   * POURQUOI CE N'EST PAS `capturing`, ET POURQUOI LES DEUX NE SE MARCHENT PAS DESSUS. En Roi
+   * de la colline il n'y a pas de capture : la colline se prend instantanément et c'est la
+   * GARDE qui marque (`.ai/V7.5/PLAN_KOTH_GARDE_VIVANTE_2026-08-30.md` § 1.1). Le Go le dit
+   * dans le même sens et c'est ce qui rend les deux règles disjointes SANS garde explicite :
+   * `ZoneState.Gauge` est TOUJOURS ABSENTE sur une colline (`document_zones.go` — le canal y
+   * est un compteur de transfert d'environ une seconde, `coverage.zones.gaugePoints` vaut 0).
+   * `capturing` naît d'une rampe de jauge, elle ne peut donc pas se déclencher en KOTH ; la
+   * sécurisation naît d'un intervalle `active` possédé, qui n'existe QUE là.
+   *
+   * LE SON EST SERVI LONG (5,5 s) ET JOUÉ UNE SEULE FOIS. C'est une règle de l'utilisateur, et
+   * elle vient de ce qu'il entend : « le son est à prolonger le temps que la sécurisation est
+   * en cours ; une boucle relancerait le début du son, qui met du temps à se lancer — c'est
+   * comme une sirène ». Le fichier porte donc la boucle DU JEU (une lecture de 1,3 s toutes les
+   * 1,8 s, `sLoopCount` = 0, `eTransitionMode` = 3) servie sur 5,5 s ; le lecteur, lui, ne le
+   * redéclenche jamais.
+   *
+   * DEUX ÉCARTS ASSUMÉS, écrits plutôt que masqués. (1) Le délai d'action de 1,5 s est RETIRÉ :
+   * il est l'entrée en boucle du jeu, et servi en tête d'un one-shot il n'ajouterait que du
+   * silence. (2) 5,5 s ne couvre pas une garde de 40 s ; c'est le plafond des sons d'ÉVÉNEMENT
+   * (`LONG_MAX_S` = 6 s dans le garde-rail d'assets), et le tenir vaut mieux que de laisser un
+   * son de match grimper vers le plafond des fanfares. Prolonger davantage demanderait de
+   * relever ce plafond — décision produit, pas décision de livraison.
+   */
+  securing: {
+    ally: 'objective_zone_securing_team',
+    enemy: 'objective_zone_securing_enemy',
+  },
 } as const
 
 /** Période des tics de score, en millisecondes — la seconde demandée par l'utilisateur. */
@@ -149,7 +186,51 @@ export function zoneSoundEvents(
   }
   out.push(...ticsDeDomination(zones, allyTeam, doc))
   out.push(...collinesSuivantes(zones, doc))
+  out.push(...securisationsDeColline(zones, allyTeam, doc))
   return out.sort((a, b) => a.ms - b.ms)
+}
+
+/**
+ * ZONE_SECURING_MIN_MS — en dessous, l'intervalle n'est pas une sécurisation mais un TRANSFERT.
+ *
+ * Le canal publie le neutre autant que le tenu (50 intervalles neutres pour 50 tenus sur
+ * `01e1f945`), et une colline change de mains plusieurs fois par période. Sans plancher, chaque
+ * passage d'un pied dans la colline déclencherait une sirène de 11,5 s. Le plancher est calé sur
+ * le son lui-même : sa première lecture dure 1,3 s après un délai d'action de 1,5 s, donc en
+ * dessous de trois secondes on lancerait un geste que l'intervalle ne laisse pas s'installer.
+ *
+ * Les gardes qui marquent, elles, durent 36,8 à 50,3 s (mesure sur 11 périodes de 3 films,
+ * `PLAN_KOTH_GARDE_VIVANTE_2026-08-30.md` § 1.1) : le plancher ne les touche pas.
+ */
+export const ZONE_SECURING_MIN_MS = 3000
+
+/**
+ * securisationsDeColline — la sirène de garde, une fois par intervalle de possession de la
+ * colline ACTIVE.
+ *
+ * Le déclencheur est `ZoneSpan.active` + `owner` : c'est le seul canal qui parle en Roi de la
+ * colline, la jauge y étant toujours absente. Un intervalle neutre (`owner` nul) ne sonne pas —
+ * personne ne sécurise. Sans camp allié résolu, tout se tait : même règle que partout ailleurs
+ * dans cette chaîne, le rejeu ne devine pas un camp.
+ */
+function securisationsDeColline(
+  zones: readonly ZoneStateLike[],
+  allyTeam: number | null,
+  doc: ReplayDocumentReady,
+): ReplaySoundEvent[] {
+  if (allyTeam === null) return []
+  const minFrames = msToFrames(ZONE_SECURING_MIN_MS, doc)
+  const out: ReplaySoundEvent[] = []
+  for (const z of zones) {
+    for (const s of z.spans) {
+      if (!s.active) continue
+      if (s.owner === null || s.owner === undefined) continue
+      if (s.t1 - s.t0 < minFrames) continue
+      const c: ZoneSide = s.owner === allyTeam ? 'ally' : 'enemy'
+      out.push(soundEvent(frameToMs(s.t0, doc), ZONE_SOUND_STEMS.securing[c]))
+    }
+  }
+  return out
 }
 
 /**
