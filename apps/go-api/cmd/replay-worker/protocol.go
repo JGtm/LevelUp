@@ -1,6 +1,6 @@
 package main
 
-// protocol.go — le CLIENT du protocole ouvrier : trois POST et rien d'autre.
+// protocol.go — le CLIENT du protocole ouvrier : quatre POST et rien d'autre.
 //
 // Ce fichier est la preuve exécutable de la frontière de sécurité : il ne lit
 // aucun token Halo, n'ouvre aucune base, ne connaît aucun identifiant. Tout ce

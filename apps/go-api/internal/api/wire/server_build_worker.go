@@ -2,11 +2,11 @@
 //
 // HORS DU GROUPE /admin, ET C'EST VOULU. Un ouvrier n'est pas un administrateur
 // connecté : il n'a ni session, ni cookie, ni compte. Il présente un jeton dédié
-// (LEVELUP_BUILD_WORKER_TOKEN) qui n'ouvre QUE ces trois routes — prendre un
-// travail déjà résolu, battre, rendre un résultat. Aucun accès Halo, aucun accès
-// base, aucune autre route.
+// (LEVELUP_BUILD_WORKER_TOKEN) qui n'ouvre QUE ces quatre routes — prendre un
+// travail déjà résolu, battre, déposer l'artefact, rendre un résultat. Aucun
+// accès Halo, aucun accès base, aucune autre route.
 //
-// Sans jeton configuré, les trois routes répondent 503 : le dépôt est public, et
+// Sans jeton configuré, les quatre routes répondent 503 : le dépôt est public, et
 // une installation par défaut ne doit hériter d'aucune porte ouverte.
 package wire
 

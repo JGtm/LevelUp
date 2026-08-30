@@ -6,12 +6,12 @@
  * `useReplayFlagCarries` porte celles des drapeaux.
  *
  * IL NE DÉCIDE PLUS SEUL. Depuis le schéma 23, la présence du crâne se résout par
- * `skullPresenceAt(lives, carries, frame)` : le hook peint UNIQUEMENT une présence `free`, à la
- * position qu'elle porte. Le portage (`carried`) est dessiné par `skullCarrierLayer` ; l'absence
- * (respawn, retombée, pré-émission) ne dessine rien. Ce hook TIENT donc désormais le crâne à son
- * dernier repos quand une PRISE le corrobore — le trou de repos-socle n'est plus un clignotement.
- * Avec `carries: []` (artefacts pré-schéma-23), la présence retombe sur la vie active seule : le
- * rendu est alors identique au comportement historique.
+ * `skullPresenceAt(lives, carries, frame, socle)` : le hook peint UNIQUEMENT une présence `free`,
+ * à la position qu'elle porte. Le portage (`carried`) est dessiné par `skullCarrierLayer`. Le crâne
+ * au REPOS est posé sur son SOCLE (`skullSocle`, lu une fois) — avant sa première prise et pendant
+ * les cooldowns de respawn hors-zone, il est chez lui, plus un trou invisible. Il ne reste `absent`
+ * (rien dessiné) que sans socle identifiable. Avec `carries: []` (artefacts pré-schéma-23), la
+ * présence retombe sur la vie active seule.
  *
  * L'ENCRE EST NEUTRE, ET C'EST UNE CONSÉQUENCE DE LA MESURE, pas un choix graphique. Le document
  * ne publie AUCUN porteur pour le crâne LIBRE : l'oracle a été mesuré puis réfuté (phase D4 — 40,6
@@ -22,7 +22,7 @@
 import { useCallback, useMemo } from 'react'
 
 import { drawFreeSkull, type ObjectiveObjectsInput } from './objectiveObjectsLayer'
-import { skullPresenceAt } from './skullPresence'
+import { skullPresenceAt, skullSocle } from './skullPresence'
 
 import type { CanvasView } from './objectivesLayer'
 import type { ReplayObjectiveObjectReady, ReplaySkullCarry } from './replayNormalize'
@@ -47,15 +47,17 @@ export function useReplayObjectiveObjects({
   lives, carries, view, ink, outline,
 }: UseReplayObjectiveObjectsArgs): ReplayObjectiveObjects {
   const layer = useMemo<ObjectiveObjectsInput>(() => ({ style: { ink, outline } }), [ink, outline])
+  // Le socle (point de réapparition) se lit UNE fois : le crâne au repos y est posé (cf. skullPresence).
+  const socle = useMemo(() => skullSocle(lives), [lives])
   const paint = useCallback(
     (ctx: CanvasRenderingContext2D, frame: number) => {
-      // Sans aucune vie émise, la présence ne peut jamais être `free` (ni active, ni repos tenu).
+      // Sans aucune vie émise, on ne connaît ni position ni socle : rien à peindre.
       if (lives.length === 0) return
-      const presence = skullPresenceAt(lives, carries, frame)
+      const presence = skullPresenceAt(lives, carries, frame, socle)
       if (presence.state !== 'free') return
       drawFreeSkull(ctx, layer, presence.at, view, presence.rolling)
     },
-    [lives, carries, layer, view],
+    [lives, carries, socle, layer, view],
   )
   return { paint }
 }

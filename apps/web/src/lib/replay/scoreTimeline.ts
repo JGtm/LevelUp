@@ -54,6 +54,7 @@ import type {
   ReplayScoreSeries,
   ReplayScoreTick,
   ReplayScoreTimeline,
+  ReplayTeamHold,
   ReplayTeamScore,
 } from '@/lib/api/types'
 
@@ -91,9 +92,16 @@ export type ReplayPlayerScoreReady = Omit<
   kills: ReplayScoreSeriesReady
   score: ReplayScoreSeriesReady
 }
-export type ReplayScoreTimelineReady = Omit<ReplayScoreTimeline, 'players' | 'teams'> & {
+export type ReplayTeamHoldReady = Omit<ReplayTeamHold, 'ticks'> & {
+  ticks: ReplayScoreTick[]
+}
+export type ReplayScoreTimelineReady = Omit<
+  ReplayScoreTimeline,
+  'players' | 'teams' | 'holdTicks'
+> & {
   players: ReplayPlayerScoreReady[]
   teams: ReplayTeamScoreReady[]
+  holdTicks: ReplayTeamHoldReady[]
 }
 
 /**
@@ -145,9 +153,9 @@ function normalizeSeries(series: ReplayScoreSeries | undefined): ReplayScoreSeri
 }
 
 /**
- * normalizeScoreTimeline comble les CINQ tableaux nullables du calque de score
- * (`teams`, `players`, `rounds`, `total`, `points`) et rend l'absence du calque telle
- * quelle : `undefined` entre, `undefined` sort.
+ * normalizeScoreTimeline comble les SEPT tableaux nullables du calque de score
+ * (`teams`, `players`, `rounds`, `total`, `points`, `holdTicks` et ses `ticks`) et rend
+ * l'absence du calque telle quelle : `undefined` entre, `undefined` sort.
  *
  * L'OBJET GARDE LE DROIT D'ÊTRE ABSENT : un artefact de schéma antérieur à 12 n'en porte
  * aucun, et un objet vide se lirait « le film a été lu, il n'y avait pas de score ».
@@ -170,6 +178,8 @@ export function normalizeScoreTimeline(
       rounds: (t.rounds ?? []).map(normalizeRound),
       total: t.total ?? [],
     })),
+    // La GARDE de la colline : meme regime que les autres series du calque.
+    holdTicks: (raw.holdTicks ?? []).map((h) => ({ ...h, ticks: h.ticks ?? [] })),
   }
 }
 

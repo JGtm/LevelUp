@@ -8,6 +8,7 @@ import { act, fireEvent, render, renderHook, screen } from '@testing-library/rea
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import {
+  AUTOPLAY_KEY,
   SPEED_MULTIPLIERS,
   TIMELINE_EXPANDED_KEY,
   usePersistedFlag,
@@ -44,6 +45,29 @@ describe('useReplaySettings — valeurs par défaut', () => {
   it('emplacements d arme ALLUMÉS — « les infos sont intéressantes à avoir » (18/08)', () => {
     const { result } = renderHook(() => useReplaySettings())
     expect(result.current.showWeaponPads).toBe(true)
+  })
+
+  // POINT 22 DU 2026-08-29 : la lecture automatique devient un réglage, ÉTEINT par défaut à la
+  // demande de l'utilisateur. C'est un CHANGEMENT de comportement (le rejeu partait tout seul
+  // depuis l'origine) : ce test est là pour qu'il ne se reperde pas silencieusement.
+  it('lecture automatique ÉTEINTE par défaut — le rejeu s ouvre en pause', () => {
+    const { result } = renderHook(() => useReplaySettings())
+    expect(result.current.autoPlay).toBe(false)
+  })
+})
+
+describe('useReplaySettings — lecture automatique (point 22 du 2026-08-29)', () => {
+  it('la bascule persiste le choix sous sa clé', () => {
+    const { result } = renderHook(() => useReplaySettings())
+    act(() => result.current.toggleAutoPlay())
+    expect(result.current.autoPlay).toBe(true)
+    expect(localStorage.getItem(AUTOPLAY_KEY)).toBe('true')
+  })
+
+  it('un choix déjà stocké est relu au montage', () => {
+    localStorage.setItem(AUTOPLAY_KEY, 'true')
+    const { result } = renderHook(() => useReplaySettings())
+    expect(result.current.autoPlay).toBe(true)
   })
 })
 

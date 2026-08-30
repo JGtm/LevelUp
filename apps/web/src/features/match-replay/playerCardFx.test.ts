@@ -22,6 +22,7 @@ function input(over: Partial<CardFxInput> = {}): CardFxInput {
     flashFrames: 14,
     equipment: null,
     zones: NO_ZONES,
+    objective: null,
     text: REPLAY_TEXT.fr,
     ...over,
   }

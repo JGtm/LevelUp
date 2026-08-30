@@ -277,6 +277,9 @@ func (e *SyncEngine) runPostSyncPipeline(
 	clock.lap("convergence_events", r.ConvergedEvents)
 	films.runWeaponKills(ctx, insertedIDs)
 	clock.lap("weapon_kills", r.WeaponKillsProcessed)
+	// 1.57 source du kill : décodage du kill-feed — la SEULE origine de `assist_known`.
+	// AVANT 1.58, qui retrouve alors le film sur disque (cf. killcollector/postsync.go).
+	clock.lap("kill_source", films.runKillSource(ctx, insertedIDs))
 	// 1.58 artefacts de rejeu 2D (fil de l'eau LOCAL, lot 6 v7.5) : pont disque
 	// filmcache + construction replaybuild des matchs insérés, fenêtre
 	// replay_retention_months relue à chaque cycle. No-op si le hook n'est pas

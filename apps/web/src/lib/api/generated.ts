@@ -9595,6 +9595,9 @@ export interface components {
             v: number;
         };
         ScoreTimeline: {
+            holdTicks?: components["schemas"]["TeamHold"][] | null;
+            /** Format: int64 */
+            holdTicksPerPoint?: number;
             players?: components["schemas"]["PlayerScore"][] | null;
             /** Format: int64 */
             targetScore?: number;
@@ -10115,6 +10118,8 @@ export interface components {
             value: number;
         };
         SkullCarriesCoverage: {
+            /** Format: int64 */
+            carrierAbsent: number;
             /** Format: int64 */
             carries: number;
             /** Format: int64 */
@@ -10904,6 +10909,11 @@ export interface components {
             name: string;
             /** Format: int64 */
             rows: number;
+        };
+        TeamHold: {
+            /** Format: int64 */
+            teamId?: number;
+            ticks?: components["schemas"]["ScoreTick"][] | null;
         };
         TeamScore: {
             rounds?: components["schemas"]["ScoreRound"][] | null;

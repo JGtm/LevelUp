@@ -195,8 +195,12 @@ func (b *Builder) BuildBytes(matchID string, mapNames []string, filmDir string, 
 	// La CIBLE DE VICTOIRE vient de la table de règlement du titre, jamais du film : elle
 	// s'ajoute à l'entrée du calque de score, et la garde de publication vit chez lui
 	// (`publishableTarget` — une table périmée se tait au lieu de publier une cible fausse).
+	// Le DÉNOMINATEUR DE LA GARDE vient de la même table, pour la même raison : le film porte le
+	// compteur de tics, pas combien de tics valent un point. Sa garde de
+	// publication vit elle aussi chez le calque (`publishableHold`).
 	if stats.score != nil {
 		stats.score.TargetScore, _ = b.regulation.ScoreTarget(facts.GameVariantName)
+		stats.score.HoldTicksPerPoint, _ = b.regulation.HoldTicksPerPoint(facts.GameVariantName)
 	}
 	// Les SOCLES de drapeau viennent du catalogue de carte, pas du film : ils s'ajoutent aux
 	// lectures que le second décodage a déjà faites (cf. flagspawns.go).

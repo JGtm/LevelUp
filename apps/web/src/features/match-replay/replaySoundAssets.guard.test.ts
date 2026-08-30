@@ -45,6 +45,7 @@ import {
   KILL_SPRITE_SOUND_STEMS,
   OBJECTIVE_SOUND_STEMS,
   ROUND_OVER_SOUND_STEMS,
+  SKULL_SOUND_STEMS,
   SOUND_VARIANTS,
   WEAPON_SOUND_STEMS,
   ZONE_SOUND_STEMS,
@@ -128,6 +129,10 @@ describe('garde-rail : manifeste sonore = dossier d assets', () => {
     // Le son « MANCHE TERMINÉE » (2026-08-28) : voix d'annonceur FR et EN, sur la piste (daté à
     // la bascule de manche), les deux langues livrées et vérifiées ensemble.
     ...Object.values(ROUND_OVER_SOUND_STEMS),
+    // LE CRANE d'Oddball (lot du 2026-08-29) : prise et chute. Source doc.skullCarries, pas
+    // doc.objectives — le nommage statborg ne couvre pas Oddball. Leurs variantes entrent par
+    // SOUND_VARIANTS ci-dessus, comme celles du grappin.
+    ...Object.values(SKULL_SOUND_STEMS),
   ])
 
   it('chaque stem du manifeste a son fichier .wav', () => {
@@ -228,6 +233,11 @@ describe('garde-rail : durée livrée par catégorie', () => {
     // retronqué à la coupe des armes. Ce n'est PAS un son de FIN DE PARTIE : il vit sur la piste,
     // daté à la bascule, il tombe donc sous le plafond des ÉVÉNEMENTS (6 s), pas la conclusion.
     ...Object.values(ROUND_OVER_SOUND_STEMS),
+    // LE CRANE d'Oddball : catégorie Objectifs, même règle de durée — les gestes gardent la
+    // durée de leur source (1,71 à 5,47 s). Les deux stems de MARQUE y pointent sur les
+    // fichiers du tic de zone (c'est le même son, mesuré à +1,000 de corrélation le
+    // 2026-08-29) : le `Set` les absorbe, et leur dispense de durée est déjà déclarée plus bas.
+    ...Object.values(SKULL_SOUND_STEMS),
     // Les VARIANTES d'un geste suivent la règle de leur geste : ce sont les autres tirages du
     // MÊME `RandomSequence`, pas d'autres sons.
     ...Object.values(SOUND_VARIANTS).flat(),

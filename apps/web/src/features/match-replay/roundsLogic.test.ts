@@ -220,15 +220,48 @@ describe('roundDots — une pastille par manche, pleine quand la manche est tran
 })
 
 describe('roundTransitions — les bascules de manche', () => {
-  it('une bascule sur le témoin Oddball, au début de la manche 2', () => {
-    expect(roundTransitions(ODDBALL())).toEqual([{ endedIndex: 1, frame: 100 }])
+  it('une bascule sur le témoin Oddball, à la FIN de la manche 1', () => {
+    expect(roundTransitions(ODDBALL())).toEqual([{ endedIndex: 1, frame: 50 }])
   })
 
-  it('deux bascules sur un best-of-three, aux débuts des manches 2 et 3', () => {
+  it('deux bascules sur un best-of-three, aux FINS des manches 1 et 2', () => {
     expect(roundTransitions(BEST_OF_THREE())).toEqual([
-      { endedIndex: 1, frame: 100 },
-      { endedIndex: 2, frame: 200 },
+      { endedIndex: 1, frame: 50 },
+      { endedIndex: 2, frame: 150 },
     ])
+  })
+
+  // LE CORRECTIF DU 2026-08-29, ÉPINGLÉ : la bascule tombait au DÉBUT de la manche suivante,
+  // c'est-à-dire au premier point qu'on y marque — 19 à 34 s après la fin annoncée sur les
+  // quatre témoins multi-manches du dossier d'artefacts. Ce cas force un entracte LONG et
+  // vérifie que la bascule ne le traverse pas : elle reste collée au dernier palier.
+  it("l'entracte ne décale plus la bascule : elle colle au dernier palier de la manche", () => {
+    const entracteLong = timelineOf({
+      teams: [
+        equipe(
+          0,
+          [manche(0, [[10, 1], [60, 100]]), manche(1, [[330, 1], [400, 100]])],
+          [[10, 1], [60, 100], [400, 200]],
+        ),
+        equipe(
+          1,
+          [manche(0, [[20, 1], [55, 42]]), manche(1, [[300, 1], [390, 61]])],
+          [[20, 1], [55, 42], [390, 103]],
+        ),
+      ],
+      players: [],
+    })
+    // Fin de la manche 1 : f60 (dernier palier, toutes équipes confondues). Reprise : f300.
+    expect(roundTransitions(entracteLong)).toEqual([{ endedIndex: 1, frame: 60 }])
+  })
+
+  // LA MÊME BORNE QUE LA PASTILLE, et c'est tout le point du correctif : il n'y a plus qu'un
+  // seul instant « fin de manche » dans le rejeu. Si les deux divergeaient à nouveau, le
+  // message paraîtrait alors que la pastille est encore vide (ou l'inverse).
+  it('partage la borne de la pastille pleine du bandeau', () => {
+    const [premiere] = roundTransitions(BEST_OF_THREE())
+    expect(roundDots(BEST_OF_THREE(), 0, 1, premiere.frame)[0].winner).toBe('ally')
+    expect(roundDots(BEST_OF_THREE(), 0, 1, premiere.frame - 1)[0].winner).toBeNull()
   })
 
   it('aucune bascule sur un mode à manche unique', () => {
@@ -248,22 +281,22 @@ describe('activeRoundTransition — la fenêtre d\'affichage du message inter-ma
   const trs = roundTransitions(BEST_OF_THREE())
 
   it('rend la bascule quand l\'image lue est dans sa fenêtre', () => {
-    expect(activeRoundTransition(trs, 100, 60)).toEqual({ endedIndex: 1, frame: 100 })
-    expect(activeRoundTransition(trs, 159, 60)).toEqual({ endedIndex: 1, frame: 100 })
+    expect(activeRoundTransition(trs, 50, 60)).toEqual({ endedIndex: 1, frame: 50 })
+    expect(activeRoundTransition(trs, 109, 60)).toEqual({ endedIndex: 1, frame: 50 })
   })
 
   it('rien avant la bascule ni après la fenêtre', () => {
-    expect(activeRoundTransition(trs, 99, 60)).toBeNull()
-    expect(activeRoundTransition(trs, 160, 60)).toBeNull()
+    expect(activeRoundTransition(trs, 49, 60)).toBeNull()
+    expect(activeRoundTransition(trs, 110, 60)).toBeNull()
   })
 
   it('la seconde bascule s\'affiche à son tour', () => {
-    expect(activeRoundTransition(trs, 210, 60)).toEqual({ endedIndex: 2, frame: 200 })
+    expect(activeRoundTransition(trs, 160, 60)).toEqual({ endedIndex: 2, frame: 150 })
   })
 
   it('retient la PLUS RÉCENTE si deux fenêtres se recouvraient', () => {
-    // Fenêtre large : à f220, les deux fenêtres (100 et 200) contiennent l'image.
-    expect(activeRoundTransition(trs, 220, 200)).toEqual({ endedIndex: 2, frame: 200 })
+    // Fenêtre large : à f170, les deux fenêtres (50 et 150) contiennent l'image.
+    expect(activeRoundTransition(trs, 170, 200)).toEqual({ endedIndex: 2, frame: 150 })
   })
 
   it('aucune bascule active quand il n\'y en a pas', () => {
