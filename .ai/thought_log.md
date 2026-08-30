@@ -77902,3 +77902,180 @@ autres types a bas=1 dont on sait maintenant que la charge est differente. Piste
 
 **Prochaine etape** : CR des lots D et E, puis ecriture d'un decodeur d'evenements reel (celui qui
 manque depuis le debut) et re-recensement du corpus SANS l'angle mort du premier evenement.
+
+## [2026-08-30] Visee lunette, LOT D — chunk_00 cartographie : PAS de table de noms d'evenements, mais une TABLE PAR TYPE qui suit le build ; et le premier octet d'un paquet delta n'est pas un type — Complete
+
+**Mandat** : D1 le film porte-t-il un registre des types d'evenements a cote du registre de
+composants ? D2 carte exhaustive de chunk_00. D3 que sont vraiment les 125 paquets « 114 » de
+00162144, et un type zoom existe-t-il dans le film ? D4 trancher la semantique du bit de poids
+faible de payload[0]. Six instruments sous garde d'environnement, seuils ecrits avant chaque
+mesure, aucun code de production touche, aucun outil binaire employe (lot E non touche).
+
+**D2 — chunk_00 N'EST PAS « le registre » : il porte TROIS sections.** Sur 1 973 120 octets
+inflates (taille identique au bit pres sur trois films), le registre n'occupe que les 832 000
+premiers, soit **50 blocs** (0..49, dont 49 porteurs). **Le « 118 blocs » du dossier est un
+artefact** : `parseRegistry` divise le FICHIER ENTIER par 16 640. Suivent une section
+d'identification (`0x0CB200`..`0x0CB45C`) et une troisieme section d'environ 538 ko
+(`0x0CB65C`..`0x14EB73`) propre au film, puis 602 ko de zeros. Le premier octet qui differe entre
+deux films du meme build tombe EXACTEMENT au debut de la section 3 : la croyance « le registre est
+identique d'un film a l'autre » est juste, mais elle vaut pour les deux premieres sections, pas
+pour le fichier.
+
+**Section 3, caracterisee sans etre decodee** : entropie 7,24-7,27 bits/octet, 17 % de zeros,
+donnee dense a partir de `0x0CE6A8`. **Ce n'est pas un flux de paquets** (le decoupage a en-tete de
+16 octets ne couvre que 2,3 % du volume), **pas de zlib imbrique** (27 en-tetes plausibles la ou le
+hasard en donnerait 131), **aucun pas de structure** (17,0 % a 15,1 % d'octets egaux du pas 2 au
+pas 1024, sans pic). **Mais elle porte l'identite des joueurs, en UTF-16LE** : `vamprym`,
+`Chocoboflor`, `RAZOR BLADE LEO` sur 00162144 ; `whiteknight2519`, `LORD PEINX13` sur 000d5950.
+`Chocoboflor` est un joueur suivi par le projet : ce sont des participants, pas du hasard.
+
+**D1a — AUCUN nom d'evenement dans le film, avec temoin positif.** Les 13 noms du catalogue de
+l'exe (dont les 8 de la famille arme/unite demandes par le pilote) cherches en ASCII et en UTF-16,
+avec trois orthographes voisines, dans chunk_00 ET dans tous les autres chunks : **0 occurrence**.
+Dans la meme passe, le temoin positif trouve `object-position-dynamic-precision` = 2,
+`unit-desired-aiming-vector` = 2, `weapon-state-type-info` = 4. L'instrument trouve ce qui est la.
+
+**D1b — le format ne hache aucun nom.** Le champ `kind` (u32 a slot+0), seul porteur possible
+d'une empreinte dans le format de slot, vaut **0 sur 1 066 des 1 067 slots** : « meme recette que
+les composants » veut dire « en clair ». Test fait quand meme, faux positifs MESURES : onze
+fonctions 32 bits (FNV-1a/1, CRC-32 IEEE/C, djb2, djb2-xor, sdbm, ELF, Jenkins, MurmurHash3,
+Adler), aux deux boutismes et a TOUT offset (821 169 u32 distincts indexes), trois populations —
+13 noms d'evenement, 325 noms de composant (temoin), 13 leurres a deux lettres permutees.
+**0 touche partout, sur les 3 films et les 11 fonctions.** Le taux de faux positifs mesure est nul :
+le negatif est net, pas noye.
+
+**D1c — LA TROUVAILLE : le film DECLARE sa grammaire par type, et cette table SUIT LE BUILD.**
+A `0x0CB208`, juste avant `6.10026.18411.0` / `HI_1_13_0` / `release`, une suite d'u32 courts
+s'arrete pile a la chaine de version. Recensement des 1 367 chunk_00 du cache, 15 groupes :
+`HI_1_5_1` **119 types** · `HI_1_8_0` a `HI_1_10_0` **121** · `HI_1_11_0` **122** · `HI_1_12_0` et
+`HI_1_13_0` **123** (5 films sans section d'identification). **123 est exactement la borne du
+dispatcher lue independamment dans l'exe au lot B** (`CMP R15,0x7b`) : deux chaines, aucune etape
+commune. Trois faits soutiennent la lecture « version de serialisation par type » : une valeur par
+type, valeurs entre 1 et 6, cardinal croissant avec le build — et surtout **le contenu change a
+cardinal CONSTANT entre `HI_1_8_0` et `HI_1_9_0`** (memes 121 types, tables `e6ea0f9d` contre
+`190fffd3`), ce que fait une version par entree et pas un compteur. Ce n'est pas une preuve : la
+fonction qui consomme ce champ n'a pas ete lue. Artefact versionne :
+`.ai/V7.5/film_re/chunk00_table_par_type.tsv`.
+
+**Corollaire lourd, et il vaut pour tout le chantier** : l'espace des numeros de type **n'est pas
+stable entre builds**, et le film en declare 123 la ou la table statique de l'exe en nomme 128.
+Les deux espaces ne peuvent pas coincider sur toute leur longueur — cinq entrees nommees n'ont pas
+de place. Si elles tombent a la fin, les etiquettes 0..122 tiennent ; si elles tombent ailleurs,
+tout glisse apres le point de retrait. **Ce lot ne tranche pas**, et c'est precisement pourquoi les
+etiquettes de type des phases 3 a 7 doivent etre tenues pour non fiables. Le geste qui fermerait la
+question est bon marche et il est laisse en handoff : lire cote exe le tableau equivalent et
+aligner les deux suites — le motif du film est distinctif (un 6, deux 5, deux 4, cinq 3, neuf 2).
+
+**D3 — le type zoom ne peut pas exister dans un film de ce build.** `unit_zoom` est a l'index
+statique 126 ; le film declare 123 types, et le dispatcher de l'exe refuse tout type >= 123 dans sa
+PROPRE numerotation. Le « 0 paquet 126 sur 41 M » de la phase 3 n'est donc pas une observation
+fragile : c'est structurel. Les octets qui coderaient 126 sous l'un ou l'autre cadrage (`0xFC`,
+`0xFD`, `0xFE`, `0x7E`) sont absents des 42 642 703 paquets delta du corpus.
+
+**D3/D4 — LE PREMIER OCTET D'UN PAQUET DELTA N'EST PAS UN TYPE D'EVENEMENT.** Recensement corpus
+(1 369 films, 42 642 703 paquets, 186 s) : 50 valeurs distinctes, **le bit de poids fort vaut 1
+sans une seule exception** — le drapeau de configuration que le desassemblage du frame-processor
+avait etabli et que `frame_records.go` mesurait a 100 % sur un seul film. Puis le critere S4,
+ecrit avant la mesure et sans statistique : l'en-tete minimal d'un evenement fait 11 bits
+(7 de type + 3 portes + 1), **11 bits ne tiennent pas dans un octet**, et le corpus contient
+**219 702 paquets delta d'exactement 1 octet valant `0x80`** (0,515 %). Leur lecture parcimonieuse
+est une TRAME VIDE : amorce 2 bits puis boucle de records close aussitot — ce que le decodeur de
+production lit deja. Second appui, sans etape commune : **S3, 0,0000 % des paquets partagent leur
+horodatage** avec un autre paquet delta du meme chunk — trames autonomes, rien ne se greffe sur
+rien.
+
+**Le bit de poids faible, question ouverte du lot D4 : FERME.** Sous la grammaire de trame,
+l'identifiant du premier record commence au bit 5 et court sur 11 bits ; le bit 7 en est le
+troisieme. Critere ecrit avant : identifiant si moins de 25 % des 2 048 valeurs sont occupees.
+Mesure sur 3 films, 90 835 paquets : tous = 435 valeurs (21,2 %) ; **`0xD2` = 7 valeurs (0,3 %) ;
+`0xD3` = 50 valeurs (2,4 %)**. Sept entites contre cinquante : voila pourquoi un champ a offset
+fixe rend 9 identifiants d'arme propres d'un cote et 447 de l'autre. Ce n'est ni une variante de
+record ni une continuation, c'est un bit d'identifiant.
+
+**Les 125 paquets « 114 » de 00162144** : ils valent tous `0xE5`, jamais `0xE4` (`0xE4` n'apparait
+que 1 431 fois sur tout le corpus, contre 195 824 pour `0xE5` — la note de cloture de la phase 7
+cite le mauvais octet). Le lot ne les renomme pas, il retire la question : `0xE5` = amorce `11`
+puis `R(1)=1` = record DELTA. 125 trames ordinaires. « 125 embarquements en vehicule sur une carte
+sans vehicule » etait une erreur de cadrage, pas une anomalie a expliquer.
+
+**CE QUI NE CONCLUT PAS, publie tel quel** : S1 (part de paquets hors de la plage de 123 types)
+donne 0,0481 % pour le cadrage A contre 0,0008 % pour le cadrage B — A est 62 fois plus fautif,
+mais les deux restent sous le seuil de 0,1 % ecrit avant la mesure : **NON CONCLUANT des deux
+cotes**, et le seuil n'est pas redecoupe. S2 (50 valeurs distinctes) tombe entre les bornes 32 et
+64 : **NON CONCLUANT**. La cadence des trames (`TestD3CadenceDesTrames`) exigeait un ecart modal
+a plus de 80 % ; il vaut 16 662 us — la periode exacte d'un tick a 60 Hz — mais ne pese que
+0,17 % des ecarts : **NON CONCLUANT**, la valeur est consignee comme observation brute.
+
+**TENSION A SIGNALER AU LOT E** : l'hypothese E4 (« le type 80 pese 85 % du flux et son lecteur lit
+une chaine-id `requested-event` : conteneur qui designe un autre evenement par son nom ») porte sur
+l'octet `0xA0`, qui pese 80,49 % du corpus. Sous la lecture de trame, `0xA0` = amorce `10` puis
+`R(1)=1` = record DELTA — c'est-a-dire la trame de tick ordinaire, ce qui explique naturellement
+qu'elle domine. Les deux lectures ne se concilient pas d'elles-memes ; ce lot ne refute pas la
+lecture Ghidra du descripteur d'index statique 80, il constate que le flux se lit sans elle.
+
+**Ce qui reste ouvert** : la section 3 (538 ko/film, non decodee, porte au moins l'identite des
+joueurs) · l'alignement des index film/exe (handoff ci-dessus) · la semantique des valeurs 1..6 ·
+les deux u32 de `0x0CB454` · **decouverte hors perimetre NON TRAITEE (regle 7)** : `parseRegistry`
+divise le fichier entier par la taille d'un bloc et ramasse un faux positif dans la section 3 de
+00162144 (1 068 slots au lieu de 1 067, empreinte de registre faussee pour ce film) — correctif :
+borner a 50 blocs · le modele de trame n'a pas de confirmation POSITIVE, il faudrait rejouer le
+decodeur de production sur les paquets `0xD2`/`0xE5` et verifier que la chaine de records s'y ferme.
+
+**Note** : `.ai/V7.5/film_re/NOTE_CARTE_CHUNK00_2026-08-30.md`. **Gates** : `gofmt` propre,
+`CGO_ENABLED=0 go vet ./internal/analysis/filmdec/ ./internal/analysis/replay/` propre, suites
+filmdec (11,1 s) et replay (20,3 s) **0 echec**, six fichiers de recherche sous garde
+d'environnement (444, 328, 239, 253, 68, 479 lignes), aucun code de production modifie.
+
+**Prochaine etape** : aligner la table par type du film sur son equivalent exe (lot Ghidra) pour
+fixer les etiquettes une bonne fois ; puis, si le decodage d'evenements reste l'objectif, ecrire le
+decodeur de trame reel plutot que de continuer a lire un type dans un octet qui n'en porte pas.
+
+## [2026-08-30] Visee lunette, phase 9 — LE CADRAGE EST CORRIGE : bit de continuation avant le type. Recensement corpus par PREMIER OCTET, et une opportunite majeure hors perimetre — En cours
+
+**Acquis structurel (lot E, deux chaines independantes)** : chaque evenement = [1 bit de
+continuation][R(7) type][3 x reference optionnelle][charge utile]. Le depot lisait
+`type = payload[0] >> 1` avec un « bit de variante » : FAUX, le bit est EN TETE et fait partie de
+rien — le type est `payload[0] & 0x7F`. Confirmation par nos donnees, sans etape commune : les
+« types » observes sous l'ancienne lecture couvrent exactement 64..125 et jamais rien en dessous,
+ce qui est la signature arithmetique de `0x80..0xFB >> 1`.
+La table de descripteurs 0x144724A90 utilisee jusqu'ici N'EST PAS la bonne (son unique xref est un
+registre d'enumerations Forge) ; la vraie est ecrite entree par entree par FUN_140e453b4, avec son
+cardinal 123 stocke en +0x208 juste avant la table. Numerotation verrouillee par deux routes.
+
+**RECENSEMENT CORPUS PAR PREMIER OCTET** (instrument visee_octet0_research_test.go,
+TestViseeOctet0Corpus, garde OCTET0_CORPUS ; 1367 films, ~41 M de paquets delta, 177 s) :
+aucun paquet sous 0x80 (grammaire confirmee) ; octets observes de 0xA0 a 0xFB, donc types reels
+32..123 — les types 0..31 n'apparaissent JAMAIS dans un film multijoueur. Principaux :
+0xA0 type 32 `unit_teleported` 34 323 692 (85 % du flux, 1367 films) · 0xD2 type 82
+`PlayerGameEventSmall` 2 535 816 (1366 films) · 0xC7 type 71 1 023 286 · 0xC0 type 64 983 883 ·
+0xE9 type 105 922 724 · 0xD3 type 83 528 262 (1367 films) · 0xC2 type 66 458 938 · 0xCA type 74
+399 988 · 0xC3 type 67 245 358 · 0xC4 type 68 237 234 · 0xE5 type 101 195 824 · 0xE6 type 102
+195 107 · 0xF3 type 115 31 228.
+
+**REPONSES AUX DEUX QUESTIONS OUVERTES** :
+- `0xA4` (action_weapon_fire, type 36) : **0 paquet sur 1367 films**. Cette famille n'est pas dans
+  la bobine — coherent avec la doctrine du depot (« il n'y a pas de record de tir manque ») : ce
+  que nous appelions « fire event » est un record de DEGAT, pas une action de tir.
+- `0x95` (unit_zoom, type 21) : **0 paquet**. VERDICT FERME : la mise en lunette n'est pas dans la
+  bobine sous forme d'evenement, sous la BONNE numerotation cette fois. Recoupe : aucun
+  deserialiseur de replication n'ecrit unite+0x461/+0x462, et le consommateur FUN_14076a484
+  retombe sur la valeur LOCALE des que l'override reseau vaut -1.
+
+**OPPORTUNITE HORS PERIMETRE, A NE PAS PERDRE** (question utilisateur) : si 0xD2 = type 82
+`PlayerGameEventSmall` est bien un SAC DE PROPRIETES NOMMEES (`R(32)` event-id + `R(8)` + `R(3)`
+compteur + N x [`R(32)` property-name + `R(3)` tag de type + valeur], puis un second sac sous
+porte), alors le record est AUTO-DESCRIPTIF : chaque champ est nomme par un identifiant de chaine.
+Consequences potentielles pour killsource / fire_events :
+1. remplacer des offsets fixes devines par une enumeration de proprietes NOMMEES ;
+2. recuperer les champs aujourd'hui inaccessibles (le depot n'expose la visee que sur 19 % des
+   records « longs », faute de savoir avancer dans les boucles de longueur variable) ;
+3. et surtout : `0xD3` = type 83, **528 262 paquets sur 1367 films, ECARTES depuis toujours**
+   comme « variante courte sans arme ». Ce n'est pas une variante : c'est un AUTRE TYPE
+   d'evenement, jamais decode.
+A instruire par un lot dedie AVANT toute conclusion (le sac de proprietes est une hypothese du
+lot E, pas encore verifiee sur le flux ; test d'auto-coherence propose : le compteur R(3) doit
+egaler le nombre de blocs lus et la fin du record doit tomber sur un bit de continuation).
+
+**Prochaine etape** : CR du lot D (registre des types dans chunk_00 : controle independant de la
+table des 123 noms) ; puis decision utilisateur sur le lot « sac de proprietes » (fiabilite des
+kills), qui est hors du perimetre visee mais a plus forte valeur produit.
