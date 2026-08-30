@@ -10616,6 +10616,8 @@ components:
           $ref: '#/components/schemas/BridgeHealth'
         equipment:
           $ref: '#/components/schemas/EquipmentCoverage'
+        equipmentChanges:
+          $ref: '#/components/schemas/EquipmentChangeCoverage'
         flagCarries:
           $ref: '#/components/schemas/FlagCarriesCoverage'
         grapple:
@@ -10624,6 +10626,8 @@ components:
           $ref: '#/components/schemas/GrenadeReadCoverage'
         grenades:
           $ref: '#/components/schemas/LayerCoverage'
+        groundWeaponItems:
+          $ref: '#/components/schemas/GroundWeaponItemsCoverage'
         groundWeapons:
           $ref: '#/components/schemas/GroundWeaponCoverage'
         inventory:
@@ -10648,6 +10652,8 @@ components:
           type: object
         vipCrown:
           $ref: '#/components/schemas/VipCrownCoverage'
+        weaponChanges:
+          $ref: '#/components/schemas/WeaponChangeCoverage'
         zones:
           $ref: '#/components/schemas/ZonesCoverage'
       required:
@@ -11313,6 +11319,80 @@ components:
         - points
         - total_matches
       type: object
+    EquipmentChange:
+      additionalProperties: false
+      properties:
+        from:
+          format: int64
+          type: integer
+        kind:
+          type: string
+        r:
+          format: int64
+          type: integer
+        slot:
+          format: int32
+          minimum: 0
+          type: integer
+        t:
+          format: int64
+          type: integer
+      required:
+        - t
+        - slot
+        - kind
+        - r
+        - from
+      type: object
+    EquipmentChangeCoverage:
+      additionalProperties: false
+      properties:
+        beforeOrigin:
+          format: int64
+          type: integer
+        counterJumps:
+          format: int64
+          type: integer
+        decoded:
+          format: int64
+          type: integer
+        lives:
+          format: int64
+          type: integer
+        livesFirstOffSpec:
+          format: int64
+          type: integer
+        missedEstimate:
+          format: int64
+          type: integer
+        published:
+          format: int64
+          type: integer
+        repeats:
+          format: int64
+          type: integer
+        spawned:
+          format: int64
+          type: integer
+        spent:
+          format: int64
+          type: integer
+        taken:
+          format: int64
+          type: integer
+      required:
+        - decoded
+        - published
+        - taken
+        - spent
+        - spawned
+        - beforeOrigin
+        - lives
+        - missedEstimate
+        - counterJumps
+        - livesFirstOffSpec
+        - repeats
+      type: object
     EquipmentCoverage:
       additionalProperties: false
       properties:
@@ -11373,6 +11453,8 @@ components:
     EquipmentPlacement:
       additionalProperties: false
       properties:
+        end:
+          type: string
         family:
           type: string
         h:
@@ -11389,6 +11471,12 @@ components:
           format: int64
           type: integer
         t1:
+          format: int64
+          type: integer
+        until:
+          format: int64
+          type: integer
+        untilMax:
           format: int64
           type: integer
         x:
@@ -11436,6 +11524,12 @@ components:
         dropped:
           format: int64
           type: integer
+        endOpen:
+          format: int64
+          type: integer
+        endSeen:
+          format: int64
+          type: integer
         lives:
           format: int64
           type: integer
@@ -11475,6 +11569,8 @@ components:
         - deployed
         - dropped
         - unknown
+        - endSeen
+        - endOpen
       type: object
     ExplorerBriefing:
       additionalProperties: false
@@ -13192,6 +13288,51 @@ components:
         - fromDelta
         - unpublished
       type: object
+    GroundWeapon:
+      additionalProperties: false
+      properties:
+        dropper:
+          format: int64
+          type: integer
+        end:
+          type: string
+        origin:
+          type: string
+        picker:
+          format: int64
+          type: integer
+        t0:
+          format: int64
+          type: integer
+        t1:
+          format: int64
+          type: integer
+        t1max:
+          format: int64
+          type: integer
+        w:
+          type: string
+        x:
+          format: float
+          type: number
+        "y":
+          format: float
+          type: number
+        z:
+          format: float
+          type: number
+      required:
+        - t0
+        - t1
+        - t1max
+        - x
+        - "y"
+        - w
+        - origin
+        - dropper
+        - end
+        - picker
+      type: object
     GroundWeaponCoverage:
       additionalProperties: false
       properties:
@@ -13278,6 +13419,47 @@ components:
         - powerupAccepted
         - powerupKept
         - powerupPads
+      type: object
+    GroundWeaponItemsCoverage:
+      additionalProperties: false
+      properties:
+        atRest:
+          format: int64
+          type: integer
+        dropperNamed:
+          format: int64
+          type: integer
+        endOpen:
+          format: int64
+          type: integer
+        endPickup:
+          format: int64
+          type: integer
+        endSeen:
+          format: int64
+          type: integer
+        objects:
+          format: int64
+          type: integer
+        pickupLinked:
+          format: int64
+          type: integer
+        published:
+          format: int64
+          type: integer
+        takesTotal:
+          format: int64
+          type: integer
+      required:
+        - objects
+        - published
+        - atRest
+        - dropperNamed
+        - takesTotal
+        - pickupLinked
+        - endPickup
+        - endSeen
+        - endOpen
       type: object
     Group:
       additionalProperties: false
@@ -20363,6 +20545,12 @@ components:
         durationMs:
           format: int64
           type: integer
+        equipmentChanges:
+          items:
+            $ref: '#/components/schemas/EquipmentChange'
+          type:
+            - array
+            - "null"
         equipmentEpisodes:
           items:
             $ref: '#/components/schemas/EquipmentEpisode'
@@ -20416,6 +20604,12 @@ components:
         grenades:
           items:
             $ref: '#/components/schemas/Grenade'
+          type:
+            - array
+            - "null"
+        groundWeapons:
+          items:
+            $ref: '#/components/schemas/GroundWeapon'
           type:
             - array
             - "null"
@@ -20516,6 +20710,12 @@ components:
         vipCrown:
           items:
             $ref: '#/components/schemas/VipPeriod'
+          type:
+            - array
+            - "null"
+        weaponChanges:
+          items:
+            $ref: '#/components/schemas/WeaponChange'
           type:
             - array
             - "null"
@@ -25461,6 +25661,60 @@ components:
             - "null"
       required:
         - subscribed_players
+      type: object
+    WeaponChange:
+      additionalProperties: false
+      properties:
+        from:
+          type: string
+        kind:
+          type: string
+        slot:
+          format: int32
+          minimum: 0
+          type: integer
+        t:
+          format: int64
+          type: integer
+        w:
+          type: string
+      required:
+        - t
+        - slot
+        - kind
+      type: object
+    WeaponChangeCoverage:
+      additionalProperties: false
+      properties:
+        beforeOrigin:
+          format: int64
+          type: integer
+        decoded:
+          format: int64
+          type: integer
+        dropped:
+          format: int64
+          type: integer
+        published:
+          format: int64
+          type: integer
+        restated:
+          format: int64
+          type: integer
+        swapped:
+          format: int64
+          type: integer
+        taken:
+          format: int64
+          type: integer
+      required:
+        - decoded
+        - published
+        - restated
+        - beforeOrigin
+        - taken
+        - dropped
+        - swapped
       type: object
     WeaponHighlight:
       additionalProperties: false

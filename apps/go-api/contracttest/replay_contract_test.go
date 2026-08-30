@@ -390,9 +390,20 @@ var replaySchemas = []struct {
 //	                      gagne son bloc `skullCarries`. Le crane LIBRE (`objectiveObjects`, v21)
 //	                      reste la couche POSITION ; celle-ci est la couche PORTEUR par-dessus.
 //
-// Les treize fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
+//	41 -> 44  2026-08-30  TROIS champs, le chantier ramassage (schemas 25-28) :
+//	                      - `weaponChanges` (v25) : les prises et lachers d arme, dates a la
+//	                        milliseconde, re-annonces ecartees ;
+//	                      - `equipmentChanges` (v26) : ramassages et consommations d equipement
+//	                        (i48), avec temoin de completude au compteur de rotation ;
+//	                      - `groundWeapons` (v27) : les armes au sol individuelles, bornees par
+//	                        l observation (pickup date / census) — la minuterie `until` de v25
+//	                        est retiree en meme temps. La v28 (fins des poses) n ajoute AUCUN
+//	                        champ au document : `until`/`untilMax`/`end` vivent sur
+//	                        EquipmentPlacement, pas a la racine.
+//
+// Les quatorze fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
 // chiffre ne le dise. Contrat regenere (`make openapi-gen`), jamais ecrit a la main.
-const wantReplayDocumentFields = 41
+const wantReplayDocumentFields = 44
 
 // TestReplayContractDescribesEveryPublishedField : AUCUN CHAMP PUBLIE SANS DESCRIPTION, ET
 // AUCUNE DESCRIPTION SANS CHAMP.
