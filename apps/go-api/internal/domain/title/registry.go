@@ -764,6 +764,19 @@ func (p *PathResolver) MapObjectivesPath(titleSlug string) string {
 	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "map_objectives.json")
 }
 
+// MapPlayedPositionsPath retourne le chemin du catalogue des POSITIONS REELLEMENT JOUEES par
+// carte, decimees depuis les artefacts de rejeu par cmd/mappos-build. Donnee de REFERENCE
+// versionnee : elle fige l observation d un corpus de matchs pour que la cuisson des fonds de
+// carte reste hors ligne.
+//
+// Elle sert d ORACLE au rognage `himap.RogneAuxPositionsJouees` : une position courue prouve
+// qu il y avait du sol sous les pieds du joueur, la ou tous les autres leviers doivent le
+// deduire de la geometrie.
+// Ex: data/titles/halo_infinite/reference/map_positions_jouees.json
+func (p *PathResolver) MapPlayedPositionsPath(titleSlug string) string {
+	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "map_positions_jouees.json")
+}
+
 // MapWeaponPadsPath retourne le chemin du catalogue des EMPLACEMENTS DE SOCLE par carte
 // (socles d'arme et de power-up), extrait des mêmes variantes de carte UGC (.mvar) par
 // cmd/mapopads-build. Donnée de RÉFÉRENCE versionnée — pas un cache.

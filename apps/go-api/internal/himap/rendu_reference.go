@@ -107,7 +107,7 @@ func (r *Rendu) AppliqueReference(s *SurfaceReference, sansPortee bool) (taux fl
 	}
 	defer func() { r.ref, r.dRef, r.zRef, r.nRef = nil, nil, nil, nil }()
 	taux = r.tauxCouverture()
-	if taux <= SeuilCarteCouverte {
+	if taux <= SeuilCouvertureEffectif() {
 		return taux, 0, false
 	}
 	return taux, r.substitueParReference(s, sansPortee), true
@@ -181,4 +181,37 @@ func (r *Rendu) TauxCouvertureMesure() float64 {
 	}
 	defer func() { r.ref, r.dRef, r.zRef, r.nRef = nil, nil, nil, nil }()
 	return r.tauxCouverture()
+}
+
+// SeuilCouvertureCarte : seuil de carte couverte PROPRE A UNE CARTE, en part de matiere, ou
+// zero pour `SeuilCarteCouverte`. Meme forme que `SeuilSubstitution` et `NiveauHautNavmesh` :
+// une variable de paquet posee et restauree autour de la cuisson d'une carte.
+//
+// POURQUOI UN REGLAGE ICI, alors que l'en-tete de ce fichier ecrit « AUCUN REGLAGE PAR CARTE ».
+// Cette phrase reste vraie de ce qu'elle visait : la sonde du 2026-08-13 a refute un seuil PAR
+// PIXEL et la part d'ancres couvertes. Elle n'a pas refute de recalibrer le seuil GLOBAL sur une
+// carte que la mesure classe mal. Or la campagne du 2026-08-30 en produit une :
+//
+//	carte           couverture   ecart median ancre -> surface dessinee   verdict de l'oeil
+//	Security Zone   54,2 %       -0,34 m                                  sol (corrigee)
+//	Dredge          28,7 %       -19,84 m                                 TOITS
+//	Yuletide         3,5 %       -14,26 m                                 TOITS
+//
+// La couverture classe Dredge avec les cartes validees (19 a 28 %) ; l'ecart median ancre ->
+// surface dit qu'on regarde le terrain de 20 m au-dessus. Les deux mesures se contredisent, et
+// c'est la seconde qui decrit ce que l'utilisateur voit. Le seuil de couverture est donc
+// abaisse SUR PIECES, carte par carte, avec cette mesure pour justification.
+//
+// CE QUE CA NE PEUT PAS CASSER : la substitution ne cree ni ne supprime de matiere, elle choisit
+// parmi les surfaces deja dessinees (en-tete de ce fichier). La silhouette est invariante, donc
+// l'abaissement du seuil NE PEUT PAS couter d'ancre — a la difference de l'ecretage et du
+// rognage aux altitudes, refutes tous deux sur ces memes cartes le 2026-08-30 pour cette raison.
+var SeuilCouvertureCarte float64
+
+// SeuilCouvertureEffectif rend le seuil a comparer a la couverture mesuree.
+func SeuilCouvertureEffectif() float64 {
+	if SeuilCouvertureCarte > 0 {
+		return SeuilCouvertureCarte
+	}
+	return SeuilCarteCouverte
 }

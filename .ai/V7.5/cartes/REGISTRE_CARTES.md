@@ -1400,7 +1400,7 @@ qui demande une mesure par region que la chaine ne produit pas encore.
 | Scarlett's Landing | `79042fc0` | 1 | 966x1100 | 9/9 | 8 | 308 polys | VALIDEE 28/08 |
 | Warehouse | `5b12d6d9` | 1 | 723x1352 | 7/7 | 9 | 588 polys | VALIDEE 28/08 |
 | Snowbound | `410f1c01` | 23 | 1349x1172 | 42/43 | 23 | 4521 polys | VALIDEE 30/08 |
-| Absolution | `78da545f` | 21 | 1188x1303 | 21/22 | 60 | maillage illisible | A JUGER |
+| Absolution | `78da545f` | 21 | 1188x1303 | 21/22 | 60 | maillage illisible | BLOQUEE — inexploitable (bouillie centrale) tant que le maillage TSTR/FSTR n est pas lu |
 | Cliffside | `4bffd021` | 18 | 1176x1348 | 14/14 | 44 | 1146 polys | VALIDEE 30/08 |
 | Fortress | `0d1c9255` | 17 | 1147x1285 | 29/29 | 75 | 989 polys | VALIDEE 30/08 |
 | High Ground | `bb7b78ae` | 15 | 1754x1202 | 19/20 | 24 | 3596 polys | VALIDEE 30/08 |
@@ -1409,13 +1409,13 @@ qui demande une mesure par region que la chaine ne produit pas encore.
 | Refuge | `41217472` | 10 | 1591x1611 | 45/46 | 83 | 2666 polys | VALIDEE 30/08 |
 | Smallhalla | `98783453` | 9 | 1989x1431 | 52/52 | 29 | 1379 polys | VALIDEE 30/08 |
 | Shogun | `33075df7` | 9 | 2920x2213 | 13/13 | 26 | 16683 polys | VALIDEE 30/08 |
-| Insolence | `d5c5eb4f` | 7 | 3001x2867 | 38/38 | 41 | maillage illisible | A JUGER |
+| Insolence | `d5c5eb4f` | 7 | 3001x2867 | 38/38 | 41 | maillage illisible | BLOQUEE — inexploitable (bouillie centrale) tant que le maillage TSTR/FSTR n est pas lu |
 | Flood Gulch | `7097bc4f` | 6 | 2153x2767 | 22/22 | 8 | 7125 polys | VALIDEE 30/08 |
 | 944396dd-5661-4a16-b1d8-a6053f762c55 | `944396dd` | 1 | 2220x2638 | 20/20 | 21 | 944 polys | VALIDEE 30/08 |
-| Thunderhead | `28a3ac28` | 4 | 3001x2493 | 46/46 | 5 | pas de maillage | A JUGER |
-| Thunderhead Heavies | `37bc3df6` | 4 | 3001x2632 | 36/36 | 5 | pas de maillage | A JUGER |
+| Thunderhead | `28a3ac28` | 4 | 3001x2493 | 46/46 | 5 | pas de maillage | VALIDEE 30/08 — image des Heavies |
+| Thunderhead Heavies | `37bc3df6` | 4 | 3001x2632 | 36/36 | 5 | pas de maillage | VALIDEE 30/08 |
 | Vallaheim Firefight | `e8268e75` | 2 | 1571x2573 | 5/5 | 48 | 17029 polys | HORS PERIMETRE — mode Firefight non supporte par le rejeu 2D (verdict 30/08) |
-| Insolence Heavies | `2a339c65` | 1 | 3001x2867 | 31/31 | 41 | maillage illisible | A JUGER |
+| Insolence Heavies | `2a339c65` | 1 | 3001x2867 | 31/31 | 41 | maillage illisible | BLOQUEE — inexploitable (bouillie centrale) tant que le maillage TSTR/FSTR n est pas lu |
 | Outlook | `ea7b30e6` | 1 | 1516x1592 | 9/9 | 4 | 349 polys | VALIDEE 30/08 |
 | Rat's Nest | `133c0185` | 1 | 1399x2016 | 23/23 | 26 | 2423 polys | VALIDEE 30/08 |
 
@@ -1486,7 +1486,7 @@ elles il n'y a rien a cadrer. Meme mur que Cole Protocol.
 | Diminished | `50a1a3b5` | 2711 | 1235x661 | 9/9 | fo11_blank | VALIDEE 30/08 |
 | Megapolis | `0c299a3a` | 2690 | 1689x2685 | 12/12 | fo03_space | VALIDEE 30/08 |
 | Ruujaya | `37a9b5f0` | 2654 | 1349x672 | 9/9 | fo11_blank | VALIDEE 30/08 |
-| Yuletide | `b6c7bdfa` | 2519 | 2173x2172 | 4/4 | fo13_frost | A JUGER |
+| Yuletide | `b6c7bdfa` | 2519 | 2173x2172 | 4/4 | fo13_frost | VALIDEE 30/08 — N2 composantes + altitude 2 m |
 | Foundry | `66f4fe86` | 1993 | 1185x1363 | 19/19 | fo11_blank | VALIDEE 30/08 |
 | Guardian | `1441775d` | 1906 | 1152x1239 | 20/20 | fo05_desert | VALIDEE 30/08 |
 | Serenity | `b4d13418` | 1685 | 1402x1234 | 28/28 | fo08_wetland | VALIDEE 30/08 |
@@ -1496,7 +1496,7 @@ elles il n'y a rien a cadrer. Meme mur que Cole Protocol.
 | Lone Wolf | `fdde5715` | 1541 | 1815x1636 | 16/16 | fo09_academy | VALIDEE 30/08 |
 | Boulevard | `252e2a45` | 1498 | 1529x1310 | 24/24 | fo11_blank | VALIDEE 30/08 |
 | Alpha Site | `6c433ed1` | 1376 | 2220x2170 | 7/7 | fo11_blank | HORS PERIMETRE — mode Firefight non supporte par le rejeu 2D (verdict 30/08) |
-| Security Zone | `3922c263` | 1285 | 1683x1977 | 53/53 | fo11_blank | A JUGER |
+| Security Zone | `3922c263` | 1285 | 1683x1977 | 53/53 | fo11_blank | VALIDEE 30/08 — N2 composantes + altitude |
 | Ghost Town | `71c3a721` | 1211 | 1454x1236 | 14/15 | fo08_wetland | VALIDEE 30/08 |
 | Cold Storage | `78cebfc7` | 1123 | 1204x1090 | 24/24 | fo11_blank | VALIDEE 30/08 |
 | Immolate | `47823612` | 725 | 1142x1218 | 13/13 | fo11_blank | VALIDEE 30/08 |
@@ -1542,6 +1542,6 @@ A JUGER. Aucune n'est declaree validee.
 | Empyrean | `d035fc3e` | REFUSEE 13/08 | 1370x1185 | 13/13 | maillage borne + zones a 1 m | VALIDEE 30/08 |
 | Starboard | `7a9265af` | REFUSEE 13/08 | 1210x1170 | 12/12 | maillage en reference + zones a 1 m | VALIDEE 30/08 |
 | Domicile | `921aebb1` | REFUSEE 13/08 | 1075x1684 | 13/13 | maillage en reference + zones a 1 m | VALIDEE 30/08 |
-| Dredge | `e4bb06db` | REFUSEE 13/08 | 2583x2272 | 12/12 | maillage en reference + zones a 1 m | A JUGER |
+| Dredge | `e4bb06db` | REFUSEE 13/08 | 2583x2272 | 12/12 | maillage en reference + zones a 1 m | VALIDEE 30/08 — masque des positions jouees, rayon 1 m |
 | Banished Narrows | `9ad226d8` | REFUSEE 13/08 | 1550x739 | 13/13 | maillage borne + zones a 1 m | VALIDEE 30/08 |
 | Corpo | `8be179f7` | A FINALISER — correction utilisateur 26/08 | 598x1090 | 4/4 | maillage borne + zones a 1 m | VALIDEE 30/08 |

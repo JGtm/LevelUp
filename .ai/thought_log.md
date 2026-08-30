@@ -73871,3 +73871,48 @@ fichier, et les verdicts se posent par decoupage de colonnes, pas par regex.
 **Conclusion / prochaine etape** : 94 fonds valides, 9 en attente de verdict. Reste ouvert : la
 forme exacte des tables TSTR/FSTR (trois pistes fermees, une quatrieme decrite), le rendu a deux
 couches si le sous-sol de Vagabond doit etre visible, le renommage de 944396dd en Narrows.
+
+## [2026-08-30] Fonds de carte — l'oracle des positions jouees, et la fin de la file de verdicts
+
+**Statut** : Complete (les 4 dernieres cartes en attente sont validees ; 99 fonds valides, 0 a juger).
+
+**Decision technique principale** : introduire un ORACLE EXTERNE dans la chaine de cuisson des
+fonds. Tous les leviers existants deduisent le terrain joue depuis la geometrie ; les positions de
+joueur decodees des films ne se deduisent pas, elles s'observent. Idee de l'utilisateur, appliquee
+a Dredge : 13 de ses 16 matchs avaient leur film en cache, 366 768 positions en ont ete extraites
+(99,99 % dans le cadre du fond, altitudes groupees a 80 m). Nouveau levier
+`himap.RogneAuxPositionsJouees` + catalogue versionne `map_positions_jouees.json`
+(`cmd/mappos-build`, chemin au PathResolver).
+
+**Resultats observes**, dans l'ordre ou ils ont ete etablis :
+
+- ECRETAGE ET ROGNAGE AUX ALTITUDES REFUTES sur les cartes « que des toits » : ils EFFACENT de la
+  matiere et coutent des ancres (Security Zone 53/53 -> 43 puis -> 0 ; Yuletide 4/4 -> 0 ;
+  Dredge 12/12 -> 1). La substitution, elle, choisit parmi les surfaces deja dessinees : silhouette
+  invariante, donc aucune ancre en jeu. C'est la lecon transverse de la journee.
+- CAUSE REELLE DES TOITS : l'absence de `maillageNiveauHaut`. Sans lui la reference garde le niveau
+  le plus BAS la ou deux etages se superposent, et la condition de couverture ne peut pas tenir.
+  Security Zone : couverture 32,6 -> 54,2 %, 1,86 M substitutions, 53/53 ancres.
+- SEUIL DE COUVERTURE PAR CARTE (`SeuilCouvertureCarte`) : la couverture classe mal certaines
+  cartes. Dredge la donne a 28,7 % — dans la population des VALIDEES (19 a 28 %) — alors que son
+  ecart median ancre -> surface dessinee vaut -19,84 m. Les deux mesures se contredisent et c'est
+  la seconde qui decrit ce que l'utilisateur voit.
+- LES HUIT BRAS de Dredge venaient de positions vues UNE FOIS dans UN SEUL match : sans filtre le
+  nuage s'etend a 268 m du centre, a 2 matchs distincts il retombe a 27 m, a 3 a 19,4 m — le 99e
+  centile du nuage. D'ou le filtre `--min-matchs` de `mappos-build`, qui compte les matchs
+  DISTINCTS et non les passages (un joueur immobile gonfle une cellule sans rien prouver).
+- LE CRENELAGE venait de la FORME de l'operation : `dilate` grossit par voisinage CARRE. Remplace
+  par une transformee de distance par chanfrein 5-7-11 — le bord est une union de DISQUES.
+- RECOLLEMENT AUX OBJETS (`recollement_objets.go`) : premiere version COMPLETANT les objets
+  majoritairement gardes ; a l'image, les grandes dalles du canevas revenaient entieres et posaient
+  d'immenses rectangles hors de l'arene. Sens rendu UNIQUE — on retire, on ne complete jamais. Son
+  effet reste faible sur Dredge (15 objets Forge sur 5 479) : le bord y est peint par le canevas.
+- PIEGE REJOUE : binaire de cuisson perime. Deux cuissons ont tourne sans le reglage tout juste
+  ajoute et ne prouvaient rien. Toute chaine de cuisson reconstruit desormais le binaire d'abord.
+
+**Conclusion / prochaine etape** : 99 fonds valides, aucun en attente de verdict. 12 cartes ont
+recu le fond blanc dans la silhouette (6 entrees natives creees pour l'occasion). Reste ouvert :
+le fond transparent au milieu de Behemoth, Fragmentation, Highpower et Oasis — sur Behemoth le vide
+est REEL (carte spatiale), sur les trois autres `combleAuMaillage` n'a pas ete essaye ; la forme
+des tables TSTR/FSTR ; le rendu a deux couches pour le sous-sol de Vagabond ; le renommage de
+944396dd en Narrows.

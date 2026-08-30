@@ -76,14 +76,30 @@ type reglageCarte struct {
 	SansSubstitution bool `json:"sansSubstitution,omitempty"`
 	// SeuilSubstitution : ecart minimal en metres pour rabattre une surface sur la reference
 	SeuilSubstitution float64 `json:"seuilSubstitution,omitempty"`
+
+	// SeuilCouverture : seuil de carte couverte propre a la carte, en part de matiere (0,25 =
+	// 25 pour cent). Zero = le seuil universel `himap.SeuilCarteCouverte`. A n armer que sur une
+	// carte dont l ecart median ancre -> surface dessinee montre des toits ; la substitution est
+	// invariante en silhouette, elle ne peut donc pas couter d ancre.
+	SeuilCouverture float64 `json:"seuilCouverture,omitempty"`
 	// MargeNavmesh : dilatation du masque de rognage au maillage, en metres (0 = 3 m)
 	MargeNavmesh float64 `json:"margeNavmesh,omitempty"`
 	// MargeSolBas : profondeur acceptee sous le niveau de jeu pour le sol vu du dessous
 	MargeSolBas float64 `json:"margeSolBas,omitempty"`
 	// RogneAuxAltitudesProches : ne garder que ce qui est proche du niveau de jeu, plus une marge
-	RogneAuxAltitudesProches bool    `json:"rogneAuxAltitudesProches,omitempty"`
-	SeuilAltitude            float64 `json:"seuilAltitude,omitempty"`
-	MargeAltitude            float64 `json:"margeAltitude,omitempty"`
+	RogneAuxAltitudesProches bool `json:"rogneAuxAltitudesProches,omitempty"`
+
+	// RogneAuxPositionsJouees efface la matiere loin de toute position reellement courue, lue
+	// dans map_positions_jouees.json (cmd/mappos-build). Sans catalogue pour la carte, le levier
+	// ne fait rien plutot que de vider l image.
+	RogneAuxPositionsJouees bool `json:"rogneAuxPositionsJouees,omitempty"`
+	// RayonPositions : rayon de garde autour d une position courue, en metres. Zero = 4 m.
+	RayonPositions float64 `json:"rayonPositions,omitempty"`
+	// SeuilRecollement : part de la surface d un objet que le masque doit garder pour que l objet
+	// survive ENTIER (recollement_objets.go). Zero = un tiers ; negatif = recollement desarme.
+	SeuilRecollement float64 `json:"seuilRecollement,omitempty"`
+	SeuilAltitude    float64 `json:"seuilAltitude,omitempty"`
+	MargeAltitude    float64 `json:"margeAltitude,omitempty"`
 	// PlancherTranche : profondeur en metres SOUS le niveau de jeu (valeur NEGATIVE) en deca
 	// de laquelle la matiere sort de la carte. Zero = -12 m. Voir OptionsCuisson.
 	PlancherTranche float64 `json:"plancherTranche,omitempty"`
@@ -759,4 +775,86 @@ func (e *environnement) rogneAuxAltitudesProchesDe(cle string) (bool, float64, f
 	slog.Info("mapfond: rognage a l altitude du niveau de jeu arme pour cette carte", "carte", cle,
 		"seuil", c.SeuilAltitude, "marge", c.MargeAltitude, "gateLe", c.GateLe)
 	return true, c.SeuilAltitude, c.MargeAltitude
+}
+
+// seuilCouvertureDe rend le seuil de carte couverte propre à une carte, ou zéro pour celui de
+// production. Journalisé : abaisser ce seuil change la voie de rendu prise par la carte.
+func (e *environnement) seuilCouvertureDe(cle string) float64 {
+	if e.reglages == nil {
+		return 0
+	}
+	c, ok := e.reglages.Cartes[cle]
+	if !ok || c.SeuilCouverture <= 0 {
+		return 0
+	}
+	slog.Info("mapfond: seuil de couverture propre a la carte", "carte", cle,
+		"seuil", c.SeuilCouverture, "gateLe", c.GateLe)
+	return c.SeuilCouverture
+}
+
+// positionsJoueesDe rend les positions réellement jouées de la carte, ou nil si le levier n'est
+// pas armé pour elle. Journalisé : ce rognage s'appuie sur un corpus observé, et le nombre de
+// positions retenues explique à lui seul l'agressivité du masque.
+func (e *environnement) positionsJoueesDe(cle string) ([]himap.PositionJouee, float64) {
+	if e.reglages == nil {
+		return nil, 0
+	}
+	c, ok := e.reglages.Cartes[cle]
+	if !ok || !c.RogneAuxPositionsJouees {
+		return nil, 0
+	}
+	pos := e.positions[cle]
+	if len(pos) == 0 {
+		slog.Warn("mapfond: rognage aux positions demande mais catalogue vide pour cette carte",
+			"carte", cle, "gateLe", c.GateLe)
+		return nil, 0
+	}
+	slog.Info("mapfond: rognage aux positions jouees arme pour cette carte", "carte", cle,
+		"positions", len(pos), "rayon", c.RayonPositions, "gateLe", c.GateLe)
+	return pos, c.RayonPositions
+}
+
+// seuilRecollementDe rend le seuil de recollement aux objets propre a une carte.
+func (e *environnement) seuilRecollementDe(cle string) float64 {
+	if e.reglages == nil {
+		return 0
+	}
+	c, ok := e.reglages.Cartes[cle]
+	if !ok || c.SeuilRecollement == 0 {
+		return 0
+	}
+	slog.Info("mapfond: seuil de recollement propre a la carte", "carte", cle,
+		"seuil", c.SeuilRecollement, "gateLe", c.GateLe)
+	return c.SeuilRecollement
+}
+
+// chargePositionsJouees lit le catalogue des positions jouées. Son absence n'est pas une erreur :
+// aucune carte n'a alors ce levier disponible, et `positionsJoueesDe` le dira carte par carte.
+func chargePositionsJouees(chemin string) map[string][]himap.PositionJouee {
+	brut, err := os.ReadFile(chemin)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			slog.Warn("mapfond: catalogue des positions jouees illisible", "err", err, "path", chemin)
+		}
+		return nil
+	}
+	var cat struct {
+		Maps map[string]struct {
+			Positions [][2]float64 `json:"positions"`
+		} `json:"maps"`
+	}
+	if err := json.Unmarshal(brut, &cat); err != nil {
+		slog.Warn("mapfond: catalogue des positions jouees invalide", "err", err, "path", chemin)
+		return nil
+	}
+	out := make(map[string][]himap.PositionJouee, len(cat.Maps))
+	for cle, m := range cat.Maps {
+		pts := make([]himap.PositionJouee, 0, len(m.Positions))
+		for _, p := range m.Positions {
+			pts = append(pts, himap.PositionJouee{X: p[0], Y: p[1]})
+		}
+		out[cle] = pts
+	}
+	slog.Info("mapfond: catalogue des positions jouees charge", "cartes", len(out), "path", chemin)
+	return out
 }

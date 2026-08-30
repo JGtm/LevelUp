@@ -14735,6 +14735,12 @@ components:
         boundaryPlanes:
           format: int64
           type: integer
+        cellsAssumedFloor:
+          format: int64
+          type: integer
+        cellsClipped:
+          format: int64
+          type: integer
         cellsSubstituted:
           format: int64
           type: integer

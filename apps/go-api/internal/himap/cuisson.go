@@ -273,7 +273,7 @@ func CuitCarteNative(ctx context.Context, opts OptionsCuisson) (*Rendu, BilanCui
 		// Voie PAR CARTE, declaree en donnee : elle SUPPRIME de la matiere, ce que la voie de
 		// reference ne fait jamais. Les deux liberent les memes buffers, elles ne se cumulent pas.
 		b.TauxCouverture, b.CellulesSubstituees, b.CellulesEcretees = r.EcretteToits(s, opts.PlafondArene)
-		b.CarteCouverte = b.TauxCouverture > SeuilCarteCouverte
+		b.CarteCouverte = b.TauxCouverture > SeuilCouvertureEffectif()
 	} else {
 		b.TauxCouverture, b.CellulesSubstituees, b.CarteCouverte = r.AppliqueReference(s, opts.SubstitutionSansPortee)
 	}
