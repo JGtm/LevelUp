@@ -221,7 +221,18 @@ package replay
 // score de mode de tout mode, donc le porteur n'est lu que sur un film que l'APPELANT reconnait
 // Oddball par `game_variant_name` — jamais devine dans le film. Chronique complete :
 // .ai/V7.5/replay2d/registre_film/ODDBALL_PORTEUR_PROTOCOLE.md.
-const SchemaVersion = 23
+//
+// CE QUE LA VERSION 24 PORTE, ET POURQUOI ELLE MONTE. `equipmentEpisodes[].k`/`.a` — LES
+// FRAGS ET ASSISTANCES DU PORTEUR pendant l'episode (camo, surbouclier), et
+// `coverage.equipment.killsRead` qui dit si la mesure a ete TENTEE pour ce match (faux =
+// non mesure, jamais confondre avec un compte a zero). Champs optionnels sur un sous-objet
+// deja publie, et pourtant la version monte, pour la raison exacte des montees v13/v18/v19 :
+// un artefact 23 n'a jamais pu porter ces compteurs, et la reprise du backfill se fait par
+// SchemaVersion. PLAN_RETOURS_UTILISATEUR_2026-08-29 §LOT F.1, decision utilisateur 8a/8b
+// (DEC-7 revisee) : GO a petite population (camo 35,2 % = 25/71, surbouclier 55,6 % = 10/18,
+// global 39,3 % = 35/89 en lecture STRICTE `LineByLinePublishable` — la population qui
+// affiche reellement des chiffres) ; re-mesure obligatoire apres la cuisson de masse.
+const SchemaVersion = 24
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {

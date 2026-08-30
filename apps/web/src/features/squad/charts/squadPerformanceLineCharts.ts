@@ -19,6 +19,7 @@ import {
   getEChartsThemeColors,
   getLegendBase,
   getTooltipBase,
+  stackedAxisExtent,
 } from '@/components/charts/_utils'
 import type { SquadPerformanceSeriesPoint } from '@/lib/api/types'
 import { hexComplement, resolveToken } from '@/lib/accessibility'
@@ -258,6 +259,11 @@ export function buildKillsDeathsButterflyOption(
   const bonusColor = resolveToken('bonus') // bonus assistances — violet, distinct des couleurs joueurs + opposés (morts)
   const emptyData = new Array<number | null>(n).fill(null)
   const seriesPerPlayer: Array<Record<string, unknown>> = []
+  // Étendue d'axe calculée sur le JEU COMPLET (bonus + joueurs masqués inclus),
+  // indépendamment des toggles (item 5, DEC-5) : une pile par joueur, kills+bonus
+  // côté positif, morts (déjà négatives) côté négatif — cf. `stackedAxisExtent`.
+  const positiveStacks: Array<Array<Array<number | null>>> = []
+  const negativeStacks: Array<Array<Array<number | null>>> = []
   for (const player of players) {
     const color = opts.colorByPlayer[player] ?? '#888' // color-allow: gris structurel pour joueur sans couleur attribuée
     const negColor = hexComplement(color) // hue +180°, opaque — même convention que squadPerMinuteChart
@@ -272,6 +278,8 @@ export function buildKillsDeathsButterflyOption(
       deathsData[p.match_order] = -p.deaths
       bonusData[p.match_order] = p.assists / 3
     }
+    positiveStacks.push([killsData, bonusData])
+    negativeStacks.push([deathsData])
     // stack identique → kills (positif), bonus (positif) et morts (négatif) partagent la même colonne x.
     seriesPerPlayer.push({
       name: `${player} — ${opts.killsLabel}`,
@@ -300,6 +308,7 @@ export function buildKillsDeathsButterflyOption(
       data: deathsHidden ? emptyData : deathsData,
     })
   }
+  const { min: yMin, max: yMax } = stackedAxisExtent(positiveStacks, negativeStacks)
 
   return {
     backgroundColor: CHART_BG,
@@ -312,9 +321,14 @@ export function buildKillsDeathsButterflyOption(
     },
     legend: { show: false }, // légende custom React (cf. SquadToggleLegendChart)
     xAxis: { ...axis, type: 'category', data: xLabels },
+    // min/max FIXÉS sur l'extent complet : sans ça, ECharts recalcule l'axe sur
+    // les séries visibles à chaque render (`notMerge`) et un toggle Bonus/joueur
+    // fait bouger toute l'échelle (item 5).
     yAxis: {
       ...axis,
       type: 'value',
+      min: yMin,
+      max: yMax,
       axisLine: { lineStyle: { color: tc.text, width: 1.5 } },
       axisLabel: { ...axis.axisLabel, formatter: (v: number) => `${Math.abs(v)}` },
     },

@@ -136,6 +136,9 @@ type ExplorerService struct {
 	// legacy). Le repo concret DuckDB fournit AUSSI les mécaniques natives H5 via
 	// type-assertion (explorerKillMechanicsLoader), capability OPTIONNELLE façon lobbySizeProvider.
 	weaponKillsRepo port.WeaponKillsRepository
+	// killSourceRepo (optionnel) : kills par SOURCE DE DEGAT du film (repulseur, bobines,
+	// chute). Cf. WithKillSourceRepo.
+	killSourceRepo port.KillSourceClassRepository
 }
 
 // ExplorerRelationsProvider fournit les agrégats relationnels joueur↔cible
@@ -230,6 +233,16 @@ func (s *ExplorerService) WithLiveGamertagResolver(r GamertagXUIDResolver) *Expl
 // MIROIR de Synthesis/Sessions. Optionnel (nil → repli donut kill-type côté front). Le
 // repo concret DuckDB fournit aussi les mécaniques natives H5 (LoadKillMechanicsAggregated)
 // via type-assertion. Retourne le service pour chainer.
+// WithKillSourceRepo injecte le loader des kills par SOURCE DE DEGAT du film — ceux que
+// l'attribution arme-a-feu ne peut pas voir (repulseur, bobines, chute), faute de record
+// de degat du tireur. Optionnel : nil (ou titre sans capability `film.kill_source`, le
+// cablage n'injecte alors rien) => ces kills restent dans « Non attribue », exactement
+// comme avant le lot du 2026-08-29.
+func (s *ExplorerService) WithKillSourceRepo(repo port.KillSourceClassRepository) *ExplorerService {
+	s.killSourceRepo = repo
+	return s
+}
+
 func (s *ExplorerService) WithWeaponKillsRepo(repo port.WeaponKillsRepository) *ExplorerService {
 	s.weaponKillsRepo = repo
 	return s

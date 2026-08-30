@@ -14,7 +14,7 @@
  * Garde-fou : minimum de frags (MIN_KILLS) pour éviter le bruit sur les petits
  * échantillons. null = aucun insight pertinent.
  */
-import { GUN_CLASSES } from '@/components/charts/fragDetailBreakdown'
+import { GUN_CLASSES, NON_WEAPON_FRAG_CLASSES } from '@/components/charts/fragDetailBreakdown'
 import type { FragDistribution } from '@/lib/api/types'
 
 export type RoleInsight =
@@ -33,18 +33,24 @@ const OVER_RELIANCE_THRESHOLD = 0.7
 
 /**
  * Rôles NON-COMBAT (frags hors-arsenal H5 : véhicules, tourelles, environnement,
- * bucket d'attribution « Spartan », UGC). Ils DOIVENT être exclus de tout calcul
- * coach : sans ça, un gros bucket non-combat gonfle le dénominateur (fausse
+ * équipement, bucket d'attribution « Spartan », UGC). Ils DOIVENT être exclus de tout
+ * calcul coach : sans ça, un gros bucket non-combat gonfle le dénominateur (fausse
  * `blind_spot_power`) ou devient une fausse `over_reliance`. Conservé comme garde
  * défensif — la dérivation depuis les gun classes les écarte déjà à la source, mais
  * l'invariant reste explicite et testé.
+ *
+ * DÉRIVÉ de `NON_WEAPON_FRAG_CLASSES` (le miroir du set Go, source unique du littéral)
+ * PLUS véhicule et tourelle. La divergence est VOULUE et ne se refermera pas : le
+ * breakdown par-arme nomme légitimement le Warthog ou la tourelle Gauss (V73-3.2, un
+ * engin EST un outil identifiable), alors que l'insight coach juge un STYLE DE JEU —
+ * « tu ne prends jamais les armes lourdes » n'a aucun sens si le dénominateur compte
+ * les frags au Warthog. Un seul littéral, deux usages.
  */
 export const NON_COMBAT_WEAPON_ROLES: ReadonlySet<string> = new Set([
+  // équipement / environnement / UGC / résidu — cf. NON_WEAPON_FRAG_CLASSES.
+  ...NON_WEAPON_FRAG_CLASSES,
   'vehicle',
   'turret',
-  'environmental',
-  'unattributed',
-  'other',
 ])
 
 /** Paire {rôle, kills} — forme d'entrée du cœur de calcul (agnostique de la source). */

@@ -39,6 +39,7 @@ import {
   damagePerDeath,
   oneLifeDefensiveRatePct,
   oneLifeOffensiveRatePct,
+  oneLifeWindowBoundsForData,
   oneLifeZonesMarkArea,
 } from '@/lib/charts/oneLifeWindow'
 import { useEffectiveHpToKill, useProvidesDamageTaken } from '@/lib/damage/effectiveHp'
@@ -246,9 +247,11 @@ export function TimeseriesSessionPerformance({
 //
 // Conséquence : les deux courbes se lisent « plus haut = mieux », donc une SEULE
 // polarité — zones communes (vert au-dessus du repère, rouge en dessous), repère
-// « 1 vie » à 100 % et fenêtre FIXE 50…200 %. La courbe pleine est le rendement,
-// la pointillée la résistance ; le jugement est porté par les zones (l'ancien
-// dégradé de trait, ancré sur la boîte de série et non sur l'axe, a été retiré).
+// « 1 vie » à 100 % et fenêtre 50…200 % élargie sans jamais rétrécir quand un
+// point en sort (DEC-5, cf. `oneLifeWindowBoundsForData`). La courbe pleine est
+// le rendement, la pointillée la résistance ; le jugement est porté par les
+// zones (l'ancien dégradé de trait, ancré sur la boîte de série et non sur
+// l'axe, a été retiré).
 
 export interface TimeseriesEfficiencyProps {
   rows: TimeseriesMatchRow[]
@@ -408,7 +411,17 @@ export function TimeseriesEfficiency({
     const colDefensive = resolveToken('chart-series-3')
 
     const categories = buildMatchCategories(rows)
-    const bounds = ONE_LIFE_RATE_BOUNDS
+    // Calculées une seule fois : réutilisées par les séries ET par l'extent
+    // d'axe ci-dessous (jamais recalculées séparément, source unique).
+    const offensive = offensiveRates(rows, hp)
+    const defensive = providesDamageTaken ? defensiveRates(rows, hp) : []
+    // Fenêtre 50…200 % élargie si un point dépasse, jamais rétrécie (DEC-5) :
+    // la fenêtre de comparabilité reste le plancher, une session courte pousse
+    // l'axe plus loin plutôt que d'écrêter la courbe.
+    const allRates = [...offensive, ...defensive]
+      .filter((d): d is NonNullable<RateDatum> => d != null)
+      .map((d) => d.value)
+    const bounds = oneLifeWindowBoundsForData(allRates, ONE_LIFE_RATE_BOUNDS)
 
     return {
       backgroundColor: CHART_BG,
@@ -431,10 +444,10 @@ export function TimeseriesEfficiency({
         data: categories,
         axisLabel: { ...getAxisBase(tc).axisLabel, interval: 0, fontSize: 9 },
       },
-      // Fenêtre FIXE 50…200 % — bornes CONSTANTES, jamais dérivées de la session :
-      // une même valeur tombe au même endroit, et prend donc la même couleur,
-      // d'une session à l'autre. Un point hors fenêtre est écrêté par l'axe ; le
-      // survol en garde la valeur vraie.
+      // Fenêtre 50…200 % par défaut — une même valeur tombe au même endroit, et
+      // prend donc la même couleur, d'une session à l'autre — mais ÉLARGIE
+      // (jamais rétrécie, DEC-5) quand un point en sort : plus jamais de courbe
+      // écrêtée par l'axe sur une session courte. Le survol garde la valeur vraie.
       yAxis: {
         ...getAxisBase(tc),
         type: 'value',
@@ -447,7 +460,7 @@ export function TimeseriesEfficiency({
         {
           type: 'line',
           name: rendementLabel,
-          data: offensiveRates(rows, hp),
+          data: offensive,
           showSymbol: false,
           smooth: false,
           connectNulls: true,
@@ -456,7 +469,9 @@ export function TimeseriesEfficiency({
           // en coordonnées d'axe : vert au-dessus du repère, rouge en dessous.
           // Les deux courbes étant des taux « plus haut = mieux », les zones
           // valent pour l'ensemble de la grille — elles sont donc portées par la
-          // première série et rendues une seule fois.
+          // première série et rendues une seule fois. `bounds` (potentiellement
+          // élargi) plutôt que la fenêtre de base : la zone ne doit jamais
+          // s'arrêter avant le bord réel de l'axe.
           markArea: oneLifeZonesMarkArea(ONE_LIFE_RATE_PCT, bounds),
           markLine: oneLifeMarkLine(refLabel, colRef),
         },
@@ -467,7 +482,7 @@ export function TimeseriesEfficiency({
               {
                 type: 'line' as const,
                 name: resistanceLabel,
-                data: defensiveRates(rows, hp),
+                data: defensive,
                 showSymbol: false,
                 smooth: false,
                 connectNulls: true,

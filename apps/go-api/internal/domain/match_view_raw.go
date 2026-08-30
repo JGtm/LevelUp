@@ -335,6 +335,18 @@ type KillSourceRaw struct {
 	// SourceTag : identifiant `jpt!` de l'effet de dégât fatal. Ne dépend d'aucune table
 	// de nommage — c'est l'adapter du titre qui le traduit en icône.
 	SourceTag uint32
+	// Headshot : le modificateur de dégât fatal (`source_category`) valait EXACTEMENT
+	// `killscope.CategoryHeadshot`, ET était UNANIME sur le couple (tueur, instant) — même
+	// garde que SourceTag (Q21b : `count(DISTINCT source_category) = 1`, même clause `HAVING`
+	// que le tag). PAS de pointeur : la seule PRÉSENCE de cette ligne dans le résultat de
+	// Q21b affirme déjà « connu et non ambigu » (comme SourceTag) — l'absence de ligne EST
+	// l'état « non mesurable/ambigu », jamais `false`.
+	//
+	// G.1 (2026-08-29) : oracle contre `match_participants.headshot_kills` (API officielle),
+	// filtre STRICT `= 'Headshot'` = 99,3 % d'accord ; `HeadshotMultiplier` INCLUS fait chuter
+	// à 84,4 % — jamais l'ajouter (verrouillé par killscope.IsHeadshotCategory +
+	// internal/archlint/no_raw_headshot_category_literal_test.go).
+	Headshot bool
 }
 
 // KillAssistRaw : l'ASSISTANCE d'une mort (Q21c), telle que le décodeur de film l'a

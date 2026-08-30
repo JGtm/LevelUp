@@ -5650,6 +5650,7 @@ export interface components {
             camoEpisodes: number;
             /** Format: int64 */
             camoLives: number;
+            killsRead: boolean;
             /** Format: int64 */
             overshieldEpisodes: number;
             /** Format: int64 */
@@ -5658,8 +5659,12 @@ export interface components {
             tracksTotal: number;
         };
         EquipmentEpisode: {
+            /** Format: int64 */
+            a?: number;
             endRead?: boolean;
             fam: string;
+            /** Format: int64 */
+            k?: number;
             /** Format: int32 */
             slot: number;
             /** Format: int64 */
@@ -6214,7 +6219,11 @@ export interface components {
             first_death_sec: number | null;
             /** Format: double */
             first_kill_sec: number | null;
+            map_ui?: string;
             match_id: string;
+            mode_ui?: string;
+            /** Format: date-time */
+            start_time: string;
         };
         FirstBloodPlayerSeries: {
             matches: components["schemas"]["FirstBloodMatchPoint"][] | null;
@@ -6306,6 +6315,7 @@ export interface components {
             /** Format: int64 */
             kills: number;
             label?: string;
+            label_en?: string;
             role: string;
         };
         FreshnessBackupInfo: {
@@ -7378,6 +7388,7 @@ export interface components {
             /** Format: int64 */
             event_time_ms?: number;
             event_type: string;
+            headshot?: boolean;
             /** Format: int64 */
             killer_damage_pct?: number;
             medal_description?: string;

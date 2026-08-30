@@ -5,6 +5,7 @@ import {
   formatNumber,
   outcomeColor,
   seriesColor,
+  stackedAxisExtent,
   tickInterval,
 } from './_utils'
 
@@ -64,6 +65,53 @@ describe('_utils', () => {
     })
     it('accepte une string ISO', () => {
       expect(formatDateShort('2026-12-01')).toBe('01/12')
+    })
+  })
+
+  describe('stackedAxisExtent — extent sur le JEU COMPLET, jamais sur les séries visibles', () => {
+    it('aucune pile → {min: 0, max: 0}', () => {
+      expect(stackedAxisExtent([])).toEqual({ min: 0, max: 0 })
+      expect(stackedAxisExtent([], [])).toEqual({ min: 0, max: 0 })
+    })
+
+    it('une pile, une série : max = plus grande valeur, arrondi dizaine supérieure', () => {
+      expect(stackedAxisExtent([[[5, 15, 8]]])).toEqual({ min: 0, max: 20 })
+    })
+
+    it('une pile, plusieurs séries EMPILÉES : max = plus grande SOMME par index (pas la plus grande valeur seule)', () => {
+      // idx0 : 10+3=13 ; idx1 : 5+2=7. Max = 13 → dizaine sup. 20.
+      expect(stackedAxisExtent([[[10, 5], [3, 2]]])).toEqual({ min: 0, max: 20 })
+    })
+
+    it('plusieurs piles indépendantes : retient le MAX entre piles, ne les additionne pas', () => {
+      // Pile A (idx0=12), pile B (idx0=30) → max = 30, PAS 42.
+      expect(stackedAxisExtent([[[12]], [[30]]])).toEqual({ min: 0, max: 30 })
+    })
+
+    it('negativeStacks omis → min toujours 0 (axe qui ne descend jamais sous zéro)', () => {
+      expect(stackedAxisExtent([[[100]]])).toEqual({ min: 0, max: 100 })
+    })
+
+    it('negativeStacks : min = la somme la PLUS NÉGATIVE, arrondie à la dizaine inférieure (valeurs déjà signées)', () => {
+      expect(stackedAxisExtent([], [[[-4, -6]]])).toEqual({ min: -10, max: 0 })
+    })
+
+    it('positif ET négatif ensemble (ex. butterfly kills/bonus vs morts)', () => {
+      expect(stackedAxisExtent([[[12], [3]]], [[[-4]]])).toEqual({ min: -10, max: 20 })
+    })
+
+    it('null/undefined comptent pour 0 (comme ECharts)', () => {
+      expect(stackedAxisExtent([[[null, 5, undefined]]])).toEqual({ min: 0, max: 10 })
+    })
+
+    it('valeur pile sur une dizaine → marge nulle (cas limite documenté, cohérent avec oneLifeWindowBoundsForData)', () => {
+      expect(stackedAxisExtent([[[20]]])).toEqual({ min: 0, max: 20 })
+    })
+
+    it('indépendant de l\'ordre des piles/séries : le résultat ne dépend que des valeurs', () => {
+      const a = stackedAxisExtent([[[30]], [[12]]], [[[-2]], [[-4]]])
+      const b = stackedAxisExtent([[[12]], [[30]]], [[[-4]], [[-2]]])
+      expect(a).toEqual(b)
     })
   })
 

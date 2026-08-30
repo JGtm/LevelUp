@@ -1703,6 +1703,13 @@ export interface MatchHighlightEvent {
   weapon_image_url?: string | null
   weapon_image_tinted?: boolean | null
   /**
+   * Le dégât fatal était-il un tir à la tête ? Peuplé ssi la source de dégât est connue
+   * ET non ambiguë — INDÉPENDAMMENT des champs `weapon_*` ci-dessus (le headshot ne
+   * dépend d'aucune résolution d'icône). Absent = non mesurable, JAMAIS false (G.1,
+   * 2026-08-30). Filtre backend STRICT : `HeadshotMultiplier` n'en fait jamais partie.
+   */
+  headshot?: boolean | null
+  /**
    * L'ASSISTANCE du kill, lue du film — TROIS états qui ne se confondent JAMAIS :
    * absent/'' = ON NE SAIT PAS (aucun kill-event apparié) ; 'none' = MESURÉ, pas
    * d'assistant ; 'named' = assistant nommé (+ parts de dégâts quand elles sont lues).

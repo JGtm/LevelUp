@@ -90,6 +90,17 @@ function durationCell(ms: number | undefined): string {
 }
 
 /**
+ * Une cellule de FRAGS SOUS EFFET ACTIF. MÊME PRINCIPE QUE `intCell`, une exception : un
+ * match dont la jointure n'a pas pu être tentée (`killsRead` faux) écrit « — », jamais un
+ * zéro qui se lirait comme une mesure de zéro frag (PLAN_RETOURS_UTILISATEUR_2026-08-29
+ * §LOT F.2, EquipmentUsageCoverage.killsRead).
+ */
+const KILLS_NOT_MEASURED = '—'
+function killsCell(kills: number | undefined, killsRead: boolean): string {
+  return killsRead ? intCell(kills) : KILLS_NOT_MEASURED
+}
+
+/**
  * usageColumnGroups — les groupes de colonnes que la donnée justifie, dans un ordre écrit.
  *
  * Le grappin d'abord (une activation), les états actifs ensuite (une durée), puis ce qui se pose
@@ -112,6 +123,9 @@ export function usageColumnGroups(
     })
   }
   if (usage.columns.episodes.length > 0) {
+    // Lu UNE FOIS par appel, fermé sur les cellules : `killsRead` est une propriété du
+    // MATCH entier (cf. EquipmentUsageCoverage), pas d'un joueur ni d'une famille.
+    const killsRead = usage.coverage.killsRead
     groups.push({
       key: 'episodes',
       label: u.groupActive,
@@ -126,6 +140,11 @@ export function usageColumnGroups(
           key: `${fam}.ms`,
           label: `${u.activeFamily[fam]} (${u.activeDuration})`,
           cell: (x: EquipmentUsageTally) => durationCell(x.episodes[fam]?.ms),
+        },
+        {
+          key: `${fam}.kills`,
+          label: u.activeKillsFamily[fam],
+          cell: (x: EquipmentUsageTally) => killsCell(x.episodes[fam]?.kills, killsRead),
         },
       ]),
     })

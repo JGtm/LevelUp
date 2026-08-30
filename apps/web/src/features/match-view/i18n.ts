@@ -135,6 +135,8 @@ export interface MatchViewText {
   // Histogramme momentum (carte Dominance) — libellés de tooltip.
   combatMomentumDelta: string
   combatMomentumCumul: string
+  /** Décompte headshot dans le tooltip de vague (G.1) — n toujours >= 1 à l'appel. */
+  combatHeadshotCountFmt: (n: number) => string
   combatNemesisTitle: string
   combatBullyTitle: string
   combatNoNemesis: string
@@ -376,6 +378,7 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     combatEnemyLabel: 'Adversaires',
     combatMomentumDelta: 'Écart',
     combatMomentumCumul: 'Cumul',
+    combatHeadshotCountFmt: (n) => `${n} tir${n > 1 ? 's' : ''} à la tête`,
     combatNemesisTitle: 'Némésis',
     combatBullyTitle: 'Souffre-douleur',
     combatNoNemesis: '—',
@@ -657,6 +660,7 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     combatEnemyLabel: 'Opponents',
     combatMomentumDelta: 'Delta',
     combatMomentumCumul: 'Cumulative',
+    combatHeadshotCountFmt: (n) => `${n} headshot${n > 1 ? 's' : ''}`,
     combatNemesisTitle: 'Nemesis',
     combatBullyTitle: 'Bully target',
     combatNoNemesis: '—',

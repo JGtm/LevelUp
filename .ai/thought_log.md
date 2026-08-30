@@ -1,3 +1,144 @@
+## [2026-08-29 soir] Retours 0829 suite — palettes daltoniennes, lot G, coordination inter-sessions
+
+**Statut** : Complete pour les palettes (gates verts) et l'analyse G.0 ; F.0 en cours
+(decodage) ; G.1-G.3 en attente de validation utilisateur.
+
+**Incident repare en priorite** : mon nettoyage de l'arbre partage avait casse la
+compilation de `internal/service` (3 appels buildSoloFirstBlood a 3 args vers une
+signature revenue a 2) — 3 hunks reverties, build vert, autres sessions debloquees.
+
+**Palettes (demande utilisateur « corrige stp »)** : famille DEDIEE `frag-*` (11 tokens,
+`semantic-tokens.ts`) definie dans les QUATRE palettes semantiques. AVANT : Okabe-Ito
+repliait lourde=grenade=equipement (#CC79A7) et epaule=environnement (#56B4E9) ; Cividis
+avait 2 collisions EXACTES ; seule la palette defaut etait controlee. APRES : defaut
+inchange a l'ecran (1 seul ecart volontaire : frag-spartan-ability indigo-400 -> 500, qui
+RESOUT la paire heritee a 6,89 au lieu de l'exempter — exception et ratchet SUPPRIMES) ;
+Okabe 11 teintes distinctes (8 brutes + derives de luminosite, technique squad-player) ;
+Cividis echelle de clarte + 3 emprunts hors rampe (seuil dE >= 5 DOCUMENTE, rampe
+sequentielle par construction) ; Tol Bright complete (emprunts Muted/Vibrant/High-contrast).
+Garde-rail etendu aux 4 palettes (pire paire nommee dans l'assertion). Gates :
+accessibility 184/184, charts 420/420, typecheck + eslint 0 erreur, snapshots palettes
+regeneres (changement intentionnel).
+
+**Lot G (headshot/distance/portee) — G.0 rendu, verdicts qui renversent la table** :
+le tir a la tete par kill EST DEJA EN BASE (`source_category`, oracle API 99,3 % avec le
+filtre STRICT `='Headshot'` ; colonne orpheline — chantier de LECTURE) ; la distance a
+son code ecrit/teste/jamais branche (`BuildKillPositions`, validation melee 0,39 m /
+sniper 16,19 m) mais `kill_positions` n'est PAS append-only (dette bloquante) ; le
+gisement recuperable reel = 415 matchs de 2026 sans passe film (cache plus alimente
+depuis le 2026-04-07, producteur Python supprime) — PAS les 581 vieux matchs bit22
+(97 % d'avant 2025). Doctrine « ~30 j » : aucune borne chiffree nulle part, commentaire
+du code dit « plusieurs mois ». Lots G.1 (S, lecture), G.2 (M, positions), G.3 (L,
+portee+narratif) proposes au plan.
+
+**Coordination inter-sessions (premiere du genre)** : repartition actee avec la session
+equipement (elle = RE/film via Ghidra ; moi = 8a/8b vue match + F.0 + plan). Sa passe
+Ghidra rend SUSPECTE la refutation « aucun evenement de ramassage » (champ +0x274 jamais
+teste par la mesure 0/149, defaut param_4 douteux sur le chemin de mesure) — le plan est
+mis au conditionnel, chemin par defaut i42-delta inchange. Backfill : delegue par
+l'utilisateur a une autre session ; 3 faits critiques a lui transmettre (gisement 2026,
+contrainte d'ordonnancement vue _latest, assist_known=FALSE depuis avril).
+
+**Prochaine etape** : chiffres F.0 (go/no-go seuil 30 %) ; validation utilisateur des
+lots G.1-G.3 et du demarrage F.1-F.3 ; verification visuelle des palettes daltoniennes.
+
+## [2026-08-29] Retours utilisateur 0829 — pilotage 8 points, 4 lots livres, worktree dedie
+
+**Statut** : Complete cote code (gate final VF vert) ; commits DIFFERES a l'arbitrage
+utilisateur ; lots E (backfill) et F (equipement) livres en RAPPORT/PLAN, execution en
+attente de decisions utilisateur (DEC-3, DEC-6 du plan).
+
+**Demande** : 8 points (backfill armes de kills ; donuts frags 2 niveaux + Escouade ;
+premier frag/mort flou + tooltip uuid ; echelles rendement/resistance ; echelle avec
+bonus ; breadcrumb rejeu ; equipement ramassage vs usage ; frags sous camo/surbouclier/
+translocateur + forme d'affichage), a analyser/planifier/piloter avec Opus/Sonnet/Haiku.
+
+**Pilotage** : 6 agents d'ANALYSE (2 Opus, 3 Sonnet, 1 Haiku, lecture seule) -> plan
+`.ai/PLAN_RETOURS_UTILISATEUR_2026-08-29.md` (6 decisions tranchees DEC-1..6) -> 5 agents
+d'IMPLEMENTATION (A donuts Opus, B echelles Sonnet, C premier-frag Sonnet, D breadcrumb
+Haiku, V2.1 labels-locale Sonnet repris par le pilote apres une coupure de quota a 95 %).
+
+**Decision technique principale** : le lot NON COMMITE « kills-hors-arme » (etapes 0-5
+faites, gate bloque par un refactor tiers) etait le SOCLE du point 2 — il a ete DEBLOQUE
+(E8 `9f053f078` repare `service_test.go`), ses gates rejoues verts (integration duckdb
+comprise), puis embarque avec les lots retours dans un WORKTREE DEDIE
+`LevelUp-wt-retours-0829` (branche `wt/retours-0829`, base `7befe6192`) — correction d'une
+erreur de pilotage relevee par l'utilisateur : le chantier avait demarre dans le worktree
+partage, ou TROIS autres lots vivent et ou deux commits tiers (E9, E10) et plusieurs
+ecrasements de fichiers sont survenus EN VOL. Transfert par patch + tar des non-suivis,
+retrait des lots etrangers du dedie, retrait de mes fichiers exclusifs du partage (les
+fichiers CHEVAUCHES y gardent des hunks residuels, carte au §7 du plan).
+
+**Resultats observes** : gate final VF vert dans le worktree dedie — vitest 530 fichiers /
+5 457 tests / 0 echec (+55 vs base), typecheck cache purge OK, lint 0 erreur, `go build` +
+`go vet ./...` OK, `go test ./...` vert hors les 2 echecs PRE-EXISTANTS documentes
+(archlint TestNoLocalLongestRun, himap timeout). Correctif bloquant decouvert par le VF :
+litteral brut `'marche'` dans `killsource_class_repo_test.go` (garde archlint J4R-3) ->
+`killscope.ReadPathFilmWalk`. Mesures cles du chantier : backfill armes NON complet et
+IRRECUPERABLE a ~30 % (581 films expires) — artefacts rejeu 40/1948 (2,1 %), la passe de
+masse (~8 h) reste a lancer ; rampe niveau 2 produisait du BLANC PUR des le 5e role ;
+`FirstBloodMatchPoint` ne portait QUE match_id ; fenetre 50-200 % ecretait ; extent
+recalcule sur series visibles ; equipement : ramassage ABSENT du film (negatif mesure),
+frags-sous-fenetre FAISABLE a cout quasi nul, degats REFUTES, translocateur bloque (n=2).
+
+**Conclusion / prochaine etape** : (1) arbitrage utilisateur des commits (3 lots tiers
+dans le worktree partage, hunks residuels chevauches) ; (2) accord backfills (repair 2
+artefacts, killsource serveur arrete, passe rejeu 8 h) — NB chantier tiers
+`backfill_killsource_online` apparu en vol ; (3) validation 8b (reco A+C vue match
+uniquement) avant lot F ; (4) verification visuelle utilisateur (sunburst x5, Escouade,
+premier frag, echelles, breadcrumb) ; (5) V2.2 latence `[!]` (pas de data/ ici) ;
+(6) CI branche rouge depuis le 28/08 (anterieur), a diagnostiquer avant push.
+
+## [2026-08-29] LOT A — Donuts « Répartition des frags » 2 niveaux + Escouade — Complété
+
+**Contexte** : 5 items du PLAN_RETOURS_UTILISATEUR_2026-08-29 §2, par-dessus le lot
+« kills-hors-arme » non commité (classes `equipment` / `environmental` fraîchement ajoutées).
+
+**Décisions techniques** :
+1. *Rampe de teinte du niveau 2* — `fragClass.ts` : `0.22 + index × 0.2` atteignait 1,02 dès
+   l'index 4, `shiftLightness` clampait, et les 5ᵉ/6ᵉ rôles d'une classe sortaient en BLANC
+   PUR (cas réel : les 5 types de grenade). Rampe NORMALISÉE sur le nombre de rôles avec un
+   plafond `ROLE_LIGHTNESS_MAX = 0.7` : pas nominal tant qu'il tient, sinon pas resserré
+   plaçant le dernier rôle exactement au plafond → 1-3 rôles gardent leur rendu historique.
+   `FragSunburst.tsx` : la valeur de la ligne de rappel n'est plus peinte à la couleur d'arc
+   (teinte éclaircie, illisible en texte) mais au token de texte du thème ; la polyline garde
+   la couleur, elle porte le lien arc→étiquette.
+2. *DEC-1* — `fragDetailBreakdown.ts` : nouvel ensemble `NON_WEAPON_FRAG_CLASSES`
+   (unattributed / environmental / equipment / other), MIROIR EXACT de
+   `domain.nonCombatFragClasses`, qui remplace le test inline `c.class === 'unattributed'`.
+   Plus de barres « Bobine… » / « Chute et environnement » dans « Outils de destruction » sur
+   les 5 surfaces. Pas de 3ᵉ liste : `NON_COMBAT_WEAPON_ROLES` (insight coach) en DÉRIVE
+   désormais, + véhicule/tourelle — divergence voulue, documentée des deux côtés.
+3. *Escouade* — `squadFragTools.ts` : le cap top-N ne portait que sur les armes ; le détail
+   arrivait entier et le tri ASC le faisait remonter en tête, noyant les 8 armes. Second cap
+   `SQUAD_TOOLS_TOP_DETAILS = 6` + ligne agrégée « Autres frags » (FR/EN), épinglée en bas
+   avec « Autres armes ». Aucune perte silencieuse.
+4. *Couleur* — `equipment` passe de `chart-series-1` (#93C5FD, TROISIÈME bleu à côté de
+   `environmental` #0072B2, son voisin d'ordre, et `unattributed` #60A5FA) à `extreme`
+   (#C026D3, fuchsia) : pire ΔE OKLab×100 de la classe 10,68 → 13,95. Le garde-rail inclut
+   désormais `unattributed` dans le contrôle ΔE, avec une EXCEPTION CIBLÉE ET DATÉE pour la
+   paire héritée `spartan_ability`/`unattributed` (6,89) + un test-ratchet qui casse le jour
+   où l'exception devient inutile.
+5. *Doc* — commentaire du Mutilator restauré depuis `HEAD` dans `rules.tsv` (écrasé par
+   copier-coller du répulseur ; colonnes `weapon_key` du lot en cours intactes) ; doc Go
+   corrigée pour `FragRoleEntry.Label` (plus « UNIQUEMENT IsPerWeaponFragClass »),
+   `perWeaponFragClasses` (note de PORTÉE : aiguillage de la provenance registre, pas la
+   liste des classes à niveau 2 par objet) et `nonCombatFragClasses` (la prétention de miroir
+   de `NON_COMBAT_WEAPON_ROLES` était fausse).
+
+**Résultats observés** : `npx vitest run src/lib/accessibility src/features/squad
+src/components/charts src/features/synthesis` → 90 fichiers / 819 tests, 0 échec ; les 5
+surfaces consommatrices (`match-view`, `session-detail`, `timeseries`) → 50 fichiers /
+396 tests, 0 échec ; `npm run typecheck` exit 0 ; ESLint sur les 11 fichiers touchés :
+0 erreur, 0 avertissement ; `go vet ./internal/domain/` et les tests killicon verts.
+
+**Conclusion / prochaine étape** : LOT A clos, A.1→A.5 tous `[x]`. Découvertes NON traitées :
+la palette Okabe-Ito est déjà entièrement collabée sur les classes de frags (shoulder ≡
+environmental, heavy ≡ grenade : ΔE 0) — le garde-rail ne teste que la palette défaut ;
+et `apps/web/src/features/squad/i18n.ts` s'est retrouvé STAGÉ pendant la passe (index ≡
+worktree) alors qu'aucune commande git d'écriture n'a été lancée par ce lot — à prendre en
+compte lors de l'arbitrage `git add -p` du worktree partagé.
+
 ## [2026-08-29] LOT D — Fil d'Ariane sur la page rejeu — Complet
 
 **Contexte** : la page rejeu affichait un titre « Rejeu 2D » et le détail du match (map, mode, date), mais aucun fil d'Ariane (breadcrumb) pour revenir au contexte précédent. La vue match en affichait un depuis mai 2026.
@@ -76353,3 +76494,177 @@ touchés) ; vitest 217 fichiers / 2 719 tests, 0 échec ; suite Go en cours de r
 `score_kind` sans consommateur sur trois contrats ; l'erreur avalée sur la recréation de
 `v_match_full` ; la divergence FFA pré-existante entre historique et vue match). Restent
 `make gate-push` et la CI, à jouer quand le worktree ne sera plus partagé.
+
+---
+
+## [2026-08-30] Équipement — LOT F.1-F.3 : frags sous camo/surbouclier, vue match uniquement
+
+**Statut** : Complété (plan `.ai/PLAN_RETOURS_UTILISATEUR_2026-08-29.md` §LOT F, sous-lots
+F.1/F.2/F.3 ; F.0 mesure d'entrée déjà rendue le 29/08, décision utilisateur 8a/8b, DEC-7
+révisée : GO à petite population).
+
+**Décision technique principale** : la jointure épisode×kill (F.1) exige DEUX choses que
+`killsource.Kill` ne porte pas directement — une identité résolue (le kill-feed ne donne
+qu'un GAMERTAG ou un repli `xuid:<N>`) et une horloge recalée (`Kill.TimeMS` est sur
+l'horloge « début du film », pas celle du rejeu). Plutôt qu'importer
+`killcollector.MatchIdentities` (DB-backed, romprait le contrat « `replaybuild` n'ouvre
+aucune base »), la résolution gamertag→xuid se fait HORS LIGNE via `replay.ScanFilmDeaths`
+— le fil des morts du film porte déjà xuid ET gamertag dans le même enregistrement pour
+chaque victime, exactement la même source que celle qui nomme les vies (`Track.XUID`). La
+conversion d'horloge, elle, ne peut PAS se faire côté `replaybuild` : `OriginMs` n'est résolu
+qu'à l'intérieur de `analysis/replay.BuildFromPositions`, après le pont slot→xuid — la
+jointure (`attachEpisodeKills`) vit donc dans `analysis/replay`, appelée juste après
+`buildEquipmentEpisodes`, et `replaybuild` ne fait que passer le `TimeMS` brut + les xuid déjà
+résolus (`Options.Kills KillsInput`). Le décodage killsource lui-même n'est fait qu'UNE FOIS
+par match (`decodeKillSource`, nouveau), partagé avec `neutralDeaths` qui le refaisait
+séparément avant ce lot.
+
+**Résultats observés** :
+- F.1 (Go) : `EquipmentEpisode.K/A` (omitempty), `Coverage.Equipment.KillsRead`,
+  `attachEpisodeKills`/`attachAllEquipmentKills` purs + 15 tests synthétiques (fenêtre,
+  bornes T0/T1 incluses, porteur≠tueur, assist connu/inconnu, épisode fermé par mort — tous
+  les cas demandés). Collision de nom découverte à la compilation : `KillRef` existait déjà
+  dans `killpos.go` (chantier arme-par-kill, sans rapport) → renommé `EquipmentKillRef`.
+  SchemaVersion 23→24 : tous les points de pin retrouvés par grep et mis à jour — la constante
+  Go, `structure_test.go` (ratchet narratif qui exige une raison écrite par version), le
+  golden `assembly_000d5950.golden` (régénéré via `-update`, un seul octet de contenu a
+  changé : le numéro de version), le contrat `openapi.yaml` (régénéré via `make
+  openapi-gen`), `generated.ts` (`make generate-types`), et la copie web
+  `replaySchemaLogic.ts` (garde de parité dédiée, `replaySchemaLogic.guard.test.ts`) — AUCUN
+  de ces deux derniers n'était nommé dans la consigne, trouvés par grep comme demandé.
+  Gate : `go build ./... && go vet ... && go test ...` → 418 sous-tests verts, 0 échec.
+- F.2 (Web) : 2 colonnes « Frags sous camo » / « Frags sous surbouclier » dans le groupe
+  États actifs existant, distinction 0 (mesuré) vs « — » (non mesuré) portée par
+  `Coverage.equipment.killsRead` — jamais par le champ `k` seul. La réserve mesurée demandée
+  a été FUSIONNÉE dans l'infobulle de groupe déjà existante (`groupActiveHint`) plutôt que
+  dupliquée dans un nouveau mécanisme de tooltip par colonne : les deux réserves parlent du
+  même état mesuré. Tests existants cassés puis réparés (nouveau champ `kills` dans
+  `EquipmentUsageEpisode` → fixtures `toEqual` à mettre à jour ; nouvelle colonne → indices de
+  cellule décalés dans un test qui les comptait en dur). Gate : vitest
+  match-replay+match-view → 2067 tests verts, typecheck propre.
+- F.3 (badge) : `equipmentKillBadges.ts` (nouveau, pur, dans `match-view` — le badge regarde
+  le MEILLEUR ÉPISODE d'un match, pas la somme d'un joueur sur tout le match, ce qui est une
+  donnée différente de celle du tableau F.2). Seuil 3 écrit en dur
+  (`EQUIPMENT_KILL_BADGE_THRESHOLD`), non ajusté à la sortie comme demandé. Câblé dans
+  `MatchImpactBadgesBar` par auto-alimentation (`useMatchReplay`, même clé de cache que
+  `MatchEquipmentUsageSection`, donc aucun appel réseau de plus) ; rendu via `NarrativeBadge`
+  (pilule, `tokenVar('success')`) plutôt que la carte bespoke des badges serveur — les deux
+  badges viennent de sources différentes (film côté client vs `ComputeMatchImpactFull` côté
+  Go) et les confondre visuellement aurait menti sur leur origine. Gate : vitest
+  match-view+components/feedback → 265 tests verts (9 dédiés au seuil/meilleur-épisode/
+  unicité par famille/absence de propriétaire), typecheck propre.
+
+**Écarts au plan, justifiés** : aucune re-cuisson des 44 artefacts (le worktree ne porte pas
+`data/` — dépendance externe explicite, cf. consigne). Commande vérifiée sur pièces
+(`cmd/levelup/cmd_backfill_replay.go`), à jouer post-merge sur un arbre qui porte `data/` :
+`go run ./apps/go-api/cmd/levelup backfill-replay` (sans `-force` : la reprise se fait par
+`SchemaVersion`, `ArtifactUpToDate` écarte déjà tout artefact à 24 — seuls les 44 artefacts
+à 23 ou moins seront recuits).
+
+**Conclusion / prochaine étape** : LOT F.1-F.3 clos, gates verts sur pièces. Restent F.4/F.5
+(sondes de recherche RE) et F.6 (agrégats, conditionné à ≥ 40 % de couverture après cuisson de
+masse), non planifiés par ce plan — hors périmètre de cette session. Découverte notée, non
+traitée : `MatchImpactBadgesBar` n'avait aucun test dédié avant ce lot (entièrement mocké par
+`MatchViewTabs.test.tsx`) — sa logique de tri/valence des badges serveur reste sans
+couverture directe.
+
+## [2026-08-30] LOT G.1/G.2/G.3-préparation — tir à la tête (lecture), positions (fondation), guide Reddit
+
+**Statut** : Complété pour G.1 et G.3-préparation ; PARTIEL et justifié `[!]` pour G.2 (plan
+`.ai/PLAN_RETOURS_UTILISATEUR_2026-08-29.md` §3bis LOT G, sous-lots G.1/G.2/G.3-préparation ;
+G.0 faisabilité déjà rendue le 29/08 soir). Fichiers Lot F verrouillés (`internal/analysis/
+replay/**` sauf import, `internal/replaybuild/**`, `features/match-replay/**`,
+`MatchViewTabChronology.tsx`, `equipmentKillBadges*`, `MatchImpactBadgesBar.tsx`) : 0 touché,
+vérifié par `git status` en fin de session.
+
+**Décision technique principale** : G.1 réutilise le PRÉCÉDENT `killscope` (J4R-3, ratchet
+`no_raw_kill_scope_literal_test.go`) à l'identique pour le filtre headshot — même paquet
+feuille sans import (`internal/domain/killscope`), même verrou d'égalité dans le SEUL paquet
+qui importe le décodeur ET la feuille (`sync/killcollector`), même mécanique de garde-rail
+archlint (scan texte, propriétaires exemptés). Le garde-rail est volontairement SCOPÉ au seul
+littéral `"HeadshotMultiplier"` (pas `"Headshot"` bare) après avoir constaté, en le rodant
+contre le dépôt réel, que « Headshot » est AUSSI le nom d'une médaille du jeu — un ratchet
+plus large aurait banni des fixtures de médaille sans aucun rapport avec `source_category`,
+pour toujours. Pour G.2, la conversion append-only de `kill_positions` réutilise le helper
+`migration.ApplyAppendOnlyRebuild` (recette ADR 0026) exactement comme ses deux sœurs
+`match_csrs`/`pve_match_stats` dans le même fichier (`games/halo_infinite/migrations/
+steps_appendonly_misc.go`) — mécanisme `written_at` simple (PAS `decode_pass` comme
+`match_kill_events` : la clé fonctionnelle (match_id, killer_xuid, time_ms) n'a jamais eu
+besoin de plus, la table n'a même pas de colonne `victim_xuid`).
+
+**Résultats observés** :
+- G.1 : `killscope.CategoryHeadshot`/`IsHeadshotCategory` (le SEUL comparateur du dépôt) ;
+  `Q21bKillSources` lit `source_category` avec une garde d'unanimité INDÉPENDANTE de celle du
+  `source_tag` (`HAVING count(DISTINCT source_tag)=1 AND count(DISTINCT source_category)=1`
+  — un double kill peut porter la même arme et des catégories différentes, cas neuf verrouillé
+  par un test DuckDB réel, `TestQ21bKillSources_CategorieAmbigueEcartee`) ;
+  `domain.KillSourceRaw.Headshot bool` (présence de ligne = connu) ;
+  `domain.MatchHighlightEvent.Headshot *bool` (nil = non mesurable, jamais `false` par
+  défaut) ; posé par `decorateKillFeed` INDÉPENDAMMENT de la résolution d'icône. Icône :
+  TRANCHÉ pour le FRONT (killfeed-64 composée via `staticAssetURL`, précédent CSR/rangs) —
+  PAS `killicon`/`rules.tsv`, dont tout le système résout par `source_tag`, une quantité que
+  le headshot (`source_category`) ne porte pas. Capability `match.killfeed.per_kill` : reste
+  `degraded`, justifié (elle gate l'arme-par-kill globalement ~33,7 % de couverture, le
+  headshot devenu lisible ne change ni cette couverture ni le contrat canonical séparé).
+  `canonical.MatchEvent.Headshot` (pipeline Chronologie, appariement différent) délibérément
+  PAS rempli — deuxième plomberie hors périmètre kill-feed. UI : décompte headshot dans le
+  tooltip de vague de `MatchTugOfWarChart.tsx` (carte Dominance) ; le détail par kill reste
+  dans `ReplayKillFeed.tsx` (verrouillé) — donnée plombée jusqu'à `_momentum.ts`
+  (`KillEvent.headshot?: boolean`, optionnel car des fixtures de test verrouillées construisent
+  des `KillEvent` sans lui) pour qu'un futur lot l'y affiche. Contrat régénéré (seul lot de la
+  passe à y toucher).
+- G.2 : dette bloquante FERMÉE (`kill_positions` append-only, testé via la VRAIE chaîne
+  `RunForDB` — 3 tests neufs dont préservation de lignes H5 legacy à travers le swap et
+  dédoublonnage `_latest` sur re-décodage simulé). L'unique lecteur brut existant
+  (`h5KillFeedQuery`) bascule sur `kill_positions_latest`. Vérifié : le provider de migration
+  `halomigrations.StepsFor` est UNIQUE et partagé par `cmd/h5-sync`/`cmd/h5-backfill` — la
+  conversion s'applique à la vraie DB H5, pas seulement Infinite. Câblage de la capture LIVE
+  Infinite dans `killcollector` : DÉFÉRÉ `[!]`, investigué jusqu'au bout (pas un abandon sur
+  inconnu). `replay.BuildKillPositions` est pur mais ses trois fournisseurs de données
+  exportés (`filmdec.ScanFilmBipedPositions`, `replay.ScanFilmClockOrigin`,
+  `replay.ScanFilmPlayerIndices`) sont tous disque-only, alors que `killcollector` décode
+  aujourd'hui les chunks en mémoire pure — la pipeline qui les utilise déjà
+  (`replayartifacts`) le fait via un enfant de process à plafond mémoire dur, disproportionné
+  ici et de toute façon verrouillé (`replaybuild`). Le pont identifié (écrire les chunks déjà
+  en mémoire dans un répertoire temporaire, appeler les fonctions exportées telles quelles) ne
+  touche aucune logique de décodage et n'est donc pas risqué en soi ; mais le tour complet —
+  ce pont + faire transiter le nom de carte jusqu'à `MatchIdentities` + bornes monde
+  (`filmdec.LoadMapQuantCatalog`) + inversion du pont slot→xuid + nouveau persister + nouvelle
+  capability dédiée (doctrine « clé fine » déjà posée pour `film.kill_source`/
+  `film.weapon_shots`) + tests d'intégration bout en bout — est un lot à part entière. Détail
+  utile pour la reprise, pas évident avant lecture du test dédié
+  (`killpos_test.go:88 TestKillPositionsAppliqueLeDecalageDHorloge`) : `offsetUS` du
+  producteur PUR est DIRECTEMENT `replay.ScanFilmClockOrigin(filmDir)`, pas la machinerie
+  `bestDeathOffset`/témoin (celle-ci sert la robustesse du rejeu 2D, pas un prérequis de
+  correction pour les positions). Déclencheur de backfill décidé malgré tout, vérifié sur le
+  code réel : bump de `killcollector.KillSourceDecoderRev` — `matchsAJour`
+  (`cmd_backfill_killsource.go:357`) ne considère « à jour » que les matchs dont la passe
+  `_latest` porte déjà la revision courante, donc bumper la constante remet tous les matchs
+  déjà décodés candidats, sans nouveau flag `--positions` ni nouveau binaire.
+- G.3-préparation : guide Reddit (« Definitive guide to weapon variants », u/Kai--,
+  2022-09-16) extrait du HTML fourni (piège rencontré et déjoué : un premier conteneur
+  `id="-post-rtjson-content"` SANS préfixe existe mais sert le flair de l'auteur, pas le
+  corps du post — le bon conteneur est `id="t3_xfcz4n-post-rtjson-content"`) via un script
+  Node jetable en scratchpad, jamais commité, zéro dépendance npm, zéro accès réseau.
+  Document produit : `.ai/V7.5/killweapon/REFERENCE_VARIANTES_ARMES_REDDIT.md` — 22
+  variantes sourcées, rapprochées du registre par nom (22/22 déductibles, 0 UNKNOWN, vérifié
+  sur pièces contre `registry.go`/`rules.tsv`). Réserve méthodologique consignée en tête de
+  section dédiée : nos `source_tag` identifient l'ARME, pas le TUNING de mode Fiesta/
+  Yappening que documente le guide — un kill à une variante et un kill à l'arme vanilla
+  partagent le même `weapon_key`, indistinguable après coup dans `match_kill_events`.
+
+**Découverte notée, non traitée** : 19 tests `-tags=integration` échouent en l'état ACTUEL du
+dépôt (`player_matches_repo_test.go` ×18, `pool_migration_test.go` ×1 — fichiers pristine,
+`git status` vide, sans rapport avec ce lot ni avec aucun lot uncommitted du worktree) —
+`Binder Error: team_0_rounds_won` : une fixture VALUES-list brute simulant `match_registry`
+n'a jamais reçu les colonnes de manches (ADR 0032) que les requêtes réelles sélectionnent
+désormais. Tâche spawnée (`task_fb60be2a`) plutôt que corrigée dans cette passe.
+
+**Conclusion / prochaine étape** : G.1 et G.3-préparation clos, gates verts sur pièces
+(seuls échecs : les 2 pré-existants déjà documentés au 29/08 soir + les 19
+`team_0_rounds_won` ci-dessus, tous vérifiés sans rapport avec ce lot). G.2 partiellement
+clos — la dette bloquante qui empêchait tout remplissage de `kill_positions` est fermée,
+mais la capture live reste à câbler dans une session dédiée (plan d'exécution précis laissé
+au rapport de session et à ce journal : pont disque + carte + bornes + slot→xuid inversé +
+persister + capability + tests). G.3 plein (portée + narratif) non engagé, conditionné à
+cette capture live + une cuisson de masse — pas seulement à l'append-only rendu ici.

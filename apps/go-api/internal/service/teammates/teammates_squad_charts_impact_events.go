@@ -242,6 +242,9 @@ func (s *TeammatesService) buildSquadFirstBlood(
 	if len(matchIDs) == 0 || len(xuidsOrdered) == 0 {
 		return nil
 	}
+	// Métadonnées d'affichage (carte/mode/date) par match, pour le tooltip —
+	// DEC-4 (retours utilisateur 2026-08-29) : plus jamais l'uuid du match.
+	metaByMatch := squadFirstBloodMeta(allSquadRows)
 
 	// 2. Charger les events, puis les ramener au référentiel gameplay (T0 /
 	//    countdown pré-match retranché, §4.A-bis). CRITIQUE ici : le chart lit des
@@ -281,7 +284,8 @@ func (s *TeammatesService) buildSquadFirstBlood(
 	for _, xuid := range xuidsOrdered {
 		points := make([]domain.FirstBloodMatchPoint, 0, len(matchIDs))
 		for _, r := range byXUID[xuid] {
-			points = append(points, domain.NewFirstBloodPoint(r.MatchID, r.FirstKillMS, r.FirstDeathMS))
+			points = append(points, domain.NewFirstBloodPoint(
+				r.MatchID, r.FirstKillMS, r.FirstDeathMS, metaByMatch[r.MatchID]))
 		}
 		series := domain.FirstBloodPlayerSeries{Player: gtByXUID[xuid], Matches: points}
 		if series.HasEvents() {
@@ -292,6 +296,30 @@ func (s *TeammatesService) buildSquadFirstBlood(
 		return nil
 	}
 	return out
+}
+
+// squadFirstBloodMeta indexe carte/mode/date par match_id pour le tooltip du
+// chart « premier frag / première mort » (DEC-4). MapUI est déjà résolu sur
+// SquadMatchRow (Q30, enrichSquadMatchAssets tourne avant l'appel — cf.
+// teammates_service.go) ; ModeUI réutilise squadModeUI, le résolveur canonique
+// déjà partagé avec SquadMatchHistoryRow (teammates_service_assets.go) — ne
+// pas dupliquer sa logique pair-sinon-variant. allSquadRows porte plusieurs
+// lignes par match (une par coéquipier) : première occurrence retenue, comme
+// firstBloodScope ci-dessous (les métadonnées de match sont invariantes par
+// coéquipier).
+func squadFirstBloodMeta(rows []domain.SquadMatchRow) map[string]domain.FirstBloodMatchMeta {
+	meta := make(map[string]domain.FirstBloodMatchMeta, len(rows))
+	for _, m := range rows {
+		if _, ok := meta[m.MatchID]; ok {
+			continue
+		}
+		meta[m.MatchID] = domain.FirstBloodMatchMeta{
+			MapUI:     m.MapUI,
+			ModeUI:    squadModeUI(m),
+			StartTime: m.StartTime,
+		}
+	}
+	return meta
 }
 
 // firstBloodScope dérive le périmètre du chart « premier frag / première mort » :

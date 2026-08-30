@@ -135,6 +135,13 @@ type Options struct {
 	// les couples de `killpos.go`. L'appelant décode, résout le pictogramme du titre, fournit.
 	// Absente = rejeu dont les lignes de mort neutres gardent leur repère générique.
 	NeutralDeaths []NeutralDeath
+	// Kills : les frags/assistances RÉSOLUS EN IDENTITÉ pour la jointure avec les épisodes
+	// d'état actif (camo, surbouclier — cf. equipment_episode_kills.go). Entrée de DONNÉES
+	// comme NeutralDeaths, MÊME RAISON : la source de dégât/crédit a un seul propriétaire
+	// dans le dépôt (`killsource`), et le redécoder ici en ferait un second décodeur du même
+	// fait. `Kills.Read=false` (repli zéro) publie `Coverage.Equipment.KillsRead=false` —
+	// jamais un `EquipmentEpisode.K/A` à zéro qui se lirait comme une mesure.
+	Kills KillsInput
 	// FilmClockOriginUS est l'horodatage moteur du PREMIER PAQUET du film, c'est-à-dire le
 	// zéro de l'horloge sur laquelle les highlight events sont datés (cf. origin.go). Entrée
 	// de DONNÉES, comme Loadouts et Deaths. Zéro = origine incalculable : le document ne
@@ -458,11 +465,16 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 		slog.Warn("rejeu : lectures camo NON BINAIRES ignorees — l'interrupteur mesure ne connait que 0 et 4095",
 			"lectures", camoNonBinary)
 	}
+	// Les FRAGS SOUS EFFET ACTIF : jointure des episodes avec les kills resolus par
+	// l'appelant (cf. equipment_episode_kills.go). AVANT la couverture, qui publie
+	// killsRead a cote des compteurs.
+	killsRead := attachAllEquipmentKills(doc.EquipmentEpisodes, opt.Kills, own.SlotXUID, doc.OriginMs, interval)
 
 	doc.Coverage = buildCoverage(shotCov, grenCov, objCov, own, doc.OriginMs != nil, scoreCov)
 	// La couverture des episodes d'equipement se publie AVEC eux : « N episodes » sans
 	// « sur M vies » se lirait comme une exhaustivite.
 	doc.Coverage.Equipment = equipmentCoverage(doc.EquipmentEpisodes, doc.Tracks)
+	doc.Coverage.Equipment.KillsRead = killsRead
 	// Les TRACTIONS de grappin : fenetre mesuree par vie + ancre en coordonnees monde
 	// (cf. grapple_lines.go). L'ancre exige les bornes de la carte : sans MapQuant,
 	// aucune traction (regle map_bounds.go — pas de bornes, pas de coordonnee monde).

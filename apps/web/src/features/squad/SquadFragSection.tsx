@@ -17,7 +17,7 @@ import { formatMessage } from '@/lib/i18n/format'
 import { fragsManifest } from '@/lib/i18n/generated/frags'
 import type { FragClassEntry, SquadWeaponAccuracy, SquadWeaponKills } from '@/lib/api/types'
 import { buildFragBreakdownOption } from './charts/squadFragBreakdownChart'
-import { buildSquadFragTools, SQUAD_TOOLS_TOP_GUNS } from './charts/squadFragTools'
+import { buildSquadFragTools, SQUAD_TOOLS_TOP_DETAILS, SQUAD_TOOLS_TOP_GUNS } from './charts/squadFragTools'
 import { SquadWeaponKillsChart } from './SquadWeaponKillsChart'
 import { SquadWeaponAccuracyBarsChart } from './SquadWeaponAccuracyBarsChart'
 import type { SquadText } from './i18n'
@@ -76,16 +76,20 @@ export function SquadFragSection({
 
   // « Outils de destruction » = version multi-joueurs de buildFragDetailBreakdown :
   // armes gun (top-N) + détail Assassinat/Corps-à-corps/Coup au sol/Charge spartane/
-  // Grenade tiré de frag_classes, SANS « Spartan »/unattributed.
+  // Grenade tiré de frag_classes, SANS « Spartan »/unattributed. Le détail a son PROPRE
+  // plafond (top-N + « Autres frags ») : sans lui les micro-lignes noyaient les 8 armes.
   const weaponTools = useMemo(
     () =>
       buildSquadFragTools(weaponKills, fragClassesByPlayer, {
         roleLabel: (r) => formatMessage(fragsManifest, `frags.role.${r}` as never, locale),
         classLabel: (c) => formatMessage(fragsManifest, `frags.class.${c}` as never, locale),
+        locale,
         otherWeaponsLabel: t.weaponKills.otherWeapons,
+        otherKillsLabel: t.weaponKills.otherKills,
         topGuns: SQUAD_TOOLS_TOP_GUNS,
+        topDetails: SQUAD_TOOLS_TOP_DETAILS,
       }),
-    [weaponKills, fragClassesByPlayer, locale, t.weaponKills.otherWeapons],
+    [weaponKills, fragClassesByPlayer, locale, t.weaponKills.otherWeapons, t.weaponKills.otherKills],
   )
 
   // Carte « Répartition des frags » définie UNE seule fois (≤ 2 copies), puis

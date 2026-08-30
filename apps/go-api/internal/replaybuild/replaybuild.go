@@ -205,12 +205,18 @@ func (b *Builder) BuildBytes(matchID string, mapNames []string, filmDir string, 
 	// c'est cet ordre qui donne son sens à `zoneStates[].zoneRef` (cf. zones.go). Aucune zone =
 	// aucun balayage de `ti=13`, donc aucun coût sur les modes qui n'en ont pas.
 	zones, zoneRoles := b.matchZones(matchID, facts.MapID, facts.GameVariantName)
+	// UN SEUL décodage killsource par match : neutralDeaths ET killRefs (cf. kills.go) en
+	// dérivent tous les deux, pour ne payer qu'UNE fois le verrou filmdec partagé avec
+	// `replay.BuildFromFilm` — au lieu de deux, comme avant la jointure des frags sous
+	// effet actif (PLAN_RETOURS_UTILISATEUR_2026-08-29 §LOT F.1).
+	ksRes := b.decodeKillSource(matchID, filmDir)
 	doc, err := replay.BuildFromFilm(matchID, b.titleSlug, filmDir, replay.Options{
 		FrameIntervalMS: b.interval,
 		Geometry:        b.geometry,
 		Structure:       b.structureFor(entry.Module),
 		Labels:          b.labels,
-		NeutralDeaths:   b.neutralDeaths(matchID, filmDir),
+		NeutralDeaths:   b.neutralDeaths(matchID, ksRes),
+		Kills:           b.killRefs(matchID, filmDir, ksRes),
 		Objectives:      stats.objectives,
 		Score:           stats.score,
 		Flag:            stats.flag,
@@ -270,36 +276,30 @@ func (b *Builder) BuildMatch(matchID string, mapNames []string, filmDir string, 
 		Bytes: surDisque.bytes}, nil
 }
 
-// neutralDeaths décode les morts que PERSONNE ne revendique et rend les entrées d'artefact
-// déjà résolues (type de mort + pictogramme du titre).
+// neutralDeaths rend les entrées d'artefact déjà résolues (type de mort + pictogramme du
+// titre) pour les morts que PERSONNE ne revendique, à partir d'un décodage killsource DÉJÀ
+// FAIT (cf. decodeKillSource, kills.go) — ce fichier ne décode plus rien lui-même depuis le
+// lot F.1 (jointure des frags sous effet actif), qui a besoin du MÊME `*killsource.Result`.
 //
-// POURQUOI CE DÉCODAGE-CI VIT ICI, ET PAS DANS `analysis/replay`. La source du dégât fatal se
-// lit dans le composant dead-state du film, et ce décodage a UN seul propriétaire dans le dépôt
-// (`film/killsource`, avec ses golden et ses ancres Theater). `analysis/` est title-agnostic et
-// n'a pas à le connaître ; ce paquet, lui, est la couche d'ASSEMBLAGE — il compose déjà les
-// libellés du titre de la même façon. Deux décodeurs du même fait divergeraient.
+// POURQUOI CE DÉCODAGE-CI VIT DANS `replaybuild`, ET PAS DANS `analysis/replay`. La source du
+// dégât fatal se lit dans le composant dead-state du film, et ce décodage a UN seul
+// propriétaire dans le dépôt (`film/killsource`, avec ses golden et ses ancres Theater).
+// `analysis/` est title-agnostic et n'a pas à le connaître ; ce paquet, lui, est la couche
+// d'ASSEMBLAGE — il compose déjà les libellés du titre de la même façon. Deux décodeurs du
+// même fait divergeraient.
 //
-// DEUX ACQUISITIONS DU VERROU filmdec, ET C'EST VOULU : `killsource.Decode` prend et rend le
-// verrou process, puis `replay.BuildFromFilm` le reprend. Ce sont deux décodages complets du
-// MÊME film, chacun sérialisé de bout en bout ; c'est exactement ce que fait déjà le cycle
-// post-sync (arme du kill puis artefacts). Les enchaîner sous un seul verrou exigerait un mutex
-// réentrant, que Go n'a pas — et le contrat qui compte (« jamais deux films entrelacés dans un
-// décodage ») est tenu par chacune des deux.
+// DEUX ACQUISITIONS DU VERROU filmdec, ET C'EST VOULU : `killsource.Decode` (dans
+// decodeKillSource) prend et rend le verrou process, puis `replay.BuildFromFilm` le reprend.
+// Ce sont deux décodages complets du MÊME film, chacun sérialisé de bout en bout ; c'est
+// exactement ce que fait déjà le cycle post-sync (arme du kill puis artefacts). Les enchaîner
+// sous un seul verrou exigerait un mutex réentrant, que Go n'a pas — et le contrat qui compte
+// (« jamais deux films entrelacés dans un décodage ») est tenu par chacune des deux.
 //
 // TOUT ÉCHEC EST NON FATAL : un film dont la source de dégât ne se décode pas reste un rejeu
 // parfaitement valide, avec des lignes de mort neutres au repère générique. Le refus est
-// JOURNALISÉ, jamais avalé.
-func (b *Builder) neutralDeaths(matchID, filmDir string) []replay.NeutralDeath {
-	src, err := killsource.DirChunks(filmDir)
-	if err != nil {
-		slog.Debug("replaybuild: chunks illisibles pour la source de dégât — morts neutres sans type",
-			"err", err, "match_id", matchID)
-		return nil
-	}
-	res, err := killsource.Decode(context.Background(), matchID, src, nil)
-	if err != nil {
-		slog.Info("replaybuild: source de dégât non décodée — morts neutres sans type",
-			"err", err, "match_id", matchID)
+// JOURNALISÉ (dans decodeKillSource), jamais avalé.
+func (b *Builder) neutralDeaths(matchID string, res *killsource.Result) []replay.NeutralDeath {
+	if res == nil {
 		return nil
 	}
 	// LA MÊME PORTE QUE POUR LES KILLS : ces lignes sont nommées par la bijection indice ->

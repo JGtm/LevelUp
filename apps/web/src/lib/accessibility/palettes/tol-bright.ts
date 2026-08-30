@@ -144,6 +144,24 @@ export const tolBrightPalette: Palette = {
   //  labels disambiguent pour les daltoniens)
   ...ENCOUNTER_BADGE_COLORS,
 
+  // ── Classes de frags — famille dédiée (2026-08-29) ─────────────────────────
+  // Même motif que sur les autres palettes : 11 classes > 7 teintes Bright, on
+  // puise dans les schémas Muted et Vibrant du même auteur (mêmes garanties CVD),
+  // comme le font déjà squad-player-* et narrative-*. Garde-rail par palette :
+  // fragClass.guard.test.ts (ΔE ≥ 8 ici).
+  'frag-shoulder':        TOL_CYAN,           // cyan
+  'frag-sidearm':         TOL_GREEN,          // vert
+  'frag-heavy':           TOL_PURPLE,         // pourpre
+  'frag-melee':           TOL_RED,            // rouge rosé
+  'frag-grenade':         TOL_YELLOW,         // jaune
+  'frag-spartan-ability': TOL_BLUE,           // bleu
+  'frag-vehicle':         '#332288',          // Tol Muted Indigo — indigo profond
+  'frag-turret':          TOL_VIBRANT_ORANGE, // orange brûlé
+  'frag-equipment':       TOL_MUTED_WINE,     // wine — écho du fuchsia du défaut
+  'frag-environmental':   '#004488',          // Tol High-contrast Blue — bleu profond
+  //                       (le Vibrant Blue #0077BB valait ΔE 4,2 contre TOL_BLUE)
+  'frag-unattributed':    NEUTRAL_GREY,       // gris neutre (résidu)
+
   // ── Heatmaps ────────────────────────────────────────────────────────────────
   'heatmap-cold':           TOL_RED,
   'heatmap-hot':            TOL_BLUE,
