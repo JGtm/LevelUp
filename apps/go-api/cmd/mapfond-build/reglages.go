@@ -60,6 +60,10 @@ type reglageCarte struct {
 	SubstitutionSansPortee bool `json:"substitutionSansPortee,omitempty"`
 	// CombleTrous : poser un aplat de sol suppose dans les trous des zones nommees.
 	CombleTrous bool `json:"combleTrous,omitempty"`
+	// CombleZonesEntieres : combler AUSSI les vides OUVERTS des zones nommees, pas seulement les
+	// trous fermes. Version refutee sur Illusion le 2026-08-26 (611 959 cellules d aplat), rearmee
+	// par carte apres verdict visuel. Voir himap.CombleZonesEntieres.
+	CombleZonesEntieres bool `json:"combleZonesEntieres,omitempty"`
 	// CombleAuMaillage : peindre le sol suppose dans toute l emprise du maillage de navigation
 	CombleAuMaillage bool `json:"combleAuMaillage,omitempty"`
 	// RogneAuxComposantesAncrees : effacer les amas de matiere sans ancre, hors silhouette jouee
@@ -857,4 +861,19 @@ func chargePositionsJouees(chemin string) map[string][]himap.PositionJouee {
 	}
 	slog.Info("mapfond: catalogue des positions jouees charge", "cartes", len(out), "path", chemin)
 	return out
+}
+
+// combleZonesEntieresDe dit si cette carte comble AUSSI ses vides ouverts. Journalisé : c'est le
+// levier qui avait noyé Illusion, il ne doit jamais s'armer en silence.
+func (e *environnement) combleZonesEntieresDe(cle string) bool {
+	if e.reglages == nil {
+		return false
+	}
+	c, ok := e.reglages.Cartes[cle]
+	if !ok || !c.CombleZonesEntieres {
+		return false
+	}
+	slog.Info("mapfond: comblement des vides OUVERTS arme pour cette carte (refute sur Illusion)",
+		"carte", cle, "gateLe", c.GateLe)
+	return true
 }

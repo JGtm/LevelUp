@@ -223,3 +223,37 @@ func (r *Rendu) SolSuppose(i, j int) bool {
 	}
 	return r.solSuppose[j*r.NX+i]
 }
+
+// CombleZonesEntieres pose l'aplat de sol suppose sur TOUTES les cellules vides du masque, que
+// le vide soit ferme ou ouvert sur l'exterieur. Rend le nombre de cellules marquees.
+//
+// C'EST LA VERSION REFUTEE LE 2026-08-26, REARMEE EN OPTION PAR CARTE — et il faut savoir
+// pourquoi avant de s'en servir. Comblee sur tout vide du masque DILATE, elle avait pose
+// 611 959 cellules d'aplat sur Illusion et noye l'arene sous des dalles grises. La regle des
+// trous fermes (`CombleTrous`) est nee de cet echec et reste le defaut.
+//
+// CE QUI LA RAMENE : le verdict utilisateur du 2026-08-30 sur Behemoth, Fragmentation,
+// Highpower et Oasis — « il y a toujours du fond transparent au milieu ». Sur ces cartes le vide
+// central COMMUNIQUE avec l'exterieur (l'anneau de Behemoth est perce par ses huit branches),
+// l'inondation venue des bords y entre, et `CombleTrous` le laisse donc intact : 23 505 cellules
+// comblees seulement. Ce n'est pas un mauvais reglage, c'est la definition du levier.
+//
+// DEUX GARDE-FOUS CONTRE LE NAUFRAGE D'ILLUSION. Le masque passe ici doit etre celui des zones
+// NON DILATE — une zone nommee est du terrain joue par construction, sa dilatation ne l'est pas.
+// Et le compte est publie au sidecar comme pour `CombleTrous` : un aplat qu'on ne compte pas est
+// un mensonge qui grandit sans qu'on le voie. A n'armer que carte par carte, apres avoir REGARDE
+// l'image.
+func (r *Rendu) CombleZonesEntieres(masque []bool) int {
+	comble := 0
+	for k := range r.z {
+		if !math.IsInf(r.z[k], -1) || k >= len(masque) || !masque[k] {
+			continue
+		}
+		if r.solSuppose == nil {
+			r.solSuppose = make([]bool, len(r.z))
+		}
+		r.solSuppose[k] = true
+		comble++
+	}
+	return comble
+}

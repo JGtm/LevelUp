@@ -1124,8 +1124,9 @@
       "carte": "Behemoth",
       "style": "encre",
       "combleTrous": true,
-      "raison": "ENTREE CREEE le 2026-08-30 pour porter le FOND BLANC DANS LA SILHOUETTE, demande par l utilisateur par selection sur planche a cocher. Cette carte native n avait aucun reglage jusqu ici : son fond sortait de la chaine telle quelle, ce qui explique qu elle n en ait jamais eu besoin. `combleTrous` peint un sol suppose dans les trous INTERIEURS seulement — la silhouette reste celle que le rendu a dessinee, il ne deborde jamais.",
-      "gateLe": "2026-08-30"
+      "raison": "COMBLEMENT DES VIDES OUVERTS arme le 2026-08-30 : l utilisateur signale « il y a toujours du fond transparent au milieu » apres le fond blanc. CAUSE ETABLIE PAR LECTURE DU CODE, pas par essai : `CombleTrous` inonde le vide depuis les bords de l image et ne comble que ce que l inondation n atteint PAS. Ici le vide central COMMUNIQUE avec l exterieur — l anneau de Behemoth est perce par ses huit branches — donc l inondation y entre et le vide reste. RISQUE ASSUME ET DATE : cette regle est celle qui avait noye Illusion le 2026-08-26 (611 959 cellules d aplat). Deux garde-fous : le masque utilise est celui des zones NON DILATE, et le compte part au sidecar. A regarder a l image avant de garder. ENTREE CREEE le 2026-08-30 pour porter le FOND BLANC DANS LA SILHOUETTE, demande par l utilisateur par selection sur planche a cocher. Cette carte native n avait aucun reglage jusqu ici : son fond sortait de la chaine telle quelle, ce qui explique qu elle n en ait jamais eu besoin. `combleTrous` peint un sol suppose dans les trous INTERIEURS seulement — la silhouette reste celle que le rendu a dessinee, il ne deborde jamais.",
+      "gateLe": "2026-08-30",
+      "combleZonesEntieres": true
     },
     "ctf_breaker": {
       "carte": "Breaker",
@@ -1138,22 +1139,25 @@
       "carte": "Fragmentation",
       "style": "encre",
       "combleTrous": true,
-      "raison": "ENTREE CREEE le 2026-08-30 pour porter le FOND BLANC DANS LA SILHOUETTE, demande par l utilisateur par selection sur planche a cocher. Cette carte native n avait aucun reglage jusqu ici : son fond sortait de la chaine telle quelle, ce qui explique qu elle n en ait jamais eu besoin. `combleTrous` peint un sol suppose dans les trous INTERIEURS seulement — la silhouette reste celle que le rendu a dessinee, il ne deborde jamais.",
-      "gateLe": "2026-08-30"
+      "raison": "COMBLEMENT DES VIDES OUVERTS arme le 2026-08-30 : l utilisateur signale « il y a toujours du fond transparent au milieu » apres le fond blanc. CAUSE ETABLIE PAR LECTURE DU CODE, pas par essai : `CombleTrous` inonde le vide depuis les bords de l image et ne comble que ce que l inondation n atteint PAS. Ici le vide central COMMUNIQUE avec l exterieur — l anneau de Behemoth est perce par ses huit branches — donc l inondation y entre et le vide reste. RISQUE ASSUME ET DATE : cette regle est celle qui avait noye Illusion le 2026-08-26 (611 959 cellules d aplat). Deux garde-fous : le masque utilise est celui des zones NON DILATE, et le compte part au sidecar. A regarder a l image avant de garder. ENTREE CREEE le 2026-08-30 pour porter le FOND BLANC DANS LA SILHOUETTE, demande par l utilisateur par selection sur planche a cocher. Cette carte native n avait aucun reglage jusqu ici : son fond sortait de la chaine telle quelle, ce qui explique qu elle n en ait jamais eu besoin. `combleTrous` peint un sol suppose dans les trous INTERIEURS seulement — la silhouette reste celle que le rendu a dessinee, il ne deborde jamais.",
+      "gateLe": "2026-08-30",
+      "combleZonesEntieres": true
     },
     "btb_highpower": {
       "carte": "Highpower Heavies",
       "style": "encre",
       "combleTrous": true,
-      "raison": "ENTREE CREEE le 2026-08-30 pour porter le FOND BLANC DANS LA SILHOUETTE, demande par l utilisateur par selection sur planche a cocher. Cette carte native n avait aucun reglage jusqu ici : son fond sortait de la chaine telle quelle, ce qui explique qu elle n en ait jamais eu besoin. `combleTrous` peint un sol suppose dans les trous INTERIEURS seulement — la silhouette reste celle que le rendu a dessinee, il ne deborde jamais.",
-      "gateLe": "2026-08-30"
+      "raison": "COMBLEMENT DES VIDES OUVERTS arme le 2026-08-30 : l utilisateur signale « il y a toujours du fond transparent au milieu » apres le fond blanc. CAUSE ETABLIE PAR LECTURE DU CODE, pas par essai : `CombleTrous` inonde le vide depuis les bords de l image et ne comble que ce que l inondation n atteint PAS. Ici le vide central COMMUNIQUE avec l exterieur — l anneau de Behemoth est perce par ses huit branches — donc l inondation y entre et le vide reste. RISQUE ASSUME ET DATE : cette regle est celle qui avait noye Illusion le 2026-08-26 (611 959 cellules d aplat). Deux garde-fous : le masque utilise est celui des zones NON DILATE, et le compte part au sidecar. A regarder a l image avant de garder. ENTREE CREEE le 2026-08-30 pour porter le FOND BLANC DANS LA SILHOUETTE, demande par l utilisateur par selection sur planche a cocher. Cette carte native n avait aucun reglage jusqu ici : son fond sortait de la chaine telle quelle, ce qui explique qu elle n en ait jamais eu besoin. `combleTrous` peint un sol suppose dans les trous INTERIEURS seulement — la silhouette reste celle que le rendu a dessinee, il ne deborde jamais.",
+      "gateLe": "2026-08-30",
+      "combleZonesEntieres": true
     },
     "btb_exiled": {
       "carte": "Oasis",
       "style": "encre",
       "combleTrous": true,
-      "raison": "ENTREE CREEE le 2026-08-30 pour porter le FOND BLANC DANS LA SILHOUETTE, demande par l utilisateur par selection sur planche a cocher. Cette carte native n avait aucun reglage jusqu ici : son fond sortait de la chaine telle quelle, ce qui explique qu elle n en ait jamais eu besoin. `combleTrous` peint un sol suppose dans les trous INTERIEURS seulement — la silhouette reste celle que le rendu a dessinee, il ne deborde jamais.",
-      "gateLe": "2026-08-30"
+      "raison": "COMBLEMENT DES VIDES OUVERTS arme le 2026-08-30 : l utilisateur signale « il y a toujours du fond transparent au milieu » apres le fond blanc. CAUSE ETABLIE PAR LECTURE DU CODE, pas par essai : `CombleTrous` inonde le vide depuis les bords de l image et ne comble que ce que l inondation n atteint PAS. Ici le vide central COMMUNIQUE avec l exterieur — l anneau de Behemoth est perce par ses huit branches — donc l inondation y entre et le vide reste. RISQUE ASSUME ET DATE : cette regle est celle qui avait noye Illusion le 2026-08-26 (611 959 cellules d aplat). Deux garde-fous : le masque utilise est celui des zones NON DILATE, et le compte part au sidecar. A regarder a l image avant de garder. ENTREE CREEE le 2026-08-30 pour porter le FOND BLANC DANS LA SILHOUETTE, demande par l utilisateur par selection sur planche a cocher. Cette carte native n avait aucun reglage jusqu ici : son fond sortait de la chaine telle quelle, ce qui explique qu elle n en ait jamais eu besoin. `combleTrous` peint un sol suppose dans les trous INTERIEURS seulement — la silhouette reste celle que le rendu a dessinee, il ne deborde jamais.",
+      "gateLe": "2026-08-30",
+      "combleZonesEntieres": true
     },
     "btb_engine": {
       "carte": "Scarr",
