@@ -115,3 +115,17 @@ commit sur une branche dédiée.
   `ecs_table.tsv` : INCHANGÉ (déjà juste, ti ≤ 49). Goldens killsource : sortie publiée
   inchangée (98 kills, accord 85/0, ancres, contrôle négatif), 4 compteurs de diagnostic ±1,
   régénérés. Détail : `film_re/NOTE_COMPTE_REGISTRE_2026-08-30.md`.
+- **[2026-08-30] Lot 1 : OUVERT `[ ]`, trois acquis mesurés** (même branche/worktree,
+  instruments `lot1_familles_trame_research_test.go`, témoin `000d5950`) :
+  (1) confirmation positive du modèle de trame — les familles se décodent au décodeur de
+  production, L1-C1 TENU pour 0xD2, 0xD3 à 2 pts sous le seuil, publié ; les trames 0xD2/0xD3
+  commencent TOUTES par un record **DEL d'une entité transitoire** (projectile probable), et
+  0xD3 rend 47 slots distincts (recoupe les « 50 » du lot D sans étape commune) ;
+  (2) les familles « vides » (0xC0…) portent leurs records dans les **vues 2/3** (prédiction
+  tenue sur 0xC0 : 100 % ≥ 2 vues) — réserve : l'inférence multi-vues lit au-delà du payload ;
+  (3) **l'amorce varie par famille** : k=2 pour 0xA0 (témoin), k=6 pour 0xC2 (99,3 %), k=8
+  pour 0xD2 (86,2 %, NET) — un en-tête supplémentaire propre aux familles à bit 2 = 1.
+  RESTE (ordre écrit dans la note) : sémantique de l'en-tête (piste Ghidra : 2e grammaire du
+  record-loop, global `DAT_14474cd78`, largeur d'id dépendant du bit de configuration),
+  re-balayage à plus de chunks pour les NON CONCLUANT, puis décodage des records suivants et
+  confrontation au golden killsource. Détail : `film_re/NOTE_FAMILLES_TRAME_2026-08-30.md`.
