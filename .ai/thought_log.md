@@ -2939,6 +2939,47 @@ autres fichiers plutot que d'editer a deux mains.
 Le lot Oddball se lance des qu'on veut ; recuperer d'abord les 19 films manquants rendrait le
 controle sur moities disjointes solide au lieu d'etre tenu par 3 contre 4.
 
+## [2026-08-27] Lot G (RE-LECTEUR) — angle « lecteur/ecrivain du jeu » sur le corps type-2 : exhaustion mappee, levier positif localise — Complete
+
+Statut : Complete (phase LIRE / reconnaissance Ghidra ; aucune mesure ; livrable = journal RE).
+Branche : wt/re-lecteur (worktree LevelUp-wt-re-lecteur, base b14140106).
+
+Contexte. L'utilisateur a LEVE la borne d'arret R7-e pour un angle precis : puisque le jeu ne
+relit jamais le payload type-2 (etabli par R6), remonter le format par le CODE de serialisation
+lui-meme plutot que de mesurer une grammaire portee a l'aveugle. Ghidra en lecture seule (API HTTP
+du plugin, ~16 fonctions decompilees, vtable 0x1436a87e0 lue octet a octet).
+
+Decision technique. Ne pas re-porter/re-mesurer : d'abord CARTOGRAPHIER tous les serialiseurs
+d'etat complet du binaire (via les xrefs de la portee pleine precision DAT_144e61ea0), puis
+attribuer chacun a son role, avant de conclure quoi que ce soit sur type-2.
+
+Resultats observes.
+1. FUN_142f2e174, appele « encodeur de snapshot » par R6/R7-d, est en realite le constructeur de
+   la liste de REFERENCE/priorite de la vue de replication : il ecrit l'en-tete 64 bits
+   ([gen:2][flags:2][slot:13] id + priorite FLOAT via FUN_143138d30) mais AUCUN corps de composant.
+   C'est l'explication de l'enigme depuis R5 (l'en-tete decode, le corps jamais).
+2. Trois familles d'etat complet mappees : A = baseline RESEAU (78 Mo, 3 vues, /20 s ; c'est ce
+   que R7-e a porte), B = lecteur NEW masque (FUN_14076cb60), C = reconstruction playback
+   (grammaire NEW, le buffer keyframe_buffer_live.bin). Les DEUX seules grammaires de composants du
+   binaire (masquee-NEW, refutee par R5 ; plate-64-sans-masque, refutee par R7-e) sont TOUTES DEUX
+   deja refutees pour type-2. La suspicion R6 (« l'ecrivain n'est pas dans ce binaire ») devient
+   une exhaustion enumeree.
+3. LEVIER POSITIF : l'ecrivain NEW du flux type-0 est localise (en-tete FUN_142f2c754, corps
+   FUN_142e35a58, via FUN_142f303bc au slot vtable +0x18). C'est le miroir ecriture des
+   deserialiseurs NEW de R5, jamais confronte a eux. Bonus : le miroir ecriture de la famille A
+   (FUN_142e2d6d4, tableau plat de 64 ptr, vtable[0x18] direct) prouve que « ordre de table /
+   niveau » de R7-e etaient des artefacts du cote LECTURE.
+
+Conclusion / prochaine etape. L'angle « lire le lecteur/ecrivain du type-2 » est epuise SANS
+grammaire de corps type-2 : elle n'est pas dans HaloInfinite.exe. La reprise utile n'est plus le
+type-2 (que le jeu ignore) mais le flux type-0 que le jeu utilise vraiment : valider les
+deserialiseurs NEW de R5 contre leur ecrivain FUN_142e35a58 largeur pour largeur (methode R7-d),
+avec l'oracle jamais consomme kf_capture_sample.txt (400 frontieres de records EXACTES). Detail
+complet : WALK_PORT_NOTES section « LE LECTEUR/ECRIVAIN DU JEU » ; ligne de registre datee. Rien
+publie, aucun SchemaVersion touche, aucun fichier Go modifie.
+
+---
+
 ## [2026-08-27] Sons : les ZONES sonnent (capture en cours, domination, colline), et la mesure video du translocateur ECHOUE — Complete
 
 **Contexte** : l'utilisateur designe deux sons a l'oreille (Zone 15 = capture adverse, Zone 17 =
