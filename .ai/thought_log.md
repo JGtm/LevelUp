@@ -78305,3 +78305,33 @@ puissance mesuree) · **bit a offset relatif dans un composant (ce lot)**.
 `filmdec/offline_aim.go` a du etre recopiee faute d'export — exporter la constante, ou mieux
 exposer un `filmdec.BipedComponentWalk` rendant les couples (index, StartBit), eviterait une
 troisieme copie (regle des <= 2 copies du depot).
+
+## [2026-08-30] Visee lunette — DECISION : trancher par CHEAT ENGINE le 31/08 (protocole ecrit et pret) — En attente d'execution
+
+**Decision utilisateur** : plutot que d'annoter d'autres films pour gagner de la puissance
+statistique, faire une CAPTURE VIVANTE. C'est le bon appel, et cela rend les six canaux restants
+inutiles a explorer.
+
+**Pourquoi c'est decisif** : l'adresse de l'etat de zoom est CONNUE (unite+0x461 courant,
+unite+0x462 desire, valeurs -1/0/1/2). Un point d'arret EN ECRITURE sur cet octet, pendant que
+Theater rejoue le film, fait dire au jeu lui-meme QUELLE FONCTION l'ecrit. Les trois candidats sont
+deja identifies et chacun porte un verdict tranche :
+- `FUN_1406db688` (applique la commande joueur, `unite+0x462 = commande[6]`) -> les commandes SONT
+  rejouees depuis le film ; il reste a trouver le champ porteur ;
+- `FUN_14110ec20` (applicateur de l'evenement `unit_zoom`) -> un evenement existe malgre 41 M de
+  paquets recenses sans lui — le recensement serait a refaire ;
+- `FUN_1404a4ab8` (transition locale courant -> desire, appelee par le tick d'unite) -> reconstruit
+  cote client, question CLOSE.
+
+**Le controle le plus informatif du protocole** : refaire la recherche sur un JOUEUR DISTANT
+(Madina97294, zoomee sur {45 ; 46,3} et quasiment pas ailleurs). Si son octet suit SA propre
+chronologie pendant le rejeu, l'etat existe par joueur et vient donc du film ; s'il reste a -1 alors
+que l'observe varie, le zoom n'existe que pour l'unite observee et la question est definitivement
+close.
+
+**Protocole ecrit, clef en main** : `.ai/V7.5/PROTOCOLE_CE_ZOOM_2026-08-31.md` (4 etapes, pieges,
+suites selon chacun des trois verdicts). Precedent d'usage de CE dans ce chantier : la mesure du
+cout en bits du composant de position (« total i0 = 47 bits », cf. `filmdec/offline_aim.go`).
+
+**Regle rappelee dans le protocole** : une capture CE n'est pas reproductible plus tard — adresses,
+instructions ecrivantes et pile d'appels doivent entrer au thought_log le jour meme.
