@@ -78257,3 +78257,51 @@ releve Theater DENSE (3-4 min, episodes longs) qui redonnerait de la puissance a
 et couvrirait i5/i32/i35, soit (B) le repli produit deja recommande en phase 7 : piloter le cone
 du rejeu par heuristique client (arme a lunette tenue + reticule sur cible), affichee comme
 estimation.
+
+## [2026-08-30] Visee lunette — VERIFICATION PILOTE du lot F, et identification du VRAI facteur limitant : le volume de verite terrain — En cours
+
+**Verification sur pieces (rejeu integral de l'instrument par le pilote, film 00162144)** : le CR du
+lot F est EXACT. Piege de lecture a signaler pour la suite — les verdicts se lisent PAR VARIANTE, et
+deux variantes voisines ne disent pas la meme chose :
+- `D1 COMPLET` (138 couples) et `D3 ETAT` : **NON CONCLUANT**, puissance 4,75 % / 2,03 % / 4,18 %
+  — sous le nombre d'hypotheses la puissance s'effondre, aucun negatif n'en est tirable ;
+- composants ISOLES `i0`, `i1`, `i21`, `i25` : **NEGATIF adosse a une puissance mesuree a 0,00 %**
+  (un canal parfait, et meme a 0,95, y serait detecte).
+Le resultat central porte bien sur **i25 `unit-command-tick-component`**, DESIGNE par le
+raisonnement d'elimination de la phase 7 (l'octet 6 de la commande joueur) et non choisi pour son
+score : aucun de ses 10 bits ne porte l'etat de lunette, puissance 0,00 %.
+
+**Couverture verifiee (F5) : 15 491 records marches, 100,00 % traverses en entier, 64 451
+composants annonces = 64 451 consommes.** Le negatif porte donc sur le RECORD ENTIER, pas sur un
+fragment — l'angle mort redoute (« la marche s'arrete au premier composant non modelise ») n'existe
+pas sur ce corpus. C'est une mesure neuve et elle vaut au-dela de ce chantier.
+
+**CE QUI RESTE NON COUVERT, ET C'EST LE VRAI FACTEUR LIMITANT** : sur 7 composants recevables,
+3 (`i5`, `i32`, `i35`) n'ont PAS ete conclus faute d'echantillons — moins de 30 records dans la
+classe « zoome ». Et la classe « zoome » entiere ne pese que **36 echantillons contre 1 563**
+(garde 1,2 s) ou 90 contre 1 899 (garde 0,5 s), parce qu'UN SEUL film est annote et que les bandes
+de garde mangent 4 des 6 episodes. Le facteur limitant n'est plus le decodeur : **c'est le volume
+de verite terrain.**
+
+**BILAN DES SEPT CANAUX** (tous mesures, aucun positif) : composant du registre · queue d'i21
+constante · evenement dedie (deux structures independantes) · tete du record de degat · alignement
+d'un type d'evenement (refute par translation) · bit a position fixe (1024 bits, 7 variantes,
+puissance mesuree) · **bit a offset relatif dans un composant (ce lot)**.
+
+**CE QUI DEBLOQUERAIT** (par ordre de rendement) :
+1. **Plus de verite terrain** : 2 ou 3 films annotes de plus, ou davantage d'episodes sur le meme
+   film, redonneraient de la puissance au domaine complet ET aux 3 composants non conclus. C'est
+   l'action a plus fort rendement et elle ne depend que de l'utilisateur (releve Theater).
+2. **Lot 3 du plan `PLAN_PERCER_TRAME_FILM_2026-08-30.md`** (compte du registre, 118 vs 50 blocs) :
+   si l'inventaire des composants s'avere incomplet, plusieurs « ce composant n'existe pas » du
+   chantier tombent et la question se rouvre — c'est ecrit dans le plan.
+3. **Tags d'armes du jeu** (angle utilisateur, jamais exploite) : le niveau de zoom appartient a
+   l'ARME. Le tag d'arme declare ses paliers de grossissement — cela ne dit pas QUAND un joueur
+   zoome, mais donne le QUOI (combien de crans, quel facteur), de quoi dimensionner le cone du
+   rejeu correctement le jour ou l'etat sera disponible, et de quoi alimenter une heuristique
+   honnete en attendant.
+
+**Demande du lot F non traitee (dette notee, hors perimetre)** : `i0TailBits` de
+`filmdec/offline_aim.go` a du etre recopiee faute d'export — exporter la constante, ou mieux
+exposer un `filmdec.BipedComponentWalk` rendant les couples (index, StartBit), eviterait une
+troisieme copie (regle des <= 2 copies du depot).
