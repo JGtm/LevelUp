@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "module": "d5c5eb4f-0dcb-4677-a866-eae0dcbfde9b",
+  "mapNames": [
+    "Insolence",
+    "insolence_map"
+  ],
+  "image": "d5c5eb4f-0dcb-4677-a866-eae0dcbfde9b.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-30T12:15:35.9731125Z",
+  "style": "encre",
+  "calibration": {
+    "metersPerPixel": 0.05905832036336263,
+    "originX": -66.81725017166139,
+    "originY": 65.67221881230674,
+    "widthPx": 2358,
+    "heightPx": 2224,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 38,
+    "anchorsInFrame": 38,
+    "anchorsWithGround": 38,
+    "anchorMedianGapM": -0.012291688945488488,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 64.91003509521484,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.4117843922736353,
+    "covered": true,
+    "cellsSubstituted": 2834539,
+    "forgeObjects": 5376,
+    "forgeObjectsDrawn": 5237,
+    "forgeObjectsWithoutModel": 84,
+    "forgeDeathVolumes": 55
+  }
+}

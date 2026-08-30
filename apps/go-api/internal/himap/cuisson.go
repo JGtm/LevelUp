@@ -18,9 +18,17 @@
 //	eau       volumes sddt (PoseEau)                             tag de la carte
 //	niveau    mediane des ancres moins AncrageDecalageSol        ancres
 //
-// AUCUN REGLAGE PAR CARTE. C'est la propriete qui rend la chaine transferable : une seule carte
-// (Cliffhanger) possede l'oracle fort des positions de joueur, regler carte par carte serait
-// donc impossible en principe, pas seulement penible.
+// LA RECETTE EST UNIVERSELLE, SES REGLAGES NE LE SONT PLUS TOUS. Jusqu'au 2026-08-26 la chaine
+// ne portait aucun reglage par carte, et c'est ce qui la rendait transferable : une seule carte
+// (Cliffhanger) possede l'oracle fort des positions de joueur, donc regler carte par carte etait
+// impossible en principe. Le gate utilisateur du 26/08 a tranche l'inverse, et il
+// avait des images a l'appui : l'habillage (`encre` sur Cliffhanger, `jeu` sur Catalyst) et
+// l'ECHELLE (une petite arene rend une petite image, donc pixelisee a l'ecran) ; l'ECRETAGE des toits s'y est ajoute le meme jour (ecretage_toits.go).
+//
+// CE QUI RESTE INTERDIT, et c'est la vraie regle : une BRANCHE par carte dans ce paquet. Les
+// axes ci-dessus sont des ENTREES (`OptionsCuisson`), choisies en DONNEE par l'appelant,
+// avec leur raison ecrite et la date de leur gate. La chaine, elle, ne sait pas quelle carte
+// elle cuit.
 //
 // DEGRADATIONS : une carte sans tag sddt, sans volume d'eau, ou dont la frontiere exclut des
 // ancres, est SIGNALEE (journal + `BilanCuisson.Degradations`) et cuite quand meme. Jamais
@@ -70,6 +78,88 @@ type OptionsCuisson struct {
 	// SansFrontiere neutralise la coquille de mort. TEMOIN de comparaison uniquement :
 	// jamais une option de production.
 	SansFrontiere bool
+	// EcreteToits arme l ECRETAGE (ecretage_toits.go) : un pixel dont aucune surface n est a
+	// hauteur de jeu est VIDE au lieu d etre rendu. Reglage PAR CARTE, jamais un defaut — sur
+	// une carte dont les rochers hauts font l identite, il les efface.
+	EcreteToits bool
+	// PlafondArene : hauteur, en metres, au-dela de la reference locale, a partir de laquelle
+	// une surface cesse d etre tenue pour un etage joue. ZERO = `himap.PlafondArene` (6 m).
+	PlafondArene float64
+	// SansEau ecarte l habillage d eau de cette carte. Reglage PAR CARTE, et il en faut un :
+	// l eau est peinte par la BOITE ENGLOBANTE de son volume (sddt.go), donc une carte dont un
+	// volume a une grande boite recoit un grand rectangle bleu. Recharge en porte un depuis le
+	// 2026-08-10 en production. Tant que le defaut de fond n est pas instruit, l ecarter carte
+	// par carte vaut mieux que publier un aplat faux.
+	SansEau bool
+	// SubstitutionSansPortee retire la limite de PorteeAncre (25 m) de la voie de reference.
+	//
+	// LE DEFAUT QU ELLE CORRIGE, ecrit des le 2026-08-13 et non rapproche du symptome jusqu au
+	// 26/08 : la substitution ne touche que les cellules a moins de 25 m d une ancre, alors que
+	// le cadre va bien plus loin. Sur une carte dont les ancres sont groupees, les toits
+	// restent intacts des qu on s en eloigne. Elle ne VIDE jamais — contrairement a
+	// l ecretage — donc elle ne peut pas percer le sol d une carte a plusieurs niveaux.
+	SubstitutionSansPortee bool
+	// CombleTrous pose un APLAT de sol suppose sur les cellules sans matiere qui tombent dans
+	// les zones nommees. Ce n est PAS une mesure : c est un aplat assume, peint autrement et
+	// compte au sidecar. Exige `ZonesNommees`.
+	CombleTrous bool
+	// CombleZonesEntieres comble AUSSI les vides ouverts des zones nommees. Voir
+	// CombleZonesEntieres — version refutee sur Illusion, rearmee par carte.
+	CombleZonesEntieres bool
+	// PlancherTranche : profondeur, en metres SOUS le niveau de jeu, en deca de laquelle la
+	// matiere n appartient plus a la carte. ZERO = `TrancheDeJeuMin` (-12 m).
+	//
+	// POURQUOI UN REGLAGE PAR CARTE (2026-08-26, Chasm). -12 m couvre les sous-sols d une
+	// arene ordinaire, mais sur une carte a gouffre il laisse entrer LE FOND DU GOUFFRE : une
+	// forme qui traverse la carte de part en part, qu aucun joueur n atteint sans mourir.
+	// Remonter le plancher la fait sortir de la tranche, sans toucher a la geometrie jouee.
+	PlancherTranche float64
+	// PlafondTranche : hauteur, en metres AU-DESSUS du niveau de jeu, au-dela de laquelle la
+	// matiere n est meme pas PROJETEE. Zero = la tranche par defaut (+28 m).
+	//
+	// A ne pas confondre avec l ecretage : celui-ci choisit, pixel par pixel, parmi les
+	// surfaces DEJA dessinees ; la tranche, elle, ecarte la geometrie avant le rendu. Sur une
+	// carte entierement couverte — Isolation, 93,9 pour cent, une arene sous voute — l ecretage
+	// ne peut rien quand la voute descend jusqu au sol joue, alors qu une tranche basse la
+	// supprime par construction.
+	PlafondTranche float64
+	// SeuilArete : voir Rendu.SeuilArete. Zero = le defaut.
+	SeuilArete float64
+	// ZonesNommees : polygones des callouts de la carte (contours + parties). Fournis, ils
+	// sont toujours MESURES (`BilanCuisson.MatiereHorsZones`) ; ils ne rognent que si
+	// `RogneAuxZones`. Vides sur une carte sans callouts — toutes les cartes Forge.
+	ZonesNommees [][][2]float64
+	// RogneAuxZones EFFACE la matiere hors des zones nommees dilatees. Reglage PAR CARTE, a
+	// ne poser qu apres avoir regarde le taux mesure.
+	RogneAuxZones bool
+	// MargeZones : dilatation du masque des zones, en metres. ZERO = `MargeMasqueZones` (4 m).
+	// Une marge large garde le mur qui borde une zone ; une marge nulle serre au ras du sol
+	// praticable. Reglage par carte : sur une carte dont des structures LONGUES frolent les
+	// zones (garde-corps, rebord de gouffre), 4 m suffit a les faire entrer.
+	MargeZones float64
+	// BoiteUtile borne la matiere a un rectangle MONDE (minX, minY, maxX, maxY). Zero = pas de
+	// bornage.
+	//
+	// C EST LE LEVIER MANUEL, et il est assume comme tel : quand aucun critere derive des
+	// fichiers ne separe ce qu on veut garder de ce qu on veut retirer, on trace la boite a la
+	// main. Il ne se justifie que par sa raison ecrite et il ne doit jamais devenir la voie
+	// normale — un rectangle ne connait pas la carte.
+	BoiteUtile [4]float64
+	// Echelle est le cote d'un pixel du fond, en metres. ZERO = `EchelleFondCarte`.
+	//
+	// POURQUOI CE N'EST PLUS UNE CONSTANTE (2026-08-26). Le cadre est propre a chaque carte,
+	// donc a echelle FIXE une petite arene rend une petite image : mesure du jour, la matiere
+	// d'Aquarius n'occupe que 506 x 336 px. Agrandie a l'ecran, elle pixelise. L'echelle est
+	// donc un reglage PAR CARTE — comme le style — et la regle qui la choisit se derive d'une
+	// taille utile minimale, elle ne se decrete pas carte par carte.
+	//
+	// Toute valeur autre que `EchelleFondCarte` change le calage publie : le sidecar porte
+	// `metersPerPixel`, les lecteurs s'y fient, et le banc de non-regression compare a
+	// 0,0920 m/px (`TestEchelleDeProductionEgaleCelleDuBanc`).
+	Echelle float64
+	// CibleCadrePx demande une echelle AUTOMATIQUE quand Echelle est nulle : voir
+	// EchellePourCadre (echelle_cible.go). Zero = echelle de production.
+	CibleCadrePx int
 }
 
 // BilanCuisson chiffre ce que la cuisson a fait. Il est publie avec l'asset : un fond de carte
@@ -102,6 +192,18 @@ type BilanCuisson struct {
 	TauxCouverture      float64
 	CarteCouverte       bool
 	CellulesSubstituees int
+	// CellulesEcretees : pixels VIDES par l ecretage des toits (voie par carte). Zero partout
+	// ailleurs — la voie de reference ne supprime jamais de matiere.
+	CellulesEcretees int
+	// MatiereHorsZones : cellules de matiere qui tombent HORS des zones nommees dilatees.
+	// MESURE, publiee meme quand on ne rogne pas — c est le chiffre qui autorise ou interdit
+	// le rognage. CellulesHorsZones est ce qui a ete reellement efface.
+	MatiereHorsZones  int
+	CellulesHorsZones int
+	// CellulesHorsBoite : matiere effacee par le bornage MANUEL (BoiteUtile).
+	CellulesHorsBoite int
+	// CellulesSolSuppose : cellules comblees par un APLAT, pas relevees. Publie au sidecar.
+	CellulesSolSuppose int
 	// PlansFrontiere / FrontiereAppliquee / CellulesEffacees : la coquille de mort declaree
 	// par la carte.
 	PlansFrontiere     int
@@ -116,6 +218,17 @@ type BilanCuisson struct {
 	ObjetsDessines   int
 	ObjetsSansModele int
 	VolumesDeMort    int
+	// ObjetsExclus : objets Forge ecartes par TypesExclus.
+	ObjetsExclus int
+	// ObjetsFilaires : objets Forge ecartes par MinceurMin (branches, lianes, herbes).
+	ObjetsFilaires int
+	// ObjetsAuPlafond : objets Forge ecartes parce que POSES trop haut (PlafondObjets).
+	ObjetsAuPlafond int
+	// ObjetsDrapeauExclu : objets Forge ecartes par leur champ de drapeaux (DrapeauxExclus).
+	ObjetsDrapeauExclu int
+	// CanevasDessinees / CanevasEcartees : instances du CANEVAS posees sous la carte Forge.
+	CanevasDessinees int
+	CanevasEcartees  int
 	// Degradations liste, en clair, ce qui a manque. Vide = chaine complete.
 	Degradations []string
 }
@@ -136,12 +249,20 @@ func CuitCarteNative(ctx context.Context, opts OptionsCuisson) (*Rendu, BilanCui
 	if len(opts.Ancres) == 0 {
 		return nil, b, ErrSansAncre
 	}
-	r := CadreSurAncres(opts.Ancres)
+	r := CadreSurAncresEchelle(opts.Ancres, EchellePourCadre(opts.Ancres, opts.Echelle, opts.CibleCadrePx))
+	r.SeuilArete = opts.SeuilArete
 	zJeu := MedianeZ(opts.Ancres) - AncrageDecalageSol
 	b.NiveauDeJeu = zJeu
 	// La tranche est TRANSLATEE AU SOL JOUE — meme regle que la chaine Forge, et pour la meme
 	// raison. Justification chiffree : cf. `TrancheDeJeu` (rendu.go).
-	r.Tranche(TrancheDeJeu(zJeu))
+	min, max := TrancheDeJeu(zJeu)
+	if opts.PlancherTranche < 0 {
+		min = zJeu + opts.PlancherTranche
+	}
+	if opts.PlafondTranche > 0 {
+		max = zJeu + opts.PlafondTranche
+	}
+	r.Tranche(min, max)
 	r.NiveauDeJeu(zJeu)
 	// La voie de reference contre les TOITS : armee avant de projeter, decidee juste apres —
 	// et AVANT la frontiere, pour que celle-ci efface sur l'image finale.
@@ -151,10 +272,21 @@ func CuitCarteNative(ctx context.Context, opts OptionsCuisson) (*Rendu, BilanCui
 	if err := peupleDepuisModule(ctx, r, &b, opts); err != nil {
 		return nil, b, err
 	}
-	b.TauxCouverture, b.CellulesSubstituees, b.CarteCouverte = r.AppliqueReference(s)
+	if opts.EcreteToits {
+		// Voie PAR CARTE, declaree en donnee : elle SUPPRIME de la matiere, ce que la voie de
+		// reference ne fait jamais. Les deux liberent les memes buffers, elles ne se cumulent pas.
+		b.TauxCouverture, b.CellulesSubstituees, b.CellulesEcretees = r.EcretteToits(s, opts.PlafondArene)
+		b.CarteCouverte = b.TauxCouverture > SeuilCouvertureEffectif()
+	} else {
+		b.TauxCouverture, b.CellulesSubstituees, b.CarteCouverte = r.AppliqueReference(s, opts.SubstitutionSansPortee)
+	}
 	appliqueFrontiere(ctx, r, &b, opts, zJeu)
+	mesureEtRogneZones(ctx, r, &b, opts)
+	borneALaBoite(ctx, r, &b, opts.BoiteUtile)
 	JugeParLesAncres(r, &b, opts.Ancres)
-	PoseEauDepuisModule(ctx, r, &b, opts.CheminModule)
+	if !opts.SansEau {
+		PoseEauDepuisModule(ctx, r, &b, opts.CheminModule)
+	}
 	slog.InfoContext(ctx, "carte cuite", "module", b.Module,
 		"instances", b.Dessinees, "decor", b.EcarteesDecor,
 		"ancres", fmt.Sprintf("%d/%d", b.AncresAvecSol, b.AncresDansLeCadre),
@@ -166,6 +298,16 @@ func CuitCarteNative(ctx context.Context, opts OptionsCuisson) (*Rendu, BilanCui
 
 // CadreSurAncres prepare un rendu borne au voisinage des ancres, a l'echelle de production.
 func CadreSurAncres(ancres [][3]float64) *Rendu {
+	return CadreSurAncresEchelle(ancres, EchelleFondCarte)
+}
+
+// CadreSurAncresEchelle est `CadreSurAncres` a une echelle choisie (cote du pixel, en metres).
+//
+// Le CADRE MONDE est le meme — seule la finesse de la grille change, donc la taille en pixels
+// de l'image et son `metersPerPixel` publie. Deux fonds de la meme carte a deux echelles se
+// superposent donc exactement une fois remis a l'echelle : c'est ce qui rend le reglage
+// comparable au gate.
+func CadreSurAncresEchelle(ancres [][3]float64, cell float64) *Rendu {
 	lo := [2]float64{math.Inf(1), math.Inf(1)}
 	hi := [2]float64{math.Inf(-1), math.Inf(-1)}
 	for _, a := range ancres {
@@ -174,7 +316,7 @@ func CadreSurAncres(ancres [][3]float64) *Rendu {
 			hi[k] = math.Max(hi[k], a[k]+MargeCadre)
 		}
 	}
-	return NewRendu(lo, hi, EchelleFondCarte)
+	return NewRendu(lo, hi, cell)
 }
 
 // peupleDepuisModule resout l'index de modules, choisit le bsp par les ancres, et peuple.
@@ -358,49 +500,6 @@ func JugeParLesAncres(r *Rendu, b *BilanCuisson, ancres [][3]float64) {
 	b.EcartMedianAncre = Centile(ecarts, 0.5)
 }
 
-// ChoisitBSP retient le bsp qui contient le PLUS D'ANCRES, et a defaut celui qui porte le plus
-// d'instances.
-//
-// MESURE DU 2026-08-09 : sur les 27 cartes du balayage, le bsp le plus peuple est TOUJOURS
-// celui qui contient les ancres. Cette regle ne change donc AUCUN chiffre — elle supprime une
-// dependance au hasard, elle ne corrige rien. Le taux de 306/474 est identique avec et sans.
-//
-// Pourquoi le compte d'instances ne suffit pas EN PRINCIPE : une carte declare plusieurs bsp,
-// dont un decor lointain. Cliffhanger en a deux — l'arene,
-// 113 x 114 m et 10 357 instances, et un horizon de 6 619 x 10 471 m avec 3 971 instances. Ici
-// le plus peuple est le bon PAR CHANCE ; rien ne le garantit ailleurs, et retenir l'horizon
-// donne une carte vide de tout ce qui interesse. Les ancres, elles, sont dans l'aire de jeu par
-// construction : elles designent le bon bsp sans qu'on ait a le deviner. Le repli sur le plus
-// peuple ne sert que si aucune ancre ne tombe dans aucune boite.
-func ChoisitBSP(bsps []BSPInstances, ancres [][3]float64) BSPInstances {
-	var meilleur BSPInstances
-	if len(ancres) > 0 {
-		mieux := 0
-		for _, b := range bsps {
-			n := 0
-			for _, a := range ancres {
-				if a[0] >= b.Bounds.Min[0] && a[0] <= b.Bounds.Max[0] &&
-					a[1] >= b.Bounds.Min[1] && a[1] <= b.Bounds.Max[1] &&
-					a[2] >= b.Bounds.Min[2] && a[2] <= b.Bounds.Max[2] {
-					n++
-				}
-			}
-			if n > mieux {
-				mieux, meilleur = n, b
-			}
-		}
-		if mieux > 0 {
-			return meilleur
-		}
-	}
-	for _, b := range bsps {
-		if len(b.Instances) > len(meilleur.Instances) {
-			meilleur = b
-		}
-	}
-	return meilleur
-}
-
 // MedianeZ rend l'altitude mediane d'un jeu de points.
 func MedianeZ(pts [][3]float64) float64 {
 	zs := make([]float64, 0, len(pts))
@@ -422,4 +521,78 @@ func Centile(v []float64, p float64) float64 {
 	c := append([]float64(nil), v...)
 	sort.Float64s(c)
 	return c[int(p*float64(len(c)-1))]
+}
+
+// mesureEtRogneZones mesure la matiere hors des zones nommees, et ne l'efface que si la carte
+// le demande. La MESURE est inconditionnelle : c'est elle qui dit si le rognage est defendable
+// sur cette carte, et un chiffre qu'on ne publie pas est un chiffre que personne ne regarde.
+func mesureEtRogneZones(ctx context.Context, r *Rendu, b *BilanCuisson, opts OptionsCuisson) {
+	if len(opts.ZonesNommees) == 0 {
+		return
+	}
+	marge := MargeMasqueZones
+	if opts.MargeZones > 0 {
+		marge = opts.MargeZones
+	} else if opts.MargeZones < 0 {
+		marge = 0 // negatif = demande explicite de NE PAS dilater
+	}
+	m := MasqueZones(r, opts.ZonesNommees, marge)
+	matiere, dehors := r.MesureHorsZones(m)
+	b.MatiereHorsZones = dehors
+	part := 0.0
+	if matiere > 0 {
+		part = float64(dehors) / float64(matiere)
+	}
+	slog.InfoContext(ctx, "mapfond: matiere hors des zones nommees", "carte", b.Module,
+		"zones", len(opts.ZonesNommees), "matiere", matiere, "dehors", dehors,
+		"part", fmt.Sprintf("%.1f%%", 100*part), "rogne", opts.RogneAuxZones)
+	if opts.RogneAuxZones {
+		b.CellulesHorsZones = r.EffaceHorsZones(m)
+	}
+	if opts.CombleZonesEntieres {
+		// Masque NON DILATE : la dilatation d une zone n est pas du terrain joue, et c est elle
+		// qui avait noye Illusion.
+		b.CellulesSolSuppose = r.CombleZonesEntieres(MasqueZones(r, opts.ZonesNommees, 0))
+		slog.InfoContext(ctx, "mapfond: sol suppose pose sur TOUTES les zones (vides ouverts compris)",
+			"carte", b.Module, "cellules", b.CellulesSolSuppose)
+	} else if opts.CombleTrous {
+		b.CellulesSolSuppose = r.CombleTrous(m)
+		slog.InfoContext(ctx, "mapfond: sol suppose pose sur les trous des zones", "carte", b.Module,
+			"cellules", b.CellulesSolSuppose)
+	}
+}
+
+// borneALaBoite efface la matiere hors du rectangle monde declare, s'il l'est. LEVIER MANUEL :
+// il est journalise avec ses bornes, pour qu'un fond borne a la main se reconnaisse au premier
+// coup d'oeil dans les logs.
+func borneALaBoite(ctx context.Context, r *Rendu, b *BilanCuisson, bo [4]float64) {
+	if bo[2] <= bo[0] || bo[3] <= bo[1] {
+		return
+	}
+	efface := 0
+	for j := 0; j < r.NY; j++ {
+		y := r.Min[1] + (float64(j)+0.5)*r.Cell
+		for i := 0; i < r.NX; i++ {
+			k := j*r.NX + i
+			vide := math.IsInf(r.z[k], -1)
+			if vide && (r.solSuppose == nil || !r.solSuppose[k]) {
+				continue
+			}
+			x := r.Min[0] + (float64(i)+0.5)*r.Cell
+			if x >= bo[0] && x <= bo[2] && y >= bo[1] && y <= bo[3] {
+				continue
+			}
+			r.z[k] = math.Inf(-1)
+			// Le SOL SUPPOSE se peint sans matiere : sans cette ligne, un aplat pose hors de la
+			// boite y resterait dessine et le bornage n aurait aucun effet visible (mesure du
+			// 2026-08-26 sur Catalyst : 44 331 cellules effacees, image quasi inchangee).
+			if r.solSuppose != nil {
+				r.solSuppose[k] = false
+			}
+			efface++
+		}
+	}
+	b.CellulesHorsBoite = efface
+	slog.InfoContext(ctx, "mapfond: matiere bornee a la boite manuelle", "carte", b.Module,
+		"boite", fmt.Sprintf("[%.1f %.1f %.1f %.1f]", bo[0], bo[1], bo[2], bo[3]), "effacees", efface)
 }

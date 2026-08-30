@@ -101,16 +101,16 @@ func (r *Rendu) CandidatsReference(i, j int) (zHaut, zProche, ref float64, ok bo
 //
 // Rend la part de matiere couverte, le nombre de cellules substituees et le verdict. La voie
 // de reference est liberee en sortie : la decision est prise, les buffers n'ont plus d'objet.
-func (r *Rendu) AppliqueReference(s *SurfaceReference) (taux float64, substituees int, couverte bool) {
+func (r *Rendu) AppliqueReference(s *SurfaceReference, sansPortee bool) (taux float64, substituees int, couverte bool) {
 	if r.zRef == nil || s.Vide() {
 		return 0, 0, false
 	}
 	defer func() { r.ref, r.dRef, r.zRef, r.nRef = nil, nil, nil, nil }()
 	taux = r.tauxCouverture()
-	if taux <= SeuilCarteCouverte {
+	if taux <= SeuilCouvertureEffectif() {
 		return taux, 0, false
 	}
-	return taux, r.substitueParReference(s), true
+	return taux, r.substitueParReference(s, sansPortee), true
 }
 
 // tauxCouverture rend la part de la matiere dessinee dont la surface haute cache un sol
@@ -134,7 +134,22 @@ func (r *Rendu) tauxCouverture() float64 {
 
 // substitueParReference remplace, dans la portee des ancres, la surface haute par la surface
 // la plus proche de la reference, et rend le nombre de cellules touchees.
-func (r *Rendu) substitueParReference(s *SurfaceReference) int {
+// SeuilSubstitution : ecart minimal, en metres, entre la surface dessinee et la reference pour
+// que la substitution s applique. Zero = substituer des qu il y a un ecart (comportement
+// d origine).
+//
+// POURQUOI CE SEUIL EXISTE. La substitution ne distingue pas un DOME d une STRUCTURE : elle
+// rabat tout ce qui n est pas la reference. Sur Isolation le dome vit onze metres au-dessus du
+// sol, alors qu un muret, un auvent, un conteneur en font deux ou trois. Un seuil separe les
+// deux par la seule chose qui les distingue vraiment — la hauteur. En dessous, on garde ce qui
+// est dessine ; au-dessus, on rabat.
+//
+// MESURE DU 2026-08-30 QUI A CONDUIT ICI : renoncer completement a la substitution sur Vagabond
+// rend une image PIRE — une masse grise uniforme, les toits ayant tout recouvert. Le tout ou
+// rien ne convient donc pas ; il fallait un curseur.
+var SeuilSubstitution = 0.0
+
+func (r *Rendu) substitueParReference(s *SurfaceReference, sansPortee bool) int {
 	substituees := 0
 	for j := 0; j < r.NY; j++ {
 		y := r.Min[1] + (float64(j)+0.5)*r.Cell
@@ -143,7 +158,10 @@ func (r *Rendu) substitueParReference(s *SurfaceReference) int {
 			if math.IsInf(r.z[k], -1) || math.IsNaN(r.zRef[k]) || r.z[k] == r.zRef[k] {
 				continue
 			}
-			if s.DistanceAncre(r.Min[0]+(float64(i)+0.5)*r.Cell, y) > PorteeAncre {
+			if SeuilSubstitution > 0 && r.z[k]-r.zRef[k] < SeuilSubstitution {
+				continue
+			}
+			if !sansPortee && s.DistanceAncre(r.Min[0]+(float64(i)+0.5)*r.Cell, y) > PorteeAncre {
 				continue
 			}
 			r.z[k], r.n[k] = r.zRef[k], r.nRef[k]
@@ -151,4 +169,49 @@ func (r *Rendu) substitueParReference(s *SurfaceReference) int {
 		}
 	}
 	return substituees
+}
+
+// TauxCouvertureMesure rend le taux de couverture SANS rien substituer, et libere les tampons
+// de reference comme le ferait AppliqueReference. Sert au mode `SansSubstitution` : le chiffre
+// reste publie au sidecar, ce qui permet de comparer une carte laissee brute a la meme carte
+// substituee.
+func (r *Rendu) TauxCouvertureMesure() float64 {
+	if r.zRef == nil {
+		return 0
+	}
+	defer func() { r.ref, r.dRef, r.zRef, r.nRef = nil, nil, nil, nil }()
+	return r.tauxCouverture()
+}
+
+// SeuilCouvertureCarte : seuil de carte couverte PROPRE A UNE CARTE, en part de matiere, ou
+// zero pour `SeuilCarteCouverte`. Meme forme que `SeuilSubstitution` et `NiveauHautNavmesh` :
+// une variable de paquet posee et restauree autour de la cuisson d'une carte.
+//
+// POURQUOI UN REGLAGE ICI, alors que l'en-tete de ce fichier ecrit « AUCUN REGLAGE PAR CARTE ».
+// Cette phrase reste vraie de ce qu'elle visait : la sonde du 2026-08-13 a refute un seuil PAR
+// PIXEL et la part d'ancres couvertes. Elle n'a pas refute de recalibrer le seuil GLOBAL sur une
+// carte que la mesure classe mal. Or la campagne du 2026-08-30 en produit une :
+//
+//	carte           couverture   ecart median ancre -> surface dessinee   verdict de l'oeil
+//	Security Zone   54,2 %       -0,34 m                                  sol (corrigee)
+//	Dredge          28,7 %       -19,84 m                                 TOITS
+//	Yuletide         3,5 %       -14,26 m                                 TOITS
+//
+// La couverture classe Dredge avec les cartes validees (19 a 28 %) ; l'ecart median ancre ->
+// surface dit qu'on regarde le terrain de 20 m au-dessus. Les deux mesures se contredisent, et
+// c'est la seconde qui decrit ce que l'utilisateur voit. Le seuil de couverture est donc
+// abaisse SUR PIECES, carte par carte, avec cette mesure pour justification.
+//
+// CE QUE CA NE PEUT PAS CASSER : la substitution ne cree ni ne supprime de matiere, elle choisit
+// parmi les surfaces deja dessinees (en-tete de ce fichier). La silhouette est invariante, donc
+// l'abaissement du seuil NE PEUT PAS couter d'ancre — a la difference de l'ecretage et du
+// rognage aux altitudes, refutes tous deux sur ces memes cartes le 2026-08-30 pour cette raison.
+var SeuilCouvertureCarte float64
+
+// SeuilCouvertureEffectif rend le seuil a comparer a la couverture mesuree.
+func SeuilCouvertureEffectif() float64 {
+	if SeuilCouvertureCarte > 0 {
+		return SeuilCouvertureCarte
+	}
+	return SeuilCarteCouverte
 }

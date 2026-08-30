@@ -34,6 +34,17 @@ const PaliersEclairement = 5
 // franchit sans sauter.
 const SeuilAreteMetres = 0.5
 
+// SeuilArete remplace le seuil par defaut pour CE rendu. Zero = SeuilAreteMetres.
+//
+// POURQUOI UN REGLAGE. Sur une carte faite de pieces ORGANIQUES qui se chevauchent — les
+// remakes Forge en rochers — deux pixels voisins different de quelques centimetres partout :
+// le predicat d arete devient vrai presque partout et l image se couvre d un GRIBOUILLIS de
+// traits qui masque les formes. C est le defaut signale par l utilisateur sur Isolation le
+// 2026-08-27, et la mesure qui l a designe : le meme rendu en habillage altitude — le seul
+// qui ne trace AUCUNE arete — montre les formes intactes sous le gribouillis.
+//
+// Le seuil ne change pas la geometrie, seulement ce qu on souligne.
+
 // EclairementPlat rend l'eclairement quantifie en `PaliersEclairement` aplats.
 func (r *Rendu) EclairementPlat(i, j int) (float64, bool) {
 	e, ok := r.Eclairement(i, j)
@@ -50,6 +61,14 @@ func (r *Rendu) EclairementPlat(i, j int) (float64, bool) {
 // Le test porte sur les quatre voisins et sur la DIFFERENCE, pas sur la normale : deux dalles
 // horizontales a deux hauteurs ont la meme normale et doivent quand meme se separer. Un pixel
 // dont un voisin est vide est aussi un bord — c'est la silhouette.
+// seuilArete rend le denivele a partir duquel ce rendu trace un bord.
+func (r *Rendu) seuilArete() float64 {
+	if r.SeuilArete > 0 {
+		return r.SeuilArete
+	}
+	return SeuilAreteMetres
+}
+
 func (r *Rendu) Arete(i, j int) bool {
 	z, ok := r.Altitude(i, j)
 	if !ok {
@@ -57,7 +76,7 @@ func (r *Rendu) Arete(i, j int) bool {
 	}
 	for _, d := range [4][2]int{{1, 0}, {-1, 0}, {0, 1}, {0, -1}} {
 		zv, okv := r.Altitude(i+d[0], j+d[1])
-		if !okv || math.Abs(z-zv) > SeuilAreteMetres {
+		if !okv || math.Abs(z-zv) > r.seuilArete() {
 			return true
 		}
 	}
@@ -188,4 +207,18 @@ func TeinteAltitude(t, eclairement float64) color.RGBA {
 		c[a] = uint8(math.Round(255 * math.Max(0, math.Min(1, v*eclairement))))
 	}
 	return color.RGBA{c[0], c[1], c[2], 255}
+}
+
+// TeinteSolSuppose rend l'aplat des cellules comblees (cf. Rendu.CombleTrous).
+//
+// IL DOIT SE DISTINGUER DU RELEVE, sans crier. Un gris neutre, sans arete ni ombrage — c'est
+// justement l'absence de modele qui le caracterise : la ou le rendu a des surfaces, il a aussi
+// des aretes et un eclairement, et un aplat parfaitement uni se lit comme « ici, on ne sait
+// pas ». La valeur est prise LEGEREMENT SOUS le sol joue moyen des deux habillages, pour que
+// le comblement recule au lieu d'attirer l'oeil.
+func TeinteSolSuppose(style StyleFond) color.RGBA {
+	if style == StyleEncre {
+		return color.RGBA{178, 178, 178, 255}
+	}
+	return color.RGBA{92, 96, 104, 255}
 }

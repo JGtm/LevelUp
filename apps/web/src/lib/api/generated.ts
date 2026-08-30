@@ -7114,6 +7114,10 @@ export interface components {
             /** Format: int64 */
             boundaryPlanes: number;
             /** Format: int64 */
+            cellsAssumedFloor?: number;
+            /** Format: int64 */
+            cellsClipped?: number;
+            /** Format: int64 */
             cellsSubstituted?: number;
             covered: boolean;
             /** Format: double */

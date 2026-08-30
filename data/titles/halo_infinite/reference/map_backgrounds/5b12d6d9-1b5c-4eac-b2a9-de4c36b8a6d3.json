@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "module": "5b12d6d9-1b5c-4eac-b2a9-de4c36b8a6d3",
+  "mapNames": [
+    "Warehouse",
+    "warehouse_map"
+  ],
+  "image": "5b12d6d9-1b5c-4eac-b2a9-de4c36b8a6d3.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-27T22:42:18.0255206Z",
+  "style": "encre",
+  "calibration": {
+    "metersPerPixel": 0.04666675504048665,
+    "originX": -14.69992260932922,
+    "originY": 31.64022490310669,
+    "widthPx": 723,
+    "heightPx": 1352,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 7,
+    "anchorsInFrame": 7,
+    "anchorsWithGround": 7,
+    "anchorMedianGapM": -0.29154450516815444,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 60.508065185546876,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.7285126718633711,
+    "covered": true,
+    "cellsSubstituted": 233806,
+    "forgeObjects": 5278,
+    "forgeObjectsDrawn": 5244,
+    "forgeObjectsWithoutModel": 28,
+    "forgeDeathVolumes": 6
+  }
+}

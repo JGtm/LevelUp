@@ -103,6 +103,12 @@ type MapBackgroundStats struct {
 	CoveredShare     float64 `json:"coveredShare"`
 	Covered          bool    `json:"covered"`
 	CellsSubstituted int     `json:"cellsSubstituted,omitempty"`
+	// CellsClipped : pixels VIDES par l ecretage des toits (reglage PAR CARTE,
+	// himap/ecretage_toits.go). C est la seule voie qui SUPPRIME de la matiere : un fond dont
+	// on ne sait pas ce qui en a ete retire n est pas verifiable. Absent = ecretage non arme.
+	CellsClipped int `json:"cellsClipped,omitempty"`
+	// CellsAssumedFloor : cellules peintes en SOL SUPPOSE — un aplat, pas un releve.
+	CellsAssumedFloor int `json:"cellsAssumedFloor,omitempty"`
 	// Champs FORGE — absents d'une carte native. ForgeObjectsWithoutModel n'est pas du bruit :
 	// il dit quelle part de la carte manque à l'image (les objets qui passent par
 	// bloc/scen/mach vers hlmt, saut non traité).

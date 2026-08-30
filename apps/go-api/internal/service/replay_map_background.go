@@ -11,8 +11,7 @@ package service
 //
 //	match -> map_id + nom(s) de carte (registre partagé)   ReplayMapNameRepo
 //	map_id -> image + calage (map_backgrounds/{map_id})    la clé des cartes FORGE
-//	nom de carte -> module   (map_quant_bounds.json)       filmdec.NormalizeMapName + Lookup
-//	module -> image + calage (map_backgrounds/{module})    le repli des cartes NATIVES
+//	nom de carte -> clé de fond publiée                    replay.MapBackgroundIndex
 //
 // POURQUOI DEUX CLÉS. Une carte Forge communautaire vit sur un CANEVAS (8 installés)
 // partagé par des dizaines de cartes : le module ne peut pas keyer son fond, seul son
@@ -20,9 +19,17 @@ package service
 // keyée par son dossier installé. L'essai map_id se fait D'ABORD : un fond sous cette clé
 // n'existe que pour la carte exacte du match.
 //
-// Le maillon nom -> module est celui de `cmd/replay-build` : ce lien n'a qu'une source, le
-// catalogue de bornes. En écrire une seconde ici, c'est se garantir deux vérités qui
-// divergeront.
+// POURQUOI UN INDEX DE NOMS ET PLUS LE CATALOGUE DE BORNES. L'essai map_id échoue dès que la
+// carte a été REPUBLIÉE sous un nouvel asset depuis la cuisson de son fond — mesuré le
+// 2026-08-27 : Salvation, Dynasty, Shogun, Houseki, Starboard et Shiro, jouées sous un map_id
+// mort, s'affichaient sans fond alors que leur image existe. Le repli historique passait par
+// `map_quant_bounds.json`, qui envoie un nom de carte Forge vers son CANEVAS — un module qui
+// n'a jamais de fond publié, donc un cul-de-sac par construction. L'index de fonds
+// (`replay.MapBackgroundIndex`) lit à la place les identités que la cuisson a DÉJÀ écrites dans
+// chaque sidecar. Mesuré sur les 123 map_id du registre : l'index résout tout ce que le
+// catalogue de bornes résolvait (zéro divergence, zéro carte résolue par lui seul) et 9 map_id
+// de plus. Le repli par bornes est donc retiré : deux chemins pour le même lien, dont un mort,
+// sont deux vérités qui divergeront.
 //
 // OFFLINE PUR : ces étapes lisent des fichiers versionnés et une table. Rien n'ouvre le
 // jeu, rien ne va sur le réseau.
@@ -34,7 +41,6 @@ import (
 	"log/slog"
 	"os"
 
-	"levelup/go-api/internal/analysis/filmdec"
 	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/port"
@@ -73,8 +79,9 @@ func (s *replayService) MapBackgroundImage(ctx context.Context, matchID string) 
 }
 
 // resolveBackgroundKey traduit le match en clé de fond : le map_id du match quand un fond
-// existe sous cette clé (cartes Forge), sinon le module installé résolu par les noms
-// candidats (cartes natives).
+// existe sous cette clé (cartes Forge encore publiées sous leur asset du jour), sinon la clé
+// que l'index des fonds attache à l'une des identités candidates (cartes natives, et cartes
+// republiées depuis la cuisson de leur fond).
 func (s *replayService) resolveBackgroundKey(ctx context.Context, matchID string) (string, error) {
 	if s.maps == nil {
 		return "", port.ErrMapBackgroundNotAvailable
@@ -95,18 +102,19 @@ func (s *replayService) resolveBackgroundKey(ctx context.Context, matchID string
 			return keys.MapID, nil
 		}
 	}
-	// 2. Le repli module — celui des cartes natives, via le catalogue de bornes.
-	catPath := title.NewPathResolver(s.repoRoot).MapQuantBoundsPath(s.titleSlug)
-	cat, err := filmdec.LoadMapQuantCatalog(catPath)
+	// 2. Le repli par NOM — l'index des identités que la cuisson a écrites dans les sidecars.
+	// Il rattrape les cartes republiées sous un nouvel asset (le map_id de l'étape 1 est mort)
+	// et les cartes natives, dont le fond est keyé par module installé.
+	dir := title.NewPathResolver(s.repoRoot).MapBackgroundDir(s.titleSlug)
+	idx, err := replay.MapBackgroundIndexFor(dir)
 	if err != nil {
-		slog.WarnContext(ctx, "rejeu 2D : catalogue de bornes illisible — pas de fond",
-			"err", err, "path", catPath, "titleSlug", s.titleSlug)
+		slog.WarnContext(ctx, "rejeu 2D : index des fonds indisponible — pas de fond",
+			"err", err, "path", dir, "titleSlug", s.titleSlug)
 		return "", port.ErrMapBackgroundNotAvailable
 	}
 	for _, name := range keys.Names {
-		entry, lookErr := cat.Lookup(name)
-		if lookErr == nil && entry.Module != "" {
-			return entry.Module, nil
+		if cle, ok := idx.Lookup(name); ok {
+			return cle, nil
 		}
 	}
 	slog.DebugContext(ctx, "rejeu 2D : aucun fond pour les identités de carte candidates",

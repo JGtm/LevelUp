@@ -740,6 +740,20 @@ func (p *PathResolver) MapQuantBoundsPath(titleSlug string) string {
 	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "map_quant_bounds.json")
 }
 
+// MapFondReglagesPath retourne le chemin des RÉGLAGES DE CUISSON PAR CARTE des fonds de
+// rejeu 2D (habillage, échelle).
+//
+// POURQUOI CE FICHIER EXISTE. La chaîne de cuisson (`internal/himap`) ne porte aucune branche
+// par carte, et c'est ce qui la rend transférable. Mais le gate utilisateur du 2026-08-26 a
+// établi, images à l'appui, que le meilleur rendu n'est pas le même d'une carte à l'autre.
+// Le choix vit donc ICI, en DONNÉE, avec sa raison écrite et la date de son gate — jamais
+// dans le code. Entrée de cuisson uniquement : l'application lit le PNG figé, jamais ce
+// fichier.
+// Ex: data/titles/halo_infinite/reference/map_fond_reglages.json
+func (p *PathResolver) MapFondReglagesPath(titleSlug string) string {
+	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "map_fond_reglages.json")
+}
+
 // MapObjectivesPath retourne le chemin du catalogue des objets d'objectif par carte
 // (socles de drapeau, points de livraison, sockets Stockpile, zones...), extrait des
 // variantes de carte UGC (.mvar) par cmd/mapobj-build. Donnée de RÉFÉRENCE versionnée
@@ -748,6 +762,19 @@ func (p *PathResolver) MapQuantBoundsPath(titleSlug string) string {
 // Ex: data/titles/halo_infinite/reference/map_objectives.json
 func (p *PathResolver) MapObjectivesPath(titleSlug string) string {
 	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "map_objectives.json")
+}
+
+// MapPlayedPositionsPath retourne le chemin du catalogue des POSITIONS REELLEMENT JOUEES par
+// carte, decimees depuis les artefacts de rejeu par cmd/mappos-build. Donnee de REFERENCE
+// versionnee : elle fige l observation d un corpus de matchs pour que la cuisson des fonds de
+// carte reste hors ligne.
+//
+// Elle sert d ORACLE au rognage `himap.RogneAuxPositionsJouees` : une position courue prouve
+// qu il y avait du sol sous les pieds du joueur, la ou tous les autres leviers doivent le
+// deduire de la geometrie.
+// Ex: data/titles/halo_infinite/reference/map_positions_jouees.json
+func (p *PathResolver) MapPlayedPositionsPath(titleSlug string) string {
+	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "map_positions_jouees.json")
 }
 
 // MapWeaponPadsPath retourne le chemin du catalogue des EMPLACEMENTS DE SOCLE par carte
