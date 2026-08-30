@@ -9,6 +9,7 @@ import { MatchBreadcrumb, MatchNavigationBar, MatchHeaderCard } from './MatchHea
 import { MatchSummaryCardsSection } from './MatchStatCards'
 import { MatchKdaExpectedChart, MatchSpreeChart, MatchSummaryRadarChart } from './MatchSummaryCharts'
 import { MatchFragCard } from './MatchFragCard'
+import { MatchKillDistanceSection } from './MatchKillDistanceSection'
 import { MatchMediaTab } from './MatchMediaTab'
 import {
   MatchMedalsSection,
@@ -346,6 +347,16 @@ export function MatchViewPage() {
                 Infinite = classes sans Spartan ; Halo 5 = avec (capability
                 native_kill_mechanics côté backend). */}
             <MatchFragCard distribution={combat_tab.frag_distribution} weapons={weaponKills} />
+            {/* POC (LOT G.3, 2026-08-30) : distance par arme, par joueur — juste après
+                les stats d'armes du viewer. Scoreboard passé pour gamertag + total de
+                kills (le DTO backend ne porte que le xuid). Rend null sans donnée
+                mesurée (cas de la quasi-totalité des matchs tant que le backfill de
+                masse n'a pas tourné) : pas de wrapper ici. */}
+            <MatchKillDistanceSection
+              players={combat_tab.kill_distance_by_weapon}
+              scoreboard={scoreboard}
+              t={t}
+            />
             {/* Rangée suivante : Médailles À GAUCHE des Citations — grille fluide
                 (auto-fit) : chaque carte garde une largeur pleine ou partagée sans
                 cellule orpheline. Halo 5 : commendations NATIVES (citations_tab.

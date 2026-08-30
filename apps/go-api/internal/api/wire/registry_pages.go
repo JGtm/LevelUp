@@ -119,6 +119,9 @@ func (r *ServiceRegistry) MatchView(ctx context.Context, slug string) (port.Matc
 	if repo := r.killSourceClassRepoFor(pdb); repo != nil {
 		svc = svc.WithKillSourceRepo(repo)
 	}
+	if repo := r.killDistanceRepoFor(pdb); repo != nil {
+		svc = svc.WithKillDistanceRepo(repo)
+	}
 	if loader := r.buildFriendsExtrasResolver(pdb); loader != nil {
 		svc = svc.WithFriendsExtras(loader)
 	}
@@ -431,4 +434,34 @@ func (r *ServiceRegistry) killSourceClassRepoFor(pdb *duckdb.PlayerDB) port.Kill
 		return nil
 	}
 	return duckdb.NewKillSourceClassRepo(pdb, classifier)
+}
+
+// killDistanceRepoFor construit le loader « distance par arme, par joueur »
+// (POC LOT G.3, plan retours-utilisateur §3bis DEC-8), ou nil si ce titre n'a
+// rien à en dire.
+//
+// MÊME GATE que killSourceClassRepoFor, et c'est un choix délibéré, PAS
+// `film.kill_positions` (qui gouverne la CAPTURE des positions, pas la
+// lecture — cf. games/adapter.go, doc de CapFilmKillPositions) ni
+// `match.events.spatial` (qui gouverne la timeline CANONIQUE cross-titre,
+// un pipeline distinct — cf. games/halo_infinite/events.go:
+// infiniteEventLimitations). Ce lecteur a besoin de exactement la même chose
+// que KillSourceClassRepo : `match_kill_events_latest.source_tag` (via
+// `film.kill_source`) ET le classificateur qui le traduit en weapon_key. Une
+// table `kill_positions_latest` vide (titre pas encore backfillé) dégrade
+// proprement via LoadMatch (zéro ligne, zéro erreur) — inutile de la gater
+// une deuxième fois ici.
+func (r *ServiceRegistry) killDistanceRepoFor(pdb *duckdb.PlayerDB) port.KillDistanceRepository {
+	if pdb == nil || r.titleResolver == nil {
+		return nil
+	}
+	data, err := r.titleResolver.Data(pdb.TitleSlug)
+	if err != nil || data == nil || !data.Capabilities().Has(games.CapFilmKillSource) {
+		return nil
+	}
+	classifier, ok := r.assetURLFor(pdb.TitleSlug).(port.KillSourceClassifier)
+	if !ok {
+		return nil
+	}
+	return duckdb.NewKillDistanceRepo(pdb, classifier)
 }

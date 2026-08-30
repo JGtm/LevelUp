@@ -246,3 +246,59 @@ func resolveOffArsenalKeys(ctx context.Context, meta *DB, titleSlug string, keys
 	}
 	return out
 }
+
+// resolveWeaponKeyLabelsAny résout un lot de weapon_key vers {class, label,
+// labelEN} SANS restriction arsenal — contrairement à resolveOffArsenalKeys,
+// qui ne garde QUE les clés sans id numérique (anti-double-comptage avec
+// weapon_kills, cf. son en-tête). Utilisée par un lecteur qui ne recoupe JAMAIS
+// avec weapon_kills — le POC distance par arme (G.3, platform/duckdb/
+// kill_distance_repo.go), qui a besoin du libellé de TOUTES les armes
+// (arme à feu du registre COMME hors arsenal), pas seulement des secondes.
+//
+// PAS de jointure weapon_ids ici, et c'est délibéré : une arme à feu peut avoir
+// PLUSIEURS id numériques (variantes) → une jointure LEFT JOIN weapon_ids ferait
+// un fan-out (N lignes pour 1 weapon_key) exactement le bug que
+// resolveOffArsenalKeys évite par son filtre `wi.weapon_key IS NULL`. `weapons`
+// est unique par (title_slug, weapon_key) — la sélectionner seule ne fan-out
+// jamais.
+//
+// Même politique de nom que les deux résolveurs sœurs : weapon_name_labels
+// FR>EN, vide si la metadata n'est pas seedée. Best-effort, jamais de panic.
+func resolveWeaponKeyLabelsAny(ctx context.Context, meta *DB, titleSlug string, keys []string) map[string]offArsenalMeta {
+	out := map[string]offArsenalMeta{}
+	if meta == nil || len(keys) == 0 || !weaponRegistryAvailable(ctx, meta) {
+		return out
+	}
+	labelExpr := "''"
+	labelENExpr := "''"
+	nameJoin := ""
+	if weaponNameLabelsAvailable(ctx, meta) {
+		labelExpr = "COALESCE(NULLIF(wnl.name_fr,''), NULLIF(wnl.name_en,''), '')"
+		labelENExpr = "COALESCE(NULLIF(wnl.name_en,''), NULLIF(wnl.name_fr,''), '')"
+		nameJoin = " LEFT JOIN weapon_name_labels wnl ON wnl.title_slug = w.title_slug AND wnl.weapon_key = w.weapon_key"
+	}
+	args := make([]any, 0, len(keys)+1)
+	args = append(args, titleSlug)
+	for _, k := range keys {
+		args = append(args, k)
+	}
+	query := "SELECT w.weapon_key, COALESCE(w.class, '') AS class, " + labelExpr + " AS label, " + labelENExpr + " AS label_en" +
+		" FROM weapons w" +
+		nameJoin +
+		" WHERE w.title_slug = ? AND w.weapon_key IN (" + Placeholders(len(keys)) + ")"
+	rows, err := meta.Query(ctx, query, args...)
+	if err != nil {
+		slog.WarnContext(ctx, "weapon resolver: any-key query failed",
+			"title", titleSlug, "keys", len(keys), "err", err)
+		return out
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var key, class, label, labelEN string
+		if err := rows.Scan(&key, &class, &label, &labelEN); err != nil {
+			continue
+		}
+		out[key] = offArsenalMeta{class: class, label: label, labelEN: labelEN}
+	}
+	return out
+}
