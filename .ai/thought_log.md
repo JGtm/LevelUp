@@ -76668,3 +76668,189 @@ mais la capture live reste à câbler dans une session dédiée (plan d'exécuti
 au rapport de session et à ce journal : pont disque + carte + bornes + slot→xuid inversé +
 persister + capability + tests). G.3 plein (portée + narratif) non engagé, conditionné à
 cette capture live + une cuisson de masse — pas seulement à l'append-only rendu ici.
+
+---
+
+## [2026-08-30] LOT G.2bis — capture live des positions câblée dans killcollector
+
+**Statut** : Complété (plan `.ai/PLAN_RETOURS_UTILISATEUR_2026-08-29.md` §3bis LOT G, item
+G.2bis — dernière pièce déférée par G.2 : la dette bloquante `kill_positions` non-append-only
+était déjà fermée, restait la CAPTURE elle-même).
+
+**Décision technique principale** : le pont retenu est celui identifié par G.2, option (a) —
+`writeChunksToTempDir` (nouveau, `sync/killcollector/positions.go`) recopie les chunks DÉJÀ EN
+MÉMOIRE vers `chunk_NN.bin` (même format que le cache film hérité, `haloclient.LocalFilmCache` :
+octets zlib ou clairs, `filmdec.ReadFilmChunk` décompresse à la LECTURE, donc le pont ne décode
+rien) puis appelle telles quelles les quatre fonctions HORS LIGNE de `analysis/filmdec`/
+`analysis/replay`. L'option (b) (variantes mémoire des scanners) était écartée par G.2 et
+confirmée à tort inutile : elle aurait été un second décodeur des mêmes octets, la règle « deux
+décodeurs du même fait divergeraient » revenant trois fois dans le code du paquet lui-même
+(killpos.go, deaths_source.go, identity.go). AJOUT non anticipé par G.2 : un refus sur TROU DE
+SÉQUENCE — `filmdec.CountFilmChunks` s'arrête au premier index manquant, donc un film incomplet
+ferait lire les quatre scanners sur un PRÉFIXE silencieux plutôt que sur rien ; le pont compare
+l'index max déclaré au compte réel après écriture et refuse plutôt que de laisser passer une
+lecture partielle plausible — c'est le seul endroit où « aucune position fausse possible »
+(critère n°1 de la mission) exigeait plus que la recopie décrite par G.2.
+
+**La découverte qui a le plus fait dévier l'estimé de G.2** : le pont slot→xuid qu'exige
+`replay.BuildKillPositions` n'est PAS un sous-produit de `killcollector.MatchIdentities`
+(résolution gamertag↔xuid contre le roster du match) comme le plan le supposait implicitement
+(« l'inversion du pont slot→xuid de `ScanFilmPlayerIndices` »). `ScanFilmPlayerIndices` rend un
+INDEX DE JOUEUR (5 bits, 0..31, le même que `shots.go`), pas un SLOT DE BIPED (13 bits, qui migre
+à chaque réapparition) : les deux grandeurs ne sont pas interchangeables. Le VRAI pont slot→xuid
+est celui d'`analysis/replay/owners.go` (`buildOwners`/`OwnerReport.SlotXUID`), qui nomme chaque
+VIE de biped par LA MORT QUI LA TERMINE (fil des morts + index de joueur, LU et pas voté, mesuré
+90/105 vies nommées avec 0 collision sur le film témoin) — jusqu'ici entièrement UNEXPORTÉ,
+interne à `BuildFromPositions` (le document de rejeu complet). Réimplémenter
+`buildLifeSpans`/`bestDeathOffset`/`nameLivesByDeaths`/`ownersFromLives` dans `killcollector`
+aurait été exactement le second décodeur que la doctrine du paquet interdit. Solution : exporter
+`replay.ResolveSlotXUID` (nouveau fichier `internal/analysis/replay/killpos_bridge.go`, ~15
+lignes utiles) qui compose `indexBySlot`+`buildOwners` EXISTANTS sans toucher une seule ligne de
+leur logique, `fire=nil` (pas de fermeture par tir — la version la PLUS CONSERVATRICE, cohérente
+avec « une position absente reste absente »). C'est le SEUL fichier neuf dans
+`internal/analysis/replay/**`, famille que la session G précédente avait tenue verrouillée pour
+ne pas percuter le lot F alors CONCURRENT. Jugé touchable ici : (i) le lot F est livré, plus
+concurrent, dans ce même worktree ; (ii) l'ajout est additif pur, zéro ligne existante modifiée,
+testé isolément (`killpos_bridge_test.go`, 3 tests dont la reprise VOLONTAIRE du scénario déjà
+éprouvé de `TestNameLivesByDeathsJoinsOnEnd` — une fixture inventée aurait prouvé moins qu'une
+fixture déjà mesurée traversée par le nouveau chemin d'entrée) ; (iii) l'alternative
+(réimplémenter) était précisément le risque de corruption silencieuse que ce chantier existe pour
+éviter. Conséquence en cascade non plus anticipée par G.2 : une QUATRIÈME lecture disque devient
+nécessaire — `replay.ScanFilmDeaths` (le fil des morts DU REJEU, même horloge que le kill-feed de
+`killsource` mais un lecteur séparé, déjà précédenté par le lot F équipement pour la même raison
+« replaybuild n'ouvre aucune base »).
+
+**Résultats observés** :
+- `internal/sync/killcollector/positions.go` (nouveau) : `collectPositions` (gate capability
+  `games.CapFilmKillPositions` PUIS câblage `WithPositionCapture` PUIS kills résolus PUIS bornes
+  de carte PUIS pont disque PUIS les 4 lectures — chaque étage refuse proprement, AUCUN n'écrit
+  si un étage antérieur a refusé), `resolveMapBounds` (candidats de `port.ReplayMapNameRepo`
+  essayés dans l'ordre contre `filmdec.MapQuantCatalog.Lookup`), `buildPositionRows` (les 4
+  lectures + `ResolveSlotXUID` + `BuildKillPositions`), `killRefsFromDeaths` (ne garde que les
+  morts à DEUX xuids résolus — un kill crédit-seul, sans film, n'a structurellement aucune
+  position à offrir), `toKillPositionRows`, `writeChunksToTempDir`.
+- `collector.go` : champs `mapNames port.ReplayMapNameRepo` / `mapBounds *filmdec.MapQuantCatalog`
+  (nil = désactivé, dégradation Debug par match) ; wither `WithPositionCapture` (garde
+  `NewKillSourceCollector` à 5 paramètres, le plafond du dépôt) ; appel `collectPositions(...,
+  batch.Deaths)` après `collectShots` dans `collect()` — `batch.Deaths` est la liste PRÉ-FUSION
+  (avant `MergeCreditAndFilm`), qui EST la population exacte pouvant avoir une position (un kill
+  récupéré par le producteur crédit-seul n'a aucune position à offrir par construction).
+- `internal/persist/kill_position_persister.go` (nouveau) : `KillPositionPersister.PersistPass`
+  réutilise l'INSERT déjà existant de `shared_persister.go` (`persistKillPositions`, inchangé),
+  refuse `killer_xuid` vide et une ligne dont le `match_id` diverge du paramètre. AUCUNE entrée
+  nouvelle dans l'allowlist `no_art_patterns_test.go` (INSERT pur, rien à y déclarer) — vérifié
+  par la suite `internal/sync/...` verte au premier gate.
+- Capability `games.CapFilmKillPositions` = `"film.kill_positions"` (adapter.go +
+  capabilities.go + `AllCapabilityKeys()` + ratchet `TestAllCapabilityKeys_Count` bumpé 22→23 +
+  parité `adapter_data.go`/`capabilities.toml` — les DEUX gardes-fous de parité existants ont
+  attrapé l'oubli initial de `adapter_data.go`, exactement leur rôle). `capabilities.toml`
+  halo_infinite SEUL (`"supported"`) ; Halo 5 absente (positions déjà natives via
+  `match.events.spatial` = supported, aucun décodeur de film requis). La capability LECTURE
+  `match.events.spatial` n'a PAS été touchée pour Infinite (reste `not_exposed`) : elle gouverne
+  la lecture canonique, `film.kill_positions` gouverne la CAPTURE — aucun consommateur ne lit
+  `kill_positions` pour Infinite dans cette passe (G.3, hors périmètre).
+- `cmd/levelup/cmd_backfill_killsource.go` : `positionCaptureDeps` (charge le catalogue RÉEL via
+  `PathResolver.MapQuantBoundsPath`, ouvre `metadata.duckdb` en `OpenReadOnly` — pas
+  `OpenReadForQuery` : la précondition de CETTE commande est le serveur ARRÊTÉ, donc aucun
+  process concurrent à protéger, et `duckdb.NewReplayMapRepo` demande le type `*duckdb.DB`, pas
+  `*sql.DB` brut) + `staticSharedReader` (adapte le handle shared déjà ouvert en
+  `duckdb.SharedReader`, même patron que `writerDeja` déjà en place). Câblée PAR DÉFAUT dans
+  `passeDesFilms`, best-effort (catalogue/metadata indisponibles → positions désactivées,
+  JAMAIS une erreur fatale — le backfill des morts/tirs, la raison d'être de la commande, n'en
+  dépend pas). Découverte notée, pas corrigée : réutiliser `duckdb.ReplayMapRepo`
+  (`platform/duckdb/replay_map_repo.go`, déjà exporté via `port.ReplayMapNameRepo`) a évité une
+  TROISIÈME copie de « résoudre les identités de carte candidates d'un match » — deux existaient
+  déjà, indépendamment (`sync/replayartifacts/artifacts.go` et `cmd/levelup/
+  cmd_backfill_replay.go`), sans jamais converger sur le repo déjà centralisé.
+- Décision `KillSourceDecoderRev` (item 3 de la mission) : **PAS bumpée**. `kill_positions` ne
+  porte AUCUNE colonne de révision (clé fonctionnelle `match_id, killer_xuid, time_ms` +
+  `written_at` seul — vérifié sur la migration G.2, `steps_appendonly_misc.go`) : le rev suit le
+  décodage des MORTS, et le bumper aurait forcé un re-décodage COMPLET (morts + tirs + positions,
+  jusqu'à 1h15 mesurées sur le corpus) pour un gain qui ne concerne QUE les positions. Les
+  NOUVEAUX matchs capturent sans bump (le code est actif dès ce commit, gate franchi à la
+  capability). Le rattrapage des matchs déjà décodés passe par la commande EXISTANTE
+  `levelup backfill-killsource --force` (redécode tout, positions comprises) — décision opérateur
+  EXPLICITE, documentée, plutôt qu'un bump qui aurait aussi fait re-décoder 8 anciens matchs/cycle
+  dans un futur hook post-sync (non câblé aujourd'hui — `killcollector` n'a aucun appelant en
+  dehors de cette commande de backfill, vérifié par grep avant d'écrire l'estimé de coût).
+- Verrou d'ordonnancement (crédit-seul après film efface la source, signalé bloquant par G.2) :
+  **vérifié NON APPLICABLE à `kill_positions`**. Cette table n'a qu'UN SEUL producteur candidat
+  par titre (Infinite : le film seul — aucun chemin crédit-seul n'a jamais eu de position à
+  offrir ; H5 : natif seul, `ingest.MapKillPositions`), contrairement à `match_kill_events` qui a
+  un second producteur crédit-seul (`highlight_events`) avec lequel la passe film doit composer
+  et pour lequel la contrainte existe réellement. Aucun verrou nouveau posé ; la précondition
+  « serveur arrêté » déjà en vigueur pour `backfill-killsource` (ADR 0013) couvre le seul risque
+  réel restant (deux writers concurrents sur `shared`).
+- Estimation du surcoût du hook post-sync (item 2, ordre de grandeur — AUCUNE mesure réelle
+  possible sans `data/`) : `ScanFilmBipedPositions`/`ScanFilmPlayerIndices`/`ScanFilmDeaths`
+  parcourent le MÊME flux de paquets que `killsource.Decode` mais SANS le mur de coût identifié
+  et corrigé le 2026-08-01 (`consumeObjectMultiplayerProperties`, 78 % du temps AVANT correctif) —
+  `bipedSlotBand` limite la lecture keyframe à UN paquet par chunk (pas un TLV complet par
+  keyframe). Ordre de grandeur retenu : le SURCOÛT des positions est du même ordre que le
+  décodage killsource déjà mesuré (table `defaultKillSourceTimeout`, collector.go), pas un
+  multiple. Appliqué au pire cas mesuré (69 chunks, 46,7 s), un cycle de 8 matchs/5 min ne serait
+  en danger QUE si plusieurs BTB de taille maximale tombaient dans le MÊME cycle (scénario de
+  queue, pas le régime nominal 4v4 ~1 s). Décision : câblage `WithPositionCapture` ACTIVÉ PAR
+  DÉFAUT là où il y a un appelant réel aujourd'hui (le backfill CLI) — CLAUDE.md règle 11 interdit
+  une feature prête livrée OFF « pour plus tard », et `killcollector` n'a aucun hook post-sync
+  vivant à gater (vérifié : zéro appelant hors `cmd_backfill_killsource.go`). Si un futur hook
+  post-sync est câblé, cette estimation devra être reprise avec une mesure réelle avant
+  activation en continu — noté pour la reprise, pas traité ici (hors périmètre : câbler
+  `killcollector` dans un cycle live est un chantier séparé, non commencé).
+
+**Tests** : pont `writeChunksToTempDir` (round-trip verbatim + zlib, refus de trou de séquence,
+chunk déclaré-mais-vide traité comme un trou, cleanup, 0 chunk = 0 trou sans erreur — la
+responsabilité de refuser un répertoire vide appartient aux LECTEURS, pas au pont) ; composition
+pure (`killRefsFromDeaths`, `toKillPositionRows`, `parseXUID`, `rosterUint64`) ; `resolveMapBounds`
+(ordre des candidats, refus sans candidat connu, propagation d'erreur) ; CINQ refus de
+`collectPositions` qui NE TENTENT AUCUNE ÉCRITURE — preuve par un `acquireShared` qui PANIQUE s'il
+est appelé (capability absente, collecteur non câblé, aucune identité résolue, carte hors
+catalogue, film illisible/0 chunk) ; `ResolveSlotXUID` (3 tests, dont la reprise du scénario
+`lives_test.go` déjà cité) ; persister `:memory:` -tags=integration (5 cas, dont l'idempotence
+append-only PAR LIGNE — découverte notée : le dédoublonnage de `kill_positions_latest` est PAR
+CLÉ `(match_id, killer_xuid, time_ms)`, PAS par passe entière comme `match_kill_events`/
+`decode_pass` — une 2e passe qui retrouve MOINS de kills n'efface PAS les positions des kills
+qu'elle n'a pas retrouvés, propriété vérifiée par un test dédié) ; 1 test d'intégration sur film
+RÉEL (`positions_integration_test.go`, gate `KILLSOURCE_FIXTURES` identique au test historique de
+G.1/G.2, catalogue de bornes RÉEL chargé via `PathResolver` — donnée de référence VERSIONNÉE
+[`data/titles/halo_infinite/reference/map_quant_bounds.json`, 22 Ko commités, 79 cartes,
+schemaVersion=1 vérifié sur pièces], donc disponible même sans `data/` de travail dans ce
+worktree).
+
+**LIMITE HONNÊTE, à consigner pour la reprise** : le test d'intégration sur film réel n'a JAMAIS
+tourné dans cette session (aucun `KILLSOURCE_FIXTURES` dans ce worktree dédié, conforme à sa
+contrainte). Son SETUP est vérifié sur pièces (le catalogue charge, le schéma correspond), mais le
+CHEMIN POSITIF — chunks réels → positions non vides → persistées → relues par `_latest` →
+idempotence sur 2 passes — n'a jamais été EXÉCUTÉ. Le pont et la composition sont couverts par les
+tests synthétiques ; chaque brique réutiliée (`ScanFilmBipedPositions`, `ScanFilmClockOrigin`,
+`ScanFilmPlayerIndices`, `ScanFilmDeaths`, `buildOwners`, `BuildKillPositions`) porte sa propre
+couverture éprouvée dans son paquet d'origine — mais l'EMBOÎTEMENT complet sur du binaire réel
+reste À REJOUER (commande exacte dans le fichier de test) avant confiance totale sur la géométrie
+produite.
+
+**Découverte notée, non corrigée** : le gate `-tags=integration` de `internal/platform/duckdb`
+révèle 5 échecs `team_0_rounds_won` SUPPLÉMENTAIRES à ceux déjà repérés par G.1/G.2 (19 dans
+`player_matches_repo_test.go`×18 + `pool_migration_test.go`×1) — `match_repos_test.go` porte le
+MÊME défaut de fixture (5 tests : `TestMatchHistoryRepo_LoadAll_{Empty,WithData}`,
+`TestMatchViewRepo_GetMatchMeta_Found`, `TestSquadRepo_LoadSquadMatches_{Empty,WithData}`), même
+cause exacte (`Binder Error: Values list "r" does not have a column named "team_0_rounds_won"`),
+même fichier PRISTINE (`git status`/`git diff --stat` vides). Total réel : 24 échecs
+`team_0_rounds_won` pré-existants sur 3 fichiers, pas 19 sur 2 — le compte du 30/08 matin était
+incomplet (probablement une sélection de paquets plus étroite lors de sa propre vérification).
+AUCUN des 24 n'est imputable à ce lot (0 fichier de la liste modifié ici). Non re-signalé comme
+nouvelle tâche : `task_fb60be2a` (déjà spawnée par la session G.1/G.2) couvre le MÊME défaut de
+fond (fixture VALUES-list sans les colonnes ADR 0032) — le corriger une fois corrige les 24, pas
+seulement 19.
+
+**Conclusion / prochaine étape** : G.2bis clos, capture live opérationnelle pour les nouveaux
+matchs et pour tout backfill futur avec `--force`. Gates : `go build ./...` propre ; `go vet` sur
+les paquets ciblés propre ; `go test ./internal/sync/... ./internal/analysis/...
+./internal/persist/... ./internal/migration/... -count=1` 0 échec ; `-tags=integration -p 1
+./internal/migration/... ./internal/persist/... ./internal/platform/duckdb/... ./internal/sync/...`
+0 échec NOUVEAU (24 `team_0_rounds_won` pré-existants détaillés ci-dessus, aucun autre). G.3
+(portée + narratif) reste non engagé — conditionné désormais à une cuisson de masse
+(`backfill-killsource --force`) plutôt qu'à la capture live, qui est fermée. Reprise recommandée :
+(1) rejouer `positions_integration_test.go` avec `KILLSOURCE_FIXTURES` dès qu'un poste avec le
+cache de films est disponible, pour vérifier le chemin positif jamais exécuté ici ; (2) si un hook
+post-sync est câblé pour `killcollector` un jour, reprendre l'estimation de coût du surcoût
+positions avec une mesure réelle avant activation continue.

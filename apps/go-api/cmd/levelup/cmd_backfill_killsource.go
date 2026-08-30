@@ -98,6 +98,7 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/analysis/filmdec"
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain/killscope"
 	titlePkg "levelup/go-api/internal/domain/title"
@@ -107,6 +108,7 @@ import (
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/sync/haloclient"
 	"levelup/go-api/internal/sync/killcollector"
 )
@@ -263,6 +265,16 @@ func passeDesFilms(ctx context.Context, cfg *config.AppConfig, db *sql.DB, o kil
 		caps,
 		0, // limite par match : le defaut du collecteur (45 min)
 	)
+	// CAPTURE DES POSITIONS (G.2bis), BEST-EFFORT : catalogue de bornes illisible ou metadata
+	// indisponible degrade en « positions desactivees » (le collecteur continue sans elles, la
+	// passe des morts/tirs n en depend pas). ACTIVEE PAR DEFAUT ici, PAS derriere un flag CLI —
+	// c est la seule commande de backfill de ce producteur, et une feature OFF « pour plus tard »
+	// est l anti-pattern que CLAUDE.md interdit (regle 11) : la capture est prete, elle capture.
+	mapNames, mapBounds, cleanupPositions := positionCaptureDeps(cfg, o.titleSlug, db)
+	defer cleanupPositions()
+	if mapNames != nil && mapBounds != nil {
+		collecteur = collecteur.WithPositionCapture(mapNames, mapBounds)
+	}
 
 	ids := make([]string, 0, len(candidats))
 	for _, c := range candidats {
@@ -275,6 +287,51 @@ func passeDesFilms(ctx context.Context, cfg *config.AppConfig, db *sql.DB, o kil
 		sum.Written, sum.Deaths, sum.NoFilm, sum.NoKillFeed, sum.Timeouts, sum.Errors,
 		sum.NotSupport, time.Since(debut).Round(time.Second))
 	return nil
+}
+
+// positionCaptureDeps construit les dependances de la capture des positions (G.2bis) :
+// resolution de carte (`port.ReplayMapNameRepo`, implementee par `duckdb.ReplayMapRepo`) et
+// catalogue de bornes de dequantification (le meme que `replaybuild`, DONNEE DE REFERENCE
+// VERSIONNEE — data/titles/{slug}/reference/map_quant_bounds.json, pas une sortie de sync).
+//
+// BEST-EFFORT PAR CONCEPTION : un catalogue illisible ou une metadata indisponible degrade en
+// « positions desactivees », jamais une erreur fatale — le backfill des morts et des tirs, la
+// raison d etre de cette commande, ne doit pas dependre d une brique tierce. `cleanup` ferme le
+// handle metadata ouvert ici ; elle est TOUJOURS non-nil (no-op si rien n a ete ouvert), donc
+// l appelant peut la `defer` inconditionnellement.
+func positionCaptureDeps(
+	cfg *config.AppConfig, titleSlug string, sharedDB *sql.DB,
+) (port.ReplayMapNameRepo, *filmdec.MapQuantCatalog, func()) {
+	noop := func() {}
+	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
+
+	catalog, err := filmdec.LoadMapQuantCatalog(pr.MapQuantBoundsPath(titleSlug))
+	if err != nil {
+		fmt.Printf("catalogue de bornes indisponible (%v) — positions desactivees pour cette passe\n", err)
+		return nil, nil, noop
+	}
+
+	// OpenReadOnly (pas OpenReadForQuery) : la precondition de CETTE commande est le SERVEUR
+	// ARRETE (comme pour le handle RW de shared), donc aucun autre process ne tient metadata en
+	// ecriture pendant la passe — la garde « different configuration » d OpenReadForQuery n a
+	// rien a proteger ici, et NewReplayMapRepo demande le type *duckdb.DB, pas *sql.DB brut.
+	metaDB, err := duckdb.OpenReadOnly(pr.MetadataDBPath(titleSlug))
+	if err != nil {
+		fmt.Printf("metadata illisible (%v) — positions desactivees pour cette passe\n", err)
+		return nil, nil, noop
+	}
+
+	repo := duckdb.NewReplayMapRepo(staticSharedReader{db: sharedDB}, metaDB)
+	return repo, catalog, func() { _ = metaDB.Close() }
+}
+
+// staticSharedReader adapte le handle shared DEJA OUVERT (le lease de cette commande) en
+// duckdb.SharedReader. Meme raison que writerDeja : le process est seul (serveur arrete), donc
+// release est un no-op — il n y a pas de second lease a poser par-dessus celui deja tenu.
+type staticSharedReader struct{ db *sql.DB }
+
+func (s staticSharedReader) Get(context.Context) (*sql.DB, func(), error) {
+	return s.db, func() {}, nil
 }
 
 // passeDuCredit : la transformation SQL -> SQL, sur TOUS les matchs du registre.
