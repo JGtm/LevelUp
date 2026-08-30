@@ -73916,3 +73916,29 @@ le fond transparent au milieu de Behemoth, Fragmentation, Highpower et Oasis —
 est REEL (carte spatiale), sur les trois autres `combleAuMaillage` n'a pas ete essaye ; la forme
 des tables TSTR/FSTR ; le rendu a deux couches pour le sous-sol de Vagabond ; le renommage de
 944396dd en Narrows.
+
+## [2026-08-30] Fonds de carte — combler les vides OUVERTS des zones nommees
+
+**Statut** : Complete (3 cartes validees, Behemoth passe en retouche manuelle a la demande de
+l'utilisateur).
+
+**Decision technique principale** : `himap.CombleZonesEntieres`, qui pose l'aplat de sol suppose
+sur TOUTES les cellules vides du masque des zones, ouvertes ou fermees. C'est la regle REFUTEE le
+2026-08-26 (611 959 cellules d'aplat sur Illusion, arene noyee), rearmee en OPTION PAR CARTE avec
+deux garde-fous tires de cet echec : le masque des zones est pris NON DILATE — une zone nommee est
+du terrain joue par construction, sa dilatation ne l'est pas — et le compte part au sidecar.
+
+**Pourquoi il fallait un second levier** : `CombleTrous` inonde le vide depuis les bords de l'image
+et ne comble que ce que l'inondation n'atteint pas. Sur Behemoth, Fragmentation, Highpower et
+Oasis, le vide central COMMUNIQUE avec l'exterieur (l'anneau de Behemoth est perce par ses huit
+branches) : l'inondation y entre, et le vide reste. Cause etablie par LECTURE DU CODE, pas par
+essai — 23 505 cellules comblees sur Behemoth le disaient deja.
+
+**Resultats observes** : Fragmentation 874 207 cellules, Oasis 810 624, Highpower 567 959,
+Behemoth 473 108 — du meme ordre que le naufrage d'Illusion, sans le naufrage : verification a
+l'image sur Behemoth et Fragmentation avant publication, silhouette tenue, arene lisible.
+
+**Conclusion / prochaine etape** : Fragmentation, Highpower et Oasis validees. Behemoth passe en
+retouche manuelle. ATTENTION : toute recuisson de Behemoth ECRASERA la retouche — son reglage
+`combleZonesEntieres` reste arme et la carte reste dans le catalogue. Si la retouche doit survivre,
+il faudra soit sortir la carte de la cuisson, soit versionner l'image retouchee comme source.

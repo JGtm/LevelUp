@@ -103,6 +103,9 @@ type OptionsCuisson struct {
 	// les zones nommees. Ce n est PAS une mesure : c est un aplat assume, peint autrement et
 	// compte au sidecar. Exige `ZonesNommees`.
 	CombleTrous bool
+	// CombleZonesEntieres comble AUSSI les vides ouverts des zones nommees. Voir
+	// CombleZonesEntieres — version refutee sur Illusion, rearmee par carte.
+	CombleZonesEntieres bool
 	// PlancherTranche : profondeur, en metres SOUS le niveau de jeu, en deca de laquelle la
 	// matiere n appartient plus a la carte. ZERO = `TrancheDeJeuMin` (-12 m).
 	//
@@ -546,7 +549,13 @@ func mesureEtRogneZones(ctx context.Context, r *Rendu, b *BilanCuisson, opts Opt
 	if opts.RogneAuxZones {
 		b.CellulesHorsZones = r.EffaceHorsZones(m)
 	}
-	if opts.CombleTrous {
+	if opts.CombleZonesEntieres {
+		// Masque NON DILATE : la dilatation d une zone n est pas du terrain joue, et c est elle
+		// qui avait noye Illusion.
+		b.CellulesSolSuppose = r.CombleZonesEntieres(MasqueZones(r, opts.ZonesNommees, 0))
+		slog.InfoContext(ctx, "mapfond: sol suppose pose sur TOUTES les zones (vides ouverts compris)",
+			"carte", b.Module, "cellules", b.CellulesSolSuppose)
+	} else if opts.CombleTrous {
 		b.CellulesSolSuppose = r.CombleTrous(m)
 		slog.InfoContext(ctx, "mapfond: sol suppose pose sur les trous des zones", "carte", b.Module,
 			"cellules", b.CellulesSolSuppose)

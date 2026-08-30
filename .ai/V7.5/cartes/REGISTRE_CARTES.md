@@ -52,10 +52,10 @@ metres (attendu : -0,29). `matchs` = somme des matchs de tous les map_id servis 
 
 | carte(s) servie(s) | cle du fond | matchs | occL % | ecart m | famille | statut |
 |---|---|---:|---:|---:|---|---|
-| Highpower Heavies / Highpower | `btb_highpower` | 108 | 59.1 | -0,29 | natif | VALIDEE 26/08 |
+| Highpower Heavies / Highpower | `btb_highpower` | 108 | 59.1 | -0,29 | natif | VALIDEE 30/08 — vides ouverts combles |
 | Deadlock / Deadlock Heavies | `btb_drydock` | 97 | 67.1 | -0,30 | natif | VALIDEE 26/08 |
-| Oasis / Oasis Heavies | `btb_exiled` | 92 | 61.0 | -4,38 | natif | VALIDEE 26/08 |
-| Fragmentation / Fragmentation Heavies | `btb_fragmentation` | 92 | 87.4 | -11,71 | natif | VALIDEE 26/08 |
+| Oasis / Oasis Heavies | `btb_exiled` | 92 | 61.0 | -4,38 | natif | VALIDEE 30/08 — vides ouverts combles |
+| Fragmentation / Fragmentation Heavies | `btb_fragmentation` | 92 | 87.4 | -11,71 | natif | VALIDEE 30/08 — vides ouverts combles |
 | Breaker / Breaker Heavies | `ctf_breaker` | 76 | 52.4 | -3,29 | natif | VALIDEE 26/08 |
 | Streets - Ranked / Streets | `sgh_streets` | 62 | 40.6 | -4,33 | natif | VALIDEE 26/08 — `encre` + cadre + echelle + toits + zones |
 | Cliffhanger | `ridgeline` | 58 | 68.6 | -0,32 | natif | VALIDEE `encre` 26/08 |
@@ -69,7 +69,7 @@ metres (attendu : -0,29). `matchs` = somme des matchs de tous les map_id servis 
 | Prism | `sgh_crystalcaves` | 49 | 49.2 | -0,23 | natif | VALIDEE `encre` 26/08 — plafond 2 m + masque |
 | Catalyst | `catalyst` | 48 | 50.0 | -0,19 | natif | VALIDEE `encre` 26/08 — boite mesuree sur positions |
 | Forbidden | `ctf_forbidden` | 46 | 44.7 | -0,21 | natif | VALIDEE `encre` 26/08 — plafond 4 m + masque 63 zones |
-| Behemoth | `va_behemoth` | 44 | 83.2 | -17,51 | natif | VALIDEE 26/08 |
+| Behemoth | `va_behemoth` | 44 | 83.2 | -17,51 | natif | A FINALISER — retouche manuelle par l utilisateur (fond publie = vides ouverts combles) |
 | Empyrean | `d035fc3e` | 29 | 68.7 | -14,41 | forge | REFUSEE 13/08 |
 | Origin | `b302eb62` | 24 | 85.7 | 0,01 | forge | REFUSEE 13/08 |
 | Launch Site | `va_launchsite` | 24 | 53.5 | -0,40 | natif | VALIDEE `encre` 26/08 — SANS ecretage, comblement + sans eau |

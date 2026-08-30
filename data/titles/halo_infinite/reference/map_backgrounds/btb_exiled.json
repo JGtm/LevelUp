@@ -13,13 +13,13 @@
   ],
   "image": "btb_exiled.png",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
-  "generatedAt": "2026-08-30T19:02:14.8997923Z",
+  "generatedAt": "2026-08-30T21:22:04.6991944Z",
   "style": "encre",
   "calibration": {
     "metersPerPixel": 0.06756666692097982,
     "originX": -54.92614322916667,
     "originY": 68.52743321863811,
-    "widthPx": 1756,
+    "widthPx": 1757,
     "heightPx": 2018,
     "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
   },
@@ -38,6 +38,6 @@
     "waterCells": 176684,
     "coveredShare": 0.2354149414941494,
     "covered": false,
-    "cellsAssumedFloor": 89919
+    "cellsAssumedFloor": 810624
   }
 }

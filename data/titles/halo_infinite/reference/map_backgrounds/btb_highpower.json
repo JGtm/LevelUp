@@ -11,13 +11,13 @@
   ],
   "image": "btb_highpower.png",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
-  "generatedAt": "2026-08-30T19:01:44.3327377Z",
+  "generatedAt": "2026-08-30T21:21:31.8047608Z",
   "style": "encre",
   "calibration": {
     "metersPerPixel": 0.06298965406417846,
     "originX": -178.75742001819611,
     "originY": 23.67781647491453,
-    "widthPx": 1876,
+    "widthPx": 1877,
     "heightPx": 2074,
     "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
   },
@@ -36,6 +36,6 @@
     "waterCells": 28799,
     "coveredShare": 0.2231625753974723,
     "covered": false,
-    "cellsAssumedFloor": 84010
+    "cellsAssumedFloor": 567959
   }
 }
