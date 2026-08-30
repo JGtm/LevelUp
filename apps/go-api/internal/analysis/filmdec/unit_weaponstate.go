@@ -801,10 +801,24 @@ func consumeWeaponStateOverheated(br *BitReader) {
 //	FUN_1406d0f20 = R(3).
 //	FUN_1406d00ec = R(1)+optR(2).
 //	FUN_1406d00ec = R(1)+optR(2).
+//
+// desiredWeaponSetHook, si non nil, reçoit CHAQUE lecture d'i42 avec la valeur du R(3) de
+// tête (l'emplacement d'arme désiré). Global de paquet, donc UN SEUL décodage filmdec à la
+// fois par process — même règle que les autres sondes.
+var desiredWeaponSetHook func(sel uint32)
+
+// SetDesiredWeaponSetHook installe (ou retire, avec nil) la sonde d'i42. L'appelant restaure
+// la sonde précédente. AUCUN bit lu ne change : la sonde est appelée après les trois
+// lectures, et le déser ne branche jamais sur elle.
+func SetDesiredWeaponSetHook(h func(sel uint32)) { desiredWeaponSetHook = h }
+
 func consumeBipedDesiredWeaponSet(br *BitReader) {
-	br.ReadBits(3) // FUN_1406d0f20
-	consumeID2(br) // FUN_1406d00ec
-	consumeID2(br) // FUN_1406d00ec
+	sel := uint32(br.ReadBits(3)) // FUN_1406d0f20
+	consumeID2(br)                // FUN_1406d00ec
+	consumeID2(br)                // FUN_1406d00ec
+	if desiredWeaponSetHook != nil {
+		desiredWeaponSetHook(sel)
+	}
 }
 
 // ---------------------------------------------------------------------------
