@@ -533,3 +533,282 @@ func TestLienPriseEquipementPose(t *testing.T) {
 		t.Logf("   eqip %s : %s", id, line)
 	}
 }
+
+// TestI26ResolutionDesHandles — mesure E (2026-08-30, suite de la mesure D refutee) : les
+// handles NOUVEAUX d'i26 au moment d'une prise se resolvent-ils en POSES ti=37 connues ?
+//
+// La mesure D a refute le lien PAR PROXIMITE (l'equipement tombe en tas avec les grenades).
+// i26 donne une REFERENCE — pas une position : si (valeur, queue) designe la vie (slot, gen)
+// d'une pose, la matrice GlobalID x rang refaite PAR REFERENCE doit devenir DIAGONALE la ou
+// celle par proximite etait brouillee. C'est le juge, enonce avant lecture. En bonus, la
+// distance ramasseur -> pose resolue doit etre courte (controle physique independant).
+func TestI26ResolutionDesHandles(t *testing.T) {
+	s := glResolve(t)
+
+	i26, err := filmdec.ScanFilmUnitEquipment(s.dir)
+	if err != nil {
+		t.Fatalf("balayage i26 : %v", err)
+	}
+	i26BySlot := map[uint32][]filmdec.UnitEquipmentEmission{}
+	for _, e := range i26 {
+		i26BySlot[e.Slot] = append(i26BySlot[e.Slot], e)
+	}
+	born := func(slot uint32) (uint64, bool) {
+		list := s.pos[slot]
+		if len(list) == 0 {
+			return 0, false
+		}
+		return list[0].TimestampUS, true
+	}
+	changes, _, err := filmdec.ScanFilmEquipmentChanges(s.dir, born)
+	if err != nil {
+		t.Fatalf("changements d equipement : %v", err)
+	}
+	poses, pst, err := filmdec.ScanFilmEquipmentPlacements(s.dir, &s.wr)
+	if err != nil || !pst.Scanned {
+		t.Fatalf("poses ti=37 : err=%v scanned=%v", err, pst.Scanned)
+	}
+	bySlot37 := map[uint32][]filmdec.EquipmentPlacement{}
+	for _, p := range poses {
+		bySlot37[p.Life.Slot] = append(bySlot37[p.Life.Slot], p)
+	}
+
+	// newHandles rend les entrees nouvelles de la fenetre [-1 s, +1 s] autour de la prise.
+	newHandles := func(slot uint32, at uint64) []filmdec.UnitEquipmentEntry {
+		list := i26BySlot[slot]
+		before := map[uint64]bool{}
+		for _, e := range list {
+			if e.TimestampUS >= at-1_000_000 {
+				break
+			}
+			before = map[uint64]bool{}
+			for _, en := range e.Read.Entries {
+				if en.Present {
+					before[uint64(en.Val)<<2|uint64(en.Tail)] = true
+				}
+			}
+		}
+		var out []filmdec.UnitEquipmentEntry
+		for _, e := range list {
+			if e.TimestampUS < at-1_000_000 || e.TimestampUS > at+1_000_000 {
+				continue
+			}
+			for _, en := range e.Read.Entries {
+				if en.Present && !before[uint64(en.Val)<<2|uint64(en.Tail)] {
+					out = append(out, en)
+				}
+			}
+		}
+		return out
+	}
+
+	var takes, withHandle, resolvedSlot, genMatch int
+	var dists []float64
+	matrix := map[string]map[int]int{}
+	for _, ch := range changes {
+		if ch.Kind != filmdec.EquipmentTaken && ch.Kind != filmdec.EquipmentSpawned {
+			continue
+		}
+		takes++
+		hs := newHandles(ch.Slot, ch.TimestampUS)
+		if len(hs) == 0 {
+			continue
+		}
+		withHandle++
+		// La pose candidate : meme slot d'objet, la plus recente NEE AVANT la prise (+1 s de
+		// marge d'horodatage). Le test de generation se COMPTE a part — c'est lui qui dira si
+		// la queue R(2) est bien la generation.
+		var best *filmdec.EquipmentPlacement
+		var bestEntry filmdec.UnitEquipmentEntry
+		for _, en := range hs {
+			for i := range bySlot37[en.Val] {
+				p := &bySlot37[en.Val][i]
+				if p.T0US > ch.TimestampUS+1_000_000 {
+					continue
+				}
+				if best == nil || p.T0US > best.T0US {
+					best, bestEntry = p, en
+				}
+			}
+		}
+		if best == nil {
+			continue
+		}
+		resolvedSlot++
+		if bestEntry.Tail == best.Life.Gen {
+			genMatch++
+		}
+		if a, ok := glAt(s.pos, ch.Slot, ch.TimestampUS); ok {
+			dists = append(dists, glDist(a.X, a.Y, a.Z, best.X, best.Y, best.Z))
+		}
+		if ch.Rank >= 0 {
+			key := fmt.Sprintf("%08x", best.GlobalID)
+			if matrix[key] == nil {
+				matrix[key] = map[int]int{}
+			}
+			matrix[key][ch.Rank]++
+		}
+	}
+	t.Logf("PRISES = %d ; avec handle NOUVEAU = %d ; resolues en pose (slot) = %d ; "+
+		"generation concordante = %d", takes, withHandle, resolvedSlot, genMatch)
+	if len(dists) > 0 {
+		sort.Float64s(dists)
+		t.Logf("DISTANCE ramasseur -> pose RESOLUE PAR REFERENCE : mediane=%.2f m  max=%.2f",
+			dists[len(dists)/2], dists[len(dists)-1])
+	}
+	t.Log("MATRICE GlobalID x rang PAR REFERENCE (le juge : diagonale = canal etabli) :")
+	ids := make([]string, 0, len(matrix))
+	for id := range matrix {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	for _, id := range ids {
+		line := ""
+		for r, n := range matrix[id] {
+			line += fmt.Sprintf("rang%d=%d  ", r, n)
+		}
+		t.Logf("   eqip %s : %s", id, line)
+	}
+}
+
+// TestI26HandleVersCreation — mesure F : le handle nouveau d'i26 designe-t-il une CREATION
+// ti=37 (record NEW accepte, confirme ou non) contemporaine de la prise ?
+//
+// La mesure E a refute la resolution vers les POSES (3/33 et 16/71, distances 19-29 m) : le
+// handle ne designe pas l'objet au sol. L'hypothese restante : il designe l'INSTANCE
+// d'equipement DU PORTEUR, creee au ramassage — une entite ti=37 SANS vie au sol, donc
+// exactement celle que confirmPlacements ecarte. Si (valeur, queue) == (slot, gen) d'une
+// creation acceptee a moins d'une seconde de la prise, le GlobalID de cette creation est
+// l'IDENTITE REELLE de l'equipement ramasse — et la matrice GlobalID x rang doit etre
+// DIAGONALE. C'est le juge, enonce avant lecture.
+func TestI26HandleVersCreation(t *testing.T) {
+	s := glResolve(t)
+
+	i26, err := filmdec.ScanFilmUnitEquipment(s.dir)
+	if err != nil {
+		t.Fatalf("balayage i26 : %v", err)
+	}
+	i26BySlot := map[uint32][]filmdec.UnitEquipmentEmission{}
+	for _, e := range i26 {
+		i26BySlot[e.Slot] = append(i26BySlot[e.Slot], e)
+	}
+	born := func(slot uint32) (uint64, bool) {
+		list := s.pos[slot]
+		if len(list) == 0 {
+			return 0, false
+		}
+		return list[0].TimestampUS, true
+	}
+	changes, _, err := filmdec.ScanFilmEquipmentChanges(s.dir, born)
+	if err != nil {
+		t.Fatalf("changements d equipement : %v", err)
+	}
+	// Les CREATIONS ti=37, toutes — la calibration MPP vient des poses (chaine de prod),
+	// puis le balayage brut sur la bande des images-cles.
+	_, pst := decodeFilmPlacements(s.dir, &s.wr)
+	if !pst.Calibration.Widths.Valid() {
+		t.Fatal("calibration MPP non tranchee : la mesure ne peut pas lire les identites")
+	}
+	restore := gwInstallMPPWidths(pst.Calibration.Widths)
+	defer restore()
+	kf := filmdec.ScanFilmWorldObjectKeyframes(s.dir, filmdec.EquipmentTypeIndex)
+	cre, _, err := filmdec.ScanFilmEquipmentCreationsForBand(s.dir, &s.wr, kf.Band)
+	if err != nil {
+		t.Fatalf("creations ti=37 : %v", err)
+	}
+	type creKey struct{ slot, gen uint32 }
+	byKey := map[creKey][]filmdec.EquipmentCreation{}
+	for _, c := range cre {
+		byKey[creKey{c.Slot, c.Gen}] = append(byKey[creKey{c.Slot, c.Gen}], c)
+	}
+
+	newHandles := func(slot uint32, at uint64) []filmdec.UnitEquipmentEntry {
+		list := i26BySlot[slot]
+		before := map[uint64]bool{}
+		for _, e := range list {
+			if e.TimestampUS >= at-1_000_000 {
+				break
+			}
+			before = map[uint64]bool{}
+			for _, en := range e.Read.Entries {
+				if en.Present {
+					before[uint64(en.Val)<<2|uint64(en.Tail)] = true
+				}
+			}
+		}
+		var out []filmdec.UnitEquipmentEntry
+		for _, e := range list {
+			if e.TimestampUS < at-1_000_000 || e.TimestampUS > at+1_000_000 {
+				continue
+			}
+			for _, en := range e.Read.Entries {
+				if en.Present && !before[uint64(en.Val)<<2|uint64(en.Tail)] {
+					out = append(out, en)
+				}
+			}
+		}
+		return out
+	}
+
+	var takes, withHandle, resolved int
+	var gaps []float64
+	matrix := map[string]map[int]int{}
+	for _, ch := range changes {
+		if ch.Kind != filmdec.EquipmentTaken && ch.Kind != filmdec.EquipmentSpawned {
+			continue
+		}
+		takes++
+		hs := newHandles(ch.Slot, ch.TimestampUS)
+		if len(hs) == 0 {
+			continue
+		}
+		withHandle++
+		var best *filmdec.EquipmentCreation
+		for _, en := range hs {
+			for i := range byKey[creKey{en.Val, en.Tail}] {
+				c := &byKey[creKey{en.Val, en.Tail}][i]
+				gap := equipTimeGap(c.TimestampUS, ch.TimestampUS)
+				if gap > 1_500_000 {
+					continue
+				}
+				if best == nil ||
+					gap < equipTimeGap(best.TimestampUS, ch.TimestampUS) {
+					best = c
+				}
+			}
+		}
+		if best == nil || !best.MPPPresent[filmdec.MPPWord32] {
+			continue
+		}
+		resolved++
+		gaps = append(gaps,
+			float64(equipTimeGap(best.TimestampUS, ch.TimestampUS))/1000)
+		if ch.Rank >= 0 {
+			key := fmt.Sprintf("%08x", uint32(best.MPPVal[filmdec.MPPWord32]))
+			if matrix[key] == nil {
+				matrix[key] = map[int]int{}
+			}
+			matrix[key][ch.Rank]++
+		}
+	}
+	t.Logf("PRISES = %d ; avec handle NOUVEAU = %d ; RESOLUES en creation ti=37 "+
+		"contemporaine (slot ET generation, +-1,5 s) = %d", takes, withHandle, resolved)
+	if len(gaps) > 0 {
+		sort.Float64s(gaps)
+		t.Logf("ECART creation <-> prise : mediane=%.0f ms  max=%.0f ms",
+			gaps[len(gaps)/2], gaps[len(gaps)-1])
+	}
+	t.Log("MATRICE GlobalID x rang PAR REFERENCE DE CREATION (juge : diagonale) :")
+	ids := make([]string, 0, len(matrix))
+	for id := range matrix {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	for _, id := range ids {
+		line := ""
+		for r, n := range matrix[id] {
+			line += fmt.Sprintf("rang%d=%d  ", r, n)
+		}
+		t.Logf("   eqip %s : %s", id, line)
+	}
+}
