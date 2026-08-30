@@ -10,10 +10,11 @@
  *    un) — corrige le doublon mêlée=grenade de l'ancien donut.
  * 2. Tokens valides : chaque token existe dans le contrat sémantique (ALL_TOKENS).
  * 3. Pin du mapping validé (la gamme Antagonistes actée avec l'utilisateur).
- * 4. Distinction : résolus sur la palette DÉFAUT, les classes de combat (véhicule et
- *    tourelle inclus depuis V73-3.2) donnent autant d'hex DISTINCTS et une distance
- *    perceptuelle normale-vision suffisante (min all-pairs ΔE OKLab ×100 ≥ 8). La
- *    robustesse daltonisme est
+ * 4. Distinction : résolus sur la palette DÉFAUT, TOUTES les classes — le résidu
+ *    `unattributed` inclus depuis le 2026-08-29, il en était exclu et masquait une
+ *    collision — donnent autant d'hex DISTINCTS et une distance perceptuelle
+ *    normale-vision suffisante (min all-pairs ΔE OKLab ×100 ≥ 8), à l'exception datée
+ *    ci-dessous. La robustesse daltonisme est
  *    portée par l'ENCODAGE SECONDAIRE (labels + lignes de rappel + légende +
  *    position d'anneau), jamais par la seule teinte — cf. double encodage P1.2.
  */
@@ -66,6 +67,8 @@ describe('fragClass — garde-rail gamme Antagonistes (tokens)', () => {
       spartan_ability: 'compare-a',
       vehicle: 'chart-series-5',
       turret: 'narrative-debacle',
+      equipment: 'extreme',
+      environmental: 'narrative-remontada',
       unattributed: 'divergent-neutral',
     })
   })
@@ -75,18 +78,42 @@ describe('fragClass — garde-rail gamme Antagonistes (tokens)', () => {
     expect(fragClassToken(null)).toBe('divergent-neutral')
   })
 
-  it('classes de combat (engins inclus) : hex DISTINCTS + distinction normale-vision (ΔE ≥ 8) sur la palette défaut', () => {
-    const combat = FRAG_CLASS_ORDER.filter((c) => c !== 'unattributed')
-    const hexes = combat.map((c) => defaultPalette[FRAG_CLASS_TOKENS[c]])
+  // PAIRE HÉRITÉE, constatée le 2026-08-29 en incluant `unattributed` au contrôle ΔE
+  // (il en était exclu jusque-là, ce qui masquait la collision) : spartan_ability
+  // (compare-a #818CF8) et unattributed (divergent-neutral #60A5FA) valent 6,89 — deux
+  // bleus clairs. Exception CIBLÉE à cette seule paire, à re-trancher si refonte palette :
+  // les deux tokens servent ailleurs (page Compare, Résistance défensive), les rebasculer
+  // dépasse le lot. Le seuil global reste 8 et aucune autre paire n'est exemptée.
+  const LEGACY_UNDER_THRESHOLD = new Set(['spartan_ability|unattributed'])
+
+  it('classes (résidu INCLUS) : hex DISTINCTS + distinction normale-vision (ΔE ≥ 8) sur la palette défaut', () => {
+    const hexes = FRAG_CLASS_ORDER.map((c) => defaultPalette[FRAG_CLASS_TOKENS[c]])
     // Hex distincts (pas deux classes sur la même teinte de palette).
-    expect(new Set(hexes.map((h) => h.toLowerCase())).size).toBe(combat.length)
-    // Distance perceptuelle normale-vision.
+    expect(new Set(hexes.map((h) => h.toLowerCase())).size).toBe(FRAG_CLASS_ORDER.length)
+    // Distance perceptuelle normale-vision, toutes paires sauf l'exception héritée.
     let worst = Infinity
+    let worstPair = ''
     for (let i = 0; i < hexes.length; i++) {
       for (let j = i + 1; j < hexes.length; j++) {
-        worst = Math.min(worst, deltaE(hexes[i], hexes[j]))
+        const pair = [FRAG_CLASS_ORDER[i], FRAG_CLASS_ORDER[j]].sort().join('|')
+        if (LEGACY_UNDER_THRESHOLD.has(pair)) continue
+        const d = deltaE(hexes[i], hexes[j])
+        if (d < worst) {
+          worst = d
+          worstPair = pair
+        }
       }
     }
-    expect(worst).toBeGreaterThanOrEqual(8)
+    expect(worst, `paire la plus proche : ${worstPair}`).toBeGreaterThanOrEqual(8)
+  })
+
+  it('l\'exception héritée est toujours JUSTIFIÉE (sinon la retirer)', () => {
+    // Ratchet anti « compatibility guard forever » : le jour où la palette rend cette
+    // paire conforme, ce test casse et l'exception doit DISPARAÎTRE du fichier.
+    for (const pair of LEGACY_UNDER_THRESHOLD) {
+      const [a, b] = pair.split('|') as [(typeof FRAG_CLASS_ORDER)[number], (typeof FRAG_CLASS_ORDER)[number]]
+      const d = deltaE(defaultPalette[FRAG_CLASS_TOKENS[a]], defaultPalette[FRAG_CLASS_TOKENS[b]])
+      expect(d, `${pair} n'est plus sous le seuil : retirer l'exception`).toBeLessThan(8)
+    }
   })
 })

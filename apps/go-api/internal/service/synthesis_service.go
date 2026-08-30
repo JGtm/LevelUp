@@ -38,6 +38,7 @@ import (
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/fragdist"
+	"levelup/go-api/internal/service/killsourceload"
 )
 
 // SynthesisService orchestre les donnÃ©es de la page SynthÃ¨se.
@@ -59,6 +60,9 @@ type SynthesisService struct {
 	// weaponKillsRepo : charge les kills agrégés par arme depuis shared.weapon_kills.
 	// Quand nil, le champ TopWeaponKills est omis de la réponse.
 	weaponKillsRepo port.WeaponKillsRepository
+	// killSourceRepo (optionnel) : kills par SOURCE DE DEGAT du film (repulseur, bobines,
+	// chute). Cf. WithKillSourceRepo.
+	killSourceRepo port.KillSourceClassRepository
 	// weaponAccuracyRepo : charge la précision agrégée par arme depuis la table
 	// weapon_accuracy (Halo 5 natif). Quand nil OU titre sans table (Infinite),
 	// le champ WeaponAccuracy est omis de la réponse.
@@ -118,6 +122,16 @@ func (s *SynthesisService) WithPersonalScoreAwardsRepo(
 }
 
 // WithWeaponKillsRepo injecte le loader pour le classement frags par arme.
+// WithKillSourceRepo injecte le loader des kills par SOURCE DE DEGAT du film — ceux que
+// l'attribution arme-a-feu ne peut pas voir (repulseur, bobines, chute), faute de record
+// de degat du tireur. Optionnel : nil (ou titre sans capability `film.kill_source`, le
+// cablage n'injecte alors rien) => ces kills restent dans « Non attribue », exactement
+// comme avant le lot du 2026-08-29.
+func (s *SynthesisService) WithKillSourceRepo(repo port.KillSourceClassRepository) *SynthesisService {
+	s.killSourceRepo = repo
+	return s
+}
+
 func (s *SynthesisService) WithWeaponKillsRepo(repo port.WeaponKillsRepository) *SynthesisService {
 	s.weaponKillsRepo = repo
 	return s
@@ -387,6 +401,12 @@ func (s *SynthesisService) loadTopWeaponKills(
 		return nil, nil
 	}
 	rows := s.loadWeaponKillRows(ctx, filteredCanon)
+	matchIDs := make([]string, 0, len(filteredCanon))
+	for _, r := range filteredCanon {
+		matchIDs = append(matchIDs, r.Summary.MatchID)
+	}
+	sources := killsourceload.Load(ctx, s.killSourceRepo, "synthesis", s.titleSlug,
+		matchIDs, []string{s.playerXUID})
 	hasMechanics := titleHasNativeKillMechanics(s.titleSlug)
 	counts := domain.FragKillTypeCounts{
 		Melee:         detailedStats.TotalMeleeKills,
@@ -396,7 +416,7 @@ func (s *SynthesisService) loadTopWeaponKills(
 		ShoulderBash:  detailedStats.TotalShoulderBashKills,
 		Total:         totalKills,
 	}
-	fd := fragdist.Build(rows, counts, hasMechanics)
+	fd := fragdist.Build(rows, sources, counts, hasMechanics)
 	logFragDistribution(ctx, "synthesis", s.titleSlug, s.gamertag, fd)
 	return buildTopWeaponKills(rows, synthesisWeaponChartTopN), &fd
 }

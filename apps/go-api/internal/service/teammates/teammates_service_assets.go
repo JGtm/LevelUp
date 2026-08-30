@@ -219,6 +219,34 @@ func computeMapBreakdown(matches []domain.SquadMatchRow) []domain.MapBreakdownRo
 	return result
 }
 
+// squadMapWinRate rend le taux de victoire historique du joueur principal sur la carte de la
+// ligne, et le nombre de matchs qui le fondent.
+//
+// DEUX NIL VEULENT DIRE « PAS DE MESURE », et la cellule front affiche « — ». Jamais un zéro,
+// qui se lirait « jamais gagné ici » : la carte peut simplement n'avoir aucun historique, ou
+// n'être identifiée par aucune clé (`MapID` vide ET `MapName` vide). Extrait de
+// buildSquadMatchHistory le 2026-08-30 pour repasser sous le seuil de 80 lignes (funlen) —
+// le calcul est autonome, il ne lit que la ligne et la table.
+func squadMapWinRate(m domain.SquadMatchRow, mapWR map[string][2]int) (*float64, *int) {
+	if mapWR == nil {
+		return nil, nil
+	}
+	key := m.MapID
+	if key == "" {
+		key = m.MapName
+	}
+	if key == "" {
+		return nil, nil
+	}
+	entry, ok := mapWR[key]
+	if !ok || entry[1] <= 0 {
+		return nil, nil
+	}
+	v := round2(float64(entry[0]) / float64(entry[1]))
+	total := entry[1]
+	return &v, &total
+}
+
 // buildSquadMatchHistory construit la table historique pour teammates.11 :
 // une ligne par match unique, triée par StartTime DESC. Pas de cap serveur —
 // la pagination (20/page) est gérée côté client (TanStack Table).
@@ -276,22 +304,7 @@ func buildSquadMatchHistory(
 			scoreLabel = analysis.FormatTeamScoreLabel(d)
 			scoreKind = string(d.Kind)
 		}
-		var winRate *float64
-		var winRateTotal *int
-		if mapWR != nil {
-			key := m.MapID
-			if key == "" {
-				key = m.MapName
-			}
-			if key != "" {
-				if entry, ok := mapWR[key]; ok && entry[1] > 0 {
-					v := round2(float64(entry[0]) / float64(entry[1]))
-					winRate = &v
-					total := entry[1]
-					winRateTotal = &total
-				}
-			}
-		}
+		winRate, winRateTotal := squadMapWinRate(m, mapWR)
 		modeUI := squadModeUI(m)
 		rows = append(rows, domain.SquadMatchHistoryRow{
 			MatchID:      m.MatchID,
