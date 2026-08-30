@@ -1,3 +1,33 @@
+## [2026-08-30] Percer la trame — lot 1 ouvert : DEL de tête sur 0xD2/0xD3, vues 2/3, et l'amorce qui varie par famille — En cours
+
+**Contexte** : plan `.ai/V7.5/PLAN_PERCER_TRAME_FILM_2026-08-30.md`, lot 1 (les 528 262
+paquets 0xD3 écartés). Branche `wt/trame-film`. Trois instruments sous garde `LOT1_TRAME_FILM`
+(`lot1_familles_trame_research_test.go`), témoin calibré `000d5950`, 12 chunks.
+
+**Décision technique** : confirmer d'abord POSITIVEMENT le modèle de trame (point 6 laissé
+ouvert par le lot D) en rejouant `DecodeFrameRecords` par famille de premier octet, référence
+interne 0xA0 ; puis départager les cadrages par le discriminant établi (masques 1..7 : 84,8 %
+sous la bonne grammaire, 10,7 % au hasard).
+
+**Résultats chiffrés** : (1) L1-C1 TENU pour 0xD2 (34,3 % de fermetures propres vs seuil
+18,1 %), 0xD3 RATE de 2,1 pts (publié) ; L1-C2 TENU pour 0xD3 : 47 slots distincts du 1er
+record (les « 50 » du lot D, recoupés sans étape commune). **Les trames 0xD2/0xD3 commencent
+100 % par un record DEL d'une entité TRANSITOIRE** (jamais déclarée par une image-clé —
+profil projectile) ; 0xD2 recycle 12 slots. (2) Les familles « vides » (0xC0/C2/C3/C4/C7,
+100 % fermées à 0 record, payload non lu) portent leurs records dans les VUES 2/3 :
+`DecodeFrameViews(3)` rend 454 records et ≥2 vues sur 100 % des paquets 0xC0 — réserve :
+l'inférence lit au-delà du payload (couverture > 100 %, records fantômes). (3) **L'amorce
+varie par famille** : k=2 gagne sur 0xA0 (témoin, 99,2 %/21 546), k=6 sur 0xC2 (99,3 %/135),
+k=8 sur 0xD2 (86,2 %/80, NET) — les familles à bit 2 = 1 portent un en-tête supplémentaire
+propre à la famille. Décompilé FUN_1406cd128 : DEUX grammaires de record-loop (global
+DAT_14474cd78), la 2e à largeur d'id dépendant du bit de configuration du paquet.
+
+**Conclusion / prochaine étape** : le gisement 0xD3 s'ouvre par la sémantique de cet en-tête,
+pas par des offsets figés. Ordre écrit dans `film_re/NOTE_FAMILLES_TRAME_2026-08-30.md` :
+(a) sémantique de l'en-tête (piste Ghidra ci-dessus), (b) re-balayage sur plus de chunks pour
+les familles NON CONCLUANT, (c) décodage des records suivants de 0xD2/0xD3 et confrontation au
+golden killsource (garde-fou du plan). Lot 2 non ouvert (ordre du plan respecté).
+
 ## [2026-08-30] Percer la trame — lot 3 : le registre fait 50 blocs, pas 118 — Complété
 
 **Contexte** : plan `.ai/V7.5/PLAN_PERCER_TRAME_FILM_2026-08-30.md`, lot 3 (à faire en premier).
