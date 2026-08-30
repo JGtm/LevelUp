@@ -7202,6 +7202,8 @@ export interface components {
             assist_count: number;
             assist_gamertag: string;
             assist_xuid: string;
+            /** Format: int64 */
+            avg_assist_pct?: number;
             killer_gamertag?: string;
             killer_xuid: string;
             /** Format: int64 */

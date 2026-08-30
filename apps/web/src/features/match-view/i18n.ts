@@ -193,6 +193,9 @@ export interface MatchViewText {
   // Note d'infobulle d'un segment : les éliminations volées de ce couple
   // (part de dégâts de l'assistant supérieure à celle du tueur crédité).
   assistStolenNote: (n: number) => string
+  // Note d'infobulle d'un segment : la part moyenne de participation de l'assistant sur
+  // ce couple. Vocabulaire « part » (comme le kill feed du rejeu), jamais « dégâts ».
+  assistAvgShareNote: (pct: number) => string
   // Sections des onglets Chronologie et Joueurs (titres type-1 du catalogue
   // d'harmonisation)
   sectionFlow: string
@@ -438,6 +441,7 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     assistNotUsable: 'Assistances non disponibles pour ce match (non mesurées ou non publiables).',
     assistNoData: 'Aucune assistance sur ce match.',
     assistStolenNote: (n) => `dont ${n} volée${n > 1 ? 's' : ''}`,
+    assistAvgShareNote: (pct) => `part moyenne ${pct} %`,
     sectionFlow: 'Déroulé du match',
     sectionDuels: 'Duels & confrontations',
     sectionEncounters: 'Historique des rencontres',
@@ -732,6 +736,7 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     assistNotUsable: 'Assists unavailable for this match (not measured or not publishable).',
     assistNoData: 'No assists in this match.',
     assistStolenNote: (n) => `${n} stolen`,
+    assistAvgShareNote: (pct) => `avg share ${pct}%`,
     sectionFlow: 'Match flow',
     sectionDuels: 'Duels & head-to-head',
     sectionEncounters: 'Encounter history',

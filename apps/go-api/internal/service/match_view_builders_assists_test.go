@@ -63,8 +63,9 @@ func TestBuildAssistPairs_GamertagTueurDepuisScoreboard(t *testing.T) {
 		{XUID: "A1", Gamertag: "Alpha"},
 		{XUID: "K3", Gamertag: ""}, // présent mais anonyme : ne compte pas
 	}
+	avg := 45
 	raw := []domain.MatchAssistPairRaw{
-		{AssistXUID: "A1", AssistGamertag: "Alpha", KillerXUID: "K1", AssistCount: 3, StolenCount: 2},
+		{AssistXUID: "A1", AssistGamertag: "Alpha", KillerXUID: "K1", AssistCount: 3, StolenCount: 2, AvgAssistPct: &avg},
 		{AssistXUID: "A1", AssistGamertag: "Alpha", KillerXUID: "K2", AssistCount: 1},
 		{AssistXUID: "A1", AssistGamertag: "Alpha", KillerXUID: "K3", AssistCount: 1},
 	}
@@ -87,6 +88,13 @@ func TestBuildAssistPairs_GamertagTueurDepuisScoreboard(t *testing.T) {
 	// Les compteurs traversent sans être recalculés — Q21d les a déjà comptés.
 	if got.Pairs[0].AssistCount != 3 || got.Pairs[0].StolenCount != 2 {
 		t.Errorf("compteurs = %d/%d, attendus 3/2", got.Pairs[0].AssistCount, got.Pairs[0].StolenCount)
+	}
+	// La part moyenne traverse telle quelle — et son ABSENCE aussi (nil, jamais 0).
+	if got.Pairs[0].AvgAssistPct == nil || *got.Pairs[0].AvgAssistPct != 45 {
+		t.Errorf("avg = %v, attendu 45", got.Pairs[0].AvgAssistPct)
+	}
+	if got.Pairs[1].AvgAssistPct != nil {
+		t.Errorf("avg de la paire sans part = %v, attendu nil", *got.Pairs[1].AvgAssistPct)
 	}
 }
 

@@ -51,6 +51,10 @@ type MatchAssistPairRaw struct {
 	AssistCount int
 	// StolenCount : sous-ensemble de AssistCount où `assist_damage_pct > killer_damage_pct`.
 	StolenCount int
+	// AvgAssistPct : part moyenne de participation de l'assistant sur les morts de la
+	// paire (AVG des `assist_damage_pct` non NULL, arrondie). NIL quand aucune mort de la
+	// paire ne porte de part mesurée — jamais un zéro fabriqué. Non plafonnée (cf. en-tête).
+	AvgAssistPct *int
 }
 
 // MatchAssistScopeRaw : la PORTÉE de la lecture d'assistance d'un match — les deux
@@ -88,6 +92,12 @@ type MatchAssistPair struct {
 	// DÉPASSE celle du tueur crédité. « Éliminations volées » à l'écran — un décompte,
 	// pas une réattribution : le crédit du jeu n'est jamais réécrit.
 	StolenCount int `json:"stolen_count"`
+	// AvgAssistPct : part moyenne de participation de l'assistant sur cette paire,
+	// arrondie à l'entier. ABSENT quand aucune part n'est mesurée sur la paire. Le
+	// vocabulaire à l'écran est « part » (comme le kill feed du rejeu, killFeedAssistShare)
+	// — JAMAIS « dégâts » : les montants ne se publient pas, les parts si (réserve G.0,
+	// non plafonnée par doctrine).
+	AvgAssistPct *int `json:"avg_assist_pct,omitempty"`
 }
 
 // MatchAssistPairs : le bloc « assistances » de l'onglet Combat, avec la PORTÉE de sa

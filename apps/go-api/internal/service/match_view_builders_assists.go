@@ -63,6 +63,7 @@ func buildAssistPairs(
 			KillerGamertag: gtByXUID[r.KillerXUID],
 			AssistCount:    r.AssistCount,
 			StolenCount:    r.StolenCount,
+			AvgAssistPct:   r.AvgAssistPct,
 		})
 	}
 	return &domain.MatchAssistPairs{

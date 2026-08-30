@@ -695,10 +695,88 @@ la réflexion narrative venant après.
       resterait à rouvrir par une décision utilisateur ultérieure, pas une
       simple question de cuisson de masse. La capture live reste câblée
       (G.2bis) si ce chantier rouvre un jour.
+- [x] **G.4 — Assistances empilées (vue match) : DÉJÀ LIVRÉ, ZÉRO CODE NEUF**
+      (demande du 2026-08-30 soir, agent Sonnet, worktree dédié). Cadrage
+      utilisateur MOT POUR MOT : « comme le graphe de barres empilées de la page
+      match view : on compte les assistances totales et on met des barres
+      empilées pour dire qui on a assisté et combien de fois. » L'élaboration du
+      pilote au moment de la mission (carte dédiée, dénominateur d'honnêteté PAR
+      JOUEUR contre le scoreboard, infobulle « part moyenne », nouvelle chaîne
+      Go+web calquée sur `kill_distance_repo.go`) N'EST PAS dans les mots de
+      l'utilisateur — à distinguer du besoin vérifié ci-dessous, cf. Découvertes.
+      VÉRIFIÉ SUR PIÈCES (règle 4) AVANT toute ligne de code : le graphe demandé
+      EXISTE déjà, livré et branché depuis le 2026-08-25 par un chantier
+      antérieur (« notion5(C) », commits `5bf2e6128` match + `48ca9b065`
+      escouade/Synergies + `97ae1cefc` correctifs web — TOUS ancêtres de HEAD
+      sur cette branche, `git merge-base --is-ancestor` vérifié), donc PAS par ce
+      plan ni cette session. Correspondance point par point avec le cadrage :
+      « chaque joueur a sa barre = total d'assistances MESURÉES » = 1 barre par
+      ASSISTANT, longueur = somme des segments = `assist_count` sous
+      `publishable AND assist_known` (Q21d) ; « empilée par BÉNÉFICIAIRE (le
+      coéquipier assisté) » = segments empilés par `feed_killer_xuid` (le tueur
+      crédité — nécessairement un coéquipier) ; « nombre d'assistances envers ce
+      coéquipier » = `assist_count` par paire (assistant, tueur), `GROUP BY
+      assist_xuid, assist_gamertag, feed_killer_xuid`.
+      CHAÎNE DÉJÀ EN PROD sur cette branche — Go :
+      `platform/duckdb/match_view_repo_assist_pairs.go` (Q21d, sur
+      `KillEventsCanonicalTable` = `match_kill_events_latest`, MÊME table que
+      tout le LOT G) → `domain/match_assist_pairs.go`
+      (`MatchAssistPairRaw/Pair/ScopeRaw/Pairs`) → `domain/match_view.go:456-460`
+      (`MatchCombatTab.AssistPairs`) → `port/repository.go:257-262`
+      (`GetMatchAssistPairs`) → `service/match_view_builders_assists.go`
+      (`buildAssistPairs`, gamertag du tueur résolu depuis le scoreboard) →
+      `service/match_view_data_loaders.go:174-176,428` (chargement errgroup
+      inconditionnel, best-effort — même patron que `d.killDistances`) → contrat
+      `api/openapi.yaml:14945,15071-15072` (+ pendant escouade
+      `SquadAssistPairs:22207,24176-24177`) → `lib/api/types.ts:1770,1802`. Web :
+      `features/match-view/MatchAssistChart.tsx` (barres empilées horizontales,
+      `BarStackedChart`, MIROIR du graphe des antagonistes, note « dont N
+      volées » quand `assist_damage_pct > killer_damage_pct`) + `_chartSeries.ts`
+      (`assistStackedSeries`/`assistStolenLookup`) + `i18n.ts:437-440,731-734`
+      (FR/EN typées) — monté dans `MatchViewTabPlayers.tsx:23-24,77-90` (onglet
+      Joueurs, section Duels & confrontations, juste sous les Antagonistes) via
+      `MatchViewPage.tsx:222,423`.
+      LA QUESTION `publishable` DE LA MISSION EST DÉJÀ TRANCHÉE PAR CE
+      PRÉCÉDENT, PAS PAR fragdist/`KillSourceClassRepo` : Q21d EXIGE
+      `publishable = TRUE` (`match_view_repo_assist_pairs.go:82`), aligné sur
+      `KillDistanceRepo` (G.3-POC) et PAS sur `KillSourceClassRepo` — une PAIRE
+      nomme DEUX joueurs (lecture ligne à ligne), contrairement au tally
+      mono-joueur de `KillSourceClassRepo` qui tolère l'agrégat non publiable.
+      Même raisonnement tranché deux fois indépendamment (G.3-POC et ce
+      « notion5(C) » antérieur) : cohérent.
+      VÉRIFICATION REJOUÉE dans ce worktree, aujourd'hui (pas seulement lue à
+      l'historique git) : `go build ./...` + `go vet ./internal/...` propres ;
+      les 7 `TestQ21dAssistPairs_*` (`platform/duckdb`), les
+      `TestBuildAssistPairs_*` (`service`) et `TestBuildSquadAssistPairs_*`
+      (`service/teammates`) verts ; `go test ./internal/platform/duckdb/...
+      ./internal/service/... ./internal/domain/... ./contracttest/...
+      -count=1` 100 % vert ; web `npx vitest run src/features/match-view`
+      265/265 (dont les 23 tests `MatchAssistChart.test.tsx` +
+      `_chartSeries.test.ts` ciblés) ; `npm run typecheck` propre ; `gofmt -l
+      apps/go-api/internal/` vide.
+      DÉCISION : ZÉRO code neuf. Construire une deuxième chaîne Go+web pour
+      recalculer le MÊME agrégat depuis la MÊME table avec le MÊME filtre
+      aurait violé CLAUDE.md règle 6 (≤ 2 copies d'un même pattern — ici une
+      copie littérale du composant lui-même), règle 7 (0 code mort — l'une des
+      deux chaînes ne serait jamais appelée par l'écran) et l'interdit explicite
+      de la mission elle-même (« toucher aux lots livrés hors besoin direct ») :
+      le besoin direct est déjà satisfait par le lot livré. Deux idées du
+      cadrage du pilote restent NON posées, faute de besoin utilisateur vérifié
+      pour les justifier (consignées en Découvertes §8, pas traitées) : moyenne
+      de `assist_damage_pct` en infobulle (« part moyenne ») et un dénominateur
+      d'honnêteté PAR JOUEUR contre le total scoreboard.
+      LIMITE HONNÊTE : pas de vérification visuelle navigateur (pas de `data/`
+      dans ce worktree, aucun match réel à afficher) — la preuve tient sur les
+      tests d'intégration REJOUÉS contre le VRAI schéma
+      (`migration.EnsureMatchKillEvents`, même harnais que le commit
+      `5bf2e6128`) et sur le branchement de bout en bout vérifié par lecture de
+      code (aucun maillon manquant entre la table et l'écran).
 - Gate G.0 : PASSÉ. Gate G.1 : PASSÉ (détail ci-dessus). Gate G.2 : PASSÉ pour le
       périmètre RENDU (append-only). Gate G.2bis : PASSÉ (détail ci-dessus) — la
       capture live n'est plus `[!]`. Gate G.3-préparation : PASSÉ. Gate G.3-POC :
-      PASSÉ (détail ci-dessus). G.3 (plein) : non engagé, fermé par DEC-8.
+      PASSÉ (détail ci-dessus). G.3 (plein) : non engagé, fermé par DEC-8. Gate
+      G.4 : PASSÉ — vérification seule (détail ci-dessus), aucun code de
+      production modifié.
 
 ## 4. Hors périmètre (fermé)
 - R9/D6 (niveau 2 barres Escouade) — Découvertes.

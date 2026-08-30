@@ -11,7 +11,7 @@ import { render, screen } from '@testing-library/react'
 
 import { MatchAssistChart } from './MatchAssistChart'
 import { MATCH_VIEW_TEXT } from './i18n'
-import { assistStackedSeries, assistStolenKey, assistStolenLookup } from './_chartSeries'
+import { assistAvgPctLookup, assistStackedSeries, assistStolenKey, assistStolenLookup } from './_chartSeries'
 import type { MatchAssistPair, MatchAssistPairs, MatchScoreboardRow } from '@/lib/api/types'
 
 vi.mock('@/lib/accessibility', () => ({
@@ -177,5 +177,24 @@ describe('assistStolenLookup', () => {
     ])
     expect(lookup.get(assistStolenKey('A B', 'C'))).toBe(1)
     expect(lookup.get(assistStolenKey('A', 'B C'))).toBe(5)
+  })
+})
+
+describe('assistAvgPctLookup', () => {
+  it("n'indexe QUE les couples portant une part moyenne mesurée — jamais de 0 % fabriqué", () => {
+    const lookup = assistAvgPctLookup([
+      pair(), // avg_assist_pct absent du contrat : la paire n'entre pas dans la map
+      pair({ assist_gamertag: 'Carol', killer_gamertag: 'Dave', avg_assist_pct: 45 }),
+    ])
+    expect(lookup.size).toBe(1)
+    expect(lookup.get(assistStolenKey('Carol', 'Dave'))).toBe(45)
+    expect(lookup.get(assistStolenKey('Alice', 'Bob'))).toBeUndefined()
+  })
+
+  it('transmet la valeur SANS la plafonner (mesures réelles au-delà de 100)', () => {
+    const lookup = assistAvgPctLookup([
+      pair({ assist_gamertag: 'Carol', killer_gamertag: 'Dave', avg_assist_pct: 228 }),
+    ])
+    expect(lookup.get(assistStolenKey('Carol', 'Dave'))).toBe(228)
   })
 })
