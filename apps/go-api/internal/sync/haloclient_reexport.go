@@ -11,6 +11,7 @@ type (
 	HaloAPIClient            = haloclient.HaloAPIClient
 	HaloClient               = haloclient.HaloClient
 	FilmChunkData            = haloclient.FilmChunkData
+	FilmChunk                = haloclient.FilmChunk
 	FilmChunkRef             = haloclient.FilmChunkRef
 	MatchSkillData           = haloclient.MatchSkillData
 	PlayerPlaylistCSR        = haloclient.PlayerPlaylistCSR

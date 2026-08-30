@@ -92,6 +92,9 @@ const (
 	metricNoKillFeed  = "killsource_sans_killfeed"
 	metricDecodeError = "killsource_erreurs_decodage"
 	metricTimeout     = "killsource_abandons_delai"
+	// metricBudget : passes arretees par leur budget. UN ARRET NOMINAL, pas une erreur —
+	// il se compte a part pour ne pas polluer `killsource_erreurs_decodage`.
+	metricBudget      = "killsource_budgets_epuises"
 	metricWriteError  = "killsource_erreurs_ecriture"
 	metricDeaths      = "killsource_morts_ecrites"
 	metricNotPublish  = "killsource_passes_non_publiables"
@@ -115,7 +118,10 @@ type KillSourceCollector struct {
 	roster        KillSourceRoster
 	acquireShared persist.SharedWriterFn
 	caps          games.CapabilityMap
-	timeout       time.Duration
+	// budget : duree maximale d une passe MULTI-MATCHS. 0 = sans borne (backfill de nuit).
+	// Verifie ENTRE deux matchs, jamais au milieu d une ecriture.
+	budget  time.Duration
+	timeout time.Duration
 }
 
 // NewKillSourceCollector construit le collecteur.
@@ -144,6 +150,16 @@ func NewKillSourceCollector(
 		caps:          caps,
 		timeout:       timeout,
 	}
+}
+
+// WithBudget borne la duree d une passe multi-matchs. 0 (defaut) = sans borne.
+//
+// A UTILISER PARTOUT OU LA PASSE PARTAGE SON TEMPS AVEC AUTRE CHOSE — typiquement le cycle de
+// sync, dont les etapes suivantes attendent derriere. Le solde est repris a la passe suivante,
+// la collecte etant idempotente (`decoder_rev` fait foi). Le backfill CLI, lui, ne borne rien.
+func (c *KillSourceCollector) WithBudget(d time.Duration) *KillSourceCollector {
+	c.budget = d
+	return c
 }
 
 // KillSourceOutcome : ce qui est arrive a UN match. Le collecteur ne rend jamais une erreur pour

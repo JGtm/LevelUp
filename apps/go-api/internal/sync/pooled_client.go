@@ -222,6 +222,27 @@ func (pc *PooledHaloClient) GetMatchFilm(ctx context.Context, matchID string) (m
 	return result, ok, err
 }
 
+// GetFilmChunks rend TOUS les chunks du film (en-tête + réplication + kill-feed) avec
+// PolicyAnyPublic. Même motif que GetMatchFilm, qui n'en rend que la réplication.
+//
+// HORS de l'interface HaloClient, mais INDISPENSABLE : l'étape 1.57 du post-sync obtient
+// cette capacité par assertion de type, et ce client est celui du chemin serveur. Son absence
+// désactivait l'étape en silence (mesure du 2026-08-29 — cf.
+// `.ai/V7.5/REGISTRE_ASSISTANCES_2026-08-29.md`). Verrouillé par
+// `kill_source_wiring_test.go`, qui l'assert sur les TYPES CONCRETS.
+func (pc *PooledHaloClient) GetFilmChunks(ctx context.Context, matchID string) ([]FilmChunk, bool, error) {
+	callStart := time.Now()
+	var result []FilmChunk
+	var ok bool
+	err := pc.doPublic(ctx, func(c *HaloAPIClient) error {
+		var e error
+		result, ok, e = c.GetFilmChunks(ctx, matchID)
+		return e
+	})
+	observeHaloCall(ctxkeys.TitleSlug(ctx), "film_chunks", "", callStart, err)
+	return result, ok, err
+}
+
 // GetHighlightEventsChunk implémente HaloClient.GetHighlightEventsChunk() avec PolicyAnyPublic.
 func (pc *PooledHaloClient) GetHighlightEventsChunk(ctx context.Context, matchID string) ([]byte, int, bool, error) {
 	callStart := time.Now()
