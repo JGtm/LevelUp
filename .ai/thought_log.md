@@ -80921,3 +80921,43 @@ une requete assemblee entierement a l'execution lui echapperait. Et il ne couvre
 
 **Prochaine etape** : rien de planifie. Le dispositif est autonome — il signale, et il dit quoi
 faire du signalement.
+
+## [2026-08-31] CI de branche : les cinq garde-rails rouges, et ce que chacun disait
+
+**Statut** : Complete (vet + les 7 paquets concernes verts).
+
+**Decision technique principale** : traiter chaque garde-rail par sa CAUSE, jamais en relevant le
+seuil. Aucun n'a ete affaibli ; deux n'avaient meme rien a corriger.
+
+**Resultats observes, un par un** :
+
+- `TestNoNewHalowaypointLiteral` : `cmd/mapnav-fetch/main.go` allowliste, a cote de
+  `cmd/mapobj-build/fetch.go` qui est la meme frontiere — appel direct de l'hote UGC officiel en
+  ACCES ANONYME (aucun jeton), production d'artefacts VERSIONNES (maillages, miniatures). Entree
+  datee comme l'exige la liste.
+- `TestNoAdHocRepoRootLadderInTests` : `cmd/mapfond-build/reglages_test.go` et
+  `cmd/mapobj-build/catalogue_modules_guard_test.go` passent a `testutil.RepoRoot()`. Leur chemin
+  devient relatif a la RACINE au lieu d'une echelle `../../../..` qui se casse en silence des que
+  le test change de dossier.
+- `TestNoProdRepoRootHelperInTests` : `map_background_index_catalogue_test.go` utilisait
+  `title.FindRepoRoot()`, qui echoue en CI — le test faisait alors `t.Skipf` et LE GARDE-RAIL
+  DISPARAISSAIT SANS BRUIT. Passe a `testutil.RepoRoot()` + `t.Fatalf`.
+- `TestSentinel_NoNewDuckDBAuthReaders` et `TestSentinel_NoNewClientSecretReaders` : DEJA VERTS sur
+  feat/v75. Ils ne rougissaient que sur wt/cartes-revue-par-carte, base sur un etat anterieur aux
+  309 commits du chantier ramassage/sons. Rien a corriger — le constat valait d'etre fait.
+- `TestMapObjectives_ModesPonctuels` : releve de reference perime. CTF 14 -> 35 cartes a forme,
+  Stockpile 16 -> 22, Assault 2 inchange. Cause etablie : la campagne de catalogage a porte le
+  catalogue de 73 a 126 cartes. L'assertion de fond — un (role, camp) sert ses ponctuels OU les
+  centres de ses formes, jamais les deux — passe sur les 126. Seul le compte est mis a jour.
+- `TestCatalogueLivreEstExploitable` : trois cartes a zones surfaciques sans forme, ajoutees a
+  `pointlessConnues` avec des explications DIFFERENCIEES. fdde5715 et 841242db sont des cartes
+  FIREFIGHT (level_id 1437677928, scripts « classic firefight extraction zone », « EZONE ») : leur
+  extraction_zone est un objet de SCRIPT, pas un volume — leurs collines (5/5) et zones Bastion
+  (3/3) portent bien leur forme. 1042b738 est la SEULE des 126 dont aucun role surfacique ne porte
+  de forme (extraction 0/6, colline 0/4), un pack 1v1 multi-arenes (sections 1v1Bazzar,
+  1v1Aquarius, 1v1ORIGIN) : sa cause n'est PAS etablie et c'est ecrit tel quel dans le code.
+  CE QUI REND CES TROIS ENTREES ACCEPTABLES : aucune n'a le moindre match au corpus (mesure sur
+  match_registry). Elles sont entrees par le classement mondial, pas par ce qu'on rejoue.
+
+**Conclusion / prochaine etape** : la CI de branche ne devrait plus rougir sur ces sept paquets.
+Reprise du decodage TSTR/FSTR, qui debloquerait Absolution et les deux Insolence.

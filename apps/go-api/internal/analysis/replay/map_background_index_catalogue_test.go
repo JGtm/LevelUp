@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/testutil"
 )
 
 // titreDuCatalogueDeFonds : le seul titre qui publie des fonds de carte à ce jour. Une
@@ -29,9 +30,9 @@ const titreDuCatalogueDeFonds = "halo_infinite"
 // indexDuCatalogueLivre charge l'index des fonds réellement publiés dans le dépôt.
 func indexDuCatalogueLivre(t *testing.T) *MapBackgroundIndex {
 	t.Helper()
-	root, err := title.FindRepoRoot()
+	root, err := testutil.RepoRoot()
 	if err != nil {
-		t.Skipf("racine du dépôt introuvable — garde-rail de catalogue non applicable : %v", err)
+		t.Fatalf("racine du depot introuvable — le garde-rail se skipperait en silence en CI : %v", err)
 	}
 	dir := title.NewPathResolver(root).MapBackgroundDir(titreDuCatalogueDeFonds)
 	idx, err := BuildMapBackgroundIndex(dir)
@@ -73,9 +74,9 @@ func TestCatalogueDeFondsSansIdentiteAmbigue(t *testing.T) {
 // clé. Un fond que l'index ne sait pas nommer est un fond que personne n'affichera.
 func TestCatalogueDeFondsIndexeChaqueCle(t *testing.T) {
 	idx := indexDuCatalogueLivre(t)
-	root, err := title.FindRepoRoot()
+	root, err := testutil.RepoRoot()
 	if err != nil {
-		t.Skipf("racine du dépôt introuvable : %v", err)
+		t.Fatalf("racine du depot introuvable — le garde-rail se skipperait en silence en CI : %v", err)
 	}
 	dir := title.NewPathResolver(root).MapBackgroundDir(titreDuCatalogueDeFonds)
 	entrees, err := os.ReadDir(dir)
