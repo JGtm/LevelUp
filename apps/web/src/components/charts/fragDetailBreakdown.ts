@@ -16,6 +16,28 @@ import { fragRoleDisplayLabel } from './fragRoleLabel'
 /** Classes servies par des ARMES (registre) — les seules gardées depuis la liste per-arme. */
 export const GUN_CLASSES = new Set(['shoulder', 'sidearm', 'heavy'])
 
+/**
+ * Classes qu'AUCUNE ligne per-arme ne porte : leurs entrées de registre n'ont pas d'id
+ * numérique, elles n'entrent donc jamais dans `weapon_kills`. Miroir EXACT du set Go
+ * `nonCombatFragClasses` (apps/go-api/internal/domain/frag_distribution.go) — source unique
+ * du littéral côté web, dont `NON_COMBAT_WEAPON_ROLES` (features/synthesis/weaponRoleInsight)
+ * DÉRIVE en y ajoutant véhicule et tourelle.
+ *
+ * CE SET NE FILTRE PAS À LUI SEUL LE « DÉTAILS DES FRAGS », et c'est voulu : depuis le lot
+ * « kills hors arme à feu » (2026-08-29), `equipment` et `environmental` ont un niveau 2 PAR
+ * OBJET (répulseur, bobines, chute) servi par la source de dégât du film — ce sont des lignes
+ * nommables, elles ont leur place dans le tableau. Seul le résidu `unattributed` en est exclu,
+ * parce qu'il n'a par définition aucun objet à nommer. Aucun garde-rail ne teste le miroir
+ * Go/web : il n'y a pas de contrat de sérialisation entre les deux, seulement une intention
+ * commune, re-vérifiée à la main.
+ */
+export const NON_WEAPON_FRAG_CLASSES: ReadonlySet<string> = new Set([
+  'unattributed',
+  'environmental',
+  'other',
+  'equipment',
+])
+
 export interface FragDetailLabels {
   roleLabel: (role: string) => string
   classLabel: (className: string) => string

@@ -20700,6 +20700,15 @@ components:
     ScoreTimeline:
       additionalProperties: false
       properties:
+        holdTicks:
+          items:
+            $ref: '#/components/schemas/TeamHold'
+          type:
+            - array
+            - "null"
+        holdTicksPerPoint:
+          format: int64
+          type: integer
         players:
           items:
             $ref: '#/components/schemas/PlayerScore'
@@ -23960,6 +23969,19 @@ components:
         - name
         - exists
         - rows
+      type: object
+    TeamHold:
+      additionalProperties: false
+      properties:
+        teamId:
+          format: int64
+          type: integer
+        ticks:
+          items:
+            $ref: '#/components/schemas/ScoreTick'
+          type:
+            - array
+            - "null"
       type: object
     TeamScore:
       additionalProperties: false

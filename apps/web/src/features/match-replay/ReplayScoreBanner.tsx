@@ -41,6 +41,7 @@ import type { MatchScoreboardRow } from '@/lib/api/types'
 
 import { formatClock } from './replayLogic'
 import { displayClockMs, type ReplayWindowBounds } from './replayWindow'
+import { readHillHold, type HillHoldDocument } from './hillHoldLogic'
 import { readScoreBanner, type ScoreBannerSide } from './scoreBannerLogic'
 import { roundsTally, type RoundDot } from './roundsLogic'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
@@ -52,7 +53,7 @@ interface Props {
    * seul accès qui porte la garde d'horloge : un film dont l'origine n'est pas résolue
    * tiquerait jusqu'à 50 s trop tôt, et un score faux se lit comme un score juste.
    */
-  doc: ReplayScoreDocument
+  doc: ReplayScoreDocument & HillHoldDocument
   scoreboard: ReadonlyArray<Pick<MatchScoreboardRow, 'xuid' | 'team_side'>>
   xuidMeta?: XuidMeta
   /** Image de lecture courante — le score est lu À CE frame, pas à la fin du match. */
@@ -82,6 +83,17 @@ export function ReplayScoreBanner({
     [doc, scoreboard, xuidMeta, frame],
   )
   const tally = useMemo(() => roundsTally(reading?.dots ?? []), [reading])
+  // LA GARDE DE LA COLLINE, sous les barres. Elle se lit APRÈS les camps, parce qu'elle a besoin
+  // d'eux : la série de garde est indexée par camp du registre, et c'est le bandeau qui sait
+  // lequel est allié. `null` = rien à dessiner (mode sans colline, artefact sans série,
+  // variante sans dénominateur mesuré) — cf. l'en-tête de `hillHoldLogic`.
+  const hold = useMemo(
+    () =>
+      reading
+        ? readHillHold(doc, reading.ally.teamId, reading.enemy.teamId, frame)
+        : null,
+    [doc, reading, frame],
+  )
   if (!reading) return null
   return (
     <div className="mb-2">
@@ -93,7 +105,14 @@ export function ReplayScoreBanner({
           dire de plus. La couleur, elle, dit d'un coup d'œil QUI a pris chaque manche. */}
       <RoundDots dots={reading.dots} t={t} />
       <div role="group" aria-label={t.scoreBannerLabel} className="flex items-stretch gap-2">
-        <ScoreBar side={reading.ally} label={t.scoreBannerAlly} token="team-ally" anchor="left" />
+        <ScoreBar
+          side={reading.ally}
+          label={t.scoreBannerAlly}
+          token="team-ally"
+          anchor="left"
+          hold={hold?.ally ?? null}
+          holdLabel={t.hillHoldAlly}
+        />
         <div className="flex shrink-0 flex-col items-center justify-center px-1">
           <span
             className="font-mono text-sm font-bold leading-none tabular-nums"
@@ -125,7 +144,14 @@ export function ReplayScoreBanner({
             </span>
           )}
         </div>
-        <ScoreBar side={reading.enemy} label={t.scoreBannerEnemy} token="team-enemy" anchor="right" />
+        <ScoreBar
+          side={reading.enemy}
+          label={t.scoreBannerEnemy}
+          token="team-enemy"
+          anchor="right"
+          hold={hold?.enemy ?? null}
+          holdLabel={t.hillHoldEnemy}
+        />
       </div>
     </div>
   )
@@ -188,6 +214,13 @@ interface BarProps {
    * du bord opposé (côté horloge) et grandit VERS ce bord — les camps se font face.
    */
   anchor: 'left' | 'right'
+  /**
+   * Progression de GARDE du camp vers son prochain point, dans [0,1] — ou `null` quand il n'y
+   * a rien à dire (mode sans colline, artefact sans état de zone, variante sans seuil mesuré).
+   * `null` ne dessine RIEN : une jauge à zéro se lirait comme une mesure.
+   */
+  hold: number | null
+  holdLabel: string
 }
 
 /**
@@ -198,9 +231,10 @@ interface BarProps {
  * `scoreBannerLogic`), qui n'est pas une donnée publiée. Le pourcentage décrit la barre,
  * le `valuetext` dit la mesure.
  */
-function ScoreBar({ side, label, token, anchor }: BarProps) {
+function ScoreBar({ side, label, token, anchor, hold, holdLabel }: BarProps) {
   const accent = tokenCssVar(token)
   const pct = Math.round(side.fill * 100)
+  const holdPct = hold === null ? null : Math.round(hold * 100)
   // L'aplat est ancré au bord INTÉRIEUR (côté horloge) et grandit vers l'extérieur : pour
   // la barre de gauche il colle à droite, pour celle de droite il colle à gauche.
   const fillStyle: CSSProperties = {
@@ -211,26 +245,54 @@ function ScoreBar({ side, label, token, anchor }: BarProps) {
   const trackStyle: CSSProperties =
     anchor === 'left' ? { borderLeft: `3px solid ${accent}` } : { borderRight: `3px solid ${accent}` }
   return (
-    <div
-      role="progressbar"
-      aria-label={label}
-      aria-valuemin={0}
-      aria-valuemax={100}
-      aria-valuenow={pct}
-      aria-valuetext={String(side.score)}
-      className="relative h-7 min-w-0 flex-1 overflow-hidden rounded-sm bg-muted"
-      style={trackStyle}
-    >
-      <span className="absolute inset-y-0 block" style={fillStyle} />
-      {/* Le nombre CÔTÉ HORLOGE : bord droit de la barre de gauche, bord gauche de celle
-          de droite — l'inverse de `anchor`, qui nomme le bord extérieur. */}
-      <span
-        className={`absolute inset-y-0 flex items-center px-2 font-mono text-[15px] font-bold tabular-nums text-foreground ${
-          anchor === 'left' ? 'right-0' : 'left-0'
-        }`}
+    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+      <div
+        role="progressbar"
+        aria-label={label}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={pct}
+        aria-valuetext={String(side.score)}
+        className="relative h-7 w-full overflow-hidden rounded-sm bg-muted"
+        style={trackStyle}
       >
-        {side.score}
-      </span>
+        <span className="absolute inset-y-0 block" style={fillStyle} />
+        {/* Le nombre CÔTÉ HORLOGE : bord droit de la barre de gauche, bord gauche de celle
+            de droite — l'inverse de `anchor`, qui nomme le bord extérieur. */}
+        <span
+          className={`absolute inset-y-0 flex items-center px-2 font-mono text-[15px] font-bold tabular-nums text-foreground ${
+            anchor === 'left' ? 'right-0' : 'left-0'
+          }`}
+        >
+          {side.score}
+        </span>
+      </div>
+      {/* LA GARDE, SOUS LA BARRE ET SÉPARÉE D'ELLE. Un filet distinct plutôt qu'un second
+          remplissage DANS la barre : les deux grandeurs n'ont ni la même unité (des points
+          contre des secondes) ni le même horizon (le match contre le prochain point), et
+          superposées à la même teinte elles se confondraient. Il grandit dans le MÊME sens
+          que le score — depuis l'horloge vers l'extérieur —, de sorte que les deux
+          progressions d'un camp se lisent d'un seul mouvement de l'œil. */}
+      {holdPct !== null && (
+        <div
+          role="progressbar"
+          aria-label={holdLabel}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={holdPct}
+          title={holdLabel}
+          className="relative h-1 w-full overflow-hidden rounded-sm bg-muted"
+        >
+          <span
+            className="absolute inset-y-0 block"
+            style={{
+              width: `${holdPct}%`,
+              background: accent,
+              ...(anchor === 'left' ? { right: 0 } : { left: 0 }),
+            }}
+          />
+        </div>
+      )}
     </div>
   )
 }

@@ -258,6 +258,9 @@ const NULLABLE_ARRAY_PATHS = [
   'scoreTimeline.teams[].rounds',
   'scoreTimeline.teams[].rounds[].points',
   'scoreTimeline.teams[].total',
+  // La GARDE de la colline (KOTH) : la serie de tics par camp, lue et non reconstruite.
+  'scoreTimeline.holdTicks',
+  'scoreTimeline.holdTicks[].ticks',
   // Les objectifs STATIQUES du mode : servis à la requête, normalisés à l'entrée de leur
   // calque (`normalizeMapObjectives`) et non par la frontière du document — d'où leur
   // présence dans l'allowlist ci-dessous.

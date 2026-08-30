@@ -85,6 +85,18 @@ en = "Vehicle"
 fr = "Tourelle"
 en = "Turret"
 
+# Equipement et environnement (lot « kills hors arme a feu », 2026-08-29) : servis par la
+# SOURCE DE DEGAT du film, pas par le registre d armes. Leur niveau 2 est un OBJET
+# (« Bobine a plasma », « Repulseur ») dont le libelle vient du TOML du titre, comme les
+# engins ci-dessus — rien a recopier ici.
+[frags.class.equipment]
+fr = "Équipement"
+en = "Equipment"
+
+[frags.class.environmental]
+fr = "Environnement"
+en = "Environment"
+
 [frags.class.unattributed]
 fr = "Non attribué"
 en = "Unattributed"
