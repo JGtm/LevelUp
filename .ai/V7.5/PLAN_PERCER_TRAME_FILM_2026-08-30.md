@@ -129,3 +129,12 @@ commit sur une branche dédiée.
   record-loop, global `DAT_14474cd78`, largeur d'id dépendant du bit de configuration),
   re-balayage à plus de chunks pour les NON CONCLUANT, puis décodage des records suivants et
   confrontation au golden killsource. Détail : `film_re/NOTE_FAMILLES_TRAME_2026-08-30.md`.
+- **[2026-08-30, suite] Lot 1 : cadrage ÉTABLI sur 2 films pour 0xC2 (k=6) et 0xD2 (k=8)** ;
+  **RÉTRACTATION** du « record DEL de tête » (artefact du cadrage k=2 — sous le bon cadrage,
+  le 1er record est un DELTA sur un transitoire non lié). Deux négatifs publiés : le cadrage
+  par paquet est du bruit (k divergents à en-tête identique, 0xE9 : 0/255), l'inférence de
+  chaîne NON CONCLUANTE par défaut d'instrument (trames vides gagnent, lecture au-delà du
+  payload). Ghidra : lecture normale = branche B du record-loop (restauration force
+  temporairement la branche A) ; largeur d'id runtime = table sélectionnée par le bit 0 du
+  paquet — source du `IDLowBits` calibré. 0xD3 : k=6 reproductible mais faible (~40 %) —
+  en-tête plus complexe, OUVERT. Table de synthèse publiée dans le miroir Notion.

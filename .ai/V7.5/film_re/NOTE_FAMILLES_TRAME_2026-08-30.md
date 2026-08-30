@@ -9,6 +9,11 @@ interne, pas la justesse absolue).
 
 ## 1. Confirmation positive du modele de trame (le point 6 laisse ouvert par le lot D)
 
+> AVERTISSEMENT (ajoute le meme jour) : cette section lit toutes les familles sous l'amorce
+> k=2. Le « record DEL de tete » qu'elle rapporte est un ARTEFACT de ce cadrage — retracte
+> plus bas (« Suite de session »). Les taux de fermeture et les comptes de slots restent des
+> mesures valides DU CHAMP LU SOUS k=2.
+
 `TestLot1FamillesTrame` rejoue `DecodeFrameRecords` (le decodeur de production) par famille de
 PREMIER OCTET, reference interne = `0xA0` (la trame de tick, 80 % du corpus) :
 
@@ -80,6 +85,59 @@ champ d'en-tete non identifie, dont la largeur varie — vraisemblablement un co
    sur PLUS de chunks pour faire tomber les NON CONCLUANT ; (c) une fois l'en-tete su,
    decoder les records suivants de `0xD2`/`0xD3` et confronter au golden killsource (garde-fou
    du plan : le nouveau se valide contre l'ancien, jamais l'inverse).
+
+## Suite de session (meme jour) — retractation, generalisation, et ce qui resiste
+
+### RETRACTATION : le « record DEL de tete » etait un artefact de cadrage
+
+La section 1 lit les trames 0xD2/0xD3 sous l'amorce k=2 (celle de 0xA0). Sous le cadrage
+PROPRE de la famille (k=8 pour 0xD2), le premier record n'est PAS un DEL : c'est un **DELTA
+sur un slot transitoire non lie** (172/245 sur 0xD2 ; 183/183 sur 0xC2 a k=6 ; 125/125 sur
+0xD3 a k=6). Le « DEL » de la premiere passe etait la lecture des bits d'en-tete + debut du
+vrai record a travers un mauvais cadrage. CE QUI SURVIT a la retractation : le premier record
+vise une entite transitoire (jamais declaree par une image-cle), et les comptes de slots
+distincts (12 / 47) restent des mesures du meme champ d'identifiant.
+
+### GENERALISATION : le cadrage se reproduit sur un second film
+
+`TestLot1AmorceParFamille` sur `00502e52` (meme protocole, 12 chunks) :
+
+| famille | 000d5950 | 00502e52 | verdict |
+|---|---|---|---|
+| `0xA0` | k=2, 99,2 % (n=21 546) | k=2, 99,4 % (n=23 658) | temoin stable |
+| `0xC2` | k=6, 99,3 % (n=135) | **k=6, 98,4 % (n=62)** | **REPRODUIT — cadrage etabli sur 2 films** |
+| `0xD2` | k=8, 86,2 % (n=80) | **k=8, 98,2 % (n=57)** | **REPRODUIT — cadrage etabli sur 2 films** |
+| `0xD3` | k=6, 41,5 % (n=82) | k=6, 36,5 % (n=104) | reproductible mais FAIBLE : en-tete plus complexe, OUVERT |
+| `0xC0` | non concluant | k=8, 73,2 % (n=56) | a re-mesurer (un seul film concluant) |
+| `0xC3`, `0xC7`, `0xE5`, `0xE9` | non concluant | non concluant | OUVERT (effectifs < 50 sur 12 chunks) |
+
+### NEGATIFS PUBLIES (deux instruments qui ne tranchent pas)
+
+- **Cadrage PAR PAQUET** (`TestLot1EnteteParPaquet`, critere fermeture + couverture >= 50 %) :
+  les k gagnants DIVERGENT entre paquets a en-tete identique (k=7/13/15/20 sur la meme tete
+  `11010010 01100001`) et 0xE9 ne rend aucun k sur 255 paquets. La fermeture propre d'une
+  marche sequentielle est trop dependante des composants non portes pour cadrer un paquet
+  isole — seul le discriminant de masques PAR FAMILLE est fiable.
+- **Balayage avec inference de chaine** (`TestLot1InferenceParFamille`) : NON CONCLUANT par
+  DEFAUT DE L'INSTRUMENT, publie tel quel — la metrique « fin de chaine propre » est gagnee
+  a 100 % par des trames vides (k=2/3 : 0 record, payload non couvert), faute d'exiger la
+  couverture ; et l'inference lit au-dela de la fin du payload (records fantomes). A
+  re-outiller avant toute conclusion par cette voie.
+
+### Cote exe (Ghidra, meme session)
+
+- La boucle de records `FUN_1406cd128` porte **DEUX grammaires d'identifiant**, selectionnees
+  par le global `DAT_14474cd78` : branche A = var-int domaine 7 (celle du port historique),
+  branche B = largeur lue dans une table selectionnee par **le bit de configuration du paquet**
+  (`DAT_144706104`, bit 0 du payload — mesure a 1 sur 100 % du corpus) : cardinal
+  `DAT_1451f990c` + base `DAT_1451f9908` si bit=1, `DAT_144706100` sans base sinon. C'est la
+  source RUNTIME du `IDLowBits` calibre par film (11 sur 000d5950, 14 sur la capture live).
+- `FUN_1428e24bc` (chemin de restauration d'etat : il resNapshotte les entites puis rejoue une
+  boucle de records) **force temporairement `DAT_14474cd78 = 0`** puis le restaure — la
+  lecture NORMALE tourne donc en branche B.
+- Le deuxieme bit d'amorce reste NON LOCALISE statiquement (le frame-processor ne lit qu'un
+  bit ; les blocs « unreachable » du decompile ont ete desassembles : nettoyage seulement).
+  L'etabli reste empirique, comme le documentait deja `frame_records.go`.
 
 ## Decouvertes hors perimetre (non traitees, regle 7)
 
