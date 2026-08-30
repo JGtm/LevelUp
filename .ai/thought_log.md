@@ -4122,6 +4122,38 @@ niveau job (c'est elle qui statue). Question a rendre a la session du lot Phase 
 son gate « go build ./... » n'a pas vu ces deux appelants (build scoped ? arbre non
 fusionne ?) — a consigner de son cote.
 
+## [2026-08-25] Doc-rot « trois routes » du protocole ouvrier : il en compte quatre — Complete
+
+**Contexte** : constat d'une revue adversariale du 2026-08-25, traite en tache separee
+(branche `chore/doc-quatre-routes-ouvrier`, worktree, base feat/v75 `b687c2c39`) :
+plusieurs commentaires parlent encore de « trois routes » / « trois POST » alors que le
+protocole ouvrier en compte QUATRE depuis l'ajout de la route de depot d'artefact
+(claim, heartbeat, artifact, complete). L'en-tete de `handlers/build_worker.go` et le
+ratchet `bare_routes_ratchet_test.go` disaient deja « quatre » — seuls des voisins
+avaient rotte.
+
+**Decision technique principale** : correction de commentaires UNIQUEMENT, zero
+changement de code. 7 sites sur 4 fichiers : `wire/server_build_worker.go` (l.5-7,
+enumeration etendue avec « deposer l'artefact », et l.9), `server_apiv1.go` (l.435),
+`handlers/build_worker.go` (l.16 « quatre POST HTTPS », l.25, l.248) et
+`cmd/replay-worker/protocol.go` (l.3, cote client — meme rot trouve par grep).
+NON touches, verifie sur pieces : `openapi_docs.go`/`openapi_docs_test.go` (trio des
+routes de docs, compte exact) et CHANGELOG FR (trio des routes catalogue, compte exact) ;
+entrees historiques du thought_log et archives laissees telles quelles.
+
+**Resultats observes** : `gofmt -l` vide ; `go build ./internal/api/...
+./cmd/replay-worker/...` OK ; `go vet` + `go test` verts sur `internal/api` (ratchet
+`bare_routes_ratchet_test` inclus), `internal/api/wire` et `cmd/replay-worker`. Le
+paquet `handlers` est intestable a la pointe de feat/v75, HORS de ce diff :
+`build_queue_e2e_cgo_test.go:47` (tag cgo) appelle `NewAdminMonitoringHandler` avec
+11 args alors que le retrait d'ErrorStats (c42624dd5) l'a reduit a 10 — cassure
+preexistante (probable auto-merge b687c2c39), signalee en tache separee, non corrigee
+ici (zero fix hors perimetre). Grep residuel « trois routes|trois POST » sur apps/ :
+ne restent que les deux occurrences openapi_docs (hors protocole, correctes).
+
+**Conclusion / prochaine etape** : commit sur `chore/doc-quatre-routes-ouvrier`, a
+fusionner dans feat/v75 avec le train v7.5.
+
 ## [2026-08-25] Encadre Notion « REPLAY 2D » (11 points) — pilotage 4 lots — En cours
 
 **Contexte** : demande utilisateur : planifier puis piloter l'encadre Notion « REPLAY 2D »
