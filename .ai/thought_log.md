@@ -39,6 +39,15 @@ export que personne n'avait écrit. Centralisation de littéral faite à moitié
 qu'il ne fait PAS : il ne filtre pas à lui seul le « Détails des frags », où `equipment` et
 `environmental` ont désormais des lignes nommables.
 
+**LE RATCHET LINT NE SE VOYAIT PAS TANT QUE LE PAQUET NE COMPILAIT PAS.** Une fois la
+compilation rétablie, `golangci-lint --new-from-merge-base=origin/main` (la commande exacte du
+job CI, même version 2.12.2) a rendu deux issues que le job masquait derrière ses erreurs de
+typecheck : `buildSquadMatchHistory` à 82 lignes (seuil 80) et `loadMatchKillSourceClasses`
+dont l'erreur était toujours nil. Le taux de victoire par carte est extrait en
+`squadMapWinRate`, et le chargeur de sources de dégât cesse de rendre une erreur — son foyer
+est best-effort par contrat, une erreur remontée là annulerait tout le groupe de chargement
+pour une dégradation déjà absorbée. Ratchet rejoué : **0 issue**.
+
 **Gates rejoués sur l'arbre complet** : `go build ./...` et `go vet ./...` exit 0 ;
 `go test ./...` — seul `himap` reste rouge (butée de 10 min, local-only : ses tests skippent en
 CI faute du jeu installé, cf. mémoire) ; `go test -tags=integration -p 1` sur
