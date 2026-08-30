@@ -77861,3 +77861,44 @@ un objectif prioritaire.
 **Commits wt/visee** : b2a059c4a (lot A), d481acc85 (retractation+note B), 414e0272c (lot C). Notes
 RE : NOTE_ENVELOPPE + NOTE_EMETTEUR (cette derniere non encore committee). Push toujours bloque
 (killsourceload, session ramassage).
+
+## [2026-08-30] Visee lunette, phase 8 — OPTION A engagee : decoder la grammaire de la trame. Hypothese « chaine d'evenements » REFUTEE en 5 minutes — En cours
+
+**Decision utilisateur** : option A (decoder la trame), avec deux intuitions a suivre : (1) « la
+grammaire est deja decrite quelque part dans le film, il doit y avoir une recette atteignable » ;
+(2) « une correlation aussi precise avec ma ground truth ne peut pas etre un hasard total, il doit
+y avoir un decalage » — l'utilisateur refuse d'enterrer le signal du type 114.
+
+**Hypothese du pilote, formulee ET REFUTEE dans la meme passe** (instrument
+`visee_octet0_research_test.go`, garde OCTET0_FILM) : le lot B2 ayant lu chez l'ecrivain un bit
+accole au type (`acc = type | 0x80`), j'ai suppose que le bit de poids faible de payload[0] etait
+une CONTINUATION (« un autre evenement suit »), ce qui aurait rendu tous nos recensements borgnes
+(ils ne lisent que le premier evenement de chaque paquet). Test decisif sans seuil : si le record
+est le meme, le champ arme (bits 44..107, offsets figes de fire_events.go) doit avoir la meme
+forme pour 0xD2 et 0xD3. RESULTAT : 0xD2 = 1 958 paquets, **9 identifiants d'arme distincts**
+(propres, moitie basse 42c9679f) ; 0xD3 = 459 paquets, **447 identifiants distincts** (bruit).
+Le record DIFFERE reellement selon ce bit -> ce n'est PAS une continuation. La lecture
+`type = payload[0] >> 1` du depot tient ; la semantique du bit bas reste INCONNUE (le depot
+l'appelle « variante courte » sans preuve). Question ouverte transmise au lot E.
+
+**Ce que la mesure a produit au passage — le recensement par PREMIER OCTET** (film 00162144), qui
+n'existait pas : 0xA0 (type 80) 21 227 · 0xD2 (105) 1 958 · 0xE9 (116, bas 1) 666 · 0xC7 (99, bas 1)
+481 · 0xC0 (96) 464 · 0xD3 (105, bas 1) 459 · 0xCA (101) 324 · 0xC4 (98) 220 · 0xC2 (97) 161 ·
+0xE5 (114, bas 1) 125 · 0xE6 (115) 114 · 0xC3 (97, bas 1) 67 · 0x8A (69) 51 · 0x89 (68, bas 1) 31.
+NOTABLE : les 125 paquets « 114 » sont TOUS a bas=1 (0xE5), jamais 0xE4 — le meme profil que les
+autres types a bas=1 dont on sait maintenant que la charge est differente. Piste a suivre.
+
+**Deux lots lances en parallele** :
+- LOT D (mesure, worktree) : le chunk_00 des films porte deja le REGISTRE DE REPLICATION
+  (325 composants). Porte-t-il aussi un REGISTRE DES TYPES D'EVENEMENTS ? Si oui, on obtient la
+  correspondance type -> nom PROPRE AU BUILD (le depot a deja mesure que le decoupage du registre
+  CHANGE avec le build), et la question « 125 embarquements en vehicule sur une carte sans
+  vehicule » se tranche. Plus : carte exhaustive de chunk_00 (jamais faite hors registre ECS).
+- LOT E (Ghidra) : grammaire EXACTE bit a bit de l'en-tete commune des evenements (pour ecrire un
+  decodeur qui AVANCE d'un evenement au suivant), semantique du bit bas (E1), longueurs de charge
+  utile des 19 types observes (E3), et surtout E4 : le type 80 pese 85 % du flux (21 227 paquets)
+  et son lecteur lit une CHAINE-ID « requested-event » puis R(32) — s'il s'agit d'un CONTENEUR qui
+  designe un autre evenement par son nom, c'est la clef de tout le flux.
+
+**Prochaine etape** : CR des lots D et E, puis ecriture d'un decodeur d'evenements reel (celui qui
+manque depuis le debut) et re-recensement du corpus SANS l'angle mort du premier evenement.
