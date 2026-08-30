@@ -1,3 +1,32 @@
+## [2026-08-30] Part moyenne de participation dans l'infobulle des assistances — Complété
+
+**Statut** : Complété (commit `b57a98702`, pousse). Exécuté PAR LE PILOTE (deux agents
+morts au démarrage sur quota Opus puis Sonnet — plus de roulette, tâche petite et
+entièrement spécifiée).
+
+**Demande** : « les assistances avec pourcentage de participation ». Le graphe empilé
+(qui a assisté qui, combien de fois) existait déjà — livré le 25/08, vérifié la veille.
+Ce lot ajoute la part moyenne par couple dans son infobulle.
+
+**Décision technique principale** : `CAST(ROUND(AVG(assist_damage_pct)) AS INTEGER)` par
+paire dans Q21d — AVG ignore les NULL nativement ; paire sans part mesurée → colonne
+NULL → champ ABSENT du contrat (`avg_assist_pct` omitempty), jamais un « 0 % » fabriqué.
+Vocabulaire « part » (aligné sur killFeedAssistShare du rejeu), jamais « dégâts »
+(réserve G.0), valeur non plafonnée (mesures jusqu'à 228, doctrine du fichier).
+Infobulle : « dont N volées · part moyenne P % », chaque note absente si non mesurée.
+
+**Piège attrapé avant exécution** : le test Nominal de Q21d comparait les structs par
+`!=` — avec le nouveau champ POINTEUR, deux pointeurs vers la même valeur auraient été
+« différents ». Comparaison passée en `reflect.DeepEqual` avant de casser.
+
+**Résultats observés** : Q21d verts (moyennes exactes 45/49/79, NULL ignorés, 228 non
+plafonné, paire sans part → nil), builder (traversée + absence), contracttest vert,
+vitest match-view 267/267, typecheck et gofmt propres.
+
+**Conclusion / prochaine étape** : plus rien en vol côté pilote. Restent : merge de
+`wt/retours-0829` dans feat/v75 (utilisateur), séquence backfill post-merge,
+vérifications visuelles.
+
 ## [2026-08-30] LOT G.4 — assistances empilées, vue match : déjà livré, vérifié, zéro code neuf — Complété
 
 **Statut** : Complété. Plan `.ai/PLAN_RETOURS_UTILISATEUR_2026-08-29.md` §3bis, LOT G,
