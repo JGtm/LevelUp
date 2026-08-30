@@ -337,7 +337,10 @@ export function ExplorerPage() {
     !!endDate ||
     !!squadScope ||
     !!replayScope ||
-    !!matchIDSearch ||
+    // `.trim()` : le backend ignore les blancs d'une recherche par match ID (un GUID n'en
+    // porte aucun), donc une saisie qui s'y réduit ne filtre RIEN — annoncer « filtres actifs »
+    // pour elle proposerait d'effacer un filtre qui n'existe pas.
+    !!matchIDSearch.trim() ||
     expTypes.size > 0 ||
     playlists.size > 0 ||
     mapNames.size > 0 ||
