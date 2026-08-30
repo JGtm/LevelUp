@@ -1,3 +1,78 @@
+## [2026-08-30] Ramassage : le lien objet-au-sol <-> pickup EXISTE, et l'equipement TOMBE a la mort — Complété
+
+Trois questions de l'utilisateur, trois mesures (`replay/ground_link_research_test.go`, garde
+PICKUP_FILM/PICKUP_MAP). Deux renversent des affirmations de la veille.
+
+**1. Le lien pickup <-> objet au sol (armes) : ETABLI.** Distance du ramasseur a l'objet ti=42 le
+plus proche VIVANT a l'instant exact de la prise (canal delta du schema 24) : mediane **0,61 m**
+sur Catalyst (74,8 % sous 1 m), **0,75 m** sur Behemoth — temoin (autre bipede au meme instant)
+4,10 m et 7,00 m. Les queues au-dessus de 2 m sont les prises de DRAPEAU (pas un ti=42). Les trois
+refutations passees visaient d'AUTRES voies (suppression meme-paquet, attachement, oracle
+inventaire a 20 s) ; la voie directe n'avait jamais ete mesurable parce que l'instant exact du
+pickup n'existait pas — **c'est la condition de reprise du REGISTRE_REPORTS (« un oracle plus
+rapproche que 20 s ») qui est LEVEE par le schema 24.**
+
+**2. La disparition est OBSERVABLE, pas a minuter.** Recensement des images-cles : 233/244 vies
+ti=42 (Catalyst) et 229/244 (Behemoth) disparaissent EN COURS de match — derniere image-cle vue /
+premiere absente = fenetre de ~20 s, et un pickup lie (1) date la disparition a la milliseconde.
+Le user refuse la minuterie fixe du schema 24 (`Until`) : elle sera remplacee par ces fins
+mesurees.
+
+**3. L'equipement TOMBE au sol a la mort — l'utilisateur avait raison, la veille avait tort.**
+87,6 % des poses ti=37 de Catalyst (198/226 attribuees) et 77,9 % de Cliffhanger naissent a
+<= 3 m d'un bipede dont la vie SE TERMINE dans les 1,5 s. Le canal i48 (schema 25) ne pouvait pas
+le voir : le mourant n'emet rien — mais l'OBJET nait, et `equipmentPlacements` le publie deja.
+Le reste (12-22 %) = deploiements volontaires. NB : le guide fourni (« Definitive guide to weapon
+variants », r/halo) ne parle QUE des variantes d'armes — zero mention d'equipement ; c'est la
+mesure qui tranche.
+
+**Pieges d'instrumentation payes (3 versions fausses avant la bonne), a retenir** : un scan
+d'objets du monde HORS BuildFromFilm doit reproduire son preambule — LockProcessDecode +
+`installWorldObjectPrecision(entry, dir)` (largeurs d'axe DE LA CARTE) + largeurs MPP calibrees
+via decodeFilmPlacements. Sans la precision de carte : positions dequantifiees faux, mediane
+24-117 m EGALE au temoin (signature d'un nuage fantome). Utiliser `decodeFilmPadScans` (chaine de
+prod), jamais une copie.
+
+**Prochaine etape (schema 26)** : (a) publier le lien pickup->objet (fin de vie exacte de l'arme
+au sol ramassee, et l'arme LACHEE affichee jusqu'a sa fin MESUREE — pickup ou fenetre keyframe —
+plus de minuterie fixe) ; (b) qualifier les poses d'equipement mort/deploiement et leur donner la
+meme fin mesuree ; (c) corriger la doc du schema 25 (« pas de lacher d'equipement » -> « pas de
+lacher VOLONTAIRE ; le lacher de mort existe cote objet »).
+## [2026-08-30] Sons — option A appliquée : le ramassage sur socle se tait, et « le son » n'est pas « l'instant » — Complété
+
+**Décision utilisateur : OPTION A.** `padSound.ts` et son test sont SUPPRIMÉS, l'appel retiré de
+`replaySound.ts`, le stem retiré du garde-rail, et **l'asset `objective_pad_pickup.wav` retiré du
+dépôt** — sans quoi le garde-rail « 0 asset mort » serait rouge, et un fichier que rien ne joue
+est exactement ce qu'il traque.
+
+**Ce qui n'est pas perdu** : le son reste identifié (`play_007_abl_shared_pickup`, `c73036e4`),
+audible sur la planche `3c84fab7`, re-livrable en une commande depuis les `.wem` archivés, et git
+garde le fichier. **Condition de reprise** écrite : un canal qui DATE le ramassage — soit un
+`PadPickup.XUID` renseigné (l'oracle plafonne à 88,1 %, sous le seuil de 90 %), soit un
+resserrement de `[tLow, tHigh]` (médiane 20,00 s).
+
+**UN COMMENTAIRE DE HUIT LIGNES REMPLACE LA RÈGLE** à l'endroit exact où elle vivait : ce qu'elle
+faisait, les deux mesures qui la justifiaient, pourquoi la conclusion était fausse, où retrouver
+le son. Un retrait qui ne laisse pas de trace se refait.
+
+**Gates** : `vitest src/features/match-replay` 120 fichiers / **1 880 tests VERT** ; `typecheck`
+cache purgé VERT ; `eslint` VERT.
+
+**IMPRÉCISION DE MA PART, corrigée** (relevée par l'utilisateur : « tu me disais qu'on n'avait pas
+de sons pour spawn ou ramassage d'équipement et pourtant ils sont dedans »). J'écrivais « on n'a
+pas X » pour dire « X ne sonne pas dans le rejeu ». **Ce sont deux choses distinctes** :
+
+    LE SON      existe, est reconstitué, est sur la planche, est parfois nommé
+    L'INSTANT   n'existe pas dans le document de rejeu — rien ne date le geste
+
+Pour ces deux-là le SON est acquis (`c73036e4` ramassage, `4093f3c4` spawn) et c'est l'INSTANT
+qui manque. **Règle d'écriture désormais : nommer lequel des deux manque.**
+
+**Livré** : sections 14.1 et 14.2 de `.ai/V7.5/RE_SONS_RATELIER_ET_KOTH_2026-08-30.md` ;
+`padSound.ts` + test supprimés ; `objective_pad_pickup.wav` retiré. Rien de commité.
+
+---
+
 ## [2026-08-30] `fix/h5-prod-symptoms` supprimée : ses trois correctifs sont déjà en place — Complété
 
 **Demande utilisateur** : supprimer la branche obsolète.
@@ -29,13 +104,25 @@ Le worktree (`LevelUp/.claude/worktrees/fix+h5-support-hardening`) était propre
 le dépôt principal.
 
 **Conclusion / prochaine étape** : reste `wt/ti11-cadre`, seule branche non fusionnée portant
-de la matière. Analyse rendue à l'utilisateur : elle apprend au décodeur à lire les 34
-composants du descripteur d'objectif du HUD (`ti=11`), aujourd'hui ILLISIBLES — et une
-composante illisible ARRÊTE la marche du record (`DesyncAt`, `KeyframeStopDesync`), donc tout
-ce qui suit dans l'image est perdu pour la marche ordonnée. Ce que la branche décode est
-l'état par DÉFAUT (rien de vivant), mais le gain possible est ailleurs : les records
-actuellement tronqués. Combien ? Personne ne l'a mesuré — c'est le gate à écrire avant tout
-merge (re-cuisson d'un corpus, artefacts identiques au bit ou écart expliqué).
+de la matière. Elle apprend au décodeur à lire les 34 composants du descripteur d'objectif du
+HUD (`ti=11`), aujourd'hui illisibles ; ce qu'elle décode est l'état par DÉFAUT, donc rien de
+vivant.
+
+**CORRECTION DE CE PARAGRAPHE, LE MÊME JOUR — j'y avais écrit un argument FAUX.** J'avais
+avancé qu'un composant illisible « ARRÊTE la marche du record, donc tout ce qui suit dans
+l'image est perdu », et qu'il fallait donc mesurer ce qu'on perd avant de trancher. Vérifié
+sur pièces à la question de l'utilisateur (« ça ressemble plus à de la doc, non ? ») : **il
+avait raison et l'argument ne tient pas.** (a) Le walker qui s'arrête dur
+(`WalkKeyframeRecords` → `KeyframeStopDesync`) n'est appelé que depuis DEUX fichiers de test,
+jamais en production ; (b) le walker de production (`frame_records.go`) appelle
+`repairUnportedComponent` puis `continue`. Aucune donnée n'est perdue aujourd'hui, donc il n'y
+a rien à récupérer et aucun gate de re-cuisson à écrire. J'avais lu le mécanisme dans le
+walker de DEBUG et généralisé à la production sans le vérifier.
+
+La branche se réduit donc à de la documentation, et elle est déjà consignée là où il faut :
+verdict de mesure dans l'entrée du 27/08 de ce journal, décision de merge au registre
+(ligne `Objectifs vivants ti=11`), plan dans `replay2d/PLAN_R4_OBJECTIFS_VIVANTS_TI11.md`, et
+la grammaire elle-même sur `origin`. Rien à documenter de plus.
 ## [2026-08-30] Sons — le ramassage câblé sur un tir est une aberration, et la planche des socles — Complété
 
 **L'utilisateur** : « mettre un son de ramassage sur un event de tir ça ne te choque pas comme
