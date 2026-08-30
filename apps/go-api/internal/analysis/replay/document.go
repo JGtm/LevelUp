@@ -242,8 +242,35 @@ package replay
 // d'affichage, parce que le jeu n'a pas de minuterie inconditionnelle — seules 5 à 14 % des
 // armes au sol reçoivent un événement de disparition dans le film, et c'est son comportement,
 // pas un défaut de lecture.
+//
+// CE QUE LA VERSION 25 PORTE. Les RAMASSAGES ET LES CONSOMMATIONS D'ÉQUIPEMENT
+// (`equipmentChanges`) : la capacité d'armure suit la même règle que l'arme en main — son
+// composant (i48) n'entre au masque du flux delta que lorsqu'elle CHANGE, donc chaque émission
+// est un événement daté. Le document portait déjà `abilities[]`, qui dit ce qu'un joueur PORTE ;
+// ce calque dit ce qui lui ARRIVE. Champ optionnel, mais la version monte pour la raison exacte
+// des montées v14, v16, v21, v22 et v24 : la reprise du backfill se fait par SchemaVersion, et un
+// artefact 24 doit se lire « à re-cuire », pas « à jour ».
+//
+// NIVEAU DE PREUVE — ET IL EST MEILLEUR QUE CELUI DES ARMES, pour une raison de format. Le
+// compteur de rotation d'i48 avance de 1 à chaque émission (aucune répétition sur 50 transitions,
+// 3 films) et repart à 5 à la première émission de chaque vie (264 cas sur 269). Ce calque porte
+// donc son PROPRE TÉMOIN DE COMPLÉTUDE : un pas de compteur supérieur à 1 dénonce les émissions
+// manquées et les compte — environ 16 pour 319 vues sur le corpus, soit de l'ordre de 95 % de
+// couverture, LUE et non supposée. La couverture publie ce témoin (`missedEstimate`,
+// `counterJumps`, `livesFirstOffSpec`). Deux autres propriétés sont mesurées : la porte ouverte
+// est la CONSOMMATION et jamais la mort (17 cas sur 3 films, zéro dans la dernière seconde de la
+// vie, la plus tardive laissant 8,8 s à vivre) ; et la première émission d'une vie n'a PAS un
+// sens unique — contemporaine de la naissance du bipède c'est une réapparition équipée (83 % des
+// vies d'un film à 0 ms), tardive c'est un ramassage (médiane 16 à 18 s sur deux films d'arène,
+// 0 % sous la seconde). Les réapparitions sont donc ÉCARTÉES de la publication : les compter
+// pour des ramassages fausserait le décompte du simple au double.
+//
+// CE QUE LA VERSION 25 NE PORTE PAS. Le SOCLE d'où vient l'équipement ramassé — même impasse
+// que pour les armes, et pour les mêmes hypothèses réfutées. Ni ce que portait le joueur avant
+// la première émission d'une vie : `EquipmentChange.From` vaut alors `NoAbilityRank`, et le
+// film ne dit rien de plus.
 
-const SchemaVersion = 24
+const SchemaVersion = 25
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {
@@ -368,6 +395,12 @@ type ReplayDocument struct {
 	// portée au spawn en sont ÉCARTÉES : ce ne sont pas des ramassages. Absent si le film
 	// n'en porte aucun.
 	WeaponChanges []WeaponChange `json:"weaponChanges,omitempty"`
+	// EquipmentChanges est la liste des RAMASSAGES ET DES CONSOMMATIONS d'équipement (cf.
+	// document_equipment_changes.go) : qui, quand, quelle capacité — et, sur une
+	// consommation, laquelle vient d'être usée. Les annonces de RÉAPPARITION en sont
+	// ÉCARTÉES : ce ne sont pas des ramassages, et ce que le joueur porte à sa naissance est
+	// déjà dans `abilities`. Absent si le film n'en porte aucun.
+	EquipmentChanges []EquipmentChange `json:"equipmentChanges,omitempty"`
 	// WeaponPads (les SOCLES D'ARME du match) et PadPickups (leurs occupations ACHEVÉES) : une
 	// donnée de MATCH et non de carte, publiée seulement là où la récurrence est mesurée.
 	// Forme, chronique et refus de publication : document_ground_weapons.go.
