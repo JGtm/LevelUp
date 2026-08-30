@@ -1,6 +1,6 @@
 /**
  * MatchKillDistanceSection.test.tsx — POC (LOT G.3, 2026-08-30). Couvre :
- * rendu nominal (2 joueurs, 2 armes, kills mesurés + distance), état vide
+ * rendu nominal (2 joueurs, 2 armes, frags mesurés + distance), état vide
  * (retourne null), formats FR/EN de la distance moyenne, repli du libellé sur
  * weapon_key, et l'absence de plage min–max sur un kill mesuré unique.
  */
@@ -69,9 +69,9 @@ describe('MatchKillDistanceSection', () => {
 
     expect(screen.getByText('Distance par arme')).toBeInTheDocument()
     expect(screen.getByText('POC')).toBeInTheDocument()
-    // En-tête de groupe joueur : gamertag + kills mesurés / total du scoreboard.
-    expect(screen.getByText('Alice — 3/8 kills mesurés')).toBeInTheDocument()
-    expect(screen.getByText('Bob — 1/5 kills mesurés')).toBeInTheDocument()
+    // En-tête de groupe joueur : gamertag + frags mesurés / total du scoreboard.
+    expect(screen.getByText('Alice — 3/8 frags mesurés')).toBeInTheDocument()
+    expect(screen.getByText('Bob — 1/5 frags mesurés')).toBeInTheDocument()
     // Libellé résolu.
     expect(screen.getByText('BR75')).toBeInTheDocument()
     // Distance moyenne FR : virgule décimale + plage min–max (>1 kill mesuré).
@@ -107,7 +107,7 @@ describe('MatchKillDistanceSection', () => {
 
   it('replie sur le xuid quand le joueur est absent du scoreboard', () => {
     render(<MatchKillDistanceSection players={PLAYERS} scoreboard={[]} t={MATCH_VIEW_TEXT.fr} />)
-    expect(screen.getByText('xuid(1) — 3/0 kills mesurés')).toBeInTheDocument()
+    expect(screen.getByText('xuid(1) — 3/0 frags mesurés')).toBeInTheDocument()
   })
 
   it('ne rend rien quand players est vide', () => {
