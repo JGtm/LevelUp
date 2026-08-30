@@ -1,3 +1,30 @@
+## [2026-08-31] Percer la trame — damage_aftermath (872k) DÉCODÉ ET PROUVÉ : source + dégât + victime, l'oracle de trame tranche — En cours
+
+**Contexte** : ultracode, suite. 2e workflow multi-agents `damage-aftermath-reader` (10 agents,
+0 erreur, 722k tokens) : grammaire bit-exacte complète de damage_aftermath (type 0, octet 0xC0,
+872k) — source (tag), bloc dégât (magnitude R(5) sur [0,16] + 2e scalaire), victime (ref
+domaine 0). Corrections adverses intégrées (largeurs 19, victime 15 bits). 3 refs d'en-tête du
+type 0 = domaines 1/1/7 (lus dans l'exe).
+
+**Décision technique** : poser enfin l'ORACLE DE TRAME DISCRIMINANT (celui qui manquait au
+type 36) — décoder l'événement EN ENTIER, lire le bit de continuation, puis la trame, et
+mesurer sa PROFONDEUR (records/paquet), comparée à un témoin décalé de +3 bits. LEÇON : la
+métrique discriminante est la PROFONDEUR, pas le taux de fermeture (au témoin, la trame se
+ferme trivialement en 0 record sur un faux marqueur → taux de fermeture trompeusement haut).
+
+**Résultats chiffrés (2 films de référence)** : profondeur **2,2-2,4 records/paquet** au bon
+cadrage (≈ 0xA0 tick 2,9) contre **0,17** au témoin +3 bits = **facteur 13, TENU**. Le build
+ancien 06dfe6d9 (grammaire composants différente) rend moins — effet de build, hors sujet.
+Rendu produit : SOURCE 10-11 tags distincts (arme/effet), DÉGÂT groupé, PARTICIPANTS ref0/ref1
+domaine 1 (22-24/15-21 distincts = blessé/responsable), VICTIME domaine-0 finale 6-15 %.
+**C'est la voie touches : chaque damage_aftermath = un coup au but, avec source + magnitude +
+participants. 872k sur le corpus.** Deux bugs corrigés en route (bit de continuation oublié ;
+oracle masques 1-7 saturé → bascule sur la profondeur).
+
+**Conclusion / prochaine étape** : départager quelle ref d'en-tête est le blessé (sémantique) ;
+résoudre les 5 constantes de déquantification pour la valeur de dégât en clair ; corpus complet.
+Note : `film_re/NOTE_MODELE_EVENEMENTS_2026-08-30.md`.
+
 ## [2026-08-31] Percer la trame — les deux lecteurs composites du type 36 PERCÉS (workflow) ; en-tête tir PROUVÉ, visée plausible non prouvée — En cours
 
 **Contexte** : ultracode. Workflow multi-agents `type36-subreaders` (11 agents, 0 erreur,
