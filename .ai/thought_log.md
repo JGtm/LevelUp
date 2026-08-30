@@ -1,3 +1,97 @@
+## [2026-08-30] Rejeu 2D — le web consomme les schémas 24-26 : armes au sol sur la carte, datation fine des fiches — Complété
+
+**Périmètre** : lot FRONTEND SEUL sur `wt/ramassage-web` (branché sur `origin/wt/ramassage`).
+Aucune ligne de Go, aucune ligne d'`openapi.yaml`. Le backend publie depuis ce matin trois
+calques que rien ne lisait côté web ; ce lot les branche.
+
+**P1 — LES ARMES AU SOL SUR LA CARTE (schéma 26), le livrable principal.** Un calque frère de
+celui des socles, et la distinction est le cœur du rendu : un SOCLE est un LIEU qui
+réapprovisionne (losange + compte à rebours), une ARME AU SOL est un OBJET qui ne revient pas —
+elle se dessine SEULE, sans socle sous elle, plus petite (6,5 px contre 8) et plus discrète.
+Trois fichiers, découpe habituelle de la feature : `groundWeaponTime.ts` (lecture temporelle
+pure), `groundWeaponsLayer.ts` (tracé), `useReplayGroundWeapons.ts` (cuisson des vignettes et
+câblage).
+
+**LA DÉCISION DE RENDU QUI PORTE TOUT LE LOT : l'estompage EST la mesure.** Le document publie
+trois bornes et non deux — `t0`, `t1` (dernière preuve de PRÉSENCE), `t1max` (première preuve
+d'ABSENCE). Sur une fin `seen`, la disparition est un INTERVALLE : plein jusqu'à `t1`, descente
+LINÉAIRE de 0,8 à 0,2 jusqu'à `t1max`, RIEN au-delà. Une coupe franche à `t1` affirmerait une
+disparition que personne n'a vue ; tenir l'objet plein jusqu'à `t1max` affirmerait une présence
+que plus rien n'atteste. Sur `pickup` et `open`, `t1max == t1` : la fenêtre d'estompage est vide,
+la fin est exacte. Le plancher est NON NUL — à zéro, l'objet s'éteindrait avant la borne mesurée
+et la borne haute ne se lirait plus.
+
+**LES VIGNETTES SONT RÉUTILISÉES, PAS RECOPIÉES** : `groundWeapons[].w` est le même identifiant
+de famille que `weaponPads[].weapon` et `loadouts[].w`, donc la même clé dans `weaponLabels`. La
+résolution passe par `padIconRefFor` — la fonction pure qui porte déjà la règle (silhouette
+pleine plutôt que contour, miroir des atlas). Une seconde règle de résolution aurait divergé, et
+l'écran aurait montré la même arme de deux façons selon qu'elle est sur son socle ou par terre.
+Sans vignette, RIEN n'est dessiné : ni glyphe de repli, ni icône voisine (verdict du 2026-08-26
+sur les socles, qui vaut a fortiori ici — le socle gardait son losange, une arme au sol n'a que
+son image).
+
+**P2 — LA DATATION FINE DES FICHES (schémas 24 et 25), livrée en logique testée + branchement
+au FOYER.** `changeRefine.ts` est pur ; il se branche dans `loadoutAt` et `abilityAt`
+(`rosterLogic.ts`), les deux seuls points d'entrée — les fiches et la rangée d'armes en
+bénéficient sans qu'une ligne d'UI change.
+
+- ARMES : ne sont appliquées que les SUBSTITUTIONS D'IDENTITÉ (`from` connue ET présente dans la
+  rangée lue, `w` non vide). Elles ne changent ni la longueur de la rangée ni l'ordre de ses
+  emplacements — la seule transformation qui ne peut pas désaligner `Inventory.d`, le sélecteur
+  d'emplacement dégainé, lu à une AUTRE image-clé avec son propre âge.
+- CE QUI N'EST PAS APPLIQUÉ, ET C'EST ÉCRIT DANS LE MODULE : les LÂCHERS (`w` vide) ne retirent
+  pas l'arme, et les PRISES SUR EMPLACEMENT VIDE (`from` vide) n'en ajoutent pas. Le film ne
+  donne AUCUN index d'emplacement sur l'événement ; retirer ou ajouter décalerait ou inventerait
+  un emplacement que le sélecteur adresse. Le prix est nommé : une arme lâchée reste affichée,
+  estompée, jusqu'au prochain relevé — exactement le comportement d'avant ce lot.
+- CAPACITÉ : la plus RÉCENTE des deux sources gagne (même doctrine que les deux canaux
+  d'`abilities`), le relevé l'emportant à égalité d'âge. Une CONSOMMATION rend `null` : le joueur
+  ne porte plus rien, la vignette disparaît au lieu de montrer un équipement déjà dépensé.
+- La lecture d'image-clé RESTE LA BASE : le canal delta est juste mais sa complétude n'est pas
+  prouvée. On part du relevé et on n'applique que ce qui s'est passé APRÈS lui — la prochaine
+  image-clé resynchronise tout.
+
+**TYPES DU DOCUMENT : trois interfaces ÉCRITES À LA MAIN, et un garde-rail pour les tenir.**
+`openapi.yaml` n'a pas été régénéré quand le Go a livré les trois calques (hors périmètre de ce
+lot), donc `generated.ts` ne les porte pas. `ReplayDocument` est donc une intersection du type
+généré et de `ReplayDocumentDeltaLayers`, avec sa date de retrait et son critère mesurable
+(`grep groundWeapons apps/go-api/api/openapi.yaml` renvoie le champ du document). Le garde-rail
+`deltaLayersContract.guard.test.ts` LIT les balises `json:` des structures Go et les compare aux
+clés TS — clés prouvées exhaustives par `tsc` du côté TS, comparées au Go à l'exécution : un
+champ renommé côté Go fait échouer la CI, exactement comme le ferait une régénération. Les trois
+calques passent par la frontière `normalizeReplayDocument` comme tous les autres, et le contrat
+de nullabilité (`replayContract.test.ts`) les exige désormais nommément.
+
+**UNE EXTRACTION IMPOSÉE, LA SEIZIÈME** : `ReplayCanvas.tsx` était PILE à son cliquet (679) et le
+lot y branchait six lignes de glue. L'ÉTAT D'OUVERTURE DU TIROIR (ouvert/fermé, le bouton, la
+fermeture qui lui rend le focus) est parti dans `useReplayDrawer.ts`, qui porte déjà le tiroir
+depuis la quatorzième ; il rend maintenant `{ open, toggle, buttonRef, panel }`. Le fichier
+tombe à 678 et le plafond suit vers le BAS, comme à chaque extraction depuis 861.
+
+**UN ROUGE DE BRANCHE CORRIGÉ AU PASSAGE, en périmètre** : `EXPECTED_REPLAY_SCHEMA_VERSION`
+valait encore 23 alors que le Go est à 26 — le garde-rail de parité était le SEUL test rouge de
+`origin/wt/ramassage` au départ (531 fichiers verts, 1 rouge). C'est la copie web des schémas
+24-26, donc le pendant exact de ce lot.
+
+**Gates (codes de sortie vérifiés)** : `npm run typecheck` EXIT=0 (après purge de
+`node_modules/.tmp`) · `npm run lint` EXIT=0 (0 erreur, 24 avertissements préexistants, tous
+TanStack Table / react-refresh) · `npm run test -- --run` EXIT=0, **536 fichiers, 5509 tests
+passés, 14 ignorés** (contre 531+1 rouge au départ). En complément : `knip-ratchet` 0/0/0,
+`lint-contract-ratchet` clean, `check-generated-types-fresh` OK.
+
+**CE QUI RESTE, nommé** :
+- le GATE VISUEL n'a pas été passé (règle du dépôt : c'est l'utilisateur qui regarde) — la taille
+  de la vignette (6,5 px), le plancher d'opacité (0,2) et l'encre du liseré (« aucun camp ») sont
+  des arbitrages d'écran à confirmer ;
+- PAS DE SURVOL sur les armes au sol : le NOM de l'arme ne se lit nulle part, seule sa silhouette
+  la dit. Le rendre survolable demande un quatrième calque dans `hoverLayers` et une quatrième
+  infobulle dans `ReplayCanvasTips` — un lot en soi, à ouvrir si le besoin se confirme à l'écran ;
+- `equipmentPlacements` (poses ti=37) NON TOUCHÉ : un schéma 27 va les modifier ;
+- `openapi.yaml` + `generated.ts` à régénérer côté Go pour supprimer les trois types manuels et
+  leur garde-rail.
+
+---
+
 ## [2026-08-30] Remise au vert de `feat/v75` : trois lots orphelins commités, deux ratchets réparés — Complété
 
 **Demande utilisateur** : « corriger toutes les erreurs, gates et tests jusqu'à ce que plus rien
