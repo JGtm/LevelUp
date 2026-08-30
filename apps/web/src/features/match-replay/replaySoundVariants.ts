@@ -54,6 +54,18 @@ export const SOUND_VARIANTS: Readonly<Record<string, readonly string[]>> = {
     'repair_field_activate_v3',
   ],
   repair_field_end: ['repair_field_end', 'repair_field_end_v2', 'repair_field_end_v3'],
+  // LE CRANE d'Oddball (banque `sb_004_mod_mp_oddball`, rendu du 2026-08-29) : quatre de ses
+  // gestes sont des `RandomSequence` a plusieurs `.wem`, exactement comme le grappin. Le jeu
+  // TIRE une variante a chaque lecture ; le rejeu aussi. `objective_skull_spawn` n'y est pas :
+  // son evenement est « 1 couche, 1 son », un seul fichier.
+  objective_skull_despawn: ['objective_skull_despawn', 'objective_skull_despawn_v2'],
+  objective_skull_taken: ['objective_skull_taken', 'objective_skull_taken_v2'],
+  objective_skull_pickup: ['objective_skull_pickup', 'objective_skull_pickup_v2'],
+  objective_skull_dropped: [
+    'objective_skull_dropped',
+    'objective_skull_dropped_v2',
+    'objective_skull_dropped_v3',
+  ],
 }
 
 /**

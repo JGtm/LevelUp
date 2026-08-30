@@ -845,7 +845,7 @@ describe('ReplayTeams — compteurs de fiche : publiés, ou ceux de la base', ()
     const doc = testReplayDoc({ ...twoLives, scoreTimeline: timeline })
     const view = render(<ReplayTeams doc={doc} scoreboard={board()} frame={100} locale="fr" />)
     expect(view.getByTitle("Score personnel à l'instant lu").textContent).toBe('350')
-    const live = view.getByTitle("Frags / morts / assistances à l'instant lu")
+    const live = view.getByTitle(/^Frags \/ morts \/ assistances à l'instant lu — FDA /)
     expect(live.textContent).toBe('3/2/4')
   })
 
@@ -854,7 +854,9 @@ describe('ReplayTeams — compteurs de fiche : publiés, ou ceux de la base', ()
     const view = render(<ReplayTeams doc={doc} scoreboard={board()} frame={10} locale="fr" />)
     expect(view.getByTitle("Score personnel à l'instant lu").textContent).toBe('120')
     // Aucune mort ni assistance transmise avant l'image 20 : zéro est la valeur, pas une lacune.
-    expect(view.getByTitle("Frags / morts / assistances à l'instant lu").textContent).toBe('1/0/0')
+    expect(
+      view.getByTitle(/^Frags \/ morts \/ assistances à l'instant lu — FDA /).textContent,
+    ).toBe('1/0/0')
   })
 
   it('le joueur NON publié garde les totaux de la BASE — jamais un zéro inventé', () => {
@@ -863,7 +865,7 @@ describe('ReplayTeams — compteurs de fiche : publiés, ou ceux de la base', ()
     const doc = testReplayDoc({ ...twoLives, scoreTimeline: timeline })
     const view = render(<ReplayTeams doc={doc} scoreboard={board()} frame={100} locale="fr" />)
     expect(view.getAllByTitle("Score personnel à l'instant lu")).toHaveLength(1)
-    const base = view.getAllByTitle('Frags / morts / assistances du match')
+    const base = view.getAllByTitle(/^Frags \/ morts \/ assistances du match — FDA /)
     expect(base).toHaveLength(1)
     expect(base[0].textContent).toBe('1/1/0')
   })
@@ -872,15 +874,81 @@ describe('ReplayTeams — compteurs de fiche : publiés, ou ceux de la base', ()
     const doc = testReplayDoc(twoLives)
     const view = render(<ReplayTeams doc={doc} scoreboard={board()} frame={100} locale="fr" />)
     expect(view.queryAllByTitle("Score personnel à l'instant lu")).toHaveLength(0)
-    expect(view.getAllByTitle('Frags / morts / assistances du match')).toHaveLength(2)
+    expect(view.getAllByTitle(/^Frags \/ morts \/ assistances du match — FDA /)).toHaveLength(2)
+  })
+
+  /**
+   * LE FOND DU TRIPLET EST UNE LECTURE DU FDA, pas un ornement : il suit la MÊME horloge que
+   * les nombres qu'il colore. Sur un joueur publié il change AVEC la lecture — c'est le cas
+   * qui distingue un fond calculé d'un fond figé au score final.
+   */
+  it("le fond du triplet suit le FDA à l'instant lu, et CHANGE de palier avec la lecture", () => {
+    const doc = testReplayDoc({ ...twoLives, scoreTimeline: timeline })
+    // Image 20 : 1 frag, 2 morts, 0 assistance -> FDA = −1 -> palier déficitaire.
+    const tot = render(<ReplayTeams doc={doc} scoreboard={board()} frame={20} locale="fr" />)
+    const deficit = tot.getByTitle(/^Frags \/ morts \/ assistances à l'instant lu — FDA /)
+    // Le signe négatif vient de l'Intl de la plateforme (tiret ou moins typographique) :
+    // ce qui est vérifié ici, c'est la VALEUR et son signe, pas le glyphe.
+    expect(deficit.getAttribute('title')).toMatch(/FDA .1,00$/)
+    expect(deficit.style.background).toContain('var(--ac-destructive)')
+    tot.unmount()
+    // Image 100 : 3 frags, 2 morts, 4 assistances -> FDA = 3 + 4/3 − 2 = 2,33 -> bénéficiaire.
+    const view = render(<ReplayTeams doc={doc} scoreboard={board()} frame={100} locale="fr" />)
+    const gain = view.getByTitle(/^Frags \/ morts \/ assistances à l'instant lu — FDA /)
+    expect(gain.getAttribute('title')).toContain('2,33')
+    expect(gain.style.background).toContain('var(--ac-success)')
+  })
+
+  it("un FDA à l'équilibre (0 à 1 inclus) prend le palier médian", () => {
+    // Bravo n'est pas publié : ses totaux de base valent 1 frag / 1 mort / 0 assistance -> FDA 0.
+    const doc = testReplayDoc({ ...twoLives, scoreTimeline: timeline })
+    const view = render(<ReplayTeams doc={doc} scoreboard={board()} frame={100} locale="fr" />)
+    const base = view.getAllByTitle(/^Frags \/ morts \/ assistances du match — FDA /)
+    expect(base[0].getAttribute('title')).toContain('0,00')
+    expect(base[0].style.background).toContain('var(--ac-info)')
+  })
+
+  it('un compteur NON LU ne donne aucun fond — une couleur est une affirmation', () => {
+    const doc = testReplayDoc(twoLives)
+    const trous = board().map((r) => ({ ...r, assists: null }))
+    const view = render(<ReplayTeams doc={doc} scoreboard={trous} frame={100} locale="fr" />)
+    const base = view.getAllByTitle('Frags / morts / assistances du match')
+    expect(base).toHaveLength(2)
+    expect(base[0].textContent).toBe('1/1/?')
+    expect(base[0].style.background).toBe('')
+  })
+
+  /**
+   * LA GRILLE DE LA RANGÉE (demande utilisateur du 2026-08-29). Deux garanties, et la
+   * seconde est celle qui aligne réellement les fiches : le score vient AVANT les compteurs,
+   * et sa cellule est rendue MÊME VIDE pour un joueur non publié — sinon son triplet
+   * glisserait par rapport à celui du voisin publié.
+   */
+  it('le score personnel précède le triplet, et sa cellule reste réservée quand il manque', () => {
+    const doc = testReplayDoc({ ...twoLives, scoreTimeline: timeline })
+    const view = render(<ReplayTeams doc={doc} scoreboard={board()} frame={100} locale="fr" />)
+    // Alpha est publié : score puis compteurs, dans cet ordre de lecture.
+    const score = view.getByTitle("Score personnel à l'instant lu")
+    const trio = view.getByTitle(/^Frags \/ morts \/ assistances à l'instant lu — FDA /)
+    expect(score.compareDocumentPosition(trio) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    // Bravo n'est pas publié : sa rangée porte quand même DEUX cellules, la première vide et
+    // sans infobulle — la cellule est là, la mesure n'y est pas.
+    const bravo = view.getAllByTitle(/^Frags \/ morts \/ assistances du match — FDA /)[0]
+    const rangee = bravo.parentElement as HTMLElement
+    expect(rangee.children).toHaveLength(2)
+    expect(rangee.children[0].textContent).toBe('')
+    expect(rangee.children[0].getAttribute('title')).toBeNull()
+    expect(rangee.children[1]).toBe(bravo)
   })
 
   it('EN : les mêmes surfaces portent les libellés anglais', () => {
     const doc = testReplayDoc({ ...twoLives, scoreTimeline: timeline })
     const view = render(<ReplayTeams doc={doc} scoreboard={board()} frame={100} locale="en" />)
     expect(view.getByTitle('Personal score at the moment being played').textContent).toBe('350')
-    expect(view.getByTitle('Kills / deaths / assists at the moment being played')).toBeTruthy()
-    expect(view.getByTitle('Kills / deaths / assists for the whole match')).toBeTruthy()
+    expect(
+      view.getByTitle('Kills / deaths / assists at the moment being played — KDA 2.33'),
+    ).toBeTruthy()
+    expect(view.getByTitle('Kills / deaths / assists for the whole match — KDA 0.00')).toBeTruthy()
   })
 })
 
