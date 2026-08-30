@@ -1,3 +1,44 @@
+## [2026-08-30] Portage en production du canal de ramassage, et une correction a mes propres chiffres — Complété
+
+**Décisions techniques** :
+1. `filmdec.ScanFilmHeldWeaponChanges(dir, spawnSet)` — balayage de PRODUCTION des changements
+   d arme en main : instant, vie, emplacement, famille (moitie haute = l identite catalogable),
+   moitie basse, famille precedente, et NATURE (`taken` / `dropped` / `swapped` / `restated`).
+   `restated` est la distinction qui empeche de compter des prises qui n ont pas eu lieu : une
+   arme deja portee au spawn et seulement re-annoncee par le flux n est PAS un ramassage.
+2. Le balayage est confronte a l instrument de mesure par un test qui compare les deux listes
+   ELEMENT PAR ELEMENT (instant, vie, emplacement, famille). Sans cette confrontation le portage
+   pourrait deriver en silence. Resultat : identiques, 229 et 100 emissions.
+
+**CORRECTION D UNE DE MES AFFIRMATIONS** : j ai ecrit plusieurs fois « ZERO repetition, la
+grammaire reserve i43..i46 au changement ». C etait une generalisation depuis UN film de
+31 emissions. Sur des films plus fournis il reste **1 repetition par film** : 1/229 (0,4 %) et
+1/100 (1,0 %) ; 0/31 sur le film d origine. La propriete tient a ~99 %, pas a 100 %. Le test
+porte desormais un RATCHET a 2 % au lieu d une egalite a zero — il casse si le taux se degrade,
+pas si l exception connue subsiste.
+
+**Résultats observés** (nature des changements, 3 films) :
+
+| film | taken | dropped | swapped | restated |
+|---|---|---|---|---|
+| 64e8adfa | 125 | 92 | 2 | 10 |
+| 53ce4390 | 55 | 30 | 5 | 10 |
+| 000d5950 | 21 | 4 | 0 | 6 |
+
+`go build` + `go vet` verts sur `internal/analysis/...`.
+
+**Conclusion / prochaine étape** : le canal est porte en production et verifie contre
+l instrument. Reste a le publier dans le document de rejeu (champ + version de schema +
+couverture), avec la fenetre d affichage bornee par les durees de despawn du jeu
+(`.ai/V7.5/reference/DESPAWN_ARMES_HALO_INFINITE.md`) ET par l image-cle — la plus courte des
+deux, aucune n inventant de donnee. Puis l equipement, dont le canal cote bipede est i26
+`unit-equipment-component`, jamais decode en valeurs.
+
+**Blocage de push, inchange** : `killsourceload` n est toujours pas commite, ni localement ni sur
+`origin/feat/v75`. Le hook de pre-push echoue donc sur un code qui n est pas le notre. Quatre
+commits en attente sur `wt/ramassage`. Demande faite a l utilisateur : contourner (`--no-verify`)
+ou attendre. Aucun contournement tente sans son accord.
+
 ## [2026-08-30] Remise au vert de `feat/v75` : trois lots orphelins commités, deux ratchets réparés — Complété
 
 **Demande utilisateur** : « corriger toutes les erreurs, gates et tests jusqu'à ce que plus rien
