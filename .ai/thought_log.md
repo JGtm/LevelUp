@@ -1,3 +1,213 @@
+## [2026-08-28] Rejeu Oddball — 4 lots intégrés dans feat/v75 (score par joueur/manche, deux-DinoR00, bandeau par manche, crâne socle) — Complété
+
+**Contexte** : chantier modes porteurs. Demande utilisateur : le score de manche doit repartir de 0,
+et le crâne doit être visible quand il repose sur son socle. 4 lots sur worktrees dédiés, revus
+adversarialement, fusionnés dans feat/v75.
+
+**Décisions techniques** :
+1. **Score PAR JOUEUR par manche** (wt/score-parmanche, Go) : fork `buildPlayerScores` sur
+   `RealRounds>1` → identité par manche (`ResolveRoundIdentity`/`AtRound`) ; mono-manche byte-exact.
+2. **Identité slot→joueur PAR IMAGE** (wt/slot-parmanche, web) : `buildSlotOwnership`/`ownerAtFrame`
+   + résolveurs frame-aware ; corrige « deux DinoR00 ». Régression P2 (revue) : objets lâchés à la
+   mort (`t0=finVie+1` → couleur neutre) corrigée par `ownerAtFrameOrLast` confiné aux frontières
+   (inkOf, killFx, marque « révélé »).
+3. **Bandeau = score de la MANCHE COURANTE remis à 0** (wt/score-manche, web) : `teamRoundScoreAtFrame`
+   + `currentRoundAtFrame` (borne partagée) ; dénominateur = plafond de manche ; mono-manche inchangé.
+4. **Crâne visible au repos-socle** (wt/skull-socle, web) : module pur `skullPresence.ts`, règle du
+   prochain événement (repos tenu si une PRISE suit, sinon absent) ; void-drop → absent ; `drawFreeSkull`.
+   Tous les correctifs 2-4 sont RENDU-SEUL (aucune re-cuisson).
+
+**Revue adversariale** : 7 relecteurs aveugles + réfuteurs. 0 P0/P1 sur les 4 lots. 1 P2 (poses
+lâchées) corrigée, ronde 2 propre (6 conditions vérifiées, aucun constat).
+
+**Résultats** : fusion des 4 dans feat/v75 (merges --no-ff, auto-merge propre y compris
+ReplayCanvas.tsx malgré le workstream export-video parallèle). Gates : vitest **1889/1889**, eslint
+**0 erreur** (fichiers touchés ; 4 warnings pré-existants export-video/son), `go test` replay **ok**.
+TYPECHECK : 1 erreur **PRÉ-EXISTANTE** dans `useReplayExport.test.tsx:90` (workstream export-video
+parallèle, PAS mes lots) → branche non-verte tant qu'elle n'est pas corrigée. **NON POUSSÉ** (attend
+gate visuel utilisateur + correction export-video).
+
+**Découverte (voir registre)** : sur d9781168 les `skullCarries` attribuent des portages à SHROOM
+HORS de sa présence bipède (1er carry 326-426 mais 1re vie SHROOM à 868 ; dernier carry 6944 après
+sa dernière vie 6505) → le calque porteur n'a pas de position → icône crâne absente au 1er portage.
+Bug de RECONSTRUCTION (skullCarries, canal score), pas des lots de rendu. Fix = revoir l'attribution
+xuid des `skullCarries` + re-cuisson (différée).
+
+**Prochaine étape** : rebuild feat/v75 côté utilisateur + gate visuel ; corriger l'erreur typecheck
+export-video (autre workstream) avant push ; trancher le phantom-carry `skullCarries`.
+
+## [2026-08-29] RE i10/i21 — le handle du parent est NOMME par sentinelle, et i21 porte un SECOND vecteur — Complété
+
+**Contexte** : l'utilisateur pose deux hypothèses contre nos négatifs écrits — « les ramassages
+sont dans le film » et « la donnée de visée aussi » — et demande de chercher d'abord les TROUS de
+nos recettes avant d'aller plus loin. Ghidra + MCP fournis. Le pont MCP natif ne se connecte pas
+(`socket.AF_UNIX` absent sous Windows) : l'API HTTP du greffon (`127.0.0.1:8089`) répond, elle a
+servi de chemin. Programme : `HaloInfinite.exe`, 311 103 fonctions, analyse complète.
+
+**Décisions techniques** :
+
+1. *Le trou n'était pas là où le négatif le disait — i10 est un trou de MESURE, pas de décodage.*
+   `object-parent-state-component` (i10) est porté sur TOUS les archétypes d'objet (ti=35 à 43),
+   `consumeObjectParentState` en lit la grammaire complète et `SetObjectParentStateHook` en publie
+   déjà chaque champ. Ce que `PLAN_ATTACHEMENT_PARENT_STATE.md` laissait ouvert (Gate 0 négatif,
+   condition de reprise littérale : « Ghidra sur `FUN_140c1e4d0` (sens des champs) puis remesure »)
+   est maintenant tranché PAR CONSTRUCTION, sans oracle : la branche DÉTACHÉE du déser écrit des
+   sentinelles nulles là où la branche ATTACHÉE lit le flux.
+   - `+0x274` <- `FUN_1406d3140` (le quant-stat, notre `Quant16`) en branche attachée ; **`0xFFFFFFFF`
+     en branche détachée** => c'est LE HANDLE DU PARENT. Un handle nul ne s'écrit pas autrement.
+   - `+0x278` (R(16)) et `+0x27a` (R(16) derrière porte) : **`0xFFFF` en branche détachée** =>
+     deux identifiants de POINT D'ATTACHE (marqueur / siège), le second optionnel.
+   - `+0x27c` / `+0x27d` : les deux R(1) ; `+0x280` : la matrice 3 x R(16) (transformation locale).
+   - `+0x2a4/+0x2a8/+0x2ac` : triple à sentinelle, lu SEULEMENT en branche détachée ET SEULEMENT si
+     `param_4 < 2` ; en branche attachée le même `param_4 < 2` les MET à `0xFFFFFFFF` sans lire un bit.
+   Les quatre « hypothèses de champ » que la phase 0.2 balayait à l'aveugle (0/149, seuil réfuté)
+   n'ont donc plus lieu d'être : le champ à tester est désigné.
+
+2. *Et le plan portait déjà, en « découverte hors périmètre », une piste MOINS CHÈRE que Ghidra
+   qui n'a jamais été essayée* — elle devient prioritaire à la lumière du point 1. `paramByComponent`
+   (traverse.go) ne contient PAS i10 : tout archétype non-bipède retombe sur le défaut 1. Or
+   `param_4 < 2` gouverne des lectures dans LES DEUX branches. Si le vrai `param_4` de ti=37/42 vaut
+   >= 2, alors chaque lecture i10 d'un objet DÉTACHÉ sur-lit aujourd'hui le bloc `1408f0ac4` + le
+   R(11) signé, et désynchronise tout ce qui suit dans le record. La réfutation 0/149 de la phase 0.2
+   a été mesurée sur ce chemin : elle est SUSPECTE tant que le balayage `SetRecordStateParam` par
+   archétype (offline pur, déjà outillé) n'a pas été fait. Ordre correct : balayage d'abord, remesure
+   de l'oracle CTF ensuite, et seulement alors un verdict sur le ramassage.
+
+3. *i21 — les « 2 bits inexpliqués » sont expliqués, et ils cachent un SECOND vecteur.*
+   L'entrée du 2026-08-29 (cône de visée) parlait de 25 bits mesurés contre 23 consommés.
+   `FUN_14076df7c` décompilé : `R(1) flag0 ; FUN_14076e0ec ; R(1) flag1 ; si flag0==0 :
+   FUN_14076e0ec ; R(1) flag2`, et `FUN_14076e0ec` = `FUN_1406d84b4(...,0xc)` + `FUN_1406d84b4(...,0xb)`
+   = R(12)+R(11) puis conversion en vecteur unitaire. Donc 1+23+1 = **25 bits quand flag0==1** —
+   le compte tombe juste — et **49 bits quand flag0==0, avec un DEUXIÈME vecteur de direction**
+   écrit à une autre zone du composant (`+0x564` contre `+0x718` pour le premier), suivi d'un
+   troisième drapeau (`+0x5f8`). Le port Go modélise déjà cette branche
+   (`unit_weaponstate.go:446`) : les bits sont correctement CONSOMMÉS, mais le second vecteur et les
+   trois drapeaux sont JETÉS, et `offline_aim.go` ne lit que le premier vecteur. C'est donc, là aussi,
+   un trou de mesure et non de grammaire : un hook sur i21, du modèle de `SetObjectParentStateHook`,
+   les rendrait sans lire un bit de plus.
+
+4. *Ce qui reste réfuté, et ne doit pas être rouvert sur cette base* : il n'existe AUCUN composant de
+   zoom dans le registre ECS (ti=35 porte i0..i63 sans trou d'indice, aucun nommé zoom ; recherche de
+   chaînes = 0 composant). Les occurrences `IsZoomed` / `GetZoomState` sont des champs de
+   data-binding d'interface (`FUN_140dd208c` / `FUN_140dd018c`), exactement le motif déjà réfuté pour
+   `KillerWeapon`. Le cluster `DescopedUnitPosition` / `DescopedUnitAimVector` /
+   `DescopedWeaponObjDescSeqId` confirme que le descope part en TÉLÉMÉTRIE Xbox, pas dans le film.
+   L'état de lunette, s'il est atteignable, passera par le sens de flag0/flag1/flag2 d'i21 — pas par
+   un composant dédié.
+
+**Résultats observés** : aucune modification de code, aucun test lancé — session de rétro-ingénierie
+et de lecture. Décompilations à l'appui : `FUN_140c1e4d0` (i10), `FUN_14076df7c` et `FUN_14076e0ec`
+(i21), `FUN_140dd208c` (registre d'interface). Sources croisées : `ecs_table.tsv` (497 portés,
+491 non portés, 45 partiels, 34 désérialiseurs non câblés), `components_object_state.go`,
+`unit_weaponstate.go`, `traverse.go`, `PLAN_ATTACHEMENT_PARENT_STATE.md`.
+
+**Conclusion / prochaine étape** : les deux hypothèses de l'utilisateur sont PLAUSIBLES et aucune
+n'est encore prouvée. Ordre de reprise, du moins cher au plus cher : (1) balayage
+`SetRecordStateParam` sur i10 pour ti=37/38/40/42 (offline, outillé) ; (2) remesure de l'oracle CTF
+de la phase 0.2 en ne testant QUE `+0x274` comme handle ; (3) hook i21 publiant flag0/flag1/flag2 et
+le second vecteur, puis oracle « kills au fusil de précision » pour tester l'hypothèse lunette.
+Aucun de ces trois pas ne demande Ghidra. Répartition en cours avec la session `retours-0829`
+(elle tient 8a/8b + F.0 ; je tiens la couche RE/film).
+
+## [2026-08-29] Deux retours mineurs — recherche match ID tolérante aux blancs, cône de visée sans tick — Complété
+
+**Contexte** : deux demandes utilisateur hors chantier, l'une sur la page Explorer, l'autre sur
+le rejeu 2D. Une troisième (cône plus étroit quand le joueur met l'œil dans la lunette) est
+NON TRAITÉE, faute de donnée — justification en fin d'entrée.
+
+**Décisions techniques** :
+1. *Recherche par match ID* — `filterByExplorerMatchIDSearch` retirait zéro blanc : un GUID
+   collé depuis un log ou une URL repliée ne rendait AUCUNE ligne, ce qui se lit « ce match
+   n'existe pas ». Le filtre passe désormais par `stripAllSpaces` (tous les blancs Unicode,
+   pas seulement ceux des bords — un GUID n'en porte aucun, donc aucun n'est significatif).
+   Conséquence assumée : une requête réduite à du blanc redevient une requête VIDE. Côté web,
+   `hasActiveFilter` teste `matchIDSearch.trim()`, sans quoi une barre d'espaces annonçait des
+   « filtres actifs » qui ne filtraient rien.
+2. *Cône de visée — le tick est supprimé, la longueur porte le signe* — le modèle du schéma 13
+   multipliait la longueur par `max(0,35 ; cos p)`. Le cosinus est PAIR : « vise le ciel » et
+   « vise ses pieds » rendaient le même cône, d'où le trait collé à la pointe pour lever
+   l'ambiguïté — celui que l'utilisateur ne veut plus. Le facteur devient `1 + 0,55 × sin(p)`,
+   IMPAIR et strictement croissant sur [−90, +90] : court vers le bas (45 % à −90°, soit
+   23 px), long vers le haut (155 %, 81 px), 52 px à plat. La longueur ordonne donc les visées
+   à elle seule et le tick n'a plus rien à dire — supprimé, pas désactivé (CLAUDE.md n°7).
+   Deux points non évidents : `AIM_LENGTH` (52) cesse d'être un MAXIMUM pour devenir la
+   RÉFÉRENCE à plat, et le bornage à ±90° est nécessaire parce que `sin` redescend au-delà
+   alors que la formule publiée de `p` couvre ±180° sous réserve (`AimPitchDeg`) — sans lui,
+   une visée à 120° rendrait un cône plus court qu'à 90°, c'est-à-dire l'inverse de la lecture.
+   Le plancher de lisibilité disparaît comme constante : 0,45 à la verticale basse suffit.
+   `document_aim.go` (contrat du champ `P`, qui décrivait l'ancien modèle) mis à jour dans le
+   même diff — doc inversée interdite.
+
+**Résultats observés** : `vitest` `apps/web` — match-replay 119 fichiers / 1858 tests verts,
+explorer 26 / 221 verts ; `tsc --noEmit` (non incrémental) = 0 ; eslint = 0 sur les 3 fichiers
+web touchés. Go : `go build` + `go vet ./internal/analysis/replay/` verts ; les 3 nouveaux
+tests de `match_history_match_id_search_test.go` passent. RÉSERVE HONNÊTE : `internal/service`
+NE COMPILE PAS dans ce worktree partagé — une autre session y a en vol des appels à
+`buildSoloFirstBlood` à 3 arguments pour une fonction qui en prend 2 (fichiers
+`session_page_service.go` / `timeseries_service.go`, que je n'ai pas touchés). Vérification
+faite dans un worktree jetable où cette signature a été bouchonnée, puis détruit ; le paquet
+reste à recompiler ici quand l'autre session aura fini.
+
+**Non traité** : rendre le cône plus étroit quand le joueur est à la lunette. AUCUNE donnée
+d'ADS n'existe aujourd'hui — ni dans l'artefact (`Point` ne porte que `h`, `p`, `sh`, `hp`),
+ni dans le décodeur (`grep -iw zoom|scoped` = 0 sur `filmdec/` et sur `.ai/V7.5/`). La seule
+piste connue : le composant i21 consomme 25 bits mesurés alors que ses deux scalaires en
+utilisent 23 (R(12) cap + R(11) élévation, `offline_aim.go`) — 2 bits inexpliqués, à
+caractériser par RE avec un oracle avant toute promesse d'affichage.
+
+**Prochaine étape** : rien de bloquant. Si la lunette redevient prioritaire, c'est un item de
+plan RE (oracle candidat : les kills au fusil de précision, où l'ADS est quasi certain).
+
+## [2026-08-29] LOT A — Donuts « Répartition des frags » 2 niveaux + Escouade — Complété
+
+**Contexte** : 5 items du PLAN_RETOURS_UTILISATEUR_2026-08-29 §2, par-dessus le lot
+« kills-hors-arme » non commité (classes `equipment` / `environmental` fraîchement ajoutées).
+
+**Décisions techniques** :
+1. *Rampe de teinte du niveau 2* — `fragClass.ts` : `0.22 + index × 0.2` atteignait 1,02 dès
+   l'index 4, `shiftLightness` clampait, et les 5ᵉ/6ᵉ rôles d'une classe sortaient en BLANC
+   PUR (cas réel : les 5 types de grenade). Rampe NORMALISÉE sur le nombre de rôles avec un
+   plafond `ROLE_LIGHTNESS_MAX = 0.7` : pas nominal tant qu'il tient, sinon pas resserré
+   plaçant le dernier rôle exactement au plafond → 1-3 rôles gardent leur rendu historique.
+   `FragSunburst.tsx` : la valeur de la ligne de rappel n'est plus peinte à la couleur d'arc
+   (teinte éclaircie, illisible en texte) mais au token de texte du thème ; la polyline garde
+   la couleur, elle porte le lien arc→étiquette.
+2. *DEC-1* — `fragDetailBreakdown.ts` : nouvel ensemble `NON_WEAPON_FRAG_CLASSES`
+   (unattributed / environmental / equipment / other), MIROIR EXACT de
+   `domain.nonCombatFragClasses`, qui remplace le test inline `c.class === 'unattributed'`.
+   Plus de barres « Bobine… » / « Chute et environnement » dans « Outils de destruction » sur
+   les 5 surfaces. Pas de 3ᵉ liste : `NON_COMBAT_WEAPON_ROLES` (insight coach) en DÉRIVE
+   désormais, + véhicule/tourelle — divergence voulue, documentée des deux côtés.
+3. *Escouade* — `squadFragTools.ts` : le cap top-N ne portait que sur les armes ; le détail
+   arrivait entier et le tri ASC le faisait remonter en tête, noyant les 8 armes. Second cap
+   `SQUAD_TOOLS_TOP_DETAILS = 6` + ligne agrégée « Autres frags » (FR/EN), épinglée en bas
+   avec « Autres armes ». Aucune perte silencieuse.
+4. *Couleur* — `equipment` passe de `chart-series-1` (#93C5FD, TROISIÈME bleu à côté de
+   `environmental` #0072B2, son voisin d'ordre, et `unattributed` #60A5FA) à `extreme`
+   (#C026D3, fuchsia) : pire ΔE OKLab×100 de la classe 10,68 → 13,95. Le garde-rail inclut
+   désormais `unattributed` dans le contrôle ΔE, avec une EXCEPTION CIBLÉE ET DATÉE pour la
+   paire héritée `spartan_ability`/`unattributed` (6,89) + un test-ratchet qui casse le jour
+   où l'exception devient inutile.
+5. *Doc* — commentaire du Mutilator restauré depuis `HEAD` dans `rules.tsv` (écrasé par
+   copier-coller du répulseur ; colonnes `weapon_key` du lot en cours intactes) ; doc Go
+   corrigée pour `FragRoleEntry.Label` (plus « UNIQUEMENT IsPerWeaponFragClass »),
+   `perWeaponFragClasses` (note de PORTÉE : aiguillage de la provenance registre, pas la
+   liste des classes à niveau 2 par objet) et `nonCombatFragClasses` (la prétention de miroir
+   de `NON_COMBAT_WEAPON_ROLES` était fausse).
+
+**Résultats observés** : `npx vitest run src/lib/accessibility src/features/squad
+src/components/charts src/features/synthesis` → 90 fichiers / 819 tests, 0 échec ; les 5
+surfaces consommatrices (`match-view`, `session-detail`, `timeseries`) → 50 fichiers /
+396 tests, 0 échec ; `npm run typecheck` exit 0 ; ESLint sur les 11 fichiers touchés :
+0 erreur, 0 avertissement ; `go vet ./internal/domain/` et les tests killicon verts.
+
+**Conclusion / prochaine étape** : LOT A clos, A.1→A.5 tous `[x]`. Découvertes NON traitées :
+la palette Okabe-Ito est déjà entièrement collabée sur les classes de frags (shoulder ≡
+environmental, heavy ≡ grenade : ΔE 0) — le garde-rail ne teste que la palette défaut ;
+et `apps/web/src/features/squad/i18n.ts` s'est retrouvé STAGÉ pendant la passe (index ≡
+worktree) alors qu'aucune commande git d'écriture n'a été lancée par ce lot — à prendre en
+compte lors de l'arbitrage `git add -p` du worktree partagé.
+
 ## [2026-08-29] LOT D — Fil d'Ariane sur la page rejeu — Complet
 
 **Contexte** : la page rejeu affichait un titre « Rejeu 2D » et le détail du match (map, mode, date), mais aucun fil d'Ariane (breadcrumb) pour revenir au contexte précédent. La vue match en affichait un depuis mai 2026.
@@ -76353,3 +76563,474 @@ touchés) ; vitest 217 fichiers / 2 719 tests, 0 échec ; suite Go en cours de r
 `score_kind` sans consommateur sur trois contrats ; l'erreur avalée sur la recréation de
 `v_match_full` ; la divergence FFA pré-existante entre historique et vue match). Restent
 `make gate-push` et la CI, à jouer quand le worktree ne sera plus partagé.
+
+## [2026-08-29] Rejeu — deux retours utilisateur : le déclenchement sur T0, et la lecture automatique
+
+**Statut** : Complété (retours du jour, hors plan ; branche `feat/v75`, worktree partagé).
+
+**Demande, mot pour mot** : « Attention aux messages affichés et tous les sons et à la voix
+(voire musique aussi), le déclenchement doit se faire sur le T0 (si ce n'est pas calé sur
+l'événement en lui même) dans le replay, sinon c'est décalé » puis, en précision : « Les
+composants horodatés qui se basent sur le début du match doivent être calés aussi sur T0 ; ce
+qui est sur les événements précis qui ont déjà un timestamp, on ne touche pas si c'est déjà
+bien calé. » Et : « 22. Lecture automatique dans les réglages (avec persistance du choix). Et
+pour les réglages d'ailleurs je préfère un toggle plutôt que des boutons comme aujourd'hui. »
+
+### Point 1 — l'audit des déclenchements, et le seul qui était faux
+
+**L'AUDIT D'ABORD, LE CORRECTIF ENSUITE.** Tout ce qui parle ou s'affiche dans le rejeu a été
+repris un par un, à la question « d'où vient son instant ? » :
+
+- **Piste sonore entière** (tirs, kills, grenades et leurs explosions, mêlée, équipements,
+  poses, grappin, socles, objectifs, états de zone, crâne d'Oddball) : datée par
+  `frameToMs(<frame du film>)`, donc par l'événement lui-même. RIEN À FAIRE.
+- **Kills, morts neutres, médailles, effets de mort, fil de droite** : `alignFeed`, c'est-à-dire
+  `replayMs = event_time_ms + t0Ms − originMs`. Déjà recalé sur T0. RIEN À FAIRE.
+- **Piste médias** : `capture_start − header.start_time − originMs` — le même axe reconstruit
+  depuis des dates absolues. RIEN À FAIRE.
+- **Fin de partie (voix + fanfare + écran de victoire)** : `playWindow.endFrame =
+  t0_ms + playable_duration × 1000 − originMs`, et `playable_duration` est calculée serveur
+  comme `duration − t0/1000` (`headerGameplayDurationSeconds`, vérifié sur pièces). L'ancrage
+  est bien T0. RIEN À FAIRE.
+- **Message « Manche N terminée » + voix d'annonceur** : **FAUX**, et c'est le seul.
+
+**LE DÉFAUT, MESURÉ.** `roundTransitions` datait la bascule au DÉBUT de la manche suivante,
+c'est-à-dire à son PREMIER PALIER DE SCORE — le moment où quelqu'un marque à nouveau, après
+l'entracte ET après le temps qu'il faut pour reprendre le crâne. Mesure sur les quatre
+artefacts multi-manches du dossier (`data/cache/replays/halo_infinite`, script ad hoc) :
+
+| Témoin | fin de manche (frame) | déclenchement (frame) | retard |
+|---|---|---|---|
+| 24dbb67d | 2787 | 3056 | **+26,9 s** |
+| 43716616 | 1319 | 1509 | **+19,0 s** |
+| 51ebbc0f | 2499 | 2788 | **+28,9 s** |
+| d9781168 | 2062 / 4174 | 2403 / 4389 | **+34,1 s / +21,5 s** |
+
+L'annonceur disait donc « manche terminée » une demi-minute plus tard, par-dessus la manche
+suivante déjà lancée, et le message s'affichait avec lui.
+
+**Correctif** : la bascule est datée à la FIN de la manche qui se termine (`rounds[i-1].end`,
+son dernier palier) — exactement la borne qui remplit déjà la pastille du bandeau. **Il n'y a
+plus qu'un seul instant « fin de manche » dans tout le rejeu**, et un test l'épingle
+(`roundsLogic.test.ts`, « partage la borne de la pastille pleine du bandeau »). Un second test
+force un entracte long et vérifie que la bascule ne le traverse pas ; un troisième vérifie que
+la fenêtre d'affichage est bien FERMÉE à l'ancien instant de déclenchement.
+
+Le commentaire de `roundsLogic` qui justifiait l'ancien choix (« l'une dit gagnée, l'autre on
+passe à la suite ») est remplacé par la mesure : une doc inversée sur un correctif est
+exactement l'anti-patron n°9 du dépôt.
+
+**Effet de bord assumé et souhaitable** : les séparateurs de manche de la frise
+(`useReplayTimeline`) et le panneau inter-manche repeint dans la vidéo exportée
+(`exportOverlayPanels`) lisent la même fonction. Ils se recalent avec, sans un test rouge —
+ils ne pinaient pas la frame, seulement le nombre de bascules.
+
+### Point 22 — lecture automatique, et des interrupteurs
+
+- **Réglage neuf `AUTOPLAY_KEY`** (`useReplaySettings`), **ÉTEINT par défaut** — livré allumé
+  d'abord (« un réglage neuf ne change rien à qui n'y touche pas »), puis basculé dans le même
+  échange sur décision explicite de l'utilisateur : « je veux que la lecture automatique soit
+  désactivée par défaut ». C'est donc un CHANGEMENT DE COMPORTEMENT assumé — le rejeu partait
+  en lecture au montage depuis l'origine — et il se tient : on arrive sur cette page par un lien
+  de match, souvent pour lire d'abord le rappel du match et le tableau de scores, pendant que le
+  film courait déjà. Persisté par le patron habituel (`usePersistedFlag`).
+- **EFFET DE BORD NOMMÉ** : le curseur se pose au coup d'envoi même en pause (l'effet de cadrage
+  ne regarde pas `playing`). Sans cela un rejeu ouvert en pause resterait sur l'image zéro du
+  FILM, c'est-à-dire sur le countdown, joueurs figés. Test dédié.
+- **Lu UNE FOIS, dans l'initialiseur de `useState`** (`useReplayPlayback`), sans abonnement —
+  et c'est la seule préférence du tiroir dans ce cas. Un calque qu'on éteint s'éteint tout de
+  suite ; « lecture automatique » ne décrit pas l'état courant du lecteur mais son état de
+  DÉPART. Le suivre en direct ferait partir — ou arrêter — la lecture sous les doigts de qui
+  vient d'ouvrir le tiroir pour régler la fois suivante. L'infobulle le dit à l'écran.
+- **DES INTERRUPTEURS, MAIS PAS PARTOUT, ET C'EST DÉLIBÉRÉ.** `SettingsToggle` devient un vrai
+  `role="switch"` (libellé à gauche, rail à droite, sur le modèle de `ThemeToggle`) pour tout
+  ce qui est un OUI/NON : calques, effets, catégories de son, lecture automatique. Les CHOIX
+  EXCLUSIFS — lecture et portée de la carte de chaleur, couleur des points — gardent le bouton
+  pressé sous le nom `SettingsChoice` : un interrupteur y promettrait un « tout éteint » que le
+  réglage n'accepte pas, et sa pastille éteinte se lirait « désactivé » sur une option qui
+  n'attend qu'un clic. Un test épingle cette frontière, qui se perdrait à la relecture.
+- **UNE LIGNE PAR INTERRUPTEUR**, ce qui revient sur la grille à deux colonnes du 2026-08-24
+  (« un élément par ligne c'est inefficace ») : deux rails côte à côte dans 130 px
+  tronqueraient « Objets lâchés au sol » pour gagner une hauteur que le tiroir, qui défile
+  déjà, n'avait pas besoin de gagner. Les choix exclusifs, eux, gardent leur grille.
+- **EXTRACTION PLUTÔT QUE PLAFOND RELEVÉ** : la section LECTURE faisait repasser
+  `ReplaySettingsDrawer.tsx` au-dessus des 500 lignes ; `LayersSection` et ses cinq interfaces
+  `available` partent dans `ReplaySettingsLayers.tsx` (2e extraction du tiroir après la carte
+  de chaleur en 2026-08-18). Le tiroir tombe à 374 lignes, sa surface d'appel ne bouge pas
+  (réexports de types). `ReplayCanvas.tsx` n'est pas touché : il reste PILE à son cliquet (679).
+
+### Gates
+
+`npx tsc -b --force` (cache purgé) : **une seule erreur, PRÉ-EXISTANTE ET ÉTRANGÈRE À CE LOT** —
+`weaponRoleInsight.ts:17` importe `NON_WEAPON_FRAG_CLASSES` de `fragDetailBreakdown.ts`, qui ne
+l'exporte pas (et ne l'a jamais exporté : vérifié sur `HEAD`). `weaponRoleInsight.ts` est modifié
+non commité par le LOT A « kills-hors-arme » d'une AUTRE session sur ce worktree partagé, et
+`fragDetailBreakdown.ts` a été ramené à `HEAD` pendant cette session. **Non corrigé : hors
+périmètre, et c'est du travail en vol qui appartient à quelqu'un d'autre.**
+
+ESLint `src/features/match-replay` + `src/lib/replay` : **0 erreur**, 4 warnings tous
+pré-existants et hors fichiers touchés. Vitest : suite complète du rejeu **120 fichiers /
+1 886 tests, 0 échec** ; suite web complète relancée en fin de lot.
+
+**NON VÉRIFIÉ À L'ŒIL** : le rendu du tiroir n'a pas été regardé dans un navigateur (aucun
+serveur de dev en marche, et en lancer un ouvre les DuckDB en écriture sur un poste partagé
+avec d'autres sessions). Le rail reprend la géométrie de `ThemeToggle`, qui est en production ;
+sa course est calculée et commentée. À valider d'un coup d'œil au prochain lancement.
+
+**CONTRE-ÉPREUVE DU SIGNAL DE FIN DE MANCHE** (demandée par l'utilisateur, refaite proprement
+après une première passe trop grossière — cf. la correction de chiffres en fin de bloc).
+
+Le film ne publie AUCUN événement « manche terminée » : `scoreTimeline` ne porte que
+`teams[].rounds[].points[]` (paliers `{t, v}`), et `objectives` est vide sur ces témoins. Le
+signal retenu est donc le **dernier palier de score de la manche**, toutes équipes confondues.
+Trois vérifications indépendantes, toutes concordantes :
+
+1. **LES DERNIERS PALIERS SONT UNE RAMPE D'UN POINT PAR SECONDE QUI S'ARRÊTE NET SUR LE
+   PLAFOND** — c'est la preuve décisive, et c'est ce qui distingue « la manche est gagnée » de
+   « le film a cessé de publier ». Exemple 43716616 manche 0 :
+   `f1269:75 f1279:76 f1289:77 f1299:78 f1309:79 f1319:80` — un palier toutes les 10 images
+   (100 ms/image = 1 s), soit le tic de possession du crâne, jusqu'au point qui gagne. Idem sur
+   les 5 bascules.
+2. **LE PLAFOND EST BIEN 80 SUR CERTAINS MATCHS, 100 SUR D'AUTRES**, et les TOTAUX le prouvent :
+   43716616 finit à **160**-53 (80+80), 24dbb67d à **200**-121 (100+100), d9781168 à 191-196
+   (80+31+80 / 49+80+67). Ce n'était donc pas une troncature du décodeur — la question
+   « plusieurs films plafonnent à 80 ou 100, à instruire (manches ?) » restée ouverte dans
+   `ETAT_DE_L_ART_MODE_SCORE_EVENEMENTS.md` §16.4 **est tranchée ici : ce sont deux variantes de
+   plafond PAR MANCHE, et le total du match en est la somme exacte.**
+3. **LE TERRAIN SE VIDE APRÈS, PAS AVANT.** En comptant les SLOTS distincts publiés par image
+   (et non les points bruts — c'est la correction de méthode), le terrain se vide
+   **+7,6 à +9,1 s après** le déclencheur, reste vide **0,5 à 1,7 s** (la téléportation), puis se
+   repeuple ; le premier point de la manche suivante n'arrive que **10,1 à 25,1 s après ce
+   repeuplement**. L'ordre est celui du jeu : la manche se gagne, l'écran de fin de manche tient
+   ~8 s, le jeu téléporte, puis il faut reprendre le crâne. **L'ancien déclencheur était le
+   dernier maillon de cette chaîne** (+19,0 à +34,1 s). 51ebbc0f ne montre aucun creux : ses
+   pistes sont trop clairsemées (9/84 slots, défaut déjà connu), la rampe de score y est
+   identique.
+
+**CORRECTION DE CHIFFRES** : une première passe annonçait « pistes éteintes 3,0 à 7,8 s après ».
+Elle comptait les POINTS bruts par image avec un seuil arbitraire, et attrapait le premier creux
+de bruit plutôt que le vrai trou. En slots distincts et en cherchant le trou le PLUS LONG, la
+mesure juste est **+7,6 à +9,1 s**. La conclusion ne change pas, l'ordre de grandeur si.
+
+**LE SIGNAL EST LA MARQUE DE MANCHE DU FILM, PAS UN PIS-ALLER** (mesure du 2026-08-29, ajoutée
+après la question « sur quel signal tu t'appuies ? »). Le film ÉTIQUETTE chacun de ses
+enregistrements statborg par une manche (`StatRecord.Round`). Toutes les séries qu'en tire
+l'artefact sont donc bornées par la manche : score de MODE des deux camps, ET les quatre
+compteurs de CHAQUE joueur (score personnel, frags, morts, assistances). Sur les 5 bascules,
+**elles se figent TOUTES sur la même image, écart 0,0 s** entre « dernier palier d'équipe » et
+« dernier palier toutes séries confondues ». Le déclencheur ne lit donc pas « le dernier point
+marqué » mais **l'instant où le film cesse de décrire la manche**.
+
+Deux conséquences, écrites pour qu'on n'y revienne pas :
+- **inutile de publier des bornes de manche depuis le décodeur Go** : elles tomberaient sur
+  exactement cette image, au prix d'un champ de schéma + une re-cuisson de tous les artefacts ;
+- **inutile de chercher un signal « plus physique »** : le terrain se vide bien (0,5 à 1,7 s de
+  téléportation) mais 7,6 à 9,1 s APRÈS — c'est l'écran de fin de manche du jeu, pas sa fin.
+  S'y caler remettrait 8 s de décalage là où on vient d'en retirer trente.
+
+**HYPOTHÈSES ÉCARTÉES EN CHEMIN** (contrôlées, négatives) : manches FANTÔMES côté web (le
+décodeur Go les filtre par `RealRounds`, le client accepte toute manche portant un palier) —
+**0 artefact en alerte sur 38**, `coverage.score.rounds` concorde partout ; et
+`objectiveObjects` famille `ball` comme borne — inexploitable, le crâne apparaît/disparaît des
+dizaines de fois par manche. Sur le seul artefact de schéma 23 (d9781168), `skullCarries` donne
+une confirmation de plus : le dernier portage de chaque manche se ferme à f2061 / f4173 / f6974,
+soit **une image avant** le dernier palier de score.
+
+**LIMITE CONNUE, NON RENCONTRÉE SUR UNE BASCULE** : une manche close AU CHRONO n'a pas de « point
+qui gagne ». Le corpus en contient une (51ebbc0f manche 1, arrêtée à 75/80) mais c'est la
+DERNIÈRE manche du match, qui ne produit aucune bascule (la fin de partie l'annonce déjà). Les
+5 bascules réelles finissent toutes au plafond. Et une erreur EN AVANCE reste bien moins nuisible
+que les +19 à +34 s de retard d'avant : l'annonce ne tombe plus par-dessus la manche suivante.
+
+**« ET COMMENT LE REJEU SAIT-IL QUE LA MANCHE FINIT A 80 OU A 100 ? »** (question utilisateur).
+Réponse en deux temps, vérifiée sur pièces :
+
+1. **LE DÉCLENCHEUR N'A PAS BESOIN DE LE SAVOIR, et c'est le point de conception.** Il ne dit pas
+   « le compteur a atteint le plafond », il dit « le compteur s'est arrêté » (dernier palier).
+   Plafond à 80, à 100, ou manche close au chrono à 75 : la borne est la même. L'y brancher aurait
+   au contraire cassé le correctif sur ce mode précis, cf. le point 2.
+2. **LE BANDEAU, LUI, LE SAIT DÉJÀ — ET IL LE LIT DANS LE FILM, PAS DANS LA TABLE.**
+   `scoreBannerLogic.roundTargetOf` prend `timeline.targetScore` s'il existe, et retombe sinon sur
+   le PLUS HAUT dernier-palier de toutes les manches des deux camps. Vérifié sur les 4 témoins :
+   il rend 100 (24dbb67d) et 80 (43716616, 51ebbc0f, d9781168) — exactement les bons plafonds.
+   Ce repli, écrit avant ce lot, est ce qui fait que les barres du bandeau sont justes malgré ce
+   qui suit.
+
+**DÉCOUVERTE, NON TRAITÉE (hors périmètre, CLAUDE.md n°5 des plans)** : `scoreTimeline.targetScore`
+est ABSENT de tous les artefacts multi-manches, et pour DEUX raisons cumulées :
+- `[score_target]` de `config/titles/halo_infinite/mappings/regulation.toml` **ne porte aucune
+  entrée Oddball** (Slayer, CTF, Strongholds, Total Control, Stockpile, Assault, VIP, Escalation
+  seulement) — donc `target = 0`, donc pas de publication ;
+- et même si on en ajoutait, la garde `publishableTarget`
+  (`analysis/replay/score_timeline.go:203`) compare la cible au score FINAL du film, qui sur un
+  mode à manches est le **CUMUL du match** (160 pour 43716616, 200 pour 24dbb67d) — toujours
+  au-dessus d'un plafond PAR MANCHE. La garde conclurait « table périmée » et se tairait quand
+  même. **La garde raisonne en cible de MATCH sur une donnée de MANCHE** : c'est un défaut latent,
+  sans effet visible aujourd'hui puisque la table est muette sur ces variantes. Chiffres : 30
+  artefacts sur 38 publient `targetScore` ; les 4 multi-manches sont dans les 8 qui ne le publient
+  pas. À traiter avec les entrées Oddball, pas avant (les deux plafonds 80/100 sont deux VARIANTES
+  distinctes, et le nom de variante n'est pas dans l'artefact — il faut passer par
+  `match_registry.game_variant_name`).
+
+**VÉRIFICATION SUR LE FILM QUE L'UTILISATEUR A REJOUÉ.** Il a nommé son témoin : « le match
+Oddball sur Dredge », c'est-à-dire `d9781168` (thought log du 2026-08-28). Les fonctions de
+PRODUCTION ont été passées sur le VRAI artefact du cache, par un test jetable (supprimé après
+coup : `data/cache/replays/` n'est pas versionné, un test permanent y serait rouge en CI) :
+- `roundTransitions` rend `[{1, f2062}, {2, f4174}]` — les deux points qui CLÔTURENT les manches ;
+- `roundOverSoundEvents(doc, 'fr')` rend 206 200 ms et 417 400 ms, stem `round_over_fr` ;
+- `activeRoundTransition` est VRAIE à f2062 et **nulle à f2403 et f4389**, les deux anciens
+  instants de déclenchement.
+Les trois autres films : 24dbb67d f2787, 43716616 f1319 — et **51ebbc0f : RIEN DU TOUT**, la
+garde d'horloge (`filmClockTrusted`) supprimant tout son calque de score faute d'origine résolue.
+Ni message ni voix sur ce film : constat, pas régression.
+
+**CE QUE L'UTILISATEUR A VU, RECONSTITUÉ** (son mot : « sonnée trop tôt »). Sur Dredge, ancien
+code : manche 1 gagnée à f2062, terrain vidé f2147-f2152 (téléportation), manche 2 jouée à partir
+de f2152 — et « Manche 1 terminée » se déclenchait à **f2403, soit 25,1 s APRÈS le début de jeu
+de la manche 2** (11,7 s pour la bascule suivante). De sa place : on lui annonçait la fin d'une
+manche qui venait de commencer. Du code : 34 s trop tard sur la manche 1. **Même défaut, deux
+points de vue** — c'est ce qui a fait diverger les diagnostics pendant deux tours.
+
+**LE MOTEUR DE PARTIE NE REPOND PAS SUR CE FILM — MESURE NEGATIVE, ET C'EST UN LIVRABLE.**
+L'utilisateur a proposé de se servir d'un signal « physique » (despawn/respawn) pour la fin de
+manche et pour les prolongations. Le dépôt avait déjà repéré mieux : l'entité MOTEUR DE PARTIE
+(`ti=0`) publie `i4` manche courante, `i5` chrono de manche, `i6` mort subite (« source candidate
+de la prolongation — mesurée, jamais devinée », `components_game_engine.go:117`), `i7` période de
+grâce, `i8` conditions de fin de manche. Les questions B.0.3 et B.0.5 étaient écrites avec leurs
+seuils. L'instrument de phase 0 a donc été lancé sur le film de l'utilisateur :
+
+    CGO_ENABLED=0 GAME_FILM=data/cache/film_chunks/d9781168       go test ./internal/analysis/filmdec/ -run '^TestGameEntitiesPhase0$' -timeout 30m -v
+
+Résultat (PASS en 23,7 s, lecture seule, aucune DB) : **les six champs de `ti=0` rendent ZÉRO
+lecture.** `game-engine-current-round`, `sudden-death-time-left`, `grace-period-time-left`,
+`round-condition-flags`, `current-state` : 0 ; `round-timer` : « 0 lectures certaines ». Le
+diagnostic du test le dit : « CHASSE ti=0 : la bande est VIDE (aucun slot d'archetype 0 dans les
+images-clés) ». 42 records `ti=0` sont bien décodés mais AUCUN n'est confirmé par une image-clé,
+donc aucune lecture certaine. La chasse rend des slots candidats (575, 619, 580… qui annoncent
+`i5`) — c'est-à-dire exactement le travail d'ancrage que le lot B phase 0 laisse ouvert.
+
+**CONSÉQUENCE, ÉCRITE POUR NE PAS Y REVENIR** : tant que `ti=0` n'est pas ancré, il n'existe
+AUCUN signal de manche meilleur que l'étiquette statborg (`StatRecord.Round`) sur laquelle le
+correctif s'appuie. Ni pour la fin de manche, ni pour la prolongation — dont la détection reste
+donc la règle de durée de `analysis/overtime.go` (réglementaire + 40 s, 0 faux positif sur 724
+témoins, 2 prolongations courtes assumées perdues). Le despawn/respawn, lui, ne détecterait de
+toute façon PAS une prolongation : c'est un signal de téléportation entre manches, et une
+prolongation est une continuation du jeu, sans téléportation.
+
+**LA GARDE D'HORLOGE, CHIFFRÉE** (question « pourquoi ça efface les voix et messages sur certains
+matchs ? ») : `filmClockTrusted` supprime TOUT le calque de score — bandeau, pastilles, message
+inter-manche, voix, piste score de la frise — quand `coverage.originResolved === false` ET
+`originMs` absent. Mesure du jour : **3 artefacts sur 39 (7,7 %)** — `06dfe6d9`, `11de8353`,
+`51ebbc0f` (seul multi-manche des trois). Raison mesurée : sans origine résolue, les frames du
+calque sont décalées d'un écart inconnu, relevé de 3,6 s à 50,8 s selon le film. Piste de
+réparation NON tentée : re-cuire ces trois films avec le décodeur d'aujourd'hui (leurs chunks
+sont en cache) — l'origine pourrait se résoudre là où elle avait échoué.
+
+**CORRECTION D'UNE AFFIRMATION FAUSSE DE MA PART, ET CE QU'ELLE A OUVERT** (2026-08-30). J'avais
+écrit qu'« une prolongation est une continuation du jeu, sans téléportation » — affirmé, pas
+mesuré. L'utilisateur : « là où tu te trompes, c'est qu'une prolongation fait despawn et
+respawn ». Il a raison, et la mesure le confirme.
+
+**Protocole** : occupation du terrain LISSÉE (slots distincts vus dans une fenêtre glissante de
+±0,5 s — la présence par image saute en permanence, le film ne publie pas chaque joueur à chaque
+image), trous retenus à < 15 % de l'occupation médiane et >= 0,5 s, 30 premières et 8 dernières
+secondes exclues (mise en place, outro). Croisé avec le registre (`cmd/diag_q`, lecture seule,
+AVANT que le serveur ne reprenne la DB) : variante + `duration_seconds`, et la règle de
+`analysis/overtime.go` (réglementaire `regulation.toml` + 40 s).
+
+**Résultat : sur 39 artefacts, DEUX trous francs seulement.**
+- `64e8adfa` (CTF:Arena, 839 s — **le SEUL match du corpus flagué en prolongation**, 720 + 40
+  dépassé) : trou à **750 s / 0,7 s** ;
+- `51ebbc0f` (Oddball 2 manches) : 203 s / 3,6 s — sa bascule de manche.
+**21 films de contrôle** (temps réglementaire connu, terminés dans le temps) : **zéro trou**.
+Le seul positif du corpus est donc le seul match en prolongation. **1/1, 0 faux positif — mais
+n = 1 positif : c'est une piste, pas une preuve.**
+
+**INDÉTERMINÉ, ET C'EST LE CAS LE PLUS INTÉRESSANT** : `53ce4390` (CTF:Arena, 753 s, soit +33 s —
+exactement la « prolongation COURTE » que la marge de 40 s laisse passer par construction) ne
+montre aucun trou franc à ce seuil. Soit il n'y a pas eu prolongation, soit le trou est sous le
+seuil. C'est le témoin qui dirait si l'oracle bat la règle de durée.
+
+**RÉSERVE DE MÉTHODE, à ne pas perdre** : le lissage à ±0,5 s ABSORBE les téléportations de
+bascule de manche (0,5 à 1,7 s en brut sur d9781168, 24dbb67d, 43716616 — qui ressortent donc
+« sans trou » ici). Les deux détections ci-dessus ne sont pas au même seuil que les bascules de
+manche : une campagne sérieuse doit fixer son seuil AVANT, et sur les deux familles.
+
+**ET LA « VRAIE SOURCE » RESTE MUETTE — SUR DEUX FILMS SUR DEUX.** L'instrument de phase 0 a été
+rejoué sur `64e8adfa` après `d9781168` : `BANDES · ti=0 (vide)`, les six champs du moteur de
+partie à **0 lecture**, 27 records `ti=0` décodés mais aucun lié par une image-clé. `i4` (manche
+courante), `i6` (mort subite) et `i7` (période de grâce) sont donc INUTILISABLES tant que la
+bande `ti=0` n'est pas ancrée — c'est le travail que le lot B phase 0 laisse ouvert, et la chasse
+rend des slots candidats (575, 619, 580… qui annoncent `i5`).
+
+**CE QUE ÇA CHANGE AU LOT LIVRÉ : RIEN.** Le déclencheur de fin de manche reste l'étiquette
+statborg, seule source utilisable aujourd'hui. Les deux pistes ouvertes (oracle despawn pour la
+prolongation, ancrage de `ti=0`) sont des chantiers de mesure, pas des ajustements du rejeu.
+
+**HYGIÈNE DE SESSION** : le serveur `levelup.exe` (PID 34876) a repris la DB en cours de session.
+La requête registre avait été passée AVANT ; dès le refus d'ouverture, plus aucune requête. Le
+modèle mono-writer n'a pas été enfreint.
+
+**Prochaine étape** : gate visuel utilisateur sur le tiroir (interrupteurs + section Lecture).
+La minuterie de la fin de manche, elle, est vérifiée sur données réelles — l'œil ne distingue pas
+huit secondes d'un centième, la mesure si.
+
+---
+
+## [2026-08-29] Assistances — le producteur avait cessé d'exister, et personne ne l'a su
+
+**Statut** : Complété côté code, **les deux P0 de la revue corrigés et vérifiés par mutation**.
+Rattrapage non joué (serveur arrêté requis). Registre :
+`.ai/V7.5/REGISTRE_ASSISTANCES_2026-08-29.md` (version 2 — la v1 a été réfutée sur 12 points).
+
+**Contexte** : suite de la découverte §9 du plan « score par manches ». `assist_known`
+s'effondre à partir d'avril 2026 : 12 730 lignes en mars, 806 en avril, 0 en juin et en août.
+
+**CE QUE LA MESURE A CHANGÉ PAR RAPPORT À L'ÉNONCÉ.** L'hypothèse de départ était une
+régression de l'attribution, et un lien causal avec la hausse simultanée de `publishable`.
+Les deux sont fausses. La ventilation par `read_path` montre que **`assist_known = TRUE`
+n'apparaît JAMAIS hors des voies de film** : le producteur live (credit-seul) écrit
+`assist_known = false`, et il a raison — le flux crédit ne sait rien de l'assistant. La
+hausse de `publishable` est l'autre face du même basculement de producteur, pas sa cause.
+Ce n'est pas une régression d'attribution, c'est une régression de COUVERTURE.
+
+**La date exacte se lit sur le disque, pas dans le code** : les mtimes de
+`data/cache/film_manifests/` — 850 fichiers le 2026-03-14, 81 jusqu'au 03-27, **11 les 6 et
+7 avril, puis plus rien** (sauf 14 manifestes ponctuels en juillet, qui expliquent
+exactement le sursaut de juillet). Le décodeur n'était atteignable que par une sous-commande
+manuelle 100 % hors ligne, qui ne lit que ce cache ; et **aucun code Go ne crée de manifeste**
+— le cache était alimenté par le projet Python supprimé à la migration.
+
+**Décision technique principale, et elle vient d'un recadrage de l'utilisateur.** J'avais
+proposé un outil `--online` et posé la question du câblage. Réponse : « pourquoi c'est pas
+intégré au workflow de sync ?? ». Il a raison, et c'est le cœur du défaut : **un rattrapage
+manuel aurait reproduit à l'identique la cause qu'on venait de diagnostiquer.** La correction
+est donc l'étape 1.57 du post-sync (`killcollector/postsync.go`), à côté de `runWeaponKills`
+qui exploite déjà le film du même match.
+
+**Trois dispositifs de sécurité, chacun pour une raison mesurée** :
+1. **Installée dans `NewSyncEngine`, pas au wiring.** Le rejeu 2D s'installe à trois sites ;
+   la revue E9 du même jour avait montré qu'une factory oubliée fait un câblage muet. Une
+   étape qui répare un trou resté invisible cinq mois ne pouvait pas dépendre de trois sites
+   qui doivent y penser. Deux tests l'épinglent (installation + appel du pipeline), les deux
+   mutations correspondantes les font échouer.
+2. **Budget de 5 min par cycle + 3 min par match.** La borne `perCycle` compte des matchs, or
+   le coût d'un film varie d'un facteur dix. Le défaut du collecteur (45 min/match) est celui
+   d'un backfill qu'on laisse tourner la nuit, pas d'un cycle de sync.
+3. **La source archive ce qu'elle télécharge** (`RemoteFilms` → `filmcache.Write`). Un film
+   expiré ne se retélécharge jamais ; et l'étape 1.58 le retrouve alors sur disque au lieu de
+   le retélécharger. L'échec d'archivage est non fatal mais COMPTÉ — un disque plein ferait
+   sinon repayer le réseau à chaque cycle en silence.
+
+**Le silence, traité comme le défaut qu'il est** (demande explicite) : trois compteurs expvar
++ un log au retrait (`assist_pairs_squad_retire_sans_mesure_total`,
+`assist_pairs_match_retire_sans_ligne_total`, `assist_pairs_match_publie_sans_mesure_total`).
+Les deux causes du bloc match sont comptées SÉPARÉMENT : « aucune ligne » se corrige en
+produisant des kill-events, « aucune mesure » en décodant le film — les additionner rendrait
+l'alerte inexploitable.
+
+**Le rattrapage semble possible, sur un ÉCHANTILLON** : sonde jetable `cmd/diag_film_avail`
+(manifeste seul), **43 tirages, 0 expiré** — mais tirés uniquement dans 2026, alors que 584
+des 999 candidats réels sont antérieurs. Ce 43/43 ne dit rien du périmètre pré-2026.
+**Le périmètre annoncé était faux** : 374 est le trou depuis avril, la commande en traite
+**999** sur un registre de **1 948** matchs. Les tokens ne sont PAS une contrainte :
+l'endpoint film est indexé par match (`/films/matches/{id}/spectate`), sans xuid — n'importe
+quel token vivant couvre tout, et `--gamertag` ne choisit que le jeu d'identifiants.
+
+**Les garde-rails ont mordu, et c'est leur rôle** : `TestNoRawKillScopeLiteral` et
+`TestNoNewRawStartTimeLiteral` ont refusé mes trois littéraux bruts (voies de film, tri
+canonique ×2). Corrigés par `killscope.FilmReadPaths()` et `analysis.SQLStartTimeCanonical`.
+
+**Piège de session** : le worktree reste partagé. `internal/service` ne compile pas — refactor
+`buildSoloFirstBlood` en vol côté autre session. Mes deux fichiers de ce paquet compilaient et
+passaient avant sa modification ; à revérifier quand son lot atterrit. Un troisième constat de
+`TestNoRawKillScopeLiteral` porte sur `killsource_class_repo_test.go`, fichier NON SUIVI créé
+par cette autre session : non traité (règle 7).
+
+**Fausse piste, corrigée** : j'avais noté que `xuid_aliases` aurait cessé d'être alimentée en
+avril 2026. C'est faux — elle reçoit 2 683 lignes après avril. Seul l'alimentateur
+`source='highlight_events'` s'arrête, au 2026-04-07, jour pour jour comme le dernier
+manifeste de film. Et `roster.go` documente déjà cet état comme connu et compensé : j'avais
+cité la moitié de sa phrase.
+
+---
+
+### Ce que la revue adversariale a démoli — 5 relecteurs aveugles, en lecture seule
+
+**Elle a payé, et c'est le point à retenir de cette entrée.** Deux P0, chacun trouvé
+indépendamment par deux relecteurs, et vérifiés sur pièces avant d'être retenus.
+
+**P0-1 — l'étape ne s'exécute sur AUCUN chemin de production.** `runKillSource`
+(`convergence.go:632`) fait une assertion de type sur `GetFilmChunks`. Seul `HaloAPIClient`
+porte cette méthode : `PooledHaloClient` (serveur) ne l'a pas, et `cachedHaloClient` — qui
+enveloppe systématiquement le client sur le chemin V1 — ne l'a pas non plus. L'assertion
+échoue partout, l'étape sort sans log ni compteur. **Et mes deux garde-rails restaient
+verts** : ils ne vérifiaient que « le hook est non nil » et « la ligne d'appel existe dans le
+fichier ». C'est exactement l'anti-pattern n°1 — le code mort entretenu par des tests verts —
+posé par celui qui écrivait un garde-rail contre cet anti-pattern.
+
+**P0-2 — même corrigée, la sélection ne servirait jamais 2026.** Backlog trié du plus vieux
+au plus récent, 8 par cycle, **sans marqueur terminal** : un film expiré ne produit aucune
+ligne, le match reste à sa place, les mêmes 8 matchs de **2021** sont retentés indéfiniment.
+Mesure : 999 candidats, dont 11 en 2021, 529 en 2023, 415 en 2026. Mon raisonnement « course
+contre l'expiration » était à l'envers — les plus vieux sont ceux qui sont déjà perdus. Et le
+dépôt portait déjà la machinerie à réutiliser (`MBitWeaponKillsNoFilm`, `isNoFilmDefinitive`,
+`MarkNoFilmDefinitive`) : je ne l'ai pas cherchée, en violation de la règle 14.
+
+**Le relecteur « affirmations contre preuves » a instruit 42 affirmations du registre :
+22 soutenues, 6 partielles, 12 fausses ou non soutenues.** Périmètre faux d'un facteur 2,7 ;
+échantillon présenté comme recensement ; argument tokens hors sujet ; `~29 % de films perdus`
+emprunté sans citation dans un document qui proclame « ce document MESURE et DATE » ; trois
+erreurs de calcul dans mes tableaux (751 et non 736, 9 875 et non 9 884, 184 et non 183) ;
+951 manifestes et non 954, 9 de juillet et non 14.
+
+**Leçon de méthode, et elle est la vraie sortie de ce lot.** J'ai mesuré le producteur
+correctement — cette partie se re-mesure à l'identique — puis j'ai rédigé le compte rendu en
+laissant passer un échantillon présenté comme un total, un argument d'authentification jamais
+vérifié, et une fausse piste. **Un garde-rail qui teste la présence d'une ligne de code au
+lieu du comportement ne garde rien.** Le test qui aurait attrapé le P0-1 tient en une ligne :
+`var _ interface{ GetFilmChunks(...) } = (*PooledHaloClient)(nil)`.
+
+### Ce qui a été corrigé, et ce que la correction a appris
+
+**P0-1** : `GetFilmChunks` en délégation sur les deux enveloppes, sans toucher à l'interface
+`HaloClient`. L'interface étroite est désormais EXPORTÉE (`killcollector.FilmChunkFetcher`)
+pour que le câblage et son garde-rail assertent la MÊME — une copie du littéral d'interface
+côté appelant pouvait dériver d'un paramètre et désarmer l'étape sans que rien ne le dise.
+Trois assertions de compilation sur les types concrets, un test qui refait l'assertion sur les
+clients tels que le moteur les construit, un test qui vérifie que l'enveloppe DÉLÈGUE (une
+méthode qui rendrait toujours `found = false` passerait les assertions tout en désarmant
+l'étape), et un WARN + compteur là où il y avait un `return` nu.
+
+**P0-2, et c'est LA leçon** : le dépôt portait déjà la réponse. L'étape 1.55 tourne AVANT la
+mienne sur le même film et pose `MBitWeaponKillsNoFilm` quand 343 ne le sert plus. Mesuré :
+**581 des 999 candidats portent déjà ce marqueur**, et ce sont exactement les irrécupérables
+(11/11 en 2021, 529/529 en 2023). L'exclure suffit — aucun bit nouveau, aucune migration,
+aucune écriture de plus. J'avais envisagé de poser un bit dédié : mesurer d'abord a évité une
+modification de schéma inutile. **Règle 14 (« vérifier l'existant avant d'implémenter ») n'est
+pas une formalité : elle a fait la différence entre lire une colonne et migrer une table.**
+
+L'ordre est passé du plus RÉCENT au plus vieux. Le raisonnement d'origine — « course contre
+l'expiration, sauvons les plus vieux » — était faux : un film déjà expiré ne se sauve pas, et
+le dépôt sait lesquels le sont.
+
+**Un test corrigé qui ne mordait toujours pas.** En réparant
+`TestRunPostSync_CapabilityAbsente_EtapeVide` j'ai visé un titre réel via un chemin relatif à
+quatre niveaux — il en fallait cinq. Le `t.Skip` de repli faisait passer la mutation au vert :
+un test qui saute est un test qui ne garde rien. Le `t.Skip` a été remplacé par un `t.Fatal`.
+**Toute correction a été vérifiée par mutation** : 4 sur la requête de backlog, 1 sur la porte
+capability, 1 sur la délégation du client, 1 sur la validation des drapeaux CLI — sept, toutes
+rouges avant restauration.
+
+**Gates** : `go build ./...` propre · `go test` vert sur `internal/sync/...`,
+`internal/service/...`, `cmd/levelup` · `go test -tags=integration` sur persist + sync +
+killcollector **vert** (anti-ART) · `golangci-lint` **0 issue** sur les paquets touchés.
+Seul échec d'archlint restant : `killsource_class_repo_test.go`, fichier non suivi d'une autre
+session (règle 7).
+
+**Prochaine étape** : jouer le rattrapage serveur arrêté — **417 candidats après exclusion du
+marqueur terminal** — 414 en 2026, 3 en 2025, et plus aucun match antérieur (contre 374
+annoncés en v1, et 999 bruts sans le marqueur) :
+`levelup backfill-killsource --online --gamertag JGtm --limit 20` puis sans limite. Surveiller
+ensuite `killsource_postsync_backlog_restant` et `killsource_postsync_client_sans_film` sur
+`/debug/vars` — le second doit rester à zéro.
