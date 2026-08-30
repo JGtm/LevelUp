@@ -77437,3 +77437,145 @@ soit ses records ne suivent pas la grammaire que le registre declare pour `ti=0`
   REFUTER, ce qu'aucune autre epreuve ne savait faire), et il reste la piste pour la detection
   de prolongation — 1/1 sur le seul match en prolongation du corpus, 0 faux positif sur 21
   temoins.
+
+## [2026-08-30] Seeds de test vs schema shared : un garde-rail de parite, pour que la prochaine migration coute UN message au lieu de vingt
+
+**Statut** : Complete. Un fichier de test ajoute, aucun code de production touche.
+Branche `wt/seed-parity`, worktree dedie `LevelUp-wt-seed-parity` (base `feat/v75`).
+
+**Le probleme, tel que l'incident du matin l'a montre.** La migration ADR 0032
+`add_team_rounds_to_match_registry` ajoute trois colonnes au registre, et les requetes les
+lisent aussitot. Trois seeds de test qui recreent `shared.match_registry` A LA MAIN ne les
+avaient pas : `seedPlayerSchema`, `seedSharedDBSchema` (`player_repos_test.go`) et
+`seedSharedDBForPoolTest` (`pool_migration_test.go`). Resultat : une vingtaine de tests
+d'integration tombes en « Binder Error: Values list 'r' does not have a column named
+team_0_rounds_won » — un diagnostic a reconstruire a la main, alors que la cause tient en une
+phrase. Corrige par `e484a68ae`, mais le motif rejouera a la prochaine colonne : rien
+n'attache ces seeds au schema qu'ils pretendent imiter.
+
+**LA DECISION QUI STRUCTURE TOUT : un PLANCHER, pas une parite totale.** La tentation etait de
+comparer les seeds a la liste canonique complete de `match_registry`. C'est un mauvais contrat :
+ces seeds sont VOLONTAIREMENT minimaux — `seedSharedDBForPoolTest` ne porte que ce que
+`MatchHistoryRepo.LoadAll` lit, et l'exiger complet ferait grossir trois DDL sans qu'aucun test
+n'y gagne. Le contrat retenu est celui qui correspond a la panne reelle : **toute colonne
+REFEREE par une requete de prod qui s'execute sur ce seed doit exister dans son CREATE TABLE.**
+Une colonne ajoutee en prod mais lue par personne ne casse rien — et c'est juste, elle ne casse
+rien non plus dans les tests.
+
+**Mise en oeuvre** : `internal/platform/duckdb/seed_schema_column_parity_test.go`, meme famille
+que `persist/demo_seed_columns_test.go` et `ops/seed_demo_column_parity_test.go`. Deux
+extracteurs : les references `<alias>.<colonne>` d'une requete (commentaires `--` retires, pour
+qu'une colonne citee en prose ne compte pas), et les colonnes d'un `CREATE TABLE` DANS LE CORPS
+D'UNE FONCTION seed donnee (decoupage sur les virgules de profondeur 0, donc `DECIMAL(10,2)` ne
+separe rien ; contraintes de table ignorees). Le perimetre par fonction n'est pas un detail :
+deux seeds du meme fichier creent la meme table avec des colonnes differentes.
+
+Requetes enrolees : `Q5SharedHistory`, `Q13MatchMeta`, `playerMatchesSharedBaseSelect`, sur les
+alias `r` (registre — `v_match_full` est un `SELECT *` de `match_registry` dans les trois seeds)
+et `p` (participants). **Le fichier n'a PAS de tag build** : il tourne dans la suite rapide ET
+sous `-tags=integration`, alors qu'il verifie des seeds qui, eux, sont derriere le tag. Il lit
+leurs sources comme des FICHIERS, pas comme du code compile — d'ou l'independance.
+
+**LA VALIDATION QUI COMPTE : le negatif.** Un garde-rail vert au premier essai ne prouve rien.
+J'ai rejoue l'incident en retirant `team_0_rounds_won` de `seedSharedDBForPoolTest` : echec
+UNIQUE, `colonne "team_0_rounds_won" referencee par Q5SharedHistory (alias r) absente du CREATE
+TABLE de seedSharedDBForPoolTest (pool_migration_test.go) — ajouter la colonne au seed (modele :
+commit e484a68ae)`. Le message nomme la colonne, la requete, le seed et le fichier : c'est
+exactement l'objectif. Seed restaure ensuite. Deux tests d'extracteurs sur sources fabriquees
+verrouillent les pieges (commentaire, parentheses imbriquees, contrainte de table, deux
+fonctions creant la meme table).
+
+**CE QUE J'AI VERIFIE SUR PIECES, ET PAS D'APRES LES COMMENTAIRES.** Le test declare une carte
+de « quelle requete tourne sur quel seed », avec des desenrolements. Un desenrolement pris pour
+argent comptant serait un trou dans le garde-rail, donc chacun est etabli par mesure :
+- `seedSharedDBSchema` ne contient NI `season_id` (lu par Q5) NI `map_version_id` (lu par Q13),
+  et la suite est verte : ces deux requetes ne s'y executent donc pas. Elles passent par
+  `SharedReader = LegacySharedReader(player)`, c'est-a-dire le schema de `seedPlayerSchema`.
+- `seedSharedDBForPoolTest` n'a ni `damage_dealt` ni `headshot_kills`, projetes par
+  `playerMatchesSharedBaseSelect` : le seul repo appele par ces tests est
+  `MatchHistoryRepo.LoadAll` (ligne 48), donc Q5 seule.
+- `seedPlayerSchema` a bien `map_version_id` : l'enrolement de Q13 y est legitime.
+
+**Gates** : `go vet` propre ; `gofmt` propre (le fichier n'y etait pas conforme au premier jet,
+corrige) ; suite d'integration complete `go test -tags=integration -p 1
+./internal/platform/duckdb/...` VERTE, exit code 0 — `duckdb` 126,5 s, `halo5` 0,45 s,
+`prestige` 70,1 s, `sharedprovider` 9,0 s. Les durees sont reelles : pas de duree fantome, donc
+pas de contention masquant des rouges. `golangci-lint` exit 0, et AUCUNE des 22 issues de la
+baseline gelee ne vise le nouveau fichier (verifie par grep sur son nom). Fichier 279 L,
+fonction la plus longue 67 L (seuils 500 / 80 respectes).
+
+**Ce que ce garde-rail NE couvre PAS, et qu'il faut savoir.** Il compare des colonnes, pas des
+TYPES : un seed qui declarerait `rounds_total INTEGER` la ou la prod met `SMALLINT` passerait.
+Il ne couvre que les seeds de CE package et les trois requetes enrolees — une nouvelle requete
+prod lisant registre/participants sur ces seeds doit etre ENROLEE (une ligne dans la table de
+cas), et rien n'y force aujourd'hui. Enfin il raisonne sur les chaines SQL au repos : un
+fragment injecte a l'execution qui referencerait une colonne supplementaire lui echapperait —
+verifie pour le token d'exclusion campagne, qui ne cite que `<alias>.game_variant_id`, deja
+projetee par Q5.
+
+**Prochaine etape** : a la prochaine migration shared qui ajoute une colonne lue, le test doit
+tomber AVANT les binder errors. Si un jour la carte requete-x-seed devient trop couteuse a tenir
+a la main, la suite naturelle est de la deriver du code plutot que de la declarer.
+
+## [2026-08-30] Cliquet de completude sur l'enrolement — et ce qu'il a trouve, y compris contre mon propre diagnostic
+
+**Statut** : Complete. Second fichier de test, aucun code de production touche.
+
+**Pourquoi ce lot existe.** L'utilisateur a demande si les limites annoncees du garde-rail
+precedent etaient importantes ou acceptables. J'ai mesure les trois : les fragments injectes a
+l'execution sont un risque VERIFIE NUL (deux tokens dans le package, `__EXCLUDE_CAMPAIGN__` ne
+cite que `game_variant_id` deja projetee, `__PERFECT_KILL_IN__` filtre sur un alias de
+`medals_earned`) ; les types sont acceptables (une divergence existe deja et ne gene rien —
+`last_updated_at` est TIMESTAMP en prod et TIMESTAMPTZ dans `seedPlayerSchema`) ; restait
+l'enrolement manuel, seul point avec des dents. D'ou ce cliquet.
+
+**JE ME SUIS TROMPE, ET LE CLIQUET L'A MONTRE.** Avant de l'ecrire, j'avais mesure
+`Q30SquadMatchesSharedQuery` et conclu que la couverture etait « incidentellement complete ».
+Cette mesure ne portait que sur l'alias REGISTRE. Le cliquet, lui, a trouve quatre colonnes
+reelles non couvertes, toutes cote PARTICIPANTS : `kills_stddev` / `deaths_stddev`
+(Q12MatchScoreboard, Q26MatchExpectedStats), `backfill_bits` (Q17PlayerMatchStats),
+`present_at_beginning` / `present_at_completion` (qElapsedSecondsByMatchTpl). Ma conclusion
+etait juste sur la moitie du perimetre que j'avais regardee, et fausse sur l'autre. C'est
+exactement pour ca qu'on ecrit l'instrument au lieu de raisonner.
+
+**Conception : par COLONNE, pas par nom de requete.** Une allowlist « cette requete est
+enrolee / celle-la est exemptee » aurait grossi a chaque ajout jusqu'a devenir un tampon. Le
+cliquet verifie le risque reel : toute colonne lue sous l'alias registre/participants par UNE
+QUELCONQUE requete du package doit l'etre aussi par une requete enrolee. Consequence qui le rend
+tenable : ajouter une requete qui ne lit que du deja-couvert ne demande AUCUNE action. Lecture
+des requetes par AST (`go/parser`), litteraux concatenes — les appels intercales
+(`StartTimeCanonicalSQL("r")`, templates `%s`) sont ignores sans gener la detection.
+
+**UN FAUX POSITIF TROUVE ET CORRIGE A LA SOURCE.** Le cliquet signalait `perfect_kills` sur
+Q29HistoryForAvg. Verification : l'alias `p` y est lie a `match_participants` PUIS RELIE a une
+CTE (`LEFT JOIN perfect p`) — `p.perfect_kills` designe la CTE, pas une colonne de participants.
+Corrige en detectant les alias relies et en les ECARTANT (references inattribuables), plutot
+qu'en allowlistant le symptome : un cliquet qui crie a tort est un cliquet qu'on apprend a
+ignorer. Cas fabrique ajoute au test de detection d'alias.
+
+**RESOLUTION DES QUATRE TROUS, statuee une par une.**
+- `kills_stddev` / `deaths_stddev` : PRESENTES dans les seeds → Q12MatchScoreboard ENROLEE.
+  Le garde-rail reste vert, la couverture passe de 54 a 56 colonnes. Protection gagnee a cout nul.
+- `backfill_bits`, `present_at_beginning`, `present_at_completion` : ABSENTES des trois seeds
+  alors que la suite est verte — preuve que le chemin qui les lit n'est pas couvert par ces
+  seeds. Les enroler rendrait le garde-rail rouge sans qu'aucun test soit en danger. Inscrites
+  dans `ratchetColonnesHorsPerimetre` avec raison ET date. Le jour ou un test exercera ce
+  chemin, il tombera — et ce sera le signal d'enroler la requete et d'etendre le seed.
+
+**UNE DUPLICATION EVITEE DE JUSTESSE.** Premiere version : le cliquet tenait sa propre liste de
+requetes enrolees. J'ai enrole Q12 dans le garde-rail, et le cliquet a CONTINUE de la signaler —
+deux listes deja desynchronisees en quelques minutes. Centralise en `seedParityCarte`, source
+unique consommee par les deux tests (regle CLAUDE.md n°6 appliquee des la 2e copie, pas la 3e).
+
+**Gates** : quatre tests verts ; validation negative REJOUEE apres le refactor (retrait de
+`team_0_rounds_won` du seed pool → echec unique et nomme, seed restaure) ; `go vet` propre ;
+`gofmt` propre ; suite d'integration `-tags=integration -p 1` verte ; `golangci-lint` sans issue
+sur les deux fichiers. Tailles : 297 L et 252 L, fonction la plus longue 67 L.
+
+**Ce qui reste ouvert, en connaissance de cause.** Les types ne sont toujours pas compares
+(decision assumee : ce n'est pas la classe de panne visee, et la fidelite temporelle a ses
+propres tests). Le cliquet ne voit que les requetes declarees en `var`/`const` de niveau paquet :
+une requete assemblee entierement a l'execution lui echapperait. Et il ne couvre que ce package.
+
+**Prochaine etape** : rien de planifie. Le dispositif est autonome — il signale, et il dit quoi
+faire du signalement.
