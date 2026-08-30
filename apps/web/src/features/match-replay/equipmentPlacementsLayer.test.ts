@@ -32,6 +32,12 @@ import {
 } from './equipmentPlacementsLayer'
 import { placementAt } from './placementHitTest'
 import {
+  buildSlotOwnership,
+  colorResolver,
+  colorResolverOrLast,
+  type ReplayPlayer,
+} from './rosterLogic'
+import {
   BEACON_ID,
   DEVICE_ID,
   OVERSHIELD_ID,
@@ -59,13 +65,18 @@ const RIEN: PlacementToggles = { showUnnamed: false, showDropped: false }
 const TOUT: PlacementToggles = { showUnnamed: true, showDropped: true }
 
 describe('PLACEMENT_RENDER — la table, famille par famille', () => {
-  it('les cinq familles DÉPLOYABLES ont chacune leur règle de rendu', () => {
+  it('les six familles DÉPLOYABLES ont chacune leur règle de rendu', () => {
     expect(PLACEMENT_RENDER.wall).toBe('wall')
     expect(PLACEMENT_RENDER.sensor).toBe('sensor')
-    expect(PLACEMENT_RENDER.translocator_beacon).toBe('beacon')
+    // La FAMILLE garde son nom (identifiant stable du document) ; c est le RENDU qui change.
+    expect(PLACEMENT_RENDER.translocator_beacon).toBe('rift')
     expect(PLACEMENT_RENDER.threat_seeker).toBe('seeker')
     expect(PLACEMENT_RENDER.repair_field).toBe('field')
     expect(PLACEMENT_RENDER.other).toBe('unnamed')
+    // L ECRAN OCCULTANT a suivi trois etapes distinctes le 2026-08-27, dans cet ordre : nomme
+    // (sa banque sonore le dit), sonore, puis DESSINE une fois le verdict rendu sur les trois
+    // propositions de la planche — opaque, et les pions au-dessus.
+    expect(PLACEMENT_RENDER.shroud_screen).toBe('shroud')
   })
 
   it('les sept familles PORTÉES sont à `null` — connues, et volontairement muettes', () => {
@@ -260,6 +271,7 @@ describe('la marque « révélé », tracée dans ce calque', () => {
       colorOfSlot: (slot: number) => `slot${slot}`,
       neutral: 'neutre',
       wall: 'mur',
+      rift: { rim: 'faille-bord', core: 'faille-coeur' },
     })
     expect(ops.some((o) => o.op === 'set strokeStyle' && o.args[0] === 'slot3')).toBe(true)
     expect(ops.some((o) => o.op === 'set strokeStyle' && o.args[0] === 'slot7')).toBe(false)
@@ -286,6 +298,50 @@ describe('la marque « révélé », tracée dans ce calque', () => {
     const foe = life(7, 6, 5)
     const lache = pose({ family: 'sensor', id: SENSOR_ID, t0: 50, origin: 'dropped' })
     expect(arcsOf(draw([lache], TIME, { lives: [foe], sideOfSlot }))).toHaveLength(0)
+  })
+})
+
+/**
+ * RÉGRESSION DE FRONTIÈRE (revue adversariale 2026-08-28) — la couleur d'un objet LÂCHÉ À LA MORT.
+ *
+ * Un objet `origin='dropped'` porte `t0 = finVie du poseur + 1` : le poseur n'occupe DÉJÀ PLUS le
+ * slot à `t0`. Le double `colorOfSlot` doit donc être un résolveur de FRONTIÈRE
+ * (`ownerAtFrameOrLast`) : strict, il rendrait `null` → l'objet serait peint en NEUTRE au lieu de
+ * la couleur d'équipe du lâcheur. Le double est ici FRAME-DÉPENDANT (un vrai résolveur bâti sur
+ * une vie fournie), ce qui démasque le bug qu'un `(slot)=>couleur` figé cachait.
+ */
+describe('couleur d’un objet LÂCHÉ à la mort (t0 = finVie + 1)', () => {
+  const dropTime = { ...TIME, showDropped: true, frame: 60 }
+  // Le lâcheur : sa vie sur le slot 3 s'est terminée à l'image 49 (l'objet est lâché à 50).
+  const dropper: ReplayPlayer = {
+    xuid: 'A',
+    lives: [
+      { slot: 3, team: -1, startFrame: 1, endFrame: 49, points: [{ t: 1, x: 5, y: 5 }] },
+    ] as ReplayPlayer['lives'],
+  }
+  const own = buildSlotOwnership([dropper])
+  const teamColor = (ally: boolean) => (ally ? 'equipe' : 'adverse')
+  const dropped = pose({ family: 'sensor', id: SENSOR_ID, origin: 'dropped', owner: 3, t0: 50 })
+  const inkWith = (colorOfSlot: (slot: number, frame: number) => string | null) => ({
+    colorOfSlot, neutral: 'neutre', wall: 'mur', rift: { rim: 'faille-bord', core: 'faille-coeur' },
+  })
+  const strokesOf = (ops: ReturnType<typeof draw>) =>
+    ops.filter((o) => o.op === 'set strokeStyle').map((o) => o.args[0])
+
+  it('résolution STRICTE (ownerAtFrame) : peint en NEUTRE — la régression', () => {
+    const strokes = strokesOf(
+      draw([dropped], dropTime, {}, inkWith(colorResolver(own, teamColor, () => true, 'neutre'))),
+    )
+    expect(strokes).toContain('neutre')
+    expect(strokes).not.toContain('equipe')
+  })
+
+  it('résolution de FRONTIÈRE (ownerAtFrameOrLast) : prend la couleur d’équipe du LÂCHEUR', () => {
+    const strokes = strokesOf(
+      draw([dropped], dropTime, {}, inkWith(colorResolverOrLast(own, teamColor, () => true, 'neutre'))),
+    )
+    expect(strokes).toContain('equipe')
+    expect(strokes).not.toContain('neutre')
   })
 })
 
@@ -422,5 +478,77 @@ describe('countDrawablePlacements — la porte du comptage est celle du tracé',
   it('un film SANS lâcher de puissance rend `dropped: 0` — le tiroir n’affiche alors rien', () => {
     const n = countDrawablePlacements([pose(), pose({ family: 'grenade_spike', origin: 'dropped' })])
     expect(n.dropped).toBe(0)
+  })
+})
+
+describe('le LIEN de téléportation', () => {
+  const passage = { slot: 3, frame: 48, from: { x: 1, y: 1 }, to: { x: 9, y: 9 }, viaRift: false }
+
+  /** Les opérations d un tracé de lien : le pointillé est sa signature. */
+  function liens(frame: number) {
+    return draw([], { ...TIME, frame }, { teleports: [passage] })
+      .filter((o) => o.op === 'setLineDash' && Array.isArray(o.args[0]) && o.args[0].length > 0)
+  }
+
+  it('se trace pendant les 600 ms qui suivent le passage, et pas au-delà', () => {
+    // frameMs vaut 100 dans la fixture : la fenêtre couvre les frames 48 à 53. La frame 54
+    // tombe EXACTEMENT sur les 600 ms — l effacement y est complet, donc plus rien n est tracé.
+    expect(liens(48)).toHaveLength(1)
+    expect(liens(53)).toHaveLength(1)
+    expect(liens(54)).toHaveLength(0)
+    expect(liens(55)).toHaveLength(0)
+  })
+
+  it('ne se trace pas AVANT le passage — un lien n annonce rien', () => {
+    expect(liens(47)).toHaveLength(0)
+  })
+
+  it('porte les encres de la faille, jamais la couleur d équipe du joueur', () => {
+    const encres = draw([], { ...TIME, frame: 49 }, { teleports: [passage] })
+      .filter((o) => o.op === 'set strokeStyle')
+      .map((o) => o.args[0])
+    expect(encres).toContain('faille-coeur')
+    expect(encres).not.toContain('equipe')
+  })
+
+  it('relie les DEUX positions mesurées : le départ et l arrivée', () => {
+    const ops = draw([], { ...TIME, frame: 49 }, { teleports: [passage] })
+    const depart = projected(1, 1)
+    const arrivee = projected(9, 9)
+    const courbe = ops.find((o) => o.op === 'quadraticCurveTo' && o.args[2] === arrivee.x)
+    expect(courbe).toBeDefined()
+    expect(ops.some((o) => o.op === 'moveTo' && o.args[0] === depart.x && o.args[1] === depart.y)).toBe(true)
+  })
+
+  it('sans passage, le calque n émet rien de plus qu avant', () => {
+    expect(draw([], TIME, { teleports: [] }).filter((o) => o.op === 'setLineDash')).toHaveLength(0)
+  })
+})
+
+
+describe("l ECRAN OCCULTANT — une bulle opaque, et les pions au-dessus", () => {
+  const ecran = () => pose({ family: 'shroud_screen', id: 'sh1' })
+
+  it('trace un disque plein a l encre NEUTRE, jamais a celle de l equipe', () => {
+    const ops = draw([ecran()])
+    const encres = ops.filter((o) => o.op === 'set fillStyle').map((o) => o.args[0])
+    expect(encres).toContain('neutre')
+    expect(encres).not.toContain('equipe')
+  })
+
+  it('le bord est un FONDU, pas une borne : un degrade et AUCUN anneau trace', () => {
+    const ops = draw([ecran()])
+    expect(ops.filter((o) => o.op === 'createRadialGradient')).toHaveLength(1)
+    // Le champ de reparation borne son disque d un pointille parce qu il a une portee dont on
+    // doute ; l ecran n a pas de borne du tout, parce qu il n a pas de portee connue.
+    expect(ops.filter((o) => o.op === 'stroke')).toHaveLength(0)
+    expect(ops.filter((o) => o.op === 'setLineDash')).toHaveLength(0)
+  })
+
+  it('sa zone sensible suit sa bulle — on le designe partout, pas seulement au centre', () => {
+    const p = ecran()
+    const centre = projected(5, 5)
+    // 6 m a 10 px par metre : un point a 4 m du centre est DANS la bulle.
+    expect(placementAt([p], VIEW, TIME, { x: centre.x + 40, y: centre.y })?.id).toBe('sh1')
   })
 })

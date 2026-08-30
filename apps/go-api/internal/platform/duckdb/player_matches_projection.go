@@ -37,15 +37,27 @@ func projectOutcome(s playerMatchScanResult) canonical.Outcome {
 // Une valeur -1 (COALESCE) signifie absent et est exclue.
 func projectTeamScores(s playerMatchScanResult) []canonical.TeamSnapshot {
 	var teams []canonical.TeamSnapshot
-	if s.team0Score >= 0 {
-		score := s.team0Score
-		teams = append(teams, canonical.TeamSnapshot{TeamID: 0, Score: &score})
+	if s.team0Score >= 0 || s.team0RoundsWon >= 0 {
+		teams = append(teams, canonical.TeamSnapshot{
+			TeamID: 0, Score: nonNegPtr(s.team0Score), RoundsWon: nonNegPtr(s.team0RoundsWon),
+		})
 	}
-	if s.team1Score >= 0 {
-		score := s.team1Score
-		teams = append(teams, canonical.TeamSnapshot{TeamID: 1, Score: &score})
+	if s.team1Score >= 0 || s.team1RoundsWon >= 0 {
+		teams = append(teams, canonical.TeamSnapshot{
+			TeamID: 1, Score: nonNegPtr(s.team1Score), RoundsWon: nonNegPtr(s.team1RoundsWon),
+		})
 	}
 	return teams
+}
+
+// nonNegPtr rend un pointeur sur v, ou nil si v porte la sentinelle -1 du COALESCE.
+// Un ZÉRO est une mesure (« zéro manche gagnée ») et passe donc bien en pointeur.
+func nonNegPtr(v int) *int {
+	if v < 0 {
+		return nil
+	}
+	out := v
+	return &out
 }
 
 // projectSkillSnapshot extrait le SkillSnapshot depuis match_skill_rank.
@@ -108,6 +120,7 @@ func projectMatchSummary(s playerMatchScanResult, outcome canonical.Outcome, tea
 		Playlist:        AssetReference("playlist", s.playlistID, s.playlistName, s.playlistNameFR),
 		Map:             AssetReference("map", s.mapID, s.mapName, s.mapNameFR),
 		GameVariant:     AssetReference("game_variant", s.variantID, s.variantName, ""),
+		RoundsTotal:     nonNegPtr(s.roundsTotal),
 		PairMode:        AssetReference("pair_mode", s.pairID, s.pairName, s.pairNameFR),
 		IsRanked:        &s.isRanked,
 		IsPvE:           &s.isFirefight,

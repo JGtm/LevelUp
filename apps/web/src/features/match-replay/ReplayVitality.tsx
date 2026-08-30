@@ -1,6 +1,6 @@
 /**
  * ReplayVitality — CE QU'UNE FICHE DIT DE L'ÉTAT DU JOUEUR : ses deux jauges quand il vit, son
- * retour quand il est mort.
+ * encadré « Éliminé » quand il est mort.
  *
  * EXTRAIT DE `ReplayTeams.tsx` LE 2026-08-18 (lot R3, item R3.7) : la fiche a gagné sa
  * variante COMPACTE, et le fichier franchissait le seuil de 500 lignes du dépôt. La découpe
@@ -8,12 +8,20 @@
  * mise en page de la fiche : ils reçoivent une lecture, ils rendent une barre. Aucune règle
  * n'a changé au passage.
  */
+import type { CSSProperties } from 'react'
+
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
 import { formatSeconds, frameToMs, freshness, READING_FADE } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
 import type { PlayerState } from './rosterLogic'
+
+/**
+ * La PISTE des deux jauges : l'encre du thème à 10 % (option 2a du handoff 2026-08-27) —
+ * visible sur le fond de la tuile dans les deux thèmes, jamais un gris écrit en dur.
+ */
+const TRACK_INK_PCT = 10
 
 /**
  * VitalityBar — bouclier ou santé, lus dans le MÊME enregistrement que la position.
@@ -25,29 +33,39 @@ import type { PlayerState } from './rosterLogic'
  * entamée. Reading null = le document ne porte pas ce champ (titre sans décodage film) :
  * la ligne n'existe pas — on n'invente pas une jauge pour une donnée qui n'existe nulle
  * part dans le document.
+ *
+ * DEUX BARRES PLEINES, DEUX HAUTEURS (option 2a) : le bouclier 5 px au-dessus de la santé
+ * 3 px — la hiérarchie du jeu (le bouclier encaisse d'abord) dite par l'épaisseur, plus par
+ * des segments. `heightPx` vient de la fiche, qui apparie hauteur et token.
  */
 export function VitalityBar({
   reading,
   fade,
   name,
   token,
+  heightPx,
 }: {
   reading: { value: number; age: number } | null
   fade: number
   name: string
   token: 'info' | 'success'
+  heightPx: number
 }) {
   if (!reading) return null
   const fresh = freshness(reading.age, fade, READING_FADE)
   return (
     <div
-      className="h-1 overflow-hidden rounded-sm bg-muted"
-      style={{ opacity: fresh }}
+      className="overflow-hidden rounded-[1px]"
+      style={{
+        height: heightPx,
+        opacity: fresh,
+        background: `color-mix(in srgb, var(--foreground) ${TRACK_INK_PCT}%, transparent)`,
+      }}
       title={name}
       aria-label={name}
     >
       <div
-        className="h-full rounded-sm"
+        className="h-full rounded-[1px]"
         style={{
           width: `${Math.max(0, Math.min(1, reading.value)) * 100}%`,
           background: tokenCssVar(token),
@@ -58,22 +76,22 @@ export function VitalityBar({
 }
 
 /**
- * RespawnRow — ce que la fiche d'un joueur mort a de plus utile à dire.
+ * EliminatedBox — ce que la fiche d'un joueur mort a de plus utile à dire, dans l'ENCADRÉ
+ * qui remplace les rangées vitalité + inventaire (option 2a du handoff 2026-08-27, ex-
+ * `RespawnRow`) : « ÉLIMINÉ » à gauche à l'encre d'alerte, le décompte à droite en gros
+ * chiffres tabulaires. Fond `destructive` très dilué, hachures diagonales de la même encre.
  *
  * LE RETOUR EST LU, PAS DÉDUIT D'UNE CONSTANTE : c'est l'image de départ de la vie suivante du
  * même joueur. Mesure publiée sur le film de référence : 90 épisodes de mort, 82 avec un retour
  * lisible, médiane 8,0 s, 66 sur 82 exactement à 7,9-8,0 s. Les 8 sans retour affichent une
- * LACUNE — jamais un délai deviné, ce serait remplacer une mesure absente par une moyenne.
+ * LACUNE — `respawnUnknown`, dans le MÊME gabarit que le décompte — jamais un délai deviné,
+ * ce serait remplacer une mesure absente par une moyenne.
  *
- * LE COMPTE SEUL, ET CENTRÉ (demande utilisateur du 2026-08-25 : « centre le compteur de
- * réapparition et virer la jauge »). La barre d'avancement depuis la mort est SUPPRIMÉE : elle
- * disait la même chose que le compte à rebours, en moins précis — le compte donne les secondes,
- * la barre n'en donnait que la fraction, sur 9 px de large. Ce qu'on perd est nul : les deux se
- * dérivaient des deux MÊMES lectures (fin de la vie précédente, départ de la suivante).
- * Le centrage vaut pour les DEUX états de la rangée, le compte et la lacune : c'est la même
- * cellule, elle ne doit pas se décaler selon ce qu'elle porte.
+ * L'ENCADRÉ REMPLIT LA ZONE FIXE DE LA FICHE (`h-full`) : la hauteur totale reste identique
+ * en vie et en mort (règle du 2026-08-24 — une fiche qui change de hauteur fait sauter toute
+ * la colonne à chaque mort). C'est la fiche qui possède cette hauteur, pas l'encadré.
  */
-export function RespawnRow({
+export function EliminatedBox({
   state,
   doc,
   frame,
@@ -85,19 +103,38 @@ export function RespawnRow({
   locale: ReplayLocale
 }) {
   const t = REPLAY_TEXT[locale]
-  if (state.respawnFrame < 0) {
-    // « retour ? » sans infobulle de méthode : la justification (fin de partie sans vie
-    // suivante) vit dans le commentaire de PlayerState.respawnFrame, pas à l'écran.
-    return (
-      <span className="block text-center font-mono text-[9.5px] text-muted-foreground">
-        {t.respawnUnknown}
-      </span>
-    )
+  const rouge = tokenCssVar('destructive')
+  const fond: CSSProperties = {
+    backgroundColor: `color-mix(in srgb, ${rouge} 7%, transparent)`,
+    backgroundImage:
+      `repeating-linear-gradient(135deg, color-mix(in srgb, ${rouge} 10%, transparent) 0 4px, ` +
+      'transparent 4px 9px)',
   }
-  const remainMs = frameToMs(state.respawnFrame - frame, doc)
   return (
-    <span className="flex items-center justify-center gap-1 font-mono text-[9.5px] text-muted-foreground">
-      {t.respawnIn} <b className="tabular-nums">{formatSeconds(remainMs)}</b>
-    </span>
+    <div
+      className="flex h-full items-center justify-between overflow-hidden rounded-sm px-2"
+      style={fond}
+    >
+      <span
+        className="shrink-0 text-[9.5px] font-bold uppercase tracking-[.18em]"
+        style={{ color: rouge }}
+      >
+        {t.eliminatedLabel}
+      </span>
+      {state.respawnFrame < 0 ? (
+        // « Réapparition ? » sans infobulle de méthode : la justification (fin de partie sans
+        // vie suivante) vit dans le commentaire de PlayerState.respawnFrame, pas à l'écran.
+        <span className="min-w-0 truncate font-mono text-[15px] font-bold tabular-nums text-foreground">
+          {t.respawnUnknown}
+        </span>
+      ) : (
+        <span
+          className="shrink-0 font-mono text-[15px] font-bold tabular-nums text-foreground"
+          title={t.respawnIn}
+        >
+          {formatSeconds(frameToMs(state.respawnFrame - frame, doc))}
+        </span>
+      )}
+    </div>
   )
 }

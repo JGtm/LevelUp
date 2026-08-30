@@ -21,6 +21,7 @@ import { createRef, type RefObject } from 'react'
 import type { ReplayWindowBounds } from './replayWindow'
 import { testReplayDoc } from './test/testDoc'
 import { useReplayPlayback } from './useReplayPlayback'
+import { AUTOPLAY_KEY } from './useReplaySettings'
 
 /** Un document de 51 images (`endFrame` = 50) à la cadence par défaut. */
 const DOC = testReplayDoc({ frameCount: 51 })
@@ -29,6 +30,12 @@ const DOC = testReplayDoc({ frameCount: 51 })
 let pending: FrameRequestCallback[] = []
 
 beforeEach(() => {
+  // LA LECTURE AUTOMATIQUE EST UNE PRÉFÉRENCE PERSISTÉE depuis le 2026-08-29, et elle est
+  // ÉTEINTE par défaut. Tout ce fichier — sauf la série qui teste le réglage lui-même — éprouve
+  // la BOUCLE en marche : il l'allume donc explicitement, plutôt que de faire dépendre trente
+  // tests d'un défaut de produit qui peut rebasculer.
+  localStorage.clear()
+  localStorage.setItem(AUTOPLAY_KEY, 'true')
   pending = []
   vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
     pending.push(cb)
@@ -90,6 +97,57 @@ const FENETRE: ReplayWindowBounds = {
   startMs: 10_000,
   endMs: 40_000,
 }
+
+describe('useReplayPlayback — la lecture automatique (point 22 du 2026-08-29)', () => {
+  it('sans préférence stockée : le rejeu s ouvre EN PAUSE (défaut du 2026-08-29)', () => {
+    localStorage.removeItem(AUTOPLAY_KEY)
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 0
+    const { result } = mount(frameRef)
+    expect(result.current.playing).toBe(false)
+    expect(pending).toHaveLength(0)
+  })
+
+  it('préférence allumée : le rejeu démarre tout seul', () => {
+    localStorage.setItem(AUTOPLAY_KEY, 'true')
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 0
+    expect(mount(frameRef).result.current.playing).toBe(true)
+  })
+
+  it('préférence éteinte : le rejeu s ouvre EN PAUSE, et aucune image n est demandée', () => {
+    localStorage.setItem(AUTOPLAY_KEY, 'false')
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 0
+    const { result } = mount(frameRef)
+    expect(result.current.playing).toBe(false)
+    // La boucle ne tourne pas du tout : pas de rappel d'animation en attente. C'est ce qui
+    // distingue « en pause » de « en lecture sur une image qui ne bouge pas ».
+    expect(pending).toHaveLength(0)
+  })
+
+  it('en pause, le curseur se pose quand même AU COUP D ENVOI, et la scène est peinte', () => {
+    // SANS CE POSITIONNEMENT, un rejeu ouvert en pause resterait sur l'image zéro du FILM —
+    // c'est-à-dire sur le countdown d'avant-match, joueurs figés. Le cadrage vaut lecture ou
+    // pas ; seule la boucle dépend de la préférence.
+    localStorage.setItem(AUTOPLAY_KEY, 'false')
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 0
+    const { draw } = mount(frameRef, FENETRE)
+    expect(frameRef.current).toBe(FENETRE.startFrame)
+    expect(draw).toHaveBeenCalled()
+    expect(pending).toHaveLength(0)
+  })
+
+  it('en pause à l ouverture, « Lecture » démarre normalement', () => {
+    localStorage.setItem(AUTOPLAY_KEY, 'false')
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 0
+    const { result } = mount(frameRef)
+    act(() => result.current.togglePlay())
+    expect(result.current.playing).toBe(true)
+  })
+})
 
 describe('useReplayPlayback — la lecture avance', () => {
   it('la boucle fait courir l’image et peint à chaque pas', () => {
@@ -357,5 +415,199 @@ describe('useReplayPlayback — la frise', () => {
     })
     expect(frameRef.current).toBe(42)
     expect(draw).toHaveBeenCalledTimes(1)
+  })
+})
+
+/**
+ * LES SAUTS (planche 2a, 2026-08-28) — `seekBy` en SECONDES, `stepFrames` en images.
+ *
+ * CE QUE CES CAS TIENNENT : le bornage à la fenêtre de gameplay (un saut de 10 s près d'un
+ * bout ne doit pas sortir du match), la conversion secondes -> images par `baseFps` (10 ici),
+ * et la mise en PAUSE du pas d'image — sans elle, la boucle écraserait le pas au rendu suivant
+ * et le bouton n'aurait aucun effet visible.
+ */
+describe('useReplayPlayback — les sauts', () => {
+  it('`seekBy` convertit les secondes en images par la cadence du document', () => {
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 20
+    const { result, draw, soundTick } = mount(frameRef, FENETRE)
+    draw.mockClear()
+    soundTick.mockClear()
+    act(() => {
+      result.current.seekBy(1) // 1 s à 10 images/s
+    })
+    expect(frameRef.current).toBe(30)
+    // Un saut REPEINT et fait battre le son : sinon la scène montrerait l'instant d'avant.
+    expect(draw).toHaveBeenCalledTimes(1)
+    expect(soundTick).toHaveBeenCalledTimes(1)
+  })
+
+  it('`seekBy` est borné aux DEUX bouts de la fenêtre de gameplay', () => {
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 20
+    const { result } = mount(frameRef, FENETRE)
+    act(() => {
+      result.current.seekBy(-10) // 100 images en arrière : bien avant le coup d'envoi
+    })
+    expect(frameRef.current).toBe(10)
+    act(() => {
+      result.current.seekBy(10) // 100 images en avant : bien après la fin déclarée
+    })
+    expect(frameRef.current).toBe(40)
+  })
+
+  it('`stepFrames` met la lecture EN PAUSE et avance d’une image', () => {
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 20
+    const { result } = mount(frameRef, FENETRE)
+    expect(result.current.playing).toBe(true)
+    act(() => {
+      result.current.stepFrames(1)
+    })
+    expect(frameRef.current).toBe(21)
+    expect(result.current.playing).toBe(false)
+  })
+
+  it('`stepFrames` ne sort pas de la fenêtre, à l’une ou l’autre borne', () => {
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 40
+    const { result } = mount(frameRef, FENETRE)
+    act(() => {
+      result.current.stepFrames(1)
+    })
+    expect(frameRef.current).toBe(40)
+    act(() => {
+      result.current.stepFrames(-40)
+    })
+    expect(frameRef.current).toBe(10)
+  })
+})
+
+/**
+ * LE REMPLISSAGE DE LA FRISE (`--played`) — la part parcourue, écrite par `writeCursor`.
+ *
+ * POURQUOI UN TEST PAR CHEMIN : la variable ne se met à jour pour personne toute seule. Chaque
+ * chemin qui déplace le curseur doit passer par `writeCursor`, et c'est exactement ce qu'un
+ * oubli ferait perdre — une frise remplie jusqu'à la position d'avant le geste.
+ */
+describe('useReplayPlayback — le remplissage de la frise suit le curseur', () => {
+  /** Le champ n'existe pas dans un test de hook : on l'attache à la ref rendue par le hook. */
+  function attachSlider(ref: RefObject<HTMLInputElement | null>): HTMLInputElement {
+    const el = document.createElement('input')
+    el.type = 'range'
+    ref.current = el
+    return el
+  }
+
+  function played(el: HTMLInputElement): string {
+    return el.style.getPropertyValue('--played')
+  }
+
+  it('un saut écrit la part parcourue de la FENÊTRE, pas du film', () => {
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 10
+    const { result } = mount(frameRef, FENETRE)
+    const el = attachSlider(result.current.sliderRef)
+    act(() => {
+      result.current.seekBy(1.5) // 15 images : la moitié des 30 de la fenêtre
+    })
+    expect(el.value).toBe('25')
+    expect(played(el)).toBe('50%')
+  })
+
+  it('« Recommencer » ramène le remplissage à zéro', () => {
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 25
+    const { result } = mount(frameRef, FENETRE)
+    const el = attachSlider(result.current.sliderRef)
+    act(() => {
+      result.current.restart()
+    })
+    expect(el.value).toBe('10')
+    expect(played(el)).toBe('0%')
+  })
+
+  it('un glissé manuel le met à jour lui aussi', () => {
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 10
+    const { result } = mount(frameRef, FENETRE)
+    const el = attachSlider(result.current.sliderRef)
+    act(() => {
+      result.current.onScrub({
+        currentTarget: { value: '40' },
+      } as unknown as React.ChangeEvent<HTMLInputElement>)
+    })
+    expect(played(el)).toBe('100%')
+  })
+
+  /**
+   * LA POSE INITIALE — le cas que les autres ne couvrent pas, et c'est le scénario RÉEL : la
+   * fenêtre de gameplay vient de la Match View, qui arrive APRÈS le document du rejeu. Le champ
+   * existe donc déjà quand elle se connaît, et c'est l'effet de pose (et non un geste) qui doit
+   * écrire les deux choses. Sans son appel à `writeCursor`, la frise s'afficherait creuse
+   * jusqu'au premier pas de la boucle.
+   */
+  it('la fenêtre qui ARRIVE pose le curseur ET son remplissage', () => {
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 0
+    const draw = vi.fn()
+    const view = renderHook(
+      ({ playWindow }: { playWindow: ReplayWindowBounds | null }) =>
+        useReplayPlayback({
+          doc: DOC,
+          playWindow,
+          baseFps: 10,
+          speed: 1,
+          renderWidth: 480,
+          frameRef,
+          draw,
+          soundTick: vi.fn(),
+          onEnded: vi.fn(),
+          onTransportGesture: vi.fn(),
+        }),
+      { initialProps: { playWindow: null as ReplayWindowBounds | null } },
+    )
+    const el = attachSlider(view.result.current.sliderRef)
+    view.rerender({ playWindow: FENETRE })
+    // Le curseur est au coup d'envoi, et le remplissage part de zéro AVEC lui.
+    expect(frameRef.current).toBe(10)
+    expect(el.value).toBe('10')
+    expect(played(el)).toBe('0%')
+  })
+
+  it('une lecture DÉJÀ engagée garde sa position, et son remplissage est posé quand même', () => {
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 25 // au-delà du coup d'envoi : le repositionnement ne recule jamais
+    const view = renderHook(
+      ({ playWindow }: { playWindow: ReplayWindowBounds | null }) =>
+        useReplayPlayback({
+          doc: DOC,
+          playWindow,
+          baseFps: 10,
+          speed: 1,
+          renderWidth: 480,
+          frameRef,
+          draw: vi.fn(),
+          soundTick: vi.fn(),
+          onEnded: vi.fn(),
+          onTransportGesture: vi.fn(),
+        }),
+      { initialProps: { playWindow: null as ReplayWindowBounds | null } },
+    )
+    const el = attachSlider(view.result.current.sliderRef)
+    view.rerender({ playWindow: FENETRE })
+    expect(frameRef.current).toBe(25)
+    expect(played(el)).toBe('50%')
+  })
+
+  it('la boucle de lecture l’écrit à chaque pas', () => {
+    const frameRef = createRef<number>() as RefObject<number>
+    frameRef.current = 10
+    const { result } = mount(frameRef, FENETRE)
+    const el = attachSlider(result.current.sliderRef)
+    tick(1_000) // amorce
+    tick(3_000) // 2 s à 10 images/s : 20 images, soit les deux tiers de la fenêtre
+    expect(el.value).toBe('30')
+    expect(played(el)).toBe(`${((30 - 10) / 30) * 100}%`)
   })
 })

@@ -54,7 +54,8 @@ func newMetaResolveTestPDB(t *testing.T) *PlayerDB {
 			playlist_name VARCHAR, playlist_name_fr VARCHAR,
 			is_firefight BOOLEAN DEFAULT FALSE, is_ranked BOOLEAN DEFAULT FALSE,
 			duration_seconds INTEGER, playable_duration_seconds INTEGER,
-			team_0_score INTEGER, team_1_score INTEGER)`,
+			team_0_score INTEGER, team_1_score INTEGER,
+			team_0_rounds_won SMALLINT, team_1_rounds_won SMALLINT, rounds_total SMALLINT)`,
 		// Vue root-level : les queries SharedReader migrées P5/P7 lisent
 		// `FROM match_registry` (sans préfixe), car la conn cible
 		// directement le catalogue shared_matches_v2 en prod. Le schéma
@@ -636,7 +637,8 @@ func newEmptySnapshotSharedReader(t *testing.T, seed ...string) SharedReader {
 		playlist_name VARCHAR, playlist_name_fr VARCHAR,
 		is_firefight BOOLEAN DEFAULT FALSE, is_ranked BOOLEAN DEFAULT FALSE,
 		duration_seconds INTEGER, playable_duration_seconds INTEGER,
-		team_0_score INTEGER, team_1_score INTEGER)`); err != nil {
+		team_0_score INTEGER, team_1_score INTEGER,
+		team_0_rounds_won SMALLINT, team_1_rounds_won SMALLINT, rounds_total SMALLINT)`); err != nil {
 		t.Fatalf("seed snapshot schema: %v", err)
 	}
 	for _, q := range seed {
@@ -702,5 +704,69 @@ func TestGetMatchMeta_SnapshotMissFallsBackToLive(t *testing.T) {
 	repo2 := NewMatchViewRepo(pdb, "test-xuid").WithSharedReader(snapReader)
 	if _, err := repo2.GetMatchMeta(ctx, "ghost"); err == nil {
 		t.Fatalf("match absent du snapshot ET du live doit rester introuvable")
+	}
+}
+
+// TestGetMatchMeta_SnapshotStaleSchemaFallsBackToLive prouve le correctif du 2026-08-29.
+//
+// Vécu en prod locale le jour même : le lot score-manches ajoute à Q13 les colonnes
+// team_0_rounds_won / team_1_rounds_won / rounds_total, mais le snapshot courant a été
+// coupé AVANT cette migration — Q13 y échoue en Binder Error (colonne inconnue), qui
+// n'est PAS sql.ErrNoRows : l'ancienne bascule ne jouait pas, et le service transformait
+// l'erreur en 404 « match introuvable » pour TOUS les matchs. La page match entière
+// tombait, et avec elle tout ce qui en dépend (camps, issue, fenêtre de gameplay — donc
+// l'écran de fin, la voix et la musique de l'export vidéo du rejeu).
+//
+// La propriété tenue ici : un snapshot au SCHÉMA EN RETARD est traité comme un
+// snapshot-miss — bascule live, réponse servie, forceLive armé.
+func TestGetMatchMeta_SnapshotStaleSchemaFallsBackToLive(t *testing.T) {
+	pdb := newMetaResolveTestPDB(t) // pdb.SharedReadDB() = LIVE, schéma complet
+	ctx := context.Background()
+
+	if _, err := pdb.Player.Exec(ctx, `
+		INSERT INTO shared.match_registry
+			(match_id, start_time, start_time_utc, map_name, pair_name, playlist_name, duration_seconds)
+		VALUES ('m-schema', '2026-08-29 10:00:00', '2026-08-29 10:00:00+00',
+		        'Catalyst', 'Slayer', 'Quick Play', 495)`); err != nil {
+		t.Fatalf("insert live match: %v", err)
+	}
+
+	// SNAPSHOT AU SCHÉMA D'AVANT LA MIGRATION : le match Y EST, mais les colonnes de
+	// manches manquent — Q13 échoue en Binder Error, pas en ErrNoRows.
+	snapSQL, err := sql.Open("duckdb", ":memory:")
+	if err != nil {
+		t.Fatalf("open snapshot: %v", err)
+	}
+	t.Cleanup(func() { snapSQL.Close() })
+	snap := newTestDB(snapSQL, ":memory:")
+	if _, err := snap.Exec(ctx, `CREATE TABLE match_registry (
+		match_id VARCHAR PRIMARY KEY,
+		start_time TIMESTAMP, end_time TIMESTAMP,
+		start_time_utc TIMESTAMPTZ, end_time_utc TIMESTAMPTZ,
+		real_start_time TIMESTAMP,
+		playlist_id VARCHAR, map_id VARCHAR, map_version_id VARCHAR,
+		pair_id VARCHAR, game_variant_id VARCHAR,
+		map_name VARCHAR, game_variant_name VARCHAR,
+		pair_name VARCHAR, pair_name_fr VARCHAR, playlist_name VARCHAR,
+		is_firefight BOOLEAN DEFAULT FALSE, is_ranked BOOLEAN DEFAULT FALSE,
+		duration_seconds INTEGER, playable_duration_seconds INTEGER,
+		team_0_score INTEGER, team_1_score INTEGER)`); err != nil {
+		t.Fatalf("seed vieux schema snapshot: %v", err)
+	}
+	if _, err := snap.Exec(ctx, `INSERT INTO match_registry (match_id, start_time, start_time_utc, map_name, pair_name, playlist_name)
+		VALUES ('m-schema', '2026-08-29 10:00:00', '2026-08-29 10:00:00+00', 'Catalyst', 'Slayer', 'Quick Play')`); err != nil {
+		t.Fatalf("seed snapshot row: %v", err)
+	}
+
+	repo := NewMatchViewRepo(pdb, "test-xuid").WithSharedReader(LegacySharedReader(snap))
+	meta, err := repo.GetMatchMeta(ctx, "m-schema")
+	if err != nil {
+		t.Fatalf("un snapshot au schema en retard doit basculer sur le live, err=%v", err)
+	}
+	if meta == nil || meta.MatchID != "m-schema" {
+		t.Fatalf("meta.MatchID = %v, want 'm-schema'", meta)
+	}
+	if !repo.forceLive {
+		t.Fatalf("forceLive doit etre arme apres une bascule pour schema en retard")
 	}
 }

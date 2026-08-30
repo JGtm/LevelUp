@@ -160,6 +160,41 @@ type Coverage struct {
 	// publié rendent tous deux un calque vide. Son ABSENCE dit encore autre chose — l'appelant
 	// n'a rien fourni à lire.
 	FlagCarries *FlagCarriesCoverage `json:"flagCarries,omitempty"`
+	// VipCrown est la couverture de la COURONNE VIP (schéma 22, cf. document_vip_crown.go) :
+	// les sélections `vip_selected`, les périodes publiées partagées en fermées / ouvertes, la
+	// cause de fermeture (mort du VIP / sélection suivante) et les rejets par cause. Son ABSENCE
+	// dit que l'appelant n'a PAS reconnu un film VIP (la garde de mode est chez `replaybuild`).
+	VipCrown *VipCrownCoverage `json:"vipCrown,omitempty"`
+	// SkullCarries est la couverture du PORTEUR DU CRANE d'Oddball (schéma 23, cf.
+	// document_skull_carries.go) : les prises (`skull_grabs`), les trains de tics détectés, les
+	// portages publiés partagés en fermés / ouverts, et les rejets par cause (sans pont, hors
+	// fenêtre). Son ABSENCE dit que l'appelant n'a PAS reconnu un film Oddball (la garde de mode
+	// est chez `replaybuild`).
+	SkullCarries *SkullCarriesCoverage `json:"skullCarries,omitempty"`
+	// WeaponChanges est la couverture des PRISES ET LACHERS d'arme (schéma 25, cf.
+	// document_weapon_changes.go) : les changements décodés, ceux publiés, et ce qui a été
+	// écarté — les ré-annonces d'une arme déjà portée au spawn (qui ne sont PAS des prises) et
+	// les événements antérieurs à la première frame.
+	//
+	// ELLE EST PUBLIÉE MÊME QUAND AUCUN CHANGEMENT NE L'EST, pour la même raison que
+	// `placements` et `groundWeapons` : un film sans ramassage et un film qu'on n'a pas su
+	// balayer rendent tous deux zéro changement — seuls ces compteurs les distinguent.
+	WeaponChanges *WeaponChangeCoverage `json:"weaponChanges,omitempty"`
+	// EquipmentChanges est la couverture des RAMASSAGES ET CONSOMMATIONS d'équipement
+	// (schéma 26, cf. document_equipment_changes.go). Elle porte, seule de toutes les
+	// couvertures du rejeu, un TÉMOIN DE COMPLÉTUDE : le compteur de rotation d'i48 dit
+	// combien d'émissions ont été MANQUÉES (`missedEstimate`). Publiée même quand aucun
+	// changement ne l'est, pour la même raison que `weaponChanges`.
+	EquipmentChanges *EquipmentChangeCoverage `json:"equipmentChanges,omitempty"`
+	// GroundWeaponItems est la couverture des ARMES AU SOL individuelles (schéma 27, cf.
+	// document_ground_weapon_items.go) : combien d'objets, combien liés à leur lâcheur et à
+	// leur ramasseur, et comment leurs fins se répartissent entre observé et ouvert. Publiée
+	// même vide, même raison que `weaponChanges`.
+	GroundWeaponItems *GroundWeaponItemsCoverage `json:"groundWeaponItems,omitempty"`
+	// ObjectiveObjects est la couverture du calque des objets d'objectif LIBRES : combien le
+	// manifeste en déclare de publiables, combien de vies et de points sortent, et ce qui a été
+	// écarté hors axe (cf. document_objective_objects.go).
+	ObjectiveObjects *ObjectiveObjectsCoverage `json:"objectiveObjects,omitempty"`
 	// Inventory est la couverture du calque INVENTAIRE (munitions, grenades, capacité,
 	// emplacement dégainé, cf. inventory.go) : lectures décodées, écartées avant l'origine du
 	// rejeu, écartées faute de trajectoire publiée, et publiées. TÉLÉMÉTRIE PURE — absente des

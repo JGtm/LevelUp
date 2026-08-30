@@ -121,6 +121,50 @@ func TestResolveWeaponMeta_WeaponKeyNameSourceH5(t *testing.T) {
 	}
 }
 
+// TestResolveWeaponMeta_LabelENBothLocales (V2.1, D2, 2026-08-29) : le resolver fournit
+// LabelEN dans la MÊME passe que Label, EN-first (repli FR), symétrique de Label
+// (FR-first, repli EN) — mêmes 4 sources sous-jacentes, ordre inversé. h5_vehicle_warthog
+// porte en et fr dans weapon_name_labels (comme weapon_names.toml en pratique : chaque
+// clé y est seedée dans les DEUX locales) → les deux champs résolvent au nom natif.
+func TestResolveWeaponMeta_LabelENBothLocales(t *testing.T) {
+	meta := resolverTestMeta(t, true)
+	ctx := context.Background()
+	if _, err := meta.Exec(ctx,
+		"INSERT INTO weapon_name_labels VALUES ('halo_5', 'h5_vehicle_warthog', 'Warthog', 'Chariot de guerre')"); err != nil {
+		t.Fatalf("seed weapon_name_labels: %v", err)
+	}
+	const warthogID = int64(4028516791)
+	res := resolveWeaponMeta(ctx, meta, "halo_5", []int64{warthogID})[warthogID]
+	if res.label != "Chariot de guerre" {
+		t.Errorf("label = %q, want \"Chariot de guerre\" (FR-first, inchangé)", res.label)
+	}
+	if res.labelEN != "Warthog" {
+		t.Errorf("labelEN = %q, want \"Warthog\" (EN-first)", res.labelEN)
+	}
+}
+
+// TestResolveWeaponMeta_LabelENFallsBackToFRWhenEmpty : si weapon_name_labels ne porte
+// PAS de name_en pour une clé (traduction manquante — cas transitoire, weapon_names.toml
+// pas encore complété pour ce titre), labelEN retombe sur le FR plutôt que de rester vide
+// — même contrat que label (FR-first) mais en EN-first : labelEN n'est vide QUE si aucune
+// des 4 sources (wnl.name_en, wl.name_en, wnl.name_fr, wl.name_fr) n'a de valeur.
+func TestResolveWeaponMeta_LabelENFallsBackToFRWhenEmpty(t *testing.T) {
+	meta := resolverTestMeta(t, true)
+	ctx := context.Background()
+	if _, err := meta.Exec(ctx,
+		"INSERT INTO weapon_name_labels VALUES ('halo_5', 'h5_vehicle_ghost', '', 'Fantôme')"); err != nil {
+		t.Fatalf("seed weapon_name_labels (name_en vide): %v", err)
+	}
+	const ghostID = int64(3010146366)
+	res := resolveWeaponMeta(ctx, meta, "halo_5", []int64{ghostID})[ghostID]
+	if res.label != "Fantôme" {
+		t.Errorf("label = %q, want \"Fantôme\"", res.label)
+	}
+	if res.labelEN != "Fantôme" {
+		t.Errorf("labelEN = %q, want \"Fantôme\" (repli FR : name_en absent de toutes les sources)", res.labelEN)
+	}
+}
+
 func TestResolveWeaponMeta_FallbackWhenNoRegistry(t *testing.T) {
 	meta := resolverTestMeta(t, false) // registre absent
 	brID := int64(0x2b1824d542c9679f)
@@ -129,8 +173,16 @@ func TestResolveWeaponMeta_FallbackWhenNoRegistry(t *testing.T) {
 	if br := res[brID]; br.label != "BR75" || br.role != "" {
 		t.Errorf("BR75 sans registre = %+v, want label=BR75 role='' (parité, dims vides)", br)
 	}
+	// labelEN aussi servi par le fallback weapon_labels-seul (résolveur cohérent quel que
+	// soit le chemin interne emprunté) — V2.1, 2026-08-29.
+	if br := res[brID]; br.labelEN != "BR75" {
+		t.Errorf("BR75 sans registre : labelEN = %q, want \"BR75\"", br.labelEN)
+	}
 	if s := res[0]; s.label != "Grenade" {
 		t.Errorf("sentinel sans registre = %+v, want label=Grenade", s)
+	}
+	if s := res[0]; s.labelEN != "Grenade" {
+		t.Errorf("sentinel sans registre : labelEN = %q, want \"Grenade\"", s.labelEN)
 	}
 }
 

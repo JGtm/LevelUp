@@ -1,26 +1,20 @@
 /**
- * ReplaySoundControls — l'interrupteur du son et son volume. Il a vécu dans la barre des
- * calques (jusqu'au 16/08), puis au tiroir de réglages ; depuis le 2026-08-24 il vit à la
- * BARRE DE LECTURE (ReplayTransport) — « c'est plus simple si c'est au niveau de la
- * lecture » — et l'interrupteur est une ICÔNE haut-parleur (barrée quand le son est coupé),
- * son libellé porté par aria-label/title.
+ * ReplaySoundControls — l'interrupteur du son et son volume, à la barre de lecture.
  *
- * Rien ici que de l'affichage : l'état, la persistance et le déclenchement vivent dans
- * useReplaySound. Deux règles s'appliquent, les mêmes que pour le bouton des zones :
- * pas de commande quand il n'y a rien à commander (une piste sans un seul son ne montre
- * pas d'interrupteur), et un interrupteur qui n'agit pas en ce moment le DIT (à vitesse
- * rapide le son se tait — le bouton s'estompe et l'infobulle explique) plutôt que de
- * laisser croire à une panne.
+ * SEUL L'HABILLAGE CHANGE (planche 2a du 2026-08-28) : bouton ROND comme le reste du transport,
+ * curseur de volume habillé au lieu du `input[type=range]` nu. Les DEUX RÈGLES de l'ancien
+ * fichier restent, mot pour mot :
  *
- * LA SECONDE RÈGLE L'EMPORTE SUR LA PREMIÈRE POUR LE VOLUME (demande utilisateur du
- * 2026-08-25 : « couper le son ne doit plus faire disparaître la barre de volume »). Le
- * curseur ne s'escamote plus : il tombe à zéro, s'estompe et dit en infobulle que le niveau
- * réglé revient avec le son. « Rien à commander » vaut pour un match SANS AUCUN son — un fait
- * du document ; le son coupé, lui, est un état que l'utilisateur vient de choisir, et un
- * réglage qui disparaît sous le clic fait sauter la barre au lieu de montrer sa conséquence.
+ *  - pas de commande quand il n'y a rien à commander (une piste sans un seul son ne montre pas
+ *    d'interrupteur) ;
+ *  - un interrupteur qui n'agit pas en ce moment le DIT (à vitesse rapide le son se tait — le
+ *    bouton s'estompe et l'infobulle explique) plutôt que de laisser croire à une panne.
+ *
+ * ET LE CURSEUR NE S'ESCAMOTE TOUJOURS PAS quand le son est coupé (demande du 2026-08-25) : il
+ * tombe à zéro, s'estompe, et son infobulle dit que le niveau réglé revient avec le son. Le
+ * niveau lui-même survit à la coupure — `sound.volume` est l'état de préférence, que la bascule
+ * ne touche pas ; le zéro affiché est un affichage, jamais une écriture.
  */
-import { Button } from '@/components/ui/button'
-
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
 import type { ReplaySound } from './useReplaySound'
 
@@ -32,43 +26,45 @@ interface ReplaySoundControlsProps {
 export function ReplaySoundControls({ sound, locale }: ReplaySoundControlsProps) {
   const t = REPLAY_TEXT[locale]
   if (!sound.available) return null
+  const level = sound.on ? Math.round(sound.volume * 100) : 0
   return (
-    <>
-      <Button
-        variant={sound.on ? 'default' : 'ghost'}
-        size="sm"
+    <div className="flex items-center gap-2">
+      <button
+        type="button"
         onClick={sound.toggle}
-        className={sound.mutedBySpeed ? 'h-8 w-9 opacity-60' : 'h-8 w-9'}
-        title={sound.mutedBySpeed ? t.soundFastHint : t.soundHint}
         aria-label={t.sound}
         aria-pressed={sound.on}
+        title={sound.mutedBySpeed ? t.soundFastHint : `${t.soundHint} (M)`}
+        className={`inline-flex h-[34px] w-[34px] cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-accent ${
+          sound.mutedBySpeed ? 'opacity-60' : ''
+        } ${sound.on ? '' : 'text-muted-foreground'}`}
       >
         <SpeakerIcon muted={!sound.on} />
-      </Button>
-      {/* LE CURSEUR NE DISPARAÎT PLUS QUAND LE SON EST COUPÉ (demande utilisateur du
-          2026-08-25). Il MONTRE l'état plutôt que de le cacher : à zéro et inerte tant que le
-          son est coupé, avec une infobulle qui dit les deux choses utiles — c'est zéro, et le
-          niveau réglé n'est pas perdu. La barre qui s'escamotait faisait sauter la mise en page
-          de la barre de lecture à chaque clic sur le haut-parleur, et laissait croire que le
-          réglage repartait de rien.
-
-          LE NIVEAU RÉGLÉ SURVIT À LA COUPURE : `sound.volume` est l'état de préférence, que la
-          bascule ne touche pas (useReplaySound.toggle coupe le MAÎTRE du lecteur, à zéro, et le
-          repose à `volume` au retour). Le zéro affiché ici est donc un affichage, jamais une
-          écriture — rallumer rend exactement le niveau d'avant. */}
+      </button>
       <input
         type="range"
         min={0}
         max={100}
         step={5}
-        value={sound.on ? Math.round(sound.volume * 100) : 0}
+        value={level}
         disabled={!sound.on}
         onChange={(e) => sound.setVolume(Number(e.currentTarget.value) / 100)}
-        className={sound.on ? 'h-7 w-16' : 'h-7 w-16 opacity-60'}
         aria-label={t.soundVolume}
         title={sound.on ? t.soundVolume : t.soundVolumeMutedHint}
+        style={{ '--played': `${level}%` } as React.CSSProperties}
+        className={`h-3 w-[58px] cursor-pointer appearance-none bg-transparent
+          [&::-webkit-slider-runnable-track]:h-1 [&::-webkit-slider-runnable-track]:rounded-full
+          [&::-webkit-slider-runnable-track]:bg-[linear-gradient(to_right,var(--muted-foreground)_0_var(--played),var(--input)_var(--played)_100%)]
+          [&::-webkit-slider-thumb]:-mt-[4px] [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3
+          [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full
+          [&::-webkit-slider-thumb]:bg-foreground
+          [&::-moz-range-track]:h-1 [&::-moz-range-track]:rounded-full
+          [&::-moz-range-track]:bg-[linear-gradient(to_right,var(--muted-foreground)_0_var(--played),var(--input)_var(--played)_100%)]
+          [&::-moz-range-thumb]:h-3 [&::-moz-range-thumb]:w-3 [&::-moz-range-thumb]:border-0
+          [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-foreground
+          ${sound.on ? '' : 'opacity-60'}`}
       />
-    </>
+    </div>
   )
 }
 
@@ -77,7 +73,7 @@ function SpeakerIcon({ muted }: { muted: boolean }) {
   return (
     <svg
       viewBox="0 0 16 16"
-      className="h-5 w-5"
+      className="h-4 w-4"
       fill="none"
       stroke="currentColor"
       strokeWidth="1.5"

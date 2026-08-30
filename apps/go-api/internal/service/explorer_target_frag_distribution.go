@@ -24,6 +24,7 @@ import (
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/fragdist"
+	"levelup/go-api/internal/service/killsourceload"
 )
 
 // explorerKillMechanicsLoader est la capability OPTIONNELLE (type-assertion, même
@@ -72,7 +73,9 @@ func (s *ExplorerService) targetFragDistribution(
 			counts.ShoulderBash = m.ShoulderBash
 		}
 	}
-	fd := fragdist.Build(rows, counts, hasMechanics)
+	sources := killsourceload.Load(ctx, s.killSourceRepo, "explorer target", slug,
+		matchIDs, []string{targetXUID})
+	fd := fragdist.Build(rows, sources, counts, hasMechanics)
 	logFragDistribution(ctx, "explorer target", slug, targetXUID, fd)
 	return &fd, buildTopWeaponKills(rows, synthesisWeaponChartTopN)
 }

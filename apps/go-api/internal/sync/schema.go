@@ -182,6 +182,12 @@ CREATE TABLE IF NOT EXISTS match_registry (
     team_1_score              SMALLINT,
     team_0_ps_score           INTEGER,
     team_1_ps_score           INTEGER,
+    -- Manches gagnees par camp + nombre de manches jouees (CoreStats.RoundsWon/Lost/Tied).
+    -- NULL = inconnu : le lecteur retombe sur les points, jamais un zero substitue.
+    -- Convergence des DB existantes : step add_team_rounds_to_match_registry.
+    team_0_rounds_won         SMALLINT,
+    team_1_rounds_won         SMALLINT,
+    rounds_total              SMALLINT,
     backfill_completed        INTEGER  DEFAULT 0,
     participants_loaded       BOOLEAN  DEFAULT FALSE,
     events_loaded             BOOLEAN  DEFAULT FALSE,

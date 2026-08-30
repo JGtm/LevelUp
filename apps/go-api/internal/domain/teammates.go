@@ -361,6 +361,10 @@ type SquadMatchHistoryRow struct {
 	EnemyMMRAvg *float64 `json:"enemy_mmr_avg,omitempty"`
 	DeltaMMR    *float64 `json:"delta_mmr,omitempty"`
 	ScoreLabel  string   `json:"score_label,omitempty"`
+	// ScoreKind dit CE QUE porte ScoreLabel : "points" ou "rounds" (manches gagnées).
+	// Même contrat que la vue match et l'Explorateur — l'infobulle d'en-tête de colonne
+	// l'explique, et le client localise le mot (ADR 0032). Vide = pas de score.
+	ScoreKind string `json:"score_kind,omitempty"`
 	// HasReplay : un artefact de rejeu 2D existe pour ce match → la ligne porte un
 	// lien vers la page de rejeu. Résolu en UN listing de dossier par requête, jamais
 	// un accès disque par ligne. Faux/absent = rien n'est rendu (pas de lien mort).

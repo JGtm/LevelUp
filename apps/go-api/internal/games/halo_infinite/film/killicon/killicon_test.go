@@ -3,6 +3,7 @@ package killicon
 import (
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -86,8 +87,15 @@ func TestChaqueRegleTrouveSaSource(t *testing.T) {
 		if m := ggglRe.FindStringSubmatch(l.Detail); m != nil {
 			gggl[m[1]] = true
 		}
-		for _, m := range banqueRe.FindAllStringSubmatch(l.Detail, -1) {
-			banques[m[1]] = true
+		// LES DEUX FORMES DE RACINE, comme le resolveur : la courte (trois segments, celle
+		// des chassis) ET la longue (le nom de banque entier, celle qui distingue les quatre
+		// bobines). Ne construire que la courte rendait ce garde-rail ROUGE sur des regles
+		// pourtant justes — il aurait dit `aucune ligne ne cite cette racine` alors que la
+		// ligne la cite, mais plus loin que le troisieme segment.
+		for _, re := range []*regexp.Regexp{banqueRe, banqueLongueRe} {
+			for _, m := range re.FindAllStringSubmatch(l.Detail, -1) {
+				banques[m[1]] = true
+			}
 		}
 	}
 	for _, r := range Rules() {
@@ -336,6 +344,16 @@ func TestCouvertureParClasse(t *testing.T) {
 		damagetag.ClassMelee:    {14, 14},
 		damagetag.ClassGrenade:  {15, 15},
 		damagetag.ClassVehicule: {89, 46},
+		// OBJET_EXPLOSIF ENTRE DANS LA TABLE LE 2026-08-27, et c est une DECISION, pas une
+		// derive : les quatre bobines ont chacune leur vignette dans l atlas (42 Shock,
+		// 43 Blast, 44 UNSC fusion, 45 Plasma, passe humaine du 2026-08-09). Ce qui les
+		// tenait dehors etait technique — la coupe a trois segments de banqueRe les rendait
+		// toutes identiques (exp_single_small) — pas doctrinal.
+		// 8 sur 19 SEULEMENT, et le reste n est pas un oubli : les onze autres lignes
+		// d OBJET_EXPLOSIF ne citent AUCUNE banque sonore (elles designent un hlmt, un effe
+		// ou un weap). Sans flaveur d energie, rien ne dit LAQUELLE des quatre bobines c est,
+		// et servir une icone au hasard serait le defaut que ce pont existe pour eviter.
+		damagetag.ClassObjet: {19, 8},
 	}
 	got := map[damagetag.Class][2]int{}
 	for _, l := range damagetag.Labels() {
@@ -357,7 +375,7 @@ func TestCouvertureParClasse(t *testing.T) {
 	// Les classes sans regle ne doivent JAMAIS recevoir d icone (bidon, chute, inconnu) :
 	// servir une image au hasard serait le defaut que ce lot evite.
 	for _, cl := range []damagetag.Class{
-		damagetag.ClassObjet, damagetag.ClassGlobal, damagetag.ClassInconnu,
+		damagetag.ClassGlobal, damagetag.ClassInconnu,
 	} {
 		if n := got[cl][1]; n != 0 {
 			t.Errorf("classe %s : %d icones alors qu aucune regle ne la couvre", cl, n)

@@ -133,3 +133,44 @@ function myCampIndex(scoreboard: VictoryRows, camps: readonly Camp[]): 0 | 1 | n
   if (camps[1].id === id) return 1
   return null
 }
+
+/** Le score FINAL du match, du point de vue du joueur de la page. */
+export interface FinalScoreReading {
+  ally: number
+  enemy: number
+}
+
+/** Ce que l'écran de fin lit de l'en-tête de la vue match pour connaître le score final. */
+export interface FinalScoreHeader {
+  score_kind?: string
+  score_mine?: number
+  score_theirs?: number
+}
+
+/**
+ * finalScoreFromHeader rend le score final SERVI PAR L'API, et `null` quand l'en-tête n'en
+ * publie pas — auquel cas l'écran de fin garde sa lecture du calque du film.
+ *
+ * POURQUOI L'API ICI, ALORS QUE TOUT LE RESTE DU REJEU VIENT DU FILM. La lecture du calque à
+ * la borne de fin rend, sur un mode à manches, les points de la DERNIÈRE MANCHE (Oddball :
+ * « 100 - 43 ») présentés comme le score du match. C'est faux : le match s'est joué en deux
+ * manches à une. L'écran de fin annonce un RÉSULTAT, et le résultat est celui que toute
+ * l'app affiche par ailleurs — le prendre de l'en-tête garantit que les deux surfaces ne
+ * peuvent pas dire deux nombres différents du même match.
+ *
+ * IL NE FAUT PAS LE RESTREINDRE AUX SEULES LECTURES EN MANCHES, et c'est un piège qui a
+ * réellement été posé puis retiré : sur une variante à manches dont les deux camps finissent
+ * à ÉGALITÉ de manches (témoin `adb93fb7` : 1 partout, plus une nulle), le serveur retombe
+ * volontairement sur les points et publie `score_kind = "points"`. Filtrer sur « rounds »
+ * renvoyait alors l'écran de fin vers le calque, donc vers les points de la dernière manche,
+ * pendant que la vue match affichait le total. Le critère est donc la PRÉSENCE des deux
+ * nombres, jamais leur nature.
+ *
+ * Le pendant vivant — le compte de manches qui monte pendant la lecture — reste dérivé du
+ * film : il doit suivre la position de lecture, ce que l'en-tête ne sait pas faire
+ * (cf. `roundsTally`).
+ */
+export function finalScoreFromHeader(header: FinalScoreHeader | undefined): FinalScoreReading | null {
+  if (!header || header.score_mine == null || header.score_theirs == null) return null
+  return { ally: header.score_mine, enemy: header.score_theirs }
+}

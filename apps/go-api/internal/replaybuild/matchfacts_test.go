@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/port"
 )
 
@@ -71,57 +72,120 @@ func TestTeamByXUIDSansCampConnuRendNil(t *testing.T) {
 	}
 }
 
-// TestIdentifiedEventsRefuseDeuxCas — LES DEUX REFUS SONT EXPLICITES.
+// TestIdentifiedEventsSansFamilleNeNommeRien — LA GARDE DE MODE, ET ELLE COURT-CIRCUITE L'I/O.
 //
-// Sans famille d'objectif, aucun nom n'est possible ; sans ligne de match, aucun slot ne peut
-// etre apparie. Dans les deux cas on ne publie RIEN — poser une action sur un slot arbitraire est
-// precisement l'erreur que le pont d'identite existe pour eviter.
-func TestIdentifiedEventsRefuseDeuxCas(t *testing.T) {
+// Sans famille d'objectif (mode sans table nommee ou variante inconnue), aucun emplacement n'est
+// nomme : `identifiedEvents` rend nil AVANT de toucher au disque (le fil des morts n'est meme pas
+// relu). Le `filmDir` volontairement absent le prouve — s'il etait lu, l'appel echouerait dessus.
+func TestIdentifiedEventsSansFamilleNeNommeRien(t *testing.T) {
 	recs := []objectiveevents.StatRecord{{
 		TimeMS: 1_000, Slot: 10, Round: 0,
 		Comps: map[int]objectiveevents.StatValue{2: {A: 3, B: 1}, 3: {A: 1}},
 	}}
-	lignes := []objectiveevents.PlayerLine{{XUID: "x10", Kills: 3, Deaths: 1, Assists: 1}}
-
-	for nom, cas := range map[string]struct {
-		lignes  []objectiveevents.PlayerLine
-		variant string
-	}{
-		"mode sans famille d'objectif": {lignes, "Slayer:Arena"},
-		"variante inconnue":            {lignes, ""},
-		"aucune ligne de match":        {nil, "CTF:Arena"},
+	for nom, variant := range map[string]string{
+		"mode sans famille d'objectif": "Slayer:Arena",
+		"variante inconnue":            "",
 	} {
 		t.Run(nom, func(t *testing.T) {
-			got := identifiedEvents(context.Background(), "m", recs, cas.lignes, cas.variant)
+			got := identifiedEvents(context.Background(), "m", "repertoire-absent", recs, variant)
 			if got != nil {
-				t.Errorf("%d action(s) publiee(s), attendu aucune : %+v", len(got), got)
+				t.Errorf("%d action(s), attendu nil : un mode sans table nommee ne nomme rien", len(got))
 			}
 		})
 	}
 }
 
-// TestIdentifiedEventsNommeQuandLesDeuxSontLa — le temoin positif : avec une famille d'objectif
-// ET des lignes de match, le pont fonctionne. Sans lui, les refus ci-dessus ne prouveraient rien.
-func TestIdentifiedEventsNommeQuandLesDeuxSontLa(t *testing.T) {
-	var recs []objectiveevents.StatRecord
-	// Composant 2 (frags et morts) et 3 (assistances) : le triplet qui apparie le slot.
-	// Composant 4 valeur A : les captures de drapeau nommees par la table `flag`.
-	for i, v := range []int64{1, 2} {
-		recs = append(recs, objectiveevents.StatRecord{
-			TimeMS: 1_000 + i*1_000, Slot: 10, Round: 0,
-			Comps: map[int]objectiveevents.StatValue{
-				2: {A: 3, B: 1}, 3: {A: 1}, 4: {A: v},
-			},
-		})
-	}
-	lignes := []objectiveevents.PlayerLine{{XUID: "x10", Kills: 3, Deaths: 1, Assists: 1}}
-	got := identifiedEvents(context.Background(), "m", recs, lignes, "CTF:Arena")
-	if len(got) == 0 {
-		t.Fatal("aucune action identifiee alors que la famille et les lignes sont la")
-	}
-	for _, e := range got {
-		if e.XUID != "x10" {
-			t.Errorf("action attribuee a %q, attendu x10 : %+v", e.XUID, e)
+// twoRoundFlagFixture — un film SYNTHETIQUE a deux manches ou le slot 22 est REATTRIBUE ("A" en
+// manche 0, "B" en manche 1), avec une CAPTURE DE DRAPEAU (comp 21 A) posee en manche 1. Le score
+// de mode (comp 0 A) marque les manches ; le compteur de morts (comp 2 B) RESET par manche apparie
+// le slot au fil des morts. Meme grammaire que `twoRoundReassignedFixture` d'objectiveevents.
+func twoRoundFlagFixture() ([]objectiveevents.NamedEvent, []objectiveevents.StatRecord, []objectiveevents.DeathInstant) {
+	sv := func(comp int, side string, v int64) map[int]objectiveevents.StatValue {
+		if side == "B" {
+			return map[int]objectiveevents.StatValue{comp: {B: v}}
 		}
+		return map[int]objectiveevents.StatValue{comp: {A: v}}
+	}
+	rec := func(t, slot, round, comp int, side string, v int64) objectiveevents.StatRecord {
+		return objectiveevents.StatRecord{TimeMS: t, Slot: slot, Round: round, Comps: sv(comp, side, v)}
+	}
+	recs := []objectiveevents.StatRecord{
+		// Score de mode : trois emissions croissantes par manche -> manches 0 et 1 reelles.
+		rec(900, 22, 0, 0, "A", 10), rec(1900, 22, 0, 0, "A", 20), rec(2900, 22, 0, 0, "A", 30),
+		rec(10900, 22, 1, 0, "A", 10), rec(11900, 22, 1, 0, "A", 20), rec(12900, 22, 1, 0, "A", 30),
+		// Compteur de morts, RESET par manche : slot 22.
+		rec(1000, 22, 0, 2, "B", 1), rec(2000, 22, 0, 2, "B", 2), rec(3000, 22, 0, 2, "B", 3),
+		rec(11000, 22, 1, 2, "B", 1), rec(12000, 22, 1, 2, "B", 2), rec(13000, 22, 1, 2, "B", 3),
+		// Slot 20, stable = "C".
+		rec(1500, 20, 0, 2, "B", 1), rec(2500, 20, 0, 2, "B", 2), rec(3500, 20, 0, 2, "B", 3),
+		rec(11500, 20, 1, 2, "B", 1), rec(12500, 20, 1, 2, "B", 2), rec(13500, 20, 1, 2, "B", 3),
+		// Capture de drapeau (comp 21 A) sur le slot 22, EN MANCHE 1.
+		rec(12500, 22, 1, 21, "A", 1),
+	}
+	deaths := []objectiveevents.DeathInstant{
+		{XUID: "A", TimeMS: 1000}, {XUID: "A", TimeMS: 2000}, {XUID: "A", TimeMS: 3000},
+		{XUID: "B", TimeMS: 11000}, {XUID: "B", TimeMS: 12000}, {XUID: "B", TimeMS: 13000},
+		{XUID: "C", TimeMS: 1500}, {XUID: "C", TimeMS: 2500}, {XUID: "C", TimeMS: 3500},
+		{XUID: "C", TimeMS: 11500}, {XUID: "C", TimeMS: 12500}, {XUID: "C", TimeMS: 13500},
+	}
+	named := objectiveevents.NamedEventsFrom(recs, objectiveevents.ObjectiveTypeFlag)
+	return named, recs, deaths
+}
+
+// TestIdentifyRoundEventsMultiManche — LE CAS QUI FONDE LE LOT : une capture posee en manche 1 sur
+// un slot REATTRIBUE est attribuee au joueur de LA MANCHE 1 ("B"), la ou le pont plat par instants
+// de mort la donnait a "A" (il ne voit que la manche 0, le compteur repartant de zero).
+func TestIdentifyRoundEventsMultiManche(t *testing.T) {
+	named, recs, deaths := twoRoundFlagFixture()
+
+	// La capture de drapeau doit bien avoir ete nommee sur le slot 22.
+	var cap *objectiveevents.NamedEvent
+	for i := range named {
+		if named[i].Stat == objectiveevents.StatFlagCaptures && named[i].Slot == 22 {
+			cap = &named[i]
+		}
+	}
+	if cap == nil {
+		t.Fatalf("la fixture ne nomme aucune capture de drapeau sur le slot 22 : %+v", named)
+	}
+
+	got := identifyRoundEvents(named, recs, deaths)
+	var capX string
+	for _, e := range got {
+		if e.Stat == objectiveevents.StatFlagCaptures {
+			capX = e.XUID
+		}
+	}
+	if capX != "B" {
+		t.Errorf("capture de manche 1 attribuee a %q, attendu \"B\" (slot 22 reattribue)", capX)
+	}
+
+	// CONTRE-EPREUVE : le pont plat par instants de mort la donne a "A".
+	flat := objectiveevents.IdentifyNamedEvents(named, objectiveevents.SlotIdentityByDeaths(recs, deaths))
+	var flatCapX string
+	for _, e := range flat {
+		if e.Stat == objectiveevents.StatFlagCaptures {
+			flatCapX = e.XUID
+		}
+	}
+	if flatCapX != "A" {
+		t.Fatalf("pont plat : capture attribuee a %q, attendu \"A\" (temoin de la difference)", flatCapX)
+	}
+	if flatCapX == capX {
+		t.Error("le pont par manche ne DIFFERE PAS du pont plat sur la capture de manche 1 — " +
+			"la correction est nulle")
+	}
+}
+
+// TestDeathInstantsOfConversion — la traduction du fil des morts (xuid decimal + instant) est la
+// SEULE chose que `deathInstantsOf` fait, et une inversion casserait tout appariement en silence.
+func TestDeathInstantsOfConversion(t *testing.T) {
+	got := deathInstantsOf([]replay.Death{{XUID: 2533274, TimeMS: 4200}})
+	if len(got) != 1 {
+		t.Fatalf("%d instant(s), attendu 1", len(got))
+	}
+	want := objectiveevents.DeathInstant{XUID: "2533274", TimeMS: 4200}
+	if got[0] != want {
+		t.Errorf("instant = %+v, attendu %+v (xuid en decimal, instant en ms)", got[0], want)
 	}
 }

@@ -1,6 +1,6 @@
 // Package service — home_service_enrichment.go : helpers d'enrichissement des
-// RecentMatchItem (médailles + citations) et favoris. Extrait de home_service.go
-// (refactor god-file, revue 2026-06-02).
+// RecentMatchItem (médailles + citations), favoris et lien rejeu 2D. Extrait de
+// home_service.go (refactor god-file, revue 2026-06-02).
 package service
 
 import (
@@ -16,14 +16,12 @@ import (
 func buildFavoriteMatchListCanonical(
 	rows []canonical.PlayerMatchRow,
 	favoriteIDs map[string]bool,
-	locale string,
-	effectiveHpToKill float64,
-	skillBadgeURL func(tierEN string, subTier int) string,
+	opts analysis.RecentMatchesOptions,
 ) []domain.RecentMatchItem {
 	if len(favoriteIDs) == 0 {
 		return nil
 	}
-	allItems := analysis.BuildRecentMatchesWithFavoritesFromCanonical(rows, len(rows), favoriteIDs, locale, effectiveHpToKill, skillBadgeURL)
+	allItems := analysis.BuildRecentMatchesWithFavoritesFromCanonical(rows, len(rows), favoriteIDs, opts)
 	var favorites []domain.RecentMatchItem
 	for _, item := range allItems {
 		if item.IsFavorite {
@@ -31,6 +29,41 @@ func buildFavoriteMatchListCanonical(
 		}
 	}
 	return favorites
+}
+
+// WithReplay injecte le service de rejeu 2D — même contrat que MatchHistoryService :
+// les tuiles de match de l'Accueil portent has_replay pour poser le lien vers la page
+// de rejeu. Dégradation gracieuse si nil. Retourne le service (chaînage).
+func (s *HomeService) WithReplay(svc port.ReplayService) *HomeService {
+	s.replaySvc = svc
+	return s
+}
+
+// replayAvailability liste les matchs ayant un artefact de rejeu — UN listing de
+// dossier par requête. Service non câblé ou listing en échec (déjà journalisé par le
+// service de rejeu) : ensemble vide, les tuiles se servent sans lien plutôt qu'en 500.
+func (s *HomeService) replayAvailability(ctx context.Context) port.ReplayAvailability {
+	if s.replaySvc == nil {
+		return nil
+	}
+	set, err := s.replaySvc.AvailableSet(ctx)
+	if err != nil {
+		return nil
+	}
+	return set
+}
+
+// applyReplayAvailabilityToRecentItems pose HasReplay sur les tuiles de match (récents
+// + favoris) depuis l'ensemble résolu une fois par requête. Ensemble vide/nil = no-op.
+func applyReplayAvailabilityToRecentItems(replays port.ReplayAvailability, itemLists ...[]domain.RecentMatchItem) {
+	if len(replays) == 0 {
+		return
+	}
+	for _, items := range itemLists {
+		for i := range items {
+			items[i].HasReplay = replays.Has(items[i].MatchID)
+		}
+	}
 }
 
 // enrichMatchesWithMedals injecte les TopMedals (max 4, sÃ©lection par raretÃ©/count)

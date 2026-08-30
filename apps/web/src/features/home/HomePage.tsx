@@ -518,6 +518,7 @@ export function HomePage() {
                         match={m}
                         locale={locale}
                         timezone={userTimezone}
+                        playerSlug={playerSlug}
                         onClick={() => goToMatch(m.match_id, 'home_recent')}
                         onToggleFavorite={() =>
                           favoriteMutation.mutate({ matchId: m.match_id, favorite: !m.is_favorite })
@@ -542,6 +543,7 @@ export function HomePage() {
                         match={m}
                         locale={locale}
                         timezone={userTimezone}
+                        playerSlug={playerSlug}
                         onClick={() => goToMatch(m.match_id, 'home_favorites')}
                         onToggleFavorite={() =>
                           favoriteMutation.mutate({ matchId: m.match_id, favorite: false })

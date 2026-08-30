@@ -31,6 +31,13 @@ func (r *ServiceRegistry) HomeCtx(ctx context.Context, slug string) (port.HomeSe
 		WithSquadSessionTeammates(duckdb.NewSquadRepo(pdb), r.friendGamertagsResolver()).
 		WithCareerLive(r.newCareerLiveService(pdb, homeRepo)).
 		WithSkillBadgeResolver(skillBadgeResolverFor(pdb.TitleSlug)).
+		// Score en MANCHES des tuiles d'accueil : MÊME table que la vue match, l'historique
+		// et l'escouade — les quatre surfaces doivent dire le même nombre.
+		WithRoundsDecide(r.roundsDecideFor(pdb)).
+		// Rejeu 2D des tuiles de match (lien à côté de la playlist) : MÊME service que
+		// l'endpoint /replay et l'Explorer — une seule résolution de chemin dans le
+		// dépôt. Seul AvailableSet est appelé : un listing de dossier par requête.
+		WithReplay(r.replayServiceFor(pdb)).
 		WithDemoMode(r.cfg.DemoMode)
 	return svc, pdb.XUID, pdb.Gamertag, nil
 }
@@ -77,6 +84,9 @@ func (r *ServiceRegistry) MatchHistoryCtx(ctx context.Context, slug string) (por
 		// Flag « Prolongation » des lignes Explorer/historique : table
 		// réglementaire du titre (regulation.toml). Titre sans table → nil.
 		WithRegulation(r.regulationFor(pdb)).
+		// Score en MANCHES sur les lignes Explorer/historique : même fichier de config,
+		// autre table. Titre qui n'en déclare aucune → nil → tout reste en points.
+		WithRoundsDecide(r.roundsDecideFor(pdb)).
 		// Image du badge de palier des lignes Explorer/historique : MÊME résolveur
 		// title-aware que la home (skill_rank_image_url de RecentMatchItem).
 		WithSkillBadgeResolver(skillBadgeResolverFor(pdb.TitleSlug)).
@@ -193,6 +203,7 @@ func (r *ServiceRegistry) TeammatesCtx(ctx context.Context, slug string) (port.T
 	svc := teammates.NewTeammatesService(duckdb.NewSquadRepo(pdb), r.friendGamertagsResolver()).
 		WithPlayerMatchesRepo(r.playerMatchesAdapterFor(pdb), pdb.TitleSlug, pdb.Gamertag).
 		WithSquadLoader(briefingLoader).
+		WithKillSourceRepo(r.killSourceClassRepoFor(pdb)).
 		WithMedalDefs(duckdb.NewMedalDefinitionsRepo(pdb)).
 		// Précision native par arme (Halo 5) : table weapon_accuracy SHARED par titre →
 		// le repo lié au PlayerDB du main charge la précision de tous les xuids de
@@ -201,7 +212,10 @@ func (r *ServiceRegistry) TeammatesCtx(ctx context.Context, slug string) (port.T
 		// Rejeu 2D du tableau historique de l'escouade : MÊME service que l'endpoint
 		// /replay et la Match View (une seule résolution de chemin dans le dépôt).
 		// Seul AvailableSet est appelé : un listing de dossier par requête.
-		WithReplay(r.replayServiceFor(pdb))
+		WithReplay(r.replayServiceFor(pdb)).
+		// Score en MANCHES du tableau historique de l'escouade : MÊME table que la vue
+		// match et l'Explorateur, pour que les trois surfaces s'accordent.
+		WithRoundsDecide(r.roundsDecideFor(pdb))
 	// Axe « Objectifs » par opportunité du radar synergie : gated par la capability
 	// match.objective.stats (Infinite ; absente pour Halo 5 → axe retiré de toutes
 	// les séries). Source SHARED → couvre aussi les coéquipiers non suivis.
@@ -289,6 +303,7 @@ func (r *ServiceRegistry) SynthesisCtx(ctx context.Context, slug string) (port.S
 		WithPlayerMatchesRepo(r.playerMatchesAdapterFor(pdb), pdb.TitleSlug, pdb.Gamertag).
 		WithPersonalScoreAwardsRepo(duckdb.NewPersonalScoreAwardsRepo(pdb), pdb.XUID).
 		WithWeaponKillsRepo(duckdb.NewWeaponKillsRepo(pdb)).
+		WithKillSourceRepo(r.killSourceClassRepoFor(pdb)).
 		WithWeaponAccuracyRepo(duckdb.NewWeaponAccuracyRepo(pdb))
 	if a := r.dataAdapterForPDB(pdb); a != nil {
 		svc = svc.WithDataAdapter(a)

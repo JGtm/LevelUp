@@ -62,11 +62,12 @@ function makeSound(over: Partial<ReplaySound> = {}): ReplaySound {
     volume: 0.7,
     setVolume: vi.fn(),
     mutedBySpeed: false,
-    categories: { weapon: true, grenade: true, melee: true, equipment: true },
+    categories: { weapon: true, grenade: true, melee: true, equipment: true, objective: true },
     toggleCategory: vi.fn(),
     tick: vi.fn(),
     endMatch: vi.fn(),
     recordingTrack: () => null,
+  exportTrack: () => ({ timeline: [], endMatchStems: [], variationPercent: 0, distancePercent: 0, families: { voice: [], music: [] } }),
     ...over,
   }
 }
@@ -81,10 +82,13 @@ function renderDrawer(over: Partial<Parameters<typeof ReplaySettingsDrawer>[0]> 
   const onToggleShotFx = vi.fn()
   const onToggleKillFx = vi.fn()
   const onSetMarkerColors = vi.fn()
+  const onToggleAutoPlay = vi.fn()
   const utils = render(
     <ReplaySettingsDrawer
       locale="fr"
       onClose={onClose}
+      autoPlay
+      onToggleAutoPlay={onToggleAutoPlay}
       showAim
       onToggleAim={onToggleAim}
       showZones
@@ -96,7 +100,10 @@ function renderDrawer(over: Partial<Parameters<typeof ReplaySettingsDrawer>[0]> 
       zonesAvailable
       placements={makePlacements()}
       weaponPads={makeWeaponPads()}
+      groundWeapons={makeWeaponPads()}
       flagCarries={makeFlagCarries()}
+      vipCrown={makeFlagCarries()}
+      skullCarrier={makeFlagCarries()}
       heatmap={makeHeatmap()}
       showShotFx
       onToggleShotFx={onToggleShotFx}
@@ -110,15 +117,58 @@ function renderDrawer(over: Partial<Parameters<typeof ReplaySettingsDrawer>[0]> 
   )
   return {
     ...utils, onClose, onToggleAim, onToggleZones, onToggleNames, onToggleTrail, onSetSpeed,
-    onToggleShotFx, onToggleKillFx, onSetMarkerColors,
+    onToggleShotFx, onToggleKillFx, onSetMarkerColors, onToggleAutoPlay,
   }
 }
+
+describe('ReplaySettingsDrawer — lecture automatique (point 22 du 2026-08-29)', () => {
+  it('la bascule est proposée, reflète autoPlay et appelle SON callback', () => {
+    const { onToggleAutoPlay, onToggleAim } = renderDrawer({ autoPlay: false })
+    const sw = screen.getByRole('switch', { name: 'Lecture automatique' })
+    expect(sw).toHaveAttribute('aria-checked', 'false')
+    fireEvent.click(sw)
+    expect(onToggleAutoPlay).toHaveBeenCalledTimes(1)
+    expect(onToggleAim).not.toHaveBeenCalled()
+  })
+
+  // LA RÉSERVE EST À L'ÉCRAN, pas dans un commentaire : ce réglage ne commande pas le rejeu
+  // ouvert (il décide de son état de DÉPART, lu au montage par `useReplayPlayback`). Sans
+  // cette phrase, on l'essaierait comme un bouton « Lecture » et on le croirait cassé.
+  it('dit en clair qu il ne met ni en lecture ni en pause le rejeu ouvert', () => {
+    renderDrawer()
+    expect(screen.getByRole('switch', { name: 'Lecture automatique' })).toHaveAttribute(
+      'title',
+      expect.stringContaining('ni en lecture ni en pause'),
+    )
+  })
+})
+
+describe('ReplaySettingsDrawer — les deux formes de commande (2026-08-29)', () => {
+  // UN OUI/NON EST UN INTERRUPTEUR, UN CHOIX EXCLUSIF RESTE UN BOUTON PRESSÉ. La demande
+  // utilisateur (« je préfère un toggle plutôt que des boutons ») porte sur les réglages
+  // oui/non ; un interrupteur sur « Par équipe » promettrait un « tout éteint » que le
+  // réglage n'accepte pas. Ce test épingle la frontière, qui se perdrait à la relecture.
+  it('les calques et les catégories de son sont des interrupteurs', () => {
+    renderDrawer({ heatmap: makeHeatmap({ show: true }) })
+    for (const nom of ['Visée', 'Noms', 'Traînée', 'Zones', 'Carte de chaleur', 'Armes']) {
+      expect(screen.getByRole('switch', { name: nom })).toBeTruthy()
+    }
+  })
+
+  it('les choix exclusifs restent des boutons pressés', () => {
+    renderDrawer({ heatmap: makeHeatmap({ show: true }) })
+    for (const nom of ['Présence', 'Éliminations', 'Par équipe', 'Par joueur']) {
+      expect(screen.getByRole('button', { name: nom })).toBeTruthy()
+      expect(screen.queryByRole('switch', { name: nom })).toBeNull()
+    }
+  })
+})
 
 describe('ReplaySettingsDrawer — calques', () => {
   it('bascule Visée : reflète showAim et appelle onToggleAim au clic, jamais onToggleZones', () => {
     const { onToggleAim, onToggleZones } = renderDrawer({ showAim: true })
-    const btn = screen.getByRole('button', { name: 'Visée' })
-    expect(btn).toHaveAttribute('aria-pressed', 'true')
+    const btn = screen.getByRole('switch', { name: 'Visée' })
+    expect(btn).toHaveAttribute('aria-checked', 'true')
     fireEvent.click(btn)
     expect(onToggleAim).toHaveBeenCalledTimes(1)
     expect(onToggleZones).not.toHaveBeenCalled()
@@ -128,8 +178,8 @@ describe('ReplaySettingsDrawer — calques', () => {
   // rejeu a toujours des joueurs, donc toujours des noms à écrire ou à taire.
   it('bascule Noms : toujours proposée, reflète showNames, appelle onToggleNames au clic', () => {
     const { onToggleNames, onToggleAim } = renderDrawer({ showNames: false, zonesAvailable: false })
-    const btn = screen.getByRole('button', { name: 'Noms' })
-    expect(btn).toHaveAttribute('aria-pressed', 'false')
+    const btn = screen.getByRole('switch', { name: 'Noms' })
+    expect(btn).toHaveAttribute('aria-checked', 'false')
     fireEvent.click(btn)
     expect(onToggleNames).toHaveBeenCalledTimes(1)
     expect(onToggleAim).not.toHaveBeenCalled()
@@ -139,8 +189,8 @@ describe('ReplaySettingsDrawer — calques', () => {
   // n'a aucune condition de disponibilité : une vie a toujours un passé), allumée par défaut.
   it('bascule Traînée : toujours proposée, reflète showTrail, appelle onToggleTrail au clic', () => {
     const { onToggleTrail, onToggleNames } = renderDrawer({ showTrail: false, zonesAvailable: false })
-    const btn = screen.getByRole('button', { name: 'Traînée' })
-    expect(btn).toHaveAttribute('aria-pressed', 'false')
+    const btn = screen.getByRole('switch', { name: 'Traînée' })
+    expect(btn).toHaveAttribute('aria-checked', 'false')
     fireEvent.click(btn)
     expect(onToggleTrail).toHaveBeenCalledTimes(1)
     expect(onToggleNames).not.toHaveBeenCalled()
@@ -148,13 +198,13 @@ describe('ReplaySettingsDrawer — calques', () => {
 
   it('bouton Zones absent quand la carte n a pas de zones nommées', () => {
     renderDrawer({ zonesAvailable: false })
-    expect(screen.queryByRole('button', { name: 'Zones' })).toBeNull()
+    expect(screen.queryByRole('switch', { name: 'Zones' })).toBeNull()
   })
 
   it('bouton Zones présent, reflète showZones, appelle onToggleZones au clic', () => {
     const { onToggleZones } = renderDrawer({ zonesAvailable: true, showZones: false })
-    const btn = screen.getByRole('button', { name: 'Zones' })
-    expect(btn).toHaveAttribute('aria-pressed', 'false')
+    const btn = screen.getByRole('switch', { name: 'Zones' })
+    expect(btn).toHaveAttribute('aria-checked', 'false')
     fireEvent.click(btn)
     expect(onToggleZones).toHaveBeenCalledTimes(1)
   })
@@ -163,15 +213,15 @@ describe('ReplaySettingsDrawer — calques', () => {
 describe('ReplaySettingsDrawer — poses d équipement', () => {
   it('film sans pose dessinable : ni le calque ni les objets non identifiés', () => {
     renderDrawer({ placements: makePlacements({ available: false }) })
-    expect(screen.queryByRole('button', { name: 'Équipements posés' })).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Objets non identifiés' })).toBeNull()
+    expect(screen.queryByRole('switch', { name: 'Équipements posés' })).toBeNull()
+    expect(screen.queryByRole('switch', { name: 'Objets non identifiés' })).toBeNull()
   })
 
   it('bascule Équipements posés : reflète son état et appelle SON callback', () => {
     const onToggle = vi.fn()
     const { onToggleAim } = renderDrawer({ placements: makePlacements({ show: false, onToggle }) })
-    const btn = screen.getByRole('button', { name: 'Équipements posés' })
-    expect(btn).toHaveAttribute('aria-pressed', 'false')
+    const btn = screen.getByRole('switch', { name: 'Équipements posés' })
+    expect(btn).toHaveAttribute('aria-checked', 'false')
     fireEvent.click(btn)
     expect(onToggle).toHaveBeenCalledTimes(1)
     expect(onToggleAim).not.toHaveBeenCalled()
@@ -179,21 +229,21 @@ describe('ReplaySettingsDrawer — poses d équipement', () => {
 
   it('calque éteint : la bascule des objets non identifiés ne commanderait rien, elle est absente', () => {
     renderDrawer({ placements: makePlacements({ show: false }) })
-    expect(screen.queryByRole('button', { name: 'Objets non identifiés' })).toBeNull()
+    expect(screen.queryByRole('switch', { name: 'Objets non identifiés' })).toBeNull()
   })
 
   it('toutes les poses nommées : rien à révéler, la bascule n est pas proposée', () => {
     renderDrawer({ placements: makePlacements({ unnamedAvailable: false }) })
-    expect(screen.getByRole('button', { name: 'Équipements posés' })).toBeTruthy()
-    expect(screen.queryByRole('button', { name: 'Objets non identifiés' })).toBeNull()
+    expect(screen.getByRole('switch', { name: 'Équipements posés' })).toBeTruthy()
+    expect(screen.queryByRole('switch', { name: 'Objets non identifiés' })).toBeNull()
   })
 
   it('bascule Objets non identifiés : éteinte par défaut, appelle SON callback', () => {
     const onToggleUnnamed = vi.fn()
     const onToggle = vi.fn()
     renderDrawer({ placements: makePlacements({ onToggle, onToggleUnnamed }) })
-    const btn = screen.getByRole('button', { name: 'Objets non identifiés' })
-    expect(btn).toHaveAttribute('aria-pressed', 'false')
+    const btn = screen.getByRole('switch', { name: 'Objets non identifiés' })
+    expect(btn).toHaveAttribute('aria-checked', 'false')
     fireEvent.click(btn)
     expect(onToggleUnnamed).toHaveBeenCalledTimes(1)
     expect(onToggle).not.toHaveBeenCalled()
@@ -203,7 +253,7 @@ describe('ReplaySettingsDrawer — poses d équipement', () => {
 describe('ReplaySettingsDrawer — emplacements d arme', () => {
   it('film sans socle publié : pas de bascule (elle ne commanderait rien)', () => {
     renderDrawer({ weaponPads: makeWeaponPads({ available: false }) })
-    expect(screen.queryByRole('button', { name: "Emplacements d'arme" })).toBeNull()
+    expect(screen.queryByRole('switch', { name: "Emplacements d'arme" })).toBeNull()
   })
 
   it('bascule Emplacements d arme : reflète son état et appelle SON callback', () => {
@@ -212,8 +262,8 @@ describe('ReplaySettingsDrawer — emplacements d arme', () => {
       weaponPads: makeWeaponPads({ show: false, onToggle }),
       placements: makePlacements({ onToggle: vi.fn() }),
     })
-    const btn = screen.getByRole('button', { name: "Emplacements d'arme" })
-    expect(btn).toHaveAttribute('aria-pressed', 'false')
+    const btn = screen.getByRole('switch', { name: "Emplacements d'arme" })
+    expect(btn).toHaveAttribute('aria-checked', 'false')
     fireEvent.click(btn)
     expect(onToggle).toHaveBeenCalledTimes(1)
     expect(onToggleAim).not.toHaveBeenCalled()
@@ -223,15 +273,15 @@ describe('ReplaySettingsDrawer — emplacements d arme', () => {
 describe('ReplaySettingsDrawer — carte de chaleur', () => {
   it('calque éteint : la bascule est là, le choix de lecture ne l est pas', () => {
     renderDrawer({ heatmap: makeHeatmap({ show: false }) })
-    expect(screen.getByRole('button', { name: 'Carte de chaleur' })).toHaveAttribute(
-      'aria-pressed',
+    expect(screen.getByRole('switch', { name: 'Carte de chaleur' })).toHaveAttribute(
+      'aria-checked',
       'false',
     )
     expect(screen.queryByRole('button', { name: 'Présence' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Éliminations' })).toBeNull()
   })
 
-  it('calque allumé : les deux lectures, aria-pressed sur celle en cours', () => {
+  it('calque allumé : les deux lectures, la courante pressée (choix exclusif)', () => {
     renderDrawer({ heatmap: makeHeatmap({ show: true, mode: 'kills' }) })
     expect(screen.getByRole('button', { name: 'Présence' })).toHaveAttribute(
       'aria-pressed',
@@ -263,14 +313,14 @@ describe('ReplaySettingsDrawer — carte de chaleur', () => {
   it('la bascule appelle onToggle, jamais un calque voisin', () => {
     const onToggle = vi.fn()
     const { onToggleZones } = renderDrawer({ heatmap: makeHeatmap({ onToggle }) })
-    fireEvent.click(screen.getByRole('button', { name: 'Carte de chaleur' }))
+    fireEvent.click(screen.getByRole('switch', { name: 'Carte de chaleur' }))
     expect(onToggle).toHaveBeenCalledTimes(1)
     expect(onToggleZones).not.toHaveBeenCalled()
   })
 })
 
 describe('ReplaySettingsDrawer — couleur des points', () => {
-  it('propose les deux lectures, aria-pressed sur celle en cours', () => {
+  it('propose les deux lectures, la courante pressée (choix exclusif)', () => {
     renderDrawer({ markerColors: 'player' })
     expect(screen.getByRole('button', { name: 'Par équipe' })).toHaveAttribute('aria-pressed', 'false')
     expect(screen.getByRole('button', { name: 'Par joueur' })).toHaveAttribute('aria-pressed', 'true')
@@ -287,32 +337,32 @@ describe('ReplaySettingsDrawer — son (le filtre par catégorie seul : l’inte
   it('aucune commande de son ni de catégorie quand le match n a aucun son', () => {
     renderDrawer({ sound: makeSound({ available: false }) })
     expect(screen.queryByText('Sons par catégorie')).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Armes' })).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Son' })).toBeNull()
+    expect(screen.queryByRole('switch', { name: 'Armes' })).toBeNull()
+    expect(screen.queryByRole('switch', { name: 'Son' })).toBeNull()
   })
 
   it('l’interrupteur du son n’est PLUS au tiroir, même quand le son est disponible', () => {
     renderDrawer()
-    expect(screen.queryByRole('button', { name: 'Son' })).toBeNull()
+    expect(screen.queryByRole('switch', { name: 'Son' })).toBeNull()
     expect(screen.getByText('Sons par catégorie')).toBeTruthy()
   })
 
   it('les quatre catégories sont affichées, chacune avec son état', () => {
     renderDrawer({
       sound: makeSound({
-        categories: { weapon: true, grenade: false, melee: true, equipment: false },
+        categories: { weapon: true, grenade: false, melee: true, equipment: false, objective: false },
       }),
     })
-    expect(screen.getByRole('button', { name: 'Armes' })).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByRole('button', { name: 'Grenades' })).toHaveAttribute('aria-pressed', 'false')
-    expect(screen.getByRole('button', { name: 'Mêlée' })).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByRole('button', { name: 'Équipements' })).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('switch', { name: 'Armes' })).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByRole('switch', { name: 'Grenades' })).toHaveAttribute('aria-checked', 'false')
+    expect(screen.getByRole('switch', { name: 'Mêlée' })).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByRole('switch', { name: 'Équipements' })).toHaveAttribute('aria-checked', 'false')
   })
 
   it('cliquer une catégorie appelle toggleCategory avec SA clé, jamais une voisine', () => {
     const toggleCategory = vi.fn()
     renderDrawer({ sound: makeSound({ toggleCategory }) })
-    fireEvent.click(screen.getByRole('button', { name: 'Grenades' }))
+    fireEvent.click(screen.getByRole('switch', { name: 'Grenades' }))
     expect(toggleCategory).toHaveBeenCalledTimes(1)
     expect(toggleCategory).toHaveBeenCalledWith('grenade')
   })
@@ -321,19 +371,19 @@ describe('ReplaySettingsDrawer — son (le filtre par catégorie seul : l’inte
 describe('ReplaySettingsDrawer — effets d événement', () => {
   it('les deux effets ont leur bascule, chacune avec son état', () => {
     renderDrawer({ showShotFx: true, showKillFx: false })
-    expect(screen.getByRole('button', { name: 'Effets de tirs' })).toHaveAttribute(
-      'aria-pressed',
+    expect(screen.getByRole('switch', { name: 'Effets de tirs' })).toHaveAttribute(
+      'aria-checked',
       'true',
     )
-    expect(screen.getByRole('button', { name: 'Effets de mort' })).toHaveAttribute(
-      'aria-pressed',
+    expect(screen.getByRole('switch', { name: 'Effets de mort' })).toHaveAttribute(
+      'aria-checked',
       'false',
     )
   })
 
   it('chaque bascule appelle SON callback, jamais celui de l autre effet', () => {
     const { onToggleShotFx, onToggleKillFx } = renderDrawer()
-    fireEvent.click(screen.getByRole('button', { name: 'Effets de mort' }))
+    fireEvent.click(screen.getByRole('switch', { name: 'Effets de mort' }))
     expect(onToggleKillFx).toHaveBeenCalledTimes(1)
     expect(onToggleShotFx).not.toHaveBeenCalled()
   })
@@ -386,7 +436,7 @@ describe('ReplaySettingsDrawer — fermeture et focus', () => {
 
   it('un clic DEDANS ne ferme rien — sinon régler quoi que ce soit refermerait le panneau', () => {
     const { onClose } = renderDrawer()
-    fireEvent.pointerDown(screen.getByRole('button', { name: 'Visée' }))
+    fireEvent.pointerDown(screen.getByRole('switch', { name: 'Visée' }))
     expect(onClose).not.toHaveBeenCalled()
   })
 

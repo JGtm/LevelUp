@@ -34,8 +34,40 @@ const SHOW_PLACEMENTS_KEY = 'replay-show-placements'
 const SHOW_UNNAMED_PLACEMENTS_KEY = 'replay-show-unnamed-placements'
 const SHOW_DROPPED_PLACEMENTS_KEY = 'replay-show-dropped-placements'
 const SHOW_WEAPON_PADS_KEY = 'replay-show-weapon-pads'
+const SHOW_GROUND_WEAPONS_KEY = 'replay-show-ground-weapons'
 const SHOW_FLAG_CARRIES_KEY = 'replay-show-flag-carries'
+const SHOW_VIP_CROWN_KEY = 'replay-show-vip-crown'
+const SHOW_SKULL_CARRIER_KEY = 'replay-show-skull-carrier'
 const MARKER_COLORS_KEY = 'replay-marker-colors'
+
+/**
+ * LA FRISE EST-ELLE DÉPLIÉE ? Réglage du LECTEUR et non d'un calque : il ne passe donc pas
+ * par le tiroir, mais par un chevron sur la frise elle-même (retour utilisateur du
+ * 2026-08-28) — replié, il ne reste que la barre de progression et ses horloges. La clé vit
+ * avec les autres préférences du rejeu : c'est leur registre, et `useReplayTimeline` la lit.
+ */
+export const TIMELINE_EXPANDED_KEY = 'replay-timeline-expanded'
+
+/**
+ * LA LECTURE DÉMARRE-T-ELLE TOUTE SEULE ? (demande utilisateur du 2026-08-29, point 22 :
+ * « lecture automatique dans les réglages, avec persistance du choix »).
+ *
+ * EXPORTÉE POUR LA MÊME RAISON QUE LA CLÉ DE LA FRISE : c'est `useReplayPlayback` qui la lit,
+ * parce que lui seul tient l'état « en lecture », et il ne passe pas par le tiroir. La bascule,
+ * elle, vit bien dans le tiroir comme les autres réglages — d'où la clé partagée plutôt qu'une
+ * seconde copie du corps de `usePersistedFlag`.
+ *
+ * ÉTEINTE PAR DÉFAUT (décision utilisateur du 2026-08-29, dans le même échange que la demande) :
+ * le rejeu s'ouvre EN PAUSE, cadré au coup d'envoi, et attend le bouton Lecture. C'est un
+ * CHANGEMENT DE COMPORTEMENT assumé — la lecture partait toute seule au montage depuis l'origine
+ * du rejeu — et il se tient : on arrive sur cette page par un lien de match, souvent pour lire
+ * d'abord le rappel du match et le tableau de scores, pendant que le film, lui, courait déjà.
+ *
+ * CE N'EST PAS UN DEMI-LIVRABLE (CLAUDE.md n°11) : les deux comportements sont complets et
+ * l'interrupteur est un RÉGLAGE offert au lecteur, pas un interrupteur de chantier.
+ */
+export const AUTOPLAY_KEY = 'replay-autoplay'
+export const AUTOPLAY_DEFAULT = false
 
 /** Multiplicateurs de vitesse proposés (repris du POC, réglés à l'écran). */
 export const SPEED_MULTIPLIERS: readonly number[] = [0.5, 1, 2, 4]
@@ -125,6 +157,17 @@ const SHOW_DROPPED_PLACEMENTS_DEFAULT = true
 const SHOW_WEAPON_PADS_DEFAULT = true
 
 /**
+ * LES ARMES AU SOL SONT ALLUMÉES PAR DÉFAUT (schéma 27). Même raisonnement que les objets de
+ * puissance lâchés, décidé le 2026-08-18 : une arme ramassable par terre change la lecture de
+ * l'échange suivant, au même titre qu'une arme encore sur son socle. Le film qui n'en porte
+ * aucune n'affiche ni calque ni bascule.
+ *
+ * Ce n'est pas un demi-livrable (CLAUDE.md n°11) : le calque est complet, l'interrupteur est un
+ * RÉGLAGE D'AFFICHAGE offert au lecteur — une carte de Grande Bataille reste dense.
+ */
+const SHOW_GROUND_WEAPONS_DEFAULT = true
+
+/**
  * LES DRAPEAUX SONT ALLUMÉS PAR DÉFAUT. C'est l'ENJEU du match en capture de drapeau : savoir
  * où est le drapeau, qui le porte et depuis quand est la lecture même du mode — un rejeu de CTF
  * qui s'ouvrirait sans lui montrerait huit points qui courent sans raison. Le film qui n'en
@@ -134,6 +177,8 @@ const SHOW_WEAPON_PADS_DEFAULT = true
  * RÉGLAGE D'AFFICHAGE offert au lecteur — un BTB de capture reste dense.
  */
 const SHOW_FLAG_CARRIES_DEFAULT = true
+const SHOW_VIP_CROWN_DEFAULT = true
+const SHOW_SKULL_CARRIER_DEFAULT = true
 
 /** Les deux lectures de couleur des points, dans l'ordre où le tiroir les propose. */
 export type MarkerColorsMode = 'team' | 'player'
@@ -206,14 +251,40 @@ export interface ReplaySettings {
   showWeaponPads: boolean
   toggleWeaponPads: () => void
   /**
+   * Calque des ARMES AU SOL (schéma 27) — les armes abandonnées, distinctes des socles.
+   * Allumé par défaut (cf. SHOW_GROUND_WEAPONS_DEFAULT).
+   */
+  showGroundWeapons: boolean
+  toggleGroundWeapons: () => void
+  /**
    * Calque des DRAPEAUX de capture (schéma 15). Allumé par défaut : c'est l'enjeu du mode
    * (cf. SHOW_FLAG_CARRIES_DEFAULT). Un film hors capture n'en publie aucun.
    */
   showFlagCarries: boolean
   toggleFlagCarries: () => void
+  /**
+   * Calque de la COURONNE VIP (schéma 22). Allumé par défaut : c'est l'enjeu du mode
+   * (cf. SHOW_VIP_CROWN_DEFAULT). Un film hors VIP n'en publie aucune.
+   */
+  showVipCrown: boolean
+  toggleVipCrown: () => void
+  /**
+   * Calque du PORTEUR DU CRÂNE d'Oddball (schéma 23). Allumé par défaut : c'est l'enjeu du mode
+   * (cf. SHOW_SKULL_CARRIER_DEFAULT). Un film hors Oddball n'en publie aucun.
+   */
+  showSkullCarrier: boolean
+  toggleSkullCarrier: () => void
   /** Couleur des points des joueurs : par équipe (défaut) ou distincte par joueur. */
   markerColors: MarkerColorsMode
   setMarkerColors: (mode: MarkerColorsMode) => void
+  /**
+   * LA LECTURE DÉMARRE-T-ELLE SEULE à l'ouverture du rejeu ? ÉTEINTE par défaut (cf.
+   * AUTOPLAY_DEFAULT). Ce n'est PAS une commande de transport : basculer ce réglage ne met
+   * ni en lecture ni en pause le rejeu ouvert — il ne décide que de l'état de DÉPART, lu une
+   * fois au montage par `useReplayPlayback`. « Lecture » et « Pause » restent à la barre.
+   */
+  autoPlay: boolean
+  toggleAutoPlay: () => void
   /** Multiplicateur de vitesse courant — toujours une valeur de SPEED_MULTIPLIERS. */
   speed: number
   setSpeed: (speed: number) => void
@@ -242,8 +313,13 @@ export interface ReplaySettings {
  * une valeur nue ; la persistance vient APRÈS, depuis le gestionnaire d'événement. `value` est
  * de ce fait une dépendance de la bascule — c'est le prix, et il est juste : une bascule qui ne
  * connaît pas la valeur qu'elle inverse n'existe pas.
+ *
+ * EXPORTÉ depuis le 2026-08-28 : le repli de la frise est une préférence persistée comme les
+ * autres, mais elle ne passe pas par le tiroir (`useReplayTimeline` la lit directement). Faire
+ * une seconde copie du corps pour cette seule raison aurait rouvert exactement la divergence
+ * que cette centralisation a fermée.
  */
-function usePersistedFlag(key: string, fallback: boolean): [boolean, () => void] {
+export function usePersistedFlag(key: string, fallback: boolean): [boolean, () => void] {
   const [value, setValue] = useState(() => readStoredFlag(key, fallback))
   // L'ABONNEMENT REND LA CLÉ PARTAGEABLE : deux composants qui lisent la même préférence
   // bougent ensemble (cf. la note de `subscribePreference`). Sans lui, la bascule du tiroir
@@ -281,9 +357,21 @@ export function useReplaySettings(): ReplaySettings {
     SHOW_WEAPON_PADS_KEY,
     SHOW_WEAPON_PADS_DEFAULT,
   )
+  const [showGroundWeapons, toggleGroundWeapons] = usePersistedFlag(
+    SHOW_GROUND_WEAPONS_KEY,
+    SHOW_GROUND_WEAPONS_DEFAULT,
+  )
   const [showFlagCarries, toggleFlagCarries] = usePersistedFlag(
     SHOW_FLAG_CARRIES_KEY,
     SHOW_FLAG_CARRIES_DEFAULT,
+  )
+  const [showVipCrown, toggleVipCrown] = usePersistedFlag(
+    SHOW_VIP_CROWN_KEY,
+    SHOW_VIP_CROWN_DEFAULT,
+  )
+  const [showSkullCarrier, toggleSkullCarrier] = usePersistedFlag(
+    SHOW_SKULL_CARRIER_KEY,
+    SHOW_SKULL_CARRIER_DEFAULT,
   )
   const [heatmapMode, setHeatmapModeState] = useState(() =>
     readStoredChoice(HEATMAP_MODE_KEY, HEATMAP_MODE_DEFAULT, HEATMAP_MODES),
@@ -294,6 +382,7 @@ export function useReplaySettings(): ReplaySettings {
   const [markerColors, setMarkerColorsState] = useState(() =>
     readStoredChoice(MARKER_COLORS_KEY, MARKER_COLORS_DEFAULT, MARKER_COLORS_MODES),
   )
+  const [autoPlay, toggleAutoPlay] = usePersistedFlag(AUTOPLAY_KEY, AUTOPLAY_DEFAULT)
   const [speed, setSpeedState] = useState(() =>
     readStoredNumber(SPEED_KEY, SPEED_DEFAULT, (v) => SPEED_MULTIPLIERS.includes(v)),
   )
@@ -345,10 +434,18 @@ export function useReplaySettings(): ReplaySettings {
     toggleDroppedPlacements,
     showWeaponPads,
     toggleWeaponPads,
+    showGroundWeapons,
+    toggleGroundWeapons,
     showFlagCarries,
     toggleFlagCarries,
+    showVipCrown,
+    toggleVipCrown,
+    showSkullCarrier,
+    toggleSkullCarrier,
     markerColors,
     setMarkerColors,
+    autoPlay,
+    toggleAutoPlay,
     speed,
     setSpeed,
   }

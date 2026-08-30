@@ -27,7 +27,9 @@ import "sort"
 //
 // # D'ou vient la table, et ce qui la limite
 //
-// Balayage `cmd/tmp_statnames` : la valeur finale de chaque emplacement, pour un slot dont
+// Balayage `cmd/tmp_statnames` (outil jetable de 2026-08-05, disparu du depot — reecrit
+// en CLI durable `cmd/statnames-sweep` le 2026-08-27, meme methode, execution bornee par
+// `internal/filmproc`) : la valeur finale de chaque emplacement, pour un slot dont
 // l'identite est connue, est confrontee au compte de chaque recompense de
 // `personal_score_awards`, puis les candidates sont intersectees sur les films.
 // **Controle** : la table est ajustee separement sur les films de rang pair et de rang
@@ -102,6 +104,13 @@ var namedStatSlots = map[string]map[statSlotKey]statSlot{
 		{3, sideA}:  {Stat: StatAssists},
 		{12, sideB}: {Stat: StatAssists, Redundant: true},
 	},
+	// VIP : `comp 22 A` reproduit `TimesSelectedAsVip` EXACTEMENT par joueur (100 % x3 films,
+	// somme-film decale = 0, gate corrige `VIP_temoin_corrige.log`) — le MEME emplacement que
+	// `flag_grabs` en CTF, le sens change avec le mode. Chaque increment DATE une selection VIP,
+	// donc l'ouverture d'une periode de port de couronne (patron `flag_carries`).
+	ObjectiveTypeVip: {
+		{22, sideA}: {Stat: StatVipSelected},
+	},
 }
 
 // Noms canoniques des STATISTIQUES, tels que `match_objective_stats` les nomme et que le
@@ -131,6 +140,7 @@ const (
 	StatFlagCarriersKilled = "flag_carriers_killed"
 	StatZoneCaptures       = "zone_captures"
 	StatZoneSecures        = "zone_secures"
+	StatVipSelected        = "vip_selected"
 	StatKills              = "kills"
 	StatAssists            = "assists"
 )

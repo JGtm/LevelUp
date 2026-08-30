@@ -12,7 +12,11 @@
  *   1. **Fenêtre FIXE** autour du pivot — {@link oneLifeWindowBounds} : demi-pivot
  *      … double pivot, soit 50…200 % sur le pivot 100. Elle ne dépend JAMAIS des
  *      données affichées, sinon la même valeur change de position (et de
- *      couleur) d'une session à l'autre.
+ *      couleur) d'une session à l'autre. Les call sites de rendu (axe Y) ne
+ *      consomment PAS cette fenêtre brute mais {@link oneLifeWindowBoundsForData} :
+ *      même plancher de comparabilité, mais ÉLARGI (jamais rétréci) quand une
+ *      session courte pousse un point hors fenêtre — DEC-5, retours utilisateur
+ *      2026-08-29 pt.4, sinon la courbe est écrêtée au lieu d'être lue.
  *   2. **Zones de lecture** — {@link oneLifeZonesMarkArea} : `divergent-pos`
  *      au-dessus du pivot, `divergent-neg` en dessous, à des opacités distinctes
  *      (le rouge pèse plus que le vert à opacité égale). Elles sont posées en
@@ -60,6 +64,35 @@ export function oneLifeWindowBounds(pivot: number = ONE_LIFE_DAMAGE): {
 /** Fenêtre FIXE en % : 50…200 % autour du pivot « une vie ». Bornes d'axe de
  *  TOUTES les surfaces Rendement / Résistance (escouade et solo). */
 export const ONE_LIFE_RATE_BOUNDS = oneLifeWindowBounds(ONE_LIFE_RATE_PCT)
+
+/**
+ * Bornes de la fenêtre de lecture adaptées aux données réellement tracées
+ * (DEC-5, retours utilisateur 2026-08-29 pt.4) : part de `base` (la fenêtre
+ * FIXE 50…200 % par défaut) et l'ÉLARGIT si une valeur la dépasse — ne la
+ * RÉTRÉCIT JAMAIS. `base` reste le PLANCHER de comparabilité entre sessions
+ * (deux matchs nominaux se lisent toujours au même endroit, cf. invariant 1
+ * ci-dessus) ; seule une session dont un point sort réellement de la fenêtre
+ * pousse l'axe plus loin, au lieu d'écrêter la courbe.
+ *
+ * Marge d'arrondi : la borne élargie est arrondie à la dizaine ENTIÈRE la
+ * plus proche à l'EXTÉRIEUR de la donnée (`Math.floor`/`Math.ceil` sur les
+ * dizaines) — ni pile sur la valeur (qui toucherait le bord du cadre), ni une
+ * marge en % arbitraire : une règle simple et déterministe qui garde des
+ * graduations lisibles (l'axe reste étiqueté par dizaines).
+ */
+export function oneLifeWindowBoundsForData(
+  values: Array<number | null | undefined>,
+  base: { min: number; max: number } = ONE_LIFE_RATE_BOUNDS,
+): { min: number; max: number } {
+  let min = base.min
+  let max = base.max
+  for (const v of values) {
+    if (v == null || !Number.isFinite(v)) continue
+    if (v < min) min = Math.floor(v / 10) * 10
+    if (v > max) max = Math.ceil(v / 10) * 10
+  }
+  return { min, max }
+}
 
 /** Dégâts/mort bruts d'un match : ΣDT / morts. null si non calculable. */
 export function damagePerDeath(damageTaken?: number | null, deaths?: number | null): number | null {

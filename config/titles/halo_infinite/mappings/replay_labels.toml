@@ -466,12 +466,15 @@ name_id    = "0xed76a664"
 provenance = "sofa_string_id"
 kind       = "carried"
 
-# Rang 10 de la palette famille A : rattache, non nomme. Cf. la note ci-dessus.
+# Rang 10 de la palette famille A. NOMME LE 2026-08-27, et par une voie neuve : sa banque
+# sonore est `sb_007_abl_shroud`, casse par hachage FNV-1 de l identifiant Wwise (banque
+# `92c830f5`, celle que le lot du 18/08 lui avait deja rattachee sans pouvoir la nommer).
+# C est l ECRAN OCCULTANT.
 [[equipment_objects]]
 id         = "0x4396db42"
-family     = "other"
+family     = "shroud_screen"
 name_id    = "0xb328c9fa"
-provenance = "sofa_anonyme"
+provenance = "banque_nommee"
 kind       = "carried"
 
 [[equipment_objects]]
@@ -610,9 +613,10 @@ kind       = "carried"
 # Un drapeau n'est pas un socle d'arme : deux apparitions au meme socle en feraient un, et le
 # rejeu dessinerait un socle de fusil a la base de chaque equipe.
 #
-# `family` : liste FERMEE (`flag` aujourd'hui). Le crane d'Oddball n'y est PAS, et ce n'est
-# pas un oubli : le marqueur de portage est TOTALEMENT absent du film Oddball mesure (0
-# porteur sur 26 images-cles), il n'existe donc ni canal ni oracle pour l'etablir.
+# `family` : liste FERMEE (`flag`, `ball`). Le crane d'Oddball y est entre le 2026-08-27 ;
+# la phrase precedente disait qu'il n'y etait pas « faute de canal ET d'oracle », et c'est
+# cette phrase que la phase D4 du plan des objectifs vivants a attaquee — avec un succes
+# PARTIEL qu'il faut lire tel quel (voir le bloc du crane ci-dessous).
 #
 # `en` / `fr` : le nom de l'objet, dans les deux langues du produit — jamais en dur en Go ni
 # en TypeScript, meme regle que les grenades et les capacites.
@@ -621,3 +625,32 @@ id     = "0x2a392328"
 family = "flag"
 en     = "Flag"
 fr     = "Drapeau"
+
+# LE CRANE D'ODDBALL — identite ETABLIE le 2026-08-27, portage REFUTE le meme jour.
+#
+# CE QUI EST MESURE (phase D4, quatre films Oddball : `24dbb67d` Recharge, `43716616`
+# Smallhalla, `51ebbc0f` Banished Narrows, `d9781168` Dredge ; instrument
+# `oddball_crane_d4_test.go`, sortie figee dans `.ai/V7.5/replay2d/registre_film/`) :
+#
+#   COMBIEN   133 / 137 / 144 / 256 creations `ti=42` ECARTEES du catalogue d'armes, soit
+#             69 / 107 / 82 / 199 mots de 32 bits distincts.
+#   OU        ce mot-ci naissait a 0,0 m du socle `oddball_spawn` UNIQUE de la carte sur les
+#             QUATRE films (3, 4, 4 et 13 creations au socle).
+#   QUAND     a 6, 3, 3 et 5 ms d'un evenement `th=10` de crane.
+#
+# LE TEMOIN DE SELECTIVITE, ecrit comme pour le drapeau : sur `43716616` et `51ebbc0f`, AUCUN
+# autre mot ecarte ne reunit les deux conditions. Sur les deux autres films il en existe UN,
+# mais ce n'est pas le meme des deux cotes (`0xCBA072DC` / `0x042100A6`) et il s'en separe sur
+# les DEUX criteres : 1 creation contre 16 a 47, ne a 1,7 et 2,9 m contre 0,0, coincidant a 157
+# et 177 ms contre 3 a 6. Bruit de singleton, pas identite rivale.
+#
+# CE QUE CETTE ENTREE NE DIT PAS, ET QU'IL FAUT LIRE AVANT DE L'ETENDRE : QUI porte le crane.
+# Le seuil de portage a ete mesure et REFUTE — 40,6 a 66,7 % de trous a porteur unique contre
+# un seuil de 90 %, et un temoin place HORS trou qui rend le meme signal dans 66,7 et 71,4 %
+# des cas. L'oracle du score personnel ne discrimine pas le portage en Oddball. Aucun calque de
+# portage de crane n'existe, et il ne faut pas en deduire un de cette ligne.
+[[objective_objects]]
+id     = "0x0017592c"
+family = "ball"
+en     = "Oddball"
+fr     = "Crane"

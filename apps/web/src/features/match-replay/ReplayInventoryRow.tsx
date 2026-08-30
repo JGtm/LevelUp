@@ -33,12 +33,9 @@ import type { ReactNode } from 'react'
 
 import { WeaponIcon } from '@/components/ui/WeaponIcon'
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
-import { useTitleSlug } from '@/lib/title-routing/useTitleSlug'
-import { useSettingsDraftStore } from '@/stores/settingsDraftStore'
 
 import { catalogText, type CatalogLabel } from './catalogLabel'
 import type { EquippedReading } from './equippedLogic'
-import { grenadeIconOf, type GrenadeIconRef } from './grenadeIcon'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
 import {
   grenadeBoxAt,
@@ -54,11 +51,13 @@ import type { ReplayDocumentReady } from './replayNormalize'
 import { abilityAt } from './rosterLogic'
 import { familyOf } from './shotEffects'
 
-/** Boîte d'une vignette de HUD (grenade, capacité) : la hauteur de la ligne. */
+/** Boîte de la vignette de CAPACITÉ : la hauteur de la ligne. */
 const HUD_ICON_PX = 16
-/** Largeurs FIXES des cellules — la grille des fiches en dépend (cf. en-tête). */
-const AMMO_CELL_W = 34
-const GRENADES_BOX_W = 62
+/** Vignette d'un TYPE DE GRENADE : 14 px (option 2a — la boîte de 56 px est taillée dessus). */
+const GRENADE_ICON_PX = 14
+/** Largeurs FIXES des cellules — la grille des fiches en dépend (option 2a : 32 / 56). */
+const AMMO_CELL_W = 32
+const GRENADES_BOX_W = 56
 
 /** Les familles d'arme À CHARGE : pas de chargeur, une jauge (cf. en-tête). */
 const CHARGE_FX = new Set(['plasma', 'melee', 'light'])
@@ -79,10 +78,6 @@ export function ReplayInventoryRow({
   locale: ReplayLocale
 }) {
   const t = REPLAY_TEXT[locale]
-  // La vignette de grenade est une IMAGE VERSIONNÉE, choisie à l'encre du thème (planche du
-  // 16/08) : le titre dit OÙ chercher, le thème dit LAQUELLE des deux encres.
-  const titleSlug = useTitleSlug()
-  const theme = useSettingsDraftStore((s) => s.localUiPrefs.theme)
   const read = inventoryAt(doc, slot, frame)
   // LA CAPACITÉ A SA PROPRE LECTURE, et donc son propre âge : elle arrive surtout par le
   // canal i48 des paquets delta, qui ne tombe pas sur les images-clés de l'inventaire.
@@ -130,7 +125,7 @@ export function ReplayInventoryRow({
 
   return (
     <div
-      className="flex items-center gap-1 font-mono text-[9.5px] text-muted-foreground"
+      className="flex items-center gap-[5px] font-mono text-[9.5px] text-muted-foreground"
       // LA RANGÉE N'IMPOSE PLUS SON ÂGE À TOUTE LA GRILLE. L'estompage vivait ici tant que
       // l'inventaire était la seule lecture de la ligne ; il ne l'est plus (capacité par i48,
       // grenades par l'axe `grenadeReads`). Laissé au conteneur, il MULTIPLIAIT l'opacité
@@ -182,7 +177,7 @@ export function ReplayInventoryRow({
           <GrenadeChip
             key={g.rank}
             carried={g}
-            icon={grenadeIconOf(doc.grenadeLabels?.[g.rank], titleSlug, theme)}
+            icon={grenadeMaskOf(doc.grenadeLabels?.[g.rank])}
             selected={
               typeof selected === 'object' && selected !== null && g.rank === selected.rank
                 ? selected
@@ -244,6 +239,24 @@ export function ReplayInventoryRow({
   )
 }
 
+/** Ce que la puce a besoin de savoir pour peindre la vignette : l'URL, et son mode. */
+interface GrenadeIconRef {
+  url: string
+  /** Vrai = masque à teindre (currentColor) ; faux = image finie. */
+  tinted: boolean
+}
+
+/**
+ * grenadeMaskOf — la vignette d'un rang : le MASQUE DE HUD cuit dans l'artefact, la
+ * version PLEINE de la maquette (option 2a du handoff 2026-08-27 — elle remplace l'image
+ * versionnée de la planche du 16/08, dont le module `grenadeIcon.ts` est parti avec elle).
+ * Teint par currentColor, le masque suit le thème ET l'encre `warning` du type équipé.
+ * Sans vignette : null — l'appelant garde le libellé, jamais l'image d'un autre type.
+ */
+function grenadeMaskOf(label: CatalogLabel | undefined): GrenadeIconRef | null {
+  return label?.img ? { url: label.img, tinted: !!label.tinted } : null
+}
+
 /**
  * GrenadeChip — UN type de grenade porté : sa vignette, son compteur, et la marque du type
  * ÉQUIPÉ quand c'est lui qui partira au prochain lancer.
@@ -287,8 +300,8 @@ function GrenadeChip({
           imageUrl={icon.url}
           tinted={icon.tinted}
           label={carried.name}
-          width={HUD_ICON_PX}
-          height={HUD_ICON_PX}
+          width={GRENADE_ICON_PX}
+          height={GRENADE_ICON_PX}
         />
       ) : (
         carried.name

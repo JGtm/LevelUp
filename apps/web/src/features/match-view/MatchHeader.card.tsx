@@ -8,6 +8,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { AlertDialog } from '@/components/ui/alert-dialog'
 import { tokenCssVar } from '@/lib/accessibility'
 import type { SemanticToken } from '@/lib/accessibility'
@@ -21,6 +22,7 @@ import {
 import { NarrativeBadge } from '@/components/feedback/NarrativeBadge'
 import { tokenVar } from '@/lib/accessibility'
 import { ReplayLink } from './MatchHeader.replayLink'
+import { WaypointLink } from './MatchHeader.waypointLink'
 import { useToggleMatchFavorite } from './queries'
 import { useSetMatchExclusion } from '@/features/match-history/queries'
 import {
@@ -293,26 +295,27 @@ function TitleAndActionsRow({
 
         <Button
           variant="outline"
-          size="sm"
+          size="icon"
           onClick={onCopyId}
           title={t.copyTooltip}
-          className="h-8 gap-1.5 text-xs"
+          aria-label={copied ? t.copied : t.copyShort}
         >
           {copied ? (
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
             </svg>
           ) : (
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2" />
             </svg>
           )}
-          {copied ? t.copied : t.copyShort}
         </Button>
+
+        <WaypointLink matchId={matchId} playerSlug={playerSlug} locale={locale} />
 
         <Button
           variant="outline"
-          size="sm"
+          size="icon"
           onClick={onOpenExclusionDialog}
           disabled={excludePending || excludeBlockedByRanked}
           title={
@@ -322,22 +325,22 @@ function TitleAndActionsRow({
                 ? t.reactivateTooltip
                 : t.excludeTooltip
           }
+          aria-label={header.is_excluded ? t.reactivate : t.excludeShort}
           className={
             header.is_excluded
-              ? 'h-8 gap-1.5 text-xs'
-              : 'h-8 gap-1.5 text-xs text-destructive border-destructive/50 hover:bg-destructive/10 hover:text-destructive'
+              ? ''
+              : 'text-destructive border-destructive/50 hover:bg-destructive/10 hover:text-destructive'
           }
         >
           {header.is_excluded ? (
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
             </svg>
           ) : (
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
             </svg>
           )}
-          {header.is_excluded ? t.reactivate : t.excludeShort}
         </Button>
       </div>
     </div>
@@ -369,6 +372,7 @@ function OutcomeRow({ header, outcomeColor, locale }: OutcomeRowProps) {
           >
             {header.score_label}
           </span>
+          <ScoreRoundsAside header={header} locale={locale} />
         </>
       )}
       {header.dominance_badge && (
@@ -395,6 +399,42 @@ function OutcomeRow({ header, outcomeColor, locale }: OutcomeRowProps) {
         />
       )}
     </div>
+  )
+}
+
+// ── ScoreRoundsAside ───────────────────────────────────────────────────────
+
+/**
+ * L'AIDE ET LE SCORE DE L'API, quand le score affiché compte des MANCHES.
+ *
+ * Sur un mode qui se décide aux manches (Oddball et consorts), le score rendu par l'API est
+ * un CUMUL DE POINTS sur toutes les manches : il ne dit pas qui a gagné, et sur quatre
+ * matchs du corpus mesuré il donne même l'avantage au camp qui a perdu. L'en-tête affiche
+ * donc les manches, et relègue les points ici — en petit, grisé, à côté (demande
+ * utilisateur du 2026-08-29).
+ *
+ * NE REND RIEN sur un mode en points : le libellé principal EST déjà le score de l'API,
+ * l'écrire deux fois n'apprendrait rien. C'est le serveur qui tranche (`score_kind`), pas
+ * ce composant — la règle vit dans `analysis.ReadTeamScore`, elle n'est pas ré-écrite ici.
+ */
+function ScoreRoundsAside({
+  header,
+  locale,
+}: {
+  header: MatchViewHeaderData
+  locale: MatchViewLocale
+}) {
+  if (header.score_kind !== 'rounds') return null
+  const t = MATCH_VIEW_TEXT[locale]
+  return (
+    <>
+      <InfoTooltip content={t.scoreRoundsHint} iconClass="w-4 h-4" />
+      {header.score_points_label && (
+        <span className="text-sm tabular-nums text-muted-foreground">
+          {t.scorePointsAside(header.score_points_label)}
+        </span>
+      )}
+    </>
   )
 }
 

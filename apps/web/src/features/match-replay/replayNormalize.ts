@@ -26,6 +26,7 @@ import type {
   ReplayDocument,
   ReplayFlagCarry,
   ReplayGrenadeRead,
+  ReplayObjectiveObjectLife,
   ReplayInventory,
   ReplayLoadout,
   ReplayProjectile,
@@ -74,6 +75,14 @@ export type ReplayWeaponPadReady = Filled<ReplayWeaponPad, 'spawns' | 'presence'
  */
 export type ReplayFlagCarryReady = Filled<ReplayFlagCarry, 'spans'>
 /**
+ * ReplayObjectiveObjectReady — une vie libre d'objet d'objectif, trajectoire comblée.
+ *
+ * MÊME PATRON QUE `flagCarries` : le tableau de tête et le tableau IMBRIQUÉ (`pts`) sont tous
+ * deux nullables au contrat, et une vie qui arriverait avec `pts: null` ferait tomber le calque
+ * à l'exécution, pas à la compilation.
+ */
+export type ReplayObjectiveObjectReady = Filled<ReplayObjectiveObjectLife, 'pts'>
+/**
  * ReplayZoneStateReady — l'état d'une zone dont les intervalles ET la jauge en direct sont comblés.
  *
  * MÊME PATRON QUE `flagCarries` et `weaponPads` : le tableau de tête et les tableaux IMBRIQUÉS
@@ -94,32 +103,65 @@ export type ReplayZoneStateReady = Filled<ReplayZoneState, 'spans' | 'gauge'>
 export type ReplayDocumentReady = Omit<
   ReplayDocument,
   | 'abilities'
+  | 'equipmentChanges'
   | 'equipmentEpisodes'
   | 'equipmentPlacements'
   | 'flagCarries'
   | 'geometry'
   | 'grappleLines'
+  | 'groundWeapons'
   | 'grenadeLabels'
   | 'grenadeReads'
   | 'grenades'
   | 'inventory'
   | 'loadouts'
   | 'neutralDeaths'
+  | 'objectiveObjects'
   | 'objectives'
   | 'padPickups'
   | 'projectiles'
   | 'roster'
   | 'scoreTimeline'
   | 'shots'
+  | 'skullCarries'
   | 'structure'
   | 'tracks'
+  | 'vipCrown'
+  | 'weaponChanges'
   | 'weaponPads'
   | 'zoneStates'
 > & {
   abilities: NonNullable<ReplayDocument['abilities']>
+  /**
+   * LES RAMASSAGES ET LES CONSOMMATIONS D'ÉQUIPEMENT (schéma 26) : ce qui ARRIVE à un joueur,
+   * là où `abilities` dit ce qu'il PORTE. Datés à la milliseconde puis projetés sur l'axe de
+   * frames — c'est la source FINE qui affine `abilityAt` entre deux images-clés. Vide =
+   * artefact antérieur au schéma 26, ou film qui n'en porte aucun.
+   */
+  equipmentChanges: NonNullable<ReplayDocument['equipmentChanges']>
   equipmentEpisodes: NonNullable<ReplayDocument['equipmentEpisodes']>
   equipmentPlacements: NonNullable<ReplayDocument['equipmentPlacements']>
   flagCarries: ReplayFlagCarryReady[]
+  /**
+   * LES ARMES AU SOL individuelles (schéma 27) : une entrée par objet qui a BOUGÉ, avec sa
+   * position de repos et ses bornes d'affichage OBSERVÉES. Vide = artefact antérieur au schéma
+   * 26, ou film dont aucune arme ne tombe — `coverage.groundWeaponItems` distingue les deux.
+   * Les armes de SOCLE restent au calque `weaponPads` : les publier ici en double ferait deux
+   * vérités pour un même objet.
+   */
+  groundWeapons: NonNullable<ReplayDocument['groundWeapons']>
+  /**
+   * LES PRISES ET LES LÂCHERS D'ARME (schéma 25) : qui, quand, quelle arme. Datés à la
+   * milliseconde — c'est la source FINE qui affine `loadoutAt` entre deux images-clés. Vide =
+   * artefact antérieur au schéma 25, ou film qui n'en porte aucun.
+   */
+  weaponChanges: NonNullable<ReplayDocument['weaponChanges']>
+  /**
+   * LES OBJETS D'OBJECTIF LIBRES (schéma 21) : où se trouve le crâne d'Oddball quand PERSONNE
+   * ne le porte. Vide = artefact antérieur au schéma 21, mode sans objet porté, ou film qui n'en
+   * porte pas — `coverage.objectiveObjects` distingue les trois.
+   */
+  objectiveObjects: ReplayObjectiveObjectReady[]
   geometry: NonNullable<ReplayDocument['geometry']>
   grappleLines: NonNullable<ReplayDocument['grappleLines']>
   grenadeLabels: NonNullable<ReplayDocument['grenadeLabels']>
@@ -151,7 +193,26 @@ export type ReplayDocumentReady = Omit<
   tracks: ReplayTrackReady[]
   weaponPads: ReplayWeaponPadReady[]
   zoneStates: ReplayZoneStateReady[]
+  /**
+   * LES PÉRIODES DE PORT DE LA COURONNE VIP (schéma 22) : une entrée par période, nommée par le
+   * xuid du VIP. Vide = artefact antérieur au schéma 22, ou film que l'appelant n'a pas reconnu
+   * VIP — `coverage.vipCrown` distingue les deux. Aucun tableau imbriqué : la période est plate.
+   */
+  vipCrown: NonNullable<ReplayDocument['vipCrown']>
+  /**
+   * LES PÉRIODES DE PORTAGE DU CRÂNE d'Oddball (schéma 23) : une entrée par période, nommée par le
+   * xuid du porteur. Vide = artefact antérieur au schéma 23, ou film que l'appelant n'a pas reconnu
+   * Oddball — `coverage.skullCarries` distingue les deux. Aucun tableau imbriqué : la période est
+   * plate. Le crâne LIBRE (`objectiveObjects`) reste la couche POSITION ; celle-ci est le PORTEUR.
+   */
+  skullCarries: NonNullable<ReplayDocument['skullCarries']>
 }
+
+/** ReplayVipPeriod — UNE période de port de la couronne, telle que le rendu la lit (plate). */
+export type ReplayVipPeriod = NonNullable<ReplayDocument['vipCrown']>[number]
+
+/** ReplaySkullCarry — UNE période de portage du crâne, telle que le rendu la lit (plate). */
+export type ReplaySkullCarry = NonNullable<ReplayDocument['skullCarries']>[number]
 
 /**
  * normalizeReplayDocument comble les tableaux absents et rétablit l'arité des coordonnées.
@@ -168,6 +229,19 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     // ce calque porte le RANG complet, et chaque lecture dit par quel canal elle est venue.
     // Absent = aucune lecture, la fiche montre l'inventaire sans capacité nommée.
     abilities: raw.abilities ?? [],
+    // LES RAMASSAGES ET LES CONSOMMATIONS d'équipement (schéma 26) : la source FINE de datation
+    // de ce que porte un joueur. `abilities` reste la LECTURE (ce qu'il porte, échantillonné) ;
+    // ceci est l'ÉVÉNEMENT (ce qui lui arrive, daté). Absent = artefact antérieur, ou film qui
+    // n'en porte aucun — `coverage.equipmentChanges` distingue les deux.
+    equipmentChanges: raw.equipmentChanges ?? [],
+    // LES PRISES ET LES LÂCHERS D'ARME (schéma 25) : même rapport à `loadouts` que ci-dessus —
+    // la lecture d'image-clé dit l'ÉTAT, ces événements datent le CHANGEMENT. Absent = artefact
+    // antérieur, ou film qui n'en porte aucun (`coverage.weaponChanges` distingue les deux).
+    weaponChanges: raw.weaponChanges ?? [],
+    // LES ARMES AU SOL individuelles (schéma 27) : une entrée par objet qui a bougé, bornée par
+    // l'OBSERVATION. Absent = artefact antérieur, ou film dont aucune arme ne tombe —
+    // `coverage.groundWeaponItems` distingue les deux. Aucun tableau imbriqué : l'objet est plat.
+    groundWeapons: raw.groundWeapons ?? [],
     // Les épisodes d'ÉTAT ACTIF d'équipement (schéma 7) : camouflage et surbouclier,
     // datés par vie — les deux seules familles dont l'état est MESURÉ. Absent = aucune
     // vie publiée n'en porte : les fiches restent sobres, jamais un effet deviné.
@@ -186,6 +260,19 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     // contrat le déclare nullable, et un drapeau qui arriverait avec `spans: null` ferait
     // tomber le calque à l'exécution — pas à la compilation.
     flagCarries: (raw.flagCarries ?? []).map((f) => ({ ...f, spans: f.spans ?? [] })),
+    // LES PÉRIODES DE PORT DE LA COURONNE VIP (schéma 22) : une entrée plate par période
+    // (xuid, t0, t1, closed), aucun tableau imbriqué. Absent = artefact antérieur, ou film
+    // non reconnu VIP — `coverage.vipCrown` distingue les deux, et c'est pour cela qu'il existe.
+    vipCrown: raw.vipCrown ?? [],
+    // LES PÉRIODES DE PORTAGE DU CRÂNE d'Oddball (schéma 23) : une entrée plate par période
+    // (xuid, t0, t1, closed), aucun tableau imbriqué. Absent = artefact antérieur, ou film non
+    // reconnu Oddball — `coverage.skullCarries` distingue les deux.
+    skullCarries: raw.skullCarries ?? [],
+    // LES OBJETS D'OBJECTIF LIBRES (schéma 21) : une entrée par VIE de l'objet hors portage.
+    // Absent = artefact antérieur, mode sans objet porté, ou film qui n'en porte pas —
+    // `coverage.objectiveObjects` distingue les trois, et c'est pour cela qu'il est publié.
+    // Le tableau IMBRIQUÉ (`pts`) se comble aussi, même raison que `spans` ci-dessus.
+    objectiveObjects: (raw.objectiveObjects ?? []).map((o) => ({ ...o, pts: o.pts ?? [] })),
     geometry: raw.geometry ?? [],
     // Les TRACTIONS de grappin (schéma 8) : fenêtre mesurée [t0, t1] par vie + point
     // d'accroche en coordonnées monde. Absent = aucune traction lue sur ce film : rien

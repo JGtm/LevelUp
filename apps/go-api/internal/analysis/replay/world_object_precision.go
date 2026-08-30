@@ -52,6 +52,8 @@ func installWorldObjectPrecision(e filmdec.MapQuantEntry, filmDir string) (resto
 		return func() {}
 	}
 	prev := filmdec.WorldObjectPrecision
-	filmdec.SetWorldObjectPrecisionFromLayout(filmdec.I0Layout{AxisW: e.AxisWidths})
+	// e.Layout() porte les largeurs d'axe ET la largeur de l'index de région (2 bits sur
+	// Live Fire — lot C catalogues, 2026-08-27) : les deux sont des constantes par carte.
+	filmdec.SetWorldObjectPrecisionFromLayout(e.Layout())
 	return func() { filmdec.WorldObjectPrecision = prev }
 }

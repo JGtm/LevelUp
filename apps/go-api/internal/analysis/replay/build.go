@@ -77,8 +77,18 @@ type Options struct {
 	// LES STATISTIQUES VOYAGENT AVEC LA LISTE, et il le faut : elles portent le decoupage de
 	// bloc CALIBRE sur ce film. Une liste vide sans elles serait indistinguable d'un film
 	// sans equipement, alors que ce peut etre un film dont la calibration a echoue.
-	Placements     []filmdec.EquipmentPlacement
-	PlacementStats filmdec.EquipmentPlacementStats
+	// WeaponChanges : les PRISES ET LACHERS d'arme lus dans le flux delta (cf.
+	// filmdec/held_weapon_changes.go). Entree de DONNEES, comme GrappleReads. Absente =
+	// rejeu sans ramassages — jamais des ramassages devines.
+	WeaponChanges []filmdec.HeldWeaponChange
+	// EquipmentChanges / EquipmentChangeStats : les RAMASSAGES ET CONSOMMATIONS d'equipement
+	// lus dans le flux delta (cf. filmdec/equipment_changes.go). Entree de DONNEES, comme
+	// WeaponChanges. Les stats voyagent avec parce qu'elles portent le TEMOIN DE COMPLETUDE
+	// (compteur de rotation) : sans elles, la couverture ne saurait pas dire ce qui manque.
+	EquipmentChanges     []filmdec.EquipmentChange
+	EquipmentChangeStats filmdec.EquipmentChangeStats
+	Placements           []filmdec.EquipmentPlacement
+	PlacementStats       filmdec.EquipmentPlacementStats
 	// Pads : ce que le film rend sur les SOCLES — armes au sol (`ti=42`) et power-ups (`ti=37`),
 	// TROIS lectures chacun, `Scanned` disant qu'elles ont abouti (cf. build_ground_weapons.go).
 	// Entree de DONNEES, comme Placements. Absente = rejeu sans socles — jamais des socles devines.
@@ -95,14 +105,16 @@ type Options struct {
 	// player_index.go). Second maillon du pont, et lui aussi une lecture. Absente, aucun tir
 	// ni lancer n'est publié.
 	PlayerIndices PlayerIndexTable
-	// Objectives : les actions d'objectif NOMMÉES ET IDENTIFIÉES (cf. objectives.go).
+	// Objectives : les actions d'objectif NOMMÉES ET IDENTIFIÉES PAR MANCHE (cf. objectives.go).
 	// Entrée de DONNÉES, comme Loadouts et Grenades.
 	//
-	// POURQUOI DÉJÀ IDENTIFIÉES, et pas décodées ici : le pont slot -> xuid a besoin des
-	// lignes de match (`match_participants`), donc de la BASE. Ce paquet et le CLI hors
-	// ligne n'en ouvrent aucune — l'appelant qui l'a résout le pont et fournit le
-	// résultat, exactement comme `objectiveevents.Extract` reçoit son `Roster`.
-	// Absente = rejeu sans calque d'objectifs.
+	// POURQUOI DÉJÀ IDENTIFIÉES, et pas décodées ici : le NOMMAGE et le pont d'identité sont un
+	// second décodage du statborg que l'appelant fait UNE fois (cf. replaybuild/matchfacts.go),
+	// et qu'il fait servir aussi à la courbe de score — les refaire ici rejouerait ce décodage.
+	// Le pont est PAR MANCHE, par les seuls INSTANTS DE MORT (aucune base, JUSTE en multi-manche
+	// où le slot d'entité est réattribué) — comme la couronne VIP et le drapeau vivant, à cette
+	// nuance près qu'eux se résolvent dans ce paquet parce qu'ils lisent `opt.Deaths` déjà scanné
+	// ici. Absente = rejeu sans calque d'objectifs.
 	Objectives []objectiveevents.IdentifiedEvent
 	// Score : de quoi construire LA COURBE DE SCORE (entrée de DONNÉES comme Objectives ; cf. score_timeline.go et build_score.go). Nil = ni calque ni couverture de score.
 	Score *ScoreInput
@@ -113,6 +125,16 @@ type Options struct {
 	// build_zones.go). Le CATALOGUE de zones vient de l'appelant — c'est lui qui sait joindre la
 	// carte du match — et il commande le balayage : sans zones, `ti=13` n'est pas lu.
 	Zone ZoneInput
+	// Vip : de quoi construire LA COURONNE VIP (entrée de DONNÉES comme Flag ; cf. vip_crown.go).
+	// `Scanned` faux = ni couronne ni couverture. La GARDE DE MODE est chez l'appelant : `comp
+	// 22 A` vaut `flag_grabs` en CTF, donc seul un appelant qui reconnaît le match VIP par
+	// `game_variant_name` le pose — ce paquet ne devine aucun mode.
+	Vip VipInput
+	// Skull : de quoi construire LE PORTEUR DU CRANE d'Oddball (entrée de DONNÉES comme Vip ; cf.
+	// skull_carries.go). `Scanned` faux = ni calque ni couverture. La GARDE DE MODE est chez
+	// l'appelant : `comp 0 A` est le score de mode de tout mode, donc seul un appelant qui
+	// reconnaît le match Oddball (par `game_variant_name`) le pose — ce paquet ne devine aucun mode.
+	Skull SkullInput
 	// NeutralDeaths : les morts que personne ne revendique, AVEC LEUR TYPE DÉJÀ RÉSOLU
 	// (cf. NeutralDeath). Entrée de DONNÉES comme Deaths et Objectives.
 	//
@@ -123,6 +145,13 @@ type Options struct {
 	// les couples de `killpos.go`. L'appelant décode, résout le pictogramme du titre, fournit.
 	// Absente = rejeu dont les lignes de mort neutres gardent leur repère générique.
 	NeutralDeaths []NeutralDeath
+	// Kills : les frags/assistances RÉSOLUS EN IDENTITÉ pour la jointure avec les épisodes
+	// d'état actif (camo, surbouclier — cf. equipment_episode_kills.go). Entrée de DONNÉES
+	// comme NeutralDeaths, MÊME RAISON : la source de dégât/crédit a un seul propriétaire
+	// dans le dépôt (`killsource`), et le redécoder ici en ferait un second décodeur du même
+	// fait. `Kills.Read=false` (repli zéro) publie `Coverage.Equipment.KillsRead=false` —
+	// jamais un `EquipmentEpisode.K/A` à zéro qui se lirait comme une mesure.
+	Kills KillsInput
 	// FilmClockOriginUS est l'horodatage moteur du PREMIER PAQUET du film, c'est-à-dire le
 	// zéro de l'horloge sur laquelle les highlight events sont datés (cf. origin.go). Entrée
 	// de DONNÉES, comme Loadouts et Deaths. Zéro = origine incalculable : le document ne
@@ -189,6 +218,17 @@ func BuildFromFilm(matchID, titleSlug, filmDir string, opt Options) (ReplayDocum
 		scan = *opt.Scan
 	}
 	scan.WorldRange = &worldRange
+	// Le DÉCOUPAGE d'i0 vient du CATALOGUE, comme les bornes dont il est déduit — le
+	// découpage lu dans le film (DetectI0Layout) est le contrôle, jamais l'entrée (doctrine
+	// écrite sur WorldObjectPrecision, appliquée au bipède depuis le lot C catalogues
+	// 2026-08-27 : sur une carte à plus de 2 régions, l'auto-détection lit l'index de
+	// région comme un bit d'axe et le décodeur rejetterait tous les records — Live Fire).
+	// Un opt.Scan qui force déjà son Layout (instruments) reste maître ; une entrée sans
+	// largeurs (catalogue antérieur au champ) laisse l'auto-détection, comme le chemin
+	// world-object laisse son défaut — jamais des largeurs nulles.
+	if lay := opt.MapQuant.Layout(); scan.Layout == nil && lay.Valid() {
+		scan.Layout = &lay
+	}
 	// Le cap de visée (Point.H) se lit dans le MÊME record que la position : la capture des
 	// directions est donc toujours active pour l'artefact. Elle n'altère aucune position
 	// (lecture seule après le vec3 d'i0).
@@ -212,6 +252,22 @@ func BuildFromFilm(matchID, titleSlug, filmDir string, opt Options) (ReplayDocum
 		loadouts = nil
 	}
 	opt.Loadouts = loadouts
+	// PRISES ET LACHERS D'ARME : le composant d'identite d'arme n'entre au masque du flux
+	// delta que lorsqu'un emplacement CHANGE (cf. filmdec/held_weapon_changes.go). Le
+	// predicat de spawn vient des loadouts qu'on vient de lire : sans lui, la PREMIERE
+	// emission d'un emplacement serait comptee comme une prise alors qu'elle peut n'etre que
+	// la re-annonce d'une arme deja portee. Absence non fatale — le rejeu sort sans
+	// ramassages, jamais avec des ramassages devines.
+	weaponChanges, wStats, err := filmdec.ScanFilmHeldWeaponChanges(filmDir, spawnSetFrom(loadouts))
+	if err != nil {
+		slog.Warn("changements d arme illisibles — rejeu sans ramassages", "err", err, "filmDir", filmDir)
+		weaponChanges = nil
+	} else {
+		slog.Info("ramassage : changements d arme lus",
+			"recordsDelta", wStats.Records, "masquePorteur", wStats.WithComponent,
+			"emissions", wStats.Emissions, "repetitions", wStats.Repeats)
+	}
+	opt.WeaponChanges = weaponChanges
 	// Inventaire complet : MÊMES images-clés, MÊME horloge, même record de biped que les armes
 	// portées. Absence non fatale — un rejeu sans grenades reste un rejeu valide.
 	inventory, invStats, err := ScanFilmKeyframeInventory(filmDir, loadoutFamilies(), 0)
@@ -256,6 +312,23 @@ func BuildFromFilm(matchID, titleSlug, filmDir string, opt Options) (ReplayDocum
 			"lues", aStats.Read, "illisibles", aStats.Unread, "sansIdentite", aStats.Gated)
 	}
 	opt.AbilityRanks = abilityRanks
+	// RAMASSAGES ET CONSOMMATIONS D'EQUIPEMENT : meme composant qu'au-dessus (i48), autre
+	// question — non plus « que porte ce joueur » mais « que vient-il de ramasser ou d'user ».
+	// Le temoin de NAISSANCE vient des positions BRUTES lues plus haut : sans lui, une
+	// reapparition equipee serait comptee comme un ramassage, ce qui double le decompte sur
+	// les modes ou les joueurs renaissent equipes. Absence non fatale.
+	equipChanges, eStats, err := filmdec.ScanFilmEquipmentChanges(filmDir, birthOfLives(positions))
+	if err != nil {
+		slog.Warn("changements d equipement illisibles — rejeu sans ramassages d equipement",
+			"err", err, "filmDir", filmDir)
+		equipChanges, eStats = nil, filmdec.EquipmentChangeStats{}
+	} else {
+		slog.Info("equipement : changements lus",
+			"emissions", eStats.Walk.Read, "vies", eStats.Lives,
+			"ramassages", eStats.Taken, "consommations", eStats.Spent,
+			"reapparitions", eStats.Spawned, "manqueesEstimees", eStats.MissedEstimate)
+	}
+	opt.EquipmentChanges, opt.EquipmentChangeStats = equipChanges, eStats
 	// Etat du camouflage : la voie i28 queue[1], lue dans les paquets DELTA, sur la MEME
 	// horloge (cf. filmdec/camo_state.go). Absence non fatale — le rejeu sort sans episodes
 	// de camouflage, jamais avec des episodes devines.
@@ -422,7 +495,7 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 
 	clock := replayScoreClock(&doc, interval, matchID)
 	objCov := attachObjectiveActions(&doc, opt.Objectives, clock)
-	scoreCov := attachScoreTimeline(&doc, opt.Score, clock, matchID)
+	scoreCov := attachScoreTimeline(&doc, opt.Score, opt.Deaths, clock, matchID)
 
 	// L'ETAT ACTIF des deux familles mesurees (camo, surbouclier) : episodes dates par
 	// vie, fermes a la mort quand rien n'a mesure la fin (cf. equipment_episodes.go).
@@ -435,11 +508,16 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 		slog.Warn("rejeu : lectures camo NON BINAIRES ignorees — l'interrupteur mesure ne connait que 0 et 4095",
 			"lectures", camoNonBinary)
 	}
+	// Les FRAGS SOUS EFFET ACTIF : jointure des episodes avec les kills resolus par
+	// l'appelant (cf. equipment_episode_kills.go). AVANT la couverture, qui publie
+	// killsRead a cote des compteurs.
+	killsRead := attachAllEquipmentKills(doc.EquipmentEpisodes, opt.Kills, own.SlotXUID, doc.OriginMs, interval)
 
 	doc.Coverage = buildCoverage(shotCov, grenCov, objCov, own, doc.OriginMs != nil, scoreCov)
 	// La couverture des episodes d'equipement se publie AVEC eux : « N episodes » sans
 	// « sur M vies » se lirait comme une exhaustivite.
 	doc.Coverage.Equipment = equipmentCoverage(doc.EquipmentEpisodes, doc.Tracks)
+	doc.Coverage.Equipment.KillsRead = killsRead
 	// Les TRACTIONS de grappin : fenetre mesuree par vie + ancre en coordonnees monde
 	// (cf. grapple_lines.go). L'ancre exige les bornes de la carte : sans MapQuant,
 	// aucune traction (regle map_bounds.go — pas de bornes, pas de coordonnee monde).
@@ -458,18 +536,49 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	}
 	// Les POSES d'equipement : famille par le manifeste du titre, poseur et cap MESURES sur le
 	// nuage NON decime (une pose dure quelques dizaines de millisecondes ; la decimation
-	// perdrait le record contemporain qui designe le poseur).
+	// perdrait le record contemporain qui designe le poseur). La FIN OBSERVEE (schema 28)
+	// vient du recensement ti=37 deja lu par la chaine des socles (opt.Pads.Powerups).
 	doc.EquipmentPlacements, doc.Coverage.Placements = buildEquipmentPlacements(
 		opt.Placements, opt.PlacementStats, sorted,
 		replayClock{origin: origin, step: step, frames: doc.FrameCount,
-			families: opt.Labels.EquipmentFamilies})
+			families: opt.Labels.EquipmentFamilies},
+		opt.Pads.Powerups.Keyframes)
 	logPlacementCoverage(doc.Coverage.Placements)
+	// LES PRISES ET LES LACHERS d'arme, sur l'axe de frames du document. Les re-annonces d'une
+	// arme deja portee au spawn sont ECARTEES ici : ce ne sont pas des ramassages.
+	var wcCov WeaponChangeCoverage
+	doc.WeaponChanges, wcCov = buildWeaponChanges(opt.WeaponChanges, origin, step)
+	doc.Coverage.WeaponChanges = &wcCov
+	slog.Info("rejeu : prises et lachers d arme",
+		"decodes", wcCov.Decoded, "publies", wcCov.Published,
+		"prises", wcCov.Taken, "lachers", wcCov.Dropped, "echanges", wcCov.Swapped,
+		"reannonces", wcCov.Restated, "avantOrigine", wcCov.BeforeOrigin)
 	// Les SOCLES — armes au sol ET power-ups —, sur le meme nuage NON decime (build_ground_weapons.go).
-	attachWeaponPads(&doc, opt.Pads, sorted,
+	gwObjs := attachWeaponPads(&doc, opt.Pads, sorted,
 		replayClock{origin: origin, step: step, frames: doc.FrameCount}, opt.Labels)
+	// LES ARMES AU SOL INDIVIDUELLES (schema 27) : la meme chaine que les socles, publiee objet
+	// par objet, LIEE aux lachers et aux prises du flux delta, et bornee par l observation —
+	// jamais par une table de durees (document_ground_weapon_items.go).
+	var gwiCov GroundWeaponItemsCoverage
+	doc.GroundWeapons, gwiCov = buildGroundWeaponItems(gwObjs, opt.WeaponChanges, sorted,
+		replayClock{origin: origin, step: step, frames: doc.FrameCount})
+	doc.Coverage.GroundWeaponItems = &gwiCov
+	logGroundWeaponItems(gwiCov)
 	// La VIE DES DRAPEAUX, sur les pistes PUBLIEES (le drapeau porte est a la position de son
 	// porteur, et c'est celle-la que le client dessine) — cf. build_objectives_live.go.
 	attachFlagCarries(&doc, opt, own, replayClock{origin: origin, step: step, frames: doc.FrameCount})
+	// LA COURONNE VIP, sur les pistes PUBLIEES (la couronne est a la position de son porteur) —
+	// gardee de mode par l'appelant (opt.Vip.Scanned), cf. vip_crown.go.
+	attachVipCrown(&doc, opt, own, replayClock{origin: origin, step: step, frames: doc.FrameCount})
+	// LE PORTEUR DU CRANE d'Oddball, sur les pistes PUBLIEES (le crane est a la position de son
+	// porteur) — garde de mode par l'appelant (opt.Skull.Scanned), cf. skull_carries.go. Le crane
+	// LIBRE (attachObjectiveObjects, ci-dessous) reste la couche POSITION ; ce calque-ci est la
+	// couche VIVANTE par-dessus.
+	attachSkullCarries(&doc, opt, own, replayClock{origin: origin, step: step, frames: doc.FrameCount})
+	// LES OBJETS D'OBJECTIF LIBRES SONT POSÉS HORS DE LA GARDE DE MODE DU DRAPEAU, et c'est
+	// délibéré : ce calque ne lit ni le statborg ni le fil des morts, donc rien de ce que cette
+	// garde protège. La placer devant l'éteindrait sur Oddball — là où il sert.
+	attachObjectiveObjects(&doc, opt, replayClock{origin: origin, step: step, frames: doc.FrameCount})
 	// L'ETAT DES ZONES, sur la MEME horloge que les positions et sur les captures DEJA posees
 	// (`doc.Objectives`) — cf. build_zones.go.
 	attachZoneStates(&doc, opt, replayClock{origin: origin, step: step, frames: doc.FrameCount})
@@ -527,6 +636,14 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 		buildAbilityReads(opt.AbilityRanks, opt.Inventory, origin, step), doc.Tracks)
 	// LA PALETTE SE CLASSE AVANT DE NOMMER, et un film ambigu ne recoit AUCUN nom : le
 	// meme rang designe des capacites differentes d'une palette a l'autre.
+	// LES RAMASSAGES ET LES CONSOMMATIONS d'equipement, sur le meme axe et avec les MEMES
+	// rangs que doc.Abilities : c'est AbilityLabels qui les nomme, ou pas. Les annonces de
+	// reapparition sont ECARTEES ici — ce ne sont pas des ramassages.
+	ecChanges, ecCov := buildEquipmentChanges(
+		opt.EquipmentChanges, opt.EquipmentChangeStats, origin, step)
+	doc.EquipmentChanges = keepEquipmentChangesOfPublishedTracks(ecChanges, doc.Tracks)
+	doc.Coverage.EquipmentChanges = &ecCov
+	logEquipmentChangeCoverage(ecCov)
 	palette := classifyAbilityPalette(doc.Abilities, opt.Labels.Abilities)
 	doc.AbilityLabels = abilityLabelsUsed(doc.Abilities, palette)
 	slog.Info("rejeu : palette de capacites",

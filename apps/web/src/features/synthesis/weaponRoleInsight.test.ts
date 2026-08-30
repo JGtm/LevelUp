@@ -97,6 +97,7 @@ describe('insightFromRoles', () => {
   it('expose l\'ensemble des rôles non-combat exclus', () => {
     expect([...NON_COMBAT_WEAPON_ROLES].sort()).toEqual([
       'environmental',
+      'equipment',
       'other',
       'turret',
       'unattributed',

@@ -324,12 +324,48 @@ func TestDecorateMedalEvents_ResolutionEtRepli(t *testing.T) {
 
 // TestKillFeedWeaponCoverage : le compteur ne regarde QUE les kills. Un feed de 4 events
 // dont 3 kills et 1 médaille compte 3, jamais 4 — sinon le taux publié serait faux.
+// Le headshot compte PLUS LARGE que l'icône (G.1) : events[1] a un headshot connu (faux)
+// sans aucune icône d'arme — les deux compteurs doivent diverger.
 func TestKillFeedWeaponCoverage(t *testing.T) {
 	events := feedFixture()
 	events[0].WeaponImageURL = "/x.png"
+	hs0, hs1 := true, false
+	events[0].Headshot = &hs0
+	events[1].Headshot = &hs1
 	events[3].WeaponImageURL = "/y.png" // médaille : ne doit compter ni au numérateur ni au dénominateur
-	avec, total := killFeedWeaponCoverage(events)
-	if avec != 1 || total != 3 {
-		t.Errorf("couverture = %d/%d, attendu 1/3", avec, total)
+	avec, avecHeadshot, total := killFeedWeaponCoverage(events)
+	if avec != 1 || avecHeadshot != 2 || total != 3 {
+		t.Errorf("couverture = icone %d / headshot %d / total %d, attendu 1/2/3", avec, avecHeadshot, total)
+	}
+}
+
+// TestDecorateKillFeed_PoseHeadshotIndependammentDeLIcone : le headshot se lit dès que la
+// source est connue et non ambiguë (Q21b), MÊME quand l'icône ne résout rien — les deux
+// informations viennent de la même ligne mais ne se conditionnent pas l'une l'autre.
+// (A,1000) : headshot vrai, SANS adapter (assetURL nil) → Headshot posé, arme absente.
+// (B,2000) : headshot faux (MESURÉ, jamais absent) → pointeur non nil vers false.
+// (A,3000) : aucune source appariée → Headshot reste nil, jamais false par défaut.
+func TestDecorateKillFeed_PoseHeadshotIndependammentDeLIcone(t *testing.T) {
+	events := feedFixture()
+	sources := []domain.KillSourceRaw{
+		{XUID: "A", TimeMS: 1000, SourceTag: 0x11, Headshot: true},
+		{XUID: "B", TimeMS: 2000, SourceTag: 0x22, Headshot: false},
+	}
+
+	decorateKillFeed(context.Background(), events, killFeedInputs{
+		sources: sources, scoreboard: feedScoreboard(), // assetURL volontairement absent
+	})
+
+	if events[0].Headshot == nil || !*events[0].Headshot {
+		t.Errorf("kill (A,1000) : headshot = %v, attendu true (posé même sans adapter)", events[0].Headshot)
+	}
+	if events[0].WeaponImageURL != "" {
+		t.Errorf("kill (A,1000) : arme posée (%q) sans adapter", events[0].WeaponImageURL)
+	}
+	if events[1].Headshot == nil || *events[1].Headshot {
+		t.Errorf("kill (B,2000) : headshot = %v, attendu pointeur vers false (mesuré, pas absent)", events[1].Headshot)
+	}
+	if events[2].Headshot != nil {
+		t.Errorf("kill (A,3000) sans source appariée : headshot = %v, attendu nil (non mesurable)", events[2].Headshot)
 	}
 }

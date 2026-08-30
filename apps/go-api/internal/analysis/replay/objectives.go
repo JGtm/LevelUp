@@ -22,12 +22,15 @@ import (
 // conversion est donc une DIVISION par le pas de la grille — pas d'appariement, pas de
 // fenetre de tolerance, pas de seuil.
 //
-// # Le pont d'identite est deja fait, et il n'est pas le numero de slot
+// # Le pont d'identite est deja fait, PAR MANCHE, et il n'est pas le numero de slot
 //
-// Les evenements arrivent deja identifies par xuid (`objectiveevents.IdentifiedEvent`). Ce
-// n'est pas un detail de commodite : le slot d'entite statborg et le slot de biped du rejeu
-// sont DEUX ESPACES DIFFERENTS, et les confondre poserait les actions sur les mauvais
-// joueurs sans que rien ne le signale (etat de l'art §20.1).
+// Les evenements arrivent deja identifies par xuid (`objectiveevents.IdentifiedEvent`), resolus
+// PAR MANCHE par les seuls INSTANTS DE MORT ([objectiveevents.ResolveRoundIdentity]) chez
+// l'appelant hors ligne — comme la couronne VIP, le drapeau vivant et le porteur du crane. Ce
+// n'est pas un detail de commodite : le slot d'entite statborg et le slot de biped du rejeu sont
+// DEUX ESPACES DIFFERENTS, et le slot d'entite est REATTRIBUE d'une manche a l'autre — les
+// confondre, ou resoudre par les TOTAUX du match, poserait les actions sur les mauvais joueurs
+// apres la bascule de manche sans que rien ne le signale (etat de l'art §20.1).
 
 // ObjectiveAction est une action d'objectif posee sur l'axe de temps du rejeu.
 type ObjectiveAction struct {
@@ -129,9 +132,11 @@ func dropUnpublishedActions(actions []ObjectiveAction, tracks []Track, cov Layer
 // attachObjectiveActions pose le calque des actions d'objectif sur le document et rend sa
 // couverture.
 //
-// LES ACTIONS ARRIVENT DEJA IDENTIFIEES PAR XUID : leur pont passe par les lignes de match, donc
-// par la base, que ce paquet n'ouvre pas (cf. Options.Objectives). L'horloge, elle, demande une
-// soustraction — celle de l'origine (cf. buildObjectiveActions et build_score.go).
+// LES ACTIONS ARRIVENT DEJA IDENTIFIEES PAR XUID, ET PAR MANCHE : leur pont passe desormais par les
+// seuls INSTANTS DE MORT ([objectiveevents.ResolveRoundIdentity]), resolu chez l'appelant hors
+// ligne (cf. Options.Objectives) — aucune base, et JUSTE en multi-manche (le slot d'entite est
+// reattribue d'une manche a l'autre). L'horloge, elle, demande une soustraction — celle de
+// l'origine (cf. buildObjectiveActions et build_score.go).
 func attachObjectiveActions(doc *ReplayDocument, evs []objectiveevents.IdentifiedEvent, c scoreClock) LayerCoverage {
 	actions, cov := buildObjectiveActions(evs, c)
 	doc.Objectives, cov = dropUnpublishedActions(actions, doc.Tracks, cov)

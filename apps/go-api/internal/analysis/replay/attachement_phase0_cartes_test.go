@@ -34,6 +34,45 @@ var attCartes = map[string]struct{ Nom, MapID string }{
 	"53ce4390": {"Behemoth", "e9a5a982-6c4e-4db6-9383-7b03671460eb"},
 	"084a804d": {"Fortitude Heavies", "305b1bdd-9a7b-4975-bacf-8bd63c8c13d2"},
 	"a349fea8": {"Fragmentation Heavies", "0d849a52-fedb-4aea-b5a3-caee268f1f49"},
+
+	// LES SEPT FILMS ODDBALL DU RECENSEMENT D1, relevés le 2026-08-27 par
+	// `cmd/zone-attribution -census` (lecture seule de `match_registry`, sortie figée dans
+	// `registre_film/D1_recensement_modes.log`) — et non plus sur l'instantané parquet, qui
+	// date de juillet et ne connaît pas ces matchs.
+	//
+	// LES SEPT SONT LÀ, Y COMPRIS LES TROIS QUE LES CATALOGUES NE COUVRENT PAS. Live Fire n'a
+	// pas de bornes de quantification, Lattice n'est pas au catalogue d'objectifs : ces trois
+	// films sortiront par le chemin NON EXPLOITABLE de l'instrument, qui NOMME la cause. Les
+	// omettre ici ferait disparaître l'exclusion au lieu de la mesurer.
+	"24dbb67d": {"Recharge - Ranked", "336b5174-3579-4fd8-b2f0-922e4a5f7628"},
+	"43716616": {"Smallhalla", "98783453-ce40-4020-9e87-62099a290b62"},
+	"51ebbc0f": {"Banished Narrows", "9ad226d8-8947-4c5b-95bc-d220187698c1"},
+	"60ae07c4": {"Live Fire - Ranked", "309253f8-7a75-48ff-83e1-e7fb3db2ac47"},
+	"92f18088": {"Lattice - Ranked", "1a6cfc2e-ec86-48e1-9464-1ce1bff6ed48"},
+	"c88ec007": {"Live Fire", "6c01f693-c968-4a71-b157-efc35ffcf71f"},
+	"d9781168": {"Dredge", "e4bb06db-065f-4902-b93b-d8dac315eac4"},
+
+	// LES NEUF FILMS ASSAUT DU LOT A, releves le 2026-08-27 sur `match_registry` (lecture
+	// seule via `cmd/diag_q`, depot principal) — meme convention que les sept films Oddball
+	// ci-dessus : TOUS les films du corpus entrent ici, y compris ceux que les catalogues ne
+	// couvrent pas, pour que l'exclusion soit MESUREE par l'instrument et jamais presumee.
+	"35b75a31": {"Origin", "b302eb62-da9a-480b-a409-3c89df8c1a04"},
+	"ce083875": {"Origin", "b302eb62-da9a-480b-a409-3c89df8c1a04"},
+	"69b16f5d": {"Origin", "b302eb62-da9a-480b-a409-3c89df8c1a04"},
+	"3d58eb37": {"Absolution", "78da545f-a168-4a5e-9c8d-dd379067c352"},
+	"34bb3bc8": {"Rat's Nest", "133c0185-24ed-4bc2-b834-62db5c936257"},
+	"df8fcbef": {"Curfew", "63d634be-0319-489d-8c21-9c4e012f664f"},
+	"c75f33b8": {"Curfew", "63d634be-0319-489d-8c21-9c4e012f664f"},
+	"9f57c612": {"Curfew", "63d634be-0319-489d-8c21-9c4e012f664f"},
+	"1c01e34f": {"Urban Raid", "be848f91-3d87-4b80-8eb9-df3b52cb8d10"},
+
+	// LES TROIS FILMS VIP DU LOT RESOLUTION, releves le 2026-08-27 sur les payloads bruts
+	// GetMatchStats des trois matchs (MapVariant.AssetId ; meme convention que ci-dessus).
+	// Deux cartes seulement : Bazaar (deux films) et Catalyst — toutes deux au catalogue de
+	// bornes `map_quant_bounds.json`, donc qualifiables. Mode GameVariantCategory=23.
+	"00761d27": {"Bazaar", "3e1e4cec-4f2c-44c6-b8d2-96b85c66c702"},
+	"9903b1c5": {"Bazaar", "3e1e4cec-4f2c-44c6-b8d2-96b85c66c702"},
+	"99553e4a": {"Catalyst", "f7e8cde9-0c0a-487c-94a3-61bfa0f20465"},
 }
 
 // attRefDir rend le répertoire des données de référence du titre.
@@ -50,12 +89,12 @@ func attRefDir(root string) string {
 // L'APPELANT DOIT DÉTENIR `LockProcessDecode` ET RESTAURER `WorldObjectPrecision` : c'est un
 // global de paquet, et le correctif du 2026-08-15 a mesuré ce que coûte de l'oublier (tous
 // les objets déquantifiés aux largeurs de la carte précédente).
-func attBornes(t *testing.T, root, id string) (filmdec.Vec3Range, bool) {
+func attBornes(t *testing.T, root, id string) (filmdec.Vec3Range, filmdec.I0Layout, bool) {
 	t.Helper()
 	c, ok := attCartes[id]
 	if !ok {
 		t.Logf("%s : carte inconnue du fixture — bornes indisponibles", id)
-		return filmdec.Vec3Range{}, false
+		return filmdec.Vec3Range{}, filmdec.I0Layout{}, false
 	}
 	cat, err := filmdec.LoadMapQuantCatalog(filepath.Join(attRefDir(root), "map_quant_bounds.json"))
 	if err != nil {
@@ -64,11 +103,14 @@ func attBornes(t *testing.T, root, id string) (filmdec.Vec3Range, bool) {
 	e, err := cat.Lookup(c.Nom)
 	if err != nil {
 		t.Logf("%s : carte %q absente du catalogue de bornes (%v)", id, c.Nom, err)
-		return filmdec.Vec3Range{}, false
+		return filmdec.Vec3Range{}, filmdec.I0Layout{}, false
 	}
-	filmdec.SetWorldObjectPrecisionFromLayout(filmdec.I0Layout{AxisW: [3]uint{
-		uint(e.AxisWidths[0]), uint(e.AxisWidths[1]), uint(e.AxisWidths[2])}})
-	return e.Range(), true
+	// e.Layout() porte largeurs d'axe, largeur d'index de région et région attendue —
+	// trois constantes par carte du MÊME catalogue (Live Fire : région 1 sur 2 bits, lot C
+	// catalogues 2026-08-27). Il est rendu à l'appelant pour le chemin BIPÈDE, et installé
+	// ici pour le chemin WORLD-OBJECT, comme avant.
+	filmdec.SetWorldObjectPrecisionFromLayout(e.Layout())
+	return e.Range(), e.Layout(), true
 }
 
 // attMarqueurs rend les objectifs PONCTUELS d'un rôle donné sur la carte d'un film. Rend une

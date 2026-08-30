@@ -92,6 +92,18 @@ var labelNames = map[int32]string{
 	// de Bastion et des collines. Le marqueur, lui, n'attribue aucun rôle (même règle que le
 	// marqueur de Bastion) et son nom n'est pas retrouvé : il n'entre pas dans cette table.
 	-1624244313: "firefight_objective",
+	// --- Land Grab (cable au lot C catalogues, 2026-08-27 — ex-lot L) ---
+	//
+	// Les deux noms sont RESOLUS par la chasse murmur3 rejouable (TestHuntLabels, radicaux
+	// landgrab/land_grab sur les .mvar versionnes du dump) : Cliffhanger porte 9 volumes
+	// [landgrab_include, landgrab_zone] AVEC forme et 9 marqueurs ponctuels
+	// [landgrab_include, -941529218] — exactement le motif volume+marqueur de Bastion et de
+	// KOTH (le releve du 2026-08-19, en-tete des labels de KOTH ci-dessous, l'avait deja
+	// nomme). Le census du catalogue (2026-08-27) compte 29 entrees porteuses du marqueur.
+	// Le marqueur -941529218 n'attribue AUCUN role et son nom n'est pas retrouve : il
+	// n'entre pas dans cette table (meme regle que les marqueurs de Bastion et de KOTH).
+	-886053664: "landgrab_include",
+	996801386:  "landgrab_zone",
 }
 
 // LabelName retourne le nom d'un label, ou "" s'il n'est pas résolu.
@@ -158,6 +170,12 @@ const (
 	RoleTotalControlZone Role = "totalcontrol_zone"
 	// RoleFirefightObjective est la zone d'objectif d'une manche de Firefight (PvE).
 	RoleFirefightObjective Role = "firefight_objective"
+	// RoleLandGrabZone est une zone de Land Grab. ATTENTION AU VIVIER, comme pour Total
+	// Control et la colline : le fichier declare 9 zones par carte quand une VAGUE du mode
+	// n'en active que 3 (trois vagues successives). Le choix des 3 actives n'est PAS dans
+	// le fichier : ce role publie des FORMES, jamais un etat. Aucun film Land Grab
+	// n'existe (expire) — le cablage sert les matchs FUTURS, par degradation d'absence.
+	RoleLandGrabZone Role = "landgrab_zone"
 	// RoleHill est la colline de King of the Hill — attribuee par le hash de ROLE
 	// LabelHashHillRole (voir isHill), jamais par un nom.
 	RoleHill Role = "hill"
@@ -182,6 +200,8 @@ var roleByLabel = map[string]Role{
 	// `totalcontrol_include`, lui, N'EST PAS ici : c'est le filtre de mode, pas l'objet.
 	"totalcontrol_zone":   RoleTotalControlZone,
 	"firefight_objective": RoleFirefightObjective,
+	// `landgrab_include` n'est pas ici non plus : filtre de mode, pas l'objet.
+	"landgrab_zone": RoleLandGrabZone,
 }
 
 // Objective est un objet d'objectif identifié.

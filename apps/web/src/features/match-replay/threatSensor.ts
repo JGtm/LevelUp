@@ -158,8 +158,12 @@ export interface SensorTime {
 export interface SensorScene {
   /** Toutes les vies : le balayage filtre lui-même sur la fenêtre de vie. */
   lives: readonly ReplayTrackReady[]
-  /** Camp d'une vie (`team_side` de la base) ; null = camp inconnu, donc jamais un ennemi. */
-  sideOfSlot: (slot: number) => string | null
+  /**
+   * Camp de la vie qui occupe un slot À UNE IMAGE (`team_side` de la base) ; null = camp inconnu,
+   * donc jamais un ennemi. La frame est nécessaire parce qu'un slot de biped est réattribué
+   * entre manches : le poseur se lit à l'instant de sa POSE, la cible à l'instant du PING.
+   */
+  sideOfSlot: (slot: number, frame: number) => string | null
 }
 
 /** L'onde du ping courant : où elle en est de sa course, et ce qu'il lui reste d'opacité. */
@@ -179,6 +183,12 @@ export interface SensorReveal {
   y: number
   /** Slot du POSEUR : la marque porte SA couleur d'équipe — c'est son camp qui voit. */
   owner: number
+  /**
+   * Image de la POSE du capteur (`s.t0`) : c'est l'image à laquelle résoudre la couleur du
+   * poseur — le slot `owner` peut appartenir à un autre joueur à l'image courante (manche
+   * suivante), et le poseur, lui, était vivant quand il a posé.
+   */
+  ownerFrame: number
   /** Temps écoulé depuis le ping qui l'a révélée, en ms — dans [0, SENSOR_REVEAL_MS]. */
   sinceMs: number
 }
@@ -242,7 +252,9 @@ export function sensorReveals(
     // SANS POSEUR MESURÉ, AUCUNE RÉVÉLATION : on ignore le camp du capteur, donc personne
     // n'est « ennemi » de lui. Le ping, lui, continue de se dessiner.
     if (s.owner < 0) continue
-    const side = scene.sideOfSlot(s.owner)
+    // LE POSEUR SE LIT À L'INSTANT DE LA POSE (`s.t0`) : il était alors vivant sur ce slot, et
+    // c'est SON camp qui voit. À l'image courante, le slot pourrait déjà être libre ou à un autre.
+    const side = scene.sideOfSlot(s.owner, s.t0)
     if (side === null) continue
     const sinceMs = sensorPingAgeMs((time.frame - s.t0) * time.frameMs)
     if (sinceMs > SENSOR_REVEAL_MS) continue
@@ -254,7 +266,9 @@ export function sensorReveals(
       // avant toute dichotomie de position (cf. le coût en tête).
       if (!isAliveAt(life, pingFrame)) continue
       if (!isAliveAt(life, time.frame)) continue
-      const other = scene.sideOfSlot(life.slot)
+      // La CIBLE se lit à l'instant du PING, où elle est vivante (contrôle ci-dessus) : c'est le
+      // camp de la vie qui occupe alors ce slot, jamais celui d'une autre manche.
+      const other = scene.sideOfSlot(life.slot, pingFrame)
       if (other === null || other === side) continue
       const atPing = positionAt(life.points, pingFrame)
       if (!atPing) continue
@@ -267,7 +281,7 @@ export function sensorReveals(
       // halos superposés doubleraient l'opacité sans rien dire de plus.
       const held = bySlot.get(life.slot)
       if (held && held.sinceMs <= sinceMs) continue
-      bySlot.set(life.slot, { slot: life.slot, x: now.x, y: now.y, owner: s.owner, sinceMs })
+      bySlot.set(life.slot, { slot: life.slot, x: now.x, y: now.y, owner: s.owner, ownerFrame: s.t0, sinceMs })
     }
   }
   return [...bySlot.values()]

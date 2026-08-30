@@ -7,24 +7,27 @@
  * lui qui sort, comme `MedalBadges` avant lui (2026-08-16).
  */
 import { WeaponIcon } from '@/components/ui/WeaponIcon'
+import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import { staticAssetURL } from '@/lib/staticAssets'
 import { useTitleSlug } from '@/lib/title-routing/useTitleSlug'
 
 /** Cote du pictogramme quasi carre de l'atlas kill feed (40x40 mesure) : cf. ReplayKillFeed. */
-const PICTOGRAM_PX = 12
+const PICTOGRAM_PX = 11
 
 /**
  * Stem (sans dossier ni extension) de la vignette d'assistance du KILL FEED DU JEU —
  * atlas killfeed, index 62. Exporté pour le garde-rail `assistMarkIcon.guard.test.ts`
- * (même patron que `GRENADE_ICON_STEMS`) : le fichier référencé doit exister sur disque
- * ET rester ce que `jeu/index.json` déclare à cet index.
+ * (même patron que `weaponFullIcon.guard.test.ts`) : le fichier référencé doit exister sur
+ * disque ET rester ce que `jeu/index.json` déclare à cet index.
  */
 export const ASSIST_ICON_STEM = 'killfeed-62'
 
 /**
  * AssistMark — LA MARQUE D'ASSISTANCE : la vignette D'ASSISTANCE DU JEU (`jeu/killfeed-62`),
- * en masque teint à la couleur de l'ASSISTANT — la MÊME technique que l'icône d'arme du fil
- * (`WeaponIcon`, masque + `currentColor` porté par le parent).
+ * en masque teint — la MÊME technique que l'icône d'arme du fil (`WeaponIcon`, masque +
+ * `currentColor` porté par le parent). L'ENCRE EST LE TOKEN `bonus` (option 2a du handoff
+ * 2026-08-27), plus la couleur d'équipe de l'assistant : son nom la dit déjà sur la même
+ * ligne, et une marque à encre CONSTANTE se reconnaît d'une ligne à l'autre.
  *
  * PROVENANCE, CORRECTION DU LOT R1. R1 avait conclu qu'aucune icône d'assistance n'existait
  * dans l'atlas kill feed et dessinait un glyphe SVG neutre à la place : cette conclusion
@@ -41,7 +44,7 @@ export const ASSIST_ICON_STEM = 'killfeed-62'
  * d'arme (`ICON_W`×`ICON_H`) l'écraserait à la hauteur d'une lettre, d'où `PICTOGRAM_PX`,
  * le même gabarit que le pictogramme de TYPE DE MORT (même atlas, même famille de forme).
  */
-export function AssistMark({ label, color }: { label: string; color: string }) {
+export function AssistMark({ label }: { label: string }) {
   const titleSlug = useTitleSlug()
   return (
     <span title={label} className="inline-flex shrink-0 items-center">
@@ -51,7 +54,7 @@ export function AssistMark({ label, color }: { label: string; color: string }) {
         label={label}
         width={PICTOGRAM_PX}
         height={PICTOGRAM_PX}
-        style={{ color }}
+        style={{ color: tokenCssVar('bonus') }}
       />
     </span>
   )

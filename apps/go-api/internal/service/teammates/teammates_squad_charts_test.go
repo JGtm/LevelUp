@@ -529,6 +529,40 @@ func TestBuildSquadFirstBlood_SkipsPreGameplayEvents(t *testing.T) {
 	}
 }
 
+// TestBuildSquadFirstBlood_PopulatesMatchMeta : DEC-4 (retours utilisateur
+// 2026-08-29) — chaque point porte carte/mode/date résolus depuis
+// SquadMatchRow (MapUI déjà résolu en amont par enrichSquadMatchAssets ; mode
+// via squadModeUI, même résolveur canonique que SquadMatchHistoryRow), pour
+// que le tooltip du chart ne montre plus jamais l'uuid du match.
+func TestBuildSquadFirstBlood_PopulatesMatchMeta(t *testing.T) {
+	start := time.Date(2026, 4, 6, 18, 0, 0, 0, time.UTC)
+	mainXUID := "x_main"
+	repo := &mockSquadRepo{
+		impactRows: []domain.ImpactEventRow{
+			{MatchID: "m1", XUID: mainXUID, EventType: analysis.EventTypeKill, TimeMS: 5000},
+		},
+	}
+	svc := &TeammatesService{titleSlug: "halo_infinite", gamertag: "main", repo: repo}
+	rows := []domain.SquadMatchRow{
+		{MatchID: "m1", StartTime: start, DurationSeconds: 600, MapUI: "Aquarius", PairNameFR: "Assassin"},
+	}
+
+	got := svc.buildSquadFirstBlood(context.Background(), rows, "main", mainXUID, nil)
+	if len(got) != 1 || len(got[0].Matches) != 1 {
+		t.Fatalf("want 1 série avec 1 point, got %#v", got)
+	}
+	pt := got[0].Matches[0]
+	if pt.MapUI != "Aquarius" {
+		t.Errorf("carte want %q, got %q", "Aquarius", pt.MapUI)
+	}
+	if pt.ModeUI != "Assassin" {
+		t.Errorf("mode want %q, got %q", "Assassin", pt.ModeUI)
+	}
+	if !pt.StartTime.Equal(start) {
+		t.Errorf("start_time want %v, got %v", start, pt.StartTime)
+	}
+}
+
 // TestBuildSquadIntensityProfile_AppliesT0AndSkipsCountdown (extension §4.A-bis,
 // teammates.13) : le profil d'intensité doit retrancher le T0 et EXCLURE les
 // events du countdown (TimeMS<0 après correction). Un kill countdown + un kill

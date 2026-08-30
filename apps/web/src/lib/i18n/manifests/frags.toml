@@ -85,6 +85,18 @@ en = "Vehicle"
 fr = "Tourelle"
 en = "Turret"
 
+# Equipement et environnement (lot « kills hors arme a feu », 2026-08-29) : servis par la
+# SOURCE DE DEGAT du film, pas par le registre d armes. Leur niveau 2 est un OBJET
+# (« Bobine a plasma », « Repulseur ») dont le libelle vient du TOML du titre, comme les
+# engins ci-dessus — rien a recopier ici.
+[frags.class.equipment]
+fr = "Équipement"
+en = "Equipment"
+
+[frags.class.environmental]
+fr = "Environnement"
+en = "Environment"
+
 [frags.class.unattributed]
 fr = "Non attribué"
 en = "Unattributed"
@@ -158,3 +170,12 @@ en = "Splinter"
 [frags.role.grenade_other]
 fr = "Autre grenade"
 en = "Other grenade"
+
+# ── Repli générique (V2.1, D3, 2026-08-29) ─────────────────────────────────────
+# Niveau 2 par OBJET (véhicule/tourelle/équipement/environnement) sans AUCUN libellé
+# servi par l'API (label et label_en vides — objet jamais seedé dans le TOML du titre)
+# ET sans clé canonique ici (ce n'est justement pas un rôle canonique). Dernier repli
+# de fragRoleDisplayLabel (fragRoleLabel.ts) : jamais une clé i18n brute à l'écran.
+[frags.role.generic_object]
+fr = "Objet"
+en = "Object"

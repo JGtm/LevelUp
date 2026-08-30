@@ -171,7 +171,7 @@ func TestBuildEquipmentPlacementsPublieUneOrigineToujours(t *testing.T) {
 	st.Calibration.Widths = filmdec.CurrentMPPWidths()
 	clock := replayClock{origin: eqOrigin, step: eqStep, frames: 200,
 		families: map[uint32]string{0x2974c233: "wall"}}
-	out, cov := buildEquipmentPlacements(raw, st, pos, clock)
+	out, cov := buildEquipmentPlacements(raw, st, pos, clock, filmdec.WorldObjectKeyframes{})
 	if len(out) != 2 {
 		t.Fatalf("%d pose(s) publiee(s), attendu 2", len(out))
 	}

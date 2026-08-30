@@ -16,22 +16,40 @@ import (
 //
 // Lit Map/Playlist/GameVariant labels via Summary.AssetReference.Labels.
 // PairName (composite Halo-only) substituÃ© par GameVariant FR/Default.
-// skillBadgeURL : résolveur d'URL de badge CSR INJECTÉ (title-aware ; résolu par
-// la couche boot/service qui connaît le titre). Signature (tierEN capitalisé,
-// subTier 0..6 ; 0 = Onyx) → URL ; nil ou "" → SkillRankImageURL laissé vide
-// (dégradation gracieuse : le front a déjà le label). Aucun template HINF figé ici.
+// Ce que la couche service injecte — locale, létalité du titre, résolveur de badge de
+// palier, table des variantes qui se décident aux manches — voyage dans
+// RecentMatchesOptions, ci-dessous.
+
+// RecentMatchesOptions regroupe ce que la couche service injecte dans la projection des
+// tuiles d'accueil : la locale, la constante de létalité du titre, le résolveur de badge de
+// palier, et la table des variantes qui se décident aux manches.
+//
+// Un struct plutôt que quatre paramètres de plus : la fonction en portait déjà six, au-delà
+// du seuil du dépôt (5), et chaque ajout aggravait la dette. Groupés, ils la ramènent SOUS
+// le seuil.
+type RecentMatchesOptions struct {
+	Locale            string
+	EffectiveHpToKill float64
+	// SkillBadgeURL : (tier EN capitalisé, sous-palier 0..6 ; 0 = Onyx) -> URL. Nil → aucune
+	// image, le front retombe sur le libellé texte.
+	SkillBadgeURL func(tierEN string, subTier int) string
+	// RoundsDecide : game_variant_name -> le RÉSULTAT se lit en manches (ADR 0032).
+	// Nil/absente → lecture en points, comme avant.
+	RoundsDecide map[string]bool
+}
+
 func BuildRecentMatchesWithFavoritesFromCanonical(
 	rows []canonical.PlayerMatchRow,
 	limit int,
 	favoriteIDs map[string]bool,
-	locale string,
-	effectiveHpToKill float64,
-	skillBadgeURL func(tierEN string, subTier int) string,
+	opts RecentMatchesOptions,
 ) []domain.RecentMatchItem {
 	if len(rows) == 0 {
 		return nil
 	}
-	locale = normalizeHomeLocale(locale)
+	locale := normalizeHomeLocale(opts.Locale)
+	effectiveHpToKill := opts.EffectiveHpToKill
+	skillBadgeURL := opts.SkillBadgeURL
 	if len(rows) > limit {
 		rows = rows[:limit]
 	}
@@ -67,8 +85,8 @@ func BuildRecentMatchesWithFavoritesFromCanonical(
 			playlistUI = &playlist
 		}
 
-		// Score label : reconstruit depuis Summary.Teams.
-		scoreLabel := buildScoreLabelCanonical(r)
+		// Score label : reconstruit depuis Summary.Teams — points ou MANCHES.
+		scoreLabel := buildScoreLabelCanonical(r, opts.RoundsDecide)
 		scoreStr := "-"
 		if scoreLabel != nil {
 			scoreStr = *scoreLabel
@@ -219,29 +237,43 @@ func BuildRecentMatchesWithFavoritesFromCanonical(
 
 // buildScoreLabelCanonical : reconstruit le score "X-Y" depuis Summary.Teams
 // + Self.TeamID (Ã©quivalent canonical de buildHomeScoreLabel).
-func buildScoreLabelCanonical(r canonical.PlayerMatchRow) *string {
-	var score0, score1 int
-	var found0, found1 bool
-	for _, t := range r.Summary.Teams {
-		if t.Score == nil {
-			continue
-		}
-		switch t.TeamID {
+func buildScoreLabelCanonical(r canonical.PlayerMatchRow, roundsDecide map[string]bool) *string {
+	var t0, t1 *canonical.TeamSnapshot
+	for i := range r.Summary.Teams {
+		switch r.Summary.Teams[i].TeamID {
 		case 0:
-			score0 = *t.Score
-			found0 = true
+			t0 = &r.Summary.Teams[i]
 		case 1:
-			score1 = *t.Score
-			found1 = true
+			t1 = &r.Summary.Teams[i]
 		}
 	}
-	if !found0 || !found1 || score0 < 0 || score1 < 0 {
+	if t0 == nil || t1 == nil {
 		return nil
 	}
-	leftScore, rightScore := score0, score1
+	mine, theirs := t0, t1
 	if r.Self.TeamID != nil && *r.Self.TeamID == 1 {
-		leftScore, rightScore = score1, score0
+		mine, theirs = t1, t0
 	}
-	label := fmt.Sprintf("%d-%d", leftScore, rightScore)
+	// Délégation à la source unique (cf. team_score_display.go) : la MÊME règle que la vue
+	// match, l'historique et l'escouade — une tuile d'accueil et la page du match ne peuvent
+	// pas afficher deux nombres différents pour le même Oddball.
+	label := TeamScoreLabel(TeamScoreInput{
+		MyPoints: mine.Score, EnemyPoints: theirs.Score,
+		MyRoundsWon: mine.RoundsWon, EnemyRoundsWon: theirs.RoundsWon,
+		RoundsTotal:  r.Summary.RoundsTotal,
+		RoundsDecide: roundsDecide[strings.TrimSpace(variantNameOf(r))],
+	})
+	if label == "" {
+		return nil
+	}
 	return &label
+}
+
+// variantNameOf rend le nom de variante canonique du match, ou "" — la clé de la table
+// [rounds_decide]. Une variante inconnue n'est déclarée nulle part, donc points.
+func variantNameOf(r canonical.PlayerMatchRow) string {
+	if r.Summary.GameVariant == nil {
+		return ""
+	}
+	return r.Summary.GameVariant.DefaultLabel
 }

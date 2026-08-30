@@ -42,17 +42,20 @@
  */
 import type { ReplayEquipmentPlacement } from '@/lib/api/types'
 
+import { drawRift, drawTeleportLinks, type RiftInk } from './placementRift'
+import type { RiftTeleport } from './placementTeleport'
 import { placementIsDroppedPower } from './placementDropped'
 import {
-  drawBeacon,
   drawDroppedObject,
   drawRepairField,
   drawRevealMark,
   drawSeekerImpulse,
+  drawShroud,
   drawUnnamedDot,
   type PlacementView,
   project,
   REPAIR_FIELD_RADIUS_M,
+  SHROUD_RADIUS_M,
   viewScale,
 } from './placementShapes'
 import { drawWall, wallHeading, WALL_PANEL_IDS } from './placementWall'
@@ -93,7 +96,8 @@ export type { PlacementView } from './placementShapes'
 export type PlacementKind =
   | 'wall'
   | 'sensor'
-  | 'beacon'
+  | 'rift'
+  | 'shroud'
   | 'seeker'
   | 'field'
   | 'unnamed'
@@ -127,7 +131,15 @@ export const PLACEMENT_RENDER: Readonly<Record<string, PlacementKind | null>> = 
   // Les objets que la mesure voit DÉPLOYÉS, chacun avec sa forme propre.
   wall: 'wall',
   sensor: 'sensor',
-  translocator_beacon: 'beacon',
+  // LA FAMILLE GARDE SON NOM `translocator_beacon` — c est un identifiant STABLE du document,
+  // et des milliers d artefacts deja cuits le portent ; le renommer serait une rupture de
+  // contrat, pas une correction de libelle. Ce qui change est ce que le calque en DESSINE et
+  // ce qu il en DIT : une faille, pas une balise (correction de l utilisateur, 2026-08-27).
+  translocator_beacon: 'rift',
+  // L ECRAN OCCULTANT : nomme le 2026-08-27 par sa banque sonore, dessine le meme jour apres
+  // le verdict de l utilisateur sur les trois propositions de la planche — « opaque et points
+  // au-dessus ». Nommer, sonner et dessiner ont ete trois travaux distincts, dans cet ordre.
+  shroud_screen: 'shroud',
   threat_seeker: 'seeker',
   repair_field: 'field',
   // L'objet posé dont la nature n'est pas établie : un point neutre, et seulement sur bascule.
@@ -262,20 +274,42 @@ export interface PlacementScene {
   placements: readonly ReplayEquipmentPlacement[]
   /** Toutes les vies du film ; le balayage de révélation filtre lui-même sur leur fenêtre. */
   lives: readonly ReplayTrackReady[]
-  /** Camp d'une vie (`team_side`) ; null = camp inconnu, donc jamais révélé ni révélateur. */
-  sideOfSlot: (slot: number) => string | null
+  /**
+   * Camp de la vie qui occupe un slot À UNE IMAGE (`team_side`) ; null = camp inconnu, donc
+   * jamais révélé ni révélateur. La frame lève l'ambiguïté d'un slot réattribué entre manches
+   * (poseur lu à sa pose, cible au ping — cf. threatSensor).
+   */
+  sideOfSlot: (slot: number, frame: number) => string | null
+  /**
+   * Passages par une faille (cf. `placementTeleport`). Calculés UNE FOIS par l'appelant : la
+   * détection balaye toutes les pistes, ce qu'on ne refait pas à chaque image.
+   */
+  teleports?: readonly RiftTeleport[]
 }
 
 /** Les encres du calque : la couleur d'équipe du poseur, et le neutre quand il n'y en a pas. */
 export interface PlacementInk {
-  /** Couleur de la vie qui a posé l'objet ; null = vie inconnue, on tombe sur `neutral`. */
-  colorOfSlot: (slot: number) => string | null
+  /**
+   * Couleur du poseur, résolue par slot ET par image, demandée à l'instant de la POSE (`p.t0`) —
+   * pas à l'image courante, où le slot peut appartenir à un autre joueur (manche suivante).
+   * DOIT être un résolveur de FRONTIÈRE (`colorOfSlotOrLast`) : la classe dominante des poses est
+   * l'objet LÂCHÉ à la mort, dont `t0 = finVie + 1` — le poseur ne couvre plus l'image, et un
+   * résolveur strict rendrait `null` → encre neutre au lieu de la couleur du lâcheur. `null` =
+   * ni vie couvrante ni vie précédente : on tombe sur `neutral`.
+   */
+  colorOfSlot: (slot: number, frame: number) => string | null
   /**
    * Encre FIXE de l'arc du mur (token `warning`, verdict R2-5 du 2026-08-18). Elle ne passe
    * PAS par `inkOf` : le mur est le seul objet posé dont la couleur dit ce qu'il EST plutôt
    * que qui l'a posé — l'utilisateur a explicitement accepté de perdre le camp sur celui-là.
    */
   wall: string
+  /**
+   * Encres FIXES de la faille du translocateur (2026-08-27). Comme `wall`, elles ne passent
+   * PAS par `inkOf` : l'utilisateur veut que la faille lise comme un « portail
+   * interdimensionnel », et une teinte d'équipe la ferait lire comme un marqueur de camp.
+   */
+  rift: RiftInk
   /** Encre neutre du thème (`--muted-foreground`), servie aux poses sans poseur. */
   neutral: string
 }
@@ -310,7 +344,12 @@ export function placementKind(
 /** inkOf — la couleur d'équipe du poseur, ou le neutre quand la pose n'a pas de poseur connu. */
 function inkOf(p: ReplayEquipmentPlacement, ink: PlacementInk): string {
   if (p.owner < 0) return ink.neutral
-  return ink.colorOfSlot(p.owner) ?? ink.neutral
+  // À L'INSTANT DE LA POSE (`p.t0`). ATTENTION : pour la classe DOMINANTE — les objets LÂCHÉS à
+  // la mort — `t0 = finVie + 1`, le poseur n'occupe DÉJÀ PLUS le slot. `colorOfSlot` doit donc
+  // être un résolveur de FRONTIÈRE (`ownerAtFrameOrLast`, câblé par l'appelant) : il retombe sur
+  // la vie qui vient de finir — le lâcheur — au lieu de rendre `null` (encre neutre). Pour un
+  // objet DÉPLOYÉ, `t0` tombe dans la vie du poseur et la frontière rend la même chose que strict.
+  return ink.colorOfSlot(p.owner, p.t0) ?? ink.neutral
 }
 
 /**
@@ -397,16 +436,15 @@ function drawPlacement(
   }
   const c = project({ x: p.x, y: p.y }, view)
   const ageMs = (time.frame - p.t0) * time.frameMs
+  // Les deux disques dont la portée est en MÈTRES partagent la même échelle : la lire une fois
+  // évite qu'ils divergent le jour où le cadrage changerait de source.
+  const pxParM = viewScale(view)
   if (kind === 'dropped') drawDroppedObject(ctx, c, time, color)
-  else if (kind === 'beacon') drawBeacon(ctx, c, time, color)
+  else if (kind === 'rift') drawRift(ctx, c, time, ink.rift)
+  else if (kind === 'shroud') drawShroud(ctx, c, SHROUD_RADIUS_M * pxParM, ink.neutral)
   else if (kind === 'seeker') drawSeekerImpulse(ctx, c, ageMs, time, color)
   else if (kind === 'field')
-    drawRepairField(
-      ctx,
-      { c, radiusPx: REPAIR_FIELD_RADIUS_M * viewScale(view), ageMs },
-      time,
-      color,
-    )
+    drawRepairField(ctx, { c, radiusPx: REPAIR_FIELD_RADIUS_M * pxParM, ageMs }, time, color)
   else drawUnnamedDot(ctx, c, time, color)
 }
 
@@ -436,9 +474,12 @@ export function drawEquipmentPlacementsLayer(
     drawPlacement(ctx, { p, kind, lives: scene.lives }, view, time, ink)
     if (kind === 'sensor') sensors.push(p)
   }
+  drawTeleportLinks(ctx, scene.teleports ?? [], view, time, ink.rift)
   if (sensors.length === 0) return
   for (const reveal of sensorReveals(sensors, scene, time)) {
-    const color = ink.colorOfSlot(reveal.owner) ?? ink.neutral
+    // La marque porte la couleur du POSEUR, résolue à l'image de sa pose (`reveal.ownerFrame`) :
+    // le slot du poseur peut appartenir à un autre joueur à l'image courante (manche suivante).
+    const color = ink.colorOfSlot(reveal.owner, reveal.ownerFrame) ?? ink.neutral
     drawRevealMark(ctx, project({ x: reveal.x, y: reveal.y }, view), reveal.sinceMs, time, color)
   }
 }

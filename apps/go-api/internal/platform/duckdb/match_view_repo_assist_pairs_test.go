@@ -10,6 +10,7 @@ package duckdb
 import (
 	"context"
 	"database/sql"
+	"reflect"
 	"testing"
 
 	"levelup/go-api/internal/domain"
@@ -115,14 +116,17 @@ func TestQ21dAssistPairs_Nominal(t *testing.T) {
 	if len(pairs) != 3 {
 		t.Fatalf("paires = %d (%+v), attendu 3", len(pairs), pairs)
 	}
-	// ORDER BY assist_count DESC, assist_gamertag, feed_killer_xuid
+	// ORDER BY assist_count DESC, assist_gamertag, feed_killer_xuid.
+	// Les parts moyennes : A->K1 = ROUND(AVG(60, 29)) = 45 ; A->K2 = 49 ; B->K1 = 79.
+	// Comparaison par DeepEqual : AvgAssistPct est un pointeur, `!=` comparerait les
+	// ADRESSES et échouerait sur deux pointeurs vers la même valeur.
 	want := []domain.MatchAssistPairRaw{
-		{AssistXUID: "A", AssistGamertag: "Alpha", KillerXUID: "K1", AssistCount: 2, StolenCount: 1},
-		{AssistXUID: "A", AssistGamertag: "Alpha", KillerXUID: "K2", AssistCount: 1, StolenCount: 0},
-		{AssistXUID: "B", AssistGamertag: "Bravo", KillerXUID: "K1", AssistCount: 1, StolenCount: 1},
+		{AssistXUID: "A", AssistGamertag: "Alpha", KillerXUID: "K1", AssistCount: 2, StolenCount: 1, AvgAssistPct: intPtr(45)},
+		{AssistXUID: "A", AssistGamertag: "Alpha", KillerXUID: "K2", AssistCount: 1, StolenCount: 0, AvgAssistPct: intPtr(49)},
+		{AssistXUID: "B", AssistGamertag: "Bravo", KillerXUID: "K1", AssistCount: 1, StolenCount: 1, AvgAssistPct: intPtr(79)},
 	}
 	for i := range want {
-		if pairs[i] != want[i] {
+		if !reflect.DeepEqual(pairs[i], want[i]) {
 			t.Errorf("paire %d = %+v, attendu %+v", i, pairs[i], want[i])
 		}
 	}
@@ -207,19 +211,29 @@ func TestQ21dAssistPairs_PartsNonMesureesEtNonBornees(t *testing.T) {
 		{"m1", true, 1000, "v1", strPtr("K1"), true, strPtr("Alpha"), strPtr("A"), nil, nil},
 		{"m1", true, 2000, "v2", strPtr("K1"), true, strPtr("Alpha"), strPtr("A"), intPtr(50), nil},
 		{"m1", true, 3000, "v3", strPtr("K1"), true, strPtr("Alpha"), strPtr("A"), intPtr(100), intPtr(228)},
+		// B n'a AUCUNE part mesurée sur sa paire : la moyenne doit rester ABSENTE
+		// (nil), jamais un « 0 % » fabriqué.
+		{"m1", true, 4000, "v4", strPtr("K1"), true, strPtr("Bravo"), strPtr("B"), intPtr(80), nil},
 	})
 	pairs, scope := queryAssistPairs(t, db, "m1")
-	if scope.MeasuredDeaths != 3 {
-		t.Fatalf("portée = %+v, attendu 3 morts mesurées", scope)
+	if scope.MeasuredDeaths != 4 {
+		t.Fatalf("portée = %+v, attendu 4 morts mesurées", scope)
 	}
-	if len(pairs) != 1 {
-		t.Fatalf("paires = %+v, attendu une paire", pairs)
+	if len(pairs) != 2 {
+		t.Fatalf("paires = %+v, attendu deux paires", pairs)
 	}
 	if pairs[0].AssistCount != 3 {
 		t.Errorf("assist_count = %d, attendu 3 (aucune mort perdue par une part absente)", pairs[0].AssistCount)
 	}
 	if pairs[0].StolenCount != 1 {
 		t.Errorf("stolen_count = %d, attendu 1 (la seule où 228 > 100)", pairs[0].StolenCount)
+	}
+	// AVG ignore les NULL : la seule part mesurée (228) EST la moyenne — non plafonnée.
+	if pairs[0].AvgAssistPct == nil || *pairs[0].AvgAssistPct != 228 {
+		t.Errorf("avg_assist_pct = %v, attendu 228 (AVG sur les seules parts mesurées, sans plafond)", pairs[0].AvgAssistPct)
+	}
+	if pairs[1].AvgAssistPct != nil {
+		t.Errorf("avg_assist_pct de Bravo = %v, attendu nil (aucune part mesurée)", *pairs[1].AvgAssistPct)
 	}
 }
 

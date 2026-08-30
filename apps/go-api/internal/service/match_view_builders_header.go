@@ -68,7 +68,7 @@ func buildMatchHeader(
 		h.WaypointURL = assetURL.MatchWebURL(matchID)
 	}
 
-	applyMatchHeaderOutcome(&h, meta, stats)
+	applyMatchHeaderOutcome(&h, stats)
 	applyMatchHeaderEnrichment(&h, stats, enrich)
 
 	return h
@@ -175,8 +175,11 @@ func applyMatchHeaderMapImage(
 		"map_name_en", strDeref(meta.MapNameEN))
 }
 
-// applyMatchHeaderOutcome remplit OutcomeCode/Label/Color + ScoreLabel.
-func applyMatchHeaderOutcome(h *domain.MatchViewHeader, meta *domain.MatchMetaRaw, stats *domain.PlayerMatchStatsRaw) {
+// applyMatchHeaderOutcome remplit OutcomeCode/Label/Color. Le score, lui, est posé par
+// applyMatchHeaderScore : il dépend de la table `[rounds_decide]`, portée par le service
+// (même raison que le flag « Prolongation » — buildMatchHeader est déjà à la limite de
+// paramètres).
+func applyMatchHeaderOutcome(h *domain.MatchViewHeader, stats *domain.PlayerMatchStatsRaw) {
 	if stats == nil || stats.OutcomeCode == 0 {
 		return
 	}
@@ -185,7 +188,6 @@ func applyMatchHeaderOutcome(h *domain.MatchViewHeader, meta *domain.MatchMetaRa
 	h.OutcomeLabel = outcomeLabel(code)
 	h.OutcomeColor = outcomeColor(code)
 	h.OutcomeColorToken = outcomeColorToken(code)
-	h.ScoreLabel = buildScoreLabelFromMeta(meta, stats)
 }
 
 // applyMatchHeaderEnrichment renseigne PerfDisplay/Color, IsExcluded, DominanceFlag/Badge.
@@ -278,22 +280,62 @@ func applyMatchHeaderModeCategory(h *domain.MatchViewHeader, meta *domain.MatchM
 	h.ModeCategory = taxonomy.Classify(*meta.PairName)
 }
 
-// buildScoreLabelFromMeta construit "X-Y" depuis team_0_score/team_1_score de
-// match_registry. L'équipe du joueur (stats.TeamID) est toujours affichée en
-// premier (miroir de buildHomeScoreLabel dans analysis/home.go).
-func buildScoreLabelFromMeta(meta *domain.MatchMetaRaw, stats *domain.PlayerMatchStatsRaw) string {
-	if meta == nil || meta.Team0Score == nil || meta.Team1Score == nil {
-		return ""
+// applyMatchHeaderScore pose le score de l'en-tête : le libellé, ce qu'il porte (points ou
+// MANCHES), et — en lecture manches — le score de l'API en information secondaire.
+//
+// L'ÉQUIPE DU JOUEUR EST TOUJOURS À GAUCHE (stats.TeamID), comme partout ailleurs.
+//
+// `roundsDecide` est la table `game_variant_name → le résultat se lit en manches`
+// (regulation.toml). Table absente ou variante non déclarée → lecture en points, c'est-à-dire
+// le comportement d'avant le 2026-08-29. La règle elle-même n'est PAS réécrite ici : elle vit
+// dans analysis.ReadTeamScore, source unique partagée avec l'historique.
+func applyMatchHeaderScore(
+	h *domain.MatchViewHeader, meta *domain.MatchMetaRaw,
+	stats *domain.PlayerMatchStatsRaw, roundsDecide map[string]bool,
+) {
+	if meta == nil {
+		return
 	}
-	s0, s1 := int(*meta.Team0Score), int(*meta.Team1Score)
-	if s0 < 0 || s1 < 0 {
-		return ""
-	}
+	mine, theirs := int16PtrPair(meta.Team0Score, meta.Team1Score)
+	myRounds, theirRounds := int16PtrPair(meta.Team0RoundsWon, meta.Team1RoundsWon)
 	if stats != nil && stats.TeamID != nil && *stats.TeamID == 1 {
-		return fmt.Sprintf("%d-%d", s1, s0)
+		mine, theirs = theirs, mine
+		myRounds, theirRounds = theirRounds, myRounds
 	}
-	return fmt.Sprintf("%d-%d", s0, s1)
+	d, ok := analysis.ReadTeamScore(analysis.TeamScoreInput{
+		MyPoints: mine, EnemyPoints: theirs,
+		MyRoundsWon: myRounds, EnemyRoundsWon: theirRounds,
+		RoundsTotal:  int16Ptr(meta.RoundsTotal),
+		RoundsDecide: roundsDecide[strings.TrimSpace(strDeref(meta.GameVariantName))],
+	})
+	if !ok {
+		return
+	}
+	h.ScoreLabel = analysis.FormatTeamScoreLabel(d)
+	h.ScoreKind = string(d.Kind)
+	mineVal, theirsVal := d.Mine, d.Theirs
+	h.ScoreMine, h.ScoreTheirs = &mineVal, &theirsVal
+	// Le score de l'API n'accompagne le compte de manches QUE s'il dit autre chose : en
+	// lecture points, ce serait le même libellé deux fois.
+	if d.Kind == analysis.ScoreKindRounds && d.Points != nil {
+		h.ScorePointsLabel = analysis.FormatTeamScoreLabel(analysis.TeamScoreDisplay{
+			Mine: d.Points[0], Theirs: d.Points[1],
+		})
+	}
 }
+
+// int16Ptr convertit un *int16 de colonne SMALLINT en *int, en préservant le nil (« colonne
+// NULL » n'est pas « zéro »).
+func int16Ptr(v *int16) *int {
+	if v == nil {
+		return nil
+	}
+	out := int(*v)
+	return &out
+}
+
+// int16PtrPair convertit deux colonnes d'un coup — la paire est toujours lue ensemble.
+func int16PtrPair(a, b *int16) (*int, *int) { return int16Ptr(a), int16Ptr(b) }
 
 // resolveSkillIconURL retourne l'URL du badge CSR/LUSR depuis tier + sub_tier.
 // Extrait de buildRankBlock pour être réutilisé par le scoreboard (tous joueurs).

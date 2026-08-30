@@ -106,6 +106,10 @@ var replaySchemas = []struct {
 	{"FlagCarry", replay.FlagCarry{}},
 	{"FlagSpan", replay.FlagSpan{}},
 	{"FlagCarriesCoverage", replay.FlagCarriesCoverage{}},
+	{"VipPeriod", replay.VipPeriod{}},
+	{"VipCrownCoverage", replay.VipCrownCoverage{}},
+	{"SkullCarry", replay.SkullCarry{}},
+	{"SkullCarriesCoverage", replay.SkullCarriesCoverage{}},
 	{"ZoneState", replay.ZoneState{}},
 	{"ZoneSpan", replay.ZoneSpan{}},
 	{"GaugePoint", replay.GaugePoint{}},
@@ -326,9 +330,80 @@ var replaySchemas = []struct {
 //	                      (decision utilisateur du 2026-08-19) ; `catalogN` dit combien la carte
 //	                      en porte, pour que le calque avoue ce qu il n affiche pas.
 //
-// Les douze fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
+//	38 -> 39  2026-08-27  `objectiveObjects` (plan PLAN_OBJECTIFS_ETAT_VIVANT, phase D5-bis) :
+//	                      OU SE TROUVE L OBJET D OBJECTIF QUAND PERSONNE NE LE PORTE — les vies
+//	                      LIBRES du crane d Oddball. Le canal est une PRESENCE, pas une
+//	                      deduction : un objet du monde replique sa position tant qu il est
+//	                      libre et CESSE de la repliquer des qu on le porte. Le champ publie
+//	                      donc exactement les positions que le film a emises.
+//	                      L IDENTITE DU CRANE EST MESUREE (phase D4) : mot MPP `0x0017592C`,
+//	                      elu sur 4 films sur 4, ne a 0,0 m du socle `oddball_spawn` unique de
+//	                      sa carte et coincidant a 3-6 ms d un evenement `th=10`. Le compteur
+//	                      `coverage.groundWeapons.objectives` le corrobore a l unite pres :
+//	                      23 / 16 / 21 / 47 creations, exactement les comptes de D4.
+//	                      CE QUE LE CHAMP NE DIT PAS, ET C EST ECRIT DANS SON SCHEMA : QUI porte
+//	                      l objet pendant les trous. L oracle du porteur a ete mesure et REFUSE
+//	                      par son propre protocole (40,6 a 66,7 % de trous a porteur unique
+//	                      contre un seuil de 90 %, temoin hors trou a 66,7 et 71,4 %).
+//	                      LE DRAPEAU N Y EST PAS, et ce n est pas un report : le controle 3 de
+//	                      son propre lot a ECHOUE sur ses vies libres (149/197 = 75,6 % pour un
+//	                      seuil de 90 %). La forme publiee porte `family` pour qu il puisse la
+//	                      rejoindre sans qu aucune cle ne bouge.
+//	                      SCHEMA D ARTEFACT INCHANGE A 21 : le bump du lot a eu lieu dans le
+//	                      meme lot et n a quitte ni le poste ni les temoins locaux — aucun
+//	                      artefact 21 n existe ailleurs, le bump unique reste unique.
+//
+//	39 -> 40  2026-08-27  `vipCrown` (lot VIP COURONNE, `.ai/V7.5/replay2d/registre_film/
+//	                      VIP_COURONNE_PROTOCOLE.md`) : LES PERIODES DE PORT DE LA COURONNE VIP,
+//	                      en intervalles de frames nommes par le xuid du VIP. Un champ de
+//	                      document, un schema de plus (`VipPeriod`) et un bloc de couverture
+//	                      (`VipCrownCoverage`). Source, toute dans le film : les SELECTIONS
+//	                      `vip_selected` (`comp 22 A` = `TimesSelectedAsVip`, resolu au gate
+//	                      corrige — 100 % par joueur x3 films, temoin decale 0) et le fil des
+//	                      morts ; le VIP nomme par le pont d INSTANTS DE MORT (aucune base). La
+//	                      reconstruction a ete MESUREE : les periodes somment, par joueur, a
+//	                      `TimeAsVip` de l API au SUB-SECONDE (recouv 100 % 3/3, 24/24 joueurs a
+//	                      +0,2-0,3 s), contre un temoin d attribution aleatoire effondre
+//	                      (exactitude 8/8 contre 0-1/8). GARDE DE MODE chez l appelant : `comp
+//	                      22 A` vaut `flag_grabs` en CTF, donc la couronne n est lue que sur un
+//	                      film reconnu VIP par `game_variant_name` — jamais devinee dans le film.
+//	                      Le SchemaVersion d artefact monte a 22 (reprise du backfill).
+//	                      `Coverage` gagne son bloc `vipCrown` : un film non-VIP (bloc absent) et
+//	                      un film VIP sans periode publiee se distinguent par lui.
+//
+//	40 -> 41  2026-08-28  `skullCarries` (lot PORTEUR ODDBALL, `.ai/V7.5/replay2d/registre_film/
+//	                      ODDBALL_PORTEUR_PROTOCOLE.md`) : LES PERIODES DE PORTAGE DU CRANE, en
+//	                      intervalles de frames nommes par le xuid du porteur. Un champ de
+//	                      document, un schema de plus (`SkullCarry`) et un bloc de couverture
+//	                      (`SkullCarriesCoverage`). Source, toute dans le film : le porteur est le
+//	                      joueur dont les TICS DE SCORE DE MODE montent (`comp 0 A` =
+//	                      `skull_scoring_ticks`), un TRAIN de tics ETANT une periode de portage ;
+//	                      le porteur nomme par le pont d INSTANTS DE MORT PAR MANCHE (le slot est
+//	                      reattribue d une manche a l autre, aucune base). Le portage avait resiste
+//	                      a CINQ campagnes (proximite, traversee, score personnel : negatifs) ; le
+//	                      canal des tics tient — gate oracle porteur PRINCIPAL correct 7/7 films,
+//	                      gate terrain manche 1 de d9781168 prises 9/9 et porteurs 8/9 (seuil 8/9),
+//	                      emplacement identifie par l oracle films confondus. GARDE DE MODE chez l
+//	                      appelant : `comp 0 A` est le score de mode de tout mode, donc le porteur
+//	                      n est lu que sur un film reconnu Oddball par `game_variant_name`. Le
+//	                      SchemaVersion d artefact monte a 23 (reprise du backfill). `Coverage`
+//	                      gagne son bloc `skullCarries`. Le crane LIBRE (`objectiveObjects`, v21)
+//	                      reste la couche POSITION ; celle-ci est la couche PORTEUR par-dessus.
+//
+//	41 -> 44  2026-08-30  TROIS champs, le chantier ramassage (schemas 25-28) :
+//	                      - `weaponChanges` (v25) : les prises et lachers d arme, dates a la
+//	                        milliseconde, re-annonces ecartees ;
+//	                      - `equipmentChanges` (v26) : ramassages et consommations d equipement
+//	                        (i48), avec temoin de completude au compteur de rotation ;
+//	                      - `groundWeapons` (v27) : les armes au sol individuelles, bornees par
+//	                        l observation (pickup date / census) — la minuterie `until` de v25
+//	                        est retiree en meme temps. La v28 (fins des poses) n ajoute AUCUN
+//	                        champ au document : `until`/`untilMax`/`end` vivent sur
+//	                        EquipmentPlacement, pas a la racine.
+//
+// Les quatorze fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
 // chiffre ne le dise. Contrat regenere (`make openapi-gen`), jamais ecrit a la main.
-const wantReplayDocumentFields = 38
+const wantReplayDocumentFields = 44
 
 // TestReplayContractDescribesEveryPublishedField : AUCUN CHAMP PUBLIE SANS DESCRIPTION, ET
 // AUCUNE DESCRIPTION SANS CHAMP.

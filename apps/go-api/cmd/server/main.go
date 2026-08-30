@@ -67,6 +67,7 @@ import (
 	"levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/platform/userstore"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/replaychild"
 	"levelup/go-api/internal/scheduler"
 	"levelup/go-api/internal/service"
 	syncpkg "levelup/go-api/internal/sync"
@@ -103,6 +104,17 @@ func buildTokenProvider(settingsStore *settings.Store, authDesc title.AuthDescri
 }
 
 func main() {
+	// --- 0 bis. Mode ENFANT DE CUISSON (lot BUILDALL, 2026-08-26) ---
+	//
+	// LE SERVEUR SE RÉ-EXÉCUTE LUI-MÊME pour décoder un film hors de son propre processus : le
+	// décodage est un amplificateur mémoire, et l'enchaîner in-process a tué la machine trois
+	// fois. L'interception est ICI, AVANT TOUT LE RESTE — un enfant qui démarrerait le serveur
+	// ouvrirait un second écrivain sur les mêmes bases, ce que le modèle mono-processus
+	// interdit (ADR 0013/0016). Même patron que le health-check ci-dessous.
+	if replaychild.IsChild(os.Args) {
+		os.Exit(replaychild.RunChild(os.Args))
+	}
+
 	// --- 0. Health-check mode (Docker HEALTHCHECK) ---
 	if len(os.Args) == 2 && os.Args[1] == "-health-check" {
 		hcClient := &http.Client{Timeout: 5 * time.Second}
@@ -1698,9 +1710,21 @@ func runMigrations(metaPath, sharedPath, sharedSocialPath, pvePath, prestigeConf
 	// les autres titres gardent le défaut Infinite. Sans ça, h5 collapserait tous
 	// ses modes dans arena_slayer (classifier Infinite sur pair_name vide).
 	syncpkg.SetLUSRChainClassifierForTitle(halo5.TitleSlug, halo5.ClassifyLUSRChain)
+	// Scission ranked par famille (D-A) : classifier title-owned de la famille
+	// objectif, consommé par GetPerformanceChain pour trancher entre les chaînes
+	// de performance ranked_slayer et ranked_objectif. h5 n'a pas de pair_name →
+	// classifier dédié qui répond false (tout son classé va en ranked_slayer).
+	syncpkg.SetObjectiveFamilyClassifier(skillchain.IsObjectiveSubMode)
+	syncpkg.SetObjectiveFamilyClassifierForTitle(halo5.TitleSlug, halo5.IsObjectiveSubMode)
 	// Lot B (audit robustesse) : fail-fast au boot si le classifier LUSR par
 	// défaut n'a pas été posé, au lieu du panic tardif au 1er match live.
 	if err := syncpkg.ValidateLUSRChainClassifierWired(); err != nil {
+		return fmt.Errorf("boot: %w", err)
+	}
+	// Idem pour la famille objectif : sans elle, tout le classé serait noté en
+	// ranked_slayer (le fallback existe pour les binaires hors chemin de scoring,
+	// pas pour le serveur).
+	if err := syncpkg.ValidateObjectiveFamilyClassifierWired(); err != nil {
 		return fmt.Errorf("boot: %w", err)
 	}
 

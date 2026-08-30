@@ -1133,6 +1133,10 @@ en = "Duration:"
 fr = "Date :"
 en = "Date:"
 
+[common.match_card.replay_aria]
+fr = "Ouvrir le rejeu 2D du match"
+en = "Open the 2D replay of the match"
+
 # ─── Setup wizard (StepDeviceCode, StepInitialSync, StepPlayer) ─────────
 
 [common.setup.device_starting]

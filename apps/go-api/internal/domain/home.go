@@ -294,6 +294,11 @@ type RecentMatchItem struct {
 	// IsRanked : true si la playlist est classée (CSR officiel).
 	// Source : canonical.MatchSummary.IsRanked (issu de match_registry.is_ranked).
 	IsRanked bool `json:"is_ranked,omitempty"`
+	// HasReplay : un artefact de rejeu 2D existe pour ce match — la tuile peut donc
+	// porter un lien vers la page de rejeu. Résolu en UN listing de dossier par requête
+	// (port.ReplayAvailability), jamais un accès disque par tuile. Faux/absent quand le
+	// titre n'a pas de rejeu construit : le front n'affiche alors rien (pas de lien mort).
+	HasReplay bool `json:"has_replay,omitempty"`
 }
 
 // RecentMatchMedal est une médaille compacte pour l'affichage dans MatchCard.

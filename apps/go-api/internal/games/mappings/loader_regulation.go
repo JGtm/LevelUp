@@ -3,6 +3,7 @@ package mappings
 import (
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/pelletier/go-toml/v2"
@@ -27,13 +28,26 @@ type RegulationSet struct {
 	// du vainqueur au registre), variante inconnue → pas de cible, jamais une devinette.
 	// Consommateur : le constructeur d'artefact de rejeu (ScoreTimeline.TargetScore).
 	targets map[string]int
+	// roundsDecide : game_variant_name → la variante se décide aux MANCHES, donc son
+	// `CoreStats.Score` (un cumul de points sur toutes les manches) ne dit PAS le résultat.
+	// Même doctrine encore : contenu MESURÉ (`.ai/V7.5/RAPPORT_MANCHES_2026-08-29.md`),
+	// variante absente → on garde les points. Consommateur : analysis.TeamScoreDisplay.
+	roundsDecide map[string]bool
+	// holdTicks : game_variant_name → TICS DE GARDE qui valent un point, sur un mode
+	// où l'on marque en TENANT une zone (KOTH : la colline se prend instantanément, c'est la
+	// garde qui compte). Même doctrine que targets : valeur MESURÉE, variante inconnue → pas
+	// de dénominateur, donc aucune jauge de progression — jamais une jauge au jugé.
+	// Consommateur : le constructeur d'artefact (ScoreTimeline.HoldTicksPerPoint).
+	holdTicks map[string]int
 }
 
 // regulationTOML — projection brute de regulation.toml.
 type regulationTOML struct {
-	Meta    metaSection    `toml:"meta"`
-	Seconds map[string]int `toml:"regulation_seconds"`
-	Targets map[string]int `toml:"score_target"`
+	Meta         metaSection     `toml:"meta"`
+	Seconds      map[string]int  `toml:"regulation_seconds"`
+	Targets      map[string]int  `toml:"score_target"`
+	RoundsDecide map[string]bool `toml:"rounds_decide"`
+	HoldTicks    map[string]int  `toml:"hold_ticks_per_point"`
 }
 
 // Seconds retourne le temps réglementaire de la variante et true s'il est connu.
@@ -54,6 +68,59 @@ func (s *RegulationSet) ScoreTarget(gameVariantName string) (int, bool) {
 	}
 	v, ok := s.targets[strings.TrimSpace(gameVariantName)]
 	return v, ok
+}
+
+// HoldTicksPerPoint retourne le nombre de secondes de GARDE qui valent un point sur la
+// variante, et true s'il est connu.
+//
+// nil-safe et variante inconnue → (0, false) : l'appelant ne publie aucun dénominateur, donc
+// le client n'affiche AUCUNE jauge de progression. Une jauge absente ne ment pas ; une jauge
+// remplie sur un dénominateur inventé, si.
+func (s *RegulationSet) HoldTicksPerPoint(gameVariantName string) (int, bool) {
+	if s == nil {
+		return 0, false
+	}
+	v, ok := s.holdTicks[strings.TrimSpace(gameVariantName)]
+	return v, ok
+}
+
+// RoundsDecide dit si le RÉSULTAT de la variante se lit en MANCHES plutôt qu'en points.
+// nil-safe et variante inconnue → false : l'appelant garde les points (dégradation sûre,
+// jamais un affichage inventé).
+func (s *RegulationSet) RoundsDecide(gameVariantName string) bool {
+	if s == nil {
+		return false
+	}
+	return s.roundsDecide[strings.TrimSpace(gameVariantName)]
+}
+
+// RoundsDecideVariants retourne les variantes déclarées, triées (ordre déterministe pour
+// les appelants qui les injectent dans une requête ou un journal). nil-safe : liste vide.
+// Utilisé par `cmd/backfill-team-rounds` pour ne re-lire que l'historique qui en a besoin.
+func (s *RegulationSet) RoundsDecideVariants() []string {
+	if s == nil {
+		return nil
+	}
+	out := make([]string, 0, len(s.roundsDecide))
+	for k := range s.roundsDecide {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// RoundsDecideMap retourne une copie de la table variante → « se lit en manches ». nil-safe
+// (map vide). Pendant de SecondsMap : le wiring injecte la table dans les services sans
+// exposer le type interne.
+func (s *RegulationSet) RoundsDecideMap() map[string]bool {
+	out := make(map[string]bool)
+	if s == nil {
+		return out
+	}
+	for k, v := range s.roundsDecide {
+		out[k] = v
+	}
+	return out
 }
 
 // SecondsMap retourne une copie de la table variante → secondes. nil-safe (map
@@ -132,10 +199,37 @@ func LoadRegulationFromBytes(path string, raw []byte) (*RegulationSet, error) {
 		}
 		targets[key] = target
 	}
+	holds := make(map[string]int, len(doc.HoldTicks))
+	for rawName, secs := range doc.HoldTicks {
+		key := strings.TrimSpace(rawName)
+		if key == "" {
+			return nil, fmt.Errorf("%s: [hold_ticks_per_point] game_variant_name vide", path)
+		}
+		if secs <= 0 {
+			return nil, fmt.Errorf("%s: variante %q : secondes de garde par point doit être > 0 (reçu %d)", path, key, secs)
+		}
+		holds[key] = secs
+	}
+	rounds := make(map[string]bool, len(doc.RoundsDecide))
+	for rawName, decides := range doc.RoundsDecide {
+		key := strings.TrimSpace(rawName)
+		if key == "" {
+			return nil, fmt.Errorf("%s: [rounds_decide] game_variant_name vide", path)
+		}
+		// Une entrée `false` n'existe pas : l'absence EST le « non ». L'accepter ferait
+		// croire qu'on peut désactiver quelque chose depuis cette table, alors que la
+		// dégradation se lit par l'absence de clé.
+		if !decides {
+			return nil, fmt.Errorf("%s: [rounds_decide] variante %q à false — retirer la ligne (l'absence vaut « non »)", path, key)
+		}
+		rounds[key] = true
+	}
 	return &RegulationSet{
 		titleSlug:     doc.Meta.TitleSlug,
 		schemaVersion: doc.Meta.SchemaVersion,
 		seconds:       seconds,
 		targets:       targets,
+		roundsDecide:  rounds,
+		holdTicks:     holds,
 	}, nil
 }

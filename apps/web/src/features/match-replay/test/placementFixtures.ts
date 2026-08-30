@@ -106,7 +106,12 @@ export function life(slot: number, x: number, y: number): ReplayTrackReady {
   return { slot, team: -1, startFrame: 0, endFrame: 200, points }
 }
 
-export const INK = { colorOfSlot: () => 'equipe', neutral: 'neutre', wall: 'mur' }
+export const INK = {
+  colorOfSlot: () => 'equipe',
+  neutral: 'neutre',
+  wall: 'mur',
+  rift: { rim: 'faille-bord', core: 'faille-coeur' },
+}
 
 /** projected — un point monde dans le repère du canvas de test. */
 export function projected(x: number, y: number) {

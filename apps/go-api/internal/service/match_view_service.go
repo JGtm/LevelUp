@@ -19,6 +19,8 @@ package service
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -168,6 +170,21 @@ type MatchViewService struct {
 	// (titre sans mesure, ex. Halo 5). Jamais de comparaison de slug ici : la
 	// table injectée EST le titre.
 	regulationSeconds map[string]int
+	// roundsDecide (optionnel) : game_variant_name → le RÉSULTAT du match se lit en
+	// MANCHES et non en points (regulation.toml [rounds_decide]). Nil/absent → l'en-tête
+	// affiche le score de l'API, comportement d'avant le 2026-08-29.
+	roundsDecide map[string]bool
+	// killSourceRepo (optionnel) : loader des kills par SOURCE DE DEGAT du film
+	// (repulseur, bobines, chute). Nil, ou titre sans capability film.kill_source =>
+	// ces kills restent dans « Non attribue » du sunburst, comme avant le lot du
+	// 2026-08-29. Degradation gracieuse : ce n est pas une panne, c est un titre sans
+	// decodeur de film.
+	killSourceRepo port.KillSourceClassRepository
+	// killDistanceRepo (optionnel) : loader « distance par arme, par joueur »
+	// (POC LOT G.3, plan retours-utilisateur §3bis DEC-8). Nil, ou titre sans
+	// capability film.kill_source => pas de bloc, jamais d'erreur. Dégradation
+	// gracieuse identique à killSourceRepo (même gate, cf. wire.killDistanceRepoFor).
+	killDistanceRepo port.KillDistanceRepository
 	// replaySvc (optionnel) : service du rejeu 2D, interrogé UNIQUEMENT pour la
 	// présence de l'artefact (IsAvailable = un os.Stat). Nil → ReplayAvailable
 	// reste faux et le front ne pose aucun lien : un titre qui ne produit pas de
@@ -240,6 +257,27 @@ func (s *MatchViewService) WithReplay(svc port.ReplayService) *MatchViewService 
 	return s
 }
 
+// WithKillSourceRepo injecte le loader des kills par SOURCE DE DÉGÂT du film — ceux que
+// l'attribution arme-à-feu ne peut pas voir (répulseur, bobines, chute), parce qu'ils
+// n'émettent aucun record de dégât du tireur.
+//
+// Dégradation gracieuse si nil ou si le titre n'a pas la capability : ces kills restent
+// dans « Non attribué », exactement comme avant le lot du 2026-08-29.
+func (s *MatchViewService) WithKillSourceRepo(r port.KillSourceClassRepository) *MatchViewService {
+	s.killSourceRepo = r
+	return s
+}
+
+// WithKillDistanceRepo injecte le loader « distance par arme, par joueur »
+// (POC LOT G.3, plan retours-utilisateur §3bis DEC-8).
+//
+// Dégradation gracieuse si nil ou si le titre n'a pas la capability : le bloc
+// combat_tab.kill_distance_by_weapon reste absent, exactement comme avant ce lot.
+func (s *MatchViewService) WithKillDistanceRepo(r port.KillDistanceRepository) *MatchViewService {
+	s.killDistanceRepo = r
+	return s
+}
+
 // WithPlayerPositionsRepo injecte le loader des positions joueurs keyframe v3
 // (match-level, §N) consommé par GetMatchPositions. Dégradation gracieuse si
 // nil : GetMatchPositions retourne games.ErrCapabilityNotSupported.
@@ -260,6 +298,14 @@ func (s *MatchViewService) WithAwardsRepo(r port.PersonalScoreAwardsRepository) 
 // restent vides côté response et le front affiche les fallbacks texte.
 func (s *MatchViewService) WithAssetURL(a games.TitleAssetURLAdapter) *MatchViewService {
 	s.assetURL = a
+	return s
+}
+
+// WithRoundsDecide injecte la table `game_variant_name → le résultat se lit en MANCHES`
+// (regulation.toml [rounds_decide]). Sans injection, l'en-tête affiche le score de l'API —
+// le comportement d'avant le 2026-08-29, jamais une régression.
+func (s *MatchViewService) WithRoundsDecide(roundsDecide map[string]bool) *MatchViewService {
+	s.roundsDecide = roundsDecide
 	return s
 }
 
@@ -292,16 +338,27 @@ func (s *MatchViewService) GetMatchView(ctx context.Context, matchID string) (do
 	// --- Appels séquentiels bloquants (meta est nécessaire pour la suite) ---
 	meta, err := s.repo.GetMatchMeta(ctx, matchID)
 	if err != nil {
-		// Match absent du substrat local (jamais synchronisé, ou pas encore) : 404
-		// propre et typé, title-agnostic (aucune comparaison de slug — HINF et Halo 5
-		// suivent EXACTEMENT le même chemin). AUCUN fetch live vers l'API du titre
-		// depuis cette page : décision user 2026-07-19 (BACKLOG "Retirer le fallback
-		// LIVE du Match view") — latence, dépendance token et échec réseau à
-		// l'affichage n'étaient pas acceptables. Le front affiche un état dédié
-		// « pas encore synchronisé » sur ce code (match_not_found).
-		slog.InfoContext(ctx, "match_view: match absent du substrat local (pas encore synchronisé)",
+		// L'ABSENCE ET LA PANNE NE SONT PAS LE MÊME 404 (correctif 2026-08-29).
+		//
+		// Absence (sql.ErrNoRows, préservé par le wrapping %w du repo) : match jamais
+		// synchronisé — 404 propre et typé, title-agnostic. AUCUN fetch live vers l'API
+		// du titre depuis cette page : décision user 2026-07-19 (BACKLOG "Retirer le
+		// fallback LIVE du Match view") — cette décision porte sur le refus du fetch,
+		// PAS sur le mapping des erreurs. Le front affiche « pas encore synchronisé »
+		// sur ce code (match_not_found).
+		if errors.Is(err, sql.ErrNoRows) {
+			slog.InfoContext(ctx, "match_view: match absent du substrat local (pas encore synchronisé)",
+				"match_id", matchID, "err", err)
+			return domain.MatchViewResponse{}, domain.ErrNotFound("match", matchID)
+		}
+		// Panne technique (schéma en retard, timeout, verrou, I/O) : la déguiser en
+		// « pas encore synchronisé » a masqué pendant des heures une panne TOTALE de la
+		// page (2026-08-29 : Binder Error sur snapshot au schéma en retard → 404 sur
+		// TOUS les matchs, log en Info que personne ne lit). Une panne se dit : 500,
+		// log ERROR, et l'état d'erreur générique du front.
+		slog.ErrorContext(ctx, "match_view: lecture des métadonnées en échec (pas une absence)",
 			"match_id", matchID, "err", err)
-		return domain.MatchViewResponse{}, domain.ErrNotFound("match", matchID)
+		return domain.MatchViewResponse{}, fmt.Errorf("match_view: métadonnées illisibles pour %s: %w", matchID, err)
 	}
 
 	// Couche B (ADR 0029) : fail-fast si le joueur courant n'a pas participé à ce

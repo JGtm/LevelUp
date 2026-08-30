@@ -23,9 +23,10 @@ package replay
 //
 // # LE PONT D'IDENTITE NE DEMANDE AUCUNE BASE, ET C'EST DELIBERE
 //
-// Le slot statborg d'un porteur se resout en xuid par les seuls INSTANTS DE MORT
-// ([objectiveevents.SlotIdentityByDeaths]) : les progressions du compteur de morts du statborg
-// appariees au fil des morts du film. Le pont par TOTAUX aurait exige les lignes de match, donc
+// Le slot statborg d'un porteur se resout en xuid par les seuls INSTANTS DE MORT, PAR MANCHE
+// ([objectiveevents.ResolveRoundIdentity]) : les progressions du compteur de morts du statborg,
+// restreintes a la manche, appariees au fil des morts du film (le slot est reattribue d'une
+// manche a l'autre). Le pont par TOTAUX aurait exige les lignes de match, donc
 // la base ; les deux ont ete confrontes a la phase 0 (8 accords / 0 desaccord la ou les deux
 // repondent, et 8/8 contre 0/8 sur un film TRONQUE). Le calque du drapeau se publie donc sur un
 // artefact construit SANS aucun fait de match — un CLI hors ligne le rend entier.
@@ -120,7 +121,7 @@ func attachFlagCarries(doc *ReplayDocument, opt Options, own OwnerReport, clock 
 	// HORS CTF, LE CALQUE S'ARRETE ICI — ET C'EST UN CORRECTIF DE PRODUCTION (2026-08-18).
 	//
 	// `buildFlagCarries` rendait deja un calque vide sur un film d'un autre mode, mais APRES que
-	// l'appelant eut paye tout le travail : le pont d'identite (`SlotIdentityByDeaths`) deroule
+	// l'appelant eut paye tout le travail : le pont d'identite (`ResolveRoundIdentity`) deroule
 	// la progression du compteur de morts de CHAQUE slot du statborg, et sur un film dont la
 	// grammaire n'est pas celle du CTF ce compteur se lit n'importe ou. Mesure du terrain :
 	// `cmd/replay-build --facts` montait a 19-22 Go et ne rendait jamais la main.
@@ -134,13 +135,13 @@ func attachFlagCarries(doc *ReplayDocument, opt Options, own OwnerReport, clock 
 		attachFlagLayer(doc, vide, cov)
 		return
 	}
-	scan.Identity = objectiveevents.SlotIdentityByDeaths(in.Records, deathInstantsOf(opt.Deaths))
+	scan.Identity = objectiveevents.ResolveRoundIdentity(in.Records, deathInstantsOf(opt.Deaths))
 	scan.Marks = in.Marks
 	// LES VIES LIBRES ne se lisent que sur un film de CTF, pour la meme raison : hors CTF,
 	// l'identifiant du manifeste n'apparait dans aucune creation `ti=42`. Elles ne sont PAS
 	// publiees (cf. document_objectives_live.go) — elles CORRIGENT le calque, et seules celles
 	// nees aux pieds d'un porteur y servent.
-	scan.Free = flagFreeLives(opt.Pads.Weapons, opt.Labels.FlagObjects)
+	scan.Free = flagFreeLives(opt.Pads.Weapons, opt.Labels.ObjectiveObjects)
 	carries, cov := buildFlagCarries(scan, flagCarryCtx{
 		origin: clock.origin, step: clock.step, frames: clock.frames,
 		tracks: doc.Tracks, deaths: opt.Deaths,

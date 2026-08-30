@@ -102,3 +102,14 @@ schema_version = 1
 # ⚠ CETTE CLÉ GOUVERNE LE STOCKAGE, PAS UNE PUBLICATION : la table stocke des COMPTES,
 # elle ne publie aucun TAUX (le taux est match.weapon.accuracy, et il est not_exposed).
 "film.weapon_shots"      = "supported"
+# Positions monde (x,y,z) tueur/victime PAR KILL, décodées du MÊME film dans la MÊME
+# passe → shared.kill_positions (G.2bis, sync/killcollector). Troisième famille de
+# données du film : répond à OÙ, ni QUI (film.kill_source) ni QUOI (film.weapon_shots).
+# Plancher de couverture mesuré 75,8 % (36 artefacts, 1 994 couples) ; positions
+# absentes jamais approchées. ABSENTE pour Halo 5 : positions NATIVES dans le carnage
+# (match.events.spatial = supported), aucun décodeur de film requis.
+# ⚠ Clé FINE, même doctrine que ses deux sœurs — ne pas l'élargir.
+# ⚠ GOUVERNE LA CAPTURE (l'écriture) : la lecture canonique (match.events.spatial)
+# reste not_exposed tant qu'aucun consommateur ne lit kill_positions pour ce titre
+# (G.3, hors périmètre G.2bis).
+"film.kill_positions"    = "supported"

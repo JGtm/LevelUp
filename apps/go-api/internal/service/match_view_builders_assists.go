@@ -9,7 +9,32 @@
 // tout le décompte est fait par Q21d, y compris les éliminations volées.
 package service
 
-import "levelup/go-api/internal/domain"
+import (
+	"context"
+
+	"levelup/go-api/internal/ctxkeys"
+	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/observability"
+)
+
+// Les deux compteurs du bloc, publiés en expvar (ADR 0009) — lisibles sur /debug/vars.
+//
+// ⚠ ILS SONT TITRE-AWARE (`IncCounterT`), ET CE N EST PAS UN DETAIL. `halo_5` est
+// `status = "active"` et ce builder n est protege par AUCUNE capability : ouvrir une vue
+// match Halo 5 suffit a incrementer. Sur une cle NUE, « la passe de film s est arretee »
+// deviendrait indistinguable de « quelqu un a navigue dans Halo 5 » — soit exactement
+// l ambiguite que ces compteurs existent pour supprimer. `observability` replie le titre par
+// defaut sur la cle nue : la mesure Halo Infinite reste octet-identique.
+//
+// POURQUOI DEUX, ET PAS UN : les deux causes n'appellent pas la même action. `sans_ligne`
+// se corrige en produisant des kill-events pour ce match ; `sans_mesure` se corrige en
+// DÉCODANT SON FILM. C'est le second qui a explosé le 2026-04-07 sans que rien ne le dise
+// (registre `.ai/V7.5/REGISTRE_ASSISTANCES_2026-08-29.md`) : les confondre rendrait
+// l'alerte inexploitable.
+const (
+	compteurMatchAssistSansLigne  = "assist_pairs_match_retire_sans_ligne_total"
+	compteurMatchAssistSansMesure = "assist_pairs_match_publie_sans_mesure_total"
+)
 
 // buildAssistPairs assemble le bloc `combat_tab.assist_pairs`.
 //
@@ -37,12 +62,20 @@ import "levelup/go-api/internal/domain"
 // front a déjà son masque « Joueur #### ». On ne fabrique aucun nom, et on ne recopie
 // jamais un xuid dans un champ de nom.
 func buildAssistPairs(
+	ctx context.Context,
 	raw []domain.MatchAssistPairRaw,
 	scope domain.MatchAssistScopeRaw,
 	scoreboard []domain.ScoreboardRaw,
 ) *domain.MatchAssistPairs {
+	titre := ctxkeys.TitleSlug(ctx)
 	if scope.MatchDeaths == 0 {
+		observability.IncCounterT(titre, compteurMatchAssistSansLigne)
 		return nil
+	}
+	if scope.MeasuredDeaths == 0 {
+		// Le bloc est bien émis (l'écran dira « non disponibles »), mais l'état est compté :
+		// c'est exactement la population qui s'est mise à croître le 2026-04-07.
+		observability.IncCounterT(titre, compteurMatchAssistSansMesure)
 	}
 	gtByXUID := make(map[string]string, len(scoreboard))
 	for _, s := range scoreboard {
@@ -63,6 +96,7 @@ func buildAssistPairs(
 			KillerGamertag: gtByXUID[r.KillerXUID],
 			AssistCount:    r.AssistCount,
 			StolenCount:    r.StolenCount,
+			AvgAssistPct:   r.AvgAssistPct,
 		})
 	}
 	return &domain.MatchAssistPairs{

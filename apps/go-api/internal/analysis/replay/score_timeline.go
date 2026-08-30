@@ -36,6 +36,10 @@ type ScoreInput struct {
 	// TargetScore est la cible de victoire de la variante (regulation.toml [score_target]).
 	// 0 = inconnue : rien n'est publie, le client retombe sur son repli.
 	TargetScore int
+	// HoldTicksPerPoint est le nombre de TICS de garde qui valent un point sur la variante
+	// (regulation.toml [hold_ticks_per_point]). 0 = inconnu : ni serie ni denominateur ne sont
+	// publies, et le client n'affiche aucune progression de garde.
+	HoldTicksPerPoint int
 	// Truncated propage le plafond de lecture des enregistrements : les courbes s'arretent
 	// alors avant la fin du match, et la couverture le dit.
 	Truncated bool
@@ -164,7 +168,7 @@ func scoreRoundsOf(byRound map[int][]objectiveevents.ScorePoint, c scoreClock) [
 // Rend (nil, nil) quand l'appelant n'a rien fourni : un artefact construit sans acces aux
 // enregistrements du film ne porte AUCUNE couverture de score, ce qui le distingue d'un film
 // dont la lecture n'a rien donne (couverture presente, courbes vides).
-func buildScoreTimeline(in *ScoreInput, c scoreClock) (*ScoreTimeline, *ScoreCoverage) {
+func buildScoreTimeline(in *ScoreInput, deaths []Death, c scoreClock) (*ScoreTimeline, *ScoreCoverage) {
 	if in == nil {
 		return nil, nil
 	}
@@ -172,6 +176,10 @@ func buildScoreTimeline(in *ScoreInput, c scoreClock) (*ScoreTimeline, *ScoreCov
 	teamScore := loadScoreSeries(recs, objectiveevents.ModeScoreComponent, true)
 	teamFrags := loadScoreSeries(recs, objectiveevents.KillsComponent, true)
 	playerFrags := loadScoreSeries(recs, objectiveevents.KillsComponent, false)
+	// L'identite PLATE par TOTAUX reste la source de la preuve (b) d'identite des CAMPS
+	// (`resolveTeamIdentity`) : les courbes d'equipe ne bougent pas. En MONO-MANCHE elle nomme
+	// aussi les joueurs (le slot n'est pas reattribue) ; en MULTI-MANCHE, `buildPlayerScores`
+	// passe par l'identite PAR MANCHE (les instants de mort). Cf. buildPlayerScores.
 	identity := objectiveevents.SlotIdentityFrom(recs, in.Lines)
 
 	slots := teamSlotsOf(teamScore, teamFrags)
@@ -179,9 +187,15 @@ func buildScoreTimeline(in *ScoreInput, c scoreClock) (*ScoreTimeline, *ScoreCov
 
 	tl := &ScoreTimeline{
 		Teams:   buildTeamScores(slots, teamScore, teamID, c),
-		Players: buildPlayerScores(recs, identity, c),
+		Players: buildPlayerScores(recs, identity, deaths, c),
 	}
 	tl.TargetScore = publishableTarget(in.TargetScore, slots, teamScore, len(tl.Teams))
+	if in.HoldTicksPerPoint > 0 {
+		// GARDE DE MODE : la serie n'est construite que sur une variante DECLAREE — `comp 23 A`
+		// existe sur tous les modes, il ne porte des tics de colline que sur un mode a colline.
+		tl.HoldTicks = buildHoldTicks(recs, identity, in.TeamByXUID, c)
+		tl.HoldTicksPerPoint = publishableHold(in.HoldTicksPerPoint, len(tl.HoldTicks))
+	}
 	cov := &ScoreCoverage{
 		TeamIdentity:  method,
 		Rounds:        len(objectiveevents.RealRounds(recs)),
@@ -211,6 +225,23 @@ func publishableTarget(target int, slots []int, score scoreSeriesSet, teams int)
 		}
 	}
 	return &target
+}
+
+// publishableHold applique la garde du denominateur de garde (cf.
+// ScoreTimeline.HoldTicksPerPoint) : il n'est publie que s'il est connu (> 0) et si le calque
+// porte au moins une serie de garde.
+//
+// POURQUOI LA SECONDE CONDITION. Un denominateur sans numerateur ne norme rien : le client
+// aurait de quoi diviser mais rien a diviser, et une jauge a zero se lirait comme une mesure.
+//
+// AUCUNE GARDE « la valeur depasse ce que le film montre », contrairement a publishableTarget :
+// le film ne porte pas de total de reference pour la garde. La mesure qui fonde le 35 est en
+// tete de hill_hold_ticks.go.
+func publishableHold(ticks, series int) *int {
+	if ticks <= 0 || series == 0 {
+		return nil
+	}
+	return &ticks
 }
 
 // teamSlotsOf rend les slots d'entite d'equipe vus par le film, dans l'ordre.
@@ -249,12 +280,33 @@ func buildTeamScores(slots []int, score scoreSeriesSet, teamID map[int]int, c sc
 	return out
 }
 
-// buildPlayerScores rend les compteurs vivants des joueurs APPARIES, tries par xuid.
+// buildPlayerScores rend les compteurs vivants des joueurs, tries par xuid. DEUX CHEMINS, ET LE
+// MONO-MANCHE EST L'ANCIEN, MOT POUR MOT.
 //
-// Un slot que le triplet n'a pas apparie sans ambiguite n'apparait pas : c'est la meme regle
-// que pour les actions d'objectif, et pour la meme raison — attribuer les compteurs d'un
-// joueur a un autre serait indetectable a l'ecran.
-func buildPlayerScores(recs []objectiveevents.StatRecord, identity map[int]string, c scoreClock) []PlayerScore {
+//	MONO-MANCHE (<= 1 manche reelle)  le slot d'entite n'est PAS reattribue : l'identite plate
+//	   par TOTAUX (le triplet des lignes de match) apparie chaque slot a son joueur, et le total
+//	   d'un slot est celui de `SeriesTotal` — exactement comme avant cette migration.
+//	MULTI-MANCHE (> 1 manche reelle)  le slot EST reattribue (slot 22 = joueur A en manche 0,
+//	   joueur B ensuite) et le compteur repart de zero par manche : le pont plat ne verrait que
+//	   la manche 0 (un seul joueur apparie). La courbe de chaque slot est DECOUPEE aux bornes de
+//	   manche (`SeriesByRound` la donne deja par manche), chaque segment rattache au joueur de SA
+//	   manche (identite par les instants de mort, `AtRound`), et les segments d'un meme xuid
+//	   FUSIONNES en une seule entree, `Total` recompose dans l'ordre des manches.
+//
+// Un slot (mono) ou un couple (slot, manche) (multi) que le pont n'apparie pas sans ambiguite
+// n'est PAS publie : attribuer les compteurs d'un joueur a un autre serait indetectable a l'ecran.
+func buildPlayerScores(recs []objectiveevents.StatRecord, flat map[int]string,
+	deaths []Death, c scoreClock) []PlayerScore {
+	if len(objectiveevents.RealRounds(recs)) > 1 {
+		return buildPlayerScoresByRound(recs,
+			objectiveevents.ResolveRoundIdentity(recs, deathInstantsOf(deaths)), c)
+	}
+	return buildPlayerScoresFlat(recs, flat, c)
+}
+
+// buildPlayerScoresFlat est le chemin MONO-MANCHE : un PlayerScore par slot apparie par le pont
+// des totaux, total lu tel quel dans `SeriesTotal`. Comportement d'avant la migration, inchange.
+func buildPlayerScoresFlat(recs []objectiveevents.StatRecord, identity map[int]string, c scoreClock) []PlayerScore {
 	if len(identity) == 0 {
 		return nil
 	}
@@ -287,6 +339,111 @@ func buildPlayerScores(recs []objectiveevents.StatRecord, identity map[int]strin
 	if len(out) == 0 {
 		return nil
 	}
+	return out
+}
+
+// buildPlayerScoresByRound est le chemin MULTI-MANCHE : la courbe de chaque slot est decoupee par
+// manche, chaque segment rattache au joueur de SA manche (`AtRound`), les segments d'un meme xuid
+// fusionnes en une entree — courbe recomposee dans l'ordre du temps.
+func buildPlayerScoresByRound(recs []objectiveevents.StatRecord,
+	round objectiveevents.RoundIdentity, c scoreClock) []PlayerScore {
+	personal := playerRoundsByXUID(recs, objectiveevents.PersonalScoreComponent, round)
+	kills := playerRoundsByXUID(recs, objectiveevents.KillsComponent, round)
+	deaths := playerRoundsByXUID(recs, objectiveevents.DeathsComponent, round)
+	assists := playerRoundsByXUID(recs, objectiveevents.AssistsComponent, round)
+
+	out := make([]PlayerScore, 0)
+	for _, xuid := range sortedXUIDs(personal, kills, deaths, assists) {
+		p := PlayerScore{
+			XUID:    xuid,
+			Score:   seriesOfRounds(personal[xuid], c),
+			Kills:   seriesOfRounds(kills[xuid], c),
+			Deaths:  seriesOfRounds(deaths[xuid], c),
+			Assists: seriesOfRounds(assists[xuid], c),
+		}
+		if p.empty() {
+			continue
+		}
+		out = append(out, p)
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
+
+// playerRoundsByXUID regroupe les segments par MANCHE d'un composant sous le xuid qui occupait le
+// slot A CETTE MANCHE (`AtRound`). Un couple (slot, manche) sans joueur nomme est ecarte. Rend
+// xuid -> manche -> points (valeurs propres a la manche, deja triees et filtrees par
+// `SeriesByRound`). L'identite par manche garantit qu'aucun xuid n'est revendique par deux slots
+// dans la meme manche (`withoutContestedXUID`) : chaque (xuid, manche) recoit au plus un segment.
+func playerRoundsByXUID(recs []objectiveevents.StatRecord, comp objectiveevents.StatComponent,
+	round objectiveevents.RoundIdentity) map[string]map[int][]objectiveevents.ScorePoint {
+	out := map[string]map[int][]objectiveevents.ScorePoint{}
+	for slot, byRound := range objectiveevents.SeriesByRound(recs, comp, false) {
+		for r, pts := range byRound {
+			xuid := round.AtRound(r, slot)
+			if xuid == "" {
+				continue
+			}
+			if out[xuid] == nil {
+				out[xuid] = map[int][]objectiveevents.ScorePoint{}
+			}
+			out[xuid][r] = pts
+		}
+	}
+	return out
+}
+
+// seriesOfRounds pose sur la grille les segments par manche d'un xuid : `Rounds` (les manches
+// telles quelles) et `Total` (le cumul recompose dans l'ordre des manches).
+func seriesOfRounds(byRound map[int][]objectiveevents.ScorePoint, c scoreClock) ScoreSeries {
+	return ScoreSeries{
+		Rounds: scoreRoundsOf(byRound, c),
+		Total:  scoreTicksOf(cumulateXUIDRounds(byRound), c),
+	}
+}
+
+// cumulateXUIDRounds recompose la courbe cumulee d'un xuid a partir de ses segments par manche :
+// chaque manche, dans l'ordre, decalee du total des manches precedentes. Les segments viennent de
+// `SeriesByRound` (deja tries par instant et filtres par la plus longue sous-suite non
+// decroissante — les quatre composants joueur sont tous NON stricts), donc leur dernier point est
+// le total de la manche. C'est `cumulateRounds` d'`objectiveevents`, applique par JOUEUR : un
+// joueur qui garde son slot retrouve exactement `SeriesTotal`, un joueur reassigne voit ses
+// manches fusionner dans l'ordre du temps.
+func cumulateXUIDRounds(byRound map[int][]objectiveevents.ScorePoint) []objectiveevents.ScorePoint {
+	rounds := make([]int, 0, len(byRound))
+	for r := range byRound {
+		rounds = append(rounds, r)
+	}
+	sort.Ints(rounds)
+	var out []objectiveevents.ScorePoint
+	var offset int64
+	for _, r := range rounds {
+		pts := byRound[r]
+		for _, p := range pts {
+			out = append(out, objectiveevents.ScorePoint{TimeMS: p.TimeMS, Slot: p.Slot, Value: p.Value + offset})
+		}
+		if len(pts) > 0 {
+			offset += pts[len(pts)-1].Value
+		}
+	}
+	return out
+}
+
+// sortedXUIDs rend l'union triee des xuids presents dans les composants fournis.
+func sortedXUIDs(maps ...map[string]map[int][]objectiveevents.ScorePoint) []string {
+	seen := map[string]bool{}
+	for _, m := range maps {
+		for xuid := range m {
+			seen[xuid] = true
+		}
+	}
+	out := make([]string, 0, len(seen))
+	for xuid := range seen {
+		out = append(out, xuid)
+	}
+	sort.Strings(out)
 	return out
 }
 

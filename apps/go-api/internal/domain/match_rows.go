@@ -47,7 +47,19 @@ type MatchRegistryRow struct {
 	Team1Score              *int
 	Team0PSScore            *int // somme des PersonalScore équipe 0
 	Team1PSScore            *int // somme des PersonalScore équipe 1
-	FirstSyncBy             string
+
+	// Team0RoundsWon / Team1RoundsWon / RoundsTotal — les MANCHES du match
+	// (`CoreStats.RoundsWon/RoundsLost/RoundsTied`). Sur un mode qui se décide aux
+	// manches, Team{0,1}Score est un cumul de points qui ne dit PAS le résultat (4 matchs
+	// Oddball du corpus donnent la victoire à l'équipe qui a le moins de points, cf.
+	// `.ai/V7.5/RAPPORT_MANCHES_2026-08-29.md`). RoundsTotal est le MAX des totaux des deux
+	// camps (un abandon crédite 1 manche à un seul camp). Nil = inconnu (ligne antérieure au
+	// backfill, FFA, camp absent) → le lecteur retombe sur les points ; jamais un zéro
+	// substitué, qui se lirait « zéro manche gagnée ».
+	Team0RoundsWon *int
+	Team1RoundsWon *int
+	RoundsTotal    *int
+	FirstSyncBy    string
 	// SeasonID est l'identifiant CSR de la saison du match (ex. "CsrSeason13-1").
 	// Lu depuis matchInfo["SeasonId"] (payload Halo officiel). Permet le lookup
 	// threshold dynamique côté display (cf. csr_placement_thresholds).

@@ -114,6 +114,26 @@ export type SemanticToken =
   | 'narrative-debacle-text'
   | 'narrative-contre-remontada-text'
 
+  // ── Classes de frags (11) — sunburst « Répartition des frags » ─────────────
+  // Famille DÉDIÉE (2026-08-29) : les classes empruntaient des tokens d'autres
+  // gammes (perf-tier, narrative, chart-series…) choisis pour leur distance sur la
+  // palette DÉFAUT — mais les palettes daltoniennes replient plusieurs de ces
+  // tokens sur la MÊME teinte (Okabe-Ito : lourde ≡ grenade ≡ équipement sur le
+  // Reddish Purple, épaule ≡ environnement sur le Sky Blue ; Cividis : deux paires
+  // exactes aussi). Une famille dédiée permet d'accorder chaque palette SANS
+  // toucher aux tokens partagés. Garde-rail par palette : fragClass.guard.test.ts.
+  | 'frag-shoulder'
+  | 'frag-sidearm'
+  | 'frag-heavy'
+  | 'frag-melee'
+  | 'frag-grenade'
+  | 'frag-spartan-ability'
+  | 'frag-vehicle'
+  | 'frag-turret'
+  | 'frag-equipment'
+  | 'frag-environmental'
+  | 'frag-unattributed'
+
   // ── Heatmaps (6) ──────────────────────────────────────────────────────────
   // cold/hot + divergent : rampes À CONNOTATION (win-rate, K/D → bien/mal).
   // freq-low/high : rampe NEUTRE mono-teinte pour les heatmaps de FRÉQUENCE
@@ -165,6 +185,9 @@ export const ALL_TOKENS: readonly SemanticToken[] = [
   'narrative-encounter-duo-gagnant', 'narrative-encounter-cameleon',
   'narrative-encounter-de-longue-date', 'narrative-encounter-recrue',
   'narrative-encounter-proie-favorite', 'narrative-encounter-cross-game',
+  'frag-shoulder', 'frag-sidearm', 'frag-heavy', 'frag-melee', 'frag-grenade',
+  'frag-spartan-ability', 'frag-vehicle', 'frag-turret', 'frag-equipment',
+  'frag-environmental', 'frag-unattributed',
   'heatmap-cold', 'heatmap-hot', 'heatmap-divergent-low', 'heatmap-divergent-high',
   'heatmap-freq-low', 'heatmap-freq-high',
   'team-ally', 'team-enemy',

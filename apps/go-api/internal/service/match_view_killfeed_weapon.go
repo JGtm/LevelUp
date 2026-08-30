@@ -103,9 +103,10 @@ func decorateKillFeed(ctx context.Context, events []domain.MatchHighlightEvent, 
 		return
 	}
 	defer func() {
-		avec, total := killFeedWeaponCoverage(events)
+		avec, avecHeadshot, total := killFeedWeaponCoverage(events)
 		slog.DebugContext(ctx, "match_view: couverture arme du kill feed",
-			"kills", total, "avec_icone", avec, "sources_appariables", len(in.sources),
+			"kills", total, "avec_icone", avec, "avec_headshot_connu", avecHeadshot,
+			"sources_appariables", len(in.sources),
 			"assists_appariables", len(in.assists), "victimes_appariables", len(in.victims))
 	}()
 	teamByXUID := make(map[string]int, len(in.scoreboard))
@@ -114,9 +115,12 @@ func decorateKillFeed(ctx context.Context, events []domain.MatchHighlightEvent, 
 			teamByXUID[r.XUID] = *r.TeamID
 		}
 	}
-	tagByKill := make(map[killFeedKey]uint32, len(in.sources))
+	// sourceByKill : la ligne ENTIÈRE (arme + headshot), pas seulement le tag — les deux
+	// voyagent ensemble depuis Q21b (même garde d'unanimité, cf. domain.KillSourceRaw) et
+	// Headshot se peuple INDÉPENDAMMENT de la résolution d'icône ci-dessous.
+	sourceByKill := make(map[killFeedKey]domain.KillSourceRaw, len(in.sources))
 	for _, s := range in.sources {
-		tagByKill[killFeedKey{xuid: s.XUID, timeMS: s.TimeMS}] = s.SourceTag
+		sourceByKill[killFeedKey{xuid: s.XUID, timeMS: s.TimeMS}] = s
 	}
 	assistByKill := make(map[killFeedKey]*domain.KillAssistRaw, len(in.assists))
 	for i := range in.assists {
@@ -144,14 +148,18 @@ func decorateKillFeed(ctx context.Context, events []domain.MatchHighlightEvent, 
 		if a, ok := assistByKill[key]; ok {
 			decorateAssist(e, a, teamByXUID)
 		}
-		if in.assetURL == nil {
-			continue
-		}
-		tag, ok := tagByKill[key]
+		src, ok := sourceByKill[key]
 		if !ok {
 			continue
 		}
-		icon, ok := in.assetURL.KillSourceIcon(tag)
+		// Headshot : posé dès que la source est connue et non ambiguë — PAS conditionné à la
+		// résolution d'icône ni à assetURL (le tir à la tête ne dépend d'aucune table de noms).
+		headshot := src.Headshot
+		e.Headshot = &headshot
+		if in.assetURL == nil {
+			continue
+		}
+		icon, ok := in.assetURL.KillSourceIcon(src.SourceTag)
 		if !ok {
 			continue
 		}
@@ -198,13 +206,17 @@ func decorateAssist(e *domain.MatchHighlightEvent, a *domain.KillAssistRaw, team
 }
 
 // killFeedWeaponCoverage compte, sur un feed décoré, les kills qui portent une icône
-// d'arme et ceux qui n'en portent pas.
+// d'arme, ceux dont le headshot est CONNU (Headshot non nil — vrai ou faux, cf. doctrine
+// domain.MatchHighlightEvent.Headshot) et le total.
 //
 // Ce compteur EXISTE POUR ÊTRE LU : le taux de couverture de cette surface ne dépend pas
 // du code mais de l'état d'avancement du décodage de film, qui bouge dans le temps (et
 // qui, au 2026-08-11, est nul sur les matchs d'avril à juillet 2026). Sans mesure, une
 // chute de couverture ressemblerait à une régression de rendu.
-func killFeedWeaponCoverage(events []domain.MatchHighlightEvent) (avecIcone, total int) {
+//
+// avecHeadshot COMPTE PLUS LARGE que avecIcone (G.1) : le headshot se lit dès que la
+// source est non ambiguë, sans dépendre de la résolution d'icône (cf. decorateKillFeed).
+func killFeedWeaponCoverage(events []domain.MatchHighlightEvent) (avecIcone, avecHeadshot, total int) {
 	for _, e := range events {
 		if e.EventType != analysis.EventTypeKill {
 			continue
@@ -213,6 +225,9 @@ func killFeedWeaponCoverage(events []domain.MatchHighlightEvent) (avecIcone, tot
 		if e.WeaponImageURL != "" {
 			avecIcone++
 		}
+		if e.Headshot != nil {
+			avecHeadshot++
+		}
 	}
-	return avecIcone, total
+	return avecIcone, avecHeadshot, total
 }

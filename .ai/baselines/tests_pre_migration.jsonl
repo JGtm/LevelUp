@@ -47015,10 +47015,6 @@
 {"Time":"2026-06-26T23:51:31.8804724+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestMatchViewService_GetMatchView_OK","Output":"=== RUN   TestMatchViewService_GetMatchView_OK\n"}
 {"Time":"2026-06-26T23:51:31.8804724+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestMatchViewService_GetMatchView_OK","Output":"--- PASS: TestMatchViewService_GetMatchView_OK (0.00s)\n"}
 {"Time":"2026-06-26T23:51:31.8804724+02:00","Action":"pass","Package":"levelup/go-api/internal/service","Test":"TestMatchViewService_GetMatchView_OK","Elapsed":0}
-{"Time":"2026-06-26T23:51:31.8804724+02:00","Action":"run","Package":"levelup/go-api/internal/service","Test":"TestMatchViewService_GetMatchView_MetaError"}
-{"Time":"2026-06-26T23:51:31.8804724+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestMatchViewService_GetMatchView_MetaError","Output":"=== RUN   TestMatchViewService_GetMatchView_MetaError\n"}
-{"Time":"2026-06-26T23:51:31.8804724+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestMatchViewService_GetMatchView_MetaError","Output":"--- PASS: TestMatchViewService_GetMatchView_MetaError (0.00s)\n"}
-{"Time":"2026-06-26T23:51:31.8804724+02:00","Action":"pass","Package":"levelup/go-api/internal/service","Test":"TestMatchViewService_GetMatchView_MetaError","Elapsed":0}
 {"Time":"2026-06-26T23:51:31.8804724+02:00","Action":"run","Package":"levelup/go-api/internal/service","Test":"TestMatchViewService_GetMatchView_NotParticipant"}
 {"Time":"2026-06-26T23:51:31.8804724+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestMatchViewService_GetMatchView_NotParticipant","Output":"=== RUN   TestMatchViewService_GetMatchView_NotParticipant\n"}
 {"Time":"2026-06-26T23:51:31.8804724+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestMatchViewService_GetMatchView_NotParticipant","Output":"2026/06/26 23:51:31 INFO match_view: accès match non-participé refusé match_id=m1 xuid=xuid-absent\n"}
@@ -47771,18 +47767,6 @@
 {"Time":"2026-06-26T23:51:37.7665591+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestComputeProgressPct_MaxRank","Output":"=== RUN   TestComputeProgressPct_MaxRank\n"}
 {"Time":"2026-06-26T23:51:37.7665591+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestComputeProgressPct_MaxRank","Output":"--- PASS: TestComputeProgressPct_MaxRank (0.00s)\n"}
 {"Time":"2026-06-26T23:51:37.7665591+02:00","Action":"pass","Package":"levelup/go-api/internal/service","Test":"TestComputeProgressPct_MaxRank","Elapsed":0}
-{"Time":"2026-06-26T23:51:37.7665591+02:00","Action":"run","Package":"levelup/go-api/internal/service","Test":"TestBuildScoreLabelFromMeta_Team0"}
-{"Time":"2026-06-26T23:51:37.7665591+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBuildScoreLabelFromMeta_Team0","Output":"=== RUN   TestBuildScoreLabelFromMeta_Team0\n"}
-{"Time":"2026-06-26T23:51:37.7665591+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBuildScoreLabelFromMeta_Team0","Output":"--- PASS: TestBuildScoreLabelFromMeta_Team0 (0.00s)\n"}
-{"Time":"2026-06-26T23:51:37.7665591+02:00","Action":"pass","Package":"levelup/go-api/internal/service","Test":"TestBuildScoreLabelFromMeta_Team0","Elapsed":0}
-{"Time":"2026-06-26T23:51:37.7665591+02:00","Action":"run","Package":"levelup/go-api/internal/service","Test":"TestBuildScoreLabelFromMeta_Team1"}
-{"Time":"2026-06-26T23:51:37.7665591+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBuildScoreLabelFromMeta_Team1","Output":"=== RUN   TestBuildScoreLabelFromMeta_Team1\n"}
-{"Time":"2026-06-26T23:51:37.7665591+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBuildScoreLabelFromMeta_Team1","Output":"--- PASS: TestBuildScoreLabelFromMeta_Team1 (0.00s)\n"}
-{"Time":"2026-06-26T23:51:37.7665591+02:00","Action":"pass","Package":"levelup/go-api/internal/service","Test":"TestBuildScoreLabelFromMeta_Team1","Elapsed":0}
-{"Time":"2026-06-26T23:51:37.7665591+02:00","Action":"run","Package":"levelup/go-api/internal/service","Test":"TestBuildScoreLabelFromMeta_Nil"}
-{"Time":"2026-06-26T23:51:37.7665591+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBuildScoreLabelFromMeta_Nil","Output":"=== RUN   TestBuildScoreLabelFromMeta_Nil\n"}
-{"Time":"2026-06-26T23:51:37.7665591+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBuildScoreLabelFromMeta_Nil","Output":"--- PASS: TestBuildScoreLabelFromMeta_Nil (0.00s)\n"}
-{"Time":"2026-06-26T23:51:37.7665591+02:00","Action":"pass","Package":"levelup/go-api/internal/service","Test":"TestBuildScoreLabelFromMeta_Nil","Elapsed":0}
 {"Time":"2026-06-26T23:51:37.7665591+02:00","Action":"run","Package":"levelup/go-api/internal/service","Test":"TestFormatDateFRLong_Known"}
 {"Time":"2026-06-26T23:51:37.7665591+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestFormatDateFRLong_Known","Output":"=== RUN   TestFormatDateFRLong_Known\n"}
 {"Time":"2026-06-26T23:51:37.7665591+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestFormatDateFRLong_Known","Output":"--- PASS: TestFormatDateFRLong_Known (0.00s)\n"}

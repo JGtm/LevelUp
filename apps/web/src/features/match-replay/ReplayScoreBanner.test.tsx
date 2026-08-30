@@ -171,11 +171,14 @@ describe('ReplayScoreBanner — la manche', () => {
       ],
       total: [{ t: 0, v: 0 }, { t: 50, v: 100 }, { t: 150, v: 200 }],
     },
-    equipe(1, [
-      [0, 0],
-      [50, 78],
-      [150, 121],
-    ]),
+    {
+      teamId: 1,
+      rounds: [
+        { round: 0, points: [{ t: 0, v: 0 }, { t: 50, v: 78 }] },
+        { round: 1, points: [{ t: 100, v: 0 }, { t: 150, v: 43 }] },
+      ],
+      total: [{ t: 0, v: 0 }, { t: 50, v: 78 }, { t: 150, v: 121 }],
+    },
   ]
 
   it('annonce la manche en cours quand le mode en a plusieurs', () => {
@@ -184,14 +187,65 @@ describe('ReplayScoreBanner — la manche', () => {
     expect(screen.getByTitle('Manche 2 sur 2')).toBeInTheDocument()
   })
 
-  it('affiche le TOTAL du match à côté, jamais la valeur de la manche', () => {
+  it('affiche la valeur de la MANCHE COURANTE, jamais le total du match', () => {
+    // Manche 2 : l'allié en est à 100, l'adverse à 43 ; les totaux (200/121) ne s'affichent pas.
     renderBanner({ doc: docOf(ODDBALL), frame: 150 })
-    expect(screen.getByText('200')).toBeInTheDocument()
+    expect(screen.getByText('100')).toBeInTheDocument()
+    expect(screen.getByText('43')).toBeInTheDocument()
+    expect(screen.queryByText('200')).not.toBeInTheDocument()
   })
 
   it('se tait sur un mode à manche unique', () => {
     renderBanner()
     expect(screen.queryByText(/^Manche /)).not.toBeInTheDocument()
+  })
+})
+
+describe('ReplayScoreBanner — les pastilles de manche', () => {
+  /** Oddball à deux manches, les deux équipes ventilées : t0 gagne les deux. */
+  const ODDBALL_SPLIT = [
+    {
+      teamId: 0,
+      rounds: [
+        { round: 0, points: [{ t: 0, v: 0 }, { t: 50, v: 100 }] },
+        { round: 1, points: [{ t: 100, v: 0 }, { t: 150, v: 100 }] },
+      ],
+      total: [{ t: 0, v: 0 }, { t: 50, v: 100 }, { t: 150, v: 200 }],
+    },
+    {
+      teamId: 1,
+      rounds: [
+        { round: 0, points: [{ t: 0, v: 0 }, { t: 50, v: 78 }] },
+        { round: 1, points: [{ t: 100, v: 0 }, { t: 150, v: 43 }] },
+      ],
+      total: [{ t: 0, v: 0 }, { t: 50, v: 78 }, { t: 150, v: 121 }],
+    },
+  ]
+
+  it('pose une pastille par manche au-dessus du score', () => {
+    renderBanner({ doc: docOf(ODDBALL_SPLIT), frame: 200 })
+    const dots = screen.getAllByRole('img')
+    expect(dots).toHaveLength(2)
+    expect(dots[0]).toHaveAttribute('aria-label', 'Manche 1 : gagnée par l\'équipe alliée')
+    expect(dots[1]).toHaveAttribute('aria-label', 'Manche 2 : gagnée par l\'équipe alliée')
+  })
+
+  it('remplit au fil de la lecture : manche close pleine, manche en cours vide', () => {
+    renderBanner({ doc: docOf(ODDBALL_SPLIT), frame: 120 })
+    const dots = screen.getAllByRole('img')
+    expect(dots[0]).toHaveAttribute('aria-label', 'Manche 1 : gagnée par l\'équipe alliée')
+    expect(dots[1]).toHaveAttribute('aria-label', 'Manche 2 : à jouer')
+  })
+
+  it('teinte au token du camp gagnant, jamais une couleur en dur', () => {
+    const { container } = renderBanner({ doc: docOf(ODDBALL_SPLIT), frame: 200 })
+    expect(container.innerHTML).toContain('var(--ac-team-ally)')
+    expect(container.innerHTML).not.toMatch(/#[0-9a-fA-F]{6}/)
+  })
+
+  it('aucune pastille sur un mode à manche unique', () => {
+    renderBanner()
+    expect(screen.queryAllByRole('img')).toHaveLength(0)
   })
 })
 

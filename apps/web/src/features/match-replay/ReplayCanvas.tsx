@@ -22,7 +22,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { getSeriesColors } from '@/lib/accessibility/plotlyColorscale'
-import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
 import { useColorPaletteVersion } from '@/lib/accessibility/useColorPaletteVersion'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
@@ -33,30 +32,37 @@ import type { CalloutZoneReady } from './calloutsLayer'
 
 import { ReplayHeatmapLegend } from './ReplayHeatmapLegend'
 import { ReplayTransport } from './ReplayTransport'
-import { useLeadMarks } from './useLeadMarks'
-import {
-  buildObjectivePulses,
-  drawObjectivePulses,
-  normalizeMapObjectives,
-} from './objectivesLayer'
+import { useTeamCascades } from './useTeamCascades'
+import { drawObjectivePulses, normalizeMapObjectives } from './objectivesLayer'
 import { drawZoneStates } from './zoneStatesLayer'
 import { drawFireMarks } from './fireMark'
 import { drawGrappleLayer } from './grappleLayer'
 import { drawEquipmentPlacementsLayer } from './equipmentPlacementsLayer'
 import { ReplayCanvasTips } from './ReplayCanvasTips'
 import { useReplayPlacements } from './useReplayPlacements'
+import { EMPTY_FEED, EMPTY_MEDIA, EMPTY_ZONES, SERIES_TOKENS } from './replayCanvasConfig'
+import { useReplayObjectiveObjects } from './useReplayObjectiveObjects'
+import { useReplayVipCrown } from './useReplayVipCrown'
+import { useReplaySkullCarrier } from './useReplaySkullCarrier'
 import { useReplayFlagCarries } from './useReplayFlagCarries'
 import { useGrenadeIcons } from './useGrenadeIcons'
 import { useZoneStates } from './useZoneStates'
 import { useReplayWeaponPads } from './useReplayWeaponPads'
+import { useReplayGroundWeapons } from './useReplayGroundWeapons'
 import type { ReplayLocale } from './i18n'
 import type { EndMatchSoundSpec } from './endMatchSound'
+import type { ReplayFeedEntry } from './killFeedLogic'
+import type { ReplayMediaItem } from './replayTimelineTracksLogic'
 import { useReplayFx } from './useReplayFx'
-import type { PlayerMarkKind } from './playerMarks'
+import { NO_MARKS, type PlayerMarkKind } from './playerMarks'
+import { useReplayDrawer } from './useReplayDrawer'
+import { useReplayTimeline } from './useReplayTimeline'
 import { useSlotIdentity } from './useSlotIdentity'
 import { ReplaySettingsDrawer } from './ReplaySettingsDrawer'
 import { useReplayHeatmap } from './useReplayHeatmap'
 import { useReplayInks } from './useReplayInks'
+import { hoverHandlers } from './hoverLayers'
+import type { ExportOutcome } from './exportOverlayPanels'
 import { useReplayCapture } from './useReplayCapture'
 import { useReplayClock } from './useReplayClock'
 import { useReplayPlayback } from './useReplayPlayback'
@@ -77,18 +83,9 @@ import type { ReplayWindowBounds } from './replayWindow'
 import { drawProjectilesLayer } from './replayProjectiles'
 import { drawTracksLayer } from './replayMarkers'
 import { useReplayTiming } from './useReplayTiming'
-import { CANVAS_HEIGHT, CANVAS_PAD, useReplayView, type ReplayMapBackgroundLayer } from './useReplayView'
+import { CANVAS_HEIGHT, CANVAS_PAD, exportRenderScale, useReplayView, type ReplayMapBackgroundLayer } from './useReplayView'
 
-// 8 tokens de série : une teinte par GRANDE ZONE NOMMÉE (cyclés au-delà de 8 via
-// getSeriesColors), et — depuis le 2026-08-24 — la palette des COULEURS DISTINCTES PAR
-// JOUEUR quand l'option du tiroir la choisit. Par défaut un joueur porte la couleur de
-// son ÉQUIPE (D1).
-const SERIES_TOKENS: SemanticToken[] = [
-  'chart-series-1', 'chart-series-2', 'chart-series-3', 'chart-series-4',
-  'chart-series-5', 'chart-series-6', 'chart-series-7', 'chart-series-8',
-]
-/** Référence STABLE pour « pas de zones » : un `?? []` inline recuirait le calque à chaque rendu. */
-const EMPTY_ZONES: CalloutZoneReady[] = []
+
 
 interface ReplayCanvasProps {
   doc: ReplayDocumentReady
@@ -131,16 +128,29 @@ interface ReplayCanvasProps {
   /** Marques d'identité par xuid (« moi », « ami ») : elles décident de la FORME du point. */
   marks?: ReadonlyMap<string, PlayerMarkKind>
   /**
+   * LE FIL ALIGNÉ ET LES MÉDIAS, assemblés une fois par la page (`buildFeedEntries`,
+   * `buildReplayMedia`) : un second recalage ici divergerait de ce qu'on lit à côté.
+   */
+  feedEntries?: readonly ReplayFeedEntry[]
+  media?: readonly ReplayMediaItem[]
+  /**
    * LA FIN DE PARTIE SONORE (lot C) : l'issue du joueur de la page et la langue, lues UNE fois
    * par la page — la même lecture que l'écran de fin (`endMatchSound.ts`). Le canvas ne fait
    * que la relayer au lecteur, qui préchargera les prises et les jouera quand la lecture
    * atteindra la borne de fin. Absente = aucune conclusion sonore, le reste est inchangé.
    */
   endMatch?: EndMatchSoundSpec | null
+  /**
+   * LE VERDICT DU MATCH, pour l'EXPORT seul : c'est lui qui permet de peindre l'ecran de fin
+   * DANS la toile, la ou l'ecran affiche (`ReplayVictoryOverlay`) est du DOM qu'aucun encodeur
+   * ne voit. Absent = clip sans ecran de fin, exactement comme une page sans libelle d'issue.
+   */
+  outcome?: ExportOutcome | null
 }
 
 export function ReplayCanvas({
-  doc, locale, playWindow, kills, t0Ms, onFrameChange, background, callouts, scoreboard, xuidMeta, marks, endMatch,
+  doc, locale, playWindow, kills, t0Ms, onFrameChange, background, callouts, scoreboard, xuidMeta, marks,
+  endMatch, outcome, feedEntries = EMPTY_FEED, media = EMPTY_MEDIA,
 }: ReplayCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -150,33 +160,19 @@ export function ReplayCanvas({
   const { clockRef, tick: clockTick } = useReplayClock({ doc, playWindow, onFrameChange })
 
   const [width, setWidth] = useState(0)
-  // TIROIR DE RÉGLAGES (décision utilisateur du 16/08) : fermé par défaut, ouvert par un
-  // bouton unique dans la barre. Calques, effets et vitesse persistés comme le son — même
-  // mécanisme (replayPreferences.ts), des réglages distincts.
-  const [settingsOpen, setSettingsOpen] = useState(false)
-  // Le bouton du tiroir : il est exclu du « clic dehors » et REPREND le focus à la
-  // fermeture — sans quoi le focus retomberait au document et la navigation au clavier
-  // repartirait du haut de la page.
-  const settingsButtonRef = useRef<HTMLButtonElement>(null)
-  const closeSettings = useCallback(() => {
-    setSettingsOpen(false)
-    settingsButtonRef.current?.focus({ preventScroll: true })
-  }, [])
+  // L'OBJET DE RÉGLAGES RESTE ENTIER (2026-08-28) : le tiroir en consomme la quasi-totalité, et
+  // le lui recopier bascule par bascule coûtait cinquante lignes au canvas (cf. useReplayDrawer).
+  // Le DESSIN, lui, ne lit que les valeurs — d'où cette destructuration-là, et pas les commandes.
+  const settings = useReplaySettings()
   const {
-    showAim, toggleAim, showZones, toggleZones, showNames, toggleNames,
-    showTrail, toggleTrail,
-    showHeatmap, toggleHeatmap, heatmapMode, setHeatmapMode, heatmapSpan, setHeatmapSpan,
-    showShotFx, toggleShotFx, showKillFx, toggleKillFx,
-    showPlacements, togglePlacements,
-    showUnnamedPlacements, toggleUnnamedPlacements,
-    showDroppedPlacements, toggleDroppedPlacements,
-    showWeaponPads, toggleWeaponPads, showFlagCarries, toggleFlagCarries,
-    speed: multiplier, setSpeed: setMultiplier,
-    markerColors, setMarkerColors,
-  } = useReplaySettings()
-  // SON : coupé par défaut, préférence, volume et filtre par catégorie persistés, tout le
-  // câblage dans le hook (règles dans replaySound.ts, lecture Web Audio dans replayAudio.ts).
-  const sound = useReplaySound(doc, kills, t0Ms, multiplier, endMatch ?? null)
+    showAim, showZones, showNames, showTrail, showHeatmap, heatmapMode, heatmapSpan,
+    showShotFx, showKillFx, showPlacements, showUnnamedPlacements, showDroppedPlacements,
+    showWeaponPads, showGroundWeapons, showFlagCarries, showVipCrown, showSkullCarrier, speed: multiplier,
+    markerColors,
+  } = settings
+  // SON : coupé par défaut, câblage dans le hook (replaySound.ts, lecture replayAudio.ts, camps
+  // objectiveSound.ts, fin endMatch, « manche terminée » locale-aware — la `locale` ne sert qu'à lui).
+  const sound = useReplaySound(doc, kills, t0Ms, multiplier, scoreboard, endMatch ?? null, locale)
 
   const paletteVersion = useColorPaletteVersion()
   // TOUTES LES ENCRES DU REJEU, résolues une fois par palette (useReplayInks) : couleurs
@@ -185,7 +181,7 @@ export function ReplayCanvas({
   // l'en-tête du hook.
   const {
     teamColorOf, geometry: geometryColor, shot: shotColor, grenade: grenadeColor, neutral: neutralInk, pad: padInk,
-    floor: floorStyle, fx: fxInk, grapple: grappleInk, labelStroke, self: selfInk, wall: wallInk, mark: markInk,
+    floor: floorStyle, fx: fxInk, grapple: grappleInk, labelStroke, self: selfInk, wall: wallInk, rift: riftInk, mark: markInk,
   } = useReplayInks(paletteVersion)
   // COULEURS DISTINCTES PAR JOUEUR (option du tiroir, 2026-08-24) : une couleur de série
   // stable par joueur du roster, à la place de la couleur d'équipe — pour suivre quelqu'un
@@ -194,10 +190,9 @@ export function ReplayCanvas({
     void paletteVersion
     return markerColors === 'player' ? getSeriesColors(doc.roster.length, SERIES_TOKENS) : null
   }, [markerColors, doc.roster.length, paletteVersion])
-  // Couleur, marque et nom PAR SLOT : un tir et une mort se dessinent dans la teinte de leur
-  // auteur, et c'est elle qui permet de suivre un joueur des yeux. Le calcul (jointure au
-  // scoreboard + descente sur les vies) vit dans useSlotIdentity.
-  const { colorOfSlot, slotColors, markOfSlot, nameOfSlot, sideOfSlot } = useSlotIdentity({
+  // Identité PAR SLOT ET PAR IMAGE (un slot est réattribué entre manches) : strict pour les
+  // marqueurs/vies, `colorOfSlotOrLast` pour la frontière (objets lâchés, morts). Cf. useSlotIdentity.
+  const { colorOfSlot, colorOfSlotOrLast, markOfSlot, nameOfSlot, sideOfSlot } = useSlotIdentity({
     doc,
     scoreboard,
     xuidMeta,
@@ -233,16 +228,10 @@ export function ReplayCanvas({
   // Les OBJECTIFS STATIQUES du mode arrivent AVEC le document (`mapObjectives`, servi à
   // la requête) : normalisés une fois, comme les callouts. Absents = pas de calque.
   const mapObjectives = useMemo(() => normalizeMapObjectives(doc.mapObjectives), [doc.mapObjectives])
-  // Les PULSES d'action d'objectif (doc.objectives, rendu nulle part avant le lot 4.4) :
-  // précalculés en monde, comme les effets de mort.
-  const objectivePulses = useMemo(
-    () => buildObjectivePulses(doc, mapObjectives),
-    [doc, mapObjectives],
-  )
   // L'ÉTAT VIVANT DES ZONES (schémas 16-18) : encres, jointure du catalogue, tenue de la jauge (useZoneStates).
   const zones = useZoneStates(mapObjectives, scoreboard, teamColorOf, neutralInk, doc)
 
-  const leadMarks = useLeadMarks(doc, scoreboard, xuidMeta, locale, playWindow)
+  const teamCascades = useTeamCascades(scoreboard, xuidMeta, locale)
 
   // Traînée, cône, croix de mort, apparition, rémanences et fins de vol : toutes les durées
   // du rejeu, converties une fois pour ce document (useReplayTiming).
@@ -250,7 +239,8 @@ export function ReplayCanvas({
   // LES EFFETS PRÉCALCULÉS DU FILM (tirs, « ! » du tireur, morts, fins de vol, grappin) : cinq
   // listes en coordonnées monde, cuites une fois pour ce document. Elles vivent dans
   // `useReplayFx` — onzième extraction imposée par le cliquet de taille, noms inchangés.
-  const { shotFx, fireMarks, killFx, grenadeRestFx, grappleFx } = useReplayFx(doc, kills, t0Ms, timing.aimHold)
+  const { shotFx, fireMarks, killFx, grenadeRestFx, grappleFx, objectivePulses } =
+    useReplayFx(doc, kills, t0Ms, timing.aimHold, mapObjectives)
   // La CARTE DE CHALEUR : grille cuite, rampe du thème et lecture réellement servie —
   // toute la logique vit dans le hook, le canvas ne fait que poser le calque.
   const heat = useReplayHeatmap(doc, bounds, killFx, {
@@ -303,6 +293,12 @@ export function ReplayCanvas({
     locale,
     redraw,
   })
+  // LES ARMES AU SOL (schéma 27) : les armes ABANDONNÉES — un socle est un LIEU qui réapprovisionne,
+  // une arme au sol un OBJET qui ne revient pas. Liseré à l'encre du « aucun camp » (cf. le hook).
+  const groundWeapons = useReplayGroundWeapons({
+    doc, view: canvasView, enabled: showGroundWeapons,
+    ink: { fill: markInk.fill, outline: neutralInk }, redraw,
+  })
   // LES POSES D'ÉQUIPEMENT (schéma 10) : comptes, axe de temps, bascules et survol dans un
   // seul hook (useReplayPlacements). Les LÂCHÉS DE PUISSANCE suivent leur bascule, et rien
   // d'autre — plus de garde de mode par-dessus (2026-08-20).
@@ -316,15 +312,23 @@ export function ReplayCanvas({
   // calque statique, le drapeau porté suit son porteur image par image.
   const flags = useReplayFlagCarries({
     doc, view: canvasView, frameRef, enabled: showFlagCarries,
-    scoreboard, teamColorOf, neutral: floorStyle.edge, reducedMotion,
+    scoreboard, teamColorOf, neutral: floorStyle.edge, outline: markInk.outline, reducedMotion,
   })
+
+  const objectiveObjects = useReplayObjectiveObjects({
+    lives: doc.objectiveObjects, carries: doc.skullCarries, view: canvasView, ink: neutralInk, outline: markInk.outline,
+  })
+  // LA COURONNE VIP (schéma 22) : marqueur sur le VIP courant, relu image par image (useReplayVipCrown).
+  const vipCrown = useReplayVipCrown({ doc, view: canvasView, enabled: showVipCrown, ink: neutralInk, reducedMotion })
+  // LE PORTEUR DU CRÂNE d'Oddball (schéma 23) : crâne sur le porteur courant, relu image par image.
+  const skullCarrier = useReplaySkullCarrier({ doc, view: canvasView, enabled: showSkullCarrier, ink: neutralInk, outline: markInk.outline, reducedMotion })
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current
     if (!canvas || renderWidth === 0) return
     const ctx = canvas.getContext('2d')
     if (!ctx) return
-    const dpr = window.devicePixelRatio || 1
+    const dpr = (window.devicePixelRatio || 1) * exportRenderScale.current
     const pw = Math.round(renderWidth * dpr)
     const ph = Math.round(CANVAS_HEIGHT * dpr)
     if (canvas.width !== pw || canvas.height !== ph) {
@@ -376,6 +380,8 @@ export function ReplayCanvas({
     // Les EMPLACEMENTS D'ARME juste au-dessus du terrain et SOUS les poses : un socle est un
     // MEUBLE de la carte, il précède ce qu'un joueur y dépose comme ce qui s'y déplace.
     weaponPads.paint(ctx, frame, dpr)
+    // Les ARMES AU SOL au MÊME étage que les socles : du décor posé sur le terrain, jamais le sujet.
+    groundWeapons.paint(ctx, frame, dpr)
     // Les POSES D'ÉQUIPEMENT, au-dessus du terrain (fond, zones, chaleur, objectifs) et SOUS
     // les marqueurs de joueurs : un mur est un objet POSÉ sur la carte — il appartient au
     // décor du moment, pas au sujet. Sa fenêtre d'affichage n'est PAS [t0, t1] : `t1` date la
@@ -386,7 +392,7 @@ export function ReplayCanvas({
         // Les VIES et leur CAMP voyagent avec les poses : le ping du capteur révèle les
         // adversaires du poseur, et « adversaire » est une relation entre deux vies. Le camp
         // est celui de la base (`team_side`), jamais le drapeau « allié » vu de la page.
-        { placements: doc.equipmentPlacements, lives: doc.tracks, sideOfSlot },
+        { placements: doc.equipmentPlacements, lives: doc.tracks, sideOfSlot, teleports: placements.teleports },
         view,
         {
           frame,
@@ -398,7 +404,8 @@ export function ReplayCanvas({
           reducedMotion,
           ...placements.toggles,
         },
-        { colorOfSlot: (slot) => slotColors.get(slot) ?? null, neutral: floorStyle.edge, wall: wallInk },
+        // FRONTIÈRE : objet lâché à la mort, `t0 = finVie+1` — `colorOfSlotOrLast` (cf. PlacementInk).
+        { colorOfSlot: colorOfSlotOrLast, neutral: floorStyle.edge, wall: wallInk, rift: riftInk },
       )
     }
     drawTracksLayer(ctx, doc.tracks, view, {
@@ -486,6 +493,13 @@ export function ReplayCanvas({
     // LES DRAPEAUX par-dessus les zones et SOUS les morts : l'enjeu du mode prime sur le
     // terrain, mais une élimination reste l'événement le plus lourd de sens du calque.
     flags.paint(ctx, frame)
+    // LE CRÂNE LIBRE : sa présence se résout par `skullPresenceAt` (cf. le hook) — tenu à son
+    // dernier repos qu'une prise corrobore, muet pendant les portages, absent aux respawns.
+    objectiveObjects.paint(ctx, frame)
+    // LA COURONNE VIP sur le porteur courant de chaque camp, au-dessus de son marqueur.
+    vipCrown.paint(ctx, frame)
+    // LE CRÂNE d'Oddball sur son porteur (le crâne LIBRE reste au sol via objectiveObjects).
+    skullCarrier.paint(ctx, frame)
     // Le PULSE D'ACTION D'OBJECTIF (capture, retour, prise de zone) : un anneau qui
     // s'ouvre depuis la zone/le marqueur concerné à l'instant de l'action (lot 4.4).
     if (objectivePulses.length > 0) {
@@ -496,7 +510,7 @@ export function ReplayCanvas({
     // et le seul dont l'extrémité pointe une vraie victime (couple complet, règle 89/93).
     if (showKillFx && killFx.length > 0) {
       drawKillFxLayer(ctx, killFx, view, win, {
-        colorOfSlot: (slot) => slotColors.get(slot) ?? null,
+        colorOfSlot: colorOfSlotOrLast, // FRONTIÈRE : kill posthume/échange après la fin de vie (cf. KillFxStyle)
         fallback: shotColor,
         reducedMotion, k: dpr,
       })
@@ -506,7 +520,7 @@ export function ReplayCanvas({
     // qu'on vient de peindre (cf. useReplayClock).
     clockTick(frame)
   }, [
-    doc, geometryColor, bounds, zRange, timing, clockTick, wallInk,
+    doc, geometryColor, bounds, zRange, timing, clockTick, wallInk, riftInk,
     // Refs STABLES : la regle de dependances ne le sait pas d'un hook maison.
     floorRef, zonesRef, heatRef, objectivesRef, grenadeIconsRef,
     renderWidth, canvasView,
@@ -517,6 +531,7 @@ export function ReplayCanvas({
     // Le TRACÉ seul, jamais l'objet du hook : `hover` change à chaque mouvement de pointeur,
     // et le mettre ici ferait recuire `draw` (donc toute la scène) pour une infobulle.
     weaponPads,
+    groundWeapons,
     shotColor,
     grenadeColor,
     eventHoldFrames,
@@ -530,11 +545,14 @@ export function ReplayCanvas({
     grenadeRestFx,
     restWindow,
     objectivePulses,
+    placements.teleports,
     zones,
     flags,
+    vipCrown,
+    skullCarrier,
     floorStyle.edge,
-    slotColors,
     colorOfSlot,
+    colorOfSlotOrLast,
     sideOfSlot,
     markOfSlot,
     nameOfSlot,
@@ -559,13 +577,42 @@ export function ReplayCanvas({
 
   // LA LECTURE (état lu/pause, boucle rAF, curseur de la frise, ARRÊT SUR L'ÉTAT FINAL) vit
   // dans useReplayPlayback : le canvas garde le DESSIN, le hook porte le TEMPS.
-  const { playing, startFrame, endFrame, sliderRef, togglePlay, restart, onScrub } = useReplayPlayback({
+  const playback = useReplayPlayback({
     doc, playWindow, baseFps, speed: multiplier, renderWidth, frameRef, draw,
     soundTick: sound.tick, onEnded: sound.endMatch, onTransportGesture: sound.wake,
   })
+  // LA FRISE ET SON CLAVIER (planche 2a) vivent dans useReplayTimeline — treizième extraction
+  // imposée par le cliquet : pistes, dominance, médias, horloges et raccourcis sont LA FRISE.
+  const timeline = useReplayTimeline({
+    doc, playWindow, feedEntries, media, marks: marks ?? NO_MARKS, renderWidth, locale,
+    lead: teamCascades, playback, toggleSound: sound.toggle,
+  })
+  // LE TIROIR, groupé de même (useReplayDrawer) : les disponibilités viennent des calques, les
+  // bascules de `useReplaySettings`, et l'état d'ouverture du hook lui-même (2026-08-30).
+  const drawer = useReplayDrawer({
+    settings, sound, locale,
+    heat: { mode: heat.mode, killsAvailable: heat.killsAvailable },
+    available: {
+      zones: calloutZones.length > 0,
+      placements: {
+        drawable: placements.counts.drawable > 0,
+        unnamed: placements.counts.unnamed > 0,
+        dropped: placements.counts.dropped > 0,
+      },
+      weaponPads: weaponPads.available,
+      groundWeapons: groundWeapons.available,
+      flagCarries: flags.available,
+      vipCrown: vipCrown.available,
+      skullCarrier: skullCarrier.available,
+    },
+  })
   // CE QUI SORT DU REJEU (image, vidéo) vit dans useReplayCapture : le canvas prête sa TOILE, son
   // HORLOGE et sa lecture. `play` reçoit `togglePlay` — appelé sur une PAUSE seule, il vaut lecture.
-  const capture = useReplayCapture({ canvasRef, doc, frameRef, playing, play: togglePlay, audioTrack: sound.recordingTrack })
+  const capture = useReplayCapture({
+    canvasRef, doc, frameRef, playing: playback.playing, play: playback.togglePlay,
+    audioTrack: sound.recordingTrack, soundTrack: sound.exportTrack, soundVolume: sound.volume,
+    redraw, playWindow, scoreboard, xuidMeta, outcome, locale,
+  })
 
   return (
     // RELATIVE + OVERFLOW-HIDDEN : le tiroir se pose EN SURIMPRESSION dans ce cadre (retour
@@ -592,16 +639,7 @@ export function ReplayCanvas({
                 ref={canvasRef}
                 className="block"
                 style={{ width: renderWidth || '100%', height: CANVAS_HEIGHT }}
-                onPointerMove={(e) => {
-                  placements.hover.onPointerMove(e)
-                  weaponPads.onPointerMove(e)
-                  flags.onPointerMove(e)
-                }}
-                onPointerLeave={() => {
-                  placements.hover.onPointerLeave()
-                  weaponPads.onPointerLeave()
-                  flags.onPointerLeave()
-                }}
+                {...hoverHandlers(placements.hover, weaponPads, flags)}
               />
               {/* Les infobulles des trois calques survolables (cf. ReplayCanvasTips). */}
               <ReplayCanvasTips
@@ -613,78 +651,27 @@ export function ReplayCanvas({
             {/* LA BARRE DE LECTURE : icônes, vitesse et son au niveau de la lecture
                 (demandes du 2026-08-24) — extraite dans ReplayTransport. */}
             <ReplayTransport
-              playing={playing}
-              onTogglePlay={togglePlay}
-              onRestart={restart}
+              playing={playback.playing}
+              onTogglePlay={playback.togglePlay}
+              onRestart={playback.restart}
+              onSeekBy={playback.seekBy}
               clockRef={clockRef}
-              sliderRef={sliderRef}
-              minFrame={startFrame}
-              maxFrame={endFrame}
-              onScrub={onScrub}
+              timeline={timeline}
               speed={multiplier}
-              onSetSpeed={setMultiplier}
+              onSetSpeed={settings.setSpeed}
               sound={sound}
               capture={capture}
               locale={locale}
-              leadMarks={leadMarks}
-              settingsOpen={settingsOpen}
-              onToggleSettings={() => setSettingsOpen((v) => !v)}
-              settingsButtonRef={settingsButtonRef}
+              settingsOpen={drawer.open}
+              onToggleSettings={drawer.toggle}
+              settingsButtonRef={drawer.buttonRef}
             />
           </div>
         </div>
         {/* Le panneau se pose SUR la carte, à droite (retour de planche du 16/08 : « je vois
             plus un panneau par dessus »). Il ne mange donc plus la largeur du canvas — et il
             laisse libre le coin BAS-GAUCHE, où vit la légende de la carte de chaleur. */}
-        {settingsOpen && (
-          <ReplaySettingsDrawer
-            locale={locale}
-            onClose={closeSettings}
-            showAim={showAim}
-            onToggleAim={toggleAim}
-            showZones={showZones}
-            onToggleZones={toggleZones}
-            showNames={showNames}
-            onToggleNames={toggleNames}
-            showTrail={showTrail}
-            onToggleTrail={toggleTrail}
-            zonesAvailable={calloutZones.length > 0}
-            placements={{
-              available: placements.counts.drawable > 0,
-              show: showPlacements,
-              onToggle: togglePlacements,
-              unnamedAvailable: placements.counts.unnamed > 0,
-              showUnnamed: showUnnamedPlacements,
-              onToggleUnnamed: toggleUnnamedPlacements,
-              droppedAvailable: placements.counts.dropped > 0,
-              showDropped: showDroppedPlacements,
-              onToggleDropped: toggleDroppedPlacements,
-            }}
-            weaponPads={{
-              available: weaponPads.available,
-              show: showWeaponPads,
-              onToggle: toggleWeaponPads,
-            }}
-            flagCarries={{ available: flags.available, show: showFlagCarries, onToggle: toggleFlagCarries }}
-            heatmap={{
-              show: showHeatmap,
-              onToggle: toggleHeatmap,
-              mode: heat.mode,
-              onSetMode: setHeatmapMode,
-              span: heatmapSpan,
-              onSetSpan: setHeatmapSpan,
-              killsAvailable: heat.killsAvailable,
-            }}
-            showShotFx={showShotFx}
-            onToggleShotFx={toggleShotFx}
-            showKillFx={showKillFx}
-            onToggleKillFx={toggleKillFx}
-            sound={sound}
-            markerColors={markerColors}
-            onSetMarkerColors={setMarkerColors}
-            triggerRef={settingsButtonRef}
-          />
-        )}
+        {drawer.open && <ReplaySettingsDrawer {...drawer.panel} />}
       </div>
     </div>
   )

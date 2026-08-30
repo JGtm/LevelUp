@@ -60,6 +60,12 @@ type EquipmentEpisode struct {
 	// qu'un consommateur (le son) doit distinguer « l'équipement s'éteint » de « le
 	// porteur meurt » — le second n'a pas de son de désactivation mesuré.
 	EndRead bool `json:"endRead,omitempty"`
+	// K / A : les frags et assistances DU PORTEUR pendant [T0, T1] (cf.
+	// equipment_episode_kills.go). Omis quand nuls — le zéro DE CE CHAMP n'est distinguable
+	// d'une mesure non tentée QUE via EquipmentCoverage.KillsRead, publié à côté : lui seul
+	// dit si la jointure a eu lieu pour ce match.
+	K int `json:"k,omitempty"`
+	A int `json:"a,omitempty"`
 }
 
 // EquipmentCoverage dit combien de vies publiées portent au moins un épisode, par
@@ -77,6 +83,13 @@ type EquipmentCoverage struct {
 	// OvershieldLives / OvershieldEpisodes : idem pour le surbouclier.
 	OvershieldLives    int `json:"overshieldLives"`
 	OvershieldEpisodes int `json:"overshieldEpisodes"`
+	// KillsRead dit si `EquipmentEpisode.K`/`.A` ont été MESURÉS pour ce match — jamais
+	// « il n'y avait rien à joindre ». Faux quand killsource n'a pas pu être décodé, quand
+	// sa porte de publication ligne-par-ligne était fermée, ou quand l'origine d'horloge du
+	// document n'est pas établie (cf. equipment_episode_kills.go). SANS CE CHAMP, un match
+	// sans aucun frag sous effet actif (K=0 partout, mesuré) est indiscernable d'un match où
+	// la mesure a simplement échoué — exactement le piège que Coverage existe pour fermer.
+	KillsRead bool `json:"killsRead"`
 }
 
 // trackFrameWindows indexe les fenêtres [StartFrame, EndFrame] des vies publiées. Ce

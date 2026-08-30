@@ -19,8 +19,15 @@ export interface MatchViewText {
   copied: string
   copyShort: string
   copyTooltip: string
-  replayShort: string
   replayTooltip: string
+  /**
+   * Aide du score quand le mode se joue en MANCHES : le nombre affiché est le compte de
+   * manches gagnées / perdues, pas le score en points de l'API — lequel, sur ces modes,
+   * peut donner la victoire au camp qui en a le moins.
+   */
+  scoreRoundsHint: string
+  /** Étiquette du score de l'API affiché en second plan, à côté du compte de manches. */
+  scorePointsAside: (label: string) => string
   markIrrelevant: string
   reactivate: string
   excludeShort: string
@@ -94,6 +101,21 @@ export interface MatchViewText {
   labelGroundPound: string
   labelShoulderBash: string
   weaponUnknownPrefix: string
+  // Distance par arme, par joueur — POC (LOT G.3, 2026-08-30, plan
+  // retours-utilisateur §3bis DEC-8). Vue match uniquement, kills du TUEUR
+  // seulement (arme/distance de l'assistant hors périmètre).
+  killDistanceTitle: string
+  killDistancePocBadge: string
+  killDistanceColWeapon: string
+  killDistanceColKills: string
+  killDistanceColAvg: string
+  /** En-tête d'un groupe joueur : gamertag + kills mesurés / total du match. */
+  killDistancePlayerHeaderFmt: (gamertag: string, measured: number, total: number) => string
+  /** Distance moyenne formatée locale-aware, ex. « 12,4 m » (FR) / « 12.4 m » (EN). */
+  killDistanceAvgFmt: (m: number) => string
+  /** Plage min–max entre parenthèses, ex. « (3,1–28,7 m) ». */
+  killDistanceRangeFmt: (min: number, max: number) => string
+  killDistanceReserve: string
   // Section médias (dans onglet Résumé)
   sectionMedia: string
   mediaNoCaptures: string
@@ -128,6 +150,8 @@ export interface MatchViewText {
   // Histogramme momentum (carte Dominance) — libellés de tooltip.
   combatMomentumDelta: string
   combatMomentumCumul: string
+  /** Décompte headshot dans le tooltip de vague (G.1) — n toujours >= 1 à l'appel. */
+  combatHeadshotCountFmt: (n: number) => string
   combatNemesisTitle: string
   combatBullyTitle: string
   combatNoNemesis: string
@@ -169,6 +193,9 @@ export interface MatchViewText {
   // Note d'infobulle d'un segment : les éliminations volées de ce couple
   // (part de dégâts de l'assistant supérieure à celle du tueur crédité).
   assistStolenNote: (n: number) => string
+  // Note d'infobulle d'un segment : la part moyenne de participation de l'assistant sur
+  // ce couple. Vocabulaire « part » (comme le kill feed du rejeu), jamais « dégâts ».
+  assistAvgShareNote: (pct: number) => string
   // Sections des onglets Chronologie et Joueurs (titres type-1 du catalogue
   // d'harmonisation)
   sectionFlow: string
@@ -271,8 +298,10 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     copied: 'Copié',
     copyShort: 'Copier ID',
     copyTooltip: "Copier l'identifiant unique de ce match dans le presse-papier",
-    replayShort: 'Rejeu 2D',
     replayTooltip: 'Voir le rejeu 2D de ce match (vue du dessus)',
+    scoreRoundsHint:
+      "Ce mode se joue en manches : le score affiché est le nombre de manches gagnées et perdues. Le score en points renvoyé par l'API est indiqué à côté — sur ces modes, il peut donner l'avantage au camp qui a perdu.",
+    scorePointsAside: (label: string) => `${label} points`,
     markIrrelevant: 'Marquer comme non pertinent',
     reactivate: 'Réactiver',
     excludeShort: 'Exclure',
@@ -341,6 +370,18 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     labelGroundPound: 'Coup au sol',
     labelShoulderBash: 'Charge spartane',
     weaponUnknownPrefix: 'Arme inconnue',
+    killDistanceTitle: 'Distance par arme',
+    killDistancePocBadge: 'POC',
+    killDistanceColWeapon: 'Arme',
+    killDistanceColKills: 'Frags mesurés',
+    killDistanceColAvg: 'Distance moyenne',
+    killDistancePlayerHeaderFmt: (gamertag, measured, total) =>
+      `${gamertag} — ${measured}/${total} frags mesurés`,
+    killDistanceAvgFmt: (m) => `${new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(m)} m`,
+    killDistanceRangeFmt: (min, max) =>
+      `(${new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(min)}–${new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(max)} m)`,
+    killDistanceReserve:
+      "POC — ne compte que les frags dont la position du tueur ET de la victime est mesurée ; tous les frags n'ont pas de position (couverture partielle).",
     sectionMedia: 'Médias',
     mediaNoCaptures: 'Aucune capture',
     mediaNoCapturesDesc: 'Les screenshots et clips associés à ce match apparaîtront ici.',
@@ -367,6 +408,7 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     combatEnemyLabel: 'Adversaires',
     combatMomentumDelta: 'Écart',
     combatMomentumCumul: 'Cumul',
+    combatHeadshotCountFmt: (n) => `${n} tir${n > 1 ? 's' : ''} à la tête`,
     combatNemesisTitle: 'Némésis',
     combatBullyTitle: 'Souffre-douleur',
     combatNoNemesis: '—',
@@ -399,6 +441,7 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     assistNotUsable: 'Assistances non disponibles pour ce match (non mesurées ou non publiables).',
     assistNoData: 'Aucune assistance sur ce match.',
     assistStolenNote: (n) => `dont ${n} volée${n > 1 ? 's' : ''}`,
+    assistAvgShareNote: (pct) => `part moyenne ${pct} %`,
     sectionFlow: 'Déroulé du match',
     sectionDuels: 'Duels & confrontations',
     sectionEncounters: 'Historique des rencontres',
@@ -551,8 +594,10 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     copied: 'Copied',
     copyShort: 'Copy ID',
     copyTooltip: "Copy this match's unique identifier to clipboard",
-    replayShort: '2D replay',
     replayTooltip: 'Watch the 2D replay of this match (top-down view)',
+    scoreRoundsHint:
+      'This mode is played in rounds: the score shown is the number of rounds won and lost. The point score returned by the API is shown next to it — in these modes it can favour the losing side.',
+    scorePointsAside: (label: string) => `${label} points`,
     markIrrelevant: 'Mark as irrelevant',
     reactivate: 'Reactivate',
     excludeShort: 'Exclude',
@@ -621,6 +666,18 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     labelGroundPound: 'Ground Pound',
     labelShoulderBash: 'Shoulder Bash',
     weaponUnknownPrefix: 'Unknown weapon',
+    killDistanceTitle: 'Distance by weapon',
+    killDistancePocBadge: 'POC',
+    killDistanceColWeapon: 'Weapon',
+    killDistanceColKills: 'Measured kills',
+    killDistanceColAvg: 'Average distance',
+    killDistancePlayerHeaderFmt: (gamertag, measured, total) =>
+      `${gamertag} — ${measured}/${total} measured kills`,
+    killDistanceAvgFmt: (m) => `${new Intl.NumberFormat('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(m)} m`,
+    killDistanceRangeFmt: (min, max) =>
+      `(${new Intl.NumberFormat('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(min)}–${new Intl.NumberFormat('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(max)} m)`,
+    killDistanceReserve:
+      'POC — only counts kills where both the killer and victim position are measured; not all kills have a position (partial coverage).',
     sectionMedia: 'Media',
     mediaNoCaptures: 'No captures',
     mediaNoCapturesDesc: 'Screenshots and clips associated with this match will appear here.',
@@ -646,6 +703,7 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     combatEnemyLabel: 'Opponents',
     combatMomentumDelta: 'Delta',
     combatMomentumCumul: 'Cumulative',
+    combatHeadshotCountFmt: (n) => `${n} headshot${n > 1 ? 's' : ''}`,
     combatNemesisTitle: 'Nemesis',
     combatBullyTitle: 'Bully target',
     combatNoNemesis: '—',
@@ -678,6 +736,7 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     assistNotUsable: 'Assists unavailable for this match (not measured or not publishable).',
     assistNoData: 'No assists in this match.',
     assistStolenNote: (n) => `${n} stolen`,
+    assistAvgShareNote: (pct) => `avg share ${pct}%`,
     sectionFlow: 'Match flow',
     sectionDuels: 'Duels & head-to-head',
     sectionEncounters: 'Encounter history',

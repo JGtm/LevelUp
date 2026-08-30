@@ -10,7 +10,11 @@ import { describe, expect, it } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 
 import { resolveXuidMeta } from '@/features/match-view/xuidMeta'
-import type { MatchScoreboardRow, ReplayDocument } from '@/lib/api/types'
+import type {
+  MatchScoreboardRow,
+  ReplayDocument,
+  ReplayEquipmentPlacement,
+} from '@/lib/api/types'
 
 import { ReplayTeams } from './ReplayTeams'
 import { testReplayDoc } from './test/testDoc'
@@ -231,9 +235,11 @@ describe('ReplayTeams — boîte de grenades : quelle lecture, et de quel âge',
       },
       60,
     )
+    // Les libellés de test n'ont pas de vignette : la puce garde le LIBELLÉ (le module
+    // d'images versionnées est parti avec l'option 2a — la vignette vient du document seul).
     const box = screen.getByTitle(/Grenades lues il y a 1\.0 s/)
-    expect(within(box).getByRole('img', { name: 'Fragmentation' })).toBeTruthy()
-    expect(within(box).getByRole('img', { name: 'Plasma' })).toBeTruthy()
+    expect(within(box).getByTitle('Fragmentation')).toBeTruthy()
+    expect(within(box).getByTitle('Plasma')).toBeTruthy()
     expect(box.textContent).toContain('×1')
     expect(box.textContent).toContain('×2')
   })
@@ -250,14 +256,16 @@ describe('ReplayTeams — boîte de grenades : quelle lecture, et de quel âge',
       },
       30,
     )
+    // Seul type porté : la puce est marquée « équipé », son infobulle est donc PRÉFIXÉE
+    // par le nom — d'où la regex (title exact = nom seul uniquement hors sélection).
     const box = screen.getByTitle(/Grenades lues il y a 0\.5 s/)
     expect(
-      within(box).getByRole('img', { name: 'Fragmentation' }),
+      within(box).getByTitle(/^Fragmentation/),
       'les compteurs de l’inventaire passé',
     ).toBeTruthy()
     expect(box.textContent).toContain('×2')
     expect(box.textContent, 'jamais la lecture à venir').not.toContain('×5')
-    expect(within(box).queryByRole('img', { name: 'Plasma' })).toBeNull()
+    expect(within(box).queryByTitle(/^Plasma/)).toBeNull()
   })
 
   it('lecture À VENIR sans RIEN de passé : elle s’affiche, et l’infobulle dit « dans »', () => {
@@ -369,7 +377,9 @@ describe('ReplayTeams — hauteur constante vivant/mort', () => {
     })
     const cardRows = (view: ReturnType<typeof render>) => {
       const card = view.getByText('Alpha').parentElement?.parentElement as HTMLElement
-      return card.childElementCount
+      // Hors couches d'effets (aria-hidden, absolues — éclats, incrustations) : elles ne
+      // prennent aucune hauteur, seules les RANGÉES comptent.
+      return [...card.children].filter((e) => !e.hasAttribute('aria-hidden')).length
     }
     const alive = render(<ReplayTeams doc={doc} scoreboard={[]} frame={10} locale="fr" />)
     const aliveRows = cardRows(alive)
@@ -381,10 +391,11 @@ describe('ReplayTeams — hauteur constante vivant/mort', () => {
 })
 
 /**
- * LA FICHE MORTE, DÉPOUILLÉE (demande utilisateur du 2026-08-25 : « virer l'accentuation sur la
- * bordure gauche de la fiche quand le joueur est mort ? Et centre le compteur de réapparition et
- * virer la jauge »). Trois retraits, trois verrous — et ce qui RESTE est vérifié aussi : la mort
- * doit continuer de se lire, sans quoi le dépouillement l'aurait effacée.
+ * LA FICHE MORTE — L'ENCADRÉ « ÉLIMINÉ » (option 2a du handoff 2026-08-27, qui remplace la
+ * rangée de réapparition centrée du 2026-08-25) : le mot d'état à gauche à l'encre d'alerte,
+ * le décompte lu à droite, dans une zone qui garde EXACTEMENT la hauteur du corps vivant.
+ * Ce qui se lit est vérifié sur ses deux faces : la mort se dit (tuile teintée, encadré),
+ * et rien ne se devine (lacune dite, aucune jauge).
  */
 describe('ReplayTeams — mort et réapparition', () => {
   /** La fiche d'Alpha : deux niveaux au-dessus de son nom (marque retirée, cf. A1). */
@@ -400,25 +411,27 @@ describe('ReplayTeams — mort et réapparition', () => {
       ],
     })
 
-  it('mort avec retour lu : le compte à rebours, et AUCUNE jauge', () => {
+  it('mort avec retour lu : « Éliminé », le compte à rebours, et AUCUNE jauge', () => {
     render(<ReplayTeams doc={docAvecRetour()} scoreboard={[]} frame={140} locale="fr" />)
-    expect(screen.getByText('Réapparition dans')).toBeTruthy()
+    expect(screen.getByText('Éliminé')).toBeTruthy()
+    // Le décompte porte la phrase en infobulle — le mot visible est parti avec l'encadré.
+    expect(screen.getByTitle('Réapparition dans')).toBeTruthy()
     expect(screen.queryByRole('progressbar')).toBeNull()
   })
 
-  // LA RANGÉE ELLE-MÊME, PAS SON PARENT : la cellule qui l'accueille porte DÉJÀ
-  // `justify-center` — pour son centrage VERTICAL (elle est en `flex-col`). Viser le parent
-  // ferait passer ce cas quoi qu'on écrive dans `RespawnRow` ; un premier essai l'a montré,
-  // la mutation survivait. `getByText` rend bien la rangée : elle porte le libellé en enfant
-  // texte DIRECT, le compte étant dans un `<b>`.
-  it('le compte à rebours est CENTRÉ dans sa rangée', () => {
+  it('l’encadré écarte ses deux bouts : le mot à gauche, le décompte à droite', () => {
     const view = render(<ReplayTeams doc={docAvecRetour()} scoreboard={[]} frame={140} locale="fr" />)
-    expect(view.getByText('Réapparition dans').className).toContain('justify-center')
+    const box = view.getByText('Éliminé').parentElement as HTMLElement
+    expect(box.className).toContain('justify-between')
+    // Et il REMPLIT la zone fixe du corps : la hauteur ne dépend pas de l'état vital.
+    expect(box.className).toContain('h-full')
   })
 
-  it('la LACUNE est centrée elle aussi — la cellule ne se décale pas selon ce qu’elle porte', () => {
+  it('la LACUNE garde le gabarit du décompte — la cellule ne change pas selon ce qu’elle porte', () => {
     const view = renderTeams({}, 140)
-    expect(view.getByText('Réapparition ?').className).toContain('text-center')
+    const lacune = view.getByText('Réapparition ?')
+    expect(lacune.className).toContain('font-mono')
+    expect(lacune.className).toContain('text-[15px]')
   })
 
   it('mort sans vie suivante : « Réapparition ? », jamais un délai deviné', () => {
@@ -426,23 +439,32 @@ describe('ReplayTeams — mort et réapparition', () => {
     expect(screen.getByText('Réapparition ?')).toBeTruthy()
   })
 
-  // (a) DU VERBATIM : plus de liseré gauche sur une fiche morte. Le `boxShadow` était le seul
-  // porteur de cet accent — sa disparition du style en ligne est donc la mesure exacte.
-  it('aucun liseré gauche sur une fiche morte', () => {
+  // PLUS DE LISERÉ GAUCHE (2026-08-25), et depuis l'option 2a plus de PEINTURE de mort sur
+  // la couche : c'est la TUILE qui dit la mort, par une bordure symétrique teintée
+  // destructive. À l'image 140 l'éclat du coup fatal est encore dans sa fenêtre (mort à
+  // 100, fenêtre de 84 images à 60 fps) : la couche existe, mais ne porte QUE l'éclat —
+  // ni cadre, ni fond, donc aucun accent directionnel possible.
+  it('aucun liseré gauche : bordure symétrique de la tuile, couche réduite à l’éclat', () => {
     const view = render(<ReplayTeams doc={docAvecRetour()} scoreboard={[]} frame={140} locale="fr" />)
-    expect(carte(view).style.boxShadow).toBe('')
+    expect(carte(view).style.borderLeft).toBe('')
+    expect(carte(view).style.borderColor).toContain('var(--ac-destructive)')
+    const layer = carte(view).querySelector('.replay-card-fx') as HTMLElement
+    expect(layer.className).toContain('replay-flash-death')
+    expect(layer.style.boxShadow).toBe('')
+    expect(layer.style.backgroundColor).toBe('')
   })
 
-  // CE QUI RESTE, et qui doit rester : la mort se lit encore au fond teinté et au nom. Retirer
-  // le liseré ne devait pas rendre une fiche morte indistinguable d'une fiche vivante.
-  it('la mort reste DITE : fond teinté et nom à l’encre d’alerte', () => {
+  // CE QUI RESTE, et qui doit rester : la mort se lit encore — tuile teintée, nom éteint,
+  // encadré. Une fiche vivante sans effet, elle, n'a AUCUNE couche et garde sa pleine encre.
+  it('la mort reste DITE : la tuile teintée destructive et le nom à l’encre éteinte', () => {
     const mort = render(<ReplayTeams doc={docAvecRetour()} scoreboard={[]} frame={140} locale="fr" />)
-    expect(carte(mort).style.background).toContain('color-mix')
-    expect(mort.getByText('Alpha').style.color).not.toBe('')
+    expect(carte(mort).style.background).toContain('var(--ac-destructive)')
+    expect(mort.getByText('Alpha').className).toContain('text-muted-foreground')
     mort.unmount()
     const vivant = render(<ReplayTeams doc={docAvecRetour()} scoreboard={[]} frame={10} locale="fr" />)
-    expect(carte(vivant).style.background).toBe('')
-    expect(vivant.getByText('Alpha').style.color).toBe('')
+    expect(carte(vivant).style.background).not.toContain('var(--ac-destructive)')
+    expect(carte(vivant).querySelector('.replay-card-fx')).toBeNull()
+    expect(vivant.getByText('Alpha').className).toContain('text-foreground')
   })
 })
 
@@ -546,28 +568,34 @@ describe('ReplayTeams — vitalité : plein d’apparition', () => {
 describe('ReplayTeams — état actif équipement (camo/surbouclier), cahier des charges 21.1', () => {
   const cardOf = (view: ReturnType<typeof render>) =>
     view.getByText('Alpha').parentElement?.parentElement as HTMLElement
+  // LES EFFETS VIVENT SUR LA COUCHE EN RETRAIT depuis le 2026-08-27 (« pas de padding,
+  // tout est bord à bord ») : c'est elle que ces tests inspectent, jamais la fiche.
+  const layerOf = (view: ReturnType<typeof render>) =>
+    cardOf(view).querySelector('.replay-card-fx') as HTMLElement
 
-  it('camouflage actif : effet de VERRE (flou + fond translucide), JAMAIS une opacité réduite', () => {
+  it('camouflage actif : VERRE TREMPÉ (flou + voile + reflets), JAMAIS une opacité réduite', () => {
     // Règle n°1.1 du fichier : un état se dit par un effet dédié, jamais en faisant
-    // fondre la fiche entière (l'ancien défaut que ce lot corrige).
+    // fondre la fiche entière (l'ancien défaut que ce lot corrige). Depuis le 2026-08-27
+    // le verre porte ses REFLETS diagonaux en couche image — le fond passe en longhands.
     const view = renderTeams({
       equipmentEpisodes: [{ slot: 512, fam: 'camo', t0: 0, t1: 50, endRead: true }],
     })
-    const card = cardOf(view)
-    expect(card.style.backdropFilter).toContain('blur')
-    expect(card.style.background).toContain('var(--card)')
-    expect(card.style.opacity).toBe('')
+    const layer = layerOf(view)
+    expect(layer.style.backdropFilter).toContain('blur')
+    expect(layer.style.backgroundColor).toContain('var(--card)')
+    expect(layer.style.backgroundImage).toContain('linear-gradient')
+    expect(cardOf(view).style.opacity).toBe('')
   })
 
   it('surbouclier actif : ENCADRÉ au token `legendary`, jamais `info` (réservé à la jauge de bouclier)', () => {
     const view = renderTeams({
       equipmentEpisodes: [{ slot: 512, fam: 'overshield', t0: 0, t1: 50, endRead: true }],
     })
-    const card = cardOf(view)
-    expect(card.style.boxShadow).toContain('var(--ac-legendary)')
-    expect(card.style.boxShadow).not.toContain('var(--ac-info)')
+    const layer = layerOf(view)
+    expect(layer.style.boxShadow).toContain('var(--ac-legendary)')
+    expect(layer.style.boxShadow).not.toContain('var(--ac-info)')
     // Le cadre n'a pas de fond propre : cf. la composition avec le verre ci-dessous.
-    expect(card.style.background).toBe('')
+    expect(layer.style.backgroundColor).toBe('')
   })
 
   it('les deux effets se COMPOSENT : les ombres s’accumulent, le fond reste celui du verre', () => {
@@ -577,28 +605,160 @@ describe('ReplayTeams — état actif équipement (camo/surbouclier), cahier des
         { slot: 512, fam: 'overshield', t0: 0, t1: 50, endRead: true },
       ],
     })
-    const card = cardOf(view)
-    expect(card.style.backdropFilter).toContain('blur')
-    expect(card.style.background).toContain('var(--card)')
-    expect(card.style.boxShadow).toContain('var(--ac-legendary)')
-    expect(card.style.boxShadow).toContain('var(--border)')
+    const layer = layerOf(view)
+    expect(layer.style.backdropFilter).toContain('blur')
+    expect(layer.style.backgroundColor).toContain('var(--card)')
+    expect(layer.style.boxShadow).toContain('var(--ac-legendary)')
+    expect(layer.style.boxShadow).toContain('var(--border)')
   })
 
-  it('hors de la fenêtre [t0,t1] mesurée : aucun des deux effets — la fiche reste normale', () => {
+  it('hors de la fenêtre [t0,t1] mesurée : AUCUNE couche d’effets — la fiche reste normale', () => {
     const view = renderTeams({
       equipmentEpisodes: [{ slot: 512, fam: 'camo', t0: 60, t1: 90, endRead: true }],
     }, 10)
-    const card = cardOf(view)
-    expect(card.style.backdropFilter).toBe('')
-    expect(card.style.boxShadow).toBe('')
+    expect(layerOf(view)).toBeNull()
   })
 
   it('une fiche MORTE ne porte jamais un effet d’équipement (un épisode se ferme à la mort au plus tard)', () => {
     const view = renderTeams({
       equipmentEpisodes: [{ slot: 512, fam: 'camo', t0: 0, t1: 99, endRead: false }],
     }, 140)
+    // La couche ne porte que l'ÉCLAT du coup fatal (encore dans sa fenêtre à l'image 140) :
+    // aucun verre — la mort vit sur la tuile (option 2a), et un épisode qui n'est plus
+    // mesuré n'a pas à survivre à la vie.
+    const layer = layerOf(view)
+    expect(layer.className).toContain('replay-flash-death')
+    expect(layer.style.backdropFilter).toBe('')
+    expect(layer.style.backgroundImage).toBe('')
+    expect(layer.style.boxShadow).toBe('')
+  })
+})
+
+/**
+ * LES EFFETS DE ZONE (2026-08-27) : la fiche dit quand son joueur se tient dans le disque
+ * d'un objet posé — champ de réparation, écran occultant, capteur adverse — par les MÊMES
+ * portes que le calque de la carte (equipmentZones.ts). Et l'éclat de TRANSLOCATION, porté
+ * par les passages mesurés (placementTeleport.ts). La vie de test (TRACK) se tient en (0,0).
+ */
+describe('ReplayTeams — zones d’équipement et translocation', () => {
+  const cardOf = (view: ReturnType<typeof render>) =>
+    view.getByText('Alpha').parentElement?.parentElement as HTMLElement
+  const layerOf = (view: ReturnType<typeof render>) =>
+    cardOf(view).querySelector('.replay-card-fx') as HTMLElement
+
+  const field = (over: Partial<ReplayEquipmentPlacement> = {}) => ({
+    family: 'repair_field',
+    id: '0x32d97758',
+    owner: 9,
+    origin: 'deployed',
+    t0: 0,
+    t1: 50,
+    x: 1,
+    y: 0,
+    ...over,
+  })
+
+  it('champ de réparation sous le joueur : contour vert, croix flottantes, et la phrase', () => {
+    const view = renderTeams({ equipmentPlacements: [field()] })
     const card = cardOf(view)
-    expect(card.style.backdropFilter).toBe('')
+    expect(layerOf(view).style.boxShadow).toContain('var(--ac-success)')
+    expect(card.title).toContain('champ de réparation')
+    expect(card.querySelectorAll('.replay-zone-cross')).toHaveLength(3)
+  })
+
+  it('objet LÂCHÉ : aucune zone — la porte est celle du calque, un lâcher n’agit pas', () => {
+    const view = renderTeams({ equipmentPlacements: [field({ origin: 'dropped' })] })
+    expect(layerOf(view)).toBeNull()
+    expect(cardOf(view).querySelector('.replay-zone-cross')).toBeNull()
+  })
+
+  it('écran occultant : NUAGE NOIR par-dessus les infos, voile sombre discret, flou, contour', () => {
+    const view = renderTeams({
+      equipmentPlacements: [field({ family: 'shroud_screen', id: '0x5eeb1a13', x: 4 })],
+    })
+    const card = cardOf(view)
+    const layer = layerOf(view)
+    expect(card.querySelector('.replay-zone-cloud')).toBeTruthy()
+    expect(layer.style.backdropFilter).toContain('blur')
+    expect(layer.style.backgroundColor).toContain('var(--replay-label-stroke)')
+    expect(layer.style.boxShadow).toContain('var(--replay-label-stroke)')
+    expect(card.title).toContain('écran occultant')
+  })
+
+  it('écran occultant : TROIS éclairs, calés sur l’horloge de la pose (délais négatifs)', () => {
+    // Option 2a du handoff 2026-08-27 : les éclairs scintillent dans l'incrustation, et
+    // leur délai suit la POSE de l'écran (shroudSinceMs) — jamais un rythme inventé. La
+    // pose est à t0 = 0 et on lit l'image 10 : chaque délai est strictement négatif.
+    const view = renderTeams({
+      equipmentPlacements: [field({ family: 'shroud_screen', id: '0x5eeb1a13', x: 4 })],
+    })
+    const bolts = [...cardOf(view).querySelectorAll('.replay-zone-bolt')] as HTMLElement[]
+    expect(bolts).toHaveLength(3)
+    for (const bolt of bolts) {
+      expect(bolt.style.animationDelay.startsWith('-')).toBe(true)
+    }
+  })
+
+  it('capteur ADVERSE : le contour « détecté » pulse sur l’incrustation ; même camp : rien', () => {
+    const deuxCamps = (side: string) => {
+      const doc = testReplayDoc({
+        roster: [
+          { xuid: 'A', filmIndex: 0, name: 'Alpha' },
+          { xuid: 'B', filmIndex: 1, name: 'Bravo' },
+        ],
+        tracks: [TRACK, { ...TRACK, slot: 513, xuid: 'B', points: [{ t: 0, x: 9, y: 9 }] }],
+        equipmentPlacements: [
+          field({ family: 'sensor', id: '0x72b63d69', owner: 513, x: 0, y: 0 }),
+        ],
+      })
+      const board = [sbRow('A', 'Alpha', 't0'), sbRow('B', 'Bravo', side)]
+      return render(<ReplayTeams doc={doc} scoreboard={board} frame={10} locale="fr" />)
+    }
+    const adverse = deuxCamps('t1')
+    const card = cardOf(adverse)
+    expect(card.querySelector('.replay-zone-sensor')).toBeTruthy()
+    expect(card.title).toContain('capteur de menaces adverse')
+    // Bravo est HORS de portée (12,7 m > 4,25 m) : sa fiche ne porte rien.
+    const bravo = adverse.getByText('Bravo').parentElement?.parentElement as HTMLElement
+    expect(bravo.querySelector('.replay-zone-sensor')).toBeNull()
+    adverse.unmount()
+    const allie = deuxCamps('t0')
+    expect(cardOf(allie).querySelector('.replay-zone-sensor')).toBeNull()
+  })
+
+  it('translocation : le FOURREAU sur la bordure à l’arrivée du saut, à délai négatif', () => {
+    const saut = {
+      slot: 512,
+      team: -1,
+      xuid: 'A',
+      startFrame: 0,
+      endFrame: 100,
+      points: [
+        { t: 0, x: 0, y: 0 },
+        { t: 20, x: 0, y: 0 },
+        { t: 21, x: 20, y: 0 },
+      ],
+    }
+    const view = renderTeams({
+      tracks: [saut],
+      abilities: [{ t: 0, slot: 512, r: 11, src: 'i48' }],
+    }, 22)
+    const card = cardOf(view)
+    const fourreau = card.querySelector('.replay-flash-translocation') as HTMLElement
+    expect(fourreau).toBeTruthy()
+    expect(fourreau.style.animationDelay.startsWith('-')).toBe(true)
+    expect(card.title).toContain('translocateur')
+  })
+
+  it('une fiche MORTE ne porte ni zone ni croix — même posée en plein champ', () => {
+    const view = renderTeams({ equipmentPlacements: [field({ x: 0 })] }, 140)
+    const card = cardOf(view)
+    // La couche ne porte que l'éclat du coup fatal — jamais un cadre de zone (success) —
+    // et aucune incrustation : ni croix, ni nuage, ni éclair.
+    expect(layerOf(view).style.boxShadow).toBe('')
+    expect(card.querySelector('.replay-zone-cross')).toBeNull()
+    expect(card.querySelector('.replay-zone-cloud')).toBeNull()
+    expect(card.querySelector('.replay-zone-bolt')).toBeNull()
   })
 })
 
@@ -637,10 +797,12 @@ describe('ReplayTeams — nom d’équipe des colonnes (D8)', () => {
     expect(screen.getByText('Équipe 12')).toBeTruthy()
   })
 
-  it('sans camp connu : « Sans équipe », encre neutre — aucune couleur d’équipe empruntée', () => {
+  it('sans camp connu : « Sans équipe », encre et liseré neutres — aucune couleur d’équipe empruntée', () => {
     const view = renderTeams({})
     const header = view.getByText('Sans équipe').parentElement as HTMLElement
-    expect(header.style.borderLeft).toBe('')
+    // Le bandeau HUD garde son liseré, au token NEUTRE `border` — jamais un camp deviné.
+    expect(header.style.borderLeft).toContain('var(--border)')
+    expect(header.style.borderLeft).not.toContain('team')
     expect(header.className).toContain('text-muted-foreground')
   })
 
@@ -683,7 +845,7 @@ describe('ReplayTeams — compteurs de fiche : publiés, ou ceux de la base', ()
     const doc = testReplayDoc({ ...twoLives, scoreTimeline: timeline })
     const view = render(<ReplayTeams doc={doc} scoreboard={board()} frame={100} locale="fr" />)
     expect(view.getByTitle("Score personnel à l'instant lu").textContent).toBe('350')
-    const live = view.getByTitle("Frags / morts / assistances à l'instant lu")
+    const live = view.getByTitle(/^Frags \/ morts \/ assistances à l'instant lu — FDA /)
     expect(live.textContent).toBe('3/2/4')
   })
 
@@ -692,7 +854,9 @@ describe('ReplayTeams — compteurs de fiche : publiés, ou ceux de la base', ()
     const view = render(<ReplayTeams doc={doc} scoreboard={board()} frame={10} locale="fr" />)
     expect(view.getByTitle("Score personnel à l'instant lu").textContent).toBe('120')
     // Aucune mort ni assistance transmise avant l'image 20 : zéro est la valeur, pas une lacune.
-    expect(view.getByTitle("Frags / morts / assistances à l'instant lu").textContent).toBe('1/0/0')
+    expect(
+      view.getByTitle(/^Frags \/ morts \/ assistances à l'instant lu — FDA /).textContent,
+    ).toBe('1/0/0')
   })
 
   it('le joueur NON publié garde les totaux de la BASE — jamais un zéro inventé', () => {
@@ -701,7 +865,7 @@ describe('ReplayTeams — compteurs de fiche : publiés, ou ceux de la base', ()
     const doc = testReplayDoc({ ...twoLives, scoreTimeline: timeline })
     const view = render(<ReplayTeams doc={doc} scoreboard={board()} frame={100} locale="fr" />)
     expect(view.getAllByTitle("Score personnel à l'instant lu")).toHaveLength(1)
-    const base = view.getAllByTitle('Frags / morts / assistances du match')
+    const base = view.getAllByTitle(/^Frags \/ morts \/ assistances du match — FDA /)
     expect(base).toHaveLength(1)
     expect(base[0].textContent).toBe('1/1/0')
   })
@@ -710,15 +874,81 @@ describe('ReplayTeams — compteurs de fiche : publiés, ou ceux de la base', ()
     const doc = testReplayDoc(twoLives)
     const view = render(<ReplayTeams doc={doc} scoreboard={board()} frame={100} locale="fr" />)
     expect(view.queryAllByTitle("Score personnel à l'instant lu")).toHaveLength(0)
-    expect(view.getAllByTitle('Frags / morts / assistances du match')).toHaveLength(2)
+    expect(view.getAllByTitle(/^Frags \/ morts \/ assistances du match — FDA /)).toHaveLength(2)
+  })
+
+  /**
+   * LE FOND DU TRIPLET EST UNE LECTURE DU FDA, pas un ornement : il suit la MÊME horloge que
+   * les nombres qu'il colore. Sur un joueur publié il change AVEC la lecture — c'est le cas
+   * qui distingue un fond calculé d'un fond figé au score final.
+   */
+  it("le fond du triplet suit le FDA à l'instant lu, et CHANGE de palier avec la lecture", () => {
+    const doc = testReplayDoc({ ...twoLives, scoreTimeline: timeline })
+    // Image 20 : 1 frag, 2 morts, 0 assistance -> FDA = −1 -> palier déficitaire.
+    const tot = render(<ReplayTeams doc={doc} scoreboard={board()} frame={20} locale="fr" />)
+    const deficit = tot.getByTitle(/^Frags \/ morts \/ assistances à l'instant lu — FDA /)
+    // Le signe négatif vient de l'Intl de la plateforme (tiret ou moins typographique) :
+    // ce qui est vérifié ici, c'est la VALEUR et son signe, pas le glyphe.
+    expect(deficit.getAttribute('title')).toMatch(/FDA .1,00$/)
+    expect(deficit.style.background).toContain('var(--ac-destructive)')
+    tot.unmount()
+    // Image 100 : 3 frags, 2 morts, 4 assistances -> FDA = 3 + 4/3 − 2 = 2,33 -> bénéficiaire.
+    const view = render(<ReplayTeams doc={doc} scoreboard={board()} frame={100} locale="fr" />)
+    const gain = view.getByTitle(/^Frags \/ morts \/ assistances à l'instant lu — FDA /)
+    expect(gain.getAttribute('title')).toContain('2,33')
+    expect(gain.style.background).toContain('var(--ac-success)')
+  })
+
+  it("un FDA à l'équilibre (0 à 1 inclus) prend le palier médian", () => {
+    // Bravo n'est pas publié : ses totaux de base valent 1 frag / 1 mort / 0 assistance -> FDA 0.
+    const doc = testReplayDoc({ ...twoLives, scoreTimeline: timeline })
+    const view = render(<ReplayTeams doc={doc} scoreboard={board()} frame={100} locale="fr" />)
+    const base = view.getAllByTitle(/^Frags \/ morts \/ assistances du match — FDA /)
+    expect(base[0].getAttribute('title')).toContain('0,00')
+    expect(base[0].style.background).toContain('var(--ac-info)')
+  })
+
+  it('un compteur NON LU ne donne aucun fond — une couleur est une affirmation', () => {
+    const doc = testReplayDoc(twoLives)
+    const trous = board().map((r) => ({ ...r, assists: null }))
+    const view = render(<ReplayTeams doc={doc} scoreboard={trous} frame={100} locale="fr" />)
+    const base = view.getAllByTitle('Frags / morts / assistances du match')
+    expect(base).toHaveLength(2)
+    expect(base[0].textContent).toBe('1/1/?')
+    expect(base[0].style.background).toBe('')
+  })
+
+  /**
+   * LA GRILLE DE LA RANGÉE (demande utilisateur du 2026-08-29). Deux garanties, et la
+   * seconde est celle qui aligne réellement les fiches : le score vient AVANT les compteurs,
+   * et sa cellule est rendue MÊME VIDE pour un joueur non publié — sinon son triplet
+   * glisserait par rapport à celui du voisin publié.
+   */
+  it('le score personnel précède le triplet, et sa cellule reste réservée quand il manque', () => {
+    const doc = testReplayDoc({ ...twoLives, scoreTimeline: timeline })
+    const view = render(<ReplayTeams doc={doc} scoreboard={board()} frame={100} locale="fr" />)
+    // Alpha est publié : score puis compteurs, dans cet ordre de lecture.
+    const score = view.getByTitle("Score personnel à l'instant lu")
+    const trio = view.getByTitle(/^Frags \/ morts \/ assistances à l'instant lu — FDA /)
+    expect(score.compareDocumentPosition(trio) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    // Bravo n'est pas publié : sa rangée porte quand même DEUX cellules, la première vide et
+    // sans infobulle — la cellule est là, la mesure n'y est pas.
+    const bravo = view.getAllByTitle(/^Frags \/ morts \/ assistances du match — FDA /)[0]
+    const rangee = bravo.parentElement as HTMLElement
+    expect(rangee.children).toHaveLength(2)
+    expect(rangee.children[0].textContent).toBe('')
+    expect(rangee.children[0].getAttribute('title')).toBeNull()
+    expect(rangee.children[1]).toBe(bravo)
   })
 
   it('EN : les mêmes surfaces portent les libellés anglais', () => {
     const doc = testReplayDoc({ ...twoLives, scoreTimeline: timeline })
     const view = render(<ReplayTeams doc={doc} scoreboard={board()} frame={100} locale="en" />)
     expect(view.getByTitle('Personal score at the moment being played').textContent).toBe('350')
-    expect(view.getByTitle('Kills / deaths / assists at the moment being played')).toBeTruthy()
-    expect(view.getByTitle('Kills / deaths / assists for the whole match')).toBeTruthy()
+    expect(
+      view.getByTitle('Kills / deaths / assists at the moment being played — KDA 2.33'),
+    ).toBeTruthy()
+    expect(view.getByTitle('Kills / deaths / assists for the whole match — KDA 0.00')).toBeTruthy()
   })
 })
 
@@ -785,9 +1015,13 @@ describe('ReplayTeams — la fiche unique', () => {
     return render(<ReplayTeams doc={doc} scoreboard={[]} frame={frame} locale="fr" />)
   }
 
-  /** Le nombre de RANGÉES d'une fiche : les enfants directs de la carte d'Alpha. */
+  /**
+   * Le nombre de RANGÉES d'une fiche : les enfants directs de la carte d'Alpha, HORS
+   * couches d'effets (`aria-hidden`, absolues — elles ne prennent aucune hauteur).
+   */
   const rangees = (view: ReturnType<typeof render>) =>
-    (view.getByText('Alpha').parentElement?.parentElement as HTMLElement).childElementCount
+    [...(view.getByText('Alpha').parentElement?.parentElement as HTMLElement).children]
+      .filter((e) => !e.hasAttribute('aria-hidden')).length
 
   it('sans sélecteur lu, AUCUNE munition n’est montrée — jamais une arme désignée au hasard', () => {
     const sansSelecteur = {
@@ -820,9 +1054,11 @@ describe('ReplayTeams — la fiche unique', () => {
   })
 
   it('la rangée unique refuse de se replier — sinon la fiche changerait de hauteur', () => {
+    // La rangée vit DANS le corps à hauteur fixe de la tuile (option 2a) : on la cherche
+    // en descendant, plus parmi les enfants directs de la carte.
     const vue = renderCard(AMMO)
     const carte = vue.getByText('Alpha').parentElement?.parentElement as HTMLElement
-    const rangee = [...carte.children].find((e) => e.className.includes('flex-nowrap'))
+    const rangee = carte.querySelector('.flex-nowrap')
     expect(rangee, 'la rangée armes + inventaire').toBeTruthy()
     expect(rangee!.className).toContain('overflow-hidden')
   })
@@ -851,13 +1087,17 @@ describe('ReplayTeams — la fiche unique', () => {
   /**
    * AUCUNE CLASSE DE HAUTEUR NE SE CONDITIONNE À L'ÉTAT VITAL — le corollaire de la règle
    * ci-dessus, et celui qu'un futur « state.alive ? 'h-6' : 'h-4' » casserait sans toucher
-   * au nombre de rangées. Les rangées ont une hauteur FIXE (h-3.5 pour la vitalité,
-   * h-[18px] pour les armes) : ce sont les mêmes classes, mortes ou vivantes. Seuls le
-   * CONTENU et la couleur changent, et la couleur passe par `style`, pas par une classe.
+   * au nombre de rangées. Le CORPS de la fiche a une hauteur FIXE (h-[35px], option 2a) :
+   * c'est la même classe, mort ou vivant — seul son CONTENU change (barres + inventaire,
+   * ou l'encadré « Éliminé » qui le remplit). Le nom, lui, change d'ENCRE par une classe
+   * de couleur, jamais de gabarit — la comparaison porte sur les rangées, pas sur lui.
    */
   it('les classes des rangées sont identiques morte et vivante', () => {
+    // Même exclusion des couches d'effets que `rangees` (absolues, aria-hidden, sans
+    // hauteur) : ce test ne parle que des RANGÉES.
     const classes = (view: ReturnType<typeof render>) =>
       [...((view.getByText('Alpha').parentElement?.parentElement as HTMLElement).children)]
+        .filter((e) => !e.hasAttribute('aria-hidden'))
         .map((e) => e.className)
     const vivante = renderCard({}, 10)
     const attendues = classes(vivante)

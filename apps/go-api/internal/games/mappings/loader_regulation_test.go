@@ -4,6 +4,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"testing"
+
+	"levelup/go-api/internal/testutil"
 )
 
 // TestLoadRegulationTOMLsFromRepo — smoke test sur les VRAIS fichiers du repo :
@@ -34,15 +36,36 @@ func TestLoadRegulationTOMLsFromRepo(t *testing.T) {
 		"CTF:Arena":                 3,
 		"CTF:Arena Neutral Flag":    5,
 		"Ranked:Strongholds":        250,
+		// KOTH, mesure du 2026-08-30 : 3 en social (45 matchs sur 46), 4 en classé (3/3).
+		// L'ancien motif d'exclusion (« l'oracle du film diffère de l'API ») est périmé —
+		// le registre porte des collines depuis le backfill du 2026-08-24, cf. le TOML.
+		"KOTH:Arena":              3,
+		"Ranked:King of the Hill": 4,
 	} {
 		if target, ok := hi.ScoreTarget(variant); !ok || target != want {
 			t.Errorf("halo_infinite cible %q = (%d, %v), want (%d, true)", variant, target, ok, want)
 		}
 	}
-	// Oddball et KOTH sont VOLONTAIREMENT absents (modes à manches, cf. le TOML).
-	for _, variant := range []string{"Ranked:Oddball", "KOTH:Arena"} {
+	// Oddball reste VOLONTAIREMENT absent (mode à manches : le total déborde le plateau
+	// d'une manche). "Arena:King of the Hill" aussi, pour une autre raison : son plateau
+	// n'est atteint que par UN match, sous la règle des >= 2. Cf. le TOML.
+	for _, variant := range []string{"Ranked:Oddball", "Arena:King of the Hill"} {
 		if _, ok := hi.ScoreTarget(variant); ok {
-			t.Errorf("halo_infinite : %q ne doit pas avoir de cible (mode à manches)", variant)
+			t.Errorf("halo_infinite : %q ne doit pas avoir de cible (cf. commentaire du TOML)", variant)
+		}
+	}
+
+	// Tics de garde par point : 35, mesure du 2026-08-30 (union des instants, 15 periodes sur 16).
+	if secs, ok := hi.HoldTicksPerPoint("KOTH:Arena"); !ok || secs != 35 {
+		t.Errorf("halo_infinite tics/point %q = (%d, %v), want (35, true)", "KOTH:Arena", secs, ok)
+	}
+	// Le KOTH CLASSÉ n'a pas de seuil : ses 3 matchs sont inexploitables (deux sans film en
+	// cache, un sur une carte absente du catalogue de bornes). Lui recopier la valeur du
+	// social serait la devinette que la table interdit — donc aucune jauge côté client.
+	// Strongholds non plus : ses zones simultanées portent leur vraie jauge dans le film.
+	for _, variant := range []string{"Ranked:King of the Hill", "Strongholds:Arena", "CTF:Arena"} {
+		if _, ok := hi.HoldTicksPerPoint(variant); ok {
+			t.Errorf("halo_infinite : %q ne doit pas avoir de tics de garde par point", variant)
 		}
 	}
 
@@ -192,6 +215,74 @@ schema_version = 1
 	for name, raw := range cases {
 		if _, err := LoadRegulationFromBytes("t.toml", []byte(raw)); err == nil {
 			t.Errorf("%s: attendu une erreur", name)
+		}
+	}
+}
+
+// La section [rounds_decide] (schéma 3) déclare les variantes dont le RÉSULTAT se lit en
+// manches. Elle est optionnelle, ses clés doivent être non vides, et une entrée `false` est
+// REFUSÉE : l'absence de clé est déjà le « non », deux façons de dire non se contrediraient
+// un jour.
+func TestLoadRegulation_RoundsDecide(t *testing.T) {
+	set, err := LoadRegulationFromBytes("regulation.toml", []byte(`
+[meta]
+title_slug     = "halo_infinite"
+schema_version = 3
+
+[rounds_decide]
+"Arena:Oddball" = true
+`))
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if !set.RoundsDecide("Arena:Oddball") {
+		t.Error("Arena:Oddball doit se lire en manches")
+	}
+	if set.RoundsDecide("  Arena:Oddball  ") != true {
+		t.Error("la clé doit être comparée trimée, comme les deux autres tables")
+	}
+	if set.RoundsDecide("CTF:Arena") {
+		t.Error("variante non déclarée : on garde les points")
+	}
+	if _, err := LoadRegulationFromBytes("t.toml", []byte(`
+[meta]
+title_slug     = "halo_infinite"
+schema_version = 3
+[rounds_decide]
+"CTF:Arena" = false
+`)); err == nil {
+		t.Error("une entrée à false doit être refusée (retirer la ligne)")
+	}
+}
+
+func TestRegulationSet_NilRoundsDecide(t *testing.T) {
+	var set *RegulationSet
+	if set.RoundsDecide("Arena:Oddball") {
+		t.Error("nil RoundsDecide doit rendre false")
+	}
+}
+
+// TestRegulationReelle_OddballDeclare épingle le CONTENU livré : les trois variantes Oddball
+// mesurées le 2026-08-29 sont déclarées, et le CTF d'arène (deux mi-temps) ne l'est PAS.
+// Sans ce test, un nettoyage de config retirerait la table sans que rien ne casse.
+func TestRegulationReelle_OddballDeclare(t *testing.T) {
+	root, err := testutil.RepoRoot()
+	if err != nil {
+		t.Fatalf("racine du dépôt introuvable : %v", err)
+	}
+	set, err := LoadRegulationFromFile(
+		filepath.Join(root, "config", "titles", "halo_infinite", "mappings", "regulation.toml"))
+	if err != nil {
+		t.Fatalf("lecture de la config livrée : %v", err)
+	}
+	for _, v := range []string{"Arena:Oddball", "Ranked:Oddball", "Oddball:Arena"} {
+		if !set.RoundsDecide(v) {
+			t.Errorf("%q doit être déclarée dans [rounds_decide] (mesure du 2026-08-29)", v)
+		}
+	}
+	for _, v := range []string{"CTF:Arena", "Ranked:CTF", "Arena:One Flag CTF", "Slayer:Arena"} {
+		if set.RoundsDecide(v) {
+			t.Errorf("%q ne doit PAS être déclarée : son score est déjà le bon (cf. rapport §2.1)", v)
 		}
 	}
 }

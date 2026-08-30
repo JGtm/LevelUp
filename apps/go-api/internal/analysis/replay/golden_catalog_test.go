@@ -67,10 +67,10 @@ func goldenCatalog(t *testing.T) LabelCatalog {
 		if o.Family != mappings.ObjectiveFamilyFlag {
 			continue
 		}
-		if cat.FlagObjects == nil {
-			cat.FlagObjects = map[uint32]Label{}
+		if cat.ObjectiveObjects == nil {
+			cat.ObjectiveObjects = map[uint32]Label{}
 		}
-		cat.FlagObjects[id] = Label{En: o.Label.En, Fr: o.Label.Fr}
+		cat.ObjectiveObjects[id] = Label{En: o.Label.En, Fr: o.Label.Fr}
 	}
 	return cat
 }

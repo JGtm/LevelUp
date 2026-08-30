@@ -61,15 +61,23 @@ export const EPISODE_FAMILIES = [EQUIP_FAMILY_CAMO, EQUIP_FAMILY_OVERSHIELD] as 
 export type EquipmentEpisodeFamily = (typeof EPISODE_FAMILIES)[number]
 
 /**
- * Un état actif cumulé : combien d'épisodes, et combien de temps en tout.
+ * Un état actif cumulé : combien d'épisodes, combien de temps en tout, et combien de frags
+ * DU PORTEUR pendant ces épisodes.
  *
- * LES DEUX SE LISENT ENSEMBLE : six épisodes d'une seconde et un épisode de six secondes ne
- * racontent pas la même partie, et le nombre seul ne les distingue pas.
+ * COMPTE ET DURÉE SE LISENT ENSEMBLE : six épisodes d'une seconde et un épisode de six
+ * secondes ne racontent pas la même partie, et le nombre seul ne les distingue pas.
+ *
+ * `kills` EST UNE SOMME SUR DES EPISODES, PAS UNE MESURE DE MATCH À ELLE SEULE : elle vaut
+ * zéro aussi bien quand le porteur n'a rien tué sous l'effet que quand la jointure n'a pas pu
+ * être tentée pour ce match — c'est `EquipmentUsageCoverage.killsRead` (document entier) qui
+ * distingue les deux, jamais ce champ seul (PLAN_RETOURS_UTILISATEUR_2026-08-29 §LOT F.2).
  */
 export interface EquipmentUsageEpisode {
   count: number
   /** Durée cumulée, en millisecondes (les épisodes sont datés en frames). */
   ms: number
+  /** Frags DU PORTEUR pendant SES épisodes de cette famille (`EquipmentEpisode.k`, sommés). */
+  kills: number
 }
 
 /** Les grandeurs comptées, sans identité — la ligne d'un joueur comme le total d'une équipe. */
@@ -135,6 +143,14 @@ export interface EquipmentUsageCoverage {
   placementsByFamilyOrigin: Record<string, number>
   /** `groundWeapons.powerupPads` : socles de bonus publiés — le dénominateur des vidages. */
   powerupPads: number
+  /**
+   * `equipment.killsRead` : les frags/assistances sous effet actif ont-ils pu être MESURÉS
+   * pour ce match ? Faux = jointure non tentée (killsource non décodé, porte de publication
+   * ligne-par-ligne fermée, ou origine d'horloge non établie) — DISTINCT d'un compte à zéro
+   * mesuré. La cellule de colonne « Frags sous <famille> » lit CE champ, jamais
+   * `episodes[fam].kills` seul, pour choisir entre un nombre et « — ».
+   */
+  killsRead: boolean
 }
 
 /** Le résultat complet : par joueur, par équipe, et ce qui reste au niveau du match. */
@@ -169,18 +185,23 @@ function bump<K extends string | number>(table: Record<K, number>, key: K, by = 
   table[key] = (table[key] ?? 0) + by
 }
 
-/** Ajoute un épisode (un de plus, et sa durée) à une table par famille. */
-function addEpisode(table: Record<string, EquipmentUsageEpisode>, fam: string, ms: number): void {
-  const cur = table[fam] ?? { count: 0, ms: 0 }
-  table[fam] = { count: cur.count + 1, ms: cur.ms + Math.max(0, ms) }
+/** Ajoute un épisode (un de plus, sa durée, ses frags) à une table par famille. */
+function addEpisode(
+  table: Record<string, EquipmentUsageEpisode>,
+  fam: string,
+  ms: number,
+  kills: number,
+): void {
+  const cur = table[fam] ?? { count: 0, ms: 0, kills: 0 }
+  table[fam] = { count: cur.count + 1, ms: cur.ms + Math.max(0, ms), kills: cur.kills + kills }
 }
 
 /** Verse `src` dans `dst` — le total d'une équipe est la somme de ses lignes, rien de plus. */
 function mergeTally(dst: EquipmentUsageTally, src: EquipmentUsageTally): void {
   dst.grapplePulls += src.grapplePulls
   for (const [fam, ep] of Object.entries(src.episodes)) {
-    const cur = dst.episodes[fam] ?? { count: 0, ms: 0 }
-    dst.episodes[fam] = { count: cur.count + ep.count, ms: cur.ms + ep.ms }
+    const cur = dst.episodes[fam] ?? { count: 0, ms: 0, kills: 0 }
+    dst.episodes[fam] = { count: cur.count + ep.count, ms: cur.ms + ep.ms, kills: cur.kills + ep.kills }
   }
   for (const [fam, n] of Object.entries(src.deployed)) bump(dst.deployed, fam, n)
   for (const [fam, n] of Object.entries(src.dropped)) bump(dst.dropped, fam, n)
@@ -256,7 +277,7 @@ export function buildEquipmentUsage(
   for (const e of doc.equipmentEpisodes) {
     // Une famille hors des deux mesurées n'a ni libellé ni sens établi : elle n'entre pas.
     if (!(EPISODE_FAMILIES as readonly string[]).includes(e.fam)) continue
-    addEpisode(tallyOfSlot(e.slot).episodes, e.fam, frameToMs(e.t1 - e.t0, doc))
+    addEpisode(tallyOfSlot(e.slot).episodes, e.fam, frameToMs(e.t1 - e.t0, doc), e.k ?? 0)
   }
 
   for (const p of doc.equipmentPlacements) {
@@ -385,5 +406,6 @@ function coverageOf(doc: ReplayDocumentReady): EquipmentUsageCoverage {
     grapplePullLives: grapple?.pullLives ?? 0,
     placementsByFamilyOrigin: cov?.placements?.byFamilyOrigin ?? {},
     powerupPads: cov?.groundWeapons?.powerupPads ?? 0,
+    killsRead: equip?.killsRead ?? false,
   }
 }

@@ -27,11 +27,11 @@ export const defaultPalette: Palette = {
 
   // ── Divergent (source : match-card.tsx, delta-card.tsx) ────────────────────
   'divergent-pos':     '#22C55E', // green-500
-  // Gris légèrement bleuté : la zone « non significative » ne doit porter aucune
-  // direction. L'ancien bleu #60A5FA se lisait comme une valeur positive et
-  // entrait en concurrence avec les couleurs joueurs. Les 3 autres palettes ont
-  // déjà un gris à ce poste.
-  'divergent-neutral': '#8A9099',
+  // Bleu (blue-400) — décision produit 2026-08-27 : retour au bleu historique pour
+  // la Résistance défensive, jugé plus lisible que le gris #8A9099 essayé le
+  // 2026-08-04 (le gris se confondait avec les libellés muted voisins). Les 3
+  // palettes daltoniennes gardent leur gris à ce poste (neutre sans direction).
+  'divergent-neutral': '#60A5FA',
   'divergent-neg':     '#EF4444', // red-500
 
   // ── Statuts UI ─────────────────────────────────────────────────────────────
@@ -99,6 +99,27 @@ export const defaultPalette: Palette = {
   // ── Badges encounter (source : narrative/encounter.go ColorToken) ──────────
   // (set sombre distinct AA-blanc, palette-invariant — cf. _encounterColors.ts)
   ...ENCOUNTER_BADGE_COLORS,
+
+  // ── Classes de frags — famille dédiée (2026-08-29) ─────────────────────────
+  // Valeurs = EXACTEMENT celles que résolvaient les anciens tokens empruntés
+  // (perf-tier-2, chart-series-6/8/7/5, narrative-humiliation/-debacle/-remontada,
+  // compare-a, extreme, divergent-neutral) : zéro changement à l'écran sur la
+  // palette défaut — SAUF frag-spartan-ability, seul écart volontaire : l'ancien
+  // compare-a (#818CF8, indigo-400) valait ΔE 6,89 (< seuil 8) contre
+  // frag-unattributed (#60A5FA) — la paire « héritée » exemptée au guard du
+  // 2026-08-29 matin. La famille dédiée la RÉSOUT (indigo-500, plus saturé et
+  // plus sombre) au lieu de l'exempter.
+  'frag-shoulder':        '#06B6D4', // cyan-500
+  'frag-sidearm':         '#10B981', // émeraude
+  'frag-heavy':           '#7C3AED', // violet-600
+  'frag-melee':           '#EC4899', // rose
+  'frag-grenade':         '#F59E0B', // ambre
+  'frag-spartan-ability': '#6366F1', // indigo-500 (cf. note ci-dessus)
+  'frag-vehicle':         '#3730A3', // indigo-800
+  'frag-turret':          '#D55E00', // orange brûlé
+  'frag-equipment':       '#C026D3', // fuchsia-600
+  'frag-environmental':   '#0072B2', // bleu profond
+  'frag-unattributed':    '#60A5FA', // bleu-400 neutre (résidu)
 
   // ── Heatmaps (source : timeseries-heatmap.tsx, heatmapChart.ts) ────────────
   'heatmap-cold':           '#EF4444', // mauvais — rouge

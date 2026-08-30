@@ -15,7 +15,6 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  beaconDiamond,
   REPAIR_FIELD_RADIUS_M,
   repairCrossAlpha,
   SEEKER_IMPULSE_MS,
@@ -87,55 +86,36 @@ describe('seekerImpulse — la course de l’onde', () => {
   })
 })
 
-describe('beaconDiamond — un losange qui ne pointe nulle part', () => {
-  it('quatre sommets, tous à la même distance du centre', () => {
-    const c = { x: 30, y: -12 }
-    const pts = beaconDiamond(c, 5)
-    expect(pts).toHaveLength(4)
-    for (const p of pts) expect(Math.hypot(p.x - c.x, p.y - c.y)).toBeCloseTo(5, 6)
-  })
-
-  it('symétrique par ses deux axes : son barycentre EST le centre', () => {
-    const c = { x: 4, y: 9 }
-    const pts = beaconDiamond(c, 7)
-    expect(pts.reduce((s, p) => s + p.x, 0) / 4).toBeCloseTo(c.x, 6)
-    expect(pts.reduce((s, p) => s + p.y, 0) / 4).toBeCloseTo(c.y, 6)
-  })
-})
-
-describe('la BALISE du translocateur — un marqueur à demeure', () => {
+describe('la FAILLE du translocateur — une ouverture à demeure', () => {
   const beacon = () => pose({ family: 'translocator_beacon', id: BEACON_ID })
 
-  it('un losange fermé et son cœur, à la position de la pose', () => {
+  it('deux lèvres courbes et un cœur droit, à la position de la pose', () => {
     const ops = draw([beacon()])
     const c = projected(5, 5)
-    expect(ops.filter((o) => o.op === 'closePath')).toHaveLength(1)
-    expect(ops.filter((o) => o.op === 'lineTo')).toHaveLength(3)
-    const dot = ops.filter((o) => o.op === 'arc')
-    expect(dot).toHaveLength(1)
-    expect(dot[0].args.slice(0, 2)).toEqual([c.x, c.y])
+    // La déchirure : deux arcs quadratiques opposés, sommet à sommet.
+    expect(ops.filter((o) => o.op === 'quadraticCurveTo')).toHaveLength(2)
+    // UN SEUL arc de cercle, et c est le HALO — le dégradé qui déborde de la déchirure
+    // depuis le passage en portail interdimensionnel (2026-08-27). Le losange de la balise en
+    // avait un aussi, mais c était son CORPS : ici le corps reste fait de courbes, et l arc
+    // est rempli d un dégradé, jamais tracé. Une faille n est toujours pas un point.
+    const arcs = ops.filter((o) => o.op === 'arc')
+    expect(arcs).toHaveLength(1)
+    expect(ops.filter((o) => o.op === 'createRadialGradient')).toHaveLength(1)
+    const traits = ops.filter((o) => o.op === 'lineTo')
+    expect(traits).toHaveLength(1)
+    expect(traits[0].args[0]).toBeCloseTo(c.x, 6)
   })
 
   it('elle NE PULSE PAS : la même image à tout âge de sa fenêtre', () => {
     const sommets = [10, 50, 100].map((frame) =>
       draw([beacon()], { ...TIME, frame })
-        .filter((o) => o.op === 'lineTo')
+        .filter((o) => o.op === 'quadraticCurveTo')
         .map((o) => o.args[0] as number),
     )
     expect(sommets[1]).toEqual(sommets[0])
     expect(sommets[2]).toEqual(sommets[0])
   })
 
-  it('le losange ne pointe nulle part, une fois tracé comme au calcul', () => {
-    const c = projected(5, 5)
-    const sommets = draw([beacon()])
-      .filter((o) => o.op === 'moveTo' || o.op === 'lineTo')
-      .map((o) => ({ x: o.args[0] as number, y: o.args[1] as number }))
-    expect(sommets).toHaveLength(4)
-    // La somme des écarts au centre est nulle sur les deux axes : aucun biais directionnel.
-    expect(sommets.reduce((s, p) => s + (p.x - c.x), 0)).toBeCloseTo(0, 6)
-    expect(sommets.reduce((s, p) => s + (p.y - c.y), 0)).toBeCloseTo(0, 6)
-  })
 })
 
 describe('le TRAQUEUR de menaces — une seule impulsion, puis plus rien', () => {

@@ -44,6 +44,14 @@ export interface FirstBloodMatch {
   firstKillSec: number | null
   /** Secondes depuis le début du match, `null` si le joueur n'est pas mort. */
   firstDeathSec: number | null
+  /** Libellé de carte résolu — absent si le titre/le match n'en expose pas
+   *  (dégradation tooltip, DEC-4 : jamais l'uuid). */
+  mapUI?: string
+  /** Libellé de mode résolu — absent si le titre/le match n'en expose pas. */
+  modeUI?: string
+  /** Date de début du match, ISO 8601 (déjà en UTC canonique côté API — ne pas
+   *  recalculer, seulement formater à l'affichage). */
+  startTime?: string
 }
 
 export interface FirstBloodPlayerSeries {
@@ -56,6 +64,10 @@ export interface FirstBloodPlayerSeries {
 export interface FirstBloodEventPoint {
   matchId: string
   sec: number
+  /** Reprises de FirstBloodMatch — alimentent le tooltip du nuage (DEC-4). */
+  mapUI?: string
+  modeUI?: string
+  startTime?: string
 }
 
 export interface FirstBloodLane {
@@ -115,8 +127,11 @@ export function buildFirstBloodLanes(data: FirstBloodPlayerSeries[]): FirstBlood
     const kills: FirstBloodEventPoint[] = []
     const deaths: FirstBloodEventPoint[] = []
     for (const m of matches) {
-      if (isUsable(m.firstKillSec)) kills.push({ matchId: m.matchId, sec: m.firstKillSec })
-      if (isUsable(m.firstDeathSec)) deaths.push({ matchId: m.matchId, sec: m.firstDeathSec })
+      // Métadonnées d'affichage communes aux deux points (frag/mort) d'un même
+      // match — DEC-4 : alimentent le tooltip (carte · mode · date), jamais l'uuid.
+      const meta = { mapUI: m.mapUI, modeUI: m.modeUI, startTime: m.startTime }
+      if (isUsable(m.firstKillSec)) kills.push({ matchId: m.matchId, sec: m.firstKillSec, ...meta })
+      if (isUsable(m.firstDeathSec)) deaths.push({ matchId: m.matchId, sec: m.firstDeathSec, ...meta })
     }
     const medianKillSec = medianSeconds(kills.map((p) => p.sec))
     const medianDeathSec = medianSeconds(deaths.map((p) => p.sec))

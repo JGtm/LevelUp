@@ -35,8 +35,12 @@ interface ReplayCanvasTipsProps {
   playWindow: ReplayWindowBounds | null
   /** Une POSE d'équipement survolée : ce que l'objet est, et qui l'a posé. */
   placement: PlacementHover | null
-  /** Le nom du poseur, par slot — la pose ne porte que son numéro. */
-  ownerNameOf: (slot: number) => string | null
+  /**
+   * Le nom du poseur, par slot ET par image — la pose ne porte que son numéro. On le résout à
+   * l'INSTANT DE LA POSE (`t0`) : le slot peut appartenir à un autre joueur à l'image courante
+   * (manche suivante), et le poseur, lui, était vivant quand il a posé.
+   */
+  ownerNameOf: (slot: number, frame: number) => string | null
   /** Un EMPLACEMENT D'ARME survolé : l'arme, son état, son cycle s'il est établi. */
   pad: WeaponPadHover | null
   /** Un DRAPEAU de CTF survolé : son camp, son état, son porteur, depuis quand. */
@@ -58,7 +62,7 @@ export function ReplayCanvasTips({
         <ReplayPlacementTip
           locale={locale}
           hover={placement}
-          ownerName={ownerNameOf(placement.placement.owner)}
+          ownerName={ownerNameOf(placement.placement.owner, placement.placement.t0)}
           width={width}
           playWindow={playWindow}
         />

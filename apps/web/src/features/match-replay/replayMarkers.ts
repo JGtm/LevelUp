@@ -148,16 +148,18 @@ const SPAWN_ALPHA = 0.8
 /**
  * Style du calque : ce qu'une VIE emprunte à son PROPRIÉTAIRE, plus les encres du thème.
  *
- * TOUT SE LIT PAR SLOT, jamais par index de trace. Le slot est la clé d'une vie, et le
- * propriétaire de la vie porte sa couleur d'équipe, sa marque d'identité et son nom
- * (rosterLogic.ts). Une vie SANS propriétaire rend `null` en couleur, et le calque ne la
- * dessine PAS : ce sont les caméras et les spectateurs de fin de partie, qui ne désignent
- * personne (2026-08-20). La marque et le nom, eux, peuvent manquer sur une vie qui se
- * dessine — elle sort alors sans étiquette ni marque, pas sans marqueur.
+ * TOUT SE LIT PAR SLOT ET PAR IMAGE, jamais par index de trace ni par une valeur figée pour
+ * tout le match. Le slot est la clé d'une vie ; le propriétaire de la vie qui occupe le slot À
+ * CETTE IMAGE porte sa couleur d'équipe, sa marque d'identité et son nom (rosterLogic.ts) —
+ * un slot de biped étant réattribué entre manches, la frame est indispensable pour ne pas
+ * montrer le joueur d'une AUTRE manche. Un slot SANS propriétaire à l'image rend `null` en
+ * couleur, et le calque ne le dessine PAS : caméras, spectateurs de fin de partie (2026-08-20).
+ * La marque et le nom, eux, peuvent manquer sur une vie qui se dessine — elle sort alors sans
+ * étiquette ni marque, pas sans marqueur.
  */
 export interface MarkerStyle {
-  /** Couleur d'équipe du propriétaire de la vie. `null` = ne rien dessiner pour ce slot. */
-  colorOfSlot: (slot: number) => string | null
+  /** Couleur d'équipe du propriétaire du slot à l'image. `null` = ne rien dessiner. */
+  colorOfSlot: (slot: number, frame: number) => string | null
   /** Encre qui contraste avec la page dans les deux thèmes : liseré, anneau du joueur. */
   ink: string
   frame: number
@@ -166,10 +168,10 @@ export interface MarkerStyle {
   /** Densité du canevas : tout ce qui s'adresse à l'œil est multiplié par ce facteur. */
   k: number
   showAim: boolean
-  /** Marque d'identité du propriétaire : elle décide de la FORME du marqueur. */
-  markOfSlot: (slot: number) => PlayerMarkKind | undefined
-  /** Nom à écrire sous le marqueur ; `null` = vie sans propriétaire, donc sans étiquette. */
-  nameOfSlot: (slot: number) => string | null
+  /** Marque d'identité du propriétaire du slot à l'image : elle décide de la FORME du marqueur. */
+  markOfSlot: (slot: number, frame: number) => PlayerMarkKind | undefined
+  /** Nom à écrire sous le marqueur ; `null` = slot sans propriétaire à l'image, donc sans étiquette. */
+  nameOfSlot: (slot: number, frame: number) => string | null
   /** Calque des noms (bouton « Noms », allumé par défaut) : un BTB doit pouvoir l'éteindre. */
   showNames: boolean
   /** Calque de la TRAÎNÉE (bouton « Traînée », allumé par défaut) — retour du 2026-08-18. */
@@ -214,7 +216,14 @@ export function drawTracksLayer(
   ctx.lineCap = 'round'
   ctx.lineJoin = 'round'
   tracks.forEach((track) => {
-    const color = style.colorOfSlot(track.slot)
+    // La couleur est celle du PROPRIÉTAIRE DE CETTE VIE : on résout donc l'identité à une image
+    // BORNÉE à la fenêtre de la vie. Vivant, c'est l'image courante ; en croix de mort, c'est la
+    // fin de la vie (l'image courante peut être au-delà, où le slot est libre ou déjà repris par
+    // une AUTRE vie — y résoudre effacerait la croix ou lui prêterait un autre joueur). Les vies
+    // d'un slot étant disjointes, une image dans [start, end] désigne CETTE vie sans ambiguïté.
+    const w = trackWindow(track)
+    const at = Math.max(w.start, Math.min(style.frame, w.end))
+    const color = style.colorOfSlot(track.slot, at)
     if (!color) return
     if (!isAliveAt(track, style.frame)) {
       // La couleur du slot reste la PORTE (une vie sans couleur ne se dessine pas), mais la
@@ -275,11 +284,13 @@ function drawLivingTrack(
   if (style.showTrail) drawTrail(ctx, track, view, style, color)
   if (style.showAim) drawAimCone(ctx, track, c, style, color)
   drawSpawnRing(ctx, track, c, style, color)
-  const shape = shapeOfMark(style.markOfSlot(track.slot))
+  // Vie EN COURS : l'image courante est dans sa fenêtre, elle désigne donc bien le propriétaire
+  // de CETTE vie (les vies d'un slot sont disjointes).
+  const shape = shapeOfMark(style.markOfSlot(track.slot, style.frame))
   drawMarker(ctx, c, style, color, fl, shape)
   // LE NOM SOUS LE POINT, jamais à côté d'une croix de mort : la ligne ci-dessus n'est
   // atteinte que pour une vie EN COURS (drawDeathMark rend avant).
-  const name = style.showNames ? style.nameOfSlot(track.slot) : null
+  const name = style.showNames ? style.nameOfSlot(track.slot, style.frame) : null
   if (name) drawNameLabel(ctx, c, name, style, color, markerEdge(fl, style.k, shape))
 }
 

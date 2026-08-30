@@ -65,6 +65,10 @@ type HomeService struct {
 	// match (dégradation gracieuse, le label suffit). Signature (tierEN capitalisé,
 	// subTier 0..6 ; 0 = Onyx) → URL. Garde le package analysis title-agnostic.
 	skillBadgeResolver func(tierEN string, subTier int) string
+	// roundsDecide : game_variant_name -> le RÉSULTAT du match se lit en MANCHES
+	// (regulation.toml [rounds_decide], ADR 0032). Nil/absente -> les tuiles affichent le
+	// score de l'API, comme avant. Injectée par WithRoundsDecide.
+	roundsDecide map[string]bool
 	// sessionTeammatesLoader (optionnel) : charge les coéquipiers (même équipe que
 	// le joueur principal) sur une liste de matchs, pour renseigner
 	// SessionSummaryItem.Teammates des sessions escouade (deep-link card → /squad).
@@ -74,6 +78,11 @@ type HomeService struct {
 	// sessionFriendsResolver (optionnel) : restreint les coéquipiers de session aux
 	// amis configurés (settings.friend_gamertags). nil → tous les coéquipiers alliés.
 	sessionFriendsResolver teammates.FriendGamertagsResolver
+	// replaySvc (optionnel) : service de rejeu 2D — MÊME service que l'endpoint /replay
+	// et l'Explorer. Seul AvailableSet est appelé : un listing de dossier par requête,
+	// jamais un accès disque par tuile. Nil → HasReplay reste faux partout (titre sans
+	// rejeu construit — dégradation gracieuse, aucun lien mort sur les tuiles).
+	replaySvc port.ReplayService
 }
 
 // NewHomeService crÃ©e un HomeService avec le repository et le provider Halo.
@@ -98,6 +107,15 @@ func (s *HomeService) WithDemoMode(demo bool) *HomeService {
 // pour permettre le chaînage.
 func (s *HomeService) WithSkillBadgeResolver(f func(tierEN string, subTier int) string) *HomeService {
 	s.skillBadgeResolver = f
+	return s
+}
+
+// WithRoundsDecide injecte la table `game_variant_name -> le résultat se lit en MANCHES`
+// (regulation.toml [rounds_decide], ADR 0032). Sans injection, les tuiles d'accueil
+// affichent le score de l'API — jamais une régression, mais une incohérence avec la vue
+// match si le titre en déclare : c'est pourquoi les TROIS factories l'injectent.
+func (s *HomeService) WithRoundsDecide(roundsDecide map[string]bool) *HomeService {
+	s.roundsDecide = roundsDecide
 	return s
 }
 
@@ -418,12 +436,22 @@ func (s *HomeService) GetHomePage(ctx context.Context, gamertag, locale string) 
 	hasRankedHistory, hasUnrankedHistory := analysis.InferHomeSkillHistoryFromCanonical(d.canonicalRows)
 	hero := analysis.BuildHeroCardFromCanonical(d.canonicalRows, gamertag, d.totalMatches, locale, hp)
 	highlights := analysis.BuildHighlightsFromCanonical(d.canonicalRows, locale)
-	recentMatches := analysis.BuildRecentMatchesWithFavoritesFromCanonical(d.canonicalRows, len(d.canonicalRows), d.favoriteIDs, locale, hp, s.skillBadgeResolver)
-	favoriteMatches := buildFavoriteMatchListCanonical(d.canonicalRows, d.favoriteIDs, locale, hp, s.skillBadgeResolver)
+	// Les tuiles d'accueil lisent le score par la MÊME règle que la vue match et les
+	// tableaux : `roundsDecide` porte les variantes qui se décident aux manches (ADR 0032).
+	recentOpts := analysis.RecentMatchesOptions{
+		Locale: locale, EffectiveHpToKill: hp,
+		SkillBadgeURL: s.skillBadgeResolver, RoundsDecide: s.roundsDecide,
+	}
+	recentMatches := analysis.BuildRecentMatchesWithFavoritesFromCanonical(
+		d.canonicalRows, len(d.canonicalRows), d.favoriteIDs, recentOpts)
+	favoriteMatches := buildFavoriteMatchListCanonical(d.canonicalRows, d.favoriteIDs, recentOpts)
 	// Placement de chaîne de PERFORMANCE sur les tuiles de match : même signal que
 	// l'Explorer (« En placement (X/Y) » au lieu d'un vide ou d'un 0 fabriqué pour une
 	// perf structurellement absente). Comptage par chaîne sur TOUT l'historique.
 	applyPerfPlacementsToRecentItems(ctx, d.canonicalRows, recentMatches, favoriteMatches)
+	// Lien « Rejeu 2D » des tuiles : présence d'artefact résolue en UN listing de
+	// dossier pour les deux listes (jamais un accès disque par tuile).
+	applyReplayAvailabilityToRecentItems(s.replayAvailability(ctx), recentMatches, favoriteMatches)
 	soloSession := analysis.BuildSessionSummaryFromCanonical(d.canonicalRows, false, locale, hp)
 	squadSession := analysis.BuildSessionSummaryFromCanonical(d.canonicalRows, true, locale, hp)
 	soloSessions := analysis.BuildSessionSummariesFromCanonical(d.canonicalRows, false, 20, locale, hp)

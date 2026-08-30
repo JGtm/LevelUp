@@ -16,17 +16,18 @@
  */
 import type { ReplayEquipmentPlacement } from '@/lib/api/types'
 
+import { RIFT_HALF_HEIGHT_PX } from './placementRift'
 import {
   type PlacementHoverTime,
   type PlacementKind,
   placementKind,
 } from './equipmentPlacementsLayer'
 import {
-  BEACON_RADIUS_PX,
   DROPPED_RADIUS_PX,
   type PlacementView,
   project,
   REPAIR_FIELD_RADIUS_M,
+  SHROUD_RADIUS_M,
   SEEKER_IMPULSE_RADIUS_PX,
   UNNAMED_DOT_RADIUS_PX,
   viewScale,
@@ -53,7 +54,10 @@ export function hoverRadiusPx(kind: PlacementKind, view: PlacementView): number 
   if (kind === 'field') return REPAIR_FIELD_RADIUS_M * scale
   if (kind === 'wall') return Math.max(wallRadiusM(view) * scale, HOVER_MIN_RADIUS_PX)
   if (kind === 'seeker') return Math.max(SEEKER_IMPULSE_RADIUS_PX, HOVER_MIN_RADIUS_PX)
-  if (kind === 'beacon') return Math.max(BEACON_RADIUS_PX, HOVER_MIN_RADIUS_PX)
+  if (kind === 'rift') return Math.max(RIFT_HALF_HEIGHT_PX, HOVER_MIN_RADIUS_PX)
+  // L ECRAN : sa zone sensible est sa bulle entiere, fondu compris. Le survol suit ce que
+  // l oeil voit — un disque de 6 m qu on ne pourrait designer qu en son centre mentirait.
+  if (kind === 'shroud') return SHROUD_RADIUS_M * scale
   if (kind === 'dropped') return Math.max(DROPPED_RADIUS_PX, HOVER_MIN_RADIUS_PX)
   return Math.max(UNNAMED_DOT_RADIUS_PX, HOVER_MIN_RADIUS_PX)
 }

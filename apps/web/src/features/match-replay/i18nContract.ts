@@ -16,17 +16,26 @@ import type { PadEquipmentFamilyKey } from './weaponPadFamilies'
  * LE TABLEAU DES USAGES D'ÉQUIPEMENT de la page match (onglet Chronologie). Il compte, sur tout
  * le match, ce que le rejeu ne montre qu'image par image.
  *
- * TROIS RÉSERVES SONT PORTÉES PAR CES TEXTES, et aucune ne doit se perdre :
+ * QUATRE RÉSERVES SONT PORTÉES PAR CES TEXTES, et aucune ne doit se perdre :
  *
  *  1. `groupActiveHint` — un épisode de camouflage ou de surbouclier est un ÉTAT MESURÉ, pas
  *     un geste : le film dit que l'effet court, il ne dit PAS d'où il vient (bonus ramassé au
  *     socle, ou capacité déclenchée). Compter ces épisodes comme des « utilisations d'objet »
- *     serait affirmer une origine que rien n'établit.
+ *     serait affirmer une origine que rien n'établit. LA MÊME PHRASE PORTE DÉSORMAIS LA
+ *     RÉSERVE DES COLONNES « FRAGS SOUS <FAMILLE> » (PLAN_RETOURS_UTILISATEUR_2026-08-29
+ *     §LOT F.2, DEC-7 révisée) : les bornes de l'épisode sont à la précision de la
+ *     retransmission près, et le camo SEUL est sous le seuil de mesure en lecture large
+ *     (26,2 % des épisodes avec ≥ 1 frag) — un même groupe, une seule infobulle, parce que les
+ *     colonnes de frags sont des SOUS-COLONNES du même état mesuré, pas un calque à part.
  *  2. `powerupPadsHint` — les vidages de socle de bonus sont ANONYMES PAR MESURE
  *     (`padPickups[].xuid` vaut `null` partout) : la ligne reste au niveau du MATCH, et aucun
  *     libellé ne doit laisser croire qu'on connaît le ramasseur.
  *  3. `notMeasured` — répulseur et propulseur n'ont AUCUN canal d'activation dans le film. Pas
  *     de colonne vide (elle se lirait « zéro utilisation ») : une phrase qui le dit.
+ *  4. LA CELLULE « — » DES COLONNES DE FRAGS (cf. `equipmentUsageColumns.ts`, `killsCell`) —
+ *     un match dont `EquipmentUsageCoverage.killsRead` est faux écrit « — », jamais un zéro :
+ *     pas un texte à part, un CARACTÈRE, identique dans les deux langues (même convention que
+ *     `lib/formatters` pour toute grandeur non mesurée du dépôt).
  *
  * LES NOMS DE FAMILLE NE SONT PAS ICI, et c'est voulu : ils vivent déjà dans `placementFamily`
  * (règles de rendu) et `padEquipmentFamily` (socles de bonus). Une troisième table de noms
@@ -54,6 +63,17 @@ export interface EquipmentUsageText {
   activeFamily: Record<'camo' | 'overshield', string>
   activeCount: string
   activeDuration: string
+  /**
+   * LES DEUX COLONNES « FRAGS SOUS <FAMILLE> » (PLAN_RETOURS_UTILISATEUR_2026-08-29 §LOT F.2,
+   * décision utilisateur 8a/8b) : la somme des frags du PORTEUR pendant ses épisodes de cette
+   * famille. En-tête complet plutôt que la composition `activeFamily` + suffixe (contrairement
+   * à `activeCount`/`activeDuration`) parce que la phrase se lit seule en tête de colonne
+   * étroite — « Frags sous camo » porte son sens, « Camouflage (Frags) » l'aurait fait deviner.
+   * La réserve mesurée (source non distinguée, bornes approximatives, camo sous le seuil de
+   * mesure en lecture large) est celle de `groupActiveHint`, pas un second texte : ces colonnes
+   * sont des sous-colonnes du MÊME état mesuré.
+   */
+  activeKillsFamily: Record<'camo' | 'overshield', string>
   groupDeployed: string
   groupDeployedHint: string
   groupDropped: string
@@ -72,6 +92,18 @@ export interface EquipmentUsageText {
   /** Gestes mesurés dont le film ne nomme pas l'auteur : comptés hors tableau, jamais versés. */
   unattributedFmt: (count: number) => string
   notMeasured: string
+  /**
+   * LE BADGE « TEMPS FORT » (`features/match-view/equipmentKillBadges.ts`, LOT F.3) : « N frags
+   * sous camouflage » / « N frags sous surbouclier », le nombre RÉEL du meilleur épisode du
+   * match — jamais arrondi, jamais une somme sur le joueur. Vit ici (et pas dans
+   * `match-view/i18n.ts`) pour la même raison que le reste du vocabulaire d'équipement : les
+   * noms de famille appartiennent au dictionnaire du rejeu, `match-view` l'importe (même sens
+   * que `MatchEquipmentUsageSection`, réutilisé tel quel par `MatchViewTabChronology`).
+   */
+  killBadgeFmt: Record<'camo' | 'overshield', (kills: number) => string>
+  /** Infobulle du badge : LA MÊME réserve que `groupActiveHint` (source non distinguée, bornes
+   * à la précision de la retransmission, camo seul sous le seuil de mesure en lecture large). */
+  killBadgeHint: string
 }
 
 export interface ReplayText {
@@ -84,6 +116,30 @@ export interface ReplayText {
   empty: string
   speed: string
   time: string
+  /**
+   * LES SAUTS DE LA BARRE (planche 2a, 2026-08-28) : le libellé PORTE LA DURÉE plutôt que de
+   * la répéter à côté du bouton — l'icône dit le sens, le nom accessible dit combien. La
+   * valeur vient de `SKIP_SECONDS` (replayCanvasConfig.ts) : changer la convention à un seul
+   * endroit change les deux libellés.
+   */
+  skipBackFmt: (seconds: number) => string
+  skipForwardFmt: (seconds: number) => string
+  /**
+   * LES DEUX NOTES DU MENU DE VITESSE. `speedNormal` marque la vitesse de référence (on
+   * cherche « comment je reviens à la normale ? », pas « qu'est-ce que 1× »). `speedMuted`
+   * marque celles où le son se tait — le menu ne la pose que sur les vitesses que
+   * `soundPlaysAtSpeed` (replaySoundCursor.ts) refuse, donc la borne n'est écrite nulle part
+   * dans le texte : elle se lit sur les entrées qui portent la note.
+   */
+  speedNormal: string
+  speedMuted: string
+  /**
+   * LE NOM DE LA BARRE D'ESPACE, et c'est la SEULE touche du lecteur qui se traduit. Les autres
+   * rappels de la barre — R, M, ←, → — sont des touches physiques : leur nom est le glyphe
+   * gravé dessus, identique dans les deux langues. « Espace » ne l'est pas ; l'écrire en dur
+   * aurait laissé un mot français dans une interface anglaise.
+   */
+  keySpace: string
   /** Kill feed synchronisé sur l'horloge du rejeu. */
   killFeedTitle: string
   killFeedEmpty: string
@@ -97,7 +153,7 @@ export interface ReplayText {
    * marque DIT (infobulle + lecteur d'écran) — elle ne se lit pas toute seule.
    */
   killFeedAssistMark: string
-  /** Part de participation de l'assistant, telle que la ligne l'écrit : « - 37 % ». */
+  /** Part de participation de l'assistant, telle que la ligne l'écrit : « 37 % ». */
   killFeedAssistShare: (pct: number) => string
   /** Ligne de mort NEUTRE (suicide, chute, sortie) : le mot affiché et son infobulle. */
   killFeedDeathLabel: string
@@ -123,7 +179,7 @@ export interface ReplayText {
   soundFastHint: string
   /** Filtre des sons par catégorie (tiroir de réglages, phase 2, décision du 16/08). */
   soundCategoriesTitle: string
-  soundCategory: Record<'weapon' | 'grenade' | 'melee' | 'equipment', string>
+  soundCategory: Record<'weapon' | 'grenade' | 'melee' | 'equipment' | 'objective', string>
   /**
    * LA CAPTURE D'IMAGE (2026-08-26) : un bouton en icône dans la barre de lecture, qui
    * télécharge la scène courante en PNG. Le libellé dit le GESTE, pas la technique — « PNG »,
@@ -153,10 +209,32 @@ export interface ReplayText {
    * `sound` / `soundHint`).
    */
   recordHint: string
+  /**
+   * LES PASTILLES DE SORTIE (planche 2a, 2026-08-28) : les trois commandes portent désormais
+   * un TEXTE COURT à côté de leur icône. Il ne remplace pas le nom accessible — `captureImage`,
+   * `recordVideo` et `stopRecording` restent en aria-label, et ce sont eux qu'un lecteur
+   * d'écran annonce. Ce mot-ci est ce que l'ŒIL lit sans survoler : trois icônes muettes côte
+   * à côte se ressemblent toutes, un mot les départage d'un coup.
+   */
+  captureImageShort: string
+  recordVideoShort: string
+  stopRecordingShort: string
   /** Le tiroir de réglages (décision utilisateur du 16/08) : bouton et panneau partagent
    *  le même intitulé — ouvrir dit ce qu'on va trouver derrière. */
   settingsButton: string
   settingsClose: string
+  /**
+   * LA LECTURE : la seule section du tiroir qui parle du LECTEUR et non de ce qu'il montre
+   * (demande utilisateur du 2026-08-29, point 22 — « lecture automatique dans les réglages,
+   * avec persistance du choix »).
+   *
+   * L'INFOBULLE PORTE LA RÉSERVE, et elle n'est pas décorative : ce réglage ne commande pas le
+   * rejeu ouvert, il décide de son état de DÉPART. Sans cette phrase, on l'essaierait comme un
+   * bouton « Lecture » et on conclurait qu'il ne marche pas.
+   */
+  playbackTitle: string
+  autoPlay: string
+  autoPlayHint: string
   /** Calques que le lecteur peut éteindre. */
   layers: string
   layerAim: string
@@ -214,7 +292,7 @@ export interface ReplayText {
   layerPlacementsDroppedHint: string
   layerPlacementsUnnamed: string
   layerPlacementsUnnamedHint: string
-  placementFamily: Record<'wall' | 'sensor' | 'beacon' | 'seeker' | 'field', string>
+  placementFamily: Record<'wall' | 'sensor' | 'rift' | 'shroud' | 'seeker' | 'field', string>
   /** Ce que dit le point neutre d'un objet dont la nature n'est pas établie. */
   placementUnnamedLabel: string
   /** Ligne « posé par <joueur> » de l'infobulle ; le poseur est une MESURE (proximité). */
@@ -268,7 +346,22 @@ export interface ReplayText {
   flagSinceFmt: (seconds: number) => string
   /** La réserve de `carried_open`, en toutes lettres. */
   flagOpenNote: string
-  padState: Record<'full' | 'uncertain' | 'empty', string>
+  /** LA COURONNE VIP (schéma 22) : le nom du calque et sa réserve, identiques FR/EN (« VIP »). */
+  layerVipCrown: string
+  layerVipCrownHint: string
+  /** LE PORTEUR DU CRÂNE d'Oddball (schéma 23) : le nom du calque et sa réserve. */
+  layerSkullCarrier: string
+  layerSkullCarrierHint: string
+  /**
+   * LES ARMES AU SOL (schéma 27) : le nom du calque et sa réserve.
+   *
+   * LA RÉSERVE EST LE SUJET, pas un ornement : ce calque affiche des objets dont la
+   * disparition n'est PAS toujours datée. La réserve doit dire, en toutes lettres, ce que
+   * l'estompage veut dire — sans quoi il se lit comme un effet de style, exactement le défaut
+   * que `flagOpenNote` corrige sur les portages ouverts.
+   */
+  layerGroundWeapons: string
+  layerGroundWeaponsHint: string
   /**
    * LE NOM D'UN SOCLE QUI NE PORTE PAS UNE ARME (schéma 17). Les clés sont les familles
    * d'équipement publiées par le document (`weaponPads[].weapon`), énumérées une par une dans
@@ -283,18 +376,22 @@ export interface ReplayText {
    * rejoignent, avec les mêmes mots que le jeu.
    */
   padEquipmentFamily: Record<PadEquipmentFamilyKey, string>
-  /** Ce que la donnée ne distingue pas : socle au sol ou râtelier mural (position seule). */
-  padPlacementNote: string
-  /**
-   * La même réserve pour un socle NON-ARME : la question du râtelier mural n'y a pas de sens
-   * (un power-up n'est jamais accroché à un mur), mais la position reste une mesure de CE
-   * match — l'infobulle ne doit pas laisser croire à un catalogue de carte.
-   */
-  padPlacementNotePowerUp: string
-  /** Compte à rebours COMPACT, celui de la carte (« 12 s »). */
+  /** Compte à rebours COMPACT, celui de la carte (« 12 s ») — il ne dit pas sa source. */
   padCountdownFmt: (seconds: number) => string
-  /** Compte à rebours de l'infobulle, en toutes lettres. */
-  padRespawnFmt: (seconds: number) => string
+  /**
+   * LES DEUX COMPTES À REBOURS DE L'INFOBULLE, et leur différence est la seule chose qui compte
+   * (D3, 2026-08-27) : `Measured` vise la prochaine apparition VUE dans le film — le rejeu
+   * connaît la suite, le chiffre est EXACT et n'a pas à porter de « ≈ » ; `Expected` vise ce que
+   * le CYCLE prédit, pour le dernier trou qu'aucune apparition ne ferme, et garde sa réserve.
+   *
+   * DEUX CLÉS ET NON UN DRAPEAU dans une seule phrase : les deux langues n'insèrent pas la
+   * réserve au même endroit, et une phrase à trous se serait figée sur l'ordre du français.
+   *
+   * SANS PARENTHÈSE D'EXPLICATION depuis le 2026-08-28 (« je ne veux pas de blabla dedans ») :
+   * la source du chiffre tient dans le « ≈ », et l'infobulle ne porte plus que deux lignes.
+   */
+  padRespawnMeasuredFmt: (seconds: number) => string
+  padRespawnExpectedFmt: (seconds: number) => string
   /**
    * Carte de chaleur : le calque, ce qu'il mesure, et sa légende. JAMAIS « heatmap » à
    * l'écran (règle FR sans anglicismes) — « carte de chaleur » partout.
@@ -340,6 +437,12 @@ export interface ReplayText {
   countersLive: string
   countersMatch: string
   /**
+   * LE FDA du triplet affiché — le net canonique (frags + assistances/3 − morts, cf.
+   * `lib/fda.ts`). Le fond coloré du triplet le dit d'un coup d'oeil ; l'infobulle le dit
+   * en toutes lettres, parce qu'une couleur seule n'est pas une mesure.
+   */
+  fdaTooltipFmt: (counters: string, fda: string) => string
+  /**
    * LE BANDEAU DE SCORE au-dessus du terrain : deux barres de camp encadrant l'horloge de
    * lecture. Les deux camps s'y nomment par leur RAPPORT au joueur de la page (allié /
    * adverse) et non par leur nom d'équipe, qui est déjà en tête des colonnes de fiches —
@@ -353,8 +456,43 @@ export interface ReplayText {
   scoreBannerAlly: string
   scoreBannerEnemy: string
   scoreBannerClock: string
+  /**
+   * La progression de GARDE de la colline (KOTH) : le libelle d'un filet, pas d'un nombre.
+   * Il nomme la grandeur — sans lui, un lecteur d'ecran annoncerait un second pourcentage
+   * sans dire de quoi, a cote de celui du score.
+   */
+  hillHoldAlly: string
+  hillHoldEnemy: string
   roundNumberFmt: (index: number) => string
   roundOfCountFmt: (index: number, count: number) => string
+  /**
+   * LES PASTILLES DE MANCHE, au-dessus du score (Oddball et tout mode multi-manche). Une
+   * rangée COMMUNE, une pastille par manche jouée, teintée au camp gagnant quand la manche est
+   * tranchée — pleine = gagnée, vide = en cours ou à jouer. `roundDotsLabel` nomme la rangée
+   * pour les lecteurs d'écran ; les trois formateurs disent l'état de chaque pastille (l'œil lit
+   * la couleur, le lecteur d'écran lit le mot). Le camp est nommé par son RAPPORT au joueur de
+   * la page (allié / adverse), comme le bandeau — jamais par une couleur ni un nom d'équipe.
+   */
+  roundDotsLabel: string
+  /**
+   * LE COMPTE DE MANCHES ÉCRIT EN CLAIR, à côté du rang de manche sous l'horloge (arbitrage
+   * utilisateur du 2026-08-29). Les pastilles le disent déjà à l'œil ; ce libellé le dit au
+   * lecteur d'écran et à qui compte mal des ronds. Toujours « allié - adverse », l'ordre du
+   * bandeau. Il se lit À L'IMAGE COURANTE, comme les pastilles : c'est un compte EN COURS,
+   * pas le verdict du match (celui-ci vient de l'API, sur l'écran de fin).
+   */
+  roundsTallyFmt: (ally: number, enemy: number) => string
+  roundsTallyLabel: string
+  roundDotAllyFmt: (index: number) => string
+  roundDotEnemyFmt: (index: number) => string
+  roundDotPendingFmt: (index: number) => string
+  /**
+   * LE MESSAGE INTER-MANCHE : bref et non bloquant, il paraît à la bascule d'une manche à la
+   * suivante et dit la manche qui vient de se TERMINER. Dérivé de la position de lecture comme
+   * l'écran de fin — visible dans une courte fenêtre autour de la bascule, il se rejoue si l'on
+   * repasse dessus. C'est aussi le point de déclenchement du son « manche terminée ».
+   */
+  roundOverFmt: (index: number) => string
   /**
    * L'ÉCRAN DE FIN DE MATCH, à l'instant où la lecture atteint la fin déclarée.
    *
@@ -374,9 +512,67 @@ export interface ReplayText {
    */
   victoryPanelLabel: string
   victoryScoreLabel: string
-  /** RETOURNEMENT : l'instant où le match change de meneur (marque sur la frise). */
-  leadChange: string
-  leadChangeAtFmt: (time: string, team: string) => string
+  /**
+   * LES QUATRE PISTES DE LA FRISE (planche 2a, 2026-08-28). Les trois premières nomment ce
+   * qu'on lit sous le curseur : tes éliminations et tes morts, celles de tes alliés, et qui
+   * menait à cet instant. Ce sont des ÉTIQUETTES DE LIGNE, pas des titres — d'où des mots
+   * seuls, à l'échelle d'une frise haute de quelques pixels.
+   *
+   * `dominanceOfFmt` date une bande de dominance dans son infobulle : l'équipe y est nommée
+   * par la cascade du scoreboard (`labelOf`), la même que les colonnes et le bandeau. Elle
+   * dit AUX FRAGS depuis le 2026-08-28 : la piste ne lit plus le compteur du mode (captures,
+   * secondes de balle) mais le nombre d'éliminations de chaque camp — « mène » tout court
+   * laisserait croire au score du tableau.
+   *
+   * `dominanceTied` nomme la bande d'ÉGALITÉ (l'encre `outcome-draw`), qui est l'état du coup
+   * d'envoi et de tout retour à parité : sans elle, la bande bleue serait la seule de la piste
+   * dont le survol ne dirait rien.
+   */
+  trackYou: string
+  trackAllies: string
+  trackDominance: string
+  dominanceOfFmt: (team: string) => string
+  dominanceTied: string
+  /**
+   * LA PISTE SCORE (2026-08-28) : la même lecture que la dominance, mais sur le compteur du
+   * MODE. Elle n'apparaît pas en Slayer, où le score EST le compte des frags — d'où trois
+   * chaînes jumelles et non partagées : « mène aux frags » et « mène au score » sont deux
+   * affirmations différentes, et les fondre en une seule (« mène ») rendrait les deux rangées
+   * indiscernables au survol, précisément là où on les compare.
+   *
+   * Les séparateurs de manche de cette piste réutilisent `roundOverFmt` — le même mot que
+   * l'écran inter-manche, pour la même chose.
+   */
+  trackScore: string
+  scoreOfFmt: (team: string) => string
+  scoreTied: string
+  /**
+   * LA PISTE DES MÉDIAS, son état VIDE, et la lightbox qui ouvre un média.
+   *
+   * LA DONNÉE EST ARRIVÉE le 2026-08-28 (phase 2 : l'onglet médias du match, recalé sur l'axe
+   * du rejeu) : « aucun média » reste un état honnête, mais c'est désormais un fait DU MATCH
+   * et non plus l'attente d'une source. `mediaPausedHint` est la pastille de la lightbox :
+   * ouvrir un média met le rejeu en pause, et sans ce mot un lecteur qui referme ne saurait
+   * pas pourquoi le film n'a pas avancé.
+   *
+   * LES DEUX ÉCHECS DE LECTURE SONT DISTINCTS, et le lecteur n'y peut pas la même chose : un
+   * navigateur sans HLS ne lira JAMAIS ce clip (il faut en changer), tandis qu'un flux en
+   * erreur peut être réessayé. Un message unique les confondrait.
+   */
+  mediaTrack: string
+  mediaEmpty: string
+  mediaOpen: string
+  mediaClose: string
+  mediaPausedHint: string
+  mediaHlsUnsupported: string
+  mediaHlsError: string
+  /**
+   * REPLI DE LA FRISE (retour utilisateur du 2026-08-28). Les deux libellés portent le GESTE
+   * OFFERT, pas l'état courant : c'est ce que le lecteur va déclencher en cliquant, et c'est la
+   * convention des noms accessibles de commandes. L'état, lui, se lit dans `aria-expanded`.
+   */
+  tracksCollapse: string
+  tracksExpand: string
   unknownPlayer: string
   /**
    * Marques d'identité devant un nom. Le glyphe « moi » ne se DESSINE plus nulle part
@@ -395,6 +591,8 @@ export interface ReplayText {
   weaponSecondaryHint: string
   /** Badge de lancer sur la fiche (le `.gic` du POC) : l'auteur est écrit dans le film. */
   grenadeThrown: string
+  /** L'encadré de la fiche morte (option 2a) : le mot d'état, puis le décompte lu. */
+  eliminatedLabel: string
   respawnIn: string
   respawnUnknown: string
   /** Ligne d'inventaire : grenades, capacité, munitions. */
@@ -427,6 +625,31 @@ export interface ReplayText {
    */
   equipmentActive: Record<'camo' | 'overshield', string>
   /**
+   * LE PASSAGE PAR TRANSLOCATEUR (mesuré : deux canaux concordants, cf. placementTeleport.ts) —
+   * la phrase de l'éclat violet puis jaune-orangé que la fiche porte brièvement après le saut.
+   * Hors de `equipmentActive` PARCE QUE la clé n'est pas une famille d'épisode du document :
+   * c'est un ÉVÉNEMENT reconstruit des pistes, pas un état mesuré par le canal des épisodes.
+   */
+  translocationFlash: string
+  /**
+   * LE JOUEUR DANS UNE ZONE D'ÉQUIPEMENT (cf. equipmentZones.ts) : les trois états que la
+   * fiche sait dire — champ de réparation, écran occultant, capteur adverse. Les clés sont
+   * les RÈGLES DE RENDU du calque (`PlacementKind`), la même convention que `placementFamily`
+   * ci-dessus : la zone de la fiche et le disque de la carte sont le même objet.
+   */
+  zonePresence: Record<'field' | 'shroud' | 'sensor', string>
+  /**
+   * LE PORTEUR D'OBJECTIF (cf. objectiveMark.ts) : la phrase que le filigrane de la fiche dit
+   * en toutes lettres dans l'infobulle. Les clés sont les GENRES DE MARQUE, jamais les modes —
+   * un même objet se retrouve d'un mode à l'autre, et la fiche ne connaît pas le mode.
+   *
+   * DEUX RÉGIMES DANS LA MÊME TABLE, ET LES LIBELLÉS DOIVENT LE DIRE : `flag`, `skull`, `vip`
+   * et `hill` sont des ÉTATS qui durent — « porte », « est » ; `zone` est un ÉVÉNEMENT tenu
+   * quelques secondes — « vient de prendre » — parce que la donnée n'attribue à un joueur que
+   * l'INSTANT de la prise, jamais la durée d'une capture.
+   */
+  objectiveCarry: Record<'flag' | 'skull' | 'vip' | 'hill' | 'zone', string>
+  /**
    * LE TABLEAU DES USAGES D'ÉQUIPEMENT (page match, onglet Chronologie). Bloc à part parce que
    * ces textes ne servent PAS le rejeu lui-même : ils servent son BILAN, une autre surface.
    */
@@ -457,4 +680,58 @@ export interface ReplayText {
   inventoryFallbackHint: string
   inventoryNoPriorHint: string
   gaugeLabel: string
+  /**
+   * L'EXPORT HORS TEMPS REEL — la commande, son dialogue, et ce qu'il annonce pendant qu'il
+   * calcule.
+   *
+   * `exportHint` dit la SEULE chose qui distingue cette commande de l'enregistrement qu'elle
+   * remplace : le fichier ne se paie pas en temps de match. `exportRunningHint` prévient que
+   * le terrain va défiler très vite sous les yeux — sans cela, un utilisateur croirait à un
+   * emballement du rejeu.
+   */
+  exportVideo: string
+  exportVideoShort: string
+  exportHint: string
+  exportDialogTitle: string
+  exportFrom: string
+  exportTo: string
+  exportWithSound: string
+  exportStart: string
+  exportCancel: string
+  exportClose: string
+  exportRunningHint: string
+  /** « Image 4 200 / 18 000 » : ce que la barre de progression dit en toutes lettres. */
+  exportProgressFmt: (done: number, total: number) => string
+  /**
+   * « Plage exportée : 4:32 » — la durée de MATCH demandée, et non celle du fichier : quand la
+   * plage va jusqu'au bout, le clip tient sa dernière image quelques secondes de plus, le temps
+   * qu'on lise le verdict et que le son s'achève.
+   */
+  exportLengthFmt: (clock: string) => string
+  /** L'export a ECHOUE : le dialogue le dit au lieu de se vider en silence. */
+  exportFailed: string
+  /**
+   * LA PHASE DE PREPARATION, avant la premiere image encodee : polices, logo, decodage des
+   * sons, mixage hors ligne, encodage de la piste. Elle dure plusieurs secondes sur un match
+   * charge en sons, et la barre y resterait sinon a zero sans rien expliquer.
+   */
+  exportPreparing: string
+  /** « ~1:20 restantes » — l'estimation, absente tant qu'elle danserait. */
+  exportEtaFmt: (clock: string) => string
+  /** « Fichier depose : rejeu-....mp4 » — la fin se dit, avec le nom du fichier. */
+  exportDoneFmt: (filename: string) => string
+  /** Le son etait demande, le navigateur l'a refuse : le clip est muet, et on le DIT. */
+  exportMutedFallback: string
+  /**
+   * LES NOMS DES PISTES SONORES du clip. Ils sont ECRITS DANS LE FICHIER : c'est ce qu'un
+   * montage affiche dans sa liste de pistes, et la seule chose qui distingue « bruitages » de
+   * « voix » pour qui ouvre le clip six mois plus tard.
+   *
+   * `exportTrackMix` vient TOUJOURS EN PREMIER : un lecteur ordinaire ne joue que la premiere
+   * piste, et un navigateur n'expose meme pas les autres.
+   */
+  exportTrackMix: string
+  exportTrackSfx: string
+  exportTrackVoice: string
+  exportTrackMusic: string
 }

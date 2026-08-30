@@ -83,8 +83,10 @@ type FlagCarryScan struct {
 	// exactement combien de prises sont perdues faute de pont (`NoBridge`) — un calque qui ne le
 	// dirait pas annoncerait une exhaustivite qu'il n'a pas.
 	Events []objectiveevents.NamedEvent
-	// Identity est le pont slot statborg -> xuid.
-	Identity map[int]string
+	// Identity est le pont slot statborg -> xuid, PAR MANCHE (le slot est reattribue d'une
+	// manche a l'autre ; une prise est nommee par l'identite de sa manche, choisie sur son
+	// instant). Sur un film mono-manche c'est le pont plat, a l'octet pres.
+	Identity objectiveevents.RoundIdentity
 	// Marks est le controle independant : les records de bipede d'image-cle portant le marqueur
 	// de portage, plus les instants de TOUTES les images-cles.
 	Marks filmdec.CarrierMarkScan
@@ -203,7 +205,7 @@ func buildFlagCarries(scan FlagCarryScan, ctx flagCarryCtx) ([]FlagCarry, *FlagC
 }
 
 // flagOpenings rend les prises de l'oracle, par SLOT statborg, fusionnees et triees.
-func flagOpenings(evs []objectiveevents.NamedEvent, identity map[int]string) []flagOpening {
+func flagOpenings(evs []objectiveevents.NamedEvent, identity objectiveevents.RoundIdentity) []flagOpening {
 	bySlot := map[int][]flagOpening{}
 	for _, e := range evs {
 		steal := e.Stat == objectiveevents.StatFlagSteals
@@ -211,7 +213,7 @@ func flagOpenings(evs []objectiveevents.NamedEvent, identity map[int]string) []f
 			continue
 		}
 		bySlot[e.Slot] = append(bySlot[e.Slot],
-			flagOpening{slot: e.Slot, xuid: identity[e.Slot], t0: int64(e.TimeMS), steal: steal})
+			flagOpening{slot: e.Slot, xuid: identity.At(e.Slot, e.TimeMS), t0: int64(e.TimeMS), steal: steal})
 	}
 	var out []flagOpening
 	for _, ops := range bySlot {
@@ -284,13 +286,13 @@ func nextOpeningOfSlot(ops []flagOpening) map[int]int64 {
 // fil des morts n'a pas vue. Ne s'applique QUE si un seul portage est ouvert a cet instant :
 // sinon rien ne dit lequel, et l'evenement se compte en incoherence.
 func closeByCarrierKills(raws []flagCarryRaw, evs []objectiveevents.NamedEvent,
-	identity map[int]string) ([]flagCarryRaw, int) {
+	identity objectiveevents.RoundIdentity) ([]flagCarryRaw, int) {
 	ambiguous := 0
 	for _, e := range evs {
 		if e.Stat != objectiveevents.StatFlagCarriersKilled {
 			continue
 		}
-		at, killer := int64(e.TimeMS), identity[e.Slot]
+		at, killer := int64(e.TimeMS), identity.At(e.Slot, e.TimeMS)
 		open, several := -1, false
 		for i := range raws {
 			if raws[i].t0 >= at || at >= raws[i].t1 || raws[i].xuid == killer {

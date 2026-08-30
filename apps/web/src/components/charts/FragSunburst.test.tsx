@@ -13,6 +13,9 @@ import {
   type FragSunburstColors,
   type FragSunburstLabels,
 } from './fragSunburstModel'
+import { applyPalette, _resetActivePalette } from '@/lib/accessibility/applyPalette'
+import { defaultPalette } from '@/lib/accessibility/palettes/default'
+import { fragClassColor, fragLeafColor, fragRoleColor } from '@/lib/accessibility/scales'
 import type { FragDistribution } from '@/lib/api/types'
 
 const COLORS: FragSunburstColors = {
@@ -26,6 +29,7 @@ const LABELS: FragSunburstLabels = {
   roleLabel: (r) => `role:${r}`,
   formatValue: (n) => String(n),
   formatShare: (n) => `${n}%`,
+  locale: 'fr',
 }
 
 const DIST: FragDistribution = {
@@ -138,6 +142,41 @@ describe('buildSunburstModel (builder pur)', () => {
     expect(model.arcs).toHaveLength(0)
     expect(model.callouts).toHaveLength(0)
     expect(model.legend).toHaveLength(0)
+  })
+
+  // ── Rampe de teinte du niveau 2 avec BEAUCOUP de rôles (2026-08-29) ────────────
+  // Régression corrigée : la rampe `0.22 + index × 0.2` dépassait 1 dès l'index 4 et
+  // shiftLightness clampait → les 5e et 6e rôles d'une même classe sortaient en BLANC
+  // PUR, donc invisibles ET indiscernables. Ce cas exerce les VRAIES couleurs de
+  // production (fragRoleColor sur la palette défaut), pas les stubs `role:c:i`.
+  it('classe à ≥ 5 rôles : aucune teinte blanche, aucune égale à la précédente', () => {
+    _resetActivePalette()
+    applyPalette(defaultPalette, 'default')
+    const realColors: FragSunburstColors = {
+      classColor: fragClassColor,
+      roleColor: fragRoleColor,
+      leafColor: fragLeafColor,
+    }
+    // 6 rôles sur une même classe (au-delà des 5 types de grenade : marge de sécurité).
+    const roles = Array.from({ length: 6 }, (_, i) => ({ role: `r${i}`, kills: 6 - i }))
+    const dist: FragDistribution = {
+      total_kills: 21,
+      classes: [{ class: 'grenade', kills: 21, authoritative: true, roles }],
+    }
+    const model = buildSunburstModel(dist.classes ?? [], dist.total_kills, realColors, LABELS)
+    const fills = model.arcs.filter((a) => a.kind === 'role').map((a) => a.fill.toLowerCase())
+    expect(fills).toHaveLength(6)
+    // Aucune couleur blanche (ni #ffffff ni un quasi-blanc au-delà du plafond de rampe).
+    for (const f of fills) {
+      expect(f).toMatch(/^#[0-9a-f]{6}$/)
+      expect(f).not.toBe('#ffffff')
+    }
+    // Toutes distinctes, et strictement croissantes en clarté (l'ordre reste lisible).
+    expect(new Set(fills).size).toBe(fills.length)
+    const lum = (hex: string) => [1, 3, 5].reduce((s, i) => s + parseInt(hex.slice(i, i + 2), 16), 0)
+    for (let i = 1; i < fills.length; i++) expect(lum(fills[i])).toBeGreaterThan(lum(fills[i - 1]))
+    // Le dernier garde de la couleur : il ne colle pas au blanc (plafond 0,7).
+    expect(lum(fills[fills.length - 1])).toBeLessThan(lum('#ffffff'))
   })
 })
 

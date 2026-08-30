@@ -73,6 +73,19 @@ go run ./cmd/levelup backfill --all          --weapons        [--force]   # film
 go run ./cmd/levelup backfill --gamertag X --citations-recompute-all
 ```
 
+Manches des modes qui se décident aux manches (ADR 0032) — une colonne que seule l'API peut
+remplir, donc qu'aucune resynchronisation ne répare. **Serveur arrêté** pour `--apply` (un
+seul writer, ADR 0013) :
+
+```bash
+# répétition à blanc : aucune écriture, aucun droit d'écriture demandé
+go run ./cmd/backfill-team-rounds --gamertag X
+
+# application — restreinte PAR DÉFAUT aux variantes déclarées dans regulation.toml
+# [rounds_decide] (26 matchs, ~7 s). --all couvre tout le corpus (~1 900 appels d'API).
+go run ./cmd/backfill-team-rounds --gamertag X --apply [--all] [--limit N] [--match ID]
+```
+
 ### Backup / restore
 
 ```bash

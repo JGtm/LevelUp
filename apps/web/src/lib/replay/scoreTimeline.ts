@@ -54,6 +54,7 @@ import type {
   ReplayScoreSeries,
   ReplayScoreTick,
   ReplayScoreTimeline,
+  ReplayTeamHold,
   ReplayTeamScore,
 } from '@/lib/api/types'
 
@@ -91,9 +92,16 @@ export type ReplayPlayerScoreReady = Omit<
   kills: ReplayScoreSeriesReady
   score: ReplayScoreSeriesReady
 }
-export type ReplayScoreTimelineReady = Omit<ReplayScoreTimeline, 'players' | 'teams'> & {
+export type ReplayTeamHoldReady = Omit<ReplayTeamHold, 'ticks'> & {
+  ticks: ReplayScoreTick[]
+}
+export type ReplayScoreTimelineReady = Omit<
+  ReplayScoreTimeline,
+  'players' | 'teams' | 'holdTicks'
+> & {
   players: ReplayPlayerScoreReady[]
   teams: ReplayTeamScoreReady[]
+  holdTicks: ReplayTeamHoldReady[]
 }
 
 /**
@@ -145,9 +153,9 @@ function normalizeSeries(series: ReplayScoreSeries | undefined): ReplayScoreSeri
 }
 
 /**
- * normalizeScoreTimeline comble les CINQ tableaux nullables du calque de score
- * (`teams`, `players`, `rounds`, `total`, `points`) et rend l'absence du calque telle
- * quelle : `undefined` entre, `undefined` sort.
+ * normalizeScoreTimeline comble les SEPT tableaux nullables du calque de score
+ * (`teams`, `players`, `rounds`, `total`, `points`, `holdTicks` et ses `ticks`) et rend
+ * l'absence du calque telle quelle : `undefined` entre, `undefined` sort.
  *
  * L'OBJET GARDE LE DROIT D'ÊTRE ABSENT : un artefact de schéma antérieur à 12 n'en porte
  * aucun, et un objet vide se lirait « le film a été lu, il n'y avait pas de score ».
@@ -170,6 +178,8 @@ export function normalizeScoreTimeline(
       rounds: (t.rounds ?? []).map(normalizeRound),
       total: t.total ?? [],
     })),
+    // La GARDE de la colline : meme regime que les autres series du calque.
+    holdTicks: (raw.holdTicks ?? []).map((h) => ({ ...h, ticks: h.ticks ?? [] })),
   }
 }
 
@@ -258,6 +268,26 @@ export function teamScoreAtFrame(
   frame: number,
 ): number {
   return scoreAtFrame(teamSeriesFor(timeline, teamId)?.total ?? [], frame)
+}
+
+/**
+ * teamRoundScoreAtFrame — le score d'un camp DANS une manche au frame courant.
+ *
+ * C'EST LA GRANDEUR QUI REPART DE ZÉRO à chaque manche, là où `teamScoreAtFrame` rend le
+ * cumul du match. Rend 0 avant le premier palier de la manche (le compteur de la manche
+ * n'a pas encore bougé) et 0 si le camp n'a pas cette manche du tout — une équipe muette
+ * sur une manche vaut zéro, exactement comme sur le total (témoin CTF 3-0). Le point unique
+ * du motif `find(round) + scoreAtFrame` : `roundFinal` (roundsLogic) y délègue.
+ */
+export function teamRoundScoreAtFrame(
+  timeline: ReplayScoreTimelineReady | undefined,
+  teamId: number | null,
+  roundNumber: number,
+  frame: number,
+): number {
+  const team = teamSeriesFor(timeline, teamId)
+  const r = team?.rounds.find((x) => x.round === roundNumber)
+  return r ? scoreAtFrame(r.points, frame) : 0
 }
 
 /** teamIdOfSide traduit le camp du scoreboard (`t{N}`) en identifiant d'équipe du film. */
@@ -367,18 +397,52 @@ export interface LeadChange {
  * marque), Oddball `24dbb67d` 3 — c'est le témoin de cette marque.
  */
 export function leadChanges(timeline: ReplayScoreTimelineReady | undefined): LeadChange[] {
+  const out: LeadChange[] = []
+  let previous: number | null = null
+  for (const state of leaderStates(timeline)) {
+    // UNE ÉGALITÉ NE FERME PAS LE MENEUR PRÉCÉDENT ici : elle le suspend (cf. l'en-tête). Le
+    // comparatif se fait au dernier meneur CONNU, pas au dernier état.
+    if (state.teamId == null) continue
+    if (previous != null && state.teamId !== previous) out.push({ frame: state.frame, teamId: state.teamId })
+    previous = state.teamId
+  }
+  return out
+}
+
+/**
+ * Un ÉTAT de la course au score : à partir de cette frame, voilà qui mène — ou personne.
+ * `teamId: null` EST une mesure : les camps sont à égalité, pas « inconnus ».
+ */
+export interface LeadState {
+  frame: number
+  teamId: number | null
+}
+
+/**
+ * leaderStates rend la suite des états de la course au score : un état par CHANGEMENT, égalités
+ * comprises. C'est la lecture complète dont `leadChanges` n'est qu'une projection (les seuls
+ * retournements, l'égalité effacée) — les deux ne peuvent donc pas diverger, et il n'y a qu'une
+ * implémentation du « qui mène » dans le dépôt.
+ *
+ * POURQUOI LES ÉGALITÉS SORTENT ICI. La piste SCORE de la frise du rejeu les PEINT (encre
+ * d'égalité du dépôt) : un mode où les deux camps se tiennent longtemps a une piste bleue, et
+ * c'est un fait du match. `leadChanges`, lui, date des retournements — une égalité n'en est
+ * pas un.
+ *
+ * Le premier état est celui du PREMIER PALIER publié, quel qu'il soit : avant lui, le calque ne
+ * dit rien (0-0 est l'affaire de l'appelant, qui seul sait où commence sa frise).
+ */
+export function leaderStates(timeline: ReplayScoreTimelineReady | undefined): LeadState[] {
   // Une équipe SANS identifiant ne peut être ni meneuse ni menée : la comparer reviendrait
   // à couronner la seule qui en a un (`coverage.score.teamIdentity = "unresolved"`).
   const teams = (timeline?.teams ?? []).filter((t) => t.teamId != null)
   if (teams.length < 2) return []
   const frames = [...new Set(teams.flatMap((t) => t.total.map((p) => p.t)))].sort((a, b) => a - b)
-  const out: LeadChange[] = []
-  let previous: number | null = null
+  const out: LeadState[] = []
   for (const frame of frames) {
     const leader = leaderAt(teams, frame)
-    if (leader == null) continue
-    if (previous != null && leader !== previous) out.push({ frame, teamId: leader })
-    previous = leader
+    if (out.length > 0 && leader === out[out.length - 1].teamId) continue
+    out.push({ frame, teamId: leader })
   }
   return out
 }
