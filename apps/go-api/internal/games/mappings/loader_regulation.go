@@ -33,6 +33,12 @@ type RegulationSet struct {
 	// Même doctrine encore : contenu MESURÉ (`.ai/V7.5/RAPPORT_MANCHES_2026-08-29.md`),
 	// variante absente → on garde les points. Consommateur : analysis.TeamScoreDisplay.
 	roundsDecide map[string]bool
+	// holdTicks : game_variant_name → TICS DE GARDE qui valent un point, sur un mode
+	// où l'on marque en TENANT une zone (KOTH : la colline se prend instantanément, c'est la
+	// garde qui compte). Même doctrine que targets : valeur MESURÉE, variante inconnue → pas
+	// de dénominateur, donc aucune jauge de progression — jamais une jauge au jugé.
+	// Consommateur : le constructeur d'artefact (ScoreTimeline.HoldTicksPerPoint).
+	holdTicks map[string]int
 }
 
 // regulationTOML — projection brute de regulation.toml.
@@ -41,6 +47,7 @@ type regulationTOML struct {
 	Seconds      map[string]int  `toml:"regulation_seconds"`
 	Targets      map[string]int  `toml:"score_target"`
 	RoundsDecide map[string]bool `toml:"rounds_decide"`
+	HoldTicks    map[string]int  `toml:"hold_ticks_per_point"`
 }
 
 // Seconds retourne le temps réglementaire de la variante et true s'il est connu.
@@ -60,6 +67,20 @@ func (s *RegulationSet) ScoreTarget(gameVariantName string) (int, bool) {
 		return 0, false
 	}
 	v, ok := s.targets[strings.TrimSpace(gameVariantName)]
+	return v, ok
+}
+
+// HoldTicksPerPoint retourne le nombre de secondes de GARDE qui valent un point sur la
+// variante, et true s'il est connu.
+//
+// nil-safe et variante inconnue → (0, false) : l'appelant ne publie aucun dénominateur, donc
+// le client n'affiche AUCUNE jauge de progression. Une jauge absente ne ment pas ; une jauge
+// remplie sur un dénominateur inventé, si.
+func (s *RegulationSet) HoldTicksPerPoint(gameVariantName string) (int, bool) {
+	if s == nil {
+		return 0, false
+	}
+	v, ok := s.holdTicks[strings.TrimSpace(gameVariantName)]
 	return v, ok
 }
 
@@ -178,6 +199,17 @@ func LoadRegulationFromBytes(path string, raw []byte) (*RegulationSet, error) {
 		}
 		targets[key] = target
 	}
+	holds := make(map[string]int, len(doc.HoldTicks))
+	for rawName, secs := range doc.HoldTicks {
+		key := strings.TrimSpace(rawName)
+		if key == "" {
+			return nil, fmt.Errorf("%s: [hold_ticks_per_point] game_variant_name vide", path)
+		}
+		if secs <= 0 {
+			return nil, fmt.Errorf("%s: variante %q : secondes de garde par point doit être > 0 (reçu %d)", path, key, secs)
+		}
+		holds[key] = secs
+	}
 	rounds := make(map[string]bool, len(doc.RoundsDecide))
 	for rawName, decides := range doc.RoundsDecide {
 		key := strings.TrimSpace(rawName)
@@ -198,5 +230,6 @@ func LoadRegulationFromBytes(path string, raw []byte) (*RegulationSet, error) {
 		seconds:       seconds,
 		targets:       targets,
 		roundsDecide:  rounds,
+		holdTicks:     holds,
 	}, nil
 }

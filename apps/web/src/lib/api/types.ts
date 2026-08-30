@@ -2700,6 +2700,7 @@ export type ReplayScoreTick = components['schemas']['ScoreTick']
 export type ReplayScoreRound = components['schemas']['ScoreRound']
 export type ReplayScoreSeries = components['schemas']['ScoreSeries']
 export type ReplayTeamScore = components['schemas']['TeamScore']
+export type ReplayTeamHold = components['schemas']['TeamHold']
 export type ReplayPlayerScore = components['schemas']['PlayerScore']
 export type ReplayScoreTimeline = components['schemas']['ScoreTimeline']
 // La COUVERTURE du calque de score : par quelle voie l'identité des équipes a été résolue
