@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "module": "e8268e75-6583-42ad-9e0c-2d2f043f5f0f",
+  "mapNames": [
+    "Vallaheim Firefight",
+    "vallaheim_firefight_map"
+  ],
+  "image": "e8268e75-6583-42ad-9e0c-2d2f043f5f0f.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-30T12:16:47.4438948Z",
+  "style": "encre",
+  "calibration": {
+    "metersPerPixel": 0.06187918090820312,
+    "originX": -41.638386520385744,
+    "originY": 67.51507830810546,
+    "widthPx": 1571,
+    "heightPx": 2266,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 5,
+    "anchorsInFrame": 5,
+    "anchorsWithGround": 5,
+    "anchorMedianGapM": -4.718549604896353,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 75.4100274658203,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.0007015203959460855,
+    "covered": false,
+    "forgeObjects": 5238,
+    "forgeObjectsDrawn": 5134,
+    "forgeObjectsWithoutModel": 56,
+    "forgeDeathVolumes": 48
+  }
+}

@@ -37,7 +37,10 @@ func (m *mapNamesStub) MapKeysForMatch(_ context.Context, matchID string) (port.
 //
 // Le catalogue est écrit avec la MÊME forme que la donnée de référence de production
 // (schemaVersion + maps indexé par nom normalisé) : un test qui invente sa propre forme
-// ne dirait rien du fichier réel.
+// ne dirait rien du fichier réel. MÊME EXIGENCE POUR LE SIDECAR : la cuisson y écrit
+// TOUJOURS `mapNames` (cmd/mapfond-build, `noms` + `sources`), et c'est ce champ que le
+// service lit pour retrouver un fond par le nom de la carte. Un fixture sans `mapNames`
+// décrirait un fichier que la chaîne ne produit pas.
 func fondDeCarte(t *testing.T, titleSlug, cleCatalogue, module string, avecImage bool) string {
 	t.Helper()
 	root := t.TempDir()
@@ -47,7 +50,9 @@ func fondDeCarte(t *testing.T, titleSlug, cleCatalogue, module string, avecImage
 		`"module":"` + module + `","min":[-10,-10,-10],"max":[10,10,10],"axisWidths":[11,11,11]}}}`
 	ecrire(t, res.MapQuantBoundsPath(titleSlug), catalogue)
 
-	sidecar := `{"schemaVersion":1,"module":"` + module + `","image":"` + module + `.png",` +
+	sidecar := `{"schemaVersion":1,"module":"` + module + `",` +
+		`"mapNames":["` + cleCatalogue + `","` + cleCatalogue + `_` + module + `"],` +
+		`"image":"` + module + `.png",` +
 		`"source":"test","generatedAt":"2026-08-10T20:25:25Z","style":"jeu",` +
 		`"calibration":{"metersPerPixel":0.092,"originX":-57.3,"originY":78.87,` +
 		`"widthPx":1633,"heightPx":1627,"convention":"x = originX + (px+0.5)*mpp"},` +
@@ -173,13 +178,31 @@ func TestMapBackground_ForgeJamaisViaCanevas(t *testing.T) {
 	}
 }
 
-// TestMapBackground_NomNormalise — le nom affiché passe par la MÊME normalisation que le
-// build (« Aquarius - Ranked » et « Aquarius » désignent une seule carte). Si ce test
-// tombe, c'est qu'une seconde règle de nommage a été écrite quelque part.
-func TestMapBackground_NomNormalise(t *testing.T) {
+// TestMapBackground_NomDeVarianteDeclare — LA VARIANTE DE PLAYLIST EST UNE IDENTITÉ DÉCLARÉE,
+// PAS UN SUFFIXE À RABOTER.
+//
+// Contrat d'origine (jusqu'au 2026-08-27) : le service rabotait « - Ranked » via
+// filmdec.NormalizeMapName, comme le build. CE RABOTAGE A ÉTÉ RETIRÉ, et pas par confort — il
+// est FAUX sur les cartes Forge. Mesuré le 2026-08-27 sur les 84 fonds publiés : « Insolence »
+// et « Insolence Heavies » sont DEUX assets distincts avec DEUX fonds distincts (idem
+// Fortitude, Thunderhead, Refuge, Obituary, Origin, Solitude). Raboter le suffixe les rendrait
+// ambiguës, donc sans fond TOUTES LES DEUX.
+//
+// Ce qui les relie reste déclaré à UN seul endroit : `mapNames`, que la cuisson écrit dans le
+// sidecar (`aquarius_-_ranked_map` y figure à côté d'`aquarius`). Le service lit cette
+// déclaration, il n'invente pas de règle de nommage.
+func TestMapBackground_NomDeVarianteDeclare(t *testing.T) {
 	root := fondDeCarte(t, title.DefaultSlug, "aquarius", "ctf_aquarius", true)
-	svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{names: []string{"Aquarius - Ranked"}})
+	res := title.NewPathResolver(root)
+	// Le sidecar de production déclare la variante ; on écrit exactement cela.
+	ecrire(t, res.MapBackgroundMetaPath(title.DefaultSlug, "ctf_aquarius"),
+		`{"schemaVersion":1,"module":"ctf_aquarius",`+
+			`"mapNames":["Aquarius - Ranked","aquarius","aquarius_-_ranked_map","aquarius_map"],`+
+			`"image":"ctf_aquarius.png","source":"test","generatedAt":"2026-08-27T10:00:00Z",`+
+			`"style":"encre","calibration":{"metersPerPixel":0.05,"originX":-1,"originY":1,`+
+			`"widthPx":10,"heightPx":10,"convention":"test"},"stats":{"anchors":1}}`)
 
+	svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{names: []string{"Aquarius - Ranked"}})
 	bg, err := svc.MapBackground(context.Background(), "m1")
 	if err != nil {
 		t.Fatalf("MapBackground: %v", err)
@@ -187,6 +210,40 @@ func TestMapBackground_NomNormalise(t *testing.T) {
 	if bg.Module != "ctf_aquarius" {
 		t.Errorf("module = %q, attendu ctf_aquarius", bg.Module)
 	}
+}
+
+// TestMapBackground_VarianteHeaviesNeVolePasSonAine — la contre-épreuve du test précédent :
+// deux fonds publiés pour « Insolence » et « Insolence Heavies » restent DEUX cartes. Si un
+// jour quelqu'un remet un rabotage de suffixe dans la chaîne, ce test tombe.
+func TestMapBackground_VarianteHeaviesNeVolePasSonAine(t *testing.T) {
+	const cleBase, cleHeavies = "d5c5eb4f-0dcb-4677-a866-eae0dcbfde9b", "2a339c65-5128-4457-88d4-0906e265034e"
+	root := fondDeCarte(t, title.DefaultSlug, "insolence", cleBase, true)
+	res := title.NewPathResolver(root)
+	ecrire(t, res.MapBackgroundMetaPath(title.DefaultSlug, cleBase),
+		fondJSON(cleBase, `"Insolence","insolence_map"`))
+	ecrire(t, res.MapBackgroundMetaPath(title.DefaultSlug, cleHeavies),
+		fondJSON(cleHeavies, `"Insolence Heavies","insolence_heavies_map"`))
+
+	cas := map[string]string{"Insolence": cleBase, "Insolence Heavies": cleHeavies}
+	for nom, veut := range cas {
+		svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{names: []string{nom}})
+		bg, err := svc.MapBackground(context.Background(), "m1")
+		if err != nil {
+			t.Fatalf("MapBackground(%q) : %v", nom, err)
+		}
+		if bg.Module != veut {
+			t.Errorf("%q -> %q, attendu %q", nom, bg.Module, veut)
+		}
+	}
+}
+
+// fondJSON rend un sidecar conforme au schéma, pour une clé et une liste de `mapNames` déjà
+// sérialisée.
+func fondJSON(cle, mapNames string) string {
+	return `{"schemaVersion":1,"module":"` + cle + `","mapNames":[` + mapNames + `],` +
+		`"image":"` + cle + `.png","source":"test","generatedAt":"2026-08-27T10:00:00Z",` +
+		`"style":"encre","calibration":{"metersPerPixel":0.05,"originX":-1,"originY":1,` +
+		`"widthPx":10,"heightPx":10,"convention":"test"},"stats":{"anchors":1}}`
 }
 
 // TestMapBackground_SecondCandidat — le registre rend plusieurs noms car aucun n'est bon
@@ -355,9 +412,18 @@ func TestMapBackground_DonneesReelles(t *testing.T) {
 	}
 }
 
-// TestMapBackground_TousLesModulesDuCatalogue — chaque module cité par le catalogue de
+// TestMapBackground_TousLesModulesDuCatalogue — chaque carte citée par le catalogue de
 // bornes qui possède un fond doit livrer un calage LISIBLE. Un sous-test par carte : un
 // t.Fatal dans une boucle de balayage tuerait tout le balayage (piège du chantier cartes).
+//
+// CE QUE CE TEST N'ASSERTE PLUS, ET POURQUOI. Il exigeait `bg.Module == entry.Module`, c'est-à-
+// dire que la carte soit servie sous le module du catalogue de bornes. Pour une carte FORGE ce
+// module est son CANEVAS (`fo11_blank`, `fo08_wetland`) — un dossier partagé par des dizaines
+// de cartes, qui n'a jamais de fond publié. L'assertion ne tenait donc que parce que ces cartes
+// se déclaraient SKIP : elles n'avaient AUCUN fond. Depuis l'index des fonds (2026-08-27) elles
+// sont servies sous leur propre clé, et c'est le but. Ce qu'on vérifie maintenant : la clé
+// servie est un fond RÉELLEMENT PUBLIÉ, et elle vaut le module du catalogue quand ce module a,
+// lui, un fond publié (cartes natives).
 func TestMapBackground_TousLesModulesDuCatalogue(t *testing.T) {
 	root, err := testutil.RepoRoot()
 	if err != nil {
@@ -384,8 +450,18 @@ func TestMapBackground_TousLesModulesDuCatalogue(t *testing.T) {
 			if err != nil {
 				t.Fatalf("fond de %s : %v", nom, err)
 			}
-			if bg.Module != entry.Module {
-				t.Errorf("module = %q, attendu %q", bg.Module, entry.Module)
+			// La clé servie doit être un fond publié — jamais un module deviné.
+			if _, statErr := os.Stat(res.MapBackgroundMetaPath(title.DefaultSlug, bg.Module)); statErr != nil {
+				t.Errorf("clé servie %q sans sidecar publié : %v", bg.Module, statErr)
+			}
+			// Carte NATIVE : le module du catalogue a son propre fond, c'est lui qu'on sert.
+			natif := false
+			if _, statErr := os.Stat(res.MapBackgroundMetaPath(title.DefaultSlug, entry.Module)); statErr == nil {
+				natif = true
+			}
+			if natif && bg.Module != entry.Module {
+				t.Errorf("module = %q, attendu %q (le module du catalogue a son propre fond)",
+					bg.Module, entry.Module)
 			}
 			if bg.Calibration.MetersPerPixel <= 0 || bg.Calibration.WidthPx <= 0 {
 				t.Errorf("calage inexploitable pour %s : %+v", nom, bg.Calibration)

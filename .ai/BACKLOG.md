@@ -10,6 +10,55 @@
 
 ---
 
+### [replay/sons] Fins de partie multi-équipes par couleur — écran + annonceur
+
+Noté le 2026-08-27 (chantier rejeu 2D, plan `.ai/V7.5/PLAN_REPLAY_CADRAGE_VICTOIRE.md`,
+branche `wt/replay-cadrage-victoire`). L'écran de victoire et les sons de fin (lots B/C)
+couvrent les matchs à 2 équipes + le FFA gagné ; les modes MULTI-ÉQUIPES (3+) n'ont ni
+écran (décision D-B1) ni son. Or le jeu porte une famille complète d'annonces dédiées,
+identifiée par transcription locale des packs annonceur :
+
+- **8 répliques FR** « Partie terminée, l'équipe X est déclarée vainqueur » — bleue
+  `1070034924`, rouge `808622693`, cyan `83592248`, mauve `186794961`, verte `265309140`,
+  citron `784566745`, jaune `868146650`, orange `399957729` (ids `.wem` du pack
+  `French(France)/sb_001_vo_ai_mp_announcer.pck`) ;
+- **8 jumelles EN** « Game over — <color> team wins » — red `1005389916`, blue `101785491`,
+  green `1010879786`, purple `100056384`, yellow `927455187`, orange `564119611`,
+  lime `92374`, cyan `256805823` (pack `English(US)/…`).
+
+**Cible** : sur un match 3+ équipes, écran de fin aux couleurs de l'équipe gagnante et
+réplique de SA couleur. La correspondance `team_id` → couleur officielle existe déjà
+(`apps/web/src/lib/halo/teamNames.ts`, TEAM_COLORS/TEAM_NAMES 0-8) — il reste à VÉRIFIER
+sur pièces le mapping team_id ↔ couleur annoncée (au moins un match multi-équipes réel).
+Extraction/normalisation : rejouer la recette du lot C (transcriptions et outillage
+conservés sous `Desktop/Halo Infinite - Sons armes/_fin_partie/`). **Effort : S-M**
+(gros du travail = l'écran multi-équipes, les sons suivent). Dépendance : aucune —
+s'appuie sur l'overlay et le canal son de fin livrés en v7.5.
+
+---
+
+### [replay/sons] Musique d'intro au lancement du rejeu — queue du build-up, sans attente
+
+Noté le 2026-08-27 (chantier rejeu 2D, suite du lot C sons de fin). La piste `402178411`
+(16,00 s, pack `SFX/sb_130_mus_multiplayer_global.pck`, extraite et convertie sous
+`Desktop/Halo Infinite - Sons armes/_fin_partie/mus_mp_global_wav/`) est très
+probablement la musique d'INTRO de match (le build-up du countdown, écrit pour se
+résoudre au coup d'envoi). Le cadrage v7.5 démarre la lecture pile au coup d'envoi :
+il n'y a plus de place pour la jouer entière, et retarder le départ de 3-4 s a été
+REFUSÉ (décision utilisateur 2026-08-27 — pas d'attente imposée, syndrome de l'intro
+non skippable).
+
+**Cible si repris** : ne garder que la QUEUE du build-up (les 2-3 dernières secondes,
+celles qui se résolvent au coup d'envoi) et la jouer PAR-DESSUS les premières secondes
+de lecture, à volume musique (−18 LUFS, comme les fanfares de fin) — zéro attente,
+l'anticipation en plus. Coupe d'asset (recette du lot C : fondu, normalisation,
+manifeste + garde-rail) + un déclenchement au départ de la lecture, symétrique du
+déclenchement de fin du lot C. **Effort : S** (~20 min une fois le lot C en place).
+À faire seulement si l'envie revient à l'usage — le statu quo (départ silencieux,
+sons diégétiques seuls) est le choix par défaut assumé.
+
+---
+
 ### [ops/demo] Hermétisme FICHIERS du mode démo — racine démo autonome
 
 Noté le 2026-08-05 (vague 2, chantier fixture démo). Le mode démo est hermétique côté

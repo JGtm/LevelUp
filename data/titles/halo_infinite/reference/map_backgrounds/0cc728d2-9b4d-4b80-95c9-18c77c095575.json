@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "module": "0cc728d2-9b4d-4b80-95c9-18c77c095575",
+  "mapNames": [
+    "Credence",
+    "credence_map"
+  ],
+  "image": "0cc728d2-9b4d-4b80-95c9-18c77c095575.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-27T22:15:42.9323703Z",
+  "style": "encre",
+  "calibration": {
+    "metersPerPixel": 0.06381111017862956,
+    "originX": -39.08861837005615,
+    "originY": 64.96137527720136,
+    "widthPx": 1927,
+    "heightPx": 2019,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 50,
+    "anchorsInFrame": 50,
+    "anchorsWithGround": 50,
+    "anchorMedianGapM": -0.2899989226844042,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 74.71457000732421,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.7944006729286415,
+    "covered": true,
+    "cellsSubstituted": 1375464,
+    "forgeObjects": 5305,
+    "forgeObjectsDrawn": 5177,
+    "forgeObjectsWithoutModel": 76,
+    "forgeDeathVolumes": 52
+  }
+}

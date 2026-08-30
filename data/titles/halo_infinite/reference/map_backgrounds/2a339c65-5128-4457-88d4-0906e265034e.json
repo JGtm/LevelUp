@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "module": "2a339c65-5128-4457-88d4-0906e265034e",
+  "mapNames": [
+    "Insolence Heavies",
+    "insolence_heavies_map"
+  ],
+  "image": "2a339c65-5128-4457-88d4-0906e265034e.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-30T12:08:13.1503079Z",
+  "style": "encre",
+  "calibration": {
+    "metersPerPixel": 0.05905832036336263,
+    "originX": -66.81725017166139,
+    "originY": 65.67221881230674,
+    "widthPx": 2358,
+    "heightPx": 2224,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 31,
+    "anchorsInFrame": 31,
+    "anchorsWithGround": 31,
+    "anchorMedianGapM": -0.012291688945488488,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 64.91183563232421,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.41083643374663986,
+    "covered": true,
+    "cellsSubstituted": 2656065,
+    "forgeObjects": 5374,
+    "forgeObjectsDrawn": 5239,
+    "forgeObjectsWithoutModel": 80,
+    "forgeDeathVolumes": 55
+  }
+}

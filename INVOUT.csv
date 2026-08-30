@@ -1,0 +1,124 @@
+nom,map_id,famille,fond_cle,canevas_declare,declaree_forge,n_ancres,module_cat,mvar_attendu,matchs
+944396dd-5661-4a16-b1d8-a6053f762c55,944396dd-5661-4a16-b1d8-a6053f762c55,forge,944396dd-5661-4a16-b1d8-a6053f762c55,fo13_frost,true,20,944396dd-5661-4a16-b1d8-a6053f762c55_map,944396dd-5661-4a16-b1d8-a6053f762c55_map.mvar,1
+Absolution,78da545f-a168-4a5e-9c8d-dd379067c352,forge,78da545f-a168-4a5e-9c8d-dd379067c352,fo09_academy,true,22,absolution_map,absolution_map.mvar,21
+Banished Narrows,9ad226d8-8947-4c5b-95bc-d220187698c1,forge,9ad226d8-8947-4c5b-95bc-d220187698c1,fo05_desert,true,13,banished_narrows_map,banished_narrows_map.mvar,12
+Cliffside,4bffd021-92c0-422b-8b6e-8f595511458c,forge,4bffd021-92c0-422b-8b6e-8f595511458c,fo05_desert,true,14,cliffside_map,cliffside_map.mvar,18
+Command,2c9f3490-6be2-4d90-9015-02095651e91e,forge,2c9f3490-6be2-4d90-9015-02095651e91e,fo09_academy,true,43,command_map,command_map.mvar,11
+Corpo,8be179f7-8940-4868-b881-44cad1ca8711,forge,8be179f7-8940-4868-b881-44cad1ca8711,fo11_blank,true,4,corpo_map,corpo_map.mvar,2
+Credence,0cc728d2-9b4d-4b80-95c9-18c77c095575,forge,0cc728d2-9b4d-4b80-95c9-18c77c095575,fo11_blank,true,50,credence_map,credence_map.mvar,2
+Critical Dewpoint,bae4df14-4f4a-424c-aac1-2f795c807146,forge,bae4df14-4f4a-424c-aac1-2f795c807146,fo11_blank,true,11,critical_dewpoint_map,critical_dewpoint_map.mvar,10
+Curfew,63d634be-0319-489d-8c21-9c4e012f664f,forge,63d634be-0319-489d-8c21-9c4e012f664f,fo11_blank,true,18,curfew_map,curfew_map.mvar,20
+Dawnbreaker,89dd4003-455c-4a1c-bcea-43acd514b20d,forge,89dd4003-455c-4a1c-bcea-43acd514b20d,fo05_desert,true,42,dawnbreaker_map,dawnbreaker_map.mvar,1
+Disciple,525451ca-0bfa-4b5c-8a0f-29524e0f2834,forge,525451ca-0bfa-4b5c-8a0f-29524e0f2834,fo11_blank,true,9,disciple_map,disciple_map.mvar,2
+Domicile,921aebb1-783d-45e4-bacd-7ad869fa8dae,forge,921aebb1-783d-45e4-bacd-7ad869fa8dae,fo05_desert,true,13,domicile_map,domicile_map.mvar,17
+Dredge,e4bb06db-065f-4902-b93b-d8dac315eac4,forge,e4bb06db-065f-4902-b93b-d8dac315eac4,fo06_deepsea,true,12,dredge_map,dredge_map.mvar,16
+Dynasty,cfd90b63-62fd-441a-8015-8d7804b9c3c3,forge,cfd90b63-62fd-441a-8015-8d7804b9c3c3,fo08_wetland,true,13,dynasty_map,dynasty_map.mvar,19
+Ecotone,8816f240-9038-404b-bbd5-ef4f2b00f482,forge,8816f240-9038-404b-bbd5-ef4f2b00f482,fo11_blank,true,11,ecotone_map,ecotone_map.mvar,8
+Elevation,76043dc6-2724-45e2-9b5a-6fe2e75da588,forge,76043dc6-2724-45e2-9b5a-6fe2e75da588,fo11_blank,true,20,elevation_map,elevation_map.mvar,14
+Empyrean,d035fc3e-f298-4c14-9487-465be2e1dc1f,forge,d035fc3e-f298-4c14-9487-465be2e1dc1f,fo11_blank,true,13,empyrean_map,empyrean_map.mvar,29
+Flood Gulch,7097bc4f-efcf-4c5a-a96e-4ddb03e84d2a,forge,7097bc4f-efcf-4c5a-a96e-4ddb03e84d2a,fo05_desert,true,22,flood_gulch_map,flood_gulch_map.mvar,6
+Fortitude,1ede38fa-4d30-4dfa-a8b7-5d08bf4e46e3,forge,1ede38fa-4d30-4dfa-a8b7-5d08bf4e46e3,fo05_desert,true,41,fortitude_map,fortitude_map.mvar,7
+Fortitude Heavies,305b1bdd-9a7b-4975-bacf-8bd63c8c13d2,forge,305b1bdd-9a7b-4975-bacf-8bd63c8c13d2,fo05_desert,true,26,fortitude_heavies_map,fortitude_heavies_map.mvar,4
+Fortress,0d1c9255-d912-416c-befc-5f3e5e176df2,forge,0d1c9255-d912-416c-befc-5f3e5e176df2,fo09_academy,true,29,fortress_map,fortress_map.mvar,17
+Goliath,504ebf22-12b6-46c3-a9c1-ea20ca5bf03c,forge,504ebf22-12b6-46c3-a9c1-ea20ca5bf03c,fo11_blank,true,13,goliath_map,goliath_map.mvar,17
+High Ground,bb7b78ae-3468-46ce-b5ba-cca61c3a338a,forge,bb7b78ae-3468-46ce-b5ba-cca61c3a338a,fo08_wetland,true,20,high_ground_map,high_ground_map.mvar,15
+Houseki,cf034ec8-ee47-43c2-b2e8-4751c22b3d4d,forge,cf034ec8-ee47-43c2-b2e8-4751c22b3d4d,fo09_academy,true,8,houseki_map,houseki_map.mvar,15
+Insolence,d5c5eb4f-0dcb-4677-a866-eae0dcbfde9b,forge,d5c5eb4f-0dcb-4677-a866-eae0dcbfde9b,fo09_academy,true,38,insolence_map,insolence_map.mvar,7
+Insolence Heavies,2a339c65-5128-4457-88d4-0906e265034e,forge,2a339c65-5128-4457-88d4-0906e265034e,fo09_academy,true,31,insolence_heavies_map,insolence_heavies_map.mvar,1
+Isolation,01af558d-53ab-4f05-ba68-92d805fc6260,forge,01af558d-53ab-4f05-ba68-92d805fc6260,fo08_wetland,true,25,isolation_map,isolation_map.mvar,17
+Kaiketsu,98a83f87-2420-48c6-93f8-cc6b62d73235,forge,98a83f87-2420-48c6-93f8-cc6b62d73235,fo05_desert,true,16,kaiketsu_map,kaiketsu_map.mvar,12
+Kiken'na,df7dbf08-b8de-4ade-9d7f-1947128c9ae4,forge,df7dbf08-b8de-4ade-9d7f-1947128c9ae4,fo08_wetland,true,13,kiken'na_map,kiken'na_map.mvar,13
+Lattice - Ranked,1a6cfc2e-ec86-48e1-9464-1ce1bff6ed48,forge,1a6cfc2e-ec86-48e1-9464-1ce1bff6ed48,fo13_frost,true,9,lattice_-_ranked_map,lattice_-_ranked_map.mvar,1
+Merchant's Square,7dfec55d-d968-4a38-aa68-bc31e8874cfd,forge,7dfec55d-d968-4a38-aa68-bc31e8874cfd,fo09_academy,true,9,merchant's_square_map,merchant's_square_map.mvar,2
+Nadair,6dbd1c0d-a6c2-4697-8453-f0799d941741,forge,6dbd1c0d-a6c2-4697-8453-f0799d941741,fo11_blank,true,4,nadair_map,nadair_map.mvar,1
+Nemesis,2be34415-bc96-4d02-875c-c4f2aa135f89,forge,2be34415-bc96-4d02-875c-c4f2aa135f89,fo08_wetland,true,26,nemesis_map,nemesis_map.mvar,18
+Obituary,a289bafe-102e-4363-98f7-80b596007338,forge,a289bafe-102e-4363-98f7-80b596007338,fo09_academy,true,31,obituary_map,obituary_map.mvar,9
+Obituary Heavies,e3681516-2930-491c-b94f-7dbfa161e000,forge,e3681516-2930-491c-b94f-7dbfa161e000,fo09_academy,true,31,obituary_heavies_map,obituary_heavies_map.mvar,3
+Opulence,255bbe78-b191-476e-b0ae-0763c3bc2f44,forge,255bbe78-b191-476e-b0ae-0763c3bc2f44,fo11_blank,true,13,opulence_map,opulence_map.mvar,12
+Origin,b302eb62-da9a-480b-a409-3c89df8c1a04,forge,b302eb62-da9a-480b-a409-3c89df8c1a04,fo08_wetland,true,20,origin_map,origin_map.mvar,24
+Origin - Ranked,46a8319c-2c63-46ee-9382-788906dcb049,forge,46a8319c-2c63-46ee-9382-788906dcb049,fo08_wetland,true,20,origin_-_ranked_map,origin_-_ranked_map.mvar,1
+Outlook,ea7b30e6-d1b9-4c2c-a9e0-de955c48525d,forge,ea7b30e6-d1b9-4c2c-a9e0-de955c48525d,fo13_frost,true,9,outlook_map,outlook_map.mvar,1
+Perilous,c5ac9f12-660e-4f1a-83e7-2e7536bbcb04,forge,c5ac9f12-660e-4f1a-83e7-2e7536bbcb04,fo08_wetland,true,9,perilous_map,perilous_map.mvar,10
+Pharaoh,88d45250-97dd-4a28-8fb2-b52baaeebb39,forge,88d45250-97dd-4a28-8fb2-b52baaeebb39,fo11_blank,true,9,pharaoh_map,pharaoh_map.mvar,3
+Rat's Nest,133c0185-24ed-4bc2-b834-62db5c936257,forge,133c0185-24ed-4bc2-b834-62db5c936257,fo08_wetland,true,23,rat's_nest_map,rat's_nest_map.mvar,1
+Refuge,41217472-3020-4bd8-bce9-b2a2b0d50896,forge,41217472-3020-4bd8-bce9-b2a2b0d50896,fo08_wetland,true,46,refuge_map,refuge_map.mvar,10
+Refuge Heavies,c10c7e79-ec91-4f07-92e8-e570ed9ce79c,forge,c10c7e79-ec91-4f07-92e8-e570ed9ce79c,fo08_wetland,true,33,refuge_heavies_map,refuge_heavies_map.mvar,1
+Ronin,f459867d-7457-4397-a332-dbbb6812792a,forge,f459867d-7457-4397-a332-dbbb6812792a,fo08_wetland,true,9,ronin_map,ronin_map.mvar,1
+Salvation,cd08bc7a-7ba5-4502-be87-c58b641fc94d,forge,cd08bc7a-7ba5-4502-be87-c58b641fc94d,fo11_blank,true,12,salvation_map,salvation_map.mvar,12
+Scarlett's Landing,79042fc0-ba3d-4046-aa97-5a6902462531,forge,79042fc0-ba3d-4046-aa97-5a6902462531,fo08_wetland,true,9,scarlett's_landing_map,scarlett's_landing_map.mvar,1
+Shiro,2890782c-0a33-4f2c-a468-e3a7d6cd6db4,forge,2890782c-0a33-4f2c-a468-e3a7d6cd6db4,fo05_desert,true,12,shiro_map,shiro_map.mvar,18
+Shogun,33075df7-01c8-40e1-8b3e-1baee0054c76,forge,33075df7-01c8-40e1-8b3e-1baee0054c76,fo11_blank,true,13,shogun_map,shogun_map.mvar,9
+Smallhalla,98783453-ce40-4020-9e87-62099a290b62,forge,98783453-ce40-4020-9e87-62099a290b62,fo08_wetland,true,52,smallhalla_map,smallhalla_map.mvar,9
+Snowbound,410f1c01-aca6-4567-9df5-9b16bd550cb2,forge,410f1c01-aca6-4567-9df5-9b16bd550cb2,fo13_frost,true,43,snowbound_map,snowbound_map.mvar,23
+Solitude,f1cc3b4e-471c-4ec5-b855-1db7d9e6ce42,forge,f1cc3b4e-471c-4ec5-b855-1db7d9e6ce42,fo11_blank,true,19,solitude_map,solitude_map.mvar,12
+Solitude - Ranked,4a5e5612-2b2e-4375-a0b3-9335a68815f3,forge,4a5e5612-2b2e-4375-a0b3-9335a68815f3,fo11_blank,true,19,solitude_-_ranked_map,solitude_-_ranked_map.mvar,5
+Solution,ee43d273-8677-45c2-a8cd-aedd2c463dc9,forge,ee43d273-8677-45c2-a8cd-aedd2c463dc9,fo05_desert,true,19,solution_map,solution_map.mvar,7
+Starboard,7a9265af-a880-487b-8829-68d88fcfb145,forge,7a9265af-a880-487b-8829-68d88fcfb145,fo03_space,true,12,starboard_map,starboard_map.mvar,24
+Sylvanus,95b69e4b-485f-4c6c-9b00-4bd68c94c1e9,forge,95b69e4b-485f-4c6c-9b00-4bd68c94c1e9,fo05_desert,true,17,sylvanus_map,sylvanus_map.mvar,10
+Takamanohara,edcd4467-6846-455f-ac44-f1034476f774,forge,edcd4467-6846-455f-ac44-f1034476f774,fo11_blank,true,12,takamanohara_map,takamanohara_map.mvar,15
+The Pit,648ae7aa-c5d0-4f80-861a-79eb30440fcb,forge,648ae7aa-c5d0-4f80-861a-79eb30440fcb,fo09_academy,true,20,the_pit_map,the_pit_map.mvar,22
+Threshold,ddbb3a00-b109-4703-af07-00433512af38,forge,ddbb3a00-b109-4703-af07-00433512af38,fo11_blank,true,20,threshold_map,threshold_map.mvar,5
+Thunderhead,28a3ac28-f69d-4fa9-9ebf-a0449c89c8da,forge,28a3ac28-f69d-4fa9-9ebf-a0449c89c8da,fo08_wetland,true,46,thunderhead_map,thunderhead_map.mvar,4
+Thunderhead Heavies,37bc3df6-93e8-4d74-b16e-5ceaa30ebc23,forge,37bc3df6-93e8-4d74-b16e-5ceaa30ebc23,fo08_wetland,true,36,thunderhead_heavies_map,thunderhead_heavies_map.mvar,4
+Urban Raid,be848f91-3d87-4b80-8eb9-df3b52cb8d10,forge,be848f91-3d87-4b80-8eb9-df3b52cb8d10,fo09_academy,true,9,urban_raid_map,urban_raid_map.mvar,2
+Vagabond,105f5d84-8de1-4908-af3a-1c4f3bf9d642,forge,105f5d84-8de1-4908-af3a-1c4f3bf9d642,fo08_wetland,true,9,map,vagabond_map.mvar,16
+Vallaheim Firefight,e8268e75-6583-42ad-9e0c-2d2f043f5f0f,forge,e8268e75-6583-42ad-9e0c-2d2f043f5f0f,fo05_desert,true,5,vallaheim_firefight_map,vallaheim_firefight_map.mvar,2
+Warehouse,5b12d6d9-1b5c-4eac-b2a9-de4c36b8a6d3,forge,5b12d6d9-1b5c-4eac-b2a9-de4c36b8a6d3,fo11_blank,true,7,warehouse_map,warehouse_map.mvar,1
+Aquarius,33c0766c-ef15-48f8-b298-34aba5bff3b4,inconnu,,,false,,,,9
+Argyle,dd600260-d91c-4d77-9990-3f35873c90a1,inconnu,,,false,,,,22
+Bazaar,298d5036-cd43-47b3-a4bd-31e127566593,inconnu,,,false,,,,3
+Breaker,6a147baf-b9c0-489e-8f04-8c6676c948d2,inconnu,,,false,,,,4
+Chasm,fc1ced39-128b-439d-9b44-4710225090f3,inconnu,,,false,,,,10
+Cliffhanger,81274d6f-6a94-425a-a16e-3bdb1e2eea9d,inconnu,,,false,,,,9
+Cole Protocol,571afb7f-63c3-40a4-9c21-06ef921eb415,inconnu,,,false,0,cole_protocol_map,cole_protocol_map.mvar,1
+Deadlock,6f82df05-3b24-4746-8579-e0c5ef9e9d64,inconnu,,,false,,,,13
+Detachment,d39600e2-3c35-4a3a-bdf5-7b3cbdde98e1,inconnu,,,false,,,,25
+Dynasty,90cd321d-1439-49de-943d-06245a407909,inconnu,,,false,,,,1
+Forest,619bea21-f1e6-461f-8a7d-2bb4f905d0ca,inconnu,,,false,,,,2
+Fragmentation,068f41f4-e3dd-4bec-b297-d2ded85ab54b,inconnu,,,false,,,,12
+Houseki,6439625e-277b-4da9-9502-eefedb186ba8,inconnu,,,false,,,,1
+Live Fire,b6aca0c7-8ba7-4066-bf91-693571374c3c,inconnu,,,false,,,,18
+Oasis,7aa6fed5-4c21-43dd-b740-2fae8c971517,inconnu,,,false,,,,5
+Recharge,8420410b-044d-44d7-80b6-98a766c8c39f,inconnu,,,false,,,,8
+Salvation,f633db01-3989-41d1-b6d4-bf2d220fc619,inconnu,,,false,,,,3
+Scarr,ccb81e1f-ce22-4017-97bb-f46b181eb8f7,inconnu,,,false,,,,5
+Shiro,2962c4e0-ab15-4979-8d28-c0792632c862,inconnu,,,false,,,,1
+Shogun,8f51ccb9-7dc8-4bfb-8fca-6d84d0101ac0,inconnu,,,false,,,,1
+Starboard,50771a22-62a7-4f1f-8982-3403857ba225,inconnu,,,false,,,,1
+Streets,f0a1760f-0d4a-4bcc-ac7a-e8f9aee331dc,inconnu,,,false,,,,11
+TFF | Night Of The Undead,ae4daed6-251a-4c2f-bc6f-eb25eac1bfd8,inconnu,,,false,,,,1
+Aquarius,c395f3ac-4614-45f9-a83a-56f69e8ae962,natif,ctf_aquarius,,false,22,aquarius_map,map.mvar,44
+Aquarius - Ranked,667072ae-ba00-4414-adda-8203e8c49295,natif,ctf_aquarius,,false,20,aquarius_-_ranked_map,map.mvar,1
+Bazaar,3e1e4cec-4f2c-44c6-b8d2-96b85c66c702,natif,ctf_bazaar,,false,19,bazaar_map,ctf_bazaar.mvar,53
+Behemoth,e9a5a982-6c4e-4db6-9383-7b03671460eb,natif,va_behemoth,,false,24,behemoth_va_behemoth,map.mvar,44
+Breaker,e6cbfe01-665b-4a8c-bf3a-d63a65a7c890,natif,ctf_breaker,,false,42,breaker_map,ctf_breaker.mvar,62
+Breaker Heavies,953dc3e2-943f-4ae3-abdd-b4be2a6a7a3a,natif,ctf_breaker,,false,37,breaker_heavies_map,ctf_breaker.mvar,10
+Catalyst,f7e8cde9-0c0a-487c-94a3-61bfa0f20465,natif,catalyst,,false,25,catalyst_map,map.mvar,46
+Catalyst,e859cf75-9b8a-429a-91be-2376681c8537,natif,catalyst,,false,20,catalyst,catalyst.mvar,2
+Chasm,a455572d-3141-48bc-ac55-dac78d9b52c9,natif,chasm,,false,24,chasm_map,map.mvar,42
+Cliffhanger,5324364b-39a8-4f93-96a6-b80a1f18ce8a,natif,ridgeline,,false,24,cliffhanger_ridgeline,map.mvar,49
+Deadlock,08607bf4-6abe-4a5b-9547-290a6cc1433e,natif,btb_drydock,,false,41,deadlock_map,btb_drydock.mvar,80
+Deadlock Heavies,4fd75c74-5098-47ce-b6d3-4540df3f9b8e,natif,btb_drydock,,false,37,deadlock_heavies_map,map.mvar,4
+Forbidden,87c03bfd-2db3-4a5b-bbf9-d5369c5894d1,natif,ctf_forbidden,,false,19,ctf_forbidden,ctf_forbidden.mvar,46
+Forest,e8d56863-9ad4-4efe-9059-81270884589c,natif,forest,,false,30,forest_map,map.mvar,46
+Forest - Ranked,003c828e-c2b3-43b5-b482-4005f9d4ec25,natif,forest,,false,25,forest_-_ranked_map,forest.mvar,1
+Fragmentation,4f196016-0101-4844-8358-2504f7c44656,natif,btb_fragmentation,,false,47,fragmentation_map,btb_fragmentation.mvar,58
+Fragmentation Heavies,0d849a52-fedb-4aea-b5a3-caee268f1f49,natif,btb_fragmentation,,false,42,fragmentation_heavies_map,btb_fragmentation.mvar,22
+Highpower,33c6505d-1cfa-43c6-9fa9-311eb0502ad9,natif,105f5d84-8de1-4908-af3a-1c4f3bf9d642,,false,43,map,map.mvar,13
+Highpower,c494ef7c-d203-42a9-9c0f-b3f576334501,natif,btb_highpower,,false,46,highpower_map,btb_highpower.mvar,84
+Highpower Heavies,ecbb3aa1-6227-43c7-8cf8-ce62d1a988f0,natif,btb_highpower,,false,41,highpower_heavies_map,map.mvar,11
+Highpower Sentry Defense,142a5e23-46de-4429-a232-aac4e6459a11,natif,btb_highpower,,false,41,highpower_sentry_defense_map,btb_highpower.mvar,1
+Illusion,9e821f5e-042f-407c-97f3-de165b1cdb26,natif,ctf_illusion,,false,19,ctf_illusion,ctf_illusion.mvar,56
+Launch Site,5646ce03-a86e-40d7-9cac-08d442d32606,natif,va_launchsite,,false,30,launch_site_va_launchsite,map.mvar,24
+Live Fire,6c01f693-c968-4a71-b157-efc35ffcf71f,natif,,,false,24,live_fire_sgh_interlock,map.mvar,51
+Live Fire - Ranked,309253f8-7a75-48ff-83e1-e7fb3db2ac47,natif,,,false,24,live_fire_-_ranked_sgh_interlock,map.mvar,2
+Oasis,6aa0a116-66a6-4242-a1b3-41aa417d6dc6,natif,,,false,33,btb_exiled,btb_exiled.mvar,71
+Oasis Firefight,f566aa62-afe4-4f33-b44f-7a314cb23f9b,natif,,,false,33,btb_exiled,btb_exiled.mvar,1
+Oasis Heavies,7f56a242-c93a-4a19-b084-a9bf9cdd0246,natif,btb_exiled,,false,28,oasis_heavies_map,map.mvar,16
+Oasis Sentry Defense,052956b4-06d1-4f78-9938-6b43c66bb223,natif,btb_exiled,,false,34,oasis_sentry_defense_map,map.mvar,1
+Prism,2fdb8370-e5ac-4a1a-bdce-a08bc738b9ad,natif,sgh_crystalcaves,,false,20,prism_sgh_crystalcaves,map.mvar,49
+Recharge,2b6d2baf-7645-4e16-8a80-c7006f595812,natif,sgh_blueprint,,false,24,recharge_sgh_blueprint,map.mvar,47
+Recharge - Ranked,336b5174-3579-4fd8-b2f0-922e4a5f7628,natif,sgh_blueprint,,false,19,recharge_-_ranked_sgh_blueprint,map.mvar,1
+Scarr,247637f8-1ed2-47de-8ff0-fd4b68f50888,natif,btb_engine,,false,23,scarr_map,btb_engine.mvar,52
+Streets,9c7b0b0f-e933-4c2d-9d4a-3e4500d0de99,natif,sgh_streets,,false,19,streets_sgh_streets,map.mvar,50
+Streets - Ranked,e23ea388-9bcb-4180-a0dc-fbe987751b9e,natif,sgh_streets,,false,19,streets_-_ranked_map,map.mvar,1

@@ -77,12 +77,54 @@ func TrancheDeJeu(zJeu float64) (min, max float64) {
 
 // Rendu porte un z-buffer et la normale retenue par pixel.
 type Rendu struct {
-	Cell     float64
-	Min      [2]float64
-	NX, NY   int
-	z        []float64
-	plafond  float64
-	plancher float64
+	// TypeCourant / typeGagnant : DIAGNOSTIC. La cuisson Forge annonce, avant de poser un
+	// objet, de quel TYPE il est ; le rendu retient alors, pour chaque pixel, le type qui a
+	// gagne le z-buffer. C est la seule facon de nommer ce qui peint reellement une zone de
+	// l image — trente rendus et une dizaine d exclusions n y sont pas parvenus, et le type
+	// le plus soupconne (les branches d Isolation) s est revele n occuper AUCUN pixel : son
+	// exclusion ne changeait pas un octet du fichier.
+	TypeCourant int32
+	typeGagnant []int32
+	// ObjetCourant / objetGagnant : la meme idee que TypeCourant, mais a l INSTANCE. Le type
+	// ne suffit pas a nommer un element : tous les murs d un meme modele le partagent, et
+	// raisonner par type reviendrait a traiter ensemble des objets poses aux quatre coins de la
+	// carte. L instance, elle, designe UN objet pose — c est la maille du recollement
+	// (recollement_objets.go), qui decide de garder ou de retirer un element ENTIER.
+	ObjetCourant int32
+	objetGagnant []int32
+	// RecollementRetires : DIAGNOSTIC du recollement — combien d objets ont ete retires entiers
+	// parce que le masque n en gardait qu une part trop faible. Publie au journal de cuisson.
+	RecollementRetires int
+	// zBas / nBas : LA SURFACE LA PLUS BASSE AU-DESSUS DU SOL JOUE, par pixel.
+	//
+	// Le z-buffer ordinaire retient la surface la plus HAUTE : sur une carte a ciel ferme, il
+	// ne montre donc jamais que le plafond. Mesure du 2026-08-27 sur Isolation : le type qui
+	// peint 82,7 pour cent de l image est pose entre Z 136 et 160 quand le sol joue est a
+	// Z 117 — c est un DOME. Et comme sa paroi descend jusqu au sol, aucune coupe en altitude
+	// ne l en separe : c est ce qui a fait echouer l ecretage a 4, 2 et 1 m, la tranche
+	// plafonnee a +3, +6 et +12, et le bornage.
+	//
+	// D ou cette seconde voie : garder, pour chaque pixel, la surface la plus BASSE qui reste
+	// au-dessus du sol joue. Sous un dome, c est le sol ; a ciel ouvert, c est la meme surface
+	// que la voie haute. On ne retire rien : on regarde d en dessous.
+	zBas []float64
+	nBas [][3]float64
+	// couvertureNavmesh : les cellules que le maillage de navigation couvre. Memorisee au
+	// moment ou la reference est armee, parce que les tampons de reference sont liberes des
+	// que la substitution a decide.
+	couvertureNavmesh []bool
+	// referenceNavmesh : l altitude du sol donnee par le maillage, gardee apres que la voie de
+	// reference a libere ses tampons. NaN hors du maillage.
+	referenceNavmesh []float64
+	// SeuilArete : denivele entre voisins au-dela duquel on trace un bord. Zero = le defaut
+	// (SeuilAreteMetres). Reglage PAR CARTE, cf. rendu_couleur.go.
+	SeuilArete float64
+	Cell       float64
+	Min        [2]float64
+	NX, NY     int
+	z          []float64
+	plafond    float64
+	plancher   float64
 	// niveauJeu : altitude du sol JOUE, deduite des ancres. NaN = inconnu.
 	niveauJeu float64
 	n         [][3]float64
@@ -95,6 +137,14 @@ type Rendu struct {
 	// eau : cellules couvertes par un volume d'eau (PoseEau, cf. sddt.go). Un habillage —
 	// jamais consulte par le z-buffer ni par les metriques du banc.
 	eau []bool
+	// ecrete marque les cellules RETIREES de la carte — par l ecretage des toits ou par le
+	// masque des zones nommees. L eau ne s y pose pas :
+	// elle est peinte meme sans matiere (c est sa raison d etre), et sur une carte couverte
+	// elle remplissait alors le trou laisse par l ecretage — 30 970 cellules d eau devenues
+	// 325 353 sur Recharge, une dalle bleue en travers de la carte (mesure du 2026-08-26).
+	ecrete []bool
+	// solSuppose marque les cellules SANS matiere comblees par un aplat (CombleTrous).
+	solSuppose []bool
 }
 
 // NewRendu prepare un rendu sur une emprise et une resolution donnees.
@@ -182,8 +232,17 @@ func (r *Rendu) triangleBorne(a, b, c [3]float64, lo, hi [3]float64) {
 				continue
 			}
 			k := j*r.NX + i
+			if r.zBas != nil && z >= r.plancherSolVu() && z < r.zBas[k] {
+				r.zBas[k], r.nBas[k] = z, nrm
+			}
 			if z > r.z[k] {
 				r.z[k], r.n[k] = z, nrm
+				if r.typeGagnant != nil {
+					r.typeGagnant[k] = r.TypeCourant
+				}
+				if r.objetGagnant != nil {
+					r.objetGagnant[k] = r.ObjetCourant
+				}
 			}
 			// Voie de reference (rendu_reference.go) : retenir AUSSI la surface la plus
 			// proche du sol de reference. Strictement `<` : la premiere face gagne les
@@ -302,4 +361,98 @@ func (r *Rendu) EcartAuNiveauDeJeu(i, j int) (float64, bool) {
 		return 0, false
 	}
 	return z - r.niveauJeu, true
+}
+
+// ArmeObjetGagnant fait retenir, pour chaque pixel, l INSTANCE qui a gagne le z-buffer.
+// Zero vaut « aucune » : la numerotation des objets commence donc a 1.
+func (r *Rendu) ArmeObjetGagnant() {
+	r.objetGagnant = make([]int32, r.NX*r.NY)
+}
+
+// ArmeTypeGagnant fait retenir, pour chaque pixel, le TYPE d'objet qui a gagne le z-buffer.
+// Diagnostic pur : il ne change rien au rendu, il permet seulement de demander a l'image
+// « qui t'a peint ici ».
+func (r *Rendu) ArmeTypeGagnant() {
+	r.typeGagnant = make([]int32, r.NX*r.NY)
+}
+
+// TypeGagnant rend le type qui occupe ce pixel, et s'il y en a un.
+func (r *Rendu) TypeGagnant(i, j int) (int32, bool) {
+	if r.typeGagnant == nil || i < 0 || j < 0 || i >= r.NX || j >= r.NY {
+		return 0, false
+	}
+	k := j*r.NX + i
+	if math.IsInf(r.z[k], -1) {
+		return 0, false
+	}
+	return r.typeGagnant[k], true
+}
+
+// PixelsParType compte, pour chaque type, le nombre de pixels qu'il occupe dans l'image.
+// C'est la mesure qui DESIGNE ce qui couvre l'arene, la ou aucun critere porte par le modele
+// (emprise, aire du maillage, couverture de son emprise au sol) n'y est parvenu.
+func (r *Rendu) PixelsParType() map[int32]int {
+	out := map[int32]int{}
+	if r.typeGagnant == nil {
+		return out
+	}
+	for k := range r.z {
+		if math.IsInf(r.z[k], -1) {
+			continue
+		}
+		out[r.typeGagnant[k]]++
+	}
+	return out
+}
+
+// MargeSolVuDuDessous : de combien on descend SOUS le niveau de jeu pour accepter une surface
+// comme candidate au sol. Le sol d'une arene n'est pas plan — 4 m couvrent les marches et les
+// creux sans laisser entrer un sous-sol.
+const MargeSolVuDuDessous = 4.0
+
+// MargeSolVuDuDessousCarte, quand elle est > 0, remplace la marge par defaut. Reglable par
+// carte parce que 4 m sont faits pour EXCLURE un sous-sol, et qu il existe des cartes ou le
+// sous-sol est justement ce qu on veut voir (Vagabond, verdict utilisateur du 2026-08-30 :
+// « on a surtout pas le sous-sol »). Elargir la marge le fait entrer — au prix du niveau du
+// dessus, la ou les deux se superposent : une vue de dessus ne montre qu une surface par pixel.
+var MargeSolVuDuDessousCarte = 0.0
+
+// ArmeSurfaceBasse fait retenir, pour chaque pixel, la surface la plus BASSE au-dessus du sol
+// joue. A appeler apres NiveauDeJeu et avant de projeter.
+func (r *Rendu) ArmeSurfaceBasse() {
+	r.zBas = make([]float64, r.NX*r.NY)
+	r.nBas = make([][3]float64, r.NX*r.NY)
+	for i := range r.zBas {
+		r.zBas[i] = math.Inf(1)
+	}
+}
+
+// plancherSolVu rend l'altitude sous laquelle une surface n'est plus candidate au sol.
+func (r *Rendu) plancherSolVu() float64 {
+	if math.IsNaN(r.niveauJeu) {
+		return math.Inf(-1)
+	}
+	m := MargeSolVuDuDessous
+	if MargeSolVuDuDessousCarte > 0 {
+		m = MargeSolVuDuDessousCarte
+	}
+	return r.niveauJeu - m
+}
+
+// AdopteSurfaceBasse remplace la surface haute par la surface basse, la ou il y en a une, et
+// rend le nombre de pixels changes. Un pixel sans candidate garde ce qu'il avait : on ne cree
+// ni ne supprime jamais de matiere.
+func (r *Rendu) AdopteSurfaceBasse() int {
+	if r.zBas == nil {
+		return 0
+	}
+	changes := 0
+	for k := range r.z {
+		if math.IsInf(r.z[k], -1) || math.IsInf(r.zBas[k], 1) || r.zBas[k] == r.z[k] {
+			continue
+		}
+		r.z[k], r.n[k] = r.zBas[k], r.nBas[k]
+		changes++
+	}
+	return changes
 }

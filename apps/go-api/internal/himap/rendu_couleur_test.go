@@ -128,3 +128,31 @@ func TestTeinteAltitudeEstOrdonnee(t *testing.T) {
 		t.Error("les valeurs hors bornes doivent etre ecretees")
 	}
 }
+
+// TestSeuilAreteParCarte — le seuil d'arete se regle PAR CARTE, et le defaut ne bouge pas.
+//
+// Le gribouillis d'Isolation (2026-08-27) vient de la : le predicat compare deux voisins a
+// 50 cm, et sur une carte en pieces organiques il est vrai presque partout. Un seuil releve
+// doit faire taire un denivele modere et laisser parler une vraie marche.
+func TestSeuilAreteParCarte(t *testing.T) {
+	// Un sol plein de 3 x 3, et une marche de 1 m sur la colonne de droite. La cellule
+	// testee est INTERIEURE : ses quatre voisins existent, sans quoi le predicat rend vrai
+	// par manque de matiere et ne mesure plus rien.
+	r := NewRendu([2]float64{0, 0}, [2]float64{3, 3}, 1)
+	sol, in := quadPlat(0, 0, 3, 3, 0)
+	r.AddMesh(sol, in)
+	marche, inM := quadPlat(2, 0, 3, 3, 1)
+	r.AddMesh(marche, inM)
+
+	if !r.Arete(1, 1) {
+		t.Fatal("denivele de 1 m : le seuil par defaut (0,5 m) doit tracer un bord")
+	}
+	r.SeuilArete = 2
+	if r.Arete(1, 1) {
+		t.Fatal("seuil releve a 2 m : un denivele de 1 m ne doit plus tracer de bord")
+	}
+	r.SeuilArete = 0
+	if !r.Arete(1, 1) {
+		t.Fatal("seuil remis a zero : le defaut doit reprendre")
+	}
+}

@@ -158,6 +158,11 @@ func (p peintre) pixel(px, j int) (color.RGBA, bool) {
 	if p.r.Eau(px, j) {
 		return TeinteEau(p.r.BordEau(px, j)), true
 	}
+	// Le SOL SUPPOSE se peint la ou aucune surface n a ete relevee, et il se peint AUTREMENT :
+	// c est un aplat assume, pas une mesure (cf. Rendu.CombleTrous).
+	if p.r.SolSuppose(px, j) {
+		return TeinteSolSuppose(p.style), true
+	}
 	e, ok := p.r.Eclairement(px, j)
 	if !ok {
 		return color.RGBA{}, false // alpha 0 : pas de matiere, pas de pixel

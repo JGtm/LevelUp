@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "module": "2143a29c-19ec-4671-8992-f15cbfeeab21",
+  "mapNames": [
+    "Ivory Tower",
+    "2143a29c-19ec-4671-8992-f15cbfeeab21_map"
+  ],
+  "image": "2143a29c-19ec-4671-8992-f15cbfeeab21.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-28T12:23:02.5422844Z",
+  "style": "encre",
+  "calibration": {
+    "metersPerPixel": 0.043501307169596354,
+    "originX": -24.083479436238605,
+    "originY": -67.80773376464842,
+    "widthPx": 1109,
+    "heightPx": 1124,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 21,
+    "anchorsInFrame": 21,
+    "anchorsWithGround": 21,
+    "anchorMedianGapM": -0.2899993079207519,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 99.5009927368164,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.6822093746853027,
+    "covered": true,
+    "cellsSubstituted": 360996,
+    "forgeObjects": 4815,
+    "forgeObjectsDrawn": 4740,
+    "forgeObjectsWithoutModel": 56,
+    "forgeDeathVolumes": 19
+  }
+}

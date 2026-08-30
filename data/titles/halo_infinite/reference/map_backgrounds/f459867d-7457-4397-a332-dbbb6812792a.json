@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "module": "f459867d-7457-4397-a332-dbbb6812792a",
+  "mapNames": [
+    "Ronin",
+    "ronin_map"
+  ],
+  "image": "f459867d-7457-4397-a332-dbbb6812792a.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-27T23:24:03.6260926Z",
+  "style": "encre",
+  "calibration": {
+    "metersPerPixel": 0.046816663106282554,
+    "originX": 28.58543214416504,
+    "originY": -9.821884859720868,
+    "widthPx": 659,
+    "heightPx": 1288,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 9,
+    "anchorsInFrame": 9,
+    "anchorsWithGround": 9,
+    "anchorMedianGapM": -0.2899496797013157,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 50.29163070678711,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.9971444582220527,
+    "covered": true,
+    "cellsSubstituted": 167322,
+    "forgeObjects": 5476,
+    "forgeObjectsDrawn": 5445,
+    "forgeObjectsWithoutModel": 20,
+    "forgeDeathVolumes": 11
+  }
+}

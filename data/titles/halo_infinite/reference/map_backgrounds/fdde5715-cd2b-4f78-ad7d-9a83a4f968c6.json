@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "module": "fdde5715-cd2b-4f78-ad7d-9a83a4f968c6",
+  "mapNames": [
+    "Lone Wolf",
+    "fdde5715-cd2b-4f78-ad7d-9a83a4f968c6_map"
+  ],
+  "image": "fdde5715-cd2b-4f78-ad7d-9a83a4f968c6.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-28T12:31:10.034009Z",
+  "style": "encre",
+  "calibration": {
+    "metersPerPixel": 0.047242486953735355,
+    "originX": -85.65846211242675,
+    "originY": 96.02701953315737,
+    "widthPx": 1815,
+    "heightPx": 1636,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 16,
+    "anchorsInFrame": 16,
+    "anchorsWithGround": 16,
+    "anchorMedianGapM": -1.2531648573783798,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 116.54989715576171,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.14635836629338195,
+    "covered": false,
+    "forgeObjects": 3543,
+    "forgeObjectsDrawn": 3478,
+    "forgeObjectsWithoutModel": 50,
+    "forgeDeathVolumes": 15
+  }
+}

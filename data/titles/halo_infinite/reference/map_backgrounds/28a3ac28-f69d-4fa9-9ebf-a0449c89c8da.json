@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "module": "28a3ac28-f69d-4fa9-9ebf-a0449c89c8da",
+  "mapNames": [
+    "Thunderhead",
+    "28a3ac28-f69d-4fa9-9ebf-a0449c89c8da_map"
+  ],
+  "image": "28a3ac28-f69d-4fa9-9ebf-a0449c89c8da.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-30T12:10:46.6972688Z",
+  "style": "encre",
+  "calibration": {
+    "metersPerPixel": 0.0658952465057373,
+    "originX": -112.88945568847656,
+    "originY": 152.2085682697296,
+    "widthPx": 2424,
+    "heightPx": 2055,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 36,
+    "anchorsInFrame": 36,
+    "anchorsWithGround": 36,
+    "anchorMedianGapM": -0.10854619246295272,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 54.02853485107422,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.5673848803733843,
+    "covered": true,
+    "cellsSubstituted": 2330959,
+    "forgeObjects": 5004,
+    "forgeObjectsDrawn": 4807,
+    "forgeObjectsWithoutModel": 123,
+    "forgeDeathVolumes": 74
+  }
+}
