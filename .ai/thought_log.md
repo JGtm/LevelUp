@@ -1,3 +1,209 @@
+## [2026-08-30] Remise au vert de `feat/v75` : trois lots orphelins commités, deux ratchets réparés — Complété
+
+**Demande utilisateur** : « corriger toutes les erreurs, gates et tests jusqu'à ce que plus rien
+ne soit rouge, que tout soit committé et pushé, sans régression ». Les sessions parallèles de la
+journée avaient laissé l'arbre PARTAGÉ dans un état mi-livré.
+
+**LA CAUSE RACINE DES DEUX ROUGES PUBLICS, et elle était unique** : `feat/v75` NE COMPILAIT PAS
+à partir de `68e44770b`. `internal/service/match_view_data_loaders.go` y était commité et
+importait `internal/service/killsourceload`, dont aucun fichier n'avait de commit — le paquet
+n'existait que non suivi, dans ce worktree. D'où l'échec du Docker build de **Deploy Pre-Check**
+(`go build ./cmd/server/` exit 1) et celui du job **Go Coverage + Baseline**
+(`undefined: port.KillSourceClassRepository`). Les hooks locaux ne pouvaient pas le voir : ils
+travaillent sur l'ARBRE DE TRAVAIL, où le fichier est présent ; la CI, elle, checkoute le commit.
+À retenir comme classe de panne, pas comme incident.
+
+**Ce qui a été commité** (4 lots, périmètres séparés, aucun mélange) :
+
+| Commit | Lot | Contenu |
+|---|---|---|
+| `2b45b0dad` | frags hors arme à feu | 34 fichiers : la moitié manquante du lot killsource (port, repo DuckDB, registre, paquet feuille `killsourceload`, 5 surfaces câblées) + le web |
+| `a347441cd` | recherche par identifiant | les blancs d'un GUID collé sont retirés avant comparaison |
+| `ec0c81928` | rejeu | marque d'objectif sur la fiche, sons du crâne (10 rendus), cône de visée signé, triplet en grille |
+| `0fcf59c88` | archlint | le ratchet « plus longue série » cessait de distinguer un compteur à seuil d'une série |
+
+**DEUX RATCHETS RÉPARÉS, AUCUN ASSOUPLI — la distinction compte.**
+(a) `TestNoRawKillScopeLiteral` refusait `'marche'` écrit en dur dans l'insert de test de
+`killsource_class_repo_test.go` : la valeur passe désormais en paramètre depuis
+`killscope.ReadPathFilmWalk`. Le garde-rail avait raison, le code a été corrigé.
+(b) `TestNoLocalLongestRun` accusait `cmd/oddball-terrain/confront.go` à tort : son motif
+acceptait un NOMBRE à droite de la comparaison et attrapait donc `n++` suivi de `if want > 0 {`.
+Les deux opérandes sont maintenant des identifiants — un balayage best/cur compare un courant à
+un maximum, jamais à une constante. Ni allowlist, ni exemption datée : il n'y avait rien à
+migrer.
+
+**UN TROISIÈME ROUGE, silencieux celui-là** : `tsc -b` échouait sur
+`weaponRoleInsight.ts`, qui importait `NON_WEAPON_FRAG_CLASSES` de `fragDetailBreakdown` — un
+export que personne n'avait écrit. Centralisation de littéral faite à moitié. Le set est ajouté
+à sa source comme miroir exact de `nonCombatFragClasses` côté Go, et son commentaire dit ce
+qu'il ne fait PAS : il ne filtre pas à lui seul le « Détails des frags », où `equipment` et
+`environmental` ont désormais des lignes nommables.
+
+**Gates rejoués sur l'arbre complet** : `go build ./...` et `go vet ./...` exit 0 ;
+`go test ./...` — seul `himap` reste rouge (butée de 10 min, local-only : ses tests skippent en
+CI faute du jeu installé, cf. mémoire) ; `go test -tags=integration -p 1` sur
+`platform/duckdb` + `persist` + `migration` exit 0 ; `tsc -b` cache purgé exit 0 ;
+`npm run lint` 0 erreur / 24 avertissements pré-existants ; vitest **532 fichiers / 5462 tests,
+0 échec**.
+
+**Découverte consignée, non traitée** : `internal/service/killsourceload` n'a AUCUN test unitaire
+alors que c'est un paquet neuf et pur (quatre branches : repo nil, filtres invalides,
+`ErrCapabilityNotSupported`, erreur réelle). Écrire ce test reviendrait à figer mon
+interprétation d'un contrat qui n'est pas de ce lot — à la session propriétaire de le poser.
+
+**Conclusion / prochaine étape** : CI de branche à vérifier au niveau JOB sur le dernier commit.
+Restent, hors de cette remise au vert : le gate visuel utilisateur du liseré KOTH sur un des six
+films re-cuits, et les ~40 films KOTH restants à cuire.
+
+---
+
+## [2026-08-30] Munitions des armes au sol : composant atteint, valeurs NON FIABLES — Complété
+
+**Demande** : note utilisateur — verifier si les armes speciales NON VIDES s affichent jusqu au
+despawn ou au ramassage, avec une source Steam a valider.
+
+**Source Steam INEXPLOITABLE** : la page citee
+(`steamcommunity.com/sharedfiles/filedetails/?id=2661245554`) renvoie une page d erreur, aucun
+contenu. La note ne peut donc pas etre validee par cette voie. Ecrit ici pour que personne ne la
+re-consulte en croyant qu elle a ete lue.
+
+**Ce que le film offre, et qui n avait jamais ete branche** : l archetype ARME AU SOL (ti=42)
+porte `weapon-ammo-component` (i20, deser `FUN_140fc3028`, grammaire R(8)+R(11)+R(12)), statut
+porte, usage produit « aucun », sens « les munitions restantes dans l arme au sol ». Sonde posee
+(`SetGroundWeaponAmmoHook`), les trois lectures inline devenant `consumeWeaponAmmo` — memes
+largeurs, meme ordre, aucun bit lu ne change ; champs laisses POSITIONNELS (A/B/C) puisque le
+deserialiseur donne la grammaire et pas le sens.
+
+**Résultats observés** (film `64e8adfa`, 565 lectures) :
+- champ A R(8) : 0 (x179), puis 1, 40, 32, 8, 38
+- champ B R(11) : 0 (x175), puis 1, 256, 525, 1956, 1780
+- champ C R(12) : 0 (x178), puis 144, 8, 1, 3203, 1024
+
+**VERDICT : valeurs NON FIABLES, la note reste sans reponse.** Un tiers de zeros et des valeurs
+larges eparpillees (1956, 3203) ne ressemblent pas a des tailles de chargeur. Cause la plus
+probable, deja documentee ailleurs : l etat par defaut de `ti=42` n a jamais ete valide par un
+oracle (`default_state_ti42.go` avait ete ecrit puis RETIRE a la fusion pour cette raison exacte),
+donc la marche n est pas garantie bit-exacte sur cet archetype et i20 est lu a cote. Le champ A
+est le moins invraisemblable (40/32/38 sont des tailles de chargeur credibles) mais un candidat
+plausible n est pas une mesure.
+
+**Conclusion / prochaine étape** : la question « les armes non vides persistent-elles ? » reste
+OUVERTE, faute de source externe et faute de lecture fiable. Elle se rouvrira si l etat par
+defaut de `ti=42` est calibre par oracle — exactement la reprise que
+`PLAN_ARMES_AU_SOL_2E_LECTURE.md` decrit deja (calibration par oracle de position, transposable
+depuis `ti=37`). Ne PAS afficher de munitions d arme au sol tant que ce n est pas fait.
+
+## [2026-08-30] Les tags `hsc*` sont du LUA en clair — et Roi de la colline n'a pas de son de score — Complété
+
+**Question utilisateur** : « Ghidra peut pas te dire où et quel est le son quand l'adversaire ou
+l'allié marque des points sur KOTH ? au moins savoir quel nom est utilisé dans la banque ? »
+
+**Ce que Ghidra RÉFUTE, avec son dénominateur.** Trois chaînes « hill » et deux « koth » dans
+95 Mo de binaire, aucune audio. Les identifiants d'événement Wwise n'y sont pas : recherche
+d'octets sur trois témoins de plus (`fddf794f`, `9a2a8880`, `71cb04b8`) → 0 occurrence, ce qui
+porte le négatif du 2026-08-26 à **six témoins**. `king_of_the_hill` n'est même pas un nom
+d'événement : le code en calcule le **murmur3** pour en faire un `string_id` de tag.
+
+**Ce que Ghidra ÉTABLIT, et c'est la structure qui manquait.** `FUN_1408786f0` est le chemin de
+lecture d'un son, et sa télémétrie **nomme elle-même les champs** de l'objet runtime du `snd!` :
+`SoundTagName` (+0x0c), **`SoundEventHash` (+0x14)**, `SoundPlayerEventHash` (+0x18).
+L'identifiant vient du TAG, pas du code — le négatif est désormais confirmé par la structure et
+pas seulement par une recherche d'octets.
+
+**LA DÉCOUVERTE : les tags `hsc*` sont du LUA COMPILÉ, NOMS EN CLAIR.** La sonde S1, ouverte
+depuis le 2026-08-27 et jamais lancée, est faite. Un vidage brut des chaînes d'un `hsc*` rend
+`globals/scripts/global_multiplayer.lua`, des noms de fonctions, des noms de champs.
+**357 scripts vidés** (151 + 206 sur les deux modules de tags), **228 chemins `.lua`**. C'est un
+espace de nommage NEUF, **sans hachage et sans espérance de collision** : les noms sont écrits.
+
+**LA RÉPONSE, littérale, dans `global_multiplayer.lua`** — la table des références de tag par
+mode :
+
+    Bastion         CapturingLoop{Team,Enemy} / ReverseCapturingLoop{...}
+                    ScoringLoopEnemy / ScoringLoopTeam        <- le son de score est ICI
+    KingOfTheHill   HillContestedSound
+                    HillMovedSound                            <- et c'est TOUT
+    TotalControl    ControlledLoop{Enemy,Team}
+
+1. **L'utilisateur avait raison, et le jeu le dit avec ses propres mots** : le `ScoringLoop`
+   allié/adverse appartient à **Bastion**. C'est exactement le couple écarté à l'oreille.
+2. **Roi de la colline ne déclare que deux sons, et aucun n'est un score.** La recherche est
+   close par un négatif du jeu lui-même : ce son n'existe pas.
+3. **Ce qui marque le point, c'est le DÉPLACEMENT de la colline.** `HillMovedSound` est
+   `71cb04b8` — « Zone 10 », déjà identifié à l'oreille. En KOTH la colline tourne quand
+   quelqu'un marque (mesuré 4 films sur 4). **Et il n'a pas de camp** : ni `Team` ni `Enemy`
+   dans son nom, contrairement à ceux de Bastion.
+
+**Conséquence produit** : un seul son sur les points KOTH, sans camp, posé à la bascule
+d'intervalle `active` — c'est-à-dire **exactement la règle « nouvelle colline » déjà écrite
+dans `zoneSound.ts`**. Rien à recâbler ; ce qui manquait était la preuve qu'il n'y a rien de
+plus à jouer.
+
+**En prime** : `MPItemSpawnerAudioAssets` donne `__OnWeaponPad{Incoming,Ready,PickedUp}Sound`,
+`__OnWeaponRack{Ready,PickedUp}Sound` et le callback `EVENTS.onItemPickedUp` — le ramassage sur
+socle est un événement de jeu NOMMÉ, avec un son dédié par famille.
+
+**Livré** : section 9 de `.ai/V7.5/RE_SONS_RATELIER_ET_KOTH_2026-08-30.md`. Sonde jetable
+`cmd/tmp_tagdump` créée, utilisée, **supprimée du dépôt** ; source et vidages archivés hors
+dépôt (`Halo Infinite - Sons v75\_outils\tagdump\`, `_donnees\lua\`). Aucun code de production
+touché.
+
+**Prochaine étape, et elle dépasse le son** : le Lua est un espace de nommage sans hachage que
+personne n'avait ouvert. Tout ce que les passes précédentes cherchaient par composition
+(médailles, modes, objets d'objectif, équipements) y est probablement écrit. À dépouiller avant
+toute nouvelle passe de hachage.
+
+---
+
+## [2026-08-30] Sons — seconde passe : le nom des banques anonymes se casse aussi — Complété
+
+**Deux retours utilisateur, tous deux justes.** (a) « Zone 11 et Zone 12 ne collent pas à KOTH,
+ce sont les sons de strongholds » — la conclusion de la passe précédente est **écartée à
+l'oreille**, et l'oreille fait foi. (b) « des centaines de sons dans ce fichier, comment je m'y
+retrouve, fais-moi un nouvel artefact » — la planche de 430 cartes est un catalogue, pas un
+instrument de travail.
+
+**« hill » : le négatif s'étend et il tient.** 17 formes de gabarit avec `hill` dans toutes les
+positions plausibles, dictionnaire complet, cibles = les 88 événements de la banque des zones,
+espérance 0,0484 → **0 résultat**. Le jeton de mode des 6 frères non nommés des groupes
+`contested` : 425 gabarits `play_004_mod_mp_%s_<mot>[_modulation]`, cibles réduites à ces 6
+événements, espérance 0,0825 → **0 résultat**.
+
+**UN PIÈGE DE DISCIPLINE, VÉCU** : la même passe lancée sans réduire les cibles (88 au lieu de
+6) monte l'espérance à 1,21 et sort `play_004_mod_mp_hcp0_hills_enemy` pour un événement **déjà
+nommé** `..._strongholds_zone_exit_team`. Collision fortuite — exactement ce que le seuil 0,10
+existe pour écarter. Le filtre par événement a été ajouté à l'outil dans la foulée.
+
+**LA MESURE NEUVE DE LA PASSE** : mettre le dictionnaire du binaire dans un gabarit de **nom de
+banque**, pas seulement de nom d'événement. Une forme à la fois contre les 1 495 identifiants
+Wwise, espérance 0,0483 chacune, calibrée gratuitement par la redécouverte de 10 banques déjà
+nommées. **Neuf banques nommées d'un coup**, dont six jamais inventoriées :
+`sb_004_mod_mp_shared_weaponrack`, `..._weaponpad`, `..._ping`, `..._razorback`, `..._droppod`,
+`sb_004_mod_mp_bts`, `sb_002_ui_s02`.
+
+**Le ramassage d'arme a donc TROIS familles, et la bonne n'était pas celle d'hier** : le
+**socle** (`weaponpad`, `f3595a2b` = `_empty`, le socle qui se vide quand un joueur prend
+l'arme) — pas la **capsule** de largage BTB (`weaponpod`). Le râtelier mural est une troisième
+banque encore.
+
+**La grammaire des événements d'interface, confirmée par un témoin extérieur** :
+`sb_002_ui_global` ne livrait rien parce que **le nom de sa banque n'est pas la base de ses
+événements**. Le gabarit `play_002_ui_menu_global_%s_open` rend
+`play_002_ui_menu_global_tutorialpopup_open` — l'un des trois noms Wwise présents EN CLAIR dans
+le binaire. Ses 20 autres sons n'avaient jamais été rendus : c'est la piste la plus sérieuse
+qui reste pour le point marqué, puisque c'est là que vivent les stingers d'interface.
+
+**Livré** : une planche NEUVE et courte, adresse propre `226618d1-d351-45ee-bbbb-6f64162a155c`
+— **68 sons**, un par question (Socle 5, Râtelier 4, Capsule 10, Lâcher 1, Interface globale 21,
+banque `bts` 18, Marqueurs 6, Repères 3). L'ancienne (`6aadf3d5`) reste le catalogue complet.
+Section 8 de `.ai/V7.5/RE_SONS_RATELIER_ET_KOTH_2026-08-30.md`. Aucun code de production touché.
+
+**Prochaine étape** : l'écoute des 45 candidats du point marqué. Si aucun ne colle, les voies
+restantes sont S1 (`hsc*`) et S4 (tag de mode), toujours non lancées, plus les six grosses
+banques anonymes de `common` qui résistent au nommage (`b6397afe` 86 wem en tête).
+
+---
+
 ## [2026-08-30] KOTH — la jauge de garde LIT le compteur du jeu (21/22 à 100 %) — Complété
 
 **Statut** : E2-bis / E3-bis / E4-bis closes, gates passés. Reste le gate visuel utilisateur et
