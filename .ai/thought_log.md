@@ -1,3 +1,258 @@
+## [2026-08-30] Seeds de test duckdb : colonnes manches ADR 0032 absentes des stubs match_registry — Complété
+
+**Contexte** : `go test -tags=integration -p 1 ./internal/platform/duckdb/...` rouge sur ~20 tests
+(player_matches_repo_test, pool_migration_test, match_repos_test/LoadSquadMatches) avec
+`Binder Error: Values list 'r' does not have a column named 'team_0_rounds_won'`. Fichiers de test
+pristins/committés : trou de la branche telle que committée, pas un lot en vol.
+
+**Décision technique** : la migration ADR 0032 (`add_team_rounds_to_match_registry`) a ajouté
+`team_0_rounds_won`/`team_1_rounds_won`/`rounds_total` (SMALLINT) à `match_registry`, et les
+requêtes de prod les projettent désormais via `v_match_full`/`match_registry` (Q5SharedHistory,
+Q13MatchMeta, playerMatchesSharedBaseSelect, requête squad matches). Or trois seeds de test
+recréent `shared.match_registry` à la main sans ces colonnes : `seedPlayerSchema` et
+`seedSharedDBSchema` (player_repos_test.go) + `seedSharedDBForPoolTest` (pool_migration_test.go).
+`v_match_full` étant un `SELECT *` figé sur ce stub, le binder DuckDB nomme la sous-requête de la
+vue « Values list 'r' » — d'où le message trompeur (aucune VALUES-list littérale en cause).
+Correctif : ajout des 3 colonnes SMALLINT (miroir du type prod) aux 3 DDL de seed — fix
+test-only, aucun fichier de migration prod touché.
+
+**Résultats observés** : tests ciblés verts puis suite complète
+`-tags=integration -p 1 ./internal/platform/duckdb/...` verte (root 151 s, halo5, prestige,
+sharedprovider), codes de sortie vérifiés (test=0, vet=0), `go vet -tags=integration` silencieux.
+Balayage hors package : `sync/schema.go` et `match_view_service_test.go` portent déjà les
+colonnes ; le stub de `relations_segmentation_integration_test.go` ne les lit pas (Q26/Q27/Q28) ;
+run service borné vert.
+
+**Conclusion / prochaine étape** : rien à faire de plus sur ce fix. Découverte notée NON traitée
+(hors périmètre) : les DDL de seed dupliquent le schéma prod à la main et re-divergeront à chaque
+migration shared — un test de parité seed-vs-migrations (même famille que
+`ops/seed_demo_column_parity_test.go`) éviterait la récidive.
+
+## [2026-08-30] Ramassage d armes : le film porte des prises DATEES et NOMMEES, mais n en couvre que la moitie — En cours
+
+**Contexte** : l utilisateur juge que le ramassage est dans le film (« si en regardant le film
+je vois le joueur utiliser la lunette c est que c est ecrit ») et demande d arreter de tourner
+autour. Worktree dedie `LevelUp-wt-ramassage` (branche `wt/ramassage`), film de reference
+`000d5950` (Cliffhanger, Super Fiesta, 27 chunks).
+
+**Decisions techniques** :
+
+1. *Le negatif « aucun evenement de ramassage » visait la mauvaise porte.* Il portait sur
+   l archetype ARME AU SOL (ti=42) et sur un event type. Or le porteur du signal est le
+   BIPEDE : `weapon-state-type-info` (i43..i46) n entre au masque delta que lorsque l identite
+   d un emplacement d arme CHANGE. Mesure : 171 851 records biped delta ancres, 31 portent le
+   composant, **31 emissions lues, 0 repetition** — la grammaire reserve donc bien ces
+   composants au changement. Chaque emission est une prise ou un lacher date a la ms du paquet.
+
+2. *La sonde publie les DEUX mots de 32 bits, et c est ce qui nomme l arme.* Le deser lisait
+   `R(32)` dit « optional local-handle id » puis `R(32)` « variant-name », et le port ne rendait
+   que le second. Le second ne resout RIEN au catalogue (5 valeurs distinctes sur 31 emissions,
+   dont `0x42c9679f` deja connu comme suffixe partage). C est le PREMIER mot qui est la moitie
+   haute de l id 64 bits, donc la FAMILLE : avec lui, le catalogue de production nomme les
+   armes (Gravity Hammer, Sentinel Beam, Needler, Disruptor, Energy Sword, Stalker Rifle).
+   Une seule edition de production : `SetHeldWeaponHook` + publication en `defer`, aucun bit lu
+   ne change (meme motif que `SetObjectParentStateHook` / `SetAbilitySetHook`).
+
+3. *Controle de completude contre l oracle des images-cles, seuil enonce avant lecture.*
+   Le delta voit PLUS que les images-cles (31 changements contre 14) — il ne rate donc pas par
+   grossierete, il est plus fin, et il date 10 a 15 s plus tot (slot 546 : Disruptor a
+   4 726 654 ms en delta, la keyframe ne le voit qu a 4 737 944 ms).
+
+4. *Mais la couverture est le point faible, et il est mesure.* Sur les 14 ARRIVEES d arme que
+   les images-cles revelent, **7 (50,0 %) sont expliquees** par une emission delta portant la
+   MEME famille sur le MEME slot dans la fenetre ; le temoin (une emission quelconque dans la
+   fenetre, arme ignoree) vaut 9 (64,3 %). Lecture juste : quand une emission existe dans la
+   fenetre, elle nomme la bonne arme 7 fois sur 9 (78 %) — la PRECISION est correcte, c est le
+   RAPPEL qui manque (9 fenetres sur 14). Les 7 arrivees non expliquees sont massivement des
+   armes lourdes (M41 SPNKr x3, Gravity Hammer x3, Stalker Rifle x1).
+
+**Resultats observes** : `TestHeldWeaponDeltaCensus` et `TestHeldWeaponDeltaVsKeyframes` /
+`TestHeldWeaponDeltaCorrobore` (gardes `HW_FILM`, lecture seule, sautes en CI) verts sur
+`000d5950`. `gofmt` propre, `go vet` silencieux. Diff de production = 21 lignes ajoutees dans
+`components_object.go` (la sonde), rien d autre.
+
+**Conclusion / prochaine etape** : le ramassage EST dans le film, date et nommable — la these de
+l utilisateur est confirmee sur le fond, et le negatif du 2026-08-12 est perime. Ce qui manque
+est le RAPPEL. Piste immediate et deja chiffree ailleurs : `biped-desired-weapon-set` (i42)
+emet **245 fois** sur ce meme film (recensement du 2026-08-24) contre 31 pour i43..i46. i42 dit
+« l emplacement selectionne a change » sans nommer l arme ; croise avec i43..i46 il devrait
+fermer les fenetres non expliquees. A mesurer avant toute production, avec le meme oracle et le
+meme temoin. Rien n est publie dans le document de rejeu a ce stade.
+
+**Mise a jour du meme jour — i42 croise, et classement des emissions** :
+- Sonde i42 posee (`SetDesiredWeaponSetHook`, publie le R(3) de tete, aucun bit lu change).
+  Volumes sur `000d5950` : identite (i43..i46) **31**, selection (i42) **245**.
+- CLASSEMENT des 31 emissions d identite : **4 lachers** (l emplacement passe a vide — le cas
+  NON AMBIGU, celui que l utilisateur veut pour « donner une arme a un allie »), 1 prise,
+  0 echange, et **26 premieres emissions indeterminees** — indeterminees seulement parce que
+  l etat de depart vient du spawn (image-cle) et n a pas encore ete injecte comme graine.
+- CORROBORATION combinee, seuils enonces avant lecture : sur 14 arrivees d arme revelees par
+  les images-cles — **7 (50,0 %) nommees ET datees** par i43..i46 ; **2 (14,3 %) datables** par
+  une emission i42 unique dans la fenetre ; 5 (35,7 %) ambigues (2 a 6 i42 dans la fenetre) ;
+  et **0 (0,0 %) aveugles**. Couverture combinee **64,3 %**.
+- LE FAIT QUI COMPTE : zero fenetre aveugle. Le film porte TOUJOURS un signal a l instant d une
+  prise ; ce qui manque n est pas le signal, c est son NOMMAGE quand i43..i46 ne parle pas.
+- Prochaine etape ecrite : (1) amorcer chaque couple (slot, emplacement) avec le loadout de
+  spawn lu a l image-cle, ce qui doit convertir la majorite des 26 indeterminees en prises ou
+  echanges ; (2) relier les lachers et les prises aux objets `ti=42` (armes au sol) pour la
+  troisieme piece demandee. Aucun seuil rebaisse, rien publie.
+
+**Suite du meme jour — amorcage spawn, et le miroir du monde (6 films)** :
+- *Amorcage par le loadout de spawn* : chaque premiere emission d un couple (slot, emplacement)
+  est confrontee a l ENSEMBLE de familles du dernier releve d image-cle qui precede. Resultat sur
+  `000d5950` : **4 lachers, 21 prises, 6 deja portees, 0 indetermine** (31/31 classees). « Deja
+  portee » = l arme etait au spawn, le delta ne fait que la re-annoncer : ce n est PAS un
+  ramassage, et c est la distinction qui manquait.
+- *Bug d outillage trouve* : `frame_records.go` ne renseigne JAMAIS `FrameRecord.TypeIndex` sur un
+  record DEL (`case recDel: br.Skip(32); w.Unbind(slot)`). Tout filtre par archetype sur les
+  suppressions rend donc zero — silencieusement. Contournement dans l instrument : retenir
+  l archetype a la NAISSANCE. Avant : 0 mort ti=42 ; apres : 70 sur le film de reference.
+- *Miroir du monde, 6 films, fenetre +/- 0,5 s, temoin decale de 30 s* :
+  **LACHER -> NAISSANCE d une arme au sol = 17/20 (85,0 %), temoin 5/20 (25,0 %).** Le seuil de
+  70 % est tenu ; le temoin depasse la cible de 15 % — a dire tel quel, l ecart reste de 3,4x mais
+  la population est petite (20 lachers sur 6 films).
+  **PRISE -> MORT d une arme au sol = 1/71 (1,4 %), temoin 7/71 (9,9 %) : REFUTE**, et sous son
+  propre temoin. Ramasser une arme ne supprime donc PAS l entite au sol dans la demi-seconde.
+  Consequence de conception : le lien prise -> objet du monde ne se fera pas par la suppression.
+
+**Etat des trois pieces demandees** : le LACHAGE est lu et corrobore ; le PICK UP est lu sur le
+bipede (21 sur le film de reference, 64,3 % de couverture combinee contre l oracle des images-cles,
+0 fenetre aveugle) mais son lien a l objet du monde est refute par cette voie ; l ARME AU SOL est
+reliee au lachage seulement. Rien n est publie, rien n est commite.
+
+**Correction du meme jour — la prise n est pas une SUPPRESSION, c est un ATTACHEMENT** :
+- L utilisateur conteste le negatif « prise -> mort refutee ». Deux erreurs trouvees dans ma
+  mesure, la seconde etant la vraie.
+- ERREUR 1 (corrigee) : je ne classais une suppression que si j avais vu la NAISSANCE de
+  l entite en delta. Une arme posee par la CARTE (ratelier, socle) n a pas de NEW : elle vient
+  du World de l image-cle. Amorcage ajoute -> morts ti=42 sur `000d5950` : 70 -> 137.
+- ERREUR 2 (la vraie) : la question etait mal posee. Distribution des ecarts, film de reference :
+  **LACHER -> naissance = +0 ms, 4 fois sur 4** (MEME paquet : ce n est pas une correlation,
+  c est une identite). **PRISE -> mort : etalement -11,4 s a +11,1 s**, mediane des valeurs
+  absolues 1,9 s, soit PIRE que le hasard pour la densite observee. La prise ne passe donc pas
+  par la suppression de l entite.
+- MECANISME PROBABLE, et il est deja instrumente : `ti=42` porte **i10 object-parent-state**
+  (liste complete : bloc objet partage i0..i17 + item-at-rest + item-ignore-player +
+  weapon-ammo — aucun composant de ramassage). Ramasser = ATTACHER l objet au bipede, pas le
+  detruire ; l arme disparait du sol a l ecran parce qu elle est desormais portee. Cela recoupe
+  exactement le resultat Ghidra du matin : `+0x274` = handle du parent, `0xFFFFFFFF` quand
+  l objet est libre. Le lacher cree une entite neuve (NEW a 0 ms), la prise rattache l existante.
+- PROCHAIN TEST, ecrit avant de le lancer : pour chacune des 21 prises, existe-t-il une lecture
+  i10 sur une entite `ti=42` passant de detache a attache dans le MEME paquet ? Seuil >= 70 %,
+  temoin decale de 30 s <= 15 %. La sonde existe (`SetObjectParentStateHook`).
+
+**Resultat du test d attachement — l hypothese est REFUTEE elle aussi** :
+- Instrument `pickup_attachment_research_test.go` : jointure EXACTE lecture i10 <-> record par
+  egalite de position de bit, sur les deux archetypes d objet.
+- Film `000d5950`, film entier : **13 transitions d attachement seulement** (ti=42 : 4 attache /
+  5 detache ; ti=37 : 3 attache / 1 detache), contre 21 prises et 4 lachers cote bipede.
+  **PRISE -> ATTACHEMENT = 1/21 (4,8 %)**, temoin 0/21. Seuil 70 % tres loin d etre atteint.
+- Donc : ni la SUPPRESSION de l entite (1/71 sur 6 films, sous son temoin), ni l ATTACHEMENT
+  (1/21) n expliquent la prise. Trois hypotheses de miroir du monde testees, trois refutees.
+- L ASYMETRIE EST LE RESULTAT, et elle est nette : le film enregistre la CREATION de l arme
+  lachee exactement (naissance ti=42 dans le MEME paquet, +0 ms, 4/4) mais n enregistre AUCUN
+  evenement d entite au ramassage. Ce n est pas une limite de notre decodage : c est ce que le
+  film contient.
+- CONSEQUENCE DE CONCEPTION, ecrite : le ramassage n a PAS besoin du lien vers l objet du monde.
+  Il est deja lisible cote BIPEDE (i43..i46 : qui, quand, quelle arme ; 64,3 % de couverture
+  combinee contre l oracle des images-cles, 0 fenetre aveugle). Le lien a l objet n ajouterait
+  que « depuis quel socle », et aucune des trois voies testees ne le donne.
+
+**Equipements** : les deux archetypes portent bien le meme composant i10 et le mecanisme est
+donc IDENTIQUE — la question de l utilisateur (« pourquoi les dev auraient code ca
+differemment ») est repondue par oui, c est le meme. Mais le volume est aussi faible (4
+transitions ti=37 sur le film) et surtout le canal cote BIPEDE pour l equipement n est PAS
+i43..i46 : c est **i26 unit-equipment-component**, porte, decode, jamais publie en valeurs.
+Prochaine etape ecrite pour l equipement : lui poser la meme sonde qu a i43..i46 (motif
+`SetHeldWeaponHook`), recenser ses emissions delta, et refaire le meme controle de completude.
+
+**Remesure sur films ARENA (correction de population, remarque utilisateur)** :
+`000d5950` est un Super Fiesta : quasi pas de socles ni rateliers, loadouts aleatoires. Mauvaise
+population pour le ramassage au sol. Remesure sur 4 films CTF (Catalyst x2, Behemoth, + 01e1f945) :
+
+| film | prises | lachers | couverture combinee | lacher->naissance <=0,5 s |
+|---|---|---|---|---|
+| 64e8adfa | 123 | 92 | 66,7 % | 34 % (mediane +0 ms) |
+| 530820e5 | 43 | 36 | 42,9 % | 39 % (mediane +0 ms) |
+| 53ce4390 | 55 | 30 | 80,0 % | 13 % (mediane -184 ms) |
+| 01e1f945 | 22 | 8 | 50,0 % | 75 % (mediane +0 ms) |
+
+DEUX CORRECTIONS A MES CONCLUSIONS PRECEDENTES :
+1. Le « 64 % » n etait PAS un artefact de Fiesta : sur Arena la couverture va de 42,9 % a 80,0 %.
+   Le trou est structurel, pas lie au mode.
+2. Le « lacher -> naissance = +0 ms, 4/4, c est une identite » etait une SUR-INTERPRETATION de
+   n=4. Sur 166 lachers Arena, la mediane reste centree sur 0 (donc la relation est reelle) mais
+   seuls 13 a 75 % tombent sous 0,5 s. Relation reelle, appariement NON bijectif.
+
+ETAT REEL : non operationnel. Le signal existe et il est nomme et date, mais il attrape entre la
+moitie et les trois quarts des prises selon le film. Cause la plus probable a tester en premier :
+l ancrage `matchBipedHeader` ne retrouve pas tous les records (245 masques porteurs sur 171 851
+records ancres) — un record non ancre est une emission perdue, silencieusement.
+
+**LA MESURE DIRECTE INVALIDE LE CHIFFRE DE COUVERTURE — a lire avant toute suite** :
+Question posee par l utilisateur : « ce pourcentage veut dire quoi ? ». Reponse : rien
+d actionnable, et il est retire. Nouveau test (`loadout_prediction_research_test.go`) : partir de
+l inventaire d une image-cle, appliquer les changements du flux delta, comparer a l image-cle
+suivante. Temoin : la meme comparaison SANS appliquer les changements.
+
+| film | paires | prediction avec delta | temoin « rien n a bouge » | repare | casse |
+|---|---|---|---|---|---|
+| 000d5950 | 70 | 80,0 % | 80,0 % | 0 | 0 |
+| 01e1f945 | 68 | 75,0 % | 75,0 % | 0 | 0 |
+| 530820e5 | 57 | 63,2 % | **70,2 %** | 0 | 4 |
+
+VERDICT : le flux delta n ameliore la prediction d inventaire sur AUCUN film, et la degrade sur
+un. Le taux de « couverture » de 43-80 % mesurait donc surtout le bruit d un oracle
+echantillonne toutes les 20 s et aveugle a tout ce qui n est pas au catalogue d armes.
+
+DEUX CAUSES IDENTIFIEES, les deux instructives :
+1. **Les 4 « cassures » sont des FAUX POSITIFS de l oracle, pas des erreurs du delta.** Elles
+   ajoutent toutes la meme famille `0x2a392328` — c est le DRAPEAU de CTF, deja identifie sous ce
+   mot exact par PLAN_ATTACHEMENT_PARENT_STATE.md (3 films, 2 cartes). Le delta a donc RAISON :
+   le joueur a bien pris le drapeau, qui occupe un emplacement d arme. C est le lecteur
+   d image-cle qui ne peut pas le voir, filtrant sur le catalogue d armes.
+   ACQUIS EXPLOITABLE : **le port du drapeau se lit dans les emplacements d arme du porteur.**
+2. **repare=0 et casse=0 sur deux films** : les emissions et les paires d images-cles ne portent
+   pas sur la meme population. Un slot est une VIE ; une vie courte n a pas deux images-cles, et
+   les emissions se concentrent tot dans la vie. Le test tel qu ecrit compare donc surtout des
+   fenetres ou il ne se passe rien.
+
+ETAT REEL, sans habillage : on a entre 31 et 123 evenements dates et nommes par match,
+individuellement plausibles, MAIS on n a PAS demontre qu ils suffisent a reconstituer qui tient
+quoi. Prochain test : refaire la prediction sur la population ou il y a quelque chose a predire
+(vies couvrant au moins deux images-cles ET portant au moins une emission).
+
+**ORACLE DES TIRS — le canal est JUSTE, sa completude reste indemontree** :
+`ScanFilmFireEvents` donne des centaines de preuves datees par match (un tir = l arme etait en
+main). Test : la famille tiree appartient-elle a l union des inventaires reconstitues ? Temoin :
+la meme union avec les SEULES images-cles.
+
+| film | tirs | temoin (images-cles) | + flux delta | gagnes | PERDUS |
+|---|---|---|---|---|---|
+| 64e8adfa | 2 879 | 100,0 % | 100,0 % | 0 | **0** |
+| 000d5950 | 519 | 99,8 % | 99,8 % | 0 | **0** |
+| 53ce4390 | 2 229 | 97,7 % | 99,5 % | 40 (1,8 %) | **0** |
+
+DEUX LECTURES, et il faut les tenir ensemble :
+1. **Le test est SATURE et ne peut donc pas trancher la completude.** Le temoin est deja a
+   97,7-100 % : avec huit joueurs portant une quinzaine de familles, presque toute arme tiree
+   appartient deja a l union des images-cles. Un test dont le temoin plafonne ne mesure rien.
+   C est une limite de MA construction (union faute de pont tireur -> vie), pas un resultat.
+2. **Mais le zero de la derniere colonne, lui, est un vrai resultat.** Sur 5 627 tirs et 3 films,
+   le flux delta ne retire JAMAIS une arme que le joueur utilise encore. Autrement dit : les
+   changements qu on lit ne sont jamais contredits par ce qu on voit tirer. Le canal est JUSTE.
+   Et sur 53ce4390 il explique 40 tirs que les images-cles seules ne justifient pas.
+
+ETAT : justesse etablie (0 contradiction sur 5 627 preuves), completude NON etablie et non
+etablissable par les oracles construits jusqu ici (images-cles trop grossieres, union saturee).
+
+CE QUI DEBLOQUE, et c est borne : le pont **FireEvent.FilmIndex -> slot de bipede**. Il n existe
+pas dans `filmdec` (l index est une numerotation interne au film, jamais rapprochee des slots).
+Avec lui, le test devient discriminant : un tir du joueur P avec l arme W doit etre dans
+l inventaire de P, pas dans celui de n importe qui. Le temoin retombe alors loin du plafond.
+Piste de construction : apparier, par vie, la suite des tirs d un FilmIndex aux inventaires
+d images-cles des slots candidats — l appariement qui explique le plus de tirs nomme le slot.
+
 ## [2026-08-28] Rejeu Oddball — 4 lots intégrés dans feat/v75 (score par joueur/manche, deux-DinoR00, bandeau par manche, crâne socle) — Complété
 
 **Contexte** : chantier modes porteurs. Demande utilisateur : le score de manche doit repartir de 0,
@@ -77028,12 +77283,64 @@ killcollector **vert** (anti-ART) · `golangci-lint` **0 issue** sur les paquets
 Seul échec d'archlint restant : `killsource_class_repo_test.go`, fichier non suivi d'une autre
 session (règle 7).
 
-**Prochaine étape** : jouer le rattrapage serveur arrêté — **417 candidats après exclusion du
-marqueur terminal** — 414 en 2026, 3 en 2025, et plus aucun match antérieur (contre 374
-annoncés en v1, et 999 bruts sans le marqueur) :
-`levelup backfill-killsource --online --gamertag JGtm --limit 20` puis sans limite. Surveiller
-ensuite `killsource_postsync_backlog_restant` et `killsource_postsync_client_sans_film` sur
-`/debug/vars` — le second doit rester à zéro.
+### [2026-08-30] Le rattrapage demandé n'était pas celui que j'avais livré
+
+**Précision utilisateur** : « je te parlais de télécharger et conserver les datas des films et
+les manifestes manquants, c'est ça mon rattrapage ponctuel ». J'avais livré le décodage des
+assistances ; le besoin était l'ARCHIVAGE des films avant expiration. Les deux se recouvrent
+(la passe de décodage archive ce qu'elle télécharge) mais pas leurs périmètres : **917 matchs
+sur 1 948 n'ont aucun film en local**, la passe de décodage n'en couvre que 417.
+
+D'où `levelup archive-films` : manifeste + chunks complets (`GetFilmChunks`, pas
+`GetMatchFilm` qui ne rend que la réplication — archiver un film sans son kill-feed le rendrait
+inutilisable pour l'attribution), **aucun décodage**, lecture seule sur la base. Elle ne saute
+pas par défaut les matchs marqués « film absent » : 579 matchs antérieurs à 2025 n'ont jamais
+été sondés, et un manifeste coûte une requête.
+
+**L'ordre est l'INVERSE de celui du décodage, et c'est délibéré** : le décodage prend les
+récents (les vieux sont déjà perdus, et c'est ce que l'écran montre) ; l'archivage prend les
+vieux (parmi les films encore servis, ce sont eux à qui il reste le moins de temps). Deux buts,
+un seul raisonnement.
+
+**J'ai écrit une affirmation fausse puis je l'ai démentie en la testant** : « elle tourne
+serveur allumé » parce qu'elle ne fait que lire. Testé pendant qu'une passe tenait la base :
+DuckDB n'autorise qu'un processus par fichier, l'ouverture échoue. Corrigé dans l'en-tête et
+l'aide. Le réflexe à garder : **une propriété qu'on documente se teste, même — surtout —
+quand elle paraît évidente**.
+
+**Mesures du jour** : lot d'essai 20/20 films, 0 erreur, 6 min 19 s → août passe de 0/8 à 8/8
+matchs avec passe de film, `assist_known` de 0 à 786, **339 paires** là où le tableau était
+vide. Coût disque 24,1 Mo/film, ~18,3 Go à ajouter pour 86,7 Go libres.
+
+### Les deux passes ont été jouées (2026-08-30, serveur arrêté)
+
+**Décodage** : 417 matchs, 391 écrits, 35 242 morts, 395 films archivés, 0 erreur d'archivage
+— 1 h 48. Backlog résiduel 6 (4 films sans kill-feed, 2 erreurs de décodage). Effet mesuré :
+`assist_known` passe de 0 à 786 en août, de 0 à 5 545 en juin, de 92 à 7 231 en mai ; les
+paires assistant→tueur de 0 à 339 / 1 066 / 1 623. Couverture film : 8/8, 149/149, 65/65,
+85/86, 85/86. **Le trou de cinq mois est comblé.**
+
+**Archivage** : 582 films manquants, **3 sauvés, 579 EXPIRÉS, 0 erreur** — 2 min 55.
+
+**LE FAIT QUE CETTE PASSE ÉTABLIT, ET QUE PERSONNE N'AVAIT MESURÉ** : les 579 films antérieurs
+à 2025 sont définitivement perdus, et le marqueur `MBitWeaponKillsNoFilm` du pipeline était
+donc EXACT — vérifié par 579 réponses 404 indépendantes, plus supposé. Preuve opérationnelle :
+`--dry-run --sauter-marques` rend **0** manquant, donc l'ensemble « expiré » et l'ensemble
+« marqué » coïncident exactement. C'est aussi ce qui rend la passe périodique bon marché.
+
+**Cache final** : 1 369 films (951 le matin, **+418 sauvés**), 32,3 Go, 85,2 Go libres.
+
+**Une dernière sloppiness attrapée au vol** : le plan de `archive-films` affichait « du plus
+récent au plus vieux » alors qu'il trie à l'inverse — j'avais réutilisé l'affichage de la passe
+de décodage avec son libellé en dur. Corrigé en paramétrant le libellé, avec les deux ordres
+déclarés côte à côte et leur raison. **Un plan qui ment sur son propre ordre est pire qu'un
+plan sans libellé** — et c'est exactement le genre de détail que la revue m'a appris à ne plus
+laisser passer.
+
+**Prochaine étape** : rattrapage périodique
+`levelup archive-films --gamertag JGtm --sauter-marques` (0 manquant aujourd'hui). Surveiller
+`killsource_postsync_backlog_restant` et `killsource_postsync_client_sans_film` sur
+`/debug/vars` au premier cycle de sync — le second doit rester à zéro.
 
 ## [2026-08-30] Rejeu — pourquoi la bande `ti=0` est vide : diagnostic mesuré, et le correctif facile RÉFUTÉ
 
