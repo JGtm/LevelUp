@@ -78079,3 +78079,55 @@ egaler le nombre de blocs lus et la fin du record doit tomber sur un bit de cont
 **Prochaine etape** : CR du lot D (registre des types dans chunk_00 : controle independant de la
 table des 123 noms) ; puis decision utilisateur sur le lot « sac de proprietes » (fiabilite des
 kills), qui est hors du perimetre visee mais a plus forte valeur produit.
+
+## [2026-08-30] Visee lunette, phase 10 — CONTRADICTION ENTRE LOTS D ET E sur la nature du premier octet ; ce qui CONVERGE et ce qui reste ouvert — En cours
+
+**LES DEUX LECTURES INCOMPATIBLES.**
+- LOT E (Ghidra, desassemblage du repartiteur FUN_14080a9d4 + boucle appelante FUN_14076a1c4) :
+  un evenement = [1 bit de continuation][R(7) type][3 x reference][charge utile]. Donc le premier
+  octet d'un paquet vaut `0x80 | type`, et la plage observee 0xA0..0xFB s'explique.
+- LOT D (structure du film, 1367 chunk_00 + corpus) : le premier octet N'EST PAS un type. Le bit
+  de poids faible tombe dans l'IDENTIFIANT du premier record (amorce 5 bits + 11 bits d'id) ;
+  0xD2 porte 7 valeurs d'identifiant distinctes, 0xD3 en porte 50 — ce qui explique les « 9
+  identifiants d'arme propres contre 447 de bruit » SANS invoquer aucune variante ni aucun type.
+
+**ARBITRAGE FAIT PAR LE PILOTE (mesure propre, instrument TestViseeTaillesPaquets)** : sur
+00162144, **160 paquets delta d'UN SEUL OCTET (0x80)**, soit 0,58 % ; taille minimale par octet de
+tete : 0xA0 -> 6 o, 0xC7 -> 21 o, 0xC0 -> 25 o, 0xE9 -> 60 o, 0xE5 -> 90 o, 0xD3 -> 105 o,
+0xD2 -> 156 o. Un en-tete d'evenement exige au moins 11 bits (1 + 7 + 3 portes) : **un paquet d'un
+octet ne peut pas en porter**. LE LOT D A RAISON SUR CE POINT — le premier octet du payload n'est
+pas, a lui seul, un numero de type d'evenement.
+Reconciliation la plus probable, NON PROUVEE : le lot E decrit la grammaire des EVENEMENTS telle
+que le moteur les lit sur SON flux ; le paquet delta du film n'est pas ce flux (ou pas seulement).
+Les evenements seraient IMBRIQUES dans la trame, pas en tete. La correspondance « octet de tete <->
+famille de contenu » observee depuis toujours (0xD2 = records de degat) resterait alors un
+CORRELAT de structure, pas un type — ce qui n'invalide pas le pipeline killsource, qui lit des
+decalages MESURES, mais invalide toute conclusion tiree d'un NOM de type.
+
+**CE QUI CONVERGE MALGRE LA CONTRADICTION — la reponse a la question du chantier.**
+Les deux lots, par des voies opposees, disent la meme chose : **il n'y a pas d'evenement de zoom
+dans les films.** Lot E : l'octet attendu (0x95) est absent des 41 M de paquets. Lot D : le film
+declare 123 types (table a 0x0CB208, cardinal suivant le build : 119 en HI_1_5_1, 121 en 1_8-1_10,
+122 en 1_11, 123 en 1_12/1_13) et un type de zoom serait hors de cette borne. Verdict de chantier
+INCHANGE et desormais adosse a deux structures independantes.
+
+**DECOUVERTES HORS PERIMETRE DU LOT D, a ne pas perdre :**
+1. *chunk_00 a TROIS sections, le depot n'en lisait qu'une.* Registre = **50 blocs** (le « 118 »
+   du dossier etait la taille du fichier divisee par celle d'un bloc — erreur de longue date) ;
+   en-tete 0x0CB200..0x0CB45C (table par type + chaine de build) ; **troisieme section
+   0x0CB65C..0x14EB73, ~538 ko propres au match, JAMAIS regardee**, qui porte les gamertags en
+   UTF-16LE. Puis 602 ko de zeros.
+2. *Le film declare sa grammaire PAR TYPE et PAR BUILD* (123 u32, valeurs 1..6, contenu qui change
+   a cardinal constant entre HI_1_8_0 et HI_1_9_0 = une version par entree). Artefact :
+   .ai/V7.5/film_re/chunk00_table_par_type.tsv.
+3. *Le film ne NOMME aucun type d'evenement* : negatif net (13 noms cherches en ASCII et UTF-16,
+   3 orthographes, tous chunks ; temoin positif OK sur les noms de composants ; hachage exclu par
+   821 169 u32 indexes, 0 touche, faux positifs mesures nuls).
+
+**Consequence de methode a retenir** : deux lots aux conclusions opposees valent mieux qu'un lot
+confiant. Le geste qui a tranche a coute 3 minutes (mesurer les tailles de paquets) et aucune des
+deux equipes ne l'avait fait.
+
+**Prochaine etape** : (a) corriger la page Notion publiee (elle affirme le bit de continuation
+comme prouve — a temperer) ; (b) decision utilisateur sur le lot « sac de proprietes / fiabilite
+des kills » ; (c) la 3e section de chunk_00 (538 ko) est un chantier neuf a fort potentiel.

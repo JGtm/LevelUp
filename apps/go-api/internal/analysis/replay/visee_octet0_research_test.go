@@ -18,6 +18,7 @@ package replay
 
 import (
 	"os"
+	"path/filepath"
 	"sort"
 	"testing"
 
@@ -85,4 +86,139 @@ func TestViseeOctet0(t *testing.T) {
 	t.Log("LECTURE : memes identifiants des deux cotes = le record est IDENTIQUE, donc le bit bas" +
 		" n'est pas une variante de record -> il porte la CONTINUATION, et chaque paquet peut" +
 		" contenir une CHAINE d'evenements que nos recensements n'ont jamais lue.")
+}
+
+// TestViseeOctet0Corpus recense les PREMIERS OCTETS sur tout le corpus. Depuis que la grammaire
+// d'en-tete est etablie (bit de continuation puis R(7) du type), l'octet vaut 0x80 | type : ce
+// recensement EST donc le recensement des types reels, et il tranche deux questions ouvertes —
+// l'octet 0xA4 (action_weapon_fire, lecteur FUN_14080C1F8) existe-t-il ? et l'octet 0x95
+// (unit_zoom) ? Garde OCTET0_CORPUS.
+func TestViseeOctet0Corpus(t *testing.T) {
+	root := os.Getenv("OCTET0_CORPUS")
+	if root == "" {
+		t.Skipf("OCTET0_CORPUS absent : recensement saute")
+	}
+	ents, err := os.ReadDir(root)
+	if err != nil {
+		t.Fatalf("corpus illisible : %v", err)
+	}
+	var compte [256]int
+	var films [256]int
+	nFilms, total := 0, 0
+	for _, e := range ents {
+		if !e.IsDir() {
+			continue
+		}
+		dir := filepath.Join(root, e.Name())
+		var loc [256]int
+		n := filmdec.CountFilmChunks(dir)
+		if n == 0 {
+			continue
+		}
+		nFilms++
+		for c := 1; c <= n; c++ {
+			chunk, err := filmdec.ReadFilmChunk(dir, c)
+			if err != nil {
+				continue
+			}
+			for _, p := range filmdec.WalkPackets(chunk) {
+				if p.Type != filmdec.PacketTypeDelta || p.Size < 1 {
+					continue
+				}
+				loc[p.Payload(chunk)[0]]++
+			}
+		}
+		for b, v := range loc {
+			compte[b] += v
+			if v > 0 {
+				films[b]++
+			}
+		}
+		total++
+	}
+	t.Logf("CORPUS — %d films lus", nFilms)
+	sousSeuil := 0
+	for b := 0; b < 0x80; b++ {
+		sousSeuil += compte[b]
+	}
+	t.Logf("CONTROLE DE GRAMMAIRE — paquets dont le premier octet est < 0x80 : %d"+
+		" (attendu 0 si le bit de continuation est toujours a 1)", sousSeuil)
+	for b := 0x80; b < 0x100; b++ {
+		if compte[b] > 0 {
+			t.Logf("  0x%02X = type %3d : %10d paquets sur %4d films", b, b&0x7f, compte[b], films[b])
+		}
+	}
+	for _, q := range []struct {
+		o   byte
+		nom string
+	}{{0xA4, "action_weapon_fire (type 36)"}, {0x95, "unit_zoom (type 21)"}, {0xD2, "type 82"}} {
+		t.Logf("REPONSE — 0x%02X %s : %d paquets sur %d films", q.o, q.nom, compte[q.o], films[q.o])
+	}
+}
+
+// TestViseeTaillesPaquets mesure la distribution des TAILLES de payload par premier octet. C'est
+// l'arbitre entre deux lectures incompatibles du debut d'un paquet delta : « en-tete d'evenement
+// (1 bit de continuation + R(7) type + references) », qui exige au moins 11 bits, et « trame
+// d'etat dont le premier octet n'est pas un type ». Un paquet d'UN SEUL octet ne peut pas porter
+// un en-tete d'evenement. Garde TAILLES_FILM (un film) ou TAILLES_CORPUS (tout le corpus).
+func TestViseeTaillesPaquets(t *testing.T) {
+	root := os.Getenv("TAILLES_CORPUS")
+	un := os.Getenv("TAILLES_FILM")
+	if root == "" && un == "" {
+		t.Skipf("TAILLES_CORPUS/TAILLES_FILM absents : mesure sautee")
+	}
+	var dirs []string
+	if un != "" {
+		dirs = []string{un}
+	} else {
+		ents, err := os.ReadDir(root)
+		if err != nil {
+			t.Fatalf("corpus illisible : %v", err)
+		}
+		for _, e := range ents {
+			if e.IsDir() {
+				dirs = append(dirs, filepath.Join(root, e.Name()))
+			}
+		}
+	}
+	courts := map[byte]int{}
+	total, sous2o := 0, 0
+	tailleMin := map[byte]int{}
+	for _, dir := range dirs {
+		n := filmdec.CountFilmChunks(dir)
+		for c := 1; c <= n; c++ {
+			chunk, err := filmdec.ReadFilmChunk(dir, c)
+			if err != nil {
+				continue
+			}
+			for _, p := range filmdec.WalkPackets(chunk) {
+				if p.Type != filmdec.PacketTypeDelta || p.Size < 1 {
+					continue
+				}
+				b := p.Payload(chunk)[0]
+				total++
+				if m, ok := tailleMin[b]; !ok || p.Size < m {
+					tailleMin[b] = p.Size
+				}
+				if p.Size < 2 {
+					sous2o++
+					courts[b]++
+				}
+			}
+		}
+	}
+	t.Logf("PAQUETS — %d au total ; %d font MOINS DE 2 OCTETS (%.4f %%)",
+		total, sous2o, 100*float64(sous2o)/float64(total))
+	for b, n := range courts {
+		t.Logf("  premier octet 0x%02X : %d paquets d'un seul octet", b, n)
+	}
+	t.Log("TAILLE MINIMALE observee par premier octet (les octets frequents) :")
+	for _, b := range []byte{0xA0, 0xD2, 0xD3, 0xC7, 0xC0, 0xE9, 0xE5, 0x80} {
+		if m, ok := tailleMin[b]; ok {
+			t.Logf("  0x%02X : %d octets", b, m)
+		}
+	}
+	t.Log("ARBITRAGE : un paquet d'UN octet ne peut pas porter un en-tete d'evenement" +
+		" (1 + 7 + au moins 3 portes = 11 bits) ; s'il en existe, le premier octet du payload" +
+		" n'est pas, a lui seul, un numero de type d'evenement.")
 }
