@@ -10,7 +10,7 @@
   ],
   "image": "sgh_blueprint.png",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
-  "generatedAt": "2026-08-26T16:34:34.0449086Z",
+  "generatedAt": "2026-08-30T18:58:27.9674928Z",
   "style": "encre",
   "calibration": {
     "metersPerPixel": 0.029,
@@ -36,6 +36,7 @@
     "coveredShare": 0.19890836464917688,
     "covered": false,
     "cellsSubstituted": 840952,
-    "cellsClipped": 2382213
+    "cellsClipped": 2382213,
+    "cellsAssumedFloor": 68221
   }
 }

@@ -104,6 +104,9 @@ type environnement struct {
 	// callouts : les zones nommees par carte. Nil si le catalogue est absent — la mesure hors
 	// zones est alors muette, jamais un zero silencieux.
 	callouts *replay.MapCalloutsCatalog
+	// positions : les positions reellement jouees par carte, oracle du rognage le plus fort du
+	// chantier. Nil si le catalogue est absent — chaque carte qui le demande le dira alors.
+	positions map[string][]himap.PositionJouee
 	// echelle : cote du pixel en metres. Zero = celle de production (`EchelleFondCarte`).
 	// Reglage PAR CARTE au sens du gate du 26/08 — ici il vaut pour toute la cuisson demandee.
 	echelle float64
@@ -156,6 +159,7 @@ func prepare(titleSlug, outDir string) (*environnement, error) {
 		liens:        liensDuDepot(root, levels),
 		reglages:     reg,
 		callouts:     chargeCallouts(res.MapCalloutsPath(titleSlug)),
+		positions:    chargePositionsJouees(res.MapPlayedPositionsPath(titleSlug)),
 	}, nil
 }
 

@@ -85,6 +85,16 @@ type Rendu struct {
 	// exclusion ne changeait pas un octet du fichier.
 	TypeCourant int32
 	typeGagnant []int32
+	// ObjetCourant / objetGagnant : la meme idee que TypeCourant, mais a l INSTANCE. Le type
+	// ne suffit pas a nommer un element : tous les murs d un meme modele le partagent, et
+	// raisonner par type reviendrait a traiter ensemble des objets poses aux quatre coins de la
+	// carte. L instance, elle, designe UN objet pose — c est la maille du recollement
+	// (recollement_objets.go), qui decide de garder ou de retirer un element ENTIER.
+	ObjetCourant int32
+	objetGagnant []int32
+	// RecollementRetires : DIAGNOSTIC du recollement — combien d objets ont ete retires entiers
+	// parce que le masque n en gardait qu une part trop faible. Publie au journal de cuisson.
+	RecollementRetires int
 	// zBas / nBas : LA SURFACE LA PLUS BASSE AU-DESSUS DU SOL JOUE, par pixel.
 	//
 	// Le z-buffer ordinaire retient la surface la plus HAUTE : sur une carte a ciel ferme, il
@@ -230,6 +240,9 @@ func (r *Rendu) triangleBorne(a, b, c [3]float64, lo, hi [3]float64) {
 				if r.typeGagnant != nil {
 					r.typeGagnant[k] = r.TypeCourant
 				}
+				if r.objetGagnant != nil {
+					r.objetGagnant[k] = r.ObjetCourant
+				}
 			}
 			// Voie de reference (rendu_reference.go) : retenir AUSSI la surface la plus
 			// proche du sol de reference. Strictement `<` : la premiere face gagne les
@@ -348,6 +361,12 @@ func (r *Rendu) EcartAuNiveauDeJeu(i, j int) (float64, bool) {
 		return 0, false
 	}
 	return z - r.niveauJeu, true
+}
+
+// ArmeObjetGagnant fait retenir, pour chaque pixel, l INSTANCE qui a gagne le z-buffer.
+// Zero vaut « aucune » : la numerotation des objets commence donc a 1.
+func (r *Rendu) ArmeObjetGagnant() {
+	r.objetGagnant = make([]int32, r.NX*r.NY)
 }
 
 // ArmeTypeGagnant fait retenir, pour chaque pixel, le TYPE d'objet qui a gagne le z-buffer.

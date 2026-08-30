@@ -245,6 +245,20 @@ type OptionsCuissonForge struct {
 	// SeuilSubstitution : ecart minimal en metres au-dessus de la reference pour qu une surface
 	// soit rabattue. Zero = rabattre des qu il y a un ecart. Voir SeuilSubstitution.
 	SeuilSubstitution float64
+
+	// SeuilCouverture : seuil de carte couverte propre a la carte, en part de matiere.
+	// Zero = `SeuilCarteCouverte`. Voir SeuilCouvertureCarte pour la justification.
+	SeuilCouverture float64
+
+	// PositionsJouees : positions monde des joueurs, tirees des rejeux decodes. Vide = le levier
+	// ne fait rien. Voir positions_jouees.go.
+	PositionsJouees []PositionJouee
+	// RayonPositions : rayon de garde autour d une position courue, en metres. ZERO =
+	// `RayonPositionsJouees` (4 m).
+	RayonPositions float64
+	// SeuilRecollement : part de la surface d un objet que le masque doit garder pour que l objet
+	// survive ENTIER. ZERO = `SeuilRecollement` (un tiers) ; NEGATIF = recollement desarme.
+	SeuilRecollement float64
 }
 
 // CuitCarteForge rend le fond de carte d'une carte Forge en posant les modeles de ses objets.
@@ -283,6 +297,9 @@ func CuitCarteForge(ctx context.Context, opts OptionsCuissonForge) (*Rendu, Bila
 	precedentSeuil := SeuilSubstitution
 	SeuilSubstitution = opts.SeuilSubstitution
 	defer func() { SeuilSubstitution = precedentSeuil }()
+	precedentCouverture := SeuilCouvertureCarte
+	SeuilCouvertureCarte = opts.SeuilCouverture
+	defer func() { SeuilCouvertureCarte = precedentCouverture }()
 	s := NewSurfaceReference(opts.Ancres)
 	if opts.NavmeshReference != nil {
 		precedent := NiveauHautNavmesh
@@ -296,6 +313,7 @@ func CuitCarteForge(ctx context.Context, opts OptionsCuissonForge) (*Rendu, Bila
 	}
 
 	r.ArmeTypeGagnant()
+	r.ArmeObjetGagnant()
 	if opts.SolVuDuDessous {
 		precedentBas := MargeSolVuDuDessousCarte
 		MargeSolVuDuDessousCarte = opts.MargeSolBas
@@ -321,12 +339,12 @@ func CuitCarteForge(ctx context.Context, opts OptionsCuissonForge) (*Rendu, Bila
 	switch {
 	case opts.SansSubstitution:
 		b.TauxCouverture = r.TauxCouvertureMesure()
-		b.CarteCouverte = b.TauxCouverture > SeuilCarteCouverte
+		b.CarteCouverte = b.TauxCouverture > SeuilCouvertureEffectif()
 		slog.InfoContext(ctx, "mapfond: substitution NON appliquee sur demande", "carte", opts.Cle,
 			"couverture", fmt.Sprintf("%.1f%%", 100*b.TauxCouverture))
 	case opts.EcreteToits:
 		b.TauxCouverture, b.CellulesSubstituees, b.CellulesEcretees = r.EcretteToits(s, opts.PlafondArene)
-		b.CarteCouverte = b.TauxCouverture > SeuilCarteCouverte
+		b.CarteCouverte = b.TauxCouverture > SeuilCouvertureEffectif()
 	default:
 		b.TauxCouverture, b.CellulesSubstituees, b.CarteCouverte = r.AppliqueReference(s, opts.SubstitutionSansPortee)
 	}
@@ -355,6 +373,22 @@ func CuitCarteForge(ctx context.Context, opts OptionsCuissonForge) (*Rendu, Bila
 		n := r.RogneAuxAltitudesProches(seuil, marge)
 		slog.InfoContext(ctx, "mapfond: matiere loin du niveau de jeu effacee", "carte", opts.Cle,
 			"seuil", seuil, "marge", marge, "cellules", n)
+	}
+	if len(opts.PositionsJouees) > 0 {
+		rayon := RayonPositionsJouees
+		if opts.RayonPositions > 0 {
+			rayon = opts.RayonPositions
+		}
+		seuilRec := SeuilRecollement
+		if opts.SeuilRecollement < 0 {
+			seuilRec = 0 // negatif = recollement desarme explicitement
+		} else if opts.SeuilRecollement > 0 {
+			seuilRec = opts.SeuilRecollement
+		}
+		n := r.RogneAuxPositionsJouees(opts.PositionsJouees, rayon, seuilRec)
+		slog.InfoContext(ctx, "mapfond: matiere hors des positions jouees effacee", "carte", opts.Cle,
+			"positions", len(opts.PositionsJouees), "rayon", rayon, "cellules", n,
+			"seuilRecollement", seuilRec, "objetsRetires", r.RecollementRetires)
 	}
 	if opts.RogneAuxComposantesAncrees {
 		n, gardees, total := r.GardeComposantesAncrees(opts.Ancres)
@@ -443,7 +477,7 @@ func poseObjetsForge(ctx context.Context, r *Rendu, b *BilanCuisson,
 	etendues := map[int32]float64{}
 	comptes := map[int32]int{}
 	defer func() { journaliseTypesEtendus(ctx, b, etendues, comptes) }()
-	for _, o := range objets {
+	for i, o := range objets {
 		if _, mort := TypesVolumesDeMort[o.TypeID]; mort {
 			b.VolumesDeMort++
 			continue
@@ -485,6 +519,7 @@ func poseObjetsForge(ctx context.Context, r *Rendu, b *BilanCuisson,
 		}
 		in := InstanceForge(o)
 		r.TypeCourant = o.TypeID
+		r.ObjetCourant = int32(i) + 1 // zero = aucune instance
 		if _, vu := etendues[o.TypeID]; !vu {
 			etendues[o.TypeID] = etendueMondeDe(a, in)
 		}
