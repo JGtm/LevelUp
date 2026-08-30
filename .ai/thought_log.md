@@ -77686,3 +77686,40 @@ restent : (a) refaire l'oracle sur un relevé plus dense ou plusieurs films avan
 identification, avec le controle par translation comme gate ; (b) reprendre les deux pistes
 DERIVEES deja nommees en phase 3 (`player-aim-assist-component`, `player-desired-frame-
 configuration-component`), en les traitant comme des correlats et jamais comme l'etat.
+
+## [2026-08-30] Visee lunette, phase 7 (pilotage) — RETRACTATION de la phase 6 apres contre-verification ; le canal restant est LA COMMANDE JOUEUR dans la trame de tick — En cours
+
+**Verification sur pieces du lot A (pilote)** : l'instrument decisif O4 rejoue a l'identique chez
+moi (couverture 10/12 ; 7 902 decalages temoins ; moyenne 2,9 ; max 11 ; **1,04 % des decalages
+font aussi bien -> NON SIGNIFICATIF au seuil declare de 1 %**). O4bis montre un plateau a 10 sur
+[-1 s ; +1 s] qui decroit symetriquement : l'alignement existe mais faible, et avec ~30 types
+scannes en phase 6, une queue a 1 % devait sortir quelque part (effet des comparaisons multiples).
+
+**RETRACTATION FORMELLE** : « le zoom est le type 114 » (phase 6, commit eaa518cf1) est RETIRE.
+Double verrou : statistique (lot A) + statique (lot B : l'applicateur du 114 est de la vraie
+logique de siege de vehicule ; type 126 unit_zoom dedie, mais < 123 requis par le dispatcher et
+0 occurrence sur 41 M de paquets). Le livrable qui RESTE de ces lots : l'enveloppe du 114
+entierement decodee (b2a059c4a), la table domaine->plage du var-int (note lot B), et le piege
+leve : UN PAQUET DELTA = EN-TETE D'EVENEMENT PUIS FLUX D'ETAT DU TICK.
+
+**Raisonnement d'elimination qui designe le canal restant** :
+1. Theater PREMIERE PERSONNE affiche le zoom (verite terrain utilisateur, chronologie 00162144).
+2. L'etat de zoom (unite+0x461/0x462) n'a que deux sources pilotees par donnees : l'evenement
+   126 (exclu : jamais dans les films) et l'octet 6 de la COMMANDE JOUEUR (FUN_1406db688).
+3. Donc les commandes sont rejouees depuis le film. Les paquets a en-tete « 80 » arrivent a
+   ~22/s = la cadence d'un lot de commandes par tick ; la region de tete de ces paquets (avant
+   les records d'entites) est le suspect n1.
+
+**Lot C lance** (agent Opus) : correlation d'ONDE CARREE — l'onde de zoom complete de Nilton
+(50 s x ~22 Hz ~ 1 100 echantillons par position de bit, bandes de garde ±1,2 s aux transitions)
+correlee bit a bit aux positions fixes [7..512] des payloads (toutes tetes / tetes 80 / offsets
+depuis la fin), seuils declares avant mesure + controle par translation obligatoire,
+contre-verification sur l'onde de Madina.
+
+**Integration** : la note du lot B (.ai/V7.5/film_re/NOTE_ENVELOPPE_EVENTS_2026-08-30.md,
+561 lignes — table 0x1451f98d0, largeurs par domaine, handle generation<<30|base+index, sonde
+domaine 1 seulement, catalogue des types 50..127) est versionnee par ce commit. Note lot B2
+(emetteurs) attendue.
+
+**Prochaine etape** : CR du lot C (onde) et du lot B2 (emetteur + sieges d'arme) ; puis soit le
+decodage du bloc commandes, soit l'elargissement de l'onde aux autres regions de la trame.
