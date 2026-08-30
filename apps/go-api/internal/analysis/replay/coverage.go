@@ -180,6 +180,12 @@ type Coverage struct {
 	// `placements` et `groundWeapons` : un film sans ramassage et un film qu'on n'a pas su
 	// balayer rendent tous deux zéro changement — seuls ces compteurs les distinguent.
 	WeaponChanges *WeaponChangeCoverage `json:"weaponChanges,omitempty"`
+	// EquipmentChanges est la couverture des RAMASSAGES ET CONSOMMATIONS d'équipement
+	// (schéma 25, cf. document_equipment_changes.go). Elle porte, seule de toutes les
+	// couvertures du rejeu, un TÉMOIN DE COMPLÉTUDE : le compteur de rotation d'i48 dit
+	// combien d'émissions ont été MANQUÉES (`missedEstimate`). Publiée même quand aucun
+	// changement ne l'est, pour la même raison que `weaponChanges`.
+	EquipmentChanges *EquipmentChangeCoverage `json:"equipmentChanges,omitempty"`
 	// ObjectiveObjects est la couverture du calque des objets d'objectif LIBRES : combien le
 	// manifeste en déclare de publiables, combien de vies et de points sortent, et ce qui a été
 	// écarté hors axe (cf. document_objective_objects.go).

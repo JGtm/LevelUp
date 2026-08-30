@@ -362,7 +362,7 @@ func publishHeldWeapon(idHigh, idLow *uint32) {
 }
 
 func consumeWeaponStateTypeInfoVariant(br *BitReader) (variant uint32) {
-	var idHigh uint32 = noVariant
+	idHigh := noVariant
 	defer publishHeldWeapon(&idHigh, &variant)
 	if !br.ReadBit() { // FUN_14080d69c gate
 		consumeWeaponStateTail(br) // tail still runs (FUN_1407f08bc + FUN_1406d01fc)

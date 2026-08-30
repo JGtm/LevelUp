@@ -388,8 +388,28 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   passe ni par la suppression de l'entité (1/71), ni par son attachement (1/21), ni par un
 	//   appariement par les armes (5-12 % contre 70 % exigés). Détail :
 	//   internal/analysis/replay/document_weapon_changes.go.
-	if SchemaVersion != 24 {
-		t.Fatalf("SchemaVersion = %d, attendu 24 : incrémenter exige une raison écrite ci-dessus "+
+	//
+	// v25 — LES RAMASSAGES ET LES CONSOMMATIONS D'ÉQUIPEMENT (`equipmentChanges`). La capacité
+	//   d'armure suit la règle de l'arme en main : son composant (i48) n'entre au masque du flux
+	//   delta que lorsqu'elle CHANGE. Le document portait déjà `abilities` — ce qu'un joueur
+	//   PORTE ; ce calque dit ce qui lui ARRIVE. Champ optionnel, mais la version monte pour la
+	//   raison exacte des montées v14/v16/v21/v22/v23/v24 : un artefact 24 doit se lire
+	//   « à re-cuire », il ne peut porter aucun ramassage d'équipement.
+	//   NIVEAU DE PREUVE — MEILLEUR QUE CELUI DE v24, et pour une raison de format qu'il faut
+	//   lire ici : le compteur de rotation d'i48 avance de 1 à chaque émission (zéro répétition
+	//   sur 50 transitions, 3 films) et repart à 5 à la première émission de chaque vie (264 cas
+	//   sur 269). Ce calque porte donc son PROPRE TÉMOIN DE COMPLÉTUDE — un pas supérieur à 1
+	//   dénonce les émissions manquées et les compte : environ 16 pour 319 vues, soit ~95 % de
+	//   couverture LUE et non supposée, publiée dans la couverture (`missedEstimate`).
+	//   DEUX AUTRES MESURES fondent la sémantique : la porte ouverte est la CONSOMMATION et
+	//   jamais la mort (17 cas, zéro dans la dernière seconde de la vie, la plus tardive laissant
+	//   8,8 s à vivre) ; et la première émission d'une vie n'a pas un sens unique — à 0 ms de la
+	//   naissance c'est une réapparition équipée (83 % des vies d'un film), tardive c'est un
+	//   ramassage (médiane 16-18 s sur deux films d'arène, 0 % sous la seconde). Les
+	//   réapparitions sont ÉCARTÉES : les publier fausserait le décompte du simple au double.
+	//   Détail : internal/analysis/replay/document_equipment_changes.go.
+	if SchemaVersion != 25 {
+		t.Fatalf("SchemaVersion = %d, attendu 25 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }
