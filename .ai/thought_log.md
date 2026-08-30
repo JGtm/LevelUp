@@ -77081,3 +77081,52 @@ f4174. Le protocole qui en découle, à écrire avant de coder :
 c'est l'INSTRUMENT, pas le décodeur servi. Activer la bande ne change ni le schéma ni les
 artefacts — la question du schéma et de la cuisson ne se pose qu'APRÈS, si les lectures sont
 bonnes et qu'on veut les publier.
+
+
+## [2026-08-30] Rejeu — ancrage de la bande `ti=0` par oracle exterieur : NEGATIF PUBLIE
+
+**Statut** : Complete. Mesure, pas de code de production. Sonde jetable supprimee, `go vet` propre.
+
+**Mandat utilisateur** : « pour activer la bande ok ». Le diagnostic (entree precedente) avait
+montre que les deux chemins prevus echouent — images-cles trop pauvres (2 a 3 records), chasse
+par grammaire non discriminante (4 477 slots sur 8 192). Restait l'idee de l'utilisateur : se
+servir du despawn/respawn comme ORACLE.
+
+**PROTOCOLE, SEUIL ECRIT AVANT LA MESURE.**
+- Oracle, lu dans les POSITIONS sans rien decoder du moteur : sur `d9781168` (3 manches, donc
+  DEUX transitions independantes) le terrain se vide f2147->f2152 puis f4265->f4272.
+- Candidats : **EXHAUSTIFS** — les 8 192 slots de l'espace declares en bande `ti=0`. (Une
+  premiere passe n'en eprouvait que 300, tries par la chasse ; un negatif y aurait pu n'etre
+  qu'un mauvais classement. C'est la correction qui rend ce negatif recevable.)
+- Epreuve : marcher le film avec cette bande artificielle (`newGameEntityWalk`, la machinerie
+  existante) et relever `i4` (`game-engine-current-round-component`) par slot.
+- Seuil : exactement 3 valeurs distinctes CROISSANTES, exactement 2 changements, chacun dans une
+  fenetre de teleportation +/- 20 frames (2 s). 1 survivant = ancrage ; 0 ou plusieurs = negatif.
+- Critere SOUPLE en second rideau (un changement dans chaque fenetre, quoi qu'il fasse ailleurs),
+  pour distinguer « rien ne colle » de « le seuil est trop serre ».
+
+**RESULTAT : 0 SURVIVANT.** 5 469 slots sur 8 192 rendent au moins une lecture de `i4` — ce qui
+dit deja que la grammaire `ti=0` n'est pas selective : elle se laisse lire a peu pres partout.
+Rejets dominants : 2 511 slots a 1 seule valeur, 1 262 a 2 valeurs, 485 non croissants.
+Le critere souple ne retient que 2 slots, et les deux sont du bruit manifeste :
+- slot 0 : 667 changements, valeurs 9, 6, 7, 8, 10, 12, 28, 17, 1... ;
+- slot 257 : 33 changements, valeurs 0, 7, 9, 7, 13, 0, 16, 0, 2, 0, 13, 0, 24... — des entiers
+  5 bits tires au hasard, pas un compteur monotone.
+
+**CE QUE LE NEGATIF ETABLIT.** L'entite du moteur de partie n'est pas localisable dans le flux
+delta par les moyens dont dispose ce decodeur. Deux faits convergent : elle n'apparait que 2 a 3
+fois dans les images-cles (alors que les 32 entites joueur y sont a chaque fois), et AUCUN slot
+ne se comporte comme son compteur de manche. Soit son etat ne voyage pas dans les paquets delta,
+soit ses records ne suivent pas la grammaire que le registre declare pour `ti=0`.
+
+**CE QUE CA FERME, ET CE QUE CA NE FERME PAS.**
+- FERME pour l'instant : `i4` (manche), `i6` (mort subite), `i7` (periode de grace). Aller plus
+  loin demanderait de re-examiner la GRAMMAIRE elle-meme de `ti=0`, pas son ancrage — c'est un
+  autre chantier, plus profond, au resultat incertain.
+- INCHANGE : le declencheur de fin de manche reste l'etiquette statborg (`StatRecord.Round`),
+  seule source utilisable — et desormais seule source TOUT COURT, ce qui est une raison de plus
+  de la documenter comme on l'a fait (commit `8eeaba19f`).
+- TOUJOURS VALIDE : l'oracle despawn/respawn lui-meme. Il a fait son travail ici (il a permis de
+  REFUTER, ce qu'aucune autre epreuve ne savait faire), et il reste la piste pour la detection
+  de prolongation — 1/1 sur le seul match en prolongation du corpus, 0 faux positif sur 21
+  temoins.
