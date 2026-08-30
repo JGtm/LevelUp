@@ -194,7 +194,40 @@ corrige). Grammaires cablees dans lot1SkipCd5b8 / lot1SkipEff64 :
   modal ne desalignent pas l'en-tete, prouve par l'oracle arme en amont), mais le decodage
   des cibles elles-memes (victime) n'est pas fait.
 
-## LE JUGE DEFINITIF A POSER — l'oracle de trame
+## damage_aftermath (type 0, 872 k) DECODE ET PROUVE — le vrai enregistrement de touche
+
+Workflow `damage-aftermath-reader` (10 agents, decompilation parallele + verification adverse
++ synthese, corrections integrees : largeurs 19, victime = 15 bits). Grammaire complete cablee
+(lot1DecodeDamageAftermath) ; 3 references d'en-tete du type 0 = domaines 1, 1, 7 (lus dans
+l'exe, descripteur 0x144724f80 vtable+0x58). L'ORACLE DE TRAME DISCRIMINANT tranche : apres
+avoir decode l'evenement EN ENTIER, on lit le bit de continuation puis la trame de records,
+et on mesure sa PROFONDEUR (records/paquet). Au BON cadrage : **2,2-2,4 records/paquet** (une
+vraie trame de tick, cf. 0xA0 ~2,9) ; a un offset FAUX (+3 bits) : **0,17 record/paquet** (la
+trame tombe aussitot sur un faux marqueur de fin — fermeture triviale). **Facteur 13, TENU sur
+000d5950 et 00502e52** (build de reference). Le film ancien 06dfe6d9 (HI_1_8_0, registre 49
+blocs, grammaire de composants differente) rend une profondeur moindre : effet de build sur la
+trame, hors sujet damage_aftermath.
+
+PIEGE DE METHODE eprouve ici : la metrique DISCRIMINANTE est la PROFONDEUR, PAS le taux de
+fermeture (au temoin, le taux de fermeture est trompeusement HAUT — 88-90 % — parce que la
+trame desynchronisee se ferme en 0 record sur un faux marqueur ; le bon cadrage se ferme MOINS
+souvent mais va LOIN, comme 0xA0). Et la victime n'a pas d'oracle geometrique : le juge est
+structurel (la trame reprend).
+
+Ce que damage_aftermath rend (mesure, 2 films) :
+- **SOURCE (tag du degat)** : 10-11 valeurs distinctes — categoriel = l'arme/effet responsable.
+- **DEGAT (magnitude, code R(5) sur [0,16])** : distribue et groupe (1x81, 0x43, 2x20...).
+- **PARTICIPANTS** (refs d'en-tete domaine 1) : ref0 22-24 distincts, ref1 15-21 — les entites
+  blesse / responsable (plus que 8 joueurs : inclut projectiles/objets, attendu).
+- **VICTIME domaine-0 finale** : presente 6-15 % — un objet secondaire (le blesse principal est
+  vraisemblablement une des deux refs d'en-tete domaine 1, a departager).
+
+C'EST LA VOIE PRECISION / TOUCHES : chaque damage_aftermath = un coup au but, avec l'arme
+source, la magnitude, et les participants. 872 k sur le corpus. Reste a departager quelle ref
+est le blesse (semantique) et a resoudre les 5 constantes de dequantification pour la valeur de
+degat en clair.
+
+## LE JUGE DEFINITIF A POSER — l'oracle de trame (POSE pour damage_aftermath, cf. ci-dessus)
 
 Le seul oracle DISCRIMINANT pour les composites+visee : decoder l'evenement 36 EN ENTIER
 (y compris les champs post-visee : [R(1);si1:R(6)]+R(6) sous 0x2dd, R(2)+sous-lecteurs sous
