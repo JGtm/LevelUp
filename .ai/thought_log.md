@@ -1,3 +1,40 @@
+## [2026-08-30] Percer la trame — LE MODÈLE DE PAQUET EST PERCÉ : [config][liste d'événements][trame] — et la LUNETTE REVIENT dans la bobine — Complété (modèle établi)
+
+**Contexte** : lot 1, poursuite en autonomie. Après la levée de réserve à monde propre
+(0xC2 k=6 confirmé 99,3 % identique ; 0xC0 k=9 NET sur 2 films ; 0xD2/0xD3 en pelotons
+serrés = largeur VARIABLE), la mesure des largeurs par paquet a fait apparaître la
+structure : bits 2..8 = un R(7) dont la valeur tombe pile sur la table des types du lot E.
+
+**Décision technique** : formuler le modèle M — paquet delta = [1 bit configuration]
+[liste d'événements (grammaire E PROUVÉE au désassemblage : continuation, R(7) type,
+3 réfs gardées par domaine, charge)][trame de records] — et le tester DE BOUT EN BOUT sur
+la famille à charge fixe la plus courte : 0xCA = type 21 unit_zoom (charge R(2) ; domaines
+des réfs lus dans l'exe : vtable+0x58 du descripteur → 4/8/7 → R(9)/R(13)/R(13)).
+
+**Résultats chiffrés** (TestLot1EvenementZoom, 2 films × 12 chunks, critères écrits avant) :
+type lu = 21 sur **97/97 et 86/86** paquets 0xCA ; réf0 (l'unité) présente **100 %** ;
+charge = **{0,1} uniquement** = niveaux {−1, 0} = **paires entrée/sortie de lunette**
+(50/47 et 48/38) ; après l'événement, la TRAME se ferme à 37,8 % (témoin 0xA0 : 36,3 %) et
+20,0 % avec masques 1..7 à **99,4 % / 99,3 %** — M3 TENU deux fois. Chaîne 2 indépendante :
+l'arithmétique octet0 = 0xC0|(type>>1) tombe juste sur TOUTES les familles (0xD2→36
+action_weapon_fire, 0xD3→38/39 reload/throw-grenade, 0xC0→0/1 damage_aftermath,
+0xC2→4/5 projectile_detonate, 0xE9→82/83…). **Modèle établi — deux chaînes sans étape
+commune.**
+
+**Conséquences lourdes** : (1) **la conclusion « aucun événement de zoom dans la bobine »
+(chantier visée, négatif triple-verrouillé) est RÉFUTÉE** — les trois chaînes du négatif
+partageaient le même décalage d'un bit (type = octet&0x7F au lieu de bits 2..8) ; ~400 k
+événements unit_zoom sur le corpus, avec l'unité en réf0 ; (2) 0xD2 = action_weapon_fire
+(la charge du type 36 = cible pour visée complète + victime) ; (3) le « gisement 0xD3 » =
+recharges + amorces de grenade ; (4) 0xC0 (983 k) = damage_aftermath, gisement dégâts ;
+(5) le mystère « en-tête par famille » est dissous : c'était la longueur de l'événement de
+tête. Note : `film_re/NOTE_MODELE_EVENEMENTS_2026-08-30.md`.
+
+**Conclusion / prochaine étape** : associer réf0 (domaine 4) aux joueurs et croiser avec la
+vérité terrain lunette (gate produit) ; percer la charge du type 36 (largeurs R(n) sur
+pile, Ghidra) ; bit8 par famille sur corpus. Le user est informé (la lunette était SON
+objectif d'origine).
+
 ## [2026-08-30] Percer la trame — lot 1 suite : cadrage 0xC2/0xD2 ÉTABLI sur 2 films, RÉTRACTATION du DEL de tête — En cours
 
 **Contexte** : poursuite du lot 1 (session du soir). Trois instruments ajoutés au même
