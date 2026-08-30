@@ -78131,3 +78131,129 @@ deux equipes ne l'avait fait.
 **Prochaine etape** : (a) corriger la page Notion publiee (elle affirme le bit de continuation
 comme prouve — a temperer) ; (b) decision utilisateur sur le lot « sac de proprietes / fiabilite
 des kills » ; (c) la 3e section de chunk_00 (538 ko) est un chantier neuf a fort potentiel.
+
+## [2026-08-30] Visee lunette, LOT F — le DERNIER canal (offset variable dans un composant) : negatif adosse a une puissance mesuree, et la marche couvre 100 % du record — Complete
+
+**Mandat** : le seul emplacement que les six negatifs precedents n'avaient pas pu atteindre — un
+bit DANS LA CHARGE UTILE d'un composant deja present, donc a offset VARIABLE (il se deplace d'un
+record a l'autre selon les portes amont). Le balayage du lot C, indexe depuis le DEBUT du
+payload, ne pouvait structurellement pas le voir. Quatre instruments sous garde
+`COMPOSANT_FILM` : `visee_composant_research_test.go` (collecte + couverture),
+`_pont_test.go` (slot -> joueur), `_score_test.go` (colonnes + domaines), `_verdict_test.go`
+(mesure, controle, verdict). Aucun code de production touche.
+
+**SEUILS ECRITS AVANT MESURE** : S1 candidat >= 0,95 avec >= 200 echantillons par classe ; S2 a
+suivre >= 0,85 ; S3 sous-dimensionne ; S4 verdict positif exige p(max GLOBAL) < 1 % au controle
+par translation ; S5 puissance publiee ; S6 recevabilite (composant >= 200 records, decalage
+temoin >= 30 par classe). Moteur d'onde, gardes et translation REPRIS du lot C sans reecriture.
+
+**DEUX ECHECS DE CHEMIN, MESURES ET PUBLIES PLUTOT QUE MASQUES.**
+1. *La marche SEQUENTIELLE ne marche pas sur ce film.* `DecodeFrameViews` rend au mieux
+   1 152 records bipedes sur 3 chunks et **ZERO sur les slots cibles**, pour les cinq largeurs
+   d'identifiant bas balayees (10..14). Bascule sur le chemin ANCRE : `ScanBipedRecords`
+   (ancrage sur la grammaire d'en-tete bipede) + `SetRecordMaskHook` (masque + bit apres i0) +
+   **`ConsumeComponentAt`** — le deser de PRODUCTION, exporte. Enchainee sur les index du masque,
+   cette derniere EST `walkRecordComponents` vue de l'exterieur du paquet. Appariement
+   hook <-> record EXACT (meme appel non filtre) : 0 paquet ecarte sur 27 447.
+2. *Le pont slot -> joueur etait troue, et c'etait le meme piege qu'en phase 6.* La premiere mort
+   de Nilton410 tombe a 1 333 133 ms de film ; le fragment du slot 513 court sur
+   [1 211,1 ; 1 337,4] s — sa fin depasse la mort de 4,3 s (le corps reste replique), donc
+   `nameLivesByDeaths` ne le nomme pas, et c'est EXACTEMENT le fragment que le releve etiquette.
+   Sans lui : 0 record dans la fenetre, et un « negatif » qui n'aurait rien mesure. Rattachement
+   a **trois volets, unicite exigee** : (a) mort a moins de 6 s de la fin du fragment, (b) vie
+   nommee du meme joueur dans les 15 s qui suivent, (c) **aucune mort du joueur A L'INTERIEUR du
+   fragment** — ce dernier volet n'est pas un reglage mais une impossibilite (une vie ne contient
+   pas la mort de son porteur), et il a fait passer le slot 513 de 2 candidats a 1. Marges
+   publiees : mort a -4 285 ms, reapparition a +3 787 ms. Le slot 520 reste NON RATTACHE
+   (3 candidats) et c'est publie tel quel.
+
+**COUVERTURE DE LA MARCHE (F5) — IL N'Y A PAS D'ANGLE MORT.** 15 505 records bipedes ancres sur
+les slots de Nilton, 15 491 marches (14 ecartes hors vie nommee) : **15 491 traverses EN ENTIER,
+soit 100,00 %** ; 64 451 composants annonces par les masques, **64 451 consommes (100,00 %)** ;
+part moyenne consommee par record 100,00 % ; rang moyen du dernier composant consomme i26,5.
+Le negatif porte donc sur le record ENTIER, pas sur son debut. 7 composants sont recevables
+(>= 200 records) : i0 position (54 bits), i1 velocite (2 offsets communs), i5 bouclier (29),
+i21 visee (25), **i25 `unit-command-tick-component` (10)**, i32 et i35 `weapon-state-overheated`
+(9). 138 couples (composant, offset relatif) balayes.
+
+**LA FENETRE, ET CE QU'ELLE COUTE** : 2 458 records du joueur dans [35 ; 95] s de feed ; garde
+1,2 s -> 36 « zoome » / 1 563 « pas zoome » ; garde 0,5 s -> 90 / 1 899. Les deux variantes sont
+donc SOUS-DIMENSIONNEES (S3, seuil 200) : le verdict repose sur le seul controle.
+
+**LE RESULTAT DE METHODE, ET IL EST NEUF : LA PUISSANCE SE PAIE AU NOMBRE D'HYPOTHESES.** Sur le
+domaine COMPLET (138 couples), 4,75 % des decalages temoins atteignent 1,0000 — au-dessus du
+seuil de 1 %. Autrement dit **un canal PARFAIT n'y serait pas distingue du hasard**, et le
+« negatif » global n'y vaut rien. L'instrument le declare lui-meme : le verdict est NON
+CONCLUANT, pas negatif. Cause identifiee : le confondant SPATIAL — les bits de position (i0)
+suivent la trajectoire, donc separent deux intervalles de temps disjoints sans rien dire d'un
+etat, et ils saturent le classement. La reponse n'a pas ete de retirer i0 apres coup, mais de
+mesurer **un domaine par composant** : le meme instrument, restreint, retrouve une puissance de
+0,00 %.
+
+**RESULTATS PAR COMPOSANT** (score = exactitude equilibree ; p = p(max global) ; puissance = part
+des temoins atteignant 1,0000) :
+
+| domaine | garde | meilleur | score | p(max) | puissance | verdict |
+|---|---|---|---|---|---|---|
+| D1 COMPLET (138 couples) | 1,2 s | i0 off. 10 | 0,9363 | 23,97 % | 4,75 % | NON CONCLUANT |
+| D1 COMPLET | 0,5 s | i0 off. 28 | 0,7770 | 74,56 % | 2,03 % | NON CONCLUANT |
+| D3 ETAT (hors i0/i1) | 1,2 s | i25 off. 2 | 0,7527 | 71,27 % | 4,18 % | NON CONCLUANT |
+| D3 ETAT | 0,5 s | i21 off. 13 | 0,7486 | 70,96 % | 2,03 % | NON CONCLUANT |
+| **i25 command-tick** | 1,2 s | off. 2 | 0,7527 | 9,29 % | **0,00 %** | **NEGATIF** |
+| **i25 command-tick** | 0,5 s | off. 2 | 0,5884 | 46,70 % | **0,00 %** | **NEGATIF** |
+| i0 position | 1,2 s | off. 10 | 0,9363 | 11,88 % | 0,58 % | NEGATIF |
+| i0 position | 0,5 s | off. 28 | 0,7770 | 41,99 % | 0,00 % | NEGATIF |
+| i1 velocite | 0,5 s | off. 1 | 0,5189 | 0,33 % | 0,00 % | NEGATIF (score sous S2) |
+| i21 visee | 0,5 s | off. 13 | 0,7486 | 24,58 % | 0,00 % | NEGATIF |
+| i5, i32, i35 | les deux | — | — | — | — | classe « zoome » < 30 : AUCUN verdict |
+
+**CE QUE LE LOT ELIMINE, ET AVEC QUELLE FORCE.** Le resultat central porte sur **i25
+`unit-command-tick-component`** : ce composant n'a pas ete choisi pour son score, il est DESIGNE
+par la phase 7, qui avait etabli au desassemblage que l'etat de zoom d'une unite n'a que deux
+sources ecrites par des donnees, dont **l'octet 6 de la COMMANDE JOUEUR** (`FUN_1406db688` :
+`unite+0x462 = commande[6]`). C'est l'hypothese la plus ancienne du dossier, et elle n'avait
+jamais eu de test a sa mesure. Verdict : **aucun de ses 10 bits de prefixe ne porte l'etat de
+lunette, avec une puissance de 0,00 %** — un canal parfait, et meme un canal a 0,95, y serait
+detecte. Meme conclusion, meme puissance, pour i21 (la visee) et i1 ; i0 conclut aussi (0,58 % et
+0,00 %). Restent hors verdict i5, i32 et i35, trop intermittents pour que la fenetre en donne 30
+echantillons zoomes — c'est le seul trou du lot, et il est nomme.
+
+**LA LECON DU LOT C SE REPRODUIT, A L'IDENTIQUE** : p(position) vaut 1,15 % et **0,33 %** sur le
+domaine complet, ce qui aurait ete publie comme trouvaille par le controle du lot A. p(max) le
+refuse (23,97 % et 74,56 %). Troisieme fois que ce chantier voit un controle trop permissif
+fabriquer un signal ; premiere fois qu'on voit AUSSI la puissance s'effondrer sous le nombre
+d'hypotheses.
+
+**F4 non applicable** : aucun candidat n'est sorti, donc pas de contre-verification Madina ni
+d'autre film. Rappel du lot C : le creneau unique de Madina97294 (1,3 s) laisse 290 ms en garde
+courte, soit ~7 records — structurellement sous le seuil de recevabilite.
+
+**BILAN DES CANAUX — LE SEPTIEME TOMBE.** 1. composant du registre ECS : aucun · 2. queue d'i21 :
+constante · 3. evenement dedie : absent (deux structures) · 4. tete du record de degat : aucun
+bit · 5. alignement d'un type d'evenement : non significatif · 6. bit a POSITION FIXE : aucun,
+puissance mesuree (lot C) · **7. bit a OFFSET RELATIF dans un composant : aucun sur les quatre
+composants qui rendent un verdict, dont la commande du tick, puissance 0,00 %**. La couverture
+etant de 100 %, ce n'est pas un negatif partiel.
+
+**Ce qui reste ouvert, et honnetement** : (a) i5/i32/i35, sans verdict faute d'echantillons —
+leve par un releve plus dense, pas par un instrument de plus ; (b) le domaine COMPLET reste NON
+CONCLUANT : il faudrait ~5 a 10 fois plus d'echantillons « zoome » pour que 138 hypotheses
+tiennent ; (c) l'hypothese « les commandes ne sont pas dans le film » (intuition utilisateur)
+n'est ni prouvee ni refutee, mais elle est desormais la lecture la plus economique.
+
+**DEMANDE (helper de production, NON FAITE — regle « aucune modification de production »)** : la
+constante `i0TailBits = 2` de `filmdec/offline_aim.go` a du etre RECOPIEE dans l'instrument
+(`vfI0TailBits`) faute d'export. C'est la seule constante de grammaire dupliquee par ce lot. Si
+un autre instrument en a besoin, l'exporter (ou exposer un `filmdec.BipedComponentWalk` qui rende
+directement les couples (index, StartBit)) evitera la troisieme copie.
+
+**Gates** : `gofmt` propre · `CGO_ENABLED=0 go vet ./internal/analysis/replay/` propre · suites
+`replay` (19,4 s) et `filmdec` (0,7 s) **0 echec** · 4 fichiers de 385, 434, 206 et 414 lignes,
+tous sous garde d'environnement (saute en CI) · huit executions reelles conservees, dont les deux
+echecs de chemin.
+
+**Prochaine etape** : le canal d'etat de lunette est epuise cote film pour ce releve. Soit (A) un
+releve Theater DENSE (3-4 min, episodes longs) qui redonnerait de la puissance au domaine complet
+et couvrirait i5/i32/i35, soit (B) le repli produit deja recommande en phase 7 : piloter le cone
+du rejeu par heuristique client (arme a lunette tenue + reticule sur cible), affichee comme
+estimation.
