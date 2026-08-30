@@ -191,6 +191,18 @@ export interface ReplayText {
    *  le même intitulé — ouvrir dit ce qu'on va trouver derrière. */
   settingsButton: string
   settingsClose: string
+  /**
+   * LA LECTURE : la seule section du tiroir qui parle du LECTEUR et non de ce qu'il montre
+   * (demande utilisateur du 2026-08-29, point 22 — « lecture automatique dans les réglages,
+   * avec persistance du choix »).
+   *
+   * L'INFOBULLE PORTE LA RÉSERVE, et elle n'est pas décorative : ce réglage ne commande pas le
+   * rejeu ouvert, il décide de son état de DÉPART. Sans cette phrase, on l'essaierait comme un
+   * bouton « Lecture » et on conclurait qu'il ne marche pas.
+   */
+  playbackTitle: string
+  autoPlay: string
+  autoPlayHint: string
   /** Calques que le lecteur peut éteindre. */
   layers: string
   layerAim: string

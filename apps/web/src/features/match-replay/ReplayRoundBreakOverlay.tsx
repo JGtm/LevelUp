@@ -18,9 +18,16 @@
  * message qui paraîtrait trente secondes à côté serait pire qu'aucun message. Sur un mode à manche
  * unique, `roundTransitions` est vide : rien ne se rend jamais.
  *
- * C'EST AUSSI LE POINT DE DÉCLENCHEMENT DU SON « manche terminée ». La détection de bascule
- * (`roundTransitions`) est partagée avec la piste sonore : le jour où l'asset est fourni, le son
- * se branche sur la même mesure (cf. `replaySound.ts`, bloc des sons d'objectif).
+ * ET « TRENTE SECONDES À CÔTÉ » N'ÉTAIT PAS UNE FIGURE DE STYLE (correctif du 2026-08-29) : la
+ * bascule était datée au DÉBUT de la manche suivante, c'est-à-dire au premier point qu'on y
+ * marque — 19 à 34 s après la fin de la manche annoncée, mesuré sur les quatre témoins
+ * multi-manches. Le message paraissait donc par-dessus la manche suivante, déjà commencée. Il
+ * paraît maintenant à la FIN de la manche, l'instant même qui remplit la pastille du bandeau
+ * (`roundsLogic`, en-tête) — un message se déclenche sur son événement, pas sur son voisin.
+ *
+ * C'EST AUSSI LE POINT DE DÉCLENCHEMENT DU SON « manche terminée » (`roundOverSound.ts`, câblé
+ * depuis le 2026-08-28) : la détection de bascule est partagée avec la piste sonore, donc le
+ * recalage vaut pour les deux d'un seul coup — l'image et la voix ne peuvent pas diverger.
  */
 import { useMemo } from 'react'
 

@@ -74,6 +74,10 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     stopRecordingShort: 'Arrêter',
     settingsButton: 'Réglages',
     settingsClose: 'Fermer les réglages',
+    playbackTitle: 'Lecture',
+    autoPlay: 'Lecture automatique',
+    autoPlayHint:
+      "Allumé, le rejeu démarre tout seul à l'ouverture de la page. Éteint — le réglage par défaut — il s'ouvre en pause au coup d'envoi et attend le bouton Lecture. Le choix est retenu d'un match à l'autre ; il ne met ni en lecture ni en pause le rejeu déjà ouvert.",
     layers: 'Calques',
     layerAim: 'Visée',
     layerAimHint:
@@ -397,6 +401,10 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     stopRecordingShort: 'Stop',
     settingsButton: 'Settings',
     settingsClose: 'Close settings',
+    playbackTitle: 'Playback',
+    autoPlay: 'Auto-play',
+    autoPlayHint:
+      'Turned on, the replay starts on its own when the page opens. Turned off — the default — it opens paused at kickoff and waits for the Play button. The choice is kept from one match to the next; it neither plays nor pauses a replay that is already open.',
     layers: 'Layers',
     layerAim: 'Aim',
     layerAimHint:

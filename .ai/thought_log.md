@@ -77034,3 +77034,50 @@ annoncés en v1, et 999 bruts sans le marqueur) :
 `levelup backfill-killsource --online --gamertag JGtm --limit 20` puis sans limite. Surveiller
 ensuite `killsource_postsync_backlog_restant` et `killsource_postsync_client_sans_film` sur
 `/debug/vars` — le second doit rester à zéro.
+
+## [2026-08-30] Rejeu — pourquoi la bande `ti=0` est vide : diagnostic mesuré, et le correctif facile RÉFUTÉ
+
+**Statut** : Diagnostic complet, aucun code de production touché. Sondes jetables supprimées.
+
+**Contexte** : l'utilisateur a validé « pour activer la bande ok ». Avant de toucher quoi que ce
+soit, il fallait savoir POURQUOI elle est vide. Trois mesures, deux films (`d9781168` Dredge,
+`64e8adfa` CTF en prolongation), instrument existant `TestGameEntitiesPhase0` + une sonde jetable.
+
+**CE QU'ON SAIT MAINTENANT, ET QUI N'ÉTAIT PAS ÉCRIT.**
+
+1. **Le slot du moteur de partie EXISTE et il est identifié** : `3072` sur d9781168, `1536` sur
+   64e8adfa. Il porte bien l'archétype 0 dans les images-clés.
+2. **Il est écarté par la règle « slot recyclé »** (`len(tis) > 1`, `gameEntityBands`) : il porte
+   AUSSI un second archétype — `37` sur un film, `42` sur l'autre. Contre-épreuve : les 32 slots
+   joueur (ti=5) sont TOUS mono-archétype, 0 recyclé. La règle ne tue que le moteur.
+3. **MAIS LE CORRECTIF FACILE EST RÉFUTÉ, et c'est le résultat qui compte.** Compte des records
+   d'image-clé sur ce slot : **2 au total** sur d9781168 (ti=0 ×1, ti=37 ×1), **3** sur 64e8adfa
+   (ti=0 ×2, ti=42 ×1). Le moteur n'apparaît donc que **deux ou trois fois dans tout le film**.
+   Or la construction de bande repose sur la prémisse INVERSE, écrite dans son en-tête : « Le
+   moteur de partie et les entités joueur vivent TOUTE la partie : elles sont présentes à CHAQUE
+   image-clé ». **Cette prémisse est fausse pour ti=0.** Relâcher la règle ancrerait la bande sur
+   une ou deux observations — une supposition, pas une mesure.
+4. **La chasse par grammaire n'est pas discriminante** (`CLOCK_HUNT=1` sur Dredge, jamais lancé
+   sur ce film jusqu'ici) : **4 477 slots sur 8 192** rendent au moins une lecture d'horloge de
+   manche. Plus de la moitié de l'espace de slots « marche » : c'est du bruit.
+
+**CONSÉQUENCE** : activer la bande n'est pas un ajustement de règle. Il manque un ORACLE
+DISCRIMINANT — quelque chose d'extérieur au décodage qui dise « à cet instant précis, la manche a
+changé », pour éprouver les slots candidats.
+
+**ET CET ORACLE, L'UTILISATEUR L'A DÉJÀ NOMMÉ** (« despawn et respawn, qui peuvent servir
+d'oracle »). Les instants de téléportation d'entracte se lisent dans les POSITIONS, sans rien
+décoder du moteur : sur Dredge, terrain vidé f2147→f2152 et f4265→f4272, fins de manche f2062 et
+f4174. Le protocole qui en découle, à écrire avant de coder :
+- candidats : les slots qui rendent une lecture d'horloge (4 477 sur Dredge) ;
+- épreuve : décoder `i4` (manche courante) sur chaque candidat et retenir ceux dont la valeur
+  change AUX DEUX téléportations (±1 s) et reste constante ailleurs ;
+- seuil écrit d'avance : sur un film à 3 manches, le vrai slot rend exactement 3 valeurs
+  distinctes croissantes et 2 changements ; un slot de bruit n'a aucune raison de tomber deux
+  fois sur la bonne image. Un seul survivant = ancrage ; zéro ou plusieurs = négatif publié.
+- Dredge est le témoin idéal : 3 manches, donc DEUX transitions indépendantes.
+
+**RIEN N'EST TOUCHÉ EN PRODUCTION.** La construction de bande vit dans un fichier `_test.go` :
+c'est l'INSTRUMENT, pas le décodeur servi. Activer la bande ne change ni le schéma ni les
+artefacts — la question du schéma et de la cuisson ne se pose qu'APRÈS, si les lectures sont
+bonnes et qu'on veut les publier.

@@ -1,9 +1,9 @@
 /**
  * ReplaySettingsDrawer — LE TIROIR DE RÉGLAGES du rejeu (décision utilisateur du 16/08) :
- * calques, effets d'événement, son (+ filtre par catégorie), vitesse. Regroupe ce qui vivait
- * éparpillé dans la barre du canvas — AUCUN réglage n'est réinventé ici, chacun garde sa
- * règle et sa persistance (calques/effets/vitesse : useReplaySettings ; son et catégories :
- * useReplaySound).
+ * lecture, calques, effets d'événement, son (+ filtre par catégorie), vitesse. Regroupe ce qui
+ * vivait éparpillé dans la barre du canvas — AUCUN réglage n'est réinventé ici, chacun garde sa
+ * règle et sa persistance (lecture/calques/effets/vitesse : useReplaySettings ; son et
+ * catégories : useReplaySound).
  *
  * PANNEAU EN SURIMPRESSION, PAS UNE MODALE (retour de planche du 16/08 : « je vois plus un
  * panneau par dessus »). Il se pose SUR la carte, dans le cadre du rejeu — le canvas ne se
@@ -12,26 +12,59 @@
  * l'ouverture. Ce qui n'en est pas : ni fond assombri, ni piège de focus, ni lecture
  * suspendue — le rejeu continue de tourner derrière.
  *
- * DÉCOUPÉ EN SECTIONS (Layers/Effects/Heatmap/Speed/Sound), chacune sa propre fonction : un
- * seul corps de composant pour toutes dépassait le seuil de lisibilité (CLAUDE.md n°5,
- * fonction ≤ 80 lignes) sans y gagner en clarté — des blocs indépendants s'y prêtent mieux.
+ * DES INTERRUPTEURS, PLUS DES BOUTONS (retour utilisateur du 2026-08-29 : « pour les réglages
+ * je préfère un toggle plutôt que des boutons comme aujourd'hui »). Tout ce qui est un OUI/NON
+ * passe par `SettingsToggle`, devenu un vrai interrupteur `role="switch"` ; les CHOIX EXCLUSIFS
+ * (lecture et portée de la carte de chaleur, couleur des points) gardent le bouton pressé sous
+ * le nom `SettingsChoice` — la nuance et sa raison sont dans `ReplaySettingsToggle.tsx`.
+ *
+ * DÉCOUPÉ EN SECTIONS (Playback/Layers/Effects/Heatmap/Colors/Sound), chacune sa propre
+ * fonction : un seul corps de composant pour toutes dépassait le seuil de lisibilité
+ * (CLAUDE.md n°5, fonction ≤ 80 lignes) sans y gagner en clarté — des blocs indépendants s'y
+ * prêtent mieux. Les deux plus lourdes vivent dans leur propre fichier (`ReplayHeatmapSection`
+ * le 2026-08-18, `ReplaySettingsLayers` le 2026-08-29) : c'est ce qui tient ce fichier sous
+ * les 500 lignes du dépôt.
  */
 import { useEffect, useRef, type RefObject } from 'react'
 
-import { InfoMark, SettingsToggle } from './ReplaySettingsToggle'
+import { InfoMark, SettingsChoice, SettingsToggle } from './ReplaySettingsToggle'
 
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
 import { HeatmapSection, type ReplayHeatmapControls } from './ReplayHeatmapSection'
+import { LayersSection } from './ReplaySettingsLayers'
 import { SOUND_CATEGORIES } from './replaySound'
 import { MARKER_COLORS_MODES, type MarkerColorsMode } from './useReplaySettings'
 import type { ReplaySound } from './useReplaySound'
 
-/** Réexporté : la section a déménagé (ReplayHeatmapSection), sa surface d'appel non. */
+/** Réexportés : les sections ont déménagé, la surface d'appel du tiroir n'a pas bougé. */
 export type { ReplayHeatmapControls } from './ReplayHeatmapSection'
+export type {
+  ReplayFlagControls,
+  ReplayPlacementControls,
+  ReplaySkullCarrierControls,
+  ReplayVipCrownControls,
+  ReplayWeaponPadControls,
+} from './ReplaySettingsLayers'
+
+import type {
+  ReplayFlagControls,
+  ReplayPlacementControls,
+  ReplaySkullCarrierControls,
+  ReplayVipCrownControls,
+  ReplayWeaponPadControls,
+} from './ReplaySettingsLayers'
 
 interface ReplaySettingsDrawerProps {
   locale: ReplayLocale
   onClose: () => void
+  /**
+   * LA LECTURE DÉMARRE-T-ELLE SEULE à l'ouverture du rejeu (demande utilisateur du 2026-08-29,
+   * point 22) ? ÉTEINT par défaut. Réglage persisté comme les autres, MAIS il ne commande pas
+   * le lecteur ouvert : il décide de son état de départ, lu une fois au montage (cf.
+   * `useReplayPlayback`).
+   */
+  autoPlay: boolean
+  onToggleAutoPlay: () => void
   showAim: boolean
   onToggleAim: () => void
   showZones: boolean
@@ -75,189 +108,32 @@ interface ReplaySettingsDrawerProps {
 }
 
 /**
- * Ce que le tiroir sait des POSES d'équipement : les deux bascules, et ce que le film porte.
+ * LA LECTURE a sa propre section, en TÊTE du tiroir : c'est le seul réglage qui parle du
+ * LECTEUR et non de ce qu'il montre. Le ranger parmi les calques ferait lire « lecture
+ * automatique » comme un calque de plus.
  *
- * `available` et `unnamedAvailable` suivent la même règle que le bouton Zones — pas de
- * commande qui ne commande rien. Un film sans pose publiée (largeur de bloc non tranchée,
- * ou match sans équipement posé) ne montre pas le calque ; un film dont TOUTES les poses
- * sont nommées ne montre pas la bascule des objets non identifiés.
+ * ELLE NE COMMANDE PAS LE REJEU OUVERT, et l'infobulle le dit : basculer ce réglage ne met ni
+ * en lecture ni en pause. « Lecture » et « Pause » sont à la barre, sous le terrain — deux
+ * commandes qui feraient la même chose seraient une invitation à croire qu'elles diffèrent.
  */
-export interface ReplayPlacementControls {
-  available: boolean
-  show: boolean
-  onToggle: () => void
-  unnamedAvailable: boolean
-  showUnnamed: boolean
-  onToggleUnnamed: () => void
-  /**
-   * Les objets de PUISSANCE lâchés à la mort. `droppedAvailable` ne pose plus qu'UNE
-   * condition : le film en porte au moins un. La garde de mode qui l'annulait en Fiesta a été
-   * retirée le 2026-08-20 (elle masquait 26 lâchers réels sur le témoin Fiesta) — la commande
-   * s'affiche donc dans tous les modes dès qu'elle a de quoi commander.
-   */
-  droppedAvailable: boolean
-  showDropped: boolean
-  onToggleDropped: () => void
-}
-
-/**
- * Ce que le tiroir sait des EMPLACEMENTS D'ARME : une bascule, et si le film en porte.
- * `available` suit la même règle — un film sans socle publié (Super Fiesta sur variante
- * Forge : zéro socle mesuré) ne montre pas la bascule.
- */
-export interface ReplayWeaponPadControls {
-  available: boolean
-  show: boolean
-  onToggle: () => void
-}
-
-/**
- * Ce que le tiroir sait des DRAPEAUX de capture : une bascule, et si le film en porte.
- * `available` suit la même règle que les zones et les socles — un film qui n'est pas reconnu
- * comme de la capture de drapeau ne publie aucun drapeau, et ne montre donc pas la bascule.
- */
-export interface ReplayFlagControls {
-  available: boolean
-  show: boolean
-  onToggle: () => void
-}
-
-/** La COURONNE VIP (schéma 22) : un seul calque, allumé par défaut, comme les drapeaux. */
-export interface ReplayVipCrownControls {
-  available: boolean
-  show: boolean
-  onToggle: () => void
-}
-
-/** Le PORTEUR DU CRÂNE d'Oddball (schéma 23) : un seul calque, allumé par défaut. */
-export interface ReplaySkullCarrierControls {
-  available: boolean
-  show: boolean
-  onToggle: () => void
-}
-
-interface LayersSectionProps {
+function PlaybackSection({
+  locale, autoPlay, onToggleAutoPlay,
+}: {
   locale: ReplayLocale
-  showAim: boolean
-  onToggleAim: () => void
-  showZones: boolean
-  onToggleZones: () => void
-  showNames: boolean
-  onToggleNames: () => void
-  showTrail: boolean
-  onToggleTrail: () => void
-  zonesAvailable: boolean
-  placements: ReplayPlacementControls
-  weaponPads: ReplayWeaponPadControls
-  flagCarries: ReplayFlagControls
-  vipCrown: ReplayVipCrownControls
-  skullCarrier: ReplaySkullCarrierControls
-}
-
-function LayersSection({
-  locale, showAim, onToggleAim, showZones, onToggleZones, showNames, onToggleNames,
-  showTrail, onToggleTrail, zonesAvailable, placements, weaponPads, flagCarries, vipCrown,
-  skullCarrier,
-}: LayersSectionProps) {
+  autoPlay: boolean
+  onToggleAutoPlay: () => void
+}) {
   const t = REPLAY_TEXT[locale]
   return (
     <section className="space-y-1">
-      <h3 className="text-xs font-medium text-muted-foreground">{t.layers}</h3>
-      {/* DEUX COLONNES (demande utilisateur du 2026-08-24 : « un élément par ligne c'est
-          inefficace ») : les bascules sont courtes, la grille double la densité du tiroir
-          sans rien perdre — l'infobulle porte déjà le détail de chacune. */}
-      <div className="grid grid-cols-2 gap-1">
-        <SettingsToggle label={t.layerAim} pressed={showAim} onToggle={onToggleAim} hint={t.layerAimHint} />
+      <h3 className="text-xs font-medium text-muted-foreground">{t.playbackTitle}</h3>
+      <div className="flex flex-col gap-0.5">
         <SettingsToggle
-          label={t.layerNames}
-          pressed={showNames}
-          onToggle={onToggleNames}
-          hint={t.layerNamesHint}
+          label={t.autoPlay}
+          pressed={autoPlay}
+          onToggle={onToggleAutoPlay}
+          hint={t.autoPlayHint}
         />
-        <SettingsToggle
-          label={t.layerTrail}
-          pressed={showTrail}
-          onToggle={onToggleTrail}
-          hint={t.layerTrailHint}
-        />
-        {zonesAvailable && (
-          <SettingsToggle
-            label={t.layerZones}
-            pressed={showZones}
-            onToggle={onToggleZones}
-            hint={t.layerZonesHint}
-          />
-        )}
-        {/* Les POSES sont un calque, pas un effet : elles montrent un ÉTAT du terrain (un mur
-            EST là de t0 à t1), là où un éclair de bouche montre un instant. La bascule des
-            objets non identifiés n'apparaît qu'avec elles — elle ne commanderait rien sinon. */}
-        {placements.available && (
-          <>
-            <SettingsToggle
-              label={t.layerPlacements}
-              pressed={placements.show}
-              onToggle={placements.onToggle}
-              hint={t.layerPlacementsHint}
-            />
-            {placements.show && placements.droppedAvailable && (
-              <SettingsToggle
-                label={t.layerPlacementsDropped}
-                pressed={placements.showDropped}
-                onToggle={placements.onToggleDropped}
-                hint={t.layerPlacementsDroppedHint}
-              />
-            )}
-            {placements.show && placements.unnamedAvailable && (
-              <SettingsToggle
-                label={t.layerPlacementsUnnamed}
-                pressed={placements.showUnnamed}
-                onToggle={placements.onToggleUnnamed}
-                hint={t.layerPlacementsUnnamedHint}
-              />
-            )}
-          </>
-        )}
-        {/* Les EMPLACEMENTS D'ARME sont un calque du terrain eux aussi, mais leur donnée est
-            une récurrence spatiale mesurée, pas un geste de joueur : d'où une bascule à part. */}
-        {weaponPads.available && (
-          <SettingsToggle
-            label={t.layerWeaponPads}
-            pressed={weaponPads.show}
-            onToggle={weaponPads.onToggle}
-            hint={t.layerWeaponPadsHint}
-          />
-        )}
-        {/* Les DRAPEAUX sont l'ENJEU du mode, pas un meuble : ils bougent, ils changent de
-            main, et leur position EST la lecture du match. Ils restent dans les calques —
-            un drapeau au sol est un état du terrain, pas un instant. */}
-        {flagCarries.available && (
-          <SettingsToggle
-            label={t.layerFlagCarries}
-            pressed={flagCarries.show}
-            onToggle={flagCarries.onToggle}
-            hint={t.layerFlagCarriesHint}
-          />
-        )}
-        {/* LA COURONNE VIP est l'ENJEU du mode, comme les drapeaux : elle suit le porteur, sa
-            présence EST la lecture du match. Un film hors VIP n'en publie aucune. */}
-        {vipCrown.available && (
-          <SettingsToggle
-            label={t.layerVipCrown}
-            pressed={vipCrown.show}
-            onToggle={vipCrown.onToggle}
-            hint={t.layerVipCrownHint}
-          />
-        )}
-        {/* LE PORTEUR DU CRÂNE est l'ENJEU d'Oddball : il suit le porteur, sa présence EST la
-            lecture du match. Un film hors Oddball n'en publie aucun. */}
-        {skullCarrier.available && (
-          <SettingsToggle
-            label={t.layerSkullCarrier}
-            pressed={skullCarrier.show}
-            onToggle={skullCarrier.onToggle}
-            hint={t.layerSkullCarrierHint}
-          />
-        )}
       </div>
     </section>
   )
@@ -290,7 +166,7 @@ function EffectsSection({
         {t.effects}
         <InfoMark text={t.layerShotFxCoverage} />
       </h3>
-      <div className="grid grid-cols-2 gap-1">
+      <div className="flex flex-col gap-0.5">
         <SettingsToggle
           label={t.layerShotFx}
           pressed={showShotFx}
@@ -312,7 +188,8 @@ function EffectsSection({
 /**
  * LA COULEUR DES POINTS (proposition utilisateur du 2026-08-24) : par équipe — le défaut,
  * la couleur dit le camp (D1) — ou distincte par joueur, pour suivre quelqu'un dans la
- * mêlée. Deux lectures exclusives, même grammaire que les choix de la carte de chaleur.
+ * mêlée. Deux lectures exclusives, même grammaire que les choix de la carte de chaleur —
+ * d'où `SettingsChoice` et non un interrupteur : exactement une des deux est vraie.
  */
 function ColorsSection({
   locale, markerColors, onSetMarkerColors,
@@ -327,7 +204,7 @@ function ColorsSection({
       <h3 className="text-xs font-medium text-muted-foreground">{t.markerColorsTitle}</h3>
       <div className="grid grid-cols-2 gap-1">
         {MARKER_COLORS_MODES.map((mode) => (
-          <SettingsToggle
+          <SettingsChoice
             key={mode}
             label={t.markerColorsMode[mode]}
             pressed={markerColors === mode}
@@ -344,6 +221,9 @@ function ColorsSection({
  * Le tiroir ne garde du son que le FILTRE PAR CATÉGORIE (l'interrupteur et le volume sont à
  * la barre de lecture, 2026-08-24). Même règle que partout : pas de commande quand il n'y a
  * rien à commander — un match sans un seul son ne montre pas de filtre.
+ *
+ * CINQ OUI/NON INDÉPENDANTS, pas un choix : on peut couper les grenades ET les objectifs, ou
+ * tout couper. Ce sont donc des interrupteurs, un par ligne comme les calques.
  */
 function SoundSection({ locale, sound }: { locale: ReplayLocale; sound: ReplaySound }) {
   const t = REPLAY_TEXT[locale]
@@ -351,7 +231,7 @@ function SoundSection({ locale, sound }: { locale: ReplayLocale; sound: ReplaySo
   return (
     <section className="space-y-1">
       <h3 className="text-xs font-medium text-muted-foreground">{t.soundCategoriesTitle}</h3>
-      <div className="grid grid-cols-2 gap-1">
+      <div className="flex flex-col gap-0.5">
         {SOUND_CATEGORIES.map((category) => (
           <SettingsToggle
             key={category}
@@ -407,6 +287,8 @@ function useDrawerDismiss(
 export function ReplaySettingsDrawer({
   locale,
   onClose,
+  autoPlay,
+  onToggleAutoPlay,
   showAim,
   onToggleAim,
   showZones,
@@ -456,6 +338,7 @@ export function ReplaySettingsDrawer({
         </button>
       </div>
 
+      <PlaybackSection locale={locale} autoPlay={autoPlay} onToggleAutoPlay={onToggleAutoPlay} />
       <LayersSection
         locale={locale}
         showAim={showAim}
