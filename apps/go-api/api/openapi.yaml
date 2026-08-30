@@ -14928,6 +14928,9 @@ components:
           type: string
         assist_xuid:
           type: string
+        avg_assist_pct:
+          format: int64
+          type: integer
         killer_gamertag:
           type: string
         killer_xuid:

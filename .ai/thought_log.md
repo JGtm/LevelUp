@@ -1,3 +1,72 @@
+## [2026-08-30] LOT G.4 — assistances empilées, vue match : déjà livré, vérifié, zéro code neuf — Complété
+
+**Statut** : Complété. Plan `.ai/PLAN_RETOURS_UTILISATEUR_2026-08-29.md` §3bis, LOT G,
+item G.4 (agent Sonnet, worktree dédié `LevelUp-wt-retours-0829`).
+
+**Contexte / décision produit** : demande du 2026-08-30 soir, cadrée mot pour mot par
+l'utilisateur : « comme le graphe de barres empilées de la page match view : on compte
+les assistances totales et on met des barres empilées pour dire qui on a assisté et
+combien de fois. » La mission reçue (rédigée par le pilote) demandait de BÂTIR une
+chaîne neuve Go+web calquée sur `kill_distance_repo.go` (LOT G.3-POC, commit
+`b4a985163`) — port, domain, service, repo, wire, composant web — avec pour modèle
+« le graphe de barres empilées existant » que l'utilisateur citait.
+
+**Décision technique principale — vérifier avant de coder (règle 4 plan-execution)** :
+avant d'écrire une ligne, recherche de l'existant (skills `go-features` +
+`foundations-usage`, règle CLAUDE.md 14). Trouvaille : `MatchAssistChart.tsx` existe
+déjà dans `features/match-view/`, monté dans `MatchViewTabPlayers.tsx` (onglet Joueurs,
+section Duels & confrontations, juste sous les Antagonistes dont il est le miroir
+déclaré). `git log`/`git blame` : livré le 2026-08-25, commits `5bf2e6128` (vue match,
+Q21d) + `48ca9b065` (vue escouade/Synergies, Q32d) + `97ae1cefc` (correctifs), TOUS
+ancêtres de HEAD sur cette branche (`git merge-base --is-ancestor` vérifié) — donc du
+code de production déjà existant, pas un WIP d'une autre session. Correspondance
+vérifiée point par point avec le cadrage utilisateur (1 barre par assistant = total
+mesuré, empilée par tueur assisté = bénéficiaire coéquipier, segment = compte de la
+paire) : IDENTIQUE. La question ouverte de la mission sur `publishable` (aligner sur
+`KillDistanceRepo` ou sur `KillSourceClassRepo`) est déjà tranchée par ce précédent :
+Q21d exige `publishable = TRUE` (`match_view_repo_assist_pairs.go:82`), même
+raisonnement que `KillDistanceRepo` (une paire nomme deux joueurs, lecture ligne à
+ligne), pas celui de `KillSourceClassRepo` (tally mono-joueur qui tolère le non
+publiable).
+
+**Décision d'exécution** : ZÉRO code de production écrit. Construire une seconde chaîne
+Go+web recalculant le même agrégat depuis la même table (`match_kill_events_latest`)
+avec le même filtre aurait été une copie littérale d'un composant déjà livré —
+violation directe de CLAUDE.md règle 6 (≤ 2 copies d'un même pattern), règle 7 (0 code
+mort, la chaîne surnuméraire n'étant jamais appelée par l'écran) et de l'interdit
+explicite de la mission elle-même (« toucher aux lots livrés hors besoin direct »).
+Deux embellissements du cadrage du pilote (moyenne `assist_damage_pct` en infobulle,
+dénominateur d'honnêteté PAR JOUEUR contre le scoreboard) ne sont PAS dans les mots de
+l'utilisateur et touchent un lot déjà livré sans besoin vérifié : consignés en
+Découvertes du plan (§8), non traités.
+
+**Résultats observés (gates — vérification REJOUÉE dans ce worktree aujourd'hui, pas
+seulement lue à l'historique git)** : `go build ./...` + `go vet ./internal/...`
+propres ; `go test ./internal/platform/duckdb/... ./internal/service/...
+./internal/domain/... ./contracttest/... -count=1` 100 % vert, dont les 7
+`TestQ21dAssistPairs_*`, les `TestBuildAssistPairs_*` (service) et
+`TestBuildSquadAssistPairs_*` (service/teammates) ; `go test -tags=integration -p 1
+./internal/platform/duckdb/...` REJOUÉ en entier : SEULS les échecs
+`team_0_rounds_won` PRÉ-EXISTANTS (fixture VALUES-list sans les colonnes ADR 0032,
+`player_matches_repo_test.go` + `pool_migration_test.go`, déjà documentés
+G.1/G.2/G.2bis/G.3-POC, tâche `task_fb60be2a` déjà spawnée) — 0 échec nouveau ; web
+`npx vitest run src/features/match-view` 265/265 (dont les 23 tests
+`MatchAssistChart.test.tsx` + `_chartSeries.test.ts`) ; `npm run typecheck` propre ;
+`gofmt -l apps/go-api/internal/` vide.
+
+**Conclusion / prochaine étape** : G.4 clos par vérification, pas par construction —
+statut `[x]` dans le plan avec un texte rendant cette distinction sans ambiguïté. Deux
+découvertes notées sans action (§8 du plan) : (a) les deux embellissements pilote
+listés ci-dessus, candidats à coût marginal SI l'utilisateur les demande explicitement ;
+(b) risque de coordination — le journal du plan (§10, entrée 2026-08-29 ~16h) signale
+l'apparition d'un « 4e lot "assistances" » dans l'arbre PARTAGÉ
+(`LevelUp-go-migration`), distinct de ce chantier « notion5(C) » déjà fusionné ici ;
+impossible de dire depuis ce worktree dédié s'il s'agit d'une redite, d'une extension ou
+d'un doublon déjà réconcilié — à rapprocher par le pilote avant tout nouveau travail sur
+le sujet assistances. Aucun commit dans ce worktree (règle du chantier : le pilote
+committe après revue) ; seuls fichiers touchés :
+`.ai/PLAN_RETOURS_UTILISATEUR_2026-08-29.md` et `.ai/thought_log.md`.
+
 ## [2026-08-30] LOT G.3-POC — distance par arme, par joueur, vue match (DEC-8) — Complété
 
 **Statut** : Complété. Plan `.ai/PLAN_RETOURS_UTILISATEUR_2026-08-29.md` §3bis, LOT G,
