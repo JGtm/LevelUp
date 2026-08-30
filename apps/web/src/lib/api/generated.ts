@@ -10088,6 +10088,8 @@ export interface components {
         };
         SkullCarriesCoverage: {
             /** Format: int64 */
+            carrierAbsent: number;
+            /** Format: int64 */
             carries: number;
             /** Format: int64 */
             closed: number;
