@@ -380,6 +380,7 @@ func findViewerScoreboardRow(rows []domain.MatchScoreboardRow) *domain.MatchScor
 func buildViewerFragDistribution(
 	me *domain.MatchScoreboardRow,
 	bulkWeapons []domain.BulkWeaponKillRaw,
+	killSourceClasses []port.KillSourceClassRow,
 	hasMechanics bool,
 ) *domain.FragDistribution {
 	if me == nil {
@@ -407,7 +408,7 @@ func buildViewerFragDistribution(
 		ShoulderBash:  derefInt(me.ShoulderBashKills),
 		Total:         total,
 	}
-	fd := fragdist.Build(rows, counts, hasMechanics)
+	fd := fragdist.Build(rows, killSourceClasses, counts, hasMechanics)
 	return &fd
 }
 

@@ -37,6 +37,8 @@ export const FRAG_CLASS_ORDER = [
   'spartan_ability',
   'vehicle',
   'turret',
+  'equipment',
+  'environmental',
   'unattributed',
 ] as const
 
@@ -52,7 +54,8 @@ export const FRAG_CLASS_UNATTRIBUTED: FragClassKey = 'unattributed'
  *
  * Rappel des teintes sous la palette DÉFAUT (pour lecture) : shoulder=cyan,
  * sidearm=émeraude, heavy=violet, melee=rose, grenade=ambre, spartan=indigo,
- * vehicle=indigo profond, turret=orange brûlé.
+ * vehicle=indigo profond, turret=orange brûlé, equipment=fuchsia,
+ * environmental=bleu profond.
  *
  * Les tokens de véhicule/tourelle (V73-3.2) empruntent à d'autres gammes — comme le
  * font déjà heavy (narrative-*) et shoulder (perf-tier-*) : le critère du mapping est
@@ -69,6 +72,15 @@ export const FRAG_CLASS_TOKENS: Record<FragClassKey, SemanticToken> = {
   spartan_ability: 'compare-a', // indigo
   vehicle: 'chart-series-5', // indigo profond
   turret: 'narrative-debacle', // orange brûlé
+  // equipment : fuchsia, HORS famille bleue (2026-08-29). Le premier choix du lot
+  // « kills hors arme à feu » (chart-series-1, bleu clair #93C5FD) faisait un TROISIÈME
+  // bleu à côté de environmental (#0072B2), son voisin dans l'ordre canonique, et de
+  // unattributed (#60A5FA) : ΔE minimal 10,68 contre unattributed, soit trois arcs
+  // bleus voisins à distinguer. `extreme` porte le pire ΔE à 13,95 (vs heavy) et sort
+  // la classe de la famille bleue. Le token dit « rare et intense » — un frag au
+  // répulseur ou à la bobine l'est.
+  equipment: 'extreme', // fuchsia
+  environmental: 'narrative-remontada', // bleu profond (lot « kills hors arme à feu »)
   unattributed: 'divergent-neutral', // neutre (résidu)
 }
 
@@ -98,8 +110,17 @@ const HEX_RE = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i
 
 /** Éclaircissement du 1er rôle (teinte de base déjà un cran plus claire que la classe). */
 const ROLE_LIGHTNESS_BASE = 0.22
-/** Incrément d'éclaircissement par rôle suivant. */
+/** Incrément NOMINAL d'éclaircissement par rôle suivant (tant qu'il tient sous le plafond). */
 const ROLE_LIGHTNESS_STEP = 0.2
+/**
+ * PLAFOND d'éclaircissement du DERNIER rôle d'une classe. Sans lui, la rampe
+ * `0.22 + index × 0.2` atteignait 1,02 dès l'index 4 : shiftLightness clampe l'amplitude
+ * à 1, donc les 5ᵉ et 6ᵉ rôles d'une même classe (cas RÉEL : les 5 types de grenade, les
+ * engins d'une classe véhicule, les objets d'une classe équipement) sortaient en BLANC
+ * PUR — invisibles sur le fond de carte, et indiscernables entre eux. À 0,7 il reste 30 %
+ * de la teinte de classe : l'arc garde sa hue, se distingue du blanc et de son voisin.
+ */
+const ROLE_LIGHTNESS_MAX = 0.7
 
 function parseHex(hex: string): [number, number, number] | null {
   const m = HEX_RE.exec(hex.trim())
@@ -134,12 +155,21 @@ export function shiftLightness(hex: string, t: number): string {
  * de plus en plus claire selon `index` (premier = le plus proche de la classe,
  * dernier = le plus clair). Double encodage : la position (anneau externe) + le
  * label du rôle (ligne de rappel) désambiguïsent au-delà de la teinte.
+ *
+ * La rampe est NORMALISÉE sur `count` : le pas nominal tant qu'il tient sous
+ * ROLE_LIGHTNESS_MAX, sinon un pas resserré qui place le DERNIER rôle exactement au
+ * plafond. Les classes à 1-3 rôles (mêlée, capacités spartanes) gardent donc leur rendu
+ * historique ; seules les classes à 4 rôles et plus sont recomprimées — c'est-à-dire
+ * exactement celles qui déteignaient en blanc.
  */
 export function fragRoleColor(className: string | null | undefined, index: number, count: number): string {
   const base = fragClassColor(className)
   if (index < 0) return base
-  const t = count <= 1 ? ROLE_LIGHTNESS_BASE : ROLE_LIGHTNESS_BASE + index * ROLE_LIGHTNESS_STEP
-  return shiftLightness(base, t)
+  // `index + 1` : un index hors bornes (count sous-évalué par un appelant) reste borné
+  // par le plafond au lieu de repartir vers le blanc.
+  const n = Math.max(1, count, index + 1)
+  const step = n <= 1 ? 0 : Math.min(ROLE_LIGHTNESS_STEP, (ROLE_LIGHTNESS_MAX - ROLE_LIGHTNESS_BASE) / (n - 1))
+  return shiftLightness(base, ROLE_LIGHTNESS_BASE + index * step)
 }
 
 /**
