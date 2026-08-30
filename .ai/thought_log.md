@@ -30,10 +30,23 @@ recharges + amorces de grenade ; (4) 0xC0 (983 k) = damage_aftermath, gisement d
 (5) le mystère « en-tête par famille » est dissous : c'était la longueur de l'événement de
 tête. Note : `film_re/NOTE_MODELE_EVENEMENTS_2026-08-30.md`.
 
+**Suite de nuit — corpus + type 36 + voie précision (demande user)** : (a) passe corpus
+1 367 films : distribution des types de tête 100 % plausible, fermeture arithmétique
+weapon_reload 404 027 + biped_throw_initiate 124 235 = 528 262 = le compte historique de
+0xD3 ; biped_pickup 236 860 (utile chantier ramassage) ; PlayerKilledEvent 108. (b) Charge
+du type 36 décompilée : squelette complet consigné — variant_name R(32) = l'ARME (nommée
+dans l'exe), boucle cibles avec réf DOMAINE 6 = LA VICTIME, visée R(30) TOUJOURS présente
+en mode film ; comptes résolus (code à préfixe) ; domaines réfs = 1 (ATTAQUANT, sonde), 8,
+7. (c) VOIE PRÉCISION consignée (demande user en cours de session) : touches = n2 cibles
+du type 36 (+ damage_aftermath 872 k) ; dénominateur = décréments munitions i37 ;
+mesure préliminaire 000d5950 : type=36 245/245, attaquant 245/245, 27 armes propres,
+comptes lus à 98 % toutVide — RÉSERVE : à juger par la visée R(30) une fois
+FUN_1406cd5b8/FUN_1408eff64 résolus, ne pas bâtir avant.
+
 **Conclusion / prochaine étape** : associer réf0 (domaine 4) aux joueurs et croiser avec la
-vérité terrain lunette (gate produit) ; percer la charge du type 36 (largeurs R(n) sur
-pile, Ghidra) ; bit8 par famille sur corpus. Le user est informé (la lunette était SON
-objectif d'origine).
+vérité terrain lunette (gate produit) ; résoudre FUN_1406cd5b8 + FUN_1408eff64 et valider
+le cadrage complet du type 36 par la visée R(30) ; puis décodeur type 36 confronté au
+golden killsource. Le user est informé (la lunette était SON objectif d'origine).
 
 ## [2026-08-30] Percer la trame — lot 1 suite : cadrage 0xC2/0xD2 ÉTABLI sur 2 films, RÉTRACTATION du DEL de tête — En cours
 
