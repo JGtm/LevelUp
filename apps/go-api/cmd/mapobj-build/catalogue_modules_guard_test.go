@@ -21,10 +21,14 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"levelup/go-api/internal/testutil"
 )
 
-// cheminCatalogueObjectifs : l'asset publié, depuis ce paquet.
-const cheminCatalogueObjectifs = "../../../../data/titles/halo_infinite/reference/map_objectives.json"
+// cheminCatalogueObjectifs : l asset publie, relatif a la RACINE du depot. La racine se demande
+// a testutil.RepoRoot() et jamais par une echelle de « .. » — une echelle se casse en silence des
+// que le test change de dossier, et le garde-rail archlint l interdit.
+const cheminCatalogueObjectifs = "data/titles/halo_infinite/reference/map_objectives.json"
 
 // modulesDistinctsMin / entreesParModuleMax : le cliquet.
 //
@@ -41,7 +45,11 @@ const (
 )
 
 func TestCatalogueObjectifsModulesDistincts(t *testing.T) {
-	blob, err := os.ReadFile(filepath.FromSlash(cheminCatalogueObjectifs))
+	racine, err := testutil.RepoRoot()
+	if err != nil {
+		t.Fatalf("racine du depot introuvable : %v", err)
+	}
+	blob, err := os.ReadFile(filepath.Join(racine, filepath.FromSlash(cheminCatalogueObjectifs)))
 	if err != nil {
 		t.Skipf("catalogue d'objectifs absent (%v) — test de données, pas de code", err)
 	}

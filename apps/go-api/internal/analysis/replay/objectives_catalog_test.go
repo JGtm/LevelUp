@@ -192,6 +192,25 @@ func TestCatalogueLivreEstExploitable(t *testing.T) {
 	// une forme, l'entree devient fausse et se retire.
 	pointlessConnues := map[string]map[mapvar.Role]int{
 		"cd08bc7a-7ba5-4502-be87-c58b641fc94d": {mapvar.RoleStrongholdZone: 1}, // Salvation
+		// TROIS ENTREES AJOUTEES LE 2026-08-31, apres la campagne de catalogage qui a porte le
+		// catalogue de 73 a 126 cartes. AUCUNE des trois n a le moindre match au corpus (mesure
+		// sur match_registry) : elles sont entrees par le classement mondial des cartes jouees,
+		// pas par ce qu on rejoue ici. L invariant que ce test protege — une carte JOUEE doit
+		// avoir des zones exploitables — n est donc pas entame.
+		//
+		// Les deux premieres sont des cartes FIREFIGHT (meme level_id 1437677928, scripts nommes
+		// « classic firefight extraction zone », « EZONE », « ExtractionCaptureLoop() ») : leur
+		// unique extraction_zone est un OBJET DE SCRIPT, pas un volume de zone. Leurs collines et
+		// leurs zones Bastion, elles, portent toutes leur forme (5/5 et 3/3) — la source sait
+		// donc poser des sacs de forme, elle n en pose simplement pas pour cet objet-la.
+		"fdde5715-cd2b-4f78-ad7d-9a83a4f968c6": {mapvar.RoleExtractionZone: 1},
+		"841242db-013f-4b10-871e-c432379e852c": {mapvar.RoleExtractionZone: 1},
+		// La troisieme est DIFFERENTE et sa cause n est PAS etablie : c est la SEULE carte des 126
+		// dont AUCUN role surfacique ne porte de forme (extraction 0/6, colline 0/4). Un pack 1v1
+		// multi-arenes — ses sections s appellent 1v1Bazzar, 1v1Aquarius, 1v1ORIGIN, 1v1ARG. Elle
+		// est listee parce qu elle n est pas jouee ici, PAS parce qu on l a expliquee. Si elle
+		// entre un jour au corpus, cette entree doit etre reprise avant d etre reconduite.
+		"1042b738-30d6-453b-a057-cec8bda009b3": {mapvar.RoleExtractionZone: 6, mapvar.RoleHill: 4},
 	}
 	// RoleHill depuis le lot C-ter volet 2 : 113 collines sur 23 cartes, 100 % avec forme —
 	// les 4 cartes des films (Catalyst 6, Chasm 5, Shogun 5, Solitude - Ranked 5) plus les

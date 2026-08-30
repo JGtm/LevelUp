@@ -88,6 +88,11 @@ var halowaypointAllowlist = map[string]bool{
 	// (`cmd/tmp_filmmanifest/main.go` retiré le 2026-08-01 — outillage de recherche
 	// supprimé au lot A du plan de dette avant merge.)
 	"cmd/mapobj-build/fetch.go": true,
+	// cmd/mapnav-fetch (campagne des fonds de carte, 2026-08-30) : meme frontiere que
+	// mapobj-build ci-dessus — il telecharge navmesh.blob, map.mvar et les miniatures
+	// depuis l hote UGC officiel, en ACCES ANONYME (aucun jeton), et PRODUIT des
+	// artefacts versionnes (maillages, catalogues, miniatures). Ajoutee le 2026-08-30.
+	"cmd/mapnav-fetch/main.go": true,
 	// scripts/ — warm-up d'assets (URLs gamecms).
 	"scripts/warm_bp_assets/main.go": true,
 	// ops/ — seeder démo synthétique : URL blob-infiniteugc FACTICE d'assets démo
