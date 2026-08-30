@@ -1,3 +1,54 @@
+## [2026-08-30] Ménage des branches : trois fusions, quatre suppressions, un contrat rattrapé — Complété
+
+**Demande utilisateur** : merger les branches qui ne sont plus vivantes ; supprimer les
+`feat/filmdec-*` et `feat/weapon-*`.
+
+**Le critère de « vivante » est le dernier commit ET la propreté du worktree**, pas le nom.
+Trois branches actives ont été laissées intactes : `wt/seed-parity` (16h46), `wt/ramassage`
+(16h47), `wt/retours-0829` (15h46, 16 fichiers non commités dans son worktree — travail en
+cours, et 144 fichiers de diff qui recoupent `weapon_names.toml` et `frags.toml`).
+
+**FUSIONNÉES** (dormantes, worktrees propres) :
+
+| Branche | Contenu |
+|---|---|
+| `wt/skull-integration` | phantom-carry (gate de présence bipède sur `buildSkullCarries`) + crâne posé sur son socle au repos |
+| `chore/doc-quatre-routes-ouvrier` | doc-rot : le protocole ouvrier compte QUATRE routes, 7 sites de commentaire |
+| `wt/re-lecteur` | documents seuls — RE lecteur image-clé, carte des sérialiseurs d'état complet |
+
+**LE ROUGE QUE LA FUSION A RÉVÉLÉ, et il valait la passe** : `TestOpenAPIYAMLIsUpToDate` est
+tombé sur `carrierAbsent`. Le lot crâne ajoute un champ au contrat servi et n'avait pas
+régénéré `openapi.yaml` — sa branche était verte parce qu'elle n'avait pas rejoué ce test.
+Les DEUX maillons ont été refaits ensemble (`openapi-gen` puis `generate-types`) : régénérer
+le seul YAML laisserait le front typé sur l'ancien contrat avec un `tsc` vert, ce que le
+garde `generated-types-fresh` existe précisément pour interdire.
+
+**SUPPRIMÉES** — `feat/filmdec-continuation`, `feat/filmdec-killweapon`,
+`feat/weapon-attribution-v3`, `feat/weapon-sameclock` (lignées de recherche mortes, 3434
+commits de retard). Toutes les quatre sont **sur `origin` au même SHA** : rien n'est perdu.
+Deux précautions prises : (a) la jonction `node_modules` de `filmdec-continuation` retirée
+AVANT `git worktree remove --force`, sinon la suppression suit le lien et vide le vrai
+`node_modules` du dépôt principal (incident du 15/06) — vérifié à 373 entrées avant et après ;
+(b) les 18 fichiers non suivis de `weapon-attribution-v3` (captures Cheat Engine, 1,5 Mo)
+archivés dans `Downloads/Scripts/LevelUp-archive-ce-weapon-attribution-v3/` — ils n'étaient
+sur aucun commit.
+
+**NON FUSIONNÉES, avec leur raison** :
+- `wt/ti11-cadre` — le registre porte une décision ÉCRITE et datée : « non fusionnée, publie
+  rien ». Elle ajoute 3 400 lignes de décodeur et de tests que rien ne consomme. Elle est sur
+  `origin`, donc conservée sans risque. À rouvrir sur arbitrage, pas par ménage.
+- `fix/h5-prod-symptoms` — 4 correctifs H5 du 27/06 (barre XP, meilleur CSR, bannière
+  d'accueil) qui ne sont PAS dans `feat/v75` (`provides_live_banner` absent), mais bâtis sur
+  `internal/api/gen/types.gen.go`, l'architecture d'avant la migration Huma. Ce n'est plus un
+  merge, c'est une ré-implémentation. **Local uniquement, absente d'`origin`** : ne pas
+  supprimer sans décision.
+
+**Conclusion / prochaine étape** : décision utilisateur sur ces deux branches ; les worktrees
+des branches désormais fusionnées (`wt/skull-*`, `chore/doc-quatre-routes-ouvrier`,
+`wt/re-lecteur`) peuvent être retirés au prochain ménage — même précaution de jonction.
+
+---
+
 ## [2026-08-30] Portage en production du canal de ramassage, et une correction a mes propres chiffres — Complété
 
 **Décisions techniques** :
