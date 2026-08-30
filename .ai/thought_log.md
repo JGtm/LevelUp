@@ -1,3 +1,155 @@
+## [2026-08-30] Sonde i26 unit-equipment : l'evenement CONFIRME, le fil objet<->porteur REFUTE par trois voies — Complété
+
+Demande utilisateur : « regarde i26 unit-equipment, avec ses enfants ou parents ».
+
+**La sonde** (production, valeurs publiees, zero bit change) : `readVarWidthInt` et
+`consume1408f0ac4Probe` rendent desormais leurs valeurs, `consumeUnitEquipment` publie via
+`SetUnitEquipmentHook` — en-tete R(3) + liste de jusqu'a 7 optionnels `porte(1)+valeur(13)+
+queue(2)`. Les largeurs 13+2 sont EXACTEMENT celles d'un slot d'entite et d'une generation :
+c'etait l'hypothese a verifier. Scan exporte `ScanFilmUnitEquipment`.
+
+**CE QUI TIENT — l'evenement.** A une prise i48, la liste i26 du meme slot gagne un handle
+NOUVEAU dans la seconde : **70,2 % des prises, temoin +30 s = 0 %** (Catalyst). i26 est un
+confirmateur d'evenement de ramassage. Il n'apporte rien de plus qu'i48 (qui a le temoin de
+completude) — pas de publication.
+
+**CE QUI EST REFUTE — le fil.** Les handles ne se resolvent vers AUCUNE entite ti=37
+repliquee :
+- mesure E (handle -> POSES) : 3/33 et 16/71 « resolutions » de slot, distances ramasseur->
+  pose de 19 a 29 m = collisions de pool, matrice GlobalID x rang non diagonale ;
+- mesure F (handle -> CREATIONS NEW, confirmees ou non, slot+generation, +-1,5 s) :
+  **0/33 et 0/71**. Le handle ne designe aucun record de creation ti=37 du film.
+Le fil objet<->porteur pour l'equipement est donc ferme par TROIS voies mesurees : proximite
+(mesure D, tas de grenades), reference->poses (E), reference->creations (F). Les handles d'i26
+designent une entite NON repliquee dans le film (instance interne/logique de l'inventaire).
+
+**Pour le SON du ramassage d'equipement** (question posee en meme temps) : l'evenement
+distinct existe DEJA — `equipmentChanges[].kind=taken` (schema 25), date a la frame, avec le
+slot. Rien a creer cote donnees ; c'est un declencheur pret pour le chantier sons.
+
+**ECS** : ligne ti=35 i26 mise a jour avec le verdict date. Gates : suites filmdec+replay
+EXIT=0, lint 0 issues.
+## [2026-08-30] Lot AFFICHAGE WEB des calques ramassage — pilote, verifie, fusionne — Complété
+
+Lot execute par un agent Opus pilote (worktree dedie LevelUp-wt-affichage-sol, branche
+wt/ramassage-web), verifie SUR PIECES avant relais, puis fusionne dans wt/ramassage.
+
+**Ce que le web affiche desormais** (a valider au gate visuel par l'utilisateur) :
+- P1 — les ARMES AU SOL sur la carte du rejeu : vignette silhouette (icones du catalogue
+  reutilisees via padIconRefFor, aucune seconde regle de resolution), pleine de t0 a t1,
+  ESTOMPEE lineairement jusqu'a t1max (l'estompage EST la mesure : la disparition a eu lieu
+  dans cet intervalle), rien au-dela. Fin `pickup`/`open` : coupe franche. Bascule de tiroir
+  dediee, FR/EN.
+- P2 — les fiches basculent A LA FRAME de l'evenement : weaponChanges (substitutions
+  d'identite uniquement — jamais de retrait/ajout d'emplacement, le film ne publie pas
+  l'index) et equipmentChanges (plus recente des deux sources ; une consommation rend null).
+  Logique pure changeRefine.ts, 19 tests, branchee aux deux seuls points d'entree
+  (loadoutAt/abilityAt de rosterLogic).
+
+**Verifications du pilote sur pieces** : zero fichier Go touche (diff vide), zero hex dans
+features/, FR+EN presents et exacts, tailles sous les seuils (canvas 679 -> 678 apres
+extraction useReplayDrawer), garde-rail deltaLayersContract.guard.test.ts (lit les balises
+json: du Go — un renommage Go casse la CI web).
+
+**Friction geree au merge** : la branche web etait basee sur le schema 26, le backend etait
+passe a 27 entre-temps. Merge origin/wt/ramassage dans wt/ramassage-web, bascule
+EXPECTED_REPLAY_SCHEMA_VERSION 26 -> 27, gates web APRES merge (typecheck 0, vitest 536
+fichiers / 5509 tests, cache purge), puis merge de wt/ramassage-web dans wt/ramassage
+(suites Go re-passees, 2 ok). Tout pousse.
+
+**Reste** (registre du lot, pas de ce commit) : gate visuel utilisateur (taille de vignette,
+plancher d'opacite, encre du lisere = arbitrages d'ecran) ; survol/infobulle des armes au
+sol (un 4e calque hoverLayers, lot a part) ; consommation web des fins de poses du schema 27
+(until/untilMax d'equipmentPlacements) ; types manuels ReplayDocumentDeltaLayers en attendant
+la regeneration openapi (date et critere de retrait poses par l'agent).
+## [2026-08-30] Schema 27 : la fin observee des poses d'equipement — et la refutation du lien pickup — Complété
+
+Reponse a « ok et pour l'equipement ? ». Deux verdicts, un livre.
+
+**REFUTE (mesure D, ground_link_research_test.go)** : le lien spatial prise i48 -> pose ti=37.
+Mediane 1,41-1,74 m (contre 0,61-0,75 m pour les armes), 41-50 % sous 1,5 m seulement — et
+surtout la matrice GlobalID x rang des paires liees N'EST PAS diagonale (`bcabbe43` lie a
+rang4=4, rang10=3, rang6=3). Cause physique : l'equipement tombe a la mort AVEC les grenades
+du mort — plusieurs objets ti=37 au metre carre, « le plus proche » choisit au hasard.
+Resserre a CANDIDAT UNIQUE (< 1,5 m, seul a < 3 m) : il reste 2 / 0 / 2 paires par film,
+encore incoherentes (273fe0eb -> rang9 ET rang4). Critere enonce avant lecture (matrice
+diagonale), non atteint, seuil non rebaisse. Consequence : PAS de fin `pickup` pour
+l'equipement, et pas de table rang<->eqip par cette voie. Le ramassage reste publie par
+equipmentChanges (QUI et QUAND) — il ne dit pas QUEL objet du sol.
+
+**LIVRE (schema 27)** : `until` / `untilMax` / `end` sur `equipmentPlacements` — la fin
+d'affichage OBSERVEE, meme mecanique que les armes au sol de v26, sur le recensement ti=37
+que la chaine des socles lisait deja (opt.Pads.Powerups.Keyframes, AUCUN nouveau balayage).
+`end` : `seen` (disparition bornee : derniere image-cle qui recense / premiere qui ne recense
+plus) ou `open` (rien ne prouve la disparition). `t1` garde son sens (fin du MOUVEMENT) et son
+interdit ; le rendu a enfin une borne legitime. Piege paye : la fenetre de recensement est
+EXCLUSIVE sur sa borne haute — a la fin de film exacte, la derniere image-cle etait retranchee
+et une pose encore recensee sortait « disparue » (test rouge, corrige par filmEnd+1).
+
+Reutilisation stricte (regle <= 2 copies) : `gwPickupBoundsFrom` + `gwPickupSeenWithin` de la
+chaine des socles, un seul exemplaire du bornage. `buildEquipmentPlacements` prend le census
+en 5e parametre ; la vie d'une cle est fermee par la pose suivante de la meme cle.
+
+**Gates** : suites replay+filmdec EXIT=0, vet 0, lint 0 issues, golden regen (ligne de schema),
+cmd/levelup OK, bout-en-bout Catalyst PASS (229 poses). Tests : 4 regles de bornage + 1 tally.
+
+**Pilotage** : agent Opus lance en parallele sur le lot AFFICHAGE WEB (worktree dedie
+LevelUp-wt-affichage-sol, branche wt/ramassage-web) — P1 armes au sol sur la carte, P2 datation
+fine des fiches par weaponChanges/equipmentChanges ; perimetre exclut equipmentPlacements
+(schema 27 le modifiait pendant ce temps). Rapport attendu ; les fins de poses (until/untilMax)
+seront un lot web SUIVANT, apres merge des deux branches.
+## [2026-08-30] Schema 26 : les armes au sol OBSERVEES — la minuterie degage — Complété
+
+Suite immediate des mesures du jour (lien pickup<->objet etabli a 0,61-0,75 m). Livraison.
+
+**Ce que le schema 26 publie** : `groundWeapons` — chaque objet arme au sol qui a BOUGE (l'arme
+d'un mort, l'arme de depart abandonnee), avec sa position de repos, son origine mesuree
+(`dropped`/`spawned`, la regle des poses), son LACHEUR, et une fin OBSERVEE :
+
+- `pickup` : une prise du flux delta (schema 24) de MEME FAMILLE, a < 1,5 m, dans la fenetre de
+  vie — fin datee a la milliseconde, ramasseur nomme ;
+- `seen` : la disparition est un INTERVALLE mesure — `t1` = derniere image-cle qui recense
+  l'objet (derniere preuve de presence), `t1max` = premiere qui ne le recense plus (premiere
+  preuve d'absence). Le client choisit son rendu DANS l'intervalle, jamais au-dela ;
+- `open` : rien ne prouve la disparition, l'objet reste affiche.
+
+**Ce que le schema 26 retire** : le champ `until` de `weaponChanges` et sa table de durees
+(10/20/30 s) — la convention du schema 24, refusee par l'utilisateur (« je veux juste voir
+quand elle est au sol et quand elle disparait »). Tests de la borne retires avec elle.
+
+**Trois decisions payees par la mesure de bout en bout, a retenir** :
+
+1. *Le lacheur ne se lie PAS par le lacher delta* (1/92 : l'ecart lacher->naissance n'est pas
+   borne a 500 ms, retractation du 29/08 confirmee). Il se lie par LA VIE QUI S'ACHEVE a la
+   naissance de l'objet — celle que `gwPadsClass` trouvait deja pour classer `dropped` et
+   qu'elle jetait. `gwPadsClass` rend desormais (classe, slot) ; 241/293 et 220/302 objets ont
+   leur lacheur.
+2. *La famille est un CRITERE du lien de prise, pas un controle apres coup* : la premiere
+   version liait « l'objet le plus proche » et une prise de DRAPEAU volait le lien de l'arme
+   voisine — 27 mauvaises familles sur 33 liens. Famille stricte : 9-10 ramasseurs nommes,
+   tous justes par construction ; les prises de socle (objets at_rest, publies par weaponPads)
+   et de drapeau ne se lient pas ici, et c'est documente.
+3. *La disparition en intervalle [t1, t1max]* : publier la seule derniere-vue effacait a tort
+   les armes jamais recensees (vie < 20 s : t1 == t0, affichees zero frame). Les deux bornes
+   sont des preuves ; rien d'invente.
+
+**Chiffres de bout en bout** (Catalyst / Behemoth) : 293 / 302 armes au sol publiees (sur 352 /
+359 objets, 59 / 57 laisses aux socles), fins : 9 / 10 pickup exacts, 279 / 277 vues, 5 / 15
+ouvertes.
+
+**Chaine reutilisee, pas dupliquee** : `buildWeaponPads` rend desormais aussi les objets
+individuels (`gwPickupObject`) — memes bornes census, meme position de reference que les
+socles. Deux publications, UNE chaine. Garde-rail du depot respecte a la lettre : le test
+anti-duplication de la distance 3D a attrape l'instrument (glDist reecrivait la formule) —
+plie a `dist3`.
+
+**Gates** : suites replay+filmdec EXIT=0, vet 0, golangci-lint 0 issues, golden regen (seule la
+ligne de schema bouge), cmd/levelup OK, bout-en-bout 2 films PASS. Ratchet 26 avec raison.
+
+**Reste au calque (pas au lot)** : cote web, RIEN ne lit encore groundWeapons / weaponChanges /
+equipmentChanges — c'est le lot d'affichage. Et les poses d'equipement (ti=37) n'ont pas encore
+leur fin observee (census SeenUS existe pour ti=37 via opt.Pads.Powerups) : meme mecanique a
+appliquer, note pour le prochain lot.
 ## [2026-08-30] Ramassage : le lien objet-au-sol <-> pickup EXISTE, et l'equipement TOMBE a la mort — Complété
 
 Trois questions de l'utilisateur, trois mesures (`replay/ground_link_research_test.go`, garde
