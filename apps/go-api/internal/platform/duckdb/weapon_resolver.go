@@ -36,8 +36,12 @@ import (
 
 // weaponResolved — résolution unifiée d'une arme.
 type weaponResolved struct {
-	label     string // nom d'affichage (parité weapon_labels-first)
-	nameEN    string // pour l'URL image (AssetURLAdapter)
+	label   string // nom d'affichage FR-first (parité weapon_labels-first, repli EN)
+	nameEN  string // pour l'URL image (AssetURLAdapter) — PAS un libellé d'affichage
+	labelEN string // nom d'affichage EN-first (repli FR) — V2.1, 2026-08-29, cf. label ci-
+	// dessus : MÊME source (weapon_name_labels puis weapon_labels), ordre de priorité
+	// inversé. Distinct de nameEN (celui-ci reste réservé à l'URL image, jamais affiché
+	// tel quel). Vide exactement quand label est vide (mêmes 4 sources sous-jacentes).
 	weaponKey string // clé canonique du registre ("hinf_br75") ; "" si inconnu
 	role      string // dimension registre (automatic/precision/…) ; "" si inconnu
 	class     string // dimension registre — axe manipulation (shoulder/sidearm/heavy/
@@ -73,14 +77,20 @@ func resolveWeaponMeta(ctx context.Context, meta *DB, titleSlug string, weaponID
 	// weapon_key, ou metadata non seedée en test). Le registre `weapons` ne fournit
 	// PLUS de nom (dimensions seules). name_en reste weapon_labels (URL image). label ""
 	// → id inconnu de toutes les sources (caller décide).
+	// labelEN (V2.1, 2026-08-29) : MÊME 4 sources, ordre EN-first — pour qu'un lecteur EN
+	// voie le nom EN de l'objet plutôt que le FR servi par label (D2 du plan retours
+	// utilisateur). Vide exactement quand label l'est (mêmes sources sous-jacentes).
 	labelExpr := "COALESCE(NULLIF(wl.name_fr,''), NULLIF(wl.name_en,''), '')"
+	labelENExpr := "COALESCE(NULLIF(wl.name_en,''), NULLIF(wl.name_fr,''), '')"
 	nameJoin := ""
 	if weaponNameLabelsAvailable(ctx, meta) {
 		labelExpr = "COALESCE(NULLIF(wnl.name_fr,''), NULLIF(wnl.name_en,''), NULLIF(wl.name_fr,''), NULLIF(wl.name_en,''), '')"
+		labelENExpr = "COALESCE(NULLIF(wnl.name_en,''), NULLIF(wl.name_en,''), NULLIF(wnl.name_fr,''), NULLIF(wl.name_fr,''), '')"
 		nameJoin = " LEFT JOIN weapon_name_labels wnl ON wnl.title_slug = wi.title_slug AND wnl.weapon_key = wi.weapon_key"
 	}
 	query := "SELECT ids.v," +
 		" " + labelExpr + " AS label," +
+		" " + labelENExpr + " AS label_en," +
 		" COALESCE(wl.name_en, '') AS name_en," +
 		" COALESCE(w.weapon_key, '') AS weapon_key," +
 		" COALESCE(w.role, '') AS role," +
@@ -105,8 +115,8 @@ func resolveWeaponMeta(ctx context.Context, meta *DB, titleSlug string, weaponID
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var idStr, label, nameEN, weaponKey, role, class, family, faction string
-		if err := rows.Scan(&idStr, &label, &nameEN, &weaponKey, &role, &class, &family, &faction); err != nil {
+		var idStr, label, labelEN, nameEN, weaponKey, role, class, family, faction string
+		if err := rows.Scan(&idStr, &label, &labelEN, &nameEN, &weaponKey, &role, &class, &family, &faction); err != nil {
 			continue
 		}
 		u, perr := strconv.ParseUint(idStr, 10, 64)
@@ -114,7 +124,7 @@ func resolveWeaponMeta(ctx context.Context, meta *DB, titleSlug string, weaponID
 			continue
 		}
 		out[int64(u)] = weaponResolved{
-			label: label, nameEN: nameEN, weaponKey: weaponKey,
+			label: label, labelEN: labelEN, nameEN: nameEN, weaponKey: weaponKey,
 			role: role, class: class, family: family, faction: faction,
 		}
 	}
@@ -155,6 +165,7 @@ func resolveWeaponLabelsOnly(ctx context.Context, meta *DB, uniqueIDs []int64) m
 	}
 	query := "SELECT weapon_id," +
 		" COALESCE(name_fr, name_en, CAST(weapon_id AS VARCHAR)) AS label," +
+		" COALESCE(name_en, name_fr, CAST(weapon_id AS VARCHAR)) AS label_en," +
 		" COALESCE(name_en, '') AS name_en" +
 		" FROM weapon_labels WHERE weapon_id IN (" + strings.Join(parts, ",") + ")"
 	rows, err := meta.Query(ctx, query)
@@ -164,10 +175,74 @@ func resolveWeaponLabelsOnly(ctx context.Context, meta *DB, uniqueIDs []int64) m
 	defer rows.Close()
 	for rows.Next() {
 		var id UBigint
-		var label, nameEN string
-		if err := rows.Scan(&id, &label, &nameEN); err == nil && label != "" {
-			out[id.Int64()] = weaponResolved{label: label, nameEN: nameEN}
+		var label, labelEN, nameEN string
+		if err := rows.Scan(&id, &label, &labelEN, &nameEN); err == nil && label != "" {
+			out[id.Int64()] = weaponResolved{label: label, labelEN: labelEN, nameEN: nameEN}
 		}
+	}
+	return out
+}
+
+// offArsenalMeta — dimensions d'une cle de registre HORS ARSENAL (cf.
+// killsource_class_repo.go) : sa classe et son libelle d'affichage.
+type offArsenalMeta struct {
+	class   string
+	label   string
+	labelEN string // meme libelle, EN-first (repli FR) — V2.1, 2026-08-29, cf. weaponResolved.labelEN
+}
+
+// resolveOffArsenalKeys resout un lot de weapon_key et NE GARDE QUE celles qui n'ont
+// AUCUN identifiant numerique dans `weapon_ids`.
+//
+// POURQUOI CE FILTRE EST LE COEUR DE LA FONCTION, et pas une option. Ces cles servent une
+// SECONDE voie de comptage des kills (source de degat du film), en parallele de
+// l'attribution arme-a-feu qui, elle, part d'un `weapon_id`. Une cle qui porte un id
+// numerique est donc visible des DEUX voies : la compter ici la compterait deux fois.
+// Le filtre `wi.weapon_key IS NULL` est la garantie STRUCTURELLE que ca n'arrive pas —
+// pas une liste de classes ecrite a la main, qui derive au premier ajout de registre.
+// Le garde-rail qui tient la propriete cote registre : weapons.TestHorsArsenalHINFSansIdNumerique.
+//
+// Meme politique de nom que resolveWeaponMeta (source unique keyee par weapon_key) :
+// weapon_name_labels FR > EN, vide si la metadata n'est pas seedee. Best-effort, jamais
+// de panic : registre absent -> map vide (le lecteur ne remonte alors aucune ligne).
+func resolveOffArsenalKeys(ctx context.Context, meta *DB, titleSlug string, keys []string) map[string]offArsenalMeta {
+	out := map[string]offArsenalMeta{}
+	if meta == nil || len(keys) == 0 || !weaponRegistryAvailable(ctx, meta) {
+		return out
+	}
+	labelExpr := "''"
+	labelENExpr := "''"
+	nameJoin := ""
+	if weaponNameLabelsAvailable(ctx, meta) {
+		labelExpr = "COALESCE(NULLIF(wnl.name_fr,''), NULLIF(wnl.name_en,''), '')"
+		labelENExpr = "COALESCE(NULLIF(wnl.name_en,''), NULLIF(wnl.name_fr,''), '')"
+		nameJoin = " LEFT JOIN weapon_name_labels wnl ON wnl.title_slug = w.title_slug AND wnl.weapon_key = w.weapon_key"
+	}
+	args := make([]any, 0, len(keys)+1)
+	args = append(args, titleSlug)
+	for _, k := range keys {
+		args = append(args, k)
+	}
+	query := "SELECT w.weapon_key, COALESCE(w.class, '') AS class, " + labelExpr + " AS label, " + labelENExpr + " AS label_en" +
+		" FROM weapons w" +
+		" LEFT JOIN weapon_ids wi ON wi.title_slug = w.title_slug AND wi.weapon_key = w.weapon_key" +
+		nameJoin +
+		" WHERE w.title_slug = ? AND wi.weapon_key IS NULL AND w.weapon_key IN (" + Placeholders(len(keys)) + ")"
+	rows, err := meta.Query(ctx, query, args...)
+	if err != nil {
+		// weaponRegistryAvailable a confirme les tables : une erreur ici est une anomalie
+		// de requete, pas un schema non migre. On la SIGNALE avant de degrader.
+		slog.WarnContext(ctx, "weapon resolver: off-arsenal key query failed",
+			"title", titleSlug, "keys", len(keys), "err", err)
+		return out
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var key, class, label, labelEN string
+		if err := rows.Scan(&key, &class, &label, &labelEN); err != nil {
+			continue
+		}
+		out[key] = offArsenalMeta{class: class, label: label, labelEN: labelEN}
 	}
 	return out
 }

@@ -1,16 +1,25 @@
 /**
  * squadFragTools.test.ts — « Outils de destruction » Escouade (version multi-joueurs de
  * buildFragDetailBreakdown). Couvre : fusion multi-joueurs, exclusion Spartan/unattributed,
- * anti-double-comptage des sentinels grenade/mêlée, cap top-N + « Autres armes », split Mêlée.
+ * anti-double-comptage des sentinels grenade/mêlée, DEUX caps top-N (« Autres armes » côté
+ * gun, « Autres frags » côté détail), split Mêlée.
  */
 import { describe, it, expect } from 'vitest'
-import { buildSquadFragTools, SQUAD_TOOLS_TOP_GUNS } from './squadFragTools'
+import { buildSquadFragTools, SQUAD_TOOLS_TOP_DETAILS, SQUAD_TOOLS_TOP_GUNS } from './squadFragTools'
 import type { FragClassEntry, SquadWeaponKills } from '@/lib/api/types'
 
 // Libellés identité → les labels de sortie sont les clés brutes (guns gardent leur nom).
 const roleLabel = (r: string) => r
 const classLabel = (c: string) => c
-const opts = (topGuns: number) => ({ roleLabel, classLabel, otherWeaponsLabel: 'Autres armes', topGuns })
+const opts = (topGuns: number, topDetails = 99) => ({
+  roleLabel,
+  classLabel,
+  locale: 'fr' as const,
+  otherWeaponsLabel: 'Autres armes',
+  otherKillsLabel: 'Autres frags',
+  topGuns,
+  topDetails,
+})
 
 function input(): SquadWeaponKills {
   return {
@@ -130,5 +139,50 @@ describe('buildSquadFragTools', () => {
     // Le reste (hors agrégat) reste trié ASC par total escouade (comme le chart existant).
     const rest = bars.slice(1).map((b) => b.total_squad)
     expect([...rest].sort((a, b) => a - b)).toEqual(rest)
+  })
+
+  // ── Cap du DÉTAIL non-arme (2026-08-29) ────────────────────────────────────────
+  // Le cap top-N ne portait QUE sur les armes : les lignes de détail arrivaient toutes,
+  // et le tri ASC les faisait remonter EN HAUT du graphe, noyant les 8 armes.
+  describe('cap des lignes de détail non-arme', () => {
+    it('garde les N plus grosses lignes de détail, agrège le reste en « Autres frags »', () => {
+      const res = buildSquadFragTools(input(), fragClasses(), opts(10, 2))!
+      const byLabel = byLabelOf(res)
+      // Détail par total : direct_melee(8), grenade(9), assassination(2), ground_pound(2),
+      // shoulder_bash(1) → top 2 = grenade(9) et direct_melee(8).
+      expect(byLabel.has('grenade')).toBe(true)
+      expect(byLabel.has('direct_melee')).toBe(true)
+      expect(byLabel.has('assassination')).toBe(false)
+      expect(byLabel.has('ground_pound')).toBe(false)
+      expect(byLabel.has('shoulder_bash')).toBe(false)
+      // Aucune perte silencieuse : 2 + 2 + 1 = 5 frags repliés, ventilés par joueur.
+      const autres = byLabel.get('Autres frags')
+      expect(autres?.total_squad).toBe(5)
+      expect(autres?.kills_by_player).toEqual({ Me: 5 })
+    })
+
+    it('les 8 armes du cap restent toutes visibles malgré un détail pléthorique', () => {
+      const res = buildSquadFragTools(input(), fragClasses(), opts(SQUAD_TOOLS_TOP_GUNS, SQUAD_TOOLS_TOP_DETAILS))!
+      const bars = res.bars ?? []
+      const byLabel = byLabelOf(res)
+      for (const gun of ['AR', 'BR', 'Sniper', 'Pistol', 'Rocket']) expect(byLabel.has(gun)).toBe(true)
+      // Plafond global de catégories : topGuns + topDetails + les 2 agrégats au plus.
+      expect(bars.length).toBeLessThanOrEqual(SQUAD_TOOLS_TOP_GUNS + SQUAD_TOOLS_TOP_DETAILS + 2)
+    })
+
+    it('les deux agrégats sont épinglés en bas, « Autres armes » en tout dernier', () => {
+      const res = buildSquadFragTools(input(), fragClasses(), opts(3, 2))!
+      const bars = res.bars ?? []
+      expect(bars[0]?.label).toBe('Autres armes')
+      expect(bars[1]?.label).toBe('Autres frags')
+      const rest = bars.slice(2).map((b) => b.total_squad)
+      expect([...rest].sort((a, b) => a - b)).toEqual(rest)
+    })
+
+    it('détail sous le cap → aucune ligne « Autres frags » (pas d\'agrégat vide)', () => {
+      const res = buildSquadFragTools(input(), fragClasses(), opts(10, SQUAD_TOOLS_TOP_DETAILS))!
+      expect(byLabelOf(res).has('Autres frags')).toBe(false)
+      expect(SQUAD_TOOLS_TOP_DETAILS).toBeGreaterThan(0)
+    })
   })
 })

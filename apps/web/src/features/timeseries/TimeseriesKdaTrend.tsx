@@ -13,6 +13,7 @@ import {
   getEChartsThemeColors,
   getLegendBase,
   getTooltipBase,
+  stackedAxisExtent,
 } from '@/components/charts/_utils'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { resolveToken } from '@/lib/accessibility'
@@ -65,6 +66,12 @@ export function TimeseriesKdaTrend({ rows, height = 360, title, emptyMessage, la
     const kills = rows.map((r) => r.kills)
     const deaths = rows.map((r) => r.deaths)
     const bonus = rows.map((r) => r.assists / 3)
+    // Étendue d'axe calculée sur le JEU COMPLET (bonus toujours inclus, qu'il
+    // soit affiché ou masqué via la légende) — item 5, DEC-5 : sans ça, ECharts
+    // recalcule l'axe sur les séries visibles à chaque render et le toggle
+    // « Bonus » fait bouger toute l'échelle. Kills+bonus empilés (positif) ;
+    // morts jamais négatives ici (pas de `stack`) → min fixé à 0.
+    const { min: yMin, max: yMax } = stackedAxisExtent([[kills, bonus], [deaths]])
 
     return {
       backgroundColor: CHART_BG,
@@ -95,6 +102,8 @@ export function TimeseriesKdaTrend({ rows, height = 360, title, emptyMessage, la
         type: 'value',
         name: labels.yAxis,
         nameTextStyle: { color: tc.axisLabel, fontSize: 11 },
+        min: yMin,
+        max: yMax,
         minInterval: 1,
       },
       series: [

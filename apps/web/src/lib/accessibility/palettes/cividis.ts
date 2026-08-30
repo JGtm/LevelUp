@@ -130,6 +130,27 @@ export const cividisPalette: Palette = {
   //  labels disambiguent pour les daltoniens)
   ...ENCOUNTER_BADGE_COLORS,
 
+  // ── Classes de frags — famille dédiée (2026-08-29) ─────────────────────────
+  // AVANT cette famille : lourde ≡ capacité spartan (#00224E) et épaule ≡
+  // environnement (#3F4A6B), collisions EXACTES. Cividis est une rampe
+  // séquentielle : l'identité par TEINTE y est impossible par construction (cf.
+  // squad-player-*) — l'identité vient de la CLARTÉ, ordonnée sur la rampe, plus
+  // trois emprunts hors rampe (même doctrine que blue/vermillion/extreme).
+  // Écarts plus serrés que sur les autres palettes, assumés : le double encodage
+  // (labels + anneaux + légende, P1.2) porte le sens ; le garde-rail exige ΔE ≥ 5
+  // ici (≥ 8 ailleurs), seuil documenté au test.
+  'frag-heavy':           CIVIDIS_DARKEST,  // t=0.00
+  'frag-shoulder':        CIVIDIS_T25,      // t=0.25
+  'frag-vehicle':         CIVIDIS_T40,      // t=0.40
+  'frag-unattributed':    CIVIDIS_MID,      // t=0.50 — gris-brun neutre (résidu)
+  'frag-sidearm':         CIVIDIS_T60,      // t=0.60
+  'frag-grenade':         CIVIDIS_T75,      // t=0.75 (l'ocre, écho de l'ambre)
+  'frag-melee':           CIVIDIS_T90,      // t=0.90
+  'frag-environmental':   CIVIDIS_LIGHTEST, // t=1.00 (identité par clarté, pas par teinte)
+  'frag-spartan-ability': SAFE_BLUE,        // emprunt hors rampe
+  'frag-turret':          SAFE_VERMILLION_DEEP,
+  'frag-equipment':       SAFE_REDDISH_PURPLE,
+
   // ── Heatmaps — axe blue/vermillion ────────────────────────────────────────
   'heatmap-cold':           SAFE_VERMILLION,
   'heatmap-hot':            SAFE_BLUE,

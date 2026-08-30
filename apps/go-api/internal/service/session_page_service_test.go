@@ -532,6 +532,15 @@ func TestSessionPageService_AttachSessionEventBlocks(t *testing.T) {
 	if pt.FirstDeathSec == nil || *pt.FirstDeathSec != 4.2 {
 		t.Fatalf("première mort courante want 4.2s, got %#v", pt.FirstDeathSec)
 	}
+	// DEC-4 (retours utilisateur 2026-08-29) : carte + date accompagnent le
+	// point (tooltip web sans uuid) — repris de currentMatches (m1: MapName
+	// "Aquarius", pas de PairName/GameVariant → ModeUI vide, dégradation).
+	if pt.MapUI != "Aquarius" {
+		t.Errorf("m1 carte want %q, got %q", "Aquarius", pt.MapUI)
+	}
+	if !pt.StartTime.Equal(tt) {
+		t.Errorf("m1 start_time want %v, got %v", tt, pt.StartTime)
+	}
 	if len(resp.CompareFirstBlood) != 1 || len(resp.CompareFirstBlood[0].Matches) != 1 ||
 		resp.CompareFirstBlood[0].Matches[0].MatchID != "c1" {
 		t.Fatalf("CompareFirstBlood inattendu: %#v", resp.CompareFirstBlood)

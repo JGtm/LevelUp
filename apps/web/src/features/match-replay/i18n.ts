@@ -275,10 +275,11 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
         "Tractions de grappin lues dans le film — la seule activation de capacité que la mesure sait attribuer à un joueur. Un tir sans accroche n'est pas une traction : il est compté à part et n'entre pas dans cette colonne.",
       groupActive: 'États actifs',
       groupActiveHint:
-        "Épisodes de camouflage et de surbouclier. Le film mesure que l'effet COURT ; il ne dit pas d'où il vient — un bonus ramassé au socle et une capacité déclenchée produisent le même épisode, et la source n'est pas distinguée. Le nombre et la durée cumulée se lisent ensemble : six épisodes d'une seconde et un épisode de six secondes ne racontent pas la même partie.",
+        "Épisodes de camouflage et de surbouclier. Le film mesure que l'effet COURT ; il ne dit pas d'où il vient — un bonus ramassé au socle et une capacité déclenchée produisent le même épisode, et la source n'est pas distinguée. Le nombre et la durée cumulée se lisent ensemble : six épisodes d'une seconde et un épisode de six secondes ne racontent pas la même partie. Les frags sous effet actif se lisent à la précision de la retransmission près (les bornes de l'épisode) ; le camo seul reste sous le seuil de mesure en lecture large (26,2 % des épisodes avec au moins un frag).",
       activeFamily: { camo: 'Camouflage', overshield: 'Surbouclier' },
       activeCount: 'épisodes',
       activeDuration: 'durée',
+      activeKillsFamily: { camo: 'Frags sous camo', overshield: 'Frags sous surbouclier' },
       groupDeployed: 'Déploiements',
       groupDeployedHint:
         "Les objets qu'un joueur a réellement DÉPLOYÉS en cours de vie, par famille. Un mur déployé publie deux poses (l'appareil et ses panneaux) et n'en compte qu'une. Les lancers de grenade ont leur propre colonne ; le grappin, le propulseur et le répulseur agissent sur leur porteur et ne posent rien sur le terrain.",
@@ -301,6 +302,12 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
         `${count} geste${count > 1 ? 's' : ''} mesuré${count > 1 ? 's' : ''} sans propriétaire (vie sans joueur, ou poseur non mesuré) : hors du tableau.`,
       notMeasured:
         "Répulseur et propulseur n'apparaissent pas : le film ne publie aucun canal d'activation pour ces deux capacités. Une colonne vide se lirait « zéro utilisation ».",
+      killBadgeFmt: {
+        camo: (kills) => `${kills} frags sous camouflage`,
+        overshield: (kills) => `${kills} frags sous surbouclier`,
+      },
+      killBadgeHint:
+        "Le meilleur épisode du match pour cette famille. Même réserve que les états actifs : la source de l'épisode n'est pas distinguée (ramassage ou capacité déclenchée), ses bornes sont à la précision de la retransmission près, et le camo seul reste sous le seuil de mesure en lecture large.",
     },
     ammoFullLabel: 'Munitions pleines',
     gaugeLabel: 'charge restante',
@@ -596,10 +603,11 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
         'Grapple pulls read from the film — the only ability activation the measurement can attribute to a player. A shot with no anchor is not a pull: it is counted separately and never enters this column.',
       groupActive: 'Active states',
       groupActiveHint:
-        'Camo and overshield episodes. The film measures that the effect IS RUNNING; it never says where it came from — a power-up picked up from a pad and a triggered ability produce the same episode, and the source is not told apart. Count and cumulative duration read together: six one-second episodes and one six-second episode are not the same game.',
+        "Camo and overshield episodes. The film measures that the effect IS RUNNING; it never says where it came from — a power-up picked up from a pad and a triggered ability produce the same episode, and the source is not told apart. Count and cumulative duration read together: six one-second episodes and one six-second episode are not the same game. Kills under active effect read at the precision of the broadcast (the episode's bounds); camo alone stays under the measurement threshold in broad reading (26.2% of episodes with at least one kill).",
       activeFamily: { camo: 'Camo', overshield: 'Overshield' },
       activeCount: 'episodes',
       activeDuration: 'duration',
+      activeKillsFamily: { camo: 'Kills under camo', overshield: 'Kills under overshield' },
       groupDeployed: 'Deployments',
       groupDeployedHint:
         'The objects a player actually DEPLOYED while alive, by family. A deployed drop wall publishes two placements (the device and its panels) and counts as one. Grenade throws have their own column; the grappleshot, thruster and repulsor act on their carrier and put nothing on the ground.',
@@ -621,6 +629,12 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
         `${count} measured gesture${count > 1 ? 's' : ''} with no owner (life with no player, or unmeasured deployer): outside the table.`,
       notMeasured:
         'Repulsor and thruster are absent: the film publishes no activation channel for those two abilities. An empty column would read as "zero uses".',
+      killBadgeFmt: {
+        camo: (kills) => `${kills} kills under camo`,
+        overshield: (kills) => `${kills} kills under overshield`,
+      },
+      killBadgeHint:
+        "The best episode of the match for this family. Same reserve as active states: the episode's source is not told apart (picked up or triggered), its bounds are at broadcast precision, and camo alone stays under the measurement threshold in broad reading.",
     },
     ammoFullLabel: 'Ammo full',
     gaugeLabel: 'charge left',

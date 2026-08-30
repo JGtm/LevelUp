@@ -45,3 +45,16 @@ hinf_vestige_carbine = { en = "Vestige Carbine", fr = "Carabine Vestige" }
 hinf_frag_grenade   = { en = "Frag Grenade", fr = "Grenade frag" }
 hinf_plasma_grenade = { en = "Plasma Grenade", fr = "Grenade plasma" }
 hinf_dynamo_grenade = { en = "Dynamo Grenade", fr = "Grenade dynamo" }
+
+# Hors arsenal (lot « kills hors arme a feu », 2026-08-29). Ces cles ne se resolvent
+# PAS par weapon_id : elles viennent du pont killicon (source de degat jpt! -> weapon_key).
+# Le nom EN du repulseur DOIT rester « Repulsor » : c'est la cle de la regle NOM de
+# rules.tsv, et TestChaqueRegleEstCorroboreeParLeRegistre compare les deux.
+hinf_repulsor       = { en = "Repulsor", fr = "Répulseur" }
+# Les quatre bobines portent le nom que le kill feed du jeu leur donne (atlas killfeed
+# 42/43/44/45) : c'est le TYPE D'ENERGIE qui les distingue, pas le modele de bidon.
+hinf_coil_kinetic   = { en = "UNSC Fusion Coil", fr = "Bobine à fusion UNSC" }
+hinf_coil_plasma    = { en = "Plasma Coil", fr = "Bobine à plasma" }
+hinf_coil_shock     = { en = "Shock Coil", fr = "Bobine à choc" }
+hinf_coil_hardlight = { en = "Blast Coil", fr = "Bobine à souffle" }
+hinf_environment    = { en = "Environment", fr = "Chute et environnement" }

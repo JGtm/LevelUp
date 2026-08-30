@@ -11322,6 +11322,8 @@ components:
         camoLives:
           format: int64
           type: integer
+        killsRead:
+          type: boolean
         overshieldEpisodes:
           format: int64
           type: integer
@@ -11337,14 +11339,21 @@ components:
         - camoEpisodes
         - overshieldLives
         - overshieldEpisodes
+        - killsRead
       type: object
     EquipmentEpisode:
       additionalProperties: false
       properties:
+        a:
+          format: int64
+          type: integer
         endRead:
           type: boolean
         fam:
           type: string
+        k:
+          format: int64
+          type: integer
         slot:
           format: int32
           minimum: 0
@@ -12634,12 +12643,20 @@ components:
           type:
             - number
             - "null"
+        map_ui:
+          type: string
         match_id:
+          type: string
+        mode_ui:
+          type: string
+        start_time:
+          format: date-time
           type: string
       required:
         - match_id
         - first_kill_sec
         - first_death_sec
+        - start_time
       type: object
     FirstBloodPlayerSeries:
       additionalProperties: false
@@ -12862,6 +12879,8 @@ components:
           format: int64
           type: integer
         label:
+          type: string
+        label_en:
           type: string
         role:
           type: string
@@ -15374,6 +15393,8 @@ components:
           type: integer
         event_type:
           type: string
+        headshot:
+          type: boolean
         killer_damage_pct:
           format: int64
           type: integer

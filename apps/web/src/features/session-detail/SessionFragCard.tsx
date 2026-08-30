@@ -52,7 +52,7 @@ export function SessionFragCard({ entry, stacked = false }: Props) {
   const classLabel = (c: string) => formatMessage(fragsManifest, `frags.class.${c}` as never, appLocale)
   const roleLabel = (r: string) => formatMessage(fragsManifest, `frags.role.${r}` as never, appLocale)
   const detailTitle = formatMessage(fragsManifest, 'frags.charts.detail_title', appLocale)
-  const breakdown = buildFragDetailBreakdown(distribution, entry?.top_weapon_kills ?? [], { roleLabel, classLabel })
+  const breakdown = buildFragDetailBreakdown(distribution, entry?.top_weapon_kills ?? [], { roleLabel, classLabel, locale: appLocale })
   // Précision par arme native (Halo 5) : quand l'agrégat de session la porte, le 2e graphe
   // devient « Précision par arme » à la place de « Détails des frags » (Infinite = vide → repli).
   const accuracy = entry?.weapon_accuracy ?? []

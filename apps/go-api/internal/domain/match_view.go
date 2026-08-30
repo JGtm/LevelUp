@@ -313,6 +313,16 @@ type MatchHighlightEvent struct {
 	WeaponImageURL    string `json:"weapon_image_url,omitempty"`
 	WeaponImageTinted bool   `json:"weapon_image_tinted,omitempty"`
 
+	// Headshot : le dégât fatal était-il un tir à la tête ? Peuplé ssi la source de dégât est
+	// connue ET non ambiguë (cf. domain.KillSourceRaw.Headshot) — INDÉPENDAMMENT de la
+	// résolution d'icône ci-dessus : une catégorie peut être connue même quand
+	// `TitleAssetURLAdapter.KillSourceIcon` ne trouve aucune image pour le tag. Nil = non
+	// mesurable (film absent, passe non publiable, ou double kill ambigu sur la catégorie),
+	// JAMAIS false — même doctrine que KillerDamagePct ci-dessous. G.1 (2026-08-30) : filtre
+	// STRICT `source_category = 'Headshot'` uniquement (killscope.IsHeadshotCategory) ;
+	// `HeadshotMultiplier` fait chuter l'accord oracle de 99,3 % à 84,4 %, JAMAIS l'inclure.
+	Headshot *bool `json:"headshot,omitempty"`
+
 	// AssistState : l'état de la lecture d'ASSISTANCE de ce kill — TROIS valeurs qui ne
 	// se confondent JAMAIS (décodeur de film, cf. domain.KillAssistRaw) :
 	//   ""      (champ omis)  ON NE SAIT PAS — aucun kill-event apparié à cette mort ;

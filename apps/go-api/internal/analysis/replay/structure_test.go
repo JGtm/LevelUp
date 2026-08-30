@@ -370,8 +370,17 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   Oddball par `game_variant_name`. Le crâne LIBRE (`objectiveObjects`, v21) reste la couche
 	//   POSITION ; celle-ci est la couche PORTEUR. Détail :
 	//   .ai/V7.5/replay2d/registre_film/ODDBALL_PORTEUR_PROTOCOLE.md.
-	if SchemaVersion != 23 {
-		t.Fatalf("SchemaVersion = %d, attendu 23 : incrémenter exige une raison écrite ci-dessus "+
+	// - v24 (2026-08-30, PLAN_RETOURS_UTILISATEUR_2026-08-29 §LOT F.1) : `equipmentEpisodes[].k`/
+	//   `.a` — LES FRAGS ET ASSISTANCES DU PORTEUR pendant l'épisode (camo, surbouclier), et
+	//   `coverage.equipment.killsRead` qui dit si la mesure a été TENTÉE pour ce match. Champs
+	//   optionnels sur un sous-objet déjà publié, et pourtant la version monte, pour la raison
+	//   exacte des montées v13/v18/v19 : un artefact 23 n'a jamais pu porter ces compteurs, et
+	//   la reprise du backfill se fait par SchemaVersion. Décision utilisateur 8a/8b (DEC-7
+	//   révisée) : GO à petite population — camo 35,2 % (25/71), surbouclier 55,6 % (10/18),
+	//   global 39,3 % (35/89) en lecture STRICTE (`LineByLinePublishable`, la population qui
+	//   affiche réellement des chiffres) ; re-mesure obligatoire après la cuisson de masse.
+	if SchemaVersion != 24 {
+		t.Fatalf("SchemaVersion = %d, attendu 24 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

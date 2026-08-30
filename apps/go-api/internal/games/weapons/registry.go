@@ -126,6 +126,11 @@ const (
 	clsSidearm  = "sidearm"
 	clsGrenade  = "grenade"
 	clsMelee    = "melee"
+	// clsEquipment / clsEnvironmental : buckets HORS ARSENAL (lot 2026-08-29). Comme
+	// clsSidearm/clsGrenade/clsMelee, ils servent a la fois de class, de role ET de
+	// family — ces sources n'ont pas de fonction de combat a ventiler.
+	clsEquipment     = "equipment"
+	clsEnvironmental = "environmental"
 
 	roleAuto      = "automatic"
 	rolePrecision = "precision"
@@ -350,6 +355,9 @@ var weaponRegistryFamilies = []weaponFamilyRow{
 	{"vehicle", "Vehicle", "Véhicule"},
 	{"turret", "Turret", "Tourelle"},
 	{"environmental", "Environmental", "Environnement"},
+	// equipment : ajoutée le 2026-08-29 avec le répulseur (lot « kills hors arme à feu »).
+	// Halo Infinite, contrairement aux cinq familles ci-dessus qui sont H5-only.
+	{clsEquipment, "Equipment", "Équipement"},
 	{"unattributed", "Unattributed", "Non attribué"},
 	{"other", "Other", "Autres"},
 }
@@ -391,6 +399,35 @@ var weaponRegistryWeapons = []weaponRow{
 	{"hinf_frag_grenade", titleHINF, "Frag Grenade", clsGrenade, clsGrenade, "frag_grenade", facHuman, dmgExplosive, mfrMisriah},
 	{"hinf_plasma_grenade", titleHINF, "Plasma Grenade", clsGrenade, clsGrenade, "plasma_grenade", facCovenant, dmgPlasma, ""},
 	{"hinf_dynamo_grenade", titleHINF, "Dynamo Grenade", clsGrenade, clsGrenade, "dynamo_grenade", facBanished, "shock", ""},
+	// ── Halo Infinite HORS ARSENAL (lot « kills hors arme à feu », 2026-08-29) ──
+	// Ces six entrées ne sont PAS des armes de l'arsenal : ce sont les sources de dégât
+	// LÉTALES que l'attribution arme-à-feu ne peut pas voir (elle repose sur les records
+	// de dégât `0xd2` du tireur, qu'aucune d'elles n'émet). Leurs kills tombaient donc
+	// dans « Non attribué ». Elles n'ont ni faction ni fabricant (`""`) et — c'est le
+	// point qui les distingue de toutes les autres lignes — AUCUN id numérique dans
+	// weapon_ids : elles ne se résolvent pas par `weapon_id` mais par le pont
+	// `killicon` (source de dégât `jpt!` → weapon_key), cf. film/killicon/data/rules.tsv.
+	//
+	// Volumétrie mesurée le 2026-08-29 sur la base de production (1 365 matchs décodés,
+	// 74 569 sources de dégât mesurées) : bobines 547 kills, chute/environnement 403,
+	// répulseur 1. Le répulseur porte sa propre classe `equipment` MALGRÉ ce volume de 1
+	// (décision D1 du plan, confirmée par l'utilisateur) : la classe ne coûte que cette
+	// ligne, un sunburst n'affiche pas une classe vide, et le jour où le geste devient
+	// courant il est compté sans code neuf.
+	{"hinf_repulsor", titleHINF, "Repulsor", clsEquipment, clsEquipment, clsEquipment, "", "", ""},
+	// Les quatre bobines : le film ne dit PAS quel modèle de bidon a explosé, il dit le
+	// TYPE D'ÉNERGIE (la racine de banque sonore). C'est donc l'énergie qui nomme, et
+	// c'est aussi ce que fait le kill feed du jeu — quatre vignettes distinctes.
+	{"hinf_coil_kinetic", titleHINF, "UNSC Fusion Coil", clsEnvironmental, clsEnvironmental, clsEnvironmental, "", dmgExplosive, ""},
+	{"hinf_coil_plasma", titleHINF, "Plasma Coil", clsEnvironmental, clsEnvironmental, clsEnvironmental, "", dmgPlasma, ""},
+	{"hinf_coil_shock", titleHINF, "Shock Coil", clsEnvironmental, clsEnvironmental, clsEnvironmental, "", "shock", ""},
+	{"hinf_coil_hardlight", titleHINF, "Blast Coil", clsEnvironmental, clsEnvironmental, clsEnvironmental, "", "hardlight", ""},
+	// Chute et environnement : les 9 tags `DEGAT_GLOBAL` sont indiscernables entre eux
+	// (tous « glda/matg : chute, environnement »). Une seule entrée, donc, et AUCUNE
+	// vignette — l'atlas a bien `killfeed-52 Fall` et `killfeed-55 environment`, mais
+	// choisir l'une des deux pour les neuf tags mettrait une icône fausse sur la moitié
+	// des cas. Une icône absente est un repli, une icône fausse est un mensonge.
+	{"hinf_environment", titleHINF, "Environment", clsEnvironmental, clsEnvironmental, clsEnvironmental, "", "", ""},
 	// ── Halo 5: Guardians (§6.2) ──
 	{"h5_assault_rifle", titleH5, "Assault Rifle (MA5D)", clsShoulder, roleAuto, "assault_rifle", facHuman, dmgBallistic, mfrMisriah},
 	{"h5_battle_rifle", titleH5, "Battle Rifle (BR55HB)", clsShoulder, rolePrecision, "battle_rifle", facHuman, dmgBallistic, mfrMisriah},
