@@ -1,3 +1,41 @@
+## [2026-08-30] Sons — le merge ramassage fournit les déclencheurs, les quatre sons muets sont câblés — Complété
+
+**Le merge `dcbc6e458` (chantier ramassage, schémas 25-28) apporte exactement ce qui manquait
+en §12.3** : `weaponChanges` (prises/lâchers/échanges datés à la frame), `equipmentChanges`
+(ramassages/consommations datés), `groundWeapons`. Le lot web du chantier branchait l'affichage,
+pas le son — câblé ce soir :
+
+    weaponChangeSound.ts     (neuf)   taken → weapon_pickup (168832f6), dropped → weapon_drop
+                                      (6cdd92fd). Un SWAPPED sonne le ramassage SEUL : un
+                                      échange est un lâcher + une prise au même instant,
+                                      superposer les deux fichiers = artefact de mixage.
+    equipmentChangeSound.ts  (neuf)   taken → objective_pad_pickup (c73036e4, RE-LIVRÉ — retiré
+                                      le matin faute de déclencheur, il en a un le soir).
+                                      `spent` MUET : consommer = utiliser, et l'usage sonne
+                                      déjà par sa famille — un jingle générique DOUBLERAIT.
+    padSpawnSound.ts        (scindé)  socle d'ÉQUIPEMENT (powerup_camo/overshield, jointure
+                                      `padEquipmentFamilyOf` de l'affichage) →
+                                      equipment_pad_spawn (4093f3c4) ; socle d'ARME →
+                                      objective_pad_spawn.
+
+**Le spawn d'équipement n'a demandé AUCUN événement neuf** — l'utilisateur avait raison
+(« déjà géré, en tous cas partiellement ») : `powerup_pads.go` publie les socles de power-up
+dans le canal des socles avec leurs `spawns` datés. Limite du « partiellement » écrite : seuls
+camo et surbouclier sont des familles de socle ; un équipement posé hors socle n'a pas
+d'apparition datée.
+
+**Livré** : 4 wav (`weapon_drop` 0,312 s, `weapon_pickup` 0,340 s, `equipment_pad_spawn`
+0,562 s, `objective_pad_pickup` 0,804 s), 2 modules neufs + 1 scindé, garde-rail d'assets étendu
+(SOURCES_COURTES nominatives). **Gates : vitest match-replay 125 fichiers / 1 934 tests VERT,
+typecheck cache purgé VERT, eslint VERT.**
+
+**BILAN DU CHANTIER SON : les six gestes désignés SONNENT** — sécurisation de colline (x2),
+spawn d'arme et d'équipement sur socle, lâcher, ramassage d'arme — plus le ramassage
+d'équipement re-livré. **Aucun son désigné ne reste sans déclencheur.** Section 16 du RE.
+Rien de commité.
+
+---
+
 ## [2026-08-30] Sonde i26 unit-equipment : l'evenement CONFIRME, le fil objet<->porteur REFUTE par trois voies — Complété
 
 Demande utilisateur : « regarde i26 unit-equipment, avec ses enfants ou parents ».
