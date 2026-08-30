@@ -43,10 +43,22 @@ mesure préliminaire 000d5950 : type=36 245/245, attaquant 245/245, 27 armes pro
 comptes lus à 98 % toutVide — RÉSERVE : à juger par la visée R(30) une fois
 FUN_1406cd5b8/FUN_1408eff64 résolus, ne pas bâtir avant.
 
-**Conclusion / prochaine étape** : associer réf0 (domaine 4) aux joueurs et croiser avec la
-vérité terrain lunette (gate produit) ; résoudre FUN_1406cd5b8 + FUN_1408eff64 et valider
-le cadrage complet du type 36 par la visée R(30) ; puis décodeur type 36 confronté au
-golden killsource. Le user est informé (la lunette était SON objectif d'origine).
+**Suite (31/08) — le juge visée + véhicules (demande user)** : (a) le contrôle décisif est la
+visée R(30) en bout de chaîne du type 36. Cas modal (0 cible, 0 composante) : 229/240 ont des
+portes non vides dans les deux sous-lecteurs COMPOSITES (FUN_1406cd5b8, FUN_1408eff64) donc
+sautés ; les 11 restants donnent **11 vecteurs unitaires VALIDES / 11** — signal positif mais
+n trop faible, il faut fermer les deux composites (forme lue : R(1) porte + tag R(2) +
+R(32)/R(6) selon tag) pour lever les 229. NE PAS conclure précision avant. Sous-lecteurs
+résolus : FUN_141fcf670=R(7)+R(1), FUN_1406d00ec=[R(1):-1|R(2)], FUN_14080cc68=deux comptes
+(code à préfixe), FUN_1407ef8e4=R(3), FUN_1407f0278=R(2). (b) VÉHICULES (corpus, octets
+corrigés — piège base 0xC0 pas 0x80) : embarquement (type 8) 374 sur 154 films, sortie
+(type 22) 5 600 sur 279 films, enter (53) 0 ; siège R(6) et occupant (ref0) décodés
+proprement. Entrées ET sorties présentes et lisibles.
+
+**Conclusion / prochaine étape** : fermer FUN_1406cd5b8 + FUN_1408eff64 champ par champ pour
+lever les 229 sautés et porter le n de la visée à quelques centaines (le vrai verdict
+précision) ; associer réf0 aux joueurs ; puis décodeur type 36 confronté au golden killsource.
+Le user est informé et très demandeur (touches, pickups, véhicules).
 
 ## [2026-08-30] Percer la trame — lot 1 suite : cadrage 0xC2/0xD2 ÉTABLI sur 2 films, RÉTRACTATION du DEL de tête — En cours
 
