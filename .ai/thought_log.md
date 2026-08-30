@@ -77723,3 +77723,87 @@ domaine 1 seulement, catalogue des types 50..127) est versionnee par ce commit. 
 
 **Prochaine etape** : CR du lot C (onde) et du lot B2 (emetteur + sieges d'arme) ; puis soit le
 decodage du bloc commandes, soit l'elargissement de l'onde aux autres regions de la trame.
+
+## [2026-08-30] Visee lunette, LOT C — la correlation d'onde carree : AUCUN bit a position fixe ne porte l'etat de lunette, et pour la premiere fois le negatif est adosse a une PUISSANCE mesuree — Complete
+
+**Mandat** : l'instrument le plus dense du dossier. Au lieu des 12 transitions qui servaient
+d'oracle aux lots precedents, l'onde carree COMPLETE de Nilton410 (relevé Theater de
+l'utilisateur, film 00162144, decalage feed->film +1 171 858 ms) confrontee bit a bit aux
+positions FIXES du payload des paquets delta — un echantillon par paquet, pas un par transition.
+Deux instruments sous garde d'environnement (ONDE_FILM) :
+`apps/go-api/internal/analysis/replay/visee_onde_research_test.go` (moteur : onde, collecte,
+transposition en colonnes de bits, exactitude equilibree) et `visee_onde_verdict_test.go`
+(controle par translation, verdict). Aucun code de production touche.
+
+**SEUILS ECRITS AVANT MESURE** : S1 candidat = exactitude equilibree >= 0,95 avec >= 200
+echantillons de CHAQUE classe ; S2 a suivre >= 0,85 ; S3 sous-dimensionne si une classe compte
+moins de 200 echantillons ; S4 controle par translation obligatoire, verdict positif exige
+p(max) < 1 %. La mesure compte les deux polarites, et le score est l'exactitude EQUILIBREE
+(moyenne du taux de vrais 1 et de vrais 0) : une position constante vaut 0,5 quelle que soit
+l'asymetrie des classes.
+
+**CE QUE LES BANDES DE GARDE COUTENT, chiffre AVANT la mesure et non decouvert apres.** Le relevé
+est precis a +/- 1 s, donc +/- 1,2 s autour de chaque transition est exclu. Consequence : les
+episodes de moins de 2,4 s disparaissent entierement, et {71 -> 73} aussi. Il ne reste que
+3 480 ms classees « zoome » sur 60 s de fenetre. D'ou une variante a garde 0,5 s (7 270 ms),
+DECLAREE d'avance et publiee quel qu'en soit le resultat. **Madina97294 est structurellement
+inexploitable** : son creneau unique de 1,3 s laisse 0 ms en garde longue, 290 ms en garde courte.
+
+**LE CONTROLE PAR TRANSLATION, DURCI PAR RAPPORT AU LOT A.** L'onde entiere est translatee — la
+fenetre d'analyse AVEC elle, ce qui preserve exactement la duree des creneaux, le nombre de
+transitions et les gardes. Trois parts publiees : p(max) = part des decalages ou le MEILLEUR
+score toutes positions confondues atteint le score observe (il corrige de lui-meme le balayage de
+~1 000 hypotheses) ; p(max apparie en taille) ; p(pos) = le controle du lot A, sur la seule
+position candidate. C'est p(max) qui fait foi.
+
+**RESULTATS — 25 219 paquets delta collectes sur 457 s (55/s, 14 tetes ; tete 80 = 20 089,
+105 = 2 417, 116 = 658, 99 = 480, 96 = 465, 101 = 324, 97 = 228). Fenetre : 3 364 paquets, dont
+210 en classe « zoome » et 1 744 en classe « pas zoome ».**
+
+| variante (garde 1,2 s) | meilleure position | score | p(max) | verdict |
+|---|---|---|---|---|
+| C2 toutes tetes / debut (512 b) | bit 50 | 0,7730 | 24,84 % | NEGATIF |
+| C2 tetes 80 / debut | bit 87 | 0,8018 | 36,60 % | NEGATIF (sous-dimensionne) |
+| C2bis toutes tetes / FIN | 196 b avant la fin | 0,7114 | 20,13 % | NEGATIF |
+| C2bis tetes 80 / FIN | 196 b avant la fin | 0,7106 | 18,48 % | NEGATIF (sous-dimensionne) |
+| C5 tetes 96+97+116 / debut | bit 183 | 0,9280 | 6,06 % | NEGATIF (sous-dimensionne) |
+| C2 elargi 1024 b / debut | bit 50 | 0,7751 | 21,82 % | NEGATIF |
+| C2bis elargi 1024 b / FIN | 196 b avant la fin | 0,7129 | 18,38 % | NEGATIF |
+
+La variante a garde 0,5 s ne change aucun verdict (scores plus bas, p(max) de 17 a 42 %).
+L'elargissement du domaine a 1 024 bits (24 393 paquets d'au moins 128 octets, 11,1 % du flux
+ecarte) ne fait apparaitre aucune position nouvelle : les memes bits reviennent en tete.
+
+**LE RESULTAT DE METHODE — POURQUOI CES SCORES NE VALENT RIEN.** Le meilleur score sous onde
+TRANSLATEE vaut en moyenne 0,68 a 0,81 selon la variante, et atteint 0,99 sur certains decalages.
+Le flux d'etat est si autocorrele qu'une onde qui ne decrit RIEN se fait imiter a 0,80 par l'une
+des 505 positions. Sans le controle, le bit 50 (0,773) ou le bit 183 (0,928, p(pos) = 0,19 % —
+le controle du lot A l'aurait declare significatif) auraient ete publies comme trouvailles. C'est
+la troisieme fois que ce chantier voit un controle trop permissif fabriquer un signal.
+
+**ET LE NEGATIF N'EST PAS UN AVEUGLEMENT — la PUISSANCE est mesuree.** Nouveaute de ce lot : on
+publie la part des decalages de controle dont le meilleur score atteint 1,0000, c'est-a-dire la
+p(max) qu'obtiendrait un signal PARFAIT. Elle vaut **0,00 % a 0,50 % selon la variante, donc
+< 1 % partout** : un bit qui suivrait exactement l'onde serait declare SIGNIFICATIF par cet
+instrument. Nuance publiee : la part atteignant 0,95 va de 0,06 % a 4,18 %, donc dans les
+variantes les plus bruyantes (C2 toutes tetes debut, C5) il faudrait un score >= 0,99 pour
+conclure. L'instrument a la puissance de detecter un canal exact ; il n'y en a pas.
+
+**CE QUE CE LOT ELIMINE** : l'hypothese « le lot de commandes du tick est a position fixe dans la
+region de tete (ou de queue) du paquet delta » est REFUTEE sur les 1 024 premiers bits, les 1 024
+derniers, et sur cinq familles de tetes. Combinee au triple verrou de la phase 3 (registre ECS,
+oracle des medailles, type 126 absent) et a la chute du 114 au lot A, il ne reste, pour un etat
+de lunette lisible du film, que des emplacements a offset VARIABLE — c'est-a-dire atteignables
+seulement par un decodage reel de la trame d'etat, pas par un balayage de positions.
+
+**Prochaine etape honnete** (aucune n'est un balayage de plus) : (a) decoder la trame d'etat du
+paquet a tete 80 pour atteindre le bloc de commandes a son offset reel, ce qui suppose de
+resoudre la structure du tick avant les records d'entites ; (b) obtenir de l'utilisateur un relevé
+plus DENSE — les gardes ont mange 4 des 6 episodes, un relevé de 3 a 4 minutes avec des episodes
+longs multiplierait par dix la classe « zoome » ; (c) le lot B2 (sites d'emission generiques),
+seule voie statique encore ouverte.
+
+**Gates** : `CGO_ENABLED=0 go vet ./internal/analysis/replay/` propre, gofmt propre, fichiers
+359 et 311 lignes, deux executions reelles conservees (la seconde apres durcissement de
+l'instrument : distinction hors-fenetre / bandes de garde, mesure de puissance, domaine elargi).
+Test PASS en 1,4 s, saute hors garde d'environnement.
