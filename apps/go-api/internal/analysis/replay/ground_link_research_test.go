@@ -28,6 +28,7 @@ package replay
 // GARDE : PICKUP_FILM / PICKUP_MAP, comme les autres instruments du lot.
 
 import (
+	"fmt"
 	"math"
 	"os"
 	"path/filepath"
@@ -366,4 +367,169 @@ func TestEquipementTombeALaMort(t *testing.T) {
 	t.Log("LECTURE : une majorite de morts = l'equipement TOMBE au sol a la mort, et les poses " +
 		"publiees (equipmentPlacements) les montrent deja. Une majorite de survivants = ces " +
 		"poses sont des deploiements volontaires, pas des lachers de mort.")
+}
+
+// TestLienPriseEquipementPose — mesure D (2026-08-30, suite de la mesure A) : le RAMASSAGE
+// D'EQUIPEMENT (i48, schema 25) se lie-t-il a la POSE ti=37 (l'objet au sol) par la meme
+// regle que les armes — proximite a l'instant exact ?
+//
+// DEUX ESPACES D'IDENTIFIANTS DIFFERENTS, et c'est le point a mesurer en plus : la prise i48
+// porte un RANG DE PALETTE, la pose un GlobalID `eqip`. Aucune table complete ne les joint.
+// Si le lien spatial tient, la matrice (GlobalID x rang) des paires liees doit etre quasi
+// DIAGONALE (un GlobalID -> un rang dominant) : c'est a la fois la validation du lien et la
+// table de correspondance qui en tombe.
+func TestLienPriseEquipementPose(t *testing.T) {
+	s := glResolve(t)
+
+	t.Log("CRITERE (enonce avant lecture) : mediane sub-metrique de la distance ramasseur ->" +
+		" pose vivante la plus proche, temoin (autre bipede) nettement au-dessus, et matrice" +
+		" GlobalID x rang quasi diagonale sur les paires liees (< 1,5 m).")
+
+	born := func(slot uint32) (uint64, bool) {
+		list := s.pos[slot]
+		if len(list) == 0 {
+			return 0, false
+		}
+		return list[0].TimestampUS, true
+	}
+	changes, _, err := filmdec.ScanFilmEquipmentChanges(s.dir, born)
+	if err != nil {
+		t.Fatalf("changements d equipement : %v", err)
+	}
+	poses, pst, err := filmdec.ScanFilmEquipmentPlacements(s.dir, &s.wr)
+	if err != nil || !pst.Scanned {
+		t.Fatalf("poses ti=37 : err=%v scanned=%v", err, pst.Scanned)
+	}
+	kf := filmdec.ScanFilmWorldObjectKeyframes(s.dir, filmdec.EquipmentTypeIndex)
+
+	// Fenetre de vie d'une pose : de sa creation a sa derniere image-cle recensee AVANT la
+	// pose suivante de la meme cle (le pool de cles reboucle), plus un intervalle de grace.
+	byLife := map[filmdec.EquipmentLifeKey][]int{}
+	for i, p := range poses {
+		byLife[p.Life] = append(byLife[p.Life], i)
+	}
+	end := make([]uint64, len(poses))
+	for life, idxs := range byLife {
+		sort.Slice(idxs, func(a, b int) bool { return poses[idxs[a]].T0US < poses[idxs[b]].T0US })
+		for j, i := range idxs {
+			next := uint64(1) << 62
+			if j+1 < len(idxs) {
+				next = poses[idxs[j+1]].T0US
+			}
+			e := poses[i].T1US
+			for _, seen := range kf.SeenUS[life] {
+				if seen >= poses[i].T0US && seen < next && seen > e {
+					e = seen
+				}
+			}
+			end[i] = e + 21_000_000
+		}
+	}
+	nearest := func(x, y, z float32, at uint64) (float64, int, bool) {
+		best, bi, ok := 1e18, -1, false
+		for i, p := range poses {
+			if at < p.T0US || at > end[i] {
+				continue
+			}
+			if d := glDist(x, y, z, p.X, p.Y, p.Z); d < best {
+				best, bi, ok = d, i, true
+			}
+		}
+		return best, bi, ok
+	}
+	// inReach compte les poses vivantes a moins de `lim` : le desambiguisateur. A une mort,
+	// l'equipement tombe AVEC les grenades du mort — plusieurs poses au metre carre, et « le
+	// plus proche » choisit au hasard physique. Un lien ne vaut que si le candidat est SEUL.
+	inReach := func(x, y, z float32, at uint64, lim float64) int {
+		n := 0
+		for i, p := range poses {
+			if at < p.T0US || at > end[i] {
+				continue
+			}
+			if glDist(x, y, z, p.X, p.Y, p.Z) < lim {
+				n++
+			}
+		}
+		return n
+	}
+
+	var dists, witness []float64
+	matrix := map[string]map[int]int{}
+	var takes, noPos, noCand int
+	for _, ch := range changes {
+		if ch.Kind != filmdec.EquipmentTaken {
+			continue
+		}
+		takes++
+		p, ok := glAt(s.pos, ch.Slot, ch.TimestampUS)
+		if !ok {
+			noPos++
+			continue
+		}
+		d, bi, ok := nearest(p.X, p.Y, p.Z, ch.TimestampUS)
+		if !ok {
+			noCand++
+			continue
+		}
+		dists = append(dists, d)
+		if d < 1.5 && inReach(p.X, p.Y, p.Z, ch.TimestampUS, 3.0) == 1 {
+			key := fmt.Sprintf("%08x", poses[bi].GlobalID)
+			if matrix[key] == nil {
+				matrix[key] = map[int]int{}
+			}
+			matrix[key][ch.Rank]++
+		}
+		for slot := range s.pos {
+			if slot == ch.Slot {
+				continue
+			}
+			if w, ok := glAt(s.pos, slot, ch.TimestampUS); ok {
+				if wd, _, ok := nearest(w.X, w.Y, w.Z, ch.TimestampUS); ok {
+					witness = append(witness, wd)
+				}
+				break
+			}
+		}
+	}
+	if len(dists) == 0 {
+		t.Logf("VERDICT : aucune prise mesurable (prises=%d sansPosition=%d sansCandidat=%d).",
+			takes, noPos, noCand)
+		return
+	}
+	sort.Float64s(dists)
+	sort.Float64s(witness)
+	q := func(v []float64, f float64) float64 { return v[int(f*float64(len(v)-1))] }
+	under := func(v []float64, lim float64) int {
+		n := 0
+		for _, d := range v {
+			if d <= lim {
+				n++
+			}
+		}
+		return n
+	}
+	t.Logf("PRISES D EQUIPEMENT = %d (mesurables=%d sansPosition=%d sansCandidat=%d) ; "+
+		"POSES=%d", takes, len(dists), noPos, noCand, len(poses))
+	t.Logf("DISTANCE ramasseur -> pose vivante la plus proche : mediane=%.2f m  p75=%.2f  p90=%.2f",
+		q(dists, 0.5), q(dists, 0.75), q(dists, 0.9))
+	t.Logf("SOUS 1 m = %d (%.1f %%) ; sous 1,5 m = %d (%.1f %%)",
+		under(dists, 1), 100*float64(under(dists, 1))/float64(len(dists)),
+		under(dists, 1.5), 100*float64(under(dists, 1.5))/float64(len(dists)))
+	if len(witness) > 0 {
+		t.Logf("TEMOIN (autre bipede, meme instant) : mediane=%.2f m  sous 1,5 m = %.1f %%",
+			q(witness, 0.5), 100*float64(under(witness, 1.5))/float64(len(witness)))
+	}
+	t.Log("MATRICE GlobalID x rang des paires liees a CANDIDAT UNIQUE (< 1,5 m, seul a < 3 m) :")
+	ids := make([]string, 0, len(matrix))
+	for id := range matrix {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	for _, id := range ids {
+		line := ""
+		for r, n := range matrix[id] {
+			line += fmt.Sprintf("rang%d=%d  ", r, n)
+		}
+		t.Logf("   eqip %s : %s", id, line)
+	}
 }
