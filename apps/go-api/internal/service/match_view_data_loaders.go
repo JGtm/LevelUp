@@ -410,7 +410,7 @@ func (s *MatchViewService) buildMatchViewFromData(
 	// elles sortent déjà comptées de Q21d et n'ont besoin que du scoreboard pour nommer
 	// le tueur. Posées ici pour la même raison que FragDistribution — hors de
 	// buildCombatTabFull, dont la signature est déjà à la limite de paramètres.
-	combat.AssistPairs = buildAssistPairs(d.assistPairs, d.assistScope, d.scoreboard)
+	combat.AssistPairs = buildAssistPairs(ctx, d.assistPairs, d.assistScope, d.scoreboard)
 	// Extras per-friend (panneau d'expander scoreboard) : best-effort, on
 	// charge depuis chaque player DB d'ami configuré. Si pas de loader injecté
 	// → map vide (section "Local" inactive sauf pour `is_me`).
