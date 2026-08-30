@@ -1,3 +1,421 @@
+## [2026-08-30] `fix/h5-prod-symptoms` supprimée : ses trois correctifs sont déjà en place — Complété
+
+**Demande utilisateur** : supprimer la branche obsolète.
+
+**VÉRIFIÉ SUR PIÈCES AVANT DE SUPPRIMER, un correctif à la fois.** Les trois sont présents
+dans `feat/v75` au 2026-08-30, arrivés par une autre route que cette branche :
+
+| Correctif (27/06) | Où il vit aujourd'hui |
+|---|---|
+| barre XP lue depuis la ligne rank-non-NULL | `FILTER (WHERE rank IS NOT NULL)` sur les 8 champs carrière de `career_live_repo.go` |
+| Meilleur CSR par palier, tier-only | `csrTierOrderEN` + `CSRTierOrdinal`, `analysis/home_canonical_skill.go` |
+| backdrop de bannière synthétisé | `synthesizeBanner` dans `HomeSpartanIdentityBanner.tsx` |
+
+**Le troisième est refait MIEUX que sur la branche**, et c'est ce qui a emporté la décision :
+la branche introduisait un trait dédié `provides_live_banner` (+ `constants.toml
+[damage_model] no_live_banner`) ; la version en place branche sur la capability
+`spartan_customizer` — un mécanisme qui existait déjà, zéro trait neuf à maintenir. Merger
+aurait réintroduit une seconde façon de dire la même chose.
+
+**Elle n'était de toute façon plus mergeable** : bâtie sur `internal/api/gen/types.gen.go`,
+l'architecture d'avant la migration Huma, et 2 570 commits en retard.
+
+**PRÉCAUTION, parce qu'elle n'était sur AUCUN remote** : tag d'archive
+`archive/h5-prod-symptoms-2026-08-30` posé sur `cdf686005` AVANT la suppression. Un
+`git branch -D` seul laisse les objets à la merci du `gc` ; le tag les garde en vie
+indéfiniment et ne coûte rien. Reprise éventuelle : `git checkout archive/h5-prod-symptoms-2026-08-30`.
+Le worktree (`LevelUp/.claude/worktrees/fix+h5-support-hardening`) était propre et son
+`apps/web/node_modules` était un VRAI dossier, pas une jonction — retrait sans risque pour
+le dépôt principal.
+
+**Conclusion / prochaine étape** : reste `wt/ti11-cadre`, seule branche non fusionnée portant
+de la matière. Analyse rendue à l'utilisateur : elle apprend au décodeur à lire les 34
+composants du descripteur d'objectif du HUD (`ti=11`), aujourd'hui ILLISIBLES — et une
+composante illisible ARRÊTE la marche du record (`DesyncAt`, `KeyframeStopDesync`), donc tout
+ce qui suit dans l'image est perdu pour la marche ordonnée. Ce que la branche décode est
+l'état par DÉFAUT (rien de vivant), mais le gain possible est ailleurs : les records
+actuellement tronqués. Combien ? Personne ne l'a mesuré — c'est le gate à écrire avant tout
+merge (re-cuisson d'un corpus, artefacts identiques au bit ou écart expliqué).
+## [2026-08-30] Sons — le ramassage câblé sur un tir est une aberration, et la planche des socles — Complété
+
+**L'utilisateur** : « mettre un son de ramassage sur un event de tir ça ne te choque pas comme
+aberration ? ». **Si.** Et le dire ici vaut mieux que de le laisser dans un en-tête que personne
+ne relit.
+
+`padSound.ts` joue `objective_pad_pickup` au PREMIER TIR d'une famille d'arme de socle. Ses deux
+dénominateurs sont vrais — `padPickups` a une médiane de 20,00 s entre `tLow` et `tHigh`, les
+loadouts vivent sur la même grille d'images-clés (0 sur 597 datés à moins de 5 s), aucun canal ne
+DATE le ramassage. **Mais la conclusion qu'on en a tirée contredit la doctrine du chantier** :
+la règle écrite partout ailleurs est « le rejeu se TAIT plutôt que de deviner » ; ici on n'a pas
+choisi le silence, on a déplacé le son sur un AUTRE événement. Trois conséquences audibles : le
+son part en même temps qu'un tir ; il part pour une arme prise au sol ou sur un mort ; il ne part
+jamais pour une arme ramassée et non tirée.
+
+**Trois sorties possibles, écrites en §14 du RE pour être tranchées** : (A) se taire jusqu'à ce
+qu'un canal date le ramassage ; (B) poser le son à `padPickups[].tLow` — le socle parle au lieu
+du tir, au prix de 20 s d'imprécision ; (C) garder le premier tir mais SEULEMENT s'il tombe dans
+`[tLow, tHigh]` du socle de cette famille. **Fichier non touché** : le lot est confié à un autre
+agent, la décision lui revient ou revient à l'utilisateur.
+
+**Livré aussi — la planche des socles et des équipements** (demande utilisateur) : artefact
+`3c84fab7-5e36-4777-a2d9-bd1c90b08f65`, **135 sons, treize banques, trois familles**, en
+dépliants `<details>` pour la navigation. Chaque ligne porte son gain de chemin, sa forme, le
+nombre d'événements qui jouent le même matériau et son nom Wwise quand il est cassé — 33 sur 135.
+Ce qui est livré ou désigné est marqué.
+
+**QUATRE SONS SUR 139 NE SONT PAS RENDUS** (trois du champ de réparation, un de la capsule) :
+leur média n'est pas embarqué dans la banque, il vit dans un `.pck`. Ils sont ABSENTS de la page
+plutôt que servis silencieux, et le nombre est écrit en pied de page — un rendu manquant qui ne
+se voit pas est pire qu'un trou déclaré.
+
+**Livré** : sections 14 et 15 de `.ai/V7.5/RE_SONS_RATELIER_ET_KOTH_2026-08-30.md`, nouvelle
+planche publiée, 135 rendus archivés hors dépôt. Aucun code de production touché ce jour au-delà
+du lot de câblage déjà consigné.
+
+---
+
+## [2026-08-30] Sons — le spawn d'équipement n'a pas de banque à lui, et la recherche ne rend aucun candidat neuf — Complété
+
+Vérification demandée par l'utilisateur après sa propre désignation (`4093f3c4`). Trois mesures,
+dans l'ordre où elles réduisent le champ :
+
+1. **Aucune banque de socle d'équipement.** Gabarit `sb_004_mod_mp_shared_%s` sur les 138 886
+   jetons du binaire contre les 1 495 identifiants Wwise (espérance 0,048) : `weaponpad`,
+   `weaponrack`, `weaponpod`, `ping`, `razorback`, `droppod`, `ui`, `ai`, `global`. Rien pour
+   l'équipement.
+2. **Le Lua dit pourquoi.** `MPEquipmentPlacement` (`hsc* b1cdc4ba`) ne porte QUE deux noms
+   audio, et ce sont ceux du socle d'ARME : `MPItemSpawnerAudioAssets` et
+   `GetHologramLoopingSound`. Les kits Forge de placement d'équipement et de bonus (`0d380ade`,
+   `e31760a1`) n'en portent aucun — leurs réglages exposés sont visuels.
+3. **La remontée de tags va dans le même sens.** Depuis `sb_007_abl_shared` : 13 `snd!` au
+   niveau 1 ; au niveau 2, **21 `eqip`**, 31 `sofa`, 6 `effe`, 2 `luas`. Les sons de cette banque
+   pendent à des OBJETS D'ÉQUIPEMENT, pas à un spawner.
+
+**Conclusion, avec sa réserve** : la structure pousse vers « le spawn d'équipement sonne comme le
+spawn d'arme » (`..._weaponpad_appear`), pas vers un son propre. L'utilisateur a pourtant désigné
+`4093f3c4` à l'oreille, et une désignation vaut une mesure ; les deux ne se contredisent pas
+forcément (le socle peut jouer le son du spawner ET l'objet posé émettre le sien). **Ce qui est
+certain : cette passe n'a produit aucun candidat neuf.**
+
+**Question de l'utilisateur sur `padSound.ts` — « le son est câblé sur un tir ?? »** Oui, et
+c'est écrit dans l'en-tête du fichier avec ses dénominateurs : `padPickups` donne un intervalle
+dont la médiane est **20,00 s** (3,2 % seulement sous 2 s) et les changements de loadout vivent
+sur la même grille d'images-clés (0 sur 597 datés à moins de 5 s). Aucun canal ne DATE le
+ramassage. La règle joue donc le son au **premier tir** d'une famille d'arme de socle, une fois
+par couple (joueur, famille) — la première PREUVE de possession, pas l'instant du ramassage.
+Deux conséquences assumées y sont déjà écrites : une arme jamais tirée ne sonne pas, et une arme
+de la même famille ramassée ailleurs sonne aussi. **Fichier non touché ce jour** : le lot du
+ramassage d'arme est confié à un autre agent.
+
+**Livré** : section 13.5 de `.ai/V7.5/RE_SONS_RATELIER_ET_KOTH_2026-08-30.md`. Aucune mesure
+neuve à rendre, aucun code touché.
+
+---
+
+## [2026-08-30] Schema 25 : les RAMASSAGES et les CONSOMMATIONS d'équipement sont PUBLIÉS — Complété
+
+Suite directe du schéma 24 (les prises et lâchers d'arme). Même question pour l'équipement — la
+capacité d'armure : grappin, répulseur, mur, capteur, propulseur, translocateur.
+
+**Décision technique principale : le canal n'est PAS celui que la table ECS désignait.** La table
+signalait `i26 unit-equipment-component` « à sonder en priorité ». Il a été lu (`R(3)` + compteur
+`R(3)` + N handles d'objets) : c'est une LISTE DE HANDLES, pas une identité de capacité. Le canal
+de changement est **`i48 biped-desired-ability-set`**, déjà porté, déjà décodé, et déjà publié en
+lectures brutes par `abilities[]` — mais jamais en ÉVÉNEMENTS. Même règle que pour les armes : le
+composant n'entre au masque du flux delta que lorsque l'équipement porté CHANGE.
+
+**Ce canal porte son PROPRE TÉMOIN DE COMPLÉTUDE, et c'est ce que les armes n'avaient pas.** Le
+compteur de rotation `R(3)` d'i48 avance de 1 à chaque émission (ZÉRO répétition sur 50
+transitions, 3 films) et repart à 5 à la première émission de chaque vie (264 cas sur 269, 98,1 %).
+Un pas supérieur à 1 dénonce donc les émissions manquées ET les compte : ~16 manquées pour 319
+vues, soit de l'ordre de 95 % de couverture, LUE et non supposée. La couverture du document la
+publie (`missedEstimate`, `counterJumps`, `livesFirstOffSpec`, `repeats`).
+
+**Deux mesures fondent la sémantique**, énoncées avant lecture :
+
+1. *La porte ouverte est la CONSOMMATION, jamais la mort.* Sur les 17 émissions à porte ouverte des
+   trois films, ZÉRO ne tombe dans la dernière seconde de la vie ; la plus tardive laisse 8,8 s à
+   vivre, la médiane 23 à 48 s. Le joueur a usé son équipement.
+2. *La première émission d'une vie n'a PAS un sens unique.* Sur `64e8adfa` (Catalyst CTF) et
+   `53ce4390` (Behemoth CTF) elle tombe 16 à 18 s après la naissance du bipède, 0 % sous la
+   seconde : c'est un RAMASSAGE. Sur `00ba2e1c` elle tombe à 0 ms dans 83 % des cas : les joueurs y
+   réapparaissent équipés, et l'émission n'est qu'une annonce. Le balayage exige donc un TÉMOIN DE
+   NAISSANCE (`birthOfLives`, premier échantillon de position, nuage NON décimé) et ÉCARTE les
+   réapparitions. Sans lui, `000d5950` publierait 82 « ramassages » au lieu de 11.
+
+**Résultats observés** (bout en bout, `TestEquipmentChangesSurFilmReel`) :
+
+| film | décodés | publiés | ramassages | consommations | réapparitions écartées | manquées estimées |
+|---|---|---|---|---|---|---|
+| 64e8adfa Catalyst | 57 | 57 | 47 | 10 | 0 | 1 |
+| 53ce4390 Behemoth | 56 | 56 | 53 | 3 | 0 | 3 |
+| 000d5950 Cliffhanger | 92 | 21 | 11 | 10 | 71 | 2 |
+
+`repeats = 0` sur les trois — la propriété qui fonde le calque tient.
+
+**Factorisation faite au passage (règle CLAUDE.md n°6).** Un troisième balayage d'i48 aurait été
+créé ; `walkAbilityEmissions` est extrait dans `ability_rank.go` et les deux vues le partagent —
+`ScanFilmAbilityRanks` (identités, écarte la porte ouverte, contrat inchangé) et
+`ScanFilmEquipmentChanges` (événements, pour qui la porte ouverte EST l'événement). Le composant
+n'a toujours qu'UN lecteur.
+
+**Fichiers** : NOUVEAUX `filmdec/equipment_changes.go` (200 L) + son test, `filmdec/
+equipment_change_research_test.go` (instrument, garde `HW_FILM`), `replay/
+document_equipment_changes.go` (179 L) + son test unitaire (5 cas) + son instrument de bout en
+bout (garde `PICKUP_FILM`/`PICKUP_MAP`). MODIFIÉS : `ability_rank.go` (extraction),
+`replay/{build,document,coverage,structure_test}.go`, golden d'assemblage (seule la ligne de
+schéma bouge — le fixture d'entrées est antérieur au calque, d'où les tests unitaires),
+`ecs_table.tsv` (i48 gagne son usage produit ; i26 est marqué PISTE ÉCARTÉE, avec le pourquoi).
+
+**Gates** : `go test` filmdec + replay `EXIT=0`, `go vet EXIT=0`, `golangci-lint 0 issues` (deux
+`staticcheck` corrigés, dont un hérité du lot précédent), `cmd/levelup` (backfill, consomme
+`replay.SchemaVersion`) `EXIT=0`.
+
+**Ce qui n'est PAS fait, et c'est explicite** : le socle d'où vient l'équipement ramassé (même
+impasse que pour les armes, mêmes hypothèses réfutées) ; ce que portait le joueur avant la première
+émission d'une vie (`From = -1`) ; et la CONSOMMATION côté web — `equipmentChanges` n'a pas encore
+de lecteur dans `apps/web`, exactement comme `weaponChanges` du schéma 24. C'est le prochain lot
+naturel : les deux calques se câblent ensemble sur la fiche joueur du rejeu.
+
+## [2026-08-30] Sons — câblage des deux gestes qui avaient déjà leur déclencheur — Complété
+
+Après les désignations, le lot de livraison : **ce qui pouvait sonner tout de suite sonne**.
+
+**1. La SÉCURISATION de la colline** (`zoneSound.ts`). Déclencheur : `ZoneSpan.active` + `owner`
+— le seul canal qui parle en KOTH. Fichiers `objective_zone_securing_team/_enemy`, 5,50 s.
+Plancher `ZONE_SECURING_MIN_MS = 3000` : en dessous l'intervalle est un TRANSFERT, pas une garde
+(le canal publie le neutre autant que le tenu, 50 pour 50 sur `01e1f945`).
+
+**LA DISJONCTION AVEC `capturing` EST TENUE PAR LA SOURCE, pas par une garde à maintenir** :
+`capturing` naît d'une rampe de jauge, et `ZoneState.Gauge` est **toujours absente sur une
+colline** (`document_zones.go` — le canal y est un compteur de transfert d'une seconde,
+`coverage.zones.gaugePoints` vaut 0). Les deux règles ne peuvent pas se déclencher ensemble.
+
+**DEUX ÉCARTS ASSUMÉS SUR LE RENDU**, écrits dans le code : le délai d'action de 1,5 s est retiré
+(c'est l'entrée en boucle du jeu ; en tête d'un one-shot il n'ajoute que du silence), et 5,5 s ne
+couvrent pas une garde de 40 s. **Mon premier rendu faisait 11,5 s et le garde-rail l'a refusé —
+c'est exactement son rôle** : `LONG_MAX_S` = 6 s borne les sons d'ÉVÉNEMENT depuis que les
+fanfares ont porté `SOUND_CUT_MAX_S` à 12 s. Prolonger davantage est une décision PRODUIT
+(relever ce plafond), pas une décision de livraison ; je ne l'ai pas prise seul.
+
+**2. L'APPARITION SUR SOCLE** — fichier neuf `padSpawnSound.ts`. Déclencheur :
+`weaponPads[].spawns`, les INSTANTS publiés par le calque. Fichier `objective_pad_spawn`,
+1,409 s. Séparé de `padSound.ts` pour la raison qui a séparé `zoneSound.ts` de
+`objectiveSound.ts` : `padSound` DÉDUIT le ramassage d'un premier tir, ici le calque DATE et il
+n'y a pas de camp. **La portée « armes spéciales » est tenue par la source** — `doc.weaponPads`
+ne liste que des socles, les râteliers n'y sont pas ; le Lua dit la même chose
+(`MPItemSpawnerAudioAssets` gardée par `MP_WEAPON_TIER.Power`).
+
+**Gates** : `vitest src/features/match-replay` 121 fichiers / 1 883 tests VERT ;
+`npm run typecheck` cache purgé VERT ; `eslint` sur les 5 fichiers touchés VERT. 12 tests neufs,
+dont **9 qui épinglent des SILENCES**.
+
+**CE QUI N'EST PAS CÂBLÉ, ET LE RAMASSAGE D'ÉQUIPEMENT EN FAIT PARTIE.** L'utilisateur le relève
+et il a raison : le son EXISTE et est livré (`objective_pad_pickup.wav` = `c73036e4`), mais il
+est **consommé par la règle des ARMES** — `padSound.ts` le joue au premier tir d'une famille
+d'arme de socle. Deux manques distincts : (a) le stem est pris, et il ne se libérera que le jour
+où le son de ramassage d'ARME (`168832f6`) sera livré et que `padSound.ts` basculera dessus —
+lot confié à un autre agent, je n'ai pas touché ce fichier ; (b) le déclencheur n'existe pas —
+`equipmentPlacements` date la POSE par un joueur, `equipmentEpisodes` l'ACTIVATION du camouflage
+ou du surbouclier ; aucun ne dit « untel a pris l'équipement du socle ». Travail de DÉCODEUR.
+Même situation pour le spawn d'équipement sur socle et pour le lâcher d'arme.
+
+**Livré** : section 13 de `.ai/V7.5/RE_SONS_RATELIER_ET_KOTH_2026-08-30.md`, 3 `.wav` dans
+`static/sounds/halo_infinite/`, `padSpawnSound.ts` + son test, `zoneSound.ts` étendu. Rien de
+commité.
+
+---
+
+## [2026-08-30] Sons — les six gestes sont identifiés, le chantier bascule sur la livraison — Complété
+
+**Dernière désignation** : le ramassage d'arme = `168832f6` (banque `sb_006_chm_un_spartan`, une
+couche, une variante parmi trois, gain −6 dB, 0,34 s).
+
+**ET IL FAUT ÉCRIRE COMMENT IL A ÉTÉ PRIS.** Le mot de l'utilisateur est « faute de mieux ».
+Cette désignation est donc **plus faible que les cinq autres** : aucune ne s'est imposée à
+l'écoute, celle-ci a été prise par élimination. La consigner au même rang que les autres serait
+mentir sur la mesure. Ce qui la soutient tout de même : le retenu porte **exactement la signature
+du lâcher**, son geste symétrique, mesurée dans le format — une couche, une variante parmi trois,
+gain −6 dB — et dure 0,34 s contre 0,31 s. Sur les 107 jeux de médias de la banque, onze seulement
+portent cette signature ; c'est parmi eux qu'il a été pris.
+
+**Condition de reprise** : si le rendu sonne faux en situation, les dix autres candidats de même
+signature restent servis sur la planche, et les 94 autres rendus derrière.
+
+**ÉTAT FINAL DE L'IDENTIFICATION — six gestes, elle est CLOSE** :
+
+    sécurisation de la colline, ALLIÉE     93f632c0   désigné
+    sécurisation de la colline, ADVERSE    dcf980a5   désigné
+    spawn d'arme sur socle                 54bd9e43   désigné + nom cassé (_weaponpad_appear)
+    spawn d'équipement sur socle           4093f3c4   désigné
+    lâcher d'arme                          6cdd92fd   désigné + nom cassé (_spartan_weapondrop)
+    ramassage d'arme                       168832f6   désigné PAR DÉFAUT
+
+**LE CHANTIER BASCULE** : ce qui reste n'est plus du son. C'est (1) la livraison des six `.wav`
+dans `static/sounds/halo_infinite/`, (2) le câblage — avec la règle d'étirement pour la
+sécurisation, qui ne se boucle pas — et (3) pour trois des six, un **déclencheur qui n'existe pas
+encore** dans le document de rejeu : ramassage d'arme (`padPickups` = intervalle, `xuid` nul),
+spawn d'équipement (pas de canal de socle d'équipement), lâcher (pas de canal daté d'inventaire).
+Deux sont câblables tout de suite : la sécurisation (`zoneStates[].gauge` + `owner`) et le spawn
+d'arme sur socle (`weaponPads[].spawns` publie les instants).
+
+**Livré** : sections 12.4 à 12.6 de `.ai/V7.5/RE_SONS_RATELIER_ET_KOTH_2026-08-30.md`, planche
+`226618d1` republiée (200 cartes, six gestes en tête). Aucun code de production touché.
+
+---
+
+## [2026-08-30] Sons — cinq gestes désignés, un seul introuvable, et l'état des déclencheurs — Complété
+
+**Désignation de plus** : le spawn d'équipement sur socle = `4093f3c4` (`sb_007_abl_shared`,
+wem 905776253, gain −5 dB). Cinq gestes sont désormais désignés à l'oreille :
+
+    sécurisation de la colline, ALLIÉE     93f632c0
+    sécurisation de la colline, ADVERSE    dcf980a5
+    spawn d'arme sur socle                 54bd9e43   ..._weaponpad_appear (armes spéciales)
+    spawn d'équipement sur socle           4093f3c4
+    lâcher d'arme                          6cdd92fd   play_006_chm_un_spartan_weapondrop
+
+**IDENTIFICATION — il ne manque qu'UN son de la demande initiale : le RAMASSAGE D'ARME.**
+Précision utile levée au passage : ce que l'utilisateur avait donné en début de chantier
+(« Equip 18 ») était le ramassage d'**équipement**, pas d'arme — c'est pour ça qu'il manquait.
+Le Lua prouve que le geste existe (`__OnWeaponPadPickedUpSound`, `EVENTS.onItemPickedUp`), mais
+aucun son du socle, du râtelier ni de la capsule n'y correspond.
+
+**Piste lancée par symétrie** : `sb_006_chm_un_spartan`, la banque qui porte le lâcher —
+230 événements, **107 jeux de médias, 105 rendus** (2 échecs de décodage), servis triés par durée
+croissante. Le hachage y est épuisé, l'oreille est la seule voie restante.
+
+**LIVRAISON — rien n'est câblé, et les déclencheurs sont inégaux** (vérifié sur pièces) :
+
+    sécurisation alliée / adverse   DISPONIBLE  zoneStates[].gauge (rampes) + owner
+    spawn d'arme sur socle          DISPONIBLE  weaponPads[].spawns publie les INSTANTS
+    ramassage d'arme                ABSENT      padPickups = INTERVALLE [tLow,tHigh], xuid nul
+                                                (oracle 88,1 % < seuil 90 % du plan)
+    spawn d'équipement sur socle    ABSENT      le document publie equipmentPlacements (la POSE
+                                                par un joueur, T0), pas les socles d'équipement
+    lâcher d'arme                   ABSENT      aucun canal daté de changement d'inventaire
+
+**Deux des cinq sont câblables tout de suite** ; les trois autres demandent du DÉCODEUR, pas du
+son. **RÈGLE DE CÂBLAGE à ne pas perdre** : la sécurisation s'ÉTIRE sur la durée de la garde,
+elle ne se boucle pas (une boucle relancerait la montée — « c'est comme une sirène »).
+
+**Livré** : sections 10 à 12 de `.ai/V7.5/RE_SONS_RATELIER_ET_KOTH_2026-08-30.md`, planche
+`226618d1` republiée (199 cartes). Aucun code de production touché.
+
+---
+
+## [2026-08-30] Sons — quatre gestes DÉSIGNÉS, et le socle d'équipement ouvert — Complété
+
+**Désignations de l'utilisateur, à l'oreille** (elles valent mesure, `RECETTE_SONS_ARMES` §5) :
+
+    SÉCURISATION DE LA COLLINE, ALLIÉE     93f632c0   (paire 4 B, gain -1 dB)
+    SÉCURISATION DE LA COLLINE, ADVERSE    dcf980a5   (paire 4 A, gain +5 dB)
+    SPAWN D'ARME SUR SOCLE                 54bd9e43   play_004_mod_mp_shared_weaponpad_appear
+    LÂCHER D'ARME                          6cdd92fd   play_006_chm_un_spartan_weapondrop
+
+**RÈGLE DE CÂBLAGE donnée avec la désignation, à ne pas perdre** : le son de sécurisation « doit
+être PROLONGÉ le temps que la sécurisation est en cours ; une boucle relancerait le début du son,
+qui met du temps à se lancer — c'est comme une sirène ». Le rejeu doit donc l'ÉTIRER sur la durée
+de la garde, pas le redéclencher. C'est une contrainte de rendu côté app : la banque, elle,
+déclare bien une boucle (`sLoopCount` = 0, mode 3, 0,5 s de silence, entrée à +1,50 s).
+
+**La portée du spawn d'arme est confirmée par le Lua.** L'utilisateur précise « donc que les armes
+spéciales, pas les armes sur râteliers » ; la table `MPItemSpawnerAudioAssets` est effectivement
+gardée par `MP_WEAPON_TIER.Power`. La désignation et la structure disent la même chose.
+
+**LE RAMASSAGE D'ARME EST INTROUVABLE — et ce n'est pas qu'il n'existe pas.** Le Lua prouve le
+geste : `__OnWeaponPadPickedUpSound`, `__OnWeaponRackPickedUpSound`, callback
+`EVENTS.onItemPickedUp`. Aucun des 5 sons du socle ni des 4 du râtelier n'y correspond à l'écoute.
+**Piste désignée par la symétrie** : le lâcher vit dans `sb_006_chm_un_spartan` (230 événements,
+UN SEUL nommé) ; un ramassage est le geste symétrique. Le cassage par gabarit y est épuisé (un
+jeton sur dictionnaire complet, espérance 0,0074/forme ; deux jetons sur 165 mots curie, 0,0103) —
+la voie restante est le rendu des 230 événements et l'oreille.
+
+**DEMANDE NEUVE — le spawn d'ÉQUIPEMENT sur socle.** Le Lua dit où chercher :
+`MPEquipmentPlacement` (`hsc* b1cdc4ba`) utilise la MÊME structure audio que les socles d'armes
+(`MPItemSpawnerAudioAssets`, `GetHologramLoopingSound`, `GetIncomingEffect`, `GetSpawnedEffect`).
+La banque commune est `sb_007_abl_shared` (`15c5b355`, 15 événements, 20 médias), dont deux
+nommés seulement. **Les 15 sont rendus et servis** sous cette question ; les 13 anonymes résistent
+à 53 gabarits sur dictionnaire complet (espérance 0,0257). Les gains de chemin sont affichés carte
+par carte — plusieurs sont à -22 / -26 dB, ce que la normalisation masque (leçon de §9.9).
+
+**Livré** : sections 10 et 11 de `.ai/V7.5/RE_SONS_RATELIER_ET_KOTH_2026-08-30.md`, planche
+`226618d1` republiée (94 cartes, sections « DÉSIGNÉ » en tête et « Socle d'équipement » neuve).
+Aucun code de production touché.
+
+**Prochaine étape** : l'écoute du socle d'équipement ; puis le câblage des quatre gestes désignés,
+avec la règle d'étirement pour la sécurisation.
+
+---
+
+## [2026-08-30] Schema 24 : les prises et les lachers d arme sont PUBLIES — Complété
+
+**Décisions techniques** :
+1. `weaponChanges` au document (t, slot, kind, w, from, until) + `coverage.weaponChanges`.
+   `SchemaVersion` 23 -> 24 avec la chronique et le cliquet de `structure_test.go` mis a jour.
+2. **Les re-annonces sont ECARTEES** : une arme deja portee au spawn et seulement re-annoncee
+   par le flux n est pas un ramassage. 10 sur 229 et 10 sur 100 — les publier gonflerait le
+   compte d environ 8 % avec des evenements qui n ont pas eu lieu.
+3. `Until` borne l affichage d une arme lachee par la duree publiee du jeu, plafonnee a la
+   derniere frame. CONVENTION assumee, ecrite comme telle dans le contrat du champ.
+4. Le golden d assemblage NE COUVRE PAS ce calque (fixture d entrees anterieur). Comble par six
+   tests unitaires sur la projection + un instrument de bout en bout (garde `PICKUP_FILM`).
+
+**Résultats observés** : suites `replay` et `filmdec` vertes. Bout en bout sur deux films —
+`64e8adfa` 229 decodes / 219 publies (125 prises, 92 lachers, 2 echanges, 10 re-annonces
+ecartees, 89 lachers bornes) ; `53ce4390` 100 / 90 (55, 30, 5, 10, 30 bornes). Aucune borne ne
+depasse la derniere frame ni ne precede son lacher.
+
+**Conclusion / prochaine étape** : l EQUIPEMENT. Son canal cote bipede n est PAS i43..i46 mais
+**i26 `unit-equipment-component`** — porte, decode, usage produit « aucun », signale « a sonder
+en priorite » par la table ECS. Meme travail qu ici : sonde sur le motif maison, recensement des
+emissions delta, controle de plausibilite. Duree de despawn de reference pour l equipement :
+20 s (guide releve ce jour).
+## [2026-08-30] Correction — un pool de constantes Lua ne prouve pas une absence — Complété
+
+**Réfutation utilisateur** : « les sons de score KOTH sont pas les mêmes que Strongholds/Bastion ».
+Il a raison, et l'entrée précédente concluait trop.
+
+**L'ERREUR, nommée.** J'ai lu le **pool de constantes** d'un Lua compilé comme s'il était la
+déclaration exhaustive de l'audio d'un mode. Deux raisons pour lesquelles il ne l'est pas :
+(1) **un pool de constantes DÉDUPLIQUE** — une clé déjà internée par la table de Bastion
+(`ScoringLoopTeam`) n'apparaît pas une seconde fois sous `KingOfTheHill`, donc son absence là ne
+prouve rien ; (2) **le script ne nomme que ce dont le script a besoin** — le moteur poste des
+événements que le Lua n'écrit jamais.
+
+**Réserve supplémentaire, qu'il fallait dire** : j'avais aussi assimilé `ScoringLoop{Team,Enemy}`
+du Lua aux événements `..._strongholds_scoring_tick_{team,enemy}` de la banque. Ils se
+ressemblent par le sens mais **pas par la forme** — le Lua dit BOUCLE, et ces deux événements
+n'en sont pas (2 couches simultanées, 3,6 et 4,4 s). Le rattachement n'est pas établi.
+
+**CE QUI RESTE ACQUIS** (et n'est pas touché) : les `hsc*` sont du Lua avec ses noms en clair,
+357 scripts ; `KingOfTheHillInitArgs` ne porte que `instanceName`, `kingOfTheHillObjectNames`
+(`threehold_{blue,neutral,red}`) et les deux tags VO d'annonceur ; le binaire ne porte ni
+vocabulaire audio de colline ni identifiant Wwise, seulement le nom du champ `SoundEventHash`.
+Rien de tout cela n'est une preuve d'absence.
+
+**CE QUE LA MESURE APPORTE À LA PLACE.** Cinq **paires miroir** non attribuées dans la banque des
+zones — deux groupes de médias de forme identique et de médias disjoints, ce qui est la signature
+d'un couple `_team`/`_enemy` :
+
+    P1  8061054a / 6d4b6ad4   boucle, 1,00 s de silence entre deux lectures   <- forme d'un tic
+    P2  1c21bc2d / 222abfa1   2 couches simultanées
+    P3  259a15f2 / 59d1f744   3 couches, deux en boucle
+    P4  93f632c0 / dcf980a5   boucle à +1,50 s, 0,50 s de silence
+    P5  1badec8a / af31554f   boucle, une variante parmi cinq
+
+P1 est le candidat de forme le plus fort : c'est exactement ce que le mot `Loop` du Lua décrit.
+Les dix sons sont rendus et servis côte à côte en tête de la planche courte (`226618d1`).
+
+**LEÇON DE MÉTHODE, à garder** : un espace de nommage neuf donne du VOCABULAIRE, pas des
+NÉGATIFS. Une absence dans un pool dédupliqué n'est pas un dénominateur — contrairement à un
+balayage de hachage, où le dénominateur est comptable.
+
+**Livré** : section 9.8 de `.ai/V7.5/RE_SONS_RATELIER_ET_KOTH_2026-08-30.md`, planche republiée
+(79 cartes). Aucun code de production touché.
+
+---
+
 ## [2026-08-30] Part moyenne de participation dans l'infobulle des assistances — Complété
 
 **Statut** : Complété (commit `b57a98702`, pousse). Exécuté PAR LE PILOTE (deux agents
@@ -270,6 +688,8 @@ artefacts, killsource serveur arrete, passe rejeu 8 h) — NB chantier tiers
 uniquement) avant lot F ; (4) verification visuelle utilisateur (sunburst x5, Escouade,
 premier frag, echelles, breadcrumb) ; (5) V2.2 latence `[!]` (pas de data/ ici) ;
 (6) CI branche rouge depuis le 28/08 (anterieur), a diagnostiquer avant push.
+---
+
 ## [2026-08-30] Ménage des branches : trois fusions, quatre suppressions, un contrat rattrapé — Complété
 
 **Demande utilisateur** : merger les branches qui ne sont plus vivantes ; supprimer les
