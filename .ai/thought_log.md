@@ -77584,3 +77584,105 @@ validation corpus par medailles.
 croisee (constant / stable-par-joueur / par-evenement) sur tous les 114 du film, cle de
 signature bits 24+ -> attribution par joueur via la chronologie ; puis largeurs par domaine
 (1/2/3/7) par fermeture arithmetique, et validation corpus par medailles.
+
+## [2026-08-30] Visee lunette, LOT A — l'enveloppe du « type 114 » decodee et FERMEE ; mais l'attribution par joueur et le sens ECHOUENT, et l'alignement lui-meme retombe a p = 1 % — Complete
+
+**Mandat** : inferer les frontieres de champs de l'enveloppe du type 114 par la variance (A1),
+attribuer les paquets a un joueur par signature (A2), trouver le champ du sens entree/sortie
+(A3), fermer les largeurs par domaine (A4). Six instruments sous garde d'environnement dans
+`apps/go-api/internal/analysis/replay/visee_{env,signature,obs,sens,larg,ferme}114_*_test.go`,
+seuils ecrits avant chaque mesure, aucun code de production touche.
+
+**PIEGE LEVE D'ENTREE — un paquet delta n'est pas un evenement isole.** Les payloads des
+paquets 114 mesurent 90 a 543 octets sur 00162144 (437 a 2575 sur 00ba2e1c) : l'evenement est
+en TETE, tout le reste est le flux d'etat du tick. La lecture de la phase 6bis (« bits 24..71
+BIT-IDENTIQUES entre deux sorties de lunette, donc l'encodage entite/siege est stable ») portait
+donc sur des bits qui n'appartiennent PAS a l'evenement — l'enveloppe s'arrete au bit 31. Mesure
+O2 : 274 paires sur 7750 partagent >= 32 bits a partir du bit 24, ce qui est structurel (le flux
+d'etat est repetitif), pas une signature d'entite.
+
+**A1 — STRUCTURE INFEREE, stable sur TROIS films** (125 + 227 + 80 paquets) : ossature de 27
+positions constantes sur 00162144, tenue a 24/27 sur 03ccbe42 et 20/27 sur 00ba2e1c ; les seuls
+ecarts hors enveloppe (bits 63..82) tombent dans le flux d'etat. Profil : bits 0..11 constants
+`11100101 1110`, bits 12..19 variables, bits 20..23 constants `0100`, bits 24..29 a tres faible
+cardinalite (5 valeurs sur 125 paquets), bit 29 constant, bit 30 et au-dela = flux d'etat.
+
+**A4 — FERMETURE, avec l'ancre du binaire (note du lot B)** :
+
+| bits | largeur | role | preuve |
+|---|---|---|---|
+| 0..6 | 7 | type = 114 | filtre |
+| 7 | 1 | porte de la reference 0 | constante 1 sur 432 paquets / 3 films |
+| 8..11 | 4 | champ NON MODELISE, constant `1110` | constant sur les 3 films |
+| 12..19 | 8 | index de la reference 0 (domaine 2) | 67 / 129 / 36 valeurs ; handles 0x200..0x2cd, dans la plage exacte du domaine (base 0x200, cardinal 0x100) |
+| 20..21 | 2 | generation du handle | constante `01` sur 432 paquets |
+| 22 | 1 | porte de la reference 1 (domaine 3) | constante 0 -> reference ABSENTE |
+| 23 | 1 | porte de la reference 2 (domaine 7) | constante 0 -> reference ABSENTE |
+| 24..29 | 6 | charge utile du type | palette stable {11, 13, 15, 17} sur les 3 films |
+| 30 | 1 | queue R(1) de l'evenement | variable |
+
+Le flux SEUL laisse deux decoupes equivalentes (champ de 3 bits + index de 9, ou champ de 4 bits
++ index de 8) ; la table `0x1451f98d0` lue par le lot B (domaine 2 : cardinal 0x100 -> 8 bits,
+aucune sonde hors domaine 1) tranche pour la seconde SANS ajustement. **W(domaine 3) et
+W(domaine 7) restent non mesurables** : leurs portes sont fermees sur les 432 paquets.
+La premiere passe de A4, qui exigeait des bits de queue CONSTANTS, est refutee et le fichier le
+dit : ces deux bits sont la generation du handle, donc de la donnee.
+
+**ANCRE INDEPENDANTE SUR LE TYPE 105 — l'enveloppe generique NE SUFFIT PAS.** L'index
+d'attaquant du type 105 est connu au bit 36 (controle positif : 100 % de valeurs paires et < 16
+sur 00162144 et 03ccbe42, 68 % sur 00ba2e1c). Aucune combinaison (champ de tete 0..8 bits,
+sonde 0/1, W de 9 ou 13) ne place une reference plausible a 36 : les positions calculables
+plafonnent a 34. **Il existe donc un sous-en-tete propre au type** entre le type et les
+references — ce qui explique les 4 bits constants `1110` du 114, et interdit de generaliser
+l'enveloppe a partir d'un seul type.
+
+**A2 — ATTRIBUTION : ECHEC MESURE.** Critere ecrit avant : une valeur UNIQUE couvrant >= 8 des
+12 transitions avec <= 2 paquets hors fenetre (la vie de Nilton couvre toute la plage, aucun
+respawn ne la coupe). Balayage de toutes les tranches de 3 a 16 bits, positions 7 a 104 :
+**0 candidate**. Le front publie le plafond : les tranches qui discriminent vraiment plafonnent
+a 5/12 (impurete nulle) ; les « 10/12 » du balayage sont des tranches degenerees, constantes sur
+tous les paquets. Avec l'index enfin localise (bits 12..19), la plage etiquetee contient
+**8 references distinctes pour 17 paquets, la meilleure couvrant 3/12 transitions**. Les douze
+bascules d'un meme joueur ne se rassemblent derriere aucune reference.
+
+**A3 — SENS : AUCUN DISCRIMINANT.** Deux lentilles. (1) Aucun bit de l'enveloppe n'est proche de
+50 % (les seuls le sont dans l'index) et aucune partition des multiplicites du payload
+{6, 16, 83, 10, 10} n'approche l'equilibre : un champ de sens en serait un. (2) Par type
+d'evenement, entrees et sorties mesurees SEPAREMENT avec controle par translation de la
+chronologie : sur 13 types testes, aucun ne separe (le 114 lui-meme fait 5/6 entrees a p = 0,060
+et 5/6 sorties a p = 0,052 — symetrique, donc muet sur le sens). Le type 103
+`unit_exit_vehicle` signale par le lot B n'atteint meme pas 20 paquets sur ce film.
+
+**LE RESULTAT LE PLUS IMPORTANT — L'ALIGNEMENT DU 114 EST BEAUCOUP PLUS FAIBLE QU'ANNONCE.**
+La phase 6 concluait de « 9 a 10 transitions sur 12 couvertes » en comparant au debit de fond du
+film entier. Le bon controle est le nombre de paquets REELLEMENT presents dans la plage — 17 —
+et la part de cette plage que les douze fenetres +/-1,2 s recouvrent deja (53 %). Controle exact
+par translation de la chronologie entiere (7902 decalages, structure des paquets et ecarts entre
+transitions preserves) : couverture observee 10/12, moyenne des decalages 2,9, maximum 11, et
+**1,04 % des decalages atteignent 10 ou plus**. Au seuil de 1 % ecrit avant la mesure :
+**NON SIGNIFICATIF**. Le calage n'est pas en cause (profil O4bis : le maximum tombe bien sur
+delta = 0). L'identification « type 114 = mise a la lunette » n'est donc pas etablie ; elle
+reposait sur un controle trop permissif.
+
+**CONCLUSION** : l'enveloppe est decodee et fermee (ce qui servira a TOUT evenement de ce
+format), mais les trois questions produit — quel joueur, quel sens, et meme « est-ce bien le
+zoom » — sont toutes negatives sur ce film. Le lot B conclut par la voie statique que la lunette
+a son type dedie (126 `unit_zoom`, absent du corpus) et que « la lunette est un siege » est
+refutee : deux chaines independantes, aucune etape commune, meme verdict.
+
+**HYPOTHESE DU SOUS-EN-TETE DE 16 BITS — REFUTEE, chiffres a l'appui.** Le pilote a propose que
+16 bits fixes separent le type des trois references, ce qui ferait tomber la reference 0 du type
+105 au bit 23 et son champ suivant exactement sur le bit 36 connu. Mesure sur 5 239 records
+longs des trois films : la « porte » du bit 23 est ouverte **0,0 %** du temps et la « sonde » du
+bit 24 vaut 1 **0,0 %** du temps — les deux sont constantes a zero, l'hypothese exige l'inverse.
+Cote 114, aucune des 25 longueurs de sous-en-tete testees (0 a 24, portes lues, largeurs du
+binaire 8/8/13) ne produit une charge utile R(6) de cardinalite <= 8 stable entre films : 0 sur
+25. La decoupe qui tient reste celle mesuree plus haut (porte au bit 7, champ constant `1110`,
+index de 8 bits au bit 12), et l'enveloppe generique du dispatcher ne rend PAS compte du type
+105 : ce type a son propre sous-en-tete, de longueur non determinee par ce lot.
+
+**Prochaine etape** : ne plus instrumenter le 114 comme canal du zoom. Deux fils honnetes
+restent : (a) refaire l'oracle sur un relevé plus dense ou plusieurs films avant toute nouvelle
+identification, avec le controle par translation comme gate ; (b) reprendre les deux pistes
+DERIVEES deja nommees en phase 3 (`player-aim-assist-component`, `player-desired-frame-
+configuration-component`), en les traitant comme des correlats et jamais comme l'etat.
