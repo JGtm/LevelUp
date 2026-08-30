@@ -370,8 +370,26 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   Oddball par `game_variant_name`. Le crâne LIBRE (`objectiveObjects`, v21) reste la couche
 	//   POSITION ; celle-ci est la couche PORTEUR. Détail :
 	//   .ai/V7.5/replay2d/registre_film/ODDBALL_PORTEUR_PROTOCOLE.md.
-	if SchemaVersion != 23 {
-		t.Fatalf("SchemaVersion = %d, attendu 23 : incrémenter exige une raison écrite ci-dessus "+
+	//
+	// v24 — LES PRISES ET LES LÂCHERS D'ARME (`weaponChanges`). Le composant d'identité d'arme
+	//   du bipède n'entre au masque du flux delta que lorsqu'un emplacement CHANGE : chaque
+	//   émission est donc un ramassage, un lâcher ou un échange, daté à la milliseconde. Jusqu'ici
+	//   le document ne portait que `padPickups` — « ce socle s'est vidé quelque part dans cet
+	//   intervalle », sans le joueur. Le champ est optionnel, mais la version monte pour la raison
+	//   exacte des montées v14/v16/v21/v22/v23 : la reprise du backfill se fait par SchemaVersion,
+	//   un artefact 23 doit se lire « à re-cuire » — il ne peut porter aucun ramassage.
+	//   NIVEAU DE PREUVE, et il est INÉGAL, ce qui doit se lire ici : le canal est JUSTE (sur
+	//   5 627 tirs de trois films il ne retire jamais une arme encore utilisée) ; sa COMPLÉTUDE
+	//   n'est PAS établie, faute d'oracle hors ligne — les images-clés sont trop grossières (20 s)
+	//   et l'union des inventaires sature à 98-100 % avant même le canal. Ce qui a été mesuré à la
+	//   place est la PLAUSIBILITÉ : hors drapeaux, 22 et 21 ramassages par match sur deux CTF
+	//   Arena, composés d'armes de socle et de râtelier et jamais d'armes de départ, pour 10 et
+	//   13 socles sur ces cartes. TROIS RÉFUTATIONS écrites : le lien vers l'objet du monde ne
+	//   passe ni par la suppression de l'entité (1/71), ni par son attachement (1/21), ni par un
+	//   appariement par les armes (5-12 % contre 70 % exigés). Détail :
+	//   internal/analysis/replay/document_weapon_changes.go.
+	if SchemaVersion != 24 {
+		t.Fatalf("SchemaVersion = %d, attendu 24 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }
