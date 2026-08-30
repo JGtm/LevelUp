@@ -1,3 +1,87 @@
+## [2026-08-30] LOT G.3-POC — distance par arme, par joueur, vue match (DEC-8) — Complété
+
+**Statut** : Complété. Plan `.ai/PLAN_RETOURS_UTILISATEUR_2026-08-29.md` §3bis, LOT G,
+item G.3-POC (agent Sonnet, worktree dédié `LevelUp-wt-retours-0829`).
+
+**Contexte / décision produit** : DEC-8 (utilisateur, 2026-08-30 soir) réduit G.3
+(« portée + narratif ») à un POC vue match, cadré mot pour mot : « mettre le nombre
+de kills par armes sur la distance et indiquer la distance moyenne pour chaque
+arme... pour chaque joueur. Pour le moment c'est tout ce qu'on va faire au niveau
+de la lecture de la distance. » Fermés explicitement : agrégat multi-matchs, portée
+par arme (RRR), arme ET distance de l'ASSISTANT (le TUEUR seul est lu). Correction
+consignée dans la même décision : les parts de dégâts tueur/assistant sont DÉJÀ en
+prod par kill dans le kill feed du rejeu depuis le 2026-08-24
+(`ReplayKillFeed.tsx:489`, `match-replay/i18n.ts:39-41`) — la réserve de
+`GUIDE_KILLSOURCE.md:670-674` / `steps_shared_kill_events.go:322-324` (chemin non
+démontré, valeurs non bornées à 100) ne s'applique qu'à les présenter comme des
+dégâts exacts ou à les agréger, pas à l'affichage brut par kill déjà livré.
+
+**Décision technique principale — écart assumé sur la consigne de gating** : la
+mission demandait de gater sur la capability `film.kill_positions`. Vérifié sur
+pièces AVANT de coder (skill `plan-execution` règle 4) : `games/adapter.go:160-166`
+et `capabilities.toml` (halo_infinite) disent explicitement que cette clé
+« GOUVERNE LA CAPTURE, PAS LA LECTURE » — l'utiliser aurait en plus cassé Halo 5 en
+pratique (positions natives déjà là, mais H5 ne pose jamais cette clé Infinite-only
+dans sa capability map). Câblé à la place sur `games.CapFilmKillSource` (même
+capability que `KillSourceClassRepo`, dont ce lecteur dépend réellement : même
+table `match_kill_events_latest`, même classificateur `port.KillSourceClassifier`).
+`match.events.spatial` écarté aussi : gouverne le pipeline `canonical.MatchEvent`
+cross-titre de la timeline (axe distinct, `games/halo_infinite/events.go:130-151`).
+
+**Chaîne livrée** : Go — `port.KillDistanceRepository` (`internal/port/
+repository_data.go`) → `duckdb.KillDistanceRepo` (nouveau,
+`kill_distance_repo.go`) : jointure `match_kill_events_latest` ×
+`kill_positions_latest` sur (match_id, killer_xuid=feed_killer_xuid, time_ms),
+garde d'unanimité sur `source_tag` par (tueur, instant) identique à Q21b,
+`publishable` requis (lecture PAR KILL), positions NULL exclues des deux côtés,
+distance = hypot 3D calculée en Go (jamais stockée, jamais en SQL). Résolution
+weapon_key : nouvelle fonction `resolveWeaponKeyLabelsAny` (`weapon_resolver.go`) —
+réutilise le classificateur existant SANS le filtre anti-double-comptage
+« hors arsenal seul » de `resolveOffArsenalKeys` (donc les armes à feu ordinaires
+remontent aussi, ex. `hinf_br75` — testé) ; aucune jointure `weapon_ids` (fan-out
+évité sur les armes à variantes), aucune nouvelle table. `domain.
+MatchKillDistancePlayer/Weapon` (nouveau fichier, pas dans `match_view.go` déjà
+805 L) exposés sur `MatchCombatTab.KillDistanceByWeapon` (omitempty). Wiring
+`killDistanceRepoFor` (`registry_pages.go`, miroir de `killSourceClassRepoFor`) +
+`WithKillDistanceRepo` + chargement errgroup (`goLoad`, WARN auto sur échec) +
+assemblage direct dans `match_view_data_loaders.go`. Web —
+`MatchKillDistanceSection.tsx` (nouveau, gabarit `MatchObjectivesSection.tsx`) :
+table groupée par joueur (gamertag + total de kills résolus depuis le scoreboard
+déjà chargé, PAS dupliqués côté backend), armes triées, pastille de comptage,
+distance moyenne locale-aware (virgule FR / point EN) + plage min–max si
+`measured_kills > 1`, badge « POC », footnote réserve. Rend `null` sans donnée
+(état vide propre — le cas de la quasi-totalité des matchs avant backfill de
+masse). Placé dans le tab `summary` (il n'existe PAS de tab « Combat » littéral,
+vérifié sur pièces) juste après `MatchFragCard`. i18n FR/EN typées
+`features/match-view/i18n.ts`. Tokens sémantiques uniquement, 0 hex. Contrat
+régénéré (`openapi-gen` + `generate-types`) + alias `lib/api/types.ts`.
+
+**Résultats observés (gates)** : 9 tests Go `:memory:` + vraies migrations
+(`-tags=integration`, harnais réutilisé `killsource_class_repo_test.go`) — tous
+verts (moyennes exactes, clé d'arsenal qui remonte, kill sans position/position
+partielle/double-kill ambigu/passe non publiable tous exclus proprement, table
+vide et classificateur nil dégradent sans erreur, matchID vide refusé). 8 tests
+web (`MatchKillDistanceSection.test.tsx`). `go build ./...` + `go vet
+./internal/...` propres. `go test ./internal/platform/duckdb/... ./internal/
+service/... ./internal/domain/... ./contracttest/... -count=1` 100 % vert.
+`go test -tags=integration -p 1 ./internal/platform/duckdb/... -count=1` : SEULS
+les 24 échecs `team_0_rounds_won` PRÉ-EXISTANTS documentés en G.2bis (fichiers
+jamais touchés par ce lot) — 0 échec imputable. `go test -p 4 ./... -count=1`
+(module ENTIER) : SEULS les 2 échecs pré-existants déjà documentés au VF du
+30/08 midi (archlint `TestNoLocalLongestRun`, `internal/himap` timeout) — 0
+régression nulle part dans tout le dépôt. Web : `npx vitest run
+src/features/match-view` 265/265 (257 pré-existants + 8 neufs) ; `npm run
+typecheck` propre.
+
+**Conclusion / prochaine étape** : G.3-POC RENDU et vérifié ; G.3 « plein »
+(portée + narratif, confrontation RRR) reste NON engagé — fermé par DEC-8 (pas
+seulement conditionné à la donnée), à rouvrir seulement sur décision utilisateur
+ultérieure. Aucun commit dans ce worktree (règle du chantier : le pilote committe
+après revue) ; arbitrage des commits toujours en attente (§5/§7 du plan).
+Vérification visuelle utilisateur de la carte non faite (pas de `data/` dans ce
+worktree — aucun match réel à afficher ici, seulement les fixtures synthétiques
+des tests).
+
 ## [2026-08-29 soir] Retours 0829 suite — palettes daltoniennes, lot G, coordination inter-sessions
 
 **Statut** : Complete pour les palettes (gates verts) et l'analyse G.0 ; F.0 en cours

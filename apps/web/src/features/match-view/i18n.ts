@@ -101,6 +101,21 @@ export interface MatchViewText {
   labelGroundPound: string
   labelShoulderBash: string
   weaponUnknownPrefix: string
+  // Distance par arme, par joueur — POC (LOT G.3, 2026-08-30, plan
+  // retours-utilisateur §3bis DEC-8). Vue match uniquement, kills du TUEUR
+  // seulement (arme/distance de l'assistant hors périmètre).
+  killDistanceTitle: string
+  killDistancePocBadge: string
+  killDistanceColWeapon: string
+  killDistanceColKills: string
+  killDistanceColAvg: string
+  /** En-tête d'un groupe joueur : gamertag + kills mesurés / total du match. */
+  killDistancePlayerHeaderFmt: (gamertag: string, measured: number, total: number) => string
+  /** Distance moyenne formatée locale-aware, ex. « 12,4 m » (FR) / « 12.4 m » (EN). */
+  killDistanceAvgFmt: (m: number) => string
+  /** Plage min–max entre parenthèses, ex. « (3,1–28,7 m) ». */
+  killDistanceRangeFmt: (min: number, max: number) => string
+  killDistanceReserve: string
   // Section médias (dans onglet Résumé)
   sectionMedia: string
   mediaNoCaptures: string
@@ -352,6 +367,18 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     labelGroundPound: 'Coup au sol',
     labelShoulderBash: 'Charge spartane',
     weaponUnknownPrefix: 'Arme inconnue',
+    killDistanceTitle: 'Distance par arme',
+    killDistancePocBadge: 'POC',
+    killDistanceColWeapon: 'Arme',
+    killDistanceColKills: 'Kills mesurés',
+    killDistanceColAvg: 'Distance moyenne',
+    killDistancePlayerHeaderFmt: (gamertag, measured, total) =>
+      `${gamertag} — ${measured}/${total} kills mesurés`,
+    killDistanceAvgFmt: (m) => `${new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(m)} m`,
+    killDistanceRangeFmt: (min, max) =>
+      `(${new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(min)}–${new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(max)} m)`,
+    killDistanceReserve:
+      "POC — ne compte que les kills dont la position du tueur ET de la victime est mesurée ; tous les kills n'ont pas de position (couverture partielle).",
     sectionMedia: 'Médias',
     mediaNoCaptures: 'Aucune capture',
     mediaNoCapturesDesc: 'Les screenshots et clips associés à ce match apparaîtront ici.',
@@ -635,6 +662,18 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     labelGroundPound: 'Ground Pound',
     labelShoulderBash: 'Shoulder Bash',
     weaponUnknownPrefix: 'Unknown weapon',
+    killDistanceTitle: 'Distance by weapon',
+    killDistancePocBadge: 'POC',
+    killDistanceColWeapon: 'Weapon',
+    killDistanceColKills: 'Measured kills',
+    killDistanceColAvg: 'Average distance',
+    killDistancePlayerHeaderFmt: (gamertag, measured, total) =>
+      `${gamertag} — ${measured}/${total} measured kills`,
+    killDistanceAvgFmt: (m) => `${new Intl.NumberFormat('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(m)} m`,
+    killDistanceRangeFmt: (min, max) =>
+      `(${new Intl.NumberFormat('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(min)}–${new Intl.NumberFormat('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(max)} m)`,
+    killDistanceReserve:
+      'POC — only counts kills where both the killer and victim position are measured; not all kills have a position (partial coverage).',
     sectionMedia: 'Media',
     mediaNoCaptures: 'No captures',
     mediaNoCapturesDesc: 'Screenshots and clips associated with this match will appear here.',

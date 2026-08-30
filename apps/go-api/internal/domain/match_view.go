@@ -477,6 +477,15 @@ type MatchCombatTab struct {
 	// scoreboard. Nil si le viewer n'a aucun kill (le front rend null). Cf.
 	// .ai/V7/PLAN_FRAG_DISTRIBUTION_V2.md P3.
 	FragDistribution *FragDistribution `json:"frag_distribution,omitempty"`
+
+	// KillDistanceByWeapon : POC (LOT G.3, 2026-08-30, plan retours-utilisateur
+	// §3bis DEC-8) — kills mesurés et distance tueur-victime moyenne par arme,
+	// PAR JOUEUR (pas seulement le viewer), pour ce match. Vide/nil si aucun kill
+	// n'a de position mesurée (titre/serveur sans capture positions, backfill non
+	// joué, ou couverture du match sous le plancher mesuré 75,8 %) — dégradation
+	// propre, jamais d'erreur : le front n'affiche alors aucune carte. Périmètre
+	// fermé : arme et distance de l'ASSISTANT hors scope (cadrage utilisateur).
+	KillDistanceByWeapon []MatchKillDistancePlayer `json:"kill_distance_by_weapon,omitempty"`
 }
 
 // ---------------------------------------------------------------------------

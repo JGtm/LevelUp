@@ -1769,6 +1769,21 @@ export type MatchAssistPair = components['schemas']['MatchAssistPair']
  */
 export type MatchAssistPairs = components['schemas']['MatchAssistPairs']
 
+/**
+ * POC (LOT G.3, 2026-08-30) : une arme, ses kills mesurés et sa distance
+ * tueur-victime pour UN joueur sur CE match. `measured_kills` est TOUJOURS
+ * ≤ au total de kills à l'arme (couverture positions mesurée à 75,8 % plancher,
+ * jamais 100 %).
+ */
+export type MatchKillDistanceWeapon = components['schemas']['MatchKillDistanceWeapon']
+
+/**
+ * POC (LOT G.3) : le regroupement par joueur (xuid) des armes mesurées. Pas de
+ * gamertag ici — résolu côté front depuis le scoreboard déjà chargé (même
+ * pattern que MatchObjectivesSection).
+ */
+export type MatchKillDistancePlayer = components['schemas']['MatchKillDistancePlayer']
+
 export interface MatchCombatTab {
   weapon_kills: MatchWeaponKill[]
   highlight_events: MatchHighlightEvent[]
@@ -1794,6 +1809,13 @@ export interface MatchCombatTab {
    * match. Nil si le viewer n'a aucun kill (le front rend null). Cf. P3.
    */
   frag_distribution?: FragDistribution
+  /**
+   * POC (LOT G.3, 2026-08-30, plan retours-utilisateur §3bis DEC-8) : kills
+   * mesurés et distance tueur-victime moyenne par arme, PAR JOUEUR (pas
+   * seulement le viewer), pour ce match. Absent/vide si aucun kill n'a de
+   * position mesurée — dégradation propre, jamais d'erreur.
+   */
+  kill_distance_by_weapon?: MatchKillDistancePlayer[]
 }
 
 /** MV2 : rôle narratif attribué (1 entrée par joueur × rôle). */

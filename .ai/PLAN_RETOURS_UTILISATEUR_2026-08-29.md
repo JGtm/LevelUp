@@ -555,16 +555,150 @@ la réflexion narrative venant après.
       variante et un kill à l'arme vanilla partagent le même `weapon_key`,
       illisible après coup dans `match_kill_events`. Zéro fichier de code touché
       (vérifié : `git status` ne montre que le `.md` neuf).
-- [ ] G.3 (L) — PORTÉE + narratif : agrégat par tag × carte, confrontation RRR,
-      moteur narratif. La capture live est désormais câblée (G.2bis) ; G.3 reste
-      CONDITIONNÉ à une CUISSON DE MASSE (`backfill-killsource --force` sur le
-      corpus, pour peupler `kill_positions` au-delà des nouveaux matchs) — non
-      engagé, aucune donnée de masse disponible pour agréger tant que ce
-      backfill n'a pas tourné en prod.
+- [x] **DEC-8 (utilisateur, 2026-08-30 soir)** : G.3 RÉDUIT à un POC vue match,
+      cadré MOT POUR MOT par l'utilisateur : « sur la page match view on peut,
+      comme si c'était un POC, mettre le nombre de kills par armes sur la
+      distance et indiquer la distance moyenne pour chaque arme, tout ça pour
+      chaque joueur. Pour le moment c'est tout ce qu'on va faire au niveau de la
+      lecture de la distance. » Périmètre FERMÉ par cette phrase : vue match
+      UNIQUEMENT, par joueur, kills par arme × distance + distance moyenne par
+      arme — RIEN d'autre. Explicitement FERMÉS : agrégat multi-matchs, portée
+      par arme (confrontation RRR — le reste de G.3 « plein » ci-dessous), et
+      **arme ET distance de l'ASSISTANT** (G.0 avait signalé la distance de
+      l'assistant comme mesurable via `assist_xuid`, 22 708 lignes — DEC-8 la
+      ferme explicitement, comme l'arme de l'assistant : ce POC ne lit QUE le
+      TUEUR).
+      CORRECTION portée par la même décision, sur une ligne distincte du sujet
+      distance : les PARTS DE DÉGÂTS tueur/assistant (`killer_damage_pct`/
+      `assist_damage_pct`) sont DÉJÀ affichées PAR KILL dans le kill feed du
+      rejeu depuis le 2026-08-24 (`ReplayKillFeed.tsx:489`, i18n
+      `killFeedKillerShare`/`killFeedAssistShare`,
+      `apps/web/src/features/match-replay/i18n.ts:39-41` — sur une rangée
+      assistée, la part de l'assistant s'affiche seule, celle du tueur sort de
+      la rangée, cf. `.ai/thought_log.md:3949`). La réserve écrite dans
+      `.ai/V7.5/killweapon/GUIDE_KILLSOURCE.md:670-674` (chemin kill-event film
+      → `KillerPercentageDamageDone`/`AssistantPercentageDamageDone` NON
+      démontré ; valeurs NON bornées à 100, 1,7 % vont jusqu'à 228 — verrouillé
+      aussi côté schéma, `internal/migration/steps_shared_kill_events.go:322-324`)
+      NE VAUT QUE pour (a) présenter ces nombres comme des DÉGÂTS EXACTS en HP,
+      ou (b) les AGRÉGER (moyenne/somme sur plusieurs kills) — jamais pour la
+      part BRUTE par kill déjà en prod, qui est un simple affichage d'un champ
+      mesuré, sans interprétation ajoutée. Aucune ligne du plan n'affirmait le
+      contraire noir sur blanc ; cette entrée sert de repère écrit pour ne pas
+      le laisser se former plus tard par confusion avec la réserve distance
+      (G.0, valeurs non plafonnées elle aussi mais sur un TERRAIN différent).
+- [x] G.3-POC (S) — RENDU le 30/08 (agent Sonnet, worktree dédié), périmètre
+      DEC-8 ci-dessus. Chaîne complète, gate par gate :
+      **Go lecture** : `port.KillDistanceRepository.LoadMatch(ctx, matchID)`
+      (`internal/port/repository_data.go`, à côté de `PlayerPositionsRepository`,
+      même forme mono-match) → `duckdb.KillDistanceRepo`
+      (`internal/platform/duckdb/kill_distance_repo.go`, nouveau) : jointure
+      `match_kill_events_latest` × `kill_positions_latest` sur
+      `(match_id, killer_xuid = feed_killer_xuid, time_ms)`, `GROUP BY
+      (feed_killer_xuid, time_ms) HAVING count(DISTINCT source_tag) = 1` (même
+      garde d'unanimité double-kill que Q21b), `publishable` requis (lecture PAR
+      KILL, pas un agrégat qui tolère l'individuel faux — contrairement à
+      `KillSourceClassRepo`), positions NULL des deux côtés exigées non-NULL
+      (une position partielle — un seul côté connu, cf.
+      `internal/analysis/replay/killpos.go:58-59` `Killer`/`Victim *Vec3` — est
+      exclue, jamais approchée). Distance = `hypot3D` en Go (jamais en SQL, même
+      politique que `KillSourceClassRepo` : le SQL ne connaît que des nombres).
+      Résolution weapon_key : RÉUTILISE le classificateur existant
+      (`port.KillSourceClassifier`/`killicon.Lookup`, même injection que
+      `KillSourceClassRepo`) — mais SANS le filtre anti-double-comptage
+      « hors arsenal seul » : nouvelle fonction
+      `resolveWeaponKeyLabelsAny` (`weapon_resolver.go`, à côté de
+      `resolveOffArsenalKeys`) qui résout TOUTE arme (à feu du registre COMME
+      hors arsenal) par `weapon_key` — sans jointure `weapon_ids` (qui aurait
+      fan-out sur les armes à variantes multiples), donc AUCUNE nouvelle table
+      de résolution, juste une requête de plus sur `weapons`/`weapon_name_labels`
+      déjà existantes. 9 tests `:memory:` + vraies migrations
+      (`kill_distance_repo_test.go`, tag `integration`, harnais réutilisé de
+      `killsource_class_repo_test.go` même package) : moyennes exactes (2
+      joueurs, 2 armes, distances connues), clé D'ARSENAL qui remonte
+      (`hinf_br75`, LA différence de comportement avec `KillSourceClassRepo`),
+      kill sans position exclu, position partielle exclue, double kill à armes
+      divergentes exclu en entier, passe non publiable exclue, table vide →
+      zéro ligne zéro erreur, classificateur nil → rien, matchID vide → refus
+      (jamais de scan complet).
+      **Go service** : `domain.MatchKillDistancePlayer`/`MatchKillDistanceWeapon`
+      (nouveau fichier `domain/match_view_kill_distance.go` — PAS dans
+      `match_view.go`, déjà 805 L) ; `MatchCombatTab.KillDistanceByWeapon`
+      (`omitempty`) ; `MatchViewService.WithKillDistanceRepo` (nil-safe, même
+      doctrine que `WithKillSourceRepo`) ; chargement dans l'errgroup
+      (`match_view_data_loaders.go`, `goLoad` — WARN automatique sur échec,
+      c'est la brique qui couvre « slog sur échec de lecture ») ; assemblage
+      direct `combat.KillDistanceByWeapon = d.killDistances` (pas de
+      transformation supplémentaire, contrairement à `FragDistribution`).
+      **Gate de capability — ÉCART ASSUMÉ sur la consigne initiale** : câblé sur
+      `games.CapFilmKillSource` (`killDistanceRepoFor`,
+      `internal/api/wire/registry_pages.go`, miroir exact de
+      `killSourceClassRepoFor`), **PAS** `film.kill_positions` comme la mission
+      le nommait. Vérifié sur pièces AVANT de coder (règle 4) :
+      `games/adapter.go:160-166` et
+      `config/titles/halo_infinite/mappings/capabilities.toml:112-114` disent
+      NOIR SUR BLANC que `film.kill_positions` « GOUVERNE LA CAPTURE (l'écriture),
+      PAS LA LECTURE ». L'utiliser pour gater CETTE lecture aurait en plus
+      cassé Halo 5 EN PRATIQUE : `kill_positions` y est natif
+      (`match.events.spatial = supported`) mais H5 ne pose JAMAIS
+      `film.kill_positions` dans sa capability map (c'est une clé Infinite-only,
+      le film est son SEUL besoin de capture) — gater dessus aurait masqué une
+      donnée déjà disponible pour H5. `CapFilmKillSource` est la capability dont
+      CE lecteur dépend RÉELLEMENT (même table `match_kill_events_latest`, même
+      classificateur que `KillSourceClassRepo`) ; `match.events.spatial` a
+      aussi été écarté (gouverne le pipeline `canonical.MatchEvent` CROSS-TITRE
+      de la timeline, `games/halo_infinite/events.go:130-151`, un axe distinct
+      — le promouvoir aurait fait mentir le message statique de
+      `infiniteEventLimitations()`, qui dit encore à raison que la timeline
+      CANONIQUE ne branche pas les positions). Décision documentée dans le code
+      (commentaire `killDistanceRepoFor`) et ici — micro-décision tranchée par
+      les conventions du dépôt (skill `plan-execution` §3), pas déléguée.
+      **Web** : `MatchKillDistanceSection.tsx` (nouveau,
+      `features/match-view/`, gabarit structurel `MatchObjectivesSection.tsx`)
+      — table groupée par joueur (en-tête `{gamertag} — {mesurés}/{total} kills
+      mesurés`, gamertag/total résolus depuis le scoreboard déjà chargé,
+      JAMAIS dupliqués côté backend), une ligne par arme (libellé FR/EN via la
+      locale + repli `weapon_key`, pastille de comptage `bg-primary/10`,
+      distance moyenne locale-aware + plage min–max entre parenthèses si
+      `measured_kills > 1`), badge « POC » (`bg-warning/10`), footnote réserve
+      de couverture. Rendu `null` si aucune donnée (pas de cadre vide — cas de
+      la quasi-totalité des matchs tant que le backfill de masse n'a pas
+      tourné). Placé en `summary` tab (il n'existe PAS de tab « Combat »
+      littéral — vérifié sur pièces, seuls `summary`/`chronology`/`players`
+      existent, `MatchViewPage.tsx:75-78` — la vue backend `combat_tab`
+      alimente le tab `summary` ; `MatchFragCard`, « stats d'armes » la plus
+      proche, y vit aussi) juste après `MatchFragCard`. Tokens sémantiques
+      SEULEMENT (`primary`/`warning`/`info`/`muted-foreground`, 0 hex). i18n FR
+      + EN typées (`Record<Locale,T>`, `features/match-view/i18n.ts`,
+      formatteurs `Intl.NumberFormat('fr-FR'|'en-US', {minimumFractionDigits:1,
+      maximumFractionDigits:1})` — virgule FR / point EN vérifiés par test).
+      Contrat régénéré (`make openapi-gen` + `make generate-types`) + alias
+      manuels `apps/web/src/lib/api/types.ts` (pattern existant, pas de
+      réécriture des champs).
+      **Tests** : 9 Go intégration (ci-dessus, tous verts) + 8 web
+      (`MatchKillDistanceSection.test.tsx` : rendu nominal FR, repli
+      `weapon_key`, pas de plage sur 1 seul kill, locale EN complète, repli
+      xuid hors scoreboard, 3 états vides null/undefined/[]) — 265/265
+      `vitest match-view` (257 pré-existants + 8 neufs, 0 régression).
+      **Gate G.3-POC** : `go build ./... ` + `go vet ./internal/...` propres ;
+      `go test ./internal/platform/duckdb/... ./internal/service/...
+      ./internal/domain/... ./contracttest/... -count=1` 100 % vert ;
+      `go test -tags=integration -p 1 ./internal/platform/duckdb/... -count=1` :
+      SEULS les mêmes 24 échecs `team_0_rounds_won` PRÉ-EXISTANTS documentés en
+      G.2bis (fichiers jamais touchés par ce POC : `match_repos_test.go`,
+      `player_matches_repo_test.go`, `pool_migration_test.go`) — 0 échec
+      imputable ; `npx vitest run src/features/match-view` 265/265 ; `npm run
+      typecheck` propre.
+- [ ] G.3 (L, plein) — PORTÉE + narratif : agrégat par tag × carte, confrontation
+      RRR, moteur narratif. NON ENGAGÉ, désormais fermé par DEC-8 (portée par
+      arme = hors scope de ce cadrage, pas seulement conditionné à la donnée) —
+      resterait à rouvrir par une décision utilisateur ultérieure, pas une
+      simple question de cuisson de masse. La capture live reste câblée
+      (G.2bis) si ce chantier rouvre un jour.
 - Gate G.0 : PASSÉ. Gate G.1 : PASSÉ (détail ci-dessus). Gate G.2 : PASSÉ pour le
       périmètre RENDU (append-only). Gate G.2bis : PASSÉ (détail ci-dessus) — la
-      capture live n'est plus `[!]`. Gate G.3-préparation : PASSÉ. G.3 (plein) :
-      non engagé, conditionné à la cuisson de masse ci-dessus.
+      capture live n'est plus `[!]`. Gate G.3-préparation : PASSÉ. Gate G.3-POC :
+      PASSÉ (détail ci-dessus). G.3 (plein) : non engagé, fermé par DEC-8.
 
 ## 4. Hors périmètre (fermé)
 - R9/D6 (niveau 2 barres Escouade) — Découvertes.
@@ -617,6 +751,15 @@ obligatoire sur les fichiers à 2 lots.
 ## 8. Découvertes (à consigner, PAS à traiter ici)
 - CI `feat/v75` ROUGE depuis le push du 2026-08-28 16:05 (AVANT tous ces lots) — à
   diagnostiquer avant tout push.
+- LOT G.3-POC (30/08) — `make go-api-lint` (ratchet `--new-from-merge-base=origin/main`)
+  remonte 2 issues, AUCUNE dans les fichiers de ce POC : (a) `funlen` sur
+  `service/teammates/teammates_service_assets.go:238` `buildSquadMatchHistory` (82 > 80 L)
+  — fichier du lot score-manches, jamais touché ici ; (b) `unparam` sur
+  `service/match_view_data_loaders.go:706` `loadMatchKillSourceClasses` (le retour error
+  est toujours nil) — fonction PRÉ-EXISTANTE du lot kills-hors-arme/V2.1, byte-identique
+  avant/après ce POC (vérifié). Les deux remontent seulement parce que le ratchet compare
+  au dernier merge-base `origin/main`, et ce worktree porte plusieurs lots non mergés — pas
+  une régression de ce POC.
 - `spartan_ability`/`unattributed` ΔE 6,89 (pré-existant, sous seuil 8) — traité en
   exception datée par A.5, à re-trancher si refonte palette.
 - `ecs_table.tsv:800` : doc inversée (`i27 charges-remaining` présentée « en réserve »
@@ -770,3 +913,19 @@ coder (règle 4).
   vérifié non applicable à cette table) et gates : §3bis, item G.2bis, et
   `.ai/thought_log.md`. G.3 (portée + narratif) reste non engagé, désormais conditionné
   à une cuisson de masse plutôt qu'à la capture live (câblée).
+- 2026-08-30 : LOT G.3-POC exécuté dans ce worktree dédié (agent Sonnet) — DEC-8
+  (utilisateur) réduit G.3 à un POC vue match (kills par arme × distance + distance
+  moyenne, par joueur, TUEUR seul), ferme le reste de G.3 (portée RRR, narratif,
+  arme/distance assistant), et corrige la lecture de la réserve damage-pct (parts
+  tueur/assistant déjà en prod par kill dans le kill feed du rejeu, réserve non
+  applicable à l'affichage brut). Chaîne complète RENDUE : repo Go
+  (`KillDistanceRepo`, jointure `kill_positions_latest`×`match_kill_events_latest`,
+  9 tests intégration) → service (wiring, capability `film.kill_source` — ÉCART
+  ASSUMÉ vs la consigne `film.kill_positions`, justifié sur pièces §3bis) → contrat
+  régénéré → carte web (`MatchKillDistanceSection`, tab `summary` à côté de
+  `MatchFragCard`, 8 tests). Gates : build+vet propres, suite ciblée 100 % verte,
+  `-tags=integration` platform/duckdb SEULS les 24 échecs `team_0_rounds_won`
+  pré-existants (G.2bis), `go test ./...` MODULE ENTIER seuls les 2 échecs
+  pré-existants déjà documentés au VF du 30/08 (archlint, himap timeout) — 0
+  régression. Web vitest match-view 265/265, typecheck propre. Détail complet :
+  §3bis item G.3-POC, `.ai/thought_log.md`.

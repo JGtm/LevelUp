@@ -15098,6 +15098,12 @@ components:
           type:
             - array
             - "null"
+        kill_distance_by_weapon:
+          items:
+            $ref: '#/components/schemas/MatchKillDistancePlayer'
+          type:
+            - array
+            - "null"
         killer_victim:
           items:
             $ref: '#/components/schemas/MatchKillerVictimPair'
@@ -15770,6 +15776,49 @@ components:
         - time_seconds
         - kills
         - deaths
+      type: object
+    MatchKillDistancePlayer:
+      additionalProperties: false
+      properties:
+        weapons:
+          items:
+            $ref: '#/components/schemas/MatchKillDistanceWeapon'
+          type:
+            - array
+            - "null"
+        xuid:
+          type: string
+      required:
+        - xuid
+        - weapons
+      type: object
+    MatchKillDistanceWeapon:
+      additionalProperties: false
+      properties:
+        avg_distance_m:
+          format: double
+          type: number
+        label:
+          type: string
+        label_en:
+          type: string
+        max_distance_m:
+          format: double
+          type: number
+        measured_kills:
+          format: int64
+          type: integer
+        min_distance_m:
+          format: double
+          type: number
+        weapon_key:
+          type: string
+      required:
+        - weapon_key
+        - measured_kills
+        - avg_distance_m
+        - min_distance_m
+        - max_distance_m
       type: object
     MatchKillerVictimPair:
       additionalProperties: false

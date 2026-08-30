@@ -80,7 +80,12 @@ type matchViewData struct {
 	// pour l icone du kill feed, celui-ci est un COMPTE PAR JOUEUR pour le sunburst.
 	// Vide = titre sans decodeur de film, match jamais decode, ou aucune de ces morts.
 	killSourceClasses []port.KillSourceClassRow
-	objectiveScore    int
+	// killDistances : POC (LOT G.3, plan retours-utilisateur §3bis DEC-8) —
+	// distance mesurée par (xuid, weapon_key) pour CE match, tous les joueurs
+	// (pas seulement le viewer). Nil si le titre n'a pas de killDistanceRepo
+	// câblé, ou si aucun kill n'a de position mesurée.
+	killDistances  []domain.MatchKillDistancePlayer
+	objectiveScore int
 }
 
 // loadMatchViewDataParallel lance en parallèle (errgroup) tous les chargements
@@ -232,6 +237,16 @@ func (s *MatchViewService) loadMatchViewDataParallel(ctx context.Context, matchI
 		goLoad(gctx, g, matchID, "kill_source_classes", func() error {
 			var e error
 			d.killSourceClasses, e = s.loadMatchKillSourceClasses(gctx, matchID)
+			return e
+		})
+	}
+	// Même doctrine que kill_source_classes ci-dessus : le gate de capability est
+	// posé au câblage (wire.killDistanceRepoFor) — un repo non nil veut dire que
+	// le titre a film.kill_source. Zéro comparaison de slug.
+	if s.killDistanceRepo != nil {
+		goLoad(gctx, g, matchID, "kill_distances", func() error {
+			var e error
+			d.killDistances, e = s.killDistanceRepo.LoadMatch(gctx, matchID)
 			return e
 		})
 	}
@@ -496,6 +511,10 @@ func (s *MatchViewService) buildMatchViewFromData(
 	if combat.FragDistribution != nil {
 		logFragDistribution(ctx, "match view", s.titleSlug, s.xuid, *combat.FragDistribution)
 	}
+	// KillDistanceByWeapon (POC LOT G.3) : déjà agrégé par (xuid, weapon_key) côté
+	// repo (kill_positions_latest × match_kill_events_latest) — assemblage direct,
+	// contrairement à FragDistribution qui doit croiser scoreboard+bulkWeapons.
+	combat.KillDistanceByWeapon = d.killDistances
 	mediaTab := buildMediaTab(d.media)
 
 	// MV4.B' : radar calculé depuis le scoreboard (kills/HS/PK/assists/accuracy/

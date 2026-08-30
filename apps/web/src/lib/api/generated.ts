@@ -7263,6 +7263,7 @@ export interface components {
             impact_badges: components["schemas"]["MatchImpactBadge"][] | null;
             impact_roles?: components["schemas"]["MatchViewImpactRole"][] | null;
             kd_timeline: components["schemas"]["MatchKDTimelinePoint"][] | null;
+            kill_distance_by_weapon?: components["schemas"]["MatchKillDistancePlayer"][] | null;
             killer_victim?: components["schemas"]["MatchKillerVictimPair"][] | null;
             nemesis_duels: components["schemas"]["MatchNemesisRow"][] | null;
             tug_of_war: components["schemas"]["MatchTugOfWarBin"][] | null;
@@ -7532,6 +7533,23 @@ export interface components {
             kills: number;
             /** Format: int64 */
             time_seconds: number;
+        };
+        MatchKillDistancePlayer: {
+            weapons: components["schemas"]["MatchKillDistanceWeapon"][] | null;
+            xuid: string;
+        };
+        MatchKillDistanceWeapon: {
+            /** Format: double */
+            avg_distance_m: number;
+            label?: string;
+            label_en?: string;
+            /** Format: double */
+            max_distance_m: number;
+            /** Format: int64 */
+            measured_kills: number;
+            /** Format: double */
+            min_distance_m: number;
+            weapon_key: string;
         };
         MatchKillerVictimPair: {
             /** Format: int64 */
