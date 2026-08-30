@@ -138,3 +138,15 @@ commit sur une branche dédiée.
   temporairement la branche A) ; largeur d'id runtime = table sélectionnée par le bit 0 du
   paquet — source du `IDLowBits` calibré. 0xD3 : k=6 reproductible mais faible (~40 %) —
   en-tête plus complexe, OUVERT. Table de synthèse publiée dans le miroir Notion.
+- **[2026-08-30, nuit] LE MODÈLE DE PAQUET EST PERCÉ** : paquet delta = [1 bit config]
+  [liste d'événements — grammaire E prouvée : continuation, R(7) type, 3 réfs, charge]
+  [trame de records]. Établi par DEUX chaînes : arithmétique octet0 = 0xC0|(type>>1) juste
+  sur toutes les familles + décodage BOUT EN BOUT de 0xCA = type 21 `unit_zoom` (largeurs
+  100 % sourcées exe, 2 films : 97/97 et 86/86, charges = paires entrée/sortie de lunette,
+  trame aval au niveau du témoin, masques 99,3-99,4 %). **Conséquences : la LUNETTE est
+  dans la bobine (~400 k événements — le négatif du chantier visée est réfuté, décalage
+  d'un bit partagé par ses trois chaînes) ; 0xD2 = action_weapon_fire (36) ; 0xD3 =
+  reload/throw-grenade (38/39) ; 0xC0 = damage_aftermath (983 k). Le « mystère de
+  l'en-tête par famille » est dissous.** Détail : `film_re/NOTE_MODELE_EVENEMENTS_2026-08-30.md`.
+  RESTE : pont réf0→joueur + vérité terrain lunette (gate produit), charge du type 36,
+  bit8 par famille corpus.
