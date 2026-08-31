@@ -81180,3 +81180,113 @@ second (avec l'inegalite stricte, pas seulement la valeur), et plancher aux cran
 L'orthogonalite avec l'elevation reste testee dans les deux sens.
 
 **Gates** : typecheck vert (cache purge), eslint propre, vitest `match-replay` **1940/1940**.
+
+## [2026-08-31] Visee lunette, LOT G — la verite terrain passe de 36 a 10 491 echantillons : le champ d'etat de lunette N'EXISTE PAS dans les records delta, et les images-cles ne peuvent pas etre testees sur un film — Complete
+
+**CE QUI A CHANGE, ET C'EST TOUT LE LOT.** Le lot F cherchait un bit d'etat dans la charge utile
+des composants du bipede en correlant avec la chronologie RELEVEE A LA MAIN : six episodes, un
+joueur, soixante secondes, **36 echantillons** en classe « zoome » apres bandes de garde. Sur le
+domaine complet il avait du publier NON CONCLUANT — la puissance s'effondrait a 4,75 %. Depuis,
+les evenements `unit_zoom` sont decodes et valides ; ils deviennent des ETIQUETTES pour TOUS les
+slots et TOUT le film. La meme question, avec **291 fois plus d'echantillons**.
+
+**G1 — LES ETIQUETTES (film 00162144).** 324 bascules lues (180 entrees, 144 sorties), grille de
+8 710 cellules de 50 ms sur 435,5 s, 61 slots retenus, 160 periodes reconstruites par
+`buildScopedLookup` (la reconstruction de PRODUCTION, a plusieurs causes de fermeture). Marges
+obligatoires appliquees par erosion / dilatation exactes : « zoome » a >= 300 ms d'une entree ET
+d'une fermeture, « pas zoome » a >= 1 s de TOUTE periode. **Effectifs en records delta :
+10 491 « zoome » / 67 460 « pas zoome »**, 19 843 exclus par les marges. Films de controle :
+6 773 / 80 322 (00502e52) et 5 613 / 63 091 (000d5950).
+
+**LE PONT SLOT -> JOUEUR DISPARAIT.** Le lot F avait du rattacher a la main des fragments de vie
+anonymes (critere a trois volets, un slot laisse non rattache) pour savoir quels records etaient
+ceux de Nilton410. Les etiquettes etant indexees par SLOT, exactement comme les records, la
+question « qui est ce joueur » ne se pose plus. Perimetre : seuls les slots portant au moins une
+periode entrent dans la mesure — les deux classes viennent donc des MEMES slots, et le confondant
+« bit qui identifie le porteur » n'existe plus par construction.
+
+**G2 — COUVERTURE DE LA MARCHE : IL N'Y A PAS D'ANGLE MORT.** 97 794 records bipedes ancres,
+97 794 marches, **97 792 traverses EN ENTIER (100,00 %)** ; 396 640 composants annonces,
+396 637 consommes (100,00 %) ; rang moyen du dernier composant i25,6. 15 composants recevables
+(>= 200 records), **177 couples (composant, offset relatif)** balayes — contre 7 composants et
+138 couples au lot F. Sur les films de controle : 99,97 % et 99,99 % de records entiers.
+
+**LA SENTINELLE — CE QUE CE LOT AJOUTE A LA METHODE DU DOSSIER.** La puissance (S5) repond par
+extrapolation a « l'instrument aurait-il su trouver ? ». Ce lot y repond AUSSI par construction :
+un canal PARFAIT (un bit egal a l'etiquette) est injecte dans une colonne au meme format que les
+autres et passe par la CHAINE ENTIERE — meme transposition, meme masque, meme score, meme
+controle. Resultat sur les trois films : **1,0000 avec p(max global) = 0,00 %**, score moyen des
+temoins 0,5383. Ce que cela exclut, et qu'aucune autre mesure n'excluait : un desalignement
+records / etiquettes (slots decales, horloges differentes) aurait mis tous les scores a 0,5 et
+produit un negatif parfaitement convaincant et entierement faux. Ce mode de panne est ecarte.
+
+**RESULTATS G2 (00162144 ; score = exactitude equilibree ; p = p(max global) ; puissance = part
+des temoins atteignant 1,0000) :**
+
+| domaine | meilleur | score | p(max) | puissance | verdict |
+|---|---|---|---|---|---|
+| SENTINELLE (canal parfait injecte) | offset 0 | **1,0000** | **0,00 %** | 0,00 % | detecte |
+| COMPLET (177 couples) | i32 off. 0 | 0,6509 | 97,16 % | 0,00 % | NEGATIF |
+| i0 position | off. 8 | 0,5844 | 96,02 % | 0,00 % | NEGATIF |
+| i1 velocite | off. 1 | 0,5018 | 28,41 % | 0,00 % | NEGATIF |
+| i5 bouclier | off. 16 | 0,6055 | 78,12 % | 0,00 % | NEGATIF |
+| i21 visee | off. 16 | 0,5856 | 72,99 % | 0,00 % | NEGATIF |
+| **i25 command-tick** (designe phase 7) | off. 1 | 0,5191 | 65,91 % | **0,00 %** | **NEGATIF** |
+| i30 / i33 weapon-state-ammo | off. 0 | 0,5443 / 0,5224 | 38,71 / 33,33 % | 0,00 % | NEGATIF |
+| i32 weapon-state-overheated | off. 0 | 0,6509 | 88,24 % | 0,00 % | NEGATIF |
+
+Films de controle : **8 domaines NEGATIFS sur 00502e52, 11 sur 000d5950**, sentinelle a 1,0000
+et p = 0,00 % sur les deux. Aucun candidat nulle part — **G4 (contre-verification et confrontation
+a `chronoEpisodes`) est donc sans objet**, et c'est dit plutot que simule.
+
+**CE QUE LE DOMAINE COMPLET GAGNE PAR RAPPORT AU LOT F, ET C'EST LE POINT DE METHODE.** Au lot F
+il etait NON CONCLUANT (puissance 4,75 % sur 138 couples). Ici, avec 291 fois plus d'echantillons
+et 177 couples, la puissance vaut **0,00 %** : le negatif porte desormais sur le domaine ENTIER,
+pas seulement composant par composant. Le trou nomme par le lot F — i5, i32, i35 sans verdict
+faute d'echantillons — est **comble** : i5 et i32 rendent un verdict.
+
+**RESERVE PUBLIEE, ET ELLE N'ETAIT PAS PREVUE.** Le meilleur score MOYEN sous etiquettes
+translatees depasse le score observe (0,7638 contre 0,6509 sur le domaine complet). Cause
+mesuree : un slot n'a de records que pendant SES vies, donc translater ses periodes les envoie
+souvent la ou il n'existe pas — la classe « zoome » d'un temoin est bien plus petite (mediane
+1 269 contre 10 491 au decalage nul) et un maximum sur petit echantillon monte plus haut.
+Consequence de lecture : **p(max) est CONSERVATEUR** — il durcit un positif, jamais un negatif —
+et la sentinelle prouve qu'un positif franc passe malgre cela. Les tailles min / mediane / max
+sont publiees domaine par domaine.
+
+**G3 — IMAGES-CLES : PAS UN NEGATIF, UNE MESURE DE DIMENSIONNEMENT.** Le mandat l'exigeait
+explicitement, et c'est ce qui sort. Deux chemins mesures plutot qu'un choisi :
+le MARCHEUR DETERMINISTE (`WalkKeyframeRecords`) **rend 1 record par paquet et ZERO bipede** sur
+les 23 images-cles de 00162144, arret « en-tete-invalide » 23 fois sur 23 — la grammaire
+d'enchainement ne tient pas sur ce film (registre a l'empreinte INCONNUE, 118 blocs) ; le
+BALAYEUR DE PRODUCTION (`WalkKeyframeWorld` + `TraverseKeyframeBipedAt`, le chemin de
+`WorldFromKeyframe`) ancre **14 955 records, 166 bipedes, 66 mesurables** (34 desynchronises,
+3 ecartes pour debordement sur l'ancre suivante).
+
+Et la ou tout se joue : **2 records « zoome » seulement** (55 « pas zoome »). Sur les films de
+controle, 4 et 5. A ce rendement il faudrait **~40 a 100 films** pour atteindre le seuil de
+candidature (200 par classe), ~6 a 15 pour le seuil de recevabilite. **Le volet image-cle n'est
+pas testable sur un film** — et un balayage du corpus entier est exclu (bombe RAM documentee).
+Aucun negatif n'en est tirable, et l'instrument refuse d'en publier un.
+
+**BILAN POUR L'ARCHITECTURE — LA REPONSE A L'OBJECTION DE L'UTILISATEUR.** L'objection etait
+juste : faire dependre l'etat de la capture exhaustive des sorties est fragile. L'esperance
+etait qu'un champ d'etat rende la reconstruction inutile. **Sur le canal delta, cette esperance
+est refutee avec une puissance de 0,00 % et une sentinelle qui prouve la chaine** : les 177
+couples du record ENTIER ne portent pas l'etat de lunette. La reconstruction par evenements a
+plusieurs causes (`replay/zoom_state.go`) reste donc le bon modele cote delta, et le plafond de
+maintien reste justifie. Le seul emplacement encore ouvert est l'IMAGE-CLE, et il est ouvert non
+par manque d'idee mais par manque d'echantillons — la question est desormais CHIFFREE.
+
+**Ce qui reste ouvert, honnetement** : (a) le volet image-cle, leve par une collecte multi-films
+(~50 films, un processus par film) et non par un instrument de plus ; (b) le marcheur
+deterministe d'image-cle qui ne tient pas sur ces films — c'est un fait a verser au chantier
+« percer la trame », pas a celui-ci ; (c) la vraie correction du sous-comptage des sorties reste
+la marche de la liste d'evenements ENTIERE, inchangee par ce lot.
+
+**Gates** : `gofmt` propre · `CGO_ENABLED=0 go vet ./internal/analysis/replay/` propre ·
+`CGO_ENABLED=0 go test ./internal/analysis/...` **0 echec** · 4 fichiers de 325, 258, 199 et
+425 lignes, tous sous garde d'environnement `ZOOMLBL_FILM` (sautes en CI) · trois executions
+reelles conservees (00162144, 00502e52, 000d5950) · **aucun code de production modifie** ; les
+seuils, l'echelle de verdict et la marche des composants sont ceux du lot F, REPRIS et non
+redefinis, pour que les deux verdicts se comparent.
