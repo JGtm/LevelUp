@@ -206,6 +206,9 @@ var replaySchemas = []struct {
 //	                        ramassage, le recensement est espace de ~20 s). Le champ `xuid`
 //	                        existe et vaut `null` PARTOUT : l oracle des loadouts donne 88,1 %
 //	                        par slot de vie et 79,7 % par joueur, contre >= 90 % exige.
+//	                        LEVE AU SCHEMA 29 (2026-08-31) : l evenement natif `biped_pickup`
+//	                        date l occupation et PORTE son ramasseur — `xuid` est renseigne
+//	                        quand le canal natif couvre la fenetre, `null` sinon.
 //	                      `Coverage` gagne son bloc `groundWeapons` : un film sans socle, un film
 //	                      dont toutes les armes sont des lachers et un film qu on n a pas su
 //	                      balayer rendent tous trois zero socle, et seuls ces compteurs les

@@ -56,7 +56,9 @@ var phrasesGolden = []string{
 	"retenue(s) par l IDENTITE",
 	"le seul jeu qui fait des socles",
 	"un cycle instable publie `null`, jamais un chiffre",
-	"avec un ramasseur nomme (l oracle ne le permet pas",
+	// Schema 29 (2026-08-31) : le ramasseur EST publie quand l evenement natif date
+	// l occupation. La phrase qualifie desormais la SOURCE du chiffre, plus son impossibilite.
+	"datee(s) a l instant exact par l evenement natif",
 	"POWER-UPS (voie ti=37)",
 	"retenue(s) par l IDENTITE `powerup_*`",
 }

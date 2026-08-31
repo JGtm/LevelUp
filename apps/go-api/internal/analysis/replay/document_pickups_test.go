@@ -11,6 +11,7 @@ package replay
 // main où chaque cas limite est visible.
 
 import (
+	"fmt"
 	"testing"
 
 	"levelup/go-api/internal/analysis/filmdec"
@@ -66,48 +67,112 @@ func TestBuildPickupsProjectsAndNames(t *testing.T) {
 	}
 }
 
+// LA FORME DES DEUX CÔTÉS EST DÉRIVÉE, JAMAIS RECOPIÉE. Un socle publie sa famille via
+// `formatWeaponFamily` (`"0x"` + huit MAJUSCULES) ; un ramassage via `%08x` (huit minuscules,
+// sans préfixe). La première version de ce test écrivait `"11223344"` des DEUX côtés — une
+// forme que `buildWeaponPads` ne produit jamais : il passait avec ET sans le bogue de jointure.
+// Les deux helpers ci-dessous ancrent le test aux fonctions de production : si l'une des deux
+// conventions bouge, le test bouge avec elle.
+func padWeaponForm(fam uint32) string { return formatWeaponFamily(fam) }
+
+func pickupWeaponForm(fam uint32) string { return fmt.Sprintf("%08x", fam) }
+
+func TestPadFamilyKeyNormalisesBothConventions(t *testing.T) {
+	const fam = 0x11223344
+	kPad, okPad := padFamilyKey(padWeaponForm(fam))
+	kPick, okPick := padFamilyKey(pickupWeaponForm(fam))
+	if !okPad || !okPick {
+		t.Fatalf("les deux formes de production doivent être reconnues : socle=%v ramassage=%v", okPad, okPick)
+	}
+	if kPad != kPick {
+		t.Errorf("clés divergentes : socle %q vs ramassage %q — la jointure ne peut pas marcher", kPad, kPick)
+	}
+	// UN NOM CANONIQUE DE POWER-UP N'EST PAS UNE FAMILLE, et c'est ainsi qu'on le distingue
+	// sans connaître la liste des noms.
+	if _, ok := padFamilyKey("overshield"); ok {
+		t.Error("un nom canonique de power-up ne doit PAS passer pour une famille d arme")
+	}
+	if _, ok := padFamilyKey(""); ok {
+		t.Error("une famille vide ne doit pas produire de clé")
+	}
+}
+
 func TestDatePadPickupsAddsNeverRemoves(t *testing.T) {
-	pads := []WeaponPad{{Weapon: "11223344"}, {Weapon: "55667788"}}
+	const famA, famB = 0x11223344, 0x55667788
+	pads := []WeaponPad{
+		{Weapon: padWeaponForm(famA)},
+		{Weapon: padWeaponForm(famB)},
+		// Socle de POWER-UP : identité = nom canonique, structurellement non joignable.
+		{Weapon: "overshield"},
+	}
 	pickups := []Pickup{
-		{T: 12, W: "11223344", Kind: PickupWeapon, XUID: "111"}, // dans la fenetre du socle 0
-		{T: 40, W: "55667788", Kind: PickupWeapon, XUID: "222"}, // ambigu avec le suivant
-		{T: 45, W: "55667788", Kind: PickupWeapon, XUID: "333"},
-		{T: 70, W: "11223344", Kind: PickupItem, XUID: "444"}, // non-arme : jamais apparie a un socle
+		{T: 12, W: pickupWeaponForm(famA), Kind: PickupWeapon, XUID: "111"},
+		{T: 40, W: pickupWeaponForm(famB), Kind: PickupWeapon, XUID: "222"}, // ambigu avec le suivant
+		{T: 45, W: pickupWeaponForm(famB), Kind: PickupWeapon, XUID: "333"},
+		{T: 70, W: pickupWeaponForm(famA), Kind: PickupItem, XUID: "444"}, // non-arme : jamais un socle d arme
+		{T: 90, W: pickupWeaponForm(famA), Kind: PickupWeapon, XUID: "555"},
 	}
 	picks := []PadPickup{
 		{Pad: 0, TLow: 10, THigh: 30}, // datable
 		{Pad: 1, TLow: 35, THigh: 50}, // AMBIGU : deux candidats
 		{Pad: 0, TLow: 60, THigh: 80}, // seul candidat est un non-arme -> non couvert
+		{Pad: 2, TLow: 85, THigh: 95}, // socle de power-up -> hors jointure, pas « non couvert »
 		{Pad: 9, TLow: 10, THigh: 30}, // index de socle hors bornes
 	}
 	st := datePadPickups(pads, picks, pickups)
 
 	if picks[0].T == nil || *picks[0].T != 12 {
-		t.Fatalf("occupation 0 : t = %v, attendu 12", picks[0].T)
+		t.Fatalf("occupation 0 : t = %v, attendu 12 — LA JOINTURE EST MORTE", picks[0].T)
 	}
 	if picks[0].XUID == nil || *picks[0].XUID != "111" {
 		t.Errorf("occupation 0 : xuid = %v, attendu \"111\"", picks[0].XUID)
 	}
-	// L'AMBIGUITE NE SE TRANCHE PAS AU HASARD : deux joueurs ont pu prendre la meme arme
+	// L'AMBIGUITE NE SE TRANCHE PAS AU HASARD : deux joueurs ont pu prendre la même arme
 	// ailleurs sur la carte pendant ces vingt secondes.
 	if picks[1].T != nil || picks[1].XUID != nil {
-		t.Errorf("occupation 1 ambigue : t = %v, xuid = %v, attendu nil/nil", picks[1].T, picks[1].XUID)
+		t.Errorf("occupation 1 ambiguë : t = %v, xuid = %v, attendu nil/nil", picks[1].T, picks[1].XUID)
 	}
 	// UN SOCLE D'ARME NE REND PAS DE L'EQUIPEMENT.
 	if picks[2].T != nil {
 		t.Errorf("occupation 2 : t = %v, attendu nil (le seul candidat n est pas une arme)", picks[2].T)
 	}
+	// UN SOCLE DE POWER-UP N'EST PAS UNE RECHERCHE INFRUCTUEUSE : il est hors jointure.
 	if picks[3].T != nil {
-		t.Errorf("occupation 3 : index de socle hors bornes, t = %v, attendu nil", picks[3].T)
+		t.Errorf("occupation 3 (power-up) : t = %v, attendu nil", picks[3].T)
 	}
-	// RIEN N'EST EFFACE : les intervalles restent, dates ou non.
+	if picks[4].T != nil {
+		t.Errorf("occupation 4 : index de socle hors bornes, t = %v, attendu nil", picks[4].T)
+	}
+	// RIEN N'EST EFFACE : les intervalles restent, datés ou non.
 	for i, k := range picks {
 		if k.TLow == 0 && k.THigh == 0 {
-			t.Errorf("occupation %d : l intervalle a ete efface", i)
+			t.Errorf("occupation %d : l intervalle a été effacé", i)
 		}
 	}
-	if st.Occupations != 4 || st.Dated != 1 || st.Named != 1 || st.Ambiguous != 1 || st.Uncovered != 2 {
-		t.Errorf("stats = %+v, attendu occupations=4 datees=1 nommees=1 ambigues=1 nonCouvertes=2", st)
+	if st.Occupations != 5 || st.Dated != 1 || st.Named != 1 || st.Ambiguous != 1 ||
+		st.Uncovered != 2 || st.PowerupPads != 1 {
+		t.Errorf("stats = %+v, attendu occupations=5 datées=1 nommées=1 ambiguës=1 nonCouvertes=2 powerup=1", st)
+	}
+}
+
+// TestDatePadPickupsFailsOnBrokenJoinKey — L'INVERSION. Le bogue trouvé en revue était
+// exactement celui-ci : comparer la forme d'un socle à celle d'un ramassage SANS normaliser.
+// Ce test rejoue la comparaison naïve et exige qu'elle ÉCHOUE — si elle réussissait, c'est que
+// les deux conventions se sont mises à coïncider et que `padFamilyKey` ne sert plus à rien.
+func TestDatePadPickupsFailsOnBrokenJoinKey(t *testing.T) {
+	const fam = 0x11223344
+	if padWeaponForm(fam) == pickupWeaponForm(fam) {
+		t.Skip("les deux conventions coïncident désormais : la normalisation est devenue inutile")
+	}
+	// La comparaison naïve (celle d'avant la revue) ne trouve rien.
+	if padWeaponForm(fam) == pickupWeaponForm(fam) {
+		t.Fatal("inatteignable")
+	}
+	// La comparaison NORMALISÉE, elle, trouve.
+	kPad, _ := padFamilyKey(padWeaponForm(fam))
+	kPick, _ := padFamilyKey(pickupWeaponForm(fam))
+	if kPad != kPick {
+		t.Fatalf("la normalisation ne rapproche pas les deux formes : %q vs %q", kPad, kPick)
 	}
 }
 

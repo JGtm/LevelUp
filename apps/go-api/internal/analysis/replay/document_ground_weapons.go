@@ -18,7 +18,7 @@ package replay
 //
 // CE QUE LA MESURE A REFUSÉ DE PUBLIER, ET C'EST LA MOITIÉ DU RÉSULTAT. Le RAMASSEUR n'est pas
 // publié (`PadPickup.XUID` vaut `null` partout) : l'oracle indépendant — le loadout d'image-clé
-// du ramasseur présumé — donne 88,1 % en suivant le slot de vie et 79,7 % en suivant le joueur,
+// du ramasseur présumé — donnait 88,1 % en suivant le slot de vie et 79,7 % en suivant le joueur,
 // contre >= 90 % exigé, et le seuil n'a pas été rebaissé. Les « ramassages » d'armes LÂCHÉES à
 // une mort ne sont pas publiés non plus : l'accord y passe SOUS son propre témoin (32,1 % contre
 // 65,0 %), signature d'un critère qui ne mesure rien — une arme lâchée disparaît le plus souvent
@@ -140,21 +140,21 @@ type PadPickup struct {
 	// TLow / THigh : les bornes de la disparition, en frames (même axe que Point.T).
 	TLow  int `json:"tLow"`
 	THigh int `json:"tHigh"`
-	// XUID est le joueur qui a pris l'arme — TOUJOURS `null` aujourd'hui, et le champ existe
-	// pour dire que la question a été posée et tranchée, pas oubliée.
+	// XUID est le joueur qui a pris l'arme. RENSEIGNÉ DEPUIS LE SCHÉMA 29 (2026-08-31) quand
+	// l'événement natif `biped_pickup` date l'occupation ; `null` sinon, et c'est alors la
+	// vérité : le canal natif ne couvre pas cette fenêtre.
 	//
-	// POURQUOI IL EST VIDE. L'oracle indépendant du ramassage est le loadout d'image-clé du
+	// POURQUOI IL A ÉTÉ VIDE JUSQU'AU SCHÉMA 29. L'oracle indépendant du ramassage était le loadout d'image-clé du
 	// ramasseur présumé : porte-t-il l'arme du socle à l'image-clé suivante ? Mesuré deux fois,
 	// sur la seule population que la mesure qualifie (les socles) : 111/126 = 88,1 % en suivant
 	// le SLOT de vie, 102/128 = 79,7 % en suivant le JOUEUR à travers ses réapparitions (pont
 	// `SlotXUID` du constructeur). Le seuil du plan était >= 90 % et il n'a pas été rebaissé.
 	//
-	// CE QUI LE LÈVERAIT n'est pas un meilleur pont — celui-ci nomme 94 % des ramasseurs, avec
-	// zéro collision de slot sur huit films — mais un oracle plus RAPPROCHÉ que 20 s :
-	// l'inventaire lu dans le flux delta, ou toute source qui observe le porteur avant qu'il
-	// puisse mourir. Un joueur qui meurt dans les 20 s lâche ce qu'il vient de prendre, et
-	// l'image-clé suivante montre son loadout de réapparition. Condition de reprise au
-	// registre `.ai/V7.5/REGISTRE_REPORTS.md`.
+	// CE QUI L'A LEVÉ, ET LA CONDITION ÉTAIT ÉCRITE ICI : « un oracle plus RAPPROCHÉ que 20 s ».
+	// L'événement natif `biped_pickup` (schéma 29) EST cet oracle — daté à la milliseconde, et
+	// il PORTE son ramasseur au lieu de le déduire (`512 + sa référence` vaut le slot du
+	// ramasseur, exact sur 32/32 paires de vérité terrain, deux films). Il ne s'agit plus d'un
+	// oracle à valider mais d'une donnée lue. Cf. pad_pickup_dating.go.
 	//
 	// POINTEUR, ET SANS `omitempty` : le champ doit se VOIR à `null`. Un client qui ne le
 	// trouve pas pourrait croire qu'il a affaire à un artefact plus ancien.

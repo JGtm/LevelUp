@@ -317,6 +317,77 @@ le cliquet de `SchemaVersion` (raison ecrite exigee), le `contracttest` (quatre 
 par le Go et absents du contrat), les deux gardes de frontiere TypeScript (tableaux nullables,
 racine et chemins profonds) et le garde-rail de parite du numero de schema cote web.
 
+## REVUE ADVERSARIALE — ronde 1 (2026-09-01, deux relecteurs frais)
+
+Sept constats recevables : **1 P0**, **4 P1**, **1 mecanique**, **4 P2 consignes sans
+correction**. Tous les correctifs sont dans le meme worktree, gates repasses.
+
+### P0 — LA DATATION DES `padPickups` ETAIT MORTE, ET LA CUISSON NE POUVAIT PAS LE MONTRER
+
+Le defaut : `Pickup.W` s'ecrit `fmt.Sprintf("%08x", …)` — huit hexa MINUSCULES sans prefixe —
+tandis que `WeaponPad.Weapon` sort de `formatWeaponFamily`, qui ecrit `"0x"` + huit
+MAJUSCULES (et un NOM CANONIQUE pour les socles de power-up). **Les deux espaces ne coincident
+jamais** : `hits` etait toujours vide, aucun `padPickups[].t` n'a jamais ete ecrit, aucun `xuid`
+pose — et `coverage.padDating` publiait `{dated:0, uncovered:N}` **qui se lisait comme une
+mesure de corpus alors que c'etait un defaut de format**. Verifie sur pieces avant correction :
+l'artefact cuit porte `pickups[0].w = "00007ca9"` face a `loadouts[].w = "0x767DB96D"`.
+
+**Pourquoi la cuisson pilote ne l'a pas revele** : son film ne porte AUCUN socle (0 occupation).
+Le negatif publie au lot 3 (« la datation n'a pas ete exercee ») etait donc exact — et il
+masquait un bogue, pas seulement une lacune de couverture. La lecon tient en une ligne : un
+canal non exerce par la cuisson doit etre traite comme NON VERIFIE, jamais comme probablement bon.
+
+**Correctif** : la normalisation se fait AU POINT DE JOINTURE (`padFamilyKey`), et nulle part
+ailleurs. Les formes publiees ne bougent PAS — `weaponChanges[].w` s'ecrit ainsi depuis le
+schema 25 et des clients peuvent deja le lire ; changer un contrat public pour un confort prive
+aurait ete le mauvais echange. Les socles de POWER-UP (nom canonique) sont structurellement non
+joignables : ils sont comptes a part (`PowerupPads`) au lieu d'etre noyes dans `Uncovered`, qui
+laisserait croire que le canal a cherche et n'a pas trouve.
+
+Le commentaire de `Pickup.W` qui affirmait « meme convention que `Loadout.W` » est corrige :
+il etait faux de moitie, et c'est cette moitie qui a produit le bogue.
+
+### P1 — quatre trous de preuve, tous combles avec leur inversion
+
+| # | constat | correctif | inversion qui le prouve |
+|---|---|---|---|
+| a | le test de `datePadPickups` employait `"11223344"` des DEUX cotes — forme que la production ne produit jamais : vert AVEC et SANS le P0 | formes derivees de `formatWeaponFamily` et de `%08x`, plus un cas power-up | normalisation neutralisee -> **« LA JOINTURE EST MORTE »**, 3 tests tombent |
+| b | AUCUN test CI ne couvrait le decodeur (garde `BIPED_PICKUP_FILM` -> Skip permanent) | fixture SYNTHETIQUE en memoire : paquet 0xC4 forge, type 8, type inconnu, troncatures, liste multiple | base 512 -> 0 : **1 test tombe** · classe et porte du catalogue inversees : **4 tests tombent** |
+| c | dix endroits affirmaient encore « `xuid` vaut TOUJOURS `null` (79,7 % contre 90 %) » | balayage complet, formulation unique et datee « publie depuis le schema 29 » | — |
+| d | la cle de FAMILLE de la dedup sonore n'etait testee nulle part (meme `w` des deux cotes partout) | cas « arme A puis arme B <= 500 ms » + bornes 5 et 6 frames | cle de famille retiree : **1 test tombe** · fenetre 5 -> 50 : **2 tests tombent** |
+
+**Deux surprises pendant P1-b, et les tests ont eu raison contre moi.** (1) J'attendais
+`RefusedNoRef` sur un payload tronque a deux octets : c'est `RefusedNoCatalog` — a cette
+longueur la porte de ref0 est encore un vrai bit. (2) Une troncature de QUEUE est
+**indetectable** : le bourrage se lisant a zero, un payload coupe apres le bit 25 rend un
+evenement parfaitement decodable dont seul l'identifiant est faux. Le decodeur n'a pas a s'en
+apercevoir — l'autorite sur la longueur d'un paquet est `FilmPacket.Size`, pas une heuristique
+de contenu. Les deux proprietes sont ecrites dans le test au lieu d'etre supposees.
+
+**Onzieme site trouve pendant le balayage P1-c**, hors liste : le golden lui-meme rendait la
+phrase « avec un ramasseur nomme (l oracle ne le permet pas : 79,7 % contre 90 % exige) », et un
+garde-rail de phrases l'exigeait. Corrige aussi — laisser une phrase sciemment fausse dans le
+golden aurait ete l'anti-pattern qu'on corrigeait. Diff golden : **une ligne**.
+
+### Mecanique
+
+`NATIVE_PICKUP_MATCH_FRAMES` et `nativePickupsNotAlreadyHeard` etaient exportes sans aucun
+importeur : de-exportes. `npx knip` : exit 0, aucun export mort signale.
+
+## Decouvertes consignees, NON traitees (P2)
+
+1. **Jointure `weaponLabels` impossible** pour `pickups[].w` ET `weaponChanges[].w` : la table
+   de libelles est indexee sur la forme `formatWeaponFamily` (`"0x"` + majuscules), pas sur
+   `%08x`. Anterieur au lot pour `weaponChanges` (schema 25). Le nommage cote client sera
+   l'affaire du lot equipement.
+2. **`ReadFilmChunk` en erreur -> `continue` sans log** (`biped_pickups.go`) : convention
+   partagee par cinq balayeurs voisins. Dette de maison, a traiter en une passe ou pas du tout.
+3. **Aucun garde ne consulte `own.SlotCollisions` avant publication** — anterieur au lot ;
+   mesure a 0 collision sur les deux films, mais rien n'empeche une publication si ca changeait.
+4. **Le golden texte n'affiche ni `pickups`, ni `weaponChanges`, ni `equipmentChanges`** :
+   `goldenInputs.options()` ne les transmet pas. Les trois canaux vivent en production sans
+   couverture de golden. Deja consigne au lot 3.
+
 ## Reproduire
 
 ```

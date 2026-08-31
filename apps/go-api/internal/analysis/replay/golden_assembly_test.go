@@ -674,16 +674,22 @@ func renderGroundWeapons(p func(string, ...any), doc ReplayDocument) {
 			p("    presence t0=%d prouvee jusqu a %d, absente a %d", pr.T0, pr.TLow, pr.THigh)
 		}
 	}
-	// LE RAMASSEUR N EST PAS PUBLIE, et le golden le VERIFIE : `xuid` vaut `null` partout
-	// (oracle mesure a 88,1 % par slot de vie et 79,7 % par joueur, contre >= 90 % exige).
-	nommes := 0
+	// LE RAMASSEUR EST PUBLIE DEPUIS LE SCHEMA 29 (2026-08-31), et le golden le CHIFFRE.
+	// Jusque-la `xuid` valait `null` partout, faute d oracle (88,1 % par slot de vie, 79,7 %
+	// par joueur, contre >= 90 % exige) ; l evenement natif `biped_pickup` PORTE son ramasseur
+	// au lieu de le deduire. Un compte a zero ne veut donc plus dire « impossible » mais
+	// « aucune occupation de ce film n est couverte par le canal natif ».
+	nommes, datees := 0, 0
 	for _, k := range doc.PadPickups {
 		if k.XUID != nil {
 			nommes++
 		}
+		if k.T != nil {
+			datees++
+		}
 	}
-	p("%d occupation(s) achevee(s) publiee(s) · %d avec un ramasseur nomme (l oracle ne le "+
-		"permet pas : 79,7 %% contre 90 %% exige)", len(doc.PadPickups), nommes)
+	p("%d occupation(s) achevee(s) publiee(s) · %d datee(s) a l instant exact par l evenement "+
+		"natif · %d avec un ramasseur nomme", len(doc.PadPickups), datees, nommes)
 	p("")
 }
 

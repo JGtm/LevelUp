@@ -14,7 +14,10 @@
  *    COMPTE À REBOURS (« je ne veux pas de blabla dedans ») — ce sont donc ces libellés-là que
  *    ce fichier surveille, et l'état n'a plus de mot à l'écran.
  *
- * 3. LE RAMASSEUR AFFICHÉ. `padPickups[].xuid` vaut `null` partout (oracle à 79,7 % contre 90 %
+ * 3. LE RAMASSEUR AFFICHÉ. `padPickups[].xuid` est PUBLIÉ depuis le schéma 29 (2026-08-31) —
+ *    l'événement natif le porte — mais AUCUN écran ne l'affiche : ce garde-rail reste, et sa
+ *    raison change. Il ne dit plus « la donnée n'existe pas » mais « la donnée existe et son
+ *    affichage n'a pas été conçu ». (Justification d'origine, désormais caduque : oracle à 79,7 % contre 90 %
  *    exigés) et le champ EXISTE au contrat : un rendu peut le lire sans voir qu'il est vide.
  *    C'est la clause la plus facile à violer par inadvertance — ce test interdit la lecture.
  */

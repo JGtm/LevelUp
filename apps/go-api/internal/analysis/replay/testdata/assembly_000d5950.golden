@@ -429,7 +429,7 @@ balaye=true · bande 899 slot(s) · 6487 ancre(s) -> 317 acceptee(s) -> 220 rete
 0 grappe(s) -> 0 socle(s) publie(s) · 0 occupation(s) : 0 datee(s) · 0 sans passage · 0 jamais videe(s)
 0 cycle(s) ETABLI(s) — un cycle instable publie `null`, jamais un chiffre
 POWER-UPS (voie ti=37) — balaye=true · 401 creation(s) acceptee(s) -> 0 retenue(s) par l IDENTITE `powerup_*` -> 0 socle(s) publie(s)
-0 occupation(s) achevee(s) publiee(s) · 0 avec un ramasseur nomme (l oracle ne le permet pas : 79,7 % contre 90 % exige)
+0 occupation(s) achevee(s) publiee(s) · 0 datee(s) a l instant exact par l evenement natif · 0 avec un ramasseur nomme
 
 ## ARMES PORTEES — l inventaire, pas la main : le loadout ne dit pas QUELLE arme est degainee
 150 loadout(s) publie(s) · 22 famille(s) distincte(s)

@@ -16,7 +16,8 @@
  * à l'écran.
  *
  * LE RAMASSEUR N'EST PAS ICI, et il ne le sera pas : le champ existe au contrat
- * (`padPickups[].xuid`) et vaut `null` partout — l'oracle plafonne à 79,7 % contre 90 % exigés.
+ * (`padPickups[].xuid`) et est PUBLIÉ depuis le schéma 29 (2026-08-31) — l'événement natif le
+ * porte. Ce module ne le lit pas : il ne calcule que des instants.
  * Aucune ligne de ce fichier ne le lit.
  */
 import type { ReplayWeaponPadReady } from './replayNormalize'

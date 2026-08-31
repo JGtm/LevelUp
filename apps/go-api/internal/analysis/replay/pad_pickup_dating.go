@@ -24,6 +24,28 @@ package replay
 // vingt secondes, et rien dans l'événement ne dit de quel socle il vient (l'instance de
 // l'objet n'est pas dans l'événement — hypothèse mesurée et réfutée). Choisir au hasard
 // nommerait un ramasseur faux ; on s'abstient et on le compte.
+//
+// ## LES DEUX CÔTÉS N'ÉCRIVENT PAS LA FAMILLE PAREIL, ET LA JOINTURE DOIT LE SAVOIR
+//
+// Revue adversariale du 2026-08-31 : la première version de ce fichier comparait `Pickup.W`
+// (`fmt.Sprintf("%08x", …)` — huit hexa MINUSCULES, sans préfixe) à `WeaponPad.Weapon`
+// (`formatWeaponFamily` — `"0x"` + huit hexa MAJUSCULES). Les deux espaces ne coïncidaient
+// JAMAIS : `hits` était toujours vide, aucun `padPickups[].t` n'était jamais écrit, aucun
+// `xuid` posé — et `coverage.padDating` publiait `{dated: 0, uncovered: N}` qui SE LISAIT
+// COMME UNE MESURE alors que c'était un défaut de format. La cuisson pilote n'a pas pu le
+// révéler : son film ne porte aucun socle.
+//
+// LA NORMALISATION SE FAIT ICI, AU POINT DE JOINTURE, ET NULLE PART AILLEURS. Les formes
+// publiées ne bougent PAS : `weaponChanges[].w` s'écrit ainsi depuis le schéma 25 et des
+// clients peuvent déjà le lire ; `weaponPads[].weapon` depuis bien plus tôt. Changer l'une des
+// deux pour faire plaisir à une jointure interne casserait un contrat public pour un confort
+// privé.
+//
+// LES SOCLES DE POWER-UP NE SONT PAS JOIGNABLES, et ce n'est pas un échec de couverture : leur
+// identité (`gwPadWeaponID` -> `Appar.Family`) est un NOM CANONIQUE, pas un identifiant de
+// famille. Aucun ramassage natif ne peut donc s'y apparier, jamais. Ils sont comptés à part
+// (`PowerupPads`) au lieu d'être noyés dans `Uncovered`, qui laisserait croire que le canal
+// natif a cherché et n'a pas trouvé.
 
 // PadDatingStats dit ce que la datation a pu faire, et ce qu'elle n'a pas pu.
 type PadDatingStats struct {
@@ -40,6 +62,41 @@ type PadDatingStats struct {
 	// Uncovered compte les fenêtres qu'aucun ramassage natif ne couvre — elles gardent leur
 	// intervalle, intact.
 	Uncovered int `json:"uncovered"`
+	// PowerupPads compte les occupations de socle de POWER-UP, structurellement non
+	// joignables : l'identité d'un tel socle est un NOM CANONIQUE, pas une famille d'arme.
+	// Elles sont sorties d'`Uncovered` À DESSEIN — les y laisser ferait lire « le canal natif
+	// a cherché et n'a pas trouvé » là où il n'y avait rien à chercher.
+	PowerupPads int `json:"powerupPads"`
+}
+
+// padFamilyKey rend la clé de comparaison d'une famille d'arme, quelle que soit la convention
+// d'écriture de la source, et dit si la valeur EST une famille.
+//
+// Les deux écritures rencontrées : `fmt.Sprintf("%08x", fam)` (canaux `pickups` et
+// `weaponChanges`) et `formatWeaponFamily(fam)` = `"0x" + huit majuscules` (`loadouts`,
+// `weaponPads`). Le second retour est FAUX pour tout ce qui n'est pas huit chiffres
+// hexadécimaux — c'est ainsi qu'un socle de power-up (nom canonique) se distingue d'un socle
+// d'arme, sans avoir à connaître la liste des noms.
+func padFamilyKey(s string) (string, bool) {
+	if len(s) >= 2 && s[0] == '0' && (s[1] == 'x' || s[1] == 'X') {
+		s = s[2:]
+	}
+	if len(s) != 8 {
+		return "", false
+	}
+	buf := make([]byte, 8)
+	for i := 0; i < 8; i++ {
+		c := s[i]
+		switch {
+		case c >= '0' && c <= '9', c >= 'a' && c <= 'f':
+			buf[i] = c
+		case c >= 'A' && c <= 'F':
+			buf[i] = c + ('a' - 'A')
+		default:
+			return "", false
+		}
+	}
+	return string(buf), true
 }
 
 // datePadPickups pose l'instant exact et le ramasseur sur les occupations que l'événement
@@ -53,13 +110,18 @@ func datePadPickups(pads []WeaponPad, picks []PadPickup, pickups []Pickup) PadDa
 		st.Uncovered = len(picks)
 		return st
 	}
-	// Index par famille : une occupation ne s'apparie qu'à un ramassage de LA MÊME arme.
+	// Index par famille NORMALISÉE : une occupation ne s'apparie qu'à un ramassage de LA MÊME
+	// arme, et les deux côtés ne l'écrivent pas pareil (cf. l'en-tête).
 	byFamily := map[string][]Pickup{}
 	for _, p := range pickups {
 		if p.Kind != PickupWeapon {
 			continue // un socle d'arme ne rend pas de l'équipement
 		}
-		byFamily[p.W] = append(byFamily[p.W], p)
+		key, ok := padFamilyKey(p.W)
+		if !ok {
+			continue
+		}
+		byFamily[key] = append(byFamily[key], p)
 	}
 	for i := range picks {
 		k := &picks[i]
@@ -67,8 +129,15 @@ func datePadPickups(pads []WeaponPad, picks []PadPickup, pickups []Pickup) PadDa
 			st.Uncovered++
 			continue
 		}
+		key, ok := padFamilyKey(pads[k.Pad].Weapon)
+		if !ok {
+			// Socle de POWER-UP (nom canonique) : rien à chercher, et on ne fait pas passer
+			// ça pour une recherche infructueuse.
+			st.PowerupPads++
+			continue
+		}
 		var hits []Pickup
-		for _, p := range byFamily[pads[k.Pad].Weapon] {
+		for _, p := range byFamily[key] {
 			if p.T >= k.TLow && p.T <= k.THigh {
 				hits = append(hits, p)
 			}
