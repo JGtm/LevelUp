@@ -81258,3 +81258,37 @@ VOTE de l'utilisateur (rafale 1re/3e personne ; moteur = bourdon soutenu).
 registre non livrables tant que le registre ne les nomme pas). Follow-up : retrouver les
 banques Ghost/Banshee/Wraith/Chopper ; armes secondaires (coaxial Scorpion, missiles Wasp,
 2 armes Falcon) ; rotor Falcon.
+
+## [2026-08-31] Vehicules — iteration « faire juste » : sprites au trait + vrai son de moteur (chaine vehi) — Complete
+
+**Sprites v2 (lot V4, retour utilisateur « presque parfait »)** : ajout des TRAITS NOIRS de
+volume. Passe de detection d'aretes dans `himap/objet_isole.go` (`aretesObjet` + `despeckle`) sur
+la profondeur et les normales du z-buffer : contour + rupture de profondeur (occlusion roue/cockpit
+/pale) + rupture de normale (capot/panneau/pale) -> trait noir sur le remplissage blanc, alpha
+inchange. Seuils regardes a l'oeil : profondeur 7 cellules, angle 30 deg. Verifie a la planche
+(roues Warthog/Mongoose, rotors Wasp/Falcon, chenilles Scorpion, canons Shade). NOTE TEINTE
+(follow-up web) : avec des traits noirs la teinte d'equipe doit passer en MULTIPLY (blanc->couleur,
+noir->noir) — `tintedIconCanvas` fait un source-in aujourd'hui. Tourelles : seule `tourelle_montee`
+ajoutee ; les tourelles UNSC/Bannis distinctes N'EXISTENT PAS comme tags `vehi`/`bloc`/`mach`
+separes (scan exhaustif = 0) — ce sont des variantes d'armement. Variantes Warthog/Mongoose NON
+composees : l'armement est une piece jointe RUNTIME (hors du balayage d'octets), demande de parser
+la structure d'attachement du `vehi` (Ghidra) — piste documentee.
+
+**Son de deplacement (lot V3, l'utilisateur ne reconnaissait AUCUN moteur)** : l'hypothese lsnd
+etait la BONNE direction — le tag `vehi` REFERENCE ses propres sons de mouvement, dont l'audio vit
+dans des banques ANONYMES PARTAGEES (jamais dans le pck `_veh_`, qui ne porte que tir/impacts).
+Mode lecture-seule `vehi-sons` ajoute (`cmd/weapon-sounds/vehicules_sons.go`) suivant
+`vehi -> lsnd/snd!/effe -> sbnk`. Architecture : une COUCHE PARTAGEE generique (lsnd 06ba1096,
+classe de mixage, pas de switch par vehicule) + des COUCHES SPECIFIQUES snd! pour Ghost (f2b547a1),
+Wasp (09e2e7ee), et un groupe de chassis 033e41df. RECONSTRUITS par la chaine (event->couches->
+wems, gains sommes) : Ghost 3 segments, Wasp 2, Chassis_033e41df 4. Les faux moteurs structurels
+des rev precedentes RETIRES. LIMITE HONNETE : Scorpion/Gungoose/Warthog/Falcon n'ont AUCUN snd! de
+mouvement dedie dans leur `vehi` (seulement la couche partagee generique) -> leur moteur specifique
+n'est PAS isolable par les tags ; il faut une session GHIDRA (POST de l'evenement Wwise de
+deplacement + RTPC de vitesse / switch de type-vehicule). 033e41df non nomme -> a reconnaitre a
+l'oreille (Chopper/Banshee/Wraith probable).
+
+**Conclusion / prochaine etape** : sprites au trait + moteurs Ghost/Wasp/033e41df envoyes a
+l'utilisateur pour validation. En attente : (1) l'oreille sur Ghost/Wasp (valide la methode) ;
+(2) decision sur la session GHIDRA pour les moteurs switches des vehicules au sol ; (3) nommer
+033e41df. Artefact « Le Garage » a mettre a jour (les deux dossiers sont stables). WAV non commites.

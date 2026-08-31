@@ -9,14 +9,18 @@
 
 - **JALON 1 FRANCHI** et regarde a l'oeil : le Warthog rend une vraie vue de dessus,
   reconnaissable (chassis 4 roues, garde-boue avant en haut), teintable. Puis **13 vehicules**
-  rendus au total, tous reconnus visuellement (planche de revue).
-- La chaine `vehi -> hlmt -> mode -> triangles -> rasterizer local -> PNG silhouette+alpha`
-  est ecrite sur le patron Forge existant. Le SEUL maillon neuf cote decodage : le resolveur
-  `RefModeleVehicule` (recursif dans les hlmt imbriques, avec un filtre anti-parasite).
-- Sprites livres : `.ai/V7.5/film_re/sprites_v4/*.png` (13 fichiers, ~256 px de long,
-  format teintable `image.NRGBA` blanc + alpha, convention deja en prod cote web).
-- Code de production : `apps/go-api/cmd/vehicle-sprite/` (nouveau, package main) +
-  `internal/himap/vehicules.go` (resolveur) + `internal/himap/objet_isole.go` (rendu objet isole).
+  rendus, tous reconnus visuellement (planche de revue).
+- **V2 (retour « presque parfait »)** : (1) **traits noirs de volume** ajoutes aux 14 sprites
+  (roues, cockpit, rotors, pales, panneaux) via detection d'aretes profondeur+normale — LIVRE
+  et regarde a l'oeil ; (2) **tourelles** : Shade (deja la) + 1 tourelle montee ; les Gauss /
+  roquette / mitrailleuse « tourelle » n'existent PAS comme modeles propres (constat §10.2) ;
+  (3) **variantes Warthog/Mongoose** : NON composees — l'arme est une piece jointe runtime hors
+  de portee du balayage (constat honnete §10.3).
+- La chaine `vehi -> hlmt -> mode -> triangles -> rasterizer local -> PNG` est ecrite sur le
+  patron Forge. Seul maillon neuf : le resolveur `RefModeleVehicule` (recursif, filtre anti-parasite).
+- Sprites livres : `.ai/V7.5/film_re/sprites_v4/*.png` (**14 fichiers**, ~256 px, `image.NRGBA`
+  remplissage blanc + traits noirs, teintable **en MULTIPLY** cote web — cf. note §10.1).
+- Code de production : `apps/go-api/cmd/vehicle-sprite/` + `internal/himap/{vehicules,objet_isole}.go`.
 
 ## 1. La chaine exacte
 
@@ -94,13 +98,14 @@ Caveat mineur : la face avant visuelle depend du modele ; la convention retenue 
 
 ## 3. Format de sortie
 
-- **PNG `image.NRGBA`** (NON premultiplie), RGB **blanc pur** (255,255,255), alpha porteur du
-  dessin. **Piege corrige** : `color.RGBA` de Go est alpha-PREMULTIPLIE — un blanc a alpha
-  variable y ressort gris fonce apres encodage (R = 255 - A, mesure). `NRGBA` garde le RGB tel
-  quel, ce qu'exige la teinte `source-in` cote web (`tintedIconCanvas`).
-- L'alpha module l'ombrage de Lambert entre `alphaBase` (0,80, faces rasantes) et 1 (faces vues
-  de dessus) : silhouette pleine ET relief lisible apres teinte. Verifie teinte en rouge
-  d'equipe : le relief survit.
+- **PNG `image.NRGBA`** (NON premultiplie), remplissage **blanc pur** (255,255,255), **traits
+  noirs** (0,0,0), alpha porteur de la forme. **Piege corrige** : `color.RGBA` de Go est
+  alpha-PREMULTIPLIE — un blanc a alpha variable y ressort gris fonce apres encodage
+  (R = 255 - A, mesure). `NRGBA` garde le RGB tel quel.
+- L'alpha du remplissage module l'ombrage de Lambert entre `alphaBase` (0,80, faces rasantes)
+  et 1 (faces vues de dessus) : silhouette pleine, relief present.
+- **Traits noirs de VOLUME** (V2, cf. §10) : contour exterieur + aretes internes (roues,
+  cockpit, pales, panneaux). C'est ce qui montre le volume demande.
 - Cote maitre ~256 px (le rejeu affiche downscale a 24-64 px). Emprise propre a chaque
   vehicule (portrait, hauteur ~256).
 
@@ -175,17 +180,86 @@ suffisent a classer la famille de chassis (`classify.go`).
   de tag par `RefsInline` (le Forge pourrait en souffrir sur un tag futur ; il ne le fait pas
   aujourd'hui car ses IDs sont larges).
 
+## 10. V2 — traits noirs, tourelles, variantes (retour utilisateur « presque parfait »)
+
+### 10.1 Traits noirs de volume (LIVRE, les 14 sprites)
+
+Ajoute une passe de detection d'aretes sur le z-buffer du `Rendu` (`aretesObjet`,
+objet_isole.go). Un pixel de matiere devient un trait NOIR (RGB 0,0,0, alpha inchange) si l'un
+de ses 4 voisins declenche :
+
+- **contour exterieur** : voisin sans matiere ;
+- **rupture de PROFONDEUR** : |dz| entre voisins > `SeuilProfCell x cell` — un saut d'occlusion
+  (roue devant carrosserie, bord de cockpit, pale). Seuil en MULTIPLE de la taille d'un
+  pixel-monde (independant de l'echelle du vehicule) ;
+- **rupture de NORMALE** : angle entre faces retenues > `SeuilAngleDeg` (produit scalaire des
+  normales, ramenees dans l'hemisphere superieur, < cos(angle)) — arete de capot, panneau, pale.
+
+Puis un **despeckle** retire les pixels d'arete ISOLES (bruit de z-buffer des maillages d'etat
+detruit qui se superposent ; un vrai trait a toujours des voisins).
+
+**Seuils retenus** (regardes a l'oeil sur Warthog = roues+cockpit, Wasp/Falcon = rotors,
+Banshee = ailes) : `SeuilProfCell = 7` (7 pixels verticaux), `SeuilAngleDeg = 30`. Detail
+riche voulu par l'utilisateur ; le residu de bruit sur les fuselages courbes (superposition
+etat-detruit) est mineur et disparait au downscale. Reglables via `OptionsSprite`
+(`SansAretes` pour couper).
+
+**NOTE TEINTE — a repercuter cote web (follow-up hors ce lot).** Avec des traits noirs, la
+teinte d'equipe doit passer en **MULTIPLY** (couleur x blanc = couleur d'equipe ; couleur x
+noir = noir, les traits survivent). Le calque `tintedIconCanvas` fait aujourd'hui un
+`source-in` (remplace tout le RGB par la couleur, effacant les traits) — a basculer en
+`globalCompositeOperation = 'multiply'` sur un fond blanc du sprite, ou equivalent. C'est le
+SEUL changement web requis par cette v2.
+
+### 10.2 Tourelles (PARTIEL + constat honnete)
+
+- **Shade** (Covenant/Bannis) : deja livre (§4), tourelle propre et reconnaissable.
+- **`tourelle_montee.png`** (vehi `0x038df01a` -> mode `0x1ae526e1`, 28 sections) : la
+  tourelle-vehi la plus complete, lit comme un emplacement monte (corps + canon). Ajoutee.
+- **CE QUI N'EXISTE PAS proprement dans les fichiers** : aucun tag `vehi`/`bloc`/`mach` nomme
+  « gauss », « rocket », « machinegun », « chaingun », « gatling », « emplacement »... (scan
+  exhaustif des trois groupes, 0 resultat). Les autres tourelles-`vehi` sont des COMPOSANTS a
+  3-6 sections (canons, anneaux de montage), pas des emplacements reconnaissables. La
+  mitrailleuse UNSC detachable (AIE-486H), le Gauss et la roquette « tourelle » du besoin sont
+  soit des VARIANTES d'armement du Warthog (cf. 10.3), soit des `weap` d'infanterie (barils
+  fins ~5:1 en vue de dessus, inexploitables comme icone). Le turret Bannis distinct du Shade
+  n'a pas ete trouve. Verdict : au-dela de Shade + `tourelle_montee`, il n'y a pas de modele de
+  tourelle propre a extraire — pas un echec d'outil, une absence dans les tags.
+
+### 10.3 Variantes Warthog / Mongoose (NON compose — constat honnete)
+
+Mesure decisive (`modes` walker sur l'arbre hlmt) : l'arbre geometrique du Warthog `0x00002705`
+ne contient **QU'UN mode, le chassis `0x561f2ca7`** — aucun `weap` ni mode d'arme atteignable.
+Idem Mongoose. **L'armement des variantes (roquettes du Rockethog, canon du Gungoose, benne du
+Razorback) est une PIECE JOINTE RUNTIME** : le vehi la reference par un petit ID / string-id +
+un marqueur de montage, hors de portee du balayage d'octets (`RefsInline`) qui fonde toute la
+chaine. Les `weap` « missile turret » / « arifle turret » resolvent bien un modele (`0xcf38e84b`
+148 sections, `0xe7f1a0dc` 101 sections...), mais ce sont les modeles d'ARME TENUE (barils fins,
+aspect ~5:1 vu de dessus), PAS le pod de tourelle du vehicule — les composer sur le chassis ne
+donnerait pas une silhouette de Rockethog reconnaissable.
+
+**Consequence** : top-down, Warthog / Rockethog / Razorback partagent une silhouette de chassis
+IDENTIQUE (`0x561f2ca7`), Mongoose / Gungoose de meme (`0x9e581380`). Un sprite par chassis
+couvre donc toutes les variantes. Distinguer visuellement les variantes exigerait de parser la
+structure d'attachement du `vehi` (ref d'arme du vehicule + transforme du marqueur de montage) —
+de la vraie retro-ingenierie de format, au-dela d'un best-effort par balayage. **Non fait,
+assume.** Piste si repris : lever l'offset du bloc « seats/attachments » du tag `vehi` par
+Ghidra (lecture seule) pour extraire ref-arme + marqueur, puis composer les deux modes dans un
+meme `Rendu` a la transforme du marqueur.
+
 ## 8. Fichiers
 
 Production (worktree, NON commite) :
 - `apps/go-api/internal/himap/vehicules.go` — `GroupeVehi`, `RefModeleVehicule`
-  (resolveur recursif + filtre `minTagIDVehicule`), `EntreesDuGroupe`.
-- `apps/go-api/internal/himap/objet_isole.go` — `AxeHaut`, `RenduObjetIsole` (mode objet
-  isole du rasterizer), `SpriteObjetPNG` (PNG NRGBA teintable).
+  (resolveur recursif + filtre `minTagIDVehicule`), `EntreesDuGroupe`. (NON modifie en V2 :
+  coordination avec l'agent sons qui pouvait editer ce fichier.)
+- `apps/go-api/internal/himap/objet_isole.go` — `AxeHaut`, `RenduObjetIsole`, `SpriteObjetPNG`
+  (remplissage blanc + traits noirs), `aretesObjet` + `despeckle` (V2, detection d'aretes).
 - `apps/go-api/cmd/vehicle-sprite/` — `main.go`, `scan.go` (enumere + identifie), `render.go`
   (rend / curate), `classify.go` (famille de chassis par noms de maillage).
 
-Assets : `.ai/V7.5/film_re/sprites_v4/*.png` — 13 sprites teintables.
+Assets : `.ai/V7.5/film_re/sprites_v4/*.png` — **14 sprites teintables** (13 vehicules + 1
+tourelle montee), tous avec traits noirs de volume.
 
 Verification : `gofmt` propre, `go build` OK, `go vet ./internal/himap/... ./cmd/vehicle-sprite/...`
 propre. Seuils respectes (fichiers <= 500 L, fonctions <= 80 L).

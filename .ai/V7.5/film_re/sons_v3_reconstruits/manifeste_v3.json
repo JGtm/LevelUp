@@ -1,29 +1,19 @@
 {
     "genere_le":  "2026-08-31",
-    "revision":  "3 (identite des banques verifiee par banks-noms : seules 4 banques _veh_ confirmees)",
-    "lot":  "V3 - sons des vehicules",
-    "methode":  "TIR et DEPLACEMENT reconstruits par la MEME chaine (event -\u003e couches -\u003e variantes, gains sommes). Moteur = event identifie par STRUCTURE (couches multiples / boucle RTPC), rendu comme un evenement. Identite de banque validee par FNV-1 (banks-noms) — non plus par intersection de wems (qui a produit des faux matchs).",
-    "avertissement":  "Seules 4 banques _veh_ sont confirmees par FNV-1 (wasp, scorpion, wargoose, rockethog). Ghost/Banshee/Wraith/Chopper : banque non identifiee (Wraith = faux match CTF prouve). Falcon = banque mitrailleuse partagee (pas de banque chassis).",
+    "revision":  "4 (DEPLACEMENT via la vraie chaine vehi-\u003esnd!-\u003ebanque anonyme)",
+    "methode":  "TIR = weap -[Weapon Fire Sound]-\u003e snd! -\u003e events (banque _veh_ confirmee FNV-1). DEPLACEMENT = le tag vehi REFERENCE ses sons de mouvement (snd!/lsnd) dont l\u0027audio vit en banque ANONYME PARTAGEE, PAS dans le pck _veh_ ; meme semantique de rendu.",
+    "architecture":  "Couche PARTAGEE (lsnd 06ba1096 + effe 7ff6244a/4488f97a, banques e793c135/de65048f) commune aux 13 vehi ; couche SPECIFIQUE par vehicule (snd! dedies) pour Ghost (f2b547a1), Wasp (09e2e7ee), groupe 033e41df (acaa4513/2ecd73ab). Scorpion/Gungoose/Warthog/Falcon : pas de snd! mouvement dedie.",
     "vehicules":  [
                       {
                           "nom":  "Wasp (AV-49)",
                           "faction":  "UNSC",
                           "chassis_interne":  "veh_un_wasp",
-                          "pck":  "sb_010_veh_un_wasp.pck",
-                          "banque_sbnk":  "4993b379",
-                          "banque_confirmee":  "OUI - FNV-1 du nom de pack (mode banks-noms)",
-                          "classification":  "armement de vehicule (R-VEHICULE) ; chassis _veh_ = \u0027fixed\u0027",
+                          "banque_tir":  "4993b379 (FNV-1 confirme)",
+                          "vehi":  "b65b3b4a",
                           "sons":  [
                                        {
                                            "role":  "tir",
                                            "arme_weap":  "11725dc4",
-                                           "armes_weap_total":  [
-                                                                    "11725dc4",
-                                                                    "d3c407ed"
-                                                                ],
-                                           "armes_weap_non_rendues":  [
-                                                                          "d3c407ed"
-                                                                      ],
                                            "tag_son":  [
                                                            "ce8e2f81"
                                                        ],
@@ -32,7 +22,7 @@
                                                                  "e22a0d32"
                                                              ],
                                            "cadence_cpm":  450,
-                                           "chaine":  "weap 11725dc4 -[Weapon Fire Sound]-\u003e snd! ce8e2f81 -\u003e events b0554fc9,e22a0d32 (banque veh_un_wasp 4993b379) -\u003e couches RandomSequence -\u003e variantes, gains SOMMES ; rafale a 450 cpm",
+                                           "chaine":  "weap 11725dc4 -[Weapon Fire Sound]-\u003e snd! ce8e2f81 -\u003e events b0554fc9,e22a0d32 (banque veh_un_wasp 4993b379), gains sommes ; rafale 450 cpm",
                                            "coup_3p":  [
                                                            {
                                                                "fichier":  "tir_M1_3p_1.wav",
@@ -70,28 +60,119 @@
                                        },
                                        {
                                            "role":  "deplacement",
-                                           "event_moteur":  "5baca8ee",
-                                           "couches":  3,
-                                           "statut_rtpc":  "boucle continue (mode 5), pitch RTPC +/-80c, 3 couches",
+                                           "methode":  "CHAINE REELLE vehi -\u003e snd! -\u003e events -\u003e banque ANONYME (pas le pck _veh_)",
+                                           "chaine":  "vehi b65b3b4a (weap 11725dc4) -\u003e snd! 50c6acf3 -\u003e events 2cdb4b0d/36993720 -\u003e banque anonyme 09e2e7ee -\u003e wems (~0.7-1.2s)",
+                                           "segments":  2,
+                                           "confiance":  "haute (chaine de tags directe)",
+                                           "fichiers":  [
+                                                            {
+                                                                "fichier":  "deplacement_moteur_seg1.wav",
+                                                                "duree_s":  1.19
+                                                            },
+                                                            {
+                                                                "fichier":  "deplacement_moteur_seg1_boucle8s.wav",
+                                                                "duree_s":  8
+                                                            },
+                                                            {
+                                                                "fichier":  "deplacement_moteur_seg2.wav",
+                                                                "duree_s":  1.19
+                                                            },
+                                                            {
+                                                                "fichier":  "deplacement_moteur_seg2_boucle8s.wav",
+                                                                "duree_s":  8
+                                                            }
+                                                        ]
+                                       }
+                                   ]
+                      },
+                      {
+                          "nom":  "Ghost",
+                          "faction":  "Covenant",
+                          "chassis_interne":  "veh_cv_ghost",
+                          "vehi":  "00002705(+cb96ca07,fe32c0f4)",
+                          "tir_statut":  "tir non reconstruit (weap 0000a4bc non resolu) — hors lot mouvement",
+                          "sons":  [
+                                       {
+                                           "role":  "deplacement",
+                                           "methode":  "CHAINE REELLE vehi -\u003e snd! -\u003e events -\u003e banque ANONYME",
+                                           "chaine":  "vehi 00002705 (weap 0000a4bc) -\u003e snd! 17dc7858/37a178d9/f4578eb3 -\u003e events c5408c26/ae9c3fe5/b10e14b0 -\u003e banque anonyme f2b547a1 -\u003e wems (~0.65-2.2s)",
+                                           "segments":  3,
+                                           "composition":  "3 segments (moteur antigrav) — idle/mid/haut ou start/loop/stop, a l\u0027oreille",
                                            "confiance":  "haute",
-                                           "chaine":  "banque veh_un_wasp 4993b379 -\u003e event moteur 5baca8ee -\u003e 3 couche(s) (Blend au point de reference) -\u003e variantes, gains sommes ; RENDU comme EVENEMENT",
-                                           "methode":  "event moteur identifie par sa STRUCTURE (couches multiples / boucle RTPC), rendu comme le tir ; a valider a l\u0027oreille",
-                                           "moteur":  [
-                                                          {
-                                                              "fichier":  "deplacement_moteur_5baca8ee_v1.wav",
-                                                              "duree_s":  0.7
-                                                          },
-                                                          {
-                                                              "fichier":  "deplacement_moteur_5baca8ee_v2.wav",
-                                                              "duree_s":  1.12
-                                                          }
-                                                      ],
-                                           "apercu_boucle":  [
-                                                                 {
-                                                                     "fichier":  "deplacement_moteur_boucle_5baca8ee.wav",
-                                                                     "duree_s":  8
-                                                                 }
-                                                             ]
+                                           "fichiers":  [
+                                                            {
+                                                                "fichier":  "deplacement_moteur_seg1.wav",
+                                                                "duree_s":  1.15
+                                                            },
+                                                            {
+                                                                "fichier":  "deplacement_moteur_seg1_boucle8s.wav",
+                                                                "duree_s":  8
+                                                            },
+                                                            {
+                                                                "fichier":  "deplacement_moteur_seg2.wav",
+                                                                "duree_s":  2.18
+                                                            },
+                                                            {
+                                                                "fichier":  "deplacement_moteur_seg2_boucle8s.wav",
+                                                                "duree_s":  8
+                                                            },
+                                                            {
+                                                                "fichier":  "deplacement_moteur_seg3.wav",
+                                                                "duree_s":  1.43
+                                                            },
+                                                            {
+                                                                "fichier":  "deplacement_moteur_seg3_boucle8s.wav",
+                                                                "duree_s":  8
+                                                            }
+                                                        ]
+                                       }
+                                   ]
+                      },
+                      {
+                          "nom":  "Chassis 033e41df (identite a l\u0027oreille — Covenant/Banished)",
+                          "vehi":  "000025aa(+af31ab1a,de26e3d7)",
+                          "weap":  "033e41df (absent de lot2 — chopper/banshee/wraith probable)",
+                          "sons":  [
+                                       {
+                                           "role":  "deplacement",
+                                           "methode":  "CHAINE REELLE vehi -\u003e snd! -\u003e events -\u003e banques ANONYMES",
+                                           "chaine":  "vehi 000025aa (weap 033e41df) -\u003e snd! 3fb3129f/a5cfe3b4/dbde1c43/98cef02b -\u003e events -\u003e banques anonymes acaa4513, 2ecd73ab -\u003e wems (~1.2-1.6s)",
+                                           "segments":  4,
+                                           "confiance":  "haute chaine / identite chassis a confirmer",
+                                           "fichiers":  [
+                                                            {
+                                                                "fichier":  "deplacement_moteur_seg1.wav",
+                                                                "duree_s":  1.25
+                                                            },
+                                                            {
+                                                                "fichier":  "deplacement_moteur_seg1_boucle8s.wav",
+                                                                "duree_s":  8
+                                                            },
+                                                            {
+                                                                "fichier":  "deplacement_moteur_seg2.wav",
+                                                                "duree_s":  1.18
+                                                            },
+                                                            {
+                                                                "fichier":  "deplacement_moteur_seg2_boucle8s.wav",
+                                                                "duree_s":  8
+                                                            },
+                                                            {
+                                                                "fichier":  "deplacement_moteur_seg3.wav",
+                                                                "duree_s":  1.64
+                                                            },
+                                                            {
+                                                                "fichier":  "deplacement_moteur_seg3_boucle8s.wav",
+                                                                "duree_s":  8
+                                                            },
+                                                            {
+                                                                "fichier":  "deplacement_moteur_seg4.wav",
+                                                                "duree_s":  1.26
+                                                            },
+                                                            {
+                                                                "fichier":  "deplacement_moteur_seg4_boucle8s.wav",
+                                                                "duree_s":  8
+                                                            }
+                                                        ]
                                        }
                                    ]
                       },
@@ -99,21 +180,13 @@
                           "nom":  "Scorpion (M808)",
                           "faction":  "UNSC",
                           "chassis_interne":  "veh_un_scorpion",
-                          "pck":  "sb_010_veh_un_scorpion.pck",
-                          "banque_sbnk":  "05a51e0a",
-                          "banque_confirmee":  "OUI - FNV-1 du nom de pack (mode banks-noms)",
-                          "classification":  "armement de vehicule (R-VEHICULE) ; chassis _veh_ = \u0027fixed\u0027",
+                          "banque_tir":  "05a51e0a (FNV-1 confirme)",
+                          "vehi":  "0000d4ff",
+                          "deplacement_statut":  "AUCUN snd! de mouvement dedie dans le vehi (que la couche PARTAGEE : lsnd 06ba1096 + effe 7ff6244a/4488f97a, banques e793c135/de65048f). Moteur specifique NON isolable par les tags -\u003e Ghidra ou switch de type-vehicule.",
                           "sons":  [
                                        {
                                            "role":  "tir",
                                            "arme_weap":  "00015cfa",
-                                           "armes_weap_total":  [
-                                                                    "00015cfa",
-                                                                    "49e40d17"
-                                                                ],
-                                           "armes_weap_non_rendues":  [
-                                                                          "49e40d17"
-                                                                      ],
                                            "tag_son":  [
                                                            "b3adf402"
                                                        ],
@@ -122,7 +195,7 @@
                                                                  "951f76c0"
                                                              ],
                                            "cadence_cpm":  0,
-                                           "chaine":  "weap 00015cfa -[Weapon Fire Sound]-\u003e snd! b3adf402 -\u003e events 251190f3,951f76c0 (banque veh_un_scorpion 05a51e0a) -\u003e couches RandomSequence -\u003e variantes, gains SOMMES ; rafale a 0 cpm",
+                                           "chaine":  "weap 00015cfa -[Weapon Fire Sound]-\u003e snd! b3adf402 -\u003e events 251190f3,951f76c0 (banque veh_un_scorpion 05a51e0a), gains sommes ; rafale 0 cpm",
                                            "coup_3p":  [
                                                            {
                                                                "fichier":  "tir_M1_3p_1.wav",
@@ -146,52 +219,20 @@
                                            "rafale":  [
 
                                                       ]
-                                       },
-                                       {
-                                           "role":  "deplacement",
-                                           "event_moteur":  "0134da4e",
-                                           "couches":  2,
-                                           "statut_rtpc":  "2 couches soutenues ; boucle imposee par le jeu (Play/Stop)",
-                                           "confiance":  "moyenne",
-                                           "chaine":  "banque veh_un_scorpion 05a51e0a -\u003e event moteur 0134da4e -\u003e 2 couche(s) (Blend au point de reference) -\u003e variantes, gains sommes ; RENDU comme EVENEMENT",
-                                           "methode":  "event moteur identifie par sa STRUCTURE (couches multiples / boucle RTPC), rendu comme le tir ; a valider a l\u0027oreille",
-                                           "moteur":  [
-                                                          {
-                                                              "fichier":  "deplacement_moteur_0134da4e_v1.wav",
-                                                              "duree_s":  4.04
-                                                          },
-                                                          {
-                                                              "fichier":  "deplacement_moteur_0134da4e_v2.wav",
-                                                              "duree_s":  4.04
-                                                          }
-                                                      ],
-                                           "apercu_boucle":  [
-                                                                 {
-                                                                     "fichier":  "deplacement_moteur_boucle_0134da4e.wav",
-                                                                     "duree_s":  8
-                                                                 }
-                                                             ]
                                        }
                                    ]
                       },
                       {
-                          "nom":  "Gungoose (Mongoose arme)",
+                          "nom":  "Gungoose",
                           "faction":  "UNSC",
                           "chassis_interne":  "veh_un_wargoose",
-                          "pck":  "sb_010_veh_un_wargoose.pck",
-                          "banque_sbnk":  "38167604",
-                          "banque_confirmee":  "OUI - FNV-1 du nom de pack (mode banks-noms)",
-                          "classification":  "armement de vehicule (R-VEHICULE) ; chassis _veh_ = \u0027fixed\u0027",
+                          "banque_tir":  "38167604 (FNV-1 confirme)",
+                          "vehi":  "vcdd",
+                          "deplacement_statut":  "AUCUN snd! de mouvement dedie dans le vehi (que la couche PARTAGEE : lsnd 06ba1096 + effe 7ff6244a/4488f97a, banques e793c135/de65048f). Moteur specifique NON isolable par les tags -\u003e Ghidra ou switch de type-vehicule.",
                           "sons":  [
                                        {
                                            "role":  "tir",
                                            "arme_weap":  "0042678e",
-                                           "armes_weap_total":  [
-                                                                    "0042678e"
-                                                                ],
-                                           "armes_weap_non_rendues":  [
-
-                                                                      ],
                                            "tag_son":  [
                                                            "276fa353"
                                                        ],
@@ -200,7 +241,7 @@
                                                                  "c240bac4"
                                                              ],
                                            "cadence_cpm":  420,
-                                           "chaine":  "weap 0042678e -[Weapon Fire Sound]-\u003e snd! 276fa353 -\u003e events 0a54bfb7,c240bac4 (banque veh_un_wargoose 38167604) -\u003e couches RandomSequence -\u003e variantes, gains SOMMES ; rafale a 420 cpm",
+                                           "chaine":  "weap 0042678e -[Weapon Fire Sound]-\u003e snd! 276fa353 -\u003e events 0a54bfb7,c240bac4 (banque veh_un_wargoose 38167604), gains sommes ; rafale 420 cpm",
                                            "coup_3p":  [
                                                            {
                                                                "fichier":  "tir_M1_3p_1.wav",
@@ -235,52 +276,20 @@
                                                               "duree_s":  3.44
                                                           }
                                                       ]
-                                       },
-                                       {
-                                           "role":  "deplacement",
-                                           "event_moteur":  "e3082ea3",
-                                           "couches":  1,
-                                           "statut_rtpc":  "boucle soutenue 1 couche ; boucle imposee (Play/Stop)",
-                                           "confiance":  "moyenne",
-                                           "chaine":  "banque veh_un_wargoose 38167604 -\u003e event moteur e3082ea3 -\u003e 1 couche(s) (Blend au point de reference) -\u003e variantes, gains sommes ; RENDU comme EVENEMENT",
-                                           "methode":  "event moteur identifie par sa STRUCTURE (couches multiples / boucle RTPC), rendu comme le tir ; a valider a l\u0027oreille",
-                                           "moteur":  [
-                                                          {
-                                                              "fichier":  "deplacement_moteur_e3082ea3_v1.wav",
-                                                              "duree_s":  4.57
-                                                          },
-                                                          {
-                                                              "fichier":  "deplacement_moteur_e3082ea3_v2.wav",
-                                                              "duree_s":  4.57
-                                                          }
-                                                      ],
-                                           "apercu_boucle":  [
-                                                                 {
-                                                                     "fichier":  "deplacement_moteur_boucle_e3082ea3.wav",
-                                                                     "duree_s":  8
-                                                                 }
-                                                             ]
                                        }
                                    ]
                       },
                       {
-                          "nom":  "Warthog a roquettes (rockethog)",
+                          "nom":  "Warthog a roquettes",
                           "faction":  "UNSC",
                           "chassis_interne":  "veh_un_rockethog",
-                          "pck":  "sb_010_veh_un_rockethog.pck",
-                          "banque_sbnk":  "a52af042",
-                          "banque_confirmee":  "OUI - FNV-1 du nom de pack (mode banks-noms)",
-                          "classification":  "armement de vehicule (R-VEHICULE) ; chassis _veh_ = \u0027fixed\u0027",
+                          "banque_tir":  "a52af042 (FNV-1 confirme)",
+                          "vehi":  "bcfb852f",
+                          "deplacement_statut":  "AUCUN snd! de mouvement dedie dans le vehi (que la couche PARTAGEE : lsnd 06ba1096 + effe 7ff6244a/4488f97a, banques e793c135/de65048f). Moteur specifique NON isolable par les tags -\u003e Ghidra ou switch de type-vehicule.",
                           "sons":  [
                                        {
                                            "role":  "tir",
                                            "arme_weap":  "c7d50912",
-                                           "armes_weap_total":  [
-                                                                    "c7d50912"
-                                                                ],
-                                           "armes_weap_non_rendues":  [
-
-                                                                      ],
                                            "tag_son":  [
                                                            "155f1354"
                                                        ],
@@ -289,7 +298,7 @@
                                                                  "68b1a949"
                                                              ],
                                            "cadence_cpm":  126,
-                                           "chaine":  "weap c7d50912 -[Weapon Fire Sound]-\u003e snd! 155f1354 -\u003e events 38b83eb8,68b1a949 (banque veh_un_rockethog a52af042) -\u003e couches RandomSequence -\u003e variantes, gains SOMMES ; rafale a 126 cpm",
+                                           "chaine":  "weap c7d50912 -[Weapon Fire Sound]-\u003e snd! 155f1354 -\u003e events 38b83eb8,68b1a949 (banque veh_un_rockethog a52af042), gains sommes ; rafale 126 cpm",
                                            "coup_3p":  [
                                                            {
                                                                "fichier":  "tir_M1_3p_1.wav",
@@ -324,31 +333,6 @@
                                                               "duree_s":  6.7
                                                           }
                                                       ]
-                                       },
-                                       {
-                                           "role":  "deplacement",
-                                           "event_moteur":  "28338148",
-                                           "couches":  1,
-                                           "statut_rtpc":  "boucle soutenue 1 couche ; boucle imposee (Play/Stop)",
-                                           "confiance":  "moyenne",
-                                           "chaine":  "banque veh_un_rockethog a52af042 -\u003e event moteur 28338148 -\u003e 1 couche(s) (Blend au point de reference) -\u003e variantes, gains sommes ; RENDU comme EVENEMENT",
-                                           "methode":  "event moteur identifie par sa STRUCTURE (couches multiples / boucle RTPC), rendu comme le tir ; a valider a l\u0027oreille",
-                                           "moteur":  [
-                                                          {
-                                                              "fichier":  "deplacement_moteur_28338148_v1.wav",
-                                                              "duree_s":  4.7
-                                                          },
-                                                          {
-                                                              "fichier":  "deplacement_moteur_28338148_v2.wav",
-                                                              "duree_s":  4.7
-                                                          }
-                                                      ],
-                                           "apercu_boucle":  [
-                                                                 {
-                                                                     "fichier":  "deplacement_moteur_boucle_28338148.wav",
-                                                                     "duree_s":  8
-                                                                 }
-                                                             ]
                                        }
                                    ]
                       },
@@ -356,27 +340,13 @@
                           "nom":  "Falcon (tourelle LMG)",
                           "faction":  "UNSC",
                           "chassis_interne":  "veh_un_falconlmgturret",
-                          "pck":  "sb_010_veh_un_falconlmgturret.pck",
-                          "banque_sbnk":  "bd807a77",
-                          "banque_confirmee":  "NON - bd807a77 = sb_010_tur_un_machinegun (banque de la MITRAILLEUSE detachable, partagee)",
-                          "classification":  "armement de vehicule ; le Falcon LMG tire la mitrailleuse (deja validee comme tourelle)",
-                          "tir_statut":  "tir = mitrailleuse (snd! 68c0807f), correct comme ARME mais banque = tourelle MG partagee ; PAS de banque chassis Falcon -\u003e moteur/rotor NON reconstruit",
+                          "banque_tir":  "bd807a77 = sb_010_tur_un_machinegun (mitrailleuse partagee)",
+                          "vehi":  "0000d500/dd7f9102",
+                          "deplacement_statut":  "pas de snd! mouvement dedie ; banque tir = mitrailleuse detachable",
                           "sons":  [
                                        {
                                            "role":  "tir",
                                            "arme_weap":  "00015cd3",
-                                           "armes_weap_total":  [
-                                                                    "00015cd3",
-                                                                    "003f5824",
-                                                                    "0c6fd911"
-                                                                ],
-                                           "tag_son":  [
-                                                           "68c0807f"
-                                                       ],
-                                           "events_de_tir":  [
-                                                                 "2b145170",
-                                                                 "d36e3c93"
-                                                             ],
                                            "cadence_cpm":  780,
                                            "note":  "son = mitrailleuse partagee",
                                            "coup_3p":  [
@@ -414,50 +384,6 @@
                                                           }
                                                       ]
                                        }
-                                   ]
-                      },
-                      {
-                          "nom":  "Ghost",
-                          "faction":  "Covenant",
-                          "chassis_interne":  "veh_cv_ghost",
-                          "pck":  "sb_010_veh_cv_ghost.pck",
-                          "banque_confirmee":  "NON",
-                          "statut":  "banque non identifiee : mon match 01862ab3 (score 1) est anonyme et non confirme par FNV-1 ; wems non references dans le corps d\u0027aucune banque",
-                          "sons":  [
-
-                                   ]
-                      },
-                      {
-                          "nom":  "Banshee",
-                          "faction":  "Covenant",
-                          "chassis_interne":  "veh_cv_banshee",
-                          "pck":  "sb_010_veh_cv_banshee.pck",
-                          "banque_confirmee":  "NON",
-                          "statut":  "banque non identifiee : match 84bc4790 (score 26) anonyme, non confirme FNV-1",
-                          "sons":  [
-
-                                   ]
-                      },
-                      {
-                          "nom":  "Wraith",
-                          "faction":  "Covenant",
-                          "chassis_interne":  "veh_cv_wraith",
-                          "pck":  "sb_010_veh_cv_wraith.pck",
-                          "banque_confirmee":  "NON",
-                          "statut":  "FAUX MATCH PROUVE : 61007dcf = sb_004_mod_mp_ctf (le DRAPEAU, RE_GESTES §4.3). Vraie banque Wraith introuvable.",
-                          "sons":  [
-
-                                   ]
-                      },
-                      {
-                          "nom":  "Chopper",
-                          "faction":  "Banished",
-                          "chassis_interne":  "veh_bt_chopper",
-                          "pck":  "sb_010_veh_bt_chopper.pck",
-                          "banque_confirmee":  "NON",
-                          "statut":  "banque non identifiee : match 8f5a3161 (score 1) anonyme, non confirme FNV-1",
-                          "sons":  [
-
                                    ]
                       }
                   ]

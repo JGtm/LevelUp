@@ -143,7 +143,7 @@ func rendUn(idx *himap.ModuleIndex, tag []byte, id uint32, chemin string, opts h
 	if err != nil {
 		return err
 	}
-	img := himap.SpriteObjetPNG(r, opts.AlphaBase)
+	img := himap.SpriteObjetPNG(r, opts)
 	f, err := os.Create(chemin)
 	if err != nil {
 		return err

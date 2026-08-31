@@ -1,155 +1,106 @@
 # V3 — RAPPORT : sons des véhicules (chantier véhicules-tourelles)
 
 > Exécuteur : lot V3 du `PLAN_VEHICULES_TOURELLES.md`. Worktree `LevelUp-wt-vehicules`.
-> Aucun commit, aucune écriture DuckDB, aucun nouveau Python, aucune modif du Go de prod.
-> Un seul build Go, un seul module 7,24 Go en RAM à la fois (cache Go isolé).
+> Aucun commit, aucune écriture DuckDB, aucun nouveau Python. Un seul build Go (cache isolé),
+> un seul module 7,24 Go en RAM à la fois.
 >
-> **Révision 3.** La rev 1 avait choisi les déplacements par HEURISTIQUE DE DURÉE (les clips
-> les plus longs) — erreur que la RECETTE interdit, signalée par l'utilisateur (« aucun
-> déplacement, ce ne sont que des tirs isolés »). La rev 2 a reconstruit le déplacement comme
-> un ÉVÉNEMENT MOTEUR. La rev 3 a vérifié l'IDENTITÉ DES BANQUES par `banks-noms` (FNV-1) et
-> découvert que plusieurs de mes appariements par intersection de wems étaient FAUX — dont un
-> prouvé (Wraith = le CTF). Le livrable est réduit à ce qui est CERTAIN.
+> **Révision 4 — LE DÉPLACEMENT EST CORRIGÉ SUR LE FOND.** Les rev 1-3 cherchaient le son de
+> mouvement au mauvais ENDROIT (un event `snd!` de la banque `_veh_`, pris par durée puis par
+> structure — refusé deux fois à l'oreille). La rev 4 suit la BONNE chaîne : **le tag `vehi`
+> RÉFÉRENCE ses sons de mouvement**, et leur audio vit dans des banques **ANONYMES PARTAGÉES**,
+> pas dans le pck `_veh_` (qui ne porte que tir/impacts). Hypothèse du coordinateur confirmée.
 
-## 0. Ce qui est livré (révision 3)
+## 0. Ce qui est livré (révision 4)
 
-- **4 véhicules COMPLETS** (banque confirmée par FNV-1) : **Wasp, Scorpion, Gungoose,
-  Warthog à roquettes** — tir reconstruit (coup 3p/1p + rafale à la cadence) **et** moteur
-  reconstruit (événement, pas clip par durée).
-- **Falcon (tourelle LMG)** : tir seul, = la mitrailleuse détachable (banque partagée) ; pas
-  de banque châssis Falcon, donc pas de moteur/rotor.
-- **Ghost, Banshee, Wraith, Chopper** : **rien de fiable** — leur banque n'est pas identifiée
-  (voir §3). Les moteurs de la rev 2 sont RETIRÉS (celui du Wraith était un son de drapeau).
+**TIR** (banques `_veh_` confirmées par FNV-1) — inchangé, confirmé : **Wasp, Scorpion,
+Gungoose, Warthog** (coup 3p/1p + rafale à la cadence) ; **Falcon** = la mitrailleuse partagée.
 
-Manifeste : `sons_v3_reconstruits/manifeste_v3.json` (par véhicule : `banque_confirmee`,
-et par son : rôle, event, chaîne, statut RTPC, confiance).
+**DÉPLACEMENT** (nouvelle chaîne `vehi → snd! → events → banque anonyme`) :
+- **Ghost** — 3 segments de mouvement (moteur antigrav), banque `f2b547a1`.
+- **Wasp** — 2 segments, banque `09e2e7ee`.
+- **Chassis `033e41df`** — 4 segments, banques `acaa4513`/`2ecd73ab` (identité châssis à
+  reconnaître à l'oreille : Chopper/Banshee/Wraith probable).
 
-## 1. La chaîne, identique pour le tir ET le moteur
+Chaque segment est fourni brut + un aperçu bouclé 8 s. Manifeste : `manifeste_v3.json` (rev 4).
 
-Tir et déplacement sont reconstruits par la MÊME sémantique (en-tête `arbre.go`) :
-`événement → couches (Blend résolu au point de référence) → une variante par couche → gains
-de chemin SOMMÉS`. Rendu par le renderer existant `coups_lot.py`. La rafale enchaîne 10
-déclenchements à la cadence lue du tag (`barrels → rounds/s`).
+## 1. La découverte de fond — où vit le son de déplacement
 
-Commandes (exactes) — un seul build, modules jamais simultanés :
+Nouveau mode **`vehi-sons`** (lecture seule, ajouté à `cmd/weapon-sounds`) : il suit, pour
+chaque tag `vehi`, ses références `lsnd`/`snd!`/`effe` lues **inline** (comme la ref `hlmt`,
+`internal/himap/vehicules.go`) et par la table de dépendances, puis chaque son → sa banque
+(`sbnk`) et les mots de son corps (candidats d'événement).
 
-    go build -o <sc>\weapon-sounds.exe ./cmd/weapon-sounds                       # 1 fois, CGO winlibs
-    weapon-sounds.exe -mode lot      -module pc/globals/...  -pck <packs_veh renommes> ...  # 7,24 Go
-    weapon-sounds.exe -mode lot-tir  -module any/globals/... -json lot1_veh.json ...        # 0,62 Go
-    weapon-sounds.exe -mode banks-noms -module pc/globals/... -json banks_noms.json         # 7,24 Go (verif identite)
-    python akpk_unpack.py / conv_emb.py   (extraction pck+embarques -> wav, scripts existants)
-    python coups_lot.py                   (rend coup + rafale, et l'event MOTEUR fourni en lot2)
+Sur les **13 tags `vehi`**, l'architecture du mouvement est :
 
-Contournement sans éditer le Go : `lot.go:51` (`motifsPck`) ne globe pas `_veh_` ; j'ai copié
-les packs `_veh_` renommés `sb_010_wea_*` (IDs `.wem` identiques) dans un scratch pointé par
-`-pck`.
+    COUCHE PARTAGEE (les 13 vehi)   lsnd 06ba1096  + effe 7ff6244a / 4488f97a
+                                    banques ANONYMES e793c135 / de65048f
+    COUCHE SPECIFIQUE (certains)    snd! dedies :  Ghost -> f2b547a1
+                                                   Wasp  -> 09e2e7ee
+                                                   groupe 033e41df -> acaa4513 / 2ecd73ab
 
-## 2. La correction du DÉPLACEMENT — un événement moteur, pas le wem le plus long
+- **Le son de mouvement n'est PAS dans le pck `_veh_`** (qui porte tir/impacts) : il est dans
+  des banques **anonymes** (non nommées par FNV-1), partagées ou spécifiques. C'est
+  exactement l'hypothèse : « mauvais TYPE de tag, mauvais ENDROIT ».
+- **Le `lsnd 06ba1096` est GÉNÉRIQUE** (le même pour les 13). Il pointe une `sndc f1327648`
+  qui a **0 dépendance** (une classe de mixage, PAS un switch par type de véhicule). La
+  différenciation par véhicule se fait donc dans les **`snd!` dédiés**, pas dans le lsnd.
 
-Le moteur est un ÉVÉNEMENT de la banque, une BOUCLE pilotée par un RTPC de vitesse. Je
-l'identifie par sa **STRUCTURE** (pas par la durée) :
+## 2. Ce qui est reconstruit, et sa preuve
 
-- **Signal fort** : événement non-tir résolu à **plusieurs couches** (les enfants du Blend
-  RTPC au point de référence), en **boucle continue** (`repetitions=0`, `mode_enchainement=5`)
-  avec **modulation de pitch** (RTPC de vitesse). Exemple Wasp `5baca8ee` : 3 couches
-  RandomSequence, 19 variantes chacune, continu, pitch ±80c — un bourdon soutenu, pas un
-  transitoire de tir.
-- Le marqueur `sLoopCount` est absent sur certains châssis (le jeu impose la boucle par une
-  paire Play/Stop — point ouvert n°5 de `RE_GESTES_SONORES`) : pour ceux-là, le moteur est
-  l'événement non-tir **à couches multiples** le plus soutenu.
+Chaque déplacement est rendu par la MÊME sémantique que le tir (`event → couches → variantes,
+gains sommés`, via `coups_lot.py`). Les segments sont des **corps de boucle courts**
+(0,65–2,2 s), structurellement des boucles de moteur, pas des transitoires de tir.
 
-Rendu : l'événement moteur est passé à `coups_lot.py` comme un « mode » (cadence 0, pas de
-rafale) ; le rendu somme ses couches au point de référence. Contrôle de durée des moteurs
-rendus : **0,7 s (Wasp, grain continu) à 4,7 s** — soutenus, structurellement distincts des
-tirs (Wasp tir 3p = 3,13 s percussif). Un aperçu bouclé à 8 s (ffmpeg `-stream_loop`)
-accompagne chaque moteur pour l'écoute.
+| Véhicule | chaîne de preuve | segments (durées) |
+|---|---|---|
+| **Ghost** | `vehi 00002705` (weap `0000a4bc`) → snd! `17dc7858`/`37a178d9`/`f4578eb3` → events `c5408c26`/`ae9c3fe5`/`b10e14b0` → banque anonyme `f2b547a1` → wems | 3 (1,15 / 2,18 / 1,43 s) |
+| **Wasp** | `vehi b65b3b4a` (weap `11725dc4`) → snd! `50c6acf3` → events `2cdb4b0d`/`36993720` → banque anonyme `09e2e7ee` → wems | 2 (1,19 / 1,19 s) |
+| **Chassis `033e41df`** | `vehi 000025aa` (weap `033e41df`) → snd! `3fb3129f`/`a5cfe3b4`/`dbde1c43`/`98cef02b` → events → banques `acaa4513`/`2ecd73ab` | 4 (1,25 / 1,18 / 1,64 / 1,26 s) |
 
-## 3. LA DÉCOUVERTE QUI CHANGE LE LIVRABLE — l'identité des banques (banks-noms)
+Les 3 segments du Ghost (durées différentes) sont probablement idle / mid / haut régime, OU
+start / loop / stop — **à trancher à l'oreille** (aucun nom ne survit dans les tags).
 
-En PASS 1, l'appariement `pck → banque` se fait par intersection de wems. Pour les 4 UNSC
-au sol, le **score** est fort (wasp 536, falcon-MG 556, scorpion 169, wargoose 146,
-rockethog 156). Pour Ghost, Wraith, Chopper : **score = 1** — signal d'un FAUX appariement.
+## 3. Les TIRS restent confirmés (vérifiés)
 
-`banks-noms` (identifiant Wwise = FNV-1 du nom de pack) tranche sur pièces :
+Chaîne relue sur pièces, banques `_veh_` confirmées FNV-1 : Wasp event `e22a0d32` = 3 couches
+RandomSequence (+38 / +33 / +31 dB **sommés**) ; Gungoose `0a54bfb7` = 3 couches
+(+10 / +10 / +9 dB). Cadences 450 / 420 / 126 cpm lues du tag. Assemblage correct. Falcon =
+mitrailleuse détachable (banque `bd807a77` = `sb_010_tur_un_machinegun`).
 
-| Châssis | banque que j'avais mise | ce qu'elle EST vraiment (FNV-1) | verdict |
-|---|---|---|---|
-| Wasp | `4993b379` | **sb_010_veh_un_wasp** | **CONFIRMÉ** |
-| Scorpion | `05a51e0a` | **sb_010_veh_un_scorpion** | **CONFIRMÉ** |
-| Gungoose | `38167604` | **sb_010_veh_un_wargoose** | **CONFIRMÉ** |
-| Warthog roq. | `a52af042` | **sb_010_veh_un_rockethog** | **CONFIRMÉ** |
-| Falcon LMG | `bd807a77` | **sb_010_tur_un_machinegun** | banque de la MITRAILLEUSE (tourelle), pas un châssis |
-| Wraith | `61007dcf` | **sb_004_mod_mp_ctf** | **FAUX — c'est le DRAPEAU** (confirme `RE_GESTES §4.3`) |
-| Ghost | `01862ab3` | (anonyme) | non confirmé, score 1 |
-| Banshee | `84bc4790` | (anonyme) | non confirmé, score 26 |
-| Chopper | `8f5a3161` | (anonyme) | non confirmé, score 1 |
+## 4. Ce qui reste ouvert (honnête)
 
-FNV-1 du nom de pack ne trouve de banque QUE pour les 4 confirmés. Pour Ghost/Banshee/Wraith/
-Chopper/Falcon-châssis/Phantom/Pelican, **aucune banque nommée n'existe** et leurs wems
-n'apparaissent dans le corps d'aucune banque — leur reconstruction demande d'abord de
-**trouver la vraie banque** (elles sont vraisemblablement parmi les 712 banques anonymes, ou
-partagées, ou nommées par un codename interne). Je ne livre donc pas de moteur pour eux :
-mieux vaut rien qu'un son de drapeau étiqueté « moteur Wraith ».
+1. **Scorpion / Gungoose / Warthog / Falcon : PAS de `snd!` de mouvement dédié** dans leur
+   `vehi` — uniquement la couche PARTAGÉE (lsnd générique + effe). Leur moteur spécifique
+   n'est **pas isolable par les tags**. Deux pistes : (a) le son est le lsnd générique
+   `06ba1096` (même moteur pour tous, peu probable pour un char) ; (b) il est sélectionné à
+   l'exécution par un **RTPC / switch de type-véhicule** — c'est le « **Ghidra au besoin** » :
+   trouver le POST de l'événement Wwise de déplacement et le paramètre de vitesse. Non fait ce
+   tour (le tag ne l'expose pas ; c'est une session Ghidra dédiée).
+2. **Identité du châssis `033e41df`** (3 vehi) : non présent dans lot2 → à reconnaître à
+   l'oreille (Chopper/Banshee/Wraith). La chaîne son est propre ; seul le nom manque.
+3. **Segmentation start/loop/stop** : les segments sont fournis bruts + bouclés ; distinguer
+   « la boucle soutenue » des amorces demande l'écoute.
 
-## 4. Vérification des TIRS (demandée) — CONFIRMÉS
+## 5. Découvertes hors périmètre
 
-Chaîne relue sur pièces (lot1), banques confirmées :
+1. **Les banques de mouvement sont ANONYMES** (non nommées par FNV-1) : `e793c135`,
+   `de65048f` (partagées), `f2b547a1`, `09e2e7ee`, `acaa4513`, `2ecd73ab` (spécifiques). Elles
+   font partie des 712 banques anonymes du module — c'est pourquoi la voie « nom de pack » les
+   ratait.
+2. **Le `lsnd 06ba1096` + `sndc f1327648`** : contrôleur de boucle générique + classe de
+   mixage. À creuser si on veut la couche commune (bruit de roulement/vent partagé).
 
-- **Wasp** (cadence 450 cpm → intervalle rafale 0,133 s). Event `e22a0d32` = **3 couches
-  RandomSequence** (6 variantes chacune), gains de chemin **+38 / +33 / +31 dB SOMMÉS** ;
-  event `b0554fc9` = 2 couches (+12 dB, −3 dB).
-- **Gungoose** (420 cpm → 0,143 s). Event `0a54bfb7` = 3 couches (+10 / +10 / +9 dB) ;
-  `c240bac4` = 2 couches (+13, −3 dB).
+## 6. Outillage ajouté (lecture seule, gofmt-clean)
 
-`coups_lot.py` applique `10^(gain/20)` par couche puis somme et normalise à la crête. Les
-couches et les gains sont donc **bien sommés**, la rafale est **à la cadence du tag**. Aucune
-erreur d'assemblage trouvée. Les 4 tirs de banque confirmée (Wasp/Scorpion/Gungoose/Warthog)
-sont fiables ; le tir Falcon est correct comme ARME mais provient de la banque mitrailleuse
-partagée.
+`cmd/weapon-sounds/vehicules_sons.go` — mode `vehi-sons` : `vehi → lsnd/snd!/effe → sbnk +
+mots`, avec les refs `weap` inline (identité du véhicule, croisée avec lot2). Passe 1 sur
+`any/globals` (0,62 Go) ; les banques se résolvent en passe 2 par `lot -banks <sbnk>`
+(`pc/globals`).
 
-## 5. Table finale
-
-| Véhicule | banque | confirmée | tir (weap → snd! → events, cadence) | moteur (event, couches) |
-|---|---|---|---|---|
-| **Wasp** | `4993b379` | oui | `11725dc4`→`ce8e2f81`→`b0554fc9,e22a0d32`, 450 cpm | `5baca8ee`, 3c continu RTPC (**haute**) |
-| **Scorpion** | `05a51e0a` | oui | `00015cfa`→`b3adf402`→`251190f3,951f76c0`, tir unique | `0134da4e`, 2c (moyenne) |
-| **Gungoose** | `38167604` | oui | `0042678e`→`276fa353`→`0a54bfb7,c240bac4`, 420 cpm | `e3082ea3`, 1c (moyenne) |
-| **Warthog roq.** | `a52af042` | oui | `c7d50912`→`155f1354`→`38b83eb8,68b1a949`, 126 cpm | `28338148`, 1c (moyenne) |
-| Falcon LMG | `bd807a77` | non (=MG tourelle) | `00015cd3`→`68c0807f`, 780 cpm (= mitrailleuse) | absent (pas de banque châssis) |
-| Ghost / Banshee / Wraith / Chopper | — | non | non résolu | **banque non identifiée** |
-
-Multi-armes détecté (`weap_tags`) mais non rendu (2e arme) : Scorpion coaxial `49e40d17`,
-Wasp missiles `d3c407ed`, Falcon `003f5824`/`0c6fd911`.
-
-## 6. Ce qui reste à faire (douteux / follow-up)
-
-1. **Trouver les banques Ghost/Banshee/Wraith/Chopper** (et le châssis Falcon, Phantom,
-   Pelican). Piste : leurs wems ne sont référencés dans aucun corps de banque → banque
-   anonyme/partagée/codename. `banks-noms` liste 712 banques anonymes ; croiser leurs wems
-   embarqués (DIDX) avec les wems du pck de chaque châssis donnerait le bon appariement,
-   indépendant du score d'intersection qui a échoué ici.
-2. **Confiance moyenne des moteurs Scorpion/Gungoose/Warthog** : boucle imposée par le jeu
-   (Play/Stop), pas déclarée en banque → l'event moteur est le meilleur candidat structurel,
-   à confirmer à l'oreille (votes priment).
-3. **Armes secondaires** (coaxial Scorpion, missiles Wasp, 2 armes Falcon) : passe dédiée par
-   `weap` — `lot-tir` ne retient que le weap dominant par banque.
-4. **falcongrenadelauncher + pelican** : AUCUNE banque appariée en PASS 1.
-
-## 7. Découvertes hors périmètre
-
-1. **`61007dcf` = le CTF, pas le Wraith** : mon appariement par intersection l'a faussement
-   pris pour le Wraith (score 1). Leçon : l'appariement pck→banque par intersection de wems
-   est **non fiable pour les banques véhicule à wems streamés** ; `banks-noms` (FNV-1) est la
-   voie autoritaire.
-2. **6 packs `sb_008_exp_vehicle_{large,med,small}_{covenant,unsc}`** = explosions de véhicule
-   par taille/faction — matière pour l'« état détruit » du lot V1/V2.
-3. Le mode `sofa` de la consigne n'existe pas dans l'outil ; `lot-tir` donne déjà la liste des
-   `weap` par châssis via `weap_tags`.
-
-## 8. Emplacements
+## 7. Emplacements
 
 - **Livrables** : `.ai/V7.5/film_re/sons_v3_reconstruits/<Véhicule>/{tir,deplacement}/*.wav`
-  + `manifeste_v3.json`. Contenu : 4 véhicules complets (tir + moteur), Falcon tir seul.
-- **Sources extraites** (durée_id) : `Desktop\Halo Infinite - Sons armes\{UNSC_wasp, …}`.
-- **Intermédiaires** : `<scratch>\donnees\{lot1_veh, lot2_veh, lot2_moteur, coups_veh,
-  banks_noms}.json`, logs, `weapon-sounds.exe`. `_outils` restauré.
+  + `manifeste_v3.json`. Déplacement RÉEL : Ghost, Wasp, Chassis_033e41df. Tir : Wasp,
+  Scorpion, Gungoose, Warthog, Falcon.
+- **Intermédiaires** : `<scratch>\donnees\{vehi_sons, lot1_vehbanks, lot1_veh, lot2_veh,
+  banks_noms}.json`, `weapon-sounds.exe`, `emb2\`. `_outils` restauré.
