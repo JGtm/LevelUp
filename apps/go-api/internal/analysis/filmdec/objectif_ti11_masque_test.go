@@ -29,6 +29,32 @@ package filmdec
 // impossible. La part de masques HORS DOMAINE est rendue film par film ; au-dela de quelques
 // pourcents, la mesure ne dit rien et il faut douter du prologue avant de douter du reste.
 //
+// # LE VOISIN A LIRE ENSUITE
+//
+// `objectif_ti11_oracle_test.go` porte l'ORACLE DE LARGEUR et le balayage A/B des bascules. Le
+// recensement dit COMBIEN de deserialiseurs porter ; l'oracle dit si on les lit JUSTE. Les deux
+// se lisent dans cet ordre.
+//
+// # LE RESULTAT D'ENSEMBLE, ecrit ici parce qu'il conditionne tout usage de ti=11 (2026-09-01)
+//
+// Le portage lui-meme est acquis : 2 211 records marches jusqu'au bout contre 884 avant. Mais la
+// COUVERTURE n'est pas la JUSTESSE, et l'oracle le montre sans ambiguite :
+//
+//	records a UN seul composant        25 % de chainage
+//	records a PLUSIEURS composants      0 %
+//
+// Si les largeurs etaient justes, la fin d'un record tomberait sur l'en-tete du suivant a presque
+// 100 % — la probabilite qu'une position quelconque passe `readKeyframeHeader` est de l'ordre de
+// 1e-5, donc 25 % est un vrai signal, mais un signal INSUFFISANT. Et le fait que meme les records
+// LES PLUS SIMPLES plafonnent a 25 % dit que le probleme n'est pas (seulement) dans les
+// composants : il est EN AMONT — prologue de record, ou faux ancrages rendus par le balayeur.
+//
+// La calibration a balaye les deux bascules disponibles (`filmComponentCorruptionCheck` x
+// `newRecordTailBits`) : AUCUNE combinaison ne depasse 25 % / 13,6 %. Negatif net, critere ecrit
+// avant la mesure (60 % sur les records a plusieurs composants).
+//
+// **NE PAS EXPLOITER LES VALEURS DE ti=11 AVANT QUE CE CHAINAGE NE MONTE.**
+//
 // REGIME : garde `ASSAUT_CACHE`. Aucune base, aucun reseau, sentinelle memoire armee.
 //
 //	$env:ASSAUT_CACHE="C:/.../data/cache"
