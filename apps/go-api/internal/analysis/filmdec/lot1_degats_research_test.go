@@ -48,10 +48,25 @@ func lot1RefDom1(br *BitReader) (uint64, bool) {
 type lot1DmgResult struct {
 	sourceID  uint64
 	hasSource bool
-	dmgRaw    uint64 // R(5) magnitude principale (code, [0..31] -> [0,16])
-	dmg2Raw   uint64 // R(5) second scalaire ([0,3])
+	dmgRaw    uint64  // R(5) magnitude principale (code 0..31)
+	dmgClear  float64 // magnitude en clair : dq(dmgRaw, 0..16), signee (soin si porte d'echelle)
+	dmg2Raw   uint64  // R(5) second scalaire
+	negatif   bool    // porte d'echelle : Kscale = -1.0 => magnitude negee (soin)
 	victimIdx uint64
 	hasVictim bool
+}
+
+// lot1Dequant : la dequantification de l'exe (FUN_1406d84b4, flagA=0 -> N niveaux ; flagB=1 ->
+// bornes exactes). N = 1<<width ; code 0 -> vmin ; code N-1 -> vmax ; sinon interpolation.
+func lot1Dequant(raw uint64, width uint, vmin, vmax float64) float64 {
+	N := float64(uint64(1) << width)
+	if raw == 0 {
+		return vmin
+	}
+	if raw == uint64(N)-1 {
+		return vmax
+	}
+	return vmin + (float64(raw-1)+0.5)*(vmax-vmin)/(N-2)
 }
 
 // lot1DecodeDamageAftermath consomme la charge damage_aftermath EXACTEMENT (grammaire du
@@ -85,11 +100,15 @@ func lot1DecodeDamageAftermath(br *BitReader) lot1DmgResult {
 	}
 	br.Skip(1)                 // (9) bit 19 : R(1)
 	br.Skip(3)                 // (10) +0x5c : R(3)
-	r.dmgRaw = br.ReadBits(5)  // (11) magnitude principale R(5)
-	r.dmg2Raw = br.ReadBits(5) // (12) second scalaire R(5)
-	br.Skip(1)                 // (13) porte d'echelle R(1)
-	br.Skip(4)                 // (14) +0x52 : R(4)
-	if !br.ReadBit() {         // (15) +0x54 : R(1) polarite INVERSEE ; si bit==0 : R(10)
+	r.dmgRaw = br.ReadBits(5)  // (11) magnitude principale R(5), dequant [0,16]
+	r.dmg2Raw = br.ReadBits(5) // (12) second scalaire R(5), dequant [0,3]
+	r.dmgClear = lot1Dequant(r.dmgRaw, 5, 0, 16)
+	if br.ReadBit() { // (13) porte d'echelle : Kscale = -1.0 (DAT_143cd84ec) => magnitude negee
+		r.negatif = true
+		r.dmgClear = -r.dmgClear
+	}
+	br.Skip(4)         // (14) +0x52 : R(4)
+	if !br.ReadBit() { // (15) +0x54 : R(1) polarite INVERSEE ; si bit==0 : R(10)
 		br.Skip(10)
 	}
 	f58 := br.ReadBits(4) // (16) +0x58 : R(4)
@@ -137,7 +156,8 @@ func TestLot1Degats(t *testing.T) {
 		degats                               = map[uint64]int{}
 		part0                                = map[uint64]int{}
 		part1                                = map[uint64]int{}
-		avecVictime                          int
+		avecVictime, negatifs                int
+		dmgSum                               float64
 	)
 	for c := 1; c <= n; c++ {
 		data, err := ReadFilmChunk(dir, c)
@@ -195,6 +215,10 @@ func TestLot1Degats(t *testing.T) {
 				sources[r.sourceID]++
 			}
 			degats[r.dmgRaw]++
+			dmgSum += r.dmgClear
+			if r.negatif {
+				negatifs++
+			}
 			if r.hasVictim {
 				avecVictime++
 				victimes[r.victimIdx]++
@@ -234,6 +258,8 @@ func TestLot1Degats(t *testing.T) {
 	}
 	t.Logf("== 0xC0 : %d paquets · type 0 (damage_aftermath) : %d ==", paquets, type0)
 	t.Logf("SOURCE (tag du degat) : %d distinctes · DEGAT (code R5) : %s", len(sources), lot1TopU64(degats, 8))
+	t.Logf("DEGAT EN CLAIR : magnitude dq sur [0,16] (32 niveaux) · moyenne %.2f · negatifs (soin, Kscale=-1) : %d / %d",
+		dmgSum/float64(max(1, type0)), negatifs, type0)
 	t.Logf("PARTICIPANTS (refs d'en-tete, domaine 1) : ref0 %d distincts, ref1 %d distincts — les entites blesse/responsable",
 		len(part0), len(part1))
 	t.Logf("VICTIME (ref finale domaine 0) : presente %d / %d (%.1f %%), %d distinctes",
