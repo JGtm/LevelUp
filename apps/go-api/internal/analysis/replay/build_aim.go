@@ -45,3 +45,18 @@ func pitchForJSON(v float32) float32 {
 	}
 	return r
 }
+
+// zoomHoldUS borne le MAINTIEN d'un palier de lunette, en microsecondes.
+//
+// POURQUOI UN PLAFOND EXISTE. Les sorties de lunette sont sous-comptees par le scanner (seuls
+// les evenements portes EN TETE d'un paquet sont lus aujourd'hui, cf. `filmdec.ScanFilmZoomEvents`).
+// Sans plafond, une entree dont la sortie a echappe a la lecture laisserait un joueur « a la
+// lunette » jusqu'a la fin du match, et le cone du rejeu resterait etroit sur un joueur qui tire
+// a la hanche depuis longtemps. Le plafond transforme une lacune de mesure en absence
+// d'affirmation, ce qui est le bon defaut.
+//
+// POURQUOI DIX SECONDES. C'est un ordre de grandeur genereux devant la duree des periodes
+// relevees a la main dans Theater (0,8 a 5,3 s sur les six episodes du film temoin) et court
+// devant une vie de joueur. Il ne coupe donc aucune periode reelle mesuree, et il eteint les
+// entrees orphelines en une poignee de secondes.
+const zoomHoldUS uint64 = 10_000_000

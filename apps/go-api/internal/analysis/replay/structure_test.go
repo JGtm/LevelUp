@@ -370,8 +370,28 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   Oddball par `game_variant_name`. Le crâne LIBRE (`objectiveObjects`, v21) reste la couche
 	//   POSITION ; celle-ci est la couche PORTEUR. Détail :
 	//   .ai/V7.5/replay2d/registre_film/ODDBALL_PORTEUR_PROTOCOLE.md.
-	if SchemaVersion != 23 {
-		t.Fatalf("SchemaVersion = %d, attendu 23 : incrémenter exige une raison écrite ci-dessus "+
+	// - v24 (2026-08-31, chantier VISÉE À LA LUNETTE) : `Point.S` — LE PALIER DE LUNETTE.
+	//   La version monte pour la raison EXACTE du schéma 13 (l'élévation de visée) : ce n'est pas
+	//   un champ de plus, c'est le SENS DU CÔNE DE VISÉE qui change une seconde fois. Jusqu'ici le
+	//   client dessinait la même ouverture pour un joueur à la hanche et un joueur à la lunette, et
+	//   affirmait donc, sans le dire, que la visée était toujours aussi large. La reprise du
+	//   backfill se faisant par SchemaVersion, un artefact 23 doit se lire « à re-cuire ».
+	//   SOURCE : les événements `unit_zoom` (type 21) de la liste d'événements en tête de paquet —
+	//   PAS le record de position, contrairement à `H` et `P`. C'est un état à BASCULE.
+	//   NIVEAU DE PREUVE — vérité terrain, pas inférence : l'utilisateur a relevé à la main dans
+	//   Theater, en première personne, les six périodes de lunette d'un joueur sur 00162144 ; les
+	//   événements décodés apparient les SIX débuts à moins de 1,2 s, et le contrôle par
+	//   translation de la chronologie sur ~3 200 décalages témoins (maximum repris sur les
+	//   58 unités à chaque décalage) n'atteint JAMAIS ce score : p = 0,00 %. Le pont vers le
+	//   joueur est une fermeture : index de référence + 512 tombe sur un slot bipède existant
+	//   dans 98 % des cas contre 0 % pour toute autre base. RÉSERVE : seuls les événements en
+	//   TÊTE de liste sont lus, donc les sorties sont sous-comptées — d'où le maintien borné
+	//   (`zoomHoldUS`), qui refuse d'affirmer au-delà du délai au lieu de prolonger.
+	//   CE QUI L'A RENDU POSSIBLE : sept campagnes avaient conclu « aucun événement de zoom dans
+	//   la bobine » en lisant le type d'événement décalé d'UN bit ; leurs chaînes prétendument
+	//   indépendantes partageaient cette erreur. Le négatif est réfuté.
+	if SchemaVersion != 24 {
+		t.Fatalf("SchemaVersion = %d, attendu 24 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

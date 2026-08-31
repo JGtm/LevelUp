@@ -114,6 +114,7 @@ func TestViseeZoomGate(t *testing.T) {
 	t.Logf("UNITES — %d unites distinctes portent au moins une entree de lunette", len(parUnite))
 	zoomJournaliseUnites(t, parUnite)
 
+	zoomPontSlot(t, dir, evts, off)
 	parEntrees := zoomEntrees(evts, off)
 	best, bestCouv, bestExtras := zoomMeilleureParEntrees(parEntrees, chronoEpisodes)
 	t.Logf("EPREUVE DES ENTREES — unite %d : %d/%d DEBUTS d'episode apparies a moins de %.1f s,"+
@@ -180,6 +181,56 @@ func zoomDumpBrut(t *testing.T, evts []zoomEvt, off int64) {
 		}
 		t.Logf("  unite %3d (%d evts) : %s", e.u, e.n, strings.Join(sb, " "))
 	}
+}
+
+// zoomPontSlot teste L'HYPOTHESE DU PONT : l'index de ref0 (domaine 4) plus la base du domaine
+// donne-t-il le SLOT bipede du joueur ? Indice qui l'a fait naitre : l'unite 1 designee par la
+// chronologie correspond au slot 513 de Nilton410, et 513 = 512 + 1.
+//
+// L'epreuve est structurelle, sans seuil a declarer : pour chaque base candidate, on compte les
+// index dont (index + base) est un slot bipede REELLEMENT vu dans le film. La bonne base fait
+// tomber la quasi-totalite des index sur des slots existants ; une mauvaise base n'en fait
+// tomber qu'une fraction. C'est une fermeture, pas une correlation.
+func zoomPontSlot(t *testing.T, dir string, evts []zoomEvt, off int64) {
+	t.Helper()
+	scan := filmdec.DefaultScanFilmOptions()
+	scan.QuantaOnly = true
+	pos, err := filmdec.ScanFilmBipedPositions(dir, scan)
+	if err != nil {
+		t.Fatalf("balayage des positions : %v", err)
+	}
+	slots := map[uint32]int{}
+	for _, p := range pos {
+		slots[p.Slot]++
+	}
+	unites := map[uint64]bool{}
+	for _, e := range evts {
+		unites[e.unite] = true
+	}
+	t.Logf("PONT — %d slots bipedes distincts dans le film, %d unites de lunette distinctes",
+		len(slots), len(unites))
+	type essai struct {
+		base    int
+		touches int
+	}
+	var res []essai
+	for _, base := range []int{0, 256, 512, 768, 1024} {
+		n := 0
+		for u := range unites {
+			if slots[uint32(int(u)+base)] > 0 {
+				n++
+			}
+		}
+		res = append(res, essai{base, n})
+	}
+	for _, e := range res {
+		t.Logf("  base %4d : %d/%d index tombent sur un slot bipede existant (%.0f %%)",
+			e.base, e.touches, len(unites), 100*float64(e.touches)/float64(len(unites)))
+	}
+	// Controle nomme : le slot de Nilton dans la plage etiquetee est 513 (cf. le test de
+	// chronologie) ; l'unite designee par la chronologie doit donc etre 513 - base.
+	t.Log("  CONTROLE NOMME : la chronologie designe l'unite 1 ; si la base vaut 512," +
+		" cela donne le slot 513 — celui de Nilton410 etabli par le pont des morts.")
 }
 
 // zoomDecalage rend l'ecart feed -> film par le pont des morts (meme mecanique que la chronologie).

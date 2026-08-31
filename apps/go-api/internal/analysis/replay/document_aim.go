@@ -110,4 +110,34 @@ type Point struct {
 	// (p < 10⁻⁴ par permutation des étiquettes). Mais à 0,6 % de couverture, toute barre
 	// affichée serait, 99 % du temps, une valeur périmée présentée comme actuelle.
 	Hp *float32 `json:"hp,omitempty"`
+	// S (optionnel) est le PALIER DE LUNETTE en vigueur : absent ou 0 = le joueur n'est PAS
+	// a la lunette ; 1 et au-dela = il l'est. Le grossissement n'y est pas — il appartient a
+	// l'ARME, le film ne transmet que le palier.
+	//
+	// D'OU IL VIENT, ET POURQUOI C'EST UNE AUTRE SOURCE QUE `H` ET `P`. Le cap et l'elevation
+	// sont lus dans le record de position ; la lunette, elle, est un EVENEMENT
+	// (`unit_zoom`, type 21) porte par la liste d'evenements en tete de paquet. C'est un etat
+	// A BASCULE : une entree vaut jusqu'a la sortie, et non jusqu'au prochain echantillon.
+	// La reconstruction (maintien borne, sous-comptage des sorties assume) est decrite sur
+	// `filmdec.ZoomStateAt`.
+	//
+	// CE QUI L'A ETABLI — VERITE TERRAIN, pas inference. L'utilisateur a releve a la main
+	// dans Theater, en premiere personne, les six periodes de lunette d'un joueur sur le film
+	// 00162144. Les evenements decodes apparient les SIX debuts a moins de 1,2 s (41 -> 41,7 ;
+	// 49 -> 49,6 ; 61 -> 60,6 ; 68 -> 69,2 ; 71 -> 71,5 ; 85 -> 85,7), et le controle par
+	// translation de la chronologie sur ~3 200 decalages temoins — maximum repris sur les
+	// 58 unites a chaque decalage — n'atteint JAMAIS ce score : p = 0,00 %. Le pont vers le
+	// joueur est une fermeture, pas une correlation : index de reference + 512 tombe sur un
+	// slot bipede existant dans 98 % des cas, contre 0 % pour toute autre base.
+	//
+	// CE QUE LE CLIENT EN FAIT : le cone de visee RESSERRE SON OUVERTURE — il ne change PAS
+	// de longueur, celle-ci etant deja portee par l'elevation `P`. Les deux mecaniques sont
+	// orthogonales et lisibles ensemble : un joueur qui vise a la lunette vers le bas a un
+	// cone a la fois plus etroit et plus court.
+	//
+	// RESERVE PUBLIEE : seuls les evenements portes EN TETE d'un paquet sont lus aujourd'hui.
+	// Les sorties de lunette sont donc sous-comptees, ce que le maintien borne compense en
+	// refusant d'affirmer au-dela d'un delai. Une absence de `s` se lit « pas a la lunette »,
+	// jamais « inconnu » — meme contrat que `P`.
+	S int `json:"s,omitempty"`
 }
