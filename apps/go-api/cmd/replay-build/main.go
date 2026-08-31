@@ -32,10 +32,15 @@ import (
 	"os"
 
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/filmproc"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/replaybuild"
 )
+
+// outilNom : le nom que ce binaire porte dans le journal des protections (verrou, sentinelle,
+// priorite). Il apparait tel quel dans le message de refus lu par le prochain operateur.
+const outilNom = "replay-build"
 
 func main() {
 	titleFlag := flag.String("title", title.DefaultSlug, "slug du titre")
@@ -70,10 +75,38 @@ func main() {
 	}
 
 	// La disposition du cache film n'est déclarée que dans filmcache (garde-rail).
-	filmDir := filmcache.ChunkDir(title.NewPathResolver(repoRoot).CacheRootDir(), title.FilmShortMatchID(matchID))
+	cacheRoot := title.NewPathResolver(repoRoot).CacheRootDir()
+	filmDir := filmcache.ChunkDir(cacheRoot, title.FilmShortMatchID(matchID))
 	if len(args) >= 2 {
 		filmDir = args[1]
 	}
+
+	// LES TROIS PROTECTIONS, ARMÉES AVANT LE MOINDRE DÉCODAGE (leçon du 2026-08-31).
+	//
+	// Ce binaire n'en avait AUCUNE : il était le seul point d'entrée de décodage du dépôt à
+	// décoder un film sans plafond mémoire, sans priorité basse et sans exclusion mutuelle. Sa
+	// justification au ratchet — « CLI unitaire : un film par invocation » — est vraie DANS le
+	// processus, et ne dit rien du nombre d'invocations : une boucle de shell, et pire, deux
+	// boucles en parallèle dont une en arrière-plan, ont saturé la machine de travail de
+	// l'utilisateur. Voir `internal/filmproc/solo.go` pour le récit complet.
+	//
+	// Ordre : le VERROU d'abord (un refus doit coûter zéro décodage), puis la priorité, puis la
+	// sentinelle. Aucune base n'est ouverte ici, donc la sentinelle a le droit de tuer
+	// (cf. l'en-tête de `filmproc`).
+	lock, err := filmproc.AcquireSolo(cacheRoot, outilNom, matchID)
+	if err != nil {
+		slog.Error("décodage refusé", "err", err)
+		os.Exit(filmproc.CodePreparation)
+	}
+	defer lock.Release()
+	filmproc.LowerOwnPriority(outilNom)
+	guard := filmproc.Arm(outilNom, filmproc.MeasureLimitGiB, func(peak uint64) {
+		slog.Error("plafond mémoire dépassé — film abandonné pour protéger la machine",
+			"pic_octets", peak, "match", matchID)
+		lock.Release()
+		os.Exit(filmproc.CodeMemory)
+	})
+	defer guard.Disarm()
 
 	out, err := builder.BuildMatch(matchID, []string{*mapName}, filmDir, loadFacts(*factsPath, matchID))
 	if err != nil {

@@ -54,8 +54,11 @@ var filmBuildAllowedCallers = map[string]string{
 		"appelle BuildFromFilm, elle ne boucle sur rien",
 	"cmd/levelup/cmd_backfill_replay_child.go": "2026-08-26 — ENFANT de la passe bornee " +
 		"(backfill_child.go) : un film par processus, sentinelle armee, le parent compte les issues",
-	"cmd/replay-build/main.go": "2026-08-26 — CLI unitaire : un film par invocation, le " +
-		"processus meurt ensuite. Aucune boucle",
+	"cmd/replay-build/main.go": "2026-08-31 — CLI unitaire : un film par invocation, le " +
+		"processus meurt ensuite. ARME LES TROIS PROTECTIONS (verrou solo, priorite basse, " +
+		"sentinelle a MeasureLimitGiB) — la justification du 2026-08-26 s'arretait a « aucune " +
+		"boucle DANS le processus », ce qui n'a pas empeche un operateur d'en lancer deux en " +
+		"parallele et de saturer la machine (cf. internal/filmproc/solo.go)",
 	"cmd/replay-worker/job.go": "2026-08-26 — ouvrier : un job a la fois, sentinelle armee PAR " +
 		"JOB (memlimit.go) et desarmee entre deux. Processus long-vivant, jamais deux films en vol",
 	"internal/api/wire/registry_replay_build.go": "2026-08-26 — action admin sur UN match, " +
@@ -139,4 +142,93 @@ func TestNoUnboundedFilmLoop(t *testing.T) {
 				"d'artefact — la retirer plutot que la laisser autoriser un site qui n'existe plus", rel)
 		}
 	}
+}
+
+// sentinelleTokens : les marques d'une sentinelle memoire armee dans un paquet.
+//
+// Deux formes coexistent legitimement : `filmproc.Arm` (la voie centralisee) et
+// `debug.SetMemoryLimit` (les deux `main` qui portent encore leur propre sentinelle,
+// `cmd/levelup/backfill_memlimit.go` et `cmd/replay-worker/memlimit.go`, avec leur doctrine
+// d'arret propre documentee sur place).
+var sentinelleTokens = []string{"filmproc.Arm(", "debug.SetMemoryLimit("}
+
+// TestPointsDEntreeDeDecodageArmentUneSentinelle — LE RATCHET NE DE LA BOMBE RAM DU 2026-08-31.
+//
+// # Ce qu'il empeche, et pourquoi le ratchet precedent ne suffisait pas
+//
+// [TestNoUnboundedFilmLoop] exige qu'un site de construction d'artefact soit DECLARE avec une
+// justification. Il ne verifie pas que cette justification soit TENUE. `cmd/replay-build` etait
+// declare « CLI unitaire : un film par invocation, le processus meurt ensuite. Aucune boucle » —
+// c'etait vrai, et c'etait insuffisant : le binaire n'armait AUCUN plafond memoire, si bien
+// qu'une boucle de shell autour de lui (et pire, deux boucles en parallele dont une en
+// arriere-plan) a de nouveau sature la machine de travail de l'utilisateur. QUATRIEME sinistre,
+// meme mecanisme, quatrieme remede.
+//
+// **La regle qui en sort : un PROCESSUS D'OPERATEUR qui decode un film arme une sentinelle, quoi
+// que dise sa justification.** Une garantie qui s'arrete a la frontiere du processus ne protege
+// rien contre celui qui lance le processus.
+//
+// # Perimetre : les points d'entree `cmd/`, et eux seuls
+//
+// Les sites `internal/` sont soit des DEFINITIONS (elles ne decodent que si on les appelle),
+// soit des chemins qui vivent DANS LE SERVEUR — et la, la sentinelle est INTERDITE : elle mene a
+// un arret de processus, et le serveur tient des bases en ecriture (cf. l'en-tete de
+// `filmproc`). Leur protection est d'une autre nature (l'enfant borne de `replaychild`), et ce
+// ratchet n'a pas a la confondre avec celle-ci.
+func TestPointsDEntreeDeDecodageArmentUneSentinelle(t *testing.T) {
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller a echoue")
+	}
+	apiRoot := filepath.Dir(filepath.Dir(filepath.Dir(thisFile)))
+
+	verifies := 0
+	for rel := range filmBuildAllowedCallers {
+		if !strings.HasPrefix(rel, "cmd/") {
+			continue // cf. l'en-tete : les sites internal/ relevent d'une autre protection
+		}
+		verifies++
+		pkgDir := filepath.Join(apiRoot, filepath.FromSlash(filepath.Dir(rel)))
+		if !sentinelleDansPaquet(t, pkgDir) {
+			t.Errorf("point d'entree %q decode un film SANS sentinelle memoire.\n"+
+				"Un processus d'operateur qui decode doit armer filmproc.Arm (ou sa propre "+
+				"sentinelle documentee) AVANT tout decodage : « un film par invocation » ne dit "+
+				"rien du nombre d'invocations, et c'est ce qui a sature la machine le "+
+				"2026-08-31. Modele : cmd/replay-build/main.go.", rel)
+		}
+	}
+	if verifies == 0 {
+		t.Fatal("aucun point d'entree cmd/ verifie — le ratchet ne prouverait rien")
+	}
+	t.Logf("%d point(s) d'entree cmd/ verifie(s)", verifies)
+}
+
+// sentinelleDansPaquet dit si un repertoire de paquet arme une sentinelle memoire.
+func sentinelleDansPaquet(t *testing.T, dir string) bool {
+	t.Helper()
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Errorf("lecture du paquet %s: %v", dir, err)
+		return false
+	}
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".go") || strings.HasSuffix(e.Name(), "_test.go") {
+			continue
+		}
+		data, err := os.ReadFile(filepath.Join(dir, e.Name())) //nolint:gosec // chemin construit depuis l'allowlist
+		if err != nil {
+			continue
+		}
+		for _, line := range strings.Split(string(data), "\n") {
+			if trimmed := strings.TrimSpace(line); strings.HasPrefix(trimmed, "//") {
+				continue // une sentinelle CITEE en commentaire n'en est pas une
+			}
+			for _, tok := range sentinelleTokens {
+				if strings.Contains(line, tok) {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }

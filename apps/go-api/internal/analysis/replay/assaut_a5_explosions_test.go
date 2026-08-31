@@ -37,7 +37,9 @@ package replay
 import (
 	"context"
 	"os"
+	"path/filepath"
 	"sort"
+	"strconv"
 	"testing"
 
 	"levelup/go-api/internal/analysis/objectiveevents"
@@ -71,6 +73,7 @@ func TestAssautA5Explosions(t *testing.T) {
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
+	defer amArmeSentinelle(t, "TestAssautA5Explosions")()
 	films := make([]string, 0, len(a5Explosions))
 	for id := range a5Explosions {
 		films = append(films, id)
@@ -126,12 +129,75 @@ func TestAssautA5Explosions(t *testing.T) {
 		a5Datees     = 28
 		a5Attribuees = 26
 	)
-	t.Logf("BILAN : %d explosions datees au releve, %d attribuees a un joueur (%.1f %%), "+
+	t.Logf("BILAN NOMMAGE : %d explosions datees au releve, %d attribuees a un SLOT (%.1f %%), "+
 		"%d publiees hors releve", datees, attribuees, 100*float64(attribuees)/float64(datees), horsReleve)
 	if datees != a5Datees {
 		t.Errorf("le releve fige porte %d explosions, attendu %d", datees, a5Datees)
 	}
 	if attribuees != a5Attribuees {
 		t.Errorf("%d explosions attribuees, attendu %d — la publication a change", attribuees, a5Attribuees)
+	}
+}
+
+// a5Publiees : le nombre d'explosions qui arrivent A L'ECRAN, apres le PONT D'IDENTITE.
+//
+// # DEUX CHIFFRES, ET IL FAUT LES DEUX
+//
+// Le nommage attribue une explosion a un SLOT d'entite statborg (26/28). Le rejeu, lui, joint sur
+// le XUID : une explosion dont le pont ne sait pas nommer le slot POUR SA MANCHE n'est pas
+// publiable — la rattacher a un slot d'une autre manche serait exactement l'erreur que le pont
+// par manche existe pour eviter (le slot est REATTRIBUE d'une manche a l'autre).
+//
+// Mesure du 2026-08-31 : **21 sur 28**. Les 5 pertes sont toutes sur les 3 films One Bomb, les
+// seuls multi-manches — le pont y resout chaque manche separement, sur les seules progressions du
+// compteur de morts DE CETTE MANCHE, et une manche courte n'en offre pas assez. Ce n'est pas une
+// regression de ce lot : avant lui, `RealRounds` ne retenait qu'une manche par film One Bomb et
+// il n'y avait qu'UNE explosion a publier par film (3 au total contre 21 aujourd'hui).
+//
+// Le chiffre est FIGE ici pour qu'une amelioration du pont d'identite se voie, et qu'une
+// degradation se voie aussi.
+const a5Publiees = 21
+
+// TestAssautA5PontIdentite mesure ce qui arrive a l'ecran, pont d'identite compris.
+func TestAssautA5PontIdentite(t *testing.T) {
+	cache := os.Getenv("ASSAUT_CACHE")
+	if cache == "" {
+		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
+	}
+	defer amArmeSentinelle(t, "TestAssautA5PontIdentite")()
+	films := make([]string, 0, len(a5Explosions))
+	for id := range a5Explosions {
+		films = append(films, id)
+	}
+	sort.Strings(films)
+
+	var nommees, publiees int
+	for _, id := range films {
+		src, ok, err := filmcache.Open(cache, id)
+		if err != nil || !ok {
+			t.Fatalf("film %s absent du cache : %v", id, err)
+		}
+		recs, _ := objectiveevents.StatRecordsCtx(context.Background(), src, id)
+		deaths, err := ScanFilmDeaths(filepath.Join(cache, "film_chunks", id))
+		if err != nil {
+			t.Fatalf("%s : fil des morts illisible : %v", id, err)
+		}
+		instants := make([]objectiveevents.DeathInstant, 0, len(deaths))
+		for _, d := range deaths {
+			instants = append(instants, objectiveevents.DeathInstant{
+				XUID: strconv.FormatUint(d.XUID, 10), TimeMS: int(d.TimeMS)})
+		}
+		named := objectiveevents.NamedEventsFrom(recs, objectiveevents.ObjectiveTypeBomb)
+		ident := objectiveevents.IdentifyNamedEventsByRound(named,
+			objectiveevents.ResolveRoundIdentity(recs, instants))
+		nommees += len(named)
+		publiees += len(ident)
+		t.Logf("%s : %d nommee(s) -> %d publiee(s)", id, len(named), len(ident))
+	}
+	t.Logf("BILAN PONT : %d nommee(s) -> %d publiee(s) a l'ecran (%.1f %% des 28 datees)",
+		nommees, publiees, 100*float64(publiees)/28)
+	if publiees != a5Publiees {
+		t.Errorf("%d explosions publiees, attendu %d — le pont d'identite a change (une hausse "+
+			"est une bonne nouvelle a figer ici, une baisse est une regression)", publiees, a5Publiees)
 	}
 }
