@@ -79683,3 +79683,1655 @@ une requete assemblee entierement a l'execution lui echapperait. Et il ne couvre
 
 **Prochaine etape** : rien de planifie. Le dispositif est autonome — il signale, et il dit quoi
 faire du signalement.
+
+## [2026-08-30] Visee a la lunette (ADS) — la queue d'i21 est LUE, et elle est CONSTANTE : NEGATIF PUBLIE — Complete
+
+**Contexte** : l'utilisateur tient que le film porte l'etat de lunette, parce qu'on voit
+l'epaulement dans Theater. Trois negatifs etaient deja ecrits (pas de composant `unit-zoom` dans
+le registre de replication ; `IsZoomed`/`GetZoomState` = data-binding d'interface ; le descope
+part en telemetrie Xbox). Restait UNE piste vivante : le composant i21
+`unit-desired-aiming-vector` porte, apres le couple (cap, elevation) deja publie, TROIS DRAPEAUX
+et un SECOND VECTEUR que le port Go lisait puis jetait. Ghidra via l'API HTTP du greffon
+(`127.0.0.1:8089`), le pont MCP natif ne se connectant pas sous Windows.
+
+**Decisions techniques** :
+
+1. *La queue d'i21 est nommee chez le PRODUCTEUR, pas devinee.* Regle 1 de la methode (suivre le
+   consommateur/producteur) appliquee au bloc de masque `0x200000` de `FUN_142ee09a8` — la passe
+   de collecte qui remplit l'etat replique de l'unite — et confrontee a `FUN_1404d4cb8`, qui le
+   recopie sur l'objet local :
+   - `flag0` (+0x724 bit0) = `! FUN_14071443c(unite)`. C'est un drapeau de COMPRESSION : a vrai,
+     la seconde direction est identique a la premiere et `FUN_1406c72e8` recopie le vecteur A
+     dans les DEUX emplacements de destination (+0x348 et +0x3e4).
+   - vecteur A = unite+0x348 ; vecteur B = unite+0x3e4. Deux directions de visee de meme forme,
+     la seconde transmise seulement si `flag0 == 0`.
+   - `flag1` (+0x724 bit1) = signe de `(unite+0x354) x A` ; `flag2` (+0x5f8 bit0) = signe de
+     `(unite+0x3d8) x B`. Ce sont les SIGNES d'un axe compagnon — ce que l'encodage 23 bits d'une
+     direction ne peut pas porter. De la geometrie, pas un etat de jeu.
+   Fermeture arithmetique gratuite : `1 + 23 + 1 = 25` et `1 + 23 + 1 + 23 + 1 = 49`, exactement
+   les deux largeurs de la table ECS.
+
+2. *Une seule edition de production, dans le lecteur OFFLINE.* `readAimingVectorComponent`
+   (`filmdec/offline_aim.go`) lit desormais la queue entiere et `componentDirs` publie
+   `AimFlag0/AimFlag1/AimFlag2`, `HasAimB`, `YawRawB/PitchRawB`. Choix du chemin OFFLINE plutot
+   que d'un hook sur `consumeUnitDesiredAimingVector` : c'est lui qui porte deja slot + instant +
+   position dans le meme record, donc le seul par lequel un drapeau peut etre DATE contre le
+   killfeed ; le hook du chemin de marche aurait exige un test dans `filmdec`, d'ou `killsource`
+   est inaccessible (cycle d'import). Effet de bord nul : aucun bit deja lu ne change, la lecture
+   s'arrete net a la fin du composant, chaque champ neuf a sa propre borne.
+
+3. *Seuil, temoin et verdict ecrits AVANT la mesure* (`replay/visee_lunette_research_test.go`,
+   sous garde `ADS_FILM`, saute en CI). Oracle : les kills au fusil a lunette (S7 Sniper, Skewer,
+   Stalker Rifle, etiquettes `damagetag`), fenetre amont 1 s, horloge `tMS + DeathOffsetMS`. DEUX
+   temoins : le FOND (hors fenetre de kill) et surtout le TEMOIN TIR (memes fenetres avant les
+   kills a une arme SANS lunette) — lui seul separe « je vise a la lunette » de « je tire ».
+   Gate declare : facteur >= 2 ET ecart >= 20 points, sur >= 30 fenetres et >= 200 echantillons.
+
+**Resultats** (5 films : 000d5950, 530820e5, 7344d24f, 89f86fe4, d245486a) :
+
+| mesure | valeur |
+|---|---|
+| records i21 lus | **607 258** |
+| `flag0` | **CONSTANT a 1** — 607 258 / 607 258 |
+| `flag1` | **CONSTANT a 0** — 0 / 607 258 |
+| second vecteur (branche 49 bits) | **JAMAIS transmis** — 0 / 607 258 |
+| `flag2` | jamais lu (il n'existe que sur la branche 49 bits) |
+| fenetres « fusil a lunette » | 23 au total (6, 6, 0, 11, 0) — **sous le seuil de 30** |
+
+L'oracle du fusil a lunette NE CONCLUT PAS (population insuffisante, et c'est journalise comme
+tel). Ce qui conclut, c'est le CONTROLE DE CONSTANCE — ajoute apres la premiere passe, et dit
+comme tel dans le fichier : ce n'est pas un seuil deplace, c'est une observation brute sans
+parametre, et elle est plus forte que le seuil qu'elle remplace. **Un bit constant ne code aucun
+etat** ; aucune population, si grande soit-elle, ne separerait quoi que ce soit.
+
+Controle croise INDEPENDANT de `flag0` : la table ECS donne une largeur mesuree de 25 bits pour
+i21, relevee par une tout autre voie (observation de largeur du decodeur de trame). 25 = la
+branche `flag0 == 1`. Deux chaines sans etape commune, meme reponse.
+
+**Piste secondaire statuee** : `object-frame-configuration-component` (i17, biped, 52 bits, usage
+produit « aucun ») = `FUN_1407f0534` -> `FUN_1407f0550`, qui ecrit unite+0x4f8 : TROIS entrees de
+`{identifiant R(6) sous porte + 2 scalaires dequantifies}`. C'est une configuration geometrique de
+reperes (niveau_jeu=0 dans la table), pas un etat discret. Aucun bit d'etat a y chercher ; la
+piste est fermee sans campagne dediee.
+
+**REPONSE A LA QUESTION POSEE — NON, MESURE.** Le film ne transmet pas l'etat de lunette : ni
+comme composant (le registre n'en porte aucun sur aucun archetype), ni cache dans la queue d'i21
+(trois bits constants sur 607 258 records). L'epaulement vu dans Theater est RECONSTRUIT cote
+client a partir de l'arme tenue et de l'animation — le jeu sait quelle arme le joueur tient
+(i43..i46) et il en deduit la pose ; il ne lui a jamais fallu un bit de zoom pour cela.
+
+**Decouverte hors perimetre, NON traitee** : sur `feat/v75`, `internal/service/match_view_data_loaders.go`
+importe `internal/service/killsourceload`, paquet ABSENT du depot -> `go test ./internal/games/...`
+casse en `[setup failed]` sur `halo_5/livesync`. Anterieur a ce lot (fichier touche pour la
+derniere fois par `68e44770b`), une session soeur le detient sans doute non commite. A committer
+par son auteur.
+
+**Gates** : `go vet` propre ; `go test ./internal/analysis/...` **0 echec** ; les trois garde-rails
+de la table ECS (G1/G2/G3) verts avec film. La table `ecs_table.tsv` est corrigee : la ligne i21
+affirmait « Plus rien de ce composant n'est jete », ce qui etait faux — elle porte maintenant la
+grammaire complete, l'adresse du deser et le resultat de la mesure.
+
+**Prochaine etape** : rien d'ouvert sur la lunette. Si l'utilisateur veut malgre tout une trace
+d'epaulement dans le rejeu, la seule voie honnete est une HEURISTIQUE affichee comme telle (arme a
+lunette tenue + cible dans l'axe), jamais presentee comme une donnee du film.
+
+## [2026-08-30] Visee a la lunette — phase 2 : l'oracle des MEDAILLES, et le balayage des composants — Complete
+
+**Contexte** : l'utilisateur refuse le negatif de la phase 1 et donne deux pistes qui se revelent
+toutes les deux justes : (1) les medailles Counter-snipe / No Scope disent l'etat de lunette, (2)
+Ghidra doit pouvoir montrer quel etat de composant le jeu verifie pour les attribuer. Il reproche
+aussi, a raison, la limitation a 5 films.
+
+**Ce que la phase 2 a etabli** :
+
+1. *L'etat de lunette a une adresse.* Fonction de script `Unit_IsZoomed` -> `FUN_142c82fd0` :
+   `unite+0x461` = niveau de zoom COURANT (`0xFF` = pas zoome), `unite+0x462` = niveau DESIRE,
+   `FUN_1404a4ab8` fait la transition. Le descripteur du composant `unit_zoom` (143d0da58) porte a
+   `+0x70` un pointeur vers `FUN_14110ec20`, qui ecrit `+0x462`. Le composant existe donc bel et
+   bien, avec sa fonction d'application.
+
+2. *Mais il n'est pas dans le registre du film.* Zero occurrence de « zoom » parmi les 325 noms de
+   composants de `ecs_table.tsv`, et le garde-rail G2 verifie que cette table EST le registre lu
+   dans les films. Replique en reseau live, absent de la bobine.
+
+3. *Le film porte les MEDAILLES, identifiees et datees.* Recensement sur **1369 films** (le corpus
+   en compte 1369, pas 954) via le seul chunk d'evenements, 34 s :
+
+   | etiquette | code film | instants | films |
+   |---|---|---|---|
+   | No Scope (« WITHOUT ZOOMING ») | (100,114) | **2378** | 857 |
+   | Counter-snipe (« while YOU BOTH ARE ZOOMED ») | (100,168) | **295** | 148 |
+
+   Deux etiquettes OPPOSEES, meme classe d'arme, instants exacts. C'est l'oracle que le proxy
+   « kill au sniper => sans doute zoome » de la phase 1 n'etait pas.
+
+4. *Le balayage des composants.* 68 films, 271 instants situes (151 sans lunette / 120 avec),
+   arret anticipe sur cible atteinte, 13 min 42. UN seul index franchit le seuil ecrit avant la
+   mesure : **i5 `object-shield-vitality`**, present a 52,98 % avant un kill SANS lunette contre
+   16,67 % avec (dernier record 47,62 / 13,51 ; temoin a -30 s 31,20 / 20,79, sous le seuil).
+
+**POURQUOI i5 N'EST PAS LA REPONSE, et c'est dit ici plutot qu'enterre** :
+- *Le sens est inverse.* Un composant porteur de la lunette apparaitrait davantage chez la classe
+  ZOOMEE (l'evenement de mise en lunette). On observe le contraire.
+- *Le composant est deja entierement decode.* i5 est la jauge de bouclier, publiee dans le rejeu
+  (`Point.Sh`). Ce n'est pas un composant d'etat inconnu.
+- *La confusion est evidente une fois nommee.* Un No Scope se joue au contact, dans un echange de
+  tirs : le bouclier du tueur bouge. Un Counter-snipe est un duel a distance : le tueur est
+  intouche, bouclier plein et stable. i5 separe le CONTEXTE DE COMBAT, pas la lunette.
+- *Et mon temoin ne pouvait pas l'attraper* : a -30 s il controle l'effet de joueur et de film,
+  pas l'effet « au contact vs a distance » a l'instant du kill. Le bon temoin aurait ete les kills
+  a une arme sans lunette au MEME instant, comme dans l'instrument de la phase 1. Faute de
+  conception, pas de mesure.
+
+**VERDICT** : negatif sur la question posee — aucun composant n'ENTRE au masque du bipede
+differemment selon l'etat de lunette.
+
+**PORTEE EXACTE, et elle est etroite** — deux choses que ce negatif n'exclut pas :
+1. un bit a l'interieur d'un composant deja present en permanence (le balayage regarde la
+   PRESENCE, pas la charge utile) ;
+2. l'archetype JOUEUR (ti=5), qui porte `player-aim-assist-component` et
+   `player-control-aiming-component` — l'assistance a la visee change avec la lunette.
+
+**Erreurs de conduite de ce lot, listees parce qu'elles ont coute des heures** :
+- 1er balayage : appariement masque<->position par le hook de diagnostic, qui tire AVANT
+  `DropIsolated` -> 144 films sur 148 rejetes par mon propre garde-fou. Corrige en faisant voyager
+  le masque DANS le record (`BipedPosition.MaskBits`).
+- 2e balayage : expire a 4 h vers 130/148 sans RIEN imprimer -> tout perdu. Cause : aucune sortie
+  progressive, et `ScanFilmPlayerIndices` (~90 s/film) appele pour rien — ce balayage n'a besoin
+  que de slot -> xuid, que `nameLivesByDeaths` donne a partir du seul fil des morts. Apres
+  retrait : **7,6 s/film**, facteur 12.
+- 3e balayage : sortie progressive tous les 5 films + arret anticipe sur cible + plafond de films.
+  13 min 42 pour une reponse.
+
+**Prochaine etape** : aucune n'est engagee. Les deux angles restants sont ecrits ci-dessus (bit a
+l'interieur d'un composant ; archetype joueur) ; ils demandent chacun un instrument neuf.
+
+## [2026-08-30] Visee lunette, phase 3 — le canal du zoom TROUVE dans le dispatcher, et JAMAIS emprunte par la bobine : NEGATIF TRIPLE-VERROUILLE — Complete
+
+**Contexte** : suite des phases 1 (i21 constant) et 2 (Opus : oracle medailles monte, balayage de
+presence negatif, adresse memoire du zoom trouvee : unite+0x461 courant / +0x462 desire).
+L'utilisateur maintient que l'info est dans le film et signale la dispersion de la phase 2. Cette
+phase 3 ne tire qu'un fil : QUI ECRIT +0x462, et le flux qui l'alimente est-il dans la bobine ?
+
+**Chaine de retro-ingenierie (Ghidra, API HTTP)** :
+
+1. *Ecrivains de +0x461/+0x462 enumeres par balayage d'instructions* (112 et 29 sites). Trois
+   familles : la transition (`FUN_1404a4ab8`, seule ecrivaine "legitime" de +0x461, appelee du
+   tick d'unite `FUN_1406dba04`), des copies save/restore, et les SOURCES de +0x462 :
+   - `FUN_1406db688` = "applique la COMMANDE joueur a l'unite" : `+0x462 = octet 6 de la
+     commande`. Appelee par `FUN_1404d5384` (commande stockee dans la structure joueur +0x68)
+     et par `FUN_1404d4f48` (commande neutre de reset).
+   - `FUN_14110ec20` = applicateur de PROPRIETE (poignee objet + valeur -> +0x462), pointe par
+     le descripteur `unit_zoom` (143d0da50, getName +0x08, apply +0x78).
+2. *Le descripteur unit_zoom n'a PAS de lecteur de bits* : ses cases +0x28/+0x38 pointent un
+   stub `return 1` (`FUN_1408d8220`). Il porte en revanche pertinence (`FUN_142e30074`) + log
+   (`"unit-zoom : relevance=%5.3f"`) : machinerie de replication live a pertinence.
+3. *LA CLE : la table des types d'event des paquets delta* (@0x144724A90, 128 entrees) pointe
+   vers ces MEMES descripteurs. Nommage par getName de chaque type observe :
+   type 105 = `action_weapon_fire`, 64 = `weapon_overheat`, 99 = `weapon_empty_click`,
+   115 = `projectile_detonate`, 114 = `biped_board_vehicle`, 68 = `PowerUpApplied`...
+   et **type 126 = `unit_zoom`**. Le zoom a donc SON PROPRE TYPE DE PAQUET dans le format.
+
+**Mesures (instrument `visee_tir_research_test.go`, garde TIR_FILMS_DIR, 3 tests)** :
+
+1. *Differentiel bit-a-bit de la tete du record de degat fatal* (113 bits a offsets fixes du
+   type 105), oracle medailles : *No Scope* = tueur PAS zoome, *Counter-snipe* = tueur zoome,
+   meme classe d'arme des deux cotes -> le confondeur "au contact vs a distance" de la phase 2
+   ne peut pas operer. Recalage d'horloge feed->film par VOTE DE MODE sur les kills (valide :
+   58 ms d'ecart avec la reference sur 000d5950). Corpus entier en 28 s :
+   **134 tirs zoomes vs 780 non zoomes apparies** (auto-controle : la famille S7 domine les
+   deux classes). **AUCUN bit ne separe** (seuil 0,50 ecrit avant). Seul ecart : bit 42 a
+   9 % vs 40 % = champ "cause du degat" = trace du TIR A LA TETE (Counter-snipe l'exige), pas
+   du zoom.
+2. *Recensement des types de paquets, corpus entier* (1369 films, 41 M de paquets delta, 34 s) :
+   TOUS les types freres presents partout (weapon_overheat 220 k, empty_click 1 M,
+   detonate 195 k, board_vehicle 197 k)... et **ZERO paquet de type 126 (unit_zoom)**.
+
+**VERDICT TRIPLE-VERROUILLE — le film ne transmet PAS l'etat de lunette** :
+- verrou 1 (registre) : aucun composant de zoom sur aucun des 118 archetypes ; queue d'i21
+  constante sur 607 258 records (phase 1) ;
+- verrou 2 (oracle du jeu lui-meme) : 134 tirs zoomes vs 780 non zoomes, aucun bit du record
+  fatal ne les separe ;
+- verrou 3 (par construction) : le jeu POSSEDE un type de paquet dedie au zoom (126,
+  descripteur complet avec applicateur vers unite+0x462), et la bobine ne l'emprunte JAMAIS —
+  0 sur 41 M de paquets — pendant que tous ses freres de canal y sont dans chaque film.
+  L'autre chemin d'ecriture (octet 6 de la commande joueur) supposerait un flux de commandes
+  dans le film : l'archetype joueur ti=5 n'en porte pas (27 composants inventories).
+
+**PISTES INDIRECTES RESTANTES, parkees et dites comme telles** : deux composants ti=5 a
+grammaire desormais CONNUE (resolue cette phase par la table des descripteurs, pas 0x50,
+deser en +0x30) : `player-aim-assist-component` = FUN_141139f30 (poignee de cible +
+UN drapeau comp+0xb8) et `player-desired-frame-configuration-component` = FUN_1410dcb34
+(= FUN_1407f0550, meme corps que biped i17). L'assistance a la visee change avec la lunette :
+un signal DERIVE y est concevable, mais ce serait une correlation, pas l'etat.
+
+**Geste de verification utilisateur (gate visuel)** : 3 scenes Counter-snipe etiquetees —
+film 00162144 a 0:46, 00ba2e1c a 4:12, 03ccbe42 a 3:30 (horloge du feed). Si Theater n'y
+montre PAS d'epaulement chez le tueur, la premisse tombe ; s'il le montre, c'est reconstruit
+cote client et les deux pistes parkees deviennent le prochain fil.
+
+**Gates** : go vet OK ; `go test filmdec+replay` 0 echec ; fichiers de recherche sous garde
+d'env (sautes en CI). Artefacts : `.ai/V7.5/film_re/visee_tir_differentiel.tsv` (taux par bit).
+Aucun code de production modifie dans cette phase (les 3 tests sont autonomes, parallelises
+sans verrou car ils ne touchent aucun global de decodage — justifie en tete de fichier).
+
+**Prochaine etape** : gate visuel utilisateur sur une scene Counter-snipe ; selon le resultat,
+soit cloture definitive, soit instrument sur le drapeau aim-assist (ti=5 i22).
+
+## [2026-08-30] Visee lunette, phase 4 — la piste utilisateur « c'est un point de vue » donne un CORRELAT mesure : le trafic camera s'effondre autour des kills zoomes — En cours
+
+**Contexte** : l'utilisateur maintient qu'en Theater PREMIERE personne le zoom se VOIT (surimpression
+de lunette, grossissement), donc que l'info est dans la bobine, « peut-etre codee autrement » ; et
+precise l'objectif produit : dans le rejeu 2D, LE CONE DE VISEE QUI S'ETRECIT quand le joueur est a
+la lunette. Sa toute premiere intuition (« peut-etre un changement de point de vue ») devient la
+piste de cette phase.
+
+**Ce que la phase 4 etablit** :
+
+1. *Filet a zoom « sous n'importe quel nom »* (`TestViseeCanalFenetres`) : pour CHACUN des 128
+   types d'event, presence dans la fenetre [-8 s, +2 s] des kills zoomes (Counter-snipe) vs non
+   zoomes (No Scope), corpus entier, 27 s. Seuils ecrits avant (ecart >= 0,35 ET ratio >= 2).
+   **UN candidat : le type 97**, les echantillons de camera.
+2. *Temoin de contexte* (lecon i5 de la phase 2, integre d'office) : 3e classe = fenetres des
+   AUTRES kills (arme quelconque, 2 112 fenetres). Resultat :
+   | classe | presence type 97 | moy paquets/fenetre |
+   |---|---|---|
+   | autres kills (temoin) | 95,4 % | ~15 |
+   | No Scope (pas zoome) | 88,3 % | 14,15 |
+   | **Counter-snipe (zoome)** | **42,9 %** | **1,93** |
+   L'anomalie est SPECIFIQUE a la classe zoomee (le temoin colle a No Scope), et l'effondrement
+   est GLOBAL (-86 % de paquets) : l'immobilite d'UN joueur sur huit ne peut pas le produire.
+   **L'absence de paquets camera est correlee a la lunette.** Mecanisme NON elucide — ce n'est
+   pas encore un etat lisible, c'est un correlat fort et reproductible.
+3. *Grammaire du type 97* (case +0x68 du descripteur, convention VALIDEE sur le type 105 qui rend
+   exactement FUN_14080C1F8) : lecteur FUN_142f160c4 = position vec3 (niveau 0x10) + DEUX flottants
+   dequantises (angles). PAS de champ de grossissement, PAS d'index de joueur a l'offset du record
+   de degat (histogramme bits 36..40 PLAT sur 1..15 — enveloppe differente). Ecrivain FUN_142f18ad0
+   (+0x60), reference par le seul descripteur : le site d'emission passe par un canal generique,
+   sa CONDITION d'emission reste a trouver.
+4. *Reponse a la question aim-assist de l'utilisateur* : oui, `player-aim-assist-component` = 
+   l'AIMANT (magnetisme). Grammaire resolue cette session (deser FUN_141139f30) : poignee de la
+   CIBLE aimantee + UN drapeau (comp+0xb8). Le reticule qui s'agrandit/retrecit a l'ecran est du
+   HUD reconstruit cote client (data-binding), pas un enregistrement.
+
+**CE QUI RESTE A FAIRE (prochain instrument, dimensionne)** :
+- Decoder position+angles des paquets 97 et les APPARIER aux pistes bipedes : si chaque paquet
+  suit la tete d'UN joueur, le sujet de chaque echantillon est identifiable ; alors verifier si
+  le flux d'un joueur S'INTERROMPT pendant ses periodes zoomees (bornees par les Counter-snipe).
+  Si oui : les periodes de lunette par joueur deviennent LISIBLES du film (par les trous du flux
+  camera) -> le cone du rejeu peut s'etrecir sur mesure, pas sur heuristique.
+- Gate visuel utilisateur EN PREMIERE PERSONNE sur une scene Counter-snipe etiquetee (00162144 a
+  0:46, 00ba2e1c a 4:12, 03ccbe42 a 3:30) : si la surimpression de lunette s'affiche vraiment,
+  un flux la pilote et l'appariement ci-dessus est le suspect n1 ; si elle ne s'affiche pas, la
+  premisse tombe et le triple verrou de la phase 3 cloture.
+
+**Gates** : go vet OK ; suites filmdec + replay 0 echec ; 2 fichiers de recherche sous garde
+(`visee_tir_research_test.go` 499 L, `visee_canal_zoom_research_test.go` 439 L), aucun code de
+production touche en phases 3-4.
+
+**Prochaine etape** : appariement paquets 97 <-> joueurs (instrument dedie), puis mesure des trous
+du flux pendant les periodes zoomees.
+
+## [2026-08-30] Visee lunette, phase 5 — ti=11 statue (HUD des OBJECTIFS, pas la vue), table ECS balayee exhaustivement, camera type 97 : grammaire lue, appariement angulaire NON verrouille — En cours
+
+**Contexte** : l'utilisateur propose ti=11 (« le flux HUD ») ou un autre composant des tables ECS.
+
+**Statue en trois points** :
+
+1. *ti=11 n'est pas la vue.* C'est l'archetype `managed-objective` : minuteurs, couleur, textes
+   formates, progression, sous-objectifs — le HUD DES OBJECTIFS. Et le chantier `wt/ti11-cadre`
+   (c8aaf4afb) avait deja gate : « le vivant n'est PAS dans le delta ti=11 ». Rien de la visee.
+2. *Balayage NOMINAL EXHAUSTIF de la table ECS* (hud|reticle|view|camera|fov|scope|screen|zoom|
+   nameplate|marker|aim sur les 325 noms) : ti=9 `managed-player` = profil/mission (equipe,
+   couleurs, saison, nom de mission + drapeau « afficher dans le HUD » R(1)) ; ti=34 `tacmap` =
+   carte tactique de CAMPAGNE (echelle, waypoints, voyage rapide, cap de camera de carte R(12)) ;
+   plus les connus (i21, player-control-aiming, player-aim-assist). AUCUN composant de vue
+   premiere personne, AUCUN zoom. Le registre est clos sur cet angle.
+3. *Camera type 97 — la grammaire est maintenant LUE dans l'exe* (disassemblage du lecteur
+   FUN_142f160c4 + bornes en .rdata) :
+   - position (chemin FUN_14076e524, sous porte, LARGEUR RUNTIME `DAT_144632be0` — non decodee) ;
+   - **tangage R(20) sur [-1,49226 ; +1,49226] rad (= ±85,5°, butee de camera FPS)** ;
+   - **cap R(20) sur [0 ; 2π[**.
+   C'est une camera premiere personne complete. MAIS l'appariement angulaire camera<->visee i21
+   ne se verrouille a AUCUN offset fixe (v1 : 21,6 % vs 17,5 % de fond ; v2 par tangage seul +
+   concentration de l'ecart de cap : bin modal 4-6 %, uniforme ~1,4 % — pas de concentration).
+   Cause la plus probable : la position a largeur variable en tete deplace les angles paquet par
+   paquet. Instrument : `visee_camera_pov_research_test.go` (garde CAM_FILM, seuils declares,
+   verdicts v1/v2 publies).
+
+**Prochaine etape (bornee)** : lire la grammaire complete de FUN_14076e524 + la semantique de
+`DAT_144632be0` (Ghidra), decoder la position des paquets 97, apparier par DISTANCE aux bipedes ;
+les angles serviront alors de verification par famille d'offsets. Si l'attribution tient : mesurer
+les TROUS du flux par joueur pendant les periodes zoomees (bornees par Counter-snipe) -> periodes
+de lunette par joueur lisibles du film -> le cone du rejeu s'etrecit sur donnee reelle.
+
+**Gates** : go vet OK, suites filmdec + replay 0 echec, 3 fichiers de recherche sous garde
+(tir 499 L, canal 439 L, camera ~300 L), production intacte.
+
+## [2026-08-30] Visee a la lunette — phase 3 : la chaine de l'octet de zoom est FERMEE par construction — Complete
+
+**Ce qui restait ouvert apres la phase 2** : la mesure disait « aucun composant du bipede ne separe
+zoome / pas zoome », mais un negatif de mesure ne dit jamais pourquoi. La question structurelle
+etait : QUI ECRIT l'octet de zoom, et l'un de ces ecrivains est-il un deserialiseur du film ?
+
+**Methode** : l'octet est `unite+0x461` (niveau courant, `0xFF` = pas zoome), etabli phase 2 par
+`Unit_IsZoomed` -> `FUN_142c82fd0`. Recherche exhaustive des instructions ecrivant cet offset, puis
+qualification de CHAQUE ecrivain.
+
+**Resultat — les ecrivains de `+0x461`, tous qualifies, aucun laisse dans le flou** :
+
+| fonction | nature | est-ce un deser du film ? |
+|---|---|---|
+| `FUN_1404a4ab8` | transition zoom courant <- zoom desire (`+0x462`) | non — logique de jeu |
+| `FUN_1408dda14` | initialisation de l'unite | non |
+| `FUN_1434a3ac0` | constructeur de copie de l'unite (recopie 0x460/0x461/0x462) | non |
+| `FUN_1411a9510` | setter d'une ligne, appele par `FUN_1434a39f4` | voir ligne suivante |
+| `FUN_1434a39f4` | **enregistre par `FUN_1403bb200` a cote de `IsPlayerItemFocused` / `IsTeamsEnabled`** | **non — DATA-BINDING D'INTERFACE** |
+| `FUN_140915c38` / `FUN_1432d7914` | autre structure, `+0x461` sans rapport | non |
+
+Et `FUN_14110ec20`, qui ecrit `+0x462`, est bien dans le descripteur du composant `unit_zoom`
+(pointeur a `143d0dac8`) — mais ce composant est ABSENT du registre de replication du film.
+
+**CONCLUSION STRUCTURELLE** : aucun deserialiseur du film n'ecrit l'octet de zoom. Le seul chemin
+qui l'ecrirait est le composant `unit_zoom`, qui n'est pas enregistre dans la bobine. `FUN_1434a39f4`
+est le TROISIEME piege data-binding de ce chantier, apres `IsZoomed`/`GetZoomState` et
+`KillerWeapon` : le motif est desormais assez etabli pour etre un reflexe — toute fonction dont
+l'unique reference est une table de noms UI n'est pas de la replication.
+
+**DEUX CHAINES INDEPENDANTES, MEME REPONSE** (regle 2 de la methode) :
+1. STRUCTURE (ci-dessus) : personne n'ecrit l'octet depuis le flux.
+2. MESURE (phase 2) : sur 271 instants etiquetes par le jeu, aucun composant ne separe.
+Aucune etape commune. La question est close pour l'octet de zoom.
+
+**CE QUI RESTE HONNETEMENT OUVERT** : que le film ne porte pas l'octet ne dit pas qu'il ne porte
+aucun PROXY de la lunette. Et la premisse visuelle — « on voit l'epaulement dans Theater » — n'a
+jamais ete testee. D'ou `TestViseeMedaillesScenes`, qui fabrique des rendez-vous : le film
+`02d39fa0` porte deux No Scope de JGtm (02:20.978, 02:26.817) et un Counter-snipe de Wratty
+(02:53.261) dans la MEME partie. Regarder la pose du tueur sur l'un et l'autre repond en deux
+minutes a une question que le decodage n'a pas tranchee. En attente de l'utilisateur.
+
+## [2026-08-30] Visee lunette, phase 6 — TROUVE : le zoom est l'evenement type 114 (« biped_board_vehicle ») — la lunette est un SIEGE — Complete (identification)
+
+**Contexte** : l'utilisateur relit 00162144 dans Theater en premiere personne et fournit une
+CHRONOLOGIE manuscrite : Nilton410 zoome [41-46,3] (frag Counter-snipe), [49-52], ~[61-61,8],
+~[68-68,8], [71-73], ~[85-86] ; Madina97294 [45-46,3] ; et « rien ne change en 3e personne ».
+Douze transitions etiquetees en 50 s — l'oracle le plus dense de toute la campagne.
+
+**Instrument** (`visee_chronologie_research_test.go`, garde CHRONO_FILM, fige sur 00162144) :
+trois mesures aux seuils declares (couverture >= 8/12, enrichissement >= x3) + un dump 114.
+
+**Pieges leves en route** :
+1. *Fragments de vie anonymes* : `nameLivesByDeaths` ne nomme une vie que par la mort qui la
+   TERMINE ; la plage etiquetee (avant la 1re mort de Nilton) vivait dans des fragments non
+   nommes (slot 513, film [1211,1 ; 1337,4] s) -> la mesure C regardait a cote (0 emission
+   partout = signature d'un pont troue, pas d'un negatif). Propagation par meme-slot ajoutee
+   dans l'instrument.
+2. *Seuil d'enrichissement mal pose pour un evenement multi-joueurs* : le fond contient les
+   zooms des 7 AUTRES joueurs -> l'enrichissement global plafonne (x1,7) meme pour le vrai
+   canal. C'est la COUVERTURE qui discrimine (9/12 au premier passage).
+
+**RESULTAT — le type 114 s'aligne sur la chronologie** :
+| transition (user) | paquet 114 | ecart |
+|---|---|---|
+| IN 0:41 | 1212810 | 48 ms |
+| OUT 0:46,3 | 1218245 | 87 ms |
+| IN 0:49 | 1219882 | 976 ms |
+| OUT 0:52 | 1223969 | 111 ms |
+| IN ~1:01 | 1233057 | 199 ms |
+| OUT ~1:01,5 | 1233558 | 100 ms (episode de 0,5 s — le « tres brievement » du releve) |
+| IN ~1:08 | 1239897 | 39 ms |
+| OUT ~1:09 | 1241049 | 391 ms |
+| IN ~1:11 | 1243818 | 960 ms |
+| OUT ~1:13 | 1244219 | 639 ms |
+| ~1:25 | 1259085/1259100 | ~1,2 s (borne user approximative) |
+11/12 sous la seconde, la plupart sous 200 ms ; les paquets intermediaires = les zooms des
+autres joueurs. 125 paquets sur une carte SANS vehicule ; 197 255 sur les 1367 films.
+
+**LECTURE MOTEUR** : `biped_board_vehicle` couvre l'entree/sortie de SIEGE, et la mise a la
+lunette est un siege de l'arme (meme mecanique que tourelle/vehicule dans ce moteur). Charge
+utile : enveloppe (bits 9..35, structuree — 60X44YZ/60X43YZ : QUI + objet/siege, a decoder) +
+R(6) a bit 36 (lecteur FUN_142f168c0, descripteur 143d0d330, +0x68 — meme convention que le
+type 105 validee sur FUN_14080C1F8). env2 (bits 7..8) = 3 constant sur la plage.
+
+**CE QUI RESTE (industrialisation, pas identification)** :
+1. decoder l'enveloppe : l'identite du bipede (attribution par joueur) + le sens (in/out) +
+   le siege (distinguer lunette vs vraie tourelle sur cartes a vehicules) ;
+2. valider au corpus contre l'oracle des medailles (Counter-snipe : un « in » non clos avant le
+   kill ; No Scope : aucun) ;
+3. brancher : periodes de lunette par joueur -> cone de visee du rejeu qui s'etrecit (objectif
+   produit nomme par l'utilisateur).
+
+**Honnetete de phase 4** : le « silence camera type 97 » ne se confirme PAS a l'echelle d'un
+joueur sur ce film (0,39/s dedans vs 0,23/s dehors) — artefact de contexte probable, note.
+
+**Git** : commit phases 1-5 = 379a98c69 ; le PUSH est bloque par le gate pre-push a cause du
+paquet `internal/service/killsourceload` importe par 68e44770b (feat/v75) mais existant
+uniquement NON COMMITE dans le worktree de la session ramassage (piege documente « hooks
+locaux = arbre, CI = commit »). A faire committer par sa session ; aucun contournement
+--no-verify sans demande explicite.
+
+**Prochaine etape** : enveloppe du 114 (Ghidra : lecteur d'enveloppe du dispatcher) puis
+validation corpus par medailles.
+
+## [2026-08-30] Visee lunette, phase 6bis — enveloppe du type 114 : structure degrossie, deux sorties de lunette BIT-IDENTIQUES a partir du bit 24 — En cours
+
+**Acquis de la passe d'enveloppe (dispatcher FUN_14080a9d4 decompile + dump binaire aligne)** :
+1. *Grammaire generale des paquets d'event* : R(7) type ; puis TROIS references optionnelles
+   { R(1) porte ; si 1 : var-int FUN_1406d3140 } ; puis le payload specifique (vtable +0x68) ;
+   puis une queue optionnelle R(1)[+R(32)]. La case +0x58 du descripteur ne lit RIEN : elle
+   rend le DOMAINE de la reference i (type 114 : ref0->2, ref1->3, ref2->7 ; type 105 :
+   ref0->1), et la LARGEUR du var-int depend du domaine (calibration du header film, meme
+   mecanique que SetDefaultReplRange).
+2. *Dump aligne des 17 paquets 114 de la plage etiquetee* (00162144) :
+   - bits 0..6 = 114 ; bit 7 = 1 (porte ref0) ; bits 8..15 constants `11100000` ;
+   - bits ~16..21 : compteur par evenement (varie meme entre deux actions identiques) ;
+   - bits 21..23 `100` constants ;
+   - **bits 24..71+ : LE CONTENU — t=1218713 et t=1233558 (deux SORTIES de lunette) sont
+     BIT-IDENTIQUES sur toute cette plage** -> l'encodage (entite, siege) est stable par
+     (joueur, action). L'attribution peut commencer par SIGNATURE brute (bits 24+) avant meme
+     le decodage des largeurs par domaine.
+3. Le « R(6) a bit 36 » du premier dump etait un artefact de decoupe (les refs sont a largeur
+   variable) — ne pas le reutiliser.
+
+**Prochaine etape (instrument suivant)** : inference des frontieres de champs par variance
+croisee (constant / stable-par-joueur / par-evenement) sur tous les 114 du film, cle de
+signature bits 24+ -> attribution par joueur via la chronologie ; puis largeurs par domaine
+(1/2/3/7) par fermeture arithmetique, et validation corpus par medailles.
+
+## [2026-08-30] Visee lunette, LOT A — l'enveloppe du « type 114 » decodee et FERMEE ; mais l'attribution par joueur et le sens ECHOUENT, et l'alignement lui-meme retombe a p = 1 % — Complete
+
+**Mandat** : inferer les frontieres de champs de l'enveloppe du type 114 par la variance (A1),
+attribuer les paquets a un joueur par signature (A2), trouver le champ du sens entree/sortie
+(A3), fermer les largeurs par domaine (A4). Six instruments sous garde d'environnement dans
+`apps/go-api/internal/analysis/replay/visee_{env,signature,obs,sens,larg,ferme}114_*_test.go`,
+seuils ecrits avant chaque mesure, aucun code de production touche.
+
+**PIEGE LEVE D'ENTREE — un paquet delta n'est pas un evenement isole.** Les payloads des
+paquets 114 mesurent 90 a 543 octets sur 00162144 (437 a 2575 sur 00ba2e1c) : l'evenement est
+en TETE, tout le reste est le flux d'etat du tick. La lecture de la phase 6bis (« bits 24..71
+BIT-IDENTIQUES entre deux sorties de lunette, donc l'encodage entite/siege est stable ») portait
+donc sur des bits qui n'appartiennent PAS a l'evenement — l'enveloppe s'arrete au bit 31. Mesure
+O2 : 274 paires sur 7750 partagent >= 32 bits a partir du bit 24, ce qui est structurel (le flux
+d'etat est repetitif), pas une signature d'entite.
+
+**A1 — STRUCTURE INFEREE, stable sur TROIS films** (125 + 227 + 80 paquets) : ossature de 27
+positions constantes sur 00162144, tenue a 24/27 sur 03ccbe42 et 20/27 sur 00ba2e1c ; les seuls
+ecarts hors enveloppe (bits 63..82) tombent dans le flux d'etat. Profil : bits 0..11 constants
+`11100101 1110`, bits 12..19 variables, bits 20..23 constants `0100`, bits 24..29 a tres faible
+cardinalite (5 valeurs sur 125 paquets), bit 29 constant, bit 30 et au-dela = flux d'etat.
+
+**A4 — FERMETURE, avec l'ancre du binaire (note du lot B)** :
+
+| bits | largeur | role | preuve |
+|---|---|---|---|
+| 0..6 | 7 | type = 114 | filtre |
+| 7 | 1 | porte de la reference 0 | constante 1 sur 432 paquets / 3 films |
+| 8..11 | 4 | champ NON MODELISE, constant `1110` | constant sur les 3 films |
+| 12..19 | 8 | index de la reference 0 (domaine 2) | 67 / 129 / 36 valeurs ; handles 0x200..0x2cd, dans la plage exacte du domaine (base 0x200, cardinal 0x100) |
+| 20..21 | 2 | generation du handle | constante `01` sur 432 paquets |
+| 22 | 1 | porte de la reference 1 (domaine 3) | constante 0 -> reference ABSENTE |
+| 23 | 1 | porte de la reference 2 (domaine 7) | constante 0 -> reference ABSENTE |
+| 24..29 | 6 | charge utile du type | palette stable {11, 13, 15, 17} sur les 3 films |
+| 30 | 1 | queue R(1) de l'evenement | variable |
+
+Le flux SEUL laisse deux decoupes equivalentes (champ de 3 bits + index de 9, ou champ de 4 bits
++ index de 8) ; la table `0x1451f98d0` lue par le lot B (domaine 2 : cardinal 0x100 -> 8 bits,
+aucune sonde hors domaine 1) tranche pour la seconde SANS ajustement. **W(domaine 3) et
+W(domaine 7) restent non mesurables** : leurs portes sont fermees sur les 432 paquets.
+La premiere passe de A4, qui exigeait des bits de queue CONSTANTS, est refutee et le fichier le
+dit : ces deux bits sont la generation du handle, donc de la donnee.
+
+**ANCRE INDEPENDANTE SUR LE TYPE 105 — l'enveloppe generique NE SUFFIT PAS.** L'index
+d'attaquant du type 105 est connu au bit 36 (controle positif : 100 % de valeurs paires et < 16
+sur 00162144 et 03ccbe42, 68 % sur 00ba2e1c). Aucune combinaison (champ de tete 0..8 bits,
+sonde 0/1, W de 9 ou 13) ne place une reference plausible a 36 : les positions calculables
+plafonnent a 34. **Il existe donc un sous-en-tete propre au type** entre le type et les
+references — ce qui explique les 4 bits constants `1110` du 114, et interdit de generaliser
+l'enveloppe a partir d'un seul type.
+
+**A2 — ATTRIBUTION : ECHEC MESURE.** Critere ecrit avant : une valeur UNIQUE couvrant >= 8 des
+12 transitions avec <= 2 paquets hors fenetre (la vie de Nilton couvre toute la plage, aucun
+respawn ne la coupe). Balayage de toutes les tranches de 3 a 16 bits, positions 7 a 104 :
+**0 candidate**. Le front publie le plafond : les tranches qui discriminent vraiment plafonnent
+a 5/12 (impurete nulle) ; les « 10/12 » du balayage sont des tranches degenerees, constantes sur
+tous les paquets. Avec l'index enfin localise (bits 12..19), la plage etiquetee contient
+**8 references distinctes pour 17 paquets, la meilleure couvrant 3/12 transitions**. Les douze
+bascules d'un meme joueur ne se rassemblent derriere aucune reference.
+
+**A3 — SENS : AUCUN DISCRIMINANT.** Deux lentilles. (1) Aucun bit de l'enveloppe n'est proche de
+50 % (les seuls le sont dans l'index) et aucune partition des multiplicites du payload
+{6, 16, 83, 10, 10} n'approche l'equilibre : un champ de sens en serait un. (2) Par type
+d'evenement, entrees et sorties mesurees SEPAREMENT avec controle par translation de la
+chronologie : sur 13 types testes, aucun ne separe (le 114 lui-meme fait 5/6 entrees a p = 0,060
+et 5/6 sorties a p = 0,052 — symetrique, donc muet sur le sens). Le type 103
+`unit_exit_vehicle` signale par le lot B n'atteint meme pas 20 paquets sur ce film.
+
+**LE RESULTAT LE PLUS IMPORTANT — L'ALIGNEMENT DU 114 EST BEAUCOUP PLUS FAIBLE QU'ANNONCE.**
+La phase 6 concluait de « 9 a 10 transitions sur 12 couvertes » en comparant au debit de fond du
+film entier. Le bon controle est le nombre de paquets REELLEMENT presents dans la plage — 17 —
+et la part de cette plage que les douze fenetres +/-1,2 s recouvrent deja (53 %). Controle exact
+par translation de la chronologie entiere (7902 decalages, structure des paquets et ecarts entre
+transitions preserves) : couverture observee 10/12, moyenne des decalages 2,9, maximum 11, et
+**1,04 % des decalages atteignent 10 ou plus**. Au seuil de 1 % ecrit avant la mesure :
+**NON SIGNIFICATIF**. Le calage n'est pas en cause (profil O4bis : le maximum tombe bien sur
+delta = 0). L'identification « type 114 = mise a la lunette » n'est donc pas etablie ; elle
+reposait sur un controle trop permissif.
+
+**CONCLUSION** : l'enveloppe est decodee et fermee (ce qui servira a TOUT evenement de ce
+format), mais les trois questions produit — quel joueur, quel sens, et meme « est-ce bien le
+zoom » — sont toutes negatives sur ce film. Le lot B conclut par la voie statique que la lunette
+a son type dedie (126 `unit_zoom`, absent du corpus) et que « la lunette est un siege » est
+refutee : deux chaines independantes, aucune etape commune, meme verdict.
+
+**HYPOTHESE DU SOUS-EN-TETE DE 16 BITS — REFUTEE, chiffres a l'appui.** Le pilote a propose que
+16 bits fixes separent le type des trois references, ce qui ferait tomber la reference 0 du type
+105 au bit 23 et son champ suivant exactement sur le bit 36 connu. Mesure sur 5 239 records
+longs des trois films : la « porte » du bit 23 est ouverte **0,0 %** du temps et la « sonde » du
+bit 24 vaut 1 **0,0 %** du temps — les deux sont constantes a zero, l'hypothese exige l'inverse.
+Cote 114, aucune des 25 longueurs de sous-en-tete testees (0 a 24, portes lues, largeurs du
+binaire 8/8/13) ne produit une charge utile R(6) de cardinalite <= 8 stable entre films : 0 sur
+25. La decoupe qui tient reste celle mesuree plus haut (porte au bit 7, champ constant `1110`,
+index de 8 bits au bit 12), et l'enveloppe generique du dispatcher ne rend PAS compte du type
+105 : ce type a son propre sous-en-tete, de longueur non determinee par ce lot.
+
+**Prochaine etape** : ne plus instrumenter le 114 comme canal du zoom. Deux fils honnetes
+restent : (a) refaire l'oracle sur un relevé plus dense ou plusieurs films avant toute nouvelle
+identification, avec le controle par translation comme gate ; (b) reprendre les deux pistes
+DERIVEES deja nommees en phase 3 (`player-aim-assist-component`, `player-desired-frame-
+configuration-component`), en les traitant comme des correlats et jamais comme l'etat.
+
+## [2026-08-30] Visee lunette, phase 7 (pilotage) — RETRACTATION de la phase 6 apres contre-verification ; le canal restant est LA COMMANDE JOUEUR dans la trame de tick — En cours
+
+**Verification sur pieces du lot A (pilote)** : l'instrument decisif O4 rejoue a l'identique chez
+moi (couverture 10/12 ; 7 902 decalages temoins ; moyenne 2,9 ; max 11 ; **1,04 % des decalages
+font aussi bien -> NON SIGNIFICATIF au seuil declare de 1 %**). O4bis montre un plateau a 10 sur
+[-1 s ; +1 s] qui decroit symetriquement : l'alignement existe mais faible, et avec ~30 types
+scannes en phase 6, une queue a 1 % devait sortir quelque part (effet des comparaisons multiples).
+
+**RETRACTATION FORMELLE** : « le zoom est le type 114 » (phase 6, commit eaa518cf1) est RETIRE.
+Double verrou : statistique (lot A) + statique (lot B : l'applicateur du 114 est de la vraie
+logique de siege de vehicule ; type 126 unit_zoom dedie, mais < 123 requis par le dispatcher et
+0 occurrence sur 41 M de paquets). Le livrable qui RESTE de ces lots : l'enveloppe du 114
+entierement decodee (b2a059c4a), la table domaine->plage du var-int (note lot B), et le piege
+leve : UN PAQUET DELTA = EN-TETE D'EVENEMENT PUIS FLUX D'ETAT DU TICK.
+
+**Raisonnement d'elimination qui designe le canal restant** :
+1. Theater PREMIERE PERSONNE affiche le zoom (verite terrain utilisateur, chronologie 00162144).
+2. L'etat de zoom (unite+0x461/0x462) n'a que deux sources pilotees par donnees : l'evenement
+   126 (exclu : jamais dans les films) et l'octet 6 de la COMMANDE JOUEUR (FUN_1406db688).
+3. Donc les commandes sont rejouees depuis le film. Les paquets a en-tete « 80 » arrivent a
+   ~22/s = la cadence d'un lot de commandes par tick ; la region de tete de ces paquets (avant
+   les records d'entites) est le suspect n1.
+
+**Lot C lance** (agent Opus) : correlation d'ONDE CARREE — l'onde de zoom complete de Nilton
+(50 s x ~22 Hz ~ 1 100 echantillons par position de bit, bandes de garde ±1,2 s aux transitions)
+correlee bit a bit aux positions fixes [7..512] des payloads (toutes tetes / tetes 80 / offsets
+depuis la fin), seuils declares avant mesure + controle par translation obligatoire,
+contre-verification sur l'onde de Madina.
+
+**Integration** : la note du lot B (.ai/V7.5/film_re/NOTE_ENVELOPPE_EVENTS_2026-08-30.md,
+561 lignes — table 0x1451f98d0, largeurs par domaine, handle generation<<30|base+index, sonde
+domaine 1 seulement, catalogue des types 50..127) est versionnee par ce commit. Note lot B2
+(emetteurs) attendue.
+
+**Prochaine etape** : CR du lot C (onde) et du lot B2 (emetteur + sieges d'arme) ; puis soit le
+decodage du bloc commandes, soit l'elargissement de l'onde aux autres regions de la trame.
+
+## [2026-08-30] Visee lunette, LOT C — la correlation d'onde carree : AUCUN bit a position fixe ne porte l'etat de lunette, et pour la premiere fois le negatif est adosse a une PUISSANCE mesuree — Complete
+
+**Mandat** : l'instrument le plus dense du dossier. Au lieu des 12 transitions qui servaient
+d'oracle aux lots precedents, l'onde carree COMPLETE de Nilton410 (relevé Theater de
+l'utilisateur, film 00162144, decalage feed->film +1 171 858 ms) confrontee bit a bit aux
+positions FIXES du payload des paquets delta — un echantillon par paquet, pas un par transition.
+Deux instruments sous garde d'environnement (ONDE_FILM) :
+`apps/go-api/internal/analysis/replay/visee_onde_research_test.go` (moteur : onde, collecte,
+transposition en colonnes de bits, exactitude equilibree) et `visee_onde_verdict_test.go`
+(controle par translation, verdict). Aucun code de production touche.
+
+**SEUILS ECRITS AVANT MESURE** : S1 candidat = exactitude equilibree >= 0,95 avec >= 200
+echantillons de CHAQUE classe ; S2 a suivre >= 0,85 ; S3 sous-dimensionne si une classe compte
+moins de 200 echantillons ; S4 controle par translation obligatoire, verdict positif exige
+p(max) < 1 %. La mesure compte les deux polarites, et le score est l'exactitude EQUILIBREE
+(moyenne du taux de vrais 1 et de vrais 0) : une position constante vaut 0,5 quelle que soit
+l'asymetrie des classes.
+
+**CE QUE LES BANDES DE GARDE COUTENT, chiffre AVANT la mesure et non decouvert apres.** Le relevé
+est precis a +/- 1 s, donc +/- 1,2 s autour de chaque transition est exclu. Consequence : les
+episodes de moins de 2,4 s disparaissent entierement, et {71 -> 73} aussi. Il ne reste que
+3 480 ms classees « zoome » sur 60 s de fenetre. D'ou une variante a garde 0,5 s (7 270 ms),
+DECLAREE d'avance et publiee quel qu'en soit le resultat. **Madina97294 est structurellement
+inexploitable** : son creneau unique de 1,3 s laisse 0 ms en garde longue, 290 ms en garde courte.
+
+**LE CONTROLE PAR TRANSLATION, DURCI PAR RAPPORT AU LOT A.** L'onde entiere est translatee — la
+fenetre d'analyse AVEC elle, ce qui preserve exactement la duree des creneaux, le nombre de
+transitions et les gardes. Trois parts publiees : p(max) = part des decalages ou le MEILLEUR
+score toutes positions confondues atteint le score observe (il corrige de lui-meme le balayage de
+~1 000 hypotheses) ; p(max apparie en taille) ; p(pos) = le controle du lot A, sur la seule
+position candidate. C'est p(max) qui fait foi.
+
+**RESULTATS — 25 219 paquets delta collectes sur 457 s (55/s, 14 tetes ; tete 80 = 20 089,
+105 = 2 417, 116 = 658, 99 = 480, 96 = 465, 101 = 324, 97 = 228). Fenetre : 3 364 paquets, dont
+210 en classe « zoome » et 1 744 en classe « pas zoome ».**
+
+| variante (garde 1,2 s) | meilleure position | score | p(max) | verdict |
+|---|---|---|---|---|
+| C2 toutes tetes / debut (512 b) | bit 50 | 0,7730 | 24,84 % | NEGATIF |
+| C2 tetes 80 / debut | bit 87 | 0,8018 | 36,60 % | NEGATIF (sous-dimensionne) |
+| C2bis toutes tetes / FIN | 196 b avant la fin | 0,7114 | 20,13 % | NEGATIF |
+| C2bis tetes 80 / FIN | 196 b avant la fin | 0,7106 | 18,48 % | NEGATIF (sous-dimensionne) |
+| C5 tetes 96+97+116 / debut | bit 183 | 0,9280 | 6,06 % | NEGATIF (sous-dimensionne) |
+| C2 elargi 1024 b / debut | bit 50 | 0,7751 | 21,82 % | NEGATIF |
+| C2bis elargi 1024 b / FIN | 196 b avant la fin | 0,7129 | 18,38 % | NEGATIF |
+
+La variante a garde 0,5 s ne change aucun verdict (scores plus bas, p(max) de 17 a 42 %).
+L'elargissement du domaine a 1 024 bits (24 393 paquets d'au moins 128 octets, 11,1 % du flux
+ecarte) ne fait apparaitre aucune position nouvelle : les memes bits reviennent en tete.
+
+**LE RESULTAT DE METHODE — POURQUOI CES SCORES NE VALENT RIEN.** Le meilleur score sous onde
+TRANSLATEE vaut en moyenne 0,68 a 0,81 selon la variante, et atteint 0,99 sur certains decalages.
+Le flux d'etat est si autocorrele qu'une onde qui ne decrit RIEN se fait imiter a 0,80 par l'une
+des 505 positions. Sans le controle, le bit 50 (0,773) ou le bit 183 (0,928, p(pos) = 0,19 % —
+le controle du lot A l'aurait declare significatif) auraient ete publies comme trouvailles. C'est
+la troisieme fois que ce chantier voit un controle trop permissif fabriquer un signal.
+
+**ET LE NEGATIF N'EST PAS UN AVEUGLEMENT — la PUISSANCE est mesuree.** Nouveaute de ce lot : on
+publie la part des decalages de controle dont le meilleur score atteint 1,0000, c'est-a-dire la
+p(max) qu'obtiendrait un signal PARFAIT. Elle vaut **0,00 % a 0,50 % selon la variante, donc
+< 1 % partout** : un bit qui suivrait exactement l'onde serait declare SIGNIFICATIF par cet
+instrument. Nuance publiee : la part atteignant 0,95 va de 0,06 % a 4,18 %, donc dans les
+variantes les plus bruyantes (C2 toutes tetes debut, C5) il faudrait un score >= 0,99 pour
+conclure. L'instrument a la puissance de detecter un canal exact ; il n'y en a pas.
+
+**CE QUE CE LOT ELIMINE** : l'hypothese « le lot de commandes du tick est a position fixe dans la
+region de tete (ou de queue) du paquet delta » est REFUTEE sur les 1 024 premiers bits, les 1 024
+derniers, et sur cinq familles de tetes. Combinee au triple verrou de la phase 3 (registre ECS,
+oracle des medailles, type 126 absent) et a la chute du 114 au lot A, il ne reste, pour un etat
+de lunette lisible du film, que des emplacements a offset VARIABLE — c'est-a-dire atteignables
+seulement par un decodage reel de la trame d'etat, pas par un balayage de positions.
+
+**Prochaine etape honnete** (aucune n'est un balayage de plus) : (a) decoder la trame d'etat du
+paquet a tete 80 pour atteindre le bloc de commandes a son offset reel, ce qui suppose de
+resoudre la structure du tick avant les records d'entites ; (b) obtenir de l'utilisateur un relevé
+plus DENSE — les gardes ont mange 4 des 6 episodes, un relevé de 3 a 4 minutes avec des episodes
+longs multiplierait par dix la classe « zoome » ; (c) le lot B2 (sites d'emission generiques),
+seule voie statique encore ouverte.
+
+**Gates** : `CGO_ENABLED=0 go vet ./internal/analysis/replay/` propre, gofmt propre, fichiers
+359 et 311 lignes, deux executions reelles conservees (la seconde apres durcissement de
+l'instrument : distinction hors-fenetre / bandes de garde, mesure de puissance, domaine elargi).
+Test PASS en 1,4 s, saute hors garde d'environnement.
+
+## [2026-08-30] Visee lunette, phase 7 CLOSE — onde carree NEGATIVE avec puissance mesuree ; emetteur cartographie ; canaux a position fixe EPUISES — Complete (negatif fort)
+
+**Lot C (onde carree, commit 414e0272c) — le negatif le plus solide du dossier.** L'onde de zoom
+complete de Nilton (releve utilisateur, ~1 100 echantillons/bit) correlee bit a bit a TOUTES les
+positions fixes [7..1024] du debut ET de la fin des payloads, 7 variantes (toutes tetes / tete 80 /
+tetes 96+97+116 / fin de payload / domaine elargi). Meilleur score 0,77 (toutes tetes) a 0,93
+(96+97+116) ; controle par translation : p(max) de 6 % a 42 % contre seuil 1 % -> TOUTES NEGATIVES.
+INEDIT ET DECISIF : la PUISSANCE est mesuree — un canal PARFAIT serait detecte (< 0,5 % des
+decalages temoins atteignent 1,0000 partout). Ce n'est donc pas un aveuglement : il n'y a AUCUN bit
+a position fixe, dans les 1024 premiers ni les 1024 derniers bits, qui porte l'etat de lunette.
+Le controle a aussi rattrape un faux positif que le lot A aurait publie (bit 183, p(pos)=0,19 % mais
+p(max)=6 %) — le flux d'etat est si autocorrele qu'une position atteint 0,80-0,99 sur une onde qui
+ne decrit RIEN. Lecon de methode : p(position) seul ne vaut rien, seul p(max) sur translation compte.
+
+**Lot B2 (emetteur, note NOTE_EMETTEUR_114_2026-08-30.md) :**
+- Chaine d'emission cartographiee (FUN_1424d80bc -> ecrivain +0x60). Bit de CONTINUATION avant le
+  R(7) du type (acc = type | 0x80) : la liste d'evenements se lit « 1 = un event suit, 0 = fin ».
+  Pas de sous-en-tete de 16 bits (hypothese du pilote refutee).
+- « lunette = siege de l'arme » REFUTE : l'applicateur du 114 exige un masque de type = 2 sur sa
+  ref (un seul type d'objet), une arme echoue la resolution. Sortie de vehicule symetrique = type
+  103 (FUN_142f11e04). unit_zoom (126) ecrit un octet d'etat unite+0x462, ce n'est pas un siege.
+
+**Taxonomie NON TRANCHEE (a ne pas surinterpreter) :** le bit de continuation impliquerait que nos
+paquets « 114 » (payload[0]=0xE4) sont en realite du type 100 weapon_effect (0xE4 & 0x7f = 100), et
+« 105 » du type 82. MAIS le pipeline valide fire_events/killsource lit « 105 » en payload[0]>>1 et
+marche 59/59 en Theater : les deux cadrages coexistent sans etre reconcilies. Le lecteur du type
+100 (FUN_142f17eec) lit R(1)+R(12) direction = une direction d'EFFET, pas un etat de zoom. Quoi
+qu'il en soit, l'alignement des « 114 » sur la chronologie etait deja REFUTE par la translation
+(lot A) INDEPENDAMMENT du label — le relabel ne rachete rien.
+
+**BILAN DES CANAUX (tous mesures, tous negatifs) :**
+1. Composant du registre ECS : aucun (325 inventories) ;
+2. Queue d'i21 : constante (607 258 records) ;
+3. Evenement dedie unit_zoom (126) : 0 sur 41 M de paquets ;
+4. Tete du record de degat fatal : aucun bit ne separe (134 vs 780) ;
+5. Alignement d'un type d'evenement sur la chronologie : non significatif (p=1,04 %) ;
+6. Bit a POSITION FIXE (onde carree, 1024 bits debut+fin, 7 variantes) : aucun, PUISSANCE MESUREE.
+
+Il ne reste, pour un etat de lunette lisible du film, qu'un emplacement a OFFSET VARIABLE dans la
+trame d'etat du tick — atteignable UNIQUEMENT par un decodage reel de la trame (grammaire complete
+des records non-bipedes du paquet delta), pas par un balayage. C'est un chantier lourd au resultat
+incertain, ET l'hypothese « les commandes ne sont pas dans le film » (intuition utilisateur) reste
+ouverte : rien ne prouve encore que ce canal EXISTE.
+
+**Point de decision utilisateur** (pose, non tranche) : (A) engager le decodage de la trame d'etat
+complete ; (B) accepter le negatif et piloter le cone du rejeu par heuristique client (arme a
+lunette tenue + reticule sur cible), affichee comme estimation ; (C) parquer. Recommandation du
+pilote : B a court terme (livrable produit tout de suite), A seulement si le zoom par joueur devient
+un objectif prioritaire.
+
+**Commits wt/visee** : b2a059c4a (lot A), d481acc85 (retractation+note B), 414e0272c (lot C). Notes
+RE : NOTE_ENVELOPPE + NOTE_EMETTEUR (cette derniere non encore committee). Push toujours bloque
+(killsourceload, session ramassage).
+
+## [2026-08-30] Visee lunette, phase 8 — OPTION A engagee : decoder la grammaire de la trame. Hypothese « chaine d'evenements » REFUTEE en 5 minutes — En cours
+
+**Decision utilisateur** : option A (decoder la trame), avec deux intuitions a suivre : (1) « la
+grammaire est deja decrite quelque part dans le film, il doit y avoir une recette atteignable » ;
+(2) « une correlation aussi precise avec ma ground truth ne peut pas etre un hasard total, il doit
+y avoir un decalage » — l'utilisateur refuse d'enterrer le signal du type 114.
+
+**Hypothese du pilote, formulee ET REFUTEE dans la meme passe** (instrument
+`visee_octet0_research_test.go`, garde OCTET0_FILM) : le lot B2 ayant lu chez l'ecrivain un bit
+accole au type (`acc = type | 0x80`), j'ai suppose que le bit de poids faible de payload[0] etait
+une CONTINUATION (« un autre evenement suit »), ce qui aurait rendu tous nos recensements borgnes
+(ils ne lisent que le premier evenement de chaque paquet). Test decisif sans seuil : si le record
+est le meme, le champ arme (bits 44..107, offsets figes de fire_events.go) doit avoir la meme
+forme pour 0xD2 et 0xD3. RESULTAT : 0xD2 = 1 958 paquets, **9 identifiants d'arme distincts**
+(propres, moitie basse 42c9679f) ; 0xD3 = 459 paquets, **447 identifiants distincts** (bruit).
+Le record DIFFERE reellement selon ce bit -> ce n'est PAS une continuation. La lecture
+`type = payload[0] >> 1` du depot tient ; la semantique du bit bas reste INCONNUE (le depot
+l'appelle « variante courte » sans preuve). Question ouverte transmise au lot E.
+
+**Ce que la mesure a produit au passage — le recensement par PREMIER OCTET** (film 00162144), qui
+n'existait pas : 0xA0 (type 80) 21 227 · 0xD2 (105) 1 958 · 0xE9 (116, bas 1) 666 · 0xC7 (99, bas 1)
+481 · 0xC0 (96) 464 · 0xD3 (105, bas 1) 459 · 0xCA (101) 324 · 0xC4 (98) 220 · 0xC2 (97) 161 ·
+0xE5 (114, bas 1) 125 · 0xE6 (115) 114 · 0xC3 (97, bas 1) 67 · 0x8A (69) 51 · 0x89 (68, bas 1) 31.
+NOTABLE : les 125 paquets « 114 » sont TOUS a bas=1 (0xE5), jamais 0xE4 — le meme profil que les
+autres types a bas=1 dont on sait maintenant que la charge est differente. Piste a suivre.
+
+**Deux lots lances en parallele** :
+- LOT D (mesure, worktree) : le chunk_00 des films porte deja le REGISTRE DE REPLICATION
+  (325 composants). Porte-t-il aussi un REGISTRE DES TYPES D'EVENEMENTS ? Si oui, on obtient la
+  correspondance type -> nom PROPRE AU BUILD (le depot a deja mesure que le decoupage du registre
+  CHANGE avec le build), et la question « 125 embarquements en vehicule sur une carte sans
+  vehicule » se tranche. Plus : carte exhaustive de chunk_00 (jamais faite hors registre ECS).
+- LOT E (Ghidra) : grammaire EXACTE bit a bit de l'en-tete commune des evenements (pour ecrire un
+  decodeur qui AVANCE d'un evenement au suivant), semantique du bit bas (E1), longueurs de charge
+  utile des 19 types observes (E3), et surtout E4 : le type 80 pese 85 % du flux (21 227 paquets)
+  et son lecteur lit une CHAINE-ID « requested-event » puis R(32) — s'il s'agit d'un CONTENEUR qui
+  designe un autre evenement par son nom, c'est la clef de tout le flux.
+
+**Prochaine etape** : CR des lots D et E, puis ecriture d'un decodeur d'evenements reel (celui qui
+manque depuis le debut) et re-recensement du corpus SANS l'angle mort du premier evenement.
+
+## [2026-08-30] Visee lunette, LOT D — chunk_00 cartographie : PAS de table de noms d'evenements, mais une TABLE PAR TYPE qui suit le build ; et le premier octet d'un paquet delta n'est pas un type — Complete
+
+**Mandat** : D1 le film porte-t-il un registre des types d'evenements a cote du registre de
+composants ? D2 carte exhaustive de chunk_00. D3 que sont vraiment les 125 paquets « 114 » de
+00162144, et un type zoom existe-t-il dans le film ? D4 trancher la semantique du bit de poids
+faible de payload[0]. Six instruments sous garde d'environnement, seuils ecrits avant chaque
+mesure, aucun code de production touche, aucun outil binaire employe (lot E non touche).
+
+**D2 — chunk_00 N'EST PAS « le registre » : il porte TROIS sections.** Sur 1 973 120 octets
+inflates (taille identique au bit pres sur trois films), le registre n'occupe que les 832 000
+premiers, soit **50 blocs** (0..49, dont 49 porteurs). **Le « 118 blocs » du dossier est un
+artefact** : `parseRegistry` divise le FICHIER ENTIER par 16 640. Suivent une section
+d'identification (`0x0CB200`..`0x0CB45C`) et une troisieme section d'environ 538 ko
+(`0x0CB65C`..`0x14EB73`) propre au film, puis 602 ko de zeros. Le premier octet qui differe entre
+deux films du meme build tombe EXACTEMENT au debut de la section 3 : la croyance « le registre est
+identique d'un film a l'autre » est juste, mais elle vaut pour les deux premieres sections, pas
+pour le fichier.
+
+**Section 3, caracterisee sans etre decodee** : entropie 7,24-7,27 bits/octet, 17 % de zeros,
+donnee dense a partir de `0x0CE6A8`. **Ce n'est pas un flux de paquets** (le decoupage a en-tete de
+16 octets ne couvre que 2,3 % du volume), **pas de zlib imbrique** (27 en-tetes plausibles la ou le
+hasard en donnerait 131), **aucun pas de structure** (17,0 % a 15,1 % d'octets egaux du pas 2 au
+pas 1024, sans pic). **Mais elle porte l'identite des joueurs, en UTF-16LE** : `vamprym`,
+`Chocoboflor`, `RAZOR BLADE LEO` sur 00162144 ; `whiteknight2519`, `LORD PEINX13` sur 000d5950.
+`Chocoboflor` est un joueur suivi par le projet : ce sont des participants, pas du hasard.
+
+**D1a — AUCUN nom d'evenement dans le film, avec temoin positif.** Les 13 noms du catalogue de
+l'exe (dont les 8 de la famille arme/unite demandes par le pilote) cherches en ASCII et en UTF-16,
+avec trois orthographes voisines, dans chunk_00 ET dans tous les autres chunks : **0 occurrence**.
+Dans la meme passe, le temoin positif trouve `object-position-dynamic-precision` = 2,
+`unit-desired-aiming-vector` = 2, `weapon-state-type-info` = 4. L'instrument trouve ce qui est la.
+
+**D1b — le format ne hache aucun nom.** Le champ `kind` (u32 a slot+0), seul porteur possible
+d'une empreinte dans le format de slot, vaut **0 sur 1 066 des 1 067 slots** : « meme recette que
+les composants » veut dire « en clair ». Test fait quand meme, faux positifs MESURES : onze
+fonctions 32 bits (FNV-1a/1, CRC-32 IEEE/C, djb2, djb2-xor, sdbm, ELF, Jenkins, MurmurHash3,
+Adler), aux deux boutismes et a TOUT offset (821 169 u32 distincts indexes), trois populations —
+13 noms d'evenement, 325 noms de composant (temoin), 13 leurres a deux lettres permutees.
+**0 touche partout, sur les 3 films et les 11 fonctions.** Le taux de faux positifs mesure est nul :
+le negatif est net, pas noye.
+
+**D1c — LA TROUVAILLE : le film DECLARE sa grammaire par type, et cette table SUIT LE BUILD.**
+A `0x0CB208`, juste avant `6.10026.18411.0` / `HI_1_13_0` / `release`, une suite d'u32 courts
+s'arrete pile a la chaine de version. Recensement des 1 367 chunk_00 du cache, 15 groupes :
+`HI_1_5_1` **119 types** · `HI_1_8_0` a `HI_1_10_0` **121** · `HI_1_11_0` **122** · `HI_1_12_0` et
+`HI_1_13_0` **123** (5 films sans section d'identification). **123 est exactement la borne du
+dispatcher lue independamment dans l'exe au lot B** (`CMP R15,0x7b`) : deux chaines, aucune etape
+commune. Trois faits soutiennent la lecture « version de serialisation par type » : une valeur par
+type, valeurs entre 1 et 6, cardinal croissant avec le build — et surtout **le contenu change a
+cardinal CONSTANT entre `HI_1_8_0` et `HI_1_9_0`** (memes 121 types, tables `e6ea0f9d` contre
+`190fffd3`), ce que fait une version par entree et pas un compteur. Ce n'est pas une preuve : la
+fonction qui consomme ce champ n'a pas ete lue. Artefact versionne :
+`.ai/V7.5/film_re/chunk00_table_par_type.tsv`.
+
+**Corollaire lourd, et il vaut pour tout le chantier** : l'espace des numeros de type **n'est pas
+stable entre builds**, et le film en declare 123 la ou la table statique de l'exe en nomme 128.
+Les deux espaces ne peuvent pas coincider sur toute leur longueur — cinq entrees nommees n'ont pas
+de place. Si elles tombent a la fin, les etiquettes 0..122 tiennent ; si elles tombent ailleurs,
+tout glisse apres le point de retrait. **Ce lot ne tranche pas**, et c'est precisement pourquoi les
+etiquettes de type des phases 3 a 7 doivent etre tenues pour non fiables. Le geste qui fermerait la
+question est bon marche et il est laisse en handoff : lire cote exe le tableau equivalent et
+aligner les deux suites — le motif du film est distinctif (un 6, deux 5, deux 4, cinq 3, neuf 2).
+
+**D3 — le type zoom ne peut pas exister dans un film de ce build.** `unit_zoom` est a l'index
+statique 126 ; le film declare 123 types, et le dispatcher de l'exe refuse tout type >= 123 dans sa
+PROPRE numerotation. Le « 0 paquet 126 sur 41 M » de la phase 3 n'est donc pas une observation
+fragile : c'est structurel. Les octets qui coderaient 126 sous l'un ou l'autre cadrage (`0xFC`,
+`0xFD`, `0xFE`, `0x7E`) sont absents des 42 642 703 paquets delta du corpus.
+
+**D3/D4 — LE PREMIER OCTET D'UN PAQUET DELTA N'EST PAS UN TYPE D'EVENEMENT.** Recensement corpus
+(1 369 films, 42 642 703 paquets, 186 s) : 50 valeurs distinctes, **le bit de poids fort vaut 1
+sans une seule exception** — le drapeau de configuration que le desassemblage du frame-processor
+avait etabli et que `frame_records.go` mesurait a 100 % sur un seul film. Puis le critere S4,
+ecrit avant la mesure et sans statistique : l'en-tete minimal d'un evenement fait 11 bits
+(7 de type + 3 portes + 1), **11 bits ne tiennent pas dans un octet**, et le corpus contient
+**219 702 paquets delta d'exactement 1 octet valant `0x80`** (0,515 %). Leur lecture parcimonieuse
+est une TRAME VIDE : amorce 2 bits puis boucle de records close aussitot — ce que le decodeur de
+production lit deja. Second appui, sans etape commune : **S3, 0,0000 % des paquets partagent leur
+horodatage** avec un autre paquet delta du meme chunk — trames autonomes, rien ne se greffe sur
+rien.
+
+**Le bit de poids faible, question ouverte du lot D4 : FERME.** Sous la grammaire de trame,
+l'identifiant du premier record commence au bit 5 et court sur 11 bits ; le bit 7 en est le
+troisieme. Critere ecrit avant : identifiant si moins de 25 % des 2 048 valeurs sont occupees.
+Mesure sur 3 films, 90 835 paquets : tous = 435 valeurs (21,2 %) ; **`0xD2` = 7 valeurs (0,3 %) ;
+`0xD3` = 50 valeurs (2,4 %)**. Sept entites contre cinquante : voila pourquoi un champ a offset
+fixe rend 9 identifiants d'arme propres d'un cote et 447 de l'autre. Ce n'est ni une variante de
+record ni une continuation, c'est un bit d'identifiant.
+
+**Les 125 paquets « 114 » de 00162144** : ils valent tous `0xE5`, jamais `0xE4` (`0xE4` n'apparait
+que 1 431 fois sur tout le corpus, contre 195 824 pour `0xE5` — la note de cloture de la phase 7
+cite le mauvais octet). Le lot ne les renomme pas, il retire la question : `0xE5` = amorce `11`
+puis `R(1)=1` = record DELTA. 125 trames ordinaires. « 125 embarquements en vehicule sur une carte
+sans vehicule » etait une erreur de cadrage, pas une anomalie a expliquer.
+
+**CE QUI NE CONCLUT PAS, publie tel quel** : S1 (part de paquets hors de la plage de 123 types)
+donne 0,0481 % pour le cadrage A contre 0,0008 % pour le cadrage B — A est 62 fois plus fautif,
+mais les deux restent sous le seuil de 0,1 % ecrit avant la mesure : **NON CONCLUANT des deux
+cotes**, et le seuil n'est pas redecoupe. S2 (50 valeurs distinctes) tombe entre les bornes 32 et
+64 : **NON CONCLUANT**. La cadence des trames (`TestD3CadenceDesTrames`) exigeait un ecart modal
+a plus de 80 % ; il vaut 16 662 us — la periode exacte d'un tick a 60 Hz — mais ne pese que
+0,17 % des ecarts : **NON CONCLUANT**, la valeur est consignee comme observation brute.
+
+**TENSION A SIGNALER AU LOT E** : l'hypothese E4 (« le type 80 pese 85 % du flux et son lecteur lit
+une chaine-id `requested-event` : conteneur qui designe un autre evenement par son nom ») porte sur
+l'octet `0xA0`, qui pese 80,49 % du corpus. Sous la lecture de trame, `0xA0` = amorce `10` puis
+`R(1)=1` = record DELTA — c'est-a-dire la trame de tick ordinaire, ce qui explique naturellement
+qu'elle domine. Les deux lectures ne se concilient pas d'elles-memes ; ce lot ne refute pas la
+lecture Ghidra du descripteur d'index statique 80, il constate que le flux se lit sans elle.
+
+**Ce qui reste ouvert** : la section 3 (538 ko/film, non decodee, porte au moins l'identite des
+joueurs) · l'alignement des index film/exe (handoff ci-dessus) · la semantique des valeurs 1..6 ·
+les deux u32 de `0x0CB454` · **decouverte hors perimetre NON TRAITEE (regle 7)** : `parseRegistry`
+divise le fichier entier par la taille d'un bloc et ramasse un faux positif dans la section 3 de
+00162144 (1 068 slots au lieu de 1 067, empreinte de registre faussee pour ce film) — correctif :
+borner a 50 blocs · le modele de trame n'a pas de confirmation POSITIVE, il faudrait rejouer le
+decodeur de production sur les paquets `0xD2`/`0xE5` et verifier que la chaine de records s'y ferme.
+
+**Note** : `.ai/V7.5/film_re/NOTE_CARTE_CHUNK00_2026-08-30.md`. **Gates** : `gofmt` propre,
+`CGO_ENABLED=0 go vet ./internal/analysis/filmdec/ ./internal/analysis/replay/` propre, suites
+filmdec (11,1 s) et replay (20,3 s) **0 echec**, six fichiers de recherche sous garde
+d'environnement (444, 328, 239, 253, 68, 479 lignes), aucun code de production modifie.
+
+**Prochaine etape** : aligner la table par type du film sur son equivalent exe (lot Ghidra) pour
+fixer les etiquettes une bonne fois ; puis, si le decodage d'evenements reste l'objectif, ecrire le
+decodeur de trame reel plutot que de continuer a lire un type dans un octet qui n'en porte pas.
+
+## [2026-08-30] Visee lunette, phase 9 — LE CADRAGE EST CORRIGE : bit de continuation avant le type. Recensement corpus par PREMIER OCTET, et une opportunite majeure hors perimetre — En cours
+
+**Acquis structurel (lot E, deux chaines independantes)** : chaque evenement = [1 bit de
+continuation][R(7) type][3 x reference optionnelle][charge utile]. Le depot lisait
+`type = payload[0] >> 1` avec un « bit de variante » : FAUX, le bit est EN TETE et fait partie de
+rien — le type est `payload[0] & 0x7F`. Confirmation par nos donnees, sans etape commune : les
+« types » observes sous l'ancienne lecture couvrent exactement 64..125 et jamais rien en dessous,
+ce qui est la signature arithmetique de `0x80..0xFB >> 1`.
+La table de descripteurs 0x144724A90 utilisee jusqu'ici N'EST PAS la bonne (son unique xref est un
+registre d'enumerations Forge) ; la vraie est ecrite entree par entree par FUN_140e453b4, avec son
+cardinal 123 stocke en +0x208 juste avant la table. Numerotation verrouillee par deux routes.
+
+**RECENSEMENT CORPUS PAR PREMIER OCTET** (instrument visee_octet0_research_test.go,
+TestViseeOctet0Corpus, garde OCTET0_CORPUS ; 1367 films, ~41 M de paquets delta, 177 s) :
+aucun paquet sous 0x80 (grammaire confirmee) ; octets observes de 0xA0 a 0xFB, donc types reels
+32..123 — les types 0..31 n'apparaissent JAMAIS dans un film multijoueur. Principaux :
+0xA0 type 32 `unit_teleported` 34 323 692 (85 % du flux, 1367 films) · 0xD2 type 82
+`PlayerGameEventSmall` 2 535 816 (1366 films) · 0xC7 type 71 1 023 286 · 0xC0 type 64 983 883 ·
+0xE9 type 105 922 724 · 0xD3 type 83 528 262 (1367 films) · 0xC2 type 66 458 938 · 0xCA type 74
+399 988 · 0xC3 type 67 245 358 · 0xC4 type 68 237 234 · 0xE5 type 101 195 824 · 0xE6 type 102
+195 107 · 0xF3 type 115 31 228.
+
+**REPONSES AUX DEUX QUESTIONS OUVERTES** :
+- `0xA4` (action_weapon_fire, type 36) : **0 paquet sur 1367 films**. Cette famille n'est pas dans
+  la bobine — coherent avec la doctrine du depot (« il n'y a pas de record de tir manque ») : ce
+  que nous appelions « fire event » est un record de DEGAT, pas une action de tir.
+- `0x95` (unit_zoom, type 21) : **0 paquet**. VERDICT FERME : la mise en lunette n'est pas dans la
+  bobine sous forme d'evenement, sous la BONNE numerotation cette fois. Recoupe : aucun
+  deserialiseur de replication n'ecrit unite+0x461/+0x462, et le consommateur FUN_14076a484
+  retombe sur la valeur LOCALE des que l'override reseau vaut -1.
+
+**OPPORTUNITE HORS PERIMETRE, A NE PAS PERDRE** (question utilisateur) : si 0xD2 = type 82
+`PlayerGameEventSmall` est bien un SAC DE PROPRIETES NOMMEES (`R(32)` event-id + `R(8)` + `R(3)`
+compteur + N x [`R(32)` property-name + `R(3)` tag de type + valeur], puis un second sac sous
+porte), alors le record est AUTO-DESCRIPTIF : chaque champ est nomme par un identifiant de chaine.
+Consequences potentielles pour killsource / fire_events :
+1. remplacer des offsets fixes devines par une enumeration de proprietes NOMMEES ;
+2. recuperer les champs aujourd'hui inaccessibles (le depot n'expose la visee que sur 19 % des
+   records « longs », faute de savoir avancer dans les boucles de longueur variable) ;
+3. et surtout : `0xD3` = type 83, **528 262 paquets sur 1367 films, ECARTES depuis toujours**
+   comme « variante courte sans arme ». Ce n'est pas une variante : c'est un AUTRE TYPE
+   d'evenement, jamais decode.
+A instruire par un lot dedie AVANT toute conclusion (le sac de proprietes est une hypothese du
+lot E, pas encore verifiee sur le flux ; test d'auto-coherence propose : le compteur R(3) doit
+egaler le nombre de blocs lus et la fin du record doit tomber sur un bit de continuation).
+
+**Prochaine etape** : CR du lot D (registre des types dans chunk_00 : controle independant de la
+table des 123 noms) ; puis decision utilisateur sur le lot « sac de proprietes » (fiabilite des
+kills), qui est hors du perimetre visee mais a plus forte valeur produit.
+
+## [2026-08-30] Visee lunette, phase 10 — CONTRADICTION ENTRE LOTS D ET E sur la nature du premier octet ; ce qui CONVERGE et ce qui reste ouvert — En cours
+
+**LES DEUX LECTURES INCOMPATIBLES.**
+- LOT E (Ghidra, desassemblage du repartiteur FUN_14080a9d4 + boucle appelante FUN_14076a1c4) :
+  un evenement = [1 bit de continuation][R(7) type][3 x reference][charge utile]. Donc le premier
+  octet d'un paquet vaut `0x80 | type`, et la plage observee 0xA0..0xFB s'explique.
+- LOT D (structure du film, 1367 chunk_00 + corpus) : le premier octet N'EST PAS un type. Le bit
+  de poids faible tombe dans l'IDENTIFIANT du premier record (amorce 5 bits + 11 bits d'id) ;
+  0xD2 porte 7 valeurs d'identifiant distinctes, 0xD3 en porte 50 — ce qui explique les « 9
+  identifiants d'arme propres contre 447 de bruit » SANS invoquer aucune variante ni aucun type.
+
+**ARBITRAGE FAIT PAR LE PILOTE (mesure propre, instrument TestViseeTaillesPaquets)** : sur
+00162144, **160 paquets delta d'UN SEUL OCTET (0x80)**, soit 0,58 % ; taille minimale par octet de
+tete : 0xA0 -> 6 o, 0xC7 -> 21 o, 0xC0 -> 25 o, 0xE9 -> 60 o, 0xE5 -> 90 o, 0xD3 -> 105 o,
+0xD2 -> 156 o. Un en-tete d'evenement exige au moins 11 bits (1 + 7 + 3 portes) : **un paquet d'un
+octet ne peut pas en porter**. LE LOT D A RAISON SUR CE POINT — le premier octet du payload n'est
+pas, a lui seul, un numero de type d'evenement.
+Reconciliation la plus probable, NON PROUVEE : le lot E decrit la grammaire des EVENEMENTS telle
+que le moteur les lit sur SON flux ; le paquet delta du film n'est pas ce flux (ou pas seulement).
+Les evenements seraient IMBRIQUES dans la trame, pas en tete. La correspondance « octet de tete <->
+famille de contenu » observee depuis toujours (0xD2 = records de degat) resterait alors un
+CORRELAT de structure, pas un type — ce qui n'invalide pas le pipeline killsource, qui lit des
+decalages MESURES, mais invalide toute conclusion tiree d'un NOM de type.
+
+**CE QUI CONVERGE MALGRE LA CONTRADICTION — la reponse a la question du chantier.**
+Les deux lots, par des voies opposees, disent la meme chose : **il n'y a pas d'evenement de zoom
+dans les films.** Lot E : l'octet attendu (0x95) est absent des 41 M de paquets. Lot D : le film
+declare 123 types (table a 0x0CB208, cardinal suivant le build : 119 en HI_1_5_1, 121 en 1_8-1_10,
+122 en 1_11, 123 en 1_12/1_13) et un type de zoom serait hors de cette borne. Verdict de chantier
+INCHANGE et desormais adosse a deux structures independantes.
+
+**DECOUVERTES HORS PERIMETRE DU LOT D, a ne pas perdre :**
+1. *chunk_00 a TROIS sections, le depot n'en lisait qu'une.* Registre = **50 blocs** (le « 118 »
+   du dossier etait la taille du fichier divisee par celle d'un bloc — erreur de longue date) ;
+   en-tete 0x0CB200..0x0CB45C (table par type + chaine de build) ; **troisieme section
+   0x0CB65C..0x14EB73, ~538 ko propres au match, JAMAIS regardee**, qui porte les gamertags en
+   UTF-16LE. Puis 602 ko de zeros.
+2. *Le film declare sa grammaire PAR TYPE et PAR BUILD* (123 u32, valeurs 1..6, contenu qui change
+   a cardinal constant entre HI_1_8_0 et HI_1_9_0 = une version par entree). Artefact :
+   .ai/V7.5/film_re/chunk00_table_par_type.tsv.
+3. *Le film ne NOMME aucun type d'evenement* : negatif net (13 noms cherches en ASCII et UTF-16,
+   3 orthographes, tous chunks ; temoin positif OK sur les noms de composants ; hachage exclu par
+   821 169 u32 indexes, 0 touche, faux positifs mesures nuls).
+
+**Consequence de methode a retenir** : deux lots aux conclusions opposees valent mieux qu'un lot
+confiant. Le geste qui a tranche a coute 3 minutes (mesurer les tailles de paquets) et aucune des
+deux equipes ne l'avait fait.
+
+**Prochaine etape** : (a) corriger la page Notion publiee (elle affirme le bit de continuation
+comme prouve — a temperer) ; (b) decision utilisateur sur le lot « sac de proprietes / fiabilite
+des kills » ; (c) la 3e section de chunk_00 (538 ko) est un chantier neuf a fort potentiel.
+
+## [2026-08-30] Visee lunette, LOT F — le DERNIER canal (offset variable dans un composant) : negatif adosse a une puissance mesuree, et la marche couvre 100 % du record — Complete
+
+**Mandat** : le seul emplacement que les six negatifs precedents n'avaient pas pu atteindre — un
+bit DANS LA CHARGE UTILE d'un composant deja present, donc a offset VARIABLE (il se deplace d'un
+record a l'autre selon les portes amont). Le balayage du lot C, indexe depuis le DEBUT du
+payload, ne pouvait structurellement pas le voir. Quatre instruments sous garde
+`COMPOSANT_FILM` : `visee_composant_research_test.go` (collecte + couverture),
+`_pont_test.go` (slot -> joueur), `_score_test.go` (colonnes + domaines), `_verdict_test.go`
+(mesure, controle, verdict). Aucun code de production touche.
+
+**SEUILS ECRITS AVANT MESURE** : S1 candidat >= 0,95 avec >= 200 echantillons par classe ; S2 a
+suivre >= 0,85 ; S3 sous-dimensionne ; S4 verdict positif exige p(max GLOBAL) < 1 % au controle
+par translation ; S5 puissance publiee ; S6 recevabilite (composant >= 200 records, decalage
+temoin >= 30 par classe). Moteur d'onde, gardes et translation REPRIS du lot C sans reecriture.
+
+**DEUX ECHECS DE CHEMIN, MESURES ET PUBLIES PLUTOT QUE MASQUES.**
+1. *La marche SEQUENTIELLE ne marche pas sur ce film.* `DecodeFrameViews` rend au mieux
+   1 152 records bipedes sur 3 chunks et **ZERO sur les slots cibles**, pour les cinq largeurs
+   d'identifiant bas balayees (10..14). Bascule sur le chemin ANCRE : `ScanBipedRecords`
+   (ancrage sur la grammaire d'en-tete bipede) + `SetRecordMaskHook` (masque + bit apres i0) +
+   **`ConsumeComponentAt`** — le deser de PRODUCTION, exporte. Enchainee sur les index du masque,
+   cette derniere EST `walkRecordComponents` vue de l'exterieur du paquet. Appariement
+   hook <-> record EXACT (meme appel non filtre) : 0 paquet ecarte sur 27 447.
+2. *Le pont slot -> joueur etait troue, et c'etait le meme piege qu'en phase 6.* La premiere mort
+   de Nilton410 tombe a 1 333 133 ms de film ; le fragment du slot 513 court sur
+   [1 211,1 ; 1 337,4] s — sa fin depasse la mort de 4,3 s (le corps reste replique), donc
+   `nameLivesByDeaths` ne le nomme pas, et c'est EXACTEMENT le fragment que le releve etiquette.
+   Sans lui : 0 record dans la fenetre, et un « negatif » qui n'aurait rien mesure. Rattachement
+   a **trois volets, unicite exigee** : (a) mort a moins de 6 s de la fin du fragment, (b) vie
+   nommee du meme joueur dans les 15 s qui suivent, (c) **aucune mort du joueur A L'INTERIEUR du
+   fragment** — ce dernier volet n'est pas un reglage mais une impossibilite (une vie ne contient
+   pas la mort de son porteur), et il a fait passer le slot 513 de 2 candidats a 1. Marges
+   publiees : mort a -4 285 ms, reapparition a +3 787 ms. Le slot 520 reste NON RATTACHE
+   (3 candidats) et c'est publie tel quel.
+
+**COUVERTURE DE LA MARCHE (F5) — IL N'Y A PAS D'ANGLE MORT.** 15 505 records bipedes ancres sur
+les slots de Nilton, 15 491 marches (14 ecartes hors vie nommee) : **15 491 traverses EN ENTIER,
+soit 100,00 %** ; 64 451 composants annonces par les masques, **64 451 consommes (100,00 %)** ;
+part moyenne consommee par record 100,00 % ; rang moyen du dernier composant consomme i26,5.
+Le negatif porte donc sur le record ENTIER, pas sur son debut. 7 composants sont recevables
+(>= 200 records) : i0 position (54 bits), i1 velocite (2 offsets communs), i5 bouclier (29),
+i21 visee (25), **i25 `unit-command-tick-component` (10)**, i32 et i35 `weapon-state-overheated`
+(9). 138 couples (composant, offset relatif) balayes.
+
+**LA FENETRE, ET CE QU'ELLE COUTE** : 2 458 records du joueur dans [35 ; 95] s de feed ; garde
+1,2 s -> 36 « zoome » / 1 563 « pas zoome » ; garde 0,5 s -> 90 / 1 899. Les deux variantes sont
+donc SOUS-DIMENSIONNEES (S3, seuil 200) : le verdict repose sur le seul controle.
+
+**LE RESULTAT DE METHODE, ET IL EST NEUF : LA PUISSANCE SE PAIE AU NOMBRE D'HYPOTHESES.** Sur le
+domaine COMPLET (138 couples), 4,75 % des decalages temoins atteignent 1,0000 — au-dessus du
+seuil de 1 %. Autrement dit **un canal PARFAIT n'y serait pas distingue du hasard**, et le
+« negatif » global n'y vaut rien. L'instrument le declare lui-meme : le verdict est NON
+CONCLUANT, pas negatif. Cause identifiee : le confondant SPATIAL — les bits de position (i0)
+suivent la trajectoire, donc separent deux intervalles de temps disjoints sans rien dire d'un
+etat, et ils saturent le classement. La reponse n'a pas ete de retirer i0 apres coup, mais de
+mesurer **un domaine par composant** : le meme instrument, restreint, retrouve une puissance de
+0,00 %.
+
+**RESULTATS PAR COMPOSANT** (score = exactitude equilibree ; p = p(max global) ; puissance = part
+des temoins atteignant 1,0000) :
+
+| domaine | garde | meilleur | score | p(max) | puissance | verdict |
+|---|---|---|---|---|---|---|
+| D1 COMPLET (138 couples) | 1,2 s | i0 off. 10 | 0,9363 | 23,97 % | 4,75 % | NON CONCLUANT |
+| D1 COMPLET | 0,5 s | i0 off. 28 | 0,7770 | 74,56 % | 2,03 % | NON CONCLUANT |
+| D3 ETAT (hors i0/i1) | 1,2 s | i25 off. 2 | 0,7527 | 71,27 % | 4,18 % | NON CONCLUANT |
+| D3 ETAT | 0,5 s | i21 off. 13 | 0,7486 | 70,96 % | 2,03 % | NON CONCLUANT |
+| **i25 command-tick** | 1,2 s | off. 2 | 0,7527 | 9,29 % | **0,00 %** | **NEGATIF** |
+| **i25 command-tick** | 0,5 s | off. 2 | 0,5884 | 46,70 % | **0,00 %** | **NEGATIF** |
+| i0 position | 1,2 s | off. 10 | 0,9363 | 11,88 % | 0,58 % | NEGATIF |
+| i0 position | 0,5 s | off. 28 | 0,7770 | 41,99 % | 0,00 % | NEGATIF |
+| i1 velocite | 0,5 s | off. 1 | 0,5189 | 0,33 % | 0,00 % | NEGATIF (score sous S2) |
+| i21 visee | 0,5 s | off. 13 | 0,7486 | 24,58 % | 0,00 % | NEGATIF |
+| i5, i32, i35 | les deux | — | — | — | — | classe « zoome » < 30 : AUCUN verdict |
+
+**CE QUE LE LOT ELIMINE, ET AVEC QUELLE FORCE.** Le resultat central porte sur **i25
+`unit-command-tick-component`** : ce composant n'a pas ete choisi pour son score, il est DESIGNE
+par la phase 7, qui avait etabli au desassemblage que l'etat de zoom d'une unite n'a que deux
+sources ecrites par des donnees, dont **l'octet 6 de la COMMANDE JOUEUR** (`FUN_1406db688` :
+`unite+0x462 = commande[6]`). C'est l'hypothese la plus ancienne du dossier, et elle n'avait
+jamais eu de test a sa mesure. Verdict : **aucun de ses 10 bits de prefixe ne porte l'etat de
+lunette, avec une puissance de 0,00 %** — un canal parfait, et meme un canal a 0,95, y serait
+detecte. Meme conclusion, meme puissance, pour i21 (la visee) et i1 ; i0 conclut aussi (0,58 % et
+0,00 %). Restent hors verdict i5, i32 et i35, trop intermittents pour que la fenetre en donne 30
+echantillons zoomes — c'est le seul trou du lot, et il est nomme.
+
+**LA LECON DU LOT C SE REPRODUIT, A L'IDENTIQUE** : p(position) vaut 1,15 % et **0,33 %** sur le
+domaine complet, ce qui aurait ete publie comme trouvaille par le controle du lot A. p(max) le
+refuse (23,97 % et 74,56 %). Troisieme fois que ce chantier voit un controle trop permissif
+fabriquer un signal ; premiere fois qu'on voit AUSSI la puissance s'effondrer sous le nombre
+d'hypotheses.
+
+**F4 non applicable** : aucun candidat n'est sorti, donc pas de contre-verification Madina ni
+d'autre film. Rappel du lot C : le creneau unique de Madina97294 (1,3 s) laisse 290 ms en garde
+courte, soit ~7 records — structurellement sous le seuil de recevabilite.
+
+**BILAN DES CANAUX — LE SEPTIEME TOMBE.** 1. composant du registre ECS : aucun · 2. queue d'i21 :
+constante · 3. evenement dedie : absent (deux structures) · 4. tete du record de degat : aucun
+bit · 5. alignement d'un type d'evenement : non significatif · 6. bit a POSITION FIXE : aucun,
+puissance mesuree (lot C) · **7. bit a OFFSET RELATIF dans un composant : aucun sur les quatre
+composants qui rendent un verdict, dont la commande du tick, puissance 0,00 %**. La couverture
+etant de 100 %, ce n'est pas un negatif partiel.
+
+**Ce qui reste ouvert, et honnetement** : (a) i5/i32/i35, sans verdict faute d'echantillons —
+leve par un releve plus dense, pas par un instrument de plus ; (b) le domaine COMPLET reste NON
+CONCLUANT : il faudrait ~5 a 10 fois plus d'echantillons « zoome » pour que 138 hypotheses
+tiennent ; (c) l'hypothese « les commandes ne sont pas dans le film » (intuition utilisateur)
+n'est ni prouvee ni refutee, mais elle est desormais la lecture la plus economique.
+
+**DEMANDE (helper de production, NON FAITE — regle « aucune modification de production »)** : la
+constante `i0TailBits = 2` de `filmdec/offline_aim.go` a du etre RECOPIEE dans l'instrument
+(`vfI0TailBits`) faute d'export. C'est la seule constante de grammaire dupliquee par ce lot. Si
+un autre instrument en a besoin, l'exporter (ou exposer un `filmdec.BipedComponentWalk` qui rende
+directement les couples (index, StartBit)) evitera la troisieme copie.
+
+**Gates** : `gofmt` propre · `CGO_ENABLED=0 go vet ./internal/analysis/replay/` propre · suites
+`replay` (19,4 s) et `filmdec` (0,7 s) **0 echec** · 4 fichiers de 385, 434, 206 et 414 lignes,
+tous sous garde d'environnement (saute en CI) · huit executions reelles conservees, dont les deux
+echecs de chemin.
+
+**Prochaine etape** : le canal d'etat de lunette est epuise cote film pour ce releve. Soit (A) un
+releve Theater DENSE (3-4 min, episodes longs) qui redonnerait de la puissance au domaine complet
+et couvrirait i5/i32/i35, soit (B) le repli produit deja recommande en phase 7 : piloter le cone
+du rejeu par heuristique client (arme a lunette tenue + reticule sur cible), affichee comme
+estimation.
+
+## [2026-08-30] Visee lunette — VERIFICATION PILOTE du lot F, et identification du VRAI facteur limitant : le volume de verite terrain — En cours
+
+**Verification sur pieces (rejeu integral de l'instrument par le pilote, film 00162144)** : le CR du
+lot F est EXACT. Piege de lecture a signaler pour la suite — les verdicts se lisent PAR VARIANTE, et
+deux variantes voisines ne disent pas la meme chose :
+- `D1 COMPLET` (138 couples) et `D3 ETAT` : **NON CONCLUANT**, puissance 4,75 % / 2,03 % / 4,18 %
+  — sous le nombre d'hypotheses la puissance s'effondre, aucun negatif n'en est tirable ;
+- composants ISOLES `i0`, `i1`, `i21`, `i25` : **NEGATIF adosse a une puissance mesuree a 0,00 %**
+  (un canal parfait, et meme a 0,95, y serait detecte).
+Le resultat central porte bien sur **i25 `unit-command-tick-component`**, DESIGNE par le
+raisonnement d'elimination de la phase 7 (l'octet 6 de la commande joueur) et non choisi pour son
+score : aucun de ses 10 bits ne porte l'etat de lunette, puissance 0,00 %.
+
+**Couverture verifiee (F5) : 15 491 records marches, 100,00 % traverses en entier, 64 451
+composants annonces = 64 451 consommes.** Le negatif porte donc sur le RECORD ENTIER, pas sur un
+fragment — l'angle mort redoute (« la marche s'arrete au premier composant non modelise ») n'existe
+pas sur ce corpus. C'est une mesure neuve et elle vaut au-dela de ce chantier.
+
+**CE QUI RESTE NON COUVERT, ET C'EST LE VRAI FACTEUR LIMITANT** : sur 7 composants recevables,
+3 (`i5`, `i32`, `i35`) n'ont PAS ete conclus faute d'echantillons — moins de 30 records dans la
+classe « zoome ». Et la classe « zoome » entiere ne pese que **36 echantillons contre 1 563**
+(garde 1,2 s) ou 90 contre 1 899 (garde 0,5 s), parce qu'UN SEUL film est annote et que les bandes
+de garde mangent 4 des 6 episodes. Le facteur limitant n'est plus le decodeur : **c'est le volume
+de verite terrain.**
+
+**BILAN DES SEPT CANAUX** (tous mesures, aucun positif) : composant du registre · queue d'i21
+constante · evenement dedie (deux structures independantes) · tete du record de degat · alignement
+d'un type d'evenement (refute par translation) · bit a position fixe (1024 bits, 7 variantes,
+puissance mesuree) · **bit a offset relatif dans un composant (ce lot)**.
+
+**CE QUI DEBLOQUERAIT** (par ordre de rendement) :
+1. **Plus de verite terrain** : 2 ou 3 films annotes de plus, ou davantage d'episodes sur le meme
+   film, redonneraient de la puissance au domaine complet ET aux 3 composants non conclus. C'est
+   l'action a plus fort rendement et elle ne depend que de l'utilisateur (releve Theater).
+2. **Lot 3 du plan `PLAN_PERCER_TRAME_FILM_2026-08-30.md`** (compte du registre, 118 vs 50 blocs) :
+   si l'inventaire des composants s'avere incomplet, plusieurs « ce composant n'existe pas » du
+   chantier tombent et la question se rouvre — c'est ecrit dans le plan.
+3. **Tags d'armes du jeu** (angle utilisateur, jamais exploite) : le niveau de zoom appartient a
+   l'ARME. Le tag d'arme declare ses paliers de grossissement — cela ne dit pas QUAND un joueur
+   zoome, mais donne le QUOI (combien de crans, quel facteur), de quoi dimensionner le cone du
+   rejeu correctement le jour ou l'etat sera disponible, et de quoi alimenter une heuristique
+   honnete en attendant.
+
+**Demande du lot F non traitee (dette notee, hors perimetre)** : `i0TailBits` de
+`filmdec/offline_aim.go` a du etre recopiee faute d'export — exporter la constante, ou mieux
+exposer un `filmdec.BipedComponentWalk` rendant les couples (index, StartBit), eviterait une
+troisieme copie (regle des <= 2 copies du depot).
+
+## [2026-08-30] Visee lunette — DECISION : trancher par CHEAT ENGINE le 31/08 (protocole ecrit et pret) — En attente d'execution
+
+**Decision utilisateur** : plutot que d'annoter d'autres films pour gagner de la puissance
+statistique, faire une CAPTURE VIVANTE. C'est le bon appel, et cela rend les six canaux restants
+inutiles a explorer.
+
+**Pourquoi c'est decisif** : l'adresse de l'etat de zoom est CONNUE (unite+0x461 courant,
+unite+0x462 desire, valeurs -1/0/1/2). Un point d'arret EN ECRITURE sur cet octet, pendant que
+Theater rejoue le film, fait dire au jeu lui-meme QUELLE FONCTION l'ecrit. Les trois candidats sont
+deja identifies et chacun porte un verdict tranche :
+- `FUN_1406db688` (applique la commande joueur, `unite+0x462 = commande[6]`) -> les commandes SONT
+  rejouees depuis le film ; il reste a trouver le champ porteur ;
+- `FUN_14110ec20` (applicateur de l'evenement `unit_zoom`) -> un evenement existe malgre 41 M de
+  paquets recenses sans lui — le recensement serait a refaire ;
+- `FUN_1404a4ab8` (transition locale courant -> desire, appelee par le tick d'unite) -> reconstruit
+  cote client, question CLOSE.
+
+**Le controle le plus informatif du protocole** : refaire la recherche sur un JOUEUR DISTANT
+(Madina97294, zoomee sur {45 ; 46,3} et quasiment pas ailleurs). Si son octet suit SA propre
+chronologie pendant le rejeu, l'etat existe par joueur et vient donc du film ; s'il reste a -1 alors
+que l'observe varie, le zoom n'existe que pour l'unite observee et la question est definitivement
+close.
+
+**Protocole ecrit, clef en main** : `.ai/V7.5/PROTOCOLE_CE_ZOOM_2026-08-31.md` (4 etapes, pieges,
+suites selon chacun des trois verdicts). Precedent d'usage de CE dans ce chantier : la mesure du
+cout en bits du composant de position (« total i0 = 47 bits », cf. `filmdec/offline_aim.go`).
+
+**Regle rappelee dans le protocole** : une capture CE n'est pas reproductible plus tard — adresses,
+instructions ecrivantes et pile d'appels doivent entrer au thought_log le jour meme.
+
+## [2026-08-31] Visee lunette — PORTE FRANCHIE : la lunette EST dans le film, et elle est attribuable par joueur — Complete (positif prouve)
+
+**Le negatif du chantier est REFUTE, et la cause est identifiee.** Le chantier « trame film »
+(branche `wt/trame-film`, page Notion « Percer la trame du film ») a perce le MODELE DE PAQUET :
+
+	[1 bit configuration] [liste d'evenements : ( 1 [R(7) type] [3 refs gardees] [charge] )* 0]
+	[trame de records ECS]
+
+Nos sept campagnes lisaient le type a `octet & 0x7F` : elles IGNORAIENT le bit de configuration et
+decalaient tout d'UN bit. Le « triple verrou » (registre, recensement de types, onde carree)
+partageait ce meme decalage — trois chaines qui semblaient independantes ne l'etaient pas sur ce
+point precis. La famille `0xCA` porte le type 21 `unit_zoom` : **~400 000 evenements sur le corpus**.
+
+**LA MESURE DE CLOTURE (instrument `replay/visee_zoom_gate_test.go`, garde ZOOM_FILM).** Ce
+chantier detenait la VERITE TERRAIN, la session soeur la grammaire : on confronte les deux. Aucun
+pont ref0 -> joueur n'est suppose — c'est la chronologie qui DESIGNE l'unite.
+
+Film 00162144, decalage feed->film +1 171 858 ms (pont des morts, 91 fins de vie appariees).
+324 paquets `0xCA`, **324 evenements `unit_zoom` decodes, 0 d'un autre type** (la famille est pure).
+58 unites distinctes portent au moins une entree ; 7 sont actives dans la fenetre du releve.
+
+**Unite 1 (ref0, domaine 4) contre le releve manuscrit de Nilton410 :**
+
+| releve utilisateur (debut d'episode) | evenement ENTREE | ecart |
+|---|---|---|
+| 41 s | 41,7 | 0,7 s |
+| 49 s | 49,6 | 0,6 s |
+| 61 s | 60,6 | 0,4 s |
+| 68 s | 69,2 | 1,2 s |
+| 71 s | 71,5 | 0,5 s |
+| 85 s | 85,7 | 0,7 s |
+
+**6/6 debuts apparies a moins de 1,2 s**, 3 entrees supplementaires dans la fenetre.
+**CONTROLE PAR TRANSLATION : 0,00 %** — sur ~3 200 decalages temoins (±400 s, pas de 250 ms,
+voisinage ±3 s exclu), le maximum repris sur les 58 unites a chaque decalage, AUCUN n'atteint 6/6.
+Seuils ecrits avant la mesure (>= 5/6 et controle < 1 %). C'est le meme controle qui avait refute
+la phase 6 (type 114, p = 1,04 %) et rattrape deux faux positifs au lot C : il tranche ici dans
+l'autre sens, sans ambiguite.
+
+**Correction d'instrument en cours de route, dite pour memoire** : la premiere version reconstruisait
+des INTERVALLES (entree -> sortie) et fusionnait les episodes consecutifs de l'utilisateur (une
+periode 41,7 -> 53,5 s couvrant deux episodes), ce qui donnait p = 1,76 % — refuse. Le dump des
+evenements BRUTS a montre que le signal etait dans les INSTANTS d'entree, pas dans les intervalles :
+la reconstruction d'intervalles rate des sorties (evenements de lunette portes en 2e position d'une
+liste, dans d'autres familles). Comparer les instants aux debuts d'episode donne 6/6 a p = 0,00 %.
+
+**CE QUI EST DESORMAIS ACQUIS** : l'etat de lunette est lisible du film, date a la milliseconde,
+et ATTRIBUABLE PAR UNITE. L'objectif produit nomme par l'utilisateur — le cone de visee du rejeu
+qui s'etrecit — devient realisable sur DONNEE REELLE, plus par heuristique.
+
+**RESTE A FAIRE (borne, dans l'ordre)** :
+1. **Pont ref0 (domaine 4) -> joueur, general** : ici l'unite 1 a ete designee par la chronologie.
+   Pour industrialiser il faut la correspondance systematique index domaine 4 -> slot/xuid (piste
+   de la session soeur : « la ref de degat RESOUT vers un slot joueur, base ~512 », commit f4967eb73).
+2. **Recuperer les evenements de lunette portes en 2e position** d'une liste (les sorties manquantes) :
+   marcher la liste d'evenements entiere au lieu du seul evenement de tete.
+3. **Elargir la verite terrain** : 2 ou 3 films annotes confirmeraient sur un corpus independant.
+4. **Brancher** : periodes de lunette par joueur -> cone du rejeu.
+
+**Cheat Engine n'est plus necessaire** : le protocole `PROTOCOLE_CE_ZOOM_2026-08-31.md` devient sans
+objet pour la question « le film porte-t-il la lunette » (repondue par l'affirmative). Il reste
+utilisable si l'on veut un jour verifier la semantique des NIVEAUX (0/1/2).
+
+## [2026-08-31] Visee lunette — LE CONE S'ETRECIT : chaine complete du film a l'UI (schema 29) — Complete
+
+**La chaine est bouclee de bout en bout.** Le film porte la lunette, le document la publie, le
+rejeu la dessine.
+
+**1. Decodage (production)** — `filmdec/zoom_events.go` : `ScanFilmZoomEvents` lit les bascules
+`unit_zoom` (type 21, famille 0xCA) ; `ZoomStateAt` reconstruit l'etat par slot. Pont vers le
+joueur : **slot = index de reference + 512**, mesure a 98 % contre 0 % pour toute autre base
+(fermeture, pas correlation). Cette base est confirmee INDEPENDAMMENT par la session
+`wt/trame-film` (commit 5414739e4, calibration par couverture-vitalite).
+
+**2. Document** — `Point.S` (palier de lunette), **SchemaVersion 23 -> 29** (feat/v75 avait
+avance a 28 pendant le chantier ; merge resolu en gardant les deux chroniques). La montee est
+justifiee comme celle du schema 13 : ce n'est pas un champ de plus, c'est le SENS DU CONE qui
+change une seconde fois. Cliquet de version mis a jour avec sa raison ecrite, golden reassemble,
+contrat openapi + types TS regeneres (`make openapi-gen` puis `make generate-types`).
+
+**3. UI** — `replayAimCone.ts` : la lunette RESSERRE L'OUVERTURE (0,18 rad contre 0,42), et ne
+touche PAS a la longueur, qui reste le domaine de l'elevation (`1 + 0,55 x sin(p)`). Les deux
+mecaniques sont orthogonales et testees comme telles : 4 tests neufs dans `replayMarkers.test.ts`
+verifient le resserrement, la NON-modification de la longueur, le cumul (etroit ET court en
+plongee) et le contrat de l'absence. Un leger supplement d'opacite (x1,25) compense la surface
+perdue par un cone plus etroit.
+
+**CALIBRATION DU MAINTIEN, faite SUR LA DONNEE et non sur la verite terrain.** Les sorties de
+lunette sont sous-comptees (seuls les evenements en TETE de liste sont lus). Sans plafond, une
+entree orpheline tiendrait jusqu'a la fin du match. Le plafond vient de la distribution des
+periodes REELLEMENT FERMEES sur le film de reference — 139 periodes, mediane 1,13 s, p90 2,65 s,
+**p95 3,49 s**, max 5,72 s — d'ou `zoomHoldUS = 3,5 s`. Se caler sur la chronologie de
+l'utilisateur aurait ete s'ajuster a la reponse que la mesure doit controler.
+
+**DEUX CORRECTIONS DE MA PROPRE MESURE, dites pour memoire :**
+1. Le gate de bout en bout comptait d'abord les echantillons de TOUT le match contre une
+   chronologie qui n'en couvre que 60 s : 29,3 % « de justesse » qui ne mesuraient que
+   l'ignorance du releve hors fenetre. Restreint a la fenetre annotee.
+2. Puis il mesurait une PRECISION contre un releve qui est une liste de ce que l'utilisateur A VU
+   (« brievement », « environ »), jamais une certification d'absence ailleurs. Metrique changee
+   pour le RAPPEL — la seule chose que ce releve peut arbitrer.
+
+**RESULTATS DES GATES :**
+- identification (`TestViseeZoomGate`) : 6/6 debuts d'episode apparies, **p = 0,00 %** sur
+  ~3 200 decalages temoins ;
+- cablage (`TestViseeZoomBoutEnBout`) : 6/6 episodes couverts sur la track du slot 513 ;
+  22,6 % des echantillons de cette track sont a la lunette ; **reserve publiee : 1,0 % des
+  decalages temoins atteignent aussi 6/6**, ce gate verifie donc LE CABLAGE, pas l'identification ;
+- `go test ./internal/analysis/...` : 0 echec ; `npm run typecheck` (cache purge) : vert ;
+  vitest `match-replay` : **1938/1938** ; eslint : propre sur les fichiers touches.
+
+**UN GARDE-RAIL A FAIT SON TRAVAIL** : `replaySchemaLogic.guard.test.ts` a refuse la divergence
+entre la copie front de `SchemaVersion` et la constante Go — copie mise a jour a 29.
+
+**RESTE (borne, dans l'ordre)** :
+1. **Marcher la liste d'evenements ENTIERE** au lieu du seul evenement de tete : c'est ce qui
+   recupererait les sorties manquantes et rendrait le plafond de maintien inutile.
+2. **Elargir la verite terrain** : 2 ou 3 films annotes confirmeraient sur un corpus independant.
+3. **Re-cuisson** des artefacts (SchemaVersion 29) pour que les rejeux deja cuits portent la
+   lunette.
+4. **Gate visuel utilisateur** sur le rejeu de 00162144 : le cone de Nilton doit se resserrer aux
+   six moments releves.
+
+## [2026-08-31] Visee lunette — CE QUI FERME UNE PERIODE : la mort explique un tiers des sorties manquantes, pas le reste — Complete (mesure)
+
+**Question de l'utilisateur** : les zoom-out sont-ils absents du flux delta ? Et deux hypotheses
+de sa part : (a) le joueur meurt a la lunette, il n'a pas le temps de dezoomer ; (b) subir des
+degats force le dezoom.
+
+**Les chiffres d'abord — les sorties NE SONT PAS absentes** : 180 entrees, 144 sorties,
+**139 periodes completes (77 %)**. Il manque 41 fermetures, pas la moitie du signal.
+
+**Mesure (instrument `TestViseeZoomEntreesOrphelines`, garde ZOOM_FILM).** Une entree est
+ORPHELINE si la bascule suivante du meme slot est une AUTRE entree (le moteur ne peut pas entrer
+deux fois sans etre sorti). Delai entre l'entree et la fin de vie du slot :
+
+| population | n | mediane | < 2 s | < 5 s |
+|---|---|---|---|---|
+| entrees FERMEES par une sortie lue | 138 | 15,80 s | 3 % | 10 % |
+| entrees ORPHELINES | 41 | 12,13 s | **15 %** | **32 %** |
+
+**VERDICT PARTAGE, et c'est le resultat honnete** : l'hypothese (a) est CONFIRMEE mais ne couvre
+qu'une partie — les orphelines meurent 3 a 5 fois plus vite que les fermees (32 % contre 10 % a
+moins de 5 s), donc « il est mort a la lunette » explique environ un tiers des cas. Les deux tiers
+restants ne meurent pas : **leur sortie existe donc dans le flux, ailleurs que la ou on regarde**.
+
+**CE QUI DESIGNE L'HYPOTHESE (b)** : le scanner ne lit que l'evenement de TETE de chaque paquet.
+Une sortie de lunette PROVOQUEE par un degat serait emise dans le meme paquet que le degat —
+donc en DEUXIEME position d'une liste, invisible pour lui. L'intuition de l'utilisateur et la
+structure du format se rejoignent.
+
+**CONSEQUENCES OPERATIONNELLES, dans l'ordre de valeur** :
+1. **Marcher la liste d'evenements ENTIERE** recupererait les deux tiers manquants. C'est le
+   geste qui rend le plafond de maintien inutile. Il exige la longueur de charge de chaque type
+   d'evenement — chantier suivi par `PLAN_PERCER_TRAME_FILM_2026-08-30.md`.
+2. **Fermer une periode A LA MORT du slot** (fin de vie de la trajectoire) : gratuit, la donnee
+   est deja la, et cela traite proprement le tiers explique par (a) au lieu de le laisser au
+   plafond de 3,5 s.
+
+## [2026-08-31] Visee lunette — RECONSTRUCTION A PLUSIEURS CAUSES (objection architecturale de l'utilisateur) — Complete
+
+**L'OBJECTION, ET ELLE EST JUSTE** : « on peut dezoomer en changeant d'arme, en subissant des
+degats, en mourant — ca fait enormement d'evenements qui font zoom out, ca ne me parait pas
+fiable ; un developpeur n'aurait sans doute jamais code son decodeur de film de cette maniere ».
+Faire dependre l'etat de la capture EXHAUSTIVE de toutes les causes de sortie est fragile par
+construction.
+
+**CE QUI A CHANGE** (`replay/zoom_state.go`, neuf) : une periode se ferme desormais sur TOUTE
+cause observable, par ordre de fiabilite —
+1. l'evenement de sortie quand il est lu (seule source de l'instant EXACT) ;
+2. la FIN DE VIE du slot (certaine, deja dans le document, cout nul) ;
+3. une NOUVELLE ENTREE du meme slot (le moteur ne peut pas entrer deux fois sans sortir) ;
+4. le plafond de maintien, en dernier recours — il ne ferme rien, il fait CESSER D'AFFIRMER.
+Les trois premieres sont des faits ; la quatrieme est un aveu d'ignorance borne. Le decodeur ne
+depend plus d'une source unique.
+
+**GAIN MESURE : MARGINAL SUR CE FILM, et il faut le dire.** Part d'echantillons a la lunette sur
+la track de Nilton : 22,6 % avant, 23,6 % apres ; rappel 6/6 inchange ; temoin 1,0 % -> 1,2 %.
+La fermeture par la mort ne deplace presque rien ICI parce que les deux tiers des entrees
+orphelines ne meurent pas vite. Le benefice n'est donc pas dans le chiffre : il est dans
+l'INVARIANT — le modele ne peut plus affirmer « a la lunette » au-dela d'une mort, quel que soit
+le film.
+
+**CE QUE L'OBJECTION LAISSE OUVERT, honnetement.** Le modele ne simule pas la logique de jeu :
+si le moteur dezoome pour une raison qu'aucun evenement lu ne porte et qui ne coincide ni avec
+une mort ni avec une entree suivante, la periode reste trop longue de quelques secondes. Deux
+suites, dans l'ordre :
+1. **Marcher la liste d'evenements ENTIERE** (le scanner ne lit que l'evenement de TETE) —
+   recupere les deux tiers manquants et rend le plafond inutile. C'est la vraie correction.
+2. **Verifier si les IMAGES-CLES portent l'etat de lunette.** C'est le geste que l'objection
+   suggere : un decodeur robuste se resynchronise sur un etat complet periodique plutot que
+   d'accumuler des bascules. L'inventaire des composants dit qu'aucun ne porte le zoom — mais
+   cet inventaire est justement celui que le lot 3 du plan « percer la trame » doit reverifier
+   (50 blocs contre 118 annonces). A rouvrir apres lui, pas avant.
+
+**Gates** : `go test ./internal/analysis/...` 0 echec ; build et vet propres.
+
+## [2026-08-31] Visee lunette — DIMENSIONNEMENT des listes multiples : 28 % des paquets, et le zoom EST bien porte en 2e position — Complete (mesure)
+
+**Question** : le scanner de production ne lit que l'evenement de TETE de chaque paquet. Combien
+rate-t-il, et que faudrait-il savoir decoder pour marcher la liste entiere ?
+
+**L'ASTUCE QUI REND LA MESURE POSSIBLE SANS TOUTE LA GRAMMAIRE** : le bit de continuation qui suit
+un evenement est lisible des lors qu'on sait traverser CET evenement-la. Or `unit_zoom` a une
+charge de longueur connue (R(2)). On peut donc mesurer, sur la seule famille qu'on sait traverser,
+la frequence des listes multiples et le TYPE du deuxieme evenement.
+
+**RESULTAT (film 00162144, instrument `filmdec/zoom_events_test.go`, garde ZOOM_EVT_FILM)** :
+**91 des 324 paquets a evenement de lunette en tete portent un SECOND evenement, soit 28,1 %.**
+Palmares des seconds types : **38** (38 fois) · **36 `action_weapon_fire`** (25 fois) · 39 (6) ·
+82 (6) · 9 (4) · **21 `unit_zoom` (4 fois)** · 0 (4) · 15 (3) · 5 (1).
+
+**DEUX FAITS QUI COMPTENT** :
+1. **Le type 21 apparait bien en DEUXIEME position** (4 fois sur ce seul film) : la preuve directe
+   que des evenements de lunette echappent au scanner de tete. L'hypothese n'en est plus une.
+2. **Le deuxieme evenement le plus frequent est le TIR** (type 36, 25 fois) : « je me mets a la
+   lunette et je tire dans le meme tic » est le motif dominant. Cela conforte aussi, par symetrie,
+   l'hypothese de l'utilisateur pour les sorties — un dezoom PROVOQUE voyagerait dans le paquet de
+   sa cause (degat, changement d'arme), donc en 2e position d'une liste dont la tete est cette
+   cause.
+
+**CE QU'IL FAUT POUR MARCHER LA LISTE ENTIERE, ET C'EST UNE DEPENDANCE NOMMEE** : la longueur de
+charge des types 38, 36, 39, 82... Or **le type 36 (`action_weapon_fire`) et la famille des degats
+(`damage_aftermath`) sont precisement ce que la session soeur `wt/trame-film` a decode** (commits
+9d5b1b23c, fc15d59bb, 8a8aa3239). Reprendre leur grammaire permettrait de traverser les deux
+familles les plus frequentes — et donc d'attraper les dezooms provoques par un degat, le cas que
+l'utilisateur avait designe. C'est le prochain geste, et il se fera APRES la fusion de leur
+branche plutot qu'en dupliquant leur travail.
+
+**Reserve de methode** : cette mesure ne porte que sur les paquets dont la TETE est un zoom. Elle
+minore vraisemblablement le phenomene, puisque les paquets dont la tete est un degat (bien plus
+nombreux) ne sont pas comptes ici — ils sont justement ceux qu'on ne sait pas encore traverser.
+
+## [2026-08-31] Visee lunette — LE DECODAGE GENERALISE : 4 films, pont a 98-100 %, et les PALIERS SUPERIEURS existent — Complete
+
+**Question posee avant toute generalisation** : tout le chantier a ete valide sur `00162144`.
+La grammaire et le pont sont-ils GENERAUX, ou a-t-on ajuste un cas ?
+
+**Quatre controles de STRUCTURE** (instrument `filmdec/zoom_events_test.go`,
+`TestZoomStructureMultiFilms`, garde ZOOM_FILMS ; jamais le corpus entier — bombe RAM connue).
+Ils echouent par construction si le decodage derape, sans avoir besoin de verite terrain :
+
+| film | paquets | C1 hors-type | C2 paliers {0,1,2,3} | C3 pont | C4 entrees/sorties |
+|---|---|---|---|---|---|
+| 00162144 | 324 | **0** | 144 / 178 / 2 / 0 | **63/64 (98 %)** | 180 / 144 |
+| 000d5950 | 195 | **0** | 93 / 102 / 0 / 0 | **36/36 (100 %)** | 102 / 93 |
+| 00502e52 | 183 | **0** | 82 / 101 / 0 / 0 | **44/44 (100 %)** | 101 / 82 |
+| 01e1f945 | 302 | **0** | 132 / 167 / 3 / 0 | **63/63 (100 %)** | 170 / 132 |
+
+**CE QUE CA ETABLIT** :
+- **La famille est PURE** : aucun paquet 0xCA ne porte autre chose que le type 21, sur les quatre
+  films. La lecture du type n'est pas un ajustement local.
+- **Le pont slot = index + 512 est GENERAL** : 98 a 100 %. Sur `00162144` il ne rate qu'UN index
+  sur 64 — c'etait deja le chiffre du jour de la decouverte, et il se reproduit ailleurs a 100 %.
+- **L'equilibre entrees/sorties est CONSTANT** (~1,2 entree par sortie partout), ce qui conforte
+  que le meme phenomene est lu partout, avec le meme angle mort.
+
+**DECOUVERTE — LES PALIERS SUPERIEURS SONT DANS LA DONNEE.** La session soeur n'avait observe que
+les charges {0, 1} sur deux films et en avait deduit « entree / sortie ». Sur quatre films, la
+valeur **2 apparait cinq fois** (0 %, 0 %, 0,6 %, 1,0 %). Ce ne sont pas des erreurs de lecture :
+ce sont les CRANS SUPERIEURS de lunette, ceux des armes qui en ont plusieurs — le fusil de
+precision zoome deux fois. La raretemest attendue (peu d'armes, peu de joueurs vont au second
+cran), et une lecture au mauvais endroit aurait reparti les quatre valeurs a peu pres egalement.
+`ZoomEvent.Level` porte deja cette valeur ; la documentation du champ est corrigee, et le
+controle C2 verifie desormais la FORME de la distribution (dominee par {0,1}, queue rare) au lieu
+d'interdire les paliers superieurs.
+
+**CONSEQUENCE PRODUIT** : `Point.S` publie le palier, pas un booleen. Le rendu peut donc, le jour
+ou l'utilisateur le voudra, distinguer les deux crans (un cone encore plus etroit au second) —
+la donnee est la, c'est un choix d'affichage, pas un chantier.
+
+## [2026-08-31] Visee lunette — L'ETRECISSEMENT SUIT LE PALIER (demande utilisateur) — Complete
+
+**Demande** : « on peut ajuster l'etrecissement en fonction des niveaux ? » Oui — la donnee est
+deja la : `Point.S` publie un PALIER, pas un booleen, et les crans superieurs sont mesures
+(la charge vaut 2 cinq fois sur ~1 000 bascules, quatre films).
+
+**Rendu (`replayAimCone.ts`)** : chaque cran DIVISE l'ouverture.
+
+| palier | ouverture (rad) | lecture |
+|---|---|---|
+| 0 / absent | 0,84 | a la hanche |
+| 1 | 0,365 | epaule |
+| 2 | 0,159 | second cran (armes a deux zooms) |
+| >= 3 | 0,140 (plancher) | — |
+
+Formule : `AIM_HALF_ANGLE / 2,3^palier`, plancher a 0,07 rad de demi-ouverture.
+
+**LE PLANCHER N'EST PAS DECORATIF** : sous ~0,07 rad le secteur devient plus fin que le contour
+du marqueur aux echelles usuelles — il cesserait de se lire comme un cone pour devenir un trait,
+et l'information « il est epaule » se perdrait au moment ou elle est la plus forte.
+
+**CHOIX DE RENDU ASSUME, ET C'EST LE BON NIVEAU D'INFORMATION** (tranche par l'utilisateur le
+2026-08-31) : le grossissement reel de l'arme n'a pas de sens sur une carte vue de dessus — le
+cone n'y est pas un champ de vision, c'est un REPERE DE LECTURE. Le PALIER publie par le film
+suffit donc entierement : trois etats qui se distinguent d'un coup d'oeil. Aller chercher le
+facteur optique dans les tags d'armes serait de la precision inutile, et probablement nuisible
+(une ouverture « exacte » rendrait le cone illisible). Piste des tags d'armes CLOSE pour ce
+besoin.
+
+**Tests** : 3 epreuves neuves — resserrement au premier cran, resserrement SUPPLEMENTAIRE au
+second (avec l'inegalite stricte, pas seulement la valeur), et plancher aux crans extremes.
+L'orthogonalite avec l'elevation reste testee dans les deux sens.
+
+**Gates** : typecheck vert (cache purge), eslint propre, vitest `match-replay` **1940/1940**.
+
+## [2026-08-31] Visee lunette, LOT G — la verite terrain passe de 36 a 10 491 echantillons : le champ d'etat de lunette N'EXISTE PAS dans les records delta, et les images-cles ne peuvent pas etre testees sur un film — Complete
+
+**CE QUI A CHANGE, ET C'EST TOUT LE LOT.** Le lot F cherchait un bit d'etat dans la charge utile
+des composants du bipede en correlant avec la chronologie RELEVEE A LA MAIN : six episodes, un
+joueur, soixante secondes, **36 echantillons** en classe « zoome » apres bandes de garde. Sur le
+domaine complet il avait du publier NON CONCLUANT — la puissance s'effondrait a 4,75 %. Depuis,
+les evenements `unit_zoom` sont decodes et valides ; ils deviennent des ETIQUETTES pour TOUS les
+slots et TOUT le film. La meme question, avec **291 fois plus d'echantillons**.
+
+**G1 — LES ETIQUETTES (film 00162144).** 324 bascules lues (180 entrees, 144 sorties), grille de
+8 710 cellules de 50 ms sur 435,5 s, 61 slots retenus, 160 periodes reconstruites par
+`buildScopedLookup` (la reconstruction de PRODUCTION, a plusieurs causes de fermeture). Marges
+obligatoires appliquees par erosion / dilatation exactes : « zoome » a >= 300 ms d'une entree ET
+d'une fermeture, « pas zoome » a >= 1 s de TOUTE periode. **Effectifs en records delta :
+10 491 « zoome » / 67 460 « pas zoome »**, 19 843 exclus par les marges. Films de controle :
+6 773 / 80 322 (00502e52) et 5 613 / 63 091 (000d5950).
+
+**LE PONT SLOT -> JOUEUR DISPARAIT.** Le lot F avait du rattacher a la main des fragments de vie
+anonymes (critere a trois volets, un slot laisse non rattache) pour savoir quels records etaient
+ceux de Nilton410. Les etiquettes etant indexees par SLOT, exactement comme les records, la
+question « qui est ce joueur » ne se pose plus. Perimetre : seuls les slots portant au moins une
+periode entrent dans la mesure — les deux classes viennent donc des MEMES slots, et le confondant
+« bit qui identifie le porteur » n'existe plus par construction.
+
+**G2 — COUVERTURE DE LA MARCHE : IL N'Y A PAS D'ANGLE MORT.** 97 794 records bipedes ancres,
+97 794 marches, **97 792 traverses EN ENTIER (100,00 %)** ; 396 640 composants annonces,
+396 637 consommes (100,00 %) ; rang moyen du dernier composant i25,6. 15 composants recevables
+(>= 200 records), **177 couples (composant, offset relatif)** balayes — contre 7 composants et
+138 couples au lot F. Sur les films de controle : 99,97 % et 99,99 % de records entiers.
+
+**LA SENTINELLE — CE QUE CE LOT AJOUTE A LA METHODE DU DOSSIER.** La puissance (S5) repond par
+extrapolation a « l'instrument aurait-il su trouver ? ». Ce lot y repond AUSSI par construction :
+un canal PARFAIT (un bit egal a l'etiquette) est injecte dans une colonne au meme format que les
+autres et passe par la CHAINE ENTIERE — meme transposition, meme masque, meme score, meme
+controle. Resultat sur les trois films : **1,0000 avec p(max global) = 0,00 %**, score moyen des
+temoins 0,5383. Ce que cela exclut, et qu'aucune autre mesure n'excluait : un desalignement
+records / etiquettes (slots decales, horloges differentes) aurait mis tous les scores a 0,5 et
+produit un negatif parfaitement convaincant et entierement faux. Ce mode de panne est ecarte.
+
+**RESULTATS G2 (00162144 ; score = exactitude equilibree ; p = p(max global) ; puissance = part
+des temoins atteignant 1,0000) :**
+
+| domaine | meilleur | score | p(max) | puissance | verdict |
+|---|---|---|---|---|---|
+| SENTINELLE (canal parfait injecte) | offset 0 | **1,0000** | **0,00 %** | 0,00 % | detecte |
+| COMPLET (177 couples) | i32 off. 0 | 0,6509 | 97,16 % | 0,00 % | NEGATIF |
+| i0 position | off. 8 | 0,5844 | 96,02 % | 0,00 % | NEGATIF |
+| i1 velocite | off. 1 | 0,5018 | 28,41 % | 0,00 % | NEGATIF |
+| i5 bouclier | off. 16 | 0,6055 | 78,12 % | 0,00 % | NEGATIF |
+| i21 visee | off. 16 | 0,5856 | 72,99 % | 0,00 % | NEGATIF |
+| **i25 command-tick** (designe phase 7) | off. 1 | 0,5191 | 65,91 % | **0,00 %** | **NEGATIF** |
+| i30 / i33 weapon-state-ammo | off. 0 | 0,5443 / 0,5224 | 38,71 / 33,33 % | 0,00 % | NEGATIF |
+| i32 weapon-state-overheated | off. 0 | 0,6509 | 88,24 % | 0,00 % | NEGATIF |
+
+Films de controle : **8 domaines NEGATIFS sur 00502e52, 11 sur 000d5950**, sentinelle a 1,0000
+et p = 0,00 % sur les deux. Aucun candidat nulle part — **G4 (contre-verification et confrontation
+a `chronoEpisodes`) est donc sans objet**, et c'est dit plutot que simule.
+
+**CE QUE LE DOMAINE COMPLET GAGNE PAR RAPPORT AU LOT F, ET C'EST LE POINT DE METHODE.** Au lot F
+il etait NON CONCLUANT (puissance 4,75 % sur 138 couples). Ici, avec 291 fois plus d'echantillons
+et 177 couples, la puissance vaut **0,00 %** : le negatif porte desormais sur le domaine ENTIER,
+pas seulement composant par composant. Le trou nomme par le lot F — i5, i32, i35 sans verdict
+faute d'echantillons — est **comble** : i5 et i32 rendent un verdict.
+
+**RESERVE PUBLIEE, ET ELLE N'ETAIT PAS PREVUE.** Le meilleur score MOYEN sous etiquettes
+translatees depasse le score observe (0,7638 contre 0,6509 sur le domaine complet). Cause
+mesuree : un slot n'a de records que pendant SES vies, donc translater ses periodes les envoie
+souvent la ou il n'existe pas — la classe « zoome » d'un temoin est bien plus petite (mediane
+1 269 contre 10 491 au decalage nul) et un maximum sur petit echantillon monte plus haut.
+Consequence de lecture : **p(max) est CONSERVATEUR** — il durcit un positif, jamais un negatif —
+et la sentinelle prouve qu'un positif franc passe malgre cela. Les tailles min / mediane / max
+sont publiees domaine par domaine.
+
+**G3 — IMAGES-CLES : PAS UN NEGATIF, UNE MESURE DE DIMENSIONNEMENT.** Le mandat l'exigeait
+explicitement, et c'est ce qui sort. Deux chemins mesures plutot qu'un choisi :
+le MARCHEUR DETERMINISTE (`WalkKeyframeRecords`) **rend 1 record par paquet et ZERO bipede** sur
+les 23 images-cles de 00162144, arret « en-tete-invalide » 23 fois sur 23 — la grammaire
+d'enchainement ne tient pas sur ce film (registre a l'empreinte INCONNUE, 118 blocs) ; le
+BALAYEUR DE PRODUCTION (`WalkKeyframeWorld` + `TraverseKeyframeBipedAt`, le chemin de
+`WorldFromKeyframe`) ancre **14 955 records, 166 bipedes, 66 mesurables** (34 desynchronises,
+3 ecartes pour debordement sur l'ancre suivante).
+
+Et la ou tout se joue : **2 records « zoome » seulement** (55 « pas zoome »). Sur les films de
+controle, 4 et 5. A ce rendement il faudrait **~40 a 100 films** pour atteindre le seuil de
+candidature (200 par classe), ~6 a 15 pour le seuil de recevabilite. **Le volet image-cle n'est
+pas testable sur un film** — et un balayage du corpus entier est exclu (bombe RAM documentee).
+Aucun negatif n'en est tirable, et l'instrument refuse d'en publier un.
+
+**BILAN POUR L'ARCHITECTURE — LA REPONSE A L'OBJECTION DE L'UTILISATEUR.** L'objection etait
+juste : faire dependre l'etat de la capture exhaustive des sorties est fragile. L'esperance
+etait qu'un champ d'etat rende la reconstruction inutile. **Sur le canal delta, cette esperance
+est refutee avec une puissance de 0,00 % et une sentinelle qui prouve la chaine** : les 177
+couples du record ENTIER ne portent pas l'etat de lunette. La reconstruction par evenements a
+plusieurs causes (`replay/zoom_state.go`) reste donc le bon modele cote delta, et le plafond de
+maintien reste justifie. Le seul emplacement encore ouvert est l'IMAGE-CLE, et il est ouvert non
+par manque d'idee mais par manque d'echantillons — la question est desormais CHIFFREE.
+
+**Ce qui reste ouvert, honnetement** : (a) le volet image-cle, leve par une collecte multi-films
+(~50 films, un processus par film) et non par un instrument de plus ; (b) le marcheur
+deterministe d'image-cle qui ne tient pas sur ces films — c'est un fait a verser au chantier
+« percer la trame », pas a celui-ci ; (c) la vraie correction du sous-comptage des sorties reste
+la marche de la liste d'evenements ENTIERE, inchangee par ce lot.
+
+**Gates** : `gofmt` propre · `CGO_ENABLED=0 go vet ./internal/analysis/replay/` propre ·
+`CGO_ENABLED=0 go test ./internal/analysis/...` **0 echec** · 4 fichiers de 325, 258, 199 et
+425 lignes, tous sous garde d'environnement `ZOOMLBL_FILM` (sautes en CI) · trois executions
+reelles conservees (00162144, 00502e52, 000d5950) · **aucun code de production modifie** ; les
+seuils, l'echelle de verdict et la marche des composants sont ceux du lot F, REPRIS et non
+redefinis, pour que les deux verdicts se comparent.
+
+## [2026-08-31] Visee lunette — HYGIENE AVANT MERGE : trois fichiers ramenes sous le seuil, gates complets — Complete
+
+**Controle de completude avant merge** (skill `delivery-checklist`) : trois fichiers depassaient
+le seuil de 500 lignes du depot a cause de ce chantier. Corrige AVANT le merge, pas apres :
+- `replayMarkers.test.ts` 454 -> 595 (je le faisais FRANCHIR) : les epreuves de la lunette
+  sortent dans `replayAimCone.test.ts` (176 l). Frontiere nette : elles ne testent pas le
+  marqueur mais l'OUVERTURE du cone, et sont les seules a lire `s`.
+- `visee_zoom_gate_test.go` 788 l : scinde en `visee_zoom_gate_test.go` (481 l, l'IDENTIFICATION
+  — les evenements decrivent-ils la chronologie ?) et `visee_zoom_cablage_test.go` (325 l, le
+  CABLAGE et la STRUCTURE — le palier arrive-t-il au bon joueur, qu'est-ce qui ferme une periode).
+- `build.go` 771 -> 796 (dette PREEXISTANTE que j'accroissais) : commentaires allegees, le detail
+  vit dans `zoom_state.go`. Ramene a 790. **Reste +19 lignes sur un fichier deja hors seuil** :
+  le cablage minimal (champ d'options, appel, pose du champ) ne peut pas descendre plus sans
+  disperser la logique. Dette assumee et DITE.
+- `document.go` 685 -> 699 : la chronique du schema 29. Ce fichier est le domicile de TOUTES les
+  chroniques de schema ; les separer serait pire.
+
+**GATES COMPLETS (pas seulement les paquets touches)** :
+- `go test ./internal/...` **avec CGO** : exit 0, 0 echec.
+- `go vet` : propre.
+- `npm run typecheck` (cache `.tsbuildinfo` PURGE avant — piege du faux vert incremental) : vert.
+- `npm run lint` : **0 erreur** (24 avertissements preexistants).
+- `npx vitest run` (suite ENTIERE, pas seulement match-replay) : **5613 passes, 14 sautes, 0 echec**
+  sur 542 fichiers.
+
+**Nettoyage attrape par les gates** : la decoupe du fichier de tests web avait recopie quatre
+declarations devenues inutiles (`PlayerMarkKind`, `count`, `valuesOf`, `indexOfOp`) — typecheck et
+eslint les ont refusees, elles sont retirees. C'est exactement le role de ces gates.
+
+**Prochaine etape** : merge dans `feat/v75`.

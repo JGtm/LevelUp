@@ -304,7 +304,21 @@ package replay
 // n'est pas diagonale (un même objet lié à trois rangs ; à candidat unique, 0 à 2 paires par
 // film, incohérentes). Le ramassage d'équipement reste dans `equipmentChanges` (QUI et QUAND),
 // sans lien vers l'objet du sol.
-const SchemaVersion = 28
+// SCHEMA 29 (2026-08-31) — LA LUNETTE. `Point.S` publie le palier de visee a la lunette, lu
+// dans les evenements `unit_zoom` du film (type 21) et non dans le record de position : c'est un
+// etat A BASCULE, d'une autre source que le cap et l'elevation. La version monte pour la raison
+// exacte du schema 13 (l'elevation) — ce n'est pas un champ de plus, c'est le SENS DU CONE DE
+// VISEE qui change une seconde fois : jusqu'ici le client dessinait la meme ouverture pour un
+// joueur a la hanche et un joueur a la lunette, et affirmait donc, sans le dire, que la visee
+// etait toujours aussi large. La reprise du backfill se faisant par SchemaVersion, un artefact
+// 23 doit se lire « a re-cuire », pas « a jour ».
+//
+// CE QUI A RENDU CE CHAMP POSSIBLE, ET IL FAUT LE DIRE : sept campagnes de mesure ont conclu
+// « aucun evenement de zoom dans la bobine ». Elles lisaient le type d'evenement decale d'UN bit
+// (le bit de configuration en tete de paquet etait ignore), et leurs chaines pretendument
+// independantes partageaient cette erreur. Le negatif est REFUTE ; ~400 000 evenements de
+// lunette dorment dans le corpus. Validation, pont vers le joueur et reserves : sur `Point.S`.
+const SchemaVersion = 29
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {
