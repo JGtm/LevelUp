@@ -26,8 +26,9 @@ arme, colonne `shots_decoded`, porte ±10 %, capability `film.weapon_shots`), pe
 
 Découpage : **Phase 1** = classe « balle » (~2/3 de l'arsenal, dégât dans `damage_aftermath`
 type 0), livrable. **Phase 2** = classe « lourde » (SPNKr/Hydra/Skewer/Ravager/Shock/Mangler/
-Stalker/Bulldog, dégât hors type 0), en dépendance d'un décodage `damage_section_response`
-(type 1) mené par un autre chantier.
+Stalker/Bulldog, dégât hors type 0) — **voie NON trouvée** : le type 1 (`damage_section_response`)
+a été **RÉFUTÉ le 31/08** (grammaire percée mais ne porte pas d'attaquant), le dégât lourd est
+probablement dans les composants ECS projectile/détonation (investigation séparée, non planifiée).
 
 **Ce que ce plan NE fait PAS** (fermé par mesure, ne pas rouvrir sans nouveau fait) :
 - pas de `HitLikely` (scanner) : MORT, annonce 75-79 % pour une précision réelle de 0,446 ;
@@ -123,11 +124,18 @@ reste vert (aucun code touché).
   le verdict de porte ; la normalisation sur l'API (§6) est un calcul de LECTURE, hors périmètre
   d'écriture de ce plan.
 
-### 3.3 Phase 2 (dépendance externe, non planifiée en détail ici)
-Percer `damage_section_response` (0xC0 type 1) pour récupérer le dégât de la classe lourde, puis
-re-brancher le même pairing. **Dépendance** : décodage type 1 mené par le chantier trame/film.
-Report VALIDE (dépendance explicite, à porter au `REGISTRE_REPORTS.md` avec critère de reprise :
-« type 1 décodé et un `damage_section_response` émis avec attaquant résoluble »).
+### 3.3 Phase 2 (classe lourde) — voie du type 1 RÉFUTÉE (31/08)
+Hypothèse initiale : `damage_section_response` (0xC0 type 1) porterait le dégât de la classe
+lourde. **RÉFUTÉE** — `NOTE_DAMAGE_SECTION_RESPONSE_2026-08-31.md` : grammaire percée (oracle de
+trame validé, 3,0/paquet), mais le type 1 ne porte QUE la victime (ref0 dom1), **AUCUN attaquant**
+(ref1 dom8 / ref2 dom7 présentes 0 %), aucun tag source, aucune magnitude — une « réponse de
+section » (section touchée + direction d'impact), pas un dégât autoritaire. Le lien tir-lourd↔type1
+est du bruit (clé ref0==attaquant 3-10 %, ratio ~1× au témoin) → RATE ×3 films.
+**La classe lourde reste NON couverte** : son dégât n'est ni dans le type 0 ni dans le type 1.
+Piste restante (plus lourde, hors périmètre de ce plan) : les composants ECS de
+projectile/détonation (`projectile_detonate` 0xC2 type 5 ; ou la position projectile ti=41, non
+bit-exacte). À porter au `REGISTRE_REPORTS.md` comme piste ouverte, sans critère de reprise ferme.
+En attendant, la porte par-arme (§5.4) marque ces armes « non capturée » — jamais 0 % faux.
 
 ---
 
