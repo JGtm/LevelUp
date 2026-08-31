@@ -79796,3 +79796,69 @@ l'événement ne porte pas de handle monde. Ce lien reste l'affaire du canal spa
 
 **Prochaine étape** : si le chantier veut publier, exercer la traversée slot → xuid sur ces
 événements et décider du contrat. Détail et mesures : `.ai/V7.5/film_re/NOTE_BIPED_PICKUP_2026-08-31.md`.
+
+---
+
+## [2026-08-31] Lot 3 — le ramassage natif PUBLIÉ : schéma 29, `pickups` en production
+
+**Statut** : Complété (production ; 7 étapes du plan, toutes closes).
+**Worktree** : `wt/biped-pickup`. Commits `13a57abe5`, `ef0bc55d2`, `d56b16036`, `96208813a`.
+
+**Décision technique principale — le décodeur n'est PAS un hook, et c'était le bon choix.** Le
+brief demandait le patron `SetHeldWeaponHook`. Les hooks existent parce que leurs composants se
+lisent PENDANT la traversée d'un record d'entité. La liste d'événements, elle, vit AVANT la
+trame, en tête de payload : ces bits ne sont lus par AUCUN consommateur existant. Le balayage
+est donc autonome — il n'installe rien, ne touche aucun global de décodage, et ne PEUT PAS
+changer ce que les autres canaux lisent. Le patron hook aurait été un contresens.
+
+**La réserve du lot 2 est levée, et la mesure qui compte n'est pas celle qu'on croyait.** Les
+deux canaux (natif et i43..i46) rendent tous deux un SLOT, et ces slots sont égaux — donc
+« même xuid » en découle PAR CONSTRUCTION. Publier ce 100 % comme un résultat aurait été se
+flatter d'une tautologie. Ce que le gate mesure vraiment : le pont NOMME 127/135 = 94,1 % et
+73/73 = 100 % des ramasseurs, et il compte **0 collision de slot** sur les deux films — c'est
+l'objection « les slots sont réattribués entre manches », mesurée au lieu d'être supposée.
+
+**Deux décisions produit tranchées sur mesure, seuils écrits avant.**
+1. Publier les classes non-arme : 80,5 % et 72,2 % d'entre elles n'ont AUCUNE émission i48 du
+   MÊME slot à moins de 500 ms (témoin décalé 0,0 %) — elles comblent un trou, elles ne
+   doublonnent pas `equipmentChanges`.
+2. Le son : le canal natif COMBLE, il ne double pas. Un ramassage natif d'arme sonne si et
+   seulement si aucun `taken`/`swapped` ne le couvre. Mesure sur l'artefact : **32 sons ajoutés,
+   21 dédupliqués, zéro doublon**.
+
+**Une prémisse du brief était périmée, et il faut le dire.** L'étape 5 demandait de câbler le son
+`168832f6` en levant la condition de reprise. Or il était DÉJÀ câblé depuis le 2026-08-30
+(`weaponChangeSound.ts`, schéma 25), l'asset en place, le garde-rail « 0 asset mort » vert.
+Aucune re-livraison de `.wem` n'a été nécessaire. Ce qui restait vrai — et qui est fait — c'est
+que les prises ratées par `weaponChanges` étaient MUETTES (les sept armes lourdes du dossier).
+
+**La cuisson pilote, et son négatif.** UNE invocation, avant-plan, `000d5950`. Découverte au
+passage : `cmd/replay-build` n'armait PAS le plafond mémoire — seul des trois binaires qui
+décodent un film à ne pas le faire. Il l'arme désormais (`filmproc.Arm`, 3 GiB, `--mem-gib 0`
+pour désarmer). Pic mesuré **0,127 GiB**. L'artefact porte 135 ramassages, 127 nommés,
+53 armes / 82 objets, schéma 29 — chiffres identiques aux mesures des lots 1-2.
+**MAIS la datation des `padPickups` n'a PAS été exercée** : ce film (Fiesta sur Cliffhanger)
+rend 0 socle et 0 occupation, ses 220 armes au sol étant toutes des armes lâchées. La levée de
+l'intervalle de vingt secondes est prouvée par trois tests unitaires, PAS par une cuisson. Il
+faut un film à socles (CTF Arena) pour la voir à l'œuvre — c'est la seule promesse du lot qui
+reste non vérifiée sur donnée réelle.
+
+**Ce que les gardes du dépôt ont attrapé avant moi**, et qui vaut d'être noté : le cliquet de
+`SchemaVersion` (raison écrite exigée), le `contracttest` (quatre champs publiés par le Go et
+absents du contrat), les deux gardes de frontière TypeScript (tableaux nullables, racine ET
+chemins profonds), le garde-rail de parité du numéro de schéma côté web. Aucun n'a été
+contourné ; chacun a été satisfait par la donnée qu'il réclamait.
+
+**Découverte non traitée (hors périmètre, règle 7).** Le fixture du golden d'assemblage ne porte
+NI `weaponChanges`, NI `equipmentChanges`, NI les ramassages : `goldenInputs.options()` ne les
+transmet pas. Les trois canaux de « changements » vivent donc en production sans couverture de
+golden. Le golden lui-même est un rendu TEXTE écrit à la main : les nouveaux champs du document
+lui sont invisibles (d'où un diff d'UNE ligne, `schema 28` -> `29`). Corriger cela demanderait
+d'étendre le codec du fixture et de le régénérer — à décider hors de ce lot.
+
+**Gates** : `gofmt` propre · `go vet ./...` silencieux · `go test ./...` (apps/go-api) · contract
+`openapi-gen -check` « à jour » · web : `typecheck` vert, `lint` 0 erreur (24 avertissements
+pré-existants), `vitest match-replay` 1940/1940. Golden régénéré : une ligne, expliquée.
+
+**Prochaine étape** : cuire un film à socles pour exercer la datation des `padPickups`, seule
+promesse non vérifiée. Détail complet : `.ai/V7.5/film_re/NOTE_BIPED_PICKUP_2026-08-31.md`.
