@@ -78660,3 +78660,33 @@ propriete de tous les records) — contredit par le pont M1 (0xD2 tir vs 0xC0 de
 
 **Gate.** gofmt clean, go vet ./internal/analysis/filmdec/ vert (GOCACHE prive), les 3 films
 passent. Plan commite sur wt/trame-plan (plan(precision):), pas de push.
+
+## [2026-08-31] damage_section_response (type 1, 0xC0) — grammaire percée, enjeu armes lourdes RÉFUTÉ
+
+**Statut : Complété.** Worktree `wt/trame-type1`. Objectif : percer le type 1 de l'octet
+0xC0 (même octet que `damage_aftermath` type 0, bit de type R(7)=1) et tester si les armes
+LOURDES (SPNKr, Hydra, Skewer, Ravager, Shock, Mangler, Stalker, Bulldog, Fuel Rod) —
+qui affichent 0 % de touches en type 0 — attribuent leur dégât via le type 1.
+
+**Décision technique.** Ghidra : descripteur `0x144724f78` → vtable `0x143d0fa10`. Domaines
+d'en-tête (`vtable+0x58` = `FUN_14080a048`, switch) : ref0 dom1, ref1 dom8, ref2 dom7 (type 0
+était dom1/dom1/dom7 = DEUX entités ; type 1 n'en a qu'UNE). Charge (`vtable+0x68` =
+`FUN_140968368`, 28 o) désassemblée au bit : `R(5) ; R(1) g1 (polarité inversée, si 0: R(4)) ;
+R(3) ; R(1) g2 (si 1: R(19) direction unité, FUN_1406d8288 = 0 bit)`. Min 10 / max 33 bits.
+AUCUN tag source, AUCUNE magnitude, AUCUNE 2e entité. Instrument
+`lot1_degats_type1_research_test.go` (garde `LOT1_TRAME_FILM`, borné 12 chunks, oracle de trame
++ appariement tir↔type1, réutilise `attribCollectShots`, `lot1RefDom1/lot1RefDom`, `lot1chIsBiped`).
+
+**Résultats (3 films 000d5950 / 01e1f945 / 00502e52).** Type 1 RARE (55/22/42 paquets).
+Oracle : profondeur réelle 3.00/2.75/3.78 records/paquet vs témoin +3b 0.00 → grammaire
+VALIDÉE (TENU ×3). ref0 (dom1) présente 100 %, résout au biped base 512 = la VICTIME.
+ref1 (dom8) et ref2 (dom7) : présentes 0 % sur les 3 films → aucune référence d'attaquant.
+Armes lourdes : lien par clé ref0==attaquant ≤3,3 % (bruit), coïncidence dominée par le taux
+de base (armes non lourdes montent aussi haut) → VERDICT RATE ×3.
+
+**Conclusion.** Type 1 = réponse de section (section touchée + direction), PAS un dégât
+autoritaire, ne porte que la victime. Le trou de précision des armes lourdes RESTE OUVERT
+(ni type 0 ni type 1 exploitable ; piste ECS projectile/détonation hors périmètre). Garde-fou
+respecté : négatif chiffré, rien survendu. Gate : gofmt clean, `go vet
+./internal/analysis/filmdec/` vert (GOCACHE privé). NOTE :
+`.ai/V7.5/film_re/NOTE_DAMAGE_SECTION_RESPONSE_2026-08-31.md`.
