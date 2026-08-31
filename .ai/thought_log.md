@@ -80273,3 +80273,53 @@ ecrivent dans ti=13, l'Assaut dans ti=11.
 fort), et exiger que la fin d'un record tombe exactement sur l'en-tete du suivant. Sans cet oracle,
 aucune valeur de ti=11 n'est exploitable — et avec lui, la jauge, l'instant d'armement et le compte
 a rebours du rejeu suivent.
+
+---
+
+## [2026-09-01] Oracle de largeur `ti=11` : NEGATIF NET, et il deplace le probleme en amont
+
+**Statut** : Complete (la question posee est tranchee) ; le chantier ti=11 reste ouvert.
+
+**LA QUESTION.** L'entree precedente livrait le portage et disait honnetement que « 98,4 % de
+records marches » mesure la COUVERTURE du dispatch, pas la JUSTESSE des largeurs. Cette entree
+construit l'oracle qui manquait.
+
+**L'ORACLE, et pourquoi il est digne de confiance.** La table d'image-cle est une SUITE de records
+`[id:32][field:26][ti:6] + corps`. Si la grammaire est juste, la fin d'un record EST l'en-tete du
+suivant. `readKeyframeHeader` exige gen != 0, slot < 8 192, ti < 50 : la probabilite qu'une
+position quelconque passe vaut ~1e-5. Un taux de quelques dizaines de pourcents est donc un VRAI
+signal, pas du hasard.
+
+**CE QUI REND LA MESURE LOCALISANTE** : le taux est ventile PAR COMPOSANT PRESENT — d'un cote les
+records qui le portent, de l'autre ceux qui ne le portent pas. Une largeur juste ne change pas le
+taux ; une largeur fausse l'effondre des que le composant apparait.
+
+**RESULTAT (2 211 records, 13 films).** Chainage global 9,7 %.
+- `i0 timers` PRESENT : 22,0 % — ABSENT : 0,0 %.
+- TOUS les autres composants : **0,0 % quand ils sont presents.**
+- Vu autrement : records a UN composant 25 % ; records a PLUSIEURS composants 0 %.
+
+**PREMIERE HYPOTHESE, NOMMEE ET REFUTEE.** Un cout PAR COMPOSANT non consomme expliquerait
+exactement cette forme, et le depot en a un candidat deja documente :
+`filmComponentCorruptionCheck` (en mode FILM, `FUN_14076cb60` lit un `R(1)` de garde apres chaque
+composant present, plus un `R(32)` sentinelle si le bit vaut 1), defaut `false`. Balayage A/B des
+deux bascules du process (`filmComponentCorruptionCheck` x `newRecordTailBits` sur {0,1,2}), meme
+corpus, meme oracle, critere ecrit avant la mesure (60 % sur les records a plusieurs composants) :
+**aucune combinaison ne depasse 25 % / 13,6 %. Negatif net.**
+
+**CE QUE LE NEGATIF DEPLACE — et c'est le vrai apport de la journee.** Le fait que meme les records
+LES PLUS SIMPLES (un seul composant) plafonnent a 25 % dit que le probleme n'est pas, ou pas
+seulement, dans les largeurs de composants. Il est EN AMONT : soit le prologue du record ti=11
+(`defaultStateDeserByTI[11] = consumeVersionPrefix`, R(1) puis R(8) conditionnel — variable, donc
+falsifiable), soit `WalkKeyframeWorld` qui rend des FAUX ancrages (son filtre exige `field26 == 0`
+et il apprend ses largeurs par balayage). Les 14,9 % de masques hors domaine du recensement
+pointent la meme direction.
+
+**Prochaine etape, une seule et nommee** : marcher la table d'image-cle avec `WalkKeyframeRecords`
+(marche DETERMINISTE, sans filtre fort ni apprentissage de largeur) et mesurer combien de records
+consecutifs elle enchaine avant de lacher, et sur quel archetype. C'est le seul instrument qui
+separe « largeur de composant fausse » de « ancrage faux », et il existe deja dans le depot depuis
+le lot R4.
+
+**Ce que ce chantier NE doit pas faire en attendant** : brancher i12/i13 sur quoi que ce soit.
+C'est ecrit dans `components_managed_objective.go`, dans `objective_scan.go` et sur la page Notion.
