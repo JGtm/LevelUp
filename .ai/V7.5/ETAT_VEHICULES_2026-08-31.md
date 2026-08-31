@@ -165,3 +165,69 @@ seul se recycle**. Jamais mesure.
 - Corpus : `mapobj-build --player <GT> --all --dry-run --save-mvar <dir>` — 121 cartes le
   2026-08-31, 2 echecs 404 (Houseki, Shogun). Les fichiers ne sont pas versionnes.
 - `.ai/V7.5/dumps/forge_zones/palette_complete_groupes.csv` et `palette_noms.csv`.
+
+## 7. OU SONT LES VEHICULES DES CARTES OFFICIELLES — la reponse, apres trois portes (2026-08-31)
+
+La question ouverte du matin (« les vehicules ne sont pas dans le `.mvar` des cartes DEV — ou
+sont-ils ? ») est tranchee. Trois endroits ont ete ouverts, et le troisieme donne la reponse par
+elimination.
+
+**PORTE 1 — le fichier de carte (`.mvar`).** Balayage de 224 fichiers sur 121 cartes : 212
+vehicules poses, ecrasante majorite de tourelles. **Fragmentation, la carte BTB de reference,
+porte 501 objets, 28 `type_id` distincts — et exactement DEUX `unsc_turret`.** Ses autres types
+sont du groupe `scen`, `bloc`, `mach` et `weap` (8 placements d'arme). Aucun Warthog, aucun Wasp,
+aucun Scorpion.
+
+**PORTE 2 — le scenario (`levl`) du module de carte.** La carte de ses blocs, lue le 2026-08-31
+(navigation de struct-table, la meme que les zones nommees) : 40 blocs enfants sur Fragmentation,
+chacun nomme par le GROUPE DE TAG qu'il reference —
+
+| champ | Fragmentation | Aquarius | groupe reference |
+|---|---:|---:|---|
+| 0x0060 | 7 | 14 | `scen` (decor) |
+| 0x00d8 | 29 | 20 | `mach` (machines) |
+| 0x0150 | 76 | 118 | `bloc` |
+| 0x01b4 | 55 | — | `lens` |
+| 0x01c8 | 87 | 150 | `licn` |
+| 0x01dc | 1709 | 361 | `lsnd` |
+| 0x01f0 | 343 | 433 | `effe` |
+| 0x0628 | 102 | 913 | `ligr` |
+| 0x0650 | 59 | 76 | `bitm` |
+
+**AUCUN bloc ne reference `vehi` ni `bipd`.** Le scenario porte le decor, l'eclairage, le son, les
+effets et les decalques — pas les objets de jeu.
+
+**PORTE 3 — les compositions.** `deploy/any/compositions/` ne contient que du narratif.
+
+**LA REPONSE, ET ELLE RECOUPE LA RE DU BINAIRE.** Les vehicules des cartes officielles ne sont
+poses NULLE PART dans les donnees de carte : ils sont **spawnes par le MODE**. C'est exactement ce
+que decrit la structure de preset de spawner d'objet relevee le matin dans le binaire —
+`vehicles` (une LISTE), `terrainFilters`, `airVehiclePrerequisiteCount`, `forceRandomVehicle`,
+`seedSequenceOverrides`. Le meme mecanisme que les socles d'arme : **la carte pose un emplacement
+GENERIQUE, le mode decide ce qui y apparait.**
+
+Ce qui explique tout le reste :
+
+- une carte FORGE nomme son vehicule (`Starboard` : banshee, scorpion, warthog, razorback, wasp)
+  parce que son AUTEUR l'a choisi objet par objet ;
+- une carte DEV n'en nomme aucun, parce que c'est la variante de mode qui les distribue ;
+- les tourelles, elles, SONT placees a la carte — ce sont du mobilier, pas du butin de mode.
+
+**Consequence pour le chantier** : « quels vehicules sur quelle carte » n'a pas de reponse
+dans les fichiers de CARTE. La question se pose desormais a la VARIANTE DE MODE, et c'est un
+autre corpus.
+
+## 8. LA GRAMMAIRE D'UN PLACEMENT DE SCENARIO, relevee au passage
+
+Elle vaut pour tous les blocs ci-dessus, et elle est neuve :
+
+	+0x00  8 o   identifiant unique du placement
+	+0x0c  3f    POSITION monde
+	+0x18  3f    ORIENTATION
+	+0x60  u32   GlobalID du tag reference
+	+0x68  u32   GlobalID (second)
+	+0x6c  4 o   fourCC du GROUPE de tag, ECRIT A L'ENVERS (« snel » = `lens`)
+
+Le fourCC inverse est ce qui rend le scenario auto-descriptif : un bloc DIT ce qu'il pose, sans
+qu'on ait a deviner l'ordre historique des blocs de scenario Halo. Instrument :
+`internal/himap/scenario_placements_gamefiles_test.go`.

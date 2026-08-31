@@ -1,3 +1,61 @@
+## [2026-08-31] Le SCÉNARIO des cartes est ouvert — et il ne porte AUCUN véhicule : ils viennent du MODE — Complété
+
+**Sur « oui continue ».** Le chantier « lire les placements du scénario » est ouvert, et il a
+répondu — pas comme prévu.
+
+**LE SCÉNARIO EST LE TAG `levl`**, pas `scnr` : le module de carte n'a pas de groupe `scnr`, et
+c'est `levl` que la production lit déjà (les zones nommées en sortent). Le dépôt `ds/` porte le
+scénario complet en **4,6 Mo** — aucun risque mémoire, contrairement aux modules `pc/` (586 Mo).
+
+**LA CARTE DES BLOCS, dressée pour la première fois.** La navigation de struct-table existante
+donne, pour chaque bloc enfant du root : offset de champ, nombre d'éléments, taille de record.
+40 blocs non vides sur Fragmentation, 36 sur Aquarius.
+
+**LA GRAMMAIRE D'UN PLACEMENT, relevée sur pièces** — et c'est elle qui rend le scénario
+auto-descriptif :
+
+    +0x00  8 o   identifiant unique du placement
+    +0x0c  3f    POSITION monde
+    +0x18  3f    ORIENTATION
+    +0x60  u32   GlobalID du tag référencé
+    +0x6c  4 o   fourCC du GROUPE de tag, ÉCRIT À L'ENVERS (« snel » = `lens`)
+
+Le fourCC inversé **dit** ce que chaque bloc pose. Plus besoin de deviner l'ordre historique des
+blocs de scénario Halo : on lit.
+
+**ET LE RÉSULTAT EST NET** :
+
+    0x0060  scen (décor)   0x00d8  mach   0x0150  bloc   0x01b4  lens
+    0x01c8  licn           0x01dc  lsnd   0x01f0  effe   0x0628  ligr   0x0650  bitm
+
+**AUCUN bloc ne référence `vehi` ni `bipd`.** Le scénario porte le décor, l'éclairage, le son, les
+effets, les décalques — jamais les objets de jeu.
+
+**TROIS PORTES OUVERTES, ET LA RÉPONSE PAR ÉLIMINATION.** (1) Le `.mvar` de Fragmentation :
+501 objets, 28 `type_id`, groupes `scen`/`bloc`/`mach`/`weap` — et exactement DEUX `unsc_turret`.
+(2) Le scénario `levl` : rien. (3) Les compositions : narratif seul.
+
+**Les véhicules des cartes officielles ne sont posés NULLE PART dans les données de carte : ils
+sont SPAWNÉS PAR LE MODE.** Ce qui recoupe exactement la RE du binaire faite le matin — la
+structure de preset de spawner porte `vehicles` (une LISTE), `terrainFilters`,
+`airVehiclePrerequisiteCount`, `forceRandomVehicle`, `seedSequenceOverrides`. **Même mécanisme
+que les socles d'arme : la carte pose un emplacement générique, le mode décide ce qui y
+apparaît.**
+
+Ce qui explique tout le reste : une carte FORGE nomme ses véhicules (`Starboard`) parce que son
+AUTEUR les a choisis un par un ; une carte DEV n'en nomme aucun ; les tourelles, elles, SONT
+placées à la carte — c'est du mobilier, pas du butin de mode.
+
+**Conséquence** : « quels véhicules sur quelle carte » n'a pas de réponse dans les fichiers de
+CARTE. La question se pose désormais à la VARIANTE DE MODE, et c'est un autre corpus. De même
+pour les sites d'amorçage de l'Assaut : `defender_bombsite` / `attacker_bombsite` ne sont ni au
+`.mvar`, ni au scénario.
+
+**Gates** : go vet 0, gofmt propre, `mapvar` vert. La suite `himap` complète n'est pas rejouée —
+ses tests `gamefiles` sont connus pour saturer le gate local ; les nouveaux sont tous sous garde
+d'environnement (`HALO_DEPLOY`), donc inertes en CI. Sondes jetables `cmd/tmp_ctflua` et
+`cmd/tmp_scnr` supprimées après relevé.
+
 ## [2026-08-31] Assaut — le script du mode NOMME les sites d'amorçage ; la mèche, elle, est un réglage de variante — Complété
 
 **Le pool Lua des tags `hsc*` est en clair.** Balayé sur les 357 scripts de
