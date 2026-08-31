@@ -78420,3 +78420,47 @@ deux equipes ne l'avait fait.
 **Prochaine etape** : (a) corriger la page Notion publiee (elle affirme le bit de continuation
 comme prouve — a temperer) ; (b) decision utilisateur sur le lot « sac de proprietes / fiabilite
 des kills » ; (c) la 3e section de chunk_00 (538 ko) est un chantier neuf a fort potentiel.
+
+## [2026-08-31] Visee modale CABLEE EN PRODUCTION — le plafond 19 % tombe pour le rejeu 2D
+
+**Statut : Complete.** Branche `wt/trame-film`, worktree dedie `LevelUp-wt-trame-film`. Suite de
+la percee `8a8aa3239` (NOTE_VISEE_TIR_2026-08-31). La visee modale, prouvee sur 5 films, est
+desormais posee par le decodeur de PRODUCTION.
+
+**Verdict RE-CONFIRME sur 3 films avant tout code** (TestLot1ViseeGhidra, garde LOT1_TRAME_FILM,
+12 chunks) : post-comptes = 111 sur 100 % des records a visee vide (33/33, 143/143, 48/48), donc
+visee a post-comptes+2 = 113 = exactement ce que fire_events lisait deja. Concentration de l'axe
+du GAIN 97-99 % contre controle 18-35 %. TENU partout.
+
+**Decision technique.** Nouveau fichier `filmdec/fire_aim_modal.go` : decodeur forward
+`modalAimBit` qui porte la grammaire Ghidra (FUN_14080C1F8) avec la polarite du champ d CABLEE EN
+DUR (saut R(5) si garde==0) et SANS les deux lecteurs composites (parasites dans le chemin modal).
+Il rend la position post-comptes+2 pour un record modal (0 cible, 0 composante), ou ok=false pour
+non-modal / court / bloc-horodatage. `decodeFireEvent` : (1) chemin fixe historique inchange
+(flags vides -> bit 113, ancre, zero regression), (2) extension modale via le forward SOUS garde
+`!e.HasAim`, donc strictement additive. Lecture centralisee `readAimAt` (bornee) partagee par les
+deux chemins.
+
+**Le piege de test traite.** L'ancienne premisse « visee non lisible hors du chemin sur » n'est
+plus vraie que pour les records reellement NON MODAUX. Deux tests qui construisaient des paquets
+a offsets fixes (surtout des zeros) se decodaient par hasard en modal et recoltaient une visee
+parasite : `TestDecodeFireEventAimGatedOff` (fire_events_test) et `TestFireRecordAimOnlyOnTheSafePath`
+(event_decoders_test) reconstruits pour utiliser des records reellement non modaux (>= 1 cible /
+composante, construits a la grammaire) que le forward refuse. Ancre `TestDecodeFireEventLayout`
+gardee VERTE. Nouveaux tests `TestModalAimBitWalksRealisticHeader` (en-tete realiste : 3 refs +
+d/e/f) et `TestModalAimBitOnMinimalRecord` : visee lue a post-comptes+2, valeur relue correcte.
+
+**Resultats mesures.** Couverture FireEvent HasAim (12 chunks temoins) : 33->210 (x6,4), 143->491
+(x3,4), 48->218 (x4,5). Sur le film de reference COMPLET 000d5950, tirs publies avec un cap de
+visee : **90 -> 401** (x4,5) sur 483 tirs. Goldens rejeu regeneres (fixture inputs + assembly) :
+diff du golden d'assemblage = UNE seule ligne (la ligne de cap), tout le reste inchange
+(rattachement 483/519, armes 483, projectiles 439) — donc tirs existants strictement inchanges.
+Tests filmdec + replay VERTS, go vet propre, gofmt applique.
+
+**Reserve (agent Ghidra, JUSTE, inchangee).** Les records NON modaux (>= 1 cible / composante) ont
+des boucles de largeur runtime, non localisables hors ligne. La visee y reste inaccessible ; c'est
+le complement de la couverture modale.
+
+**Prochaine etape.** Possible : porter la couverture aux records non-modaux exigerait la table
+runtime `0x1451f98d0` (hors portee hors ligne). Gate visuel du rejeu 2D (le cap des tirs sur la
+carte) a la main de l'utilisateur.

@@ -197,3 +197,17 @@ commit sur une branche dédiée.
   boucles cibles/composantes non vides restent runtime-width → on ne perce QUE le cas modal (le
   tir « propre »). Note : `film_re/NOTE_VISEE_TIR_2026-08-31.md`. RESTE : câbler le chemin modal
   dans `fire_events.go decodeFireEvent` (supersète le chemin 19 %, régénère les goldens replay).
+- **[2026-08-31] VISÉE MODALE CÂBLÉE EN PRODUCTION `[x]`** (même branche/worktree). Verdict
+  re-confirmé sur 3 films avant tout code (post-comptes = 111 sur 100 % des records vides →
+  visée à 113, zéro régression prouvée ; concentration GAIN 97-99 % vs contrôle 18-35 %). Nouveau
+  `filmdec/fire_aim_modal.go` : décodeur forward `modalAimBit` (grammaire Ghidra, polarité d câblée
+  en dur, composites retirés) → position post-comptes+2 pour le record modal, ok=false sinon.
+  `decodeFireEvent` étendu : chemin fixe @113 inchangé (ancre) + extension modale sous garde
+  `!e.HasAim` (strictement additive) ; lecture centralisée `readAimAt`. Piège de test traité :
+  `TestDecodeFireEventAimGatedOff` + `TestFireRecordAimOnlyOnTheSafePath` reconstruits sur des
+  records réellement NON modaux (le forward les refuse) ; ancre `TestDecodeFireEventLayout` verte ;
+  2 nouveaux tests modaux (en-tête réaliste + minimal). Gain FireEvent HasAim (12 chunks) : 33→210,
+  143→491, 48→218 (×6,4 / ×3,4 / ×4,5). Film complet 000d5950 : tirs publiés avec cap **90→401**
+  (×4,5). Goldens rejeu régénérés — diff assembly = 1 ligne (le cap), tout le reste inchangé.
+  Tests filmdec + replay verts, vet propre, gofmt. Détail : thought_log 2026-08-31 « Visee modale
+  cablee ». RESTE : records non-modaux (largeur runtime, hors ligne) ; gate visuel du cap sur la carte.

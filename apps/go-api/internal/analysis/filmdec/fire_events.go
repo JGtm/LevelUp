@@ -31,14 +31,18 @@ import (
 //	bits 44..75  (32) ARME : moitié haute (famille)
 //	bits 76..107 (32) ARME : moitié basse (variante)  -> weapon_id 64 bits du projet
 //	bits 108..112 (5) cinq drapeaux ; 110 = « compteurs nuls », 111 et 112 = deux portes
-//	bits 113..142 (30) VISÉE — direction cubemap 30 bits, lue SEULEMENT si
-//	                   bit110 == 1 && bit111 == 0 && bit112 == 0 (chemin « record vide »).
+//	bits 113..142 (30) VISÉE — direction cubemap 30 bits, à l'offset FIXE 113 pour le seul
+//	                   sous-ensemble « record vide » (bit110 == 1 && bit111 == 0 && bit112 == 0).
 //
-// Hors de ce chemin, la visée existe toujours mais après des boucles de longueur VARIABLE
-// (composantes de dégât, liste des cibles) dont une largeur vient d'une table remplie au
-// runtime : elle n'est donc PAS localisable hors ligne. Ce décodeur ne devine pas — il
-// n'expose la visée que sur le chemin sûr (mesuré : 19 % des records longs sur 000d5950,
-// 10 % sur 01e1f945).
+// LA VISÉE N'EST PLUS BORNÉE À CE SOUS-ENSEMBLE. `fire_aim_modal.go` porte la grammaire Ghidra
+// réelle du record (FUN_14080C1F8) et localise la visée sur TOUT le record MODAL — 0 cible et
+// 0 composante de dégât — à la position post-comptes + 2, qui coïncide avec le bit 113 sur les
+// records vides (post-comptes = 111). L'offset fixe reste l'ANCRE du cas vide (zéro régression) ;
+// le chemin modal l'ÉTEND à 3-6× plus de tirs (mesuré : 33→210, 143→491, 48→218 sur trois films).
+//
+// Restent hors de portée hors ligne : les records NON modaux (≥ 1 cible / composante), dont les
+// boucles ont une largeur venant d'une table remplie au runtime. Ce décodeur ne devine pas — il
+// n'expose la visée que là où la grammaire la localise avec certitude.
 //
 // NON RÉSOLU, à ne pas prétendre : la VICTIME n'est pas décodée (elle vit dans la liste des
 // cibles, de largeur runtime). Un record type 105 dit qui tire, avec quoi, quand, et vers
@@ -177,11 +181,18 @@ func decodeFireEvent(pay []byte) (FireEvent, bool) {
 	for i := 0; i < fireFlagsCount; i++ {
 		e.Flags[i] = uint8(readBitsAt(pay, fireFlagsBit+i, 1))
 	}
-	// Chemin sûr uniquement : les trois drapeaux qui commandent la position du champ.
-	if e.Flags[2] == 1 && e.Flags[3] == 0 && e.Flags[4] == 0 &&
-		len(pay)*8 >= fireAimBit+int(FireAimBits) {
-		if v, ok := DecodeAimVectorChecked(readBitsAt(pay, fireAimBit, int(FireAimBits)), FireAimBits); ok {
-			e.HasAim, e.Aim = true, v
+	// 1) ANCRE offsets-fixes : le sous-ensemble « record vide » (drapeaux 110/111/112) pose la
+	//    visée au bit 113. Inchangé — c'est ce que la production lisait déjà, zéro régression.
+	if e.Flags[2] == 1 && e.Flags[3] == 0 && e.Flags[4] == 0 {
+		readAimAt(pay, &e, fireAimBit)
+	}
+	// 2) EXTENSION modale : la grammaire Ghidra (fire_aim_modal.go) localise la visée sur TOUT le
+	//    record modal — pas seulement le cas vide — à post-comptes + 2. Sur les records vides ce
+	//    forward retombe EXACTEMENT sur 113 (post-comptes = 111 sur 5 films), donc il n'apporte
+	//    que le GAIN : les tirs propres qui portaient des drapeaux hors du cas vide.
+	if !e.HasAim {
+		if aimBit, ok := modalAimBit(pay); ok {
+			readAimAt(pay, &e, aimBit)
 		}
 	}
 	return e, true

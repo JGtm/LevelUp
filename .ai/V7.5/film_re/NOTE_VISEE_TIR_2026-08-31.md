@@ -68,11 +68,21 @@ gagné sature l'axe x (97-100 %) — deux sous-types de record (drapeaux 111/112
 physique (un axe horizontal). L'oracle ne juge que « directionnel vs uniforme » : les deux passent
 très largement.
 
-## Portée produit
+## Portée produit — CÂBLÉE EN PRODUCTION le 2026-08-31
 
-`replay/shots.go` pose le cap du tir (`AimHeadingDeg` → `Shot.H`) quand `FireEvent.HasAim`. Câbler
-le chemin modal dans `decodeFireEvent` fait passer **3 à 6× plus de tirs** avec un cap sur la
-carte — SANS régression (pour les paquets déjà couverts, post-comptes+2 = 113 = mêmes bits).
+`replay/shots.go` pose le cap du tir (`AimHeadingDeg` → `Shot.H`) quand `FireEvent.HasAim`. Le
+chemin modal est désormais câblé :
+
+- **`filmdec/fire_aim_modal.go`** (nouveau) : `modalAimBit` porte la grammaire Ghidra avec la
+  polarité du champ d CÂBLÉE EN DUR et SANS les composites (parasites dans le chemin modal). Rend
+  la position post-comptes+2 pour un record modal, `ok=false` sinon.
+- **`filmdec/fire_events.go decodeFireEvent`** : chemin fixe @113 inchangé (ancre, zéro
+  régression) + extension modale sous garde `!e.HasAim` (strictement additive). Lecture centralisée
+  `readAimAt` partagée par les deux chemins.
+- **Non-régression prouvée** : sur les records vides, post-comptes = 111 → visée à 113 = mêmes bits.
+  Le diff du golden d'assemblage se réduit à UNE ligne (le compteur de cap), tout le reste inchangé.
+- **Gain mesuré** : FireEvent avec `HasAim` (12 chunks témoins) 33→210, 143→491, 48→218
+  (×6,4 / ×3,4 / ×4,5) ; film complet `000d5950` — tirs publiés avec un cap **90 → 401** (×4,5).
 
 ## Ce qui reste
 
@@ -80,3 +90,4 @@ carte — SANS régression (pour les paquets déjà couverts, post-comptes+2 = 1
   hors ligne (réserve de l'agent). C'est le complément de la couverture modale.
 - **Départager attaquant/blessé** dans `damage_aftermath` ; **monde chronologique** (killsource)
   pour la résolution slot→joueur.
+- **Gate visuel** : le cap des tirs posé sur la carte du rejeu 2D — à la main de l'utilisateur.
