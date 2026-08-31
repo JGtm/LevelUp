@@ -126,9 +126,26 @@ const (
 	statMaxModeScore = 250
 )
 
-// StatValue est la paire de valeurs d'un composant. Le sens de A et de B depend du
-// composant : le score de mode est en A, le score personnel en B (cf. score.go).
-type StatValue struct{ A, B int64 }
+// StatValue porte les valeurs d'un composant. Le sens de chaque canal depend du composant :
+// le score de mode est en A, le score personnel en B (cf. score.go).
+//
+// # QUATRE CANAUX, PAS DEUX — et les deux derniers n'ont jamais ete lus (2026-08-31)
+//
+// La grammaire du composant porte DEUX valeurs inconditionnelles (A, B) puis DEUX DRAPEAUX,
+// chacun commandant une valeur CONDITIONNELLE. Jusqu'ici [decodeStatComponent] lisait ces deux
+// dernieres pour AVANCER le curseur, et les jetait. A 28 composants et 2 canaux perdus, ce sont
+// **56 emplacements que rien dans le depot n'avait jamais regardes** — et la question ouverte
+// de l'Assaut (« ou est l'ARMEMENT de la bombe ? », dont le releve A0.3 dit qu'il n'a aucun
+// increment dans les canaux A et B) tombe exactement dans cet angle mort.
+//
+// C et D ne sont donc pas une commodite : ce sont les deux tiroirs qu'on n'avait pas ouverts.
+// `HasC` / `HasD` disent si le drapeau etait pose — un canal ABSENT et un canal a ZERO sont
+// deux choses differentes, et les confondre ferait lire un compteur la ou il n'y a rien.
+type StatValue struct {
+	A, B       int64
+	C, D       int64
+	HasC, HasD bool
+}
 
 // StatRecord est un enregistrement d'entite decode d'un paquet FRAME.
 type StatRecord struct {
@@ -335,17 +352,27 @@ func decodeStatComponent(pay []byte, p int) (StatValue, int, bool) {
 	}
 	flags := [2]uint64{readBitsBE(pay, q, 1), readBitsBE(pay, q+1, 1)}
 	q += 2
-	for _, f := range flags {
+	// LES DEUX CANAUX CONDITIONNELS SONT DESORMAIS GARDES (2026-08-31). Ils etaient lus pour
+	// avancer le curseur, puis JETES — 56 emplacements que rien n'avait jamais regardes (cf.
+	// l'en-tete de [StatValue]). Rien d'autre ne change : le curseur avance de la meme facon,
+	// et aucun lecteur existant ne consulte C ou D.
+	out := StatValue{A: a, B: b}
+	for i, f := range flags {
 		if f != 1 {
 			continue
 		}
-		_, n, ok := readStatVarWidth(pay, q)
+		v, n, ok := readStatVarWidth(pay, q)
 		if !ok {
 			return StatValue{}, 0, false
 		}
+		if i == 0 {
+			out.C, out.HasC = v, true
+		} else {
+			out.D, out.HasD = v, true
+		}
 		q += n
 	}
-	return StatValue{A: a, B: b}, q - p, true
+	return out, q - p, true
 }
 
 // readStatVarWidth reproduit le lecteur a longueur variable FUN_140C18A1C : un selecteur

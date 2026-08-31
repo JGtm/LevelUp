@@ -1,3 +1,56 @@
+## [2026-08-31] Assaut — le son de l'explosion est câblé ; l'armement n'est PAS un compteur du statborg — Complété
+
+**LE SON EST LIVRÉ.** L'utilisateur a désigné `538469998` à l'oreille sur la planche d'écoute, et
+la STRUCTURE de la banque le confirme indépendamment : l'événement `984f65e5`
+(`play_004_mod_mp_assault_bomb_detonated`) déclare « 1 couche, 1 son » et pointe ce média exact.
+Deux chemins, une seule réponse — donc rien à reconstruire, contrairement aux gestes multi-couches
+de la banque. Rendu : décodage vgmstream r2117, mono → stéréo sans loi de panoramique (`pan` et
+non `-ac 2`, qui applique un −3 dB silencieux), crête à −1,0 dBTP en deux passes. 4,41 s, sous le
+plafond des événements (6 s). `bomb_detonations: { any: 'objective_bomb_detonated' }` — `any` et
+pas une paire, parce que la banque ne porte qu'UN son de détonation, sans jumeau `_team`/`_enemy`.
+
+**LA STRUCTURE DE LA BANQUE, LUE UNE FOIS** (chargement de module à 8,6 Go, un seul processus au
+premier plan) : 42 événements, ramenés à 24 gestes distincts — le jeu déclare chacun deux fois,
+une par variante de mode. Les 9 nommés par la RE du 26/08 sont tous confirmés média par média.
+Découverte au passage : **deux gestes COMPOSÉS** (`0c1f744d`, `db750736`), les seuls de la banque
+à empiler une boucle bout-à-bout et une queue tirée parmi six — la forme d'un compte à rebours.
+Mes cinq « candidats détonation » du premier tri étaient en fait leurs queues.
+
+**L'ARMEMENT : NÉGATIF MESURÉ sur la branche « compteur ».** L'utilisateur : « pour l'armement à
+mon avis ça doit être dans le statborg ». L'hypothèse méritait d'être testée, parce que le relevé
+A0.3 (« l'ARMEMENT n'a aucun incrément propre ») n'avait regardé que DEUX canaux par composant.
+
+**J'ai d'abord ouvert les deux autres.** La grammaire du composant porte quatre valeurs : A et B
+inconditionnelles, puis deux drapeaux commandant chacun une valeur. `decodeStatComponent` lisait
+ces deux dernières pour avancer le curseur et les JETAIT — à 28 composants, **56 emplacements que
+rien dans le dépôt n'avait jamais regardés**. `StatValue` porte désormais `C`, `D`, `HasC`, `HasD`.
+Le vecteur dense du corpus figé en montre deux : comp 3 D = 300, comp 5 C = 114. Ce ne sont PAS
+des relectures — les deux se lisent à la même position relative et rendent des valeurs
+différentes ; qu'elles égalent A et B sur ce vecteur est une coïncidence (un compteur et son
+maximum de session coïncident tant que le maximum vient d'être atteint).
+
+**Puis balayé les 112 canaux** (28 composants × 4) sur les 9 films, contre les 28 explosions du
+relevé. Critère écrit avant la mesure : une progression avant CHAQUE explosion, avec un délai
+resserré (dispersion ≤ 20 % de la médiane, le critère des cycles de socle). **Aucun candidat.**
+Les meilleures couvertures sont les compteurs ordinaires (frags, assistances, score personnel) qui
+précèdent trivialement n'importe quoi — dispersion 116 % au mieux, six fois le seuil.
+
+**La branche « minuterie » reste INDÉCISE, et c'est le témoin qui le dit.** Une seconde sonde
+cherchait une valeur décroissant linéairement vers l'explosion : elle rend des corrélations
+élevées partout (|r| moyen 0,72 à 0,95). Sans témoin on y aurait lu un indice. Le témoin rejoue
+la même mesure sur des instants SANS explosion (−180 s) : **51,4 % de séries fortes contre 48,9 %,
+rapport 1,05**. La sonde ne distingue rien — un compteur monotone corrèle avec le temps écoulé,
+point. Le négatif se lit donc « la mesure ne sait pas répondre », jamais « ce n'est pas là ».
+
+**Ce qui reste ouvert, nommément** : l'armement n'est pas un compteur PAR JOUEUR qui progresse
+dans les composants 0-27. Restent à instruire : les slots d'ÉQUIPE en progression, les composants
+au-delà de 27 (l'archétype en compte 58), et la voie qui ne passe pas par le statborg — la MÈCHE
+comme constante moteur, à lire dans le pool Lua de la ParcelLibrary (même technique que les
+constantes du drapeau CTF), d'où `armement = explosion − mèche`.
+
+**Gates** : go test des paquets touchés vert, golangci-lint 0 issue, gofmt propre, vitest 126
+fichiers / 1 947 tests, typecheck cache purgé, garde-rail d'assets sonores vert.
+
 ## [2026-08-31] Assaut — la déflagration sur la carte, et où se désigne son son — Complété
 
 **Retour utilisateur** : « pour l'explosion il y a un effet UI ? Faudrait un truc bien voyant
