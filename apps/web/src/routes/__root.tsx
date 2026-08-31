@@ -16,6 +16,7 @@ import { resolvePageTitle } from '@/lib/pageTitle'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { AppShell } from '@/components/shell/AppShell'
 import { log } from '@/components/shell/_logger'
+import { isAnonymousPath } from '@/components/shell/shellNavigation'
 import type { BootstrapResponse } from '@/lib/api/types'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
@@ -128,11 +129,16 @@ export function RootLayout() {
     // initial (firstLaunch=true) — RegisterPage redirige vers /login sinon.
     if (data.auth_mode === 'password' || data.auth_mode === 'xbox') {
       const path = window.location.pathname
-      if (data.first_launch && path !== '/register') {
+      // Pages consultables sans compte (confidentialité) : ne jamais les
+      // éjecter vers /login, le pied de page de l'écran de connexion y renvoie.
+      // Le gate `setup_required` plus bas continue de s'appliquer : une instance
+      // non configurée n'a rien à servir.
+      const anonymous = isAnonymousPath(path)
+      if (data.first_launch && !anonymous && path !== '/register') {
         navigate({ to: '/register' })
         return
       }
-      if (!data.current_username && path !== '/login' && path !== '/register') {
+      if (!data.current_username && !anonymous && path !== '/login' && path !== '/register') {
         navigate({ to: '/login' })
         return
       }

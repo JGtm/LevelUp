@@ -117,3 +117,21 @@ export function resolvePlayerFallback(
   if (availablePlayers.some((p) => p.player_slug === playerSlug)) return { kind: 'ok' }
   return { kind: 'redirect', slug: availablePlayers[0].player_slug }
 }
+
+/**
+ * Chemins consultables SANS compte, en dehors des écrans d'authentification
+ * eux-mêmes (/login, /register, traités séparément dans `routes/__root.tsx`).
+ *
+ * Aujourd'hui : la politique de confidentialité. Un visiteur de la démo publique
+ * doit pouvoir lire ce qui est fait de ses données AVANT de décider de connecter
+ * son compte Microsoft — l'éjecter vers /login rendrait le lien du pied de page
+ * inutilisable et la page inatteignable.
+ *
+ * Le préfixe est comparé avec sa frontière de segment : `/privacy-autre` n'est
+ * PAS anonyme.
+ */
+const ANONYMOUS_PATHS: readonly string[] = ['/privacy']
+
+export function isAnonymousPath(pathname: string): boolean {
+  return ANONYMOUS_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))
+}

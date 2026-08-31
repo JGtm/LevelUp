@@ -5,6 +5,7 @@
  * Couvre aussi le toggle "Connexion admin (mot de passe)".
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import type { ComponentPropsWithoutRef } from 'react'
 import { screen, waitFor, fireEvent, render } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
@@ -24,6 +25,13 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
   return {
     ...actual,
     useNavigate: () => mockNavigate,
+    // Le pied de page minimal de l'écran de connexion renvoie vers /privacy :
+    // sans routeur monté, le vrai `Link` lève. On le réduit à une ancre.
+    Link: ({ children, to, ...props }: ComponentPropsWithoutRef<'a'> & { to: string }) => (
+      <a href={to} {...props}>
+        {children}
+      </a>
+    ),
   }
 })
 

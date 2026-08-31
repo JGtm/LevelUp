@@ -16,6 +16,7 @@ import { Route as GroupsRouteImport } from './routes/groups'
 import { Route as HelpRouteImport } from './routes/help'
 import { Route as JoinRouteImport } from './routes/join'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SetupRouteImport } from './routes/setup'
@@ -108,6 +109,11 @@ const JoinRoute = JoinRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RegisterRoute = RegisterRouteImport.update({
@@ -503,6 +509,7 @@ export interface FileRoutesByFullPath {
   '/help': typeof HelpRoute
   '/join': typeof JoinRoute
   '/login': typeof LoginRoute
+  '/privacy': typeof PrivacyRoute
   '/register': typeof RegisterRoute
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
@@ -569,6 +576,7 @@ export interface FileRoutesByTo {
   '/help': typeof HelpRoute
   '/join': typeof JoinRoute
   '/login': typeof LoginRoute
+  '/privacy': typeof PrivacyRoute
   '/register': typeof RegisterRoute
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
@@ -634,6 +642,7 @@ export interface FileRoutesById {
   '/help': typeof HelpRoute
   '/join': typeof JoinRoute
   '/login': typeof LoginRoute
+  '/privacy': typeof PrivacyRoute
   '/register': typeof RegisterRoute
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
@@ -703,6 +712,7 @@ export interface FileRouteTypes {
     | '/help'
     | '/join'
     | '/login'
+    | '/privacy'
     | '/register'
     | '/settings'
     | '/setup'
@@ -769,6 +779,7 @@ export interface FileRouteTypes {
     | '/help'
     | '/join'
     | '/login'
+    | '/privacy'
     | '/register'
     | '/settings'
     | '/setup'
@@ -833,6 +844,7 @@ export interface FileRouteTypes {
     | '/help'
     | '/join'
     | '/login'
+    | '/privacy'
     | '/register'
     | '/settings'
     | '/setup'
@@ -901,6 +913,7 @@ export interface RootRouteChildren {
   HelpRoute: typeof HelpRoute
   JoinRoute: typeof JoinRoute
   LoginRoute: typeof LoginRoute
+  PrivacyRoute: typeof PrivacyRoute
   RegisterRoute: typeof RegisterRoute
   SettingsRoute: typeof SettingsRoute
   SetupRoute: typeof SetupRoute
@@ -959,6 +972,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/register': {
@@ -1587,6 +1607,7 @@ const rootRouteChildren: RootRouteChildren = {
   HelpRoute: HelpRoute,
   JoinRoute: JoinRoute,
   LoginRoute: LoginRoute,
+  PrivacyRoute: PrivacyRoute,
   RegisterRoute: RegisterRoute,
   SettingsRoute: SettingsRoute,
   SetupRoute: SetupRoute,
