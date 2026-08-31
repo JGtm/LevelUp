@@ -78632,3 +78632,31 @@ biais residuel, + petit echantillon a recaler sur le total API). Cle d'arme qui 
 **Gate.** gofmt clean, `go vet ./internal/analysis/filmdec/` vert (GOCACHE prive), test `ok`
 (readouts t.Logf, aucun fail). Decouvertes notees, non traitees : batir la table source->arme,
 caracteriser les sources sans refs (`3655071589`, `95`).
+
+## [2026-08-31] Plan precision + distance par arme (film) — REDIGE
+
+**Statut.** Complete (plan, pas de code de prod). `.ai/V7.5/PLAN_PRECISION_ARME_DISTANCE_2026-08-31.md`,
+revu grille `plan-review`. Cible d'execution : feat/v75.
+
+**Mesure tranchee (detente vs balle).** Instrument neuf
+`filmdec/lot1_cadence_detente_research_test.go` (garde LOT1_TRAME_FILM, 12 chunks, -count=1).
+Espacement inter-tir par (tireur, arme) : MA40 auto UNIMODAL ~83ms (controle positif = 720 RPM),
+BR75 BIMODAL (intra-rafale ~67ms + inter-rafale 200-500ms sur 2 films). => le film emet un
+action_weapon_fire PAR BALLE, pas par detente. Denominateur film shots_decoded directement
+comparable a shots_fired API, aucune conversion rafale. Le seul ecart film<->API = echantillon
+partiel (~15% deficit), d'ou porte +-10% + recalage.
+
+**Decisions du plan.** Attribution PAR LE TIR (pas HitLikely mort, pas deconvolution, pas
+trajectoire). Denominateur deja en prod (match_weapon_shots). Ajout NUMERATEUR+distance dans table
+soeur append-only match_weapon_hits (grain match x joueur x arme, vue _latest, porte par-arme,
+decoder_rev distinct). W=1s (pas 250ms). Phase 1 = classe balle ; Phase 2 = classe lourde via
+damage_section_response type 1 (dependance externe). Calcul greffe sur la passe killcollector ;
+recalage API = lecture future hors perimetre. Capability film.weapon_hits (halo_infinite),
+absente h5.
+
+**A reconcilier (Lot 0).** Doc-header fire_events.go affirme 0xD2 = record de degat (touche =
+propriete de tous les records) — contredit par le pont M1 (0xD2 tir vs 0xC0 degat, appariement
+17-51%). Correction doc avant tout code.
+
+**Gate.** gofmt clean, go vet ./internal/analysis/filmdec/ vert (GOCACHE prive), les 3 films
+passent. Plan commite sur wt/trame-plan (plan(precision):), pas de push.
