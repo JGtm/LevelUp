@@ -140,9 +140,19 @@ const (
 // DANS LE FILM (cf. Track.Team). Le constructeur du rejeu est hors ligne et n'ouvre aucune base ;
 // le client, lui, a deja joint le tableau de bord pour colorer les camps. C'est donc lui qui
 // compte, et cette table est ce qu'il lui faut pour le faire.
+// LA CONTESTATION EN FAIT PARTIE, et elle a son propre rayon. Le jeu surveille DEUX cylindres
+// autour du drapeau tombe : l'INTERIEUR, ou les coequipiers du proprietaire le renvoient, et
+// l'EXTERIEUR, ou un ENNEMI du proprietaire le CONTESTE (`GetAnyEnemyTeamInOuterArea`, etats
+// `Contested` / `ContestedRefilling`). Les deux rayons sont egaux dans la configuration du jeu ;
+// ce sont les HAUTEURS des cylindres qui different (`cylinderInnerHeight` / `cylinderOuterHeight`)
+// — un ennemi sur une plateforme au-dessus du drapeau conteste sans pouvoir le prendre. Le rejeu
+// est en 2D : il publie les deux rayons separement quand meme, parce que ce sont deux REGLES, et
+// qu'une valeur unique se ferait passer pour une coincidence necessaire.
 type FlagReturnZone struct {
-	// RadiusM est le rayon de la zone, dans les MEMES coordonnees que `FlagSpan.X/Y`.
+	// RadiusM est le rayon de la zone de RETOUR, dans les MEMES coordonnees que `FlagSpan.X/Y`.
 	RadiusM float32 `json:"radiusM"`
+	// ContestRadiusM est le rayon de la zone de CONTESTATION.
+	ContestRadiusM float32 `json:"contestRadiusM"`
 	// ResetSeconds est la duree qu'un drapeau au sol met a rentrer TOUT SEUL.
 	ResetSeconds float32 `json:"resetSeconds"`
 	// SoloSeconds est la duree qu'il met avec UN defenseur dans la zone.
@@ -261,6 +271,15 @@ type FlagCarriesCoverage struct {
 	// AmbiguousHomecomings : rentrees ecartees parce qu'un AUTRE drapeau gisait au point de
 	// naissance — rien ne dit lequel des deux vient d'etre recree.
 	AmbiguousHomecomings int `json:"ambiguousHomecomings"`
+	// NeutralFlag dit que la partie a ete reconnue « DRAPEAU NEUTRE » : un seul drapeau, au socle
+	// du centre, que les deux camps se disputent. Le mode n'est PAS dans le film — c'est l'OBJET
+	// qui tranche, par le socle ou il renait (cf. flag_neutral.go).
+	NeutralFlag bool `json:"neutralFlag"`
+	// NeutralBirths / TeamBirths sont les deux comptes qui FONDENT ce verdict : les naissances de
+	// l'objet au socle neutre, et celles aux socles d'equipe. Publies pour que le verdict se
+	// verifie au lieu de se croire.
+	NeutralBirths int `json:"neutralBirths"`
+	TeamBirths    int `json:"teamBirths"`
 	// Spawns est le nombre de socles `flag_spawn` connus de la carte. Zero : la carte est hors
 	// du catalogue d'objectifs, tous les portages tombent dans UN drapeau d'equipe -1.
 	Spawns int `json:"spawns"`

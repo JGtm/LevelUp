@@ -7,8 +7,12 @@
 > revenir. C'est un angle que j'ai oublié de prendre en compte dans le replay. »
 >
 > Branche : `wt/ctf-zone-retour` (worktree dédié `LevelUp-wt-ctf-retour`), depuis `feat/v75`.
-> Hors périmètre : le mode **drapeau neutre** (un seul drapeau, aucun camp propriétaire — le user
-> l'exclut explicitement).
+>
+> **ÉLARGISSEMENT du 2026-08-31**, sur demande de l'utilisateur après lecture du premier lot :
+> « la contestation je la veux bien stp. Pour le drapeau neutre aussi faut le gérer. » Les deux
+> étaient au registre des questions ouvertes ; ils entrent au périmètre (§4 ter et §4 quater).
+> Le drapeau neutre était explicitement HORS périmètre dans la première rédaction — ce paragraphe
+> est ce qui reste de cette version, gardé pour que la trace du changement se lise.
 
 ---
 
@@ -22,10 +26,19 @@
 > l'écart entre une fin de portage sans reprise et la prise suivante au socle : la distribution
 > est trop dispersée pour qu'un seuil s'en déduise.
 
-Conséquence mesurée sur les artefacts en cache (17 films CTF, `data/cache/replays/halo_infinite`) :
-**36 spans `dropped` se terminent par un `home`** (retour crédité), mais des spans de **100 à
-162 secondes** subsistent — un drapeau posé au sol pendant deux minutes et demie n'a jamais existé
-à l'écran. Il manque donc trois choses :
+Conséquence mesurée sur les artefacts en cache (17 films reconnus CTF,
+`data/cache/replays/halo_infinite`) : **36 spans `dropped` se terminent par un `home`** (retour
+crédité), mais des spans de **100 à 162 secondes** subsistent — un drapeau posé au sol pendant deux
+minutes et demie n'a jamais existé à l'écran.
+
+> **CORRECTION du 2026-08-31, à lire avec ce chiffre.** Ces 17 artefacts ne sont pas tous du CTF
+> ordinaire : la confrontation à `match_registry` (§4 quater) montre qu'au moins NEUF d'entre eux
+> sont des parties `CTF:Arena Neutral Flag`, où le calque publiait alors deux drapeaux au lieu
+> d'un. Le constat de départ tient (les lâchers interminables sont réels et se voient aussi sur le
+> corpus de contrôle, tout en CTF ordinaire), mais le dénominateur « 17 films CTF » mélangeait deux
+> variantes.
+
+Il manque donc trois choses :
 
 1. le **retour automatique** (la minuterie qui ramène le drapeau) ;
 2. la **zone** autour du drapeau tombé (rayon) ;
@@ -202,25 +215,83 @@ corpus de la phase 0 (`64e8adfa` Catalyst, `530820e5` Catalyst, `53ce4390` Behem
 - [ ] `go test ./...` + `go vet` + typecheck/lint/vitest ; entrée `.ai/thought_log.md` ;
       `cmd/tmp_ctflua` SUPPRIMÉ ; registre des reports mis à jour.
 
-## 4 bis. LE DRAPEAU NEUTRE — la limite, et pourquoi elle n'est pas traitée ici
+## 4 bis. LE DRAPEAU NEUTRE — ce que disait la première rédaction
 
-Le user exclut explicitement le mode **drapeau neutre**, et c'est heureux : le calque des portages
-l'écarte DÉJÀ, en amont et pour une autre raison. `objFlagSpawns` ne retient que les socles
-**d'ÉQUIPE** ; le socle NEUTRE du centre est refusé parce qu'en CTF ordinaire il produirait un
-troisième drapeau immobile pour l'éternité. Conséquence, antérieure à ce chantier : sur une partie
-à drapeau neutre, la vie du drapeau est déjà approximative (un objet unique réparti sur deux
-socles d'équipe). La zone de retour hérite de cette approximation — elle ne l'aggrave pas.
+> Le user exclut explicitement le mode drapeau neutre (…) Ce qu'il faudrait pour bien faire, si le
+> user le demande un jour : reconnaître la variante. Le constructeur du rejeu est hors ligne et ne
+> connaît pas `game_variant_name` ; le signal disponible côté film serait la présence d'un objet
+> d'objectif unique naissant au socle NEUTRE. Non mesuré, donc non écrit.
 
-**Ce qu'il faudrait pour bien faire**, si le user le demande un jour : reconnaître la variante.
-Le constructeur du rejeu est hors ligne et ne connaît pas `game_variant_name` ; le signal
-disponible côté film serait la présence d'un objet d'objectif unique naissant au socle NEUTRE.
-Non mesuré, donc non écrit.
+Le user l'a demandé le lendemain, et c'est exactement ce signal qui a été mesuré et écrit :
+**§4 quater**. Le paragraphe reste ici parce que la prédiction était juste — elle vaut mieux
+consignée que remplacée.
 
-## 5. Questions ouvertes à soumettre au user
+## 4 ter. LOT 5 — LA CONTESTATION (demandée par le user le 2026-08-31)
 
-1. **La contestation** : le jeu prévoit qu'un ennemi dans le rayon EXTÉRIEUR conteste le retour et
-   fait REFAIRE la jauge (`Contested` / `ContestedRefilling`). Le user n'en a pas parlé —
-   à afficher aussi, ou à taire tant que rien ne le mesure ?
-2. **Le retour au contact** (`flagTouchReturnEnabled`) : `flag_carries.go` affirme aujourd'hui
-   « le toucher le RENVOIE ». Si le réglage est à faux en Arena, cette phrase est fausse et la
-   règle d'attribution qui s'appuie dessus est à revoir.
+**Ce que le jeu fait**, lu dans la table de constantes de `UpdateFlagState` :
+`GetAnyEnemyTeamInOuterArea` → état `Contested`, puis `ContestedRefilling` au taux
+`flagContestRefillRate` — la jauge repart en arrière. Deux rayons sont surveillés
+(`innerAreaMonitorRadius` / `outerAreaMonitorRadius`) ; les états et les raisons distinguent
+`ReturnRadius` de `ContestRadius`.
+
+**Ce qu'on a pu établir, et ce qu'on n'a pas pu.**
+
+- Le rayon de contestation est **1,3**, comme celui du retour. Ce n'est pas une supposition de
+  confort : sa valeur est **DÉDUPLIQUÉE** dans le pool de constantes (le chunk ne réémet pas une
+  valeur déjà présente), donc elle vaut l'une des constantes déjà émises à ce point — `0,1`,
+  `true` ou `1,3` — et **1,3 est la seule qui soit un rayon**. La cohérence vient d'ailleurs : les
+  deux cylindres diffèrent par leur HAUTEUR (`cylinderInnerHeight` / `cylinderOuterHeight`, deux
+  champs distincts vus dans le constructeur d'args), pas par leur rayon.
+- **Le TAUX DE RECUL, lui, reste inconnu** : `flagContestRefillRate` est dédupliqué parmi une
+  dizaine de nombres, et rien ne dit lequel. Or `false` est émis très tôt dans la même table
+  (`complete = false`), donc la déduction « booléen dédupliqué ⇒ vrai » ne tient pas non plus :
+  `flagContestedStateEnabled` n'est pas lisible non plus.
+
+**Décision de rendu, et pourquoi elle est la plus faible des deux** : le rejeu **TIENT** la jauge
+pendant la contestation au lieu de la faire reculer. Un recul inventé serait une vitesse fausse à
+l'écran ; un arrêt est seulement une progression qu'on ne réclame pas. Et l'arrêt ne fait pas
+mentir la fin : la jauge est remise à l'échelle pour atteindre 1 à l'image du retour OBSERVÉ — la
+contestation redistribue la forme, jamais les bornes. Le taux entre au registre des reports, avec
+sa condition de reprise (décoder le BYTECODE, pas seulement le pool).
+
+## 4 quater. LOT 6 — LE DRAPEAU NEUTRE (demandé par le user le 2026-08-31)
+
+**Le trou** : `replaybuild/flagspawns.go` écartait le socle neutre en amont, pour une raison
+valable (sur une partie ordinaire il ferait un troisième drapeau immobile). Conséquence : une
+partie **à drapeau neutre** publiait DEUX drapeaux qui n'existaient pas et répartissait entre eux
+les portages d'un objet unique. Le parc est loin d'être marginal : **25 matchs
+`CTF:Arena Neutral Flag`** dans `match_registry`, et **23 de leurs films sont en cache**.
+
+**Le mode n'est pas dans le film** — le constructeur du rejeu est hors ligne et ne connaît pas
+`game_variant_name`. Mais l'OBJET tranche : il ne renaît que CHEZ LUI.
+
+| | où l'objet renaît |
+|---|---|
+| variante ordinaire | aux socles D'ÉQUIPE (41 / 16 / 18 naissances à 0,0 m, mesure du 18/08) |
+| drapeau neutre | au socle NEUTRE, seul point de retour |
+
+**Seuil écrit avant la mesure** : au moins **3** naissances au socle neutre ET strictement plus
+qu'aux socles d'équipe. Le défaut est la variante ordinaire — une naissance égarée au centre ne
+bascule rien, un film muet garde le comportement d'avant. On se trompe du côté qui ne casse rien.
+
+**L'ORACLE est disjoint du discriminant** : le discriminant ne lit que le film, l'oracle est la
+variante déclarée par l'API du titre (`match_registry.game_variant_name`). Corpus de contrôle :
+`a1995edc` (Forest), `323ec1cf` et `e94163af` (Bazaar) — trois parties à drapeau neutre dont la
+carte est au catalogue d'objectifs — confrontées aux trois films ordinaires du corpus.
+
+**Ce que le mode neutre change en aval** : rien d'autre que le jeu de socles. Un seul socle donne
+un seul drapeau, d'équipe -1 ; sa rentrée se date comme les autres ; et **la zone de retour
+disparaît d'elle-même** — elle appartient au camp propriétaire, et un drapeau neutre n'en a pas.
+Le client ne trouve ni défenseur ni contestataire, la jauge se réduit à la minuterie. C'est
+exactement la règle du jeu, obtenue sans qu'aucune branche ne la dise.
+
+## 5. Questions ouvertes
+
+1. ~~La contestation~~ — **DEMANDÉE ET LIVRÉE le 2026-08-31** (§4 ter), avec sa limite écrite :
+   la jauge est TENUE, pas reculée, faute d'avoir pu lire `flagContestRefillRate`.
+2. ~~Le drapeau neutre~~ — **DEMANDÉ ET LIVRÉ le 2026-08-31** (§4 quater).
+3. **Le retour au contact** (`flagTouchReturnEnabled`) : `flag_carries.go` affirme aujourd'hui
+   « le toucher le RENVOIE ». Le réglage existe, et sa valeur n'est PAS lisible (booléen
+   dédupliqué, et `false` est émis plus tôt dans la même table — la déduction ne tient pas).
+   Si le réglage est à faux en Arena, cette phrase est fausse et la règle d'attribution qui
+   s'appuie dessus est à revoir. Non tranché.

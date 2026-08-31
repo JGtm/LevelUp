@@ -1,3 +1,79 @@
+## [2026-08-31] CTF — la contestation et le DRAPEAU NEUTRE : le discriminant de variante classe 6/6 — Complété
+
+Suite immédiate du lot de la zone de retour, sur demande de l'utilisateur après lecture du premier
+rendu : « la contestation je la veux bien stp. Pour le drapeau neutre aussi faut le gérer. » Les
+deux étaient au registre des questions ouvertes de `PLAN_CTF_ZONE_RETOUR_2026-08-30.md`.
+
+### LE DRAPEAU NEUTRE — un discriminant qui ne lit que le film, un oracle qui n'en lit rien
+
+**Le trou** : `replaybuild/flagspawns.go` écartait le socle NEUTRE en amont, pour une raison
+valable (sur une partie ordinaire il ferait un troisième drapeau immobile). Conséquence : une
+partie **à drapeau neutre** publiait DEUX drapeaux qui n'existaient pas et répartissait entre eux
+les portages d'un objet unique. **Le parc n'est pas marginal : 25 matchs `CTF:Arena Neutral Flag`
+en base, et 23 de leurs films sont en cache.**
+
+**Le mode n'est pas dans le film** — le constructeur du rejeu est hors ligne et ne connaît pas
+`game_variant_name`. Mais l'OBJET tranche : il ne renaît que CHEZ LUI. Le tri passe donc du
+fournisseur de socles (qui décidait du mode sans le savoir) au CALQUE, qui voit les naissances.
+Seuil écrit avant la mesure : **≥ 3 naissances au socle neutre ET strictement plus qu'aux socles
+d'équipe** ; le défaut reste la variante ordinaire.
+
+**CONTRÔLE À ORACLE DISJOINT — 6/6.** Le discriminant ne lit que le film ; l'oracle est la
+variante déclarée par l'API du titre. Trois films neutres dont la carte est au catalogue
+d'objectifs contre les trois films ordinaires du corpus :
+
+    64e8adfa  ordinaire  centre  1  équipes 28     530820e5  ordinaire  centre  3  équipes 12
+    53ce4390  ordinaire  centre  0  équipes  0     a1995edc  NEUTRE     centre 13  équipes  0
+    323ec1cf  NEUTRE     centre 11  équipes  1     e94163af  NEUTRE     centre 10  équipes  0
+
+`530820e5` est le cas qui justifie la SECONDE moitié du seuil : trois naissances au centre y
+suffiraient au premier critère, et c'est « strictement plus qu'aux socles d'équipe » qui le tient.
+
+**Ce que le mode neutre change en aval** : rien d'autre que le jeu de socles. Un seul socle, donc
+un seul drapeau, d'équipe -1 ; sa rentrée se date comme les autres ; **et la zone de retour
+disparaît d'elle-même** — elle appartient au camp propriétaire, un drapeau neutre n'en a pas, le
+client ne trouve personne à compter et la jauge se réduit à la minuterie. C'est la règle du jeu,
+obtenue sans qu'aucune branche ne la dise. Corollaire corrigé au passage : `sideOf` rendait
+« adverse » pour une équipe -1 — le premier camp qui n'est pas le mien emportait la comparaison.
+
+### LA CONTESTATION — ce qui se lit, et ce qui refuse de se lire
+
+Le script nomme tout : `GetAnyEnemyTeamInOuterArea` -> `Contested`, puis `ContestedRefilling` au
+taux `flagContestRefillRate`. **Le rayon de contestation vaut 1,3, comme celui du retour**, et
+c'est une déduction sûre : sa valeur est DÉDUPLIQUÉE dans le pool (le chunk ne réémet pas une
+constante déjà présente), donc elle vaut l'une des trois déjà émises — `0,1`, `true`, `1,3` — et
+1,3 est la seule qui soit un rayon. Les deux cylindres diffèrent par leur HAUTEUR
+(`cylinderInnerHeight` / `cylinderOuterHeight`), pas par leur rayon.
+
+**CE QUI REFUSE DE SE LIRE, et pourquoi la déduction s'arrête là** : `flagContestRefillRate` est
+dédupliqué parmi une dizaine de nombres. Et la tentation « booléen dédupliqué donc vrai » ne tient
+PAS — `false` est émis dès le début de la même table (`complete = false`), ce qui laisse
+`flagContestedStateEnabled` et `flagTouchReturnEnabled` illisibles eux aussi.
+
+**Décision de rendu, et c'est l'affirmation la plus faible des deux** : le rejeu **TIENT** la
+jauge pendant la contestation au lieu de la faire reculer. Un recul inventé serait une vitesse
+fausse à l'écran ; un arrêt est seulement une progression qu'on ne réclame pas. Et l'arrêt ne fait
+pas mentir la fin : la jauge est remise à l'échelle pour atteindre 1 à l'image du retour OBSERVÉ.
+À l'écran, trois lectures sans un mot de texte : anneau fin (personne), anneau ÉPAIS (des
+défenseurs, ça va plus vite), anneau POINTILLÉ (contesté, ça ne bouge plus).
+
+### Ce que le corpus neutre apprend en prime
+
+Les parties à drapeau neutre sont le cas où PERSONNE ne peut renvoyer le drapeau : tous leurs
+retours sont des expirations. Le plus long épisode inoccupé du corpus élargi vaut **28,7 s**, et
+rien ne le dépasse — `reset_seconds = 30` reste la meilleure valeur soutenue. L'accord des deux
+chaînes est inchangé : **15/15 = 100 %**, écart médian 1 frame. Le rayon garde son creux de
+dispersion à 1,3-1,5 m.
+
+**Gates** : `go test ./...` (CGO, hors `himap`) **EXIT=0**, `go vet ./...` **0**, `golangci-lint
+--new-from-merge-base=origin/main` **0 issues**, `gofmt` propre ; vitest **542 fichiers / 5 617 tests
+VERT**, typecheck cache purgé VERT, eslint 0 erreur. `openapi.yaml` et `generated.ts` régénérés.
+La sonde `cmd/tmp_ctflua` est SUPPRIMÉE du dépôt et archivée hors dépôt (règle 0 code mort).
+
+**Reste** : le taux de recul de la contestation (bytecode à décoder, pas seulement le pool) et le
+retour au contact (`flagTouchReturnEnabled`, illisible pour la même raison) sont au registre des
+reports. Plan : `.ai/V7.5/PLAN_CTF_ZONE_RETOUR_2026-08-30.md` §4 ter et §4 quater.
+
 ## [2026-08-31] CTF — la zone de retour du drapeau : retour automatique daté, zone et jauge publiées — Complété
 
 **Le trou que l'utilisateur a nommé** (30/08) : « quand le drapeau de notre équipe est en dehors

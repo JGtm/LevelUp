@@ -310,9 +310,14 @@ package replay
 // ne crédite personne — et les états `dropped` couraient jusqu'à la reprise ou la fin de l'axe,
 // des lâchers de plus de deux minutes qui n'ont jamais existé à l'écran. Contrôle : sur les
 // retours que le statborg CRÉDITE, les deux chaînes tombent à la même frame dans 9 cas sur 11
-// (écart médian 1 frame). (2) `flagReturnZone` publie la RÈGLE du mode — rayon de la zone,
-// minuterie à vide, durée à un défenseur — que le titre déclare dans son manifeste. Un artefact
-// 28 doit se lire « à re-cuire » : ses drapeaux au sol n'ont ni retour automatique ni zone.
+// (écart médian 1 frame). (2) `flagReturnZone` publie la RÈGLE du mode — rayon de la zone de
+// retour, rayon de la zone de CONTESTATION, minuterie à vide, durée à un défenseur — que le titre
+// déclare dans son manifeste. (3) LA VARIANTE « DRAPEAU NEUTRE » est reconnue : elle ne publie
+// plus DEUX drapeaux qui n'existent pas mais UN SEUL, d'équipe -1, au socle du centre. Le mode
+// n'est pas dans le film — c'est l'OBJET qui tranche, par le socle où il renaît, et la couverture
+// publie le verdict avec les deux comptes qui le fondent (`neutralFlag`, `neutralBirths`,
+// `teamBirths`). Un artefact 28 doit se lire « à re-cuire » : ses drapeaux au sol n'ont ni retour
+// automatique ni zone, et ses parties à drapeau neutre portent un drapeau de trop.
 const SchemaVersion = 29
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.

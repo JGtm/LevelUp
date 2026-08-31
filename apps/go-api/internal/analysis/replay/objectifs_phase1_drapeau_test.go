@@ -59,11 +59,21 @@ var objCTFModules = map[string]string{
 	"bcb6d393": "cliffhanger_ridgeline", "000d5950": "cliffhanger_ridgeline",
 }
 
+// objCTFMapIDs — le `map_id` de chaque film, quand on le connait. C'est la jointure de PRODUCTION
+// vers le catalogue d'objectifs, et elle PRIME sur le module : celui de Forest s'appelle `map`, et
+// plusieurs cartes du catalogue le portent.
+var objCTFMapIDs = map[string]string{
+	"a1995edc": "e8d56863-9ad4-4efe-9059-81270884589c", // Forest
+	"323ec1cf": "3e1e4cec-4f2c-44c6-b8d2-96b85c66c702", // Bazaar
+	"e94163af": "3e1e4cec-4f2c-44c6-b8d2-96b85c66c702", // Bazaar
+}
+
 // objCTFCarteNom — le NOM AFFICHE de la carte de chaque film, la cle du catalogue de bornes de
 // quantification (`filmdec.MapQuantCatalog.Lookup`, qui normalise lui-meme).
 var objCTFCarteNom = map[string]string{
 	"64e8adfa": "Catalyst", "530820e5": "Catalyst", "53ce4390": "Behemoth",
 	"bcb6d393": "Cliffhanger", "000d5950": "Cliffhanger",
+	"a1995edc": "Forest", "323ec1cf": "Bazaar", "e94163af": "Bazaar",
 }
 
 // TestObjectifsPhase1Portages — items 1.1 et 1.2 sur les trois films CTF et un temoin non-CTF.
@@ -212,13 +222,25 @@ func objFlagSpawns(t *testing.T, id string) []FlagSpawn {
 	t.Helper()
 	repo := os.Getenv(objRepoEnv)
 	module := objCTFModules[id]
-	if repo == "" || module == "" {
+	if repo == "" || (module == "" && objCTFMapIDs[id] == "") {
 		return nil
 	}
 	cat, err := LoadMapObjectives(filepath.Join(repo, "data", "titles", "halo_infinite", "reference", "map_objectives.json"))
 	if err != nil {
 		t.Logf("%s : catalogue d'objectifs illisible (%v) — mesure sans socles", id, err)
 		return nil
+	}
+	// LE `map_id` PASSE AVANT LE MODULE quand on le connait, et c'est la jointure de PRODUCTION
+	// (`replaybuild/flagspawns.go`). Le module ne suffit pas toujours a designer une carte : celui
+	// de Forest s'appelle `map`, et plusieurs entrees du catalogue le portent — joindre par lui
+	// tomberait sur la premiere venue.
+	if mapID := objCTFMapIDs[id]; mapID != "" {
+		e, err := cat.Lookup(mapID)
+		if err != nil {
+			t.Logf("%s : map_id %q hors du catalogue d'objectifs (%v)", id, mapID, err)
+			return nil
+		}
+		return objSpawnsOf(e)
 	}
 	for _, e := range cat.Maps {
 		if e.Module != module {
@@ -228,21 +250,27 @@ func objFlagSpawns(t *testing.T, id string) []FlagSpawn {
 		if len(pts) == 0 {
 			continue
 		}
-		// LES SOCLES D EQUIPE SEULEMENT. Chaque carte de CTF en declare TROIS : un par equipe,
-		// plus un NEUTRE au centre, qui n'est celui d'aucun camp et ne sert qu'aux variantes
-		// « drapeau neutre ». Le retenir sur une partie de CTF ordinaire publierait un troisieme
-		// drapeau qui n'existe pas dans le match, immobile a la maison pour l'eternite.
-		out := make([]FlagSpawn, 0, len(pts))
-		for _, p := range pts {
-			if p.TeamIndex == TeamNeutral {
-				continue
-			}
-			out = append(out, FlagSpawn{Team: p.TeamIndex, X: float32(p.Center.X), Y: float32(p.Center.Y)})
-		}
-		return out
+		_ = pts
+		return objSpawnsOf(e)
 	}
 	t.Logf("%s : module %q hors du catalogue d objectifs — mesure sans socles", id, module)
 	return nil
+}
+
+// objSpawnsOf rend TOUS les socles `flag_spawn` d'une carte, LE NEUTRE COMPRIS — comme la
+// production depuis le 2026-08-31.
+//
+// Chaque carte de CTF en declare TROIS : un par equipe, plus un NEUTRE au centre. C'est le CALQUE
+// qui tranche desormais lequel sert (`flag_neutral.go`), en regardant ou l'objet drapeau RENAIT ;
+// l'instrument doit donc lui fournir la meme chose que l'appelant reel, sinon il mesure une
+// chaine que la production n'execute pas.
+func objSpawnsOf(e MapObjectivesEntry) []FlagSpawn {
+	pts := e.PointsOfRole(mapvar.RoleFlagSpawn)
+	out := make([]FlagSpawn, 0, len(pts))
+	for _, p := range pts {
+		out = append(out, FlagSpawn{Team: p.TeamIndex, X: float32(p.Center.X), Y: float32(p.Center.Y)})
+	}
+	return out
 }
 
 // objPortageRes regroupe ce que la chaine de production a rendu sur un film — sans lui, le

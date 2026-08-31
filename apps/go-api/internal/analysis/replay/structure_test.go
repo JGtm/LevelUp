@@ -449,8 +449,13 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   drapeau qui rentre, et le socle LE NOMME (ce que `flag_returns` ne fait pas). CONTRÔLE
 	//   écrit avant la mesure et TENU : sur les retours que le statborg CRÉDITE, les deux chaînes
 	//   — disjointes — tombent à la même frame dans 18 cas sur 22 (81,8 %, seuil 80 %, écart
-	//   médian 1 frame). (2) `flagReturnZone` publie la RÈGLE du mode : rayon de la zone,
-	//   minuterie à vide, durée à un défenseur. Le rayon (1,3) est LU dans le script du jeu
+	//   médian 1 frame). (2) `flagReturnZone` publie la RÈGLE du mode : rayon de la zone de
+	//   retour, rayon de la zone de CONTESTATION (un ennemi du camp propriétaire y bloque le
+	//   retour), minuterie à vide, durée à un défenseur. (3) LA VARIANTE « DRAPEAU NEUTRE » est
+	//   reconnue et ne publie plus qu'UN drapeau, d'équipe -1, au socle du centre — le mode n'est
+	//   pas dans le film, c'est l'OBJET qui tranche par le socle où il renaît, et la couverture
+	//   publie le verdict avec ses deux comptes (`neutralFlag`, `neutralBirths`, `teamBirths`).
+	//   Le rayon (1,3) est LU dans le script du jeu
 	//   (`innerAreaMonitorRadius`) et CORROBORÉ par l'ajustement sur les films (minimum de
 	//   dispersion à 1,3-1,5 m) ; les durées sont MESURÉES. L'occupation, elle, se compte chez le
 	//   client : l'équipe d'un joueur n'est pas dans le film. Un artefact 28 doit se lire « à

@@ -136,9 +136,14 @@ export function useReplayFlagCarries({
     () => parseTeamSideID(scoreboard?.find((r) => r.is_me)?.team_side ?? null),
     [scoreboard],
   )
+  // UN DRAPEAU SANS ÉQUIPE N'EST PAS « ADVERSE ». Deux cas le produisent : la carte est hors du
+  // catalogue d'objectifs (aucun socle, donc aucun camp), et — depuis le schéma 29 — la variante
+  // À DRAPEAU NEUTRE, où l'unique drapeau n'appartient à personne. Sans cette garde, le premier
+  // camp qui n'est pas le mien emporte la comparaison et le glyphe prend l'encre ennemie : une
+  // couleur affirmée là où il n'y a rien à affirmer.
   const sideOf = useCallback(
     (team: number): FlagSide => {
-      if (allyTeamID === null) return 'unknown'
+      if (allyTeamID === null || team < 0) return 'unknown'
       return team === allyTeamID ? 'ally' : 'enemy'
     },
     [allyTeamID],
@@ -194,7 +199,21 @@ export function useReplayFlagCarries({
   const defendersOf = useCallback(
     (team: number) => {
       const out: string[] = []
+      if (team < 0) return out
       for (const [xuid, t] of teamOfXuid) if (t === team) out.push(xuid)
+      return out
+    },
+    [teamOfXuid],
+  )
+
+  // LES CONTESTATAIRES SONT LES AUTRES, et le drapeau NEUTRE n'en a aucun : son équipe vaut -1,
+  // personne n'en est « l'ennemi », et la jauge se réduit alors à la minuterie — ce que le jeu
+  // fait aussi (un drapeau neutre ne se renvoie pas, il revient tout seul).
+  const enemiesOf = useCallback(
+    (team: number) => {
+      const out: string[] = []
+      if (team < 0) return out
+      for (const [xuid, t] of teamOfXuid) if (t !== team) out.push(xuid)
       return out
     },
     [teamOfXuid],
@@ -207,8 +226,9 @@ export function useReplayFlagCarries({
         frameIntervalMs: doc.frameIntervalMs ?? 0,
         posOf,
         defendersOf,
+        enemiesOf,
       }),
-    [carries, doc.flagReturnZone, doc.frameIntervalMs, posOf, defendersOf],
+    [carries, doc.flagReturnZone, doc.frameIntervalMs, posOf, defendersOf, enemiesOf],
   )
 
   const captureStyle = useMemo<FlagCaptureStyle>(

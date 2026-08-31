@@ -123,23 +123,37 @@ type ctfzFilm struct {
 	eps        []ctfzEpisode
 	credits    []int
 	naissances []ctfzNaissance
+	// choix est le verdict de VARIANTE rendu par la production (`flagChooseSpawns`), avec les
+	// deux comptes de naissances qui le fondent.
+	choix flagSpawnChoice
+	// neutreAttendu dit ce que la BASE declare de ce film (`game_variant_name`). Il n'entre dans
+	// aucun calcul : c'est l'ORACLE contre lequel le verdict du film se juge.
+	neutreAttendu bool
 }
+
+// ctfzFilmsNeutres — les films de « CTF:Arena Neutral Flag » du corpus, releves dans
+// `match_registry` (variante declaree par l'API du titre) et dont la carte est au catalogue
+// d'objectifs. Ils servent d'ORACLE au discriminant de variante : lui ne lit que le film.
+var ctfzFilmsNeutres = []string{"a1995edc", "323ec1cf", "e94163af"}
 
 // TestCTFZoneRetourRecherche — la mesure, sur les trois films CTF du corpus de la phase 0.
 func TestCTFZoneRetourRecherche(t *testing.T) {
 	root := objRequireRoot(t)
 	cat := goldenCatalog(t)
 	var films []ctfzFilm
-	for _, id := range objCTFFilms {
+	for _, id := range append(append([]string{}, objCTFFilms...), ctfzFilmsNeutres...) {
 		src, ok := objOpenFilm(t, root, id)
 		if !ok {
 			continue
 		}
-		films = append(films, ctfzEpisodesDuFilm(t, root, id, src, cat))
+		f := ctfzEpisodesDuFilm(t, root, id, src, cat)
+		f.neutreAttendu = ctfzEstNeutre(id)
+		films = append(films, f)
 	}
 	if len(films) == 0 {
 		t.Skipf("aucun film CTF dans le cache (%s)", objFilmEnv)
 	}
+	ctfzRapportVariante(t, films)
 	var eps []ctfzEpisode
 	for _, f := range films {
 		if f.socles {
@@ -163,13 +177,58 @@ func ctfzEpisodesDuFilm(t *testing.T, root, id string, src *objDiskFilm, cat Lab
 		t.Fatalf("%s : axe de temps sans echelle", id)
 	}
 	spawns := objFlagSpawns(t, id)
-	naissances := ctfzNaissancesAuSocle(flagFreeLives(d.gw, cat.ObjectiveObjects), spawns, d.originUS, step)
+	vies := flagFreeLives(d.gw, cat.ObjectiveObjects)
+	// LE VERDICT DE VARIANTE VIENT EN PREMIER, exactement comme en production : c'est lui qui dit
+	// COMBIEN de drapeaux existent, donc a quoi renvoient les indices de `doc.FlagCarries`.
+	// Compter les naissances sur les socles NON retenus les indexerait autrement, et l'instrument
+	// apparierait le retour d'un drapeau a la naissance d'un autre.
+	choix := flagChooseSpawns(FlagCarryScan{Spawns: spawns, Free: vies})
+	naissances := ctfzNaissancesAuSocle(vies, choix.Spawns, d.originUS, step)
 	pistes := ctfzPistesParEquipe(d.doc, ctfzEquipes(id))
 	credits := ctfzRetoursCredites(src, b.OffsetMS, d.originUS, step)
 	out := ctfzEpisodesDuDocument(d.doc, id, naissances, credits, pistes)
 	t.Logf("%s : %d episodes de lacher, %d naissances de l'objet a un socle, %d retours credites, "+
-		"%d socles d'equipe", id, len(out), len(naissances), len(credits), len(spawns))
-	return ctfzFilm{id: id, socles: len(spawns) > 0, eps: out, credits: credits, naissances: naissances}
+		"%d socles au catalogue", id, len(out), len(naissances), len(credits), len(spawns))
+	return ctfzFilm{id: id, socles: len(spawns) > 0, eps: out, credits: credits,
+		naissances: naissances, choix: choix}
+}
+
+// ctfzEstNeutre dit si un film est declare « drapeau neutre » par la BASE.
+func ctfzEstNeutre(id string) bool {
+	for _, n := range ctfzFilmsNeutres {
+		if n == id {
+			return true
+		}
+	}
+	return false
+}
+
+// ctfzRapportVariante CONFRONTE le discriminant de variante a son oracle.
+//
+// LE DISCRIMINANT NE LIT QUE LE FILM (ou l'objet drapeau renait) ; l'oracle vient de la BASE
+// (`game_variant_name`). Les deux chaines sont donc disjointes, et leur accord est ce qui
+// autorise a publier UN drapeau au lieu de deux sur une partie a drapeau neutre.
+func ctfzRapportVariante(t *testing.T, films []ctfzFilm) {
+	t.Helper()
+	bons := 0
+	for _, f := range films {
+		ok := f.choix.Neutral == f.neutreAttendu
+		if ok {
+			bons++
+		}
+		t.Logf("VARIANTE — %s attendu=%s lu=%s (naissances : centre %d, equipes %d) -> %s",
+			f.id, ctfzVarianteStr(f.neutreAttendu), ctfzVarianteStr(f.choix.Neutral),
+			f.choix.NeutralBirths, f.choix.TeamBirths, objTenu(ok))
+	}
+	t.Logf("VARIANTE — %d/%d films classes correctement", bons, len(films))
+}
+
+// ctfzVarianteStr nomme une variante pour le journal.
+func ctfzVarianteStr(neutre bool) string {
+	if neutre {
+		return "NEUTRE"
+	}
+	return "ordinaire"
 }
 
 // ctfzRetoursCredites rend les frames des `flag_returns` du STATBORG.

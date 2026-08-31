@@ -202,8 +202,9 @@ func flagReturnZone(z mappings.FlagReturnZone) replay.FlagReturnZone {
 		return replay.FlagReturnZone{}
 	}
 	return replay.FlagReturnZone{
-		RadiusM:      float32(z.RadiusM),
-		ResetSeconds: float32(z.ResetSeconds),
-		SoloSeconds:  float32(z.SoloSeconds),
+		RadiusM:        float32(z.RadiusM),
+		ContestRadiusM: float32(z.ContestRadiusM),
+		ResetSeconds:   float32(z.ResetSeconds),
+		SoloSeconds:    float32(z.SoloSeconds),
 	}
 }

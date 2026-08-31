@@ -55,9 +55,13 @@ type FlagInput struct {
 	// une autre grammaire du film, et le signal sans lequel le discriminant de mode ne tient
 	// pas (un film Oddball rend 1 470 « prises » a la table du drapeau).
 	Bursts []int
-	// Spawns sont les socles `flag_spawn` D'EQUIPE de la carte, en coordonnees monde, lus dans
-	// le catalogue versionne d'objectifs. Vides : les portages restent publies, mais tous dans
-	// UN drapeau d'equipe [TeamNeutral] et sans etat `home` (sa position serait inventee).
+	// Spawns sont TOUS les socles `flag_spawn` de la carte, en coordonnees monde, lus dans le
+	// catalogue versionne d'objectifs : les deux socles d'equipe ET le socle NEUTRE du centre.
+	// C'est le calque qui retient les uns ou l'autre, selon la variante qu'il reconnait
+	// (`flag_neutral.go`) — l'appelant ne decide pas du mode.
+	//
+	// Vides : les portages restent publies, mais tous dans UN drapeau d'equipe [TeamNeutral] et
+	// sans etat `home` (sa position serait inventee).
 	Spawns []FlagSpawn
 	// Marks est le CONTROLE independant, depose par `BuildFromFilm` : les records de bipede
 	// d'image-cle portant le marqueur de portage, et l'instant de toutes les images-cles.
@@ -162,7 +166,8 @@ func attachFlagCarries(doc *ReplayDocument, opt Options, own OwnerReport, clock 
 // chargeur du manifeste la refuse deja, mais le calque ne suppose pas que l'appelant l'a
 // chargee). Un cercle dessine sur un mode qui n'en a pas serait pire qu'aucun cercle.
 func attachFlagReturnZone(doc *ReplayDocument, z FlagReturnZone, carries []FlagCarry) {
-	if len(carries) == 0 || z.RadiusM <= 0 || z.ResetSeconds <= 0 || z.SoloSeconds <= 0 {
+	if len(carries) == 0 || z.RadiusM <= 0 || z.ContestRadiusM <= 0 ||
+		z.ResetSeconds <= 0 || z.SoloSeconds <= 0 {
 		return
 	}
 	zone := z
