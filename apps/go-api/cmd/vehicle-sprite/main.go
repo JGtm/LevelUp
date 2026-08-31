@@ -33,6 +33,8 @@ func main() {
 		err = cmdScan(os.Args[2:])
 	case "render":
 		err = cmdRender(os.Args[2:])
+	case "variantes":
+		err = cmdVariantes(os.Args[2:])
 	default:
 		usage()
 		os.Exit(2)
