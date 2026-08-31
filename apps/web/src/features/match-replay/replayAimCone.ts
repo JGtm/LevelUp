@@ -29,10 +29,13 @@ const AIM_HALF_ANGLE = 0.42;
  * précision en tête). Chaque cran DIVISE encore l'ouverture, par analogie avec le jeu où un
  * cran supplémentaire double le grossissement.
  *
- * CES VALEURS SONT DES CHOIX DE RENDU, PAS DES MESURES, et il faut le dire : le film transmet
- * le palier, jamais le facteur de grossissement — celui-ci appartient à l'arme et vit dans ses
- * données de jeu. Le rapport retenu (chaque cran divise l'ouverture par ~2,3 puis ~2) rend le
- * premier cran lisible d'un coup d'œil et le second nettement distinct du premier.
+ * CES VALEURS SONT DES CHOIX DE RENDU, ET C'EST CE QU'IL FAUT. Le grossissement réel de l'arme
+ * n'a pas de sens ici : sur une carte vue de dessus, le cône n'est pas un champ de vision, c'est
+ * un REPÈRE DE LECTURE. Ce qui compte est que les états se distinguent d'un coup d'œil — hanche,
+ * premier cran, second cran — pas qu'une ouverture reproduise un facteur optique. Le rapport
+ * retenu (chaque cran divise par ~2,3) est calibré pour cette lisibilité, et le palier publié par
+ * le film suffit à le piloter : aucun besoin d'aller chercher le grossissement dans les données
+ * d'armes.
  */
 const AIM_SCOPED_DIVISOR = 2.3;
 /**
