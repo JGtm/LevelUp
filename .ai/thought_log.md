@@ -81035,3 +81035,41 @@ structure du format se rejoignent.
 2. **Fermer une periode A LA MORT du slot** (fin de vie de la trajectoire) : gratuit, la donnee
    est deja la, et cela traite proprement le tiers explique par (a) au lieu de le laisser au
    plafond de 3,5 s.
+
+## [2026-08-31] Visee lunette — RECONSTRUCTION A PLUSIEURS CAUSES (objection architecturale de l'utilisateur) — Complete
+
+**L'OBJECTION, ET ELLE EST JUSTE** : « on peut dezoomer en changeant d'arme, en subissant des
+degats, en mourant — ca fait enormement d'evenements qui font zoom out, ca ne me parait pas
+fiable ; un developpeur n'aurait sans doute jamais code son decodeur de film de cette maniere ».
+Faire dependre l'etat de la capture EXHAUSTIVE de toutes les causes de sortie est fragile par
+construction.
+
+**CE QUI A CHANGE** (`replay/zoom_state.go`, neuf) : une periode se ferme desormais sur TOUTE
+cause observable, par ordre de fiabilite —
+1. l'evenement de sortie quand il est lu (seule source de l'instant EXACT) ;
+2. la FIN DE VIE du slot (certaine, deja dans le document, cout nul) ;
+3. une NOUVELLE ENTREE du meme slot (le moteur ne peut pas entrer deux fois sans sortir) ;
+4. le plafond de maintien, en dernier recours — il ne ferme rien, il fait CESSER D'AFFIRMER.
+Les trois premieres sont des faits ; la quatrieme est un aveu d'ignorance borne. Le decodeur ne
+depend plus d'une source unique.
+
+**GAIN MESURE : MARGINAL SUR CE FILM, et il faut le dire.** Part d'echantillons a la lunette sur
+la track de Nilton : 22,6 % avant, 23,6 % apres ; rappel 6/6 inchange ; temoin 1,0 % -> 1,2 %.
+La fermeture par la mort ne deplace presque rien ICI parce que les deux tiers des entrees
+orphelines ne meurent pas vite. Le benefice n'est donc pas dans le chiffre : il est dans
+l'INVARIANT — le modele ne peut plus affirmer « a la lunette » au-dela d'une mort, quel que soit
+le film.
+
+**CE QUE L'OBJECTION LAISSE OUVERT, honnetement.** Le modele ne simule pas la logique de jeu :
+si le moteur dezoome pour une raison qu'aucun evenement lu ne porte et qui ne coincide ni avec
+une mort ni avec une entree suivante, la periode reste trop longue de quelques secondes. Deux
+suites, dans l'ordre :
+1. **Marcher la liste d'evenements ENTIERE** (le scanner ne lit que l'evenement de TETE) —
+   recupere les deux tiers manquants et rend le plafond inutile. C'est la vraie correction.
+2. **Verifier si les IMAGES-CLES portent l'etat de lunette.** C'est le geste que l'objection
+   suggere : un decodeur robuste se resynchronise sur un etat complet periodique plutot que
+   d'accumuler des bascules. L'inventaire des composants dit qu'aucun ne porte le zoom — mais
+   cet inventaire est justement celui que le lot 3 du plan « percer la trame » doit reverifier
+   (50 blocs contre 118 annonces). A rouvrir apres lui, pas avant.
+
+**Gates** : `go test ./internal/analysis/...` 0 echec ; build et vet propres.
