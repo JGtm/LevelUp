@@ -54,17 +54,18 @@ la décoder hors cas vide demande de réconcilier exactement le préambule avec 
 RÉSOLU malgré 2 workflows. fire_events (19 %, cas vide) reste la source en prod. Expériences V2/V3
 supprimées (négatifs), findings dans la note.
 
-**Croisement killsource (demande user) — LE MUR DU HANDLE RUNTIME** : les refs domaine-1 de
-damage_aftermath ne sont PAS des slots (mesure : ref0 2..1210, ref1 0..44, 0 dans la plage
-bipede [500,700]) — ce sont des index de la table domaine-1, résolus par l'entity manager
-RUNTIME, absent du film. C'est le MÊME mur que killsource documente pour SrcTag0
-(components_object.go : handle runtime, réfuté comme tag d'arme 0/786). Le champ SOURCE de
-damage_aftermath (FUN_14080d69c) EST ce reader = un handle, pas un tag. Donc « qui a été touché
-par son NOM » n'est PAS résoluble hors ligne depuis ces refs ; killsource couvre déjà la victime
-des KILLS (via le slot bipède du dead-state, mappé au roster). Le décodage de damage_aftermath
-reste prouvé et exploitable en AGRÉGAT (nb de coups, magnitude, soins). Piste : ref1 (0..44,
-petit/stable) = candidat « index de participant » si la table domaine-1 est un jour résolue
-(même table que le pont slot->xuid cherché ailleurs).
+**Croisement (demande user) — RÉSOLU : la ref de dégât EST un slot joueur.** Ma 1re passe
+concluait à tort « handle runtime irrésoluble ». Le user a insisté (« on a pas déjà le
+slot-joueur ? ») → j'ai vérifié sur pièces. Le workflow avait montré victime = (gen<<30)|(base+
+index) ; je lisais l'index BRUT sans la BASE. Mesure `TestLot1VictimeSlot` : avec base ~512
+(= début de la plage des slots bipèdes), `base+index` tombe sur un BIPÈDE LIÉ (un joueur) dans
+**82,1 % (ref0) / 89,3 % (ref1) au meilleur réglage, 2 films**. Donc la ref domaine-1 est un
+index de bipède : `slot = biped_range_lo + index`, et slot→joueur est le pont EXISTANT
+(killsource/roster). Le maillon manquant n'était PAS slot→joueur mais la base. « Qui a été
+touché » devient NOMMABLE pour les 872 k dégâts (pas que les kills). RESTE : départager
+attaquant vs blessé (les 2 sont bipèdes) ; monde chronologique (killsource.timeline) pour monter
+le taux. LEÇON : quand le user dit « on a déjà X », vérifier sur pièces avant de conclure à
+l'impossible — ma conclusion « mur du handle » était fausse.
 
 **Agent Ghidra lancé** (demande user) sur le cadrage de la visée du type 36, à rebours depuis
 l'ancre fire_events (attaquant@36/arme@44-107/visée@113). En cours.
