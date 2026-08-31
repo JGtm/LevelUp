@@ -1,0 +1,14 @@
+# Bouton « Sponsor » de GitHub — affiche en tete du depot et sur chaque issue
+# ou pull request. Les memes destinations que le bloc « Soutenir » du pied de
+# page de l'application (apps/web/src/lib/appLinks.ts) : garder les deux en
+# phase, une seule des deux mises a jour = destination fantome quelque part.
+#
+# Les cles non renseignees sont volontairement OMISES plutot que laissees vides :
+# GitHub ignore les cles vides, mais un fichier de dix lignes commentees a blanc
+# n'apprend rien a personne.
+
+github: [JGtm]
+
+# PayPal n'a pas de cle dediee chez GitHub : il passe par `custom`, qui accepte
+# jusqu'a quatre URL libres.
+custom: ['https://paypal.me/gsitbon']

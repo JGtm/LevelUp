@@ -1,3 +1,120 @@
+## [2026-08-31] Pied de page projet — soutien (Sponsors + PayPal), non-affiliation, source unique des liens — Complété
+
+**Point de départ** : le pied de page de `davidhouweling/guilty-spark`, donné en référence par
+l'utilisateur. Lecture sur pièces du dépôt (l'app publique répond 403 derrière Cloudflare) :
+`pages/src/components/footer/footer.astro` porte deux colonnes — *Resources* (dépôt, issues,
+politique de confidentialité, CGU) et *Community* (Discord, profil du développeur) — plus une
+barre basse « © … Not affiliated with Microsoft or Halo Studios ». **Le mécénat n'y est PAS** :
+GitHub Sponsors et PayPal vivent dans la FAQ (`pages/src/pages/faq.astro`, « How can I support
+this project? ») et dans `.github/FUNDING.yml`. LevelUp n'avait aucun pied de page.
+
+**Arbitrage de contenu** (contexte propre : dépôt PUBLIC MIT, démo publique `demo.lvelup.info`,
+projet mono-développeur, pas de Discord) :
+
+    REPRIS    non-affiliation Microsoft/Halo Studios — l'app sert médailles, emblèmes et
+              assets Halo ; c'est la ligne du footer de référence qui a le plus de valeur ici
+    REPRIS    code source + licence MIT
+    ADAPTÉ    « Signaler un problème » ouvre le FeedbackDrawer existant (issue préremplie avec
+              le contexte) au lieu d'un second lien brut vers /issues — pas de chemin doublon
+    AJOUTÉ    bloc « Soutenir » : GitHub Sponsors + PayPal (demande explicite), avec la note
+              « gratuit et ouvert, un coup de pouce paie l'hébergement »
+    AJOUTÉ    « Nouveautés » -> /changelog (page déjà construite)
+    ÉCARTÉ    Discord (aucun serveur), profil développeur (fondu dans le lien dépôt)
+    REPORTÉ   confidentialité / CGU — voir « reste à faire »
+
+**Décision technique principale — source unique `lib/appLinks.ts`.** Le slug `JGtm/LevelUp`
+était déjà en dur dans `feedback-drawer/buildIssueUrl.ts` ; le pied de page en aurait fait la
+2e copie et les liens de don une 3e famille de littéraux dispersés. Constantes centralisées
+(`GITHUB_REPO`, `GITHUB_URL`, `GITHUB_ISSUES_URL`, `GITHUB_LICENSE_URL`, `SPONSORS_URL`,
+`PAYPAL_URL`), `buildIssueUrl` migré, et **garde-rail dans le même commit**
+(`lib/appLinks.guard.test.ts`) : aucun de ces littéraux hors du fichier canonique. Les
+`*.test.ts(x)` sont exemptés avec justification — y épingler l'URL réelle est le but de
+l'assertion (même convention que `no-field-label-dictionary.test.ts`).
+
+**Deux variantes de rendu.** `full` en bas du flux scrollable de l'AppShell (jamais fixé : la
+hauteur verticale est comptée pour les tableaux denses). `minimal` sur LoginPage et
+XboxLoginPage — **seuls écrans qu'un visiteur anonyme de la démo publique voit**, le shell n'y
+est pas monté. La variante minimale n'a pas de lien « Signaler un problème » : le FeedbackDrawer
+n'y est pas monté non plus. Deux points d'insertion seulement (RegisterPage et l'écran admin
+mot de passe sont hors audience publique) — reste sous la règle des 2 copies.
+
+**i18n** : 12 clés `common.footer.*` FR+EN dans `manifests/common.toml`, manifests regénérés
+(21 manifests, 3 010 clés). Couleurs : tokens sémantiques uniquement (`text-muted-foreground`,
+`border-border`, `text-foreground`), aucun hex ni classe Tailwind couleur.
+
+**Gates** : vitest suite complète **543 fichiers / 5 614 tests VERT** (14 skipped), typecheck
+`tsc -b` cache `node_modules/.tmp` purgé VERT, eslint **0 erreur** (24 warnings pré-existants
+`react-hooks/incompatible-library` sur TanStack Table, hors diff). 6 tests neufs sur AppFooter
+(cibles externes, `rel="noopener noreferrer"`, ouverture du tiroir, variante minimale, locale en).
+
+**SECONDE PASSE (même journée, demandes de l'utilisateur).** Sponsors CONFIRMÉ actif sur le
+compte — le lien tient. Trois ajouts :
+
+    profil GitHub    `GITHUB_PROFILE_URL`, colonne « Ailleurs » du pied de page complet
+    csinsight.eu     site d'un proche (stats CS2). Le site sert sa langue par le PREMIER
+                     SEGMENT de chemin (`/fr`, `/en`, vérifié sur pièces) : helper
+                     `csinsightUrl(locale)` branché sur la locale de l'app, pas une langue
+                     figée. Présent aussi dans la variante minimale — la démo est publique,
+                     un lien que seuls les connectés voient n'a presque aucune portée.
+    /privacy         page de confidentialité bilingue (le point (3) reporté ci-dessus)
+
+**La page de confidentialité est écrite depuis le CODE, pas depuis un modèle.** Chaque
+affirmation est adossée à une vérification, listées en tête de `features/legal/i18n.ts` :
+cookie `levelup_session` HttpOnly / SameSite=Lax / Secure / TTL 7 j (relu dans
+`platform/session/store.go` + `api/middleware/session.go`), absence de tout traceur ou service
+de mesure (grep analytics/gtag/plausible/matomo/posthog/sentry : aucun branchement — seul un
+COMMENTAIRE d'ErrorBoundary évoque Sentry), jetons Microsoft en source unique
+`data/auth/watcher_tokens/{xuid}.json` (ADR 0023). Deux faits que le texte énonce et qu'une
+politique de complaisance aurait tus : (a) les gamertags/XUID/statistiques des AUTRES joueurs
+des parties sont conservés — indissociable d'un affichage de match ; (b) le panneau de retour
+fait un `fetch` NAVIGATEUR DIRECT vers `api.github.com` (`feedback-drawer/queries.ts`,
+`credentials: 'omit'`), donc l'IP du visiteur est exposée à GitHub, et l'envoi crée un ticket
+PUBLIC. Un test épingle ces faits vérifiables (nom du cookie, HttpOnly, durée) dans les DEUX
+langues : si le code change sans que le texte suive, il rougit.
+
+**Routage anonyme.** `/privacy` doit être lisible SANS compte — un visiteur qui hésite à
+connecter son compte Microsoft doit pouvoir lire d'abord. Helper `isAnonymousPath` dans
+`shellNavigation.ts` (frontière de SEGMENT : `/privacy-interne` n'est pas anonyme), branché sur
+les deux redirections d'authentification de `__root.tsx`. Le gate `setup_required` continue de
+s'appliquer volontairement : une instance non configurée n'a rien à servir. `routeTree.gen.ts`
+regénéré par `vite build` (jamais édité à la main), titre d'onglet ajouté dans `pageTitle.ts`.
+
+Effet de bord assumé : `XboxLoginPage.test.tsx` rendait la page sans routeur monté ; le `Link`
+vers /privacy du pied de page minimal y lève. Mock `Link` -> ancre ajouté dans ce fichier
+(convention déjà en place dans `NavL1.test.tsx` et consorts).
+
+**Gates seconde passe** : vitest suite complète **544 fichiers / 5 626 tests VERT** (14 skipped),
+typecheck cache purgé VERT, eslint **0 erreur** (24 warnings pré-existants), `vite build` VERT.
+
+**TROISIÈME PASSE — adresse de contact.** L'utilisateur veut une adresse mais craint le spam.
+Diagnostic AVANT de proposer, pas après : `nslookup` sur `lvelup.info` montre des nameservers
+IONOS et des **MX déjà actifs** (`mx00/mx01.ionos.fr`) — le domaine reçoit donc déjà du courrier,
+créer une adresse de rôle ne demandait rien à monter. Recommandation retenue et livrée : adresse
+de rôle sur le domaine du projet, jamais la boîte personnelle. Elle se filtre par DESTINATAIRE
+(une règle « pour: cette adresse » la sort de la boîte principale), elle se remplace en une ligne
+si elle est moissonnée, et ce n'est pas un compte — rien à perdre si elle finit sur une liste.
+Anti-moissonnage : l'adresse est assemblée à l'exécution depuis un tableau de parties
+(`['contact','lvelup.info'].join('@')`, non repliable par le bundler), donc le littéral complet
+n'existe ni dans le HTML servi — l'app est rendue côté navigateur, un robot sans JavaScript ne
+voit rien — ni d'un seul tenant dans le bundle. Rendu par jeton `{{CONTACT}}` -> lien `mailto:`
+(même mécanique que `{{HP}}` dans l'aide) ; un test vérifie dans les DEUX langues que le jeton
+brut ne reste jamais affiché. Un garde-rail impose une partie locale de RÔLE
+(`contact|privacy|legal|dpo`…) : si elle redevient un nom de personne, la propriété
+« remplaçable sans rien perdre » tombe et le test rougit. La page garde AUSSI la voie du ticket
+public, en disant explicitement qu'il est visible de tous et que l'adresse est la voie discrète.
+L'utilisateur a créé `contact@` (et non le `privacy@` proposé) : bascule faite, et le texte
+corrigé en conséquence — il annonçait « alias dédié à ces demandes », ce qui aurait été FAUX
+pour une adresse de contact générale.
+
+**Reste à faire** : (1) gate visuel — la main à l'utilisateur, en clair et en sombre, sur l'écran
+de connexion, en bas d'une page dense, et sur /privacy ; (2) poser côté messagerie la règle de
+tri sur le destinataire `contact@` — c'est elle qui fait tout le travail anti-spam, le code ne
+peut pas la poser ; (3) `PRIVACY_UPDATED_AT` est à faire avancer à chaque modification de fond,
+et la doctrine est écrite en tête du fichier. Branche `worktree-footer-liens` (worktree dédié
+depuis `feat/v75`).
+Rien de commité.
+---
+
 ## [2026-08-30] Sons — le merge ramassage fournit les déclencheurs, les quatre sons muets sont câblés — Complété
 
 **Le merge `dcbc6e458` (chantier ramassage, schémas 25-28) apporte exactement ce qui manquait

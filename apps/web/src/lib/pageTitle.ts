@@ -125,6 +125,7 @@ const STATIC_ROUTE_TITLES: RouteTitleRule[] = [
   { pattern: '/lab/charts', title: { fr: 'Aperçu graphiques', en: 'Charts gallery' } },
   { pattern: '/login', title: { fr: 'Connexion', en: 'Sign in' } },
   { pattern: '/onboarding/openspartan', title: { fr: 'Bienvenue', en: 'Welcome' } },
+  { pattern: '/privacy', title: { fr: 'Confidentialité', en: 'Privacy' } },
   { pattern: '/register', title: { fr: 'Inscription', en: 'Register' } },
   { pattern: '/settings', title: { fr: 'Paramètres', en: 'Settings' } },
   { pattern: '/setup', title: { fr: 'Configuration', en: 'Setup' } },
