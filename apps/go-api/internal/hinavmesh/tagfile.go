@@ -69,6 +69,9 @@ type typeHavok struct {
 	// Modeles porte les parametres de modele : "tT" -> indice du type element pour un
 	// hkArray. C'est ce qui permet de VERIFIER qu'un tableau porte le type attendu.
 	Modeles map[string]int
+	// Opaque marque un type dont l entree TBDY etait illisible et a ete FRANCHIE
+	// (resynchronisation.go). Ses membres sont inconnus — on ne les invente pas.
+	Opaque bool
 }
 
 // tableTypes est la table des types d'un fichier-tag, indexee par indice de type.
@@ -113,6 +116,9 @@ type fichierTag struct {
 	data  []byte // le contenu de la section DATA
 	types tableTypes
 	items []itemHavok
+	// recuperations : nombre d entrees TBDY franchies faute de savoir les lire. ZERO sur un
+	// fichier sain ; le compteur existe pour que la recuperation ne devienne jamais silencieuse.
+	recuperations int
 }
 
 // nomType rend le nom d'un indice de type, ou "?" hors bornes.
@@ -189,7 +195,7 @@ func lireFichierTag(region []byte) (*fichierTag, error) {
 	if !ok {
 		return nil, fmt.Errorf("hinavmesh: fichier-tag sans section DATA")
 	}
-	types, err := lireTypes(region, sections)
+	types, recuperations, err := lireTypes(region, sections)
 	if err != nil {
 		return nil, err
 	}
@@ -197,7 +203,8 @@ func lireFichierTag(region []byte) (*fichierTag, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &fichierTag{data: region[data[0] : data[0]+data[1]], types: types, items: items}, nil
+	return &fichierTag{data: region[data[0] : data[0]+data[1]], types: types, items: items,
+		recuperations: recuperations}, nil
 }
 
 // parcoursSections remplit la carte avec [offset du contenu, longueur] par etiquette.

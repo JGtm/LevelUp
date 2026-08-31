@@ -80921,3 +80921,114 @@ une requete assemblee entierement a l'execution lui echapperait. Et il ne couvre
 
 **Prochaine etape** : rien de planifie. Le dispositif est autonome — il signale, et il dit quoi
 faire du signalement.
+
+## [2026-08-31] CI de branche : les cinq garde-rails rouges, et ce que chacun disait
+
+**Statut** : Complete (vet + les 7 paquets concernes verts).
+
+**Decision technique principale** : traiter chaque garde-rail par sa CAUSE, jamais en relevant le
+seuil. Aucun n'a ete affaibli ; deux n'avaient meme rien a corriger.
+
+**Resultats observes, un par un** :
+
+- `TestNoNewHalowaypointLiteral` : `cmd/mapnav-fetch/main.go` allowliste, a cote de
+  `cmd/mapobj-build/fetch.go` qui est la meme frontiere — appel direct de l'hote UGC officiel en
+  ACCES ANONYME (aucun jeton), production d'artefacts VERSIONNES (maillages, miniatures). Entree
+  datee comme l'exige la liste.
+- `TestNoAdHocRepoRootLadderInTests` : `cmd/mapfond-build/reglages_test.go` et
+  `cmd/mapobj-build/catalogue_modules_guard_test.go` passent a `testutil.RepoRoot()`. Leur chemin
+  devient relatif a la RACINE au lieu d'une echelle `../../../..` qui se casse en silence des que
+  le test change de dossier.
+- `TestNoProdRepoRootHelperInTests` : `map_background_index_catalogue_test.go` utilisait
+  `title.FindRepoRoot()`, qui echoue en CI — le test faisait alors `t.Skipf` et LE GARDE-RAIL
+  DISPARAISSAIT SANS BRUIT. Passe a `testutil.RepoRoot()` + `t.Fatalf`.
+- `TestSentinel_NoNewDuckDBAuthReaders` et `TestSentinel_NoNewClientSecretReaders` : DEJA VERTS sur
+  feat/v75. Ils ne rougissaient que sur wt/cartes-revue-par-carte, base sur un etat anterieur aux
+  309 commits du chantier ramassage/sons. Rien a corriger — le constat valait d'etre fait.
+- `TestMapObjectives_ModesPonctuels` : releve de reference perime. CTF 14 -> 35 cartes a forme,
+  Stockpile 16 -> 22, Assault 2 inchange. Cause etablie : la campagne de catalogage a porte le
+  catalogue de 73 a 126 cartes. L'assertion de fond — un (role, camp) sert ses ponctuels OU les
+  centres de ses formes, jamais les deux — passe sur les 126. Seul le compte est mis a jour.
+- `TestCatalogueLivreEstExploitable` : trois cartes a zones surfaciques sans forme, ajoutees a
+  `pointlessConnues` avec des explications DIFFERENCIEES. fdde5715 et 841242db sont des cartes
+  FIREFIGHT (level_id 1437677928, scripts « classic firefight extraction zone », « EZONE ») : leur
+  extraction_zone est un objet de SCRIPT, pas un volume — leurs collines (5/5) et zones Bastion
+  (3/3) portent bien leur forme. 1042b738 est la SEULE des 126 dont aucun role surfacique ne porte
+  de forme (extraction 0/6, colline 0/4), un pack 1v1 multi-arenes (sections 1v1Bazzar,
+  1v1Aquarius, 1v1ORIGIN) : sa cause n'est PAS etablie et c'est ecrit tel quel dans le code.
+  CE QUI REND CES TROIS ENTREES ACCEPTABLES : aucune n'a le moindre match au corpus (mesure sur
+  match_registry). Elles sont entrees par le classement mondial, pas par ce qu'on rejoue.
+
+**Conclusion / prochaine etape** : la CI de branche ne devrait plus rougir sur ces sept paquets.
+Reprise du decodage TSTR/FSTR, qui debloquerait Absolution et les deux Insolence.
+
+## [2026-08-31] TSTR/FSTR : le blocage d'Absolution n'est PAS une origine d'indexation
+
+**Statut** : En cours (diagnostic corrige, cause non encore trouvee ; rien de casse, rien livre
+sur le decodeur lui-meme).
+
+**Decision technique principale** : ne rien changer au decodeur. La seule piste essayee a ete
+mesuree, refutee et consignee ; le code reste dans l'etat qui decode Isolation entierement.
+
+**Ce que la sonde a etabli, et qui CORRIGE le diagnostic precedent** : le decodeur echouait sur
+« type 68 (hkPropertyId), membre 50, indice de nom 98 hors des 98 chaines ». Cet ecart d'un etait
+lu comme une table indexee a partir de 1. C'est faux : hkPropertyId n'a pas cinquante membres.
+Le flux TBDY est DESYNCHRONISE bien avant, et l'indice hors bornes n'est que le premier symptome
+VISIBLE. Il faut chercher l'origine du DECALAGE, pas celle de l'indexation.
+
+**Mesures a reprendre telles quelles** (sonde_tbdy_test.go, versionnee pour cela) :
+- le flux est SAIN jusqu'a l'entree 66 incluse — indices de nom croissants (48..54, 55..58,
+  59..60), offsets et types coherents ;
+- l'entree 67 lit « 196609 membres » sur les octets `44 00 29 07 08 08 c3 00 01 ...` ;
+- l'entree suivante semble commencer 13 octets plus loin (`45 00 2b` = type 69, parent 0,
+  drapeaux 0x2b) : l'entree 68 occupe donc 13 octets ;
+- drapeaux de MEMBRE : Isolation ne connait que 0x20, 0x22, 0x24, 0x25 ; Absolution ajoute 0x21
+  (x1) et 0x23 (x3) ;
+- les sections sont UNIQUES par region dans les deux generations (hypothese « premiere occurrence
+  gagnante trompeuse » refutee) ;
+- FSTR d'Absolution : 98 entrees dont la derniere est le vide de queue, soit 97 chaines reelles.
+
+**Piste REFUTEE le 2026-08-31** : lire un entier de plus quand le drapeau de membre porte 0x01
+sans 0x04 (donc 0x21 et 0x23, jamais le 0x25 d'Isolation). Bien inerte sur Isolation, mais fait
+echouer Absolution PLUS TOT — offset 208 au lieu de 818.
+
+**Conclusion / prochaine etape** : reprendre a l'entree 68, dont on connait desormais la taille
+exacte (13 octets) et les octets exacts. Fixer sa grammaire d'abord, le reste suivra.
+
+## [2026-08-31] TSTR/FSTR resolu : Absolution et les deux Insolence sortent de la bouillie
+
+**Statut** : Complete (les trois cartes se cuisent et sont validees par l'utilisateur).
+
+**Decision technique principale** : ne rien deviner. Trois corrections enchainees, chacune tiree
+d'une mesure, et chacune assortie de son garde-fou.
+
+1. **L'entree TBDY illisible est FRANCHIE, pas interpretee.** Le type `hkPropertyId` d'Absolution
+   lisait « 196 609 membres ». Plutot que d'inventer sa grammaire, on cherche le PLUS COURT saut
+   apres lequel tout le reste de la section se lit : 13 octets, unique, et l'entree suivante tombe
+   pile. Le type est marque OPAQUE — aucun membre invente — et un compteur `recuperations` est
+   publie par region. GARDE-FOU : Isolation en a ZERO, les trois cartes exactement une ; un
+   decodeur qui se mettrait a en recuperer beaucoup serait devenu un devineur, et ça se verrait.
+2. **Le maillage n'est pas en racine sur cette generation.** La region porte un
+   `hkaiStaticTreeNavMeshQueryMediator` qui tient le `hkaiNavMesh` par pointeur. On le cherche
+   donc par son TYPE ; le cas ambigu (deux maillages dans une region) est REFUSE plutot que
+   tranche au hasard.
+3. **Le vecteur `up` n'est pas declare.** Leur `hkaiNavMesh` porte 13 membres contre 15 chez
+   Isolation (`up` et `cachedFaceIterator` manquent). Il vaut (0,0,1) par defaut — la valeur
+   mesuree partout ou il est declare — et `Maillage.HautSuppose` dit que c'est SUPPOSE. Le temoin
+   exige les deux faces : Absolution doit l'avouer, Isolation ne doit pas.
+
+**Hypotheses REFUTEES en chemin, consignees pour ne pas etre rejouees** : l'origine d'indexation
+des tables de chaines (le vrai symptome est une DESYNCHRONISATION — `hkPropertyId` n'a pas
+cinquante membres) ; la duplication de sections par region (elles sont uniques dans les deux
+generations) ; un entier de plus sur les drapeaux de membre 0x21/0x23 (inerte sur Isolation comme
+voulu, mais Absolution echoue alors PLUS TOT, offset 208 au lieu de 818).
+
+**Resultats observes** : Absolution 1188x1265 px, 21/22 ancres, couverture 80,2 % ; Insolence
+2302x2022, 36/38, 78,0 % ; Insolence Heavies 2302x2022, 31/31, 78,0 %. Maillages : Absolution
+1 342 faces / 3 291 sommets. Leur couverture tres elevee explique d'ailleurs la bouillie : ce sont
+des cartes COUVERTES, le cas ou la substitution est indispensable — et elle ne pouvait pas s'armer
+sans maillage.
+
+**Conclusion / prochaine etape** : plus aucune carte BLOQUEE pour cause de maillage. Restent au
+registre les trois Munera/Out With A Bang (aucun objectif publie) et les trois Firefight (mode non
+gere par le rejeu, precision utilisateur du 2026-08-31).
