@@ -159,4 +159,14 @@ type PadPickup struct {
 	// POINTEUR, ET SANS `omitempty` : le champ doit se VOIR à `null`. Un client qui ne le
 	// trouve pas pourrait croire qu'il a affaire à un artefact plus ancien.
 	XUID *string `json:"xuid"`
+	// T est l'instant EXACT du ramassage, en frames, quand l'événement natif `biped_pickup`
+	// l'a daté (cf. pad_pickup_dating.go). ABSENT quand aucun événement natif ne correspond :
+	// l'intervalle `[tLow, tHigh]` reste alors la seule vérité, et il n'est JAMAIS effacé.
+	//
+	// C'EST LA LEVÉE DE LA RÉSERVE ÉCRITE SUR `XUID` CI-DESSUS. Le contrat de ce champ disait
+	// que ce qui manquait n'était pas un meilleur pont mais « un oracle plus RAPPROCHÉ que
+	// 20 s ». L'événement natif EST cet oracle : il date à la milliseconde et il porte le
+	// ramasseur, sans inférence — `512 + sa référence` vaut le slot du ramasseur sur 32/32
+	// paires de vérité terrain. Quand il date une occupation, `xuid` cesse d'être `null`.
+	T *int `json:"t,omitempty"`
 }

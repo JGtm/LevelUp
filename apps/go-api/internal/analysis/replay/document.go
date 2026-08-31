@@ -304,7 +304,33 @@ package replay
 // n'est pas diagonale (un même objet lié à trois rangs ; à candidat unique, 0 à 2 paires par
 // film, incohérentes). Le ramassage d'équipement reste dans `equipmentChanges` (QUI et QUAND),
 // sans lien vers l'objet du sol.
-const SchemaVersion = 28
+//
+// CE QUE LA VERSION 29 PORTE. Le RAMASSAGE NATIF (`pickups`) : l'événement `biped_pickup` de
+// la bobine — le type 9 de la liste d'événements d'un paquet delta, décodé pour la première
+// fois (grammaire lue dans l'exe, cadrage jugé par l'oracle de trame sur deux films). Il DATE
+// à la milliseconde, ATTRIBUE (sa référence vaut `512 + index` = le slot du ramasseur, exact
+// sur 32/32 paires de vérité terrain) et NOMME l'objet par son identifiant de catalogue —
+// le même espace de valeurs que `Loadout.W` pour les armes (100 % des familles vues par
+// i43..i46 y figurent). Son R(3) de tête sépare les armes du reste : classes 0/1 → 63-72 %
+// d'armes connues, classes 2/3 → 0,0 % sur 118 événements.
+//
+// CE QUE LA VERSION 29 LÈVE. `padPickups` cesse d'être un intervalle anonyme de vingt
+// secondes : quand un ramassage natif de la MÊME famille tombe dans la fenêtre, l'occupation
+// porte son instant EXACT (`t`) et son ramasseur (`xuid`). C'est la condition de levée que le
+// contrat de `PadPickup.XUID` avait écrite — « un oracle plus RAPPROCHÉ que 20 s » — et elle
+// n'est plus une inférence : l'événement porte le ramasseur. RIEN N'EST EFFACÉ : une
+// occupation que le canal natif ne couvre pas garde son intervalle intact, et `xuid` y reste
+// `null`. Un artefact 28 se lit donc sans changement ; il ne porte simplement pas ces datations.
+//
+// CE QUE LA VERSION 29 REFUSE. De remplacer `weaponChanges` : les deux canaux coexistent parce
+// qu'ils ne disent pas la même chose (l'un qualifie prise/lâcher/échange et connaît
+// l'emplacement d'arme, l'autre voit des prises que le premier rate et nomme le ramasseur).
+// Et de prétendre à la complétude : le balayage ne décode que l'événement EN TÊTE de sa liste,
+// donc un ramassage en deuxième position lui échappe — `coverage.pickups.multiEvent` publie
+// cette borne. Les classes non-arme SONT publiées, sur mesure et non par principe : 80,5 % et
+// 72,2 % d'entre elles n'ont AUCUNE émission i48 du même slot à moins de 500 ms (témoin décalé
+// à 0,0 %) — elles comblent un trou, elles ne doublonnent pas `equipmentChanges`.
+const SchemaVersion = 29
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {
@@ -429,6 +455,16 @@ type ReplayDocument struct {
 	// portée au spawn en sont ÉCARTÉES : ce ne sont pas des ramassages. Absent si le film
 	// n'en porte aucun.
 	WeaponChanges []WeaponChange `json:"weaponChanges,omitempty"`
+	// Pickups est la liste des RAMASSAGES NATIFS (cf. document_pickups.go) : l'événement
+	// `biped_pickup` de la bobine, daté à la milliseconde, ATTRIBUÉ à son ramasseur et portant
+	// l'identifiant de catalogue de l'objet.
+	//
+	// IL NE REMPLACE PAS `weaponChanges`, IL LE COMPLÈTE — et les deux sont publiés parce
+	// qu'ils ne disent pas la même chose. `weaponChanges` sait qualifier (prise, lâcher,
+	// échange) et connaît l'emplacement d'arme ; le canal natif ne qualifie rien mais il voit
+	// des prises que l'autre rate et il nomme le ramasseur. Là où les deux voient la même
+	// prise, ils s'accordent (21/21 et 11/12, arme nommée, à moins de 500 ms).
+	Pickups []Pickup `json:"pickups,omitempty"`
 	// EquipmentChanges est la liste des RAMASSAGES ET DES CONSOMMATIONS d'équipement (cf.
 	// document_equipment_changes.go) : qui, quand, quelle capacité — et, sur une
 	// consommation, laquelle vient d'être usée. Les annonces de RÉAPPARITION en sont
