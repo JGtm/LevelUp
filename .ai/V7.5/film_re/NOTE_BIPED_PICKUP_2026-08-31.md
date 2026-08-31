@@ -258,6 +258,65 @@ refutee ; l'evenement ne porte pas de handle monde. Ce lien-la reste l'affaire d
 (schema 26). Autrement dit : « qui a ramasse quoi, quand » est acquis ; « depuis quel socle »
 ne l'est pas et ne le sera pas par cet evenement.
 
+## LOT 3 — LA PUBLICATION (schema 29)
+
+Le canal est en production. Chemin : `filmdec.ScanFilmBipedPickups` (decodeur autonome, PAS un
+hook — la liste d'evenements vit AVANT la trame, ces bits ne sont lus par aucun autre
+consommateur) -> `replay.buildPickups` -> `doc.pickups`.
+
+**Gate du portage** : accord PARFAIT production <-> instrument de recherche, evenement par
+evenement (horodatage, slot, identifiant, classe), 135/135 et 73/73, zero rejet.
+
+**Gate de la traversee slot -> xuid** (la reserve du lot 2, levee) : ramasseurs NOMMES
+**127/135 = 94,1 %** et **73/73 = 100 %** · **0 collision de slot** sur les deux films — c'est
+l'objection « les slots sont reattribues entre manches », mesuree et non supposee · 21/21 et
+11/11 paires a slot identique des deux cotes. HONNETETE : les deux canaux rendant le MEME slot,
+« meme xuid » en decoule PAR CONSTRUCTION ; ce n'est pas une mesure independante.
+
+**Decision produit tranchee sur mesure — publier les classes non-arme.** Critere ecrit avant :
+gain >= 30 %. Mesure : **80,5 % et 72,2 %** des non-armes n'ont AUCUNE emission i48 du MEME slot
+a moins de 500 ms (temoin decale a 0,0 %). Elles comblent un trou, elles ne doublonnent pas
+`equipmentChanges`.
+
+**Le son.** Le son designe `168832f6` etait DEJA cable depuis le 2026-08-30 (schema 25) : la
+condition de reprise etait deja levee, le brief du lot partait d'une premisse perimee, et aucune
+re-livraison de `.wem` n'a ete necessaire. Ce qui restait vrai : les prises que `weaponChanges`
+RATE etaient MUETTES. Regle posee — un ramassage natif d'arme sonne SI ET SEULEMENT SI aucun
+`taken`/`swapped` ne le couvre (meme vie, meme famille, <= 5 frames). Mesure sur l'artefact
+cuit : **32 sons ajoutes, 21 dedupliques, zero doublon**.
+
+### La cuisson pilote, et ce qu'elle a montre
+
+UNE invocation, en avant-plan, sur `000d5950`. Le binaire `cmd/replay-build` n'armait PAS le
+plafond memoire — seul des trois binaires qui decodent un film a ne pas le faire. Il l'arme
+desormais (`filmproc.Arm`, defaut 3 GiB, `--mem-gib 0` pour desarmer). **Pic mesure : 0,127 GiB.**
+
+| verification | resultat |
+|---|---|
+| schema de l'artefact | **29** |
+| ramassages publies | **135** (decodes 135, refuses 0) |
+| ramasseurs nommes | **127 / 135 = 94,1 %** — identique a la mesure du lot 2 |
+| armes / objets | 53 / 82 · classes 0:43 · 1:10 · 2:51 · 3:31 |
+| identifiant du 1er ramassage | `00007ca9` = 31913, la valeur decodee a la main au lot 1 |
+| sons ajoutes par le canal natif | **32** (21 dedupliques) |
+| pic memoire | **0,127 GiB** (plafond 3 GiB) |
+
+**NEGATIF DE LA CUISSON, ET IL COMPTE : la datation des `padPickups` n'a PAS ete exercee.** Ce
+film (Super Fiesta sur Cliffhanger) rend **0 socle et 0 occupation** — ses 220 armes au sol sont
+toutes des armes LACHEES, aucune ne s'agglomere en socle. `coverage.padDating` vaut donc
+`{occupations:0, dated:0, ...}`. La levee de l'intervalle de vingt secondes est **prouvee par
+trois tests unitaires** (dont un qui verifie qu'un film sans canal natif rend exactement les
+`padPickups` du schema 28) mais **PAS par une cuisson**. Il faut un film a socles — un CTF Arena
+— pour la voir a l'oeuvre. C'est la seule promesse du lot 3 qui reste non verifiee sur donnee
+reelle.
+
+### Ce que les gardes ont attrape avant moi
+
+Quatre garde-fous du depot ont refuse le lot avant d'etre satisfaits, et c'est leur role :
+le cliquet de `SchemaVersion` (raison ecrite exigee), le `contracttest` (quatre champs publies
+par le Go et absents du contrat), les deux gardes de frontiere TypeScript (tableaux nullables,
+racine et chemins profonds) et le garde-rail de parite du numero de schema cote web.
+
 ## Reproduire
 
 ```
