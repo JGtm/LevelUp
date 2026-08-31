@@ -5,8 +5,12 @@
  *   - `full`    : rendu en bas du contenu scrollable de l'AppShell (utilisateur
  *                 connecté). Colonnes « Le projet » et « Soutenir ».
  *   - `minimal` : rendu sur les écrans de connexion, seuls écrans qu'un visiteur
- *                 anonyme de la démo publique voit. Pas de lien « Signaler un
- *                 problème » : le FeedbackDrawer n'y est pas monté.
+ *                 anonyme de la démo publique voit. Deux absences VOULUES :
+ *                 « Signaler un problème » (le FeedbackDrawer n'y est pas monté)
+ *                 et le bloc « Soutenir » — solliciter un don avant que la
+ *                 personne ait vu quoi que ce soit du produit sonne quémandeur.
+ *                 Le soutien se demande à l'usage, dans la variante `full`, et
+ *                 par le bouton Sponsor du dépôt (.github/FUNDING.yml).
  *
  * Les URL externes viennent de `lib/appLinks` (source unique, garde-rail
  * `appLinks.guard.test.ts`).
@@ -63,10 +67,6 @@ export function AppFooter({ variant = 'full' }: AppFooterProps) {
           </Link>
           <ExternalLink href={GITHUB_URL}>{t('common.footer.source_code')}</ExternalLink>
           <ExternalLink href={csinsightUrl(locale)}>{t('common.footer.csinsight')}</ExternalLink>
-        </p>
-        <p className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
-          <ExternalLink href={SPONSORS_URL}>{t('common.footer.sponsors')}</ExternalLink>
-          <ExternalLink href={PAYPAL_URL}>{t('common.footer.paypal')}</ExternalLink>
         </p>
       </footer>
     )

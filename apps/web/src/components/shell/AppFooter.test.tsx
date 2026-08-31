@@ -67,15 +67,23 @@ describe('AppFooter', () => {
     expect(useFeedbackDrawerStore.getState().isOpen).toBe(true)
   })
 
-  it('variante minimale : confidentialité + soutien, pas de lien vers le tiroir de feedback', () => {
+  it('variante minimale : confidentialité, source et CSinsight', () => {
     renderWithProviders(<AppFooter variant="minimal" />)
     // L'écran de connexion est le seul que voit un visiteur anonyme : le lien
     // confidentialité DOIT y être, sinon la page est inatteignable sans compte.
     expect(hrefOf(/Confidentialité/i)).toBe('/privacy')
-    expect(hrefOf(/GitHub Sponsors/i)).toBe(SPONSORS_URL)
-    expect(hrefOf(/PayPal/i)).toBe(PAYPAL_URL)
+    expect(hrefOf(/Code source/i)).toBe(GITHUB_URL)
     expect(hrefOf(/CSinsight/i)).toBe('https://csinsight.eu/fr')
     expect(screen.queryByRole('button', { name: /Signaler un problème/i })).toBeNull()
+  })
+
+  it('variante minimale : AUCUNE sollicitation de don avant usage du produit', () => {
+    renderWithProviders(<AppFooter variant="minimal" />)
+    expect(screen.queryByRole('link', { name: /GitHub Sponsors/i })).toBeNull()
+    expect(screen.queryByRole('link', { name: /PayPal/i })).toBeNull()
+    // Contre-preuve : la variante complète, elle, les porte.
+    expect(SPONSORS_URL).toBeTruthy()
+    expect(PAYPAL_URL).toBeTruthy()
   })
 
   it('rend les libellés en anglais quand locale=en', () => {
