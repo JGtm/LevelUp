@@ -81292,3 +81292,34 @@ la marche de la liste d'evenements ENTIERE, inchangee par ce lot.
 reelles conservees (00162144, 00502e52, 000d5950) · **aucun code de production modifie** ; les
 seuils, l'echelle de verdict et la marche des composants sont ceux du lot F, REPRIS et non
 redefinis, pour que les deux verdicts se comparent.
+
+## [2026-08-31] Visee lunette — HYGIENE AVANT MERGE : trois fichiers ramenes sous le seuil, gates complets — Complete
+
+**Controle de completude avant merge** (skill `delivery-checklist`) : trois fichiers depassaient
+le seuil de 500 lignes du depot a cause de ce chantier. Corrige AVANT le merge, pas apres :
+- `replayMarkers.test.ts` 454 -> 595 (je le faisais FRANCHIR) : les epreuves de la lunette
+  sortent dans `replayAimCone.test.ts` (176 l). Frontiere nette : elles ne testent pas le
+  marqueur mais l'OUVERTURE du cone, et sont les seules a lire `s`.
+- `visee_zoom_gate_test.go` 788 l : scinde en `visee_zoom_gate_test.go` (481 l, l'IDENTIFICATION
+  — les evenements decrivent-ils la chronologie ?) et `visee_zoom_cablage_test.go` (325 l, le
+  CABLAGE et la STRUCTURE — le palier arrive-t-il au bon joueur, qu'est-ce qui ferme une periode).
+- `build.go` 771 -> 796 (dette PREEXISTANTE que j'accroissais) : commentaires allegees, le detail
+  vit dans `zoom_state.go`. Ramene a 790. **Reste +19 lignes sur un fichier deja hors seuil** :
+  le cablage minimal (champ d'options, appel, pose du champ) ne peut pas descendre plus sans
+  disperser la logique. Dette assumee et DITE.
+- `document.go` 685 -> 699 : la chronique du schema 29. Ce fichier est le domicile de TOUTES les
+  chroniques de schema ; les separer serait pire.
+
+**GATES COMPLETS (pas seulement les paquets touches)** :
+- `go test ./internal/...` **avec CGO** : exit 0, 0 echec.
+- `go vet` : propre.
+- `npm run typecheck` (cache `.tsbuildinfo` PURGE avant — piege du faux vert incremental) : vert.
+- `npm run lint` : **0 erreur** (24 avertissements preexistants).
+- `npx vitest run` (suite ENTIERE, pas seulement match-replay) : **5613 passes, 14 sautes, 0 echec**
+  sur 542 fichiers.
+
+**Nettoyage attrape par les gates** : la decoupe du fichier de tests web avait recopie quatre
+declarations devenues inutiles (`PlayerMarkKind`, `count`, `valuesOf`, `indexOfOp`) — typecheck et
+eslint les ont refusees, elles sont retirees. C'est exactement le role de ces gates.
+
+**Prochaine etape** : merge dans `feat/v75`.

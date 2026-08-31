@@ -25,10 +25,7 @@ const coordScale = 100
 
 // Options règle l'assemblage du document de rejeu.
 type Options struct {
-	// Scoped (facultatif) rend le PALIER DE LUNETTE d'un slot a un instant (0 = pas a la
-	// lunette). Rempli par `BuildFromFilm` depuis les evenements `unit_zoom` du film ; nil
-	// pour un appelant qui ne dispose que de positions, auquel cas `Point.S` reste absent —
-	// ce qui se lit « pas a la lunette », le meme contrat que pour l'elevation.
+	// Scoped (facultatif) rend le PALIER DE LUNETTE d'un slot a un instant. Cf. zoom_state.go.
 	Scoped func(slot uint32, tsUS uint64) int
 	// FrameIntervalMS : pas de temps de la grille ; 0 -> DefaultFrameIntervalMS.
 	FrameIntervalMS int
@@ -367,9 +364,8 @@ func BuildFromFilm(matchID, titleSlug, filmDir string, opt Options) (ReplayDocum
 	// paquet, pas dans les records — un balayage separe, sans verrou (il ne touche aucun etat
 	// global de decodage). Le maintien est borne : au-dela, on cesse d'affirmer plutot que de
 	// prolonger une entree dont la sortie n'a pas ete lue (cf. filmdec.ZoomStateAt).
-	// La reconstruction ferme une periode sur TOUTE cause observable — sortie lue, fin de vie,
-	// nouvelle entree — et ne retombe sur le plafond qu'a defaut (cf. zoom_state.go). Les vies
-	// viennent des positions deja balayees : aucune lecture supplementaire.
+	// Reconstruction a plusieurs causes de fermeture (cf. zoom_state.go) ; les vies viennent
+	// des positions deja balayees, aucune lecture supplementaire.
 	opt.Scoped = buildScopedLookup(
 		filmdec.ScanFilmZoomEvents(filmDir),
 		buildLifeSpans(indexBySlot(positions)),
@@ -734,10 +730,8 @@ func decimateTracks(sorted []filmdec.BipedPosition, origin, step uint64, minPoin
 		if pitch, ok := p.AimPitchDeg(); ok {
 			pt.P = pitchForJSON(pitch)
 		}
-		// LUNETTE : etat a bascule, d'une AUTRE source que les deux angles ci-dessus (les
-		// evenements `unit_zoom` du film, pas le record de position). On le consulte donc a
-		// l'instant du point au lieu de le lire dedans. Absent = pas a la lunette, jamais
-		// « inconnu » — cf. Point.S.
+		// LUNETTE : etat a bascule, d'une AUTRE source que les deux angles ci-dessus — on le
+		// consulte a l'instant du point au lieu de le lire dedans (cf. Point.S, zoom_state.go).
 		if scoped != nil {
 			pt.S = scoped(p.Slot, p.TimestampUS)
 		}
