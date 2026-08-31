@@ -253,6 +253,36 @@ sont ACQUIS ; le seul residuel est le cadrage exact des champs post-arme de MON 
 type 36 (utile pour la victime dans la liste de cibles — mais cette victime est deja donnee
 par damage_aftermath). fire_events fait foi pour la visee.
 
+## TENTATIVE >19 % (visee sur TOUS les tirs) — OUVERTE, effort documente (31/08)
+
+But : la visee de fire_events ne couvre que 19 % (le cas VIDE, offsets fixes) ; les 81 % non
+vides ont la visee APRES les boucles cibles/composantes. Un 3e workflow (`type36-full-charge`,
+10 agents) a caracterise la charge complete de FUN_14080C1F8 :
+- **BOUCLE COMPOSANTES** (n1 fois) : par composante R(2)+R(1)+R(32) offline = 35 bits.
+- **BOUCLE CIBLES** (n2 fois) : cible absente = R(4)+R(1) = 5 bits ; cible presente =
+  R(4) + R(1) porte + **VICTIME R(3)** (domaine cardinalite 6, valeurs 0..5 — PAS un handle
+  global, un petit index/region) + index source [R(1) si n1<3 sinon R(4)] + R(16) +
+  vecteur 3*R(w) avec w in {4,6,12} DATA-DEPENDANT (min(uVar8,6) si type_source==1 ;
+  uVar8=12 si n2==1 sinon 4). Taille d'une cible NON constante.
+- Cas vide : boucles = 0 bit, visee au bit 113 (ancre confirmee par le workflow).
+
+**MAIS LE CADRAGE N'EST PAS CLOS**, et deux decodages l'ont montre sur pieces :
+1. Grammaire workflow LITTERALE (sans les « 3 refs » de mon en-tete) : **0 cas vide** trouve —
+   le preambule est decale, donc mes 3 refs consomment de VRAIS bits que le workflow a omis.
+2. Mon en-tete d'origine (avec 3 refs) + arme forcee a 33/64/65/96 bits : la visee ne tombe
+   JAMAIS a 113 et n'est JAMAIS structuree (E ~0.5 partout, oracle de concentration). Donc
+   l'ecart n'est pas qu'une largeur d'arme : il y a ~27 bits de structure entre le type et
+   l'attaquant (fire_events : attaquant@36) que ni mon en-tete ni le workflow ne reproduisent
+   exactement jusqu'a l'ancre.
+
+VERDICT HONNETE : la visee EXISTE dans ~tous les tirs (ce n'est pas une limite de la donnee),
+mais la decoder pour le cas non-vide demande de reconcilier EXACTEMENT le preambule (type ->
+attaquant@36 -> arme@44-107 -> visee@113) avec les boucles — non resolu ce jour malgre deux
+workflows. fire_events (19 %, cas vide) reste la source de visee en production. Reprise : partir
+de l'ANCRE fire_events (positions physiques 36/44/113) et deriver le preambule a rebours, plutot
+que d'assembler la grammaire de haut en bas. La victime « qui a ete touche » passe mieux par les
+refs domaine 1 de damage_aftermath (a departager par killsource) que par le R(3) du type 36.
+
 ## LE JUGE DEFINITIF A POSER — l'oracle de trame (POSE pour damage_aftermath, cf. ci-dessus)
 
 Le seul oracle DISCRIMINANT pour les composites+visee : decoder l'evenement 36 EN ENTIER
