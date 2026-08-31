@@ -89,15 +89,19 @@ export function weaponChangeSoundEvents(doc: ReplayDocumentReady): ReplaySoundEv
  * NATIVE_PICKUP_MATCH_FRAMES — la fenêtre qui décide qu'un ramassage natif et un `taken` de
  * `weaponChanges` sont LE MÊME geste. Cinq frames = 500 ms sur la grille de 100 ms du rejeu,
  * c'est-à-dire la tolérance sous laquelle l'accord des deux canaux a été mesuré côté Go.
+ *
+ * NON EXPORTÉ : rien hors de ce module n'a à connaître la fenêtre. La première version
+ * l'exportait « au cas où » — personne ne l'importait, et `knip` l'aurait signalé.
  */
-export const NATIVE_PICKUP_MATCH_FRAMES = 5
+const NATIVE_PICKUP_MATCH_FRAMES = 5
 
 /**
  * nativePickupsNotAlreadyHeard — les ramassages natifs d'ARME que `weaponChanges` ne couvre
  * pas. C'est la seule population qui a le droit de sonner en plus : tout le reste ferait
- * entendre deux fois le même geste (cf. l'en-tête).
+ * entendre deux fois le même geste (cf. l'en-tête). Non exporté, pour la même raison : son
+ * seul consommateur est `weaponChangeSoundEvents`, et les tests passent par lui.
  */
-export function nativePickupsNotAlreadyHeard(
+function nativePickupsNotAlreadyHeard(
   doc: ReplayDocumentReady,
 ): ReplayDocumentReady['pickups'] {
   // Optionnel à dessein : un artefact antérieur au schéma 29 n'a pas de `pickups`, et le

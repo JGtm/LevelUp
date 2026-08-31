@@ -57,11 +57,21 @@ type Pickup struct {
 	// le pont slot -> joueur ne nomme pas cette vie ; l'événement reste publié, daté et
 	// rattaché à sa Track, parce qu'un ramassage anonyme vaut mieux qu'un ramassage effacé.
 	XUID string `json:"xuid,omitempty"`
-	// W est l'identifiant de CATALOGUE de l'objet, en hexadécimal 8 chiffres — MÊME convention
-	// et MÊME espace de valeurs que `Loadout.W` et `WeaponChange.W` quand c'est une arme
-	// (mesuré : 100 % des familles vues par i43..i46 sont dans l'ensemble des identifiants du
-	// canal natif). Sur un objet non-arme, c'est un identifiant que le catalogue d'armes ne
-	// nomme pas — il est publié quand même, brut : le nommer viendra, l'effacer serait perdre.
+	// W est l'identifiant de CATALOGUE de l'objet, en hexadécimal 8 chiffres MINUSCULES et
+	// SANS préfixe — la convention de `WeaponChange.W`, et elle seule.
+	//
+	// PAS CELLE DE `Loadout.W`, ET LA NUANCE A COÛTÉ UN BOGUE. Le commentaire de ce champ
+	// affirmait « même convention que `Loadout.W` et `WeaponChange.W` » : c'était faux de
+	// moitié. `Loadout.W` et `WeaponPad.Weapon` passent par `formatWeaponFamily`, qui écrit
+	// `"0x"` + huit MAJUSCULES. La datation des occupations de socle comparait les deux
+	// espaces directement et ne trouvait donc JAMAIS rien (revue adversariale du 2026-08-31).
+	// La jointure normalise désormais au point de comparaison (`padFamilyKey`) ; les formes
+	// publiées, elles, ne bougent pas — des clients les lisent déjà.
+	//
+	// L'ESPACE DE VALEURS, lui, est bien commun : mesuré, 100 % des familles vues par i43..i46
+	// figurent dans l'ensemble des identifiants du canal natif. Sur un objet non-arme, c'est un
+	// identifiant que le catalogue d'armes ne nomme pas — publié quand même, brut : le nommer
+	// viendra, l'effacer serait perdre.
 	W string `json:"w"`
 	// Kind dit si c'est une arme ou autre chose. C'est le champ sur lequel un client branche.
 	Kind PickupKind `json:"kind"`

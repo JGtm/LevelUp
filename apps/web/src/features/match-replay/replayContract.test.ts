@@ -113,7 +113,8 @@ const NULLABLE_ARRAYS = [
   // `padPickups` : les occupations de socle ACHEVÉES (schéma 11, 2026-08-17) — le socle s'est
   // vidé quelque part dans [tLow, tHigh]. Un INTERVALLE, pas un instant : le film ne porte aucun
   // événement de ramassage, et la seule preuve de disparition est le recensement des
-  // images-clés, espacé de ~20 s. `xuid` vaut TOUJOURS `null` (oracle à 79,7 %, seuil 90 %).
+  // images-clés, espacé de ~20 s. `xuid` est RENSEIGNÉ depuis le schéma 29 (2026-08-31) quand
+  // l'événement natif `biped_pickup` date l'occupation, `null` sinon.
   'padPickups',
   'projectiles',
   'roster',

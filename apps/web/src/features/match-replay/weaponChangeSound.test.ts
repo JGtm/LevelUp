@@ -90,6 +90,30 @@ describe('le canal NATIF comble les trous, et ne double JAMAIS', () => {
     expect(weaponChangeSoundEvents(d)).toHaveLength(2)
   })
 
+  it('la FAMILLE compte : une AUTRE arme prise dans la fenêtre sonne quand même', () => {
+    // Le joueur prend l arme A (vue par weaponChanges) puis l arme B moins de 500 ms plus tard
+    // (vue du seul canal natif). Sans la clé de famille dans la déduplication, B serait
+    // avalée par A et le geste deviendrait MUET.
+    const d = doc(
+      [{ t: 10, slot: 512, kind: 'taken', w: '1111aaaa' }],
+      [],
+      [{ t: 12, slot: 512, kind: 'weapon', w: '2222bbbb', class: 0 }],
+    )
+    expect(weaponChangeSoundEvents(d)).toEqual([
+      { ms: 1000, stem: WEAPON_CHANGE_SOUND_STEMS.taken },
+      { ms: 1200, stem: WEAPON_CHANGE_SOUND_STEMS.taken },
+    ])
+  })
+
+  it('la BORNE de la fenêtre est nette : 5 frames = même geste, 6 = un autre', () => {
+    const base = { slot: 512, kind: 'taken', w: '1111aaaa' }
+    const natif = (t: number) => [{ t, slot: 512, kind: 'weapon', w: '1111aaaa', class: 0 }]
+    // Δ = 5 frames (500 ms) : c'est le MÊME ramassage, vu deux fois.
+    expect(weaponChangeSoundEvents(doc([{ ...base, t: 10 }], [], natif(15)))).toHaveLength(1)
+    // Δ = 6 frames : au-delà de la tolérance mesurée, ce sont deux gestes.
+    expect(weaponChangeSoundEvents(doc([{ ...base, t: 10 }], [], natif(16)))).toHaveLength(2)
+  })
+
   it('un ramassage NON-ARME ne sonne pas l arme — son bruit est celui de l équipement', () => {
     const d = doc([], [], [{ t: 12, slot: 512, kind: 'item', w: 'deadbeef', class: 2 }])
     expect(weaponChangeSoundEvents(d)).toEqual([])

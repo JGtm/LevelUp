@@ -26,9 +26,10 @@
  *                                  lancers, ou pire, les verserait tous au propriétaire du
  *                                  slot 0 sur un film où ce slot existe ;
  *   - `padPickups[]` x `weaponPads[]` de famille `powerup_*` — les SOCLES DE BONUS VIDÉS. Ce
- *     canal-là est ANONYME PAR MESURE (`padPickups[].xuid` vaut `null` partout, oracle à
- *     79,7 % contre 90 % exigé) : il ne descend JAMAIS sur une ligne de joueur, il reste au
- *     niveau du match. L'attribuer serait inventer le ramasseur que le décodage refuse de nommer.
+ *     canal-là reste au niveau du MATCH, il ne descend sur aucune ligne de joueur. Depuis le
+ *     schéma 29 (2026-08-31) `padPickups[].xuid` PEUT être renseigné (l'événement natif porte
+ *     son ramasseur), mais cet écran n'a pas été repensé pour l'exploiter : ne pas descendre
+ *     reste le comportement VOULU, et ce n'est plus une impossibilité, c'est un choix.
  *
  * RÉPULSEUR ET PROPULSEUR N'ONT AUCUNE GRANDEUR ICI, et c'est une absence de DONNÉE, pas un
  * oubli : le film ne publie aucun canal d'activation pour ces deux capacités (le chantier qui

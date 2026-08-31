@@ -79862,3 +79862,71 @@ pré-existants), `vitest match-replay` 1940/1940. Golden régénéré : une lign
 
 **Prochaine étape** : cuire un film à socles pour exercer la datation des `padPickups`, seule
 promesse non vérifiée. Détail complet : `.ai/V7.5/film_re/NOTE_BIPED_PICKUP_2026-08-31.md`.
+
+---
+
+## [2026-09-01] Revue adversariale ronde 1 — un P0 : la datation des padPickups était MORTE
+
+**Statut** : Complété (corrections de revue ; production).
+**Worktree** : `wt/biped-pickup`. Sept constats recevables : 1 P0, 4 P1, 1 mécanique,
+4 P2 consignés sans correction.
+
+**Le P0, et pourquoi il compte plus que sa taille.** `Pickup.W` s'écrit `%08x` (huit hexa
+minuscules, sans préfixe) ; `WeaponPad.Weapon` sort de `formatWeaponFamily`, qui écrit
+`"0x"` + huit MAJUSCULES — et un NOM CANONIQUE pour les socles de power-up. Les deux espaces
+ne coïncident **jamais** : `hits` était toujours vide, aucun `padPickups[].t` n'a jamais été
+écrit, aucun `xuid` posé. Pire que l'absence de fonctionnalité : `coverage.padDating` publiait
+`{dated:0, uncovered:N}`, **un chiffre qui se lisait comme une mesure de corpus alors que
+c'était un défaut de format**. Vérifié sur pièces avant de toucher au code (l'artefact cuit
+porte `"00007ca9"` face à `"0x767DB96D"`).
+
+**La leçon de méthode, et je l'avais à moitié écrite.** Le lot 3 publiait le négatif « la
+datation des padPickups n'a pas été exercée par la cuisson » — c'était exact, et ça masquait
+un bogue. Un canal que la cuisson n'exerce pas doit être traité comme **NON VÉRIFIÉ**, jamais
+comme probablement bon. Le film pilote (Fiesta sur Cliffhanger) ne porte aucun socle : il ne
+pouvait structurellement pas révéler la panne.
+
+**Correctif : normaliser AU POINT DE JOINTURE, pas dans les formes publiées.** `padFamilyKey`
+ramène les deux conventions à une clé commune. `weaponChanges[].w` s'écrit ainsi depuis le
+schéma 25 et des clients peuvent déjà le lire — changer un contrat public pour un confort privé
+aurait été le mauvais échange. Les socles de power-up, structurellement non joignables, sont
+comptés à part (`PowerupPads`) au lieu d'être noyés dans `Uncovered`, qui laisserait croire que
+le canal a cherché et n'a pas trouvé.
+
+**Les quatre P1 étaient tous des trous de PREUVE, et chacun est refermé avec son inversion.**
+Le test de la datation employait une forme que la production ne produit jamais (vert avec ET
+sans le bogue) ; le décodeur de production n'avait AUCUN test tournant en CI (garde
+`BIPED_PICKUP_FILM` → Skip permanent) ; dix endroits affirmaient encore « `xuid` vaut toujours
+`null` » ; la clé de famille de la déduplication sonore n'était testée nulle part. Chaque
+correctif est accompagné de son inversion exécutée : neutraliser la normalisation fait tomber
+3 tests (« LA JOINTURE EST MORTE »), passer la base 512 à 0 en fait tomber 1, inverser classe
+et porte du catalogue en fait tomber 4, retirer la clé de famille 1, élargir la fenêtre 2.
+
+**Deux fois les tests ont eu raison contre moi, et c'est le meilleur signe qu'ils servent.**
+(1) J'attendais `RefusedNoRef` sur un payload tronqué à deux octets : c'est `RefusedNoCatalog`
+— à cette longueur la porte de ref0 est encore un vrai bit. (2) Une troncature de QUEUE est
+**indétectable** : le bourrage se lisant à zéro, un payload coupé après le bit 25 rend un
+événement parfaitement décodable dont seul l'identifiant est faux. Le décodeur n'a pas à s'en
+apercevoir — l'autorité sur la longueur d'un paquet est `FilmPacket.Size`. Les deux propriétés
+sont désormais ÉCRITES dans le test au lieu d'être supposées.
+
+**Onzième site de doc inversée, trouvé hors liste** : le golden rendait lui-même la phrase
+« l oracle ne le permet pas : 79,7 % contre 90 % », et un garde-rail de phrases l'exigeait.
+Corrigé aussi — laisser une phrase sciemment fausse dans le golden aurait été exactement
+l'anti-pattern qu'on corrigeait. Diff golden : une ligne.
+
+**Mécanique** : deux symboles exportés sans importeur, dé-exportés ; `npx knip` exit 0.
+
+**P2 consignés, NON corrigés** (détail dans la note) : jointure `weaponLabels` impossible pour
+`pickups[].w` et `weaponChanges[].w` ; `ReadFilmChunk` err → `continue` sans log (convention de
+cinq balayeurs voisins) ; aucun garde ne consulte `own.SlotCollisions` avant publication ; le
+golden texte ne couvre aucun des trois canaux de changements.
+
+**Gates** : `gofmt` propre · `go vet` silencieux · `go test` filmdec + replay + contracttest
+verts · web : purge `node_modules\.tmp` puis `typecheck` vert, `lint` 0 erreur (24
+avertissements pré-existants), `vitest match-replay` **1942/1942** (+2). Golden régénéré : une
+ligne, expliquée.
+
+**Prochaine étape** : ronde 2 relira ces corrections. Reste ouvert et inchangé : cuire un film
+à socles (CTF Arena) pour exercer réellement la datation des `padPickups` — c'est maintenant
+d'autant plus nécessaire que ce chemin s'est révélé faux sans que rien ne le signale.
