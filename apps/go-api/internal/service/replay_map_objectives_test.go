@@ -324,12 +324,18 @@ func TestMapObjectives_ModesPonctuels_AucuneZoneSurTOUTLeCatalogue(t *testing.T)
 			}
 		}
 	}
-	// Relevé du 2026-08-26 sur le catalogue versionné. Ces comptes SONT la preuve que la garde
+	// Relevé du 2026-08-30 sur le catalogue versionné. Ces comptes SONT la preuve que la garde
 	// a quelque chose à attraper : à zéro, elle ne testerait plus rien.
-	for mode, attendu := range map[string]int{"CTF": 14, "Stockpile": 16, "Assault": 2} {
+	//
+	// RELEVÉ PRÉCÉDENT, 2026-08-26 : CTF 14, Stockpile 16, Assault 2. La hausse n est PAS une
+	// derive : la campagne de catalogage des fonds de carte a fait passer le catalogue de 73 a
+	// 126 cartes, dont les variantes CTF et Stockpile de 52 cartes Forge. L assertion qui compte
+	// — un (role, camp) sert ses ponctuels OU les centres de ses formes, jamais les deux — passe
+	// sur les 126 cartes ; seul le compte de reference a bouge, et c est lui qu on met a jour.
+	for mode, attendu := range map[string]int{"CTF": 35, "Stockpile": 22, "Assault": 2} {
 		if avecForme[mode] != attendu {
-			t.Errorf("%s : %d carte(s) à forme au catalogue, relevé %d le 2026-08-26 — "+
-				"le catalogue a bougé, revérifier le correctif avant d'ajuster ce compte",
+			t.Errorf("%s : %d carte(s) à forme au catalogue, relevé %d le 2026-08-30 — "+
+				"le catalogue a bougé, revérifier le correctif avant d ajuster ce compte",
 				mode, avecForme[mode], attendu)
 		}
 	}

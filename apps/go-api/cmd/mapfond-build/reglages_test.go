@@ -17,9 +17,13 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/himap"
+	"levelup/go-api/internal/testutil"
 )
 
-const cheminReglagesPublies = "../../../../data/titles/halo_infinite/reference/map_fond_reglages.json"
+// cheminReglagesPublies, relatif a la RACINE du depot — la racine se demande a
+// testutil.RepoRoot(), jamais par une echelle de « .. » : une echelle se casse en silence des
+// que le test change de dossier, et le garde-rail archlint l interdit.
+const cheminReglagesPublies = "data/titles/halo_infinite/reference/map_fond_reglages.json"
 
 // raisonMinimale : une raison d'une ligne n'explique rien. Le seuil est bas exprès — il
 // attrape le « ok user » et laisse passer une justification honnête.
@@ -28,9 +32,13 @@ const raisonMinimale = 80
 var formatDateGate = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`)
 
 func TestReglagesFondJustifies(t *testing.T) {
-	chemin := filepath.FromSlash(cheminReglagesPublies)
+	racine, err := testutil.RepoRoot()
+	if err != nil {
+		t.Fatalf("racine du depot introuvable : %v", err)
+	}
+	chemin := filepath.Join(racine, filepath.FromSlash(cheminReglagesPublies))
 	if _, err := os.Stat(chemin); err != nil {
-		t.Skipf("aucun réglage publié (%v) — c'est le cas nominal tant que rien n'a été jugé", err)
+		t.Skipf("aucun reglage publie (%v) — c est le cas nominal tant que rien n a ete juge", err)
 	}
 	reg, err := chargeReglages(chemin)
 	if err != nil {
