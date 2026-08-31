@@ -78690,3 +78690,28 @@ autoritaire, ne porte que la victime. Le trou de précision des armes lourdes RE
 respecté : négatif chiffré, rien survendu. Gate : gofmt clean, `go vet
 ./internal/analysis/filmdec/` vert (GOCACHE privé). NOTE :
 `.ai/V7.5/film_re/NOTE_DAMAGE_SECTION_RESPONSE_2026-08-31.md`.
+
+## [2026-09-01] Événements projectile : détonate/impact NE portent PAS le tireur — Complété
+
+Statut : Complété. Décision technique : percer `projectile_detonate` (0xC2 type 5) et
+`projectile_impact_effect` (0xC3 types 6/7) pour récupérer la précision des armes à projectile
+(SPNKr, Hydra, Skewer, Ravager, Shock, Mangler, Stalker, Bulldog) — 0 % de touches en type 0,
+type 1 réfuté. Ghidra : chaînes `projectile_detonate`/`projectile_impact_effect` confirmées,
+descripteurs 0x143d0bae8 / 0x143d0bb80, commutateur de domaine partagé 0x1408096ec, lecteurs
+de charge 0x1408096f8 / 0x1410f03b4. Résultat clé LU DANS L'EXE : le commutateur rend
+domaine 5 pour le slot 0 et ASSERTE (INT3) pour tout slot > 0 -> **une SEULE référence
+d'entité en en-tête** (vs dom1/dom1/dom7 de damage_aftermath). Largeur du domaine 5 =
+ceil(log2(capacité pool)) via table RUNTIME DAT_1451f98d0 VIDE en statique -> calibrée par film
+(invariant « slots 1+2 absents » : w=8, 8, 10). Charge : `variant-name` R(32) (tag de variante
+PROJECTILE, pas arme). Résultats film (000d5950/01e1f945/00502e52) : (1) ref0 = pool projectile
+étalé (67-179 distincts, 0..1001), n'atterrit sur AUCUN bipède -> c'est le projectile, pas le
+tireur ; (2) variant-name ~96-100 % distincte -> non catégorielle, 0 % ∩ variantes de tir ->
+ne nomme pas l'arme ; (3) coïncidence temporelle tir lourd ↔ événement NON discriminante
+(événements denses, témoin +3 s à 23-38 %, bilan lourdes 1,3-2,0× seulement, un film sous le
+témoin). CONCLUSION : comme le type 1, ces événements ne permettent PAS d'attribuer les armes
+à projectile à leur tireur/arme. Seule piste résiduelle (handle projectile dom5 -> tir
+d'origine) NON franchissable hors ligne (table runtime absente). Trou de précision armes à
+projectile RESTE OUVERT. Garde-fou respecté : négatif chiffré, rien survendu. Instrument :
+`internal/analysis/filmdec/lot1_projectiles_research_test.go` (+ `_helpers_test.go`), garde
+`LOT1_TRAME_FILM`, borné 12 chunks. Gate : gofmt propre, `go vet ./internal/analysis/filmdec/`
+vert (GOCACHE privé). NOTE : `.ai/V7.5/film_re/NOTE_PROJECTILES_2026-08-31.md`.
