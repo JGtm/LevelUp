@@ -171,9 +171,14 @@ func buildFlagCarries(scan FlagCarryScan, ctx flagCarryCtx) ([]FlagCarry, *FlagC
 	if !scan.Scanned {
 		return nil, nil
 	}
+	// LA VARIANTE SE TRANCHE AVANT TOUT LE RESTE : le jeu de socles retenu decide combien de
+	// drapeaux existent, et donc a quoi chaque portage s'attache (cf. flag_neutral.go).
+	choix := flagChooseSpawns(scan)
+	scan.Spawns = choix.Spawns
 	cov := &FlagCarriesCoverage{
 		FlagFilm: scan.Signals.IsFlagFilm(), Bursts: scan.Signals.Bursts,
 		Captures: scan.Signals.Captures, Steals: scan.Signals.Steals, Spawns: len(scan.Spawns),
+		NeutralFlag: choix.Neutral, NeutralBirths: choix.NeutralBirths, TeamBirths: choix.TeamBirths,
 	}
 	if !cov.FlagFilm {
 		return nil, cov

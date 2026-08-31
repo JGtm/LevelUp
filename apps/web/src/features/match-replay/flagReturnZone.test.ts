@@ -13,7 +13,7 @@ import type { ReplayFlagCarryReady } from './replayNormalize'
  */
 
 /** La règle mesurée du CTF d'Halo Infinite, telle que le manifeste la publie. */
-const RULE: FlagReturnRule = { radiusM: 1.3, resetSeconds: 30, soloSeconds: 3.1 }
+const RULE: FlagReturnRule = { radiusM: 1.3, contestRadiusM: 1.3, resetSeconds: 30, soloSeconds: 3.1 }
 
 /** Un drapeau lâché en (0,0) de l'image `t0` à `t1`, suivi de ce que l'on veut. */
 function carry(
@@ -36,12 +36,21 @@ function carry(
 const PERSONNE = {
   posOf: () => null,
   defendersOf: () => [] as string[],
+  enemiesOf: () => [] as string[],
 }
 
 /** Un défenseur immobile SUR le drapeau — il est donc dans la zone à toutes les images. */
 const SUR_LE_DRAPEAU = {
   posOf: () => ({ x: 0, y: 0 }),
   defendersOf: () => ['1'],
+  enemiesOf: () => [] as string[],
+}
+
+/** Un ENNEMI immobile sur le drapeau : il conteste, et rien ne le renvoie. */
+const ENNEMI_DESSUS = {
+  posOf: () => ({ x: 0, y: 0 }),
+  defendersOf: () => [] as string[],
+  enemiesOf: () => ['2'],
 }
 
 describe('harmonic', () => {
@@ -124,8 +133,49 @@ describe('buildFlagReturnDrops', () => {
       frameIntervalMs: 100,
       posOf: () => ({ x: RULE.radiusM + 0.5, y: 0 }),
       defendersOf: () => ['1'],
+      enemiesOf: () => [],
     })
     expect(drops[0].occupants[5]).toBe(0)
+  })
+
+  it('un ENNEMI dans la zone TIENT la jauge — elle n’avance plus', () => {
+    const drops = buildFlagReturnDrops([carry([{ state: 'dropped', t0: 0, t1: 99 }])], {
+      rule: RULE,
+      frameIntervalMs: 100,
+      ...ENNEMI_DESSUS,
+    })
+    expect(drops[0].contesters[10]).toBe(1)
+    // Aucun retour observé : pas de remise à l'échelle, la jauge est donc lue telle quelle.
+    expect(drops[0].progress[99]).toBe(0)
+  })
+
+  it('la contestation l’emporte sur les défenseurs', () => {
+    const drops = buildFlagReturnDrops([carry([{ state: 'dropped', t0: 0, t1: 99 }])], {
+      rule: RULE,
+      frameIntervalMs: 100,
+      posOf: () => ({ x: 0, y: 0 }),
+      defendersOf: () => ['1'],
+      enemiesOf: () => ['2'],
+    })
+    expect(drops[0].occupants[10]).toBe(1)
+    expect(drops[0].contesters[10]).toBe(1)
+    expect(drops[0].progress[99]).toBe(0)
+  })
+
+  it('un DRAPEAU NEUTRE n’a ni défenseur ni contestataire : la minuterie seule', () => {
+    const neutre = { ...carry([{ state: 'dropped', t0: 0, t1: 99 }]), team: -1 }
+    const drops = buildFlagReturnDrops([neutre], {
+      rule: RULE,
+      frameIntervalMs: 100,
+      posOf: () => ({ x: 0, y: 0 }),
+      // L'appelant ne rend personne pour une équipe négative — c'est SA règle, figée ici.
+      defendersOf: (team: number) => (team < 0 ? [] : ['1']),
+      enemiesOf: (team: number) => (team < 0 ? [] : ['2']),
+    })
+    expect(drops[0].occupants[50]).toBe(0)
+    expect(drops[0].contesters[50]).toBe(0)
+    // 10 s à la minuterie de 30 s : un tiers de la jauge, sans personne pour l'accélérer.
+    expect(drops[0].progress[99]).toBeCloseTo(10 / RULE.resetSeconds, 5)
   })
 })
 

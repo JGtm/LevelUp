@@ -6305,6 +6305,9 @@ export interface components {
             /** Format: int64 */
             markerObserved: number;
             /** Format: int64 */
+            neutralBirths: number;
+            neutralFlag: boolean;
+            /** Format: int64 */
             noBridge: number;
             /** Format: int64 */
             noTrack: number;
@@ -6326,6 +6329,8 @@ export interface components {
             spawns: number;
             /** Format: int64 */
             steals: number;
+            /** Format: int64 */
+            teamBirths: number;
         };
         FlagCarry: {
             spans: components["schemas"]["FlagSpan"][] | null;
@@ -6333,6 +6338,8 @@ export interface components {
             team: number;
         };
         FlagReturnZone: {
+            /** Format: float */
+            contestRadiusM: number;
             /** Format: float */
             radiusM: number;
             /** Format: float */

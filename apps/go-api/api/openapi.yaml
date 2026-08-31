@@ -12813,6 +12813,11 @@ components:
         markerObserved:
           format: int64
           type: integer
+        neutralBirths:
+          format: int64
+          type: integer
+        neutralFlag:
+          type: boolean
         noBridge:
           format: int64
           type: integer
@@ -12846,6 +12851,9 @@ components:
         steals:
           format: int64
           type: integer
+        teamBirths:
+          format: int64
+          type: integer
       required:
         - flagFilm
         - bursts
@@ -12868,6 +12876,9 @@ components:
         - ambiguousReturns
         - homeByObject
         - ambiguousHomecomings
+        - neutralFlag
+        - neutralBirths
+        - teamBirths
         - spawns
         - objectLives
         - closedByObject
@@ -12892,6 +12903,9 @@ components:
     FlagReturnZone:
       additionalProperties: false
       properties:
+        contestRadiusM:
+          format: float
+          type: number
         radiusM:
           format: float
           type: number
@@ -12903,6 +12917,7 @@ components:
           type: number
       required:
         - radiusM
+        - contestRadiusM
         - resetSeconds
         - soloSeconds
       type: object
