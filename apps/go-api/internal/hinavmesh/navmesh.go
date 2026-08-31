@@ -51,9 +51,12 @@ type Maillage struct {
 	Faces   []Face
 	// Min et Max sont l'emprise MESUREE sur les sommets. L'AABB que porte le fichier est
 	// celle du CANEVAS Forge (plus de 400 m de cote) et ne decrit pas l'aire jouable.
-	Min, Max Point
+	Min, Max    Point
+	HautSuppose bool
 	// Haut est le vecteur `up` declare par le maillage. Mesure a (0,0,1) sur les cartes
 	// testees : la projection vue de dessus se fait donc dans le plan XY.
+	// HautSuppose dit que le maillage NE DECLARAIT PAS `up` et que (0,0,1) a ete pose par
+	// defaut — le cas de la generation TSTR/FSTR. Jamais confondre lu et suppose.
 	Haut Point
 	// RayonErosion est le `erosionRadius` declare. Mesure a 0 sur les cartes testees :
 	// le retrait du bord observe face aux ancres ne vient donc PAS de ce champ.
@@ -120,10 +123,29 @@ func Decode(blob []byte) (*Maillage, error) {
 		if err != nil {
 			return nil, fmt.Errorf("hinavmesh: region %d: %w", i+1, err)
 		}
-		if f.nomType(racine.Type) != classeNavMesh {
-			continue
+		if f.nomType(racine.Type) == classeNavMesh {
+			return construitMaillage(f, racine)
 		}
-		return construitMaillage(f, racine)
+		// LA RACINE N EST PAS TOUJOURS LE MAILLAGE. Sur la generation TSTR/FSTR (Absolution,
+		// Insolence), la region porte un hkaiStaticTreeNavMeshQueryMediator — un mediateur de
+		// requetes qui TIENT le maillage par un pointeur, au lieu de l exposer en racine. Le
+		// maillage est bien la, une entree ITEM plus loin. On le cherche donc par son TYPE plutot
+		// que par sa position, et on n accepte que le cas NON AMBIGU : deux hkaiNavMesh dans une
+		// meme region voudraient dire qu on ne sait pas lequel sert, et le refus vaut mieux qu un
+		// tirage au sort.
+		var vus []itemHavok
+		for _, it := range f.items {
+			if f.nomType(it.Type) == classeNavMesh {
+				vus = append(vus, it)
+			}
+		}
+		if len(vus) == 1 {
+			return construitMaillage(f, vus[0])
+		}
+		if len(vus) > 1 {
+			return nil, fmt.Errorf("hinavmesh: region %d porte %d %s, impossible de choisir",
+				i+1, len(vus), classeNavMesh)
+		}
 	}
 	return nil, fmt.Errorf("hinavmesh: aucune region ne porte un %s", classeNavMesh)
 }
@@ -265,7 +287,13 @@ func lireFaces(f *fichierTag, racine itemHavok, aretes []arete, nbSommets int) (
 func lireEntete(f *fichierTag, racine itemHavok, m *Maillage) error {
 	haut, ok := f.types.membre(racine.Type, membreHaut)
 	if !ok {
-		return fmt.Errorf("hinavmesh: %s ne declare pas le membre %q", classeNavMesh, membreHaut)
+		// LA GENERATION TSTR/FSTR NE DECLARE PAS `up`. Son hkaiNavMesh porte 13 membres la ou
+		// celui d Isolation en porte 15 : `up` et `cachedFaceIterator` manquent. Le vecteur haut
+		// vaut alors (0,0,1) — la valeur MESUREE sur toutes les cartes qui le declarent — mais on
+		// ne fait pas semblant de l avoir lu : `HautSuppose` le dit, et la verification se reporte
+		// sur l aval, ou les ancres d objectifs disent si le sol est au bon endroit.
+		m.Haut, m.HautSuppose = Point{X: 0, Y: 0, Z: 1}, true
+		return lireErosion(f, racine, m)
 	}
 	// `up` est un hkaiUpVector, dont le seul membre est un hkVector4 a l'offset 0.
 	interne, ok := f.types.membre(haut.Type, membreHaut)
@@ -277,7 +305,11 @@ func lireEntete(f *fichierTag, racine itemHavok, m *Maillage) error {
 		return fmt.Errorf("hinavmesh: vecteur haut hors de DATA (offset %d)", base)
 	}
 	m.Haut = Point{X: flottant(f.data, base), Y: flottant(f.data, base+4), Z: flottant(f.data, base+8)}
+	return lireErosion(f, racine, m)
+}
 
+// lireErosion lit le rayon d erosion de la racine.
+func lireErosion(f *fichierTag, racine itemHavok, m *Maillage) error {
 	erosion, ok := f.types.membre(racine.Type, membreErosion)
 	if !ok {
 		return fmt.Errorf("hinavmesh: %s ne declare pas le membre %q", classeNavMesh, membreErosion)
