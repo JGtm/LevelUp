@@ -24,7 +24,6 @@ package replay
 
 import (
 	"fmt"
-	"math"
 	"os"
 	"path/filepath"
 	"sort"
@@ -399,8 +398,8 @@ func v0ContinuiteTracks(tracks []filmdec.ProjectileTrack) (int, float64) {
 				continue
 			}
 			pas++
-			if v0Vitesse(float64(a.X), float64(a.Y), float64(a.Z), float64(b.X), float64(b.Y),
-				float64(b.Z), b.TimestampUS-a.TimestampUS) <= v0PlausibleMPS {
+			if v0Vitesse([3]float32{a.X, a.Y, a.Z}, [3]float32{b.X, b.Y, b.Z},
+				b.TimestampUS-a.TimestampUS) <= v0PlausibleMPS {
 				bons++
 			}
 		}
@@ -425,8 +424,8 @@ func v0ContinuitePositions(pos []filmdec.BipedPosition) (int, float64) {
 				continue
 			}
 			pas++
-			if v0Vitesse(float64(a.X), float64(a.Y), float64(a.Z), float64(b.X), float64(b.Y),
-				float64(b.Z), b.TimestampUS-a.TimestampUS) <= v0PlausibleMPS {
+			if v0Vitesse([3]float32{a.X, a.Y, a.Z}, [3]float32{b.X, b.Y, b.Z},
+				b.TimestampUS-a.TimestampUS) <= v0PlausibleMPS {
 				bons++
 			}
 		}
@@ -438,7 +437,11 @@ func v0ContinuitePositions(pos []filmdec.BipedPosition) (int, float64) {
 func v0PasCompte(a, b uint64) bool { return b > a && b-a <= v0PasMaxUS }
 
 // v0Vitesse rend la vitesse en m/s entre deux points separes de dtUS microsecondes.
-func v0Vitesse(ax, ay, az, bx, by, bz float64, dtUS uint64) float64 {
-	dx, dy, dz := bx-ax, by-ay, bz-az
-	return math.Sqrt(dx*dx+dy*dy+dz*dz) / (float64(dtUS) / 1_000_000)
+//
+// LA DISTANCE PASSE PAR `dist3`, l'UNIQUE ecriture de la formule euclidienne du paquet
+// (`geometry.go`, garde-rail `TestUneSeuleFormuleDeDistance3D`). La premiere redaction de cet
+// instrument la recopiait a six flottants — exactement la signature que le correctif de revue
+// du 2026-08-17 avait supprimee, et le garde-rail l'a rattrapee.
+func v0Vitesse(a, b [3]float32, dtUS uint64) float64 {
+	return dist3(a, b) / (float64(dtUS) / 1_000_000)
 }
