@@ -1,3 +1,15 @@
+## [2026-08-30] Sons — cloture CI : feat/v75 VERT au niveau job — Complété
+
+Run du head `656b6d9ce` (rattrapage de contrat, schémas 25-28) : **succès**, tous jobs verts —
+Go Build+Test ubuntu et windows, Coverage+Baseline (~30 min), Frontend, Contract Test, lints,
+Lease, Deploy Pre-Check, gitleaks. Le rouge du merge `dcbc6e458`
+(`TestReplayContractDescribesEveryPublishedField`, compteur de champs gelé) était un défaut de
+CONTRAT non régénéré, pas du lot son : sur mon run `10593604a`, tout ce qui relevait du lot
+(Frontend, lints, contrat OpenAPI) était déjà vert. **Le lot son est CLOS selon le régime de la
+branche (CI verte au niveau JOB).**
+
+---
+
 ## [2026-08-30] Sons — le merge ramassage fournit les déclencheurs, les quatre sons muets sont câblés — Complété
 
 **Le merge `dcbc6e458` (chantier ramassage, schémas 25-28) apporte exactement ce qui manquait
