@@ -262,6 +262,27 @@ func TestLot1Degats(t *testing.T) {
 		dmgSum/float64(max(1, type0)), negatifs, type0)
 	t.Logf("PARTICIPANTS (refs d'en-tete, domaine 1) : ref0 %d distincts, ref1 %d distincts — les entites blesse/responsable",
 		len(part0), len(part1))
+	// Les valeurs sont-elles dans la plage des slots bipedes (~512..615, croisable killsource)
+	// ou des handles arbitraires (non resolubles hors ligne) ?
+	minMax := func(m map[uint64]int) (uint64, uint64, int) {
+		mn, mx, dansPlage := uint64(1<<20), uint64(0), 0
+		for v := range m {
+			if v < mn {
+				mn = v
+			}
+			if v > mx {
+				mx = v
+			}
+			if v >= 500 && v <= 700 {
+				dansPlage += m[v]
+			}
+		}
+		return mn, mx, dansPlage
+	}
+	mn0, mx0, dp0 := minMax(part0)
+	mn1, mx1, dp1 := minMax(part1)
+	t.Logf("  ref0 : min=%d max=%d · dans plage bipede [500,700] : %d evenements", mn0, mx0, dp0)
+	t.Logf("  ref1 : min=%d max=%d · dans plage bipede [500,700] : %d evenements", mn1, mx1, dp1)
 	t.Logf("VICTIME (ref finale domaine 0) : presente %d / %d (%.1f %%), %d distinctes",
 		avecVictime, type0, lot1Pct(avecVictime, type0), len(victimes))
 	nEvt := trameOK + trameKO

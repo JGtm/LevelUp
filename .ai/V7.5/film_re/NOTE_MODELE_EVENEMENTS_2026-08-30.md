@@ -283,6 +283,36 @@ de l'ANCRE fire_events (positions physiques 36/44/113) et deriver le preambule a
 que d'assembler la grammaire de haut en bas. La victime « qui a ete touche » passe mieux par les
 refs domaine 1 de damage_aftermath (a departager par killsource) que par le R(3) du type 36.
 
+## CROISEMENT killsource POUR LA VICTIME — LE MUR DU HANDLE RUNTIME (31/08)
+
+Objectif : departager laquelle des deux refs domaine-1 de damage_aftermath est le blesse, en
+croisant avec killsource (victimes des morts, verifie 59/59). RESULTAT : le croisement PAR SLOT
+est IMPOSSIBLE, et pour une raison de fond.
+- **Les refs de participants ne sont PAS des slots.** Mesure : ref0 min=2 max=1210 (24 dist.),
+  ref1 min=0 max=44 (21 dist.) — **0 valeur dans la plage des slots bipedes [500,700]**. Ce
+  sont des index de la table du DOMAINE 1 (references d'entite), qui se resolvent par une table
+  RUNTIME (l'entity manager), absente des donnees decodables du film.
+- **C'est le MEME MUR que killsource documente pour `SrcTag0`** (`components_object.go` : le
+  champ lu par FUN_14080d69c est un handle runtime, refute comme tag d'arme direct 0/786 —
+  « the values are RUNTIME entity/anim handles, NOT the build-time tag string-id »). Le champ
+  SOURCE de damage_aftermath (FUN_14080d69c) est exactement ce reader : un handle, pas un tag.
+- CONSEQUENCE : le decodage BRUT de damage_aftermath est prouve (source, magnitude, participants,
+  victime — TOUS comme handles/index), mais DESIGNER qui par son NOM exige la resolution
+  handle -> entite -> gamertag, qui n'est pas dans le film hors ligne. killsource obtient la
+  victime des MORTS par une autre voie (le dead-state sur le SLOT bipede, mappe au roster) —
+  c'est pourquoi killsource nomme la victime d'un KILL mais pas d'un degat non fatal.
+- CE QUI RESTE FAISABLE (non fait, sans alignement d'horloge) : correler dans le MEME CLOCK les
+  horodatages des paquets damage_aftermath avec les dead-states (Mort=true) de la trame — montre
+  que les degats precedent les morts (validation semantique), sans nommer la victime. Valeur
+  modeste (le decodage est deja prouve par l'oracle de trame). L'index ref1 (0..44, petit et
+  stable) est un candidat « index de participant » a instruire si un jour la table domaine-1 est
+  resolue (piste : la meme table que le pont slot->xuid recherche ailleurs).
+
+VERDICT DU CROISEMENT : « qui a ete touche par son nom » n'est PAS resoluble hors ligne depuis
+les refs de damage_aftermath (handles runtime) ; killsource couvre deja la victime des KILLS.
+Le decodage de damage_aftermath reste prouve et exploitable en AGREGAT (nb de coups, magnitude,
+soins) et pour l'attribution une fois la resolution de handle disponible.
+
 ## LE JUGE DEFINITIF A POSER — l'oracle de trame (POSE pour damage_aftermath, cf. ci-dessus)
 
 Le seul oracle DISCRIMINANT pour les composites+visee : decoder l'evenement 36 EN ENTIER
