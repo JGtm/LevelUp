@@ -72,6 +72,13 @@ type ZoomEvent struct {
 	Slot uint32
 	// Level : le palier de lunette APRÈS la bascule. 0 = plus de lunette (sortie) ; 1 et
 	// au-delà = à la lunette. Le grossissement dépend de l'arme et n'est pas transmis.
+	//
+	// LES PALIERS SUPÉRIEURS EXISTENT, et c'est une mesure, pas une déduction : sur quatre
+	// films, la charge prend la valeur 2 à cinq reprises sur ~1 000 bascules (0 %, 0 %, 0,6 %
+	// et 1,0 % selon le film). Ce sont les armes à plusieurs crans — le fusil de précision
+	// zoome deux fois. La rareté est attendue : peu d'armes en ont, et peu de joueurs vont
+	// au second cran. Un décodage lu au mauvais endroit aurait réparti les quatre valeurs à
+	// peu près également ; la distribution observée est écrasée sur {0, 1}, avec une queue.
 	Level int
 }
 
