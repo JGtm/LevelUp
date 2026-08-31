@@ -292,6 +292,49 @@ ressemble a une jauge — ni rampe, ni plage bornee, ni cadence.
 hors film — la MECHE comme constante moteur, a lire dans le pool Lua de la ParcelLibrary (meme
 technique que les constantes du drapeau CTF), d'ou `armement = explosion - meche`.
 
+### 3.6 LE SCRIPT DU MODE PARLE — et il nomme ce que la phase A3 cherchait
+
+Le pool Lua des tags `hsc*` est en clair (cf. [[reference-hsc-tags-are-lua-with-names]]). Balaye
+le 2026-08-31 sur les 357 scripts de `common-rtx-new.module`, il rend DEUX tags qui comptent.
+
+**`25af9c45` — `primitive_carriable_arming_base` : LA MACHINE A ETATS DE L'AMORCAGE.**
+
+    GotoArming   GotoArmed   GotoDisarming     UpdateArming   UpdateArmed   UpdateDisarming
+    armDisarmTime        armDisarmProgress     armProgressFunction   disarmProgressFunction
+    Device_GetInteractionHoldTime              deactivationBaseInteractTimeSec
+    deactivationConvertsPlantedObject          conversionCount
+
+La bombe est un OBJET PORTABLE pose sur une BASE D'AMORCAGE, et l'amorcage est une INTERACTION
+TENUE (`Device_GetInteractionHoldTime`), pas un instant.
+
+**`a35c6ce9` — le script du MODE Assaut**, et c'est lui qui porte le nom manquant :
+
+    armzoneArgs   defender_bombsite   attacker_bombsite   bombTag   goalPlate
+    bombSpawnArgs   bombRespawnPointArgs   BombObjectTag   BombArgs
+    AssaultLoopArmTeam  AssaultLoopArmEnemy  AssaultLoopDisarm  AssaultLoopPlanted
+    AssaultLoopResetting     (+ les cinq variantes BTB...)
+
+**`defender_bombsite` / `attacker_bombsite` sont les SITES D'AMORCAGE** — exactement ce que la
+phase A3 cherchait par ancrage spatial `ti=13`, et n'a jamais trouve. Et les cinq boucles
+`AssaultLoop*` confirment nommement la lecture de la banque sonore : `AssaultLoopPlanted` est le
+COMPTE A REBOURS que l'utilisateur entend.
+
+**DEUX LIMITES, mesurees dans la foulee :**
+
+1. **La MECHE n'est pas une constante du script.** `armDisarmTime` est un CHAMP LU, pas un
+   litteral : le pool ne porte aucun nombre a cet endroit. Elle vient de la variante de MODE,
+   comme `flagResetSeconds` etait ecrase par `FlagInitArgs.returnTimer` en CTF. Donc
+   `armement = explosion - meche` n'est pas calculable a partir du seul script.
+2. **Les sites ne sont pas dans le fichier de carte.** Balayage des noms lisibles
+   (`Variant.Names`) des 224 `.mvar` du corpus : ni `defender_bombsite`, ni `attacker_bombsite`,
+   ni aucun hachage de libelle correspondant au catalogue d'objectifs. Seules des chaines
+   d'auteurs de cartes Forge (« Assault Setup », « One bomb »). **Meme conclusion que pour les
+   vehicules : sur les cartes officielles, ces objets vivent dans le scenario du `.module`.**
+
+**Le chemin critique est donc UN SEUL, et il sert les deux chantiers** : lire les placements
+d'objets du scenario (`scnr`) des `.module`. Il donne les sites d'amorcage de l'Assaut ET les
+vehicules des cartes officielles.
+
 ## 4. Pieces
 
 - `internal/analysis/replay/assaut_a5_explosions_test.go` — la confrontation de publication.
