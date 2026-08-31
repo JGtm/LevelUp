@@ -81109,3 +81109,41 @@ branche plutot qu'en dupliquant leur travail.
 **Reserve de methode** : cette mesure ne porte que sur les paquets dont la TETE est un zoom. Elle
 minore vraisemblablement le phenomene, puisque les paquets dont la tete est un degat (bien plus
 nombreux) ne sont pas comptes ici — ils sont justement ceux qu'on ne sait pas encore traverser.
+
+## [2026-08-31] Visee lunette — LE DECODAGE GENERALISE : 4 films, pont a 98-100 %, et les PALIERS SUPERIEURS existent — Complete
+
+**Question posee avant toute generalisation** : tout le chantier a ete valide sur `00162144`.
+La grammaire et le pont sont-ils GENERAUX, ou a-t-on ajuste un cas ?
+
+**Quatre controles de STRUCTURE** (instrument `filmdec/zoom_events_test.go`,
+`TestZoomStructureMultiFilms`, garde ZOOM_FILMS ; jamais le corpus entier — bombe RAM connue).
+Ils echouent par construction si le decodage derape, sans avoir besoin de verite terrain :
+
+| film | paquets | C1 hors-type | C2 paliers {0,1,2,3} | C3 pont | C4 entrees/sorties |
+|---|---|---|---|---|---|
+| 00162144 | 324 | **0** | 144 / 178 / 2 / 0 | **63/64 (98 %)** | 180 / 144 |
+| 000d5950 | 195 | **0** | 93 / 102 / 0 / 0 | **36/36 (100 %)** | 102 / 93 |
+| 00502e52 | 183 | **0** | 82 / 101 / 0 / 0 | **44/44 (100 %)** | 101 / 82 |
+| 01e1f945 | 302 | **0** | 132 / 167 / 3 / 0 | **63/63 (100 %)** | 170 / 132 |
+
+**CE QUE CA ETABLIT** :
+- **La famille est PURE** : aucun paquet 0xCA ne porte autre chose que le type 21, sur les quatre
+  films. La lecture du type n'est pas un ajustement local.
+- **Le pont slot = index + 512 est GENERAL** : 98 a 100 %. Sur `00162144` il ne rate qu'UN index
+  sur 64 — c'etait deja le chiffre du jour de la decouverte, et il se reproduit ailleurs a 100 %.
+- **L'equilibre entrees/sorties est CONSTANT** (~1,2 entree par sortie partout), ce qui conforte
+  que le meme phenomene est lu partout, avec le meme angle mort.
+
+**DECOUVERTE — LES PALIERS SUPERIEURS SONT DANS LA DONNEE.** La session soeur n'avait observe que
+les charges {0, 1} sur deux films et en avait deduit « entree / sortie ». Sur quatre films, la
+valeur **2 apparait cinq fois** (0 %, 0 %, 0,6 %, 1,0 %). Ce ne sont pas des erreurs de lecture :
+ce sont les CRANS SUPERIEURS de lunette, ceux des armes qui en ont plusieurs — le fusil de
+precision zoome deux fois. La raretemest attendue (peu d'armes, peu de joueurs vont au second
+cran), et une lecture au mauvais endroit aurait reparti les quatre valeurs a peu pres egalement.
+`ZoomEvent.Level` porte deja cette valeur ; la documentation du champ est corrigee, et le
+controle C2 verifie desormais la FORME de la distribution (dominee par {0,1}, queue rare) au lieu
+d'interdire les paliers superieurs.
+
+**CONSEQUENCE PRODUIT** : `Point.S` publie le palier, pas un booleen. Le rendu peut donc, le jour
+ou l'utilisateur le voudra, distinguer les deux crans (un cone encore plus etroit au second) —
+la donnee est la, c'est un choix d'affichage, pas un chantier.
