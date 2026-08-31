@@ -37,11 +37,13 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
 
 	"levelup/go-api/internal/analysis/objectiveevents"
+	"levelup/go-api/internal/filmproc"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 )
 
@@ -87,6 +89,7 @@ func TestAssautManchesRecherche(t *testing.T) {
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
+	defer amArmeSentinelle(t, "TestAssautManchesRecherche")()
 	var lignes []string
 	entete := "film\tmanche\treelle\tenr\tslots\tslots_j\ttmin_ms\ttmax_ms\tetendue_ms" +
 		"\tsuite_score\tsuite_frags\tsuite_morts\tsuite_assists\tsuite_scoreperso\tretenue_actuelle"
@@ -287,6 +290,7 @@ func TestAssautManchesControleHorsEchantillon(t *testing.T) {
 	if cache == "" || libres == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE et ASSAUT_FILMS_LIBRES requis")
 	}
+	defer amArmeSentinelle(t, "TestAssautManchesControleHorsEchantillon")()
 	var bande []string
 	films, manches := 0, 0
 	for _, id := range strings.Split(libres, ",") {
@@ -364,6 +368,7 @@ func TestAssautPointsDeModeParJoueur(t *testing.T) {
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
+	defer amArmeSentinelle(t, "TestAssautPointsDeModeParJoueur")()
 	for _, f := range amCorpus[:3] { // les 3 One Bomb
 		src, ok, err := filmcache.Open(cache, f.id)
 		if err != nil || !ok {
@@ -424,6 +429,7 @@ func TestAssautMancheSansPorteur(t *testing.T) {
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
+	defer amArmeSentinelle(t, "TestAssautMancheSansPorteur")()
 	cas := []struct {
 		id    string
 		round int
@@ -478,6 +484,7 @@ func TestAssautParasiteCe083875(t *testing.T) {
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
+	defer amArmeSentinelle(t, "TestAssautParasiteCe083875")()
 	src, ok, err := filmcache.Open(cache, "ce083875")
 	if err != nil || !ok {
 		t.Skip("film absent")
@@ -512,6 +519,7 @@ func TestAssautDomaineComp0(t *testing.T) {
 	if cache == "" {
 		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
 	}
+	defer amArmeSentinelle(t, "TestAssautDomaineComp0")()
 	histoB := map[string]int{}
 	histoN := map[int]int{}
 	var horsB, total int
@@ -565,5 +573,83 @@ func TestAssautDomaineComp0(t *testing.T) {
 	sort.Ints(tailles)
 	for _, k := range tailles {
 		t.Logf("  %d composant(s) -> %d enregistrement(s)", k, histoN[k])
+	}
+}
+
+// TestAssautPontIdentite — DIAGNOSTIC : combien d'explosions NOMMEES survivent au pont
+// d'identite par manche, film par film. C'est le chiffre qui arrive a l'ECRAN — le gate A5,
+// lui, mesure ce que le statborg NOMME, en amont du pont.
+func TestAssautPontIdentite(t *testing.T) {
+	cache := os.Getenv("ASSAUT_CACHE")
+	if cache == "" {
+		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
+	}
+	defer amArmeSentinelle(t, "TestAssautPontIdentite")()
+	var nommes, identifies int
+	for _, f := range amCorpus[:9] { // les 9 films d'Assaut
+		src, ok, err := filmcache.Open(cache, f.id)
+		if err != nil || !ok {
+			continue
+		}
+		recs, _ := objectiveevents.StatRecordsCtx(context.Background(), src, f.id)
+		deaths, err := ScanFilmDeaths(filepath.Join(cache, "film_chunks", f.id))
+		if err != nil {
+			t.Logf("%s : fil des morts illisible (%v)", f.id, err)
+			continue
+		}
+		var di []objectiveevents.DeathInstant
+		for _, d := range deaths {
+			di = append(di, objectiveevents.DeathInstant{
+				XUID: fmt.Sprint(d.XUID), TimeMS: int(d.TimeMS)})
+		}
+		named := objectiveevents.NamedEventsFrom(recs, objectiveevents.ObjectiveTypeBomb)
+		identity := objectiveevents.ResolveRoundIdentity(recs, di)
+		ident := objectiveevents.IdentifyNamedEventsByRound(named, identity)
+		nomme := 0
+		for _, e := range ident {
+			if e.XUID != "" {
+				nomme++
+			}
+		}
+		nommes += len(named)
+		identifies += nomme
+		manques := ""
+		for _, e := range named {
+			if identity.At(e.Slot, e.TimeMS) == "" {
+				manques += fmt.Sprintf(" [slot %d a %d ms SANS identite]", e.Slot, e.TimeMS)
+			}
+		}
+		plat := objectiveevents.SlotIdentityByDeaths(recs, di)
+		platOK := 0
+		for _, e := range named {
+			if plat[e.Slot] != "" {
+				platOK++
+			}
+		}
+		t.Logf("%s : %d nomme(s) -> %d identifie(s) par manche, %d par le pont PLAT (%d slots), %d mort(s)%s",
+			f.id, len(named), nomme, platOK, len(plat), len(deaths), manques)
+	}
+	t.Logf("BILAN PONT : %d explosion(s) nommee(s) -> %d identifiee(s) (%.1f %%)",
+		nommes, identifies, 100*float64(identifies)/float64(nommes))
+}
+
+// amArmeSentinelle arme le plafond memoire de MESURE pour un balayage de corpus, et rend la
+// fonction de desarmement (a differer par l'appelant).
+//
+// POURQUOI CHAQUE INSTRUMENT DE CE FICHIER L'APPELLE (leçon du 2026-08-31). Ces balayages
+// enchainent jusqu'a 65 films DANS UN SEUL PROCESSUS. Le decodage du statborg est borne par
+// `statMaxRecordsPerFilm` et les pics mesures restent sous le dixieme de gibioctet — mais c'est
+// une PROPRIETE OBSERVEE, pas une garantie, et la doctrine du depot ne fait pas d'exception :
+// tout processus qui enchaine des films arme sa sentinelle (cf. `internal/filmproc`).
+func amArmeSentinelle(t *testing.T, nom string) func() {
+	t.Helper()
+	g := filmproc.Arm(nom, filmproc.MeasureLimitGiB, func(peak uint64) {
+		t.Errorf("PLAFOND MEMOIRE DEPASSE (%.2f Gio) — balayage interrompu pour proteger la machine",
+			float64(peak)/(1<<30))
+	})
+	return func() {
+		g.Disarm()
+		t.Logf("pic memoire observe : %.2f Gio (plafond souple %d Gio)",
+			float64(g.Peak())/(1<<30), filmproc.MeasureLimitGiB)
 	}
 }

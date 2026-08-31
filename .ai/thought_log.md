@@ -1,3 +1,52 @@
+## [2026-08-31] Bombe RAM (4e sinistre) — le trou était l'OPÉRATEUR, pas le processus — Complété
+
+**J'ai saturé la machine de travail de l'utilisateur** en cuisant des artefacts de rejeu :
+une boucle de shell autour de `cmd/replay-build` sur 8 matchs, puis une SECONDE boucle en
+arrière-plan pendant que la première tournait encore. Plusieurs décodages de film en vol, aucun
+plafond mémoire. Signature reconnue trop tard : `bash: fork: Resource temporarily unavailable`,
+`cygheap read copy failed`. Quatrième sinistre du même genre (2026-08-20, 08-24, 08-26, 08-31).
+
+**LE DIAGNOSTIC, ET IL EST GÊNANT** : le dépôt avait déjà les trois protections
+(`internal/filmproc` — un processus par film, plafond dur, priorité basse) ET un ratchet
+(`archlint.TestNoUnboundedFilmLoop`). Elles gardent toutes l'INTÉRIEUR du processus.
+`cmd/replay-build` était déclaré à l'allowlist avec « CLI unitaire : un film par invocation, le
+processus meurt ensuite. Aucune boucle » — c'était **vrai**, et **sans aucun effet** contre celui
+qui lance les invocations. Le binaire était par ailleurs le SEUL point d'entrée de décodage du
+dépôt à n'armer aucune sentinelle : sa justification lui avait valu une dispense de fait.
+
+**La leçon, écrite pour la prochaine lecture : une garantie qui s'arrête à la frontière du
+processus ne dit rien du nombre de processus.**
+
+**POSÉ EN RÉPARATION** (toutes vérifiées sur pièces) :
+
+    internal/filmproc/solo.go        VERROU « un seul décodage à la fois sur la machine ».
+                                     Battement de cœur toutes les 2 s ; un verrou dont le
+                                     battement dépasse 6 s est MORT et se reprend tout seul —
+                                     le cas nominal ici est la mort violente (la sentinelle tue,
+                                     l'opérateur aussi), un verrou qui coincerait transformerait
+                                     la protection en panne. 4 tests : refus, libération,
+                                     reprise d'un périmé, NON-reprise d'un vivant.
+    internal/filmproc/selfpriority_  PRIORITÉ BASSE DU PROCESSUS COURANT. Elle n'existait que
+    windows.go / _other.go           pour un ENFANT qu'on va lancer (`exec.Cmd.SysProcAttr`) ;
+                                     un CLI d'opérateur n'a pas de parent.
+    cmd/replay-build/main.go         Les trois protections armées AVANT tout décodage, dans
+                                     l'ordre verrou → priorité → sentinelle (2 Gio, plafond de
+                                     MESURE : c'est un outil de poste de travail).
+    archlint (ratchet NEUF)          `TestPointsDEntreeDeDecodageArmentUneSentinelle` : tout
+                                     point d'entrée `cmd/` de l'allowlist DOIT armer une
+                                     sentinelle. 4 points d'entrée vérifiés. Le ratchet
+                                     précédent exigeait une justification ; celui-ci exige
+                                     qu'elle soit TENUE.
+    8 instruments de recherche       Sentinelle armée dans chaque balayage de corpus de ce lot
+                                     (pics mesurés 0,01-0,02 Gio — le statborg n'était pas
+                                     l'amplificateur, la construction d'artefact l'était).
+
+**Vérification end-to-end** : un verrou témoin posé à la main fait refuser `replay-build` en
+**zéro décodage**, code de sortie 12, message nommant le détenteur (outil, pid, match, instant).
+
+**Consigne utilisateur, enregistrée en mémoire** : « si t'as besoin de générer des artefacts tu me
+demandes avant ». Les 5 artefacts d'Assaut restants ne seront pas cuits sans accord.
+
 ## [2026-08-31] Assaut — la bombe explose enfin dans le rejeu, et `RealRounds` cesse de tronquer One Bomb — Complété
 
 **Le lot A du 27/08 s'était arrêté au DIAGNOSTIC** : `comp 0 A` des slots joueur réplique les
@@ -32,10 +81,14 @@ enregistrement légitime à `B=1` (une vraie explosion à 947537 ms) survit, exi
 
 **PUBLIÉ** : `ObjectiveTypeBomb` + `bomb_detonations` (`namedStatSlots`, ligne consignée à la TSV du
 registre), et côté web un sixième genre de marque de fiche — un INSTANT tenu 2,5 s, comme la prise
-de base, parce que rien n'attribue le PORT de la bombe. **Gate A5 : 26 explosions attribuées sur les
-28 datées du relevé A0.3 figé (92,9 %), à la milliseconde, 0 publiée hors relevé.** Les 2 manquantes
-n'ont AUCUN slot de joueur porteur — vérifié en imprimant tous les enregistrements `comp 0` de ces
-deux manches, le point n'existe que sur le slot d'ÉQUIPE.
+de base, parce que rien n'attribue le PORT de la bombe. **Gate A5, DEUX chiffres et il faut les deux** : 26 explosions sur les 28 datées du relevé A0.3 figé
+sont attribuées à un SLOT (92,9 %, à la milliseconde, 0 publiée hors relevé), et **21 sur 28
+arrivent À L'ÉCRAN** (75 %) une fois le pont d'identité passé. Avant ce lot il y en avait 3. Les 2
+premières manquantes n'ont AUCUN slot de joueur porteur (vérifié en imprimant tous les
+enregistrements `comp 0` de ces manches — le point n'existe que sur le slot d'ÉQUIPE) ; les 5
+autres tombent au pont d'identité par manche, toutes sur les 3 films One Bomb, les seuls
+multi-manches. Les deux chiffres sont figés par `TestAssautA5Explosions` et
+`TestAssautA5PontIdentite`.
 
 **Gates** : `go test ./...` vert (seul `internal/himap` sort en timeout — lenteur connue, hors
 diff), golangci-lint 0 issue, vitest 125 fichiers / 1 937 tests, typecheck cache purgé, eslint 0
