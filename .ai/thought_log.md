@@ -81073,3 +81073,39 @@ suites, dans l'ordre :
    (50 blocs contre 118 annonces). A rouvrir apres lui, pas avant.
 
 **Gates** : `go test ./internal/analysis/...` 0 echec ; build et vet propres.
+
+## [2026-08-31] Visee lunette — DIMENSIONNEMENT des listes multiples : 28 % des paquets, et le zoom EST bien porte en 2e position — Complete (mesure)
+
+**Question** : le scanner de production ne lit que l'evenement de TETE de chaque paquet. Combien
+rate-t-il, et que faudrait-il savoir decoder pour marcher la liste entiere ?
+
+**L'ASTUCE QUI REND LA MESURE POSSIBLE SANS TOUTE LA GRAMMAIRE** : le bit de continuation qui suit
+un evenement est lisible des lors qu'on sait traverser CET evenement-la. Or `unit_zoom` a une
+charge de longueur connue (R(2)). On peut donc mesurer, sur la seule famille qu'on sait traverser,
+la frequence des listes multiples et le TYPE du deuxieme evenement.
+
+**RESULTAT (film 00162144, instrument `filmdec/zoom_events_test.go`, garde ZOOM_EVT_FILM)** :
+**91 des 324 paquets a evenement de lunette en tete portent un SECOND evenement, soit 28,1 %.**
+Palmares des seconds types : **38** (38 fois) · **36 `action_weapon_fire`** (25 fois) · 39 (6) ·
+82 (6) · 9 (4) · **21 `unit_zoom` (4 fois)** · 0 (4) · 15 (3) · 5 (1).
+
+**DEUX FAITS QUI COMPTENT** :
+1. **Le type 21 apparait bien en DEUXIEME position** (4 fois sur ce seul film) : la preuve directe
+   que des evenements de lunette echappent au scanner de tete. L'hypothese n'en est plus une.
+2. **Le deuxieme evenement le plus frequent est le TIR** (type 36, 25 fois) : « je me mets a la
+   lunette et je tire dans le meme tic » est le motif dominant. Cela conforte aussi, par symetrie,
+   l'hypothese de l'utilisateur pour les sorties — un dezoom PROVOQUE voyagerait dans le paquet de
+   sa cause (degat, changement d'arme), donc en 2e position d'une liste dont la tete est cette
+   cause.
+
+**CE QU'IL FAUT POUR MARCHER LA LISTE ENTIERE, ET C'EST UNE DEPENDANCE NOMMEE** : la longueur de
+charge des types 38, 36, 39, 82... Or **le type 36 (`action_weapon_fire`) et la famille des degats
+(`damage_aftermath`) sont precisement ce que la session soeur `wt/trame-film` a decode** (commits
+9d5b1b23c, fc15d59bb, 8a8aa3239). Reprendre leur grammaire permettrait de traverser les deux
+familles les plus frequentes — et donc d'attraper les dezooms provoques par un degat, le cas que
+l'utilisateur avait designe. C'est le prochain geste, et il se fera APRES la fusion de leur
+branche plutot qu'en dupliquant leur travail.
+
+**Reserve de methode** : cette mesure ne porte que sur les paquets dont la TETE est un zoom. Elle
+minore vraisemblablement le phenomene, puisque les paquets dont la tete est un degat (bien plus
+nombreux) ne sont pas comptes ici — ils sont justement ceux qu'on ne sait pas encore traverser.
