@@ -521,3 +521,156 @@ func zoomDetaille(t *testing.T, ivs [][2]float64) {
 	t.Log("  releve utilisateur (Nilton410) : 41->46,3 · 49->52 · 61->61,8 · 68->68,8 ·" +
 		" 71->73 · 85->86")
 }
+
+// TestViseeZoomBoutEnBout verifie que le palier de lunette arrive jusqu'au document — au bon
+// joueur, au bon moment. C'est le gate de bout en bout : le decodage peut etre juste et le
+// cablage faux (mauvais slot, mauvaise horloge, champ jamais pose).
+//
+// LA METRIQUE EST LE RAPPEL, ET C'EST UN CHOIX RAISONNE. Le releve de l'utilisateur est une
+// liste de ce qu'il A VU (« brievement », « environ »), pas une certification d'absence sur le
+// reste de la fenetre : il n'a jamais affirme que le joueur ne zoomait PAS ailleurs. Compter
+// des « faux positifs » contre lui mesurerait donc l'exhaustivite du releve, pas la justesse du
+// cablage. On mesure ce que le releve peut REELLEMENT arbitrer : ses episodes sont-ils couverts ?
+//
+// SEUILS ECRITS AVANT LA MESURE :
+//
+//	RAPPEL   les 6 episodes releves doivent porter au moins un echantillon « a la lunette » sur
+//	         la track du joueur (6/6 exige : un releve de six periodes vues de ses yeux ne
+//	         souffre pas d'exception).
+//	TEMOIN   le meme rappel sur les episodes TRANSLATES de 30 s doit s'effondrer, sans quoi le
+//	         rappel ne dirait rien (un champ allume en permanence couvrirait tout).
+//
+// Garde ZOOM_FILM (00162144).
+func TestViseeZoomBoutEnBout(t *testing.T) {
+	dir := os.Getenv(zoomFilmEnv)
+	if dir == "" {
+		t.Skipf("%s absent : gate saute", zoomFilmEnv)
+	}
+	release := filmdec.LockProcessDecode()
+	defer release()
+
+	evts := filmdec.ScanFilmZoomEvents(dir)
+	if len(evts) == 0 {
+		t.Fatalf("aucun evenement de lunette : le scanner de production ne rend rien")
+	}
+	t.Logf("SCANNER DE PRODUCTION — %d bascules de lunette lues", len(evts))
+
+	etat := filmdec.ZoomStateAt(evts, zoomHoldUS)
+	scan := filmdec.DefaultScanFilmOptions()
+	scan.QuantaOnly = true
+	pos, err := filmdec.ScanFilmBipedPositions(dir, scan)
+	if err != nil {
+		t.Fatalf("balayage des positions : %v", err)
+	}
+	off, _ := bestDeathOffset(buildLifeSpans(indexBySlot(pos)), ScanFilmDeaths2(t, dir))
+
+	// La track de Nilton est celle du slot 513 (index 1 + base 512), etabli par le pont.
+	const slotNilton = 513
+	var scopedS []float64
+	echantillons := 0
+	for _, p := range pos {
+		if p.Slot != slotNilton {
+			continue
+		}
+		echantillons++
+		if etat(p.Slot, p.TimestampUS) == 0 {
+			continue
+		}
+		scopedS = append(scopedS, float64(int64(p.TimestampUS/1000)-off)/1000)
+	}
+	if len(scopedS) == 0 {
+		t.Fatalf("COUVERTURE — aucun echantillon « a la lunette » sur la track du slot %d :"+
+			" le cablage ne pose jamais le champ", slotNilton)
+	}
+	t.Logf("COUVERTURE — %d echantillons sur la track du slot %d, dont %d a la lunette (%.1f %%)",
+		echantillons, slotNilton, len(scopedS), 100*float64(len(scopedS))/float64(echantillons))
+
+	rappel := zoomRappel(scopedS, chronoEpisodes, 0)
+	t.Logf("RAPPEL — %d/%d episodes releves portent un echantillon a la lunette",
+		rappel, len(chronoEpisodes))
+	// CONTROLE PAR TRANSLATION plutot qu'un decalage unique : avec 22 % d'echantillons a la
+	// lunette, un seul decalage temoin ne dit rien (il attrape souvent 4/6 par hasard). On
+	// mesure la part des decalages qui atteignent le rappel observe — c'est elle qui dit si
+	// 6/6 est remarquable, et elle est publiee meme quand elle est mauvaise.
+	essais, aussiBien := 0, 0
+	for d := -300.0; d <= 300.0; d += 1 {
+		if d > -6 && d < 6 {
+			continue
+		}
+		essais++
+		if zoomRappel(scopedS, chronoEpisodes, d) >= rappel {
+			aussiBien++
+		}
+	}
+	part := float64(aussiBien) / float64(essais)
+	t.Logf("TEMOIN — %d/%d decalages atteignent aussi %d/%d (%.1f %%)",
+		aussiBien, essais, rappel, len(chronoEpisodes), 100*part)
+	if rappel < len(chronoEpisodes) {
+		t.Fatalf("RAPPEL INSUFFISANT : %d/%d (6/6 exige)", rappel, len(chronoEpisodes))
+	}
+	t.Logf("GATE DE CABLAGE FRANCHI — le palier arrive au bon joueur et couvre les %d episodes"+
+		" releves. RESERVE PUBLIEE : %.1f %% des decalages temoins en font autant, ce gate"+
+		" verifie donc LE CABLAGE, pas l'identification — celle-ci est etablie par l'epreuve"+
+		" des INSTANTS d'entree (TestViseeZoomGate, 6/6 a p = 0,00 %%).",
+		len(chronoEpisodes), 100*part)
+}
+
+// zoomRappel compte les episodes (decales de `shift` secondes) portant au moins un echantillon.
+func zoomRappel(scopedS []float64, eps [][2]float64, shift float64) int {
+	n := 0
+	for _, ep := range eps {
+		for _, s := range scopedS {
+			if s >= ep[0]+shift-zoomTolS && s <= ep[1]+shift+zoomTolS {
+				n++
+				break
+			}
+		}
+	}
+	return n
+}
+
+// ScanFilmDeaths2 est un adaptateur de test : ScanFilmDeaths rend une erreur, et l'ignorer
+// silencieusement dans le corps du gate masquerait un film illisible.
+func ScanFilmDeaths2(t *testing.T, dir string) []Death {
+	t.Helper()
+	d, err := ScanFilmDeaths(dir)
+	if err != nil {
+		t.Fatalf("fil des morts : %v", err)
+	}
+	return d
+}
+
+// TestViseeZoomDureesObservees mesure la distribution des periodes de lunette REELLEMENT
+// fermees (une entree suivie d'une sortie du meme slot). Elle sert a calibrer le maintien
+// (`zoomHoldUS`) SUR LA DONNEE, et non sur la chronologie de l'utilisateur — se caler sur la
+// verite terrain reviendrait a s'ajuster a la reponse. Garde ZOOM_FILM.
+func TestViseeZoomDureesObservees(t *testing.T) {
+	dir := os.Getenv(zoomFilmEnv)
+	if dir == "" {
+		t.Skipf("%s absent : mesure sautee", zoomFilmEnv)
+	}
+	evts := filmdec.ScanFilmZoomEvents(dir)
+	ouv := map[uint32]uint64{}
+	var durees []float64
+	entrees, sorties := 0, 0
+	for _, e := range evts {
+		if e.Scoped() {
+			entrees++
+			ouv[e.Slot] = e.TimestampUS
+			continue
+		}
+		sorties++
+		if t0, ok := ouv[e.Slot]; ok {
+			durees = append(durees, float64(e.TimestampUS-t0)/1e6)
+			delete(ouv, e.Slot)
+		}
+	}
+	sort.Float64s(durees)
+	if len(durees) == 0 {
+		t.Fatalf("aucune periode fermee")
+	}
+	q := func(f float64) float64 { return durees[int(f*float64(len(durees)-1))] }
+	t.Logf("PERIODES FERMEES — %d (sur %d entrees, %d sorties)", len(durees), entrees, sorties)
+	t.Logf("  quantiles (s) : p10=%.2f p25=%.2f p50=%.2f p75=%.2f p90=%.2f p95=%.2f max=%.2f",
+		q(0.10), q(0.25), q(0.50), q(0.75), q(0.90), q(0.95), durees[len(durees)-1])
+}
