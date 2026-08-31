@@ -150,29 +150,50 @@ func TestDatePadPickupsAddsNeverRemoves(t *testing.T) {
 		}
 	}
 	if st.Occupations != 5 || st.Dated != 1 || st.Named != 1 || st.Ambiguous != 1 ||
-		st.Uncovered != 2 || st.PowerupPads != 1 {
+		st.Uncovered != 2 || st.PowerupOccupations != 1 {
 		t.Errorf("stats = %+v, attendu occupations=5 datées=1 nommées=1 ambiguës=1 nonCouvertes=2 powerup=1", st)
 	}
 }
 
-// TestDatePadPickupsFailsOnBrokenJoinKey — L'INVERSION. Le bogue trouvé en revue était
-// exactement celui-ci : comparer la forme d'un socle à celle d'un ramassage SANS normaliser.
-// Ce test rejoue la comparaison naïve et exige qu'elle ÉCHOUE — si elle réussissait, c'est que
-// les deux conventions se sont mises à coïncider et que `padFamilyKey` ne sert plus à rien.
+// TestDatePadPickupsFailsOnBrokenJoinKey — L'INVERSION, ET ELLE APPELLE VRAIMENT LA JOINTURE.
+//
+// La première version de ce test (ronde 1) comparait deux chaînes et n'appelait JAMAIS
+// `datePadPickups` : elle ne prouvait rien sur la fonction, et portait en prime une branche
+// morte (la même condition que son `t.Skip`, trois lignes plus haut). Correctif de ronde 2 :
+// on exerce la fonction DEUX FOIS sur les mêmes données — une fois avec la forme de production
+// du socle, une fois avec une clé volontairement cassée — et on exige que la seconde ne date
+// RIEN. C'est la panne du P0 rejouée en test.
 func TestDatePadPickupsFailsOnBrokenJoinKey(t *testing.T) {
 	const fam = 0x11223344
-	if padWeaponForm(fam) == pickupWeaponForm(fam) {
-		t.Skip("les deux conventions coïncident désormais : la normalisation est devenue inutile")
+	pickups := []Pickup{{T: 12, W: pickupWeaponForm(fam), Kind: PickupWeapon, XUID: "111"}}
+
+	// (1) Forme de PRODUCTION des deux côtés : la jointure trouve.
+	bon := []PadPickup{{Pad: 0, TLow: 10, THigh: 30}}
+	stBon := datePadPickups([]WeaponPad{{Weapon: padWeaponForm(fam)}}, bon, pickups)
+	if stBon.Dated != 1 || bon[0].T == nil {
+		t.Fatalf("forme de production : datées=%d t=%v, attendu 1 et 12 — la jointure ne marche pas",
+			stBon.Dated, bon[0].T)
 	}
-	// La comparaison naïve (celle d'avant la revue) ne trouve rien.
-	if padWeaponForm(fam) == pickupWeaponForm(fam) {
-		t.Fatal("inatteignable")
+
+	// (2) MÊME famille, mais écrite dans une convention que la normalisation ne rapproche pas
+	// (un nom canonique, comme un socle de power-up) : rien ne doit être daté.
+	casse := []PadPickup{{Pad: 0, TLow: 10, THigh: 30}}
+	stCasse := datePadPickups([]WeaponPad{{Weapon: "famille-11223344"}}, casse, pickups)
+	if stCasse.Dated != 0 || casse[0].T != nil || casse[0].XUID != nil {
+		t.Errorf("clé non joignable : datées=%d t=%v xuid=%v, attendu 0/nil/nil",
+			stCasse.Dated, casse[0].T, casse[0].XUID)
 	}
-	// La comparaison NORMALISÉE, elle, trouve.
-	kPad, _ := padFamilyKey(padWeaponForm(fam))
-	kPick, _ := padFamilyKey(pickupWeaponForm(fam))
-	if kPad != kPick {
-		t.Fatalf("la normalisation ne rapproche pas les deux formes : %q vs %q", kPad, kPick)
+	if stCasse.PowerupOccupations != 1 {
+		t.Errorf("clé non joignable : powerupOccupations=%d, attendu 1 (hors jointure, pas « non couvert »)",
+			stCasse.PowerupOccupations)
+	}
+
+	// (3) LE PIÈGE D'ORIGINE : la forme du socle comparée SANS normalisation à celle du
+	// ramassage. Les deux conventions doivent rester distinctes — sinon `padFamilyKey` ne sert
+	// plus à rien et ce test doit le dire.
+	if padWeaponForm(fam) == pickupWeaponForm(fam) {
+		t.Error("les deux conventions coïncident désormais : la normalisation est devenue " +
+			"inutile, et le P0 ne peut plus se reproduire — revoir ce test")
 	}
 }
 

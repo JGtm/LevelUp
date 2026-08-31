@@ -79930,3 +79930,43 @@ ligne, expliquée.
 **Prochaine étape** : ronde 2 relira ces corrections. Reste ouvert et inchangé : cuire un film
 à socles (CTF Arena) pour exercer réellement la datation des `padPickups` — c'est maintenant
 d'autant plus nécessaire que ce chemin s'est révélé faux sans que rien ne le signale.
+
+---
+
+## [2026-09-01] Revue ronde 2 — NON RECEVABLE : deux promesses de la ronde 1 non tenues
+
+**Statut** : Complété. **Worktree** : `wt/biped-pickup`. 11 constats : 5 P1 de complétion,
+6 P2 dont 4 requalifiés à corriger — ils étaient dans mon propre diff de ronde 1.
+
+**Ce que j'ai annoncé et qui était faux.** J'ai écrit « contracttest vert » comme si le contrat
+était à jour. Le gate qui vérifie réellement `openapi.yaml` est `TestOpenAPIYAMLIsUpToDate`
+(`internal/api`, tag cgo), et je ne l'avais pas joué : le champ était publié par le Go et absent
+du contrat, sur un schéma en `additionalProperties: false`. Vérifié cette fois en lançant le
+gate AVANT régénération — il échoue et nomme le champ. **Leçon : « les tests que j'ai lancés
+sont verts » n'est pas « le gate qui couvre ce risque est vert ».**
+
+**Et j'ai annoncé un balayage complet qui ne l'était pas.** Cinq sites debout, dont une
+contradiction INTERNE à ma propre correction (`document_ground_weapons.go` : la ligne 21 passée
+à « donnait », la ligne 20 disant encore « vaut null partout »). Plus une chaîne UI affichée à
+l'utilisateur, FR et EN, qui justifiait encore par « oracle 79,7 % » — réécrite sur la vraie
+raison : un socle de bonus s'identifie par un NOM, pas par un identifiant d'objet, donc aucune
+jointure n'est possible. Un 6e survivant trouvé par le grep exigé (`ReplayCanvasTips.tsx`).
+
+**Trois défauts dans le code de ma ronde 1, pas des dettes antérieures.** (a) Le retour anticipé
+de `datePadPickups` versait tout dans `Uncovered` quand le canal natif est vide — la lecture
+mensongère que ma correction prétendait éliminer, sur un film à socles power-up. (b)
+`TestDatePadPickupsFailsOnBrokenJoinKey` n'appelait jamais la fonction et portait une branche
+morte. (c) La fixture synthétique écrivait `typ: bipedPickupType`, la constante du code testé :
+les permuter laissait tout vert et aurait publié des embarquements en véhicule comme des
+ramassages. J'avais tiré exactement cette leçon en ronde 1 pour le slot 557 sans la généraliser.
+
+**Collision de clé JSON évitée de justesse** : `coverage.groundWeapons.powerupPads` (socles
+publiés) contre le mien (occupations écartées) — deux dénominateurs, un seul nom. Renommé
+`powerupOccupations` AVANT régénération ; après, c'eût été un breaking change.
+
+**Gates** : `TestOpenAPIYAMLIsUpToDate` + `TestManualFragmentPathsSurviveGeneration` PASS ·
+contracttest · filmdec + replay · web (purge `.tmp`, typecheck vert, lint 0 erreur, vitest
+1942/1942). Inversions rejouées : constantes 9/8 permutées → 3 tests tombent ; normalisation
+neutralisée → 2 tests tombent.
+
+**Prochaine étape** : reprise du lot 4 (équipement), suspendu après ses trois étapes mesurées.

@@ -374,6 +374,33 @@ golden aurait ete l'anti-pattern qu'on corrigeait. Diff golden : **une ligne**.
 `NATIVE_PICKUP_MATCH_FRAMES` et `nativePickupsNotAlreadyHeard` etaient exportes sans aucun
 importeur : de-exportes. `npx knip` : exit 0, aucun export mort signale.
 
+## REVUE ADVERSARIALE — ronde 2 (2026-09-01) : verdict NON RECEVABLE, complete
+
+Le coeur du P0 est confirme correct (normalisation des deux conventions, aucun nom canonique ne
+passe pour une famille, formes publiees intactes, fixture bit-exacte, dedup sonore couverte).
+Mais DEUX promesses de la ronde 1 n'etaient pas tenues. 11 constats : 5 P1 de completion,
+6 P2 — dont 4 REQUALIFIES a corriger parce qu'ils sont dans le diff de la ronde 1 elle-meme.
+
+| # | constat | correctif |
+|---|---|---|
+| P1-1 | **le contrat n'a PAS ete regenere** : le champ etait publie par le Go, absent d'`openapi.yaml` (schema en `additionalProperties: false`) et de `generated.ts`. Le gate qui l'attrape est `TestOpenAPIYAMLIsUpToDate` (`internal/api`, tag cgo) — le « contracttest vert » de la ronde 1 ne le jouait PAS | regenere APRES le renommage ; gate rejoue et cite |
+| P1-2 | le balayage de doc inversee avait laisse **5 sites debout + 1 chaine UI**, dont une contradiction INTERNE a ma propre correction | corriges, plus un 6e survivant trouve au grep (`ReplayCanvasTips.tsx`) ; chaines FR ET EN reecrites sur la VRAIE raison |
+| P1-3a | `datePadPickups` : le retour anticipe versait TOUT dans `Uncovered`, power-ups compris — un film a socles power-up et zero ramassage natif publiait exactement la lecture mensongere que la correction pretendait eliminer | retour anticipe supprime ; la boucle classe TOUJOURS |
+| P1-3b | `TestDatePadPickupsFailsOnBrokenJoinKey` : branche morte, et **n'appelait jamais `datePadPickups`** | reecrit — deux appels reels, forme de production vs cle non joignable |
+| P1-3c | la fixture synthetique ecrivait `typ: bipedPickupType` — **les constantes du code teste** : les permuter laissait tout vert | litteraux 9 et 8 |
+| P1-4 | **collision de cle JSON** : `coverage.groundWeapons.powerupPads` (socles publies) contre le mien (occupations ecartees) | renomme `powerupOccupations` AVANT regeneration — apres, c'eut ete un breaking change |
+
+**Inversions rejouees apres correction** : permuter les constantes 9/8 fait tomber 3 tests ;
+neutraliser la normalisation en fait tomber 2, dont le nouveau, avec le message « la jointure
+ne marche pas ». Le gate `TestOpenAPIYAMLIsUpToDate` a ete execute AVANT regeneration : il
+ECHOUE en nommant `powerupOccupations`, puis PASSE apres.
+
+**Preuve du balayage** : grep worktree entier sur `79,7|79.7|TOUJOURS null|vaut null partout`.
+Zero survivant hors (a) notes historiques `.ai/`, (b) chronique du cliquet `structure_test.go`,
+(c) phrases explicitement historiques (« donnait », « valait », « justification d'origine,
+desormais caduque »), (d) sujets sans rapport (Halo 5 `Xuid toujours null`, les taux 79,7 % de
+`closures.go` et du gate local, les sommes nulles de `document_zones.go`).
+
 ## Decouvertes consignees, NON traitees (P2)
 
 1. **Jointure `weaponLabels` impossible** pour `pickups[].w` ET `weaponChanges[].w` : la table

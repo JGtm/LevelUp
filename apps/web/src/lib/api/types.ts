@@ -2710,8 +2710,9 @@ export type ReplayWeaponPad = components['schemas']['WeaponPad']
 export type ReplayPadPresence = components['schemas']['PadPresence']
 export type ReplayPadCycle = components['schemas']['PadCycle']
 // Une occupation de socle ACHEVÉE (schéma 11) : le socle s'est vidé quelque part dans
-// [tLow, tHigh]. C'est un INTERVALLE et non un instant, et `xuid` vaut TOUJOURS `null` — le
-// ramasseur n'est pas publié (oracle mesuré à 79,7 %, contre 90 % exigé).
+// [tLow, tHigh]. Depuis le schéma 29 (2026-08-31), `t` porte l'instant EXACT et `xuid` le
+// ramasseur quand l'événement natif `biped_pickup` date l'occupation ; sinon l'intervalle reste
+// seul et `xuid` vaut `null`.
 export type ReplayPadPickup = components['schemas']['PadPickup']
 // LE SCORE DANS LE TEMPS (schéma 12) : la courbe des deux équipes et les compteurs des
 // joueurs, décodés du film et publiés AUX CHANGEMENTS SEULEMENT — la donnée est une suite de

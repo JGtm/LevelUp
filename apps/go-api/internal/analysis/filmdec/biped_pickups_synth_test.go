@@ -94,7 +94,11 @@ func (p bpSynthPacket) bytes() []byte {
 // différents.
 func bpSynthNominal() bpSynthPacket {
 	return bpSynthPacket{
-		typ: bipedPickupType, refPresent: true, refIndex: 45,
+		// LE TYPE EST UN LITTÉRAL, PAS LA CONSTANTE DU CODE TESTÉ (correctif de ronde 2, même
+		// raison que le 557 du slot) : écrire `bipedPickupType` ferait bouger la fixture avec
+		// le décodeur, et permuter les deux constantes laisserait tout vert — on publierait
+		// alors des embarquements en véhicule comme des ramassages.
+		typ: 9, refPresent: true, refIndex: 45,
 		class: 5, catalogPresent: true, catalog: 0x1A2B3C4D,
 	}
 }
@@ -145,7 +149,7 @@ func TestDecodeBipedPickupIsOrderSensitive(t *testing.T) {
 
 func TestDecodeBipedPickupBoardVehicleIsCountedNotPublished(t *testing.T) {
 	p := bpSynthNominal()
-	p.typ = bipedBoardVehicleType
+	p.typ = 8 // littéral : cf. bpSynthNominal
 	var st BipedPickupStats
 	if _, ok := decodeBipedPickup(p.bytes(), &st); ok {
 		t.Error("un embarquement en véhicule (type 8) ne doit PAS être publié comme un ramassage")

@@ -17,7 +17,7 @@ package replay
 // SchemaVersion — un artefact v10 doit se voir comme « à re-cuire », pas comme à jour.
 //
 // CE QUE LA MESURE A REFUSÉ DE PUBLIER, ET C'EST LA MOITIÉ DU RÉSULTAT. Le RAMASSEUR n'est pas
-// publié (`PadPickup.XUID` vaut `null` partout) : l'oracle indépendant — le loadout d'image-clé
+// publié jusqu'au schéma 29 (`PadPickup.XUID` valait `null` partout) : l'oracle indépendant — le loadout d'image-clé
 // du ramasseur présumé — donnait 88,1 % en suivant le slot de vie et 79,7 % en suivant le joueur,
 // contre >= 90 % exigé, et le seuil n'a pas été rebaissé. Les « ramassages » d'armes LÂCHÉES à
 // une mort ne sont pas publiés non plus : l'accord y passe SOUS son propre témoin (32,1 % contre
