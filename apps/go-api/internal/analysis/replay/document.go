@@ -304,7 +304,16 @@ package replay
 // n'est pas diagonale (un même objet lié à trois rangs ; à candidat unique, 0 à 2 paires par
 // film, incohérentes). Le ramassage d'équipement reste dans `equipmentChanges` (QUI et QUAND),
 // sans lien vers l'objet du sol.
-const SchemaVersion = 28
+// CE QUE LA VERSION 29 PORTE. LE RETOUR DU DRAPEAU DE CTF, dans ses deux moitiés. (1) Le retour
+// AUTOMATIQUE est enfin DATÉ : un drapeau resté au sol rentre chez lui quand l'OBJET renaît à son
+// socle (`coverage.flagCarries.homeByObject`). Jusqu'ici aucune chaîne ne le datait — le statborg
+// ne crédite personne — et les états `dropped` couraient jusqu'à la reprise ou la fin de l'axe,
+// des lâchers de plus de deux minutes qui n'ont jamais existé à l'écran. Contrôle : sur les
+// retours que le statborg CRÉDITE, les deux chaînes tombent à la même frame dans 9 cas sur 11
+// (écart médian 1 frame). (2) `flagReturnZone` publie la RÈGLE du mode — rayon de la zone,
+// minuterie à vide, durée à un défenseur — que le titre déclare dans son manifeste. Un artefact
+// 28 doit se lire « à re-cuire » : ses drapeaux au sol n'ont ni retour automatique ni zone.
+const SchemaVersion = 29
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {
@@ -525,6 +534,15 @@ type ReplayDocument struct {
 	// FlagCarries est LA VIE DE CHAQUE DRAPEAU de CTF, en intervalles d'état (forme, sources et refus :
 	// document_objectives_live.go). Absente hors CTF — `coverage.flagCarries` dit lequel des deux silences.
 	FlagCarries []FlagCarry `json:"flagCarries,omitempty"`
+	// FlagReturnZone est LA RÈGLE DE RETOUR du mode, telle que le manifeste du titre la donne
+	// (schéma 29) : le rayon de la zone autour d'un drapeau tombé, la minuterie qui le ramène
+	// tout seul, et la durée quand UN défenseur s'y tient. Le client en tire le cercle et la
+	// jauge ; l'occupation, elle, se compte chez lui — l'équipe d'un joueur n'est PAS dans le
+	// film (cf. Track.Team), elle vit dans la base et le client la joint déjà.
+	//
+	// ABSENTE quand le titre ne la déclare pas, ou quand le film n'est pas une partie de CTF :
+	// rien à dessiner, et surtout pas un cercle sur un mode qui n'en a pas.
+	FlagReturnZone *FlagReturnZone `json:"flagReturnZone,omitempty"`
 	// ObjectiveObjects est OÙ SE TROUVE L'OBJET D'OBJECTIF QUAND PERSONNE NE LE PORTE — les vies
 	// LIBRES du crâne d'Oddball (forme, canal et refus : document_objective_objects.go). Un trou
 	// entre deux vies est un portage, mais le document ne dit PAS par qui : l'oracle du porteur a

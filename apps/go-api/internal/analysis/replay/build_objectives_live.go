@@ -151,6 +151,22 @@ func attachFlagCarries(doc *ReplayDocument, opt Options, own OwnerReport, clock 
 		cov.ObjectLives = len(scan.Free)
 	}
 	attachFlagLayer(doc, carries, cov)
+	attachFlagReturnZone(doc, opt.Labels.FlagReturnZone, carries)
+}
+
+// attachFlagReturnZone publie la REGLE de retour du mode — et se tait des qu'il manque quoi que
+// ce soit pour la dessiner.
+//
+// TROIS SILENCES, ET AUCUN N'EST UN OUBLI : un titre qui ne declare pas la regle (le champ est a
+// zero), un film qui ne publie aucun drapeau (rien a entourer), et une regle incomplete (le
+// chargeur du manifeste la refuse deja, mais le calque ne suppose pas que l'appelant l'a
+// chargee). Un cercle dessine sur un mode qui n'en a pas serait pire qu'aucun cercle.
+func attachFlagReturnZone(doc *ReplayDocument, z FlagReturnZone, carries []FlagCarry) {
+	if len(carries) == 0 || z.RadiusM <= 0 || z.ResetSeconds <= 0 || z.SoloSeconds <= 0 {
+		return
+	}
+	zone := z
+	doc.FlagReturnZone = &zone
 }
 
 // attachFlagLayer pose le calque et sa couverture sur le document, et journalise. Un seul endroit
@@ -202,5 +218,6 @@ func logFlagCarriesCoverage(cov *FlagCarriesCoverage) {
 		"horsFenetre", cov.OutOfWindow, "marqueurConfirme", cov.MarkerConfirmed,
 		"marqueurObserve", cov.MarkerObserved, "socles", cov.Spawns,
 		"simultaneite", cov.Overlaps, "porteursTuesAmbigus", cov.AmbiguousCarrierKills,
-		"retoursAmbigus", cov.AmbiguousReturns)
+		"retoursAmbigus", cov.AmbiguousReturns, "rentreesParLObjet", cov.HomeByObject,
+		"rentreesAmbigues", cov.AmbiguousHomecomings)
 }

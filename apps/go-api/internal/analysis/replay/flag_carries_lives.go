@@ -18,19 +18,23 @@ import (
 //	fin      ->  `home` si le portage s'est acheve sur une CAPTURE (le drapeau rentre a sa base),
 //	             `dropped` sinon, a la derniere position connue du porteur
 //	retour   ->  `home` sur un `flag_returns`, quand UN SEUL drapeau est au sol
+//	rentree  ->  `home` quand l'OBJET drapeau RENAIT A UN SOCLE — la seule chaine qui date le
+//	             retour AUTOMATIQUE, celui que personne ne provoque et que rien ne credite
 //
 // LE RETOUR NE NOMME PAS SON DRAPEAU. `flag_returns` est credite au joueur qui touche le drapeau
 // de son equipe ; l'evenement ne porte ni l'objet ni l'equipe. On l'applique donc au seul drapeau
 // AU SOL a cet instant, et on s'abstient quand il y en a zero ou deux — se taire vaut mieux que
 // renvoyer le mauvais drapeau a une base ou il n'est pas. Le compte des abstentions est publie.
 //
-// LE RETOUR AUTOMATIQUE N'EST PAS SIMULE, ET C'EST UNE MESURE, PAS UN OUBLI. Halo renvoie un
-// drapeau reste au sol au bout d'un delai ; le film n'en porte AUCUN evenement. Le delai a ete
-// cherche sur les trois films CTF par l'ecart entre une fin de portage sans reprise et la prise
-// suivante au socle (item 1.2 du plan) : la distribution est trop dispersee pour qu'un seuil s'en
-// deduise sans se tromper, et le resultat est publie tel quel plutot qu'arrondi. Un drapeau au
-// sol reste donc `dropped` jusqu'a sa reprise, son retour ou la fin du match — un etat trop long,
-// jamais une position inventee.
+// LA RENTREE, ELLE, NOMME SON DRAPEAU — ET C'EST TOUT L'INTERET. Le jeu ramene chez lui un
+// drapeau reste au sol (`flagResetSeconds` dans son propre script) ; aucun compteur du statborg
+// ne le dit, puisque personne n'est credite. L'OBJET le dit : il est RE-CREE a son socle, et le
+// socle le nomme (cf. `flagObjectHomecomings`, flag_objects.go). La chaine est INDEPENDANTE de
+// celle des compteurs, et son accord avec les retours credites est ce qui l'autorise.
+//
+// L'ABSTENTION DE LA RENTREE : un drapeau ADVERSE qui gisait deja au pied de ce socle produirait
+// la meme naissance. Quand un autre drapeau est au sol A CE POINT, on ne renvoie rien et on se
+// compte — meme regle que le retour credite ambigu.
 //
 // SANS SOCLE, PAS DE `home`. Une carte hors du catalogue d'objectifs ne donne aucune position de
 // base : les etats `home` sont alors OMIS (leur position serait inventee), et la vie du drapeau
@@ -45,9 +49,14 @@ const flagStateUnknown = ""
 // retour ou une nouvelle prise ne le reclame.
 type flagLifeEventKind int
 
+// LA RENTREE PASSE APRES LE RETOUR CREDITE, ET C'EST DELIBERE : les deux disent la meme chose a
+// une frame pres sur les retours provoques. Laisser le CREDIT agir d'abord garde intacts les
+// compteurs existants (`AmbiguousReturns`) ; la rentree ne fait alors rien, et n'agit que la ou
+// personne n'est credite — le retour AUTOMATIQUE, la seule chose qu'elle ajoute.
 const (
 	flagLifeClose flagLifeEventKind = iota
 	flagLifeReturn
+	flagLifeHome
 	flagLifeOpen
 )
 
@@ -55,8 +64,12 @@ const (
 type flagLifeEvent struct {
 	at   int64
 	kind flagLifeEventKind
-	// carry indexe `raws` pour les ouvertures et les fermetures ; -1 pour un retour.
+	// carry indexe `raws` pour les ouvertures et les fermetures ; -1 sinon.
 	carry int
+	// flag et x, y ne valent que pour une RENTREE : le drapeau que le socle nomme, et le point
+	// de naissance qui sert a ecarter le drapeau adverse gisant la.
+	flag int
+	x, y float32
 }
 
 // flagTransition est un etat qui COMMENCE a une frame donnee.
@@ -87,7 +100,7 @@ func assembleFlagLives(raws []flagCarryRaw, scan FlagCarryScan, ctx flagCarryCtx
 	for f := range state {
 		state[f] = FlagStateHome
 	}
-	for _, ev := range flagLifeTimeline(raws, scan) {
+	for _, ev := range flagLifeTimeline(raws, scan, ctx) {
 		applyFlagLifeEvent(ev, raws, scan, flagLifeState{trans: trans, state: state, ctx: ctx, cov: cov})
 	}
 	return flagCarriesOf(trans, scan, ctx.frames)
@@ -103,7 +116,7 @@ type flagLifeState struct {
 }
 
 // flagLifeTimeline rend la suite chronologique des evenements de vie des drapeaux.
-func flagLifeTimeline(raws []flagCarryRaw, scan FlagCarryScan) []flagLifeEvent {
+func flagLifeTimeline(raws []flagCarryRaw, scan FlagCarryScan, ctx flagCarryCtx) []flagLifeEvent {
 	out := make([]flagLifeEvent, 0, 2*len(raws))
 	for i, r := range raws {
 		out = append(out, flagLifeEvent{at: r.t0, kind: flagLifeOpen, carry: i})
@@ -113,6 +126,9 @@ func flagLifeTimeline(raws []flagCarryRaw, scan FlagCarryScan) []flagLifeEvent {
 	}
 	for _, t := range flagReturnTimes(scan) {
 		out = append(out, flagLifeEvent{at: t, kind: flagLifeReturn, carry: -1})
+	}
+	for _, h := range flagObjectHomecomings(scan, ctx) {
+		out = append(out, flagLifeEvent{at: h.at, kind: flagLifeHome, carry: -1, flag: h.flag, x: h.x, y: h.y})
 	}
 	sort.SliceStable(out, func(i, j int) bool {
 		if out[i].at != out[j].at {
@@ -137,8 +153,12 @@ func flagReturnTimes(scan FlagCarryScan) []int64 {
 
 // applyFlagLifeEvent fait evoluer l'etat des drapeaux d'un evenement.
 func applyFlagLifeEvent(ev flagLifeEvent, raws []flagCarryRaw, scan FlagCarryScan, st flagLifeState) {
-	if ev.kind == flagLifeReturn {
+	switch ev.kind {
+	case flagLifeReturn:
 		applyFlagReturn(ev, scan, st)
+		return
+	case flagLifeHome:
+		applyFlagHomecoming(ev, scan, st)
 		return
 	}
 	r := raws[ev.carry]
@@ -199,6 +219,55 @@ func applyFlagReturn(ev flagLifeEvent, scan FlagCarryScan, st flagLifeState) {
 		frame: st.ctx.frameOfMatchMS(ev.at), state: FlagStateHome,
 		x: scan.Spawns[only].X, y: scan.Spawns[only].Y,
 	})
+}
+
+// applyFlagHomecoming ramene chez lui le drapeau QUE LE SOCLE NOMME — et lui seul.
+//
+// TROIS RAISONS DE NE RIEN FAIRE, et aucune n'est un echec :
+//
+//	le drapeau n'est PAS au sol   il est porte, ou deja chez lui (debut de manche, capture,
+//	                              retour credite une frame plus tot) : la naissance de l'objet
+//	                              est alors le RE-SPAWN normal, et l'etat est deja le bon ;
+//	un AUTRE drapeau git la       le drapeau adverse tombe au pied de ce socle produit la meme
+//	                              naissance ; on s'abstient et on se compte ;
+//	le socle est hors catalogue   sans position de base, `home` s'inventerait.
+func applyFlagHomecoming(ev flagLifeEvent, scan FlagCarryScan, st flagLifeState) {
+	f := ev.flag
+	if f < 0 || f >= len(st.state) || f >= len(scan.Spawns) {
+		return
+	}
+	if st.state[f] != FlagStateDropped {
+		return
+	}
+	if flagOtherDroppedAt(ev, st, f) {
+		st.cov.AmbiguousHomecomings++
+		return
+	}
+	st.state[f] = FlagStateHome
+	st.cov.HomeByObject++
+	st.trans[f] = append(st.trans[f], flagTransition{
+		frame: st.ctx.frameOfMatchMS(ev.at), state: FlagStateHome,
+		x: scan.Spawns[f].X, y: scan.Spawns[f].Y,
+	})
+}
+
+// flagOtherDroppedAt dit qu'un AUTRE drapeau que `f` git au point de naissance : la naissance
+// pourrait etre la sienne, et rien ne les depart.
+func flagOtherDroppedAt(ev flagLifeEvent, st flagLifeState, f int) bool {
+	for g, s := range st.state {
+		if g == f || s != FlagStateDropped {
+			continue
+		}
+		n := len(st.trans[g])
+		if n == 0 {
+			continue
+		}
+		p := st.trans[g][n-1]
+		if sqDist(p.x, p.y, ev.x, ev.y) <= originDropMaxDist*originDropMaxDist {
+			return true
+		}
+	}
+	return false
 }
 
 // flagCarriesOf transforme les transitions de chaque drapeau en spans contigus.

@@ -47,7 +47,8 @@ import {
   type FlagCaptureStyle,
 } from './flagCaptureFx'
 import type { CanvasView } from './objectivesLayer'
-import { frameToMs, msToFrames, type XY } from './replayLogic'
+import { buildFlagReturnDrops, drawFlagReturnZones } from './flagReturnZone'
+import { canvasScale, frameToMs, msToFrames, worldToCanvas, type XY } from './replayLogic'
 import type { ReplayDocumentReady, ReplayTrackReady } from './replayNormalize'
 
 /** Le camp d'un drapeau VU DE LA PAGE — `unknown` quand la ligne « moi » manque. */
@@ -183,6 +184,33 @@ export function useReplayFlagCarries({
     return map
   }, [scoreboard])
 
+  // LA ZONE DE RETOUR (schéma 29) : le cercle autour d'un drapeau tombé, et la jauge qui s'y
+  // vide. Elle se construit UNE fois par document, comme les ondes de capture — l'occupation se
+  // compte image par image, et la recompter à chaque peinture coûterait le match entier.
+  //
+  // C'EST ICI, ET NON SUR LE SERVEUR, QUE LES DÉFENSEURS SE COMPTENT : l'équipe d'un joueur n'est
+  // pas dans le film, elle vient du tableau de bord — que cette page a déjà joint pour colorer
+  // les camps (`teamOfXuid`, juste au-dessus). Le serveur publie la RÈGLE, pas l'occupation.
+  const defendersOf = useCallback(
+    (team: number) => {
+      const out: string[] = []
+      for (const [xuid, t] of teamOfXuid) if (t === team) out.push(xuid)
+      return out
+    },
+    [teamOfXuid],
+  )
+
+  const returnDrops = useMemo(
+    () =>
+      buildFlagReturnDrops(carries, {
+        rule: doc.flagReturnZone ?? null,
+        frameIntervalMs: doc.frameIntervalMs ?? 0,
+        posOf,
+        defendersOf,
+      }),
+    [carries, doc.flagReturnZone, doc.frameIntervalMs, posOf, defendersOf],
+  )
+
   const captureStyle = useMemo<FlagCaptureStyle>(
     () => ({
       inkOf: (xuid: string) => {
@@ -201,11 +229,20 @@ export function useReplayFlagCarries({
       // drapeaux. Sur un film qui n'en publie pas, ils marquent encore les captures — dessiner
       // l'onde en plus les doublerait, à deux endroits différents.
       if (!enabled || carries.length === 0) return
+      // LA ZONE PASSE SOUS LE GLYPHE : c'est un décor de lieu, le drapeau est le sujet.
+      drawFlagReturnZones(
+        ctx,
+        returnDrops,
+        (p) => worldToCanvas(p, view.bounds, view.width, view.height, view.pad),
+        canvasScale(view.bounds, view.width, view.height, view.pad),
+        frame,
+        { colorOfTeam: inkOfTeam },
+      )
       drawFlagCarries(ctx, layer, carries, view, frame)
       // Les ondes APRÈS le calque : l'anneau s'ouvre autour du glyphe, il ne passe pas dessous.
       drawFlagCaptureFx(ctx, captures, view, { frame, hold: FLAG_CAPTURE_HOLD_FRAMES }, captureStyle)
     },
-    [enabled, carries, layer, view, captures, captureStyle],
+    [enabled, carries, layer, view, captures, captureStyle, returnDrops, inkOfTeam],
   )
 
   const onPointerMove = useCallback(
