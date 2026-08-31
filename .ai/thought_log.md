@@ -78568,3 +78568,34 @@ rate). A revoir si le sujet revient.
 
 **Prochaine etape.** Rien de bloquant. Le lien exact tir->victime reste hors portee hors ligne
 (boucles cibles/composantes = largeur runtime, table 0x1451f98d0).
+
+## [2026-08-31] Sonde de fiabilite « precision par arme et par distance » depuis le film — Complete
+
+**Statut : Complete** (branche `wt/trame-sonde`, worktree dedie).
+
+**Decision technique.** Instrument `filmdec/lot1_sonde_precision_research_test.go`
+(`TestLot1SondePrecisionDistance`, garde `LOT1_TRAME_FILM`, un film/process, borne 12 chunks),
+COMPOSITION pure des decodeurs existants (aucune reimplementation) : `ScanFilmFireEvents` +
+grammaire de reference type 36 (`variant_name`) cote tir, `lot1DecodeDamageAftermath` +
+`lot1RefDom1` cote degat, `ScanFilmBipedPositions` cote positions. 7 mesures sur 000d5950
+(Cliffhanger), 01e1f945 (Catalyst), 00502e52 (Bazaar). NOTE :
+`.ai/V7.5/film_re/NOTE_SONDE_PRECISION_DISTANCE_2026-08-31.md`.
+
+**Resultats observes.** M1 arme (variant_name) categorielle (11-30 distinctes), FilmIndex=8
+(plausible). M2 source presente 100 %, tag `399949091` commun Cliffhanger+Bazaar. M3 JOIN
+tir<->degat = 0 % sur les 3 films, toutes cles : espaces d'id DISJOINTS (confirme
+components_object.go 0/786) -> table `source de degat -> arme` requise. M4 resolvabilite 96,1 /
+73,0 / 97,3 % (base 512, calibree sur le pic de resolvabilite ; l'argmax structurel est instable).
+M5 distances physiquement ordonnees (medianes courte/longue portee coherentes). M6 (test central) :
+biais NON UNIFORME — cote positions aucun biais (~100 %), mais cote REFS certaines sources
+frequentes ne portent AUCUN handle d'en-tete (ex. `3655071589`, 62 degats Cliffhanger, 0 % capture)
+et disparaissent de la forme. M7 degats/tir varie x15 entre films (0,05-0,78) : sous-replication
+massivement film-dependante.
+
+**Verdict.** (a) distance des touches par arme = FAISABLE mais BIAISEE (exclure/annoter les sources
+sans refs avant livraison). (b) precision par arme = PAS ENCORE (join impossible sans table, +
+biais residuel, + petit echantillon a recaler sur le total API). Cle d'arme qui joint : NON.
+
+**Gate.** gofmt clean, `go vet ./internal/analysis/filmdec/` vert (GOCACHE prive), test `ok`
+(readouts t.Logf, aucun fail). Decouvertes notees, non traitees : batir la table source->arme,
+caracteriser les sources sans refs (`3655071589`, `95`).
