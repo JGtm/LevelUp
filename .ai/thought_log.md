@@ -1,3 +1,36 @@
+## [2026-08-31] Attribution PAR LE TIR de la précision/distance par arme — lien réel, viable sous conditions — Complété
+
+**Contexte** : worktree dédié `wt/trame-attrib`. Une sonde précédente (`lot1_sonde_precision_*`)
+keyait la précision par le TAG SOURCE du dégât (projectile/effet, autre espace d'id) — mauvais
+lien. Correction : l'arme est connue par le TIR (`WeaponID` de `action_weapon_fire` 0xD2 t36,
+offsets fixes). Pont réutilisé de `lot1_modal_touche` : attaquant du tir (ref0 dom1) == responsable
+du dégât (ref1 dom1, `damage_aftermath` 0xC0 t0), même espace brut, fenêtre temporelle. Instrument
+`lot1_attrib_arme_tir_research_test.go` (garde LOT1_TRAME_FILM, borné 12 chunks), noms via
+`analysis.WeaponIDToName` (map statique, pas de cycle).
+
+**Décision technique** : 5 mesures + sweep de fenêtre. Seuils écrits avant : W=250 ms (comme
+modal_touche), OFF=3 s (témoin), verdict au ratio témoin.
+
+**Résultats chiffrés (000d5950 / 01e1f945 / 00502e52)** : M1 lien tir->dégât TENU partout (ratio
+témoin AVANT 16.7x / 2.8x / 3.7x, ARRIÈRE 8.0x / 4.2x / 5.4x). M1bis sweep DÉCISIF : le dégât est
+horodaté à l'IMPACT, pas au tir ; à 250 ms le taux est un plancher (16.7/4.3/17.4 %), à ~1 s il
+double-triple (40.8/12.1/39.9 %) avec ratio témoin encore ~4-8x -> le 250 ms pré-enregistré était
+trop serré. M2 précision par arme : DEUX catégories parmi les « 0 % à 250 ms » — (1) récupérables
+à fenêtre large (Disruptor 94 %, Needler 100 %, VK78 100 %, BR75, Pulse Carbine, S7 Sniper…), (2)
+NON émises même à 2 s (M41 SPNKr, Hydra, Skewer, Ravager, Shock Rifle, Mangler, Stalker, Bulldog =
+classe explosif/faisceau/lourd -> dégât hors `damage_aftermath`, probable type 1). M3 distance : où
+capturée, ordre physiquement sensé et STABLE (Needler ~4-8 m le plus court, BR75 ~11-16 m le plus
+long) ; 01e1f945 désactivée (signature carte ambiguë catalyst/deadlock). M4 : 0 dégât sans refs sur
+les 3 films -> exclusion non-arme = non-problème ici ; sources anonymes anticipées (0x00d9dbf765/95)
+absentes comme classe. M5 : tag source n'intersecte JAMAIS le WeaponID (0 %) -> valide l'attribution
+par le tir, pas par la source.
+
+**Conclusion / prochaine étape** : note `film_re/NOTE_ATTRIBUTION_ARME_TIR_2026-08-31.md`. Mécanisme
+correct, lien réel. Précision par arme VIABLE sous conditions (fenêtre ~1 s, pas 250 ms ; classe
+« balle » seulement ; recalage API obligatoire), NON universelle (trou de couverture par classe).
+Distance plus robuste que la précision. Piste future (hors périmètre) : percer
+`damage_section_response` (0xC0 t1) pour la classe lourde. gofmt + go vet verts, rien câblé en prod.
+
 ## [2026-08-31] Visée des tirs NON-MODAUX — grammaire des 2 boucles PERCÉE, mais visée non validable par l'oracle — Complété
 
 **Contexte** : worktree dédié `wt/trame-nonmodal`. Le décodeur modal (`fire_aim_modal.go`) ne

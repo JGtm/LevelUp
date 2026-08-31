@@ -52,12 +52,16 @@ const sondeMapEnv = "LOT1_SONDE_MAP"
 var sondeDistEdges = []float64{2, 5, 10, 15, 25, 40}
 
 // sondeDmgEvt : un evenement damage_aftermath horodate, refs d'en-tete non resolues, source.
+// magClear/magRaw sont additifs (peuples par sondeScanDamage, lus par l'instrument
+// d'attribution par le tir) — l'ancienne sonde source-tag les ignore.
 type sondeDmgEvt struct {
 	ts         uint64
 	idx0, idx1 int // ref0=blesse(victime), ref1=responsable(attaquant) ; -1 si absente
 	src        uint64
 	hasSrc     bool
 	neg        bool
+	magClear   float64 // magnitude en clair (signee ; soin si negative)
+	magRaw     uint64  // code magnitude R(5)
 }
 
 // sondeSample : une position monde horodatee.

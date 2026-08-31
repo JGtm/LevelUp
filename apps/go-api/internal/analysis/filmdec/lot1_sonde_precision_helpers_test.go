@@ -66,6 +66,7 @@ func sondeScanDamage(t *testing.T, dir string, reg *Registry, n int) ([]sondeDmg
 			lot1RefDom(br, 7)
 			r := lot1DecodeDamageAftermath(br)
 			ev.src, ev.hasSrc, ev.neg = r.sourceID, r.hasSource, r.negatif
+			ev.magClear, ev.magRaw = r.dmgClear, r.dmgRaw
 			evs = append(evs, ev)
 			for _, b := range lot1chBases {
 				if lot1chIsBiped(w, b, ev.idx0) {
