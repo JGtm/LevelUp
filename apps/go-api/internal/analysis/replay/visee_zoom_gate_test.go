@@ -555,14 +555,16 @@ func TestViseeZoomBoutEnBout(t *testing.T) {
 	}
 	t.Logf("SCANNER DE PRODUCTION — %d bascules de lunette lues", len(evts))
 
-	etat := filmdec.ZoomStateAt(evts, zoomHoldUS)
 	scan := filmdec.DefaultScanFilmOptions()
 	scan.QuantaOnly = true
 	pos, err := filmdec.ScanFilmBipedPositions(dir, scan)
 	if err != nil {
 		t.Fatalf("balayage des positions : %v", err)
 	}
-	off, _ := bestDeathOffset(buildLifeSpans(indexBySlot(pos)), ScanFilmDeaths2(t, dir))
+	lives := buildLifeSpans(indexBySlot(pos))
+	// LA MEME reconstruction que la production (zoom_state.go) : plusieurs causes de fermeture.
+	etat := buildScopedLookup(evts, lives, zoomHoldUS)
+	off, _ := bestDeathOffset(lives, ScanFilmDeaths2(t, dir))
 
 	// La track de Nilton est celle du slot 513 (index 1 + base 512), etabli par le pont.
 	const slotNilton = 513

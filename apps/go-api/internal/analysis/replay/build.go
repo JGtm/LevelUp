@@ -367,7 +367,14 @@ func BuildFromFilm(matchID, titleSlug, filmDir string, opt Options) (ReplayDocum
 	// paquet, pas dans les records — un balayage separe, sans verrou (il ne touche aucun etat
 	// global de decodage). Le maintien est borne : au-dela, on cesse d'affirmer plutot que de
 	// prolonger une entree dont la sortie n'a pas ete lue (cf. filmdec.ZoomStateAt).
-	opt.Scoped = filmdec.ZoomStateAt(filmdec.ScanFilmZoomEvents(filmDir), zoomHoldUS)
+	// La reconstruction ferme une periode sur TOUTE cause observable — sortie lue, fin de vie,
+	// nouvelle entree — et ne retombe sur le plafond qu'a defaut (cf. zoom_state.go). Les vies
+	// viennent des positions deja balayees : aucune lecture supplementaire.
+	opt.Scoped = buildScopedLookup(
+		filmdec.ScanFilmZoomEvents(filmDir),
+		buildLifeSpans(indexBySlot(positions)),
+		zoomHoldUS,
+	)
 	opt.Placements, opt.PlacementStats = decodeFilmPlacements(filmDir, &worldRange)
 	// SOCLES : archetypes 42 (armes) et 37 (power-ups), sur la MEME horloge, AUX LARGEURS MPP que
 	// la calibration des POSES vient de mesurer sur ce film (cf. build_ground_weapons.go).
