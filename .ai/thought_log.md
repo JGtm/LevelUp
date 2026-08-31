@@ -30,9 +30,22 @@ K = 1,30 record/paquet, ratio médiane 1,2× vs 13× pour damage) — les champs
 longueur variable, ce qui étale le balayage. Visée toujours plausible non prouvée ; la prouver
 demande de décoder les champs post-visée du type 36 en entier (comme damage_aftermath).
 
+**CORRECTION (challenge user « on gère déjà la visée ») — la visée est RÉELLE et PROUVÉE** :
+`fire_events.go` la lit à l'offset FIXE bit 113 pour 19 % des records. Oracle géométrique
+(`TestLot1ViseeCompare`) : une vraie visée est concentrée près de l'horizontale (E petit sur un
+axe), le bruit est uniforme (E~0.5). Mesure 2 films : **fire@113 : E|x|=0.27, E|y|=0.79, part
+x<0.3 = 70 % = STRUCTURE NETTE = vraie visée**, alors que ma position modèle-M (~80-81) et le
+contrôle sont au niveau du bruit. VERDICT TENU. Donc mon « inconcluant » ne portait PAS sur la
+visée mais sur MA reconstruction : bug de cadrage de ~32 bits entre l'arme et la visée (fire
+lit l'arme sur 64 bits @44/76, mon modèle sur 32 → visée 32 bits trop tôt sur du bruit ; en
+plus ma position est variable là où la vérité est fixe à 113). **La visée est acquise
+(fire_events fait foi)** ; mon décodeur type 36 a juste un résidu de cadrage post-arme, redondant
+avec la victime de damage_aftermath.
+
 **Conclusion / prochaine étape** : croiser killsource pour départager laquelle des 2 refs
-domaine 1 est le blessé ; décoder les champs post-visée du type 36 pour clore la visée ; corpus
-complet. Note : `film_re/NOTE_MODELE_EVENEMENTS_2026-08-30.md`.
+domaine 1 de damage_aftermath est le blessé ; corriger le cadrage post-arme de mon type 36
+(optionnel, la visée est déjà donnée par fire_events) ; corpus complet. Note :
+`film_re/NOTE_MODELE_EVENEMENTS_2026-08-30.md`.
 
 ## [2026-08-31] Percer la trame — les deux lecteurs composites du type 36 PERCÉS (workflow) ; en-tête tir PROUVÉ, visée plausible non prouvée — En cours
 
