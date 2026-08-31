@@ -150,3 +150,24 @@ commit sur une branche dédiée.
   l'en-tête par famille » est dissous.** Détail : `film_re/NOTE_MODELE_EVENEMENTS_2026-08-30.md`.
   RESTE : pont réf0→joueur + vérité terrain lunette (gate produit), charge du type 36,
   bit8 par famille corpus.
+- **[2026-08-31, ultracode] Type 36 (tir) : en-tête PROUVÉ, composites RE-vérifiés** (commits
+  `9d5b1b23c`, `ee412a501`) — workflow multi-agents `type36-subreaders` (11 agents,
+  décompilation parallèle + vérification adverse au désassemblage) : grammaire bit-exacte des
+  deux lecteurs composites FUN_1406cd5b8/FUN_1408eff64 (câblés lot1SkipCd5b8/lot1SkipEff64).
+  Validation DISCRIMINANTE : l'arme (variant_name) est catégorielle à **11 % de distinctes**
+  (27/245, 30/276) contre **79-81 % pour du bruit** → « qui a tiré avec quelle arme » PROUVÉ
+  pour 2,5 M d'événements. La visée R(30) : vecteur valide 240/240 mais oracle NON discriminant
+  à 30 bits (mesuré : offset faux valide aussi 100 %) → PLAUSIBLE non prouvée. Corpus 1 367
+  films : fermeture arithmétique reload+throw = 528 262 (= gisement 0xD3). Véhicules : embarq.
+  374 / sortie 5 600. Corrigé : PIÈGE octet = 0xC0|type>>1 (pas 0x80).
+- **[2026-08-31, ultracode] damage_aftermath (872 k) DÉCODÉ ET PROUVÉ** (commit `fc15d59bb`) —
+  2e workflow `damage-aftermath-reader` (10 agents) : grammaire bit-exacte complète (source,
+  magnitude R(5) sur [0,16], victime ref domaine 0 ; 3 refs d'en-tête = domaines 1/1/7).
+  **L'ORACLE DE TRAME est le juge discriminant** : profondeur de trame **2,2-2,4 records/paquet**
+  au bon cadrage vs **0,17** au témoin +3 bits (facteur 13, 2 films). C'est LA VOIE TOUCHES :
+  source arme + magnitude + participants (blessé/responsable) + victime pour 872 k événements.
+  LEÇON : le discriminant est la PROFONDEUR, pas le taux de fermeture. Détail :
+  `film_re/NOTE_MODELE_EVENEMENTS_2026-08-30.md`.
+  RESTE (en cours) : (a) départager quelle ref d'en-tête est le blessé (croiser killsource) +
+  5 constantes de déquantification du dégât ; (b) calibrer la visée du type 36 par l'oracle de
+  trame (balayage de la longueur post-visée).
