@@ -81169,11 +81169,13 @@ Formule : `AIM_HALF_ANGLE / 2,3^palier`, plancher a 0,07 rad de demi-ouverture.
 du marqueur aux echelles usuelles — il cesserait de se lire comme un cone pour devenir un trait,
 et l'information « il est epaule » se perdrait au moment ou elle est la plus forte.
 
-**CE QUI EST UN CHOIX DE RENDU ET NON UNE MESURE, dit comme tel** : le film transmet le PALIER,
-jamais le facteur de grossissement — celui-ci appartient a l'arme et vit dans ses donnees de jeu.
-Le rapport 2,3 par cran est choisi pour la lisibilite, par analogie avec le jeu ou un cran
-supplementaire double le grossissement. Le jour ou les tags d'armes seront exploites, ce rapport
-pourra devenir une vraie mesure par arme.
+**CHOIX DE RENDU ASSUME, ET C'EST LE BON NIVEAU D'INFORMATION** (tranche par l'utilisateur le
+2026-08-31) : le grossissement reel de l'arme n'a pas de sens sur une carte vue de dessus — le
+cone n'y est pas un champ de vision, c'est un REPERE DE LECTURE. Le PALIER publie par le film
+suffit donc entierement : trois etats qui se distinguent d'un coup d'oeil. Aller chercher le
+facteur optique dans les tags d'armes serait de la precision inutile, et probablement nuisible
+(une ouverture « exacte » rendrait le cone illisible). Piste des tags d'armes CLOSE pour ce
+besoin.
 
 **Tests** : 3 epreuves neuves — resserrement au premier cran, resserrement SUPPLEMENTAIRE au
 second (avec l'inegalite stricte, pas seulement la valeur), et plancher aux crans extremes.
