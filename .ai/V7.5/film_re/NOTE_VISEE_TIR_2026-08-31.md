@@ -86,8 +86,15 @@ chemin modal est désormais câblé :
 
 ## Ce qui reste
 
-- **Cas non-modal** (tir causant ≥ 1 dégât/cible) : boucles de largeur runtime → non localisable
-  hors ligne (réserve de l'agent). C'est le complément de la couverture modale.
-- **Départager attaquant/blessé** dans `damage_aftermath` ; **monde chronologique** (killsource)
-  pour la résolution slot→joueur.
+- **Cas non-modal** (tir causant ≥ 1 dégât/cible) : la réserve « boucles de largeur runtime »
+  est **RÉFUTÉE** — `NOTE_VISEE_NONMODALE_2026-08-31.md` a percé la grammaire des deux boucles
+  ET des composites, ENTIÈREMENT hors ligne (param_5=0 → R(32) ; `FUN_140c1e924 = 3×W`, W d'une
+  table PURE). Un décodeur non-modal peut avancer jusqu'à la visée. MAIS sa CORRECTION n'est pas
+  validable par l'oracle de concentration (les tirs qui touchent visent à des élévations variées
+  → vecteur ~uniforme, indiscernable du bruit ; mesure : non-modal 28-34 % vs modal 77-87 %).
+  Non branché en prod. Piste : un **oracle de profondeur de trame** validerait la POSITION
+  indépendamment de l'orientation (comme `TestLot1ViseeCalibration` pour le modal).
+- **Départager attaquant/blessé** dans `damage_aftermath` : **RÉSOLU** — ref0 = blessé, ref1 =
+  responsable (la vitalité de ref0 baisse 90-95 %, commit `5414739e4`). **Monde chronologique** :
+  **INUTILE** (0 à +2 pts ; le plafond 82-89 % est l'ambiguïté de la réf, pas le temps).
 - **Gate visuel** : le cap des tirs posé sur la carte du rejeu 2D — à la main de l'utilisateur.
