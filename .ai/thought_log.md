@@ -1,3 +1,31 @@
+## [2026-08-31] Percer la trame — VISÉE MODALE PERCÉE : le plafond 19 % tombe (×3-6), grammaire Ghidra + oracle de concentration — Complété
+
+**Contexte** : ultracode, suite. L'agent Ghidra dédié « percer le cadrage de la visée type 105 »
+a rendu la grammaire de charge de FUN_14080C1F8 tracée instruction par instruction (type 105 =
+0xD2 = le « type 36 » du modèle-M). Il tranche pourquoi `fire_events.go` plafonne à 19 % : ses
+offsets fixes (attaquant @36, arme @44/76, visée @113) ne valent que sur le « chemin record
+vide ». Réserve honnête de l'agent (vérifiée juste) : largeurs des 3 refs en-tête = table
+runtime nulle au repos → boucles non-modales non localisables hors ligne.
+
+**Décision technique** : instrument `lot1_visee_ghidra_research_test.go` confrontant mon décodeur
+modèle-M à la grammaire Ghidra, jugé par l'ORACLE DE CONCENTRATION (une vraie visée unitaire
+sature un axe ; le bruit uniforme reste ~26 %). DEUX corrections trouvées : (1) **polarité du
+champ d** (saute R(5) si garde==0, pas ==1) → position post-comptes STABLE à 111 sur 100 % des
+paquets à visée vide ; (2) **les 2 lecteurs composites cd5b8/eff64 sont PARASITES** dans le
+chemin modal — la vraie visée est à **post-comptes + 2** (= 113 pour le cas vide, bits
+identiques à fire_events).
+
+**Résultats chiffrés (5 témoins)** : sur les paquets que fire_events NE couvre PAS, la visée à
+post-comptes+2 sature un axe à **97-100 %** (contrôle 18-39 %), pic NET à +2 (bruit à +1/+3).
+Couverture : **33 → 210 (×6,4)** et **143 → 491 (×3,4)**. Verdict TENU sur les 5. Note dédiée
+`film_re/NOTE_VISEE_TIR_2026-08-31.md`. `BitReader` borné (bits hors tampon = 0) → décodage
+forward sûr en prod.
+
+**Conclusion / prochaine étape** : réponse à « on a pas mieux que 19 % ? » = OUI, le cas modal
+(tir propre) est entièrement percé. PROCHAINE : câbler le chemin modal dans
+`decodeFireEvent` (supersète le chemin 19 %, régénère les goldens replay `shots.go`) ; le
+cas non-modal reste runtime-width (complément). Instrument de recherche committé d'abord.
+
 ## [2026-08-31] Percer la trame — damage_aftermath (872k) DÉCODÉ ET PROUVÉ : source + dégât + victime, l'oracle de trame tranche — En cours
 
 **Contexte** : ultracode, suite. 2e workflow multi-agents `damage-aftermath-reader` (10 agents,

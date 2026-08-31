@@ -184,3 +184,16 @@ commit sur une branche dédiée.
   arme/joueur = tirs touchant / tirs totaux.
 - **[2026-08-31] Aim >19 %** : agent Ghidra dédié lancé sur le préambule du type 36 (dérivation
   à rebours depuis l'ancre fire_events 36/44/113). En cours.
+- **[2026-08-31] VISÉE MODALE PERCÉE — le plafond 19 % tombe** (instrument
+  `lot1_visee_ghidra_research_test.go`, commit à suivre). L'agent Ghidra a rendu la grammaire de
+  charge complète de FUN_14080C1F8 (type 105 = 0xD2). DEUX corrections cumulées :
+  (1) **polarité du champ d** = saute R(5) si garde==**0** (pas ==1) → décodage d'en-tête stable,
+  position post-comptes = **111 sur 100 %** des paquets à visée vide, 5 témoins ;
+  (2) **les 2 lecteurs composites (cd5b8/eff64) sont PARASITES** dans le chemin modal : la vraie
+  visée est à **post-comptes + 2** (= 113 pour le cas vide, mêmes bits que fire_events). Preuve
+  par l'oracle de concentration sur les paquets que fire_events NE couvre PAS : l'axe sature à
+  **97-100 %** (contrôle 18-39 %), pic NET à +2 (bruit à +1/+3), verdict TENU sur 5 témoins.
+  **Couverture : de 33 → 210 (×6,4) et 143 → 491 (×3,4)** paquets. Réserve (agent, JUSTE) : les
+  boucles cibles/composantes non vides restent runtime-width → on ne perce QUE le cas modal (le
+  tir « propre »). Note : `film_re/NOTE_VISEE_TIR_2026-08-31.md`. RESTE : câbler le chemin modal
+  dans `fire_events.go decodeFireEvent` (supersète le chemin 19 %, régénère les goldens replay).
