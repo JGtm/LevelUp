@@ -11,6 +11,7 @@ import { NavL1 } from './NavL1'
 import { ReauthBanner } from './ReauthBanner'
 import { TopProgressBar } from './TopProgressBar'
 import { ErrorBoundary } from './ErrorBoundary'
+import { AppFooter } from './AppFooter'
 import { NotificationsToastBridge } from '@/features/notifications/toastBridge'
 import { AssetDrawer } from '@/features/asset-drawer'
 import { FeedbackDrawer } from '@/features/feedback-drawer'
@@ -61,6 +62,9 @@ export function AppShell() {
         <main className="flex-1 overflow-y-auto">
           <div className="app-shell-width mx-auto w-full">
             <Outlet />
+            {/* Pied de page — dans le flux scrollable, jamais fixé : la hauteur
+                verticale est comptée pour les tableaux denses. */}
+            <AppFooter />
           </div>
         </main>
       </ErrorBoundary>
