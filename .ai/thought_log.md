@@ -1,3 +1,50 @@
+## [2026-08-31] La JAUGE d'armement n'est pas dans le film : elle est CALCULÉE — et c'est l'instant de début qui manque — Complété
+
+**Recentrage après une dérive.** Le fil est : trouver la jauge du compte à rebours avant que la
+bombe explose, en Assaut.
+
+**LA JAUGE, C'EST LE TAG 3.** `zone_states_gauge.go` le dit sans ambiguïté : la jauge de capture
+est la série du tag 3 de `ti=13` (`filmdec.ManagedPropertyTagQuant`, mode A, R(24) quantifié sur
+[-100, +100]). Mes dumps précédents groupaient par (slot, tag) et n'en voyaient AUCUN — ni en
+Assaut, **ni chez le témoin Strongholds**. Un témoin muet accuse la sonde, pas la donnée : la
+sonde était fautive.
+
+**HISTOGRAMME PAR TAG, toutes lectures confondues** — et là le témoin parle :
+
+    2ce58582  Ranked:Strongholds   tag3 : 4 663 lectures, 4 397 avec valeur, TOUTES scalaires
+    696a9d7c  Strongholds:Arena    tag3 : 3 828 / 3 584
+    7f1bbf06  KOTH:Arena           tag3 : 2 218 / 1 999
+    9f57c612  Assaut               tag3 :     5 /     0
+    c75f33b8  Assaut               tag3 :     5 /     1
+    df8fcbef  Assaut               tag3 :    10 /     1
+    34bb3bc8  Assaut               tag3 :    78 /     2
+
+**Le canal est lu CORRECTEMENT — c'est l'Assaut qui n'y diffuse rien.** Détail des rares
+lectures : quasi toutes sans valeur et en mode PAR JOUEUR (`filmIndex >= 0`), alors que la jauge
+est scalaire (`filmIndex = -1`) ; les deux qui portent une valeur donnent 10 794 102 et 7 119 872,
+absurdes pour une quantité bornée à [-100, +100] — des ancrages fortuits.
+
+**ET LE SCRIPT DIT POURQUOI.** `primitive_carriable_arming_base` porte `armProgressFunction` et
+`disarmProgressFunction` — des FONCTIONS, pas des champs répliqués. Le client CALCULE la
+progression à partir de `armDisarmTime` et de l'instant de début ; le réseau n'a aucune raison de
+transporter une valeur qui se déduit. **Exactement le même schéma que la jauge de retour du
+drapeau, que le rejeu 2D SIMULE déjà côté client (loi harmonique, `flagReturnZone.ts`).**
+
+**CONSÉQUENCE, ET ELLE RECADRE LE CHANTIER** : il n'y a pas de jauge à extraire. Pour la dessiner,
+il faut exactement deux choses — (1) `armDisarmTime`, un réglage de variante de mode, et
+(2) **l'INSTANT DE DÉBUT D'ARMEMENT**. C'est ce second point, et lui seul, qui manque depuis le
+début du chantier.
+
+**BILAN DES CANAUX FOUILLÉS POUR CET INSTANT** — les trois sont désormais témoinés :
+
+| canal | Assaut | témoin |
+|---|---|---|
+| composants du statborg (112 canaux) | aucun candidat | critère validé sur les compteurs connus |
+| pied de film, tous indices de type | `th=10` quasi absent (6 blocs / 9 films) | zones et collines en vivent |
+| `ti=13` tag 3 (la jauge) | 5 à 78 lectures, 0 à 2 valeurs | Strongholds 4 397 valeurs |
+
+**Gates** : go vet 0, gofmt propre.
+
 ## [2026-08-31] Le SCÉNARIO des cartes est ouvert — et il ne porte AUCUN véhicule : ils viennent du MODE — Complété
 
 **Sur « oui continue ».** Le chantier « lire les placements du scénario » est ouvert, et il a

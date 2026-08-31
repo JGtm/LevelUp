@@ -36,6 +36,7 @@ package replay
 //	go test ./internal/analysis/replay/ -run AssautA8Ancrage -v -timeout 60m
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -250,5 +251,106 @@ func TestAssautA8Contenu(t *testing.T) {
 	dump("2ce58582", "Ranked:Strongholds — TEMOIN, tag 3 = jauge, tag 4 = proprietaire", nil)
 	for _, id := range []string{"9f57c612", "c75f33b8", "df8fcbef"} {
 		dump(id, "Assaut One Bomb", a5Explosions[id])
+	}
+}
+
+// TestAssautA8Tag3 — LA JAUGE EST LE TAG 3, ET ON LA CHERCHE LA.
+//
+// `zone_states_gauge.go` le dit sans ambiguite : la jauge de capture est la serie du TAG 3
+// (`filmdec.ManagedPropertyTagQuant`, mode A, R(24) quantifie sur [-100, +100]). Le dump
+// precedent groupait par (slot, tag) en ne gardant que les lectures PORTEUSES DE VALEUR, et n'a
+// vu aucun tag 3 — ni en Assaut, NI CHEZ LE TEMOIN STRONGHOLDS. Un temoin qui ne montre pas ce
+// qu'il est cense montrer accuse la sonde, pas la donnee.
+//
+// Cet histogramme compte TOUTES les lectures par tag, valeur ou non, scalaire ou par joueur. Si
+// le tag 3 apparait chez Strongholds et pas en Assaut, la reponse est dans la donnee. S'il
+// n'apparait nulle part, c'est la sonde qu'il faut corriger.
+func TestAssautA8Tag3(t *testing.T) {
+	cache := os.Getenv("ASSAUT_CACHE")
+	if cache == "" {
+		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
+	}
+	defer amArmeSentinelle(t, "TestAssautA8Tag3")()
+
+	histo := func(id, mode string) {
+		sc, err := filmdec.ScanFilmManagedProperties(filepath.Join(cache, "film_chunks", id))
+		if err != nil {
+			t.Logf("%-9s %-24s : %v", id, mode, err)
+			return
+		}
+		parTag := map[int][3]int{} // [total, avecValeur, scalaire]
+		for _, r := range sc.Reads {
+			v := parTag[r.Tag]
+			v[0]++
+			if r.HasValue {
+				v[1]++
+			}
+			if r.FilmIndex < 0 {
+				v[2]++
+			}
+			parTag[r.Tag] = v
+		}
+		tags := make([]int, 0, len(parTag))
+		for k := range parTag {
+			tags = append(tags, k)
+		}
+		sort.Ints(tags)
+		var s []string
+		for _, k := range tags {
+			v := parTag[k]
+			marque := ""
+			if k == 3 {
+				marque = "<JAUGE>"
+			}
+			s = append(s, fmt.Sprintf("tag%d%s:%d(val %d, scal %d)", k, marque, v[0], v[1], v[2]))
+		}
+		t.Logf("%-9s %-24s %d lectures — %v", id, mode, len(sc.Reads), s)
+	}
+
+	histo("2ce58582", "Ranked:Strongholds")
+	histo("696a9d7c", "Strongholds:Arena")
+	histo("7f1bbf06", "KOTH:Arena")
+	for _, id := range []string{"9f57c612", "c75f33b8", "df8fcbef", "34bb3bc8"} {
+		histo(id, "Assaut")
+	}
+}
+
+// TestAssautA8Tag3Detail — LES QUELQUES LECTURES DE JAUGE DE L'ASSAUT, en entier.
+//
+// L'histogramme etablit le fait : le canal de jauge (tag 3) porte des MILLIERS de valeurs chez
+// les temoins (Strongholds 4 397, KOTH 1 999) et de UNE a DEUX en Assaut. Le canal est donc lu
+// correctement — c'est l'Assaut qui n'y diffuse presque rien.
+//
+// Restent 5 a 78 lectures par film : assez peu pour les imprimer TOUTES. Si ces rares emissions
+// tombent avant les explosions, elles datent quelque chose. Si elles sont dispersees, le canal
+// est muet pour l'Assaut et la jauge d'armement n'est pas repliquee — auquel cas elle est
+// CALCULEE PAR LE CLIENT a partir de `armDisarmTime` et de l'instant de debut, exactement comme
+// la jauge de retour du drapeau que le rejeu simule deja.
+func TestAssautA8Tag3Detail(t *testing.T) {
+	cache := os.Getenv("ASSAUT_CACHE")
+	if cache == "" {
+		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
+	}
+	defer amArmeSentinelle(t, "TestAssautA8Tag3Detail")()
+
+	for _, id := range []string{"9f57c612", "c75f33b8", "df8fcbef", "34bb3bc8"} {
+		sc, err := filmdec.ScanFilmManagedProperties(filepath.Join(cache, "film_chunks", id))
+		if err != nil {
+			continue
+		}
+		t.Logf("--- %s : explosions %v", id, a5Explosions[id])
+		n := 0
+		for _, r := range sc.Reads {
+			if r.Tag != 3 {
+				continue
+			}
+			n++
+			if n > 40 {
+				t.Logf("    (... %d lectures de plus)", len(sc.Reads))
+				break
+			}
+			t.Logf("    slot %5d  t=%8d ms  valeur=%d (presente %v)  filmIndex=%d  chaine=%v",
+				r.Slot, r.TimestampUS/1000, r.Value, r.HasValue, r.FilmIndex, r.Chained)
+		}
 	}
 }
