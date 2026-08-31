@@ -78335,3 +78335,66 @@ cout en bits du composant de position (« total i0 = 47 bits », cf. `filmdec/of
 
 **Regle rappelee dans le protocole** : une capture CE n'est pas reproductible plus tard — adresses,
 instructions ecrivantes et pile d'appels doivent entrer au thought_log le jour meme.
+
+## [2026-08-31] Visee lunette — PORTE FRANCHIE : la lunette EST dans le film, et elle est attribuable par joueur — Complete (positif prouve)
+
+**Le negatif du chantier est REFUTE, et la cause est identifiee.** Le chantier « trame film »
+(branche `wt/trame-film`, page Notion « Percer la trame du film ») a perce le MODELE DE PAQUET :
+
+	[1 bit configuration] [liste d'evenements : ( 1 [R(7) type] [3 refs gardees] [charge] )* 0]
+	[trame de records ECS]
+
+Nos sept campagnes lisaient le type a `octet & 0x7F` : elles IGNORAIENT le bit de configuration et
+decalaient tout d'UN bit. Le « triple verrou » (registre, recensement de types, onde carree)
+partageait ce meme decalage — trois chaines qui semblaient independantes ne l'etaient pas sur ce
+point precis. La famille `0xCA` porte le type 21 `unit_zoom` : **~400 000 evenements sur le corpus**.
+
+**LA MESURE DE CLOTURE (instrument `replay/visee_zoom_gate_test.go`, garde ZOOM_FILM).** Ce
+chantier detenait la VERITE TERRAIN, la session soeur la grammaire : on confronte les deux. Aucun
+pont ref0 -> joueur n'est suppose — c'est la chronologie qui DESIGNE l'unite.
+
+Film 00162144, decalage feed->film +1 171 858 ms (pont des morts, 91 fins de vie appariees).
+324 paquets `0xCA`, **324 evenements `unit_zoom` decodes, 0 d'un autre type** (la famille est pure).
+58 unites distinctes portent au moins une entree ; 7 sont actives dans la fenetre du releve.
+
+**Unite 1 (ref0, domaine 4) contre le releve manuscrit de Nilton410 :**
+
+| releve utilisateur (debut d'episode) | evenement ENTREE | ecart |
+|---|---|---|
+| 41 s | 41,7 | 0,7 s |
+| 49 s | 49,6 | 0,6 s |
+| 61 s | 60,6 | 0,4 s |
+| 68 s | 69,2 | 1,2 s |
+| 71 s | 71,5 | 0,5 s |
+| 85 s | 85,7 | 0,7 s |
+
+**6/6 debuts apparies a moins de 1,2 s**, 3 entrees supplementaires dans la fenetre.
+**CONTROLE PAR TRANSLATION : 0,00 %** — sur ~3 200 decalages temoins (±400 s, pas de 250 ms,
+voisinage ±3 s exclu), le maximum repris sur les 58 unites a chaque decalage, AUCUN n'atteint 6/6.
+Seuils ecrits avant la mesure (>= 5/6 et controle < 1 %). C'est le meme controle qui avait refute
+la phase 6 (type 114, p = 1,04 %) et rattrape deux faux positifs au lot C : il tranche ici dans
+l'autre sens, sans ambiguite.
+
+**Correction d'instrument en cours de route, dite pour memoire** : la premiere version reconstruisait
+des INTERVALLES (entree -> sortie) et fusionnait les episodes consecutifs de l'utilisateur (une
+periode 41,7 -> 53,5 s couvrant deux episodes), ce qui donnait p = 1,76 % — refuse. Le dump des
+evenements BRUTS a montre que le signal etait dans les INSTANTS d'entree, pas dans les intervalles :
+la reconstruction d'intervalles rate des sorties (evenements de lunette portes en 2e position d'une
+liste, dans d'autres familles). Comparer les instants aux debuts d'episode donne 6/6 a p = 0,00 %.
+
+**CE QUI EST DESORMAIS ACQUIS** : l'etat de lunette est lisible du film, date a la milliseconde,
+et ATTRIBUABLE PAR UNITE. L'objectif produit nomme par l'utilisateur — le cone de visee du rejeu
+qui s'etrecit — devient realisable sur DONNEE REELLE, plus par heuristique.
+
+**RESTE A FAIRE (borne, dans l'ordre)** :
+1. **Pont ref0 (domaine 4) -> joueur, general** : ici l'unite 1 a ete designee par la chronologie.
+   Pour industrialiser il faut la correspondance systematique index domaine 4 -> slot/xuid (piste
+   de la session soeur : « la ref de degat RESOUT vers un slot joueur, base ~512 », commit f4967eb73).
+2. **Recuperer les evenements de lunette portes en 2e position** d'une liste (les sorties manquantes) :
+   marcher la liste d'evenements entiere au lieu du seul evenement de tete.
+3. **Elargir la verite terrain** : 2 ou 3 films annotes confirmeraient sur un corpus independant.
+4. **Brancher** : periodes de lunette par joueur -> cone du rejeu.
+
+**Cheat Engine n'est plus necessaire** : le protocole `PROTOCOLE_CE_ZOOM_2026-08-31.md` devient sans
+objet pour la question « le film porte-t-il la lunette » (repondue par l'affirmative). Il reste
+utilisable si l'on veut un jour verifier la semantique des NIVEAUX (0/1/2).
