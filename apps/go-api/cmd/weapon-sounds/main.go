@@ -259,6 +259,8 @@ func main() {
 			dossier = dossierSFXParDefaut(racine)
 		}
 		err = nommerBanques(chemin, dossier, *sortie)
+	case "vehi-sons":
+		err = sonsDeVehicules(chemin, *sortie)
 	default:
 		err = fmt.Errorf("mode inconnu %q", *mode)
 	}
