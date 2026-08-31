@@ -853,3 +853,7 @@ arme/equipement des socles.
 securisation de colline (x2), spawn d'arme sur socle, spawn d'equipement sur socle, lacher,
 ramassage d'arme, plus le ramassage d'equipement re-livre. Il ne reste AUCUN son designe sans
 declencheur.
+
+**CI DE CLOTURE (2026-08-30 soir)** : run du head `656b6d9ce` VERT AU NIVEAU JOB — Go Build+Test
+ubuntu et windows, Coverage+Baseline, Frontend, Contract, lints, Lease, Deploy Pre-Check. Le rouge
+herite du merge (contrat non regenere) est solde par `656b6d9ce` ; le lot son `10593604a` est CLOS.
