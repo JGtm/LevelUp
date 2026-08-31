@@ -335,6 +335,46 @@ COMPTE A REBOURS que l'utilisateur entend.
 d'objets du scenario (`scnr`) des `.module`. Il donne les sites d'amorcage de l'Assaut ET les
 vehicules des cartes officielles.
 
+### 3.7 LA JAUGE EST SUR `ti=11`, PAS `ti=13` — et les deux archetypes sont en MIROIR (2026-08-31)
+
+**Le registre ECS du film porte son propre dictionnaire, en clair**, et l'archetype 11 y nomme
+exactement ce qu'on cherchait :
+
+	ti=11  i0   managed-objective-timers-component
+	       i4   managed-objective-interaction-filter-component
+	       i12  managed-objective-progress-component            <- LA JAUGE
+	       i13  managed-objective-required-progress-component   <- LE SEUIL
+
+**LE RECENSEMENT, et il renverse tout.** Comptage des vies par archetype (en-tetes d'image-cle
+seuls — aucun corps de record decode, donc gratuit) :
+
+| film | mode | vies `ti=11` | slots `ti=13` |
+|---|---|---:|---:|
+| `2ce58582` | Ranked:Strongholds | **0** | 26 |
+| `696a9d7c` | Strongholds:Arena | **0** | 26 |
+| `7f1bbf06` | KOTH:Arena | **1** | 52 |
+| `9f57c612` | **Assaut** | **46** | 8 |
+| `c75f33b8` | **Assaut** | **31** | 8 |
+| `df8fcbef` | **Assaut** | **27** | 8 |
+| `34bb3bc8` | **Assaut** | **21** | 8 |
+| `1c01e34f` | **Assaut** | **9** | 8 |
+
+**MIROIR PARFAIT.** Strongholds et KOTH : `ti=13` riche (26-52 slots, des MILLIERS de valeurs de
+jauge au tag 3), `ti=11` vide. Assaut : `ti=13` quasi muet (8 slots, 0 a 2 valeurs), **`ti=11`
+riche (9 a 46 vies)**.
+
+**Voila pourquoi les trois fouilles precedentes ne trouvaient rien** : elles cherchaient dans le
+canal des ZONES (`ti=13`), alors que l'Assaut passe par celui des OBJECTIFS GERES (`ti=11`).
+
+**CE QUI MANQUE MAINTENANT EST UN DECODEUR, plus une piste.** `ti=11` est couvert **0 sur 34** par
+le dispatch : `components_batch3.go` n'en porte que deux composants (i2 et i9, les textes
+formates), gardes SANS APPELANT depuis le 2026-08-01 avec pour condition de retrait « branchee ou
+supprimee quand ti=11 sera decode ». Le lot R4 du 2026-08-17 avait deja vise cet archetype et
+bute sur la marche des records d'image-cle — d'ou `keyframe_record_walk.go`, qui existe et lit
+l'en-tete SANS le filtre du balayeur.
+
+**Le chantier est donc SCOPE** : porter les deserialiseurs de `ti=11` de i0 jusqu'a i12/i13. Ce
+sont treize composants a resoudre (Ghidra), et la jauge d'armement de la bombe tombe avec.
 ## 4. Pieces
 
 - `internal/analysis/replay/assaut_a5_explosions_test.go` — la confrontation de publication.
