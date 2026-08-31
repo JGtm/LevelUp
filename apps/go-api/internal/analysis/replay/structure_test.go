@@ -448,10 +448,13 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   l'écran. L'OBJET, lui, le dit : une vie libre du drapeau qui NAÎT À SON SOCLE est le
 	//   drapeau qui rentre, et le socle LE NOMME (ce que `flag_returns` ne fait pas). CONTRÔLE
 	//   écrit avant la mesure et TENU : sur les retours que le statborg CRÉDITE, les deux chaînes
-	//   — disjointes — tombent à la même frame dans 18 cas sur 22 (81,8 %, seuil 80 %, écart
-	//   médian 1 frame). (2) `flagReturnZone` publie la RÈGLE du mode : rayon de la zone de
-	//   retour, rayon de la zone de CONTESTATION (un ennemi du camp propriétaire y bloque le
-	//   retour), minuterie à vide, durée à un défenseur. (3) LA VARIANTE « DRAPEAU NEUTRE » est
+	//   — disjointes — tombent à la même frame dans 15 cas sur 15 (100 %, seuil 80 %, écart
+	//   médian 1 frame ; compté par ÉVÉNEMENT crédité DISTINCT, `flag_returns` ne nommant pas son
+	//   drapeau). (2) `flagReturnZone` publie la RÈGLE du mode : rayon de la zone de
+	//   retour, minuterie à vide, durée à un défenseur — la CONTESTATION en est écartée par la
+	//   mesure (sur 72 lâchers où un ennemi entre dans la zone, 56 finissent par une REPRISE : à
+	//   1,3 m un ennemi ne conteste pas, il RAMASSE) et par l'observation de l'utilisateur.
+	//   (3) LA VARIANTE « DRAPEAU NEUTRE » est
 	//   reconnue et ne publie plus qu'UN drapeau, d'équipe -1, au socle du centre — le mode n'est
 	//   pas dans le film, c'est l'OBJET qui tranche par le socle où il renaît, et la couverture
 	//   publie le verdict avec ses deux comptes (`neutralFlag`, `neutralBirths`, `teamBirths`).

@@ -35,10 +35,6 @@ type FlagReturnZone struct {
 	// RadiusM est le rayon de la zone de RETOUR, dans les COORDONNEES DU REJEU (les memes que les
 	// socles du catalogue de cartes et que les positions du film).
 	RadiusM float64
-	// ContestRadiusM est le rayon de la zone de CONTESTATION : un ENNEMI du camp proprietaire qui
-	// s'y tient empeche le retour (`GetAnyEnemyTeamInOuterArea`, etats `Contested` /
-	// `ContestedRefilling`).
-	ContestRadiusM float64
 	// ResetSeconds est la duree qu'un drapeau au sol met a rentrer TOUT SEUL, personne dans la
 	// zone.
 	ResetSeconds float64
@@ -50,15 +46,14 @@ type FlagReturnZone struct {
 
 // Declared dit si le titre declare une zone de retour exploitable.
 func (z FlagReturnZone) Declared() bool {
-	return z.RadiusM > 0 && z.ContestRadiusM > 0 && z.ResetSeconds > 0 && z.SoloSeconds > 0
+	return z.RadiusM > 0 && z.ResetSeconds > 0 && z.SoloSeconds > 0
 }
 
 // flagReturnZoneTOML — projection brute de la section [flag_return_zone].
 type flagReturnZoneTOML struct {
-	RadiusM        float64 `toml:"radius_m"`
-	ContestRadiusM float64 `toml:"contest_radius_m"`
-	ResetSeconds   float64 `toml:"reset_seconds"`
-	SoloSeconds    float64 `toml:"solo_seconds"`
+	RadiusM      float64 `toml:"radius_m"`
+	ResetSeconds float64 `toml:"reset_seconds"`
+	SoloSeconds  float64 `toml:"solo_seconds"`
 }
 
 // parseFlagReturnZone valide la section. Absente : zone nulle, et le rejeu se tait.
@@ -66,13 +61,11 @@ func parseFlagReturnZone(path string, in *flagReturnZoneTOML) (FlagReturnZone, e
 	if in == nil {
 		return FlagReturnZone{}, nil
 	}
-	z := FlagReturnZone{RadiusM: in.RadiusM, ContestRadiusM: in.ContestRadiusM,
-		ResetSeconds: in.ResetSeconds, SoloSeconds: in.SoloSeconds}
+	z := FlagReturnZone{RadiusM: in.RadiusM, ResetSeconds: in.ResetSeconds, SoloSeconds: in.SoloSeconds}
 	for _, c := range []struct {
 		nom string
 		v   float64
-	}{{"radius_m", z.RadiusM}, {"contest_radius_m", z.ContestRadiusM},
-		{"reset_seconds", z.ResetSeconds}, {"solo_seconds", z.SoloSeconds}} {
+	}{{"radius_m", z.RadiusM}, {"reset_seconds", z.ResetSeconds}, {"solo_seconds", z.SoloSeconds}} {
 		if c.v <= 0 {
 			return FlagReturnZone{}, fmt.Errorf("%s: [flag_return_zone].%s doit être > 0 (reçu %g)",
 				path, c.nom, c.v)

@@ -140,19 +140,17 @@ const (
 // DANS LE FILM (cf. Track.Team). Le constructeur du rejeu est hors ligne et n'ouvre aucune base ;
 // le client, lui, a deja joint le tableau de bord pour colorer les camps. C'est donc lui qui
 // compte, et cette table est ce qu'il lui faut pour le faire.
-// LA CONTESTATION EN FAIT PARTIE, et elle a son propre rayon. Le jeu surveille DEUX cylindres
-// autour du drapeau tombe : l'INTERIEUR, ou les coequipiers du proprietaire le renvoient, et
-// l'EXTERIEUR, ou un ENNEMI du proprietaire le CONTESTE (`GetAnyEnemyTeamInOuterArea`, etats
-// `Contested` / `ContestedRefilling`). Les deux rayons sont egaux dans la configuration du jeu ;
-// ce sont les HAUTEURS des cylindres qui different (`cylinderInnerHeight` / `cylinderOuterHeight`)
-// — un ennemi sur une plateforme au-dessus du drapeau conteste sans pouvoir le prendre. Le rejeu
-// est en 2D : il publie les deux rayons separement quand meme, parce que ce sont deux REGLES, et
-// qu'une valeur unique se ferait passer pour une coincidence necessaire.
+// LA CONTESTATION N'EN FAIT PAS PARTIE, ET C'EST UNE DECISION MESUREE. Le jeu decrit un etat
+// `Contested` — un ENNEMI du proprietaire dans la zone bloque le retour — puis un
+// `ContestedRefilling` ou la jauge repart en arriere. Trois faits l'ont ecarte : l'utilisateur ne
+// l'a jamais observe en jeu ; ni le reglage qui l'active ni son taux ne sont lisibles dans le
+// script (constantes dedupliquees) ; et la mesure explique le silence — sur 72 lachers ou un
+// ennemi entre dans la zone, 56 finissent par une REPRISE, sejour moyen 1,65 s. A 1,3 m d'un
+// drapeau tombe, un ennemi ne conteste pas : il RAMASSE. La seule interruption visible est la
+// reprise, et le calque la rend deja — un nouveau lacher ouvre une jauge NEUVE.
 type FlagReturnZone struct {
 	// RadiusM est le rayon de la zone de RETOUR, dans les MEMES coordonnees que `FlagSpan.X/Y`.
 	RadiusM float32 `json:"radiusM"`
-	// ContestRadiusM est le rayon de la zone de CONTESTATION.
-	ContestRadiusM float32 `json:"contestRadiusM"`
 	// ResetSeconds est la duree qu'un drapeau au sol met a rentrer TOUT SEUL.
 	ResetSeconds float32 `json:"resetSeconds"`
 	// SoloSeconds est la duree qu'il met avec UN defenseur dans la zone.

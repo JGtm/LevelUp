@@ -309,10 +309,14 @@ package replay
 // socle (`coverage.flagCarries.homeByObject`). Jusqu'ici aucune chaîne ne le datait — le statborg
 // ne crédite personne — et les états `dropped` couraient jusqu'à la reprise ou la fin de l'axe,
 // des lâchers de plus de deux minutes qui n'ont jamais existé à l'écran. Contrôle : sur les
-// retours que le statborg CRÉDITE, les deux chaînes tombent à la même frame dans 9 cas sur 11
-// (écart médian 1 frame). (2) `flagReturnZone` publie la RÈGLE du mode — rayon de la zone de
-// retour, rayon de la zone de CONTESTATION, minuterie à vide, durée à un défenseur — que le titre
-// déclare dans son manifeste. (3) LA VARIANTE « DRAPEAU NEUTRE » est reconnue : elle ne publie
+// retours que le statborg CRÉDITE, les deux chaînes tombent à la même frame dans 15 cas sur 15
+// (100 %, écart médian 1 frame ; compté par ÉVÉNEMENT crédité DISTINCT, `flag_returns` ne nommant
+// pas son drapeau). (2) `flagReturnZone` publie la RÈGLE du mode — rayon de la zone de
+// retour, minuterie à vide, durée à un défenseur — que le titre déclare dans son manifeste. LA
+// CONTESTATION N'EN FAIT PAS PARTIE : le jeu la décrit, mais l'utilisateur ne l'a jamais observée,
+// ses constantes sont illisibles, et la mesure explique le silence (sur 72 lâchers où un ennemi
+// entre dans la zone, 56 finissent par une REPRISE — à 1,3 m, un ennemi ne conteste pas, il
+// RAMASSE). (3) LA VARIANTE « DRAPEAU NEUTRE » est reconnue : elle ne publie
 // plus DEUX drapeaux qui n'existent pas mais UN SEUL, d'équipe -1, au socle du centre. Le mode
 // n'est pas dans le film — c'est l'OBJET qui tranche, par le socle où il renaît, et la couverture
 // publie le verdict avec les deux comptes qui le fondent (`neutralFlag`, `neutralBirths`,

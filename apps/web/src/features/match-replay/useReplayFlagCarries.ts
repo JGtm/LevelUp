@@ -206,19 +206,6 @@ export function useReplayFlagCarries({
     [teamOfXuid],
   )
 
-  // LES CONTESTATAIRES SONT LES AUTRES, et le drapeau NEUTRE n'en a aucun : son équipe vaut -1,
-  // personne n'en est « l'ennemi », et la jauge se réduit alors à la minuterie — ce que le jeu
-  // fait aussi (un drapeau neutre ne se renvoie pas, il revient tout seul).
-  const enemiesOf = useCallback(
-    (team: number) => {
-      const out: string[] = []
-      if (team < 0) return out
-      for (const [xuid, t] of teamOfXuid) if (t !== team) out.push(xuid)
-      return out
-    },
-    [teamOfXuid],
-  )
-
   const returnDrops = useMemo(
     () =>
       buildFlagReturnDrops(carries, {
@@ -226,9 +213,8 @@ export function useReplayFlagCarries({
         frameIntervalMs: doc.frameIntervalMs ?? 0,
         posOf,
         defendersOf,
-        enemiesOf,
       }),
-    [carries, doc.flagReturnZone, doc.frameIntervalMs, posOf, defendersOf, enemiesOf],
+    [carries, doc.flagReturnZone, doc.frameIntervalMs, posOf, defendersOf],
   )
 
   const captureStyle = useMemo<FlagCaptureStyle>(

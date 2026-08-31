@@ -6339,8 +6339,6 @@ export interface components {
         };
         FlagReturnZone: {
             /** Format: float */
-            contestRadiusM: number;
-            /** Format: float */
             radiusM: number;
             /** Format: float */
             resetSeconds: number;

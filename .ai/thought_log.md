@@ -1,3 +1,36 @@
+## [2026-08-31] CTF — la CONTESTATION est retirée : la mesure donne raison à l'observation du joueur — Complété
+
+L'utilisateur avait demandé la contestation le matin ; il a corrigé le tir en la voyant décrite :
+« en jeu je n'ai pas constaté d'arrêt de la jauge ou de reset, sauf si on reprend le drapeau
+adverse. Mais ce fonctionnement on devrait déjà l'avoir. » Il a raison sur les deux points.
+
+**LA MESURE EXPLIQUE SON OBSERVATION, elle ne la contredit pas.** Instrument étendu au comptage
+des ENNEMIS dans la zone, sur les six films du corpus : **72 lâchers voient un ennemi entrer, et
+56 d'entre eux finissent par une REPRISE** ; le séjour ennemi dure 1,65 s en moyenne, 4,9 s au
+maximum. À 1,3 m d'un drapeau tombé, un ennemi ne conteste pas — **il RAMASSE**. L'état
+`Contested` existe bien dans la bibliothèque `parcel_deliver_object.lua`, mais celle-ci sert aussi
+la bombe d'Assaut, où l'objet ne se reprend pas de la même façon. En CTF, la reprise gagne toujours
+la course.
+
+**J'AVAIS LIVRÉ SUR LA SEULE FOI DU VOCABULAIRE DU SCRIPT**, sans effet visible pour le confirmer.
+C'est l'erreur de méthode du jour : un nom de fonction dans un binaire dit ce que le moteur SAIT
+faire, pas ce que le mode joué FAIT. Retiré : le rendu (anneau pointillé, jauge tenue), le champ
+`FlagReturnZone.ContestRadiusM`, la clé `contest_radius_m` du manifeste, `enemiesOf` côté client —
+règle 0 code mort.
+
+**« ON DEVRAIT DÉJÀ L'AVOIR » : oui, et c'est vérifié.** Le seul reset que le joueur observe est
+celui de la reprise, et il tombe d'une propriété du calque plutôt que d'une ligne dédiée : un
+intervalle qui n'est pas `dropped` ferme le lâcher, et le suivant en rouvre un NEUF dont
+l'accumulateur repart de zéro (`mergedDrops`). Un test le FIGE désormais — sans lui, une future
+fusion des lâchers contigus pourrait l'effacer sans que rien ne tombe.
+
+**Chiffre corrigé au passage** : les blocs de documentation du schéma 29 citaient encore l'accord
+« 18 cas sur 22 (81,8 %) », qui était le chiffre CIRCULAIRE d'avant la correction de méthode. Le
+bon est **15 / 15 = 100 %**, compté par ÉVÉNEMENT crédité distinct.
+
+**Gates** : `go test ./...` (CGO, hors `himap`) EXIT=0, `go vet` 0, golangci-lint **0 issues**,
+`gofmt` propre ; vitest **542 fichiers / 5 616 tests VERT**, typecheck cache purgé VERT, eslint
+0 erreur. `openapi.yaml` et `generated.ts` régénérés.
 ## [2026-08-31] CTF — le retour au contact TRANCHÉ par la mesure, la doc corrigée — Complété
 
 L'utilisateur demandait plus concret sur deux points restés flous. L'un des deux se referme.
