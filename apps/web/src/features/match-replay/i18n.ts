@@ -281,6 +281,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       vip: 'Est le VIP',
       hill: 'Tient la colline',
       zone: 'Vient de prendre une base',
+      bomb: 'Vient de faire sauter la bombe',
     },
     equipmentUsage: {
       title: "Usages d'équipement",
@@ -625,6 +626,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       vip: 'Is the VIP',
       hill: 'Holding the hill',
       zone: 'Just captured a stronghold',
+      bomb: 'Just detonated the bomb',
     },
     equipmentUsage: {
       title: 'Equipment usage',

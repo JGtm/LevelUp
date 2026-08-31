@@ -111,6 +111,24 @@ var namedStatSlots = map[string]map[statSlotKey]statSlot{
 	ObjectiveTypeVip: {
 		{22, sideA}: {Stat: StatVipSelected},
 	},
+	// ASSAUT : `comp 0 A` des slots de JOUEUR porte le point de mode, et en Assaut un point de
+	// mode vaut UNE EXPLOSION DE BOMBE — rien d'autre ne fait bouger le score (releve A0.3 du
+	// lot A, 9 films : « l'EXPLOSION se date, l'ARMEMENT n'a aucun increment propre »). La
+	// confrontation A4 le tient sur MOITIES DISJOINTES : la somme des slots joueurs vaut
+	// exactement les explosions du film, 4/4 en recherche et 4/4 en verification, controle de
+	// lecture 37/37 sur les morts.
+	//
+	// C'est le MEME emplacement que `flag_captures` en CTF, ou il est marque redondant parce
+	// que `21 A` le redit ; en Assaut il est la SEULE source, donc il n'est pas redondant.
+	//
+	// Les emplacements de la bande de mode (comps 20 a 27) sont VIDES en Assaut : les huit
+	// autres statistiques de la famille `Bomb` du binaire (`BombPlants`, `BombDefusals`,
+	// `BombPickUps`...) ne sont repliquees nulle part dans le film, et l'API n'en publie
+	// aucune non plus (payload GetMatchStats des 3 variantes, 2026-08-31 : le bundle `Stats`
+	// ne porte que `CoreStats` et `PvpStats`, et la chaine « bomb » n'apparait nulle part).
+	ObjectiveTypeBomb: {
+		{0, sideA}: {Stat: StatBombDetonations},
+	},
 }
 
 // Noms canoniques des STATISTIQUES, tels que `match_objective_stats` les nomme et que le
@@ -141,6 +159,7 @@ const (
 	StatZoneCaptures       = "zone_captures"
 	StatZoneSecures        = "zone_secures"
 	StatVipSelected        = "vip_selected"
+	StatBombDetonations    = "bomb_detonations"
 	StatKills              = "kills"
 	StatAssists            = "assists"
 )
@@ -255,7 +274,18 @@ func rawSeriesByRound(recs []StatRecord, key statSlotKey, teams bool) map[int]ma
 		// sinon elle fausse ce choix. Mesure : sur la suite (1, -115, 1), la plus longue
 		// sous-suite non decroissante retenue devenait (-115, 1), ce qui datait
 		// l'evenement de la DERNIERE emission au lieu de la premiere.
-		if val < 0 || (key.Comp == modeScoreComp && val > statMaxModeScore) {
+		if val < 0 {
+			continue
+		}
+		// LE SCORE DE MODE EST BORNE SUR SES DEUX CANAUX, pas seulement sur celui qu'on lit.
+		// Les deux valeurs d'un composant sortent de la MEME emission : un canal aberrant
+		// prouve que l'emission etait mal alignee, et la valeur de l'autre ne vaut rien non
+		// plus. Mesure du 2026-08-31 sur 65 films (3 986 enregistrements joueur porteurs du
+		// composant 0) : le canal B vaut ZERO dans 98,3 % des cas, et l'enregistrement
+		// `ce083875` slot 16 a 219075 ms porte A=66 avec B=16635 — un saut de 66 unites que
+		// [incrementTimes] transformait en 66 explosions publiees au meme instant. Sa seule
+		// marque distinctive est ce B hors domaine ; son A passait la borne.
+		if key.Comp == modeScoreComp && !modeScoreInDomain(v) {
 			continue
 		}
 		if raw[r.Slot] == nil {

@@ -1,3 +1,85 @@
+## [2026-08-31] Assaut — la bombe explose enfin dans le rejeu, et `RealRounds` cesse de tronquer One Bomb — Complété
+
+**Le lot A du 27/08 s'était arrêté au DIAGNOSTIC** : `comp 0 A` des slots joueur réplique les
+points de mode (moitiés disjointes 4/4 + 4/4, contrôle morts 37/37), mais rien n'était publié. La
+reprise supposait qu'il fallait d'abord re-interroger l'API sous le bon nom de famille
+(`BombStats` et non `AssaultStats`). **C'est réfuté, et par la mesure** : dump du payload
+`GetMatchStats` BRUT de 3 matchs couvrant les 3 variantes — le bundle `Stats` ne porte que
+`CoreStats` et `PvpStats`, joueur comme équipe, et les chaînes « bomb » / « assault » n'apparaissent
+NULLE PART. Le binaire déclare pourtant les 9 stats de la famille `Bomb` (`14381e790`..) : le moteur
+les calcule, le service ne les expose pas. **Le film est la seule source.**
+
+**LE VRAI BLOCAGE ÉTAIT AILLEURS, et il fallait le lever AVANT de publier.** Une manche d'Assaut
+One Bomb porte au plus UNE émission de score, donc sa plus longue suite croissante vaut 2 — sous le
+seuil de 3 de `statMinRoundRun`. Mesure : sur les 3 films One Bomb, seule la manche 0 survivait et
+**8 explosions sur 11 étaient perdues**. Publier dans cet état aurait montré 1 explosion sur 4 —
+l'ordre de reprise (publier, puis corriger les manches) était donc inversé.
+
+**Second critère d'admission**, en OU avec le premier : une manche est MATÉRIELLE si elle porte
+>= 25 enregistrements de slot joueur ET >= 10 % de ceux de la manche la plus fournie du film. Les
+deux populations, mesurées sur **65 films / 227 manches brutes** : ancrage fortuit <= **5,84 %**
+(`bfcd1175` manche 6, un film de Slayer — mode sans manche), manche réelle >= **21 %** (`df8fcbef`
+manche 1 : 45/212). Dix pour cent se pose au milieu du vide. **Contrôle HORS ÉCHANTILLON** : 53
+films échantillonnés PAR MODE, **aucune manche dans la bande interdite 7 %..15 %**. Les deux
+contre-exemples historiques tiennent (`53ce4390` score 1 -> 2 104, `1bc77d2e` 1 -> 1 569).
+
+**Un piège payé en route** : la première publication a sorti **66 explosions au même instant** sur
+`ce083875` — un enregistrement `comp 0` à `A=66, B=16635` que `incrementTimes` déroulait en 66
+événements. Son A passait la borne ; seul le B le trahissait. Mesure sur 3 986 enregistrements :
+**le canal B vaut ZÉRO dans 98,3 % des cas**, et les 4 hors domaine du corpus d'Assaut sont
+exactement les 4 aberrations connues. `modeScoreInDomain` borne désormais les DEUX canaux — un
+enregistrement légitime à `B=1` (une vraie explosion à 947537 ms) survit, exiger `B=0` l'aurait jeté.
+
+**PUBLIÉ** : `ObjectiveTypeBomb` + `bomb_detonations` (`namedStatSlots`, ligne consignée à la TSV du
+registre), et côté web un sixième genre de marque de fiche — un INSTANT tenu 2,5 s, comme la prise
+de base, parce que rien n'attribue le PORT de la bombe. **Gate A5 : 26 explosions attribuées sur les
+28 datées du relevé A0.3 figé (92,9 %), à la milliseconde, 0 publiée hors relevé.** Les 2 manquantes
+n'ont AUCUN slot de joueur porteur — vérifié en imprimant tous les enregistrements `comp 0` de ces
+deux manches, le point n'existe que sur le slot d'ÉQUIPE.
+
+**Gates** : `go test ./...` vert (seul `internal/himap` sort en timeout — lenteur connue, hors
+diff), golangci-lint 0 issue, vitest 125 fichiers / 1 937 tests, typecheck cache purgé, eslint 0
+erreur. **Avant le gate visuel** : aucun match d'Assaut n'a d'artefact en cache (0/9) — il faut
+recuire (`cmd/replay-build` ou `levelup backfill-replay`).
+
+**Prochaine étape** : le SON de l'explosion — l'événement existe désormais, les sons sont extraits
+et rendus, il ne manque que la DÉSIGNATION du stem par l'utilisateur (une ligne dans
+`OBJECTIVE_SOUND_STEMS`). État complet : `.ai/V7.5/ETAT_ASSAUT_2026-08-31.md`.
+
+## [2026-08-31] Véhicules — la voie `.mvar` est tranchée par la négative pour les cartes officielles — Complété
+
+Question utilisateur : « lesquels sont sur quelle map, véhicules aléatoires ou non, points de spawns
+et cooldown ». Corpus re-téléchargé (`mapobj-build --all --dry-run --save-mvar`) : **224 fichiers
+`.mvar` sur 121 cartes**, 2 échecs 404.
+
+**LE RÉSULTAT QUI COMMANDE LES AUTRES** : **212 véhicules posés, écrasante majorité de TOURELLES**
+(`unsc_turret` 105 sur 38 cartes, `shade_turret` 30 sur 13). **Fragmentation, Deadlock, Highpower,
+Oasis, Behemoth ne portent qu'une tourelle à leur `.mvar`** — les seules cartes à vrais véhicules
+sont des cartes FORGE (`Starboard` : banshee, scorpion, warthog, razorback, wasp ; `Salvation`,
+`Cliffside`, `Goliath`). Même mécanisme que l'extinction des socles d'arme : une carte DEV pose ses
+objets dans le scénario du `.module`, pas dans la variante. **La question notée « décisive » au
+registre est tranchée : la voie `.mvar` ne répondra jamais pour les cartes officielles.**
+
+**Craquage** : 2 `type_id` `vehi` de plus nommés par murmur3 (contrôle 15/15) —
+**`-105823600 = warthog_razorback`** (confirme l'hypothèse posée sur l'emprise, identique au
+Warthog) et **`2128426546 = mongoose_gungoose`**. 17 des 21 nommés ; vivier de 108 noms épuisé pour
+les 4 restants, dont `1029649325` (22 exemplaires / 10 cartes).
+
+**Aléatoire — deux niveaux à distinguer** : l'EMPLACEMENT nomme son véhicule (contrairement aux
+socles d'arme, génériques), mais le preset de spawner du binaire porte `forceRandomVehicle` à côté
+de `forceRandomWeapon` / `forceRandomEquipment`, avec `vehicles`, `terrainFilters`,
+`airVehiclePrerequisiteCount`. La randomisation est un réglage de MODE, jamais de carte.
+
+**Cooldown MESURÉ, par EMPLACEMENT** : `#8/1[0]/#4` présent sur 212/212 (valeurs 1, 20, 30, 45, 60,
+88, 120, 180, 240 s), `#5` sur 206/212. La table de champs du binaire liste `m_abandonedTime`,
+`m_respawnTime`, `m_initialSpawnDelay` dans cet ordre — avec `#4 >= #5` partout, `#4` est le délai de
+réapparition. **C'est un réglage d'auteur, pas une constante de classe** : `unsc_turret` porte 30,
+60, 88, 120 et 180 s selon la carte.
+
+**Prochaine étape** : lire le scénario (`scnr`) des `.module` — `internal/himap` lit déjà index,
+BSP, géométrie et callouts, mais pas les placements d'objets de scénario. État complet :
+`.ai/V7.5/ETAT_VEHICULES_2026-08-31.md`.
+
 ## [2026-08-30] Sons — le merge ramassage fournit les déclencheurs, les quatre sons muets sont câblés — Complété
 
 **Le merge `dcbc6e458` (chantier ramassage, schémas 25-28) apporte exactement ce qui manquait

@@ -644,11 +644,11 @@ export interface ReplayText {
    * un même objet se retrouve d'un mode à l'autre, et la fiche ne connaît pas le mode.
    *
    * DEUX RÉGIMES DANS LA MÊME TABLE, ET LES LIBELLÉS DOIVENT LE DIRE : `flag`, `skull`, `vip`
-   * et `hill` sont des ÉTATS qui durent — « porte », « est » ; `zone` est un ÉVÉNEMENT tenu
-   * quelques secondes — « vient de prendre » — parce que la donnée n'attribue à un joueur que
-   * l'INSTANT de la prise, jamais la durée d'une capture.
+   * et `hill` sont des ÉTATS qui durent — « porte », « est » ; `zone` et `bomb` sont des
+   * ÉVÉNEMENTS tenus quelques secondes — « vient de » — parce que la donnée n'attribue à un
+   * joueur que l'INSTANT, jamais la durée d'une capture ni le port de la bombe.
    */
-  objectiveCarry: Record<'flag' | 'skull' | 'vip' | 'hill' | 'zone', string>
+  objectiveCarry: Record<'flag' | 'skull' | 'vip' | 'hill' | 'zone' | 'bomb', string>
   /**
    * LE TABLEAU DES USAGES D'ÉQUIPEMENT (page match, onglet Chronologie). Bloc à part parce que
    * ces textes ne servent PAS le rejeu lui-même : ils servent son BILAN, une autre surface.
