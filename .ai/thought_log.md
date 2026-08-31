@@ -81176,3 +81176,44 @@ pas de l'instrument, qui lit l'archetype et le decoupage i0 DU film.
 a TRADUIRE les 5-7 valeurs MPP en tags `vehi` via `himap.ModuleIndex` (gate 4 / voie C du cadrage)
 pour obtenir les noms lisibles (Warthog, Ghost...). Puis i21 (visee vehicule) et V2 (spawns, qui
 s'appuie sur la position de naissance du record de creation, desormais lisible).
+
+## [2026-08-31] Vehicules lot V4 — sprites vue de dessus rendus depuis les modeles 3D — Complete
+
+**Contexte** : lot V4 (le plus long), sprites vue de dessus teintables pour le rejeu 2D. Agent
+Opus, rapport `.ai/V7.5/film_re/V4_RAPPORT_SPRITES_2026-08-31.md`. Cache Go DEDIE (gocache_v4),
+CC winlibs.
+
+**Decision technique principale** : rendu maison, cha\u00eene `vehi -> hlmt -> mode (render_model)
+-> triangles -> rasterizer top-down local -> PNG silhouette+alpha`. Seul maillon neuf = le
+resolveur du tag `vehi` ; le reste reutilise l'existant (`NewRenderModelAsset`, `Rendu` du
+paquet himap, deja en prod pour les fonds de carte). Axe HAUT = Z (repere moteur X=avant,
+Y=gauche, Z=haut), orientation canonique nez en haut (+X -> haut image, remap (x,y,z)->(-y,x,z)).
+Jalon 1 franchi ET regarde a l'oeil (superviseur) : Warthog top-down reconnaissable (chassis 4
+roues), et planche des 13 verifiee visuellement (warthog/mongoose/scorpion/wasp/falcon/ghost/
+banshee/wraith/chopper/phantom/pelican/skiff/shade tous reconnus).
+
+**Trois pieges resolus (non anticipes par le scout)** : (1) `color.RGBA` de Go est
+alpha-premultiplie -> blanc vire au gris ; corrige en `image.NRGBA`. (2) les tags `vehi` ne
+vivent que dans la variante `any`, les `mode` dans `pc` REPARTIS entre `pc/globals` et
+`pc/multiplayer+common` -> index complet ~16,7 Go > 12,6 libres, d'ou un RENDU EN DEUX PASSES
+complementaires (himodule charge par os.ReadFile complet). (3) faux positif du balayage d'octets
+(`hlmt 0x1f` = l'entier 31, `mode 0x00003a73` parasite) deraillait 15 vehicules -> filtre
+`minTagIDVehicule = 0x10000` + resolveur RECURSIF dans les hlmt composites (Ghost = hlmt parent
+-> 12 hlmt enfants).
+
+**Resultats observes** : 13 sprites livres dans `.ai/V7.5/film_re/sprites_v4/`, format
+teintable (blanc + alpha) compatible du pipeline web existant (`tintedIconCanvas`). Code :
+`internal/himap/vehicules.go` (RefModeleVehicule recursif + filtre, GroupeVehi, EntreesDuGroupe),
+`internal/himap/objet_isole.go` (RenduObjetIsole, SpriteObjetPNG), `cmd/vehicle-sprite/`
+(main/scan/render mode curate/classify). gofmt/build/vet propres, seuils tenus.
+
+**Reste** : desambiguer les variantes d'un meme chassis (Rockethog/Razorback partagent le mode
+Warthog ; Gungoose partage Mongoose) -> top-down identique, distinguer exige de composer
+l'armement au niveau `vehi` (hors lot). Bruit interne mineur (maillages d'etat detruit rendus
+par-dessus, invisibles au downscale). Deux passes obligees tant que himodule charge tout le
+module en RAM.
+
+**Conclusion / prochaine etape** : sprites LIVRES, envoyes a l'utilisateur (planche). A brancher
+au rejeu quand le calque vehicules existera (apres V2). Mise a jour de l'artefact « Le Garage »
+avec les sprites + les sons finaux de V3 en UNE passe (V3 reecrit le dossier sons au moment de
+ce commit, ne pas republier le catalogue sonore depuis un dossier en cours de modification).
