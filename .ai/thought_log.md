@@ -78494,3 +78494,46 @@ le complement de la couverture modale.
 **Prochaine etape.** Possible : porter la couverture aux records non-modaux exigerait la table
 runtime `0x1451f98d0` (hors portee hors ligne). Gate visuel du rejeu 2D (le cap des tirs sur la
 carte) a la main de l'utilisateur.
+
+---
+
+## [2026-08-31] Recherche : vitalite du film (i4/i5) et « MODAL = RATE ? » — Complete
+
+**Statut : Complete.** Deux questions utilisateur tranchees sur pieces, deux instruments
+`_test.go` (garde `LOT1_TRAME_FILM`) + NOTE `.ai/V7.5/film_re/NOTE_VITALITE_ET_MODAL_2026-08-31.md`.
+Perimetre `internal/analysis/filmdec`. Corpus 000d5950 / 01e1f945 / 00502e52. gofmt + go vet verts.
+
+**Q1 — la vitalite du film est-elle une decouverte, ou ce que le rejeu affiche deja ?** VERDICT :
+i4 (`object-body-vitality`, sante, [-1,1]->frac[0,1]) et i5 (`object-shield-vitality`, bouclier,
+[0,4]->frac[0,1], surbouclier = quantum brut Q>64) sont EXACTEMENT `BipedPosition.HealthAt()` /
+`ShieldAt()` — que le rejeu 2D publie DEJA en `Point.Hp`/`Point.Sh` (`replay/build.go:647-651`,
+`replay/document_aim.go`), alimente par `ScanFilmBipedPositions(CaptureDirs)` (build.go:218). Ce
+n'est PAS une source distincte ni plus precise : c'est la vitalite canonique du film, deja cablee.
+Mesure (instrument `lot1_vitalite_source_research_test.go`) : couverture sante ~0,5-0,6 %,
+bouclier ~16-28 % (le film ne replique la vitalite qu'au CHANGEMENT — structurel, pas un defaut) ;
+temoin de forme i5 tous dans [0,64] sauf le film a surbouclier (01e1f945, 6,6 % Q>64, jusqu'a 3,5).
+La fiche PRODUIT (match view web) est une AUTRE surface : agregat API `DamageDealt`/`DamageTaken`
+(`sync/transforms.go:323`, `sync/schema.go:219`), pas la vitalite par instant du film.
+
+**Q2 — « modal = rate ? »** VERDICT : « MODAL != RATE » TENU sur 3 films. Un tir modal (0xD2 t36,
+0 cible 0 composante) PEUT toucher ; son coup au but est range dans un `damage_aftermath` (0xC0 t0)
+SEPARE. Instrument `lot1_modal_touche_research_test.go` : appariement attaquant(ref0 tir) vs
+responsable(ref1 degat), meme espace domaine-1, fenetre +/-250 ms, soins exclus. Discriminant = le
+RATIO au temoin decale (T+3s), PAS le taux absolu (plafonne par la densite des degats). Coincidence
+meme-tireur : AVANT 1,6-16,2x le temoin, ARRIERE 4,9-18,2x. Nuance chiffree : taux absolu partiel
+(16-21 % a +/-250ms, 28-33 % a +/-500ms) car (a) damage_aftermath sous-replique, (b) vrais rates
+existent. On tranche : la partie « coup au but » n'est JAMAIS dans le tir modal — elle vit dans le
+0xC0.
+
+**Correction de metrique assumee.** Le seuil ABSOLU pre-enregistre (>=25 %) etait le mauvais
+discriminant (il teste la densite d'echantillonnage, pas l'hypothese) ; remplace par le ratio
+au temoin decale (avant+arriere), documente dans l'en-tete de l'instrument et la NOTE. L'instrument
+ne « fail » jamais (readout t.Logf) — revision transparente, pas un gate desactive.
+
+**Decouverte notee, NON traitee (hors perimetre).** L'en-tete de `filmdec/fire_events.go` affirme
+« il n'y a pas de record de tir manque » ; en tension avec 57-86 % de tirs modaux pour ~16-20 % de
+coincidence degat meme-tireur. Coherent avec un `action_weapon_fire` emis a chaque tir (touche OU
+rate). A revoir si le sujet revient.
+
+**Prochaine etape.** Rien de bloquant. Le lien exact tir->victime reste hors portee hors ligne
+(boucles cibles/composantes = largeur runtime, table 0x1451f98d0).
