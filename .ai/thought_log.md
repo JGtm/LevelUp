@@ -106,12 +106,32 @@ L'utilisateur a créé `contact@` (et non le `privacy@` proposé) : bascule fait
 corrigé en conséquence — il annonçait « alias dédié à ces demandes », ce qui aurait été FAUX
 pour une adresse de contact générale.
 
+**QUATRIÈME PASSE — dosage de la sollicitation de don.** L'utilisateur : « c'est pas too much de
+le mettre partout ? ». Recensement des trois emplacements et arbitrage : bouton Sponsor du dépôt
+(GARDÉ — c'est GitHub qui le dessine dans sa propre chrome, mécanisme first-party, le bout poli
+du spectre : ni bandeau, ni section de README, ni bot qui commente les issues) ; colonne
+« Soutenir » du pied de page in-app (GARDÉE — un pied de page est fait pour ça, et la note dit
+POURQUOI, l'hébergement) ; **écran de connexion (RETIRÉ)**. Ce troisième emplacement était une
+initiative non demandée : solliciter un don avant que la personne ait vu quoi que ce soit du
+produit sonne quémandeur. La variante minimale garde confidentialité + code source + CSinsight.
+Test de non-régression explicite : « AUCUNE sollicitation de don avant usage du produit » —
+l'intention est écrite dans le test, pas seulement dans un commentaire.
+
+**Correction d'une affirmation.** J'avais annoncé que `FUNDING.yml` pose un bouton « sur chaque
+issue et pull request » — formulation qui exagère l'intrusion. C'est UN bouton dans la chrome de
+dépôt de GitHub (rangée Star/Fork, plus une carte « Sponsor this project » en barre latérale
+d'accueil), pas un élément injecté dans chaque ticket. La doc GitHub sur `FUNDING.yml`
+(consultée) ne documente pas le placement — ne pas ré-affirmer plus que ça sans preuve.
+
 **Reste à faire** : (1) gate visuel — la main à l'utilisateur, en clair et en sombre, sur l'écran
 de connexion, en bas d'une page dense, et sur /privacy ; (2) poser côté messagerie la règle de
 tri sur le destinataire `contact@` — c'est elle qui fait tout le travail anti-spam, le code ne
 peut pas la poser ; (3) `PRIVACY_UPDATED_AT` est à faire avancer à chaque modification de fond,
-et la doctrine est écrite en tête du fichier. Branche `worktree-footer-liens` (worktree dédié
-depuis `feat/v75`).
+et la doctrine est écrite en tête du fichier ; (4) **la CI n'a PAS tourné** : `wt/**` n'est pas
+dans le trigger `push` de `ci.yml` (main, feat/**, feature/**, fix/**, hotfix/**, refactor/**,
+perf/**, docs/**, chore/**, integration/**) et le trigger `pull_request` est limité aux PR vers
+`main`. Une branche `wt/*` n'obtient sa CI qu'au merge dans `feat/v75`. Branche
+`wt/footer-liens` (worktree dédié depuis `feat/v75`), poussée.
 Rien de commité.
 ---
 
