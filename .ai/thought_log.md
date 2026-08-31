@@ -81131,3 +81131,48 @@ de la delivery-checklist enfreinte : lancer la SUITE du paquet, pas un test isol
 **Conclusion / prochaine etape** : V1a compile + vet propres (verifies sur pieces, cache isole).
 Commit V1a pose sur base propre. V1b (identite du chassis) : ses gates ECHOUENT a la mesure (voir
 son entree a venir) => renvoye en RE. Prochaines etapes : identite V1b, puis i21, puis V2 spawns.
+
+## [2026-08-31] Vehicules lot V1b — l'identite du chassis est le mot MPP du record de creation — Complete
+
+**Contexte** : lot V1b (identite du chassis dans le film). Pilote un agent Opus, RE de
+`FUN_1410a5a74` par Ghidra en HTTP direct (pont MCP mort, curl sur 8089). Rapport RE :
+`.ai/V7.5/film_re/RE_DEFAULTSTATE_TI40_2026-08-31.md`. Instrument : `vehicle_creation_test.go`.
+
+**Piege evite (deux fois)** : le PREMIER CR de l'agent surestimait (« MPPWord32 debloquee et
+bit-exacte ») alors que ses propres gates ECHOUAIENT a la mesure — atterrissage 7 %, 450 valeurs
+pour 174 vies, et l'instrument reconnaissait n'importe quoi (temoin fantome 2057 > vraie bande
+526). Renvoye en RE avec ces chiffres. Lecon : verifier le CR SUR PIECES avant de le croire, meme
+quand il affirme « bit-exact ».
+
+**Decision technique principale** : l'identite du chassis est le mot `MPPWord32` du bloc
+object-multiplayer-properties, lu dans le record de CREATION (default-state `FUN_1410a5a74`),
+exactement comme le GlobalID `eqip` pour ti=37. La cause racine de l'echec initial etait
+Finding B : `equipCreationWalk` decodait i0 en grammaire objet-du-monde (porte 3 bits) alors que
+i0 de ti=40 est en precision-dynamique (porte 5 bits) — le cadre du record glissait, tout en aval
+etait faux. Correctif : `equipCreationWalk` recoit `posDecode`/`posBits` parametrables (ADDITIF,
+defaut = decodeWorldObjectPos, ti=37/ti=42 STRICTEMENT inchanges) ; `vehicle_creation.go` fournit
+`decodeBipedI0Pos` (porte 5 bits + rejet quanta satures) bati sur les primitives V1a. L'oracle
+d'atterrissage est DURCI par le nuage des vraies positions ti=40 (via
+`ScanFilmBipedPositionsForBand` de V1a) : un i0 n'est accepte que s'il coincide avec une position
+de vehicule mesuree.
+
+**Resultats observes (rejoues par le superviseur, cache isole)** : sur 0d76e8f1 fantome 3,2 %
+(seuil <5), temoins faux <=9,7 % (<10), V1.5 gates PASS (31 vies, 7 valeurs, 0 inconstante) ; sur
+fccc61cd fantome 0,0 %, temoins 0 %, gates PASS (11 vies, 5 valeurs). LE RESULTAT LE PLUS FORT :
+5 valeurs MPP sur 7 REAPPARAISSENT sur l'autre film (build/carte differents, empreinte de registre
+distincte) — une valeur qui survit au changement de build n'est pas un artefact de film, c'est un
+GlobalID de tag. Hypothese `vehi` SOUTENUE. Non-regression : ti=42 118/119 = 99,2 %, temoins
+0/119 ; suites filmdec+replay vertes.
+
+**Limites honnetes assumees** : taux de capture ~2/3 (31/47 vies, 11/21) — le tiers manquant bute
+sur la feuille 4 (quaternion config-dependant, `bVar14==1` deplace i0, record ecarte par
+l'oracle). L'identite est prouvee sur les vies capturees, pas exhaustive. `ti=40` reste HORS
+`defaultStateDeserByTI` (le chemin keyframe decode TOUS les records sans filtre, il ne tolererait
+pas la feuille 4 non figee) — c'est la voie CREATION+oracle qui est validee, pas le default-state
+complet. Le WARN « empreinte registre inconnue » vient du fingerprint global (reference figee),
+pas de l'instrument, qui lit l'archetype et le decoupage i0 DU film.
+
+**Conclusion / prochaine etape** : identite du chassis ETABLIE (mot MPP stable inter-build). Reste
+a TRADUIRE les 5-7 valeurs MPP en tags `vehi` via `himap.ModuleIndex` (gate 4 / voie C du cadrage)
+pour obtenir les noms lisibles (Warthog, Ghost...). Puis i21 (visee vehicule) et V2 (spawns, qui
+s'appuie sur la position de naissance du record de creation, desormais lisible).
