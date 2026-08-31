@@ -25,6 +25,11 @@ const coordScale = 100
 
 // Options règle l'assemblage du document de rejeu.
 type Options struct {
+	// Scoped (facultatif) rend le PALIER DE LUNETTE d'un slot a un instant (0 = pas a la
+	// lunette). Rempli par `BuildFromFilm` depuis les evenements `unit_zoom` du film ; nil
+	// pour un appelant qui ne dispose que de positions, auquel cas `Point.S` reste absent —
+	// ce qui se lit « pas a la lunette », le meme contrat que pour l'elevation.
+	Scoped func(slot uint32, tsUS uint64) int
 	// FrameIntervalMS : pas de temps de la grille ; 0 -> DefaultFrameIntervalMS.
 	FrameIntervalMS int
 	// MinPoints : seuil de publication d'une track ; 0 -> DefaultMinPoints.
@@ -308,6 +313,11 @@ func BuildFromFilm(matchID, titleSlug, filmDir string, opt Options) (ReplayDocum
 	opt.GrappleReads = grappleReads
 	// POSES d'equipement : records de CREATION de l'archetype 37, sur la MEME horloge
 	// (cf. equipment_placements.go — decodage, journal et refus y vivent ensemble).
+	// LA LUNETTE (schema 24) : les bascules vivent dans la liste d'evenements en tete de
+	// paquet, pas dans les records — un balayage separe, sans verrou (il ne touche aucun etat
+	// global de decodage). Le maintien est borne : au-dela, on cesse d'affirmer plutot que de
+	// prolonger une entree dont la sortie n'a pas ete lue (cf. filmdec.ZoomStateAt).
+	opt.Scoped = filmdec.ZoomStateAt(filmdec.ScanFilmZoomEvents(filmDir), zoomHoldUS)
 	opt.Placements, opt.PlacementStats = decodeFilmPlacements(filmDir, &worldRange)
 	// SOCLES : archetypes 42 (armes) et 37 (power-ups), sur la MEME horloge, AUX LARGEURS MPP que
 	// la calibration des POSES vient de mesurer sur ce film (cf. build_ground_weapons.go).
@@ -399,7 +409,7 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 
 	origin := sorted[0].TimestampUS
 	step := uint64(interval) * 1000
-	doc.Tracks = decimateTracks(sorted, origin, step, opt.minPoints())
+	doc.Tracks = decimateTracks(sorted, origin, step, opt.minPoints(), opt.Scoped)
 	doc.FrameCount = frameSpan(sorted, origin, step)
 	doc.DurationMS = doc.FrameCount * interval
 	doc.Bounds = boundsOf(doc.Tracks)
@@ -600,7 +610,8 @@ func keepShotsOfPublishedTracks(shots []Shot, tracks []Track) []Shot {
 // decimateTracks projette les positions sur la grille de frames (un point par slot et par
 // frame, le premier observé gagne) et produit une track par slot, dans l'ordre de première
 // apparition.
-func decimateTracks(sorted []filmdec.BipedPosition, origin, step uint64, minPoints int) []Track {
+func decimateTracks(sorted []filmdec.BipedPosition, origin, step uint64, minPoints int,
+	scoped func(slot uint32, tsUS uint64) int) []Track {
 	type acc struct {
 		pts       []Point
 		lastFrame int
@@ -633,6 +644,13 @@ func decimateTracks(sorted []filmdec.BipedPosition, origin, step uint64, minPoin
 		// plat », pas « inconnu » (cf. Point.P).
 		if pitch, ok := p.AimPitchDeg(); ok {
 			pt.P = pitchForJSON(pitch)
+		}
+		// LUNETTE : etat a bascule, d'une AUTRE source que les deux angles ci-dessus (les
+		// evenements `unit_zoom` du film, pas le record de position). On le consulte donc a
+		// l'instant du point au lieu de le lire dedans. Absent = pas a la lunette, jamais
+		// « inconnu » — cf. Point.S.
+		if scoped != nil {
+			pt.S = scoped(p.Slot, p.TimestampUS)
 		}
 		// Vitalité du MÊME record que la position (i4 / i5). La décimation garde le PREMIER
 		// échantillon de chaque frame : si deux records du même slot tombent dans la même
