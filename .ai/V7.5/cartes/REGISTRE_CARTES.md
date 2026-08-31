@@ -1400,7 +1400,7 @@ qui demande une mesure par region que la chaine ne produit pas encore.
 | Scarlett's Landing | `79042fc0` | 1 | 966x1100 | 9/9 | 8 | 308 polys | VALIDEE 28/08 |
 | Warehouse | `5b12d6d9` | 1 | 723x1352 | 7/7 | 9 | 588 polys | VALIDEE 28/08 |
 | Snowbound | `410f1c01` | 23 | 1349x1172 | 42/43 | 23 | 4521 polys | VALIDEE 30/08 |
-| Absolution | `78da545f` | 21 | 1188x1303 | 21/22 | 60 | maillage illisible | BLOQUEE — inexploitable (bouillie centrale) tant que le maillage TSTR/FSTR n est pas lu |
+| Absolution | `78da545f` | 21 | 1188x1303 | 21/22 | 60 | maillage illisible | VALIDEE 31/08 — maillage TSTR/FSTR lisible |
 | Cliffside | `4bffd021` | 18 | 1176x1348 | 14/14 | 44 | 1146 polys | VALIDEE 30/08 |
 | Fortress | `0d1c9255` | 17 | 1147x1285 | 29/29 | 75 | 989 polys | VALIDEE 30/08 |
 | High Ground | `bb7b78ae` | 15 | 1754x1202 | 19/20 | 24 | 3596 polys | VALIDEE 30/08 |
@@ -1409,13 +1409,13 @@ qui demande une mesure par region que la chaine ne produit pas encore.
 | Refuge | `41217472` | 10 | 1591x1611 | 45/46 | 83 | 2666 polys | VALIDEE 30/08 |
 | Smallhalla | `98783453` | 9 | 1989x1431 | 52/52 | 29 | 1379 polys | VALIDEE 30/08 |
 | Shogun | `33075df7` | 9 | 2920x2213 | 13/13 | 26 | 16683 polys | VALIDEE 30/08 |
-| Insolence | `d5c5eb4f` | 7 | 3001x2867 | 38/38 | 41 | maillage illisible | BLOQUEE — inexploitable (bouillie centrale) tant que le maillage TSTR/FSTR n est pas lu |
+| Insolence | `d5c5eb4f` | 7 | 3001x2867 | 38/38 | 41 | maillage illisible | VALIDEE 31/08 — maillage TSTR/FSTR lisible |
 | Flood Gulch | `7097bc4f` | 6 | 2153x2767 | 22/22 | 8 | 7125 polys | VALIDEE 30/08 |
 | 944396dd-5661-4a16-b1d8-a6053f762c55 | `944396dd` | 1 | 2220x2638 | 20/20 | 21 | 944 polys | VALIDEE 30/08 |
 | Thunderhead | `28a3ac28` | 4 | 3001x2493 | 46/46 | 5 | pas de maillage | VALIDEE 30/08 — image des Heavies |
 | Thunderhead Heavies | `37bc3df6` | 4 | 3001x2632 | 36/36 | 5 | pas de maillage | VALIDEE 30/08 |
 | Vallaheim Firefight | `e8268e75` | 2 | 1571x2573 | 5/5 | 48 | 17029 polys | HORS PERIMETRE — mode Firefight non supporte par le rejeu 2D (verdict 30/08) |
-| Insolence Heavies | `2a339c65` | 1 | 3001x2867 | 31/31 | 41 | maillage illisible | BLOQUEE — inexploitable (bouillie centrale) tant que le maillage TSTR/FSTR n est pas lu |
+| Insolence Heavies | `2a339c65` | 1 | 3001x2867 | 31/31 | 41 | maillage illisible | VALIDEE 31/08 — maillage TSTR/FSTR lisible |
 | Outlook | `ea7b30e6` | 1 | 1516x1592 | 9/9 | 4 | 349 polys | VALIDEE 30/08 |
 | Rat's Nest | `133c0185` | 1 | 1399x2016 | 23/23 | 26 | 2423 polys | VALIDEE 30/08 |
 

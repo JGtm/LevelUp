@@ -80994,3 +80994,41 @@ echouer Absolution PLUS TOT — offset 208 au lieu de 818.
 
 **Conclusion / prochaine etape** : reprendre a l'entree 68, dont on connait desormais la taille
 exacte (13 octets) et les octets exacts. Fixer sa grammaire d'abord, le reste suivra.
+
+## [2026-08-31] TSTR/FSTR resolu : Absolution et les deux Insolence sortent de la bouillie
+
+**Statut** : Complete (les trois cartes se cuisent et sont validees par l'utilisateur).
+
+**Decision technique principale** : ne rien deviner. Trois corrections enchainees, chacune tiree
+d'une mesure, et chacune assortie de son garde-fou.
+
+1. **L'entree TBDY illisible est FRANCHIE, pas interpretee.** Le type `hkPropertyId` d'Absolution
+   lisait « 196 609 membres ». Plutot que d'inventer sa grammaire, on cherche le PLUS COURT saut
+   apres lequel tout le reste de la section se lit : 13 octets, unique, et l'entree suivante tombe
+   pile. Le type est marque OPAQUE — aucun membre invente — et un compteur `recuperations` est
+   publie par region. GARDE-FOU : Isolation en a ZERO, les trois cartes exactement une ; un
+   decodeur qui se mettrait a en recuperer beaucoup serait devenu un devineur, et ça se verrait.
+2. **Le maillage n'est pas en racine sur cette generation.** La region porte un
+   `hkaiStaticTreeNavMeshQueryMediator` qui tient le `hkaiNavMesh` par pointeur. On le cherche
+   donc par son TYPE ; le cas ambigu (deux maillages dans une region) est REFUSE plutot que
+   tranche au hasard.
+3. **Le vecteur `up` n'est pas declare.** Leur `hkaiNavMesh` porte 13 membres contre 15 chez
+   Isolation (`up` et `cachedFaceIterator` manquent). Il vaut (0,0,1) par defaut — la valeur
+   mesuree partout ou il est declare — et `Maillage.HautSuppose` dit que c'est SUPPOSE. Le temoin
+   exige les deux faces : Absolution doit l'avouer, Isolation ne doit pas.
+
+**Hypotheses REFUTEES en chemin, consignees pour ne pas etre rejouees** : l'origine d'indexation
+des tables de chaines (le vrai symptome est une DESYNCHRONISATION — `hkPropertyId` n'a pas
+cinquante membres) ; la duplication de sections par region (elles sont uniques dans les deux
+generations) ; un entier de plus sur les drapeaux de membre 0x21/0x23 (inerte sur Isolation comme
+voulu, mais Absolution echoue alors PLUS TOT, offset 208 au lieu de 818).
+
+**Resultats observes** : Absolution 1188x1265 px, 21/22 ancres, couverture 80,2 % ; Insolence
+2302x2022, 36/38, 78,0 % ; Insolence Heavies 2302x2022, 31/31, 78,0 %. Maillages : Absolution
+1 342 faces / 3 291 sommets. Leur couverture tres elevee explique d'ailleurs la bouillie : ce sont
+des cartes COUVERTES, le cas ou la substitution est indispensable — et elle ne pouvait pas s'armer
+sans maillage.
+
+**Conclusion / prochaine etape** : plus aucune carte BLOQUEE pour cause de maillage. Restent au
+registre les trois Munera/Out With A Bang (aucun objectif publie) et les trois Firefight (mode non
+gere par le rejeu, precision utilisateur du 2026-08-31).

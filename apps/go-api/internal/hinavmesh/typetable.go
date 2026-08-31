@@ -118,7 +118,7 @@ var sectionsChaines = [][2]string{
 }
 
 // lireTypes construit la table des types a partir des tables de chaines, de TNA1 et de TBDY.
-func lireTypes(buf []byte, sections map[string][2]int) (tableTypes, error) {
+func lireTypes(buf []byte, sections map[string][2]int) (tableTypes, int, error) {
 	var secTypes, secChamps [2]int
 	trouve := false
 	for _, paire := range sectionsChaines {
@@ -130,11 +130,11 @@ func lireTypes(buf []byte, sections map[string][2]int) (tableTypes, error) {
 		}
 	}
 	if !trouve {
-		return nil, fmt.Errorf("hinavmesh: fichier-tag sans table de chaines (ni TST1/FST1, ni TSTR/FSTR)")
+		return nil, 0, fmt.Errorf("hinavmesh: fichier-tag sans table de chaines (ni TST1/FST1, ni TSTR/FSTR)")
 	}
 	for _, tag := range []string{"TNA1", "TBDY"} {
 		if _, ok := sections[tag]; !ok {
-			return nil, fmt.Errorf("hinavmesh: fichier-tag sans section %s", tag)
+			return nil, 0, fmt.Errorf("hinavmesh: fichier-tag sans section %s", tag)
 		}
 	}
 	nomsTypes := chaines(buf, secTypes)
@@ -142,12 +142,13 @@ func lireTypes(buf []byte, sections map[string][2]int) (tableTypes, error) {
 
 	types, err := lireNomsTypes(buf, sections["TNA1"], nomsTypes)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
-	if err := lireCorpsTypes(buf, sections["TBDY"], types, nomsChamps); err != nil {
-		return nil, err
+	recuperations, err := lireCorpsTypes(buf, sections["TBDY"], types, nomsChamps)
+	if err != nil {
+		return nil, 0, err
 	}
-	return types, nil
+	return types, recuperations, nil
 }
 
 // lireNomsTypes decode TNA1 : nom et parametres de modele de chaque type.
@@ -195,25 +196,40 @@ func lireNomsTypes(buf []byte, sec [2]int, nomsTypes []string) (tableTypes, erro
 }
 
 // lireCorpsTypes decode TBDY : taille, parent et membres de chaque type.
-func lireCorpsTypes(buf []byte, sec [2]int, types tableTypes, nomsChamps []string) error {
-	l := &lecteurEmpaquete{buf: buf[sec[0] : sec[0]+sec[1]]}
+func lireCorpsTypes(buf []byte, sec [2]int, types tableTypes, nomsChamps []string) (int, error) {
+	corps := buf[sec[0] : sec[0]+sec[1]]
+	l := &lecteurEmpaquete{buf: corps}
+	recuperations := 0
 	for l.err == nil && !l.fini() {
+		debut := l.pos
 		idx := l.entier()
 		if l.err != nil {
 			break
 		}
 		if idx <= 0 || idx >= len(types) {
-			return fmt.Errorf("hinavmesh: TBDY, indice de type %d hors des %d types (offset %d)",
+			return recuperations, fmt.Errorf("hinavmesh: TBDY, indice de type %d hors des %d types (offset %d)",
 				idx, len(types), l.pos)
 		}
+		avant := *(&types[idx])
 		if err := lireUnCorps(l, &types[idx], nomsChamps); err != nil {
-			return fmt.Errorf("hinavmesh: TBDY, type %d (%s): %w", idx, types[idx].Nom, err)
+			// L entree est illisible. On ne devine pas son contenu : on cherche le plus court
+			// saut apres lequel TOUT le reste de la section se lit (resynchronisation.go). Sans
+			// un tel saut, l erreur remonte comme avant.
+			reprise, ok := resynchronise(corps, debut, types, nomsChamps)
+			if !ok {
+				return recuperations, erreurEntreeIllisible(idx, types[idx].Nom, debut, err)
+			}
+			types[idx] = avant // le type reste OPAQUE : aucun membre invente
+			types[idx].Opaque = true
+			l.pos, l.err = reprise, nil
+			recuperations++
+			continue
 		}
 	}
 	if l.err != nil {
-		return fmt.Errorf("hinavmesh: TBDY: %w", l.err)
+		return recuperations, fmt.Errorf("hinavmesh: TBDY: %w", l.err)
 	}
-	return nil
+	return recuperations, nil
 }
 
 // lireUnCorps decode une entree de TBDY, drapeau par drapeau.

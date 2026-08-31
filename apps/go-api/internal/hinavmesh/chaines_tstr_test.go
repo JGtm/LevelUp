@@ -3,7 +3,6 @@ package hinavmesh
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 )
 
@@ -25,9 +24,11 @@ import (
 // visible. La mesure detaillee vit dans sonde_tbdy_test.go, avec la piste des drapeaux de membre
 // 0x21/0x23 essayee et refutee.
 //
-// LE TEMOIN FIGE LES DEUX MOITIES : Isolation doit se decoder entierement, et Absolution doit
-// echouer PLUS LOIN que la section manquante. Si quelqu un retire la reconnaissance de TSTR/FSTR,
-// la seconde assertion tombe.
+// LE TEMOIN EXIGE LES DEUX : Isolation et Absolution doivent se decoder ENTIEREMENT. Absolution
+// y arrive depuis le 2026-08-31 par trois corrections enchainees — l entree TBDY illisible
+// franchie par resynchronisation mesuree, le maillage cherche par son TYPE et non par la racine
+// (sa region porte un hkaiStaticTreeNavMeshQueryMediator), et le vecteur haut suppose faute
+// d etre declare. Si l une des trois est retiree, ce temoin tombe.
 func TestLesDeuxEcrituresDeTableDeChaines(t *testing.T) {
 	const racine = `C:/Users/Guillaume/Projects/LevelUp/.ai/re_dump/navmesh`
 	lis := func(f string) []byte {
@@ -46,14 +47,22 @@ func TestLesDeuxEcrituresDeTableDeChaines(t *testing.T) {
 		t.Fatalf("Isolation : maillage vide — %d faces, %d sommets", len(m.Faces), len(m.Sommets))
 	}
 
-	_, err = Decode(lis("78da545f-a168-4a5e-9c8d-dd379067c352.blob"))
-	if err == nil {
-		t.Log("Absolution (TSTR/FSTR) se decode entierement : le reste du chemin a ete fait, " +
-			"mettre ce temoin a jour pour l exiger")
-		return
+	a, err := Decode(lis("78da545f-a168-4a5e-9c8d-dd379067c352.blob"))
+	if err != nil {
+		t.Fatalf("Absolution (TSTR/FSTR) : decodage refuse : %v", err)
 	}
-	if strings.Contains(err.Error(), "sans table de chaines") || strings.Contains(err.Error(), "sans section TST1") {
-		t.Fatalf("Absolution : le decodeur ne reconnait plus l ecriture TSTR/FSTR — regression : %v", err)
+	if len(a.Faces) == 0 || len(a.Sommets) == 0 {
+		t.Fatalf("Absolution : maillage vide — %d faces, %d sommets", len(a.Faces), len(a.Sommets))
 	}
-	t.Logf("Absolution (TSTR/FSTR) : sections reconnues, blocage restant en aval : %v", err)
+	// Le vecteur haut n est pas declare par cette generation : il est SUPPOSE, et le maillage
+	// doit le dire. Une carte qui pretendrait l avoir lu serait plus inquietante que l inverse.
+	if !a.HautSuppose {
+		t.Fatal("Absolution : le maillage pretend avoir LU son vecteur haut, alors que sa " +
+			"generation ne le declare pas")
+	}
+	if m.HautSuppose {
+		t.Fatal("Isolation : vecteur haut declare comme suppose alors que le fichier le porte")
+	}
+	t.Logf("Isolation %d faces / %d sommets | Absolution %d faces / %d sommets",
+		len(m.Faces), len(m.Sommets), len(a.Faces), len(a.Sommets))
 }
