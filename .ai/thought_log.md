@@ -54,10 +54,24 @@ la décoder hors cas vide demande de réconcilier exactement le préambule avec 
 RÉSOLU malgré 2 workflows. fire_events (19 %, cas vide) reste la source en prod. Expériences V2/V3
 supprimées (négatifs), findings dans la note.
 
-**Conclusion / prochaine étape** : >19 % = partir de l'ANCRE fire_events (positions physiques
-36/44/113) et dériver le préambule À REBOURS (pas de haut en bas). Le blessé « qui a été
-touché » passe mieux par les refs domaine 1 de damage_aftermath (départager par killsource) que
-par le R(3) du type 36. Note : `film_re/NOTE_MODELE_EVENEMENTS_2026-08-30.md`.
+**Croisement killsource (demande user) — LE MUR DU HANDLE RUNTIME** : les refs domaine-1 de
+damage_aftermath ne sont PAS des slots (mesure : ref0 2..1210, ref1 0..44, 0 dans la plage
+bipede [500,700]) — ce sont des index de la table domaine-1, résolus par l'entity manager
+RUNTIME, absent du film. C'est le MÊME mur que killsource documente pour SrcTag0
+(components_object.go : handle runtime, réfuté comme tag d'arme 0/786). Le champ SOURCE de
+damage_aftermath (FUN_14080d69c) EST ce reader = un handle, pas un tag. Donc « qui a été touché
+par son NOM » n'est PAS résoluble hors ligne depuis ces refs ; killsource couvre déjà la victime
+des KILLS (via le slot bipède du dead-state, mappé au roster). Le décodage de damage_aftermath
+reste prouvé et exploitable en AGRÉGAT (nb de coups, magnitude, soins). Piste : ref1 (0..44,
+petit/stable) = candidat « index de participant » si la table domaine-1 est un jour résolue
+(même table que le pont slot->xuid cherché ailleurs).
+
+**Agent Ghidra lancé** (demande user) sur le cadrage de la visée du type 36, à rebours depuis
+l'ancre fire_events (attaquant@36/arme@44-107/visée@113). En cours.
+
+**Conclusion / prochaine étape** : attendre le rapport de l'agent Ghidra pour le préambule visée
+(>19 %) ; le blessé par nom attend la résolution de handle domaine-1 (hors film). Note :
+`film_re/NOTE_MODELE_EVENEMENTS_2026-08-30.md`.
 
 ## [2026-08-31] Percer la trame — les deux lecteurs composites du type 36 PERCÉS (workflow) ; en-tête tir PROUVÉ, visée plausible non prouvée — En cours
 
