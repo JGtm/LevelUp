@@ -81217,3 +81217,44 @@ module en RAM.
 au rejeu quand le calque vehicules existera (apres V2). Mise a jour de l'artefact « Le Garage »
 avec les sprites + les sons finaux de V3 en UNE passe (V3 reecrit le dossier sons au moment de
 ce commit, ne pas republier le catalogue sonore depuis un dossier en cours de modification).
+
+## [2026-08-31] Vehicules lot V3 — sons reconstruits (tir + moteur par la chaine Wwise), identite de banque corrigee — Complete (en attente d'ecoute)
+
+**Contexte** : lot V3 (sons des vehicules pilotables ; tourelles deja validees le 16/08). Agent
+Opus rejouant la RECETTE_SONS_ARMES. Rapport `.ai/V7.5/film_re/V3_RAPPORT_SONS_2026-08-31.md`,
+manifeste `sons_v3_reconstruits/manifeste_v3.json` (revision 3). WAV NON commites (37 Mo,
+transitoires, regenerables depuis les chaines du manifeste).
+
+**Deux corrections payees a l'ecoute de l'utilisateur** :
+1. Premiere version : le DEPLACEMENT etait choisi par HEURISTIQUE DE DUREE (les clips les plus
+   longs du pack) = l'erreur que la recette interdit. L'utilisateur : « aucun deplacement, ce ne
+   sont que des tirs isoles » (visible sur Banshee/Wraith sans tir apparie). Corrige : le moteur
+   est un EVENEMENT (conteneur Blend pilote par RTPC de vitesse, boucle continue), reconstruit
+   par la MEME chaine que le tir (event -> couches -> gains sommes), pas par la duree.
+2. En reconstruisant proprement, decouverte d'une erreur d'IDENTITE DE BANQUE plus grave :
+   l'appariement pck->banque par INTERSECTION DE WEMS produisait des FAUX. Tranche par FNV-1
+   (mode banks-noms, la voie autoritaire). Resultat : le « moteur Wraith » etait le son du
+   DRAPEAU CTF (sb_004_mod_mp_ctf, prouve). Faux RETIRE — mieux vaut rien qu'un faux.
+
+**Resultats** : 4 banques `_veh_` CONFIRMEES par FNV-1 -> moteur + tir fiables : Wasp (moteur
+5baca8ee, boucle continue RTPC, confiance haute), Scorpion (0134da4e), Gungoose (e3082ea3),
+Warthog roquettes (28338148). Falcon : tir = mitrailleuse detachable partagee (deja validee),
+PAS de banque chassis -> moteur non reconstruit. Ghost/Banshee/Wraith/Chopper : banque chassis
+NON identifiee (matches anonymes non confirmes ; Wraith = faux prouve) -> moteur ET tir en
+attente. TIRS RECONFIRMES sur pieces (Wasp event e22a0d32 = 3 couches RandomSequence, gains
++38/+33/+31 dB sommes ; coups_lot.py applique 10^(g/20) puis somme+normalise ; cadences ->
+intervalles rafale justes). Assemblage correct.
+
+**Cause racine du perimetre reduit** : seules 4 banques `_veh_` ont un nom FNV-1 ; les autres
+vehicules Covenant/Bannis demandent de retrouver leur vraie banque parmi 712 anonymes/partagees/
+codename (leurs wems ne sont references dans le corps d'aucune banque) -> follow-up.
+
+**Artefact « Le Garage » a jour** (meme URL) : page d'ecoute Web Audio (moteur + tir des 4
+confirmes, notes honnetes pour les autres) + les 13 sprites vue de dessus de V4. En attente du
+VOTE de l'utilisateur (rafale 1re/3e personne ; moteur = bourdon soutenu).
+
+**Conclusion / prochaine etape** : apres ecoute, retenir moteur + tir par vehicule, egaliser
+-16 LUFS, livrer dans static/sounds/halo_infinite/ (join par cle canonique ; vehicules HORS
+registre non livrables tant que le registre ne les nomme pas). Follow-up : retrouver les
+banques Ghost/Banshee/Wraith/Chopper ; armes secondaires (coaxial Scorpion, missiles Wasp,
+2 armes Falcon) ; rotor Falcon.
