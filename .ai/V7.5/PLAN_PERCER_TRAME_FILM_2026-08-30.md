@@ -171,3 +171,16 @@ commit sur une branche dédiée.
   RESTE (en cours) : (a) départager quelle ref d'en-tête est le blessé (croiser killsource) +
   5 constantes de déquantification du dégât ; (b) calibrer la visée du type 36 par l'oracle de
   trame (balayage de la longueur post-visée).
+- **[2026-08-31] VICTIME résolue en slot joueur** (commit `f4967eb73`) : la réf domaine-1 de
+  damage_aftermath = (gen<<30)|(**base**+index), base ~512 = début plage bipède ; `base+index`
+  = bipède lié (joueur) à **82-89 %** sur 2 films. `slot = biped_range_lo + index` → slot→joueur
+  (pont existant). « Qui a été touché » NOMMABLE pour 872 k dégâts. Correction : ma conclusion
+  « handle irrésoluble » de la passe précédente était FAUSSE. RESTE : départager attaquant vs
+  blessé (les 2 bipèdes) ; monde chronologique pour monter le taux.
+- **[2026-08-31] TIRS MANQUÉS — brique posée** (commit à suivre) : miss = action_weapon_fire à
+  0 cible ; le compte de cibles se fiabilise avec le cadrage complet du type 36 (agent Ghidra en
+  cours). DÉNOMINATEUR posé (`TestLot1TirsManques`) : 8 tireurs distincts (les 8 joueurs),
+  distribution de tirs réaliste, via l'attaquant fire_events @36. Chaîne visée : précision par
+  arme/joueur = tirs touchant / tirs totaux.
+- **[2026-08-31] Aim >19 %** : agent Ghidra dédié lancé sur le préambule du type 36 (dérivation
+  à rebours depuis l'ancre fire_events 36/44/113). En cours.
