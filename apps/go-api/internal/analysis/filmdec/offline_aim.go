@@ -56,6 +56,39 @@ type componentDirs struct {
 	HasYaw   bool   // i21 unit-desired-aiming-vector présent
 	YawRaw   uint32 // R(12) : cap de VISÉE quantifié sur le tour complet
 	PitchRaw uint32 // R(11) : élévation de visée quantifiée
+	// QUEUE D'i21 — les trois drapeaux et le SECOND vecteur, jusqu'ici lus puis jetés.
+	// Ils sont capturés sous la même option CaptureDirs, dans le même record : cf.
+	// readAimingVectorComponent pour la grammaire et pour ce que le moteur en fait.
+	AimFlag0 bool // +0x724 bit0 : les DEUX directions coïncident -> une seule est transmise
+	AimFlag1 bool // +0x724 bit1 : drapeau accolé à la direction A. Valide si HasYaw.
+	HasAimB  bool // le SECOND vecteur est présent (donc AimFlag0 == false) et lu en entier
+	// YawRawB / PitchRawB : le second couple (cap, élévation), même largeurs que le premier.
+	YawRawB, PitchRawB uint32
+	AimFlag2           bool // +0x5f8 bit0 : drapeau accolé à la direction B. Valide si HasAimB.
+	// MaskBits : le MASQUE DE COMPOSANTS du record, un bit par index déclaré (bit i = index i).
+	// Il voyage DANS le record, et c'est tout son intérêt : le hook de diagnostic
+	// (recordMaskHook) tire AVANT les filtres de post-traitement (DropIsolated,
+	// DropTeleports), donc un appelant qui appaire ses appels aux positions renvoyées
+	// s'appaire à côté dès qu'un record est écarté. Renseigné sous CaptureDirs.
+	MaskBits uint64
+	// MaskOver signale qu'un index >= 64 a été déclaré et n'a donc pas pu entrer dans MaskBits.
+	// Jamais vu sur les archétypes bipèdes (i0..i58) ; sans ce drapeau, un masque tronqué se
+	// lirait comme un masque complet.
+	MaskOver bool
+}
+
+// maskBitsOf compacte la liste d'index de composants d'un record en un masque de 64 bits.
+func maskBitsOf(idx []int) (uint64, bool) {
+	var m uint64
+	over := false
+	for _, id := range idx {
+		if id < 0 || id >= 64 {
+			over = true
+			continue
+		}
+		m |= 1 << uint(id)
+	}
+	return m, over
 }
 
 // aimYawBits / aimPitchBits : largeurs des deux scalaires de FUN_14076e0ec (i21
@@ -298,19 +331,61 @@ func readForwardComponent(pay []byte, at, total int, out *componentDirs) (int, b
 }
 
 // readAimingVectorComponent consomme i21 (unit-desired-aiming-vector, FUN_14076df7c) et
-// capture le couple (cap, élévation) de visée :
+// capture le couple (cap, élévation) de visée, PUIS la queue du composant :
 //
-//	R(1) flag0 ; FUN_14076e0ec = R(12) cap + R(11) élévation ; ...
+//	R(1) flag0 ; FUN_14076e0ec = R(12) cap + R(11) élévation ; R(1) flag1 ;
+//	si flag0 == 0 : FUN_14076e0ec (second couple) + R(1) flag2.
+//
+// Soit 25 bits sur le chemin dominant et 49 bits sur l'autre — les deux largeurs relevées
+// dans la table ECS.
 //
 // OFFSET MESURÉ, pas supposé : le balayage de cmd/tmp_aimsweep2 place le champ d'angle
 // exactement 1 bit après le début du composant (donc juste après flag0), avec une
 // concentration circulaire R = 0,84 contre 0,03 pour le bruit de fond.
+//
+// CE QUE LE MOTEUR MET DANS CES QUATRE CHAMPS — lu chez le PRODUCTEUR, FUN_142ee09a8, qui
+// est la passe de collecte qui remplit l'état répliqué de l'unité (bloc de masque 0x200000
+// = i21), et confirmé chez le CONSOMMATEUR, FUN_1404d4cb8, qui le recopie sur l'objet local :
+//
+//	flag0   = ! FUN_14071443c(unité). Vrai quand l'unité n'a pas de contrôleur, ou quand le
+//	          bit 22 de unité+0x380 est posé. Le moteur s'en sert comme drapeau de
+//	          COMPRESSION : à vrai, la seconde direction est identique à la première et
+//	          FUN_1406c72e8 recopie le vecteur A dans les DEUX emplacements de destination
+//	          (+0x348 et +0x3e4).
+//	vect. A = unité+0x348 ; vect. B = unité+0x3e4. Deux directions de visée distinctes, de
+//	          même forme, dont la seconde n'est transmise que si flag0 == 0.
+//	flag1   = signe de (unité+0x354) x A, produit vectoriel 2D ; flag2 = signe de
+//	          (unité+0x3d8) x B. Ce sont donc les SIGNES d'un axe compagnon, ce que
+//	          l'encodage 23 bits d'une direction ne peut pas porter — de la géométrie, pas
+//	          un état de jeu. Ni l'un ni l'autre n'est un bit de lunette : voir la mesure
+//	          `visee_lunette_research_test.go` (paquet replay), qui le CHIFFRE au lieu de
+//	          l'affirmer.
+//
+// Les bornes sont vérifiées champ par champ : une queue tronquée laisse le couple de tête
+// publié (comportement inchangé) et n'arme simplement pas les nouveaux drapeaux.
 func readAimingVectorComponent(pay []byte, at, total int, out *componentDirs) {
 	if at+1+aimYawBits+aimPitchBits > total {
 		return
 	}
-	at++ // flag0
+	out.AimFlag0 = readBitsAt(pay, at, 1) == 1
+	at++
 	out.HasYaw = true
 	out.YawRaw = readBitsAt(pay, at, aimYawBits)
 	out.PitchRaw = readBitsAt(pay, at+aimYawBits, aimPitchBits)
+	at += aimYawBits + aimPitchBits
+	if at+1 > total {
+		return
+	}
+	out.AimFlag1 = readBitsAt(pay, at, 1) == 1
+	at++
+	if out.AimFlag0 { // les deux directions coïncident : rien d'autre n'est transmis
+		return
+	}
+	if at+aimYawBits+aimPitchBits+1 > total {
+		return
+	}
+	out.HasAimB = true
+	out.YawRawB = readBitsAt(pay, at, aimYawBits)
+	out.PitchRawB = readBitsAt(pay, at+aimYawBits, aimPitchBits)
+	out.AimFlag2 = readBitsAt(pay, at+aimYawBits+aimPitchBits, 1) == 1
 }

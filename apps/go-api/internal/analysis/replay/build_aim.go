@@ -45,3 +45,22 @@ func pitchForJSON(v float32) float32 {
 	}
 	return r
 }
+
+// zoomHoldUS borne le MAINTIEN d'un palier de lunette, en microsecondes.
+//
+// POURQUOI UN PLAFOND EXISTE. Les sorties de lunette sont sous-comptees par le scanner (seuls
+// les evenements portes EN TETE d'un paquet sont lus, cf. `filmdec.ScanFilmZoomEvents`). Deux
+// entrees consecutives sur un meme slot prouvent qu'une sortie a echappe a la lecture — sans
+// plafond, la premiere periode s'etendrait jusqu'a la seconde entree, et une entree jamais
+// refermee tiendrait jusqu'a la fin du match. Le plafond transforme une lacune de mesure en
+// ABSENCE D'AFFIRMATION, ce qui est le bon defaut : on cesse de dire « il est a la lunette »
+// plutot que de le dire a tort.
+//
+// LA VALEUR EST CALIBREE SUR LA DONNEE, PAS SUR LA VERITE TERRAIN — la distinction est
+// importante : se caler sur la chronologie relevee a la main reviendrait a s'ajuster a la
+// reponse que la mesure doit justement contröler. Elle vient donc de la distribution des
+// periodes REELLEMENT FERMEES (une entree suivie de sa sortie, toutes deux lues) sur le film
+// de reference : 139 periodes, mediane 1,13 s, p75 1,75 s, p90 2,65 s, **p95 3,49 s**,
+// maximum 5,72 s. Le plafond retient le p95 arrondi : il couvre la quasi-totalite des periodes
+// reelles et eteint les entrees orphelines en quelques secondes.
+const zoomHoldUS uint64 = 3_500_000

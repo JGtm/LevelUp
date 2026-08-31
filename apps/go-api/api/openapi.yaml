@@ -19647,6 +19647,9 @@ components:
         p:
           format: float
           type: number
+        s:
+          format: int64
+          type: integer
         sh:
           format: float
           type: number
