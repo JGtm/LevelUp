@@ -1,3 +1,51 @@
+## [2026-08-31] Assaut — le script du mode NOMME les sites d'amorçage ; la mèche, elle, est un réglage de variante — Complété
+
+**Le pool Lua des tags `hsc*` est en clair.** Balayé sur les 357 scripts de
+`common-rtx-new.module`, il rend deux tags qui comptent.
+
+**`25af9c45` — `primitive_carriable_arming_base`, la machine à états de l'amorçage** :
+`GotoArming` / `GotoArmed` / `GotoDisarming`, `UpdateArming` / `UpdateArmed` / `UpdateDisarming`,
+`armDisarmTime`, `armDisarmProgress`, `armProgressFunction`, `disarmProgressFunction`,
+`Device_GetInteractionHoldTime`, `deactivationBaseInteractTimeSec`,
+`deactivationConvertsPlantedObject`. La bombe est un OBJET PORTABLE posé sur une BASE
+D'AMORÇAGE, et l'amorçage est une **interaction tenue**, pas un instant.
+
+**`a35c6ce9` — le script du MODE Assaut**, et il porte le nom qui manquait depuis la phase A3 :
+
+    armzoneArgs   defender_bombsite   attacker_bombsite   bombTag   goalPlate
+    bombSpawnArgs   bombRespawnPointArgs   BombObjectTag   BombArgs
+    AssaultLoopArmTeam  AssaultLoopArmEnemy  AssaultLoopDisarm  AssaultLoopPlanted
+    AssaultLoopResetting   (+ les cinq variantes BTB)
+
+**`defender_bombsite` / `attacker_bombsite` sont les SITES D'AMORÇAGE.** C'est exactement ce que
+la phase A3 cherchait par ancrage spatial `ti=13` et n'a jamais trouvé — il lui manquait le NOM,
+pas la méthode. Et les cinq boucles `AssaultLoop*` confirment nommément la lecture de la banque
+sonore : `AssaultLoopPlanted` est le compte à rebours que l'utilisateur entend.
+
+**DEUX LIMITES, mesurées dans la foulée, et elles convergent :**
+
+1. **La mèche n'est pas une constante du script.** `armDisarmTime` est un CHAMP LU, pas un
+   littéral : le pool ne porte aucun nombre à cet endroit. Elle vient de la variante de MODE —
+   exactement comme `flagResetSeconds` était écrasé par `FlagInitArgs.returnTimer` en CTF. Donc
+   `armement = explosion − mèche` n'est PAS calculable depuis le seul script, et la piste posée
+   au commit précédent tombe telle quelle.
+2. **Les sites ne sont pas dans le fichier de carte.** Balayage des noms lisibles
+   (`Variant.Names`) des **224 `.mvar`** du corpus : ni `defender_bombsite`, ni
+   `attacker_bombsite`, ni aucun hachage de libellé correspondant au catalogue d'objectifs.
+   Seulement des chaînes d'auteurs de cartes Forge (« Assault Setup », « One bomb »,
+   « ball bomb spn »). **Même conclusion que pour les véhicules : sur les cartes officielles, ces
+   objets vivent dans le scénario du `.module`.**
+
+**LE CHEMIN CRITIQUE EST DÉSORMAIS UN SEUL, ET IL SERT LES DEUX CHANTIERS** : lire les placements
+d'objets du scénario (`scnr`) des `.module`. Il donne les sites d'amorçage de l'Assaut ET les
+véhicules des cartes officielles — les deux questions ouvertes de la journée butent sur la même
+porte. `internal/himap` lit déjà index, BSP, géométrie et callouts de ces modules ; les
+placements de scénario ne sont pas encore décodés.
+
+**Gates** : go test `./internal/analysis/...` vert, gofmt propre. Sonde `cmd/tmp_ctflua`
+supprimée après relevé (règle 0 code mort) ; elle est reconstructible depuis
+`Halo Infinite - Sons v75/_outils/ctflua/`.
+
 ## [2026-08-31] `ti=13` — le « chaînage » ne mesure pas la justesse : la phase A3 lisait un ARTEFACT DE DENSITÉ — Complété
 
 **Sur « ok go » pour réparer l'ancrage de `ti=13` en Assaut. Il n'y avait rien à réparer, et
