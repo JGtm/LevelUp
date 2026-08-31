@@ -1,6 +1,6 @@
 /**
- * replayAimCone.ts — LE CÔNE DE VISÉE d'un marqueur : son cap, son ÉLÉVATION, et le trait qui
- * dit de quel côté le joueur regarde.
+ * replayAimCone.ts — LE CÔNE DE VISÉE d'un marqueur : son cap, et son ÉLÉVATION lue dans sa
+ * LONGUEUR.
  *
  * EXTRAIT DE `replayMarkers.ts` LE 2026-08-18 (lot R2-V) : le calque des marqueurs avait
  * franchi le seuil de taille du dépôt (CLAUDE.md n°5) et le lot lui ajoutait le double contour
@@ -12,29 +12,27 @@ import type { MarkerStyle } from './replayMarkers'
 import { freshness, heldReading, type XY } from './replayLogic'
 import type { ReplayTrackReady } from './replayNormalize'
 
+/** Longueur d'une visée À PLAT — la référence, pas le maximum : l'élévation joue autour d'elle. */
 const AIM_LENGTH = 52
 const AIM_HALF_ANGLE = 0.42
 const AIM_CONE_ALPHA = 0.55
 /** Une visée de 5 s ne vaut pas une visée de l'instant : elle perd 62 % de son opacité. */
 const AIM_FADE = 0.62
 /**
- * L'ÉLÉVATION DE VISÉE (schéma 13) : le cône garde son ANGLE et raccourcit.
+ * L'AMPLITUDE DE L'ÉLÉVATION : ±55 % de la longueur à plat, atteints à la verticale.
  *
- * `AIM_LENGTH` reste la longueur MAXIMALE — celle d'un joueur qui vise à plat. Le facteur est
- * `cos(p)`, la part horizontale d'un regard incliné, borné en bas pour que le marqueur reste
- * lisible quand la visée est verticale.
+ * Le cône va donc de 23 px (visée pleine plongée) à 81 px (visée pleine montée) autour des
+ * 52 px du regard horizontal — un rapport de 3,4 entre les deux extrêmes, assez pour que le
+ * sens se lise SANS second repère, ce qui est tout l'objet du changement.
  *
  * Ce que la mesure dit du champ (lot E, 3 films) : médiane −4,7 / −3,4 / −3,6°, 67 à 77 % des
- * visées vers le BAS, extrêmes −85,5 à +82°. Le cône passe donc son temps à 99,5 % de sa
- * longueur, et se contracte franchement dans les instants qui comptent — un tir en plongée,
- * un joueur qui couvre une passerelle.
+ * visées vers le BAS, extrêmes −85,5 à +82°. La carte ne s'allonge donc pas : les cônes
+ * passent leur temps un cheveu SOUS la référence, et ce sont les instants qui comptent — un
+ * tir en plongée, un joueur qui couvre une passerelle — qui s'écartent franchement.
  */
-const AIM_PITCH_FLOOR = 0.35
-/** Trait de sens, à la pointe du cône : vers l'extérieur = vers le haut, intérieur = vers le bas. */
-const AIM_TICK_LENGTH = 6
-const AIM_TICK_WIDTH = 1.4
-/** Zone morte du trait : sous 2°, la visée se lit à plat et le cône n'a pas bougé (cos 2° = 0,9994). */
-const AIM_TICK_DEAD_DEG = 2
+const AIM_PITCH_SWING = 0.55
+/** Au-delà, `sin` REDESCEND et inverserait la lecture : la longueur cesserait d'être monotone. */
+const AIM_PITCH_CLAMP_DEG = 90
 
 /**
  * drawAimCone dessine la DIRECTION DU REGARD, décodée du même record que la position.
@@ -49,16 +47,20 @@ const AIM_TICK_DEAD_DEG = 2
  * en précision d'angle, la carte le regagne en lisibilité : huit bâtons sur un 4v4 se
  * croisaient au-dessus des noms.
  *
+ * IL N'Y A PLUS DE TICK D'ÉLÉVATION NON PLUS (2026-08-29, même demande, même raison). Le trait
+ * collé à la pointe du cône se lisait comme un défaut de tracé plutôt que comme une mesure, et
+ * il n'existait que pour rattraper le COSINUS d'alors, qui étant pair confondait « vise le
+ * ciel » et « vise ses pieds ». La longueur porte désormais le signe elle-même (`pitchScale`) :
+ * le tick n'avait plus rien à dire, il a donc été supprimé — pas désactivé (CLAUDE.md n°7).
+ *
  * SES DIMENSIONS SONT CELLES DE LA PLANCHE, « un peu plus prononcées » (verdict du soir du
- * 2026-08-16, §1bis du plan) : rayon 52, demi-ouverture 0,42 rad, alpha 0,55. Le cône avait
- * d'abord été rétréci à 30 px / 0,30 — trop timide pour se lire une fois les noms posés.
+ * 2026-08-16, §1bis du plan) : rayon 52 à plat, demi-ouverture 0,42 rad, alpha 0,55. Le cône
+ * avait d'abord été rétréci à 30 px / 0,30 — trop timide pour se lire une fois les noms posés.
  *
  * DEPUIS LE SCHÉMA 13, IL DIT LES DEUX AXES DU REGARD. Le cap oriente le secteur ; l'ÉLÉVATION
- * (`p`, degrés, positif = vers le haut) le RACCOURCIT — `AIM_LENGTH × max(0,35 ; cos p)` — et
- * un trait posé à sa pointe dit de quel côté. Il faut les deux : le cosinus est pair, donc la
- * longueur seule confond « vise le ciel » et « vise ses pieds ». Un artefact antérieur au
- * schéma 13 ne porte pas `p` : le cône y garde sa pleine longueur, sans tick, et c'est le
- * comportement voulu — absent se lit « à plat », jamais « inconnu ».
+ * (`p`, degrés, positif = vers le haut) en règle la LONGUEUR — court vers le bas, long vers le
+ * haut. Un artefact antérieur au schéma 13 ne porte pas `p` : le cône y garde sa longueur de
+ * référence, et c'est le comportement voulu — absent se lit « à plat », jamais « inconnu ».
  */
 export function drawAimCone(
   ctx: CanvasRenderingContext2D,
@@ -72,8 +74,7 @@ export function drawAimCone(
   const fresh = freshness(read.age, style.timing.aimHold, AIM_FADE)
   // Monde -> canevas : l'axe Y est inversé, donc l'angle l'est aussi.
   const ang = (-read.value * Math.PI) / 180
-  const pitch = heldPitch(track.points, style, read.age)
-  const R = AIM_LENGTH * pitchScale(pitch) * style.k
+  const R = AIM_LENGTH * pitchScale(heldPitch(track.points, style, read.age)) * style.k
   const gradient = ctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, R)
   gradient.addColorStop(0, color)
   gradient.addColorStop(1, 'transparent')
@@ -84,7 +85,6 @@ export function drawAimCone(
   ctx.closePath()
   ctx.fillStyle = gradient
   ctx.fill()
-  drawPitchTick(ctx, c, ang, R, pitch, style, color)
   ctx.globalAlpha = 1
 }
 
@@ -108,51 +108,30 @@ function heldPitch(
 }
 
 /**
- * pitchScale : ce que l'élévation fait à la LONGUEUR du cône.
+ * pitchScale : ce que l'élévation fait à la LONGUEUR du cône — `1 + 0,55 × sin(p)`.
  *
- * Le cône est la projection au sol d'un regard qui, lui, vit en trois dimensions. Plus le
- * joueur pique ou lève la tête, moins ce regard porte LOIN SUR LE PLAN — d'où le cosinus, qui
- * est exactement la part horizontale d'une direction inclinée. L'ANGLE, lui, ne bouge pas :
- * c'est toujours le même cap.
+ * CE N'EST PLUS UNE PROJECTION, ET C'EST DÉLIBÉRÉ. La version précédente valait `cos(p)`, la
+ * part horizontale d'un regard incliné : physiquement juste, mais PAIRE — plonger de 30° et
+ * viser 30° en l'air rendaient exactement le même cône, si bien qu'un repère de sens (le tick)
+ * devait être ajouté à côté pour lever une ambiguïté que la longueur créait elle-même.
  *
- * LE PLANCHER EXISTE POUR QUE LE MARQUEUR RESTE LISIBLE : à ±90° le cosinus s'annule et le
- * cône disparaîtrait, alors qu'un joueur qui vise ses pieds ou le ciel est précisément ce
- * qu'on veut voir. On s'arrête donc à 35 % de la longueur maximale.
+ * Le sinus renverse ce marché : il est IMPAIR et STRICTEMENT CROISSANT sur [−90, +90], donc la
+ * longueur seule ordonne les visées — plus le joueur pique, plus le cône est court ; plus il
+ * lève la tête, plus il est long. Un seul trait de plume porte l'information, et rien n'est
+ * collé au cône pour la compléter.
+ *
+ * IL EST AUSSI LE PLUS SENSIBLE LÀ OÙ VIVENT LES MESURES : sa pente est maximale à plat, où
+ * tombe la médiane du champ (−4,7 / −3,4 / −3,6° sur trois films), et il sature près de la
+ * verticale, où le degré exact n'apprend plus rien.
+ *
+ * LE PLANCHER N'EST PLUS UNE CONSTANTE À PART : à −90° le facteur vaut 0,45, soit 23 px — le
+ * marqueur reste lisible sans qu'on ait à border quoi que ce soit. Le BORNAGE, lui, est
+ * nécessaire pour une autre raison : `sin` redescend au-delà de ±90°, et la formule publiée de
+ * `p` couvre ±180° sous réserve explicite (cf. `AimPitchDeg` côté Go). Une valeur hors de la
+ * moitié centrale du champ raccourcirait donc un cône qui monte — on l'écrête plutôt que de
+ * laisser la lecture s'inverser.
  */
 function pitchScale(pitchDeg: number): number {
-  return Math.max(AIM_PITCH_FLOOR, Math.cos((pitchDeg * Math.PI) / 180))
+  const bounded = Math.max(-AIM_PITCH_CLAMP_DEG, Math.min(AIM_PITCH_CLAMP_DEG, pitchDeg))
+  return 1 + AIM_PITCH_SWING * Math.sin((bounded * Math.PI) / 180)
 }
-
-/**
- * drawPitchTick dit le SENS de l'élévation, que la longueur ne peut pas dire.
- *
- * Le cosinus est PAIR : viser 30° au-dessus et 30° en dessous raccourcissent le cône
- * exactement pareil. Un repère de sens est donc nécessaire, et c'est un trait court posé sur
- * l'axe du regard, au BORD du cône — vers l'EXTÉRIEUR quand le joueur lève la tête, vers
- * l'INTÉRIEUR quand il pique. Il ne part JAMAIS du point : « le bâton » reste supprimé
- * (décision D3), et ce trait-ci vit à la pointe du cône, à des dizaines de pixels de là.
- *
- * LA ZONE MORTE (2°) N'EST PAS UN ARRONDI DE CONFORT : sous 2° le cône perd 0,06 % de sa
- * longueur, donc l'œil ne peut RIEN vérifier de ce que le trait affirmerait, et l'affirmation
- * changerait de sens à chaque image. Une visée est à plat quand elle se lit à plat.
- */
-function drawPitchTick(
-  ctx: CanvasRenderingContext2D,
-  c: XY,
-  ang: number,
-  R: number,
-  pitchDeg: number,
-  style: MarkerStyle,
-  color: string,
-): void {
-  if (Math.abs(pitchDeg) < AIM_TICK_DEAD_DEG) return
-  const len = AIM_TICK_LENGTH * style.k
-  const far = R + (pitchDeg > 0 ? len : -len)
-  ctx.beginPath()
-  ctx.moveTo(c.x + Math.cos(ang) * R, c.y + Math.sin(ang) * R)
-  ctx.lineTo(c.x + Math.cos(ang) * far, c.y + Math.sin(ang) * far)
-  ctx.strokeStyle = color
-  ctx.lineWidth = AIM_TICK_WIDTH * style.k
-  ctx.stroke()
-}
-

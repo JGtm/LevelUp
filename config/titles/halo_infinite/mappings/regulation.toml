@@ -30,7 +30,7 @@
 
 [meta]
 title_slug     = "halo_infinite"
-schema_version = 3
+schema_version = 4
 
 [regulation_seconds]
 "CTF:Arena"                   = 720
@@ -59,9 +59,12 @@ schema_version = 3
 # de publier une cible fausse.
 #
 # VOLONTAIREMENT ABSENTS :
-#   - Oddball et KOTH : modes a MANCHES — le total du match deborde le plateau d'une
-#     manche (Ranked:Oddball observe a 286-287 au-dessus du 200), et l'oracle du film
-#     differe de l'API en KOTH. Une cible unique n'a pas de sens sur le TOTAL.
+#   - Oddball : mode a MANCHES — le total du match deborde le plateau d'une manche
+#     (Ranked:Oddball observe a 286-287 au-dessus du 200). Une cible unique n'a pas de
+#     sens sur le TOTAL.
+#   - "Arena:King of the Hill" : le plateau n'est atteint que par UN SEUL match (3 sur
+#     3 matchs, les deux autres finissent a 2) — la regle des >= 2 matchs au plateau
+#     n'est pas tenue. Ses matchs gardent le repli du bandeau.
 #   - Attrition, Extraction, Land Grab, Sentry Defense, Escalation BTB, variantes UUID,
 #     Firefight PvE : plateau non mesurable (n < 2 au plateau, ou distribution etalee).
 #
@@ -108,6 +111,16 @@ schema_version = 3
 "Strongholds:Arena"          = 200
 "Arena:Strongholds"          = 200
 "Ranked:Strongholds"         = 250
+# KOTH : il n'y a pas de capture, la colline se marque a la GARDE — et le score EST le
+# compte de collines gagnees. Plateaux mesures le 2026-08-30 sur les 52 matchs KOTH du
+# registre : 3 en social (45 matchs sur 46 finissent a 3 ; le 46e finit a 2 sur 511 s,
+# c'est-a-dire au chrono) et 4 en classe (3 matchs sur 3, duree moyenne 770 s).
+# CETTE ENTREE ETAIT ECARTEE AU MOTIF QUE « l'oracle du film differe de l'API » : le motif
+# est PERIME. Verifie le 2026-08-30, le registre porte desormais des COLLINES (606d9844 a
+# 3-0, 8076f97f a 0-3) la ou il portait des SECONDES (105/8, 78/105) au releve du lot A —
+# le backfill du 2026-08-24 a homogeneise la colonne.
+"KOTH:Arena"                 = 3
+"Ranked:King of the Hill"    = 4
 # Total Control : 3 series de zones.
 "BTB:Total Control"          = 3
 "BTB Heavies:Total Control"  = 3
@@ -119,6 +132,49 @@ schema_version = 3
 "Arena:VIP"                  = 10
 "Arena:Escalation Slayer"    = 11
 "Event:Escalation Slayer"    = 11
+
+# ---------------------------------------------------------------------------------------
+# TICS DE GARDE PAR POINT (schema_version 4, mesure du 2026-08-30) — le DENOMINATEUR de
+# la progression vers le prochain point sur un mode ou l'on marque en TENANT une zone.
+#
+# EN KOTH IL N'Y A PAS DE CAPTURE : la colline se prend instantanement quand aucun adversaire
+# n'y est ; c'est la GARDE qui marque, et la colline tourne a chaque point. Cette table dit
+# combien de TICS de garde valent un point — sans elle, le rejeu sait QUI tient la colline mais
+# pas OU EN EST la progression.
+#
+# MEME DOCTRINE QUE LES TROIS TABLES CI-DESSUS : cle = game_variant_name exact, valeur
+# MESUREE, variante absente = pas de denominateur, donc AUCUNE jauge affichee (jamais une
+# jauge remplie au juge).
+#
+# 35 EST UN COMPTE, PAS UN REGLAGE. Le compteur est `comp 23 A` du statborg, qui reproduit
+# `ZonesStats.StrongholdScoringTicks` de l'API EXACTEMENT joueur par joueur (31 joueurs sur 31,
+# 4 films). La barre d'un camp est l'UNION des instants de tic de ses joueurs — ni la somme
+# (elle compterait deux fois le meme tic) ni le maximum sur la periode (il perd les relais).
+# Mesure : le camp QUI MARQUE rend exactement 35 sur 15 periodes sur 16 (4 films, 4 cartes ;
+# l'unique ecart vaut 33), tandis que le camp qui NE marque pas rend 1 a 25 et JAMAIS 35 — le
+# controle est dans la mesure elle-meme. 35 est aussi le chiffre annonce par la documentation
+# du jeu : deux chaines independantes concordent.
+#
+# CE CHIFFRE NE SE CALE PAS SUR LE RENDU. Une version anterieure de cette table portait 43,
+# mesure sur le canal de PROPRIETE (une reconstruction), et la tentation etait de le monter pour
+# que la jauge tombe pleine pile au point. La voie propre etait de changer de SOURCE, pas de
+# corriger la constante. Detail des trois lots : `.ai/V7.5/PLAN_KOTH_GARDE_VIVANTE_2026-08-30.md`
+# §E1, §E1-bis et §E1-ter ; instrument `internal/analysis/replay/colline_statborg_e1bis_test.go`.
+#
+# VOLONTAIREMENT ABSENTS :
+#   - "Ranked:King of the Hill" : les 3 matchs classes du registre sont INEXPLOITABLES (deux
+#     sans film en cache, un sur « Solitude - Ranked », carte absente de map_quant_bounds.json).
+#     Rien ne dit que le classe partage le seuil du social, et lui recopier la valeur serait
+#     la devinette que cette table interdit. Reprise : un film classe en cache AVEC bornes.
+#   - Strongholds et Total Control : modes a zones SIMULTANEES, dont la progression se lit
+#     directement dans la jauge du film (`ZoneState.gauge`, schema 18). Le tic de `comp 23 A`
+#     y existe aussi (l API le nomme StrongholdScoringTicks pour les deux modes), mais rien ne
+#     dit qu il s y accumule de la meme facon : non mesure, donc non declare.
+#
+# Consommation : mappings.LoadRegulation -> RegulationSet.HoldTicksPerPoint(variante)
+# -> replaybuild -> ScoreTimeline.{HoldTicks, HoldTicksPerPoint} -> lisere de garde du bandeau.
+[hold_ticks_per_point]
+"KOTH:Arena" = 35
 
 # ---------------------------------------------------------------------------------------
 # VARIANTES DONT LE RESULTAT SE LIT EN MANCHES (schema_version 3, mesure du 2026-08-29).

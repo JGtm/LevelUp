@@ -104,6 +104,9 @@ type gwPickupObject struct {
 	Bounds gwPickupBounds
 	Picker gwPickupHit
 	Status string
+	// DropperSlot est le slot de la vie de bipede qui S ACHEVE a la naissance de l objet —
+	// celle-la meme qui a classe l apparition `dropped` (cf. gwPadsClass). -1 pour `spawned`.
+	DropperSlot int
 }
 
 // gwPickupDateUS rend l'instant retenu de la disparition : celui du passage quand il existe, la
@@ -171,7 +174,7 @@ func padObjects(
 				Kind: rule.Kind, Family: fam,
 				X: c.X, Y: c.Y, Z: c.Z, TUS: c.TimestampUS,
 			}}
-			o.Appar.Class = gwPadsClass(lives, o.Appar)
+			o.Appar.Class, o.DropperSlot = gwPadsClass(lives, o.Appar)
 			gwPickupResolve(&o, c, lifeEnd, filmEnd, gwResolveInputs{
 				kfTimes: scan.Keyframes.TimesUS, seen: scan.Keyframes.SeenUS[k],
 				tracks: tracks[k], positions: positions,

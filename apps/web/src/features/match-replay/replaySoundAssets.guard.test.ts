@@ -45,10 +45,14 @@ import {
   KILL_SPRITE_SOUND_STEMS,
   OBJECTIVE_SOUND_STEMS,
   ROUND_OVER_SOUND_STEMS,
+  SKULL_SOUND_STEMS,
   SOUND_VARIANTS,
   WEAPON_SOUND_STEMS,
   ZONE_SOUND_STEMS,
-  PAD_PICKUP_SOUND_STEM,
+  PAD_SPAWN_SOUND_STEM,
+  EQUIPMENT_PAD_SPAWN_SOUND_STEM,
+  WEAPON_CHANGE_SOUND_STEMS,
+  EQUIPMENT_PICKUP_SOUND_STEM,
 } from './replaySound'
 
 /** Les stems d une entree d objectif : une PAIRE PEUT ETRE INCOMPLETE (le camp non design00e9 a
@@ -122,12 +126,22 @@ describe('garde-rail : manifeste sonore = dossier d assets', () => {
     // déplacement de la colline. Source doc.zoneStates, pas doc.objectives — mais même
     // dossier d'assets et même garde-rail.
     ...stemsZone(),
-    PAD_PICKUP_SOUND_STEM,
+    PAD_SPAWN_SOUND_STEM,
+    // Les CHANGEMENTS D'ARME ET D'ÉQUIPEMENT (schémas 25-26, 2026-08-30) : ramassage et
+    // lâcher d'arme, ramassage d'équipement, apparition d'équipement sur socle — les quatre
+    // gestes que le chantier ramassage a datés.
+    ...Object.values(WEAPON_CHANGE_SOUND_STEMS),
+    EQUIPMENT_PICKUP_SOUND_STEM,
+    EQUIPMENT_PAD_SPAWN_SOUND_STEM,
     // La FIN DE PARTIE (lot C, 2026-08-27) : voix FR et EN, fanfares, réplique du FFA gagné.
     ...endMatchStems,
     // Le son « MANCHE TERMINÉE » (2026-08-28) : voix d'annonceur FR et EN, sur la piste (daté à
     // la bascule de manche), les deux langues livrées et vérifiées ensemble.
     ...Object.values(ROUND_OVER_SOUND_STEMS),
+    // LE CRANE d'Oddball (lot du 2026-08-29) : prise et chute. Source doc.skullCarries, pas
+    // doc.objectives — le nommage statborg ne couvre pas Oddball. Leurs variantes entrent par
+    // SOUND_VARIANTS ci-dessus, comme celles du grappin.
+    ...Object.values(SKULL_SOUND_STEMS),
   ])
 
   it('chaque stem du manifeste a son fichier .wav', () => {
@@ -222,12 +236,22 @@ describe('garde-rail : durée livrée par catégorie', () => {
     // le seul son de la chaîne livré TRONQUÉ à dessein (1,2 s) et ATTÉNUÉ (-12 dBTP) : il se
     // joue une fois par seconde, un geste de 3,6 s s'y empilerait sur lui-même.
     ...stemsZone(),
-    PAD_PICKUP_SOUND_STEM,
+    PAD_SPAWN_SOUND_STEM,
+    // Les GESTES DU CHANTIER RAMASSAGE (2026-08-30) : mêmes règles de durée — des sources
+    // naturellement courtes (0,31 à 0,80 s), déclarées une à une dans `SOURCES_COURTES`.
+    ...Object.values(WEAPON_CHANGE_SOUND_STEMS),
+    EQUIPMENT_PICKUP_SOUND_STEM,
+    EQUIPMENT_PAD_SPAWN_SOUND_STEM,
     // Le son « MANCHE TERMINÉE » : voix d'annonceur sur la piste (catégorie Objectifs), même
     // règle de durée que les autres annonceurs — il garde la durée de sa source (1,7 s), jamais
     // retronqué à la coupe des armes. Ce n'est PAS un son de FIN DE PARTIE : il vit sur la piste,
     // daté à la bascule, il tombe donc sous le plafond des ÉVÉNEMENTS (6 s), pas la conclusion.
     ...Object.values(ROUND_OVER_SOUND_STEMS),
+    // LE CRANE d'Oddball : catégorie Objectifs, même règle de durée — les gestes gardent la
+    // durée de leur source (1,71 à 5,47 s). Les deux stems de MARQUE y pointent sur les
+    // fichiers du tic de zone (c'est le même son, mesuré à +1,000 de corrélation le
+    // 2026-08-29) : le `Set` les absorbe, et leur dispense de durée est déjà déclarée plus bas.
+    ...Object.values(SKULL_SOUND_STEMS),
     // Les VARIANTES d'un geste suivent la règle de leur geste : ce sont les autres tirages du
     // MÊME `RandomSequence`, pas d'autres sons.
     ...Object.values(SOUND_VARIANTS).flat(),
@@ -278,9 +302,17 @@ describe('garde-rail : durée livrée par catégorie', () => {
     // jeu fait cette durée-là. La zone contestée est « 1 couche, 1 son » (événement c3327c0b,
     // 1,180 s) ; le ramassage sur socle est « 1 parmi 2 » (événement c73036e4, 0,804 s).
     objective_zone_contested: 1.18,
-    objective_pad_pickup: 0.804,
     objective_zone_tick_team: 1.2,
     objective_zone_tick_enemy: 1.2,
+    // LES GESTES DU CHANTIER RAMASSAGE (2026-08-30), tous naturellement courts : le lâcher et
+    // le ramassage d'arme sont du bruitage de Spartan (« 1 parmi 3 », gain -6 dB, banque
+    // e9a52b26) ; le ramassage d'équipement est « 1 parmi 2 » (c73036e4) — le MÊME fichier
+    // qu'avant son retrait du 30/08, re-livré le jour où `equipmentChanges` a daté le geste ;
+    // l'apparition d'équipement sur socle est l'événement 4093f3c4 désigné à l'oreille.
+    weapon_drop: 0.312,
+    weapon_pickup: 0.34,
+    objective_pad_pickup: 0.804,
+    equipment_pad_spawn: 0.562,
     grapple_fire: 0.745,
     grapple_fire_v2: 0.765,
     grapple_fire_v3: 0.757,

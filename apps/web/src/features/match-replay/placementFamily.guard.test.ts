@@ -265,10 +265,22 @@ describe('garde-rail : le vocabulaire des familles de pose', () => {
  *     « ce qui sort du rejeu » (image, video) — l'export en est la troisieme sortie. Le canvas
  *     ne gagne donc qu'une prop, une ligne d'options et un import.
  * La prochaine addition se paie de la meme facon.
+ *
+ * 679 -> 678 le 2026-08-30 (lot des ARMES AU SOL, schema 27) : un CALQUE FRERE de plus, les
+ * armes abandonnees au sol. Sa logique est deja extraite — lecture temporelle dans
+ * `groundWeaponTime.ts`, trace dans `groundWeaponsLayer.ts`, cablage dans
+ * `useReplayGroundWeapons.ts` — mais le fichier etait PILE a son plafond et les six lignes de
+ * glue devaient etre PAYEES.
+ *   - SEIZIEME EXTRACTION, `useReplayDrawer.ts` : l'ETAT D'OUVERTURE du tiroir. Le canvas
+ *     gardait trois choses qui ne parlent que du tiroir — ouvert ou ferme, le bouton qui
+ *     l'ouvre, et la fermeture qui lui rend le focus — alors que le hook du tiroir existe
+ *     depuis la quatorzieme. Il rend desormais `{ open, toggle, buttonRef, panel }` ; le canvas
+ *     n'en garde que l'usage, et pas une ligne de logique ne se deplace.
+ * Le plafond SUIT le fichier vers le bas, comme a chaque extraction depuis 861.
  */
 describe('garde-rail : la taille du canvas du rejeu ne remonte pas', () => {
   it('ReplayCanvas.tsx reste sous son plafond', () => {
     const src = readFileSync(resolve(__dirname, 'ReplayCanvas.tsx'), 'utf8')
-    expect(src.split('\n').length - 1).toBeLessThanOrEqual(679)
+    expect(src.split('\n').length - 1).toBeLessThanOrEqual(678)
   })
 })

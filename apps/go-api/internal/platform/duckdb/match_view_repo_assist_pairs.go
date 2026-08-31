@@ -59,9 +59,17 @@ import (
 // comptée « non volée » à tort non plus, puisqu'elle reste dans `assist_count`. Aucune des
 // deux parts n'est plafonnée (mesures jusqu'à 228) : la comparaison porte sur l'ordre.
 //
-// Paramètres : ?1 = match_id (portée), ?2 = match_id (paires). Retourne 7 colonnes :
+// `avg_assist_pct` : la PART MOYENNE de participation de l'assistant sur les morts de la
+// paire, arrondie à l'entier. AVG ignore nativement les parts NULL ; si AUCUNE mort de la
+// paire ne porte de part, la colonne sort NULL et le champ publié reste absent — jamais un
+// « 0 % » fabriqué. Même vocabulaire que le kill feed du rejeu (« part »), et même refus
+// de plafonner que `stolen_count` (mesures jusqu'à 228) : c'est une moyenne de parts
+// mesurées, pas un dégât chiffré.
+//
+// Paramètres : ?1 = match_id (portée), ?2 = match_id (paires). Retourne 8 colonnes :
 // match_deaths, measured_deaths, assist_xuid, assist_gamertag, feed_killer_xuid,
-// assist_count, stolen_count — les cinq dernières NULL quand aucune paire ne sort.
+// assist_count, stolen_count, avg_assist_pct — les six dernières NULL quand aucune paire
+// ne sort.
 const Q21dAssistPairs = `
 WITH scope AS (
     SELECT
@@ -76,7 +84,8 @@ pairs AS (
         assist_gamertag,
         feed_killer_xuid,
         COUNT(*)                                                          AS assist_count,
-        COUNT(*) FILTER (WHERE assist_damage_pct > killer_damage_pct)     AS stolen_count
+        COUNT(*) FILTER (WHERE assist_damage_pct > killer_damage_pct)     AS stolen_count,
+        CAST(ROUND(AVG(assist_damage_pct)) AS INTEGER)                    AS avg_assist_pct
     FROM ` + KillEventsCanonicalTable + `
     WHERE match_id = ?
       AND publishable
@@ -93,7 +102,8 @@ SELECT
     p.assist_gamertag,
     p.feed_killer_xuid,
     p.assist_count,
-    p.stolen_count
+    p.stolen_count,
+    p.avg_assist_pct
 FROM scope s
 LEFT JOIN pairs p ON TRUE
 ORDER BY p.assist_count DESC, p.assist_gamertag, p.feed_killer_xuid`
@@ -143,11 +153,11 @@ func scanAssistPairs(rows *sql.Rows) ([]domain.MatchAssistPairRaw, domain.MatchA
 	)
 	for rows.Next() {
 		var (
-			matchDeaths, measured int
-			ax, agt, kx           sql.NullString
-			assistN, stolenN      sql.NullInt64
+			matchDeaths, measured    int
+			ax, agt, kx              sql.NullString
+			assistN, stolenN, avgPct sql.NullInt64
 		)
-		if err := rows.Scan(&matchDeaths, &measured, &ax, &agt, &kx, &assistN, &stolenN); err != nil {
+		if err := rows.Scan(&matchDeaths, &measured, &ax, &agt, &kx, &assistN, &stolenN, &avgPct); err != nil {
 			return nil, domain.MatchAssistScopeRaw{}, fmt.Errorf("MatchViewRepo.GetMatchAssistPairs scan: %w", err)
 		}
 		scope.MatchDeaths = matchDeaths
@@ -158,13 +168,18 @@ func scanAssistPairs(rows *sql.Rows) ([]domain.MatchAssistPairRaw, domain.MatchA
 		if !ax.Valid || !agt.Valid || !kx.Valid {
 			continue
 		}
-		results = append(results, domain.MatchAssistPairRaw{
+		pair := domain.MatchAssistPairRaw{
 			AssistXUID:     ax.String,
 			AssistGamertag: agt.String,
 			KillerXUID:     kx.String,
 			AssistCount:    int(assistN.Int64),
 			StolenCount:    int(stolenN.Int64),
-		})
+		}
+		if avgPct.Valid {
+			v := int(avgPct.Int64)
+			pair.AvgAssistPct = &v
+		}
+		results = append(results, pair)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, domain.MatchAssistScopeRaw{}, err

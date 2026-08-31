@@ -170,22 +170,59 @@ func buildIntensityRows(
 }
 
 // buildSoloFirstBlood projette les rows d'agrégation « premier événement » du
-// joueur suivi en série produit (chart lanes « Premier frag / première mort »).
+// joueur suivi en série produit (chart lanes « Premier frag / première mort »),
+// enrichie des métadonnées d'affichage du match (carte/mode/date — DEC-4,
+// retours utilisateur 2026-08-29 : le tooltip ne doit plus jamais montrer
+// l'uuid du match).
 //
 // Solo : une seule série. Partagé par la page Timeseries et la page Session —
 // même contrat par match, même conversion ms → secondes (domain.NewFirstBloodPoint).
+// matches sert UNIQUEMENT à la résolution carte/mode/date (même scope que rows
+// côté appelants : les matchIDs qui produisent rows sont dérivés de ces mêmes
+// matches) — StartTime est déjà la valeur canonique de la ligne, jamais
+// recalculée ici (règle 8, timezone canonique).
 // Retourne nil si aucun match ne porte de premier frag ni de première mort.
-func buildSoloFirstBlood(player string, rows []narrative.FirstEventsRow) []domain.FirstBloodPlayerSeries {
+func buildSoloFirstBlood(
+	player string,
+	rows []narrative.FirstEventsRow,
+	matches []legacymatch.StatsMatchRow,
+) []domain.FirstBloodPlayerSeries {
 	if player == "" || len(rows) == 0 {
 		return nil
 	}
+	metaByMatch := make(map[string]domain.FirstBloodMatchMeta, len(matches))
+	for _, m := range matches {
+		metaByMatch[m.MatchID] = statsMatchRowFirstBloodMeta(m)
+	}
 	points := make([]domain.FirstBloodMatchPoint, 0, len(rows))
 	for _, r := range rows {
-		points = append(points, domain.NewFirstBloodPoint(r.MatchID, r.FirstKillMS, r.FirstDeathMS))
+		points = append(points, domain.NewFirstBloodPoint(
+			r.MatchID, r.FirstKillMS, r.FirstDeathMS, metaByMatch[r.MatchID]))
 	}
 	series := domain.FirstBloodPlayerSeries{Player: player, Matches: points}
 	if !series.HasEvents() {
 		return nil
 	}
 	return []domain.FirstBloodPlayerSeries{series}
+}
+
+// statsMatchRowFirstBloodMeta résout les métadonnées d'affichage (carte, mode,
+// date) d'un match pour le chart « premier frag / première mort ». Carte : FR
+// si disponible sinon l'anglais brut (même repli que buildIntensityRows
+// ci-dessus ; 2e occurrence du pattern, sous le seuil ≤2 copies avant
+// centralisation — règle CLAUDE.md). Mode : analysis.ResolveModeUIWithVariant,
+// résolveur canonique pair-sinon-variant déjà utilisé dans tout le package
+// service — ne pas dupliquer sa logique ici.
+func statsMatchRowFirstBloodMeta(m legacymatch.StatsMatchRow) domain.FirstBloodMatchMeta {
+	mapUI := m.MapNameFR
+	if mapUI == "" {
+		mapUI = m.MapName
+	}
+	meta := domain.FirstBloodMatchMeta{MapUI: mapUI, StartTime: m.StartTime}
+	if modeUI := analysis.ResolveModeUIWithVariant(
+		&m.PairName, &m.PairNameFR, &m.GameVariantName, &m.GameVariantNameFR,
+	); modeUI != nil {
+		meta.ModeUI = *modeUI
+	}
+	return meta
 }

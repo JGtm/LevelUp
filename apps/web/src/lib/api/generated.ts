@@ -5340,10 +5340,12 @@ export interface components {
         Coverage: {
             bridge: components["schemas"]["BridgeHealth"];
             equipment?: components["schemas"]["EquipmentCoverage"];
+            equipmentChanges?: components["schemas"]["EquipmentChangeCoverage"];
             flagCarries?: components["schemas"]["FlagCarriesCoverage"];
             grapple?: components["schemas"]["GrappleCoverage"];
             grenadeReads?: components["schemas"]["GrenadeReadCoverage"];
             grenades: components["schemas"]["LayerCoverage"];
+            groundWeaponItems?: components["schemas"]["GroundWeaponItemsCoverage"];
             groundWeapons?: components["schemas"]["GroundWeaponCoverage"];
             inventory?: components["schemas"]["InventoryCoverage"];
             objectiveObjects?: components["schemas"]["ObjectiveObjectsCoverage"];
@@ -5357,6 +5359,7 @@ export interface components {
                 [key: string]: string;
             };
             vipCrown?: components["schemas"]["VipCrownCoverage"];
+            weaponChanges?: components["schemas"]["WeaponChangeCoverage"];
             zones?: components["schemas"]["ZonesCoverage"];
         };
         CreatePlayerProfileResponse: {
@@ -5645,11 +5648,47 @@ export interface components {
             /** Format: int64 */
             truncated_to_recent?: number;
         };
+        EquipmentChange: {
+            /** Format: int64 */
+            from: number;
+            kind: string;
+            /** Format: int64 */
+            r: number;
+            /** Format: int32 */
+            slot: number;
+            /** Format: int64 */
+            t: number;
+        };
+        EquipmentChangeCoverage: {
+            /** Format: int64 */
+            beforeOrigin: number;
+            /** Format: int64 */
+            counterJumps: number;
+            /** Format: int64 */
+            decoded: number;
+            /** Format: int64 */
+            lives: number;
+            /** Format: int64 */
+            livesFirstOffSpec: number;
+            /** Format: int64 */
+            missedEstimate: number;
+            /** Format: int64 */
+            published: number;
+            /** Format: int64 */
+            repeats: number;
+            /** Format: int64 */
+            spawned: number;
+            /** Format: int64 */
+            spent: number;
+            /** Format: int64 */
+            taken: number;
+        };
         EquipmentCoverage: {
             /** Format: int64 */
             camoEpisodes: number;
             /** Format: int64 */
             camoLives: number;
+            killsRead: boolean;
             /** Format: int64 */
             overshieldEpisodes: number;
             /** Format: int64 */
@@ -5658,8 +5697,12 @@ export interface components {
             tracksTotal: number;
         };
         EquipmentEpisode: {
+            /** Format: int64 */
+            a?: number;
             endRead?: boolean;
             fam: string;
+            /** Format: int64 */
+            k?: number;
             /** Format: int32 */
             slot: number;
             /** Format: int64 */
@@ -5668,6 +5711,7 @@ export interface components {
             t1: number;
         };
         EquipmentPlacement: {
+            end?: string;
             family: string;
             /** Format: float */
             h?: number;
@@ -5679,6 +5723,10 @@ export interface components {
             t0: number;
             /** Format: int64 */
             t1: number;
+            /** Format: int64 */
+            until?: number;
+            /** Format: int64 */
+            untilMax?: number;
             /** Format: float */
             x: number;
             /** Format: float */
@@ -5702,6 +5750,10 @@ export interface components {
             deployed: number;
             /** Format: int64 */
             dropped: number;
+            /** Format: int64 */
+            endOpen: number;
+            /** Format: int64 */
+            endSeen: number;
             /** Format: int64 */
             lives: number;
             /** Format: int64 */
@@ -6214,7 +6266,11 @@ export interface components {
             first_death_sec: number | null;
             /** Format: double */
             first_kill_sec: number | null;
+            map_ui?: string;
             match_id: string;
+            mode_ui?: string;
+            /** Format: date-time */
+            start_time: string;
         };
         FirstBloodPlayerSeries: {
             matches: components["schemas"]["FirstBloodMatchPoint"][] | null;
@@ -6306,6 +6362,7 @@ export interface components {
             /** Format: int64 */
             kills: number;
             label?: string;
+            label_en?: string;
             role: string;
         };
         FreshnessBackupInfo: {
@@ -6446,6 +6503,27 @@ export interface components {
             /** Format: int64 */
             unpublished: number;
         };
+        GroundWeapon: {
+            /** Format: int64 */
+            dropper: number;
+            end: string;
+            origin: string;
+            /** Format: int64 */
+            picker: number;
+            /** Format: int64 */
+            t0: number;
+            /** Format: int64 */
+            t1: number;
+            /** Format: int64 */
+            t1max: number;
+            w: string;
+            /** Format: float */
+            x: number;
+            /** Format: float */
+            y: number;
+            /** Format: float */
+            z?: number;
+        };
         GroundWeaponCoverage: {
             /** Format: int64 */
             accepted: number;
@@ -6487,6 +6565,26 @@ export interface components {
             spawned: number;
             /** Format: int64 */
             unknown: number;
+        };
+        GroundWeaponItemsCoverage: {
+            /** Format: int64 */
+            atRest: number;
+            /** Format: int64 */
+            dropperNamed: number;
+            /** Format: int64 */
+            endOpen: number;
+            /** Format: int64 */
+            endPickup: number;
+            /** Format: int64 */
+            endSeen: number;
+            /** Format: int64 */
+            objects: number;
+            /** Format: int64 */
+            pickupLinked: number;
+            /** Format: int64 */
+            published: number;
+            /** Format: int64 */
+            takesTotal: number;
         };
         Group: {
             created_at: string;
@@ -7192,6 +7290,8 @@ export interface components {
             assist_count: number;
             assist_gamertag: string;
             assist_xuid: string;
+            /** Format: int64 */
+            avg_assist_pct?: number;
             killer_gamertag?: string;
             killer_xuid: string;
             /** Format: int64 */
@@ -7253,6 +7353,7 @@ export interface components {
             impact_badges: components["schemas"]["MatchImpactBadge"][] | null;
             impact_roles?: components["schemas"]["MatchViewImpactRole"][] | null;
             kd_timeline: components["schemas"]["MatchKDTimelinePoint"][] | null;
+            kill_distance_by_weapon?: components["schemas"]["MatchKillDistancePlayer"][] | null;
             killer_victim?: components["schemas"]["MatchKillerVictimPair"][] | null;
             nemesis_duels: components["schemas"]["MatchNemesisRow"][] | null;
             tug_of_war: components["schemas"]["MatchTugOfWarBin"][] | null;
@@ -7378,6 +7479,7 @@ export interface components {
             /** Format: int64 */
             event_time_ms?: number;
             event_type: string;
+            headshot?: boolean;
             /** Format: int64 */
             killer_damage_pct?: number;
             medal_description?: string;
@@ -7521,6 +7623,23 @@ export interface components {
             kills: number;
             /** Format: int64 */
             time_seconds: number;
+        };
+        MatchKillDistancePlayer: {
+            weapons: components["schemas"]["MatchKillDistanceWeapon"][] | null;
+            xuid: string;
+        };
+        MatchKillDistanceWeapon: {
+            /** Format: double */
+            avg_distance_m: number;
+            label?: string;
+            label_en?: string;
+            /** Format: double */
+            max_distance_m: number;
+            /** Format: int64 */
+            measured_kills: number;
+            /** Format: double */
+            min_distance_m: number;
+            weapon_key: string;
         };
         MatchKillerVictimPair: {
             /** Format: int64 */
@@ -9429,6 +9548,7 @@ export interface components {
             coverage?: components["schemas"]["Coverage"];
             /** Format: int64 */
             durationMs?: number;
+            equipmentChanges?: components["schemas"]["EquipmentChange"][] | null;
             equipmentEpisodes?: components["schemas"]["EquipmentEpisode"][] | null;
             equipmentPlacements?: components["schemas"]["EquipmentPlacement"][] | null;
             flagCarries?: components["schemas"]["FlagCarry"][] | null;
@@ -9442,6 +9562,7 @@ export interface components {
             grenadeLabels?: components["schemas"]["Label"][] | null;
             grenadeReads?: components["schemas"]["GrenadeRead"][] | null;
             grenades?: components["schemas"]["Grenade"][] | null;
+            groundWeapons?: components["schemas"]["GroundWeapon"][] | null;
             inventory?: components["schemas"]["Inventory"][] | null;
             killEffects?: {
                 [key: string]: string;
@@ -9468,6 +9589,7 @@ export interface components {
             titleSlug: string;
             tracks: components["schemas"]["Track"][] | null;
             vipCrown?: components["schemas"]["VipPeriod"][] | null;
+            weaponChanges?: components["schemas"]["WeaponChange"][] | null;
             weaponLabels?: {
                 [key: string]: components["schemas"]["WeaponLabel"];
             };
@@ -9564,6 +9686,9 @@ export interface components {
             v: number;
         };
         ScoreTimeline: {
+            holdTicks?: components["schemas"]["TeamHold"][] | null;
+            /** Format: int64 */
+            holdTicksPerPoint?: number;
             players?: components["schemas"]["PlayerScore"][] | null;
             /** Format: int64 */
             targetScore?: number;
@@ -10084,6 +10209,8 @@ export interface components {
             value: number;
         };
         SkullCarriesCoverage: {
+            /** Format: int64 */
+            carrierAbsent: number;
             /** Format: int64 */
             carries: number;
             /** Format: int64 */
@@ -10874,6 +11001,11 @@ export interface components {
             /** Format: int64 */
             rows: number;
         };
+        TeamHold: {
+            /** Format: int64 */
+            teamId?: number;
+            ticks?: components["schemas"]["ScoreTick"][] | null;
+        };
         TeamScore: {
             rounds?: components["schemas"]["ScoreRound"][] | null;
             /** Format: int64 */
@@ -11393,6 +11525,31 @@ export interface components {
         };
         WatcherSubscriptionsOutputBody: {
             subscribed_players: string[] | null;
+        };
+        WeaponChange: {
+            from?: string;
+            kind: string;
+            /** Format: int32 */
+            slot: number;
+            /** Format: int64 */
+            t: number;
+            w?: string;
+        };
+        WeaponChangeCoverage: {
+            /** Format: int64 */
+            beforeOrigin: number;
+            /** Format: int64 */
+            decoded: number;
+            /** Format: int64 */
+            dropped: number;
+            /** Format: int64 */
+            published: number;
+            /** Format: int64 */
+            restated: number;
+            /** Format: int64 */
+            swapped: number;
+            /** Format: int64 */
+            taken: number;
         };
         WeaponHighlight: {
             /** Format: int64 */

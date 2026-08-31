@@ -27,11 +27,13 @@ package sync
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log/slog"
 
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/observability"
+	"levelup/go-api/internal/sync/killcollector"
 	"levelup/go-api/internal/sync/replayartifacts"
 )
 
@@ -602,6 +604,58 @@ func (s postSyncFilmSteps) runWeaponKills(ctx context.Context, insertedIDs []str
 		slog.InfoContext(ctx, "post-sync: weapon kills",
 			"gamertag", e.gamertag, "done", totalDone, "no_film", totalNoFilm)
 	}
+}
+
+// runKillSource — étape 1.57 : la SOURCE DU KILL des matchs insérés, puis le backlog.
+//
+// POURQUOI ICI, ET PAS DANS UN OUTIL SÉPARÉ. Cette donnée n'avait qu'un producteur : une
+// sous-commande manuelle qui ne lisait que les films déjà en cache. Le cache a cessé d'être
+// alimenté le 2026-04-07 et personne ne l'a vu pendant cinq mois — `assist_known` est resté
+// FALSE sur tout match synchronisé depuis, et deux blocs de l'app se sont retirés sans un log
+// (`.ai/V7.5/REGISTRE_ASSISTANCES_2026-08-29.md`). Une donnée qui ne se remplit que si
+// quelqu'un lance une commande finit toujours par ne plus se remplir.
+//
+// Elle vient APRÈS runWeaponKills, pour la même raison que celui-ci vient après la
+// convergence events : le film du match est disponible et récent, et le roster que le
+// décodage doit joindre (`v_gamertag_lookup`) est à jour.
+//
+// TOUTE la logique vit dans internal/sync/killcollector (ratchet K3c : le neuf n'entre pas à
+// la racine du god-package) ; ici on ne fait que câbler les dépendances du moteur.
+func (s postSyncFilmSteps) runKillSource(ctx context.Context, insertedIDs []string) int {
+	e := s.engine
+	if e.killSource == nil {
+		return 0
+	}
+	// GetFilmChunks est une capacité OPTIONNELLE du client (assertion, pas extension de
+	// HaloClient : les mocks des autres étapes n'ont pas à la porter).
+	//
+	// ⚠ SON ABSENCE SE JOURNALISE ET SE COMPTE, ELLE NE SE TAIT PAS. Une première version
+	// faisait un `return` nu : les deux clients de production ne portaient pas la méthode,
+	// l'étape ne s'exécutait nulle part, et RIEN ne le disait — le défaut même que cette
+	// étape corrige, reproduit dans son propre câblage. Les clients réels sont désormais
+	// vérifiés à la COMPILATION (kill_source_wiring_test.go) ; ce compteur couvre le cas
+	// qu'aucune assertion statique ne peut couvrir : un client injecté à l'exécution.
+	fetcher, ok := s.client.(killcollector.FilmChunkFetcher)
+	if !ok {
+		observability.IncCounter(killcollector.CompteurPostSyncClientSansFilm)
+		slog.WarnContext(ctx, "post-sync: kill source désarmée — le client ne porte pas GetFilmChunks",
+			"gamertag", e.gamertag, "client", fmt.Sprintf("%T", s.client),
+			"consequence", "assist_known restera FALSE sur les matchs de ce cycle")
+		return 0
+	}
+	return killcollector.RunPostSync(ctx, e.killSource, killcollector.PostSyncDeps{
+		Fetcher:    fetcher,
+		LocalCache: e.localFilmCache,
+		WithRead:   s.withRead,
+		// Le writer est acquis PAR MATCH et relâché aussitôt (burst court) : le collecteur
+		// résout son roster en lecture AVANT, donc les deux segments ne se chevauchent
+		// jamais — même garde anti-deadlock que le burst weapons.
+		AcquireWriter: func(c context.Context) (*sql.DB, func(), error) {
+			return s.shared.Write(c, "killsource")
+		},
+		TitleSlug: e.titleSlug,
+		Gamertag:  e.gamertag,
+	}, insertedIDs)
 }
 
 // runReplayArtifacts — étape 1.58 : pont disque film + artefacts de rejeu 2D des matchs

@@ -31,6 +31,7 @@ import type { CSSProperties } from 'react'
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 
 import type { ActiveEquipment } from './equipmentFx'
+import type { ObjectiveMarkKind } from './objectiveMark'
 import type { ZonePresence } from './equipmentZones'
 import type { ReplayText } from './i18nContract'
 
@@ -149,6 +150,12 @@ export interface CardFxInput {
   equipment: ActiveEquipment | null
   /** Zones d'équipement sous le joueur (NO_ZONES pour une fiche morte). */
   zones: ZonePresence
+  /**
+   * L'OBJECTIF PORTÉ à cette image (null : aucun, ou fiche morte). Le FILIGRANE, lui, se rend
+   * dans `ReplayObjectiveMark` — ce champ n'entre ici que pour l'INFOBULLE : une seule fonction
+   * compose la phrase de la fiche, sinon deux ordres d'énumération divergent au premier ajout.
+   */
+  objective: ObjectiveMarkKind | null
   /** Table i18n de la locale courante : l'infobulle se compose ici. */
   text: ReplayText
 }
@@ -250,6 +257,8 @@ function glassAndVeilOf(i: CardFxInput, style: CSSProperties, shadows: string[])
 /** L'infobulle : chaque état actif dit sa phrase, dans un ordre stable. */
 function titleOf(i: CardFxInput): string | undefined {
   const parts = [
+    // L'OBJECTIF EN TÊTE : c'est l'état qui décide de la manche, il se lit avant l'équipement.
+    i.objective ? i.text.objectiveCarry[i.objective] : null,
     i.equipment?.camo ? i.text.equipmentActive.camo : null,
     i.equipment?.overshield ? i.text.equipmentActive.overshield : null,
     i.teleportAge >= 0 && i.teleportAge <= i.flashFrames ? i.text.translocationFlash : null,

@@ -71,10 +71,13 @@ type Point struct {
 	// ARRONDI AU DIXIEME DE DEGRE : le quantum de la source vaut 0,17578 deg (360/2048), une
 	// decimale ne perd donc rien et divise par deux le cout du champ dans l'artefact.
 	//
-	// CE QUE LE CLIENT EN FAIT : le cone de visee garde son ANGLE et raccourcit — sa longueur
-	// vaut `AIM_LENGTH x max(0,35 ; cos(p))` — et un tick dit le sens (haut / bas), que le
-	// cosinus seul ne peut pas dire puisqu'il est pair. Convention, oracle et reserve : en
-	// tete de ce fichier et sur `filmdec.BipedPosition.AimPitchDeg`.
+	// CE QUE LE CLIENT EN FAIT : le cone de visee garde son ANGLE et sa LONGUEUR porte
+	// l'elevation, signe compris — `AIM_LENGTH x (1 + 0,55 x sin(p))`, ecrete a +/-90 deg,
+	// court vers le bas, long vers le haut. Le modele precedent multipliait par
+	// `max(0,35 ; cos(p))`, PAIR donc muet sur le sens, ce qui obligeait a coller un tick a la
+	// pointe du cone ; ce tick a ete retire le 2026-08-29 (demande utilisateur) en meme temps
+	// que le cosinus. Convention, oracle et reserve : en tete de ce fichier et sur
+	// `filmdec.BipedPosition.AimPitchDeg`.
 	P float32 `json:"p,omitempty"`
 	// Sh (optionnel) est la FRACTION DE BOUCLIER dans [0, 1], décodée du composant i5
 	// (object-shield-vitality) du MÊME record que la position — donc au même instant.

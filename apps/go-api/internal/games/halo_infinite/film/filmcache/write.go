@@ -21,7 +21,30 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
+
+// EnsureDirs cree les deux dossiers du cache et rend la racine prete a l emploi.
+//
+// POURQUOI ELLE EXISTE ICI ET NULLE PART AILLEURS. `haloclient.NewLocalFilmCache` rend nil
+// quand `film_manifests/` n existe pas, et ce nil vaut pour toute la vie du process : sur une
+// machine au cache vide, un producteur archiverait sans jamais relire, et chaque passe
+// repaierait le reseau. Trois appelants avaient besoin de cette preparation et la
+// reconstituaient chacun de leur cote — dont le detour consistant a deriver le dossier des
+// manifestes en prenant le parent du chemin d un manifeste fictif. La disposition n est
+// declaree que dans ce paquet (garde-rail filmcache_guard_test.go) : sa CREATION doit y vivre
+// aussi, sinon elle re-diverge au premier renommage.
+func EnsureDirs(root string) error {
+	if strings.TrimSpace(root) == "" {
+		return fmt.Errorf("filmcache: racine de cache vide")
+	}
+	for _, d := range []string{filepath.Join(root, chunksDir), filepath.Join(root, manifestsDir)} {
+		if err := os.MkdirAll(d, 0o755); err != nil {
+			return fmt.Errorf("filmcache: creation de %s : %w", d, err)
+		}
+	}
+	return nil
+}
 
 // WriteChunk est un chunk a persister, avec les champs du manifeste.
 type WriteChunk struct {

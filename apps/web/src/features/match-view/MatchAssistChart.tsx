@@ -4,7 +4,9 @@
  * Barres empilées horizontales, MIROIR du graphe des antagonistes :
  *   - 1 ligne par ASSISTANT (groupées par équipe via assistStackedSeries)
  *   - segments empilés = les TUEURS qu'il a assistés
- *   - infobulle : nombre d'assistances, et « dont N volées » quand il y en a
+ *   - infobulle : nombre d'assistances, « dont N volées » quand il y en a, et la part
+ *     moyenne de participation quand elle est mesurée (même vocabulaire que le kill feed
+ *     du rejeu — « part », jamais « dégâts »)
  *
  * Source : `combat_tab.assist_pairs` (paires agrégées et comptées par le backend Go
  * depuis `match_kill_events_latest`).
@@ -27,7 +29,7 @@
 import { BarStackedChart } from '@/components/charts/BarStackedChart'
 import { resolveToken, type SemanticToken } from '@/lib/accessibility'
 import type { MatchAssistPairs, MatchScoreboardRow } from '@/lib/api/types'
-import { assistStackedSeries, assistStolenKey, assistStolenLookup } from './_chartSeries'
+import { assistAvgPctLookup, assistStackedSeries, assistStolenKey, assistStolenLookup } from './_chartSeries'
 import type { MatchViewText } from './i18n'
 
 // Mêmes 11 tokens que le graphe des antagonistes, et pour la même raison : distance
@@ -65,6 +67,7 @@ export function MatchAssistChart({ block, scoreboard, meXUID, t }: Props) {
   const pairs = block.pairs ?? []
   const series = assistStackedSeries(pairs, scoreboard, meXUID)
   const stolen = assistStolenLookup(pairs)
+  const avgPct = assistAvgPctLookup(pairs)
 
   // Porte 2 — lisible ou non. Les deux libellés sont distincts et le choix se fait sur le
   // DÉNOMINATEUR, jamais sur la longueur de la liste.
@@ -94,8 +97,13 @@ export function MatchAssistChart({ block, scoreboard, meXUID, t }: Props) {
       componentHexColors={componentHexColors}
       tooltipHideZero
       tooltipComponentNote={(assistant, killer) => {
-        const n = stolen.get(assistStolenKey(assistant, killer))
-        return n ? t.assistStolenNote(n) : undefined
+        const key = assistStolenKey(assistant, killer)
+        const notes: string[] = []
+        const n = stolen.get(key)
+        if (n) notes.push(t.assistStolenNote(n))
+        const pct = avgPct.get(key)
+        if (pct != null) notes.push(t.assistAvgShareNote(pct))
+        return notes.length > 0 ? notes.join(' · ') : undefined
       }}
     />
   )

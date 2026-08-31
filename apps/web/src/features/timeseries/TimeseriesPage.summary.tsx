@@ -98,7 +98,7 @@ export function TimeseriesSummaryTab({
   // destruction » (buildFragDetailBreakdown) ET la recoloration par classe du graphe
   // précision (l'entrée précision de l'API ne porte pas la classe).
   const topWeaponsMapped = (data.top_weapons ?? []).map((w) => ({ label: w.label, kills: w.kills, class: w.class }))
-  const breakdown = buildFragDetailBreakdown(data.frag_distribution ?? null, topWeaponsMapped, { roleLabel, classLabel })
+  const breakdown = buildFragDetailBreakdown(data.frag_distribution ?? null, topWeaponsMapped, { roleLabel, classLabel, locale: appLocale })
   // Précision par arme native (Halo 5) ; vide sur Infinite → 2e rangée = tendance FDA seule.
   const accuracy = data.weapon_accuracy ?? []
   const fdaTrend = (

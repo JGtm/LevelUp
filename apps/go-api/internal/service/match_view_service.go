@@ -180,6 +180,11 @@ type MatchViewService struct {
 	// 2026-08-29. Degradation gracieuse : ce n est pas une panne, c est un titre sans
 	// decodeur de film.
 	killSourceRepo port.KillSourceClassRepository
+	// killDistanceRepo (optionnel) : loader « distance par arme, par joueur »
+	// (POC LOT G.3, plan retours-utilisateur §3bis DEC-8). Nil, ou titre sans
+	// capability film.kill_source => pas de bloc, jamais d'erreur. Dégradation
+	// gracieuse identique à killSourceRepo (même gate, cf. wire.killDistanceRepoFor).
+	killDistanceRepo port.KillDistanceRepository
 	// replaySvc (optionnel) : service du rejeu 2D, interrogé UNIQUEMENT pour la
 	// présence de l'artefact (IsAvailable = un os.Stat). Nil → ReplayAvailable
 	// reste faux et le front ne pose aucun lien : un titre qui ne produit pas de
@@ -260,6 +265,16 @@ func (s *MatchViewService) WithReplay(svc port.ReplayService) *MatchViewService 
 // dans « Non attribué », exactement comme avant le lot du 2026-08-29.
 func (s *MatchViewService) WithKillSourceRepo(r port.KillSourceClassRepository) *MatchViewService {
 	s.killSourceRepo = r
+	return s
+}
+
+// WithKillDistanceRepo injecte le loader « distance par arme, par joueur »
+// (POC LOT G.3, plan retours-utilisateur §3bis DEC-8).
+//
+// Dégradation gracieuse si nil ou si le titre n'a pas la capability : le bloc
+// combat_tab.kill_distance_by_weapon reste absent, exactement comme avant ce lot.
+func (s *MatchViewService) WithKillDistanceRepo(r port.KillDistanceRepository) *MatchViewService {
+	s.killDistanceRepo = r
 	return s
 }
 

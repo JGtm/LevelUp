@@ -79,6 +79,11 @@ type WeaponKillRow struct {
 	Kills    int    `json:"kills"`
 	// Label EN ou FR resolu cote service. Vide cote repo.
 	Label string `json:"label,omitempty"`
+	// LabelEN : meme libelle que Label mais EN-first (repli FR), resolu dans la MEME passe
+	// (resolveWeaponMeta). Ajoute le 2026-08-29 (V2.1) pour porter le nom d'engin EN jusqu'a
+	// FragRoleEntry.LabelEN (classes vehicule/tourelle, domain.IsPerWeaponFragClass) — vide
+	// pour les autres classes (non lu ailleurs). Vide cote repo.
+	LabelEN string `json:"label_en,omitempty"`
 	// Role : fonction de combat de l'arme (automatic/precision/sniper/shotgun/
 	// sidearm/power/special/melee/grenade), resolu depuis le referentiel
 	// metadata.weapons (duckdb/weapon_resolver.go) quand

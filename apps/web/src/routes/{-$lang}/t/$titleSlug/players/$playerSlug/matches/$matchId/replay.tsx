@@ -33,6 +33,8 @@ import { ReplayScoreBanner } from '@/features/match-replay/ReplayScoreBanner'
 import { ReplayTeams } from '@/features/match-replay/ReplayTeams'
 import { ReplayVictoryOverlay } from '@/features/match-replay/ReplayVictoryOverlay'
 import { finalScoreFromHeader } from '@/features/match-replay/victoryLogic'
+import { MatchBreadcrumb } from '@/features/match-view/MatchHeader'
+import { buildMatchHeadingStr } from '@/features/match-view/format'
 import { collectKillEvents } from '@/features/match-view/_momentum'
 import { useMatchView } from '@/features/match-view/queries'
 import type { TeamColorResolver } from '@/features/match-view/teamColor'
@@ -175,6 +177,10 @@ function ReplayPage() {
 
   const hasReplay = !!data && data.tracks.length > 0
 
+  // Fil d'Ariane : même label que la vue match (mode + map). La date est portée par la
+  // ReplayMatchRecall ci-dessous, pas besoin de la répéter ici.
+  const matchLabel = buildMatchHeadingStr(matchView?.header.map_ui, matchView?.header.mode_ui, locale)
+
   // CE QUI DÉBORDAIT N'ÉTAIT PAS DU CONTENU (retour du 2026-08-27 : « je peux descendre
   // alors qu'il n'y a rien »). Cette page est une pile RIGIDE — titre, bandeau de score, et
   // une carte dont la hauteur est constante — dans un shell où seul le <main> défile. Quand
@@ -188,7 +194,9 @@ function ReplayPage() {
   // carte elle-même qui ne tient plus dans l'écran. Là, le scroll a quelque chose à montrer,
   // et le corriger demanderait une hauteur de carte qui s'adapte — hors périmètre ici (D8).
   return (
-    <div className="space-y-4 px-6 py-3">
+    <div className="flex flex-col">
+      <MatchBreadcrumb playerSlug={playerSlug} matchLabel={matchLabel} locale={locale} />
+      <div className="space-y-4 px-6 py-3">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <h1 className="flex items-center gap-2 text-lg font-semibold">
@@ -357,6 +365,7 @@ function ReplayPage() {
           </aside>
         </div>
       )}
+      </div>
     </div>
   )
 }

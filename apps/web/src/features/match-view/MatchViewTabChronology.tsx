@@ -63,7 +63,14 @@ export function MatchViewTabChronology({
     <DetailSection title={t.sectionFlow}>
       {/* Faits marquants | Frags cumulés */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[180px_1fr]">
-        <MatchImpactBadgesBar badges={impactBadges} scoreboard={scoreboard} t={t} />
+        <MatchImpactBadgesBar
+          badges={impactBadges}
+          scoreboard={scoreboard}
+          t={t}
+          playerSlug={playerSlug}
+          matchId={matchId}
+          replayAvailable={replayAvailable}
+        />
         <MatchKDCumulChart
           events={highlightEvents}
           badges={impactBadges}

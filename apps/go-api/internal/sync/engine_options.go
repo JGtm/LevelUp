@@ -19,6 +19,7 @@ import (
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/sync/killcollector"
 	"levelup/go-api/internal/sync/replayartifacts"
 )
 
@@ -70,6 +71,14 @@ func NewSyncEngineForTitle(
 		syncCacheDir:   pr.SyncCacheDir(),
 		tokens:         tokens,
 		provider:       provider,
+		// ÉTAPE 1.57 INSTALLÉE PAR DÉFAUT, DANS LE CONSTRUCTEUR — pas au wiring.
+		// `assist_known` n'a qu'une origine (le kill-feed du film) et son producteur était
+		// une commande manuelle : le jour où plus personne ne l'a lancée, la donnée s'est
+		// arrêtée sans un log, cinq mois durant. La remettre à la charge de sites de
+		// wiring qui doivent y penser reproduirait exactement ce défaut. Le hook est inerte
+		// là où il n'a rien à faire : client sans GetFilmChunks, capability absente, ou
+		// backlog vide (cf. killcollector.RunPostSync).
+		killSource: killcollector.NewPostSyncHook(repoRoot, 0),
 	}
 }
 

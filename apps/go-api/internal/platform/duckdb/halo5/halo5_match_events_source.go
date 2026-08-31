@@ -35,16 +35,18 @@ func NewHalo5MatchEventsSource(shared duckdb.SharedReader) *Halo5MatchEventsSour
 }
 
 // h5KillFeedQuery — kills d'un match, ordonnés par instant. v_weapon_kills = dernière
-// génération append-only par (match_id, xuid) ; LEFT JOIN tolère un kill sans arme /
-// sans position (event partiel) sans le perdre.
+// génération append-only par (match_id, xuid) ; kill_positions_latest = dernière version
+// append-only par (match_id, killer_xuid, time_ms) (G.2, 2026-08-30 — ADR 0026, la table
+// n'était pas encore convertie et se lisait brute jusqu'ici) ; LEFT JOIN tolère un kill sans
+// arme / sans position (event partiel) sans le perdre.
 //
 // BASCULE DU 2026-08-03 : source canonique `match_kill_events_latest`. Halo 5 y arrive par la
 // reprise dédupliquée de son kill-feed natif (268 337 lignes, 2 754 matchs — zéro doublon, à la
 // différence d'Infinite). Le gain ici n'est donc pas le dédoublonnage : c'est que les bots
 // cessent d'être une CHAÎNE VIDE. `killer_victim_pairs` code les bots Halo 5 en `”`, forme que
 // rien ne distingue d'un joueur ; la canonique les porte en NULL, et les jointures
-// `v_weapon_kills` / `kill_positions` cessent d'apparier sur une chaîne vide partagée par tous
-// les bots du match.
+// `v_weapon_kills` / `kill_positions_latest` cessent d'apparier sur une chaîne vide partagée par
+// tous les bots du match.
 const h5KillFeedQuery = `
 SELECT kvp.time_ms,
        kvp.feed_killer_gamertag, kvp.victim_gamertag,
@@ -54,7 +56,7 @@ SELECT kvp.time_ms,
 FROM match_kill_events_latest kvp
 LEFT JOIN v_weapon_kills wk
        ON wk.match_id = kvp.match_id AND wk.xuid = kvp.feed_killer_xuid AND wk.time_ms = kvp.time_ms
-LEFT JOIN kill_positions kp
+LEFT JOIN kill_positions_latest kp
        ON kp.match_id = kvp.match_id AND kp.killer_xuid = kvp.feed_killer_xuid AND kp.time_ms = kvp.time_ms
 WHERE kvp.match_id = ?
 ORDER BY kvp.time_ms, kvp.feed_killer_gamertag, kvp.victim_gamertag`
