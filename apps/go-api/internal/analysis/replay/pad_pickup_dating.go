@@ -44,7 +44,7 @@ package replay
 // LES SOCLES DE POWER-UP NE SONT PAS JOIGNABLES, et ce n'est pas un échec de couverture : leur
 // identité (`gwPadWeaponID` -> `Appar.Family`) est un NOM CANONIQUE, pas un identifiant de
 // famille. Aucun ramassage natif ne peut donc s'y apparier, jamais. Ils sont comptés à part
-// (`PowerupPads`) au lieu d'être noyés dans `Uncovered`, qui laisserait croire que le canal
+// (`PowerupOccupations`) au lieu d'être noyés dans `Uncovered`, qui laisserait croire que le canal
 // natif a cherché et n'a pas trouvé.
 
 // PadDatingStats dit ce que la datation a pu faire, et ce qu'elle n'a pas pu.
@@ -62,11 +62,16 @@ type PadDatingStats struct {
 	// Uncovered compte les fenêtres qu'aucun ramassage natif ne couvre — elles gardent leur
 	// intervalle, intact.
 	Uncovered int `json:"uncovered"`
-	// PowerupPads compte les occupations de socle de POWER-UP, structurellement non
+	// PowerupOccupations compte les occupations de socle de POWER-UP, structurellement non
 	// joignables : l'identité d'un tel socle est un NOM CANONIQUE, pas une famille d'arme.
 	// Elles sont sorties d'`Uncovered` À DESSEIN — les y laisser ferait lire « le canal natif
 	// a cherché et n'a pas trouvé » là où il n'y avait rien à chercher.
-	PowerupPads int `json:"powerupPads"`
+	//
+	// LE NOM N'EST PAS `powerupPads`, ET C'EST DÉLIBÉRÉ (correctif de revue, ronde 2) :
+	// `coverage.groundWeapons.powerupPads` existe déjà et compte des SOCLES PUBLIÉS. Deux clés
+	// homonymes à dénominateurs différents dans le même document se liraient l'une pour
+	// l'autre. Ici on compte des OCCUPATIONS écartées de la jointure — le nom le dit.
+	PowerupOccupations int `json:"powerupOccupations"`
 }
 
 // padFamilyKey rend la clé de comparaison d'une famille d'arme, quelle que soit la convention
@@ -106,10 +111,16 @@ func padFamilyKey(s string) (string, bool) {
 // `pads`, et c'est la famille qui apparie une occupation à un ramassage natif.
 func datePadPickups(pads []WeaponPad, picks []PadPickup, pickups []Pickup) PadDatingStats {
 	st := PadDatingStats{Occupations: len(picks)}
-	if len(picks) == 0 || len(pickups) == 0 || len(pads) == 0 {
-		st.Uncovered = len(picks)
+	if len(picks) == 0 {
 		return st
 	}
+	// PAS DE RETOUR ANTICIPÉ QUAND LE CANAL NATIF EST VIDE, et c'est un correctif de revue
+	// (ronde 2) : la première version versait alors TOUTES les occupations dans `Uncovered`,
+	// power-ups compris — c'est-à-dire exactement la lecture mensongère (« le canal a cherché
+	// et n'a pas trouvé ») que ce fichier prétend éliminer. La boucle ci-dessous classe
+	// TOUJOURS, y compris avec zéro ramassage : un socle de power-up reste hors jointure, un
+	// socle d'arme reste non couvert.
+	//
 	// Index par famille NORMALISÉE : une occupation ne s'apparie qu'à un ramassage de LA MÊME
 	// arme, et les deux côtés ne l'écrivent pas pareil (cf. l'en-tête).
 	byFamily := map[string][]Pickup{}
@@ -133,7 +144,7 @@ func datePadPickups(pads []WeaponPad, picks []PadPickup, pickups []Pickup) PadDa
 		if !ok {
 			// Socle de POWER-UP (nom canonique) : rien à chercher, et on ne fait pas passer
 			// ça pour une recherche infructueuse.
-			st.PowerupPads++
+			st.PowerupOccupations++
 			continue
 		}
 		var hits []Pickup

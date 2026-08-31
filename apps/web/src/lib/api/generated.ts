@@ -8816,6 +8816,8 @@ export interface components {
             /** Format: int64 */
             occupations: number;
             /** Format: int64 */
+            powerupOccupations: number;
+            /** Format: int64 */
             uncovered: number;
         };
         PadPickup: {

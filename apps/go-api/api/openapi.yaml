@@ -18678,6 +18678,9 @@ components:
         occupations:
           format: int64
           type: integer
+        powerupOccupations:
+          format: int64
+          type: integer
         uncovered:
           format: int64
           type: integer
@@ -18687,6 +18690,7 @@ components:
         - named
         - ambiguous
         - uncovered
+        - powerupOccupations
       type: object
     PadPickup:
       additionalProperties: false
