@@ -80208,3 +80208,68 @@ une requete assemblee entierement a l'execution lui echapperait. Et il ne couvre
 
 **Prochaine etape** : rien de planifie. Le dispositif est autonome — il signale, et il dit quoi
 faire du signalement.
+
+---
+
+## [2026-09-01] Portage de l'archetype `ti=11` : la jauge d'objectif est ATTEINTE, pas encore LUE JUSTE
+
+**Statut** : Complete pour le portage et la grammaire ; **ouvert** pour l'exploitation des valeurs.
+
+**LE DEVIS S'EST MESURE AVANT DE S'ENGAGER, ET IL A DIVISE LE CHANTIER PAR TROIS.** L'annonce de
+la veille etait « porter les deserialiseurs de ti=11 de i0 a i12/i13, treize composants ». La
+boucle de composants est sequentielle, donc il faut porter ce qui est PRESENT avant i12 — mais le
+masque de presence se lit SANS aucun deserialiseur (`TraverseEntity` le publie avant d'entrer dans
+la boucle). Nouvel instrument `objectif_ti11_masque_test.go`, 13 films, garde `ASSAUT_CACHE` :
+sur les 265 records porteurs de la jauge, dix composants seulement la precedent, dont DEUX etaient
+deja ecrits. Controle de domaine publie (14,9 % de masques hors des 34 composants) plutot que tu.
+
+**LA GRAMMAIRE VIENT ENTIEREMENT DU BINAIRE, recette R7-d.** Chaine `.rdata` -> getter de nom
+(`LEA RAX,[chaine] ; RET`) -> descripteur de composant (dix pointeurs, le getter en `+0x28`) ->
+serialiseur reseau en `+0x38`. Calibre sur le cas CONNU (ti=13 `managed-object-property`, dont le
+lecteur porte etait deja identifie) avant d'etre applique aux dix-neuf chaines de ti=11. Toutes
+les largeurs sont fixes : i0 = 2xR(7), i1 = 4xR(8), i3/i5/i12/i13/i15/i16-31 = R(32), i6/i10/i11/
+i33 = R(1), i7 = R(8), i8 = R(4), i14 = R(3), i32 = R(8) quantifie. **33 composants sur 34.**
+
+**LE SEUL LAISSE DEHORS EST UN CHOIX, PAS UN OUBLI.** `i4 interaction-filter` lit R(4) + R(1) puis,
+par bit pose, R(4) SUIVI D'UN APPEL VIRTUEL de largeur inconnue. Le porter a moitie ferait
+DESYNCHRONISER au lieu de s'arreter proprement — strictement pire. Cout mesure et ecrit : 10 des
+265 records porteurs de jauge, 4 %.
+
+**RESULTAT DU PORTAGE, mesure avant/apres sur les memes 13 films.** Cause d'arret de la marche :
+avant, `i0 timers` 1 009 / aucune 884 / `i16` 178 / `i32` 177. Apres : **aucune 2 211**, `i4` 37.
+2 211 sur 2 248 records dans le domaine, 98,4 %.
+
+**ET C'EST LA QUE LA MESURE M'A ARRETE — le chiffre de 98,4 % ne prouve PAS ce qu'il semble
+prouver.** « Marcher jusqu'au bout » teste la COUVERTURE du dispatch, jamais la JUSTESSE d'une
+largeur : un composant qui lit deux bits de trop laisse la marche aboutir, simplement decalee. La
+premiere lecture des valeurs (`assaut_a10_jauge_test.go`) l'a montre en trois faits :
+1. la valeur de i12 est CONSTANTE sur toute la duree d'un slot (35 lectures sur 720 s) ;
+2. les MEMES valeurs reviennent a l'identique dans TROIS MATCHS DIFFERENTS (3 997 696,
+   255 852 575, 268 435 471, 2 097 152...) ;
+3. des slots consecutifs rendent des valeurs decalees d'UN BIT — 0x04000003, 0x08000007,
+   0x1000000F.
+Une jauge de partie ne peut pas etre octet-pour-octet identique dans trois matchs. **Ce n'est pas
+la progression : c'est une fenetre mal posee.** Ecrit tel quel dans le code, dans la page Notion et
+ici, plutot que de publier « la jauge est decodee ».
+
+**UNE VOIE REFUTEE AU PASSAGE, avec temoin.** Le balayage delta (celui qui marche pour ti=13,
+chainage 87-99 %) chaine a **2,7-26 %** sur ti=11 et sort des valeurs uniformement reparties sur
+32 bits : la bande d'ancrage compte jusqu'a 1 704 slots et attrape tout. `ScanFilmObjectives` ouvre
+donc les deux voies et etiquette chaque lecture (`FromKeyframe`) au lieu d'en cacher une.
+
+**Livre** : `components_managed_objective.go` (33 desers + hook 6 champs), 14 cas dans
+`consumeByName`, `objective_scan.go` (balayage deux voies), 34 lignes de `testdata/ecs_table.tsv`
+passees de `non_porte` a `porte` avec adresse EXE, grammaire, largeur et source ; garde-rails G1 et
+G3 verts. `components_batch3.go` : la garde « sans appelant » posee le 2026-08-01 est LEVEE, sa
+grammaire est desormais recoupee au binaire (FUN_142c70d5c).
+
+**Page de reference publiee** (Notion, sous Backlog LevelUp) : la grammaire complete des quatre
+archetypes d'objectif — ti=10, ti=11, ti=12 (documente sans decodeur, decision utilisateur),
+ti=13 — avec la mesure du MIROIR qui explique les quatre negatifs precedents : Strongholds et KOTH
+ecrivent dans ti=13, l'Assaut dans ti=11.
+
+**Prochaine etape, une seule et nommee** : un ORACLE DE LARGEUR. Ancrer par
+`WalkKeyframeRecords` (marche deterministe) plutot que par `WalkKeyframeWorld` (balayeur a filtre
+fort), et exiger que la fin d'un record tombe exactement sur l'en-tete du suivant. Sans cet oracle,
+aucune valeur de ti=11 n'est exploitable — et avec lui, la jauge, l'instant d'armement et le compte
+a rebours du rejeu suivent.

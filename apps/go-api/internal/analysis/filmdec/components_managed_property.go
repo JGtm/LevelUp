@@ -133,7 +133,7 @@ func (f ManagedPropertyField) String() string {
 	case ManagedPropertyPerPlayer:
 		return compManagedObjectPlayerMaskedProperty
 	}
-	return "champ inconnu"
+	return champInconnu
 }
 
 // managedPropertyHook, si non nil, recoit chaque lecture d'un champ de ti=13.
