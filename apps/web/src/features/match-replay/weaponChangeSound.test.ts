@@ -12,9 +12,18 @@ import { WEAPON_CHANGE_SOUND_STEMS, weaponChangeSoundEvents } from './weaponChan
  * consommation d'équipement ne sonne rien — et les bords vides.
  */
 
-/** Un document minimal : le pas de grille et les deux canaux de changements suffisent. */
-function doc(weaponChanges: unknown[], equipmentChanges: unknown[] = []): ReplayDocumentReady {
-  return { frameIntervalMs: 100, weaponChanges, equipmentChanges } as unknown as ReplayDocumentReady
+/** Un document minimal : le pas de grille et les canaux de changements suffisent. */
+function doc(
+  weaponChanges: unknown[],
+  equipmentChanges: unknown[] = [],
+  pickups: unknown[] = [],
+): ReplayDocumentReady {
+  return {
+    frameIntervalMs: 100,
+    weaponChanges,
+    equipmentChanges,
+    pickups,
+  } as unknown as ReplayDocumentReady
 }
 
 describe('ramassage et lâcher d arme — le calque date, on joue', () => {
@@ -38,6 +47,57 @@ describe('ramassage et lâcher d arme — le calque date, on joue', () => {
 
   it('MUET sans changement', () => {
     expect(weaponChangeSoundEvents(doc([]))).toEqual([])
+  })
+})
+
+describe('le canal NATIF comble les trous, et ne double JAMAIS', () => {
+  it('un ramassage natif déjà vu par weaponChanges ne sonne pas une seconde fois', () => {
+    const d = doc(
+      [{ t: 10, slot: 512, kind: 'taken', w: '1111aaaa' }],
+      [],
+      [{ t: 12, slot: 512, kind: 'weapon', w: '1111aaaa', class: 0 }],
+    )
+    expect(weaponChangeSoundEvents(d)).toEqual([
+      { ms: 1000, stem: WEAPON_CHANGE_SOUND_STEMS.taken },
+    ])
+  })
+
+  it('un ramassage natif que weaponChanges RATE sonne — c est le trou de rappel comblé', () => {
+    const d = doc([], [], [{ t: 12, slot: 512, kind: 'weapon', w: '1111aaaa', class: 0 }])
+    expect(weaponChangeSoundEvents(d)).toEqual([
+      { ms: 1200, stem: WEAPON_CHANGE_SOUND_STEMS.taken },
+    ])
+  })
+
+  it('hors fenêtre d appariement, c est un AUTRE geste : il sonne', () => {
+    const d = doc(
+      [{ t: 10, slot: 512, kind: 'taken', w: '1111aaaa' }],
+      [],
+      [{ t: 40, slot: 512, kind: 'weapon', w: '1111aaaa', class: 0 }],
+    )
+    expect(weaponChangeSoundEvents(d)).toEqual([
+      { ms: 1000, stem: WEAPON_CHANGE_SOUND_STEMS.taken },
+      { ms: 4000, stem: WEAPON_CHANGE_SOUND_STEMS.taken },
+    ])
+  })
+
+  it('une AUTRE vie au même instant n est pas le même geste : elle sonne', () => {
+    const d = doc(
+      [{ t: 10, slot: 512, kind: 'taken', w: '1111aaaa' }],
+      [],
+      [{ t: 10, slot: 999, kind: 'weapon', w: '1111aaaa', class: 0 }],
+    )
+    expect(weaponChangeSoundEvents(d)).toHaveLength(2)
+  })
+
+  it('un ramassage NON-ARME ne sonne pas l arme — son bruit est celui de l équipement', () => {
+    const d = doc([], [], [{ t: 12, slot: 512, kind: 'item', w: 'deadbeef', class: 2 }])
+    expect(weaponChangeSoundEvents(d)).toEqual([])
+  })
+
+  it('un artefact ANTÉRIEUR au schéma 29 n a pas de `pickups` : on se tait, on ne lève pas', () => {
+    const d = { frameIntervalMs: 100, weaponChanges: [], equipmentChanges: [] } as unknown as ReplayDocumentReady
+    expect(weaponChangeSoundEvents(d)).toEqual([])
   })
 })
 

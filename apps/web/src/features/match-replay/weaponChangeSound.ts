@@ -32,6 +32,24 @@
  *  - TOUTES LES VIES SONNENT, comme les tirs et les grenades : le calque publie l'auteur, le
  *    tiroir de réglages filtre par catégorie, pas par joueur. L'ordre de grandeur mesuré du
  *    canal est ~100-230 changements par match — celui des lancers de grenade.
+ *
+ * ## Le canal NATIF vient COMBLER les trous, et surtout pas doubler (schéma 29, 2026-08-31)
+ *
+ * `doc.pickups` publie l'événement `biped_pickup` que la bobine écrit elle-même. Là où les deux
+ * canaux voient la même prise, ils s'accordent (21/21 et 11/12 appariements arme nommée à moins
+ * de 500 ms) — jouer les deux ferait sonner DEUX FOIS le même geste. Mais `weaponChanges` a un
+ * rappel PARTIEL : sur le film de référence, les images-clés révèlent sept arrivées d'arme
+ * qu'il n'explique pas (Gravity Hammer ×3, M41 SPNKr ×3, Stalker Rifle ×1), et le canal natif
+ * en nomme cinq. Ces prises-là sont aujourd'hui MUETTES.
+ *
+ * La règle est donc : un ramassage natif d'ARME sonne SI ET SEULEMENT SI aucun `taken` /
+ * `swapped` de `weaponChanges` ne le couvre (même vie, même famille, à moins de cinq frames —
+ * la tolérance d'appariement de 500 ms sur une grille de 100 ms). C'est exactement la doctrine
+ * appliquée côté Go aux classes d'équipement : combler un trou, jamais doublonner.
+ *
+ * LES RAMASSAGES NON-ARME NE SONNENT PAS ICI. Le canal natif les publie (classes 2 et 3 : équipement,
+ * grenades, consommables) mais leur son est déjà l'affaire d'`equipmentChangeSound`. Leur donner
+ * en plus le bruit du ramassage d'arme ferait entendre une arme là où il n'y en a pas.
  */
 import type { ReplayDocumentReady } from './replayNormalize'
 import { frameToMs } from './replayLogic'
@@ -61,5 +79,38 @@ export function weaponChangeSoundEvents(doc: ReplayDocumentReady): ReplaySoundEv
       c.kind === 'dropped' ? WEAPON_CHANGE_SOUND_STEMS.dropped : WEAPON_CHANGE_SOUND_STEMS.taken
     out.push(soundEvent(frameToMs(c.t, doc), stem))
   }
+  for (const p of nativePickupsNotAlreadyHeard(doc)) {
+    out.push(soundEvent(frameToMs(p.t, doc), WEAPON_CHANGE_SOUND_STEMS.taken))
+  }
   return out
+}
+
+/**
+ * NATIVE_PICKUP_MATCH_FRAMES — la fenêtre qui décide qu'un ramassage natif et un `taken` de
+ * `weaponChanges` sont LE MÊME geste. Cinq frames = 500 ms sur la grille de 100 ms du rejeu,
+ * c'est-à-dire la tolérance sous laquelle l'accord des deux canaux a été mesuré côté Go.
+ */
+export const NATIVE_PICKUP_MATCH_FRAMES = 5
+
+/**
+ * nativePickupsNotAlreadyHeard — les ramassages natifs d'ARME que `weaponChanges` ne couvre
+ * pas. C'est la seule population qui a le droit de sonner en plus : tout le reste ferait
+ * entendre deux fois le même geste (cf. l'en-tête).
+ */
+export function nativePickupsNotAlreadyHeard(
+  doc: ReplayDocumentReady,
+): ReplayDocumentReady['pickups'] {
+  // Optionnel à dessein : un artefact antérieur au schéma 29 n'a pas de `pickups`, et le
+  // rejeu doit se taire sur ce qu'il ne porte pas, pas lever.
+  if (!doc.pickups?.length) return []
+  const heard = doc.weaponChanges.filter((c) => c.kind !== 'dropped')
+  return doc.pickups.filter((p) => {
+    if (p.kind !== 'weapon') return false
+    return !heard.some(
+      (c) =>
+        c.slot === p.slot &&
+        c.w === p.w &&
+        Math.abs(c.t - p.t) <= NATIVE_PICKUP_MATCH_FRAMES,
+    )
+  })
 }
