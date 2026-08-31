@@ -1,3 +1,32 @@
+## [2026-09-01] Touches explosives — présentes dans le film, attribuables tireur+arme par jointure au tir — Complété
+
+**Contexte** : worktree dédié `wt/trame-explo`. Le verdict précédent (« armes lourdes = 0 % de
+touches en type 0 ») CONTREDISAIT l'API (accuracy compte les explosifs). Hypothèse : notre
+appariement exige que le responsable du dégât (`damage_aftermath` 0xC0 t0, réf1 dom1) résolve au
+slot bipède du tireur ; pour un explosif réf1 = le PROJECTILE, jamais un joueur → raté, mais le
+dégât existe. Instrument `explo_touches_research_test.go` (+ `_helpers`), garde LOT1_TRAME_FILM,
+borné 12 chunks, 6 mesures. Films 000d5950 / 01e1f945 / 00502e52.
+
+**Décision technique** : classer chaque 0xC0 t0 par résolution de réf1 (absente / bipède direct /
+NON-bipède candidat projectile). Discriminant DENSITÉ-INDÉPENDANT = magnitude (M5) ; confond
+« tireur mort en cours de chunk » écarté par résolution CHRONO vs fin-de-chunk (M6).
+
+**Résultats** : classe NON-BIPÈDE sur les 2 films à explosifs = victime réf0 résolue ~98 %,
+magnitude ~2x le tir direct (3.0 vs 1.4-1.5), réf1 liée à RIEN en fin de chunk (39/52, 12/16). M6
+DÉCISIF : 96,2 % (000d5950) et 81,2 % (00502e52) de la classe non-bipède ne sont JAMAIS un joueur
+aux deux instants (projectile authentique, mag 2.9) ; confond « mort depuis » marginal (4-19 %).
+Attribution (M4, fenêtre de vol 2 s) : tireur+arme UNIQUE dans 100 % / 58 % des touches coïncidant
+un tir lourd (0xD2 t36 porte attaquant + WeaponID). M3 (coïncidence brute) confondu par la densité
+des tirs lourds sur Fiesta (témoin 44 %) ; TIENT sur 00502e52 (75 % vs 25 %, 3x). Rappel : les
+KILLS explosifs sont déjà attribués par le dead-state i11 (TUEUR + tag source, 97,6 %).
+
+**Conclusion** : les touches explosives non fatales SONT dans le film ; attribuables tireur+arme
+par JOINTURE probabiliste au tir (fenêtre de vol), l'arme venant du WeaponID du tir (pas du tag
+source). Réserve : lien de CHAMP non fatal exigerait de résoudre projectile→owner (réf0 dom5 des
+événements 0xC2/0xC3, sens non tranché) — piste vivante. Note :
+`.ai/V7.5/film_re/NOTE_TOUCHES_EXPLOSIVES_2026-09-01.md`. gofmt + go vet verts. Prochaine étape :
+si feature accuracy explosifs, décider jointure-au-tir vs creuser projectile-owner.
+
 ## [2026-08-31] Attribution PAR LE TIR de la précision/distance par arme — lien réel, viable sous conditions — Complété
 
 **Contexte** : worktree dédié `wt/trame-attrib`. Une sonde précédente (`lot1_sonde_precision_*`)
