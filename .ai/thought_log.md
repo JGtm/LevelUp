@@ -1,3 +1,51 @@
+## [2026-08-31] `ti=13` — le « chaînage » ne mesure pas la justesse : la phase A3 lisait un ARTEFACT DE DENSITÉ — Complété
+
+**Sur « ok go » pour réparer l'ancrage de `ti=13` en Assaut. Il n'y avait rien à réparer, et
+c'est le résultat.**
+
+**LA CORRECTION, et elle vaut au-delà de l'Assaut.** La phase A3 concluait à une « contamination
+d'ancrage » sur la foi d'un chaînage de 1,9 à 16,4 % contre 87-99 % en KOTH. `Chained` est FAUX
+PAR CONSTRUCTION pour le dernier record d'un paquet — rien ne peut le suivre — et son propre
+commentaire l'estime à ~3 % de perte, *sur un canal dense*. L'Assaut a la bande la plus maigre du
+corpus : 8 slots.
+
+Mesure densité (records `ti=13` par paquet delta) contre chaînage, **tous modes confondus** :
+
+    c75f33b8  Assaut              0,010 rec/paquet   1,9 %
+    9f57c612  Assaut              0,011                2,4 %
+    35b75a31  Assaut              0,020                3,0 %
+    1c01e34f  Assaut              0,037                4,7 %
+    0a247154  Ranked:KOTH         0,140               29,8 %
+    2ce58582  Ranked:Strongholds  0,258               56,1 %
+    21ece4d8  KOTH:Arena          0,408               46,5 %
+    7f1bbf06  KOTH:Arena          0,567               47,6 %
+    696a9d7c  Strongholds:Arena   1,070               44,1 %
+
+**Monotone, et l'Assaut est SUR la courbe, pas à côté.** Le chaînage mesure combien de records se
+suivent dans un paquet, pas si la lecture est juste. Le vrai témoin de justesse est le TAUX DE
+MARCHE : 23-49 % en Assaut contre 23-81 % chez les témoins — indiscernable. **La lecture de
+`ti=13` en Assaut n'a jamais été cassée.**
+
+Cas à part relevé au passage : `cde26226` (CTF) a une densité de 7,3 pour 2,6 % de chaînage — sa
+bande fait **914 slots** contre 8 à 52 ailleurs. Là, c'est une vraie sur-inclusion de bande, et
+c'est une piste distincte, pour le CTF.
+
+**MAIS LE CANAL EST VIDE DE JAUGE EN ASSAUT**, et c'est la fin de la piste. Contenu dumpé pour la
+première fois : 8 slots, 56 couples (slot, tag) porteurs de valeur sur `9f57c612`, la plupart avec
+**1 à 6 lectures**, des valeurs à l'échelle du milliard, presque exclusivement le canal PAR JOUEUR
+(i2..i33). Ni rampe, ni plage bornée, ni cadence — rien qui ressemble à une jauge.
+
+**BILAN DES TROIS MAISONS : le film ne réplique PAS l'armement de la bombe.** Composants du
+statborg (112 canaux) : négatif. Pied de film, tous indices de type : négatif, et `th=10` y est
+quasi absent en Assaut. `ti=13` : lisible — contrairement à ce qui était écrit — mais sans jauge.
+
+**Prochaine étape, hors film** : la MÈCHE comme constante moteur, dans le pool Lua de la
+ParcelLibrary (la bibliothèque qui sert le drapeau ET la bombe), d'où `armement = explosion −
+mèche`. C'est la technique qui a donné `innerAreaMonitorRadius`, `flagResetSeconds` et
+`flagCarrierMovespeedScalar` au chantier CTF.
+
+**Gates** : go test `./internal/analysis/...` vert, gofmt propre, golangci-lint 0 issue.
+
 ## [2026-08-31] Assaut — LES TROIS MAISONS de la donnée d'objectif, et pourquoi l'armement n'est dans aucune des deux lisibles — Complété
 
 **Retour utilisateur** : « bizarre parce que statborg a les prises de colline en KOTH, les jauges

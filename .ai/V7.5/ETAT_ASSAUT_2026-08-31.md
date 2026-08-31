@@ -255,6 +255,43 @@ l'armement est le plus probablement — et la seule des trois qui ne soit pas fe
 Reserve a garder : `1c01e34f` et `34bb3bc8` journalisent une **empreinte de registre ECS
 INCONNUE** (build de jeu different du corpus de calibration).
 
+### 3.5 `ti=13` : le diagnostic A3 est un ARTEFACT DE DENSITE — et le canal reste vide en Assaut
+
+**LA CORRECTION D'ABORD, parce qu'elle vaut au-dela de l'Assaut.** La phase A3 concluait a une
+« contamination d'ancrage » sur la foi d'un chainage de 1,9 a 16,4 % contre 87-99 % en KOTH.
+C'EST UNE MAUVAISE LECTURE DE L'INSTRUMENT. `Chained` est FAUX PAR CONSTRUCTION pour le dernier
+record d'un paquet — rien ne peut le suivre. Mesure du 2026-08-31, densite de records `ti=13`
+par paquet delta contre chainage, TOUS MODES CONFONDUS :
+
+| film | mode | densite (rec/paquet) | chainage |
+|---|---|---:|---:|
+| `c75f33b8` | Assaut | 0,010 | 1,9 % |
+| `9f57c612` | Assaut | 0,011 | 2,4 % |
+| `35b75a31` | Assaut | 0,020 | 3,0 % |
+| `1c01e34f` | Assaut | 0,037 | 4,7 % |
+| `0a247154` | Ranked:KOTH | 0,140 | 29,8 % |
+| `2ce58582` | Ranked:Strongholds | 0,258 | 56,1 % |
+| `21ece4d8` | KOTH:Arena | 0,408 | 46,5 % |
+| `7f1bbf06` | KOTH:Arena | 0,567 | 47,6 % |
+| `696a9d7c` | Strongholds:Arena | 1,070 | 44,1 % |
+
+**Le chainage suit la densite, monotone, sur tous les modes — l'Assaut est SUR la courbe, pas a
+cote.** Il mesure combien de records se suivent dans un paquet, pas si la lecture est juste. Le
+taux de MARCHE, lui, est le vrai temoin de justesse : 23-49 % en Assaut, contre 23-81 % chez les
+temoins. **La lecture de `ti=13` en Assaut n'a jamais ete cassee.**
+
+(Cas a part : `cde26226` (CTF) a une densite de 7,3 pour 2,6 % de chainage — sa bande fait
+**914 slots** contre 8 a 52 ailleurs. La, c'est une vraie sur-inclusion de bande.)
+
+**MAIS LE CANAL EST VIDE DE JAUGE EN ASSAUT.** Le contenu, dumpe pour la premiere fois : 8 slots,
+56 couples (slot, tag) porteurs de valeur sur `9f57c612`, la plupart avec **1 a 6 lectures**, des
+valeurs a l'echelle du milliard, et presque exclusivement le canal PAR JOUEUR (i2..i33). Rien qui
+ressemble a une jauge — ni rampe, ni plage bornee, ni cadence.
+
+**Conclusion des trois maisons : le film ne replique PAS l'armement de la bombe.** Reste la voie
+hors film — la MECHE comme constante moteur, a lire dans le pool Lua de la ParcelLibrary (meme
+technique que les constantes du drapeau CTF), d'ou `armement = explosion - meche`.
+
 ## 4. Pieces
 
 - `internal/analysis/replay/assaut_a5_explosions_test.go` — la confrontation de publication.
