@@ -10,10 +10,17 @@ import (
 // CE QU'EST CE RECORD (RE Ghidra, dispatcher EventDispatch_Generic_ReadType7 @0x14080AADE) :
 // chaque paquet de type 0 commence par un CHAMP DE TYPE D'EVENT sur 7 BITS ; le
 // désérialiseur est `vtable[type] + 0x68` (table de handlers @0x144724A90). Le type 105
-// pointe sur FUN_14080C1F8 — c'est le « record de dégât » déjà identifié par ailleurs dans
-// le projet. Autrement dit : le « fire event » et le « record de dégât 0xd2 » sont LE MÊME
-// RECORD, et il n'existe QUE lorsqu'un dégât est appliqué (il n'y a pas de record de tir
-// manqué : « touché » est une propriété de tous les records lus ici).
+// pointe sur FUN_14080C1F8 : c'est le record de **TIR** (`action_weapon_fire`, un coup tiré),
+// PAS un record de dégât. LE DÉGÂT EST UN RECORD DISTINCT — `damage_aftermath` (octet 0xC0,
+// type 0), avec son propre attaquant et sa victime. Un tir n'est donc PAS forcément une touche :
+// la touche se reconstruit en APPARIANT un tir 0xD2 à un `damage_aftermath` 0xC0 du même
+// attaquant dans une fenêtre temporelle (méthode PAR LE TIR, `NOTE_ATTRIBUTION_ARME_TIR_2026-08-31`).
+// « Touché » n'est PAS une propriété de tous les records lus ici — c'est ce que la précision par
+// arme (tirs qui touchent / tirs) mesure justement.
+//
+// (Correctif Lot 0 du plan précision/distance : l'ancienne rédaction affirmait « 0xD2 = record de
+// dégât, touché = propriété de tous les records » — faux, contredit par l'appariement tir↔dégât
+// à 17-51 % et des précisions par arme variables 19-100 %.)
 //
 // Conséquence pratique majeure : `payload[0] >> 1` donne le type en O(1). Le balayage
 // bit-à-bit par « marqueur 11 bits » de l'ancienne génération de scanners est inutile — ce
