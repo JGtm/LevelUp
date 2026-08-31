@@ -156,7 +156,75 @@ func DefaultScanFilmOptions() ScanFilmOptions {
 // ScanFilmBipedPositions décode toutes les positions absolues de bipeds des chunks du
 // film situé dans dir. Les chunks illisibles sont ignorés (le film peut être partiel) ;
 // une erreur n'est renvoyée que si AUCUN chunk n'a pu être lu.
+//
+// C'est l'entrée bipède de ScanFilmBipedPositionsForBand : elle ne fait qu'y ajouter le relevé
+// de la bande de slots `ti=35` (bipedSlotBand). Aucun décodage ne lui est propre.
 func ScanFilmBipedPositions(dir string, opt ScanFilmOptions) ([]BipedPosition, error) {
+	chunks, err := bipedScanChunks(dir, opt)
+	if err != nil {
+		return nil, err
+	}
+	band := bipedSlotBand(dir, chunks)
+	if len(band) == 0 {
+		return nil, fmt.Errorf("aucun slot biped (ti=%d) dans les keyframes de %s", BipedTypeIndex, dir)
+	}
+	return ScanFilmBipedPositionsForBand(dir, band, opt)
+}
+
+// ScanFilmBipedPositionsForBand décode les positions absolues des records dont le SLOT tombe
+// dans band, avec la grammaire du bipède — celle de la forme `object-position-dynamic-
+// precision`, porte de 5 bits.
+//
+// POURQUOI CETTE ENTRÉE EXISTE. Deux archétypes seulement portent cette forme d'i0 : le bipède
+// (`ti=35`) et le VÉHICULE (`ti=40`). Le registre du film le dit, et la mesure du cadrage
+// véhicules du 2026-08-31 le confirme sur pièces : sur la même bande de slots et le même film,
+// cette grammaire rend 99,4 à 100 % de pas de trajectoire sous 35 m/s, celle des objets du
+// monde (porte de 3 bits, `ScanFilmWorldObjects`) 21,2 à 41,8 %. Le décodeur savait donc déjà
+// lire un véhicule ; il lui manquait ce point d'entrée, `bipedSlotBand` filtrant en dur
+// `ti=35`. Rien de la grammaire n'est paramétré ici : seule la bande l'est.
+//
+// LA BANDE d'un archétype d'objet du monde se relève par
+// `ScanFilmWorldObjectKeyframes(dir, ti).Band`. TROIS RÉGLAGES sont à connaître pour un
+// archétype autre que le bipède, tous déjà dans ScanFilmOptions — aucune ligne à recopier :
+//
+//   - RequireTag1 est à DÉSARMER : le tag de 2 bits est la génération du handle, et les objets
+//     du monde en emploient les quatre valeurs (règle établie par matchWorldObjectRecord).
+//   - MaxSpeedMPS et IsolationGapMS sont les deux filtres de post-traitement du bipède ; ils
+//     s'appliquent tels quels, et zéro les désarme pour obtenir le flux brut.
+//   - Layout à nil laisse DetectI0Layout lire le découpage DANS LE FILM : c'est le mode normal,
+//     les largeurs d'axe étant une constante de CARTE, jamais d'archétype.
+//
+// Ce qui ne bouge pas : l'en-tête, le masque, l'exigence d'un i0 absolu de la région attendue,
+// et bipedMinMaskCnt — le masque nominal d'un véhicule porte cinq composants (i0/i1/i2/i3/i25),
+// donc le minimum de deux est franchi sans réglage.
+func ScanFilmBipedPositionsForBand(dir string, band map[uint32]bool, opt ScanFilmOptions) (
+	[]BipedPosition, error) {
+	chunks, err := bipedScanChunks(dir, opt)
+	if err != nil {
+		return nil, err
+	}
+	if len(band) == 0 {
+		return nil, fmt.Errorf("bande de slots vide pour le film %s", dir)
+	}
+	lay, err := bipedI0Layout(dir, opt)
+	if err != nil {
+		return nil, err
+	}
+	out, read := scanBipedChunks(dir, chunks, band, lay, opt)
+	if read == 0 {
+		return nil, fmt.Errorf("aucun chunk film lisible dans %s", dir)
+	}
+	out = DropIsolated(out, opt.IsolationGapMS)
+	if opt.WorldRange == nil {
+		return out, nil // sans coordonnées monde, un seuil en m/s n'a aucun sens
+	}
+	return DropTeleports(out, opt.MaxSpeedMPS), nil
+}
+
+// bipedScanChunks refuse les options qui interdisent toute émission de coordonnée, puis rend la
+// liste des chunks à balayer. Les DEUX entrées y passent : c'est ce qui leur garantit la même
+// erreur, dans le même ordre, sur un film absent ou des options incomplètes.
+func bipedScanChunks(dir string, opt ScanFilmOptions) ([]int, error) {
 	if opt.WorldRange == nil && !opt.QuantaOnly {
 		return nil, fmt.Errorf("%w (film %s) : renseigner ScanFilmOptions.WorldRange, ou QuantaOnly pour n'obtenir que les quanta", ErrUnknownMapBounds, dir)
 	}
@@ -170,20 +238,25 @@ func ScanFilmBipedPositions(dir string, opt ScanFilmOptions) ([]BipedPosition, e
 	if len(chunks) == 0 {
 		return nil, fmt.Errorf("aucun chunk film dans %s", dir)
 	}
-	slots := bipedSlotBand(dir, chunks)
-	if len(slots) == 0 {
-		return nil, fmt.Errorf("aucun slot biped (ti=%d) dans les keyframes de %s", BipedTypeIndex, dir)
-	}
-	var lay I0Layout
+	return chunks, nil
+}
+
+// bipedI0Layout rend le découpage d'i0 : celui que l'appelant force, sinon celui lu dans le film.
+func bipedI0Layout(dir string, opt ScanFilmOptions) (I0Layout, error) {
 	if opt.Layout != nil {
-		lay = *opt.Layout
-	} else {
-		detected, _, err := DetectI0Layout(dir)
-		if err != nil {
-			return nil, fmt.Errorf("découpage i0 illisible dans %s : %w", dir, err)
-		}
-		lay = detected
+		return *opt.Layout, nil
 	}
+	lay, _, err := DetectI0Layout(dir)
+	if err != nil {
+		return I0Layout{}, fmt.Errorf("découpage i0 illisible dans %s : %w", dir, err)
+	}
+	return lay, nil
+}
+
+// scanBipedChunks déroule le balayage sur les chunks demandés et rend les positions ainsi que
+// le nombre de chunks effectivement LUS — un film partiel est licite, un film illisible non.
+func scanBipedChunks(dir string, chunks []int, band map[uint32]bool, lay I0Layout,
+	opt ScanFilmOptions) ([]BipedPosition, int) {
 	var out []BipedPosition
 	read := 0
 	for _, c := range chunks {
@@ -196,20 +269,13 @@ func ScanFilmBipedPositions(dir string, opt ScanFilmOptions) ([]BipedPosition, e
 			if pk.Type != PacketTypeDelta {
 				continue
 			}
-			for _, r := range ScanBipedRecords(pk.Payload(data), slots, lay, opt) {
+			for _, r := range ScanBipedRecords(pk.Payload(data), band, lay, opt) {
 				r.Chunk, r.PacketIndex, r.TimestampUS = c, pk.Index, pk.TimestampUS
 				out = append(out, r)
 			}
 		}
 	}
-	if read == 0 {
-		return nil, fmt.Errorf("aucun chunk film lisible dans %s", dir)
-	}
-	out = DropIsolated(out, opt.IsolationGapMS)
-	if opt.WorldRange == nil {
-		return out, nil // sans coordonnées monde, un seuil en m/s n'a aucun sens
-	}
-	return DropTeleports(out, opt.MaxSpeedMPS), nil
+	return out, read
 }
 
 // bipedSlotBand construit l'ensemble des slots biped plausibles : union des ti=35 des

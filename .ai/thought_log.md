@@ -81090,3 +81090,44 @@ V1. `go vet` OK sur les deux paquets ; aucun code de production touche par ce lo
 `ScanFilmBipedPositionsForBand` avec gate de non-regression exact sur `000d5950`, V1.3 oracle
 du cap i2/i3, rejeu de l'oracle geometrique du 18/08). Puis V1b (Ghidra : portage
 `FUN_1410A5A74`, identite MPPWord32), V2 spawns/cooldowns, V3 sons, V4 sprites.
+
+## [2026-08-31] Vehicules lot V1a — positions par la grammaire bipede, cap i2 refute, conducteur par les trous — Complete
+
+**Contexte** : lot V1a du chantier vehicules (worktree LevelUp-wt-vehicules). Pilote un agent Opus,
+CR verifie sur pieces. Rapport : `.ai/V7.5/film_re/V1A_RAPPORT_2026-08-31.md`.
+
+**Decisions et resultats** :
+- V1.1 corpus : 46 films mesures, 41 retenus (min 2 637 records, seuil 1 000), les 5 temoins
+  negatifs a bande VIDE (Aquarius, Bazaar, Behemoth Tactical, Streets x2). Nom de carte pris de
+  `match_registry.map_name`. Le Behemoth non-SF qualifie aussi (13 films) : corpus de reference
+  extensible de 26 a 39.
+- V1.2 : `ScanFilmBipedPositionsForBand(dir, band, opt)` livree (offline_biped.go 402->467),
+  `ScanFilmBipedPositions` delegue. Non-regression BIT-POUR-BIT sur 000d5950 (empreinte FNV
+  identique avant/apres, 3 variantes). Suites replay+filmdec VERTES, killsource 59/59 intact.
+- V1.3 : le cap i2 (object-forward-and-up en precision-dynamique) est INDISCERNABLE du hasard
+  (mediane 40-137 deg, temoin permute = pareil) => REFUTE, non publie, aucune correction bricolee.
+  MAIS i1 (direction de velocite) s'accorde au deplacement a 1,7-2,1 deg, R 0,992-0,997 : la faute
+  est dans i2 SEUL, pas dans le curseur. Consequence : orientation d'un vehicule EN MOUVEMENT
+  disponible via i1 ; a l'arret, sans cap tant qu'i2 non perce.
+- V1a.4 : oracle geometrique du 18/08 rejoue sur les BONNES positions. Coincidence prolongee
+  faible (2-10 periodes/film) mais les TROUS du flux bipede s'ouvrent pres d'un vehicule 8 a 80x
+  plus souvent que le hasard (presence de fond 0,5-2,3 %). Modele « l'occupant attache cesse de
+  repliquer » soutenu ; bonne primitive = DEBUT DE TROU pres d'un vehicule, pas la coincidence.
+  BipedPosition n'a pas de generation => attribution designe un SLOT, pas une vie.
+
+**Repriorisation 2D (decision utilisateur du 31/08)** : le rejeu est en 2D vue de dessus, donc le
+haut/bas de forward-and-up ne sert a rien et l'altitude est mineure. i2 (orientation chassis a
+l'arret) PARQUE, faible valeur. La vraie cible « ou porte le regard » = i21
+(unit-desired-aiming-vector), NON teste sur ti=40 : c'est la visee, distincte de i2, et
+probablement la ou passe l'aim du canonnier quand l'occupant est embarque (son biped cesse de
+repliquer). Report inscrit au registre. i21 a mesurer au prochain lot film.
+
+**Incident de livraison (a ne pas repeter)** : le commit V0 `ec549ee9b` est parti avec la suite
+`replay` ROUGE — l'instrument V0 avait recopie la formule de distance 3D a six flottants, ce que
+`TestUneSeuleFormuleDeDistance3D` interdit. Cause : au commit V0 je n'avais lance que `go vet` +
+un seul test de grammaire, PAS `go test` du paquet. Corrige par V1a (passage par `dist3`). Lecon
+de la delivery-checklist enfreinte : lancer la SUITE du paquet, pas un test isole.
+
+**Conclusion / prochaine etape** : V1a compile + vet propres (verifies sur pieces, cache isole).
+Commit V1a pose sur base propre. V1b (identite du chassis) : ses gates ECHOUENT a la mesure (voir
+son entree a venir) => renvoye en RE. Prochaines etapes : identite V1b, puis i21, puis V2 spawns.
