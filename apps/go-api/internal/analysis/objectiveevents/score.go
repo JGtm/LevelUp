@@ -190,3 +190,14 @@ func longestRun(pts []ScorePoint, strict bool) []ScorePoint {
 	}
 	return out
 }
+
+// modeScoreInDomain dit si un composant de SCORE DE MODE est plausible, SUR SES DEUX CANAUX.
+//
+// Un compteur de recompense est positif, et aucun mode Halo Infinite ne fait marquer plus de
+// [statMaxModeScore] points a une entite dans une manche. Les deux canaux d'un composant sont
+// decodes de la MEME emission : si l'un est hors domaine, l'emission etait mal alignee et
+// l'autre ne vaut rien non plus. C'est la GARDE DE DOMAINE (garde anti-manche-fantome n 1),
+// etendue au canal frere le 2026-08-31.
+func modeScoreInDomain(v StatValue) bool {
+	return v.A >= 0 && v.A <= statMaxModeScore && v.B >= 0 && v.B <= statMaxModeScore
+}

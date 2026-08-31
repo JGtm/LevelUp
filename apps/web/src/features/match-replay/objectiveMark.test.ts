@@ -108,6 +108,34 @@ describe('objectiveMark — la prise de base, un instant tenu', () => {
   })
 })
 
+describe("objectiveMark — l'explosion de la bombe, un instant tenu", () => {
+  const doc = (over = {}) => testReplayDoc({
+    frameCount: 200,
+    objectives: [{ stat: 'bomb_detonations', t: 30, timeMs: 3_000, xuid: ME }],
+    ...over,
+  })
+
+  it("s'allume à l'instant de l'explosion, tient quelques secondes, puis s'éteint", () => {
+    const d = doc()
+    expect(objectiveMarkAt(d, ME, 29)).toBeNull()
+    expect(objectiveMarkAt(d, ME, 30)).toBe('bomb')
+    expect(objectiveMarkAt(d, ME, 31)).toBe('bomb')
+    expect(objectiveMarkAt(d, ME, 300)).toBeNull()
+  })
+
+  it("ne marque que son auteur — le point de mode d'Assaut est attribué", () => {
+    expect(objectiveMarkAt(doc(), 'autre', 30)).toBeNull()
+  })
+
+  it('SANS ORIGINE RÉSOLUE, aucune marque : la même garde que la prise de base', () => {
+    const d = testReplayDoc({
+      coverage: { originResolved: false } as never,
+      objectives: [{ stat: 'bomb_detonations', t: 30, timeMs: 3_000, xuid: ME }],
+    })
+    expect(objectiveMarkAt(d, ME, 30)).toBeNull()
+  })
+})
+
 describe('objectiveMark — KOTH, prêt avant sa source', () => {
   it('le résolveur de périodes vaut pour la colline comme pour le crâne et le VIP', () => {
     // Le document ne publie AUCUNE occupation de colline attribuée à ce jour (les

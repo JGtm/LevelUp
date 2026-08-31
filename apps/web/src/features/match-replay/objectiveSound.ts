@@ -63,11 +63,15 @@ export type ObjectiveSide = 'ally' | 'enemy' | 'unknown'
  *
  * CE QUI N'EST PAS ICI, ET POURQUOI — l'inventaire est écrit pour qu'on ne le recommence pas :
  *  - `zone_secures` : aucun son désigné. `zone_captures` a le sien, pas celui-là ;
- *  - la BOMBE (Assaut) et le DISPOSITIF D'EXTRACTION : leurs sons sont extraits et rendus, mais
- *    le film ne décode QUE deux familles d'objectif — `ObjectiveTypeFlag` et `ObjectiveTypeZone`
- *    (`objectiveevents/named.go`). Aucune statistique d'Assaut ni d'Extraction n'arrive dans
- *    `doc.objectives` : il n'y a rien à sonner. Ce n'est pas un manque de son, c'est un manque
- *    d'ÉVÉNEMENT, et ça se répare côté décodeur ;
+ *  - la BOMBE (Assaut) : L'ÉVÉNEMENT EXISTE DEPUIS LE 2026-08-31. `ObjectiveTypeBomb` nomme
+ *    `bomb_detonations` et le rejeu le publie dans `doc.objectives` (26 explosions attribuées
+ *    sur les 28 datées du corpus de 9 films). Il ne manque plus que la DÉSIGNATION du stem par
+ *    l'utilisateur — les sons sont extraits et rendus, mais aucun geste sonore n'a été désigné
+ *    pour l'Assaut, et en désigner un à sa place ferait entendre un son que personne n'a
+ *    validé (règle du gate sonore). Une ligne ici, et l'explosion sonne ;
+ *  - le DISPOSITIF D'EXTRACTION : ses sons sont extraits et rendus, mais aucune statistique
+ *    d'Extraction n'arrive dans `doc.objectives` — le film ne décode pas cette famille. Ce
+ *    n'est pas un manque de son, c'est un manque d'ÉVÉNEMENT, et ça se répare côté décodeur ;
  *  - `flag_capture_assists` et `flag_carriers_killed` : aucun événement Wwise propre dans la
  *    banque du mode. Les sonner avec le son de la capture ferait entendre deux captures.
  */
