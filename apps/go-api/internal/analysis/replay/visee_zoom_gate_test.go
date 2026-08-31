@@ -674,3 +674,113 @@ func TestViseeZoomDureesObservees(t *testing.T) {
 	t.Logf("  quantiles (s) : p10=%.2f p25=%.2f p50=%.2f p75=%.2f p90=%.2f p95=%.2f max=%.2f",
 		q(0.10), q(0.25), q(0.50), q(0.75), q(0.90), q(0.95), durees[len(durees)-1])
 }
+
+// TestViseeZoomEntreesOrphelines cherche CE QUI FERME une periode de lunette quand aucun
+// evenement de sortie n'est lu. Hypotheses de l'utilisateur, toutes deux plausibles et
+// testables : (a) le joueur MEURT a la lunette — il n'a pas le temps de dezoomer, et le moteur
+// n'a pas de sortie a emettre ; (b) il subit des DEGATS, ce qui force le dezoom — et cet
+// evenement-la voyagerait alors dans le meme paquet que le degat, donc en DEUXIEME position
+// d'une liste, hors de portee du scanner actuel.
+//
+// L'epreuve ne pose pas de seuil : elle mesure le delai entre une entree orpheline et la mort
+// suivante du meme slot, et le compare au delai qui suit une entree NORMALEMENT fermee. Si (a)
+// explique les orphelines, leur delai a la mort doit etre COURT la ou celui des fermees ne l'est
+// pas. Garde ZOOM_FILM.
+func TestViseeZoomEntreesOrphelines(t *testing.T) {
+	dir := os.Getenv(zoomFilmEnv)
+	if dir == "" {
+		t.Skipf("%s absent : mesure sautee", zoomFilmEnv)
+	}
+	release := filmdec.LockProcessDecode()
+	defer release()
+
+	evts := filmdec.ScanFilmZoomEvents(dir)
+	scan := filmdec.DefaultScanFilmOptions()
+	scan.QuantaOnly = true
+	pos, err := filmdec.ScanFilmBipedPositions(dir, scan)
+	if err != nil {
+		t.Fatalf("balayage des positions : %v", err)
+	}
+	lives := buildLifeSpans(indexBySlot(pos))
+	// Fin de vie d'un slot = l'instant ou sa trajectoire s'arrete : c'est la mort (ou la fin du
+	// film). On l'utilise comme horloge de mort, sans passer par le fil des morts : ici on ne
+	// cherche pas QUI meurt, seulement QUAND ce slot cesse d'exister.
+	finDeVie := map[uint32][]uint64{}
+	for _, l := range lives {
+		finDeVie[l.slot] = append(finDeVie[l.slot], uint64(l.to))
+	}
+	for s := range finDeVie {
+		sort.Slice(finDeVie[s], func(i, j int) bool { return finDeVie[s][i] < finDeVie[s][j] })
+	}
+	prochaineFin := func(slot uint32, ts uint64) (float64, bool) {
+		for _, f := range finDeVie[slot] {
+			if f >= ts {
+				return float64(f-ts) / 1e6, true
+			}
+		}
+		return 0, false
+	}
+
+	ouv := map[uint32]uint64{}
+	var delaisFermees, delaisOrphelines []float64
+	orphelines, fermees := 0, 0
+	// Une entree est ORPHELINE si la bascule suivante du meme slot est une AUTRE entree (ou
+	// s'il n'y en a plus) : le moteur ne peut pas entrer deux fois sans etre sorti entre-temps.
+	for _, e := range evts {
+		if e.Scoped() {
+			if t0, encore := ouv[e.Slot]; encore {
+				orphelines++
+				if d, ok := prochaineFin(e.Slot, t0); ok {
+					delaisOrphelines = append(delaisOrphelines, d)
+				}
+			}
+			ouv[e.Slot] = e.TimestampUS
+			continue
+		}
+		if t0, ok := ouv[e.Slot]; ok {
+			fermees++
+			if d, ok2 := prochaineFin(e.Slot, t0); ok2 {
+				delaisFermees = append(delaisFermees, d)
+			}
+			delete(ouv, e.Slot)
+		}
+	}
+	// Les entrees encore ouvertes en fin de film sont orphelines elles aussi.
+	for slot, t0 := range ouv {
+		orphelines++
+		if d, ok := prochaineFin(slot, t0); ok {
+			delaisOrphelines = append(delaisOrphelines, d)
+		}
+	}
+	t.Logf("BASCULES — %d entrees fermees par une sortie lue, %d ORPHELINES", fermees, orphelines)
+
+	med := func(v []float64) float64 {
+		if len(v) == 0 {
+			return -1
+		}
+		c := append([]float64(nil), v...)
+		sort.Float64s(c)
+		return c[len(c)/2]
+	}
+	sous := func(v []float64, seuil float64) float64 {
+		if len(v) == 0 {
+			return 0
+		}
+		n := 0
+		for _, x := range v {
+			if x <= seuil {
+				n++
+			}
+		}
+		return 100 * float64(n) / float64(len(v))
+	}
+	t.Logf("DELAI ENTREE -> FIN DE VIE DU SLOT (secondes) :")
+	t.Logf("  entrees FERMEES    (n=%d) : mediane %.2f · %.0f %% a moins de 2 s · %.0f %% a moins de 5 s",
+		len(delaisFermees), med(delaisFermees), sous(delaisFermees, 2), sous(delaisFermees, 5))
+	t.Logf("  entrees ORPHELINES (n=%d) : mediane %.2f · %.0f %% a moins de 2 s · %.0f %% a moins de 5 s",
+		len(delaisOrphelines), med(delaisOrphelines), sous(delaisOrphelines, 2), sous(delaisOrphelines, 5))
+	t.Log("LECTURE : si les orphelines meurent nettement plus vite que les fermees, l'hypothese" +
+		" « il meurt a la lunette » explique la sortie manquante — et la periode doit alors se" +
+		" fermer A LA MORT, pas au plafond de maintien. Sinon la sortie existe ailleurs dans le" +
+		" flux (2e position d'une liste, vraisemblablement le paquet du degat qui fait dezoomer).")
+}

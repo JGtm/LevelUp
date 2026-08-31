@@ -80999,3 +80999,39 @@ entre la copie front de `SchemaVersion` et la constante Go — copie mise a jour
    lunette.
 4. **Gate visuel utilisateur** sur le rejeu de 00162144 : le cone de Nilton doit se resserrer aux
    six moments releves.
+
+## [2026-08-31] Visee lunette — CE QUI FERME UNE PERIODE : la mort explique un tiers des sorties manquantes, pas le reste — Complete (mesure)
+
+**Question de l'utilisateur** : les zoom-out sont-ils absents du flux delta ? Et deux hypotheses
+de sa part : (a) le joueur meurt a la lunette, il n'a pas le temps de dezoomer ; (b) subir des
+degats force le dezoom.
+
+**Les chiffres d'abord — les sorties NE SONT PAS absentes** : 180 entrees, 144 sorties,
+**139 periodes completes (77 %)**. Il manque 41 fermetures, pas la moitie du signal.
+
+**Mesure (instrument `TestViseeZoomEntreesOrphelines`, garde ZOOM_FILM).** Une entree est
+ORPHELINE si la bascule suivante du meme slot est une AUTRE entree (le moteur ne peut pas entrer
+deux fois sans etre sorti). Delai entre l'entree et la fin de vie du slot :
+
+| population | n | mediane | < 2 s | < 5 s |
+|---|---|---|---|---|
+| entrees FERMEES par une sortie lue | 138 | 15,80 s | 3 % | 10 % |
+| entrees ORPHELINES | 41 | 12,13 s | **15 %** | **32 %** |
+
+**VERDICT PARTAGE, et c'est le resultat honnete** : l'hypothese (a) est CONFIRMEE mais ne couvre
+qu'une partie — les orphelines meurent 3 a 5 fois plus vite que les fermees (32 % contre 10 % a
+moins de 5 s), donc « il est mort a la lunette » explique environ un tiers des cas. Les deux tiers
+restants ne meurent pas : **leur sortie existe donc dans le flux, ailleurs que la ou on regarde**.
+
+**CE QUI DESIGNE L'HYPOTHESE (b)** : le scanner ne lit que l'evenement de TETE de chaque paquet.
+Une sortie de lunette PROVOQUEE par un degat serait emise dans le meme paquet que le degat —
+donc en DEUXIEME position d'une liste, invisible pour lui. L'intuition de l'utilisateur et la
+structure du format se rejoignent.
+
+**CONSEQUENCES OPERATIONNELLES, dans l'ordre de valeur** :
+1. **Marcher la liste d'evenements ENTIERE** recupererait les deux tiers manquants. C'est le
+   geste qui rend le plafond de maintien inutile. Il exige la longueur de charge de chaque type
+   d'evenement — chantier suivi par `PLAN_PERCER_TRAME_FILM_2026-08-30.md`.
+2. **Fermer une periode A LA MORT du slot** (fin de vie de la trajectoire) : gratuit, la donnee
+   est deja la, et cela traite proprement le tiers explique par (a) au lieu de le laisser au
+   plafond de 3,5 s.
