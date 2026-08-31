@@ -314,6 +314,24 @@ Correction assumee : ma conclusion « mur du handle runtime » de la 1re passe e
 handle EST resoluble hors ligne, il suffisait de la base. Lecon : quand l'utilisateur dit
 « on a deja X », le verifier sur pieces avant de conclure a l'impossible.
 
+## TIRS MANQUES (demande utilisateur, 31/08) — brique posee
+
+DEFINITION : un tir manque = un `action_weapon_fire` (type 36, 0xD2) dont la LISTE DE CIBLES est
+vide (0 cible touchee). C'est un champ du type 36 ; il devient fiable une fois le cadrage complet
+du type 36 ferme (agent Ghidra en cours sur le preambule/visee). En attendant, le DENOMINATEUR
+est mesurable et pose :
+- **TIRS PAR TIREUR** (`TestLot1TirsManques`) : l'attaquant du tir est lu par le decodeur de
+  PRODUCTION (fire_events, offset fixe bit 36, R(5)>>1 = index tireur 0..15). Mesure 2 films :
+  **8 tireurs distincts** (les 8 joueurs de l'arene), distribution realiste (61/48/37/35/26/18/
+  14/6 sur 000d5950). Le compte de tirs par joueur est acquis — c'est le denominateur de la
+  precision.
+- Rapport BRUT degats/tirs : 54-78 % (proxy grossier, NON la precision : un tir peut causer
+  plusieurs damage_aftermath, un degat plusieurs ticks).
+
+CHAINE COMPLETE VISEE (une fois le type 36 ferme) : precision par arme et par joueur =
+tirs touchant (>=1 cible) / tirs totaux ; tirs manques = tirs a 0 cible. Le tout attribue au
+tireur (deja resolu) et a l'arme (variant_name). Depend du cadrage complet du type 36.
+
 ## LE JUGE DEFINITIF A POSER — l'oracle de trame (POSE pour damage_aftermath, cf. ci-dessus)
 
 Le seul oracle DISCRIMINANT pour les composites+visee : decoder l'evenement 36 EN ENTIER
