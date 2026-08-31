@@ -69,8 +69,9 @@ Les tags `hsc*` de Halo Infinite sont du Lua compilé qui garde ses noms en clai
   fonction — plus de défenseurs = plus vite, mais en série **harmonique** (rendement décroissant :
   1, 1 + 1/2, 1 + 1/2 + 1/3 …), le même patron que l'accélération de capture des zones.
 - **DEUX rayons** : un `inner` (le retour) et un `outer` (la contestation). L'ennemi présent dans
-  le rayon extérieur CONTESTE et fait REFAIRE la jauge (`ContestedRefilling`) — un angle que le
-  user n'a pas mentionné et qu'il faudra lui soumettre.
+  le rayon extérieur CONTESTE et fait REFAIRE la jauge (`ContestedRefilling`). SOUMIS AU USER LE
+  LENDEMAIN, écrit, puis RETIRÉ après mesure : à 1,3 m un ennemi ne conteste pas, il RAMASSE
+  (§4 ter).
 - **`flagResetSeconds`** existe : la minuterie nue est une constante de configuration, pas une
   émergence.
 
@@ -226,33 +227,37 @@ Le user l'a demandé le lendemain, et c'est exactement ce signal qui a été mes
 **§4 quater**. Le paragraphe reste ici parce que la prédiction était juste — elle vaut mieux
 consignée que remplacée.
 
-## 4 ter. LOT 5 — LA CONTESTATION (demandée par le user le 2026-08-31)
+## 4 ter. LOT 5 — LA CONTESTATION : DEMANDÉE, INSTRUMENTÉE, PUIS RETIRÉE
 
-**Ce que le jeu fait**, lu dans la table de constantes de `UpdateFlagState` :
+L'utilisateur l'a demandée le 2026-08-31, puis a corrigé le tir le même jour : « en jeu je n'ai
+pas constaté d'arrêt de la jauge ou de reset, sauf si on reprend le drapeau adverse ». La
+fonctionnalité a donc été écrite, MESURÉE, puis RETIRÉE. Ce qui suit est ce qui reste — le savoir,
+pas le code.
+
+**Ce que le jeu décrit** (table de constantes de `UpdateFlagState`) :
 `GetAnyEnemyTeamInOuterArea` → état `Contested`, puis `ContestedRefilling` au taux
-`flagContestRefillRate` — la jauge repart en arrière. Deux rayons sont surveillés
-(`innerAreaMonitorRadius` / `outerAreaMonitorRadius`) ; les états et les raisons distinguent
-`ReturnRadius` de `ContestRadius`.
+`flagContestRefillRate` — la jauge repart en arrière.
 
-**Ce qu'on a pu établir, et ce qu'on n'a pas pu.**
+**Ce qu'on a pu établir** : le rayon de contestation vaut **1,3**, comme celui du retour. Sa valeur
+est DÉDUPLIQUÉE dans le pool (le chunk ne réémet pas une constante déjà présente), donc elle vaut
+l'une des trois déjà émises — `0,1`, `true`, `1,3` — et 1,3 est la seule qui soit un rayon. Les
+deux cylindres diffèrent par leur HAUTEUR (`cylinderInnerHeight` / `cylinderOuterHeight`).
 
-- Le rayon de contestation est **1,3**, comme celui du retour. Ce n'est pas une supposition de
-  confort : sa valeur est **DÉDUPLIQUÉE** dans le pool de constantes (le chunk ne réémet pas une
-  valeur déjà présente), donc elle vaut l'une des constantes déjà émises à ce point — `0,1`,
-  `true` ou `1,3` — et **1,3 est la seule qui soit un rayon**. La cohérence vient d'ailleurs : les
-  deux cylindres diffèrent par leur HAUTEUR (`cylinderInnerHeight` / `cylinderOuterHeight`, deux
-  champs distincts vus dans le constructeur d'args), pas par leur rayon.
-- **Le TAUX DE RECUL, lui, reste inconnu** : `flagContestRefillRate` est dédupliqué parmi une
-  dizaine de nombres, et rien ne dit lequel. Or `false` est émis très tôt dans la même table
-  (`complete = false`), donc la déduction « booléen dédupliqué ⇒ vrai » ne tient pas non plus :
-  `flagContestedStateEnabled` n'est pas lisible non plus.
+**Ce qu'on n a PAS pu établir** : le taux de recul, dédupliqué parmi une dizaine de nombres. Et la
+déduction de secours « booléen dédupliqué donc vrai » ne s'applique pas — `false` est émis dès le
+premier champ de la table (`complete = false`) — donc `flagContestedStateEnabled` non plus.
 
-**Décision de rendu, et pourquoi elle est la plus faible des deux** : le rejeu **TIENT** la jauge
-pendant la contestation au lieu de la faire reculer. Un recul inventé serait une vitesse fausse à
-l'écran ; un arrêt est seulement une progression qu'on ne réclame pas. Et l'arrêt ne fait pas
-mentir la fin : la jauge est remise à l'échelle pour atteindre 1 à l'image du retour OBSERVÉ — la
-contestation redistribue la forme, jamais les bornes. Le taux entre au registre des reports, avec
-sa condition de reprise (décoder le BYTECODE, pas seulement le pool).
+**LA MESURE QUI TRANCHE, et elle explique l'observation de l'utilisateur** : sur les six films du
+corpus, **72 lâchers voient un ennemi entrer dans la zone, et 56 d entre eux finissent par une
+REPRISE** ; le séjour ennemi dure 1,65 s en moyenne (max 4,9 s). À 1,3 m d'un drapeau tombé, un
+ennemi ne conteste pas : **il RAMASSE**. L'état `Contested` existe dans le script — la bibliothèque
+`parcel_deliver_object.lua` sert aussi la bombe d'Assaut, où l'objet ne se ramasse pas de la même
+façon — mais en CTF la reprise gagne toujours la course.
+
+**Décision** : rien n'est dessiné pour la contestation, et le rayon correspondant sort du
+manifeste (règle 0 code mort). La seule interruption visible est la REPRISE, et le rejeu la rend
+déjà : un intervalle `carried` ferme le lâcher, la zone disparaît, et le lâcher suivant rouvre une
+jauge NEUVE repartie de zéro. Un test le fige (`flagReturnZone.test.ts`).
 
 ## 4 quater. LOT 6 — LE DRAPEAU NEUTRE (demandé par le user le 2026-08-31)
 

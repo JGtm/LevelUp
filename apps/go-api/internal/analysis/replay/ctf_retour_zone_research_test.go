@@ -92,6 +92,9 @@ type ctfzEpisode struct {
 	credit, objet int
 	// occ[r][i] = nombre de defenseurs dans le rayon ctfzRayons[r] a la frame t0+i.
 	occ [][]int
+	// occEnn est la meme chose pour les ENNEMIS du camp proprietaire — ceux qui, selon le script
+	// du jeu, CONTESTENT le retour. Vide quand le drapeau n'a pas de camp (variante neutre).
+	occEnn [][]int
 }
 
 // retour rend la frame du retour QUI A CLOS CET EPISODE — la premiere des deux chaines qui parle,
@@ -165,6 +168,7 @@ func TestCTFZoneRetourRecherche(t *testing.T) {
 	ctfzRapportDistances(t, eps)
 	ctfzRapportRayon(t, eps)
 	ctfzRapportExpiration(t, eps)
+	ctfzRapportContestation(t, eps)
 }
 
 // ctfzEpisodesDuFilm rend les episodes de lacher d'UN film, occupation comprise.
@@ -288,6 +292,25 @@ func ctfzEpisodesDuDocument(doc ReplayDocument, id string, naissances []ctfzNais
 		out[i].objet = ctfzPremiereNaissance(naissances, out[i].flag, out[i].t0)
 		out[i].credit = ctfzCreditDans(credits, out[i].t0, out[i].t1+2)
 		out[i].occ = ctfzOccupation(out[i], pistes[out[i].team])
+		out[i].occEnn = ctfzOccupation(out[i], ctfzPistesEnnemies(pistes, out[i].team))
+	}
+	return out
+}
+
+// ctfzPistesEnnemies rassemble les pistes de TOUTES les equipes sauf celle donnee. Vide quand
+// l'equipe est negative : un drapeau neutre n'a pas d'ennemi, personne ne le possede.
+func ctfzPistesEnnemies(pistes map[int]map[string][]Point, team int) map[string][]Point {
+	out := map[string][]Point{}
+	if team < 0 {
+		return out
+	}
+	for tm, par := range pistes {
+		if tm == team {
+			continue
+		}
+		for x, pts := range par {
+			out[x] = pts
+		}
 	}
 	return out
 }
@@ -719,4 +742,71 @@ func ctfzQuantilesStr(v []int) string {
 		return "(aucun)"
 	}
 	return fmt.Sprintf("min=%d med=%d max=%d", v[0], v[len(v)/2], v[len(v)-1])
+}
+
+// ctfzRapportContestation MESURE si l'etat « conteste » est ATTEIGNABLE en CTF.
+//
+// # LA QUESTION, ET POURQUOI ELLE SE POSE APRES COUP
+//
+// Le script du jeu decrit un etat `Contested` : un ENNEMI du camp proprietaire dans la zone bloque
+// le retour, puis la jauge repart en arriere (`ContestedRefilling`). L'utilisateur, lui, dit ne
+// JAMAIS l'avoir vu en jeu — « pas d'arret de la jauge ni de reset, sauf si on reprend le drapeau
+// adverse ». Son observation et le script ne se contredisent pas forcement : le rayon vaut 1,3, et
+// un ennemi a 1,3 m d'un drapeau tombe le RAMASSE. L'etat serait alors formellement present et
+// pratiquement inatteignable — la reprise gagne toujours la course.
+//
+// # CE QUE CE RAPPORT COMPTE, ET COMMENT IL TRANCHE
+//
+// Pour chaque lacher : les frames ou un ennemi est dans la zone, et CE QUI MET FIN au lacher. Si
+// la presence ennemie est systematiquement suivie d'une REPRISE en une poignee de frames, l'etat
+// n'a pas le temps d'exister et le rejeu n'a rien a dessiner. Si au contraire des ennemis sejournent
+// sans prendre le drapeau, l'etat est reel et merite son rendu.
+func ctfzRapportContestation(t *testing.T, eps []ctfzEpisode) {
+	t.Helper()
+	for _, ray := range []float32{ctfzRayonJeu, 3} {
+		r := ctfzIndiceRayon(ray)
+		if r < 0 {
+			continue
+		}
+		avec, reprises := 0, 0
+		var sejours []float64
+		for _, e := range eps {
+			if len(e.occEnn) == 0 {
+				continue
+			}
+			f := ctfzFramesAvecEnnemi(e, r)
+			if f == 0 {
+				continue
+			}
+			avec++
+			sejours = append(sejours, float64(f)/10)
+			if e.suite == FlagStateCarried || e.suite == FlagStateCarriedOpen {
+				reprises++
+			}
+		}
+		sort.Float64s(sejours)
+		m, ec := ctfzMoyEcart(sejours)
+		t.Logf("CONTESTATION — a %.1f m : %d lachers ou un ENNEMI entre dans la zone ; %d d'entre "+
+			"eux finissent par une REPRISE. Sejour ennemi : moy=%.2fs ecart=%.2fs max=%.2fs ; "+
+			"valeurs %v", ray, avec, reprises, m, ec, ctfzMax(sejours), ctfzArrondi(sejours))
+	}
+}
+
+// ctfzFramesAvecEnnemi compte les frames d'un lacher ou au moins un ennemi est dans la zone.
+func ctfzFramesAvecEnnemi(e ctfzEpisode, r int) int {
+	n := 0
+	for _, v := range e.occEnn[r] {
+		if v > 0 {
+			n++
+		}
+	}
+	return n
+}
+
+// ctfzMax rend la plus grande valeur d'un echantillon trie, 0 s'il est vide.
+func ctfzMax(v []float64) float64 {
+	if len(v) == 0 {
+		return 0
+	}
+	return v[len(v)-1]
 }

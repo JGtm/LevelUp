@@ -15,21 +15,33 @@
  * où `n` est le nombre de DÉFENSEURS dans la zone. Deux défenseurs valent 1 + 1/2, trois
  * 1 + 1/2 + 1/3 : le rendement décroît — être plus nombreux aide, mais de moins en moins.
  *
- * LA CONTESTATION TIENT LA JAUGE. Un ENNEMI du camp propriétaire dans la zone bloque le retour
- * (`GetAnyEnemyTeamInOuterArea`, états `Contested` / `ContestedRefilling`). Le jeu fait REPARTIR
- * la jauge en arrière ; le rejeu, lui, la TIENT — le taux de recul (`flagContestRefillRate`) est
- * dédupliqué dans le pool de constantes du script, donc non lu, et un recul inventé serait une
- * vitesse fausse à l'écran. Voir `rateAt`.
+ * CE QUE LE REJEU NE MODÉLISE PAS, ET C'EST UNE DÉCISION MESURÉE : la CONTESTATION. Le script du
+ * jeu décrit un état `Contested` (un ennemi du camp propriétaire dans la zone bloque le retour)
+ * puis `ContestedRefilling` (la jauge repart en arrière). Trois faits l'ont écarté du rendu, et
+ * ils vont tous dans le même sens :
  *
- * UN DRAPEAU NEUTRE N'A NI DÉFENSEUR NI CONTESTATAIRE, et rien ici ne le teste : son équipe vaut
- * -1, les deux listes reviennent vides, et la jauge se réduit à la minuterie. C'est exactement la
- * règle du jeu — un drapeau neutre ne se renvoie pas, il revient tout seul.
+ *  - l'utilisateur ne l'a JAMAIS observé en jeu — « pas d'arrêt de la jauge ni de reset, sauf si
+ *    on reprend le drapeau adverse » ;
+ *  - ni le réglage qui l'active (`flagContestedStateEnabled`) ni son taux
+ *    (`flagContestRefillRate`) ne sont lisibles : leurs constantes sont dédupliquées dans le pool
+ *    du script ;
+ *  - la MESURE explique le silence — sur 72 lâchers où un ennemi entre dans la zone, 56 finissent
+ *    par une REPRISE, et son séjour dure 1,65 s en moyenne. À 1,3 m d'un drapeau tombé, un ennemi
+ *    ne conteste pas : il RAMASSE.
+ *
+ * LA SEULE INTERRUPTION VISIBLE EST DONC LA REPRISE, et le rejeu la rend déjà sans rien de plus :
+ * un intervalle `carried` ferme le lâcher, la zone disparaît, et le lâcher SUIVANT rouvre une
+ * jauge NEUVE repartie de zéro (cf. `mergedDrops`).
+ *
+ * UN DRAPEAU NEUTRE N'A PAS DE DÉFENSEUR, et rien ici ne le teste : son équipe vaut -1, la liste
+ * revient vide, et la jauge se réduit à la minuterie. C'est exactement la règle du jeu — un
+ * drapeau neutre ne se renvoie pas, il revient tout seul.
  *
  * POURQUOI LE CALCUL EST ICI ET NON SUR LE SERVEUR. Compter les défenseurs exige de savoir à
  * quelle équipe appartient chaque joueur — et **l'équipe n'est pas dans le film** (`Track.Team`
  * vaut -1). Le constructeur du rejeu est hors ligne et n'ouvre aucune base ; la page, elle, a
  * déjà joint le tableau de bord pour colorer les camps. Le serveur publie donc la RÈGLE
- * (`doc.flagReturnZone` : rayon et deux durées), le client compte et intègre.
+ * (`doc.flagReturnZone` : un rayon et deux durées), le client compte et intègre.
  *
  * LE MODÈLE DONNE LA FORME, L'OBSERVATION DONNE LES BORNES. Quand le rejeu SAIT à quelle image le
  * drapeau est rentré (le lâcher est suivi d'un état `home`), la jauge est remise à l'échelle pour
@@ -43,10 +55,8 @@ import type { ReplayFlagCarryReady } from './replayNormalize'
 
 /** La règle de retour du mode, telle que `doc.flagReturnZone` la publie (schéma 29). */
 export interface FlagReturnRule {
-  /** Rayon de la zone de RETOUR, dans les coordonnées monde du rejeu. */
+  /** Rayon de la zone de retour, dans les coordonnées monde du rejeu. */
   radiusM: number
-  /** Rayon de la zone de CONTESTATION — un ennemi du camp propriétaire y bloque le retour. */
-  contestRadiusM: number
   /** Durée qu'un drapeau au sol met à rentrer TOUT SEUL. */
   resetSeconds: number
   /** Durée qu'il met avec UN défenseur dans la zone. */
@@ -55,10 +65,8 @@ export interface FlagReturnRule {
 
 /** Un lâcher instrumenté : sa position image par image, sa jauge et son occupation. */
 export interface FlagReturnDrop {
-  /** Le rayon de la zone de RETOUR, dans les coordonnées monde. */
+  /** Le rayon de la zone, dans les coordonnées monde. */
   radiusM: number
-  /** Le rayon de la zone de CONTESTATION. */
-  contestRadiusM: number
   /** L'équipe PROPRIÉTAIRE du drapeau — ce sont ses joueurs qui le renvoient. */
   team: number
   /** Bornes du lâcher, en images. `t1` est INCLUSE. */
@@ -71,8 +79,6 @@ export interface FlagReturnDrop {
   progress: Float32Array
   /** Le nombre de défenseurs dans la zone à chaque image. */
   occupants: Uint8Array
-  /** Le nombre d'ENNEMIS du camp propriétaire dans la zone de contestation, à chaque image. */
-  contesters: Uint8Array
   /** L'image du retour OBSERVÉ, `null` quand le lâcher finit autrement (reprise, fin d'axe). */
   returnFrame: number | null
 }
@@ -91,11 +97,8 @@ export interface FlagReturnNow {
   x: number
   y: number
   radiusM: number
-  contestRadiusM: number
   progress: number
   occupants: number
-  /** Le nombre d'ennemis qui CONTESTENT à cette image — la jauge est alors tenue. */
-  contesters: number
 }
 
 /** flagReturnAt rend les lâchers ACTIFS à une image — leur position, leur jauge, leur monde. */
@@ -109,10 +112,8 @@ export function flagReturnAt(drops: readonly FlagReturnDrop[], frame: number): F
       x: d.x[i],
       y: d.y[i],
       radiusM: d.radiusM,
-      contestRadiusM: d.contestRadiusM,
       progress: d.progress[i],
       occupants: d.occupants[i],
-      contesters: d.contesters[i],
     })
   }
   return out
@@ -123,16 +124,14 @@ export interface FlagReturnInput {
   rule: FlagReturnRule | null
   frameIntervalMs: number
   posOf: (xuid: string, frame: number) => XY | null
-  /** Les xuid des joueurs de l'équipe donnée, tels que le tableau de bord les nomme. */
-  defendersOf: (team: number) => readonly string[]
   /**
-   * Les xuid des joueurs des AUTRES équipes — ceux qui contestent le retour.
+   * Les xuid des joueurs de l'équipe donnée, tels que le tableau de bord les nomme.
    *
-   * VIDE POUR UN DRAPEAU NEUTRE, et ce n'est pas un oubli : un drapeau que personne ne possède
-   * n'a ni défenseur ni contestataire. Il revient tout seul, à la minuterie, et le modèle le
-   * rend ainsi sans qu'aucune branche ne le dise.
+   * VIDE POUR UN DRAPEAU NEUTRE (équipe -1), et ce n'est pas un oubli : un drapeau que personne
+   * ne possède n'a pas de défenseur. Il revient tout seul, à la minuterie, et le modèle le rend
+   * ainsi sans qu'aucune branche ne le dise.
    */
-  enemiesOf: (team: number) => readonly string[]
+  defendersOf: (team: number) => readonly string[]
 }
 
 /**
@@ -146,8 +145,7 @@ export function buildFlagReturnDrops(
   input: FlagReturnInput,
 ): FlagReturnDrop[] {
   const { rule, frameIntervalMs } = input
-  if (!rule || rule.radiusM <= 0 || rule.contestRadiusM <= 0) return []
-  if (rule.resetSeconds <= 0 || rule.soloSeconds <= 0) return []
+  if (!rule || rule.radiusM <= 0 || rule.resetSeconds <= 0 || rule.soloSeconds <= 0) return []
   if (frameIntervalMs <= 0) return []
   const out: FlagReturnDrop[] = []
   for (const carry of carries) {
@@ -164,7 +162,13 @@ interface DropRun {
   returnFrame: number | null
 }
 
-/** mergedDrops fusionne les intervalles `dropped` contigus d'un drapeau. */
+/**
+ * mergedDrops fusionne les intervalles `dropped` contigus d'un drapeau.
+ *
+ * ET C'EST ICI QUE LA REPRISE REMET LA JAUGE À ZÉRO, sans qu'une ligne ne le dise : un intervalle
+ * qui n'est pas `dropped` ferme le lâcher courant, et le suivant ouvre un `DropRun` NEUF dont
+ * l'accumulateur repart de zéro. C'est le seul « reset » que le joueur observe en jeu.
+ */
 function mergedDrops(carry: ReplayFlagCarryReady): DropRun[] {
   const spans = carry.spans
   const out: DropRun[] = []
@@ -200,13 +204,10 @@ function instrument(
   const x = new Float32Array(n)
   const y = new Float32Array(n)
   const occupants = new Uint8Array(n)
-  const contesters = new Uint8Array(n)
   const progress = new Float32Array(n)
   const defenders = input.defendersOf(team)
-  const enemies = input.enemiesOf(team)
   const dt = input.frameIntervalMs / 1000
   const r2 = rule.radiusM * rule.radiusM
-  const c2 = rule.contestRadiusM * rule.contestRadiusM
   let pose = 0
   let acc = 0
   for (let i = 0; i < n; i += 1) {
@@ -215,14 +216,12 @@ function instrument(
     x[i] = run.poses[pose].x
     y[i] = run.poses[pose].y
     occupants[i] = countInside(defenders, frame, x[i], y[i], r2, input.posOf)
-    contesters[i] = countInside(enemies, frame, x[i], y[i], c2, input.posOf)
-    acc += rateAt(occupants[i], contesters[i], rule) * dt
+    acc += (1 / rule.resetSeconds + harmonic(occupants[i]) / rule.soloSeconds) * dt
     progress[i] = acc
   }
   rescale(progress, run)
   return {
     radiusM: rule.radiusM,
-    contestRadiusM: rule.contestRadiusM,
     team,
     t0: run.t0,
     t1: run.t1,
@@ -230,29 +229,8 @@ function instrument(
     y,
     progress,
     occupants,
-    contesters,
     returnFrame: run.returnFrame,
   }
-}
-
-/**
- * rateAt rend la vitesse de la jauge à une image — et LA CONTESTATION LA TIENT.
- *
- * CE QUE LE JEU FAIT, ET CE QU'ON EN GARDE. Son script distingue deux états quand un ennemi du
- * camp propriétaire entre dans la zone : `Contested` (le retour s'arrête) puis
- * `ContestedRefilling` (la jauge REPART EN ARRIÈRE, au rythme de `flagContestRefillRate`). Ce
- * taux-là, on ne l'a pas : dans le pool de constantes du script il est DÉDUPLIQUÉ — sa valeur est
- * une constante déjà émise, et rien ne dit laquelle. **Le rejeu tient donc la jauge au lieu de la
- * faire reculer** : c'est l'affirmation la plus faible des deux, celle qui ne prétend rien sur un
- * nombre qu'on n'a pas lu. Un recul inventé serait une vitesse fausse à l'écran ; un arrêt est
- * seulement une progression qu'on ne réclame pas. Report inscrit au registre.
- *
- * L'ARRÊT NE FAIT PAS MENTIR LA FIN : la jauge est remise à l'échelle pour atteindre 1 à l'image
- * du retour OBSERVÉ. La contestation redistribue la forme, jamais les bornes.
- */
-function rateAt(occupants: number, contesters: number, rule: FlagReturnRule): number {
-  if (contesters > 0) return 0
-  return 1 / rule.resetSeconds + harmonic(occupants) / rule.soloSeconds
 }
 
 /** countInside compte les défenseurs dont la position connue tombe dans la zone. */
@@ -318,10 +296,6 @@ const ZONE_FILL_ALPHA = 0.1
 const ZONE_RING_ALPHA = 0.45
 const ZONE_RING_ALPHA_BUSY = 0.9
 const GAUGE_ALPHA = 0.95
-/** La jauge TENUE (retour contesté) s'atténue : elle est là, elle n'avance pas. */
-const GAUGE_ALPHA_HELD = 0.55
-/** Le pointillé de la contestation, en pixels. */
-const CONTEST_DASH = [3, 3]
 const GAUGE_WIDTH_K = 2.5
 const MIN_RADIUS_PX = 4
 /**
@@ -360,20 +334,9 @@ interface ZonePaint {
   ink: string
 }
 
-/**
- * drawOne peint UNE zone : le disque, l'anneau, puis l'arc restant.
- *
- * TROIS LECTURES, TROIS SIGNAUX DISTINCTS, et aucun n'a besoin de texte :
- *
- *  - PERSONNE — anneau fin, jauge qui tourne : le drapeau rentrera tout seul.
- *  - DES DÉFENSEURS — anneau ÉPAIS et franc : la jauge va plus vite en ce moment. C'est le seul
- *    signal qui dise la vitesse, qu'une image fixe ne peut pas montrer.
- *  - CONTESTÉ — anneau POINTILLÉ : un ennemi est dedans, le retour est bloqué. Le pointillé dit
- *    « interrompu » là où l'épaisseur dit « en cours », et les deux ne peuvent pas se confondre.
- */
+/** drawOne peint UNE zone : le disque, l'anneau, puis l'arc restant. */
 function drawOne(ctx: CanvasRenderingContext2D, c: XY, now: FlagReturnNow, paint: ZonePaint): void {
-  const contested = now.contesters > 0
-  const busy = !contested && now.occupants > 0
+  const busy = now.occupants > 0
   ctx.save()
   ctx.fillStyle = paint.ink
   ctx.strokeStyle = paint.ink
@@ -385,20 +348,17 @@ function drawOne(ctx: CanvasRenderingContext2D, c: XY, now: FlagReturnNow, paint
     ctx.beginPath()
     ctx.arc(c.x, c.y, paint.r, 0, Math.PI * 2)
     ctx.fill()
-    ctx.globalAlpha = busy || contested ? ZONE_RING_ALPHA_BUSY : ZONE_RING_ALPHA
+    ctx.globalAlpha = busy ? ZONE_RING_ALPHA_BUSY : ZONE_RING_ALPHA
     ctx.lineWidth = RING_WIDTH * (busy ? 2 : 1)
-    if (contested) ctx.setLineDash(CONTEST_DASH)
     ctx.beginPath()
     ctx.arc(c.x, c.y, paint.r, 0, Math.PI * 2)
     ctx.stroke()
-    ctx.setLineDash([])
   }
   const left = 1 - Math.min(Math.max(now.progress, 0), 1)
   if (left > 0) {
     const rg = Math.max(paint.r, GAUGE_MIN_PX)
-    ctx.globalAlpha = contested ? GAUGE_ALPHA_HELD : GAUGE_ALPHA
+    ctx.globalAlpha = GAUGE_ALPHA
     ctx.lineWidth = RING_WIDTH * GAUGE_WIDTH_K
-    if (contested) ctx.setLineDash(CONTEST_DASH)
     ctx.beginPath()
     ctx.arc(c.x, c.y, rg, -Math.PI / 2, -Math.PI / 2 + left * Math.PI * 2)
     ctx.stroke()

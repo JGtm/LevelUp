@@ -12903,9 +12903,6 @@ components:
     FlagReturnZone:
       additionalProperties: false
       properties:
-        contestRadiusM:
-          format: float
-          type: number
         radiusM:
           format: float
           type: number
@@ -12917,7 +12914,6 @@ components:
           type: number
       required:
         - radiusM
-        - contestRadiusM
         - resetSeconds
         - soloSeconds
       type: object

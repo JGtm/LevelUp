@@ -166,8 +166,7 @@ func attachFlagCarries(doc *ReplayDocument, opt Options, own OwnerReport, clock 
 // chargeur du manifeste la refuse deja, mais le calque ne suppose pas que l'appelant l'a
 // chargee). Un cercle dessine sur un mode qui n'en a pas serait pire qu'aucun cercle.
 func attachFlagReturnZone(doc *ReplayDocument, z FlagReturnZone, carries []FlagCarry) {
-	if len(carries) == 0 || z.RadiusM <= 0 || z.ContestRadiusM <= 0 ||
-		z.ResetSeconds <= 0 || z.SoloSeconds <= 0 {
+	if len(carries) == 0 || z.RadiusM <= 0 || z.ResetSeconds <= 0 || z.SoloSeconds <= 0 {
 		return
 	}
 	zone := z
