@@ -73,6 +73,16 @@ export interface KillEvent {
   weaponImageUrl: string
   weaponTinted: boolean
   /**
+   * Le dégât fatal était-il un tir à la tête ? INDÉPENDANT des trois champs `weapon*`
+   * ci-dessus (pas conditionné à la résolution d'icône). `undefined` = non mesurable
+   * (film absent, passe non publiable, source ambiguë) — JAMAIS `false` par défaut, même
+   * doctrine que `killerDamagePct`/`assistDamagePct` ci-dessous. Optionnel (et non
+   * obligatoire comme les autres champs de ce type) : ce champ est apparu après ce type,
+   * les consommateurs existants (rejeu 2D) construisent encore des `KillEvent` qui ne le
+   * portent pas.
+   */
+  headshot?: boolean
+  /**
    * L'ASSISTANCE du kill, lue du film — TROIS états qui ne se confondent jamais :
    * '' (on ne sait pas), 'none' (mesuré : pas d'assistant), 'named' (assistant nommé,
    * avec sa part de dégâts quand elle est lue). Ne JAMAIS traiter '' comme « pas
@@ -123,6 +133,7 @@ export function collectKillEvents(
       weaponLabel: e.weapon_label ?? '',
       weaponImageUrl: e.weapon_image_url ?? '',
       weaponTinted: e.weapon_image_tinted ?? false,
+      headshot: e.headshot ?? undefined,
       assistState: e.assist_state === 'named' || e.assist_state === 'none' ? e.assist_state : '',
       assistGamertag: e.assist_gamertag ?? '',
       assistTeamID: e.assist_team_id ?? null,

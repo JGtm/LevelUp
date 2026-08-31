@@ -1703,6 +1703,13 @@ export interface MatchHighlightEvent {
   weapon_image_url?: string | null
   weapon_image_tinted?: boolean | null
   /**
+   * Le dégât fatal était-il un tir à la tête ? Peuplé ssi la source de dégât est connue
+   * ET non ambiguë — INDÉPENDAMMENT des champs `weapon_*` ci-dessus (le headshot ne
+   * dépend d'aucune résolution d'icône). Absent = non mesurable, JAMAIS false (G.1,
+   * 2026-08-30). Filtre backend STRICT : `HeadshotMultiplier` n'en fait jamais partie.
+   */
+  headshot?: boolean | null
+  /**
    * L'ASSISTANCE du kill, lue du film — TROIS états qui ne se confondent JAMAIS :
    * absent/'' = ON NE SAIT PAS (aucun kill-event apparié) ; 'none' = MESURÉ, pas
    * d'assistant ; 'named' = assistant nommé (+ parts de dégâts quand elles sont lues).
@@ -1762,6 +1769,21 @@ export type MatchAssistPair = components['schemas']['MatchAssistPair']
  */
 export type MatchAssistPairs = components['schemas']['MatchAssistPairs']
 
+/**
+ * POC (LOT G.3, 2026-08-30) : une arme, ses kills mesurés et sa distance
+ * tueur-victime pour UN joueur sur CE match. `measured_kills` est TOUJOURS
+ * ≤ au total de kills à l'arme (couverture positions mesurée à 75,8 % plancher,
+ * jamais 100 %).
+ */
+export type MatchKillDistanceWeapon = components['schemas']['MatchKillDistanceWeapon']
+
+/**
+ * POC (LOT G.3) : le regroupement par joueur (xuid) des armes mesurées. Pas de
+ * gamertag ici — résolu côté front depuis le scoreboard déjà chargé (même
+ * pattern que MatchObjectivesSection).
+ */
+export type MatchKillDistancePlayer = components['schemas']['MatchKillDistancePlayer']
+
 export interface MatchCombatTab {
   weapon_kills: MatchWeaponKill[]
   highlight_events: MatchHighlightEvent[]
@@ -1787,6 +1809,13 @@ export interface MatchCombatTab {
    * match. Nil si le viewer n'a aucun kill (le front rend null). Cf. P3.
    */
   frag_distribution?: FragDistribution
+  /**
+   * POC (LOT G.3, 2026-08-30, plan retours-utilisateur §3bis DEC-8) : kills
+   * mesurés et distance tueur-victime moyenne par arme, PAR JOUEUR (pas
+   * seulement le viewer), pour ce match. Absent/vide si aucun kill n'a de
+   * position mesurée — dégradation propre, jamais d'erreur.
+   */
+  kill_distance_by_weapon?: MatchKillDistancePlayer[]
 }
 
 /** MV2 : rôle narratif attribué (1 entrée par joueur × rôle). */
@@ -2700,6 +2729,7 @@ export type ReplayScoreTick = components['schemas']['ScoreTick']
 export type ReplayScoreRound = components['schemas']['ScoreRound']
 export type ReplayScoreSeries = components['schemas']['ScoreSeries']
 export type ReplayTeamScore = components['schemas']['TeamScore']
+export type ReplayTeamHold = components['schemas']['TeamHold']
 export type ReplayPlayerScore = components['schemas']['PlayerScore']
 export type ReplayScoreTimeline = components['schemas']['ScoreTimeline']
 // La COUVERTURE du calque de score : par quelle voie l'identité des équipes a été résolue
@@ -2757,7 +2787,131 @@ export type ReplayGaugePoint = components['schemas']['GaugePoint']
 // les incohérences. Absente = personne n'a lu le film pour ce calque.
 export type ReplayFlagCarriesCoverage = components['schemas']['FlagCarriesCoverage']
 
-export type ReplayDocument = components['schemas']['ReplayDocument']
+// ---------------------------------------------------------------------------
+// Schémas 25 à 27 du document de rejeu — ÉCRITS À LA MAIN, et voici pourquoi.
+//
+// Le contrat `api/openapi.yaml` est GÉNÉRÉ depuis les DTO Go (`make openapi-gen`), et
+// `generated.ts` en est dérivé. Les calques `weaponChanges` (schéma 25), `equipmentChanges`
+// (25) et `groundWeapons` (26) ont été livrés côté Go le 2026-08-30 SANS que le contrat soit
+// régénéré : le fichier généré ne les porte donc pas, et le lot web les consomme quand même —
+// l'artefact, lui, les publie déjà.
+//
+// CE N'EST PAS UN CONTOURNEMENT PERMANENT. Trois choses le bornent :
+//   - la forme est vérifiée SUR PIÈCES par un garde-rail qui lit les balises `json:` des
+//     structures Go (`groundWeaponContract.guard.test.ts`) — un champ renommé côté Go fait
+//     échouer la CI, exactement comme le ferait une régénération ;
+//   - ces déclarations DISPARAISSENT au prochain `make openapi-gen && make generate-types` :
+//     l'intersection ci-dessous se supprime, et les trois interfaces deviennent des
+//     ré-exports `components['schemas'][...]` comme leurs voisines ;
+//   - critère mesurable de retrait : `grep groundWeapons apps/go-api/api/openapi.yaml`
+//     renvoie le champ de `ReplayDocument` (et non le seul `GroundWeaponCoverage`).
+// ---------------------------------------------------------------------------
+
+/**
+ * ReplayWeaponChange — UN changement d'arme en main (schéma 25), daté à la milliseconde puis
+ * projeté sur l'axe de frames du document.
+ *
+ * `w` est la famille d'arme en hexadécimal 8 chiffres — MÊME espace d'identifiants que
+ * `ReplayLoadout.w` et `ReplayWeaponPad.weapon`, donc même clé dans `weaponLabels`. Elle est
+ * VIDE sur un lâcher (l'emplacement n'a plus d'arme) ; `from` porte la famille précédente
+ * quand le film la donne, et c'est elle qui NOMME l'arme lâchée.
+ *
+ * Les ré-annonces d'une arme déjà portée au spawn n'entrent pas ici : ce ne sont pas des
+ * ramassages (cf. document_weapon_changes.go).
+ */
+export interface ReplayWeaponChange {
+  /** Index de frame, sur le même axe que `ReplayPoint.t`. */
+  t: number
+  /** Slot du bipède : il désigne la Track concernée, donc une VIE. */
+  slot: number
+  kind: 'taken' | 'dropped' | 'swapped'
+  /** Famille d'arme désormais portée. Vide sur un lâcher. */
+  w?: string
+  /** Famille précédente, quand elle est connue. Vide sinon. */
+  from?: string
+}
+
+/**
+ * ReplayEquipmentChange — UN ramassage ou UNE consommation d'équipement (schéma 26).
+ *
+ * `r` est le RANG DE PALETTE, même convention que `abilities[].r` : il se nomme par
+ * `abilityLabels[String(r)]`. Il vaut `REPLAY_NO_ABILITY_RANK` sur une consommation — le joueur
+ * ne porte plus rien — et `from` le porte de la même façon quand le rang précédent n'est pas
+ * lisible (première émission d'une vie).
+ *
+ * Les annonces de RÉAPPARITION n'entrent pas ici : ce que le joueur porte à sa naissance est
+ * déjà dans `abilities` (cf. document_equipment_changes.go).
+ */
+export interface ReplayEquipmentChange {
+  /** Index de frame, sur le même axe que `ReplayPoint.t`. */
+  t: number
+  /** Slot du bipède : il désigne la Track concernée, donc une VIE. */
+  slot: number
+  kind: 'taken' | 'spent'
+  /** Rang de palette désormais porté, ou `REPLAY_NO_ABILITY_RANK` sur une consommation. */
+  r: number
+  /** Rang précédent sur cette vie, ou `REPLAY_NO_ABILITY_RANK` quand il n'est pas lisible. */
+  from: number
+}
+
+/**
+ * REPLAY_NO_ABILITY_RANK — la sentinelle « pas d'équipement » de `ReplayEquipmentChange`.
+ *
+ * C'est `replay.NoAbilityRank` (= `filmdec.AbilitySetNoRank`), publiée telle quelle plutôt
+ * qu'omise pour qu'un client n'ait pas à distinguer « champ absent » de « rang zéro » : le
+ * rang 0 existe. Le garde-rail de contrat en vérifie la valeur contre le Go.
+ */
+export const REPLAY_NO_ABILITY_RANK = -1
+
+/**
+ * ReplayGroundWeapon — UNE arme au sol, individuelle, bornée par l'OBSERVATION (schéma 27).
+ *
+ * LA DISPARITION EST UN INTERVALLE QUAND `end` VAUT `seen` : `t1` est la dernière PREUVE de
+ * présence (image-clé qui recense encore l'objet), `t1max` la première preuve d'ABSENCE.
+ * L'objet a disparu quelque part entre les deux — le film ne dit pas où. Le rendu choisit dans
+ * cet intervalle, mais il choisit dans du MESURÉ : rien ne s'affiche après `t1max`.
+ *
+ * Sur `pickup` (une prise datée du flux delta) et `open` (rien ne prouve la disparition),
+ * `t1max` vaut `t1` : la fin est exacte, ou l'objet reste jusqu'au bout.
+ *
+ * LES ARMES DE SOCLE NE SONT PAS ICI : elles appartiennent à `weaponPads`, qui les publie par
+ * grappes récurrentes. Ne sortent ici que les objets qui ont BOUGÉ.
+ */
+export interface ReplayGroundWeapon {
+  /** Frame d'apparition, sur le même axe que `ReplayPoint.t`. */
+  t0: number
+  /** Dernière preuve de PRÉSENCE (cf. l'en-tête). */
+  t1: number
+  /** Première preuve d'ABSENCE ; vaut `t1` hors `end: 'seen'`. */
+  t1max: number
+  /** Position de repos — là où l'objet gît. Mêmes axes que `ReplayPoint.x/y`. */
+  x: number
+  y: number
+  z?: number
+  /** Famille d'arme en hexadécimal 8 chiffres (même espace que `ReplayLoadout.w`). */
+  w: string
+  /** Origine MESURÉE de l'apparition : l'arme d'un mort, ou le reste. */
+  origin: 'dropped' | 'spawned'
+  /** Slot de la vie qui l'a lâchée quand un lâcher coïncide, -1 sinon. */
+  dropper: number
+  /** Comment l'affichage se termine (cf. l'en-tête). */
+  end: 'pickup' | 'seen' | 'open'
+  /** Slot de la vie qui l'a prise, sur `end: 'pickup'`. -1 sinon. */
+  picker: number
+}
+
+/**
+ * Les trois calques des schémas 25-27 tels que le TRANSPORT les sert : nullables comme tout
+ * slice Go, comblés à la frontière (`normalizeReplayDocument`) et jamais lus tels quels.
+ */
+interface ReplayDocumentDeltaLayers {
+  weaponChanges?: ReplayWeaponChange[] | null
+  equipmentChanges?: ReplayEquipmentChange[] | null
+  groundWeapons?: ReplayGroundWeapon[] | null
+}
+
+export type ReplayDocument = components['schemas']['ReplayDocument'] &
+  ReplayDocumentDeltaLayers
 
 // Le FOND DE CARTE : l'image vue du dessus d'une carte, et le calage qui la pose dans le
 // repère monde du rejeu. Le calage voyage AVEC l'image parce qu'une image dont on ignore où

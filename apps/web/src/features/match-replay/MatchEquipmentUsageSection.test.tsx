@@ -156,6 +156,9 @@ describe('MatchEquipmentUsageSection — le tableau', () => {
     // États actifs : nombre ET durée cumulée.
     expect(vue.getByText(`Camouflage (${t.equipmentUsage.activeCount})`)).toBeTruthy()
     expect(vue.getByText(`Camouflage (${t.equipmentUsage.activeDuration})`)).toBeTruthy()
+    // Frags sous effet actif (LOT F.2) : en-tête complet, une colonne par famille mesurée.
+    expect(vue.getByText(t.equipmentUsage.activeKillsFamily.camo)).toBeTruthy()
+    expect(vue.getByText(t.equipmentUsage.activeKillsFamily.overshield)).toBeTruthy()
   })
 
   it('rend une ligne par joueur, chaque camp avec son TOTAL', () => {
@@ -181,11 +184,14 @@ describe('MatchEquipmentUsageSection — le tableau', () => {
     const vue = afficher()
     const ligneAlpha = vue.getByText('Alpha').closest('tr')
     const cellules = [...(ligneAlpha?.querySelectorAll('td') ?? [])].map((c) => c.textContent)
-    // nom | grappin 1 | camo 1 épisode | camo 0:05 | surbouclier 0 | surbouclier 0:00 | ...
-    // La 6e cellule est le point du correctif F12 : elle voisine un « 0 » (nombre
+    // nom | grappin 1 | camo 1 épisode | camo 0:05 | camo frags (—) | surbouclier 0 |
+    // surbouclier 0:00 | surbouclier frags (—) | ...
+    // La 6e cellule (index 5) est le point du correctif F12 : elle voisine un « 0 » (nombre
     // d'épisodes de surbouclier d'Alpha). Un « — » y lirait « non mesuré » alors que la
-    // colonne n'existe que parce que la famille EST mesurée sur ce match.
-    expect(cellules.slice(0, 6)).toEqual(['Alpha', '1', '1', '0:05', '0', '0:00'])
+    // colonne n'existe que parce que la famille EST mesurée sur ce match. Les deux colonnes
+    // de frags (LOT F.2) écrivent « — » ici : TEMOIN ne pose pas `coverage.equipment.killsRead`,
+    // donc la jointure est réputée NON TENTÉE — jamais un zéro qui se lirait comme une mesure.
+    expect(cellules.slice(0, 8)).toEqual(['Alpha', '1', '1', '0:05', '—', '0', '0:00', '—'])
   })
 
   it('un épisode MESURÉ de durée nulle s’écrit « 0:00 », pas « — »', () => {
@@ -284,5 +290,44 @@ describe('MatchEquipmentUsageSection — parité FR/EN', () => {
     // Le catalogue du document est bilingue : le type de grenade suit la langue.
     expect(vue.getByText('Frag')).toBeTruthy()
     expect(vue.getByText(en.placementFamily.sensor)).toBeTruthy()
+    // Frags sous effet actif (LOT F.2) : en-tête EN, pas la clé FR.
+    expect(vue.getByText(en.equipmentUsage.activeKillsFamily.camo)).toBeTruthy()
+  })
+})
+
+describe('MatchEquipmentUsageSection — frags sous effet actif (LOT F.2)', () => {
+  it('écrit « — », jamais 0, quand la jointure n’a pas pu être tentée (killsRead faux)', () => {
+    // TEMOIN ne pose pas `coverage.equipment.killsRead` : la jointure est réputée non tentée.
+    poserArtefact(TEMOIN)
+    const vue = afficher()
+    const ligneAlpha = vue.getByText('Alpha').closest('tr')
+    const cellules = [...(ligneAlpha?.querySelectorAll('td') ?? [])].map((c) => c.textContent)
+    expect(cellules).toContain('—')
+  })
+
+  it('écrit le compte réel, kills sommés sur les épisodes de la famille, quand killsRead est vrai', () => {
+    poserArtefact({
+      ...TEMOIN,
+      equipmentEpisodes: [
+        { slot: 1, fam: 'camo', t0: 10, t1: 60, k: 2 },
+        { slot: 2, fam: 'overshield', t0: 0, t1: 30, k: 0 },
+      ],
+      coverage: {
+        equipment: {
+          tracksTotal: 40,
+          camoLives: 1,
+          camoEpisodes: 1,
+          overshieldLives: 1,
+          overshieldEpisodes: 1,
+          killsRead: true,
+        },
+      },
+    } as unknown as Partial<ReplayDocument>)
+    const vue = afficher()
+    const ligneAlpha = vue.getByText('Alpha').closest('tr')
+    const cellules = [...(ligneAlpha?.querySelectorAll('td') ?? [])].map((c) => c.textContent)
+    // nom | grappin | camo count | camo ms | camo frags | surbouclier count | ...
+    expect(cellules[4]).toBe('2')
+    expect(cellules).not.toContain('—')
   })
 })

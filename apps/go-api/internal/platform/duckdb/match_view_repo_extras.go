@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/killscope"
 	"levelup/go-api/internal/games/canonical"
 )
 
@@ -101,13 +102,20 @@ func (r *MatchViewRepo) GetMatchKillSources(ctx context.Context, matchID string)
 	var results []domain.KillSourceRaw
 	for rows.Next() {
 		var (
-			ks  domain.KillSourceRaw
-			tag uint32
+			ks       domain.KillSourceRaw
+			tag      uint32
+			category sql.NullString
 		)
-		if err := rows.Scan(&ks.XUID, &ks.TimeMS, &tag); err != nil {
+		if err := rows.Scan(&ks.XUID, &ks.TimeMS, &tag, &category); err != nil {
 			return nil, fmt.Errorf("MatchViewRepo.GetMatchKillSources scan: %w", err)
 		}
 		ks.SourceTag = tag
+		// category.Valid : toujours vrai en pratique (source_category voyage AVEC source_tag,
+		// que la requête filtre déjà NOT NULL) — la garde reste pour ne jamais faire dire à un
+		// NULL "pas un headshot", cf. doctrine domain.KillSourceRaw.Headshot.
+		if category.Valid {
+			ks.Headshot = killscope.IsHeadshotCategory(category.String)
+		}
 		results = append(results, ks)
 	}
 	return results, rows.Err()

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/observability"
 )
 
 func assistTestRows() []domain.SquadMatchRow {
@@ -67,6 +68,40 @@ func TestBuildSquadAssistPairs_RienMesure(t *testing.T) {
 		context.Background(), assistTestRows(), "main", "x_main", assistTestMates(),
 	); got != nil {
 		t.Fatalf("bloc = %+v, attendu nil", got)
+	}
+}
+
+// TestBuildSquadAssistPairs_RetraitCompte : LE RETRAIT DU BLOC LAISSE UNE TRACE.
+//
+// Ce test existe parce que son absence a coûté cinq mois : le `return nil` sur
+// `measured == 0` a fait disparaître le tableau de la page sans aucun signal, et le défaut
+// n'a été trouvé que sur question de l'utilisateur (registre
+// `.ai/V7.5/REGISTRE_ASSISTANCES_2026-08-29.md`). Le compteur est ce qui rend le retrait
+// observable ; le pin sur son incrément est ce qui empêche de le supprimer par distraction.
+func TestBuildSquadAssistPairs_RetraitCompte(t *testing.T) {
+	avant := observability.LoadCounter(compteurAssistPairsSansMesure)
+	svc := &TeammatesService{titleSlug: "halo_infinite", gamertag: "main", repo: &mockSquadRepo{assistMeasured: 0}}
+
+	if got := svc.buildSquadAssistPairs(
+		context.Background(), assistTestRows(), "main", "x_main", assistTestMates(),
+	); got != nil {
+		t.Fatalf("bloc = %+v, attendu nil", got)
+	}
+	if apres := observability.LoadCounter(compteurAssistPairsSansMesure); apres != avant+1 {
+		t.Errorf("%s = %d, attendu %d — un bloc qui se retire sans trace est le défaut qu'on corrige",
+			compteurAssistPairsSansMesure, apres, avant+1)
+	}
+
+	// Le compteur ne bouge PAS quand le bloc sort : sinon il mesurerait le trafic, pas le trou.
+	avant = observability.LoadCounter(compteurAssistPairsSansMesure)
+	svcOK := &TeammatesService{titleSlug: "halo_infinite", gamertag: "main", repo: &mockSquadRepo{assistMeasured: 3}}
+	if got := svcOK.buildSquadAssistPairs(
+		context.Background(), assistTestRows(), "main", "x_main", assistTestMates(),
+	); got == nil {
+		t.Fatal("bloc attendu")
+	}
+	if apres := observability.LoadCounter(compteurAssistPairsSansMesure); apres != avant {
+		t.Errorf("%s a bougé sur un bloc émis (%d -> %d)", compteurAssistPairsSansMesure, avant, apres)
 	}
 }
 

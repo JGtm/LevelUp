@@ -170,8 +170,11 @@ import { grenadeSoundEvents } from './grenadeSound'
 import type { ReplayLocale } from './i18n'
 import { alignFeed } from './killFeedLogic'
 import { objectiveSoundEvents, type ObjectiveSide } from './objectiveSound'
-import { padPickupSoundEvents } from './padSound'
+import { padSpawnSoundEvents } from './padSpawnSound'
+import { weaponChangeSoundEvents } from './weaponChangeSound'
+import { equipmentChangeSoundEvents } from './equipmentChangeSound'
 import { roundOverSoundEvents } from './roundOverSound'
+import { skullSoundEvents } from './skullSound'
 import { zoneSoundEvents } from './zoneSound'
 import { frameToMs } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
@@ -180,7 +183,10 @@ import { soundEvent, type ReplaySoundEvent } from './replaySoundVariants'
 export { pickVariantStem, SOUND_VARIANTS, stemsOf, type ReplaySoundEvent } from './replaySoundVariants'
 export { OBJECTIVE_SOUND_STEMS, objectiveSoundStem, type ObjectiveSide } from './objectiveSound'
 export { ZONE_SOUND_STEMS, zoneSoundEvents } from './zoneSound'
-export { PAD_PICKUP_SOUND_STEM, padPickupSoundEvents } from './padSound'
+export { SKULL_SOUND_STEMS, skullSoundEvents } from './skullSound'
+export { PAD_SPAWN_SOUND_STEM, EQUIPMENT_PAD_SPAWN_SOUND_STEM, padSpawnSoundEvents } from './padSpawnSound'
+export { WEAPON_CHANGE_SOUND_STEMS, weaponChangeSoundEvents } from './weaponChangeSound'
+export { EQUIPMENT_PICKUP_SOUND_STEM, equipmentChangeSoundEvents } from './equipmentChangeSound'
 export { ROUND_OVER_SOUND_STEMS, roundOverSoundEvents } from './roundOverSound'
 
 /**
@@ -574,6 +580,10 @@ export function buildSoundTimeline(
       const stem = shotSoundStem(doc, s.w)
       if (stem) out.push(soundEvent(frameToMs(s.t, doc), stem))
     }
+    // Les RAMASSAGES ET LÂCHERS D'ARME (schéma 25) : datés par `weaponChanges`, plus rien à
+    // déduire — c'est ce canal qui a remplacé la règle « au premier tir » retirée le même
+    // jour. Doctrine, sons et choix du `swapped` : `weaponChangeSound.ts`.
+    out.push(...weaponChangeSoundEvents(doc))
   }
   // Les explosions programmées PAR UN KILL, retenues au passage : ce sont elles qui
   // dédoublonnent les fins de vol, et elles doivent donc être connues avant.
@@ -623,11 +633,25 @@ export function buildSoundTimeline(
     for (const g of doc.grappleLines) {
       out.push(soundEvent(frameToMs(g.t0, doc), GRAPPLE_SOUND_STEM))
     }
-    // Le RAMASSAGE SUR SOCLE : même catégorie que les équipements (le son vient de
-    // `sb_007_abl_shared`, et l'utilisateur le désigne comme « le ramassage des armes sur socles
-    // de power up »). Il ne vient ni d'une pose ni d'une traction : sa source est le croisement
-    // des TIRS et des SOCLES — détail et mesures dans `padSound.ts`.
-    out.push(...padPickupSoundEvents(doc))
+    // LE RAMASSAGE SUR SOCLE A ÉTÉ RETIRÉ LE 2026-08-30, et il faut dire pourquoi plutôt que de
+    // laisser un trou muet. Il sonnait au PREMIER TIR d'une famille d'arme de socle, faute de
+    // canal qui date le ramassage (`padPickups` : médiane de 20,00 s entre `tLow` et `tHigh` ;
+    // loadouts sur la même grille d'images-clés, 0 sur 597 datés à moins de 5 s). Les mesures
+    // étaient justes, la conclusion ne l'était pas : la doctrine de cette chaîne est que le rejeu
+    // SE TAIT plutôt que de deviner, et on avait déplacé le son sur un AUTRE geste — il partait
+    // en même temps qu'un tir, il partait pour une arme prise au sol ou sur un mort, et il ne
+    // partait jamais pour une arme ramassée sans être tirée. Décision utilisateur du 2026-08-30 :
+    // se taire jusqu'à ce qu'un canal DATE le ramassage. Le son, lui, reste identifié
+    // (`play_007_abl_shared_pickup`, événement `c73036e4`) et audible sur la planche
+    // `3c84fab7-5e36-4777-a2d9-bd1c90b08f65` ; il n'est plus livré tant que rien ne le déclenche.
+    //
+    // L'APPARITION SUR SOCLE — arme OU équipement, chacun son son : le calque DATE l'instant
+    // (`weaponPads[].spawns`) et publie la famille qui les sépare. Détail : `padSpawnSound.ts`.
+    out.push(...padSpawnSoundEvents(doc))
+    // LE RAMASSAGE D'ÉQUIPEMENT (schéma 26) : daté par `equipmentChanges`. Le son attendait cet
+    // instant depuis le 2026-08-27 ; la consommation reste muette (elle sonne déjà par sa
+    // famille). Doctrine : `equipmentChangeSound.ts`.
+    out.push(...equipmentChangeSoundEvents(doc))
   }
   // Les ACTIONS D'OBJECTIF : chacune sonne à sa frame, dans le camp de son auteur. Sans
   // résolveur de camp (appelant qui n'a pas le tableau de score), les seules actions qui
@@ -638,6 +662,11 @@ export function buildSoundTimeline(
     // viennent d'aucun joueur — leur source est `doc.zoneStates`, pas `doc.objectives` — mais
     // ils appartiennent à la même catégorie du tiroir, et se coupent donc avec elle.
     out.push(...zoneSoundEvents(doc, allyTeam))
+    // LES SONS DU CRANE d'Oddball : prise et chute. Leur source est `doc.skullCarries`
+    // (schema 23), pas `doc.objectives` — le nommage statborg ne couvre pas Oddball. Ils
+    // n'ont pas de camp : la banque du mode ne porte pas de variante `_team`/`_enemy` sur
+    // ces gestes. Doctrine et inventaire de ce qui reste dehors : `skullSound.ts`.
+    out.push(...skullSoundEvents(doc, allyTeam))
     // LE SON « MANCHE TERMINÉE », sur la même mesure que le message inter-manche : la bascule
     // d'une manche à la suivante (`roundTransitions`, roundsLogic), datée par le calque de score.
     // CÂBLÉ depuis le 2026-08-28 (l'asset annonceur FR/EN a été fourni) — exactement comme le

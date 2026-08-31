@@ -129,6 +129,26 @@ export const okabePalette: Palette = {
   //  les teintes Okabe claires échouaient le texte blanc ; labels disambiguent)
   ...ENCOUNTER_BADGE_COLORS,
 
+  // ── Classes de frags — famille dédiée (2026-08-29) ─────────────────────────
+  // AVANT cette famille, les tokens empruntés collapsaient : lourde ≡ grenade ≡
+  // équipement (#CC79A7) et épaule ≡ environnement (#56B4E9) — 5 classes du
+  // sunburst sur 2 teintes pour les daltoniens. 11 classes > 8 teintes Okabe :
+  // on garde les 8 teintes et on AJOUTE des dérivés de luminosité (technique déjà
+  // employée : squad-player-2/3, narrative-debacle) — la clarté survit aux
+  // simulations protan/deutan, et le double encodage (labels, anneaux, légende)
+  // porte le sens (P1.2).
+  'frag-shoulder':        '#56B4E9', // Sky Blue
+  'frag-sidearm':         '#F0E442', // Yellow
+  'frag-heavy':           '#CC79A7', // Reddish Purple
+  'frag-melee':           '#BBBBBB', // gris clair
+  'frag-grenade':         '#E69F00', // Orange (l'ambre du défaut)
+  'frag-spartan-ability': '#0072B2', // Blue
+  'frag-vehicle':         '#009E73', // Bluish Green
+  'frag-turret':          '#A04700', // Vermillion assombri (× 0.75)
+  'frag-equipment':       '#8E5374', // Reddish Purple assombri (dérivé squad-player-3)
+  'frag-environmental':   '#013A63', // Blue assombri (dérivé heatmap-freq-low)
+  'frag-unattributed':    '#888888', // gris neutre (résidu)
+
   // ── Heatmaps — axe blue/vermillion ────────────────────────────────────────
   'heatmap-cold':           '#D55E00', // Vermillion — mauvais
   'heatmap-hot':            '#0072B2', // Blue       — bon

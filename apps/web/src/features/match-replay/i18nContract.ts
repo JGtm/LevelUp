@@ -16,17 +16,26 @@ import type { PadEquipmentFamilyKey } from './weaponPadFamilies'
  * LE TABLEAU DES USAGES D'ÉQUIPEMENT de la page match (onglet Chronologie). Il compte, sur tout
  * le match, ce que le rejeu ne montre qu'image par image.
  *
- * TROIS RÉSERVES SONT PORTÉES PAR CES TEXTES, et aucune ne doit se perdre :
+ * QUATRE RÉSERVES SONT PORTÉES PAR CES TEXTES, et aucune ne doit se perdre :
  *
  *  1. `groupActiveHint` — un épisode de camouflage ou de surbouclier est un ÉTAT MESURÉ, pas
  *     un geste : le film dit que l'effet court, il ne dit PAS d'où il vient (bonus ramassé au
  *     socle, ou capacité déclenchée). Compter ces épisodes comme des « utilisations d'objet »
- *     serait affirmer une origine que rien n'établit.
+ *     serait affirmer une origine que rien n'établit. LA MÊME PHRASE PORTE DÉSORMAIS LA
+ *     RÉSERVE DES COLONNES « FRAGS SOUS <FAMILLE> » (PLAN_RETOURS_UTILISATEUR_2026-08-29
+ *     §LOT F.2, DEC-7 révisée) : les bornes de l'épisode sont à la précision de la
+ *     retransmission près, et le camo SEUL est sous le seuil de mesure en lecture large
+ *     (26,2 % des épisodes avec ≥ 1 frag) — un même groupe, une seule infobulle, parce que les
+ *     colonnes de frags sont des SOUS-COLONNES du même état mesuré, pas un calque à part.
  *  2. `powerupPadsHint` — les vidages de socle de bonus sont ANONYMES PAR MESURE
  *     (`padPickups[].xuid` vaut `null` partout) : la ligne reste au niveau du MATCH, et aucun
  *     libellé ne doit laisser croire qu'on connaît le ramasseur.
  *  3. `notMeasured` — répulseur et propulseur n'ont AUCUN canal d'activation dans le film. Pas
  *     de colonne vide (elle se lirait « zéro utilisation ») : une phrase qui le dit.
+ *  4. LA CELLULE « — » DES COLONNES DE FRAGS (cf. `equipmentUsageColumns.ts`, `killsCell`) —
+ *     un match dont `EquipmentUsageCoverage.killsRead` est faux écrit « — », jamais un zéro :
+ *     pas un texte à part, un CARACTÈRE, identique dans les deux langues (même convention que
+ *     `lib/formatters` pour toute grandeur non mesurée du dépôt).
  *
  * LES NOMS DE FAMILLE NE SONT PAS ICI, et c'est voulu : ils vivent déjà dans `placementFamily`
  * (règles de rendu) et `padEquipmentFamily` (socles de bonus). Une troisième table de noms
@@ -54,6 +63,17 @@ export interface EquipmentUsageText {
   activeFamily: Record<'camo' | 'overshield', string>
   activeCount: string
   activeDuration: string
+  /**
+   * LES DEUX COLONNES « FRAGS SOUS <FAMILLE> » (PLAN_RETOURS_UTILISATEUR_2026-08-29 §LOT F.2,
+   * décision utilisateur 8a/8b) : la somme des frags du PORTEUR pendant ses épisodes de cette
+   * famille. En-tête complet plutôt que la composition `activeFamily` + suffixe (contrairement
+   * à `activeCount`/`activeDuration`) parce que la phrase se lit seule en tête de colonne
+   * étroite — « Frags sous camo » porte son sens, « Camouflage (Frags) » l'aurait fait deviner.
+   * La réserve mesurée (source non distinguée, bornes approximatives, camo sous le seuil de
+   * mesure en lecture large) est celle de `groupActiveHint`, pas un second texte : ces colonnes
+   * sont des sous-colonnes du MÊME état mesuré.
+   */
+  activeKillsFamily: Record<'camo' | 'overshield', string>
   groupDeployed: string
   groupDeployedHint: string
   groupDropped: string
@@ -72,6 +92,18 @@ export interface EquipmentUsageText {
   /** Gestes mesurés dont le film ne nomme pas l'auteur : comptés hors tableau, jamais versés. */
   unattributedFmt: (count: number) => string
   notMeasured: string
+  /**
+   * LE BADGE « TEMPS FORT » (`features/match-view/equipmentKillBadges.ts`, LOT F.3) : « N frags
+   * sous camouflage » / « N frags sous surbouclier », le nombre RÉEL du meilleur épisode du
+   * match — jamais arrondi, jamais une somme sur le joueur. Vit ici (et pas dans
+   * `match-view/i18n.ts`) pour la même raison que le reste du vocabulaire d'équipement : les
+   * noms de famille appartiennent au dictionnaire du rejeu, `match-view` l'importe (même sens
+   * que `MatchEquipmentUsageSection`, réutilisé tel quel par `MatchViewTabChronology`).
+   */
+  killBadgeFmt: Record<'camo' | 'overshield', (kills: number) => string>
+  /** Infobulle du badge : LA MÊME réserve que `groupActiveHint` (source non distinguée, bornes
+   * à la précision de la retransmission, camo seul sous le seuil de mesure en lecture large). */
+  killBadgeHint: string
 }
 
 export interface ReplayText {
@@ -321,6 +353,16 @@ export interface ReplayText {
   layerSkullCarrier: string
   layerSkullCarrierHint: string
   /**
+   * LES ARMES AU SOL (schéma 27) : le nom du calque et sa réserve.
+   *
+   * LA RÉSERVE EST LE SUJET, pas un ornement : ce calque affiche des objets dont la
+   * disparition n'est PAS toujours datée. La réserve doit dire, en toutes lettres, ce que
+   * l'estompage veut dire — sans quoi il se lit comme un effet de style, exactement le défaut
+   * que `flagOpenNote` corrige sur les portages ouverts.
+   */
+  layerGroundWeapons: string
+  layerGroundWeaponsHint: string
+  /**
    * LE NOM D'UN SOCLE QUI NE PORTE PAS UNE ARME (schéma 17). Les clés sont les familles
    * d'équipement publiées par le document (`weaponPads[].weapon`), énumérées une par une dans
    * `weaponPadFamilies.ts` — d'où le typage : une famille ajoutée là-bas sans libellé ici ne
@@ -414,6 +456,13 @@ export interface ReplayText {
   scoreBannerAlly: string
   scoreBannerEnemy: string
   scoreBannerClock: string
+  /**
+   * La progression de GARDE de la colline (KOTH) : le libelle d'un filet, pas d'un nombre.
+   * Il nomme la grandeur — sans lui, un lecteur d'ecran annoncerait un second pourcentage
+   * sans dire de quoi, a cote de celui du score.
+   */
+  hillHoldAlly: string
+  hillHoldEnemy: string
   roundNumberFmt: (index: number) => string
   roundOfCountFmt: (index: number, count: number) => string
   /**
@@ -589,6 +638,17 @@ export interface ReplayText {
    * ci-dessus : la zone de la fiche et le disque de la carte sont le même objet.
    */
   zonePresence: Record<'field' | 'shroud' | 'sensor', string>
+  /**
+   * LE PORTEUR D'OBJECTIF (cf. objectiveMark.ts) : la phrase que le filigrane de la fiche dit
+   * en toutes lettres dans l'infobulle. Les clés sont les GENRES DE MARQUE, jamais les modes —
+   * un même objet se retrouve d'un mode à l'autre, et la fiche ne connaît pas le mode.
+   *
+   * DEUX RÉGIMES DANS LA MÊME TABLE, ET LES LIBELLÉS DOIVENT LE DIRE : `flag`, `skull`, `vip`
+   * et `hill` sont des ÉTATS qui durent — « porte », « est » ; `zone` est un ÉVÉNEMENT tenu
+   * quelques secondes — « vient de prendre » — parce que la donnée n'attribue à un joueur que
+   * l'INSTANT de la prise, jamais la durée d'une capture.
+   */
+  objectiveCarry: Record<'flag' | 'skull' | 'vip' | 'hill' | 'zone', string>
   /**
    * LE TABLEAU DES USAGES D'ÉQUIPEMENT (page match, onglet Chronologie). Bloc à part parce que
    * ces textes ne servent PAS le rejeu lui-même : ils servent son BILAN, une autre surface.

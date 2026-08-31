@@ -65,14 +65,56 @@ type AbilityRankStats struct {
 // ScanFilmAbilityRanks décode les identités de capacité transmises par i48 dans les paquets
 // delta du film de dir.
 //
+// LES LECTURES À PORTE OUVERTE SONT ÉCARTÉES ici, et c'est le contrat d'AbilityRank.Rank :
+// une identité non transmise n'est pas une identité nulle. L'autre vue du même composant,
+// `ScanFilmEquipmentChanges`, les GARDE — pour elle, « le joueur n'a plus d'équipement » EST
+// l'événement. Les deux vues partagent le balayage `walkAbilityEmissions` : le composant n'a
+// qu'un seul lecteur.
+//
 // UN SEUL DÉCODAGE filmdec À LA FOIS PAR PROCESS : ce balayage installe `abilitySetHook`,
 // qui est un global de paquet. L'appelant doit détenir LockProcessDecode (BuildFromFilm le
 // fait). Le hook est restauré à la sortie, y compris en cas d'erreur.
 func ScanFilmAbilityRanks(dir string) ([]AbilityRank, AbilityRankStats, error) {
+	var out []AbilityRank
+	st, err := walkAbilityEmissions(dir, func(e abilityEmission) {
+		if e.Rank == AbilitySetNoRank {
+			return
+		}
+		// Les deux types ont la MÊME forme et des CONTRATS différents — l'un peut porter la
+		// porte ouverte, l'autre jamais —, ce qui est exactement pourquoi ils restent deux :
+		// la conversion est le point où le contrat se resserre, juste après le filtre.
+		out = append(out, AbilityRank(e))
+	})
+	if err != nil {
+		return nil, st, err
+	}
+	return out, st, nil
+}
+
+// abilityEmission est UNE lecture d'i48 telle que le déserialiseur la publie, LA PORTE
+// OUVERTE COMPRISE. C'est la matière brute des deux vues du composant.
+type abilityEmission struct {
+	Slot        uint32
+	Chunk       int
+	PacketIndex int
+	TimestampUS uint64
+	Counter     uint32
+	// Rank vaut AbilitySetNoRank quand la porte est ouverte : le joueur ne porte PAS de
+	// capacité à cet instant. C'est une information, pas un défaut de lecture.
+	Rank int
+}
+
+// walkAbilityEmissions est LE SEUL balayage d'i48 (règle des <= 2 copies, CLAUDE.md n°6) :
+// `ScanFilmAbilityRanks` et `ScanFilmEquipmentChanges` le partagent, chacune ne différant
+// que par ce qu'elle fait des émissions.
+//
+// Le hook est LA grammaire : c'est le déserialiseur lui-même qui publie, on ne relit pas les
+// bits à côté de lui. Deux lecteurs du même champ divergeraient.
+func walkAbilityEmissions(dir string, visit func(abilityEmission)) (AbilityRankStats, error) {
 	var st AbilityRankStats
 	n := CountFilmChunks(dir)
 	if n == 0 {
-		return nil, st, fmt.Errorf("aucun chunk film dans %s", dir)
+		return st, fmt.Errorf("aucun chunk film dans %s", dir)
 	}
 	chunks := make([]int, 0, n)
 	for i := 1; i <= n; i++ {
@@ -80,19 +122,17 @@ func ScanFilmAbilityRanks(dir string) ([]AbilityRank, AbilityRankStats, error) {
 	}
 	slots := bipedSlotBand(dir, chunks)
 	if len(slots) == 0 {
-		return nil, st, fmt.Errorf("aucun slot biped (ti=%d) dans les keyframes de %s", BipedTypeIndex, dir)
+		return st, fmt.Errorf("aucun slot biped (ti=%d) dans les keyframes de %s", BipedTypeIndex, dir)
 	}
 	lay, _, err := DetectI0Layout(dir)
 	if err != nil {
-		return nil, st, fmt.Errorf("découpage i0 illisible dans %s : %w", dir, err)
+		return st, fmt.Errorf("découpage i0 illisible dans %s : %w", dir, err)
 	}
 	arch, err := bipedArchetype(dir)
 	if err != nil {
-		return nil, st, err
+		return st, err
 	}
 
-	// Le hook est LA grammaire : c'est le déserialiseur lui-même qui publie, on ne relit pas
-	// les bits à côté de lui. Deux lecteurs du même champ divergeraient.
 	var last struct {
 		counter uint32
 		rank    int
@@ -104,7 +144,6 @@ func ScanFilmAbilityRanks(dir string) ([]AbilityRank, AbilityRankStats, error) {
 	})
 	defer SetAbilitySetHook(prev)
 
-	var out []AbilityRank
 	minRecord := bipedHeaderBits + bipedIndexBits*bipedMinMaskCnt + lay.TotalBits()
 	for _, c := range chunks {
 		data, err := ReadFilmChunk(dir, c)
@@ -131,13 +170,12 @@ func ScanFilmAbilityRanks(dir string) ([]AbilityRank, AbilityRankStats, error) {
 						st.Read++
 						if last.rank == AbilitySetNoRank {
 							st.Gated++
-						} else {
-							out = append(out, AbilityRank{
-								Slot: slot, Chunk: c, PacketIndex: pk.Index,
-								TimestampUS: pk.TimestampUS,
-								Counter:     last.counter, Rank: last.rank,
-							})
 						}
+						visit(abilityEmission{
+							Slot: slot, Chunk: c, PacketIndex: pk.Index,
+							TimestampUS: pk.TimestampUS,
+							Counter:     last.counter, Rank: last.rank,
+						})
 					} else {
 						st.Unread++
 					}
@@ -146,7 +184,7 @@ func ScanFilmAbilityRanks(dir string) ([]AbilityRank, AbilityRankStats, error) {
 			}
 		}
 	}
-	return out, st, nil
+	return st, nil
 }
 
 // bipedArchetype charge l'archétype biped depuis le registre du film (chunk_00).

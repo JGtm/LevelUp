@@ -14,6 +14,7 @@ import {
   oneLifeDefensiveRatePct,
   oneLifeOffensiveRatePct,
   oneLifeWindowBounds,
+  oneLifeWindowBoundsForData,
   oneLifeZonesMarkArea,
 } from './oneLifeWindow'
 
@@ -47,6 +48,49 @@ describe('oneLifeWindowBounds — fenêtre FIXE autour du pivot', () => {
   it('la fenêtre en % est constante et partagée : 50…200 autour de 100', () => {
     expect(ONE_LIFE_RATE_PCT).toBe(100)
     expect(ONE_LIFE_RATE_BOUNDS).toEqual({ min: 50, max: 200 })
+  })
+})
+
+describe('oneLifeWindowBoundsForData — élargit sans jamais rétrécir (DEC-5)', () => {
+  it('aucune valeur → la fenêtre de base, inchangée', () => {
+    expect(oneLifeWindowBoundsForData([])).toEqual(ONE_LIFE_RATE_BOUNDS)
+  })
+
+  it('toutes les valeurs DANS la fenêtre → la fenêtre de base, inchangée', () => {
+    expect(oneLifeWindowBoundsForData([50, 108, 199.9])).toEqual(ONE_LIFE_RATE_BOUNDS)
+  })
+
+  it('une valeur PILE sur une borne n\'est pas un dépassement', () => {
+    expect(oneLifeWindowBoundsForData([200])).toEqual(ONE_LIFE_RATE_BOUNDS)
+    expect(oneLifeWindowBoundsForData([50])).toEqual(ONE_LIFE_RATE_BOUNDS)
+  })
+
+  it('dépassement HAUT : le plafond s\'élargit à la dizaine supérieure, le plancher ne bouge pas', () => {
+    expect(oneLifeWindowBoundsForData([237])).toEqual({ min: 50, max: 240 })
+  })
+
+  it('dépassement BAS : le plancher s\'élargit à la dizaine inférieure, le plafond ne bouge pas', () => {
+    expect(oneLifeWindowBoundsForData([42])).toEqual({ min: 40, max: 200 })
+  })
+
+  it('dépassement des DEUX côtés simultanément (une session très inégale)', () => {
+    expect(oneLifeWindowBoundsForData([5.6, 300])).toEqual({ min: 0, max: 300 })
+  })
+
+  it('plusieurs dépassements du même côté : retient le PLUS large', () => {
+    expect(oneLifeWindowBoundsForData([210, 237, 205])).toEqual({ min: 50, max: 240 })
+  })
+
+  it('valeurs null/undefined/non-finies ignorées (jamais NaN ni Infinity en borne)', () => {
+    expect(oneLifeWindowBoundsForData([null, undefined, NaN, Infinity, -Infinity, 108])).toEqual(
+      ONE_LIFE_RATE_BOUNDS,
+    )
+  })
+
+  it('accepte une base explicite (ex. fenêtre en dégâts bruts, pivot 225)', () => {
+    const base = oneLifeWindowBounds(225) // { min: 112.5, max: 450 }
+    expect(oneLifeWindowBoundsForData([500], base)).toEqual({ min: 112.5, max: 500 })
+    expect(oneLifeWindowBoundsForData([50], base)).toEqual({ min: 50, max: 450 })
   })
 })
 

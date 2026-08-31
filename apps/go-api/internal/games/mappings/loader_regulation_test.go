@@ -36,15 +36,36 @@ func TestLoadRegulationTOMLsFromRepo(t *testing.T) {
 		"CTF:Arena":                 3,
 		"CTF:Arena Neutral Flag":    5,
 		"Ranked:Strongholds":        250,
+		// KOTH, mesure du 2026-08-30 : 3 en social (45 matchs sur 46), 4 en classé (3/3).
+		// L'ancien motif d'exclusion (« l'oracle du film diffère de l'API ») est périmé —
+		// le registre porte des collines depuis le backfill du 2026-08-24, cf. le TOML.
+		"KOTH:Arena":              3,
+		"Ranked:King of the Hill": 4,
 	} {
 		if target, ok := hi.ScoreTarget(variant); !ok || target != want {
 			t.Errorf("halo_infinite cible %q = (%d, %v), want (%d, true)", variant, target, ok, want)
 		}
 	}
-	// Oddball et KOTH sont VOLONTAIREMENT absents (modes à manches, cf. le TOML).
-	for _, variant := range []string{"Ranked:Oddball", "KOTH:Arena"} {
+	// Oddball reste VOLONTAIREMENT absent (mode à manches : le total déborde le plateau
+	// d'une manche). "Arena:King of the Hill" aussi, pour une autre raison : son plateau
+	// n'est atteint que par UN match, sous la règle des >= 2. Cf. le TOML.
+	for _, variant := range []string{"Ranked:Oddball", "Arena:King of the Hill"} {
 		if _, ok := hi.ScoreTarget(variant); ok {
-			t.Errorf("halo_infinite : %q ne doit pas avoir de cible (mode à manches)", variant)
+			t.Errorf("halo_infinite : %q ne doit pas avoir de cible (cf. commentaire du TOML)", variant)
+		}
+	}
+
+	// Tics de garde par point : 35, mesure du 2026-08-30 (union des instants, 15 periodes sur 16).
+	if secs, ok := hi.HoldTicksPerPoint("KOTH:Arena"); !ok || secs != 35 {
+		t.Errorf("halo_infinite tics/point %q = (%d, %v), want (35, true)", "KOTH:Arena", secs, ok)
+	}
+	// Le KOTH CLASSÉ n'a pas de seuil : ses 3 matchs sont inexploitables (deux sans film en
+	// cache, un sur une carte absente du catalogue de bornes). Lui recopier la valeur du
+	// social serait la devinette que la table interdit — donc aucune jauge côté client.
+	// Strongholds non plus : ses zones simultanées portent leur vraie jauge dans le film.
+	for _, variant := range []string{"Ranked:King of the Hill", "Strongholds:Arena", "CTF:Arena"} {
+		if _, ok := hi.HoldTicksPerPoint(variant); ok {
+			t.Errorf("halo_infinite : %q ne doit pas avoir de tics de garde par point", variant)
 		}
 	}
 

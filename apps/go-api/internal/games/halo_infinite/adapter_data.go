@@ -210,6 +210,12 @@ func fallbackCapabilities() games.CapabilityMap {
 		// comptes sans publier de taux : le taux, lui, est match.weapon.accuracy et
 		// il reste not_exposed pour ce titre.
 		games.CapFilmWeaponShots: games.CapSupported,
+		// Positions monde tueur/victime PAR KILL, MÊME passe de décodage que les
+		// morts → shared.kill_positions (G.2bis). Clé séparée : gouverne la CAPTURE,
+		// pas la lecture canonique (match.events.spatial reste not_exposed tant
+		// qu'aucun consommateur ne lit kill_positions pour ce titre — cf.
+		// capabilities.toml).
+		games.CapFilmKillPositions: games.CapSupported,
 	}
 }
 

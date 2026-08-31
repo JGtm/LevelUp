@@ -313,6 +313,16 @@ type MatchHighlightEvent struct {
 	WeaponImageURL    string `json:"weapon_image_url,omitempty"`
 	WeaponImageTinted bool   `json:"weapon_image_tinted,omitempty"`
 
+	// Headshot : le dégât fatal était-il un tir à la tête ? Peuplé ssi la source de dégât est
+	// connue ET non ambiguë (cf. domain.KillSourceRaw.Headshot) — INDÉPENDAMMENT de la
+	// résolution d'icône ci-dessus : une catégorie peut être connue même quand
+	// `TitleAssetURLAdapter.KillSourceIcon` ne trouve aucune image pour le tag. Nil = non
+	// mesurable (film absent, passe non publiable, ou double kill ambigu sur la catégorie),
+	// JAMAIS false — même doctrine que KillerDamagePct ci-dessous. G.1 (2026-08-30) : filtre
+	// STRICT `source_category = 'Headshot'` uniquement (killscope.IsHeadshotCategory) ;
+	// `HeadshotMultiplier` fait chuter l'accord oracle de 99,3 % à 84,4 %, JAMAIS l'inclure.
+	Headshot *bool `json:"headshot,omitempty"`
+
 	// AssistState : l'état de la lecture d'ASSISTANCE de ce kill — TROIS valeurs qui ne
 	// se confondent JAMAIS (décodeur de film, cf. domain.KillAssistRaw) :
 	//   ""      (champ omis)  ON NE SAIT PAS — aucun kill-event apparié à cette mort ;
@@ -467,6 +477,15 @@ type MatchCombatTab struct {
 	// scoreboard. Nil si le viewer n'a aucun kill (le front rend null). Cf.
 	// .ai/V7/PLAN_FRAG_DISTRIBUTION_V2.md P3.
 	FragDistribution *FragDistribution `json:"frag_distribution,omitempty"`
+
+	// KillDistanceByWeapon : POC (LOT G.3, 2026-08-30, plan retours-utilisateur
+	// §3bis DEC-8) — kills mesurés et distance tueur-victime moyenne par arme,
+	// PAR JOUEUR (pas seulement le viewer), pour ce match. Vide/nil si aucun kill
+	// n'a de position mesurée (titre/serveur sans capture positions, backfill non
+	// joué, ou couverture du match sous le plancher mesuré 75,8 %) — dégradation
+	// propre, jamais d'erreur : le front n'affiche alors aucune carte. Périmètre
+	// fermé : arme et distance de l'ASSISTANT hors scope (cadrage utilisateur).
+	KillDistanceByWeapon []MatchKillDistancePlayer `json:"kill_distance_by_weapon,omitempty"`
 }
 
 // ---------------------------------------------------------------------------

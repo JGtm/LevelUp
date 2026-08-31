@@ -48,6 +48,20 @@ func NewLocalFilmCache(rootDir string) *LocalFilmCache {
 	return &LocalFilmCache{rootDir: rootDir}
 }
 
+// RootDir rend la racine de ce cache.
+//
+// Elle est exposée pour qu'un producteur ARCHIVE dans la racine qu'il LIT. Sans cela, un
+// appelant qui reçoit ce cache (résolu par LEVELUP_LEGACY_FILM_CACHE_DIR) mais archive dans
+// la racine par défaut du dépôt écrit dans un répertoire que sa propre lecture ne consulte
+// jamais : le repli disque ne prend plus et chaque passe repaie le réseau intégralement.
+// Rend "" sur un cache nil — le comportement d'une machine sans cache.
+func (c *LocalFilmCache) RootDir() string {
+	if c == nil {
+		return ""
+	}
+	return c.rootDir
+}
+
 // CachedManifest est un manifest film tel que stocké par Python.
 // Forme JSON : { "blob_prefix": "...", "chunks": [{"index", "chunk_type",
 // "start_ms", "duration_ms", "file_relative_path"}] }

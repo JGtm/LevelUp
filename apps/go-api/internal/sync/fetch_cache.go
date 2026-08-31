@@ -73,6 +73,28 @@ func (c *cachedHaloClient) GetMatchFilm(ctx context.Context, matchID string) (ma
 	return c.inner.GetMatchFilm(ctx, matchID)
 }
 
+// GetFilmChunks : passe-plat vers inner. IL N'EST PAS OPTIONNEL, ET C'EST LA LEÇON DU
+// 2026-08-29.
+//
+// `GetFilmChunks` ne fait pas partie de l'interface HaloClient (délibéré : les mocks des
+// autres étapes n'ont pas à la porter). L'étape 1.57 du post-sync l'obtient donc par
+// ASSERTION DE TYPE sur le client. Or ce wrapper est posé SYSTÉMATIQUEMENT sur le chemin V1
+// (engine.go, NewCachedHaloClient) : sans cette méthode, l'assertion échouait, l'étape sortait
+// en silence, et `assist_known` restait FALSE — le défaut exact que cette étape existe pour
+// corriger. Un wrapper qui n'expose pas ce qu'il enveloppe le DÉSACTIVE.
+//
+// Le repli sur `inner` qui ne porterait pas la méthode rend `found = false` sans erreur : un
+// client de test minimal reste utilisable, et le collecteur traite ce cas comme « film absent ».
+func (c *cachedHaloClient) GetFilmChunks(ctx context.Context, matchID string) ([]FilmChunk, bool, error) {
+	f, ok := c.inner.(interface {
+		GetFilmChunks(ctx context.Context, matchID string) ([]FilmChunk, bool, error)
+	})
+	if !ok {
+		return nil, false, nil
+	}
+	return f.GetFilmChunks(ctx, matchID)
+}
+
 func (c *cachedHaloClient) GetCareerRank(ctx context.Context, xuid string) (*CareerRankData, error) {
 	return c.inner.GetCareerRank(ctx, xuid)
 }

@@ -9,7 +9,7 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import { skullPresenceAt } from './skullPresence'
+import { skullPresenceAt, skullSocle } from './skullPresence'
 
 import type { ReplayObjectiveObjectReady, ReplaySkullCarry } from './replayNormalize'
 
@@ -150,5 +150,39 @@ describe('skullPresenceAt — GARDE fixture d9781168 (frames concrètes)', () =>
     for (const d of drops) {
       expect(skullPresenceAt(lives, [], d.socle)).toEqual({ state: 'free', at: SOCLE, rolling: false })
     }
+  })
+})
+
+describe('skullSocle — le socle est le MODE des vies-instant', () => {
+  it('rend la position RÉCURRENTE, ignore les chutes ponctuelles', () => {
+    // Socle deux fois (le crâne y réapparaît), une chute isolée ailleurs.
+    const lives = [rest(10, 3.6, 0.97), rest(50, 3.6, 0.97), rest(90, -22, 9)]
+    expect(skullSocle(lives)).toEqual({ x: 3.6, y: 0.97 })
+  })
+
+  it('rend null sans récurrence (une vie-instant isolée = plutôt une chute qu un socle)', () => {
+    expect(skullSocle([rest(10, -22, 9)])).toBeNull()
+    expect(skullSocle([])).toBeNull()
+  })
+})
+
+describe('skullPresenceAt — le crâne au REPOS est sur son socle', () => {
+  it('pose le crâne sur le socle AVANT sa première émission (au lieu d absent)', () => {
+    const lives = [life(100, 102, [{ t: 100, x: 5, y: 5 }, { t: 102, x: 6, y: 5 }])]
+    expect(skullPresenceAt(lives, [], 0, SOCLE)).toEqual({ state: 'free', at: SOCLE, rolling: false })
+  })
+
+  it('sans socle (null, défaut), reste absent — comportement historique inchangé', () => {
+    const lives = [life(100, 102, [{ t: 100, x: 5, y: 5 }, { t: 102, x: 6, y: 5 }])]
+    expect(skullPresenceAt(lives, [], 0, null)).toEqual({ state: 'absent' })
+    expect(skullPresenceAt(lives, [], 0)).toEqual({ state: 'absent' })
+  })
+
+  it('PIÈGE void-drop : pendant le cooldown, le crâne est sur le SOCLE, jamais au point de chute', () => {
+    // chute dans le vide (instant à un pit) puis respawn au socle (vie) ; entre les deux = cooldown.
+    const lives = [rest(10, -22, 9), rest(30, SOCLE.x, SOCLE.y)]
+    expect(skullPresenceAt(lives, [], 20, SOCLE)).toEqual({ state: 'free', at: SOCLE, rolling: false })
+    // contre-épreuve : sans socle, absent — mais JAMAIS un fantôme au pit (-22, 9).
+    expect(skullPresenceAt(lives, [], 20, null)).toEqual({ state: 'absent' })
   })
 })

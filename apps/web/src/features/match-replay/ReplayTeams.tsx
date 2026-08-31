@@ -26,6 +26,8 @@ import { ReplayTeamHeader } from './ReplayTeamHeader'
 import { activeEquipmentAt } from './equipmentFx'
 import type { PlacementWindowTime } from './equipmentPlacementsLayer'
 import { NO_ZONES, zonePresenceAt, type ZonePresence, type ZoneScene } from './equipmentZones'
+import { objectiveMarkAt } from './objectiveMark'
+import { ReplayObjectiveMark } from './ReplayObjectiveMark'
 import { equippedWeapons } from './equippedLogic'
 import { lastTeleportAge, riftTeleports, type RiftTeleport } from './placementTeleport'
 import { cardChrome, hasUnderLayer, playerCardFx } from './playerCardFx'
@@ -236,6 +238,11 @@ function PlayerCard({ player, doc, frame, presence, vitalityFade, readingFull, f
   const zones = pos && state.life
     ? zonePresenceAt(fxScene.zones, { slot: state.life.slot, x: pos.x, y: pos.y, frame }, fxScene.time)
     : NO_ZONES
+  // L'OBJECTIF PORTÉ : drapeau, crâne, VIP (des périodes attribuées, donc un état qui dure),
+  // ou la prise de base (un instant attribué, tenu quelques secondes — cf. objectiveMark.ts).
+  // Comme pour l'équipement et les zones, une fiche morte n'en porte aucun : un mort a lâché
+  // ce qu'il tenait, et la tuile ne dit plus que la mort.
+  const objective = state.alive ? objectiveMarkAt(doc, player.xuid, frame) : null
   const teleportAge = state.alive && state.life
     ? lastTeleportAge(fxScene.teleports, state.life.slot, frame)
     : -1
@@ -250,6 +257,7 @@ function PlayerCard({ player, doc, frame, presence, vitalityFade, readingFull, f
     flashFrames,
     equipment,
     zones,
+    objective,
     text: t,
   })
   return (
@@ -273,6 +281,11 @@ function PlayerCard({ player, doc, frame, presence, vitalityFade, readingFull, f
           style={fx.underStyle}
         />
       )}
+      {/* LE FILIGRANE DE PORTEUR : la couche du seul canal qui restait libre sur la fiche —
+          derrière le contenu, sans toucher ni la bordure (trois cadres d'équipement) ni le
+          fond (verre, voile, teinte de mort). Déclarée AVANT les rangées, qui sont
+          `relative` : l'ordre de peinture du DOM les met au-dessus, comme la couche d'effets. */}
+      {objective && <ReplayObjectiveMark kind={objective} />}
       {/* AUCUNE MARQUE D'IDENTITÉ SUR LA FICHE (demande utilisateur du 2026-08-25) : le glyphe
           « ami » a été retiré de la colonne. Il reste au FIL des éliminations, où il sert à
           reconnaître un nom au milieu d'événements qui défilent ; sur une fiche, la colonne

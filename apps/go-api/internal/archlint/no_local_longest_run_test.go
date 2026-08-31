@@ -24,7 +24,16 @@ import (
 )
 
 // increment `x++` puis peu après `if y > z {` — signature du balayage best/cur.
-var longestRunIdiomRE = regexp.MustCompile(`\+\+[ \t]*\n[ \t]*if\s+\w+\s*>\s*\w+\s*\{`)
+//
+// LES DEUX OPÉRANDES SONT DES IDENTIFIANTS, jamais un nombre (précision apportée le
+// 2026-08-30). Le motif traqué compare un courant à un maximum — `if cur > best {` —, deux
+// variables par construction. `\w+` acceptait aussi un littéral, ce qui faisait tomber dans
+// le ratchet la forme la plus banale de Go : compter puis tester un seuil
+// (`n++` sur la ligne d'avant, `if want > 0 {` sur la suivante — cas réel de
+// `cmd/oddball-terrain/confront.go`, qui n'a aucune notion de série). Ce n'est PAS un
+// assouplissement : aucun balayage best/cur ne compare son maximum à une constante, donc
+// aucune violation réelle ne sort du filet — seule une classe de faux positifs disparaît.
+var longestRunIdiomRE = regexp.MustCompile(`\+\+[ \t]*\n[ \t]*if\s+[A-Za-z_]\w*\s*>\s*[A-Za-z_]\w*\s*\{`)
 
 var longestRunAllowed = map[string]bool{
 	"longest_run.go":       true,

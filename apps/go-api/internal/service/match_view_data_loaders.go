@@ -80,7 +80,12 @@ type matchViewData struct {
 	// pour l icone du kill feed, celui-ci est un COMPTE PAR JOUEUR pour le sunburst.
 	// Vide = titre sans decodeur de film, match jamais decode, ou aucune de ces morts.
 	killSourceClasses []port.KillSourceClassRow
-	objectiveScore    int
+	// killDistances : POC (LOT G.3, plan retours-utilisateur §3bis DEC-8) —
+	// distance mesurée par (xuid, weapon_key) pour CE match, tous les joueurs
+	// (pas seulement le viewer). Nil si le titre n'a pas de killDistanceRepo
+	// câblé, ou si aucun kill n'a de position mesurée.
+	killDistances  []domain.MatchKillDistancePlayer
+	objectiveScore int
 }
 
 // loadMatchViewDataParallel lance en parallèle (errgroup) tous les chargements
@@ -230,8 +235,21 @@ func (s *MatchViewService) loadMatchViewDataParallel(ctx context.Context, matchI
 	// repo non nil VEUT DIRE que le titre l a. Zero comparaison de slug.
 	if s.killSourceRepo != nil {
 		goLoad(gctx, g, matchID, "kill_source_classes", func() error {
+			// SANS ERREUR, contrairement a ses voisins : le foyer `killsourceload.Load`
+			// est best-effort par contrat — il logge et degrade, la vue reste juste
+			// (ces kills retombent dans « Non attribue »). Rendre une erreur ici
+			// annulerait TOUT le groupe pour une degradation deja absorbee.
+			d.killSourceClasses = s.loadMatchKillSourceClasses(gctx, matchID)
+			return nil
+		})
+	}
+	// Même doctrine que kill_source_classes ci-dessus : le gate de capability est
+	// posé au câblage (wire.killDistanceRepoFor) — un repo non nil veut dire que
+	// le titre a film.kill_source. Zéro comparaison de slug.
+	if s.killDistanceRepo != nil {
+		goLoad(gctx, g, matchID, "kill_distances", func() error {
 			var e error
-			d.killSourceClasses, e = s.loadMatchKillSourceClasses(gctx, matchID)
+			d.killDistances, e = s.killDistanceRepo.LoadMatch(gctx, matchID)
 			return e
 		})
 	}
@@ -410,7 +428,7 @@ func (s *MatchViewService) buildMatchViewFromData(
 	// elles sortent déjà comptées de Q21d et n'ont besoin que du scoreboard pour nommer
 	// le tueur. Posées ici pour la même raison que FragDistribution — hors de
 	// buildCombatTabFull, dont la signature est déjà à la limite de paramètres.
-	combat.AssistPairs = buildAssistPairs(d.assistPairs, d.assistScope, d.scoreboard)
+	combat.AssistPairs = buildAssistPairs(ctx, d.assistPairs, d.assistScope, d.scoreboard)
 	// Extras per-friend (panneau d'expander scoreboard) : best-effort, on
 	// charge depuis chaque player DB d'ami configuré. Si pas de loader injecté
 	// → map vide (section "Local" inactive sauf pour `is_me`).
@@ -496,6 +514,10 @@ func (s *MatchViewService) buildMatchViewFromData(
 	if combat.FragDistribution != nil {
 		logFragDistribution(ctx, "match view", s.titleSlug, s.xuid, *combat.FragDistribution)
 	}
+	// KillDistanceByWeapon (POC LOT G.3) : déjà agrégé par (xuid, weapon_key) côté
+	// repo (kill_positions_latest × match_kill_events_latest) — assemblage direct,
+	// contrairement à FragDistribution qui doit croiser scoreboard+bulkWeapons.
+	combat.KillDistanceByWeapon = d.killDistances
 	mediaTab := buildMediaTab(d.media)
 
 	// MV4.B' : radar calculé depuis le scoreboard (kills/HS/PK/assists/accuracy/
@@ -682,9 +704,12 @@ func strDeref(s *string) string {
 // Perimetre volontairement etroit : CE match, CE joueur — ce qui satisfait aussi le
 // garde-fou anti-scan-complet des filtres. Le chargement lui-meme passe par le foyer
 // unique `loadKillSourceClasses` (killsource_load.go), partage avec les agregats.
+// Aucune erreur rendue : `killsourceload.Load` est best-effort par contrat (il logge la
+// panne puis degrade), et une erreur remontee ici annulerait tout le groupe de chargement
+// pour une degradation deja absorbee.
 func (s *MatchViewService) loadMatchKillSourceClasses(
 	ctx context.Context, matchID string,
-) ([]port.KillSourceClassRow, error) {
+) []port.KillSourceClassRow {
 	return killsourceload.Load(ctx, s.killSourceRepo, "match view", s.titleSlug,
-		[]string{matchID}, []string{s.xuid}), nil
+		[]string{matchID}, []string{s.xuid})
 }

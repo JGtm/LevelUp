@@ -1,3 +1,1918 @@
+## [2026-08-30] Sons — le merge ramassage fournit les déclencheurs, les quatre sons muets sont câblés — Complété
+
+**Le merge `dcbc6e458` (chantier ramassage, schémas 25-28) apporte exactement ce qui manquait
+en §12.3** : `weaponChanges` (prises/lâchers/échanges datés à la frame), `equipmentChanges`
+(ramassages/consommations datés), `groundWeapons`. Le lot web du chantier branchait l'affichage,
+pas le son — câblé ce soir :
+
+    weaponChangeSound.ts     (neuf)   taken → weapon_pickup (168832f6), dropped → weapon_drop
+                                      (6cdd92fd). Un SWAPPED sonne le ramassage SEUL : un
+                                      échange est un lâcher + une prise au même instant,
+                                      superposer les deux fichiers = artefact de mixage.
+    equipmentChangeSound.ts  (neuf)   taken → objective_pad_pickup (c73036e4, RE-LIVRÉ — retiré
+                                      le matin faute de déclencheur, il en a un le soir).
+                                      `spent` MUET : consommer = utiliser, et l'usage sonne
+                                      déjà par sa famille — un jingle générique DOUBLERAIT.
+    padSpawnSound.ts        (scindé)  socle d'ÉQUIPEMENT (powerup_camo/overshield, jointure
+                                      `padEquipmentFamilyOf` de l'affichage) →
+                                      equipment_pad_spawn (4093f3c4) ; socle d'ARME →
+                                      objective_pad_spawn.
+
+**Le spawn d'équipement n'a demandé AUCUN événement neuf** — l'utilisateur avait raison
+(« déjà géré, en tous cas partiellement ») : `powerup_pads.go` publie les socles de power-up
+dans le canal des socles avec leurs `spawns` datés. Limite du « partiellement » écrite : seuls
+camo et surbouclier sont des familles de socle ; un équipement posé hors socle n'a pas
+d'apparition datée.
+
+**Livré** : 4 wav (`weapon_drop` 0,312 s, `weapon_pickup` 0,340 s, `equipment_pad_spawn`
+0,562 s, `objective_pad_pickup` 0,804 s), 2 modules neufs + 1 scindé, garde-rail d'assets étendu
+(SOURCES_COURTES nominatives). **Gates : vitest match-replay 125 fichiers / 1 934 tests VERT,
+typecheck cache purgé VERT, eslint VERT.**
+
+**BILAN DU CHANTIER SON : les six gestes désignés SONNENT** — sécurisation de colline (x2),
+spawn d'arme et d'équipement sur socle, lâcher, ramassage d'arme — plus le ramassage
+d'équipement re-livré. **Aucun son désigné ne reste sans déclencheur.** Section 16 du RE.
+Rien de commité.
+
+---
+
+## [2026-08-30] Sonde i26 unit-equipment : l'evenement CONFIRME, le fil objet<->porteur REFUTE par trois voies — Complété
+
+Demande utilisateur : « regarde i26 unit-equipment, avec ses enfants ou parents ».
+
+**La sonde** (production, valeurs publiees, zero bit change) : `readVarWidthInt` et
+`consume1408f0ac4Probe` rendent desormais leurs valeurs, `consumeUnitEquipment` publie via
+`SetUnitEquipmentHook` — en-tete R(3) + liste de jusqu'a 7 optionnels `porte(1)+valeur(13)+
+queue(2)`. Les largeurs 13+2 sont EXACTEMENT celles d'un slot d'entite et d'une generation :
+c'etait l'hypothese a verifier. Scan exporte `ScanFilmUnitEquipment`.
+
+**CE QUI TIENT — l'evenement.** A une prise i48, la liste i26 du meme slot gagne un handle
+NOUVEAU dans la seconde : **70,2 % des prises, temoin +30 s = 0 %** (Catalyst). i26 est un
+confirmateur d'evenement de ramassage. Il n'apporte rien de plus qu'i48 (qui a le temoin de
+completude) — pas de publication.
+
+**CE QUI EST REFUTE — le fil.** Les handles ne se resolvent vers AUCUNE entite ti=37
+repliquee :
+- mesure E (handle -> POSES) : 3/33 et 16/71 « resolutions » de slot, distances ramasseur->
+  pose de 19 a 29 m = collisions de pool, matrice GlobalID x rang non diagonale ;
+- mesure F (handle -> CREATIONS NEW, confirmees ou non, slot+generation, +-1,5 s) :
+  **0/33 et 0/71**. Le handle ne designe aucun record de creation ti=37 du film.
+Le fil objet<->porteur pour l'equipement est donc ferme par TROIS voies mesurees : proximite
+(mesure D, tas de grenades), reference->poses (E), reference->creations (F). Les handles d'i26
+designent une entite NON repliquee dans le film (instance interne/logique de l'inventaire).
+
+**Pour le SON du ramassage d'equipement** (question posee en meme temps) : l'evenement
+distinct existe DEJA — `equipmentChanges[].kind=taken` (schema 25), date a la frame, avec le
+slot. Rien a creer cote donnees ; c'est un declencheur pret pour le chantier sons.
+
+**ECS** : ligne ti=35 i26 mise a jour avec le verdict date. Gates : suites filmdec+replay
+EXIT=0, lint 0 issues.
+## [2026-08-30] Lot AFFICHAGE WEB des calques ramassage — pilote, verifie, fusionne — Complété
+
+Lot execute par un agent Opus pilote (worktree dedie LevelUp-wt-affichage-sol, branche
+wt/ramassage-web), verifie SUR PIECES avant relais, puis fusionne dans wt/ramassage.
+
+**Ce que le web affiche desormais** (a valider au gate visuel par l'utilisateur) :
+- P1 — les ARMES AU SOL sur la carte du rejeu : vignette silhouette (icones du catalogue
+  reutilisees via padIconRefFor, aucune seconde regle de resolution), pleine de t0 a t1,
+  ESTOMPEE lineairement jusqu'a t1max (l'estompage EST la mesure : la disparition a eu lieu
+  dans cet intervalle), rien au-dela. Fin `pickup`/`open` : coupe franche. Bascule de tiroir
+  dediee, FR/EN.
+- P2 — les fiches basculent A LA FRAME de l'evenement : weaponChanges (substitutions
+  d'identite uniquement — jamais de retrait/ajout d'emplacement, le film ne publie pas
+  l'index) et equipmentChanges (plus recente des deux sources ; une consommation rend null).
+  Logique pure changeRefine.ts, 19 tests, branchee aux deux seuls points d'entree
+  (loadoutAt/abilityAt de rosterLogic).
+
+**Verifications du pilote sur pieces** : zero fichier Go touche (diff vide), zero hex dans
+features/, FR+EN presents et exacts, tailles sous les seuils (canvas 679 -> 678 apres
+extraction useReplayDrawer), garde-rail deltaLayersContract.guard.test.ts (lit les balises
+json: du Go — un renommage Go casse la CI web).
+
+**Friction geree au merge** : la branche web etait basee sur le schema 26, le backend etait
+passe a 27 entre-temps. Merge origin/wt/ramassage dans wt/ramassage-web, bascule
+EXPECTED_REPLAY_SCHEMA_VERSION 26 -> 27, gates web APRES merge (typecheck 0, vitest 536
+fichiers / 5509 tests, cache purge), puis merge de wt/ramassage-web dans wt/ramassage
+(suites Go re-passees, 2 ok). Tout pousse.
+
+**Reste** (registre du lot, pas de ce commit) : gate visuel utilisateur (taille de vignette,
+plancher d'opacite, encre du lisere = arbitrages d'ecran) ; survol/infobulle des armes au
+sol (un 4e calque hoverLayers, lot a part) ; consommation web des fins de poses du schema 27
+(until/untilMax d'equipmentPlacements) ; types manuels ReplayDocumentDeltaLayers en attendant
+la regeneration openapi (date et critere de retrait poses par l'agent).
+## [2026-08-30] Schema 27 : la fin observee des poses d'equipement — et la refutation du lien pickup — Complété
+
+Reponse a « ok et pour l'equipement ? ». Deux verdicts, un livre.
+
+**REFUTE (mesure D, ground_link_research_test.go)** : le lien spatial prise i48 -> pose ti=37.
+Mediane 1,41-1,74 m (contre 0,61-0,75 m pour les armes), 41-50 % sous 1,5 m seulement — et
+surtout la matrice GlobalID x rang des paires liees N'EST PAS diagonale (`bcabbe43` lie a
+rang4=4, rang10=3, rang6=3). Cause physique : l'equipement tombe a la mort AVEC les grenades
+du mort — plusieurs objets ti=37 au metre carre, « le plus proche » choisit au hasard.
+Resserre a CANDIDAT UNIQUE (< 1,5 m, seul a < 3 m) : il reste 2 / 0 / 2 paires par film,
+encore incoherentes (273fe0eb -> rang9 ET rang4). Critere enonce avant lecture (matrice
+diagonale), non atteint, seuil non rebaisse. Consequence : PAS de fin `pickup` pour
+l'equipement, et pas de table rang<->eqip par cette voie. Le ramassage reste publie par
+equipmentChanges (QUI et QUAND) — il ne dit pas QUEL objet du sol.
+
+**LIVRE (schema 27)** : `until` / `untilMax` / `end` sur `equipmentPlacements` — la fin
+d'affichage OBSERVEE, meme mecanique que les armes au sol de v26, sur le recensement ti=37
+que la chaine des socles lisait deja (opt.Pads.Powerups.Keyframes, AUCUN nouveau balayage).
+`end` : `seen` (disparition bornee : derniere image-cle qui recense / premiere qui ne recense
+plus) ou `open` (rien ne prouve la disparition). `t1` garde son sens (fin du MOUVEMENT) et son
+interdit ; le rendu a enfin une borne legitime. Piege paye : la fenetre de recensement est
+EXCLUSIVE sur sa borne haute — a la fin de film exacte, la derniere image-cle etait retranchee
+et une pose encore recensee sortait « disparue » (test rouge, corrige par filmEnd+1).
+
+Reutilisation stricte (regle <= 2 copies) : `gwPickupBoundsFrom` + `gwPickupSeenWithin` de la
+chaine des socles, un seul exemplaire du bornage. `buildEquipmentPlacements` prend le census
+en 5e parametre ; la vie d'une cle est fermee par la pose suivante de la meme cle.
+
+**Gates** : suites replay+filmdec EXIT=0, vet 0, lint 0 issues, golden regen (ligne de schema),
+cmd/levelup OK, bout-en-bout Catalyst PASS (229 poses). Tests : 4 regles de bornage + 1 tally.
+
+**Pilotage** : agent Opus lance en parallele sur le lot AFFICHAGE WEB (worktree dedie
+LevelUp-wt-affichage-sol, branche wt/ramassage-web) — P1 armes au sol sur la carte, P2 datation
+fine des fiches par weaponChanges/equipmentChanges ; perimetre exclut equipmentPlacements
+(schema 27 le modifiait pendant ce temps). Rapport attendu ; les fins de poses (until/untilMax)
+seront un lot web SUIVANT, apres merge des deux branches.
+## [2026-08-30] Schema 26 : les armes au sol OBSERVEES — la minuterie degage — Complété
+
+Suite immediate des mesures du jour (lien pickup<->objet etabli a 0,61-0,75 m). Livraison.
+
+**Ce que le schema 26 publie** : `groundWeapons` — chaque objet arme au sol qui a BOUGE (l'arme
+d'un mort, l'arme de depart abandonnee), avec sa position de repos, son origine mesuree
+(`dropped`/`spawned`, la regle des poses), son LACHEUR, et une fin OBSERVEE :
+
+- `pickup` : une prise du flux delta (schema 24) de MEME FAMILLE, a < 1,5 m, dans la fenetre de
+  vie — fin datee a la milliseconde, ramasseur nomme ;
+- `seen` : la disparition est un INTERVALLE mesure — `t1` = derniere image-cle qui recense
+  l'objet (derniere preuve de presence), `t1max` = premiere qui ne le recense plus (premiere
+  preuve d'absence). Le client choisit son rendu DANS l'intervalle, jamais au-dela ;
+- `open` : rien ne prouve la disparition, l'objet reste affiche.
+
+**Ce que le schema 26 retire** : le champ `until` de `weaponChanges` et sa table de durees
+(10/20/30 s) — la convention du schema 24, refusee par l'utilisateur (« je veux juste voir
+quand elle est au sol et quand elle disparait »). Tests de la borne retires avec elle.
+
+**Trois decisions payees par la mesure de bout en bout, a retenir** :
+
+1. *Le lacheur ne se lie PAS par le lacher delta* (1/92 : l'ecart lacher->naissance n'est pas
+   borne a 500 ms, retractation du 29/08 confirmee). Il se lie par LA VIE QUI S'ACHEVE a la
+   naissance de l'objet — celle que `gwPadsClass` trouvait deja pour classer `dropped` et
+   qu'elle jetait. `gwPadsClass` rend desormais (classe, slot) ; 241/293 et 220/302 objets ont
+   leur lacheur.
+2. *La famille est un CRITERE du lien de prise, pas un controle apres coup* : la premiere
+   version liait « l'objet le plus proche » et une prise de DRAPEAU volait le lien de l'arme
+   voisine — 27 mauvaises familles sur 33 liens. Famille stricte : 9-10 ramasseurs nommes,
+   tous justes par construction ; les prises de socle (objets at_rest, publies par weaponPads)
+   et de drapeau ne se lient pas ici, et c'est documente.
+3. *La disparition en intervalle [t1, t1max]* : publier la seule derniere-vue effacait a tort
+   les armes jamais recensees (vie < 20 s : t1 == t0, affichees zero frame). Les deux bornes
+   sont des preuves ; rien d'invente.
+
+**Chiffres de bout en bout** (Catalyst / Behemoth) : 293 / 302 armes au sol publiees (sur 352 /
+359 objets, 59 / 57 laisses aux socles), fins : 9 / 10 pickup exacts, 279 / 277 vues, 5 / 15
+ouvertes.
+
+**Chaine reutilisee, pas dupliquee** : `buildWeaponPads` rend desormais aussi les objets
+individuels (`gwPickupObject`) — memes bornes census, meme position de reference que les
+socles. Deux publications, UNE chaine. Garde-rail du depot respecte a la lettre : le test
+anti-duplication de la distance 3D a attrape l'instrument (glDist reecrivait la formule) —
+plie a `dist3`.
+
+**Gates** : suites replay+filmdec EXIT=0, vet 0, golangci-lint 0 issues, golden regen (seule la
+ligne de schema bouge), cmd/levelup OK, bout-en-bout 2 films PASS. Ratchet 26 avec raison.
+
+**Reste au calque (pas au lot)** : cote web, RIEN ne lit encore groundWeapons / weaponChanges /
+equipmentChanges — c'est le lot d'affichage. Et les poses d'equipement (ti=37) n'ont pas encore
+leur fin observee (census SeenUS existe pour ti=37 via opt.Pads.Powerups) : meme mecanique a
+appliquer, note pour le prochain lot.
+## [2026-08-30] Ramassage : le lien objet-au-sol <-> pickup EXISTE, et l'equipement TOMBE a la mort — Complété
+
+Trois questions de l'utilisateur, trois mesures (`replay/ground_link_research_test.go`, garde
+PICKUP_FILM/PICKUP_MAP). Deux renversent des affirmations de la veille.
+
+**1. Le lien pickup <-> objet au sol (armes) : ETABLI.** Distance du ramasseur a l'objet ti=42 le
+plus proche VIVANT a l'instant exact de la prise (canal delta du schema 24) : mediane **0,61 m**
+sur Catalyst (74,8 % sous 1 m), **0,75 m** sur Behemoth — temoin (autre bipede au meme instant)
+4,10 m et 7,00 m. Les queues au-dessus de 2 m sont les prises de DRAPEAU (pas un ti=42). Les trois
+refutations passees visaient d'AUTRES voies (suppression meme-paquet, attachement, oracle
+inventaire a 20 s) ; la voie directe n'avait jamais ete mesurable parce que l'instant exact du
+pickup n'existait pas — **c'est la condition de reprise du REGISTRE_REPORTS (« un oracle plus
+rapproche que 20 s ») qui est LEVEE par le schema 24.**
+
+**2. La disparition est OBSERVABLE, pas a minuter.** Recensement des images-cles : 233/244 vies
+ti=42 (Catalyst) et 229/244 (Behemoth) disparaissent EN COURS de match — derniere image-cle vue /
+premiere absente = fenetre de ~20 s, et un pickup lie (1) date la disparition a la milliseconde.
+Le user refuse la minuterie fixe du schema 24 (`Until`) : elle sera remplacee par ces fins
+mesurees.
+
+**3. L'equipement TOMBE au sol a la mort — l'utilisateur avait raison, la veille avait tort.**
+87,6 % des poses ti=37 de Catalyst (198/226 attribuees) et 77,9 % de Cliffhanger naissent a
+<= 3 m d'un bipede dont la vie SE TERMINE dans les 1,5 s. Le canal i48 (schema 25) ne pouvait pas
+le voir : le mourant n'emet rien — mais l'OBJET nait, et `equipmentPlacements` le publie deja.
+Le reste (12-22 %) = deploiements volontaires. NB : le guide fourni (« Definitive guide to weapon
+variants », r/halo) ne parle QUE des variantes d'armes — zero mention d'equipement ; c'est la
+mesure qui tranche.
+
+**Pieges d'instrumentation payes (3 versions fausses avant la bonne), a retenir** : un scan
+d'objets du monde HORS BuildFromFilm doit reproduire son preambule — LockProcessDecode +
+`installWorldObjectPrecision(entry, dir)` (largeurs d'axe DE LA CARTE) + largeurs MPP calibrees
+via decodeFilmPlacements. Sans la precision de carte : positions dequantifiees faux, mediane
+24-117 m EGALE au temoin (signature d'un nuage fantome). Utiliser `decodeFilmPadScans` (chaine de
+prod), jamais une copie.
+
+**Prochaine etape (schema 26)** : (a) publier le lien pickup->objet (fin de vie exacte de l'arme
+au sol ramassee, et l'arme LACHEE affichee jusqu'a sa fin MESUREE — pickup ou fenetre keyframe —
+plus de minuterie fixe) ; (b) qualifier les poses d'equipement mort/deploiement et leur donner la
+meme fin mesuree ; (c) corriger la doc du schema 25 (« pas de lacher d'equipement » -> « pas de
+lacher VOLONTAIRE ; le lacher de mort existe cote objet »).
+## [2026-08-30] Sons — option A appliquée : le ramassage sur socle se tait, et « le son » n'est pas « l'instant » — Complété
+
+**Décision utilisateur : OPTION A.** `padSound.ts` et son test sont SUPPRIMÉS, l'appel retiré de
+`replaySound.ts`, le stem retiré du garde-rail, et **l'asset `objective_pad_pickup.wav` retiré du
+dépôt** — sans quoi le garde-rail « 0 asset mort » serait rouge, et un fichier que rien ne joue
+est exactement ce qu'il traque.
+
+**Ce qui n'est pas perdu** : le son reste identifié (`play_007_abl_shared_pickup`, `c73036e4`),
+audible sur la planche `3c84fab7`, re-livrable en une commande depuis les `.wem` archivés, et git
+garde le fichier. **Condition de reprise** écrite : un canal qui DATE le ramassage — soit un
+`PadPickup.XUID` renseigné (l'oracle plafonne à 88,1 %, sous le seuil de 90 %), soit un
+resserrement de `[tLow, tHigh]` (médiane 20,00 s).
+
+**UN COMMENTAIRE DE HUIT LIGNES REMPLACE LA RÈGLE** à l'endroit exact où elle vivait : ce qu'elle
+faisait, les deux mesures qui la justifiaient, pourquoi la conclusion était fausse, où retrouver
+le son. Un retrait qui ne laisse pas de trace se refait.
+
+**Gates** : `vitest src/features/match-replay` 120 fichiers / **1 880 tests VERT** ; `typecheck`
+cache purgé VERT ; `eslint` VERT.
+
+**IMPRÉCISION DE MA PART, corrigée** (relevée par l'utilisateur : « tu me disais qu'on n'avait pas
+de sons pour spawn ou ramassage d'équipement et pourtant ils sont dedans »). J'écrivais « on n'a
+pas X » pour dire « X ne sonne pas dans le rejeu ». **Ce sont deux choses distinctes** :
+
+    LE SON      existe, est reconstitué, est sur la planche, est parfois nommé
+    L'INSTANT   n'existe pas dans le document de rejeu — rien ne date le geste
+
+Pour ces deux-là le SON est acquis (`c73036e4` ramassage, `4093f3c4` spawn) et c'est l'INSTANT
+qui manque. **Règle d'écriture désormais : nommer lequel des deux manque.**
+
+**Livré** : sections 14.1 et 14.2 de `.ai/V7.5/RE_SONS_RATELIER_ET_KOTH_2026-08-30.md` ;
+`padSound.ts` + test supprimés ; `objective_pad_pickup.wav` retiré. Rien de commité.
+
+---
+
+## [2026-08-30] `fix/h5-prod-symptoms` supprimée : ses trois correctifs sont déjà en place — Complété
+
+**Demande utilisateur** : supprimer la branche obsolète.
+
+**VÉRIFIÉ SUR PIÈCES AVANT DE SUPPRIMER, un correctif à la fois.** Les trois sont présents
+dans `feat/v75` au 2026-08-30, arrivés par une autre route que cette branche :
+
+| Correctif (27/06) | Où il vit aujourd'hui |
+|---|---|
+| barre XP lue depuis la ligne rank-non-NULL | `FILTER (WHERE rank IS NOT NULL)` sur les 8 champs carrière de `career_live_repo.go` |
+| Meilleur CSR par palier, tier-only | `csrTierOrderEN` + `CSRTierOrdinal`, `analysis/home_canonical_skill.go` |
+| backdrop de bannière synthétisé | `synthesizeBanner` dans `HomeSpartanIdentityBanner.tsx` |
+
+**Le troisième est refait MIEUX que sur la branche**, et c'est ce qui a emporté la décision :
+la branche introduisait un trait dédié `provides_live_banner` (+ `constants.toml
+[damage_model] no_live_banner`) ; la version en place branche sur la capability
+`spartan_customizer` — un mécanisme qui existait déjà, zéro trait neuf à maintenir. Merger
+aurait réintroduit une seconde façon de dire la même chose.
+
+**Elle n'était de toute façon plus mergeable** : bâtie sur `internal/api/gen/types.gen.go`,
+l'architecture d'avant la migration Huma, et 2 570 commits en retard.
+
+**PRÉCAUTION, parce qu'elle n'était sur AUCUN remote** : tag d'archive
+`archive/h5-prod-symptoms-2026-08-30` posé sur `cdf686005` AVANT la suppression. Un
+`git branch -D` seul laisse les objets à la merci du `gc` ; le tag les garde en vie
+indéfiniment et ne coûte rien. Reprise éventuelle : `git checkout archive/h5-prod-symptoms-2026-08-30`.
+Le worktree (`LevelUp/.claude/worktrees/fix+h5-support-hardening`) était propre et son
+`apps/web/node_modules` était un VRAI dossier, pas une jonction — retrait sans risque pour
+le dépôt principal.
+
+**Conclusion / prochaine étape** : reste `wt/ti11-cadre`, seule branche non fusionnée portant
+de la matière. Elle apprend au décodeur à lire les 34 composants du descripteur d'objectif du
+HUD (`ti=11`), aujourd'hui illisibles ; ce qu'elle décode est l'état par DÉFAUT, donc rien de
+vivant.
+
+**CORRECTION DE CE PARAGRAPHE, LE MÊME JOUR — j'y avais écrit un argument FAUX.** J'avais
+avancé qu'un composant illisible « ARRÊTE la marche du record, donc tout ce qui suit dans
+l'image est perdu », et qu'il fallait donc mesurer ce qu'on perd avant de trancher. Vérifié
+sur pièces à la question de l'utilisateur (« ça ressemble plus à de la doc, non ? ») : **il
+avait raison et l'argument ne tient pas.** (a) Le walker qui s'arrête dur
+(`WalkKeyframeRecords` → `KeyframeStopDesync`) n'est appelé que depuis DEUX fichiers de test,
+jamais en production ; (b) le walker de production (`frame_records.go`) appelle
+`repairUnportedComponent` puis `continue`. Aucune donnée n'est perdue aujourd'hui, donc il n'y
+a rien à récupérer et aucun gate de re-cuisson à écrire. J'avais lu le mécanisme dans le
+walker de DEBUG et généralisé à la production sans le vérifier.
+
+La branche se réduit donc à de la documentation, et elle est déjà consignée là où il faut :
+verdict de mesure dans l'entrée du 27/08 de ce journal, décision de merge au registre
+(ligne `Objectifs vivants ti=11`), plan dans `replay2d/PLAN_R4_OBJECTIFS_VIVANTS_TI11.md`, et
+la grammaire elle-même sur `origin`. Rien à documenter de plus.
+## [2026-08-30] Sons — le ramassage câblé sur un tir est une aberration, et la planche des socles — Complété
+
+**L'utilisateur** : « mettre un son de ramassage sur un event de tir ça ne te choque pas comme
+aberration ? ». **Si.** Et le dire ici vaut mieux que de le laisser dans un en-tête que personne
+ne relit.
+
+`padSound.ts` joue `objective_pad_pickup` au PREMIER TIR d'une famille d'arme de socle. Ses deux
+dénominateurs sont vrais — `padPickups` a une médiane de 20,00 s entre `tLow` et `tHigh`, les
+loadouts vivent sur la même grille d'images-clés (0 sur 597 datés à moins de 5 s), aucun canal ne
+DATE le ramassage. **Mais la conclusion qu'on en a tirée contredit la doctrine du chantier** :
+la règle écrite partout ailleurs est « le rejeu se TAIT plutôt que de deviner » ; ici on n'a pas
+choisi le silence, on a déplacé le son sur un AUTRE événement. Trois conséquences audibles : le
+son part en même temps qu'un tir ; il part pour une arme prise au sol ou sur un mort ; il ne part
+jamais pour une arme ramassée et non tirée.
+
+**Trois sorties possibles, écrites en §14 du RE pour être tranchées** : (A) se taire jusqu'à ce
+qu'un canal date le ramassage ; (B) poser le son à `padPickups[].tLow` — le socle parle au lieu
+du tir, au prix de 20 s d'imprécision ; (C) garder le premier tir mais SEULEMENT s'il tombe dans
+`[tLow, tHigh]` du socle de cette famille. **Fichier non touché** : le lot est confié à un autre
+agent, la décision lui revient ou revient à l'utilisateur.
+
+**Livré aussi — la planche des socles et des équipements** (demande utilisateur) : artefact
+`3c84fab7-5e36-4777-a2d9-bd1c90b08f65`, **135 sons, treize banques, trois familles**, en
+dépliants `<details>` pour la navigation. Chaque ligne porte son gain de chemin, sa forme, le
+nombre d'événements qui jouent le même matériau et son nom Wwise quand il est cassé — 33 sur 135.
+Ce qui est livré ou désigné est marqué.
+
+**QUATRE SONS SUR 139 NE SONT PAS RENDUS** (trois du champ de réparation, un de la capsule) :
+leur média n'est pas embarqué dans la banque, il vit dans un `.pck`. Ils sont ABSENTS de la page
+plutôt que servis silencieux, et le nombre est écrit en pied de page — un rendu manquant qui ne
+se voit pas est pire qu'un trou déclaré.
+
+**Livré** : sections 14 et 15 de `.ai/V7.5/RE_SONS_RATELIER_ET_KOTH_2026-08-30.md`, nouvelle
+planche publiée, 135 rendus archivés hors dépôt. Aucun code de production touché ce jour au-delà
+du lot de câblage déjà consigné.
+
+---
+
+## [2026-08-30] Sons — le spawn d'équipement n'a pas de banque à lui, et la recherche ne rend aucun candidat neuf — Complété
+
+Vérification demandée par l'utilisateur après sa propre désignation (`4093f3c4`). Trois mesures,
+dans l'ordre où elles réduisent le champ :
+
+1. **Aucune banque de socle d'équipement.** Gabarit `sb_004_mod_mp_shared_%s` sur les 138 886
+   jetons du binaire contre les 1 495 identifiants Wwise (espérance 0,048) : `weaponpad`,
+   `weaponrack`, `weaponpod`, `ping`, `razorback`, `droppod`, `ui`, `ai`, `global`. Rien pour
+   l'équipement.
+2. **Le Lua dit pourquoi.** `MPEquipmentPlacement` (`hsc* b1cdc4ba`) ne porte QUE deux noms
+   audio, et ce sont ceux du socle d'ARME : `MPItemSpawnerAudioAssets` et
+   `GetHologramLoopingSound`. Les kits Forge de placement d'équipement et de bonus (`0d380ade`,
+   `e31760a1`) n'en portent aucun — leurs réglages exposés sont visuels.
+3. **La remontée de tags va dans le même sens.** Depuis `sb_007_abl_shared` : 13 `snd!` au
+   niveau 1 ; au niveau 2, **21 `eqip`**, 31 `sofa`, 6 `effe`, 2 `luas`. Les sons de cette banque
+   pendent à des OBJETS D'ÉQUIPEMENT, pas à un spawner.
+
+**Conclusion, avec sa réserve** : la structure pousse vers « le spawn d'équipement sonne comme le
+spawn d'arme » (`..._weaponpad_appear`), pas vers un son propre. L'utilisateur a pourtant désigné
+`4093f3c4` à l'oreille, et une désignation vaut une mesure ; les deux ne se contredisent pas
+forcément (le socle peut jouer le son du spawner ET l'objet posé émettre le sien). **Ce qui est
+certain : cette passe n'a produit aucun candidat neuf.**
+
+**Question de l'utilisateur sur `padSound.ts` — « le son est câblé sur un tir ?? »** Oui, et
+c'est écrit dans l'en-tête du fichier avec ses dénominateurs : `padPickups` donne un intervalle
+dont la médiane est **20,00 s** (3,2 % seulement sous 2 s) et les changements de loadout vivent
+sur la même grille d'images-clés (0 sur 597 datés à moins de 5 s). Aucun canal ne DATE le
+ramassage. La règle joue donc le son au **premier tir** d'une famille d'arme de socle, une fois
+par couple (joueur, famille) — la première PREUVE de possession, pas l'instant du ramassage.
+Deux conséquences assumées y sont déjà écrites : une arme jamais tirée ne sonne pas, et une arme
+de la même famille ramassée ailleurs sonne aussi. **Fichier non touché ce jour** : le lot du
+ramassage d'arme est confié à un autre agent.
+
+**Livré** : section 13.5 de `.ai/V7.5/RE_SONS_RATELIER_ET_KOTH_2026-08-30.md`. Aucune mesure
+neuve à rendre, aucun code touché.
+
+---
+
+## [2026-08-30] Schema 25 : les RAMASSAGES et les CONSOMMATIONS d'équipement sont PUBLIÉS — Complété
+
+Suite directe du schéma 24 (les prises et lâchers d'arme). Même question pour l'équipement — la
+capacité d'armure : grappin, répulseur, mur, capteur, propulseur, translocateur.
+
+**Décision technique principale : le canal n'est PAS celui que la table ECS désignait.** La table
+signalait `i26 unit-equipment-component` « à sonder en priorité ». Il a été lu (`R(3)` + compteur
+`R(3)` + N handles d'objets) : c'est une LISTE DE HANDLES, pas une identité de capacité. Le canal
+de changement est **`i48 biped-desired-ability-set`**, déjà porté, déjà décodé, et déjà publié en
+lectures brutes par `abilities[]` — mais jamais en ÉVÉNEMENTS. Même règle que pour les armes : le
+composant n'entre au masque du flux delta que lorsque l'équipement porté CHANGE.
+
+**Ce canal porte son PROPRE TÉMOIN DE COMPLÉTUDE, et c'est ce que les armes n'avaient pas.** Le
+compteur de rotation `R(3)` d'i48 avance de 1 à chaque émission (ZÉRO répétition sur 50
+transitions, 3 films) et repart à 5 à la première émission de chaque vie (264 cas sur 269, 98,1 %).
+Un pas supérieur à 1 dénonce donc les émissions manquées ET les compte : ~16 manquées pour 319
+vues, soit de l'ordre de 95 % de couverture, LUE et non supposée. La couverture du document la
+publie (`missedEstimate`, `counterJumps`, `livesFirstOffSpec`, `repeats`).
+
+**Deux mesures fondent la sémantique**, énoncées avant lecture :
+
+1. *La porte ouverte est la CONSOMMATION, jamais la mort.* Sur les 17 émissions à porte ouverte des
+   trois films, ZÉRO ne tombe dans la dernière seconde de la vie ; la plus tardive laisse 8,8 s à
+   vivre, la médiane 23 à 48 s. Le joueur a usé son équipement.
+2. *La première émission d'une vie n'a PAS un sens unique.* Sur `64e8adfa` (Catalyst CTF) et
+   `53ce4390` (Behemoth CTF) elle tombe 16 à 18 s après la naissance du bipède, 0 % sous la
+   seconde : c'est un RAMASSAGE. Sur `00ba2e1c` elle tombe à 0 ms dans 83 % des cas : les joueurs y
+   réapparaissent équipés, et l'émission n'est qu'une annonce. Le balayage exige donc un TÉMOIN DE
+   NAISSANCE (`birthOfLives`, premier échantillon de position, nuage NON décimé) et ÉCARTE les
+   réapparitions. Sans lui, `000d5950` publierait 82 « ramassages » au lieu de 11.
+
+**Résultats observés** (bout en bout, `TestEquipmentChangesSurFilmReel`) :
+
+| film | décodés | publiés | ramassages | consommations | réapparitions écartées | manquées estimées |
+|---|---|---|---|---|---|---|
+| 64e8adfa Catalyst | 57 | 57 | 47 | 10 | 0 | 1 |
+| 53ce4390 Behemoth | 56 | 56 | 53 | 3 | 0 | 3 |
+| 000d5950 Cliffhanger | 92 | 21 | 11 | 10 | 71 | 2 |
+
+`repeats = 0` sur les trois — la propriété qui fonde le calque tient.
+
+**Factorisation faite au passage (règle CLAUDE.md n°6).** Un troisième balayage d'i48 aurait été
+créé ; `walkAbilityEmissions` est extrait dans `ability_rank.go` et les deux vues le partagent —
+`ScanFilmAbilityRanks` (identités, écarte la porte ouverte, contrat inchangé) et
+`ScanFilmEquipmentChanges` (événements, pour qui la porte ouverte EST l'événement). Le composant
+n'a toujours qu'UN lecteur.
+
+**Fichiers** : NOUVEAUX `filmdec/equipment_changes.go` (200 L) + son test, `filmdec/
+equipment_change_research_test.go` (instrument, garde `HW_FILM`), `replay/
+document_equipment_changes.go` (179 L) + son test unitaire (5 cas) + son instrument de bout en
+bout (garde `PICKUP_FILM`/`PICKUP_MAP`). MODIFIÉS : `ability_rank.go` (extraction),
+`replay/{build,document,coverage,structure_test}.go`, golden d'assemblage (seule la ligne de
+schéma bouge — le fixture d'entrées est antérieur au calque, d'où les tests unitaires),
+`ecs_table.tsv` (i48 gagne son usage produit ; i26 est marqué PISTE ÉCARTÉE, avec le pourquoi).
+
+**Gates** : `go test` filmdec + replay `EXIT=0`, `go vet EXIT=0`, `golangci-lint 0 issues` (deux
+`staticcheck` corrigés, dont un hérité du lot précédent), `cmd/levelup` (backfill, consomme
+`replay.SchemaVersion`) `EXIT=0`.
+
+**Ce qui n'est PAS fait, et c'est explicite** : le socle d'où vient l'équipement ramassé (même
+impasse que pour les armes, mêmes hypothèses réfutées) ; ce que portait le joueur avant la première
+émission d'une vie (`From = -1`) ; et la CONSOMMATION côté web — `equipmentChanges` n'a pas encore
+de lecteur dans `apps/web`, exactement comme `weaponChanges` du schéma 24. C'est le prochain lot
+naturel : les deux calques se câblent ensemble sur la fiche joueur du rejeu.
+
+## [2026-08-30] Sons — câblage des deux gestes qui avaient déjà leur déclencheur — Complété
+
+Après les désignations, le lot de livraison : **ce qui pouvait sonner tout de suite sonne**.
+
+**1. La SÉCURISATION de la colline** (`zoneSound.ts`). Déclencheur : `ZoneSpan.active` + `owner`
+— le seul canal qui parle en KOTH. Fichiers `objective_zone_securing_team/_enemy`, 5,50 s.
+Plancher `ZONE_SECURING_MIN_MS = 3000` : en dessous l'intervalle est un TRANSFERT, pas une garde
+(le canal publie le neutre autant que le tenu, 50 pour 50 sur `01e1f945`).
+
+**LA DISJONCTION AVEC `capturing` EST TENUE PAR LA SOURCE, pas par une garde à maintenir** :
+`capturing` naît d'une rampe de jauge, et `ZoneState.Gauge` est **toujours absente sur une
+colline** (`document_zones.go` — le canal y est un compteur de transfert d'une seconde,
+`coverage.zones.gaugePoints` vaut 0). Les deux règles ne peuvent pas se déclencher ensemble.
+
+**DEUX ÉCARTS ASSUMÉS SUR LE RENDU**, écrits dans le code : le délai d'action de 1,5 s est retiré
+(c'est l'entrée en boucle du jeu ; en tête d'un one-shot il n'ajoute que du silence), et 5,5 s ne
+couvrent pas une garde de 40 s. **Mon premier rendu faisait 11,5 s et le garde-rail l'a refusé —
+c'est exactement son rôle** : `LONG_MAX_S` = 6 s borne les sons d'ÉVÉNEMENT depuis que les
+fanfares ont porté `SOUND_CUT_MAX_S` à 12 s. Prolonger davantage est une décision PRODUIT
+(relever ce plafond), pas une décision de livraison ; je ne l'ai pas prise seul.
+
+**2. L'APPARITION SUR SOCLE** — fichier neuf `padSpawnSound.ts`. Déclencheur :
+`weaponPads[].spawns`, les INSTANTS publiés par le calque. Fichier `objective_pad_spawn`,
+1,409 s. Séparé de `padSound.ts` pour la raison qui a séparé `zoneSound.ts` de
+`objectiveSound.ts` : `padSound` DÉDUIT le ramassage d'un premier tir, ici le calque DATE et il
+n'y a pas de camp. **La portée « armes spéciales » est tenue par la source** — `doc.weaponPads`
+ne liste que des socles, les râteliers n'y sont pas ; le Lua dit la même chose
+(`MPItemSpawnerAudioAssets` gardée par `MP_WEAPON_TIER.Power`).
+
+**Gates** : `vitest src/features/match-replay` 121 fichiers / 1 883 tests VERT ;
+`npm run typecheck` cache purgé VERT ; `eslint` sur les 5 fichiers touchés VERT. 12 tests neufs,
+dont **9 qui épinglent des SILENCES**.
+
+**CE QUI N'EST PAS CÂBLÉ, ET LE RAMASSAGE D'ÉQUIPEMENT EN FAIT PARTIE.** L'utilisateur le relève
+et il a raison : le son EXISTE et est livré (`objective_pad_pickup.wav` = `c73036e4`), mais il
+est **consommé par la règle des ARMES** — `padSound.ts` le joue au premier tir d'une famille
+d'arme de socle. Deux manques distincts : (a) le stem est pris, et il ne se libérera que le jour
+où le son de ramassage d'ARME (`168832f6`) sera livré et que `padSound.ts` basculera dessus —
+lot confié à un autre agent, je n'ai pas touché ce fichier ; (b) le déclencheur n'existe pas —
+`equipmentPlacements` date la POSE par un joueur, `equipmentEpisodes` l'ACTIVATION du camouflage
+ou du surbouclier ; aucun ne dit « untel a pris l'équipement du socle ». Travail de DÉCODEUR.
+Même situation pour le spawn d'équipement sur socle et pour le lâcher d'arme.
+
+**Livré** : section 13 de `.ai/V7.5/RE_SONS_RATELIER_ET_KOTH_2026-08-30.md`, 3 `.wav` dans
+`static/sounds/halo_infinite/`, `padSpawnSound.ts` + son test, `zoneSound.ts` étendu. Rien de
+commité.
+
+---
+
+## [2026-08-30] Sons — les six gestes sont identifiés, le chantier bascule sur la livraison — Complété
+
+**Dernière désignation** : le ramassage d'arme = `168832f6` (banque `sb_006_chm_un_spartan`, une
+couche, une variante parmi trois, gain −6 dB, 0,34 s).
+
+**ET IL FAUT ÉCRIRE COMMENT IL A ÉTÉ PRIS.** Le mot de l'utilisateur est « faute de mieux ».
+Cette désignation est donc **plus faible que les cinq autres** : aucune ne s'est imposée à
+l'écoute, celle-ci a été prise par élimination. La consigner au même rang que les autres serait
+mentir sur la mesure. Ce qui la soutient tout de même : le retenu porte **exactement la signature
+du lâcher**, son geste symétrique, mesurée dans le format — une couche, une variante parmi trois,
+gain −6 dB — et dure 0,34 s contre 0,31 s. Sur les 107 jeux de médias de la banque, onze seulement
+portent cette signature ; c'est parmi eux qu'il a été pris.
+
+**Condition de reprise** : si le rendu sonne faux en situation, les dix autres candidats de même
+signature restent servis sur la planche, et les 94 autres rendus derrière.
+
+**ÉTAT FINAL DE L'IDENTIFICATION — six gestes, elle est CLOSE** :
+
+    sécurisation de la colline, ALLIÉE     93f632c0   désigné
+    sécurisation de la colline, ADVERSE    dcf980a5   désigné
+    spawn d'arme sur socle                 54bd9e43   désigné + nom cassé (_weaponpad_appear)
+    spawn d'équipement sur socle           4093f3c4   désigné
+    lâcher d'arme                          6cdd92fd   désigné + nom cassé (_spartan_weapondrop)
+    ramassage d'arme                       168832f6   désigné PAR DÉFAUT
+
+**LE CHANTIER BASCULE** : ce qui reste n'est plus du son. C'est (1) la livraison des six `.wav`
+dans `static/sounds/halo_infinite/`, (2) le câblage — avec la règle d'étirement pour la
+sécurisation, qui ne se boucle pas — et (3) pour trois des six, un **déclencheur qui n'existe pas
+encore** dans le document de rejeu : ramassage d'arme (`padPickups` = intervalle, `xuid` nul),
+spawn d'équipement (pas de canal de socle d'équipement), lâcher (pas de canal daté d'inventaire).
+Deux sont câblables tout de suite : la sécurisation (`zoneStates[].gauge` + `owner`) et le spawn
+d'arme sur socle (`weaponPads[].spawns` publie les instants).
+
+**Livré** : sections 12.4 à 12.6 de `.ai/V7.5/RE_SONS_RATELIER_ET_KOTH_2026-08-30.md`, planche
+`226618d1` republiée (200 cartes, six gestes en tête). Aucun code de production touché.
+
+---
+
+## [2026-08-30] Sons — cinq gestes désignés, un seul introuvable, et l'état des déclencheurs — Complété
+
+**Désignation de plus** : le spawn d'équipement sur socle = `4093f3c4` (`sb_007_abl_shared`,
+wem 905776253, gain −5 dB). Cinq gestes sont désormais désignés à l'oreille :
+
+    sécurisation de la colline, ALLIÉE     93f632c0
+    sécurisation de la colline, ADVERSE    dcf980a5
+    spawn d'arme sur socle                 54bd9e43   ..._weaponpad_appear (armes spéciales)
+    spawn d'équipement sur socle           4093f3c4
+    lâcher d'arme                          6cdd92fd   play_006_chm_un_spartan_weapondrop
+
+**IDENTIFICATION — il ne manque qu'UN son de la demande initiale : le RAMASSAGE D'ARME.**
+Précision utile levée au passage : ce que l'utilisateur avait donné en début de chantier
+(« Equip 18 ») était le ramassage d'**équipement**, pas d'arme — c'est pour ça qu'il manquait.
+Le Lua prouve que le geste existe (`__OnWeaponPadPickedUpSound`, `EVENTS.onItemPickedUp`), mais
+aucun son du socle, du râtelier ni de la capsule n'y correspond.
+
+**Piste lancée par symétrie** : `sb_006_chm_un_spartan`, la banque qui porte le lâcher —
+230 événements, **107 jeux de médias, 105 rendus** (2 échecs de décodage), servis triés par durée
+croissante. Le hachage y est épuisé, l'oreille est la seule voie restante.
+
+**LIVRAISON — rien n'est câblé, et les déclencheurs sont inégaux** (vérifié sur pièces) :
+
+    sécurisation alliée / adverse   DISPONIBLE  zoneStates[].gauge (rampes) + owner
+    spawn d'arme sur socle          DISPONIBLE  weaponPads[].spawns publie les INSTANTS
+    ramassage d'arme                ABSENT      padPickups = INTERVALLE [tLow,tHigh], xuid nul
+                                                (oracle 88,1 % < seuil 90 % du plan)
+    spawn d'équipement sur socle    ABSENT      le document publie equipmentPlacements (la POSE
+                                                par un joueur, T0), pas les socles d'équipement
+    lâcher d'arme                   ABSENT      aucun canal daté de changement d'inventaire
+
+**Deux des cinq sont câblables tout de suite** ; les trois autres demandent du DÉCODEUR, pas du
+son. **RÈGLE DE CÂBLAGE à ne pas perdre** : la sécurisation s'ÉTIRE sur la durée de la garde,
+elle ne se boucle pas (une boucle relancerait la montée — « c'est comme une sirène »).
+
+**Livré** : sections 10 à 12 de `.ai/V7.5/RE_SONS_RATELIER_ET_KOTH_2026-08-30.md`, planche
+`226618d1` republiée (199 cartes). Aucun code de production touché.
+
+---
+
+## [2026-08-30] Sons — quatre gestes DÉSIGNÉS, et le socle d'équipement ouvert — Complété
+
+**Désignations de l'utilisateur, à l'oreille** (elles valent mesure, `RECETTE_SONS_ARMES` §5) :
+
+    SÉCURISATION DE LA COLLINE, ALLIÉE     93f632c0   (paire 4 B, gain -1 dB)
+    SÉCURISATION DE LA COLLINE, ADVERSE    dcf980a5   (paire 4 A, gain +5 dB)
+    SPAWN D'ARME SUR SOCLE                 54bd9e43   play_004_mod_mp_shared_weaponpad_appear
+    LÂCHER D'ARME                          6cdd92fd   play_006_chm_un_spartan_weapondrop
+
+**RÈGLE DE CÂBLAGE donnée avec la désignation, à ne pas perdre** : le son de sécurisation « doit
+être PROLONGÉ le temps que la sécurisation est en cours ; une boucle relancerait le début du son,
+qui met du temps à se lancer — c'est comme une sirène ». Le rejeu doit donc l'ÉTIRER sur la durée
+de la garde, pas le redéclencher. C'est une contrainte de rendu côté app : la banque, elle,
+déclare bien une boucle (`sLoopCount` = 0, mode 3, 0,5 s de silence, entrée à +1,50 s).
+
+**La portée du spawn d'arme est confirmée par le Lua.** L'utilisateur précise « donc que les armes
+spéciales, pas les armes sur râteliers » ; la table `MPItemSpawnerAudioAssets` est effectivement
+gardée par `MP_WEAPON_TIER.Power`. La désignation et la structure disent la même chose.
+
+**LE RAMASSAGE D'ARME EST INTROUVABLE — et ce n'est pas qu'il n'existe pas.** Le Lua prouve le
+geste : `__OnWeaponPadPickedUpSound`, `__OnWeaponRackPickedUpSound`, callback
+`EVENTS.onItemPickedUp`. Aucun des 5 sons du socle ni des 4 du râtelier n'y correspond à l'écoute.
+**Piste désignée par la symétrie** : le lâcher vit dans `sb_006_chm_un_spartan` (230 événements,
+UN SEUL nommé) ; un ramassage est le geste symétrique. Le cassage par gabarit y est épuisé (un
+jeton sur dictionnaire complet, espérance 0,0074/forme ; deux jetons sur 165 mots curie, 0,0103) —
+la voie restante est le rendu des 230 événements et l'oreille.
+
+**DEMANDE NEUVE — le spawn d'ÉQUIPEMENT sur socle.** Le Lua dit où chercher :
+`MPEquipmentPlacement` (`hsc* b1cdc4ba`) utilise la MÊME structure audio que les socles d'armes
+(`MPItemSpawnerAudioAssets`, `GetHologramLoopingSound`, `GetIncomingEffect`, `GetSpawnedEffect`).
+La banque commune est `sb_007_abl_shared` (`15c5b355`, 15 événements, 20 médias), dont deux
+nommés seulement. **Les 15 sont rendus et servis** sous cette question ; les 13 anonymes résistent
+à 53 gabarits sur dictionnaire complet (espérance 0,0257). Les gains de chemin sont affichés carte
+par carte — plusieurs sont à -22 / -26 dB, ce que la normalisation masque (leçon de §9.9).
+
+**Livré** : sections 10 et 11 de `.ai/V7.5/RE_SONS_RATELIER_ET_KOTH_2026-08-30.md`, planche
+`226618d1` republiée (94 cartes, sections « DÉSIGNÉ » en tête et « Socle d'équipement » neuve).
+Aucun code de production touché.
+
+**Prochaine étape** : l'écoute du socle d'équipement ; puis le câblage des quatre gestes désignés,
+avec la règle d'étirement pour la sécurisation.
+
+---
+
+## [2026-08-30] Schema 24 : les prises et les lachers d arme sont PUBLIES — Complété
+
+**Décisions techniques** :
+1. `weaponChanges` au document (t, slot, kind, w, from, until) + `coverage.weaponChanges`.
+   `SchemaVersion` 23 -> 24 avec la chronique et le cliquet de `structure_test.go` mis a jour.
+2. **Les re-annonces sont ECARTEES** : une arme deja portee au spawn et seulement re-annoncee
+   par le flux n est pas un ramassage. 10 sur 229 et 10 sur 100 — les publier gonflerait le
+   compte d environ 8 % avec des evenements qui n ont pas eu lieu.
+3. `Until` borne l affichage d une arme lachee par la duree publiee du jeu, plafonnee a la
+   derniere frame. CONVENTION assumee, ecrite comme telle dans le contrat du champ.
+4. Le golden d assemblage NE COUVRE PAS ce calque (fixture d entrees anterieur). Comble par six
+   tests unitaires sur la projection + un instrument de bout en bout (garde `PICKUP_FILM`).
+
+**Résultats observés** : suites `replay` et `filmdec` vertes. Bout en bout sur deux films —
+`64e8adfa` 229 decodes / 219 publies (125 prises, 92 lachers, 2 echanges, 10 re-annonces
+ecartees, 89 lachers bornes) ; `53ce4390` 100 / 90 (55, 30, 5, 10, 30 bornes). Aucune borne ne
+depasse la derniere frame ni ne precede son lacher.
+
+**Conclusion / prochaine étape** : l EQUIPEMENT. Son canal cote bipede n est PAS i43..i46 mais
+**i26 `unit-equipment-component`** — porte, decode, usage produit « aucun », signale « a sonder
+en priorite » par la table ECS. Meme travail qu ici : sonde sur le motif maison, recensement des
+emissions delta, controle de plausibilite. Duree de despawn de reference pour l equipement :
+20 s (guide releve ce jour).
+## [2026-08-30] Correction — un pool de constantes Lua ne prouve pas une absence — Complété
+
+**Réfutation utilisateur** : « les sons de score KOTH sont pas les mêmes que Strongholds/Bastion ».
+Il a raison, et l'entrée précédente concluait trop.
+
+**L'ERREUR, nommée.** J'ai lu le **pool de constantes** d'un Lua compilé comme s'il était la
+déclaration exhaustive de l'audio d'un mode. Deux raisons pour lesquelles il ne l'est pas :
+(1) **un pool de constantes DÉDUPLIQUE** — une clé déjà internée par la table de Bastion
+(`ScoringLoopTeam`) n'apparaît pas une seconde fois sous `KingOfTheHill`, donc son absence là ne
+prouve rien ; (2) **le script ne nomme que ce dont le script a besoin** — le moteur poste des
+événements que le Lua n'écrit jamais.
+
+**Réserve supplémentaire, qu'il fallait dire** : j'avais aussi assimilé `ScoringLoop{Team,Enemy}`
+du Lua aux événements `..._strongholds_scoring_tick_{team,enemy}` de la banque. Ils se
+ressemblent par le sens mais **pas par la forme** — le Lua dit BOUCLE, et ces deux événements
+n'en sont pas (2 couches simultanées, 3,6 et 4,4 s). Le rattachement n'est pas établi.
+
+**CE QUI RESTE ACQUIS** (et n'est pas touché) : les `hsc*` sont du Lua avec ses noms en clair,
+357 scripts ; `KingOfTheHillInitArgs` ne porte que `instanceName`, `kingOfTheHillObjectNames`
+(`threehold_{blue,neutral,red}`) et les deux tags VO d'annonceur ; le binaire ne porte ni
+vocabulaire audio de colline ni identifiant Wwise, seulement le nom du champ `SoundEventHash`.
+Rien de tout cela n'est une preuve d'absence.
+
+**CE QUE LA MESURE APPORTE À LA PLACE.** Cinq **paires miroir** non attribuées dans la banque des
+zones — deux groupes de médias de forme identique et de médias disjoints, ce qui est la signature
+d'un couple `_team`/`_enemy` :
+
+    P1  8061054a / 6d4b6ad4   boucle, 1,00 s de silence entre deux lectures   <- forme d'un tic
+    P2  1c21bc2d / 222abfa1   2 couches simultanées
+    P3  259a15f2 / 59d1f744   3 couches, deux en boucle
+    P4  93f632c0 / dcf980a5   boucle à +1,50 s, 0,50 s de silence
+    P5  1badec8a / af31554f   boucle, une variante parmi cinq
+
+P1 est le candidat de forme le plus fort : c'est exactement ce que le mot `Loop` du Lua décrit.
+Les dix sons sont rendus et servis côte à côte en tête de la planche courte (`226618d1`).
+
+**LEÇON DE MÉTHODE, à garder** : un espace de nommage neuf donne du VOCABULAIRE, pas des
+NÉGATIFS. Une absence dans un pool dédupliqué n'est pas un dénominateur — contrairement à un
+balayage de hachage, où le dénominateur est comptable.
+
+**Livré** : section 9.8 de `.ai/V7.5/RE_SONS_RATELIER_ET_KOTH_2026-08-30.md`, planche republiée
+(79 cartes). Aucun code de production touché.
+
+---
+
+## [2026-08-30] Part moyenne de participation dans l'infobulle des assistances — Complété
+
+**Statut** : Complété (commit `b57a98702`, pousse). Exécuté PAR LE PILOTE (deux agents
+morts au démarrage sur quota Opus puis Sonnet — plus de roulette, tâche petite et
+entièrement spécifiée).
+
+**Demande** : « les assistances avec pourcentage de participation ». Le graphe empilé
+(qui a assisté qui, combien de fois) existait déjà — livré le 25/08, vérifié la veille.
+Ce lot ajoute la part moyenne par couple dans son infobulle.
+
+**Décision technique principale** : `CAST(ROUND(AVG(assist_damage_pct)) AS INTEGER)` par
+paire dans Q21d — AVG ignore les NULL nativement ; paire sans part mesurée → colonne
+NULL → champ ABSENT du contrat (`avg_assist_pct` omitempty), jamais un « 0 % » fabriqué.
+Vocabulaire « part » (aligné sur killFeedAssistShare du rejeu), jamais « dégâts »
+(réserve G.0), valeur non plafonnée (mesures jusqu'à 228, doctrine du fichier).
+Infobulle : « dont N volées · part moyenne P % », chaque note absente si non mesurée.
+
+**Piège attrapé avant exécution** : le test Nominal de Q21d comparait les structs par
+`!=` — avec le nouveau champ POINTEUR, deux pointeurs vers la même valeur auraient été
+« différents ». Comparaison passée en `reflect.DeepEqual` avant de casser.
+
+**Résultats observés** : Q21d verts (moyennes exactes 45/49/79, NULL ignorés, 228 non
+plafonné, paire sans part → nil), builder (traversée + absence), contracttest vert,
+vitest match-view 267/267, typecheck et gofmt propres.
+
+**Conclusion / prochaine étape** : plus rien en vol côté pilote. Restent : merge de
+`wt/retours-0829` dans feat/v75 (utilisateur), séquence backfill post-merge,
+vérifications visuelles.
+
+## [2026-08-30] LOT G.4 — assistances empilées, vue match : déjà livré, vérifié, zéro code neuf — Complété
+
+**Statut** : Complété. Plan `.ai/PLAN_RETOURS_UTILISATEUR_2026-08-29.md` §3bis, LOT G,
+item G.4 (agent Sonnet, worktree dédié `LevelUp-wt-retours-0829`).
+
+**Contexte / décision produit** : demande du 2026-08-30 soir, cadrée mot pour mot par
+l'utilisateur : « comme le graphe de barres empilées de la page match view : on compte
+les assistances totales et on met des barres empilées pour dire qui on a assisté et
+combien de fois. » La mission reçue (rédigée par le pilote) demandait de BÂTIR une
+chaîne neuve Go+web calquée sur `kill_distance_repo.go` (LOT G.3-POC, commit
+`b4a985163`) — port, domain, service, repo, wire, composant web — avec pour modèle
+« le graphe de barres empilées existant » que l'utilisateur citait.
+
+**Décision technique principale — vérifier avant de coder (règle 4 plan-execution)** :
+avant d'écrire une ligne, recherche de l'existant (skills `go-features` +
+`foundations-usage`, règle CLAUDE.md 14). Trouvaille : `MatchAssistChart.tsx` existe
+déjà dans `features/match-view/`, monté dans `MatchViewTabPlayers.tsx` (onglet Joueurs,
+section Duels & confrontations, juste sous les Antagonistes dont il est le miroir
+déclaré). `git log`/`git blame` : livré le 2026-08-25, commits `5bf2e6128` (vue match,
+Q21d) + `48ca9b065` (vue escouade/Synergies, Q32d) + `97ae1cefc` (correctifs), TOUS
+ancêtres de HEAD sur cette branche (`git merge-base --is-ancestor` vérifié) — donc du
+code de production déjà existant, pas un WIP d'une autre session. Correspondance
+vérifiée point par point avec le cadrage utilisateur (1 barre par assistant = total
+mesuré, empilée par tueur assisté = bénéficiaire coéquipier, segment = compte de la
+paire) : IDENTIQUE. La question ouverte de la mission sur `publishable` (aligner sur
+`KillDistanceRepo` ou sur `KillSourceClassRepo`) est déjà tranchée par ce précédent :
+Q21d exige `publishable = TRUE` (`match_view_repo_assist_pairs.go:82`), même
+raisonnement que `KillDistanceRepo` (une paire nomme deux joueurs, lecture ligne à
+ligne), pas celui de `KillSourceClassRepo` (tally mono-joueur qui tolère le non
+publiable).
+
+**Décision d'exécution** : ZÉRO code de production écrit. Construire une seconde chaîne
+Go+web recalculant le même agrégat depuis la même table (`match_kill_events_latest`)
+avec le même filtre aurait été une copie littérale d'un composant déjà livré —
+violation directe de CLAUDE.md règle 6 (≤ 2 copies d'un même pattern), règle 7 (0 code
+mort, la chaîne surnuméraire n'étant jamais appelée par l'écran) et de l'interdit
+explicite de la mission elle-même (« toucher aux lots livrés hors besoin direct »).
+Deux embellissements du cadrage du pilote (moyenne `assist_damage_pct` en infobulle,
+dénominateur d'honnêteté PAR JOUEUR contre le scoreboard) ne sont PAS dans les mots de
+l'utilisateur et touchent un lot déjà livré sans besoin vérifié : consignés en
+Découvertes du plan (§8), non traités.
+
+**Résultats observés (gates — vérification REJOUÉE dans ce worktree aujourd'hui, pas
+seulement lue à l'historique git)** : `go build ./...` + `go vet ./internal/...`
+propres ; `go test ./internal/platform/duckdb/... ./internal/service/...
+./internal/domain/... ./contracttest/... -count=1` 100 % vert, dont les 7
+`TestQ21dAssistPairs_*`, les `TestBuildAssistPairs_*` (service) et
+`TestBuildSquadAssistPairs_*` (service/teammates) ; `go test -tags=integration -p 1
+./internal/platform/duckdb/...` REJOUÉ en entier : SEULS les échecs
+`team_0_rounds_won` PRÉ-EXISTANTS (fixture VALUES-list sans les colonnes ADR 0032,
+`player_matches_repo_test.go` + `pool_migration_test.go`, déjà documentés
+G.1/G.2/G.2bis/G.3-POC, tâche `task_fb60be2a` déjà spawnée) — 0 échec nouveau ; web
+`npx vitest run src/features/match-view` 265/265 (dont les 23 tests
+`MatchAssistChart.test.tsx` + `_chartSeries.test.ts`) ; `npm run typecheck` propre ;
+`gofmt -l apps/go-api/internal/` vide.
+
+**Conclusion / prochaine étape** : G.4 clos par vérification, pas par construction —
+statut `[x]` dans le plan avec un texte rendant cette distinction sans ambiguïté. Deux
+découvertes notées sans action (§8 du plan) : (a) les deux embellissements pilote
+listés ci-dessus, candidats à coût marginal SI l'utilisateur les demande explicitement ;
+(b) risque de coordination — le journal du plan (§10, entrée 2026-08-29 ~16h) signale
+l'apparition d'un « 4e lot "assistances" » dans l'arbre PARTAGÉ
+(`LevelUp-go-migration`), distinct de ce chantier « notion5(C) » déjà fusionné ici ;
+impossible de dire depuis ce worktree dédié s'il s'agit d'une redite, d'une extension ou
+d'un doublon déjà réconcilié — à rapprocher par le pilote avant tout nouveau travail sur
+le sujet assistances. Aucun commit dans ce worktree (règle du chantier : le pilote
+committe après revue) ; seuls fichiers touchés :
+`.ai/PLAN_RETOURS_UTILISATEUR_2026-08-29.md` et `.ai/thought_log.md`.
+
+## [2026-08-30] LOT G.3-POC — distance par arme, par joueur, vue match (DEC-8) — Complété
+
+**Statut** : Complété. Plan `.ai/PLAN_RETOURS_UTILISATEUR_2026-08-29.md` §3bis, LOT G,
+item G.3-POC (agent Sonnet, worktree dédié `LevelUp-wt-retours-0829`).
+
+**Contexte / décision produit** : DEC-8 (utilisateur, 2026-08-30 soir) réduit G.3
+(« portée + narratif ») à un POC vue match, cadré mot pour mot : « mettre le nombre
+de kills par armes sur la distance et indiquer la distance moyenne pour chaque
+arme... pour chaque joueur. Pour le moment c'est tout ce qu'on va faire au niveau
+de la lecture de la distance. » Fermés explicitement : agrégat multi-matchs, portée
+par arme (RRR), arme ET distance de l'ASSISTANT (le TUEUR seul est lu). Correction
+consignée dans la même décision : les parts de dégâts tueur/assistant sont DÉJÀ en
+prod par kill dans le kill feed du rejeu depuis le 2026-08-24
+(`ReplayKillFeed.tsx:489`, `match-replay/i18n.ts:39-41`) — la réserve de
+`GUIDE_KILLSOURCE.md:670-674` / `steps_shared_kill_events.go:322-324` (chemin non
+démontré, valeurs non bornées à 100) ne s'applique qu'à les présenter comme des
+dégâts exacts ou à les agréger, pas à l'affichage brut par kill déjà livré.
+
+**Décision technique principale — écart assumé sur la consigne de gating** : la
+mission demandait de gater sur la capability `film.kill_positions`. Vérifié sur
+pièces AVANT de coder (skill `plan-execution` règle 4) : `games/adapter.go:160-166`
+et `capabilities.toml` (halo_infinite) disent explicitement que cette clé
+« GOUVERNE LA CAPTURE, PAS LA LECTURE » — l'utiliser aurait en plus cassé Halo 5 en
+pratique (positions natives déjà là, mais H5 ne pose jamais cette clé Infinite-only
+dans sa capability map). Câblé à la place sur `games.CapFilmKillSource` (même
+capability que `KillSourceClassRepo`, dont ce lecteur dépend réellement : même
+table `match_kill_events_latest`, même classificateur `port.KillSourceClassifier`).
+`match.events.spatial` écarté aussi : gouverne le pipeline `canonical.MatchEvent`
+cross-titre de la timeline (axe distinct, `games/halo_infinite/events.go:130-151`).
+
+**Chaîne livrée** : Go — `port.KillDistanceRepository` (`internal/port/
+repository_data.go`) → `duckdb.KillDistanceRepo` (nouveau,
+`kill_distance_repo.go`) : jointure `match_kill_events_latest` ×
+`kill_positions_latest` sur (match_id, killer_xuid=feed_killer_xuid, time_ms),
+garde d'unanimité sur `source_tag` par (tueur, instant) identique à Q21b,
+`publishable` requis (lecture PAR KILL), positions NULL exclues des deux côtés,
+distance = hypot 3D calculée en Go (jamais stockée, jamais en SQL). Résolution
+weapon_key : nouvelle fonction `resolveWeaponKeyLabelsAny` (`weapon_resolver.go`) —
+réutilise le classificateur existant SANS le filtre anti-double-comptage
+« hors arsenal seul » de `resolveOffArsenalKeys` (donc les armes à feu ordinaires
+remontent aussi, ex. `hinf_br75` — testé) ; aucune jointure `weapon_ids` (fan-out
+évité sur les armes à variantes), aucune nouvelle table. `domain.
+MatchKillDistancePlayer/Weapon` (nouveau fichier, pas dans `match_view.go` déjà
+805 L) exposés sur `MatchCombatTab.KillDistanceByWeapon` (omitempty). Wiring
+`killDistanceRepoFor` (`registry_pages.go`, miroir de `killSourceClassRepoFor`) +
+`WithKillDistanceRepo` + chargement errgroup (`goLoad`, WARN auto sur échec) +
+assemblage direct dans `match_view_data_loaders.go`. Web —
+`MatchKillDistanceSection.tsx` (nouveau, gabarit `MatchObjectivesSection.tsx`) :
+table groupée par joueur (gamertag + total de kills résolus depuis le scoreboard
+déjà chargé, PAS dupliqués côté backend), armes triées, pastille de comptage,
+distance moyenne locale-aware (virgule FR / point EN) + plage min–max si
+`measured_kills > 1`, badge « POC », footnote réserve. Rend `null` sans donnée
+(état vide propre — le cas de la quasi-totalité des matchs avant backfill de
+masse). Placé dans le tab `summary` (il n'existe PAS de tab « Combat » littéral,
+vérifié sur pièces) juste après `MatchFragCard`. i18n FR/EN typées
+`features/match-view/i18n.ts`. Tokens sémantiques uniquement, 0 hex. Contrat
+régénéré (`openapi-gen` + `generate-types`) + alias `lib/api/types.ts`.
+
+**Résultats observés (gates)** : 9 tests Go `:memory:` + vraies migrations
+(`-tags=integration`, harnais réutilisé `killsource_class_repo_test.go`) — tous
+verts (moyennes exactes, clé d'arsenal qui remonte, kill sans position/position
+partielle/double-kill ambigu/passe non publiable tous exclus proprement, table
+vide et classificateur nil dégradent sans erreur, matchID vide refusé). 8 tests
+web (`MatchKillDistanceSection.test.tsx`). `go build ./...` + `go vet
+./internal/...` propres. `go test ./internal/platform/duckdb/... ./internal/
+service/... ./internal/domain/... ./contracttest/... -count=1` 100 % vert.
+`go test -tags=integration -p 1 ./internal/platform/duckdb/... -count=1` : SEULS
+les 24 échecs `team_0_rounds_won` PRÉ-EXISTANTS documentés en G.2bis (fichiers
+jamais touchés par ce lot) — 0 échec imputable. `go test -p 4 ./... -count=1`
+(module ENTIER) : SEULS les 2 échecs pré-existants déjà documentés au VF du
+30/08 midi (archlint `TestNoLocalLongestRun`, `internal/himap` timeout) — 0
+régression nulle part dans tout le dépôt. Web : `npx vitest run
+src/features/match-view` 265/265 (257 pré-existants + 8 neufs) ; `npm run
+typecheck` propre.
+
+**Conclusion / prochaine étape** : G.3-POC RENDU et vérifié ; G.3 « plein »
+(portée + narratif, confrontation RRR) reste NON engagé — fermé par DEC-8 (pas
+seulement conditionné à la donnée), à rouvrir seulement sur décision utilisateur
+ultérieure. Aucun commit dans ce worktree (règle du chantier : le pilote committe
+après revue) ; arbitrage des commits toujours en attente (§5/§7 du plan).
+Vérification visuelle utilisateur de la carte non faite (pas de `data/` dans ce
+worktree — aucun match réel à afficher ici, seulement les fixtures synthétiques
+des tests).
+
+## [2026-08-29 soir] Retours 0829 suite — palettes daltoniennes, lot G, coordination inter-sessions
+
+**Statut** : Complete pour les palettes (gates verts) et l'analyse G.0 ; F.0 en cours
+(decodage) ; G.1-G.3 en attente de validation utilisateur.
+
+**Incident repare en priorite** : mon nettoyage de l'arbre partage avait casse la
+compilation de `internal/service` (3 appels buildSoloFirstBlood a 3 args vers une
+signature revenue a 2) — 3 hunks reverties, build vert, autres sessions debloquees.
+
+**Palettes (demande utilisateur « corrige stp »)** : famille DEDIEE `frag-*` (11 tokens,
+`semantic-tokens.ts`) definie dans les QUATRE palettes semantiques. AVANT : Okabe-Ito
+repliait lourde=grenade=equipement (#CC79A7) et epaule=environnement (#56B4E9) ; Cividis
+avait 2 collisions EXACTES ; seule la palette defaut etait controlee. APRES : defaut
+inchange a l'ecran (1 seul ecart volontaire : frag-spartan-ability indigo-400 -> 500, qui
+RESOUT la paire heritee a 6,89 au lieu de l'exempter — exception et ratchet SUPPRIMES) ;
+Okabe 11 teintes distinctes (8 brutes + derives de luminosite, technique squad-player) ;
+Cividis echelle de clarte + 3 emprunts hors rampe (seuil dE >= 5 DOCUMENTE, rampe
+sequentielle par construction) ; Tol Bright complete (emprunts Muted/Vibrant/High-contrast).
+Garde-rail etendu aux 4 palettes (pire paire nommee dans l'assertion). Gates :
+accessibility 184/184, charts 420/420, typecheck + eslint 0 erreur, snapshots palettes
+regeneres (changement intentionnel).
+
+**Lot G (headshot/distance/portee) — G.0 rendu, verdicts qui renversent la table** :
+le tir a la tete par kill EST DEJA EN BASE (`source_category`, oracle API 99,3 % avec le
+filtre STRICT `='Headshot'` ; colonne orpheline — chantier de LECTURE) ; la distance a
+son code ecrit/teste/jamais branche (`BuildKillPositions`, validation melee 0,39 m /
+sniper 16,19 m) mais `kill_positions` n'est PAS append-only (dette bloquante) ; le
+gisement recuperable reel = 415 matchs de 2026 sans passe film (cache plus alimente
+depuis le 2026-04-07, producteur Python supprime) — PAS les 581 vieux matchs bit22
+(97 % d'avant 2025). Doctrine « ~30 j » : aucune borne chiffree nulle part, commentaire
+du code dit « plusieurs mois ». Lots G.1 (S, lecture), G.2 (M, positions), G.3 (L,
+portee+narratif) proposes au plan.
+
+**Coordination inter-sessions (premiere du genre)** : repartition actee avec la session
+equipement (elle = RE/film via Ghidra ; moi = 8a/8b vue match + F.0 + plan). Sa passe
+Ghidra rend SUSPECTE la refutation « aucun evenement de ramassage » (champ +0x274 jamais
+teste par la mesure 0/149, defaut param_4 douteux sur le chemin de mesure) — le plan est
+mis au conditionnel, chemin par defaut i42-delta inchange. Backfill : delegue par
+l'utilisateur a une autre session ; 3 faits critiques a lui transmettre (gisement 2026,
+contrainte d'ordonnancement vue _latest, assist_known=FALSE depuis avril).
+
+**Prochaine etape** : chiffres F.0 (go/no-go seuil 30 %) ; validation utilisateur des
+lots G.1-G.3 et du demarrage F.1-F.3 ; verification visuelle des palettes daltoniennes.
+
+## [2026-08-29] Retours utilisateur 0829 — pilotage 8 points, 4 lots livres, worktree dedie
+
+**Statut** : Complete cote code (gate final VF vert) ; commits DIFFERES a l'arbitrage
+utilisateur ; lots E (backfill) et F (equipement) livres en RAPPORT/PLAN, execution en
+attente de decisions utilisateur (DEC-3, DEC-6 du plan).
+
+**Demande** : 8 points (backfill armes de kills ; donuts frags 2 niveaux + Escouade ;
+premier frag/mort flou + tooltip uuid ; echelles rendement/resistance ; echelle avec
+bonus ; breadcrumb rejeu ; equipement ramassage vs usage ; frags sous camo/surbouclier/
+translocateur + forme d'affichage), a analyser/planifier/piloter avec Opus/Sonnet/Haiku.
+
+**Pilotage** : 6 agents d'ANALYSE (2 Opus, 3 Sonnet, 1 Haiku, lecture seule) -> plan
+`.ai/PLAN_RETOURS_UTILISATEUR_2026-08-29.md` (6 decisions tranchees DEC-1..6) -> 5 agents
+d'IMPLEMENTATION (A donuts Opus, B echelles Sonnet, C premier-frag Sonnet, D breadcrumb
+Haiku, V2.1 labels-locale Sonnet repris par le pilote apres une coupure de quota a 95 %).
+
+**Decision technique principale** : le lot NON COMMITE « kills-hors-arme » (etapes 0-5
+faites, gate bloque par un refactor tiers) etait le SOCLE du point 2 — il a ete DEBLOQUE
+(E8 `9f053f078` repare `service_test.go`), ses gates rejoues verts (integration duckdb
+comprise), puis embarque avec les lots retours dans un WORKTREE DEDIE
+`LevelUp-wt-retours-0829` (branche `wt/retours-0829`, base `7befe6192`) — correction d'une
+erreur de pilotage relevee par l'utilisateur : le chantier avait demarre dans le worktree
+partage, ou TROIS autres lots vivent et ou deux commits tiers (E9, E10) et plusieurs
+ecrasements de fichiers sont survenus EN VOL. Transfert par patch + tar des non-suivis,
+retrait des lots etrangers du dedie, retrait de mes fichiers exclusifs du partage (les
+fichiers CHEVAUCHES y gardent des hunks residuels, carte au §7 du plan).
+
+**Resultats observes** : gate final VF vert dans le worktree dedie — vitest 530 fichiers /
+5 457 tests / 0 echec (+55 vs base), typecheck cache purge OK, lint 0 erreur, `go build` +
+`go vet ./...` OK, `go test ./...` vert hors les 2 echecs PRE-EXISTANTS documentes
+(archlint TestNoLocalLongestRun, himap timeout). Correctif bloquant decouvert par le VF :
+litteral brut `'marche'` dans `killsource_class_repo_test.go` (garde archlint J4R-3) ->
+`killscope.ReadPathFilmWalk`. Mesures cles du chantier : backfill armes NON complet et
+IRRECUPERABLE a ~30 % (581 films expires) — artefacts rejeu 40/1948 (2,1 %), la passe de
+masse (~8 h) reste a lancer ; rampe niveau 2 produisait du BLANC PUR des le 5e role ;
+`FirstBloodMatchPoint` ne portait QUE match_id ; fenetre 50-200 % ecretait ; extent
+recalcule sur series visibles ; equipement : ramassage ABSENT du film (negatif mesure),
+frags-sous-fenetre FAISABLE a cout quasi nul, degats REFUTES, translocateur bloque (n=2).
+
+**Conclusion / prochaine etape** : (1) arbitrage utilisateur des commits (3 lots tiers
+dans le worktree partage, hunks residuels chevauches) ; (2) accord backfills (repair 2
+artefacts, killsource serveur arrete, passe rejeu 8 h) — NB chantier tiers
+`backfill_killsource_online` apparu en vol ; (3) validation 8b (reco A+C vue match
+uniquement) avant lot F ; (4) verification visuelle utilisateur (sunburst x5, Escouade,
+premier frag, echelles, breadcrumb) ; (5) V2.2 latence `[!]` (pas de data/ ici) ;
+(6) CI branche rouge depuis le 28/08 (anterieur), a diagnostiquer avant push.
+---
+
+## [2026-08-30] Ménage des branches : trois fusions, quatre suppressions, un contrat rattrapé — Complété
+
+**Demande utilisateur** : merger les branches qui ne sont plus vivantes ; supprimer les
+`feat/filmdec-*` et `feat/weapon-*`.
+
+**Le critère de « vivante » est le dernier commit ET la propreté du worktree**, pas le nom.
+Trois branches actives ont été laissées intactes : `wt/seed-parity` (16h46), `wt/ramassage`
+(16h47), `wt/retours-0829` (15h46, 16 fichiers non commités dans son worktree — travail en
+cours, et 144 fichiers de diff qui recoupent `weapon_names.toml` et `frags.toml`).
+
+**FUSIONNÉES** (dormantes, worktrees propres) :
+
+| Branche | Contenu |
+|---|---|
+| `wt/skull-integration` | phantom-carry (gate de présence bipède sur `buildSkullCarries`) + crâne posé sur son socle au repos |
+| `chore/doc-quatre-routes-ouvrier` | doc-rot : le protocole ouvrier compte QUATRE routes, 7 sites de commentaire |
+| `wt/re-lecteur` | documents seuls — RE lecteur image-clé, carte des sérialiseurs d'état complet |
+
+**LE ROUGE QUE LA FUSION A RÉVÉLÉ, et il valait la passe** : `TestOpenAPIYAMLIsUpToDate` est
+tombé sur `carrierAbsent`. Le lot crâne ajoute un champ au contrat servi et n'avait pas
+régénéré `openapi.yaml` — sa branche était verte parce qu'elle n'avait pas rejoué ce test.
+Les DEUX maillons ont été refaits ensemble (`openapi-gen` puis `generate-types`) : régénérer
+le seul YAML laisserait le front typé sur l'ancien contrat avec un `tsc` vert, ce que le
+garde `generated-types-fresh` existe précisément pour interdire.
+
+**SUPPRIMÉES** — `feat/filmdec-continuation`, `feat/filmdec-killweapon`,
+`feat/weapon-attribution-v3`, `feat/weapon-sameclock` (lignées de recherche mortes, 3434
+commits de retard). Toutes les quatre sont **sur `origin` au même SHA** : rien n'est perdu.
+Deux précautions prises : (a) la jonction `node_modules` de `filmdec-continuation` retirée
+AVANT `git worktree remove --force`, sinon la suppression suit le lien et vide le vrai
+`node_modules` du dépôt principal (incident du 15/06) — vérifié à 373 entrées avant et après ;
+(b) les 18 fichiers non suivis de `weapon-attribution-v3` (captures Cheat Engine, 1,5 Mo)
+archivés dans `Downloads/Scripts/LevelUp-archive-ce-weapon-attribution-v3/` — ils n'étaient
+sur aucun commit.
+
+**NON FUSIONNÉES, avec leur raison** :
+- `wt/ti11-cadre` — le registre porte une décision ÉCRITE et datée : « non fusionnée, publie
+  rien ». Elle ajoute 3 400 lignes de décodeur et de tests que rien ne consomme. Elle est sur
+  `origin`, donc conservée sans risque. À rouvrir sur arbitrage, pas par ménage.
+- `fix/h5-prod-symptoms` — 4 correctifs H5 du 27/06 (barre XP, meilleur CSR, bannière
+  d'accueil) qui ne sont PAS dans `feat/v75` (`provides_live_banner` absent), mais bâtis sur
+  `internal/api/gen/types.gen.go`, l'architecture d'avant la migration Huma. Ce n'est plus un
+  merge, c'est une ré-implémentation. **Local uniquement, absente d'`origin`** : ne pas
+  supprimer sans décision.
+
+**Conclusion / prochaine étape** : décision utilisateur sur ces deux branches ; les worktrees
+des branches désormais fusionnées (`wt/skull-*`, `chore/doc-quatre-routes-ouvrier`,
+`wt/re-lecteur`) peuvent être retirés au prochain ménage — même précaution de jonction.
+
+---
+
+## [2026-08-30] Portage en production du canal de ramassage, et une correction a mes propres chiffres — Complété
+
+**Décisions techniques** :
+1. `filmdec.ScanFilmHeldWeaponChanges(dir, spawnSet)` — balayage de PRODUCTION des changements
+   d arme en main : instant, vie, emplacement, famille (moitie haute = l identite catalogable),
+   moitie basse, famille precedente, et NATURE (`taken` / `dropped` / `swapped` / `restated`).
+   `restated` est la distinction qui empeche de compter des prises qui n ont pas eu lieu : une
+   arme deja portee au spawn et seulement re-annoncee par le flux n est PAS un ramassage.
+2. Le balayage est confronte a l instrument de mesure par un test qui compare les deux listes
+   ELEMENT PAR ELEMENT (instant, vie, emplacement, famille). Sans cette confrontation le portage
+   pourrait deriver en silence. Resultat : identiques, 229 et 100 emissions.
+
+**CORRECTION D UNE DE MES AFFIRMATIONS** : j ai ecrit plusieurs fois « ZERO repetition, la
+grammaire reserve i43..i46 au changement ». C etait une generalisation depuis UN film de
+31 emissions. Sur des films plus fournis il reste **1 repetition par film** : 1/229 (0,4 %) et
+1/100 (1,0 %) ; 0/31 sur le film d origine. La propriete tient a ~99 %, pas a 100 %. Le test
+porte desormais un RATCHET a 2 % au lieu d une egalite a zero — il casse si le taux se degrade,
+pas si l exception connue subsiste.
+
+**Résultats observés** (nature des changements, 3 films) :
+
+| film | taken | dropped | swapped | restated |
+|---|---|---|---|---|
+| 64e8adfa | 125 | 92 | 2 | 10 |
+| 53ce4390 | 55 | 30 | 5 | 10 |
+| 000d5950 | 21 | 4 | 0 | 6 |
+
+`go build` + `go vet` verts sur `internal/analysis/...`.
+
+**Conclusion / prochaine étape** : le canal est porte en production et verifie contre
+l instrument. Reste a le publier dans le document de rejeu (champ + version de schema +
+couverture), avec la fenetre d affichage bornee par les durees de despawn du jeu
+(`.ai/V7.5/reference/DESPAWN_ARMES_HALO_INFINITE.md`) ET par l image-cle — la plus courte des
+deux, aucune n inventant de donnee. Puis l equipement, dont le canal cote bipede est i26
+`unit-equipment-component`, jamais decode en valeurs.
+
+**Blocage de push, inchange** : `killsourceload` n est toujours pas commite, ni localement ni sur
+`origin/feat/v75`. Le hook de pre-push echoue donc sur un code qui n est pas le notre. Quatre
+commits en attente sur `wt/ramassage`. Demande faite a l utilisateur : contourner (`--no-verify`)
+ou attendre. Aucun contournement tente sans son accord.
+
+## [2026-08-30] Rejeu 2D — le web consomme les schémas 24-26 : armes au sol sur la carte, datation fine des fiches — Complété
+
+**Périmètre** : lot FRONTEND SEUL sur `wt/ramassage-web` (branché sur `origin/wt/ramassage`).
+Aucune ligne de Go, aucune ligne d'`openapi.yaml`. Le backend publie depuis ce matin trois
+calques que rien ne lisait côté web ; ce lot les branche.
+
+**P1 — LES ARMES AU SOL SUR LA CARTE (schéma 26), le livrable principal.** Un calque frère de
+celui des socles, et la distinction est le cœur du rendu : un SOCLE est un LIEU qui
+réapprovisionne (losange + compte à rebours), une ARME AU SOL est un OBJET qui ne revient pas —
+elle se dessine SEULE, sans socle sous elle, plus petite (6,5 px contre 8) et plus discrète.
+Trois fichiers, découpe habituelle de la feature : `groundWeaponTime.ts` (lecture temporelle
+pure), `groundWeaponsLayer.ts` (tracé), `useReplayGroundWeapons.ts` (cuisson des vignettes et
+câblage).
+
+**LA DÉCISION DE RENDU QUI PORTE TOUT LE LOT : l'estompage EST la mesure.** Le document publie
+trois bornes et non deux — `t0`, `t1` (dernière preuve de PRÉSENCE), `t1max` (première preuve
+d'ABSENCE). Sur une fin `seen`, la disparition est un INTERVALLE : plein jusqu'à `t1`, descente
+LINÉAIRE de 0,8 à 0,2 jusqu'à `t1max`, RIEN au-delà. Une coupe franche à `t1` affirmerait une
+disparition que personne n'a vue ; tenir l'objet plein jusqu'à `t1max` affirmerait une présence
+que plus rien n'atteste. Sur `pickup` et `open`, `t1max == t1` : la fenêtre d'estompage est vide,
+la fin est exacte. Le plancher est NON NUL — à zéro, l'objet s'éteindrait avant la borne mesurée
+et la borne haute ne se lirait plus.
+
+**LES VIGNETTES SONT RÉUTILISÉES, PAS RECOPIÉES** : `groundWeapons[].w` est le même identifiant
+de famille que `weaponPads[].weapon` et `loadouts[].w`, donc la même clé dans `weaponLabels`. La
+résolution passe par `padIconRefFor` — la fonction pure qui porte déjà la règle (silhouette
+pleine plutôt que contour, miroir des atlas). Une seconde règle de résolution aurait divergé, et
+l'écran aurait montré la même arme de deux façons selon qu'elle est sur son socle ou par terre.
+Sans vignette, RIEN n'est dessiné : ni glyphe de repli, ni icône voisine (verdict du 2026-08-26
+sur les socles, qui vaut a fortiori ici — le socle gardait son losange, une arme au sol n'a que
+son image).
+
+**P2 — LA DATATION FINE DES FICHES (schémas 24 et 25), livrée en logique testée + branchement
+au FOYER.** `changeRefine.ts` est pur ; il se branche dans `loadoutAt` et `abilityAt`
+(`rosterLogic.ts`), les deux seuls points d'entrée — les fiches et la rangée d'armes en
+bénéficient sans qu'une ligne d'UI change.
+
+- ARMES : ne sont appliquées que les SUBSTITUTIONS D'IDENTITÉ (`from` connue ET présente dans la
+  rangée lue, `w` non vide). Elles ne changent ni la longueur de la rangée ni l'ordre de ses
+  emplacements — la seule transformation qui ne peut pas désaligner `Inventory.d`, le sélecteur
+  d'emplacement dégainé, lu à une AUTRE image-clé avec son propre âge.
+- CE QUI N'EST PAS APPLIQUÉ, ET C'EST ÉCRIT DANS LE MODULE : les LÂCHERS (`w` vide) ne retirent
+  pas l'arme, et les PRISES SUR EMPLACEMENT VIDE (`from` vide) n'en ajoutent pas. Le film ne
+  donne AUCUN index d'emplacement sur l'événement ; retirer ou ajouter décalerait ou inventerait
+  un emplacement que le sélecteur adresse. Le prix est nommé : une arme lâchée reste affichée,
+  estompée, jusqu'au prochain relevé — exactement le comportement d'avant ce lot.
+- CAPACITÉ : la plus RÉCENTE des deux sources gagne (même doctrine que les deux canaux
+  d'`abilities`), le relevé l'emportant à égalité d'âge. Une CONSOMMATION rend `null` : le joueur
+  ne porte plus rien, la vignette disparaît au lieu de montrer un équipement déjà dépensé.
+- La lecture d'image-clé RESTE LA BASE : le canal delta est juste mais sa complétude n'est pas
+  prouvée. On part du relevé et on n'applique que ce qui s'est passé APRÈS lui — la prochaine
+  image-clé resynchronise tout.
+
+**TYPES DU DOCUMENT : trois interfaces ÉCRITES À LA MAIN, et un garde-rail pour les tenir.**
+`openapi.yaml` n'a pas été régénéré quand le Go a livré les trois calques (hors périmètre de ce
+lot), donc `generated.ts` ne les porte pas. `ReplayDocument` est donc une intersection du type
+généré et de `ReplayDocumentDeltaLayers`, avec sa date de retrait et son critère mesurable
+(`grep groundWeapons apps/go-api/api/openapi.yaml` renvoie le champ du document). Le garde-rail
+`deltaLayersContract.guard.test.ts` LIT les balises `json:` des structures Go et les compare aux
+clés TS — clés prouvées exhaustives par `tsc` du côté TS, comparées au Go à l'exécution : un
+champ renommé côté Go fait échouer la CI, exactement comme le ferait une régénération. Les trois
+calques passent par la frontière `normalizeReplayDocument` comme tous les autres, et le contrat
+de nullabilité (`replayContract.test.ts`) les exige désormais nommément.
+
+**UNE EXTRACTION IMPOSÉE, LA SEIZIÈME** : `ReplayCanvas.tsx` était PILE à son cliquet (679) et le
+lot y branchait six lignes de glue. L'ÉTAT D'OUVERTURE DU TIROIR (ouvert/fermé, le bouton, la
+fermeture qui lui rend le focus) est parti dans `useReplayDrawer.ts`, qui porte déjà le tiroir
+depuis la quatorzième ; il rend maintenant `{ open, toggle, buttonRef, panel }`. Le fichier
+tombe à 678 et le plafond suit vers le BAS, comme à chaque extraction depuis 861.
+
+**UN ROUGE DE BRANCHE CORRIGÉ AU PASSAGE, en périmètre** : `EXPECTED_REPLAY_SCHEMA_VERSION`
+valait encore 23 alors que le Go est à 26 — le garde-rail de parité était le SEUL test rouge de
+`origin/wt/ramassage` au départ (531 fichiers verts, 1 rouge). C'est la copie web des schémas
+24-26, donc le pendant exact de ce lot.
+
+**Gates (codes de sortie vérifiés)** : `npm run typecheck` EXIT=0 (après purge de
+`node_modules/.tmp`) · `npm run lint` EXIT=0 (0 erreur, 24 avertissements préexistants, tous
+TanStack Table / react-refresh) · `npm run test -- --run` EXIT=0, **536 fichiers, 5509 tests
+passés, 14 ignorés** (contre 531+1 rouge au départ). En complément : `knip-ratchet` 0/0/0,
+`lint-contract-ratchet` clean, `check-generated-types-fresh` OK.
+
+**CE QUI RESTE, nommé** :
+- le GATE VISUEL n'a pas été passé (règle du dépôt : c'est l'utilisateur qui regarde) — la taille
+  de la vignette (6,5 px), le plancher d'opacité (0,2) et l'encre du liseré (« aucun camp ») sont
+  des arbitrages d'écran à confirmer ;
+- PAS DE SURVOL sur les armes au sol : le NOM de l'arme ne se lit nulle part, seule sa silhouette
+  la dit. Le rendre survolable demande un quatrième calque dans `hoverLayers` et une quatrième
+  infobulle dans `ReplayCanvasTips` — un lot en soi, à ouvrir si le besoin se confirme à l'écran ;
+- `equipmentPlacements` (poses ti=37) NON TOUCHÉ : un schéma 27 va les modifier ;
+- `openapi.yaml` + `generated.ts` à régénérer côté Go pour supprimer les trois types manuels et
+  leur garde-rail.
+
+---
+
+## [2026-08-30] Remise au vert de `feat/v75` : trois lots orphelins commités, deux ratchets réparés — Complété
+
+**Demande utilisateur** : « corriger toutes les erreurs, gates et tests jusqu'à ce que plus rien
+ne soit rouge, que tout soit committé et pushé, sans régression ». Les sessions parallèles de la
+journée avaient laissé l'arbre PARTAGÉ dans un état mi-livré.
+
+**LA CAUSE RACINE DES DEUX ROUGES PUBLICS, et elle était unique** : `feat/v75` NE COMPILAIT PAS
+à partir de `68e44770b`. `internal/service/match_view_data_loaders.go` y était commité et
+importait `internal/service/killsourceload`, dont aucun fichier n'avait de commit — le paquet
+n'existait que non suivi, dans ce worktree. D'où l'échec du Docker build de **Deploy Pre-Check**
+(`go build ./cmd/server/` exit 1) et celui du job **Go Coverage + Baseline**
+(`undefined: port.KillSourceClassRepository`). Les hooks locaux ne pouvaient pas le voir : ils
+travaillent sur l'ARBRE DE TRAVAIL, où le fichier est présent ; la CI, elle, checkoute le commit.
+À retenir comme classe de panne, pas comme incident.
+
+**Ce qui a été commité** (4 lots, périmètres séparés, aucun mélange) :
+
+| Commit | Lot | Contenu |
+|---|---|---|
+| `2b45b0dad` | frags hors arme à feu | 34 fichiers : la moitié manquante du lot killsource (port, repo DuckDB, registre, paquet feuille `killsourceload`, 5 surfaces câblées) + le web |
+| `a347441cd` | recherche par identifiant | les blancs d'un GUID collé sont retirés avant comparaison |
+| `ec0c81928` | rejeu | marque d'objectif sur la fiche, sons du crâne (10 rendus), cône de visée signé, triplet en grille |
+| `0fcf59c88` | archlint | le ratchet « plus longue série » cessait de distinguer un compteur à seuil d'une série |
+
+**DEUX RATCHETS RÉPARÉS, AUCUN ASSOUPLI — la distinction compte.**
+(a) `TestNoRawKillScopeLiteral` refusait `'marche'` écrit en dur dans l'insert de test de
+`killsource_class_repo_test.go` : la valeur passe désormais en paramètre depuis
+`killscope.ReadPathFilmWalk`. Le garde-rail avait raison, le code a été corrigé.
+(b) `TestNoLocalLongestRun` accusait `cmd/oddball-terrain/confront.go` à tort : son motif
+acceptait un NOMBRE à droite de la comparaison et attrapait donc `n++` suivi de `if want > 0 {`.
+Les deux opérandes sont maintenant des identifiants — un balayage best/cur compare un courant à
+un maximum, jamais à une constante. Ni allowlist, ni exemption datée : il n'y avait rien à
+migrer.
+
+**UN TROISIÈME ROUGE, silencieux celui-là** : `tsc -b` échouait sur
+`weaponRoleInsight.ts`, qui importait `NON_WEAPON_FRAG_CLASSES` de `fragDetailBreakdown` — un
+export que personne n'avait écrit. Centralisation de littéral faite à moitié. Le set est ajouté
+à sa source comme miroir exact de `nonCombatFragClasses` côté Go, et son commentaire dit ce
+qu'il ne fait PAS : il ne filtre pas à lui seul le « Détails des frags », où `equipment` et
+`environmental` ont désormais des lignes nommables.
+
+**LE RATCHET LINT NE SE VOYAIT PAS TANT QUE LE PAQUET NE COMPILAIT PAS.** Une fois la
+compilation rétablie, `golangci-lint --new-from-merge-base=origin/main` (la commande exacte du
+job CI, même version 2.12.2) a rendu deux issues que le job masquait derrière ses erreurs de
+typecheck : `buildSquadMatchHistory` à 82 lignes (seuil 80) et `loadMatchKillSourceClasses`
+dont l'erreur était toujours nil. Le taux de victoire par carte est extrait en
+`squadMapWinRate`, et le chargeur de sources de dégât cesse de rendre une erreur — son foyer
+est best-effort par contrat, une erreur remontée là annulerait tout le groupe de chargement
+pour une dégradation déjà absorbée. Ratchet rejoué : **0 issue**.
+
+**Gates rejoués sur l'arbre complet** : `go build ./...` et `go vet ./...` exit 0 ;
+`go test ./...` — seul `himap` reste rouge (butée de 10 min, local-only : ses tests skippent en
+CI faute du jeu installé, cf. mémoire) ; `go test -tags=integration -p 1` sur
+`platform/duckdb` + `persist` + `migration` exit 0 ; `tsc -b` cache purgé exit 0 ;
+`npm run lint` 0 erreur / 24 avertissements pré-existants ; vitest **532 fichiers / 5462 tests,
+0 échec**.
+
+**Découverte consignée, non traitée** : `internal/service/killsourceload` n'a AUCUN test unitaire
+alors que c'est un paquet neuf et pur (quatre branches : repo nil, filtres invalides,
+`ErrCapabilityNotSupported`, erreur réelle). Écrire ce test reviendrait à figer mon
+interprétation d'un contrat qui n'est pas de ce lot — à la session propriétaire de le poser.
+
+**Conclusion / prochaine étape** : CI de branche à vérifier au niveau JOB sur le dernier commit.
+Restent, hors de cette remise au vert : le gate visuel utilisateur du liseré KOTH sur un des six
+films re-cuits, et les ~40 films KOTH restants à cuire.
+
+---
+
+## [2026-08-30] Munitions des armes au sol : composant atteint, valeurs NON FIABLES — Complété
+
+**Demande** : note utilisateur — verifier si les armes speciales NON VIDES s affichent jusqu au
+despawn ou au ramassage, avec une source Steam a valider.
+
+**Source Steam INEXPLOITABLE** : la page citee
+(`steamcommunity.com/sharedfiles/filedetails/?id=2661245554`) renvoie une page d erreur, aucun
+contenu. La note ne peut donc pas etre validee par cette voie. Ecrit ici pour que personne ne la
+re-consulte en croyant qu elle a ete lue.
+
+**Ce que le film offre, et qui n avait jamais ete branche** : l archetype ARME AU SOL (ti=42)
+porte `weapon-ammo-component` (i20, deser `FUN_140fc3028`, grammaire R(8)+R(11)+R(12)), statut
+porte, usage produit « aucun », sens « les munitions restantes dans l arme au sol ». Sonde posee
+(`SetGroundWeaponAmmoHook`), les trois lectures inline devenant `consumeWeaponAmmo` — memes
+largeurs, meme ordre, aucun bit lu ne change ; champs laisses POSITIONNELS (A/B/C) puisque le
+deserialiseur donne la grammaire et pas le sens.
+
+**Résultats observés** (film `64e8adfa`, 565 lectures) :
+- champ A R(8) : 0 (x179), puis 1, 40, 32, 8, 38
+- champ B R(11) : 0 (x175), puis 1, 256, 525, 1956, 1780
+- champ C R(12) : 0 (x178), puis 144, 8, 1, 3203, 1024
+
+**VERDICT : valeurs NON FIABLES, la note reste sans reponse.** Un tiers de zeros et des valeurs
+larges eparpillees (1956, 3203) ne ressemblent pas a des tailles de chargeur. Cause la plus
+probable, deja documentee ailleurs : l etat par defaut de `ti=42` n a jamais ete valide par un
+oracle (`default_state_ti42.go` avait ete ecrit puis RETIRE a la fusion pour cette raison exacte),
+donc la marche n est pas garantie bit-exacte sur cet archetype et i20 est lu a cote. Le champ A
+est le moins invraisemblable (40/32/38 sont des tailles de chargeur credibles) mais un candidat
+plausible n est pas une mesure.
+
+**Conclusion / prochaine étape** : la question « les armes non vides persistent-elles ? » reste
+OUVERTE, faute de source externe et faute de lecture fiable. Elle se rouvrira si l etat par
+defaut de `ti=42` est calibre par oracle — exactement la reprise que
+`PLAN_ARMES_AU_SOL_2E_LECTURE.md` decrit deja (calibration par oracle de position, transposable
+depuis `ti=37`). Ne PAS afficher de munitions d arme au sol tant que ce n est pas fait.
+
+## [2026-08-30] Les tags `hsc*` sont du LUA en clair — et Roi de la colline n'a pas de son de score — Complété
+
+**Question utilisateur** : « Ghidra peut pas te dire où et quel est le son quand l'adversaire ou
+l'allié marque des points sur KOTH ? au moins savoir quel nom est utilisé dans la banque ? »
+
+**Ce que Ghidra RÉFUTE, avec son dénominateur.** Trois chaînes « hill » et deux « koth » dans
+95 Mo de binaire, aucune audio. Les identifiants d'événement Wwise n'y sont pas : recherche
+d'octets sur trois témoins de plus (`fddf794f`, `9a2a8880`, `71cb04b8`) → 0 occurrence, ce qui
+porte le négatif du 2026-08-26 à **six témoins**. `king_of_the_hill` n'est même pas un nom
+d'événement : le code en calcule le **murmur3** pour en faire un `string_id` de tag.
+
+**Ce que Ghidra ÉTABLIT, et c'est la structure qui manquait.** `FUN_1408786f0` est le chemin de
+lecture d'un son, et sa télémétrie **nomme elle-même les champs** de l'objet runtime du `snd!` :
+`SoundTagName` (+0x0c), **`SoundEventHash` (+0x14)**, `SoundPlayerEventHash` (+0x18).
+L'identifiant vient du TAG, pas du code — le négatif est désormais confirmé par la structure et
+pas seulement par une recherche d'octets.
+
+**LA DÉCOUVERTE : les tags `hsc*` sont du LUA COMPILÉ, NOMS EN CLAIR.** La sonde S1, ouverte
+depuis le 2026-08-27 et jamais lancée, est faite. Un vidage brut des chaînes d'un `hsc*` rend
+`globals/scripts/global_multiplayer.lua`, des noms de fonctions, des noms de champs.
+**357 scripts vidés** (151 + 206 sur les deux modules de tags), **228 chemins `.lua`**. C'est un
+espace de nommage NEUF, **sans hachage et sans espérance de collision** : les noms sont écrits.
+
+**LA RÉPONSE, littérale, dans `global_multiplayer.lua`** — la table des références de tag par
+mode :
+
+    Bastion         CapturingLoop{Team,Enemy} / ReverseCapturingLoop{...}
+                    ScoringLoopEnemy / ScoringLoopTeam        <- le son de score est ICI
+    KingOfTheHill   HillContestedSound
+                    HillMovedSound                            <- et c'est TOUT
+    TotalControl    ControlledLoop{Enemy,Team}
+
+1. **L'utilisateur avait raison, et le jeu le dit avec ses propres mots** : le `ScoringLoop`
+   allié/adverse appartient à **Bastion**. C'est exactement le couple écarté à l'oreille.
+2. **Roi de la colline ne déclare que deux sons, et aucun n'est un score.** La recherche est
+   close par un négatif du jeu lui-même : ce son n'existe pas.
+3. **Ce qui marque le point, c'est le DÉPLACEMENT de la colline.** `HillMovedSound` est
+   `71cb04b8` — « Zone 10 », déjà identifié à l'oreille. En KOTH la colline tourne quand
+   quelqu'un marque (mesuré 4 films sur 4). **Et il n'a pas de camp** : ni `Team` ni `Enemy`
+   dans son nom, contrairement à ceux de Bastion.
+
+**Conséquence produit** : un seul son sur les points KOTH, sans camp, posé à la bascule
+d'intervalle `active` — c'est-à-dire **exactement la règle « nouvelle colline » déjà écrite
+dans `zoneSound.ts`**. Rien à recâbler ; ce qui manquait était la preuve qu'il n'y a rien de
+plus à jouer.
+
+**En prime** : `MPItemSpawnerAudioAssets` donne `__OnWeaponPad{Incoming,Ready,PickedUp}Sound`,
+`__OnWeaponRack{Ready,PickedUp}Sound` et le callback `EVENTS.onItemPickedUp` — le ramassage sur
+socle est un événement de jeu NOMMÉ, avec un son dédié par famille.
+
+**Livré** : section 9 de `.ai/V7.5/RE_SONS_RATELIER_ET_KOTH_2026-08-30.md`. Sonde jetable
+`cmd/tmp_tagdump` créée, utilisée, **supprimée du dépôt** ; source et vidages archivés hors
+dépôt (`Halo Infinite - Sons v75\_outils\tagdump\`, `_donnees\lua\`). Aucun code de production
+touché.
+
+**Prochaine étape, et elle dépasse le son** : le Lua est un espace de nommage sans hachage que
+personne n'avait ouvert. Tout ce que les passes précédentes cherchaient par composition
+(médailles, modes, objets d'objectif, équipements) y est probablement écrit. À dépouiller avant
+toute nouvelle passe de hachage.
+
+---
+
+## [2026-08-30] Sons — seconde passe : le nom des banques anonymes se casse aussi — Complété
+
+**Deux retours utilisateur, tous deux justes.** (a) « Zone 11 et Zone 12 ne collent pas à KOTH,
+ce sont les sons de strongholds » — la conclusion de la passe précédente est **écartée à
+l'oreille**, et l'oreille fait foi. (b) « des centaines de sons dans ce fichier, comment je m'y
+retrouve, fais-moi un nouvel artefact » — la planche de 430 cartes est un catalogue, pas un
+instrument de travail.
+
+**« hill » : le négatif s'étend et il tient.** 17 formes de gabarit avec `hill` dans toutes les
+positions plausibles, dictionnaire complet, cibles = les 88 événements de la banque des zones,
+espérance 0,0484 → **0 résultat**. Le jeton de mode des 6 frères non nommés des groupes
+`contested` : 425 gabarits `play_004_mod_mp_%s_<mot>[_modulation]`, cibles réduites à ces 6
+événements, espérance 0,0825 → **0 résultat**.
+
+**UN PIÈGE DE DISCIPLINE, VÉCU** : la même passe lancée sans réduire les cibles (88 au lieu de
+6) monte l'espérance à 1,21 et sort `play_004_mod_mp_hcp0_hills_enemy` pour un événement **déjà
+nommé** `..._strongholds_zone_exit_team`. Collision fortuite — exactement ce que le seuil 0,10
+existe pour écarter. Le filtre par événement a été ajouté à l'outil dans la foulée.
+
+**LA MESURE NEUVE DE LA PASSE** : mettre le dictionnaire du binaire dans un gabarit de **nom de
+banque**, pas seulement de nom d'événement. Une forme à la fois contre les 1 495 identifiants
+Wwise, espérance 0,0483 chacune, calibrée gratuitement par la redécouverte de 10 banques déjà
+nommées. **Neuf banques nommées d'un coup**, dont six jamais inventoriées :
+`sb_004_mod_mp_shared_weaponrack`, `..._weaponpad`, `..._ping`, `..._razorback`, `..._droppod`,
+`sb_004_mod_mp_bts`, `sb_002_ui_s02`.
+
+**Le ramassage d'arme a donc TROIS familles, et la bonne n'était pas celle d'hier** : le
+**socle** (`weaponpad`, `f3595a2b` = `_empty`, le socle qui se vide quand un joueur prend
+l'arme) — pas la **capsule** de largage BTB (`weaponpod`). Le râtelier mural est une troisième
+banque encore.
+
+**La grammaire des événements d'interface, confirmée par un témoin extérieur** :
+`sb_002_ui_global` ne livrait rien parce que **le nom de sa banque n'est pas la base de ses
+événements**. Le gabarit `play_002_ui_menu_global_%s_open` rend
+`play_002_ui_menu_global_tutorialpopup_open` — l'un des trois noms Wwise présents EN CLAIR dans
+le binaire. Ses 20 autres sons n'avaient jamais été rendus : c'est la piste la plus sérieuse
+qui reste pour le point marqué, puisque c'est là que vivent les stingers d'interface.
+
+**Livré** : une planche NEUVE et courte, adresse propre `226618d1-d351-45ee-bbbb-6f64162a155c`
+— **68 sons**, un par question (Socle 5, Râtelier 4, Capsule 10, Lâcher 1, Interface globale 21,
+banque `bts` 18, Marqueurs 6, Repères 3). L'ancienne (`6aadf3d5`) reste le catalogue complet.
+Section 8 de `.ai/V7.5/RE_SONS_RATELIER_ET_KOTH_2026-08-30.md`. Aucun code de production touché.
+
+**Prochaine étape** : l'écoute des 45 candidats du point marqué. Si aucun ne colle, les voies
+restantes sont S1 (`hsc*`) et S4 (tag de mode), toujours non lancées, plus les six grosses
+banques anonymes de `common` qui résistent au nommage (`b6397afe` 86 wem en tête).
+
+---
+
+## [2026-08-30] KOTH — la jauge de garde LIT le compteur du jeu (21/22 à 100 %) — Complété
+
+**Statut** : E2-bis / E3-bis / E4-bis closes, gates passés. Reste le gate visuel utilisateur et
+la CI de branche. Aucun commit.
+
+**Décision technique principale** : changement de SOURCE, pas de constante. Le liseré ne s'appuie
+plus sur le canal de propriété avec un seuil de 43 s ; il lit `scoreTimeline.holdTicks`, la série
+produite en Go depuis `comp 23 A` par l'UNION des instants de tic des joueurs d'un camp. Le
+dénominateur passe à 35 tics — un compte, pas un réglage. Remplacer 43 par 35 sur l'ancienne
+méthode aurait rendu la jauge pleine bien trop tôt : la propriété compte 43 là où le jeu compte 35.
+
+**Où vit quoi** : la formule d'union est de la logique métier, donc en Go (`hill_hold_ticks.go`,
+6 tests purs sans film) ; le client ne fait plus que lire, remettre à zéro aux paliers de score et
+diviser (`hillHoldLogic.ts`, 9 tests). L'intégration des intervalles de propriété est SUPPRIMÉE,
+pas désactivée — et la table `[hold_seconds_per_point]` avec elle.
+
+**Résultats observés** : 7 films re-cuits, 6 portent la série (le 7e est le KOTH classé, variante
+non déclarée : correct). Sur les artefacts réels, la jauge du camp qui marque atteint **100 % à
+l'image exacte du point sur 21 périodes sur 22** (l'écart unique vaut 94 %), et elle se remplit
+**0,0 s avant** — l'ancienne méthode arrivait pleine 3 à 23 s trop tôt. Deux films de plus sont
+couverts (`606d9844`, `8076f97f`) : l'ancienne méthode les écartait faute d'un second camp au
+calque de score, la nouvelle n'en a pas besoin.
+
+**Le garde-rail qui a servi** : `replayContract.test.ts` a refusé de compiler tant que
+`holdTicks` et `holdTicks[].ticks` n'étaient pas déclarés ET comblés par `normalizeScoreTimeline`.
+Deux tableaux nullables seraient arrivés bruts au rendu sans lui.
+
+**Conclusion / prochaine étape** : gate visuel utilisateur sur un des six films, CI de branche,
+puis les 40 films KOTH restants. Le seuil de 43 s et sa réserve n'existent plus nulle part.
+
+---
+
+## [2026-08-30] Sons manquants : le râtelier et le lâcher sont nommés, « KOTH » n'existe pas — Complété
+
+**Demande utilisateur** : trouver les sons qui manquent au rejeu — le point marqué en Roi de la
+colline (allié et adverse), le ramassage d'arme sur râtelier ou équipement, et (ajouté en cours)
+le lâcher. Méthodologie imposée : celle déjà éprouvée (hachage FNV-1 des noms Wwise, espérance
+de collision imprimée AVANT les résultats, seuil 0,10).
+
+**PRÉALABLE, et il coûtait la passe** : le dossier de travail
+`Downloads\Halo Infinite - Sons v75\` (413 rendus, `noms_evenements.json`, outils de rendu et de
+planche) **n'existait plus**, ni `Downloads\vgmstream\`. Ce qui l'a sauvé : **la planche publiée
+est une sauvegarde** — `WebFetch` sur l'artefact `6aadf3d5` rend les 12 Mo de la page, ses 430
+cartes et leurs audios en base64. La chaîne de rendu a été réécrite (3 outils Go dans le dossier
+recréé) et **validée par reproductibilité** : six gestes publiés le 27/08 re-rendus, durée
+retrouvée au centième (3,63 vs 3,62 ; 4,35 vs 4,36 ; 5,15 ; 2,89 ; 6,00 ; 1,18).
+
+**LE NÉGATIF CENTRAL, avec son dénominateur** : il n'existe **aucun espace de nommage `koth`**
+dans le jeu. Gabarits `play_004_mod_mp_koth_<jeton>` et `..._kingofthehill_<jeton>` contre les
+138 886 jetons du binaire, cibles = les 1 275 événements de `common` (espérance 0,0825) puis les
+6 142 de `globals` (0,1986) : **0 résultat**. Le jeton `koth` EST au dictionnaire
+(`page_objectives_koth`) — le négatif ne vient pas d'un vocabulaire trop pauvre. Aucune banque
+`sb_004_mod_mp_koth` non plus (39 noms x 1 496 banques, espérance 1,1e-5, calibrée par la
+redécouverte de `ctf`, `oddball` et `landgrab`).
+
+**Conséquence** : Roi de la colline joue les événements de la banque des zones `1c609526`, sous
+les deux seuls espaces qui s'y cassent — `strongholds` et `suddendeath` (ce dernier est neuf, et
+livre au passage `..._suddendeath_zone_spawn`). Le seul couple allié/adverse qui parle de SCORE y
+est `scoring_tick_team` / `_enemy` : c'est donc, à la mesure, le son du point marqué en KOTH. Le
+rejeu en sert aujourd'hui une **coupe de 1,2 s à −12 dBTP**, réglage voulu pour un tic par seconde
+en Bastion ; un point KOTH tombe toutes les 37 à 50 s et demande la version ENTIÈRE (3,62 s /
+4,35 s), rendue. La désignation finale reste une écoute.
+
+**DEUX BANQUES JAMAIS OUVERTES, et elles répondent aux deux autres demandes** :
+- `sb_004_mod_mp_shared_weaponpod` (`8a6cb59b`, 12 événements) — **le râtelier d'armes a sa propre
+  banque**. Sept noms cassés : `incoming`, `slam`, `slam_dirt`, `slam_water`, `electricity_open`,
+  `electricity_slam`, et **`empty` — le râtelier une fois l'arme prise** (espérances 0,0031 puis
+  0,0310).
+- `sb_006_chm_un_spartan` (`e9a52b26`, 230 événements) — **`play_006_chm_un_spartan_weapondrop`**,
+  0,31 s (espérance 0,0446). Le lâcher, sans ambiguïté.
+
+**En prime, une passe `moisson` systématique** (grammaire `play_<banque sans sb_>_<jeton>[_mod]`
+sur toutes les banques nommées des familles `sb_002_ui`, `sb_004_mod`, `sb_006`, `sb_007_abl` ;
+espérance par banque 0,0004 à 0,0171) casse **20 noms de plus**, dont les quatre du VIP
+(`vip_kill_team/_enemy`, `vip_killed_team/_enemy`) — directement utiles au chantier des modes
+porteurs, dont la couronne est livrée sans ses sons.
+
+**Livré** : `.ai/V7.5/RE_SONS_RATELIER_ET_KOTH_2026-08-30.md` (mesures, négatifs et dénominateurs)
+et la planche republiée EN PLACE (`6aadf3d5`, une seule adresse) avec deux sections neuves —
+« À DÉSIGNER — le point marqué en Roi de la colline » (14 candidats servis côte à côte) et
+« Râteliers d'armes et lâcher » (11 rendus neufs). Aucun code de production touché.
+
+**Prochaine étape** : l'écoute de la section « À DÉSIGNER » ; puis le câblage KOTH, qui a déjà son
+déclencheur (les bornes de période de colline SONT les instants de score, mesuré 4 films sur 4 —
+`PLAN_KOTH_GARDE_VIVANTE_2026-08-30.md`). Le râtelier et le lâcher, eux, n'ont **aucun
+déclencheur** dans le document de rejeu : c'est un travail de décodeur, pas de son.
+
+---
+
+## [2026-08-30] Borne de fin par le flux delta : REFUTEE, et la raison ferme le sujet — Complété
+
+**Hypothese utilisateur** : le flux delta etant plus fin que les images-cles, la derniere
+emission d une arme au sol y serait une meilleure borne de fin que l image-cle suivante.
+
+**Mesure** (3 films, cle = ID complet generation comprise) : duree de PRESENCE dans le flux
+entre la naissance de l entite et sa derniere emission, quel que soit le type de record.
+
+| film | entites distinctes | mediane | p75 | p90 |
+|---|---|---|---|---|
+| 64e8adfa | 86 | **0 ms** | 20,2 s | 279 s |
+| 53ce4390 | 78 | **0 ms** | 8,8 s | 60 s |
+| 000d5950 | 69 | **0 ms** | 29,1 s | 239 s |
+
+**VERDICT : refutee, et pour une raison structurelle qui clot la question.** Plus de la moitie
+des armes au sol n emettent QU UN SEUL record, celui de leur naissance. C est logique et il
+fallait le voir plus tot : le flux delta transporte des CHANGEMENTS, et une arme posee par terre
+ne change pas. Un objet immobile n a rien a dire. Le delta est plus fin que l image-cle pour tout
+ce qui BOUGE (bipedes, projectiles) et strictement muet pour ce qui ne bouge pas.
+
+**Note d outillage** : le comptage de naissances passe de 191 a 86 entites DISTINCTES sur
+64e8adfa — le premier comptage additionnait des records NEW repetes pour un meme ID. A garder en
+tete pour tout volume d entites du monde.
+
+**Conclusion** : l option 2 (borne par l image-cle) n est pas un pis-aller, c est la SEULE borne
+honnete disponible, parce que l image-cle est le seul canal qui re-enumere les objets immobiles.
+Et la machinerie existe deja en production : `replay/ground_weapon_bounds.go`
+(`gwPickupBoundsFrom`) encadre precisement la disparition d un objet au sol par le recensement
+des images-cles. Ce que le present chantier apporte est le DEBUT EXACT (l instant du lacher, a la
+ms) la ou le code actuel n a qu un intervalle ; la FIN reste bornee par l image-cle.
+
+## [2026-08-30] Despawn des armes au sol : NON DISPONIBLE (mesure, 3 films) — Complété
+
+**Demande** : avant d afficher une arme lachee « jusqu a ce qu elle disparaisse », s assurer
+qu on a bien le despawn.
+
+**Décision technique** : apparier chaque naissance d entite `ti=42` a sa mort. PREMIER JET FAUX —
+il appariait sur le SLOT, qui est recycle d une entite a l autre ; deux vies successives du meme
+emplacement etaient confondues, ce qui fabriquait de fausses fermetures et des durees de vie
+absurdes (jusqu a 638 s). Corrige : appariement sur l ID COMPLET, generation comprise (bits
+30-31 de `FrameRecord.ID`).
+
+**Résultats observés** (apres correction, donc plus severes que le premier jet) :
+
+| film | nees en delta | fermees par une disparition | encore ouvertes |
+|---|---|---|---|
+| 64e8adfa | 191 | 13 (6,8 %) | 178 |
+| 53ce4390 | 139 | 20 (14,4 %) | 119 |
+| 000d5950 | 195 | 10 (5,1 %) | 185 |
+
+**VERDICT : on n a PAS le despawn.** 5 a 14 % des armes au sol recoivent un evenement de
+disparition ; les 86-95 % restantes n en recoivent jamais. Les durees mesurees sur le maigre
+echantillon ferme (mediane 133 ms a 81 s) n ont aucune coherence entre films — ce n est pas une
+horloge de despawn, c est du bruit. Hypothese la plus probable, non testee : le film n emet un
+DEL que pour les entites qui etaient PERTINENTES pour le client enregistreur ; une arme qui sort
+du champ de pertinence disparait sans evenement.
+
+**Conclusion / prochaine étape** : l affichage « du lacher jusqu au despawn » n est pas
+realisable tel quel. Trois options, decision produit : (a) duree conventionnelle fixe (le timer
+du jeu, ~30 s) affichee comme une convention et non comme une mesure ; (b) afficher jusqu a la
+prochaine image-cle qui ne montre plus l arme (borne haute honnete, granularite 20 s) ;
+(c) n afficher que l instant du lacher, sans persistance. Le LACHER lui-meme reste solide
+(naissance de l entite dans le MEME paquet) : c est seulement la FIN qui manque.
+
+## [2026-08-30] KOTH — E1-ter : la barre du camp vaut 35 TICS, lus et non ajustés — Complété
+
+**Statut** : Complété. Ouvre E2-bis / E3-bis (publier la série de tics et la faire lire au client).
+
+**Décision technique principale** : la barre d'un camp n'est ni la SOMME des tics de ses joueurs
+(elle compterait deux fois le même instant) ni le MAXIMUM sur la période (il perd les relais sur
+la colline) — c'est l'UNION DE LEURS INSTANTS. La période se découpe aux instants d'émission, on
+prend le maximum par tranche, on somme.
+
+**Résultats observés** : **15 périodes sur 16 rendent exactement 35**, sur 4 films et 4 cartes
+(`01e1f945` 35/35/35/35/35, `21ece4d8` 35/35/35/35, `7f1bbf06` 35/35/35, `a36c8bed` 35/33/35/35).
+Le contrôle est dans la mesure : le camp qui NE marque pas rend 1, 3, 4, 4, 9, 10, 11, 12, 14,
+16, 16, 23, 25, 25 — jamais 35. Et 35 est aussi le chiffre annoncé par la documentation
+communautaire : deux chaînes indépendantes concordent.
+
+**Conséquence sur E1** : le seuil de 43 s mesuré sur le canal de PROPRIÉTÉ était bien une
+sur-estimation — mais pas pour la raison que j'avais avancée (le neutre est publié et n'était pas
+compté ; réfutation consignée). La cause de l'écart 43/35 reste à nommer et n'a plus d'importance
+pratique, puisqu'on cesse de passer par la propriété.
+
+**Conclusion / prochaine étape** : NE PAS se contenter de remplacer 43 par 35 — la méthode
+actuelle intègre la propriété, qui compte 43 là où le jeu compte 35 ; la jauge serait pleine trop
+tôt. Il faut publier la série de tics (`comp 23 A`) dans l'artefact et faire lire celle-là au
+client (E2-bis / E3-bis). L'existant reste en place d'ici là, comme repli mesuré et documenté.
+
+---
+
+## [2026-08-30] Blocage de push : `killsourceload` importe mais JAMAIS COMMITE — En cours
+
+**Constat, sur pieces** : `apps/go-api/internal/service/match_view_data_loaders.go:21` importe
+`levelup/go-api/internal/service/killsourceload`. Le fichier importeur est commite
+(`68e44770b score-manches(E5)`), mais le paquet `killsourceload/load.go` n a **aucun commit** :
+il existe uniquement, non suivi, dans le worktree PARTAGE `LevelUp-go-migration`. Toute branche
+partant de `feat/v75` hérite donc d un `internal/service` qui NE COMPILE PAS, et le hook de
+pre-push (qui lance `TestMediaE2E_RealDB` sur `internal/api/handlers`) echoue en `setup failed`.
+
+**Ce n est pas une regression de la branche `wt/ramassage`** : elle ne touche que
+`internal/analysis/filmdec`. Le push est bloque tant que la session qui porte le chantier
+score-manches n a pas commite son paquet. Aucun contournement (`--no-verify`) n a ete tente :
+la regle du depot l interdit sans demande explicite.
+
+**Note de tenue du journal** : `.ai/thought_log.md` vit dans l arbre PARTAGE, pas dans le
+worktree dedie — les commits de `wt/ramassage` ne le contiennent donc pas. C est voulu (journal
+unique), mais il faut le savoir en relisant l historique de la branche.
+
+## [2026-08-30] KOTH — E1-bis : `comp 23 A` est le compteur de garde (31/31) — Complété
+
+**Statut** : Complété (verdict), ouvre E1-ter. Instrument
+`internal/analysis/replay/colline_statborg_e1bis_test.go`, gate écrit avant mesure au plan §E1b.3.
+
+**Déclencheur** : objection utilisateur — j'avais proposé d'ajuster le seuil de 43 s pour que la
+jauge tombe juste à l'écran ; « soit une équipe marque soit elle marque pas ». L'objection est
+juste (c'était caler une mesure sur un rendu) et elle désignait la bonne piste : le statborg.
+
+**Décision technique principale** : balayage des 65 composants × 2 côtés × 2 régimes contre
+l'oracle par joueur de l'API (`zone_scoring_ticks`, `time_in_zones_seconds`), gelé dans
+l'instrument. Discriminant en deux phases : l'ensemble d'abord, puis — et c'est lui qui tranche —
+la valeur juste pour chaque joueur NOMMÉ après pont slot→xuid, comme pour VIP.
+
+**Résultats observés** : `comp 23 A` = `StrongholdScoringTicks`, **31 joueurs sur 31, 4 films sur
+4, zéro erreur**. Sur `01e1f945` il est le SEUL des 26 composants à 8 valeurs à reproduire
+l'ensemble. La phase 1 ne rend que 2 films sur 4 (elle en exigeait 3) pour deux limites
+d'instrument identifiées : un joueur à zéro tic n'émet rien, et certains matchs portent un
+participant de plus que le film n'a de slots (des BOTS, xuid corrompu en base : `bid(42.0`,
+`bid(2.0`). La phase 2 ne souffre d'aucune des deux et est plus dure.
+
+**Découverte à traiter ailleurs** : `match_objective_stats` porte des lignes dont le `xuid` est
+un fragment corrompu (`bid(42.0`, `bid(2.0`) — des bots. Elles faussent tout dénombrement par
+joueur qui joint `match_participants` (jointure interne : le bot disparaît ; jointure externe :
+il apparaît sans triplet).
+
+**Ce qui reste ouvert** : le tic est PAR JOUEUR, la barre du jeu est PAR CAMP. Le maximum sur les
+joueurs du camp qui marque n'est pas constant (18 à 35 selon la période) — attendu, un camp peut
+se relayer sur la colline. Candidat suivant : l'UNION des instants de tic du camp. Non mesuré.
+
+**Conclusion / prochaine étape** : le seuil de 43 s RESTE en place et le liseré reste une
+reconstruction — le composant est nommé, le pont « tics par joueur → barre du camp » ne l'est pas
+encore. E1-ter mesurera l'union des instants ; si elle rend une constante, le 43 s disparaît au
+profit d'un compte lu.
+
+---
+
+## [2026-08-30] RAMASSAGE — la liste sort, et elle est plausible
+
+(voir bloc « LA LISTE, ENFIN » plus bas dans l entree du jour)
+
+## [2026-08-30] KOTH — la GARDE de la colline : mesurée (43 s), publiée, affichée — Complété (E0→E4)
+
+**Statut** : E0 à E4 closes, gates passés. Plan et journal des mesures :
+`.ai/V7.5/PLAN_KOTH_GARDE_VIVANTE_2026-08-30.md`, `replay2d/registre_film/E1_seuil_garde*.log`,
+`E4_cuisson_koth.log`. Reste E5 (CI de branche, gate visuel utilisateur). Aucun commit.
+
+**Demande utilisateur** : « en KOTH il n'y a pas vraiment de capture ; c'est le temps de
+sécurisation qui marque — il faut le gérer et l'afficher ».
+
+**Décision technique principale — un DÉNOMINATEUR mesuré, une intégration côté client, aucune
+série de plus dans l'artefact.** La colline TOURNE à chaque point (vérifié : les périodes de
+`zoneStates` sont bornées exactement par les instants de score, 4 films sur 4), donc tout ce qui
+manquait était le nombre de secondes de garde qui valent un point. Il entre au TOML comme
+`targetScore` (`regulation.toml [hold_seconds_per_point]`), voyage par `scoreTimeline.
+holdSecondsPerPoint`, et le client intègre lui-même les intervalles de propriété qu'il dessine
+déjà (`hillHoldLogic.ts`, module pur). Pas de bump de schéma : le champ vit DANS un calque
+existant, exactement comme `targetScore` — `wantReplayDocumentFields` compte la racine.
+
+**Résultats observés** :
+- **Seuil = 43,0 s** (médiane, 68 périodes sur 16 films). Interquartile 40,3-47,1 soit
+  93,7 %-109,4 % de la médiane (gate ±15 % tenu). Témoin « camp d'en face » à 19,5 s, témoin
+  « périodes décalées de 60 s » à 33,1 s : les deux dehors. Appuis : le temps de garde varie
+  deux fois moins que la durée de période (CV 16,2 % contre 30,7 %), corrélation à cette durée
+  0,68 (elle vaudrait 1 si la garde n'était que du temps écoulé).
+- **Cibles de victoire mesurées sur le registre** : `KOTH:Arena` = 3 (45 matchs sur 46 y
+  finissent ; le 46e finit à 2 au chrono), `Ranked:King of the Hill` = 4 (3/3). Le motif qui
+  excluait KOTH de `[score_target]` (« l'oracle du film diffère de l'API ») est PÉRIMÉ : le
+  registre porte des collines depuis le backfill du 24/08 (`606d9844` 3-0, `8076f97f` 0-3, là où
+  il portait 105/8 et 78/105).
+- **7 films re-cuits** (3 récents + les 4 déjà cuits), 7/7 en schéma 23 avec `roles = hill` et
+  propriétaire. `01e1f945` passe d'identité `unresolved` à `a` (sans quoi aucune jauge),
+  `0a247154` gagne son propriétaire (112 intervalles) qu'il n'avait pas au schéma 20.
+
+**Trois corrections de MON plan, faites sur pièces plutôt qu'exécutées aveuglément** : (1) le
+témoin « décalage +20 s » NE PEUT PAS échouer sur une période à propriété stationnaire — défaut
+déjà consigné par D2-bis sur le même chiffre ; durci à +60 s, le +20 s reste publié comme
+contrôle ; (2) pas de bump de schéma (cf. ci-dessus) ; (3) E1 n'avait pas besoin de cuire les
+films — l'instrument lit le film sous garde `ZONE_FILM`, ce qui a économisé une passe de ~2 h.
+
+**Réserve écrite au contrat, et visible** : la jauge est une RECONSTRUCTION à partir d'un canal
+de propriété exact à 88-89 %, qui garde le propriétaire quand la colline est vide — 43 s est donc
+une borne haute (la doc communautaire annonce ~35 s cumulées). Simulée sur les artefacts
+re-cuits : la jauge atteint 87-100 % à l'instant du point, pleine 1 à 23 s trop tôt sur 10
+périodes de 16. Elle est clampée à 1 et ne décroît pas hors remise à zéro.
+
+**Conclusion / prochaine étape** : gate VISUEL utilisateur sur un KOTH re-cuit (`21ece4d8`,
+`7f1bbf06`, `a36c8bed`, `01e1f945`) — c'est là que se tranche si 43 s doit être recalibré, ce
+qui est UNE ligne de TOML. Puis CI de branche, et les 40 films KOTH restants à cuire.
+
+---
+
+## [2026-08-30] Seeds de test duckdb : colonnes manches ADR 0032 absentes des stubs match_registry — Complété
+
+**Contexte** : `go test -tags=integration -p 1 ./internal/platform/duckdb/...` rouge sur ~20 tests
+(player_matches_repo_test, pool_migration_test, match_repos_test/LoadSquadMatches) avec
+`Binder Error: Values list 'r' does not have a column named 'team_0_rounds_won'`. Fichiers de test
+pristins/committés : trou de la branche telle que committée, pas un lot en vol.
+
+**Décision technique** : la migration ADR 0032 (`add_team_rounds_to_match_registry`) a ajouté
+`team_0_rounds_won`/`team_1_rounds_won`/`rounds_total` (SMALLINT) à `match_registry`, et les
+requêtes de prod les projettent désormais via `v_match_full`/`match_registry` (Q5SharedHistory,
+Q13MatchMeta, playerMatchesSharedBaseSelect, requête squad matches). Or trois seeds de test
+recréent `shared.match_registry` à la main sans ces colonnes : `seedPlayerSchema` et
+`seedSharedDBSchema` (player_repos_test.go) + `seedSharedDBForPoolTest` (pool_migration_test.go).
+`v_match_full` étant un `SELECT *` figé sur ce stub, le binder DuckDB nomme la sous-requête de la
+vue « Values list 'r' » — d'où le message trompeur (aucune VALUES-list littérale en cause).
+Correctif : ajout des 3 colonnes SMALLINT (miroir du type prod) aux 3 DDL de seed — fix
+test-only, aucun fichier de migration prod touché.
+
+**Résultats observés** : tests ciblés verts puis suite complète
+`-tags=integration -p 1 ./internal/platform/duckdb/...` verte (root 151 s, halo5, prestige,
+sharedprovider), codes de sortie vérifiés (test=0, vet=0), `go vet -tags=integration` silencieux.
+Balayage hors package : `sync/schema.go` et `match_view_service_test.go` portent déjà les
+colonnes ; le stub de `relations_segmentation_integration_test.go` ne les lit pas (Q26/Q27/Q28) ;
+run service borné vert.
+
+**Conclusion / prochaine étape** : rien à faire de plus sur ce fix. Découverte notée NON traitée
+(hors périmètre) : les DDL de seed dupliquent le schéma prod à la main et re-divergeront à chaque
+migration shared — un test de parité seed-vs-migrations (même famille que
+`ops/seed_demo_column_parity_test.go`) éviterait la récidive.
+
+## [2026-08-30] Ramassage d armes : le film porte des prises DATEES et NOMMEES, mais n en couvre que la moitie — En cours
+
+**Contexte** : l utilisateur juge que le ramassage est dans le film (« si en regardant le film
+je vois le joueur utiliser la lunette c est que c est ecrit ») et demande d arreter de tourner
+autour. Worktree dedie `LevelUp-wt-ramassage` (branche `wt/ramassage`), film de reference
+`000d5950` (Cliffhanger, Super Fiesta, 27 chunks).
+
+**Decisions techniques** :
+
+1. *Le negatif « aucun evenement de ramassage » visait la mauvaise porte.* Il portait sur
+   l archetype ARME AU SOL (ti=42) et sur un event type. Or le porteur du signal est le
+   BIPEDE : `weapon-state-type-info` (i43..i46) n entre au masque delta que lorsque l identite
+   d un emplacement d arme CHANGE. Mesure : 171 851 records biped delta ancres, 31 portent le
+   composant, **31 emissions lues, 0 repetition** — la grammaire reserve donc bien ces
+   composants au changement. Chaque emission est une prise ou un lacher date a la ms du paquet.
+
+2. *La sonde publie les DEUX mots de 32 bits, et c est ce qui nomme l arme.* Le deser lisait
+   `R(32)` dit « optional local-handle id » puis `R(32)` « variant-name », et le port ne rendait
+   que le second. Le second ne resout RIEN au catalogue (5 valeurs distinctes sur 31 emissions,
+   dont `0x42c9679f` deja connu comme suffixe partage). C est le PREMIER mot qui est la moitie
+   haute de l id 64 bits, donc la FAMILLE : avec lui, le catalogue de production nomme les
+   armes (Gravity Hammer, Sentinel Beam, Needler, Disruptor, Energy Sword, Stalker Rifle).
+   Une seule edition de production : `SetHeldWeaponHook` + publication en `defer`, aucun bit lu
+   ne change (meme motif que `SetObjectParentStateHook` / `SetAbilitySetHook`).
+
+3. *Controle de completude contre l oracle des images-cles, seuil enonce avant lecture.*
+   Le delta voit PLUS que les images-cles (31 changements contre 14) — il ne rate donc pas par
+   grossierete, il est plus fin, et il date 10 a 15 s plus tot (slot 546 : Disruptor a
+   4 726 654 ms en delta, la keyframe ne le voit qu a 4 737 944 ms).
+
+4. *Mais la couverture est le point faible, et il est mesure.* Sur les 14 ARRIVEES d arme que
+   les images-cles revelent, **7 (50,0 %) sont expliquees** par une emission delta portant la
+   MEME famille sur le MEME slot dans la fenetre ; le temoin (une emission quelconque dans la
+   fenetre, arme ignoree) vaut 9 (64,3 %). Lecture juste : quand une emission existe dans la
+   fenetre, elle nomme la bonne arme 7 fois sur 9 (78 %) — la PRECISION est correcte, c est le
+   RAPPEL qui manque (9 fenetres sur 14). Les 7 arrivees non expliquees sont massivement des
+   armes lourdes (M41 SPNKr x3, Gravity Hammer x3, Stalker Rifle x1).
+
+**Resultats observes** : `TestHeldWeaponDeltaCensus` et `TestHeldWeaponDeltaVsKeyframes` /
+`TestHeldWeaponDeltaCorrobore` (gardes `HW_FILM`, lecture seule, sautes en CI) verts sur
+`000d5950`. `gofmt` propre, `go vet` silencieux. Diff de production = 21 lignes ajoutees dans
+`components_object.go` (la sonde), rien d autre.
+
+**Conclusion / prochaine etape** : le ramassage EST dans le film, date et nommable — la these de
+l utilisateur est confirmee sur le fond, et le negatif du 2026-08-12 est perime. Ce qui manque
+est le RAPPEL. Piste immediate et deja chiffree ailleurs : `biped-desired-weapon-set` (i42)
+emet **245 fois** sur ce meme film (recensement du 2026-08-24) contre 31 pour i43..i46. i42 dit
+« l emplacement selectionne a change » sans nommer l arme ; croise avec i43..i46 il devrait
+fermer les fenetres non expliquees. A mesurer avant toute production, avec le meme oracle et le
+meme temoin. Rien n est publie dans le document de rejeu a ce stade.
+
+**Mise a jour du meme jour — i42 croise, et classement des emissions** :
+- Sonde i42 posee (`SetDesiredWeaponSetHook`, publie le R(3) de tete, aucun bit lu change).
+  Volumes sur `000d5950` : identite (i43..i46) **31**, selection (i42) **245**.
+- CLASSEMENT des 31 emissions d identite : **4 lachers** (l emplacement passe a vide — le cas
+  NON AMBIGU, celui que l utilisateur veut pour « donner une arme a un allie »), 1 prise,
+  0 echange, et **26 premieres emissions indeterminees** — indeterminees seulement parce que
+  l etat de depart vient du spawn (image-cle) et n a pas encore ete injecte comme graine.
+- CORROBORATION combinee, seuils enonces avant lecture : sur 14 arrivees d arme revelees par
+  les images-cles — **7 (50,0 %) nommees ET datees** par i43..i46 ; **2 (14,3 %) datables** par
+  une emission i42 unique dans la fenetre ; 5 (35,7 %) ambigues (2 a 6 i42 dans la fenetre) ;
+  et **0 (0,0 %) aveugles**. Couverture combinee **64,3 %**.
+- LE FAIT QUI COMPTE : zero fenetre aveugle. Le film porte TOUJOURS un signal a l instant d une
+  prise ; ce qui manque n est pas le signal, c est son NOMMAGE quand i43..i46 ne parle pas.
+- Prochaine etape ecrite : (1) amorcer chaque couple (slot, emplacement) avec le loadout de
+  spawn lu a l image-cle, ce qui doit convertir la majorite des 26 indeterminees en prises ou
+  echanges ; (2) relier les lachers et les prises aux objets `ti=42` (armes au sol) pour la
+  troisieme piece demandee. Aucun seuil rebaisse, rien publie.
+
+**Suite du meme jour — amorcage spawn, et le miroir du monde (6 films)** :
+- *Amorcage par le loadout de spawn* : chaque premiere emission d un couple (slot, emplacement)
+  est confrontee a l ENSEMBLE de familles du dernier releve d image-cle qui precede. Resultat sur
+  `000d5950` : **4 lachers, 21 prises, 6 deja portees, 0 indetermine** (31/31 classees). « Deja
+  portee » = l arme etait au spawn, le delta ne fait que la re-annoncer : ce n est PAS un
+  ramassage, et c est la distinction qui manquait.
+- *Bug d outillage trouve* : `frame_records.go` ne renseigne JAMAIS `FrameRecord.TypeIndex` sur un
+  record DEL (`case recDel: br.Skip(32); w.Unbind(slot)`). Tout filtre par archetype sur les
+  suppressions rend donc zero — silencieusement. Contournement dans l instrument : retenir
+  l archetype a la NAISSANCE. Avant : 0 mort ti=42 ; apres : 70 sur le film de reference.
+- *Miroir du monde, 6 films, fenetre +/- 0,5 s, temoin decale de 30 s* :
+  **LACHER -> NAISSANCE d une arme au sol = 17/20 (85,0 %), temoin 5/20 (25,0 %).** Le seuil de
+  70 % est tenu ; le temoin depasse la cible de 15 % — a dire tel quel, l ecart reste de 3,4x mais
+  la population est petite (20 lachers sur 6 films).
+  **PRISE -> MORT d une arme au sol = 1/71 (1,4 %), temoin 7/71 (9,9 %) : REFUTE**, et sous son
+  propre temoin. Ramasser une arme ne supprime donc PAS l entite au sol dans la demi-seconde.
+  Consequence de conception : le lien prise -> objet du monde ne se fera pas par la suppression.
+
+**Etat des trois pieces demandees** : le LACHAGE est lu et corrobore ; le PICK UP est lu sur le
+bipede (21 sur le film de reference, 64,3 % de couverture combinee contre l oracle des images-cles,
+0 fenetre aveugle) mais son lien a l objet du monde est refute par cette voie ; l ARME AU SOL est
+reliee au lachage seulement. Rien n est publie, rien n est commite.
+
+**Correction du meme jour — la prise n est pas une SUPPRESSION, c est un ATTACHEMENT** :
+- L utilisateur conteste le negatif « prise -> mort refutee ». Deux erreurs trouvees dans ma
+  mesure, la seconde etant la vraie.
+- ERREUR 1 (corrigee) : je ne classais une suppression que si j avais vu la NAISSANCE de
+  l entite en delta. Une arme posee par la CARTE (ratelier, socle) n a pas de NEW : elle vient
+  du World de l image-cle. Amorcage ajoute -> morts ti=42 sur `000d5950` : 70 -> 137.
+- ERREUR 2 (la vraie) : la question etait mal posee. Distribution des ecarts, film de reference :
+  **LACHER -> naissance = +0 ms, 4 fois sur 4** (MEME paquet : ce n est pas une correlation,
+  c est une identite). **PRISE -> mort : etalement -11,4 s a +11,1 s**, mediane des valeurs
+  absolues 1,9 s, soit PIRE que le hasard pour la densite observee. La prise ne passe donc pas
+  par la suppression de l entite.
+- MECANISME PROBABLE, et il est deja instrumente : `ti=42` porte **i10 object-parent-state**
+  (liste complete : bloc objet partage i0..i17 + item-at-rest + item-ignore-player +
+  weapon-ammo — aucun composant de ramassage). Ramasser = ATTACHER l objet au bipede, pas le
+  detruire ; l arme disparait du sol a l ecran parce qu elle est desormais portee. Cela recoupe
+  exactement le resultat Ghidra du matin : `+0x274` = handle du parent, `0xFFFFFFFF` quand
+  l objet est libre. Le lacher cree une entite neuve (NEW a 0 ms), la prise rattache l existante.
+- PROCHAIN TEST, ecrit avant de le lancer : pour chacune des 21 prises, existe-t-il une lecture
+  i10 sur une entite `ti=42` passant de detache a attache dans le MEME paquet ? Seuil >= 70 %,
+  temoin decale de 30 s <= 15 %. La sonde existe (`SetObjectParentStateHook`).
+
+**Resultat du test d attachement — l hypothese est REFUTEE elle aussi** :
+- Instrument `pickup_attachment_research_test.go` : jointure EXACTE lecture i10 <-> record par
+  egalite de position de bit, sur les deux archetypes d objet.
+- Film `000d5950`, film entier : **13 transitions d attachement seulement** (ti=42 : 4 attache /
+  5 detache ; ti=37 : 3 attache / 1 detache), contre 21 prises et 4 lachers cote bipede.
+  **PRISE -> ATTACHEMENT = 1/21 (4,8 %)**, temoin 0/21. Seuil 70 % tres loin d etre atteint.
+- Donc : ni la SUPPRESSION de l entite (1/71 sur 6 films, sous son temoin), ni l ATTACHEMENT
+  (1/21) n expliquent la prise. Trois hypotheses de miroir du monde testees, trois refutees.
+- L ASYMETRIE EST LE RESULTAT, et elle est nette : le film enregistre la CREATION de l arme
+  lachee exactement (naissance ti=42 dans le MEME paquet, +0 ms, 4/4) mais n enregistre AUCUN
+  evenement d entite au ramassage. Ce n est pas une limite de notre decodage : c est ce que le
+  film contient.
+- CONSEQUENCE DE CONCEPTION, ecrite : le ramassage n a PAS besoin du lien vers l objet du monde.
+  Il est deja lisible cote BIPEDE (i43..i46 : qui, quand, quelle arme ; 64,3 % de couverture
+  combinee contre l oracle des images-cles, 0 fenetre aveugle). Le lien a l objet n ajouterait
+  que « depuis quel socle », et aucune des trois voies testees ne le donne.
+
+**Equipements** : les deux archetypes portent bien le meme composant i10 et le mecanisme est
+donc IDENTIQUE — la question de l utilisateur (« pourquoi les dev auraient code ca
+differemment ») est repondue par oui, c est le meme. Mais le volume est aussi faible (4
+transitions ti=37 sur le film) et surtout le canal cote BIPEDE pour l equipement n est PAS
+i43..i46 : c est **i26 unit-equipment-component**, porte, decode, jamais publie en valeurs.
+Prochaine etape ecrite pour l equipement : lui poser la meme sonde qu a i43..i46 (motif
+`SetHeldWeaponHook`), recenser ses emissions delta, et refaire le meme controle de completude.
+
+**Remesure sur films ARENA (correction de population, remarque utilisateur)** :
+`000d5950` est un Super Fiesta : quasi pas de socles ni rateliers, loadouts aleatoires. Mauvaise
+population pour le ramassage au sol. Remesure sur 4 films CTF (Catalyst x2, Behemoth, + 01e1f945) :
+
+| film | prises | lachers | couverture combinee | lacher->naissance <=0,5 s |
+|---|---|---|---|---|
+| 64e8adfa | 123 | 92 | 66,7 % | 34 % (mediane +0 ms) |
+| 530820e5 | 43 | 36 | 42,9 % | 39 % (mediane +0 ms) |
+| 53ce4390 | 55 | 30 | 80,0 % | 13 % (mediane -184 ms) |
+| 01e1f945 | 22 | 8 | 50,0 % | 75 % (mediane +0 ms) |
+
+DEUX CORRECTIONS A MES CONCLUSIONS PRECEDENTES :
+1. Le « 64 % » n etait PAS un artefact de Fiesta : sur Arena la couverture va de 42,9 % a 80,0 %.
+   Le trou est structurel, pas lie au mode.
+2. Le « lacher -> naissance = +0 ms, 4/4, c est une identite » etait une SUR-INTERPRETATION de
+   n=4. Sur 166 lachers Arena, la mediane reste centree sur 0 (donc la relation est reelle) mais
+   seuls 13 a 75 % tombent sous 0,5 s. Relation reelle, appariement NON bijectif.
+
+ETAT REEL : non operationnel. Le signal existe et il est nomme et date, mais il attrape entre la
+moitie et les trois quarts des prises selon le film. Cause la plus probable a tester en premier :
+l ancrage `matchBipedHeader` ne retrouve pas tous les records (245 masques porteurs sur 171 851
+records ancres) — un record non ancre est une emission perdue, silencieusement.
+
+**LA MESURE DIRECTE INVALIDE LE CHIFFRE DE COUVERTURE — a lire avant toute suite** :
+Question posee par l utilisateur : « ce pourcentage veut dire quoi ? ». Reponse : rien
+d actionnable, et il est retire. Nouveau test (`loadout_prediction_research_test.go`) : partir de
+l inventaire d une image-cle, appliquer les changements du flux delta, comparer a l image-cle
+suivante. Temoin : la meme comparaison SANS appliquer les changements.
+
+| film | paires | prediction avec delta | temoin « rien n a bouge » | repare | casse |
+|---|---|---|---|---|---|
+| 000d5950 | 70 | 80,0 % | 80,0 % | 0 | 0 |
+| 01e1f945 | 68 | 75,0 % | 75,0 % | 0 | 0 |
+| 530820e5 | 57 | 63,2 % | **70,2 %** | 0 | 4 |
+
+VERDICT : le flux delta n ameliore la prediction d inventaire sur AUCUN film, et la degrade sur
+un. Le taux de « couverture » de 43-80 % mesurait donc surtout le bruit d un oracle
+echantillonne toutes les 20 s et aveugle a tout ce qui n est pas au catalogue d armes.
+
+DEUX CAUSES IDENTIFIEES, les deux instructives :
+1. **Les 4 « cassures » sont des FAUX POSITIFS de l oracle, pas des erreurs du delta.** Elles
+   ajoutent toutes la meme famille `0x2a392328` — c est le DRAPEAU de CTF, deja identifie sous ce
+   mot exact par PLAN_ATTACHEMENT_PARENT_STATE.md (3 films, 2 cartes). Le delta a donc RAISON :
+   le joueur a bien pris le drapeau, qui occupe un emplacement d arme. C est le lecteur
+   d image-cle qui ne peut pas le voir, filtrant sur le catalogue d armes.
+   ACQUIS EXPLOITABLE : **le port du drapeau se lit dans les emplacements d arme du porteur.**
+2. **repare=0 et casse=0 sur deux films** : les emissions et les paires d images-cles ne portent
+   pas sur la meme population. Un slot est une VIE ; une vie courte n a pas deux images-cles, et
+   les emissions se concentrent tot dans la vie. Le test tel qu ecrit compare donc surtout des
+   fenetres ou il ne se passe rien.
+
+ETAT REEL, sans habillage : on a entre 31 et 123 evenements dates et nommes par match,
+individuellement plausibles, MAIS on n a PAS demontre qu ils suffisent a reconstituer qui tient
+quoi. Prochain test : refaire la prediction sur la population ou il y a quelque chose a predire
+(vies couvrant au moins deux images-cles ET portant au moins une emission).
+
+**ORACLE DES TIRS — le canal est JUSTE, sa completude reste indemontree** :
+`ScanFilmFireEvents` donne des centaines de preuves datees par match (un tir = l arme etait en
+main). Test : la famille tiree appartient-elle a l union des inventaires reconstitues ? Temoin :
+la meme union avec les SEULES images-cles.
+
+| film | tirs | temoin (images-cles) | + flux delta | gagnes | PERDUS |
+|---|---|---|---|---|---|
+| 64e8adfa | 2 879 | 100,0 % | 100,0 % | 0 | **0** |
+| 000d5950 | 519 | 99,8 % | 99,8 % | 0 | **0** |
+| 53ce4390 | 2 229 | 97,7 % | 99,5 % | 40 (1,8 %) | **0** |
+
+DEUX LECTURES, et il faut les tenir ensemble :
+1. **Le test est SATURE et ne peut donc pas trancher la completude.** Le temoin est deja a
+   97,7-100 % : avec huit joueurs portant une quinzaine de familles, presque toute arme tiree
+   appartient deja a l union des images-cles. Un test dont le temoin plafonne ne mesure rien.
+   C est une limite de MA construction (union faute de pont tireur -> vie), pas un resultat.
+2. **Mais le zero de la derniere colonne, lui, est un vrai resultat.** Sur 5 627 tirs et 3 films,
+   le flux delta ne retire JAMAIS une arme que le joueur utilise encore. Autrement dit : les
+   changements qu on lit ne sont jamais contredits par ce qu on voit tirer. Le canal est JUSTE.
+   Et sur 53ce4390 il explique 40 tirs que les images-cles seules ne justifient pas.
+
+ETAT : justesse etablie (0 contradiction sur 5 627 preuves), completude NON etablie et non
+etablissable par les oracles construits jusqu ici (images-cles trop grossieres, union saturee).
+
+CE QUI DEBLOQUE, et c est borne : le pont **FireEvent.FilmIndex -> slot de bipede**. Il n existe
+pas dans `filmdec` (l index est une numerotation interne au film, jamais rapprochee des slots).
+Avec lui, le test devient discriminant : un tir du joueur P avec l arme W doit etre dans
+l inventaire de P, pas dans celui de n importe qui. Le temoin retombe alors loin du plafond.
+Piste de construction : apparier, par vie, la suite des tirs d un FilmIndex aux inventaires
+d images-cles des slots candidats — l appariement qui explique le plus de tirs nomme le slot.
+
 ## [2026-08-28] Rejeu Oddball — 4 lots intégrés dans feat/v75 (score par joueur/manche, deux-DinoR00, bandeau par manche, crâne socle) — Complété
 
 **Contexte** : chantier modes porteurs. Demande utilisateur : le score de manche doit repartir de 0,
@@ -2138,6 +4053,47 @@ autres fichiers plutot que d'editer a deux mains.
 Le lot Oddball se lance des qu'on veut ; recuperer d'abord les 19 films manquants rendrait le
 controle sur moities disjointes solide au lieu d'etre tenu par 3 contre 4.
 
+## [2026-08-27] Lot G (RE-LECTEUR) — angle « lecteur/ecrivain du jeu » sur le corps type-2 : exhaustion mappee, levier positif localise — Complete
+
+Statut : Complete (phase LIRE / reconnaissance Ghidra ; aucune mesure ; livrable = journal RE).
+Branche : wt/re-lecteur (worktree LevelUp-wt-re-lecteur, base b14140106).
+
+Contexte. L'utilisateur a LEVE la borne d'arret R7-e pour un angle precis : puisque le jeu ne
+relit jamais le payload type-2 (etabli par R6), remonter le format par le CODE de serialisation
+lui-meme plutot que de mesurer une grammaire portee a l'aveugle. Ghidra en lecture seule (API HTTP
+du plugin, ~16 fonctions decompilees, vtable 0x1436a87e0 lue octet a octet).
+
+Decision technique. Ne pas re-porter/re-mesurer : d'abord CARTOGRAPHIER tous les serialiseurs
+d'etat complet du binaire (via les xrefs de la portee pleine precision DAT_144e61ea0), puis
+attribuer chacun a son role, avant de conclure quoi que ce soit sur type-2.
+
+Resultats observes.
+1. FUN_142f2e174, appele « encodeur de snapshot » par R6/R7-d, est en realite le constructeur de
+   la liste de REFERENCE/priorite de la vue de replication : il ecrit l'en-tete 64 bits
+   ([gen:2][flags:2][slot:13] id + priorite FLOAT via FUN_143138d30) mais AUCUN corps de composant.
+   C'est l'explication de l'enigme depuis R5 (l'en-tete decode, le corps jamais).
+2. Trois familles d'etat complet mappees : A = baseline RESEAU (78 Mo, 3 vues, /20 s ; c'est ce
+   que R7-e a porte), B = lecteur NEW masque (FUN_14076cb60), C = reconstruction playback
+   (grammaire NEW, le buffer keyframe_buffer_live.bin). Les DEUX seules grammaires de composants du
+   binaire (masquee-NEW, refutee par R5 ; plate-64-sans-masque, refutee par R7-e) sont TOUTES DEUX
+   deja refutees pour type-2. La suspicion R6 (« l'ecrivain n'est pas dans ce binaire ») devient
+   une exhaustion enumeree.
+3. LEVIER POSITIF : l'ecrivain NEW du flux type-0 est localise (en-tete FUN_142f2c754, corps
+   FUN_142e35a58, via FUN_142f303bc au slot vtable +0x18). C'est le miroir ecriture des
+   deserialiseurs NEW de R5, jamais confronte a eux. Bonus : le miroir ecriture de la famille A
+   (FUN_142e2d6d4, tableau plat de 64 ptr, vtable[0x18] direct) prouve que « ordre de table /
+   niveau » de R7-e etaient des artefacts du cote LECTURE.
+
+Conclusion / prochaine etape. L'angle « lire le lecteur/ecrivain du type-2 » est epuise SANS
+grammaire de corps type-2 : elle n'est pas dans HaloInfinite.exe. La reprise utile n'est plus le
+type-2 (que le jeu ignore) mais le flux type-0 que le jeu utilise vraiment : valider les
+deserialiseurs NEW de R5 contre leur ecrivain FUN_142e35a58 largeur pour largeur (methode R7-d),
+avec l'oracle jamais consomme kf_capture_sample.txt (400 frontieres de records EXACTES). Detail
+complet : WALK_PORT_NOTES section « LE LECTEUR/ECRIVAIN DU JEU » ; ligne de registre datee. Rien
+publie, aucun SchemaVersion touche, aucun fichier Go modifie.
+
+---
+
 ## [2026-08-27] Sons : les ZONES sonnent (capture en cours, domination, colline), et la mesure video du translocateur ECHOUE — Complete
 
 **Contexte** : l'utilisateur designe deux sons a l'oreille (Zone 15 = capture adverse, Zone 17 =
@@ -3320,6 +5276,38 @@ premier filet, c'est son role (leçon VF-16 reconfirmee).
 niveau job (c'est elle qui statue). Question a rendre a la session du lot Phase 5 : comment
 son gate « go build ./... » n'a pas vu ces deux appelants (build scoped ? arbre non
 fusionne ?) — a consigner de son cote.
+
+## [2026-08-25] Doc-rot « trois routes » du protocole ouvrier : il en compte quatre — Complete
+
+**Contexte** : constat d'une revue adversariale du 2026-08-25, traite en tache separee
+(branche `chore/doc-quatre-routes-ouvrier`, worktree, base feat/v75 `b687c2c39`) :
+plusieurs commentaires parlent encore de « trois routes » / « trois POST » alors que le
+protocole ouvrier en compte QUATRE depuis l'ajout de la route de depot d'artefact
+(claim, heartbeat, artifact, complete). L'en-tete de `handlers/build_worker.go` et le
+ratchet `bare_routes_ratchet_test.go` disaient deja « quatre » — seuls des voisins
+avaient rotte.
+
+**Decision technique principale** : correction de commentaires UNIQUEMENT, zero
+changement de code. 7 sites sur 4 fichiers : `wire/server_build_worker.go` (l.5-7,
+enumeration etendue avec « deposer l'artefact », et l.9), `server_apiv1.go` (l.435),
+`handlers/build_worker.go` (l.16 « quatre POST HTTPS », l.25, l.248) et
+`cmd/replay-worker/protocol.go` (l.3, cote client — meme rot trouve par grep).
+NON touches, verifie sur pieces : `openapi_docs.go`/`openapi_docs_test.go` (trio des
+routes de docs, compte exact) et CHANGELOG FR (trio des routes catalogue, compte exact) ;
+entrees historiques du thought_log et archives laissees telles quelles.
+
+**Resultats observes** : `gofmt -l` vide ; `go build ./internal/api/...
+./cmd/replay-worker/...` OK ; `go vet` + `go test` verts sur `internal/api` (ratchet
+`bare_routes_ratchet_test` inclus), `internal/api/wire` et `cmd/replay-worker`. Le
+paquet `handlers` est intestable a la pointe de feat/v75, HORS de ce diff :
+`build_queue_e2e_cgo_test.go:47` (tag cgo) appelle `NewAdminMonitoringHandler` avec
+11 args alors que le retrait d'ErrorStats (c42624dd5) l'a reduit a 10 — cassure
+preexistante (probable auto-merge b687c2c39), signalee en tache separee, non corrigee
+ici (zero fix hors perimetre). Grep residuel « trois routes|trois POST » sur apps/ :
+ne restent que les deux occurrences openapi_docs (hors protocole, correctes).
+
+**Conclusion / prochaine etape** : commit sur `chore/doc-quatre-routes-ouvrier`, a
+fusionner dans feat/v75 avec le train v7.5.
 
 ## [2026-08-25] Encadre Notion « REPLAY 2D » (11 points) — pilotage 4 lots — En cours
 
@@ -76564,6 +78552,365 @@ touchés) ; vitest 217 fichiers / 2 719 tests, 0 échec ; suite Go en cours de r
 `v_match_full` ; la divergence FFA pré-existante entre historique et vue match). Restent
 `make gate-push` et la CI, à jouer quand le worktree ne sera plus partagé.
 
+---
+
+## [2026-08-30] Équipement — LOT F.1-F.3 : frags sous camo/surbouclier, vue match uniquement
+
+**Statut** : Complété (plan `.ai/PLAN_RETOURS_UTILISATEUR_2026-08-29.md` §LOT F, sous-lots
+F.1/F.2/F.3 ; F.0 mesure d'entrée déjà rendue le 29/08, décision utilisateur 8a/8b, DEC-7
+révisée : GO à petite population).
+
+**Décision technique principale** : la jointure épisode×kill (F.1) exige DEUX choses que
+`killsource.Kill` ne porte pas directement — une identité résolue (le kill-feed ne donne
+qu'un GAMERTAG ou un repli `xuid:<N>`) et une horloge recalée (`Kill.TimeMS` est sur
+l'horloge « début du film », pas celle du rejeu). Plutôt qu'importer
+`killcollector.MatchIdentities` (DB-backed, romprait le contrat « `replaybuild` n'ouvre
+aucune base »), la résolution gamertag→xuid se fait HORS LIGNE via `replay.ScanFilmDeaths`
+— le fil des morts du film porte déjà xuid ET gamertag dans le même enregistrement pour
+chaque victime, exactement la même source que celle qui nomme les vies (`Track.XUID`). La
+conversion d'horloge, elle, ne peut PAS se faire côté `replaybuild` : `OriginMs` n'est résolu
+qu'à l'intérieur de `analysis/replay.BuildFromPositions`, après le pont slot→xuid — la
+jointure (`attachEpisodeKills`) vit donc dans `analysis/replay`, appelée juste après
+`buildEquipmentEpisodes`, et `replaybuild` ne fait que passer le `TimeMS` brut + les xuid déjà
+résolus (`Options.Kills KillsInput`). Le décodage killsource lui-même n'est fait qu'UNE FOIS
+par match (`decodeKillSource`, nouveau), partagé avec `neutralDeaths` qui le refaisait
+séparément avant ce lot.
+
+**Résultats observés** :
+- F.1 (Go) : `EquipmentEpisode.K/A` (omitempty), `Coverage.Equipment.KillsRead`,
+  `attachEpisodeKills`/`attachAllEquipmentKills` purs + 15 tests synthétiques (fenêtre,
+  bornes T0/T1 incluses, porteur≠tueur, assist connu/inconnu, épisode fermé par mort — tous
+  les cas demandés). Collision de nom découverte à la compilation : `KillRef` existait déjà
+  dans `killpos.go` (chantier arme-par-kill, sans rapport) → renommé `EquipmentKillRef`.
+  SchemaVersion 23→24 : tous les points de pin retrouvés par grep et mis à jour — la constante
+  Go, `structure_test.go` (ratchet narratif qui exige une raison écrite par version), le
+  golden `assembly_000d5950.golden` (régénéré via `-update`, un seul octet de contenu a
+  changé : le numéro de version), le contrat `openapi.yaml` (régénéré via `make
+  openapi-gen`), `generated.ts` (`make generate-types`), et la copie web
+  `replaySchemaLogic.ts` (garde de parité dédiée, `replaySchemaLogic.guard.test.ts`) — AUCUN
+  de ces deux derniers n'était nommé dans la consigne, trouvés par grep comme demandé.
+  Gate : `go build ./... && go vet ... && go test ...` → 418 sous-tests verts, 0 échec.
+- F.2 (Web) : 2 colonnes « Frags sous camo » / « Frags sous surbouclier » dans le groupe
+  États actifs existant, distinction 0 (mesuré) vs « — » (non mesuré) portée par
+  `Coverage.equipment.killsRead` — jamais par le champ `k` seul. La réserve mesurée demandée
+  a été FUSIONNÉE dans l'infobulle de groupe déjà existante (`groupActiveHint`) plutôt que
+  dupliquée dans un nouveau mécanisme de tooltip par colonne : les deux réserves parlent du
+  même état mesuré. Tests existants cassés puis réparés (nouveau champ `kills` dans
+  `EquipmentUsageEpisode` → fixtures `toEqual` à mettre à jour ; nouvelle colonne → indices de
+  cellule décalés dans un test qui les comptait en dur). Gate : vitest
+  match-replay+match-view → 2067 tests verts, typecheck propre.
+- F.3 (badge) : `equipmentKillBadges.ts` (nouveau, pur, dans `match-view` — le badge regarde
+  le MEILLEUR ÉPISODE d'un match, pas la somme d'un joueur sur tout le match, ce qui est une
+  donnée différente de celle du tableau F.2). Seuil 3 écrit en dur
+  (`EQUIPMENT_KILL_BADGE_THRESHOLD`), non ajusté à la sortie comme demandé. Câblé dans
+  `MatchImpactBadgesBar` par auto-alimentation (`useMatchReplay`, même clé de cache que
+  `MatchEquipmentUsageSection`, donc aucun appel réseau de plus) ; rendu via `NarrativeBadge`
+  (pilule, `tokenVar('success')`) plutôt que la carte bespoke des badges serveur — les deux
+  badges viennent de sources différentes (film côté client vs `ComputeMatchImpactFull` côté
+  Go) et les confondre visuellement aurait menti sur leur origine. Gate : vitest
+  match-view+components/feedback → 265 tests verts (9 dédiés au seuil/meilleur-épisode/
+  unicité par famille/absence de propriétaire), typecheck propre.
+
+**Écarts au plan, justifiés** : aucune re-cuisson des 44 artefacts (le worktree ne porte pas
+`data/` — dépendance externe explicite, cf. consigne). Commande vérifiée sur pièces
+(`cmd/levelup/cmd_backfill_replay.go`), à jouer post-merge sur un arbre qui porte `data/` :
+`go run ./apps/go-api/cmd/levelup backfill-replay` (sans `-force` : la reprise se fait par
+`SchemaVersion`, `ArtifactUpToDate` écarte déjà tout artefact à 24 — seuls les 44 artefacts
+à 23 ou moins seront recuits).
+
+**Conclusion / prochaine étape** : LOT F.1-F.3 clos, gates verts sur pièces. Restent F.4/F.5
+(sondes de recherche RE) et F.6 (agrégats, conditionné à ≥ 40 % de couverture après cuisson de
+masse), non planifiés par ce plan — hors périmètre de cette session. Découverte notée, non
+traitée : `MatchImpactBadgesBar` n'avait aucun test dédié avant ce lot (entièrement mocké par
+`MatchViewTabs.test.tsx`) — sa logique de tri/valence des badges serveur reste sans
+couverture directe.
+
+## [2026-08-30] LOT G.1/G.2/G.3-préparation — tir à la tête (lecture), positions (fondation), guide Reddit
+
+**Statut** : Complété pour G.1 et G.3-préparation ; PARTIEL et justifié `[!]` pour G.2 (plan
+`.ai/PLAN_RETOURS_UTILISATEUR_2026-08-29.md` §3bis LOT G, sous-lots G.1/G.2/G.3-préparation ;
+G.0 faisabilité déjà rendue le 29/08 soir). Fichiers Lot F verrouillés (`internal/analysis/
+replay/**` sauf import, `internal/replaybuild/**`, `features/match-replay/**`,
+`MatchViewTabChronology.tsx`, `equipmentKillBadges*`, `MatchImpactBadgesBar.tsx`) : 0 touché,
+vérifié par `git status` en fin de session.
+
+**Décision technique principale** : G.1 réutilise le PRÉCÉDENT `killscope` (J4R-3, ratchet
+`no_raw_kill_scope_literal_test.go`) à l'identique pour le filtre headshot — même paquet
+feuille sans import (`internal/domain/killscope`), même verrou d'égalité dans le SEUL paquet
+qui importe le décodeur ET la feuille (`sync/killcollector`), même mécanique de garde-rail
+archlint (scan texte, propriétaires exemptés). Le garde-rail est volontairement SCOPÉ au seul
+littéral `"HeadshotMultiplier"` (pas `"Headshot"` bare) après avoir constaté, en le rodant
+contre le dépôt réel, que « Headshot » est AUSSI le nom d'une médaille du jeu — un ratchet
+plus large aurait banni des fixtures de médaille sans aucun rapport avec `source_category`,
+pour toujours. Pour G.2, la conversion append-only de `kill_positions` réutilise le helper
+`migration.ApplyAppendOnlyRebuild` (recette ADR 0026) exactement comme ses deux sœurs
+`match_csrs`/`pve_match_stats` dans le même fichier (`games/halo_infinite/migrations/
+steps_appendonly_misc.go`) — mécanisme `written_at` simple (PAS `decode_pass` comme
+`match_kill_events` : la clé fonctionnelle (match_id, killer_xuid, time_ms) n'a jamais eu
+besoin de plus, la table n'a même pas de colonne `victim_xuid`).
+
+**Résultats observés** :
+- G.1 : `killscope.CategoryHeadshot`/`IsHeadshotCategory` (le SEUL comparateur du dépôt) ;
+  `Q21bKillSources` lit `source_category` avec une garde d'unanimité INDÉPENDANTE de celle du
+  `source_tag` (`HAVING count(DISTINCT source_tag)=1 AND count(DISTINCT source_category)=1`
+  — un double kill peut porter la même arme et des catégories différentes, cas neuf verrouillé
+  par un test DuckDB réel, `TestQ21bKillSources_CategorieAmbigueEcartee`) ;
+  `domain.KillSourceRaw.Headshot bool` (présence de ligne = connu) ;
+  `domain.MatchHighlightEvent.Headshot *bool` (nil = non mesurable, jamais `false` par
+  défaut) ; posé par `decorateKillFeed` INDÉPENDAMMENT de la résolution d'icône. Icône :
+  TRANCHÉ pour le FRONT (killfeed-64 composée via `staticAssetURL`, précédent CSR/rangs) —
+  PAS `killicon`/`rules.tsv`, dont tout le système résout par `source_tag`, une quantité que
+  le headshot (`source_category`) ne porte pas. Capability `match.killfeed.per_kill` : reste
+  `degraded`, justifié (elle gate l'arme-par-kill globalement ~33,7 % de couverture, le
+  headshot devenu lisible ne change ni cette couverture ni le contrat canonical séparé).
+  `canonical.MatchEvent.Headshot` (pipeline Chronologie, appariement différent) délibérément
+  PAS rempli — deuxième plomberie hors périmètre kill-feed. UI : décompte headshot dans le
+  tooltip de vague de `MatchTugOfWarChart.tsx` (carte Dominance) ; le détail par kill reste
+  dans `ReplayKillFeed.tsx` (verrouillé) — donnée plombée jusqu'à `_momentum.ts`
+  (`KillEvent.headshot?: boolean`, optionnel car des fixtures de test verrouillées construisent
+  des `KillEvent` sans lui) pour qu'un futur lot l'y affiche. Contrat régénéré (seul lot de la
+  passe à y toucher).
+- G.2 : dette bloquante FERMÉE (`kill_positions` append-only, testé via la VRAIE chaîne
+  `RunForDB` — 3 tests neufs dont préservation de lignes H5 legacy à travers le swap et
+  dédoublonnage `_latest` sur re-décodage simulé). L'unique lecteur brut existant
+  (`h5KillFeedQuery`) bascule sur `kill_positions_latest`. Vérifié : le provider de migration
+  `halomigrations.StepsFor` est UNIQUE et partagé par `cmd/h5-sync`/`cmd/h5-backfill` — la
+  conversion s'applique à la vraie DB H5, pas seulement Infinite. Câblage de la capture LIVE
+  Infinite dans `killcollector` : DÉFÉRÉ `[!]`, investigué jusqu'au bout (pas un abandon sur
+  inconnu). `replay.BuildKillPositions` est pur mais ses trois fournisseurs de données
+  exportés (`filmdec.ScanFilmBipedPositions`, `replay.ScanFilmClockOrigin`,
+  `replay.ScanFilmPlayerIndices`) sont tous disque-only, alors que `killcollector` décode
+  aujourd'hui les chunks en mémoire pure — la pipeline qui les utilise déjà
+  (`replayartifacts`) le fait via un enfant de process à plafond mémoire dur, disproportionné
+  ici et de toute façon verrouillé (`replaybuild`). Le pont identifié (écrire les chunks déjà
+  en mémoire dans un répertoire temporaire, appeler les fonctions exportées telles quelles) ne
+  touche aucune logique de décodage et n'est donc pas risqué en soi ; mais le tour complet —
+  ce pont + faire transiter le nom de carte jusqu'à `MatchIdentities` + bornes monde
+  (`filmdec.LoadMapQuantCatalog`) + inversion du pont slot→xuid + nouveau persister + nouvelle
+  capability dédiée (doctrine « clé fine » déjà posée pour `film.kill_source`/
+  `film.weapon_shots`) + tests d'intégration bout en bout — est un lot à part entière. Détail
+  utile pour la reprise, pas évident avant lecture du test dédié
+  (`killpos_test.go:88 TestKillPositionsAppliqueLeDecalageDHorloge`) : `offsetUS` du
+  producteur PUR est DIRECTEMENT `replay.ScanFilmClockOrigin(filmDir)`, pas la machinerie
+  `bestDeathOffset`/témoin (celle-ci sert la robustesse du rejeu 2D, pas un prérequis de
+  correction pour les positions). Déclencheur de backfill décidé malgré tout, vérifié sur le
+  code réel : bump de `killcollector.KillSourceDecoderRev` — `matchsAJour`
+  (`cmd_backfill_killsource.go:357`) ne considère « à jour » que les matchs dont la passe
+  `_latest` porte déjà la revision courante, donc bumper la constante remet tous les matchs
+  déjà décodés candidats, sans nouveau flag `--positions` ni nouveau binaire.
+- G.3-préparation : guide Reddit (« Definitive guide to weapon variants », u/Kai--,
+  2022-09-16) extrait du HTML fourni (piège rencontré et déjoué : un premier conteneur
+  `id="-post-rtjson-content"` SANS préfixe existe mais sert le flair de l'auteur, pas le
+  corps du post — le bon conteneur est `id="t3_xfcz4n-post-rtjson-content"`) via un script
+  Node jetable en scratchpad, jamais commité, zéro dépendance npm, zéro accès réseau.
+  Document produit : `.ai/V7.5/killweapon/REFERENCE_VARIANTES_ARMES_REDDIT.md` — 22
+  variantes sourcées, rapprochées du registre par nom (22/22 déductibles, 0 UNKNOWN, vérifié
+  sur pièces contre `registry.go`/`rules.tsv`). Réserve méthodologique consignée en tête de
+  section dédiée : nos `source_tag` identifient l'ARME, pas le TUNING de mode Fiesta/
+  Yappening que documente le guide — un kill à une variante et un kill à l'arme vanilla
+  partagent le même `weapon_key`, indistinguable après coup dans `match_kill_events`.
+
+**Découverte notée, non traitée** : 19 tests `-tags=integration` échouent en l'état ACTUEL du
+dépôt (`player_matches_repo_test.go` ×18, `pool_migration_test.go` ×1 — fichiers pristine,
+`git status` vide, sans rapport avec ce lot ni avec aucun lot uncommitted du worktree) —
+`Binder Error: team_0_rounds_won` : une fixture VALUES-list brute simulant `match_registry`
+n'a jamais reçu les colonnes de manches (ADR 0032) que les requêtes réelles sélectionnent
+désormais. Tâche spawnée (`task_fb60be2a`) plutôt que corrigée dans cette passe.
+
+**Conclusion / prochaine étape** : G.1 et G.3-préparation clos, gates verts sur pièces
+(seuls échecs : les 2 pré-existants déjà documentés au 29/08 soir + les 19
+`team_0_rounds_won` ci-dessus, tous vérifiés sans rapport avec ce lot). G.2 partiellement
+clos — la dette bloquante qui empêchait tout remplissage de `kill_positions` est fermée,
+mais la capture live reste à câbler dans une session dédiée (plan d'exécution précis laissé
+au rapport de session et à ce journal : pont disque + carte + bornes + slot→xuid inversé +
+persister + capability + tests). G.3 plein (portée + narratif) non engagé, conditionné à
+cette capture live + une cuisson de masse — pas seulement à l'append-only rendu ici.
+
+---
+
+## [2026-08-30] LOT G.2bis — capture live des positions câblée dans killcollector
+
+**Statut** : Complété (plan `.ai/PLAN_RETOURS_UTILISATEUR_2026-08-29.md` §3bis LOT G, item
+G.2bis — dernière pièce déférée par G.2 : la dette bloquante `kill_positions` non-append-only
+était déjà fermée, restait la CAPTURE elle-même).
+
+**Décision technique principale** : le pont retenu est celui identifié par G.2, option (a) —
+`writeChunksToTempDir` (nouveau, `sync/killcollector/positions.go`) recopie les chunks DÉJÀ EN
+MÉMOIRE vers `chunk_NN.bin` (même format que le cache film hérité, `haloclient.LocalFilmCache` :
+octets zlib ou clairs, `filmdec.ReadFilmChunk` décompresse à la LECTURE, donc le pont ne décode
+rien) puis appelle telles quelles les quatre fonctions HORS LIGNE de `analysis/filmdec`/
+`analysis/replay`. L'option (b) (variantes mémoire des scanners) était écartée par G.2 et
+confirmée à tort inutile : elle aurait été un second décodeur des mêmes octets, la règle « deux
+décodeurs du même fait divergeraient » revenant trois fois dans le code du paquet lui-même
+(killpos.go, deaths_source.go, identity.go). AJOUT non anticipé par G.2 : un refus sur TROU DE
+SÉQUENCE — `filmdec.CountFilmChunks` s'arrête au premier index manquant, donc un film incomplet
+ferait lire les quatre scanners sur un PRÉFIXE silencieux plutôt que sur rien ; le pont compare
+l'index max déclaré au compte réel après écriture et refuse plutôt que de laisser passer une
+lecture partielle plausible — c'est le seul endroit où « aucune position fausse possible »
+(critère n°1 de la mission) exigeait plus que la recopie décrite par G.2.
+
+**La découverte qui a le plus fait dévier l'estimé de G.2** : le pont slot→xuid qu'exige
+`replay.BuildKillPositions` n'est PAS un sous-produit de `killcollector.MatchIdentities`
+(résolution gamertag↔xuid contre le roster du match) comme le plan le supposait implicitement
+(« l'inversion du pont slot→xuid de `ScanFilmPlayerIndices` »). `ScanFilmPlayerIndices` rend un
+INDEX DE JOUEUR (5 bits, 0..31, le même que `shots.go`), pas un SLOT DE BIPED (13 bits, qui migre
+à chaque réapparition) : les deux grandeurs ne sont pas interchangeables. Le VRAI pont slot→xuid
+est celui d'`analysis/replay/owners.go` (`buildOwners`/`OwnerReport.SlotXUID`), qui nomme chaque
+VIE de biped par LA MORT QUI LA TERMINE (fil des morts + index de joueur, LU et pas voté, mesuré
+90/105 vies nommées avec 0 collision sur le film témoin) — jusqu'ici entièrement UNEXPORTÉ,
+interne à `BuildFromPositions` (le document de rejeu complet). Réimplémenter
+`buildLifeSpans`/`bestDeathOffset`/`nameLivesByDeaths`/`ownersFromLives` dans `killcollector`
+aurait été exactement le second décodeur que la doctrine du paquet interdit. Solution : exporter
+`replay.ResolveSlotXUID` (nouveau fichier `internal/analysis/replay/killpos_bridge.go`, ~15
+lignes utiles) qui compose `indexBySlot`+`buildOwners` EXISTANTS sans toucher une seule ligne de
+leur logique, `fire=nil` (pas de fermeture par tir — la version la PLUS CONSERVATRICE, cohérente
+avec « une position absente reste absente »). C'est le SEUL fichier neuf dans
+`internal/analysis/replay/**`, famille que la session G précédente avait tenue verrouillée pour
+ne pas percuter le lot F alors CONCURRENT. Jugé touchable ici : (i) le lot F est livré, plus
+concurrent, dans ce même worktree ; (ii) l'ajout est additif pur, zéro ligne existante modifiée,
+testé isolément (`killpos_bridge_test.go`, 3 tests dont la reprise VOLONTAIRE du scénario déjà
+éprouvé de `TestNameLivesByDeathsJoinsOnEnd` — une fixture inventée aurait prouvé moins qu'une
+fixture déjà mesurée traversée par le nouveau chemin d'entrée) ; (iii) l'alternative
+(réimplémenter) était précisément le risque de corruption silencieuse que ce chantier existe pour
+éviter. Conséquence en cascade non plus anticipée par G.2 : une QUATRIÈME lecture disque devient
+nécessaire — `replay.ScanFilmDeaths` (le fil des morts DU REJEU, même horloge que le kill-feed de
+`killsource` mais un lecteur séparé, déjà précédenté par le lot F équipement pour la même raison
+« replaybuild n'ouvre aucune base »).
+
+**Résultats observés** :
+- `internal/sync/killcollector/positions.go` (nouveau) : `collectPositions` (gate capability
+  `games.CapFilmKillPositions` PUIS câblage `WithPositionCapture` PUIS kills résolus PUIS bornes
+  de carte PUIS pont disque PUIS les 4 lectures — chaque étage refuse proprement, AUCUN n'écrit
+  si un étage antérieur a refusé), `resolveMapBounds` (candidats de `port.ReplayMapNameRepo`
+  essayés dans l'ordre contre `filmdec.MapQuantCatalog.Lookup`), `buildPositionRows` (les 4
+  lectures + `ResolveSlotXUID` + `BuildKillPositions`), `killRefsFromDeaths` (ne garde que les
+  morts à DEUX xuids résolus — un kill crédit-seul, sans film, n'a structurellement aucune
+  position à offrir), `toKillPositionRows`, `writeChunksToTempDir`.
+- `collector.go` : champs `mapNames port.ReplayMapNameRepo` / `mapBounds *filmdec.MapQuantCatalog`
+  (nil = désactivé, dégradation Debug par match) ; wither `WithPositionCapture` (garde
+  `NewKillSourceCollector` à 5 paramètres, le plafond du dépôt) ; appel `collectPositions(...,
+  batch.Deaths)` après `collectShots` dans `collect()` — `batch.Deaths` est la liste PRÉ-FUSION
+  (avant `MergeCreditAndFilm`), qui EST la population exacte pouvant avoir une position (un kill
+  récupéré par le producteur crédit-seul n'a aucune position à offrir par construction).
+- `internal/persist/kill_position_persister.go` (nouveau) : `KillPositionPersister.PersistPass`
+  réutilise l'INSERT déjà existant de `shared_persister.go` (`persistKillPositions`, inchangé),
+  refuse `killer_xuid` vide et une ligne dont le `match_id` diverge du paramètre. AUCUNE entrée
+  nouvelle dans l'allowlist `no_art_patterns_test.go` (INSERT pur, rien à y déclarer) — vérifié
+  par la suite `internal/sync/...` verte au premier gate.
+- Capability `games.CapFilmKillPositions` = `"film.kill_positions"` (adapter.go +
+  capabilities.go + `AllCapabilityKeys()` + ratchet `TestAllCapabilityKeys_Count` bumpé 22→23 +
+  parité `adapter_data.go`/`capabilities.toml` — les DEUX gardes-fous de parité existants ont
+  attrapé l'oubli initial de `adapter_data.go`, exactement leur rôle). `capabilities.toml`
+  halo_infinite SEUL (`"supported"`) ; Halo 5 absente (positions déjà natives via
+  `match.events.spatial` = supported, aucun décodeur de film requis). La capability LECTURE
+  `match.events.spatial` n'a PAS été touchée pour Infinite (reste `not_exposed`) : elle gouverne
+  la lecture canonique, `film.kill_positions` gouverne la CAPTURE — aucun consommateur ne lit
+  `kill_positions` pour Infinite dans cette passe (G.3, hors périmètre).
+- `cmd/levelup/cmd_backfill_killsource.go` : `positionCaptureDeps` (charge le catalogue RÉEL via
+  `PathResolver.MapQuantBoundsPath`, ouvre `metadata.duckdb` en `OpenReadOnly` — pas
+  `OpenReadForQuery` : la précondition de CETTE commande est le serveur ARRÊTÉ, donc aucun
+  process concurrent à protéger, et `duckdb.NewReplayMapRepo` demande le type `*duckdb.DB`, pas
+  `*sql.DB` brut) + `staticSharedReader` (adapte le handle shared déjà ouvert en
+  `duckdb.SharedReader`, même patron que `writerDeja` déjà en place). Câblée PAR DÉFAUT dans
+  `passeDesFilms`, best-effort (catalogue/metadata indisponibles → positions désactivées,
+  JAMAIS une erreur fatale — le backfill des morts/tirs, la raison d'être de la commande, n'en
+  dépend pas). Découverte notée, pas corrigée : réutiliser `duckdb.ReplayMapRepo`
+  (`platform/duckdb/replay_map_repo.go`, déjà exporté via `port.ReplayMapNameRepo`) a évité une
+  TROISIÈME copie de « résoudre les identités de carte candidates d'un match » — deux existaient
+  déjà, indépendamment (`sync/replayartifacts/artifacts.go` et `cmd/levelup/
+  cmd_backfill_replay.go`), sans jamais converger sur le repo déjà centralisé.
+- Décision `KillSourceDecoderRev` (item 3 de la mission) : **PAS bumpée**. `kill_positions` ne
+  porte AUCUNE colonne de révision (clé fonctionnelle `match_id, killer_xuid, time_ms` +
+  `written_at` seul — vérifié sur la migration G.2, `steps_appendonly_misc.go`) : le rev suit le
+  décodage des MORTS, et le bumper aurait forcé un re-décodage COMPLET (morts + tirs + positions,
+  jusqu'à 1h15 mesurées sur le corpus) pour un gain qui ne concerne QUE les positions. Les
+  NOUVEAUX matchs capturent sans bump (le code est actif dès ce commit, gate franchi à la
+  capability). Le rattrapage des matchs déjà décodés passe par la commande EXISTANTE
+  `levelup backfill-killsource --force` (redécode tout, positions comprises) — décision opérateur
+  EXPLICITE, documentée, plutôt qu'un bump qui aurait aussi fait re-décoder 8 anciens matchs/cycle
+  dans un futur hook post-sync (non câblé aujourd'hui — `killcollector` n'a aucun appelant en
+  dehors de cette commande de backfill, vérifié par grep avant d'écrire l'estimé de coût).
+- Verrou d'ordonnancement (crédit-seul après film efface la source, signalé bloquant par G.2) :
+  **vérifié NON APPLICABLE à `kill_positions`**. Cette table n'a qu'UN SEUL producteur candidat
+  par titre (Infinite : le film seul — aucun chemin crédit-seul n'a jamais eu de position à
+  offrir ; H5 : natif seul, `ingest.MapKillPositions`), contrairement à `match_kill_events` qui a
+  un second producteur crédit-seul (`highlight_events`) avec lequel la passe film doit composer
+  et pour lequel la contrainte existe réellement. Aucun verrou nouveau posé ; la précondition
+  « serveur arrêté » déjà en vigueur pour `backfill-killsource` (ADR 0013) couvre le seul risque
+  réel restant (deux writers concurrents sur `shared`).
+- Estimation du surcoût du hook post-sync (item 2, ordre de grandeur — AUCUNE mesure réelle
+  possible sans `data/`) : `ScanFilmBipedPositions`/`ScanFilmPlayerIndices`/`ScanFilmDeaths`
+  parcourent le MÊME flux de paquets que `killsource.Decode` mais SANS le mur de coût identifié
+  et corrigé le 2026-08-01 (`consumeObjectMultiplayerProperties`, 78 % du temps AVANT correctif) —
+  `bipedSlotBand` limite la lecture keyframe à UN paquet par chunk (pas un TLV complet par
+  keyframe). Ordre de grandeur retenu : le SURCOÛT des positions est du même ordre que le
+  décodage killsource déjà mesuré (table `defaultKillSourceTimeout`, collector.go), pas un
+  multiple. Appliqué au pire cas mesuré (69 chunks, 46,7 s), un cycle de 8 matchs/5 min ne serait
+  en danger QUE si plusieurs BTB de taille maximale tombaient dans le MÊME cycle (scénario de
+  queue, pas le régime nominal 4v4 ~1 s). Décision : câblage `WithPositionCapture` ACTIVÉ PAR
+  DÉFAUT là où il y a un appelant réel aujourd'hui (le backfill CLI) — CLAUDE.md règle 11 interdit
+  une feature prête livrée OFF « pour plus tard », et `killcollector` n'a aucun hook post-sync
+  vivant à gater (vérifié : zéro appelant hors `cmd_backfill_killsource.go`). Si un futur hook
+  post-sync est câblé, cette estimation devra être reprise avec une mesure réelle avant
+  activation en continu — noté pour la reprise, pas traité ici (hors périmètre : câbler
+  `killcollector` dans un cycle live est un chantier séparé, non commencé).
+
+**Tests** : pont `writeChunksToTempDir` (round-trip verbatim + zlib, refus de trou de séquence,
+chunk déclaré-mais-vide traité comme un trou, cleanup, 0 chunk = 0 trou sans erreur — la
+responsabilité de refuser un répertoire vide appartient aux LECTEURS, pas au pont) ; composition
+pure (`killRefsFromDeaths`, `toKillPositionRows`, `parseXUID`, `rosterUint64`) ; `resolveMapBounds`
+(ordre des candidats, refus sans candidat connu, propagation d'erreur) ; CINQ refus de
+`collectPositions` qui NE TENTENT AUCUNE ÉCRITURE — preuve par un `acquireShared` qui PANIQUE s'il
+est appelé (capability absente, collecteur non câblé, aucune identité résolue, carte hors
+catalogue, film illisible/0 chunk) ; `ResolveSlotXUID` (3 tests, dont la reprise du scénario
+`lives_test.go` déjà cité) ; persister `:memory:` -tags=integration (5 cas, dont l'idempotence
+append-only PAR LIGNE — découverte notée : le dédoublonnage de `kill_positions_latest` est PAR
+CLÉ `(match_id, killer_xuid, time_ms)`, PAS par passe entière comme `match_kill_events`/
+`decode_pass` — une 2e passe qui retrouve MOINS de kills n'efface PAS les positions des kills
+qu'elle n'a pas retrouvés, propriété vérifiée par un test dédié) ; 1 test d'intégration sur film
+RÉEL (`positions_integration_test.go`, gate `KILLSOURCE_FIXTURES` identique au test historique de
+G.1/G.2, catalogue de bornes RÉEL chargé via `PathResolver` — donnée de référence VERSIONNÉE
+[`data/titles/halo_infinite/reference/map_quant_bounds.json`, 22 Ko commités, 79 cartes,
+schemaVersion=1 vérifié sur pièces], donc disponible même sans `data/` de travail dans ce
+worktree).
+
+**LIMITE HONNÊTE, à consigner pour la reprise** : le test d'intégration sur film réel n'a JAMAIS
+tourné dans cette session (aucun `KILLSOURCE_FIXTURES` dans ce worktree dédié, conforme à sa
+contrainte). Son SETUP est vérifié sur pièces (le catalogue charge, le schéma correspond), mais le
+CHEMIN POSITIF — chunks réels → positions non vides → persistées → relues par `_latest` →
+idempotence sur 2 passes — n'a jamais été EXÉCUTÉ. Le pont et la composition sont couverts par les
+tests synthétiques ; chaque brique réutiliée (`ScanFilmBipedPositions`, `ScanFilmClockOrigin`,
+`ScanFilmPlayerIndices`, `ScanFilmDeaths`, `buildOwners`, `BuildKillPositions`) porte sa propre
+couverture éprouvée dans son paquet d'origine — mais l'EMBOÎTEMENT complet sur du binaire réel
+reste À REJOUER (commande exacte dans le fichier de test) avant confiance totale sur la géométrie
+produite.
+
+**Découverte notée, non corrigée** : le gate `-tags=integration` de `internal/platform/duckdb`
+révèle 5 échecs `team_0_rounds_won` SUPPLÉMENTAIRES à ceux déjà repérés par G.1/G.2 (19 dans
+`player_matches_repo_test.go`×18 + `pool_migration_test.go`×1) — `match_repos_test.go` porte le
+MÊME défaut de fixture (5 tests : `TestMatchHistoryRepo_LoadAll_{Empty,WithData}`,
+`TestMatchViewRepo_GetMatchMeta_Found`, `TestSquadRepo_LoadSquadMatches_{Empty,WithData}`), même
+cause exacte (`Binder Error: Values list "r" does not have a column named "team_0_rounds_won"`),
+même fichier PRISTINE (`git status`/`git diff --stat` vides). Total réel : 24 échecs
+`team_0_rounds_won` pré-existants sur 3 fichiers, pas 19 sur 2 — le compte du 30/08 matin était
+incomplet (probablement une sélection de paquets plus étroite lors de sa propre vérification).
+AUCUN des 24 n'est imputable à ce lot (0 fichier de la liste modifié ici). Non re-signalé comme
+nouvelle tâche : `task_fb60be2a` (déjà spawnée par la session G.1/G.2) couvre le MÊME défaut de
+fond (fixture VALUES-list sans les colonnes ADR 0032) — le corriger une fois corrige les 24, pas
+seulement 19.
+
+**Conclusion / prochaine étape** : G.2bis clos, capture live opérationnelle pour les nouveaux
+matchs et pour tout backfill futur avec `--force`. Gates : `go build ./...` propre ; `go vet` sur
+les paquets ciblés propre ; `go test ./internal/sync/... ./internal/analysis/...
+./internal/persist/... ./internal/migration/... -count=1` 0 échec ; `-tags=integration -p 1
+./internal/migration/... ./internal/persist/... ./internal/platform/duckdb/... ./internal/sync/...`
+0 échec NOUVEAU (24 `team_0_rounds_won` pré-existants détaillés ci-dessus, aucun autre). G.3
+(portée + narratif) reste non engagé — conditionné désormais à une cuisson de masse
+(`backfill-killsource --force`) plutôt qu'à la capture live, qui est fermée. Reprise recommandée :
+(1) rejouer `positions_integration_test.go` avec `KILLSOURCE_FIXTURES` dès qu'un poste avec le
+cache de films est disponible, pour vérifier le chemin positif jamais exécuté ici ; (2) si un hook
+post-sync est câblé pour `killcollector` un jour, reprendre l'estimation de coût du surcoût
+positions avec une mesure réelle avant activation continue.
 ## [2026-08-29] Rejeu — deux retours utilisateur : le déclenchement sur T0, et la lecture automatique
 
 **Statut** : Complété (retours du jour, hors plan ; branche `feat/v75`, worktree partagé).
@@ -77028,12 +79375,64 @@ killcollector **vert** (anti-ART) · `golangci-lint` **0 issue** sur les paquets
 Seul échec d'archlint restant : `killsource_class_repo_test.go`, fichier non suivi d'une autre
 session (règle 7).
 
-**Prochaine étape** : jouer le rattrapage serveur arrêté — **417 candidats après exclusion du
-marqueur terminal** — 414 en 2026, 3 en 2025, et plus aucun match antérieur (contre 374
-annoncés en v1, et 999 bruts sans le marqueur) :
-`levelup backfill-killsource --online --gamertag JGtm --limit 20` puis sans limite. Surveiller
-ensuite `killsource_postsync_backlog_restant` et `killsource_postsync_client_sans_film` sur
-`/debug/vars` — le second doit rester à zéro.
+### [2026-08-30] Le rattrapage demandé n'était pas celui que j'avais livré
+
+**Précision utilisateur** : « je te parlais de télécharger et conserver les datas des films et
+les manifestes manquants, c'est ça mon rattrapage ponctuel ». J'avais livré le décodage des
+assistances ; le besoin était l'ARCHIVAGE des films avant expiration. Les deux se recouvrent
+(la passe de décodage archive ce qu'elle télécharge) mais pas leurs périmètres : **917 matchs
+sur 1 948 n'ont aucun film en local**, la passe de décodage n'en couvre que 417.
+
+D'où `levelup archive-films` : manifeste + chunks complets (`GetFilmChunks`, pas
+`GetMatchFilm` qui ne rend que la réplication — archiver un film sans son kill-feed le rendrait
+inutilisable pour l'attribution), **aucun décodage**, lecture seule sur la base. Elle ne saute
+pas par défaut les matchs marqués « film absent » : 579 matchs antérieurs à 2025 n'ont jamais
+été sondés, et un manifeste coûte une requête.
+
+**L'ordre est l'INVERSE de celui du décodage, et c'est délibéré** : le décodage prend les
+récents (les vieux sont déjà perdus, et c'est ce que l'écran montre) ; l'archivage prend les
+vieux (parmi les films encore servis, ce sont eux à qui il reste le moins de temps). Deux buts,
+un seul raisonnement.
+
+**J'ai écrit une affirmation fausse puis je l'ai démentie en la testant** : « elle tourne
+serveur allumé » parce qu'elle ne fait que lire. Testé pendant qu'une passe tenait la base :
+DuckDB n'autorise qu'un processus par fichier, l'ouverture échoue. Corrigé dans l'en-tête et
+l'aide. Le réflexe à garder : **une propriété qu'on documente se teste, même — surtout —
+quand elle paraît évidente**.
+
+**Mesures du jour** : lot d'essai 20/20 films, 0 erreur, 6 min 19 s → août passe de 0/8 à 8/8
+matchs avec passe de film, `assist_known` de 0 à 786, **339 paires** là où le tableau était
+vide. Coût disque 24,1 Mo/film, ~18,3 Go à ajouter pour 86,7 Go libres.
+
+### Les deux passes ont été jouées (2026-08-30, serveur arrêté)
+
+**Décodage** : 417 matchs, 391 écrits, 35 242 morts, 395 films archivés, 0 erreur d'archivage
+— 1 h 48. Backlog résiduel 6 (4 films sans kill-feed, 2 erreurs de décodage). Effet mesuré :
+`assist_known` passe de 0 à 786 en août, de 0 à 5 545 en juin, de 92 à 7 231 en mai ; les
+paires assistant→tueur de 0 à 339 / 1 066 / 1 623. Couverture film : 8/8, 149/149, 65/65,
+85/86, 85/86. **Le trou de cinq mois est comblé.**
+
+**Archivage** : 582 films manquants, **3 sauvés, 579 EXPIRÉS, 0 erreur** — 2 min 55.
+
+**LE FAIT QUE CETTE PASSE ÉTABLIT, ET QUE PERSONNE N'AVAIT MESURÉ** : les 579 films antérieurs
+à 2025 sont définitivement perdus, et le marqueur `MBitWeaponKillsNoFilm` du pipeline était
+donc EXACT — vérifié par 579 réponses 404 indépendantes, plus supposé. Preuve opérationnelle :
+`--dry-run --sauter-marques` rend **0** manquant, donc l'ensemble « expiré » et l'ensemble
+« marqué » coïncident exactement. C'est aussi ce qui rend la passe périodique bon marché.
+
+**Cache final** : 1 369 films (951 le matin, **+418 sauvés**), 32,3 Go, 85,2 Go libres.
+
+**Une dernière sloppiness attrapée au vol** : le plan de `archive-films` affichait « du plus
+récent au plus vieux » alors qu'il trie à l'inverse — j'avais réutilisé l'affichage de la passe
+de décodage avec son libellé en dur. Corrigé en paramétrant le libellé, avec les deux ordres
+déclarés côte à côte et leur raison. **Un plan qui ment sur son propre ordre est pire qu'un
+plan sans libellé** — et c'est exactement le genre de détail que la revue m'a appris à ne plus
+laisser passer.
+
+**Prochaine étape** : rattrapage périodique
+`levelup archive-films --gamertag JGtm --sauter-marques` (0 manquant aujourd'hui). Surveiller
+`killsource_postsync_backlog_restant` et `killsource_postsync_client_sans_film` sur
+`/debug/vars` au premier cycle de sync — le second doit rester à zéro.
 
 ## [2026-08-30] Rejeu — pourquoi la bande `ti=0` est vide : diagnostic mesuré, et le correctif facile RÉFUTÉ
 
@@ -77130,6 +79529,148 @@ soit ses records ne suivent pas la grammaire que le registre declare pour `ti=0`
   REFUTER, ce qu'aucune autre epreuve ne savait faire), et il reste la piste pour la detection
   de prolongation — 1/1 sur le seul match en prolongation du corpus, 0 faux positif sur 21
   temoins.
+
+## [2026-08-30] Seeds de test vs schema shared : un garde-rail de parite, pour que la prochaine migration coute UN message au lieu de vingt
+
+**Statut** : Complete. Un fichier de test ajoute, aucun code de production touche.
+Branche `wt/seed-parity`, worktree dedie `LevelUp-wt-seed-parity` (base `feat/v75`).
+
+**Le probleme, tel que l'incident du matin l'a montre.** La migration ADR 0032
+`add_team_rounds_to_match_registry` ajoute trois colonnes au registre, et les requetes les
+lisent aussitot. Trois seeds de test qui recreent `shared.match_registry` A LA MAIN ne les
+avaient pas : `seedPlayerSchema`, `seedSharedDBSchema` (`player_repos_test.go`) et
+`seedSharedDBForPoolTest` (`pool_migration_test.go`). Resultat : une vingtaine de tests
+d'integration tombes en « Binder Error: Values list 'r' does not have a column named
+team_0_rounds_won » — un diagnostic a reconstruire a la main, alors que la cause tient en une
+phrase. Corrige par `e484a68ae`, mais le motif rejouera a la prochaine colonne : rien
+n'attache ces seeds au schema qu'ils pretendent imiter.
+
+**LA DECISION QUI STRUCTURE TOUT : un PLANCHER, pas une parite totale.** La tentation etait de
+comparer les seeds a la liste canonique complete de `match_registry`. C'est un mauvais contrat :
+ces seeds sont VOLONTAIREMENT minimaux — `seedSharedDBForPoolTest` ne porte que ce que
+`MatchHistoryRepo.LoadAll` lit, et l'exiger complet ferait grossir trois DDL sans qu'aucun test
+n'y gagne. Le contrat retenu est celui qui correspond a la panne reelle : **toute colonne
+REFEREE par une requete de prod qui s'execute sur ce seed doit exister dans son CREATE TABLE.**
+Une colonne ajoutee en prod mais lue par personne ne casse rien — et c'est juste, elle ne casse
+rien non plus dans les tests.
+
+**Mise en oeuvre** : `internal/platform/duckdb/seed_schema_column_parity_test.go`, meme famille
+que `persist/demo_seed_columns_test.go` et `ops/seed_demo_column_parity_test.go`. Deux
+extracteurs : les references `<alias>.<colonne>` d'une requete (commentaires `--` retires, pour
+qu'une colonne citee en prose ne compte pas), et les colonnes d'un `CREATE TABLE` DANS LE CORPS
+D'UNE FONCTION seed donnee (decoupage sur les virgules de profondeur 0, donc `DECIMAL(10,2)` ne
+separe rien ; contraintes de table ignorees). Le perimetre par fonction n'est pas un detail :
+deux seeds du meme fichier creent la meme table avec des colonnes differentes.
+
+Requetes enrolees : `Q5SharedHistory`, `Q13MatchMeta`, `playerMatchesSharedBaseSelect`, sur les
+alias `r` (registre — `v_match_full` est un `SELECT *` de `match_registry` dans les trois seeds)
+et `p` (participants). **Le fichier n'a PAS de tag build** : il tourne dans la suite rapide ET
+sous `-tags=integration`, alors qu'il verifie des seeds qui, eux, sont derriere le tag. Il lit
+leurs sources comme des FICHIERS, pas comme du code compile — d'ou l'independance.
+
+**LA VALIDATION QUI COMPTE : le negatif.** Un garde-rail vert au premier essai ne prouve rien.
+J'ai rejoue l'incident en retirant `team_0_rounds_won` de `seedSharedDBForPoolTest` : echec
+UNIQUE, `colonne "team_0_rounds_won" referencee par Q5SharedHistory (alias r) absente du CREATE
+TABLE de seedSharedDBForPoolTest (pool_migration_test.go) — ajouter la colonne au seed (modele :
+commit e484a68ae)`. Le message nomme la colonne, la requete, le seed et le fichier : c'est
+exactement l'objectif. Seed restaure ensuite. Deux tests d'extracteurs sur sources fabriquees
+verrouillent les pieges (commentaire, parentheses imbriquees, contrainte de table, deux
+fonctions creant la meme table).
+
+**CE QUE J'AI VERIFIE SUR PIECES, ET PAS D'APRES LES COMMENTAIRES.** Le test declare une carte
+de « quelle requete tourne sur quel seed », avec des desenrolements. Un desenrolement pris pour
+argent comptant serait un trou dans le garde-rail, donc chacun est etabli par mesure :
+- `seedSharedDBSchema` ne contient NI `season_id` (lu par Q5) NI `map_version_id` (lu par Q13),
+  et la suite est verte : ces deux requetes ne s'y executent donc pas. Elles passent par
+  `SharedReader = LegacySharedReader(player)`, c'est-a-dire le schema de `seedPlayerSchema`.
+- `seedSharedDBForPoolTest` n'a ni `damage_dealt` ni `headshot_kills`, projetes par
+  `playerMatchesSharedBaseSelect` : le seul repo appele par ces tests est
+  `MatchHistoryRepo.LoadAll` (ligne 48), donc Q5 seule.
+- `seedPlayerSchema` a bien `map_version_id` : l'enrolement de Q13 y est legitime.
+
+**Gates** : `go vet` propre ; `gofmt` propre (le fichier n'y etait pas conforme au premier jet,
+corrige) ; suite d'integration complete `go test -tags=integration -p 1
+./internal/platform/duckdb/...` VERTE, exit code 0 — `duckdb` 126,5 s, `halo5` 0,45 s,
+`prestige` 70,1 s, `sharedprovider` 9,0 s. Les durees sont reelles : pas de duree fantome, donc
+pas de contention masquant des rouges. `golangci-lint` exit 0, et AUCUNE des 22 issues de la
+baseline gelee ne vise le nouveau fichier (verifie par grep sur son nom). Fichier 279 L,
+fonction la plus longue 67 L (seuils 500 / 80 respectes).
+
+**Ce que ce garde-rail NE couvre PAS, et qu'il faut savoir.** Il compare des colonnes, pas des
+TYPES : un seed qui declarerait `rounds_total INTEGER` la ou la prod met `SMALLINT` passerait.
+Il ne couvre que les seeds de CE package et les trois requetes enrolees — une nouvelle requete
+prod lisant registre/participants sur ces seeds doit etre ENROLEE (une ligne dans la table de
+cas), et rien n'y force aujourd'hui. Enfin il raisonne sur les chaines SQL au repos : un
+fragment injecte a l'execution qui referencerait une colonne supplementaire lui echapperait —
+verifie pour le token d'exclusion campagne, qui ne cite que `<alias>.game_variant_id`, deja
+projetee par Q5.
+
+**Prochaine etape** : a la prochaine migration shared qui ajoute une colonne lue, le test doit
+tomber AVANT les binder errors. Si un jour la carte requete-x-seed devient trop couteuse a tenir
+a la main, la suite naturelle est de la deriver du code plutot que de la declarer.
+
+## [2026-08-30] Cliquet de completude sur l'enrolement — et ce qu'il a trouve, y compris contre mon propre diagnostic
+
+**Statut** : Complete. Second fichier de test, aucun code de production touche.
+
+**Pourquoi ce lot existe.** L'utilisateur a demande si les limites annoncees du garde-rail
+precedent etaient importantes ou acceptables. J'ai mesure les trois : les fragments injectes a
+l'execution sont un risque VERIFIE NUL (deux tokens dans le package, `__EXCLUDE_CAMPAIGN__` ne
+cite que `game_variant_id` deja projetee, `__PERFECT_KILL_IN__` filtre sur un alias de
+`medals_earned`) ; les types sont acceptables (une divergence existe deja et ne gene rien —
+`last_updated_at` est TIMESTAMP en prod et TIMESTAMPTZ dans `seedPlayerSchema`) ; restait
+l'enrolement manuel, seul point avec des dents. D'ou ce cliquet.
+
+**JE ME SUIS TROMPE, ET LE CLIQUET L'A MONTRE.** Avant de l'ecrire, j'avais mesure
+`Q30SquadMatchesSharedQuery` et conclu que la couverture etait « incidentellement complete ».
+Cette mesure ne portait que sur l'alias REGISTRE. Le cliquet, lui, a trouve quatre colonnes
+reelles non couvertes, toutes cote PARTICIPANTS : `kills_stddev` / `deaths_stddev`
+(Q12MatchScoreboard, Q26MatchExpectedStats), `backfill_bits` (Q17PlayerMatchStats),
+`present_at_beginning` / `present_at_completion` (qElapsedSecondsByMatchTpl). Ma conclusion
+etait juste sur la moitie du perimetre que j'avais regardee, et fausse sur l'autre. C'est
+exactement pour ca qu'on ecrit l'instrument au lieu de raisonner.
+
+**Conception : par COLONNE, pas par nom de requete.** Une allowlist « cette requete est
+enrolee / celle-la est exemptee » aurait grossi a chaque ajout jusqu'a devenir un tampon. Le
+cliquet verifie le risque reel : toute colonne lue sous l'alias registre/participants par UNE
+QUELCONQUE requete du package doit l'etre aussi par une requete enrolee. Consequence qui le rend
+tenable : ajouter une requete qui ne lit que du deja-couvert ne demande AUCUNE action. Lecture
+des requetes par AST (`go/parser`), litteraux concatenes — les appels intercales
+(`StartTimeCanonicalSQL("r")`, templates `%s`) sont ignores sans gener la detection.
+
+**UN FAUX POSITIF TROUVE ET CORRIGE A LA SOURCE.** Le cliquet signalait `perfect_kills` sur
+Q29HistoryForAvg. Verification : l'alias `p` y est lie a `match_participants` PUIS RELIE a une
+CTE (`LEFT JOIN perfect p`) — `p.perfect_kills` designe la CTE, pas une colonne de participants.
+Corrige en detectant les alias relies et en les ECARTANT (references inattribuables), plutot
+qu'en allowlistant le symptome : un cliquet qui crie a tort est un cliquet qu'on apprend a
+ignorer. Cas fabrique ajoute au test de detection d'alias.
+
+**RESOLUTION DES QUATRE TROUS, statuee une par une.**
+- `kills_stddev` / `deaths_stddev` : PRESENTES dans les seeds → Q12MatchScoreboard ENROLEE.
+  Le garde-rail reste vert, la couverture passe de 54 a 56 colonnes. Protection gagnee a cout nul.
+- `backfill_bits`, `present_at_beginning`, `present_at_completion` : ABSENTES des trois seeds
+  alors que la suite est verte — preuve que le chemin qui les lit n'est pas couvert par ces
+  seeds. Les enroler rendrait le garde-rail rouge sans qu'aucun test soit en danger. Inscrites
+  dans `ratchetColonnesHorsPerimetre` avec raison ET date. Le jour ou un test exercera ce
+  chemin, il tombera — et ce sera le signal d'enroler la requete et d'etendre le seed.
+
+**UNE DUPLICATION EVITEE DE JUSTESSE.** Premiere version : le cliquet tenait sa propre liste de
+requetes enrolees. J'ai enrole Q12 dans le garde-rail, et le cliquet a CONTINUE de la signaler —
+deux listes deja desynchronisees en quelques minutes. Centralise en `seedParityCarte`, source
+unique consommee par les deux tests (regle CLAUDE.md n°6 appliquee des la 2e copie, pas la 3e).
+
+**Gates** : quatre tests verts ; validation negative REJOUEE apres le refactor (retrait de
+`team_0_rounds_won` du seed pool → echec unique et nomme, seed restaure) ; `go vet` propre ;
+`gofmt` propre ; suite d'integration `-tags=integration -p 1` verte ; `golangci-lint` sans issue
+sur les deux fichiers. Tailles : 297 L et 252 L, fonction la plus longue 67 L.
+
+**Ce qui reste ouvert, en connaissance de cause.** Les types ne sont toujours pas compares
+(decision assumee : ce n'est pas la classe de panne visee, et la fidelite temporelle a ses
+propres tests). Le cliquet ne voit que les requetes declarees en `var`/`const` de niveau paquet :
+une requete assemblee entierement a l'execution lui echapperait. Et il ne couvre que ce package.
+
+**Prochaine etape** : rien de planifie. Le dispositif est autonome — il signale, et il dit quoi
+faire du signalement.
 
 ## [2026-08-30] Visee a la lunette (ADS) — la queue d'i21 est LUE, et elle est CONSTANTE : NEGATIF PUBLIE — Complete
 

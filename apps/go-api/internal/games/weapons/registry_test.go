@@ -44,11 +44,11 @@ func queryCount(t *testing.T, db *sql.DB, query string, args ...any) int {
 
 func TestWeaponRegistry_SeedCardinalities(t *testing.T) {
 	db := openWeaponRegistryDB(t)
-	if got := queryCount(t, db, "SELECT count(*) FROM weapons"); got != 84 {
-		t.Errorf("weapons = %d, want 84", got)
+	if got := queryCount(t, db, "SELECT count(*) FROM weapons"); got != 90 {
+		t.Errorf("weapons = %d, want 90 (84 + 6 hors-arsenal HINF, lot 2026-08-29)", got)
 	}
-	if got := queryCount(t, db, "SELECT count(*) FROM weapon_families"); got != 51 {
-		t.Errorf("weapon_families = %d, want 51", got)
+	if got := queryCount(t, db, "SELECT count(*) FROM weapon_families"); got != 52 {
+		t.Errorf("weapon_families = %d, want 52 (51 + famille equipment)", got)
 	}
 	if got := queryCount(t, db, "SELECT count(*) FROM weapon_ids"); got != 102 {
 		t.Errorf("weapon_ids = %d, want 102 (36 filmshell + 66 stock_id)", got)
@@ -56,8 +56,8 @@ func TestWeaponRegistry_SeedCardinalities(t *testing.T) {
 	if got := queryCount(t, db, "SELECT count(*) FROM weapon_ids WHERE id_kind='stock_id'"); got != 66 {
 		t.Errorf("weapon_ids stock_id = %d, want 66", got)
 	}
-	if got := queryCount(t, db, "SELECT count(*) FROM weapons WHERE title_slug='halo_infinite'"); got != 29 {
-		t.Errorf("weapons HINF = %d, want 29", got)
+	if got := queryCount(t, db, "SELECT count(*) FROM weapons WHERE title_slug='halo_infinite'"); got != 35 {
+		t.Errorf("weapons HINF = %d, want 35 (29 arsenal + 6 hors-arsenal)", got)
 	}
 	if got := queryCount(t, db, "SELECT count(*) FROM weapons WHERE title_slug='halo_5'"); got != 55 {
 		t.Errorf("weapons H5 = %d, want 55", got)
@@ -90,13 +90,13 @@ func TestWeaponRegistry_Enums(t *testing.T) {
 		t.Errorf("%d armes ont une faction hors enum", got)
 	}
 	if got := queryCount(t, db, `SELECT count(*) FROM weapons
-		WHERE class NOT IN ('sidearm','shoulder','heavy','melee','grenade',
+		WHERE class NOT IN ('sidearm','shoulder','heavy','melee','grenade','equipment',
 			'vehicle','turret','environmental','unattributed','other')`); got != 0 {
 		t.Errorf("%d armes ont une class hors enum", got)
 	}
 	// Rôles : 9 rôles de combat + 5 rôles non-combat (donut hors-arsenal H5).
 	if got := queryCount(t, db, `SELECT count(*) FROM weapons
-		WHERE role NOT IN ('automatic','precision','sniper','shotgun','sidearm','power','special','melee','grenade',
+		WHERE role NOT IN ('automatic','precision','sniper','shotgun','sidearm','power','special','melee','grenade','equipment',
 			'vehicle','turret','environmental','unattributed','other')`); got != 0 {
 		t.Errorf("%d armes ont un role hors enum", got)
 	}

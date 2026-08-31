@@ -51,15 +51,20 @@ const DATA: FirstBloodPlayerSeries[] = [
   {
     player: 'Slow',
     matches: [
-      { matchId: 'm1', firstKillSec: 80, firstDeathSec: 40 },
-      { matchId: 'm2', firstKillSec: 100, firstDeathSec: 60 },
+      { matchId: 'm1', firstKillSec: 80, firstDeathSec: 40, mapUI: 'Bazaar', modeUI: 'CTF', startTime: '2026-04-18T12:00:00Z' },
+      { matchId: 'm2', firstKillSec: 100, firstDeathSec: 60, mapUI: 'Bazaar', modeUI: 'CTF', startTime: '2026-04-19T12:00:00Z' },
+      // 3e match AJOUTÉ pile sur la médiane 2-points pré-existante (90/50) :
+      // porte le total à 3 (MIN_MATCHES_FOR_CLOUD) sans déplacer médiane ni
+      // écart — les assertions numériques ci-dessous (gap, labels) restent
+      // valides inchangées.
+      { matchId: 'm3', firstKillSec: 90, firstDeathSec: 50, mapUI: 'Bazaar', modeUI: 'CTF', startTime: '2026-04-20T12:00:00Z' },
     ],
   },
   {
     player: 'Fast',
     matches: [
-      { matchId: 'm1', firstKillSec: 20, firstDeathSec: 50 },
-      { matchId: 'm2', firstKillSec: 40, firstDeathSec: 70 },
+      { matchId: 'm1', firstKillSec: 20, firstDeathSec: 50, mapUI: 'Aquarius', modeUI: 'Slayer', startTime: '2026-04-19T12:00:00Z' },
+      { matchId: 'm2', firstKillSec: 40, firstDeathSec: 70, mapUI: 'Aquarius', modeUI: 'Slayer', startTime: '2026-04-19T13:00:00Z' },
       { matchId: 'm3', firstKillSec: null, firstDeathSec: null },
     ],
   },
@@ -112,10 +117,11 @@ describe('FirstBloodLanes — structure de l’option', () => {
     const [, kills, deaths] = option.series
     expect(kills.symbolOffset).toEqual([0, -14])
     expect(deaths.symbolOffset).toEqual([0, 14])
-    expect(kills.symbolSize).toBe(6)
-    // 2 joueurs × 2 matchs exploitables (le 3e match de Fast est null/null).
-    expect(kills.data).toHaveLength(4)
-    expect(deaths.data).toHaveLength(4)
+    expect(kills.symbolSize).toBe(8)
+    // Fast (3 matchs, 1 sans événement → 2 exploitables) + Slow (3 matchs,
+    // tous exploitables) = 5. Aucune lane n'est sous MIN_MATCHES_FOR_CLOUD ici.
+    expect(kills.data).toHaveLength(5)
+    expect(deaths.data).toHaveLength(5)
     // Lane index 0 = Fast (trié en tête).
     expect(kills.data[0].value).toEqual([20, 0])
   })
@@ -194,14 +200,17 @@ describe('FirstBloodLanes — libellés et tooltips', () => {
     expect(option.yAxis.axisLabel.formatter('Slow', 1)).toContain("{gapNeg|−40s d'avance}")
   })
 
-  it('tooltip item : match, médiane (couverture n/total) et fenêtre d’avance', async () => {
+  it('tooltip item : carte, mode, date et fenêtre d’avance (DEC-4 — jamais l’uuid)', async () => {
     const { option } = await renderChart()
     expect(option.tooltip.trigger).toBe('item')
     const [gapS, killS, , medKillS] = option.series
 
+    // Noon UTC choisi pour la date afin que le rendu Intl reste sur le même
+    // jour calendaire quel que soit le fuseau de la machine de test.
     expect(killS.tooltip?.formatter({ data: killS.data[0] })).toBe(
-      'Fast · match m1 · premier frag 20s',
+      'Fast · Aquarius · Slayer · 19 avr. 2026 · premier frag 20s',
     )
+    expect(killS.tooltip?.formatter({ data: killS.data[0] })).not.toContain('m1')
     // Fast : 2 premiers frags exploitables sur 3 matchs.
     expect(medKillS.tooltip?.formatter({ data: medKillS.data[0] })).toContain(
       'médiane premier frag 30s (2/3 matchs)',
@@ -215,18 +224,54 @@ describe('FirstBloodLanes — libellés et tooltips', () => {
     const { option } = await renderChart({ locale: 'en' })
     expect(option.yAxis.axisLabel.formatter('Fast', 0)).toContain('{gapPos|+30s ahead}')
     expect(option.series[1].tooltip?.formatter({ data: option.series[1].data[0] })).toBe(
-      'Fast · match m1 · first kill 20s',
+      'Fast · Aquarius · Slayer · Apr 19, 2026 · first kill 20s',
     )
   })
 
-  it('échappe le HTML des données non constantes (pseudo, identifiant de match)', async () => {
+  it('dégrade proprement quand carte/mode manquent sur un point : jamais l’uuid, au moins la date', async () => {
+    captured.length = 0
+    render(
+      <FirstBloodLanes
+        data={[
+          {
+            player: 'NoMeta',
+            matches: [
+              { matchId: 'a', firstKillSec: 10, firstDeathSec: 20, startTime: '2026-04-19T12:00:00Z' },
+              { matchId: 'b', firstKillSec: 15, firstDeathSec: 25, startTime: '2026-04-20T12:00:00Z' },
+              { matchId: 'c', firstKillSec: 12, firstDeathSec: 22, startTime: '2026-04-21T12:00:00Z' },
+            ],
+          },
+        ]}
+      />,
+    )
+    await screen.findByTestId('lanes-stub')
+    const option = captured[captured.length - 1].option as OptionLike
+    const html = option.series[1].tooltip?.formatter({ data: option.series[1].data[0] }) ?? ''
+    expect(html).not.toContain('undefined')
+    expect(html).not.toMatch(/match [a-z]\b/) // pas l'identifiant de match brut
+    expect(html).toContain('—') // placeholder carte/mode, jamais une clé brute
+    expect(html).toContain('19 avr. 2026') // la date, elle, reste toujours affichée
+  })
+
+  it('échappe le HTML des données non constantes (pseudo, carte, mode)', async () => {
     captured.length = 0
     render(
       <FirstBloodLanes
         data={[
           {
             player: '<img src=x>',
-            matches: [{ matchId: '"><b>', firstKillSec: 10, firstDeathSec: 20 }],
+            matches: [
+              {
+                matchId: 'a',
+                firstKillSec: 10,
+                firstDeathSec: 20,
+                mapUI: '<b>Map</b>',
+                modeUI: '<i>Mode</i>',
+                startTime: '2026-04-19T12:00:00Z',
+              },
+              { matchId: 'b', firstKillSec: 15, firstDeathSec: 25 },
+              { matchId: 'c', firstKillSec: 12, firstDeathSec: 22 },
+            ],
           },
         ]}
       />,
@@ -235,7 +280,63 @@ describe('FirstBloodLanes — libellés et tooltips', () => {
     const option = captured[captured.length - 1].option as OptionLike
     const html = option.series[1].tooltip?.formatter({ data: option.series[1].data[0] }) ?? ''
     expect(html).not.toContain('<img')
+    expect(html).not.toContain('<b>Map</b>')
+    expect(html).not.toContain('<i>Mode</i>')
     expect(html).toContain('&lt;img src=x&gt;')
+    expect(html).toContain('&lt;b&gt;Map&lt;/b&gt;')
+    expect(html).toContain('&lt;i&gt;Mode&lt;/i&gt;')
+  })
+})
+
+describe('FirstBloodLanes — nuage supprimé à faible N (lisibilité, retour utilisateur 2026-08-29)', () => {
+  it('ne dessine aucun point de nuage pour une lane à 1 ou 2 matchs', async () => {
+    captured.length = 0
+    render(
+      <FirstBloodLanes
+        data={[
+          { player: 'OneMatch', matches: [{ matchId: 'a', firstKillSec: 10, firstDeathSec: 20 }] },
+          {
+            player: 'TwoMatches',
+            matches: [
+              { matchId: 'b', firstKillSec: 10, firstDeathSec: 20 },
+              { matchId: 'c', firstKillSec: 15, firstDeathSec: 25 },
+            ],
+          },
+        ]}
+      />,
+    )
+    await screen.findByTestId('lanes-stub')
+    const option = captured[captured.length - 1].option as OptionLike
+    const [, kills, deaths] = option.series
+    expect(kills.data).toHaveLength(0)
+    expect(deaths.data).toHaveLength(0)
+  })
+
+  it('dessine le nuage dès 3 matchs ; médiane et barre d’avance restent, elles, toujours présentes', async () => {
+    captured.length = 0
+    render(
+      <FirstBloodLanes
+        data={[
+          {
+            player: 'ThreeMatches',
+            matches: [
+              { matchId: 'a', firstKillSec: 10, firstDeathSec: 20 },
+              { matchId: 'b', firstKillSec: 15, firstDeathSec: 25 },
+              { matchId: 'c', firstKillSec: 20, firstDeathSec: 30 },
+            ],
+          },
+        ]}
+      />,
+    )
+    await screen.findByTestId('lanes-stub')
+    const option = captured[captured.length - 1].option as OptionLike
+    const [gap, kills, deaths, medKills, medDeaths] = option.series
+    expect(kills.data).toHaveLength(3)
+    expect(deaths.data).toHaveLength(3)
+    // Médiane et barre d'avance : un point par lane, indépendant du seuil nuage.
+    expect(medKills.data).toHaveLength(1)
+    expect(medDeaths.data).toHaveLength(1)
+    expect(gap.data).toHaveLength(1)
   })
 })
 

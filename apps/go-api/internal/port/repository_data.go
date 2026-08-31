@@ -163,6 +163,23 @@ type PlayerPositionsRepository interface {
 	LoadMatch(ctx context.Context, matchID string) ([]positions.PlayerPosition, error)
 }
 
+// KillDistanceRepository — POC (LOT G.3, 2026-08-30, plan retours-utilisateur
+// §3bis DEC-8) : kills mesurés et distance tueur-victime moyenne par arme, par
+// joueur, pour UN match. Implémenté par platform/duckdb.KillDistanceRepo.
+//
+// Source : shared.kill_positions_latest × shared.match_kill_events_latest —
+// TROISIÈME famille de données du film (comme KillSourceClassRepository),
+// jamais un agrégat multi-matchs (filtre à un seul match_id, jamais un scan).
+//
+// Capability gating : retourne games.ErrCapabilityNotSupported si les tables
+// sont absentes (titre/schéma sans décodeur de film). Zéro ligne (nil, nil) est
+// l'état NOMINAL d'un match sans position mesurée — pas une panne.
+type KillDistanceRepository interface {
+	// LoadMatch relit les distances mesurées par (xuid, weapon_key) pour un
+	// match, un joueur par entrée. Ordre déterministe (xuid, puis weapon_key).
+	LoadMatch(ctx context.Context, matchID string) ([]domain.MatchKillDistancePlayer, error)
+}
+
 // MatchExclusionRepository gère le flag is_excluded dans player_match_enrichment.
 // Implémenté par platform/duckdb.MatchExclusionRepo.
 type MatchExclusionRepository interface {

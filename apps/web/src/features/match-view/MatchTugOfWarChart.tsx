@@ -146,29 +146,40 @@ function waveLabel(color: string, count: number, position: 'top' | 'bottom') {
   return { show: true, formatter: `×${count}`, color, fontSize: 10, fontWeight: 'bold' as const, position, distance: 6 }
 }
 
-function waveTip(side: string, w: TeamWave, xuidMeta: XuidMeta): string {
+/**
+ * headshotSuffix : ligne de tooltip supplémentaire quand la vague porte au moins un
+ * headshot connu — le décompte, pas le détail par kill (aucun rendu per-kill n'existe
+ * ailleurs dans cette carte, cf. G.1). `undefined` (non mesurable) et `false` (mesuré,
+ * pas un headshot) ne comptent PAS : seul `true` incrémente.
+ */
+function headshotSuffix(waveKills: MomentumKill[], t: MatchViewText): string {
+  const n = waveKills.filter((k) => k.headshot === true).length
+  return n > 0 ? `<br/>${escapeHtml(t.combatHeadshotCountFmt(n))}` : ''
+}
+
+function waveTip(side: string, w: TeamWave, xuidMeta: XuidMeta, t: MatchViewText): string {
   const byPlayer = new Map<string, number>()
   for (const k of w.waveKills) byPlayer.set(k.xuid, (byPlayer.get(k.xuid) ?? 0) + 1)
   const contrib = [...byPlayer.entries()]
     .sort((a, b) => b[1] - a[1])
     .map(([xuid, n]) => `${displayPlayerName(xuidMeta.get(xuid)?.gamertag, xuid)} — ${n} kill${n > 1 ? 's' : ''}`)
     .join('<br/>')
-  return `<b>Vague ${side} ×${w.count}</b> — ${formatMmSs(w.tStartMs / 1000)} → ${formatMmSs(w.tEndMs / 1000)}<br/>${contrib}`
+  return `<b>Vague ${side} ×${w.count}</b> — ${formatMmSs(w.tStartMs / 1000)} → ${formatMmSs(w.tEndMs / 1000)}<br/>${contrib}${headshotSuffix(w.waveKills, t)}`
 }
 
-interface WaveSeriesOpts { color: string; laneY: number; axisIndex: 0 | 1; sideLabel: string; xuidMeta: XuidMeta }
+interface WaveSeriesOpts { color: string; laneY: number; axisIndex: 0 | 1; sideLabel: string; xuidMeta: XuidMeta; t: MatchViewText }
 
 /** Séries de vague : un segment épais par vague, label ×N à l'extrémité. */
 function buildWaveSeries(waves: TeamWave[], opts: WaveSeriesOpts): Record<string, unknown>[] {
-  const { color, laneY, axisIndex, sideLabel, xuidMeta } = opts
+  const { color, laneY, axisIndex, sideLabel, xuidMeta, t } = opts
   const position = axisIndex === 0 ? 'top' : 'bottom'
   const side = axisIndex === 0 ? 'ally' : 'enemy'
   return waves.map((w, wi) => ({
     type: 'line',
     name: `wave-${side}-${wi}`,
     data: [
-      { value: [w.xStart, laneY], _tip: waveTip(sideLabel, w, xuidMeta) },
-      { value: [w.xEnd, laneY], _tip: waveTip(sideLabel, w, xuidMeta), label: waveLabel(color, w.count, position) },
+      { value: [w.xStart, laneY], _tip: waveTip(sideLabel, w, xuidMeta, t) },
+      { value: [w.xEnd, laneY], _tip: waveTip(sideLabel, w, xuidMeta, t), label: waveLabel(color, w.count, position) },
     ],
     lineStyle: { color, width: 4, opacity: 0.9 },
     itemStyle: { color, borderColor: 'rgba(255,255,255,0.6)', borderWidth: 1.5 },
@@ -255,9 +266,9 @@ function buildKillFeedSeries(input: KillFeedInput): Record<string, unknown>[] {
   })
   return [
     lane(colorTeam, allyLaneY, 0, 'Lane alliée'),
-    ...buildWaveSeries(detectTeamWaves(allyKills), { color: colorTeam, laneY: allyLaneY, axisIndex: 0, sideLabel: t.combatTeamLabel, xuidMeta }),
+    ...buildWaveSeries(detectTeamWaves(allyKills), { color: colorTeam, laneY: allyLaneY, axisIndex: 0, sideLabel: t.combatTeamLabel, xuidMeta, t }),
     lane(colorEnemy, 0, 1, 'Lane ennemie'),
-    ...buildWaveSeries(detectTeamWaves(enemyKills), { color: colorEnemy, laneY: 0, axisIndex: 1, sideLabel: t.combatEnemyLabel, xuidMeta }),
+    ...buildWaveSeries(detectTeamWaves(enemyKills), { color: colorEnemy, laneY: 0, axisIndex: 1, sideLabel: t.combatEnemyLabel, xuidMeta, t }),
   ]
 }
 

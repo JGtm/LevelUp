@@ -53,7 +53,7 @@ export function MatchFragCard({ distribution, weapons }: Props) {
     kills: w.kill_count,
     class: w.class,
   }))
-  const breakdown = buildFragDetailBreakdown(distribution, weaponsNorm, { roleLabel, classLabel })
+  const breakdown = buildFragDetailBreakdown(distribution, weaponsNorm, { roleLabel, classLabel, locale: appLocale })
 
   // Miroir EXACT du prédicat de rendu de FragSunburst (total > 0 ET classes non
   // vides) : si le sunburst rendrait null, on ne réserve pas sa colonne.

@@ -48,6 +48,7 @@ import { useReplayFlagCarries } from './useReplayFlagCarries'
 import { useGrenadeIcons } from './useGrenadeIcons'
 import { useZoneStates } from './useZoneStates'
 import { useReplayWeaponPads } from './useReplayWeaponPads'
+import { useReplayGroundWeapons } from './useReplayGroundWeapons'
 import type { ReplayLocale } from './i18n'
 import type { EndMatchSoundSpec } from './endMatchSound'
 import type { ReplayFeedEntry } from './killFeedLogic'
@@ -159,18 +160,6 @@ export function ReplayCanvas({
   const { clockRef, tick: clockTick } = useReplayClock({ doc, playWindow, onFrameChange })
 
   const [width, setWidth] = useState(0)
-  // TIROIR DE RÉGLAGES (décision utilisateur du 16/08) : fermé par défaut, ouvert par un
-  // bouton unique dans la barre. Calques, effets et vitesse persistés comme le son — même
-  // mécanisme (replayPreferences.ts), des réglages distincts.
-  const [settingsOpen, setSettingsOpen] = useState(false)
-  // Le bouton du tiroir : il est exclu du « clic dehors » et REPREND le focus à la
-  // fermeture — sans quoi le focus retomberait au document et la navigation au clavier
-  // repartirait du haut de la page.
-  const settingsButtonRef = useRef<HTMLButtonElement>(null)
-  const closeSettings = useCallback(() => {
-    setSettingsOpen(false)
-    settingsButtonRef.current?.focus({ preventScroll: true })
-  }, [])
   // L'OBJET DE RÉGLAGES RESTE ENTIER (2026-08-28) : le tiroir en consomme la quasi-totalité, et
   // le lui recopier bascule par bascule coûtait cinquante lignes au canvas (cf. useReplayDrawer).
   // Le DESSIN, lui, ne lit que les valeurs — d'où cette destructuration-là, et pas les commandes.
@@ -178,7 +167,7 @@ export function ReplayCanvas({
   const {
     showAim, showZones, showNames, showTrail, showHeatmap, heatmapMode, heatmapSpan,
     showShotFx, showKillFx, showPlacements, showUnnamedPlacements, showDroppedPlacements,
-    showWeaponPads, showFlagCarries, showVipCrown, showSkullCarrier, speed: multiplier,
+    showWeaponPads, showGroundWeapons, showFlagCarries, showVipCrown, showSkullCarrier, speed: multiplier,
     markerColors,
   } = settings
   // SON : coupé par défaut, câblage dans le hook (replaySound.ts, lecture replayAudio.ts, camps
@@ -304,6 +293,12 @@ export function ReplayCanvas({
     locale,
     redraw,
   })
+  // LES ARMES AU SOL (schéma 27) : les armes ABANDONNÉES — un socle est un LIEU qui réapprovisionne,
+  // une arme au sol un OBJET qui ne revient pas. Liseré à l'encre du « aucun camp » (cf. le hook).
+  const groundWeapons = useReplayGroundWeapons({
+    doc, view: canvasView, enabled: showGroundWeapons,
+    ink: { fill: markInk.fill, outline: neutralInk }, redraw,
+  })
   // LES POSES D'ÉQUIPEMENT (schéma 10) : comptes, axe de temps, bascules et survol dans un
   // seul hook (useReplayPlacements). Les LÂCHÉS DE PUISSANCE suivent leur bascule, et rien
   // d'autre — plus de garde de mode par-dessus (2026-08-20).
@@ -385,6 +380,8 @@ export function ReplayCanvas({
     // Les EMPLACEMENTS D'ARME juste au-dessus du terrain et SOUS les poses : un socle est un
     // MEUBLE de la carte, il précède ce qu'un joueur y dépose comme ce qui s'y déplace.
     weaponPads.paint(ctx, frame, dpr)
+    // Les ARMES AU SOL au MÊME étage que les socles : du décor posé sur le terrain, jamais le sujet.
+    groundWeapons.paint(ctx, frame, dpr)
     // Les POSES D'ÉQUIPEMENT, au-dessus du terrain (fond, zones, chaleur, objectifs) et SOUS
     // les marqueurs de joueurs : un mur est un objet POSÉ sur la carte — il appartient au
     // décor du moment, pas au sujet. Sa fenêtre d'affichage n'est PAS [t0, t1] : `t1` date la
@@ -534,6 +531,7 @@ export function ReplayCanvas({
     // Le TRACÉ seul, jamais l'objet du hook : `hover` change à chaque mouvement de pointeur,
     // et le mettre ici ferait recuire `draw` (donc toute la scène) pour une infobulle.
     weaponPads,
+    groundWeapons,
     shotColor,
     grenadeColor,
     eventHoldFrames,
@@ -590,9 +588,9 @@ export function ReplayCanvas({
     lead: teamCascades, playback, toggleSound: sound.toggle,
   })
   // LE TIROIR, groupé de même (useReplayDrawer) : les disponibilités viennent des calques, les
-  // bascules de `useReplaySettings` — le canvas ne fait plus que les mettre en présence.
+  // bascules de `useReplaySettings`, et l'état d'ouverture du hook lui-même (2026-08-30).
   const drawer = useReplayDrawer({
-    settings, sound, locale, onClose: closeSettings, triggerRef: settingsButtonRef,
+    settings, sound, locale,
     heat: { mode: heat.mode, killsAvailable: heat.killsAvailable },
     available: {
       zones: calloutZones.length > 0,
@@ -602,6 +600,7 @@ export function ReplayCanvas({
         dropped: placements.counts.dropped > 0,
       },
       weaponPads: weaponPads.available,
+      groundWeapons: groundWeapons.available,
       flagCarries: flags.available,
       vipCrown: vipCrown.available,
       skullCarrier: skullCarrier.available,
@@ -663,16 +662,16 @@ export function ReplayCanvas({
               sound={sound}
               capture={capture}
               locale={locale}
-              settingsOpen={settingsOpen}
-              onToggleSettings={() => setSettingsOpen((v) => !v)}
-              settingsButtonRef={settingsButtonRef}
+              settingsOpen={drawer.open}
+              onToggleSettings={drawer.toggle}
+              settingsButtonRef={drawer.buttonRef}
             />
           </div>
         </div>
         {/* Le panneau se pose SUR la carte, à droite (retour de planche du 16/08 : « je vois
             plus un panneau par dessus »). Il ne mange donc plus la largeur du canvas — et il
             laisse libre le coin BAS-GAUCHE, où vit la légende de la carte de chaleur. */}
-        {settingsOpen && <ReplaySettingsDrawer {...drawer} />}
+        {drawer.open && <ReplaySettingsDrawer {...drawer.panel} />}
       </div>
     </div>
   )
