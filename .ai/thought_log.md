@@ -1,3 +1,34 @@
+## [2026-08-31] Visée des tirs NON-MODAUX — grammaire des 2 boucles PERCÉE, mais visée non validable par l'oracle — Complété
+
+**Contexte** : worktree dédié `wt/trame-nonmodal`. Le décodeur modal (`fire_aim_modal.go`) ne
+lit la visée que sur le tir propre (0 cible, 0 composante), à post-comptes+2. Le non-modal (tir
+qui touche) insère deux boucles de longueur variable avant la visée. Objectif : les percer.
+
+**Décision technique** : Ghidra sur `FUN_14080C1F8` tracé instruction par instruction. Boucle
+composantes = N × (R(2)+R(1)+R(32)) = 35 bits FIXES (param_5=0 confirmé). Boucle cibles = P ×
+(R(4)+R(1)[hit] ; si hit: R(3)+(N<3?R(1):R(4))+R(16)+3·W) avec W = FUN_14102bd24(mode,
+component[idx].R2) = min(mode,6) si R2==1 sinon mode (mode=12 si P==1 sinon 4). W vient d'une
+table PURE, pas de dépendance runtime : les deux boucles + les composites (cd5b8/eff64,
+grammaires re-vérifiées au désassemblage) sont ENTIÈREMENT décodables hors ligne — RÉFUTE la
+réserve « boucles runtime-width » de la note modale. Instrument
+`lot1_visee_nonmodale_research_test.go` (garde LOT1_TRAME_FILM).
+
+**Résultats chiffrés (000d5950 / 01e1f945 / 00502e52)** : distribution binaire (0,0)=raté et
+(1,1)=touché — 0 record composante-seule / cible-seule, donc isolation empirique d'une boucle
+IMPOSSIBLE. Oracle de concentration : FONCTIONNE sur le modal (visée@d=2 = 83 / 77 / 87 %, axe x
+saturé E|x|~0.2, contrôle 25-44 %) mais le non-modal reste au BRUIT (34 / 28 / 29 %,
+E|x|=E|y|=E|z|~0.5) ; max sur toute la fenêtre + scan 0..220 depuis après-boucles ne dépasse
+jamais nettement le contrôle. COUVERTURE 0 %. Causes : validité cubemap non discriminante à 30
+bits (face<6 quasi toujours) ; faux positifs sur les champs faible-entropie (R(32) → face 0 →
+axe saturé artificiel) ; le tir qui touche vise à élévations variées (unitaire uniforme = 0.5
+partout = indiscernable du bruit).
+
+**Conclusion / prochaine étape** : note `film_re/NOTE_VISEE_NONMODALE_2026-08-31.md`. Le DÉCODE
+non-modal est désormais possible (grammaire complète) mais sa CORRECTION n'est pas prouvable
+hors ligne avec l'oracle disponible — négatif honnête, rien câblé en prod. Piste future (hors
+périmètre) : un oracle de PROFONDEUR DE TRAME validerait la position indépendamment de
+l'orientation de la visée.
+
 ## [2026-08-31] Percer la trame — damage_aftermath : ref0 = BLESSÉ, ref1 = RESPONSABLE ; monde chronologique inutile — Complété
 
 **Contexte** : worktree dédié `wt/trame-recherche`, en parallèle de `wt/trame-film`. Deux
