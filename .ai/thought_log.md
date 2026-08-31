@@ -81032,3 +81032,61 @@ sans maillage.
 **Conclusion / prochaine etape** : plus aucune carte BLOQUEE pour cause de maillage. Restent au
 registre les trois Munera/Out With A Bang (aucun objectif publie) et les trois Firefight (mode non
 gere par le rejeu, precision utilisateur du 2026-08-31).
+
+## [2026-08-31] Chantier vehicules et tourelles — lot V0 : cadrage, scouts sons et sprites — Complete
+
+**Contexte** : ouverture du chantier vehicules (worktree dedie LevelUp-wt-vehicules, branche
+wt/vehicules-tourelles, base feat/v75 14a115bb1). Trois agents en parallele : cadrage Opus,
+scout sons, scout sprites. Plan du chantier : `.ai/V7.5/PLAN_VEHICULES_TOURELLES.md`.
+
+**Decision technique principale — LA GRAMMAIRE BIPEDE DU VEHICULE.** `ti=40` porte a `i0` la
+forme dynamic-precision du BIPEDE (porte 5 bits), pas la forme objet du monde (3 bits) que
+`ScanFilmWorldObjects` lui appliquait — seule voie employee jusqu'ici, sonde du 18/08 comprise.
+Mesure (meme film, meme bande, critere pas < 35 m/s ecrit avant) : grammaire bipede 99,4-100 %
+de pas plausibles, grammaire objet du monde 21-42 %, temoin fantome 0-3 pas. REJOUE PAR LE
+SUPERVISEUR sur `fccc61cd` : 100,0 % vs 37,4 %, temoin 0 — identique au rapport. Consequence :
+tout chiffre de position vehicule anterieur est repute non mesure ; l'oracle geometrique du
+18/08 est a rejouer (inscrit au lot V1a).
+
+**Resultats observes** :
+- `ti=40` stable sur 6 empreintes de registre (11 films) ; 48 composants, 30 portes ; masque
+  nominal du flux {i0,i1,i2,i3,i25} ; plancher de faux positifs 0,17 % mesure dans la meme
+  sortie. Anomalie 174 vs 118 RECONCILIEE (118 blocs bruts, 50 semantiques `kfArchMax`, 1067
+  slots non vides) ; VEHICULES_ARCHETYPE_40.md corrige (14 composants propres, pas 8).
+- `i33` vehicle-type-state REFUTE comme signal delta ; `i11` dead-state porte mais n'arrive
+  pas : la destruction se BORNE par le recensement des images-cles, elle ne se date pas.
+  Identite du chassis : voie MPPWord32 du record de creation (`FUN_1410a5a74` est un des six
+  appelants directs du bloc MPP) ; default-state ti=40 NON porte = chemin critique de V1.
+- Corpus : PAS D'ALERTE — 951 films en cache, 18 Behemoth SF + 8 Launch Site SF, les 26
+  portent ti=40 ; 348/951 films en portent (BTB 2-4x plus denses). Temoins negatifs mesures a
+  zero (Streets x2, Bazaar, Aquarius SF, et Behemoth Tactical — temoin a carte constante).
+  Critere de qualification = records delta acceptes (>= 1000), pas les slots en image-cle
+  (Illusion : 7 slots mais 17 records — entites statiques). Team Slayer : 13 vies mediane
+  420 s contre 27-62 vies de 60-100 s en Super Fiesta — « moins de vehicules, non aleatoires »
+  confirme par la mesure.
+- Scout sons : les banques `_veh_` (15) et `_tur_` (8) sont NOMMEES EN CLAIR sur le disque du
+  jeu — pas besoin de la voie hachage des equipements. Chaine armes reutilisable telle quelle ;
+  2 preuves extraites bout en bout sans Go ni Python (format AKPK rejoue en PowerShell depuis
+  la doc de `pck.go`). Precision utilisateur du 31/08 : les tirs de TOURELLES sont DEJA tries
+  dans l'artefact « Tri des sons d'armes » du 16/08 — V3 repart de ces selections.
+- Scout sprites : les icones vehicules du kill feed existent deja (index 26-38) mais VUE DE
+  PROFIL ; voie retenue = rendu top-down maison depuis les `mode` (render_model) via le
+  rasterizer himap deja en prod (fonds de carte) ; teinte equipe deja en prod cote web
+  (`tintedIconCanvas`). Manquent : lecteur `vehi -> hlmt` et mode objet isole du rasterizer.
+- Artefact « Le Garage » publie (preuves ecoutables, 13 silhouettes teintables, catalogue V3),
+  mis a jour a chaque lot.
+
+**Arbitrage** : walker d'evenements (board/exit, occupation par siege) NON reimplemente — le
+code vit hors depot (chantier trame 30-31/08) ; V1/V2 n'en ont pas besoin ; repli mesurable =
+oracle geometrique rejoue sur positions justes. Options restantes : attendre l'atterrissage
+(retenue) ou demander l'export du walker (decision utilisateur).
+
+**Ecart au cadrage, assume** : les instruments V0 (2 fichiers `*_test.go` sous garde
+d'environnement, 444 + 198 lignes, 0 TODO) sont COMMITES avec le lot au lieu d'etre supprimes
+comme le § 7 du cadrage le proposait — V1.1 les reutilise ; leur sort se regle a la cloture de
+V1. `go vet` OK sur les deux paquets ; aucun code de production touche par ce lot.
+
+**Conclusion / prochaine etape** : lot V1a lance (V1.1 qualification corpus, V1.2 exposition
+`ScanFilmBipedPositionsForBand` avec gate de non-regression exact sur `000d5950`, V1.3 oracle
+du cap i2/i3, rejeu de l'oracle geometrique du 18/08). Puis V1b (Ghidra : portage
+`FUN_1410A5A74`, identite MPPWord32), V2 spawns/cooldowns, V3 sons, V4 sprites.
