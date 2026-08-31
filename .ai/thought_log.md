@@ -1,3 +1,52 @@
+## [2026-08-31] LA JAUGE EST SUR `ti=11`, PAS `ti=13` — les deux archétypes sont en miroir — Complété
+
+**Le film porte son propre dictionnaire de composants, en clair**, et personne ne le lui avait
+demandé. Le registre ECS (`chunk_00`) nomme chaque archétype et chacun de ses composants.
+Interrogé avec le vocabulaire de l'interaction, il rend l'archétype 11 :
+
+    ti=11  i0   managed-objective-timers-component
+           i4   managed-objective-interaction-filter-component
+           i12  managed-objective-progress-component            <- LA JAUGE
+           i13  managed-objective-required-progress-component   <- LE SEUIL
+
+(et, au passage, `ti=12` porte `managed-navpoint-top/radial/bottom-progress` — les anneaux du
+HUD.)
+
+**LE RECENSEMENT RENVERSE TOUT.** Comptage des vies par archétype — en-têtes d'image-clé
+seulement, aucun corps de record décodé, donc gratuit :
+
+| film | mode | vies `ti=11` | slots `ti=13` |
+|---|---|---:|---:|
+| 2ce58582 | Ranked:Strongholds | **0** | 26 |
+| 696a9d7c | Strongholds:Arena | **0** | 26 |
+| 7f1bbf06 | KOTH:Arena | **1** | 52 |
+| **9f57c612** | **Assaut** | **46** | 8 |
+| c75f33b8 | Assaut | **31** | 8 |
+| df8fcbef | Assaut | **27** | 8 |
+| 34bb3bc8 | Assaut | **21** | 8 |
+| 1c01e34f | Assaut | **9** | 8 |
+
+**MIROIR PARFAIT.** Strongholds et KOTH : `ti=13` riche (des milliers de valeurs de jauge au
+tag 3), `ti=11` vide. Assaut : `ti=13` quasi muet (0 à 2 valeurs), **`ti=11` riche**.
+
+**Voilà pourquoi les trois fouilles précédentes ne trouvaient rien** : elles cherchaient dans le
+canal des ZONES alors que l'Assaut passe par celui des OBJECTIFS GÉRÉS. Les négatifs mesurés sur
+le statborg, sur le pied de film et sur `ti=13` restent vrais — ils portaient sur les mauvais
+canaux, et c'est le dictionnaire du film qui l'a dit.
+
+**CE QUI MANQUE N'EST PLUS UNE PISTE, C'EST UN DÉCODEUR.** `ti=11` est couvert **0 sur 34** par
+le dispatch : `components_batch3.go` n'en porte que i2 et i9 (textes formatés), gardés SANS
+appelant depuis le 2026-08-01 avec pour condition de retrait « branchée ou supprimée quand ti=11
+sera décodé ». Le lot R4 du 2026-08-17 avait déjà visé cet archétype et buté sur la marche des
+records d'image-clé — d'où `keyframe_record_walk.go`, qui existe et lit l'en-tête sans le filtre
+du balayeur.
+
+**Le chantier est désormais SCOPÉ** : porter les désérialiseurs de `ti=11` de i0 jusqu'à i12/i13,
+soit treize composants à résoudre sous Ghidra. La jauge d'armement de la bombe tombe avec — et
+avec elle l'instant de début, donc le compte à rebours du rejeu.
+
+**Gates** : go vet 0, gofmt propre.
+
 ## [2026-08-31] La JAUGE d'armement n'est pas dans le film : elle est CALCULÉE — et c'est l'instant de début qui manque — Complété
 
 **Recentrage après une dérive.** Le fil est : trouver la jauge du compte à rebours avant que la
