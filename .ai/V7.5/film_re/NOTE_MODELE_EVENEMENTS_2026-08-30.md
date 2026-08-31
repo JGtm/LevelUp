@@ -232,13 +232,26 @@ moyenne ~1.5 sur [0,16], ~10-19 % de valeurs negees (soins). La valeur de degat 
 lisible en clair (cablee lot1Dequant + porte d'echelle). Reste (semantique) : departager
 laquelle des deux refs d'en-tete domaine 1 est le blesse (croiser killsource).
 
-**VISEE DU TYPE 36 — CALIBRATION INCONCLUANTE (31/08), publiee telle quelle** :
-`TestLot1ViseeCalibration` balaye la longueur post-visee K (0..96) et mesure la profondeur de
-trame (l'oracle discriminant). AUCUN PIC NET : meilleur K rend 1.30 record/paquet, ratio a la
-mediane ~1.2x seulement (contre 13x pour damage_aftermath). Cause : les champs POST-VISEE du
-type 36 sont de longueur VARIABLE (blocs conditionnels 0x2dd/0x1c non decodes), ce qui etale le
-balayage a K fixe. La visee reste PLAUSIBLE, NON PROUVEE. Pour la prouver : decoder les champs
-post-visee du type 36 EN ENTIER (comme damage_aftermath), puis l'oracle de trame tranchera.
+**VISEE DU TYPE 36 — REELLE ET PROUVEE (31/08), correction d'un exces de prudence.**
+L'utilisateur a rappele qu'on gere DEJA la visee : `fire_events.go` la lit a l'offset FIXE
+bit 113 (largeur 30), gardee par flags[110]=1/[111]=0/[112]=0, pour 19 % des records. La
+confrontation (`TestLot1ViseeCompare`) tranche par un ORACLE GEOMETRIQUE : une vraie visee est
+concentree pres de l'horizontale (les joueurs visent peu en tangage), le bruit est uniforme sur
+la sphere (E|composante| = 0.5 par axe). Mesure sur 2 films :
+- **fire_events @113 : E|x|=0.27, E|y|=0.79, E|z|=0.34 · part x<0.3 = 70 %** — STRUCTURE NETTE,
+  tres au-dessus de l'uniforme. VRAIE VISEE, PROUVEE.
+- ma visee modele-M (bit ~80-81, variable) et le controle : E ~0.5 partout = BRUIT.
+
+VERDICT : la visee est reelle et deja disponible en production (fire_events). Ce qui etait
+INCONCLUANT n'etait pas la visee mais MA reconstruction : mon decodage modele-M du type 36 a un
+BUG DE CADRAGE entre l'arme et la visee (il produit une position VARIABLE, ~80-81, la ou la
+verite est ~FIXE a 113 — la structure arme->visee de ces paquets est constante et
+`fire_events` la capture par offset fixe ; mon modele la sur-parse). L'ecart est de ~32 bits
+(une largeur d'arme R(32) : fire_events lit l'arme sur 64 bits @44/76, mon modele sur 32).
+CONSEQUENCE : attaquant + arme (prouves, oracle categoriel) et visee (prouvee, fire_events)
+sont ACQUIS ; le seul residuel est le cadrage exact des champs post-arme de MON decodeur
+type 36 (utile pour la victime dans la liste de cibles — mais cette victime est deja donnee
+par damage_aftermath). fire_events fait foi pour la visee.
 
 ## LE JUGE DEFINITIF A POSER — l'oracle de trame (POSE pour damage_aftermath, cf. ci-dessus)
 
