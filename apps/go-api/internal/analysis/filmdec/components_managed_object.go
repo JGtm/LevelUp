@@ -54,6 +54,12 @@ const (
 )
 
 // String rend l'etiquette de registre du champ.
+// champInconnu est l etiquette rendue par le `String()` d un champ publie hors enumeration.
+// CENTRALISEE le 2026-09-01 : le litteral etait a sa QUATRIEME copie (les quatre archetypes
+// d objectif ti=10 a ti=13 ont chacun leur enumeration de champs). Le garde-rail est le lint
+// `goconst` lui-meme, qui a signale la copie de trop — il interdira la cinquieme.
+const champInconnu = "champ inconnu"
+
 func (f ManagedObjectField) String() string {
 	switch f {
 	case ManagedObjectBoundaryVisibility:
@@ -63,7 +69,7 @@ func (f ManagedObjectField) String() string {
 	case ManagedObjectRTPC:
 		return compManagedObjectRTPC
 	}
-	return "champ inconnu"
+	return champInconnu
 }
 
 // managedObjectHook, si non nil, recoit chaque lecture d'un champ de ti=10.
@@ -151,7 +157,7 @@ func (f NavpointField) String() string {
 	if f == NavpointRadialProgress {
 		return compNavpointRadialProgress
 	}
-	return "champ inconnu"
+	return champInconnu
 }
 
 // navpointHook, si non nil, recoit chaque lecture d'un champ de ti=12. Pas de `present` : le

@@ -159,3 +159,35 @@ func TestAssautA9Ti11Present(t *testing.T) {
 		ligne(id, "Assaut")
 	}
 }
+
+// TestAssautA9GrammaireObjectifs — LA GRAMMAIRE COMPLETE DES ARCHETYPES D'OBJECTIF.
+//
+// Le registre ECS du film nomme chaque composant en clair. Cet instrument imprime, pour les
+// archetypes qui portent la donnee d'objectif, la LISTE ORDONNEE de leurs composants — l'index
+// `i` est le bit de masque, donc la cle par laquelle un deserialiseur se branche.
+//
+// Sert deux choses : le portage des deserialiseurs de `ti=11`, et la page de reference.
+func TestAssautA9GrammaireObjectifs(t *testing.T) {
+	cache := os.Getenv("ASSAUT_CACHE")
+	if cache == "" {
+		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
+	}
+	raw, err := filmdec.ReadFilmChunk(filepath.Join(cache, "film_chunks", "9f57c612"), 0)
+	if err != nil {
+		t.Fatalf("registre illisible : %v", err)
+	}
+	reg, err := filmdec.ParseRegistryChunk(raw)
+	if err != nil {
+		t.Fatalf("registre invalide : %v", err)
+	}
+	for _, ti := range []int{10, 11, 12, 13} {
+		arch, ok := reg.Archetype(ti)
+		if !ok {
+			continue
+		}
+		t.Logf("########## ti=%d — %d composants", ti, len(arch.Components))
+		for i, nom := range arch.Components {
+			t.Logf("i%-3d %s", i, nom)
+		}
+	}
+}
