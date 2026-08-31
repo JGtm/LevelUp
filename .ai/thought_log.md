@@ -79740,3 +79740,59 @@ domaine 2 (corréler `ref0` aux fils de vie, aux slots bipèdes du même paquet,
 slot -> xuid de `killsource`), sur le modèle de ce qui a résolu la référence du domaine 1 de
 `damage_aftermath` par l'ajout de la base de plage. Détail complet et mesures :
 `.ai/V7.5/film_re/NOTE_BIPED_PICKUP_2026-08-31.md`.
+
+---
+
+## [2026-08-31] ref0 du type 9 RÉSOLUE — le ramasseur est nommé : `slot = 512 + index`
+
+**Statut** : Complété (recherche ; aucune publication production).
+**Worktree** : `wt/biped-pickup`, lot 2. **Films** : `000d5950`, `00502e52`.
+
+**Correction du lot 1 d'abord.** Le titre de `NOTE_BIPED_PICKUP_2026-08-31.md` surclamait
+(« daté, nommé **et attribué** ») alors que la section « Ce qui N'EST PAS prouvé » de la même
+note établissait que l'attribution n'était pas faite. Corrigé. Le lot 2 a ensuite rendu le
+titre vrai — mais l'écart entre le titre et le corps était une faute de rédaction, pas une
+anticipation heureuse.
+
+**Décision technique principale.** Le négatif du lot 1 — « ref0 n'est pas un slot de bipède,
+25 valeurs distinctes sur 50 événements » — était **FAUX**, et faux exactement comme la
+première passe sur `damage_aftermath` : je lisais l'**index brut sans la base**, alors que le
+lecteur de l'exe (`FUN_1406d3140`) reconstruit `(gen<<30) | (base + index)` avec une base de
+runtime lue dans `DAT_1451f98d0[dom*2]`. Le lot 2 n'a même pas eu à balayer la base : la vérité
+terrain du lot 1 (événements type 9 appariés sans ambiguïté à une émission i43..i46 portant la
+MÊME arme, dont le slot de bipède est connu parce que l'émission est lue sur un record delta
+ancré) permet de calculer l'écart `slot − index` paire par paire.
+
+**Résultat, et il ne laisse pas de marge** : **une seule valeur distincte, 512, sur 21/21 puis
+11/11 paires** — 32 paires, deux films, zéro exception, zéro appariement ambigu écarté. Témoin
+(appariement permuté d'un cran) : 16 et 9 valeurs distinctes, mode à 14,3 % et 18,2 %. C'est la
+MÊME base que celle de la référence domaine 1 de `damage_aftermath` (début de la plage des
+bipèdes). **H-A retenue. H-B (ref0 = l'objet ramassé) réfutée** : un slot est unique, il ne peut
+désigner à la fois le bipède qui ramasse et l'objet ramassé.
+
+**Les classes 2/3 jugées sur une vérité terrain INDÉPENDANTE.** Les 32 paires sont toutes de
+classe R(3)=0 : elles ne prouvent la base que pour les armes. Pour l'équipement et les grenades,
+le juge est le canal i48 (`ScanFilmEquipmentChanges`), dont chaque émission porte le slot du
+bipède : **16/26 = 61,5 %** et **10/13 = 76,9 %** d'égalité EXACTE `512 + ref0 == slot émetteur`
+(combiné 26/39 = 66,7 %), contre **0,0 % sur les six témoins décalés**. Contrôle positif qui
+tranche l'objection « ce n'est que de la densité d'émissions » : les classes ARMES mesurées sur
+le MÊME canal équipement tombent à 30,8 % et 0,0 %. L'appariement est sémantique.
+
+**Un négatif de méthode publié tel quel.** La mesure de couverture (`512 + ref0` tombe-t-il dans
+la bande de bipèdes ?) donne **100 % sur 208 événements, toutes classes** — mais le témoin
+permuté donne **100 % aussi** : la bande fait ~100 slots contigus. Cette mesure **ne démontre
+rien** et est publiée comme telle. C'est précisément le proxy faible contre lequel la leçon
+`damage_aftermath` mettait en garde ; les juges sont les deux correspondances exactes.
+
+**Ce que ça change pour la publication.** QUI / QUOI / QUAND est acquis : daté à la ms, ramasseur
+nommé par son slot (le même espace de slots que `HeldWeaponChange.Slot`, celui que le pipeline
+de rejeu relie déjà au joueur — **réserve honnête : la traversée slot → xuid n'a pas été
+ré-exercée dans ce lot**), objet nommé au catalogue et classé (arme vs équipement/grenade).
+Reste hors de portée : l'**instance** de l'objet, donc le **socle d'origine** — H-B est réfutée,
+l'événement ne porte pas de handle monde. Ce lien reste l'affaire du canal spatial (schéma 26).
+
+**Gates** : `gofmt` propre ; `go vet ./internal/analysis/filmdec/` silencieux ; `go test
+./internal/analysis/filmdec/` vert sans les gardes. Fichiers 222 L et 243 L.
+
+**Prochaine étape** : si le chantier veut publier, exercer la traversée slot → xuid sur ces
+événements et décider du contrat. Détail et mesures : `.ai/V7.5/film_re/NOTE_BIPED_PICKUP_2026-08-31.md`.

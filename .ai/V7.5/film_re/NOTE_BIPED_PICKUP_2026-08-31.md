@@ -1,9 +1,15 @@
-# biped_pickup (type 9) EST DECODE : le ramassage est nomme, date et attribue
+# biped_pickup (type 9) EST DECODE : le ramassage est date, nomme ET attribue au ramasseur
+
+> Historique de cette note. Le **lot 1** (grammaire, cadrage, confrontation produit) concluait
+> « nomme et date — l'attribution reste a faire » : `ref0` n'etait pas identifiee. Le **lot 2**
+> l'a resolue — `slot du ramasseur = 512 + ref0.index`, exact sur 32/32 paires de verite
+> terrain. Le titre a ete corrige en consequence. Ce qui reste hors de portee de l'evenement
+> est desormais l'INSTANCE de l'objet ramasse (donc le socle d'origine), pas le ramasseur.
 
 Date : 2026-08-31. Chantier RAMASSAGE, worktree `wt/biped-pickup`. Instruments :
-`apps/go-api/internal/analysis/filmdec/biped_pickup_{research,grammaire,confront}_test.go`,
+`apps/go-api/internal/analysis/filmdec/biped_pickup_{research,grammaire,confront,ref0,ref0_couverture}_test.go`,
 sous garde `BIPED_PICKUP_FILM` (sautes sans elle, aucun effet en CI, aucune publication
-production dans ce lot).
+production dans ces lots).
 
 ## Ce qui est PROUVE
 
@@ -22,7 +28,7 @@ production dans ce lot).
 
    ```
    [1 continuation][R(7) type = 9]
-   ref0 : R(1) porte ; si 1 : R(8) index + R(2) gen      <- domaine 2  (LE RAMASSEUR ?)
+   ref0 : R(1) porte ; si 1 : R(8) index + R(2) gen      <- domaine 2 : LE RAMASSEUR (slot = 512 + index)
    ref1 : R(1) porte ; si 1 : R(13) + R(2)               <- domaine 8  (jamais presente)
    ref2 : R(1) porte ; si 1 : R(13) + R(2)               <- domaine 7  (jamais presente)
    charge : R(3) classe ; R(1) porte ; si 1 : R(32) identifiant d'objet
@@ -146,13 +152,17 @@ nommer les identifiants de classe 2/3 (equipement, grenades), absents du catalog
 
 ## Ce qui N'EST PAS prouve, et les negatifs
 
-- **`ref0` n'est PAS identifie.** C'est une reference du domaine 2, R(8), presente a 100 %,
-  mais elle prenait deja **25 valeurs distinctes sur 50 evenements** dans la fenetre temoin de
-  000d5950 (17 sur 34 pour 00502e52) : ce n'est donc PAS un index de joueur (8 joueurs dans
-  ces parties). Ce n'est pas
-  non plus un slot de bipede (ceux-ci vivent vers 512-615, domaine 1). L'hypothese « ref0 = le
-  ramasseur » est **NON VERIFIEE** ; le lien ramasseur -> joueur reste a faire. C'est le
-  travail restant pour lever la limite « prises sur socle sans xuid ».
+- **(LOT 1, REFUTE PAR LE LOT 2 — conserve parce que l'erreur est instructive.)** Le lot 1
+  concluait : « `ref0` n'est PAS identifiee ; 25 valeurs distinctes sur 50 evenements, donc ni
+  un index de joueur ni un slot de bipede ». **C'etait faux**, et faux exactement comme sur
+  `damage_aftermath` : je lisais l'INDEX BRUT sans la BASE, alors que le lecteur de l'exe
+  reconstruit `(gen<<30) | (base + index)`. Voir « ref0 EST RESOLUE » ci-dessous. Lecon :
+  devant une reference du modele M qui « ne ressemble a rien », ajouter la base AVANT de
+  publier un negatif.
+- **L'INSTANCE de l'objet ramasse n'est PAS dans l'evenement.** Le type 9 porte l'identifiant
+  de CATALOGUE de l'objet (le R(32)), pas son handle monde : H-B mesuree et REFUTEE (voir plus
+  bas). Consequence produit : le lien vers le SOCLE d'origine d'une prise reste l'affaire du
+  canal spatial (schema 26) — l'evenement natif ne le donne pas.
 - **Le residuel (~30 % du plafond) de trames non exactes n'est pas explique.** Il n'est pas du a la
   grammaire : aucun cadrage voisin ne fait mieux (0,0 % a -1, +1, +2, +3 sur les deux films),
   et le balayage de largeur donne un pic unique. Mais on reste a ~70 % du plafond `unit_zoom`,
@@ -174,23 +184,79 @@ nommer les identifiants de classe 2/3 (equipement, grenades), absents du catalog
   DEDUIT : avec lui la longueur modale ne serait pas 50, et 50 est mesure sur 160/160
   evenements seuls des deux films, sans une seule exception.
 
-## Ce que ce lot debloque pour le produit
+## LOT 2 — `ref0` EST RESOLUE : c'est le RAMASSEUR, `slot = 512 + index`
 
-La condition de reprise ecrite pour le son de ramassage est **levee sur la moitie du sujet** :
+**La verite terrain n'a pas ete refabriquee** : le lot 1 avait deja apparie, sans ambiguite,
+des evenements type 9 a des emissions i43..i46 portant LA MEME arme a moins de 500 ms. Or une
+emission i43..i46 est lue sur un record delta ANCRE : son slot de bipede est connu. Pour ces
+paires, **le ramasseur est connu**, et c'est contre lui qu'on juge — pas contre un proxy.
 
-- l'evenement natif est **date a la milliseconde du paquet** (plus d'intervalle `[tLow, tHigh]`) ;
-- il **nomme l'objet** au catalogue de production pour les armes (100 % des familles), et il
-  **etiquette** les ramassages non-arme (classes R(3) 2 et 3) ;
-- il **couvre le trou de rappel** d'i43..i46 : 5/7 puis 3/3 des arrivees que le canal actuel
-  rate, arme nommee, contre un plancher de hasard de 9-14 % ;
-- il **corrobore** le canal actuel a 100 % / 91,7 % (temoin 4,8 % / 0,0 %) : les deux canaux
-  voient la meme chose quand ils voient tous les deux.
+Le juge n'est pas un taux de « liage » (leçon `damage_aftermath` : c'est un proxy faible) mais
+la **correspondance EXACTE par evenement**. On ne balaye meme pas la base : on calcule l'ecart
+`slot du ramasseur - index de ref0` paire par paire et on regarde son histogramme.
 
-**Ce qui manque pour publier** : l'attribution au JOUEUR. `ref0` n'est pas resolue, et sans
-elle un ramassage est date et nomme mais anonyme. Prochaine etape naturelle : identifier le
-domaine 2 (correlation de `ref0` avec les fils de vie, avec les slots bipedes du meme paquet,
-et avec le pont slot -> xuid existant de `killsource`), sur le modele de ce qui a resolu la
-reference du domaine 1 de `damage_aftermath` par l'ajout de la base de plage.
+| mesure | 000d5950 | 00502e52 |
+|---|---|---|
+| paires NON AMBIGUES de verite terrain | 21 (0 ecarte) | 11 (0 ecarte) |
+| valeurs distinctes de `slot - index` | **1** | **1** |
+| **base trouvee** | **512 sur 21/21 (100 %)** | **512 sur 11/11 (100 %)** |
+| temoin (appariement permute d'un cran) | 16 valeurs, mode a 14,3 % | 9 valeurs, mode a 18,2 % |
+
+**Une seule valeur distincte sur 32 paires, deux films, zero exception.** C'est la MEME base
+que celle de la reference domaine 1 de `damage_aftermath` (~512, le debut de la plage des
+bipedes). H-A est RETENUE.
+
+**H-B (ref0 = l'objet ramasse) est REFUTEE** : `512 + ref0` egale le slot du RAMASSEUR sur
+21/21 et 11/11 des paires, et un slot est unique — il ne peut pas designer a la fois le bipede
+qui ramasse et l'objet ramasse.
+
+### Les classes 2 et 3 (equipement, grenades) : meme base, verite terrain independante
+
+Les paires ci-dessus sont toutes de classe R(3)=0 : elles ne prouvent la base que pour les
+ramassages d'arme. Pour les classes 2 et 3, la verite terrain est ailleurs — le **canal
+equipement i48** (`ScanFilmEquipmentChanges`), dont chaque emission est ancree sur un record
+delta et porte donc le slot du bipede.
+
+| mesure | 000d5950 | 00502e52 |
+|---|---|---|
+| emissions d'equipement (vies) | 92 (77) | 82 (65) |
+| evenements classe 2/3 ayant une emission a <= 500 ms | 26 | 13 |
+| dont `512 + ref0` == **le slot emetteur** | **16 (61,5 %)** | **10 (76,9 %)** |
+| temoins decales +37 / -53 / +91 s | **0,0 / 0,0 / 0,0 %** | **0,0 / 0,0 / 0,0 %** |
+| CONTROLE classes 0/1 (armes) sur le meme canal | 30,8 % | 0,0 % |
+
+**Combine : 26/39 = 66,7 %, contre 0,0 % sur les six temoins decales.** Et le controle positif
+tranche l'objection « ce n'est que de la densite d'emissions » : les classes ARMES, mesurees
+sur le MEME canal equipement avec la meme fenetre, tombent a 30,8 % et 0,0 %. L'appariement est
+donc semantique. Les ~33 % de non-correspondance s'expliquent sans mystere : la fenetre de
+500 ms admet aussi les emissions d'equipement des AUTRES joueurs, denses sur ces modes.
+
+### Couverture — et pourquoi elle ne prouve rien toute seule
+
+`512 + ref0` tombe dans la bande de bipedes pour **135/135 et 73/73 evenements, toutes classes
+confondues (100 %)**. Mais le TEMOIN permute vaut lui aussi **100 %** : la bande fait ~100
+slots contigus et un index quelconque y tombe toujours. **Cette mesure ne demontre rien**, elle
+est publiee comme couverture et rien d'autre. Les juges sont les deux tables ci-dessus.
+
+## Ce que ce chantier debloque pour le produit
+
+La condition de reprise ecrite pour le son de ramassage est **levee sur QUI / QUOI / QUAND** :
+
+- **QUAND** — l'evenement est date a la milliseconde du paquet (plus d'intervalle `[tLow, tHigh]`) ;
+- **QUI** — `slot = 512 + ref0.index`, exact sur 32/32 paires de verite terrain. Ce slot est
+  celui du canal i43..i46 (`HeldWeaponChange.Slot`), c'est-a-dire l'espace de slots que le
+  pipeline de rejeu relie deja au joueur. **Reserve honnete** : la traversee slot -> xuid
+  elle-meme n'a pas ete re-exercee dans ce lot, seule l'identite du slot est prouvee ;
+- **QUOI** — l'identifiant de catalogue R(32) (100 % des familles d'arme d'i43..i46 connues) et
+  la classe R(3) (armes 0/1 · equipement et grenades 2/3, separation a 0,0 % sur 118 evenements) ;
+- **couverture** — 5/7 puis 3/3 des arrivees que le canal actuel rate, arme nommee, contre un
+  plancher de hasard de 9-14 % ; et corroboration du canal actuel a 100 % / 91,7 % (temoin
+  4,8 % / 0,0 %).
+
+**Ce qui manque encore** : l'INSTANCE de l'objet, donc le SOCLE d'origine d'une prise. H-B est
+refutee ; l'evenement ne porte pas de handle monde. Ce lien-la reste l'affaire du canal spatial
+(schema 26). Autrement dit : « qui a ramasse quoi, quand » est acquis ; « depuis quel socle »
+ne l'est pas et ne le sera pas par cet evenement.
 
 ## Reproduire
 
