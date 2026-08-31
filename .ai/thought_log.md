@@ -1,3 +1,51 @@
+## [2026-08-31] Assaut — LES TROIS MAISONS de la donnée d'objectif, et pourquoi l'armement n'est dans aucune des deux lisibles — Complété
+
+**Retour utilisateur** : « bizarre parce que statborg a les prises de colline en KOTH, les jauges
+et minuteurs pour CTF, les zones en capture et tout pour Strongholds. Ce serait étrange d'avoir ça
+à un autre endroit. » L'intuition désigne le bon **voisinage** — et elle m'a fait dresser la carte,
+qui manquait :
+
+    1. COMPOSANTS DU STATBORG   les COMPTEURS par joueur — flag_captures, zone_captures,
+                                vip_selected, bomb_detonations.
+    2. PIED DE FILM, th=10      les INTERACTIONS d'objectif — prises de zone, prises de colline,
+                                possession du crâne (`extractFromTh10`).
+    3. ARCHÉTYPE ti=13          les PROPRIÉTÉS D'OBJET GÉRÉ — la JAUGE de capture, le
+                                propriétaire d'une zone, la colline active.
+
+**Les jauges et minuteurs qu'il cite vivent dans la TROISIÈME**, pas dans les composants. C'est
+ce que je n'avais pas vu : je cherchais dans la première.
+
+**MAISON 2, JAMAIS OUVERTE POUR L'ASSAUT.** `classifyObjectiveMode` rendait `""` jusqu'à ce jour,
+et `ObjectiveTypeBomb` tombe encore dans le `default` du dispatch : le pied de ces neuf films
+n'avait jamais été lu. Sonde écrite sans le filtre `th == 10` de `decodeTh10Block` (qui refuse
+tout autre indice), donc en relevant l'octet 47 tel qu'il est. **Résultat : `th=10` est QUASI
+ABSENT en Assaut — 6 blocs sur 9 films**, contre le canal entier des zones et collines. Les
+indices dominants sont `th=20` (1 036), `th=50` (1 232), `th=100` (188), `th=150` (25). Aucun ne
+tient le critère (couverture 28/28 + dispersion ≤ 20 %) : les deux gros couvrent tout avec 334 %
+et 768 % de dispersion — ils précèdent trivialement n'importe quoi.
+
+**MAISON 3 : PAS UN NÉGATIF, UN CANAL ILLISIBLE — et c'est le résultat qui compte.** Première
+passe en ne gardant que les lectures CHAÎNÉES : **zéro progression**, parce que le chaînage vaut
+**1,9 à 16,4 %** sur ces neuf films contre **87 à 99 % sur un KOTH de référence**. C'est
+exactement la contamination d'ancrage établie en phase A3. Seconde passe filtre relâché, pour voir
+s'il y a du signal sous le bruit : 7 couples (slot, tag) portent une progression, chacun couvrant
+1 explosion sur 28. Rien de cohérent.
+
+**Les 8 slots `ti=13` sont bien là, à chaque film.** C'est leur ANCRAGE qui est cassé. Le verdict
+se lit donc « ce canal n'est pas lisible en Assaut », jamais « l'armement n'y est pas » — et
+comme c'est la maison où vivent les jauges, **c'est là qu'il est le plus probablement**.
+
+**BILAN DES TROIS MAISONS** : 1 balayée proprement (112 canaux) → négatif net ; 2 balayée →
+négatif, et l'Assaut n'y publie presque rien ; 3 → **bloquée par un défaut de décodage qui a déjà
+son chantier**. Réparer l'ancrage de `ti=13` sur les cartes d'Assaut est le préalable, et c'est
+désormais le chemin critique de l'armement.
+
+Deux films (`1c01e34f`, `34bb3bc8`) journalisent une **empreinte de registre ECS INCONNUE** —
+build de jeu différent du corpus de calibration. À garder à l'esprit avant toute conclusion fine
+sur eux.
+
+**Gates** : go test `./internal/analysis/...` vert, go vet 0, golangci-lint 0 issue, gofmt propre.
+
 ## [2026-08-31] Assaut — le son de l'explosion est câblé ; l'armement n'est PAS un compteur du statborg — Complété
 
 **LE SON EST LIVRÉ.** L'utilisateur a désigné `538469998` à l'oreille sur la planche d'écoute, et
