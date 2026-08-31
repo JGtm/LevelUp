@@ -42,10 +42,22 @@ plus ma position est variable là où la vérité est fixe à 113). **La visée 
 (fire_events fait foi)** ; mon décodeur type 36 a juste un résidu de cadrage post-arme, redondant
 avec la victime de damage_aftermath.
 
-**Conclusion / prochaine étape** : croiser killsource pour départager laquelle des 2 refs
-domaine 1 de damage_aftermath est le blessé ; corriger le cadrage post-arme de mon type 36
-(optionnel, la visée est déjà donnée par fire_events) ; corpus complet. Note :
-`film_re/NOTE_MODELE_EVENEMENTS_2026-08-30.md`.
+**Suite (challenge user « on a pas mieux que 19 % ? »)** : 3e workflow `type36-full-charge`
+(10 agents) a caractérisé la charge complète du type 36 (boucles composantes 35 bits/comp,
+cibles avec VICTIME R(3) domaine-6 valeurs 0..5 + vecteur 3*R(w) w∈{4,6,12} data-dépendant,
+ancre visée@113 cas vide confirmée). MAIS le cadrage N'EST PAS CLOS : (1) la grammaire workflow
+littérale trouve 0 cas vide (préambule décalé — mes 3 refs consomment de vrais bits omis par le
+workflow) ; (2) mon en-tête + arme forcée à 33/64/65/96 : la visée ne tombe jamais à 113 ni
+n'est structurée. Il y a ~27 bits entre type et attaquant@36 que ni mon en-tête ni le workflow
+ne reproduisent. VERDICT : la visée existe dans ~tous les tirs (pas une limite de donnée) mais
+la décoder hors cas vide demande de réconcilier exactement le préambule avec les boucles — NON
+RÉSOLU malgré 2 workflows. fire_events (19 %, cas vide) reste la source en prod. Expériences V2/V3
+supprimées (négatifs), findings dans la note.
+
+**Conclusion / prochaine étape** : >19 % = partir de l'ANCRE fire_events (positions physiques
+36/44/113) et dériver le préambule À REBOURS (pas de haut en bas). Le blessé « qui a été
+touché » passe mieux par les refs domaine 1 de damage_aftermath (départager par killsource) que
+par le R(3) du type 36. Note : `film_re/NOTE_MODELE_EVENEMENTS_2026-08-30.md`.
 
 ## [2026-08-31] Percer la trame — les deux lecteurs composites du type 36 PERCÉS (workflow) ; en-tête tir PROUVÉ, visée plausible non prouvée — En cours
 
