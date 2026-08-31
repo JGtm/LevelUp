@@ -1,0 +1,126 @@
+/**
+ * useReplayBombBlast — LE CÂBLAGE de la DÉFLAGRATION D'ASSAUT (`bomb_detonations`), en un point.
+ *
+ * MÊME PARTI QUE `useReplayVipCrown` et `useReplaySkullCarrier` : le canvas du rejeu porte une
+ * dette de taille GELÉE par un cliquet (`placementFamily.guard.test.ts`) — toute addition s'y
+ * fait par EXTRACTION, et ce hook n'en rend au canvas que deux lignes utiles.
+ *
+ * POURQUOI PAS DANS `useReplayFlagCarries`, qui porte déjà l'onde de capture et la même
+ * jointure. Parce que ce hook-là est gardé par `carries.length === 0` : un match d'Assaut ne
+ * publie AUCUN drapeau, donc l'explosion n'y serait jamais peinte. Deux modes disjoints, deux
+ * gardes disjointes — les fondre ferait dépendre l'explosion d'une donnée qui n'existe pas dans
+ * son mode.
+ *
+ * AUCUNE GARDE DE MODE ICI, et c'est délibéré : la garde EST la donnée. `bomb_detonations` n'est
+ * publié que par un match d'Assaut (`ObjectiveTypeBomb`, cf. `objectiveevents/named.go`), donc
+ * un film d'un autre mode rend une liste vide sans qu'on ait à connaître sa variante. Même
+ * doctrine que le crâne libre et la couronne : le calque lit ce que le document porte.
+ */
+import { useCallback, useMemo } from 'react'
+
+import type { MatchScoreboardRow } from '@/lib/api/types'
+import { parseTeamSideID } from '@/lib/halo/teamNames'
+
+import {
+  BOMB_BLAST_HOLD_FRAMES,
+  buildBombBlastFx,
+  drawBombBlastFx,
+  type BombBlastStyle,
+} from './bombBlastFx'
+import { KILLPOS_WINDOW_MS, posOfPlayerAt } from './killFx'
+import type { CanvasView } from './objectivesLayer'
+import { msToFrames } from './replayLogic'
+import type { ReplayDocumentReady, ReplayTrackReady } from './replayNormalize'
+
+export interface BombBlastHookInput {
+  doc: ReplayDocumentReady
+  view: CanvasView
+  scoreboard: MatchScoreboardRow[] | null | undefined
+  /** Encre d'un camp vu de la page (tokens déjà résolus par l'appelant). */
+  teamColorOf: (ally: boolean) => string
+  /** Encre servie quand le camp est inconnu : ni équipe inventée, ni explosion invisible. */
+  neutral: string
+  reducedMotion: boolean
+}
+
+export interface ReplayBombBlast {
+  /** Le film porte-t-il des explosions ? Sert au canvas à ne rien peindre pour rien. */
+  available: boolean
+  /** Peint les déflagrations de l'image demandée. No-op quand il n'y en a aucune. */
+  paint: (ctx: CanvasRenderingContext2D, frame: number) => void
+}
+
+export function useReplayBombBlast({
+  doc,
+  view,
+  scoreboard,
+  teamColorOf,
+  neutral,
+  reducedMotion,
+}: BombBlastHookInput): ReplayBombBlast {
+  // LES VIES PAR JOUEUR, indexées une fois — même raison que pour la couronne : la relecture
+  // tourne à chaque image, la refaire dans la boucle balaierait toutes les traces du film.
+  const livesByXuid = useMemo(() => {
+    const map = new Map<string, ReplayTrackReady[]>()
+    for (const t of doc.tracks) {
+      if (!t.xuid) continue
+      const list = map.get(t.xuid)
+      if (list) list.push(t)
+      else map.set(t.xuid, [t])
+    }
+    return map
+  }, [doc.tracks])
+
+  const deathFrames = useMemo(
+    () => Math.max(1, Math.round(msToFrames(KILLPOS_WINDOW_MS, doc))),
+    [doc],
+  )
+  // LA FENÊTRE APRÈS-MORT COMPTE PLUS ICI QU'AILLEURS : le poseur d'une bombe meurt souvent
+  // DANS son explosion, et sans elle la déflagration la mieux datée du match serait écartée
+  // faute de position.
+  const posOf = useCallback(
+    (xuid: string, frame: number) => posOfPlayerAt(livesByXuid.get(xuid), frame, deathFrames),
+    [livesByXuid, deathFrames],
+  )
+
+  const blasts = useMemo(() => buildBombBlastFx(doc, posOf), [doc, posOf])
+
+  // LE CAMP DE L'AUTEUR SE LIT AU TABLEAU DE BORD, jamais dans le film : l'action ne porte que
+  // le xuid. Un auteur absent du tableau prend le neutre du thème — jamais une équipe devinée,
+  // même règle que l'onde de capture.
+  const teamOfXuid = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const r of scoreboard ?? []) {
+      const team = parseTeamSideID(r.team_side ?? null)
+      if (team !== null) map.set(r.xuid, team)
+    }
+    return map
+  }, [scoreboard])
+
+  const allyTeamID = useMemo(
+    () => parseTeamSideID(scoreboard?.find((r) => r.is_me)?.team_side ?? null),
+    [scoreboard],
+  )
+
+  const style = useMemo<BombBlastStyle>(
+    () => ({
+      inkOf: (xuid: string) => {
+        const team = teamOfXuid.get(xuid)
+        if (team === undefined || allyTeamID === null) return neutral
+        return teamColorOf(team === allyTeamID)
+      },
+      reducedMotion,
+    }),
+    [teamOfXuid, allyTeamID, teamColorOf, neutral, reducedMotion],
+  )
+
+  const paint = useCallback(
+    (ctx: CanvasRenderingContext2D, frame: number) => {
+      if (blasts.length === 0) return
+      drawBombBlastFx(ctx, blasts, view, { frame, hold: BOMB_BLAST_HOLD_FRAMES }, style)
+    },
+    [blasts, view, style],
+  )
+
+  return { available: blasts.length > 0, paint }
+}

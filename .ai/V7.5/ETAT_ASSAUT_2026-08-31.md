@@ -78,7 +78,31 @@ composant sortent de la MEME emission : `modeScoreInDomain` les borne tous les d
 enregistrement legitime a `B=1` (`ce083875` a 947537 ms, une vraie explosion) survit — exiger `B=0`
 l'aurait jete.
 
-### 1.d Le PONT D'IDENTITE, la derniere marche — 21 sur 28 a l'ecran
+### 1.d LA DEFLAGRATION SUR LA CARTE — l'effet voyant (retour du 2026-08-31)
+
+Le filigrane de fiche (22 % d'opacite, derriere le contenu, a l'autre bout de l'ecran par
+rapport a la carte) ne suffisait pas : « faudrait un truc bien voyant quand meme ». L'explosion
+se peint desormais SUR LA CARTE, a l'endroit et a l'instant ou elle a eu lieu, en trois couches
+(`bombBlastFx.ts`) :
+
+| couche | ce qu'elle fait |
+|---|---|
+| ECLAT | disque plein, large d'emblee, eteint au premier QUART de la vie |
+| ONDE | anneau epais qui s'ouvre a 44 px — presque DEUX FOIS l'onde d'une capture (24 px) |
+| ECLATS | huit traits radiaux ; ils meurent au carre du temps, pour que la fin soit un anneau seul |
+
+Tenue **12 images (1,2 s)**, deux fois celle d'une capture : une capture arrive plusieurs fois
+par manche, une explosion d'Assaut une a quatre fois par MATCH — un evenement rare a le droit de
+tenir l'ecran. Encre = celle du CAMP de l'auteur, comme l'onde de capture : sur la carte le
+glyphe dit QUOI, la couleur dit QUI. Sous « mouvement reduit », une empreinte FIXE et pleine qui
+ne fait que palir — l'information reste, seul le mouvement part.
+
+Aucune garde de mode : la garde EST la donnee (seul un match d'Assaut publie la stat). Le
+cablage (`useReplayBombBlast`) a ete PAYE par une extraction, comme le cliquet de taille du
+canvas l'exige — la fin de vol des grenades part dans `useReplayGrenadeRest`, et le plafond
+descend de 678 a 665.
+
+### 1.e Le PONT D'IDENTITE, la derniere marche — 21 sur 28 a l'ecran
 
 Le nommage attribue une explosion a un SLOT d'entite statborg ; le rejeu, lui, joint sur le XUID.
 Une explosion dont le pont ne sait pas nommer le slot POUR SA MANCHE n'est pas publiable — la
@@ -99,7 +123,7 @@ ne retenait qu'une manche par film One Bomb, donc une seule explosion publiable 
 total contre 21 aujourd'hui**. Le chiffre est fige par `TestAssautA5PontIdentite` pour qu'une
 amelioration du pont se voie, et une degradation aussi.
 
-### 1.e L'API ne donne RIEN pour l'Assaut — negatif DEFINITIF
+### 1.f L'API ne donne RIEN pour l'Assaut — negatif DEFINITIF
 
 La reprise supposait qu'il fallait re-interroger l'API sous le bon nom de famille (`BombStats` et
 non `AssaultStats`). **C'est refute par la mesure** : dump du payload `GetMatchStats` brut de
@@ -127,9 +151,7 @@ replique qu'une.**
 
 ## 3. Ce qui RESTE, par ordre de rendement
 
-1. **Le SON de l'explosion** — l'evenement existe desormais, les sons sont extraits et rendus ; il
-   ne manque que la DESIGNATION du stem par l'utilisateur. Une ligne dans
-   `objectiveSound.OBJECTIVE_SOUND_STEMS`. C'est le meilleur rapport effort/rendu du reste.
+1. **Le SON de l'explosion** — voir §3.1 : la ligne est écrite, il manque le fichier.
 2. **Le PONT D'IDENTITE sur les films multi-manches** — 5 explosions sur 28 y tombent (`c75f33b8` en perd ses 2). `SlotIdentityByRound` resout chaque manche sur ses seules progressions de morts ; une manche de One Bomb en offre peu. Piste : elargir la source d'appariement au-dela du compteur de morts, ou accepter un appariement inter-manches SOUS PREUVE. Chantier a chiffrer, transverse (il sert aussi Oddball multi-manches).
 3. **Les 2 explosions sans porteur** (`df8fcbef` manche 3, `c75f33b8` manche 1). Le point n'existe
    que sur le slot d'EQUIPE — verifie en imprimant TOUS les enregistrements `comp 0` de ces
@@ -146,6 +168,36 @@ replique qu'une.**
 6. **Les 56 emplacements jamais balayes** — `decodeStatComponent` lit puis JETTE jusqu'a 2 valeurs
    conditionnelles par composant ; `StatValue{A, B}` n'en porte que 2 sur 4. Piste transverse, pas
    propre a l'Assaut, et la plus grosse du registre.
+
+### 3.1 Le SON de l'explosion — tout est prêt sauf le fichier
+
+**Où se désigne un son d'objectif** : la table `OBJECTIVE_SOUND_STEMS` de
+`apps/web/src/features/match-replay/objectiveSound.ts`. La clé est le NOM CANONIQUE DE LA
+STATISTIQUE, la valeur le stem d'un `.wav` de `static/sounds/halo_infinite/`. Une ligne suffit :
+
+    bomb_detonations: { any: 'objective_bomb_detonated' },
+
+`{ any: ... }` et non `{ ally, enemy }` : la RE des banques dit que l'Assaut ne déclare qu'UN
+son de détonation, sans variante de camp (`RE_BANQUES_SONORES_NOMMEES_2026-08-26.md` §3.2).
+
+**LE FICHIER N'EXISTE PAS ENCORE, et c'est le seul manque.** La ligne ci-dessus ne peut pas
+être posée sans lui : le garde-rail d'assets (`replaySoundAssets.guard.test.ts`) exige que
+chaque stem ait son `.wav`, et symétriquement que chaque `.wav` livré soit joué.
+
+**La source est identifiée au fichier près** :
+
+    banque     sb_004_mod_mp_assault                       2b01f208   38 wem
+    evenement  play_004_mod_mp_assault_bomb_detonated      984f65e5   1 wem
+
+**Un seul `.wem`, une seule couche** — c'est le cas SIMPLE : pas de reconstitution multi-couche
+à arbitrer, juste un décodage. Les 322 sons déjà rendus couvrent 18 banques, et
+`2b01f208` n'en fait pas partie : le rendu n'a jamais été lancé sur la banque d'Assaut. Il
+demande `vgmstream-cli` (les `.wem` sont en Wwise Vorbis, `fmt = 0xFFFF` — ffmpeg ne les décode
+pas), qui n'est plus sur le poste.
+
+Les sept autres événements de la banque (`bomb_planted_loop` 4 variantes, `bomb_disarm_loop`,
+`bomb_taken_team/enemy`, `bomb_pickup_team/enemy`, `bomb_spawn`, `bomb_despawn`) n'ont AUCUN
+événement correspondant dans le rejeu : le film ne réplique que la détonation.
 
 ## 4. Pieces
 

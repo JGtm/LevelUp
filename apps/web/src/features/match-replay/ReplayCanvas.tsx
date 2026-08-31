@@ -44,6 +44,8 @@ import { EMPTY_FEED, EMPTY_MEDIA, EMPTY_ZONES, SERIES_TOKENS } from './replayCan
 import { useReplayObjectiveObjects } from './useReplayObjectiveObjects'
 import { useReplayVipCrown } from './useReplayVipCrown'
 import { useReplaySkullCarrier } from './useReplaySkullCarrier'
+import { useReplayBombBlast } from './useReplayBombBlast'
+import { useReplayGrenadeRest } from './useReplayGrenadeRest'
 import { useReplayFlagCarries } from './useReplayFlagCarries'
 import { useGrenadeIcons } from './useGrenadeIcons'
 import { useZoneStates } from './useZoneStates'
@@ -77,7 +79,6 @@ import {
   drawKillFxLayer,
   drawShotsLayer,
 } from './replayDraw'
-import { drawGrenadeRestLayer } from './grenadeRestLayer'
 import { frameToMs } from './replayLogic'
 import type { ReplayWindowBounds } from './replayWindow'
 import { drawProjectilesLayer } from './replayProjectiles'
@@ -322,6 +323,11 @@ export function ReplayCanvas({
   const vipCrown = useReplayVipCrown({ doc, view: canvasView, enabled: showVipCrown, ink: neutralInk, reducedMotion })
   // LE PORTEUR DU CRÂNE d'Oddball (schéma 23) : crâne sur le porteur courant, relu image par image.
   const skullCarrier = useReplaySkullCarrier({ doc, view: canvasView, enabled: showSkullCarrier, ink: neutralInk, outline: markInk.outline, reducedMotion })
+  // LA FIN DE VOL des grenades (dix-septième extraction — elle paie la déflagration ci-dessous).
+  const grenadeRest = useReplayGrenadeRest({ doc, view: canvasView, fx: grenadeRestFx, window: restWindow, ink: fxInk, smoke: floorStyle.edge, halo: grenadeColor, reducedMotion })
+  // LA DÉFLAGRATION D'ASSAUT : l'explosion de la bombe, à l'endroit et à l'instant où elle a eu
+  // lieu (éclat + onde + éclats). Aucune garde de mode : seul un match d'Assaut publie la stat.
+  const bombBlast = useReplayBombBlast({ doc, view: canvasView, scoreboard, teamColorOf, neutral: floorStyle.edge, reducedMotion })
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current
@@ -461,30 +467,8 @@ export function ReplayCanvas({
     }
     // La FIN DE VOL après le lancer : halo « dernière position connue » (jamais un
     // impact — aucun événement de détonation dans le film), nappe électrique persistante
-    // pour la Shock/Dynamo.
-    if (grenadeRestFx.length > 0) {
-      drawGrenadeRestLayer(
-        ctx,
-        grenadeRestFx,
-        view,
-        {
-          frame,
-          holdHalo: restWindow.holdHalo,
-          holdDynamo: restWindow.holdDynamo,
-          // Durée réelle d'UNE frame : `frameToMs` porte déjà le repli des artefacts sans
-          // échelle temporelle. La lire ici plutôt que le champ brut évite qu'une explosion
-          // reste figée à l'âge zéro sur un artefact ancien.
-          frameMs: frameToMs(1, doc),
-        },
-        {
-          ink: fxInk,
-          smoke: floorStyle.edge,
-          halo: grenadeColor,
-          k: dpr,
-          reducedMotion,
-        },
-      )
-    }
+    // pour la Shock/Dynamo. Câblage : useReplayGrenadeRest (dix-septième extraction).
+    grenadeRest.paint(ctx, frame, dpr)
     // L'ÉTAT DES ZONES à l'image courante (schémas 16-18) : teinte du camp qui la tient,
     // surbrillance de la colline ACTIVE, arc de la JAUGE EN DIRECT. Il se peint dans la
     // boucle et non dans un calque cuit : la géométrie ne bouge pas, l'état si. Le calque lui-même
@@ -500,6 +484,9 @@ export function ReplayCanvas({
     vipCrown.paint(ctx, frame)
     // LE CRÂNE d'Oddball sur son porteur (le crâne LIBRE reste au sol via objectiveObjects).
     skullCarrier.paint(ctx, frame)
+    // LA DÉFLAGRATION d'Assaut, par-dessus tout le reste : c'est l'événement qui décide de la
+    // manche, et il n'y en a qu'une poignée par match.
+    bombBlast.paint(ctx, frame)
     // Le PULSE D'ACTION D'OBJECTIF (capture, retour, prise de zone) : un anneau qui
     // s'ouvre depuis la zone/le marqueur concerné à l'instant de l'action (lot 4.4).
     if (objectivePulses.length > 0) {
@@ -542,14 +529,14 @@ export function ReplayCanvas({
     grappleFx,
     grappleInk,
     killFx,
-    grenadeRestFx,
-    restWindow,
+    grenadeRest,
     objectivePulses,
     placements.teleports,
     zones,
     flags,
     vipCrown,
     skullCarrier,
+    bombBlast,
     floorStyle.edge,
     colorOfSlot,
     colorOfSlotOrLast,

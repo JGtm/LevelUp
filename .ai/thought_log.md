@@ -1,3 +1,54 @@
+## [2026-08-31] Assaut — la déflagration sur la carte, et où se désigne son son — Complété
+
+**Retour utilisateur** : « pour l'explosion il y a un effet UI ? Faudrait un truc bien voyant
+quand même ». Le filigrane de fiche livré le matin est à 22 % d'opacité, DERRIÈRE le contenu, à
+l'autre bout de l'écran par rapport à la carte — et en Assaut l'explosion n'est pas un détail de
+score : c'est le SEUL événement qui décide de la manche, une à quatre fois par match.
+
+**L'EXPLOSION SE PEINT DÉSORMAIS SUR LA CARTE**, à l'endroit et à l'instant où elle a eu lieu.
+Trois couches, parce qu'un anneau seul se lit comme une capture de drapeau — ce qu'une explosion
+n'est pas :
+
+    ÉCLAT    disque plein, large d'emblée, éteint au premier QUART de la vie (au-delà il ne
+             resterait qu'un voile qui empâterait l'onde)
+    ONDE     anneau épais qui s'ouvre à 44 px — presque DEUX FOIS celle d'une capture (24 px)
+    ÉCLATS   huit traits radiaux ; ils meurent au CARRÉ du temps, pour que la fin de l'effet
+             soit un anneau seul et non un soleil qui s'efface
+
+Tenue **12 images (1,2 s)**, deux fois celle d'une capture — une capture arrive plusieurs fois
+par manche, une explosion une à quatre fois par MATCH : un événement rare a le droit de tenir
+l'écran, et à cette densité le risque de recouvrement est nul. Encre = le CAMP de l'auteur
+(sur la carte, le glyphe dit QUOI et la couleur dit QUI). Sous « mouvement réduit », une
+empreinte FIXE et pleine qui ne fait que pâlir : ce qui part est le mouvement, pas
+l'information.
+
+**LE CÂBLAGE A ÉTÉ PAYÉ, comme le cliquet l'exige.** `ReplayCanvas.tsx` était PILE à son
+plafond (678) et sa doctrine est explicite : « toute addition s'y fait par extraction, le
+plafond suit le fichier vers le bas ». Dix-septième extraction — la FIN DE VOL des grenades part
+dans `useReplayGrenadeRest.ts` (l'appel de tracé et son objet d'options, pas une ligne de
+logique) ; le canvas passe à 665 et le plafond avec lui. `dpr` reste un argument de `paint` :
+il est calculé dans la boucle, le figer servirait une épaisseur périmée dès le premier export.
+
+**Aucune garde de mode sur la déflagration, et c'est délibéré : la garde EST la donnée.** Seul
+un match d'Assaut publie `bomb_detonations` — un film d'un autre mode rend une liste vide sans
+qu'on ait à connaître sa variante. Elle ne vit PAS dans `useReplayFlagCarries` (qui porte déjà
+l'onde de capture et la même jointure) parce que ce hook est gardé par `carries.length === 0` :
+un match d'Assaut ne publie aucun drapeau, l'explosion n'y serait jamais peinte.
+
+**LE SON : la ligne est écrite, il manque le fichier.** Un son d'objectif se désigne dans
+`OBJECTIVE_SOUND_STEMS` (`objectiveSound.ts`) — clé = nom canonique de la stat, valeur = stem
+d'un `.wav` de `static/sounds/halo_infinite/`. Ici : `bomb_detonations: { any:
+'objective_bomb_detonated' }` (`any` et non `ally`/`enemy` : la banque d'Assaut ne déclare qu'UN
+son de détonation, sans variante de camp). La source est identifiée au fichier près — banque
+`sb_004_mod_mp_assault` (`2b01f208`), événement `play_004_mod_mp_assault_bomb_detonated`
+(`984f65e5`), **1 wem, une seule couche** : c'est le cas simple, un décodage, pas une
+reconstitution. Mais les 322 sons rendus couvrent 18 banques et celle d'Assaut n'en fait pas
+partie ; le rendu demande `vgmstream-cli` (Wwise Vorbis, `fmt = 0xFFFF` — ffmpeg ne le décode
+pas), qui n'est plus sur le poste. La ligne ne peut PAS être posée sans le fichier : le
+garde-rail d'assets exige que chaque stem ait son `.wav`.
+
+**Gates** : vitest 126 fichiers / 1 947 tests, typecheck cache purgé, eslint 0 erreur.
+
 ## [2026-08-31] Bombe RAM (4e sinistre) — le trou était l'OPÉRATEUR, pas le processus — Complété
 
 **J'ai saturé la machine de travail de l'utilisateur** en cuisant des artefacts de rejeu :
