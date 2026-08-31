@@ -79970,3 +79970,57 @@ contracttest · filmdec + replay · web (purge `.tmp`, typecheck vert, lint 0 er
 neutralisée → 2 tests tombent.
 
 **Prochaine étape** : reprise du lot 4 (équipement), suspendu après ses trois étapes mesurées.
+
+---
+
+## [2026-09-01] Lot 4 — l'équipement : hypothèse RENVERSÉE, nommage partiel, réfutation déplacée
+
+**Statut** : Complété (recherche pure ; aucun fichier de production touché).
+**Worktree** : `wt/biped-pickup`. Trois instruments neufs, sous gardes.
+
+**Le résultat qui compte : l'hypothèse donnée était à l'envers.** On m'a demandé de tester
+« classe 2 = équipement, classe 3 = grenades ». La mesure dit le contraire : c'est la **classe 3**
+qui porte un rang de palette i48 — 45,2 % et 40,0 % contre un témoin décalé à **0,0 %** sur les
+deux films. La classe 3 est donc l'équipement au sens d'i48. La classe 2, elle, **n'est pas
+identifiée** : le juge « compteur de grenades » la désigne faiblement sur un film (15,7 %) et
+pas du tout sur l'autre (0,0 %). Non conclu, et la faiblesse du juge est mesurée — i22 ne porte
+ses compteurs que sur 120 et 89 lectures.
+
+**Nommage : la voie est juste, sa couverture ne suffit pas.** Apparier chaque ramassage non-arme
+à une transmission i48 du même slot à ≤ 500 ms étiquette son `R(32)` d'un rang, que le manifeste
+nomme. Témoin décalé à **0,0 %** — l'appariement est sémantique. Mais seulement 19,5 % et 25,0 %
+des ramassages reçoivent une étiquette (seuil pré-enregistré : 30 %), et sur six identifiants,
+**deux seulement sont cohérents sur les deux films** (`eef5d48d` = Thruster, `8e2dc574` = rang
+19) ; un est en collision INTER-film. Aucun vote majoritaire appliqué : deux étiquettes pour une
+valeur restent deux étiquettes. Pas de table publiable.
+
+**J'ai dû corriger l'énoncé de l'étape 3.** « L'instant natif exact » m'était présenté comme
+l'idée neuve autorisant à retenter un lien réfuté. Ce n'en est qu'une à moitié : les émissions
+i48 sont DÉJÀ datées à la milliseconde, et la réfutation écrite impute l'échec à la DENSITÉ
+d'objets, pas au flou temporel. Ce que le canal natif apporte vraiment est la POPULATION —
+70 à 72 % des ramassages non-arme n'ont aucune émission i48 dans la fenêtre, la mesure D ne les
+voyait pas. C'est cela, l'idée neuve, et je l'ai écrite ainsi.
+
+**Réfutation ni levée ni confirmée — DÉPLACÉE.** À l'instant natif exact : médiane
+ramasseur → objet ti=37 vivant = **1,33 m**, contre 9,57 m pour un autre bipède au même instant
+(7,2×) et 15,10 m pour le même ramasseur à un instant décalé (11,4×). Le lien EXISTE. Mais
+1,33 m ne permet pas d'attribuer UN objet : mieux que les 1,4-1,7 m de la mesure D, moins bon
+que les 0,61-0,75 m des armes, part sous le mètre à 46 %. Ce n'est plus « le lien n'existe pas »
+mais « le lien existe et la résolution spatiale ne le rend pas injectif ».
+
+**Contrôle d'instrument, et il valide le préambule.** Rejoué avec une carte volontairement
+fausse : le rapport tombe de 7,2× à 1,8× et la part sous le mètre de 46,3 % à 0,0 %. Les
+mauvaises largeurs d'axe détruisent le signal, comme la leçon écrite le prévoyait — le résultat
+du bon cadrage n'est donc pas un artefact.
+
+**Deux limites assumées.** L'étape 3 est MONO-FILM : la carte de `00502e52` ne m'est pas connue,
+et la deviner en essayant celles qui donnent le meilleur résultat serait exactement l'ajustement
+que ce lot s'interdit. Et le croisement inter-film de l'étape 1 est fait à la main, la règle
+« un film par process » interdisant de le faire dans un seul test.
+
+**Rien n'est publiable de ce lot** : aucune des trois étapes n'atteint son seuil. Détail complet
+et chiffres : `.ai/V7.5/film_re/NOTE_EQUIPEMENT_PICKUP_2026-09-01.md`.
+
+**Prochaine étape** : un film à carte connue pour croiser l'étape 3 ; élargir la fenêtre
+d'appariement de l'étape 1 en mesurant ce que le témoin y perd ; pour la classe 2, le pool Lua
+`hsc*` comme vocabulaire et `biped_throw_initiate` comme troisième juge.
