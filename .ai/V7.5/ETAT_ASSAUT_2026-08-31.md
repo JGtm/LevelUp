@@ -157,9 +157,10 @@ replique qu'une.**
    que sur le slot d'EQUIPE — verifie en imprimant TOUS les enregistrements `comp 0` de ces
    manches. Ce n'est pas un filtre : le film ne replique pas le compteur par joueur. Rien a
    corriger sans une autre source.
-4. **L'ARMEMENT de la bombe** — voir §3.3 : la branche « compteur du statborg » est FERMEE par la
-   mesure (112 canaux, 9 films, 28 explosions), la branche « minuterie » reste INDECISE faute de
-   sonde separante (temoin a 1,05). Les pistes vivantes y sont nommees.
+4. **L'ARMEMENT de la bombe** — voir §3.3 et §3.4. Les TROIS maisons de la donnee d'objectif sont
+   cartographiees : les deux LISIBLES sont fermees par la mesure, et la troisieme (, celle
+   des JAUGES) est ILLISIBLE en Assaut — chainage 1,9-16,4 %. Reparer son ancrage est le chemin
+   critique.
 5. **Les sites d'amorcage comme ZONES** — A3 a echoue par l'ancrage `ti=13` ; le catalogue
    d'objectifs ne porte aucune forme de site sur les 5 cartes d'Assaut. La reprise passe par
    `assault_site` / `assault_site_plate` / `assault_bomb_spawn` (hachages craques le 2026-08-30),
@@ -219,6 +220,40 @@ lit « la mesure ne sait pas repondre », jamais « ce n'est pas la ».
 (l'archetype en compte 58), et la voie hors statborg — la MECHE comme constante moteur, a lire
 dans le pool Lua de la ParcelLibrary (meme technique que les constantes du drapeau CTF), d'ou
 `armement = explosion - meche`.
+
+### 3.4 LES TROIS MAISONS de la donnee d'objectif — la carte qui manquait
+
+L'intuition de l'utilisateur (« ce serait etrange d'avoir ca a un autre endroit ») designe le bon
+voisinage. La carte exacte, etablie le 2026-08-31 :
+
+| maison | ce qu'elle porte | lecteur |
+|---|---|---|
+| **1. Composants du statborg** | les COMPTEURS par joueur — `flag_captures`, `zone_captures`, `vip_selected`, `bomb_detonations` | `objectiveevents/named.go` |
+| **2. Pied de film, `th=10`** | les INTERACTIONS d'objectif — prises de zone, prises de colline, possession du crane | `extractFromTh10` |
+| **3. Archetype `ti=13`** | les PROPRIETES d'objet gere — **la JAUGE de capture**, le proprietaire d'une zone, la colline active | `filmdec.ScanFilmManagedProperties` |
+
+**Les jauges et minuteurs vivent dans la TROISIEME**, pas dans les composants. C'est la source de
+la confusion : la phase A6 cherchait dans la premiere.
+
+**Maison 2 — jamais ouverte pour l'Assaut, et desormais balayee.** `classifyObjectiveMode`
+rendait `""`, donc le pied de ces neuf films n'avait jamais ete lu. Sonde ecrite SANS le filtre
+`th == 10` de `decodeTh10Block`. Resultat : **`th=10` est quasi absent en Assaut — 6 blocs sur
+9 films**. Les indices dominants sont `th=20` (1 036), `th=50` (1 232), `th=100` (188),
+`th=150` (25) ; aucun ne tient le critere (les deux gros couvrent 28/28 avec 334 % et 768 % de
+dispersion, ils precedent trivialement n'importe quoi).
+
+**Maison 3 — PAS un negatif, un canal ILLISIBLE.** Premiere passe en ne gardant que les lectures
+CHAINEES : **zero progression**, parce que le chainage vaut **1,9 a 16,4 %** contre **87 a 99 %
+sur un KOTH de reference** (la contamination d'ancrage de la phase A3). Passe relachee : 7 couples
+(slot, tag) portent une progression, chacun couvrant 1 explosion sur 28. Les 8 slots `ti=13` sont
+bien la a chaque film — c'est leur ANCRAGE qui est casse.
+
+**Consequence, et c'est le chemin critique** : reparer l'ancrage de `ti=13` sur les cartes
+d'Assaut est le PREALABLE de l'armement. C'est la maison ou vivent les jauges, donc celle ou
+l'armement est le plus probablement — et la seule des trois qui ne soit pas fermee.
+
+Reserve a garder : `1c01e34f` et `34bb3bc8` journalisent une **empreinte de registre ECS
+INCONNUE** (build de jeu different du corpus de calibration).
 
 ## 4. Pieces
 
