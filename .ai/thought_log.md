@@ -21,9 +21,18 @@ domaine 1 (22-24/15-21 distincts = blessé/responsable), VICTIME domaine-0 final
 participants. 872k sur le corpus.** Deux bugs corrigés en route (bit de continuation oublié ;
 oracle masques 1-7 saturé → bascule sur la profondeur).
 
-**Conclusion / prochaine étape** : départager quelle ref d'en-tête est le blessé (sémantique) ;
-résoudre les 5 constantes de déquantification pour la valeur de dégât en clair ; corpus complet.
-Note : `film_re/NOTE_MODELE_EVENEMENTS_2026-08-30.md`.
+**Suite (deux tâches en parallèle, demande user)** : (A) DÉGÂT EN CLAIR RÉSOLU — magnitude =
+dq(R(5), 0, DAT_143cd8454=16.0) sur 32 niveaux, porte d'échelle = Kscale=DAT_143cd84ec=-1.0 =
+BIT DE SIGNE (positif=dégât, négatif=SOIN/recharge). Mesure : moyenne ~1,5 sur [0,16], 10-19 %
+négatifs. Câblé (lot1Dequant). (B) CALIBRATION VISÉE type 36 INCONCLUANTE (publiée telle
+quelle, TestLot1ViseeCalibration) : balayage de la longueur post-visée, AUCUN pic net (meilleur
+K = 1,30 record/paquet, ratio médiane 1,2× vs 13× pour damage) — les champs post-visée sont de
+longueur variable, ce qui étale le balayage. Visée toujours plausible non prouvée ; la prouver
+demande de décoder les champs post-visée du type 36 en entier (comme damage_aftermath).
+
+**Conclusion / prochaine étape** : croiser killsource pour départager laquelle des 2 refs
+domaine 1 est le blessé ; décoder les champs post-visée du type 36 pour clore la visée ; corpus
+complet. Note : `film_re/NOTE_MODELE_EVENEMENTS_2026-08-30.md`.
 
 ## [2026-08-31] Percer la trame — les deux lecteurs composites du type 36 PERCÉS (workflow) ; en-tête tir PROUVÉ, visée plausible non prouvée — En cours
 

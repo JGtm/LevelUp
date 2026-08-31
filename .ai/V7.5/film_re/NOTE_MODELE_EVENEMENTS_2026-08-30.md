@@ -223,9 +223,22 @@ Ce que damage_aftermath rend (mesure, 2 films) :
   vraisemblablement une des deux refs d'en-tete domaine 1, a departager).
 
 C'EST LA VOIE PRECISION / TOUCHES : chaque damage_aftermath = un coup au but, avec l'arme
-source, la magnitude, et les participants. 872 k sur le corpus. Reste a departager quelle ref
-est le blesse (semantique) et a resoudre les 5 constantes de dequantification pour la valeur de
-degat en clair.
+source, la magnitude, et les participants. 872 k sur le corpus.
+
+**DEGAT EN CLAIR RESOLU (31/08)** : la magnitude = `dq(R(5), 0, DAT_143cd8454=16.0)` sur 32
+niveaux (resolution 0.5), et la porte d'echelle (13) multiplie par `Kscale = DAT_143cd84ec =
+-1.0` — c'est un BIT DE SIGNE : magnitude positive = degat, negative = SOIN (recharge). Mesure :
+moyenne ~1.5 sur [0,16], ~10-19 % de valeurs negees (soins). La valeur de degat est donc
+lisible en clair (cablee lot1Dequant + porte d'echelle). Reste (semantique) : departager
+laquelle des deux refs d'en-tete domaine 1 est le blesse (croiser killsource).
+
+**VISEE DU TYPE 36 — CALIBRATION INCONCLUANTE (31/08), publiee telle quelle** :
+`TestLot1ViseeCalibration` balaye la longueur post-visee K (0..96) et mesure la profondeur de
+trame (l'oracle discriminant). AUCUN PIC NET : meilleur K rend 1.30 record/paquet, ratio a la
+mediane ~1.2x seulement (contre 13x pour damage_aftermath). Cause : les champs POST-VISEE du
+type 36 sont de longueur VARIABLE (blocs conditionnels 0x2dd/0x1c non decodes), ce qui etale le
+balayage a K fixe. La visee reste PLAUSIBLE, NON PROUVEE. Pour la prouver : decoder les champs
+post-visee du type 36 EN ENTIER (comme damage_aftermath), puis l'oracle de trame tranchera.
 
 ## LE JUGE DEFINITIF A POSER — l'oracle de trame (POSE pour damage_aftermath, cf. ci-dessus)
 
