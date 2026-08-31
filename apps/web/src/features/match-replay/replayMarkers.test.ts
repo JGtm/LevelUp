@@ -211,9 +211,25 @@ describe("lunette (schéma 29)", () => {
     return { ouverture: to - from, rayon: radius };
   };
 
-  it("RESSERRE l ouverture à la lunette — 0,36 rad contre 0,84 à la hanche", () => {
+  it("RESSERRE l ouverture au premier cran — 0,84 rad à la hanche", () => {
     expect(secteur(undefined).ouverture).toBeCloseTo(0.84, 6);
-    expect(secteur(1).ouverture).toBeCloseTo(0.36, 6);
+    expect(secteur(1).ouverture).toBeCloseTo((2 * 0.42) / 2.3, 6);
+  });
+
+  it("RESSERRE ENCORE au SECOND cran — chaque palier divise l ouverture", () => {
+    // Le film publie un NIVEAU, pas un booléen : les armes à deux crans (fusil de précision)
+    // émettent le palier 2, mesuré sur quatre films. Le rendu doit les distinguer.
+    const cran1 = secteur(1).ouverture;
+    const cran2 = secteur(2).ouverture;
+    expect(cran2).toBeLessThan(cran1);
+    expect(cran2).toBeCloseTo((2 * 0.42) / (2.3 * 2.3), 6);
+  });
+
+  it("PLANCHE l ouverture aux crans extrêmes — un cône ne devient jamais un trait", () => {
+    // Sans plancher, un troisième cran rendrait le secteur plus fin que le contour du marqueur :
+    // l information « il est épaulé » se perdrait au moment où elle est la plus forte.
+    expect(secteur(3).ouverture).toBeCloseTo(2 * 0.07, 6);
+    expect(secteur(9).ouverture).toBeCloseTo(2 * 0.07, 6);
   });
 
   it("ne touche PAS à la longueur : c est le domaine de l élévation", () => {
