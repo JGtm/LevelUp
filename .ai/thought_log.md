@@ -1,3 +1,89 @@
+## [2026-08-31] CTF — la zone de retour du drapeau : retour automatique daté, zone et jauge publiées — Complété
+
+**Le trou que l'utilisateur a nommé** (30/08) : « quand le drapeau de notre équipe est en dehors
+de son emplacement, il a une zone autour de lui ; s'y mettre le retourne plus vite, et sinon la
+jauge se vide et il finit par revenir ». Le rejeu n'en avait RIEN : `flag_carries_lives.go`
+écrivait en toutes lettres que le retour automatique n'était pas simulé, faute d'avoir su le
+dater — et le corpus portait des `dropped` de 100 à 162 s qui n'ont jamais existé à l'écran.
+
+**LA CHAÎNE NEUVE — l'objet, pas les compteurs.** Le retour automatique n'est crédité à personne,
+donc le statborg n'en porte rien. Mais l'OBJET le dit : une vie libre du drapeau (`ti=42`) qui
+NAÎT à moins de 1,5 m d'un socle est le drapeau qui rentre, datée à la frame — et le socle LE
+NOMME, ce que `flag_returns` ne fait pas. La tentative antérieure avait échoué en mesurant un
+PROXY (lâcher → prise suivante au socle) ; celle-ci observe.
+
+**DEUX CORRECTIONS DE MÉTHODE avant que le contrôle veuille dire quelque chose** — notées parce
+qu'elles se reproduiront :
+
+1. **CIRCULARITÉ.** La première version lisait le retour crédité sur les spans `home` du
+   document. Or la production ramène désormais AUSSI le drapeau sur la naissance de l'objet : un
+   `home` ne dit plus quelle chaîne l'a produit, et l'instrument se confrontait à lui-même (il
+   annonçait 81,8 % pour cette seule raison). Les crédits se relisent maintenant sur les
+   ÉVÉNEMENTS BRUTS du statborg.
+2. **DÉNOMINATEUR.** `flag_returns` NE NOMME PAS SON DRAPEAU. Rapporté aux épisodes, un même
+   événement se retrouve attribué aux DEUX drapeaux tombés (mesuré : les instants 2109 et 2670 de
+   `64e8adfa`), et la moitié de ces attributions est fausse par construction. Le contrôle se
+   compte donc par ÉVÉNEMENT DISTINCT ; et les films dont la carte est hors du catalogue
+   d'objectifs (`53ce4390`, Behemoth : zéro socle) sortent du dénominateur — sans socle la chaîne
+   objet se tait par construction, l'y compter mesurerait le catalogue de cartes.
+
+**RÉSULTAT DU CONTRÔLE (seuil 80 % écrit avant la mesure) : 15 / 15 = 100 %.** Les quinze retours
+crédités distincts des deux films de Catalyst ont TOUS une naissance d'objet au socle à moins
+d'une seconde — écarts min = 0, **médiane = 1 frame**, max = 1 frame. Deux chaînes disjointes
+(compteurs de statistique d'un côté, records de création du monde de l'autre) qui tombent à la
+frame : la chaîne objet est licite pour dater ce que le crédit ne voit pas.
+
+**LES VALEURS DU JEU, LUES DANS SON PROPRE SCRIPT.** Les tags `hsc*` sont du Lua compilé qui garde
+ses noms ; leur pool de constantes se déroule (entrées typées GROS-BOUTISTES : `0x03` + flottant
+simple, `0x04` + longueur sur 8 octets + chaîne). `parcel_deliver_object.lua`, table CONFIG :
+`innerAreaMonitorRadius = 1,3` · `cylinderHeight = 2` · `updateDeltaSeconds = 0,1` ·
+`flagResetSeconds = 15` (défaut de bibliothèque, écrasé par `FlagInitArgs.returnTimer`) ·
+`flagCarrierMovespeedScalar = 0,715` — cette dernière est LE TÉMOIN du décodage : c'est la
+pénalité de vitesse du porteur, vérifiable en jeu. Le script nomme aussi la loi que l'utilisateur
+pressentait sans en être sûr : **`CalculateReturnRateHarmonic`** — série harmonique, donc « plus
+on est, plus ça va vite » MAIS à rendement décroissant (1 ; 1+1/2 ; 1+1/2+1/3). Il nomme enfin
+deux choses dont il n'a pas parlé : un rayon EXTÉRIEUR de contestation, et les états `Contested` /
+`ContestedRefilling` (registre des reports).
+
+**RAYON — deux chaînes indépendantes, même réponse.** L'ajustement du modèle du jeu
+(`D/reset + b·∫H(n)dt = 1`, `b` devant être constant) a son minimum de dispersion à **1,5 m
+(cv 0,83) puis 1,3 m (cv 0,84)**, et se dégrade de part et d'autre (0,5 m → 1,50 ; 3 m → 1,09 ;
+5 m → 1,84). La valeur lue dans le jeu tombe dans ce creux. Retour à un seul défenseur : **3,1 s**.
+**MINUTERIE NUE : la mesure la plus faible du lot**, et c'est écrit comme tel — une seule
+observation propre (29,1 s ; les épisodes courts « déserts » sont des retours joueur dont la
+position n'a pas été échantillonnée, le tableau le montre). `reset_seconds = 30` est la meilleure
+valeur soutenue, pas une mesure serrée. Report inscrit.
+
+**LIVRÉ — schéma 29** :
+- `flagObjectHomecomings` (flag_objects.go) + l'événement de vie `flagLifeHome`
+  (flag_carries_lives.go), avec son ABSTENTION : quand un AUTRE drapeau gît au point de naissance,
+  rien n'est renvoyé et l'abstention se compte (`ambiguousHomecomings`). Effet sur le corpus :
+  **9 + 2 = 11 lâchers interminables enfin fermés**, et `retoursAmbigus` de `64e8adfa` passe de 7
+  à 5 — un drapeau rentré libère le suivant.
+- `doc.flagReturnZone` : la RÈGLE du mode (rayon, minuterie, durée solo), déclarée dans
+  `config/titles/halo_infinite/mappings/replay_labels.toml [flag_return_zone]` avec sa
+  provenance ; absente = rien de dessiné (dégradation gracieuse, title-agnostic).
+- Web : `flagReturnZone.ts` — cercle à l'échelle de la carte, jauge en arc sur son propre plancher
+  de lisibilité, anneau qui s'épaissit dès qu'un défenseur est dedans. L'OCCUPATION SE COMPTE CHEZ
+  LE CLIENT, et c'est une contrainte, pas un choix : l'équipe d'un joueur n'est pas dans le film.
+  Le modèle donne la FORME, l'observation donne les BORNES (la jauge est remise à l'échelle pour
+  atteindre 1 à l'image du retour observé).
+
+**Gates** : `go test ./...` (CGO, hors `himap` local-lent) **EXIT=0**, `go vet ./...` **0**,
+`golangci-lint --new-from-merge-base=origin/main` **0 issues**, `gofmt` propre ; vitest **542
+fichiers / 5 614 tests VERT**, typecheck cache purgé VERT, eslint 0 erreur (24 avertissements
+TanStack préexistants). Deux cliquets mis à jour AVEC leur justification écrite, comme ils
+l'exigent : `SchemaVersion` 28 → 29 (`structure_test.go`) et `wantReplayDocumentFields` 44 → 45
+(`contracttest`) ; `openapi.yaml` et `generated.ts` régénérés, jamais écrits à la main ; golden
+d'assemblage régénéré (seule la ligne de schéma change — `000d5950` est sur une carte sans socle
+au catalogue, donc aucune rentrée n'y apparaît). Instrument de recherche sous garde
+`OBJ_FILM`/`OBJ_REPO`, jamais en CI.
+
+**Reste** : la CONTESTATION n'est ni mesurée ni dessinée ; `outerAreaMonitorRadius` et
+`timeToRespawnFlag` restent NON LUS (dédupliqués dans le pool de constantes) ; le corpus de mesure
+se réduit à deux films faute de socles au catalogue. Les quatre reports sont au registre. Plan et
+protocole : `.ai/V7.5/PLAN_CTF_ZONE_RETOUR_2026-08-30.md`.
+
 ## [2026-08-30] Sons — le merge ramassage fournit les déclencheurs, les quatre sons muets sont câblés — Complété
 
 **Le merge `dcbc6e458` (chantier ramassage, schémas 25-28) apporte exactement ce qui manquait

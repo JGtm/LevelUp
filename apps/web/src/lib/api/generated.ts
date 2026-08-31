@@ -6280,6 +6280,8 @@ export interface components {
             /** Format: int64 */
             ambiguousCarrierKills: number;
             /** Format: int64 */
+            ambiguousHomecomings: number;
+            /** Format: int64 */
             ambiguousReturns: number;
             /** Format: int64 */
             bursts: number;
@@ -6296,6 +6298,8 @@ export interface components {
             /** Format: int64 */
             dropsRepositioned: number;
             flagFilm: boolean;
+            /** Format: int64 */
+            homeByObject: number;
             /** Format: int64 */
             markerConfirmed: number;
             /** Format: int64 */
@@ -6327,6 +6331,14 @@ export interface components {
             spans: components["schemas"]["FlagSpan"][] | null;
             /** Format: int64 */
             team: number;
+        };
+        FlagReturnZone: {
+            /** Format: float */
+            radiusM: number;
+            /** Format: float */
+            resetSeconds: number;
+            /** Format: float */
+            soloSeconds: number;
         };
         FlagSpan: {
             state: string;
@@ -9552,6 +9564,7 @@ export interface components {
             equipmentEpisodes?: components["schemas"]["EquipmentEpisode"][] | null;
             equipmentPlacements?: components["schemas"]["EquipmentPlacement"][] | null;
             flagCarries?: components["schemas"]["FlagCarry"][] | null;
+            flagReturnZone?: components["schemas"]["FlagReturnZone"];
             /** Format: int64 */
             frameCount: number;
             /** Format: int64 */

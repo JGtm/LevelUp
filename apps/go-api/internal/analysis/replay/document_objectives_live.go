@@ -125,6 +125,30 @@ const (
 	FlagStateHome = "home"
 )
 
+// FlagReturnZone est LA REGLE DE RETOUR du drapeau, telle que le manifeste du titre la donne
+// (schema 29). Elle ne decrit PAS ce match-ci : elle decrit le MODE, et c'est pour cela qu'elle
+// est publiee une fois et non par lacher.
+//
+// LE MODELE, ET D'OU IL VIENT. Le jeu remplit une jauge de retour au taux `1/reset + H(n)/solo`,
+// ou `n` est le nombre de defenseurs dans la zone et `H` la SERIE HARMONIQUE — son propre script
+// nomme la fonction `CalculateReturnRateHarmonic`. Deux defenseurs valent donc 1 + 1/2, trois
+// 1 + 1/2 + 1/3 : le rendement decroit, il n'est jamais lineaire.
+//
+// CE QUE LE CLIENT EN FAIT, ET POURQUOI CE N'EST PAS CALCULE ICI. Le modele donne la FORME de la
+// jauge ; ses BORNES viennent de l'observation (le lacher, puis le retour date). Mais compter les
+// defenseurs exige de savoir a quelle equipe appartient chaque joueur — et l'equipe N'EST PAS
+// DANS LE FILM (cf. Track.Team). Le constructeur du rejeu est hors ligne et n'ouvre aucune base ;
+// le client, lui, a deja joint le tableau de bord pour colorer les camps. C'est donc lui qui
+// compte, et cette table est ce qu'il lui faut pour le faire.
+type FlagReturnZone struct {
+	// RadiusM est le rayon de la zone, dans les MEMES coordonnees que `FlagSpan.X/Y`.
+	RadiusM float32 `json:"radiusM"`
+	// ResetSeconds est la duree qu'un drapeau au sol met a rentrer TOUT SEUL.
+	ResetSeconds float32 `json:"resetSeconds"`
+	// SoloSeconds est la duree qu'il met avec UN defenseur dans la zone.
+	SoloSeconds float32 `json:"soloSeconds"`
+}
+
 // FlagSpan est UN intervalle d'etat du drapeau.
 type FlagSpan struct {
 	// State vaut [FlagStateCarried], [FlagStateCarriedOpen], [FlagStateDropped] ou
@@ -225,6 +249,18 @@ type FlagCarriesCoverage struct {
 	// AmbiguousReturns : evenements `flag_returns` survenus alors que zero ou plusieurs drapeaux
 	// etaient au sol. Ils ne renvoient alors aucun drapeau a sa base.
 	AmbiguousReturns int `json:"ambiguousReturns"`
+	// HomeByObject compte les drapeaux ramenes chez eux par la RENTREE DE L'OBJET — une vie libre
+	// nee a leur socle alors qu'ils etaient au sol (cf. `flagObjectHomecomings`).
+	//
+	// C'EST LE COMPTE DES RETOURS AUTOMATIQUES, ceux que personne ne provoque et qu'aucun
+	// compteur du statborg ne credite. Avant le schema 29 ils n'existaient pas et les laches
+	// couraient jusqu'a la reprise ou la fin de l'axe — des etats `dropped` de plus de deux
+	// minutes, qui n'ont jamais existe a l'ecran. Un retour DEJA credite ne s'y compte pas : la
+	// rentree ne fait alors rien.
+	HomeByObject int `json:"homeByObject"`
+	// AmbiguousHomecomings : rentrees ecartees parce qu'un AUTRE drapeau gisait au point de
+	// naissance — rien ne dit lequel des deux vient d'etre recree.
+	AmbiguousHomecomings int `json:"ambiguousHomecomings"`
 	// Spawns est le nombre de socles `flag_spawn` connus de la carte. Zero : la carte est hors
 	// du catalogue d'objectifs, tous les portages tombent dans UN drapeau d'equipe -1.
 	Spawns int `json:"spawns"`

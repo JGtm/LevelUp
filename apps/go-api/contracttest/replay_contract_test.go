@@ -401,9 +401,21 @@ var replaySchemas = []struct {
 //	                        champ au document : `until`/`untilMax`/`end` vivent sur
 //	                        EquipmentPlacement, pas a la racine.
 //
-// Les quatorze fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
+//	44 -> 45  2026-08-31  UN champ, le chantier de la zone de retour du drapeau (schema 29) :
+//	                      - `flagReturnZone` : la REGLE du mode de CTF — rayon de la zone autour
+//	                        d un drapeau tombe, minuterie qui le ramene tout seul, duree quand UN
+//	                        defenseur s y tient. Elle ne decrit pas ce match-ci mais le MODE,
+//	                        d ou un champ a la racine et non une cle par lacher. Le titre la
+//	                        declare (`replay_labels.toml [flag_return_zone]`) ; absente, le client
+//	                        ne dessine ni cercle ni jauge. L OCCUPATION, elle, n est pas publiee :
+//	                        l equipe d un joueur n est pas dans le film, le client la joint.
+//	                      L autre moitie du schema 29 n ajoute AUCUN champ : le retour AUTOMATIQUE
+//	                      se lit dans les etats `home` de `flagCarries`, et son compte dans
+//	                      `coverage.flagCarries.homeByObject`.
+//
+// Les quinze fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
 // chiffre ne le dise. Contrat regenere (`make openapi-gen`), jamais ecrit a la main.
-const wantReplayDocumentFields = 44
+const wantReplayDocumentFields = 45
 
 // TestReplayContractDescribesEveryPublishedField : AUCUN CHAMP PUBLIE SANS DESCRIPTION, ET
 // AUCUNE DESCRIPTION SANS CHAMP.

@@ -441,8 +441,23 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   tombe à la mort AVEC les grenades du mort, le lien spatial prise i48 -> pose attrape le
 	//   mauvais objet (matrice GlobalID x rang non diagonale ; à candidat unique, 0-2 paires par
 	//   film, incohérentes). Détail : internal/analysis/replay/equipment_placements.go.
-	if SchemaVersion != 28 {
-		t.Fatalf("SchemaVersion = %d, attendu 28 : incrémenter exige une raison écrite ci-dessus "+
+	// v29 — LE RETOUR DU DRAPEAU DE CTF, dans ses deux moitiés. (1) LE RETOUR AUTOMATIQUE EST
+	//   DATÉ. Le jeu ramène chez lui un drapeau resté au sol ; aucun compteur du statborg ne le
+	//   dit, puisque personne n'est crédité — et les états `dropped` couraient donc jusqu'à la
+	//   reprise ou la fin de l'axe, des lâchers de plus de deux minutes qui n'ont jamais existé à
+	//   l'écran. L'OBJET, lui, le dit : une vie libre du drapeau qui NAÎT À SON SOCLE est le
+	//   drapeau qui rentre, et le socle LE NOMME (ce que `flag_returns` ne fait pas). CONTRÔLE
+	//   écrit avant la mesure et TENU : sur les retours que le statborg CRÉDITE, les deux chaînes
+	//   — disjointes — tombent à la même frame dans 18 cas sur 22 (81,8 %, seuil 80 %, écart
+	//   médian 1 frame). (2) `flagReturnZone` publie la RÈGLE du mode : rayon de la zone,
+	//   minuterie à vide, durée à un défenseur. Le rayon (1,3) est LU dans le script du jeu
+	//   (`innerAreaMonitorRadius`) et CORROBORÉ par l'ajustement sur les films (minimum de
+	//   dispersion à 1,3-1,5 m) ; les durées sont MESURÉES. L'occupation, elle, se compte chez le
+	//   client : l'équipe d'un joueur n'est pas dans le film. Un artefact 28 doit se lire « à
+	//   re-cuire » — ses drapeaux au sol n'ont ni retour automatique ni zone. Détail :
+	//   internal/analysis/replay/flag_objects.go et .ai/V7.5/PLAN_CTF_ZONE_RETOUR_2026-08-30.md.
+	if SchemaVersion != 29 {
+		t.Fatalf("SchemaVersion = %d, attendu 29 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }
