@@ -290,8 +290,17 @@ exactement la règle du jeu, obtenue sans qu'aucune branche ne la dise.
 1. ~~La contestation~~ — **DEMANDÉE ET LIVRÉE le 2026-08-31** (§4 ter), avec sa limite écrite :
    la jauge est TENUE, pas reculée, faute d'avoir pu lire `flagContestRefillRate`.
 2. ~~Le drapeau neutre~~ — **DEMANDÉ ET LIVRÉ le 2026-08-31** (§4 quater).
-3. **Le retour au contact** (`flagTouchReturnEnabled`) : `flag_carries.go` affirme aujourd'hui
-   « le toucher le RENVOIE ». Le réglage existe, et sa valeur n'est PAS lisible (booléen
-   dédupliqué, et `false` est émis plus tôt dans la même table — la déduction ne tient pas).
-   Si le réglage est à faux en Arena, cette phrase est fausse et la règle d'attribution qui
-   s'appuie dessus est à revoir. Non tranché.
+3. ~~Le retour au contact~~ — **TRANCHÉ PAR LA MESURE le 2026-08-31, faute de pouvoir le lire.**
+   `flagTouchReturnEnabled` reste illisible (booléen dédupliqué, et `false` est émis plus tôt dans
+   la même table). Mais la mesure répond à sa place : un renvoi au CONTACT donnerait un séjour
+   NUL dans la zone, or le séjour vaut **3,1 s à un défenseur** et n'est jamais nul — le contact
+   seul ne renvoie donc pas en Arena. La phrase « le toucher le RENVOIE » de `flag_carries.go`
+   est corrigée dans le même commit ; **la règle d'attribution qui s'appuyait dessus, elle, ne
+   bouge pas** : instantané ou non, un joueur ne PORTE pas son propre drapeau.
+4. **Le socle neutre est bien au MILIEU** (confirmé par l'utilisateur le 2026-08-31, et par le
+   catalogue) : Aquarius bases (−13,0) / (13,0) socle neutre (0,0) ; Bazaar (−23,0) / (23,0) →
+   (0,3) ; Catalyst (0,21) / (0,−21) → (0,0) ; Behemoth 75 / 32 → 54. C'est exactement le point
+   que le mode neutre retient. **LIMITE** : quelques cartes du catalogue ne déclarent AUCUN socle
+   neutre (Absolution, Banished Narrows) — sur celles-là le discriminant ne peut pas basculer et
+   garde la variante ordinaire, ce qui est le bon défaut mais serait faux si elles hébergeaient
+   la variante. Non mesuré.

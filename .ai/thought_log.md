@@ -1,3 +1,30 @@
+## [2026-08-31] CTF — le retour au contact TRANCHÉ par la mesure, la doc corrigée — Complété
+
+L'utilisateur demandait plus concret sur deux points restés flous. L'un des deux se referme.
+
+**`flagTouchReturnEnabled` : illisible, mais PLUS BESOIN DE LE LIRE.** Le réglage dit si toucher
+son propre drapeau tombé le renvoie INSTANTANÉMENT. Sa valeur reste hors de portée (booléen
+dédupliqué dans le pool, et `false` est émis dès le premier champ de la table — `complete = false`
+— donc « dédupliqué donc vrai » ne tient pas). **La mesure répond à sa place** : un renvoi au
+contact donnerait un séjour NUL dans la zone, or le séjour ajusté vaut **3,1 s à un défenseur** et
+n'est jamais nul. Le contact seul ne renvoie donc pas en Arena — ce que la description de
+l'utilisateur disait déjà (« se mettre dedans permet de le retourner plus vite »).
+
+**Doc corrigée dans le même commit** (anti-pattern « doc inversée ») : `flag_carries.go` affirmait
+« le toucher le RENVOIE ». **CE QUE LA RÈGLE D'ATTRIBUTION EN RETIENT NE BOUGE PAS** : instantané
+ou non, un joueur ne PORTE pas son propre drapeau, donc un portage reste toujours celui du drapeau
+adverse. Seule la formulation était fausse. Le même en-tête gagne le cas de la variante neutre, où
+la règle devient sans objet (un seul drapeau, celui de personne).
+
+**Le socle neutre est au MILIEU — confirmé par l'utilisateur, et par le catalogue.** Aquarius bases
+(−13,0) / (13,0), socle neutre (0,0) ; Bazaar (−23,0) / (23,0) → (0,3) ; Catalyst (0,21) / (0,−21)
+→ (0,0) ; Behemoth 75 / 32 → 54. C'est exactement le point que le mode neutre retient depuis le
+lot précédent. **Limite consignée** : Absolution et Banished Narrows ne déclarent AUCUN socle
+neutre au catalogue — le discriminant ne peut pas y basculer et garde la variante ordinaire (bon
+défaut, faux si ces cartes hébergeaient la variante). Au registre.
+
+**Gates** : `go test ./internal/analysis/replay/` VERT, `gofmt` propre. Diff de commentaires et de
+documents seulement — aucun chemin de code touché.
 ## [2026-08-31] CTF — la contestation et le DRAPEAU NEUTRE : le discriminant de variante classe 6/6 — Complété
 
 Suite immédiate du lot de la zone de retour, sur demande de l'utilisateur après lecture du premier
