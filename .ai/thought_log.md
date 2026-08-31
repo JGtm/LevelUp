@@ -79671,3 +79671,72 @@ une requete assemblee entierement a l'execution lui echapperait. Et il ne couvre
 
 **Prochaine etape** : rien de planifie. Le dispositif est autonome — il signale, et il dit quoi
 faire du signalement.
+
+---
+
+## [2026-08-31] biped_pickup (type 9) DECODE — le ramassage natif est date, nomme et classe
+
+**Statut** : Complété (recherche ; aucune publication production dans ce lot).
+**Worktree** : `wt/biped-pickup`. **Films** : `000d5950` (27 chunks) et `00502e52` (29 chunks).
+
+**Décision technique principale.** Le lot devait décoder l'événement natif `biped_pickup`
+pour lever deux limites du canal actuel (i43..i46 : précis mais rappel ~50 % ; prises sur
+socle publiées en intervalle sans xuid). Deux chaînes indépendantes ont été menées jusqu'à ce
+qu'elles se ferment : un scan de cadrage EMPIRIQUE jugé par l'oracle de trame, et la lecture
+de la grammaire dans HaloInfinite.exe. Elles donnent la même longueur d'événement — **50 bits**
+— sans aucun ajustement.
+
+**Le geste qui a débloqué le lot, et il n'était pas prévu.** La première passe du scan n'a
+RIEN tranché : le meilleur cadrage rendait 1,66 record/paquet contre 1,56 pour son voisin. La
+cause n'était pas la grammaire mais l'ORACLE : `FrameConfig.IDLowBits` est une valeur de
+runtime propre au film, et le défaut 13 rendait le décodeur de trame aveugle. Calibré contre
+la vérité terrain des trames pures (cadrage connu au bit 2), il vaut **9 sur 000d5950** et
+**11 sur 00502e52**. Avec le bon critère (« la trame se ferme ET consomme le payload jusqu'au
+bout »), l'oracle passe d'une séparation de 1,9x à **93,0 % contre 0,0 %** à ±1, 2 et 3 bits.
+Leçon transférable au chantier trame : tout verdict de cadrage tiré de l'oracle de trame doit
+être précédé du calibrage d'IDLowBits sur le film, sinon il ne mesure rien.
+
+**Ce que le binaire donne** (chaîne indépendante, méthode validée d'abord sur un cas connu :
+la même lecture rend 4/8/7 pour `unit_zoom`, exactement ce que le chantier trame avait établi).
+Table des descripteurs à `ctx+0x210 + type*8` (`FUN_140e453b4`) : **type 9 -> 0x144724e18**,
+vtable 0x143d0d758. Identification de PREMIÈRE MAIN : `vtable+0x08` = 0x141164e10 est l'unique
+fonction référençant la chaîne `"biped_pickup"`. Domaines (`vtable+0x58`) : ref0 = 2 (R(8)),
+ref1 = 8, ref2 = 7. Charge (`vtable+0x68` = `FUN_141037828`) : **R(3) classe + R(1) porte +
+R(32) identifiant d'objet**. Total modal : 11 + 1 + 1 + 36 + 1 = **50**.
+
+**Résultats observés.**
+- Longueur **50 bits sur 160/160** événements seuls des deux films, sans une exception.
+  Largeur du domaine 2 balayée : **R(8) à 60,0 %** contre 3,5 % pour la meilleure voisine.
+- Confrontation produit, avec témoins de hasard (ramassages décalés de +37/-53/+91 s) parce
+  que 135 événements sur 493 s rendent tout appariement temporel large gratuit :
+  **(a) 21/21 = 100 %** des prises i43..i46 retrouvées ARME NOMMÉE à ≤ 500 ms (témoin 4,8 %) ;
+  **(b) 5/7** puis **3/3** des arrivées que i43..i46 rate sont nommées (témoins 14,3 % / 9,1 %) —
+  les 7 armes lourdes du dossier (Gravity Hammer ×3, M41 SPNKr ×3, Stalker Rifle ×1) ;
+  **(c) 10/10 et 11/11** des familles d'arme du catalogue de production sont connues du type 9.
+- **Le R(3) est une CLASSE d'objet, et c'est le résultat le plus net** : classes 0 et 1 portent
+  une arme dans 63-72 % des cas ; classes 2 et 3 dans **0,0 %** — 118 événements sur les deux
+  films, zéro arme. L'événement couvre donc AUSSI l'équipement et les grenades, et il les
+  étiquette. Réponse mesurée à la question de composition du lot.
+- L'identifiant R(32) est un identifiant de CATALOGUE, pas un handle de partie : sept valeurs
+  au moins sont communes aux deux films.
+
+**Négatifs publiés tels quels.** `ref0` n'est PAS identifiée : 25 valeurs distinctes sur 50
+événements, donc ni un index de joueur (8 joueurs) ni un slot de bipède. L'hypothèse
+« ref0 = le ramasseur » est NON VÉRIFIÉE, et sans elle un ramassage reste anonyme. Le résiduel
+de trames non exactes (57 % atteint contre un plafond `unit_zoom` de 82,7 % mesuré sur le même
+film) n'est pas expliqué ; il n'est pas imputable à la grammaire (aucun cadrage voisin ne fait
+mieux, 0,0 % à ±1..3). `biped_board_vehicle` (type 8) : **zéro occurrence** sur les deux films.
+Nondéterminisme relevé : le décodeur de trame porte de l'état global de process non réinitialisé
+entre deux décodages (±2 paquets sur 35) — à savoir avant d'écrire un ratchet sur ces taux.
+
+**Gates** : `gofmt` propre ; `go vet ./internal/analysis/filmdec/` silencieux ; `go test
+./internal/analysis/filmdec/` vert sans les gardes (les trois instruments se sautent sans
+`BIPED_PICKUP_FILM`). Aucun effet en CI, aucune publication production.
+
+**Conclusion / prochaine étape.** La condition de reprise écrite pour le son de ramassage est
+levée sur la moitié du sujet : l'événement est daté à la ms, nomme l'objet et le classe. Ce
+qui manque pour publier, c'est l'attribution au JOUEUR. Prochaine étape : identifier le
+domaine 2 (corréler `ref0` aux fils de vie, aux slots bipèdes du même paquet, et au pont
+slot -> xuid de `killsource`), sur le modèle de ce qui a résolu la référence du domaine 1 de
+`damage_aftermath` par l'ajout de la base de plage. Détail complet et mesures :
+`.ai/V7.5/film_re/NOTE_BIPED_PICKUP_2026-08-31.md`.
