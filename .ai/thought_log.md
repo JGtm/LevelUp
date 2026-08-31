@@ -80939,3 +80939,63 @@ qui s'etrecit — devient realisable sur DONNEE REELLE, plus par heuristique.
 **Cheat Engine n'est plus necessaire** : le protocole `PROTOCOLE_CE_ZOOM_2026-08-31.md` devient sans
 objet pour la question « le film porte-t-il la lunette » (repondue par l'affirmative). Il reste
 utilisable si l'on veut un jour verifier la semantique des NIVEAUX (0/1/2).
+
+## [2026-08-31] Visee lunette — LE CONE S'ETRECIT : chaine complete du film a l'UI (schema 29) — Complete
+
+**La chaine est bouclee de bout en bout.** Le film porte la lunette, le document la publie, le
+rejeu la dessine.
+
+**1. Decodage (production)** — `filmdec/zoom_events.go` : `ScanFilmZoomEvents` lit les bascules
+`unit_zoom` (type 21, famille 0xCA) ; `ZoomStateAt` reconstruit l'etat par slot. Pont vers le
+joueur : **slot = index de reference + 512**, mesure a 98 % contre 0 % pour toute autre base
+(fermeture, pas correlation). Cette base est confirmee INDEPENDAMMENT par la session
+`wt/trame-film` (commit 5414739e4, calibration par couverture-vitalite).
+
+**2. Document** — `Point.S` (palier de lunette), **SchemaVersion 23 -> 29** (feat/v75 avait
+avance a 28 pendant le chantier ; merge resolu en gardant les deux chroniques). La montee est
+justifiee comme celle du schema 13 : ce n'est pas un champ de plus, c'est le SENS DU CONE qui
+change une seconde fois. Cliquet de version mis a jour avec sa raison ecrite, golden reassemble,
+contrat openapi + types TS regeneres (`make openapi-gen` puis `make generate-types`).
+
+**3. UI** — `replayAimCone.ts` : la lunette RESSERRE L'OUVERTURE (0,18 rad contre 0,42), et ne
+touche PAS a la longueur, qui reste le domaine de l'elevation (`1 + 0,55 x sin(p)`). Les deux
+mecaniques sont orthogonales et testees comme telles : 4 tests neufs dans `replayMarkers.test.ts`
+verifient le resserrement, la NON-modification de la longueur, le cumul (etroit ET court en
+plongee) et le contrat de l'absence. Un leger supplement d'opacite (x1,25) compense la surface
+perdue par un cone plus etroit.
+
+**CALIBRATION DU MAINTIEN, faite SUR LA DONNEE et non sur la verite terrain.** Les sorties de
+lunette sont sous-comptees (seuls les evenements en TETE de liste sont lus). Sans plafond, une
+entree orpheline tiendrait jusqu'a la fin du match. Le plafond vient de la distribution des
+periodes REELLEMENT FERMEES sur le film de reference — 139 periodes, mediane 1,13 s, p90 2,65 s,
+**p95 3,49 s**, max 5,72 s — d'ou `zoomHoldUS = 3,5 s`. Se caler sur la chronologie de
+l'utilisateur aurait ete s'ajuster a la reponse que la mesure doit controler.
+
+**DEUX CORRECTIONS DE MA PROPRE MESURE, dites pour memoire :**
+1. Le gate de bout en bout comptait d'abord les echantillons de TOUT le match contre une
+   chronologie qui n'en couvre que 60 s : 29,3 % « de justesse » qui ne mesuraient que
+   l'ignorance du releve hors fenetre. Restreint a la fenetre annotee.
+2. Puis il mesurait une PRECISION contre un releve qui est une liste de ce que l'utilisateur A VU
+   (« brievement », « environ »), jamais une certification d'absence ailleurs. Metrique changee
+   pour le RAPPEL — la seule chose que ce releve peut arbitrer.
+
+**RESULTATS DES GATES :**
+- identification (`TestViseeZoomGate`) : 6/6 debuts d'episode apparies, **p = 0,00 %** sur
+  ~3 200 decalages temoins ;
+- cablage (`TestViseeZoomBoutEnBout`) : 6/6 episodes couverts sur la track du slot 513 ;
+  22,6 % des echantillons de cette track sont a la lunette ; **reserve publiee : 1,0 % des
+  decalages temoins atteignent aussi 6/6**, ce gate verifie donc LE CABLAGE, pas l'identification ;
+- `go test ./internal/analysis/...` : 0 echec ; `npm run typecheck` (cache purge) : vert ;
+  vitest `match-replay` : **1938/1938** ; eslint : propre sur les fichiers touches.
+
+**UN GARDE-RAIL A FAIT SON TRAVAIL** : `replaySchemaLogic.guard.test.ts` a refuse la divergence
+entre la copie front de `SchemaVersion` et la constante Go — copie mise a jour a 29.
+
+**RESTE (borne, dans l'ordre)** :
+1. **Marcher la liste d'evenements ENTIERE** au lieu du seul evenement de tete : c'est ce qui
+   recupererait les sorties manquantes et rendrait le plafond de maintien inutile.
+2. **Elargir la verite terrain** : 2 ou 3 films annotes confirmeraient sur un corpus independant.
+3. **Re-cuisson** des artefacts (SchemaVersion 29) pour que les rejeux deja cuits portent la
+   lunette.
+4. **Gate visuel utilisateur** sur le rejeu de 00162144 : le cone de Nilton doit se resserrer aux
+   six moments releves.

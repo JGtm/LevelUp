@@ -8,16 +8,36 @@
  * joueur, il dessine ce qu'il REGARDE, et il est le seul bloc du fichier à lire deux champs
  * (`h` et `p`) plutôt qu'une position.
  */
-import type { MarkerStyle } from './replayMarkers'
-import { freshness, heldReading, type XY } from './replayLogic'
-import type { ReplayTrackReady } from './replayNormalize'
+import type { MarkerStyle } from "./replayMarkers";
+import { freshness, heldReading, type XY } from "./replayLogic";
+import type { ReplayTrackReady } from "./replayNormalize";
 
 /** Longueur d'une visée À PLAT — la référence, pas le maximum : l'élévation joue autour d'elle. */
-const AIM_LENGTH = 52
-const AIM_HALF_ANGLE = 0.42
-const AIM_CONE_ALPHA = 0.55
+const AIM_LENGTH = 52;
+const AIM_HALF_ANGLE = 0.42;
+/**
+ * LA LUNETTE (schéma 29) : le cône RESSERRE SON OUVERTURE, et ne change PAS de longueur.
+ *
+ * Les deux mécaniques sont volontairement orthogonales. L'ÉLÉVATION pilote la LONGUEUR (un
+ * regard incliné porte moins loin sur le plan) ; la LUNETTE pilote l'ANGLE (un joueur épaulé
+ * regarde plus étroit). Elles se lisent donc ensemble sans se confondre : un joueur à la
+ * lunette qui vise vers le bas a un cône à la fois plus étroit et plus court.
+ *
+ * CETTE VALEUR EST UN CHOIX DE RENDU, PAS UNE MESURE, et il faut le dire : le film transmet le
+ * PALIER de lunette, jamais le grossissement — celui-ci appartient à l'arme. 0,18 rad vaut
+ * environ 2,3 fois moins que l'ouverture à la hanche, assez pour se lire d'un coup d'œil, et
+ * assez large pour que le cône ne disparaisse pas sur un marqueur de petite taille.
+ */
+const AIM_SCOPED_HALF_ANGLE = 0.18;
+/**
+ * Un cône plus étroit couvre moins de pixels : à opacité égale il se verrait MOINS qu'un cône
+ * large, alors qu'il dit quelque chose de plus rare et de plus intéressant. Le supplément
+ * compense la surface perdue, il ne crie pas.
+ */
+const AIM_SCOPED_ALPHA_BOOST = 1.25;
+const AIM_CONE_ALPHA = 0.55;
 /** Une visée de 5 s ne vaut pas une visée de l'instant : elle perd 62 % de son opacité. */
-const AIM_FADE = 0.62
+const AIM_FADE = 0.62;
 /**
  * L'AMPLITUDE DE L'ÉLÉVATION : ±55 % de la longueur à plat, atteints à la verticale.
  *
@@ -30,9 +50,9 @@ const AIM_FADE = 0.62
  * passent leur temps un cheveu SOUS la référence, et ce sont les instants qui comptent — un
  * tir en plongée, un joueur qui couvre une passerelle — qui s'écartent franchement.
  */
-const AIM_PITCH_SWING = 0.55
+const AIM_PITCH_SWING = 0.55;
 /** Au-delà, `sin` REDESCEND et inverserait la lecture : la longueur cesserait d'être monotone. */
-const AIM_PITCH_CLAMP_DEG = 90
+const AIM_PITCH_CLAMP_DEG = 90;
 
 /**
  * drawAimCone dessine la DIRECTION DU REGARD, décodée du même record que la position.
@@ -69,23 +89,36 @@ export function drawAimCone(
   style: MarkerStyle,
   color: string,
 ): void {
-  const read = heldReading(track.points, style.frame, (p) => p.h, style.timing.aimHold)
-  if (!read) return
-  const fresh = freshness(read.age, style.timing.aimHold, AIM_FADE)
+  const read = heldReading(
+    track.points,
+    style.frame,
+    (p) => p.h,
+    style.timing.aimHold,
+  );
+  if (!read) return;
+  const fresh = freshness(read.age, style.timing.aimHold, AIM_FADE);
   // Monde -> canevas : l'axe Y est inversé, donc l'angle l'est aussi.
-  const ang = (-read.value * Math.PI) / 180
-  const R = AIM_LENGTH * pitchScale(heldPitch(track.points, style, read.age)) * style.k
-  const gradient = ctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, R)
-  gradient.addColorStop(0, color)
-  gradient.addColorStop(1, 'transparent')
-  ctx.globalAlpha = AIM_CONE_ALPHA * fresh
-  ctx.beginPath()
-  ctx.moveTo(c.x, c.y)
-  ctx.arc(c.x, c.y, R, ang - AIM_HALF_ANGLE, ang + AIM_HALF_ANGLE)
-  ctx.closePath()
-  ctx.fillStyle = gradient
-  ctx.fill()
-  ctx.globalAlpha = 1
+  const ang = (-read.value * Math.PI) / 180;
+  const R =
+    AIM_LENGTH * pitchScale(heldPitch(track.points, style, read.age)) * style.k;
+  // LA LUNETTE agit sur l'OUVERTURE, jamais sur la longueur : celle-ci est deja portee par
+  // l'elevation, juste au-dessus. Les deux mecaniques restent ainsi lisibles ensemble.
+  const scoped = heldScoped(track.points, style, read.age);
+  const halfAngle = scoped ? AIM_SCOPED_HALF_ANGLE : AIM_HALF_ANGLE;
+  const gradient = ctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, R);
+  gradient.addColorStop(0, color);
+  gradient.addColorStop(1, "transparent");
+  ctx.globalAlpha = Math.min(
+    1,
+    AIM_CONE_ALPHA * fresh * (scoped ? AIM_SCOPED_ALPHA_BOOST : 1),
+  );
+  ctx.beginPath();
+  ctx.moveTo(c.x, c.y);
+  ctx.arc(c.x, c.y, R, ang - halfAngle, ang + halfAngle);
+  ctx.closePath();
+  ctx.fillStyle = gradient;
+  ctx.fill();
+  ctx.globalAlpha = 1;
 }
 
 /**
@@ -99,12 +132,45 @@ export function drawAimCone(
  * forcément à une autre visée — on la refuse, et « absent » redevient ce qu'il doit être.
  */
 function heldPitch(
-  points: ReplayTrackReady['points'],
+  points: ReplayTrackReady["points"],
   style: MarkerStyle,
   headingAge: number,
 ): number {
-  const read = heldReading(points, style.frame, (p) => p.p, style.timing.aimHold)
-  return read && read.age <= headingAge ? read.value : 0
+  const read = heldReading(
+    points,
+    style.frame,
+    (p) => p.p,
+    style.timing.aimHold,
+  );
+  return read && read.age <= headingAge ? read.value : 0;
+}
+
+/**
+ * heldScoped dit si le joueur est A LA LUNETTE au moment lu, et applique LA MEME REGLE D'AGE
+ * que l'elevation, pour la meme raison.
+ *
+ * `s` est omis quand le joueur n'est pas a la lunette (contrat du champ, cf. `Point.S` cote
+ * Go) : `heldReading` remonterait donc jusqu'a un point PLUS ANCIEN qui, lui, porte un palier,
+ * et le marqueur afficherait un epaulement perime sur une visee a la hanche actuelle. Le champ
+ * etant pose par le MEME enregistrement que le cap, un palier trouve plus loin dans le passe
+ * que le cap appartient forcement a un autre instant — on le refuse.
+ *
+ * ABSENT SE LIT « PAS A LA LUNETTE », JAMAIS « INCONNU » : c'est le contrat publie par le
+ * document, et il rend correct par defaut le rendu des artefacts anterieurs au schema 29 —
+ * ils dessinent l'ouverture large, ce qu'ils ont toujours fait.
+ */
+function heldScoped(
+  points: ReplayTrackReady["points"],
+  style: MarkerStyle,
+  headingAge: number,
+): boolean {
+  const read = heldReading(
+    points,
+    style.frame,
+    (p) => p.s,
+    style.timing.aimHold,
+  );
+  return read !== null && read.age <= headingAge && read.value > 0;
 }
 
 /**
@@ -132,6 +198,9 @@ function heldPitch(
  * laisser la lecture s'inverser.
  */
 function pitchScale(pitchDeg: number): number {
-  const bounded = Math.max(-AIM_PITCH_CLAMP_DEG, Math.min(AIM_PITCH_CLAMP_DEG, pitchDeg))
-  return 1 + AIM_PITCH_SWING * Math.sin((bounded * Math.PI) / 180)
+  const bounded = Math.max(
+    -AIM_PITCH_CLAMP_DEG,
+    Math.min(AIM_PITCH_CLAMP_DEG, pitchDeg),
+  );
+  return 1 + AIM_PITCH_SWING * Math.sin((bounded * Math.PI) / 180);
 }
