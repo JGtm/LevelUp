@@ -23,6 +23,7 @@ func cmdRender(args []string) error {
 	idHex := fs.String("id", "", "GlobalID du vehi (hex) ; vide = tous les vehi")
 	axe := fs.Int("axe", 2, "axe haut du modele : 0=X 1=Y 2=Z")
 	cote := fs.Int("cote", 192, "longueur cible du plus grand cote, en px")
+	cellmm := fs.Int("cellmm", 0, "millimetres/pixel FIXE (echelle commune pour composition 2D) ; 0 = ajuster a -cote")
 	nom := fs.String("nom", "", "prefixe de nom de fichier (sinon vehi_<id>)")
 	curate := fs.String("curate", "", "liste hexid:nom,... a rendre avec un nom propre (ignore ceux non resolus)")
 	_ = fs.Parse(args)
@@ -39,7 +40,7 @@ func cmdRender(args []string) error {
 	if err != nil {
 		return err
 	}
-	opts := himap.OptionsSprite{AxeHaut: himap.AxeHaut(*axe), CotePx: *cote}
+	opts := himap.OptionsSprite{AxeHaut: himap.AxeHaut(*axe), CotePx: *cote, CellMetres: float64(*cellmm) / 1000.0}
 	if *curate != "" {
 		return rendCurate(idx, *curate, *out, opts)
 	}

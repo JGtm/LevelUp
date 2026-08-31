@@ -107,6 +107,20 @@ type OptionsSprite struct {
 	CotePx    int     // longueur cible du plus grand cote, en pixels (defaut 192)
 	MargePx   int     // marge transparente autour, en pixels (defaut 6)
 	AlphaBase float64 // opacite minimale de la silhouette dans [0,1] (defaut 0.80)
+	// CellMetres, si > 0, fixe la taille d'un pixel-monde (metres/pixel) au lieu de l'ajuster
+	// a CotePx. Deux objets rendus au MEME CellMetres sont a la meme echelle : c'est ce qui
+	// permet de composer une tourelle sur un chassis en 2D (chassis et arme dans des jeux de
+	// modules distincts, jamais charges ensemble faute de RAM).
+	CellMetres float64
+	// SectionsChoisies, si non nil, restreint le rendu aux sections (index de maillage) qui y
+	// figurent. Les variantes de tourelle d'un vehicule sont des PERMUTATIONS = des sections
+	// distinctes du meme `mode` ; le rendu par defaut les superpose toutes, ce filtre isole
+	// une variante (chassis + une permutation de tourelle).
+	SectionsChoisies map[int]bool
+	// CadreMin / CadreMax : quand non nil, figent l'emprise (plan horizontal du modele) au lieu
+	// de la calculer sur les sections rendues — indispensable pour rendre plusieurs
+	// sous-ensembles de sections AU MEME CADRE (donc superposables/comparables).
+	CadreMin, CadreMax *[2]float64
 	// SansAretes desactive les traits noirs de contour/relief (par defaut ils sont TRACES).
 	SansAretes bool
 	// SeuilProfCell : rupture de PROFONDEUR entre voisins qui declenche un trait, exprimee en
@@ -148,6 +162,9 @@ func RenduObjetIsole(asset *RuntimeGeoAsset, o OptionsSprite) (*Rendu, error) {
 	o = o.avecDefauts()
 	var meshes []*Mesh
 	for i := 0; i < asset.MeshCount(); i++ {
+		if o.SectionsChoisies != nil && !o.SectionsChoisies[i] {
+			continue
+		}
 		if m := asset.Mesh(i); m != nil && len(m.Vertices) > 0 && len(m.Triangles) > 0 {
 			meshes = append(meshes, remapMesh(m, o.AxeHaut))
 		}
@@ -156,15 +173,25 @@ func RenduObjetIsole(asset *RuntimeGeoAsset, o OptionsSprite) (*Rendu, error) {
 	if !ok {
 		return nil, fmt.Errorf("himap: modele sans maillage exploitable (%d sections)", asset.MeshCount())
 	}
+	// Cadre force : rend plusieurs sous-ensembles de sections au MEME repere (comparables).
+	if o.CadreMin != nil && o.CadreMax != nil {
+		min, max = *o.CadreMin, *o.CadreMax
+	}
 	etendue := math.Max(max[0]-min[0], max[1]-min[1])
 	if etendue <= 0 {
 		return nil, fmt.Errorf("himap: modele degenere (emprise nulle)")
 	}
-	utiles := o.CotePx - 2*o.MargePx
-	if utiles < 1 {
-		utiles = o.CotePx
+	var cell float64
+	if o.CellMetres > 0 {
+		// Echelle FIXE (m/px) : deux objets partagent la meme echelle -> composables en 2D.
+		cell = o.CellMetres
+	} else {
+		utiles := o.CotePx - 2*o.MargePx
+		if utiles < 1 {
+			utiles = o.CotePx
+		}
+		cell = etendue / float64(utiles)
 	}
-	cell := etendue / float64(utiles)
 	marge := float64(o.MargePx) * cell
 	rmin := [2]float64{min[0] - marge, min[1] - marge}
 	rmax := [2]float64{max[0] + marge, max[1] + marge}

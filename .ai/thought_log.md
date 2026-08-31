@@ -1,3 +1,35 @@
+## [2026-09-01] Sons vehicules — le moteur de DEPLACEMENT est DISTINCT par vehicule (rev7 refute) — Complété
+
+**Refutation du rapport V3 rev7** (« les 13 vehicules partagent une boucle unique 06ba1096 ->
+e793c135 ; per-vehicule = RTPC seul ; non extractible »). L'utilisateur avait raison
+physiquement : un RTPC ne change que hauteur/volume, pas le timbre. Preuve sur pieces, 3 axes.
+
+**Decision technique** : ne pas se fier a la ref COMMUNE du tag `vehi` ; descendre dans la
+banque PROPRE a chaque vehicule (mappee par intersection des wems du pck, `lot1_vehbanks.json`,
+toutes dans `pc/globals`) et lire sa structure (`eqip-arbre`) :
+- Ghost -> banque `01862ab3`, event moteur `47361baf` (3 couches simultanees, souffle+thrum) ;
+- Scorpion -> banque `05a51e0a`, event `951f76c0` (base + son partage 195277626 + **SWITCH de
+  regime 196e9bed, groupe 2275666646, 4 etats**) + boucles chenilles `d5c7daeb`/`13beda14` ;
+- Warthog -> banque `a52af042`, event `68b1a949` (**SWITCH 3c24a4f9, meme groupe**) + `38b83eb8`.
+
+**Le SWITCH existe** (rev7 avait inspecte la mauvaise banque, le lit commun e793c135 qui n'en a
+pas). Le jeu change de SAMPLES par bande de regime, pas seulement le pitch. Piege evite : le wem
+embarque dans la banque est un PREFETCH tronque (~0,5 s) ; le wem COMPLET est streame dans le
+pck (prendre le plus long des deux).
+
+**Resultats** : timbres spectralement distincts et conformes a la verite terrain — Ghost souffle
+aerien + thrum (centroides 1796/751 Hz), Scorpion grondement + cliquetis de chenilles (centroide
+4687 Hz, striations d'impacts de maillons), Warthog combustion basse (1472-1698 Hz). Le lit
+commun e793c135 est plus brillant (2822 Hz) et pose SOUS chaque moteur — d'ou le « aucune
+difference » de rev7.
+
+**Livre** : `sons_v3_reconstruits/{Ghost,Scorpion,Warthog_roquettes}/deplacement/` (corps brut +
+boucle 8 s regime median + amorce + queue ; Scorpion : amorce d'allumage 0134da4e). Manifeste
+rev8, rapport `V3B_MOTEUR_PARVEHICULE_2026-09-01.md`. Lecture seule, aucun commit.
+
+**Prochaine etape** : meme recette pour les 6 autres (events deja dans `lot2_moteur.json`) et le
+boost antigrav si demande. Gate d'ecoute utilisateur sur les 3 boucles.
+
 ## [2026-08-30] Sons — le merge ramassage fournit les déclencheurs, les quatre sons muets sont câblés — Complété
 
 **Le merge `dcbc6e458` (chantier ramassage, schémas 25-28) apporte exactement ce qui manquait
@@ -81292,3 +81324,43 @@ l'oreille (Chopper/Banshee/Wraith probable).
 l'utilisateur pour validation. En attente : (1) l'oreille sur Ghost/Wasp (valide la methode) ;
 (2) decision sur la session GHIDRA pour les moteurs switches des vehicules au sol ; (3) nommer
 033e41df. Artefact « Le Garage » a mettre a jour (les deux dossiers sont stables). WAV non commites.
+
+## [2026-09-01] Vehicules — deux percees : moteur PAR VEHICULE (V3B) + variantes REELLES (V4) — Complete
+
+**MOTEUR PAR VEHICULE (V3B, agent frais adverse) — la conclusion « generique seule » de rev7
+REFUTEE.** L'utilisateur avait raison sur pieces (physique) : un RTPC de vitesse ne change que
+hauteur/volume, il ne peut pas transformer un moteur de jeep en souffle d'antigrav — donc des
+samples DISTINCTS par vehicule DOIVENT exister. Ils existent, dans la banque PROPRE a chaque
+vehicule (pas le lit commun `e793c135` ou rev7 cherchait le switch). Preuve 3 axes : (1) structure
+`eqip-arbre` par banque — Ghost banque `01862ab3` event `47361baf` (3 couches), Scorpion `05a51e0a`
+event `951f76c0` avec SWITCH DE REGIME `196e9bed` (4 etats, 6 wems/etat), Warthog `a52af042` event
+`68b1a949` avec switch `3c24a4f9` (meme groupe) — le switch existe, le jeu change de SAMPLES par
+bande de regime, pas que le pitch ; (2) contenu des pck franchement different ; (3) SPECTRE
+conforme a la verite terrain — Ghost souffle+thrum (1796/751 Hz), Scorpion grondement+cliquetis de
+chenilles (4687 Hz, striations d'impacts de maillons), Warthog combustion (1472-1698 Hz). Le lit
+commun `06ba1096`->`e793c135` est pose SOUS chaque moteur, d'ou le « aucune difference » de rev7.
+Livre : Ghost/Scorpion/Warthog corps+boucle regime median 8s+amorce+queue (+ allumage Scorpion
+authentique `0134da4e`). Les 6 autres ont deja leur event moteur identifie (`lot2_moteur.json`),
+meme recette. Rapport `V3B_MOTEUR_PARVEHICULE_2026-09-01.md`, manifeste rev8. LECON : une
+conclusion qui contredit une observation robuste de l'utilisateur est fausse — regard neuf adverse.
+
+**VARIANTES REELLES (V4, marcheur de permutations) — la voie Ghidra etait une impasse, la vraie
+voie est le render_model.** Les armes de variantes (roquettes/gauss/chaingun) n'ont AUCUN modele
+3D (que du comportement de tir) ; le binaire est strippe (pas de parse d'attachement). Mais les
+tourelles sont des PERMUTATIONS d'une region du render_model partage. Nouveau walker
+`himap.ModeRegions` (`regions.go`) : `mode` -> bloc regions (champ racine +40, 24 o/region = Name
+StringId + TagBlock permutations) -> permutation (12 o : Name, SectionIndex u16, SectionCount u16).
+Une variante = un nom de permutation partage entre regions ; SectionIndex < 0 = herite la base
+(fix crucial : sans lui le Razorback perdait ses roues). Noms resolus par murmur3
+(`mapvar.LabelHash`) : `default` et `unarmed`(=cargo/Razorback) confirmes ; 3 StringId Warthog non
+resolus mappes par FORME de tourelle (silhouettes reelles, seul le nom exact manque). Resultat
+regarde a l'oeil : Warthog/Rockethog/Gauss/Razorback nettement distincts a l'arriere, Gungoose vs
+Mongoose au mount avant — VRAIE geometrie, vrais emplacements, aucune composition 2D. Code :
+`internal/himap/regions.go` + `cmd/vehicle-sprite/variantes.go` + `objet_isole.go`
+(`SectionsChoisies`/cadre). `vehicules.go` non touche (coordination inter-agents).
+
+**Conclusion / prochaine etape** : moteurs Ghost/Scorpion/Warthog + variantes envoyes a
+l'utilisateur pour validation ; WAV non commites (transitoires). Si les 3 moteurs conviennent :
+derouler les 6 autres (event deja identifie). Puis MAJ artefact (moteurs par vehicule + variantes),
+egalisation -16 LUFS, livraison static/. Restes : dictionnaire StringId pour nommer les 3 variantes
+Warthog ; amorce/queue generiques (enveloppes) ; boost antigrav ; noms de chassis (MPP) ; i21 ; V2.

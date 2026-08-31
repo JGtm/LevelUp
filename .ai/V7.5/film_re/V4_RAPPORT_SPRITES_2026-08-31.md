@@ -10,16 +10,26 @@
 - **JALON 1 FRANCHI** et regarde a l'oeil : le Warthog rend une vraie vue de dessus,
   reconnaissable (chassis 4 roues, garde-boue avant en haut), teintable. Puis **13 vehicules**
   rendus, tous reconnus visuellement (planche de revue).
-- **V2 (retour « presque parfait »)** : (1) **traits noirs de volume** ajoutes aux 14 sprites
+- **V2 (retour « presque parfait »)** : (1) **traits noirs de volume** ajoutes a tous les sprites
   (roues, cockpit, rotors, pales, panneaux) via detection d'aretes profondeur+normale — LIVRE
   et regarde a l'oeil ; (2) **tourelles** : Shade (deja la) + 1 tourelle montee ; les Gauss /
-  roquette / mitrailleuse « tourelle » n'existent PAS comme modeles propres (constat §10.2) ;
-  (3) **variantes Warthog/Mongoose** : NON composees — l'arme est une piece jointe runtime hors
-  de portee du balayage (constat honnete §10.3).
+  roquette / mitrailleuse « tourelle » n'existent PAS comme modeles propres (constat §10.2).
+- **V3 (variantes)** : composees en 2D best-effort (placeholders) — `warthog`, `rockethog`,
+  `warthog_gauss`, `razorback` (chassis nu = cargo, correct), `gungoose`.
+- **V4 (variantes REELLES) : ABOUTI.** Ecrit le **marcheur de permutations** du render_model
+  (`himap.ModeRegions`, regions -> permutations -> plages de sections) : les variantes d'un
+  vehicule sont des PERMUTATIONS d'une region du mode PARTAGE, pas des modeles separes. Rendu
+  chaque variante = base + sa permutation, meme cadre, traits noirs. Les 4 variantes Warthog
+  (chaingun/rockets/Gauss/Razorback) et Mongoose/Gungoose sont **ENFIN NETTEMENT DISTINCTES**,
+  vraie geometrie aux vrais emplacements (§10.5). StringId `default`/`unarmed` resolus par
+  murmur3 ; les 3 armes mappees par forme de tourelle (§10.5).
+- La voie Ghidra pour parser le bloc seat du `vehi` etait une IMPASSE (weap sans modele, binaire
+  strippe) — le vrai chemin etait les permutations du render_model (§10.4 = diagnostic, §10.5 = solution).
 - La chaine `vehi -> hlmt -> mode -> triangles -> rasterizer local -> PNG` est ecrite sur le
   patron Forge. Seul maillon neuf : le resolveur `RefModeleVehicule` (recursif, filtre anti-parasite).
-- Sprites livres : `.ai/V7.5/film_re/sprites_v4/*.png` (**14 fichiers**, ~256 px, `image.NRGBA`
-  remplissage blanc + traits noirs, teintable **en MULTIPLY** cote web — cf. note §10.1).
+- Sprites livres : `.ai/V7.5/film_re/sprites_v4/*.png` (**18 fichiers** : 13 vehicules + 1 tourelle
+  + 4 variantes composees, ~256 px, `image.NRGBA` remplissage blanc + traits noirs, teintable **en
+  MULTIPLY** cote web — cf. note §10.1).
 - Code de production : `apps/go-api/cmd/vehicle-sprite/` + `internal/himap/{vehicules,objet_isole}.go`.
 
 ## 1. La chaine exacte
@@ -226,26 +236,124 @@ SEUL changement web requis par cette v2.
   n'a pas ete trouve. Verdict : au-dela de Shade + `tourelle_montee`, il n'y a pas de modele de
   tourelle propre a extraire — pas un echec d'outil, une absence dans les tags.
 
-### 10.3 Variantes Warthog / Mongoose (NON compose — constat honnete)
+### 10.3 Variantes Warthog / Mongoose (COMPOSEES — best-effort, placement approxime)
 
-Mesure decisive (`modes` walker sur l'arbre hlmt) : l'arbre geometrique du Warthog `0x00002705`
-ne contient **QU'UN mode, le chassis `0x561f2ca7`** — aucun `weap` ni mode d'arme atteignable.
-Idem Mongoose. **L'armement des variantes (roquettes du Rockethog, canon du Gungoose, benne du
-Razorback) est une PIECE JOINTE RUNTIME** : le vehi la reference par un petit ID / string-id +
-un marqueur de montage, hors de portee du balayage d'octets (`RefsInline`) qui fonde toute la
-chaine. Les `weap` « missile turret » / « arifle turret » resolvent bien un modele (`0xcf38e84b`
-148 sections, `0xe7f1a0dc` 101 sections...), mais ce sont les modeles d'ARME TENUE (barils fins,
-aspect ~5:1 vu de dessus), PAS le pod de tourelle du vehicule — les composer sur le chassis ne
-donnerait pas une silhouette de Rockethog reconnaissable.
+**Ce qui est ETABLI (mesure, pas suppose).** Les 6 `vehi` Warthog resolvent TOUS le meme chassis
+`0x561f2ca7`, et referencent TOUS le meme `weap 0x0000a4bc` (« fixed » = chaingun de base — le
+chantier son le voit aussi « non resolu »). Les 3 `vehi` Mongoose : chassis `0x9e581380`, weap
+`0x033e41df`. **Donc le `vehi` de base ne distingue PAS les variantes** : l'arme distinctive
+(roquettes / Gauss / benne) est attachee via la chaine `vcdd -> sofd -> sofa -> uwfa -> weap`
+(regle R-VEHICULE, `VEHICULES_ARCHETYPE_40.md`). Cette chaine est ANONYME : les 63 `vcdd` n'ont
+aucun nom lisible (que des fragments de tag-refs), et les `weap` « missile turret » resolvent des
+modeles d'ARME TENUE (barils fins ~5:1 vu de dessus), pas des pods de tourelle. **Le pod exact de
+chaque variante n'est donc pas identifiable proprement dans les tags.**
 
-**Consequence** : top-down, Warthog / Rockethog / Razorback partagent une silhouette de chassis
-IDENTIQUE (`0x561f2ca7`), Mongoose / Gungoose de meme (`0x9e581380`). Un sprite par chassis
-couvre donc toutes les variantes. Distinguer visuellement les variantes exigerait de parser la
-structure d'attachement du `vehi` (ref d'arme du vehicule + transforme du marqueur de montage) —
-de la vraie retro-ingenierie de format, au-dela d'un best-effort par balayage. **Non fait,
-assume.** Piste si repris : lever l'offset du bloc « seats/attachments » du tag `vehi` par
-Ghidra (lecture seule) pour extraire ref-arme + marqueur, puis composer les deux modes dans un
-meme `Rendu` a la transforme du marqueur.
+**Ce qui a ete FAIT quand meme (composition 2D a echelle fixe).** Nouveau levier :
+`render -cellmm=<mm/px>` fixe l'echelle (metres/pixel) au lieu de l'ajuster a `-cote`. Deux objets
+rendus au MEME `cellmm` sont a la meme echelle -> composables. Contrainte RAM (chassis en
+`pc/globals`, tourelles en `pc/multiplayer+common`, jamais chargeables ensemble) : on rend chacun
+SEPAREMENT au meme `cellmm`, puis on COMPOSE en 2D (la tourelle posee sur le chassis, System.Drawing).
+Le resultat garde traits noirs + alpha teintable.
+
+Modeles de tourelle-`vehi` employes (les seuls modeles de tourelle propres du jeu), MAPPING PAR
+FORME VISUELLE, NON confirme par les tags :
+
+| variante | fichier | tourelle (vehi -> mode) | placement | confiance |
+|---|---|---|---|---|
+| Warthog (base) | `warthog.png` | `0x038df01a -> 0x1ae526e1` (bloc+canon) | centre-arriere | arme = best-guess ; « a une tourelle arriere » = OK |
+| Rockethog | `rockethog.png` | `0x003f00c7 -> 0x1c8f09d8` (compact, pods) | centre-arriere | best-guess |
+| Gauss | `warthog_gauss.png` | `0x000025a5 -> 0x56fd2500` (canon long fin) | arriere, deborde | best-guess |
+| Razorback | `razorback.png` | AUCUNE (chassis nu) | — | **CORRECT** (cargo = sans tourelle) |
+| Gungoose | `gungoose.png` | `0x3a8060e2 -> 0x1c645961` (canon) | avant | best-guess |
+
+**Placement APPROXIME** (assume) : le marqueur de montage exact du `vehi` n'a pas ete extrait ;
+la tourelle est posee a sa position PLAUSIBLE (Warthog = centre-arriere, Gungoose = avant). La
+taille de la tourelle est legerement exageree pour la lisibilite d'icone.
+
+**CR honnete.** NET : Razorback (chassis sans tourelle) est correct et clairement distinct ;
+Warthog montre desormais une tourelle arriere (repond au retour utilisateur). APPROXIME : le
+mapping tourelle->variante (chaingun/roquettes/Gauss/gungoose) est un best-guess par forme, non
+confirme par les tags — top-down, Warthog/Rockethog/Gauss restent proches (meme chassis, petite
+tourelle arriere), la difference est subtile parce que la GEOMETRIE SOURCE l'est. La seule voie
+d'une distinction certaine : parser le bloc d'attachement du `vehi` (ref-arme de vehicule +
+transforme du marqueur) par Ghidra, puis composer les modes 3D a la transforme reelle — vraie RE
+de format, hors du temps de ce lot.
+
+### 10.4 Variantes REELLES (passe Ghidra) — BLOCAGE PRECIS + prochain pas localise
+
+Objectif : les VRAIES tourelles distinctes au vrai marqueur. Resultat : **non abouti ce tour**,
+mais le blocage est mesure et nomme, pas suppose. Ce qui a ete etabli sur pieces :
+
+1. **Les vrais weap de variantes viennent du chantier son** (`manifeste_v3.json`) :
+   Rockethog `weap 0xc7d50912`, Gungoose `0x0042678e`, chaingun de base `0x0000a4bc`,
+   Scorpion `0x00015cfa`, Wasp `0x11725dc4`, Falcon `0x00015cd3`.
+2. **Ces weap n'ont AUCUN render_model.** Dump des refs par groupe (tout ID) : rien que du
+   comportement de tir — `effe`, `jpt!`, `snd!`/`lsnd`, `proj`, `wpdp`, `grfr`. Zero
+   `hlmt`/`mode`/`rtgo`/`bloc`/`vehi`. Le modele de la tourelle n'est PAS sur le weap.
+3. **La chaine d'arme R-VEHICULE entiere est sans modele.** Les 16 `uwfa` referencent chacun un
+   `weap` (dont Gungoose `0x0042678e` via `uwfa 0xe3d5dc10`) mais AUCUN ne porte de ref de
+   modele. `vcdd` (63 tags) : aucun nom lisible, aucune ref de modele resolvable.
+4. **Les turret-`vehi` (turret_g) ne sont pas les tourelles de vehicule** : elles referencent des
+   weap SANS RAPPORT avec les weap de variantes (0x0bf807fe, 0x000026b6...) — ce sont des
+   emplacements autonomes (AIE, etc.), pas le pod du Warthog.
+5. **Ghidra (HaloInfinite.exe, 311k fn, base 140000000)** : accesseurs `ManagedGameVariant_*`
+   presents, mais **aucun symbole de structure de tag** (pas de fonction `Seat`), et **aucune
+   chaine de nom de champ** (« child object », « primary weapon », « seat »... = 0 resultat) —
+   binaire release, noms de champs strippes. Parser le bloc seat/weapon du `vehi` par Ghidra =
+   trace d'offsets AVEUGLE dans des `FUN_` = multi-session, pas ce tour.
+6. **Piste REELLE localisee (le vrai prochain pas)** : les variantes de tourelle sont tres
+   probablement des **PERMUTATIONS d'une region du render_model partage** (le rendu actuel les
+   SUPERPOSE toutes, d'ou un « rear » charge mais indistinct). Mesure : le mode `0x561f2ca7` a un
+   **bloc regions a l'offset racine 40** (480 o = 20 regions de 24 o = `name` StringId + TagBlock
+   de permutations, comptes 1-4), un bloc Sections a l'offset 192 (90 sections = 90x60), un
+   BoundingBox a 232. Rendu section par section (levier ajoute puis retire, cf. plus bas) :
+   les **sections 51/52/53** sont des formes de TOURELLE distinctes (canon central + base evasee) ;
+   64/65/66/67 sont des LOD du corps entier. **RESTE A FAIRE** (session dediee) : field-walker
+   region -> permutations -> plage de sections (comme le walker `sbsp`), resoudre les StringId
+   des noms de region/permutation (« turret »/« rocket »/« gauss »), puis rendre par permutation
+   au meme cadre. Ca donnerait les vraies tourelles au vrai endroit, sans Ghidra.
+
+**Diagnostic V4** : le modele de tourelle n'est ni sur le `weap`, ni sur la chaine
+`uwfa/sofa/sofd/vcdd`, ni sur une turret-`vehi` liee — il est en PERMUTATION du render_model du
+chassis (region a l'offset 40). C'est ce field-walker qui a ete ecrit en §10.5, et qui resout
+les variantes pour de bon.
+
+### 10.5 Variantes REELLES par le marcheur de permutations (ABOUTI)
+
+Le field-walker `himap.ModeRegions` (regions.go) marche : `mode` -> bloc regions (champ racine
++40, 24 o/region) -> pour chaque region, TagBlock de permutations resolu via la struct-table
+(meme mecanique que `lods()`) -> permutation (12 o : Name StringId +0, SectionIndex u16 +4,
+SectionCount u16 +6). VERIFIE : les plages couvrent proprement les 90 sections du Warthog.
+
+**Structure decouverte.** Une VARIANTE = un nom de permutation PARTAGE entre regions. Le Warthog
+(mode `0x561f2ca7`, 20 regions) a **5 permutations** ; le Mongoose (`0x9e581380`, 19 regions) en
+a **2**. Pour rendre une variante : par region, on prend sa permutation portant ce nom ; si
+absente OU `SectionIndex < 0` (= herite), on retombe sur la permutation de BASE (`default`). Sans
+cette regle d'heritage, `unarmed` perdait ses roues.
+
+**Resolution des noms (StringId = murmur3, `mapvar.LabelHash`).**
+
+| StringId | nom resolu | fichier livre | mapping |
+|---|---|---|---|
+| `0x42c9679f` | **default** | (Mongoose -> `mongoose.png`) | StringId confirme |
+| `0x4e154ee8` | **unarmed** | `razorback.png` | StringId confirme (sans arme = cargo) |
+| `0x06c86db1` | (non resolu) | `warthog.png` | forme : tourelle boxy = chaingun |
+| `0x13d24f1f` | (non resolu) | `rockethog.png` | forme : arriere large a pods = roquettes |
+| `0xad03512a` | (non resolu) | `warthog_gauss.png` | forme : canon central long = Gauss |
+| `0x02c9ed0a` | (non resolu, Mongoose) | `gungoose.png` | forme : mount avant = canons |
+
+**Resultat (regarde a l'oeil, planche de comparaison).** Les 4 variantes Warthog different
+NETTEMENT a l'arriere (tourelle boxy / pods larges / canon central / cargo plat) et Mongoose vs
+Gungoose au mount avant. C'est de la vraie geometrie du modele, a la vraie position (les sections
+sont deja placees dans le repere du modele). Plus de placement approxime, plus de best-guess de
+modele.
+
+**CR honnete.** Ce qui est CERTAIN : la structure regions/permutations, les plages de sections,
+et les noms `default`/`unarmed` (murmur3). Ce qui reste un CHOIX : l'affectation
+chaingun/roquettes/Gauss aux trois StringId non resolus (`06c86db1`/`13d24f1f`/`ad03512a`) est
+faite par la FORME de la tourelle arriere, pas par le nom — un dictionnaire de StringId plus
+complet (ou l'ordre canonique des variantes du jeu) leverait ce dernier doute. Les silhouettes,
+elles, sont les vraies.
 
 ## 8. Fichiers
 
@@ -254,12 +362,17 @@ Production (worktree, NON commite) :
   (resolveur recursif + filtre `minTagIDVehicule`), `EntreesDuGroupe`. (NON modifie en V2 :
   coordination avec l'agent sons qui pouvait editer ce fichier.)
 - `apps/go-api/internal/himap/objet_isole.go` — `AxeHaut`, `RenduObjetIsole`, `SpriteObjetPNG`
-  (remplissage blanc + traits noirs), `aretesObjet` + `despeckle` (V2, detection d'aretes).
-- `apps/go-api/cmd/vehicle-sprite/` — `main.go`, `scan.go` (enumere + identifie), `render.go`
-  (rend / curate), `classify.go` (famille de chassis par noms de maillage).
+  (remplissage blanc + traits noirs), `aretesObjet` + `despeckle` (V2), `OptionsSprite`
+  (`CellMetres` echelle fixe, `SectionsChoisies` filtre de sections, `CadreMin/Max` cadre force).
+- `apps/go-api/internal/himap/regions.go` — **`ModeRegions`** (V4) : marcheur regions ->
+  permutations -> plages de sections d'un render_model. C'est le levier des variantes reelles.
+- `apps/go-api/cmd/vehicle-sprite/` — `main.go`, `scan.go`, `render.go` (`-cellmm`),
+  `classify.go`, **`variantes.go`** (V4 : rend une image par permutation, noms via murmur3).
 
-Assets : `.ai/V7.5/film_re/sprites_v4/*.png` — **14 sprites teintables** (13 vehicules + 1
-tourelle montee), tous avec traits noirs de volume.
+Assets : `.ai/V7.5/film_re/sprites_v4/*.png` — **18 sprites teintables** (12 vehicules + 1
+tourelle montee + variantes Warthog `warthog`/`rockethog`/`warthog_gauss`/`razorback` et
+`mongoose`/`gungoose`), tous avec traits noirs de volume ; variantes = vraies permutations du
+render_model (§10.5).
 
 Verification : `gofmt` propre, `go build` OK, `go vet ./internal/himap/... ./cmd/vehicle-sprite/...`
 propre. Seuils respectes (fichiers <= 500 L, fonctions <= 80 L).
