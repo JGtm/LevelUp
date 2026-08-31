@@ -151,53 +151,74 @@ replique qu'une.**
 
 ## 3. Ce qui RESTE, par ordre de rendement
 
-1. **Le SON de l'explosion** — voir §3.1 : la ligne est écrite, il manque le fichier.
+1. **Le SON de l'explosion** — LIVRE, voir §3.1.
 2. **Le PONT D'IDENTITE sur les films multi-manches** — 5 explosions sur 28 y tombent (`c75f33b8` en perd ses 2). `SlotIdentityByRound` resout chaque manche sur ses seules progressions de morts ; une manche de One Bomb en offre peu. Piste : elargir la source d'appariement au-dela du compteur de morts, ou accepter un appariement inter-manches SOUS PREUVE. Chantier a chiffrer, transverse (il sert aussi Oddball multi-manches).
 3. **Les 2 explosions sans porteur** (`df8fcbef` manche 3, `c75f33b8` manche 1). Le point n'existe
    que sur le slot d'EQUIPE — verifie en imprimant TOUS les enregistrements `comp 0` de ces
    manches. Ce n'est pas un filtre : le film ne replique pas le compteur par joueur. Rien a
    corriger sans une autre source.
-4. **`BombPlants` separe de `BombDetonations`** — le releve A0.3 le dit : « l'ARMEMENT n'a aucun
-   increment propre ». Distinguer l'armement de l'explosion demanderait une chaine OBJET (la bombe
-   posee), et A1 a montre que `ti=42` ne la porte pas. Chantier ouvert, sans piste chiffree.
+4. **L'ARMEMENT de la bombe** — voir §3.3 : la branche « compteur du statborg » est FERMEE par la
+   mesure (112 canaux, 9 films, 28 explosions), la branche « minuterie » reste INDECISE faute de
+   sonde separante (temoin a 1,05). Les pistes vivantes y sont nommees.
 5. **Les sites d'amorcage comme ZONES** — A3 a echoue par l'ancrage `ti=13` ; le catalogue
    d'objectifs ne porte aucune forme de site sur les 5 cartes d'Assaut. La reprise passe par
    `assault_site` / `assault_site_plate` / `assault_bomb_spawn` (hachages craques le 2026-08-30),
    qui n'existent que sur **Isolation, Snowbound, The Pit, High Ground** — les 4 cartes SANS film
    au corpus. Corpus d'abord, code ensuite.
-6. **Les 56 emplacements jamais balayes** — `decodeStatComponent` lit puis JETTE jusqu'a 2 valeurs
-   conditionnelles par composant ; `StatValue{A, B}` n'en porte que 2 sur 4. Piste transverse, pas
-   propre a l'Assaut, et la plus grosse du registre.
+6. **Les 56 emplacements jamais balayes** — OUVERTS le 2026-08-31 : `StatValue` porte desormais
+   `C`, `D`, `HasC`, `HasD`, et le vecteur dense fige en montre deux. Le balayage d'Assaut n'y a
+   rien trouve (§3.3), mais ils restent a instruire pour les AUTRES modes — c'est la plus grosse
+   piste transverse du registre.
 
-### 3.1 Le SON de l'explosion — tout est prêt sauf le fichier
+### 3.1 Le SON de l'explosion — LIVRE (2026-08-31)
 
-**Où se désigne un son d'objectif** : la table `OBJECTIVE_SOUND_STEMS` de
-`apps/web/src/features/match-replay/objectiveSound.ts`. La clé est le NOM CANONIQUE DE LA
-STATISTIQUE, la valeur le stem d'un `.wav` de `static/sounds/halo_infinite/`. Une ligne suffit :
+Designe a l'oreille par l'utilisateur sur la planche d'ecoute, et corrobore INDEPENDAMMENT par la
+structure de la banque : l'evenement `984f65e5` (`play_004_mod_mp_assault_bomb_detonated`) declare
+« 1 couche, 1 son » et pointe `538469998`. Deux chemins, une seule reponse.
 
-    bomb_detonations: { any: 'objective_bomb_detonated' },
+    static/sounds/halo_infinite/objective_bomb_detonated.wav    4,41 s, stereo 48 kHz, -1,0 dBTP
+    OBJECTIVE_SOUND_STEMS   bomb_detonations: { any: 'objective_bomb_detonated' }
 
-`{ any: ... }` et non `{ ally, enemy }` : la RE des banques dit que l'Assaut ne déclare qu'UN
-son de détonation, sans variante de camp (`RE_BANQUES_SONORES_NOMMEES_2026-08-26.md` §3.2).
+`{ any }` et pas une paire : la banque ne porte qu'UN son de detonation, sans jumeau
+`_team`/`_enemy` — comme le retour de drapeau et la contestation de zone.
 
-**LE FICHIER N'EXISTE PAS ENCORE, et c'est le seul manque.** La ligne ci-dessus ne peut pas
-être posée sans lui : le garde-rail d'assets (`replaySoundAssets.guard.test.ts`) exige que
-chaque stem ait son `.wav`, et symétriquement que chaque `.wav` livré soit joué.
+**Piege de rendu paye** : `-ac 2` applique une loi de panoramique de -3 dB en silence (crete
+mesuree a -4 dB au lieu de -1). Le passage mono -> stereo se fait par `pan=stereo|c0=c0|c1=c0`,
+puis la crete se pose en DEUX passes sur un intermediaire flottant.
 
-**La source est identifiée au fichier près** :
+### 3.2 La banque, telle que sa structure la donne
 
-    banque     sb_004_mod_mp_assault                       2b01f208   38 wem
-    evenement  play_004_mod_mp_assault_bomb_detonated      984f65e5   1 wem
+42 evenements, **24 gestes distincts** (le jeu declare chacun deux fois, une par variante de
+mode). Les 9 nommes par la RE du 26/08 sont confirmes media par media. Deux gestes COMPOSES —
+`0c1f744d` et `db750736` — sont les seuls a empiler une boucle bout-a-bout et une queue tiree
+parmi six : la forme d'un COMPTE A REBOURS. Les sept autres evenements nommes (`bomb_taken`,
+`bomb_pickup`, `bomb_spawn`, `bomb_despawn`, `bomb_disarm_loop`) n'ont AUCUN evenement
+correspondant cote rejeu — le film ne replique que la detonation.
 
-**Un seul `.wem`, une seule couche** — c'est le cas SIMPLE : pas de reconstitution multi-couche
-à arbitrer, juste un décodage. Les 322 sons déjà rendus couvrent 18 banques, et
-`2b01f208` n'en fait pas partie : le rendu n'a jamais été lancé sur la banque d'Assaut. Il
-demande `vgmstream-cli` (les `.wem` sont en Wwise Vorbis, `fmt = 0xFFFF` — ffmpeg ne les décode
-pas), qui n'est plus sur le poste.
+### 3.3 L'ARMEMENT — negatif mesure sur la branche « compteur », indecis sur la branche « minuterie »
 
-Les sept autres événements de la banque (`bomb_planted_loop` 4 variantes, `bomb_disarm_loop`,
-`bomb_taken_team/enemy`, `bomb_pickup_team/enemy`, `bomb_spawn`, `bomb_despawn`) n'ont AUCUN
-événement correspondant dans le rejeu : le film ne réplique que la détonation.
+Hypothese de l'utilisateur (2026-08-31) : « pour l'armement a mon avis ca doit etre dans le
+statborg ». Elle meritait la mesure, parce que le releve A0.3 n'avait regarde que DEUX canaux.
+
+**Les deux canaux jamais lus sont ouverts.** Le composant porte quatre valeurs : A et B
+inconditionnelles, puis deux drapeaux commandant chacun une valeur. `decodeStatComponent` lisait
+ces deux dernieres pour avancer le curseur et les JETAIT — **56 emplacements que rien n'avait
+jamais regardes**. `StatValue` porte desormais `C`, `D`, `HasC`, `HasD`.
+
+**Balayage des 112 canaux** (28 composants x 4) sur 9 films contre 28 explosions. Critere ecrit
+avant la mesure : une progression avant CHAQUE explosion, dispersion des delais <= 20 % de la
+mediane. **Aucun candidat** — les meilleures couvertures sont les compteurs ordinaires, dispersion
+116 % au mieux, six fois le seuil.
+
+**La branche minuterie est INDECISE, et c'est le temoin qui le dit.** Une sonde de decroissance
+lineaire rend des correlations elevees partout ; le temoin, rejoue sur des instants SANS explosion
+(-180 s), rend **48,9 % contre 51,4 %, rapport 1,05**. La sonde ne distingue rien. Le negatif se
+lit « la mesure ne sait pas repondre », jamais « ce n'est pas la ».
+
+**Reste a instruire** : les slots d'EQUIPE en progression, les composants au-dela de 27
+(l'archetype en compte 58), et la voie hors statborg — la MECHE comme constante moteur, a lire
+dans le pool Lua de la ParcelLibrary (meme technique que les constantes du drapeau CTF), d'ou
+`armement = explosion - meche`.
 
 ## 4. Pieces
 

@@ -88,6 +88,21 @@ export const OBJECTIVE_SOUND_STEMS: Readonly<
   // côté adverse à l'écoute de la planche (événements `4ebe99d6` / `8594aef7` / `9fad450d` de
   // la banque `1c609526` : le même son déclaré une fois par mode de jeu).
   zone_captures: { ally: 'objective_zone_captured_team', enemy: 'objective_zone_captured_enemy' },
+  /**
+   * L'EXPLOSION DE LA BOMBE (Assaut). Désigné à l'oreille par l'utilisateur le 2026-08-31 sur la
+   * planche d'écoute de la banque, et corroboré par la STRUCTURE de celle-ci : l'événement
+   * `984f65e5` (`play_004_mod_mp_assault_bomb_detonated`) déclare « 1 couche, 1 son » et pointe
+   * `538469998` — les deux se rejoignent sur le même fichier.
+   *
+   * `{ any }` ET NON UNE PAIRE, et c'est une propriété du jeu, pas un raccourci : la banque
+   * d'Assaut ne porte qu'UN son de détonation, sans jumeau `_team` / `_enemy` — exactement comme
+   * le retour de drapeau et la contestation de zone. Une explosion sonne pareil pour tout le
+   * monde ; c'est le RÉSULTAT qui diffère, pas le bruit.
+   *
+   * RIEN À RECONSTRUIRE, contrairement aux gestes multi-couches de la banque (le compte à
+   * rebours en empile deux) : une couche, un média, décodage vgmstream puis crête à -1 dBTP.
+   */
+  bomb_detonations: { any: 'objective_bomb_detonated' },
 }
 
 /**
