@@ -23,12 +23,24 @@ const AIM_HALF_ANGLE = 0.42;
  * regarde plus étroit). Elles se lisent donc ensemble sans se confondre : un joueur à la
  * lunette qui vise vers le bas a un cône à la fois plus étroit et plus court.
  *
- * CETTE VALEUR EST UN CHOIX DE RENDU, PAS UNE MESURE, et il faut le dire : le film transmet le
- * PALIER de lunette, jamais le grossissement — celui-ci appartient à l'arme. 0,18 rad vaut
- * environ 2,3 fois moins que l'ouverture à la hanche, assez pour se lire d'un coup d'œil, et
- * assez large pour que le cône ne disparaisse pas sur un marqueur de petite taille.
+ * LE PALIER COMPTE, PAS SEULEMENT LE FAIT D'ÊTRE ÉPAULÉ. Le film publie un NIVEAU (`Point.S`),
+ * et les paliers supérieurs y sont mesurés — rares, mais réels : sur quatre films, le second
+ * cran apparaît cinq fois sur ~1 000 bascules (les armes qui zooment deux fois, le fusil de
+ * précision en tête). Chaque cran DIVISE encore l'ouverture, par analogie avec le jeu où un
+ * cran supplémentaire double le grossissement.
+ *
+ * CES VALEURS SONT DES CHOIX DE RENDU, PAS DES MESURES, et il faut le dire : le film transmet
+ * le palier, jamais le facteur de grossissement — celui-ci appartient à l'arme et vit dans ses
+ * données de jeu. Le rapport retenu (chaque cran divise l'ouverture par ~2,3 puis ~2) rend le
+ * premier cran lisible d'un coup d'œil et le second nettement distinct du premier.
  */
-const AIM_SCOPED_HALF_ANGLE = 0.18;
+const AIM_SCOPED_DIVISOR = 2.3;
+/**
+ * PLANCHER D'OUVERTURE. Sous ~0,07 rad le secteur devient plus fin que le contour du marqueur
+ * aux échelles usuelles : il cesserait de se lire comme un cône pour devenir un trait, et
+ * l'information « il est épaulé » se perdrait au moment même où elle est la plus forte.
+ */
+const AIM_SCOPED_MIN_HALF_ANGLE = 0.07;
 /**
  * Un cône plus étroit couvre moins de pixels : à opacité égale il se verrait MOINS qu'un cône
  * large, alors qu'il dit quelque chose de plus rare et de plus intéressant. Le supplément
@@ -103,14 +115,14 @@ export function drawAimCone(
     AIM_LENGTH * pitchScale(heldPitch(track.points, style, read.age)) * style.k;
   // LA LUNETTE agit sur l'OUVERTURE, jamais sur la longueur : celle-ci est deja portee par
   // l'elevation, juste au-dessus. Les deux mecaniques restent ainsi lisibles ensemble.
-  const scoped = heldScoped(track.points, style, read.age);
-  const halfAngle = scoped ? AIM_SCOPED_HALF_ANGLE : AIM_HALF_ANGLE;
+  const palier = heldScoped(track.points, style, read.age);
+  const halfAngle = scopedHalfAngle(palier);
   const gradient = ctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, R);
   gradient.addColorStop(0, color);
   gradient.addColorStop(1, "transparent");
   ctx.globalAlpha = Math.min(
     1,
-    AIM_CONE_ALPHA * fresh * (scoped ? AIM_SCOPED_ALPHA_BOOST : 1),
+    AIM_CONE_ALPHA * fresh * (palier > 0 ? AIM_SCOPED_ALPHA_BOOST : 1),
   );
   ctx.beginPath();
   ctx.moveTo(c.x, c.y);
@@ -163,14 +175,27 @@ function heldScoped(
   points: ReplayTrackReady["points"],
   style: MarkerStyle,
   headingAge: number,
-): boolean {
+): number {
   const read = heldReading(
     points,
     style.frame,
     (p) => p.s,
     style.timing.aimHold,
   );
-  return read !== null && read.age <= headingAge && read.value > 0;
+  if (read === null || read.age > headingAge) return 0;
+  return read.value > 0 ? read.value : 0;
+}
+
+/**
+ * scopedHalfAngle : l'ouverture du cône pour un palier de lunette donné.
+ *
+ * Palier 0 (ou absent) : l'ouverture pleine, celle de la hanche. Chaque cran divise ensuite,
+ * avec un plancher — sans lui, un troisième cran rendrait le cône illisible.
+ */
+function scopedHalfAngle(palier: number): number {
+  if (palier <= 0) return AIM_HALF_ANGLE;
+  const ouverture = AIM_HALF_ANGLE / Math.pow(AIM_SCOPED_DIVISOR, palier);
+  return Math.max(AIM_SCOPED_MIN_HALF_ANGLE, ouverture);
 }
 
 /**

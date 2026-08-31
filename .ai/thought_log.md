@@ -81147,3 +81147,36 @@ d'interdire les paliers superieurs.
 **CONSEQUENCE PRODUIT** : `Point.S` publie le palier, pas un booleen. Le rendu peut donc, le jour
 ou l'utilisateur le voudra, distinguer les deux crans (un cone encore plus etroit au second) —
 la donnee est la, c'est un choix d'affichage, pas un chantier.
+
+## [2026-08-31] Visee lunette — L'ETRECISSEMENT SUIT LE PALIER (demande utilisateur) — Complete
+
+**Demande** : « on peut ajuster l'etrecissement en fonction des niveaux ? » Oui — la donnee est
+deja la : `Point.S` publie un PALIER, pas un booleen, et les crans superieurs sont mesures
+(la charge vaut 2 cinq fois sur ~1 000 bascules, quatre films).
+
+**Rendu (`replayAimCone.ts`)** : chaque cran DIVISE l'ouverture.
+
+| palier | ouverture (rad) | lecture |
+|---|---|---|
+| 0 / absent | 0,84 | a la hanche |
+| 1 | 0,365 | epaule |
+| 2 | 0,159 | second cran (armes a deux zooms) |
+| >= 3 | 0,140 (plancher) | — |
+
+Formule : `AIM_HALF_ANGLE / 2,3^palier`, plancher a 0,07 rad de demi-ouverture.
+
+**LE PLANCHER N'EST PAS DECORATIF** : sous ~0,07 rad le secteur devient plus fin que le contour
+du marqueur aux echelles usuelles — il cesserait de se lire comme un cone pour devenir un trait,
+et l'information « il est epaule » se perdrait au moment ou elle est la plus forte.
+
+**CE QUI EST UN CHOIX DE RENDU ET NON UNE MESURE, dit comme tel** : le film transmet le PALIER,
+jamais le facteur de grossissement — celui-ci appartient a l'arme et vit dans ses donnees de jeu.
+Le rapport 2,3 par cran est choisi pour la lisibilite, par analogie avec le jeu ou un cran
+supplementaire double le grossissement. Le jour ou les tags d'armes seront exploites, ce rapport
+pourra devenir une vraie mesure par arme.
+
+**Tests** : 3 epreuves neuves — resserrement au premier cran, resserrement SUPPLEMENTAIRE au
+second (avec l'inegalite stricte, pas seulement la valeur), et plancher aux crans extremes.
+L'orthogonalite avec l'elevation reste testee dans les deux sens.
+
+**Gates** : typecheck vert (cache purge), eslint propre, vitest `match-replay` **1940/1940**.
