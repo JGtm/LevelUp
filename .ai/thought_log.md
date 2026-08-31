@@ -1,3 +1,33 @@
+## [2026-08-31] Percer la trame — damage_aftermath : ref0 = BLESSÉ, ref1 = RESPONSABLE ; monde chronologique inutile — Complété
+
+**Contexte** : worktree dédié `wt/trame-recherche`, en parallèle de `wt/trame-film`. Deux
+questions sur `damage_aftermath` (0xC0 type 0), qui porte deux références domaine-1 résolvant
+toutes deux en slots de bipède.
+
+**Décision technique** : deux instruments sous garde `LOT1_TRAME_FILM`, un film par process.
+(A) Départager blessé/attaquant par la BAISSE DE VITALITÉ (santé i4 + bouclier i5, décodés
+offline par `ScanFilmBipedPositions`/CaptureDirs) du slot résolu autour de l'instant du dégât.
+Base calibrée par couverture-vitalité max (512 sur les 3 films) : le critère « bipède lié » de
+`victime_slot` ne discrimine pas entre bases voisines (bande contiguë). (B) Reconstruire le
+monde chronologique (seuls les tick-frames antérieurs à l'événement) vs fin-de-chunk, même base.
+
+**Résultats chiffrés (000d5950 / 01e1f945 / 00502e52)** : (A) la vitalité du slot de **ref0
+baisse dans 94,8 / 70,6 / 92,4 %** des dégâts, ref1 seulement 13,3 / 37,5 / 1,7 % ; en
+tête-à-tête ref1 ne gagne JAMAIS (63 gagnants ref0, 0 ref1, 9 ambigus). ref0 est présente sur
+100 % des dégâts (toute victime), ref1 parfois absente (attaquant / dégât d'environnement).
+CONCLUSION : **ref0 = blessé (touché), ref1 = responsable (attaquant)**. Le témoin « soin »
+(magnitude négative, Kscale=-1) N'est PAS corroboré (0 % de hausse de vitalité) — à ne pas lire
+comme un soin. (B) gain chronologique NÉGLIGEABLE (0 à +2 pts ; le AVANT reproduit
+`victime_slot` à 82,1 %). Les bipèdes sont liés dès l'image-clé et persistent : le plafond
+82-89 % n'est pas temporel mais vient de l'ambiguïté de la référence (largeur 9/13 bits selon
+la sonde, génération), que le rejeu chronologique ne touche pas.
+
+**Conclusion / prochaine étape** : note `film_re/NOTE_VICTIME_MONDE_CHRONO_2026-08-31.md`.
+Leçon transverse : le taux « base+index = bipède lié » est un proxy FAIBLE de correction (il
+récompense les bases voisines qui tombent sur des bipèdes voisins) ; le vrai juge est la baisse
+de vitalité. Instruments : `lot1_degats_blesse_research_test.go`, `lot1_monde_chrono_research_test.go`.
+PROCHAINE : câbler ref0=victime / ref1=attaquant dans le décodeur de dégâts si un lecteur le demande.
+
 ## [2026-08-31] Percer la trame — VISÉE MODALE PERCÉE : le plafond 19 % tombe (×3-6), grammaire Ghidra + oracle de concentration — Complété
 
 **Contexte** : ultracode, suite. L'agent Ghidra dédié « percer le cadrage de la visée type 105 »
