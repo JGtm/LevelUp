@@ -283,3 +283,74 @@ func tpSentinelle(t *testing.T) func() {
 	})
 	return func() { g.Disarm() }
 }
+
+// TestNavpointTi12PlancherVariantes — LA MEME EPREUVE sur One Bomb et Husky Raid.
+//
+// La constante de 4,93 s est etablie sur NEUTRAL BOMB. Le lot avait observe ~17 s sur One Bomb
+// et des rampes six fois plus rapides sur Husky Raid : soit chaque variante a SA meche (un
+// reglage de mode), soit la lecture ne se generalise pas. Meme statistique, meme nulle, groupes
+// separes — le verdict est par variante.
+//
+//	go test ./internal/analysis/filmdec/ -run NavpointTi12PlancherVariantes -v -timeout 60m
+func TestNavpointTi12PlancherVariantes(t *testing.T) {
+	cache := os.Getenv("ASSAUT_CACHE")
+	if cache == "" {
+		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
+	}
+	defer tpSentinelle(t)()
+	release := LockProcessDecode()
+	defer release()
+
+	groupes := []struct {
+		nom   string
+		films []struct {
+			id   string
+			exps []int32
+		}
+	}{
+		{"One Bomb", []struct {
+			id   string
+			exps []int32
+		}{
+			{"9f57c612", []int32{83322, 298489, 353160, 469057}},
+			{"c75f33b8", []int32{109549, 395724, 450833}},
+			{"df8fcbef", []int32{255767, 309284, 485860, 778033}},
+		}},
+		{"Husky Raid", []struct {
+			id   string
+			exps []int32
+		}{
+			{"1c01e34f", []int32{150546, 273787, 335637, 400853}},
+		}},
+	}
+
+	for _, grp := range groupes {
+		var films []tpFilmDonnees
+		total := 0
+		for _, f := range grp.films {
+			d, ok := tpCharger(t, cache, f.id)
+			if !ok {
+				t.Logf("%s : %s absent — groupe incomplet", grp.nom, f.id)
+				continue
+			}
+			d.exps = f.exps
+			films = append(films, d)
+			total += len(f.exps)
+		}
+		couv, cv, med := tpStat(films, nil)
+		t.Logf("########## %s — %d explosion(s) : couverture %d/%d, delai median %6.1f s, CV %5.3f",
+			grp.nom, total, couv, total, med/1000, cv)
+		rng := rand.New(rand.NewSource(tpGraine))
+		aussiBien, pleins := 0, 0
+		for i := 0; i < tpTirages; i++ {
+			c, v, _ := tpStatNulle(films, rng)
+			if c == total {
+				pleins++
+				if v <= cv {
+					aussiBien++
+				}
+			}
+		}
+		t.Logf("           nulle : %d/%d pleins, %d aussi bien que le reel", pleins, tpTirages, aussiBien)
+	}
+}

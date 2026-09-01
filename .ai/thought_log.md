@@ -81094,3 +81094,11 @@ meilleur vingtieme des tirages nuls.
 **Prochaine etape (portage produit)** : porter la detection de montee contigue dans le pipeline
 du rejeu (meme motif que `extractFromTh10`), publier `bomb_arming_start` / `bomb_armed` par
 manche, et le compte a rebours = [fin de montee, fin + meche] — la demande produit d'origine.
+
+**COMPLEMENT VARIANTES (meme jour)** : la meme epreuve par variante rend —
+Husky Raid **4/4, mediane 5,1 s, CV 0,016, 0/1000 aussi bien** (meme meche, hold 6x plus court :
+un reglage de mode, la meche est du moteur) ; One Bomb 11/11 mais **CV 0,725 et 87/1000 tirages
+nuls font aussi bien** — le signal ne tient PAS en One Bomb sous cette lecture. Le positif vaut
+donc NEUTRAL BOMB + HUSKY RAID (17/17 a ~5 s, 0/1000) ; One Bomb est la reserve a lever au
+portage (anneau porte autrement ? paires de slots differentes ? a instrumenter avant de brancher
+cette variante).
