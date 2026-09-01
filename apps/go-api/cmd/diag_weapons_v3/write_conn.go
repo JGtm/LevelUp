@@ -1,15 +1,19 @@
 package main
 
-// weapons_write.go — ouverture RW SÛRE pour le -write du mode ARMES.
+// write_conn.go — ouverture RW SÛRE pour le -write du mode POSITIONS.
 //
 // Contrat (cf. tâche couche 5) : -write ne touche JAMAIS la vraie shared DB si un
 // serveur la verrouille en écriture. On tente d'abord OpenReadWrite (lock exclusif
 // DuckDB) ; si le lock échoue (serveur up), on travaille sur une COPIE temp de la
 // DB (mktemp), qu'on supprime à la fermeture — comme le CLI objective-events l'a
-// fait. La copie sert de validation du chemin d'écriture v3 sans risque prod.
+// fait. La copie sert de validation du chemin d'écriture sans risque prod.
 //
-// weapon_kills_v3 est shadow/additive (v2 weapon_kills jamais touchée) : écrire sur
-// la vraie DB n'est risqué QUE par le lock, d'où ce garde-fou.
+// La table visée est shadow/additive : écrire sur la vraie DB n'est risqué QUE par
+// le lock, d'où ce garde-fou.
+//
+// RENOMMÉ de `weapons_write.go` le 2026-09-01 : le mode ARMES qu'il servait à
+// l'origine est parti avec la table `weapon_kills_v3` (lot arme-source-unique). Le
+// garde-fou, lui, sert toujours le mode POSITIONS.
 
 import (
 	"context"
@@ -21,10 +25,10 @@ import (
 	"levelup/go-api/internal/platform/duckdb"
 )
 
-// openWeaponsWriteConn ouvre la DB en RW pour le -write armes. Si le lock exclusif
+// openShadowWriteConn ouvre la DB en RW pour le -write shadow. Si le lock exclusif
 // échoue (serveur up), bascule sur une copie temp (supprimée à la fermeture). Le
 // flag *toTemp* informe l'appelant que l'écriture est partie sur une copie jetable.
-func openWeaponsWriteConn(dbPath string) (c *conn, toTemp bool, err error) {
+func openShadowWriteConn(dbPath string) (c *conn, toTemp bool, err error) {
 	rw, rwErr := openLockedRW(dbPath)
 	if rwErr == nil {
 		return &conn{sqlDB: rw.SQLDb(), rwDB: rw, release: func() { _ = rw.Close() }}, false, nil

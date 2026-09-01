@@ -64,7 +64,7 @@ func TestBuildSyncScope_ForceRescanAllData(t *testing.T) {
 		ForceRescan: true,
 	}
 	scope := buildSyncScope(req)
-	if !scope.ForceMedals || !scope.ForceSkill || !scope.ForceWeapons {
+	if !scope.ForceMedals || !scope.ForceSkill || !scope.ForceEvents {
 		t.Fatal("expected all force flags when AllData+ForceRescan")
 	}
 	if !scope.ForceAliases || !scope.ForceLUSR || !scope.ForcePerformanceScores {
@@ -88,7 +88,7 @@ func TestBuildSyncScope_ForceRescanAliasesAndLUSR(t *testing.T) {
 	if !scope.ForceLUSR {
 		t.Fatal("expected ForceLUSR when LUSR+ForceRescan")
 	}
-	if scope.ForceMedals || scope.ForceSkill || scope.ForceWeapons {
+	if scope.ForceMedals || scope.ForceSkill {
 		t.Fatal("expected non-requested force flags to remain false")
 	}
 }
@@ -106,7 +106,7 @@ func TestBuildSyncScope_ForceRescanEventsAndPersonalScores(t *testing.T) {
 	if !scope.ForcePersonalScores {
 		t.Fatal("expected ForcePersonalScores when PersonalScores+ForceRescan")
 	}
-	if scope.ForceMedals || scope.ForceSkill || scope.ForceWeapons {
+	if scope.ForceMedals || scope.ForceSkill {
 		t.Fatal("expected non-requested force flags to remain false")
 	}
 }

@@ -212,6 +212,11 @@ func (c *KillSourceCollector) CollectMatches(ctx context.Context, matchIDs []str
 			sum.Errors++
 			continue
 		}
+		// LES MARQUEURS DE FILM DU REGISTRE (cf. registry_flags.go). Ils etaient poses par
+		// l etape 1.55 jusqu au 2026-09-01 ; cette passe telecharge le meme film, au meme
+		// moment, donc elle sait ce qu ils affirment. Ecrire ici et pas dans `collect` :
+		// seule cette boucle distingue une erreur (rien a affirmer) d un outcome.
+		c.marquerFilm(ctx, id, outcome, deaths)
 		switch outcome {
 		case OutcomeWritten:
 			sum.Written++

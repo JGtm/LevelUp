@@ -10575,12 +10575,8 @@ components:
         psa_processed:
           format: int64
           type: integer
-        weapons_processed:
-          format: int64
-          type: integer
       required:
         - events_processed
-        - weapons_processed
         - psa_processed
         - aliases_upserted
       type: object
@@ -19127,9 +19123,6 @@ components:
         missing_psa:
           format: int64
           type: integer
-        missing_weapons:
-          format: int64
-          type: integer
         player_slug:
           type: string
         xuid:
@@ -19141,7 +19134,6 @@ components:
         - missing_enrichment
         - missing_psa
         - missing_events
-        - missing_weapons
       type: object
     PlayerFreshness:
       additionalProperties: false
@@ -19839,12 +19831,6 @@ components:
         views_refreshed:
           format: int64
           type: integer
-        weapon_kills_no_film:
-          format: int64
-          type: integer
-        weapon_kills_processed:
-          format: int64
-          type: integer
       required:
         - perf_scores_computed
         - lusr_updated
@@ -19855,8 +19841,6 @@ components:
         - engagement_scores_computed
         - engagement_coefs_updated
         - sessions_assigned
-        - weapon_kills_processed
-        - weapon_kills_no_film
         - citations_computed
         - dominance_flags_computed
         - converged_events
@@ -22218,8 +22202,6 @@ components:
         spnkr_refresh_backfill_personal_scores:
           type: boolean
         spnkr_refresh_backfill_skill:
-          type: boolean
-        spnkr_refresh_backfill_weapons:
           type: boolean
         spnkr_refresh_with_backfill:
           type: boolean

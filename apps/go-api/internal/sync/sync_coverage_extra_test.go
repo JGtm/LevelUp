@@ -3,8 +3,6 @@ package sync
 import (
 	"errors"
 	"testing"
-
-	"levelup/go-api/internal/analysis"
 )
 
 // ── isNotFoundErr ────────────────────────────────────────────────────────────
@@ -36,33 +34,5 @@ func TestIsNotFoundErr_RessourceAbsente(t *testing.T) {
 func TestIsNotFoundErr_OtherError(t *testing.T) {
 	if isNotFoundErr(errors.New("connection refused")) {
 		t.Fatal("expected false for other error")
-	}
-}
-
-// ── attributionsToRows ───────────────────────────────────────────────────────
-
-func TestAttributionsToRows_FiltersByXUID(t *testing.T) {
-	wid := uint64(42)
-	attrs := []analysis.KillAttribution{
-		{XUID: "target", TimeMS: 100, WeaponID: &wid, Confidence: "high"},
-		{XUID: "other", TimeMS: 200, WeaponID: &wid, Confidence: "low"},
-		{XUID: "target", TimeMS: 300, WeaponID: &wid, Confidence: "medium"},
-	}
-	rows := attributionsToRows(attrs, "target")
-	if len(rows) != 2 {
-		t.Fatalf("expected 2 rows for target, got %d", len(rows))
-	}
-	if rows[0].TimeMS != 100 {
-		t.Fatalf("expected TimeMS=100, got %d", rows[0].TimeMS)
-	}
-	if rows[1].TimeMS != 300 {
-		t.Fatalf("expected TimeMS=300, got %d", rows[1].TimeMS)
-	}
-}
-
-func TestAttributionsToRows_Empty(t *testing.T) {
-	rows := attributionsToRows(nil, "x")
-	if len(rows) != 0 {
-		t.Fatalf("expected 0 rows, got %d", len(rows))
 	}
 }

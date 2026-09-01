@@ -32,17 +32,11 @@ func FindMatchesMissingData(
 		return nil, fmt.Errorf("FindMatchesMissingData: scope is nil")
 	}
 
-	// --force-no-film implique --weapons
-	if scope.ForceNoFilm {
-		scope.Weapons = true
-		scope.ForceWeapons = true
-	}
-
 	// Détecter le type de flags demandés
 	localRequested := scope.Medals || scope.Events || scope.Skill ||
 		scope.PersonalScores || scope.PerformanceScores || scope.Accuracy ||
 		scope.Shots || scope.EnemyMMR || scope.Assets || scope.Participants ||
-		scope.PVEStats || scope.Weapons
+		scope.PVEStats
 	participantsRequested := scope.ParticipantsScores || scope.ParticipantsKDA ||
 		scope.ParticipantsShots || scope.ParticipantsDamage || scope.ParticipantsAvgLife
 
@@ -370,18 +364,9 @@ func findMatchesInSharedAll(
 		}
 	}
 
-	// Weapon kills
-	if scope.Weapons {
-		wkBit := MBitWeaponKills
-		noFilmBit := MBitWeaponKillsNoFilm
-		if scope.ForceWeapons {
-			conditions = append(conditions, "1=1")
-		} else {
-			conditions = append(conditions,
-				fmt.Sprintf("(COALESCE(mr.backfill_completed, 0) & %d) = 0"+
-					" AND (COALESCE(mr.backfill_completed, 0) & %d) = 0", wkBit, noFilmBit))
-		}
-	}
+	// Weapon kills : condition RETIRÉE le 2026-09-01 avec l'axe scope.Weapons — son
+	// exécuteur (étape 1.55) n'existe plus. Cf. l'en-tête du bloc « Weapon kills »
+	// de scope.go.
 
 	// Playable duration
 	if scope.PlayableDuration {

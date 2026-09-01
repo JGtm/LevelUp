@@ -118,26 +118,6 @@ func (c *slowEventsClient) GetHighlightEventsChunk(_ context.Context, matchID st
 	return c.data, c.version, len(c.data) > 0, nil
 }
 
-// slowFilmClient simule un download film LENT (l'offenseur historique) et capture
-// l'état du writer au moment du download.
-type slowFilmClient struct {
-	weaponTestClient
-	probe    *burstProbe
-	latency  time.Duration
-	chunks   map[int]FilmChunkData
-	heldSeen atomic.Bool
-	acqSeen  atomic.Int32
-}
-
-func (c *slowFilmClient) GetMatchFilm(_ context.Context, _ string) (map[int]FilmChunkData, bool, error) {
-	if c.probe.held.Load() {
-		c.heldSeen.Store(true)
-	}
-	c.acqSeen.Store(c.probe.acquires.Load())
-	time.Sleep(c.latency)
-	return c.chunks, true, nil
-}
-
 // loadHighlightFixture charge le chunk film de référence (v41). Skip si absent.
 func loadHighlightFixture(t *testing.T) []byte {
 	t.Helper()
@@ -236,96 +216,5 @@ func TestPostSyncEvents_AntiTOCTOU_ConvergedDuringCollect(t *testing.T) {
 	}
 	if nEvents != 0 {
 		t.Errorf("ANTI-TOCTOU CASSÉ : %d events écrits alors que le match a été convergé entre collect et flush", nEvents)
-	}
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Weapons
-// ─────────────────────────────────────────────────────────────────────────────
-
-// TestPostSyncWeapons_FilmDownloadOutsideWriter_AndRowsFlushed : le download film
-// (lent) ne voit AUCUN writer RW tenu ni acquis ; les lignes corrélées sont
-// ensuite écrites dans un burst labellisé sync_v2_postsync/weapons, avec le bit
-// de complétion posé (garde bit-honnête).
-func TestPostSyncWeapons_FilmDownloadOutsideWriter_AndRowsFlushed(t *testing.T) {
-	shared := openBatchPathTestDB(t, migration.TargetShared)
-	player := openBatchPathTestDB(t, migration.TargetPlayer)
-	const xuid = "x1"
-	seedConvergenceMatch(t, shared, "wk-slow", xuid, true, 0)
-	for _, ms := range []int{5000, 10000} {
-		if _, err := shared.Exec(
-			`INSERT INTO highlight_events (match_id, xuid, event_type, time_ms) VALUES (?, ?, 'kill', ?)`,
-			"wk-slow", xuid, ms); err != nil {
-			t.Fatalf("seed highlight_events: %v", err)
-		}
-	}
-
-	client := &slowFilmClient{
-		latency: 60 * time.Millisecond,
-		chunks:  map[int]FilmChunkData{0: {Data: []byte{}, StartMS: 0, DurationMS: 1000}},
-	}
-	steps, probe, res := newFilmStepsProbe(t, player, shared, client, xuid)
-	client.probe = probe
-
-	steps.runWeaponKills(context.Background(), []string{"wk-slow"})
-
-	if client.heldSeen.Load() {
-		t.Error("RÉGRESSION : le writer RW était TENU pendant le download film (le download doit être hors lease)")
-	}
-	if got := client.acqSeen.Load(); got != 0 {
-		t.Errorf("RÉGRESSION : %d acquisition(s) RW déjà faite(s) au moment du download, want 0", got)
-	}
-	if probe.acquires.Load() != 1 {
-		t.Errorf("acquisitions RW = %d, want 1 (un seul burst de flush pour un lot)", probe.acquires.Load())
-	}
-	if !probe.seenLabel("sync_v2_postsync/weapons") {
-		t.Errorf("label de télémétrie manquant sur le burst de flush, labels=%v", probe.labels)
-	}
-
-	// Parité : lignes flushées + bit posé.
-	if res.WeaponKillsProcessed != 1 {
-		t.Errorf("WeaponKillsProcessed = %d, want 1", res.WeaponKillsProcessed)
-	}
-	var nRows int
-	if err := shared.QueryRow(
-		`SELECT COUNT(*) FROM weapon_kills WHERE match_id = 'wk-slow' AND xuid = ?`, xuid).Scan(&nRows); err != nil {
-		t.Fatalf("count weapon_kills: %v", err)
-	}
-	if nRows != 2 {
-		t.Errorf("weapon_kills écrits = %d, want 2 (les 2 kills corrélés)", nRows)
-	}
-	var bits int64
-	if err := shared.QueryRow(
-		`SELECT COALESCE(backfill_completed, 0) FROM match_registry WHERE match_id = 'wk-slow'`).Scan(&bits); err != nil {
-		t.Fatalf("read backfill_completed: %v", err)
-	}
-	if bits&int64(MBitWeaponKills) == 0 {
-		t.Errorf("MBitWeaponKills non posé après flush (bits=%d)", bits)
-	}
-}
-
-// TestPostSyncWeapons_NoFilm_MarksNoFilmBitInFlush : film absent → aucune ligne,
-// bit no-film posé pendant le flush, compteur noFilm (et pas done).
-func TestPostSyncWeapons_NoFilm_MarksNoFilmBitInFlush(t *testing.T) {
-	shared := openBatchPathTestDB(t, migration.TargetShared)
-	player := openBatchPathTestDB(t, migration.TargetPlayer)
-	const xuid = "x1"
-	seedConvergenceMatch(t, shared, "wk-nofilm", xuid, true, 0)
-
-	steps, probe, res := newFilmStepsProbe(t, player, shared, &weaponTestClient{filmPresent: false}, xuid)
-	_ = probe
-
-	steps.runWeaponKills(context.Background(), []string{"wk-nofilm"})
-
-	if res.WeaponKillsNoFilm != 1 || res.WeaponKillsProcessed != 0 {
-		t.Errorf("done=%d noFilm=%d, want done=0 noFilm=1", res.WeaponKillsProcessed, res.WeaponKillsNoFilm)
-	}
-	var bits int64
-	if err := shared.QueryRow(
-		`SELECT COALESCE(backfill_completed, 0) FROM match_registry WHERE match_id = 'wk-nofilm'`).Scan(&bits); err != nil {
-		t.Fatalf("read backfill_completed: %v", err)
-	}
-	if bits&int64(MBitWeaponKillsNoFilm) == 0 {
-		t.Errorf("MBitWeaponKillsNoFilm non posé (bits=%d)", bits)
 	}
 }
