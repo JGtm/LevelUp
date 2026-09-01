@@ -1,3 +1,77 @@
+## [2026-09-01] LA BOMBE D'ASSAUT EST DANS LE CANAL DES ARMES TENUES — `0x3fee4fcf` : ramassages, porteurs et temps de portage décodés ; témoin Oddball 100 % — Complété
+
+**La question (utilisateur)** : en Assaut il manque ramassage, porteur, temps de portage,
+désamorçage — et la bombe est un OBJET TENU EN MAIN, comme le crâne et le drapeau. Le dépôt
+décodait déjà les canaux génériques d'objet tenu (`filmdec.ScanFilmHeldWeaponChanges`,
+composant weapon-state-type-info) et personne ne les avait pointés sur l'Assaut. Les négatifs
+du chantier (bande 20-27 vide, pied th=10 quasi absent, `ti=13` vide) ne couvraient PAS ce
+canal. Branche `wt/bombe-portee`.
+
+**L'IDENTITÉ, établie par deux voies indépendantes.** (B1, `bombe_b1_identite_test.go`)
+Témoin d'abord : sur le film Oddball `43716616`, le crâne `0x0017592c` ÉMET dans le canal des
+armes tenues (14 prises, 4 lâchers, 14 slots-vies) — le canal réplique bien les objets de
+mode. Sur les 9 films d'Assaut, UNE SEULE famille passe le crible (hors catalogue d'armes +
+présente sur les 9 films + prise ET lâchée sur chacun) : **`0x3fee4fcf`**, 7 à 42 slots-vies
+par film (médiane 13). Confirmation extérieure : l'atlas HUD du jeu donne à ce tag le sprite
+`contour-34`, nommé **« ball | bomb »** dans `static/weapons-assets/halo_infinite/jeu/index.json`.
+
+**LA CHRONOLOGIE ET LES ORACLES** (B2, `bombe_b2_chronologie_test.go`) — périodes de portage
+= prise -> (lâcher | mort du porteur | fin de film), datées ms match (`ScanFilmClockOrigin`),
+identités par le pont `ResolveSlotXUID` :
+
+- **V3 (témoin Oddball) : 46/46 heartbeats = 100 %.** Chaque heartbeat de possession th=10
+  tombe dans une période de portage du crâne du MÊME joueur. DÉCOUVERTE au passage, qui
+  élucide la piste P3 du handoff Oddball : les événements th=10 émis À LA MORT du porteur
+  créditent son TUEUR (la stat `skull_carriers_killed`) — vérifié contre le fil des kills
+  sur les 10 cas, à ±150 ms. Le pied th=10 mélange donc DEUX natures d'événement.
+- **V1 (poseur = détonateur statborg) : 13/17 = 76,5 %** sur les explosions résolues des
+  deux côtés (28 datées ; 7 sans détonateur identifié — pont par manche One Bomb, connu —
+  et 4 sans porteur ponté, dont les 3 de `ce083875` au pont dégradé). Le délai médian
+  lâcher -> explosion vaut **4 740 ms** : le lâcher du canal EST le geste de pose, à
+  ~200 ms de la mèche mesurée (4 930 ms).
+- **V2 (bombe posée portée par personne) : 27/28 = 96,4 %.**
+- **Les 4 désaccords V1** (B3, `bombe_b3_desaccords_test.go`, positions en quanta) : trois
+  penchent CANAL (candidat canal 2,4-2,5x plus près des sites de pose authentifiés, plus
+  immobile ; sur `69b16f5d`-310215 le lâcher canal précède l'explosion de 4 685 ms — la
+  signature de pose), un INDÉCIS (`3d58eb37`-203065 : les deux candidats côte à côte sur
+  des vies adjacentes — coéquipiers spawnés ensemble). NON ARBITRÉS définitivement : la
+  pièce qui trancherait est la création `ti=42` de la bombe plantée (position du site réel),
+  non instrumentée dans ce lot. Les chiffres V1/V2 sont FIGÉS comme référence dans le test
+  (patron TestAssautA5PontIdentite) : amélioration comme dégradation rougissent.
+
+**LE DÉSAMORÇAGE** (B4, `filmdec/bombe_desamorcage_research_test.go`) : PAS D'OCCURRENCE
+ORACLE sur les modes mesurables. Sur les 6 films Neutral Bomb + Husky (17 explosions), D2 est
+PARFAIT — chaque explosion est précédée de sa pose complète (délais 4,86-5,24 s) et le compte
+des montées complètes vaut exactement 2 x les explosions (l'anneau est répliqué sur DEUX slots
+d'interface jumeaux) : AUCUNE pose complète sans explosion, donc aucun désamorçage au corpus.
+Sur les 3 films One Bomb, D2 = 0/11 : l'anneau ti=12 n'y date pas l'armement (confirme le
+plancher variantes, CV 0,725) — ses saturations hors explosion (32 lignes brutes, slots
+jumeaux compris) suivent le motif « lâcher +0,25 s / reprise +15-30 s », la mécanique de
+RESET de la bombe au sol, pas des poses. Le désamorçage One Bomb reste non mesurable par
+cette voie.
+
+**L'INSTRUMENT PUBLIÉ** : `replay/held_object_carry.go` — `BuildHeldObjectCarry(events,
+slotXUID, deaths)` rend événements, périodes de portage et temps de portage par joueur
+(`CarryMSByXUID`) pour tout objet tenu (bombe, crâne). Cœur pur, 5 tests unitaires sans film
+(`held_object_carry_test.go`) ; les tests de mesure B2/B3 délèguent à lui (une seule
+implémentation). AUCUN chemin de production modifié : rien ne le branche encore au document
+de rejeu — c'est la matière du futur portage produit.
+
+**Ce qui a surpris** : (1) le canal était là depuis le début — les trois maisons fouillées
+par le lot A (statborg, pied, ti=13) n'étaient pas les bonnes, l'objet tenu vit sur le
+BIPÈDE ; (2) le jonglage (jets-reprises en cycles de ~700 ms) est visible et fréquent ;
+(3) la mort du porteur n'émet AUCUN lâcher — la fermeture par le fil des morts est
+obligatoire ; (4) l'anneau ti=12 One Bomb ne date PAS l'armement (D2 0/11 sur les 3 films
+One Bomb) alors qu'il est exact à ~5 s sur Neutral et Husky.
+
+**Pièces** : logs figés `.ai/V7.5/replay2d/registre_film/B2_bombe_chronologie_v1v2.log`,
+`B3_bombe_desaccords_positions.log`, `B4_bombe_desamorcage.log`. Sentinelles mémoire armées
+partout (pics 0,01-0,09 Gio), verrou process, un décodage à la fois.
+
+**Prochaine étape** : porter la chronologie au document de rejeu (clé porteur, schéma à
+numéroter) ; arbitrer les 3+1 désaccords par les créations `ti=42` ; croiser
+`CarryMSByXUID` avec `TimeAsBombCarrier` du binaire si un jour l'API l'expose.
+
 ## [2026-09-01] `ti=11 i12/i13/i14` sans filtre — LA DENSITÉ NE PARLE PAS NON PLUS : négatif BORNÉ sur les 17 épreuves — Complété
 
 **La question du lot** : les cinq instruments précédents demandaient *quelle valeur* porte la
