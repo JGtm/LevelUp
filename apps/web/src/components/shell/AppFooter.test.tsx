@@ -39,7 +39,7 @@ describe('AppFooter', () => {
     expect(hrefOf(/PayPal/i)).toBe(PAYPAL_URL)
     expect(hrefOf(/Nouveautés/i)).toBe('/changelog')
     expect(hrefOf(/Confidentialité/i)).toBe('/privacy')
-    expect(hrefOf(/Le développeur/i)).toBe(GITHUB_PROFILE_URL)
+    expect(hrefOf(/Développeur/i)).toBe(GITHUB_PROFILE_URL)
     expect(screen.getByText(/sans lien avec Microsoft/i)).toBeInTheDocument()
   })
 

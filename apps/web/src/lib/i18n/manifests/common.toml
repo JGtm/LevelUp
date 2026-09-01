@@ -2215,10 +2215,6 @@ en = "MIT licence"
 fr = "Soutenir"
 en = "Support"
 
-[common.footer.support_note]
-fr = "LevelUp est gratuit et ouvert. Un coup de pouce paie l'hébergement."
-en = "LevelUp is free and open source. A little help pays for hosting."
-
 [common.footer.sponsors]
 fr = "GitHub Sponsors"
 en = "GitHub Sponsors"
@@ -2240,8 +2236,8 @@ fr = "Ailleurs"
 en = "Elsewhere"
 
 [common.footer.developer]
-fr = "Le développeur"
-en = "The developer"
+fr = "Développeur"
+en = "Developer"
 
 [common.footer.csinsight]
 fr = "CSinsight — stats CS2"
