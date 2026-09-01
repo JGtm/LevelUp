@@ -183,6 +183,87 @@ les 15 occurrences tombaient toutes en « sans vie rattachable » (7/7 et 8/8). 
 parfaitement uniforme sur deux films est un signal d'alarme, pas une decouverte. Corrige par un
 decoupage sur le seul axe du temps, au MEME seuil (`lifeGapUS`).
 
+## PASSE `.mvar` (2026-09-01, GO utilisateur) — LES POINTS D'EQUIPEMENT SONT TROUVES
+
+Le blocage est leve : les variantes ont ete re-telechargees, et les 12 positions publiees ont
+ete confrontees au contenu reel des fichiers de carte.
+
+### Ce qui a ete telecharge — 3 appels reseau
+
+**Diagnostic d'authentification d'abord.** Le premier essai (`--player Chocoboflor`, le joueur
+par defaut) echoue sur **AADSTS70000** — « token issued for a different client id ». AUCUNE
+re-capture (doctrine du depot). L'inspection du magasin montre pourquoi, et qui utiliser :
+
+| compte | RT | `reauth_required` | classe d'erreur | maj |
+|---|---|---|---|---|
+| Chocoboflor, Madina97294, XxDaemonGamerxX | 417/393 car. | **oui** | `revoked` | 30/08 |
+| **JGtm** | **329 car.** | **non** | — | **31/08** |
+| Trimbutton, DankerGlue, QuiteSiren, UppedJoker, GeleJugefi | 373 car. | non | — | 30/08 |
+
+Trois comptes sont revoques depuis le 30/08 ; la longueur du RT les trahit (417/393 = ancienne
+application). **Un seul essai supplementaire**, avec `JGtm` (sain, rafraichi la veille) : succes.
+
+Telechargement : `--dry-run --save-mvar` vers le worktree de recherche — **le catalogue partage
+n'a PAS ete regenere**. 3 fichiers : `map.mvar` (453 objets) et `ridgeline.mvar` (443) pour
+Cliffhanger, `catalyst.mvar` (337) pour Catalyst.
+
+### L'histogramme aux 12 positions — le test
+
+**Catalyst : 5 positions sur 5 touchees, a 0,00-0,01 m.** La meme resolution que l'etalon de
+production (mediane 0,01 m). Deux types HORS liste blanche s'y trouvent :
+
+| type_id | Catalyst | Cliffhanger | positions couvertes |
+|---|---|---|---|
+| **`0xADEEE6D8`** | 4 objets | 5 objets | 2 (n=14 et n=10) |
+| **`0xE42158DF`** | 4 objets | 4 objets | 3 (n=6, 6, 4) |
+
+Leur **cardinalite est celle d'un socle** — quelques unites par carte. Un troisieme type,
+`0xA495FE83`, tombait a 0,51 m d'une position de Cliffhanger : il compte **95 a 100 exemplaires
+par carte**, c'est du decor, sa proximite est fortuite. **Ecarte** — trois chiffres suffisent a
+separer un socle d'un pave.
+
+**Cliffhanger : 1 position sur 7, et c'est le decor ecarte.** Les deux variantes du fichier
+(`map.mvar` ET `ridgeline.mvar`) ont ete testees : aucun objet a moins d'un metre des six autres
+grappes. Sur ce film — Super Fiesta — l'equipement n'est PAS pose sur la carte, il est distribue.
+
+### Le catalogue elargi, et le verdict
+
+Elargissement EN MEMOIRE (aucune regeneration de `map_weapon_pads.json`, aucun changement a
+`mapvar.PadFamilyOf`), memes temoins spatiaux :
+
+**CATALYST (`01e1f945`, KOTH) — 283 naissances, 8 points d'equipement ajoutes**
+
+| | SOCLE | SOL | ABSTENTION |
+|---|---|---|---|
+| AVANT | 14 (4,9 %) | 149 (52,7 %) | 120 (42,4 %) |
+| **APRES** | **61 (21,6 %)** | 146 (51,6 %) | **76 (26,9 %)** |
+| temoin +10 x | 5 (1,8 %) | 148 | 130 |
+| temoin -7 y | 12 (4,2 %) | 151 | 120 |
+
+**X1 TENU** (le seau SOCLE quadruple : 14 -> 61) · **X2 TENU** (temoins a 5 et 12 contre 61).
+Quarante-quatre abstentions passent au seau SOCLE. Huit points ajoutes expliquent 47 naissances.
+
+**CLIFFHANGER (`000d5950`, Super Fiesta) — 401 naissances, 9 points ajoutes**
+
+| | SOCLE | SOL | ABSTENTION |
+|---|---|---|---|
+| AVANT | 8 (2,0 %) | 254 (63,3 %) | 139 (34,7 %) |
+| APRES | 12 (3,0 %) | 252 (62,8 %) | 137 (34,2 %) |
+| temoin +10 x | 0 | 262 | 139 |
+| temoin -7 y | **21** | 242 | 138 |
+
+**X1 NON TENU · X2 NON TENU** — et le temoin decale de -7 m rend PLUS de socles (21) que le reel
+(12). Quand un temoin bat le reel, il n'y a pas de signal : sur ce mode, les points d'equipement
+de la carte ne servent pas. C'est ce que X3 avait ecrit avant la mesure.
+
+### Trois defauts d'instrument, tous attrapes avant de conclure
+
+1. Constante `0xE42158DF` transcrite en int32 avec la mauvaise valeur (-468670241 au lieu de
+   -467576609) — attrapee en comparant au calcul.
+2. `go vet` a refuse un tag JSON groupe sur `X, Y, Z float64` : le tag va aux TROIS
+   champs, et **Y comme Z se seraient lus a ZERO en silence**. Un tag par champ.
+3. (Rappel du lot precedent) le temoin par permutation de liste, nul par construction.
+
 ## VERDICT — prouve / plausible / refute
 
 - **PROUVE** : le catalogue de socles est utilisable pour trancher l'origine, LA OU LE MODE
@@ -200,10 +281,13 @@ decoupage sur le seul axe du temps, au MEME seuil (`lifeGapUS`).
 - **REFUTE** : que la chaine `.module` puisse rendre les placements d'objets. Elle va dans
   l'autre sens (le `.module` resout un `type_id` en modele ; le `.mvar` porte la liste et les
   positions). Maillon manquant nomme : la LISTE des objets.
-- **PLUS BLOQUE, mais NON EXECUTE** : l'elargissement du catalogue. Les `.mvar` sont
-  re-telechargeables par `cmd/mapobj-build --save-mvar` (API UGC, auth en place). C'est une
-  commande reseau sur le compte de l'utilisateur — hors perimetre d'un lot de recherche hors
-  ligne. Sequence prete a lancer ci-dessus.
+- **FAIT, ET CONCLUANT** : les `.mvar` ont ete re-telecharges (3 appels) et les points
+  d'apparition d'equipement TROUVES — `0xADEEE6D8` et `0xE42158DF`, 4 a 5 objets par carte,
+  a 0,00-0,01 m des positions publiees. Catalogue elargi en memoire : sur Catalyst le seau
+  SOCLE passe de 14 a **61** et l'ABSTENTION de 120 a **76**, temoins a 5 et 12.
+- **PUBLIABLE, SOUS RESERVE D'ELARGIR LE CORPUS** : l'origine socle/sol devient decidable sur
+  les modes qui posent l'equipement. Deux cartes seulement, et un mode sur deux : la
+  regeneration du catalogue partage merite un lot dedie avec plus de cartes.
 
 ## VERIFICATION COMPLEMENTAIRE — la chaine `.module` rend-elle les `.mvar` ? NON, mais il y a mieux
 

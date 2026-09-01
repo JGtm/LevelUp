@@ -83438,3 +83438,40 @@ Corrigé par un découpage sur le seul axe du temps, au même seuil `lifeGapUS`.
 **Reste** : `00007ca9` est un événement de démarrage, une fois par joueur, classé ARME, jamais
 dans un emplacement d'arme. Non tranché — mais la piste « objet du monde portable » est fermée
 sur ces données.
+
+---
+
+## [2026-09-01] Passe `.mvar` — les points d'apparition d'équipement sont TROUVÉS
+
+**Statut** : Complété. Le blocage du lot précédent est levé, et le test tranche.
+
+**Diagnostic d'auth avant tout.** Le joueur par défaut (Chocoboflor) échoue sur **AADSTS70000**
+— token émis pour un autre client id. Aucune re-capture (doctrine). L'inspection du magasin
+montre trois comptes `revoked` depuis le 30/08, trahis par la longueur de leur RT (417/393 =
+ancienne application), et **JGtm sain, rafraîchi la veille**. UN seul essai supplémentaire avec
+ce compte : succès. 3 appels réseau, `--dry-run --save-mvar` vers le worktree — **le catalogue
+partagé n'a pas été régénéré**.
+
+**Le test des 12 positions.** Sur Catalyst, **5 positions sur 5 touchées à 0,00-0,01 m** — la
+résolution de l'étalon de production. Deux types hors liste blanche : `0xADEEE6D8` (4-5 objets
+par carte) et `0xE42158DF` (4). Leur **cardinalité est celle d'un socle**. Un troisième candidat,
+`0xA495FE83`, tombait à 0,51 m — mais il compte 95 à 100 exemplaires par carte : c'est du décor,
+écarté. Trois chiffres suffisent à séparer un socle d'un pavé.
+
+**Le verdict, catalogue élargi en mémoire.** Catalyst : SOCLE **14 → 61** (4,9 % → 21,6 %),
+ABSTENTION **120 → 76**, témoins spatiaux à 5 et 12 contre 61. X1 et X2 tenus. Huit points
+ajoutés expliquent 47 naissances.
+
+**Cliffhanger ne bouge pas, et c'était écrit avant la mesure** : SOCLE 8 → 12, et le témoin
+décalé de −7 m rend PLUS de socles (21) que le réel (12). **Quand un témoin bat le réel, il n'y
+a pas de signal.** Sur Super Fiesta l'équipement n'est pas posé sur la carte — les deux
+variantes du fichier ont été testées, aucun objet à moins d'un mètre de six des sept grappes.
+
+**Trois défauts d'instrument attrapés avant de conclure**, et deux par les outils : une constante
+int32 mal transcrite (rattrapée en comparant au calcul), et surtout `go vet` refusant un tag JSON
+groupé sur `X, Y, Z` — le tag serait allé aux trois champs et **Y comme Z se seraient lus à zéro
+en silence**, ce qui aurait faussé toutes les distances sans rien casser.
+
+**Ce que ça change** : l'origine socle/sol devient DÉCIDABLE sur les modes qui posent
+l'équipement. Publiable sous réserve d'élargir le corpus — deux cartes et un mode sur deux ne
+suffisent pas à régénérer un catalogue partagé ; ce sera un lot dédié.
