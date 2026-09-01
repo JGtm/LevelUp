@@ -128,6 +128,24 @@ type Pickup struct {
 	// jour où ce sera lu, les artefacts déjà cuits porteront la valeur — sinon il faudrait
 	// tout recuire pour une information qui était là.
 	Class int `json:"class"`
+	// Origin dit D'OU VENAIT l'objet ramasse — `spawner` (un point d'apparition catalogue de
+	// la carte) ou `ground` (une pose libere par une mort). Schema 32.
+	//
+	// UNIQUEMENT SUR LES RAMASSAGES NON-ARME, et c'est deliberé : les armes ont deja leur
+	// chaine d'origine, `GroundWeapon` avec son `End`/`Picker`, mesuree et livree. Republier
+	// une origine concurrente sur les memes evenements donnerait deux reponses a une seule
+	// question.
+	//
+	// ABSENT = ABSTENTION EXPLICITE, JAMAIS UN REPLI. Un client qui ne trouve pas la cle ne
+	// doit pas conclure `ground` : il doit conclure « non etabli ». Trois causes possibles, et
+	// la couverture les separe : la carte n'est pas au catalogue
+	// (`coverage.pickups.mapCatalogMissing`), le ramasseur n'a pas de position assez proche
+	// dans le temps, ou le ramassage n'est ni sur un point ni sur une pose.
+	//
+	// Vocabulaire distinct de `EquipmentPlacement.Origin` (`deployed`/`dropped`/`unknown`),
+	// qui repond a une AUTRE question — qui a pose l'objet, pas d'ou il venait. Les deux
+	// ensembles de valeurs sont disjoints pour que la confusion soit impossible a l'usage.
+	Origin string `json:"origin,omitempty"`
 }
 
 // buildPickups projette les ramassages lus dans le film sur l'axe de frames du document et
@@ -150,12 +168,19 @@ type Pickup struct {
 // La casse du fichier n'atteint jamais cette jointure.)
 func buildPickups(
 	pickups []filmdec.BipedPickup, clk replayClock, slotXUID map[uint32]uint64,
-	st filmdec.BipedPickupStats, weaponKeys map[uint32]string,
+	st filmdec.BipedPickupStats, weaponKeys map[uint32]string, judge *pickupOriginJudge,
 ) ([]Pickup, PickupCoverage) {
 	cov := PickupCoverage{
 		Decoded:    len(pickups),
 		MultiEvent: st.MultiEvent,
 		Refused:    st.RefusedNoRef + st.RefusedNoCatalog + st.RefusedOffBand,
+	}
+	if judge != nil {
+		cov.MapCatalogMissing = !judge.catalogKnown
+		cov.MapCatalogPoints = len(judge.points)
+	} else {
+		// Pas de juge = pas de carte fournie au builder : c'est le meme trou, et il se dit.
+		cov.MapCatalogMissing = true
 	}
 	if len(pickups) == 0 || clk.step == 0 {
 		return nil, cov
@@ -182,12 +207,24 @@ func buildPickups(
 		if e.Family == "" {
 			cov.UnknownFamilies++
 		}
+		// L'ORIGINE NE SE POSE QUE SUR LES NON-ARMES (cf. Pickup.Origin).
+		if k != PickupWeapon && judge != nil {
+			e.Origin = judge.origineDe(p.Slot, p.TimestampUS, e.T)
+		}
 		out = append(out, e)
 		cov.Published++
 		if k == PickupWeapon {
 			cov.Weapons++
 		} else {
 			cov.Items++
+			switch e.Origin {
+			case PickupOriginSpawner:
+				cov.OriginSpawner++
+			case PickupOriginGround:
+				cov.OriginGround++
+			default:
+				cov.OriginUnknown++
+			}
 		}
 	}
 	if len(out) == 0 {
@@ -255,4 +292,24 @@ type PickupCoverage struct {
 	// identifiant absent, slot hors bande de bipèdes). Jamais non nul sur le corpus de
 	// référence : une valeur non nulle signale une largeur de runtime inadaptée au film.
 	Refused int `json:"refused"`
+	// OriginSpawner / OriginGround / OriginUnknown : la repartition des origines sur les
+	// ramassages NON-ARME publies. Les trois se somment aux `items` publies — un invariant
+	// qu'un test verifie, parce qu'un seau qui ne boucle pas est le premier signe qu'une
+	// branche de classement a ete oubliee.
+	OriginSpawner int `json:"originSpawner"`
+	OriginGround  int `json:"originGround"`
+	OriginUnknown int `json:"originUnknown"`
+	// MapCatalogMissing dit que la carte de ce match N'EST PAS au catalogue des points
+	// d'apparition : aucun ramassage ne peut alors etre `spawner`, et `originUnknown` compte
+	// pour une raison qui n'a rien a voir avec le jeu.
+	//
+	// DECISION PRODUIT, ET ELLE EST LA RAISON D'ETRE DU CHAMP : le trou doit se VOIR. La
+	// generation d'artefact est HORS LIGNE et le reste — une carte manquante ne se telecharge
+	// pas pendant une cuisson, elle se comble par la CLI ou le sync. Sans ce drapeau, un
+	// artefact de carte inconnue serait indiscernable d'un artefact de carte sans point.
+	MapCatalogMissing bool `json:"mapCatalogMissing,omitempty"`
+	// MapCatalogPoints est le nombre de points d'apparition que le catalogue declare pour
+	// cette carte. Publie meme a zero quand la carte EST au catalogue : c'est ce qui separe
+	// « carte sans point » de « carte absente ».
+	MapCatalogPoints int `json:"mapCatalogPoints"`
 }

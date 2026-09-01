@@ -8971,6 +8971,7 @@ export interface components {
             class: number;
             family?: string;
             kind: string;
+            origin?: string;
             /** Format: int32 */
             slot: number;
             /** Format: int64 */
@@ -8985,10 +8986,19 @@ export interface components {
             decoded: number;
             /** Format: int64 */
             items: number;
+            mapCatalogMissing?: boolean;
+            /** Format: int64 */
+            mapCatalogPoints: number;
             /** Format: int64 */
             multiEvent: number;
             /** Format: int64 */
             named: number;
+            /** Format: int64 */
+            originGround: number;
+            /** Format: int64 */
+            originSpawner: number;
+            /** Format: int64 */
+            originUnknown: number;
             /** Format: int64 */
             published: number;
             /** Format: int64 */

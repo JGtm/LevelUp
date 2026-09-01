@@ -28,7 +28,7 @@ func TestBuildPickupsProjectsAndNames(t *testing.T) {
 	slotXUID := map[uint32]uint64{520: 111, 521: 222}
 	st := filmdec.BipedPickupStats{MultiEvent: 7, RefusedOffBand: 1}
 
-	got, cov := buildPickups(in, replayClock{origin: origin, step: step}, slotXUID, st, nil)
+	got, cov := buildPickups(in, replayClock{origin: origin, step: step}, slotXUID, st, nil, nil)
 	if len(got) != 3 {
 		t.Fatalf("publies = %d, attendu 3 (l evenement anterieur a l origine est ecarte)", len(got))
 	}
