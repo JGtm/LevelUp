@@ -78826,3 +78826,39 @@ Piste hors sujet : nommer l'enum du champ A (signal médailles/score) = chantier
 Instrument : `internal/analysis/filmdec/playergameevent_0xe9_research_test.go` (+ `_helpers_test.go`),
 garde `LOT1_TRAME_FILM`, borné 12 chunks. Gate : gofmt propre, `go vet ./internal/analysis/filmdec/`
 vert (GOCACHE privé). NOTE : `.ai/V7.5/film_re/NOTE_PLAYERGAMEEVENT_0XE9_2026-09-01.md`.
+
+## [2026-09-01] Jointure geometrique pour les touches explosives — Complete (resultat honnete, negatif sur le splash)
+
+Statut : Complete. Chantier trame-geo (worktree dedie, branche wt/trame-geo, GOCACHE prive).
+
+Objectif : attribuer les TOUCHES EXPLOSIVES non fatales a leur tireur par une jointure
+GEOMETRIQUE (visee i21 + positions + vitesse par arme), robuste au BTB, la ou la jointure
+temporelle seule echoue ; valider contre la verite terrain dead-state (tueur EnumB, 97,6 %).
+
+Decision technique : instrument `geo_explosifs_research_test.go` (+ helpers/measures/finder).
+Touche explosive = damage_aftermath 0xC0 a ref1 NON-bipede ; victime ref0 -> slot (base bipede
+DETECTEE par sweep, propre au film) -> position. Tir lourd = 0xD2 t36 (attaquant dom1 -> slot,
+FilmIndex, WeaponID). Score = alignement(visee, direction tireur->victime) + ecart de temps de
+vol. Pont d'identite roster(EnumA/B)<->FilmIndex appris des morts. Films : 000d5950 (Fiesta,
+cliffhanger), 00502e52 (bazaar), 4f77afc1 (BTB Forge 16 tireurs, bornes du canevas Forge
+partage [15,15,17] forcees via "flood gulch").
+
+Resultats : (M0) la visee est VALIDEE sur 3 cartes dont le BTB — angle visee->victime sur les
+degats DIRECTS = mediane 2,2 / 3,6 / 2,2 deg (79/84, 59/100, 16/17 sous 5-15 deg). Le pont
+visee+positions+base est correct, y compris grande carte Forge. (M2) MAIS l'explosif est du
+SPLASH : le meilleur alignement d'une touche explosive tombe a 45-90 deg pour ~94 % des cas
+(victime hors de l'axe de visee) ; touches confirmees < 15 deg = 2/34 (Fiesta, et ce sont du
+Stalker hitscan) et 0/5 (bazaar). L'aim-join attribue le DIRECT, pas le splash. (M3) verite
+terrain NON evaluable dans filmdec : la recolte de morts par trame propre rend 5 (arene) / 0
+(BTB) morts -> 0 touche fatale ; l'extracteur robuste (killsource) est hors paquet. Statut [!]
+bloque, a rebrancher sur killsource. (M4) pas d'echantillon ambigu : Fiesta a 1 seul tireur
+lourd/fenetre (ambiguite nulle), BTB Forge a des armes lourdes trop rares (0 touche coincidante).
+(M1) vitesse par arme non calibrable (2 hits, hitscan).
+
+Conclusion : la geometrie de visee est un excellent attributeur du DIRECT et un FILTRE
+anti-coincidence (94 % des appariements temporels sont a > 30 deg, non alignes), PAS un
+attributeur de splash. Attribuer l'explosif demande le POINT DE DETONATION (events 0xC2/0xC3,
+tireur du projectile non resolu) — piste vivante, l'aim-join ne la remplace pas. Rien survendu :
+negatif chiffre. Instrument : `geo_explosifs_*_test.go` (garde LOT1_TRAME_FILM / LOT1_CORPUS,
+borne 16 chunks). Gate : gofmt propre, go vet vert (GOCACHE prive). NOTE :
+`.ai/V7.5/film_re/NOTE_JOINTURE_GEOMETRIQUE_EXPLOSIFS_2026-09-01.md`.
