@@ -1,4 +1,4 @@
-## [2026-09-01] `ti=11 i0` minuteurs — LES DEUX VALEURS DE SEPT BITS SONT DES INDEX FIGÉS, et elles VALIDENT l'ancrage des images-clés — Complété
+## [2026-09-01] `ti=11 i0` minuteurs — LES DEUX VALEURS DE SEPT BITS SONT DES INDEX FIGÉS ; l'ancrage des images-clés est juste À UN BIT PRÈS — Complété
 
 **La question du lot** : `managed-objective-timers-component` (ti=11 i0) est présent dans **100 %**
 des records porteurs de la jauge et n'avait jamais été interprété. Deux lectures s'affrontaient,
@@ -28,9 +28,26 @@ pour v1 (`-1, 15, 47`), là où un tirage uniforme sur sept bits en montrerait e
 **45,7 % / 40,3 %**, soit SOUS le 53,1 % du hasard ; 120 et 121 valeurs distinctes ; 841 et 923
 lectures hors domaine. Le filtre `Chained` ne sauve rien — 38 lectures à 57,9 % / 71,1 %. Ce n'est
 plus une déduction tirée du taux de chaînage, c'est une mesure indépendante :
-**la voie delta de ti=11 est à écarter, pas à filtrer.** Portée exacte de l'oracle, écrite pour
-qu'on ne la surestime pas : i0 est en tête de masque, il valide **l'ancre du record et la largeur
-du premier composant**, jamais celles qui séparent i0 de i12.
+**la voie delta de ti=11 est à écarter, pas à filtrer.**
+
+**LA RÉSERVE QUI ACCOMPAGNE LE POSITIF, ET ELLE EST GROSSE : LE QUANTUM EST TOUJOURS PAIR.** Les
+valeurs d'image-clé, listées EN ENTIER (aucune troncature — chaque film en compte au plus six et
+les six sont imprimées), sont v0 ∈ `{-1, 1, 3, 15, 17, 19, 21, 23}` et v1 ∈ `{-1, 15, 47}` :
+**toutes impaires**. Or `ObjectiveTimerValue(q) = q - 1`, donc le quantum brut est **pair sur les
+1 149 lectures** — le bit de poids faible du champ de sept bits vaut zéro, toujours. Ce n'est pas
+un artefact du lecteur : la voie delta, elle, rend des quanta impairs (123, 121, 27, 59, 91). Deux
+explications tiennent et la mesure ne les sépare pas : (a) le jeu n'utilise que des fentes de rang
+pair ; (b) **la boucle de composants démarre un bit trop loin**, auquel cas on lit
+`((vrai & 0x3F) << 1) | bit voisin` et le vrai couple serait `q/2 - 1`, soit v0 ∈
+`{-1, 0, 1, 7, 8, 9, 10, 11}` — des index **contigus** là où nous lisons une échelle impaire de
+pas deux (sur `34bb3bc8`, les cinq valeurs 15, 17, 19, 21, 23 à 34 lectures chacune deviennent les
+cinq fentes consécutives 7, 8, 9, 10, 11). L'hypothèse (b) **recoupe un fait déjà documenté** :
+`objective_scan.go` relève des `i12` d'images-clés décalés d'UN BIT. Un démarrage tardif d'un bit
+expliquerait les deux d'un coup. Ce qui reste donc acquis, et c'est déjà inédit : **l'ancre est
+juste à AU PLUS UN BIT PRÈS** — une fenêtre posée au hasard rendrait 53 %, pas 100 % avec huit
+valeurs sur 128. L'épreuve à faire ensuite est la **contiguïté** des index (relire i0 la fenêtre
+reculée d'un bit), pas la légalité : celle-ci ne tranchera pas, les deux lectures restant dans le
+domaine tant que les index sont petits.
 
 **GATE 2 — POURQUOI i0 NE PEUT PAS DATER L'ARMEMENT.** Sur les **112 slots** d'objectif d'Assaut,
 **ZÉRO** porte une valeur qui bouge : i0 est FIGÉ pour toute la vie d'un objectif (jusqu'à 37

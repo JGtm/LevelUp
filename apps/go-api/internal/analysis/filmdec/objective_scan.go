@@ -48,16 +48,23 @@ package filmdec
 // l'en-tete : son domaine legal ne couvre que 68 des 128 valeurs encodables par champ, donc une
 // fenetre mal posee s'y voit a 53 %. Mesure sur 11 films :
 //
-//	IMAGE-CLE  1 149 lectures, 113 slots, LEGALITE 100,0 % (v0, v1 et la paire). L'ANCRE DES
-//	           IMAGES-CLES EST JUSTE, et la branche « `WalkKeyframeWorld` ancre des faux
-//	           records » est REFUTEE pour les records qui portent i0.
+//	IMAGE-CLE  1 149 lectures, 113 slots, LEGALITE 100,0 % (v0, v1 et la paire), pour huit valeurs
+//	           distinctes sur 128 possibles. L'ANCRE TOMBE SUR DE LA DONNEE STRUCTUREE, et la
+//	           branche « `WalkKeyframeWorld` ancre des faux records » est REFUTEE pour les records
+//	           qui portent i0. RESERVE MESUREE : le quantum de i0 est TOUJOURS PAIR sur ces
+//	           1 149 lectures, ce qui est compatible avec une boucle de composants demarrant UN
+//	           BIT TROP LOIN — et ce decalage expliquerait aussi les `i12` decales d'un bit du
+//	           point 3 ci-dessus. L'ancre est donc juste A AU PLUS UN BIT PRES, pas « juste » :
+//	           l'epreuve a faire est la CONTIGUITE des index, pas la legalite (cf. l'en-tete de
+//	           `objectif_ti11_minuteurs_verdict_test.go`).
 //	DELTA      1 552 lectures d'Assaut, legalite 45,7 % / 40,3 % — SOUS le hasard. Le filtre
 //	           `Chained` ne sauve rien : 38 lectures a 57,9 % / 71,1 %. LA VOIE DELTA EST DU
 //	           BRUIT, et ce n'est plus une deduction du chainage mais un oracle independant.
 //
-// CE QUE L'ORACLE NE DIT PAS : i0 est en tete de masque, i12 est loin derriere. Il valide l'ancre
-// et la largeur du PREMIER composant, jamais celles qui les separent. La derive decrite plus haut
-// concerne donc le MILIEU de la marche, pas son point de depart.
+// CE QUE L'ORACLE NE DIT PAS : i0 est en tete de masque, i12 est loin derriere. Il borne l'erreur
+// d'ancrage a UN BIT, il ne dit rien des largeurs qui separent i0 de i12, et il ne dit pas que la
+// marche demarre au bon bit — la parite du quantum laisse ouvert un demarrage tardif d'un bit,
+// qui serait alors commun a TOUTE la marche et non un defaut de son milieu.
 //
 // # LE TEMOIN DE FIABILITE EST PUBLIE, PAS GARDE POUR LES JOURNAUX
 //
