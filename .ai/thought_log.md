@@ -78862,3 +78862,27 @@ tireur du projectile non resolu) — piste vivante, l'aim-join ne la remplace pa
 negatif chiffre. Instrument : `geo_explosifs_*_test.go` (garde LOT1_TRAME_FILM / LOT1_CORPUS,
 borne 16 chunks). Gate : gofmt propre, go vet vert (GOCACHE prive). NOTE :
 `.ai/V7.5/film_re/NOTE_JOINTURE_GEOMETRIQUE_EXPLOSIFS_2026-09-01.md`.
+
+## [2026-09-01] Attribution des touches explosives par la PISTE DE DETONATION — Complété
+
+Statut : Complété (recherche, worktree wt/trame-deto). Décision technique : le splash frappe la
+victime HORS axe (~57 deg, non attribuable), mais le POINT DE DETONATION est SUR l'axe. Source
+fiable du point = dernière position répliquée de l'entité projectile ti=41 (ScanFilmProjectiles),
+PAS un événement 0xC2/0xC3 (qui ne portent pas de position). Piège corrigé : installer
+WorldObjectPrecision PAR CARTE (SetWorldObjectPrecisionFromLayout) avant tout scan projectile hors
+BuildFromFilm — sinon Forge [15,15,17] se décode à la mauvaise échelle (naissance 241 u -> 1,66 u).
+
+Résultats. M1 (coeur) : visée -> détonation alignée à 6,3 deg (M41 SPNKr arène) / 4,3 deg (Fuel Rod
+SPNKr BTB), témoin 61-85 deg ; le Stalker Rifle (HITSCAN, faux appariement à une grenade) ressort à
+109,6 deg et vitesse absurde 2,7 u/s -> à écarter par la ventilation par arme. M0 : naissance<->tireur
+1,36 u (arène) / 1,73 u (BTB) vs témoin 18-42 u. M3 : détonation -> tireur (alignement+temps de vol)
+juste à 98,2 % (arène) / 82,8 % (BTB) vs temporel 92,7/75,9 % vs témoin 18,2/6,9 % ; gain géométrique
+le plus net en BTB (sous-ensemble ambigu >=2 tireurs : 71,4 %). M4 (rattachement spatial des touches
+splash) REFUTÉ (couverture < 20 %, pic à -1 s = trou réplication<->impact) ; voie fiable = M3.
+
+Réserves : fiable pour projectiles DIRECTS seulement (grenades/cloche : réplication cesse avant la
+mèche) ; geoIsDirect sur-classe (Stalker, Bulldog = hitscan) ; 00502e52 sans lanceur, 01e1f945 base
+bipède 29 % -> inconclusifs. Instrument : deto_attribution_{research,helpers}_test.go (garde
+LOT1_TRAME_FILM, borne 16). Gate : gofmt propre, go vet vert (GOCACHE privé). NOTE :
+.ai/V7.5/film_re/NOTE_DETONATION_ATTRIBUTION_2026-09-01.md. Prochaine étape possible : lier la ref1
+non-bipède d'une touche au SLOT du projectile ti=41 (lien exact, non géométrique).
