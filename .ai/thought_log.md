@@ -78803,3 +78803,26 @@ distinction composant-répliqué vs valeur-runtime explicite, rien survendu. Ins
 `internal/analysis/filmdec/victime_degat_recu_research_test.go` (garde LOT1_TRAME_FILM, borné 12
 chunks, lecture seule). Gate : gofmt propre, `go vet ./internal/analysis/filmdec/` vert (GOCACHE
 privé). NOTE : `.ai/V7.5/film_re/NOTE_VICTIME_DEGAT_RECU_2026-09-01.md`.
+
+## [2026-09-01] PlayerGameEventSmall (0xE9, type 82) DECODE — pas de touche arme (Complété)
+
+Décision technique : décodage bit-exact du type 82 (~923 k événements corpus, jamais décodé),
+grammaire lue dans l'exe (descripteur PGES = objet 0x143d0ec18, refs d'en-tête domaines
+{0,8,7} via fonction 0x142ef7f6c calibrée contre damage {1,1,7}/fire, lecteur de charge
+FUN_14080add8 -> FUN_14080ae70). Charge = sac de propriétés nommées typées : R(32) A
+(type/enum) + R(8) B + liste [nom R(32) + sélecteur R(3) + valeur typée] + bloc « text »
+optionnel + R(32) masque final. Validé par l'ORACLE DE TRAME (même juge que damage_aftermath).
+
+Résultats (3 films, 12 chunks) : oracle TENU partout (3.16-3.37 records/paquet vs témoin 0.00) ;
+champ A catégoriel (16-31 valeurs distinctes, ~7-8 %, enum d'événement partagé 606/519/607/320) ;
+propriétés quasi absentes (0 sur 2 films, 70/364 à 1 propriété int32 sur le 3e) ; 0 intersection
+WeaponID sur 843 événements ; coïncidence événement<->tir AU NIVEAU/SOUS le témoin décalé ; refs
+d'en-tête absentes à 100 %. Conclusion : PlayerGameEventSmall = événements de jeu du joueur
+(médailles/score/mode), PAS un enregistrement de touche ; AUCUNE attribution tireur+arme, ne
+couvre pas les explosifs. Garde-fou respecté : négatif chiffré, rien survendu.
+
+Prochaine étape : trou touches explosives non fatales RESTE OUVERT (jointure de vol seule voie).
+Piste hors sujet : nommer l'enum du champ A (signal médailles/score) = chantier séparé.
+Instrument : `internal/analysis/filmdec/playergameevent_0xe9_research_test.go` (+ `_helpers_test.go`),
+garde `LOT1_TRAME_FILM`, borné 12 chunks. Gate : gofmt propre, `go vet ./internal/analysis/filmdec/`
+vert (GOCACHE privé). NOTE : `.ai/V7.5/film_re/NOTE_PLAYERGAMEEVENT_0XE9_2026-09-01.md`.
