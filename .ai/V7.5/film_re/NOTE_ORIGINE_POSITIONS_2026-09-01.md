@@ -130,6 +130,59 @@ Recoupement consigne sans conclusion, comme demande : `0xE9E7FF79` a deja ete re
 chantier Assaut comme mot MPP recurrent (4 occurrences). Deux apparitions d'un meme motif ne
 font pas un lien ; c'est note pour qui reprendra.
 
+## HYPOTHESE UTILISATEUR « BOBINE / FUSION COIL » SUR `00007ca9` — REFUTEE, proprement
+
+L'enonce (autorite gameplay) : un OBJET DU MONDE PORTABLE, tenu comme une arme mais qui
+n'occupe jamais un emplacement d'arme. **L'hypothese etait bien formee** : elle explique
+exactement le 0/15 dans i43..i46 et le classement en classe ARME. Et le vocabulaire existe au
+depot — `internal/games/weapons/registry.go` porte QUATRE bobines, `hinf_coil_kinetic`
+(« UNSC Fusion Coil », FR « Bobine a fusion UNSC »), `plasma`, `shock`, `hardlight`, toutes
+classees **`clsEnvironmental`** : objet du decor, pas arme portee. Le concept est reel.
+
+**Ce qui la tue est la SIGNATURE TEMPORELLE, et elle est nette.**
+
+| | 000d5950 | 00502e52 |
+|---|---|---|
+| occurrences de `00007ca9` | 7 | 8 |
+| cohorte **EN MATCH** (> 1 s apres le debut de vie) | **0** | **0** |
+| cohorte SPAWN (<= 1 s du debut de vie) | 4 | 0 |
+| prises **AVANT la premiere position repliquee** du porteur | 3 | 8 |
+| dont sur un slot SANS aucune position (defaut possible) | **0** | **0** |
+| avance sur la premiere position, en secondes | 22,3 · 22,7 · 34,9 | 22,2 x5 · 22,5 · 27,3 · 32,3 |
+| arme recue en main dans les 2 s | 0 / 7 | 0 / 8 |
+
+**Les quinze occurrences, sans exception, precedent la premiere position repliquee de leur
+porteur** — de 22 a 35 secondes, un ordre de grandeur qui est celui de l'intervalle entre
+images-cles. Aucune n'arrive en cours de vie. Zero slot sans position, donc ce n'est pas un
+defaut de lecture. Une bobine se ramasse EN JEU, a un endroit fixe de la carte ; ceci se
+distribue au demarrage, une fois par joueur. **Hypothese REFUTEE pour cet identifiant.**
+
+### Et sous un AUTRE identifiant ? Non plus, sur ces deux films
+
+Balayage de tous les identifiants de classe ARME, avec les trois colonnes qui departagent :
+
+- **`00007ca9` est le SEUL** a porter des prises anterieures a la replication (3 et 8). Tous les
+  autres identifiants sont pris integralement EN COURS DE MATCH (`enMatch == total`).
+- Le critere « jamais vu par i43..i46 » ne tient PAS d'un film a l'autre : `b619d84a` est absent
+  du canal sur le film 1 et present sur le film 2 ; `a0955e9e` l'inverse ; `71ab0a2c` de meme.
+  C'est un artefact de COUVERTURE (i43..i46 ne rend que 31 et 14 emissions), pas une propriete
+  de l'objet. Il ne peut donc pas isoler un objet du monde.
+- **Aucun identifiant ne cumule les deux marques attendues d'une bobine** (jamais dans un
+  emplacement d'arme de facon stable ET pris en cours de match a position fixe).
+
+**Ce que `00007ca9` reste** : un evenement de DEMARRAGE, une fois par joueur, classe ARME, qui
+n'entre dans aucun emplacement d'arme. Dotation initiale ou marqueur d'equipement de depart —
+non tranche, mais la piste « objet du monde portable » est fermee sur ces donnees.
+
+### Un defaut d'instrument, encore attrape par la mesure
+
+Le premier jet de la scission utilisait `equipmentLives`, qui ecarte les positions sans
+coordonnees monde (`!p.HasWorld`). En lecture `QuantaOnly` — la seule possible, le film 2
+n'ayant pas de carte connue — AUCUNE position n'a de monde : la fonction rendait zero vie et
+les 15 occurrences tombaient toutes en « sans vie rattachable » (7/7 et 8/8). Un resultat
+parfaitement uniforme sur deux films est un signal d'alarme, pas une decouverte. Corrige par un
+decoupage sur le seul axe du temps, au MEME seuil (`lifeGapUS`).
+
 ## VERDICT — prouve / plausible / refute
 
 - **PROUVE** : le catalogue de socles est utilisable pour trancher l'origine, LA OU LE MODE
@@ -138,7 +191,12 @@ font pas un lien ; c'est note pour qui reprendra.
 - **PROUVE AUSSI** : `00007ca9` n'occupe jamais un emplacement d'arme (0/15 sur deux films).
 - **PLAUSIBLE** : les 12 regroupements d'abstentions sont des points d'apparition d'equipement
   absents du catalogue. Recurrent, groupe, mais non verifie a la source.
-- **NON TRANCHE** : ce qu'EST `00007ca9`.
+- **REFUTE** : l'hypothese « bobine / objet du monde portable » pour `00007ca9` — ses 15
+  occurrences precedent toutes la premiere position repliquee de leur porteur (22 a 35 s), zero
+  en cours de match. Et aucun AUTRE identifiant ne porte la signature d'une bobine sur ces deux
+  films.
+- **NON TRANCHE** : ce qu'EST `00007ca9`. Ce qu'on sait : evenement de demarrage, une fois par
+  joueur, classe ARME, jamais dans un emplacement d'arme.
 - **REFUTE** : que la chaine `.module` puisse rendre les placements d'objets. Elle va dans
   l'autre sens (le `.module` resout un `type_id` en modele ; le `.mvar` porte la liste et les
   positions). Maillon manquant nomme : la LISTE des objets.

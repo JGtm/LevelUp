@@ -83406,3 +83406,35 @@ commande près.
 
 **Ce que ça change au verdict** : « bloqué » devient « réalisable, non exécuté », et la
 réfutation porte désormais sur la voie `.module` elle-même, pas sur la faisabilité.
+
+---
+
+## [2026-09-01] Hypothèse « bobine » sur `00007ca9` — réfutée par la signature temporelle
+
+**Statut** : Complété (recherche pure). L'hypothèse utilisateur était bien formée : un objet du
+monde portable expliquerait exactement le 0/15 dans i43..i46 et le classement en classe ARME. Le
+vocabulaire existe au dépôt — quatre bobines dans `weapons/registry.go`, toutes
+`clsEnvironmental`.
+
+**Ce qui la tue** : les 15 occurrences, sans exception, **précèdent la première position
+répliquée de leur porteur** — de 22 à 35 s (l'ordre de grandeur de l'intervalle entre
+images-clés). Cohorte EN MATCH : **0 sur les deux films**. Zéro slot sans position, donc pas un
+défaut de lecture. Une bobine se ramasse en jeu à un endroit fixe ; ceci se distribue au
+démarrage, une fois par joueur.
+
+**Et sous un autre identifiant ? Non plus.** `00007ca9` est le SEUL à porter des prises
+antérieures à la réplication ; tous les autres identifiants de classe ARME sont pris
+intégralement en cours de match. Et le critère « jamais vu par i43..i46 » ne tient pas d'un film
+à l'autre (`b619d84a`, `a0955e9e`, `71ab0a2c` changent de statut) : c'est un artefact de
+couverture du canal, pas une propriété de l'objet.
+
+**Encore un défaut d'instrument attrapé par la mesure elle-même.** Le premier jet utilisait
+`equipmentLives`, qui écarte les positions sans coordonnées monde — or en `QuantaOnly` (seule
+lecture possible, le film 2 n'ayant pas de carte connue) aucune position n'en a. La fonction
+rendait zéro vie et les 15 occurrences tombaient en « sans vie rattachable », 7/7 et 8/8. **Un
+résultat parfaitement uniforme sur deux films est un signal d'alarme, pas une découverte.**
+Corrigé par un découpage sur le seul axe du temps, au même seuil `lifeGapUS`.
+
+**Reste** : `00007ca9` est un événement de démarrage, une fois par joueur, classé ARME, jamais
+dans un emplacement d'arme. Non tranché — mais la piste « objet du monde portable » est fermée
+sur ces données.
