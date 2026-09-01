@@ -387,3 +387,181 @@ positif — c'est un identifiant public, deja present dans `map_weapon_pads.json
 pour un lot de recherche.
 
 Un film par process, lecture seule, aucune cuisson.
+
+---
+
+# LA RECETTE — trouver les points d'apparition sur une carte JAMAIS VUE
+
+Ce qui precede reposait sur deux `type_id` trouves a la main en comparant des positions. Une
+liste de deux identifiants n'est pas une recette : sur une carte inconnue, rien ne dit qu'ils
+suffisent ni qu'ils sont les bons. Cette section remplace la liste par une FONCTION.
+
+## Enonce
+
+> Un objet d'une variante de carte est un POINT D'APPARITION D'OBJET RAMASSABLE si et seulement
+> si son `type_id` resout, dans le module Forge, vers un tag `food` qui satisfait DEUX cribles :
+>
+> 1. il reference au moins un tag du groupe `foki` ;
+> 2. aucun de ces `foki` ne reference de `bloc` (geometrie solide) ni de `hsc*` (script).
+
+Elle est autonome : elle ne connait aucune carte, aucune position, aucun identifiant. Elle lit
+le fichier de carte et interroge le catalogue du jeu. Code : `EstPointDApparition`, dans
+`apps/go-api/internal/himap/origine_recette_gamefiles_test.go`.
+
+## Comment on y est arrive, et ce qui a echoue en chemin
+
+**Le mauvais module d'abord.** La premiere sonde a resolu les `type_id` contre le chemin de
+geometrie (module de carte + globaux, 56 766 entrees) : **0 sur 8 resolus**, pas meme les trois
+socles PROUVES. C'est le catalogue FORGE qui porte ces tags —
+`any/globals/forge/forge_objects-rtx-new.module`, comme l'ecrit deja `cuisson_forge.go:439`.
+Sur lui : 8 sur 8.
+
+**Le groupe ne separe pas.** Les huit types resolvent TOUS en `food` — socles prouves comme
+paves de decor. Une recette « groupe == food » ramasserait la carte entiere.
+
+**Ce qui separe est un cran plus bas** — ce que le tag `food` REFERENCE :
+
+| type_id | ce qu'on en savait | groupes references |
+|---|---|---|
+| `0x5F379533` | liste blanche, socle PROUVE (power) | `foki:4` |
+| `0x6253CFC0` | liste blanche, socle PROUVE (rack) | `foki:4` |
+| `0x5E86D110` | liste blanche, socle PROUVE (powerup) | `foki:4` |
+| `0xADEEE6D8` | candidat mesure | `foki:4` |
+| `0xE42158DF` | candidat mesure | `foki:4` |
+| `0xA495FE83` | decor, 95-100 par carte | aucun `foki` |
+| `0x8ACF288B` | decor, 63-67 par carte | aucun `foki` |
+| `0xCBB239F7` | decor, 18-22 par carte | aucun `foki` |
+
+**Le crible 1 seul SUR-RETIENT, et le corpus l a montre.** Applique aux 15 cartes, il classait
+**61,5 % des objets de Highpower** et 60,5 % de Scarr comme points d'apparition — invraisemblable.
+Deux types portaient l'anomalie : `0x8413E9BA` (jusqu'a 178 objets sur une carte) et
+`0xA4EE54ED` (83). Le seul comptage ne pouvait pas les ecarter : le `rack` PROUVE monte lui-meme
+a 52 sur Fragmentation Heavies.
+
+**Le crible 2 est venu d'un cran de plus.** En publiant ce que le `foki` mene a son tour :
+
+```
+0x8413E9BA  1 foki -> :44 hsc*:4 bloc:4 fosp:4 foki:1     ABERRANT
+0xA4EE54ED  1 foki -> :45 hsc*:4 bloc:4 fosp:4 foki:1     ABERRANT
+0x6253CFC0  1 foki -> :44           fosp:4 foki:1          PROUVE (rack)
+0x5F379533  1 foki -> :30           fosp:4 foki:1          PROUVE (power)
+0x5E86D110  1 foki -> :30           fosp:4 foki:1          PROUVE (powerup)
+0xADEEE6D8  1 foki -> :26           fosp:4 foki:1          candidat mesure
+0xE42158DF  1 foki -> :37           fosp:4 foki:1          candidat mesure
+```
+
+Les deux aberrants portent de la geometrie solide et un script ; aucun point prouve ou mesure
+n'en porte. Un point d'apparition NU fait naitre un objet — un objet Forge scripte et solide
+n'en est pas un. Le discriminateur est net et il va dans le sens INVERSE de l'hypothese de
+depart, qui pariait sur la cardinalite.
+
+## Selectivite
+
+| | types retenus sur 4 235 tags `food` | etalons | decor retenu |
+|---|---|---|---|
+| crible 1 seul | 27 (0,64 %) | 5/5 | 0/3 |
+| cribles 1+2 | **16 (0,38 %)** | **5/5** | **0/3** |
+
+Le crible 2 divise le catalogue par 1,7 sans perdre un seul etalon.
+
+## Universalite — 15 cartes, 13 telechargees pour ce lot
+
+Recette a 2 cribles. Le catalogue partage `map_objectives.json` n'a PAS ete regenere
+(`--dry-run`) ; les `.mvar` ne sont pas commites.
+
+| carte | objets | points | % |
+|---|---|---|---|
+| Scarr | 294 | 97 | 33,0 |
+| Forest - Ranked | 308 | 79 | 25,6 |
+| Catalyst | 337 | 65 | 19,3 |
+| Illusion | 387 | 71 | 18,3 |
+| Deadlock | 410 | 67 | 16,3 |
+| Breaker Heavies | 431 | 79 | 18,3 |
+| Cliffhanger | 443 | 74 | 16,7 |
+| Fragmentation Heavies | 490 | 109 | 22,2 |
+| Oasis | 497 | 118 | 23,7 |
+| Forbidden | 499 | 77 | 15,4 |
+| Highpower Sentry Defense | 524 | 89 | 17,0 |
+| Bazaar | 993 | 61 | 6,1 |
+| Lattice - Ranked (Forge) | 5 032 | 32 | 0,6 |
+| Flood Gulch (Forge) | 3 767 | 53 | 1,4 |
+| Pharaoh (Forge) | 3 194 | 9 | 0,3 |
+
+Les 12 cartes natives tiennent dans **61-118 points** ; le crible 1 seul donnait 61-322. Les
+cartes Forge, faites surtout de decor pose, tombent sous 2 % — coherent.
+
+Les deux `type_id` trouves a la main sont presents sur **14 cartes sur 15**. Leur universalite
+est donc etablie ; mais la recette ne s y reduit pas, elle en trouve 14 autres.
+
+## Validation
+
+**(a) Catalyst — 0 rate, 0 faux point au decor.** Les cinq etalons sont reconnus et les trois
+types de decor ecartes (`TestOrigineRecetteSepareSurLesTypesConnus`). Les 8 points trouves a la
+main appartiennent aux deux types que la recette retient : ils sont inclus par construction.
+
+**(b) Catalyst, film KOTH — le seau socle monte, temoins bas.**
+
+```
+            SOCLE        SOL          ABSTENTION
+AVANT       14 (4,9 %)   149 (52,7 %) 120 (42,4 %)
+APRES       68 (24,0 %)  139 (49,1 %)  76 (26,9 %)
+TEMOIN +10x 14 (4,9 %)
+TEMOIN -7y  23 (8,1 %)
+```
+
+Le gain est reel : 68 contre un plancher de coincidence de 14 et 23. **Le seuil ecrit avant
+(temoin x3 <= reel) est manque d'UNE occurrence sur le temoin -7y** — 23x3 = 69 contre 68. Publie
+tel quel : succes a la limite, pas succes franc.
+
+**(c) Cliffhanger, film Super Fiesta — la recette rend les points, le film ne les confirme pas.**
+
+```
+            SOCLE        SOL          ABSTENTION
+AVANT        8 (2,0 %)   254 (63,3 %) 139 (34,7 %)
+APRES       26 (6,5 %)   240 (59,9 %) 135 (33,7 %)
+TEMOIN +10x  0 (0,0 %)
+TEMOIN -7y  22 (5,5 %)
+```
+
+Ici le temoin -7y rend 22 contre 26 reels : **le gain n'est pas separable du hasard**. C'est le
+resultat ATTENDU et il valide l'enonce — la recette decrit la CARTE, le mode decide. Super
+Fiesta ne pose pas l'equipement aux socles ; les 74 points existent sur la carte et restent
+eteints. Deux films, deux verdicts opposes, et c'est le temoin qui les separe.
+
+## Ce que la recette ne fait pas
+
+Elle dit OU un objet ramassable peut naitre, pas LEQUEL. Distinguer arme, equipement et grenade
+demande de lire le `foki` lui-meme — non fait dans ce lot. Le `fosp:4` present sous tous les
+points, etalons compris, n'a pas ete elucide non plus.
+
+## Piege de methode rencontre
+
+`go test` a servi un resultat CACHE apres que le fichier de types soit passe de 27 a 16 entrees :
+le journal annoncait « 27 types » alors que le fichier en contenait 16. Un test de recherche qui
+lit un fichier de donnees externe **exige `-count=1`** — sans quoi il publie une mesure perimee
+sous une etiquette fraiche.
+
+## Reproduire
+
+```
+cd apps/go-api
+# 1. la recette produit la liste des types (lecture des fichiers du jeu installe)
+ORIGINE_TYPES_OUT=<dossier>/points_types.json \
+  go test ./internal/himap/ -run TestOrigineRecette -count=1 -v
+# 2. l instrument d origine la consomme
+ORIGINE_TYPES=<dossier>/points_types.json \
+  PICKUP_FILM=<depot>/data/cache/film_chunks/01e1f945 PICKUP_MAP=Catalyst \
+  ORIGINE_MAPID=<map_id lu dans map_objectives.json> ORIGINE_DUMP=<dossier>/objets_catalyst.json \
+  go test ./internal/analysis/replay/ -run TestOrigineAvecCatalogueElargi -count=1 -v
+```
+
+Telechargement borne (13 appels, catalogue partage intact) :
+
+```
+LEVELUP_REPO_ROOT=<depot principal> go run ./cmd/mapobj-build --player <GT> \
+  --dry-run --rate-ms 1200 --save-mvar <dossier> --map-id <uuid> [--map-id <uuid>...]
+```
+
+`--dry-run` neutralise l ecriture du catalogue ; `--save-mvar` depose quand meme les fichiers.
+`LEVELUP_REPO_ROOT` sert a lire `db_profiles.json` et les jetons, gitignores et donc absents
+d un worktree. Aucune re-capture de jeton (ADR 0023).

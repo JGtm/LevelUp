@@ -48,9 +48,34 @@ import (
 
 // oriTypesEquipement : les deux types trouvés aux positions récurrentes. Publiés en hexadécimal
 // comme le catalogue les écrit.
-var oriTypesEquipement = map[int32]bool{
+// LA LISTE N'EST PLUS ÉCRITE À LA MAIN : elle vient de la RECETTE (`ORIGINE_TYPES`, produit
+// par `himap.TestOrigineRecetteBalayeLeCatalogueForge`). Le repli sur les deux identifiants
+// mesurés reste, pour que l'instrument tourne sans la recette — mais c'est un repli, et il
+// est marqué comme tel dans le journal du test.
+var oriTypesEquipementRepli = map[int32]bool{
 	-1376852264: true, // 0xADEEE6D8
 	-467576609:  true, // 0xE42158DF
+}
+
+// oriTypesDeLaRecette charge la liste produite par la recette, ou rend le repli.
+func oriTypesDeLaRecette(t *testing.T) (map[int32]bool, string) {
+	path := os.Getenv("ORIGINE_TYPES")
+	if path == "" {
+		return oriTypesEquipementRepli, "REPLI (2 identifiants mesurés à la main)"
+	}
+	blob, err := os.ReadFile(path) //nolint:gosec // chemin fourni par l'opérateur de la mesure
+	if err != nil {
+		t.Fatalf("liste de types illisible : %v", err)
+	}
+	var ids []uint32
+	if err := json.Unmarshal(blob, &ids); err != nil {
+		t.Fatalf("liste de types : %v", err)
+	}
+	out := make(map[int32]bool, len(ids))
+	for _, id := range ids {
+		out[int32(id)] = true
+	}
+	return out, "RECETTE (" + fmt.Sprint(len(ids)) + " types du catalogue Forge)"
 }
 
 // oriObjetMvar est la forme du dump `--dump-objects`.
@@ -69,6 +94,8 @@ type oriObjetMvar struct {
 // dans le dump de la variante.
 func oriPadsElargis(t *testing.T, base []MapWeaponPadSpot) ([]MapWeaponPadSpot, int) {
 	t.Helper()
+	types, source := oriTypesDeLaRecette(t)
+	t.Logf("SOURCE DES TYPES : %s", source)
 	path := os.Getenv("ORIGINE_DUMP")
 	if path == "" {
 		t.Skip("ORIGINE_DUMP absent : instrument de mesure sauté")
@@ -84,7 +111,7 @@ func oriPadsElargis(t *testing.T, base []MapWeaponPadSpot) ([]MapWeaponPadSpot, 
 	out := append([]MapWeaponPadSpot(nil), base...)
 	ajouts := 0
 	for _, o := range objs {
-		if !oriTypesEquipement[o.TypeID] {
+		if !types[o.TypeID] {
 			continue
 		}
 		var p MapWeaponPadSpot

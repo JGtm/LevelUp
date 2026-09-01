@@ -83475,3 +83475,62 @@ en silence**, ce qui aurait faussé toutes les distances sans rien casser.
 **Ce que ça change** : l'origine socle/sol devient DÉCIDABLE sur les modes qui posent
 l'équipement. Publiable sous réserve d'élargir le corpus — deux cartes et un mode sur deux ne
 suffisent pas à régénérer un catalogue partagé ; ce sera un lot dédié.
+
+## [2026-09-01] Origine equipement — LA RECETTE : une fonction, plus une liste — Complété
+
+**Statut** : Complété (recherche pure, aucun code de production touché).
+
+**Exigence structurante du lot** : « il faut une formule, une RECETTE pour trouver ça de manière
+AUTONOME sur une carte INCONNUE ». Le lot précédent avait deux `type_id` trouvés à la main en
+comparant des positions — utile, mais inutilisable sur une carte jamais vue.
+
+**Décision technique** : remonter la chaîne `type_id → tag` déjà documentée dans
+`cuisson_forge.go` et chercher le discriminant au bon niveau. Trois paliers, deux échecs
+instructifs :
+
+1. **Mauvais module.** Résolution contre le chemin de géométrie (56 766 entrées) : **0/8**, pas
+   même les trois socles PROUVÉS. Le bon catalogue est
+   `any/globals/forge/forge_objects-rtx-new.module` — 8/8 y résolvent.
+2. **Le groupe ne sépare pas.** Les huit types rendent `food`, socles prouvés comme pavés de
+   décor. Une recette « groupe == food » ramasserait la carte entière.
+3. **Ce que le `food` référence sépare** : les 5 points (3 prouvés + 2 mesurés) référencent
+   `foki:4` ; les 3 types de décor, aucun `foki`.
+
+**Le crible 1 seul sur-retenait, et c'est le corpus qui l'a montré** : 61,5 % des objets de
+Highpower et 60,5 % de Scarr classés « points d'apparition » — invraisemblable. Deux types
+portaient l'anomalie (`0x8413E9BA` jusqu'à 178 par carte, `0xA4EE54ED` 83). **La cardinalité ne
+pouvait pas les écarter** : le `rack` PROUVÉ monte lui-même à 52 sur Fragmentation Heavies. Un
+cran plus bas a donné le crible propre : les deux aberrants mènent à `bloc:4 hsc*:4` (géométrie
+solide + script), aucun point prouvé ou mesuré n'en porte. **Le discriminant va dans le sens
+INVERSE de l'hypothèse de départ.**
+
+**Recette finale** : un objet est un point d'apparition ssi son `type_id` résout vers un tag
+`food` qui (1) référence un `foki` et (2) dont aucun `foki` ne référence `bloc` ni `hsc*`.
+
+**Résultats observés** :
+- Sélectivité : 16 types retenus sur 4 235 tags `food` (0,38 %) ; 5/5 étalons gardés, 0/3 décors.
+  Le crible 2 divise par 1,7 sans perdre un étalon.
+- Universalité (15 cartes, 13 téléchargées, 13 appels UGC, `--dry-run`, catalogue partagé
+  intact) : les 12 cartes natives tiennent dans **61-118 points** (contre 61-322 avec le crible 1
+  seul) ; les cartes Forge tombent sous 2 %. Les deux `type_id` trouvés à la main sont présents
+  sur 14/15 cartes — universalité établie, mais la recette en trouve 14 autres.
+- Catalyst / KOTH : socle 14 → 68, témoins 14 et 23. **Le seuil écrit avant (témoin ×3 ≤ réel)
+  est manqué d'UNE occurrence** (23×3 = 69 contre 68) — publié comme succès à la limite.
+- Cliffhanger / Super Fiesta : socle 8 → 26, témoin −7y à 22. **Gain non séparable du hasard**,
+  et c'est le résultat ATTENDU : la recette décrit la CARTE, le mode décide. Deux films, deux
+  verdicts opposés, séparés par le témoin.
+
+**Piège de méthode consigné** : `go test` a servi un résultat CACHÉ après passage du fichier de
+types de 27 à 16 entrées — le journal annonçait « 27 » quand le fichier disait 16. Un test de
+recherche qui lit un fichier de données externe **exige `-count=1`**, sinon il publie une mesure
+périmée sous une étiquette fraîche.
+
+**Auth** : JGtm, aucune re-capture de jeton (ADR 0023). `db_profiles.json` et les jetons étant
+gitignorés, un worktree ne les a pas : `LEVELUP_REPO_ROOT` pointe l'arbre principal en lecture,
+`--dry-run` neutralise toute écriture, seul `--save-mvar` écrit et dans le worktree.
+
+**Conclusion / prochaine étape** : la recette est autonome et validée. Elle dit OÙ un objet
+ramassable peut naître, pas LEQUEL — distinguer arme, équipement et grenade demande de lire le
+`foki` lui-même (non fait). Le `fosp:4` présent sous tous les points n'est pas élucidé. Régénérer
+le catalogue partagé `map_weapon_pads.json` depuis la recette reste un lot dédié, hors de
+celui-ci.
