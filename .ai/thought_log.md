@@ -84129,3 +84129,117 @@ il n'y avait rien à retirer.
 **Mesure au passage** : 60 points à natures mélangées sur 25 cartes, journalisés carte par carte.
 
 **Conclusion / prochaine étape** : passe de merge vers `feat/v75`.
+
+## [2026-09-01] Rattrapage des .mvar au fetch de films + le piège du fichier de variante — Complété
+
+**Statut** : Complété côté code. Pas de merge, pas de push — revue d'abord. **Le catalogue n'est
+pas modifié par ce lot.**
+
+**Câblage livré** : au moment où la chaîne détachée récupère le film d'un match, une carte
+absente de `map_weapon_pads.json` est téléchargée (1 appel UGC), déposée au cache, et ajoutée au
+catalogue. Le sync rapide reste intact, la cuisson reste offline-pure. Carte présente = zéro
+appel. Ajout-seul structurel (`mapcatalog.AddEntry` refuse une clé existante), écriture atomique,
+best-effort strict : tout échec est compté et le fetch de film continue.
+
+**Extraction plutôt que 3e copie** : le client UGC et la construction d'entrée vivaient en
+`package main` de deux CLI, importables par personne. Ils passent dans `internal/mapcatalog`,
+partagé par les deux CLI et le runtime ; les tests de comparaison de socles ont suivi la
+fonction dans sa nouvelle maison.
+
+**LE PIÈGE, et c'est le vrai résultat du lot.** Une passe `--refresh-drifted` a rendu des socles
+déplacés de 22 à 80 m sur neuf cartes. 80 m n'est pas une mise à jour de carte : le suspect
+était la résolution de fichier, et c'était elle. **Un asset UGC sert souvent DEUX `.mvar`** — la
+carte de BASE (`btb_highpower.mvar`) et la VARIANTE jouée (`map.mvar`). Les deux parsent, les
+deux rendent des socles plausibles.
+
+**Preuve par les comptes que le catalogue enregistre lui-même** : Highpower Sentry Defense, 421
+objets au catalogue — `map.mvar` en rend 421, le fichier nommé 524. Aquarius - Ranked, 236 au
+catalogue — 236 contre 349.
+
+**Avec le bon fichier** : 8 cartes régénérées au lieu de 16, dont **6 sans le moindre changement
+de socle**, et 2 déplacements au lieu de 9. **Sept des neuf écarts étaient un artefact.**
+
+**Ce que ça change rétroactivement** : les seize « cartes à source dérivée » du lot précédent
+n'avaient pas dérivé — le dump local portait le mauvais fichier. Le verrou à trois termes a fait
+son travail en refusant d'écrire.
+
+**Ce que la vérification a évité** : sans elle, neuf cartes très jouées auraient reçu les socles
+de leur carte de base. Tous les rejeux futurs les auraient affichés à des dizaines de mètres de
+leur place, et la datation des occupations n'aurait plus rien trouvé — sans qu'aucun test ne
+rougisse, le fichier restant valide.
+
+**Correctif** : `FetchMvarForMap` préfère `map.mvar`, puis le fichier déclaré, puis le premier ;
+ordre figé par `TestPreferenceDuFichierDeVariante`.
+
+**Leçon de méthode** : un chiffre invraisemblable (80 m) est un signal, pas une donnée. Le
+réflexe utile a été de comparer le compte d'objets du fichier frais à celui que le catalogue
+enregistrait déjà — une identité vérifiable sans rien décoder.
+
+**Conclusion / prochaine étape** : revue adversariale. La passe `--refresh-drifted` n'est PAS
+livrée — les 2 cartes qui bougent encore relèvent d'une décision produit.
+
+## [2026-09-01] Rattrapage .mvar — ronde 1 : il était INERTE en production — Complété
+
+**Statut** : Complété. P0 + 2 P1 + 4 P2 traités, inversions rejouées. Pas de merge, pas de push.
+
+**LE P0, et il faut le nommer sans détour** : `FetchMvarForMap` n'existait que sur
+`*HaloAPIClient`. Les deux wrappers (`cachedHaloClient`, `PooledHaloClient`) délèguent
+explicitement, sans embedding, et ne la réexposaient pas — or les trois câblages de production
+livrent l'un d'eux. L'assertion échouait **partout**, et `rattraperCartesAbsentes` sortait sans
+slog ni compteur : indistinguable d'un lot non déployé.
+
+C'est le défaut « étape 1.57 » que le fichier de test voisin existe pour interdire, et je l'ai
+réintroduit **une ligne sous le commentaire qui l'explique** — j'avais écrit
+`mvarFetcher, _ := s.client.(...)` juste après avoir lu, dans le même fichier, pourquoi cette
+forme est proscrite. Le commentaire était là ; je ne l'ai pas appliqué.
+
+**Correctif complet** : méthode réexposée sur les deux wrappers (motif exact de
+`GetFilmChunks`), assertions **compile-time** sur les trois types concrets plus leur pendant
+dynamique, et assertion **examinée** avec `SignalerClientSansMvar` (WARN + compteur) sur le cas
+nil. Inversions rejouées : retirer l'une ou l'autre réexposition **casse la compilation** —
+c'est le seul niveau où l'oubli est impossible.
+
+**P1-a** : mon test de préférence rejouait une COPIE de la boucle ; inverser la vraie laissait
+tout vert, et le commentaire « le test échoue si l'ordre diverge » était faux. La sélection
+devient `mapcatalog.ChoisirFichierVariante`, fonction pure consommée par la production et
+attaquée directement par le test.
+
+**P1-b** : `DriftOf` lisait « objects_n diffère » comme « carte dérivée » — c'est exactement la
+signature du mauvais fichier. La CLI applique désormais la même préférence de variante que le
+runtime, et une **garde passe avant l'écriture** : au-delà de 10 m de déplacement d'un socle, la
+carte est sautée, comptée et rapportée, sauf `--accept-large-moves`. Le seuil vient d'une
+mesure : la passe fautive rendait 22 à 80 m, la correcte 2 et 33 m.
+
+**Mesure sur données réelles** : dump fautif → **9 refusées** (exactement les 9 spectaculaires) ;
+dump correct → 2 refusées et 6 régénérées, qui sont précisément celles sans changement de socle.
+L'automatique ne touche donc plus que ce qui est sûr.
+
+**P2** : tests d'`AddEntry` (refus d'une clé existante, catalogue absent, catalogue corrompu) ·
+`WriteAtomic` passe à un temporaire à **nom unique** — le nom fixe faisait publier un JSON
+tronqué quand la CLI et un cycle de sync se croisaient — avec nettoyage de l'orphelin ·
+fusions hétérogènes journalisées côté runtime aussi · bilan publié en **jauges expvar**, même à
+zéro · comportement d'un titre sans fichier de référence documenté.
+
+**Conclusion / prochaine étape** : ronde 2 de revue. Le catalogue reste intouché.
+
+## [2026-09-01] Rattrapage .mvar — ronde 2 : completion des 7 P2 — Complété
+
+**Statut** : Complété. Prêt pour merge.
+
+Sept complétions, toutes avec inversion rejouée. Les deux qui portent une leçon :
+
+**La préférence CLI était du code décoratif** — les candidats sont des noms aplatis préfixés,
+donc `Base(candidat)=="map.mvar"` ne matchait jamais, et mon commentaire prétendait un
+correctif qui n avait pas lieu. Le terrain a tranché : 62 des 72 entrées du catalogue portent
+un `mvar_file` en `map.mvar` ou `{prefixe}_map.mvar`. Je l ai donc rendue OPÉRANTE (suffixe
+reconnu, candidats ajoutés) plutôt que supprimée.
+
+**La perte de mise à jour rouvrait le trou que le lot comble** : `AddEntry` fait un
+lire-modifier-écrire, et deux écrivains publiaient chacun un catalogue sans la carte de
+l autre. Verrou consultatif borné, testé à 8 écrivains concurrents.
+
+**Réserve consignée** : la garde des 10 m ne regarde que les socles APPARIÉS, pas un ajout ou
+retrait massif. Déclenchement non démontré ; correction = second critère sur le NOMBRE de
+socles, à traiter si un cas se présente.
+
+**Conclusion / prochaine étape** : merge, puis passe de données one-shot.

@@ -173,6 +173,11 @@ type ChunksFetcher interface {
 type Deps struct {
 	// Fetcher lit les chunks du film (cache-first chunk par chunk).
 	Fetcher ChunksFetcher
+	// MvarFetcher est la capacite OPTIONNELLE qui rapatrie la variante d'une carte absente du
+	// catalogue. Meme regime que `Fetcher` : nil desarme le rattrapage et ne casse rien — les
+	// films sont recuperes et les artefacts construits comme avant, simplement sans que les
+	// cartes inconnues entrent au catalogue.
+	MvarFetcher MvarFetcher
 	// WithRead ouvre un segment de LECTURE shared court — c'est le paquet sync qui porte
 	// le lease et sa dégradation best-effort ; ici on ne fait que l'emprunter.
 	WithRead func(ctx context.Context, step string, fn func(sharedDB *sql.DB))
@@ -282,6 +287,14 @@ func Run(ctx context.Context, d Deps, insertedIDs []string) {
 			"gamertag", d.Gamertag, "inseres", len(insertedIDs), "retention_mois", d.RetentionMonths)
 		return
 	}
+	// LE RATTRAPAGE DU CATALOGUE DE CARTES, AVANT TOUTE CUISSON et pour les DEUX placements.
+	//
+	// Il vit ici parce que c'est le dernier point de la chaine qui soit EN LIGNE : la cuisson,
+	// qu'elle ait lieu tout de suite ou chez un ouvrier, est offline-pure. Mettre en file sans
+	// avoir comble le catalogue produirait un artefact ampute que rien ne recuirait.
+	//
+	// Il ne peut pas faire echouer le cycle : voir mvar_rattrapage.go.
+	rattraperCartesAbsentes(ctx, d, work, d.MvarFetcher)
 	if d.Placement == replaybuild.PlacementWorker {
 		enqueueAll(ctx, d, work)
 		return

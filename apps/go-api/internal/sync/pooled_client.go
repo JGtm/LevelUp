@@ -243,6 +243,32 @@ func (pc *PooledHaloClient) GetFilmChunks(ctx context.Context, matchID string) (
 	return result, ok, err
 }
 
+// FetchMvarForMap rapatrie la variante `.mvar` d'une carte, avec PolicyAnyPublic.
+//
+// HORS de l'interface HaloClient, mais INDISPENSABLE, et pour la MEME raison que
+// `GetFilmChunks` juste en dessous : le rattrapage du catalogue de cartes obtient cette
+// capacite par assertion de type, et ce client est celui du chemin serveur. Son absence
+// desactivait le rattrapage EN SILENCE. Verrouille par `replay_artifacts_wiring_test.go`, qui
+// l'assert sur les TYPES CONCRETS.
+func (pc *PooledHaloClient) FetchMvarForMap(ctx context.Context, mapID, mvarFile string,
+) ([]byte, string, error) {
+	callStart := time.Now()
+	var blob []byte
+	var base string
+	err := pc.doPublic(ctx, func(c *HaloAPIClient) error {
+		var e error
+		blob, base, e = c.FetchMvarForMap(ctx, mapID, mvarFile)
+		return e
+	})
+	// INSTRUMENTEE COMME TOUTES LES AUTRES : c'etait la seule methode publique du client poole
+	// a ne pas l'etre, et un appel non mesure ne se voit ni en latence ni en taux d'echec.
+	observeHaloCall(ctxkeys.TitleSlug(ctx), "map_variant", "", callStart, err)
+	if err != nil {
+		return nil, "", err
+	}
+	return blob, base, nil
+}
+
 // GetHighlightEventsChunk implémente HaloClient.GetHighlightEventsChunk() avec PolicyAnyPublic.
 func (pc *PooledHaloClient) GetHighlightEventsChunk(ctx context.Context, matchID string) ([]byte, int, bool, error) {
 	callStart := time.Now()
