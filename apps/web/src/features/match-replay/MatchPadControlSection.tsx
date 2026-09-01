@@ -4,7 +4,7 @@
  * CE QUE LA PAGE NE SAVAIT PAS DIRE, ET CE QUE LE BILAN D'ÉQUIPEMENT REFUSAIT DE DIRE. La
  * section voisine (`MatchEquipmentUsageSection`) compte les socles VIDÉS, au niveau du match et
  * sans ramasseur : c'était la seule chose vraie tant que `padPickups[].xuid` valait `null`
- * partout. L'événement natif de ramassage l'a levée (schémas 30-31) : ce tableau-ci nomme le
+ * partout. L'événement natif de ramassage l'a levée (SCHÉMA 30) : ce tableau-ci nomme le
  * ramasseur socle par socle, et c'est la stat de domination tactique demandée — qui a tenu le
  * fusil de précision, qui a raflé l'épée.
  *
@@ -17,7 +17,7 @@
  * DOUBLE PORTE, comme la courbe de score et le bilan d'équipement : pas d'artefact (le cas de la
  * quasi-totalité des matchs) OU aucune prise attribuée -> RIEN. Pas de cadre vide, pas de
  * « bientôt disponible ». Un match sans socle, un match dont aucune occupation n'a pu être datée,
- * un artefact d'avant le schéma 31 : dans les trois cas la section ne s'affiche pas. La MÊME clé
+ * un artefact d'avant le schéma 30 : dans les trois cas la section ne s'affiche pas. La MÊME clé
  * de cache que ses voisines (`useMatchReplay`, gaté par `header.replay_available`) : les blocs de
  * l'onglet partagent un seul téléchargement.
  *
@@ -192,22 +192,23 @@ function PadControlTeamBody({
  * PadControlFootnotes — le dénominateur, et TOUT ce que le tableau ne montre pas.
  *
  * LA SOMME DOIT SE VÉRIFIER À L'ŒIL : prises attribuées + occupations hors tableau = occupations
- * mesurées. La ventilation par cause est rendue quand l'artefact la porte (`hasStats`) ; sinon
- * une phrase dit qu'elle n'existe pas, plutôt qu'une liste inventée ou un silence.
+ * mesurées, ventilées par cause.
+ *
+ * Le document sans bloc de datation n'existe pas en production (cf. `PadControl.coverage`) : la
+ * note est alors simplement omise, sans phrase dédiée — le tableau, lui, reste rendu.
  */
 function PadControlFootnotes({ control, t }: { control: PadControl; t: ReplayText }) {
   const p = t.padControl
   const missing = padControlMissing(control)
   const gaps = padControlGaps(control)
+  if (!control.coverage) return null
   return (
     <div className="space-y-1 px-3 pb-2 pt-2 text-[11px] text-muted-foreground">
       <p>{p.attributedFmt(control.attributed, control.coverage.occupations)}</p>
-      {missing > 0 && (
+      {missing > 0 && gaps.length > 0 && (
         <p>
           {p.missingFmt(missing)}
-          {gaps.length > 0
-            ? ` ${gaps.map((g) => p.gapFmt[g.key](g.count)).join(' · ')}.`
-            : ` ${p.noBreakdown}`}
+          {` ${gaps.map((g) => p.gapFmt[g.key](g.count)).join(' · ')}.`}
         </p>
       )}
     </div>

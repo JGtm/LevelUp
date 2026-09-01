@@ -106,7 +106,7 @@ export function MatchViewTabChronology({
 
       {/* Le CONTRÔLE DES ARMES SPÉCIALES (film), juste après le bilan d'équipement dont il est
           le complément : celui-ci compte les socles vidés SANS ramasseur, celui-là les nomme
-          (padPickups[].xuid, schémas 30-31). Même artefact, même clé de cache, aucun appel de
+          (padPickups[].xuid, schéma 30). Même artefact, même clé de cache, aucun appel de
           plus. Sans artefact, sans socle ou sans prise attribuée, il ne rend rien. */}
       <MatchPadControlSection
         playerSlug={playerSlug}

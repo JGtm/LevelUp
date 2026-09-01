@@ -139,8 +139,6 @@ export interface PadControlText {
    * dans une langue.
    */
   gapFmt: Record<PadControlGapKey, (count: number) => string>
-  /** Artefact sans bloc de datation (schéma < 31) : on ne prétend pas connaître les causes. */
-  noBreakdown: string
 }
 
 export interface ReplayText {

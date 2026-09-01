@@ -345,8 +345,6 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
           `${n} sur socle de bonus (jamais rattachable : un bonus s'identifie par un nom, pas par une famille d'arme)`,
         unjoined: (n) => `${n} au nom d'un joueur que le film n'a pas vu vivre`,
       },
-      noBreakdown:
-        "Cet artefact est antérieur à la datation des occupations : le détail des occupations hors tableau n'y figure pas.",
     },
     ammoFullLabel: 'Munitions pleines',
     gaugeLabel: 'charge restante',
@@ -711,8 +709,6 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
           `${n} on a power-up pad (never attachable: a power-up is identified by a name, not by a weapon family)`,
         unjoined: (n) => `${n} named for a player the film never saw alive`,
       },
-      noBreakdown:
-        'This artefact predates occupancy timing: it carries no breakdown of the occupancies outside the table.',
     },
     ammoFullLabel: 'Ammo full',
     gaugeLabel: 'charge left',
