@@ -12,6 +12,7 @@ import { useState, useEffect, useRef, type FormEvent } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent } from '@/components/ui/card'
+import { AppFooter } from '@/components/shell/AppFooter'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { useStartDeviceFlow, useDeviceFlowStatus } from '@/features/setup/queries'
@@ -98,6 +99,8 @@ export function XboxLoginPage() {
             </p>
           </CardContent>
         </Card>
+
+        <AppFooter variant="minimal" />
       </div>
     </div>
   )

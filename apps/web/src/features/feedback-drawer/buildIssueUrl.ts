@@ -10,9 +10,10 @@
  */
 import type { Classification, FeedbackType } from './classifyFeedback'
 import type { FeedbackContext } from './collectContext'
+import { GITHUB_ISSUES_URL, GITHUB_REPO } from '@/lib/appLinks'
 
-const REPO = 'JGtm/LevelUp'
-const BASE_URL = `https://github.com/${REPO}/issues/new`
+// Slug du dépôt et URL des issues : source unique dans lib/appLinks.
+const BASE_URL = `${GITHUB_ISSUES_URL}/new`
 const MAX_BODY_LENGTH = 7000
 const TRUNCATED_MARKER = '…[truncated]'
 
@@ -218,6 +219,6 @@ export function escapeSearchQuery(title: string): string {
  */
 export function buildSearchIssuesUrl(title: string): string {
   const sanitized = escapeSearchQuery(title)
-  const q = `${sanitized} is:issue repo:${REPO}`
+  const q = `${sanitized} is:issue repo:${GITHUB_REPO}`
   return `https://api.github.com/search/issues?q=${encodeURIComponent(q)}&per_page=3`
 }

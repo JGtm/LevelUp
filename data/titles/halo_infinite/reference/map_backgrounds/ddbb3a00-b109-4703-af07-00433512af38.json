@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "module": "ddbb3a00-b109-4703-af07-00433512af38",
+  "mapNames": [
+    "Threshold",
+    "threshold_map"
+  ],
+  "image": "ddbb3a00-b109-4703-af07-00433512af38.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-27T23:14:17.1517996Z",
+  "style": "encre",
+  "calibration": {
+    "metersPerPixel": 0.06027734756469726,
+    "originX": -60.09716974258423,
+    "originY": 61.293340682983384,
+    "widthPx": 1994,
+    "heightPx": 2034,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 20,
+    "anchorsInFrame": 20,
+    "anchorsWithGround": 20,
+    "anchorMedianGapM": 3.1646797002239566,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 176.62148376464845,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.827802332091561,
+    "covered": true,
+    "cellsSubstituted": 1449800,
+    "forgeObjects": 5309,
+    "forgeObjectsDrawn": 5212,
+    "forgeObjectsWithoutModel": 67,
+    "forgeDeathVolumes": 30
+  }
+}

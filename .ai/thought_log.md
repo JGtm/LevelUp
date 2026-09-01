@@ -7,7 +7,141 @@ Lease, Deploy Pre-Check, gitleaks. Le rouge du merge `dcbc6e458`
 CONTRAT non régénéré, pas du lot son : sur mon run `10593604a`, tout ce qui relevait du lot
 (Frontend, lints, contrat OpenAPI) était déjà vert. **Le lot son est CLOS selon le régime de la
 branche (CI verte au niveau JOB).**
+## [2026-08-31] Pied de page projet — soutien (Sponsors + PayPal), non-affiliation, source unique des liens — Complété
 
+**Point de départ** : le pied de page de `davidhouweling/guilty-spark`, donné en référence par
+l'utilisateur. Lecture sur pièces du dépôt (l'app publique répond 403 derrière Cloudflare) :
+`pages/src/components/footer/footer.astro` porte deux colonnes — *Resources* (dépôt, issues,
+politique de confidentialité, CGU) et *Community* (Discord, profil du développeur) — plus une
+barre basse « © … Not affiliated with Microsoft or Halo Studios ». **Le mécénat n'y est PAS** :
+GitHub Sponsors et PayPal vivent dans la FAQ (`pages/src/pages/faq.astro`, « How can I support
+this project? ») et dans `.github/FUNDING.yml`. LevelUp n'avait aucun pied de page.
+
+**Arbitrage de contenu** (contexte propre : dépôt PUBLIC MIT, démo publique `demo.lvelup.info`,
+projet mono-développeur, pas de Discord) :
+
+    REPRIS    non-affiliation Microsoft/Halo Studios — l'app sert médailles, emblèmes et
+              assets Halo ; c'est la ligne du footer de référence qui a le plus de valeur ici
+    REPRIS    code source + licence MIT
+    ADAPTÉ    « Signaler un problème » ouvre le FeedbackDrawer existant (issue préremplie avec
+              le contexte) au lieu d'un second lien brut vers /issues — pas de chemin doublon
+    AJOUTÉ    bloc « Soutenir » : GitHub Sponsors + PayPal (demande explicite), avec la note
+              « gratuit et ouvert, un coup de pouce paie l'hébergement »
+    AJOUTÉ    « Nouveautés » -> /changelog (page déjà construite)
+    ÉCARTÉ    Discord (aucun serveur), profil développeur (fondu dans le lien dépôt)
+    REPORTÉ   confidentialité / CGU — voir « reste à faire »
+
+**Décision technique principale — source unique `lib/appLinks.ts`.** Le slug `JGtm/LevelUp`
+était déjà en dur dans `feedback-drawer/buildIssueUrl.ts` ; le pied de page en aurait fait la
+2e copie et les liens de don une 3e famille de littéraux dispersés. Constantes centralisées
+(`GITHUB_REPO`, `GITHUB_URL`, `GITHUB_ISSUES_URL`, `GITHUB_LICENSE_URL`, `SPONSORS_URL`,
+`PAYPAL_URL`), `buildIssueUrl` migré, et **garde-rail dans le même commit**
+(`lib/appLinks.guard.test.ts`) : aucun de ces littéraux hors du fichier canonique. Les
+`*.test.ts(x)` sont exemptés avec justification — y épingler l'URL réelle est le but de
+l'assertion (même convention que `no-field-label-dictionary.test.ts`).
+
+**Deux variantes de rendu.** `full` en bas du flux scrollable de l'AppShell (jamais fixé : la
+hauteur verticale est comptée pour les tableaux denses). `minimal` sur LoginPage et
+XboxLoginPage — **seuls écrans qu'un visiteur anonyme de la démo publique voit**, le shell n'y
+est pas monté. La variante minimale n'a pas de lien « Signaler un problème » : le FeedbackDrawer
+n'y est pas monté non plus. Deux points d'insertion seulement (RegisterPage et l'écran admin
+mot de passe sont hors audience publique) — reste sous la règle des 2 copies.
+
+**i18n** : 12 clés `common.footer.*` FR+EN dans `manifests/common.toml`, manifests regénérés
+(21 manifests, 3 010 clés). Couleurs : tokens sémantiques uniquement (`text-muted-foreground`,
+`border-border`, `text-foreground`), aucun hex ni classe Tailwind couleur.
+
+**Gates** : vitest suite complète **543 fichiers / 5 614 tests VERT** (14 skipped), typecheck
+`tsc -b` cache `node_modules/.tmp` purgé VERT, eslint **0 erreur** (24 warnings pré-existants
+`react-hooks/incompatible-library` sur TanStack Table, hors diff). 6 tests neufs sur AppFooter
+(cibles externes, `rel="noopener noreferrer"`, ouverture du tiroir, variante minimale, locale en).
+
+**SECONDE PASSE (même journée, demandes de l'utilisateur).** Sponsors CONFIRMÉ actif sur le
+compte — le lien tient. Trois ajouts :
+
+    profil GitHub    `GITHUB_PROFILE_URL`, colonne « Ailleurs » du pied de page complet
+    csinsight.eu     site d'un proche (stats CS2). Le site sert sa langue par le PREMIER
+                     SEGMENT de chemin (`/fr`, `/en`, vérifié sur pièces) : helper
+                     `csinsightUrl(locale)` branché sur la locale de l'app, pas une langue
+                     figée. Présent aussi dans la variante minimale — la démo est publique,
+                     un lien que seuls les connectés voient n'a presque aucune portée.
+    /privacy         page de confidentialité bilingue (le point (3) reporté ci-dessus)
+
+**La page de confidentialité est écrite depuis le CODE, pas depuis un modèle.** Chaque
+affirmation est adossée à une vérification, listées en tête de `features/legal/i18n.ts` :
+cookie `levelup_session` HttpOnly / SameSite=Lax / Secure / TTL 7 j (relu dans
+`platform/session/store.go` + `api/middleware/session.go`), absence de tout traceur ou service
+de mesure (grep analytics/gtag/plausible/matomo/posthog/sentry : aucun branchement — seul un
+COMMENTAIRE d'ErrorBoundary évoque Sentry), jetons Microsoft en source unique
+`data/auth/watcher_tokens/{xuid}.json` (ADR 0023). Deux faits que le texte énonce et qu'une
+politique de complaisance aurait tus : (a) les gamertags/XUID/statistiques des AUTRES joueurs
+des parties sont conservés — indissociable d'un affichage de match ; (b) le panneau de retour
+fait un `fetch` NAVIGATEUR DIRECT vers `api.github.com` (`feedback-drawer/queries.ts`,
+`credentials: 'omit'`), donc l'IP du visiteur est exposée à GitHub, et l'envoi crée un ticket
+PUBLIC. Un test épingle ces faits vérifiables (nom du cookie, HttpOnly, durée) dans les DEUX
+langues : si le code change sans que le texte suive, il rougit.
+
+**Routage anonyme.** `/privacy` doit être lisible SANS compte — un visiteur qui hésite à
+connecter son compte Microsoft doit pouvoir lire d'abord. Helper `isAnonymousPath` dans
+`shellNavigation.ts` (frontière de SEGMENT : `/privacy-interne` n'est pas anonyme), branché sur
+les deux redirections d'authentification de `__root.tsx`. Le gate `setup_required` continue de
+s'appliquer volontairement : une instance non configurée n'a rien à servir. `routeTree.gen.ts`
+regénéré par `vite build` (jamais édité à la main), titre d'onglet ajouté dans `pageTitle.ts`.
+
+Effet de bord assumé : `XboxLoginPage.test.tsx` rendait la page sans routeur monté ; le `Link`
+vers /privacy du pied de page minimal y lève. Mock `Link` -> ancre ajouté dans ce fichier
+(convention déjà en place dans `NavL1.test.tsx` et consorts).
+
+**Gates seconde passe** : vitest suite complète **544 fichiers / 5 626 tests VERT** (14 skipped),
+typecheck cache purgé VERT, eslint **0 erreur** (24 warnings pré-existants), `vite build` VERT.
+
+**TROISIÈME PASSE — adresse de contact.** L'utilisateur veut une adresse mais craint le spam.
+Diagnostic AVANT de proposer, pas après : `nslookup` sur `lvelup.info` montre des nameservers
+IONOS et des **MX déjà actifs** (`mx00/mx01.ionos.fr`) — le domaine reçoit donc déjà du courrier,
+créer une adresse de rôle ne demandait rien à monter. Recommandation retenue et livrée : adresse
+de rôle sur le domaine du projet, jamais la boîte personnelle. Elle se filtre par DESTINATAIRE
+(une règle « pour: cette adresse » la sort de la boîte principale), elle se remplace en une ligne
+si elle est moissonnée, et ce n'est pas un compte — rien à perdre si elle finit sur une liste.
+Anti-moissonnage : l'adresse est assemblée à l'exécution depuis un tableau de parties
+(`['contact','lvelup.info'].join('@')`, non repliable par le bundler), donc le littéral complet
+n'existe ni dans le HTML servi — l'app est rendue côté navigateur, un robot sans JavaScript ne
+voit rien — ni d'un seul tenant dans le bundle. Rendu par jeton `{{CONTACT}}` -> lien `mailto:`
+(même mécanique que `{{HP}}` dans l'aide) ; un test vérifie dans les DEUX langues que le jeton
+brut ne reste jamais affiché. Un garde-rail impose une partie locale de RÔLE
+(`contact|privacy|legal|dpo`…) : si elle redevient un nom de personne, la propriété
+« remplaçable sans rien perdre » tombe et le test rougit. La page garde AUSSI la voie du ticket
+public, en disant explicitement qu'il est visible de tous et que l'adresse est la voie discrète.
+L'utilisateur a créé `contact@` (et non le `privacy@` proposé) : bascule faite, et le texte
+corrigé en conséquence — il annonçait « alias dédié à ces demandes », ce qui aurait été FAUX
+pour une adresse de contact générale.
+
+**QUATRIÈME PASSE — dosage de la sollicitation de don.** L'utilisateur : « c'est pas too much de
+le mettre partout ? ». Recensement des trois emplacements et arbitrage : bouton Sponsor du dépôt
+(GARDÉ — c'est GitHub qui le dessine dans sa propre chrome, mécanisme first-party, le bout poli
+du spectre : ni bandeau, ni section de README, ni bot qui commente les issues) ; colonne
+« Soutenir » du pied de page in-app (GARDÉE — un pied de page est fait pour ça, et la note dit
+POURQUOI, l'hébergement) ; **écran de connexion (RETIRÉ)**. Ce troisième emplacement était une
+initiative non demandée : solliciter un don avant que la personne ait vu quoi que ce soit du
+produit sonne quémandeur. La variante minimale garde confidentialité + code source + CSinsight.
+Test de non-régression explicite : « AUCUNE sollicitation de don avant usage du produit » —
+l'intention est écrite dans le test, pas seulement dans un commentaire.
+
+**Correction d'une affirmation.** J'avais annoncé que `FUNDING.yml` pose un bouton « sur chaque
+issue et pull request » — formulation qui exagère l'intrusion. C'est UN bouton dans la chrome de
+dépôt de GitHub (rangée Star/Fork, plus une carte « Sponsor this project » en barre latérale
+d'accueil), pas un élément injecté dans chaque ticket. La doc GitHub sur `FUNDING.yml`
+(consultée) ne documente pas le placement — ne pas ré-affirmer plus que ça sans preuve.
+
+**Reste à faire** : (1) gate visuel — la main à l'utilisateur, en clair et en sombre, sur l'écran
+de connexion, en bas d'une page dense, et sur /privacy ; (2) poser côté messagerie la règle de
+tri sur le destinataire `contact@` — c'est elle qui fait tout le travail anti-spam, le code ne
+peut pas la poser ; (3) `PRIVACY_UPDATED_AT` est à faire avancer à chaque modification de fond,
+et la doctrine est écrite en tête du fichier ; (4) **la CI n'a PAS tourné** : `wt/**` n'est pas
+dans le trigger `push` de `ci.yml` (main, feat/**, feature/**, fix/**, hotfix/**, refactor/**,
+perf/**, docs/**, chore/**, integration/**) et le trigger `pull_request` est limité aux PR vers
+`main`. Une branche `wt/*` n'obtient sa CI qu'au merge dans `feat/v75`. Branche
+`wt/footer-liens` (worktree dédié depuis `feat/v75`), poussée.
+Rien de commité.
 ---
 
 ## [2026-08-30] Sons — le merge ramassage fournit les déclencheurs, les quatre sons muets sont câblés — Complété
@@ -4773,6 +4907,67 @@ est `eslint .` sans seuil. Consigne en Decouverte D2, non traite.
 
 **Conclusion / prochaine etape** : lot 2 — enregistrement video (captureStream + MediaRecorder),
 ordre de types mp4 avc1 -> mp4 -> webm vp9 -> webm, auto-arret quand la lecture s'arrete.
+
+## [2026-08-27] Derive d identifiant d asset des fonds de carte : index inverse + garde-rails — Complete
+
+**Contexte** : 84 fonds publies, 123 map_id joues au registre partage. Mesure du jour : 16 map_id
+(131 matchs) n avaient AUCUN fond resolvable a l ecran. Cause principale, invisible jusqu ici : la
+DERIVE D IDENTIFIANT D ASSET. Un fond Forge est publie sous le map_id qui a servi a le cuire, mais
+`match_registry` porte le map_id du jour du match — Salvation, Dynasty, Shogun, Houseki, Starboard
+et Shiro ont ete jouees sous un asset different de celui de leur fond. L image existait, la carte
+etait sans fond.
+
+**Decision technique principale** : PAS de table d alias map_id -> cle (donnee ecrite a la main,
+rattrapage apres coup, seconde verite a tenir). On lit ce que la cuisson DECLARE DEJA : chaque
+sidecar porte `mapNames` (noms affiches + noms de module du catalogue d objectifs), champ jusqu ici
+purement documentaire, lu par personne. Nouveau `replay.MapBackgroundIndex`
+(`internal/analysis/replay/map_background_index.go`) : index inverse identite -> cle, construit par
+lecture des sidecars versionnes, cache invalide par la signature du repertoire (nom+taille+date),
+hors ligne et deterministe. Une identite revendiquee par DEUX cles est AMBIGUE : ecartee des deux
+cotes, jamais resolue au hasard.
+
+Normalisation d identite VOLONTAIREMENT differente de `filmdec.NormalizeMapName` : elle ne rabote
+NI « - Ranked » NI « Heavies ». Le rabotage est juste pour les bornes de dequantification et FAUX
+ici — « Insolence » et « Insolence Heavies » sont deux assets Forge avec deux fonds distincts (idem
+Fortitude, Thunderhead, Refuge, Obituary, Origin, Solitude) : les fondre les priverait de fond
+toutes les deux.
+
+Le repli historique par `map_quant_bounds.json` est RETIRE de `resolveBackgroundKey` : pour une
+carte Forge il menait au CANEVAS, module qui n a jamais de fond publie — un cul-de-sac par
+construction. Mesure de non-regression avant retrait : sur les 123 map_id du registre ET sur les 78
+noms du catalogue de bornes, l index resout tout ce que le repli resolvait, avec ZERO divergence et
+ZERO carte resolue par le repli seul.
+
+**Resultats observes** : couverture 107 -> 116 map_id sur 123 (1809 -> 1820 matchs sur 1940). Les 6
+cartes derivees sont servies ; 3 variantes que le catalogue de bornes ne portait pas (Oasis Sentry
+Defense, Highpower Sentry Defense, Oasis Firefight) le sont aussi. Sur le catalogue de bornes : 19
+noms stables (meme cle), 57 noms nouvellement resolus, 0 perte. Index : 184 identites pour 84 cles,
+ZERO collision. Restent 7 map_id / 120 matchs sans fond, tous en allowlist datee : Live Fire (3
+assets, 71 matchs — module `sgh_interlock` sans sbsp), Detachment (25) et Argyle (22) sans ancres
+au catalogue d objectifs, Cole Protocol (1) cuisinable non cuit, « TFF | Night Of The Undead » (1)
+partie personnalisee.
+
+Garde-rails poses : `TestCatalogueDeFondsSansIdentiteAmbigue` + `TestCatalogueDeFondsIndexeChaqueCle`
+(catalogue publie, tournent en CI) ; `TestRegistreChaqueCarteJoueeATrouveSonFond` sur inventaire
+GELE (`internal/service/testdata/map_ids_joues_20260827.json`, meme convention que l oracle phase 0
+du rejeu — la base n existe pas en CI) ; `TestRegistreAllowlistSansEntreePerimee` (cliquet : une
+carte dont le fond est cuit DOIT sortir de la liste) ; `TestRegistreDeriveIdentifiantAssetCorrigee`
+(temoin nommant les 6 couples map_id joue / cle de fond) ; et la re-mesure sur base vivante
+`TestRegistreVivantCouvertureDesFonds`, garde `FOND_REGISTRE`, qui rend les lignes JSON a ajouter a
+l inventaire quand de nouveaux matchs sont synchronises.
+
+Deux tests existants encodaient l ancien contrat et ont ete repris SUR PIECES, pas desactives :
+`TestMapBackground_NomNormalise` (devenu `_NomDeVarianteDeclare`, avec sa contre-epreuve Heavies) et
+l assertion `bg.Module == entry.Module` de `TestMapBackground_TousLesModulesDuCatalogue`, qui ne
+tenait que parce que les cartes Forge se declaraient SKIP faute de fond.
+
+**Conclusion / prochaine etape** : go build ./... vert, tests des paquets touches verts, ratchet
+lint golangci `--new-from-merge-base=origin/main` sans aucune issue sur les fichiers de ce lot.
+DECOUVERTE HORS PERIMETRE, non traitee : `TestMapObjectives_ModesPonctuels_AucuneZoneSurTOUTLeCatalogue`
+echoue (CTF 28 cartes a forme contre 14 relevees le 2026-08-26) — cause etablie, la campagne de
+catalogage a fait entrer 27 cartes Forge (commit 35fbad20a) ; c est le releve du test qu il faut
+reprendre, pas le correctif. Prochaine etape naturelle : cuire Detachment, Argyle et Cole Protocol,
+puis retirer leur entree d allowlist — le cliquet le rendra obligatoire.
 
 ## [2026-08-26] Fusion train v7.5 : reprise des travaux de 3 agents + passe backfill-replay 18->20 — Complete
 
@@ -77547,6 +77742,1195 @@ cache des calques cuits.
 planche de comparaison `jeu`/`encre` sur les 11 cartes non closes). Les zones jamais foulees
 restent une SECONDE BASE DE TRAVAIL (precision utilisateur), pas une regle de rendu final.
 
+---
+
+## [2026-08-26] Cartes — l'echelle du fond devient une entree, et la doctrine « aucun reglage par carte » est amendee
+
+**Statut** : En cours (branche `wt/cartes-revue-par-carte`, cuisson `encre` des 19 natifs en fond).
+
+**Decision technique principale** : demande utilisateur du jour — « faut generer des fonds de
+cartes a une taille minimale au moins pour pas que ce soit trop pixelise ». Le cadre etant
+propre a chaque carte et l'echelle FIXE (`EchelleFondCarte` = 0,0920 m/px), une petite arene
+rend une petite image : mesure du jour sur la matiere reellement dessinee, Aquarius 506 x 336 px,
+Recharge 403 x 542, Forest 509 x 615, Streets 549 x 426, Bazaar 621 x 567. Agrandies a l'ecran
+elles pixelisent, et le zoom demande le meme jour ne ferait qu'aggraver le defaut.
+
+`OptionsCuisson.Echelle` et `OptionsCuissonForge.Echelle` (zero = production),
+`CadreSurAncresEchelle`, drapeau `--mpp` sur `mapfond-build`. Le CADRE MONDE ne bouge pas :
+seule la finesse de la grille change, donc deux echelles de la meme carte se superposent
+exactement une fois remises a l'echelle — c'est ce qui rend le reglage comparable au gate.
+
+**L'amendement de doctrine, et il devait etre ecrit dans le meme commit** : l'en-tete de
+`cuisson.go` proclamait « AUCUN REGLAGE PAR CARTE. C'est la propriete qui rend la chaine
+transferable ». Le gate du 26/08 l'a tranchee dans l'autre sens sur DEUX axes, images a
+l'appui : l'habillage (`encre` sur Cliffhanger, `jeu` sur Catalyst) et l'echelle. L'en-tete est
+donc reecrit — laisser la doctrine d'origine en place aurait fabrique une doc inversee sur la
+regle la plus structurante du paquet. Ce qui reste interdit, et c'est la vraie regle : une
+BRANCHE par carte dans `himap`. Les deux axes sont des ENTREES, choisies en DONNEE par
+l'appelant, avec raison ecrite et date de gate ; la chaine ne sait pas quelle carte elle cuit.
+
+**Resultats observes** : a completer — cuisson `encre` des 19 natifs en cours, gates Go non
+encore rejoues (regle « pas deux commandes Go concurrentes » : la compilation attend la fin de
+la cuisson).
+
+**Conclusion / prochaine etape** : planche de comparaison `jeu` / `encre` a publier des la fin
+de la cuisson, puis choix de N (taille utile minimale en pixels) sur planche et non au juge.
+Point de vigilance ecrit au plan : `metersPerPixel` est PUBLIE dans le sidecar, les lecteurs
+s'y fient, et le banc de non-regression compare a 0,0920 m/px — toute carte re-cuite a une
+autre echelle doit repasser le banc, pas le contourner.
+
+---
+
+## [2026-08-26] REGRESSION DE DONNEE — le catalogue d'objectifs avait perdu 59 modules sur 71
+
+**Statut** : Complete (branche `wt/cartes-revue-par-carte`).
+
+**Decision technique principale** : trouvee en cuisant les 19 natifs en style `encre` — la
+cuisson n'en a rendu que **11**, sans erreur ni echec. Cause etablie sur pieces, par comparaison
+des versions du catalogue :
+
+| version | entrees | modules distincts | a `module: "map"` |
+|---|---:|---:|---:|
+| `79cf8e803` (13/08) | 72 | 71 | 2 |
+| `fec6b9bf9` (20/08) | 73 | 71 | 2 |
+| **`d50f3b728` (25/08)** | 73 | **12** | **58** |
+
+`d50f3b728` est le re-tirage reseau des 73 cartes (« 133 -> 273 collines, 0 perdue »).
+`mapEntry.Module` est derive du NOM DU FICHIER `.mvar` : depuis le depot de variantes ce nom
+est descriptif (`cliffhanger_ridgeline.mvar`), depuis le RESEAU il ne l'est pas — le code le
+documentait deja ailleurs (`saveVariantFile` : « plusieurs cartes exposent un fichier nomme
+`map.mvar` »). Le re-tirage a donc ecrase `module` par `map` sur 58 entrees.
+
+**Consequence, et c'est elle qui bloquait le chantier** : `mapfond-build` ne savait plus cuire
+que **11 des 19 fonds natifs publies**. Devenues incuisables : Cliffhanger, Aquarius, Prism,
+Streets, Recharge, Chasm, Launch Site, Behemoth — dont **six sont exactement les cartes que
+l'utilisateur venait de demander a retravailler** le jour meme. Une re-cuisson de masse aurait
+produit 11 fonds sur 19 et signale zero echec.
+
+**Pourquoi rien ne l'a vu** : le garde-rail du lot fautif comptait les COLLINES (« 0 perdue »)
+et il etait vert. Un garde-rail ne protege que le champ qu'il compte.
+
+**Resultats observes** : (1) donnee reparee — `module` restaure par map_id depuis `fec6b9bf9`,
+**66 entrees corrigees**, catalogue de nouveau a 71 modules distincts et 73 entrees, les deux
+seules entrees restant a `map` etant Vagabond et une variante de Highpower (les deux cartes dont
+le reseau sert reellement un `map.mvar`, mesure du 08/08). (2) cause corrigee — `gardeModuleConnu`
+dans `mapobj-build` : le reseau ne connait pas le module d'une carte, il ne peut que le perdre,
+donc un module deja au catalogue est conserve tel quel. (3) garde-rail pose sur le champ
+lui-meme — `TestCatalogueObjectifsModulesDistincts` sur l'asset PUBLIE (>= 70 modules distincts,
+<= 2 entrees par module), avec ses seuils documentes comme non relevables. **Mordant verifie par
+mutation** : remis le catalogue de HEAD, le test rougit sur les trois assertions (12 modules,
+`map` porte par 58 entrees) ; donnee restauree ensuite.
+
+**Conclusion / prochaine etape** : le chantier des cartes est debloque ; re-cuisson `encre` des
+19 natifs relancee pour la planche de comparaison `jeu` / `encre`. A verifier au passage : les
+autres assets derives du catalogue depuis le 25/08 (bornes, socles) n'ont-ils pas ete cuits
+avec les modules effaces.
+
+---
+
+## [2026-08-26] Cartes — la reparation prouvee de bout en bout, et la planche des deux habillages
+
+**Statut** : Complete (branche `wt/cartes-revue-par-carte`).
+
+**Decision technique principale** : la reparation du catalogue est prouvee par la cuisson
+elle-meme, pas par une relecture du diff — meme commande, meme sortie, avant/apres :
+**11 cartes cuites avant, 19 apres** (`cartes=19 echecs=0`), Cliffhanger, Aquarius, Prism,
+Streets, Recharge, Chasm, Launch Site et Behemoth de retour. C'est l'oracle le plus direct
+disponible ici : la cuisson est le consommateur du champ repare.
+
+Planche de comparaison des deux habillages publiee (19 fiches, 38 vignettes, 2,8 Mo) :
+https://claude.ai/code/artifact/6c9ec756-95e6-451a-8977-5e61debb8bae — ordre pose par les
+verdicts du jour (Cliffhanger, Catalyst, les neuf a finaliser, puis les huit validees en
+comparaison seulement). L'outil `mapfond-planche` a servi tel quel : deux lignes de meme cle
+dans le manifeste font les deux colonnes d'une fiche, ce pour quoi il a ete ecrit.
+
+**Resultats observes** : cuisson `encre` des 19 natifs, 0 echec, 1 non cuisinable (la carte
+sans tag sbsp deja instruite), 9 degradees (absence de volume d'eau, deja au registre),
+509/579 ancres avec sol. Gates Go : `go build` sur `himap` + les trois cmd touchees, propre ;
+`go test ./cmd/mapobj-build/` vert ; `gofmt` propre ; hook pre-commit (gofmt, gitleaks,
+go-vet) vert sur les deux commits du lot.
+
+**Conclusion / prochaine etape** : attente des verdicts de style sur la planche. Restent au
+plan, dans l'ordre : le correctif de la teinte (le niveau de jeu doit se lire sur la surface de
+reference PAR PIXEL, pas sur un scalaire — 13 fonds hors clou, jusqu'a -17,51 m), le cadrage de
+l'asset (mediane 53,5 % de largeur utile sur les natifs), et le choix de la taille utile
+minimale qui fixera l'echelle. **Point de vigilance ouvert** : verifier si d'autres assets
+derives du catalogue ont ete cuits entre le 25/08 et aujourd'hui avec les modules effaces.
+
+---
+
+## [2026-08-26] Cartes — le reglage par carte vit en DONNEE, et Cliffhanger est la premiere publiee
+
+**Statut** : Complete (branche `wt/cartes-revue-par-carte`).
+
+**Decision technique principale** : recadrage demande par l'utilisateur — « il faut retravailler
+une a une celles qui sont non validees ». La planche de masse est close ; la boucle devient :
+cuire la carte SEULE vers la PRODUCTION, publier son avant/apres, verdict, corriger sur elle,
+puis seulement la suivante. Consigne ecrite au registre.
+
+Le mecanisme a ete construit sur la premiere carte, parce que c'est la qu'il fallait le faire.
+`data/titles/halo_infinite/reference/map_fond_reglages.json` (chemin par `PathResolver.MapFondReglagesPath`)
+porte une entree par carte : habillage, echelle, **raison ecrite et date du gate**.
+`mapfond-build` la lit (`styleDe`, `echelleDe`) et JOURNALISE tout choix propre a une carte —
+un fond publie dans un habillage qu'on n'a pas vu passer est un fond qu'on ne saura pas
+expliquer. `internal/himap` ne gagne AUCUNE branche par carte : le reglage est une entree, la
+chaine ne sait toujours pas quelle carte elle cuit.
+
+**Resultats observes** : Cliffhanger cuite en `encre` vers le dossier de PRODUCTION, journal a
+l'appui (`habillage propre a la carte carte=ridgeline style=encre gateLe=2026-08-26`), sidecar
+publie `"style": "encre"`. Ce qui n'a PAS bouge : cadre 1633x1627, calage, geometrie, 23/24
+ancres avec sol — seule la mise en couleur change. Garde-rails : `TestReglagesFondJustifies`
+(raison >= 80 caracteres, date au format d'un gate, entree sans effet refusee, habillage inconnu
+refuse), `TestChargeReglagesRefuseUnHabillageInconnu`, `TestChargeReglagesAbsentEstNominal`.
+`go test ./cmd/mapfond-build/` vert, `go build` propre, gofmt propre.
+
+Detail attrape au passage, et c'est l'anti-pattern « doc inversee » : la ligne de bilan de la
+cuisson annoncait `style=jeu` alors que la carte venait d'etre publiee en `encre` — le drapeau
+global etait affiche seul. Le bilan et le rapport comptent desormais les reglages par carte a
+cote de l'habillage de cuisson.
+
+**Conclusion / prochaine etape** : planche de la carte 1 publiee
+(https://claude.ai/code/artifact/e3f8f959-14a3-44a8-b426-26a27f13832b), en attente du verdict.
+Les deux defauts connus de Cliffhanger restent entiers et viendront a leur tour : largeur utile
+68,6 % du cadre, et l'echelle. Ordre des suivantes au registre.
+
+---
+
+## [2026-08-26] Cartes 1 et 2 closes — les quatre axes du fond existent, et le code s'arrete la
+
+**Statut** : Complete (branche `wt/cartes-revue-par-carte`).
+
+**Decision technique principale** : la boucle une-carte-a-la-fois a fait sortir QUATRE axes de
+reglage, chacun ne devant son existence qu'a un defaut mesure sur une carte reelle :
+
+1. **habillage** (`styleDe`) — le gate a demande `encre` la ou `jeu` etait publie ;
+2. **echelle** (`OptionsCuisson.Echelle`, `CadreSurAncresEchelle`, `--mpp`) — la matiere utile
+   de Streets ne pesait que 549 x 426 px, minuscule et pixelisee des qu'on l'agrandit ;
+3. **cadre utile** (`himap/cadre_utile.go`) — le cadre publie etait la boite des ancres plus
+   50 m CONSTANTS, jamais recalcule apres la coquille de mort : 53,5 % de largeur occupee en
+   mediane sur les 19 natifs. Le cadre publie est desormais la boite de la MATIERE plus 6 m ;
+   l'origine du calage suit le rognage, l'echelle NON (temoin dedie : confondre les deux
+   decalerait toutes les positions du rejeu) ;
+4. **ecretage des toits** (`himap/ecretage_toits.go`) et **rognage aux zones nommees**
+   (`himap/masque_zones.go`) — les deux seules voies qui SUPPRIMENT de la matiere, donc toutes
+   deux journalisees et chiffrees au sidecar.
+
+Les quatre sont des ENTREES de `OptionsCuisson`, choisies en DONNEE
+(`map_fond_reglages.json`, une entree par carte avec raison ecrite et date de gate).
+`internal/himap` ne gagne aucune branche par carte.
+
+**Resultats observes** : **carte 1 Cliffhanger VALIDEE** (`encre` seul ; son cadre a 68,6 % et
+son echelle restent a repasser, mais NI ecretage NI masque : ses rochers sont a plus de 6 m de
+la reference et hors de ses zones nommees, les deux les effaceraient et l'utilisateur les a
+valides). **Carte 2 Streets VALIDEE avec les quatre traitements** : matiere 549 x 426 ->
+1 737 x 1 422 px, largeur utile 40,6 % -> 80,8 %, 495 752 pixels substitues par l'ecretage
+(0 vide — chaque toit avait un sol dessous), ecart mediane-ancres / sol **-2,48 m -> -0,29 m**
+(la valeur d'etalonnage : sur Streets l'ecart au sol ETAIT les toits), et 306 810 cellules sur
+1 526 464 (20,1 %) retirees par le masque des 33 zones de callout.
+
+Trois constats a garder : (a) le vrai coupable du probleme des toits est le SEUIL
+`SeuilCarteCouverte` (1/3) et non le mecanisme — Streets, mesuree a 7,1 %, n'a jamais declenche
+la voie de reference qui lui allait ; (b) le contour du masque porte des marches rectilignes,
+ce sont les carres de la dilatation, une dilatation circulaire les supprimerait ; (c) le
+rognage aux zones ne vaudra JAMAIS pour les 37 fonds Forge — 0 callout dessus, et ce sont les
+plus mal cadres.
+
+**Conclusion / prochaine etape** : le lot de CODE est clos. Les cartes suivantes ne font plus
+bouger que deux choses — leur ligne de reglages et leur PNG — donc plus de passe de tests par
+carte (remarque de l'utilisateur, actee). Carte 3 = Bazaar : `encre`, 0,034 m/px, ecretage,
+masque des 29 zones ; temoin d'abord.
+
+---
+
+## [2026-08-26] Cartes 3 et 4 — deux axes de plus, et trois diagnostics faux sur Recharge
+
+**Statut** : Complete (branche `wt/cartes-revue-par-carte`).
+
+**Decision technique principale** : Bazaar et Recharge closes ; deux axes de reglage neufs,
+tous deux nes d'un defaut mesure et tous deux en DONNEE : `plafondArene` (le cran prevu depuis
+le 13/08, « 6 -> 4 si encore trop de toits ») et `sansEau` (ecarter l'habillage d'eau).
+La chaine `himap` ne gagne toujours aucune branche par carte — six entrees de `OptionsCuisson`.
+
+Recette de traitement ECRITE a la demande de l'utilisateur (« quand on sera arrives au bout de
+ton contexte ca va etre la misere de continuer s'il n'y a pas de recette ») :
+`.ai/V7.5/cartes/RECETTE_TRAITEMENT_CARTE.md` — boucle en 8 etapes, les six axes avec leur
+champ JSON, ce qui reste ouvert, les cartes a NE PAS ecreter, et les pieges deja payes.
+
+**Resultats observes** : Bazaar VALIDEE (621 x 567 -> 2 032 x 1 462 px ; masque a 39,5 %,
+signale AVANT le verdict ; ecart au sol -3,20 m APRES ecretage, donc sur elle les toits
+n'expliquent PAS l'ecart — le correctif « reference par pixel » reste du). Recharge VALIDEE
+(403 x 542 -> 1 605 x 1 914 ; largeur occupee 28,8 %, la pire des 19 natives, -> quasi tout le
+cadre ; plafond 4 m : 2 382 213 pixels vides contre 2 043 451 a 6 m, et **24 ancres sur 25**
+contre 25/25 — l'ancre perdue est la limite, une ancre est du terrain joue par definition).
+
+**Le detour le plus cher de la journee, ecrit pour ne pas etre rejoue** : trois diagnostics
+faux d'affilee sur la dalle bleue de Recharge. (1) « L'ecretage fait fuir l'eau » — refute : la
+comparaison 30 970 -> 325 353 cellules mettait en regard 0,0920 et 0,029 m/px, un rapport de
+3,17 dont le carre vaut exactement 10 ; la surface d'eau n'avait pas bouge. (2) « L'eau est
+hors des zones nommees, le masque la retirera » — refute : 130 cellules sur 1 353 118 tombent
+hors zones, l'eau est DEDANS, et ce chiffre etait sous les yeux depuis deux mesures. (3)
+« L'ecretage revele l'eau » — refute : la dalle est dans le fond PUBLIE depuis le 10/08, ou
+aucun ecretage n'a jamais tourne. **Ce qui a tranche : ouvrir le PNG en production**, ce qui
+aurait du etre le premier geste. Verse a la recette comme piege n°2.
+
+**Conclusion / prochaine etape** : 4 cartes sur 11 closes. Carte 5 = Illusion (56 matchs,
+ecart au sol -0,26 m, donc sans le defaut de niveau de jeu). Restent au registre, non
+resolus : le niveau de jeu SCALAIRE (13 fonds hors clou, correctif nomme), la dalle d'eau
+(hypothese : `PoseEau` peint la BOITE ENGLOBANTE du volume), les marches rectilignes du masque
+(dilatation carree), et les 37 fonds Forge sans aucun callout.
+
+---
+
+## [2026-08-26] Carte 5 Illusion — le comblement sauve le 6 m, et un defaut de conception sort
+
+**Statut** : Complete (branche `wt/cartes-revue-par-carte`).
+
+**Decision technique principale** : Illusion close apres SIX cuissons, chemin non lineaire
+consigne au registre : ecretage 6 m refuse (criblee de trous, 13/16 ancres) -> sans ecretage
+juge trop couvert -> 8 m -> 10 m, plus plats -> retour a 6 m APRES l'ajout du comblement des
+trous. Les trous reproches au premier essai etaient exactement ceux que le comblement bouche —
+l'utilisateur l'a vu avant moi (« tente 6m »).
+
+Deux axes neufs, tous deux en donnee : `combleTrous` et `substitutionSansPortee`. Le premier a
+du etre CORRIGE apres mesure : sa version naive comblait tout vide du masque dilate, 611 959
+cellules d'aplat, l'arene noyee sous des dalles grises. La regle qui tient : **seuls les trous
+FERMES** — on inonde le vide depuis les bords de l'image, ce que l'inondation n'atteint pas est
+entoure de matiere. Un vide ouvert sur l'exterieur est un bord, pas un trou de releve.
+Le second est un NO-OP mesure sur cette carte (identique au bit) : les 183 361 cellules gagnees
+tombent hors des zones nommees et sont retirees ensuite.
+
+**Resultats observes** : Illusion VALIDEE avec 13/16 ancres et 464 358 cellules d'aplat (12 %
+du cadre) — reserves donnees AVANT le verdict. Aquarius (carte 6) en cours : 25/25 ancres a 4,
+3 et 2 m, l'utilisateur arbitre le cran.
+
+**DEFAUT DE CONCEPTION MIS AU JOUR, non corrige** : armer l'ecretage REMPLACE la voie de
+reference native au lieu de s'y ajouter (memes tampons liberes). Leurs regles de substitution
+different — la native substitue partout dans la portee des ancres, l'ecretage seulement au-dela
+du plafond. A 10 m sur Illusion : 108 810 cellules substituees contre 1 338 343 pour la voie
+native, d'ou une arene sans relief. Sur une carte couverte il faudrait les DEUX. Lot de code.
+
+**Trois lectures optimistes d'un compteur bas, dans la meme journee** : « peu de pixels vides
+donc peu a retirer » sur Aquarius a 6 m — en fait l'ecretage n'attrapait rien parce que les
+toits vivent ENTRE 4 et 6 m. Un chiffre faible veut dire soit rien a faire, soit cible ratee ;
+seule l'image departage.
+
+**Conclusion / prochaine etape** : 5 cartes closes sur 11. Aquarius attend le choix du plafond
+(4 / 3 / 2 m, ancres intactes aux trois). 2 m est le plancher de sens : la constante d'origine
+se decompose en 2 m (un Spartan debout) + 3 m (sols en pente) + 1 m de marge.
+
+## [2026-08-26] Fonds de rejeu 2D — cartes 6 a 10 : Aquarius, Chasm, Prism, Catalyst, Forbidden
+
+**Statut** : Complete pour ces cinq cartes ; file restante : Launch Site (24 matchs) et
+Vagabond (16, gros retravail), plus une re-passe cadre + echelle sur Cliffhanger.
+
+**Decision technique principale** : deux leviers nouveaux, et une regle de decision pour le
+masque des zones.
+
+1. **La boite utile derivee des POSITIONS DE JOUEURS** (proposition de l'utilisateur), armee
+   sur Catalyst. Trois matchs decodes depuis les films en cache, environ 105 000 positions :
+   l'enveloppe jouee tient dans 40 x 52 m quand le fond publie en faisait 69,3 x 60,3. **42
+   pour cent de la largeur de l'image n'etait JAMAIS foulee** — exactement les aplats gris
+   que l'utilisateur avait repere a l'oeil avant toute mesure. 142 484 cellules retirees.
+   C'est la premiere boite de la serie qui ne soit pas tracee a la main (Chasm) mais MESUREE,
+   donc reproductible : 951 films en cache, 24 a 38 par carte sur la file restante.
+2. **Le masque des zones de callout ne s'arme que si la carte en a besoin ET n'est pas
+   symetrique.** Les polygones de callout sont dessines a la main : ils NOMMENT des lieux,
+   ils ne decrivent pas une geometrie, et rien n'impose que la zone du haut et celle du bas
+   aient le meme contour. Sur Chasm (symetrique) le masque retirait 10 pour cent de matiere
+   et cassait la symetrie ; sur Forbidden (franchement asymetrique) il retire 3,3 pour cent
+   sans couter une seule ancre. Sur Prism j'avais d'abord DESARME le masque par reflexe,
+   en appliquant « pas par defaut » sans me demander si la carte en avait besoin — il a fallu
+   la remarque de l'utilisateur (un « bras » hors zone jouable en haut a gauche) pour le
+   rearmer.
+
+**Resultats observes** :
+
+- Catalyst : ecart mediane-ancres / sol ramene de **-13,33 m a -0,19** (etalonnage -0,29) par
+  le seul ecretage. La carte est couverte a 28,4 pour cent, SOUS le seuil d'un tiers : la voie
+  de reference native ne s'y declenche jamais, l'ecretage etait la seule voie — meme
+  configuration que Streets. Le defaut nomme le matin sans preuve d'effet a bien ete la cause.
+- Forbidden : ecart deja a -0,21 m ; le defaut reel etait le CADRE (fond du 12/08 sans rognage
+  au cadre utile, arene sur 40 pour cent de la largeur). Plafond tranche sur piece a 4 m contre
+  2 (dessin plat) et 6 (les dalles de toit reviennent, 12,4 pour cent hors zones).
+- Chasm a demande NEUF cuissons et a impose la boite manuelle : six leviers derives des
+  donnees avaient echoue avant elle a separer les rails de l'arene — aucun critere de POSITION
+  ne les distinguait, il aurait fallu un critere de FORME.
+- Dix cartes closes, huit validees en production.
+
+**Bug de plomberie paye** : `borneALaBoite` effacait la matiere mais PAS `solSuppose` —
+l'aplat de sol continuait donc de peindre hors boite et le reglage `boiteUtile` semblait
+sans effet. Lecon deja ecrite, re-payee : un garde-rail ne protege que le champ qu'il compte.
+
+**Dette corrigee au passage** : `AppliqueReference` avait pris un parametre `sansPortee`
+(reglage `substitutionSansPortee`, arme sur Chasm) sans que `rendu_reference_test.go` soit
+mis a jour — le package himap ne COMPILAIT plus en test. Quatre appels corriges et un test
+ajoute sur le chemin `sansPortee=true`, qui n'en avait aucun.
+
+**Reserves ecrites, non traitees** : (1) sur Forbidden, de longues poutres sombres depassent
+a droite et a gauche, DANS les zones de callout donc hors d'atteinte du masque ; la coupe aux
+positions n'a pas pu etre tentee, `shared_matches_v2.duckdb` etant tenue en ecriture par un
+`server.exe` local et le couple match -> carte n'existant nulle part ailleurs (ni les
+artefacts de rejeu ni le cache des films ne portent le nom de carte). (2) la boite de Catalyst
+est calee sur les EXTREMES des positions et non sur des quantiles — un artefact porte des
+aberrations a -231 / -213 m, exactement les bornes d'un canevas Forge, ecartees a l'oeil.
+(3) le defaut de conception note le 26/08 tient : l'ecretage REMPLACE la voie de reference
+native au lieu de s'y ajouter.
+
+**Conclusion / prochaine etape** : Launch Site, puis Vagabond, puis la re-passe Cliffhanger.
+
+## [2026-08-26] Fonds de rejeu 2D — carte 11 Launch Site : le taux de couverture decide de l'ecretage
+
+**Statut** : Complete. 11 cartes closes, 9 validees en production. Reste Vagabond (gros
+retravail) et la re-passe cadre + echelle de Cliffhanger.
+
+**Decision technique principale** : l'ecretage des toits, outil qui avait sauve les cinq
+cartes precedentes, doit etre REFUSE sur les cartes deja couvertes — et le critere n'est pas
+un jugement d'image, c'est un chiffre deja journalise.
+
+| Regime | Taux de couverture | Voie de reference native | Ecretage |
+|---|---|---|---|
+| Catalyst, Streets | 28,4 % — sous `SeuilCarteCouverte` (1/3) | ne se declenche JAMAIS | seul chemin possible |
+| Launch Site | 53,5 % — au-dessus | se declenche et remet le sol | ne peut que RETIRER du sol |
+
+Cause : le defaut de conception deja consigne — armer l'ecretage REMPLACE la voie native au
+lieu de s'y ajouter. Mesure sur Launch Site : 162 139 cellules de matiere avec ecretage a 4 m
+contre 245 307 sans lui, 16 ancres sur 28 contre 20, l'arene reduite a un contour creux.
+Meme cause, autre effet sur Illusion : 108 810 cellules substituees contre 1 338 343 par la
+voie native, d'ou une arene sans relief. La regle est portee dans la recette.
+
+**Deuxieme regle degagee** : devant un vide au milieu d'une arene, ce sont LES ANCRES qui
+tranchent « trou reel ou matiere manquante », pas l'oeil. Une ancre d'objectif est du terrain
+joue par definition. Launch Site : 8 ancres sur 28 flottaient sans sol dans la bande blanche
+qui traversait l'arene — donc matiere manquante, comblement justifie (440 000 cellules
+d'aplat, 2 ancres recuperees, 22/28). Chasm : aucune ancre dans le gouffre — vide reel,
+comblement a tort. Cela clot par un critere l'hesitation qui avait coute une cuisson sur
+Chasm et une premiere intention prudente ici.
+
+**Resultats observes** : Launch Site cuite en production, 1 502 x 1 478 px, 22/28 ancres,
+sans ecretage, avec comblement, masque des 52 zones (5,7 % retire, zero ancre perdue), eau
+ecartee a la demande de l'utilisateur (la nappe du flanc ouest occupait un cinquieme de
+l'image pour une zone ou l'on ne joue pas).
+
+**Reserves ecrites, non traitees** : six ancres restent sans sol (il subsiste des trous
+ailleurs, et on ignore pourquoi cette portion d'arene n'a pas de triangles) ; un aplat n'est
+pas un releve ; un petit fragment isole flotte sur le flanc ouest, la ou l'eau etait peinte.
+
+**Conclusion / prochaine etape** : Vagabond, puis la re-passe Cliffhanger.
+
+## [2026-08-26] Fonds de rejeu — les cartes qui manquaient, et pourquoi la cuisson ralentissait
+
+**Statut** : En cours (cuisson des 58 fonds Forge lancee par lots).
+
+**Decision technique principale — trois, toutes issues d'une mesure** :
+
+1. **L'echelle des fonds ne se regle plus a la main.** `himap.EchellePourCadre` vise 3 000 px
+   sur le plus grand cote de la GRILLE et en deduit le cote du pixel, borne a [0,025 ; 0,0920].
+   Le cadre monde vient des ancres, donc il est connu AVANT le rendu : la valeur n'exprimait
+   rien de propre a la carte. Douze entrees JSON portaient le meme calcul — « copy-paste
+   config » caracterise. Une `echelle` explicite reste prioritaire (garde-rail
+   `TestEchelleExpliciteGagneToujours`), les onze cartes deja gatees ne bougent pas. Les deux
+   `echelleOuDefaut` sans caller ont ete supprimees.
+2. **LA CUISSON PAGINAIT.** Mesure sur la premiere passe : le temps par carte passe de 137 s a
+   236 s et le process atteint 15 Go de memoire, la machine tombant a 0,1 Go libre. L'index
+   des modules s'accumule d'une carte a l'autre dans un meme process (chaque carte Forge
+   ouvre `forge_objects`, les globals et son canevas — jusqu'a 600 Mo pour `fo08_wetland`).
+   Correctif operationnel, pas de code : cuire par LOTS DE 3, un process par lot. A l'arret du
+   process, la machine est repassee de 0,1 a 16,2 Go libres — la preuve directe.
+3. **Loupe sur les planches de gate** : la vignette devient un bouton, l'image s'ouvre a
+   620 px, fermeture au clic ou par Echap, focus rendu. La grille sert a REPERER une carte, le
+   verdict se prend sur l'image agrandie.
+
+**Le gap des cartes, mesure** : 123 cartes jouees dans `shared_matches_v2` (lue sur COPIE, la
+base etant tenue en ecriture par un `server.exe` local), 35 sans fond de rejeu.
+
+- **29 declarables** — `.mvar` de carte et fichier-lien de canevas presents. Declarees dans
+  `CartesForge` ; leur canevas n'est pas devine, il est PROUVE par level_id
+  (`TestPreuveLevelIDCartes` vert sur les 29, unicite 1/1). Dont « Lattice - Ranked », carte du
+  pool classe 2026.
+- **Live Fire, bloquee par l'installation du jeu** : `sgh_interlock-rtx-new.module` pese
+  0,21 Mo (pc), 0,48 (any), 0,21 (ds), sans `_hd1`, quand `sgh_streets` pese 478 Mo. Le
+  diagnostic le dit par l'autre bout : `aucun tag sbsp`. La geometrie n'est pas sur le disque.
+  Le fait etait consigne le 13/08 (« NON CATALOGUEE malgre un module PROUVE ») sans que la
+  cause soit nommee. C'est la 6e carte du corpus, 51 matchs — le manque le plus couteux.
+- **Sans donnee** : Detachment et Argyle (pas de fichier-lien de canevas), TFF Night Of The
+  Undead (aucun `.mvar`). Vacancy, Serenity, Interference : jamais jouees par les joueurs
+  suivis, donc aucun asset en depot.
+
+**Piege de mesure paye** : la premiere planche triee par frequence donnait Catalyst a 2 matchs
+et Recharge a 8. Cause : un fond sert PLUSIEURS map_id (variante classee, Heavies, ancien asset
+d'avant refonte) et je prenais le premier nom venu, c'est-a-dire le moins joue. Les frequences
+sont desormais agregees par FOND.
+
+**Correction de statut** : Corpo portait `VALIDEE 26/08` sans verbatim. C'etait un statut
+d'OUTILLAGE (carte pilote du lot du 13/08) pris pour un verdict utilisateur. Repassee
+`A FINALISER` sur remarque de l'utilisateur. Regle qui en sort : un `VALIDEE` sans verbatim au
+journal est a re-verifier, pas a croire.
+
+**Conclusion / prochaine etape** : cuisson des 58 fonds par lots, puis republication de la
+planche d'etat des lieux a la meme adresse, puis commit des 29 declarations (le garde-rail
+`TestFondForgeJamaisSousCleModule` exige que chaque carte declaree ait son fond publie).
+
+## [2026-08-27] Fonds Forge : 38 cuits, 28 bloques, et deux fautes a consigner
+
+**Statut** : Complete pour ce qui etait cuisinable. 38 fonds Forge sur 38 recuits en encre a
+l'echelle automatique ; planche d'etat des lieux republiee, triee par frequence de jeu.
+
+**FAUTE 1 — j'ai declare 29 cartes sans verifier la condition qui compte.** Pour cuire un fond
+Forge il faut TROIS choses : le `.mvar`, le canevas (preuve level_id) et **les ancres
+d'objectif dans `map_objectives.json`**. Je n'ai verifie que les deux premieres, et j'ai
+annonce « 29 cartes declarees » avant qu'une seule ait ete cuite. **Vingt-huit ont echoue** :
+« carte absente du catalogue d'objectifs ». Le cadre d'un fond est construit sur les ancres
+(`CadreSurAncresEchelle`) — sans elles il n'y a pas d'image a rendre. Les 28 declarations ont
+ete retirees ; le garde-rail `TestFondForgeJamaisSousCleModule` les aurait attrapees si je
+l'avais joue avant d'annoncer. Une seule carte du reliquat etait reellement declarable :
+Solitude - Ranked, cuite. Le vrai prochain lot pour les 28 autres est `cmd/mapobj-build`.
+
+**FAUTE 2 — un garde-fou anti-regression a cree une boucle chaude de sept heures.** Le filet
+anti-boucle du script de cuisson n'ecartait un lot que si le binaire sortait avec le code 0,
+pour ne pas classer en echec un process tue de l'exterieur. Or `mapfond-build` sort en ERREUR
+quand une carte echoue : le filet ne pouvait donc JAMAIS se declencher sur le seul cas qu'il
+devait couvrir. De 01 h 00 a 08 h 17, le meme lot a ete rejoue — 135 000 lignes d'erreur,
+32 Mo de journal, zero carte produite. Correctif : compteur de TENTATIVES par carte (trois
+passages sans production = sortie de file), le code de sortie n'entre plus dans la decision.
+
+**Incident connexe, meme nuit** : arreter une tache de fond tue le processus enveloppe, PAS la
+boucle. Deux relances avaient donc laisse trois boucles vivantes sur la meme file — elles se
+battaient pour la memoire (0,4 Go libre, la machine paginait) et deux ecrivaient le meme PNG.
+Une heure pour une seule carte. Correctif : verrou par `mkdir` (atomique), refus de demarrer
+si un `mapfond-build` tourne deja, `trap` qui tue l'enfant et libere le verrou en sortant.
+Le script est desormais versionne : `.ai/V7.5/cartes/outils/cuisson_par_lots.sh`.
+
+**Ce qui a bien tenu** : la reprise. L'etat est relu sur le disque a chaque tour (sidecar plus
+recent que le jalon de campagne, jamais un compteur) — a travers trois arrets brutaux, aucune
+carte n'a ete recuite inutilement ni publiee a moitie.
+
+**Resultats mesures** : 57 fonds publies, 38 Forge recuits en encre, echelle automatique
+(environ 1 300 a 1 600 px publies contre 700 avant). Live Fire reste incuisable : son module
+`sgh_interlock` est un talon de 0,2 Mo, la geometrie n'est pas installee.
+
+**Conclusion / prochaine etape** : verdict utilisateur sur la planche ; puis lot
+`cmd/mapobj-build` pour faire entrer les 28 cartes dans le catalogue d'objectifs.
+
+## [2026-08-27] 27 cartes Forge entrent au catalogue ; Live Fire localisee mais pas encore cuite
+
+**Statut** : Complete pour les 27 cartes. Live Fire : cause trouvee, cuisson non aboutie,
+report ecrit avec sa condition de reprise.
+
+**Decision technique principale** : la condition manquante des 28 cartes n'etait ni le `.mvar`
+ni le canevas mais **les ancres d'objectif**. `cmd/mapobj-build --from-file` les ingere HORS
+LIGNE depuis le `.mvar` deja en depot — aucun appel reseau, aucune authentification. 28 sur 28
+ingerees (de 0 a 50 objectifs), 27 declarees et cuites, zero echec. Cole Protocol reste dehors :
+son `.mvar` ne porte aucun objectif, donc aucun cadre a construire. Le catalogue de fonds passe
+de 57 a 84.
+
+**Correction d'un diagnostic errone, sur remarque de l'utilisateur** : « Live Fire j'y joue
+regulierement, ce doit etre une variante d'une autre map et le poids leger doit etre la diff. »
+J'avais conclu « geometrie non installee » a partir de la TAILLE du fichier (0,21 Mo contre 478
+pour sgh_streets) sans regarder son CONTENU. Mesure : le module de Live Fire porte 6 fichiers,
+dont un `levl` de 2,3 Mo — plus gros que celui de Recharge (664 Ko) — et aucun sbsp. C'est bien
+un delta. Et `common-rtx-new.module` porte QUATRE sbsp qu'aucune carte ne reclame, dont le
+premier (12 556 instances) CONTIENT les 24 ancres de Live Fire. La geometrie est installee,
+ailleurs. Leviers ajoutes : reglage `moduleGeometrie` (chemin d'un module porteur) et test
+`TestGeometrieLiveFireDansCommon` qui rejoue la preuve.
+
+**Ce qui n'a pas abouti, et pourquoi rien n'est publie** : la cuisson par ce chemin rend un
+decor qui n'est pas l'arene (antenne, escalier, vegetation ; 21/28 ancres au sol, couverture
+22 %). `ChoisitBSP` retient le bsp contenant le plus d'ancres, et deux des quatre les
+contiennent toutes — le critere ne les departage pas. Le fond a ete RETIRE et le reglage
+desarme : un mauvais fond vaut moins que pas de fond, parce qu'il se lit comme une carte juste.
+
+**Lecon a retenir** : deux diagnostics errones de suite (les 29 cartes « declarables », la
+geometrie « non installee ») ont la meme forme — conclure d'un indice indirect (le `.mvar`
+existe, le fichier est petit) sans ouvrir ce que l'indice pretend decrire. Les deux fois,
+l'utilisateur a corrige avant moi.
+
+**Conclusion / prochaine etape** : departager les quatre bsp de `common-rtx-new` (surface,
+ancres AVEC SOL, ou references du `levl`), rearmer `moduleGeometrie`, cuire Live Fire.
+
+## [2026-08-27] Isolation : la chaine Forge n'avait aucun levier de rendu
+
+**Statut** : En cours (Isolation non close). Correctif de fond livre.
+
+**Decision technique principale** : les leviers de rendu (`EcreteToits`, `BoiteUtile`,
+`SubstitutionSansPortee`) ne vivaient que dans la chaine NATIVE. Declares pour une carte Forge,
+ils etaient silencieusement ignores — trois cuissons d'Isolation a trois plafonds ont rendu le
+MEME octet, ce qui l'a prouve. Ils passent desormais aux deux chaines.
+
+**Trouvaille** : l'equivalent Forge du masque de callouts, ce sont **les volumes de mort**. Les
+callouts disent ou l'on joue, les volumes de mort disent ou l'on meurt ; la cuisson les
+reconnait depuis le 10/08 mais ne s'en servait que pour les ecarter du dessin — leur POSITION
+n'avait jamais servi. `BoiteDesVolumesDeMort` en tire l'emprise (demi-extents de la forme, pire
+cas par la demi-diagonale). Sur Isolation : 6 volumes, le canevas et ses dalles de ciel
+disparaissent, cadre 2 628 -> 1 727 px, couverture 93,9 -> 36,4 %, 25/25 ancres conservees.
+Ce levier vaut pour les ~40 cartes Forge, pas seulement pour celle-ci.
+
+**Ce qui n'est pas resolu** : le « gribouillis » d'Isolation resiste a l'ecretage a 4, 2 et 1 m.
+Ce n'est donc pas un toit au-dessus du sol joue mais de la matiere A HAUTEUR DE SOL — des
+modeles de vegetation ou de lianes, poses en nombre. Une coupe par altitude ne peut rien contre
+cela par construction. Prochain pas ecrit : mesurer l'emprise des modeles TYPE PAR TYPE et
+ecarter les types fautifs.
+
+**Conclusion / prochaine etape** : diagnostic par type sur Isolation, puis re-cuisson.
+
+## [2026-08-27] Isolation : cinq leviers, et la preuve que le gribouillis est le sol
+
+**Statut** : Isolation non close. Trois leviers nouveaux livres et testes ; le defaut, lui,
+n'est pas soluble par la geometrie.
+
+**Ce qui a ete livre** : `plafondTranche` (coupe HAUTE de la tranche, symetrique de
+`plancherTranche` — elle ecarte la geometrie AVANT projection, la ou l'ecretage choisit parmi
+des surfaces deja dessinees), `typesExclus` (ecarter des types d'objet Forge du dessin) et le
+diagnostic « types les plus etendus » qui donne les candidats. Plus, du tour precedent, le
+passage des leviers natifs a la chaine Forge et `BoiteDesVolumesDeMort`.
+
+**Ce que cinq mesures etablissent** : ecretage a 4/2/1 m, tranche plafonnee a +6/+3 m,
+substitution sans portee, bornage aux volumes de mort, exclusion des dix types les plus
+etendus — aucun ne retire le gribouillis. Il vit donc a moins de trois metres du niveau de
+jeu : c'est le SOL de l'arene, fait de centaines de pieces organiques qui se chevauchent.
+Aucune coupe geometrique ne peut l'en separer par construction.
+
+**Correction d'une de mes affirmations de ce matin** : j'avais attribue au bornage aux volumes
+de mort la reduction du cadre de 2 628 a 1 727 px. C'etait l'ecretage. Les six volumes de mort
+d'Isolation bornent une region PLUS GRANDE que le cadre des ancres — le levier est juste, mais
+inerte sur cette carte. Verifier a quoi on doit un changement avant de l'attribuer.
+
+**Information utilisateur a instruire** : le jeu a des zones de callout pour TOUTES les cartes,
+Forge comprises. Nos 22 entrees sont toutes natives et de provenance `decoupe` — c'est-a-dire
+derivees par nous. Trouver ou le jeu range les callouts d'une carte Forge est la meilleure
+piste restante, et elle vaut pour les 40 cartes Forge, pas seulement Isolation.
+
+**Conclusion / prochaine etape** : chercher la source des callouts Forge ; et pour le
+gribouillis, si on y revient, le seul angle restant est l'exclusion par type avec un critere
+mesure sur la CONTRIBUTION EN PIXELS de chaque type, pas sur son emprise.
+
+## [2026-08-27] Le canevas Forge porte un terrain — mais Isolation est batie au-dessus
+
+**Statut** : Complete pour la mesure ; Isolation toujours non close.
+
+**Decision technique principale** : sur hypothese de l'utilisateur (« les cartes Forge ont une
+base sur laquelle dessiner, et nous on ne doit avoir que cette base, ou inversement »), j'ai
+mesure ce que porte un canevas. L'etat de l'art affirmait qu'un canevas ne porte AUCUNE
+instance — vrai pour `fo11_blank` (0 instance mesuree), FAUX pour `fo08_wetland` : 13 281
+instances sur son bsp lointain, 814 sur son bsp d'ile, 9 866 fichiers. Une carte Forge batie
+SUR ce terrain etait donc rendue sans son sol depuis toujours. Levier livre : `dessineCanevas`.
+
+**Ce que l'essai etablit sur Isolation** : canevas arme, 2 169 instances dessinees, PNG
+IDENTIQUE A L'OCTET. Ses ancres vivent entre Z +112,6 et +121,5, au-dessus du terrain : la
+carte FLOTTE au-dessus de sa base. Vue de dessus, le canevas est cache par l'arene — et « ne
+garder que la base » rendrait le marecage.
+
+**Ce que ca resserre** : le gribouillis n'est ni un toit (cinq coupes en altitude l'ont laisse
+intact), ni le canevas, ni du decor hors zone. Ce sont les pieces Forge de l'arene elle-meme, a
+hauteur de sol. Seul angle restant : exclure par TYPE, avec un critere mesure sur la
+contribution en PIXELS et non sur l'emprise du modele (mon premier critere, qui attrapait les
+gros rochers legitimes).
+
+**Conclusion / prochaine etape** : la piste a plus forte valeur reste la source des callouts
+Forge (l'utilisateur confirme que le jeu en a pour toutes les cartes) : elle sert 40 cartes,
+la quand le gribouillis n'en sert qu'une.
+
+## [2026-08-27] Isolation : le gribouillis venait de l'HABILLAGE, pas de la geometrie
+
+**Statut** : cause etablie, versions soumises au gate. Isolation non close.
+
+**Decision technique principale** : le « gribouillis » qui rend plusieurs cartes Forge
+illisibles n'est pas de la matiere parasite — c'est l'habillage. Preuve en une cuisson : le
+meme rendu, meme geometrie et meme cadre, en habillage `altitude`, montre l'arene intacte.
+L'habillage `encre` souligne un bord des que deux voisins different de plus de 0,5 m et
+quantifie l'eclairement en paliers ; sur des pieces organiques qui se chevauchent, les deux
+mecanismes se declenchent partout.
+
+**Ce que ca invalide** : les cinq coupes geometriques essayees la veille (ecretage 4/2/1 m,
+tranche plafonnee +6/+3 m, bornage aux volumes de mort, substitution sans portee, exclusion
+des dix types les plus etendus). Toutes negatives, et pour cause : le defaut n'etait pas dans
+la matiere. **Regle a retenir : avant de retirer de la matiere, changer d'habillage** — c'est
+une cuisson, et ca separe un defaut de rendu d'un defaut de geometrie.
+
+**Livre** : reglage `seuilArete` par carte (Rendu.SeuilArete, garde-rail
+TestSeuilAreteParCarte). Demi-remede : les aplats restent. Le remede complet est un choix
+d'habillage par carte, soumis au gate.
+
+**Ce que l'utilisateur a apporte** : deux fois de suite, sa lecture de l'image a corrige la
+mienne — « il y a des formes dessous » ici, « ce doit etre une variante et le poids leger doit
+etre la diff » pour Live Fire.
+
+**Conclusion / prochaine etape** : verdict sur l'habillage des cartes organiques ; puis
+proposition d'instruction pour la source des callouts Forge.
+
+## [2026-08-27] « Qui peint l'image » — la mesure qui manquait aux fonds Forge
+
+**Statut** : outil livre ; Isolation toujours refusee.
+
+**Decision technique principale** : le rendu retient, pour chaque pixel, le TYPE d'objet qui a
+gagne le z-buffer (`Rendu.ArmeTypeGagnant`, `PixelsParType`), et la cuisson Forge journalise le
+classement. Une ligne de log remplace desormais une journee de tatonnements : sur Isolation,
+UN type a 32 exemplaires peint 82,7 pour cent de l'image, et seuls 46 types sur 292 sont
+visibles.
+
+**Ce que ca corrige dans ma facon de chercher** : trente rendus, cinq coupes geometriques et
+trois criteres portes par le modele ont echoue pour une raison commune — ils decrivent ce qu'un
+objet EST, aucun ne dit ce qu'il PEINT. J'ai meme designe un coupable a tort : les 349 branches
+d'Isolation, vues en ne dessinant qu'elles, n'occupent AUCUN pixel ; les exclure ne changeait
+pas un octet.
+
+**Trois criteres automatiques refutes sur ce cas** : emprise du modele (attrape les rochers
+legitimes), aire du maillage sur emprise au carre (le coupable sort au rang 222 sur 271, parmi
+les plus pleins), part de l'emprise au sol couverte (0,499, rang 145 sur 270). Aucun invariant
+de forme ne separe une coque d'arene d'un decor.
+
+**Piege paye** : un identifiant NEGATIF passe en argument a `node -e` est pris pour une option
+de node. Deux types differents ont rendu la meme image, ce qui l'a revele.
+
+**Hypotheses utilisateur fermees ce jour** : le champ 6 des objets Forge, jamais lu et candidat
+naturel pour une echelle, est ABSENT sur les 5 042 objets ; le repere de chaque objet est
+orthonorme au 1/10 000 ; les maillages sont sains.
+
+**Conclusion / prochaine etape** : le pelage type par type est desormais dirigeable — chaque
+retrait est une cuisson de 90 s et se juge a l'oeil. Isolation est un empilement de coques :
+retirer le premier type decouvre le deuxieme, et ainsi de suite.
+
+## [2026-08-27] Cartes — MESURE des trois filtres de visibilite declares par le jeu (aucun n'etait lu)
+
+**Statut** : Complete — mesure seule, aucun filtre branche sur la cuisson, aucun fond recuit.
+
+**Decision technique principale** : lire, et EXPOSER sans les appliquer, trois declarations du
+format que la chaine ignorait — `exclude from intel map` (bit 12 du champ `flags` @0x78 d'une
+instance de bsp), `mesh is custom shadow caster` au niveau SECTION (bit 3 de `mesh flags`, +20
+du pas de 60 du bloc `meshes`), et `LOD has shadow proxies` (bit 0 de `lod render flags`,
+@0x8E du pas de 148). Les deux derniers offsets sont NEUFS : le walk du plugin rendait 138 au
+lieu de 148 pour `LOD render data` parce que `_39` y est tabule a 32 octets alors que
+`vertex buffer indices` declare 19 entrees de 2. En sommant les enfants du `_39`, la suite
+tombe juste et retrouve `index buffer index` @0x8A, la valeur deja cablee. Temoin independant
+sur les octets du jeu : @0x8E ne prend QUE 0 ou 1 sur 540 enregistrements (un seul drapeau
+declare), la ou 0x8A, 0x8C et 0x90 etalent 11 a 16 valeurs.
+
+**Le releve ne decode AUCUN maillage** : blob de ressources nil, triangles lus aux
+descripteurs. C'est ce qui le rend tenable — `himodule.Open` charge chaque `.module` ENTIER
+(`os.ReadFile`), et l'index de production coute ~12,6 Go de RSS a lui seul.
+
+**Resultats mesures**
+
+1. Le champ `flags` VIT (462 807 instances, 41 modules) : `disable play collision` 22,35 %,
+   `disable bullet collision` 14,93 %. Un zero sur le bit 12 aurait donc voulu dire
+   « inutilise », pas « offset faux ».
+2. `exclude from intel map` : **13 971 instances, 3,02 %**, mais TRES concentre — 0 sur 22
+   modules ; Recharge (sgh_blueprint) 25,97 %, Launch Site (va_launchsite) 21,43 %,
+   `common-rtx-new` 6 129/39 122, Illusion 490, Exiled 185, pve_house 36, Highpower 6,
+   Cliffhanger 3.
+3. Le drapeau est pose DANS le bsp qu'on dessine, pas seulement sur les decors lointains —
+   c'est ce qui en fait une piste : Recharge **25,44 % des instances dessinees / 23,19 % des
+   triangles**, Launch Site **21,28 % / 22,43 %**, et le bsp d'arene de `common-rtx-new`
+   (celui de Live Fire, 12 556 instances, emprise 63 x 64 m) 22,77 % de ses instances
+   retenues. Recharge et Launch Site n'ont QU'UN bsp : aucun choix de bsp ne peut les enlever.
+4. Sur les cinq cartes du releve initial : ctf_forbidden, chasm, catalyst, sgh_streets **0,00 %**
+   partout ; btb_exiled 1,03 % des dessinees / 0,29 % des triangles.
+5. Filtres de SECTION, cartes natives : `custom shadow caster` et `LOD has shadow proxies`
+   valent **0,00 %** sur les sept cartes natives mesurees ET sur le canevas fo08_wetland. Ils
+   ne mordent que sur les modeles `mode` poses par une carte Forge — **Isolation : proxies
+   d'ombre 44,92 % des couples objet x maillage et 19,62 % des triangles poses** ; section
+   projecteur d'ombre 3,85 % / 1,18 %.
+6. Filtre de LOD (aucun enregistrement au LOD 0) : 0,15 a 1,83 % des dessinees partout,
+   0,00 a 4,94 % des triangles. Marginal.
+
+**Conclusion / prochaine etape** : deux verdicts opposes selon la famille. Sur les cartes
+natives ORDINAIRES les trois filtres ne valent rien (0,00 %) ; sur TROIS cartes nommees
+(Recharge, Launch Site, Live Fire via common-rtx-new) le drapeau de carte designe un quart de
+ce qu'on dessine, et ces cartes sont precisement dans la liste des reglages par carte du
+26/08. Sur Isolation, ce sont les proxies d'ombre qui pesent (19,6 % des triangles). RESERVE A
+LEVER AVANT DE BRANCHER : « LOD has shadow proxies » peut vouloir dire « ce LOD POSSEDE des
+mandataires d'ombre » et non « ce LOD EST un mandataire » — a trancher sur l'image avant de
+retirer un cinquieme de la matiere d'Isolation. Le drapeau de carte, lui, ne souffre pas
+d'ambiguite de nom.
+
+## [2026-08-27] Live Fire cuisable : le departage des bsp par l'emprise au sol — Complete
+
+**Contexte** : Live Fire est la carte la plus jouee sans fond (71 matchs, 6e du corpus). Son
+module `sgh_interlock` pese 0,21 Mo, porte six fichiers et AUCUN sbsp : la cuisson y echouait
+sur `ErrAucunTagSbsp` et la carte etait classee « non cuisinable ». Sa geometrie vit dans
+`pc/globals/common-rtx-new.module`, qui porte quatre sbsp.
+
+**Ce que la mesure a corrige dans le diagnostic de depart** : il etait annonce que
+`ChoisitBSP` retenait le MAUVAIS bsp. C'est faux en l'etat — avec les 28 ancres de production,
+la regle courante retient deja tag#1429, l'arene. Mais elle le fait PAR HASARD : deux des
+quatre bsp contiennent les 28 ancres, et l'egalite se tranchait par l'ordre de lecture, donc
+par la taille decompressee du tag. Meme accident sur toutes les cartes natives : sur les cinq
+temoins a plusieurs bsp, TOUS les bsp contiennent TOUTES les ancres — un decor lointain englobe
+l'arene par construction.
+
+**Decision technique principale** : departage explicite a nombre d'ancres egal, par l'EMPRISE
+AU SOL la plus petite (nouveau fichier `internal/himap/choix_bsp.go`, sorti de `cuisson.go`).
+Parmi les boites qui contiennent les ancres, la plus petite est la plus specifique. Rapports
+mesures arene/horizon : forbidden x1 077, catalyst x381, cliffhanger x5 378, streets x92,
+common-rtx-new x15 211 — le plus serre vaut 92, aucune ambiguite. Un bsp SANS instance ne
+gagne jamais un departage (une boite vide plus serree rendrait un fond blanc).
+
+**Critere d'altitude REFUTE par la mesure** : « le bsp le plus proche du niveau de jeu »
+designe le bon bsp sur quatre temoins (ecart mediane-instances / mediane-ancres : 1,1 contre
+10,4 sur forbidden ; 1,1 contre 76,4 sur catalyst ; 0,2 contre 147,6 sur cliffhanger ; 1,9
+contre 27,6 sur streets) mais le MAUVAIS sur Live Fire (horizon a 0,5 m, arene a 1,7 m). Il
+est verrouille comme refute par `TestChoisitBSPNeSuitPasLAltitude`.
+
+**Resultats observes** : `TestChoixBSPCartesNativesInchange` rejoue l'ancienne regle a cote de
+la nouvelle sur les 26 cartes du catalogue installees, dont 15 a plusieurs bsp : aucun
+changement de bsp, temoins Forbidden / Chasm / Catalyst / Cliffhanger nommes explicitement.
+`TestChoixBSPLiveFireDesigneLArene` verrouille le cas Live Fire (63,2 x 63,8 m, 12 556
+instances, 6 561 dans la boite des ancres contre 0 pour l'horizon).
+
+**Ce qui rendait Live Fire non cuisable, et qui manquait vraiment** : l'entree de reglage.
+`moduleGeometrie` existait comme CHAMP mais aucune entree ne le declarait. Ajout de
+`sgh_interlock` dans `map_fond_reglages.json` -> `pc/globals/common-rtx-new.module`. Le
+garde-rail `TestReglagesFondJustifies` refusait une entree qui ne declare que ce champ (« ni
+habillage, ni echelle, ni ecretage ») : la liste ecrite a la main est remplacee par
+`reglageCarte.sansLevier()`, comparaison generique a la valeur nulle, avec un temoin qui balaie
+la structure par reflexion.
+
+**Conclusion / prochaine etape** : la cuisson de Live Fire appartient a l'agent principal (un
+seul process de cuisson a la fois). LE RENDU N'A PAS ETE GATE : `gateLe` porte la date de la
+decision factuelle (ou vit la geometrie), pas celle d'un gate visuel. A prevoir : le cadre sera
+de 134 x 125 m pour une arene de 63 x 64 m (ancres 34,3 x 25,0 m + 50 m de marge), donc une
+`boiteUtile` proche des bornes du bsp est le premier reglage a essayer si l'image est trop vide.
+
+## [2026-08-27] Le maillage de navigation ferme le chantier des cartes organiques
+
+**Statut** : Complete pour Isolation, validee par l'utilisateur. La methode vaut pour les
+66 cartes Forge qui publient un navmesh.
+
+**Decision technique principale** : cesser de soustraire, changer de source. Chaque carte Forge
+publie un `navmesh.blob` a cote de sa variante — la surface ou l'on marche. Format etabli et
+teste (`internal/hinavmesh`) : en-tete de 12 octets, puis LE MEME CONTENEUR QUE LES `.mvar`,
+decode par `cb2.go` sans une ligne nouvelle, dont un champ porte un flux zlib **a fenetre de
+8 Ko** — en-tete `58 09`, ce qui l'avait rendu invisible aux recherches de `78 9c`. Inflate :
+quatre tagfiles Havok 2022.1.0 dont un `hkaiNavMesh` (2 348 faces, 3 350 sommets, 2 200 m2).
+
+**L'oracle a ete pose AVANT le code** : une ancre d'objectif est du terrain joue par definition.
+24 des 25 ancres d'Isolation tombent dans un polygone, ecart d'altitude median 7,4 cm ; 13 sur 13
+sur Kiken'na, dans un repere tout autre — ce qui exclut tout codage en dur.
+
+**Trois usages, du plus simple au plus juste** : dessiner le maillage (lisible mais nu) ;
+**en faire la SURFACE DE REFERENCE** de la chaine ordinaire, ce qui garde les structures et fait
+disparaitre le dome sans qu'on le touche ; rogner la matiere hors de lui, pendant Forge du
+masque de callouts. Plus une tolerance au sol qui fait un plan d'etage. Isolation close a
+25 ancres sur 25.
+
+**LA LECON, ET ELLE VAUT AU-DELA DE CE CHANTIER** : pendant deux jours j'ai cherche QUOI RETIRER
+— ecretage a 4, 2 et 1 m, tranche plafonnee a +3, +6 et +12, bornage aux volumes de mort,
+substitution sans portee, exclusion par emprise du modele, par aire de maillage, par couverture
+au sol, par drapeau, par altitude de pose, pelage type par type. Toutes ces tentatives partagent
+une hypothese que je n'ai jamais mise en doute : que la reference etait bonne et que le defaut
+etait dans la matiere. Le defaut etait dans la REFERENCE — une interpolation de 25 points la ou
+il fallait l'altitude du sol en chaque point. **Quand dix corrections echouent, c'est l'hypothese
+commune qu'il faut suspecter, pas la onzieme correction qu'il faut trouver.**
+
+**Ce que l'utilisateur a apporte** : trois fois, sa lecture a corrige la mienne — « il y a des
+formes sous ce gribouillis » (c'etait l'habillage), « ce doit etre une variante et le poids leger
+doit etre la diff » (Live Fire), « ce ne sont pas des blocs, peut-etre un mur transparent » (le
+drapeau des objets, qui isole le dome). Et c'est sa demande de « decouper par zones de callout »
+qui a fait chercher un equivalent Forge — trouve dans le navmesh.
+
+**Conclusion / prochaine etape** : appliquer la recette aux cartes Forge en bouillie ;
+telecharger leurs navmesh (route anonyme, deux requetes) ; instruire le
+`hkaiTraversalAnnotationLibrary`, seul endroit ou de vrais noms de lieux Forge pourraient vivre.
+
+## [2026-08-27] Zones de callout des cartes Forge : elles sont dans le .mvar (statut : Complete)
+
+**Decision technique** : ne pas ouvrir le `hkaiTraversalAnnotationLibrary` du navmesh (piste de
+l'entree precedente) avant d'avoir epuise le .mvar. Deux mesures : (1) recensement exhaustif de
+TOUS les chemins de champ des objets de la variante (117 chemins sur Isolation, 5 042 objets) ;
+(2) croisement des entiers DECODES de l'arbre Bond avec le tableau de StringId du tag `locs`.
+Le croisement au niveau octet ne vaut rien ici : les entiers .mvar sont des varint zigzag Bond,
+un balayage LE32 du fichier rend zero.
+
+**Resultats** : le champ `#8/4[]/0/0` d'un objet porte un StringId de lieu. 4 161 zones sur 104
+des 257 variantes du dump, TOUTES du meme `type_id -696190206`, 4 151 dont le StringId est une
+entree du tag `locs` (tableau dense de 778 u32 a locs+0x120, stride 4). Elles portent la forme
+Forge standard (3 933 boites, 228 cylindres) : position, orientation et demi-extents se lisent
+avec le decodeur existant. Isolation : 18 zones, 14 noms distincts, 18/18 resolus dans locs
+(Bottom Mid, Cave x4, Top Mid, North Base, South Base, Pipes x2, plus 8 entrees que
+`callouts_i18n.csv` ne nomme pas encore). Les cartes NATIVES n'en portent pas dans leur .mvar :
+leurs zones vivent dans le tag `levl` du module — les deux sources sont complementaires, pas
+redondantes.
+
+**Elimine** : `Variant.Names` (root[10][1]) est la table des noms d'AUTEUR (115 chaines sur
+Isolation, « Prefab », « SH_cones-01 ») ; root[6] est l'arborescence des dossiers Forge
+(« 02 Gameplay », « 06.Volumes ») ; root[7] est le graphe de script en JSON. Aucun de ces trois
+ne porte de nom de lieu. Aucune chaine lisible n'existe dans l'arbre d'un objet.
+
+**Conclusion / prochaine etape** : le catalogue de zones nommees peut couvrir les cartes Forge
+sans nouveau telechargement (le `map.mvar` suffit). Reste a nommer : 434 StringId distincts
+employes par les variantes, 160 seulement portent deja un libelle dans `callouts_i18n.csv` —
+les 274 autres demandent une resolution `uslg`.
+
+## [2026-08-27] Callouts Forge : les trois autres portes sont fermees (statut : Complete)
+
+**Decision technique** : pendant que la piste `.mvar` aboutissait (entree precedente), fermer par
+la mesure les trois autres hypotheses, pour qu'aucune ne revienne : les deux blobs de l'asset UGC
+que nous ne lisions pas, la completude du manifeste reseau, et le tag `levl` du CANEVAS Forge.
+Prealable : les blobs partagent l'emballage du `navmesh.blob`, mais `lightprobes.blob` (9,1 Mo)
+depassait le plafond `tailleComprimeeMax` de 8 Mo — plafond impose par le cout memoire de
+`mapvar.DecodeRoot` (~104 octets par octet de charge). D'ou un lecteur Bond dedie a cette
+racine-la (`internal/hinavmesh/enveloppe.go`), qui TRANCHE le flux zlib au lieu de le
+materialiser : cout constant, plafond supprime, meme stricte (tout champ inattendu = erreur).
+
+**Resultats** (Isolation 01af558d, version 365ec58b) :
+- `audioocclusion.blob` 399 164 o -> 19 469 438 o inflates. Pas de fichier-tag Havok, pas le
+  preambule a 5 regions. 84,2 % d'octets nuls, 244 valeurs distinctes, ZERO chaine imprimable de
+  5 caracteres ou plus dans 19,5 Mo. Champ numerique creux, aucune piece nommee.
+- `lightprobes.blob` 9 565 295 o -> 17 023 240 o inflates, 1,8 % de nuls. Le balayage de chaines
+  rend 307 010 fausses entrees (artefacts de flottants) : c'est la recherche de VOCABULAIRE qui
+  tranche — 0 occurrence de `location`, `callout`, `zone`, `room`, `portal`, `label`, ...
+- Manifeste : le `/hi/Maps/{assetId}` AUTHENTIFIE rend exactement les memes 9 fichiers et le meme
+  prefixe que le `__NEXT_DATA__` anonyme. `PrefabLinks` et `Tags` vides. 12 noms plausibles testes
+  sur le stockage blob (callouts/locations/metadata/nodegraph/audio/zones/levl/... .blob) : 12 x
+  HTTP 404 `BlobNotFound` ; le listage de conteneur est refuse (400 `InvalidUri`). A noter :
+  `CustomData.HasNodeGraph = true` sans `nodegraph.blob` — c'est le `hkaiClusterGraph` du navmesh.
+- Canevas : le tag `levl` de `fo08_wetland` porte 0 named location. Le zero est une MESURE, pas un
+  artefact de lecture : root block de 3 184 octets sur les 31 modules installes (natifs compris),
+  blocs `names` et `volumes` presents des deux cotes. Les 8 canevas portent 12 volumes ANONYMES,
+  tous `kind=1` (les zones nommees sont `kind=6`), aux memes StringId d'un canevas a l'autre, aux
+  bornes de la boite +/- 212,5 / 250 m : ce sont les barrieres du canevas, pas des callouts.
+  Aucun `.mvar` de l'asset ne porte de texte de lieu non plus (les 100 `label` de `map.mvar` sont
+  les broches du graphe de script Forge : `"label" : "Position"`).
+
+**Conclusion / prochaine etape** : le `.mvar` est la SEULE source de zones nommees pour les cartes
+Forge — l'entree precedente le montre, ces trois mesures montrent qu'il n'y en a pas d'autre. Ne
+plus rouvrir les blobs ni chercher un fichier non telecharge. Sondes versionnees :
+`internal/hinavmesh/sonde_blobs_ugc_test.go` (blobs a rapatrier via LEVELUP_UGC_BLOBS, non
+versionnes) et `internal/himap/sonde_levl_canevas_gamefiles_test.go`.
+
+## [2026-08-27] Rogner un fond Forge a ses zones de callout : le levier, et ce que l'oracle en dit — Complete
+
+**Decision technique** : la decouverte de la veille (les zones nommees vivent dans le `map.mvar`)
+est devenue un LEVIER DE CUISSON, pas seulement un fait. Trois pieces :
+
+1. `mapvar.Object.LocationID` — le StringId de lieu, lu au chemin `#8/4[]/0/0` du sac gameplay.
+   Le parseur passait deja par ce sac ; le champ ne coute rien et rend la zone reconnaissable
+   partout ou un `.mvar` est deja decode.
+2. `himap/zones_forge.go` — la geometrie : polygone ORIENTE par le vecteur avant de l'objet
+   (une zone tournee lue alignee sur les axes declare dedans des coins qui sont dehors : la
+   chaine des objectifs a paye 31 % de faux positifs sur ce point, on ne le repaie pas), et le
+   tri des RATELIERS (palettes d'objets non poses d'`illusion` et `forbidden`).
+3. `OptionsCuissonForge.RogneAuxZones` / `MargeZones` — jumeaux exacts des leviers natifs, a
+   ceci pres que les zones ne sont pas fournies mais lues dans les objets DEJA CHARGES par la
+   cuisson. Aucun fichier a telecharger, aucun cablage de chemin.
+
+**Resultats observes** (Isolation, 1 162 199 cellules de matiere apres rognage au maillage) :
+marge 1 m -> 306 128 hors zones (26,3 %) ; 4 m -> 198 738 (17,1 %) ; 8 m -> 117 889 (10,1 %).
+**Les trois cuissons tombent a 24/25 ancres au sol, quand la recette validee tient 25/25.** Une
+ancre d'objectif est du terrain joue par definition : les zones de callout d'Isolation ne
+couvrent donc pas tout son terrain joue, et 8 m de marge ne suffisent pas a rattraper l'ancre
+perdue. Le rognage aux zones est un levier de PLUS, pas un remplacant du maillage de navigation.
+
+**Doc inversee corrigee dans le meme commit** (anti-pattern n°9) : `callouts_catalog.go` et
+`service/replay_map_callouts.go` affirmaient qu'une carte Forge n'a aucune zone nommee et que
+l'absence d'essai `map_id` etait « voulue ». C'est desormais ecrit comme ce que c'est : un
+manque date, avec le chemin pour le combler.
+
+**Conclusion / prochaine etape** : VERDICT RENDU le meme jour — « valide avec + zones, marge 1 m ».
+La recette d Isolation cumule desormais les deux sources qui disent ou l on joue : le maillage de
+navigation (reference d altitude + effacement hors maillage + tolerance 1,5 m) et les zones de
+callout en rognage serre (marge 1 m, 306 128 cellules, 26,3 % de la matiere restante). L ecart
+d une ancre (24/25) est accepte en connaissance de cause : il est ecrit dans la raison du reglage
+pour ne pas etre redecouvert comme une regression. Fond de production recuit. Reste hors perimetre
+de ce lot : les 274 StringId sans texte joueur (extraction uslg) et l affichage des callouts Forge
+dans le rejeu 2D (catalogue cle map_id). A instruire ensuite : combien des 40 autres cartes Forge
+portent des zones exploitables — le levier ne demande aucun telechargement.
+
+## [2026-08-28] Campagne : 55 fonds Forge au maillage de navigation + zones de callout — Complete
+
+**Decision technique** : appliquer la recette validee sur Isolation le 27/08 (maillage en
+reference d altitude, rognage, tolerance au sol, puis rognage aux zones de callout a 1 m) aux 27
+cartes refusees au gate du 13/08 et aux 28 restees sans statut — deux ensembles DISJOINTS, donc
+55 cartes. Trois pieces nouvelles :
+
+1. `cmd/mapnav-fetch` — les maillages ne sont pas dans l installation du jeu, ils vivent dans
+   l asset UGC. Resolution ANONYME par la page publique (`__NEXT_DATA__` -> `Files.Prefix`),
+   telechargement en FLUX vers un fichier temporaire renomme a la fin, reprise par saut des
+   blobs presents, 404 traite comme le cas nominal et non comme une panne. Temoins : file
+   dedoublonnee et ordre stable, blob ecrit en entier sans temporaire residuel, absence de
+   maillage distinguee d une panne, page sans bloc de donnees refusee.
+2. Les 55 reglages, chacun avec ses chiffres (zones, polygones du maillage, origine, matchs).
+   L ECRETAGE DES TOITS N EST PAS ARME : sous le seuil de couverture il ne retire plus que du
+   sol (lecon Launch Site), et le maillage fait deja tomber les coques par comparaison juste.
+3. `cuisson_par_lots.sh` : taille de lot lue dans l environnement.
+
+**Resultats observes** : 52 maillages rapatries, 0 echec ; 5 cartes hors recette et dites comme
+telles (2 sans maillage publie, 3 dont le fichier-tag n a pas de section TST1) ; 55 fonds cuits,
+0 echec.
+
+**LA MEMOIRE — la mise en garde de l utilisateur etait fondee.** Deux cartes dans un meme
+processus : 14,9 Go pour 1,8 Go libres, la machine pagine. Une carte seule : pic a 17 Go, tout
+rendu a la sortie. Le cout est PAR CARTE, pas cumulatif — donc un processus par carte, et rien
+d autre ne compile pendant ce temps.
+
+**LE RATTRAPAGE, ET CE QU IL ETABLIT.** Cinq cartes perdaient massivement des ancres au sol.
+Deux diagnostics separes plutot qu une hypothese : cuites sans le rognage aux ZONES, elles
+rendent EXACTEMENT le meme compte (les zones sont innocentes) ; cuites sans le rognage au
+MAILLAGE, elles remontent toutes a 100 % (Flood Gulch 7/22 -> 22/22, Rat s Nest 10/23 -> 23/23,
+Vallaheim 0/5 -> 5/5, Outlook 6/9 -> 9/9, Narrows 18/20 -> 20/20). Sur ces cartes le navmesh ne
+couvre pas tout le terrain joue : s en servir comme BORNE efface du jeu. Elles sont republiees
+sans le rognage, maillage garde en reference.
+
+**Regle degagee** : le rognage au maillage se garde tant qu il ne coute pas d ancre, il se
+retire des qu il en coute plusieurs. Neuf cartes perdent encore une ancre — le prix qu Isolation
+paie deja, accepte au gate du 27/08.
+
+**Conclusion / prochaine etape** : planche de gate soumise
+(https://claude.ai/code/artifact/2c7d0e4b-296a-4a4a-82c9-9d533e021367), les 55 lignes sont a
+JUGER au registre. Rien ne passe en VALIDEE sans verbatim. Reste ouvert : le decodeur de
+fichier-tag ne lit pas les maillages sans section TST1 (3 cartes), et les 274 StringId de lieu
+sans texte joueur (extraction uslg) restent hors perimetre.
+
+## [2026-08-28] Gate campagne : 36 fonds valides sur 55, la reserve Houseki mesuree — Complete
+
+**Decision technique** : consigner le verdict au registre carte par carte, et INSTRUIRE la seule
+reserve exprimee plutot que de la noter pour plus tard.
+
+**Resultats observes** — 35 validees, 20 non validees. Houseki avait ete annoncee validee sous
+reserve ; apres la mesure, l utilisateur a tranche : elle N EST PAS validee tant que son cadrage
+n est pas regle. Les 19 autres n ont simplement pas de verdict et restent A JUGER.
+
+**La reserve Houseki, sur mesure et non sur impression** : le cadre n'est pas en cause,
+`CadreUtile` avait deja rogne 2946x3001 -> 1981x2047 au ras de la matiere. C'est la REPARTITION
+qui l'est : centre de masse a (70,6 % ; 28,9 %), 94,5 % de la matiere dans un seul quadrant,
+matiere sur 14,2 % des pixels alors que sa boite touche presque les quatre bords — des filaments
+epars etirent la boite pendant que l arene tient dans un coin. Temoin oppose, Nemesis, validee
+sans reserve : centre (50,6 % ; 49,3 %), quadrants 26/25/22/26, 52,4 % de pixels.
+
+**Levier essaye et INOPERANT, ecrit comme tel** : le bornage aux volumes de mort. La boite des 58
+volumes vaut 549 x 577 m, soit le canevas entier — 0 cellule effacee, image identique. Le reglage
+a ete retire dans la foulee : un levier sans effet qui reste declare est un levier qu on croira
+actif au prochain passage.
+
+**Conclusion / prochaine etape** : piste restante non engagee — un seul type d objet peint 61,4 %
+de l image (26 exemplaires) et un second 20,8 % ; si les filaments viennent de l un d eux,
+`typesExclus` les retire. Il faut d abord savoir lequel peint le hors-arene, ce qui demande une
+mesure PAR REGION que la chaine ne produit pas encore (elle ne journalise qu un total global).
+Les 19 cartes sans verdict attendent l utilisateur.
+
+## [2026-08-28] Les cartes du jeu absentes du catalogue : la porte publique, 22 fonds, 27 miniatures — Complete
+
+**Decision technique** : arreter de deduire les cartes manquantes du corpus joue et les prendre a
+la source. Le navigateur public de Halo Waypoint s interroge SANS JETON, trie par parties recentes
+et pagine — c est la liste des cartes reellement jouees. Sur les 200 plus jouees, **109 etaient
+absentes de notre catalogue** ; Vacancy, reclamee quatre fois par l utilisateur, n en etait que la
+partie visible.
+
+Trois pieces : `cmd/mapnav-fetch` gagne un drapeau `-fichier` (le `.mvar`, la miniature et le
+maillage descendent par le MEME chemin anonyme) ; 25 cartes declarees a `himap.CartesForge` avec
+leur canevas LU DANS LA LISTE DE FICHIERS de leur asset (pas deduit du nom, pas de table a
+maintenir) ; la constante `CanevasDeadland` qui manquait.
+
+**Resultats observes** : 107 variantes et 89 maillages rapatries sur 109 ; 22 fonds cuits (3
+bloquees sans objectif, donc sans ancre pour batir un cadre) ; **27 miniatures** posees dans
+`static/maps/halo_infinite/` au format 560x320 — celui des images existantes, sans retouche.
+La carte `944396dd` a enfin son nom : **Narrows**.
+
+**CE QUE LE RATTRAPAGE APPREND, ET QUI CORRIGE LA REGLE DE LA VEILLE.** Douze des 22 perdaient des
+ancres, cinq totalement. Retirer le rognage AU MAILLAGE en a rattrape huit d un coup (Security Zone
+0/53 -> 53/53, Showdown Arena 0/19 -> 19/19, Courtyard 8/20 -> 20/20, Ardent Prayer 0/5 -> 5/5).
+Mais **Megapolis est le premier cas inverse** : le maillage n y etait pour rien (9/12 avec et sans),
+ce sont ses ZONES DE CALLOUT qui effaçaient du terrain joue — sans elles 12/12. Jusqu ici les zones
+avaient toujours ete innocentees ; elles ne le sont donc pas par nature. La regle n est pas « le
+coupable est le maillage » mais **« diagnostiquer les deux branches avant de retirer quoi que ce
+soit »**.
+
+**Vacancy garde 7 ancres sur 9 et aucun des deux leviers n en est la cause** (7/9 dans les trois
+configurations) : ses deux ancres manquantes tombent la ou la carte ne dessine rien au niveau de
+jeu. Ecart du meme ordre que celui d Isolation, ecrit dans son reglage.
+
+**Conclusion / prochaine etape** : planche soumise
+(https://claude.ai/code/artifact/158547b6-b528-411a-a716-1c4092b29c46), 22 lignes A JUGER au
+registre, 3 BLOQUEES. Reste ouvert : les 84 autres cartes du top 200 non traitees, et le renommage
+de `944396dd` en Narrows dans le catalogue et le registre.
+
+## [2026-08-30] Rattrapage : neuf cartes jugees sur une image perimee — Complete
+
+**Decision technique** : avant de demander un nouveau verdict, verifier que chaque fond en attente
+a bien recu la recette courante. Neuf ne l avaient pas : cinq sans aucun reglage, deux avec le seul
+bornage aux volumes de mort, Vagabond et Corpo sur une recette anterieure. Leur verdict portait
+donc sur une image d avant le maillage de navigation et les zones de callout.
+
+**Resultats observes** : les neuf avaient un maillage disponible, jamais rapatrie — 9/9 descendus,
+0 echec. Cuisson : 4 parfaites d emblee (Vagabond 9/9, qui trainait en « a retravailler — gros »
+depuis le 26/08 ; Empyrean 13/13 ; Banished Narrows 13/13 ; Corpo 4/4), The Pit a 19/20, quatre
+amputees. La regle des deux branches a tranche a la PREMIERE : le rognage au maillage etait le
+coupable sur les quatre (Domicile 0/13 -> 13/13, Dredge 0/12 -> 12/12, Goliath 10/13 -> 13/13,
+Starboard 10/12 -> 12/12). Les quatre sont republiees sans lui, maillage garde en reference.
+
+**Ce que le lot confirme** : le rognage au maillage reste le coupable habituel — Megapolis, ou les
+ZONES etaient en cause, demeure l exception qui impose de diagnostiquer les deux branches plutot
+que d en supposer une.
+
+**Conclusion / prochaine etape** : planche soumise, 9 lignes A JUGER au registre. Le stock a juger
+passe a 51 fonds, tous cuits avec la recette courante — plus aucun verdict ne portera sur une image
+perimee. Reste ouvert : les 84 cartes du top 200 non traitees, le renommage de 944396dd en Narrows,
+Houseki et sa piste typesExclus, les 3 cartes sans objectif donc sans cadre.
+
+## [2026-08-30] Revue carte par carte : dix leviers, cinq refutations mesurees — Complete
+
+**Decision technique** : mener la revue au rythme des verdicts de l utilisateur, en repondant a
+chaque defaut nomme par un levier PROPRE A LA CARTE, et en ecrivant dans la raison du reglage ce
+que chaque levier coute. Dix leviers ont ete ajoutes ce jour :
+
+`combleAuMaillage` (aplat dans l emprise du maillage) · `rogneAuxComposantesAncrees` (effacer les
+amas sans ancre) · `cadreAuxAncres` + `margeAncres` (borner l image sur les objectifs) ·
+`maillageNiveauHaut` (reference prise sur le niveau praticable le plus haut) · `seuilSubstitution`
+(n arriver que par-dela un ecart) · `margeNavmesh` (dilatation du rognage, reglable) ·
+`margeSolBas` (profondeur du sol vu du dessous) · `cadreAuxZones` · `sansSubstitution`.
+
+**CINQ REFUTATIONS, toutes mesurees, toutes consignees dans le reglage de la carte concernee** —
+elles valent autant que les reussites parce qu elles ferment des portes :
+
+1. `cadreAuxZones` est INERTE partout ou `rogneAuxZones` est deja arme : borner a la boite des
+   zones apres avoir efface hors des zones ne peut rien retirer. Zero cellule sur Outlook.
+2. Les ZONES DE CALLOUT sont inutilisables comme cadre sur dix cartes : leur emprise vaut
+   266 x 266 m (Insolence, Smallhalla) — le canevas entier. Ces cartes nomment de grands volumes.
+3. La TRANCHE DE HAUTEUR a +8 m rend 0 ancre sur 13 sur Shogun : elle coupe le sol de l arene.
+4. L EXCLUSION PAR TYPE rend elle aussi 0/13 : les deux types qui peignent 65 % de l image en 31
+   exemplaires SONT le sol. Sur une carte Forge, « peu d exemplaires couvrant beaucoup » designe de
+   grandes pieces plates, pas un decor. L altitude de POSE ne discrimine pas davantage (+11 et
+   +23 m pour des pieces qui peignent le sol : le point de pose n est pas la surface).
+5. Le SOL VU DU DESSOUS a 14 m remplace 3 290 380 pixels et vide Vagabond (couverture 0,0 %) :
+   `AdopteSurfaceBasse` REMPLACE la surface haute, il ne l ajoute pas. On montre l etage du dessus
+   OU celui du dessous, jamais les deux. Repondre vraiment demanderait un rendu A DEUX COUCHES.
+
+**Resultats observes** : 89 fonds valides par l utilisateur, 14 en attente, 3 bloques, 3 hors
+perimetre (mode Firefight non supporte par le rejeu). Le seuil de substitution a ete RETIRE partout
+apres verdict : il ne rendait pas les structures manquantes et faisait revenir la bouillie —
+« affaiblir la substitution ne rend pas les structures, ca rend les coques » est un arbitrage, pas
+un reglage a trouver.
+
+**Garde-rail respecte plutot que contourne** : `TestFondForgeJamaisSousCleModule` refusait les trois
+cartes sans objectif (Munera Platform W4/H6, Out With A Bang), declarees mais incuisables. Elles
+sont RETIREES de `CartesForge` — declarer une carte dont on ne sait pas produire l asset, c est
+promettre ce qu on ne tient pas — et restent consignees BLOQUEES au registre avec leur motif.
+
+**Conclusion / prochaine etape** : reste ouvert — le decodeur de fichier-tag ne lit pas les
+maillages sans section TST1, ce qui condamne Absolution, Insolence et leurs variantes a la bouillie
+(seul correctif possible, et c est de la retro-ingenierie) ; le rendu a deux couches si le sous-sol
+de Vagabond doit etre visible ; le renommage de 944396dd en Narrows au catalogue.
+
+## [2026-08-30] Rognage a l altitude, et la seconde ecriture des tables de chaines Havok — Complete
+
+**Decision technique 1 — LE ROGNAGE A L ALTITUDE, propose par l utilisateur.** « Tu peux pas
+prendre les bords blancs, garder une petite marge et couper ce qui est a l exterieur ? » L idee
+s appuie sur une propriete que l habillage rendait visible sans qu on l ait exploitee : en encre la
+teinte vaut (0,30 + 0,70 x eclairement) x (1 - 0,45 x ecart au niveau de jeu), donc LA CLARTE EST
+UN THERMOMETRE D ALTITUDE et « les bords blancs » sont la mesure |z - niveau de jeu|.
+
+`RogneAuxAltitudesProches` garde les cellules a moins de N metres du niveau de jeu, DILATE ce
+masque d une marge — c est elle qui ramene les murs bordant le sol — et efface le reste. Il
+travaille sur la surface DEJA DESSINEE, contrairement aux deux leviers refutes avant lui sur les
+memes cartes : la tranche de hauteur (0 ancre sur 13) et l exclusion par type (0/13, les gros
+types SONT le sol). Le sol ne peut donc pas disparaitre : il est par definition au niveau de jeu.
+
+Reglages retenus par l utilisateur apres deux tours de propositions : **Shogun** seuil 2 m marge
+1 m (2 128 x 1 777 -> 1 248 x 1 268), **Smallhalla** seuil 2 m marge 1,5 m (1 524 x 995 ->
+1 408 x 779), ancres intactes (13/13 et 52/52).
+
+**Decision technique 2 — LA SECONDE ECRITURE DES TABLES DE CHAINES.** Trois cartes restaient en
+bouillie faute de maillage lisible (Absolution, Insolence, Insolence Heavies) ; le decodeur les
+refusait sur « fichier-tag sans section TST1 ». Leur section TYPE porte les MEMES voisins que
+celle d Isolation (TPTR, TNA1, TBDY, THSH, TPAD) mais nomme ses tables de chaines TSTR et FSTR.
+Un nom de section, pas un format. `sectionsChaines` accepte desormais les deux ecritures.
+
+**Resultats observes** : le decodage va bien plus loin puis bute — un membre de TBDY demande
+l indice 98 d une table qui en porte 98. TROIS EXPLICATIONS ESSAYEES ET ECARTEES, chacune mesuree :
+indexation a partir de 1 (corrompt les noms de types, hkPropertyId devient tITEM) ; table tronquee
+au decoupage (non, l entree vide finale est deja comptee) ; espace d indices commun aux deux tables
+(l indice demande passe a 1 064 pour 197 chaines). Le seul indice de forme restant est que la
+generation TSTR porte des morceaux VIDES INTERCALES qu Isolation n a pas — signature d une
+longueur prefixee ou d un en-tete de section. Consigne dans NAVMESH_FORGE_2026-08-27.md §8.
+
+**Perimetre corrige au passage** : ce n est pas cinq cartes mais trois. Thunderhead et Thunderhead
+Heavies ne publient AUCUN maillage — rien a decoder, aucun travail sur le decodeur ne les
+debloquera. Et les blobs d Insolence et Insolence Heavies sont identiques a l octet pres.
+
+**Garde-rail** : `TestLesDeuxEcrituresDeTableDeChaines` exige qu Isolation se decode entierement et
+qu Absolution echoue PLUS LOIN que la section manquante — retirer la reconnaissance de TSTR/FSTR le
+fait tomber.
+
+**Incident a ne pas repeter** : un script de validation ecrit par HEREDOC bash a mange les
+echappements de sa regex (« \| » devenu « | », une alternation vide) et a insere son remplacement
+entre chaque caractere du registre. Restaure depuis le commit precedent — c est ce qui a rendu la
+perte nulle. Les scripts a expression reguliere passent desormais par l outil d ecriture de
+fichier, et les verdicts se posent par decoupage de colonnes, pas par regex.
+
+**Conclusion / prochaine etape** : 94 fonds valides, 9 en attente de verdict. Reste ouvert : la
+forme exacte des tables TSTR/FSTR (trois pistes fermees, une quatrieme decrite), le rendu a deux
+couches si le sous-sol de Vagabond doit etre visible, le renommage de 944396dd en Narrows.
+
+## [2026-08-30] Fonds de carte — l'oracle des positions jouees, et la fin de la file de verdicts
+
+**Statut** : Complete (les 4 dernieres cartes en attente sont validees ; 99 fonds valides, 0 a juger).
+
+**Decision technique principale** : introduire un ORACLE EXTERNE dans la chaine de cuisson des
+fonds. Tous les leviers existants deduisent le terrain joue depuis la geometrie ; les positions de
+joueur decodees des films ne se deduisent pas, elles s'observent. Idee de l'utilisateur, appliquee
+a Dredge : 13 de ses 16 matchs avaient leur film en cache, 366 768 positions en ont ete extraites
+(99,99 % dans le cadre du fond, altitudes groupees a 80 m). Nouveau levier
+`himap.RogneAuxPositionsJouees` + catalogue versionne `map_positions_jouees.json`
+(`cmd/mappos-build`, chemin au PathResolver).
+
+**Resultats observes**, dans l'ordre ou ils ont ete etablis :
+
+- ECRETAGE ET ROGNAGE AUX ALTITUDES REFUTES sur les cartes « que des toits » : ils EFFACENT de la
+  matiere et coutent des ancres (Security Zone 53/53 -> 43 puis -> 0 ; Yuletide 4/4 -> 0 ;
+  Dredge 12/12 -> 1). La substitution, elle, choisit parmi les surfaces deja dessinees : silhouette
+  invariante, donc aucune ancre en jeu. C'est la lecon transverse de la journee.
+- CAUSE REELLE DES TOITS : l'absence de `maillageNiveauHaut`. Sans lui la reference garde le niveau
+  le plus BAS la ou deux etages se superposent, et la condition de couverture ne peut pas tenir.
+  Security Zone : couverture 32,6 -> 54,2 %, 1,86 M substitutions, 53/53 ancres.
+- SEUIL DE COUVERTURE PAR CARTE (`SeuilCouvertureCarte`) : la couverture classe mal certaines
+  cartes. Dredge la donne a 28,7 % — dans la population des VALIDEES (19 a 28 %) — alors que son
+  ecart median ancre -> surface dessinee vaut -19,84 m. Les deux mesures se contredisent et c'est
+  la seconde qui decrit ce que l'utilisateur voit.
+- LES HUIT BRAS de Dredge venaient de positions vues UNE FOIS dans UN SEUL match : sans filtre le
+  nuage s'etend a 268 m du centre, a 2 matchs distincts il retombe a 27 m, a 3 a 19,4 m — le 99e
+  centile du nuage. D'ou le filtre `--min-matchs` de `mappos-build`, qui compte les matchs
+  DISTINCTS et non les passages (un joueur immobile gonfle une cellule sans rien prouver).
+- LE CRENELAGE venait de la FORME de l'operation : `dilate` grossit par voisinage CARRE. Remplace
+  par une transformee de distance par chanfrein 5-7-11 — le bord est une union de DISQUES.
+- RECOLLEMENT AUX OBJETS (`recollement_objets.go`) : premiere version COMPLETANT les objets
+  majoritairement gardes ; a l'image, les grandes dalles du canevas revenaient entieres et posaient
+  d'immenses rectangles hors de l'arene. Sens rendu UNIQUE — on retire, on ne complete jamais. Son
+  effet reste faible sur Dredge (15 objets Forge sur 5 479) : le bord y est peint par le canevas.
+- PIEGE REJOUE : binaire de cuisson perime. Deux cuissons ont tourne sans le reglage tout juste
+  ajoute et ne prouvaient rien. Toute chaine de cuisson reconstruit desormais le binaire d'abord.
+
+**Conclusion / prochaine etape** : 99 fonds valides, aucun en attente de verdict. 12 cartes ont
+recu le fond blanc dans la silhouette (6 entrees natives creees pour l'occasion). Reste ouvert :
+le fond transparent au milieu de Behemoth, Fragmentation, Highpower et Oasis — sur Behemoth le vide
+est REEL (carte spatiale), sur les trois autres `combleAuMaillage` n'a pas ete essaye ; la forme
+des tables TSTR/FSTR ; le rendu a deux couches pour le sous-sol de Vagabond ; le renommage de
+944396dd en Narrows.
+
+## [2026-08-30] Fonds de carte — combler les vides OUVERTS des zones nommees
+
+**Statut** : Complete (3 cartes validees, Behemoth passe en retouche manuelle a la demande de
+l'utilisateur).
+
+**Decision technique principale** : `himap.CombleZonesEntieres`, qui pose l'aplat de sol suppose
+sur TOUTES les cellules vides du masque des zones, ouvertes ou fermees. C'est la regle REFUTEE le
+2026-08-26 (611 959 cellules d'aplat sur Illusion, arene noyee), rearmee en OPTION PAR CARTE avec
+deux garde-fous tires de cet echec : le masque des zones est pris NON DILATE — une zone nommee est
+du terrain joue par construction, sa dilatation ne l'est pas — et le compte part au sidecar.
+
+**Pourquoi il fallait un second levier** : `CombleTrous` inonde le vide depuis les bords de l'image
+et ne comble que ce que l'inondation n'atteint pas. Sur Behemoth, Fragmentation, Highpower et
+Oasis, le vide central COMMUNIQUE avec l'exterieur (l'anneau de Behemoth est perce par ses huit
+branches) : l'inondation y entre, et le vide reste. Cause etablie par LECTURE DU CODE, pas par
+essai — 23 505 cellules comblees sur Behemoth le disaient deja.
+
+**Resultats observes** : Fragmentation 874 207 cellules, Oasis 810 624, Highpower 567 959,
+Behemoth 473 108 — du meme ordre que le naufrage d'Illusion, sans le naufrage : verification a
+l'image sur Behemoth et Fragmentation avant publication, silhouette tenue, arene lisible.
+
+**Conclusion / prochaine etape** : Fragmentation, Highpower et Oasis validees. Behemoth passe en
+retouche manuelle. ATTENTION : toute recuisson de Behemoth ECRASERA la retouche — son reglage
+`combleZonesEntieres` reste arme et la carte reste dans le catalogue. Si la retouche doit survivre,
+il faudra soit sortir la carte de la cuisson, soit versionner l'image retouchee comme source.
+
 ## [2026-08-27] Rejeu 2D — la faille devient un portail, et le PASSAGE se date par le canal equipement
 
 **Statut** : Complete (gates verts, non commite — attente du go utilisateur)
@@ -81790,3 +83174,133 @@ equipement DEPLACE et non leve, quatre P2 de revue.
 **Gates du merge** : `go build ./...` · replay + filmdec + contracttest · `TestOpenAPIYAMLIsUpToDate`
 + `TestManualFragmentPathsSurviveGeneration` · web typecheck, lint 0 erreur, vitest
 match-replay 1948/1948.
+## [2026-08-31] CI de branche : les cinq garde-rails rouges, et ce que chacun disait
+
+**Statut** : Complete (vet + les 7 paquets concernes verts).
+
+**Decision technique principale** : traiter chaque garde-rail par sa CAUSE, jamais en relevant le
+seuil. Aucun n'a ete affaibli ; deux n'avaient meme rien a corriger.
+
+**Resultats observes, un par un** :
+
+- `TestNoNewHalowaypointLiteral` : `cmd/mapnav-fetch/main.go` allowliste, a cote de
+  `cmd/mapobj-build/fetch.go` qui est la meme frontiere — appel direct de l'hote UGC officiel en
+  ACCES ANONYME (aucun jeton), production d'artefacts VERSIONNES (maillages, miniatures). Entree
+  datee comme l'exige la liste.
+- `TestNoAdHocRepoRootLadderInTests` : `cmd/mapfond-build/reglages_test.go` et
+  `cmd/mapobj-build/catalogue_modules_guard_test.go` passent a `testutil.RepoRoot()`. Leur chemin
+  devient relatif a la RACINE au lieu d'une echelle `../../../..` qui se casse en silence des que
+  le test change de dossier.
+- `TestNoProdRepoRootHelperInTests` : `map_background_index_catalogue_test.go` utilisait
+  `title.FindRepoRoot()`, qui echoue en CI — le test faisait alors `t.Skipf` et LE GARDE-RAIL
+  DISPARAISSAIT SANS BRUIT. Passe a `testutil.RepoRoot()` + `t.Fatalf`.
+- `TestSentinel_NoNewDuckDBAuthReaders` et `TestSentinel_NoNewClientSecretReaders` : DEJA VERTS sur
+  feat/v75. Ils ne rougissaient que sur wt/cartes-revue-par-carte, base sur un etat anterieur aux
+  309 commits du chantier ramassage/sons. Rien a corriger — le constat valait d'etre fait.
+- `TestMapObjectives_ModesPonctuels` : releve de reference perime. CTF 14 -> 35 cartes a forme,
+  Stockpile 16 -> 22, Assault 2 inchange. Cause etablie : la campagne de catalogage a porte le
+  catalogue de 73 a 126 cartes. L'assertion de fond — un (role, camp) sert ses ponctuels OU les
+  centres de ses formes, jamais les deux — passe sur les 126. Seul le compte est mis a jour.
+- `TestCatalogueLivreEstExploitable` : trois cartes a zones surfaciques sans forme, ajoutees a
+  `pointlessConnues` avec des explications DIFFERENCIEES. fdde5715 et 841242db sont des cartes
+  FIREFIGHT (level_id 1437677928, scripts « classic firefight extraction zone », « EZONE ») : leur
+  extraction_zone est un objet de SCRIPT, pas un volume — leurs collines (5/5) et zones Bastion
+  (3/3) portent bien leur forme. 1042b738 est la SEULE des 126 dont aucun role surfacique ne porte
+  de forme (extraction 0/6, colline 0/4), un pack 1v1 multi-arenes (sections 1v1Bazzar,
+  1v1Aquarius, 1v1ORIGIN) : sa cause n'est PAS etablie et c'est ecrit tel quel dans le code.
+  CE QUI REND CES TROIS ENTREES ACCEPTABLES : aucune n'a le moindre match au corpus (mesure sur
+  match_registry). Elles sont entrees par le classement mondial, pas par ce qu'on rejoue.
+
+**Conclusion / prochaine etape** : la CI de branche ne devrait plus rougir sur ces sept paquets.
+Reprise du decodage TSTR/FSTR, qui debloquerait Absolution et les deux Insolence.
+
+## [2026-08-31] TSTR/FSTR : le blocage d'Absolution n'est PAS une origine d'indexation
+
+**Statut** : En cours (diagnostic corrige, cause non encore trouvee ; rien de casse, rien livre
+sur le decodeur lui-meme).
+
+**Decision technique principale** : ne rien changer au decodeur. La seule piste essayee a ete
+mesuree, refutee et consignee ; le code reste dans l'etat qui decode Isolation entierement.
+
+**Ce que la sonde a etabli, et qui CORRIGE le diagnostic precedent** : le decodeur echouait sur
+« type 68 (hkPropertyId), membre 50, indice de nom 98 hors des 98 chaines ». Cet ecart d'un etait
+lu comme une table indexee a partir de 1. C'est faux : hkPropertyId n'a pas cinquante membres.
+Le flux TBDY est DESYNCHRONISE bien avant, et l'indice hors bornes n'est que le premier symptome
+VISIBLE. Il faut chercher l'origine du DECALAGE, pas celle de l'indexation.
+
+**Mesures a reprendre telles quelles** (sonde_tbdy_test.go, versionnee pour cela) :
+- le flux est SAIN jusqu'a l'entree 66 incluse — indices de nom croissants (48..54, 55..58,
+  59..60), offsets et types coherents ;
+- l'entree 67 lit « 196609 membres » sur les octets `44 00 29 07 08 08 c3 00 01 ...` ;
+- l'entree suivante semble commencer 13 octets plus loin (`45 00 2b` = type 69, parent 0,
+  drapeaux 0x2b) : l'entree 68 occupe donc 13 octets ;
+- drapeaux de MEMBRE : Isolation ne connait que 0x20, 0x22, 0x24, 0x25 ; Absolution ajoute 0x21
+  (x1) et 0x23 (x3) ;
+- les sections sont UNIQUES par region dans les deux generations (hypothese « premiere occurrence
+  gagnante trompeuse » refutee) ;
+- FSTR d'Absolution : 98 entrees dont la derniere est le vide de queue, soit 97 chaines reelles.
+
+**Piste REFUTEE le 2026-08-31** : lire un entier de plus quand le drapeau de membre porte 0x01
+sans 0x04 (donc 0x21 et 0x23, jamais le 0x25 d'Isolation). Bien inerte sur Isolation, mais fait
+echouer Absolution PLUS TOT — offset 208 au lieu de 818.
+
+**Conclusion / prochaine etape** : reprendre a l'entree 68, dont on connait desormais la taille
+exacte (13 octets) et les octets exacts. Fixer sa grammaire d'abord, le reste suivra.
+
+## [2026-08-31] TSTR/FSTR resolu : Absolution et les deux Insolence sortent de la bouillie
+
+**Statut** : Complete (les trois cartes se cuisent et sont validees par l'utilisateur).
+
+**Decision technique principale** : ne rien deviner. Trois corrections enchainees, chacune tiree
+d'une mesure, et chacune assortie de son garde-fou.
+
+1. **L'entree TBDY illisible est FRANCHIE, pas interpretee.** Le type `hkPropertyId` d'Absolution
+   lisait « 196 609 membres ». Plutot que d'inventer sa grammaire, on cherche le PLUS COURT saut
+   apres lequel tout le reste de la section se lit : 13 octets, unique, et l'entree suivante tombe
+   pile. Le type est marque OPAQUE — aucun membre invente — et un compteur `recuperations` est
+   publie par region. GARDE-FOU : Isolation en a ZERO, les trois cartes exactement une ; un
+   decodeur qui se mettrait a en recuperer beaucoup serait devenu un devineur, et ça se verrait.
+2. **Le maillage n'est pas en racine sur cette generation.** La region porte un
+   `hkaiStaticTreeNavMeshQueryMediator` qui tient le `hkaiNavMesh` par pointeur. On le cherche
+   donc par son TYPE ; le cas ambigu (deux maillages dans une region) est REFUSE plutot que
+   tranche au hasard.
+3. **Le vecteur `up` n'est pas declare.** Leur `hkaiNavMesh` porte 13 membres contre 15 chez
+   Isolation (`up` et `cachedFaceIterator` manquent). Il vaut (0,0,1) par defaut — la valeur
+   mesuree partout ou il est declare — et `Maillage.HautSuppose` dit que c'est SUPPOSE. Le temoin
+   exige les deux faces : Absolution doit l'avouer, Isolation ne doit pas.
+
+**Hypotheses REFUTEES en chemin, consignees pour ne pas etre rejouees** : l'origine d'indexation
+des tables de chaines (le vrai symptome est une DESYNCHRONISATION — `hkPropertyId` n'a pas
+cinquante membres) ; la duplication de sections par region (elles sont uniques dans les deux
+generations) ; un entier de plus sur les drapeaux de membre 0x21/0x23 (inerte sur Isolation comme
+voulu, mais Absolution echoue alors PLUS TOT, offset 208 au lieu de 818).
+
+**Resultats observes** : Absolution 1188x1265 px, 21/22 ancres, couverture 80,2 % ; Insolence
+2302x2022, 36/38, 78,0 % ; Insolence Heavies 2302x2022, 31/31, 78,0 %. Maillages : Absolution
+1 342 faces / 3 291 sommets. Leur couverture tres elevee explique d'ailleurs la bouillie : ce sont
+des cartes COUVERTES, le cas ou la substitution est indispensable — et elle ne pouvait pas s'armer
+sans maillage.
+
+**Conclusion / prochaine etape** : plus aucune carte BLOQUEE pour cause de maillage. Restent au
+registre les trois Munera/Out With A Bang (aucun objectif publie) et les trois Firefight (mode non
+gere par le rejeu, precision utilisateur du 2026-08-31).
+
+---
+
+## [2026-09-01] Reconciliation de feat/v75 — le ramassage rejoint cartes, CI et pied de page
+
+**Statut** : Complete. Merge de rattrapage `origin/feat/v75` dans le local (43 commits entrants
+contre 41 sortants), apres le rejet du premier push.
+
+**Aucune collision de numerotation** : le distant etait reste a SchemaVersion 28 / champ 44 — il
+n'avait pris ni le 29 (lunette) ni le 30 (ramassage) ni le 45. La renumerotation faite avant le
+premier merge tient telle quelle.
+
+**UN SEUL conflit, et pas dans le code metier** : `.ai/thought_log.md`, deux blocs, resolus en
+OCTETS BRUTS (les deux cotes conserves). `openapi.yaml` et `generated.ts` se sont auto-fusionnes,
+et la regeneration par l'outil (`openapi-gen` puis `generate-types`) n'a produit AUCUN ecart —
+l'auto-fusion etait deja exacte. Aucun golden n'a bouge.
+
+**Gates sur l'arbre reconcilie** : gofmt propre · `go build ./...` · replay + filmdec +
+contracttest · `TestOpenAPIYAMLIsUpToDate` + `TestManualFragmentPathsSurviveGeneration` · web
+typecheck, lint 0 erreur, vitest match-replay 1948/1948.

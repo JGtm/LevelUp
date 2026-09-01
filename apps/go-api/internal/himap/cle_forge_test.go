@@ -7,11 +7,14 @@ package himap
 // (map_backgrounds/) — ils tournent partout, sans installation du jeu.
 
 import (
+	"math"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
+
+	"levelup/go-api/internal/analysis/replay/mapvar"
 )
 
 // regexpMapID : la forme d'un asset UGC (uuid v4 minuscule) — la cle de publication Forge.
@@ -93,5 +96,45 @@ func TestFondForgeJamaisSousCleModule(t *testing.T) {
 				t.Errorf("fond %s keye par un map_id sans declaration CartesForge — orphelin, aucun producteur", e.Name())
 			}
 		}
+	}
+}
+
+// TestBoiteDesVolumesDeMort — L'EQUIVALENT FORGE DU MASQUE DE CALLOUTS.
+//
+// Une carte Forge n'a AUCUNE zone de callout : les 22 cartes qui en portent sont toutes
+// natives. Les volumes de mort la bornent par l'autre bout — ils declarent ou l'on MEURT — et
+// la cuisson les reconnait deja ; leur POSITION n'avait jamais servi.
+//
+// Le test verifie les trois proprietes dont depend le bornage : un objet sans forme ne borne
+// rien, un objet qui n'est pas un volume de mort non plus, et l'emprise rendue enveloppe bien
+// les volumes qui en ont une.
+func TestBoiteDesVolumesDeMort(t *testing.T) {
+	var typeMort int32
+	for id := range TypesVolumesDeMort {
+		typeMort = id
+		break
+	}
+	demi := 5.0
+	forme := &mapvar.ShapeRaw{Family: 3, S5: int64(2 * demi * 65536), S6: int64(2 * demi * 65536)}
+
+	objets := []mapvar.Object{
+		{TypeID: typeMort, Pos: mapvar.Vec3{X: 10, Y: 20}, ShapeRaw: forme},
+		{TypeID: typeMort, Pos: mapvar.Vec3{X: -10, Y: -20}, ShapeRaw: forme},
+		// Sans forme : ne borne rien.
+		{TypeID: typeMort, Pos: mapvar.Vec3{X: 1000, Y: 1000}},
+		// Pas un volume de mort : ignore, meme avec une forme.
+		{TypeID: typeMort + 12345, Pos: mapvar.Vec3{X: -900, Y: -900}, ShapeRaw: forme},
+	}
+	boite, n := BoiteDesVolumesDeMort(objets)
+	if n != 2 {
+		t.Fatalf("volumes retenus = %d, attendu 2 (un sans forme et un non-mortel sont ecartes)", n)
+	}
+	// Demi-diagonale d'une boite 5x5 : le bornage prend le PIRE cas, jamais moins large.
+	d := math.Hypot(demi, demi)
+	if boite[0] > -10-d || boite[1] > -20-d || boite[2] < 10+d || boite[3] < 20+d {
+		t.Fatalf("boite %v n'enveloppe pas les deux volumes (demi-diagonale %.2f)", boite, d)
+	}
+	if _, n := BoiteDesVolumesDeMort(nil); n != 0 {
+		t.Fatal("aucun objet : aucun volume retenu")
 	}
 }

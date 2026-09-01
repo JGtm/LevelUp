@@ -12,9 +12,14 @@ package replay
 //
 // LA CLÉ EST LE MODULE INSTALLÉ (« ridgeline », « ctf_bazaar »), celui que porte déjà
 // map_quant_bounds.json : le lien nom affiché -> module reste déclaré à UN seul endroit.
-// Une carte Forge ne résout jamais vers une entrée : son canevas ne porte AUCUNE zone
-// nommée (mesuré sur les 8 canevas installés) et n'est donc pas au catalogue — l'absence
-// est un fait de construction, pas une lacune.
+// AUCUNE CARTE FORGE N'EST AU CATALOGUE AUJOURD'HUI, ET C'EST UNE LACUNE, PAS UN FAIT DE
+// CONSTRUCTION. Cet en-tête a longtemps affirmé le contraire ; la mesure du 2026-08-27 l'a
+// renversé. Ce qui est vrai : un CANEVAS ne porte aucune zone nommée (mesuré sur les 8 canevas
+// installés). Ce qui est faux : en déduire qu'une CARTE Forge n'en a pas. Ses zones vivent
+// dans son map.mvar, chacune un objet de type himap.TypeIDZoneNommee portant un StringId qui
+// se résout contre le tag global locs — 18 zones sur Isolation, dont « cave » et « top mid ».
+// Les alimenter demande une clé map_id à côté des clés-module, et l'extraction des libellés
+// manquants : 274 des 434 StringId employés n'ont pas encore de texte joueur.
 
 import (
 	"encoding/json"
@@ -26,9 +31,10 @@ import (
 // MapCalloutsSchemaVersion est la version de forme attendue du catalogue.
 const MapCalloutsSchemaVersion = 1
 
-// ErrCalloutsUnknownMap signale un module absent du catalogue de callouts. Cas NOMINAL :
-// le catalogue couvre les 22 cartes intégrées, jamais les cartes Forge (leur canevas ne
-// porte aucune zone nommée — par construction). L'appelant dégrade, il n'échoue pas.
+// ErrCalloutsUnknownMap signale un module absent du catalogue de callouts. Cas COURANT : le
+// catalogue couvre les 22 cartes intégrées et aucune carte Forge — non parce qu'elles n'ont
+// pas de zones (elles en ont, cf. l'en-tête), mais parce que leur alimentation reste à
+// écrire. L'appelant dégrade, il n'échoue pas.
 var ErrCalloutsUnknownMap = errors.New("replay: carte absente du catalogue de callouts")
 
 // Provenance du polygone livré pour une carte.

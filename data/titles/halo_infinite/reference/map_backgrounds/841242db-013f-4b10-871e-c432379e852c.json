@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "module": "841242db-013f-4b10-871e-c432379e852c",
+  "mapNames": [
+    "Courtyard",
+    "841242db-013f-4b10-871e-c432379e852c_map"
+  ],
+  "image": "841242db-013f-4b10-871e-c432379e852c.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-30T11:52:32.748275Z",
+  "style": "encre",
+  "calibration": {
+    "metersPerPixel": 0.04854102039337158,
+    "originX": -28.922105026245116,
+    "originY": 48.09413350009919,
+    "widthPx": 2634,
+    "heightPx": 1442,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 20,
+    "anchorsInFrame": 20,
+    "anchorsWithGround": 20,
+    "anchorMedianGapM": -2.3227200243806934,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 58.38072296142578,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.28521140262748196,
+    "covered": false,
+    "cellsAssumedFloor": 253250,
+    "forgeObjects": 2708,
+    "forgeObjectsDrawn": 2648,
+    "forgeObjectsWithoutModel": 43,
+    "forgeDeathVolumes": 17
+  }
+}

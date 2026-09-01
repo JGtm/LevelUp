@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "module": "4fb5b69f-5104-450b-9ed0-a232f997e8f9",
+  "mapNames": [
+    "Vacancy",
+    "4fb5b69f-5104-450b-9ed0-a232f997e8f9_map"
+  ],
+  "image": "4fb5b69f-5104-450b-9ed0-a232f997e8f9.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-30T11:46:30.3029977Z",
+  "style": "encre",
+  "calibration": {
+    "metersPerPixel": 0.04487666670481364,
+    "originX": 34.02552822176615,
+    "originY": 19.68730046272279,
+    "widthPx": 1330,
+    "heightPx": 1512,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 9,
+    "anchorsInFrame": 9,
+    "anchorsWithGround": 7,
+    "anchorMedianGapM": -0.4050354669182781,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 92.71,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.5108432322600813,
+    "covered": true,
+    "cellsSubstituted": 282540,
+    "cellsAssumedFloor": 194011,
+    "forgeObjects": 5117,
+    "forgeObjectsDrawn": 5065,
+    "forgeObjectsWithoutModel": 32,
+    "forgeDeathVolumes": 20
+  }
+}

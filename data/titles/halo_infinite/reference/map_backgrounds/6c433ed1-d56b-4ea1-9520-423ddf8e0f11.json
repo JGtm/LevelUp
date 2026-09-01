@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "module": "6c433ed1-d56b-4ea1-9520-423ddf8e0f11",
+  "mapNames": [
+    "Alpha Site",
+    "6c433ed1-d56b-4ea1-9520-423ddf8e0f11_map"
+  ],
+  "image": "6c433ed1-d56b-4ea1-9520-423ddf8e0f11.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-28T12:27:03.7410283Z",
+  "style": "encre",
+  "calibration": {
+    "metersPerPixel": 0.0419713389078776,
+    "originX": -3.612258310953777,
+    "originY": 41.354245663960775,
+    "widthPx": 2220,
+    "heightPx": 2170,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 7,
+    "anchorsInFrame": 7,
+    "anchorsWithGround": 7,
+    "anchorMedianGapM": -4.380920918354917,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 83.75376983642577,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.19063550027707407,
+    "covered": false,
+    "forgeObjects": 4691,
+    "forgeObjectsDrawn": 4609,
+    "forgeObjectsWithoutModel": 55,
+    "forgeDeathVolumes": 27
+  }
+}

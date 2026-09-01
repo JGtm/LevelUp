@@ -2,26 +2,26 @@
   "schemaVersion": 1,
   "module": "ctf_illusion",
   "mapNames": [
-    "illusion",
-    "illusion_map"
+    "Illusion",
+    "ctf_illusion"
   ],
   "image": "ctf_illusion.png",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
-  "generatedAt": "2026-08-12T23:18:25.4678605Z",
-  "style": "jeu",
+  "generatedAt": "2026-08-26T17:10:42.0979379Z",
+  "style": "encre",
   "calibration": {
-    "metersPerPixel": 0.092,
-    "originX": -62.61043453216553,
-    "originY": 64.81599923706054,
-    "widthPx": 1312,
-    "heightPx": 1473,
+    "metersPerPixel": 0.031,
+    "originX": -25.751434532165526,
+    "originY": 35.164999237060556,
+    "widthPx": 1711,
+    "heightPx": 2224,
     "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
   },
   "stats": {
-    "anchors": 12,
-    "anchorsInFrame": 12,
-    "anchorsWithGround": 12,
-    "anchorMedianGapM": -0.26299932784844865,
+    "anchors": 16,
+    "anchorsInFrame": 16,
+    "anchorsWithGround": 13,
+    "anchorMedianGapM": -0.01235672329181925,
     "instancesDrawn": 8109,
     "instancesScenery": 197,
     "playLevelZ": 0.5099999523162841,
@@ -30,9 +30,11 @@
     "boundaryCellsCleared": 0,
     "waterVolumes": 0,
     "waterCells": 0,
-    "coveredShare": 0.38471906850394516,
+    "coveredShare": 0.3859841237133634,
     "covered": true,
-    "cellsSubstituted": 152000
+    "cellsSubstituted": 785512,
+    "cellsClipped": 770741,
+    "cellsAssumedFloor": 464358
   },
   "degradations": [
     "eau : aucun volume d'eau dans le sddt de ctf_illusion-rtx-new.module"

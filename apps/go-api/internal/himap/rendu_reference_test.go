@@ -31,7 +31,7 @@ func TestReferenceMontreLeSolSousLePlafond(t *testing.T) {
 	r.AddMesh(toit, in)
 
 	matAvant := compteMatiere(r)
-	taux, substituees, couverte := r.AppliqueReference(s)
+	taux, substituees, couverte := r.AppliqueReference(s, false)
 	if !couverte || taux < 0.99 {
 		t.Fatalf("arene entierement couverte : taux %.2f, couverte %v — attendu ~1 et true", taux, couverte)
 	}
@@ -59,7 +59,7 @@ func TestReferenceEpargneLaCarteNonCouverte(t *testing.T) {
 	rocher, _ := quadPlat(0, 0, 2, 2, 8)
 	r.AddMesh(rocher, in)
 
-	taux, substituees, couverte := r.AppliqueReference(s)
+	taux, substituees, couverte := r.AppliqueReference(s, false)
 	if couverte || substituees != 0 {
 		t.Fatalf("un quart de couverture (taux %.2f) ne doit PAS declencher (couverte %v, %d substituees)",
 			taux, couverte, substituees)
@@ -81,7 +81,7 @@ func TestReferenceNeTouchePasHorsPortee(t *testing.T) {
 	toit, _ := quadPlat(0, 0, 40, 4, 8)
 	r.AddMesh(toit, in)
 
-	if _, _, couverte := r.AppliqueReference(s); !couverte {
+	if _, _, couverte := r.AppliqueReference(s, false); !couverte {
 		t.Fatal("toit integral : la carte doit etre couverte")
 	}
 	if z, ok := r.Altitude(10, 1); !ok || z != 0 {
@@ -98,7 +98,7 @@ func TestReferenceNonArmeeNeFaitRien(t *testing.T) {
 	m, in := quadPlat(0, 0, 4, 4, 8)
 	r.AddMesh(m, in)
 	s := NewSurfaceReference([][3]float64{{2, 2, AncrageDecalageSol}})
-	if taux, substituees, couverte := r.AppliqueReference(s); taux != 0 || substituees != 0 || couverte {
+	if taux, substituees, couverte := r.AppliqueReference(s, false); taux != 0 || substituees != 0 || couverte {
 		t.Fatalf("reference non armee : (%v, %d, %v), attendu (0, 0, false)", taux, substituees, couverte)
 	}
 	if z, ok := r.Altitude(1, 1); !ok || z != 8 {
@@ -114,4 +114,26 @@ func compteMatiere(r *Rendu) int {
 		}
 	}
 	return n
+}
+
+// TestReferenceSansPorteeCouvreToutLePlateau — avec sansPortee, la substitution ne s'arrete
+// plus a PorteeAncre : c'est le reglage par carte `substitutionSansPortee`, arme sur Chasm
+// dont l'arene est plus longue que la portee d'une ancre (130 m de matiere utile). Le meme
+// decor qu'a TestReferenceNeTouchePasHorsPortee doit alors montrer le sol partout.
+func TestReferenceSansPorteeCouvreToutLePlateau(t *testing.T) {
+	ancres := [][3]float64{{2, 2, AncrageDecalageSol}}
+	s := NewSurfaceReference(ancres)
+	r := NewRendu([2]float64{0, 0}, [2]float64{40, 4}, 1)
+	r.ArmeReference(s)
+	m, in := quadPlat(0, 0, 40, 4, 0)
+	r.AddMesh(m, in)
+	toit, _ := quadPlat(0, 0, 40, 4, 8)
+	r.AddMesh(toit, in)
+
+	if _, _, couverte := r.AppliqueReference(s, true); !couverte {
+		t.Fatal("toit integral : la carte doit etre couverte")
+	}
+	if z, ok := r.Altitude(35, 1); !ok || z != 0 {
+		t.Fatalf("altitude (35,1) = %v (ok=%v) : sans portee, le sol (0) doit se montrer a 35 m de l'ancre", z, ok)
+	}
 }

@@ -2182,3 +2182,71 @@ en = "Back to the active title"
 [common.title_gate.retry]
 fr = "Réessayer"
 en = "Retry"
+
+# ─── Pied de page (AppFooter) ────────────────────────────────────────────────
+# Rendu en bas de l'application ET sur les pages de connexion (seul écran vu par
+# un visiteur anonyme de la démo publique).
+
+[common.footer.aria]
+fr = "Pied de page"
+en = "Footer"
+
+[common.footer.project_heading]
+fr = "Le projet"
+en = "The project"
+
+[common.footer.source_code]
+fr = "Code source"
+en = "Source code"
+
+[common.footer.report_issue]
+fr = "Signaler un problème"
+en = "Report an issue"
+
+[common.footer.changelog]
+fr = "Nouveautés"
+en = "What's new"
+
+[common.footer.license]
+fr = "Licence MIT"
+en = "MIT licence"
+
+[common.footer.support_heading]
+fr = "Soutenir"
+en = "Support"
+
+[common.footer.support_note]
+fr = "LevelUp est gratuit et ouvert. Un coup de pouce paie l'hébergement."
+en = "LevelUp is free and open source. A little help pays for hosting."
+
+[common.footer.sponsors]
+fr = "GitHub Sponsors"
+en = "GitHub Sponsors"
+
+[common.footer.paypal]
+fr = "PayPal"
+en = "PayPal"
+
+[common.footer.disclaimer]
+fr = "Projet indépendant, sans lien avec Microsoft ni Halo Studios."
+en = "Independent project, not affiliated with Microsoft or Halo Studios."
+
+[common.footer.copyright]
+fr = "© JGtm — LevelUp"
+en = "© JGtm — LevelUp"
+
+[common.footer.elsewhere_heading]
+fr = "Ailleurs"
+en = "Elsewhere"
+
+[common.footer.developer]
+fr = "Le développeur"
+en = "The developer"
+
+[common.footer.csinsight]
+fr = "CSinsight — stats CS2"
+en = "CSinsight — CS2 stats"
+
+[common.footer.privacy]
+fr = "Confidentialité"
+en = "Privacy"
