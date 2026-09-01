@@ -153,6 +153,9 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     layerSkullCarrier: 'Porteur du crâne',
     layerSkullCarrierHint:
       "Qui porte le crâne d'Oddball, lu dans le film : le porteur est le joueur dont les tics de score de mode montent, un train de tics étant une période de portage. Le crâne suit son porteur image par image. Un portage dont RIEN ne date la fin s'affiche atténué : son intervalle court jusqu'à la fin du film — c'est une borne haute, pas une mesure. Le crâne posé au sol, lui, reste dessiné par le calque des objets d'objectif.",
+    layerBombCarrier: 'Bombe',
+    layerBombCarrierHint:
+      "La bombe d'Assaut, lue dans le film : une prise ouvre une période de portage, fermée par le lâcher — souvent la pose elle-même — ou par la mort du porteur. Portée, la bombe suit son porteur image par image ; lâchée, elle reste dessinée au dernier point de son lâcheur jusqu'à la reprise ou l'explosion. Un portage dont RIEN ne date la fin s'affiche atténué : son intervalle court jusqu'à la fin du film — c'est une borne haute, pas une mesure.",
     layerGroundWeapons: 'Armes au sol',
     layerGroundWeaponsHint:
       "Les armes abandonnées au sol, lues dans le film : l'arme d'un mort, celle qu'on laisse en ramassant autre chose, ou celle qu'un râtelier a éjectée. Chacune est dessinée là où elle s'est arrêtée, dès qu'elle y tombe. Les armes SUR LEUR EMPLACEMENT ne sont pas ici : elles appartiennent au calque des emplacements d'arme. LA FIN est celle que le film montre, jamais une durée de table : un ramassage daté l'arrête exactement ; sinon l'arme est dessinée pleine tant qu'un relevé la voit encore, puis S'ESTOMPE jusqu'au premier relevé qui ne la voit plus — la disparition a eu lieu quelque part entre les deux, et rien n'est dessiné au-delà de cette borne.",
@@ -282,7 +285,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       vip: 'Est le VIP',
       hill: 'Tient la colline',
       zone: 'Vient de prendre une base',
-      bomb: 'Vient de faire sauter la bombe',
+      bomb: 'Porte la bombe — ou vient de la faire sauter',
     },
     equipmentUsage: {
       title: "Usages d'équipement",
@@ -501,6 +504,9 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     layerSkullCarrier: 'Skull carrier',
     layerSkullCarrierHint:
       'Who carries the Oddball skull, read from the film: the carrier is the player whose mode-score ticks rise, a run of ticks being one carry period. The skull follows its carrier frame by frame. A carry whose end NOTHING dates is faded: its interval runs to the end of the film — an upper bound, not a measurement. The skull dropped on the ground is still drawn by the objective-objects layer.',
+    layerBombCarrier: 'Bomb',
+    layerBombCarrierHint:
+      'The Assault bomb, read from the film: a pickup opens a carry period, closed by the drop — often the plant itself — or by the carrier’s death. Carried, the bomb follows its carrier frame by frame; dropped, it stays drawn at its dropper’s last point until the next pickup or the detonation. A carry whose end NOTHING dates is faded: its interval runs to the end of the film — an upper bound, not a measurement.',
     layerGroundWeapons: 'Weapons on the ground',
     layerGroundWeaponsHint:
       'Weapons abandoned on the ground, read from the film: a weapon dropped by a dead player, left behind while picking up another, or ejected from a rack. Each one is drawn where it came to rest, from the moment it lands. Weapons ON THEIR SPOT are not here — they belong to the weapon-spots layer. The END is what the film shows, never a duration from a table: a dated pickup ends the display exactly; otherwise the weapon is drawn solid for as long as a key frame still records it, then FADES to the first key frame that no longer does — the disappearance happened somewhere in between, and nothing is drawn past that bound.',
@@ -628,7 +634,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       vip: 'Is the VIP',
       hill: 'Holding the hill',
       zone: 'Just captured a stronghold',
-      bomb: 'Just detonated the bomb',
+      bomb: 'Carrying the bomb — or just detonated it',
     },
     equipmentUsage: {
       title: 'Equipment usage',

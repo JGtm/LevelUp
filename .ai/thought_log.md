@@ -81222,3 +81222,46 @@ golden réassemblé (seule la ligne de schéma bouge) ; `EXPECTED_REPLAY_SCHEMA_
 croisement positionnel reste au registre) ; One Bomb reste sans compte à rebours (canal réfuté
 CV 0,725 — chantier séparé) ; pas de son « bombe armée » propre dans la banque (le stem colline
 est la décision utilisateur du portage, pas un TODO).
+
+---
+
+## [2026-09-01] Portage visuel de la bombe ACHEVE — reprise apres la mort de l'agent, dette de position soldee
+
+**Statut** : Complete.
+
+**LA REPRISE.** L'agent du portage visuel est mort sur la limite de session en plein refactor,
+son dernier mot ecrit : « la 5e copie du bloc de position est interdite (regle n°6), je paie tout
+d'un coup ». Le Go etait committe (schema 30, `bombCarries`, gate PASS sur films reels —
+`BV_gate_portage_run2.log`) ; le web etait en vol. Repris a la main, sur pieces.
+
+**CE QUE L'AGENT AVAIT BIEN FAIT, garde tel quel** : `bombGlyph.ts` (vectoriel, avec la decision
+ARGUMENTEE contre la vignette d'atlas — le piege `killfeed-NN` d'un index qui bouge par saison,
+meme arbitrage que le crane le 28/08) ; `bombCarrierLayer.ts` + `useReplayBombCarrier.ts`
+(porte = position du porteur ; au sol = dernier point du lacheur ; jamais apres l'explosion ;
+portage non ferme = attenue, borne haute) ; bascule de tiroir + i18n FR/EN + marque de fiche
+`bomb` etendue au portage ; cablage canvas minimal.
+
+**LA DETTE SOLDEE : le bloc de position n'a plus qu'UNE ecriture.** `livesPosition.ts` porte
+`buildLivesByXuid` + `deathWindowFrames` + `buildPlayerPosAt` (pur) + `usePlayerPosAt` (hook).
+Migres : les hooks deflagration, drapeau, crane, couronne VIP, porteur de bombe (5 copies) et
+`objectivesLayer` (copie pure). `killFx.ts` garde la JUMELLE autorisee : il DEFINIT
+`posOfPlayerAt`/`KILLPOS_WINDOW_MS`, l'importer boucherait. Garde-rail
+`livesPosition.guard.test.ts` dans le meme commit (regle n°6 : une factorisation sans garde-rail
+re-diverge).
+
+**DEUX ACCROCS DE REPRISE, corriges** : ma propre condition d'insertion d'import etait
+court-circuitee par le mot « livesPosition » dans mes nouveaux commentaires (imports poses a la
+main ensuite) ; et la dependance `objectiveObjects` du `draw` avait saute pendant l'edition de
+l'agent — warning exhaustive-deps INTRODUIT, dependance restauree.
+
+**CANVAS SOUS PLAFOND : 665/665.** Le depassement (674) venait des commentaires ; six
+compressions sans perte (l'information vit dans les en-tetes des calques cites).
+
+**GATES** (exit codes verifies, pas de pipe masquant) : tsc 0 ; eslint 0 erreur, 0 warning sur
+nos fichiers (24 warnings preexistants ailleurs) ; vitest **546 fichiers / 5641 verts** ; gardes
+`livesPosition` + plafond canvas + glyphe + marque verts ; Go inchange depuis son gate PASS.
+
+**RESTE (hors de ce lot)** : merge des branches bombe (`wt/onebomb` : meche pausable a
+reconcilier avec la garde One Bomb du compte a rebours) ; RE-CUISSON INTERDITE par le user —
+rien ne s'affiche en app avant la levee ; son de prise/lacher de bombe volontairement absent
+(aucun stem designe — meme regle que le crane).
