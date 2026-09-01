@@ -83324,3 +83324,55 @@ visee (tests de recherche zoom) et mapfond — pas touches, ce sont leurs sessio
 
 Gates : gofmt propre, `go vet` silencieux, `go test ./internal/analysis/filmdec/` vert,
 `golangci-lint` local sur le paquet ne signale plus rien.
+
+---
+
+## [2026-09-01] Origine socle vs sol par les positions de carte — l'idée marche, sous condition de mode
+
+**Statut** : Complété (recherche pure ; aucun fichier de production touché, aucune cuisson).
+**Worktree** : `wt/origine-equipement`, base `05cb536d6`.
+
+**L'inventaire a changé le plan, et c'est le vrai gain de la première heure.** Il n'y avait pas
+de catalogue à construire : `map_weapon_pads.json` existe (72 cartes, 1 454 emplacements),
+il vient bien des `.mvar`, et ses positions sont **en repère monde non transformé — le même que
+les positions joueur**. L'étalon était déjà mesuré ailleurs (32/32, médiane 0,01 m). Écrire un
+extracteur `.mvar` aurait dupliqué tout cela.
+
+**Le verdict dépend du MODE, pas de l'instrument.** Sur Catalyst (KOTH, dix socles allumés),
+33,3 % des naissances `ti=42` *apparues* tombent à moins d'un mètre d'un socle catalogué, contre
+0,5 % et 3,5 % aux deux témoins spatiaux. Sur Cliffhanger en Super Fiesta, 0,7 % contre 0,7 % —
+et c'est **écrit dans le catalogue lui-même** : ce mode n'allume aucun socle, il n'y a rien à
+apparier. Un instrument qui « échoue » sur un mode qui ne pose pas la question n'échoue pas.
+
+**Ce que ça donne sur l'équipement** (`ti=37`) : SOCLE 4,9 % / 2,0 % (réel contre témoins à
+0,4 % et 0,0 %), SOL 52,7 % / 63,3 % par la règle de production, ABSTENTION 42,4 % / 34,7 %.
+Le seau SOCLE est réel mais minuscule — le catalogue ne connaît qu'**un** emplacement `powerup`
+par carte, sa liste blanche n'ayant que trois types.
+
+**Le résultat le plus utile est dans les abstentions : elles se REGROUPENT.** Douze positions
+(5 sur Catalyst, 7 sur Cliffhanger) hébergent chacune 3 à 14 naissances en un seul match. Ce
+sont très probablement les points d'apparition d'équipement que la liste blanche a écartés à la
+construction. Ce n'est pas une preuve — la récurrence est compatible avec un point d'apparition
+sans l'établir — mais c'est une **liste de coordonnées à vérifier**, et donc une condition de
+reprise précise au lieu d'un souhait.
+
+**Étape 2 bloquée, et la nuance compte** : les `.mvar` ne sont plus au dépôt (zéro fichier, quatre
+arborescences fouillées). Ce n'est pas « les .mvar ne déclarent pas l'équipement », c'est « on ne
+peut pas le vérifier aujourd'hui ».
+
+**Un témoin cassé, dénoncé par la mesure elle-même.** Mon premier témoin permutait la LISTE des
+socles : les chiffres sont sortis identiques au réel au chiffre près (18,5 %, 5,72 m des deux
+côtés). Permuter une liste ne change pas l'ensemble des positions. Remplacé par deux translations
+indépendantes. Un témoin qui égale le réel n'est pas une surprise, c'est un témoin mort.
+
+**Addendum tranché.** `e9e7ff79` **est une arme** ordinaire : le ramasseur la reçoit en main dans
+les 2 s, 4 fois sur 4, et le canal i43..i46 la publie — elle manque juste à la table de libellés,
+à verser au chantier catalogue d'armes. `00007ca9`, lui, est ramassé 15 fois sur deux films,
+toujours en classe ARME, et **n'entre jamais dans un emplacement d'arme** (0/15, aucune émission
+i43..i46). Avec sa valeur basse (31 913) et ses 7 occurrences groupées dans les 180 premières
+millisecondes du match, une par joueur, la signature est celle d'une **dotation à l'apparition**.
+Non tranché, consigné avec sa signature.
+
+**Prochaine étape** : re-dumper les `.mvar`, histogrammer tous les `type_id` aux 12 coordonnées
+publiées, élargir `mapvar.PadFamilyOf`, rejouer l'instrument — le seau ABSTENTION doit
+s'effondrer au profit du seau SOCLE. C'est ce test-là qui tranchera.
