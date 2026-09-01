@@ -221,7 +221,7 @@ func (b *Builder) BuildBytes(matchID string, mapNames []string, filmDir string, 
 	ksRes := b.decodeKillSource(matchID, filmDir)
 	// Les POINTS D'APPARITION viennent du catalogue des socles, par map_id — ils donnent leur
 	// origine aux ramassages non-arme (cf. spawnpoints.go).
-	spawnPts, mapKnown := b.spawnPoints(matchID, facts.MapID, mapNames)
+	spawnPts, mapState := b.spawnPoints(matchID, facts.MapID, mapNames)
 	doc, err := replay.BuildFromFilm(matchID, b.titleSlug, filmDir, replay.Options{
 		FrameIntervalMS: b.interval,
 		Geometry:        b.geometry,
@@ -236,9 +236,9 @@ func (b *Builder) BuildBytes(matchID string, mapNames []string, filmDir string, 
 		Skull:           stats.skull,
 		Zone: replay.ZoneInput{Zones: zones, Roles: zoneRoles, TeamByXUID: teamByXUID(facts),
 			Hill: isHillVariant(facts.GameVariantName)},
-		MapQuant:        &entry,
-		SpawnPoints:     spawnPts,
-		MapCatalogKnown: mapKnown,
+		MapQuant:         &entry,
+		SpawnPoints:      spawnPts,
+		SpawnPointsState: mapState,
 	})
 	if err != nil {
 		return Built{}, fmt.Errorf("décodage du film %s: %w", matchID, err)

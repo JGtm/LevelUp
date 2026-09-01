@@ -87,7 +87,7 @@ func main() {
 	if err != nil {
 		fail(ctx, "catalogue d'objectifs", err)
 	}
-	dumps, err := newDumpIndex(*from)
+	dumps, err := newDumpIndex(*from, objectifs)
 	if err != nil {
 		fail(ctx, "dépôt de .mvar", err)
 	}
@@ -96,7 +96,7 @@ func main() {
 
 	outPath := res.MapWeaponPadsPath(*titleSlug)
 	if *addOnly {
-		addSpawnPointsOnly(ctx, res, *titleSlug, objectifs, dumps, outPath, *dryRun)
+		addSpawnPointsOnly(ctx, objectifs, dumps, outPath, *dryRun)
 		return
 	}
 	cat := newPadsCatalog(*titleSlug)

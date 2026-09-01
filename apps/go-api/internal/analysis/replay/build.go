@@ -111,11 +111,11 @@ type Options struct {
 	// POURQUOI L'APPELANT ET PAS LE BUILDER : la generation d'artefact est HORS LIGNE et le
 	// reste. Le builder ne va rien chercher — on lui donne ce que la carte declare, ou rien.
 	SpawnPoints []MapSpawnPoint
-	// MapCatalogKnown dit si la carte a ete TROUVEE au catalogue. Faux avec SpawnPoints vide
-	// signifie « carte inconnue » ; vrai avec SpawnPoints vide signifie « carte connue, aucun
-	// point ». La difference part au client (coverage.pickups.mapCatalogMissing) parce qu'un
-	// trou de catalogue doit se VOIR au lieu de se combler pendant une cuisson.
-	MapCatalogKnown bool
+	// SpawnPointsState dit CE QUE VAUT l'absence d'un point : carte absente du catalogue,
+	// carte connue dont les points ne sont PAS ETABLIS, ou points etablis (fut-ce a zero).
+	// Les trois valeurs et leur raison d'etre sont documentees sur
+	// `PickupCoverage.SpawnPointsState`, qui les publie. Vide = carte absente.
+	SpawnPointsState string
 	// Deaths : le fil des morts du film (chunk highlight), qui NOMME les vies et fonde TOUT le
 	// rattachement (cf. lives.go). Entrée de DONNÉES comme les précédentes.
 	//
@@ -611,14 +611,16 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	doc.Pickups, pkCov = buildPickups(opt.Pickups,
 		replayClock{origin: origin, step: step, frames: doc.FrameCount,
 			families: opt.Labels.EquipmentFamilies},
-		own.SlotXUID, opt.PickupStats, opt.Labels.Keys, judge)
+		pickupInputs{slotXUID: own.SlotXUID, st: opt.PickupStats,
+			weaponKeys: opt.Labels.Keys, judge: judge})
 	doc.Coverage.Pickups = &pkCov
 	slog.Info("rejeu : ramassages natifs",
 		"decodes", pkCov.Decoded, "publies", pkCov.Published, "nommes", pkCov.Named,
 		"armes", pkCov.Weapons, "objets", pkCov.Items,
 		"origineSocle", pkCov.OriginSpawner, "origineSol", pkCov.OriginGround,
-		"origineInconnue", pkCov.OriginUnknown, "carteAuCatalogue", !pkCov.MapCatalogMissing,
+		"origineInconnue", pkCov.OriginUnknown, "etatPoints", pkCov.SpawnPointsState,
 		"pointsCatalogue", pkCov.MapCatalogPoints,
+		"socleParNature", pkCov.SpawnerByPointKind,
 		"famillesInconnues", pkCov.UnknownFamilies,
 		"avantOrigine", pkCov.BeforeOrigin, "listesMultiples", pkCov.MultiEvent,
 		"refuses", pkCov.Refused)

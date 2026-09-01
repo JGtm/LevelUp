@@ -18,10 +18,14 @@ package replaybuild
 //
 // # Le trou se COMPTE, il ne se comble pas
 //
-// 63 cartes sur 72 portent des points ; neuf n'en ont pas parce que leur `.mvar` servi par
-// l'UGC ne redonne plus les memes socles qu'au catalogue. Une carte hors catalogue, un catalogue
-// illisible, un match sans map_id : dans les trois cas les ramassages restent publies, sans
-// origine, et `coverage.pickups.mapCatalogMissing` porte le fait.
+// 63 cartes sur 72 portent des points etablis ; neuf ne les ont PAS ETABLIS parce que leur
+// `.mvar` servi par l'UGC ne redonne plus les memes socles qu'au catalogue.
+//
+// SANS POINTS, LES RAMASSAGES GARDENT LEUR ORIGINE `ground` — et il faut le dire, parce que
+// l'inverse a ete ecrit ici et c'etait faux. Seul `spawner` devient impossible : `ground` ne
+// depend que des poses du document, pas du catalogue. Ce que le client perd, c'est la
+// possibilite de conclure quoi que ce soit d'une ABSENCE d'origine, et c'est exactement ce que
+// `coverage.pickups.spawnPointsState` lui dit.
 //
 // LA CUISSON NE TELECHARGE RIEN. C'est la doctrine du depot et elle vaut ici sans exception :
 // une carte manquante se comble par la CLI (`mapopads-build`) ou par le sync, jamais pendant la
@@ -35,14 +39,18 @@ import (
 	"levelup/go-api/internal/domain/title"
 )
 
-// spawnPoints rend les points d'apparition non-arme de la carte du match, et VRAI si la carte
-// a ete trouvee au catalogue. Le booleen n'est pas redondant avec une liste vide : une carte
-// connue peut n'avoir aucun point, et ce n'est pas la meme chose qu'une carte inconnue.
+// spawnPoints rend les points d'apparition non-arme de la carte du match, et L'ETAT du
+// catalogue pour cette carte (cf. replay.PickupCoverage.SpawnPointsState).
+//
+// L'ETAT N'EST PAS REDONDANT AVEC UNE LISTE VIDE, et deux valeurs n'y suffisaient pas : une
+// carte peut etre absente du catalogue, y figurer SANS points etablis (sautee pour derive de
+// source), ou y figurer avec des points etablis dont le nombre est zero. Les trois se
+// distinguent, et le client ne peut lire une absence d'origine qu'en les distinguant.
 func (b *Builder) spawnPoints(matchID, mapID string, mapNames []string,
-) ([]replay.MapSpawnPoint, bool) {
+) ([]replay.MapSpawnPoint, string) {
 	cat := b.padsCatalog()
 	if cat == nil {
-		return nil, false
+		return nil, replay.SpawnPointsMapAbsent
 	}
 	entry, ok := cat.Maps[mapID]
 	if !ok && mapID != "" {
@@ -76,17 +84,24 @@ func (b *Builder) spawnPoints(matchID, mapID string, mapNames []string,
 	}
 	if !ok {
 		slog.Debug("replaybuild: carte introuvable au catalogue des socles (ni map_id ni nom) "+
-			"— ramassages sans origine",
+			"— aucun ramassage ne pourra etre `spawner`",
 			"map_id", mapID, "noms", mapNames, "match_id", matchID, "titleSlug", b.titleSlug)
-		return nil, false
+		return nil, replay.SpawnPointsMapAbsent
 	}
-	out := make([]replay.MapSpawnPoint, 0, len(entry.SpawnPoints))
-	for _, p := range entry.SpawnPoints {
+	// LA CLE ABSENTE EST UNE INFORMATION : la carte est au catalogue, mais ses points n'y sont
+	// pas etablis (generateur en mode ajout-seul, carte sautee pour derive de source).
+	if entry.SpawnPoints == nil {
+		slog.Debug("replaybuild: points d'apparition NON ETABLIS pour cette carte",
+			"map_id", mapID, "match_id", matchID, "titleSlug", b.titleSlug)
+		return nil, replay.SpawnPointsNotEstablished
+	}
+	out := make([]replay.MapSpawnPoint, 0, len(*entry.SpawnPoints))
+	for _, p := range *entry.SpawnPoints {
 		out = append(out, replay.MapSpawnPoint{
 			X: float32(p.Pos.X), Y: float32(p.Pos.Y), Z: float32(p.Pos.Z), Kind: p.Kind,
 		})
 	}
-	return out, true
+	return out, replay.SpawnPointsEstablished
 }
 
 // padsCatalog charge le catalogue des socles au plus une fois par Builder — meme motif et meme

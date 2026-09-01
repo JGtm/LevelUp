@@ -70,9 +70,22 @@ type MapWeaponPadsEntry struct {
 	// lisent deja chaque element. Ici, un lecteur qui ignore ce champ voit exactement ce
 	// qu'il voyait.
 	//
-	// `omitempty` : une carte sans point d'apparition n'ecrit pas la cle, et le diff du
-	// catalogue reste lisible.
-	SpawnPoints []MapSpawnPointSpot `json:"spawn_points,omitempty"`
+	// C'EST UN POINTEUR, ET C'EST LA CORRECTION D'UN PIEGE PAYE. Avec une tranche nue et
+	// `omitempty`, une carte ACCEPTEE mais sans aucun point n'ecrivait PAS la cle — donc elle
+	// devenait indiscernable d'une carte SAUTEE pour derive de source. Les neuf cartes sautees
+	// (Deadlock, Fragmentation, Highpower, Oasis, Breaker, Scarr...) se lisaient alors « carte
+	// connue, aucun point », c'est-a-dire un mensonge : leur catalogue de points n'est PAS
+	// ETABLI, et `spawner` y est impossible.
+	//
+	// LES TROIS ETATS SE LISENT DONC DANS LA FORME MEME DU JSON :
+	//
+	//	entree absente du fichier   la carte n'est pas au catalogue
+	//	cle `spawn_points` ABSENTE  carte connue, points NON ETABLIS (sautee pour derive)
+	//	cle presente, meme `[]`     carte connue, points ETABLIS — `[]` veut dire « aucun »
+	//
+	// `omitempty` sur un POINTEUR n'omet que le nil : une tranche vide non-nil s'ecrit `[]`.
+	// C'est exactement la distinction voulue, et c'est pourquoi la tranche nue ne convenait pas.
+	SpawnPoints *[]MapSpawnPointSpot `json:"spawn_points,omitempty"`
 }
 
 // MapSpawnPointSpot est UN point d'apparition d'objet ramassable de la carte.

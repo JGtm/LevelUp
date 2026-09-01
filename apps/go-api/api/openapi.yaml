@@ -19068,8 +19068,6 @@ components:
         items:
           format: int64
           type: integer
-        mapCatalogMissing:
-          type: boolean
         mapCatalogPoints:
           format: int64
           type: integer
@@ -19094,6 +19092,13 @@ components:
         refused:
           format: int64
           type: integer
+        spawnPointsState:
+          type: string
+        spawnerByPointKind:
+          additionalProperties:
+            format: int64
+            type: integer
+          type: object
         unknownFamilies:
           format: int64
           type: integer
@@ -19113,6 +19118,7 @@ components:
         - originSpawner
         - originGround
         - originUnknown
+        - spawnPointsState
         - mapCatalogPoints
       type: object
     PilotModeAttribution:

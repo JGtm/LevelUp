@@ -120,6 +120,15 @@ type SpawnPoint struct {
 	InstanceID int32
 	// Objects est le nombre d'objets FUSIONNES dans ce point.
 	Objects int
+	// Mixed dit que des objets de NATURES DIFFERENTES ont fusionne ici — meme drapeau et meme
+	// raison que `PadSpot.Mixed`.
+	//
+	// SANS LUI L'INFORMATION ETAIT IRRECUPERABLE : le regroupement garde le type du
+	// representant et JETTE ceux des absorbes. Sur le corpus, 234 des 1 934 points sont des
+	// fusions ; si l'une d'elles absorbait un point de grenade dans un point d'equipement, le
+	// catalogue publierait une nature fausse sans que rien ne le signale. Le producteur peut
+	// desormais le DIRE plutot que de le taire.
+	Mixed bool
 }
 
 // SpawnPoints rend les points d'apparition d'une variante, dans le MEME ordre deterministe et
@@ -144,6 +153,7 @@ func SpawnPoints(v *Variant) []SpawnPoint {
 		kind, _ := SpawnKindOf(o.TypeID)
 		if i := nearestSpawnPoint(out, o.Pos); i >= 0 {
 			out[i].Objects++
+			out[i].Mixed = out[i].Mixed || out[i].Kind != kind
 			continue
 		}
 		out = append(out, SpawnPoint{

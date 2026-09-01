@@ -8986,7 +8986,6 @@ export interface components {
             decoded: number;
             /** Format: int64 */
             items: number;
-            mapCatalogMissing?: boolean;
             /** Format: int64 */
             mapCatalogPoints: number;
             /** Format: int64 */
@@ -9003,6 +9002,10 @@ export interface components {
             published: number;
             /** Format: int64 */
             refused: number;
+            spawnPointsState: string;
+            spawnerByPointKind?: {
+                [key: string]: number;
+            };
             /** Format: int64 */
             unknownFamilies: number;
             /** Format: int64 */
