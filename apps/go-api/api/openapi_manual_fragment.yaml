@@ -3166,8 +3166,6 @@ components:
           type: boolean
         spnkr_refresh_backfill_events:
           type: boolean
-        spnkr_refresh_backfill_weapons:
-          type: boolean
         friend_gamertags:
           type: array
           items:

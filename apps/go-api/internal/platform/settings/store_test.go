@@ -186,14 +186,10 @@ func TestApply_SpnkrFields(t *testing.T) {
 		SpnkrRefreshBackfillPerfScores:     &tr,
 		SpnkrRefreshBackfillLUSR:           &tr,
 		SpnkrRefreshBackfillEvents:         &tr,
-		SpnkrRefreshBackfillWeapons:        &tr,
 	}
 	settings.Apply(cfg, req)
 	if !cfg.SpnkrRefreshWithBackfill {
 		t.Error("SpnkrRefreshWithBackfill should be true")
-	}
-	if !cfg.SpnkrRefreshBackfillWeapons {
-		t.Error("SpnkrRefreshBackfillWeapons should be true")
 	}
 }
 

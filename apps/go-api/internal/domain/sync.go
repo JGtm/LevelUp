@@ -132,13 +132,15 @@ type PostSyncResult struct {
 	EngagementScoresComputed int   `json:"engagement_scores_computed"` // Phase 3 plan engagement
 	EngagementCoefsUpdated   int   `json:"engagement_coefs_updated"`   // Phase recompute coefs : nb modes recomputes (0..2)
 	SessionsAssigned         int   `json:"sessions_assigned"`          // recalcul session_id post-sync (auto)
-	WeaponKillsProcessed     int   `json:"weapon_kills_processed"`     // nouveaux matchs traités par le pipeline film/weapon kills
-	WeaponKillsNoFilm        int   `json:"weapon_kills_no_film"`       // matchs sans film (404/410, normal pour vieux matchs)
-	CitationsComputed        int   `json:"citations_computed"`         // matchs traités par le pipeline post-sync (étape 1.6 citations)
-	DominanceFlagsComputed   int   `json:"dominance_flags_computed"`   // matchs traités par le pipeline post-sync (étape 1.7 dominance_flag)
-	ConvergedEvents          int   `json:"converged_events"`           // matchs rattrapés par la convergence events (étape 1.54)
-	ConvergedPSA             int   `json:"converged_psa"`              // matchs rattrapés par la convergence PSA (étape 1.56)
-	SnapshotReadyMarked      int   `json:"snapshot_ready_marked"`      // matchs marqués snapshot_ready_at (étape 6 readiness, Phase 2)
+	// WeaponKillsProcessed / WeaponKillsNoFilm RETIRÉS le 2026-09-01 : l'étape 1.55
+	// qui les alimentait est supprimée avec son producteur (lot arme-source-unique).
+	// Le compte de films traités et de films absents est désormais celui de l'étape
+	// 1.57, publié en expvar (`killsource_matchs_collectes`, `killsource_films_absents`).
+	CitationsComputed      int `json:"citations_computed"`       // matchs traités par le pipeline post-sync (étape 1.6 citations)
+	DominanceFlagsComputed int `json:"dominance_flags_computed"` // matchs traités par le pipeline post-sync (étape 1.7 dominance_flag)
+	ConvergedEvents        int `json:"converged_events"`         // matchs rattrapés par la convergence events (étape 1.54)
+	ConvergedPSA           int `json:"converged_psa"`            // matchs rattrapés par la convergence PSA (étape 1.56)
+	SnapshotReadyMarked    int `json:"snapshot_ready_marked"`    // matchs marqués snapshot_ready_at (étape 6 readiness, Phase 2)
 
 	// Chronométrage du pipeline (dashboard monitoring P4) : durée totale +
 	// durée par étape (timeline + détection des goulots). Renseigné par

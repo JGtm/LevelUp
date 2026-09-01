@@ -1393,10 +1393,6 @@ en = "PSA not attempted"
 fr = "Events incomplets"
 en = "Incomplete events"
 
-[admin.convergence.kpi_weapons]
-fr = "Frags d'arme incomplets"
-en = "Incomplete weapon kills"
-
 [admin.convergence.unavailable]
 fr = "Backlog de convergence indisponible."
 en = "Convergence backlog unavailable."
@@ -1426,10 +1422,6 @@ en = "Rank snapshots (PSA) not yet attempted for these matches."
 [admin.convergence.kpi_events_tooltip]
 fr = "Matchs dont la chronologie d'événements est incomplète."
 en = "Matches whose event timeline is incomplete."
-
-[admin.convergence.kpi_weapons_tooltip]
-fr = "Matchs dont l'attribution des frags par arme est incomplète."
-en = "Matches whose per-weapon kill attribution is incomplete."
 
 [admin.convergence.col_total_tooltip]
 fr = "Total de matchs incomplets pour ce joueur, toutes catégories confondues."
@@ -1470,14 +1462,6 @@ en = "LUSR"
 [admin.convergence.ps_sessions]
 fr = "Sessions"
 en = "Sessions"
-
-[admin.convergence.ps_weapons]
-fr = "Armes"
-en = "Weapons"
-
-[admin.convergence.ps_no_film]
-fr = "Sans film"
-en = "No film"
 
 [admin.convergence.ps_citations]
 fr = "Citations"
@@ -1812,10 +1796,6 @@ en = "since boot"
 [admin.convergence.caught_events]
 fr = "Events"
 en = "Events"
-
-[admin.convergence.caught_weapons]
-fr = "Frags par arme"
-en = "Weapon kills"
 
 [admin.convergence.caught_psa]
 fr = "PSA"

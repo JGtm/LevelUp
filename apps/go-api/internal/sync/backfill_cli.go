@@ -115,11 +115,6 @@ func NewBackfillFlagSet() (*flag.FlagSet, *BackfillCLI, *SyncScope) {
 	fs.BoolVar(&scope.PVEStats, "pve-stats", false, "Backfill stats PVE (Firefight)")
 	fs.BoolVar(&scope.ForcePVEStats, "force-pve-stats", false, "Force backfill PVE")
 
-	// ── Weapon kills (v5.5) ──
-	fs.BoolVar(&scope.Weapons, "weapons", false, "Backfill kills par arme")
-	fs.BoolVar(&scope.ForceWeapons, "force-weapons", false, "Force backfill armes")
-	fs.BoolVar(&scope.ForceNoFilm, "force-no-film", false, "Re-tenter matchs WEAPON_KILLS_NO_FILM")
-
 	// ── LUSR / CSR (v5.3) ──
 	fs.BoolVar(&scope.LUSR, "lusr", false, "Calculer le LUSR (TrueSkill 2 local)")
 	fs.BoolVar(&scope.ForceLUSR, "force-lusr", false, "Recalculer LUSR depuis zéro")

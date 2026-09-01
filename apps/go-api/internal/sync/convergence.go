@@ -99,28 +99,20 @@ func filterEventsStillMissing(ctx context.Context, sharedDB *sql.DB, ids []strin
 	return out
 }
 
-// selectMatchesMissingWeapons : idem pour weapon_kills (bits MBitWeaponKills /
-// MBitWeaponKillsNoFilm non posés). À appeler APRÈS convergeEvents.
-func selectMatchesMissingWeapons(ctx context.Context, playerDB, sharedDB *sql.DB, xuid string) []string {
-	scope := &SyncScope{Weapons: true, MaxMatches: convergenceHorizon, DetectionMode: "or"}
-	scope.Resolve()
-	ids, err := FindMatchesMissingData(ctx, playerDB, sharedDB, xuid, scope)
-	if err != nil {
-		slog.WarnContext(ctx, "convergence: sélection weapons incomplets échouée", "xuid", xuid, "err", err)
-		return nil
-	}
-	return ids
-}
-
 // hasConvergenceBacklog indique s'il reste des matchs à converger (enrichment
-// manquant, PSA non tentés, events OU weapons incomplets). Sert à déclencher le
-// post-sync même quand aucun nouveau match n'a été inséré : le sync n'a pas
-// "fini" tant que tout n'est pas enrichi.
+// manquant, PSA non tentés, events incomplets). Sert à déclencher le post-sync
+// même quand aucun nouveau match n'a été inséré : le sync n'a pas "fini" tant
+// que tout n'est pas enrichi.
+//
+// LE RETARD « WEAPONS » N'Y FIGURE PLUS (2026-09-01, étape A3 du lot arme-source-unique).
+// L'étape 1.55 qui le consommait est supprimée avec son producteur ; le retard de film
+// est désormais celui de l'étape 1.57, qui porte sa PROPRE sélection et sa propre jauge
+// (`killcollector.backlogAJour` / `killsource_postsync_backlog_restant`). Le rappeler ici
+// relancerait un post-sync pour une étape qui n'existe plus.
 func hasConvergenceBacklog(ctx context.Context, playerDB, sharedDB *sql.DB, xuid string) bool {
 	return countSharedMatchesMissingEnrichment(ctx, playerDB, sharedDB, xuid) > 0 ||
 		len(selectMatchesMissingPSA(ctx, playerDB)) > 0 ||
-		len(selectMatchesMissingEvents(ctx, playerDB, sharedDB, xuid)) > 0 ||
-		len(selectMatchesMissingWeapons(ctx, playerDB, sharedDB, xuid)) > 0
+		len(selectMatchesMissingEvents(ctx, playerDB, sharedDB, xuid)) > 0
 }
 
 // selectMatchesMissingPSA retourne les matchs enrichis dont les
@@ -536,76 +528,6 @@ func (s postSyncFilmSteps) runEventsConvergence(ctx context.Context) {
 		"gamertag", e.gamertag, "selected", len(eventsWork), "processed", total)
 }
 
-// runWeaponKills — étape 1.55 : pipeline film weapon kills. Convergent : nouveaux
-// matchs (insertedIDs) ∪ backlog incomplet (bits weapon non posés), bornés. La
-// sélection weapons se fait APRÈS la convergence events pour que highlight_events
-// soit peuplé. Best-effort : films absents (404/410) normaux pour les vieux
-// matchs. Garde bit-honnête préservée (MBitWeaponKills posé seulement si ≥1 ligne
-// insérée, cf. flushWeaponKillsForMatch).
-func (s postSyncFilmSteps) runWeaponKills(ctx context.Context, insertedIDs []string) {
-	e := s.engine
-	var weaponBacklog []string
-	s.withRead(ctx, "weapons_select", func(sharedDB *sql.DB) {
-		weaponBacklog = selectMatchesMissingWeapons(ctx, s.playerDB, sharedDB, e.xuid)
-	})
-	observability.AddIntT(ctxkeys.TitleSlug(ctx), "convergence_weapons_pending_total", int64(len(weaponBacklog)))
-	weaponWork := mergeUniqMatchIDs(insertedIDs, weaponBacklog)
-	if len(weaponWork) == 0 {
-		return
-	}
-	totalDone, totalNoFilm := 0, 0
-	for start := 0; start < len(weaponWork); start += postsyncWeaponsBurstChunk {
-		end := min(start+postsyncWeaponsBurstChunk, len(weaponWork))
-		// COLLECT : download film + corrélation. Les lectures shared dont dépend
-		// la corrélation (highlight_events, match_participants) passent par un
-		// segment de LECTURE — jamais par le writer. Le segment est relâché AVANT
-		// le burst (garde anti-deadlock de SharedAccess.Write).
-		var collected []collectedWeaponKills
-		readOK := false
-		s.withRead(ctx, "weapons_collect", func(roDB *sql.DB) {
-			readOK = true
-			collected = collectWeaponKillsChunk(ctx, roDB, s.client, e.xuid, weaponWork[start:end])
-		})
-		if !readOK {
-			// Lecture shared indisponible (déjà loggée + trackFatalErr par withRead) :
-			// inutile de réessayer lot après lot, on reporte le reste du backlog.
-			break
-		}
-		if len(collected) == 0 {
-			continue // tout le lot a échoué au fetch film → rien à écrire, pas de burst
-		}
-		// FLUSH : burst writer court, écritures seules.
-		wdb, releaseW, werr := s.shared.Write(ctx, "weapons")
-		if werr != nil {
-			slog.WarnContext(ctx, "post-sync: burst weapons indisponible — reste du backlog reporté",
-				"gamertag", e.gamertag, "remaining", len(weaponWork)-start, "err", werr)
-			trackFatalErr(s.result, "weapons burst", werr)
-			break
-		}
-		var done, noFilm int
-		func() {
-			defer releaseW()
-			done, noFilm = flushWeaponKillsChunk(ctx, wdb, collected)
-		}()
-		totalDone += done
-		totalNoFilm += noFilm
-		if ctx.Err() != nil {
-			// Annulation en cours de cycle : on arrête proprement (le reste du
-			// backlog est repris au cycle suivant — étapes idempotentes).
-			slog.WarnContext(ctx, "post-sync: weapon kills interrompu", "gamertag", e.gamertag, "err", ctx.Err())
-			trackFatalErr(s.result, "weapon kills", ctx.Err())
-			break
-		}
-	}
-	s.result.WeaponKillsProcessed = totalDone
-	s.result.WeaponKillsNoFilm = totalNoFilm
-	observability.AddIntT(ctxkeys.TitleSlug(ctx), "convergence_weapons_processed_total", int64(totalDone))
-	if totalDone > 0 || totalNoFilm > 0 {
-		slog.InfoContext(ctx, "post-sync: weapon kills",
-			"gamertag", e.gamertag, "done", totalDone, "no_film", totalNoFilm)
-	}
-}
-
 // runKillSource — étape 1.57 : la SOURCE DU KILL des matchs insérés, puis le backlog.
 //
 // POURQUOI ICI, ET PAS DANS UN OUTIL SÉPARÉ. Cette donnée n'avait qu'un producteur : une
@@ -615,9 +537,11 @@ func (s postSyncFilmSteps) runWeaponKills(ctx context.Context, insertedIDs []str
 // (`.ai/V7.5/REGISTRE_ASSISTANCES_2026-08-29.md`). Une donnée qui ne se remplit que si
 // quelqu'un lance une commande finit toujours par ne plus se remplir.
 //
-// Elle vient APRÈS runWeaponKills, pour la même raison que celui-ci vient après la
-// convergence events : le film du match est disponible et récent, et le roster que le
-// décodage doit joindre (`v_gamertag_lookup`) est à jour.
+// Elle vient APRÈS la convergence events, pour la même raison que l'étape 1.55 (weapon
+// kills, supprimée le 2026-09-01) y venait : le film du match est disponible et récent, et
+// le roster que le décodage doit joindre (`v_gamertag_lookup`) est à jour. Depuis cette
+// suppression, elle est la SEULE étape du post-sync qui télécharge un film — c'est donc
+// elle qui porte les marqueurs de registre du film (cf. killcollector/registry_flags.go).
 //
 // TOUTE la logique vit dans internal/sync/killcollector (ratchet K3c : le neuf n'entre pas à
 // la racine du god-package) ; ici on ne fait que câbler les dépendances du moteur.

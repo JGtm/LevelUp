@@ -369,11 +369,14 @@ type MonitoringInvariantsSummary struct {
 
 // ConvergenceTotalsSinceBoot : cumuls process-wide du travail RATTRAPÉ par la
 // convergence (compteurs expvar — perdus au restart, comme l'historique).
+//
+// WeaponsProcessed RETIRÉ le 2026-09-01 : son compteur expvar était posé par l'étape 1.55,
+// supprimée avec son producteur (lot arme-source-unique). Le travail de film se compte
+// désormais sur l'étape 1.57 (`killsource_matchs_collectes`).
 type ConvergenceTotalsSinceBoot struct {
-	EventsProcessed  int64 `json:"events_processed"`
-	WeaponsProcessed int64 `json:"weapons_processed"`
-	PSAProcessed     int64 `json:"psa_processed"`
-	AliasesUpserted  int64 `json:"aliases_upserted"`
+	EventsProcessed int64 `json:"events_processed"`
+	PSAProcessed    int64 `json:"psa_processed"`
+	AliasesUpserted int64 `json:"aliases_upserted"`
 }
 
 // AdminConvergenceReport est la réponse de GET /admin/monitoring/convergence :
@@ -382,7 +385,7 @@ type ConvergenceTotalsSinceBoot struct {
 type AdminConvergenceReport struct {
 	TitleSlug   string `json:"title_slug"`
 	GeneratedAt string `json:"generated_at"` // RFC3339
-	// Horizon : borne de sélection par cycle — missing_psa/events/weapons sont
+	// Horizon : borne de sélection par cycle — missing_psa/events sont
 	// PLAFONNÉS à cette valeur (afficher « N+ » quand count == horizon).
 	Horizon         int                        `json:"horizon"`
 	Players         []PlayerConvergenceReport  `json:"players"`
@@ -449,11 +452,13 @@ type PlayerConvergenceReport struct {
 	Gamertag   string `json:"gamertag"`
 	XUID       string `json:"xuid"`
 	// MissingEnrichment : matchs en shared sans row player_match_enrichment
-	// (non plafonné). Les 3 suivants sont plafonnés à Horizon.
+	// (non plafonné). Les 2 suivants sont plafonnés à Horizon.
+	//
+	// MissingWeapons RETIRÉ le 2026-09-01 : il comptait le retard de l'étape 1.55,
+	// supprimée. Le retard de film est global (étape 1.57), pas par joueur.
 	MissingEnrichment int `json:"missing_enrichment"`
 	MissingPSA        int `json:"missing_psa"`
 	MissingEvents     int `json:"missing_events"`
-	MissingWeapons    int `json:"missing_weapons"`
 	// CheckError non vide = DBs irrésolvables pour ce joueur (compteurs à 0).
 	CheckError string `json:"check_error,omitempty"`
 }

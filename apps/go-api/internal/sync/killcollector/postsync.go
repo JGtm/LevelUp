@@ -14,9 +14,9 @@ package killcollector
 //
 // UN RATTRAPAGE MANUEL AURAIT REPRODUIT LE DEFAUT. Une donnee qui ne se remplit que si
 // quelqu un pense a lancer une commande finit toujours par ne plus se remplir. L etape vit
-// donc dans le pipeline, a cote de `runWeaponKills` (etape 1.55) qui exploite deja le film du
-// meme match, au meme moment, pour la meme raison : c est la que le film est disponible ET
-// recent.
+// donc dans le pipeline, a la place qu occupait l etape 1.55 (supprimee le 2026-09-01), qui
+// exploitait deja le film du meme match, au meme moment, pour la meme raison : c est la que
+// le film est disponible ET recent.
 //
 // # ELLE N EST PAS BRIDEE A UNE MACHINE, ET C EST DELIBERE
 //
@@ -24,7 +24,7 @@ package killcollector
 // octets du film. Ce n est PAS le cas ici : le pic du decodage kill-source vaut le film brut
 // plus le film decompresse, et le plus gros film du corpus pese 88 Mio (mesure du 2026-08-24,
 // cf. l en-tete de `cmd/levelup/cmd_backfill_killsource.go`). L etape tourne donc partout ou
-// `runWeaponKills` — qui telecharge deja des films en production — tourne. Elle est bornee
+// l etape 1.55 — qui telechargeait deja des films en production — tournait. Elle est bornee
 // par cycle, pas par machine.
 //
 // # ELLE ARCHIVE, ET CELA FAIT BAISSER LE TRAFIC DU RESTE DU PIPELINE
@@ -269,7 +269,7 @@ func RunPostSync(ctx context.Context, h *PostSyncHook, d PostSyncDeps, insertedI
 // LE MOTEUR DE SYNC N A PAS DE HANDLE PERMANENT, ET C EST VOULU (ADR 0013 / 0016 B-swap) :
 // garder un `*sql.DB` shared vivant pendant toute la passe rendrait le B-swap RO<->RW
 // impossible. Le collecteur resout le roster AVANT d acquerir le writer, donc les deux
-// segments ne se chevauchent jamais — c est la meme garde anti-deadlock que `runWeaponKills`
+// segments ne se chevauchent jamais — c est la meme garde anti-deadlock que l ex-etape 1.55
 // (« le segment est relache AVANT le burst »).
 type rosterParSegment struct {
 	withRead func(ctx context.Context, step string, fn func(sharedDB *sql.DB))
@@ -410,7 +410,7 @@ var requeteBacklogTaille = `SELECT COUNT(*)` + conditionBacklog
 // ⚠ LECTURE PAR LA VUE `_latest` (ADR 0026) : une lecture brute servirait des passes perimees
 // et ferait sauter des matchs a redecoder.
 func backlogAJour(ctx context.Context, db *sql.DB, horizon int) (ids []string, total int) {
-	args := []any{matchflags.MBitWeaponKillsNoFilm, KillSourceDecoderRev, killscope.ReadPathCreditBackfill}
+	args := []any{matchflags.MBitFilmAbsent, KillSourceDecoderRev, killscope.ReadPathCreditBackfill}
 
 	if err := db.QueryRowContext(ctx, requeteBacklogTaille, args...).Scan(&total); err != nil {
 		slog.WarnContext(ctx, "post-sync: killsource taille du backlog illisible", "err", err)

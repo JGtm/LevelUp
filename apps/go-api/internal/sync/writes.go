@@ -184,24 +184,6 @@ func ubigintArg(p *uint64) any {
 // 2026-05-23 pour casser le cycle d'import sync ⇄ persist).
 type WeaponKillRow = domain.WeaponKillRow
 
-// MarkWeaponKillsDone met à jour le bit MBitWeaponKills ou MBitWeaponKillsNoFilm
-// dans match_registry.backfill_completed.
-func MarkWeaponKillsDone(ctx context.Context, db *sql.DB, matchID string, noFilm bool) error {
-	bit := MBitWeaponKills
-	if noFilm {
-		bit = MBitWeaponKillsNoFilm
-	}
-	_, err := db.ExecContext(ctx, `
-		UPDATE match_registry
-		SET backfill_completed = COALESCE(backfill_completed, 0) | ?
-		WHERE match_id = ?
-	`, bit, matchID)
-	if err != nil {
-		return fmt.Errorf("MarkWeaponKillsDone(%s): %w", matchID, err)
-	}
-	return nil
-}
-
 // ──────────────────────────────────────────────────────────────────────────────
 // Personal score awards writes
 // ──────────────────────────────────────────────────────────────────────────────

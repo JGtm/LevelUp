@@ -1,3 +1,48 @@
+## [2026-09-01] Arme du kill — volet A, étape A3 : le producteur de corrélation est mort — Complété
+
+**Périmètre** : étape A3 du plan `.ai/V7.5/PLAN_SOURCE_UNIQUE_ARME_2026-09-01.md`, worktree
+dédié `LevelUp-wt-arme-source`, branche `wt/arme-source-unique`. A0-A2 étaient closes ; A4 et
+A6 restent à faire.
+
+**Décision technique principale — les DEUX bits de masque survivent, c'est leur POSEUR qui
+déménage.** La rédaction initiale du plan demandait de retirer `MBitWeaponKills` (1<<21) et
+`MBitWeaponKillsNoFilm` (1<<22). Vérification sur pièces : le bit 22 n'a JAMAIS été une donnée
+de `weapon_kills` — c'est le marqueur terminal « film 404 / expiré » du registre, et ses
+lecteurs sont vivants et hors de la chaîne supprimée (rattrapage de l'étape 1.57,
+`snapshot_readiness`, rattrapage de l'étape 1.58). Le supprimer les cassait à la compilation ;
+supprimer son unique poseur (`MarkWeaponKillsDone`, appelé depuis le fichier détruit) figeait
+le marqueur et faisait redemander à vie les ~29 % de films irrécupérables (581 des 999
+candidats du 29/08). Les valeurs numériques sont donc inchangées — elles sont persistées dans
+`match_registry.backfill_completed`, on ne renumérote jamais un bit posé en base — et le poseur
+est passé à l'étape 1.57 (`killcollector/registry_flags.go`), qui télécharge le film du même
+match au même moment. Le bit 22 est renommé `MBitFilmAbsent` : son ancien nom parlait d'une
+table qui disparaît côté Halo Infinite alors qu'il n'a jamais rien dit d'elle.
+
+**Résultats observés** : `internal/sync/backfill_weapons.go` et ses 4 fichiers de tests,
+l'étape 1.55 de `convergence.go`/`engine_postsync.go`, la chaîne
+`analysis/weapon_{correlation,parser,reconciliation}.go`, `weaponv3/{correlate,fire_scanner_v3,
+attribution,melee_scanner,grenade_scanner}.go`, `kill_attribution.go`, la table morte
+`weapon_kills_v3` (domain + repo + migration + entrée d'ordre) et 10 sous-commandes CLI sont
+supprimés. Trois corrections sur pièces : `weapon_scanner.go` est CONSERVÉ (la ventilation des
+tirs du rejeu 2D en dépend), `cmd/diag_weapons_v3/` est CONSERVÉ (unique écrivain de
+`kill_positions` et `match_objective_events` — seul son mode armes part), et l'axe
+`scope.Weapons` disparaît en entier jusqu'à la case de l'UI d'administration, faute
+d'exécuteur. Les deux compteurs `weapon_kills_processed`/`_no_film` étant publiés au contrat,
+leur retrait a entraîné `openapi.yaml`, `generated.ts`, la page admin « convergence » et
+5 clés i18n.
+
+**Gates** : `go build ./...` = 0, `go vet ./...` = 0, `go vet -tags=integration ./...` = 0,
+`go test` sur tous les paquets hors `internal/himap` = 0, `go test -tags=integration -p 1
+./internal/sync/killcollector/` = 0, `gofmt -l` vide, web `typecheck`/`lint`/`vitest` = 0
+(5 666 tests). `internal/himap` non exécuté localement (> 10 min, dette datée) : le paquet ne
+référence aucun symbole touché, la CI fait foi.
+
+**Conclusion / prochaine étape** : A4 (mort de la table côté Halo Infinite, DEUX vues
+`v_weapon_kills` à droper — schémas `main` ET `shared`), puis A6 (registre véhicules et
+tourelles, plus la reclassification de l'épée et du marteau en arme lourde).
+
+---
+
 ## [2026-09-01] Arme du kill — volet A, étapes A0 à A2 : la source de dégât devient la source unique — En cours
 
 **Périmètre** : volet A du plan `.ai/V7.5/PLAN_SOURCE_UNIQUE_ARME_2026-09-01.md`, worktree
