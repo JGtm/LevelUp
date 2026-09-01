@@ -1,3 +1,88 @@
+## [2026-09-01] `ti=12 i14` — L'ANNEAU DU MARQUEUR PRÉCÈDE CHAQUE EXPLOSION D'UN DÉLAI CONSTANT — Complété
+
+**La question du lot** : `managed-navpoint-radial-progress` (ti=12 i14) — le disque qui se
+remplit autour d'un marqueur d'objectif — est porté depuis le lot C et n'avait **jamais** été
+interrogé sur un film d'Assaut. Instrument écrit, critère écrit AVANT la mesure, témoins d'un
+autre mode obligatoires.
+
+**Instrument** (test seul, aucun chemin de production touché) :
+`navpoint_ti12_scan_test.go` (clone de `ScanFilmObjectives` pour ti=12 — bande de slots
+OBSERVÉE, deux voies delta et image-clé, témoin de chaînage par lecture),
+`navpoint_ti12_radial_test.go` (critère + séries par slot),
+`navpoint_ti12_verdict_test.go` (portes + oracle recopié + rapport). Garde `ASSAUT_CACHE`,
+sentinelle mémoire armée (pic observé **0,01 Gio**), `LockProcessDecode`, un seul décodage à la
+fois. 13 films, ~170 s par passe.
+
+### GATE 0 — présence : ti=12 est LÀ, sur 9 films d'Assaut sur 9
+
+72 491 records ancrés, **10 544 lectures i14**. Chaînage delta **72 à 91 %** — à comparer aux
+**3 %** de plancher de bruit mesurés le 2026-09-01 sur `worldObjectHeaderAt`, et aux 2,7–26 % que
+rend la voie delta de ti=11. Ce canal-ci est ancré proprement.
+
+**La voie IMAGE-CLÉ est morte, comme annoncé avant la mesure** : ti=12 n'est porté qu'à 2
+composants sur 24 (i0 `sub-type`, i14 `radial-progress`), donc un record d'état complet
+désynchronise dès i1. Composants bloquants dominants : `i9` (3 308 sur `df8fcbef`), puis i27,
+i12, i26, i1. **La voie delta est la seule exploitable, et elle suffit.**
+
+### GATE 1 — l'instrument voit, et le témoin le prouve
+
+4 témoins sur 4 rendent des lectures : Strongholds 22 287 et 17 672, KOTH 4 898, CTF 2 039. Et la
+forme est celle d'une jauge, à l'œil nu — KOTH `7f1bbf06`, slot 1557 :
+
+    26,3 s=127  27,0=133  27,8=140  28,5=146  29,3=152  30,0=159 ... 40,6=247
+
+Rampe LINÉAIRE de 127 (le zéro de la plage [-1, +1]) à 247, ~63 échantillons par seconde. C'est
+l'anneau de capture de la colline. **L'instrument n'est pas muet, son verdict sur l'Assaut compte.**
+
+### GATE 3 — le critère du chantier, et le résultat
+
+**Corpus entier : COUVERTURE 28/28, SENS 28/28, DISPERSION 2,174 → NÉGATIF sur le critère écrit.**
+Et la raison du négatif est elle-même le résultat : **il n'y a pas UN délai, il y en a DEUX**.
+
+Partition du corpus (antérieure à cette mesure : `ETAT_ASSAUT_2026-08-31.md` §1.b et §1.e — les
+trois films One Bomb sont les seuls multi-manches) :
+
+| moitié | explosions | min | médiane | max | dispersion | verdict |
+|---|---:|---:|---:|---:|---:|---|
+| Neutral Bomb (6 films) | **17/17** | 4 837 | **4 987** | 5 240 | **0,033** | CANDIDAT |
+| One Bomb (3 films) | **11/11** | 8 726 | **17 219** | 42 795 | **0,133** | CANDIDAT |
+
+**Les 17 explosions de Neutral Bomb sont TOUTES précédées, dans une fenêtre de 403 ms, par un
+anneau qui finit de se remplir.** La montée va de 127 (vide) à 254 (plein) dans 15 cas sur 17.
+
+**Les horloges NE SONT PAS décalées, contrairement à ce que le brief supposait.** La conversion
+de cet instrument est bit pour bit celle d'`objectiveevents.StatRecordsCtx` : `packetFrame = 0`
+= `PacketTypeDelta`, base = premier paquet delta du chunk, plus `start_ms` du manifeste. Le
+« 4 987 ms » est donc un délai RÉEL sur l'horloge de l'oracle, pas un artefact d'alignement.
+
+### Par slot — trois slots indépendants donnent le même 5 s
+
+    slot 1535   7/28   médiane 4 994 ms   dispersion 0,028
+    slot 1523   4/28   médiane 4 856 ms   dispersion 0,031
+    slot 1522   3/28   médiane 4 938 ms   dispersion 0,003
+
+Les navpoints vont par PAIRES (1411/1423, 1459/1471, 1469/1481 rendent des séries identiques) —
+un marqueur par camp portant le même anneau.
+
+### Ce que ça ne dit pas
+
+L'anneau **finit** 5 s avant l'explosion ; il ne dit pas où il **commence** — la montée retenue
+compte de 3 à 52 échantillons selon les films, et le seuil « non décroissant » la coupe au
+premier creux. Dater le DÉBUT de l'armement demande de caractériser la durée propre de l'anneau,
+pas seulement sa fin. Et rien n'établit encore que ce navpoint EST le site d'amorçage : i0
+`sub-type` (R(32), déjà porté) le dirait, il n'a pas été joint.
+
+**Prochaine étape** : (1) joindre i14 à i0 `sub-type` pour NOMMER le marqueur porteur ;
+(2) caractériser la durée propre de l'anneau (fenêtre de montée sans coupure au premier creux) ;
+(3) expliquer les deux constantes 5,0 s / 17,2 s — fusée différente par variante ?
+
+**Gates** : `gofmt` propre, `go vet` 0, `golangci-lint run ./internal/analysis/filmdec/...`
+**0 issues**. Trois passes de mesure (la 3e ajoute la partition du corpus, publiée À CÔTÉ du
+verdict primaire et jamais à sa place). Deux corrections postérieures à la passe publiée, toutes
+deux prouvablement neutres sur les chiffres : champ `ti12Read.Key` en écriture seule supprimé, et
+tri des montées départagé par slot (les délais se calculent sur `finMS`, qui est la clé de tri —
+seul le NOM du slot rapporté pouvait varier).
+
 ## [2026-08-31] LA JAUGE EST SUR `ti=11`, PAS `ti=13` — les deux archétypes sont en miroir — Complété
 
 **Le film porte son propre dictionnaire de composants, en clair**, et personne ne le lui avait
