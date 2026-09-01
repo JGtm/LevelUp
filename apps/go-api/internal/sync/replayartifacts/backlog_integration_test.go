@@ -105,8 +105,8 @@ func TestCandidatsARattraper_SelectionOrdreEtJauge(t *testing.T) {
 	repoRoot := t.TempDir()
 	t0 := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 
-	inscrireAuRegistre(t, db, "vieux-sans-film", t0, int64(matchflags.MBitWeaponKillsNoFilm)) // (1)
-	inscrireAuRegistre(t, db, "deja-cuit", t0.AddDate(0, 1, 0), 0)                            // (2)
+	inscrireAuRegistre(t, db, "vieux-sans-film", t0, int64(matchflags.MBitFilmAbsent)) // (1)
+	inscrireAuRegistre(t, db, "deja-cuit", t0.AddDate(0, 1, 0), 0)                     // (2)
 	poserArtefact(t, repoRoot, "deja-cuit")
 	inscrireAuRegistre(t, db, "pris-par-les-inseres", t0.AddDate(0, 2, 0), 0) // (3)
 	inscrireAuRegistre(t, db, "en-retard-ancien", t0.AddDate(0, 3, 0), 0)

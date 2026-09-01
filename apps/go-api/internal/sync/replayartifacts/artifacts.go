@@ -14,8 +14,11 @@
 // puis le rattrapage), cuisson.go fait le travail (pont disque, construction, mise en file),
 // journal.go dit ce que le cycle a fait.
 //
-// CE QUE FAIT L'ÉTAPE. Après runWeaponKills (le film vient d'être exploité pour les kills :
-// c'est le moment où il est disponible ET récent), pour chaque match retenu dans la fenêtre
+// CE QUE FAIT L'ÉTAPE. Après runKillSource, l'étape 1.57 (le film vient d'être exploité pour
+// la source des kills : c'est le moment où il est disponible ET récent — et l'étape 1.57 l'a
+// au passage persisté au cache disque, donc celle-ci le trouve sans le retélécharger). Elle
+// venait auparavant après runWeaponKills, l'étape 1.55, supprimée le 2026-09-01 avec la
+// chaîne d'attribution par corrélation des tirs. Pour chaque match retenu dans la fenêtre
 // replay_retention_months — les matchs INSÉRÉS du cycle d'abord, puis le RATTRAPAGE de la
 // queue récente, parce que le film Theater se publie après la partie et qu'une tentative
 // unique à l'instant de l'insertion ne rattrape jamais rien (cf. backlog.go) :
