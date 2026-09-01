@@ -79152,3 +79152,51 @@ gofmt propres ; fichiers <500 L, fonctions <80 L.
 
 Conclusion : reserve §11 du plan LEVEE + doc-header `hits.go` mis a jour (verdict mesure). Num et
 denom keyent desormais identique (ShooterIndex5 == PlayerIndex5). SHA a consigner apres commit.
+
+## [2026-09-01] Remise chantier précision par arme — capability retirée, acquis conservés
+
+Statut : Complété (remise).
+
+Contexte : décision FERME du pilote/user. La précision PAR ARME dérivée du film est NON FIABLE
+(recalage aberrant : le pairing tir↔dégât rate ~40 %+ des touches, armes automatiques à 0,9-3,3 %
+vs ~40 % côté API — cf. `.ai/V7.5/film_re/RECALAGE_WEAPON_ACCURACY_FILM_2026-09-01.md`, commit
+`945c9fdb7`). On remise : garder les acquis backend, retirer l'exposition. La précision GLOBALE
+reste servie par l'API.
+
+Décision technique : retrait des 3 SEULS points d'exposition posés au Lot 3 (revert de l'ajout à
+Infinite ; Halo 5 reste le fournisseur natif de `weapon_accuracy`) —
+1. `internal/games/halo_infinite/adapter_data.go` : `games.CapWeaponAccuracy` (data-level
+   `match.weapon.accuracy`) `CapSupported` -> `CapNotExposed` (ferme la porte `collectHits` :
+   la passe film ne s'exécute plus pour Infinite).
+2. `config/titles/halo_infinite/mappings/capabilities.toml` : `"match.weapon.accuracy"`
+   `"supported"` -> `"not_exposed"` (restaure la cohérence avec la note existante sur
+   `film.weapon_shots` : « le taux est match.weapon.accuracy, et il est not_exposed »).
+3. `internal/domain/title/registry.go` : `CapWeaponAccuracy` (title-level `weapon_accuracy`)
+   RETIRÉE de la liste produit built-in d'Infinite -> `useCapability('weapon_accuracy')` web = false
+   -> charts a/c masqués pour Infinite.
+
+Conservé intact (acquis) : fix d'index `ShooterIndex5`/filmdec, décodeur `weapon_hits*.go`,
+`weapon_hit_distance_resolver.go`, table/migration `match_weapon_hit_distance`, persister, mapper
+`weapon_accuracy_film.go`, passe `killcollector/hits.go`, capability de STOCKAGE `film.weapon_shots`
+(gouverne le stockage, pas la publication). Aucun fichier supprimé.
+
+Anti-doc-inversée : le commentaire const `CapWeaponAccuracy` (registry.go ~89-96) disait DÉJÀ
+« Halo Infinite : non » (le Lot 3 avait oublié de le mettre à jour) — il redevient correct sans
+retouche. Les 3 commentaires d'exposition (adapter_data.go, capabilities.toml, registry.go liste)
+sont réécrits pour décrire l'état RÉEL : not_exposed, remisé, raison = recalage aberrant, reprise =
+piste compteur ECS.
+
+Dégradation gracieuse (vérifiée par lecture) : `WeaponAccuracyRepo.LoadWeaponAccuracyAggregated`
+renvoie `games.ErrCapabilityNotSupported` quand la table est absente (title-agnostic) ; le service
+Synthèse omet le champ `WeaponAccuracy` ; le front masque via `useCapability`. Aucun panic, aucun
+500. Test `TestCapabilitiesTOMLMatchesHardcoded` (parité TOML↔Go Infinite) : vert (les deux côtés
+changés cohéremment). Tests de parité title-level (`capabilities_parity_test.go`) : verts (Halo 5
+accorde toujours `weapon_accuracy`, aucune allowlist orpheline requise). Aucun test à inverser.
+
+Gates : `go build ./internal/...` VERT ; `go test ./internal/domain/title/ ./internal/games/...
+./internal/service/ -count=1` VERT (dont ratchets slug + capability parité) ; `go vet` + `gofmt -l`
+propres sur les fichiers touchés. Web : N/A (aucun fichier web/i18n touché, le front est inchangé).
+
+Conclusion : exposition retirée, acquis backend conservés sur `feat/precision-arme`. Plan REMISÉ +
+Lots 4/5/6 statués `[!]` ; report inscrit au `REGISTRE_REPORTS.md` (condition de reprise : compteur
+ECS validé OU pairing fiabilisé pour les automatiques). SHA à consigner après commit.

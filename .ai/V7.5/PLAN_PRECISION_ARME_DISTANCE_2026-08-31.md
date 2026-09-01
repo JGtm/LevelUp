@@ -4,6 +4,18 @@
 > weapon_accuracy). Branche cible : `feat/v75` (lots = commits). Worktree d'exécution dédié.
 > Contrat d'exécution : skill `plan-execution`. Ce fichier est un PLAN, pas du code.
 
+> **⚠ PLAN REMISÉ le 2026-09-01 (décision FERME du pilote/user).** La précision PAR ARME dérivée
+> du film est NON FIABLE : le pairing tir↔dégât rate ~40 %+ des touches et les armes automatiques
+> ressortent à 0,9-3,3 % vs ~40 % côté API (recalage aberrant, cf.
+> `.ai/V7.5/film_re/RECALAGE_WEAPON_ACCURACY_FILM_2026-09-01.md` et commit `945c9fdb7`). On GARDE
+> les acquis BACKEND (fix d'index `ShooterIndex5`/filmdec, décodeur `weapon_hits*`, résolveur
+> distance, table/migration `match_weapon_hit_distance`, persister, mapper `weapon_accuracy_film.go`,
+> passe `killcollector/hits.go`, capability de STOCKAGE `film.weapon_shots`) et on RETIRE
+> l'EXPOSITION (capability `weapon_accuracy` d'Infinite : `adapter_data.go` → `CapNotExposed`,
+> `capabilities.toml` → `not_exposed`, `registry.go` retirée de la liste produit built-in). La
+> précision GLOBALE reste servie par l'API. Lots 4/5/6 statués `[!]`. **Reprise** : voir
+> `REGISTRE_REPORTS.md` (piste compteur ECS validée OU pairing fiabilisé pour les automatiques).
+
 ---
 
 ## 0. Le plan en une page
@@ -241,13 +253,14 @@ contrôle est le recalage API + la porte ci-dessus, sur NOTRE donnée.
       indéfini), hors des fichiers touchés (cf. §11). Gate exécuté sur les paquets compilables.
 - Prochaine étape : **Lot 4** (vues a/c allumées + groupement par classe).
 
-### Lot 4 — Vues (a) et (c) allumées + (c) par classe
-- [ ] Vérifier que `SynthesisWeaponAccuracyChart` (a) et le chart roster (c) s'affichent pour
-      Infinite (capability on, données présentes). Ajouter le groupement par CLASSE au chart roster
-      (libellés i18n `frags.class.<class>` FR+EN).
-- [ ] Recalage API dans le lecteur (`analysis`), title-agnostic, écart à l'API exposé à côté.
-- **Gate** : `make check-types` + `make test-web` + `make go-api-test` verts ; capture visuelle
-      (gate visuel user) des deux charts sur un joueur Infinite avec film.
+### Lot 4 — Vues (a) et (c) allumées + (c) par classe  — REMISÉ 2026-09-01 (`[!]`)
+- [!] Allumage des charts (a)/(c) pour Infinite — NON TRAITÉ : la capability d'exposition est
+      RETIRÉE (remise), les charts restent masqués pour Infinite. Justification : numérateur film
+      non fiable (recalage aberrant, décision user 2026-09-01 « remiser »). Le groupement par CLASSE
+      du chart roster n'est pas ajouté (la vue ne s'allume pas).
+- [!] Recalage API dans le lecteur — NON TRAITÉ : sans vue allumée, pas de lecteur de recalage à
+      livrer. Même justification.
+- **Gate** : N/A (aucun code exposé livré). Voir `REGISTRE_REPORTS.md` pour la condition de reprise.
 
 #### Lot 4a (vue a — précision moyenne par arme, joueur actif) — BLOQUÉ / ESCALADÉ 2026-09-01
 > Périmètre : vue (a) SEULE. Zone WRITE/filmdec interdite (mapper, persister, killcollector, filmdec).
@@ -275,16 +288,19 @@ contrôle est le recalage API + la porte ci-dessus, sur NOTRE donnée.
       façon). Décision d'allumage/gating de la capability (posée prématurément au Lot 3) =
       **ressort du pilote**, pas d'un unwind unilatéral. Escaladé + report au REGISTRE_REPORTS.
 
-### Lot 5 — Vue (b) précision × distance
-- [ ] DTO domain + lecteur `analysis` (jointure weapon_accuracy × distance) + endpoint.
-- [ ] Composant React (histogramme précision par arme selon la distance), i18n FR+EN, tokens
-      couleur (skill `color-tokens`), query key dans `lib/query/keys.ts`.
-- **Gate** : `make check-types` + `make test-web` verts ; gate visuel user.
+### Lot 5 — Vue (b) précision × distance  — REMISÉ 2026-09-01 (`[!]`)
+- [!] DTO domain + lecteur `analysis` (jointure weapon_accuracy × distance) + endpoint — NON
+      TRAITÉ : la vue (b) repose sur le même numérateur film jugé non fiable ; remisée avec le reste
+      (décision user 2026-09-01). La table `match_weapon_hit_distance` et son persister restent en
+      place (acquis conservés), mais aucun lecteur/endpoint ne les expose.
+- [!] Composant React histogramme distance — NON TRAITÉ : même justification (rien à exposer).
+- **Gate** : N/A. Reprise conditionnée dans `REGISTRE_REPORTS.md`.
 
-### Lot 6 — Livraison
-- [ ] `make gate-push` ; suite complète verte ; entrée `thought_log.md` ; MAJ `MEMORY.md` /
-      `.ai/V7.5/` ; report Phase 2 (classe lourde / projectiles) au `REGISTRE_REPORTS.md`.
-- **Gate** : `skill delivery-checklist` ; CI verte au niveau JOB.
+### Lot 6 — Livraison  — REMISÉ 2026-09-01 (`[!]`)
+- [!] `make gate-push` / suite complète / livraison — NON TRAITÉ : le chantier est REMISÉ, il n'y a
+      pas de feature exposée à livrer. La remise elle-même est documentée (ce plan REMISÉ,
+      `REGISTRE_REPORTS.md`, `thought_log.md`) et les acquis backend restent sur `feat/precision-arme`.
+- **Gate** : N/A (remise). Le report Phase 2 (classe lourde / projectiles) est subsumé par la remise.
 
 ---
 

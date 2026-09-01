@@ -65,16 +65,19 @@ schema_version = 1
 "match.events.timeline"  = "degraded"
 "match.killfeed.per_kill" = "degraded"
 "match.events.spatial"   = "not_exposed"
-# Précision par arme : supported depuis le 2026-09-01 (Lot 3 PRECISION_ARME_DISTANCE).
-# La vieille note « taux non publiable » portait sur HitLikely (scanner de touches refusé,
-# faux ×2) — méthode REMPLACÉE. Le numérateur est désormais reconstruit du film par
-# l'APPARIEMENT tir↔dégât (action_weapon_fire 0xD2 ↔ damage_aftermath 0xC0 du même
-# attaquant, NOTE_ATTRIBUTION_ARME_TIR_2026-08-31) : la passe killcollector/hits.go écrit
-# shots_fired/shots_landed dans weapon_accuracy et l'histogramme de distance dans
-# match_weapon_hit_distance. Porte d'effectif Nmin=8 (armes réellement utilisées) ; le
-# recalage sur l'accuracy globale de l'API est un calcul de LECTURE (Lot 4). Gate le
-# numérateur film (collectHits) ET, côté produit, les charts a/c (front useCapability).
-"match.weapon.accuracy"  = "supported"
+# Précision par arme : REMISÉE le 2026-09-01 (not_exposed). Le numérateur reconstruit du
+# film par l'APPARIEMENT tir↔dégât (action_weapon_fire 0xD2 ↔ damage_aftermath 0xC0 du même
+# attaquant, NOTE_ATTRIBUTION_ARME_TIR_2026-08-31) s'est révélé NON FIABLE au recalage : le
+# pairing rate ~40 %+ des touches et les armes automatiques ressortent à 0,9-3,3 % vs ~40 %
+# côté API (RECALAGE_WEAPON_ACCURACY_FILM_2026-09-01, commit 945c9fdb7). On REMISE : le code
+# backend (décodeur, mapper killcollector/hits.go, persister, table match_weapon_hit_distance)
+# est conservé, seule l'exposition est retirée. Cette clé data-level gate le numérateur film
+# (collectHits) : not_exposed ⇒ la passe film ne s'exécute pas pour Infinite, et le front
+# useCapability('weapon_accuracy') repasse à false (charts a/c masqués). La précision GLOBALE
+# reste servie par l'API. Reprise : piste compteur ECS (cf. .ai/V7.5/REGISTRE_REPORTS.md).
+# Cohérent avec la note « le taux est match.weapon.accuracy, et il est not_exposed » sur
+# film.weapon_shots plus bas.
+"match.weapon.accuracy"  = "not_exposed"
 # Libellés de playlist préfixés d'une catégorie matchmaking ("Arène delta : Héritage")
 # à retirer pour l'affichage (analysis.NormalizePlaylistLabel). Trait d'affichage du
 # titre lu au site de résolution du libellé (match_view_repo) — absente pour un titre
