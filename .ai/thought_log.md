@@ -80024,3 +80024,51 @@ et chiffres : `.ai/V7.5/film_re/NOTE_EQUIPEMENT_PICKUP_2026-09-01.md`.
 **Prochaine étape** : un film à carte connue pour croiser l'étape 3 ; élargir la fenêtre
 d'appariement de l'étape 1 en mesurant ce que le témoin y perd ; pour la classe 2, le pool Lua
 `hsc*` comme vocabulaire et `biped_throw_initiate` comme troisième juge.
+
+---
+
+## [2026-09-01] Cuisson de validation padPickups + volet B (images-clés)
+
+**Statut** : Complété. **Worktree** : `wt/biped-pickup`. Une seule cuisson, pic 0,129 GiB.
+
+**Volet A — la promesse non tenue du lot 3 est enfin vérifiée, et elle tient.** La datation des
+`padPickups` n'avait jamais tourné sur un film à socles ; la ronde 1 y avait trouvé un P0 qui la
+rendait morte. Sur `01e1f945` (Catalyst, KOTH) : **46 occupations, 22 datées à l'instant exact,
+21 avec un ramasseur nommé**, 4 ambiguës, 11 non couvertes, 9 socles de power-up hors jointure.
+L'arithmétique se ferme (22+4+11+9 = 46). Contrôles : **0/22** datations hors de leur intervalle
+d'origine, **21/22** appuyées par un ramassage natif de la même arme ET du même joueur — le seul
+échec étant l'occupation dont le `xuid` est `null`, donc 21/21 sur les nommées. Un intervalle de
+vingt secondes devient un instant avec un joueur.
+
+**Je n'ai pas deviné la carte, et c'était le vrai risque.** L'artefact ne l'écrit nulle part, le
+confinement des bornes ne discrimine pas (70 cartes sur 79 contiennent les positions), et un
+mauvais cadrage détruit le résultat en silence — mesuré au lot 4 (7,2× → 1,8×). La carte vient
+de la documentation du dépôt, qui associe `01e1f945` à Catalyst en trois endroits ; le journal
+de cuisson l'a confirmé (`module=catalyst`).
+
+**Le second film n'a pas été cuit, et je le dis plutôt que de cuire par réflexe.** Le premier
+prouve tout ce qui devait l'être. Le candidat naturel était sur la MÊME carte : il aurait varié
+le mode, pas le cadrage.
+
+**Au passage, un négatif du lot 3 est confirmé** : l'artefact déjà cuit de `000d5950` porte lui
+aussi 0 socle et 0 occupation. Ma cuisson pilote ne régressait rien.
+
+**Volet B — la voie des images-clés ne tient pas sa promesse de couverture.** B1 (≥ 50 %
+étiquetés) **NON TENU** : 29,3 % et 19,4 %, soit pas mieux que la voie delta (19,5 / 25,0 %).
+Entre les ramassages sans paire d'images-clés, les ambigus et ceux sans changement, la fenêtre
+de vingt secondes perd les deux tiers de la population. Et elle est plus BRUITÉE : 66,7 % de
+collisions contre 16,7 %.
+
+**Mais deux résultats positifs.** B2 (témoin < 25 %) tenu très largement — **1,2 % et 0,0 %** :
+le risque « il se passe toujours quelque chose en 20 s » ne se matérialise pas, l'étiquetage
+mesure bien quelque chose. Et B3 : `eef5d48d` reçoit **rang 21 (Thruster)** par les DEUX voies
+indépendantes sur les DEUX films. Une corroboration croisée vaut mieux qu'une couverture.
+
+**Piste qualitative pour la classe 2, publiée comme telle et pas comme une mesure** : dans la
+table, les identifiants de classe 2 reçoivent des étiquettes GRENADE et ceux de classe 3 des
+étiquettes RANG. Cela converge avec l'hypothèse « classe 2 = grenades » que J2 n'avait pas su
+trancher au lot 4. Je n'ai pas croisé classe × type d'étiquette avec témoin — c'est une
+observation de table, et c'est la piste la plus prometteuse.
+
+**Rien de nouveau n'est publiable** côté nommage. La datation des `padPickups`, elle, est
+désormais vérifiée sur donnée réelle.
