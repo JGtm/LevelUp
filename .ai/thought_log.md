@@ -80720,3 +80720,44 @@ part ». Il l'est forcement quelque part : le HUD l'affiche.
 propriete reellement vus. Sur les temoins, ou le chainage est bon, c'est un **DICTIONNAIRE de
 proprietes reseau a nommer**, et le nommage est mecanique. C'est la voie pour nommer les jauges de
 zone de Strongholds et de KOTH, lues sans etre comprises depuis le lot C-bis.
+
+---
+
+## [2026-09-01] Le pied de film DECHIFFRE : c'est le flux des recompenses, gamertags EN CLAIR — et le negatif Assaut etait une erreur de lecture
+
+**Statut** : Complete pour le dechiffrement ; le classement des recompenses de mode reste ouvert.
+
+**LE DOUTE DE L'UTILISATEUR, ET IL AVAIT RAISON.** Ma synthese affirmait « pied de film quasi
+absent en Assaut (6 blocs / 9 films) ». C'etait faux comme generalisation : les 6 blocs etaient
+les seuls `th=10`. Le pied d'Assaut est AUSSI RICHE que celui des autres modes — 88 a 589 blocs
+par film, contre 187 a 454 chez les temoins.
+
+**TROIS SONDES, TROIS ETAGES.**
+1. `TestAssautPiedAncre` — l'ancre XUID seule, histogramme des octets suivants : les pieds
+   d'Assaut font 0,2 a 1,6 Mo et fourmillent de XUID ; l'ancre de production `[2D C0]` y est
+   presente au meme taux que chez les temoins.
+2. `TestAssautPiedFamilles` — dedoublonnage PAR MARQUEUR DE FIN au bit : les comptes tombent
+   EXACTEMENT sur ceux de l'ancre de production (Oddball 208 = 208, 9f57c612 168 = 168...), les
+   deux geometries se valident mutuellement. Familles : temoins = th 10/20/50/100/150 ; Assaut =
+   pareil SAUF th=10 (6 blocs sur un seul film).
+3. `TestAssautPiedExplosion` — vidage des 60 octets : **LE BLOC PORTE LE GAMERTAG DE L'ACTEUR EN
+   CLAIR (UTF-16LE)**, la VALEUR de la recompense en u32 grand-boutien aux octets 44-47, et
+   l'instant aux octets 48-51.
+
+**CE QUE CA RENOMME.** L'octet 47 que la production lit comme « type_hint » est le PETIT OCTET
+DE LA VALEUR : th=10 -> +10, th=20 -> +20, th=50 -> +50, th=100 -> +100. Le pied est LE FLUX DES
+RECOMPENSES DE SCORE PERSONNEL. Les « evenements th=10 » d'Oddball/KOTH/Strongholds — ce que
+`extractFromTh10` decode en production — sont les recompenses de +10 : le tic de colline, de
+zone, de possession du crane. L'Assaut n'a PAS de tic a +10, et c'est tout ce que « th=10
+absent » voulait dire.
+
+**CE QUE L'ASSAUT PORTE.** Des paires simultanees +50/+20 (combat : frag et son pendant), du
++100, et des valeurs RARES qui sont les candidates de mode : **+150 en salve d'equipe a +25 ms
+APRES une explosion (quatre joueurs d'un coup — la prime d'equipe de la detonation)**, +150
+isole, +200 et +220 exceptionnels. La pose et le desamorcage sont vraisemblablement la-dedans.
+
+**PROCHAINE ETAPE, une seule** : classer les recompenses d'Assaut par (valeur, contexte) contre
+deux oracles — les detonations NOMMEES du releve A5 (le +100/+150 du poseur doit tomber sur son
+gamertag) et les `personal_score_awards` de l'API cote base, qui NOMMENT chaque recompense. Une
+fois la valeur de la POSE identifiee, chaque pose est datee ET attribuee par gamertag — sans
+aucun decodage ECS.
