@@ -9,9 +9,16 @@
 // dépendances en paramètres — il ne connaît ni SyncEngine ni aucun type privé du paquet
 // sync.
 //
+// LE PAQUET EN QUATRE FICHIERS (découpage du 2026-09-01) : artifacts.go décide QUOI faire
+// (le hook, les dépendances, l'orchestration d'un cycle), backlog.go dit SUR QUOI (les insérés
+// puis le rattrapage), cuisson.go fait le travail (pont disque, construction, mise en file),
+// journal.go dit ce que le cycle a fait.
+//
 // CE QUE FAIT L'ÉTAPE. Après runWeaponKills (le film vient d'être exploité pour les kills :
-// c'est le moment où il est disponible ET récent), pour chaque match inséré dans la fenêtre
-// replay_retention_months :
+// c'est le moment où il est disponible ET récent), pour chaque match retenu dans la fenêtre
+// replay_retention_months — les matchs INSÉRÉS du cycle d'abord, puis le RATTRAPAGE de la
+// queue récente, parce que le film Theater se publie après la partie et qu'une tentative
+// unique à l'instant de l'insertion ne rattrape jamais rien (cf. backlog.go) :
 //
 //  1. LE PONT DISQUE — les chunks COMPLETS du film (en-tête + réplication + kill-feed)
 //     sont téléchargés et persistés au cache via filmcache.Write. C'est plus qu'un
@@ -30,16 +37,13 @@ package replayartifacts
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"log/slog"
 	"strings"
 	"time"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/ctxkeys"
 	titlePkg "levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/observability"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	settingsPkg "levelup/go-api/internal/platform/settings"
@@ -185,6 +189,9 @@ type Deps struct {
 	RetentionMonths int
 	// Placement : la décision du cycle (Hook.Placement()).
 	Placement replaybuild.Placement
+	// Budget : durée maximale d'une passe de cycle. 0 = BudgetParCycle (le contrat de
+	// production) ; négatif = « déjà épuisé ». N'est renseigné que par les tests.
+	Budget time.Duration
 	// Enqueue : la mise en file, utilisée seulement si Placement == worker.
 	Enqueue EnqueueFunc
 	// BuildOne construit l'artefact d'un film HORS DU PROCESSUS et rend ses octets (cf.
@@ -262,12 +269,12 @@ func Run(ctx context.Context, d Deps, insertedIDs []string) {
 	}
 	titre := ctxkeys.TitleSlug(ctx)
 	observability.IncCounterT(titre, CompteurCycles)
-	var work []buildWork
-	d.WithRead(ctx, "replay_select", func(sharedDB *sql.DB) {
-		work = selectBuildWork(ctx, sharedDB, d.MetaDB, insertedIDs, d.RetentionMonths)
-		attachMatchFacts(ctx, sharedDB, work)
-	})
+	work, retard := selectionnerLeTravail(ctx, d, insertedIDs)
 	observability.AddIntT(titre, CompteurSelectionnes, int64(len(work)))
+	// JAUGE, PAS COMPTEUR : ce qui reste à rattraper APRÈS ce cycle. Publiée MÊME À ZÉRO —
+	// une clé absente de /debug/vars ne se distingue pas d'une étape qui ne tourne pas, et
+	// c'est précisément l'ambiguïté que ce lot ferme.
+	observability.SetIntT(titre, CompteurRetard, int64(retard))
 	if len(work) == 0 {
 		// SÉLECTION VIDE ≠ ÉTAPE MUETTE. Sans cette ligne, « la fenêtre de rétention a tout
 		// écarté » et « l'étape n'a jamais tourné » s'écrivent pareil dans le journal : rien.
@@ -276,16 +283,9 @@ func Run(ctx context.Context, d Deps, insertedIDs []string) {
 		return
 	}
 	if d.Placement == replaybuild.PlacementWorker {
-		// La file, elle, est faite pour s'allonger : le chemin ouvrier n'est pas plafonné,
-		// donc il ne laisse aucun reliquat derrière lui.
-		observability.SetIntT(titre, CompteurRetard, 0)
 		enqueueAll(ctx, d, work)
 		return
 	}
-	// JAUGE, PAS COMPTEUR : ce qui reste à faire APRÈS ce cycle. Publiée MÊME À ZÉRO — une
-	// clé absente de /debug/vars ne se distingue pas d'une étape qui ne tourne pas, et c'est
-	// précisément l'ambiguïté que ce lot ferme.
-	observability.SetIntT(titre, CompteurRetard, int64(max(0, len(work)-maxPerCycle)))
 	if len(work) > maxPerCycle {
 		slog.InfoContext(ctx, "post-sync: rejeu 2D — lot borné, solde au cycle suivant",
 			"gamertag", d.Gamertag, "selected", len(work), "cap", maxPerCycle)
@@ -303,6 +303,36 @@ func Run(ctx context.Context, d Deps, insertedIDs []string) {
 		return
 	}
 	publierBilan(ctx, d, buildAll(ctx, d, work), len(work))
+}
+
+// selectionnerLeTravail compose le lot du cycle et rend le retard qui subsiste après lui.
+//
+// DEUX ÉTAGES, ET L'ORDRE COMPTE.
+//
+//  1. LES MATCHS INSÉRÉS. Leur film vient d'être publié : c'est le moment le plus sûr pour le
+//     télécharger, et le seul étage qui dispose des FAITS du match — d'où la réparation des
+//     artefacts appauvris, qui lui reste attachée.
+//  2. LE RATTRAPAGE, en complément et seulement s'il reste de la place dans le lot. Le film
+//     Theater se publie APRÈS la partie : sans cet étage, un film arrivé en retard n'était
+//     jamais repris (cf. backlog.go).
+//
+// LES DEUX SEGMENTS DE LECTURE N'EN FONT QU'UN : la base partagée est empruntée une fois, puis
+// relâchée avant la moindre seconde de décodage (même règle que l'action admin).
+func selectionnerLeTravail(ctx context.Context, d Deps, insertedIDs []string) (work []buildWork, retard int) {
+	d.WithRead(ctx, "replay_select", func(sharedDB *sql.DB) {
+		work = selectBuildWork(ctx, sharedDB, d.MetaDB, insertedIDs, d.RetentionMonths)
+		deja := make(map[string]bool, len(work))
+		for _, w := range work {
+			deja[w.matchID] = true
+		}
+		// Le retard est TOUJOURS mesuré, même quand le lot est déjà plein : une jauge qu'on
+		// ne rafraîchit que les bons jours ne décrit plus rien.
+		rattrapage, restant := candidatsARattraper(ctx, sharedDB, d.MetaDB, d, deja, maxPerCycle-len(work))
+		work = append(work, rattrapage...)
+		retard = restant
+		attachMatchFacts(ctx, sharedDB, work)
+	})
+	return work, retard
 }
 
 // armee dit si l'étape peut travailler, et DIT POURQUOI quand elle ne le peut pas.
@@ -348,260 +378,5 @@ func publierBilan(ctx context.Context, d Deps, b bilanCuisson, selectionnes int)
 	slog.InfoContext(ctx, "post-sync: rejeu 2D",
 		"gamertag", d.Gamertag, "built", b.construits, "films_persisted", b.filmsSauves,
 		"deja_a_jour", b.dejaAJour, "sans_film", b.sansFilm, "echecs", b.echecs,
-		"selected", selectionnes)
-}
-
-// enqueueAll met les matchs du lot dans la file durable — le chemin du VPS web,
-// qui ne décode JAMAIS.
-//
-// AUCUN PONT DISQUE ICI, et c'est la différence de fond avec le chemin local :
-// c'est la MISE EN FILE qui résout le manifeste et dépose les URL pré-signées
-// (wire.EnqueueReplayBuild), et c'est l'ouvrier qui téléchargera les morceaux. Le
-// web ne fait donc transiter aucun film.
-//
-// Le lot n'est pas borné comme le local (maxPerCycle) : enfiler coûte une
-// résolution de manifeste, pas 50 s de CPU. La file, elle, est faite pour
-// s'allonger — un ouvrier absent ne casse rien.
-func enqueueAll(ctx context.Context, d Deps, work []buildWork) {
-	if d.Enqueue == nil {
-		return
-	}
-	paths := titlePkg.NewPathResolver(d.RepoRoot)
-	queued, skipped, appauvris, refuses := 0, 0, 0, 0
-	for _, w := range work {
-		if ctx.Err() != nil {
-			break
-		}
-		pourAppauvrissement := false
-		// Idempotence : un artefact déjà à jour ne se reconstruit pas (même règle
-		// que le chemin local ; la mise en file absorbe de son côté les doublons).
-		//
-		// « À JOUR » NE SE RÉSUME PAS À LA VERSION DE SCHÉMA : un artefact construit sans les
-		// faits porte le bon numéro tout en étant APPAUVRI. Le sauter sur le seul critère de
-		// version le figerait à demeure — c'est ainsi qu'un ouvrier sans faits empoisonnerait
-		// le cache. La règle, et le pourquoi de son critère, vivent dans `etatArtefact`.
-		artefact := paths.ReplayArtifactPath(d.TitleSlug, w.matchID)
-		aJour, complet := etatArtefact(artefact, w.facts)
-		if aJour {
-			if complet {
-				skipped++
-				continue
-			}
-			// Jamais muet : un artefact re-enfilé alors qu'il paraît à jour doit s'expliquer.
-			//
-			// PRÉSOMPTION, PAS PREUVE : l'artefact peut être vide de compteurs pour une raison
-			// légitime (film sans enregistrement d'entité, appariement ambigu, aucun compteur
-			// dans la fenêtre — cf. l'en-tête d'ArtifactHasPlayerCounters). La re-cuisson rendra
-			// alors le même document. Le résidu est BORNÉ des deux côtés : en fréquence, parce
-			// que la sélection ne voit que les matchs INSÉRÉS du cycle (un match ne repasse pas
-			// ici à chaque sync) ; en dégâts, parce que `StoreArtifact` refuse toute régression.
-			// Le pire cas est donc UN cycle d'ouvrier gâché, jamais un artefact rétrogradé.
-			slog.InfoContext(ctx, "post-sync: rejeu 2D — artefact au bon schéma mais SANS compteurs de joueur, remis en file",
-				"gamertag", d.Gamertag, "match_id", w.matchID, "lignes_de_match", len(w.facts.Players))
-			pourAppauvrissement = true
-		}
-		if err := d.Enqueue(ctx, d.TitleSlug, w.matchID); err != nil {
-			// Cas nominal du refus : film absent ou expiré côté serveur (~29 % du
-			// corpus). Journalisé en debug, jamais avalé.
-			slog.DebugContext(ctx, "post-sync: rejeu 2D non mis en file",
-				"gamertag", d.Gamertag, "match_id", w.matchID, "err", err)
-			refuses++
-			continue
-		}
-		queued++
-		// Le compteur ne s'incrémente qu'APRÈS la mise en file effective : un film expiré
-		// (~29 % du corpus) est refusé ici même, et le compter comme « re-enfilé » ferait
-		// sur-déclarer la métrique de tout ce que la file n'a jamais reçu.
-		if pourAppauvrissement {
-			appauvris++
-		}
-	}
-	observability.AddIntT(ctxkeys.TitleSlug(ctx), CompteurEnfiles, int64(queued))
-	observability.AddIntT(ctxkeys.TitleSlug(ctx), CompteurDejaAJour, int64(skipped))
-	observability.AddIntT(ctxkeys.TitleSlug(ctx), CompteurAppauvrisReEnfiles, int64(appauvris))
-	// Le résumé sort dès qu'il y a eu du travail à examiner. Le conditionner à
-	// `queued > 0 || skipped > 0` rendait MUET le cas où tout a été refusé (film expiré sur
-	// tout le lot) : un cycle entier sans la moindre trace au niveau INFO.
-	if len(work) > 0 {
-		slog.InfoContext(ctx, "post-sync: rejeu 2D mis en file (construction déléguée à un ouvrier)",
-			"gamertag", d.Gamertag, "queued", queued, "deja_a_jour", skipped,
-			"appauvris_re_enfiles", appauvris, "refuses", refuses, "selected", len(work))
-	}
-}
-
-// bilanCuisson : ce que le cycle a fait, et POURQUOI il n'a rien fait quand c'est le cas.
-//
-// Un simple couple (construits, films) ne distingue pas « tout était déjà à jour » de « tous
-// les films sont expirés » ni de « la cuisson a échoué cinq fois » — trois situations qui
-// appellent trois actions différentes et qui s'écrivaient toutes « 0 ».
-type bilanCuisson struct {
-	construits  int
-	filmsSauves int
-	dejaAJour   int
-	sansFilm    int
-	echecs      int
-}
-
-// buildAll persiste le film puis construit l'artefact de chaque match du lot.
-func buildAll(ctx context.Context, d Deps, work []buildWork) bilanCuisson {
-	var b bilanCuisson
-	paths := titlePkg.NewPathResolver(d.RepoRoot)
-	// LE CAS « PAS DE CONSTRUCTION CÂBLÉE » SE DIT UNE FOIS PAR CYCLE, pas une fois par film :
-	// c'est un état de configuration, pas un incident de match. Le pont disque, lui, continue —
-	// un film persisté est irremplaçable (ils EXPIRENT côté serveur Halo).
-	if d.BuildOne == nil {
-		slog.WarnContext(ctx, "post-sync: aucune construction hors processus câblée — films persistés, cuisson SAUTÉE",
-			"gamertag", d.Gamertag, "titleSlug", d.TitleSlug, "selectionnes", len(work))
-	}
-	for _, w := range work {
-		if ctx.Err() != nil {
-			break
-		}
-		saved, ok := persistFilmToCache(ctx, d, w.matchID)
-		if !ok {
-			b.sansFilm++
-			continue // film absent/expiré côté serveur : rien à construire (débité en debug)
-		}
-		if saved {
-			b.filmsSauves++
-		}
-		// MÊME RÈGLE QUE LA MISE EN FILE : la version de schéma ne suffit pas. Un artefact
-		// appauvri déposé par un ouvrier d'avant le transport des faits porte le bon numéro ;
-		// le sauter ici le figerait, sur le chemin même qui a les faits sous la main pour le
-		// réparer (ils sont passés à BuildMatch quinze lignes plus bas).
-		if d.BuildOne == nil {
-			continue // avertissement deja emis une fois pour le cycle
-		}
-		aJour, complet := etatArtefact(paths.ReplayArtifactPath(d.TitleSlug, w.matchID), w.facts)
-		if aJour && complet {
-			b.dejaAJour++
-			continue
-		}
-		if aJour {
-			slog.InfoContext(ctx, "post-sync: rejeu 2D — artefact au bon schéma mais SANS compteurs de joueur, reconstruit",
-				"gamertag", d.Gamertag, "match_id", w.matchID, "lignes_de_match", len(w.facts.Players))
-		}
-		short := titlePkg.FilmShortMatchID(w.matchID)
-		// LA CUISSON PART HORS DU PROCESSUS (lot BUILDALL, 2026-08-26) : l'enfant décode et rend
-		// les OCTETS, le serveur les range. Le garde anti-régression et la notification restent
-		// dans `StoreArtifact`, donc exactement où ils étaient.
-		out, berr := buildAndStoreOne(ctx, d, w, filmcache.ChunkDir(d.CacheRoot, short))
-		if berr != nil {
-			// Carte hors catalogue = échec voulu (Forge) ; le reste = erreur réelle.
-			// Les deux sont best-effort, mais seuls les seconds méritent un WARN.
-			logFn := slog.WarnContext
-			if strings.Contains(berr.Error(), replaybuild.ErrMapNotInCatalog.Error()) {
-				logFn = slog.DebugContext
-			}
-			logFn(ctx, "post-sync: artefact rejeu non construit",
-				"gamertag", d.Gamertag, "match_id", w.matchID, "err", berr)
-			b.echecs++
-			continue
-		}
-		b.construits++
-		slog.InfoContext(ctx, "post-sync: artefact rejeu construit",
-			"gamertag", d.Gamertag, "match_id", w.matchID, "tracks", out.Tracks, "bytes", out.Bytes)
-	}
-	return b
-}
-
-// persistFilmToCache télécharge les chunks COMPLETS du film et les persiste au cache
-// (pont disque). Rend (persisté, film disponible). Un film déjà entièrement en cache ne
-// re-télécharge rien (GetFilmChunks est cache-first chunk par chunk).
-func persistFilmToCache(ctx context.Context, d Deps, matchID string) (saved, available bool) {
-	chunks, found, err := d.Fetcher.GetFilmChunks(ctx, matchID)
-	if err != nil {
-		slog.WarnContext(ctx, "post-sync: film illisible — rejeu non construit",
-			"gamertag", d.Gamertag, "match_id", matchID, "err", err)
-		return false, false
-	}
-	if !found || len(chunks) == 0 {
-		slog.DebugContext(ctx, "post-sync: film absent côté serveur — rejeu non construit",
-			"match_id", matchID)
-		return false, false
-	}
-	wc := make([]filmcache.WriteChunk, 0, len(chunks))
-	for _, c := range chunks {
-		wc = append(wc, filmcache.WriteChunk{
-			Index: c.Index, ChunkType: c.ChunkType, StartMS: c.StartMS,
-			DurationMS: c.DurationMS, Data: c.Data,
-		})
-	}
-	if err := filmcache.Write(d.CacheRoot, titlePkg.FilmShortMatchID(matchID), wc); err != nil {
-		slog.WarnContext(ctx, "post-sync: persistance du film au cache échouée",
-			"gamertag", d.Gamertag, "match_id", matchID, "err", err)
-		return false, false
-	}
-	return true, true
-}
-
-// selectBuildWork lit les identités de carte des matchs insérés et applique la fenêtre de
-// rétention (months <= 0 = illimité). metaDB peut être nil (pas de résolution EN : map_name
-// brut seul, même dégradation que le backfill CLI).
-func selectBuildWork(
-	ctx context.Context, sharedDB, metaDB *sql.DB, insertedIDs []string, months int,
-) []buildWork {
-	if len(insertedIDs) == 0 {
-		return nil
-	}
-	placeholders := strings.TrimSuffix(strings.Repeat("?,", len(insertedIDs)), ",")
-	args := make([]any, 0, len(insertedIDs))
-	for _, id := range insertedIDs {
-		args = append(args, id)
-	}
-	q := fmt.Sprintf(`SELECT match_id, map_name, map_id, %s AS start_canonical
-		FROM match_registry WHERE match_id IN (%s)`,
-		analysis.SQLStartTimeCanonical("match_registry"), placeholders)
-	rows, err := sharedDB.QueryContext(ctx, q, args...)
-	if err != nil {
-		slog.WarnContext(ctx, "post-sync: sélection rejeu échouée", "err", err)
-		return nil
-	}
-	defer func() { _ = rows.Close() }()
-
-	var cutoff time.Time
-	if months > 0 {
-		cutoff = time.Now().UTC().AddDate(0, -months, 0)
-	}
-	var out []buildWork
-	for rows.Next() {
-		var id string
-		var rawName, mapID sql.NullString
-		var start sql.NullTime
-		if err := rows.Scan(&id, &rawName, &mapID, &start); err != nil {
-			slog.WarnContext(ctx, "post-sync: sélection rejeu (scan)", "err", err)
-			return out
-		}
-		if months > 0 && start.Valid && start.Time.Before(cutoff) {
-			continue // hors fenêtre de rétention : le backfill CLI reste libre de le faire
-		}
-		var names []string
-		if en := resolveMapNameEN(ctx, metaDB, strings.TrimSpace(mapID.String)); en != "" {
-			names = append(names, en)
-		}
-		if raw := strings.TrimSpace(rawName.String); raw != "" {
-			names = append(names, raw)
-		}
-		out = append(out, buildWork{matchID: id, mapNames: names})
-	}
-	if err := rows.Err(); err != nil {
-		slog.WarnContext(ctx, "post-sync: sélection rejeu (rows)", "err", err)
-	}
-	return out
-}
-
-// resolveMapNameEN résout le nom EN d'une carte par son asset UGC (asset_translations).
-// Best-effort : metaDB nil ou nom absent → "" (le candidat brut reste).
-func resolveMapNameEN(ctx context.Context, metaDB *sql.DB, mapID string) string {
-	if metaDB == nil || mapID == "" {
-		return ""
-	}
-	var en string
-	err := metaDB.QueryRowContext(ctx,
-		`SELECT name FROM asset_translations WHERE asset_type = 'map' AND asset_id = ? AND lang = 'en-US'`,
-		mapID).Scan(&en)
-	if err != nil {
-		return ""
-	}
-	return strings.TrimSpace(en)
+		"budget_epuise", b.budgetEpuise, "selected", selectionnes)
 }
