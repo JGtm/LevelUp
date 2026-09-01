@@ -114,8 +114,17 @@ garde (`filmcache_guard_test.go`), voie prescrite par son message d'erreur.
 jouaient pas ce ratchet (il ne vit que dans ./... complet — lecon connue : baseline = gate
 Linux).
 
+**Addendum (meme jour)** : le run suivant a revele un DEUXIEME ratchet a nous, masque par
+la troncature des extraits CI : `TestAucuneAutreCopieDuCheminDuJeu` — le lot vehicules de la
+ligne assaut-bombe (65cbc13f6) citait le chemin d'installation Steam en clair dans l'exemple
+d'usage de `scenario_placements_gamefiles_test.go`. Corrige par placeholder neutre
+(`<racine deploy du jeu>`), garde vert local. Balayage archlint complet local : plus AUCUN
+fichier de notre ligne accuse. Restent au job (herites, sessions actives dessus) :
+halowaypoint x2 (mapcatalog, chantier cartes/mvar), repo-root helper (chantier origine),
+netguard (mapcatalog/ugc.go, chantier cartes/mvar).
+
 **Prochaine étape** : push du correctif, CI re-jouee ; le job restera rouge tant que les
-chantiers cartes/mvar et origine n'ont pas solde leurs trois ratchets (a eux).
+chantiers cartes/mvar et origine n'ont pas solde leurs quatre ratchets (a eux).
 
 ## [2026-09-01] Merge wt/bombe-visuel dans feat/v75 — schemas renumerotes 33/34
 
