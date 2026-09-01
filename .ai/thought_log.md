@@ -80682,3 +80682,41 @@ bande, ils appellent la regle.
 **RESTE** : `wt/ultra-jauge` (le worktree du lot de mesures en cours) appelle encore les anciens
 noms. Meme correction a appliquer quand le lot aura rendu la main — pas avant, on ne merge pas
 sous les pieds d'agents qui ecrivent.
+
+---
+
+## [2026-09-01] `BombObjectState` cherche par EGALITE dans ti=13 : negatif, et sa portee est bornee
+
+**Statut** : Complete.
+
+**LA PISTE.** Ghidra a rendu l'enumeration `BombObjectState` (`FUN_14034a0d0`) avec ses ordinaux :
+None=0, Unarmed=1, Armed=2, Disarming=3, Contested=4. **Pas d'etat « Arming »** — poser la bombe
+passe par `Contested`, donc l'instant ou l'etat vaut 4 EST le debut de l'armement. Or `ti=13` est
+un sac de proprietes NOMMEES (`i0` = identifiant de 32 bits) et les films d'Assaut en portent HUIT
+slots. La phase A7 y avait cherche une PROGRESSION et un tag 3 — un etat ne croit pas, il SAUTE.
+Bon archetype, mauvais critere.
+
+**LE NOM EST CALCULABLE.** `FUN_140748a74` est un **murmur3 x86_32 graine 0** sur la chaine
+normalisee (minuscules, `-` et espace -> `_`, saut de ligne -> `#`) : constantes 0xcc9e2d51,
+0x1b873593, rotation 13, 0xe6546b64, fmix32 0x85ebca6b / 0xc2b2ae35, toutes verifiees. Donc
+**murmur3("bombobjectstate") = 0x19813E20** — la recherche devient une EGALITE, pas une
+correlation. (Le lot parallele avait teste un nommage par dictionnaire, mais en **FNV-1**, la
+famille des identifiants Wwise : ce n'est pas la meme fonction, sa reponse ne couvrait pas
+celle-ci.)
+
+**ZERO MODIFICATION DE PRODUCTION** : `SetProbeHook` publie deja `ti=13 i0`, le depot avait prevu
+ce besoin exact.
+
+**RESULTAT : 0x19813E20 n'apparait dans AUCUN des 13 films.**
+
+**ET LE BALAYAGE BORNE SON PROPRE NEGATIF.** Le chainage de `ti=13` en Assaut vaut **1,9 a 4,7 %**
+— le plancher — contre 32 a 77 % sur les temoins. Et les films d'Assaut rendent 12 a 51 noms
+DISTINCTS pour HUIT slots : un slot porte UNE propriete nommee, donc huit slots ne peuvent pas
+porter cinquante noms. Ces lectures sont du bruit. Ce qui est etabli est donc « `ti=13` ne parle
+pas en Assaut » — ce que le miroir disait deja — et non « l'etat de la bombe n'est replique nulle
+part ». Il l'est forcement quelque part : le HUD l'affiche.
+
+**L'ACQUIS DURABLE EST AILLEURS.** L'instrument rend, par film et par mode, les IDENTIFIANTS de
+propriete reellement vus. Sur les temoins, ou le chainage est bon, c'est un **DICTIONNAIRE de
+proprietes reseau a nommer**, et le nommage est mecanique. C'est la voie pour nommer les jauges de
+zone de Strongholds et de KOTH, lues sans etre comprises depuis le lot C-bis.
