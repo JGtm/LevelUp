@@ -12,73 +12,24 @@ import (
 	"testing"
 )
 
-// sondeScanDamage rejoue les chunks (keyframe + tick-frames) comme lot1WorldBaseAndEvents,
-// rend les evenements damage_aftermath (avec SOURCE) et la base d'atterrissage bipede.
+// sondeScanDamage rend les evenements damage_aftermath (avec SOURCE) et la base d'atterrissage
+// bipede. Le decodage est PRODUCTIONISE (ScanFilmWeaponDamages, Lot 2) ; cet adaptateur mappe
+// simplement la sortie de production vers le type sondeDmgEvt de la sonde — une seule copie du scan.
 func sondeScanDamage(t *testing.T, dir string, reg *Registry, n int) ([]sondeDmgEvt, int) {
 	t.Helper()
-	cfg := DefaultFrameConfig()
-	hit := map[int]int{}
-	var evs []sondeDmgEvt
-	for c := 1; c <= n; c++ {
-		data, err := ReadFilmChunk(dir, c)
-		if err != nil {
-			t.Fatalf("chunk_%02d illisible : %v", c, err)
-		}
-		pks := WalkPackets(data)
-		w := NewWorld(reg)
-		for _, pk := range pks {
-			if pk.Type != PacketTypeKeyframe {
-				continue
-			}
-			for _, r := range WalkKeyframeWorld(pk.Payload(data)) {
-				w.BindFull(uint32((r.Gen<<30)|r.Slot), uint32(r.TI))
-			}
-		}
-		for _, pk := range pks {
-			if pk.Type != PacketTypeDelta || pk.Size < 1 {
-				continue
-			}
-			if pay := pk.Payload(data); pay[0]&0x40 == 0 {
-				br := NewBitReader(pay)
-				_, _ = DecodeFrameRecords(br, w, cfg)
-			}
-		}
-		for _, pk := range pks {
-			if pk.Type != PacketTypeDelta || pk.Size < 2 {
-				continue
-			}
-			pay := pk.Payload(data)
-			if pay[0] != 0xC0 {
-				continue
-			}
-			br := NewBitReader(pay)
-			br.Skip(2)
-			if br.ReadBits(7) != 0 {
-				continue
-			}
-			ev := sondeDmgEvt{ts: pk.TimestampUS, idx0: -1, idx1: -1}
-			if i0, ok := lot1RefDom1(br); ok {
-				ev.idx0 = int(i0)
-			}
-			if i1, ok := lot1RefDom1(br); ok {
-				ev.idx1 = int(i1)
-			}
-			lot1RefDom(br, 7)
-			r := lot1DecodeDamageAftermath(br)
-			ev.src, ev.hasSrc, ev.neg = r.sourceID, r.hasSource, r.negatif
-			ev.magClear, ev.magRaw = r.dmgClear, r.dmgRaw
-			evs = append(evs, ev)
-			for _, b := range lot1chBases {
-				if lot1chIsBiped(w, b, ev.idx0) {
-					hit[b]++
-				}
-				if lot1chIsBiped(w, b, ev.idx1) {
-					hit[b]++
-				}
-			}
+	dmgs, base, err := ScanFilmWeaponDamages(dir, reg, n)
+	if err != nil {
+		t.Fatalf("collecte des degats : %v", err)
+	}
+	evs := make([]sondeDmgEvt, len(dmgs))
+	for i, d := range dmgs {
+		evs[i] = sondeDmgEvt{
+			ts: d.TimestampUS, idx0: d.VictimIdx, idx1: d.ResponsibleIdx,
+			src: d.Source, hasSrc: d.HasSource, neg: d.Negative,
+			magClear: d.MagClear, magRaw: d.MagRaw,
 		}
 	}
-	return evs, lot1ArgmaxBase(hit)
+	return evs, base
 }
 
 // sondeScanFireArme decode les tirs type 36 (0xD2) a la GRAMMAIRE DE REFERENCE (lot1_tirs) :
@@ -248,14 +199,10 @@ func sondeDist(a, b sondeSample) float64 {
 	return math.Sqrt(dx*dx + dy*dy + dz*dz)
 }
 
-// sondeBucket rend l'index de bucket d'une distance (0..len(edges)).
+// sondeBucket rend l'index de bucket d'une distance (0..len(edges)). PRODUCTIONISE : delegue a
+// WeaponHitBucket (weapon_hits.go) — une seule implementation du seuillage.
 func sondeBucket(d float64) int {
-	for i, e := range sondeDistEdges {
-		if d < e {
-			return i
-		}
-	}
-	return len(sondeDistEdges)
+	return WeaponHitBucket(d)
 }
 
 // sondeMedian rend la mediane d'un echantillon (0 si vide).

@@ -48,8 +48,9 @@ const sondePosTolUS = uint64(120_000)
 // sondeMapEnv force la carte quand la signature de largeurs est ambigue.
 const sondeMapEnv = "LOT1_SONDE_MAP"
 
-// sondeDistEdges : bornes (metres) des buckets de distance attaquant<->victime.
-var sondeDistEdges = []float64{2, 5, 10, 15, 25, 40}
+// sondeDistEdges : bornes (metres) des buckets de distance attaquant<->victime. PRODUCTIONISE :
+// alias des bornes de weapon_hits.go — une seule source pour l'instrument et la table.
+var sondeDistEdges = WeaponHitDistanceEdges
 
 // sondeDmgEvt : un evenement damage_aftermath horodate, refs d'en-tete non resolues, source.
 // magClear/magRaw sont additifs (peuples par sondeScanDamage, lus par l'instrument

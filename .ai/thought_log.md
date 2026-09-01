@@ -1,3 +1,42 @@
+## [2026-09-01] Précision arme/distance — Lot 2 : décodeur dégât + pairing + distance sortis du _test — Complété
+
+**Contexte** : worktree dédié `wt/precision` (`feat/precision-arme`). Lot 2 du plan
+`PLAN_PRECISION_ARME_DISTANCE_2026-08-31.md` : le décodage `damage_aftermath`, l'appariement
+tir↔dégât et la distance n'existaient que comme code de RECHERCHE dans des `_test.go` de
+`internal/analysis/filmdec`. Objectif : les sortir en code de PRODUCTION (non-test, exporté) pour
+que le Lot 3 (passe killcollector) puisse les appeler. Refactor recherche→prod, pas de nouvel algo.
+
+**Décision technique** : deux fichiers prod neufs. `weapon_hits.go` expose l'API pure
+`PairWeaponHits(shots []WeaponShot, damages []WeaponDamage, window, dist) []WeaponHitStats` — par
+(FilmIndex, WeaponID) : `ShotsPaired` (tirs appariables), `Hits` (tir apparié à ≥1 dégât du même
+attaquant dom-1 dans W, UN tir → UNE touche = plus proche dans la fenêtre) et `DistBuckets`
+(histogramme tireur→victime, `dist` injectée = nil autorisé). Constantes `WeaponHitPairWindowUS`
+(1 s), `WeaponHitDistanceEdges` {2,5,10,15,25,40}, `WeaponHitBucket`. Scanners `ScanFilmWeaponShots`
+(0xD2 t36) et `ScanFilmWeaponDamages` (0xC0 t0, rend aussi la base-512). `weapon_hits_decode.go`
+accueille les décodeurs DÉPLACÉS des `_test` (une seule copie) : `lot1RefDom/lot1RefDom1/
+lot1RefDomWidths/lot1Dequant/lot1DmgResult/lot1DecodeDamageAftermath` + résolution slot
+`lot1chBases/lot1chIsBiped/lot1ArgmaxBase`. Anti-duplication (CLAUDE.md règle 6) : `sondeScanDamage`,
+`attribCollectShots`, `attribM2`/`attribM3`, `sondeBucket`, `sondeDistEdges` DÉLÈGUENT au code prod ;
+la distance est INJECTÉE dans `PairWeaponHits` (le résolveur de position à chemin relatif reste
+côté recherche — sa productionisation propre est du ressort du Lot 3). Helpers partagés
+(`attribShot`/`attribCollectShots`/`attribBuildIndex`/`attribMin`/`attribMax`, consommés par
+lot1_nmin/lot1_cadence_detente/lot1_degats_type1/deto/geo) conservés comme adaptateurs
+(`lot1_attrib_helpers_test.go`) déléguant au prod.
+
+**Résultats** : gate vert. `go test ./internal/analysis/filmdec/ -count=1` OK (8,85 s) ; `gofmt -l`
+vide ; `go vet` propre ; fichiers ≤ 500 L (296/155/154), fonctions ≤ 80 L (`PairWeaponHits` 60).
+Test unitaire pur neuf `weapon_hits_test.go` (9 cas, sans DuckDB/film) : apparié/non apparié/hors
+fenêtre/un tir→une touche pour N dégâts/non-appariable écarté/bucket/distance non résolue/clés/
+`WeaponHitBucket`. Reproduction sur film 000d5950 (`LOT1_TRAME_FILM`) via le code productionisé :
+245 tirs / 190 dégâts, base 512 ; **sweep W=1000 ms = 100/245 (40,8 %) vs témoin +3 s 5,3 % → 7,7×
+≥ 3** (M1 avant 16,7× / arrière 8,0× → TENU) ; M2/M3 par arme cohérents (Needler proche 2-5 m,
+BR75 10-15 m, sens physique tenu).
+
+**Conclusion / prochaine étape** : Lot 2 CLOS. Lot 3 = mapper `games/halo_infinite/ingest/
+weapon_accuracy_film.go` (pairing → `[]WeaponAccuracyInsert` + rows distance), greffe
+`killcollector/hits.go` (résout FilmIndex→xuid), persist `weapon_hit_distance_persister.go`
+(INSERT-only), activer capability Infinite.
+
 ## [2026-09-01] Précision arme/distance — Lot 1 : table sœur distance + vue _latest + Nmin — Complété
 
 **Contexte** : worktree dédié `wt/precision` (branche `feat/precision-arme`). Exécution du Lot 1 du
