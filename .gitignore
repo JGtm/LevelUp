@@ -275,6 +275,10 @@ data/warehouse/archive/shared_matches.duckdb
 data/ui_prefs.json
 
 # Build artifacts Go
+# GOCACHE isoles poses a la main (merges, gates paralleles, executeurs en worktree) :
+# convention recurrente du depot (ex. .gocache-merge, .gocache-merge-31). Caches de build
+# purement jetables, plusieurs Go par dossier — jamais versionnes.
+.gocache*/
 apps/go-api/bin/
 apps/go-api/*.exe
 data/auth/
