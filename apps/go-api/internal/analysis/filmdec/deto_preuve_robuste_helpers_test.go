@@ -11,11 +11,11 @@ package filmdec
 //
 // CE QUE FAIT CE FICHIER. Il reproduit, avec les primitives EXPORTEES de filmdec, LA MARCHE du
 // decodeur de source de degat valide (internal/games/halo_infinite/film/killsource, gate (b)
-// 98.2 %, part localisee 95.8-97.6 %). killsource importe filmdec : il ne peut PAS etre importe
-// ici (cycle). On porte donc son ALGORITHME — ce n'est pas une recolte maison, c'est le meme
-// scan, cablant les memes fonctions (World.Snapshot/Restore/GenerationMatches, TryDeltaAt,
-// DecodeFrameRecords) que killsource/walk.go et /world.go appellent. Quatre elements que
-// `geoCollectDamageKills` n'a pas et qui font la robustesse :
+// 98.2 %, part localisee 95.8-97.6 %). killsource importe filmdec ET internal/analysis : il ne
+// peut PAS etre importe ici (cycle). On porte donc son ALGORITHME — ce n'est pas une recolte
+// maison, c'est le meme scan, cablant les memes fonctions (World.Snapshot/Restore/
+// GenerationMatches, TryDeltaAt, DecodeFrameRecords) que killsource/walk.go et /world.go
+// appellent. Quatre elements que `geoCollectDamageKills` n'a pas et qui font la robustesse :
 //
 //  1. TIMELINE CHRONOLOGIQUE (killsource/world.go). Un monde unique, amorce par la PREMIERE
 //     declaration de chaque slot (preload), puis les keyframes appliques DANS L'ORDRE DU TEMPS
@@ -44,11 +44,6 @@ import (
 // dead-state (victime, tueur, categorie). Identique a killsource/world.go:bipedArchetype.
 const rbBipedArchetype = 35
 
-// rbRosterCeiling : borne haute de roster pour le filtre de credibilite. Le lobby Halo plafonne
-// a 24 (BTB) ; 32 laisse une marge. Ce n'est PAS le filtre fort — DesyncAt==-1 + plage bipede le
-// sont ; cette borne n'ecarte que des indices residuels d'un record faussement propre.
-const rbRosterCeiling = 32
-
 // rbViews : vues de replication marchees par paquet. DEFAUT killsource = 8.
 const rbViews = 8
 
@@ -59,7 +54,7 @@ type robustKF struct {
 }
 
 // robustTimeline : suite chronologique des keyframes (preload + curseur), portee de
-// killsource/world.go (mecanismes 1 seul ; gap windows et sweep complementaire volontairement
+// killsource/world.go (mecanisme 1 seul ; gap windows et sweep complementaire volontairement
 // omis — ils ajoutent +4/+8 morts marginales, pas necessaires a l'echantillon vise).
 type robustTimeline struct {
 	events       []robustKF
@@ -128,8 +123,14 @@ type rbChunkPackets struct {
 // robustCollectKills : LA passe robuste. Charge les n chunks, construit la timeline depuis TOUS
 // les keyframes, puis marche les paquets type-0 dans l'ordre du temps avec localisateur + 8 vues,
 // et recolte les dead-states credibles. Rend la liste de morts (victime slot, roster EnumA,
-// tueur EnumB, ts) au MEME format geoKill que geoHarvestKills.
-func robustCollectKills(t *testing.T, dir string, reg *Registry, n int) []geoKill {
+// tueur EnumB, ts) au MEME format geoKill que geoHarvestKills, DEDUPLIQUEE par (victime, instant).
+//
+// nRoster : la borne du filtre de credibilite (killsource:selectCredible exige EnumA/EnumB dans
+// le roster). On la derive de la VRAIE taille du lobby (FilmIndex distincts des tirs) : un indice
+// au-dela n'est pas un joueur, c'est le residu d'un record faussement propre. Le garde FORT reste
+// DesyncAt==-1 + plage bipede ; cette borne ecarte le residuel qui, sinon, pollue la table
+// d'identite (roster->FilmIndex non injective).
+func robustCollectKills(t *testing.T, dir string, reg *Registry, n, nRoster int) []geoKill {
 	t.Helper()
 	chunks := make([]rbChunkPackets, 0, n)
 	var kfs []robustKF
@@ -176,10 +177,32 @@ func robustCollectKills(t *testing.T, dir string, reg *Registry, n int) []geoKil
 			}
 			start = s
 		}
-		kills = rbHarvestPacket(d.pay, w, cfg, start, tl.bipLo, tl.bipHi, d.ts, kills)
+		kills = rbHarvestPacket(d.pay, w, cfg, start, tl.bipLo, tl.bipHi, nRoster, d.ts, kills)
 	}
 	sort.Slice(kills, func(i, j int) bool { return kills[i].ts < kills[j].ts })
-	return kills
+	return rbDedupKills(kills)
+}
+
+// rbDedupKills : une victime ne meurt qu'une fois a un instant donne. Plusieurs vues de
+// replication (ou paquets voisins) peuvent republier le MEME dead-state ; on garde une seule
+// entree par (victime slot, instant). killsource dedup par (bit, tag, indice) ; on dedup sur la
+// cle observable ici, ce qui suffit a ne pas surcompter une mort.
+func rbDedupKills(kills []geoKill) []geoKill {
+	type key struct {
+		slot uint32
+		ts   uint64
+	}
+	seen := map[key]bool{}
+	out := kills[:0]
+	for _, k := range kills {
+		kk := key{k.victSlot, k.ts}
+		if seen[kk] {
+			continue
+		}
+		seen[kk] = true
+		out = append(out, k)
+	}
+	return out
 }
 
 // rbHasEvents : le paquet porte-t-il une liste d'evenements ? Bit 1 du payload (killsource).
@@ -187,7 +210,7 @@ func rbHasEvents(pay []byte) bool { return kfBitAt(pay, 1) != 0 }
 
 // rbHarvestPacket : snapshot, marche jusqu'a rbViews vues, restore, puis recolte les dead-states
 // PROPRES et credibles. Reproduit killsource/walk.go:walkPacket + selectCredible.
-func rbHarvestPacket(pay []byte, w *World, cfg FrameConfig, start, bipLo, bipHi int, ts uint64, kills []geoKill) []geoKill {
+func rbHarvestPacket(pay []byte, w *World, cfg FrameConfig, start, bipLo, bipHi, nRoster int, ts uint64, kills []geoKill) []geoKill {
 	snap := w.Snapshot()
 	br := NewBitReader(pay)
 	br.Skip(start)
@@ -209,10 +232,10 @@ func rbHarvestPacket(pay []byte, w *World, cfg FrameConfig, start, bipLo, bipHi 
 		if int(r.Slot) < bipLo || int(r.Slot) > bipHi {
 			continue
 		}
-		if d.EnumA < 0 || int(d.EnumA) >= rbRosterCeiling {
+		if d.EnumA < 0 || int(d.EnumA) >= nRoster {
 			continue
 		}
-		if d.EnumB < 0 || int(d.EnumB) >= rbRosterCeiling {
+		if d.EnumB < 0 || int(d.EnumB) >= nRoster {
 			continue
 		}
 		if d.Val0c > 9 {

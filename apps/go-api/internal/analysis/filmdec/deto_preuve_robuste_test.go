@@ -40,12 +40,10 @@ func detoProofRandomWitness(c detoGTCtx, roster []int, trials int) (okRand, eval
 		if !okv {
 			continue
 		}
-		d, ok := detoLinkFatalDeton(vp, k.ts, c.detons, detoGTRadius)
-		if !ok {
+		if _, ok := detoLinkFatalDeton(vp, k.ts, c.detons, detoGTRadius); !ok {
 			continue
 		}
 		// le kill est explosif (relie a une detonation source) : on l'evalue.
-		_ = d
 		for tr := 0; tr < trials; tr++ {
 			evalRand++
 			if roster[rng.Intn(len(roster))] == trueFilm {
@@ -88,8 +86,9 @@ func TestDetoPreuveRobuste(t *testing.T) {
 	}
 
 	shots := geoCollectShots(t, dir, n)
+	nRoster := detoDistinctFilms(shots)
 	raws, grossKills := geoCollectDamageKills(t, dir, reg, n)
-	robKills := robustCollectKills(t, dir, reg, n)
+	robKills := robustCollectKills(t, dir, reg, n, nRoster)
 	tracks := geoTracks(t, dir, wr, n)
 	detons := detoScanProjectiles(t, dir, wr, n)
 
@@ -113,8 +112,8 @@ func TestDetoPreuveRobuste(t *testing.T) {
 	t.Logf("== PREUVE film %s · %d chunks · base %d ==", filepath.Base(dir), n, geoActiveBase)
 	t.Logf("SCAN DE KILLS : grossier (geoCollectDamageKills) %d morts  VS  robuste (marche+localisateur) %d morts",
 		len(grossKills), len(robKills))
-	t.Logf("identite roster<->FilmIndex : %d mappes (injective %v) · roster observe %d joueurs",
-		card, inj, len(roster))
+	t.Logf("identite roster<->FilmIndex : %d mappes (injective %v) · roster observe %d joueurs · lobby (FilmIndex tirs) %d",
+		card, inj, len(roster), nRoster)
 
 	ctx := detoGTCtx{detons: detons, touch: touch, kills: robKills, heavy: heavy, tracks: tracks, speed: speedByWid, table: table}
 	detoM5GroundTruth(t, ctx)
@@ -122,8 +121,17 @@ func TestDetoPreuveRobuste(t *testing.T) {
 	okRand, evalRand := detoProofRandomWitness(ctx, roster, 50)
 	t.Logf("TEMOIN TIREUR ALEATOIRE (50 tirages/kill, plancher de hasard ~ 1/%d) : %d/%d (%.1f %%)",
 		len(roster), okRand, evalRand, lot1Pct(okRand, evalRand))
-	t.Logf("LECTURE : la these est PROUVEE si DETONATION->tireur bat NETTEMENT et le temoin aleatoire")
+	t.Logf("LECTURE : la these est PROUVEE si DETONATION->tireur bat NETTEMENT le temoin aleatoire")
 	t.Logf("et la voie VICTIME->tireur ; NON CONCLUANTE si l'echantillon de kills explosifs relies < 3.")
+}
+
+// detoDistinctFilms : nombre de FilmIndex distincts parmi les tirs = taille reelle du lobby.
+func detoDistinctFilms(shots []geoShot) int {
+	seen := map[int]bool{}
+	for _, s := range shots {
+		seen[s.film] = true
+	}
+	return len(seen)
 }
 
 // rosterFilmIndices : les FilmIndex distincts de la table roster->FilmIndex, tries.
