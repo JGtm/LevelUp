@@ -327,3 +327,80 @@ func epmHex(ids []uint32) string {
 	}
 	return "[" + strings.Join(parts, " ") + "]"
 }
+
+// TestBuildPickupsFamilyCoverageOnRealFilms — LA COUVERTURE DE `family` PAR LA CHAINE DE
+// PRODUCTION, sur les deux films de reference.
+//
+// POURQUOI CE TEST EXISTE A COTE DES MESURES DU LOT 5. Les mesures de recherche resolvaient les
+// identifiants a la main, contre le manifeste. Celui-ci appelle `buildPickups` — LA fonction de
+// production — avec les catalogues que la couche titre lui donne reellement, et publie le taux
+// que le document portera. Sans lui, « 100 % » serait une propriete de mon instrument, pas du
+// produit.
+//
+// AUCUNE CUISSON : un film est decode en memoire, aucun artefact n est ecrit.
+func TestBuildPickupsFamilyCoverageOnRealFilms(t *testing.T) {
+	dir := os.Getenv(pickupsBridgeEnv)
+	if dir == "" {
+		t.Skipf("%s absent : instrument de mesure saute", pickupsBridgeEnv)
+	}
+	release := filmdec.LockProcessDecode()
+	defer release()
+
+	pickups, st, err := filmdec.ScanFilmBipedPickups(dir)
+	if err != nil {
+		t.Fatalf("ramassages natifs illisibles : %v", err)
+	}
+	// LES MEMES TABLES QUE LA COUCHE TITRE POSE dans LabelCatalog (cf. replaylabels.Load) :
+	// `Keys` vient de FilmshellWeaponKeysByFamily, `EquipmentFamilies` du manifeste.
+	equipement := goldenReplayLabels(t).EquipmentObjects()
+	armes := weapons.FilmshellWeaponKeysByFamily()
+
+	got, cov := buildPickups(pickups,
+		replayClock{origin: 0, step: 100_000, families: equipement}, nil, st, armes)
+
+	parNature := map[PickupKind]struct{ total, nomme int }{}
+	for _, p := range got {
+		e := parNature[p.Kind]
+		e.total++
+		if p.Family != "" {
+			e.nomme++
+		}
+		parNature[p.Kind] = e
+	}
+	t.Logf("== COUVERTURE `family` PAR LA CHAINE DE PRODUCTION · %s ==", dir)
+	t.Logf("publies : %d · sans famille : %d", cov.Published, cov.UnknownFamilies)
+	for _, k := range []PickupKind{PickupWeapon, PickupGrenade, PickupEquipment, PickupItem} {
+		e := parNature[k]
+		if e.total == 0 {
+			continue
+		}
+		t.Logf("  %-10s : %d/%d nommes (%.1f %%)", k, e.nomme, e.total,
+			100*float64(e.nomme)/float64(e.total))
+	}
+	// LE SEUIL PORTE SUR LES NON-ARMES, et sur elles seules : c est ce que ce lot a resolu.
+	// Le catalogue d ARMES ne couvre pas tout le jeu et n est pas l objet de cette mesure —
+	// son taux est publie, pas juge.
+	nonArme := parNature[PickupGrenade]
+	eq := parNature[PickupEquipment]
+	totalNA, nommeNA := nonArme.total+eq.total, nonArme.nomme+eq.nomme
+	if totalNA == 0 {
+		t.Fatal("aucun ramassage non-arme dans ce film : la mesure n a pas de denominateur")
+	}
+	if nommeNA != totalNA {
+		t.Errorf("non-armes nommees : %d/%d — le manifeste du titre ne couvre plus tout le corpus "+
+			"de ce film ; publier le trou plutot que de baisser le seuil", nommeNA, totalNA)
+	}
+	var inconnues []uint32
+	vu := map[uint32]bool{}
+	for i, p := range got {
+		if p.Family != "" || vu[pickups[i].CatalogID] {
+			continue
+		}
+		vu[pickups[i].CatalogID] = true
+		inconnues = append(inconnues, pickups[i].CatalogID)
+	}
+	sort.Slice(inconnues, func(a, b int) bool { return inconnues[a] < inconnues[b] })
+	t.Logf("IDENTIFIANTS SANS FAMILLE (distincts) : %s", epmHex(inconnues))
+	t.Logf("VERDICT : non-armes nommees %d/%d (%.1f %%)", nommeNA, totalNA,
+		100*float64(nommeNA)/float64(totalNA))
+}
