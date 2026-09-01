@@ -59,6 +59,18 @@ const (
 	// placement exige une construction locale. C'EST UN DÉFAUT DE CÂBLAGE, PAS UN ÉTAT
 	// NORMAL (pendant de killcollector.CompteurPostSyncClientSansFilm).
 	CompteurClientSansChunks = "postsync_replay_client_sans_chunks"
+	// CompteurClientSansMvar : cycles ou le client ne portait pas FetchMvarForMap alors que le
+	// rattrapage du catalogue de cartes aurait pu travailler. MEME NATURE que
+	// CompteurClientSansChunks : un DEFAUT DE CABLAGE, pas un etat normal.
+	CompteurClientSansMvar = "postsync_mvar_client_sans_capacite"
+	// Bilan du rattrapage des cartes absentes. JAUGES, publiees MEME A ZERO : une cle absente
+	// de /debug/vars ne se distingue pas d'une etape qui ne tourne pas, et c'est exactement
+	// l'ambiguite qu'un compteur de rattrapage doit fermer.
+	JaugeMvarAjoutees      = "postsync_mvar_cartes_ajoutees"
+	JaugeMvarDejaLa        = "postsync_mvar_cartes_deja_presentes"
+	JaugeMvarSansMapID     = "postsync_mvar_matchs_sans_map_id"
+	JaugeMvarHorsObjectifs = "postsync_mvar_cartes_hors_catalogue_objectifs"
+	JaugeMvarEchecs        = "postsync_mvar_echecs"
 )
 
 // SignalerClientSansChunks journalise et compte l'échec de l'assertion `ChunksFetcher` faite
@@ -84,4 +96,19 @@ func SignalerClientSansChunks(ctx context.Context, placement replaybuild.Placeme
 	slog.WarnContext(ctx, "post-sync: rejeu 2D désarmée — le client ne porte pas GetFilmChunks",
 		"gamertag", gamertag, "client", typeClient,
 		"consequence", "aucun film archivé ni artefact construit sur ce cycle")
+}
+
+// SignalerClientSansMvar dit qu'un client ne porte pas FetchMvarForMap.
+//
+// IL EXISTE PARCE QUE LE SILENCE A ETE REINTRODUIT UNE FOIS DE PLUS. Le premier jet de ce
+// chantier ecrivait `mvarFetcher, _ := s.client.(...)` — une ligne SOUS le commentaire qui
+// explique pourquoi cette forme est interdite. L'assertion echouait sur les deux wrappers de
+// production, et le rattrapage sortait sans un mot : indistinguable d'un lot non deploye.
+func SignalerClientSansMvar(ctx context.Context, gamertag, typeClient string) {
+	observability.IncCounterT(ctxkeys.TitleSlug(ctx), CompteurClientSansMvar)
+	slog.WarnContext(ctx, "post-sync: rattrapage des cartes DESARME — le client ne porte pas "+
+		"FetchMvarForMap",
+		"gamertag", gamertag, "client", typeClient,
+		"consequence", "aucune carte absente n'entrera au catalogue ; les rejeux de ces cartes "+
+			"resteront sans origine `spawner`")
 }

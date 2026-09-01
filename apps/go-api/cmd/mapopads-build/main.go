@@ -32,17 +32,16 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"log/slog"
 	"os"
-	"path/filepath"
 	"sort"
 	"time"
 
 	"levelup/go-api/internal/analysis/replay"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/mapcatalog"
 )
 
 func main() {
@@ -63,6 +62,19 @@ func main() {
 		// retombent a l'identique, et n'ecrit QUE `spawn_points`. Une carte dont les socles ne
 		// retombent pas est SAUTEE et COMPTEE : le trou se voit, il ne se comble pas en
 		// douce.
+		// RE-VALIDATION des cartes derivees. Decision utilisateur du 2026-09-01 : le gel
+		// prudent d'`--only-add-spawn-points` saute, le `.mvar` frais redevient la source de
+		// verite pour les cartes DEJA au catalogue. L'automatique reste AUDITABLE — chaque
+		// carte regeneree produit un diff de socles au journal et dans la note du fichier.
+		refreshDrift = flag.Bool("refresh-drifted", false,
+			"regenerer l'entree COMPLETE (socles ET points) des cartes dont le .mvar frais ne "+
+				"concorde plus ; les cartes concordantes restent byte-identiques")
+		// LA GARDE SE LEVE A LA MAIN, JAMAIS TOUTE SEULE : un deplacement de socle au-dela de
+		// dix metres est la signature du mauvais fichier, et il a failli empoisonner neuf
+		// cartes. Ce drapeau est le geste humain qui dit « j ai verifie ».
+		accepteGrands = flag.Bool("accept-large-moves", false,
+			"ecrire meme les cartes dont un socle se deplace de plus de 10 m — a n utiliser "+
+				"qu apres avoir verifie que le fichier source est bien la VARIANTE")
 		addOnly = flag.Bool("only-add-spawn-points", false,
 			"ne pas reecrire les socles : charger le catalogue existant et n'y ajouter que "+
 				"les points d'apparition, en sautant toute carte dont les socles auraient change")
@@ -95,6 +107,11 @@ func main() {
 		"cartes_catalogue", len(objectifs.Maps), "fichiers_dumpes", dumps.count(), "dossier", *from)
 
 	outPath := res.MapWeaponPadsPath(*titleSlug)
+	accepterGrandsDeplacements = *accepteGrands
+	if *refreshDrift {
+		refreshDrifted(ctx, objectifs, dumps, outPath, *dryRun)
+		return
+	}
 	if *addOnly {
 		addSpawnPointsOnly(ctx, objectifs, dumps, outPath, *dryRun)
 		return
@@ -215,19 +232,10 @@ func padsNotes() map[string]string {
 }
 
 // writeCatalog sérialise le catalogue de façon atomique (temporaire + rename).
+// writeCatalog delegue l ecriture ATOMIQUE au paquet partage — le rattrapage au fetch de films
+// ecrit le meme fichier pendant que le serveur le lit, et les deux doivent ecrire pareil.
 func writeCatalog(cat *replay.MapWeaponPadsCatalog, path string) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return err
-	}
-	buf, err := json.MarshalIndent(cat, "", "  ")
-	if err != nil {
-		return err
-	}
-	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, buf, 0o644); err != nil {
-		return err
-	}
-	return os.Rename(tmp, path)
+	return mapcatalog.WriteAtomic(cat, path)
 }
 
 func fail(ctx context.Context, what string, err error) {

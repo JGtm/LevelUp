@@ -9,12 +9,12 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"log/slog"
 	"strconv"
 	"time"
 
 	"levelup/go-api/internal/analysis/replay"
+	"levelup/go-api/internal/mapcatalog"
 )
 
 // ingestFn est la couture qui rend la DERIVE testable. Sans elle, exercer le chemin
@@ -32,24 +32,10 @@ type bilanAjout struct {
 	detailSautees                                             []string
 }
 
-// deriveDe rend la RAISON pour laquelle la source d'une carte ne concorde plus avec le
-// catalogue, ou la chaine vide si tout concorde.
-//
-// LE VERROU EST EN TROIS TERMES ET PAS UN SEUL. `memesSocles` seul ne verifie RIEN sur une
-// carte sans socle : deux listes vides sont egales, donc une carte a zero socle passait le
-// verrou sans qu'aucune donnee soit comparee. `objects_n` et `level_id` sont precisement les
-// signaux qui ont DETECTE la derive de Deadlock (462 objets au catalogue, 410 au
-// telechargement) : ils comparent le FICHIER, pas seulement ce qu'on en a extrait.
+// deriveDe delegue au verrou partage (cf. mapcatalog.DriftOf) : le rattrapage au fetch de
+// films et cette CLI doivent juger la derive EXACTEMENT de la meme facon.
 func deriveDe(entry, neuf replay.MapWeaponPadsEntry) string {
-	switch {
-	case entry.ObjectsN != neuf.ObjectsN:
-		return "objects_n"
-	case entry.LevelID != neuf.LevelID:
-		return "level_id"
-	case !memesSocles(entry.Pads, neuf.Pads):
-		return "socles"
-	}
-	return ""
+	return mapcatalog.DriftOf(entry, neuf)
 }
 
 // retirerPointsPerimes efface les points d'une carte dont la source a derive, et dit s'il y
@@ -179,14 +165,3 @@ func addSpawnPointsOnly(ctx context.Context, objectifs *replay.MapObjectivesCata
 
 // itoaSimple evite d importer fmt pour quelques entiers dans une note.
 func itoaSimple(v int) string { return strconv.Itoa(v) }
-
-// memesSocles compare deux listes de socles par leur serialisation JSON — la MEME comparaison
-// que celle du gate de non-regression, pour qu'un ecart invisible a l'oeil ne passe pas.
-func memesSocles(a, b []replay.MapWeaponPadSpot) bool {
-	ja, err1 := json.Marshal(a)
-	jb, err2 := json.Marshal(b)
-	if err1 != nil || err2 != nil {
-		return false
-	}
-	return string(ja) == string(jb)
-}

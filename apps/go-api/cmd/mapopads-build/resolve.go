@@ -22,7 +22,7 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/analysis/replay"
-	"levelup/go-api/internal/analysis/replay/mapvar"
+	"levelup/go-api/internal/mapcatalog"
 )
 
 // dumpIndex est le dépôt local de `.mvar`, indexé par nom de fichier.
@@ -93,14 +93,32 @@ func (d *dumpIndex) resolve(mapID string, e replay.MapObjectivesEntry) (string, 
 		prefixe(e.PublicName) + "_" + e.MvarFile,
 		// 3. Sans nom public, le dump a pris le map_id comme préfixe.
 		mapID + "_" + e.MvarFile,
+		// 4 et 5. LE FICHIER DE VARIANTE SOUS SON NOM APLATI. `e.MvarFile` peut nommer la
+		//    carte de BASE (le catalogue d'objectifs enregistre, pour quinze cartes, le nom du
+		//    niveau) ; la variante, elle, s'aplatit en `{prefixe}_map.mvar`. Sans ces deux
+		//    candidats, le dossier local pouvait porter la variante sans que rien ne la
+		//    cherche — et c'est ainsi qu'on ramene des socles deplaces de 80 metres.
+		prefixe(e.PublicName) + mapcatalog.SuffixeVarianteAplatie,
+		mapID + mapcatalog.SuffixeVarianteAplatie,
 	}
+	// LA PREFERENCE DE VARIANTE S'APPLIQUE ICI AUSSI, et elle est OPERANTE : les candidats
+	// ci-dessus incluent desormais le nom APLATI de la variante, que `ChoisirFichierVariante`
+	// reconnait par son suffixe. Sans ces candidats, la preference etait du code decoratif —
+	// aucun nom aplati ne pouvait valoir `map.mvar`.
+	//
+	// La regle est celle du runtime, et c'est la MEME fonction : deux implementations
+	// divergeraient, et la divergence est ce qui a coute les 80 metres.
+	var presents []string
 	for _, c := range candidats {
-		if c == "" || !d.files[c] {
-			continue
+		if c != "" && d.files[c] {
+			presents = append(presents, c)
 		}
-		return filepath.Join(d.dir, c), c, true
 	}
-	return "", "", false
+	if len(presents) == 0 {
+		return "", "", false
+	}
+	c := mapcatalog.ChoisirFichierVariante(presents, e.MvarFile)
+	return filepath.Join(d.dir, c), c, true
 }
 
 // nomSiNonAmbigu rend le nom brut, ou la chaîne vide si plusieurs cartes le partagent (la
@@ -126,53 +144,14 @@ func prefixe(publicName string) string {
 // les cartes mesurées, et il se journalise pour que ça reste une mesure.
 func ingest(mapID string, e replay.MapObjectivesEntry, path, base string,
 ) (replay.MapWeaponPadsEntry, int, error) {
-	var mixedPts int
 	buf, err := os.ReadFile(path)
 	if err != nil {
 		return replay.MapWeaponPadsEntry{}, 0, err
 	}
-	v, err := mapvar.Parse(buf)
+	out, mixedPads, mixedPts, err := mapcatalog.EntryFromMvar(mapID, e, buf, base)
 	if err != nil {
-		return replay.MapWeaponPadsEntry{}, 0, fmt.Errorf("parser %s: %w", base, err)
+		return replay.MapWeaponPadsEntry{}, 0, err
 	}
-	spots := mapvar.PadSpots(v)
-	out := replay.MapWeaponPadsEntry{
-		MapID: mapID, PublicName: e.PublicName, Module: e.Module, MvarFile: base,
-		LevelID: v.LevelID, ObjectsN: len(v.Objects),
-		Pads: make([]replay.MapWeaponPadSpot, 0, len(spots)),
-	}
-	mixed := 0
-	for _, s := range spots {
-		if s.Mixed {
-			mixed++
-		}
-		out.Pads = append(out.Pads, replay.MapWeaponPadSpot{
-			Pos:     s.Pos,
-			TypeID:  fmt.Sprintf("0x%08X", uint32(s.TypeID)),
-			Family:  string(s.Family),
-			Objects: s.Objects,
-		})
-	}
-	// LES POINTS D'APPARITION, dans une liste a part — voir MapWeaponPadsEntry.SpawnPoints.
-	pts := mapvar.SpawnPoints(v)
-	for _, sp := range pts {
-		if sp.Mixed {
-			mixedPts++
-		}
-	}
-	// TOUJOURS une tranche NON-NIL : une carte ingeree a des points ETABLIS, meme s'il n'y en a
-	// aucun. C'est le nil qui signifie « non etabli », et lui seul.
-	spawn := make([]replay.MapSpawnPointSpot, 0, len(pts))
-	out.SpawnPoints = &spawn
-	for _, s := range pts {
-		spawn = append(spawn, replay.MapSpawnPointSpot{
-			Pos:     s.Pos,
-			TypeID:  fmt.Sprintf("0x%08X", uint32(s.TypeID)),
-			Kind:    string(s.Kind),
-			Objects: s.Objects,
-		})
-	}
-	out.SpawnPoints = &spawn
 	// LES FUSIONS HETEROGENES SE DISENT. Elles doivent rester a zero : un point de grenade
 	// absorbe dans un point d'equipement publierait une nature fausse, et le regroupement jette
 	// le type des absorbes. Un compte non nul est un signal, pas un detail de journal.
@@ -181,5 +160,5 @@ func ingest(mapID string, e replay.MapObjectivesEntry, path, base string,
 			"celle du representant, celles des objets absorbes sont perdues",
 			"carte", base, "map_id", mapID, "points_melanges", mixedPts)
 	}
-	return out, mixed, nil
+	return out, mixedPads, nil
 }

@@ -37,6 +37,22 @@ var (
 	_ replayartifacts.ChunksFetcher = (*HaloAPIClient)(nil)
 )
 
+// LES CLIENTS DE PRODUCTION PORTENT LA CAPACITE MVAR — VERIFIE A LA COMPILATION.
+//
+// MEME DEFAUT, DEUXIEME FOIS. Le rattrapage du catalogue de cartes a ete livre avec une
+// methode posee sur le SEUL `*HaloAPIClient` : les deux wrappers deleguent explicitement (pas
+// d'embedding), donc ni l'un ni l'autre ne la re-exposait, et les trois cablages de production
+// livrent l'un de ces wrappers. L'assertion echouait PARTOUT, le rattrapage sortait sans un
+// mot, et rien ne distinguait cela d'un lot non deploye.
+//
+// CES TROIS LIGNES CASSENT LA COMPILATION si une re-exposition saute. C'est le seul niveau ou
+// l'oubli est impossible.
+var (
+	_ replayartifacts.MvarFetcher = (*PooledHaloClient)(nil)
+	_ replayartifacts.MvarFetcher = (*cachedHaloClient)(nil)
+	_ replayartifacts.MvarFetcher = (*HaloAPIClient)(nil)
+)
+
 // TestReplayArtifactsClientsDeProductionTraversentLAssertion : le pendant DYNAMIQUE des
 // assertions ci-dessus — il refait l assertion exactement comme `runReplayArtifacts`, sur les
 // clients tels que le moteur les construit (enveloppe de cache comprise), et non sur le type
@@ -57,6 +73,14 @@ func TestReplayArtifactsClientsDeProductionTraversentLAssertion(t *testing.T) {
 			t.Errorf("%s (%T) ne passe pas l assertion de runReplayArtifacts : l etape 1.58 "+
 				"n archiverait aucun film et ne construirait aucun artefact", c.nom, c.client)
 		}
+		// LE PENDANT DYNAMIQUE POUR LA CAPACITE MVAR, sur les MEMES clients tels que le moteur
+		// les construit. Une enveloppe qui oublierait de re-exposer la methode rendrait le
+		// rattrapage inerte sans que rien ne le signale.
+		if _, ok := c.client.(replayartifacts.MvarFetcher); !ok {
+			t.Errorf("%s (%T) ne passe pas l assertion du rattrapage mvar : aucune carte "+
+				"absente n entrerait au catalogue, et les rejeux de ces cartes resteraient "+
+				"sans origine `spawner`", c.nom, c.client)
+		}
 	}
 }
 
@@ -74,12 +98,17 @@ func TestReplayArtifactsAppeleeParLePipeline(t *testing.T) {
 	}
 }
 
-// TestReplayArtifactsAssertionRateeNeSeTaitPas — LE DEFAUT EXACT QUE CE LOT CORRIGE.
+// TestReplayArtifactsAssertionRateeNeSeTaitPas — LE DEFAUT EXACT QUE CE LOT CORRIGE, POUR LES
+// DEUX CAPACITES.
 //
 // `fetcher, _ := s.client.(replayartifacts.ChunksFetcher)` jetait le booleen : un client sans
 // la capacite donnait un fetcher nil et l etape sortait sans un mot. Le test lit le cablage et
 // exige que le resultat de l assertion soit EXAMINE — une assertion muette est indetectable a
 // l execution, donc elle se verrouille a la source.
+//
+// LA CAPACITE MVAR Y EST ENTREE APRES COUP, et pour une mauvaise raison : le meme defaut a ete
+// reintroduit sur elle le 2026-09-01. Un ratchet qui ne couvre qu une capacite laisse la porte
+// ouverte a la suivante.
 func TestReplayArtifactsAssertionRateeNeSeTaitPas(t *testing.T) {
 	src, err := os.ReadFile("convergence.go")
 	if err != nil {
@@ -93,6 +122,18 @@ func TestReplayArtifactsAssertionRateeNeSeTaitPas(t *testing.T) {
 	if !strings.Contains(cablage, "replayartifacts.SignalerClientSansChunks(") {
 		t.Error("le cablage ne signale plus l echec de l assertion ChunksFetcher : sans ce " +
 			"signal, « l etape ne peut rien faire » et « l etape n existe pas » s ecrivent pareil")
+	}
+	// LA MEME GARDE POUR LA CAPACITE MVAR, ET ELLE N EST PAS DECORATIVE : le defaut a ete
+	// REINTRODUIT le 2026-09-01, une ligne sous le commentaire qui l interdit, sur une
+	// capacite que ce ratchet ne couvrait pas encore. Deux fois suffisent.
+	if strings.Contains(cablage, "mvarFetcher, _ := s.client.(replayartifacts.MvarFetcher)") {
+		t.Error("l assertion MvarFetcher jette de nouveau son resultat : le rattrapage des " +
+			"cartes absentes sortirait en silence, et aucune carte n entrerait au catalogue")
+	}
+	if !strings.Contains(cablage, "replayartifacts.SignalerClientSansMvar(") {
+		t.Error("le cablage ne signale plus l echec de l assertion MvarFetcher : sans ce " +
+			"signal, « aucune carte a rattraper » et « le rattrapage est desarme » s ecrivent " +
+			"pareil — c est-a-dire rien")
 	}
 }
 
