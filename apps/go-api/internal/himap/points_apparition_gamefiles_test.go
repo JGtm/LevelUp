@@ -8,6 +8,13 @@ package himap
 // a 36 copies. Ce test est le lien qui l'empeche : il RE-DERIVE la table depuis les fichiers du
 // jeu par la recette elle-meme, et echoue si les deux ne coincident plus.
 //
+// IL COUTE CHER, ET LE PRIX EST ECRIT ICI PLUTOT QUE DECOUVERT PAR UN PLANTAGE : le balayage
+// extrait les 4 235 tags `food` du catalogue Forge et, pour chacun, les tags qu'il reference.
+// MESURE du 2026-09-01 : le processus de test du paquet monte a 11 GiB de memoire resident et
+// la suite depasse le delai `go test` par defaut (600 s). Lancer ce paquet exige donc
+// `-timeout 45m` et une machine libre — surtout, NE PAS le lancer en parallele d'une cuisson
+// d'artefact, dont le plafond memoire suppose la machine disponible.
+//
 // IL SAUTE SANS LE JEU INSTALLE, comme tous les `*_gamefiles_test.go` du paquet : il ne peut
 // donc pas garder la CI. Il garde la machine qui REGENERE le catalogue, et c'est la seule qui
 // puisse faire deriver la table.

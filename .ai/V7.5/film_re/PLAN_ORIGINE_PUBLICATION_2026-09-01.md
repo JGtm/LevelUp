@@ -46,10 +46,12 @@ point d'apparition depuis deux lots ». C'est exactement ce que la recette de ce
 
 ## Etape 5 — cloture
 
-- [ ] 5.1 Gates Go complets
-- [ ] 5.2 Gates web si types regeneres
-- [ ] 5.3 Note + thought_log
-- [ ] 5.4 Commits locaux (pas de merge : une revue adversariale relit avant)
+- [x] 5.1 Gates Go : contracttest, replay, mapvar, replaybuild, mapopads-build VERTS.
+      `himap` : mes tests verts un par un ; la suite complete depasse le delai par defaut et
+      monte a 11 GiB — lenteur locale CONNUE du paquet, consignee en tete du garde-rail.
+- [x] 5.2 Gates web : typecheck vert, 128 fichiers / 1971 tests vitest verts
+- [x] 5.3 Note + thought_log
+- [x] 5.4 Commits locaux, AUCUN merge, AUCUN push
 
 ## Doctrine rappelee par le coordinateur
 
@@ -131,11 +133,42 @@ sont ecrits desormais.
 Neuf cartes restent SANS points : le trou est voulu, visible, et inscrit dans les `notes` du
 fichier lui-meme.
 
+### Etapes 3, 4 et 5 — CLOSES.
+
+**Etape 3.** Schema 32. La collision a ete EVITEE en verifiant l amont d abord : `feat/v75` etait
+deja en 31 (`wt/pickup-nommage`), integre par merge AVANT numerotation. La chronique v32 leve
+explicitement la refutation ecrite au v31, dont l une des deux raisons etait « le depot ne
+declare aucun point d apparition d equipement ».
+
+**Etape 4 — LE RECOUPEMENT EST EXACT, et c est le meilleur controle du lot.**
+
+L artefact rend `origineSocle=33`, `origineSol=14`, `origineInconnue=19` — somme 66, l invariant
+boucle. La recherche, elle, avait trouve **41** ramassages non-arme sous le metre d un point,
+mais sur les 65 points BRUTS de la recette, socles d armes compris. Or la production exclut les
+trois types de socle d arme (ils sortent par `pads`). Les ramassages non-arme tombes sur ces
+types etaient : `0x5E86D110` 4 et `0x6253CFC0` 4, soit 8.
+
+> **41 - 8 = 33.** Le compte de production tombe exactement sur celui de la recherche, une fois
+> retiree la part que la production exclut par construction.
+
+`pointsCatalogue=35` contre 65 objets au dump : c est le REGROUPEMENT a 1 m (`PadSpotMergeM`),
+le meme que celui des socles. 65 objets declares font 35 emplacements.
+
+Premiere cuisson : `carteAuCatalogue=false`. La CLI cuit a partir d un NOM de carte et n a pas de
+`map_id` sans fichier de faits — la chaine etait donc muette hors service. Corrige par un repli
+par nom public, `map_id` restant prioritaire.
+
+**Etape 5.** Gates verts. Aucun merge, aucun push : la revue adversariale passe avant.
+
 ## Decouvertes (notees, NON traitees)
 
 - Neuf cartes du catalogue ont une source UGC qui a derive depuis le 2026-08-19. Re-extraire
   leurs socles changerait ce qui est servi sur ces cartes : c'est une DECISION PRODUIT, hors
   du perimetre de ce lot. Consigne, non traite.
+- Le paquet `himap` monte a 11 GiB et depasse le delai `go test` par defaut : le balayage du
+  catalogue Forge (4 235 tags) est intrinsequement lourd. Il saute sans le jeu installe, donc la
+  CI ne le voit pas — mais il interdit de lancer la suite `himap` en parallele d une cuisson.
+  Ecrit en tete du garde-rail. Non traite (ce serait un lot d optimisation a part).
 - Quatre cartes de `map_objectives` absentes du catalogue des socles pourraient y entrer
   (le generateur en trouve 75 contre 72). Ajout de cartes = changement de perimetre servi,
   hors lot. Non traite.

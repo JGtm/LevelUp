@@ -565,3 +565,122 @@ LEVELUP_REPO_ROOT=<depot principal> go run ./cmd/mapobj-build --player <GT> \
 `--dry-run` neutralise l ecriture du catalogue ; `--save-mvar` depose quand meme les fichiers.
 `LEVELUP_REPO_ROOT` sert a lire `db_profiles.json` et les jetons, gitignores et donc absents
 d un worktree. Aucune re-capture de jeton (ADR 0023).
+
+---
+
+# PUBLICATION — l'origine d'un ramassage entre au document (schema 32)
+
+Ce qui precede etablissait la recette et les points. Cette section dit ce qui a ete LIVRE, et
+ce qui a resiste.
+
+## Ce qui est publie
+
+`Pickup.origin`, sur les ramassages NON-ARME seulement :
+
+| valeur | signification | source |
+|---|---|---|
+| `spawner` | le ramassage a lieu sur un point d'apparition catalogue de la CARTE | fait de carte, au centimetre |
+| `ground` | le ramassage a lieu sur une pose dont l'origine mesuree est `dropped` | `EquipmentPlacement.Origin`, deja en production |
+| absent | ni l'un ni l'autre | ABSTENTION EXPLICITE |
+
+`spawner` l'emporte quand les deux s'appliquent : entre un fait de carte au centimetre et une
+inference de film, le fait de carte gagne. Un test tient cet ordre, avec son temoin.
+
+Les ARMES ne recoivent jamais d'origine : elles ont deja `GroundWeapon` avec son `End`/`Picker`.
+Deux reponses a une question valent moins qu'une.
+
+## Le schema 32 leve une refutation que le 31 avait ecrite
+
+La chronique v31 refusait l'origine pour DEUX raisons. Il faut lire les deux :
+
+> 25,6 % d'injectivite contre 50 % exiges, **et le depot ne declare aucun point d'apparition
+> d'equipement**. La refutation reste en place.
+
+La seconde est tombee : le catalogue porte maintenant 1 934 points sur 63 cartes. La premiere est
+devenue SANS OBJET plutot que contournee — le juge temporel cherchait a apparier un ramassage a
+une NAISSANCE du film ; `origin` n'apparie plus rien, il demande si le ramassage a eu lieu SUR un
+point que la carte declare. Aucune des quatre voies filmiques refutees (distance seule, fin de
+vie, levitation, recurrence) n'est reprise.
+
+## Le typage des points : deux voies mortes avant la bonne
+
+L'etape 1 devait nommer ce que chaque `type_id` fait naitre. Deux voies ont echoue.
+
+**La chaine de tags s'arrete au `fosp`.** `type_id -> food -> foki -> fosp -> ?` : les references
+du `fosp` ne resolvent dans AUCUN module indexe (96 804 entrees), et le manifeste d'equipement du
+titre ne recoupe pas une seule reference des 16 types. Treize indetermines sur seize. **`fosp`
+reste NON ELUCIDE** — c'est la reponse a la question « elucide-le si c'est bon marche » : ce ne
+l'est pas.
+
+**Les naissances `ti=37` ne portent pas d'identifiant de catalogue.** 283 naissances, 0 nommee :
+244 sans identite transmise, et 39 avec identite mais hors manifeste — **39 identifiants
+distincts, une occurrence chacun**. C'est la signature d'un identifiant d'INSTANCE. `AbilityID`
+n'est pas la cle du manifeste sur ce canal.
+
+**Le canal natif des ramassages, lui, livre.** 199 ramassages sur Catalyst, 66 non-arme, **66
+nommes sur 66** par le manifeste, 41 apparies sous le metre a un point catalogue.
+
+## Le temoin qui rend la mesure lisible : le taux de base
+
+66 non-arme sur 199 ramassages = **33,2 %**. Un point qui rend 33 % de non-arme ne porte aucune
+information — c'est le hasard.
+
+| type_id | armes | gren. | equip. | non-arme | lecture |
+|---|---|---|---|---|---|
+| `0x5F379533` | 13 | 0 | 0 | 0,0 % | socle PROUVE `power` |
+| `0x6253CFC0` | 7 | 1 | 3 | 36,4 % | socle PROUVE `rack` — au taux de base, bruit pur |
+| `0x5E86D110` | 0 | 0 | 4 | 100,0 % | socle PROUVE `powerup` — 4 `powerup_overshield` |
+| `0xADEEE6D8` | 3 | 15 | 1 | 84,2 % | point NON-ARME, contenu 15/16 grenade |
+| `0xE42158DF` | 1 | 0 | 11 | 91,7 % | point NON-ARME, contenu 11/11 equipement |
+| `0x0CD504B0` | 10 | 3 | 0 | 23,1 % | SOUS le taux de base — pas un point d'equipement |
+
+**Les trois socles PROUVES tombent exactement ou ils doivent, sans avoir servi a calibrer quoi
+que ce soit.** C'est le controle le plus fort du lot. Le controle symetrique le confirme par
+l'autre bout : 47,6 % des ramassages d'arme tombent sur un socle d'arme, contre un temoin de
+densite a 20,0 % — 2,4 fois le hasard.
+
+**Seuil manque, et publie tel quel.** Le seuil ecrit AVANT etait « n >= 3 et 80 % d'une meme
+classe ». `0xADEEE6D8` rend 15 grenades sur 19 = 78,9 %. Il le manque d'une observation. Le seuil
+n'a pas ete deplace ; la lecture retenue est en deux temps, et le second (grenade contre
+equipement, juge dans les seules non-armes) est une hypothese etayee sur UNE carte et UN film.
+
+**Convergence** : les deux `type_id` trouves a la main au lot precedent, par pure geometrie, sont
+exactement les deux que le canal natif type — l'un grenade, l'autre equipement.
+
+## La non-regression est devenue STRUCTURELLE
+
+**La source derive.** Neuf des 72 cartes rendent aujourd'hui un `.mvar` different de celui qui a
+bati le catalogue le 2026-08-19 (Deadlock : 462 objets au catalogue, 410 au telechargement).
+Une regeneration complete a effectivement reecrit leurs socles d'ARME — mesure : 63/72
+identiques, 9 modifies. Ces socles alimentent des chemins livres.
+
+**Reponse : `--only-add-spawn-points`**, un mode qui ne PEUT PAS ecrire un socle. Il charge le
+catalogue existant, recalcule les socles pour VERIFIER qu'ils retombent a l'identique, et n'ecrit
+que `spawn_points`. Une carte qui ne retombe pas est SAUTEE et COMPTEE.
+
+Resultat du gate : **72/72 entrees identiques au caractere** hors `spawn_points`, en-tete
+inchangee, 0 carte perdue, seule cle ajoutee `spawn_points`.
+
+**Bogue attrape en chemin, et il aurait publie un faux catalogue.** Le premier aplatissement
+ecrivait chaque `.mvar` sous son nom nu — or **58 cartes partagent `mvar_file: "map.mvar"`** :
+elles s'ecrasaient toutes dans un seul fichier, et 65 cartes sur 72 sortaient avec les socles
+d'une carte etrangere. La signature etait un « 11 pads » uniforme sur des cartes sans rapport.
+
+## Le trou de catalogue est un CHAMP, pas un silence
+
+Neuf cartes sur 72 n'ont pas de point. `coverage.pickups.mapCatalogMissing` distingue « carte
+absente du catalogue » de « carte connue sans point », et `mapCatalogPoints` donne le compte.
+
+**La cuisson ne telecharge RIEN.** C'est la doctrine, et elle vaut sans exception : une carte
+manquante se comble par la CLI (`mapopads-build`) ou par le sync, jamais pendant la generation
+d'un artefact. Un test tient la distinction, parce que sans lui elle se perd a la premiere
+refactorisation.
+
+## Ce qui reste ouvert
+
+- **`fosp` non elucide** : la chaine de tags ne descend pas jusqu'a l'objet engendre.
+- **Le typage repose sur une carte et un film.** Onze des treize points restent `unknown`.
+- **Neuf cartes a source derivee.** Re-extraire leurs socles changerait ce qui est servi sur ces
+  cartes : DECISION PRODUIT, hors du perimetre de ce lot.
+- **Quatre cartes de `map_objectives` pourraient entrer au catalogue** (75 contre 72). Ajouter
+  des cartes change le perimetre servi — hors lot.
