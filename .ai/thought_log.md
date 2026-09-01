@@ -1,3 +1,73 @@
+## [2026-09-01] `ti=11 i0` minuteurs — LES DEUX VALEURS DE SEPT BITS SONT DES INDEX FIGÉS, et elles VALIDENT l'ancrage des images-clés — Complété
+
+**La question du lot** : `managed-objective-timers-component` (ti=11 i0) est présent dans **100 %**
+des records porteurs de la jauge et n'avait jamais été interprété. Deux lectures s'affrontaient,
+écrites AVANT la mesure : **A**, une durée de sept bits qui décroît (et alors le départ d'une
+descente date l'armement de la bombe) ; **B**, un index de minuteur, de domaine
+`{-1} ∪ [0,63] ∪ {65,66,67}` — la rétro-ingénierie du 2026-08-31 lit `FUN_1410d9088` comme sept
+bits bruts moins un, sans déquantification. Les deux sont exclusives, et le domaine légal ne
+couvre que **68 des 128 valeurs encodables** : c'est ce qui en fait un oracle.
+
+**Instrument** (tests seuls, zéro chemin de production modifié) :
+`objectif_ti11_minuteurs_test.go` (critère + les quatre issues documentées avant la passe, horloge
+manifeste, digestion en séries par slot, recherche de descentes) et
+`objectif_ti11_minuteurs_verdict_test.go` (portes 0 à 3, journal, chiffres). **Aucun balayage
+n'a été écrit** : `ScanFilmObjectives` publie déjà `ObjectiveFieldTimers`, et l'oracle des
+explosions réutilise `ti12Explosions` plutôt que d'en faire une troisième copie. Garde
+`ASSAUT_CACHE`, sentinelle mémoire armée (**pic 0,02 Gio**), `LockProcessDecode`. 11 films,
+**136 s**, passe unique.
+
+**GATE 0 — LA LECTURE B GAGNE, ET L'ORACLE D'ANCRAGE EXISTE ENFIN.** Voie image-clé : **1 149
+lectures, 113 slots, légalité 100,0 %** sur v0, sur v1 et sur la paire, zéro valeur hors domaine.
+Sous l'hypothèse d'une fenêtre mal posée, une paire tombe légale avec probabilité
+`(68/128)² = 0,282` ; sur 113 slots distincts, l'ordre de grandeur est **1e-62**. Le nombre de
+valeurs DISTINCTES enfonce le clou : **huit** pour v0 (`-1, 1, 3, 15, 17, 19, 21, 23`) et **trois**
+pour v1 (`-1, 15, 47`), là où un tirage uniforme sur sept bits en montrerait environ 128.
+
+**ET LE MÊME ORACLE CONDAMNE LA VOIE DELTA.** 1 552 lectures delta d'Assaut : légalité
+**45,7 % / 40,3 %**, soit SOUS le 53,1 % du hasard ; 120 et 121 valeurs distinctes ; 841 et 923
+lectures hors domaine. Le filtre `Chained` ne sauve rien — 38 lectures à 57,9 % / 71,1 %. Ce n'est
+plus une déduction tirée du taux de chaînage, c'est une mesure indépendante :
+**la voie delta de ti=11 est à écarter, pas à filtrer.** Portée exacte de l'oracle, écrite pour
+qu'on ne la surestime pas : i0 est en tête de masque, il valide **l'ancre du record et la largeur
+du premier composant**, jamais celles qui séparent i0 de i12.
+
+**GATE 2 — POURQUOI i0 NE PEUT PAS DATER L'ARMEMENT.** Sur les **112 slots** d'objectif d'Assaut,
+**ZÉRO** porte une valeur qui bouge : i0 est FIGÉ pour toute la vie d'un objectif (jusqu'à 37
+échantillons sur 24 minutes). Et les trois minuteurs réservés n'apparaissent **jamais**
+(0 lecture à 65, 66 ou 67 sur 1 149) : l'Assaut ne branche pas le chrono de manche sur ses
+objectifs, il ne désigne que des fentes du bassin. Un index figé ne date rien.
+
+**GATE 3 — CRITÈRE NON REMPLI SUR LES TROIS VOIES.** Image-clé **0/28** (aucune descente n'existe,
+les valeurs sont constantes) ; delta 22/28 mais **dispersion 1,400** pour un plafond de 0,20 et 5
+délais hors sens, les délais s'étalant de 134 ms à 342 s — la signature du bruit ; delta chaînée
+1/28.
+
+**TÉMOIN — ET IL DIT « GÉNÉRIQUE ».** Le CTF `cde26226` porte le MÊME motif : un slot, couple
+`(v0 = -1, v1 = 15)` constant sur 37 échantillons de 20 s à 1 460 s. Le KOTH `7f1bbf06` ne rend
+aucune lecture d'image-clé (12 records, masques nuls) et 16 lectures delta à 53 % de légalité,
+soit exactement le hasard. Les deux Strongholds n'ont **aucun** slot ti=11 dans leurs images-clés :
+le MIROIR du chantier, reconfirmé en passant.
+
+**RÉSULTAT DE BORD — LA DOCTRINE D'HORLOGE EST VÉRIFIÉE SUR PIÈCES.** L'écart moteur → manifeste,
+relevé chunk par chunk, s'étend de **1 à 36 ms** pour des écarts de 387 000 à 9 724 000 ms, sur 17
+à 49 chunks : une dérive relative sous 1e-4, c'est-à-dire l'arrondi à la milliseconde des deux
+bases. L'écart est bien constant, donc les délais ABSOLUS sont lisibles, pas seulement leur
+dispersion.
+
+**Documentation corrigée dans le même commit** (commentaires seuls, aucun code touché) :
+`objective_scan.go` réclamait explicitement « un oracle de largeur » et décrivait la voie delta
+comme filtrable. Les deux affirmations sont mises à jour avec les chiffres ci-dessus.
+
+**Conclusion / prochaine étape** : **NÉGATIF sur ti=11 i0 pour dater l'armement**, positif sur
+l'ancrage des images-clés. Ce que i0 rend est le couple d'index (minuteur principal, minuteur
+secondaire) de l'affichage d'objectif, posé une fois pour toutes. La VALEUR du compte à rebours,
+si elle existe dans le film, est **derrière** l'index — dans `ti=0 i15
+managed-engine-timers-component` (masque R(64) + un enregistrement par fente, non porté, grammaire
+déjà lue). Le candidat concurrent reste `ti=12 i11/i12` (durée initiale + durée courante d'un
+navpoint, 17 bits chacune, pas de 0,05 s), qui est un compte à rebours **directement lisible sans
+résoudre d'index**.
+
 ## [2026-09-01] `ti=10 i26..i29` rtpc — LE PARAMÈTRE QUI PILOTE LE SON NE PARLE PAS DE LA BOMBE — Complété
 
 **La question du lot** : `managed-object-rtpc-component` (ti=10, instances i26 à i29) est un
