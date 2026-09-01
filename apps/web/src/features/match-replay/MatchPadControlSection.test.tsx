@@ -177,15 +177,6 @@ describe('MatchPadControlSection — ce que l’écran dit de sa mesure', () => 
     expect(manques.textContent).toContain(t.padControl.gapFmt.powerup(1))
   })
 
-  it('dit que la ventilation n’existe pas plutôt que de l’inventer (artefact ancien)', () => {
-    poserArtefact({
-      ...TEMOIN,
-      coverage: undefined,
-    } as unknown as Partial<ReplayDocument>)
-    const vue = afficher()
-    expect(note(vue, t.padControl.noBreakdown)).toBeTruthy()
-  })
-
   it('rend les mêmes nombres en anglais, sans laisser une string française', () => {
     poserArtefact(TEMOIN)
     const vue = afficher('en')

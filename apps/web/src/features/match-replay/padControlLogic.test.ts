@@ -59,8 +59,12 @@ const SB: MatchScoreboardRow[] = [
 ] as MatchScoreboardRow[]
 
 /**
- * LE TÉMOIN. Trois joueurs au scoreboard (deux camps) plus un QUATRIÈME que le film voit vivre
- * et que le scoreboard ignore ; deux socles d'arme et un socle de bonus.
+ * LE TÉMOIN. Trois joueurs au scoreboard (deux camps), un QUATRIÈME que le film voit vivre et que
+ * le scoreboard ignore, et un CINQUIÈME au roster du film SANS AUCUNE PISTE — deux socles d'arme
+ * et un socle de bonus.
+ *
+ * L'ENTRÉE SANS PISTE EST DANS LE TÉMOIN PARTAGÉ À DESSEIN : le filtre « au moins une vie » doit
+ * tenir sur tous les scénarios, pas seulement sur celui qui l'éprouve.
  */
 function temoin(over: Partial<ReplayDocument> = {}) {
   return testReplayDoc({
@@ -71,6 +75,7 @@ function temoin(over: Partial<ReplayDocument> = {}) {
       { filmIndex: 1, xuid: 'a2', name: 'Bravo' },
       { filmIndex: 2, xuid: 'b1', name: 'Charlie' },
       { filmIndex: 3, xuid: 'orphelin', name: 'Delta' },
+      { filmIndex: 4, xuid: 'sansPiste', name: 'Echo' },
     ],
     tracks: [vie(1, 'a1'), vie(2, 'a2'), vie(3, 'b1'), vie(4, 'orphelin')],
     weaponPads: [socle(SNIPER), socle(EPEE), socle('powerup_overshield')],
@@ -169,6 +174,20 @@ describe('buildPadControl — ce qui n’est PAS attribué', () => {
     expect(control.attributed).toBe(1)
   })
 
+  it('une entrée de roster SANS PISTE n’a pas de ligne, et sa prise part en hors-film', () => {
+    // Le film le nomme au roster mais ne l'a jamais vu vivre : une ligne de zéros le ferait
+    // passer pour quelqu'un qui n'a pris aucun socle, et une ligne à 1 pour un joueur du match.
+    const control = buildPadControl(
+      temoin({
+        padPickups: [prise(0, 'sansPiste'), prise(0, 'a1')],
+      } as Partial<ReplayDocument>),
+      SB,
+    )
+    expect([...parNom(control).keys()]).not.toContain('Echo')
+    expect(control.unjoined).toBe(1)
+    expect(control.attributed).toBe(1)
+  })
+
   it('la SOMME BOUCLE : prises affichées + manques = occupations mesurées', () => {
     const control = buildPadControl(
       temoin({
@@ -213,40 +232,37 @@ describe('buildPadControl — ce qui n’est PAS attribué', () => {
     expect(padControlGaps(control)).toEqual([{ key: 'unnamed', count: 2 }])
   })
 
-  it('sans bloc de datation, aucune ventilation n’est fabriquée — mais le manque reste vrai', () => {
-    const control = buildPadControl(
-      temoin({
-        padPickups: [prise(0, 'a1'), prise(0, null), prise(1, null)],
-      } as Partial<ReplayDocument>),
-      SB,
-    )
-    expect(control.coverage.hasStats).toBe(false)
-    expect(control.coverage.occupations).toBe(3)
-    expect(padControlMissing(control)).toBe(2)
-    expect(padControlGaps(control)).toEqual([])
-  })
 })
 
 describe('buildPadControl — le tri et les colonnes', () => {
   it('trie les joueurs par total décroissant, et les camps aussi', () => {
+    // TOTAUX TOUS DISTINCTS, ET L'ORDRE ATTENDU N'EST NI CELUI DU ROSTER NI L'ALPHABÉTIQUE :
+    // c'est ce qui rend le test sensible. Charlie (t1) 5 · Bravo (t0) 3 · Alpha (t0) 1 · Delta 0.
+    // Roster et alphabet donneraient tous deux « Alpha, Bravo » dans t0, et « t0, t1 » pour les
+    // camps — retirer l'un ou l'autre des deux tris fait donc tomber cette assertion.
     const control = buildPadControl(
       temoin({
         padPickups: [
-          prise(0, 'b1'),
-          prise(1, 'b1'),
-          prise(0, 'b1', 30),
+          prise(0, 'a1'),
           prise(0, 'a2'),
-          prise(1, 'a1'),
-          prise(0, 'a1', 50),
+          prise(1, 'a2', 20),
+          prise(0, 'a2', 30),
+          prise(1, 'b1'),
+          prise(1, 'b1', 20),
+          prise(0, 'b1', 30),
+          prise(1, 'b1', 40),
+          prise(0, 'b1', 50),
         ],
       } as Partial<ReplayDocument>),
       SB,
     )
-    // t0 fait 3, t1 fait 3 : à égalité, le côté départage (ordre reproductible).
-    expect(control.byTeam.map((g) => g.side)).toEqual(['t0', 't1', null])
-    const t0 = control.byTeam[0]
-    expect(t0.players.map((p) => p.name)).toEqual(['Alpha', 'Bravo'])
-    expect(t0.players.map((p) => p.total)).toEqual([2, 1])
+    // Les camps : t1 (5) devant t0 (4), le camp sans nom (0) en dernier.
+    expect(control.byTeam.map((g) => g.side)).toEqual(['t1', 't0', null])
+    expect(control.byTeam.map((g) => g.total.total)).toEqual([5, 4, 0])
+    // Dans t0, Bravo (3) passe DEVANT Alpha (1) — l'inverse du roster et de l'alphabet.
+    const t0 = control.byTeam[1]
+    expect(t0.players.map((p) => p.name)).toEqual(['Bravo', 'Alpha'])
+    expect(t0.players.map((p) => p.total)).toEqual([3, 1])
   })
 
   it('ne met en colonne que les socles réellement pris, du plus disputé au moins disputé', () => {

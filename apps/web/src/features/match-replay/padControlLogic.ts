@@ -9,7 +9,7 @@
  *
  * LA SOURCE EST `padPickups[].xuid`, ET IL N'EST PAS DEVINÉ. Le contrat d'origine de ce champ
  * portait la mesure qui l'avait refusé (88,1 % en suivant le slot de vie, 79,7 % en suivant le
- * joueur, contre >= 90 % exigé) ; l'événement natif de ramassage l'a levé (schémas 30-31,
+ * joueur, contre >= 90 % exigé) ; l'événement natif de ramassage l'a levé (SCHÉMA 30,
  * `pad_pickup_dating.go`) : quand un ramassage natif de la MÊME FAMILLE d'arme tombe dans la
  * fenêtre `[tLow, tHigh]` d'une occupation, le service publie l'instant exact ET son ramasseur —
  * le slot est exact sur 32/32 paires de vérité terrain. Quand PLUSIEURS y tombent, il s'abstient.
@@ -67,34 +67,26 @@ export interface PadControlTeam {
 }
 
 /**
- * CE QUE LA DATATION A PU FAIRE, repris de `coverage.padDating` — jamais recalculé ici.
- *
- * `hasStats` est faux pour un artefact antérieur au schéma 31 : les seuls nombres sûrs sont
- * alors le nombre d'occupations et celui des prises attribuées, et l'écran ne ventile rien.
+ * CE QUE LA DATATION A PU FAIRE, repris TEL QUEL de `coverage.padDating` — jamais recalculé, et
+ * pas recopié champ par champ : une seconde déclaration divergerait au premier compteur ajouté
+ * côté service.
  */
-export interface PadControlCoverage {
-  /** Occupations achevées examinées par la datation. */
-  occupations: number
-  /** Occupations dont l'instant exact a été publié. */
-  dated: number
-  /** Occupations dont le ramasseur a été nommé (sous-ensemble de `dated`). */
-  named: number
-  /** Fenêtres où PLUSIEURS ramassages natifs tombaient : on s'abstient plutôt que de nommer. */
-  ambiguous: number
-  /** Fenêtres qu'aucun ramassage natif ne couvre. */
-  uncovered: number
-  /** Occupations de socle de BONUS, structurellement hors jointure (nom canonique). */
-  powerupOccupations: number
-  /** Faux = artefact sans bloc `padDating` : aucune ventilation n'est affichable. */
-  hasStats: boolean
-}
+export type PadControlCoverage = NonNullable<
+  NonNullable<ReplayDocumentReady['coverage']>['padDating']
+>
 
 /** Le résultat complet : les camps, les colonnes d'arme, et ce qui reste hors tableau. */
 export interface PadControl {
   byTeam: PadControlTeam[]
   /** Identifiants d'arme à mettre en colonne, ordre écrit (cf. `weaponsOf`). */
   weapons: string[]
-  coverage: PadControlCoverage
+  /**
+   * Le bloc de datation du document. `null` n'arrive PAS en production — le service le pose
+   * inconditionnellement, et un artefact qui porte un `xuid` d'occupation le porte forcément —
+   * c'est un garde-fou de typage, pas un cas d'écran : le tableau reste rendu, la note de bas
+   * de tableau est simplement omise.
+   */
+  coverage: PadControlCoverage | null
   /** Somme des lignes : les prises que le tableau montre réellement. */
   attributed: number
   /**
@@ -160,7 +152,7 @@ export function buildPadControl(
   return {
     byTeam,
     weapons: weaponsOf(matchTotal),
-    coverage: coverageOf(doc),
+    coverage: doc.coverage?.padDating ?? null,
     attributed,
     unjoined,
     hasData: attributed > 0,
@@ -216,33 +208,6 @@ function weaponsOf(matchTotal: Record<string, number>): string[] {
   return Object.keys(matchTotal).sort((a, b) => matchTotal[b] - matchTotal[a] || a.localeCompare(b))
 }
 
-/** coverageOf recopie les compteurs de la datation — aucun n'est recalculé ni deviné. */
-function coverageOf(doc: ReplayDocumentReady): PadControlCoverage {
-  const stats = doc.coverage?.padDating
-  if (!stats) {
-    // Artefact sans bloc de datation : le nombre d'occupations reste vrai (c'est la longueur du
-    // calque), tout le reste serait inventé. `hasStats` faux le dit à l'écran.
-    return {
-      occupations: doc.padPickups.length,
-      dated: 0,
-      named: 0,
-      ambiguous: 0,
-      uncovered: 0,
-      powerupOccupations: 0,
-      hasStats: false,
-    }
-  }
-  return {
-    occupations: stats.occupations,
-    dated: stats.dated,
-    named: stats.named,
-    ambiguous: stats.ambiguous,
-    uncovered: stats.uncovered,
-    powerupOccupations: stats.powerupOccupations,
-    hasStats: true,
-  }
-}
-
 /** Les cinq raisons pour lesquelles une occupation n'est pas dans le tableau. */
 export type PadControlGapKey = 'ambiguous' | 'uncovered' | 'unnamed' | 'powerup' | 'unjoined'
 
@@ -259,14 +224,10 @@ export interface PadControlGap {
  * `unnamed` (datée sans ramasseur nommé) est le reste que les quatre autres n'expliquent pas —
  * le calculer par soustraction plutôt que le lire évite d'afficher une ventilation qui ne boucle
  * pas quand un compteur du service évolue.
- *
- * Sans bloc de datation (`hasStats` faux), aucune ventilation n'est rendue : le seul manque
- * connu est alors le nombre d'occupations moins les prises affichées, et l'écran l'écrit tel
- * quel sans prétendre en connaître la cause.
  */
 export function padControlGaps(control: PadControl): PadControlGap[] {
   const cov = control.coverage
-  if (!cov.hasStats) return []
+  if (!cov) return []
   const explained = cov.ambiguous + cov.uncovered + cov.powerupOccupations + control.unjoined
   const unnamed = Math.max(0, cov.occupations - control.attributed - explained)
   return [
@@ -280,5 +241,5 @@ export function padControlGaps(control: PadControl): PadControlGap[] {
 
 /** Le nombre total d'occupations hors tableau, ventilables ou non. */
 export function padControlMissing(control: PadControl): number {
-  return Math.max(0, control.coverage.occupations - control.attributed)
+  return Math.max(0, (control.coverage?.occupations ?? 0) - control.attributed)
 }

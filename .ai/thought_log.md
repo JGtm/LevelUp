@@ -1,3 +1,41 @@
+## [2026-09-01] Contrôle des armes spéciales — les quatre P2 de la revue adversariale — Complété
+
+Revue adversariale rendue RECEVABLE (0 P0/P1, 12 conditions tenues). Les quatre P2, tous dans le
+diff du lot, corrigés en une passe — aucun autre changement.
+
+**1. Branche morte retirée.** `coverage.padDating` est posé INCONDITIONNELLEMENT par le service
+depuis le schéma 30 : « occupation avec `xuid` mais sans `padDating` » n'existe pas, et le repli
+`hasStats:false` était inatteignable derrière la double porte. Supprimés : le champ `hasStats`, la
+fonction `coverageOf` et sa recopie champ par champ, les deux strings `noBreakdown` (FR/EN), leur
+entrée de contrat, le test de logique et le test de rendu qui fabriquaient ce document impossible.
+`PadControlCoverage` est désormais un ALIAS du type du document
+(`NonNullable<coverage['padDating']>`) — plus de seconde déclaration à faire diverger. Il reste un
+garde-fou de TYPAGE (`coverage: … | null`) : la note de bas de tableau est alors omise en silence,
+sans string dédiée ni test.
+
+**2. Tri prouvé par inversion.** L'ancien témoin était à égalité des deux côtés (t0 = t1 = 3, et
+« Alpha, Bravo » = ordre du roster = ordre alphabétique) : retirer les deux `sort` laissait la
+suite VERTE. Nouveau témoin à totaux tous distincts — Charlie 5 (t1), Bravo 3 (t0), Alpha 1 (t0),
+Delta 0 — dont l'ordre trié contredit à la fois le roster et l'alphabet : camps `['t1','t0',null]`,
+et dans t0 `['Bravo','Alpha']`. **Inversion rejouée** : les deux `sort` retirés -> 1 échec
+(`trie les joueurs par total décroissant, et les camps aussi`).
+
+**3. Filtre roster-sans-piste couvert.** Une cinquième entrée de roster SANS AUCUNE PISTE ajoutée
+au témoin PARTAGÉ (le filtre doit tenir sur tous les scénarios), plus un test dédié : une prise à
+son xuid part en `unjoined`, elle n'ouvre aucune ligne. **Inversion rejouée** :
+`.filter(lives.length > 0)` retiré -> 2 échecs (le nouveau test ET celui du joueur hors
+scoreboard).
+
+**4. Numéro de schéma.** Le `xuid` des occupations arrive au schéma **30**, pas 31 ; mes deux
+commentaires neufs se contredisaient (« schémas 30-31 » ici, « schéma 31 » là). Une seule
+formulation, aux trois endroits (`padControlLogic.ts`, `MatchPadControlSection.tsx`,
+`MatchViewTabChronology.tsx`).
+
+**Gates** : typecheck 0 (après purge `.tmp`) · lint 0 erreur (24 warnings pré-existants) · vitest
+`match-view` + `match-replay` **157 fichiers / 2238 tests** (2239 - 2 tests irréels + 1 nouveau).
+
+**Prochaine étape** : gate visuel utilisateur, PAS de merge.
+
 ## [2026-09-01] Contrôle des armes spéciales — le tableau qui NOMME le ramasseur d'un socle — Complété
 
 Lot web SEUL (worktree `wt/pickup-ui`, base `28e18feda`), aucun fichier Go touché. Le schéma 31
