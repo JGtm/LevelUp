@@ -451,8 +451,21 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   locale aux explosions du même film ; l'ARMEUR (le navpoint est un marqueur d'écran,
 	//   pas un acteur) ; les montées SOUS LE PLEIN (q<254 : holds relâchés et animation de
 	//   recharge du marqueur, plafonnée à 253). Détail : document_bomb_armings.go.
-	if SchemaVersion != 29 {
-		t.Fatalf("SchemaVersion = %d, attendu 29 : incrémenter exige une raison écrite ci-dessus "+
+	//
+	// v30 — LE PORTEUR DE LA BOMBE d'Assaut (`bombCarries`) : les périodes de portage en
+	//   intervalles de frames nommés par le xuid — le patron de `skullCarries` (v23) sur le
+	//   canal des ARMES TENUES (la bombe est répliquée dans le composant weapon-state-type-info
+	//   du bipède, famille 0x3fee4fcf — B1 2026-09-01, unique candidate des 9 films d'Assaut).
+	//   PRISE = transition VERS la famille, LÂCHER = transition DEPUIS, la MORT du porteur
+	//   ferme SANS émission (fil des morts, `BuildHeldObjectCarry`). Mesures : témoin Oddball
+	//   46/46, porteur à la pose = détonateur statborg 13/17 (3 des 4 désaccords penchent
+	//   CANAL par la position), mèche libre 27/28. GARDE : TOUTES les variantes bomb, One Bomb
+	//   COMPRISE — le négatif de v29 vise l'anneau, pas ce canal. La bombe AU SOL n'est PAS
+	//   publiée (aucun canal mesuré) : le client la dérive des périodes et des pistes (dernier
+	//   point du lâcheur). Un artefact 29 se lit « à re-cuire ». Détail :
+	//   document_bomb_carries.go.
+	if SchemaVersion != 30 {
+		t.Fatalf("SchemaVersion = %d, attendu 30 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

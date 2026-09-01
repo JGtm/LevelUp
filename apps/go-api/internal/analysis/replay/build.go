@@ -584,6 +584,11 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	// LIBRE (attachObjectiveObjects, ci-dessous) reste la couche POSITION ; ce calque-ci est la
 	// couche VIVANTE par-dessus.
 	attachSkullCarries(&doc, opt, own, replayClock{origin: origin, step: step, frames: doc.FrameCount})
+	// LE PORTEUR DE LA BOMBE d'Assaut, sur les pistes PUBLIEES (la bombe est a la position de
+	// son porteur) — garde de mode par l'appelant (opt.Bomb.CarryScanned, TOUTES les variantes
+	// de la famille bomb), source : le canal des armes tenues DEJA balaye (opt.WeaponChanges),
+	// cf. bomb_carries.go.
+	attachBombCarries(&doc, opt, own, replayClock{origin: origin, step: step, frames: doc.FrameCount})
 	// LES OBJETS D'OBJECTIF LIBRES SONT POSÉS HORS DE LA GARDE DE MODE DU DRAPEAU, et c'est
 	// délibéré : ce calque ne lit ni le statborg ni le fil des morts, donc rien de ce que cette
 	// garde protège. La placer devant l'éteindrait sur Oddball — là où il sert.

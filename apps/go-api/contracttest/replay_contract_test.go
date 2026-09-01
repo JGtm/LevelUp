@@ -110,6 +110,10 @@ var replaySchemas = []struct {
 	{"VipCrownCoverage", replay.VipCrownCoverage{}},
 	{"SkullCarry", replay.SkullCarry{}},
 	{"SkullCarriesCoverage", replay.SkullCarriesCoverage{}},
+	{"BombArming", replay.BombArming{}},
+	{"BombArmingsCoverage", replay.BombArmingsCoverage{}},
+	{"BombCarry", replay.BombCarry{}},
+	{"BombCarriesCoverage", replay.BombCarriesCoverage{}},
 	{"ZoneState", replay.ZoneState{}},
 	{"ZoneSpan", replay.ZoneSpan{}},
 	{"GaugePoint", replay.GaugePoint{}},
@@ -401,9 +405,20 @@ var replaySchemas = []struct {
 //	                        champ au document : `until`/`untilMax`/`end` vivent sur
 //	                        EquipmentPlacement, pas a la racine.
 //
-// Les quatorze fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
+//	44 -> 46  2026-09-01  DEUX champs, les deux calques de LA BOMBE d Assaut :
+//	                      - `bombArmings` (v29) : le debut du hold, l instant arme et la meche
+//	                        (anneau ti=12 i14, protocole 0/1000 — jamais One Bomb, ou le canal
+//	                        est refute CV 0,725) ;
+//	                      - `bombCarries` (v30) : les periodes de PORTAGE, patron de
+//	                        `skullCarries` sur le canal des armes tenues (famille 0x3fee4fcf,
+//	                        B1/B2 2026-09-01) — TOUTES les variantes bomb, One Bomb comprise,
+//	                        car le negatif de v29 vise l anneau, pas ce canal. La ligne v29
+//	                        etait DUE : le commit du schema 29 a regen le contrat sans passer
+//	                        ici, et ce test etait rouge — la quinzieme prise.
+//
+// Les quinze fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
 // chiffre ne le dise. Contrat regenere (`make openapi-gen`), jamais ecrit a la main.
-const wantReplayDocumentFields = 44
+const wantReplayDocumentFields = 46
 
 // TestReplayContractDescribesEveryPublishedField : AUCUN CHAMP PUBLIE SANS DESCRIPTION, ET
 // AUCUNE DESCRIPTION SANS CHAMP.

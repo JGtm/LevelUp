@@ -75,10 +75,16 @@ const bombArmedFullQuantum = 254
 
 // BombInput est CE QUE L'APPELANT FOURNIT de l'armement, plus ce que `BuildFromFilm` y dépose.
 type BombInput struct {
-	// Scanned est la GARDE DE MODE, posée par l'appelant selon `game_variant_name` : vraie
-	// sur les seules variantes d'Assaut où le canal est prouvé (jamais One Bomb — cf.
-	// l'en-tête). Faux : ni balayage, ni calque, ni couverture.
+	// Scanned est la GARDE DE MODE de L'ARMEMENT, posée par l'appelant selon
+	// `game_variant_name` : vraie sur les seules variantes d'Assaut où le canal de l'anneau
+	// est prouvé (jamais One Bomb — cf. l'en-tête). Faux : ni balayage, ni calque, ni
+	// couverture.
 	Scanned bool
+	// CarryScanned est la GARDE DE MODE du PORTAGE (`bombCarries`, schéma 30) : vraie sur
+	// TOUTE variante de la famille bomb, One Bomb COMPRISE — le canal des armes tenues n'est
+	// pas celui de l'anneau, et le négatif One Bomb ne le concerne pas (cf.
+	// document_bomb_carries.go). Faux : ni calque ni couverture de portage.
+	CarryScanned bool
 	// ChunkStartMS est l'horloge du manifeste (start_ms par index de chunk), lue par
 	// l'appelant au cache film du titre — la même base que les explosions du statborg.
 	ChunkStartMS map[int]int
