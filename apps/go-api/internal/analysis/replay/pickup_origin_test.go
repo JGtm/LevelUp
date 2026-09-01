@@ -132,10 +132,10 @@ func TestPickupOriginSocleLEmporteSurLeSol(t *testing.T) {
 // TestPickupOriginTroisEtatsDuCatalogue — promesse 4, la decision produit.
 //
 // DEUX ETATS NE SUFFISAIENT PAS, ET LE DEFAUT ETAIT EXACTEMENT INVERSE DE L'INTENTION : les
-// neuf cartes SAUTEES pour derive de source (Deadlock, Fragmentation, Highpower, Oasis...)
-// sortaient `mapCatalogMissing:false` avec zero point, ce qui se lit « carte connue, aucun
-// point ». Le drapeau cense faire VOIR le trou affirmait que tout allait bien, et precisement
-// la ou l'origine est le moins fiable.
+// SEIZE cartes SAUTEES pour derive de source (Deadlock, Fragmentation, Highpower, Oasis...)
+// sortaient FAUX a l'ancien booleen — retire au schema 32 — avec zero point, ce qui se lit
+// « carte connue, aucun point ». Le drapeau cense faire VOIR le trou affirmait que tout allait
+// bien, et precisement la ou l'origine est le moins fiable.
 func TestPickupOriginTroisEtatsDuCatalogue(t *testing.T) {
 	pos := []filmdec.BipedPosition{poPos(1, 1_000_000, 200, 200, 0)}
 	in := []filmdec.BipedPickup{poRamassage(1, 1_000_000, 2)}

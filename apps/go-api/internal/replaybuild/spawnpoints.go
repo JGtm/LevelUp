@@ -18,8 +18,8 @@ package replaybuild
 //
 // # Le trou se COMPTE, il ne se comble pas
 //
-// 63 cartes sur 72 portent des points etablis ; neuf ne les ont PAS ETABLIS parce que leur
-// `.mvar` servi par l'UGC ne redonne plus les memes socles qu'au catalogue.
+// 56 cartes sur 72 portent des points etablis ; SEIZE ne les ont PAS ETABLIS parce que leur
+// `.mvar` servi par l'UGC ne concorde plus avec le catalogue (objects_n, level_id ou socles).
 //
 // SANS POINTS, LES RAMASSAGES GARDENT LEUR ORIGINE `ground` — et il faut le dire, parce que
 // l'inverse a ete ecrit ici et c'etait faux. Seul `spawner` devient impossible : `ground` ne

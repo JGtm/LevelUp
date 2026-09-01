@@ -124,10 +124,10 @@ type SpawnPoint struct {
 	// raison que `PadSpot.Mixed`.
 	//
 	// SANS LUI L'INFORMATION ETAIT IRRECUPERABLE : le regroupement garde le type du
-	// representant et JETTE ceux des absorbes. Sur le corpus, 234 des 1 934 points sont des
-	// fusions ; si l'une d'elles absorbait un point de grenade dans un point d'equipement, le
-	// catalogue publierait une nature fausse sans que rien ne le signale. Le producteur peut
-	// desormais le DIRE plutot que de le taire.
+	// representant et JETTE ceux des absorbes. MESURE sur le catalogue livre : 60 points a
+	// natures melangees, repartis sur 25 cartes — la nature publiee y est celle du
+	// representant, celles des objets absorbes sont perdues. Le generateur les JOURNALISE
+	// carte par carte, si bien que l'information n'est plus irrecuperable.
 	Mixed bool
 }
 
