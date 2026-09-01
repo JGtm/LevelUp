@@ -33,7 +33,7 @@ package himap
 // table des callouts a ete etablie : le build serveur dedie porte le scenario complet et pese
 // 4,6 Mo — aucun risque memoire, contrairement aux modules `pc/` (586 Mo de tags anonymes).
 //
-//	$env:HALO_DEPLOY="D:/SteamLibrary/steamapps/common/Halo Infinite/deploy"
+//	$env:HALO_DEPLOY="<racine deploy du jeu>"   # facultatif : DeployRoot() connait les installations usuelles
 //	go test ./internal/himap/ -run ScenarioBlocs -v
 
 import (
