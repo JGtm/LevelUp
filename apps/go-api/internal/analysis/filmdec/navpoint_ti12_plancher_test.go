@@ -281,6 +281,12 @@ func tpSentinelle(t *testing.T) func() {
 // reglage de mode), soit la lecture ne se generalise pas. Meme statistique, meme nulle, groupes
 // separes — le verdict est par variante.
 //
+// RESOLU LE 2026-09-01 : le negatif One Bomb de CETTE lecture (CV 0,725, 87/1000) est un
+// artefact de melange de figures — la lecture « meche pausable » le resout a CV 0,017 sur les
+// neuf explosions portees (navpoint_ti12_meche_test.go, qui dit aussi pourquoi les deux
+// explosions sans porteur n'ont pas d'armement replicable). Ce test-ci reste l'instrument
+// temoin de la lecture d'origine.
+//
 //	go test ./internal/analysis/filmdec/ -run NavpointTi12PlancherVariantes -v -timeout 60m
 func TestNavpointTi12PlancherVariantes(t *testing.T) {
 	cache := os.Getenv("ASSAUT_CACHE")

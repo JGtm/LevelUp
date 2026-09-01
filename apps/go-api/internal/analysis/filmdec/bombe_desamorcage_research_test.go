@@ -10,6 +10,18 @@ package filmdec
 // famille `0x3fee4fcf` du canal des armes tenues (B1 : unique candidate des 9 films ; atlas
 // HUD du jeu : sprite `contour-34` nomme « ball | bomb »).
 //
+// # ARBITRAGE POST-FUSION (2026-09-01, merge wt/onebomb)
+//
+// D2 rend 0/11 sur les trois films ONE BOMB (9f57c612, c75f33b8, df8fcbef) et les
+// 32 candidates D3 du corpus en proviennent TOUTES — ce n'est pas un desamorcage de masse,
+// c'est la fenetre : `bdFenetreExplosionMS` (10 s) suppose la meche courte (~4,93 s), or la
+// meche One Bomb vaut 16,2 s et elle est PAUSABLE (`navpoint_ti12_meche_test.go` : 10/11
+// explosions couvertes, 9/9 portees, mediane 16,18 s, CV 0,017). Une candidate One Bomb
+// suivie d'une explosion dans la fenetre pausable est donc un ARMEMENT ; le residu (ex.
+// df8fcbef a 527 s : aucune explosion a moins de 200 s) reste une vraie candidate
+// desamorcage. Sur NEUTRAL/HUSKY le protocole tient tel quel : D2 plein (17/17), zero
+// candidate — le verdict « pas d'occurrence oracle au corpus » y est inchange.
+//
 // # PROTOCOLE, ecrit avant la mesure
 //
 //	D1  Une POSE COMPLETE est une montee contigue (memes regles que le plancher : trous
