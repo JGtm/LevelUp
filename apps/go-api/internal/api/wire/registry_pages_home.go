@@ -50,6 +50,7 @@ func (r *ServiceRegistry) HomeCtx(ctx context.Context, slug string) (port.HomeSe
 // ne fait que le lookup registry.
 func (r *ServiceRegistry) newHomeRepo(pdb *duckdb.PlayerDB) *duckdb.HomeRepo {
 	repo := duckdb.NewHomeRepo(pdb).
+		WithKillSourceClassifier(r.killSourceClassifierFor(pdb)).
 		WithPlaylistDisplay(r.playlistLabelConfigFor(pdb))
 	// Phase 6 du plan CSR : injection du repo thresholds + saison courante.
 	// Sans cette injection, le seuil par défaut (5) est utilisé partout, ce qui

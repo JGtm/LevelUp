@@ -143,7 +143,7 @@ func (h *HealthHomeHandler) handleCheck(ctx context.Context, in *healthHomeInput
 	if page.Hero.KPIs.FavoriteWeaponName != "" {
 		checks["favorite_weapon"] = "ok"
 	} else {
-		checks["favorite_weapon"] = "missing (shared.v_weapon_kills vide ou label metadata absent)"
+		checks["favorite_weapon"] = "missing (aucune arme mesuree pour ce joueur — film jamais decode, ou label metadata absent)"
 		emptySections = append(emptySections, "favorite_weapon")
 	}
 

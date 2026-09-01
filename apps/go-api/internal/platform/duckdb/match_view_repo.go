@@ -27,6 +27,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/observability"
+	"levelup/go-api/internal/port"
 )
 
 // MatchViewRepo implémente port.MatchViewRepository.
@@ -54,6 +55,12 @@ type MatchViewRepo struct {
 	// jamais partagé entre requêtes, et il est armé (écrit) dans GetMatchMeta AVANT le
 	// fan-out parallèle des autres lectures (loadMatchViewDataParallel) — pas de course.
 	forceLive bool
+	// killSourceClassifier : le traducteur « source de degat du film -> cle du registre
+	// d armes » du titre, injecte au cablage (nil pour un titre qui n en fournit pas).
+	// Non nil = les armes du match se lisent dans `match_kill_events_latest` plutot que
+	// dans `v_weapon_kills` (bascule du 2026-09-01). Aucun `slug ==` : c est la presence
+	// du traducteur qui decide, et elle vient d une capability.
+	killSourceClassifier port.KillSourceClassifier
 	// stripPlaylistCategory : le titre déclare-t-il CapPlaylistCategoryStrip
 	// (libellés de playlist préfixés d'une catégorie matchmaking à retirer pour
 	// l'affichage) ? Câblé au wiring depuis la CapabilityMap du titre — jamais de
@@ -94,6 +101,13 @@ func NewMatchViewRepo(pdb *PlayerDB, xuid string) *MatchViewRepo {
 // WithViewer injecte le slug du joueur qui consulte la page (session HTTP), qui
 // détermine l'état `liked` des médias associés au match. Vide ou non appelé :
 // repli documenté dans viewer().
+// WithKillSourceClassifier injecte le traducteur de source de degat du titre. nil (ou
+// non appele) : les armes du match restent lues dans `v_weapon_kills`.
+func (r *MatchViewRepo) WithKillSourceClassifier(c port.KillSourceClassifier) *MatchViewRepo {
+	r.killSourceClassifier = c
+	return r
+}
+
 func (r *MatchViewRepo) WithViewer(slug string) *MatchViewRepo {
 	r.viewerSlug = slug
 	return r

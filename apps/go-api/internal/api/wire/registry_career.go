@@ -70,7 +70,7 @@ func (r *ServiceRegistry) Career(ctx context.Context, slug string) (port.CareerS
 	// shared.v_gamertag_lookup (cascade xuid_aliases ∪ match_participants),
 	// donc capture les amis qui ne sont pas encore dans xuid_aliases mais
 	// déjà apparus en match. Source unique de vérité partagée avec Explorer.
-	explorerRepo := duckdb.NewExplorerRepo(pdb, pdb.XUID)
+	explorerRepo := duckdb.NewExplorerRepo(pdb, pdb.XUID).WithKillSourceClassifier(r.killSourceClassifierFor(pdb))
 	svc = svc.WithFriendXUIDResolver(explorerRepo.ResolveXUIDByGamertag)
 	// SeasonsCatalog (TOML + DB + lazy-fetch) — alimente le filtre Saisons
 	// + cascade counts dans la section "Matchs marquants". Mêmes seasons
