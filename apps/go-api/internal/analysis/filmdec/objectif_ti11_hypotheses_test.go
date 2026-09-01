@@ -72,7 +72,7 @@ func TestObjectifTi11DeltaGarde(t *testing.T) {
 		if err != nil {
 			continue
 		}
-		band := objectiveSlotSet(dir, n)
+		band := observedSlotBand(dir, n, ObjectiveTypeIndex)
 		if len(band) == 0 {
 			continue
 		}
@@ -164,7 +164,7 @@ func TestObjectifTi11DeltaTemoin(t *testing.T) {
 		if err != nil {
 			continue
 		}
-		band := objectiveSlotSet(dir, n)
+		band := observedSlotBand(dir, n, ObjectiveTypeIndex)
 		if len(band) == 0 {
 			continue
 		}
@@ -282,7 +282,7 @@ func TestObjectifTi11DeltaPresence(t *testing.T) {
 		if err != nil {
 			continue
 		}
-		band := objectiveSlotSet(dir, n)
+		band := observedSlotBand(dir, n, ObjectiveTypeIndex)
 		if len(band) == 0 {
 			continue
 		}

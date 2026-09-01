@@ -75,7 +75,7 @@ func TestObjectifTi11DeltaControleTi13(t *testing.T) {
 			}
 			band := worldObjectSlotBand(dir, n, ti)
 			if observee {
-				band = ti11SlotSetPour(dir, n, ti)
+				band = observedSlotBand(dir, n, ti)
 			}
 			if len(band) == 0 {
 				continue
@@ -152,31 +152,4 @@ func ti11NomBande(observee bool) string {
 		return "observee"
 	}
 	return "comblee"
-}
-
-// ti11SlotSetPour est `objectiveSlotSet` generalise a un archetype quelconque.
-func ti11SlotSetPour(dir string, n, ti int) map[uint32]bool {
-	seen, others := map[uint32]bool{}, map[uint32]bool{}
-	for c := 1; c <= n; c++ {
-		data, err := ReadFilmChunk(dir, c)
-		if err != nil {
-			continue
-		}
-		for _, pk := range WalkPackets(data) {
-			if pk.Type != PacketTypeKeyframe {
-				continue
-			}
-			for _, r := range WalkKeyframeWorld(pk.Payload(data)) {
-				if r.TI == ti {
-					seen[uint32(r.Slot)] = true
-					continue
-				}
-				others[uint32(r.Slot)] = true
-			}
-		}
-	}
-	for s := range others {
-		delete(seen, s)
-	}
-	return seen
 }

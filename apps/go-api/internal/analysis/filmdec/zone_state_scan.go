@@ -83,10 +83,15 @@ type ManagedPropertyRead struct {
 	// record). C'est le seul temoin de fiabilite PAR LECTURE que le balayage possede, et il est
 	// publie pour que l'appelant puisse ecarter la contamination d'ancrage — le canal par joueur
 	// (i2..i33) chaine a 33 % sur un KOTH de reference contre 97 % pour le canal scalaire
-	// (mesure du lot C-bis phase 2a), et la bande d'ancrage COMBLE les trous de slots. Faux pour
-	// le dernier record d'un paquet (rien ne peut le suivre) : le filtre coute ~3 % de lectures
-	// reelles, il ne les invente jamais. Ajoute par le lot C-ter volet 1 (2026-08-19), sans
-	// effet sur les consommateurs existants, qui ne le lisent pas.
+	// (mesure du lot C-bis phase 2a). Faux pour le dernier record d'un paquet (rien ne peut le
+	// suivre) : le filtre coute ~3 % de lectures reelles, il ne les invente jamais. Ajoute par
+	// le lot C-ter volet 1 (2026-08-19), sans effet sur les consommateurs existants, qui ne le
+	// lisent pas.
+	//
+	// IL RESTE UTILE APRES LE PASSAGE A LA BANDE OBSERVEE (2026-09-01) : la bande d'ancrage ne
+	// COMBLE plus les trous de slots — c'etait la source principale de faux records — mais le
+	// chainage plafonne encore a 77 % sur le meilleur film du corpus. Un quart des marches
+	// abouties ne retombe pas sur un en-tete.
 	Chained bool
 }
 
@@ -100,13 +105,38 @@ type ManagedPropertyScan struct {
 	Records, Walked, Broken int
 	// Chained compte les marches abouties dont la position de fin porte un EN-TETE DE RECORD
 	// valide. C'est le temoin de largeur du balayage, et il est publie plutot que garde pour
-	// les journaux : une grammaire fausse le fait s'effondrer (2-3 % sur une bande fantome,
-	// contre 87 a 99 % mesures sur le corpus). L'appelant le compare a `Walked`.
+	// les journaux : une grammaire fausse le fait s'effondrer. L'appelant le compare a `Walked`.
+	//
+	// L'ECHELLE DE LECTURE, ET ELLE A ETE CORRIGEE (2026-09-01). Le plancher est de 3 % —
+	// `worldObjectHeaderAt` accepte cette part de positions arbitraires — et le repere de
+	// « 87 a 99 % » que ce champ affichait n'etait pas reproductible : passe sur ses propres
+	// modes, ce balayage plafonne a 77 % (KOTH) et rend 39 a 56 % (Bastion). Sur un mode qui
+	// n'a pas d'objet gere a lire (CTF), la bande comblee tombait a 2,6 %, c'est-a-dire AU
+	// PLANCHER : ses 5 843 records chaines etaient tous explicables par le hasard.
 	Chained int
 }
 
 // ScanFilmManagedProperties balaye les paquets delta du film de dir et rend les valeurs des
 // proprietes reseau de ti=13.
+//
+// LA BANDE D'ANCRAGE EST CELLE DES SLOTS OBSERVES, PAS LA BANDE COMBLEE (`observedSlotBand`,
+// mesure du 2026-09-01). Une propriete d'objet gere est portee par un objet du MODE — zone de
+// Bastion, objet de colline : peu nombreux, vivants toute la partie, presents a CHAQUE
+// image-cle. Le comblement, qui existe pour rattraper les vies invisibles des objets ephemeres
+// (cf. `slot_band_observed.go`), n'a donc rien a rattraper ici et ne fait qu'elargir la fenetre
+// d'ancrage. Ce qu'il coutait, mesure sur les quatre films temoins :
+//
+//	Strongholds (x2)   26 slots -> 26 : la bande comblee n'ajoutait RIEN, rien ne change ;
+//	KOTH arene         52 slots -> 20, chainage 47,6 % -> 77,0 % ;
+//	CTF arene         914 slots -> 20, chainage  2,6 % -> 32,2 % (mode hors production : sans
+//	                   role de zone TENUE, `replaybuild` ne fournit aucun catalogue et ce
+//	                   balayage n'a pas lieu).
+//
+// LE CONSOMMATEUR NE PERD RIEN, ET C'EST LA MESURE QUI DECIDE : sur les SIX films du corpus qui
+// s'assemblent (4 KOTH, 2 Bastion), `analysis/replay` publie des etats de zone IDENTIQUES —
+// memes zones, memes intervalles, memes proprietaires, meme designateur de colline, meme nombre
+// de frames actives — pour 28 a 42 % de lectures en moins sur les KOTH et 0 sur les Bastion
+// (ou la bande comblee n'ajoutait aucun slot). Voir `replay.TestZoneBandeTi13Consommateur`.
 //
 // UN SEUL DECODAGE filmdec A LA FOIS PAR PROCESS : ce balayage installe un hook global de
 // paquet. Il est restaure a la sortie, y compris en cas d'erreur.
@@ -116,7 +146,7 @@ func ScanFilmManagedProperties(dir string) (ManagedPropertyScan, error) {
 	if n == 0 {
 		return sc, fmt.Errorf("aucun chunk film dans %s", dir)
 	}
-	band := worldObjectSlotBand(dir, n, ManagedPropertyTypeIndex)
+	band := observedSlotBand(dir, n, ManagedPropertyTypeIndex)
 	if len(band) == 0 {
 		return sc, fmt.Errorf("aucun slot d'archetype ti=%d dans les keyframes de %s",
 			ManagedPropertyTypeIndex, dir)
