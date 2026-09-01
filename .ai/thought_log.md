@@ -1,3 +1,49 @@
+## [2026-09-01] Précision arme/distance — Lot 3 : mapper film + passe killcollector + persist distance + capability — Complété
+
+**Contexte** : worktree dédié `wt/precision` (`feat/precision-arme`). Lot 3 du plan
+`PLAN_PRECISION_ARME_DISTANCE_2026-08-31.md` : produire la donnée de précision Infinite DEPUIS LE
+FILM et l'écrire, en réutilisant l'infra existante (Lots 1-2 faits : migration
+`match_weapon_hit_distance` + API pure `filmdec.PairWeaponHits`/scanners). Cinq sous-étapes.
+
+**Décision technique** :
+1. **Résolveur distance productionisé** (`filmdec/weapon_hit_distance_resolver.go`) : `BuildBipedTracks`
+   (positions bipèdes par slot via `ScanFilmBipedPositions`), `ResolveHitDistanceBase` (balayage des
+   bases `lot1chBases≥400`, la plus résolvante gagne — même mesure que sondeBaseSweep),
+   `NewWeaponHitDistanceFunc`/`FilmWeaponHitDistance` (WeaponHitDistanceFunc à injecter dans
+   PairWeaponHits), `DetectFilmWorldRange` (bornes carte par signature de largeurs d'axe). Copie #2 du
+   résolveur sonde de recherche (≤ 2, règle 6).
+2. **Mapper** `games/halo_infinite/ingest/weapon_accuracy_film.go` (miroir H5) : `MapWeaponAccuracyFilm`
+   agrège `[]WeaponHitStats` par (xuid, weapon_id) → `[]WeaponAccuracyInsert` (shots_fired=ShotsPaired,
+   shots_landed=Hits, drops=0) + `WeaponHitDistanceBatch` (dist_bucket_json JSON, dist_n). Pont
+   FilmIndex→xuid injecté ; indice non résolu/arme nulle/0 tir écartés ; collision d'indice agrégée.
+3. **Persister** `persist/weapon_hit_distance_persister.go` : `WeaponHitDistancePersister.PersistPass`
+   écrit les DEUX tables sous un lease. `EvaluateHitsGate` = copie UNIQUE de la porte Nmin=8
+   (migration.WeaponHitsMinShots). **Déviation consignée** : `persistWeaponAccuracy` (chemin
+   BatchBuilder) est un no-op sur un match déjà inséré → la passe film écrit weapon_accuracy en
+   DIRECT (forme SQL identique) avec **garde SELECT-then-INSERT** anti-doublon (table sans decode_pass) ;
+   distance = append-only (decode_pass + `_latest`). Anti-ART : INSERT purs, rien à allowlister.
+4. **Passe** `killcollector/hits.go` : `collectHits` greffé dans `collect()`, DIR-BASE (les scanners
+   Lot 2 lisent chunk_NN.bin — rejeu mémoire = duplication du décodeur, interdit), best-effort. Gate
+   `CapWeaponAccuracy`. Résout FilmIndex→xuid par `resolvePlayerIndices` EXISTANT. Branché via
+   `ConfigureFilmAccuracy(filmDir, mapBoundsPath)` — non configuré (chemin live) = sauté proprement.
+5. **Capability** : `match.weapon.accuracy` → `supported` (capabilities.toml + adapter_data.go
+   CapabilityMap, commentaires datés — la vieille note « taux non publiable HitLikely » remplacée) ;
+   produit `weapon_accuracy` ajouté au descripteur Infinite BUILT-IN (`registry.go` — Infinite n'a pas
+   de title.toml). Jamais slug== (ratchet vert).
+
+**Résultats** : tous les gates verts. `go test ./internal/persist/ ./internal/sync/killcollector/
+./internal/games/halo_infinite/ -count=1` OK ; `go test -tags=integration -p 1 ./internal/persist/`
+OK (23 s, anti-ART) ; ratchet slug (`archlint`) + ART (`sync`) OK ; mapper (4 tests) + persister
+(6 tests intégration) + capability (porte via résolveur invoqué, sans film) OK ; gofmt/vet propres ;
+fichiers ≤ 219 L, fonctions ≤ 60 L. **Réserves consignées (§11 du plan)** : (a) équivalence
+FilmIndex↔indice de réplication NON validée sur film — instrumentée (`killsource_hits_indices_non_resolus`),
+gate visuel Lot 4 tranche ; (b) casse PRÉ-EXISTANTE `internal/service/killsourceload` (paquet importé
+absent du disque) + `port.KillSourceClassRepository` indéfini → `internal/service`/`api*`/`scheduler`/
+`worldenrich`/`teammates`/`halo_5 livesync` ne compilent pas — HORS périmètre (interdiction de toucher
+`internal/service`/`cmd/*`), le gate `./internal/...` global échoue là-dessus, exécuté sur les paquets
+compilables. **Prochaine étape** : Lot 4 (vues a/c allumées + groupement par classe ; lèvera la casse
+service teammates qu'il doit toucher).
+
 ## [2026-09-01] Précision arme/distance — Lot 2 : décodeur dégât + pairing + distance sortis du _test — Complété
 
 **Contexte** : worktree dédié `wt/precision` (`feat/precision-arme`). Lot 2 du plan
