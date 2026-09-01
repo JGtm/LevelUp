@@ -230,6 +230,28 @@ func (pc *PooledHaloClient) GetMatchFilm(ctx context.Context, matchID string) (m
 // désactivait l'étape en silence (mesure du 2026-08-29 — cf.
 // `.ai/V7.5/REGISTRE_ASSISTANCES_2026-08-29.md`). Verrouillé par
 // `kill_source_wiring_test.go`, qui l'assert sur les TYPES CONCRETS.
+// FetchMvarForMap rapatrie la variante `.mvar` d'une carte, avec PolicyAnyPublic.
+//
+// HORS de l'interface HaloClient, mais INDISPENSABLE, et pour la MEME raison que
+// `GetFilmChunks` juste en dessous : le rattrapage du catalogue de cartes obtient cette
+// capacite par assertion de type, et ce client est celui du chemin serveur. Son absence
+// desactivait le rattrapage EN SILENCE. Verrouille par `replay_artifacts_wiring_test.go`, qui
+// l'assert sur les TYPES CONCRETS.
+func (pc *PooledHaloClient) FetchMvarForMap(ctx context.Context, mapID, mvarFile string,
+) ([]byte, string, error) {
+	var blob []byte
+	var base string
+	err := pc.doPublic(ctx, func(c *HaloAPIClient) error {
+		var e error
+		blob, base, e = c.FetchMvarForMap(ctx, mapID, mvarFile)
+		return e
+	})
+	if err != nil {
+		return nil, "", err
+	}
+	return blob, base, nil
+}
+
 func (pc *PooledHaloClient) GetFilmChunks(ctx context.Context, matchID string) ([]FilmChunk, bool, error) {
 	callStart := time.Now()
 	var result []FilmChunk

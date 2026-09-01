@@ -84177,3 +84177,47 @@ enregistrait déjà — une identité vérifiable sans rien décoder.
 
 **Conclusion / prochaine étape** : revue adversariale. La passe `--refresh-drifted` n'est PAS
 livrée — les 2 cartes qui bougent encore relèvent d'une décision produit.
+
+## [2026-09-01] Rattrapage .mvar — ronde 1 : il était INERTE en production — Complété
+
+**Statut** : Complété. P0 + 2 P1 + 4 P2 traités, inversions rejouées. Pas de merge, pas de push.
+
+**LE P0, et il faut le nommer sans détour** : `FetchMvarForMap` n'existait que sur
+`*HaloAPIClient`. Les deux wrappers (`cachedHaloClient`, `PooledHaloClient`) délèguent
+explicitement, sans embedding, et ne la réexposaient pas — or les trois câblages de production
+livrent l'un d'eux. L'assertion échouait **partout**, et `rattraperCartesAbsentes` sortait sans
+slog ni compteur : indistinguable d'un lot non déployé.
+
+C'est le défaut « étape 1.57 » que le fichier de test voisin existe pour interdire, et je l'ai
+réintroduit **une ligne sous le commentaire qui l'explique** — j'avais écrit
+`mvarFetcher, _ := s.client.(...)` juste après avoir lu, dans le même fichier, pourquoi cette
+forme est proscrite. Le commentaire était là ; je ne l'ai pas appliqué.
+
+**Correctif complet** : méthode réexposée sur les deux wrappers (motif exact de
+`GetFilmChunks`), assertions **compile-time** sur les trois types concrets plus leur pendant
+dynamique, et assertion **examinée** avec `SignalerClientSansMvar` (WARN + compteur) sur le cas
+nil. Inversions rejouées : retirer l'une ou l'autre réexposition **casse la compilation** —
+c'est le seul niveau où l'oubli est impossible.
+
+**P1-a** : mon test de préférence rejouait une COPIE de la boucle ; inverser la vraie laissait
+tout vert, et le commentaire « le test échoue si l'ordre diverge » était faux. La sélection
+devient `mapcatalog.ChoisirFichierVariante`, fonction pure consommée par la production et
+attaquée directement par le test.
+
+**P1-b** : `DriftOf` lisait « objects_n diffère » comme « carte dérivée » — c'est exactement la
+signature du mauvais fichier. La CLI applique désormais la même préférence de variante que le
+runtime, et une **garde passe avant l'écriture** : au-delà de 10 m de déplacement d'un socle, la
+carte est sautée, comptée et rapportée, sauf `--accept-large-moves`. Le seuil vient d'une
+mesure : la passe fautive rendait 22 à 80 m, la correcte 2 et 33 m.
+
+**Mesure sur données réelles** : dump fautif → **9 refusées** (exactement les 9 spectaculaires) ;
+dump correct → 2 refusées et 6 régénérées, qui sont précisément celles sans changement de socle.
+L'automatique ne touche donc plus que ce qui est sûr.
+
+**P2** : tests d'`AddEntry` (refus d'une clé existante, catalogue absent, catalogue corrompu) ·
+`WriteAtomic` passe à un temporaire à **nom unique** — le nom fixe faisait publier un JSON
+tronqué quand la CLI et un cycle de sync se croisaient — avec nettoyage de l'orphelin ·
+fusions hétérogènes journalisées côté runtime aussi · bilan publié en **jauges expvar**, même à
+zéro · comportement d'un titre sans fichier de référence documenté.
+
+**Conclusion / prochaine étape** : ronde 2 de revue. Le catalogue reste intouché.

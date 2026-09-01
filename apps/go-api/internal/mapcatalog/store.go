@@ -7,10 +7,15 @@ package mapcatalog
 // l'ecrit desormais A L'EXECUTION, pendant que le serveur LIT le meme fichier. Deux exigences
 // en decoulent, et elles sont tenues par le code et non par la discipline de l'appelant :
 //
-//	ECRITURE ATOMIQUE   fichier temporaire puis `rename`. Un lecteur voit l'ancien fichier ou le
-//	                    nouveau, jamais un fichier a moitie ecrit. C'est le motif que la CLI
-//	                    utilisait deja (`writeCatalog`) ; il est repris tel quel plutot
-//	                    qu'invente.
+//	ECRITURE ATOMIQUE   fichier temporaire A NOM UNIQUE puis `rename`. Un lecteur voit l'ancien
+//	                    fichier ou le nouveau, jamais un fichier a moitie ecrit.
+//
+//	                    LE NOM UNIQUE N'EST PAS UN DETAIL, et la premiere version s'est trompee :
+//	                    elle ecrivait dans `<chemin>.tmp`, un nom FIXE. Deux ecrivains
+//	                    concurrents — la CLI lancee a la main pendant qu'un cycle de sync
+//	                    rattrape une carte — ecrivaient alors dans le MEME fichier temporaire,
+//	                    et le `rename` du plus rapide publiait un JSON tronque pour TOUS les
+//	                    lecteurs. `os.CreateTemp` donne a chaque ecrivain le sien.
 //	AJOUT SEUL          `AddEntry` ne peut PAS toucher une entree existante : il relit le
 //	                    catalogue, REFUSE si la cle est deja la, et n'ecrit que dans le cas
 //	                    contraire. Ce n'est pas une consigne, c'est la seule chose que la
@@ -60,17 +65,33 @@ func AddEntry(path, mapID string, entry replay.MapWeaponPadsEntry) error {
 	return WriteAtomic(cat, path)
 }
 
-// WriteAtomic ecrit le catalogue par fichier temporaire puis `rename`.
+// WriteAtomic ecrit le catalogue par fichier temporaire A NOM UNIQUE puis `rename`.
 func WriteAtomic(cat *replay.MapWeaponPadsCatalog, path string) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
 	buf, err := json.MarshalIndent(cat, "", "  ")
 	if err != nil {
 		return err
 	}
-	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, buf, 0o644); err != nil { //nolint:gosec // catalogue lisible par tous, comme les autres references du titre
+	f, err := os.CreateTemp(dir, filepath.Base(path)+".*.tmp")
+	if err != nil {
+		return err
+	}
+	tmp := f.Name()
+	// LE TEMPORAIRE NE DOIT JAMAIS SURVIVRE A UN ECHEC : sans ce nettoyage, chaque erreur
+	// laisserait un fichier orphelin de plusieurs centaines de kilo-octets a cote du catalogue.
+	defer func() { _ = os.Remove(tmp) }() // no-op apres un rename reussi
+	if _, err := f.Write(buf); err != nil {
+		_ = f.Close()
+		return err
+	}
+	if err := f.Close(); err != nil {
+		return err
+	}
+	// Le catalogue est une reference du titre, lisible comme les autres.
+	if err := os.Chmod(tmp, 0o644); err != nil { //nolint:gosec // reference publique du titre
 		return err
 	}
 	return os.Rename(tmp, path)

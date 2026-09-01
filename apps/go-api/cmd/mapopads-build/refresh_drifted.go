@@ -76,6 +76,21 @@ func (d diffSocles) String() string {
 // socle — et ca merite d'etre signale en tete du rapport, pas enterre dedans.
 const deplacementSignificatif = mapvar.PadSpotMergeM
 
+// deplacementAnormal est le seuil au-dela duquel un socle qui bouge n'est PLUS une mise a jour
+// de carte plausible, mais la signature d'un MAUVAIS FICHIER.
+//
+// DIX METRES, et le chiffre vient d'une mesure, pas d'une intuition : la passe fautive de ce
+// chantier — carte de BASE prise pour la VARIANTE — a rendu des deplacements de 22 a 80 m sur
+// neuf cartes. Avec le bon fichier, il n'en reste que deux, a 2 et 33 m. Dix metres separe donc
+// nettement le remaniement reel de l'erreur de fichier, tout en laissant passer un socle
+// deplace de quelques metres par une vraie mise a jour.
+const deplacementAnormal = 10.0
+
+// accepterGrandsDeplacements leve la garde ci-dessus. Variable de paquet et non parametre :
+// elle est posee UNE fois par le drapeau `--accept-large-moves` et lue au fond de la boucle,
+// et la faire descendre a travers trois fonctions n'apporterait rien.
+var accepterGrandsDeplacements bool
+
 // comparerSocles apparie deux jeux de socles et dit ce qui a change.
 //
 // L'APPARIEMENT EST PAR FAMILLE ET PAR PROXIMITE, glouton : chaque socle de l'ancien jeu prend
@@ -121,7 +136,7 @@ func distanceSocles(a, b replay.MapWeaponPadSpot) float64 {
 
 // bilanRefresh compte ce qu'une passe de re-validation a fait.
 type bilanRefresh struct {
-	regenerees, concordantes, sansDump, echecs int
+	regenerees, concordantes, sansDump, echecs, refusees int
 	// rapports : une ligne par carte regeneree, dans l'ordre des map_id — deterministe.
 	rapports []string
 	// spectaculaires : les cartes dont un socle a bouge de plus de `deplacementSignificatif`.
@@ -148,6 +163,7 @@ func refreshDrifted(ctx context.Context, objectifs *replay.MapObjectivesCatalog,
 	}
 	slog.InfoContext(ctx, "mapopads: re-validation des cartes derivees",
 		"regenerees", b.regenerees, "concordantes", b.concordantes,
+		"refusees_deplacement_anormal", b.refusees,
 		"sans_dump", b.sansDump, "echecs", b.echecs,
 		"cartes_a_deplacement_significatif", len(b.spectaculaires))
 	for _, r := range b.rapports {
@@ -203,8 +219,22 @@ func revaliderUneCarte(ctx context.Context, cat *replay.MapWeaponPadsCatalog,
 	if nom == "" {
 		nom = base
 	}
-	b.rapports = append(b.rapports, fmt.Sprintf("%s (%s) : %d -> %d socles · %s",
-		nom, mapID, len(entry.Pads), len(neuf.Pads), d))
+	ligne := fmt.Sprintf("%s (%s) : %d -> %d socles · %s",
+		nom, mapID, len(entry.Pads), len(neuf.Pads), d)
+	// LA GARDE, ET ELLE PASSE AVANT L'ECRITURE — c'est tout son interet.
+	//
+	// Un socle qui bouge de plus de `deplacementAnormal` n'est pas une mise a jour de carte :
+	// c'est la signature du MAUVAIS FICHIER (carte de base plaquee sur la variante). La
+	// premiere passe de ce chantier a rendu jusqu'a 79,87 m et allait les ecrire ; seule une
+	// verification humaine l'a arretee. Desormais la carte est SAUTEE, comptee, et rapportee —
+	// l'automatique reste automatique pour la derive normale, et l'anomalie exige un geste.
+	if d.pireDeplacement() > deplacementAnormal && !accepterGrandsDeplacements {
+		b.refusees++
+		b.rapports = append(b.rapports, "REFUSEE (deplacement anormal) — "+ligne)
+		b.spectaculaires = append(b.spectaculaires, fmt.Sprintf("%s (%s)", nom, mapID))
+		return
+	}
+	b.rapports = append(b.rapports, ligne)
 	if d.pireDeplacement() > deplacementSignificatif || d.ajoutes > 0 || d.retires > 0 {
 		b.spectaculaires = append(b.spectaculaires, fmt.Sprintf("%s (%s)", nom, mapID))
 	}
@@ -218,7 +248,9 @@ func noteRefresh(b bilanRefresh) string {
 		itoaSimple(b.regenerees) + " carte(s) REGENEREES depuis leur .mvar frais (socles " +
 		"d'armes ET points d'apparition), " + itoaSimple(b.concordantes) + " concordantes " +
 		"laissees byte-identiques, " + itoaSimple(b.sansDump) + " sans .mvar au depot, " +
-		itoaSimple(b.echecs) + " en echec de lecture. "
+		itoaSimple(b.echecs) + " en echec de lecture, " + itoaSimple(b.refusees) +
+		" REFUSEE(S) pour deplacement anormal (>10 m : signature du mauvais fichier, pas d'une " +
+		"mise a jour de carte — relancer avec --accept-large-moves apres verification). "
 	if len(b.spectaculaires) > 0 {
 		s += "ATTENTION — " + itoaSimple(len(b.spectaculaires)) + " carte(s) avec socles " +
 			"ajoutes, retires ou deplaces de plus d'un metre : leurs rejeux FUTURS serviront " +

@@ -688,10 +688,17 @@ func (s postSyncFilmSteps) runReplayArtifacts(ctx context.Context, insertedIDs [
 	if !ok {
 		replayartifacts.SignalerClientSansChunks(ctx, placement, e.gamertag, fmt.Sprintf("%T", s.client))
 	}
-	// MEME MOTIF QUE `ChunksFetcher`, et pour la meme raison : une capacite OPTIONNELLE du
-	// client, assertee et non exigee. Un client qui ne la porte pas (mocks des autres etapes)
-	// desarme le rattrapage du catalogue de cartes sans rien casser.
-	mvarFetcher, _ := s.client.(replayartifacts.MvarFetcher)
+	// MEME MOTIF QUE `ChunksFetcher` — Y COMPRIS L'EXAMEN DU BOOLEEN, et il a fallu se le faire
+	// dire deux fois. Le premier jet ecrivait `mvarFetcher, _ := ...`, une ligne sous le
+	// commentaire ci-dessus qui explique precisement pourquoi cette forme est interdite :
+	// l'assertion echouait sur les DEUX wrappers de production, et le rattrapage sortait sans
+	// un mot. Les wrappers exposent desormais la methode (verifie a la COMPILATION par
+	// replay_artifacts_wiring_test.go) ; ce signal-ci couvre le cas qu'aucune assertion
+	// statique ne peut couvrir : un client injecte a l'execution.
+	mvarFetcher, okMvar := s.client.(replayartifacts.MvarFetcher)
+	if !okMvar {
+		replayartifacts.SignalerClientSansMvar(ctx, e.gamertag, fmt.Sprintf("%T", s.client))
+	}
 	replayartifacts.Run(ctx, replayartifacts.Deps{
 		BuildOne:        e.replayArtifacts.BuildOne,
 		Fetcher:         fetcher,

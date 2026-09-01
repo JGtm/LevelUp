@@ -143,3 +143,77 @@ func TestComparerSoclesDitCeQuiABouge(t *testing.T) {
 		})
 	}
 }
+
+// TestRefreshDriftedRefuseUnDeplacementAnormal — LA GARDE, et elle passe AVANT l'ecriture.
+//
+// Un socle qui bouge de plus de dix metres n'est pas une mise a jour de carte : c'est la
+// signature du MAUVAIS FICHIER (carte de base plaquee sur la variante). La premiere passe de ce
+// chantier a rendu jusqu'a 79,87 m et allait les ECRIRE ; seule une verification humaine l'a
+// arretee. Sans ce test, la garde peut sauter sans que rien ne rougisse.
+func TestRefreshDriftedRefuseUnDeplacementAnormal(t *testing.T) {
+	pts := []replay.MapSpawnPointSpot{
+		{Pos: mapvar.Vec3{X: 1}, TypeID: "0xADEEE6D8", Kind: "grenade", Objects: 1},
+	}
+	entree := func() replay.MapWeaponPadsEntry {
+		cp := append([]replay.MapSpawnPointSpot(nil), pts...)
+		return replay.MapWeaponPadsEntry{
+			MapID: "m", MvarFile: "m.mvar", ObjectsN: 462, LevelID: 7,
+			Pads:        []replay.MapWeaponPadSpot{rdSocle(1, "power")},
+			SpawnPoints: &cp,
+		}
+	}
+	objectifs := &replay.MapObjectivesCatalog{
+		SchemaVersion: replay.MapObjectivesSchemaVersion,
+		Maps:          map[string]replay.MapObjectivesEntry{"m": {MapID: "m", MvarFile: "m.mvar"}},
+	}
+	cas := []struct {
+		nom      string
+		x        float64
+		accepter bool
+		ecrit    bool
+	}{
+		// Sous le seuil : derive normale, l'automatique fait son travail.
+		{"socle deplace de 3 m — accepte", 4, false, true},
+		// Au-dela : la signature du mauvais fichier. REFUSE.
+		{"socle deplace de 80 m — REFUSE", 81, false, false},
+		// Le geste humain leve la garde.
+		{"socle deplace de 80 m avec --accept-large-moves", 81, true, true},
+	}
+	for _, c := range cas {
+		t.Run(c.nom, func(t *testing.T) {
+			ancien := accepterGrandsDeplacements
+			accepterGrandsDeplacements = c.accepter
+			t.Cleanup(func() { accepterGrandsDeplacements = ancien })
+			np := append([]replay.MapSpawnPointSpot(nil), pts...)
+			aoAvecIngestFactice(t, func(_ string, _ replay.MapObjectivesEntry, _, base string,
+			) (replay.MapWeaponPadsEntry, int, error) {
+				return replay.MapWeaponPadsEntry{
+					MapID: "m", MvarFile: base, ObjectsN: 410, LevelID: 7,
+					Pads:        []replay.MapWeaponPadSpot{rdSocle(c.x, "power")},
+					SpawnPoints: &np,
+				}, 0, nil
+			})
+			cat := &replay.MapWeaponPadsCatalog{
+				SchemaVersion: replay.MapWeaponPadsSchemaVersion, TitleSlug: "halo_infinite",
+				Maps: map[string]replay.MapWeaponPadsEntry{"m": entree()},
+			}
+			chemin := aoCatalogue(t, t.TempDir(), cat)
+			refreshDrifted(context.Background(), objectifs,
+				aoDepotAvec(t, objectifs, "m.mvar"), chemin, false)
+			relu := aoRelire(t, chemin).Maps["m"]
+			ecrit := relu.ObjectsN == 410
+			if ecrit != c.ecrit {
+				t.Errorf("ecrit = %v, attendu %v (objects_n = %d)", ecrit, c.ecrit, relu.ObjectsN)
+			}
+			if !c.ecrit && relu.Pads[0].Pos.X != 1 {
+				t.Errorf("le socle a bouge alors que la carte devait etre REFUSEE : %v",
+					relu.Pads[0].Pos)
+			}
+			// LE REFUS SE DIT dans la note : un refus silencieux serait un trou de plus.
+			note := aoRelire(t, chemin).Notes["refresh_drifted"]
+			if !c.ecrit && !strings.Contains(note, "REFUSEE") {
+				t.Errorf("le refus doit figurer au rapport : %q", note)
+			}
+		})
+	}
+}

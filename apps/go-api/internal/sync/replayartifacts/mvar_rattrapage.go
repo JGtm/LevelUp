@@ -46,8 +46,10 @@ import (
 	"path/filepath"
 
 	"levelup/go-api/internal/analysis/replay"
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/mapcatalog"
+	"levelup/go-api/internal/observability"
 )
 
 // entryFromMvarFn est la couture qui rend le CHEMIN NOMINAL testable sans `.mvar` reel.
@@ -84,6 +86,12 @@ func rattraperCartesAbsentes(ctx context.Context, d Deps, work []buildWork,
 	if fetcher == nil {
 		return b
 	}
+	// TITRE SANS FICHIER DE REFERENCE : le catalogue est VERSIONNE, donc son absence n'est pas
+	// le cas nominal d'un titre pauvre — c'est une installation incomplete, ou un titre qui n'a
+	// pas encore de catalogue de cartes (Halo 5). Le rattrapage journalise alors UN WARN et UN
+	// echec PAR CYCLE, ce qui est bruyant mais assume : la jauge `postsync_mvar_echecs` reste
+	// non nulle tant que le fichier manque, et c'est exactement ce qu'on veut voir. Le chemin
+	// est de toute facon inatteignable sans films : `Run` sort avant si la selection est vide.
 	catPath := title.NewPathResolver(d.RepoRoot).MapWeaponPadsPath(d.TitleSlug)
 	cat, err := replay.LoadMapWeaponPads(catPath)
 	if err != nil {
@@ -129,13 +137,29 @@ func rattraperCartesAbsentes(ctx context.Context, d Deps, work []buildWork,
 			b.echecs++
 		}
 	}
+	publierBilanRattrapage(ctx, b)
+	return b
+}
+
+// publierBilanRattrapage publie le bilan en JAUGES, meme a zero.
+//
+// UN SLOG CONDITIONNEL NE SUFFIT PAS, et c'est le motif du paquet : une cle absente de
+// /debug/vars ne se distingue pas d'une etape qui ne tourne pas. Un rattrapage qui ne trouve
+// jamais rien a ajouter doit se voir a zero, sans quoi « tout est deja au catalogue » et « le
+// rattrapage est desarme » s'ecrivent pareil — c'est-a-dire rien.
+func publierBilanRattrapage(ctx context.Context, b bilanRattrapage) {
+	titre := ctxkeys.TitleSlug(ctx)
+	observability.SetIntT(titre, JaugeMvarAjoutees, int64(b.ajoutees))
+	observability.SetIntT(titre, JaugeMvarDejaLa, int64(b.dejaLa))
+	observability.SetIntT(titre, JaugeMvarSansMapID, int64(b.sansMapID))
+	observability.SetIntT(titre, JaugeMvarHorsObjectifs, int64(b.horsObjectifs))
+	observability.SetIntT(titre, JaugeMvarEchecs, int64(b.echecs))
 	if b.ajoutees > 0 || b.echecs > 0 {
 		slog.InfoContext(ctx, "rattrapage mvar: cartes absentes du catalogue",
 			"ajoutees", b.ajoutees, "deja_presentes", b.dejaLa,
 			"sans_map_id", b.sansMapID, "hors_catalogue_objectifs", b.horsObjectifs,
 			"echecs", b.echecs)
 	}
-	return b
 }
 
 // ajouterCarteAuCatalogue fait le travail d'UNE carte. Rend faux sur tout echec — et l'echec
@@ -155,11 +179,20 @@ func ajouterCarteAuCatalogue(ctx context.Context, d Deps, fetcher MvarFetcher,
 		slog.WarnContext(ctx, "rattrapage mvar: depot du .mvar au cache echoue",
 			"map_id", mapID, "err", err)
 	}
-	entry, _, _, err := entryFromMvarFn(mapID, e, blob, base)
+	entry, mixedPads, mixedPts, err := entryFromMvarFn(mapID, e, blob, base)
 	if err != nil {
 		slog.WarnContext(ctx, "rattrapage mvar: variante illisible — la carte reste absente",
 			"map_id", mapID, "fichier", base, "err", err)
 		return false
+	}
+	// LES FUSIONS HETEROGENES SE DISENT ICI AUSSI. La CLI les journalise depuis toujours (« un
+	// compte non nul est un signal ») ; les jeter cote runtime aurait rendu ce signal
+	// dependant du chemin par lequel la carte entre au catalogue.
+	if mixedPads > 0 || mixedPts > 0 {
+		slog.WarnContext(ctx, "rattrapage mvar: fusions a natures/familles MELANGEES — la "+
+			"valeur publiee est celle du representant, celles des objets absorbes sont perdues",
+			"map_id", mapID, "carte", e.PublicName,
+			"socles_melanges", mixedPads, "points_melanges", mixedPts)
 	}
 	err = mapcatalog.AddEntry(catPath, mapID, entry)
 	switch {
