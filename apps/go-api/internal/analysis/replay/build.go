@@ -583,11 +583,15 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	// deja construit ci-dessus. Publies AVANT les socles : `attachWeaponPads` s'en sert pour
 	// dater les occupations de socle qui restaient en intervalle de vingt secondes.
 	var pkCov PickupCoverage
-	doc.Pickups, pkCov = buildPickups(opt.Pickups, origin, step, own.SlotXUID, opt.PickupStats)
+	doc.Pickups, pkCov = buildPickups(opt.Pickups,
+		replayClock{origin: origin, step: step, frames: doc.FrameCount,
+			families: opt.Labels.EquipmentFamilies},
+		own.SlotXUID, opt.PickupStats, opt.Labels.Keys)
 	doc.Coverage.Pickups = &pkCov
 	slog.Info("rejeu : ramassages natifs",
 		"decodes", pkCov.Decoded, "publies", pkCov.Published, "nommes", pkCov.Named,
 		"armes", pkCov.Weapons, "objets", pkCov.Items,
+		"famillesInconnues", pkCov.UnknownFamilies,
 		"avantOrigine", pkCov.BeforeOrigin, "listesMultiples", pkCov.MultiEvent,
 		"refuses", pkCov.Refused)
 	// Les SOCLES — armes au sol ET power-ups —, sur le meme nuage NON decime (build_ground_weapons.go).
