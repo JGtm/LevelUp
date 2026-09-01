@@ -311,11 +311,15 @@ func NewRegistry() *Registry {
 			// Stats objectifs par match (CTF/Zones/Oddball) — section scoreboard +
 			// KPI Synthèse/Escouade (PLAN_V72_OBJECTIVE_STATS).
 			CapObjectiveStats,
-			// Précision par arme (charts a/c page Synthèse/Escouade) — produit title-level
-			// du data-level match.weapon.accuracy. Depuis le 2026-09-01 (Lot 3) le
-			// numérateur est reconstruit du film (killcollector/hits.go) ; le front
-			// useCapability('weapon_accuracy') allume alors les graphes.
-			CapWeaponAccuracy,
+			// Précision par arme (CapWeaponAccuracy) : REMISÉE le 2026-09-01 — NON déclarée
+			// par Infinite. Elle avait été ajoutée au Lot 3 pour allumer les charts a/c depuis
+			// un numérateur reconstruit du film, mais ce numérateur s'est révélé NON FIABLE au
+			// recalage (armes automatiques à 0,9-3,3 % vs ~40 % API ;
+			// RECALAGE_WEAPON_ACCURACY_FILM_2026-09-01, commit 945c9fdb7). Retirée ⇒ le front
+			// useCapability('weapon_accuracy') repasse à false et masque les graphes pour
+			// Infinite. La capability reste accordée par Halo 5 (natif, title.toml) ; la
+			// précision GLOBALE d'Infinite reste servie par l'API. Reprise : piste compteur
+			// ECS (cf. .ai/V7.5/REGISTRE_REPORTS.md).
 		},
 		IsDefault:        true,
 		XboxTitleID:      "2043073184",
