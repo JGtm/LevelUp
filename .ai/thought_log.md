@@ -364,6 +364,88 @@ verdict primaire et jamais à sa place). Deux corrections postérieures à la pa
 deux prouvablement neutres sur les chiffres : champ `ti12Read.Key` en écriture seule supprimé, et
 tri des montées départagé par slot (les délais se calculent sur `finMS`, qui est la clé de tri —
 seul le NOM du slot rapporté pouvait varier).
+## [2026-09-01] LA BANDE D'ANCRAGE DE `ti=13` NE COMBLE PLUS — le consommateur ne perd rien — Complété
+
+**Décision technique.** `filmdec.ScanFilmManagedProperties` (ti=13, propriétés d'objet géré)
+ancrait ses records delta sur `worldObjectSlotBand`, qui **comble** toute la plage [min, max] des
+slots vus aux images-clés. Il ancre désormais sur `observedSlotBand`, les slots **réellement
+observés**. Le comblement existe pour les objets **nombreux et éphémères** — un projectile vit
+moins d'une seconde, les images-clés sont espacées de 20 s, sans comblement on décode 57 vies au
+lieu de 580 (mesure du 2026-07-26). Un objet **géré par le mode** est l'exact contraire : peu
+nombreux, vivant toute la partie, présent à chaque image-clé. Le comblement n'y rattrape rien et
+n'élargit que la fenêtre d'ancrage.
+
+`objectiveSlotSet` (ti=11, déjà sur cette règle depuis la veille) et le helper de test
+`ti11SlotSetPour` sont supprimés au profit du helper unique `observedSlotBand(dir, n, ti)` —
+**une** copie de la règle, dans `slot_band_observed.go`, à côté de sa doctrine.
+
+**Reproduction préalable.** `TestObjectifTi11DeltaControleTi13` rejoué avant toute modification :
+ti=11 5,6 % sur 1 616 281 marches → 29,3 % sur 19 666 ; ti=13 6,3 % sur 278 670 → 43,7 % sur
+27 409. Par film ti=13 : 2ce58582 26 slots/56,1 % inchangé, 696a9d7c 26/39,5 % inchangé,
+7f1bbf06 52/47,6 % → 20/**77,0 %**, cde26226 914/2,6 % → 20/32,2 %. Chiffres identiques au dixième
+près. Plancher de `worldObjectHeaderAt` sur positions arbitraires : **3 %**.
+
+**Résultats mesurés — LE SCANNEUR** (`ScanFilmManagedProperties`, chemin de production,
+avant → après) :
+
+| film | mode | slots | records | marches | cassées | chaînées | lectures |
+|---|---|---|---|---|---|---|---|
+| 7f1bbf06 | KOTH streets | 52 → **20** | 11 209 → 3 956 | 5 011 → 3 067 | 6 198 → 889 | 2 385 → **2 363** | 7 334 → 4 259 |
+| 01e1f945 | KOTH catalyst | 52 → **20** | 10 575 → 6 845 | 6 867 → 5 226 | 3 708 → 1 619 | 4 193 → **4 155** | 10 239 → 7 387 |
+| 606d9844 | KOTH chasm | 52 → **20** | 2 485 → 1 335 | 1 574 → 969 | 911 → 366 | 602 → **589** | 3 059 → 1 973 |
+| 8076f97f | KOTH shogun | 52 → **20** | 10 793 → 4 573 | 5 503 → 2 898 | 5 290 → 1 675 | 1 728 → **1 674** | 8 957 → 5 267 |
+| 696a9d7c | Bastion vagabond | 26 → 26 | \= | \= | \= | \= | \= |
+| 7344d24f | Bastion vagabond | 26 → 26 | \= | \= | \= | \= | \= |
+| 2ce58582 | Bastion classé | 26 → 26 | \= | \= | \= | \= | \= |
+| cde26226 | CTF (hors production) | 914 → **20** | 419 642 → 6 155 | 224 091 → 3 355 | 195 551 → 2 800 | 5 843 → 1 079 | 354 468 → 4 435 |
+
+**Les records chaînés survivent tous** là où le mode a un objet géré à lire : −0,9 % sur les
+quatre KOTH, −78 % de marches cassées. Là où le comblement n'ajoutait aucun slot (Bastion), le
+balayage est identique **bit pour bit**.
+
+**Résultats mesurés — LE CONSOMMATEUR** (`replay.buildZoneStates` via `BuildFromPositions`,
+nouvel instrument `TestZoneBandeTi13Consommateur`, un film par processus) :
+
+| film | zones publiées | intervalles | avec propriétaire | frames actives | désignateur |
+|---|---|---|---|---|---|
+| 7f1bbf06 | 3 = 3 | 44 = 44 | 22 = 22 | 2 758 = 2 758 | slot 1551, 2 bascules — identique |
+| 01e1f945 | 4 = 4 | 100 = 100 | 50 = 50 | 4 975 = 4 975 | slot 1471, 4 bascules — identique |
+| 606d9844 | 3 = 3 | 14 = 14 | 7 = 7 | 1 963 = 1 963 | slot 1498, 2 bascules — identique |
+| 8076f97f | 3 = 3 | 36 = 36 | 18 = 18 | 2 998 = 2 998 | slot 1540, 2 bascules — identique |
+| 696a9d7c | 3 = 3 | 37 = 37 | 37 = 37 | 0 = 0 (1 794 pts de jauge) | sans objet (Bastion) |
+| 7344d24f | 3 = 3 | 39 = 39 | 39 = 39 | 0 = 0 (1 701 pts de jauge) | sans objet (Bastion) |
+
+**AUCUN état de zone ne disparaît, aucun ne change** : mêmes zones, mêmes bornes de frames, mêmes
+camps, même découpage par changement de propriétaire, même jauge en direct. Le seul champ qui
+bouge est un **dénominateur** : `coverage.zones.slots` (slots qui émettent) 37 → 15, 28 → 13,
+21 → 10, 25 → 13 — c'est du bruit qui s'en va, pas de la donnée.
+
+**Le CTF est hors production, et c'est le code qui le dit.** `replaybuild.heldZoneRoles` ne
+retient que `strongholds_zone` et `hill` ; un CTF n'a aucun catalogue de zone, donc
+`decodeFilmZoneReads` ne balaye pas `ti=13`. Son chiffre est publié quand même parce qu'il est le
+plus spectaculaire — 354 468 lectures → 4 435 — et parce qu'il est le seul où le compte de
+records chaînés **baisse vraiment** (5 843 → 1 079). Il ne s'agit pas d'une perte : à 2,6 % sur
+224 091 marches, la bande comblée chaînait **au plancher de 3 %**. 0,026 × 224 091 ≈ 5 826, soit
+les 5 843 observés : ces records étaient tous explicables par le hasard. À 32,2 %, la bande
+observée est dix fois au-dessus.
+
+**Corrections de documentation dans le même commit** (le code fait foi) : le repère de
+« 87 à 99 % de chaînage sur ti=13 » qui servait de comparaison à trois fichiers n'existe pas —
+`ti=13` plafonne à 77 % sur ses propres modes. `ManagedPropertyRead.Chained`,
+`ManagedPropertyScan.Chained`, l'en-tête d'`objective_scan.go` et le champ `desig` de
+`replay/zone_states.go` disaient tous que la bande comblait : ils sont remis à jour.
+
+**Ce qui n'est pas traité.** Le chaînage plafonne à 77 % (KOTH) et 39-56 % (Bastion) : la bande
+n'était pas la seule source de faux ancrages, et le filtre `Chained` reste nécessaire côté
+consommateur. Un cas dégénéré théorique reste ouvert : un film dont *tous* les slots observés
+seraient aussi vus porter un autre archétype rendrait une bande vide là où la bande comblée
+rendait des slots interpolés — `ScanFilmManagedProperties` y répond par une erreur non fatale
+(rejeu sans état de zone), ce qui vaut mieux qu'un calque bâti sur des slots inventés. Aucun film
+du corpus n'est dans ce cas.
+
+**Prochaine étape.** Le chantier ti=11 reste bloqué en amont des composants (chaînage 13,7-64,9 % sur
+la bande observée) ; ce lot ne le débloque pas, il retire une des deux causes possibles. Rien à
+re-cuire côté artefacts : les états publiés sont inchangés sur tout le corpus assemblable.
 
 ## [2026-08-31] LA JAUGE EST SUR `ti=11`, PAS `ti=13` — les deux archétypes sont en miroir — Complété
 
@@ -80933,3 +81015,36 @@ et un plafond mesure de 77 % sur l'archetype de reference ; la marge restante ne
 l'ancre, qui vient d'etre confirmee par deux sources independantes. La question utile redevient la
 JAUGE : relacher le filtre `Chained` et chercher un signal statistique sur les 265 records
 porteurs de i12.
+
+---
+
+## [2026-09-01] Merge de la factorisation de bande, et les deux appelants orphelins
+
+**Statut** : Complete.
+
+**LE PROBLEME, cree par une bonne factorisation.** Le lot `wt/ti13-bande` a centralise la regle de
+bande OBSERVEE en `filmdec.observedSlotBand(dir, n, ti)` et supprime ses trois copies —
+`objectiveSlotSet` (production ti=11) et `ti11SlotSetPour` (le meme code dans un fichier de test).
+C'etait juste : trois copies, un garde-rail pose dans le meme commit (regle n°6). Mais deux
+branches soeurs appelaient encore les noms supprimes.
+
+**TRAITE MAINTENANT plutot que decouvert au merge final.** Merge de `wt/ti13-bande` dans
+`wt/assaut-bombe` : PROPRE, aucun conflit (les fichiers que le lot a touches n'avaient pas bouge
+de mon cote depuis sa base). Deux appelants orphelins, tous deux dans des instruments de mesure :
+
+	objectif_bombstate_test.go   ti11SlotSetPour(dir, n, ti)  -> observedSlotBand(dir, n, ti)
+	objectif_ti11_ancre_test.go  objectiveSlotSet(dir, n)     -> observedSlotBand(dir, n, ObjectiveTypeIndex)
+
+Apres renommage : zero occurrence des anciens noms dans tout le depot, hors le commentaire
+HISTORIQUE du garde-rail qui raconte pourquoi il existe — et celui-la doit rester.
+
+**GATES, avec une precaution.** Un lot de mesures tournait en parallele dans un autre worktree, et
+deux builds Go concurrents corrompent le cache. Toutes les verifications ont donc ete jouees avec
+un **GOCACHE et un cache golangci-lint ISOLES** dans le scratchpad : `gofmt` propre, `go vet`
+propre, `go test` vert sur `filmdec` et `archlint`, `golangci-lint` 0 issue. Le garde-rail
+`no_rewritten_slot_band_test.go` passe — mes deux instruments renommes ne reconstruisent pas de
+bande, ils appellent la regle.
+
+**RESTE** : `wt/ultra-jauge` (le worktree du lot de mesures en cours) appelle encore les anciens
+noms. Meme correction a appliquer quand le lot aura rendu la main — pas avant, on ne merge pas
+sous les pieds d'agents qui ecrivent.

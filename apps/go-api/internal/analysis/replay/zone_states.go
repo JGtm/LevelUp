@@ -107,8 +107,14 @@ type zoneSeries struct {
 	keys  map[uint32]uint32       // tag 5 : la cle de nommage, une par slot
 	// desig : tag 5, la SERIE des identifiants CHAINES par slot — en KOTH le slot de l'objet
 	// de mode y porte le DESIGNATEUR de la colline courante (cf. zone_states_hill.go). Seules
-	// les lectures dont le record chaine entrent ici : le tag 5 non chaine des slots combles est
-	// de la contamination d'ancrage (mesure du lot C-ter volet 1, 4 films).
+	// les lectures dont le record chaine entrent ici : le tag 5 non chaine est de la
+	// contamination d'ancrage (mesure du lot C-ter volet 1, 4 films).
+	//
+	// LE FILTRE RESTE UTILE APRES LE PASSAGE A LA BANDE OBSERVEE (2026-09-01). Il a ete ecrit
+	// contre les slots que le COMBLEMENT de la bande d'ancrage inventait ; ceux-la ont disparu
+	// avec lui (`filmdec.observedSlotBand`), et un des quatre films du corpus voyait justement
+	// son 5e slot de designation s'en aller. Mais le chainage de `ti=13` plafonne encore a
+	// 77 % : la contamination n'est pas eteinte, seulement reduite.
 	desig map[uint32][]zoneSample
 	slots int
 }
