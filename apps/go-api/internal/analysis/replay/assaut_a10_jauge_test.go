@@ -36,16 +36,39 @@ package replay
 // celle du MANIFESTE. Un decalage constant ne change pas une dispersion — c'est la CONSTANCE qui
 // designe le canal, le recalage vient apres.
 //
-// # LA PREMIERE PASSE A REFUTE LA VOIE DELTA, ET C'EST UN RESULTAT (2026-09-01)
+// # LES DEUX VOIES ONT CHANGE DE ROLE EN COURS DE CHANTIER, ET IL FAUT LE LIRE (2026-09-01)
 //
-// Le balayage ouvre deux voies. La voie DELTA rend 120 000 a 350 000 lectures par film, avec un
-// chainage de 2,7 a 26 % et des valeurs de jauge uniformement reparties sur 32 bits (4 851
-// valeurs distinctes pour 5 749 lectures, mediane a 2^31). Ce n'est pas une jauge, c'est du
-// bruit : la bande d'ancrage de ti=11 compte jusqu'a 1 704 slots et attrape tout.
+// PREMIERE PASSE. La voie DELTA rendait 120 000 a 350 000 lectures par film pour un chainage de
+// 2,7 a 26 % — du bruit. L'instrument s'est donc rabattu sur les IMAGES-CLES.
 //
-// Cet instrument ne garde donc que les lectures d IMAGE-CLE (`FromKeyframe`), ou l ancrage est
-// structurel et la marche aboutit sur 98,4 % des records. Il REND quand meme le bilan des deux
-// voies, parce qu un filtre qu on ne voit pas est un filtre qu on oublie.
+// PUIS DEUX MESURES ONT INVERSE LA SITUATION.
+//
+//	1. La CARTE du corps d'image-cle (`objectif_ti11_carte_test.go`) : sur 157 vies d'objectif
+//	   suivies et 2 531 records, **AUCUN des 104 bits ne varie au fil du match**. Le corps
+//	   d'image-cle est une description STATIQUE — la jauge N'Y EST PAS, par construction.
+//	2. La BANDE D'ANCRAGE delta comblait tout l'intervalle [min, max] des slots vus (jusqu'a
+//	   1 704 slots pour une quinzaine d'objectifs reels). En ne gardant que les slots OBSERVES,
+//	   le nombre de records delta tombe d'un facteur ~200 et le chainage passe de 2,7 % a
+//	   13-65 % selon le film.
+//
+// LA JAUGE EST DONC CHERCHEE DANS LES DELTAS, filtres sur `Chained` — le seul temoin de
+// fiabilite par lecture. Les lectures d'image-cle restent rendues : elles portent la description
+// statique de l'objectif, ce qui est utile, mais elles ne peuvent pas porter une progression.
+//
+// # OU EN EST LA MESURE APRES CETTE BASCULE (2026-09-01, et c'est encore un intermediaire)
+//
+// Le chainage delta est repare mais pas clos : 13 a 65 % selon le film, contre 87 a 99 % sur
+// `ti=13` correctement ancre. Le filtre `Chained` ne laisse donc passer que 1 a 35 lectures par
+// film — assez pour voir, pas assez pour une serie. VERDICT : zero slot porte une montee de
+// jauge, et les valeurs de i12/i13 restent reparties sur 32 bits.
+//
+// LE SEUL SIGNAL PROPRE EST `i14 state` : 0, 2, 4, 5, 6, 7 — des entiers dans [0, 7], soit
+// exactement la largeur R(3) portee. C'est encourageant sans etre probant : un champ de trois
+// bits parait propre quel que soit son alignement.
+//
+// CE QUI RESTE A FAIRE EST DONC UN SEUL CHIFFRE : monter le chainage delta de 13-65 % vers les
+// 87-99 % que `ti=13` atteint. La mesure de residu (`objectif_ti11_longueur_test.go`) dit dans
+// quelle direction chercher — la marche SUR-CONSOMME des qu'il y a plusieurs composants.
 //
 // # LE TEMOIN, sans lequel un resultat ne vaut rien
 //
@@ -132,26 +155,42 @@ func a10Ligne(t *testing.T, cache, id, mode string) *filmdec.ObjectiveScan {
 		t.Logf("%-9s %-26s balayage impossible (%v)", id, mode, err)
 		return nil
 	}
-	cles := a10Cles(sc.Reads)
-	t.Logf("%-9s %-26s IMAGE-CLE %d records (%d marches, %d cassees, chainage %s), %d lecture(s)"+
-		"   |   DELTA %d records (%d marches, chainage %s), %d lecture(s) ECARTEES",
-		id, mode, sc.KeyRecords, sc.KeyWalked, sc.KeyBroken, a10Pct(sc.KeyChained, sc.KeyWalked),
-		len(cles), sc.Records, sc.Walked, a10Pct(sc.Chained, sc.Walked), len(sc.Reads)-len(cles))
-	t.Logf("           champs (image-cle) : %s", a10ParChamp(cles))
-	if j := a10Jauges(cles); len(j) > 0 {
+	cles, deltas := a10Cles(sc.Reads), a10Deltas(sc.Reads)
+	t.Logf("%-9s %-26s IMAGE-CLE %d records (%d marches, chainage %s), %d lecture(s) statiques"+
+		"   |   DELTA %d records (%d marches, chainage %s), %d lecture(s) CHAINEES",
+		id, mode, sc.KeyRecords, sc.KeyWalked, a10Pct(sc.KeyChained, sc.KeyWalked), len(cles),
+		sc.Records, sc.Walked, a10Pct(sc.Chained, sc.Walked), len(deltas))
+	t.Logf("           champs (delta chaines) : %s", a10ParChamp(deltas))
+	if j := a10Jauges(deltas); len(j) > 0 {
 		t.Logf("           jauge i12 : %s", a10Plage(j))
 	}
-	if s := a10Seuils(cles); len(s) > 0 {
+	if s := a10Seuils(deltas); len(s) > 0 {
 		t.Logf("           seuil i13 : %s", a10Plage(s))
 	}
 	return &sc
 }
 
-// a10Cles ne garde que les lectures d'image-cle — cf. l'en-tete du fichier.
+// a10Cles ne garde que les lectures d'image-cle : la description STATIQUE de l'objectif.
 func a10Cles(reads []filmdec.ObjectiveRead) []filmdec.ObjectiveRead {
 	out := make([]filmdec.ObjectiveRead, 0, len(reads))
 	for _, r := range reads {
 		if r.FromKeyframe {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
+// a10Deltas ne garde que les lectures DELTA dont le record est CHAINE.
+//
+// LE FILTRE `Chained` N'EST PAS UN LUXE : il vaut 13 a 65 % selon le film, et une lecture non
+// chainee vient d'un record dont la largeur n'est pas confirmee. Prendre tout reviendrait a
+// mesurer du bruit avec du signal dedans, ce que la premiere passe de ce chantier a deja fait
+// une fois.
+func a10Deltas(reads []filmdec.ObjectiveRead) []filmdec.ObjectiveRead {
+	out := make([]filmdec.ObjectiveRead, 0, len(reads))
+	for _, r := range reads {
+		if !r.FromKeyframe && r.Chained {
 			out = append(out, r)
 		}
 	}
@@ -233,7 +272,7 @@ func a10Plage(vs []uint64) string {
 func a10MonteesParSlot(sc filmdec.ObjectiveScan) map[uint32][]int {
 	series := map[uint32]*a10Serie{}
 	for _, r := range sc.Reads {
-		if r.Field != filmdec.ObjectiveFieldProgress || !r.FromKeyframe {
+		if r.Field != filmdec.ObjectiveFieldProgress || r.FromKeyframe || !r.Chained {
 			continue
 		}
 		s := series[r.Slot]
@@ -356,9 +395,8 @@ func TestAssautA10Detail(t *testing.T) {
 			t.Logf("%s : balayage impossible (%v)", id, err)
 			continue
 		}
-		cles := a10Cles(sc.Reads)
 		slots := map[uint32][]filmdec.ObjectiveRead{}
-		for _, r := range cles {
+		for _, r := range a10Deltas(sc.Reads) {
 			if r.Field == filmdec.ObjectiveFieldProgress ||
 				r.Field == filmdec.ObjectiveFieldRequiredProgress ||
 				r.Field == filmdec.ObjectiveFieldState {
