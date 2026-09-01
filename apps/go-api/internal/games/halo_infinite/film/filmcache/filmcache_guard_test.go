@@ -34,9 +34,16 @@ var sourceImpl = regexp.MustCompile(`func \([^)]*\) Chunks\(\) \[\](objectiveeve
 //	source disque : c'est un buffer construit en memoire, repete — la disposition du cache
 //	n'entre pas dans son sujet. Entree posee au lot A phase 1, apres que le garde-rail a
 //	rougi (le test etait arrive au commit precedent sans elle).
+//	internal/analysis/objectiveevents/assaut_footer_research_test.go (2026-09-01) — MEME
+//	CYCLE D'IMPORT. Recherche sur le pied de film (flux des recompenses) : le test vit DANS
+//	le paquet objectiveevents (il exerce le decodeur de blocs du pied sur les chunks reels,
+//	symboles non exportes), donc il ne peut pas importer filmcache, qui l'importe. Entree
+//	posee au merge de wt/bombe-visuel dans feat/v75, apres que le garde a rougi en CI (le
+//	fichier etait arrive par la ligne assaut-bombe sans elle).
 var allowlist = map[string]string{
-	filepath.FromSlash("internal/analysis/objectiveevents/extract_test.go"):         "cycle d'import (2026-08-08)",
-	filepath.FromSlash("internal/analysis/objectiveevents/statborg_rounds_test.go"): "cycle d'import (2026-08-18)",
+	filepath.FromSlash("internal/analysis/objectiveevents/extract_test.go"):                "cycle d'import (2026-08-08)",
+	filepath.FromSlash("internal/analysis/objectiveevents/statborg_rounds_test.go"):        "cycle d'import (2026-08-18)",
+	filepath.FromSlash("internal/analysis/objectiveevents/assaut_footer_research_test.go"): "cycle d'import (2026-09-01)",
 }
 
 func TestUneSeuleSourceDisqueDeFilm(t *testing.T) {

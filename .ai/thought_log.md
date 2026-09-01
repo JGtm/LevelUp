@@ -96,6 +96,27 @@ occuperaient la liste de travail à vie (mesure du 2026-08-29 : 581 des 999 cand
 `feat/v75`. Le volet B n'active toujours rien en production : il rend l'étape observable,
 rattrapable et documentée, mais c'est le jeton d'ouvrier qui ouvrira le robinet.
 
+## [2026-09-01] CI du merge bombe — le garde FilmSource verdit, trois rouges herites restent
+
+**Statut** : Complété (pour le perimetre bombe)
+
+**Décision technique** : le job Linux « Coverage + Baseline » (./... complet) a rougi sur
+QUATRE ratchets ; verification sur pieces (run pre-merge 33541305731) : TROIS etaient deja
+rouges AVANT le merge — halowaypoint x2 (`internal/mapcatalog/ugc.go` + entree morte
+`cmd/mapobj-build/fetch.go`, chantier cartes/mvar) et repo-root helper
+(`himap/origine_typage_gamefiles_test.go`, chantier origine). Hors perimetre : notes ici,
+pas touches (sessions actives dessus). LE NOTRE : `TestUneSeuleSourceDisqueDeFilm` —
+`assaut_footer_research_test.go` implemente FilmSource dans le paquet objectiveevents.
+Meme cycle d'import que les deux precedents de l'allowlist : entree datee ajoutee au
+garde (`filmcache_guard_test.go`), voie prescrite par son message d'erreur.
+
+**Résultats observés** : garde filmcache local vert (EXIT=0). Les gates cibles du merge ne
+jouaient pas ce ratchet (il ne vit que dans ./... complet — lecon connue : baseline = gate
+Linux).
+
+**Prochaine étape** : push du correctif, CI re-jouee ; le job restera rouge tant que les
+chantiers cartes/mvar et origine n'ont pas solde leurs trois ratchets (a eux).
+
 ## [2026-09-01] Merge wt/bombe-visuel dans feat/v75 — schemas renumerotes 33/34
 
 **Statut** : Complété
