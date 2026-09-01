@@ -117,7 +117,6 @@ const t = {
   backfillPerfScores: 'Perf',
   backfillLUSR: 'LUSR',
   backfillEvents: 'Événements',
-  backfillWeapons: 'Armes',
 } as unknown as SettingsText
 
 const baseStatusData: WatcherStatusResponse = {

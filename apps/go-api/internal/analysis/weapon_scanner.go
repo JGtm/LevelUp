@@ -68,14 +68,13 @@ type FormulaAResult struct {
 // FireEvent est un événement de tir scanné.
 type FireEvent struct {
 	TimestampMS float64
-	// PlayerIndex : l'indice tel que le lit la CORRÉLATION D'ARMES DE PRODUCTION — 4 bits
-	// (`b5 >> 4`). Il est conservé tel quel DÉLIBÉRÉMENT : le chemin qui le consomme
-	// (`CorrelateKillsGlobal` via `backfill_weapons.go`) apparie l'indice du tueur avec
-	// `getXuidToPI`, qui le dérive de l'ORDRE DE LA BASE — déclaré faux depuis la v3. Corriger
-	// la largeur d'un champ NE RÉPARE PAS un appariement qui ne repose pas sur ce champ : mesuré
-	// kill par kill, l'effet est STRICTEMENT NUL sous 17 joueurs (823 films, 72 077 kills, zéro
-	// différence) et le gain au-delà exige de remplacer AUSSI `getXuidToPI`. Ce remplacement est
-	// hors du périmètre de la session J4-2 ; il est consigné au plan.
+	// PlayerIndex : l'indice sur 4 bits (`b5 >> 4`), largeur HISTORIQUE.
+	//
+	// ⚠ IL NE RESTE PLUS AUCUN CONSOMMATEUR DE PRODUCTION. La chaîne de corrélation qui le
+	// lisait (`CorrelateKillsGlobal` via `sync/backfill_weapons.go`) a été SUPPRIMÉE le
+	// 2026-09-01 : sur Halo Infinite l'arme d'un kill vient désormais de la source de dégât.
+	// Le champ survit pour le diagnostic (`cmd/diag_film`) et pour ne pas casser la forme du
+	// FireEvent que scanne la ventilation des tirs. Tout NOUVEAU code lit `PlayerIndex5`.
 	PlayerIndex int
 	// PlayerIndex5 : LE MÊME indice sur sa largeur RÉELLE (5 bits, event_start+31). C'est celui
 	// qu'écrit `shared.match_weapon_shots`, et il n'y a pas le choix : la lecture 4 bits SATURE

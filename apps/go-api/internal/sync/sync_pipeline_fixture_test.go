@@ -653,89 +653,6 @@ func TestPipelineFixture_MetadataInserted(t *testing.T) {
 	}
 }
 
-// TestPipelineFixture_WeaponKills_FilmPresent simule BackfillWeaponKillsForMatchAll
-// sur m1 avec un film "présent mais vide" (chunks binaires vides → 0 fire events).
-// Vérifie que MBitWeaponKills est set et que le pipeline termine proprement.
-func TestPipelineFixture_WeaponKills_FilmPresent(t *testing.T) {
-	f := buildPipelineFixture(t)
-
-	client := &weaponTestClient{
-		filmPresent: true,
-		filmChunks: map[int]FilmChunkData{
-			0: {Data: []byte{}, StartMS: 0, DurationMS: 60000},
-		},
-	}
-
-	found, err := BackfillWeaponKillsForMatchAll(context.Background(), client, f.shared, fixM1)
-	if err != nil {
-		t.Fatalf("BackfillWeaponKillsForMatchAll m1: %v", err)
-	}
-	if !found {
-		t.Fatal("expected found=true (film présent)")
-	}
-
-	var bits int
-	f.shared.QueryRow("SELECT backfill_completed FROM match_registry WHERE match_id=?", fixM1).Scan(&bits)
-	if bits&int(MBitWeaponKills) == 0 {
-		t.Fatalf("MBitWeaponKills non set après film présent (bits=%d)", bits)
-	}
-}
-
-// TestPipelineFixture_WeaponKills_NoFilm vérifie que MBitWeaponKillsNoFilm est
-// posé quand GetMatchFilm retourne filmPresent=false.
-func TestPipelineFixture_WeaponKills_NoFilm(t *testing.T) {
-	f := buildPipelineFixture(t)
-
-	client := &weaponTestClient{filmPresent: false}
-
-	found, err := BackfillWeaponKillsForMatchAll(context.Background(), client, f.shared, fixM2)
-	if err != nil {
-		t.Fatalf("BackfillWeaponKillsForMatchAll m2: %v", err)
-	}
-	if found {
-		t.Fatal("expected found=false (film absent)")
-	}
-
-	var bits int
-	f.shared.QueryRow("SELECT backfill_completed FROM match_registry WHERE match_id=?", fixM2).Scan(&bits)
-	if bits&int(MBitWeaponKillsNoFilm) == 0 {
-		t.Fatalf("MBitWeaponKillsNoFilm non set (bits=%d)", bits)
-	}
-}
-
-// TestPipelineFixture_WeaponKills_IdempotentRerun vérifie qu'un deuxième appel
-// BackfillWeaponKillsForMatchAll ne crée pas de doublons dans weapon_kills.
-func TestPipelineFixture_WeaponKills_IdempotentRerun(t *testing.T) {
-	f := buildPipelineFixture(t)
-
-	// Insérer des kill events dans highlight_events qui seront reconnus par le pipeline
-	// (chunks vides → corrélation ne produit rien, mais le pipeline tourne)
-	client := &weaponTestClient{
-		filmPresent: true,
-		filmChunks:  map[int]FilmChunkData{0: {Data: []byte{}, StartMS: 0, DurationMS: 60000}},
-	}
-
-	for i := 0; i < 2; i++ {
-		_, err := BackfillWeaponKillsForMatchAll(context.Background(), client, f.shared, fixM1)
-		if err != nil {
-			t.Fatalf("run %d: %v", i+1, err)
-		}
-	}
-
-	// weapon_kills doit contenir exactement le même nombre de rows après 2 runs
-	var count1, count2 int
-	// Append-only #23046 (Phase 2) : idempotence LOGIQUE via v_weapon_kills (dernière
-	// génération). Le physique croît à chaque run (nouvelle génération), mais la vue
-	// reste stable → count1 == count2.
-	f.shared.QueryRow("SELECT COUNT(*) FROM v_weapon_kills WHERE match_id=?", fixM1).Scan(&count1)
-	BackfillWeaponKillsForMatchAll(context.Background(), client, f.shared, fixM1)
-	f.shared.QueryRow("SELECT COUNT(*) FROM v_weapon_kills WHERE match_id=?", fixM1).Scan(&count2)
-
-	if count1 != count2 {
-		t.Fatalf("doublons logiques détectés (v_weapon_kills) : %d → %d rows après re-run", count1, count2)
-	}
-}
-
 // TestPipelineFixture_PerformanceScore vérifie que batchComputePerformanceScores
 // calcule des scores pour les matchs qui ont suffisamment d'historique.
 // Avec 12 matchs seed + 3 matchs fixture = 15 matchs, les 5 derniers doivent
@@ -1147,23 +1064,6 @@ func TestPipelineFixture_FullSequence(t *testing.T) {
 	f := buildPipelineFixture(t)
 	ctx := context.Background()
 
-	// Étape 1 — weapon_kills (film présent pour m1)
-	weaponClient := &weaponTestClient{
-		filmPresent: true,
-		filmChunks:  map[int]FilmChunkData{0: {Data: []byte{}, StartMS: 0, DurationMS: 60000}},
-	}
-	_, err := BackfillWeaponKillsForMatchAll(ctx, weaponClient, f.shared, fixM1)
-	if err != nil {
-		t.Fatalf("[étape 1] weapon_kills m1: %v", err)
-	}
-	// m2 et m3 sans film
-	noFilmClient := &weaponTestClient{filmPresent: false}
-	for _, mid := range []string{fixM2, fixM3} {
-		if _, err := BackfillWeaponKillsForMatchAll(ctx, noFilmClient, f.shared, mid); err != nil {
-			t.Fatalf("[étape 1] weapon_kills %s: %v", mid, err)
-		}
-	}
-
 	// Étape 2 — performance_score
 	if _, err := batchComputePerformanceScores(t.Context(), f.player, f.shared, fixXUID, nil, false); err != nil {
 		t.Fatalf("[étape 2] performance_score: %v", err)
@@ -1196,20 +1096,6 @@ func TestPipelineFixture_FullSequence(t *testing.T) {
 	}
 
 	// ── Assertions finales ────────────────────────────────────────────────────
-
-	// m1 : MBitWeaponKills set
-	var bitsM1 int
-	f.shared.QueryRow("SELECT backfill_completed FROM match_registry WHERE match_id=?", fixM1).Scan(&bitsM1)
-	if bitsM1&int(MBitWeaponKills) == 0 {
-		t.Error("[full] MBitWeaponKills non set pour m1")
-	}
-
-	// m2 : MBitWeaponKillsNoFilm set
-	var bitsM2 int
-	f.shared.QueryRow("SELECT backfill_completed FROM match_registry WHERE match_id=?", fixM2).Scan(&bitsM2)
-	if bitsM2&int(MBitWeaponKillsNoFilm) == 0 {
-		t.Error("[full] MBitWeaponKillsNoFilm non set pour m2")
-	}
 
 	// sessions : m1 et m2 dans la même session
 	var sid1, sid2 sql.NullString

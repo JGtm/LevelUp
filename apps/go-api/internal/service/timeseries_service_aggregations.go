@@ -319,19 +319,24 @@ func buildTopWeapons(rows []port.WeaponKillRow, topN int) []domain.TimeseriesWea
 		return []domain.TimeseriesWeaponKill{}
 	}
 	type agg struct {
-		label string
-		class string
-		kills int
+		label    string
+		class    string
+		kills    int
+		weaponID int64
 	}
-	byID := make(map[int64]*agg, len(rows))
+	// Cle d agregation : le COUPLE (identifiant, cle de registre) — cf.
+	// port.WeaponKillRow.AggregateKey. Keyer sur le seul identifiant fusionnerait les
+	// objets hors arsenal, qui n en ont aucun.
+	byID := make(map[string]*agg, len(rows))
 	for _, r := range rows {
 		if r.IsGrenadeMelee {
 			continue
 		}
-		a, ok := byID[r.WeaponID]
+		k := r.AggregateKey()
+		a, ok := byID[k]
 		if !ok {
-			a = &agg{label: r.Label, class: r.Class}
-			byID[r.WeaponID] = a
+			a = &agg{label: r.Label, class: r.Class, weaponID: r.WeaponID}
+			byID[k] = a
 		}
 		if a.label == "" && r.Label != "" {
 			a.label = r.Label
@@ -344,9 +349,9 @@ func buildTopWeapons(rows []port.WeaponKillRow, topN int) []domain.TimeseriesWea
 		a.kills += r.Kills
 	}
 	out := make([]domain.TimeseriesWeaponKill, 0, len(byID))
-	for id, a := range byID {
+	for _, a := range byID {
 		out = append(out, domain.TimeseriesWeaponKill{
-			WeaponID: id,
+			WeaponID: a.weaponID,
 			Label:    a.label,
 			Kills:    a.kills,
 			Class:    a.class,

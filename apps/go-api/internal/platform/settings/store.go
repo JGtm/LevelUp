@@ -54,7 +54,6 @@ type AppSettings struct {
 	SpnkrRefreshBackfillPerfScores     bool     `json:"spnkr_refresh_backfill_performance_scores"`
 	SpnkrRefreshBackfillLUSR           bool     `json:"spnkr_refresh_backfill_lusr"`
 	SpnkrRefreshBackfillEvents         bool     `json:"spnkr_refresh_backfill_events"`
-	SpnkrRefreshBackfillWeapons        bool     `json:"spnkr_refresh_backfill_weapons"`
 	// Escouade — gamertags des amis par défaut
 	FriendGamertags []string `json:"friend_gamertags"`
 
@@ -414,9 +413,6 @@ func Apply(cfg *AppSettings, req *domain.UpdateSettingsRequest) {
 	if req.SpnkrRefreshBackfillEvents != nil {
 		cfg.SpnkrRefreshBackfillEvents = *req.SpnkrRefreshBackfillEvents
 	}
-	if req.SpnkrRefreshBackfillWeapons != nil {
-		cfg.SpnkrRefreshBackfillWeapons = *req.SpnkrRefreshBackfillWeapons
-	}
 	if req.FriendGamertags != nil {
 		cfg.FriendGamertags = req.FriendGamertags
 	}
@@ -509,7 +505,6 @@ func ToResponse(cfg *AppSettings) *domain.SettingsResponse {
 		SpnkrRefreshBackfillPerfScores:      cfg.SpnkrRefreshBackfillPerfScores,
 		SpnkrRefreshBackfillLUSR:            cfg.SpnkrRefreshBackfillLUSR,
 		SpnkrRefreshBackfillEvents:          cfg.SpnkrRefreshBackfillEvents,
-		SpnkrRefreshBackfillWeapons:         cfg.SpnkrRefreshBackfillWeapons,
 		FriendGamertags:                     cfg.FriendGamertags,
 		SessionGapMinutes:                   cfg.SessionGapMinutes,
 		SessionSplitOnRankedChange:          cfg.SessionSplitOnRankedChange,

@@ -134,7 +134,7 @@ func passeDesFilmsEnLigne(ctx context.Context, cfg *config.AppConfig, db *sql.DB
 // `start_time_utc` par le COALESCE canonique (regle 8) — un `start_time` brut trierait faux.
 func matchsSansPasseDeFilm(ctx context.Context, db *sql.DB, o killsourceOptions) ([]string, error) {
 	dejaFaits := map[string]bool{}
-	filtreNoFilm := int64(matchflags.MBitWeaponKillsNoFilm)
+	filtreNoFilm := int64(matchflags.MBitFilmAbsent)
 	if o.force {
 		filtreNoFilm = 0 // `--force` : on retente meme ce que le pipeline a declare perdu.
 	} else {

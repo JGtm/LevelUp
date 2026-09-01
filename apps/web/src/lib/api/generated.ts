@@ -5387,8 +5387,6 @@ export interface components {
             events_processed: number;
             /** Format: int64 */
             psa_processed: number;
-            /** Format: int64 */
-            weapons_processed: number;
         };
         CorrelationDataPair: {
             metric_x_key: string;
@@ -9090,8 +9088,6 @@ export interface components {
             missing_events: number;
             /** Format: int64 */
             missing_psa: number;
-            /** Format: int64 */
-            missing_weapons: number;
             player_slug: string;
             xuid: string;
         };
@@ -9382,10 +9378,6 @@ export interface components {
             step_timings?: components["schemas"]["PostSyncStepTiming"][] | null;
             /** Format: int64 */
             views_refreshed: number;
-            /** Format: int64 */
-            weapon_kills_no_film: number;
-            /** Format: int64 */
-            weapon_kills_processed: number;
         };
         PostSyncStepTiming: {
             /** Format: int64 */
@@ -10282,7 +10274,6 @@ export interface components {
             spnkr_refresh_backfill_performance_scores?: boolean;
             spnkr_refresh_backfill_personal_scores?: boolean;
             spnkr_refresh_backfill_skill?: boolean;
-            spnkr_refresh_backfill_weapons?: boolean;
             spnkr_refresh_with_backfill?: boolean;
             user_timezone: string;
             watcher_presence_enabled?: boolean;

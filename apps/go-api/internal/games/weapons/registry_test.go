@@ -44,8 +44,8 @@ func queryCount(t *testing.T, db *sql.DB, query string, args ...any) int {
 
 func TestWeaponRegistry_SeedCardinalities(t *testing.T) {
 	db := openWeaponRegistryDB(t)
-	if got := queryCount(t, db, "SELECT count(*) FROM weapons"); got != 90 {
-		t.Errorf("weapons = %d, want 90 (84 + 6 hors-arsenal HINF, lot 2026-08-29)", got)
+	if got := queryCount(t, db, "SELECT count(*) FROM weapons"); got != 104 {
+		t.Errorf("weapons = %d, want 104 (84 + 6 hors-arsenal HINF du 2026-08-29 + 14 vehicules et tourelles de l etape A6, 2026-09-01)", got)
 	}
 	if got := queryCount(t, db, "SELECT count(*) FROM weapon_families"); got != 52 {
 		t.Errorf("weapon_families = %d, want 52 (51 + famille equipment)", got)
@@ -56,8 +56,8 @@ func TestWeaponRegistry_SeedCardinalities(t *testing.T) {
 	if got := queryCount(t, db, "SELECT count(*) FROM weapon_ids WHERE id_kind='stock_id'"); got != 66 {
 		t.Errorf("weapon_ids stock_id = %d, want 66", got)
 	}
-	if got := queryCount(t, db, "SELECT count(*) FROM weapons WHERE title_slug='halo_infinite'"); got != 35 {
-		t.Errorf("weapons HINF = %d, want 35 (29 arsenal + 6 hors-arsenal)", got)
+	if got := queryCount(t, db, "SELECT count(*) FROM weapons WHERE title_slug='halo_infinite'"); got != 49 {
+		t.Errorf("weapons HINF = %d, want 49 (29 arsenal + 6 hors-arsenal + 14 vehicules et tourelles)", got)
 	}
 	if got := queryCount(t, db, "SELECT count(*) FROM weapons WHERE title_slug='halo_5'"); got != 55 {
 		t.Errorf("weapons H5 = %d, want 55", got)

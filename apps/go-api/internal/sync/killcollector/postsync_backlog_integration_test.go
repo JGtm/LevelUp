@@ -84,8 +84,8 @@ func TestBacklogAJour_SelectionOrdreEtJauge(t *testing.T) {
 	db := baseBacklog(t)
 	t0 := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 
-	inscrireMatch(t, db, "vieux-nofilm", t0, int64(matchflags.MBitWeaponKillsNoFilm)) // (1)
-	inscrireMatch(t, db, "deja-decode", t0.AddDate(0, 1, 0), 0)                       // (2)
+	inscrireMatch(t, db, "vieux-nofilm", t0, int64(matchflags.MBitFilmAbsent)) // (1)
+	inscrireMatch(t, db, "deja-decode", t0.AddDate(0, 1, 0), 0)                // (2)
 	inscrirePasseFilm(t, db, "deja-decode", KillSourceDecoderRev, killscope.ReadPathFilmWalk, "p1", t0)
 	inscrireMatch(t, db, "via-credit", t0.AddDate(0, 2, 0), 0) // (3)
 	inscrirePasseFilm(t, db, "via-credit", KillSourceDecoderRev, killscope.ReadPathCreditBackfill, "p1", t0)

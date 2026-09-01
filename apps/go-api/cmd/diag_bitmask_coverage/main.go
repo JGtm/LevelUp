@@ -121,7 +121,7 @@ func main() {
 		{"MBitEvents (1<<16)", 1 << 16},
 		{"MBitKillerVictim (1<<19)", 1 << 19},
 		{"MBitWeaponKills (1<<21)", 1 << 21},
-		{"MBitWeaponKillsNoFilm (1<<22)", 1 << 22},
+		{"MBitFilmAbsent (1<<22)", 1 << 22},
 		{"BackfillFlags[skill]=4 (Phase 2.a fixera)", 4},
 		{"BackfillFlags[participants]=512 (Phase 2.b fixera)", 512},
 		{"MBitPVEStats=1048576 (Phase 2.c fixera)", 1048576},

@@ -186,22 +186,6 @@ func TestFindMatchesMissingData_EnemyMMRScope(t *testing.T) {
 	}
 }
 
-func TestFindMatchesMissingData_ForceNoFilm(t *testing.T) {
-	pdb := openPlayerForAll(t)
-	sdb := openSharedForAll(t)
-	// ForceNoFilm should imply Weapons + ForceWeapons
-	scope := &SyncScope{ForceNoFilm: true}
-
-	result, err := FindMatchesMissingData(t.Context(), pdb, sdb, "xuid1", scope)
-	if err != nil {
-		t.Fatal(err)
-	}
-	// All matches qualify (ForceWeapons → 1=1)
-	if len(result) != 3 {
-		t.Fatalf("expected 3 for force_no_film, got %d", len(result))
-	}
-}
-
 func TestFindMatchesMissingData_ParticipantsScores_WithLocal(t *testing.T) {
 	pdb := openPlayerForAll(t)
 	sdb := openSharedForAll(t)
@@ -390,33 +374,6 @@ func TestFindMatchesMissingData_ForcePVEScope(t *testing.T) {
 	}
 	if len(result) != 1 {
 		t.Fatalf("expected 1 firefight match, got %d", len(result))
-	}
-}
-
-func TestFindMatchesMissingData_WeaponsScope(t *testing.T) {
-	pdb := openPlayerForAll(t)
-	sdb := openSharedForAll(t)
-	scope := &SyncScope{Weapons: true}
-	result, err := FindMatchesMissingData(t.Context(), pdb, sdb, "xuid1", scope)
-	if err != nil {
-		t.Fatal(err)
-	}
-	// All matches have backfill_completed=0 → bit not set → all returned
-	if len(result) != 3 {
-		t.Fatalf("expected 3 for weapons, got %d", len(result))
-	}
-}
-
-func TestFindMatchesMissingData_ForceWeaponsScope(t *testing.T) {
-	pdb := openPlayerForAll(t)
-	sdb := openSharedForAll(t)
-	scope := &SyncScope{Weapons: true, ForceWeapons: true}
-	result, err := FindMatchesMissingData(t.Context(), pdb, sdb, "xuid1", scope)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(result) != 3 {
-		t.Fatalf("expected 3 for force_weapons, got %d", len(result))
 	}
 }
 

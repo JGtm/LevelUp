@@ -7,6 +7,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"sort"
 	"strconv"
 	"strings"
@@ -14,6 +15,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/port"
 )
 
 const weaponCoverageTopUnresolved = 15
@@ -30,6 +32,17 @@ func (r *ServiceRegistry) WeaponCoverage(ctx context.Context, titleSlug string) 
 		return resp, err
 	}
 	defer closeAll()
+
+	// DECISION A2.7 (2026-09-01) : la page SURVIT a la bascule, elle change de source.
+	// Sa question — « quelle part des frags se resout a une arme nommee ? » — reste la
+	// bonne au moment ou l on change de mesure ; c est meme la seule surface qui la pose
+	// en continu. Supprimer la page aurait retire cette veille juste quand elle sert le
+	// plus, et coute un aller-retour dans le contrat OpenAPI et le panneau web pour rien.
+	// Sur un titre a decodeur de film, l unite comptee n est plus un identifiant d arme
+	// mais un TAG de source de degat, et « non resolu » veut dire « aucune cle de registre ».
+	if classifier := r.killSourceClassifierForSlug(titleSlug); classifier != nil {
+		return weaponCoverageFromSource(ctx, sharedSQL, metaSQL, classifier, resp)
+	}
 
 	// 1. weapon_id distincts (hors sentinels 0/1/2) + kills, depuis v_weapon_kills.
 	killsByID := map[int64]int{}
@@ -147,5 +160,103 @@ func classifyWeaponLabelsOnly(ctx context.Context, metaSQL *sql.DB, ids []int64,
 		if scanErr := rows.Scan(&id); scanErr == nil {
 			inLabel[id.Int64()] = true
 		}
+	}
+}
+
+// weaponCoverageFromSource calcule la couverture pour un titre dont l'arme vient de la
+// SOURCE DE DEGAT du film : l'unite comptee est le tag `jpt!`, et « resolu » veut dire
+// « le classificateur du titre lui donne une cle de registre ».
+//
+// `ResolvedLabel` reste a zero, et ce n'est pas un oubli : sur cette voie il n'existe pas
+// de resolution « par libelle seul » — un tag donne une cle de registre, ou rien.
+func weaponCoverageFromSource(
+	ctx context.Context,
+	sharedSQL *sql.DB,
+	metaSQL *sql.DB,
+	classifier port.KillSourceClassifier,
+	resp domain.AdminWeaponCoverage,
+) (domain.AdminWeaponCoverage, error) {
+	rows, err := sharedSQL.QueryContext(ctx, `
+		SELECT source_tag, COUNT(*)::INTEGER
+		FROM match_kill_events_latest
+		WHERE source_tag IS NOT NULL
+		GROUP BY source_tag`)
+	if err != nil {
+		return resp, fmt.Errorf("match_kill_events_latest: %w", err)
+	}
+	defer rows.Close()
+
+	cles := map[string]bool{}
+	for rows.Next() {
+		var tag uint32
+		var kills int
+		if scanErr := rows.Scan(&tag, &kills); scanErr != nil {
+			return resp, scanErr
+		}
+		resp.DistinctWeapons++
+		key, ok := classifier.KillSourceRegistryKey(tag)
+		if !ok {
+			resp.Unresolved++
+			resp.TopUnresolved = append(resp.TopUnresolved, domain.AdminWeaponCoverageItem{
+				WeaponID: fmt.Sprintf("0x%08x", tag), Kills: kills,
+			})
+			continue
+		}
+		resp.ResolvedRegistry++
+		cles[key] = true
+	}
+	if err := rows.Err(); err != nil {
+		return resp, err
+	}
+	// Une cle que le REGISTRE ne connait pas est aussi peu resolue qu'un tag sans cle :
+	// le classificateur a beau nommer l objet, rien ne l affichera. On le signale.
+	if metaSQL != nil {
+		signalerClesHorsRegistre(ctx, metaSQL, resp.TitleSlug, cles)
+	}
+	sort.Slice(resp.TopUnresolved, func(i, j int) bool {
+		return resp.TopUnresolved[i].Kills > resp.TopUnresolved[j].Kills
+	})
+	if len(resp.TopUnresolved) > weaponCoverageTopUnresolved {
+		resp.TopUnresolved = resp.TopUnresolved[:weaponCoverageTopUnresolved]
+	}
+	if resp.DistinctWeapons > 0 {
+		d := float64(resp.DistinctWeapons)
+		resp.CoveragePercent = float64(resp.ResolvedRegistry) / d * 100
+		resp.RegistryPercent = resp.CoveragePercent
+	}
+	return resp, nil
+}
+
+// signalerClesHorsRegistre journalise les cles rendues par le classificateur que le
+// registre d'armes ne porte pas. Best-effort : la page reste servie, mais l'anomalie ne
+// passe pas en silence (regle « jamais d'erreur avalee »).
+func signalerClesHorsRegistre(ctx context.Context, metaSQL *sql.DB, slug string, cles map[string]bool) {
+	if len(cles) == 0 {
+		return
+	}
+	connues := map[string]bool{}
+	rows, err := metaSQL.QueryContext(ctx,
+		"SELECT weapon_key FROM weapons WHERE title_slug = ?", slug)
+	if err != nil {
+		slog.WarnContext(ctx, "couverture d'arme: registre illisible", "title", slug, "err", err)
+		return
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var k string
+		if rows.Scan(&k) == nil {
+			connues[k] = true
+		}
+	}
+	manquantes := make([]string, 0)
+	for k := range cles {
+		if !connues[k] {
+			manquantes = append(manquantes, k)
+		}
+	}
+	if len(manquantes) > 0 {
+		sort.Strings(manquantes)
+		slog.WarnContext(ctx, "couverture d'arme: cles nommees par le film mais absentes du registre",
+			"title", slug, "cles", strings.Join(manquantes, ", "))
 	}
 }

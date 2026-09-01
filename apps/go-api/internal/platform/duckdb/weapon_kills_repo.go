@@ -259,55 +259,62 @@ GROUP BY wk.xuid, wk.effective_weapon_id`)
 		return sb.String(), args
 	}
 
-	// Branche 2 : grenade/melee depuis match_participants.
-	// On reduplique les MatchIDs (placeholders distincts).
-	for _, id := range f.MatchIDs {
-		args = append(args, id)
-	}
-	sb.WriteString(`
-UNION ALL
-SELECT
-    mp.xuid,
-    `)
-	sb.WriteString(strconv.FormatInt(weaponIDGrenadeSentinel, 10))
-	sb.WriteString(`::UBIGINT AS weapon_id,
-    SUM(COALESCE(mp.grenade_kills, 0))::INTEGER AS kills,
-    0 AS mechanic_kills,
-    TRUE AS is_grenade_melee
-FROM match_participants mp
-WHERE mp.match_id IN (`)
-	sb.WriteString(matchPlaceholders)
-	sb.WriteString(`)`)
-	sb.WriteString(excludeCampaignByMatchID(titleSlug, "mp.match_id"))
-	appendXUIDFilter(&sb, &args, "mp", f)
-	sb.WriteString(`
-GROUP BY mp.xuid
-HAVING SUM(COALESCE(mp.grenade_kills, 0)) > 0`)
-
-	for _, id := range f.MatchIDs {
-		args = append(args, id)
-	}
-	sb.WriteString(`
-UNION ALL
-SELECT
-    mp.xuid,
-    `)
-	sb.WriteString(strconv.FormatInt(weaponIDMeleeSentinel, 10))
-	sb.WriteString(`::UBIGINT AS weapon_id,
-    SUM(COALESCE(mp.melee_kills, 0))::INTEGER AS kills,
-    0 AS mechanic_kills,
-    TRUE AS is_grenade_melee
-FROM match_participants mp
-WHERE mp.match_id IN (`)
-	sb.WriteString(matchPlaceholders)
-	sb.WriteString(`)`)
-	sb.WriteString(excludeCampaignByMatchID(titleSlug, "mp.match_id"))
-	appendXUIDFilter(&sb, &args, "mp", f)
-	sb.WriteString(`
-GROUP BY mp.xuid
-HAVING SUM(COALESCE(mp.melee_kills, 0)) > 0`)
-
+	// Branche 2 : grenade/melee depuis match_participants, en UNION ALL.
+	appendMechanicBranches(&sb, &args, f, titleSlug, true)
 	return sb.String(), args
+}
+
+// buildParticipantMechanicQuery rend les DEUX lignes sentinelles grenade / melee seules,
+// sans branche d'arme — la requete dont a besoin un lecteur qui tire les armes d'ailleurs
+// (killsource_weapon_kills_repo.go). Meme SQL, meme forme de colonnes : les deux
+// consommateurs scannent la meme chose.
+func buildParticipantMechanicQuery(f port.WeaponKillFilters, titleSlug string) (string, []any) {
+	var sb strings.Builder
+	args := make([]any, 0, len(f.MatchIDs)*2+len(f.XUIDs)*2+2)
+	appendMechanicBranches(&sb, &args, f, titleSlug, false)
+	return sb.String(), args
+}
+
+// appendMechanicBranches ecrit les deux branches natives (grenade puis melee) agregees par
+// joueur. Un seul exemplaire du SQL pour les deux appelants : la forme des colonnes est un
+// contrat partage, et deux copies auraient derive au premier ajout de colonne.
+func appendMechanicBranches(sb *strings.Builder, args *[]any, f port.WeaponKillFilters,
+	titleSlug string, leadingUnion bool,
+) {
+	appendMechanicBranch(sb, args, f, titleSlug, weaponIDGrenadeSentinel, "grenade_kills", leadingUnion)
+	appendMechanicBranch(sb, args, f, titleSlug, weaponIDMeleeSentinel, "melee_kills", true)
+}
+
+// appendMechanicBranch ecrit UNE branche : le compteur natif `column` agrege par joueur,
+// porte par le weapon_id sentinelle `sentinel`.
+func appendMechanicBranch(sb *strings.Builder, args *[]any, f port.WeaponKillFilters,
+	titleSlug string, sentinel int64, column string, leadingUnion bool,
+) {
+	for _, id := range f.MatchIDs {
+		*args = append(*args, id)
+	}
+	if leadingUnion {
+		sb.WriteString(`
+UNION ALL`)
+	}
+	sb.WriteString(`
+SELECT
+    mp.xuid,
+    `)
+	sb.WriteString(strconv.FormatInt(sentinel, 10))
+	sb.WriteString(`::UBIGINT AS weapon_id,
+    SUM(COALESCE(mp.` + column + `, 0))::INTEGER AS kills,
+    0 AS mechanic_kills,
+    TRUE AS is_grenade_melee
+FROM match_participants mp
+WHERE mp.match_id IN (`)
+	sb.WriteString(Placeholders(len(f.MatchIDs)))
+	sb.WriteString(`)`)
+	sb.WriteString(excludeCampaignByMatchID(titleSlug, "mp.match_id"))
+	appendXUIDFilter(sb, args, "mp", f)
+	sb.WriteString(`
+GROUP BY mp.xuid
+HAVING SUM(COALESCE(mp.` + column + `, 0)) > 0`)
 }
 
 // appendXUIDFilter ajoute la clause AND sur xuid en fonction de Gamertag ou XUIDs.

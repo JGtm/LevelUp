@@ -241,7 +241,10 @@ func TestTitleStepsRunEndToEnd_Shared(t *testing.T) {
 		t.Fatalf("RunForDB(Shared): %v", err)
 	}
 
-	for _, table := range []string{"match_registry", "match_participants", "medals_earned", "xuid_aliases", "weapon_kills"} {
+	// `weapon_kills` et `v_weapon_kills` NE SONT PLUS ATTENDUES sur le titre par défaut :
+	// shared_drop_weapon_kills_v1 les supprime (2026-09-01). Leur ABSENCE est vérifiée par
+	// shared_drop_weapon_kills_test.go, leur survie côté Halo 5 aussi.
+	for _, table := range []string{"match_registry", "match_participants", "medals_earned", "xuid_aliases"} {
 		var n int
 		if err := db.QueryRow(
 			"SELECT COUNT(*) FROM information_schema.tables WHERE table_name = ?", table,
@@ -252,7 +255,7 @@ func TestTitleStepsRunEndToEnd_Shared(t *testing.T) {
 			t.Errorf("table shared %s absente après migration title-owned", table)
 		}
 	}
-	for _, view := range []string{"v_gamertag_lookup", "v_weapon_kills", "v_match_full", "mv_player_matches"} {
+	for _, view := range []string{"v_gamertag_lookup", "v_match_full", "mv_player_matches"} {
 		var n int
 		if err := db.QueryRow(
 			"SELECT COUNT(*) FROM information_schema.tables WHERE table_name = ? AND table_type = 'VIEW'", view,

@@ -42,11 +42,36 @@ var gunFragClasses = map[string]bool{
 	domain.FragClassHeavy:    true,
 }
 
-// isRegistryFragClass : classe dont les KILLS proviennent des rows du registre (par
-// opposition aux compteurs API). Recouvre les deux familles de niveau 2 — par rôle
-// (gun) et par engin (véhicule/tourelle).
-func isRegistryFragClass(class string) bool {
-	return gunFragClasses[class] || domain.IsPerWeaponFragClass(class)
+// engineFragClasses = classes d'ENGIN, servies par le registre quelle que soit la
+// provenance de la ligne : véhicule et tourelle existent dans `weapon_kills` (Halo 5) ET
+// dans la source de dégât (Halo Infinite).
+var engineFragClasses = map[string]bool{
+	domain.FragClassVehicle: true,
+	domain.FragClassTurret:  true,
+}
+
+// offArsenalFragClasses = classes d'OBJET hors arsenal (équipement, environnement). Elles
+// ne sont servies que si la ligne a été MESURÉE dans la source de dégât du film.
+//
+// POURQUOI CETTE CONDITION, ET PAS UN SIMPLE ÉLARGISSEMENT. `isRegistryFragClass` est du
+// code partagé par les deux titres. Servir `environmental` sans regarder la provenance
+// ferait aussi remonter le bucket `h5_environmental` de Halo 5, qui porte un identifiant
+// numérique et vient de `weapon_kills` : le sunburst du second titre changerait, hors du
+// périmètre de la bascule du 2026-09-01. Le verrou : fragdist_halo5_golden_test.go.
+var offArsenalFragClasses = map[string]bool{
+	domain.FragClassEquipment:     true,
+	domain.FragClassEnvironmental: true,
+}
+
+// isRegistryFragClass : la ligne alimente-t-elle une classe servie par le registre (par
+// opposition aux compteurs API) ? Recouvre les trois familles de niveau 2 — par rôle
+// (gun), par engin (véhicule/tourelle), et par objet hors arsenal quand la source de
+// dégât l'a mesurée.
+func isRegistryFragClass(r port.WeaponKillRow) bool {
+	if gunFragClasses[r.Class] || engineFragClasses[r.Class] {
+		return true
+	}
+	return r.FromDamageSource && offArsenalFragClasses[r.Class]
 }
 
 // Build assemble la répartition hiérarchique des frags (sunburst v2).
@@ -75,7 +100,6 @@ func isRegistryFragClass(class string) bool {
 // dupliqué (règle ≤2 copies).
 func Build(
 	rows []port.WeaponKillRow,
-	sources []port.KillSourceClassRow,
 	counts domain.FragKillTypeCounts,
 	hasMechanics bool,
 ) domain.FragDistribution {
@@ -84,12 +108,6 @@ func Build(
 		byClass[e.Class] = e
 	}
 	for _, e := range buildAPIFragClasses(rows, counts, hasMechanics) {
-		byClass[e.Class] = e
-	}
-	// sources vide (titre sans décodeur de film, match jamais décodé, appelant qui ne les
-	// charge pas encore) => AUCUNE entrée ajoutée, donc sortie byte-identique à ce qu'elle
-	// était avant cette provenance. C'est le test de non-régression du lot.
-	for _, e := range buildKillSourceFragClasses(sources) {
 		byClass[e.Class] = e
 	}
 	// Non attribué = résidu calculé (invariant a : Σ classes == total ; invariant c :
@@ -111,59 +129,6 @@ func Build(
 		}
 	}
 	return domain.FragDistribution{TotalKills: counts.Total, Classes: classes}
-}
-
-// buildKillSourceFragClasses agrège les classes servies par la SOURCE DE DÉGÂT du film
-// (3ᵉ provenance, 2026-08-29) : Équipement et Environnement, niveau 2 PAR OBJET.
-//
-// POURQUOI UN CHEMIN À PART, et pas un élargissement de `isRegistryFragClass`. Élargir
-// l'ensemble des classes servies par le registre ferait aussi remonter les lignes
-// `h5_environmental` de Halo 5, qui ont un id numérique et vivent dans `weapon_kills` :
-// le sunburst de Halo 5 changerait, hors du périmètre de ce lot. Les deux provenances
-// restent donc séparées, comme le sont déjà registre et compteurs API.
-//
-// Niveau 2 par OBJET (weapon_key + libellé du registre) et jamais par rôle : sur ces
-// classes, `role` vaut la classe elle-même — un niveau 2 par rôle serait un arc unique
-// sans information. « Bobine à plasma » est une information, « environnement » n'en est
-// pas une (même exigence que les engins, V73-3.2).
-//
-// Aucune collision possible avec les classes du registre : `equipment` et `environmental`
-// ne sont pas dans `isRegistryFragClass`, donc `buildRegistryFragClasses` ne les produit
-// jamais.
-func buildKillSourceFragClasses(sources []port.KillSourceClassRow) []domain.FragClassEntry {
-	type acc struct {
-		kills    int
-		byKey    map[string]int
-		labels   map[string]string
-		labelsEN map[string]string
-	}
-	agg := map[string]*acc{}
-	for _, s := range sources {
-		if s.Class == "" || s.WeaponKey == "" || s.Kills <= 0 {
-			continue
-		}
-		a := agg[s.Class]
-		if a == nil {
-			a = &acc{byKey: map[string]int{}, labels: map[string]string{}, labelsEN: map[string]string{}}
-			agg[s.Class] = a
-		}
-		a.kills += s.Kills
-		a.byKey[s.WeaponKey] += s.Kills
-		if s.Label != "" {
-			a.labels[s.WeaponKey] = s.Label
-		}
-		if s.LabelEN != "" {
-			a.labelsEN[s.WeaponKey] = s.LabelEN
-		}
-	}
-	out := make([]domain.FragClassEntry, 0, len(agg))
-	for class, a := range agg {
-		out = append(out, domain.FragClassEntry{
-			Class: class, Kills: a.kills, Authoritative: false,
-			Roles: perWeaponRoles(a.byKey, a.labels, a.labelsEN),
-		})
-	}
-	return out
 }
 
 // registryAcc accumule une classe servie par le registre : total + ventilation de
@@ -194,7 +159,7 @@ type registryAcc struct {
 func buildRegistryFragClasses(rows []port.WeaponKillRow) []domain.FragClassEntry {
 	agg := make(map[string]*registryAcc, len(gunFragClasses)+2)
 	for _, r := range rows {
-		if r.IsGrenadeMelee || r.Class == "" || !isRegistryFragClass(r.Class) {
+		if r.IsGrenadeMelee || r.Class == "" || !isRegistryFragClass(r) {
 			continue
 		}
 		perWeapon := domain.IsPerWeaponFragClass(r.Class)

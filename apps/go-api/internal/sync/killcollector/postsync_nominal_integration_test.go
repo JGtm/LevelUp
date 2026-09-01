@@ -67,7 +67,7 @@ func TestRunPostSync_CheminNominal(t *testing.T) {
 	for i, id := range []string{"m1", "m2", "m3", "m4", "m5"} {
 		inscrireMatch(t, db, id, t0.AddDate(0, i, 0), 0)
 	}
-	inscrireMatch(t, db, "perdu", t0.AddDate(0, 6, 0), int64(matchflags.MBitWeaponKillsNoFilm))
+	inscrireMatch(t, db, "perdu", t0.AddDate(0, 6, 0), int64(matchflags.MBitFilmAbsent))
 
 	films := &filmsTraces{}
 	// perCycle = 3 : la borne doit mordre.
@@ -127,6 +127,11 @@ func TestRunPostSync_PrepareLeCacheEtArchiveAuMemeEndroit(t *testing.T) {
 	}
 
 	// (b) avec un cache moteur : SA racine gagne, en lecture COMME en ecriture.
+	//
+	// UN NOUVEAU CANDIDAT EST NECESSAIRE. Depuis le 2026-09-01 la passe pose le marqueur
+	// terminal « film absent » sur les matchs qu elle a vus sans film : `m1` a donc quitte le
+	// backlog en (a), et une passe sans travail sort AVANT de resoudre sa racine de cache.
+	inscrireMatch(t, db, "m2", time.Date(2026, 3, 2, 12, 0, 0, 0, time.UTC), 0)
 	autre := t.TempDir()
 	if err := filmcache.EnsureDirs(autre); err != nil {
 		t.Fatal(err)

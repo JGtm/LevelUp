@@ -131,6 +131,12 @@ const (
 	// family — ces sources n'ont pas de fonction de combat a ventiler.
 	clsEquipment     = "equipment"
 	clsEnvironmental = "environmental"
+	// clsVehicle / clsTurret : mêmes buckets, côté engins. Les familles existent depuis
+	// le classement hors-arsenal Halo 5 du 2026-07-17 ; Halo Infinite les rejoint le
+	// 2026-09-01 (étape A6). Comme les précédents, ils servent de class, de role ET de
+	// family — un châssis n'a pas de fonction de combat à ventiler.
+	clsVehicle = "vehicle"
+	clsTurret  = "turret"
 
 	roleAuto      = "automatic"
 	rolePrecision = "precision"
@@ -384,8 +390,17 @@ var weaponRegistryWeapons = []weaponRow{
 	{"hinf_plasma_pistol", titleHINF, "Plasma Pistol", clsSidearm, clsSidearm, "plasma_pistol", facCovenant, dmgPlasma, "Iruiru Armory"},
 	{"hinf_needler", titleHINF, "Needler", clsShoulder, roleSpecial, "needler", facCovenant, dmgSpike, mfrLodam},
 	{"hinf_sentinel_beam", titleHINF, "Sentinel Beam", clsHeavy, roleSpecial, "sentinel_beam", facForerunner, dmgHardlight, mfrFerrarius},
-	{keyHinfEnergySword, titleHINF, "Energy Sword", clsMelee, clsMelee, "energy_sword", facCovenant, dmgPlasma, mfrQikost},
-	{keyHinfGravityHammer, titleHINF, "Gravity Hammer", clsMelee, clsMelee, "gravity_hammer", facCovenant, "gravitic", "Sacred Promissory"},
+	// ÉPÉE ET MARTEAU : ARMES LOURDES, PAS MÊLÉE — reclassés le 2026-09-01 (décision de
+	// l'utilisateur, étape A6.8). Ils étaient `melee`, ce qui les faisait écarter par le
+	// lecteur : sous D4, le TOTAL de la classe mêlée vient du compteur API, autoritatif.
+	// Or CE COMPTEUR NE LES COMPTE PAS, et c'est mesuré : sur 200 matchs,
+	// `match_participants.melee_kills` vaut 1 717 quand l'épée et le marteau pèsent 2 514
+	// à eux deux. Corpus entier : marteau 6 727, épée 3 014 — 9 741 frags qui tombaient
+	// dans « Non attribué » sans que personne ne les serve. Le registre conflatait l'arme
+	// de corps à corps et la mécanique de corps à corps ; le jeu, lui, ne les confond pas.
+	// AUCUN double comptage possible : l'écart est mesuré, pas supposé.
+	{keyHinfEnergySword, titleHINF, "Energy Sword", clsHeavy, rolePower, "energy_sword", facCovenant, dmgPlasma, mfrQikost},
+	{keyHinfGravityHammer, titleHINF, "Gravity Hammer", clsHeavy, rolePower, "gravity_hammer", facCovenant, "gravitic", "Sacred Promissory"},
 	{"hinf_skewer", titleHINF, "Skewer", clsHeavy, rolePower, "skewer", facBanished, dmgSpike, "Flaktura Workshop"},
 	{"hinf_cindershot", titleHINF, "Cindershot", clsHeavy, rolePower, "cindershot", facForerunner, dmgHardlight, mfrFerrarius},
 	{"hinf_heatwave", titleHINF, "Heatwave", clsHeavy, "shotgun", "heatwave", facForerunner, dmgHardlight, mfrFerrarius},
@@ -428,6 +443,37 @@ var weaponRegistryWeapons = []weaponRow{
 	// choisir l'une des deux pour les neuf tags mettrait une icône fausse sur la moitié
 	// des cas. Une icône absente est un repli, une icône fausse est un mensonge.
 	{"hinf_environment", titleHINF, "Environment", clsEnvironmental, clsEnvironmental, clsEnvironmental, "", "", ""},
+	// ── Halo Infinite VÉHICULES ET TOURELLES (étape A6, 2026-09-01) ──
+	//
+	// MÊME RECETTE que les six entrées hors arsenal ci-dessus, et pour la même raison :
+	// ces sources n'émettent aucun record de dégât `0xd2`, donc AUCUN identifiant
+	// numérique (`weapon_ids`) — elles se résolvent par le pont `killicon` (source de
+	// dégât `jpt!` → weapon_key). C'est cette absence d'id qui garantit STRUCTURELLEMENT
+	// le non-double-comptage (garde-rail off_arsenal_guard_test.go).
+	//
+	// Le trou qu'elles comblent était chiffré : 1 441 morts de classe VEHICULE tombaient
+	// dans « Non attribué » alors que le rejeu 2D savait déjà les nommer — le kill feed
+	// affichait l'icône du Ghost et le graphe disait « Non attribué » du même kill
+	// (décision D13 du plan, mesure du 2026-09-01).
+	//
+	// LIBELLÉS ARRÊTÉS PAR L'UTILISATEUR (D14) : les noms de véhicules gardent l'anglais,
+	// à trois exceptions (Apparition, Warthog lance-roquettes, Pélican) ; les tourelles
+	// sont des DESCRIPTIONS et non des noms propres, donc traduites. Les libellés
+	// affichés vivent dans weapon_names.toml — ici, `name` est l'identité EN canonique.
+	{"hinf_ghost", titleHINF, "Ghost", clsVehicle, clsVehicle, clsVehicle, facBanished, "", ""},
+	{"hinf_banshee", titleHINF, "Banshee", clsVehicle, clsVehicle, clsVehicle, facBanished, "", ""},
+	{"hinf_wraith", titleHINF, "Wraith", clsVehicle, clsVehicle, clsVehicle, facBanished, "", ""},
+	{"hinf_phantom", titleHINF, "Phantom", clsVehicle, clsVehicle, clsVehicle, facBanished, "", ""},
+	{"hinf_chopper", titleHINF, "Chopper", clsVehicle, clsVehicle, clsVehicle, facBanished, "", ""},
+	{"hinf_wasp", titleHINF, "Wasp", clsVehicle, clsVehicle, clsVehicle, facHuman, "", ""},
+	{"hinf_scorpion", titleHINF, "Scorpion", clsVehicle, clsVehicle, clsVehicle, facHuman, "", ""},
+	{"hinf_rockethog", titleHINF, "Rockethog", clsVehicle, clsVehicle, clsVehicle, facHuman, "", ""},
+	{"hinf_pelican", titleHINF, "Pelican", clsVehicle, clsVehicle, clsVehicle, facHuman, "", ""},
+	{"hinf_falcon_lmg", titleHINF, "Falcon LMG turret", clsTurret, clsTurret, clsTurret, facHuman, "", ""},
+	{"hinf_falcon_gl", titleHINF, "Falcon grenade launcher", clsTurret, clsTurret, clsTurret, facHuman, "", ""},
+	{"hinf_turret_machinegun", titleHINF, "Machine gun turret", clsTurret, clsTurret, clsTurret, facHuman, "", ""},
+	{"hinf_turret_plasma", titleHINF, "Plasma cannon", clsTurret, clsTurret, clsTurret, facBanished, "", ""},
+	{"hinf_turret_shade", titleHINF, "Shade turret", clsTurret, clsTurret, clsTurret, facBanished, "", ""},
 	// ── Halo 5: Guardians (§6.2) ──
 	{"h5_assault_rifle", titleH5, "Assault Rifle (MA5D)", clsShoulder, roleAuto, "assault_rifle", facHuman, dmgBallistic, mfrMisriah},
 	{"h5_battle_rifle", titleH5, "Battle Rifle (BR55HB)", clsShoulder, rolePrecision, "battle_rifle", facHuman, dmgBallistic, mfrMisriah},

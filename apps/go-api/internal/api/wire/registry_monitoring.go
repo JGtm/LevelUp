@@ -215,12 +215,11 @@ func (r *ServiceRegistry) ConvergenceReport(ctx context.Context, titleSlug strin
 		Horizon:     sync_pkg.ConvergenceHorizon,
 		Players:     []domain.PlayerConvergenceReport{},
 		// Cumuls « rattrapé depuis le boot » (expvar AddInt posés par le
-		// pipeline post-sync — étapes 1.54/1.55/1.56 + alias PSA).
+		// pipeline post-sync — étapes 1.54/1.56 + alias PSA).
 		TotalsSinceBoot: domain.ConvergenceTotalsSinceBoot{
-			EventsProcessed:  observability.LoadCounter("convergence_events_processed_total"),
-			WeaponsProcessed: observability.LoadCounter("convergence_weapons_processed_total"),
-			PSAProcessed:     observability.LoadCounter("convergence_psa_processed_total"),
-			AliasesUpserted:  observability.LoadCounter("convergence_aliases_upserted_total"),
+			EventsProcessed: observability.LoadCounter("convergence_events_processed_total"),
+			PSAProcessed:    observability.LoadCounter("convergence_psa_processed_total"),
+			AliasesUpserted: observability.LoadCounter("convergence_aliases_upserted_total"),
 		},
 	}
 	players, err := r.cfg.LoadPlayers(titleSlug)
@@ -241,7 +240,6 @@ func (r *ServiceRegistry) ConvergenceReport(ctx context.Context, titleSlug strin
 			report.MissingEnrichment = counts.MissingEnrichment
 			report.MissingPSA = counts.MissingPSA
 			report.MissingEvents = counts.MissingEvents
-			report.MissingWeapons = counts.MissingWeapons
 			release()
 		}
 		resp.Players = append(resp.Players, report)

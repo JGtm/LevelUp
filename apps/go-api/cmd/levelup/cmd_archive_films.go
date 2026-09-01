@@ -212,7 +212,7 @@ func filmsManquants(ctx context.Context, cfg *config.AppConfig, o archiveOptions
 
 	filtre := int64(0)
 	if o.sauterMarques {
-		filtre = int64(matchflags.MBitWeaponKillsNoFilm)
+		filtre = int64(matchflags.MBitFilmAbsent)
 	}
 	rows, err := db.QueryContext(ctx, `
 		SELECT match_id
