@@ -274,3 +274,132 @@ PICKUP_FILM=<depot>/data/cache/film_chunks/000d5950 PICKUP_MAP=Cliffhanger \
 ```
 
 Un film par process, lecture seule, verrou `LockProcessDecode`, aucune cuisson d'artefact.
+
+## LOT DE PUBLICATION (2026-09-01) — LE NOM EST DANS LE DOCUMENT (schéma 31)
+
+La recherche ci-dessus est passée en production dans le même worktree. Périmètre strict : le
+QUOI. L'origine reste non publiée.
+
+### Ce qui est publié
+
+| champ | source | forme |
+|---|---|---|
+| `pickups[].family` (omitempty) | classes 0/1 : `LabelCatalog.Keys` (famille -> weapon_key) · classes 2/3 : `LabelCatalog.EquipmentFamilies` (manifeste du titre) | SLUG, jamais un libellé |
+| `pickups[].kind` | `weapon` / `grenade` (classe 2) / `equipment` (classe 3) / `item` (repli) | `item` n'est PAS renommé |
+| `coverage.pickups.unknownFamilies` | les publiés sans famille | dénominateur des trous |
+
+`family` est un slug : aucune chaîne FR/EN ne descend du Go (règle multi-titre). La table de
+libellés côté web est l'affaire d'un lot d'UI, hors de celui-ci.
+
+### LE PIÈGE DE FORMAT N'A PAS ÉTÉ CONTOURNÉ : IL A ÉTÉ SUPPRIMÉ
+
+Le brief demandait de normaliser trois conventions d'écriture au point de jointure par un helper
+unique. **Vérification sur pièces avant de coder** : les deux catalogues du titre
+(`LabelCatalog.Keys` et `LabelCatalog.EquipmentFamilies`) sont keyés par `uint32`, et
+`BipedPickup.CatalogID` EST cet `uint32`. La résolution se fait donc AVANT toute mise en forme,
+et aucune chaîne n'entre dans la jointure.
+
+C'est la leçon du P0 poussée un cran plus loin que « normaliser au point de jointure » : on ne
+fabrique pas la chaîne du tout, donc la classe de bogues n'existe pas sur ce chemin. Aucun
+helper de normalisation n'a été écrit — en écrire un aurait été du code sans lecteur.
+
+**La casse réelle, demandée et vérifiée** : les 21 entrées de `[[equipment_objects]]` s'écrivent
+`"0x"` + **minuscules**, zéro majuscule sur les 21. Et `tagGlobalID32` les parse en `uint32` au
+chargement du manifeste : la casse du fichier n'atteint jamais la jointure. Un test
+(`TestPickupFamilyResolvesAgainstTheRealManifest`) résout contre le manifeste RÉEL sur disque,
+pour que le fichier et son parseur soient dans la chaîne testée et pas seulement une table
+réécrite à la main.
+
+Les trois conventions du document restent verrouillées par un test dédié
+(`%08x` nu · `"0x"`+MAJUSCULES · `"0x"`+minuscules), parce qu'elles coexistent ailleurs et que
+`padFamilyKey` en dépend toujours.
+
+### LA COUVERTURE, MESURÉE PAR LA CHAÎNE DE PRODUCTION
+
+`buildPickups` appelé avec les catalogues que la couche titre lui donne réellement — pas
+l'instrument de recherche. Aucune cuisson : le film est décodé en mémoire, aucun artefact écrit.
+
+| | 000d5950 | 00502e52 |
+|---|---|---|
+| **non-armes nommées** | **82 / 82 = 100 %** | **36 / 36 = 100 %** |
+| dont grenades | 51 / 51 | 16 / 16 |
+| dont équipement | 31 / 31 | 20 / 20 |
+| **armes nommées** | **42 / 53 = 79,2 %** | **29 / 37 = 78,4 %** |
+
+**LE TAUX DES ARMES EST UN RÉSULTAT, PAS UN ÉCHEC DE CE LOT — et il compte.** Le catalogue
+d'armes de production ne couvre pas tout ce que le canal natif voit. **Deux identifiants
+distincts** en rendent compte, et l'un des deux est dans LES DEUX films : `00007ca9` — celui-là
+même que le lot 3 avait décodé à la main comme premier ramassage de `000d5950` — plus
+`e9e7ff79` sur un seul. Découverte CONSIGNÉE et NON TRAITÉE : elle appartient au catalogue
+d'armes, pas au nommage de l'équipement.
+
+C'est exactement ce pour quoi `unknownFamilies` existe. Il est **non nul dès le premier jour**
+sur le corpus de référence, du côté arme : un compteur toujours à zéro n'aurait rien prouvé, et
+`family` étant `omitempty`, sans lui un artefact où rien ne se résout serait indiscernable d'un
+artefact sain.
+
+### LES TESTS, ET LES QUATRE INVERSIONS QUI LES VALIDENT
+
+Littéraux partout, jamais les constantes du code testé — c'est la leçon P1-3c de la ronde 2 du
+chantier précédent (une fixture écrite avec les constantes de production reste verte quand on
+les permute).
+
+| inversion appliquée à la production | effet |
+|---|---|
+| permuter `PickupGrenade` et `PickupEquipment` | **2 tests tombent** |
+| repli croisé équipement -> catalogue d'armes | **1 test tombe** |
+| repli croisé armes -> manifeste d'équipement | **1 test tombe** |
+| retirer le compteur `unknownFamilies` | **2 tests tombent** |
+
+**ET UNE INVERSION A TROUVÉ UN TROU DANS MON PROPRE TEST.** La première version de
+`TestPickupFamilyNeverCrossesCatalogs` ne tombait PAS sur les deux replis croisés : sa table
+d'équipement trouvait toujours, donc le repli n'était jamais atteint. Le cas manquant a été
+ajouté — un identifiant ABSENT d'un catalogue et PRÉSENT dans l'autre. C'est l'inversion qui a
+trouvé le défaut, pas la relecture ; c'est précisément à ça qu'elle sert.
+
+### LES GATES, ET CELUI QUI A ATTRAPÉ LE LOT
+
+**`TestOpenAPIYAMLIsUpToDate`** (`internal/api`, tag cgo) a été joué **AVANT** régénération : il
+**ÉCHOUE en nommant `family`**, puis **PASSE** après. C'est la leçon P1-1 de la ronde 2 — un
+`contracttest` vert ne veut pas dire un contrat à jour, les deux gates ne voient pas la même
+chose.
+
+Le `contracttest` de comptage, lui, ne pouvait pas bouger : il compte les champs de la RACINE du
+document, et les deux champs de ce lot sont IMBRIQUÉS (`Pickup`, `PickupCoverage`). Sa chronique
+le dit désormais explicitement (45 -> 45), pour qu'on ne cherche pas un compteur qui n'a pas
+bougé.
+
+| gate | verdict |
+|---|---|
+| `go test ./internal/analysis/replay/ ./internal/analysis/filmdec/` | EXIT 0 |
+| `go test ./contracttest/` | EXIT 0 |
+| `go test ./internal/api/ -run TestOpenAPIYAMLIsUpToDate` (cgo) | EXIT 0 (après régénération ; ÉCHEC avant) |
+| cliquet `SchemaVersion` | chronique v31 écrite — raison, mesures, ce que la version refuse |
+| `npm run typecheck` (cache purgé) | vert |
+| `npm run lint` | 0 erreur (24 warnings pré-existants) |
+| `npx vitest run src/features/match-replay src/lib/api` | **130 fichiers · 1974 tests verts** |
+
+**Diff des goldens : UNE ligne** — `schema 30` -> `schema 31` dans
+`testdata/assembly_000d5950.golden`. C'est le seul changement voulu, et il est expliqué par la
+montée de version ; aucun compteur de l'assemblage ne bouge.
+
+**Contrat** : `openapi.yaml` +6 lignes (`family` non requis, `unknownFamilies` requis),
+`generated.ts` +3 lignes dérivées, parité web `EXPECTED_REPLAY_SCHEMA_VERSION` 30 -> 31.
+
+### RISQUE CONSIGNÉ, ET COMPATIBILITÉ
+
+**Collision de numéro** : ce lot prend le **31** sur `wt/pickup-nommage` alors que le 30 vient
+d'arriver sur `feat/v75`. Un autre chantier peut prendre le 31 le même jour — l'arbitrage se
+fera au merge, par renumérotation, exactement comme pour le 29 -> 30.
+
+**Un artefact 30 se lit sans changement** : il ne porte simplement ni `family` ni les deux
+natures fines, et son `kind` vaut `item` là où un 31 dirait `grenade` ou `equipment`. Le seul
+consommateur web actuel (`weaponChangeSound.ts`) teste `kind !== 'weapon'` : son comportement
+est inchangé.
+
+### Hors périmètre de ce lot, et qui le reste
+
+L'ORIGINE d'une prise (socle de la carte contre objet tombé au sol) n'est pas publiée : mesurée
+non concluante ci-dessus (25,6 % d'injectivité contre 50 % exigés), et le dépôt ne déclare aucun
+point d'apparition d'équipement. L'UI et les sons ne sont pas touchés — rien n'affiche encore
+les ramassages hors du son.
