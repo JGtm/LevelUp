@@ -31,6 +31,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/platform/netguard"
 )
 
 const (
@@ -119,7 +120,18 @@ func (c *Client) FetchMvar(ctx context.Context, asset *Asset, relPath string) ([
 
 // get exécute un GET. withAuth pose les en-têtes Spartan/Clearance ; le stockage
 // blob n'en a pas besoin (et les refuserait comme en-têtes inattendus).
+//
+// COUPE-CIRCUIT DÉMO EN TÊTE, ET AU SEUL ENDROIT QUI ÉMET. Ce fichier a quitté
+// `cmd/mapobj-build/` le 2026-09-01 pour devenir un client de RUNTIME (le fetch de film
+// comble le catalogue des cartes absentes) : il est passé d'un binaire d'outillage, hors
+// portée du ratchet, à `internal/`, où toute émission sortante doit passer par
+// `netguard.Check` — sinon le mode démo cesse d'être hermétique. L'erreur remonte telle
+// quelle : les deux appelants traitent DÉJÀ tout échec réseau en best-effort (journalisé,
+// compté, le film continue), il n'y a donc pas de chemin de dégradation à inventer.
 func (c *Client) get(ctx context.Context, endpoint string, withAuth bool) ([]byte, error) {
+	if err := netguard.Check(ctx, "mapcatalog_ugc.get"); err != nil {
+		return nil, err
+	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
 		return nil, err

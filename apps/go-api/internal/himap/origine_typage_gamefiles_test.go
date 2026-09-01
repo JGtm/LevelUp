@@ -23,21 +23,27 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"levelup/go-api/internal/testutil"
 )
 
 // origManifesteEquipement lit les `[[equipment_objects]]` du manifeste du titre.
 // On parse le TOML a la main pour ne pas trainer une dependance de config dans `himap`.
 func origManifesteEquipement(t *testing.T) map[uint32]string {
 	t.Helper()
-	racineDepot := os.Getenv("LEVELUP_REPO_ROOT")
-	if racineDepot == "" {
-		t.Skip("LEVELUP_REPO_ROOT non defini : le manifeste du titre est hors du worktree")
+	// Le manifeste est VERSIONNE (config/titles/...) : sa racine se deduit de
+	// l'emplacement du source, jamais d'une variable d'environnement. LEVELUP_REPO_ROOT
+	// n'est jamais posee en CI — le test se serait skippe en silence sur la seule machine
+	// ou il aurait pu servir (garde archlint TestNoProdRepoRootHelperInTests).
+	racineDepot, err := testutil.RepoRoot()
+	if err != nil {
+		t.Fatalf("racine du depot introuvable : %v", err)
 	}
 	chemin := filepath.Join(racineDepot, "config", "titles", "halo_infinite", "mappings",
 		"replay_labels.toml")
 	b, err := os.ReadFile(chemin)
 	if err != nil {
-		t.Skipf("manifeste illisible : %v", err)
+		t.Fatalf("manifeste versionne illisible (%s) : %v", chemin, err)
 	}
 	reID := regexp.MustCompile(`(?m)^id\s*=\s*"0x([0-9a-fA-F]{8})"`)
 	reFam := regexp.MustCompile(`(?m)^family\s*=\s*"([^"]+)"`)

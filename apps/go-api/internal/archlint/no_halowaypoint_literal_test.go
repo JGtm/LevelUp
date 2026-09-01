@@ -43,6 +43,8 @@ import (
 //   - halotest/          : fake server de test (héberge des URLs factices halowaypoint).
 //   - cmd/                : outils diag/probe/fixtures qui tapent l'API officielle.
 //   - scripts/            : outil de warm-up d'assets (URLs gamecms).
+//   - mapcatalog/         : client Discovery UGC (variantes de carte .mvar), partagé par
+//     les CLI de cuisson et le runtime depuis l'extraction du 2026-09-01.
 //
 // Toute suppression d'une URL en dur d'un de ces fichiers RETIRE son entrée.
 var halowaypointAllowlist = map[string]bool{
@@ -82,12 +84,20 @@ var halowaypointAllowlist = map[string]bool{
 	"cmd/refresh_golden_fixture/main.go":      true,
 	"cmd/snapshot-world-leaderboard/main.go":  true,
 	// Outillage du rejeu 2D (ajouté le 2026-07-31 à la réconciliation avec
-	// killsource) : ce binaire appelle DIRECTEMENT les hôtes officiels pour
+	// killsource) : le client UGC appelle DIRECTEMENT les hôtes officiels pour
 	// récupérer les variantes de carte. C'est une frontière HTTP au même titre que
 	// les outils diag ci-dessus. Il PRODUIT un artefact versionné, il reste.
 	// (`cmd/tmp_filmmanifest/main.go` retiré le 2026-08-01 — outillage de recherche
 	// supprimé au lot A du plan de dette avant merge.)
-	"cmd/mapobj-build/fetch.go": true,
+	//
+	// DÉPLACÉ le 2026-09-01 (commit a0e465ac6, « le fetch de films comble le catalogue
+	// des cartes absentes ») : `cmd/mapobj-build/fetch.go` vivait en `package main`,
+	// donc importable par personne ; le rattrapage au fetch de films en avait besoin à
+	// l'exécution. Le fichier a été EXTRAIT vers `internal/mapcatalog/ugc.go`, que les
+	// deux CLI (mapobj-build, mapopads-build) et le runtime partagent — l'entrée suit sa
+	// cause, elle ne s'ajoute pas à elle. Même frontière, même justification, un seul
+	// exemplaire. Les deux littéraux : l'hôte Discovery UGC et l'en-tête `Origin`.
+	"internal/mapcatalog/ugc.go": true,
 	// cmd/mapnav-fetch (campagne des fonds de carte, 2026-08-30) : meme frontiere que
 	// mapobj-build ci-dessus — il telecharge navmesh.blob, map.mvar et les miniatures
 	// depuis l hote UGC officiel, en ACCES ANONYME (aucun jeton), et PRODUIT des

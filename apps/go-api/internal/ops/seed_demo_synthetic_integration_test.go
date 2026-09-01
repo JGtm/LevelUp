@@ -8,6 +8,7 @@ package ops
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -62,6 +63,24 @@ func TestSeedDemoSynthetic_Structure(t *testing.T) {
 	assertCount(t, shared, "SELECT COUNT(*) FROM match_csrs", 22) // sessions classées (arène) = 10 + 12
 	assertCountAtLeast(t, shared, "SELECT COUNT(*) FROM medals_earned", 1)
 
+	// L'ARME FAVORITE DE L'ACCUEIL se lit dans la SOURCE DE DÉGÂT des morts créditées au
+	// joueur (`favoriteWeaponFromSource`), plus dans une table d'armes. Trois exigences,
+	// et l'encart disparaît si l'une tombe : des morts SOURCÉES en nombre, une part NON
+	// ATTRIBUÉE (la portée est par ligne, comme en production), et une gagnante NETTE —
+	// une égalité ferait dépendre l'arme affichée du départage par clé.
+	assertCountAtLeast(t, shared, "SELECT COUNT(*) FROM match_kill_events WHERE source_tag IS NOT NULL", 100)
+	assertCountAtLeast(t, shared, "SELECT COUNT(*) FROM match_kill_events WHERE source_tag IS NULL", 1)
+	assertCount(t, shared, fmt.Sprintf(`
+		SELECT COUNT(*) FROM (
+			SELECT source_tag FROM match_kill_events WHERE source_tag IS NOT NULL
+			GROUP BY source_tag ORDER BY COUNT(*) DESC LIMIT 1
+		) WHERE source_tag = %d`, demoSourceTagBR75), 1)
+	// Invariant du schéma : source_tag / source_category / diverges voyagent ENSEMBLE.
+	assertCount(t, shared, `
+		SELECT COUNT(*) FROM match_kill_events
+		WHERE (source_tag IS NULL) <> (source_category IS NULL)
+		   OR (source_tag IS NULL) <> (diverges IS NULL)`, 0)
+
 	// Comptages player principal + vues _latest (append-only OK).
 	player := openRO(t, filepath.Join(out, "players", "DEMO", "stats.duckdb"))
 	defer player.Close()
@@ -77,6 +96,18 @@ func TestSeedDemoSynthetic_Structure(t *testing.T) {
 	meta := openRO(t, filepath.Join(out, "warehouse", "metadata.duckdb"))
 	defer meta.Close()
 	assertCountAtLeast(t, meta, "SELECT COUNT(*) FROM weapon_labels", 10)
+	// LE DERNIER MAILLON DE L'ARME FAVORITE. `resolveWeaponKeyDimensions` joint le registre
+	// pour rendre l'identifiant NUMÉRIQUE de la clé, et `favoriteWeaponFromSource` ÉCARTE
+	// toute arme dont cet identifiant vaut 0 (objet hors arsenal). Une clé présente dans
+	// `weapons` mais absente de `weapon_ids` ferait donc disparaître l'encart alors même que
+	// les morts portent leur source — panne muette que ce compte attrape.
+	assertCount(t, meta, `
+		SELECT COUNT(*) FROM weapons w
+		JOIN weapon_ids wi ON wi.title_slug = w.title_slug AND wi.weapon_key = w.weapon_key
+		WHERE w.title_slug = 'halo_infinite'
+		  AND w.weapon_key IN ('hinf_br75', 'hinf_ma40_ar', 'hinf_bandit')
+		  AND TRY_CAST(wi.id_value AS UBIGINT) IS NOT NULL
+		  AND TRY_CAST(wi.id_value AS UBIGINT) <> 0`, 4) // le Bandit porte 2 identifiants
 	assertCountAtLeast(t, meta, "SELECT COUNT(*) FROM medal_definitions", 4)
 	assertCountAtLeast(t, meta, "SELECT COUNT(*) FROM career_ranks", 4)
 	assertCountAtLeast(t, meta, "SELECT COUNT(*) FROM citation_mappings", 10)
@@ -117,6 +148,7 @@ var detSeededTables = map[string]bool{
 	"killer_victim_pairs":     true,
 	"match_citations":         true,
 	"match_csrs":              true,
+	"match_kill_events":       true,
 	"match_participants":      true,
 	"match_registry":          true,
 	"match_skill_rank":        true,
