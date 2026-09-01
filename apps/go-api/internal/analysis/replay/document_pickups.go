@@ -235,7 +235,14 @@ type PickupCoverage struct {
 	// que les 21 objets du corpus qui l'a bâti, et le catalogue d'armes ne couvre pas tout le
 	// jeu. Sans ce compteur, un artefact où rien ne se résout se lirait comme un artefact où
 	// tout va bien : `family` étant `omitempty`, son absence est invisible à la lecture.
-	// Mesuré à 0 sur les deux films de référence (118 non-armes, 100 % résolus).
+	//
+	// IL COMPTE LES DEUX NATURES, ET IL EST NON NUL DÈS LE PREMIER JOUR. Mesuré le 2026-09-01
+	// sur les deux films de référence : les NON-ARMES se résolvent toutes (82/82 et 36/36,
+	// 100 %), mais les ARMES non — 11 et 8 ramassages sans famille, soit 79,2 % et 78,4 % de
+	// résolution, pour seulement DEUX identifiants distincts (`00007ca9`, présent dans les deux
+	// films, et `e9e7ff79`). Le total vaut donc 11 et 8, jamais 0. Un lecteur qui attendrait un
+	// zéro conclurait à une régression là où le compteur fait exactement son travail : dire que
+	// le catalogue d'ARMES ne couvre pas tout ce que le canal natif voit.
 	UnknownFamilies int `json:"unknownFamilies"`
 	// BeforeOrigin compte les ramassages antérieurs à la première frame — écartés.
 	BeforeOrigin int `json:"beforeOrigin"`
