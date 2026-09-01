@@ -32,6 +32,7 @@ import (
 	"levelup/go-api/internal/analysis/replay/mapvar"
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/mapcatalog"
 )
 
 type mapIDList []string
@@ -112,7 +113,7 @@ func main() {
 	if err != nil {
 		fail(ctx, "authentification", err)
 	}
-	client := newUGCClient(tokens)
+	client := mapcatalog.NewClient(tokens)
 
 	var failures []string
 	for i, t := range targets {
@@ -187,12 +188,12 @@ func resolveTargets(ctx context.Context, cfg *config.AppConfig, explicit []strin
 }
 
 // ingestRemote télécharge et ingère toutes les variantes .mvar d'une carte.
-func ingestRemote(ctx context.Context, cat *catalog, c *ugcClient, t target, saveDir string) error {
-	asset, err := c.fetchAsset(ctx, t.mapID, "")
+func ingestRemote(ctx context.Context, cat *catalog, c *mapcatalog.Client, t target, saveDir string) error {
+	asset, err := c.FetchAsset(ctx, t.mapID, "")
 	if err != nil {
 		return err
 	}
-	files := asset.mvarPaths()
+	files := asset.MvarPaths()
 	if len(files) == 0 {
 		return fmt.Errorf("aucun fichier .mvar dans l'asset (fichiers: %v)",
 			asset.Files.FileRelativePaths)
@@ -204,7 +205,7 @@ func ingestRemote(ctx context.Context, cat *catalog, c *ugcClient, t target, sav
 	var bestVariant *mapvar.Variant
 	parked := 0
 	for _, rel := range files {
-		buf, err := c.fetchMvar(ctx, asset, rel)
+		buf, err := c.FetchMvar(ctx, asset, rel)
 		if err != nil {
 			return err
 		}

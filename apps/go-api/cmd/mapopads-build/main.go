@@ -32,17 +32,16 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"log/slog"
 	"os"
-	"path/filepath"
 	"sort"
 	"time"
 
 	"levelup/go-api/internal/analysis/replay"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/mapcatalog"
 )
 
 func main() {
@@ -215,19 +214,10 @@ func padsNotes() map[string]string {
 }
 
 // writeCatalog sérialise le catalogue de façon atomique (temporaire + rename).
+// writeCatalog delegue l ecriture ATOMIQUE au paquet partage — le rattrapage au fetch de films
+// ecrit le meme fichier pendant que le serveur le lit, et les deux doivent ecrire pareil.
 func writeCatalog(cat *replay.MapWeaponPadsCatalog, path string) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return err
-	}
-	buf, err := json.MarshalIndent(cat, "", "  ")
-	if err != nil {
-		return err
-	}
-	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, buf, 0o644); err != nil {
-		return err
-	}
-	return os.Rename(tmp, path)
+	return mapcatalog.WriteAtomic(cat, path)
 }
 
 func fail(ctx context.Context, what string, err error) {

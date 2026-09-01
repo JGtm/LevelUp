@@ -1,4 +1,13 @@
-// cmd/mapobj-build — fetch.go : client UGC pour récupérer la variante de carte (.mvar).
+// Package mapcatalog — LE CATALOGUE DES CARTES : récupérer une variante `.mvar`, en tirer une
+// entrée de catalogue, et n'écrire ce catalogue que de façon sûre.
+//
+// POURQUOI CE PAQUET EXISTE. Ces trois gestes vivaient dans le `package mapcatalog` de DEUX CLI
+// (`mapobj-build` pour le fetch, `mapopads-build` pour l'entrée), donc importables par
+// personne. Le rattrapage au fetch de films en a besoin À L'EXÉCUTION : sans extraction, il
+// aurait fallu une troisième copie — ce que la règle du dépôt interdit (≤ 2 copies, et un
+// garde-rail à la 3ᵉ).
+//
+// ugc.go : client UGC pour récupérer la variante de carte (.mvar).
 //
 // Deux étapes :
 //  1. Discovery UGC (AUTHENTIFIÉ, jeton Spartan) : résout assetId → métadonnées
@@ -8,7 +17,7 @@
 // TÉMOIN d'authentification (mesuré) : un GET anonyme sur discovery-infiniteugc
 // répond HTTP 401. Le jeton vient de l'auth existante du projet (ADR 0023,
 // auth.RefreshHaloTokensViaStoreFirst) — aucune re-capture de jeton.
-package main
+package mapcatalog
 
 import (
 	"context"
@@ -31,9 +40,9 @@ const (
 	politeUserAgent = "LevelUp/1.0 (dashboard stats Halo, usage personnel)"
 )
 
-// ugcAsset est la forme du DTO Discovery UGC réellement servie (champs utilisés
+// Asset est la forme du DTO Discovery UGC réellement servie (champs utilisés
 // uniquement — le reste du document est ignoré).
-type ugcAsset struct {
+type Asset struct {
 	AssetID    string `json:"AssetId"`
 	VersionID  string `json:"VersionId"`
 	PublicName string `json:"PublicName"`
@@ -48,21 +57,21 @@ type ugcAsset struct {
 	} `json:"CustomData"`
 }
 
-type ugcClient struct {
+type Client struct {
 	http   *http.Client
 	tokens *domain.HaloTokens
 }
 
-func newUGCClient(tokens *domain.HaloTokens) *ugcClient {
-	return &ugcClient{
+func NewClient(tokens *domain.HaloTokens) *Client {
+	return &Client{
 		http:   &http.Client{Timeout: requestTimeout},
 		tokens: tokens,
 	}
 }
 
-// fetchAsset résout un assetId de carte via Discovery UGC.
+// FetchAsset résout un assetId de carte via Discovery UGC.
 // versionID vide → dernière version publiée.
-func (c *ugcClient) fetchAsset(ctx context.Context, assetID, versionID string) (*ugcAsset, error) {
+func (c *Client) FetchAsset(ctx context.Context, assetID, versionID string) (*Asset, error) {
 	endpoint := fmt.Sprintf("%s/hi/Maps/%s", discoveryHost, url.PathEscape(assetID))
 	if versionID != "" {
 		endpoint += "/versions/" + url.PathEscape(versionID)
@@ -71,7 +80,7 @@ func (c *ugcClient) fetchAsset(ctx context.Context, assetID, versionID string) (
 	if err != nil {
 		return nil, err
 	}
-	var asset ugcAsset
+	var asset Asset
 	if err := json.Unmarshal(body, &asset); err != nil {
 		return nil, fmt.Errorf("décoder l'asset %s: %w", assetID, err)
 	}
@@ -85,8 +94,8 @@ func (c *ugcClient) fetchAsset(ctx context.Context, assetID, versionID string) (
 	return &asset, nil
 }
 
-// mvarPaths retourne les chemins relatifs *.mvar de l'asset.
-func (a *ugcAsset) mvarPaths() []string {
+// MvarPaths retourne les chemins relatifs *.mvar de l'asset.
+func (a *Asset) MvarPaths() []string {
 	var out []string
 	for _, p := range a.Files.FileRelativePaths {
 		if strings.HasSuffix(strings.ToLower(p), ".mvar") {
@@ -96,8 +105,8 @@ func (a *ugcAsset) mvarPaths() []string {
 	return out
 }
 
-// fetchMvar télécharge un fichier de variante depuis le stockage blob.
-func (c *ugcClient) fetchMvar(ctx context.Context, asset *ugcAsset, relPath string) ([]byte, error) {
+// FetchMvar télécharge un fichier de variante depuis le stockage blob.
+func (c *Client) FetchMvar(ctx context.Context, asset *Asset, relPath string) ([]byte, error) {
 	endpoint := strings.TrimSuffix(asset.Files.Prefix, "/") + "/" + relPath
 	body, err := c.get(ctx, endpoint, false)
 	if err != nil {
@@ -110,7 +119,7 @@ func (c *ugcClient) fetchMvar(ctx context.Context, asset *ugcAsset, relPath stri
 
 // get exécute un GET. withAuth pose les en-têtes Spartan/Clearance ; le stockage
 // blob n'en a pas besoin (et les refuserait comme en-têtes inattendus).
-func (c *ugcClient) get(ctx context.Context, endpoint string, withAuth bool) ([]byte, error) {
+func (c *Client) get(ctx context.Context, endpoint string, withAuth bool) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
 		return nil, err

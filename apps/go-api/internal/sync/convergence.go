@@ -688,9 +688,14 @@ func (s postSyncFilmSteps) runReplayArtifacts(ctx context.Context, insertedIDs [
 	if !ok {
 		replayartifacts.SignalerClientSansChunks(ctx, placement, e.gamertag, fmt.Sprintf("%T", s.client))
 	}
+	// MEME MOTIF QUE `ChunksFetcher`, et pour la meme raison : une capacite OPTIONNELLE du
+	// client, assertee et non exigee. Un client qui ne la porte pas (mocks des autres etapes)
+	// desarme le rattrapage du catalogue de cartes sans rien casser.
+	mvarFetcher, _ := s.client.(replayartifacts.MvarFetcher)
 	replayartifacts.Run(ctx, replayartifacts.Deps{
 		BuildOne:        e.replayArtifacts.BuildOne,
 		Fetcher:         fetcher,
+		MvarFetcher:     mvarFetcher,
 		WithRead:        s.withRead,
 		MetaDB:          e.metaDB,
 		RepoRoot:        e.repoRoot,
