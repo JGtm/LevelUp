@@ -1,3 +1,50 @@
+## [2026-09-01] Schéma 31 — le nom de l'objet ramassé est publié, la nature passe à trois valeurs — Complété
+
+Publication du lot de recherche du matin. `pickups[].family` (slug, `omitempty`) résolu au build
+par les catalogues du TITRE : `LabelCatalog.Keys` pour les armes, `EquipmentFamilies` (manifeste
+`[[equipment_objects]]`) pour les classes 2/3. `kind` passe de `weapon`/`item` à
+`weapon`/`grenade`/`equipment`, `item` restant le REPLI des classes non-arme non établies — il
+n'est pas renommé.
+
+**LE PIÈGE DE FORMAT A ÉTÉ SUPPRIMÉ, PAS CONTOURNÉ.** Le brief demandait un helper de
+normalisation des trois écritures. Vérification sur pièces avant de coder : les deux catalogues
+sont keyés par `uint32` et `BipedPickup.CatalogID` EST cet `uint32` — la résolution se fait avant
+toute mise en forme, aucune chaîne n'entre dans la jointure, aucun helper n'était nécessaire.
+C'est la leçon du P0 poussée d'un cran : on ne fabrique pas la chaîne du tout. Casse réelle
+vérifiée et consignée : les 21 entrées du manifeste s'écrivent `0x` + minuscules (zéro
+majuscule), et `tagGlobalID32` les parse en `uint32` au chargement.
+
+**Couverture mesurée PAR LA CHAÎNE DE PRODUCTION** (`buildPickups` avec les vrais catalogues,
+aucune cuisson) : non-armes **82/82 et 36/36 = 100 %** sur les deux films. Mais les ARMES tombent
+à **79,2 % et 78,4 %** — le catalogue d'armes ne couvre pas tout ce que le canal natif voit.
+Deux identifiants distincts seulement, dont `00007ca9` présent dans LES DEUX films (celui que le
+lot 3 avait décodé à la main), plus `e9e7ff79`. Découverte CONSIGNÉE, non traitée : elle
+appartient au catalogue d'armes. C'est pour cela que `coverage.pickups.unknownFamilies` existe —
+il est non nul dès le premier jour, ce qui vaut mieux qu'un compteur toujours à zéro.
+
+**QUATRE INVERSIONS rejouées**, et l'une d'elles a trouvé un trou dans mon propre test : la
+première version de `TestPickupFamilyNeverCrossesCatalogs` ne tombait PAS sur les replis croisés
+(sa table d'équipement trouvait toujours, le repli n'était jamais atteint). Cas manquant ajouté.
+Tests écrits en littéraux, jamais avec les constantes du code testé (leçon P1-3c).
+
+**Le gate qui a attrapé le lot est `TestOpenAPIYAMLIsUpToDate`** (tag cgo), joué AVANT
+régénération : il échoue en nommant `family`, puis passe. Le `contracttest` de comptage ne
+pouvait pas bouger — il compte les champs RACINE, les deux miens sont imbriqués ; sa chronique le
+dit maintenant (45 -> 45). Gates : replay+filmdec EXIT 0, contracttest EXIT 0, golden openapi
+EXIT 0, typecheck vert, lint 0 erreur, vitest 130 fichiers / 1974 tests verts. **Diff goldens :
+UNE ligne**, le numéro de schéma.
+
+**Risque consigné** : collision possible sur le 31 (le 30 vient d'arriver sur `feat/v75`) —
+arbitrage au merge par renumérotation, comme au 29->30. Un artefact 30 se lit sans changement ;
+`weaponChangeSound.ts`, seul consommateur, teste `kind !== 'weapon'` et n'est pas affecté.
+
+**Prochaine étape** : recherche pure sur l'ORIGINE (sol vs socle) — idée utilisateur de la
+LÉVITATION (un objet sur socle flotte, un objet lâché repose) étalonnée sur les socles d'armes
+CONNUS, plus la récurrence des positions de naissance pour construire le catalogue de points
+d'apparition d'équipement qui manquait à O3. Note :
+`.ai/V7.5/film_re/NOTE_NOMMAGE_ORIGINE_2026-09-01.md`. Ne pas merger : une revue adversariale
+relit avant.
+
 ## [2026-09-01] Ramassage non-arme — nommé à 100 % par les fichiers du jeu, classes tranchées, origine non résolue — Complété
 
 **La réponse était déjà dans le dépôt.** Le `R(32)` des ramassages de classe 2/3 est un GlobalID
