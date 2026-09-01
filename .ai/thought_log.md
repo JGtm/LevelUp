@@ -1,3 +1,33 @@
+## [2026-09-01] Merge de wt/pickup-ui dans feat/v75 — le contrôle des armes spéciales est sur la page match — Complété
+
+Merge `--no-ff` de `wt/pickup-ui` (2 commits) dans `feat/v75`. **Zéro conflit** : l'arbre principal
+était exactement sur `28e18feda`, la base du worktree, et aucun commit n'était entré depuis —
+`.ai/thought_log.md` compris. Les fichiers à risque de collision surveillés avant la passe
+(`i18n.ts`, `i18nContract.ts`, `match-view/*`) n'avaient été touchés par aucune autre session.
+
+**Périmètre** : 11 fichiers, 1148 insertions, 3 suppressions. **0 fichier Go** — les gates sont
+donc npm-only, sans interaction avec les builds Go des sessions parallèles (pas de cache partagé
+en jeu).
+
+**Gates sur l'arbre fusionné, verdicts par code de sortie** : `npm run typecheck` 0 (après purge
+`node_modules/.tmp`) · `npm run lint` 0 (24 warnings pré-existants, aucun sur les fichiers du lot)
+· vitest `match-view` + `match-replay` **157 fichiers / 2238 tests**, 0 échec.
+
+**Ce qui entre en production sur `feat/v75`** : la section « Contrôle des armes spéciales » de
+l'onglet Chronologie. Elle est ADDITIVE et se masque d'elle-même sans donnée (pas d'artefact, ou
+zéro prise attribuée) — c'est le cas de la quasi-totalité des matchs, la page ne bouge donc pas
+pour eux.
+
+**GATE VISUEL : go utilisateur accordé en connaissance, vérification visuelle POST-MERGE.** Le
+rendu final n'a pas encore été validé à l'écran ; la section étant additive et masquée sans
+donnée, un retour visuel restera facile à traiter par un correctif ciblé. Artefact de
+démonstration : `01e1f945` (11 socles, 46 occupations, 21 attribuées sur 7 joueurs, 6 colonnes
+d'arme nommées FR/EN, ventilation 4 ambiguës · 11 non couvertes · 1 datée sans nom · 9 socles de
+bonus = 46).
+
+**Prochaine étape** : vérification visuelle à la main de l'utilisateur ; aucun autre travail
+ouvert sur ce périmètre.
+
 ## [2026-09-01] Contrôle des armes spéciales — les quatre P2 de la revue adversariale — Complété
 
 Revue adversariale rendue RECEVABLE (0 P0/P1, 12 conditions tenues). Les quatre P2, tous dans le
