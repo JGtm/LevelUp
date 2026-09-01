@@ -700,7 +700,7 @@ func BoiteDesVolumesDeMort(objets []mapvar.Object) (boite [4]float64, n int) {
 		if s == nil {
 			continue
 		}
-		demi := [2]float64{}
+		var demi [2]float64
 		switch {
 		case s.Radius != nil:
 			demi = [2]float64{*s.Radius, *s.Radius}
@@ -781,7 +781,7 @@ func journaliseTypesEtendus(ctx context.Context, b *BilanCuisson, etendues map[i
 	if len(l) > 10 {
 		l = l[:10]
 	}
-	var detail []string
+	detail := make([]string, 0, len(l))
 	for _, x := range l {
 		detail = append(detail, fmt.Sprintf("%d:%.0fm x%d", x.typeID, x.etendue, x.n))
 	}
@@ -894,14 +894,6 @@ func MinceurDuModele(a *RuntimeGeoAsset) (float64, bool) {
 		}
 	}
 	return float64(pleines) / float64(cotesGrille*cotesGrille), true
-}
-
-// aireTriangleMonde rend l'aire d'un triangle par la demi-norme du produit vectoriel.
-func aireTriangleMonde(a, b, c [3]float64) float64 {
-	u := [3]float64{b[0] - a[0], b[1] - a[1], b[2] - a[2]}
-	v := [3]float64{c[0] - a[0], c[1] - a[1], c[2] - a[2]}
-	x, y, z := u[1]*v[2]-u[2]*v[1], u[2]*v[0]-u[0]*v[2], u[0]*v[1]-u[1]*v[0]
-	return 0.5 * math.Sqrt(x*x+y*y+z*z)
 }
 
 // journalisePixelsParType dit QUELS TYPES OCCUPENT L'IMAGE, en pixels et en part du total.
