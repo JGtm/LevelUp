@@ -84129,3 +84129,51 @@ il n'y avait rien à retirer.
 **Mesure au passage** : 60 points à natures mélangées sur 25 cartes, journalisés carte par carte.
 
 **Conclusion / prochaine étape** : passe de merge vers `feat/v75`.
+
+## [2026-09-01] Rattrapage des .mvar au fetch de films + le piège du fichier de variante — Complété
+
+**Statut** : Complété côté code. Pas de merge, pas de push — revue d'abord. **Le catalogue n'est
+pas modifié par ce lot.**
+
+**Câblage livré** : au moment où la chaîne détachée récupère le film d'un match, une carte
+absente de `map_weapon_pads.json` est téléchargée (1 appel UGC), déposée au cache, et ajoutée au
+catalogue. Le sync rapide reste intact, la cuisson reste offline-pure. Carte présente = zéro
+appel. Ajout-seul structurel (`mapcatalog.AddEntry` refuse une clé existante), écriture atomique,
+best-effort strict : tout échec est compté et le fetch de film continue.
+
+**Extraction plutôt que 3e copie** : le client UGC et la construction d'entrée vivaient en
+`package main` de deux CLI, importables par personne. Ils passent dans `internal/mapcatalog`,
+partagé par les deux CLI et le runtime ; les tests de comparaison de socles ont suivi la
+fonction dans sa nouvelle maison.
+
+**LE PIÈGE, et c'est le vrai résultat du lot.** Une passe `--refresh-drifted` a rendu des socles
+déplacés de 22 à 80 m sur neuf cartes. 80 m n'est pas une mise à jour de carte : le suspect
+était la résolution de fichier, et c'était elle. **Un asset UGC sert souvent DEUX `.mvar`** — la
+carte de BASE (`btb_highpower.mvar`) et la VARIANTE jouée (`map.mvar`). Les deux parsent, les
+deux rendent des socles plausibles.
+
+**Preuve par les comptes que le catalogue enregistre lui-même** : Highpower Sentry Defense, 421
+objets au catalogue — `map.mvar` en rend 421, le fichier nommé 524. Aquarius - Ranked, 236 au
+catalogue — 236 contre 349.
+
+**Avec le bon fichier** : 8 cartes régénérées au lieu de 16, dont **6 sans le moindre changement
+de socle**, et 2 déplacements au lieu de 9. **Sept des neuf écarts étaient un artefact.**
+
+**Ce que ça change rétroactivement** : les seize « cartes à source dérivée » du lot précédent
+n'avaient pas dérivé — le dump local portait le mauvais fichier. Le verrou à trois termes a fait
+son travail en refusant d'écrire.
+
+**Ce que la vérification a évité** : sans elle, neuf cartes très jouées auraient reçu les socles
+de leur carte de base. Tous les rejeux futurs les auraient affichés à des dizaines de mètres de
+leur place, et la datation des occupations n'aurait plus rien trouvé — sans qu'aucun test ne
+rougisse, le fichier restant valide.
+
+**Correctif** : `FetchMvarForMap` préfère `map.mvar`, puis le fichier déclaré, puis le premier ;
+ordre figé par `TestPreferenceDuFichierDeVariante`.
+
+**Leçon de méthode** : un chiffre invraisemblable (80 m) est un signal, pas une donnée. Le
+réflexe utile a été de comparer le compte d'objets du fichier frais à celui que le catalogue
+enregistrait déjà — une identité vérifiable sans rien décoder.
+
+**Conclusion / prochaine étape** : revue adversariale. La passe `--refresh-drifted` n'est PAS
+livrée — les 2 cartes qui bougent encore relèvent d'une décision produit.

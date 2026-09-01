@@ -62,6 +62,13 @@ func main() {
 		// retombent a l'identique, et n'ecrit QUE `spawn_points`. Une carte dont les socles ne
 		// retombent pas est SAUTEE et COMPTEE : le trou se voit, il ne se comble pas en
 		// douce.
+		// RE-VALIDATION des cartes derivees. Decision utilisateur du 2026-09-01 : le gel
+		// prudent d'`--only-add-spawn-points` saute, le `.mvar` frais redevient la source de
+		// verite pour les cartes DEJA au catalogue. L'automatique reste AUDITABLE — chaque
+		// carte regeneree produit un diff de socles au journal et dans la note du fichier.
+		refreshDrift = flag.Bool("refresh-drifted", false,
+			"regenerer l'entree COMPLETE (socles ET points) des cartes dont le .mvar frais ne "+
+				"concorde plus ; les cartes concordantes restent byte-identiques")
 		addOnly = flag.Bool("only-add-spawn-points", false,
 			"ne pas reecrire les socles : charger le catalogue existant et n'y ajouter que "+
 				"les points d'apparition, en sautant toute carte dont les socles auraient change")
@@ -94,6 +101,10 @@ func main() {
 		"cartes_catalogue", len(objectifs.Maps), "fichiers_dumpes", dumps.count(), "dossier", *from)
 
 	outPath := res.MapWeaponPadsPath(*titleSlug)
+	if *refreshDrift {
+		refreshDrifted(ctx, objectifs, dumps, outPath, *dryRun)
+		return
+	}
 	if *addOnly {
 		addSpawnPointsOnly(ctx, objectifs, dumps, outPath, *dryRun)
 		return
