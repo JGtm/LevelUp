@@ -41,6 +41,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"testing"
 )
 
@@ -61,8 +62,17 @@ func TestDetoAttribution(t *testing.T) {
 		t.Fatalf("registre illisible : %v", err)
 	}
 	n := CountFilmChunks(dir)
-	if n > geoMaxChunks {
-		n = geoMaxChunks
+	// Borne RAM par defaut geoMaxChunks (16, adapte au BTB). Les films ARENE sont petits (~23 Mo,
+	// 30 chunks) : LOT1_MAXCHUNKS releve la borne pour MOISSONNER des kills explosifs (rares) sur la
+	// verite terrain M5, sans toucher au defaut BTB. Verification adverse : la preuve exige des kills.
+	maxCh := geoMaxChunks
+	if v := os.Getenv("LOT1_MAXCHUNKS"); v != "" {
+		if k, err := strconv.Atoi(v); err == nil && k > 0 {
+			maxCh = k
+		}
+	}
+	if n > maxCh {
+		n = maxCh
 	}
 	wr := sondeWorldRange(t, dir)
 	if wr == nil {
@@ -70,13 +80,14 @@ func TestDetoAttribution(t *testing.T) {
 	}
 
 	shots := geoCollectShots(t, dir, n)
-	raws, _ := geoCollectDamageKills(t, dir, reg, n)
+	raws, kills := geoCollectDamageKills(t, dir, reg, n)
 	tracks := geoTracks(t, dir, wr, n)
 	detons := detoScanProjectiles(t, dir, wr, n)
 
 	geoActiveBase = geoDetectBase(raws)
 	defer func() { geoActiveBase = geoBase }()
 	touch := geoBuildTouches(raws, geoActiveBase)
+	geoMatchFatal(touch, kills)
 
 	var heavy []geoShot
 	films := map[int]bool{}
@@ -105,6 +116,18 @@ func TestDetoAttribution(t *testing.T) {
 	detoM1Alignment(t, detons, heavy, touch, tracks)
 	detoM3Attribution(t, detons, heavy, tracks, speedByWid)
 	detoM4Splash(t, detons, touch, tracks)
+
+	table, card, inj := geoBuildIdentity(shots, kills)
+	nFatal := 0
+	for _, tc := range touch {
+		if tc.fatal {
+			nFatal++
+		}
+	}
+	t.Logf("VERITE TERRAIN : %d morts · %d touches fatales · identite roster<->FilmIndex %d mappes (injective %v)",
+		len(kills), nFatal, card, inj)
+	detoM5GroundTruth(t, detoGTCtx{detons: detons, touch: touch, kills: kills, heavy: heavy, tracks: tracks, speed: speedByWid, table: table})
+	detoM6Confound(t, detons, heavy, tracks, speedByWid)
 }
 
 // detoM0Source : combien de detonations exploitables, part appariee a un tir lourd par la
