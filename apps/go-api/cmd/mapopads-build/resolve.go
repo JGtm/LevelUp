@@ -93,13 +93,21 @@ func (d *dumpIndex) resolve(mapID string, e replay.MapObjectivesEntry) (string, 
 		prefixe(e.PublicName) + "_" + e.MvarFile,
 		// 3. Sans nom public, le dump a pris le map_id comme préfixe.
 		mapID + "_" + e.MvarFile,
+		// 4 et 5. LE FICHIER DE VARIANTE SOUS SON NOM APLATI. `e.MvarFile` peut nommer la
+		//    carte de BASE (le catalogue d'objectifs enregistre, pour quinze cartes, le nom du
+		//    niveau) ; la variante, elle, s'aplatit en `{prefixe}_map.mvar`. Sans ces deux
+		//    candidats, le dossier local pouvait porter la variante sans que rien ne la
+		//    cherche — et c'est ainsi qu'on ramene des socles deplaces de 80 metres.
+		prefixe(e.PublicName) + mapcatalog.SuffixeVarianteAplatie,
+		mapID + mapcatalog.SuffixeVarianteAplatie,
 	}
-	// LA PREFERENCE DE VARIANTE S'APPLIQUE ICI AUSSI, et c'est un correctif de revue.
+	// LA PREFERENCE DE VARIANTE S'APPLIQUE ICI AUSSI, et elle est OPERANTE : les candidats
+	// ci-dessus incluent desormais le nom APLATI de la variante, que `ChoisirFichierVariante`
+	// reconnait par son suffixe. Sans ces candidats, la preference etait du code decoratif —
+	// aucun nom aplati ne pouvait valoir `map.mvar`.
 	//
-	// `e.MvarFile` peut nommer la carte de BASE : le catalogue d'objectifs enregistre, pour
-	// plusieurs cartes, le nom du niveau et non celui de la variante jouee. Resoudre sur ce
-	// nom seul ramenait des socles deplaces de 22 a 80 metres. La regle est celle du runtime,
-	// et c'est la MEME fonction — deux implementations divergeraient.
+	// La regle est celle du runtime, et c'est la MEME fonction : deux implementations
+	// divergeraient, et la divergence est ce qui a coute les 80 metres.
 	var presents []string
 	for _, c := range candidats {
 		if c != "" && d.files[c] {

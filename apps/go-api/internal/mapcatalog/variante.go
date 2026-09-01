@@ -21,10 +21,22 @@ package mapcatalog
 // meme fichier ou ils ne choisissent rien : deux implementations de cette regle divergeraient,
 // et la divergence est precisement ce qui a coute les 80 metres.
 
-import "path"
+import (
+	"path"
+	"strings"
+)
 
 // NomDeLaVariante est le nom que porte, dans un asset UGC, le fichier de la VARIANTE JOUEE.
 const NomDeLaVariante = "map.mvar"
+
+// SuffixeVarianteAplatie est ce que devient `map.mvar` quand un depot local APLATIT les fichiers
+// de plusieurs cartes dans un seul dossier : il les prefixe pour les desambiguiser
+// (`deadlock_map.mvar`, `highpower_map.mvar`, `aquarius_-_ranked_map.mvar`).
+//
+// CE N'EST PAS UNE HYPOTHESE : 62 des 72 entrees du catalogue livre portent un `mvar_file` de
+// cette forme — c'est la nomenclature du dump qui l'a bati. Sans reconnaitre ce suffixe, la
+// preference de variante ne matcherait JAMAIS cote depot local, et le code serait decoratif.
+const SuffixeVarianteAplatie = "_" + NomDeLaVariante
 
 // ChoisirFichierVariante rend, parmi les chemins d'un asset, celui de la variante jouee.
 //
@@ -50,13 +62,14 @@ func ChoisirFichierVariante(chemins []string, declare string) string {
 		}
 	}
 	for _, p := range chemins {
-		if path.Base(p) == NomDeLaVariante {
+		if estVariante(path.Base(p)) {
 			return p
 		}
 	}
 	return choisi
 }
 
-// EstFichierDeVariante dit si un nom de fichier est celui de la variante jouee. Utile aux
-// chemins qui travaillent sur des noms deja aplatis plutot que sur les chemins d'un asset.
-func EstFichierDeVariante(nom string) bool { return path.Base(nom) == NomDeLaVariante }
+// estVariante reconnait le fichier de variante, sous son nom d'asset comme sous son nom aplati.
+func estVariante(nom string) bool {
+	return nom == NomDeLaVariante || strings.HasSuffix(nom, SuffixeVarianteAplatie)
+}

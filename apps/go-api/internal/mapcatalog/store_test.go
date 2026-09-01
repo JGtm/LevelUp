@@ -11,7 +11,9 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"sync"
 	"testing"
 
 	"levelup/go-api/internal/analysis/replay"
@@ -242,6 +244,97 @@ func TestChoisirFichierVariante(t *testing.T) {
 			if got := ChoisirFichierVariante(c.chemins, c.declare); got != c.attendu {
 				t.Errorf("fichier choisi = %q, attendu %q — prendre la carte de BASE pour la "+
 					"VARIANTE deplace les socles de plusieurs dizaines de metres", got, c.attendu)
+			}
+		})
+	}
+}
+
+// TestAddEntryConcurrentNePerdPasDEntree — ITEM 7 : la perte de mise a jour.
+//
+// `AddEntry` fait un LIRE-MODIFIER-ECRIRE. Deux ecrivains — la CLI lancee a la main pendant
+// qu'un cycle de sync rattrape une carte — pouvaient lire le meme etat et publier chacun un
+// fichier SANS la carte de l'autre. C'est le trou que ce lot comble qui se rouvrait.
+func TestAddEntryConcurrentNePerdPasDEntree(t *testing.T) {
+	chemin := mcCatalogue(t, t.TempDir(), "socle")
+	const n = 8
+	var wg sync.WaitGroup
+	wg.Add(n)
+	for i := 0; i < n; i++ {
+		go func(i int) {
+			defer wg.Done()
+			id := "carte" + strconv.Itoa(i)
+			if err := AddEntry(chemin, id, mcEntree(id)); err != nil {
+				t.Errorf("AddEntry(%s) = %v", id, err)
+			}
+		}(i)
+	}
+	wg.Wait()
+	cat, err := replay.LoadMapWeaponPads(chemin)
+	if err != nil {
+		t.Fatalf("catalogue illisible apres ecritures concurrentes : %v", err)
+	}
+	// TOUTES les cartes doivent y etre, plus celle de depart.
+	if len(cat.Maps) != n+1 {
+		t.Errorf("%d cartes au catalogue, attendu %d — une ecriture concurrente a ECRASE le "+
+			"travail d'une autre", len(cat.Maps), n+1)
+	}
+	for i := 0; i < n; i++ {
+		if _, ok := cat.Maps["carte"+strconv.Itoa(i)]; !ok {
+			t.Errorf("carte%d perdue", i)
+		}
+	}
+	// Et aucun verrou ne subsiste.
+	if _, err := os.Stat(chemin + ".lock"); err == nil {
+		t.Error("le verrou n'a pas ete retire")
+	}
+}
+
+// TestChoisirFichierVarianteSurLaNomenclatureAPLATIE — ITEM 2 : la preference doit OPERER sur
+// les noms que le depot local porte reellement.
+//
+// 62 des 72 entrees du catalogue livre ont un `mvar_file` de la forme `{prefixe}_map.mvar` :
+// c'est la nomenclature du dump qui l'a bati. Sans reconnaitre ce suffixe, la preference ne
+// matchait jamais cote CLI et le code etait decoratif.
+func TestChoisirFichierVarianteSurLaNomenclatureAPLATIE(t *testing.T) {
+	cas := []struct {
+		nom     string
+		chemins []string
+		declare string
+		attendu string
+	}{
+		{
+			// La forme REELLE du depot : noms prefixes pour desambiguiser 58 homonymes.
+			nom: "depot aplati — la variante prefixee gagne sur la carte de base prefixee",
+			chemins: []string{"highpower_sentry_defense_btb_highpower.mvar",
+				"highpower_sentry_defense_map.mvar"},
+			declare: "highpower_sentry_defense_btb_highpower.mvar",
+			attendu: "highpower_sentry_defense_map.mvar",
+		},
+		{
+			nom:     "nom public a espaces et tiret",
+			chemins: []string{"aquarius_-_ranked_ctf_aquarius.mvar", "aquarius_-_ranked_map.mvar"},
+			declare: "aquarius_-_ranked_ctf_aquarius.mvar",
+			attendu: "aquarius_-_ranked_map.mvar",
+		},
+		{
+			// Sans variante au depot, le declare reste le bon choix.
+			nom:     "depot sans variante — le declare gagne",
+			chemins: []string{"deadlock_btb_drydock.mvar"},
+			declare: "deadlock_btb_drydock.mvar",
+			attendu: "deadlock_btb_drydock.mvar",
+		},
+		{
+			// PIEGE A NE PAS CREER : un fichier qui CONTIENT « map » sans etre la variante.
+			nom:     "un nom qui contient map sans etre la variante",
+			chemins: []string{"mapmaker.mvar", "streets_map.mvar"},
+			declare: "mapmaker.mvar",
+			attendu: "streets_map.mvar",
+		},
+	}
+	for _, c := range cas {
+		t.Run(c.nom, func(t *testing.T) {
+			if got := ChoisirFichierVariante(c.chemins, c.declare); got != c.attendu {
+				t.Errorf("fichier choisi = %q, attendu %q", got, c.attendu)
 			}
 		})
 	}

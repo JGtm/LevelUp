@@ -84221,3 +84221,25 @@ fusions hétérogènes journalisées côté runtime aussi · bilan publié en **
 zéro · comportement d'un titre sans fichier de référence documenté.
 
 **Conclusion / prochaine étape** : ronde 2 de revue. Le catalogue reste intouché.
+
+## [2026-09-01] Rattrapage .mvar — ronde 2 : completion des 7 P2 — Complété
+
+**Statut** : Complété. Prêt pour merge.
+
+Sept complétions, toutes avec inversion rejouée. Les deux qui portent une leçon :
+
+**La préférence CLI était du code décoratif** — les candidats sont des noms aplatis préfixés,
+donc `Base(candidat)=="map.mvar"` ne matchait jamais, et mon commentaire prétendait un
+correctif qui n avait pas lieu. Le terrain a tranché : 62 des 72 entrées du catalogue portent
+un `mvar_file` en `map.mvar` ou `{prefixe}_map.mvar`. Je l ai donc rendue OPÉRANTE (suffixe
+reconnu, candidats ajoutés) plutôt que supprimée.
+
+**La perte de mise à jour rouvrait le trou que le lot comble** : `AddEntry` fait un
+lire-modifier-écrire, et deux écrivains publiaient chacun un catalogue sans la carte de
+l autre. Verrou consultatif borné, testé à 8 écrivains concurrents.
+
+**Réserve consignée** : la garde des 10 m ne regarde que les socles APPARIÉS, pas un ajout ou
+retrait massif. Déclenchement non démontré ; correction = second critère sur le NOMBRE de
+socles, à traiter si un cas se présente.
+
+**Conclusion / prochaine étape** : merge, puis passe de données one-shot.

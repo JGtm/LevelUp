@@ -21,6 +21,8 @@ import (
 
 	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/analysis/replay/mapvar"
+	"levelup/go-api/internal/ctxkeys"
+	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/port"
 )
 
@@ -246,4 +248,67 @@ func mrLire(t *testing.T, path string) *replay.MapWeaponPadsCatalog {
 		t.Fatalf("relecture du catalogue : %v", err)
 	}
 	return cat
+}
+
+// TestRattrapageJaugesPubliesSurTousLesCheminsDeSortie — les sorties PRECOCES comptent aussi.
+//
+// Le premier jet ne publiait les jauges qu'a la toute fin : un catalogue illisible sortait
+// AVANT, si bien que `postsync_mvar_echecs` — la jauge que le commentaire promettait — restait
+// absente EXACTEMENT dans le cas ou elle devait alerter. Une jauge absente de /debug/vars ne se
+// distingue pas d'une etape qui ne tourne pas.
+func TestRattrapageJaugesPubliesSurTousLesCheminsDeSortie(t *testing.T) {
+	cas := []struct {
+		nom     string
+		prepare func(t *testing.T) (Deps, MvarFetcher)
+		echecs  int64
+	}{
+		{
+			nom: "sortie precoce : aucun fetcher",
+			prepare: func(t *testing.T) (Deps, MvarFetcher) {
+				d, _ := mrDeps(t, []string{"connue"}, []string{"connue"})
+				return d, nil
+			},
+			echecs: 0,
+		},
+		{
+			nom: "sortie precoce : catalogue des socles illisible",
+			prepare: func(t *testing.T) (Deps, MvarFetcher) {
+				d, catPath := mrDeps(t, []string{"connue"}, []string{"connue"})
+				if err := os.Remove(catPath); err != nil {
+					t.Fatal(err)
+				}
+				return d, &mrFetcherEspion{}
+			},
+			echecs: 1,
+		},
+		{
+			nom: "sortie precoce : catalogue d objectifs illisible",
+			prepare: func(t *testing.T) (Deps, MvarFetcher) {
+				d, _ := mrDeps(t, []string{"connue"}, []string{"connue"})
+				obj := filepath.Join(d.RepoRoot, "data", "titles", "halo_infinite",
+					"reference", "map_objectives.json")
+				if err := os.Remove(obj); err != nil {
+					t.Fatal(err)
+				}
+				return d, &mrFetcherEspion{}
+			},
+			echecs: 1,
+		},
+	}
+	for _, c := range cas {
+		t.Run(c.nom, func(t *testing.T) {
+			d, f := c.prepare(t)
+			ctx := ctxkeys.WithTitleSlug(context.Background(), "halo_infinite")
+			observability.SetIntT("halo_infinite", JaugeMvarEchecs, -1) // sentinelle
+			rattraperCartesAbsentes(ctx, d, mrTravail("inconnue"), f)
+			got := observability.LoadCounterT("halo_infinite", JaugeMvarEchecs)
+			if got == -1 {
+				t.Fatal("la jauge n'a PAS ete publiee sur ce chemin de sortie — c'est " +
+					"exactement le cas ou elle devait alerter")
+			}
+			if got != c.echecs {
+				t.Errorf("jauge echecs = %d, attendu %d", got, c.echecs)
+			}
+		})
+	}
 }

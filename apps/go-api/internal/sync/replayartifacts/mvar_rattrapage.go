@@ -83,6 +83,11 @@ func rattraperCartesAbsentes(ctx context.Context, d Deps, work []buildWork,
 	fetcher MvarFetcher,
 ) bilanRattrapage {
 	var b bilanRattrapage
+	// LES JAUGES SE PUBLIENT SUR TOUS LES CHEMINS DE SORTIE, y compris les sorties precoces.
+	// Le premier jet ne les publiait qu'a la fin : un catalogue illisible sortait AVANT, si
+	// bien que `postsync_mvar_echecs` — la jauge que le commentaire promettait — restait
+	// absente exactement dans le cas ou elle devait alerter. Patron du paquet (artifacts.go).
+	defer func() { publierBilanRattrapage(ctx, b) }()
 	if fetcher == nil {
 		return b
 	}
@@ -137,16 +142,19 @@ func rattraperCartesAbsentes(ctx context.Context, d Deps, work []buildWork,
 			b.echecs++
 		}
 	}
-	publierBilanRattrapage(ctx, b)
 	return b
 }
 
-// publierBilanRattrapage publie le bilan en JAUGES, meme a zero.
+// publierBilanRattrapage publie le bilan en JAUGES, meme a zero, et SUR TOUS LES CHEMINS.
 //
 // UN SLOG CONDITIONNEL NE SUFFIT PAS, et c'est le motif du paquet : une cle absente de
 // /debug/vars ne se distingue pas d'une etape qui ne tourne pas. Un rattrapage qui ne trouve
 // jamais rien a ajouter doit se voir a zero, sans quoi « tout est deja au catalogue » et « le
 // rattrapage est desarme » s'ecrivent pareil — c'est-a-dire rien.
+//
+// L'appel est en `defer` chez l'appelant, et pas en fin de fonction : les sorties precoces
+// (catalogue illisible, catalogue d'objectifs illisible, fetcher absent) sont precisement
+// celles ou les jauges comptent le plus.
 func publierBilanRattrapage(ctx context.Context, b bilanRattrapage) {
 	titre := ctxkeys.TitleSlug(ctx)
 	observability.SetIntT(titre, JaugeMvarAjoutees, int64(b.ajoutees))
