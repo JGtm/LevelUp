@@ -1,3 +1,44 @@
+## [2026-09-01] Arme du kill — volet A, étapes A0 à A2 : la source de dégât devient la source unique — En cours
+
+**Périmètre** : volet A du plan `.ai/V7.5/PLAN_SOURCE_UNIQUE_ARME_2026-09-01.md`, worktree
+dédié `LevelUp-wt-arme-source`, branche `wt/arme-source-unique`. Étapes A0, A1 et A2 closes ;
+A3, A4 et A6 **non commencées**.
+
+**Décision technique principale — la frontière est posée sur la PROVENANCE, pas sur la
+classe.** Élargir `isRegistryFragClass` aux classes hors arsenal (équipement, environnement)
+aurait fait remonter le bucket `h5_environmental` de Halo 5, qui porte un identifiant
+numérique et vient de `weapon_kills` : le sunburst du second titre aurait changé, hors
+périmètre. Le port porte donc `FromDamageSource` — la ligne a-t-elle été MESURÉE dans le
+film — et c'est lui qui autorise ces classes. Le golden `fragdist_halo5_golden_test.go` a été
+écrit et passé AVANT l'élargissement, et repasse identique APRÈS.
+
+**Témoin de bascule (A0), seuil écrit AVANT tout résultat** (commit `214f5421b` antérieur au
+commit des mesures) : sur les 200 matchs les plus récents, même lot pour les deux chaînes
+(198/200 portent des lignes `weapon_kills`, 200/200 une source mesurée) — le résidu
+« Non attribué » passe de **14 453 (77,1 %) à 3 984 (21,2 %)**, soit **10 469 frags** qui
+quittent l'anonymat. Aucune classe d'arme à feu ne perd un frag : épaule +4 541, lourde
++3 814, poing +2 114. Les deux conditions du seuil sont tenues.
+
+**Ce que la mesure a fait apparaître, et qui n'était pas prévu** : le compteur API
+`melee_kills` n'inclut NI le marteau NI l'épée (1 717 contre 1 440 de mêlée nue et 2 514 de
+mêlée d'arme). Le registre les classe `melee`, ce qui confond l'arme de corps à corps et la
+mécanique. Sous D4 + D4bis appliqués littéralement, ces 2 514 frags restent dans
+« Non attribué » — sans régression (ils y sont déjà) mais sans le gain possible. Consigné en
+section 6 du plan, **non traité** : c'est une décision de registre, pas d'exécution.
+
+**Résultats observés, gates lancés dans cette session** : `go build ./...` 0 · `go vet ./...`
+0 · `go test ./internal/platform/duckdb/... ./internal/service/... ./internal/api/...` 0 ·
+`go test -tags=integration -p 1 ./internal/sync/... ./internal/persist/... ./internal/migration/...
+./internal/platform/duckdb/...` **0, zéro `--- FAIL:`**. Ce dernier a d'ailleurs rattrapé un
+faux vert : trois appels de `buildCitationContext` vivent derrière le tag `integration` et le
+run nu ne les compilait pas.
+
+**Prochaine étape** : A3 (mort du producteur `weapon_kills` Halo Infinite), avec la correction
+d'orchestration du 2026-09-01 sur A3.4 — les bits de masque 1<<21 et 1<<22 **survivent**,
+valeurs inchangées, et leur poseur déménage vers l'étape 1.57 ; les supprimer figerait le
+marqueur « film absent » et ferait redemander indéfiniment les ~29 % de films irrécupérables.
+Puis A4 (mort de la table côté Halo Infinite) et A6 (les 14 entrées véhicules/tourelles).
+
 ## [2026-09-01] Merge de wt/lint-dette dans feat/v75 — le job `Go Lint` n'est plus rouge — Complété
 
 Merge `--no-ff` de `wt/lint-dette` (4 commits) dans `feat/v75`. **Zéro conflit**, thought_log

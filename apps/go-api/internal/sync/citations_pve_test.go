@@ -176,7 +176,7 @@ func TestBuildCitationContext_MergesPveAndGrenade(t *testing.T) {
 
 	pve := buildPveTestReader(t)
 
-	cc, err := buildCitationContext(ctx, shared, player, pve, map[uint64]string{}, pveTestXUID, pveTestMatchID)
+	cc, err := buildCitationContext(ctx, shared, player, pve, map[uint64]string{}, citationWeaponSource{}, pveTestXUID, pveTestMatchID)
 	if err != nil {
 		t.Fatalf("buildCitationContext: %v", err)
 	}
@@ -222,7 +222,7 @@ func TestBuildCitationContext_NilPveGraceful(t *testing.T) {
 	player := openFixtureDB(t, buildPlayerDDL())
 	seedCtxSharedForPve(t, shared)
 
-	cc, err := buildCitationContext(ctx, shared, player, nil, map[uint64]string{}, pveTestXUID, pveTestMatchID)
+	cc, err := buildCitationContext(ctx, shared, player, nil, map[uint64]string{}, citationWeaponSource{}, pveTestXUID, pveTestMatchID)
 	if err != nil {
 		t.Fatalf("buildCitationContext(nil pve): %v", err)
 	}

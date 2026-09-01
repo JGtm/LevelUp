@@ -98,7 +98,7 @@ func TestBuildCitationContext_MergesObjective(t *testing.T) {
 	player := openFixtureDB(t, buildPlayerDDL())
 	seedCtxSharedForObjective(t, shared)
 
-	cc, err := buildCitationContext(ctx, shared, player, nil, map[uint64]string{}, objTestXUID, objTestMatchID)
+	cc, err := buildCitationContext(ctx, shared, player, nil, map[uint64]string{}, citationWeaponSource{}, objTestXUID, objTestMatchID)
 	if err != nil {
 		t.Fatalf("buildCitationContext: %v", err)
 	}
