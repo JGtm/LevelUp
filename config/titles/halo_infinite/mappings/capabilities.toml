@@ -65,15 +65,16 @@ schema_version = 1
 "match.events.timeline"  = "degraded"
 "match.killfeed.per_kill" = "degraded"
 "match.events.spatial"   = "not_exposed"
-# Précision par arme : not_exposed, ET LA RAISON A CHANGÉ le 2026-08-02 (J4-4).
-# Ce n'est plus « la table n'est pas peuplée » : la passe de film écrit désormais les
-# tirs par arme (cf. film.weapon_shots). C'est que LE TAUX N'EST PAS PUBLIABLE — calculé
-# sur le corpus entier il INVERSE l'ordre MA40/Sidekick par rapport à la référence de
-# l'API. Ce n'est pas une imprécision, c'est une réponse fausse. 4 armes seulement
-# tiennent à ±0,03, et seulement sur les joueurs dont l'arme domine ≥ 80 % de leurs tirs.
-# Critère de bascule : une population de publication déclarée DANS LE CODE, et l'écart à
-# l'API publié à côté du taux (PLAN_BRANCHEMENT_KILLSOURCE §4.2).
-"match.weapon.accuracy"  = "not_exposed"
+# Précision par arme : supported depuis le 2026-09-01 (Lot 3 PRECISION_ARME_DISTANCE).
+# La vieille note « taux non publiable » portait sur HitLikely (scanner de touches refusé,
+# faux ×2) — méthode REMPLACÉE. Le numérateur est désormais reconstruit du film par
+# l'APPARIEMENT tir↔dégât (action_weapon_fire 0xD2 ↔ damage_aftermath 0xC0 du même
+# attaquant, NOTE_ATTRIBUTION_ARME_TIR_2026-08-31) : la passe killcollector/hits.go écrit
+# shots_fired/shots_landed dans weapon_accuracy et l'histogramme de distance dans
+# match_weapon_hit_distance. Porte d'effectif Nmin=8 (armes réellement utilisées) ; le
+# recalage sur l'accuracy globale de l'API est un calcul de LECTURE (Lot 4). Gate le
+# numérateur film (collectHits) ET, côté produit, les charts a/c (front useCapability).
+"match.weapon.accuracy"  = "supported"
 # Libellés de playlist préfixés d'une catégorie matchmaking ("Arène delta : Héritage")
 # à retirer pour l'affichage (analysis.NormalizePlaylistLabel). Trait d'affichage du
 # titre lu au site de résolution du libellé (match_view_repo) — absente pour un titre

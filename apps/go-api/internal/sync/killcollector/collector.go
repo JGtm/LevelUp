@@ -116,6 +116,28 @@ type KillSourceCollector struct {
 	acquireShared persist.SharedWriterFn
 	caps          games.CapabilityMap
 	timeout       time.Duration
+	// filmDir / mapBoundsPath : la CONFIGURATION du numerateur film (precision par arme +
+	// distance, collectHits). filmDir nil = passe non configuree (chemin live sans cache disque)
+	// -> la precision par arme est ignoree, best-effort. Voir ConfigureFilmAccuracy.
+	filmDir       FilmDirResolver
+	mapBoundsPath string
+}
+
+// FilmDirResolver rend le repertoire disque des chunks d un film (chunk_NN.bin, format
+// filmdec.ReadFilmChunk), ou "" si le film n est pas sur disque pour ce match. Le numerateur de
+// precision par arme (collectHits) est DIR-BASE : il rejoue le film avec les scanners filmdec
+// (positions bipedes, damage_aftermath) qui lisent des fichiers chunk. Le cache disque local
+// (data/cache/film_chunks/{matchID}) satisfait ce format ; le chemin live (chunks en memoire,
+// hors cache) n a pas de repertoire -> la passe est alors sautee proprement.
+type FilmDirResolver func(matchID string) string
+
+// ConfigureFilmAccuracy branche le numerateur film (collectHits). `dir` resout le repertoire de
+// chunks d un match ; `mapBoundsPath` est le catalogue de bornes de carte (map_quant_bounds.json)
+// pour la distance — vide desactive la distance (les touches restent comptees). Sans cet appel, la
+// passe de precision par arme ne tourne pas (dégradation gracieuse).
+func (c *KillSourceCollector) ConfigureFilmAccuracy(dir FilmDirResolver, mapBoundsPath string) {
+	c.filmDir = dir
+	c.mapBoundsPath = mapBoundsPath
 }
 
 // NewKillSourceCollector construit le collecteur.
@@ -268,6 +290,11 @@ func (c *KillSourceCollector) collect(ctx context.Context, matchID string) (Kill
 	// elles sont deja ecrites, elles sont justes, et les deux tables repondent a deux questions
 	// differentes. Il se journalise et se compte — jamais il n avale la passe.
 	c.collectShots(ctx, matchID, chunks, ids)
+
+	// LE NUMERATEUR DE PRECISION PAR ARME (weapon_accuracy + distance), Infinite depuis le film.
+	// Best-effort au meme titre que les tirs : son echec ou son absence (film non sur disque,
+	// capability absente) ne remet pas en cause les morts. Meme raison de sante que collectShots.
+	c.collectHits(ctx, matchID, chunks, ids)
 
 	return OutcomeWritten, publiees, nil
 }
