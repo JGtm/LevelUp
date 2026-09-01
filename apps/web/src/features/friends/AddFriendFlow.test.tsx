@@ -41,7 +41,6 @@ const SETTINGS_BASE = {
   spnkr_refresh_backfill_performance_scores: false,
   spnkr_refresh_backfill_lusr: false,
   spnkr_refresh_backfill_events: false,
-  spnkr_refresh_backfill_weapons: false,
   session_gap_minutes: 90,
   session_split_on_ranked_change: false,
   session_team_change_mode: 'group',

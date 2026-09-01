@@ -26,15 +26,12 @@ func TestConvergenceBacklog_CountsMirrorSelectors(t *testing.T) {
 	const xuid = "x1"
 	ctx := context.Background()
 
-	// 1 match events incomplet (events_loaded=false, bit weapons posé pour ne
-	// pas polluer le compteur weapons) + 1 match weapons incomplet + 1 match
-	// complet niveau shared mais sans row enrichment + 1 match enrichi sans
-	// PSA jamais tenté.
+	// 1 match events incomplet (events_loaded=false) + 1 match complet niveau
+	// shared mais sans row enrichment + 1 match enrichi sans PSA jamais tenté.
 	seedConvergenceMatch(t, shared, "m-events", xuid, false, MBitWeaponKills)
-	seedConvergenceMatch(t, shared, "m-weapons", xuid, true, 0)
 	seedConvergenceMatch(t, shared, "m-enrich", xuid, true, MBitWeaponKills)
 	seedConvergenceMatch(t, shared, "m-psa", xuid, true, MBitWeaponKills)
-	for _, id := range []string{"m-events", "m-weapons"} {
+	for _, id := range []string{"m-events"} {
 		if _, err := player.Exec(
 			`INSERT INTO player_match_enrichment (match_id, psa_checked_at) VALUES (?, now())`, id); err != nil {
 			t.Fatalf("seed enrichment %s: %v", id, err)
@@ -49,17 +46,14 @@ func TestConvergenceBacklog_CountsMirrorSelectors(t *testing.T) {
 	if got.MissingEvents != 1 {
 		t.Errorf("MissingEvents = %d (attendu 1)", got.MissingEvents)
 	}
-	if got.MissingWeapons != 1 {
-		t.Errorf("MissingWeapons = %d (attendu 1)", got.MissingWeapons)
-	}
 	if got.MissingEnrichment != 1 {
 		t.Errorf("MissingEnrichment = %d (attendu 1)", got.MissingEnrichment)
 	}
 	if got.MissingPSA != 1 {
 		t.Errorf("MissingPSA = %d (attendu 1)", got.MissingPSA)
 	}
-	if got.Total() != 4 {
-		t.Errorf("Total() = %d (attendu 4)", got.Total())
+	if got.Total() != 3 {
+		t.Errorf("Total() = %d (attendu 3)", got.Total())
 	}
 
 	// Cohérence avec le déclencheur du post-sync : backlog non vide.

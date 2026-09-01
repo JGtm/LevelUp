@@ -50,6 +50,7 @@ func (r *ServiceRegistry) HomeCtx(ctx context.Context, slug string) (port.HomeSe
 // ne fait que le lookup registry.
 func (r *ServiceRegistry) newHomeRepo(pdb *duckdb.PlayerDB) *duckdb.HomeRepo {
 	repo := duckdb.NewHomeRepo(pdb).
+		WithKillSourceClassifier(r.killSourceClassifierFor(pdb)).
 		WithPlaylistDisplay(r.playlistLabelConfigFor(pdb))
 	// Phase 6 du plan CSR : injection du repo thresholds + saison courante.
 	// Sans cette injection, le seuil par défaut (5) est utilisé partout, ce qui
@@ -203,7 +204,6 @@ func (r *ServiceRegistry) TeammatesCtx(ctx context.Context, slug string) (port.T
 	svc := teammates.NewTeammatesService(duckdb.NewSquadRepo(pdb), r.friendGamertagsResolver()).
 		WithPlayerMatchesRepo(r.playerMatchesAdapterFor(pdb), pdb.TitleSlug, pdb.Gamertag).
 		WithSquadLoader(briefingLoader).
-		WithKillSourceRepo(r.killSourceClassRepoFor(pdb)).
 		WithMedalDefs(duckdb.NewMedalDefinitionsRepo(pdb)).
 		// Précision native par arme (Halo 5) : table weapon_accuracy SHARED par titre →
 		// le repo lié au PlayerDB du main charge la précision de tous les xuids de
@@ -302,8 +302,7 @@ func (r *ServiceRegistry) SynthesisCtx(ctx context.Context, slug string) (port.S
 	svc := service.NewSynthesisService(duckdb.NewSynthesisRepo(pdb)).
 		WithPlayerMatchesRepo(r.playerMatchesAdapterFor(pdb), pdb.TitleSlug, pdb.Gamertag).
 		WithPersonalScoreAwardsRepo(duckdb.NewPersonalScoreAwardsRepo(pdb), pdb.XUID).
-		WithWeaponKillsRepo(duckdb.NewWeaponKillsRepo(pdb)).
-		WithKillSourceRepo(r.killSourceClassRepoFor(pdb)).
+		WithWeaponKillsRepo(r.weaponKillsRepoFor(pdb)).
 		WithWeaponAccuracyRepo(duckdb.NewWeaponAccuracyRepo(pdb))
 	if a := r.dataAdapterForPDB(pdb); a != nil {
 		svc = svc.WithDataAdapter(a)

@@ -158,8 +158,6 @@ describe('evaluateDiagnostics', () => {
           engagement_scores_computed: 0,
           engagement_coefs_updated: 0,
           sessions_assigned: 0,
-          weapon_kills_processed: 12,
-          weapon_kills_no_film: 0,
           citations_computed: 0,
           dominance_flags_computed: 0,
           converged_events: 0,

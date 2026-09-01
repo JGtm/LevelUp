@@ -222,7 +222,7 @@ func init() {
 //
 // Relocation : ce step appartient fonctionnellement a Halo Infinite (les films Halo 5 ont un
 // autre format) et rejoindra `internal/games/halo_infinite/migrations/` avec le lot de la voie B
-// (ADR 0025), comme `weapon_kills_v3` — l autre table derivee du film. Consequence assumee : la
+// (ADR 0025). Consequence assumee : la
 // table est creee VIDE dans le shared des autres titres. Le nom reste dans `canonicalOrder` le
 // jour de la relocation.
 func applyMatchKillEvents(db *sql.DB) error {

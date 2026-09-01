@@ -30,10 +30,10 @@ func (r *MatchViewRepo) GetMatchScoreboard(ctx context.Context, matchID string) 
 	}
 	defer release()
 
-	// Q12 utilise 3 fois match_id : medals CTE, weapons CTE, WHERE. Set
-	// perfect-kill résolu pour le titre du joueur (HINF byte-identique).
+	// Q12 utilise 2 fois match_id : CTE des medailles, puis WHERE. Set perfect-kill
+	// resolu pour le titre du joueur (HINF byte-identique).
 	q := resolvePerfectKillClause(Q12MatchScoreboard, "medal_name_id", pdbTitleSlug(r.pdb))
-	rows, err := sharedDB.QueryContext(ctx, q, matchID, matchID, matchID)
+	rows, err := sharedDB.QueryContext(ctx, q, matchID, matchID)
 	if err != nil {
 		return nil, fmt.Errorf("MatchViewRepo.GetMatchScoreboard: %w", err)
 	}
@@ -59,6 +59,7 @@ func (r *MatchViewRepo) GetMatchScoreboard(ctx context.Context, matchID string) 
 		}
 	}
 
+	r.attachTopWeapons(ctx, matchID, results)
 	r.attachTopWeaponLabels(ctx, results)
 	return results, nil
 }

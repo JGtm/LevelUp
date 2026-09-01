@@ -37,7 +37,6 @@ func NewBackfillOrchestrator(engine *go_sync.SyncEngine, jobStore *jobs.Store,
 // backfillCounts agrège les compteurs de chaque phase pour le résumé final.
 type backfillCounts struct {
 	total                  int
-	weaponsInserted        int
 	psaMatchesUpdated      int
 	psaRowsInserted        int
 	engagementComputed     int
@@ -109,7 +108,7 @@ func (o *BackfillOrchestrator) Run(jobID string) {
 		return
 	}
 
-	o.runWeaponsEngagement(jobID, missing, &c)
+	o.runEngagement(jobID, &c)
 	o.runEventsLusr(jobID, missing, &c)
 	o.runCsrPerfPsa(jobID, missing, &c)
 
@@ -117,8 +116,8 @@ func (o *BackfillOrchestrator) Run(jobID string) {
 	o.warnUnimplemented(jobID)
 
 	done := fmt.Sprintf(
-		"Backfill terminé — matchs: %d, weapon kills insérés: %d, psa: %d match(s)/%d rows, engagement: %d, events healed: %d (%d events insérés), lusr: %d, csr: %d (skipped: %d), perf: %d, citations: %d, comeback: %d",
-		c.total, c.weaponsInserted, c.psaMatchesUpdated, c.psaRowsInserted, c.engagementComputed, c.eventsHealed, c.eventsTotal, c.lusrUpdated, c.csrInserted, c.csrSkipped, c.perfUpdated, c.citationsUpdated, c.comebackUpdated,
+		"Backfill terminé — matchs: %d, psa: %d match(s)/%d rows, engagement: %d, events healed: %d (%d events insérés), lusr: %d, csr: %d (skipped: %d), perf: %d, citations: %d, comeback: %d",
+		c.total, c.psaMatchesUpdated, c.psaRowsInserted, c.engagementComputed, c.eventsHealed, c.eventsTotal, c.lusrUpdated, c.csrInserted, c.csrSkipped, c.perfUpdated, c.citationsUpdated, c.comebackUpdated,
 	)
 	pct100 := 100
 	matchesDone := c.total
@@ -152,21 +151,14 @@ func (o *BackfillOrchestrator) runCitationsComeback(jobID string, c *backfillCou
 	}
 }
 
-// runWeaponsEngagement : Phases 2 (weapon kills, tokens requis), 2.5 (scores
-// d'engagement, local) et 2.6 (coefficients seuls si scores non demandés).
-func (o *BackfillOrchestrator) runWeaponsEngagement(jobID string, missing []string, c *backfillCounts) {
-	if o.scope.Weapons {
-		if o.tokens == nil {
-			o.warn(jobID, "WARN: weapon kills ignorés — tokens Halo absents")
-		} else {
-			o.setStep(jobID, "Backfill weapon kills")
-			inserted, _, wkErr := o.engine.BackfillWeaponKillsForMatches(context.Background(), missing)
-			if wkErr != nil {
-				o.warn(jobID, "WARN weapon kills: %v", wkErr)
-			}
-			c.weaponsInserted = inserted
-		}
-	}
+// runEngagement : Phases 2.5 (scores d'engagement, local) et 2.6 (coefficients
+// seuls si scores non demandés).
+//
+// LA PHASE 2 (weapon kills) A ÉTÉ RETIRÉE le 2026-09-01 : son exécuteur
+// (`BackfillWeaponKillsForMatches`, étape 1.55) est supprimé avec le producteur de
+// corrélation. Sur Halo Infinite le détail par arme vient désormais de la source de
+// dégât ; son rattrapage se lance par `levelup backfill-killsource`, pas par ce job.
+func (o *BackfillOrchestrator) runEngagement(jobID string, c *backfillCounts) {
 	if o.scope.EngagementScores {
 		o.setStep(jobID, "Calcul scores d'engagement")
 		n, esErr := o.engine.RunBackfillEngagementScores(context.Background(), o.scope.ForceEngagementScores)

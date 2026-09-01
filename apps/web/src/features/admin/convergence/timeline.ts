@@ -32,7 +32,6 @@ const STEP_ORDER = [
   'enrichment_rows',
   'scoring',
   'convergence_events',
-  'weapon_kills',
   'convergence_psa',
   'citations',
   'dominance',

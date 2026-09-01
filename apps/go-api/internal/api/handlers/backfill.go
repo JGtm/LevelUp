@@ -158,7 +158,7 @@ func buildSyncScope(req domain.BackfillStartRequest) *go_sync.SyncScope {
 
 	noExplicitScope := !req.Medals && !req.Events && !req.Skill &&
 		!req.PersonalScores && !req.PerformanceScores &&
-		!req.Aliases && !req.Weapons && !req.LUSR && !req.CSR && !req.EngagementScores &&
+		!req.Aliases && !req.LUSR && !req.CSR && !req.EngagementScores &&
 		!req.EngagementCoefficients && !req.ComebackBadges && !req.Citations
 	if req.AllData || noExplicitScope {
 		// Aucun scope explicite → activer tout
@@ -169,7 +169,6 @@ func buildSyncScope(req domain.BackfillStartRequest) *go_sync.SyncScope {
 		scope.PersonalScores = true
 		scope.PerformanceScores = true
 		scope.Aliases = true
-		scope.Weapons = true
 		scope.LUSR = true
 		scope.CSR = true
 		scope.EngagementScores = true
@@ -184,7 +183,6 @@ func buildSyncScope(req domain.BackfillStartRequest) *go_sync.SyncScope {
 		scope.PersonalScores = req.PersonalScores
 		scope.PerformanceScores = req.PerformanceScores
 		scope.Aliases = req.Aliases
-		scope.Weapons = req.Weapons
 		scope.LUSR = req.LUSR
 		scope.CSR = req.CSR
 		scope.EngagementScores = req.EngagementScores
@@ -197,7 +195,6 @@ func buildSyncScope(req domain.BackfillStartRequest) *go_sync.SyncScope {
 		scope.ForceMedals = req.Medals || req.AllData
 		scope.ForceEvents = req.Events || req.AllData
 		scope.ForceSkill = req.Skill || req.AllData
-		scope.ForceWeapons = req.Weapons || req.AllData
 		scope.ForcePersonalScores = req.PersonalScores || req.AllData
 		scope.ForcePerformanceScores = req.PerformanceScores || req.AllData
 		scope.ForceAliases = req.Aliases || req.AllData

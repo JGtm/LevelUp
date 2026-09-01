@@ -243,7 +243,6 @@ var canonicalOrder = []string{
 	"create_world_player_no_data",                              // shared (marqueur privés/sans-données classement mondial)
 	"shared_create_objective_stats",                            // shared (V72-03 : stats objectifs CTF/Zones/Oddball par joueur/match, append-only)
 	"shared_objective_stats_add_stockpile_extraction",          // shared (V721-02 : +18 colonnes Stockpile/Extraction/VIP + vue _latest recréée)
-	"shared_weapon_kills_v3",                                   // shared (attribution d'arme par kill, voie v3 pur-film)
 	"shared_match_weapon_shots_v1",                             // shared (J4 : ventilation des tirs par arme, append-only + vue _latest)
 	"add_team_rounds_to_match_registry",                        // shared (manches gagnées par camp — le score en points ne dit pas le résultat sur un mode à manches)
 	"refresh_views_after_team_rounds",                          // shared (v_match_full fige son SELECT * à sa création : la recréer pour qu'elle expose les manches)
@@ -267,6 +266,19 @@ var canonicalOrder = []string{
 	"arbitration_clocks_default_utc_shared_pve",    // shared_pve
 	"arbitration_clocks_default_utc_shared_social", // shared_social
 	"arbitration_clocks_default_utc_metadata",      // metadata
+	// DERNIER DE TOUT L'ORDRE, et ce n'est pas un hasard : un DROP doit suivre le dernier
+	// créateur ou ALTER de sa cible. `weapon_kills` est créée par le registre PARTAGÉ
+	// (`add_weapon_kills`), altérée par `shared_append_only_weapon_kills_v1` puis par
+	// `shared_h5_weapon_kill_kind_v1` — les trois restent, Halo 5 en dépend. Le step est
+	// TITLE-OWNED (fourni par internal/games/halo_infinite/migrations) : seul le fichier
+	// `halo_infinite` le voit ; seul son NOM figure ici, comme pour tout step title-owned
+	// (order_audit_test.go l'exige des DEUX côtés).
+	"shared_drop_weapon_kills_v1", // shared — title-owned Halo Infinite (2026-09-01)
+	// Reclassement de deux clés du registre d'armes (épée, marteau) : APRÈS
+	// add_weapon_registry, qui les sème. Le seed de boot est INSERT-only, donc un
+	// changement de CLASSE sur une clé déjà semée n'atteint jamais une base de production
+	// sans ce step. Title-owned Halo Infinite (2026-09-01).
+	"metadata_reclass_sword_hammer_heavy_v1", // metadata
 }
 
 var canonicalIndex = func() map[string]int {

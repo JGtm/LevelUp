@@ -24,11 +24,11 @@ func fragClassKills(fd *domain.FragDistribution) map[string]int {
 // viewer est absent (pas de ligne is_me) ou n'a aucun frag (total <= 0) — le front rend
 // alors null (pas de sunburst vide).
 func TestBuildViewerFragDistribution_NilOrEmpty(t *testing.T) {
-	if fd := buildViewerFragDistribution(nil, nil, nil, false); fd != nil {
+	if fd := buildViewerFragDistribution(nil, nil, false); fd != nil {
 		t.Errorf("viewer absent : want nil, got %+v", fd)
 	}
 	me := &domain.MatchScoreboardRow{XUID: "x1", IsMe: true, Kills: ptrInt(0)}
-	if fd := buildViewerFragDistribution(me, nil, nil, false); fd != nil {
+	if fd := buildViewerFragDistribution(me, nil, false); fd != nil {
 		t.Errorf("0 frag : want nil, got %+v", fd)
 	}
 }
@@ -47,7 +47,7 @@ func TestBuildViewerFragDistribution_InfiniteCapOff(t *testing.T) {
 		{XUID: "me", WeaponID: 2, Kills: 2, Class: "sidearm", Role: "sidearm"},
 		{XUID: "other", WeaponID: 1, Kills: 99, Class: "shoulder", Role: "precision"}, // ignoré (pas is_me)
 	}
-	fd := buildViewerFragDistribution(me, bulk, nil, false)
+	fd := buildViewerFragDistribution(me, bulk, false)
 	if fd == nil {
 		t.Fatal("want distribution, got nil")
 	}
@@ -87,7 +87,7 @@ func TestBuildViewerFragDistribution_H5CapOn(t *testing.T) {
 	bulk := []domain.BulkWeaponKillRaw{
 		{XUID: "me", WeaponID: 1, Kills: 10, Class: "shoulder", Role: "automatic"},
 	}
-	fd := buildViewerFragDistribution(me, bulk, nil, true)
+	fd := buildViewerFragDistribution(me, bulk, true)
 	if fd == nil {
 		t.Fatal("want distribution, got nil")
 	}
@@ -145,7 +145,7 @@ func TestBuildViewerFragDistribution_H5MechanicKillsNoDoubleCount(t *testing.T) 
 		// 9 kills BR dont 2 mêlées attribuées à l'arme tenue (MechanicKills=2).
 		{XUID: "me", WeaponID: 1, Kills: 9, Class: "shoulder", Role: "automatic", MechanicKills: 2},
 	}
-	fd := buildViewerFragDistribution(me, bulk, nil, true)
+	fd := buildViewerFragDistribution(me, bulk, true)
 	if fd == nil {
 		t.Fatal("want distribution, got nil")
 	}
@@ -181,7 +181,7 @@ func TestBuildViewerFragDistribution_GrenadeSubLevel(t *testing.T) {
 		{XUID: "me", WeaponID: 20, Kills: 3, Class: "grenade", Role: "grenade", Family: "frag_grenade"},
 		{XUID: "me", WeaponID: 21, Kills: 1, Class: "grenade", Role: "grenade", Family: "plasma_grenade"},
 	}
-	fd := buildViewerFragDistribution(me, bulk, nil, false)
+	fd := buildViewerFragDistribution(me, bulk, false)
 	if fd == nil {
 		t.Fatal("want distribution, got nil")
 	}

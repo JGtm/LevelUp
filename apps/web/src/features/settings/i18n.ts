@@ -159,7 +159,6 @@ export interface SettingsText {
   backfillLUSR: string
   backfillCSR: string
   backfillEvents: string
-  backfillWeapons: string
   backfillEngagementScores: string
   backfillEngagementCoefficients: string
   backfillPlayerLabel: string
@@ -444,7 +443,6 @@ const FR_TEXT: SettingsText = {
   backfillLUSR: 'LUSR',
   backfillCSR: 'CSR par match (re-fetch API)',
   backfillEvents: 'Événements',
-  backfillWeapons: 'Armes',
   backfillEngagementScores: "Score d'engagement",
   backfillEngagementCoefficients: "Coefficients d'engagement (recalcul rapide)",
   backfillPlayerLabel: 'Joueur',
@@ -775,7 +773,6 @@ const EN_TEXT: SettingsText = {
   backfillLUSR: 'LUSR',
   backfillCSR: 'Per-match CSR (API re-fetch)',
   backfillEvents: 'Events',
-  backfillWeapons: 'Weapons',
   backfillEngagementScores: 'Engagement score',
   backfillEngagementCoefficients: 'Engagement coefficients (fast recompute)',
   backfillPlayerLabel: 'Player',

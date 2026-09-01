@@ -141,19 +141,9 @@ type synthMatch struct {
 	csrSubTier          int
 	csrDelta            float64
 	// arme favorite (weapon_id présent dans weapon_labels seedé)
-	favWeaponID    uint64
-	favWeaponKills int
 	// médailles (medal_name_id présents dans medal_definitions synthétiques)
 	medals []int64
 }
-
-// Armes favorites synthétiques : weapon_id < 2^63 (passables en paramètre SQL) et
-// présents dans le seed weapon_labels (games/weapons/labels.go). BR75 + MA40 AR.
-const (
-	weaponBR75   uint64 = 0x2b1824d542c9679f
-	weaponMA40   uint64 = 0x48c19d2d42c9679f
-	weaponBandit uint64 = 0x2fb21c8742c9679f
-)
 
 // Médailles synthétiques (medal_name_id) — insérées dans medal_definitions.
 var synthMedalIDs = []int64{500000001, 500000002, 500000003, 500000004}
@@ -218,13 +208,6 @@ func buildSynthMatch(rng *rand.Rand, idx int, s synthSession, pl synthPlaylist, 
 		*csr = 1499
 	}
 	tier, tierFR, subTier := csrTierFor(*csr)
-	favWeapon := weaponBR75
-	switch idx % 3 {
-	case 1:
-		favWeapon = weaponMA40
-	case 2:
-		favWeapon = weaponBandit
-	}
 	// Médailles : 0 à 3 par match (déterministe).
 	var medals []int64
 	nMed := rng.Intn(4)
@@ -232,42 +215,40 @@ func buildSynthMatch(rng *rand.Rand, idx int, s synthSession, pl synthPlaylist, 
 		medals = append(medals, synthMedalIDs[(idx+i)%len(synthMedalIDs)])
 	}
 	return synthMatch{
-		idx:            idx,
-		matchID:        fmt.Sprintf("demo-match-%04d", idx),
-		start:          start,
-		end:            start.Add(time.Duration(dur) * time.Second),
-		sessionID:      fmt.Sprintf("demo-session-%d", s.order),
-		sessionLabel:   fmt.Sprintf("Session %d", s.order),
-		sessionOrder:   s.order,
-		m:              mp,
-		mode:           mode,
-		pl:             pl,
-		squad:          s.squad,
-		kills:          kills,
-		deaths:         deaths,
-		assists:        assists,
-		score:          kills*100 + assists*40,
-		outcome:        outcome,
-		accuracy:       acc,
-		shotsFired:     shotsFired,
-		shotsHit:       int(float64(shotsFired) * acc),
-		damageDealt:    float64(kills)*140 + rng.Float64()*300,
-		damageTaken:    float64(deaths)*120 + rng.Float64()*250,
-		headshots:      rng.Intn(kills/2 + 1),
-		meleeKills:     rng.Intn(3),
-		maxSpree:       3 + rng.Intn(6),
-		perfScore:      50 + rng.Float64()*45,
-		team0Score:     t0,
-		team1Score:     t1,
-		csrValue:       *csr,
-		csrTier:        tier,
-		csrTierFR:      tierFR,
-		csrSubTier:     subTier,
-		csrDelta:       delta,
-		lusrValue:      1000 + (*csr-1150)*0.9 + rng.Float64()*20,
-		favWeaponID:    favWeapon,
-		favWeaponKills: 3 + rng.Intn(6),
-		medals:         medals,
+		idx:          idx,
+		matchID:      fmt.Sprintf("demo-match-%04d", idx),
+		start:        start,
+		end:          start.Add(time.Duration(dur) * time.Second),
+		sessionID:    fmt.Sprintf("demo-session-%d", s.order),
+		sessionLabel: fmt.Sprintf("Session %d", s.order),
+		sessionOrder: s.order,
+		m:            mp,
+		mode:         mode,
+		pl:           pl,
+		squad:        s.squad,
+		kills:        kills,
+		deaths:       deaths,
+		assists:      assists,
+		score:        kills*100 + assists*40,
+		outcome:      outcome,
+		accuracy:     acc,
+		shotsFired:   shotsFired,
+		shotsHit:     int(float64(shotsFired) * acc),
+		damageDealt:  float64(kills)*140 + rng.Float64()*300,
+		damageTaken:  float64(deaths)*120 + rng.Float64()*250,
+		headshots:    rng.Intn(kills/2 + 1),
+		meleeKills:   rng.Intn(3),
+		maxSpree:     3 + rng.Intn(6),
+		perfScore:    50 + rng.Float64()*45,
+		team0Score:   t0,
+		team1Score:   t1,
+		csrValue:     *csr,
+		csrTier:      tier,
+		csrTierFR:    tierFR,
+		csrSubTier:   subTier,
+		csrDelta:     delta,
+		lusrValue:    1000 + (*csr-1150)*0.9 + rng.Float64()*20,
+		medals:       medals,
 	}
 }
 

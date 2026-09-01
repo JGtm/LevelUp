@@ -15,6 +15,15 @@
 //
 // Sert AUSSI de garde anti-régression : si le CREATE agrégé revenait dans le créateur
 // shared title-owned, les INSERT per-kill (time_ms) échoueraient ici.
+//
+// ⚠ CES TESTS MONTENT DÉSORMAIS UNE BASE HALO 5, ET LE FICHIER RESTE ICI. Depuis le
+// 2026-09-01, `weapon_kills` est SUPPRIMÉE du fichier Halo Infinite
+// (shared_drop_weapon_kills_v1) : monter la base sous le titre par défaut ne rendrait
+// plus de table à tester. Halo 5 est le titre qui la CONSERVE — 550 926 lignes natives —
+// et c'est donc lui qui porte la sémantique append-only vérifiée ici. Le fichier reste
+// dans ce paquet parce que le schéma `shared` de Halo 5 est celui de Halo Infinite : pour
+// cette cible, `TitleMigrationSet.OwnsTarget` fait retomber Halo 5 sur le provider
+// title-owned d'ici (héritage documenté dans title_set.go).
 
 package migrations
 
@@ -24,10 +33,11 @@ import (
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
+	halo5 "levelup/go-api/internal/games/halo_5"
 	"levelup/go-api/internal/migration"
 )
 
-// setupPerKillWeaponKills monte une DB shared via la chaîne de migration réelle
+// setupPerKillWeaponKills monte une DB shared HALO 5 via la chaîne de migration réelle
 // (provider title-owned câblé) : weapon_kills per-kill + reconciled_as + append-only
 // generation_id/written_at + vue v_weapon_kills.
 func setupPerKillWeaponKills(t *testing.T) *sql.DB {
@@ -38,8 +48,8 @@ func setupPerKillWeaponKills(t *testing.T) *sql.DB {
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	migration.SetTitleStepsProvider(StepsFor)
-	if err := migration.RunForDB(db, migration.TargetShared); err != nil {
-		t.Fatalf("RunForDB(TargetShared): %v", err)
+	if err := migration.RunForTitleDB(db, halo5.TitleSlug, migration.TargetShared); err != nil {
+		t.Fatalf("RunForTitleDB(halo_5, TargetShared): %v", err)
 	}
 	return db
 }

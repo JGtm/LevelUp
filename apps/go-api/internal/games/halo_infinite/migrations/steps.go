@@ -1462,6 +1462,15 @@ func Steps() []migration.Migration {
 	steps = append(steps, sharedSocialSteps()...)
 	// Racines du tier social (schémas de base media/notifications/prestige) → b24.
 	steps = append(steps, sharedSocialRootSteps()...)
+	// Reclassement de l'épée et du marteau en arme LOURDE (étape A6.8, 2026-09-01) : le
+	// seed de boot est INSERT-only, un changement de classe exige un step. Cf.
+	// steps_metadata_reclass_sword_hammer.go.
+	steps = append(steps, stepReclassSwordHammer())
+	// Mort de `weapon_kills` côté Halo Infinite (2026-09-01, lot arme-source-unique).
+	// DERNIER de la liste À DESSEIN : l'ordre canonique le place après TOUT créateur ou
+	// ALTER de la table — dont `shared_h5_weapon_kill_kind_v1`, qui reste au registre
+	// PARTAGÉ parce que Halo 5 en dépend. Cf. steps_shared_drop_weapon_kills.go.
+	steps = append(steps, stepDropWeaponKills())
 	return steps
 }
 

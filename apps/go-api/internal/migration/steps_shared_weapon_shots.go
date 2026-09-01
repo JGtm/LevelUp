@@ -114,7 +114,7 @@ func init() {
 //
 // Relocation : ce step appartient fonctionnellement a Halo Infinite (les films Halo 5 ont un
 // autre format), et rejoindra `internal/games/halo_infinite/migrations/` avec le lot de la
-// voie B (ADR 0025) — comme `shared_match_kill_events_v1` et `shared_weapon_kills_v3`.
+// voie B (ADR 0025) — comme `shared_match_kill_events_v1`.
 func applyMatchWeaponShots(db *sql.DB) error {
 	if err := execScript(db, ddlMatchWeaponShots); err != nil {
 		return err

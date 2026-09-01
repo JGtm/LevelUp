@@ -269,14 +269,16 @@ func (e *SyncEngine) runPostSyncPipeline(
 	e.runScoringSteps(ctx, playerDB, shared, &r)
 	clock.lap("scoring", r.EngagementScoresComputed)
 
-	// 1.54 convergence events puis 1.55 weapon kills — les deux étapes « film »
-	// du post-sync, extraites dans engine_postsync_films.go (split COLLECT/FLUSH :
-	// le téléchargement du film ne tient plus le writer RW).
+	// 1.54 convergence events — étape « film » du post-sync, extraite dans
+	// engine_postsync_films.go (split COLLECT/FLUSH : le téléchargement du film ne
+	// tient plus le writer RW).
+	//
+	// L'ÉTAPE 1.55 (weapon kills) A ÉTÉ SUPPRIMÉE le 2026-09-01 avec son producteur :
+	// elle corrélait les tirs de l'attaquant avec l'instant du kill, une méthode que
+	// la source de dégât (1.57) remplace intégralement. Le numéro n'est pas réattribué.
 	films := postSyncFilmSteps{engine: e, playerDB: playerDB, shared: shared, client: client, result: &r}
 	films.runEventsConvergence(ctx)
 	clock.lap("convergence_events", r.ConvergedEvents)
-	films.runWeaponKills(ctx, insertedIDs)
-	clock.lap("weapon_kills", r.WeaponKillsProcessed)
 	// 1.57 source du kill : décodage du kill-feed — la SEULE origine de `assist_known`.
 	// AVANT 1.58, qui retrouve alors le film sur disque (cf. killcollector/postsync.go).
 	clock.lap("kill_source", films.runKillSource(ctx, insertedIDs))

@@ -59,7 +59,6 @@ func TestSeedDemoSynthetic_Structure(t *testing.T) {
 	defer shared.Close()
 	assertCount(t, shared, "SELECT COUNT(*) FROM match_registry", 60)
 	assertCountAtLeast(t, shared, "SELECT COUNT(*) FROM match_participants", 200)
-	assertCountAtLeast(t, shared, "SELECT COUNT(*) FROM weapon_kills", 100)
 	assertCount(t, shared, "SELECT COUNT(*) FROM match_csrs", 22) // sessions classées (arène) = 10 + 12
 	assertCountAtLeast(t, shared, "SELECT COUNT(*) FROM medals_earned", 1)
 
@@ -127,7 +126,6 @@ var detSeededTables = map[string]bool{
 	"player_match_enrichment": true,
 	"sessions":                true,
 	"sync_meta":               true,
-	"weapon_kills":            true,
 	"xuid_aliases":            true,
 }
 

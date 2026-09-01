@@ -1,18 +1,21 @@
-// cmd/backfill_all — backfill rétroactif weapons + PSA pour tous les players.
+// cmd/backfill_all — backfill rétroactif PSA pour tous les players.
 //
 // Pour chaque player dans data/titles/<title>/players/, charge ses tokens Halo
-// depuis le MultiUserTokenStore (ADR 0023), liste les match_ids manquants
-// (weapon_kills < 28j, PSA tous matchs), et lance les pipelines en série.
+// depuis le MultiUserTokenStore (ADR 0023), liste les match_ids sans
+// personal_score_awards, et lance le pipeline en série.
 //
 // Lance ce CLI quand l'audit (cmd/audit_coverage) montre des trous, et que tu
 // veux rattraper sans passer par /api/v1/backfill/start (pas besoin de session).
+//
+// LA MOITIÉ « WEAPONS » A ÉTÉ RETIRÉE le 2026-09-01 : son exécuteur (étape 1.55,
+// corrélation tirs ↔ instant du kill) est supprimé. Le rattrapage du détail par arme
+// passe désormais par `levelup backfill-killsource --online`, qui décode la source
+// du dégât du même film.
 //
 // Usage :
 //
 //	go run ./cmd/backfill_all/                         # tous les players
 //	go run ./cmd/backfill_all/ -player JGtm            # un seul
-//	go run ./cmd/backfill_all/ -only weapons           # weapons uniquement
-//	go run ./cmd/backfill_all/ -only psa               # psa uniquement
 package main
 
 import (
@@ -24,19 +27,12 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/auth"
 	gosync "levelup/go-api/internal/sync"
-)
-
-const (
-	filmExpiryDays        = 28.0
-	mBitWeaponKillsNoFilm = 1 << 22
 )
 
 var (
@@ -44,8 +40,6 @@ var (
 	titleSlug    = flag.String("title", "halo_infinite", "Title slug")
 	envFile      = flag.String("env-file", ".env.local", "Chemin .env.local")
 	playerFilter = flag.String("player", "", "Limiter à un player (vide = tous)")
-	onlyType     = flag.String("only", "", "weapons | psa | both (par défaut)")
-	forceWeapons = flag.Bool("force-weapons", false, "Effacer et re-backfiller weapon_kills même si déjà présents")
 )
 
 func main() {
@@ -105,32 +99,17 @@ func processPlayer(ctx context.Context, gamertag string) {
 
 	fmt.Printf("\n=== %s (xuid=%s) ===\n", gamertag, xuid)
 
-	// Match list pour weapons : <28j sans wk et sans noFilm bit.
-	// En mode -force-weapons : efface d'abord les rows existantes puis recharge.
-	weaponMatches, err := loadMissingWeaponMatches(sharedDBPath, xuid, *forceWeapons)
-	if err != nil {
-		slog.Error("loadMissingWeaponMatches", "player", gamertag, "err", err)
-	}
 	// Match list pour PSA : tous les matchs participés sans entry dans personal_score_awards
 	psaMatches, err := loadMissingPSAMatches(playerDBPath, sharedDBPath, xuid)
 	if err != nil {
 		slog.Error("loadMissingPSAMatches", "player", gamertag, "err", err)
 	}
 
-	fmt.Printf("  weapons à backfill : %d match(s) <28j\n", len(weaponMatches))
 	fmt.Printf("  psa à backfill     : %d match(s)\n", len(psaMatches))
 
 	engine := gosync.NewSyncEngine(repoRootForCWD(), gamertag, xuid, tokens, nil)
 
-	if *onlyType != "psa" && len(weaponMatches) > 0 {
-		fmt.Printf("  ▶ BackfillWeaponKillsForMatches (%d)...\n", len(weaponMatches))
-		done, noFilm, err := engine.BackfillWeaponKillsForMatches(ctx, weaponMatches)
-		if err != nil {
-			slog.Error("BackfillWeaponKillsForMatches", "player", gamertag, "err", err)
-		}
-		fmt.Printf("    → %d done, %d film expiré\n", done, noFilm)
-	}
-	if *onlyType != "weapons" && len(psaMatches) > 0 {
+	if len(psaMatches) > 0 {
 		fmt.Printf("  ▶ BackfillPersonalScoreAwardsForMatches (%d)...\n", len(psaMatches))
 		matches, rows, err := engine.BackfillPersonalScoreAwardsForMatches(ctx, psaMatches)
 		if err != nil {
@@ -138,87 +117,6 @@ func processPlayer(ctx context.Context, gamertag string) {
 		}
 		fmt.Printf("    → %d match(s), %d rows insérés\n", matches, rows)
 	}
-}
-
-func loadMissingWeaponMatches(sharedDBPath, xuid string, force bool) ([]string, error) {
-	accessMode := "?access_mode=read_only"
-	if force {
-		accessMode = ""
-	}
-	db, err := sql.Open("duckdb", sharedDBPath+accessMode)
-	if err != nil {
-		return nil, err
-	}
-	defer db.Close()
-
-	cutoff := time.Now().Add(-time.Duration(filmExpiryDays*24) * time.Hour)
-
-	if force {
-		// Supprimer les weapon_kills existants pour ce joueur dans la fenêtre 28j
-		// afin de permettre une re-attribution correcte (player_index).
-		_, err := db.Exec(`
-			DELETE FROM weapon_kills
-			WHERE match_id IN (
-				SELECT DISTINCT mp.match_id
-				FROM match_participants mp
-				JOIN match_registry mr ON mr.match_id = mp.match_id
-				WHERE mp.xuid = ?
-				  AND COALESCE(mr.is_firefight, FALSE) = FALSE
-				  AND `+analysis.SQLStartTimeCanonical("mr")+` >= ?
-				  AND (COALESCE(mr.backfill_completed, 0) & ?) = 0
-			)
-			AND xuid = ?`,
-			xuid, cutoff, mBitWeaponKillsNoFilm, xuid)
-		if err != nil {
-			return nil, fmt.Errorf("force-weapons delete: %w", err)
-		}
-		// Effacer aussi le bit MBitWeaponKills (bit 21) pour que le pipeline weapons
-		// (sélection convergente + BackfillWeaponKillsForMatchAll) ne skipe pas les
-		// matchs déjà marqués done.
-		const mBitWeaponKills = 1 << 21
-		_, err = db.Exec(`
-			UPDATE match_registry
-			SET backfill_completed = backfill_completed & ~?
-			WHERE match_id IN (
-				SELECT DISTINCT mp.match_id
-				FROM match_participants mp
-				JOIN match_registry mr ON mr.match_id = mp.match_id
-				WHERE mp.xuid = ?
-				  AND COALESCE(mr.is_firefight, FALSE) = FALSE
-				  AND `+analysis.SQLStartTimeCanonical("mr")+` >= ?
-				  AND (COALESCE(mr.backfill_completed, 0) & ?) = 0
-			)`,
-			mBitWeaponKills, xuid, cutoff, mBitWeaponKillsNoFilm)
-		if err != nil {
-			return nil, fmt.Errorf("force-weapons clear bit: %w", err)
-		}
-	}
-
-	rows, err := db.Query(`
-		SELECT DISTINCT mp.match_id
-		FROM match_participants mp
-		JOIN match_registry mr ON mr.match_id = mp.match_id
-		LEFT JOIN weapon_kills wk ON wk.match_id = mp.match_id AND wk.xuid = mp.xuid
-		WHERE mp.xuid = ?
-		  AND wk.match_id IS NULL
-		  AND COALESCE(mr.is_firefight, FALSE) = FALSE
-		  AND `+analysis.SQLStartTimeCanonical("mr")+` >= ?
-		  AND (COALESCE(mr.backfill_completed, 0) & ?) = 0
-		ORDER BY mr.start_time DESC`,
-		xuid, cutoff, mBitWeaponKillsNoFilm)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var out []string
-	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
-			return nil, err
-		}
-		out = append(out, id)
-	}
-	return out, rows.Err()
 }
 
 func loadMissingPSAMatches(playerDBPath, sharedDBPath, xuid string) ([]string, error) {

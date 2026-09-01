@@ -362,7 +362,6 @@ export interface BackfillStartRequest {
   personal_scores?: boolean
   performance_scores?: boolean
   aliases?: boolean
-  weapons?: boolean
   lusr?: boolean
   /** Re-fetch CSR par-match via GetMatchSkill (RankRecap). Idempotent
    *  par défaut ; force_rescan=true → re-fetche tous les matchs ranked. */
@@ -2380,8 +2379,6 @@ export interface PostSyncCounters {
   engagement_scores_computed: number
   engagement_coefs_updated: number
   sessions_assigned: number
-  weapon_kills_processed: number
-  weapon_kills_no_film: number
   citations_computed: number
   dominance_flags_computed: number
   /** Rattrapés par la convergence (étapes 1.54 / 1.56). */

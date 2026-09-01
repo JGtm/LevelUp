@@ -216,6 +216,194 @@ candidate ; note datée dans l'en-tête de bombe_desamorcage_research_test.go).
 
 **Prochaine étape** : CI de branche au niveau job ; la re-cuisson des artefacts (schémas
 33/34 visibles en app) reste INTERDITE jusqu'à levée explicite par l'utilisateur.
+## [2026-09-01] Arme du kill — volet A, étape A6 : véhicules, tourelles, et l'épée qui n'était pas de la mêlée — Complété
+
+**Périmètre** : étape A6 du plan `.ai/V7.5/PLAN_SOURCE_UNIQUE_ARME_2026-09-01.md`, worktree
+dédié `LevelUp-wt-arme-source`, branche `wt/arme-source-unique`. A0 à A4 et A6 closes ;
+A5 (livraison, migration sur les bases réelles) reste à l'orchestrateur et à l'utilisateur.
+
+**Décision technique principale — le seed de boot est INSERT-ONLY, et le reclassement
+aurait été SILENCIEUX.** `weapons.ReconcileRegistry`, rejouée à chaque démarrage, est en
+`INSERT OR IGNORE` (décision du 2026-06-23, écrite dans son propre en-tête : « aucune
+écriture destructive, AUCUN UPDATE »). Elle propage une clé NOUVELLE — c'est ainsi que les
+14 véhicules et tourelles sont arrivés sans rien faire de plus — mais **jamais une valeur
+MODIFIÉE**. Passer l'épée et le marteau de `melee` à `heavy` dans le registre Go n'a donc
+produit AUCUN effet sur une copie de la base réelle : le changement aurait été vrai dans le
+binaire et faux dans toutes les `metadata.duckdb` existantes, sans qu'aucun test ne le dise.
+C'est la MESURE qui l'a montré, pas la relecture. Correction : un step de migration
+title-owned `metadata_reclass_sword_hammer_heavy_v1` (UPDATE de deux lignes par clé
+primaire sur un référentiel statique — hors périmètre ART par la décision du 2026-06-23),
+avec son test sur base forgée qui vérifie aussi que l'épée de HALO 5 ne bouge pas (le
+registre est cross-titre).
+
+**Résultats observés** — témoin relancé trois fois, même lot de 200 matchs, même sonde,
+seule la metadata change :
+
+| classe servie | AVANT A6 | après A6.1-A6.5 | après A6.8 |
+|---|---:|---:|---:|
+| lourde | 4 118 | 4 118 | **6 632** |
+| véhicule | — | **138** | 138 |
+| tourelle | — | **21** | 21 |
+| Non attribué | **3 984 (21,2 %)** | 3 825 (20,4 %) | **1 311 (7,0 %)** |
+
+Les véhicules arrivent NOMMÉS (Apparition 59, Ghost 43, Banshee 15, Wasp 10, Pélican 5…) ;
+l'épée et le marteau déplacent **2 514 frags** exactement, le nombre annoncé par la mesure
+de cadrage. Invariant tenu aux trois passes : Σ classes = 18 752 = total de frags API, et
+aucune classe ne perd un frag. Le résidu de 7,0 % dépasse le plancher mesuré de 4-6 % par
+la composition de l'échantillon (le décodeur s'effondre en BTB, chantier séparé) — non
+instruit, c'est la consigne. Détail complet dans
+`.ai/V7.5/MESURE_BASCULE_ARME_2026-09-01.md`. L'allowlist du garde-rail de concordance
+passe de 19 à **exactement 5** entrées, et la classe `VEHICULE` sort des classes tolérées
+sans clé : un tag véhicule sans clé de registre est désormais une régression.
+
+**Gates** : `go build` / `go vet` / `go vet -tags=integration` = 0 ; `go test` et
+`go test -tags=integration -p 1` sur tous les paquets sauf `internal/himap` = 0 ;
+`golangci-lint --new-from-merge-base=origin/main` = **0 issue** (7 findings soldés, dont 4
+hérités des étapes A1/A2 de cette branche : deux accumulations mortes laissées par la fusion
+D11, une fonction `resolveOffArsenalKeys` sans appelant, une signature à erreur toujours
+nil) ; `gofmt -l` vide ; `openapi-gen -check` à jour. `internal/himap` non exécuté
+localement (> 10 min, dette datée) : aucun symbole touché, la CI fait foi.
+
+**Conclusion / prochaine étape** : le volet A est complet côté code. Reste A5, qui n'est
+pas de mon périmètre : sauvegarde de `shared_matches_v2.duckdb`, exécution de la migration
+sur les bases réelles avec l'utilisateur, gate visuel des six surfaces, puis `make
+gate-push` et CI verte. **Aucune migration n'a été exécutée sur `data/titles/*`.**
+
+---
+
+## [2026-09-01] Arme du kill — volet A, étape A4 : la table meurt côté Halo Infinite, et Halo 5 a failli mourir avec — Complété
+
+**Périmètre** : étape A4 du plan `.ai/V7.5/PLAN_SOURCE_UNIQUE_ARME_2026-09-01.md`, worktree
+dédié `LevelUp-wt-arme-source`, branche `wt/arme-source-unique`. A0-A3 closes ; reste A6
+(et A5, hors de mon périmètre).
+
+**Décision technique principale — « title-owned » NE PROTÈGE PAS le second titre, et le
+plan supposait le contraire.** Vérifié sur pièces : `TitleMigrationSet.OwnsTarget` de Halo 5
+ne possède QUE la cible `metadata` ; pour `shared`, `RunForTitleDB` retombe DÉLIBÉRÉMENT sur
+le registre global PLUS le provider title-owned de Halo Infinite (« hérite du schéma
+uniforme », en-tête de `title_set.go`). Une migration *title-owned* Halo Infinite s'exécute
+donc AUSSI sur `data/titles/halo_5/warehouse/shared_matches_v2.duckdb`. Un step additif s'en
+accommode — c'est l'objectif — mais ce lot écrit le PREMIER step DESTRUCTIF du dépôt : tel
+que le plan le décrivait, il aurait effacé les **550 926 lignes natives** de Halo 5.
+Correction : une primitive manquante, `Migration.OnlyTitles` (vide = tous les titres,
+comportement historique inchangé), honorée par `runSteps`. Un step écarté n'est ni appliqué
+ni enregistré au ledger. Ce n'est pas une comparaison de slug (ratchet
+`no_slug_comparison`) mais une appartenance à un ensemble donné par le step, comme la clé de
+`migrationSets` : le runner ne branche sur aucun littéral.
+
+**Résultats observés** : `shared_drop_weapon_kills_v1` (title-owned + `OnlyTitles`) supprime
+la vue dans SES DEUX SCHÉMAS (`main` et `shared` — mesuré sur une copie lecture seule de la
+base de production ; un `DROP VIEW IF EXISTS` nu ne résout que sur le `search_path` et
+laisse le nom vivre dans l'autre), la table, `weapon_kills_v3`, la séquence de génération,
+puis `CHECKPOINT`. Les schémas sont lus dans `duckdb_views()` avant d'être qualifiés : un
+`DROP … IF EXISTS` sur un schéma ABSENT est une erreur, pas un no-op. Quatre tests :
+part côté Halo Infinite / survit côté Halo 5 (avec `kill_kind`) / tombe sur les deux schémas
+sur une base forgée à la forme de production / idempotent. Garde-rail de non-retour
+`archlint/no_weapon_kills_sql_test.go` : il scanne les FORMES SQL et non le littéral (celui-ci
+vit dans ~150 fichiers comme identifiant Go ou clé de citation), avec 24 entrées d'allowlist
+justifiées ; morsure vérifiée. `steps_shared_append_only_weapon_kills` RESTE : Halo 5 lit la
+vue qu'elle crée. Effets de bord traités : `validation/gate.go` n'exige plus la table dans
+les tables critiques (le gate serait devenu rouge sur une base saine), et `cmd/audit_coverage`
+sonde désormais `analysis.WeaponEvidenceTable` au lieu de joindre la table disparue.
+
+**Gates** : `go build ./...` = 0, `go vet ./...` = 0, `go vet -tags=integration ./...` = 0,
+`go test` et `go test -tags=integration -p 1` sur TOUS les paquets sauf `internal/himap` = 0,
+`gofmt -l` vide. `internal/himap` non exécuté localement (> 10 min, dette datée) : aucun
+symbole touché, la CI fait foi.
+
+**Conclusion / prochaine étape** : A6 — registre des véhicules et tourelles, puis la
+reclassification de l'épée et du marteau en arme LOURDE (décision utilisateur : le compteur
+API `melee_kills` ne les compte pas, 9 741 frags tombent en « Non attribué » sans que
+personne ne les serve). **La migration n'a PAS été exécutée sur les bases réelles** :
+consigne de l'orchestrateur, elle se lance avec l'utilisateur après sauvegarde (A5.1).
+
+---
+
+## [2026-09-01] Arme du kill — volet A, étape A3 : le producteur de corrélation est mort — Complété
+
+**Périmètre** : étape A3 du plan `.ai/V7.5/PLAN_SOURCE_UNIQUE_ARME_2026-09-01.md`, worktree
+dédié `LevelUp-wt-arme-source`, branche `wt/arme-source-unique`. A0-A2 étaient closes ; A4 et
+A6 restent à faire.
+
+**Décision technique principale — les DEUX bits de masque survivent, c'est leur POSEUR qui
+déménage.** La rédaction initiale du plan demandait de retirer `MBitWeaponKills` (1<<21) et
+`MBitWeaponKillsNoFilm` (1<<22). Vérification sur pièces : le bit 22 n'a JAMAIS été une donnée
+de `weapon_kills` — c'est le marqueur terminal « film 404 / expiré » du registre, et ses
+lecteurs sont vivants et hors de la chaîne supprimée (rattrapage de l'étape 1.57,
+`snapshot_readiness`, rattrapage de l'étape 1.58). Le supprimer les cassait à la compilation ;
+supprimer son unique poseur (`MarkWeaponKillsDone`, appelé depuis le fichier détruit) figeait
+le marqueur et faisait redemander à vie les ~29 % de films irrécupérables (581 des 999
+candidats du 29/08). Les valeurs numériques sont donc inchangées — elles sont persistées dans
+`match_registry.backfill_completed`, on ne renumérote jamais un bit posé en base — et le poseur
+est passé à l'étape 1.57 (`killcollector/registry_flags.go`), qui télécharge le film du même
+match au même moment. Le bit 22 est renommé `MBitFilmAbsent` : son ancien nom parlait d'une
+table qui disparaît côté Halo Infinite alors qu'il n'a jamais rien dit d'elle.
+
+**Résultats observés** : `internal/sync/backfill_weapons.go` et ses 4 fichiers de tests,
+l'étape 1.55 de `convergence.go`/`engine_postsync.go`, la chaîne
+`analysis/weapon_{correlation,parser,reconciliation}.go`, `weaponv3/{correlate,fire_scanner_v3,
+attribution,melee_scanner,grenade_scanner}.go`, `kill_attribution.go`, la table morte
+`weapon_kills_v3` (domain + repo + migration + entrée d'ordre) et 10 sous-commandes CLI sont
+supprimés. Trois corrections sur pièces : `weapon_scanner.go` est CONSERVÉ (la ventilation des
+tirs du rejeu 2D en dépend), `cmd/diag_weapons_v3/` est CONSERVÉ (unique écrivain de
+`kill_positions` et `match_objective_events` — seul son mode armes part), et l'axe
+`scope.Weapons` disparaît en entier jusqu'à la case de l'UI d'administration, faute
+d'exécuteur. Les deux compteurs `weapon_kills_processed`/`_no_film` étant publiés au contrat,
+leur retrait a entraîné `openapi.yaml`, `generated.ts`, la page admin « convergence » et
+5 clés i18n.
+
+**Gates** : `go build ./...` = 0, `go vet ./...` = 0, `go vet -tags=integration ./...` = 0,
+`go test` sur tous les paquets hors `internal/himap` = 0, `go test -tags=integration -p 1
+./internal/sync/killcollector/` = 0, `gofmt -l` vide, web `typecheck`/`lint`/`vitest` = 0
+(5 666 tests). `internal/himap` non exécuté localement (> 10 min, dette datée) : le paquet ne
+référence aucun symbole touché, la CI fait foi.
+
+**Conclusion / prochaine étape** : A4 (mort de la table côté Halo Infinite, DEUX vues
+`v_weapon_kills` à droper — schémas `main` ET `shared`), puis A6 (registre véhicules et
+tourelles, plus la reclassification de l'épée et du marteau en arme lourde).
+
+---
+
+## [2026-09-01] Arme du kill — volet A, étapes A0 à A2 : la source de dégât devient la source unique — En cours
+
+**Périmètre** : volet A du plan `.ai/V7.5/PLAN_SOURCE_UNIQUE_ARME_2026-09-01.md`, worktree
+dédié `LevelUp-wt-arme-source`, branche `wt/arme-source-unique`. Étapes A0, A1 et A2 closes ;
+A3, A4 et A6 **non commencées**.
+
+**Décision technique principale — la frontière est posée sur la PROVENANCE, pas sur la
+classe.** Élargir `isRegistryFragClass` aux classes hors arsenal (équipement, environnement)
+aurait fait remonter le bucket `h5_environmental` de Halo 5, qui porte un identifiant
+numérique et vient de `weapon_kills` : le sunburst du second titre aurait changé, hors
+périmètre. Le port porte donc `FromDamageSource` — la ligne a-t-elle été MESURÉE dans le
+film — et c'est lui qui autorise ces classes. Le golden `fragdist_halo5_golden_test.go` a été
+écrit et passé AVANT l'élargissement, et repasse identique APRÈS.
+
+**Témoin de bascule (A0), seuil écrit AVANT tout résultat** (commit `214f5421b` antérieur au
+commit des mesures) : sur les 200 matchs les plus récents, même lot pour les deux chaînes
+(198/200 portent des lignes `weapon_kills`, 200/200 une source mesurée) — le résidu
+« Non attribué » passe de **14 453 (77,1 %) à 3 984 (21,2 %)**, soit **10 469 frags** qui
+quittent l'anonymat. Aucune classe d'arme à feu ne perd un frag : épaule +4 541, lourde
++3 814, poing +2 114. Les deux conditions du seuil sont tenues.
+
+**Ce que la mesure a fait apparaître, et qui n'était pas prévu** : le compteur API
+`melee_kills` n'inclut NI le marteau NI l'épée (1 717 contre 1 440 de mêlée nue et 2 514 de
+mêlée d'arme). Le registre les classe `melee`, ce qui confond l'arme de corps à corps et la
+mécanique. Sous D4 + D4bis appliqués littéralement, ces 2 514 frags restent dans
+« Non attribué » — sans régression (ils y sont déjà) mais sans le gain possible. Consigné en
+section 6 du plan, **non traité** : c'est une décision de registre, pas d'exécution.
+
+**Résultats observés, gates lancés dans cette session** : `go build ./...` 0 · `go vet ./...`
+0 · `go test ./internal/platform/duckdb/... ./internal/service/... ./internal/api/...` 0 ·
+`go test -tags=integration -p 1 ./internal/sync/... ./internal/persist/... ./internal/migration/...
+./internal/platform/duckdb/...` **0, zéro `--- FAIL:`**. Ce dernier a d'ailleurs rattrapé un
+faux vert : trois appels de `buildCitationContext` vivent derrière le tag `integration` et le
+run nu ne les compilait pas.
+
+**Prochaine étape** : A3 (mort du producteur `weapon_kills` Halo Infinite), avec la correction
+d'orchestration du 2026-09-01 sur A3.4 — les bits de masque 1<<21 et 1<<22 **survivent**,
+valeurs inchangées, et leur poseur déménage vers l'étape 1.57 ; les supprimer figerait le
+marqueur « film absent » et ferait redemander indéfiniment les ~29 % de films irrécupérables.
+Puis A4 (mort de la table côté Halo Infinite) et A6 (les 14 entrées véhicules/tourelles).
 
 ## [2026-09-01] Merge de wt/lint-dette dans feat/v75 — le job `Go Lint` n'est plus rouge — Complété
 

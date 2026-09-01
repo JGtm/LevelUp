@@ -34,6 +34,26 @@ type Migration struct {
 	ApplyBackfill func(db *sql.DB) error // Backfill optionnel
 	RequiresAPI   bool                   // Si true, backfill ignoré sans API
 
+	// OnlyTitles — ENSEMBLE des titres auxquels ce step s'applique. Vide (défaut) =
+	// tous, comportement historique inchangé.
+	//
+	// ⚠ POURQUOI CE CHAMP EXISTE, ET POURQUOI « TITLE-OWNED » NE SUFFISAIT PAS.
+	// Un step fourni par le provider title-owned de Halo Infinite s'exécute AUSSI sur
+	// les autres titres pour tout target qu'ils ne POSSÈDENT pas : c'est le fallback
+	// documenté de `TitleMigrationSet.OwnsTarget` (« hérite du schéma uniforme »), et
+	// Halo 5 ne possède que `metadata`. Un step ADDITIF s'en accommode — c'est même
+	// l'objectif. Un step DESTRUCTIF, non : le premier écrit (2026-09-01, suppression
+	// de `weapon_kills` côté Halo Infinite) aurait effacé les 550 926 lignes NATIVES
+	// de Halo 5, qui vivent dans le même schéma mais un autre fichier.
+	//
+	// Ce n'est PAS une comparaison de slug (ratchet no_slug_comparison) : c'est une
+	// appartenance à un ensemble DONNÉ par le step, exactement comme la clé de
+	// `migrationSets`. Le runner ne branche sur aucun littéral.
+	//
+	// Un step écarté n'est ni appliqué NI enregistré au ledger : s'il redevenait
+	// applicable, il s'appliquerait.
+	OnlyTitles []string
+
 	// SupersededByAll — équivalence ledger d'un SQUASH (DM-5, chantier N4). Si non
 	// vide, ce step est une BASELINE squashée : sur une DB EXISTANTE qui porte déjà
 	// la SENTINELLE (dernier nom de la liste = dernier step squashé) dans
@@ -172,6 +192,20 @@ func getApplied(ctx context.Context, db *sql.DB) (map[string]migrationState, err
 	return applied, rows.Err()
 }
 
+// appliesToTitle : le step vise-t-il ce titre ? Appartenance à un ensemble donné par
+// le step (OnlyTitles), jamais une comparaison à un littéral de slug.
+func (m Migration) appliesToTitle(slug string) bool {
+	if len(m.OnlyTitles) == 0 {
+		return true
+	}
+	for _, s := range m.OnlyTitles {
+		if s == slug {
+			return true
+		}
+	}
+	return false
+}
+
 // RunForDB applique les migrations du titre PAR DÉFAUT (Halo) pour une DB/target.
 // Conservé pour compat : délègue à RunForTitleDB(db, DefaultSlug, target). Le db
 // fourni doit être ouvert en lecture/écriture ; pour target=shared, metadata doit
@@ -229,6 +263,12 @@ func runSteps(db *sql.DB, slug string, target TargetDB, steps []Migration, order
 	sortByOrder(order, steps)
 	appliedCount := 0
 	for i := range steps {
+		if !steps[i].appliesToTitle(slug) {
+			// Step restreint à d'autres titres : ni appliqué, ni enregistré.
+			slog.DebugContext(ctx, "migration: step hors du périmètre de ce titre",
+				"name", steps[i].Name, "title", slug, "only_titles", steps[i].OnlyTitles)
+			continue
+		}
 		state, exists := applied[steps[i].Name]
 		if !exists {
 			// DM-5 : une baseline squashée dont la sentinelle (dernier step squashé)
