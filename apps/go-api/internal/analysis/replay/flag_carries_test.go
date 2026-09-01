@@ -17,7 +17,7 @@ import (
 // flagTestCtx fabrique un contexte a l'echelle 100 ms/frame, sans decalage d'horloge : la frame
 // d'un instant du match est donc `ms / 100`, ce qui rend les attentes lisibles.
 func flagTestCtx(tracks []Track, deaths []Death, frames int) flagCarryCtx {
-	return flagCarryCtx{origin: 0, step: 100_000, frames: frames, tracks: tracks, deaths: deaths}
+	return flagCarryCtx{matchClock: matchClock{origin: 0, step: 100_000, frames: frames}, tracks: tracks, deaths: deaths}
 }
 
 // flagTestTrack fabrique une piste d'un joueur, un point toutes les frames de from a to.
