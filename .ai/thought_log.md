@@ -1,3 +1,97 @@
+## [2026-09-01] Sprites vehicules — assemblage parent/enfant (tourelle/canon = objet-enfant) — Complété
+
+**Insight (utilisateur) CONFIRME** : un vehicule n'est pas un seul render_model ; la tourelle/le
+canon est un OBJET-ENFANT distinct (`vehi` a part) avec son propre `hlmt`->`mode`, co-repere avec
+le chassis. Le lot V4 ne rendait que le chassis parent -> Scorpion sans canon, Warthog sans arme.
+
+**Decision technique** : (1) le `vehi` parent NE reference PAS l'enfant par tagref inline (balayage
+d'octets : seulement self + hlmt chassis + chaine son `sofd`) — le lien est par NOM DE FAMILLE
+(`scorpion` -> `scorpion_c`/`scorpion_g`), resolu au runtime. (2) Chaque enfant se resout comme un
+`vehi` : `enfant -> hlmt -> mode`. Il a fallu corriger `RefModeleVehicule` : plancher anti-parasite
+abaisse `0x10000`->`0x100` + liste NOMMEE `parasitesVehicule={0x1f,0x3a73,0x27d0}` + chaine hlmt
+AVANT la ref directe (sinon le mode d'etat partage `vehicle_partial_emp` 0x27d0 fuit). (3) Pas de
+marqueur a extraire pour le sprite fige : le render_model de chassis N'A PAS de bloc marker-groups
+(dump root-blocks : off124=materiaux « mat », marqueurs vides ; le pivot est un noeud du squelette,
+pour l'anime seulement). Les modeles enfants sont authored CO-REPERES -> assemblage a translation
+NULLE correct. (4) `RenduAssemblage` fond N modeles dans un z-buffer partage ; cross-module (chassis
+pc/globals + tourelle pc/multiplayer, jamais charges ensemble) via canevas fixe `-cadre` + `compose2d`.
+
+**Resultats (vus a l'oeil, planche)** :
+- Scorpion chassis `0x39918211` (84 sec) SEUL = anneau vide, AUCUN canon. + `scorpion_c` (`0x0000d4ff`
+  -> mode `0x60dd0e4e`, canon) + `scorpion_g` (`0x0000d500` -> `0x8bf43b79`, collier) = **char avec
+  canon net**. Composition 2D == assemblage in-module (verifie).
+- Warthog `0x561f2ca7` + `warthog_g` (`0x0000e0da`, LAAG pc/multiplayer) = arme a l'arriere.
+- Wasp : canons integres au chassis (pas de tourelle separee). Wraith/Phantom : tourelles resolues.
+- Non-regression : les 13 chassis V4 resolvent aux memes modes.
+
+**Livrables** : `sprites_v4/` regenere (scorpion.png + canon, warthog.png/warthog_laag.png + LAAG,
+warthog_v2.png, scorpion_canon_enfant.png) ; `PLANCHE_ASSEMBLAGE_ENFANTS_2026-09-01.png` ; rapport
+`ASSEMBLAGE_ENFANTS_2026-09-01.md`. Code : `himap/{vehicules,objet_isole,tagblocks_diag}.go`,
+`cmd/vehicle-sprite/{assemble,compose,diag}.go`. gofmt/build/vet propres, aucun commit.
+
+**CR honnete / prochaine etape** : chaingun (LAAG) = objet-enfant net ; gauss/roquettes ne se
+separent PAS proprement en objets-enfants distincts -> pour ces 2 variantes, garder les permutations
+de region du lot V4 (solution complete = layering enfant + permutation). Marqueur/noeud a extraire
+seulement si un jour on veut la tourelle a son cap ANIME.
+
+## [2026-09-01] Port de la LISTE D'EVENEMENTS du film + evenements vehicule board/exit — Complété
+
+**Decision technique** : porter le CADRAGE de la liste d'evenements delta
+(`[config][liste (1 [R7 type] [3 refs gardees] [charge])* 0][trame ECS]`) dans des fichiers NEUFS
+`filmdec/event_list.go` + `event_list_test.go`, sans toucher au decodeur ECS. Cadrage MSB-first :
+bit0=config, bit1=continuation, bits2..8=R(7) type. Dispatcher Ghidra `FUN_14080AADE` decompile :
+type 7 bits <123, puis EXACTEMENT 3 refs gardees, puis charge. Binaire peu analyse (thunks
+relocatés = 0xcc statique) -> grammaire du siege fixee par oracle empirique, pas par le deser.
+
+**Resultats** :
+- **Cadrage PROUVE bit-exact** : garde-fou `head type36 == fire_events == 1418` a l'unite (0d76e8f1).
+- **SORTIE (type 22) RESOLUE** : occupant = ref0 (dom1 sonde, slot=base+idx9), siege = R(6) apres
+  ref1(dom1)+ref2(dom7). 209 sorties : occupant 95,5 % en-bande, sonde=1 a 100 %, **siege=0 a 93,8 %**
+  (= « siege dominant 0 » mesure). Independant de la largeur runtime.
+- **EMBARQUEMENT (type 8) PARTIEL** : siege reproduit « siege dominant 16 » (5/12) ; occupant NON
+  resolu (ref0 sonde variable, souvent hors bande -> probable = le vehicule, occupant en ref
+  ulterieure). Echantillon board petit (348 corpus vs 5144 exit).
+- **Comptes corpus (cache 949 films)** : board=348/138 films, exit=5144/230, enter=0. Ref 1367
+  films : 374/5600/0 ; ratio board:exit 1:14,8 recoupe 1:15 (deficit = films absents du cache).
+- **Garde-fou ECS/kill** : `traverse/frame_records/fire_events` non touches ;
+  `go test ./internal/analysis/filmdec/` vert ; recoupement fire_events bit-exact.
+
+**Livrable** : `.ai/V7.5/film_re/PORT_LISTE_EVENEMENTS_2026-09-01.md`. Instruments gardes :
+`event_list_test.go` (EVT_CHUNK_DIR/EVT_CACHE/EVT_FILMS).
+
+**Prochaine etape** : resoudre l'occupant d'embarquement (probable ref0=vehicule) ; marcher la
+liste ENTIERE (evenements non-tete) pour l'exact des comptes ; confirmer la largeur dom7 par film.
+Le decodeur remplace le substitut « debut de trou » pour l'attribution du conducteur et donne le
+temps en vehicule par joueur (sorties).
+
+## [2026-09-01] Vehicules lot V2 — emplacements de spawn, cooldowns, etat detruit — Complété
+
+**Corpus** : 18 Behemoth SF + 8 Launch Site SF (avant-plan, GOCACHE isole, aucun commit).
+Instruments neufs gardes : `filmdec/vehicules_v2_test.go` + `vehicules_v2_items_test.go` (items 1-3
++ i14), `replay/vehicules_v2_deaths_test.go` (mort-coincidente). Aucun fichier de prod modifie ;
+reutilise le gate durci V1.5 et le pont `buildOwners`/`bestDeathOffset`.
+
+**Resultats** :
+- **Item 1** : naissances a des pads FIXES EXACTS (rayon 0,00 m) — 6 sur Behemoth (grille 2x3),
+  4-5 sur Launch Site ; 100 % de chassis lus. Le seuil « <=4 amas/chassis » est map-dependant
+  (ECHEC Behemoth car 6 pads ; PASS Launch Site) ; en SF le chassis est tire au hasard PAR pad.
+- **Item 2** : piege Forge confirme SUR PIECES — `map_weapon_pads.json` couvre les 2 cartes mais
+  n'a que rack/power/powerup, AUCUNE famille vehicule. Repères alignes (bbox naissances ~ pads).
+  Gate NON APPLICABLE. Reprise = re-extraction .mvar sur type_id vehicule (himap + fichiers absents).
+- **Item 3** : cooldowns non resolus (IQR/mediane 0,87-0,98) — resolution recensement +/-20 s.
+- **Item 4** : i14 sous plancher (0,002 %). Dater par la MORT de l'occupant = AU HASARD sur le
+  corpus (52 % vs 48 % temoin Behemoth ; 47 % vs 43 % LS) ; le pilote 0d76e8f1 (38 vs 18) ne
+  generalise pas. Spatial : victimes coincidentes = badauds (0-4 % a <5 m) ; le conducteur meurt
+  dans le TROU de position embarque (recoupe V1a.4). Classer detruit/ejection/despawn = BLOQUE sur
+  l'attribution du conducteur (V1a.4 non porte) + un signal de destruction date.
+
+**Livrable** : `.ai/V7.5/film_re/V2_SPAWNS_COOLDOWNS_2026-09-01.md`. Point d'entree prod a creer :
+`vehicle_placements.go` (modele `equipment_placements.go`) -> catalogue de pads par carte + vies
+bornees. NON exploitable : datation de destruction ; confrontation .mvar.
+
+**Prochaine etape** : porter le point d'entree prod (pads + vies bornees) ; item 2 et item 4d en
+report avec conditions de reprise inscrites au rapport.
+
 ## [2026-09-01] Sons vehicules — le moteur de DEPLACEMENT est DISTINCT par vehicule (rev7 refute) — Complété
 
 **Refutation du rapport V3 rev7** (« les 13 vehicules partagent une boucle unique 06ba1096 ->
@@ -81364,3 +81458,88 @@ l'utilisateur pour validation ; WAV non commites (transitoires). Si les 3 moteur
 derouler les 6 autres (event deja identifie). Puis MAJ artefact (moteurs par vehicule + variantes),
 egalisation -16 LUFS, livraison static/. Restes : dictionnaire StringId pour nommer les 3 variantes
 Warthog ; amorce/queue generiques (enveloppes) ; boost antigrav ; noms de chassis (MPP) ; i21 ; V2.
+
+## [2026-09-01] Vehicules — boucle de deplacement CORRIGEE : etat EN CONDUITE + couches superposees (V3C) — Complete
+
+**Le probleme (retour utilisateur).** « Le seul que je reconnais c'est l'ALLUMAGE du Scorpion ;
+y a pas les CHENILLES ni le DIESEL. » Diagnostic sur pieces (aucun rechargement du module 7,24 Go :
+tout etait dans `<scratch>/v3b/arbre_veh.json` + wems des pck) : (1) l'event moteur
+`951f76c0`/`68b1a949` porte un switch de regime a **5 etats** (defaut + 4), et rev8 rendait l'etat
+par DEFAUT `356702912` = le RALENTI (mesure le plus faible et le plus spiky) ; (2) pire, le Scorpion
+rev8 n'utilisait meme PAS l'event moteur — il rendait `d5c7daeb`+`13beda14` (chenilles seules, sans
+corps diesel). D'ou « pas de diesel ».
+
+**Methode : le spectre tranche l'etat.** ffmpeg `astats` par etat/couche : RMS global, RMS bas
+(<400 Hz = diesel), RMS 3-6 kHz (= chenilles), crest (bas=continu, haut=chugs). Les 5 etats forment
+une **echelle monotone** : plus le regime monte, plus c'est FORT et moins c'est spiky (crest baisse)
+— comportement moteur. EN CONDUITE = `3707760930` (Scorpion : -17,7 dB, crest 7,7, boucle 6,2 s) ;
+Warthog : seul `163696720` se detache (+3 dB, crest 7,6). Le moteur est un pur grave (3-6 kHz a
+-40 dB) ; les chenilles `d5c7daeb` sont un event DISTINCT (brillant -19 dB a 3-6 kHz, centroide
+4687 Hz). Groupe de switch `2275666646` = hachages FNV-1 non resolus (noms courants non matches).
+
+**Livre (ecrase les 4 fichiers rev8 faux).** Scorpion = diesel(`3707760930`/`85078605`) +
+chenilles(`d5c7daeb`/`1033065922`) + bed, allumage `0134da4e` conserve. Warthog = corps RPM
+(`68b1a949`/`163696720`) + combustion (`38b83eb8` L2/L3/L1) + bed. Ghost = souffle `47361baf` +
+BOOST `2e7f2aa2` (event le plus fort de la banque, gain chemin +20 dB). Mixes verifies : bas
+dominant (diesel = fondation), le 3-6 kHz remonte de -35 a -27,7 dB (chenilles presentes),
+crest ~4,3 (continu). Fichiers `moteur_conduite_boucle8s.wav` (+ couches isolees `diesel.wav`,
+`chenilles.wav`, `boost.wav`) dans `sons_v3_reconstruits/<veh>/deplacement/`. Manifeste rev9,
+rapport `V3C_MOTEUR_CONDUITE_2026-09-01.md`. WAV non commites (transitoires).
+
+**Limites honnetes.** Ghost boost = preuve ACOUSTIQUE (le plus fort, +20 dB), non confirme en jeu.
+Warthog : aucune couche de roues distincte (le -31 dB du haut porte deja le mecanique) — rien ne
+manque vraiment. Etat Scorpion `3707760930` defendable mais non unique (`163696720` = alternative
+regime plein). **Prochaine etape** : validation utilisateur a l'oreille ; si OK, derouler les 6
+autres vehicules (event moteur deja identifie), egalisation, livraison. LECON : quand une boucle
+sonne maigre, verifier QUEL etat de switch est rendu — le defaut est souvent le ralenti, pas la
+conduite.
+
+## [2026-09-01] Vehicules — sprites tourelle = OBJET-ENFANT (assemblage) + V1/V2b decodes — Complete (rework warthog/gungoose)
+
+**Sprites : la tourelle est un objet-enfant, pas une section du chassis (insight utilisateur, PROUVE).**
+Le mode de chassis rendu seul n'a qu'un anneau de tourelle vide (Scorpion 0x39918211) ; le canon est un
+vehi SEPARE (scorpion_c -> mode 0x60dd0e4e), resolu par la meme chaine vehi->hlmt->mode. Le lien
+parent->enfant est par NOM DE FAMILLE (pas de tagref inline dans le tag parent). Modeles enfants
+co-reperes dans le repere du vehicule -> assemblage a translation nulle correct. Resolveur
+RefModeleVehicule corrige (plancher 0x100 + parasitesVehicule nomme {0x1f,0x3a73,0x27d0} + chaine hlmt
+avant ref directe) pour debloquer les hlmt de tourelle a petit hash (warthog_g -> hlmt 0x0000e0d4).
+Retour utilisateur : assemblage refait en ORDRE PEINTRE sur canevas fixe (chassis + tourelle rendus
+separement, meme cadre/cellmm, compose2d source-over tourelle EN DERNIER, rognage du composite seul)
+-> placement + echelle + superposition (tourelle TOUJOURS au-dessus).
+
+**Validation utilisateur (gate visuel).** Valides : Scorpion (canon), Wraith (plasma), Razorback
+(cargo) + tout le lot V4. REFUSES : Warthog (assets de tourelle trop gros, ne ressemblent pas) et
+Gungoose (lance-missiles a revoir) -> creuser, Ghidra. Ghost/Banshee/Chopper : arme INTEGREE au chassis
+(aucun vehi-enfant, verifie scan+diag). Phantom : non jouable -> ignore (phantom_g minuscule authored a
+l'origine, negligeable).
+
+**V1 conducteur + visee.** Attribution du conducteur (pour la teinte equipe) par le debut du trou de
+position ; i21 (unit-desired-aiming-vector) ABSENT du flux ti=40 -> a l'arret on assume le regard vers
+l'avant, en mouvement on prend i1.
+
+**V2b (3 signaux, gates ecrits AVANT mesure, sur donnees reelles).** (1) Occupant par attachement i10 :
+REFUTE (0/19 resolvent vers un vehicule). Le RELAIS est la liste d'evenements monte/descend
+(filmdec.ScanFilmVehicleEvents) : les SORTIES donnent l'occupant a la ms, recoupement V1a.4 parfait
+(10/10 ferment un trou de position a l'instant exact). Embarquement = deser Ghidra restant. (2)
+Destruction par i4->0 (body-vitality) : REFUTE au niveau VALEUR (i4 = bruit pour ti=40 : 51% de pas
+decroissants vs 13-26% sur bipedes ; cause : i2/i3 non decodes avant i4 desynchronisent le curseur).
+Voie pratique validee par l'utilisateur : dater la destruction par la MORT DU CONDUCTEUR (dead-state
+bipede, resolu 97,6%). (3) Cooldown par la methode des socles : RESOLU hors Super Fiesta (Behemoth
+~58 s, CV 0,17, 4/6 pads etablis) ; en SF non resolu (densite : vehicules concurrents par pad) --
+l'echec du lot V2 etait un artefact du corpus SF, pas de la methode.
+
+**Garde-rail rattrape par le gate.** Deux instruments (v2dDist, v2cDist) avaient RECOPIE la formule de
+distance 3D -> TestUneSeuleFormuleDeDistance3D rouge. Corrige : adaptateur d'une ligne vers dist3
+(unique ecriture, geometry.go), import math retire. build + vet + tests filmdec/replay verts (CGO off) ;
+himap = *_gamefiles_test.go gardes par la presence des modules (skippent en CI).
+
+**Commite.** Code (himap objet_isole + vehicules + tagblocks_diag ; cmd/vehicle-sprite
+assemble+compose+diag+variantes ; filmdec event_list), 9 tests, sprites (hors warthog/gungoose en
+rework), rapports V1/V2/V2b/event-list/assemblage + planches, manifeste rev9. Artefact Le Garage a jour.
+WAV de sons non commites (transitoires). Libelle son corrige : l'"allumage" Scorpion = rotation de la
+tourelle.
+
+**Prochaines etapes.** (1) Rework tourelles Warthog + Gungoose (bons assets + echelle) via Ghidra. (2)
+Datation de destruction par la mort du conducteur (voie validee). (3) Occupant a l'embarquement (deser
+Ghidra de l'event board). (4) Moteurs au sol = capture en jeu (son modele au runtime, non
+reconstructible depuis les banques).

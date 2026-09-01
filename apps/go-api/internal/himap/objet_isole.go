@@ -41,25 +41,31 @@ func (a AxeHaut) axesPlan() (h0, h1 int) {
 	}
 }
 
-// CONVENTION DE REPERE MOTEUR (Halo Infinite, verifie sur le Warthog 2026-08-31) : le modele
-// est oriente X = AVANT, Y = GAUCHE, Z = HAUT. Une vue de dessus regarde vers -Z. Le sprite
-// canonique place l'AVANT vers le HAUT de l'image (nez en haut), la gauche du vehicule a
-// gauche — l'orientation attendue d'une icone que le rejeu fait tourner selon le cap.
+// CONVENTION DE REPERE MOTEUR (Halo Infinite). RECTIFIE le 2026-09-01 : l'axe LONGITUDINAL du
+// modele est bien X, mais c'est +X = ARRIERE, -X = AVANT (Z = HAUT). Preuve sur piece : rendu
+// du Warthog `0x561f2ca7` en PROFIL (axe haut Y) — le capot incline et le pare-buffle/treuil
+// sont a -X, la tourelle (permutations de region[17], sec 80-85) est a +X (cX = +0.94). Le
+// rapport V4 (2026-08-31, §2) affirmait « X = AVANT » : c'etait FAUX, et c'est pourquoi la
+// tourelle apparaissait en HAUT du sprite (a l'endroit percu comme l'avant) et semblait
+// « rien a l'arriere ».
 //
-// Apres remap, le `Rendu` projette sur (Xr, Yr) et garde Zr max ; `SpriteObjetPNG` retourne
-// l'axe Y (py = NY-1-j) pour que Yr croissant aille vers le HAUT de l'image. On veut donc :
+// Le sprite canonique veut le NEZ EN HAUT (l'avant vers le haut de l'image), donc la tourelle
+// vers le BAS = l'arriere. Apres remap, le `Rendu` projette sur (Xr, Yr) et garde Zr max ;
+// `SpriteObjetPNG` retourne l'axe Y (py = NY-1-j) pour que Yr croissant aille vers le HAUT de
+// l'image. On veut donc :
 //
-//	Yr = +avant (X)   -> l'avant monte dans l'image
-//	Xr = -gauche (Y)  -> la gauche du vehicule va a GAUCHE de l'image
+//	Yr = -X (l'AVANT, -X, monte dans l'image ; l'arriere/tourelle descend)
+//	Xr = +Y (rotation PROPRE de 180 deg de l'ancien placement — pas de miroir lateral)
 //	Zr = +haut (Z)
 //
-// remapVehicule applique ce placement pour l'axe haut Z (le cas de production). Pour les
-// autres axes hauts (diagnostic de l'axe « haut »), on retombe sur axesPlan, sans rotation.
+// C'est l'ancien placement `{-Y, X}` tourne de 180 deg : meme main (vue de dessus non miroir),
+// l'avant et l'arriere echanges. Pour les autres axes hauts (diagnostic de l'axe « haut » ou
+// vues de profil), on retombe sur axesPlan, sans rotation.
 func remapMesh(m *Mesh, a AxeHaut) *Mesh {
 	out := &Mesh{Vertices: make([][3]float64, len(m.Vertices)), Triangles: m.Triangles}
 	if a == HautZ {
 		for i, v := range m.Vertices {
-			out.Vertices[i] = [3]float64{-v[1], v[0], v[2]}
+			out.Vertices[i] = [3]float64{v[1], -v[0], v[2]}
 		}
 		return out
 	}
@@ -155,23 +161,75 @@ func (o OptionsSprite) avecDefauts() OptionsSprite {
 	return o
 }
 
+// PartAssemblage decrit un composant a fondre dans un assemblage vue de dessus : un `mode`
+// (chassis parent OU objet-enfant : tourelle, canon, arme) et la TRANSLATION de son marqueur
+// d'attache, exprimee dans le repere LOCAL du vehicule (metres, axes moteur X/Y/Z avant remap).
+//
+// Translation nulle = la piece est deja co-reperee avec le chassis. Mesure (2026-09-01) : les
+// modeles d'objet-enfant d'un vehicule sont authored dans le MEME repere local que le chassis
+// (origine au pivot de tourelle), donc un assemblage a translation nulle place deja la tourelle
+// a l'aplomb de son anneau ; la translation ne sert qu'a corriger un marqueur decale s'il est
+// extrait du render_model parent.
+type PartAssemblage struct {
+	Asset            *RuntimeGeoAsset
+	SectionsChoisies map[int]bool // nil = toutes les sections
+	Translation      [3]float64   // decalage marqueur, repere local vehicule (metres)
+}
+
+// meshesPart rend les maillages d'un composant, translates dans le repere local puis remappes
+// vers le plan de l'image selon l'axe haut.
+func meshesPart(p PartAssemblage, a AxeHaut) []*Mesh {
+	var out []*Mesh
+	for i := 0; i < p.Asset.MeshCount(); i++ {
+		if p.SectionsChoisies != nil && !p.SectionsChoisies[i] {
+			continue
+		}
+		m := p.Asset.Mesh(i)
+		if m == nil || len(m.Vertices) == 0 || len(m.Triangles) == 0 {
+			continue
+		}
+		if p.Translation != [3]float64{} {
+			t := &Mesh{Vertices: make([][3]float64, len(m.Vertices)), Triangles: m.Triangles}
+			for k, v := range m.Vertices {
+				t.Vertices[k] = [3]float64{v[0] + p.Translation[0], v[1] + p.Translation[1], v[2] + p.Translation[2]}
+			}
+			m = t
+		}
+		out = append(out, remapMesh(m, a))
+	}
+	return out
+}
+
+// RenduAssemblage fond PLUSIEURS `mode` (chassis + objets-enfants) dans un SEUL rendu vue de
+// dessus : un z-buffer partage donne l'occlusion correcte (le canon passe devant le chassis la
+// ou il est plus haut), toutes les pieces au meme repere et a la meme echelle. C'est
+// « l'assemblage du package » : chassis parent + tourelle/arme co-reperes.
+func RenduAssemblage(parts []PartAssemblage, o OptionsSprite) (*Rendu, error) {
+	o = o.avecDefauts()
+	var meshes []*Mesh
+	for _, p := range parts {
+		if p.Asset == nil {
+			continue
+		}
+		meshes = append(meshes, meshesPart(p, o.AxeHaut)...)
+	}
+	return renduDesMeshes(meshes, o, len(parts))
+}
+
 // RenduObjetIsole projette tous les maillages d'un `mode` en vue de dessus, en repere local,
 // et rend le `Rendu` (z-buffer + normales) pret a etre encode. Rend une erreur si le modele
 // n'a aucun maillage exploitable.
 func RenduObjetIsole(asset *RuntimeGeoAsset, o OptionsSprite) (*Rendu, error) {
 	o = o.avecDefauts()
-	var meshes []*Mesh
-	for i := 0; i < asset.MeshCount(); i++ {
-		if o.SectionsChoisies != nil && !o.SectionsChoisies[i] {
-			continue
-		}
-		if m := asset.Mesh(i); m != nil && len(m.Vertices) > 0 && len(m.Triangles) > 0 {
-			meshes = append(meshes, remapMesh(m, o.AxeHaut))
-		}
-	}
+	meshes := meshesPart(PartAssemblage{Asset: asset, SectionsChoisies: o.SectionsChoisies}, o.AxeHaut)
+	return renduDesMeshes(meshes, o, asset.MeshCount())
+}
+
+// renduDesMeshes cadre puis rasterise un jeu de maillages deja remappes dans le plan de l'image.
+func renduDesMeshes(meshes []*Mesh, o OptionsSprite, nSections int) (*Rendu, error) {
 	min, max, ok := bornesPlan(meshes)
 	if !ok {
-		return nil, fmt.Errorf("himap: modele sans maillage exploitable (%d sections)", asset.MeshCount())
+		return nil, fmt.Errorf("himap: modele sans maillage exploitable (%d sections)", nSections)
 	}
 	// Cadre force : rend plusieurs sous-ensembles de sections au MEME repere (comparables).
 	if o.CadreMin != nil && o.CadreMax != nil {

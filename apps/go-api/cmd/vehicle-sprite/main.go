@@ -35,6 +35,12 @@ func main() {
 		err = cmdRender(os.Args[2:])
 	case "variantes":
 		err = cmdVariantes(os.Args[2:])
+	case "diag":
+		err = cmdDiag(os.Args[2:])
+	case "assemble":
+		err = cmdAssemble(os.Args[2:])
+	case "compose2d":
+		err = cmdCompose2d(os.Args[2:])
 	default:
 		usage()
 		os.Exit(2)
