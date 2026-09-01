@@ -73,12 +73,18 @@ const BudgetParCycle = 5 * time.Minute
 
 // bitFilmAbsent : le marqueur terminal « film 404/expiré, 0 chunk disponible » du registre.
 //
-// ⚠ IL EST PARTAGÉ, ET CE N'EST PAS UN DÉTAIL. Il est POSÉ par l'étape 1.55 (weapon kills) et
-// LU par le rattrapage de l'étape 1.57 (`killcollector.backlogAJour`) ; ce fichier en est le
-// troisième usager. Quiconque supprime l'étape 1.55 supprime le seul poseur de ce marqueur, et
-// prive du même coup les rattrapages 1.57 et 1.58 de leur seule protection contre les films
-// irrécupérables — la conséquence doit être traitée dans le même lot, pas découverte après.
-const bitFilmAbsent = matchflags.MBitWeaponKillsNoFilm
+// ⚠ IL EST PARTAGÉ, ET CE N'EST PAS UN DÉTAIL. Il est POSÉ par l'étape 1.57 (kill source) et
+// LU par le rattrapage de cette même étape (`killcollector.backlogAJour`) ; ce fichier en est
+// le second usager.
+//
+// L'ÉTAPE 1.55 EN ÉTAIT LE POSEUR HISTORIQUE, et le marqueur s'appelait alors
+// `MBitWeaponKillsNoFilm`. Sa suppression (lot arme-source-unique, 2026-09-01) a transféré la
+// pose à l'étape 1.57 — qui télécharge le film du même match, au même moment, et constate donc
+// le 404 aussi bien. La VALEUR du bit (1<<22) n'a pas bougé : elle est persistée dans
+// `match_registry.backfill_completed`, on ne renumérote jamais un bit déjà posé en base.
+// Sans ce marqueur, les rattrapages 1.57 et 1.58 redemanderaient à vie les ~29 % de films
+// définitivement irrécupérables.
+const bitFilmAbsent = matchflags.MBitFilmAbsent
 
 // candidatARattraper : une ligne de la queue récente, telle que le registre la rend.
 type candidatARattraper struct {
