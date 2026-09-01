@@ -874,21 +874,6 @@ func cheminsCanevas(opts OptionsCuissonForge) []string {
 	return append(chemins, globsAny...)
 }
 
-// MinceurDuModele rend la part de son EMPRISE AU SOL que le modele couvre reellement, vue de
-// dessus : on projette ses triangles sur une grille de 32 x 32 et on compte les cases pleines.
-//
-// POURQUOI CETTE MESURE ET PAS UNE AUTRE. Le gribouillis des cartes organiques vient de
-// modeles de BRANCHES poses par centaines (349 exemplaires du seul type le plus nombreux
-// d Isolation, etabli le 2026-08-27 en n en dessinant qu un seul). Deux criteres ont ete
-// essayes et ont ECHOUE a les distinguer :
-//
-//  1. l EMPRISE du modele — elle attrape les gros rochers, qui sont legitimes ;
-//  2. l AIRE DU MAILLAGE rapportee a l emprise — le type des branches y sort au rang 222
-//     sur 271, parmi les plus PLEINS : une branche est un tube a nombreuses facettes, sa
-//     surface est grande meme si elle ne couvre rien.
-//
-// Ce qui separe vraiment une branche d un rocher, c est que vue de dessus elle ne remplit
-// presque rien de sa boite : quelques traits dans un carre vide.
 // empriseAuSolDuModele rend la boite englobante PLANAIRE du modele, en coordonnees locales, et
 // son nombre total de triangles. Extrait de MinceurDuModele, a l'identique.
 func empriseAuSolDuModele(a *RuntimeGeoAsset) (lo, hi [2]float64, tris int) {
@@ -910,6 +895,21 @@ func empriseAuSolDuModele(a *RuntimeGeoAsset) (lo, hi [2]float64, tris int) {
 	return lo, hi, tris
 }
 
+// MinceurDuModele rend la part de son EMPRISE AU SOL que le modele couvre reellement, vue de
+// dessus : on projette ses triangles sur une grille de 32 x 32 et on compte les cases pleines.
+//
+// POURQUOI CETTE MESURE ET PAS UNE AUTRE. Le gribouillis des cartes organiques vient de
+// modeles de BRANCHES poses par centaines (349 exemplaires du seul type le plus nombreux
+// d Isolation, etabli le 2026-08-27 en n en dessinant qu un seul). Deux criteres ont ete
+// essayes et ont ECHOUE a les distinguer :
+//
+//  1. l EMPRISE du modele — elle attrape les gros rochers, qui sont legitimes ;
+//  2. l AIRE DU MAILLAGE rapportee a l emprise — le type des branches y sort au rang 222
+//     sur 271, parmi les plus PLEINS : une branche est un tube a nombreuses facettes, sa
+//     surface est grande meme si elle ne couvre rien.
+//
+// Ce qui separe vraiment une branche d un rocher, c est que vue de dessus elle ne remplit
+// presque rien de sa boite : quelques traits dans un carre vide.
 func MinceurDuModele(a *RuntimeGeoAsset) (float64, bool) {
 	const cotesGrille = 32
 	lo, hi, tris := empriseAuSolDuModele(a)
