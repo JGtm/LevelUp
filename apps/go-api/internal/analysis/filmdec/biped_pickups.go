@@ -60,8 +60,6 @@ const (
 	// bipedPickupType / bipedBoardVehicleType : les deux types que cet octet porte.
 	bipedPickupType       = 9
 	bipedBoardVehicleType = 8
-	// bipedPickupPreambleBits : configuration(1) + continuation(1) + type R(7).
-	bipedPickupPreambleBits = 9
 	// bipedPickupRefBaseDom2 est la BASE de plage du domaine 2, celle que le lecteur de l'exe
 	// ajoute à l'index pour reconstruire la référence. Établie par mesure : l'écart
 	// `slot du ramasseur connu - index de ref0` vaut 512 sur 21/21 puis 11/11 paires de
@@ -199,6 +197,9 @@ func ScanFilmBipedPickups(dir string) ([]BipedPickup, BipedPickupStats, error) {
 // `ok` est faux dès que la lecture n'est pas celle qu'on attend — on ne publie jamais un
 // ramassage deviné.
 func decodeBipedPickup(pay []byte, st *BipedPickupStats) (BipedPickup, bool) {
+	// LE PRÉAMBULE FAIT 9 BITS : configuration(1) + continuation(1) + type R(7). Il se lit en
+	// ligne plutôt que par une constante — celle-ci n'avait aucun lecteur et la CI l'a relevée
+	// (golangci-lint, `unused`) ; le fait, lui, reste écrit ici.
 	br := NewBitReader(pay)
 	br.Skip(1)         // bit de configuration
 	if !br.ReadBit() { // continuation : un événement suit
