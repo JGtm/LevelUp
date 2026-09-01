@@ -93,9 +93,8 @@ export function AppFooter({ variant = 'full' }: AppFooterProps) {
           </Link>
         </nav>
 
-        <nav className="flex max-w-xs flex-col gap-1.5">
+        <nav className="flex flex-col gap-1.5">
           <h2 className="font-medium text-foreground">{t('common.footer.support_heading')}</h2>
-          <p>{t('common.footer.support_note')}</p>
           <ExternalLink href={SPONSORS_URL}>{t('common.footer.sponsors')}</ExternalLink>
           <ExternalLink href={PAYPAL_URL}>{t('common.footer.paypal')}</ExternalLink>
         </nav>

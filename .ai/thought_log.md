@@ -1,3 +1,36 @@
+## [2026-09-01] Pied de page — la note de soutien disparait, « Le developpeur » perd son article — Complete
+
+Demande utilisateur, deux retouches de libelle dans `AppFooter`.
+
+**1. Note de soutien supprimee.** « LevelUp est gratuit et ouvert. Un coup de pouce paie
+l'hebergement. » retiree du rendu ET du manifeste — la cle `common.footer.support_note` est
+SUPPRIMEE de `manifests/common.toml` (regle n°7, zero code mort : une cle i18n sans lecteur est
+du mort qui se traduit et se maintient). La colonne « Soutenir » ne garde que son titre et ses
+deux liens (GitHub Sponsors, PayPal).
+
+**Effet de bord traite dans le meme geste** : le `max-w-xs` de cette colonne n'existait que pour
+borner la largeur du paragraphe. Sans lui il ne bornait plus rien (les deux liens restants sont
+bien plus courts que 20rem) — classe retiree, la colonne s'aligne sur ses deux voisines qui
+portent le meme `flex flex-col gap-1.5`.
+
+**2. `common.footer.developer` : « Le developpeur » -> « Developpeur ».** L'anglais suit —
+« The developer » -> « Developer ». Le manifeste est type par `Record<Locale, T>` (parite
+FR/EN obligatoire) et il s'agit de la meme normalisation : les autres entrees du pied sont deja
+des etiquettes sans article (« Soutenir », « Ailleurs », « Code source », « Licence MIT »).
+Si l'anglais devait garder son article, c'est la seule ligne a revenir.
+
+**Chaine de generation respectee** : edition du TOML source puis `node scripts/build_i18n_manifests.mjs`
+(21 manifestes, 3013 cles) — `generated/common.ts` porte l'en-tete « NE PAS EDITER A LA MAIN »,
+il n'a pas ete touche directement. Diff genere verifie : exactement 2 lignes, aucune derive.
+
+**Test mis a jour** : `AppFooter.test.tsx` interrogeait le lien par `/Le developpeur/i` — le
+matcher accrochait le libelle qui vient de changer. Passe a `/Developpeur/i`.
+
+**GATES** (codes de sortie verifies) : `tsc -b` 0 apres purge de `node_modules/.tmp` (pas de
+faux vert incremental) ; eslint 0 sur les 3 fichiers touches ; vitest `AppFooter` + `lib/i18n`
+7 fichiers / 50 tests verts — dont les gardes anglicismes et le ratchet de locale. Go non
+concerne. Non commite : en attente de l'accord utilisateur.
+
 ## [2026-09-01] Hygiene du depot — les GOCACHE isoles entrent au .gitignore, le plan « source unique de l'arme » est verse — Complete
 
 Constat d'un `git status` : l'arbre suivi etait propre et `feat/v75` au niveau de son amont
