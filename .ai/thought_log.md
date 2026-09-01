@@ -1,3 +1,33 @@
+## [2026-09-01] Owner du projectile — lien de CHAMP absent du projectile vivant, present QU'A LA MORT — Complété
+
+**Contexte** : worktree dédié `wt/trame-owner`. Suite de la réserve « projectile→owner » laissée
+par NOTE_TOUCHES_EXPLOSIVES. Objectif : trouver le CHAMP qui relie une touche explosive non fatale
+à son tireur (pas une jointure temporelle). Instrument `projectile_owner_research_test.go`
+(+ `_helpers`), garde LOT1_TRAME_FILM, borné 12 chunks. Films 000d5950 / 01e1f945 / 00502e52.
+
+**Décision technique** : Ghidra — l'objet porte bien un DamageOwner (`Object_Get/SetDamageOwner
+Object/Player`, `Unit_GetReceivedDamage_WeakDamageOwner*`, `Equipment_GetOwnerUnit`) ; le handler
+`Object_GetDamageOwnerPlayer`=FUN_1407b905c le résout au RUNTIME (pas un composant répliqué). Le
+dead-state EnumB (+0x08 = killer-absolute-participant-index) EST ce DamageOwner matérialisé à la
+mort. Candidat film testé : i10 object-parent-state de ti=41, dont la branche libre lit un handle
+R(13) dom1 (même espace que les bipèdes) — valeur avant jetée, publiée via ObjectParentState.FreeID
+(edits prod sans changement de bits). Censure ROBUSTE des masques ti=41 via matchWorldObjectRecord
+(M1b), indépendante du rendement des trames propres.
+
+**Résultats** : M1b sur 6132 / 2824 / 2747 records ti=41 → i10 (parent-state) = 0,0 / 0,1 / 0,0 % ;
+i9 (multiplayer-properties) = 0,1 / 0,0 / 0,0 %. Le projectile en vol ne réplique QUE du cinématique
+(i0 position 100 %, i1/i2/i3, occasionnellement i18/i19/i20). Les 2-3 FreeID captés (5022,197,6688)
+sont étalés, ne résolvent à aucun bipède. M2 oracle : tueurs dead-state de faible cardinalité (0:4,
+9:1 etc.) — le lien de champ existe mais QU'À LA MORT. M3 : 0/50, 0/13, 0/9 dégâts explosifs
+résolvent réf1 à un slot ti=41 vivant (projectile transitoire).
+
+**Conclusion** : le lien de champ projectile→tireur existe uniquement au dead-state (kills, 97,6 %).
+Le projectile VIVANT ne porte pas d'owner dans le film → touches explosives NON FATALES non
+attribuables par lien de champ ; la jointure temporelle tir↔impact reste la seule voie. Réf. réf0
+dom5 (owner vs entité) = tranchée : c'est l'entité projectile, pas l'owner. Note :
+`.ai/V7.5/film_re/NOTE_PROJECTILE_OWNER_2026-09-01.md`. gofmt + go vet + tests composants verts.
+Prochaine étape : si feature accuracy explosifs, assumer la jointure-au-tir (pas de champ à espérer).
+
 ## [2026-09-01] Touches explosives — présentes dans le film, attribuables tireur+arme par jointure au tir — Complété
 
 **Contexte** : worktree dédié `wt/trame-explo`. Le verdict précédent (« armes lourdes = 0 % de

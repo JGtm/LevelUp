@@ -65,15 +65,20 @@ func consumeID2(br *BitReader) {
 // is DAT_144706100 = 0x1FFF -> W = bitLen(0x1FFF) = 13, so the common cost is
 // R(13)+R(2) = 15 bits; per-slot ranges (DAT_1451f98d0 table, all-zero in retail)
 // would shorten W. range is supplied by the caller's descriptor.
-func readVarWidthInt(br *BitReader, rangeMax uint32, probe bool) {
+// readVarWidthInt rend l'index brut R(W) (la génération R(2) de queue est consommée mais
+// pas rendue, comme pour les refs dom1). Les appelants qui n'en veulent pas l'ignorent
+// (un appel-instruction jette la valeur de retour) : aucun bit lu ne change.
+func readVarWidthInt(br *BitReader, rangeMax uint32, probe bool) uint64 {
 	if probe {
 		br.ReadBit() // FUN_1406cf008 probe bit (param_3==1 only)
 	}
 	w := bitLen(rangeMax) // FUN_1406d310c
+	var v uint64
 	if w > 0 {
-		br.ReadBits(uint(w))
+		v = br.ReadBits(uint(w))
 	}
-	br.ReadBits(2) // 2 trailing bits
+	br.ReadBits(2) // 2 trailing bits (génération du handle)
+	return v
 }
 
 var defaultReplRange uint32 = 0x1FFF // DAT_144706100 (config du header film ; calibrable)
@@ -89,17 +94,23 @@ func SetDefaultReplRange(v uint32) { defaultReplRange = v }
 //
 // CONFIRMED (asm): FUN_140f72e48 / FUN_1409685d8 / FUN_14058c058 all call
 // FUN_1408f0ac4(...,0). FUN_1406d3140 reads its probe R(1) only when param_3==1.
-func consume1408f0ac4(br *BitReader) { consume1408f0ac4Probe(br, false) }
+// consume1408f0ac4 rend (présent, id) où id est l'index R(W) lu quand la porte est ouverte.
+// La quasi-totalité des appelants l'appellent comme instruction et jettent ces valeurs
+// (aucun bit lu ne change) ; seul consumeObjectParentState les garde, pour sonder si l'id
+// d'un projectile en vol pointe son tireur (index dom1, même espace que les bipèdes).
+func consume1408f0ac4(br *BitReader) (bool, uint64) { return consume1408f0ac4Probe(br, false) }
 
 // consume1408f0ac4Probe is FUN_1408f0ac4 with the FUN_1406d3140 param_3 made
 // explicit. unit-actor-control's two slot calls pass param_3 == 1 (probe present);
 // all other call sites pass 0. CONFIRMED by disassembly of the call sites
 // (FUN_1408f0778 @1408f0948/1408f0962 push R8D=1; others push 0).
-func consume1408f0ac4Probe(br *BitReader, probe bool) {
+func consume1408f0ac4Probe(br *BitReader, probe bool) (bool, uint64) {
 	if br.ReadBit() {
-		readVarWidthInt(br, defaultReplRange, probe) // FUN_1406d3140 probe iff param_3==1
+		id := readVarWidthInt(br, defaultReplRange, probe) // FUN_1406d3140 probe iff param_3==1
 		// FUN_1406cb0cc consumes 0 bits (config check).
+		return true, id
 	}
+	return false, 0
 }
 
 // consume1411b1ac0 mirrors FUN_1411b1ac0 -> FUN_140e82b84: R(1); if set R(12).
