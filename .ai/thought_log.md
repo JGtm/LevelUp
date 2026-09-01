@@ -81048,3 +81048,49 @@ bande, ils appellent la regle.
 **RESTE** : `wt/ultra-jauge` (le worktree du lot de mesures en cours) appelle encore les anciens
 noms. Meme correction a appliquer quand le lot aura rendu la main — pas avant, on ne merge pas
 sous les pieds d'agents qui ecrivent.
+
+---
+
+## [2026-09-01] PERCEE — l'anneau ti=12 i14 EST la jauge d'armement : le plancher est passe
+
+**Statut** : Complete. La derniere piste film etait la bonne.
+
+**LE PROTOCOLE, fixe avant la mesure** (spec de la synthese du lot, appliquee sans retouche) :
+A = les 13 explosions des 5 films Neutral Bomb REELS (Husky Raid retire, partition anterieure) ;
+montees redefinies avec CONTIGUITE (trou <= 500 ms) ; B = 1 000 tirages nuls a graine fixe,
+memes effectifs par film ; C = les vraies cibles decalees de +45 s / -45 s / +120 s. Regle
+ecrite dans l'en-tete du fichier AVANT le premier run.
+
+**LE RESULTAT** (`navpoint_ti12_plancher_test.go`, `wt/ultra-jauge`) :
+
+	A (reel)      couverture 13/13, delai median 4,9 s, CV 0,016
+	C (+45 s)     CV 0,325 — echoue
+	C (-45 s)     couverture 11/13, CV 0,620 — echoue
+	C (+120 s)    CV 0,393 — echoue
+	B (nulle)     10/1000 tirages atteignent la couverture pleine ; parmi eux, CV p5 = 0,806 ;
+	              **0/1000 ne fait aussi bien que le reel**
+
+Toutes les conditions de la regle sont remplies. **La fin de la montee contigue de l'anneau
+precede chaque explosion de 4,93 s avec une dispersion de 1,6 %** — cinquante fois mieux que le
+meilleur vingtieme des tirages nuls.
+
+**CE QUE CA DONNE, terme a terme** :
+- DEBUT de la montee contigue = debut de l'interaction d'armement (le hold, ~5 s en Neutral
+  Bomb, ~0,9 s en Husky Raid — un reglage de mode) ;
+- FIN de la montee (quantum plein) = bombe ARMEE ;
+- fin + 4,93 s = EXPLOSION : la MECHE, constante moteur, mesuree sur 13 explosions.
+
+**RESERVES QUI BORNENT LE POSITIF, a traiter au portage** :
+- la constante 4,9 s vaut pour NEUTRAL BOMB (5 films) ; le lot a observe ~17,2 s sur One Bomb —
+  soit une meche differente par variante, soit une lecture a refaire : les 3 films One Bomb
+  passent au meme instrument AVANT toute generalisation ;
+- l'ATTRIBUTION (qui arme) n'est pas dans ce canal : le navpoint est un marqueur d'ecran, pas un
+  acteur. Le detonateur est deja nomme par le statborg ; l'armeur est le meme joueur dans la
+  quasi-totalite des cas (le porteur pose et la bombe explose) — a confirmer par croisement
+  positionnel si le rejeu veut nommer l'armeur independamment ;
+- les navpoints vont PAR PAIRES (+12 d'ecart de slot, un par camp) : le portage deduplique par
+  paire.
+
+**Prochaine etape (portage produit)** : porter la detection de montee contigue dans le pipeline
+du rejeu (meme motif que `extractFromTh10`), publier `bomb_arming_start` / `bomb_armed` par
+manche, et le compte a rebours = [fin de montee, fin + meche] — la demande produit d'origine.
