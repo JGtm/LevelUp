@@ -63,14 +63,27 @@ const (
 	PickupOriginGround = "ground"
 )
 
+// Les trois etats du catalogue de points pour la carte du match — cf.
+// PickupCoverage.SpawnPointsState, qui porte la doc de chacun.
+const (
+	SpawnPointsMapAbsent      = "map_absent"
+	SpawnPointsNotEstablished = "not_established"
+	SpawnPointsEstablished    = "established"
+)
+
 // MapSpawnPoint est UN point d'apparition non-arme de la carte, tel que le builder le recoit.
 // C'est la projection du catalogue (`MapSpawnPointSpot`) : le builder n'a pas a connaitre la
 // forme du fichier fige.
 type MapSpawnPoint struct {
 	X, Y, Z float32
-	// Kind est la nature du point (`grenade`, `equipment`, `unknown`). Elle n'entre PAS dans
-	// la decision d'origine — un ramassage sur un point est un ramassage sur un point, quelle
-	// que soit la nature qu'on prete au point. Elle est portee pour la couverture.
+	// Kind est la nature du point (`grenade`, `equipment`, `unknown`).
+	//
+	// ELLE N'ENTRE PAS DANS LA DECISION d'origine — un ramassage sur un point est un ramassage
+	// sur un point, quelle que soit la nature qu'on prete au point. Elle est en revanche
+	// PUBLIEE, ventilee par `PickupCoverage.SpawnerByPointKind` : c'est le seul endroit ou un
+	// typage de point errone se verrait en production (des grenades qui tomberaient
+	// massivement sur des points typés `equipment`). Un champ porte et jamais lu serait du
+	// musee ; celui-ci est lu.
 	Kind string
 }
 
@@ -82,15 +95,17 @@ type pickupOriginJudge struct {
 	// points : les points d'apparition NON-ARME de la carte. Vide = le juge ne rend jamais
 	// `spawner`, et la couverture le dit par MapCatalogMissing.
 	points []MapSpawnPoint
-	// catalogKnown dit si la carte a ete TROUVEE au catalogue. Distinguer « carte absente du
-	// catalogue » de « carte connue sans point » est une DECISION PRODUIT : le trou doit se
-	// VOIR, et surtout il ne doit pas se combler par un telechargement pendant la cuisson —
-	// la generation d'artefact reste hors ligne (doctrine du depot).
-	catalogKnown bool
+	// state est l'un des trois etats du catalogue pour cette carte (cf.
+	// PickupCoverage.SpawnPointsState). Il ne change pas la decision — un juge sans point ne
+	// rend jamais `spawner` — mais il dit au client CE QUE VAUT l'absence d'origine.
+	state string
+	// kindAtteint est la nature du dernier point retenu par `origineDe`. Effet de bord assume
+	// et LOCAL : il evite de faire remonter un second retour a travers toute la boucle de
+	// `buildPickups` pour une information que seul le compteur consomme, juste apres l'appel.
+	kindAtteint string
 	// posBySlot : les positions des bipedes, par slot, pour localiser le ramasseur.
 	posBySlot map[uint32][]bipedPos
-	// dropped : les positions des poses dont l'origine mesuree est `dropped`, avec l'instant
-	// de la pose — un objet ne peut pas etre ramasse avant d'avoir ete lache.
+	// dropped : les poses dont l'origine mesuree est `dropped`, BORNEES AUX DEUX BOUTS.
 	dropped []droppedSpot
 }
 
@@ -100,9 +115,33 @@ type bipedPos struct {
 	x, y, z float32
 }
 
-// droppedSpot est une pose `dropped` : ou, et a partir de quand.
+// droppedSpot est une pose `dropped` : ou, et PENDANT QUELLE FENETRE elle a pu etre ramassee.
+//
+// LES DEUX BORNES SONT NECESSAIRES, et n'en avoir qu'une etait un defaut releve en revue.
+//
+//	t        l'instant de la pose. En deca, l'objet n'existe pas encore : un ramassage
+//	         anterieur ne peut pas venir de lui.
+//	jusqua   la PREMIERE PREUVE D'ABSENCE (`UntilMax` du schema 28). Au-dela, le document a
+//	         MESURE que l'objet n'est plus la — lui attribuer un ramassage contredirait sa
+//	         propre mesure. Sans cette borne, un ramassage des milliers de frames apres la
+//	         disparition constatee sortait quand meme `ground`.
+//
+// POURQUOI `UntilMax` ET NON `Until` : entre les deux, la disparition est un INTERVALLE et
+// l'objet PEUT encore etre la (cf. le contrat de EquipmentPlacement.Until/UntilMax). Prendre
+// la borne haute, c'est refuser seulement ce qui est prouve absent — le choix conservateur,
+// celui qui n'invente pas d'abstention. Aucune marge n'est ajoutee par-dessus : `UntilMax`
+// EST deja la premiere image-cle qui ne recense plus l'objet, donc deja genereux.
+//
+// `jusqua` vaut -1 quand rien ne prouve la disparition (`End == "open"`, ou artefact
+// anterieur au schema 28 dont `End` est vide) : la pose n'a alors pas de borne haute.
+//
+// LA VALEUR ZERO N'EST PAS NEUTRE, et c'est VOULU AINSI : un `droppedSpot` construit sans
+// renseigner `jusqua` borne a la frame 0, donc refuse tout ramassage et rend l'abstention. Un
+// oubli echoue donc du cote PRUDENT — il fait perdre une origine, il n'en invente pas. C'est
+// exactement l'inverse du defaut que ce champ corrige.
 type droppedSpot struct {
 	t       int
+	jusqua  int
 	x, y, z float32
 }
 
@@ -113,14 +152,19 @@ func (j *pickupOriginJudge) origineDe(slot uint32, tsUS uint64, frame int) strin
 		return ""
 	}
 	// `spawner` d'abord : un fait de carte l'emporte sur une inference de film.
+	j.kindAtteint = ""
 	for _, p := range j.points {
 		if dist3([3]float32{x, y, z}, [3]float32{p.X, p.Y, p.Z}) < PickupOriginMatchM {
+			j.kindAtteint = p.Kind
 			return PickupOriginSpawner
 		}
 	}
 	for _, d := range j.dropped {
 		if d.t > frame {
 			continue // un objet ne se ramasse pas avant d'etre lache
+		}
+		if d.jusqua >= 0 && frame > d.jusqua {
+			continue // le document a MESURE que l'objet n'etait plus la
 		}
 		if dist3([3]float32{x, y, z}, [3]float32{d.x, d.y, d.z}) < PickupOriginMatchM {
 			return PickupOriginGround
@@ -161,10 +205,16 @@ func (j *pickupOriginJudge) positionDe(slot uint32, tsUS uint64) (x, y, z float3
 func newPickupOriginJudge(opt Options, pos []filmdec.BipedPosition,
 	placements []EquipmentPlacement,
 ) *pickupOriginJudge {
+	etat := opt.SpawnPointsState
+	if etat == "" {
+		// Un appelant qui ne dit rien n'a pas fourni de carte : c'est une absence, pas un
+		// etabli-a-vide. Le defaut le moins affirmatif est le bon.
+		etat = SpawnPointsMapAbsent
+	}
 	j := &pickupOriginJudge{
-		points:       opt.SpawnPoints,
-		catalogKnown: opt.MapCatalogKnown,
-		posBySlot:    make(map[uint32][]bipedPos, 32),
+		points:    opt.SpawnPoints,
+		state:     etat,
+		posBySlot: make(map[uint32][]bipedPos, 32),
 	}
 	for _, p := range pos {
 		if !p.HasWorld {
@@ -181,7 +231,13 @@ func newPickupOriginJudge(opt Options, pos []filmdec.BipedPosition,
 		if pl.Origin != OriginDropped {
 			continue
 		}
-		j.dropped = append(j.dropped, droppedSpot{t: pl.T0, x: pl.X, y: pl.Y, z: pl.Z})
+		// BORNE HAUTE : la premiere preuve d'absence, quand il y en a une.
+		jusqua := -1
+		if pl.End == GroundWeaponEndSeen {
+			jusqua = pl.UntilMax
+		}
+		j.dropped = append(j.dropped,
+			droppedSpot{t: pl.T0, jusqua: jusqua, x: pl.X, y: pl.Y, z: pl.Z})
 	}
 	return j
 }

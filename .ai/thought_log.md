@@ -83911,3 +83911,77 @@ garde de parité de schéma ; gate golden nommé `pickup_origin_test.go` à 4 pr
 **Conclusion / prochaine étape** : revue adversariale avant merge. Restent ouverts : `fosp` non
 élucidé, 11 des 13 points en `unknown` (une carte, un film), les 9 cartes à source dérivée
 (décision produit) et les 4 cartes de `map_objectives` qui pourraient entrer au catalogue.
+
+## [2026-09-01] Origine des ramassages — ronde 1 de corrections après double revue — Complété
+
+**Statut** : Complété. Trois P1 corrigés avec inversions rejouées, huit P2 traités. Pas de merge.
+
+### P1-A — la couverture était aveugle exactement là où l'origine est la moins fiable
+
+Un booléen `mapCatalogMissing` valait FAUX sur les cartes SAUTÉES pour dérive de source : elles
+se lisaient « carte connue, aucun point », alors que leur catalogue de points n'est pas ÉTABLI.
+Le drapeau censé faire VOIR le trou affirmait que tout allait bien.
+
+**Trois états désormais, jusque dans la forme du JSON** : `SpawnPoints` devient un POINTEUR, si
+bien que la clé absente (points non établis) ne se confond plus avec `[]` (établis, aucun point).
+Côté document, `spawnPointsState` remplace le booléen — deux vérités concurrentes sur une même
+question valent moins qu'une.
+
+### P1-B — `ground` n'avait pas de borne SUPÉRIEURE
+
+Le juge retenait `T0` et jetait `Until`/`UntilMax`/`End`, que le document mesure depuis le
+schéma 28 : un ramassage des milliers de frames après la disparition MESURÉE de la pose sortait
+quand même `ground`. Borne haute = `UntilMax` (la première preuve d'absence, le choix
+conservateur ; `End == "open"` n'en reçoit aucune).
+
+**Effet sur données réelles** : `origineSol` tombe de **14 à 10** sur le film pilote — quatre
+attributions étaient fausses.
+
+### P1-C — le mode ajout-seul laissait des points PÉRIMÉS
+
+Une carte acceptée hier et dérivée aujourd'hui gardait ses `spawn_points` : le catalogue aurait
+publié des points d'une source qu'il venait lui-même de déclarer non concordante, et la note
+l'aurait comptée parmi les « sans points ». Au saut pour dérive, la clé est maintenant EFFACÉE
+et l'effacement compté (`cartes_dont_points_retires`).
+
+**Contre-cas explicite** : une carte SANS dump garde ses points — l'absence de fichier ne
+CONTREDIT rien, et effacer détruirait des données valides dès qu'on relance sur un dépôt partiel.
+
+### Le verrou durci change le résultat : 16 cartes sautées au lieu de 9
+
+`memesSocles` seul ne vérifiait RIEN sur une carte sans socle (deux listes vides sont égales).
+Le verrou compare désormais `objects_n`, `level_id` ET les socles — les deux premiers sont
+précisément les signaux qui avaient détecté la dérive de Deadlock. **Sept cartes de plus** se
+révèlent dérivées : elles recevaient jusqu'ici des points issus d'un fichier qui n'était pas le
+leur. Catalogue final : 1662 points sur 56 cartes, 16 non établies, **72/72 socles identiques**.
+
+### Les inversions ont trouvé un défaut que la revue n'avait pas vu
+
+Rejouées comme exigé, les deux inversions P1-A **PASSAIENT** : mes assertions comparaient
+`cov.SpawnPointsState` aux constantes testées — tautologie, la faute exacte déjà payée à la
+ronde précédente. Corrigé : attendus en LITTÉRAUX, plus un test d'unicité des trois valeurs, plus
+un test `replaybuild` sur un chemin qui n'en avait aucun. Les six inversions tombent désormais
+(3 termes du verrou, effacement, borne haute, anachronisme, nom ambigu, deux sur les états).
+
+### Chiffres de PRODUCTION du film pilote (Catalyst `01e1f945`)
+
+`origineSocle=33`, `origineSol=10`, `origineInconnue=23` — somme 66, invariant bouclé.
+`etatPoints=established`, `pointsCatalogue=35`, pic mémoire **0,19 GiB** sur 3 autorisés.
+
+**Rapprochement recherche/production** : la recherche trouvait 41 ramassages non-arme sous le
+mètre d'un point, sur les 65 points BRUTS socles d'armes compris ; la production exclut les trois
+types de socle d'arme, sur lesquels tombaient 4 + 4 = 8 ramassages. **41 − 8 = 33.**
+
+**Contrôle du typage en production** (`spawnerByPointKind`, né du P2-5) : 16 points grenade pour
+18 ramassages de grenade, 13 points équipement pour 15 — les 4 points `unknown` absorbent
+l'écart. Le typage de l'étape 1 se corrobore donc sur un autre axe que celui qui l'a établi.
+
+**Repli par nom public** : la CLI cuit à partir d'un NOM et n'a pas de `map_id` sans fichier de
+faits ; sans ce repli la chaîne était muette hors service (`carteAuCatalogue=false` à la première
+cuisson). Le `map_id` reste prioritaire.
+
+### Conclusion / prochaine étape
+
+Ronde 2 de revue sur ces corrections. Restent ouverts et consignés : `fosp` non élucidé, 11 des
+13 points en `unknown`, les 16 cartes à source dérivée (décision produit), les fusions de points
+à natures mélangées (journalisées, jamais nulles sur BTB).

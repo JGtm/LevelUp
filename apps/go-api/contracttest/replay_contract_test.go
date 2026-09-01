@@ -444,6 +444,29 @@ var replaySchemas = []struct {
 //	                      `unknownFamilies` (requis) est precisement le couple que ces gardes
 //	                      savent juger.
 //
+//	45 -> 45  2026-09-01  SCHEMA 32, ET LE COMPTE RACINE NE BOUGE PAS — l entree est ecrite
+//	                      quand meme, parce que la convention posee au schema 31 serait
+//	                      abandonnee sinon : cette chronique suit le CONTRAT, pas seulement le
+//	                      nombre de champs a la racine.
+//	                      `Pickup.origin` entre (`spawner` : le ramassage a eu lieu sur un
+//	                      point d apparition catalogue de la CARTE ; `ground` : sur une pose
+//	                      dont l origine mesuree est `dropped`), et `PickupCoverage` gagne
+//	                      `originSpawner`/`originGround`/`originUnknown`, `spawnPointsState`,
+//	                      `mapCatalogPoints` et `spawnerByPointKind`.
+//	                      DEUX CORRECTIFS DE REVUE SONT DANS CE CONTRAT, et ils expliquent sa
+//	                      forme. (1) `spawnPointsState` a TROIS valeurs la ou un booleen
+//	                      `mapCatalogMissing` en donnait deux : les cartes dont les points ne
+//	                      sont PAS ETABLIS (source `.mvar` derivee, 16 cartes au 2026-09-01)
+//	                      sortaient `false` avec zero point, ce qui se lit « carte connue,
+//	                      aucun point » — le drapeau cense faire VOIR le trou affirmait que
+//	                      tout allait bien. Le booleen est RETIRE, pas complete : deux verites
+//	                      concurrentes sur une meme question valent moins qu une.
+//	                      (2) `spawnerByPointKind` existe pour que le typage des points se
+//	                      CONTROLE en production — des grenades qui tomberaient massivement
+//	                      sur des points typés `equipment` ne se verraient nulle part ailleurs.
+//	                      `origin` est OPTIONNEL et son absence est une ABSTENTION : un client
+//	                      qui ne trouve pas la cle conclut « non etabli », jamais `ground`.
+//
 // Les quinze fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
 // chiffre ne le dise. Contrat regenere (`make openapi-gen`), jamais ecrit a la main.
 const wantReplayDocumentFields = 45

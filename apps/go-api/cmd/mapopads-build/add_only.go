@@ -15,18 +15,25 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis/replay"
-	titlePkg "levelup/go-api/internal/domain/title"
 )
 
+// ingestFn est la couture qui rend la DERIVE testable. Sans elle, exercer le chemin
+// « source derivee » exigerait de fabriquer un `.mvar` synthetique, et la garde restait donc
+// non cablee : la supprimer ne faisait tomber aucun test. La variable n'existe que pour cela,
+// et le code de production ne la reassigne jamais.
+var ingestFn = ingest
+
 // addSpawnPointsOnly charge le catalogue existant et n'y ajoute que les points d'apparition.
-func addSpawnPointsOnly(ctx context.Context, res *titlePkg.PathResolver, titleSlug string,
-	objectifs *replay.MapObjectivesCatalog, dumps *dumpIndex, outPath string, dryRun bool,
+// Cinq parametres, et pas sept : `res` et `titleSlug` etaient portes sans etre lus — le chemin
+// du catalogue est deja resolu par l'appelant et passe en `outPath`.
+func addSpawnPointsOnly(ctx context.Context, objectifs *replay.MapObjectivesCatalog,
+	dumps *dumpIndex, outPath string, dryRun bool,
 ) {
 	cat, err := replay.LoadMapWeaponPads(outPath)
 	if err != nil {
 		fail(ctx, "catalogue des socles existant", err)
 	}
-	var ajoutees, points, sautees, sansDump int
+	var ajoutees, points, sautees, sansDump, retirees, aZeroPoint int
 	var detailSautees []string
 	for mapID, entry := range cat.Maps {
 		e, ok := objectifs.Maps[mapID]
@@ -36,32 +43,66 @@ func addSpawnPointsOnly(ctx context.Context, res *titlePkg.PathResolver, titleSl
 		}
 		path, base, ok := dumps.resolve(mapID, e)
 		if !ok {
+			// SANS DUMP, ON N'EFFACE RIEN. Des points etablis lors d'une passe precedente ne
+			// sont pas CONTREDITS par l'absence de fichier aujourd'hui ; les effacer
+			// detruirait des donnees valides des qu'on relance le generateur sur un depot
+			// partiel. Seule la DERIVE contredit, et seule elle efface.
 			sansDump++
 			continue
 		}
-		neuf, _, err := ingest(mapID, e, path, base)
-		if err != nil {
-			slog.WarnContext(ctx, "mapopads: variante illisible, carte sautee",
-				"map_id", mapID, "err", err)
-			sautees++
-			continue
+		neuf, _, err := ingestFn(mapID, e, path, base)
+		derive := ""
+		switch {
+		case err != nil:
+			derive = "variante illisible"
+			slog.WarnContext(ctx, "mapopads: variante illisible", "map_id", mapID, "err", err)
+		// LE VERROU, EN TROIS TERMES ET PAS UN SEUL.
+		//
+		// `memesSocles` seul ne verifie RIEN sur une carte sans socle : deux listes vides sont
+		// egales, donc Corpo (0 socle) passait le verrou sans qu'aucune donnee soit comparee.
+		// `objects_n` et `level_id` sont precisement les signaux qui ont DETECTE la derive de
+		// Deadlock (462 objets au catalogue, 410 au telechargement) : ils comparent le
+		// FICHIER, pas seulement ce qu'on en a extrait.
+		case entry.ObjectsN != neuf.ObjectsN:
+			derive = "objects_n"
+		case entry.LevelID != neuf.LevelID:
+			derive = "level_id"
+		case !memesSocles(entry.Pads, neuf.Pads):
+			derive = "socles"
 		}
-		// LE VERROU. Si les socles recalculs ne retombent pas EXACTEMENT sur ceux du
-		// catalogue, la source a derive : on ne sait pas si les points d'apparition
-		// decrivent la meme carte que les socles publies. On saute, et on le dit.
-		if !memesSocles(entry.Pads, neuf.Pads) {
+		if derive != "" {
 			sautees++
-			detailSautees = append(detailSautees, mapID)
+			detailSautees = append(detailSautees, mapID+" ("+derive+")")
+			// ON EFFACE LES POINTS DE LA PASSE PRECEDENTE, et c'est le coeur du correctif.
+			//
+			// Sans cet effacement, une carte acceptee hier et derivee aujourd'hui GARDAIT ses
+			// points : le catalogue aurait alors publie des points issus d'une source qu'il
+			// vient lui-meme de declarer non concordante — et la note aurait compte cette carte
+			// parmi les « sans points » alors qu'elle en portait. Le mensonge etait double.
+			if entry.SpawnPoints != nil {
+				entry.SpawnPoints = nil
+				cat.Maps[mapID] = entry
+				retirees++
+			}
 			continue
 		}
 		entry.SpawnPoints = neuf.SpawnPoints
 		cat.Maps[mapID] = entry
 		ajoutees++
-		points += len(neuf.SpawnPoints)
+		n := 0
+		if neuf.SpawnPoints != nil {
+			n = len(*neuf.SpawnPoints)
+		}
+		points += n
+		if n == 0 {
+			aZeroPoint++
+		}
 	}
 	slog.InfoContext(ctx, "mapopads: ajout des points d'apparition",
 		"cartes_enrichies", ajoutees, "points", points,
-		"cartes_sautees_source_derivee", sautees, "cartes_sans_dump", sansDump)
+		"cartes_acceptees_a_zero_point", aZeroPoint,
+		"cartes_sautees_source_derivee", sautees,
+		"cartes_dont_points_retires", retirees, "cartes_sans_dump", sansDump)
 	if len(detailSautees) > 0 {
 		slog.WarnContext(ctx, "mapopads: cartes SAUTEES — leur .mvar ne redonne plus les "+
 			"memes socles qu'au catalogue ; leurs points d'apparition ne sont PAS ecrits",
@@ -76,10 +117,15 @@ func addSpawnPointsOnly(ctx context.Context, res *titlePkg.PathResolver, titleSl
 	}
 	cat.Notes["spawn_points"] = "Points d'apparition d'objet ramassable NON-ARME, ajoutes le " +
 		time.Now().UTC().Format("2006-01-02") + " par --only-add-spawn-points. " +
-		itoaSimple(points) + " points sur " + itoaSimple(ajoutees) + " cartes. " +
-		itoaSimple(sautees) + " carte(s) SANS points : leur .mvar servi par l'UGC ne redonne " +
-		"plus les memes socles qu'au catalogue, donc on ne sait pas s'il decrit la meme " +
-		"carte — le trou est VOULU et visible, il ne se comble pas pendant une cuisson."
+		itoaSimple(points) + " points sur " + itoaSimple(ajoutees) + " carte(s) ACCEPTEES, " +
+		"dont " + itoaSimple(aZeroPoint) + " a zero point (cle `spawn_points` presente et " +
+		"vide : la carte n'en porte aucun, ce n'est pas un trou). " +
+		itoaSimple(sautees) + " carte(s) SAUTEES pour source derivee (objects_n, level_id ou " +
+		"socles differents du catalogue), dont " + itoaSimple(retirees) + " dont les points " +
+		"d'une passe precedente ont ete RETIRES. " + itoaSimple(sansDump) + " carte(s) sans " +
+		".mvar au depot local. Pour une carte sautee ou sans dump, la cle `spawn_points` est " +
+		"ABSENTE : les points ne sont pas ETABLIS, ce qui ne se confond pas avec `[]`. Le trou " +
+		"est VOULU et visible ; il se comble par la CLI ou le sync, jamais pendant une cuisson."
 	if dryRun {
 		slog.InfoContext(ctx, "mapopads: dry-run, rien ecrit")
 		return

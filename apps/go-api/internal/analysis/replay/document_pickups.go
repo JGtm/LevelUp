@@ -166,21 +166,34 @@ type Pickup struct {
 // (Vérifié sur pièces le 2026-09-01 : les 21 entrées de `[[equipment_objects]]` s'écrivent
 // `"0x"` + minuscules, et `tagGlobalID32` les parse en `uint32` au chargement du manifeste.
 // La casse du fichier n'atteint jamais cette jointure.)
+// pickupInputs groupe ce qui NOMME et QUALIFIE un ramassage, autour de la liste brute.
+//
+// LE GROUPEMENT N'EST PAS COSMETIQUE : `buildPickups` etait montee a SIX parametres, au-dessus
+// du plafond du depot, et son commentaire affirmait le contraire. Ce qui repond a « qui, quoi,
+// d'ou » tient dans une structure ; la liste et l'horloge restent des arguments parce qu'elles
+// sont l'ENTREE et le REFERENTIEL, pas des dependances.
+type pickupInputs struct {
+	slotXUID   map[uint32]uint64
+	st         filmdec.BipedPickupStats
+	weaponKeys map[uint32]string
+	judge      *pickupOriginJudge
+}
+
 func buildPickups(
-	pickups []filmdec.BipedPickup, clk replayClock, slotXUID map[uint32]uint64,
-	st filmdec.BipedPickupStats, weaponKeys map[uint32]string, judge *pickupOriginJudge,
+	pickups []filmdec.BipedPickup, clk replayClock, in pickupInputs,
 ) ([]Pickup, PickupCoverage) {
+	slotXUID, st, weaponKeys, judge := in.slotXUID, in.st, in.weaponKeys, in.judge
 	cov := PickupCoverage{
 		Decoded:    len(pickups),
 		MultiEvent: st.MultiEvent,
 		Refused:    st.RefusedNoRef + st.RefusedNoCatalog + st.RefusedOffBand,
 	}
 	if judge != nil {
-		cov.MapCatalogMissing = !judge.catalogKnown
+		cov.SpawnPointsState = judge.state
 		cov.MapCatalogPoints = len(judge.points)
 	} else {
-		// Pas de juge = pas de carte fournie au builder : c'est le meme trou, et il se dit.
-		cov.MapCatalogMissing = true
+		// Pas de juge = aucune carte fournie au builder : elle est absente, et ca se dit.
+		cov.SpawnPointsState = SpawnPointsMapAbsent
 	}
 	if len(pickups) == 0 || clk.step == 0 {
 		return nil, cov
@@ -220,6 +233,12 @@ func buildPickups(
 			switch e.Origin {
 			case PickupOriginSpawner:
 				cov.OriginSpawner++
+				if judge != nil {
+					if cov.SpawnerByPointKind == nil {
+						cov.SpawnerByPointKind = map[string]int{}
+					}
+					cov.SpawnerByPointKind[judge.kindAtteint]++
+				}
 			case PickupOriginGround:
 				cov.OriginGround++
 			default:
@@ -299,17 +318,39 @@ type PickupCoverage struct {
 	OriginSpawner int `json:"originSpawner"`
 	OriginGround  int `json:"originGround"`
 	OriginUnknown int `json:"originUnknown"`
-	// MapCatalogMissing dit que la carte de ce match N'EST PAS au catalogue des points
-	// d'apparition : aucun ramassage ne peut alors etre `spawner`, et `originUnknown` compte
-	// pour une raison qui n'a rien a voir avec le jeu.
+	// SpawnPointsState dit CE QUE VAUT l'absence d'un `origin: spawner`. Trois valeurs, et il
+	// en faut trois — deux ne suffisaient pas, c'est un defaut corrige apres revue.
 	//
-	// DECISION PRODUIT, ET ELLE EST LA RAISON D'ETRE DU CHAMP : le trou doit se VOIR. La
-	// generation d'artefact est HORS LIGNE et le reste — une carte manquante ne se telecharge
-	// pas pendant une cuisson, elle se comble par la CLI ou le sync. Sans ce drapeau, un
-	// artefact de carte inconnue serait indiscernable d'un artefact de carte sans point.
-	MapCatalogMissing bool `json:"mapCatalogMissing,omitempty"`
+	//	map_absent       la carte n'est pas au catalogue. Aucun ramassage ne peut etre
+	//	                 `spawner`, et `originUnknown` compte pour une raison qui n'a rien a
+	//	                 voir avec le jeu.
+	//	not_established  la carte EST au catalogue, mais ses points d'apparition n'y sont PAS
+	//	                 ETABLIS. Neuf cartes tres jouees sont dans ce cas au 2026-09-01
+	//	                 (Deadlock, Fragmentation, Highpower, Oasis, Breaker, Scarr...) : le
+	//	                 `.mvar` que sert l'UGC ne redonne plus les memes socles qu'au
+	//	                 catalogue, donc le generateur REFUSE d'ecrire des points qui
+	//	                 decriraient peut-etre une autre version de la carte.
+	//	established      les points sont etablis. `mapCatalogPoints` peut alors valoir zero, et
+	//	                 cela veut dire « cette carte n'en porte aucun » — une information, pas
+	//	                 un trou.
+	//
+	// LE DEFAUT QUE CE CHAMP CORRIGE ETAIT EXACTEMENT L'INVERSE DE SON INTENTION. Un booleen
+	// `mapCatalogMissing` valait FAUX sur les neuf cartes sautees, qui se lisaient donc « carte
+	// connue, aucun point » : le drapeau cense faire VOIR le trou affirmait que tout allait
+	// bien, et precisement la ou l'origine est le moins fiable.
+	//
+	// DECISION PRODUIT DERRIERE LES TROIS ETATS : le trou se COMPTE. La generation d'artefact
+	// est HORS LIGNE et le reste — une carte manquante ne se telecharge pas pendant une
+	// cuisson, elle se comble par la CLI (`mapopads-build`) ou par le sync.
+	SpawnPointsState string `json:"spawnPointsState"`
 	// MapCatalogPoints est le nombre de points d'apparition que le catalogue declare pour
-	// cette carte. Publie meme a zero quand la carte EST au catalogue : c'est ce qui separe
-	// « carte sans point » de « carte absente ».
+	// cette carte. Il ne se lit QU'AVEC `SpawnPointsState` : un zero ne veut rien dire tant
+	// qu'on ne sait pas si les points sont etablis.
 	MapCatalogPoints int `json:"mapCatalogPoints"`
+	// SpawnerByPointKind ventile les ramassages `spawner` par NATURE du point atteint
+	// (`grenade`, `equipment`, `unknown`). C'est le CONTROLE EN PRODUCTION du typage des
+	// points : si les grenades tombaient massivement sur des points typés `equipment`, le
+	// typage du catalogue serait a revoir, et ce compteur est le seul endroit ou cela se
+	// verrait. Absent quand aucun ramassage n'est `spawner`.
+	SpawnerByPointKind map[string]int `json:"spawnerByPointKind,omitempty"`
 }

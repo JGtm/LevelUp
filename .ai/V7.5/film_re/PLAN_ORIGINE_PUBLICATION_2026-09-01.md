@@ -160,6 +160,34 @@ par nom public, `map_id` restant prioritaire.
 
 **Etape 5.** Gates verts. Aucun merge, aucun push : la revue adversariale passe avant.
 
+### Ronde 1 de corrections (double revue) — CLOSE
+
+**P1-A** trois etats (`map_absent` / `not_established` / `established`), portes jusque dans la
+forme du JSON par un POINTEUR sur la tranche : cle absente != `[]`. Le booleen
+`mapCatalogMissing` est RETIRE, pas complete.
+
+**P1-B** borne haute du `ground` = `UntilMax` de la pose. Sur donnees reelles, `origineSol`
+tombe de 14 a 10 : quatre attributions etaient fausses.
+
+**P1-C** effacement des points perimes au saut pour derive, avec compteur ; contre-cas « sans
+dump » qui NE doit PAS effacer, teste explicitement.
+
+**Le verrou durci change le resultat** : 16 cartes sautees au lieu de 9. `memesSocles` seul ne
+verifiait rien sur une carte sans socle ; en ajoutant `objects_n` et `level_id`, sept cartes de
+plus se revelent derivees. Catalogue final 1662 points / 56 cartes, 72/72 socles identiques.
+
+**Les inversions ont trouve un defaut que la revue n'avait pas vu** : les deux inversions P1-A
+PASSAIENT, mes attendus etant les constantes testees. Corrige en litteraux + test d'unicite +
+test `replaybuild` sur un chemin qui n'en avait aucun.
+
+**P2** : 1 `resolve()` durci (nom ambigu refuse, ambiguite CALCULEE depuis le catalogue) +
+`objects_n`/`level_id` au verrou · 2 `Mixed` sur les fusions de points, journalise (jamais nul
+sur BTB) · 3 compteurs `sansDump` et « acceptee a zero point » · 4 commentaire faux rectifie
+(`ground` se publie hors catalogue) · 5 `Kind` CONSOMME (`spawnerByPointKind`) plutot que
+supprime — il donne le controle du typage en production · 6 parametres groupes
+(`pickupInputs`), commentaire corrige · 7 chronique du contrat schema 32 · 8 journal avec les
+chiffres de production.
+
 ## Decouvertes (notees, NON traitees)
 
 - Neuf cartes du catalogue ont une source UGC qui a derive depuis le 2026-08-19. Re-extraire
