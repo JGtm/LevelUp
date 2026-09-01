@@ -34,7 +34,7 @@ func (r *ServiceRegistry) ExplorerCtxWithAuth(ctx context.Context, slug string) 
 	if err != nil {
 		return nil, ctx, "", "", err
 	}
-	svc := service.NewExplorerService(duckdb.NewExplorerRepo(pdb, pdb.XUID), pdb.XUID)
+	svc := service.NewExplorerService(duckdb.NewExplorerRepo(pdb, pdb.XUID).WithKillSourceClassifier(r.killSourceClassifierFor(pdb)), pdb.XUID)
 	if a := r.dataAdapterForPDB(pdb); a != nil {
 		svc = svc.WithDataAdapter(a)
 	}

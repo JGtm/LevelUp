@@ -432,14 +432,23 @@ func (r *ServiceRegistry) weaponKillsRepoFor(pdb *duckdb.PlayerDB) port.WeaponKi
 // nil), le garde `if classifier != nil` passerait, et le premier appel dereferencerait un
 // receveur nil.
 func (r *ServiceRegistry) killSourceClassifierFor(pdb *duckdb.PlayerDB) port.KillSourceClassifier {
-	if pdb == nil || r.titleResolver == nil {
+	if pdb == nil {
 		return nil
 	}
-	data, err := r.titleResolver.Data(pdb.TitleSlug)
+	return r.killSourceClassifierForSlug(pdb.TitleSlug)
+}
+
+// killSourceClassifierForSlug : meme resolution, a partir du seul slug — pour les runners
+// d administration, qui travaillent sur un titre sans ouvrir de base de joueur.
+func (r *ServiceRegistry) killSourceClassifierForSlug(slug string) port.KillSourceClassifier {
+	if r.titleResolver == nil {
+		return nil
+	}
+	data, err := r.titleResolver.Data(slug)
 	if err != nil || data == nil || !data.Capabilities().Has(games.CapFilmKillSource) {
 		return nil
 	}
-	classifier, ok := r.assetURLFor(pdb.TitleSlug).(port.KillSourceClassifier)
+	classifier, ok := r.assetURLFor(slug).(port.KillSourceClassifier)
 	if !ok {
 		return nil
 	}

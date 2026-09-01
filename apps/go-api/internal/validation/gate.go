@@ -18,6 +18,7 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/config"
 
 	titlePkg "levelup/go-api/internal/domain/title"
@@ -148,7 +149,7 @@ func RunGateCheck4(ctx context.Context, cfg GateCheckConfig) *GateReport {
 			},
 			check{
 				titledID("shared-views", slug),
-				"Vues V6 présentes (v_gamertag_lookup, v_match_full, v_weapon_kills)",
+				"Vues V6 présentes (v_gamertag_lookup, v_match_full ; v_weapon_kills si la table existe)",
 				func() (bool, string) { return checkSharedViews(ctx, pr.SharedDBPath(slug)) },
 			},
 		)
@@ -269,11 +270,17 @@ func checkSharedTables(ctx context.Context, dbPath string) (bool, string) {
 	return true, fmt.Sprintf("%d tables critiques présentes", len(required))
 }
 
+// checkSharedViews verifie les vues V6 du fichier partage.
+//
+// `v_weapon_kills` est CONDITIONNELLE a la presence de sa table (bascule du 2026-09-01) :
+// sur un titre a decodeur de film, `weapon_kills` est supprimee et sa vue avec elle — les
+// exiger rendrait le gate rouge sur une base parfaitement saine. La conditionner a la
+// table est plus fort qu une simple omission : la vue est DERIVEE, une table presente sans
+// sa vue reste une anomalie et le gate le dit toujours.
 func checkSharedViews(ctx context.Context, dbPath string) (bool, string) {
 	requiredViews := []string{
 		"v_gamertag_lookup",
 		"v_match_full",
-		"v_weapon_kills",
 	}
 	if _, err := os.Stat(dbPath); err != nil {
 		return false, "shared DB absente"
@@ -284,6 +291,10 @@ func checkSharedViews(ctx context.Context, dbPath string) (bool, string) {
 	}
 	defer db.Close()
 
+	// La vue derivee n est exigee que si sa table est la (cf. l en-tete).
+	if analysis.WeaponEvidenceTable(ctx, db) == "weapon_kills" {
+		requiredViews = append(requiredViews, "v_weapon_kills")
+	}
 	missing := checkViewsExist(ctx, db, requiredViews)
 	if len(missing) > 0 {
 		return false, fmt.Sprintf("vues V6 manquantes: %s (relancer les migrations)", strings.Join(missing, ", "))

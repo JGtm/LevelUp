@@ -33,6 +33,11 @@ func (r *HomeRepo) LoadFavoriteWeapon(ctx context.Context, locale string) (strin
 	if r.pdb == nil || r.pdb.SharedReader == nil {
 		return "", 0, nil
 	}
+	// Titre a decodeur de film : l arme favorite vient de la SOURCE DU DEGAT — celle qui
+	// voit l epee et le marteau, invisibles a la correlation de tirs (bascule 2026-09-01).
+	if r.killSourceClassifier != nil {
+		return r.favoriteWeaponFromDamageSource(ctx, locale)
+	}
 	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
 	if err != nil {
 		slog.WarnContext(ctx, "LoadFavoriteWeapon: SharedReader unavailable",

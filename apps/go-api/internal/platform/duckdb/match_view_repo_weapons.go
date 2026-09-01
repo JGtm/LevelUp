@@ -122,6 +122,13 @@ func (r *MatchViewRepo) GetMatchBulkWeaponKills(ctx context.Context, matchID str
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
+	// Titre a decodeur de film : l arme vient de la SOURCE DU DEGAT, pas d une
+	// correlation de tirs (bascule du 2026-09-01). Aucun `slug ==` — c est la presence
+	// du traducteur, injectee par capability au cablage, qui decide.
+	if r.killSourceClassifier != nil {
+		return r.bulkWeaponKillsFromSource(ctx, matchID)
+	}
+
 	sharedDB, release, err := r.sharedRead().Get(ctx)
 	if err != nil {
 		return nil, nil //nolint:nilerr

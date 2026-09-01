@@ -50,16 +50,6 @@ WITH me_perfect AS (
     FROM medals_earned
     WHERE match_id = ? AND /*__PERFECT_KILL_IN__*/
     GROUP BY xuid
-),
-top_weapons AS (
-    SELECT xuid, wid AS top_weapon_id
-    FROM (
-        SELECT xuid, effective_weapon_id AS wid, COUNT(*) AS wk,
-               ROW_NUMBER() OVER (PARTITION BY xuid ORDER BY COUNT(*) DESC) AS rn
-        FROM v_weapon_kills
-        WHERE match_id = ? AND effective_weapon_id NOT IN (0, 1, 2)
-        GROUP BY xuid, effective_weapon_id
-    ) t WHERE rn = 1
 )
 SELECT
     p.xuid,
@@ -95,7 +85,7 @@ SELECT
     p.ground_pound_kills,
     p.shoulder_bash_kills,
     COALESCE(m.perfect_kills, 0)   AS perfect_kills,
-    w.top_weapon_id,
+    NULL::UBIGINT AS top_weapon_id, -- renseigne en Go, cf. attachTopWeapons
     p.kills_expected,
     p.deaths_expected,
     p.kills_stddev,
@@ -103,7 +93,6 @@ SELECT
 FROM match_participants p
 LEFT JOIN v_gamertag_lookup vg ON vg.xuid = p.xuid
 LEFT JOIN me_perfect m ON p.xuid = m.xuid
-LEFT JOIN top_weapons w ON p.xuid = w.xuid
 WHERE p.match_id = ?
   AND NOT (
     COALESCE(p.kills, 0) = 0
@@ -180,22 +169,6 @@ SELECT
 FROM shared.highlight_events he
 WHERE he.match_id = ?
 ORDER BY he.time_ms ASC`
-
-// Q16 : Weapon kills d'un joueur pour un match.
-// Paramètres : ?1 = xuid, ?2 = match_id.
-// Les labels sont résolus ensuite via pdb.Metadata.
-// Utilise v_weapon_kills (effective_weapon_id = COALESCE(reconciled_as, weapon_id))
-// pour appliquer la fusion d'armes (M392→Bandit Evo, Fuel Rod→M41 SPNKr, etc.).
-// Exécutée sur SharedReader (ADR 0016) — pas de préfixe `shared.`.
-const Q16WeaponKills = `
-SELECT
-    wk.effective_weapon_id AS weapon_id,
-    COUNT(*) AS kills
-FROM v_weapon_kills wk
-WHERE wk.xuid = ? AND wk.match_id = ?
-  AND wk.effective_weapon_id NOT IN (0, 1, 2)
-GROUP BY wk.effective_weapon_id
-ORDER BY kills DESC`
 
 // Q17 : Stats d'un joueur pour un match spécifique (match_participants).
 // Paramètres : ?1 = match_id, ?2 = xuid.

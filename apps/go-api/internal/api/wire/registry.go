@@ -476,7 +476,10 @@ func (r *ServiceRegistry) newMatchViewRepo(pdb *duckdb.PlayerDB) *duckdb.MatchVi
 		WithSharedReader(r.matchViewSharedReader(pdb)).
 		WithModeTaxonomy(haloInfiniteModeTaxonomy()).
 		WithPlaylistCategoryStrip(cfg.StripCategory).
-		WithPlaylistLabelOverrides(cfg.Overrides)
+		WithPlaylistLabelOverrides(cfg.Overrides).
+		// Armes du match : source de degat pour les titres qui savent la traduire, sinon
+		// v_weapon_kills. nil = titre sans decodeur de film (bascule du 2026-09-01).
+		WithKillSourceClassifier(r.killSourceClassifierFor(pdb))
 }
 
 // playlistLabelConfigFor construit la config d'affichage title-aware du libellé

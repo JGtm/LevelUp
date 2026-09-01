@@ -292,11 +292,16 @@ func (s *HealthScheduler) auditTitle(ctx context.Context, pr *titlePkg.PathResol
 		WHERE (COALESCE(r.backfill_completed, 0) & %d) != 0
 		  AND NOT EXISTS (SELECT 1 FROM highlight_events h WHERE h.match_id = r.match_id)
 	`, mbitEvents), &res.ProbeErrors)
-	res.LyingBitsWeaponKills += scanCount(ctx, db, slug, "lying_bits_weapons", fmt.Sprintf(`
+	// La PREUVE du detail des armes change de table selon le titre : `weapon_kills` la
+	// porte encore la ou l arme est native de l API, `match_kill_events_latest` la porte
+	// la ou elle vient du film. On sonde celle que la base CONTIENT, jamais un slug.
+	if evidence := analysis.WeaponEvidenceTable(ctx, db.SQLDb()); evidence != "" {
+		res.LyingBitsWeaponKills += scanCount(ctx, db, slug, "lying_bits_weapons", fmt.Sprintf(`
 		SELECT COUNT(*) FROM match_registry r
 		WHERE (COALESCE(r.backfill_completed, 0) & %d) != 0
-		  AND NOT EXISTS (SELECT 1 FROM weapon_kills w WHERE w.match_id = r.match_id)
-	`, mbitWeaponKills), &res.ProbeErrors)
+		  AND NOT EXISTS (SELECT 1 FROM %s w WHERE w.match_id = r.match_id)
+	`, mbitWeaponKills, evidence), &res.ProbeErrors)
+	}
 
 	// 3. xuids orphelins (alias absent shared)
 	res.OrphanXUIDs += scanCount(ctx, db, slug, "orphan_xuids", `

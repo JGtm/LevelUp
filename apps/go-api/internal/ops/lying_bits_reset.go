@@ -14,6 +14,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+
+	"levelup/go-api/internal/analysis"
 )
 
 // LyingBitsResetResult — compteurs des matchs concernés par catégorie. En
@@ -61,13 +63,19 @@ func ResetLyingBits(ctx context.Context, db *sql.DB, dryRun bool) (LyingBitsRese
 	}
 	out.EventsBitsCleared = len(eventsIDs)
 
-	weaponsIDs, err := selectLyingMatchIDs(ctx, db, fmt.Sprintf(`
+	// La PREUVE du detail des armes change de table selon le titre (cf.
+	// analysis.WeaponEvidenceTable) : on sonde celle que la base CONTIENT. Aucune table
+	// presente = aucun bit menteur a nettoyer, et surtout pas une requete vouee a l erreur.
+	var weaponsIDs []string
+	if evidence := analysis.WeaponEvidenceTable(ctx, db); evidence != "" {
+		weaponsIDs, err = selectLyingMatchIDs(ctx, db, fmt.Sprintf(`
 		SELECT r.match_id FROM match_registry r
 		WHERE (COALESCE(r.backfill_completed, 0) & %d) != 0
-		  AND NOT EXISTS (SELECT 1 FROM weapon_kills w WHERE w.match_id = r.match_id)
-	`, dqBitWeaponKills))
-	if err != nil {
-		return out, fmt.Errorf("detect lying weapons: %w", err)
+		  AND NOT EXISTS (SELECT 1 FROM %s w WHERE w.match_id = r.match_id)
+	`, dqBitWeaponKills, evidence))
+		if err != nil {
+			return out, fmt.Errorf("detect lying weapons: %w", err)
+		}
 	}
 	out.WeaponsBitsCleared = len(weaponsIDs)
 
