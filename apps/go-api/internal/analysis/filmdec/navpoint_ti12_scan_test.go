@@ -83,12 +83,12 @@ func ti12ScanFilm(dir string, clk zcClock) (*ti12Scan, error) {
 		return sc, fmt.Errorf("aucun chunk film dans %s", dir)
 	}
 	kf := ScanFilmWorldObjectKeyframes(dir, ti12ArchIndex)
-	band := ti12BandeObservee(kf)
+	band := bandeObserveeKeyframes(kf)
 	sc.KeyCensus, sc.SlotsBande, sc.SlotsObserves = len(kf.SeenUS), len(kf.Band), len(band)
 	if len(band) == 0 {
 		return sc, nil // pas une erreur : c'est le negatif du gate 0
 	}
-	arch, reg, err := ti12Archetype(dir)
+	arch, reg, err := filmArchetype(dir, ti12ArchIndex)
 	if err != nil {
 		return sc, err
 	}
@@ -104,14 +104,14 @@ func ti12ScanFilm(dir string, clk zcClock) (*ti12Scan, error) {
 	return sc, nil
 }
 
-// ti12BandeObservee rend les slots REELLEMENT vus porter ti=12, prives de ceux qu'un autre
-// archetype revendique.
+// bandeObserveeKeyframes rend les slots REELLEMENT vus porter l archetype recense, prives de ceux
+// qu un autre archetype revendique. PARTAGEE : ti=12 et ti=10 s en servent (une copie de moins).
 //
 // POURQUOI L'INTERSECTION AVEC LA BANDE COMBLEE SUFFIT. `ScanFilmWorldObjectKeyframes` rend
 // `SeenUS` (les vies de l'archetype, donc les slots OBSERVES) et `Band` = comblement(observes)
 // prive des slots vus porter autre chose. L'intersection des deux vaut donc exactement
 // « observes moins exclus » — la definition d'`objectiveSlotSet`, sans en recopier la marche.
-func ti12BandeObservee(kf WorldObjectKeyframes) map[uint32]bool {
+func bandeObserveeKeyframes(kf WorldObjectKeyframes) map[uint32]bool {
 	out := map[uint32]bool{}
 	for k := range kf.SeenUS {
 		if kf.Band[k.Slot] {
@@ -121,8 +121,10 @@ func ti12BandeObservee(kf WorldObjectKeyframes) map[uint32]bool {
 	return out
 }
 
-// ti12Archetype charge l'archetype des points de navigation du registre du film.
-func ti12Archetype(dir string) (Archetype, *Registry, error) {
+// filmArchetype charge UN archetype du registre du film. PARTAGEE : ti=12 et ti=10 s en servent
+// (une copie de moins ; le chemin de PRODUCTION garde `objectiveArchetype`, qui ne rend pas les
+// memes erreurs).
+func filmArchetype(dir string, ti int) (Archetype, *Registry, error) {
 	raw, err := ReadFilmChunk(dir, 0)
 	if err != nil {
 		return Archetype{}, nil, fmt.Errorf("chunk_00 (registre) illisible dans %s : %w", dir, err)
@@ -131,10 +133,9 @@ func ti12Archetype(dir string) (Archetype, *Registry, error) {
 	if err != nil {
 		return Archetype{}, nil, fmt.Errorf("registre illisible dans %s : %w", dir, err)
 	}
-	arch, ok := reg.Archetype(ti12ArchIndex)
+	arch, ok := reg.Archetype(ti)
 	if !ok {
-		return Archetype{}, nil, fmt.Errorf("archetype ti=%d absent du registre de %s",
-			ti12ArchIndex, dir)
+		return Archetype{}, nil, fmt.Errorf("archetype ti=%d absent du registre de %s", ti, dir)
 	}
 	return arch, reg, nil
 }

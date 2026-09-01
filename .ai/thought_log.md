@@ -1,3 +1,117 @@
+## [2026-09-01] `ti=10 i26..i29` rtpc — LE PARAMÈTRE QUI PILOTE LE SON NE PARLE PAS DE LA BOMBE — Complété
+
+**La question du lot** : `managed-object-rtpc-component` (ti=10, instances i26 à i29) est un
+paramètre temps réel Wwise — donc littéralement ce qui pilote un son — et l'utilisateur a établi
+sur pièces qu'un **son accompagne le compte à rebours de la bombe**. Le composant est porté
+depuis le lot C (`R(32)` identifiant + `R(22)` valeur, lecteur `FUN_140796d38`, publié par
+`SetManagedObjectHook`) et n'avait **jamais** été interrogé sur un film d'Assaut. Critère écrit
+AVANT la mesure, témoins d'un autre mode obligatoires.
+
+**Instrument** (test seul, aucun chemin de production touché) :
+`rtpc_ti10_scan_test.go` (clone de `ScanFilmObjectives` pour ti=10 — bande de slots OBSERVÉE,
+deux voies delta et image-clé, témoin de chaînage par lecture, index de composant i26..i29
+publié à côté de l'identifiant), `rtpc_ti10_assaut_test.go` (critère + digestion en séries par
+couple `(slot, identifiant)`), `rtpc_ti10_census_test.go` (journal, inventaire des identifiants,
+hacheur FNV-1 et épreuve d'égalité), `rtpc_ti10_verdict_test.go` (portes 0/1/4). Garde
+`ASSAUT_CACHE`, sentinelle mémoire armée (**pic observé 0,03 Gio**), `LockProcessDecode`, un
+seul décodage à la fois. 13 films, **171 s** pour la passe unique.
+
+**Trois helpers partagés plutôt que recopiés** : `ti12BandeObservee` renommée
+`bandeObserveeKeyframes`, `ti12Archetype` généralisée en `filmArchetype(dir, ti)`, et l'oracle
+`ti12Explosions` + les seuils `ti12SensMaxMS` / `ti12DispersionMax` réutilisés tels quels — pas
+de troisième copie de l'oracle des 28 explosions. Renommages purs, zéro changement de
+comportement pour l'instrument ti=12.
+
+### GATE 0 — présence : ti=10 est LÀ, sur 9 films d'Assaut sur 9
+
+**255 573 records ancrés, 148 939 lectures rtpc.** Chaînage delta très inégal selon le film :
+89,3 % (`34bb3bc8`), 70,2 % (`69b16f5d`), 64,5 % (`3d58eb37`), 61,1 % (`9f57c612`) … et
+**7,1 % sur `1c01e34f`**, qui ne rend que 262 lectures et doit être lu comme non mesuré.
+Voie IMAGE-CLÉ morte comme annoncé avant la mesure (ti=10 n'est porté qu'à 6 composants sur 30 :
+i0, i1, i26..i29) : au mieux 22 records chaînés sur 829. **Un seul identifiant nul sur tout le
+corpus** — la sentinelle « emplacement libéré » n'existe pratiquement pas dans les films.
+
+### GATE 1 — l'instrument voit, et les quatre témoins le prouvent
+
+Strongholds 28 667 et 25 458 lectures, KOTH 6 423, CTF 13 898. Chaînage 87 à 88 % sur les trois
+premiers.
+
+### GATE 2 — l'inventaire : DEUX canaux réels noyés dans 8 151 identifiants
+
+Sur le corpus entier, **8 151 identifiants distincts** : 87 « propres à l'Assaut » passant le
+filtre de robustesse figé d'avance (≥ 2 slots ET ≥ 2 films), 540 communs avec un témoin, 5 672
+écartés comme bruit d'ancrage. **Le bruit est le résultat principal de cette porte** : les deux
+seuls canaux réels portent à eux seuls **138 467 des 148 939 lectures d'Assaut, soit 93,0 %**,
+et le meilleur des 87 « propres » en compte **19**.
+
+**`0x7CBF0066` = LA JAUGE DE CAPTURE DE ZONE, et elle est nommée par sa signature.** Sur i27,
+3 slots, plage exactement **[0,00 ; 100,00]** après déquantification, 315 à 1 847 valeurs
+distinctes, **38 à 67 montées** — présente en Strongholds (22 134 et 17 688 lectures) et en KOTH
+(3 655), **absente de CTF** et **absente d'Assaut**. Elle existe exactement dans les modes qui
+ont une zone à prendre. C'est le témoin qui donne sa valeur au négatif : **l'instrument SAIT
+voir une jauge de mode quand il y en a une, et il n'y en a pas en Assaut.**
+
+**`0x06854540` = un paramètre générique d'objet géré.** Sur i26, dans les **13 films et tous les
+modes**, toujours exactement `[2097152, 2097361]` = **[0,00 ; 1,00]**, toujours exactement
+**210 quanta distincts**, sur 9 à 41 slots. Même signature partout : rien de propre à l'Assaut.
+
+### GATE 3 — égalité contre les identifiants attendus : AUCUNE PRISE, et c'était annoncé
+
+Le hacheur FNV-1 est prouvé **5 sur 5** en Go sur les oracles de la reconnaissance
+(`TestRtpcTi10Hachage`, pur, sans film). Les **16 identifiants d'événements de la banque
+`sb_004_mod_mp_assault`** (`bomb_arm_loop`, `bomb_arming_loop_team`, `bomb_countdown_loop`, …)
+sont confrontés par égalité aux 8 151 identifiants lus : **zéro correspondance**. Écrit avant la
+mesure : cela **ne prouve rien** — ce sont des identifiants d'ÉVÉNEMENTS Wwise, pas de RTPC. Les
+deux seules « prises » sont `0x06854540` et `0x7CBF0066`, les identifiants déjà mesurés au lot C.
+
+### GATE 4 — LE CRITÈRE, contre les 28 explosions datées : NÉGATIF, sur toutes les voies
+
+| Passe | Couverture | Médiane | Dispersion | Verdict |
+|---|---|---|---|---|
+| corpus entier, toutes lectures | 26/28 | 435 ms | **7,680** | NÉGATIF |
+| corpus entier, lectures chaînées | 23/28 | 435 ms | **7,131** | NÉGATIF |
+| Neutral Bomb, 6 films | 15/17 | 2 719 ms | **3,700** | NÉGATIF |
+| One Bomb, 3 films | 11/11 | 334 ms | **1,054** | NÉGATIF |
+
+Plafond du chantier : 0,20. **Aucune passe n'en approche.** Les deux explosions hors sens sont
+celles de `1c01e34f`, le film à 7,1 % de chaînage. Contraste net avec ti=12 i14 mesuré la veille,
+où Neutral Bomb rendait 17/17 à **0,033** de dispersion.
+
+**Par identifiant — 627 candidats examinés, aucun ne passe.** Un seul dépasse 3/28 de
+couverture : `0x06854540`, à 23/28 mais **6,263** de dispersion. La distribution du reste est
+sans appel : 1 identifiant à 3/28, 3 à 2/28, 72 à 1/28, **550 à 0/28**. Et le détail par
+explosion montre pourquoi `0x06854540` couvre sans rien dater : il monte sur un **slot
+différent à chaque fois** (1964, 1620, 2580, 1696, 1981, 1801, 1633, 1948, 2078, 1586, 2129,
+2441, 2710, 1619, 1879, 2682, 1618, 1617, 1901, 2198, 2519) — avec 12 à 41 slots qui rampent en
+permanence, il y en a toujours un qui vient de finir. C'est de la densité, pas un signal.
+
+### Conclusion
+
+**La piste RTPC est fermée pour dater l'armement.** Le canal existe, il est proprement ancré, il
+porte bien des jauges de mode — mais l'Assaut n'en écrit aucune. Négatif témoiné, publiable.
+
+**Ce qui reste ouvert et que ce lot n'a PAS traité** : le canal nommé par la reconnaissance comme
+le plus court chemin, `ti=10 i24/i25 managed-object-looping-sound-component` (`R(32)`
+inconditionnel, aucune porte, lecteur `FUN_140fb89f4`, **non porté**, 288 à 485 records par film
+au lot C). Il est hors périmètre de ce lot, qui portait sur les rtpc. C'est la suite naturelle :
+son jeton est une référence de tag `lsnd`, et le script d'Assaut nomme cinq boucles
+(`AssaultLoopArmTeam`, `ArmEnemy`, `Disarm`, `Planted`, `Resetting`).
+
+**Anomalie non expliquée, à porter au registre** : sur `34bb3bc8`, l'identifiant `0x7CBF0066`
+sort **87 740 lectures sur i26** (et non i27), **toutes constantes au quantum 0**, c'est-à-dire
+au plancher exact de la plage (−10 000,00), sur 2 slots. Ce film est aussi celui qui ancre
+166 749 records là où les autres en ancrent 2 400 à 36 000. Une constante ne date rien, donc le
+verdict n'en dépend pas — mais la cause (aliasing d'ancrage ? bande comblée de 1 790 slots ?)
+n'est pas établie.
+
+**Mise à jour de `testdata/ecs_table.tsv`** : les quatre lignes ti=10 i26..i29 portent désormais
+la mesure (colonne `exploitable_fr`), à la place du repère du lot C « ids mesurés sur 2 films ».
+
+**Dette notée, pas traitée** : le squelette d'ancrage `matchWorldObjectRecord` +
+`worldObjectHeaderAt` est recopié dans **26 fichiers** du paquet, un par instrument de mesure.
+En centraliser trois serait une factorisation abandonnée ; les centraliser tous est un chantier
+à part.
+
 ## [2026-09-01] `ti=12 i14` — L'ANNEAU DU MARQUEUR PRÉCÈDE CHAQUE EXPLOSION D'UN DÉLAI CONSTANT — Complété
 
 **La question du lot** : `managed-navpoint-radial-progress` (ti=12 i14) — le disque qui se
