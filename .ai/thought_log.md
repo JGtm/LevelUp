@@ -1,3 +1,114 @@
+## [2026-09-01] Les gardes rouges de la branche, et l'arme favorite rendue a la demo — Complete
+
+Deux sujets independants dans le meme passage : des gardes d'architecture rouges depuis
+d'autres sessions, et la consequence de la suppression de `weapon_kills` sur le corpus de demo.
+
+### 1. Les gardes rouges — QUATRE tests, TROIS causes
+
+Constat de depart : trois tests rouges sous `internal/archlint`. La lecture du dernier run CI
+de la branche (`gh run view 33548713589 --log-failed`) en a revele un QUATRIEME, invisible en
+local a ce stade — `platform/netguard::TestOutboundCallsAreNetguarded` — et un cinquieme signal
+qui n'en est pas un (voir plus bas). Aucun n'etait cause par les fusions du jour : les deux
+fichiers fautifs existent deja sur `origin/feat/v75` (verifie par `git cat-file -e`), poses par
+`a0e465ac6` et `3509c4bd4`, et les trois runs CI precedents etaient deja rouges.
+
+**Trois des quatre ont LA MEME CAUSE, et c'est le deplacement d'un fichier.** `a0e465ac6` a
+EXTRAIT le client UGC de `cmd/mapobj-build/fetch.go` (package `main`, importable par personne)
+vers `internal/mapcatalog/ugc.go`, pour que le rattrapage au fetch de films puisse s'en servir a
+l'execution. Le fichier a change de REGIME en changeant de dossier : sous `cmd/` il etait hors
+de portee de deux ratchets, sous `internal/` il y entre.
+
+- `TestHalowaypointAllowlistEntriesPointToExistingFiles` : l'entree d'allowlist pointait
+  l'ancien chemin, disparu.
+- `TestNoNewHalowaypointLiteral` : le nouveau chemin porte les deux memes litteraux (l'hote
+  Discovery UGC et l'en-tete `Origin`) et n'etait couvert par rien.
+- `TestOutboundCallsAreNetguarded` : `internal/` exige que toute emission sortante passe par
+  `netguard.Check` — sinon le mode demo cesse d'etre hermetique.
+
+Traitement : l'entree d'allowlist SUIT sa cause (l'ancienne retiree, la nouvelle ajoutee avec la
+date et le motif du deplacement — pas deux entrees pour une frontiere, plus la categorie
+`mapcatalog/` a l'en-tete) ; et le coupe-circuit demo est pose EN TETE de `Client.get`, le seul
+site d'emission du fichier, ce qui couvre `FetchAsset` comme `FetchMvar`. Pas d'allowlist
+netguard : la doctrine du ratchet n'y admet que la poignee de main d'auth interactive et les
+canaux coupes en demo, et ce client est une surface de DONNEES. Aucun chemin de degradation a
+inventer — les deux appelants traitent deja tout echec reseau en best-effort (journalise,
+compte, le film continue).
+
+**`TestNoProdRepoRootHelperInTests`** : `internal/himap/origine_typage_gamefiles_test.go`
+situait la racine du depot par `os.Getenv("LEVELUP_REPO_ROOT")` puis `t.Skip`. Le fichier lu est
+`config/titles/halo_infinite/mappings/replay_labels.toml` — VERSIONNE : la variable n'est jamais
+posee en CI, le test se serait donc tu sur la seule machine ou il aurait pu servir. Passe a
+`testutil.RepoRoot()` + `t.Fatalf` (un fichier versionne absent est une installation cassee, pas
+un cas nominal). Le `t.Skip` legitime du fichier reste en tete : `DeployRoot()` skippe d'abord
+quand le jeu n'est pas installe, donc la lecture du manifeste n'est atteinte que sur un poste
+qui a les fichiers de jeu.
+
+**Le cinquieme signal n'est pas une regression.** Le meme run CI porte
+`FAIL levelup/go-api/internal/analysis/replay 600.157s` — un depassement de butee, sans aucun
+`--- FAIL` associe. Les DEUX runs CI precedents de la branche ne l'ont pas, et le paquet passe en
+41 s en local. C'est le flake documente du job « Go Coverage » (instrumentation `-coverpkg=./...`
++ runner charge, zone DuckDB RO/RW) : remede `gh run rerun --failed`, pas de re-diagnostic.
+
+### 2. L'arme favorite de la demo — rendue par la voie courante, sans refonte du corpus
+
+L'etape A4 (`3fdc7ad1c`) a supprime `weapon_kills` du fichier Halo Infinite et retire du seeder
+`insertMatchWeaponKills` plutot que de le laisser ecrire dans le vide : la demo perdait son
+encart « arme favorite ». Le report annoncait une refonte du corpus. **Elle n'etait pas
+necessaire** : le seeder ecrivait DEJA une passe `match_kill_events` par match
+(`decode_pass = demo-<match_id>`, une ligne par mort creditee au joueur principal) — il ne
+manquait que la source du degat.
+
+**Decision technique.** Trois `source_tag` REELS releves dans
+`games/halo_infinite/film/damagetag/data/labels.tsv` — BR75 `0x0000b29c`, MA40 `0x0000b238`,
+Bandit `0xf3c1f9a8` — repartis sur dix seaux deterministes indexes par le rang de la mort
+(5 BR75 / 3 MA40 / 1 Bandit / 1 NON ATTRIBUE). Le seau vide n'est pas une economie : en
+production la portee est PAR LIGNE, une passe de film n'eclaire pas toutes les morts, et une
+demo a 100 % de couverture montrerait une surface que le produit n'a jamais.
+
+**La forme ecrite est celle de `persist.MergeCreditAndFilm`, pas une invention de la demo** :
+une seule passe par match, mais une portee par ligne. Les morts sourcees portent
+`marche` / `credit-concordant` avec `source_tag` + `source_category` + `diverges` ; les autres
+gardent `kill-feed` / `credit-seul` et les trois colonnes a NULL (elles voyagent ensemble,
+invariant du schema). Valeurs prises aux constantes typees (`killscope`, `killsource.OriginCredit`,
+`killsource.CategoryNone`), jamais en litteral — le ratchet `no_raw_kill_scope_literal_test.go`
+l'exige et il a raison : c'est `read_path` qui decide de la preseance entre producteurs.
+
+**Le nombre magique porte son garde-rail** (regle du depot) : les trois constantes traversent le
+VRAI classificateur — `halo_infinite.KillSourceRegistry`, celui que la lecture recoit par
+injection — et doivent rendre `hinf_br75` / `hinf_ma40_ar` / `hinf_bandit`. L'objection du
+report (« `killicon` ne publie pas de table inverse cle -> tag ») n'obligeait a rien : le sens
+direct suffit a verrouiller. Si la table embarquee change, le test tombe au lieu de vider
+l'encart en silence.
+
+**Chaine de lecture prouvee de bout en bout**, parce que chaque maillon peut la casser seul :
+morts sourcees en nombre + gagnante NETTE cote `shared` (a egalite, l'arme affichee serait
+decidee par le departage alphabetique sur la cle) ; les trois cles joignent `weapon_ids` sur un
+identifiant numerique NON NUL cote `metadata` (4 lignes — le Bandit en porte 2) sans quoi
+`favoriteWeaponFromSource` ecarte l'arme ; `match_kill_events` entre enfin au perimetre du test
+de determinisme, ou il manquait alors que le seeder l'ecrivait deja.
+
+**GATES** (codes de sortie verifies) : `go build ./...` et `go vet ./...` 0 ; suite Go complete
+hors `internal/himap` VERTE — `GO_TEST_EXIT=0`, 152 paquets, zero `--- FAIL:` ;
+`-tags=integration -p 1 ./internal/ops` : structure + determinisme verts (deux generations
+byte-identiques, `match_kill_events` compris) ; `golangci-lint run
+--new-from-merge-base=origin/main` 0 issue ; front `tsc -b` 0 apres purge de
+`node_modules/.tmp`, eslint 0 erreur (23 avertissements pre-existants React Compiler /
+TanStack), vitest 552 fichiers / 5700 tests. `internal/himap` est exclu du gate local : ses
+balayages de geometrie exigent le jeu installe et depassent la butee (rouge local connu, vert
+en CI ou le jeu est absent) — aucun fichier de production du diff n'est dans ce paquet, et son
+unique test touche a ete rejoue SEUL (`-run TestOrigineTypageDesPoints`, ok 41,5 s).
+
+**Registre des reports** : la ligne « Arme favorite de la base de DEMO » est LEVEE. Une ligne
+NOUVELLE y entre en revanche — decouverte en verifiant la portee, non traitee : `docs/WEAPONS.md`
+et `docs/FR/WEAPONS.md` annoncent encore que le KPI « arme favorite » se lit « via la vue
+`v_weapon_kills` et la table `metadata.weapon_labels` ». Les deux ont disparu du fichier Halo
+Infinite le 2026-09-01. Doc inversee, a reprendre au prochain lot qui touche l'attribution
+d'arme — la corriger ici aurait demande de refaire le chapitre « attribution » de deux guides
+bilingues, sans rapport avec le seeder de demo (regle : zero fix opportuniste hors perimetre).
+
+**Prochaine etape** : rien n'est ouvert sur ces deux sujets. Le corpus de demo montre a nouveau
+son arme favorite (BR75), et les quatre gardes sont vertes.
+
 ## [2026-09-01] Pied de page — la note de soutien disparait, « Le developpeur » perd son article — Complete
 
 Demande utilisateur, deux retouches de libelle dans `AppFooter`.
