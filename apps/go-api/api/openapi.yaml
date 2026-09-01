@@ -19032,6 +19032,8 @@ components:
         class:
           format: int64
           type: integer
+        family:
+          type: string
         kind:
           type: string
         slot:
@@ -19076,6 +19078,9 @@ components:
         refused:
           format: int64
           type: integer
+        unknownFamilies:
+          format: int64
+          type: integer
         weapons:
           format: int64
           type: integer
@@ -19085,6 +19090,7 @@ components:
         - named
         - weapons
         - items
+        - unknownFamilies
         - beforeOrigin
         - multiEvent
         - refused

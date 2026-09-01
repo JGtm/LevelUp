@@ -1,3 +1,127 @@
+## [2026-09-01] Merge du schéma 31 dans feat/v75 — le nom de l'objet ramassé est en production — Complété
+
+Merge `--no-ff` de `wt/pickup-nommage` (10 commits) dans `feat/v75`. **Aucune collision de numéro** :
+le remote était toujours en schéma 30, le 31 était libre — le risque consigné au lot de publication
+ne s'est pas matérialisé.
+
+**Un seul conflit, `.ai/thought_log.md`**, purement additif (les deux côtés avaient ajouté en tête) :
+résolu en octets bruts sous Bash, les deux blocs conservés, ordre interne de chacun intact,
+83 426 → 83 423 lignes — exactement les 3 marqueurs retirés, zéro contenu perdu. Les cinq autres
+fichiers communs (`openapi.yaml`, `build.go`, `document.go`, `structure_test.go`, `generated.ts`)
+se sont auto-fusionnés sans conflit de code métier.
+
+**Les fichiers générés ont été RÉGÉNÉRÉS et non présumés** — c'est le point de méthode : un
+auto-merge de fichier généré peut être syntaxiquement propre et sémantiquement faux.
+`go run ./cmd/openapi-gen` puis `npm run generate-types` rendent des fichiers **identiques au
+bit près** à l'auto-merge. L'auto-merge était donc juste, et c'est désormais vérifié par le
+générateur. Les goldens passent **sans `-update`**.
+
+**Fenêtre de merge** : une session ti=13 itérait sur `internal/analysis/replay` dans SON worktree.
+Merge exécuté avec un `GOCACHE` neuf et isolé (`.gocache-merge-31`) pour toutes les commandes go,
+ce qui supprime le seul risque partagé (corruption du cache). Ses sources n'étant pas dans le
+principal, le merge ne les touchait pas. Première compile CGO à froid : 30 s.
+
+**Gates sur l'arbre fusionné, verdicts par code de sortie** : replay+filmdec 0 · contracttest 0 ·
+`TestOpenAPIYAMLIsUpToDate` 0 · typecheck 0 · lint 0 (24 warnings pré-existants) · vitest
+**131 fichiers / 1980 tests**.
+
+## [2026-09-01] Schéma 31 — le nom de l'objet ramassé est publié, la nature passe à trois valeurs — Complété
+
+Publication du lot de recherche du matin. `pickups[].family` (slug, `omitempty`) résolu au build
+par les catalogues du TITRE : `LabelCatalog.Keys` pour les armes, `EquipmentFamilies` (manifeste
+`[[equipment_objects]]`) pour les classes 2/3. `kind` passe de `weapon`/`item` à
+`weapon`/`grenade`/`equipment`, `item` restant le REPLI des classes non-arme non établies — il
+n'est pas renommé.
+
+**LE PIÈGE DE FORMAT A ÉTÉ SUPPRIMÉ, PAS CONTOURNÉ.** Le brief demandait un helper de
+normalisation des trois écritures. Vérification sur pièces avant de coder : les deux catalogues
+sont keyés par `uint32` et `BipedPickup.CatalogID` EST cet `uint32` — la résolution se fait avant
+toute mise en forme, aucune chaîne n'entre dans la jointure, aucun helper n'était nécessaire.
+C'est la leçon du P0 poussée d'un cran : on ne fabrique pas la chaîne du tout. Casse réelle
+vérifiée et consignée : les 21 entrées du manifeste s'écrivent `0x` + minuscules (zéro
+majuscule), et `tagGlobalID32` les parse en `uint32` au chargement.
+
+**Couverture mesurée PAR LA CHAÎNE DE PRODUCTION** (`buildPickups` avec les vrais catalogues,
+aucune cuisson) : non-armes **82/82 et 36/36 = 100 %** sur les deux films. Mais les ARMES tombent
+à **79,2 % et 78,4 %** — le catalogue d'armes ne couvre pas tout ce que le canal natif voit.
+Deux identifiants distincts seulement, dont `00007ca9` présent dans LES DEUX films (celui que le
+lot 3 avait décodé à la main), plus `e9e7ff79`. Découverte CONSIGNÉE, non traitée : elle
+appartient au catalogue d'armes. C'est pour cela que `coverage.pickups.unknownFamilies` existe —
+il est non nul dès le premier jour, ce qui vaut mieux qu'un compteur toujours à zéro.
+
+**QUATRE INVERSIONS rejouées**, et l'une d'elles a trouvé un trou dans mon propre test : la
+première version de `TestPickupFamilyNeverCrossesCatalogs` ne tombait PAS sur les replis croisés
+(sa table d'équipement trouvait toujours, le repli n'était jamais atteint). Cas manquant ajouté.
+Tests écrits en littéraux, jamais avec les constantes du code testé (leçon P1-3c).
+
+**Le gate qui a attrapé le lot est `TestOpenAPIYAMLIsUpToDate`** (tag cgo), joué AVANT
+régénération : il échoue en nommant `family`, puis passe. Le `contracttest` de comptage ne
+pouvait pas bouger — il compte les champs RACINE, les deux miens sont imbriqués ; sa chronique le
+dit maintenant (45 -> 45). Gates : replay+filmdec EXIT 0, contracttest EXIT 0, golden openapi
+EXIT 0, typecheck vert, lint 0 erreur, vitest 130 fichiers / 1974 tests verts. **Diff goldens :
+UNE ligne**, le numéro de schéma.
+
+**Risque consigné** : collision possible sur le 31 (le 30 vient d'arriver sur `feat/v75`) —
+arbitrage au merge par renumérotation, comme au 29->30. Un artefact 30 se lit sans changement ;
+`weaponChangeSound.ts`, seul consommateur, teste `kind !== 'weapon'` et n'est pas affecté.
+
+**Prochaine étape** : recherche pure sur l'ORIGINE (sol vs socle) — idée utilisateur de la
+LÉVITATION (un objet sur socle flotte, un objet lâché repose) étalonnée sur les socles d'armes
+CONNUS, plus la récurrence des positions de naissance pour construire le catalogue de points
+d'apparition d'équipement qui manquait à O3. Note :
+`.ai/V7.5/film_re/NOTE_NOMMAGE_ORIGINE_2026-09-01.md`. Ne pas merger : une revue adversariale
+relit avant.
+
+## [2026-09-01] Ramassage non-arme — nommé à 100 % par les fichiers du jeu, classes tranchées, origine non résolue — Complété
+
+**La réponse était déjà dans le dépôt.** Le `R(32)` des ramassages de classe 2/3 est un GlobalID
+de tag `eqip` : les 21 lignes `[[equipment_objects]]` de `replay_labels.toml`, construites le
+2026-08-18 par la chaîne `sofd -> sofa -> {string_id, eqip}` des fichiers du jeu, résolvent
+**82/82 et 36/36** des ramassages non-arme des deux films de référence (8/8 identifiants
+distincts, les mêmes sur les deux films). Le lot 4 avait cherché par corrélation statistique
+(19-29 % de couverture) ce que la structure du jeu nommait déjà à 100 %. Sa mesure n'était pas
+fausse — elle VALIDE la table : concordance 2/2 sur `eef5d48d` = thruster et `8e2dc574` = wall
+(le rang 19 que la palette ne nommait pas). Zéro chevauchement avec le catalogue d'armes dans
+les deux sens.
+
+**Classe 2 = GRENADES, classe 3 = ÉQUIPEMENT — tranché à 100,0 % contre 0,0 %** sur les deux
+films, aucun identifiant réparti sur deux classes. L'énoncé initial du lot 4 était inversé ; le
+lot 4 l'avait corrigé à moitié (classe 3 établie par le rang i48, classe 2 non conclue), le nom
+le ferme. Le « signal qualitatif » du volet B (étiquettes grenade sur `bcabbe43`/`caaadcb0`)
+était juste : ce sont `grenade_frag` et `grenade_plasma`, dans l'ordre exact du `gggl` du jeu.
+
+**ADDENDUM A — le doute « nos grammaires sont incomplètes côté équipement » est RÉFUTÉ.** Le
+registre de réplication de `chunk_00` pris comme oracle, confronté au dispatcheur `consumeByName`
+lui-même (branche `default` = `ported false`), contrôle négatif joué avant : **ti=37 → 31/31
+consommés, zéro refus** ; ti=42 → 21/21 ; ti=35 → 63/64 (le seul manque est
+`simulation-state-component`, hors sujet). Surtout : la feuille d'identité
+`object-multiplayer-properties-component` est déclarée, consommée ET exploitée sur ti=37 **comme
+sur ti=42** — c'est le même composant qui identifie une arme au sol et un objet d'équipement.
+Gardes G1/G2/G3 de la table ECS rejoués verts sur les deux films (1 067 lignes de registre =
+1 067 lignes de table).
+
+**ADDENDUM B — la section 3 de `chunk_00` ne porte PAS de catalogue d'objets. Négatif propre.**
+0/21 identifiants d'équipement, sur les deux films. Trois témoins écrits avant : B-POS retrouve
+`whiteknight2519` à `0x13CCA6`, exactement où la carte de `chunk_00` le documente (l'instrument
+lit les bons octets) ; B-NEG plancher à 0,0005 occurrence par valeur ; **B-REF : 0/15 des
+familles d'ARME jouées par le film n'y sont pas non plus** — c'est lui qui interdit de
+sur-interpréter, l'absence ne vise pas l'équipement.
+
+**ÉTAPE 3 — l'origine reste non publiable, mais l'ambiguïté est chiffrée comme réductible.** Le
+juge temporel (fin de vie ti=37 à moins de 500 ms du ramassage, à moins de 3 m) coupe
+l'ambiguïté de **42,7 % à 20,7 %**, et de 2,6x sur la classe équipement (41,9 % -> 16,1 %), en
+doublant sa part injective (12,9 % -> 25,8 %). Mais O1 (>= 50 % injectif) n'est pas tenu :
+25,6 %, témoins décalés à 0,0 % sur des dénominateurs faibles (17 et 10). Les 53,7 % sans
+candidat sont exactement ce que la réserve écrite avant annonçait — `tEnd` est une BORNE
+INFÉRIEURE de durée de vie, la disparition d'un objet n'est pas dans le film. **O3 non testable :
+le dépôt ne déclare AUCUN point d'apparition d'équipement ni de grenade** (`map_weapon_pads.json`
+ne connaît que power / rack / powerup) ; manque de données, pas un résultat.
+
+**Prochaine étape** : la publication du nom est un lot séparé. Deux points l'attendent, tous deux
+consignés — le manifeste indexe en `0x` + MAJUSCULES alors que `pickups[].w` s'écrit en `%08x`
+(le même piège de format que le P0 de la ronde 1 du lot 3 : normaliser AU POINT DE JOINTURE), et
+le manifeste porte la famille, pas de libellé FR/EN. Recherche pure : aucun fichier de production
+touché, aucune cuisson. Note : `.ai/V7.5/film_re/NOTE_NOMMAGE_ORIGINE_2026-09-01.md`.
 ## [2026-08-30] Sons — cloture CI : feat/v75 VERT au niveau job — Complété
 
 Run du head `656b6d9ce` (rattrapage de contrat, schémas 25-28) : **succès**, tous jobs verts —
