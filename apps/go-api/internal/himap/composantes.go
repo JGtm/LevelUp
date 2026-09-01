@@ -35,40 +35,7 @@ const RayonAncreComposante = 24
 //
 // Connexite a 4 : deux dalles qui ne se touchent que par un coin ne sont pas le meme sol.
 func (r *Rendu) GardeComposantesAncrees(ancres [][3]float64) (efface, gardees, total int) {
-	plein := func(k int) bool {
-		return !math.IsInf(r.z[k], -1) || (r.solSuppose != nil && r.solSuppose[k])
-	}
-	etiq := make([]int32, len(r.z)) // 0 = vide ou pas encore vu
-	pile := make([]int, 0, 1024)
-	for k := range r.z {
-		if etiq[k] != 0 || !plein(k) {
-			continue
-		}
-		total++
-		n := int32(total)
-		etiq[k] = n
-		pile = append(pile[:0], k)
-		for len(pile) > 0 {
-			c := pile[len(pile)-1]
-			pile = pile[:len(pile)-1]
-			i, j := c%r.NX, c/r.NX
-			voisin := func(vi, vj int) {
-				if vi < 0 || vi >= r.NX || vj < 0 || vj >= r.NY {
-					return
-				}
-				vk := vj*r.NX + vi
-				if etiq[vk] != 0 || !plein(vk) {
-					return
-				}
-				etiq[vk] = n
-				pile = append(pile, vk)
-			}
-			voisin(i-1, j)
-			voisin(i+1, j)
-			voisin(i, j-1)
-			voisin(i, j+1)
-		}
-	}
+	etiq, total := r.etiquetteComposantes()
 	if total == 0 {
 		return 0, 0, 0
 	}
@@ -100,6 +67,48 @@ func (r *Rendu) GardeComposantesAncrees(ancres [][3]float64) (efface, gardees, t
 		efface++
 	}
 	return efface, gardees, total
+}
+
+// etiquetteComposantes numerote les composantes connexes a 4 de la matiere, par parcours en
+// profondeur. Rend l'etiquette de chaque cellule (0 = vide ou hors matiere) et le nombre de
+// composantes trouvees. Extrait de GardeComposantesAncrees, a l'identique.
+func (r *Rendu) etiquetteComposantes() ([]int32, int) {
+	plein := func(k int) bool {
+		return !math.IsInf(r.z[k], -1) || (r.solSuppose != nil && r.solSuppose[k])
+	}
+	etiq := make([]int32, len(r.z)) // 0 = vide ou pas encore vu
+	pile := make([]int, 0, 1024)
+	total := 0
+	for k := range r.z {
+		if etiq[k] != 0 || !plein(k) {
+			continue
+		}
+		total++
+		n := int32(total)
+		etiq[k] = n
+		pile = append(pile[:0], k)
+		for len(pile) > 0 {
+			c := pile[len(pile)-1]
+			pile = pile[:len(pile)-1]
+			i, j := c%r.NX, c/r.NX
+			voisin := func(vi, vj int) {
+				if vi < 0 || vi >= r.NX || vj < 0 || vj >= r.NY {
+					return
+				}
+				vk := vj*r.NX + vi
+				if etiq[vk] != 0 || !plein(vk) {
+					return
+				}
+				etiq[vk] = n
+				pile = append(pile, vk)
+			}
+			voisin(i-1, j)
+			voisin(i+1, j)
+			voisin(i, j-1)
+			voisin(i, j+1)
+		}
+	}
+	return etiq, total
 }
 
 // composanteSousAncre rend l'etiquette de la composante qui porte cette ancre, en cherchant en
