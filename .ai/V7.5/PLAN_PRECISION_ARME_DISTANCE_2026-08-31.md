@@ -249,6 +249,32 @@ contrôle est le recalage API + la porte ci-dessus, sur NOTRE donnée.
 - **Gate** : `make check-types` + `make test-web` + `make go-api-test` verts ; capture visuelle
       (gate visuel user) des deux charts sur un joueur Infinite avec film.
 
+#### Lot 4a (vue a — précision moyenne par arme, joueur actif) — BLOQUÉ / ESCALADÉ 2026-09-01
+> Périmètre : vue (a) SEULE. Zone WRITE/filmdec interdite (mapper, persister, killcollector, filmdec).
+> Note complète : `.ai/V7.5/film_re/RECALAGE_WEAPON_ACCURACY_FILM_2026-09-01.md`.
+- [x] **Idempotence** — garantie à l'ÉCRITURE (SELECT-then-INSERT dans
+      `WeaponHitDistancePersister.insertAccuracy`) ; un ré-décodage ne double pas `weapon_accuracy`.
+      Prouvé par `TestWeaponHitDistanceIdempotenceAccuracy` (intégration, déjà vert). La lecture
+      brute `FROM weapon_accuracy` est donc sûre (génération unique) → aucun changement de lecture
+      requis, PAS de nouvelle vue `_latest` à ajouter.
+- [x] **DI** — `WithWeaponAccuracyRepo(NewWeaponAccuracyRepo(pdb))` câblé INCONDITIONNELLEMENT
+      (title-agnostic, jamais `slug==`) dans `SynthesisCtx` (registry_pages_home.go:307),
+      `Timeseries`, `SessionPage`, `TeammatesCtx` → le Synthèse d'Infinite reçoit bien le repo.
+      Aucun câblage à ajouter.
+- [x] **Gate web** — `useCapability('weapon_accuracy')` lit la capability PRODUIT du bootstrap
+      (miroir `title.registry.go`, posée sur Infinite au Lot 3). Le chart s'allumerait automatiquement.
+- [x] **RECALAGE mesuré** (8 films, W=1 s, code prod, vs `AVG(match_participants.accuracy)`) :
+      ratio film/API 0.06–0.75 (≈12×, anti-corrélé) ; armes automatiques invraisemblables
+      (MA40 AR 0.9–3.3 % vs API 40–42 %) ; faux 0 % des armes projectile (Ravager/SPNKr/Mangler…
+      passent Nmin, non filtrées par `WeaponClassHasAccuracy`). Grain « balle » seul plausible
+      (000d5950 ~25 % vs API 28 %) mais noyé.
+- [!] **UI NON câblée** — recalage ABERRANT au grain qui alimente la vue (question user « c'est
+      fiable ? » = NON en l'état). Deux verrous en zone WRITE/filmdec (interdite Lot 4a) : (V1)
+      méthode de pairing qui écrase les armes automatiques ; (V2) porte « capturée » plan §6 absente
+      (persister ne gate que Nmin). Prod `weapon_accuracy` Infinite = 0 ligne (vue vide de toute
+      façon). Décision d'allumage/gating de la capability (posée prématurément au Lot 3) =
+      **ressort du pilote**, pas d'un unwind unilatéral. Escaladé + report au REGISTRE_REPORTS.
+
 ### Lot 5 — Vue (b) précision × distance
 - [ ] DTO domain + lecteur `analysis` (jointure weapon_accuracy × distance) + endpoint.
 - [ ] Composant React (histogramme précision par arme selon la distance), i18n FR+EN, tokens

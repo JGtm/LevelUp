@@ -1,3 +1,46 @@
+## [2026-09-01] Précision par arme Infinite — Lot 4a (vue a) : recalage ABERRANT, UI non allumée — Complété (escaladé)
+
+**Contexte** : Lot 4a du `PLAN_PRECISION_ARME_DISTANCE`, vue (a) SEULE (zone WRITE/filmdec
+interdite). Question user portée par la mission : « c'est fiable ? ». Trois axes : idempotence,
+DI, UI — précédés d'un recalage film vs API obligatoire avant tout câblage.
+
+**Vérifications sur pièces** :
+1. **Idempotence** — garantie à l'ÉCRITURE : `WeaponHitDistancePersister.insertAccuracy` fait un
+   SELECT-then-INSERT (skip si le match a déjà des lignes `weapon_accuracy`) ; la distance,
+   append-only, régénère par `decode_pass` (vue `_latest`). Prouvé par
+   `TestWeaponHitDistanceIdempotenceAccuracy` (intégration, déjà vert). La lecture brute
+   `FROM weapon_accuracy` est donc sûre (génération unique) — aucune vue `_latest` à ajouter.
+2. **DI** — `WithWeaponAccuracyRepo(NewWeaponAccuracyRepo(pdb))` câblé INCONDITIONNELLEMENT
+   (title-agnostic) dans `SynthesisCtx`/`Timeseries`/`SessionPage`/`TeammatesCtx` → le Synthèse
+   d'Infinite reçoit le repo. Gate web `useCapability('weapon_accuracy')` lit la capability produit
+   du bootstrap (posée sur Infinite au Lot 3). DI + capability + chart = déjà en place (Lot 3).
+
+**Décision technique (recalage mesuré)** : instrument = code de prod `filmdec` via
+`TestLot1AttribArmeTir` (W=1 s, une-touche-par-tir, clé WeaponID), 8 films, vs
+`AVG(match_participants.accuracy)` lu RO sur le shared prod (B-swap). Résultats :
+- Ratio film/API GLOBAL 0.06–0.75 (≈12×, anti-corrélé : film le plus haut en API = le plus bas
+  en film). Pas d'ancrage de recalage.
+- Armes AUTOMATIQUES invraisemblables : MA40 AR à 0.9 % (00761d27) et 3.3 % (008e1bba) alors que
+  l'API du match est à 40–42 %. La méthode une-touche-par-tir à W=1 s sature sur les cadences
+  élevées (le film émet ~190 `damage_aftermath` pour 245+ tirs).
+- Faux 0 % des armes projectile : Ravager/SPNKr/Mangler passent Nmin=8 et seraient écrits à 0 %
+  (mapper + persister ne posent PAS la porte « capturée » du plan §6 ; `buildWeaponAccuracy` ne
+  filtre que par `WeaponClassHasAccuracy`, qui laisse passer ces « guns »).
+- Grain « balle » seul plausible (000d5950 ~25 % vs API 28 %) mais noyé.
+- Prod `weapon_accuracy` Infinite = 0 ligne (la passe film n'a jamais backfillé).
+
+**Résultats observés** : gate baseline vert — `go build ./internal/...` OK ;
+`go test ./internal/service/ ./internal/platform/duckdb/ ./internal/games/halo_infinite/ -count=1`
+OK (aucun changement de code Go). Note complète :
+`.ai/V7.5/film_re/RECALAGE_WEAPON_ACCURACY_FILM_2026-09-01.md`.
+
+**Conclusion / prochaine étape** : recalage ABERRANT au grain qui alimente la vue → UI NON câblée
+(`[!]` au plan, report au REGISTRE_REPORTS). Deux verrous en zone WRITE/filmdec (interdite Lot 4a,
+= décision pilote) : (V1) méthode de pairing qui écrase les automatiques ; (V2) porte « capturée »
+plan §6 absente du persister. La capability `weapon_accuracy` Infinite (posée au Lot 3) est
+PRÉMATURÉE ; recommandation : la gater OFF jusqu'à V1+V2, ou n'afficher que le grain balle recalé.
+Escaladé au pilote — pas d'unwind unilatéral d'un lot précédent.
+
 ## [2026-09-01] Réconciliation compile : couche killsource ramenée de feat/v75 — Complété
 
 **Contexte** : `feat/precision-arme` (base RE, `wt/precision`) ne compilait plus
