@@ -1,3 +1,47 @@
+## [2026-09-01] Dette lint soldée sur feat/v75 — le job `Go Lint` repasse au vert, 23 findings à 0 — Complété
+
+**Le constat** : le job CI `Go Lint (golangci-lint)` était rouge en permanence sur `feat/v75`.
+Il tourne en ratchet (`--new-from-merge-base=origin/main`, ADR du 2026-07-12), et les fichiers
+des chantiers cartes/navmesh ayant été créés SUR la branche, toutes leurs lignes comptent comme
+neuves : 23 findings. Worktree dédié `wt/lint-dette` (base `origin/feat/v75` = `66e084b59`),
+GOCACHE isolé — plusieurs sessions buildent en parallèle.
+
+**Reproduction locale avant de toucher quoi que ce soit** : `golangci-lint` v2.12.2 en local,
+la version exacte du job. Même commande, même config, **23 issues** (goconst 4, gocyclo 8,
+unused 7, ineffassign 1, prealloc 1, staticcheck 1, unconvert 1). Après : **0**.
+
+**Décision technique** : zéro assouplissement. Aucune allowlist élargie, aucune règle désactivée,
+aucun `//nolint` posé. Les 8 gocyclo sont tombés par extraction de sous-fonctions aux frontières
+déjà commentées du code — déplacement à l'identique, complexité résultante ≤ 13 partout, très
+en dessous du seuil de 15. Les 7 `unused` ont été SUPPRIMÉS (règle 7 du dépôt), y compris une
+grappe fermée de quatre aides de recherche sur la lunette (`zoomControleTranslation` et ses trois
+appelées) qu'aucun point d'entrée n'atteignait.
+
+**LA TROUVAILLE QUI COMPTE, et qui aurait piégé une passe naïve** : `issues.uniq-by-line` vaut
+`true` par défaut dans golangci-lint — une seule issue est gardée par ligne. Le `gocyclo` posé
+sur la ligne de déclaration MASQUAIT deux autres findings sur les deux plus grosses fonctions :
+`funlen` sur `CuitCarteForge` et `revive argument-limit` sur `poseObjetsForge` (11 arguments).
+Corriger les gocyclo les a donc démasqués — ils n'ont pas été introduits par la passe. Vérifié
+sur pièces : au commit précédent, un run PLEIN sur `./internal/himap/...` rend 8 issues, toutes
+gocyclo. Les deux ont été soldés dans la même passe (extraction de la tranche de jeu ; lecture
+des cinq réglages dans `opts`, comme le fait déjà `poseCanevasForge`).
+
+**Résultats observés** : la commande du job rend `0 issues`. Un run PLEIN (sans ratchet) sur les
+quatre paquets touchés — `himap`, `hinavmesh`, `analysis/replay`, `cmd/mapfond-cadrage` — rend
+lui aussi **0 issue** : ces paquets n'ont plus de dette du tout, pas seulement plus de dette
+neuve. `gofmt`, `go build ./...` et `go vet` verts.
+
+**Tests joués** : les 76 tests unitaires rapides de `internal/himap` (filtre `-run` excluant les
+`*_gamefiles_test.go`, connus pour timeouter en local), `internal/hinavmesh` complet,
+`internal/analysis/replay/...` complet (18 s). Tous verts. **Laissé à la CI** : les
+`*_gamefiles_test.go` de `internal/himap`, qui exigent les fichiers du jeu.
+
+**Prochaine étape** : revue adversariale du diff avant merge — la branche `wt/lint-dette` n'est
+ni poussée ni fusionnée. Le point à relire en priorité est le changement de signature de
+`poseObjetsForge` (seul endroit où le diff n'est pas un pur déplacement de code) et son appel
+dans `sonde_bouillie_gamefiles_test.go`, dont l'`opts` portait déjà les valeurs que l'appel
+passait explicitement en nil/0.
+
 ## [2026-09-01] Merge de wt/pickup-ui dans feat/v75 — le contrôle des armes spéciales est sur la page match — Complété
 
 Merge `--no-ff` de `wt/pickup-ui` (2 commits) dans `feat/v75`. **Zéro conflit** : l'arbre principal
