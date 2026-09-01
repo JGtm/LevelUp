@@ -122,7 +122,7 @@ func ScanFilmObjectives(dir string) (ObjectiveScan, error) {
 	if n == 0 {
 		return sc, fmt.Errorf("aucun chunk film dans %s", dir)
 	}
-	band := worldObjectSlotBand(dir, n, ObjectiveTypeIndex)
+	band := objectiveSlotSet(dir, n)
 	if len(band) == 0 {
 		return sc, fmt.Errorf("aucun slot d'archetype ti=%d dans les keyframes de %s",
 			ObjectiveTypeIndex, dir)
@@ -149,6 +149,47 @@ func ScanFilmObjectives(dir string) (ObjectiveScan, error) {
 		}
 	}
 	return sc, nil
+}
+
+// objectiveSlotSet rend les slots d'objectif REELLEMENT OBSERVES dans les images-cles, SANS
+// COMBLER LES TROUS.
+//
+// POURQUOI PAS `worldObjectSlotBand`, QUI COMBLE (mesure du 2026-09-01). Le comblement existe
+// pour les objets NOMBREUX ET EPHEMERES — projectiles, equipements — dont un slot peut servir
+// entre deux images-cles sans jamais y apparaitre : la bande [min, max] rattrape ces vies
+// invisibles. Les objectifs sont l'exact contraire : ils sont PEU NOMBREUX et LONGUEMENT VIVANTS.
+// La carte du corps l'a mesure — 2 531 records d'image-cle pour 202 vies seulement, soit une
+// douzaine d'apparitions par objectif. Aucune vie d'objectif n'echappe aux images-cles.
+//
+// Le comblement, lui, coute cher : les slots observes s'etalent de 1 644 a 4 558, donc la bande
+// comblee compte jusqu'a 1 704 slots la ou une quinzaine suffisent. C'est cette bande qui rendait
+// 400 000 « records » delta par film avec un chainage de 2,7 % — du bruit, pas de la donnee.
+func objectiveSlotSet(dir string, n int) map[uint32]bool {
+	seen, others := map[uint32]bool{}, map[uint32]bool{}
+	for c := 1; c <= n; c++ {
+		data, err := ReadFilmChunk(dir, c)
+		if err != nil {
+			continue
+		}
+		for _, pk := range WalkPackets(data) {
+			if pk.Type != PacketTypeKeyframe {
+				continue
+			}
+			for _, r := range WalkKeyframeWorld(pk.Payload(data)) {
+				if r.TI == ObjectiveTypeIndex {
+					seen[uint32(r.Slot)] = true
+					continue
+				}
+				others[uint32(r.Slot)] = true
+			}
+		}
+	}
+	// UN SLOT VU PORTER AUTRE CHOSE NE PEUT PAS ETRE UN OBJECTIF : meme regle d'exclusion que
+	// `slotBandExcluding`, c'est le comblement qui saute, pas la prudence.
+	for s := range others {
+		delete(seen, s)
+	}
+	return seen
 }
 
 // objectiveArchetype charge l'archetype des objectifs geres (ti=11) du registre.

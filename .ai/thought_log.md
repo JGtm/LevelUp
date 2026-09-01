@@ -80380,3 +80380,62 @@ donne la carte du corps sans rien decoder. C'est aussi ce qui expliquerait le sy
 des valeurs de « jauge » constantes par slot et identiques d'un match a l'autre.
 
 **Toujours vrai** : ne PAS brancher i12/i13.
+
+---
+
+## [2026-09-01] Le corps d'image-cle est STATIQUE, et la bande d'ancrage delta comblait 200 fois trop
+
+**Statut** : Complete (deux mesures tranchent, une reparation livree) ; le chantier ti=11 reste
+ouvert sur un seul chiffre.
+
+**LA CARTE DU CORPS, bit par bit.** Un corps de taille fixe (104 bits) ne se lit pas comme un flux
+pilote par un masque : il se cartographie. La question utile n'est pas « que vaut ce champ » mais
+« ce champ BOUGE-T-IL » — une jauge de capture est, par definition, la seule chose qui change au
+fil du match pour un MEME objectif. Mesure sur 2 531 records et 157 vies d'objectif suivies sur au
+moins deux images-cles :
+
+**AUCUN des 104 bits ne varie. Zero.** Le corps d'image-cle de `ti=11` est une description
+STATIQUE — la jauge N'Y EST PAS, par construction. Le profil statique, lui, est structure
+(bits 0, 34, 35, 75, 100-103 toujours a 1 ; deux champs gradues autour des bits 10-15 et 27-31),
+donc l'instrument lit bien quelque chose : il lit une description, pas un etat.
+
+**CONSEQUENCE IMMEDIATE, et elle disqualifie tout le detour precedent** : les valeurs de i12
+« constantes par slot et identiques d'un match a l'autre » que j'avais relevees n'etaient pas un
+bug de lecture, c'etait la NATURE de la donnee. Chercher la jauge dans les images-cles etait une
+erreur de categorie. Les deserialiseurs portes sont ceux du chemin DELTA (`decodeDelta` = masque
++ boucle de composants, sans en-tete) — c'est la qu'il fallait les employer.
+
+**LA BANDE D'ANCRAGE DELTA, reparee.** `worldObjectSlotBand` COMBLE tout l'intervalle [min, max]
+des slots vus (`fillSlotBand`). Ce comblement existe pour les objets NOMBREUX ET EPHEMERES
+(projectiles, equipements) dont un slot peut servir entre deux images-cles sans y apparaitre. Les
+objectifs sont l'exact contraire : PEU NOMBREUX et LONGUEMENT VIVANTS — la carte l'a mesure,
+2 531 records d'image-cle pour 202 vies, une douzaine d'apparitions chacune. Aucune vie
+d'objectif n'echappe aux images-cles, donc le comblement n'apporte rien et coute tout : les slots
+s'etalent de 1 644 a 4 558, la bande comblee comptait jusqu'a 1 704 slots pour une quinzaine
+d'objectifs reels.
+
+`objectiveSlotSet` ne garde que les slots OBSERVES (meme regle d'exclusion, c'est le comblement
+qui saute). Effet mesure :
+
+| film | records delta AVANT | APRES | chainage AVANT | APRES |
+|---|---|---|---|---|
+| 34bb3bc8 | 1 209 698 | 6 241 | 2,7 % | **44,2 %** |
+| cde26226 |   415 489 | 1 025 | 3,4 % | 19,9 % |
+| 1c01e34f |     4 287 | 1 233 | 26,1 % | **64,9 %** |
+
+Records divises par ~200, chainage multiplie par 5 a 20.
+
+**CE QUI RESTE, et c'est UN SEUL CHIFFRE.** Le chainage delta vaut 13 a 65 % selon le film, contre
+87 a 99 % sur `ti=13` correctement ancre. Le filtre `Chained` ne laisse donc passer que 1 a 35
+lectures par film — assez pour voir, pas assez pour une serie. Zero slot porte une montee de
+jauge, et i12/i13 restent repartis sur 32 bits. Le seul signal propre est `i14 state` : 0, 2, 4,
+5, 6, 7, soit exactement la plage de la largeur R(3) portee — encourageant, pas probant (un champ
+de trois bits parait propre quel que soit son alignement).
+
+**Prochaine etape** : monter le chainage delta vers 87-99 %. La mesure de residu dit dans quelle
+direction chercher — la marche SUR-CONSOMME des qu'il y a plusieurs composants (+90, +70, +32,
+-6, -16 bits pour 0 a 4 composants). Une largeur trop large parmi les composants frequents des
+deltas est le suspect ; le residu ventile par composant PRESENT, applique cette fois aux records
+DELTA, le designera.
+
+**Toujours vrai** : ne PAS brancher i12/i13.
