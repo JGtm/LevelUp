@@ -1,3 +1,65 @@
+## [2026-09-01] One Bomb : LA MÈCHE EST PAUSABLE — 16,2 s, le désarmement la suspend ; 9/9 portées à CV 0,017 (0/1000), les 2 sans-porteur expliquées — Complété
+
+**La question du lot** : l'anneau `ti=12 i14` est prouvé jauge d'armement en Neutral Bomb
+(13/13, 4,93 s, CV 0,016, 0/1000) et Husky Raid (4/4, 5,1 s, CV 0,016, 0/1000), mais la même
+lecture rend en One Bomb 11/11 à délai médian 17,2 s, **CV 0,725, 87/1000 tirages nuls aussi
+bons** — le signal ne tient pas. Pourquoi, et quelle lecture tient ?
+
+**L'oracle d'abord (H4, écartée)** : `TestAssautA5Explosions` rejoué — la production statborg
+recoupe les 28 instants À LA MILLISECONDE (26/28 attribuées, 0 hors relevé). Les 11 instants
+One Bomb sont bons.
+
+**L'inspection ensuite** (`navpoint_ti12_onebomb_test.go`, critères H1/H2/H3 écrits avant) :
+dump des segments contigus (trou <= 500 ms) autour des 11 explosions. L'anneau du site porte
+en fait **TROIS figures que le plancher mélangeait** :
+
+| figure | forme mesurée | rôle |
+|---|---|---|
+| ARMEMENT | segment qui monte 131→254 et FINIT PLEIN (n=30, ~2,9 s, identique aux 10 occurrences) | la pose de la bombe |
+| DÉSARMEMENT | segment strictement DESCENDANT depuis ~251, pente **14-26 quanta/s**, interrompu (fins 185..246) ou complet (fin 127) | la tenue d'un défenseur |
+| RESET | cycle 130→253→127 en 5,0 s (n=51) sur l'AUTRE paire de slots, +6,3 s après chaque événement terminal du site | l'anneau rejoué |
+
+La chute de l'anneau à l'explosion est RAPIDE (251→127 à ~138 quanta/s) et un échantillon 127
+isolé précède chaque boum de ~0,6 s. Le plancher prenait la sous-montée du RESET (close au
+sommet) pour un armement : d'où les délais dispersés.
+
+**La lecture « mèche pausable »** (`navpoint_ti12_meche_test.go`, définitions et seuils figés
+avant la passe ; seuils NOUVEAUX justifiés par l'inspection : fin de segment à <= 4 quanta de
+son sommet = « finit plein », pente < 60 quanta/s = tenue — au milieu du vide entre 26 et
+138 ; AUCUN seuil existant modifié) : ARMEMENT = segment qui finit à son sommet avec
+l'amplitude et l'effectif du gate 2 ; PAUSE = segment descendant quasi monotone sous 60 q/s ;
+délai = (explosion − fin d'armement) − Σ pauses du même slot entre les deux.
+
+**RÉSULTAT One Bomb** : les 9 explosions PORTÉES par un joueur (partition `a5SansPorteur`,
+ANTÉRIEURE — relevé du 2026-08-31) rendent **9/9, délai médian 16,18 s, CV 0,017, 0/1000
+tirages nuls aussi bons, les trois décalages échouent** : RÉSOLU sous la règle du plancher.
+Détail par explosion publié (armement, pauses datées, brut→corrigé : 18,2→16,2 · 19,4→16,2 ·
+18,0→16,2 · 23,2→16,5 · 17,2→16,3 · 15,9 · 16,0 · 15,9 · 16,8). **La mèche One Bomb vaut
+~16,2 s et le désarmement tenu la SUSPEND** — voilà pourquoi le délai brut variait de 15,9 à
+42,8 s.
+
+**Les 2 explosions SANS PORTEUR ne sont pas des armements** — négatif de structure, sur
+pièces : `c75f33b8@395724` n'a AUCUN armement dans les 120 s (le dernier, fini à 252,2 s, a
+été DÉSARMÉ — deux tenues dont une de 5,1 s) ; `df8fcbef@778033` suit un désarmement COMPLET
+(251→127 à pente 24 q/s, fini 14,8 s avant le boum) puis le cycle RESET. Le canal i14 dit
+qu'elles relèvent d'un autre mécanisme du mode — cohérent avec le relevé A5 : le point n'y
+existe que sur le slot d'ÉQUIPE. Sur les 11 : couverture 10/11, CV 0,228 — publié tel quel.
+
+**LE TÉMOIN TIENT** : la même lecture rejouée rend Neutral **13/13, 4,94 s, CV 0,016, 0/1000**
+et Husky **4/4, 5,09 s, CV 0,016, 0/1000** — rien de cassé, et les pauses détectées en Neutral
+(4 films sur 5 en portent) n'altèrent aucun délai.
+
+**Garde-rails** : `TestNavpointTi12MecheSansPorteurFige` (copie `mpSansPorteur` cohérente avec
+l'oracle figé, sans cache) ; note de renvoi dans l'en-tête du plancher variantes (doc non
+inversée). Gates : gofmt propre, vet 0, golangci-lint 0, suite filmdec verte sans cache.
+Sentinelle mémoire armée et `LockProcessDecode` sur chaque passe, un seul décodage à la fois.
+
+**Conclusion / prochaine étape** : l'armement One Bomb est DATABLE par le film (fin du segment
+d'armement), la mèche est une constante de variante (~16,2 s) SUSPENDUE par le désarmement, et
+les tenues de désarmement sont elles-mêmes datées — matière produit nouvelle (timeline
+« bombe contestée »). Reste hors de ce lot : nommer le marqueur porteur (joindre i0 sub-type),
+et le mécanisme exact des 2 explosions d'équipe sans porteur.
+
 ## [2026-09-01] `ti=11 i12/i13/i14` sans filtre — LA DENSITÉ NE PARLE PAS NON PLUS : négatif BORNÉ sur les 17 épreuves — Complété
 
 **La question du lot** : les cinq instruments précédents demandaient *quelle valeur* porte la
