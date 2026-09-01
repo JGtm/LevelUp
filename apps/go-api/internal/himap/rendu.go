@@ -231,27 +231,34 @@ func (r *Rendu) triangleBorne(a, b, c [3]float64, lo, hi [3]float64) {
 			if !dedans || !r.accepteZ(z, lo[2], hi[2]) {
 				continue
 			}
-			k := j*r.NX + i
-			if r.zBas != nil && z >= r.plancherSolVu() && z < r.zBas[k] {
-				r.zBas[k], r.nBas[k] = z, nrm
-			}
-			if z > r.z[k] {
-				r.z[k], r.n[k] = z, nrm
-				if r.typeGagnant != nil {
-					r.typeGagnant[k] = r.TypeCourant
-				}
-				if r.objetGagnant != nil {
-					r.objetGagnant[k] = r.ObjetCourant
-				}
-			}
-			// Voie de reference (rendu_reference.go) : retenir AUSSI la surface la plus
-			// proche du sol de reference. Strictement `<` : la premiere face gagne les
-			// ex aequo, comme sur la voie haute — le determinisme au bit en depend.
-			if r.zRef != nil {
-				if d := math.Abs(z - r.ref[k]); d < r.dRef[k] {
-					r.dRef[k], r.zRef[k], r.nRef[k] = d, z, nrm
-				}
-			}
+			r.deposeAltitude(j*r.NX+i, z, nrm)
+		}
+	}
+}
+
+// deposeAltitude confronte une altitude retenue aux trois voies du rendu pour la cellule `k` :
+// la surface la plus BASSE au-dessus du plancher vu, la surface la plus HAUTE (voie principale,
+// qui emporte aussi le type et l'objet gagnants), et la surface la plus proche du sol de
+// reference. Extrait du corps de boucle de triangleBorne, a l'identique.
+func (r *Rendu) deposeAltitude(k int, z float64, nrm [3]float64) {
+	if r.zBas != nil && z >= r.plancherSolVu() && z < r.zBas[k] {
+		r.zBas[k], r.nBas[k] = z, nrm
+	}
+	if z > r.z[k] {
+		r.z[k], r.n[k] = z, nrm
+		if r.typeGagnant != nil {
+			r.typeGagnant[k] = r.TypeCourant
+		}
+		if r.objetGagnant != nil {
+			r.objetGagnant[k] = r.ObjetCourant
+		}
+	}
+	// Voie de reference (rendu_reference.go) : retenir AUSSI la surface la plus proche du sol de
+	// reference. Strictement `<` : la premiere face gagne les ex aequo, comme sur la voie haute —
+	// le determinisme au bit en depend.
+	if r.zRef != nil {
+		if d := math.Abs(z - r.ref[k]); d < r.dRef[k] {
+			r.dRef[k], r.zRef[k], r.nRef[k] = d, z, nrm
 		}
 	}
 }

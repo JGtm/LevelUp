@@ -48,15 +48,7 @@ func (r *Rendu) RogneAuxPositionsJouees(positions []PositionJouee, rayon, seuilR
 	if len(positions) == 0 || rayon <= 0 || r.Cell <= 0 {
 		return 0
 	}
-	sem := make([]bool, len(r.z))
-	for _, p := range positions {
-		i := int((p.X - r.Min[0]) / r.Cell)
-		j := int((p.Y - r.Min[1]) / r.Cell)
-		if i < 0 || i >= r.NX || j < 0 || j >= r.NY {
-			continue // hors cadre : une position d'un autre cadrage ne doit pas mordre au bord.
-		}
-		sem[j*r.NX+i] = true
-	}
+	sem := r.semisDesPositions(positions)
 	// Distance EXACTE au semis le plus proche, et non une dilatation par voisinage carre : le
 	// bord devient l union de disques au lieu d un escalier. Voir distance_masque.go.
 	garde := masqueAutourDesSemis(sem, r.NX, r.NY, rayon/r.Cell)
@@ -81,4 +73,20 @@ func (r *Rendu) RogneAuxPositionsJouees(positions []PositionJouee, rayon, seuilR
 		efface++
 	}
 	return efface
+}
+
+// semisDesPositions marque, sur la grille, la cellule de chaque position courue. Une position
+// tombee hors cadre est ignoree : celle d'un autre cadrage ne doit pas mordre au bord. Extrait de
+// RogneAuxPositionsJouees, a l'identique.
+func (r *Rendu) semisDesPositions(positions []PositionJouee) []bool {
+	sem := make([]bool, len(r.z))
+	for _, p := range positions {
+		i := int((p.X - r.Min[0]) / r.Cell)
+		j := int((p.Y - r.Min[1]) / r.Cell)
+		if i < 0 || i >= r.NX || j < 0 || j >= r.NY {
+			continue
+		}
+		sem[j*r.NX+i] = true
+	}
+	return sem
 }
