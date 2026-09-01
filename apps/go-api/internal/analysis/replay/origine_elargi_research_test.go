@@ -92,15 +92,18 @@ type oriObjetMvar struct {
 
 // oriPadsElargis rend les emplacements du catalogue PLUS ceux des deux types d'équipement lus
 // dans le dump de la variante.
-func oriPadsElargis(t *testing.T, base []MapWeaponPadSpot) ([]MapWeaponPadSpot, int) {
+// oriChargeDumpObjets relit le dump d'objets de la variante de carte (ORIGINE_DUMP).
+//
+// EXTRAIT parce qu'il a DEUX appelants : l'instrument d'origine et le typage mesure. La regle
+// du depot est « a la 3e copie on centralise » ; ici on centralise a la 2e, le bloc portant
+// deja un piege paye (un tag JSON groupe qui lisait Y et Z a zero en silence).
+func oriChargeDumpObjets(t *testing.T) []oriObjetMvar {
 	t.Helper()
-	types, source := oriTypesDeLaRecette(t)
-	t.Logf("SOURCE DES TYPES : %s", source)
 	path := os.Getenv("ORIGINE_DUMP")
 	if path == "" {
-		t.Skip("ORIGINE_DUMP absent : instrument de mesure sauté")
+		t.Skip("ORIGINE_DUMP absent : instrument de mesure saute")
 	}
-	blob, err := os.ReadFile(path) //nolint:gosec // chemin fourni par l'opérateur de la mesure
+	blob, err := os.ReadFile(path) //nolint:gosec // chemin fourni par l'operateur de la mesure
 	if err != nil {
 		t.Fatalf("dump d'objets illisible : %v", err)
 	}
@@ -108,6 +111,14 @@ func oriPadsElargis(t *testing.T, base []MapWeaponPadSpot) ([]MapWeaponPadSpot, 
 	if err := json.Unmarshal(blob, &objs); err != nil {
 		t.Fatalf("dump d'objets : %v", err)
 	}
+	return objs
+}
+
+func oriPadsElargis(t *testing.T, base []MapWeaponPadSpot) ([]MapWeaponPadSpot, int) {
+	t.Helper()
+	types, source := oriTypesDeLaRecette(t)
+	t.Logf("SOURCE DES TYPES : %s", source)
+	objs := oriChargeDumpObjets(t)
 	out := append([]MapWeaponPadSpot(nil), base...)
 	ajouts := 0
 	for _, o := range objs {
