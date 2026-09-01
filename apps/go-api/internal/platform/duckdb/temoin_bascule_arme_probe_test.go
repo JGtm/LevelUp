@@ -249,7 +249,7 @@ func TestTemoinBasculeArme(t *testing.T) {
 	ancienne := ventilationAncienneChaine(t, b, scope, counts)
 	nouvelle := ventilationNouvelleChaine(t, b, scope, counts)
 	ecrireComparaison(r, counts, ancienne, nouvelle)
-	ecrireConcordance(r, t, b, scope)
+	ecrireConcordance(r, t, b, scope, counts)
 }
 
 // ventilationAncienneChaine : le sunburst tel qu'il est SERVI aujourd'hui — `weapon_kills`

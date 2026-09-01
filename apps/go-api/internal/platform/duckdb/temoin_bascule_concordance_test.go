@@ -131,15 +131,7 @@ func ventilationNouvelleChaine(t *testing.T, b *temoinBase, s temoinScope,
 ) domain.FragDistribution {
 	t.Helper()
 	tags := tagsObserves(t, b, s)
-	cles := make([]string, 0, len(tags))
-	vu := map[string]bool{}
-	for _, e := range tags {
-		if e.cle != "" && !vu[e.cle] {
-			vu[e.cle] = true
-			cles = append(cles, e.cle)
-		}
-	}
-	reg := registreParCle(t, b, cles)
+	reg := registreParCle(t, b, clesDesTags(tags))
 
 	parClasse := map[string]int{}
 	for _, e := range tags {
@@ -179,20 +171,30 @@ func ventilationNouvelleChaine(t *testing.T, b *temoinBase, s temoinScope,
 // ecrireConcordance publie A0.4 (image sans cle, cle sans image) et A0.5 (ecart de nom),
 // plus le volume des classes melee/grenade vues par la source de degat — le nombre que la
 // decision D4 ecarte, et qu'il faut donc connaitre.
-func ecrireConcordance(r *temoinRapport, t *testing.T, b *temoinBase, s temoinScope) {
+func ecrireConcordance(r *temoinRapport, t *testing.T, b *temoinBase, s temoinScope,
+	counts domain.FragKillTypeCounts,
+) {
 	tags := tagsObserves(t, b, s)
-	cles := make([]string, 0, len(tags))
+	reg := registreParCle(t, b, clesDesTags(tags))
+	ecrireCouvertureAncienne(r, t, b, s, counts.Total)
+	ecrireA04(r, tags)
+	ecrireSyntheseDivergence(r, tags)
+	ecrireA05(r, tags, reg)
+	ecrireEcartD4(r, tags, reg)
+	ecrireArbitrageMelee(r, tags, reg, counts)
+}
+
+// clesDesTags rend les cles de registre distinctes portees par un lot de tags.
+func clesDesTags(tags []temoinTag) []string {
+	out := make([]string, 0, len(tags))
 	vu := map[string]bool{}
 	for _, e := range tags {
 		if e.cle != "" && !vu[e.cle] {
 			vu[e.cle] = true
-			cles = append(cles, e.cle)
+			out = append(out, e.cle)
 		}
 	}
-	reg := registreParCle(t, b, cles)
-	ecrireA04(r, tags)
-	ecrireA05(r, tags, reg)
-	ecrireEcartD4(r, tags, reg)
+	return out
 }
 
 // ecrireA04 : combien de tags obtiennent une image, une cle, et lesquels divergent.
