@@ -1,3 +1,316 @@
+## [2026-09-01] Merge de wt/lint-dette dans feat/v75 — le job `Go Lint` n'est plus rouge — Complété
+
+Merge `--no-ff` de `wt/lint-dette` (4 commits) dans `feat/v75`. **Zéro conflit**, thought_log
+compris : l'arbre principal était exactement sur `66e084b59`, la base du worktree, et aucun
+commit n'était entré depuis — ni avant les gates, ni pendant. `merge-tree` à blanc passé d'abord.
+
+**Périmètre** : 14 fichiers, 319 insertions, 284 suppressions. Que du Go, sur des paquets que
+seules les sessions cartes/navmesh touchent — d'où le **GOCACHE isolé neuf** pour les gates
+(4 process `go.exe` d'autres sessions tournaient : contention CPU acceptée, corruption non).
+
+**Gates sur l'arbre fusionné, verdicts par code de sortie** : `gofmt -l` 0 · `go build ./...` 0 ·
+`go vet` 0 · **la commande exacte du job CI**
+(`golangci-lint run --timeout 5m --new-from-merge-base=origin/main`) rend **`0 issues`**, exit 0 ·
+tests rapides `internal/himap` (76 tests, filtre excluant les `*_gamefiles_test.go`) 0 ·
+`internal/hinavmesh` 0 · `internal/analysis/replay/...` 0.
+
+**Ce qui entre sur `feat/v75`** : 23 findings lint à 0, sans le moindre assouplissement — aucune
+allowlist élargie, aucune règle de config touchée, aucun `//nolint` posé. Les 8 gocyclo tombent
+par extraction conservatrice (complexité ≤ 13 partout, seuil 15) ; les 7 `unused` sont supprimés.
+Deux findings de plus ont été **démasqués** au passage (`uniq-by-line` ne garde qu'une issue par
+ligne : le gocyclo cachait `funlen` sur `CuitCarteForge` et `revive argument-limit` sur
+`poseObjetsForge`) et soldés dans le même lot. Revue adversariale verte, P2 documentaire corrigé.
+
+**Prochaine étape** : run CI sur le push — ce doit être le premier 100 % vert au niveau job de la
+branche, le lint étant le dernier job rouge en permanence. Aucun travail ouvert sur ce périmètre.
+
+## [2026-09-01] Dette lint soldée sur feat/v75 — le job `Go Lint` repasse au vert, 23 findings à 0 — Complété
+
+**Le constat** : le job CI `Go Lint (golangci-lint)` était rouge en permanence sur `feat/v75`.
+Il tourne en ratchet (`--new-from-merge-base=origin/main`, ADR du 2026-07-12), et les fichiers
+des chantiers cartes/navmesh ayant été créés SUR la branche, toutes leurs lignes comptent comme
+neuves : 23 findings. Worktree dédié `wt/lint-dette` (base `origin/feat/v75` = `66e084b59`),
+GOCACHE isolé — plusieurs sessions buildent en parallèle.
+
+**Reproduction locale avant de toucher quoi que ce soit** : `golangci-lint` v2.12.2 en local,
+la version exacte du job. Même commande, même config, **23 issues** (goconst 4, gocyclo 8,
+unused 7, ineffassign 1, prealloc 1, staticcheck 1, unconvert 1). Après : **0**.
+
+**Décision technique** : zéro assouplissement. Aucune allowlist élargie, aucune règle désactivée,
+aucun `//nolint` posé. Les 8 gocyclo sont tombés par extraction de sous-fonctions aux frontières
+déjà commentées du code — déplacement à l'identique, complexité résultante ≤ 13 partout, très
+en dessous du seuil de 15. Les 7 `unused` ont été SUPPRIMÉS (règle 7 du dépôt), y compris une
+grappe fermée de quatre aides de recherche sur la lunette (`zoomControleTranslation` et ses trois
+appelées) qu'aucun point d'entrée n'atteignait.
+
+**LA TROUVAILLE QUI COMPTE, et qui aurait piégé une passe naïve** : `issues.uniq-by-line` vaut
+`true` par défaut dans golangci-lint — une seule issue est gardée par ligne. Le `gocyclo` posé
+sur la ligne de déclaration MASQUAIT deux autres findings sur les deux plus grosses fonctions :
+`funlen` sur `CuitCarteForge` et `revive argument-limit` sur `poseObjetsForge` (11 arguments).
+Corriger les gocyclo les a donc démasqués — ils n'ont pas été introduits par la passe. Vérifié
+sur pièces : au commit précédent, un run PLEIN sur `./internal/himap/...` rend 8 issues, toutes
+gocyclo. Les deux ont été soldés dans la même passe (extraction de la tranche de jeu ; lecture
+des cinq réglages dans `opts`, comme le fait déjà `poseCanevasForge`).
+
+**Résultats observés** : la commande du job rend `0 issues`. Un run PLEIN (sans ratchet) sur les
+quatre paquets touchés — `himap`, `hinavmesh`, `analysis/replay`, `cmd/mapfond-cadrage` — rend
+lui aussi **0 issue** : ces paquets n'ont plus de dette du tout, pas seulement plus de dette
+neuve. `gofmt`, `go build ./...` et `go vet` verts.
+
+**Tests joués** : les 76 tests unitaires rapides de `internal/himap` (filtre `-run` excluant les
+`*_gamefiles_test.go`, connus pour timeouter en local), `internal/hinavmesh` complet,
+`internal/analysis/replay/...` complet (18 s). Tous verts. **Laissé à la CI** : les
+`*_gamefiles_test.go` de `internal/himap`, qui exigent les fichiers du jeu.
+
+**Prochaine étape** : revue adversariale du diff avant merge — la branche `wt/lint-dette` n'est
+ni poussée ni fusionnée. Le point à relire en priorité est le changement de signature de
+`poseObjetsForge` (seul endroit où le diff n'est pas un pur déplacement de code) et son appel
+dans `sonde_bouillie_gamefiles_test.go`, dont l'`opts` portait déjà les valeurs que l'appel
+passait explicitement en nil/0.
+
+## [2026-09-01] Merge de wt/pickup-ui dans feat/v75 — le contrôle des armes spéciales est sur la page match — Complété
+
+Merge `--no-ff` de `wt/pickup-ui` (2 commits) dans `feat/v75`. **Zéro conflit** : l'arbre principal
+était exactement sur `28e18feda`, la base du worktree, et aucun commit n'était entré depuis —
+`.ai/thought_log.md` compris. Les fichiers à risque de collision surveillés avant la passe
+(`i18n.ts`, `i18nContract.ts`, `match-view/*`) n'avaient été touchés par aucune autre session.
+
+**Périmètre** : 11 fichiers, 1148 insertions, 3 suppressions. **0 fichier Go** — les gates sont
+donc npm-only, sans interaction avec les builds Go des sessions parallèles (pas de cache partagé
+en jeu).
+
+**Gates sur l'arbre fusionné, verdicts par code de sortie** : `npm run typecheck` 0 (après purge
+`node_modules/.tmp`) · `npm run lint` 0 (24 warnings pré-existants, aucun sur les fichiers du lot)
+· vitest `match-view` + `match-replay` **157 fichiers / 2238 tests**, 0 échec.
+
+**Ce qui entre en production sur `feat/v75`** : la section « Contrôle des armes spéciales » de
+l'onglet Chronologie. Elle est ADDITIVE et se masque d'elle-même sans donnée (pas d'artefact, ou
+zéro prise attribuée) — c'est le cas de la quasi-totalité des matchs, la page ne bouge donc pas
+pour eux.
+
+**GATE VISUEL : go utilisateur accordé en connaissance, vérification visuelle POST-MERGE.** Le
+rendu final n'a pas encore été validé à l'écran ; la section étant additive et masquée sans
+donnée, un retour visuel restera facile à traiter par un correctif ciblé. Artefact de
+démonstration : `01e1f945` (11 socles, 46 occupations, 21 attribuées sur 7 joueurs, 6 colonnes
+d'arme nommées FR/EN, ventilation 4 ambiguës · 11 non couvertes · 1 datée sans nom · 9 socles de
+bonus = 46).
+
+**Prochaine étape** : vérification visuelle à la main de l'utilisateur ; aucun autre travail
+ouvert sur ce périmètre.
+
+## [2026-09-01] Contrôle des armes spéciales — les quatre P2 de la revue adversariale — Complété
+
+Revue adversariale rendue RECEVABLE (0 P0/P1, 12 conditions tenues). Les quatre P2, tous dans le
+diff du lot, corrigés en une passe — aucun autre changement.
+
+**1. Branche morte retirée.** `coverage.padDating` est posé INCONDITIONNELLEMENT par le service
+depuis le schéma 30 : « occupation avec `xuid` mais sans `padDating` » n'existe pas, et le repli
+`hasStats:false` était inatteignable derrière la double porte. Supprimés : le champ `hasStats`, la
+fonction `coverageOf` et sa recopie champ par champ, les deux strings `noBreakdown` (FR/EN), leur
+entrée de contrat, le test de logique et le test de rendu qui fabriquaient ce document impossible.
+`PadControlCoverage` est désormais un ALIAS du type du document
+(`NonNullable<coverage['padDating']>`) — plus de seconde déclaration à faire diverger. Il reste un
+garde-fou de TYPAGE (`coverage: … | null`) : la note de bas de tableau est alors omise en silence,
+sans string dédiée ni test.
+
+**2. Tri prouvé par inversion.** L'ancien témoin était à égalité des deux côtés (t0 = t1 = 3, et
+« Alpha, Bravo » = ordre du roster = ordre alphabétique) : retirer les deux `sort` laissait la
+suite VERTE. Nouveau témoin à totaux tous distincts — Charlie 5 (t1), Bravo 3 (t0), Alpha 1 (t0),
+Delta 0 — dont l'ordre trié contredit à la fois le roster et l'alphabet : camps `['t1','t0',null]`,
+et dans t0 `['Bravo','Alpha']`. **Inversion rejouée** : les deux `sort` retirés -> 1 échec
+(`trie les joueurs par total décroissant, et les camps aussi`).
+
+**3. Filtre roster-sans-piste couvert.** Une cinquième entrée de roster SANS AUCUNE PISTE ajoutée
+au témoin PARTAGÉ (le filtre doit tenir sur tous les scénarios), plus un test dédié : une prise à
+son xuid part en `unjoined`, elle n'ouvre aucune ligne. **Inversion rejouée** :
+`.filter(lives.length > 0)` retiré -> 2 échecs (le nouveau test ET celui du joueur hors
+scoreboard).
+
+**4. Numéro de schéma.** Le `xuid` des occupations arrive au schéma **30**, pas 31 ; mes deux
+commentaires neufs se contredisaient (« schémas 30-31 » ici, « schéma 31 » là). Une seule
+formulation, aux trois endroits (`padControlLogic.ts`, `MatchPadControlSection.tsx`,
+`MatchViewTabChronology.tsx`).
+
+**Gates** : typecheck 0 (après purge `.tmp`) · lint 0 erreur (24 warnings pré-existants) · vitest
+`match-view` + `match-replay` **157 fichiers / 2238 tests** (2239 - 2 tests irréels + 1 nouveau).
+
+**Prochaine étape** : gate visuel utilisateur, PAS de merge.
+
+## [2026-09-01] Contrôle des armes spéciales — le tableau qui NOMME le ramasseur d'un socle — Complété
+
+Lot web SEUL (worktree `wt/pickup-ui`, base `28e18feda`), aucun fichier Go touché. Le schéma 31
+publie `padPickups[].xuid` renseigné ; jusqu'ici AUCUN écran ne l'exploitait — le bilan
+d'équipement compte les socles VIDÉS au niveau du match et sans ramasseur, l'infobulle du calque
+des socles ne lit pas le champ. Ce lot ajoute UN tableau (cadrage explicite de l'utilisateur :
+« un tableau sur match view suffit pour le moment »).
+
+**Où il vit** : `MatchPadControlSection`, dans `features/match-replay/` et non `match-view/` —
+même raison que sa voisine, le VOCABULAIRE (les noms d'arme viennent de `padNameFor`, cascade
+unique du rejeu : famille de socle, puis catalogue bilingue du document, puis identifiant brut).
+Monté dans `MatchViewTabChronology`, JUSTE SOUS `MatchEquipmentUsageSection` dont il est le
+complément : même artefact, même clé de cache `useMatchReplay`, **aucun appel réseau de plus**.
+
+**Ce que le tableau montre** : une ligne par joueur que le film a vu vivre, groupée par camp du
+scoreboard, colonne de total puis une colonne par socle réellement pris. Tri par total
+décroissant à l'intérieur d'un camp ET entre les camps — c'est le sujet du tableau ; à égalité le
+nom (puis le côté) départage, deux relectures rendent le même tableau. Total par camp en pied de
+chaque groupe. Tableau statique, pas TanStack : le tri est fixe, aucune interaction (règle 13 :
+TanStack pour les tableaux INTERACTIFS ; gabarit repris de `MatchEquipmentUsageSection`).
+
+**Ce qu'il refuse de faire** : une occupation sans `xuid` n'est comptée POUR PERSONNE, jamais
+rattrapée. Un socle que personne n'a pris n'a pas de colonne (une colonne de zéros n'est pas une
+mesure). Un ramasseur nommé mais absent du roster du film, ou un index de socle hors bornes,
+tombe dans `unjoined` — pas dans une ligne au hasard.
+
+**LA SOMME BOUCLE, ET C'EST LA NOTE DE BAS DE TABLEAU** : prises affichées + occupations hors
+tableau = `coverage.padDating.occupations`. La ventilation par CAUSE (ambiguës, non couvertes,
+datées sans nom, socles de bonus hors jointure, ramasseur hors film) est rendue quand l'artefact
+porte le bloc `padDating` ; sinon une phrase dit qu'elle n'existe pas — on n'invente pas une
+cause. `unnamed` est calculé par SOUSTRACTION plutôt que lu, pour que la ventilation boucle même
+si un compteur du service évolue.
+
+**Double porte** (identique aux deux blocs voisins) : pas d'artefact, ou zéro prise attribuée →
+la section ne rend RIEN. Un match avec socles mais aucune occupation datée est donc muet, ce qui
+est le cas de tous les artefacts d'avant le schéma 30.
+
+**Découpe** : agrégation PURE et sans langue dans `padControlLogic.ts` (aucun React, aucune
+couleur) ; le composant ne fait que rendre. Textes FR+EN dans `i18n.ts` sous contrat typé
+`PadControlText` (`i18nContract.ts`) — la parité des cinq causes est tenue par
+`Record<PadControlGapKey, …>`, aucune cause ne peut manquer dans une langue. FR sans anglicismes
+(« prises de socle », « occupations hors tableau »). Zéro hex, zéro classe Tailwind couleur :
+uniquement les tokens déjà employés par la section voisine.
+
+**Gates** : `npm run typecheck` 0 · `npm run lint` 0 erreur (24 warnings PRÉ-EXISTANTS, aucun sur
+les fichiers touchés) · vitest `match-view` + `match-replay` **157 fichiers / 2239 tests**, dont
+24 nouveaux (16 sur la logique pure, 8 sur le rendu).
+
+**Prochaine étape** : gate visuel à la main de l'utilisateur sur un match dont l'artefact porte
+des occupations DATÉES (schéma >= 30), puis revue adversariale avant merge. Rien n'est poussé.
+
+## [2026-09-01] Merge du schéma 31 dans feat/v75 — le nom de l'objet ramassé est en production — Complété
+
+Merge `--no-ff` de `wt/pickup-nommage` (10 commits) dans `feat/v75`. **Aucune collision de numéro** :
+le remote était toujours en schéma 30, le 31 était libre — le risque consigné au lot de publication
+ne s'est pas matérialisé.
+
+**Un seul conflit, `.ai/thought_log.md`**, purement additif (les deux côtés avaient ajouté en tête) :
+résolu en octets bruts sous Bash, les deux blocs conservés, ordre interne de chacun intact,
+83 426 → 83 423 lignes — exactement les 3 marqueurs retirés, zéro contenu perdu. Les cinq autres
+fichiers communs (`openapi.yaml`, `build.go`, `document.go`, `structure_test.go`, `generated.ts`)
+se sont auto-fusionnés sans conflit de code métier.
+
+**Les fichiers générés ont été RÉGÉNÉRÉS et non présumés** — c'est le point de méthode : un
+auto-merge de fichier généré peut être syntaxiquement propre et sémantiquement faux.
+`go run ./cmd/openapi-gen` puis `npm run generate-types` rendent des fichiers **identiques au
+bit près** à l'auto-merge. L'auto-merge était donc juste, et c'est désormais vérifié par le
+générateur. Les goldens passent **sans `-update`**.
+
+**Fenêtre de merge** : une session ti=13 itérait sur `internal/analysis/replay` dans SON worktree.
+Merge exécuté avec un `GOCACHE` neuf et isolé (`.gocache-merge-31`) pour toutes les commandes go,
+ce qui supprime le seul risque partagé (corruption du cache). Ses sources n'étant pas dans le
+principal, le merge ne les touchait pas. Première compile CGO à froid : 30 s.
+
+**Gates sur l'arbre fusionné, verdicts par code de sortie** : replay+filmdec 0 · contracttest 0 ·
+`TestOpenAPIYAMLIsUpToDate` 0 · typecheck 0 · lint 0 (24 warnings pré-existants) · vitest
+**131 fichiers / 1980 tests**.
+
+## [2026-09-01] Schéma 31 — le nom de l'objet ramassé est publié, la nature passe à trois valeurs — Complété
+
+Publication du lot de recherche du matin. `pickups[].family` (slug, `omitempty`) résolu au build
+par les catalogues du TITRE : `LabelCatalog.Keys` pour les armes, `EquipmentFamilies` (manifeste
+`[[equipment_objects]]`) pour les classes 2/3. `kind` passe de `weapon`/`item` à
+`weapon`/`grenade`/`equipment`, `item` restant le REPLI des classes non-arme non établies — il
+n'est pas renommé.
+
+**LE PIÈGE DE FORMAT A ÉTÉ SUPPRIMÉ, PAS CONTOURNÉ.** Le brief demandait un helper de
+normalisation des trois écritures. Vérification sur pièces avant de coder : les deux catalogues
+sont keyés par `uint32` et `BipedPickup.CatalogID` EST cet `uint32` — la résolution se fait avant
+toute mise en forme, aucune chaîne n'entre dans la jointure, aucun helper n'était nécessaire.
+C'est la leçon du P0 poussée d'un cran : on ne fabrique pas la chaîne du tout. Casse réelle
+vérifiée et consignée : les 21 entrées du manifeste s'écrivent `0x` + minuscules (zéro
+majuscule), et `tagGlobalID32` les parse en `uint32` au chargement.
+
+**Couverture mesurée PAR LA CHAÎNE DE PRODUCTION** (`buildPickups` avec les vrais catalogues,
+aucune cuisson) : non-armes **82/82 et 36/36 = 100 %** sur les deux films. Mais les ARMES tombent
+à **79,2 % et 78,4 %** — le catalogue d'armes ne couvre pas tout ce que le canal natif voit.
+Deux identifiants distincts seulement, dont `00007ca9` présent dans LES DEUX films (celui que le
+lot 3 avait décodé à la main), plus `e9e7ff79`. Découverte CONSIGNÉE, non traitée : elle
+appartient au catalogue d'armes. C'est pour cela que `coverage.pickups.unknownFamilies` existe —
+il est non nul dès le premier jour, ce qui vaut mieux qu'un compteur toujours à zéro.
+
+**QUATRE INVERSIONS rejouées**, et l'une d'elles a trouvé un trou dans mon propre test : la
+première version de `TestPickupFamilyNeverCrossesCatalogs` ne tombait PAS sur les replis croisés
+(sa table d'équipement trouvait toujours, le repli n'était jamais atteint). Cas manquant ajouté.
+Tests écrits en littéraux, jamais avec les constantes du code testé (leçon P1-3c).
+
+**Le gate qui a attrapé le lot est `TestOpenAPIYAMLIsUpToDate`** (tag cgo), joué AVANT
+régénération : il échoue en nommant `family`, puis passe. Le `contracttest` de comptage ne
+pouvait pas bouger — il compte les champs RACINE, les deux miens sont imbriqués ; sa chronique le
+dit maintenant (45 -> 45). Gates : replay+filmdec EXIT 0, contracttest EXIT 0, golden openapi
+EXIT 0, typecheck vert, lint 0 erreur, vitest 130 fichiers / 1974 tests verts. **Diff goldens :
+UNE ligne**, le numéro de schéma.
+
+**Risque consigné** : collision possible sur le 31 (le 30 vient d'arriver sur `feat/v75`) —
+arbitrage au merge par renumérotation, comme au 29->30. Un artefact 30 se lit sans changement ;
+`weaponChangeSound.ts`, seul consommateur, teste `kind !== 'weapon'` et n'est pas affecté.
+
+**Prochaine étape** : recherche pure sur l'ORIGINE (sol vs socle) — idée utilisateur de la
+LÉVITATION (un objet sur socle flotte, un objet lâché repose) étalonnée sur les socles d'armes
+CONNUS, plus la récurrence des positions de naissance pour construire le catalogue de points
+d'apparition d'équipement qui manquait à O3. Note :
+`.ai/V7.5/film_re/NOTE_NOMMAGE_ORIGINE_2026-09-01.md`. Ne pas merger : une revue adversariale
+relit avant.
+
+## [2026-09-01] Ramassage non-arme — nommé à 100 % par les fichiers du jeu, classes tranchées, origine non résolue — Complété
+
+**La réponse était déjà dans le dépôt.** Le `R(32)` des ramassages de classe 2/3 est un GlobalID
+de tag `eqip` : les 21 lignes `[[equipment_objects]]` de `replay_labels.toml`, construites le
+2026-08-18 par la chaîne `sofd -> sofa -> {string_id, eqip}` des fichiers du jeu, résolvent
+**82/82 et 36/36** des ramassages non-arme des deux films de référence (8/8 identifiants
+distincts, les mêmes sur les deux films). Le lot 4 avait cherché par corrélation statistique
+(19-29 % de couverture) ce que la structure du jeu nommait déjà à 100 %. Sa mesure n'était pas
+fausse — elle VALIDE la table : concordance 2/2 sur `eef5d48d` = thruster et `8e2dc574` = wall
+(le rang 19 que la palette ne nommait pas). Zéro chevauchement avec le catalogue d'armes dans
+les deux sens.
+
+**Classe 2 = GRENADES, classe 3 = ÉQUIPEMENT — tranché à 100,0 % contre 0,0 %** sur les deux
+films, aucun identifiant réparti sur deux classes. L'énoncé initial du lot 4 était inversé ; le
+lot 4 l'avait corrigé à moitié (classe 3 établie par le rang i48, classe 2 non conclue), le nom
+le ferme. Le « signal qualitatif » du volet B (étiquettes grenade sur `bcabbe43`/`caaadcb0`)
+était juste : ce sont `grenade_frag` et `grenade_plasma`, dans l'ordre exact du `gggl` du jeu.
+
+**ADDENDUM A — le doute « nos grammaires sont incomplètes côté équipement » est RÉFUTÉ.** Le
+registre de réplication de `chunk_00` pris comme oracle, confronté au dispatcheur `consumeByName`
+lui-même (branche `default` = `ported false`), contrôle négatif joué avant : **ti=37 → 31/31
+consommés, zéro refus** ; ti=42 → 21/21 ; ti=35 → 63/64 (le seul manque est
+`simulation-state-component`, hors sujet). Surtout : la feuille d'identité
+`object-multiplayer-properties-component` est déclarée, consommée ET exploitée sur ti=37 **comme
+sur ti=42** — c'est le même composant qui identifie une arme au sol et un objet d'équipement.
+Gardes G1/G2/G3 de la table ECS rejoués verts sur les deux films (1 067 lignes de registre =
+1 067 lignes de table).
+
+**ADDENDUM B — la section 3 de `chunk_00` ne porte PAS de catalogue d'objets. Négatif propre.**
+0/21 identifiants d'équipement, sur les deux films. Trois témoins écrits avant : B-POS retrouve
+`whiteknight2519` à `0x13CCA6`, exactement où la carte de `chunk_00` le documente (l'instrument
+lit les bons octets) ; B-NEG plancher à 0,0005 occurrence par valeur ; **B-REF : 0/15 des
+familles d'ARME jouées par le film n'y sont pas non plus** — c'est lui qui interdit de
+sur-interpréter, l'absence ne vise pas l'équipement.
+
+**ÉTAPE 3 — l'origine reste non publiable, mais l'ambiguïté est chiffrée comme réductible.** Le
+juge temporel (fin de vie ti=37 à moins de 500 ms du ramassage, à moins de 3 m) coupe
+l'ambiguïté de **42,7 % à 20,7 %**, et de 2,6x sur la classe équipement (41,9 % -> 16,1 %), en
+doublant sa part injective (12,9 % -> 25,8 %). Mais O1 (>= 50 % injectif) n'est pas tenu :
+25,6 %, témoins décalés à 0,0 % sur des dénominateurs faibles (17 et 10). Les 53,7 % sans
+candidat sont exactement ce que la réserve écrite avant annonçait — `tEnd` est une BORNE
+INFÉRIEURE de durée de vie, la disparition d'un objet n'est pas dans le film. **O3 non testable :
+le dépôt ne déclare AUCUN point d'apparition d'équipement ni de grenade** (`map_weapon_pads.json`
+ne connaît que power / rack / powerup) ; manque de données, pas un résultat.
+
+**Prochaine étape** : la publication du nom est un lot séparé. Deux points l'attendent, tous deux
+consignés — le manifeste indexe en `0x` + MAJUSCULES alors que `pickups[].w` s'écrit en `%08x`
+(le même piège de format que le P0 de la ronde 1 du lot 3 : normaliser AU POINT DE JOINTURE), et
+le manifeste porte la famille, pas de libellé FR/EN. Recherche pure : aucun fichier de production
+touché, aucune cuisson. Note : `.ai/V7.5/film_re/NOTE_NOMMAGE_ORIGINE_2026-09-01.md`.
 ## [2026-08-30] Sons — cloture CI : feat/v75 VERT au niveau job — Complété
 
 Run du head `656b6d9ce` (rattrapage de contrat, schémas 25-28) : **succès**, tous jobs verts —

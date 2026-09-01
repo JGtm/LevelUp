@@ -10,6 +10,7 @@
  * LA PARITÉ FR/EN RESTE TENUE PAR LE TYPAGE : `Record<ReplayLocale, ReplayText>` dans
  * `i18n.ts` refuse toute langue à laquelle il manque un champ.
  */
+import type { PadControlGapKey } from './padControlLogic'
 import type { PadEquipmentFamilyKey } from './weaponPadFamilies'
 
 /**
@@ -105,6 +106,39 @@ export interface EquipmentUsageText {
   /** Infobulle du badge : LA MÊME réserve que `groupActiveHint` (source non distinguée, bornes
    * à la précision de la retransmission, camo seul sous le seuil de mesure en lecture large). */
   killBadgeHint: string
+}
+
+/**
+ * PadControlText — LE VOCABULAIRE DU CONTRÔLE DES ARMES SPÉCIALES (tableau de la page match).
+ *
+ * IL VIT ICI, PAS DANS `match-view/i18n.ts`, pour la raison qui vaut déjà pour le bilan
+ * d'équipement : les noms d'ARME viennent du catalogue du document et de la table des familles
+ * de socle (`padNameFor`), tous deux dans le dictionnaire du rejeu. Une seconde table de noms
+ * côté `match-view` divergerait au premier ajout du manifeste du titre.
+ *
+ * CE QUE LA VENTILATION DOIT DIRE, ET POURQUOI ELLE EXISTE. Le tableau ne montre que les
+ * occupations dont l'événement natif nomme le ramasseur ; toutes les autres sont réelles et
+ * doivent se voir, sans quoi le lecteur croit avoir sous les yeux la totalité des socles pris du
+ * match. D'où une note de bas de tableau plutôt qu'un silence, et un libellé par CAUSE — une
+ * abstention pour ambiguïté n'est pas une absence de mesure.
+ */
+export interface PadControlText {
+  title: string
+  /** Infobulle du titre : d'où vient l'attribution, et ce qu'elle refuse de faire. */
+  titleHint: string
+  colPlayer: string
+  colTotal: string
+  teamTotal: string
+  /** Le dénominateur : « N prises attribuées sur M occupations de socle ». */
+  attributedFmt: (attributed: number, occupations: number) => string
+  /** L'annonce du reste, avant la ventilation par cause. */
+  missingFmt: (missing: number) => string
+  /**
+   * UN LIBELLÉ PAR CAUSE, et le typage tient la parité : `PadControlGapKey` énumère les cinq
+   * raisons pour lesquelles une occupation reste hors tableau, et aucune ne peut être oubliée
+   * dans une langue.
+   */
+  gapFmt: Record<PadControlGapKey, (count: number) => string>
 }
 
 export interface ReplayText {
@@ -656,6 +690,11 @@ export interface ReplayText {
    * ces textes ne servent PAS le rejeu lui-même : ils servent son BILAN, une autre surface.
    */
   equipmentUsage: EquipmentUsageText
+  /**
+   * LE TABLEAU DU CONTRÔLE DES ARMES SPÉCIALES (onglet Chronologie, sous le bilan d'équipement).
+   * Le seul écran du dépôt qui NOMME le ramasseur d'un socle — cf. `PadControlText`.
+   */
+  padControl: PadControlText
   /** Pictogramme « munitions pleines » (emplacement jamais écrit) : décision produit 4. */
   ammoFullLabel: string
   ammoDrawnHint: string

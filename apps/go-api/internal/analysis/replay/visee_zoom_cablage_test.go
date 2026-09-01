@@ -10,10 +10,8 @@ package replay
 // Seuils, gardes et conventions sont ceux du fichier d'origine ; rien n'est redefini ici.
 
 import (
-	"fmt"
 	"os"
 	"sort"
-	"strings"
 	"testing"
 
 	"levelup/go-api/internal/analysis/filmdec"
@@ -282,44 +280,4 @@ func TestViseeZoomEntreesOrphelines(t *testing.T) {
 		" « il meurt a la lunette » explique la sortie manquante — et la periode doit alors se" +
 		" fermer A LA MORT, pas au plafond de maintien. Sinon la sortie existe ailleurs dans le" +
 		" flux (2e position d'une liste, vraisemblablement le paquet du degat qui fait dezoomer).")
-}
-
-// zoomDumpBrut publie les evenements BRUTS des unites les plus actives dans la fenetre du releve.
-// C'est le diagnostic qui dit si la reconstruction d'intervalles est fidele ou si des transitions
-// manquent (evenement de lunette porte en 2e position d'une liste, dans une autre famille).
-func zoomDumpBrut(t *testing.T, evts []zoomEvt, off int64) {
-	t.Helper()
-	parU := map[uint64][]zoomEvt{}
-	for _, e := range evts {
-		s := float64(e.tMS-off) / 1000
-		if s < zoomFenetreDebut || s > zoomFenetreFin {
-			continue
-		}
-		parU[e.unite] = append(parU[e.unite], e)
-	}
-	type uc struct {
-		u uint64
-		n int
-	}
-	var l []uc
-	for u, es := range parU {
-		l = append(l, uc{u, len(es)})
-	}
-	sort.Slice(l, func(i, j int) bool { return l[i].n > l[j].n })
-	t.Logf("EVENEMENTS BRUTS dans la fenetre [%.0f ; %.0f] s — %d unites concernees",
-		zoomFenetreDebut, zoomFenetreFin, len(parU))
-	for i, e := range l {
-		if i == 6 {
-			break
-		}
-		var sb []string
-		for _, ev := range parU[e.u] {
-			sens := "SORTIE"
-			if ev.entree {
-				sens = "ENTREE"
-			}
-			sb = append(sb, fmt.Sprintf("%.1f:%s", float64(ev.tMS-off)/1000, sens))
-		}
-		t.Logf("  unite %3d (%d evts) : %s", e.u, e.n, strings.Join(sb, " "))
-	}
 }

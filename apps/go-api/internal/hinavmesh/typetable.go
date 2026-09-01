@@ -117,6 +117,13 @@ var sectionsChaines = [][2]string{
 	{"TSTR", "FSTR"},
 }
 
+// Les deux sections de types exigees par lireTypes : TNA1 porte les noms, TBDY les corps.
+// Nommees parce que le meme litteral revenait a chaque acces a la carte des sections.
+const (
+	sectionNomsTypes  = "TNA1"
+	sectionCorpsTypes = "TBDY"
+)
+
 // lireTypes construit la table des types a partir des tables de chaines, de TNA1 et de TBDY.
 func lireTypes(buf []byte, sections map[string][2]int) (tableTypes, int, error) {
 	var secTypes, secChamps [2]int
@@ -132,7 +139,7 @@ func lireTypes(buf []byte, sections map[string][2]int) (tableTypes, int, error) 
 	if !trouve {
 		return nil, 0, fmt.Errorf("hinavmesh: fichier-tag sans table de chaines (ni TST1/FST1, ni TSTR/FSTR)")
 	}
-	for _, tag := range []string{"TNA1", "TBDY"} {
+	for _, tag := range []string{sectionNomsTypes, sectionCorpsTypes} {
 		if _, ok := sections[tag]; !ok {
 			return nil, 0, fmt.Errorf("hinavmesh: fichier-tag sans section %s", tag)
 		}
@@ -140,11 +147,11 @@ func lireTypes(buf []byte, sections map[string][2]int) (tableTypes, int, error) 
 	nomsTypes := chaines(buf, secTypes)
 	nomsChamps := chaines(buf, secChamps)
 
-	types, err := lireNomsTypes(buf, sections["TNA1"], nomsTypes)
+	types, err := lireNomsTypes(buf, sections[sectionNomsTypes], nomsTypes)
 	if err != nil {
 		return nil, 0, err
 	}
-	recuperations, err := lireCorpsTypes(buf, sections["TBDY"], types, nomsChamps)
+	recuperations, err := lireCorpsTypes(buf, sections[sectionCorpsTypes], types, nomsChamps)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -210,7 +217,7 @@ func lireCorpsTypes(buf []byte, sec [2]int, types tableTypes, nomsChamps []strin
 			return recuperations, fmt.Errorf("hinavmesh: TBDY, indice de type %d hors des %d types (offset %d)",
 				idx, len(types), l.pos)
 		}
-		avant := *(&types[idx])
+		avant := types[idx]
 		if err := lireUnCorps(l, &types[idx], nomsChamps); err != nil {
 			// L entree est illisible. On ne devine pas son contenu : on cherche le plus court
 			// saut apres lequel TOUT le reste de la section se lit (resynchronisation.go). Sans

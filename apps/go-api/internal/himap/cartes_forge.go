@@ -40,6 +40,18 @@ const (
 	CanevasDeadland = "fo10_deadland"
 )
 
+// Litteraux de catalogue repris par les sondes du paquet. Nommes pour la meme raison que les
+// canevas ci-dessus : le meme litteral en 4 endroits re-divergerait (regle des <= 2 copies).
+const (
+	// carteIsolationNom est le nom affiche de la carte Forge Isolation.
+	carteIsolationNom = "Isolation"
+	// carteIsolationMvar est le `.mvar` de la carte Forge Isolation.
+	carteIsolationMvar = "isolation_map.mvar"
+	// carteFrostAnonymeMapID est le map_id de la carte Forge batie sur `fo13_frost` que
+	// `match_registry` ne nomme pas : le map_id y tient lieu de nom affiche.
+	carteFrostAnonymeMapID = "944396dd-5661-4a16-b1d8-a6053f762c55"
+)
+
 // CartesForge : les cartes Forge dont l'asset est produit.
 //
 // COMMENT ON SAIT QU'UNE CARTE EST FORGE, et ce n'est pas un prefixe de nom : son module de
@@ -159,8 +171,8 @@ var CartesForge = []CarteForge{
 	},
 	{
 		MapID:         "01af558d-53ab-4f05-ba68-92d805fc6260",
-		Nom:           "Isolation",
-		FichierMvar:   "isolation_map.mvar",
+		Nom:           carteIsolationNom,
+		FichierMvar:   carteIsolationMvar,
 		ModuleCanevas: CanevasWetland,
 	},
 	{
@@ -296,9 +308,9 @@ var CartesForge = []CarteForge{
 		ModuleCanevas: CanevasDesert,
 	},
 	{
-		MapID:         "944396dd-5661-4a16-b1d8-a6053f762c55",
-		Nom:           "944396dd-5661-4a16-b1d8-a6053f762c55",
-		FichierMvar:   "944396dd-5661-4a16-b1d8-a6053f762c55_map.mvar",
+		MapID:         carteFrostAnonymeMapID,
+		Nom:           carteFrostAnonymeMapID,
+		FichierMvar:   carteFrostAnonymeMapID + "_map.mvar",
 		ModuleCanevas: CanevasFrost,
 	},
 	{
