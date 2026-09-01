@@ -184,6 +184,37 @@ go run ./cmd/migrate-media-paths --db data/titles/{slug}/warehouse/shared_social
 # --captures-base defaults to app_settings.json media_captures_base_dir
 ```
 
+### 2D replay — where an artifact gets built (`replay_build_location`)
+
+Setting in `app_settings.json`, re-read on **every** sync cycle (a `PATCH /api/v1/settings`
+takes effect without a restart). It arbitrates the *service* paths — the post-sync step and
+the admin action — never the operator CLI below.
+
+| Value | What the server does | When it applies |
+|---|---|---|
+| `local` | This process decodes the film itself, in a **bounded child process** (hard memory cap, low CPU priority). | Default in development. **Refused in production**: a film decode takes ~50 s and peaks at hundreds of times the film's own size; the web VPS never decodes. A `PATCH` asking for it in production is rejected with `400 invalid_replay_build_location`. |
+| `worker` | This process **queues** the match and never decodes. A remote `cmd/replay-worker` pulls the job, downloads the chunks from pre-signed URLs, decodes, and pushes the artifact back. | Default in production. Requires `LEVELUP_BUILD_WORKER_TOKEN` on the web instance; **without it the placement degrades to `off`** (queueing when nobody empties the queue would resolve one Halo manifest per match, every cycle, for nothing). |
+| `off` | Nothing is built. The replay page falls back to whatever artifacts already exist. | Explicit opt-out. It is the only *silent* placement — the two degradations above each log a `WARN`. |
+
+Empty value = the instance default (`worker` in production, `local` in development). The
+decision has a single home: `replaybuild.DecidePlacement`.
+
+The post-sync step (1.58) takes the cycle's **inserted** matches first, then catches up on the
+most recent matches of the retention window that have no artifact yet — a Theater film is
+published *after* the match, so a single attempt at insertion time would never catch a
+late-arriving film. Caps: the catch-up tier never adds more than 5 matches per cycle, a local
+build never exceeds 5 matches, and either path stops between two matches once the cycle has
+spent 5 minutes. The remaining backlog is published as `postsync_replay_backlog_restant` on
+`/debug/vars`, together with `postsync_replay_cycles_total` (zero here while syncs run = the
+step is off or unwired).
+
+`replay_retention_months` bounds the same window: the step never builds — and the recurring
+purge deletes — artifacts older than it. `0` = unlimited.
+
+The operator CLI ignores this setting on purpose (see `cmd/levelup backfill-replay`): whoever
+types it has already decided where they build, on their own machine, with their own cached
+films.
+
 ### Notifications
 
 ```bash

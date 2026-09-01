@@ -1,3 +1,101 @@
+## [2026-09-01] Volet B — le rejeu 2D au fil de l'eau : une étape installée partout, muette, et sans rattrapage — Complété
+
+Worktree dédié `LevelUp-wt-rejeu-fil`, branche `wt/rejeu-fil-de-l-eau` (base `55d6c7ee5`).
+Étapes B1, B2, B3 du plan `.ai/V7.5/PLAN_SOURCE_UNIQUE_ARME_2026-09-01.md`. Le volet A est
+exécuté en parallèle par une autre session ; seul `convergence.go` est partagé, et l'édit est
+confiné à `runReplayArtifacts`.
+
+**Le constat.** L'étape post-sync 1.58 (artefacts de rejeu) existe, est installée sur les trois
+chemins de sync, et ne produit rien : 1 artefact sur les 222 matchs des 90 derniers jours. Le
+2026-08-27 à 23h02 un cycle a inséré 7 matchs, l'étape 1.55 les a traités la minute même avec
+le film disponible (`no_film: 0`), et aucune ligne « rejeu 2D » n'existe dans `logs/sync.log`.
+
+**Le diagnostic, établi sur pièces.** Il est en deux moitiés, et la première est structurelle :
+`replayartifacts.Run` avait SEPT sorties sans la moindre trace au niveau INFO — placement
+éteint, pas de segment de lecture, client sans chunks, sélection vide, titre sans catalogue,
+et **son propre résumé, conditionné à `built > 0 || filmsSaved > 0`**. Aucune ne se distinguait
+de « l'étape n'a jamais tourné » : l'absence de ligne au journal ne prouvait donc rien. C'est
+exactement le défaut qui a fait tourner l'étape 1.57 nulle part pendant cinq mois, reproduit
+dans le câblage de sa voisine — `fetcher, _ := s.client.(replayartifacts.ChunksFetcher)` jetait
+le résultat de son assertion, et 1.58 n'avait aucun garde-rail de compilation là où 1.57 en a
+un depuis le 2026-08-29.
+
+**Par élimination**, cinq des sept sorties sont écartées par les faits : le hook est installé
+par les trois sites de câblage (désormais verrouillé par un test) ; `WithRead` n'est jamais nil
+sur un moteur réel ; les trois clients de production portent bien `GetFilmChunks` (vérifié à la
+COMPILATION — `replayartifacts.ChunksFetcher` et `killcollector.FilmChunkFetcher` sont deux
+interfaces distinctes de même forme, vérifier l'une ne vérifiait pas l'autre) ; la sélection ne
+pouvait pas être vide pour des matchs insérés la minute même ; et `NewBuilder` ne peut échouer
+que si `map_quant_bounds.json` ou les libellés manquent, or ils sont versionnés et présents.
+**Reste `Placement == Off`**, c'est-à-dire `replay_build_location` mis explicitement à `"off"`
+dans `app_settings.json` — la seule valeur dont la conséquence était SILENCIEUSE (les deux
+dégradations, « local en production » et « worker sans jeton », journalisent chacune un WARN).
+Trancher définitivement demandait de lire `app_settings.json` du checkout principal, que la
+consigne de session interdisait de toucher : la mesure est nommée, pas devinée.
+
+**La seconde moitié du défaut est indépendante du placement** : `Run` ne voyait que
+`insertedIDs`. Une tentative, à l'instant de l'insertion, alors que le film Theater se publie
+APRÈS la partie. Ratée, elle n'était jamais reprise — le match n'ayant plus jamais le statut
+« inséré », plus rien ne le regardait. Même placement armé, l'étape n'aurait rattrapé personne.
+
+**Ce qui a été livré.** B1 : l'assertion est lue et signalée (WARN + compteur quand le
+placement est « local » où elle désarme tout, DEBUG sur « worker » / « off » où la capacité
+n'est pas requise — un WARN par cycle sur le chemin de production serait du bruit qui masque
+les vrais) ; garde-rail de compilation calqué sur `kill_source_wiring_test.go`, plus
+l'interdiction à la source du littéral `fetcher, _ :=` et du filtre sur les insérés ; chaque
+refus se nomme ; le bilan parle même à zéro construit, avec la ventilation
+`deja_a_jour / sans_film / echecs` ; sept compteurs expvar par titre (ADR 0009, aucun ratio).
+B2 : sélection à DEUX étages dans un seul segment de lecture — les insérés d'abord (ils portent
+les faits, donc la réparation des artefacts appauvris leur reste attachée), puis la queue
+récente du registre sans artefact sur disque ; `BudgetParCycle = 5 min` appliqué ENTRE deux
+matchs, à la cuisson comme à la mise en file ; jauge `postsync_replay_backlog_restant` publiée
+à chaque cycle, même à zéro et même quand le lot est déjà plein. B3 : `replay_build_location`
+documenté en EN et FR dans le même commit.
+
+**Trois écarts assumés par rapport au modèle 1.57**, tous écrits dans l'en-tête de `backlog.go`
+plutôt que découverts plus tard : (a) l'horizon (64) borne le PÉRIMÈTRE et pas seulement la
+lecture — une fois la queue récente couverte le retard est vide et l'étape s'arrête d'elle-même,
+le solde historique restant au `backfill-replay` CLI ; (b) le prédicat de retard est la PRÉSENCE
+du fichier (`os.Stat`), pas la fraîcheur complète, qui lit et désérialise l'artefact ENTIER —
+soutenable sur les quelques insérés d'un cycle, ruineux sur soixante-quatre ; (c) la jauge est
+donc bornée par l'horizon, et c'est dit.
+
+**Gates, verdicts par code de sortie** : `go build ./...` 0 · `go vet ./internal/... ./cmd/server/...`
+0 · `go test ./internal/sync/... -count=1 -p 1` **0** (10 paquets `ok`) ·
+`go test -tags=integration -p 1 ./internal/sync/... -count=1` **0** (`internal/sync` en 124 s) ·
+`go test ./internal/archlint/...` 0 (le ratchet du god-package ne compte pas les `_test.go`, le
+neuf non-test est allé en sous-paquet). Le paquet `replayartifacts` a été redécoupé au passage :
+`artifacts.go` passait 500 lignes, il est revenu à 378 (artifacts.go décide QUOI, backlog.go dit
+SUR QUOI, cuisson.go fait le travail, journal.go dit ce qui a été fait).
+
+**AUCUN ARTEFACT DE REJEU N'A ÉTÉ CONSTRUIT** (décision D8 du plan, sinistre RAM du 2026-08-31).
+Les tests forgent des fichiers JSON d'artefact et n'ouvrent aucun film ; le test de convergence
+de la jauge joue deux cycles en placement « worker », où c'est la fonction d'enfilage qui pose
+le fichier. Deux clauses de gate qui exigeaient un cycle de synchronisation local sont donc
+NON EXÉCUTÉES et statuées comme telles dans le plan : en développement le placement par défaut
+est « local », un cycle y ferait cuire jusqu'à cinq artefacts.
+
+**État de la production, constaté par lecture seule (aucun accès au VPS).**
+`docs/RUNBOOK_REPLAY_WORKER.md` : « Status as of 2026-08-25 : provisioned, NOT activated ». Le
+jeton d'ouvrier est *staged, inert* à `~/levelup-worker-token.env.pending` sur le VPS web, non
+câblé à aucun service ; l'unité `levelup-worker` de csstat est installée mais désactivée. Donc
+`DecidePlacement` rend `off` à chaque cycle en production, avec son WARN. **La production ne
+construit aucun rejeu, et ce lot n'y change rien** : c'est le report daté n° 134 du
+`REGISTRE_REPORTS`, dont la condition de reprise est de poser le jeton — le seul geste qui
+ouvre le fil de l'eau. Rien n'a été touché en production.
+
+**Découverte à trancher avant l'étape A3.4 du volet A** (consignée en section 6 du plan) :
+`MBitWeaponKillsNoFilm` n'est pas une donnée de `weapon_kills`, c'est le marqueur terminal
+« film 404/expiré » du registre. Il a deux lecteurs vivants hors de la chaîne que le volet A
+supprime — le rattrapage 1.57 et, depuis ce lot, le rattrapage 1.58 — et l'étape 1.55 en est le
+SEUL poseur. Le retirer casse la compilation des deux ; le supprimer avec ses lecteurs prive
+les deux rattrapages de leur seule protection contre les ~29 % de films irrécupérables, qui
+occuperaient la liste de travail à vie (mesure du 2026-08-29 : 581 des 999 candidats de 1.57).
+
+**Prochaine étape** : relecture par l'utilisateur, puis merge de `wt/rejeu-fil-de-l-eau` dans
+`feat/v75`. Le volet B n'active toujours rien en production : il rend l'étape observable,
+rattrapable et documentée, mais c'est le jeton d'ouvrier qui ouvrira le robinet.
+
 ## [2026-09-01] Merge de wt/lint-dette dans feat/v75 — le job `Go Lint` n'est plus rouge — Complété
 
 Merge `--no-ff` de `wt/lint-dette` (4 commits) dans `feat/v75`. **Zéro conflit**, thought_log

@@ -190,6 +190,37 @@ go run ./cmd/migrate-media-paths --db data/titles/{slug}/warehouse/shared_social
 # --captures-base : défaut = media_captures_base_dir de app_settings.json
 ```
 
+### Rejeu 2D — où se construit un artefact (`replay_build_location`)
+
+Réglage d'`app_settings.json`, relu à **chaque** cycle de synchronisation (un
+`PATCH /api/v1/settings` prend effet sans redémarrage). Il arbitre les chemins de *service* —
+l'étape post-sync et l'action d'administration — jamais la commande d'opérateur ci-dessous.
+
+| Valeur | Ce que fait le serveur | Quand elle s'applique |
+|---|---|---|
+| `local` | Ce processus décode le film lui-même, dans un **processus enfant borné** (plafond mémoire dur, priorité CPU basse). | Défaut en développement. **Refusée en production** : un décodage dure ~50 s et son pic mémoire vaut des centaines de fois la taille du film ; le VPS web ne décode jamais. Un `PATCH` qui la demande en production est refusé par un `400 invalid_replay_build_location`. |
+| `worker` | Ce processus **met en file** et ne décode jamais. Un `cmd/replay-worker` distant prend le travail, télécharge les morceaux par URL pré-signées, décode, et repousse l'artefact. | Défaut en production. Exige `LEVELUP_BUILD_WORKER_TOKEN` sur l'instance web ; **sans lui le placement dégrade en `off`** (enfiler quand personne ne vide la file résoudrait un manifeste Halo par match, à chaque cycle, pour rien). |
+| `off` | Aucune construction. La page de rejeu se contente des artefacts déjà présents. | Renoncement explicite. C'est le seul placement *silencieux* — les deux dégradations ci-dessus journalisent chacune un `WARN`. |
+
+Valeur vide = défaut de l'instance (`worker` en production, `local` en développement). La
+décision vit à un seul endroit : `replaybuild.DecidePlacement`.
+
+L'étape post-sync (1.58) prend d'abord les matchs **insérés** du cycle, puis rattrape les
+matchs les plus récents de la fenêtre de rétention qui n'ont pas encore d'artefact — le film
+Theater se publie *après* la partie, et une tentative unique à l'instant de l'insertion ne
+rattraperait jamais un film arrivé en retard. Plafonds : le rattrapage n'ajoute jamais plus de
+5 matchs par cycle, une construction locale n'en traite jamais plus de 5, et l'un comme l'autre
+s'arrêtent entre deux matchs dès que le cycle a consommé 5 minutes. Le retard restant est
+publié en `postsync_replay_backlog_restant` sur `/debug/vars`, avec
+`postsync_replay_cycles_total` (zéro alors que les synchronisations tournent = l'étape est
+éteinte ou non câblée).
+
+`replay_retention_months` borne cette même fenêtre : l'étape ne construit jamais — et la purge
+récurrente supprime — les artefacts plus anciens. `0` = illimité.
+
+La commande d'opérateur ignore volontairement ce réglage (cf. `cmd/levelup backfill-replay`) :
+celui qui la tape a déjà décidé où il construit, sur sa machine, avec ses films en cache.
+
 ### Notifications
 
 ```bash
