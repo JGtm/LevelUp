@@ -83304,3 +83304,23 @@ l'auto-fusion etait deja exacte. Aucun golden n'a bouge.
 **Gates sur l'arbre reconcilie** : gofmt propre · `go build ./...` · replay + filmdec +
 contracttest · `TestOpenAPIYAMLIsUpToDate` + `TestManualFragmentPathsSurviveGeneration` · web
 typecheck, lint 0 erreur, vitest match-replay 1948/1948.
+
+---
+
+## [2026-09-01] Lint CI — retrait de la constante inutilisee du canal ramassage
+
+Le run `33483712601` est vert partout SAUF « Go Lint », et un seul de ses ~25 findings vient de
+ce chantier : `biped_pickups.go:64: const bipedPickupPreambleBits is unused`. Verifie sur
+pieces avant de toucher : la constante n'apparaissait QUE dans sa propre declaration — le
+decodeur de production lit les trois champs en ligne, et les instruments de recherche ont leur
+propre `bpkHeaderBits`.
+
+Retiree. **L'information qu'elle portait n'est pas perdue** : la decomposition du preambule
+(configuration 1 + continuation 1 + type R(7) = 9 bits) est reportee en commentaire la ou les
+trois champs se lisent. Une constante morte se supprime ; le fait qu'elle documentait, non.
+
+Les ~24 autres findings appartiennent aux chantiers cartes (himap, cartes_forge, hinavmesh),
+visee (tests de recherche zoom) et mapfond — pas touches, ce sont leurs sessions.
+
+Gates : gofmt propre, `go vet` silencieux, `go test ./internal/analysis/filmdec/` vert,
+`golangci-lint` local sur le paquet ne signale plus rien.
