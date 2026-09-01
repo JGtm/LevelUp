@@ -1,3 +1,51 @@
+## [2026-09-01] Arme du kill — volet A, étape A4 : la table meurt côté Halo Infinite, et Halo 5 a failli mourir avec — Complété
+
+**Périmètre** : étape A4 du plan `.ai/V7.5/PLAN_SOURCE_UNIQUE_ARME_2026-09-01.md`, worktree
+dédié `LevelUp-wt-arme-source`, branche `wt/arme-source-unique`. A0-A3 closes ; reste A6
+(et A5, hors de mon périmètre).
+
+**Décision technique principale — « title-owned » NE PROTÈGE PAS le second titre, et le
+plan supposait le contraire.** Vérifié sur pièces : `TitleMigrationSet.OwnsTarget` de Halo 5
+ne possède QUE la cible `metadata` ; pour `shared`, `RunForTitleDB` retombe DÉLIBÉRÉMENT sur
+le registre global PLUS le provider title-owned de Halo Infinite (« hérite du schéma
+uniforme », en-tête de `title_set.go`). Une migration *title-owned* Halo Infinite s'exécute
+donc AUSSI sur `data/titles/halo_5/warehouse/shared_matches_v2.duckdb`. Un step additif s'en
+accommode — c'est l'objectif — mais ce lot écrit le PREMIER step DESTRUCTIF du dépôt : tel
+que le plan le décrivait, il aurait effacé les **550 926 lignes natives** de Halo 5.
+Correction : une primitive manquante, `Migration.OnlyTitles` (vide = tous les titres,
+comportement historique inchangé), honorée par `runSteps`. Un step écarté n'est ni appliqué
+ni enregistré au ledger. Ce n'est pas une comparaison de slug (ratchet
+`no_slug_comparison`) mais une appartenance à un ensemble donné par le step, comme la clé de
+`migrationSets` : le runner ne branche sur aucun littéral.
+
+**Résultats observés** : `shared_drop_weapon_kills_v1` (title-owned + `OnlyTitles`) supprime
+la vue dans SES DEUX SCHÉMAS (`main` et `shared` — mesuré sur une copie lecture seule de la
+base de production ; un `DROP VIEW IF EXISTS` nu ne résout que sur le `search_path` et
+laisse le nom vivre dans l'autre), la table, `weapon_kills_v3`, la séquence de génération,
+puis `CHECKPOINT`. Les schémas sont lus dans `duckdb_views()` avant d'être qualifiés : un
+`DROP … IF EXISTS` sur un schéma ABSENT est une erreur, pas un no-op. Quatre tests :
+part côté Halo Infinite / survit côté Halo 5 (avec `kill_kind`) / tombe sur les deux schémas
+sur une base forgée à la forme de production / idempotent. Garde-rail de non-retour
+`archlint/no_weapon_kills_sql_test.go` : il scanne les FORMES SQL et non le littéral (celui-ci
+vit dans ~150 fichiers comme identifiant Go ou clé de citation), avec 24 entrées d'allowlist
+justifiées ; morsure vérifiée. `steps_shared_append_only_weapon_kills` RESTE : Halo 5 lit la
+vue qu'elle crée. Effets de bord traités : `validation/gate.go` n'exige plus la table dans
+les tables critiques (le gate serait devenu rouge sur une base saine), et `cmd/audit_coverage`
+sonde désormais `analysis.WeaponEvidenceTable` au lieu de joindre la table disparue.
+
+**Gates** : `go build ./...` = 0, `go vet ./...` = 0, `go vet -tags=integration ./...` = 0,
+`go test` et `go test -tags=integration -p 1` sur TOUS les paquets sauf `internal/himap` = 0,
+`gofmt -l` vide. `internal/himap` non exécuté localement (> 10 min, dette datée) : aucun
+symbole touché, la CI fait foi.
+
+**Conclusion / prochaine étape** : A6 — registre des véhicules et tourelles, puis la
+reclassification de l'épée et du marteau en arme LOURDE (décision utilisateur : le compteur
+API `melee_kills` ne les compte pas, 9 741 frags tombent en « Non attribué » sans que
+personne ne les serve). **La migration n'a PAS été exécutée sur les bases réelles** :
+consigne de l'orchestrateur, elle se lance avec l'utilisateur après sauvegarde (A5.1).
+
+---
+
 ## [2026-09-01] Arme du kill — volet A, étape A3 : le producteur de corrélation est mort — Complété
 
 **Périmètre** : étape A3 du plan `.ai/V7.5/PLAN_SOURCE_UNIQUE_ARME_2026-09-01.md`, worktree

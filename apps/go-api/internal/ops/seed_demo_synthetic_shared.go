@@ -89,11 +89,13 @@ func insertSharedMatch(ctx context.Context, db *sql.DB, m synthMatch, aliases ma
 			return err
 		}
 	}
-	// Médailles + armes + CSR + kill-feed pour le joueur principal.
+	// Médailles + CSR + kill-feed pour le joueur principal.
+	//
+	// L ARME FAVORITE N EST PLUS SEMÉE ICI (2026-09-01) : elle passait par `weapon_kills`,
+	// supprimée du fichier Halo Infinite avec la bascule vers la source de dégât. La semer
+	// à nouveau demande des lignes `match_kill_events` portant un `source_tag` réel — une
+	// refonte du corpus de démo, hors du périmètre de ce lot (registre des reports).
 	if err := insertMatchMedals(ctx, db, m); err != nil {
-		return err
-	}
-	if err := insertMatchWeaponKills(ctx, db, m); err != nil {
 		return err
 	}
 	if m.pl.ranked {
@@ -192,22 +194,6 @@ func insertMatchMedals(ctx context.Context, db *sql.DB, m synthMatch) error {
 		if _, err := db.ExecContext(ctx,
 			`INSERT OR IGNORE INTO medals_earned (match_id, xuid, medal_name_id, count) VALUES (?, ?, ?, 1)`,
 			m.matchID, demoXUIDForIndex(0), id); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// insertMatchWeaponKills écrit weapon_kills (arme favorite) pour le joueur principal.
-// Lecture home via v_weapon_kills → weapon_labels (seed migration).
-func insertMatchWeaponKills(ctx context.Context, db *sql.DB, m synthMatch) error {
-	for i := 0; i < m.favWeaponKills; i++ {
-		// written_at ancré sur synthAnchor : weapon_kills est append-only (DEFAULT UTC
-		// posé par la migration) ; sans valeur explicite chaque run diverge.
-		if _, err := db.ExecContext(ctx, `
-			INSERT INTO weapon_kills (match_id, xuid, time_ms, weapon_id, confidence, attribution_path, written_at)
-			VALUES (?, ?, ?, ?, 'high', 'demo', ?)`,
-			m.matchID, demoXUIDForIndex(0), (i+1)*20000, int64(m.favWeaponID), synthAnchor); err != nil {
 			return err
 		}
 	}

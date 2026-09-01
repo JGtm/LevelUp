@@ -43,6 +43,14 @@ import (
 // d'une migration Python ancienne — pas répliqué côté Go. À traiter dans un
 // fix migration dédié (cf. thought_log 2026-05-23). Patch test-local en
 // attendant pour ne pas bloquer le refactor Collect→Persist.
+// titreConservantWeaponKills : le slug d'un titre qui GARDE `weapon_kills`.
+//
+// La suppression du 2026-09-01 porte `OnlyTitles = {titre par défaut}` : tout autre titre
+// conserve la table. Halo 5 est le cas réel — 550 926 lignes natives. Le slug est écrit ici
+// plutôt qu'importé de `games/halo_5` : ce paquet-là dépend de `persist`, l'importer depuis
+// un test interne de `persist` ferait un cycle.
+const titreConservantWeaponKills = "halo_5"
+
 func openSharedTestDB(t *testing.T) *sql.DB {
 	t.Helper()
 	db, err := sql.Open("duckdb", ":memory:")
@@ -55,7 +63,12 @@ func openSharedTestDB(t *testing.T) *sql.DB {
 	// merge h5 : sans provider, RunForDB n'applique que les 3 migrations globales
 	// restantes et weapon_kills n'existe pas. Poser le provider (cf. openPVETestDB).
 	migration.SetTitleStepsProvider(halomigrations.StepsFor)
-	if err := migration.RunForDB(db, migration.TargetShared); err != nil {
+	// ⚠ LA BASE EST MONTÉE SOUS UN TITRE AUTRE QUE LE DÉFAUT, ET C'EST NÉCESSAIRE.
+	// Depuis le 2026-09-01, `shared_drop_weapon_kills_v1` supprime `weapon_kills` du
+	// fichier du titre par défaut : le persister n'y écrit plus rien de par-arme. Son
+	// chemin weapon_kills sert désormais le producteur NATIF de Halo 5, et c'est donc
+	// sous ce titre-là que ces tests ont un sens.
+	if err := migration.RunForTitleDB(db, titreConservantWeaponKills, migration.TargetShared); err != nil {
 		t.Fatalf("migrate shared: %v", err)
 	}
 	for _, col := range []string{
