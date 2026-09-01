@@ -80439,3 +80439,67 @@ deltas est le suspect ; le residu ventile par composant PRESENT, applique cette 
 DELTA, le designera.
 
 **Toujours vrai** : ne PAS brancher i12/i13.
+
+---
+
+## [2026-09-01] Chainage delta : le repere de « 87 a 99 % » n'existait pas — mesure du plancher et du plafond
+
+**Statut** : Complete (la question est tranchee, autrement que prevu) ; `ti=11` est desormais dans
+le regime de l'archetype de reference.
+
+**LA DEMANDE** etait de monter le chainage delta de 13-65 % vers les 87-99 % annonces pour `ti=13`.
+Cinq instruments plus tard, ce n'est pas le chainage de `ti=11` qui a bouge : c'est le repere qui
+est tombe.
+
+**1. LE PLANCHER, qui manquait depuis le debut.** Tous les taux de ce chantier se comparaient
+implicitement a zero. Mesure : `worldObjectHeaderAt` passe a **3 %** des positions ARBITRAIRES
+(dix decalages choisis pour ne coincider avec aucune largeur ni somme de deux). Les 29,3 % globaux
+valent donc dix fois le plancher — c'est du signal ; les 5,3 % des records a plusieurs composants
+SONT le plancher — c'est du bruit. Sans ce chiffre, aucune des mesures precedentes n'etait
+interpretable, y compris les miennes.
+
+**2. LE GARDE PAR COMPOSANT DU MODE FILM : REFUTE.** `FUN_14076cb60` lit bien, apres chaque
+composant present, un `R(1)` et un `R(32)` sentinelle si ce bit vaut 1 (relu sous Ghidra). L'armer
+fait tomber le chainage de 29,3 % a **2,4 %** — le plancher. Il n'est pas dans ce flux.
+PIEGE EVITE DE JUSTESSE : le premier A/B rendait deux colonnes RIGOUREUSEMENT identiques, parce que
+ma marche appelait `consumeByName` en direct et ne passait pas par `consumeCorruptionCheck`. Un A/B
+qui ne bouge pas d'un iota ne dit pas « pas d'effet », il dit « bascule non lue ».
+
+**3. LE BIT DE PRESENCE PAR COMPOSANT : REFUTE dans ses deux lectures** — prefixe 4,5 %, garde
+conditionnelle 3,1 %. Contre 29,3 % sans rien. L'hypothese venait d'une singularite reelle : `i2
+formatted-text` chaine a **76,6 %** (vingt-cinq fois le plancher) et c'est le SEUL composant dont
+le deserialiseur commence par un bit de presence.
+
+**4. LES LARGEURS SONT JUSTES, et Ghidra l'a dit en corrigeant ma propre recette.** Le premier
+portage avait suivi l'ECRIVAIN reseau ; le LECTEUR est ailleurs dans le descripteur
+(`nameSlot + 0x28`, verifie en constatant que le lecteur d'un bloc ecrit dans le champ du composant
+PRECEDENT). Les deux concordent : i1 = 4x8, i3 = 32, i12 = 32 (offset 0x18c), i13 = 32 (0x190),
+i16 = 32 (0x19c + index*4), i32 = 8 quantifie. Les largeurs portees sont bonnes.
+
+**5. LE VRAI FACTEUR EST LA TAILLE DE LA BANDE D'ANCRAGE — et le controle sur `ti=13` le prouve.**
+
+| archetype | bande COMBLEE (production) | bande OBSERVEE |
+|---|---|---|
+| ti=11 |  5,6 % sur 1 616 281 marches | **29,3 %** sur 19 666 |
+| ti=13 |  6,3 % sur   278 670 marches | **43,7 %** sur 27 409 |
+
+Par film, le chainage suit le nombre de slots : 20 slots donnent 77 % (KOTH, ti=13), 26 slots
+56 %, 1 704 slots 2,6 %.
+
+**LA CONCLUSION QUI CHANGE L'OBJECTIF.** Le meme instrument, sur `ti=13` et sur SES PROPRES modes,
+plafonne a **77 %** et rend 32 a 56 % ailleurs. Le meilleur film de `ti=11` est a **64,9 %**.
+`ti=11` est donc DEJA dans le regime de l'archetype de reference. Le « 87 a 99 % » venait de la
+documentation du lot C-bis et n'est pas reproductible ici — ce qui manquait a ce chantier n'etait
+pas un composant, c'etait un repere honnete.
+
+**DECOUVERTE HORS PERIMETRE, NOTEE ET NON TRAITEE (regle 5).** La bande observee ferait passer le
+balayage de PRODUCTION de `ti=13` (`ScanFilmManagedProperties`, qui comble) de 2,6 % a **32,2 %**
+sur un film CTF, et de 47,6 % a **77,0 %** sur un KOTH — dix fois moins de faux records sur un
+chemin qui a des consommateurs en production. Cela se decide, cela ne se glisse pas dans un commit
+de recherche.
+
+**Prochaine etape.** Le chainage n'est plus le blocage : la jauge l'est. Avec 29 % de chainage
+global le filtre `Chained` ne laisse passer qu'une poignee de lectures par film — il faut soit
+relacher le filtre en assumant le bruit et chercher un signal statistique, soit gagner de la
+selectivite sur l'ANCRE (le vrai levier, comme la bande vient de le montrer) plutot que sur les
+composants.

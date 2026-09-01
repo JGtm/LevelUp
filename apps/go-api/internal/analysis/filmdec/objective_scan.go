@@ -261,7 +261,7 @@ func (w *objectiveWalk) scanPayload(pay []byte, band map[uint32]bool, ts uint64,
 	limit := len(pay)*8 - (worldObjectHeaderBits + worldObjectIndexBits)
 	for p := 0; p <= limit; p++ {
 		rec, ok := matchWorldObjectRecord(pay, p, band)
-		if !ok {
+		if !ok || !w.masqueDansLeDomaine(rec.Idx) {
 			continue
 		}
 		sc.Records++
@@ -280,6 +280,25 @@ func (w *objectiveWalk) scanPayload(pay []byte, band map[uint32]bool, ts uint64,
 		}
 		p = rec.After // un record reconnu n'est pas re-balaye
 	}
+}
+
+// masqueDansLeDomaine rejette les records dont le masque cite un composant QUI N'EXISTE PAS dans
+// l'archetype.
+//
+// POURQUOI CE FILTRE EST GRATUIT ET POURQUOI IL MANQUAIT (mesure du 2026-09-01). Un record delta
+// ne porte PAS son archetype : `matchWorldObjectRecord` ne verifie que l'appartenance du slot a
+// la bande, et se fie ensuite a la structure du masque. Une mesure des largeurs par masque
+// singleton a rendu des composants d'index 34 a 42 sur un archetype qui n'en a que 34 — ces
+// records-la sont impossibles, et ils polluaient tout ce qui les suivait.
+//
+// Le filtre ne coute rien (le masque est deja lu) et il n'ecarte que l'impossible.
+func (w *objectiveWalk) masqueDansLeDomaine(idx []int) bool {
+	for _, id := range idx {
+		if id < 0 || id >= len(w.arch.Components) {
+			return false
+		}
+	}
+	return true
 }
 
 // walk marche les composants du masque avec les desers DE PRODUCTION et recolte ce que le hook
