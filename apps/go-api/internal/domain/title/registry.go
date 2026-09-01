@@ -311,6 +311,11 @@ func NewRegistry() *Registry {
 			// Stats objectifs par match (CTF/Zones/Oddball) — section scoreboard +
 			// KPI Synthèse/Escouade (PLAN_V72_OBJECTIVE_STATS).
 			CapObjectiveStats,
+			// Précision par arme (charts a/c page Synthèse/Escouade) — produit title-level
+			// du data-level match.weapon.accuracy. Depuis le 2026-09-01 (Lot 3) le
+			// numérateur est reconstruit du film (killcollector/hits.go) ; le front
+			// useCapability('weapon_accuracy') allume alors les graphes.
+			CapWeaponAccuracy,
 		},
 		IsDefault:        true,
 		XboxTitleID:      "2043073184",
