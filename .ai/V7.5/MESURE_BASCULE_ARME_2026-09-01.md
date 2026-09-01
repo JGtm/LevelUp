@@ -267,3 +267,72 @@ côté registre. Les trois autres sont des libellés du film qui énumèrent des
 `Energy Sword / Infected Energy Sword`) là où le registre porte le nom canonique — ce n'est
 pas une divergence de fond, c'est la forme d'une clé de règle. Aucune correction dans ce
 lot : le lecteur voit le libellé du registre partout où le graphe s'affiche.
+
+---
+
+## Étape A6 — véhicules, tourelles, puis épée et marteau (2026-09-01)
+
+Même lot, même sonde, même commande de reproduction que ci-dessus. Seule la **metadata**
+change entre les trois passes : `TEMOIN_ARME_META` pointe une copie différente, et rien
+d'autre n'est touché.
+
+| passe | ce qui change dans la metadata |
+|---|---|
+| AVANT | copie brute de la production (registre d'avant A6) |
+| A6.1-A6.5 | + les 14 clés véhicules/tourelles, semées par `weapons.ReconcileRegistry` |
+| A6.8 | + le reclassement épée/marteau, par `metadata_reclass_sword_hammer_heavy_v1` |
+
+Préparation d'une copie (sonde `BootMetadataSurCopie`, elle rejoue ce que fait le boot du
+serveur — migrations metadata, puis réconciliation du registre, puis des libellés) :
+
+```bash
+BOOT_META_DB=<copie RW de metadata.duckdb> \
+BOOT_META_TOML=config/titles/halo_infinite/mappings/weapon_names.toml \
+go test ./internal/games/halo_infinite/migrations/ -run BootMetadataSurCopie -v -count=1
+```
+
+### Ce que la mesure dit
+
+| classe servie | AVANT | après A6.1-A6.5 | après A6.8 |
+|---|---:|---:|---:|
+| épaule | 5 244 | 5 244 | 5 244 |
+| poing | 2 532 | 2 532 | 2 532 |
+| **lourde** | 4 118 | 4 118 | **6 632** |
+| mêlée (compteur API) | 1 717 | 1 717 | 1 717 |
+| grenade (compteur API) | 986 | 986 | 986 |
+| **véhicule** | — | **138** | 138 |
+| **tourelle** | — | **21** | 21 |
+| environnement | 171 | 171 | 171 |
+| **Non attribué** | **3 984 (21,2 %)** | **3 825 (20,4 %)** | **1 311 (7,0 %)** |
+| **total** | 18 752 | 18 752 | 18 752 |
+
+Invariant tenu aux trois passes : Σ classes = total de frags API = 18 752.
+
+**A6.6 — les véhicules et les tourelles.** 159 frags quittent « Non attribué » sur ce lot,
+et ils arrivent NOMMÉS : Apparition 59, Ghost 43, Banshee 15, Wasp 10, Pélican 5, Chopper 3,
+Warthog lance-roquettes 3 ; Tourelle mitrailleuse 16, Canon à plasma 4, Tourelle LMG du
+Falcon 1. Le kill feed du rejeu affichait déjà ces icônes ; le graphe disait « Non attribué »
+du même kill. Les deux disent désormais la même chose (décision D13).
+
+**A6.9 — l'épée et le marteau.** **2 514 frags** exactement passent de « Non attribué » à la
+classe **Arme lourde**, dont le niveau 2 « puissance » va de 2 184 à 4 698. Le nombre est
+celui qu'annonçait la mesure de cadrage — l'écart entre le compteur API `melee_kills`
+(1 717) et le poids réel des deux armes.
+
+**Le résidu ne tombe pas à zéro, et c'est attendu** : 1 311 frags, soit 7,0 %. Le plancher
+mesuré est de 4 à 6 % sur un échantillon 4v4 (section 5bis du plan) — la couverture du
+décodeur se dégrade avec le nombre de joueurs du match et s'effondre en BTB. Le dépassement
+tient à la composition de l'échantillon, pas à la bascule. Ne pas enquêter ici.
+
+**Ce qui n'a pas bougé, et devait ne pas bouger** : épaule, poing, mêlée, grenade et
+environnement sont identiques aux trois passes. Aucune classe ne PERD de frag à aucune
+étape — les gains sortent tous de « Non attribué ».
+
+### Le piège qui a failli rendre A6.8 silencieux
+
+Le reclassement écrit dans le registre Go n'a produit AUCUN effet à la première mesure.
+Cause : `weapons.ReconcileRegistry`, rejouée à chaque boot, est en `INSERT OR IGNORE`
+(décision du 2026-06-23, écrite dans son en-tête). Elle propage une clé NOUVELLE — c'est
+ainsi que les 14 véhicules sont arrivés — mais **jamais une valeur MODIFIÉE**. Sans le step
+`metadata_reclass_sword_hammer_heavy_v1`, le changement serait resté vrai dans le binaire et
+faux dans toutes les bases existantes. C'est la mesure qui l'a montré, pas la relecture.

@@ -90,7 +90,7 @@ GROUP BY k.source_tag`, args...)
 }
 
 // registreParCle lit `weapons` pour un lot de cles : classe et NOM du registre. Sans le
-// filtre anti-double-comptage de resolveOffArsenalKeys — c'est precisement le filtre que
+// filtre anti-double-comptage de l ex-resolveOffArsenalKeys — c'est precisement le filtre que
 // la fusion des chemins (D11) fait disparaitre.
 func registreParCle(t *testing.T, b *temoinBase, cles []string) map[string][2]string {
 	t.Helper()

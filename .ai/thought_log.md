@@ -1,3 +1,58 @@
+## [2026-09-01] Arme du kill — volet A, étape A6 : véhicules, tourelles, et l'épée qui n'était pas de la mêlée — Complété
+
+**Périmètre** : étape A6 du plan `.ai/V7.5/PLAN_SOURCE_UNIQUE_ARME_2026-09-01.md`, worktree
+dédié `LevelUp-wt-arme-source`, branche `wt/arme-source-unique`. A0 à A4 et A6 closes ;
+A5 (livraison, migration sur les bases réelles) reste à l'orchestrateur et à l'utilisateur.
+
+**Décision technique principale — le seed de boot est INSERT-ONLY, et le reclassement
+aurait été SILENCIEUX.** `weapons.ReconcileRegistry`, rejouée à chaque démarrage, est en
+`INSERT OR IGNORE` (décision du 2026-06-23, écrite dans son propre en-tête : « aucune
+écriture destructive, AUCUN UPDATE »). Elle propage une clé NOUVELLE — c'est ainsi que les
+14 véhicules et tourelles sont arrivés sans rien faire de plus — mais **jamais une valeur
+MODIFIÉE**. Passer l'épée et le marteau de `melee` à `heavy` dans le registre Go n'a donc
+produit AUCUN effet sur une copie de la base réelle : le changement aurait été vrai dans le
+binaire et faux dans toutes les `metadata.duckdb` existantes, sans qu'aucun test ne le dise.
+C'est la MESURE qui l'a montré, pas la relecture. Correction : un step de migration
+title-owned `metadata_reclass_sword_hammer_heavy_v1` (UPDATE de deux lignes par clé
+primaire sur un référentiel statique — hors périmètre ART par la décision du 2026-06-23),
+avec son test sur base forgée qui vérifie aussi que l'épée de HALO 5 ne bouge pas (le
+registre est cross-titre).
+
+**Résultats observés** — témoin relancé trois fois, même lot de 200 matchs, même sonde,
+seule la metadata change :
+
+| classe servie | AVANT A6 | après A6.1-A6.5 | après A6.8 |
+|---|---:|---:|---:|
+| lourde | 4 118 | 4 118 | **6 632** |
+| véhicule | — | **138** | 138 |
+| tourelle | — | **21** | 21 |
+| Non attribué | **3 984 (21,2 %)** | 3 825 (20,4 %) | **1 311 (7,0 %)** |
+
+Les véhicules arrivent NOMMÉS (Apparition 59, Ghost 43, Banshee 15, Wasp 10, Pélican 5…) ;
+l'épée et le marteau déplacent **2 514 frags** exactement, le nombre annoncé par la mesure
+de cadrage. Invariant tenu aux trois passes : Σ classes = 18 752 = total de frags API, et
+aucune classe ne perd un frag. Le résidu de 7,0 % dépasse le plancher mesuré de 4-6 % par
+la composition de l'échantillon (le décodeur s'effondre en BTB, chantier séparé) — non
+instruit, c'est la consigne. Détail complet dans
+`.ai/V7.5/MESURE_BASCULE_ARME_2026-09-01.md`. L'allowlist du garde-rail de concordance
+passe de 19 à **exactement 5** entrées, et la classe `VEHICULE` sort des classes tolérées
+sans clé : un tag véhicule sans clé de registre est désormais une régression.
+
+**Gates** : `go build` / `go vet` / `go vet -tags=integration` = 0 ; `go test` et
+`go test -tags=integration -p 1` sur tous les paquets sauf `internal/himap` = 0 ;
+`golangci-lint --new-from-merge-base=origin/main` = **0 issue** (7 findings soldés, dont 4
+hérités des étapes A1/A2 de cette branche : deux accumulations mortes laissées par la fusion
+D11, une fonction `resolveOffArsenalKeys` sans appelant, une signature à erreur toujours
+nil) ; `gofmt -l` vide ; `openapi-gen -check` à jour. `internal/himap` non exécuté
+localement (> 10 min, dette datée) : aucun symbole touché, la CI fait foi.
+
+**Conclusion / prochaine étape** : le volet A est complet côté code. Reste A5, qui n'est
+pas de mon périmètre : sauvegarde de `shared_matches_v2.duckdb`, exécution de la migration
+sur les bases réelles avec l'utilisateur, gate visuel des six surfaces, puis `make
+gate-push` et CI verte. **Aucune migration n'a été exécutée sur `data/titles/*`.**
+
+---
+
 ## [2026-09-01] Arme du kill — volet A, étape A4 : la table meurt côté Halo Infinite, et Halo 5 a failli mourir avec — Complété
 
 **Périmètre** : étape A4 du plan `.ai/V7.5/PLAN_SOURCE_UNIQUE_ARME_2026-09-01.md`, worktree

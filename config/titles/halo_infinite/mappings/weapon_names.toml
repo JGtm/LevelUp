@@ -58,3 +58,25 @@ hinf_coil_plasma    = { en = "Plasma Coil", fr = "Bobine à plasma" }
 hinf_coil_shock     = { en = "Shock Coil", fr = "Bobine à choc" }
 hinf_coil_hardlight = { en = "Blast Coil", fr = "Bobine à souffle" }
 hinf_environment    = { en = "Environment", fr = "Chute et environnement" }
+
+# Vehicules et tourelles (etape A6, 2026-09-01). Meme voie que les six cles ci-dessus :
+# aucune ne se resout par weapon_id, toutes viennent du pont killicon (regles BANQUE).
+#
+# LIBELLES ARRETES PAR L'UTILISATEUR le 2026-09-01 (decision D14 du plan) : les noms de
+# vehicules GARDENT L'ANGLAIS, a trois exceptions — Apparition, Warthog lance-roquettes,
+# Pelican. Les tourelles, elles, sont des DESCRIPTIONS et non des noms propres : elles se
+# traduisent. Ne pas reinterpreter, ne pas « corriger ».
+hinf_ghost              = { en = "Ghost", fr = "Ghost" }
+hinf_banshee            = { en = "Banshee", fr = "Banshee" }
+hinf_wraith             = { en = "Wraith", fr = "Apparition" }
+hinf_phantom            = { en = "Phantom", fr = "Phantom" }
+hinf_chopper            = { en = "Chopper", fr = "Chopper" }
+hinf_wasp               = { en = "Wasp", fr = "Wasp" }
+hinf_scorpion           = { en = "Scorpion", fr = "Scorpion" }
+hinf_rockethog          = { en = "Rockethog", fr = "Warthog lance-roquettes" }
+hinf_pelican            = { en = "Pelican", fr = "Pélican" }
+hinf_falcon_lmg         = { en = "Falcon LMG turret", fr = "Tourelle LMG du Falcon" }
+hinf_falcon_gl          = { en = "Falcon grenade launcher", fr = "Lance-grenades du Falcon" }
+hinf_turret_machinegun  = { en = "Machine gun turret", fr = "Tourelle mitrailleuse" }
+hinf_turret_plasma      = { en = "Plasma cannon", fr = "Canon à plasma" }
+hinf_turret_shade       = { en = "Shade turret", fr = "Tourelle Shade" }

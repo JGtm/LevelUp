@@ -45,10 +45,15 @@ type dispenseConcordance struct {
 
 // dispensesConcordance — l'allowlist, mesurée le 2026-09-01 (étape A0.4 du plan).
 //
-// Elle contient 19 entrées. Quatorze d'entre elles (les BANQUE) sont un TROU connu :
-// véhicules et tourelles n'ont aucune entrée au registre d'armes. Ce trou est comblé par
-// l'étape A6 du même plan ; à sa clôture, ces quatorze lignes DOIVENT disparaître d'ici et
-// il ne doit rester que cinq dispenses.
+// ELLE EST PASSÉE DE 19 À 5 ENTRÉES à la clôture de l'étape A6 (2026-09-01). Les
+// quatorze règles BANQUE — châssis et tourelles — portent désormais leur clé de registre
+// et sont donc SORTIES d'ici : c'est le ratchet inverse, une dispense qui survit à sa
+// raison d'être couvrirait un jour une régression qu'elle n'a jamais eu à couvrir.
+//
+// Les cinq qui restent ne sont pas un retard, ce sont cinq refus motivés : trois objets
+// que le registre ne porte pas (et ne DOIT pas porter sans décision de catalogue), une
+// quatrième grenade que le titre ne distingue pas, et le repli de classe de la mêlée dont
+// le total vient du compteur API.
 var dispensesConcordance = []dispenseConcordance{
 	{killicon.GenreNom, "Infected Energy Sword", "2026-09-01",
 		"variante infectée de l'épée : le registre ne porte que l'arme canonique, et la " +
@@ -61,29 +66,10 @@ var dispensesConcordance = []dispenseConcordance{
 	{killicon.GenreGGGL, "3", "2026-09-01",
 		"entrée 3/4 de la liste des grenades (`kineticbanished`, grenade à pointes) : le " +
 			"registre Halo Infinite ne porte que frag, plasma et dynamo"},
-	{killicon.GenreBanque, "veh_cv_ghost", "2026-09-01", raisonEngin},
-	{killicon.GenreBanque, "veh_cv_banshee", "2026-09-01", raisonEngin},
-	{killicon.GenreBanque, "veh_cv_wraith", "2026-09-01", raisonEngin},
-	{killicon.GenreBanque, "veh_cv_phantom", "2026-09-01", raisonEngin},
-	{killicon.GenreBanque, "veh_bt_chopper", "2026-09-01", raisonEngin},
-	{killicon.GenreBanque, "veh_un_wasp", "2026-09-01", raisonEngin},
-	{killicon.GenreBanque, "veh_un_scorpion", "2026-09-01", raisonEngin},
-	{killicon.GenreBanque, "veh_un_rockethog", "2026-09-01", raisonEngin},
-	{killicon.GenreBanque, "veh_un_pelican", "2026-09-01", raisonEngin},
-	{killicon.GenreBanque, "veh_un_falconlmgturret", "2026-09-01", raisonEngin},
-	{killicon.GenreBanque, "veh_un_falcongrenadelauncher", "2026-09-01", raisonEngin},
-	{killicon.GenreBanque, "tur_un_machinegun", "2026-09-01", raisonEngin},
-	{killicon.GenreBanque, "tur_cv_plasmacannon", "2026-09-01", raisonEngin},
-	{killicon.GenreBanque, "tur_cv_shadeturret", "2026-09-01", raisonEngin},
 	{killicon.GenreClasse, "MELEE", "2026-09-01",
 		"repli de classe : la mêlée est servie par le compteur API `melee_kills`, dont le " +
 			"total est autoritatif — le graphe n'a pas besoin d'une clé pour la compter (D4)"},
 }
-
-// raisonEngin — la justification commune aux quatorze châssis et tourelles.
-const raisonEngin = "châssis ou tourelle : aucune entrée au registre d'armes au 2026-09-01. " +
-	"TROU connu et chiffré (1 441 morts de classe VEHICULE en base), comblé par l'étape A6 " +
-	"du plan — cette dispense doit disparaître à sa clôture"
 
 // TestConcordanceImageEtCle : toute règle qui donne une IMAGE doit donner une CLÉ, sauf
 // dispense explicite.
@@ -131,15 +117,19 @@ func TestConcordanceAllowlistSansEntreePerimee(t *testing.T) {
 // le lecteur. Un tag qui obtient une image sans obtenir de clé doit appartenir à une classe
 // `damagetag` pour laquelle on sait dire pourquoi.
 //
-// Les deux classes acceptables sans clé sont MELEE et GRENADE (servies par les compteurs
-// API, décision D4) ; VEHICULE et ARME y figurent tant que l'étape A6 n'a pas comblé le
-// trou. Une classe INCONNUE ou OBJET_EXPLOSIF dans cette liste serait une régression.
+// Trois classes seulement sont acceptables sans clé depuis la clôture de l'étape A6
+// (2026-09-01) : MELEE et GRENADE (servies par les compteurs API, décision D4) et ARME
+// (trois objets que le registre ne porte pas : Mutilator, Mythic Sandwich, épée infectée).
+// VEHICULE en est SORTIE — les quatorze châssis et tourelles ont désormais leur clé.
+// Une classe INCONNUE ou OBJET_EXPLOSIF dans cette liste serait une régression.
 func TestConcordanceTagsSansCleSontConnus(t *testing.T) {
 	acceptables := map[damagetag.Class]bool{
-		damagetag.ClassMelee:    true, // compteur API
-		damagetag.ClassGrenade:  true, // compteur API
-		damagetag.ClassVehicule: true, // trou A6
-		damagetag.ClassArme:     true, // Mutilator, Sandwich, épée infectée
+		damagetag.ClassMelee:   true, // compteur API
+		damagetag.ClassGrenade: true, // compteur API
+		damagetag.ClassArme:    true, // Mutilator, Sandwich, épée infectée
+		// ClassVehicule EST SORTIE le 2026-09-01 : l'étape A6 a donné une clé de registre
+		// aux quatorze châssis et tourelles. Un tag VEHICULE sans clé est désormais une
+		// RÉGRESSION, plus une dette.
 	}
 	reg := NewKillSourceRegistry()
 	for _, tag := range killicon.ResolvedTags() {
