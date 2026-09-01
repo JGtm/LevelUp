@@ -1,3 +1,54 @@
+## [2026-09-01] Ramassage non-arme — nommé à 100 % par les fichiers du jeu, classes tranchées, origine non résolue — Complété
+
+**La réponse était déjà dans le dépôt.** Le `R(32)` des ramassages de classe 2/3 est un GlobalID
+de tag `eqip` : les 21 lignes `[[equipment_objects]]` de `replay_labels.toml`, construites le
+2026-08-18 par la chaîne `sofd -> sofa -> {string_id, eqip}` des fichiers du jeu, résolvent
+**82/82 et 36/36** des ramassages non-arme des deux films de référence (8/8 identifiants
+distincts, les mêmes sur les deux films). Le lot 4 avait cherché par corrélation statistique
+(19-29 % de couverture) ce que la structure du jeu nommait déjà à 100 %. Sa mesure n'était pas
+fausse — elle VALIDE la table : concordance 2/2 sur `eef5d48d` = thruster et `8e2dc574` = wall
+(le rang 19 que la palette ne nommait pas). Zéro chevauchement avec le catalogue d'armes dans
+les deux sens.
+
+**Classe 2 = GRENADES, classe 3 = ÉQUIPEMENT — tranché à 100,0 % contre 0,0 %** sur les deux
+films, aucun identifiant réparti sur deux classes. L'énoncé initial du lot 4 était inversé ; le
+lot 4 l'avait corrigé à moitié (classe 3 établie par le rang i48, classe 2 non conclue), le nom
+le ferme. Le « signal qualitatif » du volet B (étiquettes grenade sur `bcabbe43`/`caaadcb0`)
+était juste : ce sont `grenade_frag` et `grenade_plasma`, dans l'ordre exact du `gggl` du jeu.
+
+**ADDENDUM A — le doute « nos grammaires sont incomplètes côté équipement » est RÉFUTÉ.** Le
+registre de réplication de `chunk_00` pris comme oracle, confronté au dispatcheur `consumeByName`
+lui-même (branche `default` = `ported false`), contrôle négatif joué avant : **ti=37 → 31/31
+consommés, zéro refus** ; ti=42 → 21/21 ; ti=35 → 63/64 (le seul manque est
+`simulation-state-component`, hors sujet). Surtout : la feuille d'identité
+`object-multiplayer-properties-component` est déclarée, consommée ET exploitée sur ti=37 **comme
+sur ti=42** — c'est le même composant qui identifie une arme au sol et un objet d'équipement.
+Gardes G1/G2/G3 de la table ECS rejoués verts sur les deux films (1 067 lignes de registre =
+1 067 lignes de table).
+
+**ADDENDUM B — la section 3 de `chunk_00` ne porte PAS de catalogue d'objets. Négatif propre.**
+0/21 identifiants d'équipement, sur les deux films. Trois témoins écrits avant : B-POS retrouve
+`whiteknight2519` à `0x13CCA6`, exactement où la carte de `chunk_00` le documente (l'instrument
+lit les bons octets) ; B-NEG plancher à 0,0005 occurrence par valeur ; **B-REF : 0/15 des
+familles d'ARME jouées par le film n'y sont pas non plus** — c'est lui qui interdit de
+sur-interpréter, l'absence ne vise pas l'équipement.
+
+**ÉTAPE 3 — l'origine reste non publiable, mais l'ambiguïté est chiffrée comme réductible.** Le
+juge temporel (fin de vie ti=37 à moins de 500 ms du ramassage, à moins de 3 m) coupe
+l'ambiguïté de **42,7 % à 20,7 %**, et de 2,6x sur la classe équipement (41,9 % -> 16,1 %), en
+doublant sa part injective (12,9 % -> 25,8 %). Mais O1 (>= 50 % injectif) n'est pas tenu :
+25,6 %, témoins décalés à 0,0 % sur des dénominateurs faibles (17 et 10). Les 53,7 % sans
+candidat sont exactement ce que la réserve écrite avant annonçait — `tEnd` est une BORNE
+INFÉRIEURE de durée de vie, la disparition d'un objet n'est pas dans le film. **O3 non testable :
+le dépôt ne déclare AUCUN point d'apparition d'équipement ni de grenade** (`map_weapon_pads.json`
+ne connaît que power / rack / powerup) ; manque de données, pas un résultat.
+
+**Prochaine étape** : la publication du nom est un lot séparé. Deux points l'attendent, tous deux
+consignés — le manifeste indexe en `0x` + MAJUSCULES alors que `pickups[].w` s'écrit en `%08x`
+(le même piège de format que le P0 de la ronde 1 du lot 3 : normaliser AU POINT DE JOINTURE), et
+le manifeste porte la famille, pas de libellé FR/EN. Recherche pure : aucun fichier de production
+touché, aucune cuisson. Note : `.ai/V7.5/film_re/NOTE_NOMMAGE_ORIGINE_2026-09-01.md`.
+
 ## [2026-08-30] Sons — le merge ramassage fournit les déclencheurs, les quatre sons muets sont câblés — Complété
 
 **Le merge `dcbc6e458` (chantier ramassage, schémas 25-28) apporte exactement ce qui manquait
