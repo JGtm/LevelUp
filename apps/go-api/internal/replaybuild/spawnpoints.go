@@ -29,6 +29,7 @@ package replaybuild
 
 import (
 	"log/slog"
+	"strings"
 
 	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/domain/title"
@@ -37,20 +38,46 @@ import (
 // spawnPoints rend les points d'apparition non-arme de la carte du match, et VRAI si la carte
 // a ete trouvee au catalogue. Le booleen n'est pas redondant avec une liste vide : une carte
 // connue peut n'avoir aucun point, et ce n'est pas la meme chose qu'une carte inconnue.
-func (b *Builder) spawnPoints(matchID, mapID string) ([]replay.MapSpawnPoint, bool) {
-	if mapID == "" {
-		slog.Debug("replaybuild: match sans map_id — ramassages sans origine",
-			"match_id", matchID, "titleSlug", b.titleSlug)
-		return nil, false
-	}
+func (b *Builder) spawnPoints(matchID, mapID string, mapNames []string,
+) ([]replay.MapSpawnPoint, bool) {
 	cat := b.padsCatalog()
 	if cat == nil {
 		return nil, false
 	}
 	entry, ok := cat.Maps[mapID]
-	if !ok {
+	if !ok && mapID != "" {
 		slog.Debug("replaybuild: carte hors catalogue des socles — ramassages sans origine",
 			"map_id", mapID, "match_id", matchID, "titleSlug", b.titleSlug)
+	}
+	// REPLI PAR NOM PUBLIC, et il a un usage precis : la CLI `replay-build` cuit un film a
+	// partir d'un NOM de carte (`--map Catalyst`) et n'a pas de `map_id` sans fichier de faits.
+	// Sans ce repli, une cuisson unitaire ne pourrait jamais rendre d'origine `spawner`, et on
+	// ne pourrait pas verifier la chaine autrement qu'en production.
+	//
+	// LE `map_id` RESTE PRIORITAIRE : c'est lui que le service utilise, et lui seul est fiable.
+	// `public_name` est VIDE sur la quasi-totalite des entrees (elles viennent des variantes
+	// UGC) — le repli ne sert donc que les cartes nommees, ce qui est exactement le cas d'usage
+	// de la CLI.
+	if !ok {
+		for _, n := range mapNames {
+			if n == "" {
+				continue
+			}
+			for id, e := range cat.Maps {
+				if strings.EqualFold(e.PublicName, n) {
+					entry, ok, mapID = e, true, id
+					break
+				}
+			}
+			if ok {
+				break
+			}
+		}
+	}
+	if !ok {
+		slog.Debug("replaybuild: carte introuvable au catalogue des socles (ni map_id ni nom) "+
+			"— ramassages sans origine",
+			"map_id", mapID, "noms", mapNames, "match_id", matchID, "titleSlug", b.titleSlug)
 		return nil, false
 	}
 	out := make([]replay.MapSpawnPoint, 0, len(entry.SpawnPoints))

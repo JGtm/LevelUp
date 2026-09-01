@@ -83847,3 +83847,67 @@ ramassable peut naître, pas LEQUEL — distinguer arme, équipement et grenade 
 `foki` lui-même (non fait). Le `fosp:4` présent sous tous les points n'est pas élucidé. Régénérer
 le catalogue partagé `map_weapon_pads.json` depuis la recette reste un lot dédié, hors de
 celui-ci.
+
+## [2026-09-01] Origine des ramassages — PUBLIÉE (schéma 32), 1934 points au catalogue — Complété
+
+**Statut** : Complété. Code de production, contrat régénéré, gates verts. Pas de merge : une
+revue adversariale relit avant.
+
+**Décision technique principale** : l'origine ne se déduit plus du FILM, elle se lit sur la
+CARTE. `Pickup.origin` vaut `spawner` quand le ramassage a lieu sur un point d'apparition
+catalogué, `ground` quand il a lieu sur une pose dont l'origine mesurée est `dropped` (règle
+EXISTANTE réutilisée, pas refaite), absent sinon.
+
+**Le schéma 32 lève une réfutation que le 31 avait écrite.** v31 refusait l'origine pour deux
+raisons : 25,6 % d'injectivité du juge temporel, **et « le dépôt ne déclare aucun point
+d'apparition d'équipement »**. La seconde est tombée (1934 points sur 63 cartes). La première est
+devenue SANS OBJET plutôt que contournée : `origin` n'apparie plus un ramassage à une naissance
+du film, il demande si le ramassage a eu lieu SUR un point que la carte déclare. Aucune des
+quatre voies filmiques réfutées n'est reprise.
+
+**Collision de schéma ÉVITÉE** : `origin/feat/v75` était déjà en 31 (chantier parallèle
+`wt/pickup-nommage`). L'amont a été intégré par MERGE — 21 commits, aucun conflit — AVANT toute
+numérotation. Sans cette vérification je reproduisais la collision 29/30.
+
+**Typage des points : deux voies mortes avant la bonne.**
+1. La chaîne de tags s'arrête au `fosp` — ses références ne résolvent dans aucun module indexé
+   (96 804 entrées), le manifeste ne recoupe rien, 13 indéterminés sur 16. **`fosp` reste NON
+   ÉLUCIDÉ** et c'est la réponse à « élucide-le si c'est bon marché » : ça ne l'est pas.
+2. Les naissances `ti=37` ne portent pas d'identifiant de catalogue : 283 naissances, 0 nommée,
+   **39 identités toutes distinctes vues une fois** — signature d'un identifiant d'INSTANCE.
+3. Le canal natif des ramassages livre : 66 non-arme, **66 nommés sur 66**, 41 appariés sous le
+   mètre.
+
+**Le témoin qui rend la mesure lisible** : le taux de base du film (66/199 = 33,2 % de non-arme).
+Les trois socles PROUVÉS tombent exactement où ils doivent sans avoir servi à calibrer —
+`power` 0,0 %, `rack` 36,4 % (le taux de base, bruit pur), `powerup` 100 % de
+`powerup_overshield`. Contrôle symétrique : 47,6 % des armes sur les socles d'armes contre un
+témoin de densité à 20,0 %.
+
+**Seuil manqué, publié tel quel** : `0xADEEE6D8` rend 15 grenades sur 19 = 78,9 %, sous les 80 %
+écrits avant. Le seuil n'a pas été déplacé.
+
+**La non-régression est devenue STRUCTURELLE, et il le fallait.** La source dérive : neuf des 72
+cartes rendent un `.mvar` différent de celui qui a bâti le catalogue (Deadlock 462 objets contre
+410). Une régénération complète a effectivement réécrit leurs socles d'ARME — 63/72 identiques,
+9 modifiés. D'où `--only-add-spawn-points`, un mode qui ne PEUT PAS écrire un socle : il vérifie
+que les socles retombent à l'identique et n'écrit que `spawn_points` ; une carte qui ne retombe
+pas est SAUTÉE et COMPTÉE. Gate final : **72/72 entrées identiques au caractère**, en-tête
+inchangée, seule clé ajoutée.
+
+**Bogue attrapé, et il aurait publié un faux catalogue** : 58 cartes partagent
+`mvar_file: "map.mvar"` ; le premier aplatissement les écrasait toutes dans un seul fichier, et
+65 cartes sur 72 sortaient avec les socles d'une carte étrangère (signature : des « 11 pads »
+uniformes).
+
+**Décision produit tenue par un test** : `coverage.pickups.mapCatalogMissing` distingue « carte
+absente du catalogue » de « carte connue sans point ». La cuisson ne télécharge RIEN — le trou
+se comble par la CLI ou le sync.
+
+**Résultats des gates** : contracttest, replay, mapvar, replaybuild verts ; `openapi.yaml` et
+`generated.ts` régénérés ; web typecheck vert, 128 fichiers / 1971 tests vitest verts dont la
+garde de parité de schéma ; gate golden nommé `pickup_origin_test.go` à 4 promesses.
+
+**Conclusion / prochaine étape** : revue adversariale avant merge. Restent ouverts : `fosp` non
+élucidé, 11 des 13 points en `unknown` (une carte, un film), les 9 cartes à source dérivée
+(décision produit) et les 4 cartes de `map_objectives` qui pourraient entrer au catalogue.
