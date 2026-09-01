@@ -66,6 +66,16 @@ package filmdec
 // marche demarre au bon bit — la parite du quantum laisse ouvert un demarrage tardif d'un bit,
 // qui serait alors commun a TOUTE la marche et non un defaut de son milieu.
 //
+// # ET LA DENSITE NE DIT RIEN NON PLUS (mesure du 2026-09-01, `objectif_ti11_bruit_test.go`)
+//
+// Une derniere echappatoire restait ouverte : meme illisible, la voie delta pourrait porter un
+// signal de COMPTAGE — plus de records juste avant un evenement de mode. Elle est fermee. Sur les
+// 9 films d'Assaut et les 28 explosions datees, le nombre de lectures de i12, i13 et i14 tombant
+// entre 5 et 60 secondes avant une explosion vaut x0,97 / x0,94 / x1,14 le temoin par decalage
+// circulaire (p = 0,61 / 0,63 / 0,09), et aucun des huit etats de i14 ne ressort. Le negatif est
+// BORNE : un exces de x1,5 aurait valu 3 a 5 ecarts-types du temoin. NE PAS RE-INTERROGER cette
+// voie sans un canal nouveau — ni sa valeur, ni sa densite ne parlent des objectifs.
+//
 // # LE TEMOIN DE FIABILITE EST PUBLIE, PAS GARDE POUR LES JOURNAUX
 //
 // `Chained` compte les marches dont la position de fin porte un en-tete de record valide, par
