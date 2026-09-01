@@ -658,20 +658,36 @@ func (s postSyncFilmSteps) runKillSource(ctx context.Context, insertedIDs []stri
 	}, insertedIDs)
 }
 
-// runReplayArtifacts — étape 1.58 : pont disque film + artefacts de rejeu 2D des matchs
-// insérés. TOUTE la logique vit dans internal/sync/replayartifacts (ratchet K3c : le neuf
-// n'entre pas à la racine du god-package) ; ici on ne fait que câbler les dépendances du
-// moteur sur son API. Étape absente si le wiring n'a pas installé le hook (production).
+// runReplayArtifacts — étape 1.58 : pont disque film + artefacts de rejeu 2D. TOUTE la
+// logique vit dans internal/sync/replayartifacts (ratchet K3c : le neuf n'entre pas à la
+// racine du god-package) ; ici on ne fait que câbler les dépendances du moteur sur son API.
+// Étape absente si le wiring n'a pas installé le hook.
+//
+// LES MATCHS INSÉRÉS SONT UNE PRIORITÉ, PAS UN PÉRIMÈTRE : le tri du travail appartient à
+// `replayartifacts.Run`, qui décide seul de ce que le cycle traite. Le câblage ne filtre donc
+// plus sur « le cycle a-t-il inséré quelque chose » — c'est ce filtre-là qui interdisait tout
+// rattrapage.
 func (s postSyncFilmSteps) runReplayArtifacts(ctx context.Context, insertedIDs []string) {
 	e := s.engine
-	if e.replayArtifacts == nil || len(insertedIDs) == 0 {
+	if e.replayArtifacts == nil {
 		return
 	}
+	placement := e.replayArtifacts.Placement()
 	// GetFilmChunks est une capacité OPTIONNELLE du client (assertion, pas extension de
 	// HaloClient — les mocks des autres étapes n'ont pas à la porter). Son absence
 	// n'interdit QUE la construction locale : mettre en file ne télécharge aucun film
 	// (c'est l'ouvrier qui le fera), donc ce chemin-là reste ouvert.
-	fetcher, _ := s.client.(replayartifacts.ChunksFetcher)
+	//
+	// ⚠ SON ABSENCE SE JOURNALISE ET SE COMPTE, ELLE NE SE TAIT PAS. Cette assertion jetait
+	// son résultat (`fetcher, _ := ...`) : un client sans la capacité désarmait l'étape en
+	// silence, exactement comme l'étape 1.57 avant son garde-rail. Les clients réels sont
+	// désormais vérifiés à la COMPILATION (replay_artifacts_wiring_test.go) ; ce signal-ci
+	// couvre le cas qu'aucune assertion statique ne peut couvrir : un client injecté à
+	// l'exécution.
+	fetcher, ok := s.client.(replayartifacts.ChunksFetcher)
+	if !ok {
+		replayartifacts.SignalerClientSansChunks(ctx, placement, e.gamertag, fmt.Sprintf("%T", s.client))
+	}
 	replayartifacts.Run(ctx, replayartifacts.Deps{
 		BuildOne:        e.replayArtifacts.BuildOne,
 		Fetcher:         fetcher,
@@ -682,7 +698,7 @@ func (s postSyncFilmSteps) runReplayArtifacts(ctx context.Context, insertedIDs [
 		Gamertag:        e.gamertag,
 		CacheRoot:       e.replayArtifacts.CacheRoot,
 		RetentionMonths: e.replayArtifacts.Months(),
-		Placement:       e.replayArtifacts.Placement(),
+		Placement:       placement,
 		Enqueue:         e.replayArtifacts.Enqueue,
 	}, insertedIDs)
 }
