@@ -23,8 +23,7 @@ import (
 	"testing"
 )
 
-// lot1chBases : jeu de bases candidat (identique a victime_slot pour comparabilite).
-var lot1chBases = []int{0, 128, 256, 384, 448, 480, 500, 508, 510, 512, 514, 516, 520, 544, 576}
+// lot1chBases est PRODUCTIONISE (resolution slot base-512) : weapon_hits_decode.go.
 
 // lot1chReferenceBase : base de la bande bipede etablie par l'instrument A (calibration par
 // la vitalite, base a couverture max = 512 sur les trois films temoins). Sert de reference
@@ -64,18 +63,6 @@ type lot1chAccum struct {
 
 func newLot1chAccum() *lot1chAccum {
 	return &lot1chAccum{avant: map[int]int{}, apres: map[int]int{}}
-}
-
-func lot1chIsBiped(w *World, base, idx int) bool {
-	if idx < 0 {
-		return false
-	}
-	slot := base + idx
-	if slot < 0 || slot >= 8192 {
-		return false
-	}
-	ti, ok := w.ArchetypeForSlot(uint32(slot))
-	return ok && ti == BipedTypeIndex
 }
 
 func TestLot1MondeChrono(t *testing.T) {

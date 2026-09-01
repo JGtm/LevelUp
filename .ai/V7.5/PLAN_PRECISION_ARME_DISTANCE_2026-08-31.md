@@ -186,13 +186,24 @@ contrôle est le recalage API + la porte ci-dessus, sur NOTRE donnée.
       `CanonicalOrder`/`SortByCanonical` verts ; `gofmt -l` vide ; `go vet` propre.
 - Prochaine étape : **Lot 2** (décodeur dégât + pairing + distance, sortis du `_test`).
 
-### Lot 2 — Décodeur dégât + pairing + distance, sortis du `_test`
-- [ ] Exposer (non-test) dans `filmdec` : scan `damage_aftermath`, pairing tir↔dégât (W=1s) →
-      touches par (index, WeaponID), distance → buckets. Réutiliser `sondeScanDamage`/`lot1RefDom1`
-      /`attribCollectShots` (≤ 2 copies).
-- [ ] Test unitaire pur du pairing (fixture, sans DuckDB).
-- **Gate** : `go test ./internal/analysis/filmdec/ -count=1` vert ; `TestLot1AttribArmeTir`
-      reproduit ses taux via le code productionisé (ratio témoin ≥ 3 à W=1s).
+### Lot 2 — Décodeur dégât + pairing + distance, sortis du `_test`  — CLOS 2026-09-01
+- [x] API prod exposée dans `filmdec` (`weapon_hits.go` + `weapon_hits_decode.go`) : `WeaponShot`,
+      `WeaponDamage`, `WeaponHitStats{FilmIndex, WeaponID, ShotsPaired, Hits, DistBuckets}` ;
+      `PairWeaponHits(shots, damages, window, dist)` (pur) ; `WeaponHitBucket`/`WeaponHitDistanceEdges`
+      /`WeaponHitPairWindowUS`(=1 s) ; scanners `ScanFilmWeaponShots`, `ScanFilmWeaponDamages`
+      (rend aussi la base-512). Décodeurs `lot1RefDom/lot1RefDom1/lot1DecodeDamageAftermath/
+      lot1Dequant` + résolution slot (`lot1chBases/lot1chIsBiped/lot1ArgmaxBase`) DÉPLACÉS des
+      `_test` vers `weapon_hits_decode.go` (une seule copie). `sondeScanDamage`, `attribCollectShots`,
+      `attribM2`/`attribM3`, `sondeBucket`/`sondeDistEdges` DÉLÈGUENT désormais au code prod.
+- [x] Test unitaire pur (`weapon_hits_test.go`, sans DuckDB/film) : tir apparié / non apparié /
+      hors fenêtre / un tir → une seule touche pour N dégâts / non-appariable écarté / bucket
+      distance / distance non résolue / clés par (index, arme) / `WeaponHitBucket`.
+- **Gate** : `go test ./internal/analysis/filmdec/ -count=1` **vert** (8,85 s) ; `gofmt -l` vide ;
+      `go vet` propre. `TestLot1AttribArmeTir` (film 000d5950, `LOT1_TRAME_FILM`) REPRODUIT via le
+      code productionisé : 245 tirs / 190 dégâts, base 512 ; **sweep W=1000 ms = 100/245 (40,8 %)
+      contre témoin +3 s 5,3 % → ratio 7,7× ≥ 3** (M1 avant 16,7× / arrière 8,0× → TENU).
+- Prochaine étape : **Lot 3** (mapper Infinite → `WeaponAccuracyInsert` + distance ; passe
+      killcollector ; persist ; capability).
 
 ### Lot 3 — Mapper + passe + persist (weapon_accuracy Infinite + distance)
 - [ ] `games/halo_infinite/ingest/weapon_accuracy_film.go` : pairing → `[]WeaponAccuracyInsert`

@@ -205,17 +205,6 @@ func lot1WorldBaseAndEvents(t *testing.T, dir string, reg *Registry, n int) ([]l
 	return events, lot1ArgmaxBase(combined), present0, present1
 }
 
-// lot1ArgmaxBase rend la base a l'atterrissage bipede maximal (base la plus basse en cas d'egalite).
-func lot1ArgmaxBase(hits map[int]int) int {
-	best, bestN := lot1chBases[0], -1
-	for _, b := range lot1chBases {
-		if hits[b] > bestN {
-			best, bestN = b, hits[b]
-		}
-	}
-	return best
-}
-
 func TestLot1DegatsBlesse(t *testing.T) {
 	dir := os.Getenv(lot1TrameFilmEnv)
 	if dir == "" {

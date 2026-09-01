@@ -46,8 +46,7 @@ import (
 	"testing"
 )
 
-// lot1RefDomWidths : largeur de l'index R(w) par domaine (table 0x1451f98d0, lot B1/E2).
-var lot1RefDomWidths = map[int]int{0: 13, 1: 13, 2: 8, 3: 8, 4: 9, 5: 8, 6: 9, 7: 13, 8: 13}
+// lot1RefDomWidths (largeurs d'index par domaine) est PRODUCTIONISE : weapon_hits_decode.go.
 
 // lot1LireRef consomme une reference gardee du domaine dom ; rend (index, presente).
 // Le domaine 1 porterait une sonde R(1) qui reduit la largeur a 9 — aucun des types testes
