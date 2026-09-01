@@ -205,17 +205,41 @@ contrôle est le recalage API + la porte ci-dessus, sur NOTRE donnée.
 - Prochaine étape : **Lot 3** (mapper Infinite → `WeaponAccuracyInsert` + distance ; passe
       killcollector ; persist ; capability).
 
-### Lot 3 — Mapper + passe + persist (weapon_accuracy Infinite + distance)
-- [ ] `games/halo_infinite/ingest/weapon_accuracy_film.go` : pairing → `[]WeaponAccuracyInsert`
-      (shots_fired, shots_landed) + rows distance.
-- [ ] `killcollector/hits.go` : greffe sur la passe (mêmes chunks), résout `player_index → xuid`
-      (résolveur existant), métriques `slog`.
-- [ ] `weapon_hit_distance_persister.go` (INSERT-only, porte `EvaluateHitsGate` unique) ;
-      `weapon_accuracy` réutilise le persister existant.
-- [ ] `capabilities.toml` (data-level) + `title.toml` (produit) Infinite.
-- **Gate** : `go test ./internal/persist/ ./internal/sync/killcollector/ -count=1` vert ;
-      `go test -tags=integration ./internal/persist/ -p 1` vert (anti-ART) ;
-      `no_slug_comparison_test.go` + `no_art_patterns_test.go` verts.
+### Lot 3 — Mapper + passe + persist (weapon_accuracy Infinite + distance)  — CLOS 2026-09-01
+- [x] **Sous-étape 1 (résolveur distance productionisé)** : `filmdec/weapon_hit_distance_resolver.go`
+      — `BuildBipedTracks`/`ResolveHitDistanceBase`/`NewWeaponHitDistanceFunc`/`FilmWeaponHitDistance`
+      (WeaponHitDistanceFunc depuis positions bipèdes base 512, ScanFilmBipedPositions) +
+      `DetectFilmWorldRange` (auto-détection carte par signature de largeurs d'axe). Copie #2 du
+      résolveur sonde de recherche (≤ 2, CLAUDE.md rule 6). Tests filmdec unitaires verts.
+- [x] `games/halo_infinite/ingest/weapon_accuracy_film.go` : `MapWeaponAccuracyFilm` (miroir H5) →
+      `[]WeaponAccuracyInsert` (shots_fired=ShotsPaired, shots_landed=Hits, drops=0) + rows distance
+      (dist_bucket_json, dist_n). Pont FilmIndex→xuid injecté. 4 tests purs verts (`-run WeaponAccuracy`).
+- [x] `killcollector/hits.go` : `collectHits` greffé sur la passe (`collect()`), résout FilmIndex→xuid
+      par `resolvePlayerIndices` EXISTANT, métriques `slog` (accuracy/distance/indices non résolus).
+      DIR-BASE (les scanners filmdec du Lot 2 lisent chunk_NN.bin sur disque — le rejeu en mémoire
+      dupliquerait le décodeur) ; branché via `ConfigureFilmAccuracy` (filmDir + catalogue bornes),
+      best-effort si non configuré. Test capability calqué sur shots (porte via résolveur invoqué).
+- [x] `weapon_hit_distance_persister.go` (INSERT-only, porte `EvaluateHitsGate` = copie UNIQUE Nmin=8).
+      DÉVIATION du plan consignée : `weapon_accuracy` NE réutilise PAS `persistWeaponAccuracy` (chemin
+      BatchBuilder = **no-op** sur un match déjà inséré, cas d'une passe film tardive) — écriture
+      directe sous le même lease, forme SQL identique + **garde SELECT-then-INSERT** anti-doublon
+      (weapon_accuracy n'a ni decode_pass ni `_latest`, un backfill re-run doublerait). Distance =
+      append-only (decode_pass + `_latest`). Anti-ART : rien à allowlister. 6 tests intégration verts.
+- [x] `capabilities.toml` (data-level `match.weapon.accuracy` → `supported`, commentaire daté 09-01) +
+      `adapter_data.go` (CapabilityMap → `CapSupported`, gate `collectHits`) + `registry.go` (produit
+      `weapon_accuracy` ajouté au descripteur Infinite **built-in** — Infinite n'a pas de `title.toml`,
+      son manifeste est en dur, cf. config_loader.go). Ratchet `no_slug_comparison` vert (jamais slug==).
+- **Gate** : `go test ./internal/persist/ ./internal/sync/killcollector/ ./internal/games/halo_infinite/ -count=1`
+      **vert** ; `go test -tags=integration -p 1 ./internal/persist/` **vert** (23 s, anti-ART) ;
+      slug ratchet (`internal/archlint TestNoNewSlugComparison`) + ART (`internal/sync
+      TestNoARTPatterns*`) **verts** ; mapper `-run WeaponAccuracy` + persister `-run WeaponHitDistance`
+      **verts** ; gofmt/vet propres ; fichiers ≤ 219 L, fonctions ≤ 60 L.
+- **Blocage hors périmètre (non-fatal)** : `go test ./internal/...` échoue à COMPILER pour
+      `internal/service`, `internal/api*`, `internal/scheduler`, `internal/worldenrich`,
+      `internal/service/teammates`, `internal/games/halo_5/livesync` — casse PRÉ-EXISTANTE
+      (`internal/service/killsourceload` importé mais absent du disque + `port.KillSourceClassRepository`
+      indéfini), hors des fichiers touchés (cf. §11). Gate exécuté sur les paquets compilables.
+- Prochaine étape : **Lot 4** (vues a/c allumées + groupement par classe).
 
 ### Lot 4 — Vues (a) et (c) allumées + (c) par classe
 - [ ] Vérifier que `SynthesisWeaponAccuracyChart` (a) et le chart roster (c) s'affichent pour
@@ -239,7 +263,25 @@ contrôle est le recalage API + la porte ci-dessus, sur NOTRE donnée.
 ---
 
 ## 11. Découvertes hors périmètre (consigner, NE PAS traiter)
-- (Réservé à l'exécution.)
+- **[Lot 3] Casse pré-existante `killsourceload`** : `internal/service/match_view_data_loaders.go:21`
+  importe `internal/service/killsourceload`, paquet ABSENT du disque (dossier inexistant), et
+  `internal/service/teammates` référence `port.KillSourceClassRepository` indéfini → `internal/service`
+  et tout son aval (`internal/api*`, `scheduler`, `worldenrich`, `teammates`, `halo_5/livesync`) ne
+  compilent pas. Documenté dans MEMORY.md (« importeur commité + paquet non suivi = branche non
+  compilable »). HORS périmètre Lot 3 (interdiction de toucher `internal/service`/`cmd/*`). À résoudre
+  avant tout gate `./internal/...` global (Lot 4 touche le service teammates : il faudra le lever).
+- **[Lot 3] Réserve pont FilmIndex→xuid (à valider Lot 4)** : `filmdec.WeaponHitStats.FilmIndex`
+  (`decodeFireEvent`, bits 36-40 >>1) et l'indice qu'indexe `resolvePlayerIndices` (5 bits avant le
+  motif xuid, aligné sur `PlayerIndex5` = bits 31-35 de `ScanFireEventsB5`) sont des champs DIFFÉRENTS
+  du record de tir. Leur équivalence n'est pas validée sur film. `collectHits` instrumente le risque
+  (`killsource_hits_indices_non_resolus`) ; le gate visuel du Lot 4 (joueur Infinite réel) tranche. Si
+  décalage systématique : soit aligner `decodeFireEvent.FilmIndex` sur le champ validé, soit ajouter la
+  conversion dans le pont — NE PAS deviner ici.
+- **[Lot 3] `weapon_accuracy` sans idempotence native** : la table partagée (peuplée nativement côté
+  H5) n'a ni `decode_pass` ni vue `_latest` ; pour Infinite elle n'est écrite QUE par la passe film,
+  qui est re-jouable (backfill) → risque de doublon. Résolu Lot 3 par garde SELECT-then-INSERT
+  (skip si le match a déjà des lignes). Si un jour H5 et Infinite partageaient la même DB (aujourd'hui
+  DB par titre), cette garde deviendrait insuffisante — à revoir alors.
 
 ## 12. Reprise de session
 - Avancement : cases `[ ]` de §10. Reprendre au premier lot non clos (gate vert + items statués).
