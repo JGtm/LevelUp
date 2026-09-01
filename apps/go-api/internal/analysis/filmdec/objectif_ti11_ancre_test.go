@@ -123,7 +123,7 @@ func TestObjectifTi11Ancre(t *testing.T) {
 		if err != nil {
 			continue
 		}
-		band := objectiveSlotSet(dir, n)
+		band := observedSlotBand(dir, n, ObjectiveTypeIndex)
 		if len(band) == 0 {
 			continue
 		}

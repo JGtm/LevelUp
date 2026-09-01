@@ -17,11 +17,15 @@ package filmdec
 //
 // # DEUX VOIES, ET AUCUNE N'EST ENCORE VALIDEE (mesure du 2026-09-01 — A LIRE AVANT USAGE)
 //
-// `ScanFilmManagedProperties` (ti=13) n'ouvre que les paquets DELTA, parce que sur cet
-// archetype-la l'ancrage par bande de slots chaine a 87-99 %. Sur ti=11 la meme voie chaine a
-// 2,7-26 % et sort des valeurs uniformement reparties sur 32 bits : la bande compte jusqu'a
-// 1 704 slots, elle comble les trous et attrape du bruit. Ce fichier ouvre donc AUSSI les
-// IMAGES-CLES, ou l'ancrage est structurel (en-tete de 64 bits).
+// `ScanFilmManagedProperties` (ti=13) n'ouvre que les paquets DELTA. Sur ti=11 cette voie chaine
+// a 13,7-64,9 % sur les neuf films d'Assaut — au-dessus du plancher de 3 %, jamais au niveau
+// d'un ancrage sur — et sort des valeurs uniformement reparties sur 32 bits. Ce fichier ouvre
+// donc AUSSI les IMAGES-CLES, ou l'ancrage est structurel (en-tete de 64 bits).
+//
+// LE REPERE DE « 87 A 99 % » AUQUEL CE CHANTIER SE COMPARAIT N'EXISTE PAS : passe sur ses
+// propres modes, `ti=13` plafonne a 77 % (`TestObjectifTi11DeltaControleTi13`). Les deux
+// archetypes ancrent desormais sur la BANDE OBSERVEE (`observedSlotBand`), pas sur la bande
+// comblee — c'est ce qui a fait passer ti=11 de 5,6 a 29,3 % et ti=13 de 6,3 a 43,7 %.
 //
 // LA VOIE IMAGE-CLE N'EST PAS BONNE NON PLUS, ET IL FAUT LE DIRE. Elle marche 98,4 % des records
 // jusqu'au bout — mais « marcher jusqu'au bout » ne teste QUE la COUVERTURE du dispatch, jamais
@@ -117,13 +121,14 @@ type ObjectiveRead struct {
 	//
 	//	IMAGE-CLE   les records sont ancres par leur en-tete de 64 bits, la marche aboutit sur
 	//	            98,4 % d'entre eux, et les masques tombent dans le domaine de l'archetype.
-	//	DELTA       l'ancrage repose sur une BANDE DE SLOTS qui, pour ti=11, compte 43 a 1 704
-	//	            slots — elle comble les trous et attrape du bruit. Le chainage mesure vaut
-	//	            2,7 a 26 % (contre 87 a 99 % sur ti=13 correctement ancre), et les valeurs
-	//	            sorties sont uniformement reparties sur les 32 bits : ce n'est pas une jauge,
-	//	            c'est du bruit. L'APPELANT DOIT FILTRER — et la mesure du 2026-09-01 sur i0
-	//	            (cf. l'en-tete du fichier) montre que MEME FILTREE sur `Chained` cette voie
-	//	            reste sous le hasard : il faut l'ecarter, pas la filtrer.
+	//	DELTA       l'ancrage repose sur une BANDE DE SLOTS. Sur la bande COMBLEE (43 a 1 704
+	//	            slots) le chainage valait 2,7 a 26 % ; sur la bande OBSERVEE, retenue depuis
+	//	            le 2026-09-01, il vaut 13,7 a 64,9 % — au-dessus du plancher de 3 %, sous ce
+	//	            qu'un ancrage juste donnerait. Les valeurs sorties restent uniformement
+	//	            reparties sur les 32 bits : ce n'est pas une jauge, c'est du bruit.
+	//	            ET LE FILTRE `Chained` NE SUFFIT PAS : la mesure du 2026-09-01 sur i0 montre
+	//	            que MEME FILTREE cette voie reste sous le hasard. Il faut l'ECARTER, pas la
+	//	            filtrer.
 	FromKeyframe bool
 }
 
@@ -158,7 +163,7 @@ func ScanFilmObjectives(dir string) (ObjectiveScan, error) {
 	if n == 0 {
 		return sc, fmt.Errorf("aucun chunk film dans %s", dir)
 	}
-	band := objectiveSlotSet(dir, n)
+	band := observedSlotBand(dir, n, ObjectiveTypeIndex)
 	if len(band) == 0 {
 		return sc, fmt.Errorf("aucun slot d'archetype ti=%d dans les keyframes de %s",
 			ObjectiveTypeIndex, dir)
@@ -187,46 +192,13 @@ func ScanFilmObjectives(dir string) (ObjectiveScan, error) {
 	return sc, nil
 }
 
-// objectiveSlotSet rend les slots d'objectif REELLEMENT OBSERVES dans les images-cles, SANS
-// COMBLER LES TROUS.
-//
-// POURQUOI PAS `worldObjectSlotBand`, QUI COMBLE (mesure du 2026-09-01). Le comblement existe
-// pour les objets NOMBREUX ET EPHEMERES — projectiles, equipements — dont un slot peut servir
-// entre deux images-cles sans jamais y apparaitre : la bande [min, max] rattrape ces vies
-// invisibles. Les objectifs sont l'exact contraire : ils sont PEU NOMBREUX et LONGUEMENT VIVANTS.
-// La carte du corps l'a mesure — 2 531 records d'image-cle pour 202 vies seulement, soit une
-// douzaine d'apparitions par objectif. Aucune vie d'objectif n'echappe aux images-cles.
-//
-// Le comblement, lui, coute cher : les slots observes s'etalent de 1 644 a 4 558, donc la bande
-// comblee compte jusqu'a 1 704 slots la ou une quinzaine suffisent. C'est cette bande qui rendait
-// 400 000 « records » delta par film avec un chainage de 2,7 % — du bruit, pas de la donnee.
-func objectiveSlotSet(dir string, n int) map[uint32]bool {
-	seen, others := map[uint32]bool{}, map[uint32]bool{}
-	for c := 1; c <= n; c++ {
-		data, err := ReadFilmChunk(dir, c)
-		if err != nil {
-			continue
-		}
-		for _, pk := range WalkPackets(data) {
-			if pk.Type != PacketTypeKeyframe {
-				continue
-			}
-			for _, r := range WalkKeyframeWorld(pk.Payload(data)) {
-				if r.TI == ObjectiveTypeIndex {
-					seen[uint32(r.Slot)] = true
-					continue
-				}
-				others[uint32(r.Slot)] = true
-			}
-		}
-	}
-	// UN SLOT VU PORTER AUTRE CHOSE NE PEUT PAS ETRE UN OBJECTIF : meme regle d'exclusion que
-	// `slotBandExcluding`, c'est le comblement qui saute, pas la prudence.
-	for s := range others {
-		delete(seen, s)
-	}
-	return seen
-}
+// LA BANDE D'ANCRAGE EST CELLE DES SLOTS OBSERVES, PAS LA BANDE COMBLEE (`observedSlotBand`,
+// mesure du 2026-09-01). Un objectif gere est PEU NOMBREUX et LONGUEMENT VIVANT : la carte du
+// corps l'a mesure — 2 531 records d'image-cle pour 202 vies seulement, soit une douzaine
+// d'apparitions par objectif — donc aucune vie n'echappe aux images-cles et le comblement n'a
+// rien a rattraper. Il coutait cher : les slots observes s'etalent de 1 644 a 4 558, la bande
+// comblee comptait jusqu'a 1 704 slots la ou une quinzaine suffisent, et elle rendait 400 000
+// « records » delta par film a 2,7 % de chainage — du bruit, pas de la donnee.
 
 // objectiveArchetype charge l'archetype des objectifs geres (ti=11) du registre.
 //

@@ -6,7 +6,7 @@ package filmdec
 // l'honnetete d'un balayage :
 //
 //	BANDE OBSERVEE      les slots REELLEMENT vus porter ti=12 aux images-cles, sans comblement
-//	                    (meme regle qu'`objectiveSlotSet`) ; la bande comblee est publiee a cote
+//	                    (meme regle qu'`observedSlotBand`) ; la bande comblee est publiee a cote
 //	                    comme temoin de ce que le comblement aurait coute ;
 //	DEUX VOIES          les paquets DELTA (ancrage par bande de slots) ET les IMAGES-CLES
 //	                    (ancrage structurel par en-tete de 64 bits) ;
@@ -110,7 +110,7 @@ func ti12ScanFilm(dir string, clk zcClock) (*ti12Scan, error) {
 // POURQUOI L'INTERSECTION AVEC LA BANDE COMBLEE SUFFIT. `ScanFilmWorldObjectKeyframes` rend
 // `SeenUS` (les vies de l'archetype, donc les slots OBSERVES) et `Band` = comblement(observes)
 // prive des slots vus porter autre chose. L'intersection des deux vaut donc exactement
-// « observes moins exclus » — la definition d'`objectiveSlotSet`, sans en recopier la marche.
+// « observes moins exclus » — la definition d'`observedSlotBand`, sans en recopier la marche.
 func bandeObserveeKeyframes(kf WorldObjectKeyframes) map[uint32]bool {
 	out := map[uint32]bool{}
 	for k := range kf.SeenUS {
