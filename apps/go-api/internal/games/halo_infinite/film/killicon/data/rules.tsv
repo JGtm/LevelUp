@@ -85,20 +85,20 @@ GGGL	0	killfeed-46	hinf_frag_grenade	entree 0 de la liste gggl = banque sb_008_e
 GGGL	1	killfeed-47	hinf_plasma_grenade	entree 1 = sb_010_grn_cv_plasmagrenade (cv = Covenant) ; vignette 47 nommee plasma_grenade dans le jeu
 GGGL	2	killfeed-48	hinf_dynamo_grenade	entree 2 = sb_010_grn_un_lightninggrenade ; vignette 48 nommee lightning_grenade dans le jeu — concordance textuelle directe
 GGGL	3	killfeed-49		entree 3 = sb_008_exp_single_med_kineticbanished (cinetique Banished) = grenade a pointes ; vignette 49 nommee spike_grenade ; absente du registre d armes
-BANQUE	veh_cv_ghost	killfeed-36		chassis nomme par sa banque sonore ; vignette 36 nommee ghost dans le jeu
-BANQUE	veh_cv_banshee	killfeed-35		vignette 35 nommee banshee
-BANQUE	veh_cv_wraith	killfeed-33		vignette 33 nommee wraith
-BANQUE	veh_cv_phantom	killfeed-34		vignette 34 nommee phantom
-BANQUE	veh_bt_chopper	killfeed-37		vignette 37 nommee chopper
-BANQUE	veh_un_wasp	killfeed-32		vignette 32 nommee wasp
-BANQUE	veh_un_scorpion	killfeed-31		vignette 31 nommee scorpion (le char ; la tourelle detachee a sa propre vignette 38, jamais citee seule par une racine)
-BANQUE	veh_un_rockethog	killfeed-27		vignette 27 nommee rockethog
-BANQUE	veh_un_pelican	killfeed-30		vignette 30 nommee pelican
-BANQUE	veh_un_falconlmgturret	killfeed-86		vignette 86 nommee falcon_chaingun : lmg = chaingun, concordance textuelle entre la banque sonore et la table de chaines du jeu, deux sources independantes
-BANQUE	veh_un_falcongrenadelauncher	killfeed-87		vignette 87 nommee falcon_grenade_launcher, concordance textuelle exacte
-BANQUE	tur_un_machinegun	killfeed-05		vignette 05 nommee turret_chaingun : meme tourelle UNSC
-BANQUE	tur_cv_plasmacannon	killfeed-21		vignette 21 nommee turret_plasma
-BANQUE	tur_cv_shadeturret	killfeed-39		vignette 39, nommee << Banished Shade Turret >> par la passe humaine ; toutes les racines `cv` d Infinite sont des engins Banished (ghost, banshee, wraith, phantom), la Shade `cv` est donc la version Banished — tranche par l utilisateur le 2026-08-11
+BANQUE	veh_cv_ghost	killfeed-36	hinf_ghost	chassis nomme par sa banque sonore ; vignette 36 nommee ghost dans le jeu
+BANQUE	veh_cv_banshee	killfeed-35	hinf_banshee	vignette 35 nommee banshee
+BANQUE	veh_cv_wraith	killfeed-33	hinf_wraith	vignette 33 nommee wraith
+BANQUE	veh_cv_phantom	killfeed-34	hinf_phantom	vignette 34 nommee phantom
+BANQUE	veh_bt_chopper	killfeed-37	hinf_chopper	vignette 37 nommee chopper
+BANQUE	veh_un_wasp	killfeed-32	hinf_wasp	vignette 32 nommee wasp
+BANQUE	veh_un_scorpion	killfeed-31	hinf_scorpion	vignette 31 nommee scorpion (le char ; la tourelle detachee a sa propre vignette 38, jamais citee seule par une racine)
+BANQUE	veh_un_rockethog	killfeed-27	hinf_rockethog	vignette 27 nommee rockethog
+BANQUE	veh_un_pelican	killfeed-30	hinf_pelican	vignette 30 nommee pelican
+BANQUE	veh_un_falconlmgturret	killfeed-86	hinf_falcon_lmg	vignette 86 nommee falcon_chaingun : lmg = chaingun, concordance textuelle entre la banque sonore et la table de chaines du jeu, deux sources independantes
+BANQUE	veh_un_falcongrenadelauncher	killfeed-87	hinf_falcon_gl	vignette 87 nommee falcon_grenade_launcher, concordance textuelle exacte
+BANQUE	tur_un_machinegun	killfeed-05	hinf_turret_machinegun	vignette 05 nommee turret_chaingun : meme tourelle UNSC
+BANQUE	tur_cv_plasmacannon	killfeed-21	hinf_turret_plasma	vignette 21 nommee turret_plasma
+BANQUE	tur_cv_shadeturret	killfeed-39	hinf_turret_shade	vignette 39, nommee << Banished Shade Turret >> par la passe humaine ; toutes les racines `cv` d Infinite sont des engins Banished (ghost, banshee, wraith, phantom), la Shade `cv` est donc la version Banished — tranche par l utilisateur le 2026-08-11
 BANQUE	exp_single_small_shock	killfeed-42	hinf_coil_shock	BOBINE A CHOC. La coupe a trois segments de banqueRe rendait les quatre bobines identiques (exp_single_small) ; la racine LONGUE les distingue. Concordance textuelle directe entre la flaveur de banque (shock) et la vignette 42, nommee Shock coil par la passe humaine du 2026-08-09.
 BANQUE	exp_single_small_plasma	killfeed-45	hinf_coil_plasma	BOBINE A PLASMA. Meme voie, meme concordance textuelle : flaveur plasma, vignette 45 nommee Plasma coil.
 BANQUE	exp_single_small_kineticunsc	killfeed-44	hinf_coil_kinetic	BOBINE CINETIQUE UNSC. Vignette 44 nommee UNSC fusion coil : les deux disent UNSC, la concordance porte sur la faction et non sur une elimination.

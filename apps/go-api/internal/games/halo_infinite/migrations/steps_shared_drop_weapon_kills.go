@@ -58,7 +58,7 @@ func dropWeaponKillsHINF(db *sql.DB) error {
 	}
 	for _, s := range schemas {
 		// Nom de schéma issu du catalogue DuckDB, jamais d'une entrée utilisateur.
-		if _, err := db.Exec(fmt.Sprintf(`DROP VIEW IF EXISTS "%s".v_weapon_kills`, s)); err != nil {
+		if _, err := db.ExecContext(migration.BootCtx(), fmt.Sprintf(`DROP VIEW IF EXISTS "%s".v_weapon_kills`, s)); err != nil {
 			return fmt.Errorf("drop %s.v_weapon_kills: %w", s, err)
 		}
 	}
@@ -72,7 +72,7 @@ func dropWeaponKillsHINF(db *sql.DB) error {
 
 // schemasPortantLaVue rend les schémas où la vue existe RÉELLEMENT.
 func schemasPortantLaVue(db *sql.DB, view string) ([]string, error) {
-	rows, err := db.Query(`SELECT schema_name FROM duckdb_views() WHERE view_name = ?`, view)
+	rows, err := db.QueryContext(migration.BootCtx(), `SELECT schema_name FROM duckdb_views() WHERE view_name = ?`, view)
 	if err != nil {
 		return nil, fmt.Errorf("duckdb_views(%s): %w", view, err)
 	}

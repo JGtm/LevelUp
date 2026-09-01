@@ -386,10 +386,6 @@ func (s *SynthesisService) loadTopWeaponKills(
 		return nil, nil
 	}
 	rows := s.loadWeaponKillRows(ctx, filteredCanon)
-	matchIDs := make([]string, 0, len(filteredCanon))
-	for _, r := range filteredCanon {
-		matchIDs = append(matchIDs, r.Summary.MatchID)
-	}
 	hasMechanics := titleHasNativeKillMechanics(s.titleSlug)
 	counts := domain.FragKillTypeCounts{
 		Melee:         detailedStats.TotalMeleeKills,

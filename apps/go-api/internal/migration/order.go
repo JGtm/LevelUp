@@ -274,6 +274,11 @@ var canonicalOrder = []string{
 	// `halo_infinite` le voit ; seul son NOM figure ici, comme pour tout step title-owned
 	// (order_audit_test.go l'exige des DEUX côtés).
 	"shared_drop_weapon_kills_v1", // shared — title-owned Halo Infinite (2026-09-01)
+	// Reclassement de deux clés du registre d'armes (épée, marteau) : APRÈS
+	// add_weapon_registry, qui les sème. Le seed de boot est INSERT-only, donc un
+	// changement de CLASSE sur une clé déjà semée n'atteint jamais une base de production
+	// sans ce step. Title-owned Halo Infinite (2026-09-01).
+	"metadata_reclass_sword_hammer_heavy_v1", // metadata
 }
 
 var canonicalIndex = func() map[string]int {

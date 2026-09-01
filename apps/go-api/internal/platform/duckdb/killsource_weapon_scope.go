@@ -160,11 +160,11 @@ GROUP BY k.source_tag`)
 // restent comptes partout ou le sunburst les sert.
 func (r *ExplorerRepo) topWeaponsFromSource(
 	ctx context.Context, xuid string, matchIDs []string, limit int,
-) ([]domain.WeaponHighlight, error) {
+) []domain.WeaponHighlight {
 	rows, err := weaponKillsFromSourceForPlayer(ctx, r.pdb, r.killSourceClassifier, xuid, matchIDs)
 	if err != nil {
 		slog.DebugContext(ctx, "ExplorerRepo.topWeaponsFromSource: lecture (best-effort)", "err", err)
-		return nil, nil //nolint:nilerr
+		return nil
 	}
 	out := make([]domain.WeaponHighlight, 0, limit)
 	for _, w := range rows {
@@ -183,9 +183,9 @@ func (r *ExplorerRepo) topWeaponsFromSource(
 		}
 	}
 	if len(out) == 0 {
-		return nil, nil
+		return nil
 	}
-	return out, nil
+	return out
 }
 
 // favoriteWeaponFromSource rend l'arme la plus meurtriere du joueur sur TOUT son

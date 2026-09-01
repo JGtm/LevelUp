@@ -304,10 +304,6 @@ func (s *TimeseriesService) GetPage(
 	}
 	// FragDistribution (sunburst v2) : RÉUTILISE buildFragDistribution (partagé
 	// Synthesis/Match view — aucune duplication). Construite même sans weaponRows.
-	tsMatchIDs := make([]string, 0, len(matches))
-	for _, m := range matches {
-		tsMatchIDs = append(tsMatchIDs, m.MatchID)
-	}
 	resp.FragDistribution = s.buildTimeseriesFragDistribution(ctx, weaponRows, resp.KillTypes)
 
 	// Précision par arme (Halo 5 natif) : MÊME builder partagé que Synthesis/Sessions

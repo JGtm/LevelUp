@@ -567,7 +567,7 @@ func (r *ExplorerRepo) GetTopWeaponsForMatches(
 	}
 	// Titre a decodeur de film : l arme vient de la SOURCE DU DEGAT (bascule 2026-09-01).
 	if r.killSourceClassifier != nil {
-		return r.topWeaponsFromSource(ctx, xuid, matchIDs, limit)
+		return r.topWeaponsFromSource(ctx, xuid, matchIDs, limit), nil
 	}
 	placeholders := strings.TrimRight(strings.Repeat("?,", len(matchIDs)), ",")
 	q := fmt.Sprintf(`
