@@ -1,0 +1,285 @@
+package filmdec
+
+// navpoint_ti12_plancher_test.go — LE PLANCHER DE LA SEULE OBSERVATION SURVIVANTE DU LOT.
+//
+// # CE QUI EST EN JEU
+//
+// Le lot du 2026-09-01 a laisse UNE observation sans plancher : sur les films d'Assaut, l'anneau
+// du marqueur (`ti=12 i14`) atteint son quantum plein ~5 s avant chaque explosion. Si cette
+// constante survit a un tirage nul, l'anneau EST la jauge d'armement et le chantier est clos par
+// un positif. Si elle ne lui survit pas, la derniere piste film tombe, et l'armement se deduira
+// hors film (meche constante).
+//
+// # LE PROTOCOLE, fixe AVANT la mesure (spec de la synthese du lot, appliquee sans retouche)
+//
+//	A — LA VRAIE. Les 13 explosions des 5 films Neutral Bomb REELS (35b75a31, ce083875,
+//	    69b16f5d, 3d58eb37, 34bb3bc8). `1c01e34f` est RETIRE : Husky Raid, carte Forge, rampe
+//	    six fois plus rapide (partition ANTERIEURE a la mesure, PLAN_ASSAUT_LOT_A §0).
+//	    Montee redefinie avec CONTIGUITE : trou entre echantillons <= 500 ms — c'est ce qui
+//	    separe les rampes reelles des ramassages de queue.
+//	B — LA NULLE. 1 000 tirages de 13 instants uniformes (graine FIXE = 1), memes effectifs
+//	    par film, dans l'etendue des lectures du film. Meme statistique.
+//	C — LES DECALAGES. Les vraies cibles decalees de +45 s, -45 s, +120 s.
+//
+// STATISTIQUE, identique pour tous : delai = cible moins la FIN de la derniere montee contigue
+// avant la cible (tous slots), retenu si 0 < delai <= 120 s ; couverture = cibles couvertes ;
+// dispersion = ecart-type / mediane des delais (le CV du chantier).
+//
+// # LA REGLE DE DECISION, ecrite ici et appliquee telle quelle
+//
+//	RETENU      ssi A couvre 13/13 avec CV <= 0,20, MOINS DE 1 % des tirages nuls font aussi
+//	            bien (couverture pleine ET CV <= CV reel), et les decalages echouent.
+//	ARTEFACT    si la nulle fait souvent aussi bien : la statistique « dernier evenement avant
+//	            t » est degeneree, les ~5 s sont un artefact d'argmax, et le negatif CLOT la
+//	            derniere piste film.
+//
+// REGIME : garde `ASSAUT_CACHE`. Aucune base, aucun reseau, sentinelle memoire armee, un seul
+// decodage a la fois (verrou process).
+//
+//	$env:ASSAUT_CACHE="C:/.../data/cache"
+//	go test ./internal/analysis/filmdec/ -run NavpointTi12Plancher -v -timeout 60m
+
+import (
+	"math"
+	"math/rand"
+	"os"
+	"path/filepath"
+	"sort"
+	"testing"
+
+	"levelup/go-api/internal/filmproc"
+)
+
+// tpFilms : les cinq films Neutral Bomb reels et leurs explosions (copie gardee par
+// TestNavpointTi12OracleFige via ti12Explosions — ici seulement le sous-ensemble).
+var tpFilms = []struct {
+	id   string
+	exps []int32
+}{
+	{"34bb3bc8", []int32{427120}},
+	{"35b75a31", []int32{304013, 541270, 787051}},
+	{"3d58eb37", []int32{203065, 342196, 386280}},
+	{"69b16f5d", []int32{154305, 278617, 310215}},
+	{"ce083875", []int32{512505, 686401, 947537}},
+}
+
+const (
+	tpTrouMaxMS  = 500    // contiguite d'une montee : trou entre echantillons <= 500 ms
+	tpSensMaxMS  = 120000 // fenetre de sens du chantier
+	tpTirages    = 1000
+	tpGraine     = 1
+	tpCVSeuil    = 0.20
+	tpNulSeuilPc = 1.0 // % de tirages nuls autorises a faire aussi bien
+)
+
+// tpFilmDonnees : les fins de montees contigues et l'etendue des lectures d'un film.
+type tpFilmDonnees struct {
+	fins     []int32
+	min, max int32
+	exps     []int32
+}
+
+// TestNavpointTi12Plancher applique le protocole A / B / C.
+func TestNavpointTi12Plancher(t *testing.T) {
+	cache := os.Getenv("ASSAUT_CACHE")
+	if cache == "" {
+		t.Skip("mesure non demandee : ASSAUT_CACHE requis")
+	}
+	defer tpSentinelle(t)()
+	release := LockProcessDecode()
+	defer release()
+
+	var films []tpFilmDonnees
+	for _, f := range tpFilms {
+		d, ok := tpCharger(t, cache, f.id)
+		if !ok {
+			t.Fatalf("%s : film indispensable absent — le protocole exige les cinq", f.id)
+		}
+		d.exps = f.exps
+		films = append(films, d)
+		t.Logf("%-9s : %3d montee(s) contigue(s), lectures de %d a %d ms",
+			f.id, len(d.fins), d.min, d.max)
+	}
+
+	// A — LA VRAIE.
+	couv, cv, med := tpStat(films, nil)
+	t.Logf("########## A (reel)      : couverture %2d/13, delai median %6.1f s, CV %5.3f",
+		couv, med/1000, cv)
+
+	// C — LES DECALAGES.
+	for _, dec := range []int32{45000, -45000, 120000} {
+		c, v, m := tpStat(films, func(e int32) int32 { return e + dec })
+		t.Logf("########## C (%+6d ms) : couverture %2d/13, delai median %6.1f s, CV %5.3f",
+			dec, c, m/1000, v)
+	}
+
+	// B — LA NULLE.
+	rng := rand.New(rand.NewSource(tpGraine))
+	aussiBien, pleins := 0, 0
+	cvs := make([]float64, 0, tpTirages)
+	for i := 0; i < tpTirages; i++ {
+		c, v, _ := tpStatNulle(films, rng)
+		if c == 13 {
+			pleins++
+			cvs = append(cvs, v)
+			if v <= cv {
+				aussiBien++
+			}
+		}
+	}
+	sort.Float64s(cvs)
+	t.Logf("########## B (nulle, %d tirages, graine %d) :", tpTirages, tpGraine)
+	t.Logf("  couverture pleine : %d/%d tirages (%.1f %%)", pleins, tpTirages,
+		100*float64(pleins)/float64(tpTirages))
+	if len(cvs) > 0 {
+		t.Logf("  CV des tirages pleins : p5 %5.3f, mediane %5.3f, p95 %5.3f",
+			cvs[len(cvs)/20], cvs[len(cvs)/2], cvs[len(cvs)*19/20])
+	}
+	t.Logf("  tirages faisant AUSSI BIEN que le reel (pleins ET CV <= %5.3f) : %d (%.1f %%)",
+		cv, aussiBien, 100*float64(aussiBien)/float64(tpTirages))
+
+	// LA REGLE, appliquee telle qu'ecrite.
+	reelPasse := couv == 13 && cv <= tpCVSeuil
+	nulRare := 100*float64(aussiBien)/float64(tpTirages) < tpNulSeuilPc
+	if reelPasse && nulRare {
+		t.Logf("VERDICT : RETENU sous la regle — l'anneau ti=12 est la jauge d'armement candidate.")
+	} else {
+		t.Logf("VERDICT : ARTEFACT sous la regle (reel passe=%v, nulle rare=%v) — la derniere "+
+			"piste film tombe.", reelPasse, nulRare)
+	}
+}
+
+// tpCharger balaie UN film et rend les fins de montees CONTIGUES, tous slots.
+func tpCharger(t *testing.T, cache, id string) (tpFilmDonnees, bool) {
+	t.Helper()
+	dir := filepath.Join(cache, "film_chunks", id)
+	if CountFilmChunks(dir) == 0 {
+		return tpFilmDonnees{}, false
+	}
+	clk, ok := ti12Horloge(dir)
+	if !ok {
+		return tpFilmDonnees{}, false
+	}
+	sc, err := ti12ScanFilm(dir, clk)
+	if err != nil {
+		return tpFilmDonnees{}, false
+	}
+	series := map[uint32][]ti12Ech{}
+	d := tpFilmDonnees{min: math.MaxInt32, max: math.MinInt32}
+	for _, r := range sc.Reads {
+		series[r.Slot] = append(series[r.Slot], ti12Ech{r.TMS, r.Q})
+		if r.TMS < d.min {
+			d.min = r.TMS
+		}
+		if r.TMS > d.max {
+			d.max = r.TMS
+		}
+	}
+	for slot, s := range series {
+		sort.Slice(s, func(i, j int) bool { return s[i].tMS < s[j].tMS })
+		d.fins = append(d.fins, tpMonteesContigues(slot, s)...)
+	}
+	sort.Slice(d.fins, func(i, j int) bool { return d.fins[i] < d.fins[j] })
+	return d, len(d.fins) > 0
+}
+
+// tpMonteesContigues decoupe une serie triee en montees au sens du gate 2 PLUS la contiguite :
+// un trou de plus de tpTrouMaxMS entre deux echantillons CASSE la montee.
+func tpMonteesContigues(_ uint32, s []ti12Ech) []int32 {
+	var fins []int32
+	for i := 0; i < len(s); {
+		j := i
+		for j+1 < len(s) && s[j+1].q >= s[j].q && s[j+1].tMS-s[j].tMS <= tpTrouMaxMS {
+			j++
+		}
+		n := j - i + 1
+		if n >= ti12MonteeMinEch && int(s[j].q)-int(s[i].q) >= ti12MonteeMinAmpl {
+			fins = append(fins, s[j].tMS)
+		}
+		if j == i {
+			i++
+			continue
+		}
+		i = j
+	}
+	return fins
+}
+
+// tpStat calcule (couverture, CV, mediane) des delais cible - derniere fin de montee, sur les
+// vraies explosions transformees par `f` (nil = identite).
+func tpStat(films []tpFilmDonnees, f func(int32) int32) (int, float64, float64) {
+	var delais []float64
+	couv := 0
+	for _, d := range films {
+		for _, e := range d.exps {
+			c := e
+			if f != nil {
+				c = f(e)
+			}
+			if dd, ok := tpDelai(d.fins, c); ok {
+				couv++
+				delais = append(delais, dd)
+			}
+		}
+	}
+	med, cv := tpMedCV(delais)
+	return couv, cv, med
+}
+
+// tpStatNulle tire les cibles uniformement dans l'etendue de chaque film, memes effectifs.
+func tpStatNulle(films []tpFilmDonnees, rng *rand.Rand) (int, float64, float64) {
+	var delais []float64
+	couv := 0
+	for _, d := range films {
+		span := d.max - d.min
+		for range d.exps {
+			c := d.min + int32(rng.Int63n(int64(span)+1))
+			if dd, ok := tpDelai(d.fins, c); ok {
+				couv++
+				delais = append(delais, dd)
+			}
+		}
+	}
+	med, cv := tpMedCV(delais)
+	return couv, cv, med
+}
+
+// tpDelai rend le delai cible - derniere fin de montee AVANT la cible, dans la fenetre de sens.
+func tpDelai(fins []int32, cible int32) (float64, bool) {
+	i := sort.Search(len(fins), func(k int) bool { return fins[k] >= cible })
+	if i == 0 {
+		return 0, false
+	}
+	d := cible - fins[i-1]
+	if d <= 0 || d > tpSensMaxMS {
+		return 0, false
+	}
+	return float64(d), true
+}
+
+// tpMedCV rend la mediane et le CV (ecart-type sur mediane) d'une serie.
+func tpMedCV(xs []float64) (float64, float64) {
+	if len(xs) == 0 {
+		return 0, math.Inf(1)
+	}
+	tri := append([]float64(nil), xs...)
+	sort.Float64s(tri)
+	med := tri[len(tri)/2]
+	if med == 0 {
+		return med, math.Inf(1)
+	}
+	var s float64
+	for _, x := range xs {
+		s += (x - med) * (x - med)
+	}
+	return med, math.Sqrt(s/float64(len(xs))) / med
+}
+
+// tpSentinelle arme le plafond memoire de mesure et rend le desarmement.
+func tpSentinelle(t *testing.T) func() {
+	t.Helper()
+	g := filmproc.Arm("TestNavpointTi12Plancher", filmproc.MeasureLimitGiB, func(peak uint64) {
+		t.Errorf("PLAFOND MEMOIRE DEPASSE (%.2f Gio) — plancher interrompu", float64(peak)/(1<<30))
+	})
+	return func() { g.Disarm() }
+}
