@@ -80649,3 +80649,36 @@ et un plafond mesure de 77 % sur l'archetype de reference ; la marge restante ne
 l'ancre, qui vient d'etre confirmee par deux sources independantes. La question utile redevient la
 JAUGE : relacher le filtre `Chained` et chercher un signal statistique sur les 265 records
 porteurs de i12.
+
+---
+
+## [2026-09-01] Merge de la factorisation de bande, et les deux appelants orphelins
+
+**Statut** : Complete.
+
+**LE PROBLEME, cree par une bonne factorisation.** Le lot `wt/ti13-bande` a centralise la regle de
+bande OBSERVEE en `filmdec.observedSlotBand(dir, n, ti)` et supprime ses trois copies —
+`objectiveSlotSet` (production ti=11) et `ti11SlotSetPour` (le meme code dans un fichier de test).
+C'etait juste : trois copies, un garde-rail pose dans le meme commit (regle n°6). Mais deux
+branches soeurs appelaient encore les noms supprimes.
+
+**TRAITE MAINTENANT plutot que decouvert au merge final.** Merge de `wt/ti13-bande` dans
+`wt/assaut-bombe` : PROPRE, aucun conflit (les fichiers que le lot a touches n'avaient pas bouge
+de mon cote depuis sa base). Deux appelants orphelins, tous deux dans des instruments de mesure :
+
+	objectif_bombstate_test.go   ti11SlotSetPour(dir, n, ti)  -> observedSlotBand(dir, n, ti)
+	objectif_ti11_ancre_test.go  objectiveSlotSet(dir, n)     -> observedSlotBand(dir, n, ObjectiveTypeIndex)
+
+Apres renommage : zero occurrence des anciens noms dans tout le depot, hors le commentaire
+HISTORIQUE du garde-rail qui raconte pourquoi il existe — et celui-la doit rester.
+
+**GATES, avec une precaution.** Un lot de mesures tournait en parallele dans un autre worktree, et
+deux builds Go concurrents corrompent le cache. Toutes les verifications ont donc ete jouees avec
+un **GOCACHE et un cache golangci-lint ISOLES** dans le scratchpad : `gofmt` propre, `go vet`
+propre, `go test` vert sur `filmdec` et `archlint`, `golangci-lint` 0 issue. Le garde-rail
+`no_rewritten_slot_band_test.go` passe — mes deux instruments renommes ne reconstruisent pas de
+bande, ils appellent la regle.
+
+**RESTE** : `wt/ultra-jauge` (le worktree du lot de mesures en cours) appelle encore les anciens
+noms. Meme correction a appliquer quand le lot aura rendu la main — pas avant, on ne merge pas
+sous les pieds d'agents qui ecrivent.
