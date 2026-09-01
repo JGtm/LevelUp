@@ -114,6 +114,13 @@ var replaySchemas = []struct {
 	{"ZoneSpan", replay.ZoneSpan{}},
 	{"GaugePoint", replay.GaugePoint{}},
 	{"ZonesCoverage", replay.ZonesCoverage{}},
+	// AJOUTES LE 2026-09-01 (revue adversariale du schema 31, P2-3). Le RAMASSAGE NATIF vivait
+	// en production depuis le schema 30 SANS entrer dans cette table : ses deux types
+	// n etaient donc couverts par AUCUN des deux gardes champ<->contrat de ce fichier, alors
+	// meme que le schema 31 leur ajoutait `family` (non requis) et `unknownFamilies` (requis)
+	// — exactement le couple que le garde omitempty<->required existe pour verifier.
+	{"Pickup", replay.Pickup{}},
+	{"PickupCoverage", replay.PickupCoverage{}},
 	{"Coverage", replay.Coverage{}},
 	{"LayerCoverage", replay.LayerCoverage{}},
 	{"BridgeHealth", replay.BridgeHealth{}},
@@ -417,6 +424,25 @@ var replaySchemas = []struct {
 //	                      (l instant exact d une occupation de socle, la ou il n y avait qu un
 //	                      intervalle de vingt secondes) et deux blocs de Coverage (`pickups`,
 //	                      `padDating`).
+//
+//	45 -> 45  2026-09-01  AUCUN champ racine, et c est note ICI pour qu on ne le cherche pas :
+//	                      le schema 31 (nommage des ramassages) ajoute `family` sur Pickup et
+//	                      `unknownFamilies` sur PickupCoverage — deux champs IMBRIQUES. Ce
+//	                      cliquet ne compte que les champs de la RACINE du document, il ne
+//	                      pouvait donc pas bouger, et son silence n est pas un oubli.
+//	                      LE GATE QUI A ATTRAPE CE LOT EST L AUTRE : `TestOpenAPIYAMLIsUpToDate`
+//	                      (internal/api, tag cgo), joue AVANT regeneration — il ECHOUE en
+//	                      nommant `family`, puis PASSE apres. C est exactement la lecon P1-1 de
+//	                      la ronde 2 du chantier precedent : « contracttest vert » ne veut pas
+//	                      dire « contrat a jour », les deux gates ne voient pas la meme chose.
+//	                      CORRECTIF DE REVUE (P2-3), et il corrige une lecture trop indulgente
+//	                      de la ligne ci-dessus : le silence de CE fichier ne tenait PAS qu au
+//	                      comptage racine. `Pickup` et `PickupCoverage` etaient absents de
+//	                      `replaySchemas` depuis le schema 30 — les deux gardes champ<->contrat
+//	                      (dans les DEUX sens) et le garde omitempty<->required ne les voyaient
+//	                      simplement pas. Ils y sont desormais, et `family` (optionnel) contre
+//	                      `unknownFamilies` (requis) est precisement le couple que ces gardes
+//	                      savent juger.
 //
 // Les quinze fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
 // chiffre ne le dise. Contrat regenere (`make openapi-gen`), jamais ecrit a la main.

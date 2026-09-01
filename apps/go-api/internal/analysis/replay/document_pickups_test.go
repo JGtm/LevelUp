@@ -28,7 +28,7 @@ func TestBuildPickupsProjectsAndNames(t *testing.T) {
 	slotXUID := map[uint32]uint64{520: 111, 521: 222}
 	st := filmdec.BipedPickupStats{MultiEvent: 7, RefusedOffBand: 1}
 
-	got, cov := buildPickups(in, origin, step, slotXUID, st)
+	got, cov := buildPickups(in, replayClock{origin: origin, step: step}, slotXUID, st, nil)
 	if len(got) != 3 {
 		t.Fatalf("publies = %d, attendu 3 (l evenement anterieur a l origine est ecarte)", len(got))
 	}
@@ -41,8 +41,12 @@ func TestBuildPickupsProjectsAndNames(t *testing.T) {
 	if got[0].W != "11223344" {
 		t.Errorf("W = %q, attendu \"11223344\" (hexa 8 chiffres, meme convention que Loadout.W)", got[0].W)
 	}
-	if got[0].Kind != PickupWeapon || got[1].Kind != PickupItem || got[2].Kind != PickupItem {
-		t.Errorf("natures = %q/%q/%q, attendu weapon/item/item", got[0].Kind, got[1].Kind, got[2].Kind)
+	// LITTÉRAUX, PAS LES CONSTANTES DU CODE TESTÉ : permuter `PickupGrenade` et
+	// `PickupEquipment` dans la production laisserait un test écrit avec les constantes
+	// parfaitement vert (leçon P1-3c de la ronde 2 du chantier précédent).
+	if got[0].Kind != "weapon" || got[1].Kind != "grenade" || got[2].Kind != "equipment" {
+		t.Errorf("natures = %q/%q/%q, attendu weapon/grenade/equipment (schéma 31)",
+			got[0].Kind, got[1].Kind, got[2].Kind)
 	}
 	// LA CLASSE BRUTE SURVIT : ce qui distingue 2 de 3 n'est pas etabli, et le jour ou ce le
 	// sera les artefacts deja cuits doivent porter la valeur.
