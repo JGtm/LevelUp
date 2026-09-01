@@ -42,6 +42,23 @@ package filmdec
 // ancrer par `WalkKeyframeRecords` (marche deterministe) plutot que par le balayeur, et se donner
 // un oracle de largeur — un record dont la fin tombe exactement sur l'en-tete suivant.
 //
+// # L'ORACLE RECLAME CI-DESSUS EXISTE DEPUIS LE 2026-09-01, ET IL TRANCHE — A MOITIE
+//
+// `objectif_ti11_minuteurs_test.go` l'a trouve dans `i0 timers`, le PREMIER composant lu apres
+// l'en-tete : son domaine legal ne couvre que 68 des 128 valeurs encodables par champ, donc une
+// fenetre mal posee s'y voit a 53 %. Mesure sur 11 films :
+//
+//	IMAGE-CLE  1 149 lectures, 113 slots, LEGALITE 100,0 % (v0, v1 et la paire). L'ANCRE DES
+//	           IMAGES-CLES EST JUSTE, et la branche « `WalkKeyframeWorld` ancre des faux
+//	           records » est REFUTEE pour les records qui portent i0.
+//	DELTA      1 552 lectures d'Assaut, legalite 45,7 % / 40,3 % — SOUS le hasard. Le filtre
+//	           `Chained` ne sauve rien : 38 lectures a 57,9 % / 71,1 %. LA VOIE DELTA EST DU
+//	           BRUIT, et ce n'est plus une deduction du chainage mais un oracle independant.
+//
+// CE QUE L'ORACLE NE DIT PAS : i0 est en tete de masque, i12 est loin derriere. Il valide l'ancre
+// et la largeur du PREMIER composant, jamais celles qui les separent. La derive decrite plus haut
+// concerne donc le MILIEU de la marche, pas son point de depart.
+//
 // # LE TEMOIN DE FIABILITE EST PUBLIE, PAS GARDE POUR LES JOURNAUX
 //
 // `Chained` compte les marches dont la position de fin porte un en-tete de record valide, par
@@ -87,7 +104,9 @@ type ObjectiveRead struct {
 	//	            slots — elle comble les trous et attrape du bruit. Le chainage mesure vaut
 	//	            2,7 a 26 % (contre 87 a 99 % sur ti=13 correctement ancre), et les valeurs
 	//	            sorties sont uniformement reparties sur les 32 bits : ce n'est pas une jauge,
-	//	            c'est du bruit. L'APPELANT DOIT FILTRER.
+	//	            c'est du bruit. L'APPELANT DOIT FILTRER — et la mesure du 2026-09-01 sur i0
+	//	            (cf. l'en-tete du fichier) montre que MEME FILTREE sur `Chained` cette voie
+	//	            reste sous le hasard : il faut l'ecarter, pas la filtrer.
 	FromKeyframe bool
 }
 
