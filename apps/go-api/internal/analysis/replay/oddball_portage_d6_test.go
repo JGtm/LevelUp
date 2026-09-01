@@ -49,7 +49,11 @@ const (
 	// mediane, deploiements a 5,6-21,3 m) — un objet ramasse est aux pieds de qui le ramasse.
 	d6RayonRamassageM = originDropMaxDist
 	// d6AmbiguiteM : si le deuxieme plus proche est sous le seuil ET a moins de ceci du premier,
-	// le porteur est null. Doctrine des occupations de socle, dont le xuid vaut TOUJOURS null.
+	// le porteur est null. Doctrine des occupations de socle : plutot aucun porteur qu'un
+	// porteur choisi au hasard entre deux candidats a egale distance. (Le xuid de ces
+	// occupations n'est plus TOUJOURS null depuis le schema 30 — l'evenement natif le donne
+	// quand il date l'occupation ; la doctrine d'abstention, elle, ne change pas. Le SEUIL
+	// ci-dessous est inchange.)
 	d6AmbiguiteM = 1.0
 	// d6EcartMaxMS : ecart temporel tolere entre l'instant du trou et l'echantillon de position
 	// le plus proche. Au-dela, on compare deux instants et non deux lieux.

@@ -28,7 +28,8 @@ import type { PadEquipmentFamilyKey } from './weaponPadFamilies'
  *     (26,2 % des épisodes avec ≥ 1 frag) — un même groupe, une seule infobulle, parce que les
  *     colonnes de frags sont des SOUS-COLONNES du même état mesuré, pas un calque à part.
  *  2. `powerupPadsHint` — les vidages de socle de bonus sont ANONYMES PAR MESURE
- *     (`padPickups[].xuid` vaut `null` partout) : la ligne reste au niveau du MATCH, et aucun
+ *     (`padPickups[].xuid` est publié depuis le schéma 30 mais cet écran ne l'exploite pas) :
+ *     la ligne reste au niveau du MATCH, et aucun
  *     libellé ne doit laisser croire qu'on connaît le ramasseur.
  *  3. `notMeasured` — répulseur et propulseur n'ont AUCUN canal d'activation dans le film. Pas
  *     de colonne vide (elle se lirait « zéro utilisation ») : une phrase qui le dit.
@@ -315,7 +316,8 @@ export interface ReplayText {
    * LES TROIS ÉTATS NE SE VALENT PAS, et les libellés doivent le dire : « Disponible » est une
    * présence PROUVÉE, « Pris » une absence PROUVÉE, « Incertain » l'intervalle de ~20 s entre
    * les deux, que le film ne date pas. Aucun de ces libellés ne nomme un joueur : le ramasseur
-   * n'est pas publié (`padPickups[].xuid` vaut `null` partout), et aucune ligne d'écran ne doit
+   * n'est pas AFFICHÉ (`padPickups[].xuid` est publié depuis le schéma 30 ; cet écran ne
+   * l'exploite pas), et aucune ligne d'écran ne doit
    * laisser croire qu'on le connaît.
    *
    * NI MÉDIANE NI ÉCARTS À L'ÉCRAN (verdict du 2026-08-18) : le cycle mesuré ne sert plus qu'à

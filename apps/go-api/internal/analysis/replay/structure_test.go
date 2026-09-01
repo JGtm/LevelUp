@@ -461,8 +461,33 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   CE QUI L'A RENDU POSSIBLE : sept campagnes avaient conclu « aucun événement de zoom dans
 	//   la bobine » en lisant le type d'événement décalé d'UN bit ; leurs chaînes prétendument
 	//   indépendantes partageaient cette erreur. Le négatif est réfuté.
-	if SchemaVersion != 29 {
-		t.Fatalf("SchemaVersion = %d, attendu 29 : incrémenter exige une raison écrite ci-dessus "+
+	// v30 — LE RAMASSAGE NATIF (`pickups`), ET LA DATATION DES OCCUPATIONS DE SOCLE. La bobine
+	//   porte un événement `biped_pickup` que personne n'avait décodé : le type 9 de la liste
+	//   d'événements en tête des paquets delta. Sa grammaire est lue dans l'exe (descripteur
+	//   0x144724e18, domaines 2/8/7, charge `R(3) classe + R(1) porte + R(32) catalogue`) et son
+	//   cadrage est jugé par l'ORACLE DE TRAME sur deux films : longueur 50 bits sur 160/160
+	//   événements, contre 0,0 % de trames exactes à ±1, 2 ou 3 bits.
+	//   IL DATE, IL ATTRIBUE, IL NOMME. La référence de l'événement vaut `512 + index` = le slot
+	//   du bipède ramasseur : UNE SEULE valeur d'écart sur 32/32 paires de vérité terrain (les
+	//   ramassages que le canal i43..i46 voit aussi), témoin d'appariement permuté à 14-18 %.
+	//   L'identifiant de catalogue vit dans le MÊME espace que `Loadout.W` (100 % des familles
+	//   d'i43..i46 y figurent). Le R(3) sépare armes (classes 0/1) et reste (2/3, à 0,0 % d'armes
+	//   sur 118 événements).
+	//   CE QU'IL LÈVE : `padPickups` sort de l'intervalle anonyme de vingt secondes — instant
+	//   exact `t` et `xuid` quand un ramassage natif de la même famille tombe dans la fenêtre.
+	//   C'est la condition de reprise écrite au contrat de `PadPickup.XUID` (« un oracle plus
+	//   RAPPROCHÉ que 20 s »), et ce n'est plus une inférence. RIEN N'EST EFFACÉ : une occupation
+	//   non couverte garde son intervalle et son `xuid` à `null`.
+	//   CE QU'IL NE FAIT PAS : remplacer `weaponChanges` (les deux canaux disent des choses
+	//   différentes et s'accordent là où ils se recouvrent), ni prétendre à la complétude (seuls
+	//   les événements EN TÊTE de liste sont vus — `coverage.pickups.multiEvent` publie la
+	//   borne). Les classes non-arme sont publiées SUR MESURE : 80,5 % et 72,2 % d'entre elles
+	//   n'ont aucune émission i48 du même slot à moins de 500 ms (témoin décalé 0,0 %) — elles
+	//   comblent un trou, elles ne doublonnent pas `equipmentChanges`.
+	//   Détail : internal/analysis/replay/document_pickups.go, pad_pickup_dating.go,
+	//   internal/analysis/filmdec/biped_pickups.go, .ai/V7.5/film_re/NOTE_BIPED_PICKUP_2026-08-31.md.
+	if SchemaVersion != 30 {
+		t.Fatalf("SchemaVersion = %d, attendu 30 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

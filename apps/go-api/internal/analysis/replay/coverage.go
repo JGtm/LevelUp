@@ -180,6 +180,22 @@ type Coverage struct {
 	// `placements` et `groundWeapons` : un film sans ramassage et un film qu'on n'a pas su
 	// balayer rendent tous deux zéro changement — seuls ces compteurs les distinguent.
 	WeaponChanges *WeaponChangeCoverage `json:"weaponChanges,omitempty"`
+	// Pickups est la couverture des RAMASSAGES NATIFS (cf. document_pickups.go). Elle porte,
+	// comme celle de l'équipement, un TÉMOIN DE CE QU'ELLE NE VOIT PAS : `multiEvent` compte
+	// les listes d'événements qui en portent un autre après le ramassage — le balayage ne
+	// décode que l'événement de tête, donc un ramassage en deuxième position lui échappe. Sans
+	// ce nombre, personne ne peut juger le rappel du canal.
+	//
+	// PUBLIÉE MÊME QUAND AUCUN RAMASSAGE NE L'EST, comme les autres : un film sans ramassage
+	// et un film qu'on n'a pas su balayer rendent tous deux zéro — seuls ces compteurs les
+	// distinguent.
+	Pickups *PickupCoverage `json:"pickups,omitempty"`
+	// PadDating dit ce que l'événement natif a pu dater parmi les occupations de socle : les
+	// datées, celles dont le ramasseur est nommé, les AMBIGUËS (plusieurs ramassages de la
+	// même arme dans la fenêtre — on s'abstient) et les non couvertes (qui gardent leur
+	// intervalle). C'est le compteur qui dit combien de `padPickups` sont sortis de
+	// l'intervalle de vingt secondes.
+	PadDating *PadDatingStats `json:"padDating,omitempty"`
 	// EquipmentChanges est la couverture des RAMASSAGES ET CONSOMMATIONS d'équipement
 	// (schéma 26, cf. document_equipment_changes.go). Elle porte, seule de toutes les
 	// couvertures du rejeu, un TÉMOIN DE COMPLÉTUDE : le compteur de rotation d'i48 dit

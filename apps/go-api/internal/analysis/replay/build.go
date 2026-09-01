@@ -83,6 +83,16 @@ type Options struct {
 	// filmdec/held_weapon_changes.go). Entree de DONNEES, comme GrappleReads. Absente =
 	// rejeu sans ramassages — jamais des ramassages devines.
 	WeaponChanges []filmdec.HeldWeaponChange
+	// Pickups / PickupStats : les RAMASSAGES NATIFS lus dans la liste d'evenements des paquets
+	// delta (evenement `biped_pickup`, cf. filmdec/biped_pickups.go). Entree de DONNEES, comme
+	// WeaponChanges. Absente = rejeu sans ramassages natifs — jamais des ramassages devines.
+	//
+	// LES STATISTIQUES VOYAGENT AVEC LA LISTE, et il le faut : elles portent le compte des
+	// listes MULTIPLES, c'est-a-dire la mesure de ce que le canal ne peut PAS voir (un
+	// ramassage en 2e position d'une liste lui echappe). Une liste vide sans elles serait
+	// indistinguable d'un film sans ramassage.
+	Pickups     []filmdec.BipedPickup
+	PickupStats filmdec.BipedPickupStats
 	// EquipmentChanges / EquipmentChangeStats : les RAMASSAGES ET CONSOMMATIONS d'equipement
 	// lus dans le flux delta (cf. filmdec/equipment_changes.go). Entree de DONNEES, comme
 	// WeaponChanges. Les stats voyagent avec parce qu'elles portent le TEMOIN DE COMPLETUDE
@@ -270,6 +280,22 @@ func BuildFromFilm(matchID, titleSlug, filmDir string, opt Options) (ReplayDocum
 			"emissions", wStats.Emissions, "repetitions", wStats.Repeats)
 	}
 	opt.WeaponChanges = weaponChanges
+	// RAMASSAGES NATIFS : l'evenement `biped_pickup` de la liste d'evenements, en tete des
+	// paquets delta. AUTRE SOURCE que le canal ci-dessus (qui lit un composant du bipede
+	// PENDANT la traversee d'un record) : celui-ci lit des bits que personne d'autre ne lit,
+	// avant la trame. Il date a la milliseconde ET nomme le ramasseur. Absence non fatale.
+	pickups, pStats, err := filmdec.ScanFilmBipedPickups(filmDir)
+	if err != nil {
+		slog.Warn("ramassages natifs illisibles — rejeu sans ramassages natifs", "err", err, "filmDir", filmDir)
+		pickups, pStats = nil, filmdec.BipedPickupStats{}
+	} else {
+		slog.Info("ramassage natif : evenements lus",
+			"paquets", pStats.Packets, "type9", pStats.Type9, "type8", pStats.Type8,
+			"publies", pStats.Published, "listesMultiples", pStats.MultiEvent,
+			"refusesSansRef", pStats.RefusedNoRef, "refusesSansIdentifiant", pStats.RefusedNoCatalog,
+			"refusesHorsBande", pStats.RefusedOffBand, "refLargeInattendue", pStats.UnexpectedWideRef)
+	}
+	opt.Pickups, opt.PickupStats = pickups, pStats
 	// Inventaire complet : MÊMES images-clés, MÊME horloge, même record de biped que les armes
 	// portées. Absence non fatale — un rejeu sans grenades reste un rejeu valide.
 	inventory, invStats, err := ScanFilmKeyframeInventory(filmDir, loadoutFamilies(), 0)
@@ -566,9 +592,29 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 		"decodes", wcCov.Decoded, "publies", wcCov.Published,
 		"prises", wcCov.Taken, "lachers", wcCov.Dropped, "echanges", wcCov.Swapped,
 		"reannonces", wcCov.Restated, "avantOrigine", wcCov.BeforeOrigin)
+	// LES RAMASSAGES NATIFS, dates a la milliseconde et ATTRIBUES par le pont slot -> joueur
+	// deja construit ci-dessus. Publies AVANT les socles : `attachWeaponPads` s'en sert pour
+	// dater les occupations de socle qui restaient en intervalle de vingt secondes.
+	var pkCov PickupCoverage
+	doc.Pickups, pkCov = buildPickups(opt.Pickups, origin, step, own.SlotXUID, opt.PickupStats)
+	doc.Coverage.Pickups = &pkCov
+	slog.Info("rejeu : ramassages natifs",
+		"decodes", pkCov.Decoded, "publies", pkCov.Published, "nommes", pkCov.Named,
+		"armes", pkCov.Weapons, "objets", pkCov.Items,
+		"avantOrigine", pkCov.BeforeOrigin, "listesMultiples", pkCov.MultiEvent,
+		"refuses", pkCov.Refused)
 	// Les SOCLES — armes au sol ET power-ups —, sur le meme nuage NON decime (build_ground_weapons.go).
 	gwObjs := attachWeaponPads(&doc, opt.Pads, sorted,
 		replayClock{origin: origin, step: step, frames: doc.FrameCount}, opt.Labels)
+	// DATATION DES OCCUPATIONS DE SOCLE par l'evenement natif : l'intervalle de vingt secondes
+	// devient un instant, et `xuid` cesse d'etre `null`, QUAND un ramassage natif de la meme
+	// famille tombe dans la fenetre. Rien n'est efface : une occupation non couverte garde son
+	// intervalle intact (pad_pickup_dating.go).
+	padDating := datePadPickups(doc.WeaponPads, doc.PadPickups, doc.Pickups)
+	doc.Coverage.PadDating = &padDating
+	slog.Info("rejeu : datation des occupations de socle",
+		"occupations", padDating.Occupations, "datees", padDating.Dated, "nommees", padDating.Named,
+		"ambigues", padDating.Ambiguous, "nonCouvertes", padDating.Uncovered)
 	// LES ARMES AU SOL INDIVIDUELLES (schema 27) : la meme chaine que les socles, publiee objet
 	// par objet, LIEE aux lachers et aux prises du flux delta, et bornee par l observation —
 	// jamais par une table de durees (document_ground_weapon_items.go).

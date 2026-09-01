@@ -32,6 +32,7 @@ import (
 	"os"
 
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/filmproc"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/replaybuild"
@@ -43,6 +44,8 @@ func main() {
 	geomDir := flag.String("geometry", "",
 		"répertoire des CSV de props Forge (défaut : PathResolver.MapGeometryDir du titre)")
 	mapName := flag.String("map", "", "nom de carte du match (obligatoire : porte les bornes de déquantification)")
+	memGiB := flag.Int("mem-gib", filmproc.DefaultLimitGiB,
+		"plafond memoire souple de la cuisson, en gibioctets (0 = desarme, echappatoire de l'operateur)")
 	factsPath := flag.String("facts", "",
 		"fichier JSON des faits du match (lignes de match, scores des deux camps, nom de variante) ; "+
 			"sans lui : artefact sans compteurs de joueur ni actions d'objectif")
@@ -74,6 +77,26 @@ func main() {
 	if len(args) >= 2 {
 		filmDir = args[1]
 	}
+
+	// PLAFOND MÉMOIRE ARMÉ, comme les deux autres binaires qui décodent un film
+	// (`internal/replaychild` pour le fil de l'eau, les instruments de mesure pour le reste).
+	// CE BINAIRE NE L'ARMAIT PAS, et c'était le seul des trois : une cuisson unitaire lancée à
+	// la main sur un film pathologique pouvait donc emporter la machine. Le corpus connaît un
+	// film à 3,3 Go (`1b1e380f`, tué par une surveillance EXTERNE le 2026-08-18) ; quatre
+	// sinistres mémoire ont suivi, le dernier le 2026-08-31. La sentinelle est interne, elle
+	// n'a besoin de personne.
+	//
+	// `--mem-gib 0` la désarme : c'est l'échappatoire documentée de l'opérateur qui sait ce
+	// qu'il fait, et elle est explicite au lieu d'être le défaut.
+	g := filmproc.Arm("replay-build", *memGiB, func(peak uint64) {
+		slog.Error("plafond memoire depasse — cuisson abandonnee",
+			"pic_octets", peak, "pic_gio", float64(peak)/(1<<30), "match", matchID)
+		os.Exit(filmproc.CodeMemory)
+	})
+	defer func() {
+		g.Disarm()
+		slog.Info("pic memoire de la cuisson", "octets", g.Peak(), "gio", float64(g.Peak())/(1<<30))
+	}()
 
 	out, err := builder.BuildMatch(matchID, []string{*mapName}, filmDir, loadFacts(*factsPath, matchID))
 	if err != nil {
