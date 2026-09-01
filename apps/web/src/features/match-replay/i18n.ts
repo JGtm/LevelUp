@@ -308,7 +308,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       grenadeRankFmt: (rank) => `Rang ${rank}`,
       powerupPads: 'Socles de bonus de puissance vidés',
       powerupPadsHint:
-        "Combien de fois un socle de bonus s'est vidé pendant le match. Ce compte ne descend sur AUCUN joueur, et ce n'est pas un oubli : le film ne publie pas le ramasseur (oracle mesuré à 79,7 %, contre 90 % exigé). Un même socle peut se vider plusieurs fois — le bonus réapparaît.",
+        "Combien de fois un socle de bonus s'est vidé pendant le match. Ce compte ne descend sur AUCUN joueur, et ce n'est pas un oubli : un socle de bonus s'identifie par un nom, pas par un identifiant d'objet, donc aucun ramassage du film ne peut lui être rattaché. Un même socle peut se vider plusieurs fois — le bonus réapparaît.",
       powerupPadsDenomFmt: (pads) =>
         `sur ${pads} socle${pads > 1 ? 's' : ''} mesuré${pads > 1 ? 's' : ''}`,
       coverageActiveFmt: (lives) => `États actifs mesurés sur ${lives} vies publiées.`,
@@ -652,7 +652,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       grenadeRankFmt: (rank) => `Rank ${rank}`,
       powerupPads: 'Power-up pads emptied',
       powerupPadsHint:
-        'How many times a power-up pad went empty during the match. This count is attached to NO player, and that is not an oversight: the film does not publish who took it (measured oracle at 79.7%, against 90% required). One pad can empty several times — the power-up respawns.',
+        'How many times a power-up pad went empty during the match. This count is attached to NO player, and that is not an oversight: a power-up pad is identified by a name, not by an object id, so no pickup in the film can be tied to it. One pad can empty several times — the power-up respawns.',
       powerupPadsDenomFmt: (pads) => `across ${pads} measured pad${pads > 1 ? 's' : ''}`,
       coverageActiveFmt: (lives) => `Active states measured over ${lives} published lives.`,
       coverageGrappleFmt: (pulls, lives) =>

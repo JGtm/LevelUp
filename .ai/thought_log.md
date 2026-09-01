@@ -81335,3 +81335,458 @@ declarations devenues inutiles (`PlayerMarkKind`, `count`, `valuesOf`, `indexOfO
 eslint les ont refusees, elles sont retirees. C'est exactement le role de ces gates.
 
 **Prochaine etape** : merge dans `feat/v75`.
+---
+
+## [2026-08-31] biped_pickup (type 9) DECODE — le ramassage natif est date, nomme et classe
+
+**Statut** : Complété (recherche ; aucune publication production dans ce lot).
+**Worktree** : `wt/biped-pickup`. **Films** : `000d5950` (27 chunks) et `00502e52` (29 chunks).
+
+**Décision technique principale.** Le lot devait décoder l'événement natif `biped_pickup`
+pour lever deux limites du canal actuel (i43..i46 : précis mais rappel ~50 % ; prises sur
+socle publiées en intervalle sans xuid). Deux chaînes indépendantes ont été menées jusqu'à ce
+qu'elles se ferment : un scan de cadrage EMPIRIQUE jugé par l'oracle de trame, et la lecture
+de la grammaire dans HaloInfinite.exe. Elles donnent la même longueur d'événement — **50 bits**
+— sans aucun ajustement.
+
+**Le geste qui a débloqué le lot, et il n'était pas prévu.** La première passe du scan n'a
+RIEN tranché : le meilleur cadrage rendait 1,66 record/paquet contre 1,56 pour son voisin. La
+cause n'était pas la grammaire mais l'ORACLE : `FrameConfig.IDLowBits` est une valeur de
+runtime propre au film, et le défaut 13 rendait le décodeur de trame aveugle. Calibré contre
+la vérité terrain des trames pures (cadrage connu au bit 2), il vaut **9 sur 000d5950** et
+**11 sur 00502e52**. Avec le bon critère (« la trame se ferme ET consomme le payload jusqu'au
+bout »), l'oracle passe d'une séparation de 1,9x à **93,0 % contre 0,0 %** à ±1, 2 et 3 bits.
+Leçon transférable au chantier trame : tout verdict de cadrage tiré de l'oracle de trame doit
+être précédé du calibrage d'IDLowBits sur le film, sinon il ne mesure rien.
+
+**Ce que le binaire donne** (chaîne indépendante, méthode validée d'abord sur un cas connu :
+la même lecture rend 4/8/7 pour `unit_zoom`, exactement ce que le chantier trame avait établi).
+Table des descripteurs à `ctx+0x210 + type*8` (`FUN_140e453b4`) : **type 9 -> 0x144724e18**,
+vtable 0x143d0d758. Identification de PREMIÈRE MAIN : `vtable+0x08` = 0x141164e10 est l'unique
+fonction référençant la chaîne `"biped_pickup"`. Domaines (`vtable+0x58`) : ref0 = 2 (R(8)),
+ref1 = 8, ref2 = 7. Charge (`vtable+0x68` = `FUN_141037828`) : **R(3) classe + R(1) porte +
+R(32) identifiant d'objet**. Total modal : 11 + 1 + 1 + 36 + 1 = **50**.
+
+**Résultats observés.**
+- Longueur **50 bits sur 160/160** événements seuls des deux films, sans une exception.
+  Largeur du domaine 2 balayée : **R(8) à 60,0 %** contre 3,5 % pour la meilleure voisine.
+- Confrontation produit, avec témoins de hasard (ramassages décalés de +37/-53/+91 s) parce
+  que 135 événements sur 493 s rendent tout appariement temporel large gratuit :
+  **(a) 21/21 = 100 %** des prises i43..i46 retrouvées ARME NOMMÉE à ≤ 500 ms (témoin 4,8 %) ;
+  **(b) 5/7** puis **3/3** des arrivées que i43..i46 rate sont nommées (témoins 14,3 % / 9,1 %) —
+  les 7 armes lourdes du dossier (Gravity Hammer ×3, M41 SPNKr ×3, Stalker Rifle ×1) ;
+  **(c) 10/10 et 11/11** des familles d'arme du catalogue de production sont connues du type 9.
+- **Le R(3) est une CLASSE d'objet, et c'est le résultat le plus net** : classes 0 et 1 portent
+  une arme dans 63-72 % des cas ; classes 2 et 3 dans **0,0 %** — 118 événements sur les deux
+  films, zéro arme. L'événement couvre donc AUSSI l'équipement et les grenades, et il les
+  étiquette. Réponse mesurée à la question de composition du lot.
+- L'identifiant R(32) est un identifiant de CATALOGUE, pas un handle de partie : sept valeurs
+  au moins sont communes aux deux films.
+
+**Négatifs publiés tels quels.** `ref0` n'est PAS identifiée : 25 valeurs distinctes sur 50
+événements, donc ni un index de joueur (8 joueurs) ni un slot de bipède. L'hypothèse
+« ref0 = le ramasseur » est NON VÉRIFIÉE, et sans elle un ramassage reste anonyme. Le résiduel
+de trames non exactes (57 % atteint contre un plafond `unit_zoom` de 82,7 % mesuré sur le même
+film) n'est pas expliqué ; il n'est pas imputable à la grammaire (aucun cadrage voisin ne fait
+mieux, 0,0 % à ±1..3). `biped_board_vehicle` (type 8) : **zéro occurrence** sur les deux films.
+Nondéterminisme relevé : le décodeur de trame porte de l'état global de process non réinitialisé
+entre deux décodages (±2 paquets sur 35) — à savoir avant d'écrire un ratchet sur ces taux.
+
+**Gates** : `gofmt` propre ; `go vet ./internal/analysis/filmdec/` silencieux ; `go test
+./internal/analysis/filmdec/` vert sans les gardes (les trois instruments se sautent sans
+`BIPED_PICKUP_FILM`). Aucun effet en CI, aucune publication production.
+
+**Conclusion / prochaine étape.** La condition de reprise écrite pour le son de ramassage est
+levée sur la moitié du sujet : l'événement est daté à la ms, nomme l'objet et le classe. Ce
+qui manque pour publier, c'est l'attribution au JOUEUR. Prochaine étape : identifier le
+domaine 2 (corréler `ref0` aux fils de vie, aux slots bipèdes du même paquet, et au pont
+slot -> xuid de `killsource`), sur le modèle de ce qui a résolu la référence du domaine 1 de
+`damage_aftermath` par l'ajout de la base de plage. Détail complet et mesures :
+`.ai/V7.5/film_re/NOTE_BIPED_PICKUP_2026-08-31.md`.
+
+---
+
+## [2026-08-31] ref0 du type 9 RÉSOLUE — le ramasseur est nommé : `slot = 512 + index`
+
+**Statut** : Complété (recherche ; aucune publication production).
+**Worktree** : `wt/biped-pickup`, lot 2. **Films** : `000d5950`, `00502e52`.
+
+**Correction du lot 1 d'abord.** Le titre de `NOTE_BIPED_PICKUP_2026-08-31.md` surclamait
+(« daté, nommé **et attribué** ») alors que la section « Ce qui N'EST PAS prouvé » de la même
+note établissait que l'attribution n'était pas faite. Corrigé. Le lot 2 a ensuite rendu le
+titre vrai — mais l'écart entre le titre et le corps était une faute de rédaction, pas une
+anticipation heureuse.
+
+**Décision technique principale.** Le négatif du lot 1 — « ref0 n'est pas un slot de bipède,
+25 valeurs distinctes sur 50 événements » — était **FAUX**, et faux exactement comme la
+première passe sur `damage_aftermath` : je lisais l'**index brut sans la base**, alors que le
+lecteur de l'exe (`FUN_1406d3140`) reconstruit `(gen<<30) | (base + index)` avec une base de
+runtime lue dans `DAT_1451f98d0[dom*2]`. Le lot 2 n'a même pas eu à balayer la base : la vérité
+terrain du lot 1 (événements type 9 appariés sans ambiguïté à une émission i43..i46 portant la
+MÊME arme, dont le slot de bipède est connu parce que l'émission est lue sur un record delta
+ancré) permet de calculer l'écart `slot − index` paire par paire.
+
+**Résultat, et il ne laisse pas de marge** : **une seule valeur distincte, 512, sur 21/21 puis
+11/11 paires** — 32 paires, deux films, zéro exception, zéro appariement ambigu écarté. Témoin
+(appariement permuté d'un cran) : 16 et 9 valeurs distinctes, mode à 14,3 % et 18,2 %. C'est la
+MÊME base que celle de la référence domaine 1 de `damage_aftermath` (début de la plage des
+bipèdes). **H-A retenue. H-B (ref0 = l'objet ramassé) réfutée** : un slot est unique, il ne peut
+désigner à la fois le bipède qui ramasse et l'objet ramassé.
+
+**Les classes 2/3 jugées sur une vérité terrain INDÉPENDANTE.** Les 32 paires sont toutes de
+classe R(3)=0 : elles ne prouvent la base que pour les armes. Pour l'équipement et les grenades,
+le juge est le canal i48 (`ScanFilmEquipmentChanges`), dont chaque émission porte le slot du
+bipède : **16/26 = 61,5 %** et **10/13 = 76,9 %** d'égalité EXACTE `512 + ref0 == slot émetteur`
+(combiné 26/39 = 66,7 %), contre **0,0 % sur les six témoins décalés**. Contrôle positif qui
+tranche l'objection « ce n'est que de la densité d'émissions » : les classes ARMES mesurées sur
+le MÊME canal équipement tombent à 30,8 % et 0,0 %. L'appariement est sémantique.
+
+**Un négatif de méthode publié tel quel.** La mesure de couverture (`512 + ref0` tombe-t-il dans
+la bande de bipèdes ?) donne **100 % sur 208 événements, toutes classes** — mais le témoin
+permuté donne **100 % aussi** : la bande fait ~100 slots contigus. Cette mesure **ne démontre
+rien** et est publiée comme telle. C'est précisément le proxy faible contre lequel la leçon
+`damage_aftermath` mettait en garde ; les juges sont les deux correspondances exactes.
+
+**Ce que ça change pour la publication.** QUI / QUOI / QUAND est acquis : daté à la ms, ramasseur
+nommé par son slot (le même espace de slots que `HeldWeaponChange.Slot`, celui que le pipeline
+de rejeu relie déjà au joueur — **réserve honnête : la traversée slot → xuid n'a pas été
+ré-exercée dans ce lot**), objet nommé au catalogue et classé (arme vs équipement/grenade).
+Reste hors de portée : l'**instance** de l'objet, donc le **socle d'origine** — H-B est réfutée,
+l'événement ne porte pas de handle monde. Ce lien reste l'affaire du canal spatial (schéma 26).
+
+**Gates** : `gofmt` propre ; `go vet ./internal/analysis/filmdec/` silencieux ; `go test
+./internal/analysis/filmdec/` vert sans les gardes. Fichiers 222 L et 243 L.
+
+**Prochaine étape** : si le chantier veut publier, exercer la traversée slot → xuid sur ces
+événements et décider du contrat. Détail et mesures : `.ai/V7.5/film_re/NOTE_BIPED_PICKUP_2026-08-31.md`.
+
+---
+
+## [2026-08-31] Lot 3 — le ramassage natif PUBLIÉ : schéma 30, `pickups` en production
+
+**Statut** : Complété (production ; 7 étapes du plan, toutes closes).
+**Worktree** : `wt/biped-pickup`. Commits `13a57abe5`, `ef0bc55d2`, `d56b16036`, `96208813a`.
+
+**Décision technique principale — le décodeur n'est PAS un hook, et c'était le bon choix.** Le
+brief demandait le patron `SetHeldWeaponHook`. Les hooks existent parce que leurs composants se
+lisent PENDANT la traversée d'un record d'entité. La liste d'événements, elle, vit AVANT la
+trame, en tête de payload : ces bits ne sont lus par AUCUN consommateur existant. Le balayage
+est donc autonome — il n'installe rien, ne touche aucun global de décodage, et ne PEUT PAS
+changer ce que les autres canaux lisent. Le patron hook aurait été un contresens.
+
+**La réserve du lot 2 est levée, et la mesure qui compte n'est pas celle qu'on croyait.** Les
+deux canaux (natif et i43..i46) rendent tous deux un SLOT, et ces slots sont égaux — donc
+« même xuid » en découle PAR CONSTRUCTION. Publier ce 100 % comme un résultat aurait été se
+flatter d'une tautologie. Ce que le gate mesure vraiment : le pont NOMME 127/135 = 94,1 % et
+73/73 = 100 % des ramasseurs, et il compte **0 collision de slot** sur les deux films — c'est
+l'objection « les slots sont réattribués entre manches », mesurée au lieu d'être supposée.
+
+**Deux décisions produit tranchées sur mesure, seuils écrits avant.**
+1. Publier les classes non-arme : 80,5 % et 72,2 % d'entre elles n'ont AUCUNE émission i48 du
+   MÊME slot à moins de 500 ms (témoin décalé 0,0 %) — elles comblent un trou, elles ne
+   doublonnent pas `equipmentChanges`.
+2. Le son : le canal natif COMBLE, il ne double pas. Un ramassage natif d'arme sonne si et
+   seulement si aucun `taken`/`swapped` ne le couvre. Mesure sur l'artefact : **32 sons ajoutés,
+   21 dédupliqués, zéro doublon**.
+
+**Une prémisse du brief était périmée, et il faut le dire.** L'étape 5 demandait de câbler le son
+`168832f6` en levant la condition de reprise. Or il était DÉJÀ câblé depuis le 2026-08-30
+(`weaponChangeSound.ts`, schéma 25), l'asset en place, le garde-rail « 0 asset mort » vert.
+Aucune re-livraison de `.wem` n'a été nécessaire. Ce qui restait vrai — et qui est fait — c'est
+que les prises ratées par `weaponChanges` étaient MUETTES (les sept armes lourdes du dossier).
+
+**La cuisson pilote, et son négatif.** UNE invocation, avant-plan, `000d5950`. Découverte au
+passage : `cmd/replay-build` n'armait PAS le plafond mémoire — seul des trois binaires qui
+décodent un film à ne pas le faire. Il l'arme désormais (`filmproc.Arm`, 3 GiB, `--mem-gib 0`
+pour désarmer). Pic mesuré **0,127 GiB**. L'artefact porte 135 ramassages, 127 nommés,
+53 armes / 82 objets, schéma 30 — chiffres identiques aux mesures des lots 1-2.
+**MAIS la datation des `padPickups` n'a PAS été exercée** : ce film (Fiesta sur Cliffhanger)
+rend 0 socle et 0 occupation, ses 220 armes au sol étant toutes des armes lâchées. La levée de
+l'intervalle de vingt secondes est prouvée par trois tests unitaires, PAS par une cuisson. Il
+faut un film à socles (CTF Arena) pour la voir à l'œuvre — c'est la seule promesse du lot qui
+reste non vérifiée sur donnée réelle.
+
+**Ce que les gardes du dépôt ont attrapé avant moi**, et qui vaut d'être noté : le cliquet de
+`SchemaVersion` (raison écrite exigée), le `contracttest` (quatre champs publiés par le Go et
+absents du contrat), les deux gardes de frontière TypeScript (tableaux nullables, racine ET
+chemins profonds), le garde-rail de parité du numéro de schéma côté web. Aucun n'a été
+contourné ; chacun a été satisfait par la donnée qu'il réclamait.
+
+**Découverte non traitée (hors périmètre, règle 7).** Le fixture du golden d'assemblage ne porte
+NI `weaponChanges`, NI `equipmentChanges`, NI les ramassages : `goldenInputs.options()` ne les
+transmet pas. Les trois canaux de « changements » vivent donc en production sans couverture de
+golden. Le golden lui-même est un rendu TEXTE écrit à la main : les nouveaux champs du document
+lui sont invisibles (d'où un diff d'UNE ligne, `schema 28` -> `29`). Corriger cela demanderait
+d'étendre le codec du fixture et de le régénérer — à décider hors de ce lot.
+
+**Gates** : `gofmt` propre · `go vet ./...` silencieux · `go test ./...` (apps/go-api) · contract
+`openapi-gen -check` « à jour » · web : `typecheck` vert, `lint` 0 erreur (24 avertissements
+pré-existants), `vitest match-replay` 1940/1940. Golden régénéré : une ligne, expliquée.
+
+**Prochaine étape** : cuire un film à socles pour exercer la datation des `padPickups`, seule
+promesse non vérifiée. Détail complet : `.ai/V7.5/film_re/NOTE_BIPED_PICKUP_2026-08-31.md`.
+
+---
+
+## [2026-09-01] Revue adversariale ronde 1 — un P0 : la datation des padPickups était MORTE
+
+**Statut** : Complété (corrections de revue ; production).
+**Worktree** : `wt/biped-pickup`. Sept constats recevables : 1 P0, 4 P1, 1 mécanique,
+4 P2 consignés sans correction.
+
+**Le P0, et pourquoi il compte plus que sa taille.** `Pickup.W` s'écrit `%08x` (huit hexa
+minuscules, sans préfixe) ; `WeaponPad.Weapon` sort de `formatWeaponFamily`, qui écrit
+`"0x"` + huit MAJUSCULES — et un NOM CANONIQUE pour les socles de power-up. Les deux espaces
+ne coïncident **jamais** : `hits` était toujours vide, aucun `padPickups[].t` n'a jamais été
+écrit, aucun `xuid` posé. Pire que l'absence de fonctionnalité : `coverage.padDating` publiait
+`{dated:0, uncovered:N}`, **un chiffre qui se lisait comme une mesure de corpus alors que
+c'était un défaut de format**. Vérifié sur pièces avant de toucher au code (l'artefact cuit
+porte `"00007ca9"` face à `"0x767DB96D"`).
+
+**La leçon de méthode, et je l'avais à moitié écrite.** Le lot 3 publiait le négatif « la
+datation des padPickups n'a pas été exercée par la cuisson » — c'était exact, et ça masquait
+un bogue. Un canal que la cuisson n'exerce pas doit être traité comme **NON VÉRIFIÉ**, jamais
+comme probablement bon. Le film pilote (Fiesta sur Cliffhanger) ne porte aucun socle : il ne
+pouvait structurellement pas révéler la panne.
+
+**Correctif : normaliser AU POINT DE JOINTURE, pas dans les formes publiées.** `padFamilyKey`
+ramène les deux conventions à une clé commune. `weaponChanges[].w` s'écrit ainsi depuis le
+schéma 25 et des clients peuvent déjà le lire — changer un contrat public pour un confort privé
+aurait été le mauvais échange. Les socles de power-up, structurellement non joignables, sont
+comptés à part (`PowerupPads`) au lieu d'être noyés dans `Uncovered`, qui laisserait croire que
+le canal a cherché et n'a pas trouvé.
+
+**Les quatre P1 étaient tous des trous de PREUVE, et chacun est refermé avec son inversion.**
+Le test de la datation employait une forme que la production ne produit jamais (vert avec ET
+sans le bogue) ; le décodeur de production n'avait AUCUN test tournant en CI (garde
+`BIPED_PICKUP_FILM` → Skip permanent) ; dix endroits affirmaient encore « `xuid` vaut toujours
+`null` » ; la clé de famille de la déduplication sonore n'était testée nulle part. Chaque
+correctif est accompagné de son inversion exécutée : neutraliser la normalisation fait tomber
+3 tests (« LA JOINTURE EST MORTE »), passer la base 512 à 0 en fait tomber 1, inverser classe
+et porte du catalogue en fait tomber 4, retirer la clé de famille 1, élargir la fenêtre 2.
+
+**Deux fois les tests ont eu raison contre moi, et c'est le meilleur signe qu'ils servent.**
+(1) J'attendais `RefusedNoRef` sur un payload tronqué à deux octets : c'est `RefusedNoCatalog`
+— à cette longueur la porte de ref0 est encore un vrai bit. (2) Une troncature de QUEUE est
+**indétectable** : le bourrage se lisant à zéro, un payload coupé après le bit 25 rend un
+événement parfaitement décodable dont seul l'identifiant est faux. Le décodeur n'a pas à s'en
+apercevoir — l'autorité sur la longueur d'un paquet est `FilmPacket.Size`. Les deux propriétés
+sont désormais ÉCRITES dans le test au lieu d'être supposées.
+
+**Onzième site de doc inversée, trouvé hors liste** : le golden rendait lui-même la phrase
+« l oracle ne le permet pas : 79,7 % contre 90 % », et un garde-rail de phrases l'exigeait.
+Corrigé aussi — laisser une phrase sciemment fausse dans le golden aurait été exactement
+l'anti-pattern qu'on corrigeait. Diff golden : une ligne.
+
+**Mécanique** : deux symboles exportés sans importeur, dé-exportés ; `npx knip` exit 0.
+
+**P2 consignés, NON corrigés** (détail dans la note) : jointure `weaponLabels` impossible pour
+`pickups[].w` et `weaponChanges[].w` ; `ReadFilmChunk` err → `continue` sans log (convention de
+cinq balayeurs voisins) ; aucun garde ne consulte `own.SlotCollisions` avant publication ; le
+golden texte ne couvre aucun des trois canaux de changements.
+
+**Gates** : `gofmt` propre · `go vet` silencieux · `go test` filmdec + replay + contracttest
+verts · web : purge `node_modules\.tmp` puis `typecheck` vert, `lint` 0 erreur (24
+avertissements pré-existants), `vitest match-replay` **1942/1942** (+2). Golden régénéré : une
+ligne, expliquée.
+
+**Prochaine étape** : ronde 2 relira ces corrections. Reste ouvert et inchangé : cuire un film
+à socles (CTF Arena) pour exercer réellement la datation des `padPickups` — c'est maintenant
+d'autant plus nécessaire que ce chemin s'est révélé faux sans que rien ne le signale.
+
+---
+
+## [2026-09-01] Revue ronde 2 — NON RECEVABLE : deux promesses de la ronde 1 non tenues
+
+**Statut** : Complété. **Worktree** : `wt/biped-pickup`. 11 constats : 5 P1 de complétion,
+6 P2 dont 4 requalifiés à corriger — ils étaient dans mon propre diff de ronde 1.
+
+**Ce que j'ai annoncé et qui était faux.** J'ai écrit « contracttest vert » comme si le contrat
+était à jour. Le gate qui vérifie réellement `openapi.yaml` est `TestOpenAPIYAMLIsUpToDate`
+(`internal/api`, tag cgo), et je ne l'avais pas joué : le champ était publié par le Go et absent
+du contrat, sur un schéma en `additionalProperties: false`. Vérifié cette fois en lançant le
+gate AVANT régénération — il échoue et nomme le champ. **Leçon : « les tests que j'ai lancés
+sont verts » n'est pas « le gate qui couvre ce risque est vert ».**
+
+**Et j'ai annoncé un balayage complet qui ne l'était pas.** Cinq sites debout, dont une
+contradiction INTERNE à ma propre correction (`document_ground_weapons.go` : la ligne 21 passée
+à « donnait », la ligne 20 disant encore « vaut null partout »). Plus une chaîne UI affichée à
+l'utilisateur, FR et EN, qui justifiait encore par « oracle 79,7 % » — réécrite sur la vraie
+raison : un socle de bonus s'identifie par un NOM, pas par un identifiant d'objet, donc aucune
+jointure n'est possible. Un 6e survivant trouvé par le grep exigé (`ReplayCanvasTips.tsx`).
+
+**Trois défauts dans le code de ma ronde 1, pas des dettes antérieures.** (a) Le retour anticipé
+de `datePadPickups` versait tout dans `Uncovered` quand le canal natif est vide — la lecture
+mensongère que ma correction prétendait éliminer, sur un film à socles power-up. (b)
+`TestDatePadPickupsFailsOnBrokenJoinKey` n'appelait jamais la fonction et portait une branche
+morte. (c) La fixture synthétique écrivait `typ: bipedPickupType`, la constante du code testé :
+les permuter laissait tout vert et aurait publié des embarquements en véhicule comme des
+ramassages. J'avais tiré exactement cette leçon en ronde 1 pour le slot 557 sans la généraliser.
+
+**Collision de clé JSON évitée de justesse** : `coverage.groundWeapons.powerupPads` (socles
+publiés) contre le mien (occupations écartées) — deux dénominateurs, un seul nom. Renommé
+`powerupOccupations` AVANT régénération ; après, c'eût été un breaking change.
+
+**Gates** : `TestOpenAPIYAMLIsUpToDate` + `TestManualFragmentPathsSurviveGeneration` PASS ·
+contracttest · filmdec + replay · web (purge `.tmp`, typecheck vert, lint 0 erreur, vitest
+1942/1942). Inversions rejouées : constantes 9/8 permutées → 3 tests tombent ; normalisation
+neutralisée → 2 tests tombent.
+
+**Prochaine étape** : reprise du lot 4 (équipement), suspendu après ses trois étapes mesurées.
+
+---
+
+## [2026-09-01] Lot 4 — l'équipement : hypothèse RENVERSÉE, nommage partiel, réfutation déplacée
+
+**Statut** : Complété (recherche pure ; aucun fichier de production touché).
+**Worktree** : `wt/biped-pickup`. Trois instruments neufs, sous gardes.
+
+**Le résultat qui compte : l'hypothèse donnée était à l'envers.** On m'a demandé de tester
+« classe 2 = équipement, classe 3 = grenades ». La mesure dit le contraire : c'est la **classe 3**
+qui porte un rang de palette i48 — 45,2 % et 40,0 % contre un témoin décalé à **0,0 %** sur les
+deux films. La classe 3 est donc l'équipement au sens d'i48. La classe 2, elle, **n'est pas
+identifiée** : le juge « compteur de grenades » la désigne faiblement sur un film (15,7 %) et
+pas du tout sur l'autre (0,0 %). Non conclu, et la faiblesse du juge est mesurée — i22 ne porte
+ses compteurs que sur 120 et 89 lectures.
+
+**Nommage : la voie est juste, sa couverture ne suffit pas.** Apparier chaque ramassage non-arme
+à une transmission i48 du même slot à ≤ 500 ms étiquette son `R(32)` d'un rang, que le manifeste
+nomme. Témoin décalé à **0,0 %** — l'appariement est sémantique. Mais seulement 19,5 % et 25,0 %
+des ramassages reçoivent une étiquette (seuil pré-enregistré : 30 %), et sur six identifiants,
+**deux seulement sont cohérents sur les deux films** (`eef5d48d` = Thruster, `8e2dc574` = rang
+19) ; un est en collision INTER-film. Aucun vote majoritaire appliqué : deux étiquettes pour une
+valeur restent deux étiquettes. Pas de table publiable.
+
+**J'ai dû corriger l'énoncé de l'étape 3.** « L'instant natif exact » m'était présenté comme
+l'idée neuve autorisant à retenter un lien réfuté. Ce n'en est qu'une à moitié : les émissions
+i48 sont DÉJÀ datées à la milliseconde, et la réfutation écrite impute l'échec à la DENSITÉ
+d'objets, pas au flou temporel. Ce que le canal natif apporte vraiment est la POPULATION —
+70 à 72 % des ramassages non-arme n'ont aucune émission i48 dans la fenêtre, la mesure D ne les
+voyait pas. C'est cela, l'idée neuve, et je l'ai écrite ainsi.
+
+**Réfutation ni levée ni confirmée — DÉPLACÉE.** À l'instant natif exact : médiane
+ramasseur → objet ti=37 vivant = **1,33 m**, contre 9,57 m pour un autre bipède au même instant
+(7,2×) et 15,10 m pour le même ramasseur à un instant décalé (11,4×). Le lien EXISTE. Mais
+1,33 m ne permet pas d'attribuer UN objet : mieux que les 1,4-1,7 m de la mesure D, moins bon
+que les 0,61-0,75 m des armes, part sous le mètre à 46 %. Ce n'est plus « le lien n'existe pas »
+mais « le lien existe et la résolution spatiale ne le rend pas injectif ».
+
+**Contrôle d'instrument, et il valide le préambule.** Rejoué avec une carte volontairement
+fausse : le rapport tombe de 7,2× à 1,8× et la part sous le mètre de 46,3 % à 0,0 %. Les
+mauvaises largeurs d'axe détruisent le signal, comme la leçon écrite le prévoyait — le résultat
+du bon cadrage n'est donc pas un artefact.
+
+**Deux limites assumées.** L'étape 3 est MONO-FILM : la carte de `00502e52` ne m'est pas connue,
+et la deviner en essayant celles qui donnent le meilleur résultat serait exactement l'ajustement
+que ce lot s'interdit. Et le croisement inter-film de l'étape 1 est fait à la main, la règle
+« un film par process » interdisant de le faire dans un seul test.
+
+**Rien n'est publiable de ce lot** : aucune des trois étapes n'atteint son seuil. Détail complet
+et chiffres : `.ai/V7.5/film_re/NOTE_EQUIPEMENT_PICKUP_2026-09-01.md`.
+
+**Prochaine étape** : un film à carte connue pour croiser l'étape 3 ; élargir la fenêtre
+d'appariement de l'étape 1 en mesurant ce que le témoin y perd ; pour la classe 2, le pool Lua
+`hsc*` comme vocabulaire et `biped_throw_initiate` comme troisième juge.
+
+---
+
+## [2026-09-01] Cuisson de validation padPickups + volet B (images-clés)
+
+**Statut** : Complété. **Worktree** : `wt/biped-pickup`. Une seule cuisson, pic 0,129 GiB.
+
+**Volet A — la promesse non tenue du lot 3 est enfin vérifiée, et elle tient.** La datation des
+`padPickups` n'avait jamais tourné sur un film à socles ; la ronde 1 y avait trouvé un P0 qui la
+rendait morte. Sur `01e1f945` (Catalyst, KOTH) : **46 occupations, 22 datées à l'instant exact,
+21 avec un ramasseur nommé**, 4 ambiguës, 11 non couvertes, 9 socles de power-up hors jointure.
+L'arithmétique se ferme (22+4+11+9 = 46). Contrôles : **0/22** datations hors de leur intervalle
+d'origine, **21/22** appuyées par un ramassage natif de la même arme ET du même joueur — le seul
+échec étant l'occupation dont le `xuid` est `null`, donc 21/21 sur les nommées. Un intervalle de
+vingt secondes devient un instant avec un joueur.
+
+**Je n'ai pas deviné la carte, et c'était le vrai risque.** L'artefact ne l'écrit nulle part, le
+confinement des bornes ne discrimine pas (70 cartes sur 79 contiennent les positions), et un
+mauvais cadrage détruit le résultat en silence — mesuré au lot 4 (7,2× → 1,8×). La carte vient
+de la documentation du dépôt, qui associe `01e1f945` à Catalyst en trois endroits ; le journal
+de cuisson l'a confirmé (`module=catalyst`).
+
+**Le second film n'a pas été cuit, et je le dis plutôt que de cuire par réflexe.** Le premier
+prouve tout ce qui devait l'être. Le candidat naturel était sur la MÊME carte : il aurait varié
+le mode, pas le cadrage.
+
+**Au passage, un négatif du lot 3 est confirmé** : l'artefact déjà cuit de `000d5950` porte lui
+aussi 0 socle et 0 occupation. Ma cuisson pilote ne régressait rien.
+
+**Volet B — la voie des images-clés ne tient pas sa promesse de couverture.** B1 (≥ 50 %
+étiquetés) **NON TENU** : 29,3 % et 19,4 %, soit pas mieux que la voie delta (19,5 / 25,0 %).
+Entre les ramassages sans paire d'images-clés, les ambigus et ceux sans changement, la fenêtre
+de vingt secondes perd les deux tiers de la population. Et elle est plus BRUITÉE : 66,7 % de
+collisions contre 16,7 %.
+
+**Mais deux résultats positifs.** B2 (témoin < 25 %) tenu très largement — **1,2 % et 0,0 %** :
+le risque « il se passe toujours quelque chose en 20 s » ne se matérialise pas, l'étiquetage
+mesure bien quelque chose. Et B3 : `eef5d48d` reçoit **rang 21 (Thruster)** par les DEUX voies
+indépendantes sur les DEUX films. Une corroboration croisée vaut mieux qu'une couverture.
+
+**Piste qualitative pour la classe 2, publiée comme telle et pas comme une mesure** : dans la
+table, les identifiants de classe 2 reçoivent des étiquettes GRENADE et ceux de classe 3 des
+étiquettes RANG. Cela converge avec l'hypothèse « classe 2 = grenades » que J2 n'avait pas su
+trancher au lot 4. Je n'ai pas croisé classe × type d'étiquette avec témoin — c'est une
+observation de table, et c'est la piste la plus prometteuse.
+
+**Rien de nouveau n'est publiable** côté nommage. La datation des `padPickups`, elle, est
+désormais vérifiée sur donnée réelle.
+
+---
+
+## [2026-09-01] CLOTURE du chantier biped_pickup — merge dans feat/v75, schema 30
+
+**Statut** : Complete et fusionne. **Branche** : `wt/biped-pickup` -> `feat/v75` (merge --no-ff).
+
+**Ce que le chantier a etabli.** L'evenement natif `biped_pickup` (type 9 de la liste
+d'evenements d'un paquet delta) est decode : grammaire lue dans l'exe, cadrage juge par
+l'oracle de trame (50 bits sur 160/160 evenements, contre 0,0 % a +/-1, 2 ou 3 bits),
+attribution prouvee (`slot = 512 + index`, une seule valeur d'ecart sur 32/32 paires de verite
+terrain). Publie au schema 30 : canal `pickups`, `padPickups` dates et attribues, son de
+ramassage comble sans doublon, plafond memoire arme sur `cmd/replay-build`.
+
+**Trois lecons, et elles valent au-dela de ce chantier.**
+
+1. **« Non exerce par la cuisson » = NON VERIFIE, jamais « probablement bon ».** Le lot 3
+   publiait honnetement « la datation des padPickups n'a pas ete exercee » — c'etait exact, et
+   ca MASQUAIT un P0 qui la rendait morte. Le film pilote (Fiesta sur Cliffhanger) ne portait
+   aucun socle : il ne POUVAIT PAS reveler la panne. Un chemin que la validation n'atteint pas
+   doit etre traite comme faux jusqu'a preuve du contraire.
+2. **« Les tests que j'ai lances sont verts » n'est pas « le gate qui couvre ce risque est
+   vert ».** J'ai annonce « contracttest vert » en ronde 1 alors que le gate qui verifie
+   reellement `openapi.yaml` est `TestOpenAPIYAMLIsUpToDate` (tag cgo), que je n'avais pas
+   joue. Le champ etait publie par le Go et absent du contrat, sur un schema en
+   `additionalProperties: false`.
+3. **Un test qui se sert de la constante qu'il doit prouver ne prouve rien.** Deux fois :
+   le slot compare a `bipedPickupRefBaseDom2 + 45` (passer la base a 0 laissait vert), et la
+   fixture ecrivant `typ: bipedPickupType` (permuter 9 et 8 laissait vert, et aurait publie
+   des embarquements en vehicule comme des ramassages). Corriges en litteraux, inversions
+   rejouees.
+
+**Le P0 de jointure, parce qu'il est instructif.** `Pickup.W` s'ecrit `%08x` (minuscules, sans
+prefixe), `WeaponPad.Weapon` sort de `formatWeaponFamily` (`"0x"` + MAJUSCULES) et vaut un NOM
+CANONIQUE pour les power-ups. Les deux espaces ne coincidaient jamais : aucune datation n'etait
+ecrite, et `coverage.padDating` publiait un `{dated: 0}` **qui se lisait comme une mesure de
+corpus alors que c'etait un defaut de format**. Un compteur a zero doit toujours pouvoir se
+distinguer d'un compteur qui n'a rien pu compter — c'est pourquoi les power-ups ont desormais
+leur propre compteur (`powerupOccupations`) au lieu d'etre noyes dans `uncovered`.
+
+**Validation sur donnee reelle** (01e1f945, Catalyst, une seule cuisson, pic 0,129 GiB) :
+46 occupations, **22 datees, 21 nommees**, 0/22 hors de leur intervalle d'origine, 21/22
+appuyees par un ramassage natif de la meme arme et du meme joueur.
+
+**Renumerotation 29 -> 30** : le chantier VISEE a pris le 29 le meme jour. Precedent connu
+(25-28). Le contrat n'a pas collisionne : la lunette a ajoute un champ imbriquE (`Point.S`),
+pas un champ racine — 44 -> 45 tient.
+
+**Reports consignes au REGISTRE** : nommage des `R(32)` non-armes (voie fichiers du jeu),
+classe 2 non identifiee (piste qualitative a transformer en mesure), lien objet-au-sol
+equipement DEPLACE et non leve, quatre P2 de revue.
+
+**Gates du merge** : `go build ./...` · replay + filmdec + contracttest · `TestOpenAPIYAMLIsUpToDate`
++ `TestManualFragmentPathsSurviveGeneration` · web typecheck, lint 0 erreur, vitest
+match-replay 1948/1948.

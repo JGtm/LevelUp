@@ -13,7 +13,8 @@
  * non-arme (`padNameFor`), jamais de la clé brute du document.
  *
  * CE QU'ELLE NE DIT JAMAIS : QUI a pris l'arme. Le champ existe au contrat (`padPickups[].xuid`)
- * et vaut `null` partout — l'oracle plafonne à 79,7 % contre 90 % exigés. C'est la clause la
+ * et est PUBLIÉ depuis le schéma 30 (2026-08-31) — l'événement natif le porte —, mais cette
+ * infobulle ne l'affiche pas : son dessin n'a pas été repensé. C'est la clause la
  * plus facile à violer par inadvertance, puisque le champ SE LIT sans qu'on voie qu'il est vide :
  * ce composant ne le lit pas.
  *

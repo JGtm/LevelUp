@@ -127,6 +127,7 @@ export type ReplayDocumentReady = Omit<
   | 'structure'
   | 'tracks'
   | 'vipCrown'
+  | 'pickups'
   | 'weaponChanges'
   | 'weaponPads'
   | 'zoneStates'
@@ -156,6 +157,15 @@ export type ReplayDocumentReady = Omit<
    * artefact antérieur au schéma 25, ou film qui n'en porte aucun.
    */
   weaponChanges: NonNullable<ReplayDocument['weaponChanges']>
+  /**
+   * LES RAMASSAGES NATIFS (schéma 30) : l'événement `biped_pickup` de la bobine, daté à la
+   * milliseconde, ATTRIBUÉ à son ramasseur et portant l'identifiant de catalogue de l'objet.
+   * Il ne remplace pas `weaponChanges` — celui-ci qualifie (prise, lâcher, échange) et connaît
+   * l'emplacement d'arme ; celui-là voit des prises que l'autre rate et nomme le ramasseur.
+   * Vide = artefact antérieur au schéma 30, ou film qui n'en porte aucun
+   * (`coverage.pickups` distingue les deux).
+   */
+  pickups: NonNullable<ReplayDocument['pickups']>
   /**
    * LES OBJETS D'OBJECTIF LIBRES (schéma 21) : où se trouve le crâne d'Oddball quand PERSONNE
    * ne le porte. Vide = artefact antérieur au schéma 21, mode sans objet porté, ou film qui n'en
@@ -238,6 +248,10 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     // la lecture d'image-clé dit l'ÉTAT, ces événements datent le CHANGEMENT. Absent = artefact
     // antérieur, ou film qui n'en porte aucun (`coverage.weaponChanges` distingue les deux).
     weaponChanges: raw.weaponChanges ?? [],
+    // LES RAMASSAGES NATIFS (schéma 30) : l'événement que la bobine écrit elle-même, là où
+    // `weaponChanges` déduit d'un changement de composant. Absent = artefact antérieur, ou film
+    // qui n'en porte aucun (`coverage.pickups` distingue les deux).
+    pickups: raw.pickups ?? [],
     // LES ARMES AU SOL individuelles (schéma 27) : une entrée par objet qui a bougé, bornée par
     // l'OBSERVATION. Absent = artefact antérieur, ou film dont aucune arme ne tombe —
     // `coverage.groundWeaponItems` distingue les deux. Aucun tableau imbriqué : l'objet est plat.

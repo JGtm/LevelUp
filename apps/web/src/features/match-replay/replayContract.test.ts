@@ -113,7 +113,8 @@ const NULLABLE_ARRAYS = [
   // `padPickups` : les occupations de socle ACHEVÉES (schéma 11, 2026-08-17) — le socle s'est
   // vidé quelque part dans [tLow, tHigh]. Un INTERVALLE, pas un instant : le film ne porte aucun
   // événement de ramassage, et la seule preuve de disparition est le recensement des
-  // images-clés, espacé de ~20 s. `xuid` vaut TOUJOURS `null` (oracle à 79,7 %, seuil 90 %).
+  // images-clés, espacé de ~20 s. `xuid` est RENSEIGNÉ depuis le schéma 30 (2026-08-31) quand
+  // l'événement natif `biped_pickup` date l'occupation, `null` sinon.
   'padPickups',
   'projectiles',
   'roster',
@@ -157,6 +158,11 @@ const NULLABLE_ARRAYS = [
   // d'absence), ou aucune preuve de disparition (`open`). Les armes de SOCLE restent à
   // `weaponPads` : deux vérités pour un même objet seraient une de trop.
   'groundWeapons',
+  // `pickups` : LE RAMASSAGE NATIF (schéma 30, 2026-08-31) — l'événement `biped_pickup` que la
+  // bobine écrit elle-même, là où `weaponChanges` déduit d'un changement de composant. Daté à
+  // la milliseconde, ATTRIBUÉ à son ramasseur, et portant l'identifiant de catalogue de l'objet
+  // plus sa classe (arme ou non). Il ne remplace pas `weaponChanges` : il comble son rappel.
+  'pickups',
 ] as const
 
 /** (1) La liste couvre EXACTEMENT les tableaux nullables du contrat — ni plus, ni moins. */
@@ -235,6 +241,9 @@ const NULLABLE_ARRAY_PATHS = [
   'weaponChanges',
   'equipmentChanges',
   'groundWeapons',
+  // Schéma 29 : le RAMASSAGE NATIF, calque PLAT lui aussi — l'objet ne porte que des nombres
+  // et des chaînes (instant, slot, xuid, identifiant de catalogue, nature, classe brute).
+  'pickups',
   // Dans les ÉLÉMENTS d'un tableau de tête — ce que la garde de racine ne voyait pas.
   'flagCarries[].spans',
   // La trajectoire d'une vie libre d'objet d'objectif (schema 21) : comblee par la

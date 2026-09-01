@@ -5351,6 +5351,8 @@ export interface components {
             objectiveObjects?: components["schemas"]["ObjectiveObjectsCoverage"];
             objectives: components["schemas"]["LayerCoverage"];
             originResolved: boolean;
+            padDating?: components["schemas"]["PadDatingStats"];
+            pickups?: components["schemas"]["PickupCoverage"];
             placements?: components["schemas"]["EquipmentPlacementCoverage"];
             score?: components["schemas"]["ScoreCoverage"];
             shots: components["schemas"]["LayerCoverage"];
@@ -8804,9 +8806,25 @@ export interface components {
             /** Format: float */
             p90S: number;
         };
+        PadDatingStats: {
+            /** Format: int64 */
+            ambiguous: number;
+            /** Format: int64 */
+            dated: number;
+            /** Format: int64 */
+            named: number;
+            /** Format: int64 */
+            occupations: number;
+            /** Format: int64 */
+            powerupOccupations: number;
+            /** Format: int64 */
+            uncovered: number;
+        };
         PadPickup: {
             /** Format: int64 */
             pad: number;
+            /** Format: int64 */
+            t?: number;
             /** Format: int64 */
             tHigh: number;
             /** Format: int64 */
@@ -8943,6 +8961,35 @@ export interface components {
             updated_at: string;
             /** Format: double */
             value: number;
+        };
+        Pickup: {
+            /** Format: int64 */
+            class: number;
+            kind: string;
+            /** Format: int32 */
+            slot: number;
+            /** Format: int64 */
+            t: number;
+            w: string;
+            xuid?: string;
+        };
+        PickupCoverage: {
+            /** Format: int64 */
+            beforeOrigin: number;
+            /** Format: int64 */
+            decoded: number;
+            /** Format: int64 */
+            items: number;
+            /** Format: int64 */
+            multiEvent: number;
+            /** Format: int64 */
+            named: number;
+            /** Format: int64 */
+            published: number;
+            /** Format: int64 */
+            refused: number;
+            /** Format: int64 */
+            weapons: number;
         };
         PilotModeAttribution: {
             daily?: components["schemas"]["Challenge"];
@@ -9579,6 +9626,7 @@ export interface components {
             /** Format: int64 */
             originMs?: number;
             padPickups?: components["schemas"]["PadPickup"][] | null;
+            pickups?: components["schemas"]["Pickup"][] | null;
             projectiles?: components["schemas"]["Projectile"][] | null;
             roster?: components["schemas"]["RosterEntry"][] | null;
             /** Format: int64 */

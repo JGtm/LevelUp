@@ -10638,6 +10638,10 @@ components:
           $ref: '#/components/schemas/LayerCoverage'
         originResolved:
           type: boolean
+        padDating:
+          $ref: '#/components/schemas/PadDatingStats'
+        pickups:
+          $ref: '#/components/schemas/PickupCoverage'
         placements:
           $ref: '#/components/schemas/EquipmentPlacementCoverage'
         score:
@@ -18659,10 +18663,42 @@ components:
         - gaps
         - missing
       type: object
+    PadDatingStats:
+      additionalProperties: false
+      properties:
+        ambiguous:
+          format: int64
+          type: integer
+        dated:
+          format: int64
+          type: integer
+        named:
+          format: int64
+          type: integer
+        occupations:
+          format: int64
+          type: integer
+        powerupOccupations:
+          format: int64
+          type: integer
+        uncovered:
+          format: int64
+          type: integer
+      required:
+        - occupations
+        - dated
+        - named
+        - ambiguous
+        - uncovered
+        - powerupOccupations
+      type: object
     PadPickup:
       additionalProperties: false
       properties:
         pad:
+          format: int64
+          type: integer
+        t:
           format: int64
           type: integer
         tHigh:
@@ -18983,6 +19019,69 @@ components:
         - period
         - value
         - updated_at
+      type: object
+    Pickup:
+      additionalProperties: false
+      properties:
+        class:
+          format: int64
+          type: integer
+        kind:
+          type: string
+        slot:
+          format: int32
+          minimum: 0
+          type: integer
+        t:
+          format: int64
+          type: integer
+        w:
+          type: string
+        xuid:
+          type: string
+      required:
+        - t
+        - slot
+        - w
+        - kind
+        - class
+      type: object
+    PickupCoverage:
+      additionalProperties: false
+      properties:
+        beforeOrigin:
+          format: int64
+          type: integer
+        decoded:
+          format: int64
+          type: integer
+        items:
+          format: int64
+          type: integer
+        multiEvent:
+          format: int64
+          type: integer
+        named:
+          format: int64
+          type: integer
+        published:
+          format: int64
+          type: integer
+        refused:
+          format: int64
+          type: integer
+        weapons:
+          format: int64
+          type: integer
+      required:
+        - decoded
+        - published
+        - named
+        - weapons
+        - items
+        - beforeOrigin
+        - multiEvent
+        - refused
       type: object
     PilotModeAttribution:
       additionalProperties: false
@@ -20662,6 +20761,12 @@ components:
         padPickups:
           items:
             $ref: '#/components/schemas/PadPickup'
+          type:
+            - array
+            - "null"
+        pickups:
+          items:
+            $ref: '#/components/schemas/Pickup'
           type:
             - array
             - "null"
