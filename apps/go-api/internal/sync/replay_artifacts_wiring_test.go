@@ -98,12 +98,17 @@ func TestReplayArtifactsAppeleeParLePipeline(t *testing.T) {
 	}
 }
 
-// TestReplayArtifactsAssertionRateeNeSeTaitPas — LE DEFAUT EXACT QUE CE LOT CORRIGE.
+// TestReplayArtifactsAssertionRateeNeSeTaitPas — LE DEFAUT EXACT QUE CE LOT CORRIGE, POUR LES
+// DEUX CAPACITES.
 //
 // `fetcher, _ := s.client.(replayartifacts.ChunksFetcher)` jetait le booleen : un client sans
 // la capacite donnait un fetcher nil et l etape sortait sans un mot. Le test lit le cablage et
 // exige que le resultat de l assertion soit EXAMINE — une assertion muette est indetectable a
 // l execution, donc elle se verrouille a la source.
+//
+// LA CAPACITE MVAR Y EST ENTREE APRES COUP, et pour une mauvaise raison : le meme defaut a ete
+// reintroduit sur elle le 2026-09-01. Un ratchet qui ne couvre qu une capacite laisse la porte
+// ouverte a la suivante.
 func TestReplayArtifactsAssertionRateeNeSeTaitPas(t *testing.T) {
 	src, err := os.ReadFile("convergence.go")
 	if err != nil {
@@ -117,6 +122,18 @@ func TestReplayArtifactsAssertionRateeNeSeTaitPas(t *testing.T) {
 	if !strings.Contains(cablage, "replayartifacts.SignalerClientSansChunks(") {
 		t.Error("le cablage ne signale plus l echec de l assertion ChunksFetcher : sans ce " +
 			"signal, « l etape ne peut rien faire » et « l etape n existe pas » s ecrivent pareil")
+	}
+	// LA MEME GARDE POUR LA CAPACITE MVAR, ET ELLE N EST PAS DECORATIVE : le defaut a ete
+	// REINTRODUIT le 2026-09-01, une ligne sous le commentaire qui l interdit, sur une
+	// capacite que ce ratchet ne couvrait pas encore. Deux fois suffisent.
+	if strings.Contains(cablage, "mvarFetcher, _ := s.client.(replayartifacts.MvarFetcher)") {
+		t.Error("l assertion MvarFetcher jette de nouveau son resultat : le rattrapage des " +
+			"cartes absentes sortirait en silence, et aucune carte n entrerait au catalogue")
+	}
+	if !strings.Contains(cablage, "replayartifacts.SignalerClientSansMvar(") {
+		t.Error("le cablage ne signale plus l echec de l assertion MvarFetcher : sans ce " +
+			"signal, « aucune carte a rattraper » et « le rattrapage est desarme » s ecrivent " +
+			"pareil — c est-a-dire rien")
 	}
 }
 

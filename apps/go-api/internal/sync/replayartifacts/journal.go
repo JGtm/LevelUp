@@ -86,6 +86,18 @@ const (
 // production — l'absence de la capacité est SANS CONSÉQUENCE, et un avertissement par cycle
 // y serait du bruit qui finirait par masquer les vrais. Sur le chemin « local », en
 // revanche, elle désarme complètement l'étape : WARN et compteur.
+func SignalerClientSansChunks(ctx context.Context, placement replaybuild.Placement, gamertag, typeClient string) {
+	if placement != replaybuild.PlacementLocal {
+		slog.DebugContext(ctx, "post-sync: rejeu 2D — le client ne porte pas GetFilmChunks (sans effet sur ce placement)",
+			"gamertag", gamertag, "client", typeClient, "placement", string(placement))
+		return
+	}
+	observability.IncCounterT(ctxkeys.TitleSlug(ctx), CompteurClientSansChunks)
+	slog.WarnContext(ctx, "post-sync: rejeu 2D désarmée — le client ne porte pas GetFilmChunks",
+		"gamertag", gamertag, "client", typeClient,
+		"consequence", "aucun film archivé ni artefact construit sur ce cycle")
+}
+
 // SignalerClientSansMvar dit qu'un client ne porte pas FetchMvarForMap.
 //
 // IL EXISTE PARCE QUE LE SILENCE A ETE REINTRODUIT UNE FOIS DE PLUS. Le premier jet de ce
@@ -99,16 +111,4 @@ func SignalerClientSansMvar(ctx context.Context, gamertag, typeClient string) {
 		"gamertag", gamertag, "client", typeClient,
 		"consequence", "aucune carte absente n'entrera au catalogue ; les rejeux de ces cartes "+
 			"resteront sans origine `spawner`")
-}
-
-func SignalerClientSansChunks(ctx context.Context, placement replaybuild.Placement, gamertag, typeClient string) {
-	if placement != replaybuild.PlacementLocal {
-		slog.DebugContext(ctx, "post-sync: rejeu 2D — le client ne porte pas GetFilmChunks (sans effet sur ce placement)",
-			"gamertag", gamertag, "client", typeClient, "placement", string(placement))
-		return
-	}
-	observability.IncCounterT(ctxkeys.TitleSlug(ctx), CompteurClientSansChunks)
-	slog.WarnContext(ctx, "post-sync: rejeu 2D désarmée — le client ne porte pas GetFilmChunks",
-		"gamertag", gamertag, "client", typeClient,
-		"consequence", "aucun film archivé ni artefact construit sur ce cycle")
 }

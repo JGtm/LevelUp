@@ -27,15 +27,25 @@ package mapcatalog
 // l'application sert sur une carte deja jouee. Les cartes dont la source a DERIVE ne sont donc
 // pas l'affaire de ce chemin : elles se traitent a la main par `mapopads-build --refresh-drifted`.
 //
-// LA RELECTURE JUSTE AVANT L'ECRITURE n'est pas un verrou entre processus — rien ici ne
-// pretend en etre un. Elle reduit la fenetre, et l'ajout-seul fait que le pire cas est une
-// entree perdue (re-tentee au prochain film de la meme carte), jamais une entree ecrasee.
+// LA PERTE DE MISE A JOUR EST GARDEE PAR UN VERROU CONSULTATIF, et il a fallu une revue pour
+// le voir : `AddEntry` fait un LIRE-MODIFIER-ECRIRE. Deux ecrivains — la CLI lancee a la main
+// pendant qu'un cycle de sync rattrape une carte — pouvaient lire le meme etat et publier
+// chacun un fichier SANS la carte de l'autre. C'est exactement le trou que ce lot comble qui
+// se rouvrait.
+//
+// LE VERROU EST UN FICHIER `.lock` cree en O_CREATE|O_EXCL, avec attente bornee et retrait en
+// `defer`. Il est CONSULTATIF et assume comme tel : si un processus meurt sans le retirer, le
+// suivant force le passage apres le delai et le journalise. Un verrou qui bloquerait pour
+// toujours serait pire que le defaut qu'il corrige — un cycle de sync ne doit jamais rester
+// pendu sur un catalogue de cartes.
 
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
+	"time"
 
 	"levelup/go-api/internal/analysis/replay"
 )
@@ -46,11 +56,49 @@ import (
 // meme carte arrivent dans le meme lot. L'appelant le compte, il ne s'en alarme pas.
 var ErrEntryExists = fmt.Errorf("carte deja au catalogue")
 
+// dureeAttenteVerrou / pasAttenteVerrou : l'attente bornee du verrou d'ecriture.
+//
+// Deux secondes suffisent tres largement : l'ecriture du catalogue est de l'ordre de la
+// dizaine de millisecondes. Au-dela, on considere le verrou ORPHELIN — un processus mort ne
+// doit pas geler le rattrapage de tous les suivants.
+const (
+	dureeAttenteVerrou = 2 * time.Second
+	pasAttenteVerrou   = 25 * time.Millisecond
+)
+
+// prendreVerrou pose un verrou consultatif a cote du catalogue et rend sa fonction de retrait.
+//
+// Il ne rend JAMAIS d'erreur : au pire il force le passage apres `dureeAttenteVerrou` en le
+// journalisant. Faire echouer une ecriture parce qu'un `.lock` traine serait transformer un
+// garde-fou en panne.
+func prendreVerrou(chemin string) func() {
+	verrou := chemin + ".lock"
+	fin := time.Now().Add(dureeAttenteVerrou)
+	for {
+		f, err := os.OpenFile(verrou, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+		if err == nil {
+			_ = f.Close()
+			return func() { _ = os.Remove(verrou) }
+		}
+		if time.Now().After(fin) {
+			slog.Warn("mapcatalog: verrou d'ecriture tenu trop longtemps — passage force",
+				"verrou", verrou, "attente", dureeAttenteVerrou,
+				"consequence", "une ecriture concurrente pourrait perdre une entree")
+			return func() {}
+		}
+		time.Sleep(pasAttenteVerrou)
+	}
+}
+
 // AddEntry ajoute UNE entree au catalogue si et seulement si sa cle n'y est pas encore.
 //
 // Rend `ErrEntryExists` quand la carte y est deja — y compris quand elle y est arrivee entre le
 // moment ou l'appelant a constate son absence et celui-ci.
+//
+// LIRE-MODIFIER-ECRIRE SOUS VERROU : sans lui, deux ecrivains concurrents publiaient chacun un
+// catalogue sans la carte de l'autre.
 func AddEntry(path, mapID string, entry replay.MapWeaponPadsEntry) error {
+	defer prendreVerrou(path)()
 	cat, err := replay.LoadMapWeaponPads(path)
 	if err != nil {
 		return fmt.Errorf("catalogue illisible : %w", err)
