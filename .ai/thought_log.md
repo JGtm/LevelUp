@@ -1,3 +1,54 @@
+## [2026-09-01] Contrôle des armes spéciales — le tableau qui NOMME le ramasseur d'un socle — Complété
+
+Lot web SEUL (worktree `wt/pickup-ui`, base `28e18feda`), aucun fichier Go touché. Le schéma 31
+publie `padPickups[].xuid` renseigné ; jusqu'ici AUCUN écran ne l'exploitait — le bilan
+d'équipement compte les socles VIDÉS au niveau du match et sans ramasseur, l'infobulle du calque
+des socles ne lit pas le champ. Ce lot ajoute UN tableau (cadrage explicite de l'utilisateur :
+« un tableau sur match view suffit pour le moment »).
+
+**Où il vit** : `MatchPadControlSection`, dans `features/match-replay/` et non `match-view/` —
+même raison que sa voisine, le VOCABULAIRE (les noms d'arme viennent de `padNameFor`, cascade
+unique du rejeu : famille de socle, puis catalogue bilingue du document, puis identifiant brut).
+Monté dans `MatchViewTabChronology`, JUSTE SOUS `MatchEquipmentUsageSection` dont il est le
+complément : même artefact, même clé de cache `useMatchReplay`, **aucun appel réseau de plus**.
+
+**Ce que le tableau montre** : une ligne par joueur que le film a vu vivre, groupée par camp du
+scoreboard, colonne de total puis une colonne par socle réellement pris. Tri par total
+décroissant à l'intérieur d'un camp ET entre les camps — c'est le sujet du tableau ; à égalité le
+nom (puis le côté) départage, deux relectures rendent le même tableau. Total par camp en pied de
+chaque groupe. Tableau statique, pas TanStack : le tri est fixe, aucune interaction (règle 13 :
+TanStack pour les tableaux INTERACTIFS ; gabarit repris de `MatchEquipmentUsageSection`).
+
+**Ce qu'il refuse de faire** : une occupation sans `xuid` n'est comptée POUR PERSONNE, jamais
+rattrapée. Un socle que personne n'a pris n'a pas de colonne (une colonne de zéros n'est pas une
+mesure). Un ramasseur nommé mais absent du roster du film, ou un index de socle hors bornes,
+tombe dans `unjoined` — pas dans une ligne au hasard.
+
+**LA SOMME BOUCLE, ET C'EST LA NOTE DE BAS DE TABLEAU** : prises affichées + occupations hors
+tableau = `coverage.padDating.occupations`. La ventilation par CAUSE (ambiguës, non couvertes,
+datées sans nom, socles de bonus hors jointure, ramasseur hors film) est rendue quand l'artefact
+porte le bloc `padDating` ; sinon une phrase dit qu'elle n'existe pas — on n'invente pas une
+cause. `unnamed` est calculé par SOUSTRACTION plutôt que lu, pour que la ventilation boucle même
+si un compteur du service évolue.
+
+**Double porte** (identique aux deux blocs voisins) : pas d'artefact, ou zéro prise attribuée →
+la section ne rend RIEN. Un match avec socles mais aucune occupation datée est donc muet, ce qui
+est le cas de tous les artefacts d'avant le schéma 30.
+
+**Découpe** : agrégation PURE et sans langue dans `padControlLogic.ts` (aucun React, aucune
+couleur) ; le composant ne fait que rendre. Textes FR+EN dans `i18n.ts` sous contrat typé
+`PadControlText` (`i18nContract.ts`) — la parité des cinq causes est tenue par
+`Record<PadControlGapKey, …>`, aucune cause ne peut manquer dans une langue. FR sans anglicismes
+(« prises de socle », « occupations hors tableau »). Zéro hex, zéro classe Tailwind couleur :
+uniquement les tokens déjà employés par la section voisine.
+
+**Gates** : `npm run typecheck` 0 · `npm run lint` 0 erreur (24 warnings PRÉ-EXISTANTS, aucun sur
+les fichiers touchés) · vitest `match-view` + `match-replay` **157 fichiers / 2239 tests**, dont
+24 nouveaux (16 sur la logique pure, 8 sur le rendu).
+
+**Prochaine étape** : gate visuel à la main de l'utilisateur sur un match dont l'artefact porte
+des occupations DATÉES (schéma >= 30), puis revue adversariale avant merge. Rien n'est poussé.
+
 ## [2026-09-01] Merge du schéma 31 dans feat/v75 — le nom de l'objet ramassé est en production — Complété
 
 Merge `--no-ff` de `wt/pickup-nommage` (10 commits) dans `feat/v75`. **Aucune collision de numéro** :

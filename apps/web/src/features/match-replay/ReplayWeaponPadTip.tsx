@@ -14,7 +14,8 @@
  *
  * CE QU'ELLE NE DIT JAMAIS : QUI a pris l'arme. Le champ existe au contrat (`padPickups[].xuid`)
  * et est PUBLIÉ depuis le schéma 30 (2026-08-31) — l'événement natif le porte —, mais cette
- * infobulle ne l'affiche pas : son dessin n'a pas été repensé. C'est la clause la
+ * infobulle ne l'affiche pas : son dessin n'a pas été repensé (le ramasseur nommé est le sujet
+ * du tableau « Contrôle des armes spéciales » de la page match). C'est la clause la
  * plus facile à violer par inadvertance, puisque le champ SE LIT sans qu'on voie qu'il est vide :
  * ce composant ne le lit pas.
  *
