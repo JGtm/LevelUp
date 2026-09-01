@@ -103,40 +103,16 @@ type FlagCarryScan struct {
 // flagCarryCtx regroupe ce que la regle consomme en plus du balayage : l'axe de temps, les
 // pistes publiees, le fil des morts et le calage d'horloge film <-> match.
 type flagCarryCtx struct {
-	// origin / step : l'axe de temps du rejeu, en microsecondes de l'horloge du FILM.
-	origin, step uint64
-	frames       int
+	// matchClock est l'axe de temps et le calage d'horloge film <-> match, PARTAGES avec le
+	// crane, la couronne et la bombe (match_clock.go) — la conversion n'est ecrite qu'une fois.
+	matchClock
 	// tracks sont les trajectoires PUBLIEES : c'est sur elles que le client dessinera, donc
 	// c'est en elles qu'il faut trouver la position du drapeau.
 	tracks []Track
 	deaths []Death
-	// deathOffsetMS : horlogeFilm = horlogeMatch + deathOffsetMS (cf. OwnerReport.DeathOffsetMS).
-	deathOffsetMS int64
 	// slotXUID nomme le slot de BIPEDE des marques de portage (espace de slots different de
 	// celui du statborg).
 	slotXUID map[uint32]uint64
-}
-
-// frameOfMatchMS pose un instant de l'horloge du MATCH sur l'axe de frames du rejeu.
-func (c flagCarryCtx) frameOfMatchMS(matchMS int64) int {
-	if c.step == 0 {
-		return -1
-	}
-	filmUS := (matchMS + c.deathOffsetMS) * 1000
-	if filmUS < int64(c.origin) {
-		return -1
-	}
-	return int((uint64(filmUS) - c.origin) / c.step)
-}
-
-// matchMSOfFrame est l inverse de [flagCarryCtx.frameOfMatchMS] : l instant du MATCH ou commence
-// une frame. Il borne les portages que RIEN ne ferme — sans lui, un portage ouvert dans les
-// dernieres secondes s arreterait au dernier evenement date plutot qu a la fin du rejeu.
-func (c flagCarryCtx) matchMSOfFrame(frame int) int64 {
-	if frame < 0 {
-		return 0
-	}
-	return int64(c.origin+uint64(frame)*c.step)/1000 - c.deathOffsetMS
 }
 
 // flagOpening est une prise, avant tout bornage.
