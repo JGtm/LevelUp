@@ -37,6 +37,22 @@ var (
 	_ replayartifacts.ChunksFetcher = (*HaloAPIClient)(nil)
 )
 
+// LES CLIENTS DE PRODUCTION PORTENT LA CAPACITE MVAR — VERIFIE A LA COMPILATION.
+//
+// MEME DEFAUT, DEUXIEME FOIS. Le rattrapage du catalogue de cartes a ete livre avec une
+// methode posee sur le SEUL `*HaloAPIClient` : les deux wrappers deleguent explicitement (pas
+// d'embedding), donc ni l'un ni l'autre ne la re-exposait, et les trois cablages de production
+// livrent l'un de ces wrappers. L'assertion echouait PARTOUT, le rattrapage sortait sans un
+// mot, et rien ne distinguait cela d'un lot non deploye.
+//
+// CES TROIS LIGNES CASSENT LA COMPILATION si une re-exposition saute. C'est le seul niveau ou
+// l'oubli est impossible.
+var (
+	_ replayartifacts.MvarFetcher = (*PooledHaloClient)(nil)
+	_ replayartifacts.MvarFetcher = (*cachedHaloClient)(nil)
+	_ replayartifacts.MvarFetcher = (*HaloAPIClient)(nil)
+)
+
 // TestReplayArtifactsClientsDeProductionTraversentLAssertion : le pendant DYNAMIQUE des
 // assertions ci-dessus — il refait l assertion exactement comme `runReplayArtifacts`, sur les
 // clients tels que le moteur les construit (enveloppe de cache comprise), et non sur le type
@@ -56,6 +72,14 @@ func TestReplayArtifactsClientsDeProductionTraversentLAssertion(t *testing.T) {
 		if _, ok := c.client.(replayartifacts.ChunksFetcher); !ok {
 			t.Errorf("%s (%T) ne passe pas l assertion de runReplayArtifacts : l etape 1.58 "+
 				"n archiverait aucun film et ne construirait aucun artefact", c.nom, c.client)
+		}
+		// LE PENDANT DYNAMIQUE POUR LA CAPACITE MVAR, sur les MEMES clients tels que le moteur
+		// les construit. Une enveloppe qui oublierait de re-exposer la methode rendrait le
+		// rattrapage inerte sans que rien ne le signale.
+		if _, ok := c.client.(replayartifacts.MvarFetcher); !ok {
+			t.Errorf("%s (%T) ne passe pas l assertion du rattrapage mvar : aucune carte "+
+				"absente n entrerait au catalogue, et les rejeux de ces cartes resteraient "+
+				"sans origine `spawner`", c.nom, c.client)
 		}
 	}
 }

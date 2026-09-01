@@ -69,6 +69,12 @@ func main() {
 		refreshDrift = flag.Bool("refresh-drifted", false,
 			"regenerer l'entree COMPLETE (socles ET points) des cartes dont le .mvar frais ne "+
 				"concorde plus ; les cartes concordantes restent byte-identiques")
+		// LA GARDE SE LEVE A LA MAIN, JAMAIS TOUTE SEULE : un deplacement de socle au-dela de
+		// dix metres est la signature du mauvais fichier, et il a failli empoisonner neuf
+		// cartes. Ce drapeau est le geste humain qui dit « j ai verifie ».
+		accepteGrands = flag.Bool("accept-large-moves", false,
+			"ecrire meme les cartes dont un socle se deplace de plus de 10 m — a n utiliser "+
+				"qu apres avoir verifie que le fichier source est bien la VARIANTE")
 		addOnly = flag.Bool("only-add-spawn-points", false,
 			"ne pas reecrire les socles : charger le catalogue existant et n'y ajouter que "+
 				"les points d'apparition, en sautant toute carte dont les socles auraient change")
@@ -101,6 +107,7 @@ func main() {
 		"cartes_catalogue", len(objectifs.Maps), "fichiers_dumpes", dumps.count(), "dossier", *from)
 
 	outPath := res.MapWeaponPadsPath(*titleSlug)
+	accepterGrandsDeplacements = *accepteGrands
 	if *refreshDrift {
 		refreshDrifted(ctx, objectifs, dumps, outPath, *dryRun)
 		return

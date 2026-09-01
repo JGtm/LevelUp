@@ -27,6 +27,7 @@ package sync
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -94,6 +95,31 @@ func (c *cachedHaloClient) GetFilmChunks(ctx context.Context, matchID string) ([
 	}
 	return f.GetFilmChunks(ctx, matchID)
 }
+
+// FetchMvarForMap : passe-plat vers inner. MEME LECON QUE `GetFilmChunks` JUSTE AU-DESSUS, et
+// elle vient d'etre re-payee.
+//
+// Le rattrapage du catalogue de cartes obtient cette capacite par ASSERTION DE TYPE sur le
+// client. Or ce wrapper est pose SYSTEMATIQUEMENT sur le chemin V1 (engine.go,
+// NewCachedHaloClient) : sans cette methode, l'assertion echouait, le rattrapage sortait en
+// silence, et AUCUNE carte absente n'entrait jamais au catalogue — indistinguable d'un lot non
+// deploye. Un wrapper qui n'expose pas ce qu'il enveloppe le DESACTIVE.
+//
+// Le repli sur un `inner` qui ne porterait pas la methode rend une erreur explicite plutot
+// qu'un succes vide : ici, se taire ferait croire a un `.mvar` introuvable cote serveur.
+func (c *cachedHaloClient) FetchMvarForMap(ctx context.Context, mapID, mvarFile string,
+) ([]byte, string, error) {
+	f, ok := c.inner.(interface {
+		FetchMvarForMap(ctx context.Context, mapID, mvarFile string) ([]byte, string, error)
+	})
+	if !ok {
+		return nil, "", errPasDeCapaciteMvar
+	}
+	return f.FetchMvarForMap(ctx, mapID, mvarFile)
+}
+
+// errPasDeCapaciteMvar : le client enveloppe ne sait pas rapatrier de variante de carte.
+var errPasDeCapaciteMvar = errors.New("client sans capacite FetchMvarForMap")
 
 func (c *cachedHaloClient) GetCareerRank(ctx context.Context, xuid string) (*CareerRankData, error) {
 	return c.inner.GetCareerRank(ctx, xuid)

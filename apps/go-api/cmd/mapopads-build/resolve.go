@@ -94,13 +94,23 @@ func (d *dumpIndex) resolve(mapID string, e replay.MapObjectivesEntry) (string, 
 		// 3. Sans nom public, le dump a pris le map_id comme préfixe.
 		mapID + "_" + e.MvarFile,
 	}
+	// LA PREFERENCE DE VARIANTE S'APPLIQUE ICI AUSSI, et c'est un correctif de revue.
+	//
+	// `e.MvarFile` peut nommer la carte de BASE : le catalogue d'objectifs enregistre, pour
+	// plusieurs cartes, le nom du niveau et non celui de la variante jouee. Resoudre sur ce
+	// nom seul ramenait des socles deplaces de 22 a 80 metres. La regle est celle du runtime,
+	// et c'est la MEME fonction — deux implementations divergeraient.
+	var presents []string
 	for _, c := range candidats {
-		if c == "" || !d.files[c] {
-			continue
+		if c != "" && d.files[c] {
+			presents = append(presents, c)
 		}
-		return filepath.Join(d.dir, c), c, true
 	}
-	return "", "", false
+	if len(presents) == 0 {
+		return "", "", false
+	}
+	c := mapcatalog.ChoisirFichierVariante(presents, e.MvarFile)
+	return filepath.Join(d.dir, c), c, true
 }
 
 // nomSiNonAmbigu rend le nom brut, ou la chaîne vide si plusieurs cartes le partagent (la
