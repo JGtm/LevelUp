@@ -78774,3 +78774,32 @@ projectile RESTE OUVERT. Garde-fou respecté : négatif chiffré, rien survendu.
 `internal/analysis/filmdec/lot1_projectiles_research_test.go` (+ `_helpers_test.go`), garde
 `LOT1_TRAME_FILM`, borné 12 chunks. Gate : gofmt propre, `go vet ./internal/analysis/filmdec/`
 vert (GOCACHE privé). NOTE : `.ai/V7.5/film_re/NOTE_PROJECTILES_2026-08-31.md`.
+
+## [2026-09-01] Côté VICTIME : aucun champ répliqué « dernier attaquant » non-fatal — Complété
+
+Statut : Complété. Question (utilisateur) : le bipède réplique-t-il, côté VICTIME, un champ
+« dégât reçu / dernier attaquant » portant l'INSTIGATEUR d'un coup (explosif compris), mis à jour
+à CHAQUE coup et pas seulement à la mort ? Réponse : NON — le struct existe dans le MOTEUR mais
+c'est une valeur RUNTIME, pas un composant répliqué. Preuves : (1) GHIDRA — famille de getters de
+reflection/script `Unit_GetReceivedDamage_{WeakDamageOwnerObject 0x143c58f78, WeakDamageOwnerPlayer
+0x143c58e10, WeakDamageSourceObject 0x143c58e40, TimeStamp, Normalized, Body, Shield}`, chaînes
+`.rdata` référencées comme DATA depuis la table de binding FUN_140e61df8 ; le struct DISTINGUE bien
+l'OWNER (tireur) de la SOURCE (projectile) et porte un TimeStamp (cache transitoire de RAM, écrasé
+par coup), mais ce sont des GETTERS — aucune réplication. (2) SCHÉMA — l'archétype bipède (ti=35)
+réplique EXACTEMENT 64 composants énumérés depuis le registre du film ; AUCUN nom ne matche
+received-damage/damage-owner/last-attacker/aftermath ; les seuls composants dégât sont i4 santé,
+i5 bouclier, i6 régions, i7 sections, i11 dead-state ; i6/i7 ne portent aucune réf ; i11 (dead-state)
+est le SEUL porteur d'un attaquant et c'est l'événement de LA MORT. Contrôle : aucun archétype de la
+table ECS n'a de composant received-damage/aftermath. (3) CORPUS (3 films, tous modes, 12 chunks) —
+la VITALITÉ est répliquée per-tick (bouclier i5 sur 14,9/25,5/15,3 % des records) mais i11 dead-state
+est quasi absent des records per-tick : 000d5950 (Fiesta) 0/77858, 01e1f945 0/70508, 00502e52
+1/73228, contre 190/44/150 touches (damage_aftermath 0xC0 type 0). Le pendant NON-FATAL du dead-state
+n'existe donc pas côté victime ; le film ne porte l'attaquant non-fatal que par l'ÉVÉNEMENT
+damage_aftermath, dont le « responsable » pour un explosif est le PROJECTILE (cf. explo_touches),
+pas le tireur — l'OWNER runtime n'est pas sérialisé. Confirme/complète projectile_owner (24d192ba5,
+« lien QU'À LA MORT ») : ni projectile vivant ni victime ne portent l'instigateur hors mort. La mort
+explosive reste couverte (i11/killsource 97,6 %). Garde-fou respecté : négatif prouvé sur pièces,
+distinction composant-répliqué vs valeur-runtime explicite, rien survendu. Instrument :
+`internal/analysis/filmdec/victime_degat_recu_research_test.go` (garde LOT1_TRAME_FILM, borné 12
+chunks, lecture seule). Gate : gofmt propre, `go vet ./internal/analysis/filmdec/` vert (GOCACHE
+privé). NOTE : `.ai/V7.5/film_re/NOTE_VICTIME_DEGAT_RECU_2026-09-01.md`.
