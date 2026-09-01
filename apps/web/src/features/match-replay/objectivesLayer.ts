@@ -39,11 +39,11 @@
  */
 import type { ReplayBounds, ReplayMapObjectives } from '@/lib/api/types'
 
-import { posOfPlayerAt, KILLPOS_WINDOW_MS } from './killFx'
-import { canvasScale, msToFrames, worldToCanvas, type XY } from './replayLogic'
+import { buildPlayerPosAt } from './livesPosition'
+import { canvasScale, worldToCanvas, type XY } from './replayLogic'
 import { filmClockTrusted } from '@/lib/replay/scoreTimeline'
 
-import type { ReplayDocumentReady, ReplayTrackReady } from './replayNormalize'
+import type { ReplayDocumentReady } from './replayNormalize'
 
 /** Valeur « aucun camp » du team_index — celle du fichier de carte, servie telle quelle. */
 export const OBJECTIVE_TEAM_NEUTRAL = -1
@@ -287,21 +287,14 @@ export function buildObjectivePulses(
   // LE SUBSTITUT DU DRAPEAU SORT ICI, à la source, plutôt qu'au tracé : un pulse construit puis
   // non dessiné resterait dans la mémoire de la scène et dans les dépendances de `draw`.
   const dropFlags = flagPulsesRetired(doc)
-  const deathFrames = Math.max(1, Math.round(msToFrames(KILLPOS_WINDOW_MS, doc)))
-  const livesByXuid = new Map<string, ReplayTrackReady[]>()
-  for (const t of doc.tracks) {
-    if (!t.xuid) continue
-    const list = livesByXuid.get(t.xuid)
-    if (list) list.push(t)
-    else livesByXuid.set(t.xuid, [t])
-  }
+  const posOf = buildPlayerPosAt(doc)
   const out: ObjectivePulse[] = []
   for (const a of doc.objectives) {
     if (dropFlags && a.stat.startsWith(FLAG_STAT_PREFIX)) continue
     // AUCUN RECALAGE ICI : `a.t` est déjà une frame du document (cf. en-tête). L'action que
     // la grille ne portait pas a été comptée hors fenêtre côté Go et n'est pas publiée.
     const frame = a.t
-    const pos = posOfPlayerAt(livesByXuid.get(a.xuid), frame, deathFrames)
+    const pos = posOf(a.xuid, frame)
     if (!pos) continue
     let best: ObjectiveElementReady | null = null
     let bd = Infinity

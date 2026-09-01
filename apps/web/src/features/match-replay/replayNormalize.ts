@@ -103,6 +103,8 @@ export type ReplayZoneStateReady = Filled<ReplayZoneState, 'spans' | 'gauge'>
 export type ReplayDocumentReady = Omit<
   ReplayDocument,
   | 'abilities'
+  | 'bombArmings'
+  | 'bombCarries'
   | 'equipmentChanges'
   | 'equipmentEpisodes'
   | 'equipmentPlacements'
@@ -133,6 +135,21 @@ export type ReplayDocumentReady = Omit<
   | 'zoneStates'
 > & {
   abilities: NonNullable<ReplayDocument['abilities']>
+  /**
+   * L'ARMEMENT DE LA BOMBE d'Assaut (schéma 29) : le début du hold, l'instant armé et la
+   * mèche (fuseMs) — le compte à rebours se dessine sur [t, t + fuseMs] sans autre donnée.
+   * Vide = artefact antérieur au schéma 29, mode non couvert (jamais One Bomb), ou film
+   * retenu par la confrontation locale — `coverage.bombArmings` distingue les silences.
+   */
+  bombArmings: NonNullable<ReplayDocument['bombArmings']>
+  /**
+   * LES PÉRIODES DE PORTAGE DE LA BOMBE d'Assaut (schéma 30) : une entrée plate par période
+   * (xuid, t0, t1, closed), le patron de `skullCarries` sur le canal des armes tenues. Vide =
+   * artefact antérieur au schéma 30, ou film hors de la famille bomb — `coverage.bombCarries`
+   * distingue les deux. La bombe portée est à la position de son porteur ; AU SOL, le rendu la
+   * dérive des périodes + pistes (dernier point du lâcheur — aucun canal mesuré côté Go).
+   */
+  bombCarries: NonNullable<ReplayDocument['bombCarries']>
   /**
    * LES RAMASSAGES ET LES CONSOMMATIONS D'ÉQUIPEMENT (schéma 26) : ce qui ARRIVE à un joueur,
    * là où `abilities` dit ce qu'il PORTE. Datés à la milliseconde puis projetés sur l'axe de
@@ -224,6 +241,9 @@ export type ReplayVipPeriod = NonNullable<ReplayDocument['vipCrown']>[number]
 /** ReplaySkullCarry — UNE période de portage du crâne, telle que le rendu la lit (plate). */
 export type ReplaySkullCarry = NonNullable<ReplayDocument['skullCarries']>[number]
 
+/** ReplayBombCarry — UNE période de portage de la bombe, telle que le rendu la lit (plate). */
+export type ReplayBombCarry = NonNullable<ReplayDocument['bombCarries']>[number]
+
 /**
  * normalizeReplayDocument comble les tableaux absents et rétablit l'arité des coordonnées.
  *
@@ -239,6 +259,15 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     // ce calque porte le RANG complet, et chaque lecture dit par quel canal elle est venue.
     // Absent = aucune lecture, la fiche montre l'inventaire sans capacité nommée.
     abilities: raw.abilities ?? [],
+    // L'ARMEMENT DE LA BOMBE d'Assaut (schéma 29) : hold, instant armé, mèche. Absent =
+    // artefact antérieur, mode non couvert, ou calque retenu par la confrontation locale —
+    // `coverage.bombArmings` distingue les silences. Aucun tableau imbriqué : l'entrée est plate.
+    bombArmings: raw.bombArmings ?? [],
+    // LES PÉRIODES DE PORTAGE DE LA BOMBE d'Assaut (schéma 30) : une entrée plate par période
+    // (xuid, t0, t1, closed), le patron de `skullCarries` sur le canal des armes tenues.
+    // Absent = artefact antérieur, ou film hors famille bomb — `coverage.bombCarries`
+    // distingue les deux.
+    bombCarries: raw.bombCarries ?? [],
     // LES RAMASSAGES ET LES CONSOMMATIONS d'équipement (schéma 26) : la source FINE de datation
     // de ce que porte un joueur. `abilities` reste la LECTURE (ce qu'il porte, échantillonné) ;
     // ceci est l'ÉVÉNEMENT (ce qui lui arrive, daté). Absent = artefact antérieur, ou film qui

@@ -549,8 +549,34 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   est exactement ce qu'un client doit traiter comme « non etabli ».
 	//   Detail : internal/analysis/replay/pickup_origin.go,
 	//   .ai/V7.5/film_re/NOTE_ORIGINE_POSITIONS_2026-09-01.md.
-	if SchemaVersion != 32 {
-		t.Fatalf("SchemaVersion = %d, attendu 32 : incrémenter exige une raison écrite ci-dessus "+
+	//
+	// (v33/v34 : pris 29/30 sur wt/bombe-visuel, renumerotes au merge du 2026-09-01 —
+	// les schemas 29-32 etaient pris sur feat/v75, arbitrage ecrit aux schemas 30/31.)
+	//
+	// v33 — L'ARMEMENT DE LA BOMBE d'Assaut (`bombArmings`) : début du hold, instant armé,
+	//   mèche (4 930 ms). Source : l'anneau du marqueur `ti=12 i14`, prouvé jauge d'armement
+	//   par le protocole du 2026-09-01 avec tirage nul (13/13 Neutral Bomb CV 0,016, 4/4 Husky
+	//   Raid, 0/1000 tirages nuls aussi bien). Le compte à rebours côté client n'existe que si
+	//   l'artefact porte le calque — un artefact 32 se lit « à re-cuire ». REFUS : One Bomb
+	//   (canal réfuté, CV 0,725), gardé par le NOM chez l'appelant ET par la confrontation
+	//   locale aux explosions du même film ; l'ARMEUR (le navpoint est un marqueur d'écran,
+	//   pas un acteur) ; les montées SOUS LE PLEIN (q<254 : holds relâchés et animation de
+	//   recharge du marqueur, plafonnée à 253). Détail : document_bomb_armings.go.
+	//
+	// v34 — LE PORTEUR DE LA BOMBE d'Assaut (`bombCarries`) : les périodes de portage en
+	//   intervalles de frames nommés par le xuid — le patron de `skullCarries` (v23) sur le
+	//   canal des ARMES TENUES (la bombe est répliquée dans le composant weapon-state-type-info
+	//   du bipède, famille 0x3fee4fcf — B1 2026-09-01, unique candidate des 9 films d'Assaut).
+	//   PRISE = transition VERS la famille, LÂCHER = transition DEPUIS, la MORT du porteur
+	//   ferme SANS émission (fil des morts, `BuildHeldObjectCarry`). Mesures : témoin Oddball
+	//   46/46, porteur à la pose = détonateur statborg 13/17 (3 des 4 désaccords penchent
+	//   CANAL par la position), mèche libre 27/28. GARDE : TOUTES les variantes bomb, One Bomb
+	//   COMPRISE — le négatif de v33 vise l'anneau, pas ce canal. La bombe AU SOL n'est PAS
+	//   publiée (aucun canal mesuré) : le client la dérive des périodes et des pistes (dernier
+	//   point du lâcheur). Un artefact 33 se lit « à re-cuire ». Détail :
+	//   document_bomb_carries.go.
+	if SchemaVersion != 34 {
+		t.Fatalf("SchemaVersion = %d, attendu 34 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

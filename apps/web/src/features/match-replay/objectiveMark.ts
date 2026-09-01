@@ -13,12 +13,19 @@
  *  - un PORTAGE est une PÉRIODE attribuée — `flagCarries[].spans[]` (schéma 15),
  *    `skullCarries[]` (23), `vipCrown[]` (22) portent tous un `xuid` et un intervalle. La
  *    marque dure exactement l'intervalle : c'est un état, il se lit comme tel.
- *  - une PRISE DE BASE n'a PAS de période attribuée. `zoneStates[].spans[]` ne publie que le
- *    propriétaire (une ÉQUIPE) et la jauge — aucun xuid. Seuls les ÉVÉNEMENTS `zone_captures`
- *    et `zone_secures` ont un auteur (cf. analysis/objectiveevents/named.go). La marque est
- *    donc un INSTANT tenu quelques secondes, jamais un « est en train de capturer » : ce
- *    dernier n'existe nulle part dans la donnée, et le déduire de la position serait affirmer
- *    ce que le film ne dit pas (règle « une valeur non lue s'affiche comme une lacune »).
+ *  - un ÉVÉNEMENT INSTANTANÉ n'a PAS de période attribuée. `zoneStates[].spans[]` ne publie
+ *    que le propriétaire (une ÉQUIPE) et la jauge — aucun xuid ; seuls les ÉVÉNEMENTS
+ *    `zone_captures` et `zone_secures` ont un auteur. La marque est alors un INSTANT tenu
+ *    quelques secondes, jamais un « est en train de capturer » : le déduire de la position
+ *    serait affirmer ce que le film ne dit pas (règle « une valeur non lue s'affiche comme
+ *    une lacune »).
+ *
+ * LA BOMBE A LES DEUX RÉGIMES depuis le schéma 30 : le PORT est une période attribuée
+ * (`bombCarries[]`, canal des armes tenues — jusque-là « rien n'attribue le PORT de la
+ * bombe » était vrai, et ne l'est plus), et l'EXPLOSION reste l'instant `bomb_detonations`
+ * (le point de mode d'Assaut). Le portage prime, comme partout : un porteur marqué reste
+ * marqué pendant tout son portage, l'explosion tient sa marque quelques secondes après le
+ * geste — même glyphe, deux moments d'un même enjeu.
  *
  * KOTH EST PRÊT ET ATTEND SA SOURCE. Le mode n'a AUCUNE donnée attribuée aujourd'hui : les
  * emplacements de statistiques `hill` ne sont pas encore nommés — `NamedEvents` rend `nil`
@@ -28,11 +35,11 @@
  * mais sa source est vide : le jour où le décodage KOTH publiera des occupations par joueur,
  * c'est UNE ligne à ajouter dans `carrySourcesOf` — rien d'autre à écrire.
  *
- * UNE SEULE ENCRE POUR LES CINQ (règle color-tokens) : `extreme`, « rare et intense », le
+ * UNE SEULE ENCRE POUR LES SIX (règle color-tokens) : `extreme`, « rare et intense », le
  * sommet d'une rampe d'intensité — et le seul token de la palette qu'AUCUN autre effet de
  * fiche n'emploie (`legendary` est le surbouclier, `success` le champ de réparation,
  * `destructive` le capteur et la mort, `info` la jauge de bouclier). Porter l'objectif est un
- * état de jeu, pas un camp : c'est le GLYPHE qui dit lequel des cinq, pas la couleur. La carte,
+ * état de jeu, pas un camp : c'est le GLYPHE qui dit lequel des six, pas la couleur. La carte,
  * elle, garde l'encre d'ÉQUIPE sur ses glyphes — elle doit distinguer deux drapeaux sur un même
  * fond, quand une fiche n'a jamais qu'un seul porteur.
  */
@@ -42,10 +49,11 @@ import { msToFrames } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
 
 /**
- * Les cinq marques, nommées par l'OBJET porté (ou l'endroit tenu), jamais par le mode : un
- * même objet se retrouve d'un mode à l'autre, et la fiche ne connaît pas le mode.
+ * Les six marques, nommées par l'OBJET porté, l'endroit tenu ou le geste qui vient d'être fait
+ * — jamais par le mode : un même objet se retrouve d'un mode à l'autre, et la fiche ne connaît
+ * pas le mode.
  */
-export type ObjectiveMarkKind = 'flag' | 'skull' | 'vip' | 'hill' | 'zone'
+export type ObjectiveMarkKind = 'flag' | 'skull' | 'vip' | 'hill' | 'zone' | 'bomb'
 
 /**
  * Les états de `flagCarries[].spans[].state` qui veulent dire PORTÉ. `carried_open` est le
@@ -65,8 +73,20 @@ const CARRIED_STATES = new Set(['carried', 'carried_open'])
  */
 export const ZONE_MARK_HOLD_MS = 2_500
 
-/** Les deux statistiques de zone attribuées à un joueur (cf. objectiveevents/named.go). */
-const ZONE_STATS = new Set(['zone_captures', 'zone_secures'])
+/**
+ * Les ÉVÉNEMENTS INSTANTANÉS attribués à un joueur, par genre de marque (cf.
+ * objectiveevents/named.go). Ce sont les seuls modes dont la donnée ne publie AUCUNE période :
+ * la marque est un instant tenu quelques secondes, jamais un état.
+ *
+ * `bomb_detonations` (Assaut, depuis le 2026-08-31) : le point de mode d'une manche d'Assaut
+ * vaut une EXPLOSION, et rien d'autre ne fait bouger le score. Le joueur crédité est celui que
+ * le moteur crédite ; le film ne distingue pas l'armement de la détonation, et la fiche ne
+ * l'affirme donc pas.
+ */
+const EVENT_STATS: Record<'zone' | 'bomb', ReadonlySet<string>> = {
+  zone: new Set(['zone_captures', 'zone_secures']),
+  bomb: new Set(['bomb_detonations']),
+}
 
 /** Une période de portage attribuée : la forme commune du crâne, du VIP et (demain) de la colline. */
 interface CarryPeriod {
@@ -103,6 +123,10 @@ function carrySourcesOf(
   return [
     { kind: 'skull', periods: doc.skullCarries },
     { kind: 'vip', periods: doc.vipCrown },
+    // LA BOMBE PORTÉE (schéma 30) : le même résolveur que le crâne — le kind `bomb` sert
+    // aussi l'ÉVÉNEMENT d'explosion (EVENT_STATS), et le portage prime par construction :
+    // les périodes se lisent AVANT les événements dans `objectiveMarkAt`.
+    { kind: 'bomb', periods: doc.bombCarries },
     // KOTH : la source manque encore (cf. l'en-tête). Une ligne `{ kind: 'hill', periods: ... }`
     // ici, et le filigrane de colline s'allume — tout le reste est déjà en place.
   ]
@@ -124,24 +148,25 @@ function flagCarriedBy(doc: ReplayDocumentReady, xuid: string, frame: number): b
 }
 
 /**
- * zoneMarkedBy dit si ce joueur a pris ou sécurisé une base dans la fenêtre qui précède cette
- * image.
+ * eventMarkedBy dit si ce joueur a accompli l'un des événements du genre donné dans la fenêtre
+ * qui précède cette image.
  *
  * LA GARDE D'HORLOGE EST LA MÊME QUE CELLE DE L'ONDE DE CAPTURE (`flagCaptureFx`) : les
  * `objectives[]` sont datés par l'horloge du FILM puis recalés sur la grille du document ; sans
  * origine résolue, l'écart est inconnu (mesuré de 3,6 s à 50,8 s) et la marque s'allumerait sur
  * la mauvaise image. Muet vaut mieux que faux.
  */
-function zoneMarkedBy(
+function eventMarkedBy(
   doc: ReplayDocumentReady,
   xuid: string,
   frame: number,
   hold: number,
+  stats: ReadonlySet<string>,
 ): boolean {
   if (!filmClockTrusted(doc)) return false
   for (const a of doc.objectives) {
     if (a.xuid !== xuid) continue
-    if (!ZONE_STATS.has(a.stat)) continue
+    if (!stats.has(a.stat)) continue
     const age = frame - a.t
     if (age >= 0 && age <= hold) return true
   }
@@ -169,7 +194,8 @@ export function objectiveMarkAt(
     if (markFromPeriods(src.periods, xuid, frame)) return src.kind
   }
   const hold = Math.max(1, msToFrames(ZONE_MARK_HOLD_MS, doc))
-  if (zoneMarkedBy(doc, xuid, frame, hold)) return 'zone'
+  if (eventMarkedBy(doc, xuid, frame, hold, EVENT_STATS.zone)) return 'zone'
+  if (eventMarkedBy(doc, xuid, frame, hold, EVENT_STATS.bomb)) return 'bomb'
   return null
 }
 

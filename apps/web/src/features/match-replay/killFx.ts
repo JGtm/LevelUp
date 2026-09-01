@@ -139,6 +139,9 @@ export function buildKillFx(
   t0Ms: number,
 ): KillFxEntry[] {
   if (kills.length === 0 || doc.tracks.length === 0) return []
+  // COPIE JUMELLE AUTORISEE de livesPosition.ts (buildLivesByXuid + deathWindowFrames) : ce
+  // module DEFINIT posOfPlayerAt et KILLPOS_WINDOW_MS — importer livesPosition d'ici ferait un
+  // cycle. Le garde-rail livesPosition.guard.test.ts n'autorise que ces deux ecritures.
   const deathFrames = Math.max(1, Math.round(msToFrames(KILLPOS_WINDOW_MS, doc)))
   const livesByXuid = new Map<string, ReplayTrackReady[]>()
   for (const t of doc.tracks) {

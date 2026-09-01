@@ -389,6 +389,12 @@ export interface ReplayText {
   layerSkullCarrier: string
   layerSkullCarrierHint: string
   /**
+   * LA BOMBE d'Assaut (schéma 30) : le nom du calque et sa réserve — portée elle suit son
+   * porteur, lâchée elle reste au dernier point du lâcheur jusqu'à la reprise ou l'explosion.
+   */
+  layerBombCarrier: string
+  layerBombCarrierHint: string
+  /**
    * LES ARMES AU SOL (schéma 27) : le nom du calque et sa réserve.
    *
    * LA RÉSERVE EST LE SUJET, pas un ornement : ce calque affiche des objets dont la
@@ -529,6 +535,12 @@ export interface ReplayText {
    * repasse dessus. C'est aussi le point de déclenchement du son « manche terminée ».
    */
   roundOverFmt: (index: number) => string
+  /**
+   * LE COMPTE À REBOURS DE LA BOMBE (Assaut, schéma 29) : le bandeau affiché pendant la mèche,
+   * de l'armement à l'explosion. `remaining` arrive déjà formaté (`formatSeconds`, « 4.9 s ») —
+   * le texte ne porte que le fait : la bombe est armée, il reste ce temps.
+   */
+  bombArmedFmt: (remaining: string) => string
   /**
    * L'ÉCRAN DE FIN DE MATCH, à l'instant où la lecture atteint la fin déclarée.
    *
@@ -680,11 +692,11 @@ export interface ReplayText {
    * un même objet se retrouve d'un mode à l'autre, et la fiche ne connaît pas le mode.
    *
    * DEUX RÉGIMES DANS LA MÊME TABLE, ET LES LIBELLÉS DOIVENT LE DIRE : `flag`, `skull`, `vip`
-   * et `hill` sont des ÉTATS qui durent — « porte », « est » ; `zone` est un ÉVÉNEMENT tenu
-   * quelques secondes — « vient de prendre » — parce que la donnée n'attribue à un joueur que
-   * l'INSTANT de la prise, jamais la durée d'une capture.
+   * et `hill` sont des ÉTATS qui durent — « porte », « est » ; `zone` et `bomb` sont des
+   * ÉVÉNEMENTS tenus quelques secondes — « vient de » — parce que la donnée n'attribue à un
+   * joueur que l'INSTANT, jamais la durée d'une capture ni le port de la bombe.
    */
-  objectiveCarry: Record<'flag' | 'skull' | 'vip' | 'hill' | 'zone', string>
+  objectiveCarry: Record<'flag' | 'skull' | 'vip' | 'hill' | 'zone' | 'bomb', string>
   /**
    * LE TABLEAU DES USAGES D'ÉQUIPEMENT (page match, onglet Chronologie). Bloc à part parce que
    * ces textes ne servent PAS le rejeu lui-même : ils servent son BILAN, une autre surface.

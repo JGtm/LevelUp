@@ -378,7 +378,41 @@ package replay
 // branche `wt/pickup-nommage` alors que le 30 vient d'arriver sur `feat/v75`. Un autre chantier
 // peut prendre le 31 le même jour ; l'arbitrage se fait au merge, par renumérotation, comme la
 // dernière fois.
-const SchemaVersion = 32
+//
+// CE QUE LA VERSION 33 PORTE, ET CE QU'ELLE REFUSE. L'ARMEMENT DE LA BOMBE d'Assaut
+// (`bombArmings`) : le début du hold (`bomb_arming_start`), l'instant armé (`bomb_armed`) et la
+// mèche (4,93 s), lus dans l'anneau du marqueur `ti=12 i14` — protocole du 2026-09-01 avec
+// tirage nul (13/13 Neutral Bomb CV 0,016, 4/4 Husky Raid, 0/1000 tirages nuls aussi bien). Le
+// compte à rebours côté client N'EXISTE que si l'artefact porte le calque, et la reprise du
+// backfill se fait par SchemaVersion : un artefact 32 doit se lire « à re-cuire », pas « à
+// jour ». CE QUE LA VERSION REFUSE : ONE BOMB, où le signal ne tient pas (CV 0,725, 87/1000) —
+// deux gardes indépendantes (nom de variante chez l'appelant, confrontation locale aux
+// explosions du même film) retiennent le calque à la source ; et QUI ARME — le navpoint est un
+// marqueur d'écran, pas un acteur, aucun xuid n'est publié. Chronique, sources et refus :
+// document_bomb_armings.go. (Ce lot avait pris 29 et 30 sur `wt/bombe-visuel` pendant que
+// la lunette, les ramassages et leur nommage prenaient 29-32 sur `feat/v75` : renumerote
+// 33/34 au merge du 2026-09-01, l'arbitrage ecrit aux schemas 30 et 31.)
+//
+// CE QUE LA VERSION 34 PORTE. Le PORTEUR DE LA BOMBE d'Assaut (`bombCarries`) : les périodes
+// de portage en intervalles de frames nommés par le xuid — le patron exact de `skullCarries`
+// (v23), sur un AUTRE canal : la bombe est un OBJET TENU, répliquée dans le composant
+// weapon-state-type-info du bipède comme une arme (famille `0x3fee4fcf`, B1 2026-09-01 :
+// unique candidate des 9 films d'Assaut ; l'atlas HUD la nomme « ball | bomb »). PRISE =
+// transition VERS la famille, LÂCHER = transition DEPUIS, et la MORT du porteur ferme SANS
+// émission (piège mesuré — fermeture par le fil des morts, `BuildHeldObjectCarry`). Mesures :
+// témoin Oddball 46/46 (100 %), porteur à la pose = détonateur statborg 13/17 (3 des 4
+// désaccords penchent CANAL par la position, B3), mèche libre 27/28 (96,4 %) ; le délai
+// médian lâcher -> explosion (4 804 ms) établit que le LÂCHER du canal EST le geste de pose.
+// GARDE DE MODE : toutes les variantes de la famille bomb, ONE BOMB COMPRISE — le négatif de
+// v33 vise l'anneau d'armement, pas ce canal. Champ optionnel, mais la version monte pour la
+// raison exacte des montées v22, v23 et v33 : la reprise du backfill se fait par
+// SchemaVersion, et un artefact 33 doit se lire « à re-cuire », pas « à jour » — sans quoi
+// aucun rejeu d'Assaut déjà cuit ne montrerait jamais la bombe portée. CE QUE LA VERSION NE
+// PORTE PAS : la bombe AU SOL — l'objet n'a pas de canal mesuré ; entre un lâcher et la
+// prise suivante, le client la dérive des périodes et des pistes déjà publiées (dernier
+// point du lâcheur), sans qu'aucune position inventée n'entre dans l'artefact. Chronique,
+// sources et refus : document_bomb_carries.go.
+const SchemaVersion = 34
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {
@@ -625,6 +659,11 @@ type ReplayDocument struct {
 	// position de son porteur — le client la pose sur sa piste. Absente hors VIP —
 	// `coverage.vipCrown` dit lequel des silences (film non-VIP contre film VIP sans periode).
 	VipCrown []VipPeriod `json:"vipCrown,omitempty"`
+	// BombArmings est L'ARMEMENT DE LA BOMBE d'Assaut : le début du hold, l'instant armé et la
+	// mèche — le compte à rebours [t, t+fuseMs] se dessine sans autre donnée (forme, provenance
+	// et refus : document_bomb_armings.go). Absente hors des variantes d'Assaut couvertes
+	// (jamais One Bomb) — `coverage.bombArmings` dit lequel des silences.
+	BombArmings []BombArming `json:"bombArmings,omitempty"`
 	// SkullCarries est LES PERIODES DE PORTAGE DU CRANE d'Oddball, en intervalles de frames nommes
 	// par le xuid du porteur (forme, sources et garde de mode : document_skull_carries.go). Le
 	// crane porte est a la position de son porteur — le client le pose sur sa piste, comme la
@@ -632,6 +671,13 @@ type ReplayDocument struct {
 	// non-Oddball contre film Oddball sans portage). Le crane LIBRE (`objectiveObjects`) reste la
 	// couche POSITION ; celle-ci est la couche PORTEUR.
 	SkullCarries []SkullCarry `json:"skullCarries,omitempty"`
+	// BombCarries est LES PERIODES DE PORTAGE DE LA BOMBE d'Assaut, en intervalles de frames
+	// nommes par le xuid du porteur (forme, sources et garde de mode : document_bomb_carries.go)
+	// — le patron de `skullCarries`, sur le canal des armes tenues. La bombe portee est a la
+	// position de son porteur ; entre un lacher et la prise suivante, le client la derive des
+	// periodes et des pistes (dernier point du lacheur — la bombe au sol n'a pas de canal
+	// mesure). Absente hors de la famille bomb — `coverage.bombCarries` dit lequel des silences.
+	BombCarries []BombCarry `json:"bombCarries,omitempty"`
 	// Coverage dit, pour chaque calque, COMBIEN il a rattaché SUR COMBIEN existaient, et
 	// pourquoi il a écarté le reste (cf. coverage.go).
 	//

@@ -56,6 +56,11 @@ type filmStats struct {
 	// garde de mode posee selon `game_variant_name` — `comp 0 A` est le score de mode de tout
 	// mode, donc le porteur n'est lu que sur un film reconnu Oddball.
 	skull replay.SkullInput
+	// bomb porte L'ARMEMENT DE LA BOMBE d'Assaut : l'horloge du manifeste (le balayage de
+	// l'anneau ti=12 se date sur `start_ms` par chunk), plus la garde de mode posee selon
+	// `game_variant_name` — le canal n'est prouve que sur Neutral Bomb et Husky Raid, jamais
+	// One Bomb (cf. replaybuild/zones.go, isArmableBombVariant).
+	bomb replay.BombInput
 }
 
 // readFilmStats decode les enregistrements d'entite et assemble les entrees des deux calques.
@@ -98,7 +103,33 @@ func readFilmStats(ctx context.Context, matchID, filmDir string, facts port.Matc
 		flag:       flagInput(recs, src),
 		vip:        vipInput(recs, isVipVariant(facts.GameVariantName)),
 		skull:      skullInput(recs, isSkullVariant(facts.GameVariantName)),
+		bomb: bombInput(src, isArmableBombVariant(facts.GameVariantName),
+			isBombVariant(facts.GameVariantName)),
 	}
+}
+
+// bombInput assemble ce que LA BOMBE lit hors film, sous ses DEUX gardes de mode :
+//
+//	armable  l'ARMEMENT (schema 33) — l'horloge du manifeste (start_ms par chunk, le
+//	         balayage de l'anneau la demande pour dater sur la meme base que les explosions
+//	         du statborg). Jamais One Bomb : le canal de l'anneau y est refute.
+//	carry    le PORTAGE (schema 34) — aucune donnee de plus (le canal des armes tenues est
+//	         deja balaye par BuildFromFilm) : la garde seule. TOUTES les variantes de la
+//	         famille bomb, One Bomb comprise.
+//
+// Hors de la famille bomb, il rend un input VIDE : ni balayage, ni calque, ni couverture.
+func bombInput(src objectiveevents.FilmSource, armable, carry bool) replay.BombInput {
+	in := replay.BombInput{CarryScanned: carry}
+	if !armable {
+		return in
+	}
+	clock := map[int]int{}
+	for _, c := range src.Chunks() {
+		clock[c.Index] = c.StartMS
+	}
+	in.Scanned = true
+	in.ChunkStartMS = clock
+	return in
 }
 
 // skullInput assemble ce que le PORTEUR DU CRANE lit dans le film — les memes enregistrements

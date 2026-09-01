@@ -68,7 +68,7 @@ func TestSkullCarriesTwoRounds(t *testing.T) {
 	recs, deaths := skullFixture()
 	// step = 1000 us/frame => 1 frame par ms (frame = instant en ms). frames grand : tout ferme.
 	carries, cov := buildSkullCarries(skullTestScan(recs, deaths),
-		skullCarryCtx{origin: 0, step: 1000, frames: 100000}, nil)
+		matchClock{origin: 0, step: 1000, frames: 100000}, nil)
 
 	if cov == nil || !cov.SkullFilm {
 		t.Fatalf("couverture absente ou SkullFilm faux : %+v", cov)
@@ -109,7 +109,7 @@ func TestSkullCarriesOpenAtAxisEnd(t *testing.T) {
 	recs, deaths := skullFixture()
 	// frames = 23000 : le dernier portage (fin 22000) tombe dans le mou de fin (3 s) -> ouvert.
 	carries, cov := buildSkullCarries(skullTestScan(recs, deaths),
-		skullCarryCtx{origin: 0, step: 1000, frames: 23000}, nil)
+		matchClock{origin: 0, step: 1000, frames: 23000}, nil)
 	if len(carries) != 4 {
 		t.Fatalf("portages = %d, attendu 4", len(carries))
 	}
@@ -131,7 +131,7 @@ func TestSkullCarriesOpenAtAxisEnd(t *testing.T) {
 
 // TestSkullCarriesUnscanned — hors Oddball (Scanned faux), ni calque ni couverture.
 func TestSkullCarriesUnscanned(t *testing.T) {
-	carries, cov := buildSkullCarries(SkullCarryScan{Scanned: false}, skullCarryCtx{step: 1000, frames: 100}, nil)
+	carries, cov := buildSkullCarries(SkullCarryScan{Scanned: false}, matchClock{step: 1000, frames: 100}, nil)
 	if carries != nil || cov != nil {
 		t.Errorf("film non-Oddball : attendu (nil, nil), obtenu (%v, %v)", carries, cov)
 	}
@@ -151,7 +151,7 @@ func TestSkullCarriesCarrierAbsent(t *testing.T) {
 		"B": {{20000, 22000}},
 	}
 	carries, cov := buildSkullCarries(skullTestScan(recs, deaths),
-		skullCarryCtx{origin: 0, step: 1000, frames: 100000}, presence)
+		matchClock{origin: 0, step: 1000, frames: 100000}, presence)
 
 	if len(carries) != 3 {
 		t.Fatalf("portages = %d, attendu 3 (le fantome A@9000 ecarte) : %+v", len(carries), carries)

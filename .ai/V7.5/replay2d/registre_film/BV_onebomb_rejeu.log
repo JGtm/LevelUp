@@ -1,0 +1,378 @@
+=== RUN   TestNavpointTi12MecheSansPorteurFige
+--- PASS: TestNavpointTi12MecheSansPorteurFige (0.00s)
+=== RUN   TestNavpointTi12MecheOneBomb
+2026/09/01 19:54:49 INFO plafond memoire arme pour ce decodage outil=TestNavpointTi12Plancher souple_gib=2 dur_octets=2684354560
+    navpoint_ti12_meche_test.go:133: 9f57c612  : 10 armement(s), 2 slot(s) a pauses, lectures de 19984 a 480083 ms
+    navpoint_ti12_meche_test.go:133: c75f33b8  : 8 armement(s), 2 slot(s) a pauses, lectures de 60020 a 461076 ms
+    navpoint_ti12_meche_test.go:133: df8fcbef  : 14 armement(s), 2 slot(s) a pauses, lectures de 19996 a 780145 ms
+    navpoint_ti12_meche_test.go:134: ########## DETAIL PAR EXPLOSION (lecture meche pausable)
+    navpoint_ti12_meche_test.go:137:     9f57c612   83322 ms : armement slot 1471 fin 65.1s · brut   18.2s · pauses [70.5s..72.0s 1.5s] [81.5s..82.0s 0.5s] · CORRIGE   16.2s
+    navpoint_ti12_meche_test.go:137:     9f57c612  298489 ms : armement slot 1471 fin 279.1s · brut   19.4s · pauses [283.7s..285.8s 2.1s] [286.6s..287.5s 0.9s] [293.1s..293.3s 0.2s] · CORRIGE   16.2s
+    navpoint_ti12_meche_test.go:137:     9f57c612  353160 ms : armement slot 1471 fin 335.2s · brut   18.0s · pauses [346.8s..347.7s 0.9s] [349.3s..350.2s 0.9s] · CORRIGE   16.2s
+    navpoint_ti12_meche_test.go:137:     9f57c612  469057 ms : armement slot 1471 fin 445.8s · brut   23.2s · pauses [448.1s..448.6s 0.5s] [456.4s..461.2s 4.8s] [465.8s..467.2s 1.4s] · CORRIGE   16.5s
+    navpoint_ti12_meche_test.go:137:     c75f33b8  109549 ms : armement slot 1471 fin 92.3s · brut   17.2s · pauses [106.1s..107.0s 0.9s] · CORRIGE   16.3s
+    navpoint_ti12_meche_test.go:137:     c75f33b8  395724 ms : armement slot 1471 fin 252.2s · brut  143.6s · pauses [253.0s..254.1s 1.1s] [255.2s..260.3s 5.1s] · CORRIGE  137.4s · SANS PORTEUR (a5SansPorteur)
+    navpoint_ti12_meche_test.go:137:     c75f33b8  450833 ms : armement slot 1471 fin 434.9s · brut   15.9s · pauses (aucune) · CORRIGE   15.9s
+    navpoint_ti12_meche_test.go:137:     df8fcbef  255767 ms : armement slot 1471 fin 239.8s · brut   16.0s · pauses (aucune) · CORRIGE   16.0s
+    navpoint_ti12_meche_test.go:137:     df8fcbef  309284 ms : armement slot 1471 fin 293.4s · brut   15.9s · pauses (aucune) · CORRIGE   15.9s
+    navpoint_ti12_meche_test.go:137:     df8fcbef  485860 ms : armement slot 1471 fin 469.1s · brut   16.8s · pauses (aucune) · CORRIGE   16.8s
+    navpoint_ti12_meche_test.go:137:     df8fcbef  778033 ms : armement slot 1471 fin 745.1s · brut   33.0s · pauses [758.1s..763.2s 5.1s] · CORRIGE   27.8s · SANS PORTEUR (a5SansPorteur)
+    navpoint_ti12_meche_test.go:140: ########## ONE BOMB — 11 explosions : couverture 10/11, delai median  16.18 s, CV 0.228
+    navpoint_ti12_meche_test.go:140:            decalage +45000 ms : couverture 11/11, mediane  60.90 s, CV 0.611
+    navpoint_ti12_meche_test.go:140:            decalage -45000 ms : couverture 5/11, mediane  30.87 s, CV 0.903
+    navpoint_ti12_meche_test.go:140:            decalage +120000 ms : couverture 6/11, mediane  72.09 s, CV 0.473
+    navpoint_ti12_meche_test.go:140:            nulle (1000 tirages, graine 1) : 24 pleins, 0 aussi bien (0.0 %)
+    navpoint_ti12_meche_test.go:140:            VERDICT ONE BOMB — 11 explosions : NON RESOLU sous la regle
+    navpoint_ti12_meche_test.go:142: ########## ONE BOMB — 9 explosions PORTEES (partition a5SansPorteur) : couverture 9/9, delai median  16.18 s, CV 0.017
+    navpoint_ti12_meche_test.go:142:            decalage +45000 ms : couverture 9/9, mediane  60.90 s, CV 0.601
+    navpoint_ti12_meche_test.go:142:            decalage -45000 ms : couverture 4/9, mediane  30.87 s, CV 0.165
+    navpoint_ti12_meche_test.go:142:            decalage +120000 ms : couverture 5/9, mediane  27.84 s, CV 1.135
+    navpoint_ti12_meche_test.go:142:            nulle (1000 tirages, graine 1) : 47 pleins, 0 aussi bien (0.0 %)
+    navpoint_ti12_meche_test.go:142:            VERDICT ONE BOMB — 9 explosions PORTEES (partition a5SansPorteur) : RESOLU sous la regle (couverture pleine, CV <= 0,20, nulle < 1 %)
+--- PASS: TestNavpointTi12MecheOneBomb (39.69s)
+=== RUN   TestNavpointTi12MecheTemoin
+2026/09/01 19:55:28 INFO plafond memoire arme pour ce decodage outil=TestNavpointTi12Plancher souple_gib=2 dur_octets=2684354560
+2026/09/01 19:55:52 WARN empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte (mise a jour du jeu ?) ; le film reste decode empreinte=11463600112565967046 empreinte_connue=7053924395561516366 blocs=116 slots_non_vides=1031
+    navpoint_ti12_meche_test.go:155: 34bb3bc8  : 2 armement(s), 4 slot(s) a pauses, lectures de 19993 a 780161 ms
+2026/09/01 19:56:51 WARN empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte (mise a jour du jeu ?) ; le film reste decode empreinte=1872162450444512260 empreinte_connue=7053924395561516366 blocs=118 slots_non_vides=1068
+    navpoint_ti12_meche_test.go:155: 35b75a31  : 9 armement(s), 2 slot(s) a pauses, lectures de 39975 a 800107 ms
+    navpoint_ti12_meche_test.go:155: 3d58eb37  : 6 armement(s), 2 slot(s) a pauses, lectures de 11329 a 392586 ms
+    navpoint_ti12_meche_test.go:155: 69b16f5d  : 6 armement(s), 0 slot(s) a pauses, lectures de 6373 a 320036 ms
+    navpoint_ti12_meche_test.go:155: ce083875  : 6 armement(s), 2 slot(s) a pauses, lectures de 80110 a 960273 ms
+    navpoint_ti12_meche_test.go:156: ########## TEMOIN NEUTRAL BOMB — 13 explosions : couverture 13/13, delai median   4.94 s, CV 0.016
+    navpoint_ti12_meche_test.go:156:            decalage +45000 ms : couverture 13/13, mediane  49.92 s, CV 0.300
+    navpoint_ti12_meche_test.go:156:            decalage -45000 ms : couverture 4/13, mediane  99.12 s, CV 0.493
+    navpoint_ti12_meche_test.go:156:            decalage +120000 ms : couverture 3/13, mediane  81.02 s, CV 0.580
+    navpoint_ti12_meche_test.go:156:            nulle (1000 tirages, graine 1) : 0 pleins, 0 aussi bien (0.0 %)
+    navpoint_ti12_meche_test.go:156:            VERDICT TEMOIN NEUTRAL BOMB — 13 explosions : RESOLU sous la regle (couverture pleine, CV <= 0,20, nulle < 1 %)
+    navpoint_ti12_meche_test.go:159: TEMOIN : EXIGENCE TENUE (13/13, CV 0.016 <= 0.02)
+    navpoint_ti12_meche_test.go:165: 1c01e34f  : 8 armement(s), 0 slot(s) a pauses, lectures de 19989 a 406175 ms
+    navpoint_ti12_meche_test.go:169: ########## TEMOIN HUSKY RAID — 4 explosions : couverture 4/4, delai median   5.09 s, CV 0.016
+    navpoint_ti12_meche_test.go:169:            decalage +45000 ms : couverture 4/4, mediane  50.09 s, CV 0.002
+    navpoint_ti12_meche_test.go:169:            decalage -45000 ms : couverture 3/4, mediane  25.25 s, CV 1.333
+    navpoint_ti12_meche_test.go:169:            decalage +120000 ms : couverture 3/4, mediane  59.87 s, CV 0.561
+    navpoint_ti12_meche_test.go:169:            nulle (1000 tirages, graine 1) : 186 pleins, 0 aussi bien (0.0 %)
+    navpoint_ti12_meche_test.go:169:            VERDICT TEMOIN HUSKY RAID — 4 explosions : RESOLU sous la regle (couverture pleine, CV <= 0,20, nulle < 1 %)
+--- PASS: TestNavpointTi12MecheTemoin (166.23s)
+=== RUN   TestNavpointTi12OneBombInspection
+2026/09/01 19:58:14 INFO plafond memoire arme pour ce decodage outil=TestNavpointTi12Plancher souple_gib=2 dur_octets=2684354560
+    navpoint_ti12_onebomb_test.go:90: =========================================== FILM 9f57c612
+    navpoint_ti12_onebomb_test.go:91: --- VUE GLOBALE : 21 slot(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 1459    351 ech. de    62.2s a   468.3s ·  5 montee(s) contigue(s),  5 non contigue(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 1463      1 ech. de   125.0s a   125.0s ·  0 montee(s) contigue(s),  0 non contigue(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 1464      1 ech. de   244.8s a   244.8s ·  0 montee(s) contigue(s),  0 non contigue(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 1465      1 ech. de    68.6s a    68.6s ·  0 montee(s) contigue(s),  0 non contigue(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 1467      1 ech. de    61.6s a    61.6s ·  0 montee(s) contigue(s),  0 non contigue(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 1469    357 ech. de    84.7s a   475.4s ·  7 montee(s) contigue(s),  7 non contigue(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 1471    351 ech. de    62.2s a   468.3s ·  5 montee(s) contigue(s),  5 non contigue(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 1472      2 ech. de   103.8s a   429.1s ·  0 montee(s) contigue(s),  0 non contigue(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 1473     24 ech. de    20.0s a   480.1s ·  0 montee(s) contigue(s),  0 non contigue(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 1476      3 ech. de    73.9s a   318.3s ·  0 montee(s) contigue(s),  0 non contigue(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 1477      8 ech. de   281.1s a   447.9s ·  0 montee(s) contigue(s),  1 non contigue(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 1478      1 ech. de   318.3s a   318.3s ·  0 montee(s) contigue(s),  0 non contigue(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 1479      3 ech. de   107.9s a   318.3s ·  0 montee(s) contigue(s),  0 non contigue(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 1481    357 ech. de    84.7s a   475.4s ·  7 montee(s) contigue(s),  7 non contigue(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 1489      1 ech. de   125.3s a   125.3s ·  0 montee(s) contigue(s),  0 non contigue(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 1612      2 ech. de   380.6s a   416.0s ·  0 montee(s) contigue(s),  0 non contigue(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 1758      1 ech. de   298.4s a   298.4s ·  0 montee(s) contigue(s),  0 non contigue(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 2337      5 ech. de   100.2s a   452.9s ·  0 montee(s) contigue(s),  0 non contigue(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 2339      2 ech. de   411.1s a   448.6s ·  0 montee(s) contigue(s),  0 non contigue(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 2632      1 ech. de   254.1s a   254.1s ·  0 montee(s) contigue(s),  0 non contigue(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 2634      1 ech. de   162.0s a   162.0s ·  0 montee(s) contigue(s),  0 non contigue(s)
+    navpoint_ti12_onebomb_test.go:94: --- EXPLOSION 83322 ms (fenetre 38.3s .. 85.3s)
+    navpoint_ti12_onebomb_test.go:94:     slot 1473      40.0s ->     40.0s  q   0->  0 (min   0, max   0) n=1   PLAT      · fin a   -43.3s de l'explosion · trou  20005 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1473      60.0s ->     60.0s  q   0->  0 (min   0, max   0) n=1   PLAT      · fin a   -23.3s de l'explosion · trou  20004 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1467      61.6s ->     61.6s  q  32-> 32 (min  32, max  32) n=1   PLAT      · fin a   -21.8s de l'explosion · premier
+    navpoint_ti12_onebomb_test.go:94:     slot 1459      62.2s ->     65.1s  q 131->254 (min 131, max 254) n=30  MONTEE    · fin a   -18.2s de l'explosion · premier
+    navpoint_ti12_onebomb_test.go:94:     slot 1471      62.2s ->     65.1s  q 131->254 (min 131, max 254) n=30  MONTEE    · fin a   -18.2s de l'explosion · premier
+    navpoint_ti12_onebomb_test.go:94:     slot 1465      68.6s ->     68.6s  q  44-> 44 (min  44, max  44) n=1   PLAT      · fin a   -14.8s de l'explosion · premier
+    navpoint_ti12_onebomb_test.go:94:     slot 1459      70.5s ->     72.0s  q 251->213 (min 213, max 251) n=16  DESCENTE  · fin a   -11.3s de l'explosion · trou   5405 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1471      70.5s ->     72.0s  q 251->213 (min 213, max 251) n=16  DESCENTE  · fin a   -11.3s de l'explosion · trou   5405 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1476      73.9s ->     73.9s  q  32-> 32 (min  32, max  32) n=1   PLAT      · fin a    -9.4s de l'explosion · premier
+    navpoint_ti12_onebomb_test.go:94:     slot 1473      80.0s ->     80.0s  q   0->  0 (min   0, max   0) n=1   PLAT      · fin a    -3.3s de l'explosion · trou  20002 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1459      81.5s ->     82.0s  q 251->238 (min 238, max 251) n=6   DESCENTE  · fin a    -1.4s de l'explosion · trou   9409 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1471      81.5s ->     82.0s  q 251->238 (min 238, max 251) n=6   DESCENTE  · fin a    -1.4s de l'explosion · trou   9409 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1459      82.8s ->     82.8s  q 127->127 (min 127, max 127) n=1   PLAT      · fin a    -0.6s de l'explosion · trou    801 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1471      82.8s ->     82.8s  q 127->127 (min 127, max 127) n=1   PLAT      · fin a    -0.6s de l'explosion · trou    801 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1469      84.7s ->     89.7s  q 130->127 (min 127, max 253) n=51  MIXTE     · fin a    +6.3s de l'explosion · premier
+    navpoint_ti12_onebomb_test.go:94:     slot 1481      84.7s ->     89.7s  q 130->127 (min 127, max 253) n=51  MIXTE     · fin a    +6.3s de l'explosion · premier
+    navpoint_ti12_onebomb_test.go:94: --- EXPLOSION 298489 ms (fenetre 253.5s .. 300.5s)
+    navpoint_ti12_onebomb_test.go:94:     slot 2632     254.1s ->    254.1s  q  12-> 12 (min  12, max  12) n=1   PLAT      · fin a   -44.4s de l'explosion · premier
+    navpoint_ti12_onebomb_test.go:94:     slot 1473     260.0s ->    260.0s  q   0->  0 (min   0, max   0) n=1   PLAT      · fin a   -38.5s de l'explosion · trou  20005 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1459     276.2s ->    279.1s  q 131->254 (min 131, max 254) n=30  MONTEE    · fin a   -19.4s de l'explosion · trou 193446 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1471     276.2s ->    279.1s  q 131->254 (min 131, max 254) n=30  MONTEE    · fin a   -19.4s de l'explosion · trou 193446 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1473     280.0s ->    280.0s  q   0->  0 (min   0, max   0) n=1   PLAT      · fin a   -18.5s de l'explosion · trou  20003 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1477     281.1s ->    281.1s  q 180->180 (min 180, max 180) n=1   PLAT      · fin a   -17.4s de l'explosion · premier
+    navpoint_ti12_onebomb_test.go:94:     slot 1459     283.7s ->    285.8s  q 251->218 (min 218, max 251) n=21  DESCENTE  · fin a   -12.7s de l'explosion · trou   4604 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1471     283.7s ->    285.8s  q 251->218 (min 218, max 251) n=21  DESCENTE  · fin a   -12.7s de l'explosion · trou   4604 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1459     286.6s ->    287.5s  q 251->228 (min 228, max 251) n=10  DESCENTE  · fin a   -11.0s de l'explosion · trou    800 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1471     286.6s ->    287.5s  q 251->228 (min 228, max 251) n=10  DESCENTE  · fin a   -11.0s de l'explosion · trou    800 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1459     293.1s ->    293.3s  q 251->246 (min 246, max 251) n=3   DESCENTE  · fin a    -5.2s de l'explosion · trou   5605 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1471     293.1s ->    293.3s  q 251->246 (min 246, max 251) n=3   DESCENTE  · fin a    -5.2s de l'explosion · trou   5605 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1459     297.9s ->    297.9s  q 127->127 (min 127, max 127) n=1   PLAT      · fin a    -0.6s de l'explosion · trou   4604 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1471     297.9s ->    297.9s  q 127->127 (min 127, max 127) n=1   PLAT      · fin a    -0.6s de l'explosion · trou   4604 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1758     298.4s ->    298.4s  q  17-> 17 (min  17, max  17) n=1   PLAT      · fin a    -0.1s de l'explosion · premier
+    navpoint_ti12_onebomb_test.go:94:     slot 2337     299.2s ->    299.3s  q 128->128 (min 128, max 128) n=2   PLAT      · fin a    +0.8s de l'explosion · trou 199069 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1469     299.8s ->    304.8s  q 130->127 (min 127, max 253) n=51  MIXTE     · fin a    +6.3s de l'explosion · trou  78380 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1481     299.8s ->    304.8s  q 130->127 (min 127, max 253) n=51  MIXTE     · fin a    +6.3s de l'explosion · trou  78380 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1473     300.0s ->    300.0s  q   0->  0 (min   0, max   0) n=1   PLAT      · fin a    +1.5s de l'explosion · trou  20003 ms
+    navpoint_ti12_onebomb_test.go:94: --- EXPLOSION 353160 ms (fenetre 308.2s .. 355.2s)
+    navpoint_ti12_onebomb_test.go:94:     slot 1477     311.6s ->    311.6s  q 180->180 (min 180, max 180) n=1   PLAT      · fin a   -41.5s de l'explosion · trou  30515 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1476     318.3s ->    318.3s  q  96-> 96 (min  96, max  96) n=1   PLAT      · fin a   -34.9s de l'explosion · trou  84253 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1477     318.3s ->    318.3s  q  96-> 96 (min  96, max  96) n=1   PLAT      · fin a   -34.9s de l'explosion · trou   6655 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1478     318.3s ->    318.3s  q  96-> 96 (min  96, max  96) n=1   PLAT      · fin a   -34.9s de l'explosion · premier
+    navpoint_ti12_onebomb_test.go:94:     slot 1479     318.3s ->    318.3s  q  96-> 96 (min  96, max  96) n=1   PLAT      · fin a   -34.8s de l'explosion · trou 193330 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1473     320.0s ->    320.0s  q   0->  0 (min   0, max   0) n=1   PLAT      · fin a   -33.1s de l'explosion · trou  20004 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 2337     329.1s ->    329.1s  q  45-> 45 (min  45, max  45) n=1   PLAT      · fin a   -24.0s de l'explosion · trou  29880 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1459     332.3s ->    335.2s  q 131->254 (min 131, max 254) n=30  MONTEE    · fin a   -18.0s de l'explosion · trou  34370 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1471     332.3s ->    335.2s  q 131->254 (min 131, max 254) n=30  MONTEE    · fin a   -18.0s de l'explosion · trou  34370 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1477     337.2s ->    337.2s  q 180->180 (min 180, max 180) n=1   PLAT      · fin a   -15.9s de l'explosion · trou  18920 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1473     340.0s ->    340.0s  q   0->  0 (min   0, max   0) n=1   PLAT      · fin a   -13.1s de l'explosion · trou  20003 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1459     346.8s ->    347.7s  q 251->228 (min 228, max 251) n=10  DESCENTE  · fin a    -5.5s de l'explosion · trou  11610 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1471     346.8s ->    347.7s  q 251->228 (min 228, max 251) n=10  DESCENTE  · fin a    -5.5s de l'explosion · trou  11610 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1459     349.3s ->    350.2s  q 251->228 (min 228, max 251) n=10  DESCENTE  · fin a    -3.0s de l'explosion · trou   1601 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1471     349.3s ->    350.2s  q 251->228 (min 228, max 251) n=10  DESCENTE  · fin a    -3.0s de l'explosion · trou   1601 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1459     352.6s ->    352.6s  q 127->127 (min 127, max 127) n=1   PLAT      · fin a    -0.6s de l'explosion · trou   2403 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1471     352.6s ->    352.6s  q 127->127 (min 127, max 127) n=1   PLAT      · fin a    -0.6s de l'explosion · trou   2403 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1469     354.5s ->    359.5s  q 130->127 (min 127, max 253) n=51  MIXTE     · fin a    +6.4s de l'explosion · trou  49684 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1481     354.5s ->    359.5s  q 130->127 (min 127, max 253) n=51  MIXTE     · fin a    +6.4s de l'explosion · trou  49684 ms
+    navpoint_ti12_onebomb_test.go:94: --- EXPLOSION 469057 ms (fenetre 424.1s .. 471.1s)
+    navpoint_ti12_onebomb_test.go:94:     slot 1472     429.1s ->    429.1s  q   4->  4 (min   4, max   4) n=1   PLAT      · fin a   -40.0s de l'explosion · trou 325228 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1473     440.1s ->    440.1s  q   0->  0 (min   0, max   0) n=1   PLAT      · fin a   -29.0s de l'explosion · trou  20004 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1459     442.9s ->    445.8s  q 131->254 (min 131, max 254) n=30  MONTEE    · fin a   -23.2s de l'explosion · trou  44848 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1471     442.9s ->    445.8s  q 131->254 (min 131, max 254) n=30  MONTEE    · fin a   -23.2s de l'explosion · trou  44848 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1477     447.9s ->    447.9s  q 180->180 (min 180, max 180) n=1   PLAT      · fin a   -21.2s de l'explosion · trou  48099 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1459     448.1s ->    448.6s  q 251->238 (min 238, max 251) n=6   DESCENTE  · fin a   -20.4s de l'explosion · trou   2303 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1471     448.1s ->    448.6s  q 251->238 (min 238, max 251) n=6   DESCENTE  · fin a   -20.4s de l'explosion · trou   2303 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 2339     448.6s ->    448.6s  q  41-> 41 (min  41, max  41) n=1   PLAT      · fin a   -20.5s de l'explosion · trou  37504 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 2337     452.9s ->    452.9s  q  39-> 39 (min  39, max  39) n=1   PLAT      · fin a   -16.2s de l'explosion · trou 123726 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1459     456.4s ->    461.2s  q 251->185 (min 185, max 251) n=49  DESCENTE  · fin a    -7.8s de l'explosion · trou   7807 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1471     456.4s ->    461.2s  q 251->185 (min 185, max 251) n=49  DESCENTE  · fin a    -7.8s de l'explosion · trou   7807 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1473     460.1s ->    460.1s  q   0->  0 (min   0, max   0) n=1   PLAT      · fin a    -9.0s de l'explosion · trou  20000 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1459     465.8s ->    467.2s  q 251->216 (min 216, max 251) n=15  DESCENTE  · fin a    -1.9s de l'explosion · trou   4503 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1471     465.8s ->    467.2s  q 251->216 (min 216, max 251) n=15  DESCENTE  · fin a    -1.9s de l'explosion · trou   4503 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1459     468.3s ->    468.3s  q 127->127 (min 127, max 127) n=1   PLAT      · fin a    -0.8s de l'explosion · trou   1101 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1471     468.3s ->    468.3s  q 127->127 (min 127, max 127) n=1   PLAT      · fin a    -0.8s de l'explosion · trou   1101 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1469     470.4s ->    475.4s  q 130->127 (min 127, max 253) n=51  MIXTE     · fin a    +6.3s de l'explosion · trou  66060 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1481     470.4s ->    475.4s  q 130->127 (min 127, max 253) n=51  MIXTE     · fin a    +6.3s de l'explosion · trou  66060 ms
+    navpoint_ti12_onebomb_test.go:96: --- MONTEES CONTIGUES VALIDES : 18 suivie(s) d'une explosion sous 120 s, 6 orpheline(s)
+    navpoint_ti12_onebomb_test.go:96:     [slot 1471 fin 65.1s -> expl +18.2s]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1459 fin 65.1s -> expl +18.2s]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1469 fin 89.6s ORPHELINE]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1481 fin 89.6s ORPHELINE]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1481 fin 137.9s ORPHELINE]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1469 fin 137.9s ORPHELINE]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1469 fin 221.3s -> expl +77.1s]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1481 fin 221.3s -> expl +77.1s]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1471 fin 279.1s -> expl +19.4s]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1459 fin 279.1s -> expl +19.4s]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1481 fin 304.7s -> expl +48.4s]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1469 fin 304.7s -> expl +48.4s]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1459 fin 335.2s -> expl +18.0s]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1471 fin 335.2s -> expl +18.0s]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1481 fin 359.4s -> expl +109.6s]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1469 fin 359.4s -> expl +109.6s]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1459 fin 388.1s -> expl +81.0s]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1471 fin 388.1s -> expl +81.0s]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1469 fin 404.2s -> expl +64.9s]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1481 fin 404.2s -> expl +64.9s]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1471 fin 445.8s -> expl +23.2s]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1459 fin 445.8s -> expl +23.2s]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1469 fin 475.3s ORPHELINE]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1481 fin 475.3s ORPHELINE]
+    navpoint_ti12_onebomb_test.go:90: =========================================== FILM c75f33b8
+    navpoint_ti12_onebomb_test.go:91: --- VUE GLOBALE : 19 slot(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 1459    248 ech. de    89.4s a   450.3s ·  5 montee(s) contigue(s),  5 non contigue(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 1461      1 ech. de   276.2s a   276.2s ·  0 montee(s) contigue(s),  0 non contigue(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 1462      1 ech. de   201.2s a   201.2s ·  0 montee(s) contigue(s),  0 non contigue(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 1468      1 ech. de   430.1s a   430.1s ·  0 montee(s) contigue(s),  0 non contigue(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 1469    306 ech. de   110.8s a   457.2s ·  6 montee(s) contigue(s),  6 non contigue(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 1471    248 ech. de    89.4s a   450.3s ·  5 montee(s) contigue(s),  5 non contigue(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 1472      2 ech. de   395.2s a   461.1s ·  0 montee(s) contigue(s),  0 non contigue(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 1473     22 ech. de    60.0s a   460.1s ·  0 montee(s) contigue(s),  1 non contigue(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 1474      1 ech. de   352.9s a   352.9s ·  0 montee(s) contigue(s),  0 non contigue(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 1476      1 ech. de   184.2s a   184.2s ·  0 montee(s) contigue(s),  0 non contigue(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 1477      7 ech. de   198.6s a   437.0s ·  0 montee(s) contigue(s),  1 non contigue(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 1478      1 ech. de   254.6s a   254.6s ·  0 montee(s) contigue(s),  0 non contigue(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 1481    307 ech. de   110.8s a   457.2s ·  6 montee(s) contigue(s),  6 non contigue(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 1491      1 ech. de   401.4s a   401.4s ·  0 montee(s) contigue(s),  0 non contigue(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 1793     17 ech. de    89.3s a   449.1s ·  0 montee(s) contigue(s),  3 non contigue(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 1795      1 ech. de   420.1s a   420.1s ·  0 montee(s) contigue(s),  0 non contigue(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 2404      1 ech. de   449.2s a   449.2s ·  0 montee(s) contigue(s),  0 non contigue(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 2576      1 ech. de   379.7s a   379.7s ·  0 montee(s) contigue(s),  0 non contigue(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 2578      2 ech. de   341.9s a   379.7s ·  0 montee(s) contigue(s),  0 non contigue(s)
+    navpoint_ti12_onebomb_test.go:94: --- EXPLOSION 109549 ms (fenetre 64.5s .. 111.5s)
+    navpoint_ti12_onebomb_test.go:94:     slot 1473      80.0s ->     80.0s  q   0->  0 (min   0, max   0) n=1   PLAT      · fin a   -29.5s de l'explosion · trou  20001 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1793      89.3s ->     89.3s  q 217->217 (min 217, max 217) n=1   PLAT      · fin a   -20.2s de l'explosion · premier
+    navpoint_ti12_onebomb_test.go:94:     slot 1459      89.4s ->     92.3s  q 131->254 (min 131, max 254) n=30  MONTEE    · fin a   -17.2s de l'explosion · premier
+    navpoint_ti12_onebomb_test.go:94:     slot 1471      89.4s ->     92.3s  q 131->254 (min 131, max 254) n=30  MONTEE    · fin a   -17.2s de l'explosion · premier
+    navpoint_ti12_onebomb_test.go:94:     slot 1793      92.9s ->     93.3s  q   9->  9 (min   9, max   9) n=2   PLAT      · fin a   -16.3s de l'explosion · trou   3537 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1459      93.8s ->     93.8s  q 251->251 (min 251, max 251) n=1   PLAT      · fin a   -15.7s de l'explosion · trou   1502 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1471      93.8s ->     93.8s  q 251->251 (min 251, max 251) n=1   PLAT      · fin a   -15.7s de l'explosion · trou   1502 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1793      93.9s ->     93.9s  q   9->  9 (min   9, max   9) n=1   PLAT      · fin a   -15.6s de l'explosion · trou    650 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1473     100.0s ->    100.0s  q   0->  0 (min   0, max   0) n=1   PLAT      · fin a    -9.5s de l'explosion · trou  20005 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1459     106.1s ->    107.0s  q 251->228 (min 228, max 251) n=10  DESCENTE  · fin a    -2.5s de l'explosion · trou  12313 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1471     106.1s ->    107.0s  q 251->228 (min 228, max 251) n=10  DESCENTE  · fin a    -2.5s de l'explosion · trou  12313 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1459     108.9s ->    108.9s  q 127->127 (min 127, max 127) n=1   PLAT      · fin a    -0.6s de l'explosion · trou   1902 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1471     108.9s ->    108.9s  q 127->127 (min 127, max 127) n=1   PLAT      · fin a    -0.6s de l'explosion · trou   1902 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1469     110.8s ->    115.9s  q 130->127 (min 127, max 253) n=51  MIXTE     · fin a    +6.3s de l'explosion · premier
+    navpoint_ti12_onebomb_test.go:94:     slot 1481     110.8s ->    115.9s  q 130->127 (min 127, max 253) n=51  MIXTE     · fin a    +6.3s de l'explosion · premier
+    navpoint_ti12_onebomb_test.go:94: --- EXPLOSION 395724 ms (fenetre 350.7s .. 397.7s)
+    navpoint_ti12_onebomb_test.go:94:     slot 1473     352.9s ->    352.9s  q 160->160 (min 160, max 160) n=1   PLAT      · fin a   -42.8s de l'explosion · trou  12857 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1474     352.9s ->    352.9s  q 128->128 (min 128, max 128) n=1   PLAT      · fin a   -42.8s de l'explosion · premier
+    navpoint_ti12_onebomb_test.go:94:     slot 1473     360.1s ->    360.1s  q   0->  0 (min   0, max   0) n=1   PLAT      · fin a   -35.6s de l'explosion · trou   7146 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 2578     379.7s ->    379.7s  q   0->  0 (min   0, max   0) n=1   PLAT      · fin a   -16.0s de l'explosion · trou  37870 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 2576     379.7s ->    379.7s  q   0->  0 (min   0, max   0) n=1   PLAT      · fin a   -16.0s de l'explosion · premier
+    navpoint_ti12_onebomb_test.go:94:     slot 1473     380.1s ->    380.1s  q   0->  0 (min   0, max   0) n=1   PLAT      · fin a   -15.6s de l'explosion · trou  20004 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1472     395.2s ->    395.2s  q   1->  1 (min   1, max   1) n=1   PLAT      · fin a    -0.5s de l'explosion · premier
+    navpoint_ti12_onebomb_test.go:94: --- EXPLOSION 450833 ms (fenetre 405.8s .. 452.8s)
+    navpoint_ti12_onebomb_test.go:94:     slot 1477     408.7s ->    408.7s  q 164->164 (min 164, max 164) n=1   PLAT      · fin a   -42.1s de l'explosion · trou 146752 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1473     420.1s ->    420.1s  q   0->  0 (min   0, max   0) n=1   PLAT      · fin a   -30.7s de l'explosion · trou  20007 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1795     420.1s ->    420.1s  q   8->  8 (min   8, max   8) n=1   PLAT      · fin a   -30.7s de l'explosion · premier
+    navpoint_ti12_onebomb_test.go:94:     slot 1468     430.1s ->    430.1s  q  18-> 18 (min  18, max  18) n=1   PLAT      · fin a   -20.7s de l'explosion · premier
+    navpoint_ti12_onebomb_test.go:94:     slot 1459     432.0s ->    434.9s  q 131->254 (min 131, max 254) n=30  MONTEE    · fin a   -15.9s de l'explosion · trou 171760 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1471     432.0s ->    434.9s  q 131->254 (min 131, max 254) n=30  MONTEE    · fin a   -15.9s de l'explosion · trou 171760 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1477     437.0s ->    437.0s  q 164->164 (min 164, max 164) n=1   PLAT      · fin a   -13.9s de l'explosion · trou  28261 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1793     438.0s ->    438.0s  q 217->217 (min 217, max 217) n=1   PLAT      · fin a   -12.8s de l'explosion · trou  35206 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1473     440.1s ->    440.1s  q   0->  0 (min   0, max   0) n=1   PLAT      · fin a   -10.7s de l'explosion · trou  20003 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1793     449.1s ->    449.1s  q   9->  9 (min   9, max   9) n=1   PLAT      · fin a    -1.7s de l'explosion · trou  11078 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 2404     449.2s ->    449.2s  q 118->118 (min 118, max 118) n=1   PLAT      · fin a    -1.6s de l'explosion · premier
+    navpoint_ti12_onebomb_test.go:94:     slot 1459     450.3s ->    450.3s  q 127->127 (min 127, max 127) n=1   PLAT      · fin a    -0.5s de l'explosion · trou  15416 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1471     450.3s ->    450.3s  q 127->127 (min 127, max 127) n=1   PLAT      · fin a    -0.5s de l'explosion · trou  15416 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1469     452.2s ->    457.2s  q 130->127 (min 127, max 253) n=51  MIXTE     · fin a    +6.3s de l'explosion · trou 113501 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1481     452.2s ->    457.2s  q 130->127 (min 127, max 253) n=51  MIXTE     · fin a    +6.3s de l'explosion · trou 113501 ms
+    navpoint_ti12_onebomb_test.go:96: --- MONTEES CONTIGUES VALIDES : 6 suivie(s) d'une explosion sous 120 s, 16 orpheline(s)
+    navpoint_ti12_onebomb_test.go:96:     [slot 1459 fin 92.3s -> expl +17.2s]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1471 fin 92.3s -> expl +17.2s]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1481 fin 115.8s ORPHELINE]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1469 fin 115.8s ORPHELINE]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1469 fin 173.5s ORPHELINE]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1481 fin 173.5s ORPHELINE]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1471 fin 196.6s ORPHELINE]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1459 fin 196.6s ORPHELINE]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1469 fin 219.4s ORPHELINE]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1481 fin 219.4s ORPHELINE]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1459 fin 247.6s ORPHELINE]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1471 fin 247.6s ORPHELINE]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1459 fin 252.2s ORPHELINE]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1471 fin 252.2s ORPHELINE]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1481 fin 266.4s ORPHELINE]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1469 fin 266.4s ORPHELINE]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1481 fin 338.6s -> expl +57.2s]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1469 fin 338.6s -> expl +57.2s]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1459 fin 434.9s -> expl +15.9s]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1471 fin 434.9s -> expl +15.9s]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1481 fin 457.1s ORPHELINE]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1469 fin 457.1s ORPHELINE]
+    navpoint_ti12_onebomb_test.go:90: =========================================== FILM df8fcbef
+    navpoint_ti12_onebomb_test.go:91: --- VUE GLOBALE : 21 slot(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 1459    469 ech. de    49.0s a   763.2s ·  9 montee(s) contigue(s),  9 non contigue(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 1464      1 ech. de   333.4s a   333.4s ·  0 montee(s) contigue(s),  0 non contigue(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 1466      2 ech. de   372.8s a   508.8s ·  0 montee(s) contigue(s),  0 non contigue(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 1469    561 ech. de    66.3s a   769.4s · 11 montee(s) contigue(s), 11 non contigue(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 1471    469 ech. de    49.0s a   763.2s ·  9 montee(s) contigue(s),  9 non contigue(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 1472      3 ech. de   233.3s a   378.0s ·  0 montee(s) contigue(s),  0 non contigue(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 1473     40 ech. de    20.0s a   780.1s ·  0 montee(s) contigue(s),  1 non contigue(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 1474      2 ech. de    71.5s a   320.7s ·  0 montee(s) contigue(s),  0 non contigue(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 1476      3 ech. de   325.0s a   750.8s ·  0 montee(s) contigue(s),  0 non contigue(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 1477      4 ech. de   170.6s a   333.6s ·  0 montee(s) contigue(s),  1 non contigue(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 1478      1 ech. de   372.7s a   372.7s ·  0 montee(s) contigue(s),  0 non contigue(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 1481    563 ech. de    66.3s a   769.4s · 11 montee(s) contigue(s), 11 non contigue(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 1489      1 ech. de   202.9s a   202.9s ·  0 montee(s) contigue(s),  0 non contigue(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 1491      1 ech. de   522.1s a   522.1s ·  0 montee(s) contigue(s),  0 non contigue(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 2115      1 ech. de   294.1s a   294.1s ·  0 montee(s) contigue(s),  0 non contigue(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 2117      3 ech. de   169.1s a   740.0s ·  0 montee(s) contigue(s),  1 non contigue(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 2119      1 ech. de   590.7s a   590.7s ·  0 montee(s) contigue(s),  0 non contigue(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 2385      2 ech. de   734.3s a   734.3s ·  0 montee(s) contigue(s),  0 non contigue(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 2387      1 ech. de   432.4s a   432.4s ·  0 montee(s) contigue(s),  0 non contigue(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 2389      1 ech. de   674.1s a   674.1s ·  0 montee(s) contigue(s),  0 non contigue(s)
+    navpoint_ti12_onebomb_test.go:91:     slot 2642      1 ech. de    45.2s a    45.2s ·  0 montee(s) contigue(s),  0 non contigue(s)
+    navpoint_ti12_onebomb_test.go:94: --- EXPLOSION 255767 ms (fenetre 210.8s .. 257.8s)
+    navpoint_ti12_onebomb_test.go:94:     slot 1473     220.0s ->    220.0s  q   0->  0 (min   0, max   0) n=1   PLAT      · fin a   -35.7s de l'explosion · trou  20003 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1472     233.3s ->    233.3s  q 238->238 (min 238, max 238) n=1   PLAT      · fin a   -22.5s de l'explosion · premier
+    navpoint_ti12_onebomb_test.go:94:     slot 1459     236.9s ->    239.8s  q 131->254 (min 131, max 254) n=30  MONTEE    · fin a   -16.0s de l'explosion · trou  60875 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1471     236.9s ->    239.8s  q 131->254 (min 131, max 254) n=30  MONTEE    · fin a   -16.0s de l'explosion · trou  60875 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1473     240.0s ->    240.0s  q   0->  0 (min   0, max   0) n=1   PLAT      · fin a   -15.7s de l'explosion · trou  20004 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1477     241.8s ->    241.8s  q 238->238 (min 238, max 238) n=1   PLAT      · fin a   -13.9s de l'explosion · trou  64125 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1459     255.2s ->    255.2s  q 127->127 (min 127, max 127) n=1   PLAT      · fin a    -0.6s de l'explosion · trou  15414 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1471     255.2s ->    255.2s  q 127->127 (min 127, max 127) n=1   PLAT      · fin a    -0.6s de l'explosion · trou  15414 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1469     257.1s ->    262.1s  q 130->127 (min 127, max 253) n=51  MIXTE     · fin a    +6.4s de l'explosion · trou  74886 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1481     257.1s ->    262.1s  q 130->127 (min 127, max 253) n=51  MIXTE     · fin a    +6.4s de l'explosion · trou  74886 ms
+    navpoint_ti12_onebomb_test.go:94: --- EXPLOSION 309284 ms (fenetre 264.3s .. 311.3s)
+    navpoint_ti12_onebomb_test.go:94:     slot 1473     280.1s ->    280.1s  q   0->  0 (min   0, max   0) n=1   PLAT      · fin a   -29.2s de l'explosion · trou  20001 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1459     290.4s ->    293.4s  q 131->254 (min 131, max 254) n=30  MONTEE    · fin a   -15.9s de l'explosion · trou  35234 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1471     290.4s ->    293.4s  q 131->254 (min 131, max 254) n=30  MONTEE    · fin a   -15.9s de l'explosion · trou  35234 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 2117     292.0s ->    292.0s  q 109->109 (min 109, max 109) n=1   PLAT      · fin a   -17.3s de l'explosion · trou 122867 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 2115     294.1s ->    294.1s  q 213->213 (min 213, max 213) n=1   PLAT      · fin a   -15.2s de l'explosion · premier
+    navpoint_ti12_onebomb_test.go:94:     slot 1473     300.1s ->    300.1s  q   0->  0 (min   0, max   0) n=1   PLAT      · fin a    -9.2s de l'explosion · trou  20006 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1459     308.8s ->    308.8s  q 127->127 (min 127, max 127) n=1   PLAT      · fin a    -0.5s de l'explosion · trou  15396 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1471     308.8s ->    308.8s  q 127->127 (min 127, max 127) n=1   PLAT      · fin a    -0.5s de l'explosion · trou  15396 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1469     310.6s ->    315.6s  q 130->127 (min 127, max 253) n=51  MIXTE     · fin a    +6.3s de l'explosion · trou  48429 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1481     310.6s ->    315.6s  q 130->127 (min 127, max 253) n=51  MIXTE     · fin a    +6.3s de l'explosion · trou  48429 ms
+    navpoint_ti12_onebomb_test.go:94: --- EXPLOSION 485860 ms (fenetre 440.9s .. 487.9s)
+    navpoint_ti12_onebomb_test.go:94:     slot 1473     460.1s ->    460.1s  q   0->  0 (min   0, max   0) n=1   PLAT      · fin a   -25.8s de l'explosion · trou  20004 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1459     466.2s ->    469.1s  q 131->254 (min 131, max 254) n=30  MONTEE    · fin a   -16.8s de l'explosion · trou 157421 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1471     466.2s ->    469.1s  q 131->254 (min 131, max 254) n=30  MONTEE    · fin a   -16.8s de l'explosion · trou 157421 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1473     480.1s ->    480.1s  q   0->  0 (min   0, max   0) n=1   PLAT      · fin a    -5.8s de l'explosion · trou  20004 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1459     484.3s ->    485.2s  q 251->127 (min 127, max 251) n=8   DESCENTE  · fin a    -0.7s de l'explosion · trou  15215 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1471     484.3s ->    485.2s  q 251->127 (min 127, max 251) n=8   DESCENTE  · fin a    -0.7s de l'explosion · trou  15215 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1469     487.2s ->    492.2s  q 130->127 (min 127, max 253) n=51  MIXTE     · fin a    +6.3s de l'explosion · trou 121521 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1481     487.2s ->    492.2s  q 130->127 (min 127, max 253) n=51  MIXTE     · fin a    +6.3s de l'explosion · trou 121521 ms
+    navpoint_ti12_onebomb_test.go:94: --- EXPLOSION 778033 ms (fenetre 733.0s .. 780.0s)
+    navpoint_ti12_onebomb_test.go:94:     slot 2385     734.3s ->    734.3s  q 236->234 (min 234, max 236) n=2   DESCENTE  · fin a   -43.7s de l'explosion · premier
+    navpoint_ti12_onebomb_test.go:94:     slot 2117     740.0s ->    740.0s  q 232->232 (min 232, max 232) n=1   PLAT      · fin a   -38.0s de l'explosion · trou 448059 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1473     740.1s ->    740.1s  q   0->  0 (min   0, max   0) n=1   PLAT      · fin a   -37.9s de l'explosion · trou  20002 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1459     742.2s ->    745.1s  q 131->254 (min 131, max 254) n=30  MONTEE    · fin a   -33.0s de l'explosion · trou  71873 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1471     742.2s ->    745.1s  q 131->254 (min 131, max 254) n=30  MONTEE    · fin a   -33.0s de l'explosion · trou  71873 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1476     750.8s ->    750.8s  q   8->  8 (min   8, max   8) n=1   PLAT      · fin a   -27.2s de l'explosion · trou 361262 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1459     758.1s ->    763.2s  q 251->127 (min 127, max 251) n=51  DESCENTE  · fin a   -14.8s de l'explosion · trou  13013 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1471     758.1s ->    763.2s  q 251->127 (min 127, max 251) n=51  DESCENTE  · fin a   -14.8s de l'explosion · trou  13013 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1473     760.1s ->    760.1s  q   0->  0 (min   0, max   0) n=1   PLAT      · fin a   -17.9s de l'explosion · trou  20003 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1469     764.4s ->    769.4s  q 130->127 (min 127, max 253) n=51  MIXTE     · fin a    -8.6s de l'explosion · trou  62862 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1481     764.4s ->    769.4s  q 130->127 (min 127, max 253) n=51  MIXTE     · fin a    -8.6s de l'explosion · trou  62862 ms
+    navpoint_ti12_onebomb_test.go:94:     slot 1473     765.5s ->    765.5s  q  26-> 26 (min  26, max  26) n=1   PLAT      · fin a   -12.6s de l'explosion · trou   5312 ms
+    navpoint_ti12_onebomb_test.go:96: --- MONTEES CONTIGUES VALIDES : 20 suivie(s) d'une explosion sous 120 s, 20 orpheline(s)
+    navpoint_ti12_onebomb_test.go:96:     [slot 1471 fin 51.9s ORPHELINE]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1459 fin 51.9s ORPHELINE]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1469 fin 71.2s ORPHELINE]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1481 fin 71.2s ORPHELINE]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1469 fin 130.6s ORPHELINE]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1481 fin 130.6s ORPHELINE]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1471 fin 168.6s -> expl +87.1s]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1459 fin 168.6s -> expl +87.1s]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1481 fin 182.1s -> expl +73.6s]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1469 fin 182.1s -> expl +73.6s]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1471 fin 239.8s -> expl +16.0s]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1459 fin 239.8s -> expl +16.0s]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1481 fin 262.0s -> expl +47.3s]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1469 fin 262.0s -> expl +47.3s]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1471 fin 293.4s -> expl +15.9s]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1459 fin 293.4s -> expl +15.9s]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1469 fin 315.5s ORPHELINE]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1481 fin 315.5s ORPHELINE]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1481 fin 365.6s ORPHELINE]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1469 fin 365.6s ORPHELINE]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1459 fin 469.1s -> expl +16.8s]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1471 fin 469.1s -> expl +16.8s]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1469 fin 492.1s ORPHELINE]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1481 fin 492.1s ORPHELINE]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1459 fin 524.6s ORPHELINE]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1471 fin 524.6s ORPHELINE]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1471 fin 527.4s ORPHELINE]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1459 fin 527.4s ORPHELINE]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1469 fin 548.8s ORPHELINE]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1481 fin 548.8s ORPHELINE]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1469 fin 626.8s ORPHELINE]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1481 fin 626.8s ORPHELINE]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1459 fin 670.2s -> expl +107.8s]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1471 fin 670.2s -> expl +107.8s]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1481 fin 701.4s -> expl +76.6s]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1469 fin 701.4s -> expl +76.6s]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1459 fin 745.1s -> expl +33.0s]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1471 fin 745.1s -> expl +33.0s]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1469 fin 769.3s -> expl +8.7s]
+    navpoint_ti12_onebomb_test.go:96:     [slot 1481 fin 769.3s -> expl +8.7s]
+--- PASS: TestNavpointTi12OneBombInspection (38.84s)
+PASS
+ok  	levelup/go-api/internal/analysis/filmdec	245.401s
+EXIT=0

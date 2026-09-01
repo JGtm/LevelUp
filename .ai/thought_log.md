@@ -96,6 +96,33 @@ occuperaient la liste de travail à vie (mesure du 2026-08-29 : 581 des 999 cand
 `feat/v75`. Le volet B n'active toujours rien en production : il rend l'étape observable,
 rattrapable et documentée, mais c'est le jeton d'ouvrier qui ouvrira le robinet.
 
+## [2026-09-01] Merge wt/bombe-visuel dans feat/v75 — schemas renumerotes 33/34
+
+**Statut** : Complété
+
+**Décision technique** : collision de numéros pleine largeur — pendant que la ligne bombe
+prenait 29 (armement) et 30 (portage), feat/v75 prenait 29-32 (lunette, ramassage natif,
+nommage, origine). Arbitrage par renumérotation au merge, comme l'écrit la chronique aux
+schémas 30/31 : bombArmings = **33**, bombCarries = **34**, `SchemaVersion = 34`,
+`EXPECTED_REPLAY_SCHEMA_VERSION = 34`, `wantReplayDocumentFields = 47` (45 + 2). Notes de
+collision datées posées dans document.go, structure_test.go, contracttest et
+document_bomb_carries.go. `cmd/replay-build/main.go` : union des deux côtés — verrou
+`AcquireSolo` + priorité basse (notre ligne) + échappatoire `--mem-gib` et journal du pic
+(feat/v75). Golden régénéré par `-update` (entrées figées intactes des deux côtés) ;
+openapi.yaml et generated.ts régénérés — octet pour octet identiques à l'auto-merge.
+
+**Résultats observés** : go test replay + replaybuild + filmdec + contracttest + api :
+EXIT=0. Web (cache tsbuildinfo purgé) : TSC=0, LINT=0, vitest 552 fichiers / 5700 verts
+(14 skipped), EXIT=0. Logs au registre (`MERGE_gate_{go,web,vitest}.log`). Avant ce merge,
+wt/onebomb avait rejoint wt/bombe-visuel (`899fefed6`) : inspection One Bomb raccordée à la
+détection de production (9/9 portées, médiane 16,18 s, CV 0,017, log `BV_onebomb_rejeu.log`)
+et tension D2 arbitrée sur pièces (les 32 candidates désamorçage de B4 viennent toutes des
+trois films One Bomb — artefact de la fenêtre 10 s ; Neutral/Husky : D2 17/17, zéro
+candidate ; note datée dans l'en-tête de bombe_desamorcage_research_test.go).
+
+**Prochaine étape** : CI de branche au niveau job ; la re-cuisson des artefacts (schémas
+33/34 visibles en app) reste INTERDITE jusqu'à levée explicite par l'utilisateur.
+
 ## [2026-09-01] Merge de wt/lint-dette dans feat/v75 — le job `Go Lint` n'est plus rouge — Complété
 
 Merge `--no-ff` de `wt/lint-dette` (4 commits) dans `feat/v75`. **Zéro conflit**, thought_log
@@ -554,6 +581,1147 @@ perf/**, docs/**, chore/**, integration/**) et le trigger `pull_request` est lim
 `wt/footer-liens` (worktree dédié depuis `feat/v75`), poussée.
 Rien de commité.
 ---
+## [2026-09-01] LA BOMBE D'ASSAUT EST DANS LE CANAL DES ARMES TENUES — `0x3fee4fcf` : ramassages, porteurs et temps de portage décodés ; témoin Oddball 100 % — Complété
+
+**La question (utilisateur)** : en Assaut il manque ramassage, porteur, temps de portage,
+désamorçage — et la bombe est un OBJET TENU EN MAIN, comme le crâne et le drapeau. Le dépôt
+décodait déjà les canaux génériques d'objet tenu (`filmdec.ScanFilmHeldWeaponChanges`,
+composant weapon-state-type-info) et personne ne les avait pointés sur l'Assaut. Les négatifs
+du chantier (bande 20-27 vide, pied th=10 quasi absent, `ti=13` vide) ne couvraient PAS ce
+canal. Branche `wt/bombe-portee`.
+
+**L'IDENTITÉ, établie par deux voies indépendantes.** (B1, `bombe_b1_identite_test.go`)
+Témoin d'abord : sur le film Oddball `43716616`, le crâne `0x0017592c` ÉMET dans le canal des
+armes tenues (14 prises, 4 lâchers, 14 slots-vies) — le canal réplique bien les objets de
+mode. Sur les 9 films d'Assaut, UNE SEULE famille passe le crible (hors catalogue d'armes +
+présente sur les 9 films + prise ET lâchée sur chacun) : **`0x3fee4fcf`**, 7 à 42 slots-vies
+par film (médiane 13). Confirmation extérieure : l'atlas HUD du jeu donne à ce tag le sprite
+`contour-34`, nommé **« ball | bomb »** dans `static/weapons-assets/halo_infinite/jeu/index.json`.
+
+**LA CHRONOLOGIE ET LES ORACLES** (B2, `bombe_b2_chronologie_test.go`) — périodes de portage
+= prise -> (lâcher | mort du porteur | fin de film), datées ms match (`ScanFilmClockOrigin`),
+identités par le pont `ResolveSlotXUID` :
+
+- **V3 (témoin Oddball) : 46/46 heartbeats = 100 %.** Chaque heartbeat de possession th=10
+  tombe dans une période de portage du crâne du MÊME joueur. DÉCOUVERTE au passage, qui
+  élucide la piste P3 du handoff Oddball : les événements th=10 émis À LA MORT du porteur
+  créditent son TUEUR (la stat `skull_carriers_killed`) — vérifié contre le fil des kills
+  sur les 10 cas, à ±150 ms. Le pied th=10 mélange donc DEUX natures d'événement.
+- **V1 (poseur = détonateur statborg) : 13/17 = 76,5 %** sur les explosions résolues des
+  deux côtés (28 datées ; 7 sans détonateur identifié — pont par manche One Bomb, connu —
+  et 4 sans porteur ponté, dont les 3 de `ce083875` au pont dégradé). Le délai médian
+  lâcher -> explosion vaut **4 740 ms** : le lâcher du canal EST le geste de pose, à
+  ~200 ms de la mèche mesurée (4 930 ms).
+- **V2 (bombe posée portée par personne) : 27/28 = 96,4 %.**
+- **Les 4 désaccords V1** (B3, `bombe_b3_desaccords_test.go`, positions en quanta) : trois
+  penchent CANAL (candidat canal 2,4-2,5x plus près des sites de pose authentifiés, plus
+  immobile ; sur `69b16f5d`-310215 le lâcher canal précède l'explosion de 4 685 ms — la
+  signature de pose), un INDÉCIS (`3d58eb37`-203065 : les deux candidats côte à côte sur
+  des vies adjacentes — coéquipiers spawnés ensemble). NON ARBITRÉS définitivement : la
+  pièce qui trancherait est la création `ti=42` de la bombe plantée (position du site réel),
+  non instrumentée dans ce lot. Les chiffres V1/V2 sont FIGÉS comme référence dans le test
+  (patron TestAssautA5PontIdentite) : amélioration comme dégradation rougissent.
+
+**LE DÉSAMORÇAGE** (B4, `filmdec/bombe_desamorcage_research_test.go`) : PAS D'OCCURRENCE
+ORACLE sur les modes mesurables. Sur les 6 films Neutral Bomb + Husky (17 explosions), D2 est
+PARFAIT — chaque explosion est précédée de sa pose complète (délais 4,86-5,24 s) et le compte
+des montées complètes vaut exactement 2 x les explosions (l'anneau est répliqué sur DEUX slots
+d'interface jumeaux) : AUCUNE pose complète sans explosion, donc aucun désamorçage au corpus.
+Sur les 3 films One Bomb, D2 = 0/11 : l'anneau ti=12 n'y date pas l'armement (confirme le
+plancher variantes, CV 0,725) — ses saturations hors explosion (32 lignes brutes, slots
+jumeaux compris) suivent le motif « lâcher +0,25 s / reprise +15-30 s », la mécanique de
+RESET de la bombe au sol, pas des poses. Le désamorçage One Bomb reste non mesurable par
+cette voie.
+
+**L'INSTRUMENT PUBLIÉ** : `replay/held_object_carry.go` — `BuildHeldObjectCarry(events,
+slotXUID, deaths)` rend événements, périodes de portage et temps de portage par joueur
+(`CarryMSByXUID`) pour tout objet tenu (bombe, crâne). Cœur pur, 5 tests unitaires sans film
+(`held_object_carry_test.go`) ; les tests de mesure B2/B3 délèguent à lui (une seule
+implémentation). AUCUN chemin de production modifié : rien ne le branche encore au document
+de rejeu — c'est la matière du futur portage produit.
+
+**Ce qui a surpris** : (1) le canal était là depuis le début — les trois maisons fouillées
+par le lot A (statborg, pied, ti=13) n'étaient pas les bonnes, l'objet tenu vit sur le
+BIPÈDE ; (2) le jonglage (jets-reprises en cycles de ~700 ms) est visible et fréquent ;
+(3) la mort du porteur n'émet AUCUN lâcher — la fermeture par le fil des morts est
+obligatoire ; (4) l'anneau ti=12 One Bomb ne date PAS l'armement (D2 0/11 sur les 3 films
+One Bomb) alors qu'il est exact à ~5 s sur Neutral et Husky.
+
+**Pièces** : logs figés `.ai/V7.5/replay2d/registre_film/B2_bombe_chronologie_v1v2.log`,
+`B3_bombe_desaccords_positions.log`, `B4_bombe_desamorcage.log`. Sentinelles mémoire armées
+partout (pics 0,01-0,09 Gio), verrou process, un décodage à la fois.
+
+**Prochaine étape** : porter la chronologie au document de rejeu (clé porteur, schéma à
+numéroter) ; arbitrer les 3+1 désaccords par les créations `ti=42` ; croiser
+`CarryMSByXUID` avec `TimeAsBombCarrier` du binaire si un jour l'API l'expose.
+## [2026-09-01] Fusion wt/onebomb dans la ligne bombe — raccord production + arbitrage D2
+
+**Statut** : Complété
+
+**Décision technique** : au merge, `navpoint_ti12_onebomb_test.go` est raccordé à la
+détection de PRODUCTION (`ScanFilmNavpointRadial` + `NavpointContiguousRises` via le helper
+local `obFinsContigues`, constante `NavpointRiseMaxGapMS`) — l'inspection mesure le code qui
+publie, comme le plancher. La tension inter-agents (bombe-portee : « D2 0/11 sur One Bomb,
+32 candidates désamorçage » vs onebomb : « mèche 16,2 s pausable, 9/9 ») est arbitrée SUR
+PIÈCES : les 32 candidates de B4 viennent toutes des trois films One Bomb, artefact de la
+fenêtre 10 s dimensionnée pour la mèche courte ; sur Neutral/Husky D2 est plein (17/17) et
+zéro candidate. Note datée posée dans l'en-tête de `bombe_desamorcage_research_test.go`.
+
+**Résultats observés** : rejeu complet avec la détection de production —
+`TestNavpointTi12MecheOneBomb` 9/9 portées, médiane 16,18 s, CV 0,017 (10/11 avec les deux
+SANS PORTEUR) ; témoins Neutral 13/13 (4,94 s), Husky 4/4 (5,09 s) ; inspection PASS ;
+EXIT=0 (log scratchpad BV_onebomb_rejeu.log).
+
+**Prochaine étape** : merge de wt/bombe-visuel dans feat/v75 (demande user), gates ciblés
+Go + web, push, CI au niveau job.
+
+## [2026-09-01] One Bomb : LA MÈCHE EST PAUSABLE — 16,2 s, le désarmement la suspend ; 9/9 portées à CV 0,017 (0/1000), les 2 sans-porteur expliquées — Complété
+
+**La question du lot** : l'anneau `ti=12 i14` est prouvé jauge d'armement en Neutral Bomb
+(13/13, 4,93 s, CV 0,016, 0/1000) et Husky Raid (4/4, 5,1 s, CV 0,016, 0/1000), mais la même
+lecture rend en One Bomb 11/11 à délai médian 17,2 s, **CV 0,725, 87/1000 tirages nuls aussi
+bons** — le signal ne tient pas. Pourquoi, et quelle lecture tient ?
+
+**L'oracle d'abord (H4, écartée)** : `TestAssautA5Explosions` rejoué — la production statborg
+recoupe les 28 instants À LA MILLISECONDE (26/28 attribuées, 0 hors relevé). Les 11 instants
+One Bomb sont bons.
+
+**L'inspection ensuite** (`navpoint_ti12_onebomb_test.go`, critères H1/H2/H3 écrits avant) :
+dump des segments contigus (trou <= 500 ms) autour des 11 explosions. L'anneau du site porte
+en fait **TROIS figures que le plancher mélangeait** :
+
+| figure | forme mesurée | rôle |
+|---|---|---|
+| ARMEMENT | segment qui monte 131→254 et FINIT PLEIN (n=30, ~2,9 s, identique aux 10 occurrences) | la pose de la bombe |
+| DÉSARMEMENT | segment strictement DESCENDANT depuis ~251, pente **14-26 quanta/s**, interrompu (fins 185..246) ou complet (fin 127) | la tenue d'un défenseur |
+| RESET | cycle 130→253→127 en 5,0 s (n=51) sur l'AUTRE paire de slots, +6,3 s après chaque événement terminal du site | l'anneau rejoué |
+
+La chute de l'anneau à l'explosion est RAPIDE (251→127 à ~138 quanta/s) et un échantillon 127
+isolé précède chaque boum de ~0,6 s. Le plancher prenait la sous-montée du RESET (close au
+sommet) pour un armement : d'où les délais dispersés.
+
+**La lecture « mèche pausable »** (`navpoint_ti12_meche_test.go`, définitions et seuils figés
+avant la passe ; seuils NOUVEAUX justifiés par l'inspection : fin de segment à <= 4 quanta de
+son sommet = « finit plein », pente < 60 quanta/s = tenue — au milieu du vide entre 26 et
+138 ; AUCUN seuil existant modifié) : ARMEMENT = segment qui finit à son sommet avec
+l'amplitude et l'effectif du gate 2 ; PAUSE = segment descendant quasi monotone sous 60 q/s ;
+délai = (explosion − fin d'armement) − Σ pauses du même slot entre les deux.
+
+**RÉSULTAT One Bomb** : les 9 explosions PORTÉES par un joueur (partition `a5SansPorteur`,
+ANTÉRIEURE — relevé du 2026-08-31) rendent **9/9, délai médian 16,18 s, CV 0,017, 0/1000
+tirages nuls aussi bons, les trois décalages échouent** : RÉSOLU sous la règle du plancher.
+Détail par explosion publié (armement, pauses datées, brut→corrigé : 18,2→16,2 · 19,4→16,2 ·
+18,0→16,2 · 23,2→16,5 · 17,2→16,3 · 15,9 · 16,0 · 15,9 · 16,8). **La mèche One Bomb vaut
+~16,2 s et le désarmement tenu la SUSPEND** — voilà pourquoi le délai brut variait de 15,9 à
+42,8 s.
+
+**Les 2 explosions SANS PORTEUR ne sont pas des armements** — négatif de structure, sur
+pièces : `c75f33b8@395724` n'a AUCUN armement dans les 120 s (le dernier, fini à 252,2 s, a
+été DÉSARMÉ — deux tenues dont une de 5,1 s) ; `df8fcbef@778033` suit un désarmement COMPLET
+(251→127 à pente 24 q/s, fini 14,8 s avant le boum) puis le cycle RESET. Le canal i14 dit
+qu'elles relèvent d'un autre mécanisme du mode — cohérent avec le relevé A5 : le point n'y
+existe que sur le slot d'ÉQUIPE. Sur les 11 : couverture 10/11, CV 0,228 — publié tel quel.
+
+**LE TÉMOIN TIENT** : la même lecture rejouée rend Neutral **13/13, 4,94 s, CV 0,016, 0/1000**
+et Husky **4/4, 5,09 s, CV 0,016, 0/1000** — rien de cassé, et les pauses détectées en Neutral
+(4 films sur 5 en portent) n'altèrent aucun délai.
+
+**Garde-rails** : `TestNavpointTi12MecheSansPorteurFige` (copie `mpSansPorteur` cohérente avec
+l'oracle figé, sans cache) ; note de renvoi dans l'en-tête du plancher variantes (doc non
+inversée). Gates : gofmt propre, vet 0, golangci-lint 0, suite filmdec verte sans cache.
+Sentinelle mémoire armée et `LockProcessDecode` sur chaque passe, un seul décodage à la fois.
+
+**Conclusion / prochaine étape** : l'armement One Bomb est DATABLE par le film (fin du segment
+d'armement), la mèche est une constante de variante (~16,2 s) SUSPENDUE par le désarmement, et
+les tenues de désarmement sont elles-mêmes datées — matière produit nouvelle (timeline
+« bombe contestée »). Reste hors de ce lot : nommer le marqueur porteur (joindre i0 sub-type),
+et le mécanisme exact des 2 explosions d'équipe sans porteur.
+
+## [2026-09-01] `ti=11 i12/i13/i14` sans filtre — LA DENSITÉ NE PARLE PAS NON PLUS : négatif BORNÉ sur les 17 épreuves — Complété
+
+**La question du lot** : les cinq instruments précédents demandaient *quelle valeur* porte la
+jauge d'armement, et tous ont buté sur le même mur — la voie DELTA de `ti=11` est du bruit
+d'ancrage (légalité `i0` à 45,7 % quand le hasard donne 53,1 %) et le filtre `Chained` ne laisse
+passer que 1 à 35 lectures par film. Ce lot pose une question **strictement plus faible, donc
+répondable** : sans lire aucune valeur, **y a-t-il PLUS de lectures juste avant une explosion
+qu'ailleurs dans le même film ?** Un ancrage bruité ne date rien, mais il n'efface pas forcément
+le TRAFIC : si le mode écrit davantage sur ses objectifs pendant l'armement, la densité des
+records monte. C'est un effet de comptage, pas de lecture — et un comptage survit à une largeur
+fausse.
+
+**Instrument** (tests seuls) : `objectif_ti11_bruit_test.go` (critère + les quatre issues
+documentées AVANT la passe), `objectif_ti11_bruit_stat_test.go` (machinerie statistique),
+`objectif_ti11_bruit_verdict_test.go` (portes 0 à 3, journal). **Aucun balayage n'a été écrit** :
+`ScanFilmObjectives` publie déjà les trois champs, `mntChargerHorloge` date sur l'horloge du
+MANIFESTE, et l'oracle réutilise `ti12Explosions` plutôt que d'en faire une troisième copie.
+Garde `ASSAUT_CACHE`, sentinelle mémoire armée (**pic 0,02 Gio**), `LockProcessDecode`. **11 films,
+134 s, passe unique.**
+
+**Critère écrit avant la mesure** : fenêtre [5 s, 60 s[ avant explosion ; EXCÈS ≥ x1,5 ;
+p empirique ≤ 0,01 (÷8 en Bonferroni pour les huit états de `i14`) ; CONSISTANCE (le nombre
+d'explosions en excès doit lui aussi battre le témoin) ; TÉMOIN CROISÉ muet. **Deux témoins**,
+999 tirages, graine figée : **A** = instants uniformes (celui que la mission prescrit), **B** =
+décalage circulaire des instants réels, qui préserve les amas et ne détruit que la phase. **C'est
+B qui fait foi**, décidé d'avance.
+
+**GATE 2 — NÉGATIF SUR LES TROIS CHAMPS, ET LE NÉGATIF EST BORNÉ.**
+
+| voie / champ | lectures | fenêtre observée | témoin B | verdict |
+|---|---|---|---|---|
+| DELTA `i12` | 277 | 65 | 67,3 ± 10,5 | x0,97 · p=0,61 |
+| DELTA `i13` | 326 | 83 | 88,2 ± 14,9 | x0,94 · p=0,63 |
+| DELTA `i14` | 437 | 114 | 99,9 ± 11,0 | x1,14 · p=0,09 |
+| IMAGE-CLÉ `i12` | 291 | 100 | 77,3 ± 16,1 | x1,29 · p=0,09 |
+
+Consistance : 13, 10 et 16 explosions en excès sur 28, contre des témoins à 12,1, 11,4 et 13,2 —
+rien. **Ce n'est PAS « l'échantillon est trop petit »** : un excès de x1,5 aurait valu **+3,2
+écarts-types** du témoin sur `i12`, +2,9 sur `i13`, +4,6 sur `i14`. Les valeurs observées se
+tiennent à −0,2, −0,4 et +1,3. **La mesure EXCLUT tout enrichissement au-delà d'environ x1,4.**
+
+**GATE 3 — `i14` PAR VALEUR : rien non plus.** Distribution delta sur l'Assaut :
+`[61, 207, 16, 12, 44, 25, 26, 46]` (l'état 1 fait 47 % à lui seul). Aucun des huit ne s'approche
+du seuil de Bonferroni (0,00125) ; le meilleur est l'état 5 à x1,40 pour p=0,16. Aux images-clés
+`i14` vaut **toujours 0** (35 lectures, un seul film).
+
+**TÉMOIN CROISÉ — l'instrument ne fabrique pas de pics.** KOTH `7f1bbf06` et CTF `cde26226`
+passés au même instrument avec le motif d'explosions d'un film d'Assaut de durée voisine :
+p = 0,56 / 0,38 / 0,31 sur les trois champs. Réserve honnête : **7 à 10 lectures seulement**, donc
+ce témoin a peu de puissance — il montre que l'instrument rend bien des p-valeurs de milieu de
+table sur du nul, pas qu'il détecterait un faux positif ténu. Les deux Strongholds n'ont **aucun**
+slot `ti=11` aux images-clés (le MIROIR du chantier, reconfirmé).
+
+**RÉSULTAT DE BORD n°1 — LE TÉMOIN B A SERVI, ET IL SE VOIT.** La voie DELTA n'a **aucun amas** :
+277 lectures pour **276 instants distincts** — A et B y coïncident, la taille d'échantillon
+effective est bien celle qu'on croit. La voie IMAGE-CLÉ, elle, en a : 291 lectures pour **85
+instants**. Et c'est exactement là que les deux témoins divergent : **A rend p=0,001, B rend
+p=0,088 sur le MÊME chiffre**. Sans le témoin par décalage circulaire, ce lot aurait annoncé une
+trouvaille à p=0,001 qui n'est qu'un effet de grappe. Même écart sur DELTA CHAÎNÉE `i13` (18
+lectures en fenêtre, x2,49 : p=0,001 contre A, p=0,056 contre B, consistance 3/28).
+
+**RÉSULTAT DE BORD n°2 — UNE OBSERVATION HORS CRITÈRE, écrite pour qu'elle ne soit PAS relue comme
+un résultat.** Le seau [0 s, 5 s[ dépasse le témoin sur les trois champs delta (12/6,1 · 13/8,0 ·
+11/9,1, soit x1,55 ensemble) et l'état 7 y met 5 lectures pour 0,8 attendue. Ce seau **n'est pas
+dans la fenêtre préenregistrée** ; sur 63 seaux publiés, trois dépassements à p=0,05 sont
+l'espérance du hasard. Et une écriture d'objectif dans les cinq secondes qui précèdent l'explosion
+serait de toute façon la **conséquence** de la fin de mèche, pas le début de l'armement. À
+instruire par une mesure dont ce serait le critère écrit d'avance, jamais en relisant celle-ci.
+
+**Documentation corrigée dans le même commit** (commentaire seul, aucun code touché) :
+`objective_scan.go` disait que la voie delta est à écarter pour sa VALEUR ; il dit désormais que
+sa DENSITÉ ne parle pas davantage, avec les chiffres et la borne.
+
+**Conclusion / prochaine étape** : **`ti=11` est clos pour dater l'armement** — ni la valeur
+(lots précédents), ni la densité (celui-ci) ne parlent de la bombe, et le négatif est chiffré, pas
+supposé. Les canaux encore ouverts du chantier restent, par ordre de coût : `ti=10 i24/i25`
+`managed-object-looping-sound-component` (R(32) inconditionnel, sans porte, non porté — le
+portage le moins cher du registre, et l'utilisateur a établi qu'un son accompagne le compte à
+rebours), puis `ti=12 i11/i12` (durée initiale + durée courante d'un navpoint, 17 bits chacune),
+puis le run `ti=43 i19..i25` (`device-interaction-hold-time`, 22 composants à porter).
+
+## [2026-09-01] `ti=11 i0` minuteurs — LES DEUX VALEURS DE SEPT BITS SONT DES INDEX FIGÉS ; l'ancrage des images-clés est juste À UN BIT PRÈS — Complété
+
+**La question du lot** : `managed-objective-timers-component` (ti=11 i0) est présent dans **100 %**
+des records porteurs de la jauge et n'avait jamais été interprété. Deux lectures s'affrontaient,
+écrites AVANT la mesure : **A**, une durée de sept bits qui décroît (et alors le départ d'une
+descente date l'armement de la bombe) ; **B**, un index de minuteur, de domaine
+`{-1} ∪ [0,63] ∪ {65,66,67}` — la rétro-ingénierie du 2026-08-31 lit `FUN_1410d9088` comme sept
+bits bruts moins un, sans déquantification. Les deux sont exclusives, et le domaine légal ne
+couvre que **68 des 128 valeurs encodables** : c'est ce qui en fait un oracle.
+
+**Instrument** (tests seuls, zéro chemin de production modifié) :
+`objectif_ti11_minuteurs_test.go` (critère + les quatre issues documentées avant la passe, horloge
+manifeste, digestion en séries par slot, recherche de descentes) et
+`objectif_ti11_minuteurs_verdict_test.go` (portes 0 à 3, journal, chiffres). **Aucun balayage
+n'a été écrit** : `ScanFilmObjectives` publie déjà `ObjectiveFieldTimers`, et l'oracle des
+explosions réutilise `ti12Explosions` plutôt que d'en faire une troisième copie. Garde
+`ASSAUT_CACHE`, sentinelle mémoire armée (**pic 0,02 Gio**), `LockProcessDecode`. 11 films,
+**136 s**, passe unique.
+
+**GATE 0 — LA LECTURE B GAGNE, ET L'ORACLE D'ANCRAGE EXISTE ENFIN.** Voie image-clé : **1 149
+lectures, 113 slots, légalité 100,0 %** sur v0, sur v1 et sur la paire, zéro valeur hors domaine.
+Sous l'hypothèse d'une fenêtre mal posée, une paire tombe légale avec probabilité
+`(68/128)² = 0,282` ; sur 113 slots distincts, l'ordre de grandeur est **1e-62**. Le nombre de
+valeurs DISTINCTES enfonce le clou : **huit** pour v0 (`-1, 1, 3, 15, 17, 19, 21, 23`) et **trois**
+pour v1 (`-1, 15, 47`), là où un tirage uniforme sur sept bits en montrerait environ 128.
+
+**ET LE MÊME ORACLE CONDAMNE LA VOIE DELTA.** 1 552 lectures delta d'Assaut : légalité
+**45,7 % / 40,3 %**, soit SOUS le 53,1 % du hasard ; 120 et 121 valeurs distinctes ; 841 et 923
+lectures hors domaine. Le filtre `Chained` ne sauve rien — 38 lectures à 57,9 % / 71,1 %. Ce n'est
+plus une déduction tirée du taux de chaînage, c'est une mesure indépendante :
+**la voie delta de ti=11 est à écarter, pas à filtrer.**
+
+**LA RÉSERVE QUI ACCOMPAGNE LE POSITIF, ET ELLE EST GROSSE : LE QUANTUM EST TOUJOURS PAIR.** Les
+valeurs d'image-clé, listées EN ENTIER (aucune troncature — chaque film en compte au plus six et
+les six sont imprimées), sont v0 ∈ `{-1, 1, 3, 15, 17, 19, 21, 23}` et v1 ∈ `{-1, 15, 47}` :
+**toutes impaires**. Or `ObjectiveTimerValue(q) = q - 1`, donc le quantum brut est **pair sur les
+1 149 lectures** — le bit de poids faible du champ de sept bits vaut zéro, toujours. Ce n'est pas
+un artefact du lecteur : la voie delta, elle, rend des quanta impairs (123, 121, 27, 59, 91). Deux
+explications tiennent et la mesure ne les sépare pas : (a) le jeu n'utilise que des fentes de rang
+pair ; (b) **la boucle de composants démarre un bit trop loin**, auquel cas on lit
+`((vrai & 0x3F) << 1) | bit voisin` et le vrai couple serait `q/2 - 1`, soit v0 ∈
+`{-1, 0, 1, 7, 8, 9, 10, 11}` — des index **contigus** là où nous lisons une échelle impaire de
+pas deux (sur `34bb3bc8`, les cinq valeurs 15, 17, 19, 21, 23 à 34 lectures chacune deviennent les
+cinq fentes consécutives 7, 8, 9, 10, 11). L'hypothèse (b) **recoupe un fait déjà documenté** :
+`objective_scan.go` relève des `i12` d'images-clés décalés d'UN BIT. Un démarrage tardif d'un bit
+expliquerait les deux d'un coup. Ce qui reste donc acquis, et c'est déjà inédit : **l'ancre est
+juste à AU PLUS UN BIT PRÈS** — une fenêtre posée au hasard rendrait 53 %, pas 100 % avec huit
+valeurs sur 128. L'épreuve à faire ensuite est la **contiguïté** des index (relire i0 la fenêtre
+reculée d'un bit), pas la légalité : celle-ci ne tranchera pas, les deux lectures restant dans le
+domaine tant que les index sont petits.
+
+**GATE 2 — POURQUOI i0 NE PEUT PAS DATER L'ARMEMENT.** Sur les **112 slots** d'objectif d'Assaut,
+**ZÉRO** porte une valeur qui bouge : i0 est FIGÉ pour toute la vie d'un objectif (jusqu'à 37
+échantillons sur 24 minutes). Et les trois minuteurs réservés n'apparaissent **jamais**
+(0 lecture à 65, 66 ou 67 sur 1 149) : l'Assaut ne branche pas le chrono de manche sur ses
+objectifs, il ne désigne que des fentes du bassin. Un index figé ne date rien.
+
+**GATE 3 — CRITÈRE NON REMPLI SUR LES TROIS VOIES.** Image-clé **0/28** (aucune descente n'existe,
+les valeurs sont constantes) ; delta 22/28 mais **dispersion 1,400** pour un plafond de 0,20 et 5
+délais hors sens, les délais s'étalant de 134 ms à 342 s — la signature du bruit ; delta chaînée
+1/28.
+
+**TÉMOIN — ET IL DIT « GÉNÉRIQUE ».** Le CTF `cde26226` porte le MÊME motif : un slot, couple
+`(v0 = -1, v1 = 15)` constant sur 37 échantillons de 20 s à 1 460 s. Le KOTH `7f1bbf06` ne rend
+aucune lecture d'image-clé (12 records, masques nuls) et 16 lectures delta à 53 % de légalité,
+soit exactement le hasard. Les deux Strongholds n'ont **aucun** slot ti=11 dans leurs images-clés :
+le MIROIR du chantier, reconfirmé en passant.
+
+**RÉSULTAT DE BORD — LA DOCTRINE D'HORLOGE EST VÉRIFIÉE SUR PIÈCES.** L'écart moteur → manifeste,
+relevé chunk par chunk, s'étend de **1 à 36 ms** pour des écarts de 387 000 à 9 724 000 ms, sur 17
+à 49 chunks : une dérive relative sous 1e-4, c'est-à-dire l'arrondi à la milliseconde des deux
+bases. L'écart est bien constant, donc les délais ABSOLUS sont lisibles, pas seulement leur
+dispersion.
+
+**Documentation corrigée dans le même commit** (commentaires seuls, aucun code touché) :
+`objective_scan.go` réclamait explicitement « un oracle de largeur » et décrivait la voie delta
+comme filtrable. Les deux affirmations sont mises à jour avec les chiffres ci-dessus.
+
+**Conclusion / prochaine étape** : **NÉGATIF sur ti=11 i0 pour dater l'armement**, positif sur
+l'ancrage des images-clés. Ce que i0 rend est le couple d'index (minuteur principal, minuteur
+secondaire) de l'affichage d'objectif, posé une fois pour toutes. La VALEUR du compte à rebours,
+si elle existe dans le film, est **derrière** l'index — dans `ti=0 i15
+managed-engine-timers-component` (masque R(64) + un enregistrement par fente, non porté, grammaire
+déjà lue). Le candidat concurrent reste `ti=12 i11/i12` (durée initiale + durée courante d'un
+navpoint, 17 bits chacune, pas de 0,05 s), qui est un compte à rebours **directement lisible sans
+résoudre d'index**.
+
+## [2026-09-01] `ti=10 i26..i29` rtpc — LE PARAMÈTRE QUI PILOTE LE SON NE PARLE PAS DE LA BOMBE — Complété
+
+**La question du lot** : `managed-object-rtpc-component` (ti=10, instances i26 à i29) est un
+paramètre temps réel Wwise — donc littéralement ce qui pilote un son — et l'utilisateur a établi
+sur pièces qu'un **son accompagne le compte à rebours de la bombe**. Le composant est porté
+depuis le lot C (`R(32)` identifiant + `R(22)` valeur, lecteur `FUN_140796d38`, publié par
+`SetManagedObjectHook`) et n'avait **jamais** été interrogé sur un film d'Assaut. Critère écrit
+AVANT la mesure, témoins d'un autre mode obligatoires.
+
+**Instrument** (test seul, aucun chemin de production touché) :
+`rtpc_ti10_scan_test.go` (clone de `ScanFilmObjectives` pour ti=10 — bande de slots OBSERVÉE,
+deux voies delta et image-clé, témoin de chaînage par lecture, index de composant i26..i29
+publié à côté de l'identifiant), `rtpc_ti10_assaut_test.go` (critère + digestion en séries par
+couple `(slot, identifiant)`), `rtpc_ti10_census_test.go` (journal, inventaire des identifiants,
+hacheur FNV-1 et épreuve d'égalité), `rtpc_ti10_verdict_test.go` (portes 0/1/4). Garde
+`ASSAUT_CACHE`, sentinelle mémoire armée (**pic observé 0,03 Gio**), `LockProcessDecode`, un
+seul décodage à la fois. 13 films, **171 s** pour la passe unique.
+
+**Trois helpers partagés plutôt que recopiés** : `ti12BandeObservee` renommée
+`bandeObserveeKeyframes`, `ti12Archetype` généralisée en `filmArchetype(dir, ti)`, et l'oracle
+`ti12Explosions` + les seuils `ti12SensMaxMS` / `ti12DispersionMax` réutilisés tels quels — pas
+de troisième copie de l'oracle des 28 explosions. Renommages purs, zéro changement de
+comportement pour l'instrument ti=12.
+
+### GATE 0 — présence : ti=10 est LÀ, sur 9 films d'Assaut sur 9
+
+**255 573 records ancrés, 148 939 lectures rtpc.** Chaînage delta très inégal selon le film :
+89,3 % (`34bb3bc8`), 70,2 % (`69b16f5d`), 64,5 % (`3d58eb37`), 61,1 % (`9f57c612`) … et
+**7,1 % sur `1c01e34f`**, qui ne rend que 262 lectures et doit être lu comme non mesuré.
+Voie IMAGE-CLÉ morte comme annoncé avant la mesure (ti=10 n'est porté qu'à 6 composants sur 30 :
+i0, i1, i26..i29) : au mieux 22 records chaînés sur 829. **Un seul identifiant nul sur tout le
+corpus** — la sentinelle « emplacement libéré » n'existe pratiquement pas dans les films.
+
+### GATE 1 — l'instrument voit, et les quatre témoins le prouvent
+
+Strongholds 28 667 et 25 458 lectures, KOTH 6 423, CTF 13 898. Chaînage 87 à 88 % sur les trois
+premiers.
+
+### GATE 2 — l'inventaire : DEUX canaux réels noyés dans 8 151 identifiants
+
+Sur le corpus entier, **8 151 identifiants distincts** : 87 « propres à l'Assaut » passant le
+filtre de robustesse figé d'avance (≥ 2 slots ET ≥ 2 films), 540 communs avec un témoin, 5 672
+écartés comme bruit d'ancrage. **Le bruit est le résultat principal de cette porte** : les deux
+seuls canaux réels portent à eux seuls **138 467 des 148 939 lectures d'Assaut, soit 93,0 %**,
+et le meilleur des 87 « propres » en compte **19**.
+
+**`0x7CBF0066` = LA JAUGE DE CAPTURE DE ZONE, et elle est nommée par sa signature.** Sur i27,
+3 slots, plage exactement **[0,00 ; 100,00]** après déquantification, 315 à 1 847 valeurs
+distinctes, **38 à 67 montées** — présente en Strongholds (22 134 et 17 688 lectures) et en KOTH
+(3 655), **absente de CTF** et **absente d'Assaut**. Elle existe exactement dans les modes qui
+ont une zone à prendre. C'est le témoin qui donne sa valeur au négatif : **l'instrument SAIT
+voir une jauge de mode quand il y en a une, et il n'y en a pas en Assaut.**
+
+**`0x06854540` = un paramètre générique d'objet géré.** Sur i26, dans les **13 films et tous les
+modes**, toujours exactement `[2097152, 2097361]` = **[0,00 ; 1,00]**, toujours exactement
+**210 quanta distincts**, sur 9 à 41 slots. Même signature partout : rien de propre à l'Assaut.
+
+### GATE 3 — égalité contre les identifiants attendus : AUCUNE PRISE, et c'était annoncé
+
+Le hacheur FNV-1 est prouvé **5 sur 5** en Go sur les oracles de la reconnaissance
+(`TestRtpcTi10Hachage`, pur, sans film). Les **16 identifiants d'événements de la banque
+`sb_004_mod_mp_assault`** (`bomb_arm_loop`, `bomb_arming_loop_team`, `bomb_countdown_loop`, …)
+sont confrontés par égalité aux 8 151 identifiants lus : **zéro correspondance**. Écrit avant la
+mesure : cela **ne prouve rien** — ce sont des identifiants d'ÉVÉNEMENTS Wwise, pas de RTPC. Les
+deux seules « prises » sont `0x06854540` et `0x7CBF0066`, les identifiants déjà mesurés au lot C.
+
+### GATE 4 — LE CRITÈRE, contre les 28 explosions datées : NÉGATIF, sur toutes les voies
+
+| Passe | Couverture | Médiane | Dispersion | Verdict |
+|---|---|---|---|---|
+| corpus entier, toutes lectures | 26/28 | 435 ms | **7,680** | NÉGATIF |
+| corpus entier, lectures chaînées | 23/28 | 435 ms | **7,131** | NÉGATIF |
+| Neutral Bomb, 6 films | 15/17 | 2 719 ms | **3,700** | NÉGATIF |
+| One Bomb, 3 films | 11/11 | 334 ms | **1,054** | NÉGATIF |
+
+Plafond du chantier : 0,20. **Aucune passe n'en approche.** Les deux explosions hors sens sont
+celles de `1c01e34f`, le film à 7,1 % de chaînage. Contraste net avec ti=12 i14 mesuré la veille,
+où Neutral Bomb rendait 17/17 à **0,033** de dispersion.
+
+**Par identifiant — 627 candidats examinés, aucun ne passe.** Un seul dépasse 3/28 de
+couverture : `0x06854540`, à 23/28 mais **6,263** de dispersion. La distribution du reste est
+sans appel : 1 identifiant à 3/28, 3 à 2/28, 72 à 1/28, **550 à 0/28**. Et le détail par
+explosion montre pourquoi `0x06854540` couvre sans rien dater : il monte sur un **slot
+différent à chaque fois** (1964, 1620, 2580, 1696, 1981, 1801, 1633, 1948, 2078, 1586, 2129,
+2441, 2710, 1619, 1879, 2682, 1618, 1617, 1901, 2198, 2519) — avec 12 à 41 slots qui rampent en
+permanence, il y en a toujours un qui vient de finir. C'est de la densité, pas un signal.
+
+### Conclusion
+
+**La piste RTPC est fermée pour dater l'armement.** Le canal existe, il est proprement ancré, il
+porte bien des jauges de mode — mais l'Assaut n'en écrit aucune. Négatif témoiné, publiable.
+
+**Ce qui reste ouvert et que ce lot n'a PAS traité** : le canal nommé par la reconnaissance comme
+le plus court chemin, `ti=10 i24/i25 managed-object-looping-sound-component` (`R(32)`
+inconditionnel, aucune porte, lecteur `FUN_140fb89f4`, **non porté**, 288 à 485 records par film
+au lot C). Il est hors périmètre de ce lot, qui portait sur les rtpc. C'est la suite naturelle :
+son jeton est une référence de tag `lsnd`, et le script d'Assaut nomme cinq boucles
+(`AssaultLoopArmTeam`, `ArmEnemy`, `Disarm`, `Planted`, `Resetting`).
+
+**Anomalie non expliquée, à porter au registre** : sur `34bb3bc8`, l'identifiant `0x7CBF0066`
+sort **87 740 lectures sur i26** (et non i27), **toutes constantes au quantum 0**, c'est-à-dire
+au plancher exact de la plage (−10 000,00), sur 2 slots. Ce film est aussi celui qui ancre
+166 749 records là où les autres en ancrent 2 400 à 36 000. Une constante ne date rien, donc le
+verdict n'en dépend pas — mais la cause (aliasing d'ancrage ? bande comblée de 1 790 slots ?)
+n'est pas établie.
+
+**Mise à jour de `testdata/ecs_table.tsv`** : les quatre lignes ti=10 i26..i29 portent désormais
+la mesure (colonne `exploitable_fr`), à la place du repère du lot C « ids mesurés sur 2 films ».
+
+**Dette notée, pas traitée** : le squelette d'ancrage `matchWorldObjectRecord` +
+`worldObjectHeaderAt` est recopié dans **26 fichiers** du paquet, un par instrument de mesure.
+En centraliser trois serait une factorisation abandonnée ; les centraliser tous est un chantier
+à part.
+
+## [2026-09-01] `ti=12 i14` — L'ANNEAU DU MARQUEUR PRÉCÈDE CHAQUE EXPLOSION D'UN DÉLAI CONSTANT — Complété
+
+**La question du lot** : `managed-navpoint-radial-progress` (ti=12 i14) — le disque qui se
+remplit autour d'un marqueur d'objectif — est porté depuis le lot C et n'avait **jamais** été
+interrogé sur un film d'Assaut. Instrument écrit, critère écrit AVANT la mesure, témoins d'un
+autre mode obligatoires.
+
+**Instrument** (test seul, aucun chemin de production touché) :
+`navpoint_ti12_scan_test.go` (clone de `ScanFilmObjectives` pour ti=12 — bande de slots
+OBSERVÉE, deux voies delta et image-clé, témoin de chaînage par lecture),
+`navpoint_ti12_radial_test.go` (critère + séries par slot),
+`navpoint_ti12_verdict_test.go` (portes + oracle recopié + rapport). Garde `ASSAUT_CACHE`,
+sentinelle mémoire armée (pic observé **0,01 Gio**), `LockProcessDecode`, un seul décodage à la
+fois. 13 films, ~170 s par passe.
+
+### GATE 0 — présence : ti=12 est LÀ, sur 9 films d'Assaut sur 9
+
+72 491 records ancrés, **10 544 lectures i14**. Chaînage delta **72 à 91 %** — à comparer aux
+**3 %** de plancher de bruit mesurés le 2026-09-01 sur `worldObjectHeaderAt`, et aux 2,7–26 % que
+rend la voie delta de ti=11. Ce canal-ci est ancré proprement.
+
+**La voie IMAGE-CLÉ est morte, comme annoncé avant la mesure** : ti=12 n'est porté qu'à 2
+composants sur 24 (i0 `sub-type`, i14 `radial-progress`), donc un record d'état complet
+désynchronise dès i1. Composants bloquants dominants : `i9` (3 308 sur `df8fcbef`), puis i27,
+i12, i26, i1. **La voie delta est la seule exploitable, et elle suffit.**
+
+### GATE 1 — l'instrument voit, et le témoin le prouve
+
+4 témoins sur 4 rendent des lectures : Strongholds 22 287 et 17 672, KOTH 4 898, CTF 2 039. Et la
+forme est celle d'une jauge, à l'œil nu — KOTH `7f1bbf06`, slot 1557 :
+
+    26,3 s=127  27,0=133  27,8=140  28,5=146  29,3=152  30,0=159 ... 40,6=247
+
+Rampe LINÉAIRE de 127 (le zéro de la plage [-1, +1]) à 247, ~63 échantillons par seconde. C'est
+l'anneau de capture de la colline. **L'instrument n'est pas muet, son verdict sur l'Assaut compte.**
+
+### GATE 3 — le critère du chantier, et le résultat
+
+**Corpus entier : COUVERTURE 28/28, SENS 28/28, DISPERSION 2,174 → NÉGATIF sur le critère écrit.**
+Et la raison du négatif est elle-même le résultat : **il n'y a pas UN délai, il y en a DEUX**.
+
+Partition du corpus (antérieure à cette mesure : `ETAT_ASSAUT_2026-08-31.md` §1.b et §1.e — les
+trois films One Bomb sont les seuls multi-manches) :
+
+| moitié | explosions | min | médiane | max | dispersion | verdict |
+|---|---:|---:|---:|---:|---:|---|
+| Neutral Bomb (6 films) | **17/17** | 4 837 | **4 987** | 5 240 | **0,033** | CANDIDAT |
+| One Bomb (3 films) | **11/11** | 8 726 | **17 219** | 42 795 | **0,133** | CANDIDAT |
+
+**Les 17 explosions de Neutral Bomb sont TOUTES précédées, dans une fenêtre de 403 ms, par un
+anneau qui finit de se remplir.** La montée va de 127 (vide) à 254 (plein) dans 15 cas sur 17.
+
+**Les horloges NE SONT PAS décalées, contrairement à ce que le brief supposait.** La conversion
+de cet instrument est bit pour bit celle d'`objectiveevents.StatRecordsCtx` : `packetFrame = 0`
+= `PacketTypeDelta`, base = premier paquet delta du chunk, plus `start_ms` du manifeste. Le
+« 4 987 ms » est donc un délai RÉEL sur l'horloge de l'oracle, pas un artefact d'alignement.
+
+### Par slot — trois slots indépendants donnent le même 5 s
+
+    slot 1535   7/28   médiane 4 994 ms   dispersion 0,028
+    slot 1523   4/28   médiane 4 856 ms   dispersion 0,031
+    slot 1522   3/28   médiane 4 938 ms   dispersion 0,003
+
+Les navpoints vont par PAIRES (1411/1423, 1459/1471, 1469/1481 rendent des séries identiques) —
+un marqueur par camp portant le même anneau.
+
+### Ce que ça ne dit pas
+
+L'anneau **finit** 5 s avant l'explosion ; il ne dit pas où il **commence** — la montée retenue
+compte de 3 à 52 échantillons selon les films, et le seuil « non décroissant » la coupe au
+premier creux. Dater le DÉBUT de l'armement demande de caractériser la durée propre de l'anneau,
+pas seulement sa fin. Et rien n'établit encore que ce navpoint EST le site d'amorçage : i0
+`sub-type` (R(32), déjà porté) le dirait, il n'a pas été joint.
+
+**Prochaine étape** : (1) joindre i14 à i0 `sub-type` pour NOMMER le marqueur porteur ;
+(2) caractériser la durée propre de l'anneau (fenêtre de montée sans coupure au premier creux) ;
+(3) expliquer les deux constantes 5,0 s / 17,2 s — fusée différente par variante ?
+
+**Gates** : `gofmt` propre, `go vet` 0, `golangci-lint run ./internal/analysis/filmdec/...`
+**0 issues**. Trois passes de mesure (la 3e ajoute la partition du corpus, publiée À CÔTÉ du
+verdict primaire et jamais à sa place). Deux corrections postérieures à la passe publiée, toutes
+deux prouvablement neutres sur les chiffres : champ `ti12Read.Key` en écriture seule supprimé, et
+tri des montées départagé par slot (les délais se calculent sur `finMS`, qui est la clé de tri —
+seul le NOM du slot rapporté pouvait varier).
+## [2026-09-01] LA BANDE D'ANCRAGE DE `ti=13` NE COMBLE PLUS — le consommateur ne perd rien — Complété
+
+**Décision technique.** `filmdec.ScanFilmManagedProperties` (ti=13, propriétés d'objet géré)
+ancrait ses records delta sur `worldObjectSlotBand`, qui **comble** toute la plage [min, max] des
+slots vus aux images-clés. Il ancre désormais sur `observedSlotBand`, les slots **réellement
+observés**. Le comblement existe pour les objets **nombreux et éphémères** — un projectile vit
+moins d'une seconde, les images-clés sont espacées de 20 s, sans comblement on décode 57 vies au
+lieu de 580 (mesure du 2026-07-26). Un objet **géré par le mode** est l'exact contraire : peu
+nombreux, vivant toute la partie, présent à chaque image-clé. Le comblement n'y rattrape rien et
+n'élargit que la fenêtre d'ancrage.
+
+`objectiveSlotSet` (ti=11, déjà sur cette règle depuis la veille) et le helper de test
+`ti11SlotSetPour` sont supprimés au profit du helper unique `observedSlotBand(dir, n, ti)` —
+**une** copie de la règle, dans `slot_band_observed.go`, à côté de sa doctrine.
+
+**Reproduction préalable.** `TestObjectifTi11DeltaControleTi13` rejoué avant toute modification :
+ti=11 5,6 % sur 1 616 281 marches → 29,3 % sur 19 666 ; ti=13 6,3 % sur 278 670 → 43,7 % sur
+27 409. Par film ti=13 : 2ce58582 26 slots/56,1 % inchangé, 696a9d7c 26/39,5 % inchangé,
+7f1bbf06 52/47,6 % → 20/**77,0 %**, cde26226 914/2,6 % → 20/32,2 %. Chiffres identiques au dixième
+près. Plancher de `worldObjectHeaderAt` sur positions arbitraires : **3 %**.
+
+**Résultats mesurés — LE SCANNEUR** (`ScanFilmManagedProperties`, chemin de production,
+avant → après) :
+
+| film | mode | slots | records | marches | cassées | chaînées | lectures |
+|---|---|---|---|---|---|---|---|
+| 7f1bbf06 | KOTH streets | 52 → **20** | 11 209 → 3 956 | 5 011 → 3 067 | 6 198 → 889 | 2 385 → **2 363** | 7 334 → 4 259 |
+| 01e1f945 | KOTH catalyst | 52 → **20** | 10 575 → 6 845 | 6 867 → 5 226 | 3 708 → 1 619 | 4 193 → **4 155** | 10 239 → 7 387 |
+| 606d9844 | KOTH chasm | 52 → **20** | 2 485 → 1 335 | 1 574 → 969 | 911 → 366 | 602 → **589** | 3 059 → 1 973 |
+| 8076f97f | KOTH shogun | 52 → **20** | 10 793 → 4 573 | 5 503 → 2 898 | 5 290 → 1 675 | 1 728 → **1 674** | 8 957 → 5 267 |
+| 696a9d7c | Bastion vagabond | 26 → 26 | \= | \= | \= | \= | \= |
+| 7344d24f | Bastion vagabond | 26 → 26 | \= | \= | \= | \= | \= |
+| 2ce58582 | Bastion classé | 26 → 26 | \= | \= | \= | \= | \= |
+| cde26226 | CTF (hors production) | 914 → **20** | 419 642 → 6 155 | 224 091 → 3 355 | 195 551 → 2 800 | 5 843 → 1 079 | 354 468 → 4 435 |
+
+**Les records chaînés survivent tous** là où le mode a un objet géré à lire : −0,9 % sur les
+quatre KOTH, −78 % de marches cassées. Là où le comblement n'ajoutait aucun slot (Bastion), le
+balayage est identique **bit pour bit**.
+
+**Résultats mesurés — LE CONSOMMATEUR** (`replay.buildZoneStates` via `BuildFromPositions`,
+nouvel instrument `TestZoneBandeTi13Consommateur`, un film par processus) :
+
+| film | zones publiées | intervalles | avec propriétaire | frames actives | désignateur |
+|---|---|---|---|---|---|
+| 7f1bbf06 | 3 = 3 | 44 = 44 | 22 = 22 | 2 758 = 2 758 | slot 1551, 2 bascules — identique |
+| 01e1f945 | 4 = 4 | 100 = 100 | 50 = 50 | 4 975 = 4 975 | slot 1471, 4 bascules — identique |
+| 606d9844 | 3 = 3 | 14 = 14 | 7 = 7 | 1 963 = 1 963 | slot 1498, 2 bascules — identique |
+| 8076f97f | 3 = 3 | 36 = 36 | 18 = 18 | 2 998 = 2 998 | slot 1540, 2 bascules — identique |
+| 696a9d7c | 3 = 3 | 37 = 37 | 37 = 37 | 0 = 0 (1 794 pts de jauge) | sans objet (Bastion) |
+| 7344d24f | 3 = 3 | 39 = 39 | 39 = 39 | 0 = 0 (1 701 pts de jauge) | sans objet (Bastion) |
+
+**AUCUN état de zone ne disparaît, aucun ne change** : mêmes zones, mêmes bornes de frames, mêmes
+camps, même découpage par changement de propriétaire, même jauge en direct. Le seul champ qui
+bouge est un **dénominateur** : `coverage.zones.slots` (slots qui émettent) 37 → 15, 28 → 13,
+21 → 10, 25 → 13 — c'est du bruit qui s'en va, pas de la donnée.
+
+**Le CTF est hors production, et c'est le code qui le dit.** `replaybuild.heldZoneRoles` ne
+retient que `strongholds_zone` et `hill` ; un CTF n'a aucun catalogue de zone, donc
+`decodeFilmZoneReads` ne balaye pas `ti=13`. Son chiffre est publié quand même parce qu'il est le
+plus spectaculaire — 354 468 lectures → 4 435 — et parce qu'il est le seul où le compte de
+records chaînés **baisse vraiment** (5 843 → 1 079). Il ne s'agit pas d'une perte : à 2,6 % sur
+224 091 marches, la bande comblée chaînait **au plancher de 3 %**. 0,026 × 224 091 ≈ 5 826, soit
+les 5 843 observés : ces records étaient tous explicables par le hasard. À 32,2 %, la bande
+observée est dix fois au-dessus.
+
+**Corrections de documentation dans le même commit** (le code fait foi) : le repère de
+« 87 à 99 % de chaînage sur ti=13 » qui servait de comparaison à trois fichiers n'existe pas —
+`ti=13` plafonne à 77 % sur ses propres modes. `ManagedPropertyRead.Chained`,
+`ManagedPropertyScan.Chained`, l'en-tête d'`objective_scan.go` et le champ `desig` de
+`replay/zone_states.go` disaient tous que la bande comblait : ils sont remis à jour.
+
+**Ce qui n'est pas traité.** Le chaînage plafonne à 77 % (KOTH) et 39-56 % (Bastion) : la bande
+n'était pas la seule source de faux ancrages, et le filtre `Chained` reste nécessaire côté
+consommateur. Un cas dégénéré théorique reste ouvert : un film dont *tous* les slots observés
+seraient aussi vus porter un autre archétype rendrait une bande vide là où la bande comblée
+rendait des slots interpolés — `ScanFilmManagedProperties` y répond par une erreur non fatale
+(rejeu sans état de zone), ce qui vaut mieux qu'un calque bâti sur des slots inventés. Aucun film
+du corpus n'est dans ce cas.
+
+**Prochaine étape.** Le chantier ti=11 reste bloqué en amont des composants (chaînage 13,7-64,9 % sur
+la bande observée) ; ce lot ne le débloque pas, il retire une des deux causes possibles. Rien à
+re-cuire côté artefacts : les états publiés sont inchangés sur tout le corpus assemblable.
+
+## [2026-08-31] LA JAUGE EST SUR `ti=11`, PAS `ti=13` — les deux archétypes sont en miroir — Complété
+
+**Le film porte son propre dictionnaire de composants, en clair**, et personne ne le lui avait
+demandé. Le registre ECS (`chunk_00`) nomme chaque archétype et chacun de ses composants.
+Interrogé avec le vocabulaire de l'interaction, il rend l'archétype 11 :
+
+    ti=11  i0   managed-objective-timers-component
+           i4   managed-objective-interaction-filter-component
+           i12  managed-objective-progress-component            <- LA JAUGE
+           i13  managed-objective-required-progress-component   <- LE SEUIL
+
+(et, au passage, `ti=12` porte `managed-navpoint-top/radial/bottom-progress` — les anneaux du
+HUD.)
+
+**LE RECENSEMENT RENVERSE TOUT.** Comptage des vies par archétype — en-têtes d'image-clé
+seulement, aucun corps de record décodé, donc gratuit :
+
+| film | mode | vies `ti=11` | slots `ti=13` |
+|---|---|---:|---:|
+| 2ce58582 | Ranked:Strongholds | **0** | 26 |
+| 696a9d7c | Strongholds:Arena | **0** | 26 |
+| 7f1bbf06 | KOTH:Arena | **1** | 52 |
+| **9f57c612** | **Assaut** | **46** | 8 |
+| c75f33b8 | Assaut | **31** | 8 |
+| df8fcbef | Assaut | **27** | 8 |
+| 34bb3bc8 | Assaut | **21** | 8 |
+| 1c01e34f | Assaut | **9** | 8 |
+
+**MIROIR PARFAIT.** Strongholds et KOTH : `ti=13` riche (des milliers de valeurs de jauge au
+tag 3), `ti=11` vide. Assaut : `ti=13` quasi muet (0 à 2 valeurs), **`ti=11` riche**.
+
+**Voilà pourquoi les trois fouilles précédentes ne trouvaient rien** : elles cherchaient dans le
+canal des ZONES alors que l'Assaut passe par celui des OBJECTIFS GÉRÉS. Les négatifs mesurés sur
+le statborg, sur le pied de film et sur `ti=13` restent vrais — ils portaient sur les mauvais
+canaux, et c'est le dictionnaire du film qui l'a dit.
+
+**CE QUI MANQUE N'EST PLUS UNE PISTE, C'EST UN DÉCODEUR.** `ti=11` est couvert **0 sur 34** par
+le dispatch : `components_batch3.go` n'en porte que i2 et i9 (textes formatés), gardés SANS
+appelant depuis le 2026-08-01 avec pour condition de retrait « branchée ou supprimée quand ti=11
+sera décodé ». Le lot R4 du 2026-08-17 avait déjà visé cet archétype et buté sur la marche des
+records d'image-clé — d'où `keyframe_record_walk.go`, qui existe et lit l'en-tête sans le filtre
+du balayeur.
+
+**Le chantier est désormais SCOPÉ** : porter les désérialiseurs de `ti=11` de i0 jusqu'à i12/i13,
+soit treize composants à résoudre sous Ghidra. La jauge d'armement de la bombe tombe avec — et
+avec elle l'instant de début, donc le compte à rebours du rejeu.
+
+**Gates** : go vet 0, gofmt propre.
+
+## [2026-08-31] La JAUGE d'armement n'est pas dans le film : elle est CALCULÉE — et c'est l'instant de début qui manque — Complété
+
+**Recentrage après une dérive.** Le fil est : trouver la jauge du compte à rebours avant que la
+bombe explose, en Assaut.
+
+**LA JAUGE, C'EST LE TAG 3.** `zone_states_gauge.go` le dit sans ambiguïté : la jauge de capture
+est la série du tag 3 de `ti=13` (`filmdec.ManagedPropertyTagQuant`, mode A, R(24) quantifié sur
+[-100, +100]). Mes dumps précédents groupaient par (slot, tag) et n'en voyaient AUCUN — ni en
+Assaut, **ni chez le témoin Strongholds**. Un témoin muet accuse la sonde, pas la donnée : la
+sonde était fautive.
+
+**HISTOGRAMME PAR TAG, toutes lectures confondues** — et là le témoin parle :
+
+    2ce58582  Ranked:Strongholds   tag3 : 4 663 lectures, 4 397 avec valeur, TOUTES scalaires
+    696a9d7c  Strongholds:Arena    tag3 : 3 828 / 3 584
+    7f1bbf06  KOTH:Arena           tag3 : 2 218 / 1 999
+    9f57c612  Assaut               tag3 :     5 /     0
+    c75f33b8  Assaut               tag3 :     5 /     1
+    df8fcbef  Assaut               tag3 :    10 /     1
+    34bb3bc8  Assaut               tag3 :    78 /     2
+
+**Le canal est lu CORRECTEMENT — c'est l'Assaut qui n'y diffuse rien.** Détail des rares
+lectures : quasi toutes sans valeur et en mode PAR JOUEUR (`filmIndex >= 0`), alors que la jauge
+est scalaire (`filmIndex = -1`) ; les deux qui portent une valeur donnent 10 794 102 et 7 119 872,
+absurdes pour une quantité bornée à [-100, +100] — des ancrages fortuits.
+
+**ET LE SCRIPT DIT POURQUOI.** `primitive_carriable_arming_base` porte `armProgressFunction` et
+`disarmProgressFunction` — des FONCTIONS, pas des champs répliqués. Le client CALCULE la
+progression à partir de `armDisarmTime` et de l'instant de début ; le réseau n'a aucune raison de
+transporter une valeur qui se déduit. **Exactement le même schéma que la jauge de retour du
+drapeau, que le rejeu 2D SIMULE déjà côté client (loi harmonique, `flagReturnZone.ts`).**
+
+**CONSÉQUENCE, ET ELLE RECADRE LE CHANTIER** : il n'y a pas de jauge à extraire. Pour la dessiner,
+il faut exactement deux choses — (1) `armDisarmTime`, un réglage de variante de mode, et
+(2) **l'INSTANT DE DÉBUT D'ARMEMENT**. C'est ce second point, et lui seul, qui manque depuis le
+début du chantier.
+
+**BILAN DES CANAUX FOUILLÉS POUR CET INSTANT** — les trois sont désormais témoinés :
+
+| canal | Assaut | témoin |
+|---|---|---|
+| composants du statborg (112 canaux) | aucun candidat | critère validé sur les compteurs connus |
+| pied de film, tous indices de type | `th=10` quasi absent (6 blocs / 9 films) | zones et collines en vivent |
+| `ti=13` tag 3 (la jauge) | 5 à 78 lectures, 0 à 2 valeurs | Strongholds 4 397 valeurs |
+
+**Gates** : go vet 0, gofmt propre.
+
+## [2026-08-31] Le SCÉNARIO des cartes est ouvert — et il ne porte AUCUN véhicule : ils viennent du MODE — Complété
+
+**Sur « oui continue ».** Le chantier « lire les placements du scénario » est ouvert, et il a
+répondu — pas comme prévu.
+
+**LE SCÉNARIO EST LE TAG `levl`**, pas `scnr` : le module de carte n'a pas de groupe `scnr`, et
+c'est `levl` que la production lit déjà (les zones nommées en sortent). Le dépôt `ds/` porte le
+scénario complet en **4,6 Mo** — aucun risque mémoire, contrairement aux modules `pc/` (586 Mo).
+
+**LA CARTE DES BLOCS, dressée pour la première fois.** La navigation de struct-table existante
+donne, pour chaque bloc enfant du root : offset de champ, nombre d'éléments, taille de record.
+40 blocs non vides sur Fragmentation, 36 sur Aquarius.
+
+**LA GRAMMAIRE D'UN PLACEMENT, relevée sur pièces** — et c'est elle qui rend le scénario
+auto-descriptif :
+
+    +0x00  8 o   identifiant unique du placement
+    +0x0c  3f    POSITION monde
+    +0x18  3f    ORIENTATION
+    +0x60  u32   GlobalID du tag référencé
+    +0x6c  4 o   fourCC du GROUPE de tag, ÉCRIT À L'ENVERS (« snel » = `lens`)
+
+Le fourCC inversé **dit** ce que chaque bloc pose. Plus besoin de deviner l'ordre historique des
+blocs de scénario Halo : on lit.
+
+**ET LE RÉSULTAT EST NET** :
+
+    0x0060  scen (décor)   0x00d8  mach   0x0150  bloc   0x01b4  lens
+    0x01c8  licn           0x01dc  lsnd   0x01f0  effe   0x0628  ligr   0x0650  bitm
+
+**AUCUN bloc ne référence `vehi` ni `bipd`.** Le scénario porte le décor, l'éclairage, le son, les
+effets, les décalques — jamais les objets de jeu.
+
+**TROIS PORTES OUVERTES, ET LA RÉPONSE PAR ÉLIMINATION.** (1) Le `.mvar` de Fragmentation :
+501 objets, 28 `type_id`, groupes `scen`/`bloc`/`mach`/`weap` — et exactement DEUX `unsc_turret`.
+(2) Le scénario `levl` : rien. (3) Les compositions : narratif seul.
+
+**Les véhicules des cartes officielles ne sont posés NULLE PART dans les données de carte : ils
+sont SPAWNÉS PAR LE MODE.** Ce qui recoupe exactement la RE du binaire faite le matin — la
+structure de preset de spawner porte `vehicles` (une LISTE), `terrainFilters`,
+`airVehiclePrerequisiteCount`, `forceRandomVehicle`, `seedSequenceOverrides`. **Même mécanisme
+que les socles d'arme : la carte pose un emplacement générique, le mode décide ce qui y
+apparaît.**
+
+Ce qui explique tout le reste : une carte FORGE nomme ses véhicules (`Starboard`) parce que son
+AUTEUR les a choisis un par un ; une carte DEV n'en nomme aucun ; les tourelles, elles, SONT
+placées à la carte — c'est du mobilier, pas du butin de mode.
+
+**Conséquence** : « quels véhicules sur quelle carte » n'a pas de réponse dans les fichiers de
+CARTE. La question se pose désormais à la VARIANTE DE MODE, et c'est un autre corpus. De même
+pour les sites d'amorçage de l'Assaut : `defender_bombsite` / `attacker_bombsite` ne sont ni au
+`.mvar`, ni au scénario.
+
+**Gates** : go vet 0, gofmt propre, `mapvar` vert. La suite `himap` complète n'est pas rejouée —
+ses tests `gamefiles` sont connus pour saturer le gate local ; les nouveaux sont tous sous garde
+d'environnement (`HALO_DEPLOY`), donc inertes en CI. Sondes jetables `cmd/tmp_ctflua` et
+`cmd/tmp_scnr` supprimées après relevé.
+
+## [2026-08-31] Assaut — le script du mode NOMME les sites d'amorçage ; la mèche, elle, est un réglage de variante — Complété
+
+**Le pool Lua des tags `hsc*` est en clair.** Balayé sur les 357 scripts de
+`common-rtx-new.module`, il rend deux tags qui comptent.
+
+**`25af9c45` — `primitive_carriable_arming_base`, la machine à états de l'amorçage** :
+`GotoArming` / `GotoArmed` / `GotoDisarming`, `UpdateArming` / `UpdateArmed` / `UpdateDisarming`,
+`armDisarmTime`, `armDisarmProgress`, `armProgressFunction`, `disarmProgressFunction`,
+`Device_GetInteractionHoldTime`, `deactivationBaseInteractTimeSec`,
+`deactivationConvertsPlantedObject`. La bombe est un OBJET PORTABLE posé sur une BASE
+D'AMORÇAGE, et l'amorçage est une **interaction tenue**, pas un instant.
+
+**`a35c6ce9` — le script du MODE Assaut**, et il porte le nom qui manquait depuis la phase A3 :
+
+    armzoneArgs   defender_bombsite   attacker_bombsite   bombTag   goalPlate
+    bombSpawnArgs   bombRespawnPointArgs   BombObjectTag   BombArgs
+    AssaultLoopArmTeam  AssaultLoopArmEnemy  AssaultLoopDisarm  AssaultLoopPlanted
+    AssaultLoopResetting   (+ les cinq variantes BTB)
+
+**`defender_bombsite` / `attacker_bombsite` sont les SITES D'AMORÇAGE.** C'est exactement ce que
+la phase A3 cherchait par ancrage spatial `ti=13` et n'a jamais trouvé — il lui manquait le NOM,
+pas la méthode. Et les cinq boucles `AssaultLoop*` confirment nommément la lecture de la banque
+sonore : `AssaultLoopPlanted` est le compte à rebours que l'utilisateur entend.
+
+**DEUX LIMITES, mesurées dans la foulée, et elles convergent :**
+
+1. **La mèche n'est pas une constante du script.** `armDisarmTime` est un CHAMP LU, pas un
+   littéral : le pool ne porte aucun nombre à cet endroit. Elle vient de la variante de MODE —
+   exactement comme `flagResetSeconds` était écrasé par `FlagInitArgs.returnTimer` en CTF. Donc
+   `armement = explosion − mèche` n'est PAS calculable depuis le seul script, et la piste posée
+   au commit précédent tombe telle quelle.
+2. **Les sites ne sont pas dans le fichier de carte.** Balayage des noms lisibles
+   (`Variant.Names`) des **224 `.mvar`** du corpus : ni `defender_bombsite`, ni
+   `attacker_bombsite`, ni aucun hachage de libellé correspondant au catalogue d'objectifs.
+   Seulement des chaînes d'auteurs de cartes Forge (« Assault Setup », « One bomb »,
+   « ball bomb spn »). **Même conclusion que pour les véhicules : sur les cartes officielles, ces
+   objets vivent dans le scénario du `.module`.**
+
+**LE CHEMIN CRITIQUE EST DÉSORMAIS UN SEUL, ET IL SERT LES DEUX CHANTIERS** : lire les placements
+d'objets du scénario (`scnr`) des `.module`. Il donne les sites d'amorçage de l'Assaut ET les
+véhicules des cartes officielles — les deux questions ouvertes de la journée butent sur la même
+porte. `internal/himap` lit déjà index, BSP, géométrie et callouts de ces modules ; les
+placements de scénario ne sont pas encore décodés.
+
+**Gates** : go test `./internal/analysis/...` vert, gofmt propre. Sonde `cmd/tmp_ctflua`
+supprimée après relevé (règle 0 code mort) ; elle est reconstructible depuis
+`Halo Infinite - Sons v75/_outils/ctflua/`.
+
+## [2026-08-31] `ti=13` — le « chaînage » ne mesure pas la justesse : la phase A3 lisait un ARTEFACT DE DENSITÉ — Complété
+
+**Sur « ok go » pour réparer l'ancrage de `ti=13` en Assaut. Il n'y avait rien à réparer, et
+c'est le résultat.**
+
+**LA CORRECTION, et elle vaut au-delà de l'Assaut.** La phase A3 concluait à une « contamination
+d'ancrage » sur la foi d'un chaînage de 1,9 à 16,4 % contre 87-99 % en KOTH. `Chained` est FAUX
+PAR CONSTRUCTION pour le dernier record d'un paquet — rien ne peut le suivre — et son propre
+commentaire l'estime à ~3 % de perte, *sur un canal dense*. L'Assaut a la bande la plus maigre du
+corpus : 8 slots.
+
+Mesure densité (records `ti=13` par paquet delta) contre chaînage, **tous modes confondus** :
+
+    c75f33b8  Assaut              0,010 rec/paquet   1,9 %
+    9f57c612  Assaut              0,011                2,4 %
+    35b75a31  Assaut              0,020                3,0 %
+    1c01e34f  Assaut              0,037                4,7 %
+    0a247154  Ranked:KOTH         0,140               29,8 %
+    2ce58582  Ranked:Strongholds  0,258               56,1 %
+    21ece4d8  KOTH:Arena          0,408               46,5 %
+    7f1bbf06  KOTH:Arena          0,567               47,6 %
+    696a9d7c  Strongholds:Arena   1,070               44,1 %
+
+**Monotone, et l'Assaut est SUR la courbe, pas à côté.** Le chaînage mesure combien de records se
+suivent dans un paquet, pas si la lecture est juste. Le vrai témoin de justesse est le TAUX DE
+MARCHE : 23-49 % en Assaut contre 23-81 % chez les témoins — indiscernable. **La lecture de
+`ti=13` en Assaut n'a jamais été cassée.**
+
+Cas à part relevé au passage : `cde26226` (CTF) a une densité de 7,3 pour 2,6 % de chaînage — sa
+bande fait **914 slots** contre 8 à 52 ailleurs. Là, c'est une vraie sur-inclusion de bande, et
+c'est une piste distincte, pour le CTF.
+
+**MAIS LE CANAL EST VIDE DE JAUGE EN ASSAUT**, et c'est la fin de la piste. Contenu dumpé pour la
+première fois : 8 slots, 56 couples (slot, tag) porteurs de valeur sur `9f57c612`, la plupart avec
+**1 à 6 lectures**, des valeurs à l'échelle du milliard, presque exclusivement le canal PAR JOUEUR
+(i2..i33). Ni rampe, ni plage bornée, ni cadence — rien qui ressemble à une jauge.
+
+**BILAN DES TROIS MAISONS : le film ne réplique PAS l'armement de la bombe.** Composants du
+statborg (112 canaux) : négatif. Pied de film, tous indices de type : négatif, et `th=10` y est
+quasi absent en Assaut. `ti=13` : lisible — contrairement à ce qui était écrit — mais sans jauge.
+
+**Prochaine étape, hors film** : la MÈCHE comme constante moteur, dans le pool Lua de la
+ParcelLibrary (la bibliothèque qui sert le drapeau ET la bombe), d'où `armement = explosion −
+mèche`. C'est la technique qui a donné `innerAreaMonitorRadius`, `flagResetSeconds` et
+`flagCarrierMovespeedScalar` au chantier CTF.
+
+**Gates** : go test `./internal/analysis/...` vert, gofmt propre, golangci-lint 0 issue.
+
+## [2026-08-31] Assaut — LES TROIS MAISONS de la donnée d'objectif, et pourquoi l'armement n'est dans aucune des deux lisibles — Complété
+
+**Retour utilisateur** : « bizarre parce que statborg a les prises de colline en KOTH, les jauges
+et minuteurs pour CTF, les zones en capture et tout pour Strongholds. Ce serait étrange d'avoir ça
+à un autre endroit. » L'intuition désigne le bon **voisinage** — et elle m'a fait dresser la carte,
+qui manquait :
+
+    1. COMPOSANTS DU STATBORG   les COMPTEURS par joueur — flag_captures, zone_captures,
+                                vip_selected, bomb_detonations.
+    2. PIED DE FILM, th=10      les INTERACTIONS d'objectif — prises de zone, prises de colline,
+                                possession du crâne (`extractFromTh10`).
+    3. ARCHÉTYPE ti=13          les PROPRIÉTÉS D'OBJET GÉRÉ — la JAUGE de capture, le
+                                propriétaire d'une zone, la colline active.
+
+**Les jauges et minuteurs qu'il cite vivent dans la TROISIÈME**, pas dans les composants. C'est
+ce que je n'avais pas vu : je cherchais dans la première.
+
+**MAISON 2, JAMAIS OUVERTE POUR L'ASSAUT.** `classifyObjectiveMode` rendait `""` jusqu'à ce jour,
+et `ObjectiveTypeBomb` tombe encore dans le `default` du dispatch : le pied de ces neuf films
+n'avait jamais été lu. Sonde écrite sans le filtre `th == 10` de `decodeTh10Block` (qui refuse
+tout autre indice), donc en relevant l'octet 47 tel qu'il est. **Résultat : `th=10` est QUASI
+ABSENT en Assaut — 6 blocs sur 9 films**, contre le canal entier des zones et collines. Les
+indices dominants sont `th=20` (1 036), `th=50` (1 232), `th=100` (188), `th=150` (25). Aucun ne
+tient le critère (couverture 28/28 + dispersion ≤ 20 %) : les deux gros couvrent tout avec 334 %
+et 768 % de dispersion — ils précèdent trivialement n'importe quoi.
+
+**MAISON 3 : PAS UN NÉGATIF, UN CANAL ILLISIBLE — et c'est le résultat qui compte.** Première
+passe en ne gardant que les lectures CHAÎNÉES : **zéro progression**, parce que le chaînage vaut
+**1,9 à 16,4 %** sur ces neuf films contre **87 à 99 % sur un KOTH de référence**. C'est
+exactement la contamination d'ancrage établie en phase A3. Seconde passe filtre relâché, pour voir
+s'il y a du signal sous le bruit : 7 couples (slot, tag) portent une progression, chacun couvrant
+1 explosion sur 28. Rien de cohérent.
+
+**Les 8 slots `ti=13` sont bien là, à chaque film.** C'est leur ANCRAGE qui est cassé. Le verdict
+se lit donc « ce canal n'est pas lisible en Assaut », jamais « l'armement n'y est pas » — et
+comme c'est la maison où vivent les jauges, **c'est là qu'il est le plus probablement**.
+
+**BILAN DES TROIS MAISONS** : 1 balayée proprement (112 canaux) → négatif net ; 2 balayée →
+négatif, et l'Assaut n'y publie presque rien ; 3 → **bloquée par un défaut de décodage qui a déjà
+son chantier**. Réparer l'ancrage de `ti=13` sur les cartes d'Assaut est le préalable, et c'est
+désormais le chemin critique de l'armement.
+
+Deux films (`1c01e34f`, `34bb3bc8`) journalisent une **empreinte de registre ECS INCONNUE** —
+build de jeu différent du corpus de calibration. À garder à l'esprit avant toute conclusion fine
+sur eux.
+
+**Gates** : go test `./internal/analysis/...` vert, go vet 0, golangci-lint 0 issue, gofmt propre.
+
+## [2026-08-31] Assaut — le son de l'explosion est câblé ; l'armement n'est PAS un compteur du statborg — Complété
+
+**LE SON EST LIVRÉ.** L'utilisateur a désigné `538469998` à l'oreille sur la planche d'écoute, et
+la STRUCTURE de la banque le confirme indépendamment : l'événement `984f65e5`
+(`play_004_mod_mp_assault_bomb_detonated`) déclare « 1 couche, 1 son » et pointe ce média exact.
+Deux chemins, une seule réponse — donc rien à reconstruire, contrairement aux gestes multi-couches
+de la banque. Rendu : décodage vgmstream r2117, mono → stéréo sans loi de panoramique (`pan` et
+non `-ac 2`, qui applique un −3 dB silencieux), crête à −1,0 dBTP en deux passes. 4,41 s, sous le
+plafond des événements (6 s). `bomb_detonations: { any: 'objective_bomb_detonated' }` — `any` et
+pas une paire, parce que la banque ne porte qu'UN son de détonation, sans jumeau `_team`/`_enemy`.
+
+**LA STRUCTURE DE LA BANQUE, LUE UNE FOIS** (chargement de module à 8,6 Go, un seul processus au
+premier plan) : 42 événements, ramenés à 24 gestes distincts — le jeu déclare chacun deux fois,
+une par variante de mode. Les 9 nommés par la RE du 26/08 sont tous confirmés média par média.
+Découverte au passage : **deux gestes COMPOSÉS** (`0c1f744d`, `db750736`), les seuls de la banque
+à empiler une boucle bout-à-bout et une queue tirée parmi six — la forme d'un compte à rebours.
+Mes cinq « candidats détonation » du premier tri étaient en fait leurs queues.
+
+**L'ARMEMENT : NÉGATIF MESURÉ sur la branche « compteur ».** L'utilisateur : « pour l'armement à
+mon avis ça doit être dans le statborg ». L'hypothèse méritait d'être testée, parce que le relevé
+A0.3 (« l'ARMEMENT n'a aucun incrément propre ») n'avait regardé que DEUX canaux par composant.
+
+**J'ai d'abord ouvert les deux autres.** La grammaire du composant porte quatre valeurs : A et B
+inconditionnelles, puis deux drapeaux commandant chacun une valeur. `decodeStatComponent` lisait
+ces deux dernières pour avancer le curseur et les JETAIT — à 28 composants, **56 emplacements que
+rien dans le dépôt n'avait jamais regardés**. `StatValue` porte désormais `C`, `D`, `HasC`, `HasD`.
+Le vecteur dense du corpus figé en montre deux : comp 3 D = 300, comp 5 C = 114. Ce ne sont PAS
+des relectures — les deux se lisent à la même position relative et rendent des valeurs
+différentes ; qu'elles égalent A et B sur ce vecteur est une coïncidence (un compteur et son
+maximum de session coïncident tant que le maximum vient d'être atteint).
+
+**Puis balayé les 112 canaux** (28 composants × 4) sur les 9 films, contre les 28 explosions du
+relevé. Critère écrit avant la mesure : une progression avant CHAQUE explosion, avec un délai
+resserré (dispersion ≤ 20 % de la médiane, le critère des cycles de socle). **Aucun candidat.**
+Les meilleures couvertures sont les compteurs ordinaires (frags, assistances, score personnel) qui
+précèdent trivialement n'importe quoi — dispersion 116 % au mieux, six fois le seuil.
+
+**La branche « minuterie » reste INDÉCISE, et c'est le témoin qui le dit.** Une seconde sonde
+cherchait une valeur décroissant linéairement vers l'explosion : elle rend des corrélations
+élevées partout (|r| moyen 0,72 à 0,95). Sans témoin on y aurait lu un indice. Le témoin rejoue
+la même mesure sur des instants SANS explosion (−180 s) : **51,4 % de séries fortes contre 48,9 %,
+rapport 1,05**. La sonde ne distingue rien — un compteur monotone corrèle avec le temps écoulé,
+point. Le négatif se lit donc « la mesure ne sait pas répondre », jamais « ce n'est pas là ».
+
+**Ce qui reste ouvert, nommément** : l'armement n'est pas un compteur PAR JOUEUR qui progresse
+dans les composants 0-27. Restent à instruire : les slots d'ÉQUIPE en progression, les composants
+au-delà de 27 (l'archétype en compte 58), et la voie qui ne passe pas par le statborg — la MÈCHE
+comme constante moteur, à lire dans le pool Lua de la ParcelLibrary (même technique que les
+constantes du drapeau CTF), d'où `armement = explosion − mèche`.
+
+**Gates** : go test des paquets touchés vert, golangci-lint 0 issue, gofmt propre, vitest 126
+fichiers / 1 947 tests, typecheck cache purgé, garde-rail d'assets sonores vert.
+
+## [2026-08-31] Assaut — la déflagration sur la carte, et où se désigne son son — Complété
+
+**Retour utilisateur** : « pour l'explosion il y a un effet UI ? Faudrait un truc bien voyant
+quand même ». Le filigrane de fiche livré le matin est à 22 % d'opacité, DERRIÈRE le contenu, à
+l'autre bout de l'écran par rapport à la carte — et en Assaut l'explosion n'est pas un détail de
+score : c'est le SEUL événement qui décide de la manche, une à quatre fois par match.
+
+**L'EXPLOSION SE PEINT DÉSORMAIS SUR LA CARTE**, à l'endroit et à l'instant où elle a eu lieu.
+Trois couches, parce qu'un anneau seul se lit comme une capture de drapeau — ce qu'une explosion
+n'est pas :
+
+    ÉCLAT    disque plein, large d'emblée, éteint au premier QUART de la vie (au-delà il ne
+             resterait qu'un voile qui empâterait l'onde)
+    ONDE     anneau épais qui s'ouvre à 44 px — presque DEUX FOIS celle d'une capture (24 px)
+    ÉCLATS   huit traits radiaux ; ils meurent au CARRÉ du temps, pour que la fin de l'effet
+             soit un anneau seul et non un soleil qui s'efface
+
+Tenue **12 images (1,2 s)**, deux fois celle d'une capture — une capture arrive plusieurs fois
+par manche, une explosion une à quatre fois par MATCH : un événement rare a le droit de tenir
+l'écran, et à cette densité le risque de recouvrement est nul. Encre = le CAMP de l'auteur
+(sur la carte, le glyphe dit QUOI et la couleur dit QUI). Sous « mouvement réduit », une
+empreinte FIXE et pleine qui ne fait que pâlir : ce qui part est le mouvement, pas
+l'information.
+
+**LE CÂBLAGE A ÉTÉ PAYÉ, comme le cliquet l'exige.** `ReplayCanvas.tsx` était PILE à son
+plafond (678) et sa doctrine est explicite : « toute addition s'y fait par extraction, le
+plafond suit le fichier vers le bas ». Dix-septième extraction — la FIN DE VOL des grenades part
+dans `useReplayGrenadeRest.ts` (l'appel de tracé et son objet d'options, pas une ligne de
+logique) ; le canvas passe à 665 et le plafond avec lui. `dpr` reste un argument de `paint` :
+il est calculé dans la boucle, le figer servirait une épaisseur périmée dès le premier export.
+
+**Aucune garde de mode sur la déflagration, et c'est délibéré : la garde EST la donnée.** Seul
+un match d'Assaut publie `bomb_detonations` — un film d'un autre mode rend une liste vide sans
+qu'on ait à connaître sa variante. Elle ne vit PAS dans `useReplayFlagCarries` (qui porte déjà
+l'onde de capture et la même jointure) parce que ce hook est gardé par `carries.length === 0` :
+un match d'Assaut ne publie aucun drapeau, l'explosion n'y serait jamais peinte.
+
+**LE SON : la ligne est écrite, il manque le fichier.** Un son d'objectif se désigne dans
+`OBJECTIVE_SOUND_STEMS` (`objectiveSound.ts`) — clé = nom canonique de la stat, valeur = stem
+d'un `.wav` de `static/sounds/halo_infinite/`. Ici : `bomb_detonations: { any:
+'objective_bomb_detonated' }` (`any` et non `ally`/`enemy` : la banque d'Assaut ne déclare qu'UN
+son de détonation, sans variante de camp). La source est identifiée au fichier près — banque
+`sb_004_mod_mp_assault` (`2b01f208`), événement `play_004_mod_mp_assault_bomb_detonated`
+(`984f65e5`), **1 wem, une seule couche** : c'est le cas simple, un décodage, pas une
+reconstitution. Mais les 322 sons rendus couvrent 18 banques et celle d'Assaut n'en fait pas
+partie ; le rendu demande `vgmstream-cli` (Wwise Vorbis, `fmt = 0xFFFF` — ffmpeg ne le décode
+pas), qui n'est plus sur le poste. La ligne ne peut PAS être posée sans le fichier : le
+garde-rail d'assets exige que chaque stem ait son `.wav`.
+
+**Gates** : vitest 126 fichiers / 1 947 tests, typecheck cache purgé, eslint 0 erreur.
+
+## [2026-08-31] Bombe RAM (4e sinistre) — le trou était l'OPÉRATEUR, pas le processus — Complété
+
+**J'ai saturé la machine de travail de l'utilisateur** en cuisant des artefacts de rejeu :
+une boucle de shell autour de `cmd/replay-build` sur 8 matchs, puis une SECONDE boucle en
+arrière-plan pendant que la première tournait encore. Plusieurs décodages de film en vol, aucun
+plafond mémoire. Signature reconnue trop tard : `bash: fork: Resource temporarily unavailable`,
+`cygheap read copy failed`. Quatrième sinistre du même genre (2026-08-20, 08-24, 08-26, 08-31).
+
+**LE DIAGNOSTIC, ET IL EST GÊNANT** : le dépôt avait déjà les trois protections
+(`internal/filmproc` — un processus par film, plafond dur, priorité basse) ET un ratchet
+(`archlint.TestNoUnboundedFilmLoop`). Elles gardent toutes l'INTÉRIEUR du processus.
+`cmd/replay-build` était déclaré à l'allowlist avec « CLI unitaire : un film par invocation, le
+processus meurt ensuite. Aucune boucle » — c'était **vrai**, et **sans aucun effet** contre celui
+qui lance les invocations. Le binaire était par ailleurs le SEUL point d'entrée de décodage du
+dépôt à n'armer aucune sentinelle : sa justification lui avait valu une dispense de fait.
+
+**La leçon, écrite pour la prochaine lecture : une garantie qui s'arrête à la frontière du
+processus ne dit rien du nombre de processus.**
+
+**POSÉ EN RÉPARATION** (toutes vérifiées sur pièces) :
+
+    internal/filmproc/solo.go        VERROU « un seul décodage à la fois sur la machine ».
+                                     Battement de cœur toutes les 2 s ; un verrou dont le
+                                     battement dépasse 6 s est MORT et se reprend tout seul —
+                                     le cas nominal ici est la mort violente (la sentinelle tue,
+                                     l'opérateur aussi), un verrou qui coincerait transformerait
+                                     la protection en panne. 4 tests : refus, libération,
+                                     reprise d'un périmé, NON-reprise d'un vivant.
+    internal/filmproc/selfpriority_  PRIORITÉ BASSE DU PROCESSUS COURANT. Elle n'existait que
+    windows.go / _other.go           pour un ENFANT qu'on va lancer (`exec.Cmd.SysProcAttr`) ;
+                                     un CLI d'opérateur n'a pas de parent.
+    cmd/replay-build/main.go         Les trois protections armées AVANT tout décodage, dans
+                                     l'ordre verrou → priorité → sentinelle (2 Gio, plafond de
+                                     MESURE : c'est un outil de poste de travail).
+    archlint (ratchet NEUF)          `TestPointsDEntreeDeDecodageArmentUneSentinelle` : tout
+                                     point d'entrée `cmd/` de l'allowlist DOIT armer une
+                                     sentinelle. 4 points d'entrée vérifiés. Le ratchet
+                                     précédent exigeait une justification ; celui-ci exige
+                                     qu'elle soit TENUE.
+    8 instruments de recherche       Sentinelle armée dans chaque balayage de corpus de ce lot
+                                     (pics mesurés 0,01-0,02 Gio — le statborg n'était pas
+                                     l'amplificateur, la construction d'artefact l'était).
+
+**Vérification end-to-end** : un verrou témoin posé à la main fait refuser `replay-build` en
+**zéro décodage**, code de sortie 12, message nommant le détenteur (outil, pid, match, instant).
+
+**Consigne utilisateur, enregistrée en mémoire** : « si t'as besoin de générer des artefacts tu me
+demandes avant ». Les 5 artefacts d'Assaut restants ne seront pas cuits sans accord.
+
+## [2026-08-31] Assaut — la bombe explose enfin dans le rejeu, et `RealRounds` cesse de tronquer One Bomb — Complété
+
+**Le lot A du 27/08 s'était arrêté au DIAGNOSTIC** : `comp 0 A` des slots joueur réplique les
+points de mode (moitiés disjointes 4/4 + 4/4, contrôle morts 37/37), mais rien n'était publié. La
+reprise supposait qu'il fallait d'abord re-interroger l'API sous le bon nom de famille
+(`BombStats` et non `AssaultStats`). **C'est réfuté, et par la mesure** : dump du payload
+`GetMatchStats` BRUT de 3 matchs couvrant les 3 variantes — le bundle `Stats` ne porte que
+`CoreStats` et `PvpStats`, joueur comme équipe, et les chaînes « bomb » / « assault » n'apparaissent
+NULLE PART. Le binaire déclare pourtant les 9 stats de la famille `Bomb` (`14381e790`..) : le moteur
+les calcule, le service ne les expose pas. **Le film est la seule source.**
+
+**LE VRAI BLOCAGE ÉTAIT AILLEURS, et il fallait le lever AVANT de publier.** Une manche d'Assaut
+One Bomb porte au plus UNE émission de score, donc sa plus longue suite croissante vaut 2 — sous le
+seuil de 3 de `statMinRoundRun`. Mesure : sur les 3 films One Bomb, seule la manche 0 survivait et
+**8 explosions sur 11 étaient perdues**. Publier dans cet état aurait montré 1 explosion sur 4 —
+l'ordre de reprise (publier, puis corriger les manches) était donc inversé.
+
+**Second critère d'admission**, en OU avec le premier : une manche est MATÉRIELLE si elle porte
+>= 25 enregistrements de slot joueur ET >= 10 % de ceux de la manche la plus fournie du film. Les
+deux populations, mesurées sur **65 films / 227 manches brutes** : ancrage fortuit <= **5,84 %**
+(`bfcd1175` manche 6, un film de Slayer — mode sans manche), manche réelle >= **21 %** (`df8fcbef`
+manche 1 : 45/212). Dix pour cent se pose au milieu du vide. **Contrôle HORS ÉCHANTILLON** : 53
+films échantillonnés PAR MODE, **aucune manche dans la bande interdite 7 %..15 %**. Les deux
+contre-exemples historiques tiennent (`53ce4390` score 1 -> 2 104, `1bc77d2e` 1 -> 1 569).
+
+**Un piège payé en route** : la première publication a sorti **66 explosions au même instant** sur
+`ce083875` — un enregistrement `comp 0` à `A=66, B=16635` que `incrementTimes` déroulait en 66
+événements. Son A passait la borne ; seul le B le trahissait. Mesure sur 3 986 enregistrements :
+**le canal B vaut ZÉRO dans 98,3 % des cas**, et les 4 hors domaine du corpus d'Assaut sont
+exactement les 4 aberrations connues. `modeScoreInDomain` borne désormais les DEUX canaux — un
+enregistrement légitime à `B=1` (une vraie explosion à 947537 ms) survit, exiger `B=0` l'aurait jeté.
+
+**PUBLIÉ** : `ObjectiveTypeBomb` + `bomb_detonations` (`namedStatSlots`, ligne consignée à la TSV du
+registre), et côté web un sixième genre de marque de fiche — un INSTANT tenu 2,5 s, comme la prise
+de base, parce que rien n'attribue le PORT de la bombe. **Gate A5, DEUX chiffres et il faut les deux** : 26 explosions sur les 28 datées du relevé A0.3 figé
+sont attribuées à un SLOT (92,9 %, à la milliseconde, 0 publiée hors relevé), et **21 sur 28
+arrivent À L'ÉCRAN** (75 %) une fois le pont d'identité passé. Avant ce lot il y en avait 3. Les 2
+premières manquantes n'ont AUCUN slot de joueur porteur (vérifié en imprimant tous les
+enregistrements `comp 0` de ces manches — le point n'existe que sur le slot d'ÉQUIPE) ; les 5
+autres tombent au pont d'identité par manche, toutes sur les 3 films One Bomb, les seuls
+multi-manches. Les deux chiffres sont figés par `TestAssautA5Explosions` et
+`TestAssautA5PontIdentite`.
+
+**Gates** : `go test ./...` vert (seul `internal/himap` sort en timeout — lenteur connue, hors
+diff), golangci-lint 0 issue, vitest 125 fichiers / 1 937 tests, typecheck cache purgé, eslint 0
+erreur. **Avant le gate visuel** : aucun match d'Assaut n'a d'artefact en cache (0/9) — il faut
+recuire (`cmd/replay-build` ou `levelup backfill-replay`).
+
+**Prochaine étape** : le SON de l'explosion — l'événement existe désormais, les sons sont extraits
+et rendus, il ne manque que la DÉSIGNATION du stem par l'utilisateur (une ligne dans
+`OBJECTIVE_SOUND_STEMS`). État complet : `.ai/V7.5/ETAT_ASSAUT_2026-08-31.md`.
+
+## [2026-08-31] Véhicules — la voie `.mvar` est tranchée par la négative pour les cartes officielles — Complété
+
+Question utilisateur : « lesquels sont sur quelle map, véhicules aléatoires ou non, points de spawns
+et cooldown ». Corpus re-téléchargé (`mapobj-build --all --dry-run --save-mvar`) : **224 fichiers
+`.mvar` sur 121 cartes**, 2 échecs 404.
+
+**LE RÉSULTAT QUI COMMANDE LES AUTRES** : **212 véhicules posés, écrasante majorité de TOURELLES**
+(`unsc_turret` 105 sur 38 cartes, `shade_turret` 30 sur 13). **Fragmentation, Deadlock, Highpower,
+Oasis, Behemoth ne portent qu'une tourelle à leur `.mvar`** — les seules cartes à vrais véhicules
+sont des cartes FORGE (`Starboard` : banshee, scorpion, warthog, razorback, wasp ; `Salvation`,
+`Cliffside`, `Goliath`). Même mécanisme que l'extinction des socles d'arme : une carte DEV pose ses
+objets dans le scénario du `.module`, pas dans la variante. **La question notée « décisive » au
+registre est tranchée : la voie `.mvar` ne répondra jamais pour les cartes officielles.**
+
+**Craquage** : 2 `type_id` `vehi` de plus nommés par murmur3 (contrôle 15/15) —
+**`-105823600 = warthog_razorback`** (confirme l'hypothèse posée sur l'emprise, identique au
+Warthog) et **`2128426546 = mongoose_gungoose`**. 17 des 21 nommés ; vivier de 108 noms épuisé pour
+les 4 restants, dont `1029649325` (22 exemplaires / 10 cartes).
+
+**Aléatoire — deux niveaux à distinguer** : l'EMPLACEMENT nomme son véhicule (contrairement aux
+socles d'arme, génériques), mais le preset de spawner du binaire porte `forceRandomVehicle` à côté
+de `forceRandomWeapon` / `forceRandomEquipment`, avec `vehicles`, `terrainFilters`,
+`airVehiclePrerequisiteCount`. La randomisation est un réglage de MODE, jamais de carte.
+
+**Cooldown MESURÉ, par EMPLACEMENT** : `#8/1[0]/#4` présent sur 212/212 (valeurs 1, 20, 30, 45, 60,
+88, 120, 180, 240 s), `#5` sur 206/212. La table de champs du binaire liste `m_abandonedTime`,
+`m_respawnTime`, `m_initialSpawnDelay` dans cet ordre — avec `#4 >= #5` partout, `#4` est le délai de
+réapparition. **C'est un réglage d'auteur, pas une constante de classe** : `unsc_turret` porte 30,
+60, 88, 120 et 180 s selon la carte.
+
+**Prochaine étape** : lire le scénario (`scnr`) des `.module` — `internal/himap` lit déjà index,
+BSP, géométrie et callouts, mais pas les placements d'objets de scénario. État complet :
+`.ai/V7.5/ETAT_VEHICULES_2026-08-31.md`.
 
 ## [2026-08-30] Sons — le merge ramassage fournit les déclencheurs, les quatre sons muets sont câblés — Complété
 
@@ -84271,3 +85439,536 @@ passe de 337 à 357. Les mesures du schéma 32 ne bougent pas.
 
 **Conclusion** : le chiffre attendu était ~70, le réel est **66** ; l écart est exactement ces
 six cartes.
+---
+
+## [2026-09-01] Portage de l'archetype `ti=11` : la jauge d'objectif est ATTEINTE, pas encore LUE JUSTE
+
+**Statut** : Complete pour le portage et la grammaire ; **ouvert** pour l'exploitation des valeurs.
+
+**LE DEVIS S'EST MESURE AVANT DE S'ENGAGER, ET IL A DIVISE LE CHANTIER PAR TROIS.** L'annonce de
+la veille etait « porter les deserialiseurs de ti=11 de i0 a i12/i13, treize composants ». La
+boucle de composants est sequentielle, donc il faut porter ce qui est PRESENT avant i12 — mais le
+masque de presence se lit SANS aucun deserialiseur (`TraverseEntity` le publie avant d'entrer dans
+la boucle). Nouvel instrument `objectif_ti11_masque_test.go`, 13 films, garde `ASSAUT_CACHE` :
+sur les 265 records porteurs de la jauge, dix composants seulement la precedent, dont DEUX etaient
+deja ecrits. Controle de domaine publie (14,9 % de masques hors des 34 composants) plutot que tu.
+
+**LA GRAMMAIRE VIENT ENTIEREMENT DU BINAIRE, recette R7-d.** Chaine `.rdata` -> getter de nom
+(`LEA RAX,[chaine] ; RET`) -> descripteur de composant (dix pointeurs, le getter en `+0x28`) ->
+serialiseur reseau en `+0x38`. Calibre sur le cas CONNU (ti=13 `managed-object-property`, dont le
+lecteur porte etait deja identifie) avant d'etre applique aux dix-neuf chaines de ti=11. Toutes
+les largeurs sont fixes : i0 = 2xR(7), i1 = 4xR(8), i3/i5/i12/i13/i15/i16-31 = R(32), i6/i10/i11/
+i33 = R(1), i7 = R(8), i8 = R(4), i14 = R(3), i32 = R(8) quantifie. **33 composants sur 34.**
+
+**LE SEUL LAISSE DEHORS EST UN CHOIX, PAS UN OUBLI.** `i4 interaction-filter` lit R(4) + R(1) puis,
+par bit pose, R(4) SUIVI D'UN APPEL VIRTUEL de largeur inconnue. Le porter a moitie ferait
+DESYNCHRONISER au lieu de s'arreter proprement — strictement pire. Cout mesure et ecrit : 10 des
+265 records porteurs de jauge, 4 %.
+
+**RESULTAT DU PORTAGE, mesure avant/apres sur les memes 13 films.** Cause d'arret de la marche :
+avant, `i0 timers` 1 009 / aucune 884 / `i16` 178 / `i32` 177. Apres : **aucune 2 211**, `i4` 37.
+2 211 sur 2 248 records dans le domaine, 98,4 %.
+
+**ET C'EST LA QUE LA MESURE M'A ARRETE — le chiffre de 98,4 % ne prouve PAS ce qu'il semble
+prouver.** « Marcher jusqu'au bout » teste la COUVERTURE du dispatch, jamais la JUSTESSE d'une
+largeur : un composant qui lit deux bits de trop laisse la marche aboutir, simplement decalee. La
+premiere lecture des valeurs (`assaut_a10_jauge_test.go`) l'a montre en trois faits :
+1. la valeur de i12 est CONSTANTE sur toute la duree d'un slot (35 lectures sur 720 s) ;
+2. les MEMES valeurs reviennent a l'identique dans TROIS MATCHS DIFFERENTS (3 997 696,
+   255 852 575, 268 435 471, 2 097 152...) ;
+3. des slots consecutifs rendent des valeurs decalees d'UN BIT — 0x04000003, 0x08000007,
+   0x1000000F.
+Une jauge de partie ne peut pas etre octet-pour-octet identique dans trois matchs. **Ce n'est pas
+la progression : c'est une fenetre mal posee.** Ecrit tel quel dans le code, dans la page Notion et
+ici, plutot que de publier « la jauge est decodee ».
+
+**UNE VOIE REFUTEE AU PASSAGE, avec temoin.** Le balayage delta (celui qui marche pour ti=13,
+chainage 87-99 %) chaine a **2,7-26 %** sur ti=11 et sort des valeurs uniformement reparties sur
+32 bits : la bande d'ancrage compte jusqu'a 1 704 slots et attrape tout. `ScanFilmObjectives` ouvre
+donc les deux voies et etiquette chaque lecture (`FromKeyframe`) au lieu d'en cacher une.
+
+**Livre** : `components_managed_objective.go` (33 desers + hook 6 champs), 14 cas dans
+`consumeByName`, `objective_scan.go` (balayage deux voies), 34 lignes de `testdata/ecs_table.tsv`
+passees de `non_porte` a `porte` avec adresse EXE, grammaire, largeur et source ; garde-rails G1 et
+G3 verts. `components_batch3.go` : la garde « sans appelant » posee le 2026-08-01 est LEVEE, sa
+grammaire est desormais recoupee au binaire (FUN_142c70d5c).
+
+**Page de reference publiee** (Notion, sous Backlog LevelUp) : la grammaire complete des quatre
+archetypes d'objectif — ti=10, ti=11, ti=12 (documente sans decodeur, decision utilisateur),
+ti=13 — avec la mesure du MIROIR qui explique les quatre negatifs precedents : Strongholds et KOTH
+ecrivent dans ti=13, l'Assaut dans ti=11.
+
+**Prochaine etape, une seule et nommee** : un ORACLE DE LARGEUR. Ancrer par
+`WalkKeyframeRecords` (marche deterministe) plutot que par `WalkKeyframeWorld` (balayeur a filtre
+fort), et exiger que la fin d'un record tombe exactement sur l'en-tete du suivant. Sans cet oracle,
+aucune valeur de ti=11 n'est exploitable — et avec lui, la jauge, l'instant d'armement et le compte
+a rebours du rejeu suivent.
+
+---
+
+## [2026-09-01] Oracle de largeur `ti=11` : NEGATIF NET, et il deplace le probleme en amont
+
+**Statut** : Complete (la question posee est tranchee) ; le chantier ti=11 reste ouvert.
+
+**LA QUESTION.** L'entree precedente livrait le portage et disait honnetement que « 98,4 % de
+records marches » mesure la COUVERTURE du dispatch, pas la JUSTESSE des largeurs. Cette entree
+construit l'oracle qui manquait.
+
+**L'ORACLE, et pourquoi il est digne de confiance.** La table d'image-cle est une SUITE de records
+`[id:32][field:26][ti:6] + corps`. Si la grammaire est juste, la fin d'un record EST l'en-tete du
+suivant. `readKeyframeHeader` exige gen != 0, slot < 8 192, ti < 50 : la probabilite qu'une
+position quelconque passe vaut ~1e-5. Un taux de quelques dizaines de pourcents est donc un VRAI
+signal, pas du hasard.
+
+**CE QUI REND LA MESURE LOCALISANTE** : le taux est ventile PAR COMPOSANT PRESENT — d'un cote les
+records qui le portent, de l'autre ceux qui ne le portent pas. Une largeur juste ne change pas le
+taux ; une largeur fausse l'effondre des que le composant apparait.
+
+**RESULTAT (2 211 records, 13 films).** Chainage global 9,7 %.
+- `i0 timers` PRESENT : 22,0 % — ABSENT : 0,0 %.
+- TOUS les autres composants : **0,0 % quand ils sont presents.**
+- Vu autrement : records a UN composant 25 % ; records a PLUSIEURS composants 0 %.
+
+**PREMIERE HYPOTHESE, NOMMEE ET REFUTEE.** Un cout PAR COMPOSANT non consomme expliquerait
+exactement cette forme, et le depot en a un candidat deja documente :
+`filmComponentCorruptionCheck` (en mode FILM, `FUN_14076cb60` lit un `R(1)` de garde apres chaque
+composant present, plus un `R(32)` sentinelle si le bit vaut 1), defaut `false`. Balayage A/B des
+deux bascules du process (`filmComponentCorruptionCheck` x `newRecordTailBits` sur {0,1,2}), meme
+corpus, meme oracle, critere ecrit avant la mesure (60 % sur les records a plusieurs composants) :
+**aucune combinaison ne depasse 25 % / 13,6 %. Negatif net.**
+
+**CE QUE LE NEGATIF DEPLACE — et c'est le vrai apport de la journee.** Le fait que meme les records
+LES PLUS SIMPLES (un seul composant) plafonnent a 25 % dit que le probleme n'est pas, ou pas
+seulement, dans les largeurs de composants. Il est EN AMONT : soit le prologue du record ti=11
+(`defaultStateDeserByTI[11] = consumeVersionPrefix`, R(1) puis R(8) conditionnel — variable, donc
+falsifiable), soit `WalkKeyframeWorld` qui rend des FAUX ancrages (son filtre exige `field26 == 0`
+et il apprend ses largeurs par balayage). Les 14,9 % de masques hors domaine du recensement
+pointent la meme direction.
+
+**Prochaine etape, une seule et nommee** : marcher la table d'image-cle avec `WalkKeyframeRecords`
+(marche DETERMINISTE, sans filtre fort ni apprentissage de largeur) et mesurer combien de records
+consecutifs elle enchaine avant de lacher, et sur quel archetype. C'est le seul instrument qui
+separe « largeur de composant fausse » de « ancrage faux », et il existe deja dans le depot depuis
+le lot R4.
+
+**Ce que ce chantier NE doit pas faire en attendant** : brancher i12/i13 sur quoi que ce soit.
+C'est ecrit dans `components_managed_objective.go`, dans `objective_scan.go` et sur la page Notion.
+
+---
+
+## [2026-09-01] Les records d'image-cle sont de LONGUEUR FIXE PAR ARCHETYPE — fait structurel neuf
+
+**Statut** : Complete (la mesure tranche) ; le chantier ti=11 reste ouvert, mais sur une autre
+question que celle d'hier.
+
+**J'ALLAIS FAIRE LA MAUVAISE CHOSE, ET LE DEPOT M'A ARRETE.** L'etape annoncee etait « marcher la
+table avec `WalkKeyframeRecords` pour separer largeur fausse d'ancrage faux ». En ouvrant le
+fichier, son en-tete portait deja le resultat du lot R3/R5 : « AUCUN decalage ne rend une seule
+marche bit-exacte ; le corps d'un record d'image-cle n'est PAS le corps d'un record NEW », avec une
+hypothese de rechange — l'image-cle porterait un ETAT COMPLET, tous les composants sans masque
+epars. Cette lecture expliquait TOUT ce que l'oracle avait mesure. Leçon appliquee : greper
+l'en-tete du fichier qu'on s'apprete a utiliser AVANT d'ecrire l'instrument.
+
+**L'EPREUVE, sans aucun deserialiseur.** Si le corps porte un etat complet, la longueur du record
+est fixe. Elle se mesure en cherchant, depuis l'ancre, la premiere position portant un en-tete
+valide a slot croissant. Predicat ecrit avant la mesure : la somme des largeurs portees vaut
+745 bits (constante `ti11SommeLargeurs`, gardee par un test qui tombe si une largeur bouge), donc
+un record d'etat complet doit tomber entre 820 et 900 bits.
+
+**PREDICAT REFUTE — ZERO record dans la fenetre.** Et ce que la mesure trouve a la place vaut
+mieux :
+
+| archetype | records | dominante | part | longueurs distinctes |
+|---|---|---|---|---|
+| ti=11 |  2 611 | **168 bits** | **93,8 %** | 10 |
+| ti=13 |  2 948 | **446 bits** | 73,5 % | 7 |
+| ti=38 | 44 231 |   555 bits |  6,9 % | 266 |
+
+**LES RECORDS D'IMAGE-CLE DE ti=11 ET ti=13 SONT DE LONGUEUR FIXE PAR ARCHETYPE.** Aucun
+instrument du depot ne l'avait mesure. Consequence immediate : un record de taille fixe dont le
+contenu varie porte du REMPLISSAGE, donc sa longueur ne peut pas servir d'oracle de largeur — et
+l'etat complet est refute puisque 745 bits excedent deja le corps de 104 bits de ti=11.
+(`ti=38` etale : soit sa longueur varie vraiment, soit la fenetre de 2 000 bits attrape de faux
+en-tetes sur des records longs. NON TRANCHE, et ecrit comme tel.)
+
+**L'ECART, ventile — la mesure qui dit ou chercher.** Entre la fin de marche de production et la
+fin reelle du record, par nombre de composants presents : **+90, +70, +32, -6, -16 bits pour 0 a
+4 composants**. Il DECROIT avec le nombre de composants. Un cout par composant manquant le ferait
+CROITRE ; des largeurs justes le laisseraient constant. Qu'il decroisse dit que la lecture par
+masque epars SUR-CONSOMME des qu'il y a plusieurs composants — coherent avec un corps a CHAMPS DE
+POSITION FIXE plutot qu'a flux pilote par un masque.
+
+Detail arithmetique qui va dans le meme sens : a 0 composant je consomme 14 bits de corps sur 104
+(residu 90) ; a 1 composant 34 (residu 70) ; a 2 composants 72 (residu 32). Les trois sont
+exactement le prologue plus les largeurs portees des composants lus — les largeurs ne sont donc
+pas absurdes, c'est le MODELE DE CORPS qui ne l'est pas.
+
+**Prochaine etape** : traiter le corps de 104 bits comme une STRUCTURE A OFFSETS FIXES et non comme
+un flux. L'epreuve est directe et bon marche : prendre une fenetre de 32 bits a un decalage donne,
+et mesurer si elle est constante par slot et variable entre slots. Balayer le decalage de 0 a 72
+donne la carte du corps sans rien decoder. C'est aussi ce qui expliquerait le symptome initial —
+des valeurs de « jauge » constantes par slot et identiques d'un match a l'autre.
+
+**Toujours vrai** : ne PAS brancher i12/i13.
+
+---
+
+## [2026-09-01] Le corps d'image-cle est STATIQUE, et la bande d'ancrage delta comblait 200 fois trop
+
+**Statut** : Complete (deux mesures tranchent, une reparation livree) ; le chantier ti=11 reste
+ouvert sur un seul chiffre.
+
+**LA CARTE DU CORPS, bit par bit.** Un corps de taille fixe (104 bits) ne se lit pas comme un flux
+pilote par un masque : il se cartographie. La question utile n'est pas « que vaut ce champ » mais
+« ce champ BOUGE-T-IL » — une jauge de capture est, par definition, la seule chose qui change au
+fil du match pour un MEME objectif. Mesure sur 2 531 records et 157 vies d'objectif suivies sur au
+moins deux images-cles :
+
+**AUCUN des 104 bits ne varie. Zero.** Le corps d'image-cle de `ti=11` est une description
+STATIQUE — la jauge N'Y EST PAS, par construction. Le profil statique, lui, est structure
+(bits 0, 34, 35, 75, 100-103 toujours a 1 ; deux champs gradues autour des bits 10-15 et 27-31),
+donc l'instrument lit bien quelque chose : il lit une description, pas un etat.
+
+**CONSEQUENCE IMMEDIATE, et elle disqualifie tout le detour precedent** : les valeurs de i12
+« constantes par slot et identiques d'un match a l'autre » que j'avais relevees n'etaient pas un
+bug de lecture, c'etait la NATURE de la donnee. Chercher la jauge dans les images-cles etait une
+erreur de categorie. Les deserialiseurs portes sont ceux du chemin DELTA (`decodeDelta` = masque
++ boucle de composants, sans en-tete) — c'est la qu'il fallait les employer.
+
+**LA BANDE D'ANCRAGE DELTA, reparee.** `worldObjectSlotBand` COMBLE tout l'intervalle [min, max]
+des slots vus (`fillSlotBand`). Ce comblement existe pour les objets NOMBREUX ET EPHEMERES
+(projectiles, equipements) dont un slot peut servir entre deux images-cles sans y apparaitre. Les
+objectifs sont l'exact contraire : PEU NOMBREUX et LONGUEMENT VIVANTS — la carte l'a mesure,
+2 531 records d'image-cle pour 202 vies, une douzaine d'apparitions chacune. Aucune vie
+d'objectif n'echappe aux images-cles, donc le comblement n'apporte rien et coute tout : les slots
+s'etalent de 1 644 a 4 558, la bande comblee comptait jusqu'a 1 704 slots pour une quinzaine
+d'objectifs reels.
+
+`objectiveSlotSet` ne garde que les slots OBSERVES (meme regle d'exclusion, c'est le comblement
+qui saute). Effet mesure :
+
+| film | records delta AVANT | APRES | chainage AVANT | APRES |
+|---|---|---|---|---|
+| 34bb3bc8 | 1 209 698 | 6 241 | 2,7 % | **44,2 %** |
+| cde26226 |   415 489 | 1 025 | 3,4 % | 19,9 % |
+| 1c01e34f |     4 287 | 1 233 | 26,1 % | **64,9 %** |
+
+Records divises par ~200, chainage multiplie par 5 a 20.
+
+**CE QUI RESTE, et c'est UN SEUL CHIFFRE.** Le chainage delta vaut 13 a 65 % selon le film, contre
+87 a 99 % sur `ti=13` correctement ancre. Le filtre `Chained` ne laisse donc passer que 1 a 35
+lectures par film — assez pour voir, pas assez pour une serie. Zero slot porte une montee de
+jauge, et i12/i13 restent repartis sur 32 bits. Le seul signal propre est `i14 state` : 0, 2, 4,
+5, 6, 7, soit exactement la plage de la largeur R(3) portee — encourageant, pas probant (un champ
+de trois bits parait propre quel que soit son alignement).
+
+**Prochaine etape** : monter le chainage delta vers 87-99 %. La mesure de residu dit dans quelle
+direction chercher — la marche SUR-CONSOMME des qu'il y a plusieurs composants (+90, +70, +32,
+-6, -16 bits pour 0 a 4 composants). Une largeur trop large parmi les composants frequents des
+deltas est le suspect ; le residu ventile par composant PRESENT, applique cette fois aux records
+DELTA, le designera.
+
+**Toujours vrai** : ne PAS brancher i12/i13.
+
+---
+
+## [2026-09-01] Chainage delta : le repere de « 87 a 99 % » n'existait pas — mesure du plancher et du plafond
+
+**Statut** : Complete (la question est tranchee, autrement que prevu) ; `ti=11` est desormais dans
+le regime de l'archetype de reference.
+
+**LA DEMANDE** etait de monter le chainage delta de 13-65 % vers les 87-99 % annonces pour `ti=13`.
+Cinq instruments plus tard, ce n'est pas le chainage de `ti=11` qui a bouge : c'est le repere qui
+est tombe.
+
+**1. LE PLANCHER, qui manquait depuis le debut.** Tous les taux de ce chantier se comparaient
+implicitement a zero. Mesure : `worldObjectHeaderAt` passe a **3 %** des positions ARBITRAIRES
+(dix decalages choisis pour ne coincider avec aucune largeur ni somme de deux). Les 29,3 % globaux
+valent donc dix fois le plancher — c'est du signal ; les 5,3 % des records a plusieurs composants
+SONT le plancher — c'est du bruit. Sans ce chiffre, aucune des mesures precedentes n'etait
+interpretable, y compris les miennes.
+
+**2. LE GARDE PAR COMPOSANT DU MODE FILM : REFUTE.** `FUN_14076cb60` lit bien, apres chaque
+composant present, un `R(1)` et un `R(32)` sentinelle si ce bit vaut 1 (relu sous Ghidra). L'armer
+fait tomber le chainage de 29,3 % a **2,4 %** — le plancher. Il n'est pas dans ce flux.
+PIEGE EVITE DE JUSTESSE : le premier A/B rendait deux colonnes RIGOUREUSEMENT identiques, parce que
+ma marche appelait `consumeByName` en direct et ne passait pas par `consumeCorruptionCheck`. Un A/B
+qui ne bouge pas d'un iota ne dit pas « pas d'effet », il dit « bascule non lue ».
+
+**3. LE BIT DE PRESENCE PAR COMPOSANT : REFUTE dans ses deux lectures** — prefixe 4,5 %, garde
+conditionnelle 3,1 %. Contre 29,3 % sans rien. L'hypothese venait d'une singularite reelle : `i2
+formatted-text` chaine a **76,6 %** (vingt-cinq fois le plancher) et c'est le SEUL composant dont
+le deserialiseur commence par un bit de presence.
+
+**4. LES LARGEURS SONT JUSTES, et Ghidra l'a dit en corrigeant ma propre recette.** Le premier
+portage avait suivi l'ECRIVAIN reseau ; le LECTEUR est ailleurs dans le descripteur
+(`nameSlot + 0x28`, verifie en constatant que le lecteur d'un bloc ecrit dans le champ du composant
+PRECEDENT). Les deux concordent : i1 = 4x8, i3 = 32, i12 = 32 (offset 0x18c), i13 = 32 (0x190),
+i16 = 32 (0x19c + index*4), i32 = 8 quantifie. Les largeurs portees sont bonnes.
+
+**5. LE VRAI FACTEUR EST LA TAILLE DE LA BANDE D'ANCRAGE — et le controle sur `ti=13` le prouve.**
+
+| archetype | bande COMBLEE (production) | bande OBSERVEE |
+|---|---|---|
+| ti=11 |  5,6 % sur 1 616 281 marches | **29,3 %** sur 19 666 |
+| ti=13 |  6,3 % sur   278 670 marches | **43,7 %** sur 27 409 |
+
+Par film, le chainage suit le nombre de slots : 20 slots donnent 77 % (KOTH, ti=13), 26 slots
+56 %, 1 704 slots 2,6 %.
+
+**LA CONCLUSION QUI CHANGE L'OBJECTIF.** Le meme instrument, sur `ti=13` et sur SES PROPRES modes,
+plafonne a **77 %** et rend 32 a 56 % ailleurs. Le meilleur film de `ti=11` est a **64,9 %**.
+`ti=11` est donc DEJA dans le regime de l'archetype de reference. Le « 87 a 99 % » venait de la
+documentation du lot C-bis et n'est pas reproductible ici — ce qui manquait a ce chantier n'etait
+pas un composant, c'etait un repere honnete.
+
+**DECOUVERTE HORS PERIMETRE, NOTEE ET NON TRAITEE (regle 5).** La bande observee ferait passer le
+balayage de PRODUCTION de `ti=13` (`ScanFilmManagedProperties`, qui comble) de 2,6 % a **32,2 %**
+sur un film CTF, et de 47,6 % a **77,0 %** sur un KOTH — dix fois moins de faux records sur un
+chemin qui a des consommateurs en production. Cela se decide, cela ne se glisse pas dans un commit
+de recherche.
+
+**Prochaine etape.** Le chainage n'est plus le blocage : la jauge l'est. Avec 29 % de chainage
+global le filtre `Chained` ne laisse passer qu'une poignee de lectures par film — il faut soit
+relacher le filtre en assumant le bruit et chercher un signal statistique, soit gagner de la
+selectivite sur l'ANCRE (le vrai levier, comme la bande vient de le montrer) plutot que sur les
+composants.
+
+---
+
+## [2026-09-01] L'en-tete de record lu dans le jeu — l'ancre du depot est CONFIRMEE, pas corrigee
+
+**Statut** : Complete. Une piste fermee, deux fonctions du jeu nommees.
+
+**CE QUE GHIDRA A RENDU.** Le lecteur d'en-tete de record est `FUN_141f85fe0`, appele par les DEUX
+lecteurs de record (`FUN_142e309b4` et `FUN_142e30b9c`), qui enchainent tous deux sur
+`FUN_14076cb60`, la boucle de composants. Sa grammaire :
+
+	R(6)                                  -> typeIndex de l'archetype
+	FUN_1406d3140(ti, lecteur, 7, &id)    -> l'identifiant d'entite
+	FUN_1406d676c(lecteur)                -> alignement
+	valide SSI typeIndex < 0x32 ET id != -1 ET position <= taille x 8
+
+Le `< 0x32` justifie enfin `kfArchMax = 50` du depot, qui etait une constante sans source.
+
+`FUN_1406d3140` decompose l'identifiant :
+
+	largeur = FUN_1406d310c(capacite)     -> CEIL(LOG2(capacite))
+	R(largeur)                            -> index de slot, plus une base
+	R(2)                                  -> generation
+	id = generation << 30 | (base + index)
+
+**LE POINT QUI COMPTE : la largeur du slot n'est pas une constante du binaire.** Elle vaut
+`ceil(log2(capacite du pool))`, et la table `DAT_1451f98d0` est NULLE dans l'image statique — elle
+est peuplee au chargement de carte. Meme classe de probleme que les composants a precision
+runtime deja documentes.
+
+**DONC ELLE SE MESURE.** Balayage de la largeur de slot (12 a 16) x largeur de porte (1 a 3),
+meme corpus, meme oracle, plancher de reference 3 % :
+
+| | porte=1 | porte=2 | porte=3 |
+|---|---|---|---|
+| slot=12 | 13,1 % |  7,1 % | 4,4 % |
+| slot=13 | 14,1 % |  7,7 % | 4,9 % |
+| slot=14 | 12,9 % | **20,9 %** | 5,9 % |
+| slot=15 | 15,7 % | 13,2 % | 6,7 % |
+| slot=16 | 12,7 % |  9,8 % | 4,1 % |
+
+`slot=14 porte=2` domine, **a nombre de marches EGAL** (37 901 contre 37 902 pour `slot=13
+porte=2`) : ce n'est pas un effet de selectivite.
+
+**ET CE GAGNANT EST L'EN-TETE DU DEPOT.** `matchWorldObjectRecord` lit `R(1)` de prefixe + `R(13)`
+de slot + `R(2)` de generation + `R(2)` de porte + `R(3)` de compte = **21 bits**, exactement la
+largeur de `slot=14 porte=2`. Le decoupage en `1 + 13` est la meme lecture qu'un `R(14)` dont on
+exige le bit de tete a 1 — et cette exigence supplementaire explique l'ecart entre les 20,9 %
+d'ici et les 29,3 % du chainage de production.
+
+Les deux sources concordent : `ceil(log2(16 384)) = 14`.
+
+**L'ancre n'est donc pas le trou.** Ce balayage FERME une piste, et c'est son utilite : il
+interdit d'y revenir. Restent, pour le chainage : la selectivite du test de fin
+(`worldObjectHeaderAt`, qui passe deja a 3 % des positions arbitraires — le renforcer ferait
+monter le taux sans rien prouver de plus), et la semantique meme du chainage sur un flux ou les
+records d'archetypes DIFFERENTS s'entrelacent.
+
+**Prochaine etape** : ne plus chercher a monter le chainage. Il vaut 29 % pour un plancher de 3 %
+et un plafond mesure de 77 % sur l'archetype de reference ; la marge restante ne se gagne pas sur
+l'ancre, qui vient d'etre confirmee par deux sources independantes. La question utile redevient la
+JAUGE : relacher le filtre `Chained` et chercher un signal statistique sur les 265 records
+porteurs de i12.
+
+---
+
+## [2026-09-01] Merge de la factorisation de bande, et les deux appelants orphelins
+
+**Statut** : Complete.
+
+**LE PROBLEME, cree par une bonne factorisation.** Le lot `wt/ti13-bande` a centralise la regle de
+bande OBSERVEE en `filmdec.observedSlotBand(dir, n, ti)` et supprime ses trois copies —
+`objectiveSlotSet` (production ti=11) et `ti11SlotSetPour` (le meme code dans un fichier de test).
+C'etait juste : trois copies, un garde-rail pose dans le meme commit (regle n°6). Mais deux
+branches soeurs appelaient encore les noms supprimes.
+
+**TRAITE MAINTENANT plutot que decouvert au merge final.** Merge de `wt/ti13-bande` dans
+`wt/assaut-bombe` : PROPRE, aucun conflit (les fichiers que le lot a touches n'avaient pas bouge
+de mon cote depuis sa base). Deux appelants orphelins, tous deux dans des instruments de mesure :
+
+	objectif_bombstate_test.go   ti11SlotSetPour(dir, n, ti)  -> observedSlotBand(dir, n, ti)
+	objectif_ti11_ancre_test.go  objectiveSlotSet(dir, n)     -> observedSlotBand(dir, n, ObjectiveTypeIndex)
+
+Apres renommage : zero occurrence des anciens noms dans tout le depot, hors le commentaire
+HISTORIQUE du garde-rail qui raconte pourquoi il existe — et celui-la doit rester.
+
+**GATES, avec une precaution.** Un lot de mesures tournait en parallele dans un autre worktree, et
+deux builds Go concurrents corrompent le cache. Toutes les verifications ont donc ete jouees avec
+un **GOCACHE et un cache golangci-lint ISOLES** dans le scratchpad : `gofmt` propre, `go vet`
+propre, `go test` vert sur `filmdec` et `archlint`, `golangci-lint` 0 issue. Le garde-rail
+`no_rewritten_slot_band_test.go` passe — mes deux instruments renommes ne reconstruisent pas de
+bande, ils appellent la regle.
+
+**RESTE** : `wt/ultra-jauge` (le worktree du lot de mesures en cours) appelle encore les anciens
+noms. Meme correction a appliquer quand le lot aura rendu la main — pas avant, on ne merge pas
+sous les pieds d'agents qui ecrivent.
+
+---
+
+## [2026-09-01] PERCEE — l'anneau ti=12 i14 EST la jauge d'armement : le plancher est passe
+
+**Statut** : Complete. La derniere piste film etait la bonne.
+
+**LE PROTOCOLE, fixe avant la mesure** (spec de la synthese du lot, appliquee sans retouche) :
+A = les 13 explosions des 5 films Neutral Bomb REELS (Husky Raid retire, partition anterieure) ;
+montees redefinies avec CONTIGUITE (trou <= 500 ms) ; B = 1 000 tirages nuls a graine fixe,
+memes effectifs par film ; C = les vraies cibles decalees de +45 s / -45 s / +120 s. Regle
+ecrite dans l'en-tete du fichier AVANT le premier run.
+
+**LE RESULTAT** (`navpoint_ti12_plancher_test.go`, `wt/ultra-jauge`) :
+
+	A (reel)      couverture 13/13, delai median 4,9 s, CV 0,016
+	C (+45 s)     CV 0,325 — echoue
+	C (-45 s)     couverture 11/13, CV 0,620 — echoue
+	C (+120 s)    CV 0,393 — echoue
+	B (nulle)     10/1000 tirages atteignent la couverture pleine ; parmi eux, CV p5 = 0,806 ;
+	              **0/1000 ne fait aussi bien que le reel**
+
+Toutes les conditions de la regle sont remplies. **La fin de la montee contigue de l'anneau
+precede chaque explosion de 4,93 s avec une dispersion de 1,6 %** — cinquante fois mieux que le
+meilleur vingtieme des tirages nuls.
+
+**CE QUE CA DONNE, terme a terme** :
+- DEBUT de la montee contigue = debut de l'interaction d'armement (le hold, ~5 s en Neutral
+  Bomb, ~0,9 s en Husky Raid — un reglage de mode) ;
+- FIN de la montee (quantum plein) = bombe ARMEE ;
+- fin + 4,93 s = EXPLOSION : la MECHE, constante moteur, mesuree sur 13 explosions.
+
+**RESERVES QUI BORNENT LE POSITIF, a traiter au portage** :
+- la constante 4,9 s vaut pour NEUTRAL BOMB (5 films) ; le lot a observe ~17,2 s sur One Bomb —
+  soit une meche differente par variante, soit une lecture a refaire : les 3 films One Bomb
+  passent au meme instrument AVANT toute generalisation ;
+- l'ATTRIBUTION (qui arme) n'est pas dans ce canal : le navpoint est un marqueur d'ecran, pas un
+  acteur. Le detonateur est deja nomme par le statborg ; l'armeur est le meme joueur dans la
+  quasi-totalite des cas (le porteur pose et la bombe explose) — a confirmer par croisement
+  positionnel si le rejeu veut nommer l'armeur independamment ;
+- les navpoints vont PAR PAIRES (+12 d'ecart de slot, un par camp) : le portage deduplique par
+  paire.
+
+**Prochaine etape (portage produit)** : porter la detection de montee contigue dans le pipeline
+du rejeu (meme motif que `extractFromTh10`), publier `bomb_arming_start` / `bomb_armed` par
+manche, et le compte a rebours = [fin de montee, fin + meche] — la demande produit d'origine.
+
+**COMPLEMENT VARIANTES (meme jour)** : la meme epreuve par variante rend —
+Husky Raid **4/4, mediane 5,1 s, CV 0,016, 0/1000 aussi bien** (meme meche, hold 6x plus court :
+un reglage de mode, la meche est du moteur) ; One Bomb 11/11 mais **CV 0,725 et 87/1000 tirages
+nuls font aussi bien** — le signal ne tient PAS en One Bomb sous cette lecture. Le positif vaut
+donc NEUTRAL BOMB + HUSKY RAID (17/17 a ~5 s, 0/1000) ; One Bomb est la reserve a lever au
+portage (anneau porte autrement ? paires de slots differentes ? a instrumenter avant de brancher
+cette variante).
+
+---
+
+## [2026-09-01] Portage produit — l'armement de la bombe entre au rejeu 2D (schéma 29)
+
+**Statut** : Complété. Gate ASSAUT_CACHE vert du premier coup, tous critères tenus.
+
+**Décision technique principale** : le canal prouvé (anneau `ti=12 i14` = jauge d'armement,
+protocole 0/1000) est porté en production sur le patron EXACT des calques gardés par le mode
+(couronne VIP, crâne, zones) :
+
+- `filmdec/navpoint_radial_scan.go` : `ScanFilmNavpointRadial` — le balayage du test porté tel
+  quel (deux voies, bande observée, hook de production) ; les instruments ti12 APPELLENT
+  désormais la production (plancher compris) au lieu d'en garder une copie ;
+- `filmdec/navpoint_radial_rises.go` : `NavpointContiguousRises` + les seuils du protocole
+  (trou 500 ms, 3 échantillons, 16 quanta) gardés par `TestNavpointTi12ProtocoleFige` ;
+- `replay/bomb_armings.go` + `document_bomb_armings.go` : `bombArmings` (startT/startMs le
+  hold, t/timeMs l'armé, fuseMs=4930) — schéma 29 ; mèche publiée DANS l'artefact ;
+- garde de mode DOUBLE : `replaybuild.isArmableBombVariant` (jamais « one bomb ») ET
+  confrontation locale tout-ou-rien aux explosions du même film (une explosion sans armement
+  à 4,93 s ± 0,6 s retient le calque entier) ;
+- front : bandeau `ReplayBombCountdownOverlay` (« Bombe armée — 4,9 s » + barre de mèche,
+  dérivé de la position de lecture, token destructive, FR/EN), son `bomb_armed` sur le stem
+  de la NOUVELLE COLLINE (`ZONE_SOUND_STEMS.newZone`, emprunté par référence).
+
+**Découverte du gate (mesure faite AVANT de figer la règle)** : sans filtre, 35b75a31 publiait
+19 « armements » pour 3 explosions. Le diagnostic des quanta tranche : les 7 montées confirmées
+par une explosion finissent TOUTES à q=254 (quantum plein) ; les montées plafonnées à q=253
+(~4,9 s, 130→253, après chaque explosion et à chaque spawn de bombe) sont l'ANIMATION DE
+RECHARGE du marqueur (0/12 à la mèche) ; en dessous, des holds relâchés. Règle de production :
+armé ⇔ dernier échantillon ≥ 254 (`bombArmedFullQuantum`).
+
+**Résultats du gate** (`TestAssautArmementGate`, critères écrits avant le run) :
+- 35b75a31 (Neutral) : 3 armements = 3 explosions, délais 4837/5055/4987 ms ;
+- 1c01e34f (Husky) : 4 armements = 4 explosions, délais 5240/5056/5038/5089 ms ;
+- 9f57c612 (One Bomb, Scanned forcé) : 0 publié, calque retenu (0/4 couvertes) — la défense
+  en profondeur fonctionne (One Bomb a 5 montées à 254 que la confrontation écarte).
+
+**Gates** : go vet/test/golangci 0 issue (filmdec, replay, replaybuild, api, service,
+replayartifacts) ; openapi-gen -check à jour ; web typecheck/lint 0 erreur, vitest 5628 verts ;
+golden réassemblé (seule la ligne de schéma bouge) ; `EXPECTED_REPLAY_SCHEMA_VERSION` = 29.
+
+**Non fait, et pourquoi** : l'ARMEUR n'est pas nommé (marqueur d'écran, pas un acteur — le
+croisement positionnel reste au registre) ; One Bomb reste sans compte à rebours (canal réfuté
+CV 0,725 — chantier séparé) ; pas de son « bombe armée » propre dans la banque (le stem colline
+est la décision utilisateur du portage, pas un TODO).
+
+---
+
+## [2026-09-01] Portage visuel de la bombe ACHEVE — reprise apres la mort de l'agent, dette de position soldee
+
+**Statut** : Complete.
+
+**LA REPRISE.** L'agent du portage visuel est mort sur la limite de session en plein refactor,
+son dernier mot ecrit : « la 5e copie du bloc de position est interdite (regle n°6), je paie tout
+d'un coup ». Le Go etait committe (schema 30, `bombCarries`, gate PASS sur films reels —
+`BV_gate_portage_run2.log`) ; le web etait en vol. Repris a la main, sur pieces.
+
+**CE QUE L'AGENT AVAIT BIEN FAIT, garde tel quel** : `bombGlyph.ts` (vectoriel, avec la decision
+ARGUMENTEE contre la vignette d'atlas — le piege `killfeed-NN` d'un index qui bouge par saison,
+meme arbitrage que le crane le 28/08) ; `bombCarrierLayer.ts` + `useReplayBombCarrier.ts`
+(porte = position du porteur ; au sol = dernier point du lacheur ; jamais apres l'explosion ;
+portage non ferme = attenue, borne haute) ; bascule de tiroir + i18n FR/EN + marque de fiche
+`bomb` etendue au portage ; cablage canvas minimal.
+
+**LA DETTE SOLDEE : le bloc de position n'a plus qu'UNE ecriture.** `livesPosition.ts` porte
+`buildLivesByXuid` + `deathWindowFrames` + `buildPlayerPosAt` (pur) + `usePlayerPosAt` (hook).
+Migres : les hooks deflagration, drapeau, crane, couronne VIP, porteur de bombe (5 copies) et
+`objectivesLayer` (copie pure). `killFx.ts` garde la JUMELLE autorisee : il DEFINIT
+`posOfPlayerAt`/`KILLPOS_WINDOW_MS`, l'importer boucherait. Garde-rail
+`livesPosition.guard.test.ts` dans le meme commit (regle n°6 : une factorisation sans garde-rail
+re-diverge).
+
+**DEUX ACCROCS DE REPRISE, corriges** : ma propre condition d'insertion d'import etait
+court-circuitee par le mot « livesPosition » dans mes nouveaux commentaires (imports poses a la
+main ensuite) ; et la dependance `objectiveObjects` du `draw` avait saute pendant l'edition de
+l'agent — warning exhaustive-deps INTRODUIT, dependance restauree.
+
+**CANVAS SOUS PLAFOND : 665/665.** Le depassement (674) venait des commentaires ; six
+compressions sans perte (l'information vit dans les en-tetes des calques cites).
+
+**GATES** (exit codes verifies, pas de pipe masquant) : tsc 0 ; eslint 0 erreur, 0 warning sur
+nos fichiers (24 warnings preexistants ailleurs) ; vitest **546 fichiers / 5641 verts** ; gardes
+`livesPosition` + plafond canvas + glyphe + marque verts ; Go inchange depuis son gate PASS.
+
+**RESTE (hors de ce lot)** : merge des branches bombe (`wt/onebomb` : meche pausable a
+reconcilier avec la garde One Bomb du compte a rebours) ; RE-CUISSON INTERDITE par le user —
+rien ne s'affiche en app avant la levee ; son de prise/lacher de bombe volontairement absent
+(aucun stem designe — meme regle que le crane).

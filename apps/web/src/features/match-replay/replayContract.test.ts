@@ -163,6 +163,16 @@ const NULLABLE_ARRAYS = [
   // la milliseconde, ATTRIBUÉ à son ramasseur, et portant l'identifiant de catalogue de l'objet
   // plus sa classe (arme ou non). Il ne remplace pas `weaponChanges` : il comble son rappel.
   'pickups',
+  // `bombArmings` : L'ARMEMENT DE LA BOMBE d'Assaut (schéma 33, 2026-09-01) — une entrée PLATE
+  // par armement (startT/startMs le hold, t/timeMs l'instant armé, fuseMs la mèche de 4 930 ms
+  // prouvée par tirage nul). La garde de mode est côté serveur : jamais One Bomb (canal
+  // réfuté), et la confrontation locale aux explosions retient un film qui contredit la
+  // lecture.
+  'bombArmings',
+  // `bombCarries` : LE PORTEUR DE LA BOMBE d'Assaut (schéma 34, 2026-09-01) — une entrée PLATE
+  // par période (xuid, t0, t1, closed), le patron de `skullCarries` sur le canal des armes
+  // tenues. La garde de mode est côté serveur : toute la famille bomb, One Bomb comprise.
+  'bombCarries',
 ] as const
 
 /** (1) La liste couvre EXACTEMENT les tableaux nullables du contrat — ni plus, ni moins. */
@@ -244,6 +254,10 @@ const NULLABLE_ARRAY_PATHS = [
   // Schéma 29 : le RAMASSAGE NATIF, calque PLAT lui aussi — l'objet ne porte que des nombres
   // et des chaînes (instant, slot, xuid, identifiant de catalogue, nature, classe brute).
   'pickups',
+  // `bombArmings` (schéma 33) : armement PLAT, aucun tableau imbriqué — un seul chemin, la racine.
+  'bombArmings',
+  // `bombCarries` (schéma 34) : portage PLAT, aucun tableau imbriqué — un seul chemin, la racine.
+  'bombCarries',
   // Dans les ÉLÉMENTS d'un tableau de tête — ce que la garde de racine ne voyait pas.
   'flagCarries[].spans',
   // La trajectoire d'une vie libre d'objet d'objectif (schema 21) : comblee par la

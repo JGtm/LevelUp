@@ -43,7 +43,10 @@ import { useReplayPlacements } from './useReplayPlacements'
 import { EMPTY_FEED, EMPTY_MEDIA, EMPTY_ZONES, SERIES_TOKENS } from './replayCanvasConfig'
 import { useReplayObjectiveObjects } from './useReplayObjectiveObjects'
 import { useReplayVipCrown } from './useReplayVipCrown'
+import { useReplayBombCarrier } from './useReplayBombCarrier'
 import { useReplaySkullCarrier } from './useReplaySkullCarrier'
+import { useReplayBombBlast } from './useReplayBombBlast'
+import { useReplayGrenadeRest } from './useReplayGrenadeRest'
 import { useReplayFlagCarries } from './useReplayFlagCarries'
 import { useGrenadeIcons } from './useGrenadeIcons'
 import { useZoneStates } from './useZoneStates'
@@ -77,7 +80,6 @@ import {
   drawKillFxLayer,
   drawShotsLayer,
 } from './replayDraw'
-import { drawGrenadeRestLayer } from './grenadeRestLayer'
 import { frameToMs } from './replayLogic'
 import type { ReplayWindowBounds } from './replayWindow'
 import { drawProjectilesLayer } from './replayProjectiles'
@@ -155,19 +157,17 @@ export function ReplayCanvas({
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const frameRef = useRef(0)
-  // L'HORLOGE AFFICHÉE (recalée sur le gameplay) et la publication bridée de l'image courante
-  // vivent dans useReplayClock — dixième extraction imposée par le cliquet de taille.
+  // L'HORLOGE AFFICHÉE et la publication bridée vivent dans useReplayClock (dixième extraction).
   const { clockRef, tick: clockTick } = useReplayClock({ doc, playWindow, onFrameChange })
 
   const [width, setWidth] = useState(0)
-  // L'OBJET DE RÉGLAGES RESTE ENTIER (2026-08-28) : le tiroir en consomme la quasi-totalité, et
-  // le lui recopier bascule par bascule coûtait cinquante lignes au canvas (cf. useReplayDrawer).
-  // Le DESSIN, lui, ne lit que les valeurs — d'où cette destructuration-là, et pas les commandes.
+  // L'OBJET DE RÉGLAGES RESTE ENTIER (2026-08-28) : le tiroir en consomme la quasi-totalité ;
+  // le dessin ne lit que les valeurs — d'où cette destructuration-là (cf. useReplayDrawer).
   const settings = useReplaySettings()
   const {
     showAim, showZones, showNames, showTrail, showHeatmap, heatmapMode, heatmapSpan,
     showShotFx, showKillFx, showPlacements, showUnnamedPlacements, showDroppedPlacements,
-    showWeaponPads, showGroundWeapons, showFlagCarries, showVipCrown, showSkullCarrier, speed: multiplier,
+    showWeaponPads, showGroundWeapons, showFlagCarries, showVipCrown, showSkullCarrier, showBombCarrier, speed: multiplier,
     markerColors,
   } = settings
   // SON : coupé par défaut, câblage dans le hook (replaySound.ts, lecture replayAudio.ts, camps
@@ -175,23 +175,18 @@ export function ReplayCanvas({
   const sound = useReplaySound(doc, kills, t0Ms, multiplier, scoreboard, endMatch ?? null, locale)
 
   const paletteVersion = useColorPaletteVersion()
-  // TOUTES LES ENCRES DU REJEU, résolues une fois par palette (useReplayInks) : couleurs
-  // d'équipe, fond de carte, lancers, sol, teintes d'éclair, grappin, contour des noms, et le
-  // double contour du joueur de la page. Elles partageaient huit fois le même corps ici — voir
-  // l'en-tête du hook.
+  // TOUTES LES ENCRES DU REJEU, résolues une fois par palette — voir l'en-tête d'useReplayInks.
   const {
     teamColorOf, geometry: geometryColor, shot: shotColor, grenade: grenadeColor, neutral: neutralInk, pad: padInk,
     floor: floorStyle, fx: fxInk, grapple: grappleInk, labelStroke, self: selfInk, wall: wallInk, rift: riftInk, mark: markInk,
   } = useReplayInks(paletteVersion)
-  // COULEURS DISTINCTES PAR JOUEUR (option du tiroir, 2026-08-24) : une couleur de série
-  // stable par joueur du roster, à la place de la couleur d'équipe — pour suivre quelqu'un
-  // dans la mêlée. Le camp reste dit par les fiches, le fil et le bandeau.
+  // COULEURS DISTINCTES PAR JOUEUR (option du tiroir, 2026-08-24) : une série stable par joueur
+  // à la place de la couleur d'équipe — le camp reste dit par les fiches, le fil et le bandeau.
   const distinctColors = useMemo(() => {
     void paletteVersion
     return markerColors === 'player' ? getSeriesColors(doc.roster.length, SERIES_TOKENS) : null
   }, [markerColors, doc.roster.length, paletteVersion])
-  // Identité PAR SLOT ET PAR IMAGE (un slot est réattribué entre manches) : strict pour les
-  // marqueurs/vies, `colorOfSlotOrLast` pour la frontière (objets lâchés, morts). Cf. useSlotIdentity.
+  // Identité PAR SLOT ET PAR IMAGE : strict pour marqueurs/vies, `OrLast` pour la frontière — cf. useSlotIdentity.
   const { colorOfSlot, colorOfSlotOrLast, markOfSlot, nameOfSlot, sideOfSlot } = useSlotIdentity({
     doc,
     scoreboard,
@@ -322,6 +317,12 @@ export function ReplayCanvas({
   const vipCrown = useReplayVipCrown({ doc, view: canvasView, enabled: showVipCrown, ink: neutralInk, reducedMotion })
   // LE PORTEUR DU CRÂNE d'Oddball (schéma 23) : crâne sur le porteur courant, relu image par image.
   const skullCarrier = useReplaySkullCarrier({ doc, view: canvasView, enabled: showSkullCarrier, ink: neutralInk, outline: markInk.outline, reducedMotion })
+  // LA BOMBE d'Assaut (schéma 30) : portée sur son porteur, au sol au dernier point du lâcheur.
+  const bombCarrier = useReplayBombCarrier({ doc, view: canvasView, enabled: showBombCarrier, ink: neutralInk, outline: markInk.outline, reducedMotion })
+  // LA FIN DE VOL des grenades (dix-septième extraction — elle paie la déflagration ci-dessous).
+  const grenadeRest = useReplayGrenadeRest({ doc, view: canvasView, fx: grenadeRestFx, window: restWindow, ink: fxInk, smoke: floorStyle.edge, halo: grenadeColor, reducedMotion })
+  // LA DÉFLAGRATION D'ASSAUT, où et quand elle a eu lieu — seul un match d'Assaut publie la stat.
+  const bombBlast = useReplayBombBlast({ doc, view: canvasView, scoreboard, teamColorOf, neutral: floorStyle.edge, reducedMotion })
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current
@@ -461,30 +462,8 @@ export function ReplayCanvas({
     }
     // La FIN DE VOL après le lancer : halo « dernière position connue » (jamais un
     // impact — aucun événement de détonation dans le film), nappe électrique persistante
-    // pour la Shock/Dynamo.
-    if (grenadeRestFx.length > 0) {
-      drawGrenadeRestLayer(
-        ctx,
-        grenadeRestFx,
-        view,
-        {
-          frame,
-          holdHalo: restWindow.holdHalo,
-          holdDynamo: restWindow.holdDynamo,
-          // Durée réelle d'UNE frame : `frameToMs` porte déjà le repli des artefacts sans
-          // échelle temporelle. La lire ici plutôt que le champ brut évite qu'une explosion
-          // reste figée à l'âge zéro sur un artefact ancien.
-          frameMs: frameToMs(1, doc),
-        },
-        {
-          ink: fxInk,
-          smoke: floorStyle.edge,
-          halo: grenadeColor,
-          k: dpr,
-          reducedMotion,
-        },
-      )
-    }
+    // pour la Shock/Dynamo. Câblage : useReplayGrenadeRest (dix-septième extraction).
+    grenadeRest.paint(ctx, frame, dpr)
     // L'ÉTAT DES ZONES à l'image courante (schémas 16-18) : teinte du camp qui la tient,
     // surbrillance de la colline ACTIVE, arc de la JAUGE EN DIRECT. Il se peint dans la
     // boucle et non dans un calque cuit : la géométrie ne bouge pas, l'état si. Le calque lui-même
@@ -500,6 +479,11 @@ export function ReplayCanvas({
     vipCrown.paint(ctx, frame)
     // LE CRÂNE d'Oddball sur son porteur (le crâne LIBRE reste au sol via objectiveObjects).
     skullCarrier.paint(ctx, frame)
+    // LA BOMBE d'Assaut : portée, au sol, jamais après l'explosion (cf. bombCarrierLayer).
+    bombCarrier.paint(ctx, frame)
+    // LA DÉFLAGRATION d'Assaut, par-dessus tout le reste : c'est l'événement qui décide de la
+    // manche, et il n'y en a qu'une poignée par match.
+    bombBlast.paint(ctx, frame)
     // Le PULSE D'ACTION D'OBJECTIF (capture, retour, prise de zone) : un anneau qui
     // s'ouvre depuis la zone/le marqueur concerné à l'instant de l'action (lot 4.4).
     if (objectivePulses.length > 0) {
@@ -542,14 +526,16 @@ export function ReplayCanvas({
     grappleFx,
     grappleInk,
     killFx,
-    grenadeRestFx,
-    restWindow,
+    grenadeRest,
     objectivePulses,
     placements.teleports,
     zones,
     flags,
+    objectiveObjects,
     vipCrown,
     skullCarrier,
+    bombCarrier,
+    bombBlast,
     floorStyle.edge,
     colorOfSlot,
     colorOfSlotOrLast,
@@ -604,6 +590,7 @@ export function ReplayCanvas({
       flagCarries: flags.available,
       vipCrown: vipCrown.available,
       skullCarrier: skullCarrier.available,
+      bombCarrier: bombCarrier.available,
     },
   })
   // CE QUI SORT DU REJEU (image, vidéo) vit dans useReplayCapture : le canvas prête sa TOILE, son

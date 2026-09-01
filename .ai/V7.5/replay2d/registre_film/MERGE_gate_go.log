@@ -1,0 +1,6 @@
+ok  	levelup/go-api/internal/analysis/replay	19.433s
+ok  	levelup/go-api/internal/replaybuild	0.603s
+ok  	levelup/go-api/internal/analysis/filmdec	0.970s
+ok  	levelup/go-api/contracttest	0.405s
+ok  	levelup/go-api/internal/api	22.398s
+EXIT=0

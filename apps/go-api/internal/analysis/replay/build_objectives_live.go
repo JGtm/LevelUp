@@ -143,9 +143,9 @@ func attachFlagCarries(doc *ReplayDocument, opt Options, own OwnerReport, clock 
 	// nees aux pieds d'un porteur y servent.
 	scan.Free = flagFreeLives(opt.Pads.Weapons, opt.Labels.ObjectiveObjects)
 	carries, cov := buildFlagCarries(scan, flagCarryCtx{
-		origin: clock.origin, step: clock.step, frames: clock.frames,
-		tracks: doc.Tracks, deaths: opt.Deaths,
-		deathOffsetMS: own.DeathOffsetMS, slotXUID: own.SlotXUID,
+		matchClock: matchClock{origin: clock.origin, step: clock.step, frames: clock.frames,
+			deathOffsetMS: own.DeathOffsetMS},
+		tracks: doc.Tracks, deaths: opt.Deaths, slotXUID: own.SlotXUID,
 	})
 	if cov != nil {
 		cov.ObjectLives = len(scan.Free)

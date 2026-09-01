@@ -59,6 +59,15 @@ describe('objectiveMark — les portages, un état qui dure', () => {
     expect(objectiveMarkAt(vip, ME, 5)).toBe('vip')
   })
 
+  it('le PORTAGE de la bombe (schéma 30) marque son porteur comme le crâne — un état qui dure', () => {
+    const doc = testReplayDoc({ bombCarries: [{ xuid: ME, t0: 4, t1: 9, closed: true }] })
+    expect(objectiveMarkAt(doc, ME, 3)).toBeNull()
+    expect(objectiveMarkAt(doc, ME, 4)).toBe('bomb')
+    expect(objectiveMarkAt(doc, ME, 9)).toBe('bomb')
+    expect(objectiveMarkAt(doc, ME, 10)).toBeNull()
+    expect(objectiveMarkAt(doc, 'autre', 5)).toBeNull()
+  })
+
   it('un porteur qui vient de prendre une base garde son objet : l’état prime sur l’instant', () => {
     const doc = testReplayDoc({
       frameCount: 200,
@@ -103,6 +112,34 @@ describe('objectiveMark — la prise de base, un instant tenu', () => {
       // de transport exige une couverture complète, dont rien ici ne dépend).
       coverage: { originResolved: false } as never,
       objectives: [{ stat: 'zone_captures', t: 30, timeMs: 3_000, xuid: ME }],
+    })
+    expect(objectiveMarkAt(d, ME, 30)).toBeNull()
+  })
+})
+
+describe("objectiveMark — l'explosion de la bombe, un instant tenu", () => {
+  const doc = (over = {}) => testReplayDoc({
+    frameCount: 200,
+    objectives: [{ stat: 'bomb_detonations', t: 30, timeMs: 3_000, xuid: ME }],
+    ...over,
+  })
+
+  it("s'allume à l'instant de l'explosion, tient quelques secondes, puis s'éteint", () => {
+    const d = doc()
+    expect(objectiveMarkAt(d, ME, 29)).toBeNull()
+    expect(objectiveMarkAt(d, ME, 30)).toBe('bomb')
+    expect(objectiveMarkAt(d, ME, 31)).toBe('bomb')
+    expect(objectiveMarkAt(d, ME, 300)).toBeNull()
+  })
+
+  it("ne marque que son auteur — le point de mode d'Assaut est attribué", () => {
+    expect(objectiveMarkAt(doc(), 'autre', 30)).toBeNull()
+  })
+
+  it('SANS ORIGINE RÉSOLUE, aucune marque : la même garde que la prise de base', () => {
+    const d = testReplayDoc({
+      coverage: { originResolved: false } as never,
+      objectives: [{ stat: 'bomb_detonations', t: 30, timeMs: 3_000, xuid: ME }],
     })
     expect(objectiveMarkAt(d, ME, 30)).toBeNull()
   })

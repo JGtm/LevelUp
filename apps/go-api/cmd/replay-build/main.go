@@ -38,6 +38,10 @@ import (
 	"levelup/go-api/internal/replaybuild"
 )
 
+// outilNom : le nom que ce binaire porte dans le journal des protections (verrou, sentinelle,
+// priorite). Il apparait tel quel dans le message de refus lu par le prochain operateur.
+const outilNom = "replay-build"
+
 func main() {
 	titleFlag := flag.String("title", title.DefaultSlug, "slug du titre")
 	interval := flag.Int("interval", 0, "pas de temps du rejeu, en ms (0 = défaut)")
@@ -73,24 +77,38 @@ func main() {
 	}
 
 	// La disposition du cache film n'est déclarée que dans filmcache (garde-rail).
-	filmDir := filmcache.ChunkDir(title.NewPathResolver(repoRoot).CacheRootDir(), title.FilmShortMatchID(matchID))
+	cacheRoot := title.NewPathResolver(repoRoot).CacheRootDir()
+	filmDir := filmcache.ChunkDir(cacheRoot, title.FilmShortMatchID(matchID))
 	if len(args) >= 2 {
 		filmDir = args[1]
 	}
 
-	// PLAFOND MÉMOIRE ARMÉ, comme les deux autres binaires qui décodent un film
-	// (`internal/replaychild` pour le fil de l'eau, les instruments de mesure pour le reste).
-	// CE BINAIRE NE L'ARMAIT PAS, et c'était le seul des trois : une cuisson unitaire lancée à
-	// la main sur un film pathologique pouvait donc emporter la machine. Le corpus connaît un
-	// film à 3,3 Go (`1b1e380f`, tué par une surveillance EXTERNE le 2026-08-18) ; quatre
-	// sinistres mémoire ont suivi, le dernier le 2026-08-31. La sentinelle est interne, elle
-	// n'a besoin de personne.
+	// LES TROIS PROTECTIONS, ARMÉES AVANT LE MOINDRE DÉCODAGE (leçon du 2026-08-31).
 	//
-	// `--mem-gib 0` la désarme : c'est l'échappatoire documentée de l'opérateur qui sait ce
-	// qu'il fait, et elle est explicite au lieu d'être le défaut.
-	g := filmproc.Arm("replay-build", *memGiB, func(peak uint64) {
+	// Ce binaire n'en avait AUCUNE : il était le seul point d'entrée de décodage du dépôt à
+	// décoder un film sans plafond mémoire, sans priorité basse et sans exclusion mutuelle. Sa
+	// justification au ratchet — « CLI unitaire : un film par invocation » — est vraie DANS le
+	// processus, et ne dit rien du nombre d'invocations : une boucle de shell, et pire, deux
+	// boucles en parallèle dont une en arrière-plan, ont saturé la machine de travail de
+	// l'utilisateur. Le corpus connaît un film à 3,3 Go (`1b1e380f`, tué par une surveillance
+	// EXTERNE le 2026-08-18) ; quatre sinistres mémoire ont suivi, le dernier le 2026-08-31.
+	// Voir `internal/filmproc/solo.go` pour le récit complet.
+	//
+	// Ordre : le VERROU d'abord (un refus doit coûter zéro décodage), puis la priorité, puis la
+	// sentinelle. Aucune base n'est ouverte ici, donc la sentinelle a le droit de tuer
+	// (cf. l'en-tête de `filmproc`). `--mem-gib 0` la désarme : c'est l'échappatoire documentée
+	// de l'opérateur qui sait ce qu'il fait, et elle est explicite au lieu d'être le défaut.
+	lock, err := filmproc.AcquireSolo(cacheRoot, outilNom, matchID)
+	if err != nil {
+		slog.Error("décodage refusé", "err", err)
+		os.Exit(filmproc.CodePreparation)
+	}
+	defer lock.Release()
+	filmproc.LowerOwnPriority(outilNom)
+	g := filmproc.Arm(outilNom, *memGiB, func(peak uint64) {
 		slog.Error("plafond memoire depasse — cuisson abandonnee",
 			"pic_octets", peak, "pic_gio", float64(peak)/(1<<30), "match", matchID)
+		lock.Release()
 		os.Exit(filmproc.CodeMemory)
 	})
 	defer func() {

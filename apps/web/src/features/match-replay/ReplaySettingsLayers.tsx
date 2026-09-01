@@ -95,6 +95,13 @@ export interface ReplaySkullCarrierControls {
   onToggle: () => void
 }
 
+/** LA BOMBE d'Assaut (schéma 30) : portée et posée, un seul calque, allumé par défaut. */
+export interface ReplayBombCarrierControls {
+  available: boolean
+  show: boolean
+  onToggle: () => void
+}
+
 export interface LayersSectionProps {
   locale: ReplayLocale
   showAim: boolean
@@ -112,12 +119,13 @@ export interface LayersSectionProps {
   flagCarries: ReplayFlagControls
   vipCrown: ReplayVipCrownControls
   skullCarrier: ReplaySkullCarrierControls
+  bombCarrier: ReplayBombCarrierControls
 }
 
 export function LayersSection({
   locale, showAim, onToggleAim, showZones, onToggleZones, showNames, onToggleNames,
   showTrail, onToggleTrail, zonesAvailable, placements, weaponPads, groundWeapons, flagCarries,
-  vipCrown, skullCarrier,
+  vipCrown, skullCarrier, bombCarrier,
 }: LayersSectionProps) {
   const t = REPLAY_TEXT[locale]
   return (
@@ -230,6 +238,17 @@ export function LayersSection({
             pressed={skullCarrier.show}
             onToggle={skullCarrier.onToggle}
             hint={t.layerSkullCarrierHint}
+          />
+        )}
+        {/* LA BOMBE est l'ENJEU d'Assaut : portée elle suit son porteur, lâchée elle reste au
+            dernier point de son lâcheur jusqu'à la reprise ou l'explosion. Un film hors
+            Assaut n'en publie aucune. */}
+        {bombCarrier.available && (
+          <SettingsToggle
+            label={t.layerBombCarrier}
+            pressed={bombCarrier.show}
+            onToggle={bombCarrier.onToggle}
+            hint={t.layerBombCarrierHint}
           />
         )}
       </div>

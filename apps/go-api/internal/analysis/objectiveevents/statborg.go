@@ -126,9 +126,26 @@ const (
 	statMaxModeScore = 250
 )
 
-// StatValue est la paire de valeurs d'un composant. Le sens de A et de B depend du
-// composant : le score de mode est en A, le score personnel en B (cf. score.go).
-type StatValue struct{ A, B int64 }
+// StatValue porte les valeurs d'un composant. Le sens de chaque canal depend du composant :
+// le score de mode est en A, le score personnel en B (cf. score.go).
+//
+// # QUATRE CANAUX, PAS DEUX — et les deux derniers n'ont jamais ete lus (2026-08-31)
+//
+// La grammaire du composant porte DEUX valeurs inconditionnelles (A, B) puis DEUX DRAPEAUX,
+// chacun commandant une valeur CONDITIONNELLE. Jusqu'ici [decodeStatComponent] lisait ces deux
+// dernieres pour AVANCER le curseur, et les jetait. A 28 composants et 2 canaux perdus, ce sont
+// **56 emplacements que rien dans le depot n'avait jamais regardes** — et la question ouverte
+// de l'Assaut (« ou est l'ARMEMENT de la bombe ? », dont le releve A0.3 dit qu'il n'a aucun
+// increment dans les canaux A et B) tombe exactement dans cet angle mort.
+//
+// C et D ne sont donc pas une commodite : ce sont les deux tiroirs qu'on n'avait pas ouverts.
+// `HasC` / `HasD` disent si le drapeau etait pose — un canal ABSENT et un canal a ZERO sont
+// deux choses differentes, et les confondre ferait lire un compteur la ou il n'y a rien.
+type StatValue struct {
+	A, B       int64
+	C, D       int64
+	HasC, HasD bool
+}
 
 // StatRecord est un enregistrement d'entite decode d'un paquet FRAME.
 type StatRecord struct {
@@ -335,17 +352,27 @@ func decodeStatComponent(pay []byte, p int) (StatValue, int, bool) {
 	}
 	flags := [2]uint64{readBitsBE(pay, q, 1), readBitsBE(pay, q+1, 1)}
 	q += 2
-	for _, f := range flags {
+	// LES DEUX CANAUX CONDITIONNELS SONT DESORMAIS GARDES (2026-08-31). Ils etaient lus pour
+	// avancer le curseur, puis JETES — 56 emplacements que rien n'avait jamais regardes (cf.
+	// l'en-tete de [StatValue]). Rien d'autre ne change : le curseur avance de la meme facon,
+	// et aucun lecteur existant ne consulte C ou D.
+	out := StatValue{A: a, B: b}
+	for i, f := range flags {
 		if f != 1 {
 			continue
 		}
-		_, n, ok := readStatVarWidth(pay, q)
+		v, n, ok := readStatVarWidth(pay, q)
 		if !ok {
 			return StatValue{}, 0, false
 		}
+		if i == 0 {
+			out.C, out.HasC = v, true
+		} else {
+			out.D, out.HasD = v, true
+		}
 		q += n
 	}
-	return StatValue{A: a, B: b}, q - p, true
+	return out, q - p, true
 }
 
 // readStatVarWidth reproduit le lecteur a longueur variable FUN_140C18A1C : un selecteur
@@ -403,7 +430,7 @@ func RealRounds(recs []StatRecord) map[int]bool {
 	series := map[key][]ScorePoint{}
 	for _, r := range recs {
 		v, ok := r.Comps[modeScoreComp]
-		if !ok || v.A < 0 || v.A > statMaxModeScore {
+		if !ok || !modeScoreInDomain(v) {
 			continue
 		}
 		k := key{r.Slot, r.Round}
@@ -416,7 +443,87 @@ func RealRounds(recs []StatRecord) map[int]bool {
 			runs[k.round] = n
 		}
 	}
-	return contiguousRounds(runs)
+	return contiguousRounds(runs, materialRounds(recs))
+}
+
+// statMinRoundRecordShare : la part MINIMALE, en pour cent, des enregistrements de slot
+// JOUEUR de la manche la plus fournie du film qu'une manche doit porter pour etre MATERIELLE.
+//
+// # Pourquoi un SECOND critere d'admission, et pourquoi celui-ci
+//
+// Le critere de suite coherente ne peut PAS etre tenu par une manche d'Assaut One Bomb : une
+// manche y porte au plus UNE emission de score (un point de mode = une explosion, releve A0.3
+// fige au protocole du lot A), donc sa plus longue suite strictement croissante vaut 2 — sous
+// [statMinRoundRun]. Mesure du 2026-08-31 : sur `df8fcbef`, `c75f33b8` et `9f57c612`, seule la
+// manche 0 survivait et 8 explosions sur 11 etaient perdues, alors que le releve BRUT somme au
+// score de l'API sur 9 films sur 9.
+//
+// Ce qui separe VRAIMENT une manche jouee d'un ancrage fortuit, c'est la MATIERE : une manche
+// jouee fait emettre tous les slots de joueur pendant toute sa duree ; un faux positif de
+// l'assertion d'en-tete arrive isole. La part est prise RELATIVEMENT a la manche la plus
+// fournie du meme film — ce denominateur est toujours une manche reelle, donc la mesure ne
+// depend d'aucune constante de duree, de cadence, ni de nombre de joueurs (un FFA a 6 joueurs
+// passe comme un 4v4).
+//
+// # Les deux populations, mesurees sur 65 films et 227 manches brutes
+//
+// Corpus de recherche (12 films : 3 One Bomb a verite connue, 6 Assaut mono-manche, les DEUX
+// contre-exemples documentes `53ce4390` et `1bc77d2e`, un Oddball a manches courtes) et corpus
+// de CONTROLE HORS ECHANTILLON (53 films echantillonnes PAR MODE : Slayer, Fiesta, BTB, Husky
+// Raid, Firefight, Oddball, CTF, KOTH, Strongholds, variantes communautaires) :
+//
+//	ancrage fortuit   part <= 5,84 %   (`bfcd1175` manche 6 : 18/308 — un film de Slayer,
+//	                                   mode qui n'a pas de manche)
+//	manche reelle     part >= 21 %     (`df8fcbef` manche 1 : 45/212)
+//
+// DIX pour cent se pose au milieu de ce vide : 1,7 fois au-dessus du plus gros ancrage observe,
+// 2,1 fois sous la plus maigre manche reelle. Instrument et controle :
+// `analysis/replay/assaut_manches_research_test.go`, qui REFUSE toute manche du corpus libre
+// dans la bande 7 %..15 %.
+const statMinRoundRecordShare = 10
+
+// statMinRoundRecords : le PLANCHER ABSOLU du second critere, en enregistrements de slot joueur.
+//
+// La part seule serait piegeuse sur un film TRES pauvre : trois enregistrements en manche 0 et
+// un en manche 1 font 33 %, et l'ancrage passerait. Le plancher ferme cette porte sans rien
+// coûter aux vrais films — le plus maigre du corpus de mesure (`69b16f5d`) porte deja 306
+// enregistrements. Les deux extremes mesures l'encadrent : plus gros ancrage observe 18
+// (`bfcd1175` manche 6), plus maigre manche reelle 45 (`df8fcbef` manche 1).
+//
+// LES DEUX CONDITIONS SONT EXIGEES ENSEMBLE. Le second critere ne peut donc qu'AJOUTER des
+// manches a ce que le premier retenait deja, jamais en retirer.
+const statMinRoundRecords = 25
+
+// materialRounds rend les manches MATERIELLES : celles qui portent au moins
+// [statMinRoundRecords] enregistrements de slot JOUEUR ET au moins [statMinRoundRecordShare] %
+// de ceux de la manche la plus fournie.
+//
+// Les slots d'EQUIPE sont exclus du comptage : ils emettent sur un rythme propre, independant
+// du nombre de joueurs, et deux slots suffiraient a faire passer un ancrage.
+func materialRounds(recs []StatRecord) map[int]bool {
+	parRound := map[int]int{}
+	for _, r := range recs {
+		if IsTeamSlot(r.Slot) {
+			continue
+		}
+		parRound[r.Round]++
+	}
+	ref := 0
+	for _, n := range parRound {
+		if n > ref {
+			ref = n
+		}
+	}
+	out := map[int]bool{}
+	if ref == 0 {
+		return out
+	}
+	for round, n := range parRound {
+		if n >= statMinRoundRecords && n*100 >= ref*statMinRoundRecordShare {
+			out[round] = true
+		}
+	}
+	return out
 }
 
 // statMaxEmptyRoundRun : combien de manches SANS suite coherente la contiguite tolere d'affilee.
@@ -438,17 +545,22 @@ const statMaxEmptyRoundRun = 1
 // Une manche sans suite coherente est CONSERVEE quand une manche coherente la suit encore (elle
 // a bien ete jouee, elle a seulement ete courte) et que le trou ne depasse pas
 // [statMaxEmptyRoundRun]. Sinon on s'arrete : ce qui suit est du bruit.
-func contiguousRounds(runs map[int]int) map[int]bool {
+//
+// DEUX CRITERES D'ADMISSION, en OU : la suite coherente du score de mode ([statMinRoundRun])
+// OU la matiere de la manche ([statMinRoundRecordShare]). Le second existe pour l'Assaut One
+// Bomb, ou une manche ne porte qu'UNE emission de score et ne peut donc jamais tenir le
+// premier — voir l'en-tete de [statMinRoundRecordShare] pour les deux populations mesurees.
+func contiguousRounds(runs map[int]int, material map[int]bool) map[int]bool {
 	out := map[int]bool{}
 	gap := 0
 	for round := 0; round <= statMaxRound; round++ {
-		if runs[round] >= statMinRoundRun {
+		if runs[round] >= statMinRoundRun || material[round] {
 			gap = 0
 			out[round] = true
 			continue
 		}
 		gap++
-		if gap > statMaxEmptyRoundRun || !hasRoundAfter(runs, round) {
+		if gap > statMaxEmptyRoundRun || !hasRoundAfter(runs, material, round) {
 			break
 		}
 		out[round] = true // manche courte, mais une manche coherente la suit encore
@@ -461,10 +573,11 @@ func contiguousRounds(runs map[int]int) map[int]bool {
 	return out
 }
 
-// hasRoundAfter dit s'il reste une manche coherente STRICTEMENT apres celle-ci.
-func hasRoundAfter(runs map[int]int, round int) bool {
+// hasRoundAfter dit s'il reste une manche ADMISE STRICTEMENT apres celle-ci — par l'un ou
+// l'autre des deux criteres, comme la boucle de [contiguousRounds].
+func hasRoundAfter(runs map[int]int, material map[int]bool, round int) bool {
 	for r := round + 1; r <= statMaxRound; r++ {
-		if runs[r] >= statMinRoundRun {
+		if runs[r] >= statMinRoundRun || material[r] {
 			return true
 		}
 	}

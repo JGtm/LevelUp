@@ -110,6 +110,10 @@ var replaySchemas = []struct {
 	{"VipCrownCoverage", replay.VipCrownCoverage{}},
 	{"SkullCarry", replay.SkullCarry{}},
 	{"SkullCarriesCoverage", replay.SkullCarriesCoverage{}},
+	{"BombArming", replay.BombArming{}},
+	{"BombArmingsCoverage", replay.BombArmingsCoverage{}},
+	{"BombCarry", replay.BombCarry{}},
+	{"BombCarriesCoverage", replay.BombCarriesCoverage{}},
 	{"ZoneState", replay.ZoneState{}},
 	{"ZoneSpan", replay.ZoneSpan{}},
 	{"GaugePoint", replay.GaugePoint{}},
@@ -471,9 +475,22 @@ var replaySchemas = []struct {
 //	                      `origin` est OPTIONNEL et son absence est une ABSTENTION : un client
 //	                      qui ne trouve pas la cle conclut « non etabli », jamais `ground`.
 //
-// Les quinze fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
+//	45 -> 47  2026-09-01  DEUX champs, les deux calques de LA BOMBE d Assaut :
+//	                      - `bombArmings` (v33) : le debut du hold, l instant arme et la meche
+//	                        (anneau ti=12 i14, protocole 0/1000 — jamais One Bomb, ou le canal
+//	                        est refute CV 0,725) ;
+//	                      - `bombCarries` (v34) : les periodes de PORTAGE, patron de
+//	                        `skullCarries` sur le canal des armes tenues (famille 0x3fee4fcf,
+//	                        B1/B2 2026-09-01) — TOUTES les variantes bomb, One Bomb comprise,
+//	                        car le negatif de v33 vise l anneau, pas ce canal. La ligne v33
+//	                        etait DUE : le commit du schema (pris 29 sur wt/bombe-visuel,
+//	                        renumerote 33 au merge — les schemas 29-32 etaient pris sur
+//	                        feat/v75) a regen le contrat sans passer ici, et ce test etait
+//	                        rouge — la seizieme prise.
+//
+// Les seize fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
 // chiffre ne le dise. Contrat regenere (`make openapi-gen`), jamais ecrit a la main.
-const wantReplayDocumentFields = 45
+const wantReplayDocumentFields = 47
 
 // TestReplayContractDescribesEveryPublishedField : AUCUN CHAMP PUBLIE SANS DESCRIPTION, ET
 // AUCUNE DESCRIPTION SANS CHAMP.

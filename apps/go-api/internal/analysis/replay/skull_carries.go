@@ -73,36 +73,12 @@ type SkullCarryScan struct {
 	Identity objectiveevents.RoundIdentity
 }
 
-// skullCarryCtx regroupe l'axe de temps et le calage d'horloge film <-> match (memes conventions
-// que la couronne VIP).
-type skullCarryCtx struct {
-	origin, step  uint64
-	frames        int
-	deathOffsetMS int64
-}
-
-// frameOfMatchMS pose un instant du MATCH sur l'axe de frames.
-func (c skullCarryCtx) frameOfMatchMS(matchMS int) int {
-	if c.step == 0 {
-		return -1
-	}
-	filmUS := (int64(matchMS) + c.deathOffsetMS) * 1000
-	if filmUS < int64(c.origin) {
-		return -1
-	}
-	return int((uint64(filmUS) - c.origin) / c.step)
-}
-
-// openSlackFrames traduit le trou de fermeture d'un train en frames : un portage dont le dernier
-// tic est a moins d'un trou de la fin de l'axe n'a ete ferme par aucun fait — il court jusqu'au
-// bout (le film s'arrete pendant le portage). Au-dela, une fermeture est un vrai fait (une chute
-// suivie d'une reprise, ou une fin de manche).
-func (c skullCarryCtx) openSlackFrames() int {
-	if c.step == 0 {
-		return 0
-	}
-	return int((uint64(skullTickGapMS)*1000 + c.step - 1) / c.step)
-}
+// L'AXE DE TEMPS est le `matchClock` partagé (match_clock.go) : la conversion match -> frames
+// était la même que celle du drapeau et de la couronne, elle n'est plus écrite qu'une fois.
+// Le trou de fermeture d'un train se traduit en frames par `slackFrames(skullTickGapMS)` : un
+// portage dont le dernier tic est a moins d'un trou de la fin de l'axe n'a ete ferme par aucun
+// fait — il court jusqu'au bout (le film s'arrete pendant le portage). Au-dela, une fermeture
+// est un vrai fait (une chute suivie d'une reprise, ou une fin de manche).
 
 // skullRawCarry est une periode de portage reconstruite : un train de tics d'un meme slot dans une
 // manche, en horloge du MATCH.
@@ -123,26 +99,26 @@ type skullRawCarry struct {
 // (`CarrierAbsent`). Un portage qui DEBORDE de la presence du porteur est ROGNE a elle (le crane
 // n'est porte que tant que le porteur est present). Un porteur inconnu de `presence` — jamais nomme
 // dans les tracks, ou `presence` nil en test — n'est PAS verifie : on ne rejette pas l'inconnu.
-func buildSkullCarries(scan SkullCarryScan, ctx skullCarryCtx, presence map[string][]presenceSpan) ([]SkullCarry, *SkullCarriesCoverage) {
+func buildSkullCarries(scan SkullCarryScan, ctx matchClock, presence map[string][]presenceSpan) ([]SkullCarry, *SkullCarriesCoverage) {
 	if !scan.Scanned {
 		return nil, nil
 	}
 	cov := &SkullCarriesCoverage{SkullFilm: true, Grabs: skullGrabCount(scan.Records)}
 	raws := skullCarryIntervals(scan.Records, scan.Identity)
 	cov.Trains = len(raws)
-	openThreshold := ctx.frames - 1 - ctx.openSlackFrames()
+	openThreshold := ctx.frames - 1 - ctx.slackFrames(skullTickGapMS)
 	out := make([]SkullCarry, 0, len(raws))
 	for _, r := range raws {
 		if r.xuid == "" {
 			cov.NoBridge++
 			continue
 		}
-		f0 := ctx.frameOfMatchMS(r.t0MS)
+		f0 := ctx.frameOfMatchMS(int64(r.t0MS))
 		if f0 < 0 || f0 >= ctx.frames {
 			cov.OutOfWindow++
 			continue
 		}
-		f1 := clampFrame(ctx.frameOfMatchMS(r.t1MS), ctx.frames)
+		f1 := clampFrame(ctx.frameOfMatchMS(int64(r.t1MS)), ctx.frames)
 		if f1 < f0 {
 			f1 = f0
 		}
@@ -292,7 +268,7 @@ func attachSkullCarries(doc *ReplayDocument, opt Options, own OwnerReport, clock
 		Records:  in.Records,
 		Identity: objectiveevents.ResolveRoundIdentity(in.Records, deathInstantsOf(opt.Deaths)),
 	}
-	carries, cov := buildSkullCarries(scan, skullCarryCtx{
+	carries, cov := buildSkullCarries(scan, matchClock{
 		origin: clock.origin, step: clock.step, frames: clock.frames,
 		deathOffsetMS: own.DeathOffsetMS,
 	}, skullCarrierPresence(doc.Tracks))
