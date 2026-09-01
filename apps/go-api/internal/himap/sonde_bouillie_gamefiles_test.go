@@ -90,7 +90,10 @@ func mesureBouillie(t *testing.T, root string, carte CarteForge, verdict string)
 		t.Skipf("index Forge : %v", err)
 	}
 	var b BilanCuisson
-	poseObjetsForge(context.Background(), r, &b, v.Objects, idx, forge, nil, 0, 0, 0, nil)
+	// `opts` porte deja Objets = v.Objects et laisse a zero les quatre reglages que l'appel
+	// passait explicitement a nil/0 (types exclus, minceur, plafond, drapeaux) ; zJeu reste 0
+	// comme avant.
+	poseObjetsForge(context.Background(), r, &b, idx, forge, opts, 0)
 	if b.ObjetsDessines == 0 {
 		t.Fatal("aucun objet dessine")
 	}

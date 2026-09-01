@@ -277,20 +277,7 @@ func CuitCarteForge(ctx context.Context, opts OptionsCuissonForge) (*Rendu, Bila
 
 	r := CadreSurAncresEchelle(opts.Ancres, EchellePourCadre(opts.Ancres, opts.Echelle, opts.CibleCadrePx))
 	r.SeuilArete = opts.SeuilArete
-	// LA TRANCHE, TRANSLATEE AU SOL DES ANCRES. Le sol de Vagabond vit vers z=52 : c'est ici
-	// qu'on a compris qu'une tranche absolue n'avait pas de sens, et la chaine native applique
-	// desormais la meme regle (cf. `TrancheDeJeu`).
-	zJeu := MedianeZ(opts.Ancres) - AncrageDecalageSol
-	b.NiveauDeJeu = zJeu
-	minT, maxT := TrancheDeJeu(zJeu)
-	if opts.PlancherTranche < 0 {
-		minT = zJeu + opts.PlancherTranche
-	}
-	if opts.PlafondTranche > 0 {
-		maxT = zJeu + opts.PlafondTranche
-	}
-	r.Tranche(minT, maxT)
-	r.NiveauDeJeu(zJeu)
+	zJeu := armeTrancheDeJeuForge(r, &b, opts)
 	// MEME regle que la chaine native : la voie de reference contre les toits
 	// (rendu_reference.go). Une carte Forge a ciel ouvert reste sous le seuil et n'est pas
 	// touchee ; la regle est universelle, pas une affaire de chaine.
@@ -323,8 +310,7 @@ func CuitCarteForge(ctx context.Context, opts OptionsCuissonForge) (*Rendu, Bila
 	if opts.DessineCanevas {
 		poseCanevasForge(ctx, r, &b, opts)
 	}
-	poseObjetsForge(ctx, r, &b, opts.Objets, idx, forge, opts.TypesExclus, opts.MinceurMin,
-		zJeu, opts.PlafondObjets, opts.DrapeauxExclus)
+	poseObjetsForge(ctx, r, &b, idx, forge, opts, zJeu)
 	if opts.PlafondObjets > 0 {
 		slog.InfoContext(ctx, "mapfond: objets poses au-dessus du plafond ecartes", "carte", opts.Cle,
 			"plafond", opts.PlafondObjets, "objets", b.ObjetsAuPlafond)
@@ -336,6 +322,51 @@ func CuitCarteForge(ctx context.Context, opts OptionsCuissonForge) (*Rendu, Bila
 		n := r.AdopteSurfaceBasse()
 		slog.InfoContext(ctx, "mapfond: sol vu du dessous", "carte", opts.Cle, "pixels", n)
 	}
+	appliqueSubstitutionForge(ctx, r, &b, s, opts)
+	rogneAuNavmeshForge(ctx, r, opts)
+	mesureEtRogneZonesForge(ctx, r, &b, opts)
+	combleTrousForge(ctx, r, &b, opts)
+	rogneAltitudesEtPositionsForge(ctx, r, opts)
+	cadreAuxAncresEtZonesForge(ctx, r, opts)
+	borneALaBoite(ctx, r, &b, boiteForge(ctx, opts))
+	if b.VolumesDeMort == 0 {
+		b.degrade(ctx, "aucun volume de mort reconnu — l'empreinte des types a peut-etre bouge")
+	}
+	JugeParLesAncres(r, &b, opts.Ancres)
+	journalisePixelsParType(ctx, r, b, opts.Objets)
+	slog.InfoContext(ctx, "carte Forge cuite", "cle", b.Module,
+		"objets", fmt.Sprintf("%d/%d", b.ObjetsDessines, b.ObjetsForge),
+		"sansModele", b.ObjetsSansModele, "volumesDeMort", b.VolumesDeMort,
+		"couverture", fmt.Sprintf("%.1f%%", 100*b.TauxCouverture), "couverte", b.CarteCouverte,
+		"ancres", fmt.Sprintf("%d/%d", b.AncresAvecSol, b.AncresDansLeCadre))
+	return r, b, nil
+}
+
+// armeTrancheDeJeuForge deduit le niveau de jeu des ancres, arme la tranche d'altitude du rendu
+// et note ce niveau au bilan. Rend le niveau de jeu. Extrait de CuitCarteForge, a l'identique.
+//
+// LA TRANCHE EST TRANSLATEE AU SOL DES ANCRES. Le sol de Vagabond vit vers z=52 : c'est ici
+// qu'on a compris qu'une tranche absolue n'avait pas de sens, et la chaine native applique
+// desormais la meme regle (cf. `TrancheDeJeu`).
+func armeTrancheDeJeuForge(r *Rendu, b *BilanCuisson, opts OptionsCuissonForge) float64 {
+	zJeu := MedianeZ(opts.Ancres) - AncrageDecalageSol
+	b.NiveauDeJeu = zJeu
+	minT, maxT := TrancheDeJeu(zJeu)
+	if opts.PlancherTranche < 0 {
+		minT = zJeu + opts.PlancherTranche
+	}
+	if opts.PlafondTranche > 0 {
+		maxT = zJeu + opts.PlafondTranche
+	}
+	r.Tranche(minT, maxT)
+	r.NiveauDeJeu(zJeu)
+	return zJeu
+}
+
+// appliqueSubstitutionForge arbitre entre les trois voies de traitement des toits et renseigne
+// le taux de couverture du bilan. Extrait de CuitCarteForge, a l'identique.
+func appliqueSubstitutionForge(ctx context.Context, r *Rendu, b *BilanCuisson,
+	s *SurfaceReference, opts OptionsCuissonForge) {
 	switch {
 	case opts.SansSubstitution:
 		b.TauxCouverture = r.TauxCouvertureMesure()
@@ -348,6 +379,11 @@ func CuitCarteForge(ctx context.Context, opts OptionsCuissonForge) (*Rendu, Bila
 	default:
 		b.TauxCouverture, b.CellulesSubstituees, b.CarteCouverte = r.AppliqueReference(s, opts.SubstitutionSansPortee)
 	}
+}
+
+// rogneAuNavmeshForge applique les deux rognages qui prennent le maillage de navigation pour
+// juge : hors maillage, puis loin du sol qu'il donne. Extrait de CuitCarteForge, a l'identique.
+func rogneAuNavmeshForge(ctx context.Context, r *Rendu, opts OptionsCuissonForge) {
 	if opts.RogneAuNavmesh && opts.NavmeshReference != nil {
 		marge := MargeNavmesh
 		if opts.MargeNavmeshCarte > 0 {
@@ -360,8 +396,12 @@ func CuitCarteForge(ctx context.Context, opts OptionsCuissonForge) (*Rendu, Bila
 		n := r.EffaceLoinDuNavmesh(opts.ToleranceNavmesh)
 		slog.InfoContext(ctx, "mapfond: surfaces loin du sol vidées", "carte", opts.Cle, "tolerance", opts.ToleranceNavmesh, "cellules", n)
 	}
-	mesureEtRogneZonesForge(ctx, r, &b, opts)
-	combleTrousForge(ctx, r, &b, opts)
+}
+
+// rogneAltitudesEtPositionsForge applique les deux rognages qui prennent le JEU pour juge : la
+// distance au niveau de jeu, puis la distance aux positions courues. Extrait de CuitCarteForge,
+// a l'identique.
+func rogneAltitudesEtPositionsForge(ctx context.Context, r *Rendu, opts OptionsCuissonForge) {
 	if opts.RogneAuxAltitudesProches {
 		seuil, marge := SeuilAltitudeProche, MargeAltitudeProche
 		if opts.SeuilAltitude > 0 {
@@ -390,6 +430,12 @@ func CuitCarteForge(ctx context.Context, opts OptionsCuissonForge) (*Rendu, Bila
 			"positions", len(opts.PositionsJouees), "rayon", rayon, "cellules", n,
 			"seuilRecollement", seuilRec, "objetsRetires", r.RecollementRetires)
 	}
+}
+
+// cadreAuxAncresEtZonesForge efface les composantes sans ancre, puis borne le cadre a l'emprise
+// des ancres et a celle des zones de callout. Extrait de CuitCarteForge, a l'identique : les
+// bilans locaux ne servent qu'au journal, seul le bornage final alimente le bilan de cuisson.
+func cadreAuxAncresEtZonesForge(ctx context.Context, r *Rendu, opts OptionsCuissonForge) {
 	if opts.RogneAuxComposantesAncrees {
 		n, gardees, total := r.GardeComposantesAncrees(opts.Ancres)
 		slog.InfoContext(ctx, "mapfond: composantes sans ancre effacees", "carte", opts.Cle,
@@ -419,18 +465,6 @@ func CuitCarteForge(ctx context.Context, opts OptionsCuissonForge) (*Rendu, Bila
 			slog.WarnContext(ctx, "mapfond: cadre aux zones demande mais aucune zone lue", "carte", opts.Cle)
 		}
 	}
-	borneALaBoite(ctx, r, &b, boiteForge(ctx, opts))
-	if b.VolumesDeMort == 0 {
-		b.degrade(ctx, "aucun volume de mort reconnu — l'empreinte des types a peut-etre bouge")
-	}
-	JugeParLesAncres(r, &b, opts.Ancres)
-	journalisePixelsParType(ctx, r, b, opts.Objets)
-	slog.InfoContext(ctx, "carte Forge cuite", "cle", b.Module,
-		"objets", fmt.Sprintf("%d/%d", b.ObjetsDessines, b.ObjetsForge),
-		"sansModele", b.ObjetsSansModele, "volumesDeMort", b.VolumesDeMort,
-		"couverture", fmt.Sprintf("%.1f%%", 100*b.TauxCouverture), "couverte", b.CarteCouverte,
-		"ancres", fmt.Sprintf("%d/%d", b.AncresAvecSol, b.AncresDansLeCadre))
-	return r, b, nil
 }
 
 // indexForge construit l'index des tags : le module des objets Forge d'abord (les `food` et
@@ -463,12 +497,14 @@ func indexForge(opts OptionsCuissonForge) (*ModuleIndex, *himodule.Module, error
 	return idx, forge, nil
 }
 
-// poseObjetsForge resout le modele de chaque type d'objet, puis pose ses triangles.
+// poseObjetsForge resout le modele de chaque type d'objet, puis pose ses triangles. Les cinq
+// reglages qu'il consulte (objets, types exclus, minceur minimale, plafond de pose, drapeaux
+// exclus) sont lus dans `opts`, comme dans poseCanevasForge ; seul `zJeu`, qui est calcule et non
+// declare, reste un parametre a part.
 func poseObjetsForge(ctx context.Context, r *Rendu, b *BilanCuisson,
-	objets []mapvar.Object, idx *ModuleIndex, forge *himodule.Module, exclus map[int32]bool,
-	minceurMin, zJeu, plafondObjets float64, drapeaux map[uint8]bool) {
+	idx *ModuleIndex, forge *himodule.Module, opts OptionsCuissonForge, zJeu float64) {
 	minceurs := map[uint32]float64{}
-	modeleDuType := modeleParType(ctx, objets, idx, forge)
+	modeleDuType := modeleParType(ctx, opts.Objets, idx, forge)
 	assets := map[uint32]*RuntimeGeoAsset{}
 	// DIAGNOSTIC DES TYPES ETENDUS. Le « gribouillis » d Isolation ne cede ni a l ecretage ni
 	// au bornage : il vit A HAUTEUR DE SOL. Reste une cause possible — un TYPE d objet dont le
@@ -477,7 +513,7 @@ func poseObjetsForge(ctx context.Context, r *Rendu, b *BilanCuisson,
 	etendues := map[int32]float64{}
 	comptes := map[int32]int{}
 	defer func() { journaliseTypesEtendus(ctx, b, etendues, comptes) }()
-	for i, o := range objets {
+	for i, o := range opts.Objets {
 		if _, mort := TypesVolumesDeMort[o.TypeID]; mort {
 			b.VolumesDeMort++
 			continue
@@ -487,18 +523,9 @@ func poseObjetsForge(ctx context.Context, r *Rendu, b *BilanCuisson,
 			b.ObjetsSansModele++
 			continue
 		}
-		if minceurMin > 0 {
-			mn, connue := minceurs[m.id]
-			if !connue {
-				if a := ouvreAsset(ctx, idx, m.id, m.groupe); a != nil {
-					mn, _ = MinceurDuModele(a)
-				}
-				minceurs[m.id] = mn
-			}
-			if mn > 0 && mn < minceurMin {
-				b.ObjetsFilaires++
-				continue
-			}
+		if modeleTropFilaire(ctx, idx, m, minceurs, opts.MinceurMin) {
+			b.ObjetsFilaires++
+			continue
 		}
 		a, deja := assets[m.id]
 		if !deja {
@@ -509,11 +536,11 @@ func poseObjetsForge(ctx context.Context, r *Rendu, b *BilanCuisson,
 			b.ObjetsSansModele++
 			continue
 		}
-		if drapeaux[o.Flags] {
+		if opts.DrapeauxExclus[o.Flags] {
 			b.ObjetsDrapeauExclu++
 			continue
 		}
-		if plafondObjets > 0 && float64(o.Pos.Z) > zJeu+plafondObjets {
+		if opts.PlafondObjets > 0 && float64(o.Pos.Z) > zJeu+opts.PlafondObjets {
 			b.ObjetsAuPlafond++
 			continue
 		}
@@ -524,7 +551,7 @@ func poseObjetsForge(ctx context.Context, r *Rendu, b *BilanCuisson,
 			etendues[o.TypeID] = etendueMondeDe(a, in)
 		}
 		comptes[o.TypeID]++
-		if exclus[o.TypeID] {
+		if opts.TypesExclus[o.TypeID] {
 			b.ObjetsExclus++
 			continue
 		}
@@ -535,6 +562,25 @@ func poseObjetsForge(ctx context.Context, r *Rendu, b *BilanCuisson,
 		}
 		b.ObjetsDessines++
 	}
+}
+
+// modeleTropFilaire dit si le modele d'un type couvre trop peu de son emprise au sol pour etre
+// pose (cf. MinceurDuModele). La mesure est mise en cache par modele dans `minceurs` — elle coute
+// une ouverture d'asset. Un minceurMin nul ou negatif desarme le filtre. Extrait de
+// poseObjetsForge, a l'identique.
+func modeleTropFilaire(ctx context.Context, idx *ModuleIndex, m refModele,
+	minceurs map[uint32]float64, minceurMin float64) bool {
+	if minceurMin <= 0 {
+		return false
+	}
+	mn, connue := minceurs[m.id]
+	if !connue {
+		if a := ouvreAsset(ctx, idx, m.id, m.groupe); a != nil {
+			mn, _ = MinceurDuModele(a)
+		}
+		minceurs[m.id] = mn
+	}
+	return mn > 0 && mn < minceurMin
 }
 
 // refModele designe le tag de geometrie d'un type d'objet : son GlobalID et son groupe —
@@ -843,11 +889,11 @@ func cheminsCanevas(opts OptionsCuissonForge) []string {
 //
 // Ce qui separe vraiment une branche d un rocher, c est que vue de dessus elle ne remplit
 // presque rien de sa boite : quelques traits dans un carre vide.
-func MinceurDuModele(a *RuntimeGeoAsset) (float64, bool) {
-	const cotesGrille = 32
-	lo := [2]float64{math.Inf(1), math.Inf(1)}
-	hi := [2]float64{math.Inf(-1), math.Inf(-1)}
-	tris := 0
+// empriseAuSolDuModele rend la boite englobante PLANAIRE du modele, en coordonnees locales, et
+// son nombre total de triangles. Extrait de MinceurDuModele, a l'identique.
+func empriseAuSolDuModele(a *RuntimeGeoAsset) (lo, hi [2]float64, tris int) {
+	lo = [2]float64{math.Inf(1), math.Inf(1)}
+	hi = [2]float64{math.Inf(-1), math.Inf(-1)}
 	for mi := 0; mi < a.MeshCount(); mi++ {
 		m := a.Mesh(mi)
 		if m == nil {
@@ -861,6 +907,12 @@ func MinceurDuModele(a *RuntimeGeoAsset) (float64, bool) {
 		}
 		tris += len(m.Triangles)
 	}
+	return lo, hi, tris
+}
+
+func MinceurDuModele(a *RuntimeGeoAsset) (float64, bool) {
+	const cotesGrille = 32
+	lo, hi, tris := empriseAuSolDuModele(a)
 	l, h := hi[0]-lo[0], hi[1]-lo[1]
 	if tris == 0 || l <= 0 || h <= 0 {
 		return 0, false

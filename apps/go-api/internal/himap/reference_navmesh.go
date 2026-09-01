@@ -169,23 +169,35 @@ func (r *Rendu) dilateCouverture(marge float64) []bool {
 	}
 	// Dilatation separable : une passe en X, une en Y. Le carre qu'elle produit est un peu plus
 	// large qu'un disque aux diagonales — assume, comme pour le masque des zones.
-	tmp := make([]bool, len(base))
+	return r.dilateEnY(r.dilateEnX(base, rayon), rayon)
+}
+
+// dilateEnX rend le masque elargi de `rayon` cellules le long des colonnes. Passe X de la
+// dilatation separable de dilateCouverture, extraite a l'identique.
+func (r *Rendu) dilateEnX(base []bool, rayon int) []bool {
+	out := make([]bool, len(base))
 	for j := 0; j < r.NY; j++ {
 		for i := 0; i < r.NX; i++ {
-			for d := -rayon; d <= rayon && !tmp[j*r.NX+i]; d++ {
+			for d := -rayon; d <= rayon && !out[j*r.NX+i]; d++ {
 				x := i + d
 				if x >= 0 && x < r.NX && base[j*r.NX+x] {
-					tmp[j*r.NX+i] = true
+					out[j*r.NX+i] = true
 				}
 			}
 		}
 	}
+	return out
+}
+
+// dilateEnY rend le masque elargi de `rayon` cellules le long des lignes. Passe Y de la
+// dilatation separable de dilateCouverture, extraite a l'identique.
+func (r *Rendu) dilateEnY(base []bool, rayon int) []bool {
 	out := make([]bool, len(base))
 	for j := 0; j < r.NY; j++ {
 		for i := 0; i < r.NX; i++ {
 			for d := -rayon; d <= rayon && !out[j*r.NX+i]; d++ {
 				y := j + d
-				if y >= 0 && y < r.NY && tmp[y*r.NX+i] {
+				if y >= 0 && y < r.NY && base[y*r.NX+i] {
 					out[j*r.NX+i] = true
 				}
 			}
