@@ -79799,7 +79799,7 @@ l'événement ne porte pas de handle monde. Ce lien reste l'affaire du canal spa
 
 ---
 
-## [2026-08-31] Lot 3 — le ramassage natif PUBLIÉ : schéma 29, `pickups` en production
+## [2026-08-31] Lot 3 — le ramassage natif PUBLIÉ : schéma 30, `pickups` en production
 
 **Statut** : Complété (production ; 7 étapes du plan, toutes closes).
 **Worktree** : `wt/biped-pickup`. Commits `13a57abe5`, `ef0bc55d2`, `d56b16036`, `96208813a`.
@@ -79836,7 +79836,7 @@ que les prises ratées par `weaponChanges` étaient MUETTES (les sept armes lour
 passage : `cmd/replay-build` n'armait PAS le plafond mémoire — seul des trois binaires qui
 décodent un film à ne pas le faire. Il l'arme désormais (`filmproc.Arm`, 3 GiB, `--mem-gib 0`
 pour désarmer). Pic mesuré **0,127 GiB**. L'artefact porte 135 ramassages, 127 nommés,
-53 armes / 82 objets, schéma 29 — chiffres identiques aux mesures des lots 1-2.
+53 armes / 82 objets, schéma 30 — chiffres identiques aux mesures des lots 1-2.
 **MAIS la datation des `padPickups` n'a PAS été exercée** : ce film (Fiesta sur Cliffhanger)
 rend 0 socle et 0 occupation, ses 220 armes au sol étant toutes des armes lâchées. La levée de
 l'intervalle de vingt secondes est prouvée par trois tests unitaires, PAS par une cuisson. Il

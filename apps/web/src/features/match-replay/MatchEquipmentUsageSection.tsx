@@ -187,7 +187,7 @@ function UsageTeamBody({
  * UsageFootnotes — la ligne ANONYME du match, les dénominateurs, et ce qui n'est pas mesuré.
  *
  * La ligne des socles de bonus est HORS DU TABLEAU, et ce n'est pas une question de place : le
- * ramasseur n'est pas AFFICHÉ ici (`padPickups[].xuid` est publié depuis le schéma 29, mais cet
+ * ramasseur n'est pas AFFICHÉ ici (`padPickups[].xuid` est publié depuis le schéma 30, mais cet
  * écran n'a pas été repensé pour l'exploiter). Une colonne, même
  * intitulée « anonyme », finirait par se lire comme une grandeur de joueur.
  */

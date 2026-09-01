@@ -14,7 +14,7 @@ package replay
 //	REFUSÉ    le RAMASSEUR. L'oracle des loadouts a été mesuré deux fois, par slot de vie puis
 //	          par joueur (pont `SlotXUID` du constructeur) : 88,1 % puis 79,7 % là où il peut
 //	          parler, contre >= 90 % exigé, et le seuil n'a pas été rebaissé. `PadPickup.XUID`
-//	          existe et EST RENSEIGNE depuis le schema 29 (2026-08-31) quand l evenement natif
+//	          existe et EST RENSEIGNE depuis le schema 30 (2026-08-31) quand l evenement natif
 //	          `biped_pickup` date l occupation ; `null` sinon, et le champ dit pourquoi.
 //
 //	REFUSÉ    les « ramassages » d'armes LÂCHÉES à une mort. La mesure les a séparés des socles :

@@ -68,7 +68,7 @@ export function ReplayCanvasTips({
         />
       )}
       {/* JAMAIS qui a pris l'arme : le champ existe au contrat et est renseigne depuis le
-          schema 29 quand l'evenement natif date l'occupation, mais cette infobulle ne
+          schema 30 quand l'evenement natif date l'occupation, mais cette infobulle ne
           l'affiche pas — son dessin n'a pas ete repense. */}
       {pad && <ReplayWeaponPadTip locale={locale} hover={pad} width={width} />}
       {flag && <ReplayFlagTip locale={locale} hover={flag} width={width} />}

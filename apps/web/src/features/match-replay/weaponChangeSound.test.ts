@@ -119,7 +119,7 @@ describe('le canal NATIF comble les trous, et ne double JAMAIS', () => {
     expect(weaponChangeSoundEvents(d)).toEqual([])
   })
 
-  it('un artefact ANTÉRIEUR au schéma 29 n a pas de `pickups` : on se tait, on ne lève pas', () => {
+  it('un artefact ANTÉRIEUR au schéma 30 n a pas de `pickups` : on se tait, on ne lève pas', () => {
     const d = { frameIntervalMs: 100, weaponChanges: [], equipmentChanges: [] } as unknown as ReplayDocumentReady
     expect(weaponChangeSoundEvents(d)).toEqual([])
   })

@@ -2710,7 +2710,7 @@ export type ReplayWeaponPad = components['schemas']['WeaponPad']
 export type ReplayPadPresence = components['schemas']['PadPresence']
 export type ReplayPadCycle = components['schemas']['PadCycle']
 // Une occupation de socle ACHEVÉE (schéma 11) : le socle s'est vidé quelque part dans
-// [tLow, tHigh]. Depuis le schéma 29 (2026-08-31), `t` porte l'instant EXACT et `xuid` le
+// [tLow, tHigh]. Depuis le schéma 30 (2026-08-31), `t` porte l'instant EXACT et `xuid` le
 // ramasseur quand l'événement natif `biped_pickup` date l'occupation ; sinon l'intervalle reste
 // seul et `xuid` vaut `null`.
 export type ReplayPadPickup = components['schemas']['PadPickup']

@@ -206,7 +206,7 @@ var replaySchemas = []struct {
 //	                        ramassage, le recensement est espace de ~20 s). Le champ `xuid`
 //	                        existe et vaut `null` PARTOUT : l oracle des loadouts donne 88,1 %
 //	                        par slot de vie et 79,7 % par joueur, contre >= 90 % exige.
-//	                        LEVE AU SCHEMA 29 (2026-08-31) : l evenement natif `biped_pickup`
+//	                        LEVE AU SCHEMA 30 (2026-08-31) : l evenement natif `biped_pickup`
 //	                        date l occupation et PORTE son ramasseur — `xuid` est renseigne
 //	                        quand le canal natif couvre la fenetre, `null` sinon.
 //	                      `Coverage` gagne son bloc `groundWeapons` : un film sans socle, un film
@@ -404,7 +404,7 @@ var replaySchemas = []struct {
 //	                        champ au document : `until`/`untilMax`/`end` vivent sur
 //	                        EquipmentPlacement, pas a la racine.
 //
-//	44 -> 45  2026-08-31  UN champ, le RAMASSAGE NATIF (schema 29) :
+//	44 -> 45  2026-08-31  UN champ, le RAMASSAGE NATIF (schema 30) :
 //	                      - `pickups` : l evenement `biped_pickup` de la bobine (type 9 de la
 //	                        liste d evenements en tete des paquets delta), decode pour la
 //	                        premiere fois. Grammaire lue dans l exe, cadrage juge par l oracle

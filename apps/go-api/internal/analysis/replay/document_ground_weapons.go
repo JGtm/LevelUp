@@ -17,7 +17,7 @@ package replay
 // SchemaVersion — un artefact v10 doit se voir comme « à re-cuire », pas comme à jour.
 //
 // CE QUE LA MESURE A REFUSÉ DE PUBLIER, ET C'EST LA MOITIÉ DU RÉSULTAT. Le RAMASSEUR n'est pas
-// publié jusqu'au schéma 29 (`PadPickup.XUID` valait `null` partout) : l'oracle indépendant — le loadout d'image-clé
+// publié jusqu'au schéma 30 (`PadPickup.XUID` valait `null` partout) : l'oracle indépendant — le loadout d'image-clé
 // du ramasseur présumé — donnait 88,1 % en suivant le slot de vie et 79,7 % en suivant le joueur,
 // contre >= 90 % exigé, et le seuil n'a pas été rebaissé. Les « ramassages » d'armes LÂCHÉES à
 // une mort ne sont pas publiés non plus : l'accord y passe SOUS son propre témoin (32,1 % contre
@@ -151,7 +151,7 @@ type PadPickup struct {
 	// `SlotXUID` du constructeur). Le seuil du plan était >= 90 % et il n'a pas été rebaissé.
 	//
 	// CE QUI L'A LEVÉ, ET LA CONDITION ÉTAIT ÉCRITE ICI : « un oracle plus RAPPROCHÉ que 20 s ».
-	// L'événement natif `biped_pickup` (schéma 29) EST cet oracle — daté à la milliseconde, et
+	// L'événement natif `biped_pickup` (schéma 30) EST cet oracle — daté à la milliseconde, et
 	// il PORTE son ramasseur au lieu de le déduire (`512 + sa référence` vaut le slot du
 	// ramasseur, exact sur 32/32 paires de vérité terrain, deux films). Il ne s'agit plus d'un
 	// oracle à valider mais d'une donnée lue. Cf. pad_pickup_dating.go.

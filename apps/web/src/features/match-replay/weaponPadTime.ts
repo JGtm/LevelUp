@@ -16,7 +16,7 @@
  * à l'écran.
  *
  * LE RAMASSEUR N'EST PAS ICI, et il ne le sera pas : le champ existe au contrat
- * (`padPickups[].xuid`) et est PUBLIÉ depuis le schéma 29 (2026-08-31) — l'événement natif le
+ * (`padPickups[].xuid`) et est PUBLIÉ depuis le schéma 30 (2026-08-31) — l'événement natif le
  * porte. Ce module ne le lit pas : il ne calcule que des instants.
  * Aucune ligne de ce fichier ne le lit.
  */

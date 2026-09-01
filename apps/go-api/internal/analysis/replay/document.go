@@ -305,7 +305,7 @@ package replay
 // film, incohérentes). Le ramassage d'équipement reste dans `equipmentChanges` (QUI et QUAND),
 // sans lien vers l'objet du sol.
 //
-// CE QUE LA VERSION 29 PORTE. Le RAMASSAGE NATIF (`pickups`) : l'événement `biped_pickup` de
+// CE QUE LA VERSION 30 PORTE. Le RAMASSAGE NATIF (`pickups`) : l'événement `biped_pickup` de
 // la bobine — le type 9 de la liste d'événements d'un paquet delta, décodé pour la première
 // fois (grammaire lue dans l'exe, cadrage jugé par l'oracle de trame sur deux films). Il DATE
 // à la milliseconde, ATTRIBUE (sa référence vaut `512 + index` = le slot du ramasseur, exact
@@ -314,15 +314,17 @@ package replay
 // i43..i46 y figurent). Son R(3) de tête sépare les armes du reste : classes 0/1 → 63-72 %
 // d'armes connues, classes 2/3 → 0,0 % sur 118 événements.
 //
-// CE QUE LA VERSION 29 LÈVE. `padPickups` cesse d'être un intervalle anonyme de vingt
+// CE QUE LA VERSION 30 LÈVE. `padPickups` cesse d'être un intervalle anonyme de vingt
 // secondes : quand un ramassage natif de la MÊME famille tombe dans la fenêtre, l'occupation
 // porte son instant EXACT (`t`) et son ramasseur (`xuid`). C'est la condition de levée que le
 // contrat de `PadPickup.XUID` avait écrite — « un oracle plus RAPPROCHÉ que 20 s » — et elle
 // n'est plus une inférence : l'événement porte le ramasseur. RIEN N'EST EFFACÉ : une
 // occupation que le canal natif ne couvre pas garde son intervalle intact, et `xuid` y reste
-// `null`. Un artefact 28 se lit donc sans changement ; il ne porte simplement pas ces datations.
+// `null`. Un artefact ANTERIEUR se lit donc sans changement ; il ne porte simplement pas ces
+// datations. (La version 29 est celle de la LUNETTE, arrivee en parallele sur feat/v75 : les
+// deux chantiers ont pris le 29 le meme jour, celui-ci a ete renumerote 30 au merge.)
 //
-// CE QUE LA VERSION 29 REFUSE. De remplacer `weaponChanges` : les deux canaux coexistent parce
+// CE QUE LA VERSION 30 REFUSE. De remplacer `weaponChanges` : les deux canaux coexistent parce
 // qu'ils ne disent pas la même chose (l'un qualifie prise/lâcher/échange et connaît
 // l'emplacement d'arme, l'autre voit des prises que le premier rate et nomme le ramasseur).
 // Et de prétendre à la complétude : le balayage ne décode que l'événement EN TÊTE de sa liste,
@@ -330,7 +332,7 @@ package replay
 // cette borne. Les classes non-arme SONT publiées, sur mesure et non par principe : 80,5 % et
 // 72,2 % d'entre elles n'ont AUCUNE émission i48 du même slot à moins de 500 ms (témoin décalé
 // à 0,0 %) — elles comblent un trou, elles ne doublonnent pas `equipmentChanges`.
-const SchemaVersion = 29
+const SchemaVersion = 30
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {

@@ -37,7 +37,7 @@
  * présence ou une absence que la mesure tient.
  *
  * CE QUE CE CALQUE NE DESSINE JAMAIS :
- *  - LE RAMASSEUR. Le champ (`padPickups[].xuid`) est PUBLIÉ depuis le schéma 29 (2026-08-31),
+ *  - LE RAMASSEUR. Le champ (`padPickups[].xuid`) est PUBLIÉ depuis le schéma 30 (2026-08-31),
  *    l'événement natif le portant. Aucune ligne d'ici ne le lit : ce calque dessine des LIEUX,
  *    pas des joueurs. C'est un choix de calque, plus une absence de donnée.
  *  - LES OBJETS LÂCHÉS. Ce sont les armes qu'un joueur relâche en mourant ; elles ne sont pas
