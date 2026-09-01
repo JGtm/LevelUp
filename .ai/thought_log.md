@@ -84243,3 +84243,31 @@ retrait massif. Déclenchement non démontré ; correction = second critère sur
 socles, à traiter si un cas se présente.
 
 **Conclusion / prochaine étape** : merge, puis passe de données one-shot.
+
+## [2026-09-01] Passe one-shot du catalogue de cartes — 66 cartes, 2028 points — Complété
+
+**Statut** : Complété et poussé. Données uniquement, aucune cuisson.
+
+Trois passes avec le dump CORRIGÉ (variante `map.mvar`, jamais la carte de base) :
+`--refresh-drifted` (7 régénérées, **2 refusées par la garde des 10 m**), puis
+`--accept-large-moves` pour les 2 dérives réelles, puis `--only-add-spawn-points`.
+
+**La troisième passe était nécessaire, et ce n était pas prévu** : `--refresh-drifted` SAUTE les
+cartes concordantes, si bien que celles redevenues concordantes avec le bon fichier
+n auraient jamais reçu leurs points. Sans elle on restait à 62 cartes.
+
+**État** : 56 -> **66** cartes à points établis · 1662 -> **2028** points · 16 -> **6** non établies.
+
+**Rapport de diff des socles** : **70 des 72 entrées inchangées**. Seules bougent les deux
+dérives réelles — `live_fire_-_ranked` (1 ajouté, 1 retiré, 6 déplacés, max 21,94 m) et
+`recharge_-_ranked` (2 retirés, 4 déplacés, max 33,83 m). Dix cartes gagnent des points, aucune
+n en perd.
+
+**Catalyst reste intacte sur le fond** : socles et points byte-identiques, seul `objects_n`
+passe de 337 à 357. Les mesures du schéma 32 ne bougent pas.
+
+**Six cartes restent sans points** — manque de DONNÉES, pas refus : leur asset ne sert pas de
+`map.mvar` dans le dump local. Elles se combleront par le rattrapage au fetch de films.
+
+**Conclusion** : le chiffre attendu était ~70, le réel est **66** ; l écart est exactement ces
+six cartes.
