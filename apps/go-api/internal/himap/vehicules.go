@@ -31,34 +31,54 @@ const profondeurMaxHlmt = 6
 // piege du hlmt de repli partage (id bas 0x1f) qui porte un `mode` parasite : le vrai modele du
 // vehicule, atteint par recursion sur le premier hlmt, prime.
 func RefModeleVehicule(ctx context.Context, idx *ModuleIndex, tagVehi []byte) (id uint32, groupe string, ok bool) {
-	// Une ref `rtgo`/`mode` directe sur le vehi d'abord (comme le `food` Forge), sinon le saut
-	// par les hlmt.
+	// LA CHAINE hlmt D'ABORD, ref directe seulement en repli. Un `vehi` inline SOUVENT un `mode`
+	// de repli d'ETAT (le modele « partial_emp », 0x000027d0, partage par une dizaine de vehis) :
+	// le preferer ecraserait le vrai chassis. Le modele reel est TOUJOURS au bout du champ
+	// `model` -> `hlmt` -> `mode`. On epuise donc la chaine hlmt (modeleParHlmtRecursif prend le
+	// premier hlmt = le champ model), et on ne retombe sur une ref `rtgo`/`mode` directe (comme le
+	// `food` Forge) que si aucun hlmt ne porte de geometrie.
+	vus := map[uint32]bool{}
+	if id, g, ok := modeleParHlmtRecursif(ctx, idx, tagVehi, vus, 0); ok {
+		return id, g, true
+	}
 	if refs := refsVehicule(tagVehi, idx, GroupeRtgo); len(refs) > 0 {
 		return refs[0], GroupeRtgo, true
 	}
 	if refs := refsVehicule(tagVehi, idx, GroupeMode); len(refs) > 0 {
 		return refs[0], GroupeMode, true
 	}
-	vus := map[uint32]bool{}
-	return modeleParHlmtRecursif(ctx, idx, tagVehi, vus, 0)
+	return 0, "", false
 }
 
-// minTagIDVehicule : plancher des GlobalID acceptes comme reference d'un tag de vehicule.
+// minTagIDVehicule : plancher modeste des GlobalID acceptes comme reference d'un tag de
+// vehicule — il ecarte le bruit de champ-compteur (valeurs 0..255 lues comme un id par le
+// balayage d'octets), pas les vrais modeles.
 //
-// POURQUOI, ET C'EST MESURE (2026-08-31). Le balayage d'octets (`RefsInline`) prend pour une
-// reference toute valeur 4 octets qui resout dans l'index. Deux tags PARTAGES a ID minuscule
-// derailent la resolution : `hlmt 0x0000001f` (octets « 1f 00 00 00 » = l'entier 31, omnipresent)
-// capte comme « premier hlmt », et il porte un `mode 0x00003a73` de repli — d'ou 15 vehicules
-// (ghost, banshee, wraith, chopper...) resolus vers CE meme modele parasite plat de 452 sections.
-// Tous les vrais modeles de vehicule ont un GlobalID de HASH large (>= 0x06000000 sur les cas
-// resolus) ; ecarter les ID sous ce plancher supprime les deux parasites sans toucher un seul
-// modele reel. Le filtre est PROPRE au vehicule (le Forge, lui, n'a pas ce piege).
-const minTagIDVehicule = 0x00010000
+// HISTOIRE (2026-08-31 -> 2026-09-01). V4 avait pose ce plancher a 0x10000 pour ecarter DEUX
+// tags PARTAGES a ID minuscule qui deraillaient la resolution : `hlmt 0x0000001f` (octets
+// « 1f 00 00 00 » = l'entier 31, omnipresent) capte comme « premier hlmt », et son `mode
+// 0x00003a73` de repli (modele plat de 452 sections). Mais 0x10000 etait TROP HAUT : il
+// ecartait aussi des hlmt de tourelle legitimes a petit hash (mesure 2026-09-01 : la tourelle
+// `warthog_g` a pour modele `hlmt 0x0000e0d4` = 57 556, ecrase par le plancher, d'ou une
+// tourelle « SANS MODELE »). La bonne cible n'est pas un plancher haut mais l'exclusion NOMMEE
+// des deux parasites (parasitesVehicule) : ainsi les hlmt de tourelle a petit hash passent.
+const minTagIDVehicule = 0x00000100
 
-// refsVehicule rend les refs inline d'un groupe dont le GlobalID passe le plancher anti-parasite.
+// parasitesVehicule : les GlobalID PARTAGES de repli qui derailleraient le balayage d'octets —
+// le `hlmt` omnipresent 0x1f (entier 31 present dans tout tag) et le `mode` plat 0x3a73 qu'il
+// porte. Exclus NOMMEMENT (et non par un plancher aveugle) pour ne pas ecarter du meme coup les
+// modeles de tourelle a petit hash.
+var parasitesVehicule = map[uint32]bool{
+	0x0000001f: true, // hlmt de repli partage
+	0x00003a73: true, // mode plat de repli (452 sections)
+	0x000027d0: true, // mode d'etat partage « vehicle_partial_emp » (~10 vehis y pointent)
+}
+
+// refsVehicule rend les refs inline d'un groupe dont le GlobalID passe le plancher anti-bruit
+// et n'est pas un parasite partage.
 func refsVehicule(tag []byte, idx *ModuleIndex, groupe string) []uint32 {
 	return RefsInline(tag, func(h uint32) bool {
-		if h < minTagIDVehicule {
+		if h < minTagIDVehicule || parasitesVehicule[h] {
 			return false
 		}
 		g, _, ok := idx.Lookup(h)

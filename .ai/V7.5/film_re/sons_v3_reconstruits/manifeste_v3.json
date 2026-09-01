@@ -1,8 +1,8 @@
 ﻿{
     "genere_le":  "2026-09-01",
-    "revision":  "8 (REFUTE rev7 : le moteur de DEPLACEMENT est DISTINCT par vehicule. Banque + event + wems propres a chaque vehicule ; SWITCH de regime dans la banque du vehicule. e793c135 = lit commun, PAS le moteur. Voir V3B_MOTEUR_PARVEHICULE_2026-09-01.md)",
+    "revision":  "9 (CORRIGE la boucle de deplacement : l'etat de switch retenu par rev8 etait le RALENTI (defaut 356702912, maigre) et Scorpion n'utilisait meme pas l'event moteur. rev9 retient l'etat EN CONDUITE (diesel soutenu) mesure au spectre, et SUPERPOSE les couches : Scorpion = diesel + chenilles ; Warthog = corps RPM + combustion ; Ghost = souffle + boost. Voir V3C_MOTEUR_CONDUITE_2026-09-01.md)",
     "tir_livre":  "Wasp, Scorpion, Gungoose, Warthog (banques _veh_ FNV-1) + Falcon (mitrailleuse).",
-    "deplacement":  "DISTINCT PAR VEHICULE (rev7 refute). Chaque vehicule : sa banque, son event de moteur, ses wems. Rendu debut/boucle/fin regime median pour Ghost, Scorpion, Warthog (verite terrain). e793c135/06ba1096 = lit commun de presence pose SOUS le moteur propre, pas le moteur.",
+    "deplacement":  "DISTINCT PAR VEHICULE. Boucle EN CONDUITE (rev9) : etat de switch a diesel/regime soutenu (pas le ralenti par defaut), couches SUPERPOSEES et sommees (semantique arbre.go), niveaux calibres par mesure RMS. Fichiers deplacement/moteur_conduite_boucle8s.wav (+ couches isolees). e793c135/06ba1096 = lit commun de presence, PAS le moteur.",
     "sadt_verdict":  "REFUTE comme moteur par vehicule : sadt 2b6f1d67 est PARTAGE Ghost+Scorpion ; le handler du FourCC \u0027sadt\u0027 (FUN_1404cc908) est un simple test de groupe, aucune structure audio. sadt ne porte pas le moteur.",
     "per_vehicule":  "EXTRACTIBLES et rendus : Ghost=souffle+thrum (bank 01862ab3, event 47361baf) ; Scorpion=grondement+chenilles (bank 05a51e0a, events 951f76c0/d5c7daeb) ; Warthog=combustion (bank a52af042, events 68b1a949/38b83eb8). Timbres spectralement distincts, conformes a la verite terrain.",
     "preuve_ghidra":  {
@@ -265,45 +265,40 @@
                   ],
     "switch_verdict":  "OUI, il y a un SWITCH — mais dans la banque DU VEHICULE, pas dans e793c135. Scorpion event 951f76c0 : switch 196e9bed (groupe 2275666646, defaut 356702912, 4 etats de regime, chaque etat = 6 wems differents). Warthog event 68b1a949 : switch 3c24a4f9 (meme groupe). rev7 avait inspecte la MAUVAISE banque (le lit commun e793c135, qui lui n\u0027a pas de switch).",
     "per_vehicule_extractible":  "OUI (prouve, 3 axes : structure eqip-arbre + contenu du pck + spectre). Le prefetch embarque de la banque est tronque (~0.5s) ; le wem COMPLET est streame dans le pck du vehicule.",
+    "switch_regime_5_etats":  "Event moteur 951f76c0 (Scorpion) et 68b1a949 (Warthog) : switch groupe 2275666646, 5 etats (1 defaut 356702912 + 4 conditionnels), 6 wems/etat, +8..+9 dB. Echelle monotone mesuree au spectre : le defaut est le RALENTI (le plus faible, crest le plus haut = chugs distincts) ; l energie monte et le crest baisse (grondement continu) vers les etats hauts. EN CONDUITE = etat a diesel soutenu (Scorpion 3707760930 ; Warthog 163696720). rev8 avait rendu le ralenti (ou meme, pour Scorpion, pas l event moteur du tout) : d ou la boucle maigre.",
     "deplacement_par_vehicule":  [
                                      {
                                          "nom":  "Ghost",
                                          "banque":  "01862ab3",
-                                         "event_moteur":  "47361baf",
-                                         "nature":  "3 couches SIMULTANEES : lit 192653757 + (1 parmi 4) + 835658180",
-                                         "switch":  "aucun (antigrav continu, module en hauteur par RTPC)",
-                                         "timbre":  "souffle aerien large + thrum basse pulsee",
-                                         "centroides_hz":  "192653757=1796, 68830349=751, 835658180=1364",
-                                         "verite_terrain":  "CONFORME (souffle antigrav)",
+                                         "event_moteur":  "47361baf (souffle, 3 couches simultanees) + 2e7f2aa2 (BOOST)",
+                                         "etat_conduite":  "aucun switch (antigrav continu). Le moving = souffle + boost.",
+                                         "couches_superposees":  "souffle mid 68830349 (dominant, -14 dB) + bed grave 192653757 (-20) + thrum tonal 835658180 (-20) ; boost = 2e7f2aa2 wem 52024965 (event le plus fort de la banque, gain chemin +20 dB : brut -16,7 dB effectif +3,6 dB ; -13 dB dans le mix boost)",
+                                         "mesures_mix":  "souffle mono, bas -14,5 dB dominant, crest 4,1 (continu) ; +boost : +2,4 dB de niveau, bas -10,9 dB (poussee grave)",
+                                         "verite_terrain":  "CONFORME (souffle antigrav + poussee de boost)",
+                                         "fichiers":  "moteur_conduite_boucle8s.wav ; moteur_conduite_boost_boucle8s.wav ; boost.wav",
                                          "dossier":  "Ghost/deplacement"
                                      },
                                      {
                                          "nom":  "Scorpion",
                                          "banque":  "05a51e0a",
-                                         "event_moteur":  "951f76c0 (regime, switch 196e9bed 4 etats) ; 0134da4e (allumage) ; d5c7daeb/13beda14 (boucles chenilles)",
-                                         "boucle_wems":  [
-                                                             1033065922,
-                                                             369482775
-                                                         ],
-                                         "switch":  "196e9bed, groupe 2275666646, 4 etats de regime (6 wems/etat)",
-                                         "timbre":  "grondement grave + cliquetis de chenilles (striations d\u0027impacts de maillons)",
-                                         "centroides_hz":  "1033065922=4687",
-                                         "verite_terrain":  "CONFORME (chenilles)",
+                                         "event_moteur":  "951f76c0 (regime, switch 196e9bed) = DIESEL ; d5c7daeb = CHENILLES ; 0134da4e = allumage (RECONNU, conserve)",
+                                         "switch":  "196e9bed etat 3707760930 (EN CONDUITE, diesel soutenu : brut -17,7 dB, crest 7,7, boucle 6,2 s) ; groupe 2275666646, 5 etats (defaut 356702912=ralenti + 4), 6 wems/etat",
+                                         "regression_rev8":  "rev8 ne rendait NI 951f76c0 NI un etat de conduite : elle rendait d5c7daeb+13beda14 (chenilles seules, sans corps diesel), d ou l absence de diesel signalee.",
+                                         "couches_superposees":  "diesel = 951f76c0 etat 3707760930 wem 85078605 (-14 dB) + chenilles = d5c7daeb wem 1033065922 (centroide 4687 Hz, -19 dB) + bed 195277626 (-25 dB)",
+                                         "mesures_mix":  "bas -13,8 dB dominant (diesel) ; haut 3-6 kHz de -35 (diesel seul) a -27,7 dB (chenilles presentes) ; crest 4,3 (continu)",
+                                         "verite_terrain":  "CONFORME (grondement diesel + cliquetis de chenilles)",
+                                         "fichiers":  "moteur_conduite_boucle8s.wav ; diesel.wav ; chenilles.wav ; moteur_amorce_allumage.wav (0134da4e conserve)",
                                          "dossier":  "Scorpion/deplacement"
                                      },
                                      {
                                          "nom":  "Warthog a roquettes",
                                          "banque":  "a52af042",
-                                         "event_moteur":  "68b1a949 (regime, switch 3c24a4f9 4 etats) ; 38b83eb8 (3 couches combustion)",
-                                         "boucle_wems":  [
-                                                             128563311,
-                                                             351128378,
-                                                             79651516
-                                                         ],
-                                         "switch":  "3c24a4f9, groupe 2275666646 (meme que Scorpion)",
-                                         "timbre":  "moteur a combustion, dominante basse 0-6 kHz",
-                                         "centroides_hz":  "351128378=1472, 955693063=1698",
-                                         "verite_terrain":  "CONFORME (jeep combustion)",
+                                         "event_moteur":  "68b1a949 (regime, switch 3c24a4f9) + 38b83eb8 (3 couches combustion)",
+                                         "switch":  "3c24a4f9 etat 163696720 (EN CONDUITE, seul a se detacher : brut -17,6 dB, crest 7,6, +3 dB) ; groupe 2275666646 (meme que Scorpion)",
+                                         "couches_superposees":  "corps RPM = 68b1a949 etat 163696720 wem 675731033 (-15) + combustion 38b83eb8 L2 351128378 (-16) + detail L3 585735189 (-21) + chug L1 128563311 (-22) + bed 195277626 (-26). Aucune couche surface/roues distincte (le haut -31 dB de l etat de conduite porte deja le mecanique).",
+                                         "mesures_mix":  "bas -13,6 dB dominant, crest 4,3 (combustion continue)",
+                                         "verite_terrain":  "CONFORME (moteur de jeep en marche)",
+                                         "fichiers":  "moteur_conduite_boucle8s.wav ; diesel.wav (corps RPM + combustion)",
                                          "dossier":  "Warthog_roquettes/deplacement"
                                      }
                                  ],
