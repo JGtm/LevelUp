@@ -20,10 +20,11 @@ package filmdec
 //
 // DEUX CONSEQUENCES, ET LA PREMIERE DEPASSE LE CANAL.
 //
-//	1. L'ANCRAGE DES IMAGES-CLES DE ti=11 EST JUSTE, et c'est la premiere preuve INDEPENDANTE du
-//	   chainage qu'ait ce chantier. `objective_scan.go` reclamait un oracle de largeur : le voila,
-//	   et il ne coute aucun portage. Portee exacte : il valide l'ANCRE du record et la largeur du
-//	   PREMIER composant, pas les composants situes plus loin dans le masque.
+//	1. L'ANCRAGE DES IMAGES-CLES DE ti=11 TOMBE SUR DE LA DONNEE STRUCTUREE, et c'est la premiere
+//	   preuve INDEPENDANTE du chainage qu'ait ce chantier. `objective_scan.go` reclamait un oracle
+//	   de largeur : le voila, et il ne coute aucun portage. Portee exacte : il borne l'erreur
+//	   d'ancrage a UN BIT (cf. la RESERVE plus bas), et il ne dit rien des composants situes plus
+//	   loin dans le masque.
 //	2. LA VOIE DELTA EST DU BRUIT, MEME FILTREE SUR `Chained`. 1 552 lectures delta d'Assaut :
 //	   legalite 45,7 % / 40,3 % / 21,7 % en paire, SOUS le 53,1 % d'un tirage uniforme ; 120 et
 //	   121 valeurs distinctes ; 841 et 923 lectures hors domaine. Les 38 lectures survivant au
@@ -54,6 +55,38 @@ package filmdec
 // images-cles. Ce que i0 rend est le COUPLE D'INDEX (minuteur principal, minuteur secondaire) de
 // l'affichage d'objectif, pose une fois pour toutes. La VALEUR du compte a rebours, si elle
 // existe, est derriere l'index — dans ti=0 i15 `managed-engine-timers-component`, non porte.
+//
+// # LA RESERVE QUI ACCOMPAGNE LE POSITIF, ET ELLE EST GROSSE : LE QUANTUM EST TOUJOURS PAIR
+//
+// Les valeurs observees en image-cle sont, EN ENTIER (aucune troncature — chaque film en compte
+// au plus six et les six sont imprimees) : v0 dans {-1, 1, 3, 15, 17, 19, 21, 23} et v1 dans
+// {-1, 15, 47}. TOUTES IMPAIRES. Or `ObjectiveTimerValue(q) = q - 1`, donc le QUANTUM BRUT est
+// PAIR sur les 1 149 lectures : le bit de poids faible du champ de sept bits vaut zero, toujours.
+// Le hasard est exclu, et ce n'est pas un artefact du lecteur — la voie delta, elle, rend des
+// quanta impairs (123, 121, 27, 59, 91...).
+//
+// DEUX EXPLICATIONS TIENNENT, ET LA MESURE NE LES SEPARE PAS.
+//
+//	a. Le jeu n'utilise que des fentes de bassin de rang pair. Possible, mais treize valeurs de
+//	   suite sans une seule exception fait cher pour une coincidence.
+//	b. LA BOUCLE DE COMPOSANTS DEMARRE UN BIT TROP LOIN. On lirait alors
+//	   `((vrai & 0x3F) << 1) | premier bit du composant suivant`, ce qui rend un quantum pair des
+//	   que ce bit voisin vaut zero. Le vrai couple serait `q/2 - 1`, soit v0 dans
+//	   {-1, 0, 1, 7, 8, 9, 10, 11} et v1 dans {-1, 7, 23} — des index CONTIGUS la ou nous lisons
+//	   une echelle impaire de pas deux. Sur `34bb3bc8`, les cinq valeurs 15, 17, 19, 21, 23 (34
+//	   lectures chacune) deviennent les cinq fentes CONSECUTIVES 7, 8, 9, 10, 11.
+//
+// L'HYPOTHESE (b) RECOUPE UN FAIT DEJA DOCUMENTE : `objective_scan.go` releve que des slots
+// consecutifs rendent des `i12` decales d'UN BIT (0x04000003, 0x08000007, 0x1000000F). Un
+// demarrage tardif d'un bit expliquerait les deux observations d'un coup.
+//
+// CE QUE LA LEGALITE PROUVE MALGRE CELA — et c'est ce qui reste acquis : une fenetre POSEE AU
+// HASARD rendrait 53 %, et elle rend 100 % avec huit valeurs distinctes sur 128 possibles. L'ancre
+// tombe donc sur de la donnee STRUCTUREE, a AU PLUS UN BIT PRES. C'est deja ce que ce chantier
+// n'avait jamais pu dire. Mais « a un bit pres » n'est pas « juste », et la suite doit le tester
+// AVANT d'exploiter une valeur de ti=11 : relire i0 avec la fenetre reculee d'un bit, et regarder
+// si le couple devient contigu. La legalite ne tranchera pas (les deux lectures restent dans le
+// domaine tant que les index sont petits) ; la CONTIGUITE, si.
 //
 // # L'ECART D'HORLOGE, MESURE ET NON PLUS SUPPOSE
 //
