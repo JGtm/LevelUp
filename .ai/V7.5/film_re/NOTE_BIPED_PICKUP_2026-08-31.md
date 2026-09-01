@@ -374,6 +374,56 @@ golden aurait ete l'anti-pattern qu'on corrigeait. Diff golden : **une ligne**.
 `NATIVE_PICKUP_MATCH_FRAMES` et `nativePickupsNotAlreadyHeard` etaient exportes sans aucun
 importeur : de-exportes. `npx knip` : exit 0, aucun export mort signale.
 
+## CUISSON DE VALIDATION (2026-09-01) : LA DATATION MARCHE SUR DONNEE REELLE
+
+Le lot 3 avait laisse UNE promesse non verifiee — la datation des `padPickups` n'avait jamais
+tourne sur un film a socles — et la ronde 1 y a trouve un P0 qui la rendait MORTE. Voici la
+verification sur donnee reelle, celle qui manquait.
+
+**Selection SANS cuisson.** 41 artefacts deja cuits portent des `padPickups` non vides et ont
+leurs chunks disponibles. Le nom de carte n'est ecrit nulle part dans l'artefact, et je ne l'ai
+pas devine : le test de confinement des bornes ne discrimine pas (70 cartes sur 79 contiennent
+les positions), et un mauvais cadrage detruit le resultat en silence (mesure du lot 4 : 7,2x ->
+1,8x). La carte vient donc de la DOCUMENTATION du depot, qui associe `01e1f945` a **Catalyst**
+en trois endroits independants (`ETAT_DE_L_ART_MODE_SCORE_EVENEMENTS.md`,
+`PLAN_FINALISATION_REJEU_2D.md`). Le journal de cuisson a confirme : `module=catalyst`.
+
+**UNE seule cuisson, avant-plan, plafond arme, 0 process concurrent verifie avant lancement.**
+
+| mesure | 01e1f945 (Catalyst, KOTH:Arena) |
+|---|---|
+| socles publies · occupations achevees | 10 · 46 |
+| **occupations DATEES a l'instant exact** | **22** |
+| **dont ramasseur NOMME (`xuid`)** | **21** |
+| ambigues (plusieurs candidats, on s'abstient) | 4 |
+| non couvertes (gardent leur intervalle) | 11 |
+| socles de POWER-UP (hors jointure) | 9 |
+| **pic memoire** | **0,129 GiB** (plafond 3 GiB) |
+
+L'arithmetique se ferme exactement : 22 + 4 + 11 + 9 = 46.
+
+### Les deux controles de plausibilite
+
+- **L'instant tombe-t-il DANS l'intervalle d'origine ?** `0 / 22` hors bornes. Toutes les
+  datations sont contenues dans le `[tLow, tHigh]` qu'elles remplacent.
+- **La datation est-elle appuyee par un ramassage natif de la MEME arme et du MEME joueur ?**
+  `21 / 22`. Le seul echec est l'occupation dont `xuid` vaut `null` — le pont slot -> joueur
+  n'a pas nomme cette vie, donc la comparaison de xuid ne peut pas reussir par construction.
+  Sur les 21 occupations NOMMEES, l'accord est de 21/21.
+
+Exemples (socle 3, arme `0x4FF3937E`) : `[274, 474]` -> **354** · `[2674, 2874]` -> **2781** ·
+`[4875, 5075]` -> **5034**. Un intervalle de vingt secondes devient un instant, avec un joueur.
+
+**Le second film n'a PAS ete cuit, et c'est dit plutot que fait par reflexe.** Le premier prouve
+tout ce que la cuisson devait prouver : datations > 0, `xuid` poses, comptes coherents, controles
+passes, pic memoire negligeable. Le candidat naturel (`64e8adfa`, CTF) est sur la MEME carte
+Catalyst : il aurait varie le mode, pas le cadrage. Le cout RAM d'une cuisson de plus n'etait
+pas justifie par ce qu'elle aurait ajoute.
+
+**Au passage, un negatif du lot 3 est CONFIRME** : l'artefact deja cuit de `000d5950` dans le
+worktree principal porte lui aussi `padPickups: 0` et `weaponPads: 0`. Ma cuisson pilote ne
+regressait donc rien — ce film n'a reellement aucun socle.
+
 ## REVUE ADVERSARIALE — ronde 2 (2026-09-01) : verdict NON RECEVABLE, complete
 
 Le coeur du P0 est confirme correct (normalisation des deux conventions, aucun nom canonique ne

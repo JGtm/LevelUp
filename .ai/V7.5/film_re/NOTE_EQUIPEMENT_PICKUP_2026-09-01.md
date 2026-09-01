@@ -122,6 +122,64 @@ exactement l'ajustement que cette note s'interdit. Mesure a un film, dit comme t
   reproductible.
 - **REFUTATION DEPLACEE, PAS LEVEE** : le lien ramasseur -> objet au sol pour l'equipement.
 
+## VOLET B (2026-09-01) — L'ETAT DES IMAGES-CLES : la couverture esperee N'EST PAS AU RENDEZ-VOUS
+
+Question utilisateur : elargir la correlation d'inventaire au-dela du delta i48. Le levier non
+tente etait l'ETAT COMPLET des images-cles, diffe entre deux releves — le patron qui a servi
+d'oracle aux armes.
+
+**Recensement d'abord, sans rien reimplementer.** `ScanFilmKeyframeInventory` rend deja, par
+bipede et par image-cle : `Grenades [4]uint32` + `GrenadesRead` (etat complet des compteurs) et
+`AbilityRank` (rang de palette). RESERVE ECRITE AVANT LA MESURE : `AbilityRank` ne se lit que
+dans la fenetre 16..23 de la palette. Mes deux films sont de la palette `famille_b` (rangs
+19-22), donc ENTIEREMENT dedans — la limitation ne mord pas ici, elle mordrait sur un film de
+famille A (rangs 1-12).
+
+| mesure | 000d5950 | 00502e52 |
+|---|---|---|
+| releves d'inventaire · rang lu · grenades lues | 184 · 132 · 150 | 209 · 152 · 170 |
+| ramassages non-arme | 82 | 36 |
+| **ETIQUETES (une seule etiquette)** | **24 (29,3 %)** | **7 (19,4 %)** |
+| ambigus (plusieurs changements dans la fenetre) | 15 | 8 |
+| sans changement | 13 | 10 |
+| sans paire d'images-cles | 30 | 11 |
+| **TEMOIN decale (pire des 3)** | **1 (1,2 %)** | **0 (0,0 %)** |
+| identifiants etiquetes · dont en COLLISION | 6 · **4 (66,7 %)** | 4 · 1 (25,0 %) |
+
+**VERDICT B1 (>= 50 % etiquetes) : NON TENU** — 29,3 % et 19,4 %, c'est-a-dire **pas mieux que
+la voie delta** (19,5 % et 25,0 %). La couverture qui justifiait la voie n'existe pas : entre
+les ramassages sans paire d'images-cles (30 et 11), les ambigus (15 et 8) et ceux sans aucun
+changement (13 et 10), la fenetre de vingt secondes perd les deux tiers de la population.
+
+**VERDICT B2 (temoin < 25 %) : TENU, et tres largement** — 1,2 % et 0,0 %. Le risque structurel
+que je redoutais (« il se passe toujours quelque chose en 20 s ») ne se materialise PAS.
+L'etiquetage mesure bien quelque chose.
+
+**VERDICT B3 (concordance) : TENU la ou les deux voies se recouvrent.** `eef5d48d` recoit
+**rang 21 (Thruster)** par la voie delta ET par la voie images-cles, sur les DEUX films.
+`8e2dc574` recoit rang 19 par les deux, mais la voie images-cles y ajoute une etiquette
+parasite « grenade rang 1 » — collision.
+
+**Le defaut propre de cette voie est le BRUIT** : 66,7 % de collisions sur 000d5950 contre
+16,7 % pour la voie delta. Vingt secondes melangent les gestes, et l'etiquetage attribue au
+ramassage ce qui s'est passe a cote.
+
+### Un signal qualitatif, publie comme tel
+
+Dans la table, les identifiants que le lot 4 avait classes en **classe 2** recoivent des
+etiquettes GRENADE (`bcabbe43` : grenade rang 0 x3 · `caaadcb0` : grenade rang 1 x4), tandis
+que ceux de **classe 3** recoivent des etiquettes RANG (`eef5d48d` : rang 21). Cela CONVERGE
+avec l'hypothese « classe 2 = grenades » que le juge J2 du lot 4 n'avait pas su trancher. Ce
+n'est PAS une mesure — je n'ai pas croise classe x type d'etiquette avec un temoin — c'est une
+observation de table, et c'est la piste la plus prometteuse pour elucider la classe 2.
+
+### Conclusion du volet B
+
+La voie des images-cles **ne remplace pas** la voie delta : meme couverture, plus de bruit.
+Elle apporte en revanche une **corroboration croisee** (B3) qui vaut mieux qu'une couverture :
+deux voies independantes disent rang 21 pour `eef5d48d` sur deux films. Aucune table n'est
+publiable pour autant.
+
 ## Ce qu'il faudrait pour aller plus loin
 
 1. Un film dont la CARTE est connue pour rejouer l'etape 3 en croise.
