@@ -1,3 +1,68 @@
+## [2026-09-02] Baseline purgee des tests morts, et l'Escouade rebranchee sur la source de l'arme — Complete
+
+Suite directe du lot precedent : la CI de `feat/v75` est passee au vert sur 7 jobs sur 8, et
+le huitieme a livre DEUX causes distinctes, plus un signalement utilisateur.
+
+### 1. Le gate baseline — la suite passe, c'est la LISTE qui ne passe plus
+
+`go test: exit=0, 93213 lignes JSONL` : la suite Go elle-meme est VERTE. Ce qui tombe est le
+controle de non-regression, qui exige que tout test present dans
+`.ai/baselines/tests_pre_migration.jsonl` existe encore. **107 tests manquants** — 64 dans
+`internal/sync`, 43 dans `internal/analysis`.
+
+**Ce sont des suppressions VOULUES, pas une regression** : `9b8c52622` (« A3(arme): le
+producteur de correlation meurt ») a supprime le producteur qui reconstruisait l'arme en
+correlant les tirs, et ses tests avec. Verifie AVANT de purger, test par test : les 107 noms
+ont ete cherches en `func <Nom>(` dans tout `internal/` — **zero survivant**. Une purge qui
+masquerait un test encore vivant serait un garde-rail affaibli ; celle-ci retire des noms qui
+ne designent plus rien.
+
+Purge : 596 lignes JSONL retirees (tous les events des 107 tests, pas seulement leurs
+`pass`), baseline 8693 -> 8586 tests, aucun autre nom touche — verifie par intersection avec
+la liste des manquants (0 restant). Precedent identique au depot : `82f215f74`.
+
+**Pourquoi la CI ne l'avait pas vu avant** : le run precedent portait `50caaf1e7`, l'ancien
+sommet distant. La poussee du lot precedent a emmene les 13 commits locaux, dont le merge de
+`wt/arme-source-unique` — c'est cette poussee qui a expose la dette, pas le lot qui l'a creee.
+
+### 2. L'Escouade lisait une table supprimee — signalement utilisateur
+
+Rapport : « Repartition des frags » et « Outils de destruction » n'affichent plus rien.
+
+Mesure d'abord, code ensuite. La base locale a bien APPLIQUE `shared_drop_weapon_kills_v1`
+(le 2026-09-01 20:51) : `weapon_kills` et `v_weapon_kills` n'existent plus. Et la source de
+remplacement est PLEINE — 110 452 lignes sourcees sur 138 293 dans `match_kill_events_latest`,
+1 372 matchs couverts, 95 % pour le joueur principal. Le lecteur adosse a la source tourne
+(journal du 23:13 : 23 matchs, 11 morts ecartees, MELEE=8 GRENADE=2 INCONNU=1).
+
+Balayage des appelants de production : **un seul** construisait `NewWeaponKillsRepo` SANS
+condition — `SquadV2LoaderAdapter.LoadWeaponKills`, le dernier reste hors du gate de
+capability quand tout le reste passe par `ServiceRegistry.weaponKillsRepoFor`. Sur un titre a
+decodeur de film il interrogeait donc une table disparue : aucune erreur, aucune ligne, un
+graphe blanc.
+
+**Correction sans comparaison de slug** : l'adapteur vit dans `duckdb` et ne peut pas importer
+le cablage ; il recoit donc une FABRIQUE (`WeaponKillsRepoFactory`), que le wiring alimente
+avec `weaponKillsRepoFor` — la meme decision de capability, au meme endroit, pour toutes les
+surfaces. Repli sur le lecteur historique quand la fabrique est absente ou rend nil : les
+appelants hors HTTP et les titres sans decodeur de film gardent leur voie.
+
+**`LoadKillMechanics` reste DELIBEREMENT sur le lecteur historique**, et c'est ecrit dans le
+code : les mecaniques de kill sont NATIVES, lues sur `match_participants`, table que la
+bascule ne touche pas — et `LoadKillMechanicsAggregated` n'appartient meme pas a
+`port.WeaponKillsRepository` (interface optionnelle, decouverte par assertion).
+
+Trois tests verrouillent les deux sens : la fabrique injectee est suivie, son absence rend le
+lecteur historique, et une fabrique qui rend nil ne propage pas un lecteur nil.
+
+**GATES** : `go build ./...` 0, `go vet` 0, `internal/platform/duckdb` (53 s), `internal/api/wire`,
+`internal/archlint` verts, `golangci-lint` 0 issue.
+
+**RESTE OUVERT** : si les deux graphes sont vides sur une AUTRE page que l'Escouade
+(Synthese, Sessions, Match view, Explorer), la cause est ailleurs — ces quatre surfaces
+passent deja par le gate et le lecteur de source y rend des lignes. A trancher avec
+l'utilisateur : quelle page.
+
 ## [2026-09-01] Les gardes rouges de la branche, et l'arme favorite rendue a la demo — Complete
 
 Deux sujets independants dans le meme passage : des gardes d'architecture rouges depuis

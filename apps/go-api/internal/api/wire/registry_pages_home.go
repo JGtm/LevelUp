@@ -141,6 +141,7 @@ func (r *ServiceRegistry) SquadV2Ctx(ctx context.Context, slug string) (port.Squ
 		return nil, "", "", err
 	}
 	loader := duckdb.NewSquadV2LoaderAdapter(r.resolveByGT)
+	loader.SetWeaponKillsRepoFactory(r.weaponKillsRepoFor)
 	// Le loader resout les DBs `shared` (events / weapons / medals) via le main
 	// player ; on lui propage le gamertag de la session courante (chunk S11).
 	loader.SetDefaultGamertag(pdb.Gamertag)
@@ -200,6 +201,7 @@ func (r *ServiceRegistry) TeammatesCtx(ctx context.Context, slug string) (port.T
 	// playerMatchesAdapterFor est bound au main, ne sait pas charger les
 	// canonical rows d'un coequipier different). On reutilise le SquadV2Loader.
 	briefingLoader := duckdb.NewSquadV2LoaderAdapter(r.resolveByGT)
+	briefingLoader.SetWeaponKillsRepoFactory(r.weaponKillsRepoFor)
 	briefingLoader.SetDefaultGamertag(pdb.Gamertag)
 	svc := teammates.NewTeammatesService(duckdb.NewSquadRepo(pdb), r.friendGamertagsResolver()).
 		WithPlayerMatchesRepo(r.playerMatchesAdapterFor(pdb), pdb.TitleSlug, pdb.Gamertag).

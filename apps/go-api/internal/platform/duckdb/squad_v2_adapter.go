@@ -46,12 +46,49 @@ type TitlePlayerResolver func(ctx context.Context, titleSlug, gamertag string) (
 type SquadV2LoaderAdapter struct {
 	resolve         TitlePlayerResolver
 	defaultGamertag string
+	// weaponKillsRepoFactory choisit LE lecteur de l'arme d'un kill pour ce titre.
+	// Injecté par le wiring, qui est le SEUL à connaître les capabilities du titre ;
+	// nil = repli historique (cf. weaponKillsRepo).
+	weaponKillsRepoFactory WeaponKillsRepoFactory
 }
+
+// WeaponKillsRepoFactory rend le lecteur d'arme adossé aux capabilities du titre.
+//
+// POURQUOI UNE FABRIQUE INJECTÉE, ET PAS UN `NewWeaponKillsRepo` EN DUR. Le choix entre
+// le lecteur historique (`weapon_kills`) et celui de la SOURCE DE DÉGÂT
+// (`match_kill_events_latest.source_tag`) est une décision de CAPABILITY, et le wiring est
+// le seul à la porter (`ServiceRegistry.weaponKillsRepoFor`). Cet adapteur vit dans
+// `duckdb` et ne peut pas importer le wiring ; il reçoit donc la fabrique.
+//
+// CE QUE CE PARAMÈTRE RÉPARE (2026-09-01) : l'Escouade construisait `NewWeaponKillsRepo`
+// SANS condition, seul appelant de production resté hors du gate. Sur un titre à décodeur
+// de film, `weapon_kills` a été SUPPRIMÉE (`shared_drop_weapon_kills_v1`) — la page servait
+// donc des séries vides pendant que toutes les autres surfaces lisaient la source de dégât.
+type WeaponKillsRepoFactory func(*PlayerDB) port.WeaponKillsRepository
 
 // NewSquadV2LoaderAdapter construit un adapteur production. Le resolver est
 // injecté par le wiring (registry.go) — ne pas l'appeler avec resolver=nil.
 func NewSquadV2LoaderAdapter(resolver TitlePlayerResolver) *SquadV2LoaderAdapter {
 	return &SquadV2LoaderAdapter{resolve: resolver}
+}
+
+// SetWeaponKillsRepoFactory injecte le sélecteur de lecteur d'arme du wiring.
+func (a *SquadV2LoaderAdapter) SetWeaponKillsRepoFactory(f WeaponKillsRepoFactory) {
+	a.weaponKillsRepoFactory = f
+}
+
+// weaponKillsRepo rend le lecteur d'arme à utiliser pour ce PlayerDB.
+//
+// Repli sur le lecteur historique quand aucune fabrique n'est injectée : les tests et les
+// appelants hors HTTP gardent le comportement d'avant le câblage, et un titre sans
+// décodeur de film lit de toute façon `weapon_kills`.
+func (a *SquadV2LoaderAdapter) weaponKillsRepo(pdb *PlayerDB) port.WeaponKillsRepository {
+	if a.weaponKillsRepoFactory != nil {
+		if repo := a.weaponKillsRepoFactory(pdb); repo != nil {
+			return repo
+		}
+	}
+	return NewWeaponKillsRepo(pdb)
 }
 
 // LoadFor charge les matchs du joueur (titleSlug, gamertag) en passant par le
@@ -130,7 +167,7 @@ func (a *SquadV2LoaderAdapter) LoadWeaponKills(
 	if err != nil {
 		return nil, err
 	}
-	repo := NewWeaponKillsRepo(pdb)
+	repo := a.weaponKillsRepo(pdb)
 	rows, err := repo.LoadWeaponKillsAggregated(ctx, titleSlug, filters)
 	if err != nil {
 		return nil, fmt.Errorf("SquadV2LoaderAdapter.LoadWeaponKills: %w", err)
@@ -151,6 +188,11 @@ func (a *SquadV2LoaderAdapter) LoadKillMechanics(
 	if err != nil {
 		return nil, err
 	}
+	// PAS le lecteur gaté : les mécaniques de kill sont NATIVES et se lisent sur
+	// `match_participants`, table que la bascule vers la source de dégât ne touche pas.
+	// `LoadKillMechanicsAggregated` ne fait d'ailleurs pas partie de
+	// `port.WeaponKillsRepository` — c'est une interface OPTIONNELLE que le lecteur adossé
+	// à la source de dégât n'implémente pas, et n'a aucune raison d'implémenter.
 	repo := NewWeaponKillsRepo(pdb)
 	rows, err := repo.LoadKillMechanicsAggregated(ctx, filters)
 	if err != nil {
