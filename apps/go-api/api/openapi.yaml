@@ -19036,6 +19036,8 @@ components:
           type: string
         kind:
           type: string
+        origin:
+          type: string
         slot:
           format: int32
           minimum: 0
@@ -19066,10 +19068,22 @@ components:
         items:
           format: int64
           type: integer
+        mapCatalogPoints:
+          format: int64
+          type: integer
         multiEvent:
           format: int64
           type: integer
         named:
+          format: int64
+          type: integer
+        originGround:
+          format: int64
+          type: integer
+        originSpawner:
+          format: int64
+          type: integer
+        originUnknown:
           format: int64
           type: integer
         published:
@@ -19078,6 +19092,13 @@ components:
         refused:
           format: int64
           type: integer
+        spawnPointsState:
+          type: string
+        spawnerByPointKind:
+          additionalProperties:
+            format: int64
+            type: integer
+          type: object
         unknownFamilies:
           format: int64
           type: integer
@@ -19094,6 +19115,11 @@ components:
         - beforeOrigin
         - multiEvent
         - refused
+        - originSpawner
+        - originGround
+        - originUnknown
+        - spawnPointsState
+        - mapCatalogPoints
       type: object
     PilotModeAttribution:
       additionalProperties: false

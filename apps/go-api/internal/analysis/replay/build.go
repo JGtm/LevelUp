@@ -105,6 +105,17 @@ type Options struct {
 	// TROIS lectures chacun, `Scanned` disant qu'elles ont abouti (cf. build_ground_weapons.go).
 	// Entree de DONNEES, comme Placements. Absente = rejeu sans socles — jamais des socles devines.
 	Pads PadScans
+	// SpawnPoints : les points d'apparition d'objet ramassable NON-ARME de la CARTE, lus au
+	// catalogue fige par l'appelant (cf. cmd/replay-build). Entree de DONNEES, pas de reglage.
+	//
+	// POURQUOI L'APPELANT ET PAS LE BUILDER : la generation d'artefact est HORS LIGNE et le
+	// reste. Le builder ne va rien chercher — on lui donne ce que la carte declare, ou rien.
+	SpawnPoints []MapSpawnPoint
+	// SpawnPointsState dit CE QUE VAUT l'absence d'un point : carte absente du catalogue,
+	// carte connue dont les points ne sont PAS ETABLIS, ou points etablis (fut-ce a zero).
+	// Les trois valeurs et leur raison d'etre sont documentees sur
+	// `PickupCoverage.SpawnPointsState`, qui les publie. Vide = carte absente.
+	SpawnPointsState string
 	// Deaths : le fil des morts du film (chunk highlight), qui NOMME les vies et fonde TOUT le
 	// rattachement (cf. lives.go). Entrée de DONNÉES comme les précédentes.
 	//
@@ -596,14 +607,20 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	// deja construit ci-dessus. Publies AVANT les socles : `attachWeaponPads` s'en sert pour
 	// dater les occupations de socle qui restaient en intervalle de vingt secondes.
 	var pkCov PickupCoverage
+	judge := newPickupOriginJudge(opt, pos, doc.EquipmentPlacements)
 	doc.Pickups, pkCov = buildPickups(opt.Pickups,
 		replayClock{origin: origin, step: step, frames: doc.FrameCount,
 			families: opt.Labels.EquipmentFamilies},
-		own.SlotXUID, opt.PickupStats, opt.Labels.Keys)
+		pickupInputs{slotXUID: own.SlotXUID, st: opt.PickupStats,
+			weaponKeys: opt.Labels.Keys, judge: judge})
 	doc.Coverage.Pickups = &pkCov
 	slog.Info("rejeu : ramassages natifs",
 		"decodes", pkCov.Decoded, "publies", pkCov.Published, "nommes", pkCov.Named,
 		"armes", pkCov.Weapons, "objets", pkCov.Items,
+		"origineSocle", pkCov.OriginSpawner, "origineSol", pkCov.OriginGround,
+		"origineInconnue", pkCov.OriginUnknown, "etatPoints", pkCov.SpawnPointsState,
+		"pointsCatalogue", pkCov.MapCatalogPoints,
+		"socleParNature", pkCov.SpawnerByPointKind,
 		"famillesInconnues", pkCov.UnknownFamilies,
 		"avantOrigine", pkCov.BeforeOrigin, "listesMultiples", pkCov.MultiEvent,
 		"refuses", pkCov.Refused)

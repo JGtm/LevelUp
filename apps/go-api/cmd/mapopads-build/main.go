@@ -50,6 +50,22 @@ func main() {
 		from      = flag.String("from", "", "dossier des .mvar dumpés (obligatoire)")
 		titleSlug = flag.String("title", titlePkg.DefaultSlug, "slug du titre")
 		dryRun    = flag.Bool("dry-run", false, "ne pas écrire le catalogue")
+		// AJOUT SEUL — le mode de livraison des points d'apparition, et la raison d'etre du
+		// flag est une NON-REGRESSION, pas un confort.
+		//
+		// Les `.mvar` servis par l'UGC DERIVENT : SEIZE cartes du catalogue rendent
+		// aujourd'hui un fichier different de celui qui l'a bati le 2026-08-19 (Deadlock
+		// 462 objets au catalogue, 410 au telechargement d'aujourd'hui). Une regeneration
+		// complete reecrirait donc leurs socles d'ARME — or ces socles alimentent des chemins livres
+		// (datation des occupations, tableau de la page match).
+		//
+		// Ce mode charge le catalogue EXISTANT, recalcule les socles pour VERIFIER qu'ils
+		// retombent a l'identique, et n'ecrit QUE `spawn_points`. Une carte dont les socles ne
+		// retombent pas est SAUTEE et COMPTEE : le trou se voit, il ne se comble pas en
+		// douce.
+		addOnly = flag.Bool("only-add-spawn-points", false,
+			"ne pas reecrire les socles : charger le catalogue existant et n'y ajouter que "+
+				"les points d'apparition, en sautant toute carte dont les socles auraient change")
 	)
 	flag.Parse()
 
@@ -71,13 +87,18 @@ func main() {
 	if err != nil {
 		fail(ctx, "catalogue d'objectifs", err)
 	}
-	dumps, err := newDumpIndex(*from)
+	dumps, err := newDumpIndex(*from, objectifs)
 	if err != nil {
 		fail(ctx, "dépôt de .mvar", err)
 	}
 	slog.InfoContext(ctx, "mapopads: sources lues",
 		"cartes_catalogue", len(objectifs.Maps), "fichiers_dumpes", dumps.count(), "dossier", *from)
 
+	outPath := res.MapWeaponPadsPath(*titleSlug)
+	if *addOnly {
+		addSpawnPointsOnly(ctx, objectifs, dumps, outPath, *dryRun)
+		return
+	}
 	cat := newPadsCatalog(*titleSlug)
 	build(ctx, cat, objectifs, dumps)
 
@@ -85,7 +106,6 @@ func main() {
 		slog.InfoContext(ctx, "mapopads: dry-run, rien écrit", "cartes", len(cat.Maps))
 		return
 	}
-	outPath := res.MapWeaponPadsPath(*titleSlug)
 	if err := writeCatalog(cat, outPath); err != nil {
 		fail(ctx, "écriture du catalogue", err)
 	}

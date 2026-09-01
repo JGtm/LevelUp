@@ -444,6 +444,33 @@ var replaySchemas = []struct {
 //	                      `unknownFamilies` (requis) est precisement le couple que ces gardes
 //	                      savent juger.
 //
+//	45 -> 45  2026-09-01  SCHEMA 32, ET LE COMPTE RACINE NE BOUGE PAS — l entree est ecrite
+//	                      quand meme, parce que la convention posee au schema 31 serait
+//	                      abandonnee sinon : cette chronique suit le CONTRAT, pas seulement le
+//	                      nombre de champs a la racine.
+//	                      `Pickup.origin` entre (`spawner` : le ramassage a eu lieu sur un
+//	                      point d apparition catalogue de la CARTE ; `ground` : sur une pose
+//	                      dont l origine mesuree est `dropped`), et `PickupCoverage` gagne
+//	                      `originSpawner`/`originGround`/`originUnknown`, `spawnPointsState`,
+//	                      `mapCatalogPoints` et `spawnerByPointKind`.
+//	                      DEUX CORRECTIFS DE REVUE SONT DANS CE CONTRAT, et ils expliquent sa
+//	                      forme. (1) `spawnPointsState` a TROIS valeurs la ou l ancien booleen
+//	                      `mapCatalogMissing` en donnait deux — ce booleen est RETIRE du contrat
+//	                      au meme schema : les cartes dont les points ne sont PAS ETABLIS
+//	                      (source `.mvar` derivee, 16 cartes au 2026-09-01)
+//	                      sortaient `false` avec zero point, ce qui se lit « carte connue,
+//	                      aucun point » — le drapeau cense faire VOIR le trou affirmait que
+//	                      tout allait bien. Le booleen est RETIRE, pas complete : deux verites
+//	                      concurrentes sur une meme question valent moins qu une.
+//	                      (2) `spawnerByPointKind` ventile les `spawner` par NATURE DU POINT :
+//	                      il donne l ORDRE DE GRANDEUR de ce qui est atteint dans un match, et
+//	                      montre un match qui tombe surtout sur des points `unknown`. Ce n est
+//	                      PAS un detecteur d inversion du typage — un echange complet
+//	                      grenade <-> equipement rendrait les memes totaux ; ce croisement-la se
+//	                      calcule cote client, qui a deja `kind` et `origin` sur chaque prise.
+//	                      `origin` est OPTIONNEL et son absence est une ABSTENTION : un client
+//	                      qui ne trouve pas la cle conclut « non etabli », jamais `ground`.
+//
 // Les quinze fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
 // chiffre ne le dise. Contrat regenere (`make openapi-gen`), jamais ecrit a la main.
 const wantReplayDocumentFields = 45

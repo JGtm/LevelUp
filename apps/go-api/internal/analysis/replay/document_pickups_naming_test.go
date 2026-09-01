@@ -34,7 +34,7 @@ func TestBuildPickupsResolvesFamilyFromTitleCatalogs(t *testing.T) {
 		{TimestampUS: 1_100_000, Slot: 520, CatalogID: 0xbcabbe43, Class: 2}, // grenade
 		{TimestampUS: 1_200_000, Slot: 520, CatalogID: 0xeef5d48d, Class: 3}, // équipement
 	}
-	got, cov := buildPickups(in, pkClock(equipement), nil, filmdec.BipedPickupStats{}, armes)
+	got, cov := buildPickups(in, pkClock(equipement), pickupInputs{slotXUID: nil, st: filmdec.BipedPickupStats{}, weaponKeys: armes, judge: nil})
 	if len(got) != 3 {
 		t.Fatalf("publiés = %d, attendu 3", len(got))
 	}
@@ -65,7 +65,7 @@ func TestBuildPickupsKindPerClassLiteral(t *testing.T) {
 	}{{0, "weapon"}, {1, "weapon"}, {2, "grenade"}, {3, "equipment"}, {5, "item"}, {7, "item"}}
 	for _, c := range cas {
 		in := []filmdec.BipedPickup{{TimestampUS: 1_000_000, Slot: 520, CatalogID: 1, Class: c.classe}}
-		got, _ := buildPickups(in, pkClock(nil), nil, filmdec.BipedPickupStats{}, nil)
+		got, _ := buildPickups(in, pkClock(nil), pickupInputs{slotXUID: nil, st: filmdec.BipedPickupStats{}, weaponKeys: nil, judge: nil})
 		if len(got) != 1 {
 			t.Fatalf("classe %d : %d publié(s), attendu 1", c.classe, len(got))
 		}
@@ -87,8 +87,7 @@ func TestBuildPickupsUnknownFamilyIsCountedNotInvented(t *testing.T) {
 		{TimestampUS: 1_100_000, Slot: 520, CatalogID: 0xdeadbeef, Class: 3}, // INCONNU
 		{TimestampUS: 1_200_000, Slot: 520, CatalogID: 0xfeedface, Class: 0}, // arme INCONNUE
 	}
-	got, cov := buildPickups(in, pkClock(map[uint32]string{0xbcabbe43: "grenade_frag"}),
-		nil, filmdec.BipedPickupStats{}, map[uint32]string{})
+	got, cov := buildPickups(in, pkClock(map[uint32]string{0xbcabbe43: "grenade_frag"}), pickupInputs{slotXUID: nil, st: filmdec.BipedPickupStats{}, weaponKeys: map[uint32]string{}, judge: nil})
 	if len(got) != 3 {
 		t.Fatalf("publiés = %d, attendu 3", len(got))
 	}
@@ -120,7 +119,7 @@ func TestPickupFamilyNeverCrossesCatalogs(t *testing.T) {
 		{TimestampUS: 1_100_000, Slot: 520, CatalogID: id, Class: 3}, // équipement
 		{TimestampUS: 1_200_000, Slot: 520, CatalogID: id, Class: 6}, // repli : aucun catalogue
 	}
-	got, _ := buildPickups(in, pkClock(equipement), nil, filmdec.BipedPickupStats{}, armes)
+	got, _ := buildPickups(in, pkClock(equipement), pickupInputs{slotXUID: nil, st: filmdec.BipedPickupStats{}, weaponKeys: armes, judge: nil})
 	if got[0].Family != "cote_arme" {
 		t.Errorf("classe arme : family = %q, attendu \"cote_arme\" — le catalogue d armes doit primer", got[0].Family)
 	}
@@ -143,8 +142,7 @@ func TestPickupFamilyNeverCrossesCatalogs(t *testing.T) {
 		{TimestampUS: 1_000_000, Slot: 520, CatalogID: orphelin, Class: 3}, // équipement
 		{TimestampUS: 1_100_000, Slot: 520, CatalogID: orphelin, Class: 2}, // grenade
 	}
-	gotSeul, cov := buildPickups(seul, pkClock(map[uint32]string{}), nil,
-		filmdec.BipedPickupStats{}, map[uint32]string{orphelin: "hinf_ma40_ar"})
+	gotSeul, cov := buildPickups(seul, pkClock(map[uint32]string{}), pickupInputs{slotXUID: nil, st: filmdec.BipedPickupStats{}, weaponKeys: map[uint32]string{orphelin: "hinf_ma40_ar"}, judge: nil})
 	for i, p := range gotSeul {
 		if p.Family != "" {
 			t.Errorf("non-arme %d : family = %q, attendu vide — l identifiant n est PAS dans le "+
@@ -159,8 +157,7 @@ func TestPickupFamilyNeverCrossesCatalogs(t *testing.T) {
 	// Et la symétrique : une ARME absente du catalogue d'armes ne doit pas piocher dans le
 	// manifeste d'équipement.
 	arme := []filmdec.BipedPickup{{TimestampUS: 1_000_000, Slot: 520, CatalogID: orphelin, Class: 0}}
-	gotArme, _ := buildPickups(arme, pkClock(map[uint32]string{orphelin: "grenade_frag"}), nil,
-		filmdec.BipedPickupStats{}, map[uint32]string{})
+	gotArme, _ := buildPickups(arme, pkClock(map[uint32]string{orphelin: "grenade_frag"}), pickupInputs{slotXUID: nil, st: filmdec.BipedPickupStats{}, weaponKeys: map[uint32]string{}, judge: nil})
 	if gotArme[0].Family != "" {
 		t.Errorf("arme : family = %q, attendu vide — le manifeste d équipement ne doit pas servir de repli",
 			gotArme[0].Family)

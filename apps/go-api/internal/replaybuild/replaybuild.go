@@ -69,7 +69,12 @@ type Builder struct {
 	// objectives / objectivesTried : le catalogue versionné d'objectifs de carte, d'où sortent
 	// les socles de drapeau (cf. flagspawns.go), chargé au plus une fois par Builder. Le drapeau
 	// booléen distingue « pas encore chargé » de « chargement tenté et échoué ».
-	objectives      *replay.MapObjectivesCatalog
+	objectives *replay.MapObjectivesCatalog
+	// pads / padsTried : le catalogue versionne des socles, d'ou sortent les POINTS
+	// D'APPARITION (cf. spawnpoints.go). Meme motif que `objectives` — chargement unique par
+	// Builder, et un booleen qui distingue « pas encore charge » de « tente et echoue ».
+	pads            *replay.MapWeaponPadsCatalog
+	padsTried       bool
 	objectivesTried bool
 	// roles / rolesTried : la table de roles d objectif du titre, d ou sortent les zones du
 	// calque d ETAT DES ZONES (cf. zones.go). Meme cache, meme raison que ci-dessus.
@@ -214,6 +219,9 @@ func (b *Builder) BuildBytes(matchID string, mapNames []string, filmDir string, 
 	// `replay.BuildFromFilm` — au lieu de deux, comme avant la jointure des frags sous
 	// effet actif (PLAN_RETOURS_UTILISATEUR_2026-08-29 §LOT F.1).
 	ksRes := b.decodeKillSource(matchID, filmDir)
+	// Les POINTS D'APPARITION viennent du catalogue des socles, par map_id — ils donnent leur
+	// origine aux ramassages non-arme (cf. spawnpoints.go).
+	spawnPts, mapState := b.spawnPoints(matchID, facts.MapID, mapNames)
 	doc, err := replay.BuildFromFilm(matchID, b.titleSlug, filmDir, replay.Options{
 		FrameIntervalMS: b.interval,
 		Geometry:        b.geometry,
@@ -228,7 +236,9 @@ func (b *Builder) BuildBytes(matchID string, mapNames []string, filmDir string, 
 		Skull:           stats.skull,
 		Zone: replay.ZoneInput{Zones: zones, Roles: zoneRoles, TeamByXUID: teamByXUID(facts),
 			Hill: isHillVariant(facts.GameVariantName)},
-		MapQuant: &entry,
+		MapQuant:         &entry,
+		SpawnPoints:      spawnPts,
+		SpawnPointsState: mapState,
 	})
 	if err != nil {
 		return Built{}, fmt.Errorf("décodage du film %s: %w", matchID, err)
