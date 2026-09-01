@@ -50,16 +50,6 @@ import (
 	"levelup/go-api/internal/himodule"
 )
 
-// origGroupeRamassable est le groupe de tag qui signe un objet ramassable référencé par un
-// point d'apparition. MESURÉ, pas supposé : présent sur les 5 points (3 prouvés + 2 trouvés),
-// absent des 3 types de décor sondés.
-const origGroupeRamassable = "foki"
-
-// origGroupesDisqualifiants — groupes dont la presence sous le `foki` REFUTE le point
-// d'apparition : de la geometrie solide (`bloc`) ou un script (`hsc*`). Voir CRIBLE 2.
-var origGroupesDisqualifiants = map[string]bool{"bloc": true, "hsc*": true}
-
-// origIndexForge ouvre le catalogue Forge — celui qui porte les tags `food` des types d'objet.
 func origIndexForge(t *testing.T, racine string) *ModuleIndex {
 	t.Helper()
 	chemins := []string{filepath.Join(racine, "any", "globals", "forge", "forge_objects-rtx-new.module")}
@@ -79,48 +69,6 @@ func origIndexForge(t *testing.T, racine string) *ModuleIndex {
 // et doit couvrir les groupes d'objet ramassable. Rend aussi le nombre de `foki` référencés —
 // publié parce qu'un compte constant (4 sur tous les points mesurés) est un témoin de forme :
 // s'il dérivait, la recette mériterait d'être re-mesurée.
-func EstPointDApparition(idxForge, idxRef *ModuleIndex, typeID uint32) (bool, int) {
-	tag, err := idxForge.Extract(typeID)
-	if err != nil {
-		return false, 0
-	}
-	// CRIBLE 1 — le type reference au moins un `foki`.
-	var fokis []uint32
-	vus := map[uint32]bool{}
-	RefsInline(tag, func(h uint32) bool {
-		if g, _, ok := idxRef.Lookup(h); ok && g == origGroupeRamassable && !vus[h] {
-			vus[h] = true
-			fokis = append(fokis, h)
-		}
-		return false
-	})
-	if len(fokis) == 0 {
-		return false, 0
-	}
-	// CRIBLE 2 — le `foki` ne porte NI geometrie NI script. MESURE : les deux types qui
-	// faisaient sur-retenir la recette (0x8413E9BA jusqu'a 178 objets sur Highpower,
-	// 0xA4EE54ED jusqu'a 83 sur Breaker) menent a `bloc:4 hsc*:4` ; les cinq etalons et
-	// tous les types mesures ne menent qu'a `fosp:4 foki:1`. Un point d'apparition NU fait
-	// naitre un objet ; un objet Forge scripte et solide n'en est pas un.
-	for _, f := range fokis {
-		sous, err := idxRef.Extract(f)
-		if err != nil {
-			return false, 0
-		}
-		porte := false
-		RefsInline(sous, func(h uint32) bool {
-			if g, _, ok := idxRef.Lookup(h); ok && origGroupesDisqualifiants[g] {
-				porte = true
-				return true
-			}
-			return false
-		})
-		if porte {
-			return false, 0
-		}
-	}
-	return true, len(fokis)
-}
 
 // TestOrigineRecetteSepareSurLesTypesConnus — VALIDATION (a) : la recette retrouve-t-elle les
 // cinq points connus sans ramasser le décor ?

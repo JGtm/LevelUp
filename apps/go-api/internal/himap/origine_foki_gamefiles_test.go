@@ -30,7 +30,7 @@ func origFokiDe(idxForge, idxRef *ModuleIndex, typeID uint32) []uint32 {
 	var out []uint32
 	vus := map[uint32]bool{}
 	RefsInline(tag, func(h uint32) bool {
-		if g, _, ok := idxRef.Lookup(h); ok && g == origGroupeRamassable && !vus[h] {
+		if g, _, ok := idxRef.Lookup(h); ok && g == GroupeRamassable && !vus[h] {
 			vus[h] = true
 			out = append(out, h)
 		}

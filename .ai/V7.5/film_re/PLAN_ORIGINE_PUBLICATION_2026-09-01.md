@@ -23,10 +23,12 @@ point d'apparition depuis deux lots ». C'est exactement ce que la recette de ce
 
 ## Etape 2 — regenerer `map_weapon_pads.json` par la recette
 
-- [ ] 2.1 La recette passe du test de recherche au code du generateur, avec garde-rail
-- [ ] 2.2 Telechargements : uniquement les `.mvar` MANQUANTS, plafond raisonnable, auth JGtm
-- [ ] 2.3 GATE NON-REGRESSION : les entrees ARMES des 72 cartes STRICTEMENT identiques ;
-      diff structurel avant/apres = ajouts seulement (`kind` nouveaux equipment/grenade)
+- [x] 2.1 Recette en production (`himap.EstPointDApparition`), table typee
+      (`mapvar.spawnPointTypes`), garde-rail `TestRecetteRedonneLaTableDesPoints` VERT (16 = 13 + 3)
+- [x] 2.2 60 `.mvar` manquants telecharges (72 cartes au catalogue, 12 deja la), auth JGtm,
+      aucune re-capture, `--dry-run` : catalogue d'objectifs partage intact
+- [x] 2.3 GATE NON-REGRESSION PASSE : 72/72 entrees identiques AU CARACTERE hors `spawn_points`,
+      en-tete inchangee, 0 carte perdue, seule cle ajoutee `spawn_points`
 
 ## Etape 3 — publier l'origine dans le document de rejeu
 
@@ -106,6 +108,34 @@ est en DEUX temps, et le second est une hypothese, pas une preuve :
 exactement les deux que le canal natif type — l'un grenade, l'autre equipement. Deux chaines
 independantes, meme resultat.
 
+### Etape 2 — CLOSE. La non-regression est devenue STRUCTURELLE.
+
+**LA SOURCE A DERIVE, et une regeneration en bloc aurait ete une regression.** Neuf des 72
+cartes rendent aujourd'hui un `.mvar` different de celui qui a bati le catalogue le 2026-08-19
+(Deadlock : 462 objets au catalogue, 410 au telechargement d'aujourd'hui). Une regeneration
+complete a effectivement reecrit leurs socles d'ARME — mesure : 63/72 identiques, 9 modifies.
+Or ces socles alimentent des chemins livres.
+
+**REPONSE : un mode qui ne PEUT PAS ecrire un socle.** `--only-add-spawn-points` charge le
+catalogue existant, recalcule les socles pour VERIFIER qu'ils retombent a l'identique, et
+n'ecrit que `spawn_points`. Une carte dont les socles ne retombent pas est SAUTEE et COMPTEE.
+La garantie est structurelle, pas verifiee apres coup.
+
+**BOGUE ATTRAPE EN CHEMIN, ET IL AURAIT PUBLIE UN FAUX CATALOGUE.** Le premier aplatissement
+ecrivait chaque `.mvar` sous son nom nu — or **58 cartes partagent `mvar_file: "map.mvar"`** :
+elles s'ecrasaient toutes dans un seul fichier, et 65 cartes sur 72 sortaient avec les socles
+d'une carte etrangere (signature : des « 11 pads » uniformes). Seuls les noms desambiguises
+sont ecrits desormais.
+
+**Resultat** : 1934 points sur 63 cartes — 346 `grenade`, 348 `equipment`, 1240 `unknown`.
+Neuf cartes restent SANS points : le trou est voulu, visible, et inscrit dans les `notes` du
+fichier lui-meme.
+
 ## Decouvertes (notees, NON traitees)
 
-(vide)
+- Neuf cartes du catalogue ont une source UGC qui a derive depuis le 2026-08-19. Re-extraire
+  leurs socles changerait ce qui est servi sur ces cartes : c'est une DECISION PRODUIT, hors
+  du perimetre de ce lot. Consigne, non traite.
+- Quatre cartes de `map_objectives` absentes du catalogue des socles pourraient y entrer
+  (le generateur en trouve 75 contre 72). Ajout de cartes = changement de perimetre servi,
+  hors lot. Non traite.

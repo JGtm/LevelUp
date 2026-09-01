@@ -114,5 +114,16 @@ func ingest(mapID string, e replay.MapObjectivesEntry, path, base string) (repla
 			Objects: s.Objects,
 		})
 	}
+	// LES POINTS D'APPARITION, dans une liste a part — voir MapWeaponPadsEntry.SpawnPoints.
+	pts := mapvar.SpawnPoints(v)
+	out.SpawnPoints = make([]replay.MapSpawnPointSpot, 0, len(pts))
+	for _, s := range pts {
+		out.SpawnPoints = append(out.SpawnPoints, replay.MapSpawnPointSpot{
+			Pos:     s.Pos,
+			TypeID:  fmt.Sprintf("0x%08X", uint32(s.TypeID)),
+			Kind:    string(s.Kind),
+			Objects: s.Objects,
+		})
+	}
 	return out, mixed, nil
 }
