@@ -44,6 +44,11 @@ func BackfillMatchCitations(
 	pve *duckdbpkg.RecoveringReader,
 	xuid string,
 	matchIDs []string,
+	// killSource : le traducteur « source de degat -> cle du registre » du titre, quand il
+	// en a un. VARIADIQUE et OPTIONNEL a dessein : la signature portait deja sept
+	// parametres et huit sites d appel, dont cinq de test qui n ont aucune source de degat
+	// a fournir. Absent ou nil = voie historique, byte-identique.
+	killSource ...CitationWeaponSource,
 ) error {
 	if len(matchIDs) == 0 {
 		return nil
@@ -62,6 +67,20 @@ func BackfillMatchCitations(
 	if err != nil {
 		slog.WarnContext(ctx, "BackfillMatchCitations: weapon_names non chargés", "err", err)
 		weaponNames = map[uint64]string{}
+	}
+
+	// Source de degat : armee seulement si le titre fournit un traducteur ET que la
+	// metadata porte les noms canoniques par cle. Sans l un des deux, la voie historique
+	// reste servie — degradation silencieuse ET reversible, jamais une mesure vide.
+	var source citationWeaponSource
+	if len(killSource) > 0 && killSource[0].Classifier != nil {
+		names, nerr := loadWeaponKeyNames(ctx, metadataDB, killSource[0].TitleSlug)
+		if nerr != nil {
+			slog.WarnContext(ctx, "BackfillMatchCitations: noms par cle de registre non charges",
+				"title", killSource[0].TitleSlug, "err", nerr)
+		} else {
+			source = citationWeaponSource{classifier: killSource[0].Classifier, keyNames: names}
+		}
 	}
 
 	// Tri chrono pour que le cumulPre soit correct entre les matchs du batch.
@@ -84,7 +103,7 @@ func BackfillMatchCitations(
 
 	written, skipped := 0, 0
 	for _, matchID := range sorted {
-		citCtx, err := buildCitationContext(ctx, sharedDB, playerDB, pve, weaponNames, xuid, matchID)
+		citCtx, err := buildCitationContext(ctx, sharedDB, playerDB, pve, weaponNames, source, xuid, matchID)
 		if err != nil {
 			slog.WarnContext(ctx, "BackfillMatchCitations: context", "match_id", matchID, "err", err)
 			skipped++
@@ -166,6 +185,7 @@ func buildCitationContext(
 	sharedDB, playerDB *sql.DB,
 	pve *duckdbpkg.RecoveringReader,
 	weaponNames map[uint64]string,
+	source citationWeaponSource,
 	xuid, matchID string,
 ) (domain.CitationContext, error) {
 	medals, err := loadMedalsForMatch(ctx, sharedDB, matchID, xuid)
@@ -179,9 +199,16 @@ func buildCitationContext(
 		return domain.CitationContext{}, fmt.Errorf("stats: %w", err)
 	}
 
-	weaponKills, err := loadWeaponKills(ctx, sharedDB, weaponNames, matchID, xuid)
+	// Titre a decodeur de film : les frags par arme viennent de la SOURCE DU DEGAT, celle
+	// qui voit l epee et le marteau (bascule du 2026-09-01). Sinon, voie historique.
+	var weaponKills map[string]int
+	if source.actif() {
+		weaponKills, err = loadWeaponKillsFromSource(ctx, sharedDB, source, matchID, xuid)
+	} else {
+		weaponKills, err = loadWeaponKills(ctx, sharedDB, weaponNames, matchID, xuid)
+	}
 	if err != nil {
-		slog.WarnContext(ctx, "BackfillMatchCitations: weapon_kills", "match_id", matchID, "err", err)
+		slog.WarnContext(ctx, "BackfillMatchCitations: frags par arme", "match_id", matchID, "err", err)
 	}
 	for k, v := range weaponKills {
 		stats["weapon_kills:"+k] = float64(v)
