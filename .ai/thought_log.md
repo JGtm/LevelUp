@@ -80323,3 +80323,60 @@ le lot R4.
 
 **Ce que ce chantier NE doit pas faire en attendant** : brancher i12/i13 sur quoi que ce soit.
 C'est ecrit dans `components_managed_objective.go`, dans `objective_scan.go` et sur la page Notion.
+
+---
+
+## [2026-09-01] Les records d'image-cle sont de LONGUEUR FIXE PAR ARCHETYPE — fait structurel neuf
+
+**Statut** : Complete (la mesure tranche) ; le chantier ti=11 reste ouvert, mais sur une autre
+question que celle d'hier.
+
+**J'ALLAIS FAIRE LA MAUVAISE CHOSE, ET LE DEPOT M'A ARRETE.** L'etape annoncee etait « marcher la
+table avec `WalkKeyframeRecords` pour separer largeur fausse d'ancrage faux ». En ouvrant le
+fichier, son en-tete portait deja le resultat du lot R3/R5 : « AUCUN decalage ne rend une seule
+marche bit-exacte ; le corps d'un record d'image-cle n'est PAS le corps d'un record NEW », avec une
+hypothese de rechange — l'image-cle porterait un ETAT COMPLET, tous les composants sans masque
+epars. Cette lecture expliquait TOUT ce que l'oracle avait mesure. Leçon appliquee : greper
+l'en-tete du fichier qu'on s'apprete a utiliser AVANT d'ecrire l'instrument.
+
+**L'EPREUVE, sans aucun deserialiseur.** Si le corps porte un etat complet, la longueur du record
+est fixe. Elle se mesure en cherchant, depuis l'ancre, la premiere position portant un en-tete
+valide a slot croissant. Predicat ecrit avant la mesure : la somme des largeurs portees vaut
+745 bits (constante `ti11SommeLargeurs`, gardee par un test qui tombe si une largeur bouge), donc
+un record d'etat complet doit tomber entre 820 et 900 bits.
+
+**PREDICAT REFUTE — ZERO record dans la fenetre.** Et ce que la mesure trouve a la place vaut
+mieux :
+
+| archetype | records | dominante | part | longueurs distinctes |
+|---|---|---|---|---|
+| ti=11 |  2 611 | **168 bits** | **93,8 %** | 10 |
+| ti=13 |  2 948 | **446 bits** | 73,5 % | 7 |
+| ti=38 | 44 231 |   555 bits |  6,9 % | 266 |
+
+**LES RECORDS D'IMAGE-CLE DE ti=11 ET ti=13 SONT DE LONGUEUR FIXE PAR ARCHETYPE.** Aucun
+instrument du depot ne l'avait mesure. Consequence immediate : un record de taille fixe dont le
+contenu varie porte du REMPLISSAGE, donc sa longueur ne peut pas servir d'oracle de largeur — et
+l'etat complet est refute puisque 745 bits excedent deja le corps de 104 bits de ti=11.
+(`ti=38` etale : soit sa longueur varie vraiment, soit la fenetre de 2 000 bits attrape de faux
+en-tetes sur des records longs. NON TRANCHE, et ecrit comme tel.)
+
+**L'ECART, ventile — la mesure qui dit ou chercher.** Entre la fin de marche de production et la
+fin reelle du record, par nombre de composants presents : **+90, +70, +32, -6, -16 bits pour 0 a
+4 composants**. Il DECROIT avec le nombre de composants. Un cout par composant manquant le ferait
+CROITRE ; des largeurs justes le laisseraient constant. Qu'il decroisse dit que la lecture par
+masque epars SUR-CONSOMME des qu'il y a plusieurs composants — coherent avec un corps a CHAMPS DE
+POSITION FIXE plutot qu'a flux pilote par un masque.
+
+Detail arithmetique qui va dans le meme sens : a 0 composant je consomme 14 bits de corps sur 104
+(residu 90) ; a 1 composant 34 (residu 70) ; a 2 composants 72 (residu 32). Les trois sont
+exactement le prologue plus les largeurs portees des composants lus — les largeurs ne sont donc
+pas absurdes, c'est le MODELE DE CORPS qui ne l'est pas.
+
+**Prochaine etape** : traiter le corps de 104 bits comme une STRUCTURE A OFFSETS FIXES et non comme
+un flux. L'epreuve est directe et bon marche : prendre une fenetre de 32 bits a un decalage donne,
+et mesurer si elle est constante par slot et variable entre slots. Balayer le decalage de 0 a 72
+donne la carte du corps sans rien decoder. C'est aussi ce qui expliquerait le symptome initial —
+des valeurs de « jauge » constantes par slot et identiques d'un match a l'autre.
+
+**Toujours vrai** : ne PAS brancher i12/i13.
