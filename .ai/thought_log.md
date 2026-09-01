@@ -1,3 +1,84 @@
+## [2026-09-01] `ti=11 i12/i13/i14` sans filtre — LA DENSITÉ NE PARLE PAS NON PLUS : négatif BORNÉ sur les 17 épreuves — Complété
+
+**La question du lot** : les cinq instruments précédents demandaient *quelle valeur* porte la
+jauge d'armement, et tous ont buté sur le même mur — la voie DELTA de `ti=11` est du bruit
+d'ancrage (légalité `i0` à 45,7 % quand le hasard donne 53,1 %) et le filtre `Chained` ne laisse
+passer que 1 à 35 lectures par film. Ce lot pose une question **strictement plus faible, donc
+répondable** : sans lire aucune valeur, **y a-t-il PLUS de lectures juste avant une explosion
+qu'ailleurs dans le même film ?** Un ancrage bruité ne date rien, mais il n'efface pas forcément
+le TRAFIC : si le mode écrit davantage sur ses objectifs pendant l'armement, la densité des
+records monte. C'est un effet de comptage, pas de lecture — et un comptage survit à une largeur
+fausse.
+
+**Instrument** (tests seuls) : `objectif_ti11_bruit_test.go` (critère + les quatre issues
+documentées AVANT la passe), `objectif_ti11_bruit_stat_test.go` (machinerie statistique),
+`objectif_ti11_bruit_verdict_test.go` (portes 0 à 3, journal). **Aucun balayage n'a été écrit** :
+`ScanFilmObjectives` publie déjà les trois champs, `mntChargerHorloge` date sur l'horloge du
+MANIFESTE, et l'oracle réutilise `ti12Explosions` plutôt que d'en faire une troisième copie.
+Garde `ASSAUT_CACHE`, sentinelle mémoire armée (**pic 0,02 Gio**), `LockProcessDecode`. **11 films,
+134 s, passe unique.**
+
+**Critère écrit avant la mesure** : fenêtre [5 s, 60 s[ avant explosion ; EXCÈS ≥ x1,5 ;
+p empirique ≤ 0,01 (÷8 en Bonferroni pour les huit états de `i14`) ; CONSISTANCE (le nombre
+d'explosions en excès doit lui aussi battre le témoin) ; TÉMOIN CROISÉ muet. **Deux témoins**,
+999 tirages, graine figée : **A** = instants uniformes (celui que la mission prescrit), **B** =
+décalage circulaire des instants réels, qui préserve les amas et ne détruit que la phase. **C'est
+B qui fait foi**, décidé d'avance.
+
+**GATE 2 — NÉGATIF SUR LES TROIS CHAMPS, ET LE NÉGATIF EST BORNÉ.**
+
+| voie / champ | lectures | fenêtre observée | témoin B | verdict |
+|---|---|---|---|---|
+| DELTA `i12` | 277 | 65 | 67,3 ± 10,5 | x0,97 · p=0,61 |
+| DELTA `i13` | 326 | 83 | 88,2 ± 14,9 | x0,94 · p=0,63 |
+| DELTA `i14` | 437 | 114 | 99,9 ± 11,0 | x1,14 · p=0,09 |
+| IMAGE-CLÉ `i12` | 291 | 100 | 77,3 ± 16,1 | x1,29 · p=0,09 |
+
+Consistance : 13, 10 et 16 explosions en excès sur 28, contre des témoins à 12,1, 11,4 et 13,2 —
+rien. **Ce n'est PAS « l'échantillon est trop petit »** : un excès de x1,5 aurait valu **+3,2
+écarts-types** du témoin sur `i12`, +2,9 sur `i13`, +4,6 sur `i14`. Les valeurs observées se
+tiennent à −0,2, −0,4 et +1,3. **La mesure EXCLUT tout enrichissement au-delà d'environ x1,4.**
+
+**GATE 3 — `i14` PAR VALEUR : rien non plus.** Distribution delta sur l'Assaut :
+`[61, 207, 16, 12, 44, 25, 26, 46]` (l'état 1 fait 47 % à lui seul). Aucun des huit ne s'approche
+du seuil de Bonferroni (0,00125) ; le meilleur est l'état 5 à x1,40 pour p=0,16. Aux images-clés
+`i14` vaut **toujours 0** (35 lectures, un seul film).
+
+**TÉMOIN CROISÉ — l'instrument ne fabrique pas de pics.** KOTH `7f1bbf06` et CTF `cde26226`
+passés au même instrument avec le motif d'explosions d'un film d'Assaut de durée voisine :
+p = 0,56 / 0,38 / 0,31 sur les trois champs. Réserve honnête : **7 à 10 lectures seulement**, donc
+ce témoin a peu de puissance — il montre que l'instrument rend bien des p-valeurs de milieu de
+table sur du nul, pas qu'il détecterait un faux positif ténu. Les deux Strongholds n'ont **aucun**
+slot `ti=11` aux images-clés (le MIROIR du chantier, reconfirmé).
+
+**RÉSULTAT DE BORD n°1 — LE TÉMOIN B A SERVI, ET IL SE VOIT.** La voie DELTA n'a **aucun amas** :
+277 lectures pour **276 instants distincts** — A et B y coïncident, la taille d'échantillon
+effective est bien celle qu'on croit. La voie IMAGE-CLÉ, elle, en a : 291 lectures pour **85
+instants**. Et c'est exactement là que les deux témoins divergent : **A rend p=0,001, B rend
+p=0,088 sur le MÊME chiffre**. Sans le témoin par décalage circulaire, ce lot aurait annoncé une
+trouvaille à p=0,001 qui n'est qu'un effet de grappe. Même écart sur DELTA CHAÎNÉE `i13` (18
+lectures en fenêtre, x2,49 : p=0,001 contre A, p=0,056 contre B, consistance 3/28).
+
+**RÉSULTAT DE BORD n°2 — UNE OBSERVATION HORS CRITÈRE, écrite pour qu'elle ne soit PAS relue comme
+un résultat.** Le seau [0 s, 5 s[ dépasse le témoin sur les trois champs delta (12/6,1 · 13/8,0 ·
+11/9,1, soit x1,55 ensemble) et l'état 7 y met 5 lectures pour 0,8 attendue. Ce seau **n'est pas
+dans la fenêtre préenregistrée** ; sur 63 seaux publiés, trois dépassements à p=0,05 sont
+l'espérance du hasard. Et une écriture d'objectif dans les cinq secondes qui précèdent l'explosion
+serait de toute façon la **conséquence** de la fin de mèche, pas le début de l'armement. À
+instruire par une mesure dont ce serait le critère écrit d'avance, jamais en relisant celle-ci.
+
+**Documentation corrigée dans le même commit** (commentaire seul, aucun code touché) :
+`objective_scan.go` disait que la voie delta est à écarter pour sa VALEUR ; il dit désormais que
+sa DENSITÉ ne parle pas davantage, avec les chiffres et la borne.
+
+**Conclusion / prochaine étape** : **`ti=11` est clos pour dater l'armement** — ni la valeur
+(lots précédents), ni la densité (celui-ci) ne parlent de la bombe, et le négatif est chiffré, pas
+supposé. Les canaux encore ouverts du chantier restent, par ordre de coût : `ti=10 i24/i25`
+`managed-object-looping-sound-component` (R(32) inconditionnel, sans porte, non porté — le
+portage le moins cher du registre, et l'utilisateur a établi qu'un son accompagne le compte à
+rebours), puis `ti=12 i11/i12` (durée initiale + durée courante d'un navpoint, 17 bits chacune),
+puis le run `ti=43 i19..i25` (`device-interaction-hold-time`, 22 composants à porter).
+
 ## [2026-09-01] `ti=11 i0` minuteurs — LES DEUX VALEURS DE SEPT BITS SONT DES INDEX FIGÉS ; l'ancrage des images-clés est juste À UN BIT PRÈS — Complété
 
 **La question du lot** : `managed-objective-timers-component` (ti=11 i0) est présent dans **100 %**
