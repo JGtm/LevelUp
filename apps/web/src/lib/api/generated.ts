@@ -8965,6 +8965,7 @@ export interface components {
         Pickup: {
             /** Format: int64 */
             class: number;
+            family?: string;
             kind: string;
             /** Format: int32 */
             slot: number;
@@ -8988,6 +8989,8 @@ export interface components {
             published: number;
             /** Format: int64 */
             refused: number;
+            /** Format: int64 */
+            unknownFamilies: number;
             /** Format: int64 */
             weapons: number;
         };

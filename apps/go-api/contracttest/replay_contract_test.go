@@ -418,6 +418,17 @@ var replaySchemas = []struct {
 //	                      intervalle de vingt secondes) et deux blocs de Coverage (`pickups`,
 //	                      `padDating`).
 //
+//	45 -> 45  2026-09-01  AUCUN champ racine, et c est note ICI pour qu on ne le cherche pas :
+//	                      le schema 31 (nommage des ramassages) ajoute `family` sur Pickup et
+//	                      `unknownFamilies` sur PickupCoverage — deux champs IMBRIQUES. Ce
+//	                      cliquet ne compte que les champs de la RACINE du document, il ne
+//	                      pouvait donc pas bouger, et son silence n est pas un oubli.
+//	                      LE GATE QUI A ATTRAPE CE LOT EST L AUTRE : `TestOpenAPIYAMLIsUpToDate`
+//	                      (internal/api, tag cgo), joue AVANT regeneration — il ECHOUE en
+//	                      nommant `family`, puis PASSE apres. C est exactement la lecon P1-1 de
+//	                      la ronde 2 du chantier precedent : « contracttest vert » ne veut pas
+//	                      dire « contrat a jour », les deux gates ne voient pas la meme chose.
+//
 // Les quinze fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
 // chiffre ne le dise. Contrat regenere (`make openapi-gen`), jamais ecrit a la main.
 const wantReplayDocumentFields = 45
