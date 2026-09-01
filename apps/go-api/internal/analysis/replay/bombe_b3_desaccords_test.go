@@ -33,7 +33,6 @@ package replay
 
 import (
 	"fmt"
-	"math"
 	"os"
 	"path/filepath"
 	"sort"
@@ -109,12 +108,14 @@ func b3Amplitude(qs [][3]uint32) float64 {
 	return worst
 }
 
-// b3Dist est la distance euclidienne entre deux triplets de quanta.
+// b3Dist est l'ADAPTATEUR de types vers l'unique ecriture de la distance 3D du paquet
+// (`dist3`, geometry.go — regle du garde-rail TestUneSeuleFormuleDeDistance3D). Les quanta
+// d'axe tiennent sur 17-18 bits : la conversion en float32 (mantisse 24 bits) est exacte.
 func b3Dist(a, b [3]uint32) float64 {
-	dx := float64(int64(a[0]) - int64(b[0]))
-	dy := float64(int64(a[1]) - int64(b[1]))
-	dz := float64(int64(a[2]) - int64(b[2]))
-	return math.Sqrt(dx*dx + dy*dy + dz*dz)
+	return dist3(
+		[3]float32{float32(a[0]), float32(a[1]), float32(a[2])},
+		[3]float32{float32(b[0]), float32(b[1]), float32(b[2])},
+	)
 }
 
 // b3DernierAvant rend le dernier quantum du slot à <= t (fenêtre 3 s), s'il existe.
