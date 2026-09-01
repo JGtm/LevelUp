@@ -270,13 +270,21 @@ contrôle est le recalage API + la porte ci-dessus, sur NOTRE donnée.
   compilent pas. Documenté dans MEMORY.md (« importeur commité + paquet non suivi = branche non
   compilable »). HORS périmètre Lot 3 (interdiction de toucher `internal/service`/`cmd/*`). À résoudre
   avant tout gate `./internal/...` global (Lot 4 touche le service teammates : il faudra le lever).
-- **[Lot 3] Réserve pont FilmIndex→xuid (à valider Lot 4)** : `filmdec.WeaponHitStats.FilmIndex`
-  (`decodeFireEvent`, bits 36-40 >>1) et l'indice qu'indexe `resolvePlayerIndices` (5 bits avant le
-  motif xuid, aligné sur `PlayerIndex5` = bits 31-35 de `ScanFireEventsB5`) sont des champs DIFFÉRENTS
-  du record de tir. Leur équivalence n'est pas validée sur film. `collectHits` instrumente le risque
-  (`killsource_hits_indices_non_resolus`) ; le gate visuel du Lot 4 (joueur Infinite réel) tranche. Si
-  décalage systématique : soit aligner `decodeFireEvent.FilmIndex` sur le champ validé, soit ajouter la
-  conversion dans le pont — NE PAS deviner ici.
+- **[Lot 3] Réserve pont FilmIndex→xuid — LEVÉE ET CORRIGÉE (mesuré 2026-09-01)** : la réserve était
+  que `filmdec.WeaponHitStats.FilmIndex` (`decodeFireEvent`, bits 36-40 >>1 = 4 bits) et l'indice
+  qu'indexe `resolvePlayerIndices` (5 bits, aligné sur `analysis.PlayerIndex5` = event_start+31)
+  soient des champs différents. VERDICT MESURÉ : le 4 bits n'était que la MOITIÉ BASSE du 5 bits
+  (`ShooterIndex5 & 0x0F == FilmIndex`, invariant algébrique). L'ancre paquet de filmdec place le champ
+  au bit 35 du payload, qui coïncide au bit près avec `event_start+31` d'`analysis` → `ShooterIndex5`
+  (bits 35-39) == `PlayerIndex5`. Preuve : `TestWeaponIndexNumDenomEquivalence` (package analysis) —
+  **mismatch 0** sur 4342 records BTB corrélés + tous les records arène ; table de correspondance
+  publiée. Sous 17 joueurs (arène) les deux lectures coïncidaient déjà (correction = no-op, tables
+  d'identité identiques) ; au-delà (BTB 4f77afc1, lobby **24**), le 4 bits saturait à 15 (distinct=16)
+  et fusionnait 8 paires (idx5 16-23 → idx4 0-7) → précision fausse. CORRECTION : `fire_events.go`
+  expose `FireEvent.ShooterIndex5` (bits 35-39, R(5) sans >>1) ; `ScanFilmWeaponShots` key le
+  numérateur dessus. `FilmIndex` (4 bits) reste pour le regroupement visée de replay (golden verts).
+  Vérité terrain : `TestWeaponIndexGroundTruth` (filmdec) — 4 bits structurellement insuffisant pour le
+  lobby BTB de 24 (preuve par dénombrement), 5 bits le couvre ; no-op en arène confirmé.
 - **[Lot 3] `weapon_accuracy` sans idempotence native** : la table partagée (peuplée nativement côté
   H5) n'a ni `decode_pass` ni vue `_latest` ; pour Infinite elle n'est écrite QUE par la passe film,
   qui est re-jouable (backfill) → risque de doublon. Résolu Lot 3 par garde SELECT-then-INSERT

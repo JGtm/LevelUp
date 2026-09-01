@@ -79031,3 +79031,36 @@ Conclusion : l'attribution SURVIT comme PLAUSIBLE (cohérence interne forte + di
 gain géo en BTB), NON PROUVÉE (aucun accord vérité terrain mesurable, harvest de morts data-starved
 in-package ; le walker validé 97,6% est dans killsource qui importe filmdec — cycle interdit). SHA à
 consigner après commit.
+
+## [2026-09-01] Precision par arme — pont d'indice num=denom (Lot 3, reserve levee) — Complété
+
+Tache : lever la reserve du Lot 3 (precision par arme) AVANT l'UI. Le numerateur (touches, film)
+keyait le tireur sur `filmdec.WeaponHitStats.FilmIndex` (`decodeFireEvent`, bits 36-40 >>1 = 4 bits),
+le denominateur (tirs, match_weapon_shots) sur `analysis.PlayerIndex5` (5 bits) ; le pont
+FilmIndex->xuid (`resolvePlayerIndices`) est keye sur le 5 bits. Si FilmIndex != PlayerIndex5, num
+et denom pointent des joueurs differents -> precision fausse, cassee en BTB.
+
+Decision technique : le 4 bits n'etait que la MOITIE BASSE du champ 5 bits (invariant algebrique
+`ShooterIndex5 & 0x0F == FilmIndex`). L'ancre paquet de filmdec place le champ au bit 35 du payload,
+qui coincide au bit pres avec `event_start+31` d'analysis. Correctif en couches (filmdec ne peut pas
+importer analysis, cycle) : `fire_events.go` expose `FireEvent.ShooterIndex5` (bits 35-39, R(5) sans
+>>1) + accesseur `ReadShooterIndex5` ; `ScanFilmWeaponShots` key le numerateur dessus. `FilmIndex`
+(4 bits) reste INCHANGE pour le regroupement visee de replay (pas de fix opportuniste hors perimetre).
+
+Resultats mesures (corpus film_chunks, arene 000d5950/01e1f945/00502e52 + BTB 4f77afc1) :
+- `TestWeaponIndexNumDenomEquivalence` (analysis) : mismatch 0 sur TOUS les records correles au
+  denominateur — 4342 records BTB + tous les records arene. Table de correspondance publiee : arene
+  idx4==idx5 (max 7) ; BTB idx5 atteint 23 (lobby 24) quand idx4 sature a 15, 1778 records idx5>=16
+  (les 8 paires 16-23 -> 0-7 que le 4 bits fusionnait). num-cle == denom-cle PROUVE.
+- `TestWeaponIndexGroundTruth` (filmdec) : arene = correction NO-OP (idx4==idx5, tables d'identite
+  identiques, non-regression) ; BTB = 4 bits structurellement insuffisant (distinct=16/max=15) la ou
+  le 5 bits couvre le lobby reel de 24 (distinct=24/max=23), preuve par denombrement. NB : l'heuristique
+  geoBuildIdentity est bruitee (non-injective des l'arene ou idx4==idx5) — son injectivite n'isole PAS
+  la largeur d'indice ; on mesure le signal non confondu (bornes d'indice).
+
+Gates : gate principal (filmdec/analysis/persist/killcollector/halo_infinite) VERT ; golden replay
+(`Golden|MiniFilm`) VERT (visee non regressee) ; integration -p 1 persist anti-ART VERT ; go vet +
+gofmt propres ; fichiers <500 L, fonctions <80 L.
+
+Conclusion : reserve §11 du plan LEVEE + doc-header `hits.go` mis a jour (verdict mesure). Num et
+denom keyent desormais identique (ShooterIndex5 == PlayerIndex5). SHA a consigner apres commit.

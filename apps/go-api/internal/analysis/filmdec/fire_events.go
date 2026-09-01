@@ -63,6 +63,17 @@ const (
 	fireVariantBit  = 7
 	fireAttackerBit = 36
 	fireAttackerW   = 5
+	// fireShooterBit / fireShooterW — L'INDICE DE TIREUR SUR SA LARGEUR RÉELLE : 5 bits à
+	// l'offset 35, soit le bit qui PRÉCÈDE le champ « attaquant x2 » (36..40). Le champ
+	// `fireAttackerBit` >>1 ne rend que les bits 36..39 (4 bits) : il TRONQUE l'indice à sa
+	// moitié basse et sature à 15 au-delà de 16 joueurs (BTB), FUSIONNANT deux tireurs distincts.
+	// L'indice complet inclut le bit 35 en tête : readBitsAt(pay, 35, 5) = bits 35..39. C'est
+	// EXACTEMENT le champ que lit `analysis.FireEvent.PlayerIndex5` (event_start+31, 5 bits) —
+	// donc l'indice qu'écrit `shared.match_weapon_shots` (le DÉNOMINATEUR de la précision). La
+	// relation est algébrique : ShooterIndex5 & 0x0F == FilmIndex (l'ancien 4 bits). Prouvée sur
+	// pièces par TestWeaponIndexNumDenomEquivalence (paquets 0xD2 arène + BTB 4f77afc1).
+	fireShooterBit  = 35
+	fireShooterW    = 5
 	fireWeaponHiBit = 44
 	fireWeaponLoBit = 76
 	fireWeaponW     = 32
@@ -99,7 +110,20 @@ type FireEvent struct {
 	//
 	// L'IDENTITÉ D'UN JOUEUR EST SON XUID. Toute jointure passe par lui ; cet index ne sert
 	// qu'à regrouper les événements d'un même tireur À L'INTÉRIEUR d'un film.
+	//
+	// LARGEUR 4 BITS, ET C'EST UNE TRONCATURE. FilmIndex = bits 36..39 (le champ attaquant x2 >>1) :
+	// il perd le bit 35, la MOITIÉ HAUTE de l'indice. Sous 17 joueurs (arène) le bit 35 est
+	// toujours 0, donc FilmIndex == ShooterIndex5 ; au-delà (BTB) il sature à 15 et fusionne deux
+	// tireurs. Le regroupement intra-film de la visée (replay) s'en contente — l'arène n'a jamais
+	// plus de 16 joueurs. Pour PONTER vers un xuid (précision par arme), utiliser ShooterIndex5.
 	FilmIndex int
+	// ShooterIndex5 est le MÊME indice de tireur sur sa largeur RÉELLE (5 bits, bit 35) : bits
+	// 35..39, sans troncature. C'est le champ ALIGNÉ sur `analysis.FireEvent.PlayerIndex5` et donc
+	// sur l'indice de `shared.match_weapon_shots` (le dénominateur de la précision). Le pont
+	// FilmIndex->xuid (resolvePlayerIndices, killcollector) est keyé sur ce 5 bits : le
+	// NUMÉRATEUR de la précision DOIT keyer identique, sinon num et dénom pointent des joueurs
+	// différents au-delà de 16 (bug corrigé Lot 3). Invariant : ShooterIndex5 & 0x0F == FilmIndex.
+	ShooterIndex5 int
 	// WeaponID est l'identifiant global 64 bits de l'arme : clé directe de
 	// metadata.weapon_labels.weapon_id et de analysis.WeaponIDToName.
 	WeaponID uint64
@@ -162,6 +186,20 @@ func ReadAttackerIndex(pay []byte) int {
 	return int(readBitsAt(pay, fireAttackerBit, fireAttackerW)) >> 1
 }
 
+// ReadShooterIndex5 lit l'indice de tireur SUR SA LARGEUR RÉELLE (5 bits, bit 35) d'un payload de
+// record type 105, aux MÊMES offsets que `decodeFireEvent`. Rend -1 si le payload est trop court.
+//
+// EXPORTÉ POUR LA MESURE : c'est la clé de tireur du NUMÉRATEUR de précision, et l'instrument
+// d'équivalence (TestWeaponIndexNumDenomEquivalence, package analysis) confronte cette valeur à
+// `analysis.FireEvent.PlayerIndex5` sur les mêmes records 0xD2. Un seul endroit déclare l'offset
+// du champ (fireShooterBit), et c'est ce fichier — comme ReadAttackerIndex pour le 4 bits.
+func ReadShooterIndex5(pay []byte) int {
+	if len(pay)*8 < fireShooterBit+fireShooterW {
+		return -1
+	}
+	return int(readBitsAt(pay, fireShooterBit, fireShooterW))
+}
+
 // decodeFireEvent lit la tête du record type 105 d'un payload de paquet. Rend ok=false, sans
 // rien lire, si le payload est trop court pour porter cette tête.
 //
@@ -183,6 +221,7 @@ func decodeFireEvent(pay []byte) (FireEvent, bool) {
 	}
 	e := FireEvent{Variant: int(pay[0]) & 1}
 	e.FilmIndex = int(readBitsAt(pay, fireAttackerBit, fireAttackerW)) >> 1
+	e.ShooterIndex5 = int(readBitsAt(pay, fireShooterBit, fireShooterW))
 	e.WeaponID = uint64(readBitsAt(pay, fireWeaponHiBit, fireWeaponW))<<32 |
 		uint64(readBitsAt(pay, fireWeaponLoBit, fireWeaponW))
 	for i := 0; i < fireFlagsCount; i++ {

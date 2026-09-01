@@ -51,8 +51,12 @@ type WeaponShot struct {
 	Attacker uint64
 	// WeaponID est l'identifiant global 64 bits de l'arme (cle metadata.weapon_labels).
 	WeaponID uint64
-	// FilmIndex est l'index de tireur INTERNE AU FILM (0..7 en arene) ; l'identite reste le xuid,
-	// resolu par l'appelant (Lot 3). Sert a regrouper les tirs d'un meme tireur dans un film.
+	// FilmIndex est l'index de tireur INTERNE AU FILM, SUR SA LARGEUR REELLE (5 bits, ShooterIndex5) :
+	// l'identite reste le xuid, resolu par l'appelant (Lot 3) via resolvePlayerIndices, LUI AUSSI
+	// keye sur ce 5 bits. C'est le DENOMINATEUR (shared.match_weapon_shots) qui impose la largeur :
+	// il key sur analysis.PlayerIndex5 (5 bits). Un 4 bits (ancien decodeFireEvent.FilmIndex) SATURE
+	// a 15 au-dela de 16 joueurs (BTB) et pointerait un AUTRE joueur que le denominateur -> precision
+	// fausse. Num et denom keyent desormais IDENTIQUE (Lot 3, reserve levee).
 	FilmIndex int
 	// HasPair indique que l'attaquant ET le WeaponID sont lisibles (tir appariable).
 	HasPair bool
@@ -209,7 +213,10 @@ func ScanFilmWeaponShots(dir string, n int) ([]WeaponShot, error) {
 			att, okA := lot1RefDom1(br) // ref0 = attaquant (dom1)
 			fe, okF := decodeFireEvent(pay)
 			if okA && okF {
-				s.Attacker, s.WeaponID, s.FilmIndex, s.HasPair = att, fe.WeaponID, fe.FilmIndex, true
+				// La cle de tireur est le 5 bits (ShooterIndex5), PAS le 4 bits FilmIndex : le pont
+				// FilmIndex->xuid (resolvePlayerIndices) et le denominateur (match_weapon_shots) sont
+				// keyes sur ce 5 bits. Voir WeaponShot.FilmIndex et fire_events.go:fireShooterBit.
+				s.Attacker, s.WeaponID, s.FilmIndex, s.HasPair = att, fe.WeaponID, fe.ShooterIndex5, true
 			}
 			out = append(out, s)
 		}
