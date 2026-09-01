@@ -8585,6 +8585,69 @@ components:
         - detonations
         - detonationsCovered
       type: object
+    BombCarriesCoverage:
+      additionalProperties: false
+      properties:
+        bombFilm:
+          type: boolean
+        byDeath:
+          format: int64
+          type: integer
+        carrierAbsent:
+          format: int64
+          type: integer
+        carries:
+          format: int64
+          type: integer
+        closed:
+          format: int64
+          type: integer
+        events:
+          format: int64
+          type: integer
+        noBridge:
+          format: int64
+          type: integer
+        open:
+          format: int64
+          type: integer
+        outOfWindow:
+          format: int64
+          type: integer
+        periods:
+          format: int64
+          type: integer
+      required:
+        - bombFilm
+        - events
+        - periods
+        - carries
+        - closed
+        - open
+        - byDeath
+        - noBridge
+        - outOfWindow
+        - carrierAbsent
+      type: object
+    BombCarry:
+      additionalProperties: false
+      properties:
+        closed:
+          type: boolean
+        t0:
+          format: int64
+          type: integer
+        t1:
+          format: int64
+          type: integer
+        xuid:
+          type: string
+      required:
+        - xuid
+        - t0
+        - t1
+        - closed
+      type: object
     BootstrapResponse:
       additionalProperties: false
       properties:
@@ -10685,6 +10748,8 @@ components:
       properties:
         bombArmings:
           $ref: '#/components/schemas/BombArmingsCoverage'
+        bombCarries:
+          $ref: '#/components/schemas/BombCarriesCoverage'
         bridge:
           $ref: '#/components/schemas/BridgeHealth'
         equipment:
@@ -20614,6 +20679,12 @@ components:
         bombArmings:
           items:
             $ref: '#/components/schemas/BombArming'
+          type:
+            - array
+            - "null"
+        bombCarries:
+          items:
+            $ref: '#/components/schemas/BombCarry'
           type:
             - array
             - "null"

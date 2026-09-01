@@ -316,7 +316,27 @@ package replay
 // explosions du même film) retiennent le calque à la source ; et QUI ARME — le navpoint est un
 // marqueur d'écran, pas un acteur, aucun xuid n'est publié. Chronique, sources et refus :
 // document_bomb_armings.go.
-const SchemaVersion = 29
+//
+// CE QUE LA VERSION 30 PORTE. Le PORTEUR DE LA BOMBE d'Assaut (`bombCarries`) : les périodes
+// de portage en intervalles de frames nommés par le xuid — le patron exact de `skullCarries`
+// (v23), sur un AUTRE canal : la bombe est un OBJET TENU, répliquée dans le composant
+// weapon-state-type-info du bipède comme une arme (famille `0x3fee4fcf`, B1 2026-09-01 :
+// unique candidate des 9 films d'Assaut ; l'atlas HUD la nomme « ball | bomb »). PRISE =
+// transition VERS la famille, LÂCHER = transition DEPUIS, et la MORT du porteur ferme SANS
+// émission (piège mesuré — fermeture par le fil des morts, `BuildHeldObjectCarry`). Mesures :
+// témoin Oddball 46/46 (100 %), porteur à la pose = détonateur statborg 13/17 (3 des 4
+// désaccords penchent CANAL par la position, B3), mèche libre 27/28 (96,4 %) ; le délai
+// médian lâcher -> explosion (4 804 ms) établit que le LÂCHER du canal EST le geste de pose.
+// GARDE DE MODE : toutes les variantes de la famille bomb, ONE BOMB COMPRISE — le négatif de
+// v29 vise l'anneau d'armement, pas ce canal. Champ optionnel, mais la version monte pour la
+// raison exacte des montées v22, v23 et v29 : la reprise du backfill se fait par
+// SchemaVersion, et un artefact 29 doit se lire « à re-cuire », pas « à jour » — sans quoi
+// aucun rejeu d'Assaut déjà cuit ne montrerait jamais la bombe portée. CE QUE LA VERSION NE
+// PORTE PAS : la bombe AU SOL — l'objet n'a pas de canal mesuré ; entre un lâcher et la
+// prise suivante, le client la dérive des périodes et des pistes déjà publiées (dernier
+// point du lâcheur), sans qu'aucune position inventée n'entre dans l'artefact. Chronique,
+// sources et refus : document_bomb_carries.go.
+const SchemaVersion = 30
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {
@@ -565,6 +585,13 @@ type ReplayDocument struct {
 	// non-Oddball contre film Oddball sans portage). Le crane LIBRE (`objectiveObjects`) reste la
 	// couche POSITION ; celle-ci est la couche PORTEUR.
 	SkullCarries []SkullCarry `json:"skullCarries,omitempty"`
+	// BombCarries est LES PERIODES DE PORTAGE DE LA BOMBE d'Assaut, en intervalles de frames
+	// nommes par le xuid du porteur (forme, sources et garde de mode : document_bomb_carries.go)
+	// — le patron de `skullCarries`, sur le canal des armes tenues. La bombe portee est a la
+	// position de son porteur ; entre un lacher et la prise suivante, le client la derive des
+	// periodes et des pistes (dernier point du lacheur — la bombe au sol n'a pas de canal
+	// mesure). Absente hors de la famille bomb — `coverage.bombCarries` dit lequel des silences.
+	BombCarries []BombCarry `json:"bombCarries,omitempty"`
 	// Coverage dit, pour chaque calque, COMBIEN il a rattaché SUR COMBIEN existaient, et
 	// pourquoi il a écarté le reste (cf. coverage.go).
 	//

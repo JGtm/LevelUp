@@ -171,6 +171,11 @@ type Coverage struct {
 	// fenêtre). Son ABSENCE dit que l'appelant n'a PAS reconnu un film Oddball (la garde de mode
 	// est chez `replaybuild`).
 	SkullCarries *SkullCarriesCoverage `json:"skullCarries,omitempty"`
+	// BombCarries est la couverture du PORTEUR DE LA BOMBE d'Assaut (schéma 30, cf.
+	// document_bomb_carries.go) : transitions lues, périodes reconstruites, publiées, et les
+	// causes nommées de chaque rejet. Absente = l'appelant n'a pas reconnu un film de la
+	// famille bomb ; présente et vide de portages = film d'Assaut où rien n'a pu être nommé.
+	BombCarries *BombCarriesCoverage `json:"bombCarries,omitempty"`
 	// BombArmings est la couverture de L'ARMEMENT DE LA BOMBE d'Assaut (schéma 29, cf.
 	// document_bomb_armings.go) : lectures de l'anneau, montées, armements retenus, et le
 	// verdict de la confrontation locale aux explosions (`suppressed`). Son ABSENCE dit que

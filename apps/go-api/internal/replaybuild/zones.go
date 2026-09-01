@@ -163,10 +163,20 @@ func isSkullVariant(variant string) bool {
 // meme film (`replay/bomb_armings.go`, garde 2) qui tranche : elle retient le calque entier si
 // une seule explosion n'a pas son armement a la meche.
 func isArmableBombVariant(variant string) bool {
-	if objectiveevents.ObjectiveTypeOf(variant) != objectiveevents.ObjectiveTypeBomb {
+	if !isBombVariant(variant) {
 		return false
 	}
 	return !strings.Contains(strings.ToLower(variant), "one bomb")
+}
+
+// isBombVariant dit si la variante est de la FAMILLE BOMB, TOUTES variantes — la GARDE DE
+// MODE du PORTAGE de la bombe (`replay.BombInput.CarryScanned`, schema 30). One Bomb y est
+// INCLUSE, et la difference avec `isArmableBombVariant` est mesuree : le negatif One Bomb
+// (CV 0,725) vise le canal de l'ANNEAU D'ARMEMENT, pas le composant d'arme tenue du bipede,
+// qui replique la bombe dans toutes les variantes (B1 2026-09-01 : 9 films sur 9, One Bomb
+// comprise). Meme predicat canonique que la colline et le crane (`ObjectiveTypeOf`).
+func isBombVariant(variant string) bool {
+	return objectiveevents.ObjectiveTypeOf(variant) == objectiveevents.ObjectiveTypeBomb
 }
 
 // tableRoles projette la table du titre sur la variante du match : les memes entrees, le meme
