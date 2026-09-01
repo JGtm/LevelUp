@@ -356,7 +356,7 @@ func TestBuildPickupsFamilyCoverageOnRealFilms(t *testing.T) {
 	armes := weapons.FilmshellWeaponKeysByFamily()
 
 	got, cov := buildPickups(pickups,
-		replayClock{origin: 0, step: 100_000, families: equipement}, nil, st, armes)
+		replayClock{origin: 0, step: 100_000, families: equipement}, nil, st, armes, nil)
 
 	parNature := map[PickupKind]struct{ total, nomme int }{}
 	for _, p := range got {
