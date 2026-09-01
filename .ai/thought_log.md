@@ -78886,3 +78886,31 @@ bipède 29 % -> inconclusifs. Instrument : deto_attribution_{research,helpers}_t
 LOT1_TRAME_FILM, borne 16). Gate : gofmt propre, go vet vert (GOCACHE privé). NOTE :
 .ai/V7.5/film_re/NOTE_DETONATION_ATTRIBUTION_2026-09-01.md. Prochaine étape possible : lier la ref1
 non-bipède d'une touche au SLOT du projectile ti=41 (lien exact, non géométrique).
+
+## [2026-09-01] Verification adverse — attribution detonation->tireur->splash — Complété
+
+Rôle : REFUTER l'attribution de la note NOTE_DETONATION_ATTRIBUTION. Instrument étendu
+(deto_attribution_groundtruth_test.go, M5 vérité terrain + M6 confond ; garde LOT1_TRAME_FILM,
+override LOT1_MAXCHUNKS pour moissonner les films arène). gofmt/vet verts, GOCACHE privé.
+
+Décision technique : le M3 de la note valide detonation->tireur contre l'oracle NAISSANCE (tir
+lourd dont le tireur est le plus proche de la naissance du projectile) — oracle et gagnant
+géométrique dérivent des MÊMES tracks : coherence interne, PAS vérité terrain. La vraie preuve est
+le dead-state (EnumB = tueur). M5 relie chaque MORT à sa détonation source et compare 4 voies au
+tueur EnumB->FilmIndex.
+
+Résultats : (1) VERITE TERRAIN INDISPONIBLE — le harvest de morts par rejeu-par-chunk
+(geoCollectDamageKills, sans localisateur d'events) récolte 5/2/0/0 morts sur 000d5950/00502e52/
+4f77afc1 (une partie en compte ~50), 0 kill explosif appariable, 0 touche fatale non-bipède. Même
+plafond dans l'instrument établi geo_explosifs : sa section "M3 vérité terrain" a toujours été à 0
+évaluable. L'attribution n'a JAMAIS été confrontée au vrai tueur d'un kill explosif. (2) CONFOND
+NET (M6) : pic visée->détonation des vrais lanceurs 27/27 (arène) et 13/15 (BTB) sous 15 deg ; témoin
+visée+3s 3/14 et 4/12 ; témoin aléatoire diffus. L'alignement EST discriminant. (3) BTB #3 : géo
+82,8% vs temporel 75,9% vs témoin décalé 6,9% (vs oracle naissance) ; sous-ensemble ambigu 14/29 des
+détonations → géo 71,4%. Gain géo/temporel réel mais modeste (~7 pts), grand écart vs témoin. (4)
+SPLASH : rattachement touche<->détonation < 20% (arène), 0 (BTB) — réfuté, confirmé.
+
+Conclusion : l'attribution SURVIT comme PLAUSIBLE (cohérence interne forte + discriminant net +
+gain géo en BTB), NON PROUVÉE (aucun accord vérité terrain mesurable, harvest de morts data-starved
+in-package ; le walker validé 97,6% est dans killsource qui importe filmdec — cycle interdit). SHA à
+consigner après commit.
