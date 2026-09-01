@@ -4529,6 +4529,40 @@ export interface components {
             /** Format: double */
             value: number;
         };
+        BombArming: {
+            /** Format: int64 */
+            fuseMs: number;
+            /** Format: int64 */
+            startMs: number;
+            /** Format: int64 */
+            startT: number;
+            /** Format: int64 */
+            t: number;
+            /** Format: int64 */
+            timeMs: number;
+        };
+        BombArmingsCoverage: {
+            /** Format: int64 */
+            armed: number;
+            /** Format: int64 */
+            belowFull: number;
+            /** Format: int64 */
+            detonations: number;
+            /** Format: int64 */
+            detonationsCovered: number;
+            /** Format: int64 */
+            outOfWindow: number;
+            /** Format: int64 */
+            pairMerged: number;
+            /** Format: int64 */
+            published: number;
+            /** Format: int64 */
+            reads: number;
+            /** Format: int64 */
+            rises: number;
+            scanned: boolean;
+            suppressed?: boolean;
+        };
         BootstrapResponse: {
             active_sync_job_id?: string;
             /** @enum {string} */
@@ -5338,6 +5372,7 @@ export interface components {
             y_value: number;
         };
         Coverage: {
+            bombArmings?: components["schemas"]["BombArmingsCoverage"];
             bridge: components["schemas"]["BridgeHealth"];
             equipment?: components["schemas"]["EquipmentCoverage"];
             equipmentChanges?: components["schemas"]["EquipmentChangeCoverage"];
@@ -9544,6 +9579,7 @@ export interface components {
             abilityLabels?: {
                 [key: string]: components["schemas"]["Label"];
             };
+            bombArmings?: components["schemas"]["BombArming"][] | null;
             bounds: components["schemas"]["Bounds"];
             coverage?: components["schemas"]["Coverage"];
             /** Format: int64 */

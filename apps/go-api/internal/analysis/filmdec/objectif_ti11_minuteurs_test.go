@@ -189,7 +189,7 @@ func mntLegal(v int) bool {
 
 // mntChargerHorloge construit la table des horodatages du film, chunk par chunk.
 //
-// MEME RECETTE QUE `ti12ScanFilm` : la base est le PREMIER PAQUET DELTA du chunk, et `start_ms`
+// MEME RECETTE QUE `ScanFilmNavpointRadial` : la base est le PREMIER PAQUET DELTA du chunk, et `start_ms`
 // vient du manifeste — c'est ce qui met les lectures sur la MEME base que l'oracle des
 // explosions. L'ecart par chunk est conserve : c'est lui qui dit si l'horloge moteur est affine
 // a celle du manifeste, comme la doctrine du chantier le suppose.
@@ -211,7 +211,7 @@ func mntChargerHorloge(dir string) (mntHorloge, bool) {
 			continue
 		}
 		pks := WalkPackets(data)
-		base, aBase := ti12BaseChunk(pks)
+		base, aBase := navpointRadialBaseChunk(pks)
 		start, aStart := debut[c]
 		if !aBase || !aStart {
 			continue

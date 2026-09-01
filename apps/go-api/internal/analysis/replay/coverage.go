@@ -171,6 +171,12 @@ type Coverage struct {
 	// fenêtre). Son ABSENCE dit que l'appelant n'a PAS reconnu un film Oddball (la garde de mode
 	// est chez `replaybuild`).
 	SkullCarries *SkullCarriesCoverage `json:"skullCarries,omitempty"`
+	// BombArmings est la couverture de L'ARMEMENT DE LA BOMBE d'Assaut (schéma 29, cf.
+	// document_bomb_armings.go) : lectures de l'anneau, montées, armements retenus, et le
+	// verdict de la confrontation locale aux explosions (`suppressed`). Son ABSENCE dit que
+	// l'appelant n'a PAS reconnu une variante d'Assaut couverte (la garde de mode est chez
+	// `replaybuild` — One Bomb n'y entre jamais).
+	BombArmings *BombArmingsCoverage `json:"bombArmings,omitempty"`
 	// WeaponChanges est la couverture des PRISES ET LACHERS d'arme (schéma 25, cf.
 	// document_weapon_changes.go) : les changements décodés, ceux publiés, et ce qui a été
 	// écarté — les ré-annonces d'une arme déjà portée au spawn (qui ne sont PAS des prises) et

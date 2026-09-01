@@ -150,6 +150,25 @@ func isSkullVariant(variant string) bool {
 	return objectiveevents.ObjectiveTypeOf(variant) == objectiveevents.ObjectiveTypeSkull
 }
 
+// isArmableBombVariant dit si la variante du match est un ASSAUT DONT LE CANAL D'ARMEMENT EST
+// PROUVE — la GARDE DE MODE du compte a rebours (`replay.BombInput.Scanned`). Elle est ICI,
+// chez l'appelant, comme les autres : le paquet `replay` ne devine aucun mode.
+//
+// LA FAMILLE vient du predicat canonique (`ObjectiveTypeOf` == bomb : « Assault:One Bomb »,
+// « Assault:Neutral Bomb », « Assault:Neutral Bomb Squad », « Husky Raid:Assault » — les 4
+// formes du registre, releve du 2026-08-31). ONE BOMB EN EST EXCLU PAR SON NOM : le protocole
+// du 2026-09-01 y a REFUTE la lecture (CV 0,725, 87/1000 tirages nuls aussi bien) la ou
+// Neutral Bomb (13/13, CV 0,016) et Husky Raid (4/4) la prouvent. La garde echoue FERMEE — une
+// variante d'Assaut au nom inconnu passe, et c'est la CONFRONTATION LOCALE aux explosions du
+// meme film (`replay/bomb_armings.go`, garde 2) qui tranche : elle retient le calque entier si
+// une seule explosion n'a pas son armement a la meche.
+func isArmableBombVariant(variant string) bool {
+	if objectiveevents.ObjectiveTypeOf(variant) != objectiveevents.ObjectiveTypeBomb {
+		return false
+	}
+	return !strings.Contains(strings.ToLower(variant), "one bomb")
+}
+
 // tableRoles projette la table du titre sur la variante du match : les memes entrees, le meme
 // matcher et le meme ordre que le service.
 //

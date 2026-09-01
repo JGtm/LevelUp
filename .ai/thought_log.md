@@ -81102,3 +81102,49 @@ nuls font aussi bien** — le signal ne tient PAS en One Bomb sous cette lecture
 donc NEUTRAL BOMB + HUSKY RAID (17/17 a ~5 s, 0/1000) ; One Bomb est la reserve a lever au
 portage (anneau porte autrement ? paires de slots differentes ? a instrumenter avant de brancher
 cette variante).
+
+---
+
+## [2026-09-01] Portage produit — l'armement de la bombe entre au rejeu 2D (schéma 29)
+
+**Statut** : Complété. Gate ASSAUT_CACHE vert du premier coup, tous critères tenus.
+
+**Décision technique principale** : le canal prouvé (anneau `ti=12 i14` = jauge d'armement,
+protocole 0/1000) est porté en production sur le patron EXACT des calques gardés par le mode
+(couronne VIP, crâne, zones) :
+
+- `filmdec/navpoint_radial_scan.go` : `ScanFilmNavpointRadial` — le balayage du test porté tel
+  quel (deux voies, bande observée, hook de production) ; les instruments ti12 APPELLENT
+  désormais la production (plancher compris) au lieu d'en garder une copie ;
+- `filmdec/navpoint_radial_rises.go` : `NavpointContiguousRises` + les seuils du protocole
+  (trou 500 ms, 3 échantillons, 16 quanta) gardés par `TestNavpointTi12ProtocoleFige` ;
+- `replay/bomb_armings.go` + `document_bomb_armings.go` : `bombArmings` (startT/startMs le
+  hold, t/timeMs l'armé, fuseMs=4930) — schéma 29 ; mèche publiée DANS l'artefact ;
+- garde de mode DOUBLE : `replaybuild.isArmableBombVariant` (jamais « one bomb ») ET
+  confrontation locale tout-ou-rien aux explosions du même film (une explosion sans armement
+  à 4,93 s ± 0,6 s retient le calque entier) ;
+- front : bandeau `ReplayBombCountdownOverlay` (« Bombe armée — 4,9 s » + barre de mèche,
+  dérivé de la position de lecture, token destructive, FR/EN), son `bomb_armed` sur le stem
+  de la NOUVELLE COLLINE (`ZONE_SOUND_STEMS.newZone`, emprunté par référence).
+
+**Découverte du gate (mesure faite AVANT de figer la règle)** : sans filtre, 35b75a31 publiait
+19 « armements » pour 3 explosions. Le diagnostic des quanta tranche : les 7 montées confirmées
+par une explosion finissent TOUTES à q=254 (quantum plein) ; les montées plafonnées à q=253
+(~4,9 s, 130→253, après chaque explosion et à chaque spawn de bombe) sont l'ANIMATION DE
+RECHARGE du marqueur (0/12 à la mèche) ; en dessous, des holds relâchés. Règle de production :
+armé ⇔ dernier échantillon ≥ 254 (`bombArmedFullQuantum`).
+
+**Résultats du gate** (`TestAssautArmementGate`, critères écrits avant le run) :
+- 35b75a31 (Neutral) : 3 armements = 3 explosions, délais 4837/5055/4987 ms ;
+- 1c01e34f (Husky) : 4 armements = 4 explosions, délais 5240/5056/5038/5089 ms ;
+- 9f57c612 (One Bomb, Scanned forcé) : 0 publié, calque retenu (0/4 couvertes) — la défense
+  en profondeur fonctionne (One Bomb a 5 montées à 254 que la confrontation écarte).
+
+**Gates** : go vet/test/golangci 0 issue (filmdec, replay, replaybuild, api, service,
+replayartifacts) ; openapi-gen -check à jour ; web typecheck/lint 0 erreur, vitest 5628 verts ;
+golden réassemblé (seule la ligne de schéma bouge) ; `EXPECTED_REPLAY_SCHEMA_VERSION` = 29.
+
+**Non fait, et pourquoi** : l'ARMEUR n'est pas nommé (marqueur d'écran, pas un acteur — le
+croisement positionnel reste au registre) ; One Bomb reste sans compte à rebours (canal réfuté
+CV 0,725 — chantier séparé) ; pas de son « bombe armée » propre dans la banque (le stem colline
+est la décision utilisateur du portage, pas un TODO).

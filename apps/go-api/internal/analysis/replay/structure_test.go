@@ -441,8 +441,18 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   tombe à la mort AVEC les grenades du mort, le lien spatial prise i48 -> pose attrape le
 	//   mauvais objet (matrice GlobalID x rang non diagonale ; à candidat unique, 0-2 paires par
 	//   film, incohérentes). Détail : internal/analysis/replay/equipment_placements.go.
-	if SchemaVersion != 28 {
-		t.Fatalf("SchemaVersion = %d, attendu 28 : incrémenter exige une raison écrite ci-dessus "+
+	//
+	// v29 — L'ARMEMENT DE LA BOMBE d'Assaut (`bombArmings`) : début du hold, instant armé,
+	//   mèche (4 930 ms). Source : l'anneau du marqueur `ti=12 i14`, prouvé jauge d'armement
+	//   par le protocole du 2026-09-01 avec tirage nul (13/13 Neutral Bomb CV 0,016, 4/4 Husky
+	//   Raid, 0/1000 tirages nuls aussi bien). Le compte à rebours côté client n'existe que si
+	//   l'artefact porte le calque — un artefact 28 se lit « à re-cuire ». REFUS : One Bomb
+	//   (canal réfuté, CV 0,725), gardé par le NOM chez l'appelant ET par la confrontation
+	//   locale aux explosions du même film ; l'ARMEUR (le navpoint est un marqueur d'écran,
+	//   pas un acteur) ; les montées SOUS LE PLEIN (q<254 : holds relâchés et animation de
+	//   recharge du marqueur, plafonnée à 253). Détail : document_bomb_armings.go.
+	if SchemaVersion != 29 {
+		t.Fatalf("SchemaVersion = %d, attendu 29 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

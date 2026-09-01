@@ -8514,6 +8514,77 @@ components:
         - match_id
         - value
       type: object
+    BombArming:
+      additionalProperties: false
+      properties:
+        fuseMs:
+          format: int64
+          type: integer
+        startMs:
+          format: int64
+          type: integer
+        startT:
+          format: int64
+          type: integer
+        t:
+          format: int64
+          type: integer
+        timeMs:
+          format: int64
+          type: integer
+      required:
+        - t
+        - timeMs
+        - startT
+        - startMs
+        - fuseMs
+      type: object
+    BombArmingsCoverage:
+      additionalProperties: false
+      properties:
+        armed:
+          format: int64
+          type: integer
+        belowFull:
+          format: int64
+          type: integer
+        detonations:
+          format: int64
+          type: integer
+        detonationsCovered:
+          format: int64
+          type: integer
+        outOfWindow:
+          format: int64
+          type: integer
+        pairMerged:
+          format: int64
+          type: integer
+        published:
+          format: int64
+          type: integer
+        reads:
+          format: int64
+          type: integer
+        rises:
+          format: int64
+          type: integer
+        scanned:
+          type: boolean
+        suppressed:
+          type: boolean
+      required:
+        - scanned
+        - reads
+        - rises
+        - belowFull
+        - armed
+        - pairMerged
+        - published
+        - outOfWindow
+        - detonations
+        - detonationsCovered
+      type: object
     BootstrapResponse:
       additionalProperties: false
       properties:
@@ -10612,6 +10683,8 @@ components:
     Coverage:
       additionalProperties: false
       properties:
+        bombArmings:
+          $ref: '#/components/schemas/BombArmingsCoverage'
         bridge:
           $ref: '#/components/schemas/BridgeHealth'
         equipment:
@@ -20538,6 +20611,12 @@ components:
           additionalProperties:
             $ref: '#/components/schemas/Label'
           type: object
+        bombArmings:
+          items:
+            $ref: '#/components/schemas/BombArming'
+          type:
+            - array
+            - "null"
         bounds:
           $ref: '#/components/schemas/Bounds'
         coverage:

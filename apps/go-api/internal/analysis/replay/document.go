@@ -304,7 +304,19 @@ package replay
 // n'est pas diagonale (un même objet lié à trois rangs ; à candidat unique, 0 à 2 paires par
 // film, incohérentes). Le ramassage d'équipement reste dans `equipmentChanges` (QUI et QUAND),
 // sans lien vers l'objet du sol.
-const SchemaVersion = 28
+//
+// CE QUE LA VERSION 29 PORTE, ET CE QU'ELLE REFUSE. L'ARMEMENT DE LA BOMBE d'Assaut
+// (`bombArmings`) : le début du hold (`bomb_arming_start`), l'instant armé (`bomb_armed`) et la
+// mèche (4,93 s), lus dans l'anneau du marqueur `ti=12 i14` — protocole du 2026-09-01 avec
+// tirage nul (13/13 Neutral Bomb CV 0,016, 4/4 Husky Raid, 0/1000 tirages nuls aussi bien). Le
+// compte à rebours côté client N'EXISTE que si l'artefact porte le calque, et la reprise du
+// backfill se fait par SchemaVersion : un artefact 28 doit se lire « à re-cuire », pas « à
+// jour ». CE QUE LA VERSION REFUSE : ONE BOMB, où le signal ne tient pas (CV 0,725, 87/1000) —
+// deux gardes indépendantes (nom de variante chez l'appelant, confrontation locale aux
+// explosions du même film) retiennent le calque à la source ; et QUI ARME — le navpoint est un
+// marqueur d'écran, pas un acteur, aucun xuid n'est publié. Chronique, sources et refus :
+// document_bomb_armings.go.
+const SchemaVersion = 29
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {
@@ -541,6 +553,11 @@ type ReplayDocument struct {
 	// position de son porteur — le client la pose sur sa piste. Absente hors VIP —
 	// `coverage.vipCrown` dit lequel des silences (film non-VIP contre film VIP sans periode).
 	VipCrown []VipPeriod `json:"vipCrown,omitempty"`
+	// BombArmings est L'ARMEMENT DE LA BOMBE d'Assaut : le début du hold, l'instant armé et la
+	// mèche — le compte à rebours [t, t+fuseMs] se dessine sans autre donnée (forme, provenance
+	// et refus : document_bomb_armings.go). Absente hors des variantes d'Assaut couvertes
+	// (jamais One Bomb) — `coverage.bombArmings` dit lequel des silences.
+	BombArmings []BombArming `json:"bombArmings,omitempty"`
 	// SkullCarries est LES PERIODES DE PORTAGE DU CRANE d'Oddball, en intervalles de frames nommes
 	// par le xuid du porteur (forme, sources et garde de mode : document_skull_carries.go). Le
 	// crane porte est a la position de son porteur — le client le pose sur sa piste, comme la
