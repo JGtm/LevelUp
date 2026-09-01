@@ -266,6 +266,14 @@ var canonicalOrder = []string{
 	"arbitration_clocks_default_utc_shared_pve",    // shared_pve
 	"arbitration_clocks_default_utc_shared_social", // shared_social
 	"arbitration_clocks_default_utc_metadata",      // metadata
+	// DERNIER DE TOUT L'ORDRE, et ce n'est pas un hasard : un DROP doit suivre le dernier
+	// créateur ou ALTER de sa cible. `weapon_kills` est créée par le registre PARTAGÉ
+	// (`add_weapon_kills`), altérée par `shared_append_only_weapon_kills_v1` puis par
+	// `shared_h5_weapon_kill_kind_v1` — les trois restent, Halo 5 en dépend. Le step est
+	// TITLE-OWNED (fourni par internal/games/halo_infinite/migrations) : seul le fichier
+	// `halo_infinite` le voit ; seul son NOM figure ici, comme pour tout step title-owned
+	// (order_audit_test.go l'exige des DEUX côtés).
+	"shared_drop_weapon_kills_v1", // shared — title-owned Halo Infinite (2026-09-01)
 }
 
 var canonicalIndex = func() map[string]int {

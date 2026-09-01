@@ -245,6 +245,14 @@ func checkDBAccessible(ctx context.Context, dbPath string) (bool, string) {
 	return true, ""
 }
 
+// checkSharedTables verifie les tables critiques du fichier partage.
+//
+// `weapon_kills` N EN FAIT PLUS PARTIE depuis le 2026-09-01 : elle est supprimee du
+// fichier des titres a decodeur de film (shared_drop_weapon_kills_v1) et l exiger rendrait
+// le gate rouge sur une base parfaitement saine. Elle n est pas remplacee par
+// `match_kill_events` dans cette liste : cette derniere n existe que sur un titre a
+// decodeur, et une table CRITIQUE doit l etre pour TOUS les titres — c est la definition
+// de cette liste. Sa presence se verifie la ou elle a un sens, cote capability.
 func checkSharedTables(ctx context.Context, dbPath string) (bool, string) {
 	required := []string{
 		tableMatchRegistry,
@@ -252,7 +260,6 @@ func checkSharedTables(ctx context.Context, dbPath string) (bool, string) {
 		"medals_earned",
 		"highlight_events",
 		"xuid_aliases",
-		"weapon_kills",
 	}
 	if _, err := os.Stat(dbPath); err != nil {
 		return false, "shared DB absente"
