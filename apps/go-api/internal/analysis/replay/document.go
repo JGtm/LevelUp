@@ -378,7 +378,7 @@ package replay
 // branche `wt/pickup-nommage` alors que le 30 vient d'arriver sur `feat/v75`. Un autre chantier
 // peut prendre le 31 le même jour ; l'arbitrage se fait au merge, par renumérotation, comme la
 // dernière fois.
-const SchemaVersion = 31
+const SchemaVersion = 32
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {

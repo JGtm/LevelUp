@@ -61,6 +61,49 @@ type MapWeaponPadsEntry struct {
 	LevelID  int32              `json:"level_id"`
 	ObjectsN int                `json:"objects_n"`
 	Pads     []MapWeaponPadSpot `json:"pads"`
+	// SpawnPoints est la SECONDE liste : les points d'apparition d'objet ramassable NON-ARME
+	// que la recette (`himap.EstPointDApparition`) reconnait dans le catalogue Forge du jeu.
+	//
+	// LISTE SEPAREE, ET C'EST LA GARANTIE DE NON-REGRESSION. `Pads` alimente des chemins
+	// livres — datation des occupations de socle, tableau de la page match. Ajouter les
+	// points d'apparition DEDANS aurait mele deux natures dans un tableau dont des clients
+	// lisent deja chaque element. Ici, un lecteur qui ignore ce champ voit exactement ce
+	// qu'il voyait.
+	//
+	// C'EST UN POINTEUR, ET C'EST LA CORRECTION D'UN PIEGE PAYE. Avec une tranche nue et
+	// `omitempty`, une carte ACCEPTEE mais sans aucun point n'ecrivait PAS la cle — donc elle
+	// devenait indiscernable d'une carte SAUTEE pour derive de source. Les SEIZE cartes sautees
+	// (Deadlock, Fragmentation, Highpower, Oasis, Breaker, Scarr...) se lisaient alors « carte
+	// connue, aucun point », c'est-a-dire un mensonge : leur catalogue de points n'est PAS
+	// ETABLI, et `spawner` y est impossible.
+	//
+	// LES TROIS ETATS SE LISENT DONC DANS LA FORME MEME DU JSON :
+	//
+	//	entree absente du fichier   la carte n'est pas au catalogue
+	//	cle `spawn_points` ABSENTE  carte connue, points NON ETABLIS (sautee pour derive)
+	//	cle presente, meme `[]`     carte connue, points ETABLIS — `[]` veut dire « aucun »
+	//
+	// `omitempty` sur un POINTEUR n'omet que le nil : une tranche vide non-nil s'ecrit `[]`.
+	// C'est exactement la distinction voulue, et c'est pourquoi la tranche nue ne convenait pas.
+	SpawnPoints *[]MapSpawnPointSpot `json:"spawn_points,omitempty"`
+}
+
+// MapSpawnPointSpot est UN point d'apparition d'objet ramassable de la carte.
+//
+// MEME REGLE QUE POUR LES SOCLES : le type brut reste a cote de la nature, jamais remplace par
+// elle. La nature vient d'une MESURE (canal natif des ramassages sur un film), pas d'une
+// lecture des fichiers du jeu — le jour ou une seconde carte l'infirme, on la recalcule depuis
+// `type_id` sans re-extraire un seul `.mvar`.
+type MapSpawnPointSpot struct {
+	Pos mapvar.Vec3 `json:"pos"`
+	// TypeID est le type_id BRUT du fichier, en hexadecimal.
+	TypeID string `json:"type_id"`
+	// Kind : `grenade`, `equipment`, ou `unknown` quand aucune mesure ne dit ce que le point
+	// fait naitre. `unknown` est une valeur PLEINE, pas un trou : la recette affirme que c'est
+	// un point d'apparition, et seule sa nature manque.
+	Kind string `json:"kind"`
+	// Objects est le nombre d'objets du fichier FUSIONNES dans ce point.
+	Objects int `json:"objects"`
 }
 
 // MapWeaponPadSpot est UN emplacement de socle de la carte.

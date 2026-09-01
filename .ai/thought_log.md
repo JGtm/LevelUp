@@ -83637,3 +83637,397 @@ visee (tests de recherche zoom) et mapfond — pas touches, ce sont leurs sessio
 
 Gates : gofmt propre, `go vet` silencieux, `go test ./internal/analysis/filmdec/` vert,
 `golangci-lint` local sur le paquet ne signale plus rien.
+
+---
+
+## [2026-09-01] Origine socle vs sol par les positions de carte — l'idée marche, sous condition de mode
+
+**Statut** : Complété (recherche pure ; aucun fichier de production touché, aucune cuisson).
+**Worktree** : `wt/origine-equipement`, base `05cb536d6`.
+
+**L'inventaire a changé le plan, et c'est le vrai gain de la première heure.** Il n'y avait pas
+de catalogue à construire : `map_weapon_pads.json` existe (72 cartes, 1 454 emplacements),
+il vient bien des `.mvar`, et ses positions sont **en repère monde non transformé — le même que
+les positions joueur**. L'étalon était déjà mesuré ailleurs (32/32, médiane 0,01 m). Écrire un
+extracteur `.mvar` aurait dupliqué tout cela.
+
+**Le verdict dépend du MODE, pas de l'instrument.** Sur Catalyst (KOTH, dix socles allumés),
+33,3 % des naissances `ti=42` *apparues* tombent à moins d'un mètre d'un socle catalogué, contre
+0,5 % et 3,5 % aux deux témoins spatiaux. Sur Cliffhanger en Super Fiesta, 0,7 % contre 0,7 % —
+et c'est **écrit dans le catalogue lui-même** : ce mode n'allume aucun socle, il n'y a rien à
+apparier. Un instrument qui « échoue » sur un mode qui ne pose pas la question n'échoue pas.
+
+**Ce que ça donne sur l'équipement** (`ti=37`) : SOCLE 4,9 % / 2,0 % (réel contre témoins à
+0,4 % et 0,0 %), SOL 52,7 % / 63,3 % par la règle de production, ABSTENTION 42,4 % / 34,7 %.
+Le seau SOCLE est réel mais minuscule — le catalogue ne connaît qu'**un** emplacement `powerup`
+par carte, sa liste blanche n'ayant que trois types.
+
+**Le résultat le plus utile est dans les abstentions : elles se REGROUPENT.** Douze positions
+(5 sur Catalyst, 7 sur Cliffhanger) hébergent chacune 3 à 14 naissances en un seul match. Ce
+sont très probablement les points d'apparition d'équipement que la liste blanche a écartés à la
+construction. Ce n'est pas une preuve — la récurrence est compatible avec un point d'apparition
+sans l'établir — mais c'est une **liste de coordonnées à vérifier**, et donc une condition de
+reprise précise au lieu d'un souhait.
+
+**Étape 2 bloquée, et la nuance compte** : les `.mvar` ne sont plus au dépôt (zéro fichier, quatre
+arborescences fouillées). Ce n'est pas « les .mvar ne déclarent pas l'équipement », c'est « on ne
+peut pas le vérifier aujourd'hui ».
+
+**Un témoin cassé, dénoncé par la mesure elle-même.** Mon premier témoin permutait la LISTE des
+socles : les chiffres sont sortis identiques au réel au chiffre près (18,5 %, 5,72 m des deux
+côtés). Permuter une liste ne change pas l'ensemble des positions. Remplacé par deux translations
+indépendantes. Un témoin qui égale le réel n'est pas une surprise, c'est un témoin mort.
+
+**Addendum tranché.** `e9e7ff79` **est une arme** ordinaire : le ramasseur la reçoit en main dans
+les 2 s, 4 fois sur 4, et le canal i43..i46 la publie — elle manque juste à la table de libellés,
+à verser au chantier catalogue d'armes. `00007ca9`, lui, est ramassé 15 fois sur deux films,
+toujours en classe ARME, et **n'entre jamais dans un emplacement d'arme** (0/15, aucune émission
+i43..i46). Avec sa valeur basse (31 913) et ses 7 occurrences groupées dans les 180 premières
+millisecondes du match, une par joueur, la signature est celle d'une **dotation à l'apparition**.
+Non tranché, consigné avec sa signature.
+
+**Prochaine étape** : re-dumper les `.mvar`, histogrammer tous les `type_id` aux 12 coordonnées
+publiées, élargir `mapvar.PadFamilyOf`, rejouer l'instrument — le seau ABSTENTION doit
+s'effondrer au profit du seau SOCLE. C'est ce test-là qui tranchera.
+
+---
+
+## [2026-09-01] Vérification `.module` → `.mvar` : réfutée, mais le blocage tombe autrement
+
+**Statut** : Complété (vérification documentaire, aucun appel réseau, aucune écriture hors note).
+
+**La chaîne `.module` ne rend PAS les placements d'objets, et le dépôt le dit noir sur blanc.**
+La chaîne Forge établie le 2026-08-10 (`himap/cuisson_forge.go`) va dans l'autre sens :
+`objet .mvar --type_id--> tag food (.module) --refs--> maillages`. Le `.mvar` est la SOURCE des
+objets (liste, positions, `type_id`) ; le `.module` ne fait que résoudre un `type_id` en modèle.
+C'est le piège « canevas + rack » du lot 5, et il est chiffré : Vagabond porte **788 instances
+dans son canevas contre 4 709 objets dans son `.mvar`**. `himap` CONSOMME des `.mvar`, il n'en
+produit pas. **Maillon manquant nommé : la LISTE des objets et leurs positions.**
+
+**Mais en cherchant, j'ai trouvé mieux que la voie `.module`.** `cmd/mapobj-build` TÉLÉCHARGE les
+`.mvar` depuis l'API UGC Discovery (authentifiée, ADR 0023, aucune re-capture de jeton), et porte
+exactement les trois drapeaux nécessaires : `--save-mvar` (dépose les fichiers — la source qui
+manquait), `--from-file … --dump-objects` (écrit TOUS les objets d'une variante : l'histogramme
+des `type_id` demandé), `--refresh-from` (régénère le catalogue hors ligne). Les jetons sont en
+place. La condition de reprise n'est donc pas « attendre un dump perdu » : c'est **une commande
+réseau**, et la séquence complète est écrite dans la note.
+
+**Je ne l'ai pas exécutée**, et c'est délibéré : déclencher des appels authentifiés sur le compte
+Halo de l'utilisateur, écrire des `.mvar` et régénérer un catalogue partagé sortent du périmètre
+d'un lot de recherche hors ligne en lecture seule. La décision lui revient — elle est à une
+commande près.
+
+**Ce que ça change au verdict** : « bloqué » devient « réalisable, non exécuté », et la
+réfutation porte désormais sur la voie `.module` elle-même, pas sur la faisabilité.
+
+---
+
+## [2026-09-01] Hypothèse « bobine » sur `00007ca9` — réfutée par la signature temporelle
+
+**Statut** : Complété (recherche pure). L'hypothèse utilisateur était bien formée : un objet du
+monde portable expliquerait exactement le 0/15 dans i43..i46 et le classement en classe ARME. Le
+vocabulaire existe au dépôt — quatre bobines dans `weapons/registry.go`, toutes
+`clsEnvironmental`.
+
+**Ce qui la tue** : les 15 occurrences, sans exception, **précèdent la première position
+répliquée de leur porteur** — de 22 à 35 s (l'ordre de grandeur de l'intervalle entre
+images-clés). Cohorte EN MATCH : **0 sur les deux films**. Zéro slot sans position, donc pas un
+défaut de lecture. Une bobine se ramasse en jeu à un endroit fixe ; ceci se distribue au
+démarrage, une fois par joueur.
+
+**Et sous un autre identifiant ? Non plus.** `00007ca9` est le SEUL à porter des prises
+antérieures à la réplication ; tous les autres identifiants de classe ARME sont pris
+intégralement en cours de match. Et le critère « jamais vu par i43..i46 » ne tient pas d'un film
+à l'autre (`b619d84a`, `a0955e9e`, `71ab0a2c` changent de statut) : c'est un artefact de
+couverture du canal, pas une propriété de l'objet.
+
+**Encore un défaut d'instrument attrapé par la mesure elle-même.** Le premier jet utilisait
+`equipmentLives`, qui écarte les positions sans coordonnées monde — or en `QuantaOnly` (seule
+lecture possible, le film 2 n'ayant pas de carte connue) aucune position n'en a. La fonction
+rendait zéro vie et les 15 occurrences tombaient en « sans vie rattachable », 7/7 et 8/8. **Un
+résultat parfaitement uniforme sur deux films est un signal d'alarme, pas une découverte.**
+Corrigé par un découpage sur le seul axe du temps, au même seuil `lifeGapUS`.
+
+**Reste** : `00007ca9` est un événement de démarrage, une fois par joueur, classé ARME, jamais
+dans un emplacement d'arme. Non tranché — mais la piste « objet du monde portable » est fermée
+sur ces données.
+
+---
+
+## [2026-09-01] Passe `.mvar` — les points d'apparition d'équipement sont TROUVÉS
+
+**Statut** : Complété. Le blocage du lot précédent est levé, et le test tranche.
+
+**Diagnostic d'auth avant tout.** Le joueur par défaut (Chocoboflor) échoue sur **AADSTS70000**
+— token émis pour un autre client id. Aucune re-capture (doctrine). L'inspection du magasin
+montre trois comptes `revoked` depuis le 30/08, trahis par la longueur de leur RT (417/393 =
+ancienne application), et **JGtm sain, rafraîchi la veille**. UN seul essai supplémentaire avec
+ce compte : succès. 3 appels réseau, `--dry-run --save-mvar` vers le worktree — **le catalogue
+partagé n'a pas été régénéré**.
+
+**Le test des 12 positions.** Sur Catalyst, **5 positions sur 5 touchées à 0,00-0,01 m** — la
+résolution de l'étalon de production. Deux types hors liste blanche : `0xADEEE6D8` (4-5 objets
+par carte) et `0xE42158DF` (4). Leur **cardinalité est celle d'un socle**. Un troisième candidat,
+`0xA495FE83`, tombait à 0,51 m — mais il compte 95 à 100 exemplaires par carte : c'est du décor,
+écarté. Trois chiffres suffisent à séparer un socle d'un pavé.
+
+**Le verdict, catalogue élargi en mémoire.** Catalyst : SOCLE **14 → 61** (4,9 % → 21,6 %),
+ABSTENTION **120 → 76**, témoins spatiaux à 5 et 12 contre 61. X1 et X2 tenus. Huit points
+ajoutés expliquent 47 naissances.
+
+**Cliffhanger ne bouge pas, et c'était écrit avant la mesure** : SOCLE 8 → 12, et le témoin
+décalé de −7 m rend PLUS de socles (21) que le réel (12). **Quand un témoin bat le réel, il n'y
+a pas de signal.** Sur Super Fiesta l'équipement n'est pas posé sur la carte — les deux
+variantes du fichier ont été testées, aucun objet à moins d'un mètre de six des sept grappes.
+
+**Trois défauts d'instrument attrapés avant de conclure**, et deux par les outils : une constante
+int32 mal transcrite (rattrapée en comparant au calcul), et surtout `go vet` refusant un tag JSON
+groupé sur `X, Y, Z` — le tag serait allé aux trois champs et **Y comme Z se seraient lus à zéro
+en silence**, ce qui aurait faussé toutes les distances sans rien casser.
+
+**Ce que ça change** : l'origine socle/sol devient DÉCIDABLE sur les modes qui posent
+l'équipement. Publiable sous réserve d'élargir le corpus — deux cartes et un mode sur deux ne
+suffisent pas à régénérer un catalogue partagé ; ce sera un lot dédié.
+
+## [2026-09-01] Origine equipement — LA RECETTE : une fonction, plus une liste — Complété
+
+**Statut** : Complété (recherche pure, aucun code de production touché).
+
+**Exigence structurante du lot** : « il faut une formule, une RECETTE pour trouver ça de manière
+AUTONOME sur une carte INCONNUE ». Le lot précédent avait deux `type_id` trouvés à la main en
+comparant des positions — utile, mais inutilisable sur une carte jamais vue.
+
+**Décision technique** : remonter la chaîne `type_id → tag` déjà documentée dans
+`cuisson_forge.go` et chercher le discriminant au bon niveau. Trois paliers, deux échecs
+instructifs :
+
+1. **Mauvais module.** Résolution contre le chemin de géométrie (56 766 entrées) : **0/8**, pas
+   même les trois socles PROUVÉS. Le bon catalogue est
+   `any/globals/forge/forge_objects-rtx-new.module` — 8/8 y résolvent.
+2. **Le groupe ne sépare pas.** Les huit types rendent `food`, socles prouvés comme pavés de
+   décor. Une recette « groupe == food » ramasserait la carte entière.
+3. **Ce que le `food` référence sépare** : les 5 points (3 prouvés + 2 mesurés) référencent
+   `foki:4` ; les 3 types de décor, aucun `foki`.
+
+**Le crible 1 seul sur-retenait, et c'est le corpus qui l'a montré** : 61,5 % des objets de
+Highpower et 60,5 % de Scarr classés « points d'apparition » — invraisemblable. Deux types
+portaient l'anomalie (`0x8413E9BA` jusqu'à 178 par carte, `0xA4EE54ED` 83). **La cardinalité ne
+pouvait pas les écarter** : le `rack` PROUVÉ monte lui-même à 52 sur Fragmentation Heavies. Un
+cran plus bas a donné le crible propre : les deux aberrants mènent à `bloc:4 hsc*:4` (géométrie
+solide + script), aucun point prouvé ou mesuré n'en porte. **Le discriminant va dans le sens
+INVERSE de l'hypothèse de départ.**
+
+**Recette finale** : un objet est un point d'apparition ssi son `type_id` résout vers un tag
+`food` qui (1) référence un `foki` et (2) dont aucun `foki` ne référence `bloc` ni `hsc*`.
+
+**Résultats observés** :
+- Sélectivité : 16 types retenus sur 4 235 tags `food` (0,38 %) ; 5/5 étalons gardés, 0/3 décors.
+  Le crible 2 divise par 1,7 sans perdre un étalon.
+- Universalité (15 cartes, 13 téléchargées, 13 appels UGC, `--dry-run`, catalogue partagé
+  intact) : les 12 cartes natives tiennent dans **61-118 points** (contre 61-322 avec le crible 1
+  seul) ; les cartes Forge tombent sous 2 %. Les deux `type_id` trouvés à la main sont présents
+  sur 14/15 cartes — universalité établie, mais la recette en trouve 14 autres.
+- Catalyst / KOTH : socle 14 → 68, témoins 14 et 23. **Le seuil écrit avant (témoin ×3 ≤ réel)
+  est manqué d'UNE occurrence** (23×3 = 69 contre 68) — publié comme succès à la limite.
+- Cliffhanger / Super Fiesta : socle 8 → 26, témoin −7y à 22. **Gain non séparable du hasard**,
+  et c'est le résultat ATTENDU : la recette décrit la CARTE, le mode décide. Deux films, deux
+  verdicts opposés, séparés par le témoin.
+
+**Piège de méthode consigné** : `go test` a servi un résultat CACHÉ après passage du fichier de
+types de 27 à 16 entrées — le journal annonçait « 27 » quand le fichier disait 16. Un test de
+recherche qui lit un fichier de données externe **exige `-count=1`**, sinon il publie une mesure
+périmée sous une étiquette fraîche.
+
+**Auth** : JGtm, aucune re-capture de jeton (ADR 0023). `db_profiles.json` et les jetons étant
+gitignorés, un worktree ne les a pas : `LEVELUP_REPO_ROOT` pointe l'arbre principal en lecture,
+`--dry-run` neutralise toute écriture, seul `--save-mvar` écrit et dans le worktree.
+
+**Conclusion / prochaine étape** : la recette est autonome et validée. Elle dit OÙ un objet
+ramassable peut naître, pas LEQUEL — distinguer arme, équipement et grenade demande de lire le
+`foki` lui-même (non fait). Le `fosp:4` présent sous tous les points n'est pas élucidé. Régénérer
+le catalogue partagé `map_weapon_pads.json` depuis la recette reste un lot dédié, hors de
+celui-ci.
+
+## [2026-09-01] Origine des ramassages — PUBLIÉE (schéma 32), 1934 points au catalogue — Complété
+
+**Statut** : Complété. Code de production, contrat régénéré, gates verts. Pas de merge : une
+revue adversariale relit avant.
+
+**Décision technique principale** : l'origine ne se déduit plus du FILM, elle se lit sur la
+CARTE. `Pickup.origin` vaut `spawner` quand le ramassage a lieu sur un point d'apparition
+catalogué, `ground` quand il a lieu sur une pose dont l'origine mesurée est `dropped` (règle
+EXISTANTE réutilisée, pas refaite), absent sinon.
+
+**Le schéma 32 lève une réfutation que le 31 avait écrite.** v31 refusait l'origine pour deux
+raisons : 25,6 % d'injectivité du juge temporel, **et « le dépôt ne déclare aucun point
+d'apparition d'équipement »**. La seconde est tombée (1934 points sur 63 cartes). La première est
+devenue SANS OBJET plutôt que contournée : `origin` n'apparie plus un ramassage à une naissance
+du film, il demande si le ramassage a eu lieu SUR un point que la carte déclare. Aucune des
+quatre voies filmiques réfutées n'est reprise.
+
+**Collision de schéma ÉVITÉE** : `origin/feat/v75` était déjà en 31 (chantier parallèle
+`wt/pickup-nommage`). L'amont a été intégré par MERGE — 21 commits, aucun conflit — AVANT toute
+numérotation. Sans cette vérification je reproduisais la collision 29/30.
+
+**Typage des points : deux voies mortes avant la bonne.**
+1. La chaîne de tags s'arrête au `fosp` — ses références ne résolvent dans aucun module indexé
+   (96 804 entrées), le manifeste ne recoupe rien, 13 indéterminés sur 16. **`fosp` reste NON
+   ÉLUCIDÉ** et c'est la réponse à « élucide-le si c'est bon marché » : ça ne l'est pas.
+2. Les naissances `ti=37` ne portent pas d'identifiant de catalogue : 283 naissances, 0 nommée,
+   **39 identités toutes distinctes vues une fois** — signature d'un identifiant d'INSTANCE.
+3. Le canal natif des ramassages livre : 66 non-arme, **66 nommés sur 66**, 41 appariés sous le
+   mètre.
+
+**Le témoin qui rend la mesure lisible** : le taux de base du film (66/199 = 33,2 % de non-arme).
+Les trois socles PROUVÉS tombent exactement où ils doivent sans avoir servi à calibrer —
+`power` 0,0 %, `rack` 36,4 % (le taux de base, bruit pur), `powerup` 100 % de
+`powerup_overshield`. Contrôle symétrique : 47,6 % des armes sur les socles d'armes contre un
+témoin de densité à 20,0 %.
+
+**Seuil manqué, publié tel quel** : `0xADEEE6D8` rend 15 grenades sur 19 = 78,9 %, sous les 80 %
+écrits avant. Le seuil n'a pas été déplacé.
+
+**La non-régression est devenue STRUCTURELLE, et il le fallait.** La source dérive : neuf des 72
+cartes rendent un `.mvar` différent de celui qui a bâti le catalogue (Deadlock 462 objets contre
+410). Une régénération complète a effectivement réécrit leurs socles d'ARME — 63/72 identiques,
+9 modifiés. D'où `--only-add-spawn-points`, un mode qui ne PEUT PAS écrire un socle : il vérifie
+que les socles retombent à l'identique et n'écrit que `spawn_points` ; une carte qui ne retombe
+pas est SAUTÉE et COMPTÉE. Gate final : **72/72 entrées identiques au caractère**, en-tête
+inchangée, seule clé ajoutée.
+
+**Bogue attrapé, et il aurait publié un faux catalogue** : 58 cartes partagent
+`mvar_file: "map.mvar"` ; le premier aplatissement les écrasait toutes dans un seul fichier, et
+65 cartes sur 72 sortaient avec les socles d'une carte étrangère (signature : des « 11 pads »
+uniformes).
+
+**Décision produit tenue par un test** : `coverage.pickups.mapCatalogMissing` distingue « carte
+absente du catalogue » de « carte connue sans point ». La cuisson ne télécharge RIEN — le trou
+se comble par la CLI ou le sync.
+
+**Résultats des gates** : contracttest, replay, mapvar, replaybuild verts ; `openapi.yaml` et
+`generated.ts` régénérés ; web typecheck vert, 128 fichiers / 1971 tests vitest verts dont la
+garde de parité de schéma ; gate golden nommé `pickup_origin_test.go` à 4 promesses.
+
+**Conclusion / prochaine étape** : revue adversariale avant merge. Restent ouverts : `fosp` non
+élucidé, 11 des 13 points en `unknown` (une carte, un film), les 9 cartes à source dérivée
+(décision produit) et les 4 cartes de `map_objectives` qui pourraient entrer au catalogue.
+
+## [2026-09-01] Origine des ramassages — ronde 1 de corrections après double revue — Complété
+
+**Statut** : Complété. Trois P1 corrigés avec inversions rejouées, huit P2 traités. Pas de merge.
+
+### P1-A — la couverture était aveugle exactement là où l'origine est la moins fiable
+
+Un booléen `mapCatalogMissing` valait FAUX sur les cartes SAUTÉES pour dérive de source : elles
+se lisaient « carte connue, aucun point », alors que leur catalogue de points n'est pas ÉTABLI.
+Le drapeau censé faire VOIR le trou affirmait que tout allait bien.
+
+**Trois états désormais, jusque dans la forme du JSON** : `SpawnPoints` devient un POINTEUR, si
+bien que la clé absente (points non établis) ne se confond plus avec `[]` (établis, aucun point).
+Côté document, `spawnPointsState` remplace le booléen — deux vérités concurrentes sur une même
+question valent moins qu'une.
+
+### P1-B — `ground` n'avait pas de borne SUPÉRIEURE
+
+Le juge retenait `T0` et jetait `Until`/`UntilMax`/`End`, que le document mesure depuis le
+schéma 28 : un ramassage des milliers de frames après la disparition MESURÉE de la pose sortait
+quand même `ground`. Borne haute = `UntilMax` (la première preuve d'absence, le choix
+conservateur ; `End == "open"` n'en reçoit aucune).
+
+**Effet sur données réelles** : `origineSol` tombe de **14 à 10** sur le film pilote — quatre
+attributions étaient fausses.
+
+### P1-C — le mode ajout-seul laissait des points PÉRIMÉS
+
+Une carte acceptée hier et dérivée aujourd'hui gardait ses `spawn_points` : le catalogue aurait
+publié des points d'une source qu'il venait lui-même de déclarer non concordante, et la note
+l'aurait comptée parmi les « sans points ». Au saut pour dérive, la clé est maintenant EFFACÉE
+et l'effacement compté (`cartes_dont_points_retires`).
+
+**Contre-cas explicite** : une carte SANS dump garde ses points — l'absence de fichier ne
+CONTREDIT rien, et effacer détruirait des données valides dès qu'on relance sur un dépôt partiel.
+
+### Le verrou durci change le résultat : 16 cartes sautées au lieu de 9
+
+`memesSocles` seul ne vérifiait RIEN sur une carte sans socle (deux listes vides sont égales).
+Le verrou compare désormais `objects_n`, `level_id` ET les socles — les deux premiers sont
+précisément les signaux qui avaient détecté la dérive de Deadlock. **Sept cartes de plus** se
+révèlent dérivées : elles recevaient jusqu'ici des points issus d'un fichier qui n'était pas le
+leur. Catalogue final : 1662 points sur 56 cartes, 16 non établies, **72/72 socles identiques**.
+
+### Les inversions ont trouvé un défaut que la revue n'avait pas vu
+
+Rejouées comme exigé, les deux inversions P1-A **PASSAIENT** : mes assertions comparaient
+`cov.SpawnPointsState` aux constantes testées — tautologie, la faute exacte déjà payée à la
+ronde précédente. Corrigé : attendus en LITTÉRAUX, plus un test d'unicité des trois valeurs, plus
+un test `replaybuild` sur un chemin qui n'en avait aucun. Les six inversions tombent désormais
+(3 termes du verrou, effacement, borne haute, anachronisme, nom ambigu, deux sur les états).
+
+### Chiffres de PRODUCTION du film pilote (Catalyst `01e1f945`)
+
+`origineSocle=33`, `origineSol=10`, `origineInconnue=23` — somme 66, invariant bouclé.
+`etatPoints=established`, `pointsCatalogue=35`, pic mémoire **0,19 GiB** sur 3 autorisés.
+
+**Rapprochement recherche/production** : la recherche trouvait 41 ramassages non-arme sous le
+mètre d'un point, sur les 65 points BRUTS socles d'armes compris ; la production exclut les trois
+types de socle d'arme, sur lesquels tombaient 4 + 4 = 8 ramassages. **41 − 8 = 33.**
+
+**Contrôle du typage en production** (`spawnerByPointKind`, né du P2-5) : 16 points grenade pour
+18 ramassages de grenade, 13 points équipement pour 15 — les 4 points `unknown` absorbent
+l'écart. Le typage de l'étape 1 se corrobore donc sur un autre axe que celui qui l'a établi.
+
+**Repli par nom public** : la CLI cuit à partir d'un NOM et n'a pas de `map_id` sans fichier de
+faits ; sans ce repli la chaîne était muette hors service (`carteAuCatalogue=false` à la première
+cuisson). Le `map_id` reste prioritaire.
+
+### Conclusion / prochaine étape
+
+Ronde 2 de revue sur ces corrections. Restent ouverts et consignés : `fosp` non élucidé, 11 des
+13 points en `unknown`, les 16 cartes à source dérivée (décision produit), les fusions de points
+à natures mélangées (journalisées, jamais nulles sur BTB).
+
+## [2026-09-01] Origine des ramassages — ronde 2 : complétion des 5 P2 — Complété
+
+**Statut** : Complété. Corrections de ronde 1 jugées recevables, aucun nouveau P0/P1.
+
+**Le point dit bloquant ne l'était pas, et la vérification le montre.** La revue annonçait que
+`addSpawnPointsOnly` (107 L, complexité 17) rougirait le job lint. La commande EXACTE du job
+(`golangci-lint run --timeout 5m --new-from-merge-base=origin/main`), lancée avec `origin/main`
+présent, une merge-base résolue et le fichier bien dans le périmètre (1378 fichiers vus), rend
+**0 issue** : `.golangci.yml` exclut `funlen` et `gocyclo` sous `^cmd/` par une règle documentée
+(« CLI tools / scripts ponctuels »), et sous `internal/analysis/` — ce qui couvre aussi
+`buildPickups`. **J'ai extrait quand même**, parce que la règle projet (≤ 80 L) s'applique
+indépendamment des exclusions du linter : 109 L → 39 L pour la fonction principale, découpée en
+`deriveDe`, `retirerPointsPerimes`, `ajouterPointsDUneCarte`, `noteDuCatalogue`. Inversions
+rejouées APRÈS extraction : neutraliser le verrou ou l'effacement fait toujours tomber 3
+sous-tests chacun — la découpe n'a rien décâblé.
+
+**Onze mentions périmées balayées.** Le catalogue livré dit **16 sautées / 56 acceptées / 1662
+points**, pas 9/63/1934 : le verrou à trois termes (ajout d'`objects_n` et `level_id`) révèle
+sept cartes dérivées de plus. Preuve par grep sur les fichiers du diff : zéro survivant, le seul
+« 1934 » restant étant un intervalle de frames du golden.
+
+**Résidus `mapCatalogMissing`** : deux occurrences subsistent, toutes deux explicitement datées
+(« l'ancien booléen, RETIRÉ au schéma 32 ») — dont celle de la doc de `Pickup.Origin`, lue par
+les clients, qui pointe désormais `spawnPointsState` et ses trois valeurs.
+
+**Note du catalogue rectifiée** : elle affirmait « sautée OU sans dump → clé absente » alors que
+le contre-cas testé conserve la clé sans dump. Elle distingue maintenant les deux : sautée pour
+dérive → clé RETIRÉE (avec le compte de celles qui l'ont effectivement perdue) ; sans dump → clé
+CONSERVÉE, l'absence de fichier ne contredit rien.
+
+**`spawnerByPointKind` — doc corrigée d'une promesse fausse.** Elle annonçait un pouvoir de
+détection qu'il n'a pas : un échange complet grenade ↔ équipement rendrait des totaux
+identiques, donc invisibles. Ce qu'il fait réellement : donner l'ordre de grandeur de la
+composition des points atteints, et montrer un match qui tombe surtout sur des points `unknown`.
+Le croisement qui détecterait une inversion se calcule côté client, qui a déjà `kind` et
+`origin` sur chaque prise. Corrigé aussi dans la chronique du contrat.
+
+**Déterminisme confirmé** : le fichier commité EST une régénération en une passe depuis le
+catalogue parent — deux exécutions rendent un fichier identique hors note datée, vérifié par
+comparaison JSON normalisée. `retirees=0` est donc légitime : le parent ne portait aucun point,
+il n'y avait rien à retirer.
+
+**Mesure au passage** : 60 points à natures mélangées sur 25 cartes, journalisés carte par carte.
+
+**Conclusion / prochaine étape** : passe de merge vers `feat/v75`.

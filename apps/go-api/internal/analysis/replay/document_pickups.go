@@ -128,6 +128,25 @@ type Pickup struct {
 	// jour où ce sera lu, les artefacts déjà cuits porteront la valeur — sinon il faudrait
 	// tout recuire pour une information qui était là.
 	Class int `json:"class"`
+	// Origin dit D'OU VENAIT l'objet ramasse — `spawner` (un point d'apparition catalogue de
+	// la carte) ou `ground` (une pose libere par une mort). Schema 32.
+	//
+	// UNIQUEMENT SUR LES RAMASSAGES NON-ARME, et c'est deliberé : les armes ont deja leur
+	// chaine d'origine, `GroundWeapon` avec son `End`/`Picker`, mesuree et livree. Republier
+	// une origine concurrente sur les memes evenements donnerait deux reponses a une seule
+	// question.
+	//
+	// ABSENT = ABSTENTION EXPLICITE, JAMAIS UN REPLI. Un client qui ne trouve pas la cle ne
+	// doit pas conclure `ground` : il doit conclure « non etabli ». Trois causes possibles, et
+	// la couverture les separe par `coverage.pickups.spawnPointsState` : la carte n'est pas au
+	// catalogue (`map_absent`), ses points n'y sont pas etablis (`not_established`), ou bien
+	// ils le sont (`established`) et c'est alors que le ramasseur n'avait pas de position
+	// assez proche dans le temps, ou que le ramassage n'etait ni sur un point ni sur une pose.
+	//
+	// Vocabulaire distinct de `EquipmentPlacement.Origin` (`deployed`/`dropped`/`unknown`),
+	// qui repond a une AUTRE question — qui a pose l'objet, pas d'ou il venait. Les deux
+	// ensembles de valeurs sont disjoints pour que la confusion soit impossible a l'usage.
+	Origin string `json:"origin,omitempty"`
 }
 
 // buildPickups projette les ramassages lus dans le film sur l'axe de frames du document et
@@ -148,14 +167,34 @@ type Pickup struct {
 // (Vérifié sur pièces le 2026-09-01 : les 21 entrées de `[[equipment_objects]]` s'écrivent
 // `"0x"` + minuscules, et `tagGlobalID32` les parse en `uint32` au chargement du manifeste.
 // La casse du fichier n'atteint jamais cette jointure.)
+// pickupInputs groupe ce qui NOMME et QUALIFIE un ramassage, autour de la liste brute.
+//
+// LE GROUPEMENT N'EST PAS COSMETIQUE : `buildPickups` etait montee a SIX parametres, au-dessus
+// du plafond du depot, et son commentaire affirmait le contraire. Ce qui repond a « qui, quoi,
+// d'ou » tient dans une structure ; la liste et l'horloge restent des arguments parce qu'elles
+// sont l'ENTREE et le REFERENTIEL, pas des dependances.
+type pickupInputs struct {
+	slotXUID   map[uint32]uint64
+	st         filmdec.BipedPickupStats
+	weaponKeys map[uint32]string
+	judge      *pickupOriginJudge
+}
+
 func buildPickups(
-	pickups []filmdec.BipedPickup, clk replayClock, slotXUID map[uint32]uint64,
-	st filmdec.BipedPickupStats, weaponKeys map[uint32]string,
+	pickups []filmdec.BipedPickup, clk replayClock, in pickupInputs,
 ) ([]Pickup, PickupCoverage) {
+	slotXUID, st, weaponKeys, judge := in.slotXUID, in.st, in.weaponKeys, in.judge
 	cov := PickupCoverage{
 		Decoded:    len(pickups),
 		MultiEvent: st.MultiEvent,
 		Refused:    st.RefusedNoRef + st.RefusedNoCatalog + st.RefusedOffBand,
+	}
+	if judge != nil {
+		cov.SpawnPointsState = judge.state
+		cov.MapCatalogPoints = len(judge.points)
+	} else {
+		// Pas de juge = aucune carte fournie au builder : elle est absente, et ca se dit.
+		cov.SpawnPointsState = SpawnPointsMapAbsent
 	}
 	if len(pickups) == 0 || clk.step == 0 {
 		return nil, cov
@@ -182,12 +221,30 @@ func buildPickups(
 		if e.Family == "" {
 			cov.UnknownFamilies++
 		}
+		// L'ORIGINE NE SE POSE QUE SUR LES NON-ARMES (cf. Pickup.Origin).
+		if k != PickupWeapon && judge != nil {
+			e.Origin = judge.origineDe(p.Slot, p.TimestampUS, e.T)
+		}
 		out = append(out, e)
 		cov.Published++
 		if k == PickupWeapon {
 			cov.Weapons++
 		} else {
 			cov.Items++
+			switch e.Origin {
+			case PickupOriginSpawner:
+				cov.OriginSpawner++
+				if judge != nil {
+					if cov.SpawnerByPointKind == nil {
+						cov.SpawnerByPointKind = map[string]int{}
+					}
+					cov.SpawnerByPointKind[judge.kindAtteint]++
+				}
+			case PickupOriginGround:
+				cov.OriginGround++
+			default:
+				cov.OriginUnknown++
+			}
 		}
 	}
 	if len(out) == 0 {
@@ -255,4 +312,58 @@ type PickupCoverage struct {
 	// identifiant absent, slot hors bande de bipèdes). Jamais non nul sur le corpus de
 	// référence : une valeur non nulle signale une largeur de runtime inadaptée au film.
 	Refused int `json:"refused"`
+	// OriginSpawner / OriginGround / OriginUnknown : la repartition des origines sur les
+	// ramassages NON-ARME publies. Les trois se somment aux `items` publies — un invariant
+	// qu'un test verifie, parce qu'un seau qui ne boucle pas est le premier signe qu'une
+	// branche de classement a ete oubliee.
+	OriginSpawner int `json:"originSpawner"`
+	OriginGround  int `json:"originGround"`
+	OriginUnknown int `json:"originUnknown"`
+	// SpawnPointsState dit CE QUE VAUT l'absence d'un `origin: spawner`. Trois valeurs, et il
+	// en faut trois — deux ne suffisaient pas, c'est un defaut corrige apres revue.
+	//
+	//	map_absent       la carte n'est pas au catalogue. Aucun ramassage ne peut etre
+	//	                 `spawner`, et `originUnknown` compte pour une raison qui n'a rien a
+	//	                 voir avec le jeu.
+	//	not_established  la carte EST au catalogue, mais ses points d'apparition n'y sont PAS
+	//	                 ETABLIS. Seize cartes tres jouees sont dans ce cas au 2026-09-01
+	//	                 (Deadlock, Fragmentation, Highpower, Oasis, Breaker, Scarr...) : le
+	//	                 `.mvar` que sert l'UGC ne redonne plus les memes socles qu'au
+	//	                 catalogue, donc le generateur REFUSE d'ecrire des points qui
+	//	                 decriraient peut-etre une autre version de la carte.
+	//	established      les points sont etablis. `mapCatalogPoints` peut alors valoir zero, et
+	//	                 cela veut dire « cette carte n'en porte aucun » — une information, pas
+	//	                 un trou.
+	//
+	// LE DEFAUT QUE CE CHAMP CORRIGE ETAIT EXACTEMENT L'INVERSE DE SON INTENTION. Un booleen
+	// l'ancien booleen `mapCatalogMissing` — RETIRE au schema 32 — valait FAUX sur les seize
+	// cartes sautees, qui se lisaient donc « carte connue, aucun point » : le drapeau cense
+	// faire VOIR le trou affirmait que tout allait bien, et precisement la ou l'origine est le
+	// moins fiable.
+	//
+	// DECISION PRODUIT DERRIERE LES TROIS ETATS : le trou se COMPTE. La generation d'artefact
+	// est HORS LIGNE et le reste — une carte manquante ne se telecharge pas pendant une
+	// cuisson, elle se comble par la CLI (`mapopads-build`) ou par le sync.
+	SpawnPointsState string `json:"spawnPointsState"`
+	// MapCatalogPoints est le nombre de points d'apparition que le catalogue declare pour
+	// cette carte. Il ne se lit QU'AVEC `SpawnPointsState` : un zero ne veut rien dire tant
+	// qu'on ne sait pas si les points sont etablis.
+	MapCatalogPoints int `json:"mapCatalogPoints"`
+	// SpawnerByPointKind ventile les ramassages `spawner` par NATURE DU POINT atteint
+	// (`grenade`, `equipment`, `unknown`).
+	//
+	// CE QU'IL FAIT : il donne l'ORDRE DE GRANDEUR de la composition des points effectivement
+	// atteints dans un match, et il permet de voir d'un coup d'oeil qu'un match tombe
+	// majoritairement sur des points `unknown` — c'est-a-dire que le typage du catalogue ne
+	// couvre pas ce qui se joue vraiment sur cette carte.
+	//
+	// CE QU'IL NE FAIT PAS, ET LA PREMIERE REDACTION LE PROMETTAIT A TORT : ce n'est PAS un
+	// detecteur d'inversion du typage. Un echange complet grenade <-> equipement rendrait des
+	// totaux strictement identiques, donc invisibles ici. Le croisement qui detecterait une
+	// inversion — nature du RAMASSAGE contre nature du POINT — se calcule cote client, qui a
+	// deja `kind` et `origin` sur chaque element de `pickups[]` ; ce compteur ne le remplace
+	// pas et ne cherche pas a le faire.
+	//
+	// Absent quand aucun ramassage n'est `spawner`.
+	SpawnerByPointKind map[string]int `json:"spawnerByPointKind,omitempty"`
 }
