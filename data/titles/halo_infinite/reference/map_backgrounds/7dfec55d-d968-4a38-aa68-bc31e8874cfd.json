@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "module": "7dfec55d-d968-4a38-aa68-bc31e8874cfd",
+  "mapNames": [
+    "Merchant's Square",
+    "merchant's_square_map"
+  ],
+  "image": "7dfec55d-d968-4a38-aa68-bc31e8874cfd.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-27T22:51:43.3913472Z",
+  "style": "encre",
+  "calibration": {
+    "metersPerPixel": 0.04243333435058594,
+    "originX": -102.72580140686034,
+    "originY": 59.36755659484864,
+    "widthPx": 712,
+    "heightPx": 1200,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 9,
+    "anchorsInFrame": 9,
+    "anchorsWithGround": 9,
+    "anchorMedianGapM": -0.289939481279319,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 69.90711303710937,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 1,
+    "covered": true,
+    "cellsSubstituted": 137921,
+    "forgeObjects": 5496,
+    "forgeObjectsDrawn": 5465,
+    "forgeObjectsWithoutModel": 17,
+    "forgeDeathVolumes": 14
+  }
+}

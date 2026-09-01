@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "module": "be848f91-3d87-4b80-8eb9-df3b52cb8d10",
+  "mapNames": [
+    "Urban Raid",
+    "urban_raid_map"
+  ],
+  "image": "be848f91-3d87-4b80-8eb9-df3b52cb8d10.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-27T23:06:29.3471123Z",
+  "style": "encre",
+  "calibration": {
+    "metersPerPixel": 0.04223333326975504,
+    "originX": -10.528373825391135,
+    "originY": 24.717199863433834,
+    "widthPx": 693,
+    "heightPx": 1292,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 9,
+    "anchorsInFrame": 9,
+    "anchorsWithGround": 9,
+    "anchorMedianGapM": -0.2861471525467536,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 54.55037780761719,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.6294753266390262,
+    "covered": true,
+    "cellsSubstituted": 240168,
+    "forgeObjects": 5604,
+    "forgeObjectsDrawn": 5564,
+    "forgeObjectsWithoutModel": 12,
+    "forgeDeathVolumes": 28
+  }
+}

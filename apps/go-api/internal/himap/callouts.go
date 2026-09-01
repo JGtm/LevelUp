@@ -7,6 +7,15 @@
 // 816 zones, liaison nom<->volume 816/816, les canevas Forge en portent ZÉRO — c'est un
 // fait de construction, pas une absence de données) :
 //
+// LE ZÉRO DES CANEVAS EST VÉRIFIÉ, PAS SUPPOSÉ (sonde_levl_canevas_gamefiles_test.go,
+// 2026-08-27) : lire un compte à root+0x91C sur un tag de disposition différente rendrait
+// zéro aussi, et ce zéro-là ne dirait rien. Le root block du tag levl mesure 3 184 octets
+// sur les 31 modules installés, canevas compris, et les blocs `names`/`volumes` y sont
+// présents des deux côtés. Les 8 canevas portent 12 volumes ANONYMES, tous kind=1 (une
+// zone nommée est kind=6), aux mêmes string_id d'un canevas à l'autre et aux bornes de la
+// boîte ±212,5/250 m : ce sont les barrières du canevas. Les callouts d'une carte Forge
+// vivent dans son `.mvar`, pas ici.
+//
 //	levl -> root block
 //	  root+0x91C : TagBlock « named locations » (stride 0x28)
 //	               { i16 volume_index, char name[32], u16 pad, u32 name_string_id }

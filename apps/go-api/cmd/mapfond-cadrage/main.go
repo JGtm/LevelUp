@@ -46,6 +46,23 @@ type mesure struct {
 	matiereL, matiereH     int
 	pixels                 int
 	occupL, occupH, occupA float64
+	// bruit : part des pixels de matiere dont la LUMINANCE saute fortement par rapport a leurs
+	// voisins de droite et du bas. C est la mesure du « gribouillis » : une carte faite de
+	// dalles planes rend de grands aplats et un bruit faible ; une carte faite de coques
+	// organiques qui se chevauchent rend un enchevetrement de traits et un bruit eleve.
+	//
+	// Pourquoi cette mesure existe : l utilisateur demande, le 2026-08-27, ce qui distingue
+	// les cartes Forge propres des cartes en bouillie. Tant que le defaut restait une
+	// impression, on ne pouvait ni le classer ni verifier qu on l avait corrige.
+	bruit float64
+	// alignement : part des CONTOURS qui suivent un axe de la grille, a 15 degres pres.
+	//
+	// C est la mesure qui separe ce que le bruit ne separait pas. Une carte Forge batie de
+	// pieces prismatiques posees a la grille rend des contours horizontaux et verticaux ; une
+	// carte batie de rochers rend des contours qui pointent dans toutes les directions. Le
+	// bruit, lui, compte les ruptures sans regarder leur SENS : il monte aussi bien sur une
+	// carte tres detaillee mais lisible (Cliffhanger, 43 pour cent) que sur une bouillie.
+	alignement float64
 }
 
 func main() {
@@ -80,16 +97,18 @@ func main() {
 		}
 		mesures = append(mesures, m)
 	}
-	sort.Slice(mesures, func(i, j int) bool { return mesures[i].occupL < mesures[j].occupL })
+	// Tri par BRUIT decroissant : la question du jour est « quelles cartes sont en bouillie »,
+	// et la reponse doit se lire sur la premiere ligne.
+	sort.Slice(mesures, func(i, j int) bool { return mesures[i].alignement < mesures[j].alignement })
 
 	fmt.Println(strings.Join([]string{
 		"cle", "largeurPx", "hauteurPx", "matiereLPx", "matiereHPx",
-		"occupLargeurPct", "occupHauteurPct", "occupAirePct",
+		"occupLargeurPct", "occupHauteurPct", "occupAirePct", "bruitPct", "alignementPct",
 	}, "\t"))
 	for _, m := range mesures {
-		fmt.Printf("%s\t%d\t%d\t%d\t%d\t%.1f\t%.1f\t%.1f\n",
+		fmt.Printf("%s\t%d\t%d\t%d\t%d\t%.1f\t%.1f\t%.1f\t%.1f\t%.1f\n",
 			m.cle, m.largeur, m.hauteur, m.matiereL, m.matiereH,
-			100*m.occupL, 100*m.occupH, 100*m.occupA)
+			100*m.occupL, 100*m.occupH, 100*m.occupA, 100*m.bruit, 100*m.alignement)
 	}
 }
 
@@ -134,6 +153,8 @@ func mesureFond(chemin string) (mesure, error) {
 	if m.pixels == 0 {
 		return m, nil
 	}
+	m.bruit = mesureBruit(img, b)
+	m.alignement = mesureAlignement(img, b)
 	m.matiereL, m.matiereH = maxX-minX+1, maxY-minY+1
 	m.occupL = float64(m.matiereL) / float64(m.largeur)
 	m.occupH = float64(m.matiereH) / float64(m.hauteur)
@@ -146,4 +167,80 @@ func mesureFond(chemin string) (mesure, error) {
 func opaque(img image.Image, x, y int) bool {
 	_, _, _, a := img.At(x, y).RGBA()
 	return a>>8 >= seuilAlpha
+}
+
+// seuilSautLuminance : ecart de luminance, sur 255, au-dela duquel deux pixels voisins comptent
+// comme une rupture. 24 separe une arete tracee (l'arete divise la teinte par 3) d'un simple
+// degrade d'eclairement.
+const seuilSautLuminance = 24
+
+// mesureBruit rend la part des pixels de matiere qui rompent avec leur voisin de droite ou du
+// bas. Deux voisins suffisent : le bruit d'un enchevetrement de traits est isotrope, et le
+// compter dans quatre directions doublerait le cout sans rien separer de plus.
+func mesureBruit(img image.Image, b image.Rectangle) float64 {
+	matiere, ruptures := 0, 0
+	for y := b.Min.Y; y < b.Max.Y-1; y++ {
+		for x := b.Min.X; x < b.Max.X-1; x++ {
+			if !opaque(img, x, y) {
+				continue
+			}
+			matiere++
+			l := luminance(img, x, y)
+			if (opaque(img, x+1, y) && abs(l-luminance(img, x+1, y)) > seuilSautLuminance) ||
+				(opaque(img, x, y+1) && abs(l-luminance(img, x, y+1)) > seuilSautLuminance) {
+				ruptures++
+			}
+		}
+	}
+	if matiere == 0 {
+		return 0
+	}
+	return float64(ruptures) / float64(matiere)
+}
+
+// luminance rend la clarte d'un pixel sur 0..255, ponderee comme l'oeil la percoit.
+func luminance(img image.Image, x, y int) int {
+	r, g, bl, _ := img.At(x, y).RGBA()
+	return int((299*int(r>>8) + 587*int(g>>8) + 114*int(bl>>8)) / 1000)
+}
+
+func abs(v int) int {
+	if v < 0 {
+		return -v
+	}
+	return v
+}
+
+// seuilContour : norme minimale du gradient pour qu'un pixel compte comme contour. En deca on
+// ne mesure que le bruit d'eclairement, dont l'orientation ne veut rien dire.
+const seuilContour = 18
+
+// mesureAlignement rend la part des contours dont la direction suit un axe de la grille a
+// 15 degres pres. Gradient de Sobel simplifie sur la luminance, deux voisins par axe.
+func mesureAlignement(img image.Image, b image.Rectangle) float64 {
+	contours, alignes := 0, 0
+	for y := b.Min.Y + 1; y < b.Max.Y-1; y++ {
+		for x := b.Min.X + 1; x < b.Max.X-1; x++ {
+			if !opaque(img, x, y) || !opaque(img, x-1, y) || !opaque(img, x+1, y) ||
+				!opaque(img, x, y-1) || !opaque(img, x, y+1) {
+				continue
+			}
+			gx := luminance(img, x+1, y) - luminance(img, x-1, y)
+			gy := luminance(img, x, y+1) - luminance(img, x, y-1)
+			if gx*gx+gy*gy < seuilContour*seuilContour {
+				continue
+			}
+			contours++
+			// Un contour est aligne si son gradient est presque purement horizontal ou
+			// presque purement vertical : tan(15 deg) vaut 0,268, soit environ 27 %.
+			ax, ay := abs(gx), abs(gy)
+			if ay*100 < ax*27 || ax*100 < ay*27 {
+				alignes++
+			}
+		}
+	}
+	if contours == 0 {
+		return 0
+	}
+	return float64(alignes) / float64(contours)
 }

@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "module": "7097bc4f-efcf-4c5a-a96e-4ddb03e84d2a",
+  "mapNames": [
+    "Flood Gulch",
+    "flood_gulch_map"
+  ],
+  "image": "7097bc4f-efcf-4c5a-a96e-4ddb03e84d2a.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-30T12:12:24.7315458Z",
+  "style": "encre",
+  "calibration": {
+    "metersPerPixel": 0.06558466084798177,
+    "originX": -76.72080861409505,
+    "originY": 61.08022557576497,
+    "widthPx": 1946,
+    "heightPx": 2420,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 22,
+    "anchorsInFrame": 22,
+    "anchorsWithGround": 22,
+    "anchorMedianGapM": -1.4622665366751448,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 103.24533172607421,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.26518661376640473,
+    "covered": false,
+    "forgeObjects": 3767,
+    "forgeObjectsDrawn": 3694,
+    "forgeObjectsWithoutModel": 48,
+    "forgeDeathVolumes": 25
+  }
+}

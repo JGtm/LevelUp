@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "module": "88d45250-97dd-4a28-8fb2-b52baaeebb39",
+  "mapNames": [
+    "Pharaoh",
+    "pharaoh_map"
+  ],
+  "image": "88d45250-97dd-4a28-8fb2-b52baaeebb39.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-27T22:54:13.3476856Z",
+  "style": "encre",
+  "calibration": {
+    "metersPerPixel": 0.044533333937327065,
+    "originX": -34.00853947067261,
+    "originY": 48.23093431440989,
+    "widthPx": 701,
+    "heightPx": 1196,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 9,
+    "anchorsInFrame": 9,
+    "anchorsWithGround": 9,
+    "anchorMedianGapM": -0.3286817468873977,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 80.20746704101562,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 1,
+    "covered": true,
+    "cellsSubstituted": 159850,
+    "forgeObjects": 3194,
+    "forgeObjectsDrawn": 3181,
+    "forgeObjectsWithoutModel": 11,
+    "forgeDeathVolumes": 2
+  }
+}

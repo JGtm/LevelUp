@@ -1,11 +1,29 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  isAnonymousPath,
   resolveIndexRedirect,
   resolvePlayerFallback,
   resolvePlayerSwitch,
   type IndexRedirectInput,
 } from './shellNavigation'
+
+describe('isAnonymousPath', () => {
+  it('la politique de confidentialité est consultable sans compte', () => {
+    expect(isAnonymousPath('/privacy')).toBe(true)
+    expect(isAnonymousPath('/privacy/details')).toBe(true)
+  })
+
+  it('les pages applicatives ne le sont pas', () => {
+    expect(isAnonymousPath('/')).toBe(false)
+    expect(isAnonymousPath('/settings')).toBe(false)
+    expect(isAnonymousPath('/players/halo_infinite/quelquun')).toBe(false)
+  })
+
+  it('la frontière est un segment, pas un préfixe de chaîne', () => {
+    expect(isAnonymousPath('/privacy-interne')).toBe(false)
+  })
+})
 
 describe('resolvePlayerSwitch', () => {
   it('reste sur la même route (préserve la sous-page) quand on est sous une sous-page joueur', () => {

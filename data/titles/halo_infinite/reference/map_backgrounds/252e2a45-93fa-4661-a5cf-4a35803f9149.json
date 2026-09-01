@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "module": "252e2a45-93fa-4661-a5cf-4a35803f9149",
+  "mapNames": [
+    "Boulevard",
+    "252e2a45-93fa-4661-a5cf-4a35803f9149_map"
+  ],
+  "image": "252e2a45-93fa-4661-a5cf-4a35803f9149.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-30T13:32:54.1681597Z",
+  "style": "encre",
+  "calibration": {
+    "metersPerPixel": 0.042944127400716146,
+    "originX": -28.958252670288083,
+    "originY": -70.55115227762857,
+    "widthPx": 1543,
+    "heightPx": 1310,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 24,
+    "anchorsInFrame": 24,
+    "anchorsWithGround": 23,
+    "anchorMedianGapM": -2.556068785884719,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 99.6870050048828,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.5066474575729417,
+    "covered": true,
+    "cellsSubstituted": 60405,
+    "cellsClipped": 6903,
+    "cellsAssumedFloor": 259634,
+    "forgeObjects": 5381,
+    "forgeObjectsDrawn": 5312,
+    "forgeObjectsWithoutModel": 58,
+    "forgeDeathVolumes": 11
+  }
+}
