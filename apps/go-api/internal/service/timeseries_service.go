@@ -40,6 +40,7 @@ import (
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/fragdist"
+	"levelup/go-api/internal/service/killsourceload"
 )
 
 // Cles metriques canoniques utilisees dans MetricXKey/MetricYKey.
@@ -69,6 +70,9 @@ type TimeseriesService struct {
 	// weaponKillsRepo (chart .04 Top weapons) : optionnel, degradation gracieuse.
 	// Si nil, TopWeapons reste vide.
 	weaponKillsRepo port.WeaponKillsRepository
+	// killSourceRepo (optionnel) : kills par SOURCE DE DEGAT du film (repulseur, bobines,
+	// chute). Cf. WithKillSourceRepo.
+	killSourceRepo port.KillSourceClassRepository
 	// weaponAccuracyRepo (« Précision par arme » onglet Résumé) : loader
 	// weapon_accuracy agrégé (Halo 5 natif, MIROIR de weaponKillsRepo). Optionnel —
 	// nil / capability absente (Infinite) → WeaponAccuracy best-effort nil (le front
@@ -131,6 +135,16 @@ func (s *TimeseriesService) WithPlayerMatchesRepo(repo port.PlayerMatchesReposit
 // (Top weapons by kills). Optionnel : si non cable, TopWeapons reste vide.
 func (s *TimeseriesService) WithWeaponKillsRepo(repo port.WeaponKillsRepository) *TimeseriesService {
 	s.weaponKillsRepo = repo
+	return s
+}
+
+// WithKillSourceRepo injecte le loader des kills par SOURCE DE DEGAT du film — ceux que
+// l'attribution arme-a-feu ne peut pas voir (repulseur, bobines, chute), faute de record
+// de degat du tireur. Optionnel : nil (ou titre sans capability `film.kill_source`, le
+// cablage n'injecte alors rien) => ces kills restent dans « Non attribue », exactement
+// comme avant le lot du 2026-08-29.
+func (s *TimeseriesService) WithKillSourceRepo(repo port.KillSourceClassRepository) *TimeseriesService {
+	s.killSourceRepo = repo
 	return s
 }
 
@@ -306,7 +320,13 @@ func (s *TimeseriesService) GetPage(
 	}
 	// FragDistribution (sunburst v2) : RÉUTILISE buildFragDistribution (partagé
 	// Synthesis/Match view — aucune duplication). Construite même sans weaponRows.
-	resp.FragDistribution = s.buildTimeseriesFragDistribution(ctx, weaponRows, resp.KillTypes)
+	tsMatchIDs := make([]string, 0, len(matches))
+	for _, m := range matches {
+		tsMatchIDs = append(tsMatchIDs, m.MatchID)
+	}
+	tsSources := killsourceload.Load(ctx, s.killSourceRepo, "timeseries", s.titleSlug,
+		tsMatchIDs, []string{s.playerXUID})
+	resp.FragDistribution = s.buildTimeseriesFragDistribution(ctx, weaponRows, tsSources, resp.KillTypes)
 
 	// Précision par arme (Halo 5 natif) : MÊME builder partagé que Synthesis/Sessions
 	// (buildWeaponAccuracy → nil si aucune arme valide → champ omis). Best-effort,
@@ -364,6 +384,7 @@ func (s *TimeseriesService) loadObjectiveStats(ctx context.Context, matchIDs []s
 func (s *TimeseriesService) buildTimeseriesFragDistribution(
 	ctx context.Context,
 	weaponRows []port.WeaponKillRow,
+	sources []port.KillSourceClassRow,
 	kt *domain.TimeseriesKillTypes,
 ) *domain.FragDistribution {
 	if kt == nil || kt.TotalKills <= 0 {
@@ -377,7 +398,7 @@ func (s *TimeseriesService) buildTimeseriesFragDistribution(
 		ShoulderBash:  kt.ShoulderBashKills,
 		Total:         kt.TotalKills,
 	}
-	fd := fragdist.Build(weaponRows, counts, titleHasNativeKillMechanics(s.titleSlug))
+	fd := fragdist.Build(weaponRows, sources, counts, titleHasNativeKillMechanics(s.titleSlug))
 	logFragDistribution(ctx, "timeseries", s.titleSlug, s.gamertag, fd)
 	return &fd
 }
