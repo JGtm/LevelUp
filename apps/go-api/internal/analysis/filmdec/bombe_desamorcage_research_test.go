@@ -62,7 +62,7 @@ func bdMonteesContigues(slot uint32, s []ti12Ech) []bdMontee {
 	var out []bdMontee
 	for i := 0; i < len(s); {
 		j := i
-		for j+1 < len(s) && s[j+1].q >= s[j].q && s[j+1].tMS-s[j].tMS <= tpTrouMaxMS {
+		for j+1 < len(s) && s[j+1].q >= s[j].q && s[j+1].tMS-s[j].tMS <= NavpointRiseMaxGapMS {
 			j++
 		}
 		n := j - i + 1
@@ -169,7 +169,7 @@ func bdFilm(t *testing.T, cache, id string) int {
 	if !ok {
 		t.Fatalf("%s : horloge illisible", id)
 	}
-	sc, err := ti12ScanFilm(dir, clk)
+	sc, err := ScanFilmNavpointRadial(dir, clk.startMS)
 	if err != nil {
 		t.Fatalf("%s : scan ti=12 impossible : %v", id, err)
 	}
