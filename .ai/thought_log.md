@@ -1,3 +1,29 @@
+## [2026-09-01] Merge de wt/lint-dette dans feat/v75 — le job `Go Lint` n'est plus rouge — Complété
+
+Merge `--no-ff` de `wt/lint-dette` (4 commits) dans `feat/v75`. **Zéro conflit**, thought_log
+compris : l'arbre principal était exactement sur `66e084b59`, la base du worktree, et aucun
+commit n'était entré depuis — ni avant les gates, ni pendant. `merge-tree` à blanc passé d'abord.
+
+**Périmètre** : 14 fichiers, 319 insertions, 284 suppressions. Que du Go, sur des paquets que
+seules les sessions cartes/navmesh touchent — d'où le **GOCACHE isolé neuf** pour les gates
+(4 process `go.exe` d'autres sessions tournaient : contention CPU acceptée, corruption non).
+
+**Gates sur l'arbre fusionné, verdicts par code de sortie** : `gofmt -l` 0 · `go build ./...` 0 ·
+`go vet` 0 · **la commande exacte du job CI**
+(`golangci-lint run --timeout 5m --new-from-merge-base=origin/main`) rend **`0 issues`**, exit 0 ·
+tests rapides `internal/himap` (76 tests, filtre excluant les `*_gamefiles_test.go`) 0 ·
+`internal/hinavmesh` 0 · `internal/analysis/replay/...` 0.
+
+**Ce qui entre sur `feat/v75`** : 23 findings lint à 0, sans le moindre assouplissement — aucune
+allowlist élargie, aucune règle de config touchée, aucun `//nolint` posé. Les 8 gocyclo tombent
+par extraction conservatrice (complexité ≤ 13 partout, seuil 15) ; les 7 `unused` sont supprimés.
+Deux findings de plus ont été **démasqués** au passage (`uniq-by-line` ne garde qu'une issue par
+ligne : le gocyclo cachait `funlen` sur `CuitCarteForge` et `revive argument-limit` sur
+`poseObjetsForge`) et soldés dans le même lot. Revue adversariale verte, P2 documentaire corrigé.
+
+**Prochaine étape** : run CI sur le push — ce doit être le premier 100 % vert au niveau job de la
+branche, le lint étant le dernier job rouge en permanence. Aucun travail ouvert sur ce périmètre.
+
 ## [2026-09-01] Dette lint soldée sur feat/v75 — le job `Go Lint` repasse au vert, 23 findings à 0 — Complété
 
 **Le constat** : le job CI `Go Lint (golangci-lint)` était rouge en permanence sur `feat/v75`.
