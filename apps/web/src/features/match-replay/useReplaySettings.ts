@@ -38,6 +38,7 @@ const SHOW_GROUND_WEAPONS_KEY = 'replay-show-ground-weapons'
 const SHOW_FLAG_CARRIES_KEY = 'replay-show-flag-carries'
 const SHOW_VIP_CROWN_KEY = 'replay-show-vip-crown'
 const SHOW_SKULL_CARRIER_KEY = 'replay-show-skull-carrier'
+const SHOW_BOMB_CARRIER_KEY = 'replay-show-bomb-carrier'
 const MARKER_COLORS_KEY = 'replay-marker-colors'
 
 /**
@@ -179,6 +180,7 @@ const SHOW_GROUND_WEAPONS_DEFAULT = true
 const SHOW_FLAG_CARRIES_DEFAULT = true
 const SHOW_VIP_CROWN_DEFAULT = true
 const SHOW_SKULL_CARRIER_DEFAULT = true
+const SHOW_BOMB_CARRIER_DEFAULT = true
 
 /** Les deux lectures de couleur des points, dans l'ordre où le tiroir les propose. */
 export type MarkerColorsMode = 'team' | 'player'
@@ -274,6 +276,13 @@ export interface ReplaySettings {
    */
   showSkullCarrier: boolean
   toggleSkullCarrier: () => void
+  /**
+   * Calque de LA BOMBE d'Assaut (schéma 30) : portée sur son porteur, posée au sol. Allumé par
+   * défaut : c'est l'enjeu du mode (cf. SHOW_BOMB_CARRIER_DEFAULT). Un film hors Assaut n'en
+   * publie aucune.
+   */
+  showBombCarrier: boolean
+  toggleBombCarrier: () => void
   /** Couleur des points des joueurs : par équipe (défaut) ou distincte par joueur. */
   markerColors: MarkerColorsMode
   setMarkerColors: (mode: MarkerColorsMode) => void
@@ -373,6 +382,10 @@ export function useReplaySettings(): ReplaySettings {
     SHOW_SKULL_CARRIER_KEY,
     SHOW_SKULL_CARRIER_DEFAULT,
   )
+  const [showBombCarrier, toggleBombCarrier] = usePersistedFlag(
+    SHOW_BOMB_CARRIER_KEY,
+    SHOW_BOMB_CARRIER_DEFAULT,
+  )
   const [heatmapMode, setHeatmapModeState] = useState(() =>
     readStoredChoice(HEATMAP_MODE_KEY, HEATMAP_MODE_DEFAULT, HEATMAP_MODES),
   )
@@ -442,6 +455,8 @@ export function useReplaySettings(): ReplaySettings {
     toggleVipCrown,
     showSkullCarrier,
     toggleSkullCarrier,
+    showBombCarrier,
+    toggleBombCarrier,
     markerColors,
     setMarkerColors,
     autoPlay,

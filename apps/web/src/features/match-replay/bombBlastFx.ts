@@ -48,7 +48,7 @@ import type { ReplayDocumentReady } from './replayNormalize'
  * Assaut un point de mode vaut UNE explosion, et rien d'autre ne fait bouger le score — c'est
  * la seule stat de la famille que le film réplique.
  */
-const BOMB_DETONATION_STAT = 'bomb_detonations'
+export const BOMB_DETONATION_STAT = 'bomb_detonations'
 
 /** Une déflagration prête à dessiner : son instant, le lieu RELU de son auteur, et son auteur. */
 export interface BombBlastFx {

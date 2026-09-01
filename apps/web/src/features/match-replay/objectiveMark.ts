@@ -13,15 +13,19 @@
  *  - un PORTAGE est une PÉRIODE attribuée — `flagCarries[].spans[]` (schéma 15),
  *    `skullCarries[]` (23), `vipCrown[]` (22) portent tous un `xuid` et un intervalle. La
  *    marque dure exactement l'intervalle : c'est un état, il se lit comme tel.
- *  - un ÉVÉNEMENT INSTANTANÉ n'a PAS de période attribuée, et DEUX modes en sont là.
- *    `zoneStates[].spans[]` ne publie que le propriétaire (une ÉQUIPE) et la jauge — aucun
- *    xuid ; seuls les ÉVÉNEMENTS `zone_captures` et `zone_secures` ont un auteur. En Assaut,
- *    de même, rien n'attribue le PORT de la bombe : le seul canal attribué est le point de
- *    mode, et un point de mode y vaut une EXPLOSION (`bomb_detonations`, cf.
- *    analysis/objectiveevents/named.go). La marque est donc un INSTANT tenu quelques secondes,
- *    jamais un « est en train de capturer » ni un « porte la bombe » : ces derniers n'existent
- *    nulle part dans la donnée, et les déduire de la position serait affirmer ce que le film
- *    ne dit pas (règle « une valeur non lue s'affiche comme une lacune »).
+ *  - un ÉVÉNEMENT INSTANTANÉ n'a PAS de période attribuée. `zoneStates[].spans[]` ne publie
+ *    que le propriétaire (une ÉQUIPE) et la jauge — aucun xuid ; seuls les ÉVÉNEMENTS
+ *    `zone_captures` et `zone_secures` ont un auteur. La marque est alors un INSTANT tenu
+ *    quelques secondes, jamais un « est en train de capturer » : le déduire de la position
+ *    serait affirmer ce que le film ne dit pas (règle « une valeur non lue s'affiche comme
+ *    une lacune »).
+ *
+ * LA BOMBE A LES DEUX RÉGIMES depuis le schéma 30 : le PORT est une période attribuée
+ * (`bombCarries[]`, canal des armes tenues — jusque-là « rien n'attribue le PORT de la
+ * bombe » était vrai, et ne l'est plus), et l'EXPLOSION reste l'instant `bomb_detonations`
+ * (le point de mode d'Assaut). Le portage prime, comme partout : un porteur marqué reste
+ * marqué pendant tout son portage, l'explosion tient sa marque quelques secondes après le
+ * geste — même glyphe, deux moments d'un même enjeu.
  *
  * KOTH EST PRÊT ET ATTEND SA SOURCE. Le mode n'a AUCUNE donnée attribuée aujourd'hui : les
  * emplacements de statistiques `hill` ne sont pas encore nommés — `NamedEvents` rend `nil`
@@ -119,6 +123,10 @@ function carrySourcesOf(
   return [
     { kind: 'skull', periods: doc.skullCarries },
     { kind: 'vip', periods: doc.vipCrown },
+    // LA BOMBE PORTÉE (schéma 30) : le même résolveur que le crâne — le kind `bomb` sert
+    // aussi l'ÉVÉNEMENT d'explosion (EVENT_STATS), et le portage prime par construction :
+    // les périodes se lisent AVANT les événements dans `objectiveMarkAt`.
+    { kind: 'bomb', periods: doc.bombCarries },
     // KOTH : la source manque encore (cf. l'en-tête). Une ligne `{ kind: 'hill', periods: ... }`
     // ici, et le filigrane de colline s'allume — tout le reste est déjà en place.
   ]

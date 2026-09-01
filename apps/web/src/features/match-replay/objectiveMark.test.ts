@@ -59,6 +59,15 @@ describe('objectiveMark — les portages, un état qui dure', () => {
     expect(objectiveMarkAt(vip, ME, 5)).toBe('vip')
   })
 
+  it('le PORTAGE de la bombe (schéma 30) marque son porteur comme le crâne — un état qui dure', () => {
+    const doc = testReplayDoc({ bombCarries: [{ xuid: ME, t0: 4, t1: 9, closed: true }] })
+    expect(objectiveMarkAt(doc, ME, 3)).toBeNull()
+    expect(objectiveMarkAt(doc, ME, 4)).toBe('bomb')
+    expect(objectiveMarkAt(doc, ME, 9)).toBe('bomb')
+    expect(objectiveMarkAt(doc, ME, 10)).toBeNull()
+    expect(objectiveMarkAt(doc, 'autre', 5)).toBeNull()
+  })
+
   it('un porteur qui vient de prendre une base garde son objet : l’état prime sur l’instant', () => {
     const doc = testReplayDoc({
       frameCount: 200,

@@ -353,6 +353,12 @@ export interface ReplayText {
   layerSkullCarrier: string
   layerSkullCarrierHint: string
   /**
+   * LA BOMBE d'Assaut (schéma 30) : le nom du calque et sa réserve — portée elle suit son
+   * porteur, lâchée elle reste au dernier point du lâcheur jusqu'à la reprise ou l'explosion.
+   */
+  layerBombCarrier: string
+  layerBombCarrierHint: string
+  /**
    * LES ARMES AU SOL (schéma 27) : le nom du calque et sa réserve.
    *
    * LA RÉSERVE EST LE SUJET, pas un ornement : ce calque affiche des objets dont la

@@ -163,6 +163,10 @@ const NULLABLE_ARRAYS = [
   // réfuté), et la confrontation locale aux explosions retient un film qui contredit la
   // lecture.
   'bombArmings',
+  // `bombCarries` : LE PORTEUR DE LA BOMBE d'Assaut (schéma 30, 2026-09-01) — une entrée PLATE
+  // par période (xuid, t0, t1, closed), le patron de `skullCarries` sur le canal des armes
+  // tenues. La garde de mode est côté serveur : toute la famille bomb, One Bomb comprise.
+  'bombCarries',
 ] as const
 
 /** (1) La liste couvre EXACTEMENT les tableaux nullables du contrat — ni plus, ni moins. */
@@ -243,6 +247,8 @@ const NULLABLE_ARRAY_PATHS = [
   'groundWeapons',
   // `bombArmings` (schéma 29) : armement PLAT, aucun tableau imbriqué — un seul chemin, la racine.
   'bombArmings',
+  // `bombCarries` (schéma 30) : portage PLAT, aucun tableau imbriqué — un seul chemin, la racine.
+  'bombCarries',
   // Dans les ÉLÉMENTS d'un tableau de tête — ce que la garde de racine ne voyait pas.
   'flagCarries[].spans',
   // La trajectoire d'une vie libre d'objet d'objectif (schema 21) : comblee par la
