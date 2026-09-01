@@ -188,7 +188,8 @@ function UsageTeamBody({
  *
  * La ligne des socles de bonus est HORS DU TABLEAU, et ce n'est pas une question de place : le
  * ramasseur n'est pas AFFICHÉ ici (`padPickups[].xuid` est publié depuis le schéma 30, mais cet
- * écran n'a pas été repensé pour l'exploiter). Une colonne, même
+ * écran n'a pas été repensé pour l'exploiter — il l'est par `MatchPadControlSection`, juste en
+ * dessous dans l'onglet). Une colonne, même
  * intitulée « anonyme », finirait par se lire comme une grandeur de joueur.
  */
 function UsageFootnotes({ usage, t }: { usage: EquipmentUsage; t: ReplayText }) {
