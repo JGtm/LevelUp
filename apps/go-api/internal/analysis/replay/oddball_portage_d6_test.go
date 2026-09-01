@@ -51,7 +51,7 @@ const (
 	// d6AmbiguiteM : si le deuxieme plus proche est sous le seuil ET a moins de ceci du premier,
 	// le porteur est null. Doctrine des occupations de socle : plutot aucun porteur qu'un
 	// porteur choisi au hasard entre deux candidats a egale distance. (Le xuid de ces
-	// occupations n'est plus TOUJOURS null depuis le schema 29 — l'evenement natif le donne
+	// occupations n'est plus TOUJOURS null depuis le schema 30 — l'evenement natif le donne
 	// quand il date l'occupation ; la doctrine d'abstention, elle, ne change pas. Le SEUIL
 	// ci-dessous est inchange.)
 	d6AmbiguiteM = 1.0

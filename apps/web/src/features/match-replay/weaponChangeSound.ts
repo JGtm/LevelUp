@@ -33,7 +33,7 @@
  *    tiroir de réglages filtre par catégorie, pas par joueur. L'ordre de grandeur mesuré du
  *    canal est ~100-230 changements par match — celui des lancers de grenade.
  *
- * ## Le canal NATIF vient COMBLER les trous, et surtout pas doubler (schéma 29, 2026-08-31)
+ * ## Le canal NATIF vient COMBLER les trous, et surtout pas doubler (schéma 30, 2026-08-31)
  *
  * `doc.pickups` publie l'événement `biped_pickup` que la bobine écrit elle-même. Là où les deux
  * canaux voient la même prise, ils s'accordent (21/21 et 11/12 appariements arme nommée à moins
@@ -104,7 +104,7 @@ const NATIVE_PICKUP_MATCH_FRAMES = 5
 function nativePickupsNotAlreadyHeard(
   doc: ReplayDocumentReady,
 ): ReplayDocumentReady['pickups'] {
-  // Optionnel à dessein : un artefact antérieur au schéma 29 n'a pas de `pickups`, et le
+  // Optionnel à dessein : un artefact antérieur au schéma 30 n'a pas de `pickups`, et le
   // rejeu doit se taire sur ce qu'il ne porte pas, pas lever.
   if (!doc.pickups?.length) return []
   const heard = doc.weaponChanges.filter((c) => c.kind !== 'dropped')

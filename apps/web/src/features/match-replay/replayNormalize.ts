@@ -158,11 +158,11 @@ export type ReplayDocumentReady = Omit<
    */
   weaponChanges: NonNullable<ReplayDocument['weaponChanges']>
   /**
-   * LES RAMASSAGES NATIFS (schéma 29) : l'événement `biped_pickup` de la bobine, daté à la
+   * LES RAMASSAGES NATIFS (schéma 30) : l'événement `biped_pickup` de la bobine, daté à la
    * milliseconde, ATTRIBUÉ à son ramasseur et portant l'identifiant de catalogue de l'objet.
    * Il ne remplace pas `weaponChanges` — celui-ci qualifie (prise, lâcher, échange) et connaît
    * l'emplacement d'arme ; celui-là voit des prises que l'autre rate et nomme le ramasseur.
-   * Vide = artefact antérieur au schéma 29, ou film qui n'en porte aucun
+   * Vide = artefact antérieur au schéma 30, ou film qui n'en porte aucun
    * (`coverage.pickups` distingue les deux).
    */
   pickups: NonNullable<ReplayDocument['pickups']>
@@ -248,7 +248,7 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     // la lecture d'image-clé dit l'ÉTAT, ces événements datent le CHANGEMENT. Absent = artefact
     // antérieur, ou film qui n'en porte aucun (`coverage.weaponChanges` distingue les deux).
     weaponChanges: raw.weaponChanges ?? [],
-    // LES RAMASSAGES NATIFS (schéma 29) : l'événement que la bobine écrit elle-même, là où
+    // LES RAMASSAGES NATIFS (schéma 30) : l'événement que la bobine écrit elle-même, là où
     // `weaponChanges` déduit d'un changement de composant. Absent = artefact antérieur, ou film
     // qui n'en porte aucun (`coverage.pickups` distingue les deux).
     pickups: raw.pickups ?? [],

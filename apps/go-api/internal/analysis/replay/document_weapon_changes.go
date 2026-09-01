@@ -8,7 +8,7 @@ package replay
 //
 // CE QUE ÇA CORRIGE. Jusqu'ici le document ne portait que `padPickups` : « ce socle s'est vidé
 // quelque part dans cet intervalle », sans le joueur (`PadPickup.XUID` valait `null` partout
-// jusqu'au schéma 29, où l'événement natif le renseigne quand il date l'occupation).
+// jusqu'au schéma 30, où l'événement natif le renseigne quand il date l'occupation).
 // Le présent calque donne QUI, QUAND et QUELLE ARME.
 //
 // CE QUE ÇA NE DONNE PAS, ET IL FAUT LE LIRE AVANT D'Y TOUCHER :

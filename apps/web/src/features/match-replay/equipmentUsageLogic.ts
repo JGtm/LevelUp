@@ -27,7 +27,7 @@
  *                                  slot 0 sur un film où ce slot existe ;
  *   - `padPickups[]` x `weaponPads[]` de famille `powerup_*` — les SOCLES DE BONUS VIDÉS. Ce
  *     canal-là reste au niveau du MATCH, il ne descend sur aucune ligne de joueur. Depuis le
- *     schéma 29 (2026-08-31) `padPickups[].xuid` PEUT être renseigné (l'événement natif porte
+ *     schéma 30 (2026-08-31) `padPickups[].xuid` PEUT être renseigné (l'événement natif porte
  *     son ramasseur), mais cet écran n'a pas été repensé pour l'exploiter : ne pas descendre
  *     reste le comportement VOULU, et ce n'est plus une impossibilité, c'est un choix.
  *

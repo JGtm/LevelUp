@@ -441,7 +441,7 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   tombe à la mort AVEC les grenades du mort, le lien spatial prise i48 -> pose attrape le
 	//   mauvais objet (matrice GlobalID x rang non diagonale ; à candidat unique, 0-2 paires par
 	//   film, incohérentes). Détail : internal/analysis/replay/equipment_placements.go.
-	// v29 — LE RAMASSAGE NATIF (`pickups`), ET LA DATATION DES OCCUPATIONS DE SOCLE. La bobine
+	// v30 — LE RAMASSAGE NATIF (`pickups`), ET LA DATATION DES OCCUPATIONS DE SOCLE. La bobine
 	//   porte un événement `biped_pickup` que personne n'avait décodé : le type 9 de la liste
 	//   d'événements en tête des paquets delta. Sa grammaire est lue dans l'exe (descripteur
 	//   0x144724e18, domaines 2/8/7, charge `R(3) classe + R(1) porte + R(32) catalogue`) et son
@@ -466,8 +466,8 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   comblent un trou, elles ne doublonnent pas `equipmentChanges`.
 	//   Détail : internal/analysis/replay/document_pickups.go, pad_pickup_dating.go,
 	//   internal/analysis/filmdec/biped_pickups.go, .ai/V7.5/film_re/NOTE_BIPED_PICKUP_2026-08-31.md.
-	if SchemaVersion != 29 {
-		t.Fatalf("SchemaVersion = %d, attendu 29 : incrémenter exige une raison écrite ci-dessus "+
+	if SchemaVersion != 30 {
+		t.Fatalf("SchemaVersion = %d, attendu 30 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

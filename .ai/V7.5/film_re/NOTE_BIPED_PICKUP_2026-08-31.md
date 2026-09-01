@@ -258,7 +258,7 @@ refutee ; l'evenement ne porte pas de handle monde. Ce lien-la reste l'affaire d
 (schema 26). Autrement dit : « qui a ramasse quoi, quand » est acquis ; « depuis quel socle »
 ne l'est pas et ne le sera pas par cet evenement.
 
-## LOT 3 — LA PUBLICATION (schema 29)
+## LOT 3 — LA PUBLICATION (schema 30)
 
 Le canal est en production. Chemin : `filmdec.ScanFilmBipedPickups` (decodeur autonome, PAS un
 hook — la liste d'evenements vit AVANT la trame, ces bits ne sont lus par aucun autre
@@ -353,7 +353,7 @@ il etait faux de moitie, et c'est cette moitie qui a produit le bogue.
 |---|---|---|---|
 | a | le test de `datePadPickups` employait `"11223344"` des DEUX cotes — forme que la production ne produit jamais : vert AVEC et SANS le P0 | formes derivees de `formatWeaponFamily` et de `%08x`, plus un cas power-up | normalisation neutralisee -> **« LA JOINTURE EST MORTE »**, 3 tests tombent |
 | b | AUCUN test CI ne couvrait le decodeur (garde `BIPED_PICKUP_FILM` -> Skip permanent) | fixture SYNTHETIQUE en memoire : paquet 0xC4 forge, type 8, type inconnu, troncatures, liste multiple | base 512 -> 0 : **1 test tombe** · classe et porte du catalogue inversees : **4 tests tombent** |
-| c | dix endroits affirmaient encore « `xuid` vaut TOUJOURS `null` (79,7 % contre 90 %) » | balayage complet, formulation unique et datee « publie depuis le schema 29 » | — |
+| c | dix endroits affirmaient encore « `xuid` vaut TOUJOURS `null` (79,7 % contre 90 %) » | balayage complet, formulation unique et datee « publie depuis le schema 30 » | — |
 | d | la cle de FAMILLE de la dedup sonore n'etait testee nulle part (meme `w` des deux cotes partout) | cas « arme A puis arme B <= 500 ms » + bornes 5 et 6 frames | cle de famille retiree : **1 test tombe** · fenetre 5 -> 50 : **2 tests tombent** |
 
 **Deux surprises pendant P1-b, et les tests ont eu raison contre moi.** (1) J'attendais

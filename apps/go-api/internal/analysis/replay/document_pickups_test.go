@@ -198,7 +198,7 @@ func TestDatePadPickupsFailsOnBrokenJoinKey(t *testing.T) {
 }
 
 // TestDatePadPickupsWithoutNativeChannelIsInert : sans ramassage natif, RIEN ne bouge. C'est la
-// garantie de compatibilite du schema 29 — un film dont le canal natif ne rend rien produit
+// garantie de compatibilite du schema 30 — un film dont le canal natif ne rend rien produit
 // exactement les `padPickups` du schema 28.
 func TestDatePadPickupsWithoutNativeChannelIsInert(t *testing.T) {
 	pads := []WeaponPad{{Weapon: "11223344"}}
