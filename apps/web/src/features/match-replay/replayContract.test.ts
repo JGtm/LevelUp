@@ -157,6 +157,12 @@ const NULLABLE_ARRAYS = [
   // d'absence), ou aucune preuve de disparition (`open`). Les armes de SOCLE restent à
   // `weaponPads` : deux vérités pour un même objet seraient une de trop.
   'groundWeapons',
+  // `bombArmings` : L'ARMEMENT DE LA BOMBE d'Assaut (schéma 29, 2026-09-01) — une entrée PLATE
+  // par armement (startT/startMs le hold, t/timeMs l'instant armé, fuseMs la mèche de 4 930 ms
+  // prouvée par tirage nul). La garde de mode est côté serveur : jamais One Bomb (canal
+  // réfuté), et la confrontation locale aux explosions retient un film qui contredit la
+  // lecture.
+  'bombArmings',
 ] as const
 
 /** (1) La liste couvre EXACTEMENT les tableaux nullables du contrat — ni plus, ni moins. */
@@ -235,6 +241,8 @@ const NULLABLE_ARRAY_PATHS = [
   'weaponChanges',
   'equipmentChanges',
   'groundWeapons',
+  // `bombArmings` (schéma 29) : armement PLAT, aucun tableau imbriqué — un seul chemin, la racine.
+  'bombArmings',
   // Dans les ÉLÉMENTS d'un tableau de tête — ce que la garde de racine ne voyait pas.
   'flagCarries[].spans',
   // La trajectoire d'une vie libre d'objet d'objectif (schema 21) : comblee par la

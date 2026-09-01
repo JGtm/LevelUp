@@ -193,7 +193,7 @@ func (s *ti10Scan) ajouter(r ti10Read) {
 // `objectiveevents.StatRecords`, donc que l'oracle des explosions.
 func (w *ti10Walk) scanChunk(data []byte, startMS map[int]int, c int) {
 	pks := WalkPackets(data)
-	base, ok := ti12BaseChunk(pks)
+	base, ok := navpointRadialBaseChunk(pks)
 	start, hasStart := startMS[c]
 	for _, pk := range pks {
 		if !ok || !hasStart {

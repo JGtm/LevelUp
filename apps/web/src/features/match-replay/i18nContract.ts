@@ -494,6 +494,12 @@ export interface ReplayText {
    */
   roundOverFmt: (index: number) => string
   /**
+   * LE COMPTE À REBOURS DE LA BOMBE (Assaut, schéma 29) : le bandeau affiché pendant la mèche,
+   * de l'armement à l'explosion. `remaining` arrive déjà formaté (`formatSeconds`, « 4.9 s ») —
+   * le texte ne porte que le fait : la bombe est armée, il reste ce temps.
+   */
+  bombArmedFmt: (remaining: string) => string
+  /**
    * L'ÉCRAN DE FIN DE MATCH, à l'instant où la lecture atteint la fin déclarée.
    *
    * IL N'Y A PAS DE CLÉ DE TITRE ICI, ET C'EST VOULU (amendement utilisateur du 2026-08-26) :

@@ -28,6 +28,7 @@ import { ReplayKillFeed } from '@/features/match-replay/ReplayKillFeed'
 import { ReplayMatchRecall } from '@/features/match-replay/ReplayMatchRecall'
 import { frameToMs } from '@/features/match-replay/replayLogic'
 import { replayWindow } from '@/features/match-replay/replayWindow'
+import { ReplayBombCountdownOverlay } from '@/features/match-replay/ReplayBombCountdownOverlay'
 import { ReplayRoundBreakOverlay } from '@/features/match-replay/ReplayRoundBreakOverlay'
 import { ReplayScoreBanner } from '@/features/match-replay/ReplayScoreBanner'
 import { ReplayTeams } from '@/features/match-replay/ReplayTeams'
@@ -323,6 +324,11 @@ function ReplayPage() {
                 bascule d'une manche à la suivante et laisse passer les clics. Sur un mode à
                 manche unique, il ne se rend jamais. */}
             <ReplayRoundBreakOverlay doc={data} frame={frame} locale={locale} />
+            {/* LE COMPTE À REBOURS DE LA BOMBE (Assaut, schéma 29), dérivé de la position de
+                lecture comme le message inter-manche : « Bombe armée — 4,9 s » et sa barre de
+                mèche, en haut du terrain, pendant les ~5 s qui précèdent l'explosion. Hors des
+                variantes couvertes (One Bomb comprise), le calque est vide : rien ne se rend. */}
+            <ReplayBombCountdownOverlay doc={data} frame={frame} locale={locale} />
           </section>
           {/* FICHES AU-DESSUS, FIL EN DESSOUS, même largeur (demande du 2026-08-24) : un
               rejeu se lit en balayant du terrain vers les joueurs, puis vers l'événement.

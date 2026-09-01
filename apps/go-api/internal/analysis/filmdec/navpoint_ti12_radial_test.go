@@ -113,7 +113,7 @@ type ti12Montee struct {
 // ti12FilmBilan porte ce qu'un film a rendu, une fois ses lectures digerees et relachees.
 type ti12FilmBilan struct {
 	id, mode                          string
-	sc                                *ti12Scan
+	sc                                *NavpointRadialScan
 	lectures, chainees                int
 	slotsPorteurs                     int
 	montees, monteesChainees          []ti12Montee
@@ -189,7 +189,7 @@ func ti12MesurerFilm(t *testing.T, dir, id, mode string) *ti12FilmBilan {
 		return nil
 	}
 	debut := time.Now()
-	sc, err := ti12ScanFilm(dir, clk)
+	sc, err := ScanFilmNavpointRadial(dir, clk.startMS)
 	if err != nil {
 		t.Logf("%-9s %-26s balayage impossible (%v) — saute", id, mode, err)
 		return nil

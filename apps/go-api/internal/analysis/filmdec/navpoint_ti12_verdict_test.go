@@ -60,7 +60,7 @@ func ti12JournalFilm(t *testing.T, b *ti12FilmBilan) {
 	t.Helper()
 	sc := b.sc
 	t.Logf("%-9s %-26s slots observes %d (bande comblee %d) · %d vie(s) recensee(s)",
-		b.id, b.mode, sc.SlotsObserves, sc.SlotsBande, sc.KeyCensus)
+		b.id, b.mode, sc.SlotsObserved, sc.SlotsBand, sc.KeyCensus)
 	t.Logf("           DELTA %d ancres, %d marches, %d cassees, %d chainees (%.1f %%) | "+
 		"IMAGE-CLE %d records, %d marches, %d cassees, %d chainees",
 		sc.Records, sc.Walked, sc.Broken, sc.Chained, ti11Part(sc.Chained, sc.Walked),
@@ -72,16 +72,16 @@ func ti12JournalFilm(t *testing.T, b *ti12FilmBilan) {
 	if b.lectures > 0 {
 		t.Logf("           HISTOGRAMME des quanta par huitieme de plage : %v", b.histo)
 	}
-	if sc.Tronque {
+	if sc.Truncated {
 		t.Logf("           ATTENTION : plafond de %d lectures ATTEINT — la recolte est tronquee",
-			ti12MaxLectures)
+			navpointRadialMaxReads)
 	}
-	if sc.PaquetsSansHorloge > 0 {
+	if sc.PacketsNoClock > 0 {
 		t.Logf("           %d paquet(s) sans horloge (chunk absent du manifeste) — ecartes",
-			sc.PaquetsSansHorloge)
+			sc.PacketsNoClock)
 	}
 	t.Logf("           PREMIER COMPOSANT BLOQUANT : %s · balayage en %s",
-		ti12Bloquants(sc.Bloque), b.duree.Round(time.Second))
+		ti12Bloquants(sc.Blocked), b.duree.Round(time.Second))
 	for _, e := range b.extraits {
 		t.Logf("           %s", e)
 	}
@@ -172,7 +172,7 @@ func ti12Gate0(t *testing.T, bs []*ti12FilmBilan) {
 		if strings.HasPrefix(b.mode, "TEMOIN") {
 			continue
 		}
-		if b.sc.SlotsObserves > 0 {
+		if b.sc.SlotsObserved > 0 {
 			films++
 		}
 		records += b.sc.Records + b.sc.KeyRecords

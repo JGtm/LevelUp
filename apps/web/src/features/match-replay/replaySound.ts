@@ -169,6 +169,7 @@ import { placementIsDeployedObject } from './equipmentPlacementsLayer'
 import { grenadeSoundEvents } from './grenadeSound'
 import type { ReplayLocale } from './i18n'
 import { alignFeed } from './killFeedLogic'
+import { bombArmingSoundEvents } from './bombCountdown'
 import { objectiveSoundEvents, type ObjectiveSide } from './objectiveSound'
 import { padSpawnSoundEvents } from './padSpawnSound'
 import { weaponChangeSoundEvents } from './weaponChangeSound'
@@ -662,6 +663,11 @@ export function buildSoundTimeline(
     // viennent d'aucun joueur — leur source est `doc.zoneStates`, pas `doc.objectives` — mais
     // ils appartiennent à la même catégorie du tiroir, et se coupent donc avec elle.
     out.push(...zoneSoundEvents(doc, allyTeam))
+    // LE SON DE LA BOMBE ARMÉE (Assaut, schéma 29) : un événement au début de chaque mèche.
+    // Sa source est `doc.bombArmings`, pas `doc.objectives` — le canal de l'anneau ti=12 ne
+    // nomme aucun joueur. Le stem est celui de la NOUVELLE COLLINE, emprunté par référence
+    // (décision utilisateur du portage) : doctrine et provenance dans `bombCountdown.ts`.
+    out.push(...bombArmingSoundEvents(doc))
     // LES SONS DU CRANE d'Oddball : prise et chute. Leur source est `doc.skullCarries`
     // (schema 23), pas `doc.objectives` — le nommage statborg ne couvre pas Oddball. Ils
     // n'ont pas de camp : la banque du mode ne porte pas de variante `_team`/`_enemy` sur

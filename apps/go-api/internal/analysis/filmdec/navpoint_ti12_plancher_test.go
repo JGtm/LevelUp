@@ -63,8 +63,9 @@ var tpFilms = []struct {
 	{"ce083875", []int32{512505, 686401, 947537}},
 }
 
+// La contiguite (trou <= 500 ms) vit desormais en PRODUCTION (`NavpointRiseMaxGapMS`,
+// navpoint_radial_rises.go) — TestNavpointTi12ProtocoleFige garde la valeur du protocole.
 const (
-	tpTrouMaxMS  = 500    // contiguite d'une montee : trou entre echantillons <= 500 ms
 	tpSensMaxMS  = 120000 // fenetre de sens du chantier
 	tpTirages    = 1000
 	tpGraine     = 1
@@ -160,14 +161,12 @@ func tpCharger(t *testing.T, cache, id string) (tpFilmDonnees, bool) {
 	if !ok {
 		return tpFilmDonnees{}, false
 	}
-	sc, err := ti12ScanFilm(dir, clk)
+	sc, err := ScanFilmNavpointRadial(dir, clk.startMS)
 	if err != nil {
 		return tpFilmDonnees{}, false
 	}
-	series := map[uint32][]ti12Ech{}
 	d := tpFilmDonnees{min: math.MaxInt32, max: math.MinInt32}
 	for _, r := range sc.Reads {
-		series[r.Slot] = append(series[r.Slot], ti12Ech{r.TMS, r.Q})
 		if r.TMS < d.min {
 			d.min = r.TMS
 		}
@@ -175,34 +174,25 @@ func tpCharger(t *testing.T, cache, id string) (tpFilmDonnees, bool) {
 			d.max = r.TMS
 		}
 	}
-	for slot, s := range series {
-		sort.Slice(s, func(i, j int) bool { return s[i].tMS < s[j].tMS })
-		d.fins = append(d.fins, tpMonteesContigues(slot, s)...)
+	// LA DETECTION EST CELLE DE PRODUCTION (`NavpointContiguousRises`, portee le 2026-09-01
+	// depuis cet instrument) : le plancher mesure ainsi le code qui publie, pas une copie.
+	// Les fins sortent triees (EndMS puis Slot) — l'ordre qu'exige tpDelai.
+	for _, m := range NavpointContiguousRises(sc.Reads) {
+		d.fins = append(d.fins, m.EndMS)
 	}
-	sort.Slice(d.fins, func(i, j int) bool { return d.fins[i] < d.fins[j] })
 	return d, len(d.fins) > 0
 }
 
-// tpMonteesContigues decoupe une serie triee en montees au sens du gate 2 PLUS la contiguite :
-// un trou de plus de tpTrouMaxMS entre deux echantillons CASSE la montee.
-func tpMonteesContigues(_ uint32, s []ti12Ech) []int32 {
-	var fins []int32
-	for i := 0; i < len(s); {
-		j := i
-		for j+1 < len(s) && s[j+1].q >= s[j].q && s[j+1].tMS-s[j].tMS <= tpTrouMaxMS {
-			j++
-		}
-		n := j - i + 1
-		if n >= ti12MonteeMinEch && int(s[j].q)-int(s[i].q) >= ti12MonteeMinAmpl {
-			fins = append(fins, s[j].tMS)
-		}
-		if j == i {
-			i++
-			continue
-		}
-		i = j
+// TestNavpointTi12ProtocoleFige garde les seuils de production contre une derive silencieuse :
+// le verdict 0/1000 du plancher n'a de sens que sous LA definition du protocole (trou 500 ms,
+// 3 echantillons, 16 quanta). Changer un seuil de production invalide le protocole — ce test
+// force a le dire.
+func TestNavpointTi12ProtocoleFige(t *testing.T) {
+	if NavpointRiseMaxGapMS != 500 || NavpointRiseMinSamples != 3 || NavpointRiseMinQuanta != 16 {
+		t.Fatalf("seuils de production hors protocole du 2026-09-01 : trou %d (attendu 500), "+
+			"echantillons %d (attendu 3), quanta %d (attendu 16) — re-passer le plancher avant de bouger",
+			NavpointRiseMaxGapMS, NavpointRiseMinSamples, NavpointRiseMinQuanta)
 	}
-	return fins
 }
 
 // tpStat calcule (couverture, CV, mediane) des delais cible - derniere fin de montee, sur les
