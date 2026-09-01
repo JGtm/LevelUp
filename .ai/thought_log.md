@@ -1,3 +1,35 @@
+## [2026-09-01] Précision arme/distance — Lot 1 : table sœur distance + vue _latest + Nmin — Complété
+
+**Contexte** : worktree dédié `wt/precision` (branche `feat/precision-arme`). Exécution du Lot 1 du
+plan `PLAN_PRECISION_ARME_DISTANCE_2026-08-31.md` : poser le schéma de la DISTANCE des touches par
+arme (table sœur de `match_weapon_shots`, la précision réutilisant la table existante
+`weapon_accuracy`) et fixer le seuil de porte Nmin par mesure. Périmètre strict Lot 1 — pas de
+persister ni de passe film (Lot 3).
+
+**Décision technique** : nouvelle table append-only `match_weapon_hit_distance` (shared,
+`TargetShared`, grain match×xuid×weapon_id ; colonnes `dist_bucket_json`/`dist_n` + traçage
+`decode_pass`/`decoder_rev`/`written_at`), recette calquée EXACTEMENT sur
+`steps_shared_weapon_shots.go` : INSERT-only ADR 0026, PK technique `id` sur séquence, `weapon_id`
+UBIGINT inséré en chaîne décimale (piège bit de poids fort), vue `_latest` qui retient LA DERNIÈRE
+PASSE par match (pas la dernière ligne par clé). `decoder_rev = "whd-v1"`. Enregistrée dans
+`order.go` AVANT `shared_weapon_kills_v3` — position imposée par l'ordre d'init (alphabétique par
+nom de fichier : `weapon_hit_distance` < `weapon_kills` < `weapon_shots`), vérifiée par le no-op
+test. Nmin mesuré par un instrument neuf `filmdec/lot1_nmin_effectif_research_test.go` (garde
+LOT1_TRAME_FILM, réutilise attribCollectShots/attribBuildIndex/lot1mtNear).
+
+**Résultats** : gate vert — `go test ./internal/migration/ -run WeaponHitDistance` OK (3 cas :
+dernière passe, multi-match, weapon_id UBIGINT haut bit) ; `CanonicalOrder`/`SortByCanonical` OK ;
+`gofmt -l` vide ; `go vet` propre ; fichiers ≤ 500 L. Mesure Nmin (W=250 ms, 12 chunks) : clés
+(joueur,arme) 33/14/34, médiane tirs/clé 5/60/5 ; sous-ensemble « ≥8 tirs » STABLE à 11 clés sur
+les 3 films → **Nmin = 8** (`WeaponHitsMinShots`), même ordre de grandeur que le garde-fou `n<5` de
+l'instrument d'attribution, relevé à 8 car la distance exige 2 positions résolues. Réserve : les
+touches par clé sont plus rares sur la fenêtre témoin tronquée (12 chunks), l'effectif réel sur un
+match complet est supérieur.
+
+**Conclusion / prochaine étape** : Lot 1 CLOS. Lot 2 = décoder dégât `damage_aftermath` + pairing
+tir↔dégât (W=1s) + distance sortis du `_test` dans `filmdec` (non-test), avec test unitaire pur du
+pairing.
+
 ## [2026-09-01] Owner du projectile — lien de CHAMP absent du projectile vivant, present QU'A LA MORT — Complété
 
 **Contexte** : worktree dédié `wt/trame-owner`. Suite de la réserve « projectile→owner » laissée

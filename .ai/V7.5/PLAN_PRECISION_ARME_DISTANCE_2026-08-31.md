@@ -170,10 +170,21 @@ contrôle est le recalage API + la porte ci-dessus, sur NOTRE donnée.
       0xD2 = tir, 0xC0 = dégât). Commentaire seul, zéro comportement.
 - **Gate** : `go test ./internal/analysis/filmdec/ -count=1` vert ; `git diff` = commentaire seul.
 
-### Lot 1 — DDL distance + seuils de porte
-- [ ] `steps_shared_weapon_hit_distance.go` (table sœur + vue `_latest`) + `order.go`.
-- [ ] Fixer `Nmin` et la règle de la porte par-arme par mesure (3 films).
-- **Gate** : `go test ./internal/migration/ -run WeaponHitDistance -count=1` vert.
+### Lot 1 — DDL distance + seuils de porte  — CLOS 2026-09-01
+- [x] `steps_shared_weapon_hit_distance.go` (table sœur `match_weapon_hit_distance` + vue
+      `_latest`, append-only INSERT-only ADR 0026) + `order.go` (position AVANT
+      `shared_weapon_kills_v3` — dictée par l'init alphabétique du nom de fichier ; no-op
+      test vert). Test `steps_shared_weapon_hit_distance_test.go` (3 cas, `-run WeaponHitDistance`).
+- [x] `Nmin` fixé à **8** (`migration.WeaponHitsMinShots`) par mesure sur les 3 films
+      (instrument `filmdec/lot1_nmin_effectif_research_test.go`, W=250 ms, 12 chunks témoin) :
+      le sous-ensemble « ≥ 8 tirs/clé (joueur,arme) » est stable (11 clés sur les 3 films quand
+      le total va de 14 à 34) → isole les armes réellement utilisées. Constante + tableau de
+      mesure documentés dans le doc-header de la migration. `decoder_rev = "whd-v1"`
+      (`WeaponHitDistanceDecoderRev`). Règle de porte écrite (dist_n ≥ Nmin, tranchée par le
+      lecteur au Lot 5).
+- **Gate** : `go test ./internal/migration/ -run WeaponHitDistance -count=1` **vert** ;
+      `CanonicalOrder`/`SortByCanonical` verts ; `gofmt -l` vide ; `go vet` propre.
+- Prochaine étape : **Lot 2** (décodeur dégât + pairing + distance, sortis du `_test`).
 
 ### Lot 2 — Décodeur dégât + pairing + distance, sortis du `_test`
 - [ ] Exposer (non-test) dans `filmdec` : scan `damage_aftermath`, pairing tir↔dégât (W=1s) →
