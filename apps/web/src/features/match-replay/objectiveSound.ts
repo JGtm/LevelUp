@@ -63,11 +63,15 @@ export type ObjectiveSide = 'ally' | 'enemy' | 'unknown'
  *
  * CE QUI N'EST PAS ICI, ET POURQUOI — l'inventaire est écrit pour qu'on ne le recommence pas :
  *  - `zone_secures` : aucun son désigné. `zone_captures` a le sien, pas celui-là ;
- *  - la BOMBE (Assaut) et le DISPOSITIF D'EXTRACTION : leurs sons sont extraits et rendus, mais
- *    le film ne décode QUE deux familles d'objectif — `ObjectiveTypeFlag` et `ObjectiveTypeZone`
- *    (`objectiveevents/named.go`). Aucune statistique d'Assaut ni d'Extraction n'arrive dans
- *    `doc.objectives` : il n'y a rien à sonner. Ce n'est pas un manque de son, c'est un manque
- *    d'ÉVÉNEMENT, et ça se répare côté décodeur ;
+ *  - la BOMBE (Assaut) : L'ÉVÉNEMENT EXISTE DEPUIS LE 2026-08-31. `ObjectiveTypeBomb` nomme
+ *    `bomb_detonations` et le rejeu le publie dans `doc.objectives` (26 explosions attribuées
+ *    sur les 28 datées du corpus de 9 films). Il ne manque plus que la DÉSIGNATION du stem par
+ *    l'utilisateur — les sons sont extraits et rendus, mais aucun geste sonore n'a été désigné
+ *    pour l'Assaut, et en désigner un à sa place ferait entendre un son que personne n'a
+ *    validé (règle du gate sonore). Une ligne ici, et l'explosion sonne ;
+ *  - le DISPOSITIF D'EXTRACTION : ses sons sont extraits et rendus, mais aucune statistique
+ *    d'Extraction n'arrive dans `doc.objectives` — le film ne décode pas cette famille. Ce
+ *    n'est pas un manque de son, c'est un manque d'ÉVÉNEMENT, et ça se répare côté décodeur ;
  *  - `flag_capture_assists` et `flag_carriers_killed` : aucun événement Wwise propre dans la
  *    banque du mode. Les sonner avec le son de la capture ferait entendre deux captures.
  */
@@ -84,6 +88,21 @@ export const OBJECTIVE_SOUND_STEMS: Readonly<
   // côté adverse à l'écoute de la planche (événements `4ebe99d6` / `8594aef7` / `9fad450d` de
   // la banque `1c609526` : le même son déclaré une fois par mode de jeu).
   zone_captures: { ally: 'objective_zone_captured_team', enemy: 'objective_zone_captured_enemy' },
+  /**
+   * L'EXPLOSION DE LA BOMBE (Assaut). Désigné à l'oreille par l'utilisateur le 2026-08-31 sur la
+   * planche d'écoute de la banque, et corroboré par la STRUCTURE de celle-ci : l'événement
+   * `984f65e5` (`play_004_mod_mp_assault_bomb_detonated`) déclare « 1 couche, 1 son » et pointe
+   * `538469998` — les deux se rejoignent sur le même fichier.
+   *
+   * `{ any }` ET NON UNE PAIRE, et c'est une propriété du jeu, pas un raccourci : la banque
+   * d'Assaut ne porte qu'UN son de détonation, sans jumeau `_team` / `_enemy` — exactement comme
+   * le retour de drapeau et la contestation de zone. Une explosion sonne pareil pour tout le
+   * monde ; c'est le RÉSULTAT qui diffère, pas le bruit.
+   *
+   * RIEN À RECONSTRUIRE, contrairement aux gestes multi-couches de la banque (le compte à
+   * rebours en empile deux) : une couche, un média, décodage vgmstream puis crête à -1 dBTP.
+   */
+  bomb_detonations: { any: 'objective_bomb_detonated' },
 }
 
 /**

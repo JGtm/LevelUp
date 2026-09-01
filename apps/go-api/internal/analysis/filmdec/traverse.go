@@ -878,6 +878,50 @@ func consumeByName(br *BitReader, name string, typeIndex uint32, level uint32) (
 	case compManagedObjectPlayerMaskedProperty: // ti=13 i2..i33 (FUN_140ce593c -> FUN_140ce59bc) — variant mode B, publie
 		consumeManagedObjectPlayerMaskedProperty(br)
 		return variant, nil, true
+	// ti=11 — l'archétype des objectifs gérés (components_managed_objective.go). Toutes les
+	// largeurs viennent du sérialiseur réseau du descripteur de composant (`+0x38`), recette R7-d.
+	// SEUL i4 `interaction-filter` reste dehors : sa queue est un appel virtuel de largeur
+	// inconnue, et le porter à moitié désynchroniserait au lieu d'arrêter proprement.
+	case compObjectiveTimers: // ti=11 i0 (FUN_142edbac8) — 2 x R(7), publie
+		consumeObjectiveTimers(br)
+		return variant, nil, true
+	case compObjectiveColor: // ti=11 i1 (FUN_142edb548) — 4 x R(8)
+		consumeObjectiveColor(br)
+		return variant, nil, true
+	case compObjectiveFormattedText, compObjectiveSecondaryFormattedText: // ti=11 i2 et i9
+		consumeObjectiveFormattedText(br)
+		return variant, nil, true
+	case compObjectiveObjectReference: // ti=11 i3 (FUN_142edb6a4) — R(32), publie
+		consumeObjectiveObjectReference(br)
+		return variant, nil, true
+	case compObjectiveType: // ti=11 i5 (FUN_142edbb00) — R(32), publie
+		consumeObjectiveType(br)
+		return variant, nil, true
+	case compObjectiveEnabled, compObjectiveIsNewAndUnseen,
+		compObjectiveIsOnlyOneItemUnlocked, compObjectiveForcedUpdate: // ti=11 i6/i10/i11/i33 — R(1)
+		consumeObjectiveBool(br)
+		return variant, nil, true
+	case compObjectivePriority: // ti=11 i7 (FUN_142edb820) — R(8)
+		consumeObjectivePriority(br)
+		return variant, nil, true
+	case compObjectiveMessageType: // ti=11 i8 (FUN_142edb604) — R(4)
+		consumeObjectiveMessageType(br)
+		return variant, nil, true
+	case compObjectiveProgress: // ti=11 i12 (FUN_142edb8c0) — R(32) LA JAUGE, publie
+		consumeObjectiveProgress(br)
+		return variant, nil, true
+	case compObjectiveRequiredProgress: // ti=11 i13 (FUN_142edb960) — R(32) LE SEUIL, publie
+		consumeObjectiveRequiredProgress(br)
+		return variant, nil, true
+	case compObjectiveState: // ti=11 i14 (FUN_142edba10) — R(3), publie
+		consumeObjectiveState(br)
+		return variant, nil, true
+	case compObjectiveParentObjective, compObjectiveSubObjectiveEntities: // ti=11 i15 et i16..i31 — R(32)
+		consumeObjectiveEntityRef(br)
+		return variant, nil, true
+	case compObjectiveOutroPhaseDuration: // ti=11 i32 (FUN_142edb740) — R(8) quantifié
+		consumeObjectiveOutroPhaseDuration(br)
+		return variant, nil, true
 	case "device-position-component": // ti43 (FUN_140bef320) — R(14)+R(1)
 		consumeDevicePosition(br)
 		return variant, nil, true

@@ -44,7 +44,7 @@ const WATERMARK_OPACITY = 0.22
 const WATERMARK_PX = 46
 
 /**
- * Les cinq glyphes, en repère 16×16.
+ * Les six glyphes, en repère 16×16.
  *
  * LE CRÂNE ET LA BASE SE CREUSENT PAR `fill-rule="evenodd"` plutôt qu'en repeignant leurs trous
  * à la couleur du fond : un trou peint tiendrait de la couleur exacte de la tuile, qui varie
@@ -62,6 +62,9 @@ const GLYPH_PATHS: Record<ObjectiveMarkKind, string> = {
   hill: 'M1.4 12.6 6.4 3.9a1.8 1.8 0 0 1 3.2 0l5 8.7Z',
   // Base : hexagone évidé, la forme des zones du calque d'objectifs.
   zone: 'M8 1.4l5.7 3.3v6.6L8 14.6 2.3 11.3V4.7Z M8 4.6l3 1.7v3.4L8 11.4 5 9.7V6.3Z',
+  // Bombe : corps rond, collier, et mèche partant en biais. La mèche est ce qui la distingue
+  // du crâne à cette taille — c'est elle, pas le corps, qui porte l'identification.
+  bomb: 'M7.4 5.9a4.6 4.6 0 1 0 0 9.2 4.6 4.6 0 0 0 0-9.2Z M6.3 4.3h2.2v1.6H6.3Z M8.5 4.9c1.4-.6 2.5-1.5 2.9-2.9l1.5.5c-.6 2-2 3.2-3.7 3.9Z',
 }
 
 /**

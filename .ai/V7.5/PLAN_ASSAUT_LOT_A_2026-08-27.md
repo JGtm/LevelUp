@@ -237,3 +237,33 @@ REGISTRE_REPORTS ; decouvertes du §5.
 - (A0, 2026-08-27) Urban Raid (carte Forge) A ses bornes de quantification au catalogue
   (`map_quant_bounds.json`) et son film decode proprement (pont 93,5 %) — le piege
   « carte Forge = canevas+rack » vaut pour la GEOMETRIE/objectifs, pas pour les bornes.
+
+## 6. CLOTURE DU LOT (2026-08-31) — la publication, et le sort des decouvertes
+
+Le lot A s'etait arrete au diagnostic (§4). La reprise du 2026-08-31 (branche `wt/assaut-bombe`)
+publie le poseur et solde les decouvertes du §5. Etat complet et chiffres :
+**`.ai/V7.5/ETAT_ASSAUT_2026-08-31.md`**.
+
+| decouverte du §5 | statut | ce qui a ete fait |
+|---|---|---|
+| Sites `assault_bomb` sur 4 cartes sans film | `[!]` **REPORTE** — condition de reprise : un corpus de films sur Isolation / Snowbound / The Pit / High Ground. Les hachages `assault_site`, `assault_site_plate`, `assault_bomb_spawn`, `assault_minigame_include` sont craques (30/08) ; il manque les FILMS, pas les noms. |
+| `RealRounds` refuse les manches de One Bomb | `[x]` **TRAITE** — second critere d'admission (`statMinRoundRecords` + `statMinRoundRecordShare`), deux populations mesurees sur 65 films / 227 manches (fortuit <= 5,84 %, reelle >= 21 %), controle hors echantillon sur 53 films echantillonnes par mode : 0 manche dans la bande 7 %..15 %. Les 4 manches de One Bomb sont retenues, la courbe de score du rejeu n'est plus partielle. |
+| `ce083875` : emission de score PARASITE | `[x]` **TRAITE** — c'etait plus grave que note : l'enregistrement `A=66, B=16635` a 219075 ms deroulait **66 explosions au meme instant** a la publication. `modeScoreInDomain` borne desormais les DEUX canaux du composant 0 (mesure : B=0 dans 98,3 % des 3 986 enregistrements joueur du corpus). |
+| Urban Raid : bornes au catalogue | `[~]` sans objet pour ce lot, conserve au registre. |
+
+**A1 / A2 / A3 restent `[!]`** : l'identite de la bombe par `ti=42` (0 candidat sur 7/7 films) et
+l'ancrage des sites par `ti=13` (chainage 1,9-16,4 %, indistinguable du temoin) sont des NEGATIFS
+mesures, pas des etapes sautees. Leur reprise depend d'un corpus, pas d'un effort de code.
+
+**A5 (neuf) — CONFRONTATION DE PUBLICATION** : `[x]` **26 explosions attribuees a un joueur sur les
+28 datees du releve A0.3 fige (92,9 %), a la milliseconde, 0 publiee hors releve**. Les 2 restantes
+(`df8fcbef` manche 3, `c75f33b8` manche 1) n'ont AUCUN slot de joueur porteur — tous les
+enregistrements `comp 0` de ces manches imprimes, le point n'existe que sur le slot d'EQUIPE.
+Instrument : `internal/analysis/replay/assaut_a5_explosions_test.go` ; logs figes :
+`replay2d/registre_film/A5_publication_explosions.log`, `A5_controle_hors_echantillon.log`.
+
+**Decouverte NEUVE, consignee et non traitee** : l'API ne publie AUCUNE statistique d'Assaut. Le
+payload `GetMatchStats` brut de 3 matchs (les 3 variantes) ne porte que `CoreStats` et `PvpStats`,
+au niveau joueur comme equipe, et les chaines « bomb » / « assault » n'y apparaissent nulle part —
+alors que le binaire declare les 9 statistiques de la famille `Bomb`. Toute reprise qui esperait un
+oracle API par joueur pour l'Assaut est sans objet.

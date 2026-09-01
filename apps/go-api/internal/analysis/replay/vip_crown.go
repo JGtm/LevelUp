@@ -63,32 +63,8 @@ type VipCrownScan struct {
 	Deaths []Death
 }
 
-// vipCrownCtx regroupe l'axe de temps et le calage d'horloge film <-> match.
-type vipCrownCtx struct {
-	origin, step  uint64
-	frames        int
-	deathOffsetMS int64
-}
-
-// frameOfMatchMS pose un instant du MATCH sur l'axe de frames (memes conventions que le drapeau).
-func (c vipCrownCtx) frameOfMatchMS(matchMS int64) int {
-	if c.step == 0 {
-		return -1
-	}
-	filmUS := (matchMS + c.deathOffsetMS) * 1000
-	if filmUS < int64(c.origin) {
-		return -1
-	}
-	return int((uint64(filmUS) - c.origin) / c.step)
-}
-
-// matchMSOfFrame est l'inverse : il borne une periode que RIEN ne ferme a la fin de l'axe.
-func (c vipCrownCtx) matchMSOfFrame(frame int) int64 {
-	if frame < 0 {
-		return 0
-	}
-	return int64(c.origin+uint64(frame)*c.step)/1000 - c.deathOffsetMS
-}
+// L'AXE DE TEMPS est le `matchClock` partage (match_clock.go) : la conversion match <-> frames
+// etait la meme que celle du drapeau et du crane, elle n'est plus ecrite qu'une fois.
 
 // vipRawPeriod est une periode de port, en horloge du MATCH, avant mise en frames.
 type vipRawPeriod struct {
@@ -174,7 +150,7 @@ func vipMatchEndMS(events []objectiveevents.NamedEvent, deaths []Death) int64 {
 //
 // Rend (nil, nil) quand rien n'a ete balaye (film non-VIP), et (nil, couverture) quand le film
 // est VIP mais qu'aucune periode ne sort — la couverture dit alors POURQUOI.
-func buildVipCrown(scan VipCrownScan, ctx vipCrownCtx) ([]VipPeriod, *VipCrownCoverage) {
+func buildVipCrown(scan VipCrownScan, ctx matchClock) ([]VipPeriod, *VipCrownCoverage) {
 	if !scan.Scanned {
 		return nil, nil
 	}
@@ -224,7 +200,7 @@ func attachVipCrown(doc *ReplayDocument, opt Options, own OwnerReport, clock rep
 		Identity: objectiveevents.ResolveRoundIdentity(in.Records, deathInstantsOf(opt.Deaths)),
 		Deaths:   opt.Deaths,
 	}
-	periods, cov := buildVipCrown(scan, vipCrownCtx{
+	periods, cov := buildVipCrown(scan, matchClock{
 		origin: clock.origin, step: clock.step, frames: clock.frames,
 		deathOffsetMS: own.DeathOffsetMS,
 	})

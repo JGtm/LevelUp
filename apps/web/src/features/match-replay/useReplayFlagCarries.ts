@@ -33,7 +33,7 @@ import { useCallback, useMemo, useState, type PointerEvent, type RefObject } fro
 import type { MatchScoreboardRow } from '@/lib/api/types'
 import { parseTeamSideID } from '@/lib/halo/teamNames'
 
-import { KILLPOS_WINDOW_MS, posOfPlayerAt } from './killFx'
+import { usePlayerPosAt } from './livesPosition'
 import {
   drawFlagCarries,
   flagAt,
@@ -47,8 +47,8 @@ import {
   type FlagCaptureStyle,
 } from './flagCaptureFx'
 import type { CanvasView } from './objectivesLayer'
-import { frameToMs, msToFrames, type XY } from './replayLogic'
-import type { ReplayDocumentReady, ReplayTrackReady } from './replayNormalize'
+import { frameToMs, type XY } from './replayLogic'
+import type { ReplayDocumentReady } from './replayNormalize'
 
 /** Le camp d'un drapeau VU DE LA PAGE — `unknown` quand la ligne « moi » manque. */
 export type FlagSide = 'ally' | 'enemy' | 'unknown'
@@ -109,27 +109,8 @@ export function useReplayFlagCarries({
   const carries = doc.flagCarries
   const [hover, setHover] = useState<FlagHover | null>(null)
 
-  // LES VIES PAR JOUEUR, indexées une fois : la relecture de position tourne à chaque image et
-  // pour chaque drapeau — la refaire dans la boucle balaierait toutes les traces du film.
-  const livesByXuid = useMemo(() => {
-    const map = new Map<string, ReplayTrackReady[]>()
-    for (const t of doc.tracks) {
-      if (!t.xuid) continue
-      const list = map.get(t.xuid)
-      if (list) list.push(t)
-      else map.set(t.xuid, [t])
-    }
-    return map
-  }, [doc.tracks])
-
-  const deathFrames = useMemo(
-    () => Math.max(1, Math.round(msToFrames(KILLPOS_WINDOW_MS, doc))),
-    [doc],
-  )
-  const posOf = useCallback(
-    (xuid: string, frame: number) => posOfPlayerAt(livesByXuid.get(xuid), frame, deathFrames),
-    [livesByXuid, deathFrames],
-  )
+  // La relecture de position partagée (livesPosition.ts).
+  const posOf = usePlayerPosAt(doc)
 
   const allyTeamID = useMemo(
     () => parseTeamSideID(scoreboard?.find((r) => r.is_me)?.team_side ?? null),

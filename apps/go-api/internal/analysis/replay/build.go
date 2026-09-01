@@ -158,6 +158,11 @@ type Options struct {
 	// l'appelant : `comp 0 A` est le score de mode de tout mode, donc seul un appelant qui
 	// reconnaît le match Oddball (par `game_variant_name`) le pose — ce paquet ne devine aucun mode.
 	Skull SkullInput
+	// Bomb : de quoi construire L'ARMEMENT DE LA BOMBE d'Assaut (entrée de DONNÉES comme Skull ;
+	// cf. bomb_armings.go). `Scanned` faux = ni balayage ni calque ni couverture. La GARDE DE
+	// MODE est chez l'appelant : le canal n'est prouvé que sur Neutral Bomb et Husky Raid,
+	// jamais One Bomb — ce paquet ne devine aucun mode.
+	Bomb BombInput
 	// NeutralDeaths : les morts que personne ne revendique, AVEC LEUR TYPE DÉJÀ RÉSOLU
 	// (cf. NeutralDeath). Entrée de DONNÉES comme Deaths et Objectives.
 	//
@@ -420,6 +425,10 @@ func BuildFromFilm(matchID, titleSlug, filmDir string, opt Options) (ReplayDocum
 	// zones (cf. build_zones.go).
 	opt.Zone.Reads = decodeFilmZoneReads(filmDir, matchID, len(opt.Zone.Zones))
 	opt.Zone.Scanned = len(opt.Zone.Zones) > 0
+	// ANNEAU D'ARMEMENT ti=12 : la jauge d'armement de la bombe, lue dans les paquets delta du
+	// MEME film — sur les seuls matchs que l'appelant reconnait Assaut armable (cf.
+	// bomb_armings.go ; jamais One Bomb, ou le canal ne tient pas).
+	opt.Bomb.Reads = decodeFilmBombReads(filmDir, matchID, opt.Bomb)
 	// Lancers de grenade : décodés des paquets delta du MÊME film, sur la MÊME horloge.
 	// Absence non fatale, comme les tirs et les armes portées.
 	grenades, err := filmdec.ScanFilmGrenadeThrows(filmDir)
@@ -655,6 +664,11 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	// LIBRE (attachObjectiveObjects, ci-dessous) reste la couche POSITION ; ce calque-ci est la
 	// couche VIVANTE par-dessus.
 	attachSkullCarries(&doc, opt, own, replayClock{origin: origin, step: step, frames: doc.FrameCount})
+	// LE PORTEUR DE LA BOMBE d'Assaut, sur les pistes PUBLIEES (la bombe est a la position de
+	// son porteur) — garde de mode par l'appelant (opt.Bomb.CarryScanned, TOUTES les variantes
+	// de la famille bomb), source : le canal des armes tenues DEJA balaye (opt.WeaponChanges),
+	// cf. bomb_carries.go.
+	attachBombCarries(&doc, opt, own, replayClock{origin: origin, step: step, frames: doc.FrameCount})
 	// LES OBJETS D'OBJECTIF LIBRES SONT POSÉS HORS DE LA GARDE DE MODE DU DRAPEAU, et c'est
 	// délibéré : ce calque ne lit ni le statborg ni le fil des morts, donc rien de ce que cette
 	// garde protège. La placer devant l'éteindrait sur Oddball — là où il sert.
@@ -662,6 +676,10 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	// L'ETAT DES ZONES, sur la MEME horloge que les positions et sur les captures DEJA posees
 	// (`doc.Objectives`) — cf. build_zones.go.
 	attachZoneStates(&doc, opt, replayClock{origin: origin, step: step, frames: doc.FrameCount})
+	// L'ARMEMENT DE LA BOMBE, sur la meme horloge que les actions d'objectif et confronte aux
+	// explosions DEJA posees (`doc.Objectives`) — garde de mode par l'appelant
+	// (opt.Bomb.Scanned), cf. bomb_armings.go.
+	attachBombArmings(&doc, opt, clock)
 	slog.Info("rejeu : episodes d'equipement actif",
 		"viesPubliees", doc.Coverage.Equipment.TracksTotal,
 		"viesCamo", doc.Coverage.Equipment.CamoLives,

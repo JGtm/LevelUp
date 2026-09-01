@@ -39,6 +39,7 @@ import type { ReplaySound } from './useReplaySound'
 /** Réexportés : les sections ont déménagé, la surface d'appel du tiroir n'a pas bougé. */
 export type { ReplayHeatmapControls } from './ReplayHeatmapSection'
 export type {
+  ReplayBombCarrierControls,
   ReplayFlagControls,
   ReplayGroundWeaponControls,
   ReplayPlacementControls,
@@ -48,6 +49,7 @@ export type {
 } from './ReplaySettingsLayers'
 
 import type {
+  ReplayBombCarrierControls,
   ReplayFlagControls,
   ReplayGroundWeaponControls,
   ReplayPlacementControls,
@@ -91,6 +93,8 @@ interface ReplaySettingsDrawerProps {
   vipCrown: ReplayVipCrownControls
   /** Le PORTEUR DU CRÂNE d'Oddball (schéma 23) : un seul calque, allumé par défaut. */
   skullCarrier: ReplaySkullCarrierControls
+  /** LA BOMBE d'Assaut (schéma 30) : portée et posée, un seul calque, allumé par défaut. */
+  bombCarrier: ReplayBombCarrierControls
   heatmap: ReplayHeatmapControls
   /** Éclairs de bouche (tous les tirs) et trait tueur -> victime : deux réglages distincts. */
   showShotFx: boolean
@@ -308,6 +312,7 @@ export function ReplaySettingsDrawer({
   flagCarries,
   vipCrown,
   skullCarrier,
+  bombCarrier,
   heatmap,
   showShotFx,
   onToggleShotFx,
@@ -361,6 +366,7 @@ export function ReplaySettingsDrawer({
         flagCarries={flagCarries}
         vipCrown={vipCrown}
         skullCarrier={skullCarrier}
+        bombCarrier={bombCarrier}
       />
       <EffectsSection
         locale={locale}

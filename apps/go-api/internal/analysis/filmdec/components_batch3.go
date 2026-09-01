@@ -12,13 +12,16 @@ package filmdec
 // ENTIER parce que la table ECS les déclare `deser_non_cable` en pointant ce fichier, et que
 // son garde-rail G1 exige que le nom du composant y apparaisse (`checkCodeSource`).
 //
-// GARDÉE SANS APPELANT le 2026-08-01 (lot C, PLAN_DETTE_AVANT_MERGE) : ti=11 est PLANIFIÉ
-// mais non décodé — le traverseur s'arrête à i0 (traverse.go:1187), la brancher seule ne
-// changerait donc rien, et le gate du lot exige des artefacts identiques.
-// CONDITION DE RETRAIT : branchée ou supprimée quand ti=11 sera décodé (master plan J6-A,
-// ordre interne §4 « Objectifs étape 3 » / PLAN_OBJECTIFS_TEMPS_REEL).
+// BRANCHÉE le 2026-09-01 : la condition de retrait posée le 2026-08-01 (« branchée ou supprimée
+// quand ti=11 sera décodé ») est LEVÉE — `consumeByName` route désormais i2 et i9 vers cette
+// fonction (`components_managed_objective.go` porte les trente-et-un autres composants de
+// l'archétype). Le `nolint:unused` qui accompagnait la garde est retiré avec elle.
 //
-//nolint:unused // grammaire d'un composant de ti=11 — voir la condition de retrait ci-dessus.
+// LA GRAMMAIRE EST RECOUPÉE AU BINAIRE depuis ce jour, ce qu'elle n'était pas : le sérialiseur
+// réseau du descripteur est `FUN_142edb5bc` pour i2 et `FUN_142edba00` pour i9, tous deux vers
+// `FUN_142c70d5c` — R(1) de présence, puis R(32) (FUN_1407edaf4), puis R(3) de compte, puis
+// autant d'éléments taggés sur R(3) (FUN_142c70e88). La forme portée depuis le workflow
+// port-ecs-deathchains coïncide ; seule la charge par tag reste issue de ce workflow.
 func consumeObjectiveFormattedText(br *BitReader) {
 	if !br.ReadBit() {
 		return

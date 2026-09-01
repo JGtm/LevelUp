@@ -276,11 +276,16 @@ describe('garde-rail : le vocabulaire des familles de pose', () => {
  *     l'ouvre, et la fermeture qui lui rend le focus — alors que le hook du tiroir existe
  *     depuis la quatorzieme. Il rend desormais `{ open, toggle, buttonRef, panel }` ; le canvas
  *     n'en garde que l'usage, et pas une ligne de logique ne se deplace.
- * Le plafond SUIT le fichier vers le bas, comme a chaque extraction depuis 861.
+ *   - DIX-SEPTIEME EXTRACTION, `useReplayGrenadeRest.ts` : la FIN DE VOL des grenades. Elle
+ *     PAIE une addition — la DEFLAGRATION d'Assaut (`useReplayBombBlast`, 2026-08-31), qui
+ *     demandait ses lignes de glue alors que le fichier etait PILE a son plafond. Seul l'appel
+ *     de trace et son objet d'options se deplacent ; la mesure reste dans `useReplayFx` et
+ *     `useReplayTiming`.
+
  */
 describe('garde-rail : la taille du canvas du rejeu ne remonte pas', () => {
   it('ReplayCanvas.tsx reste sous son plafond', () => {
     const src = readFileSync(resolve(__dirname, 'ReplayCanvas.tsx'), 'utf8')
-    expect(src.split('\n').length - 1).toBeLessThanOrEqual(678)
+    expect(src.split('\n').length - 1).toBeLessThanOrEqual(665)
   })
 })

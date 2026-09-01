@@ -22,6 +22,7 @@ const (
 	ObjectiveTypeHill  = "hill"  // King of the Hill
 	ObjectiveTypeSkull = "skull" // Oddball
 	ObjectiveTypeVip   = "vip"   // VIP (statborg-only : le film ne porte pas le bit VIP)
+	ObjectiveTypeBomb  = "bomb"  // Assaut (One Bomb / Neutral Bomb) — statborg-only
 )
 
 // Valeurs de domain.ObjectiveEvent.EventType (action).
@@ -139,6 +140,15 @@ func classifyObjectiveMode(gameVariantName string) string {
 		return ObjectiveTypeHill
 	case strings.Contains(n, "oddball"):
 		return ObjectiveTypeSkull
+	case strings.Contains(n, "assault") || strings.Contains(n, "bomb"):
+		// Assaut : « Assault:One Bomb », « Assault:Neutral Bomb », « Assault:Neutral Bomb
+		// Squad », « Husky Raid:Assault » — les 4 formes du registre. Le mot-clef `bomb`
+		// double `assault` parce que le second manque a trois d'entre elles ; aucune variante
+		// Halo non-Assaut ne porte l'un ou l'autre (releve `match_registry` du 2026-08-31).
+		//
+		// PLACE DANS LE SWITCH : apres le drapeau, qui gagne — une hypothetique variante
+		// nommant les deux resterait un CTF, mode dont les emplacements sont mesures.
+		return ObjectiveTypeBomb
 	default:
 		return ""
 	}
