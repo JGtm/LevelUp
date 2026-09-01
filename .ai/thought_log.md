@@ -83985,3 +83985,49 @@ cuisson). Le `map_id` reste prioritaire.
 Ronde 2 de revue sur ces corrections. Restent ouverts et consignés : `fosp` non élucidé, 11 des
 13 points en `unknown`, les 16 cartes à source dérivée (décision produit), les fusions de points
 à natures mélangées (journalisées, jamais nulles sur BTB).
+
+## [2026-09-01] Origine des ramassages — ronde 2 : complétion des 5 P2 — Complété
+
+**Statut** : Complété. Corrections de ronde 1 jugées recevables, aucun nouveau P0/P1.
+
+**Le point dit bloquant ne l'était pas, et la vérification le montre.** La revue annonçait que
+`addSpawnPointsOnly` (107 L, complexité 17) rougirait le job lint. La commande EXACTE du job
+(`golangci-lint run --timeout 5m --new-from-merge-base=origin/main`), lancée avec `origin/main`
+présent, une merge-base résolue et le fichier bien dans le périmètre (1378 fichiers vus), rend
+**0 issue** : `.golangci.yml` exclut `funlen` et `gocyclo` sous `^cmd/` par une règle documentée
+(« CLI tools / scripts ponctuels »), et sous `internal/analysis/` — ce qui couvre aussi
+`buildPickups`. **J'ai extrait quand même**, parce que la règle projet (≤ 80 L) s'applique
+indépendamment des exclusions du linter : 109 L → 39 L pour la fonction principale, découpée en
+`deriveDe`, `retirerPointsPerimes`, `ajouterPointsDUneCarte`, `noteDuCatalogue`. Inversions
+rejouées APRÈS extraction : neutraliser le verrou ou l'effacement fait toujours tomber 3
+sous-tests chacun — la découpe n'a rien décâblé.
+
+**Onze mentions périmées balayées.** Le catalogue livré dit **16 sautées / 56 acceptées / 1662
+points**, pas 9/63/1934 : le verrou à trois termes (ajout d'`objects_n` et `level_id`) révèle
+sept cartes dérivées de plus. Preuve par grep sur les fichiers du diff : zéro survivant, le seul
+« 1934 » restant étant un intervalle de frames du golden.
+
+**Résidus `mapCatalogMissing`** : deux occurrences subsistent, toutes deux explicitement datées
+(« l'ancien booléen, RETIRÉ au schéma 32 ») — dont celle de la doc de `Pickup.Origin`, lue par
+les clients, qui pointe désormais `spawnPointsState` et ses trois valeurs.
+
+**Note du catalogue rectifiée** : elle affirmait « sautée OU sans dump → clé absente » alors que
+le contre-cas testé conserve la clé sans dump. Elle distingue maintenant les deux : sautée pour
+dérive → clé RETIRÉE (avec le compte de celles qui l'ont effectivement perdue) ; sans dump → clé
+CONSERVÉE, l'absence de fichier ne contredit rien.
+
+**`spawnerByPointKind` — doc corrigée d'une promesse fausse.** Elle annonçait un pouvoir de
+détection qu'il n'a pas : un échange complet grenade ↔ équipement rendrait des totaux
+identiques, donc invisibles. Ce qu'il fait réellement : donner l'ordre de grandeur de la
+composition des points atteints, et montrer un match qui tombe surtout sur des points `unknown`.
+Le croisement qui détecterait une inversion se calcule côté client, qui a déjà `kind` et
+`origin` sur chaque prise. Corrigé aussi dans la chronique du contrat.
+
+**Déterminisme confirmé** : le fichier commité EST une régénération en une passe depuis le
+catalogue parent — deux exécutions rendent un fichier identique hors note datée, vérifié par
+comparaison JSON normalisée. `retirees=0` est donc légitime : le parent ne portait aucun point,
+il n'y avait rien à retirer.
+
+**Mesure au passage** : 60 points à natures mélangées sur 25 cartes, journalisés carte par carte.
+
+**Conclusion / prochaine étape** : passe de merge vers `feat/v75`.

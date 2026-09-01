@@ -93,7 +93,7 @@ type MapSpawnPoint struct {
 // plafond du depot. Grouper ce qui repond a UNE question vaut mieux qu'un sixieme argument.
 type pickupOriginJudge struct {
 	// points : les points d'apparition NON-ARME de la carte. Vide = le juge ne rend jamais
-	// `spawner`, et la couverture le dit par MapCatalogMissing.
+	// `spawner`, et la couverture dit POURQUOI via `SpawnPointsState`.
 	points []MapSpawnPoint
 	// state est l'un des trois etats du catalogue pour cette carte (cf.
 	// PickupCoverage.SpawnPointsState). Il ne change pas la decision — un juge sans point ne

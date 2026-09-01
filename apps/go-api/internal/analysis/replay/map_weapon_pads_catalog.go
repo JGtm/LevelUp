@@ -72,7 +72,7 @@ type MapWeaponPadsEntry struct {
 	//
 	// C'EST UN POINTEUR, ET C'EST LA CORRECTION D'UN PIEGE PAYE. Avec une tranche nue et
 	// `omitempty`, une carte ACCEPTEE mais sans aucun point n'ecrivait PAS la cle — donc elle
-	// devenait indiscernable d'une carte SAUTEE pour derive de source. Les neuf cartes sautees
+	// devenait indiscernable d'une carte SAUTEE pour derive de source. Les SEIZE cartes sautees
 	// (Deadlock, Fragmentation, Highpower, Oasis, Breaker, Scarr...) se lisaient alors « carte
 	// connue, aucun point », c'est-a-dire un mensonge : leur catalogue de points n'est PAS
 	// ETABLI, et `spawner` y est impossible.

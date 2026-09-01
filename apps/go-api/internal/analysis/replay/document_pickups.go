@@ -138,9 +138,10 @@ type Pickup struct {
 	//
 	// ABSENT = ABSTENTION EXPLICITE, JAMAIS UN REPLI. Un client qui ne trouve pas la cle ne
 	// doit pas conclure `ground` : il doit conclure « non etabli ». Trois causes possibles, et
-	// la couverture les separe : la carte n'est pas au catalogue
-	// (`coverage.pickups.mapCatalogMissing`), le ramasseur n'a pas de position assez proche
-	// dans le temps, ou le ramassage n'est ni sur un point ni sur une pose.
+	// la couverture les separe par `coverage.pickups.spawnPointsState` : la carte n'est pas au
+	// catalogue (`map_absent`), ses points n'y sont pas etablis (`not_established`), ou bien
+	// ils le sont (`established`) et c'est alors que le ramasseur n'avait pas de position
+	// assez proche dans le temps, ou que le ramassage n'etait ni sur un point ni sur une pose.
 	//
 	// Vocabulaire distinct de `EquipmentPlacement.Origin` (`deployed`/`dropped`/`unknown`),
 	// qui repond a une AUTRE question — qui a pose l'objet, pas d'ou il venait. Les deux
@@ -325,7 +326,7 @@ type PickupCoverage struct {
 	//	                 `spawner`, et `originUnknown` compte pour une raison qui n'a rien a
 	//	                 voir avec le jeu.
 	//	not_established  la carte EST au catalogue, mais ses points d'apparition n'y sont PAS
-	//	                 ETABLIS. Neuf cartes tres jouees sont dans ce cas au 2026-09-01
+	//	                 ETABLIS. Seize cartes tres jouees sont dans ce cas au 2026-09-01
 	//	                 (Deadlock, Fragmentation, Highpower, Oasis, Breaker, Scarr...) : le
 	//	                 `.mvar` que sert l'UGC ne redonne plus les memes socles qu'au
 	//	                 catalogue, donc le generateur REFUSE d'ecrire des points qui
@@ -335,9 +336,10 @@ type PickupCoverage struct {
 	//	                 un trou.
 	//
 	// LE DEFAUT QUE CE CHAMP CORRIGE ETAIT EXACTEMENT L'INVERSE DE SON INTENTION. Un booleen
-	// `mapCatalogMissing` valait FAUX sur les neuf cartes sautees, qui se lisaient donc « carte
-	// connue, aucun point » : le drapeau cense faire VOIR le trou affirmait que tout allait
-	// bien, et precisement la ou l'origine est le moins fiable.
+	// l'ancien booleen `mapCatalogMissing` — RETIRE au schema 32 — valait FAUX sur les seize
+	// cartes sautees, qui se lisaient donc « carte connue, aucun point » : le drapeau cense
+	// faire VOIR le trou affirmait que tout allait bien, et precisement la ou l'origine est le
+	// moins fiable.
 	//
 	// DECISION PRODUIT DERRIERE LES TROIS ETATS : le trou se COMPTE. La generation d'artefact
 	// est HORS LIGNE et le reste — une carte manquante ne se telecharge pas pendant une
@@ -347,10 +349,21 @@ type PickupCoverage struct {
 	// cette carte. Il ne se lit QU'AVEC `SpawnPointsState` : un zero ne veut rien dire tant
 	// qu'on ne sait pas si les points sont etablis.
 	MapCatalogPoints int `json:"mapCatalogPoints"`
-	// SpawnerByPointKind ventile les ramassages `spawner` par NATURE du point atteint
-	// (`grenade`, `equipment`, `unknown`). C'est le CONTROLE EN PRODUCTION du typage des
-	// points : si les grenades tombaient massivement sur des points typés `equipment`, le
-	// typage du catalogue serait a revoir, et ce compteur est le seul endroit ou cela se
-	// verrait. Absent quand aucun ramassage n'est `spawner`.
+	// SpawnerByPointKind ventile les ramassages `spawner` par NATURE DU POINT atteint
+	// (`grenade`, `equipment`, `unknown`).
+	//
+	// CE QU'IL FAIT : il donne l'ORDRE DE GRANDEUR de la composition des points effectivement
+	// atteints dans un match, et il permet de voir d'un coup d'oeil qu'un match tombe
+	// majoritairement sur des points `unknown` — c'est-a-dire que le typage du catalogue ne
+	// couvre pas ce qui se joue vraiment sur cette carte.
+	//
+	// CE QU'IL NE FAIT PAS, ET LA PREMIERE REDACTION LE PROMETTAIT A TORT : ce n'est PAS un
+	// detecteur d'inversion du typage. Un echange complet grenade <-> equipement rendrait des
+	// totaux strictement identiques, donc invisibles ici. Le croisement qui detecterait une
+	// inversion — nature du RAMASSAGE contre nature du POINT — se calcule cote client, qui a
+	// deja `kind` et `origin` sur chaque element de `pickups[]` ; ce compteur ne le remplace
+	// pas et ne cherche pas a le faire.
+	//
+	// Absent quand aucun ramassage n'est `spawner`.
 	SpawnerByPointKind map[string]int `json:"spawnerByPointKind,omitempty"`
 }

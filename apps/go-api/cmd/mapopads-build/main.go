@@ -53,10 +53,10 @@ func main() {
 		// AJOUT SEUL — le mode de livraison des points d'apparition, et la raison d'etre du
 		// flag est une NON-REGRESSION, pas un confort.
 		//
-		// Les `.mvar` servis par l'UGC DERIVENT : neuf cartes du catalogue rendent aujourd'hui
-		// un fichier different de celui qui l'a bati le 2026-08-19 (Deadlock 462 objets au
-		// catalogue, 410 au telechargement d'aujourd'hui). Une regeneration complete
-		// reecrirait donc leurs socles d'ARME — or ces socles alimentent des chemins livres
+		// Les `.mvar` servis par l'UGC DERIVENT : SEIZE cartes du catalogue rendent
+		// aujourd'hui un fichier different de celui qui l'a bati le 2026-08-19 (Deadlock
+		// 462 objets au catalogue, 410 au telechargement d'aujourd'hui). Une regeneration
+		// complete reecrirait donc leurs socles d'ARME — or ces socles alimentent des chemins livres
 		// (datation des occupations, tableau de la page match).
 		//
 		// Ce mode charge le catalogue EXISTANT, recalcule les socles pour VERIFIER qu'ils

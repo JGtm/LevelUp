@@ -454,16 +454,20 @@ var replaySchemas = []struct {
 //	                      `originSpawner`/`originGround`/`originUnknown`, `spawnPointsState`,
 //	                      `mapCatalogPoints` et `spawnerByPointKind`.
 //	                      DEUX CORRECTIFS DE REVUE SONT DANS CE CONTRAT, et ils expliquent sa
-//	                      forme. (1) `spawnPointsState` a TROIS valeurs la ou un booleen
-//	                      `mapCatalogMissing` en donnait deux : les cartes dont les points ne
-//	                      sont PAS ETABLIS (source `.mvar` derivee, 16 cartes au 2026-09-01)
+//	                      forme. (1) `spawnPointsState` a TROIS valeurs la ou l ancien booleen
+//	                      `mapCatalogMissing` en donnait deux — ce booleen est RETIRE du contrat
+//	                      au meme schema : les cartes dont les points ne sont PAS ETABLIS
+//	                      (source `.mvar` derivee, 16 cartes au 2026-09-01)
 //	                      sortaient `false` avec zero point, ce qui se lit « carte connue,
 //	                      aucun point » — le drapeau cense faire VOIR le trou affirmait que
 //	                      tout allait bien. Le booleen est RETIRE, pas complete : deux verites
 //	                      concurrentes sur une meme question valent moins qu une.
-//	                      (2) `spawnerByPointKind` existe pour que le typage des points se
-//	                      CONTROLE en production — des grenades qui tomberaient massivement
-//	                      sur des points typés `equipment` ne se verraient nulle part ailleurs.
+//	                      (2) `spawnerByPointKind` ventile les `spawner` par NATURE DU POINT :
+//	                      il donne l ORDRE DE GRANDEUR de ce qui est atteint dans un match, et
+//	                      montre un match qui tombe surtout sur des points `unknown`. Ce n est
+//	                      PAS un detecteur d inversion du typage — un echange complet
+//	                      grenade <-> equipement rendrait les memes totaux ; ce croisement-la se
+//	                      calcule cote client, qui a deja `kind` et `origin` sur chaque prise.
 //	                      `origin` est OPTIONNEL et son absence est une ABSTENTION : un client
 //	                      qui ne trouve pas la cle conclut « non etabli », jamais `ground`.
 //

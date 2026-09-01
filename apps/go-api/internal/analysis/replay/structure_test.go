@@ -522,8 +522,8 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   CE NUMERO LEVE UNE REFUTATION QUE v31 AVAIT ECRITE JUSTE AU-DESSUS, et il faut lire les
 	//   deux ensemble. v31 refusait l'origine pour DEUX raisons : 25,6 % d'injectivite du juge
 	//   temporel, ET « le depot ne declare aucun point d'apparition d'equipement ». La seconde
-	//   est tombee : le catalogue des socles porte desormais 1 934 POINTS D'APPARITION sur
-	//   63 cartes, extraits des `.mvar` par une recette qui interroge le catalogue Forge du jeu
+	//   est tombee : le catalogue des socles porte desormais 1 662 POINTS D'APPARITION sur
+	//   56 cartes, extraits des `.mvar` par une recette qui interroge le catalogue Forge du jeu
 	//   (`himap.EstPointDApparition`) — 16 types retenus sur 4 235 tags `food`.
 	//   LA PREMIERE RAISON N'EST PAS CONTOURNEE, ELLE EST DEVENUE SANS OBJET : le juge temporel
 	//   cherchait a apparier un ramassage a une NAISSANCE du film. `origin` n'apparie plus rien —
@@ -533,12 +533,14 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   `ground` NE REFAIT AUCUNE MESURE : il reutilise `EquipmentPlacement.Origin == "dropped"`,
 	//   deja en production, qui rattache une pose a une fin de vie.
 	//   L'ABSENCE EST UNE ABSTENTION, JAMAIS UN REPLI. Trois causes la produisent et la
-	//   couverture les separe : carte hors catalogue (`mapCatalogMissing`), ramasseur sans
-	//   position assez proche dans le temps, ou ramassage ni sur un point ni sur une pose.
+	//   couverture les separe par `spawnPointsState` (`map_absent` / `not_established` /
+	//   `established`), puis, une fois les points etablis, par le fait que le ramasseur n'avait
+	//   pas de position assez proche dans le temps ou que le ramassage n'etait ni sur un point
+	//   ni sur une pose.
 	//   `originSpawner + originGround + originUnknown == items`, et un test tient l'invariant.
-	//   LE TROU DE CATALOGUE EST UN CHAMP, PAS UN SILENCE — decision produit : neuf cartes sur
-	//   72 n'ont pas de point (leur `.mvar` a derive en amont), et la cuisson ne telecharge
-	//   RIEN pour y remedier. Elle reste hors ligne ; le trou se comble par la CLI ou le sync.
+	//   LE TROU DE CATALOGUE EST UN CHAMP, PAS UN SILENCE — decision produit : seize cartes sur
+	//   72 n'ont pas de points ETABLIS (leur `.mvar` a derive en amont), et la cuisson ne
+	//   telecharge RIEN pour y remedier. Elle reste hors ligne ; le trou se comble par la CLI ou le sync.
 	//   CE QUE v32 NE FAIT PAS : poser une origine sur les ramassages d'ARME (ils ont deja
 	//   `GroundWeapon` avec son `End`/`Picker` — deux reponses a une question valent moins
 	//   qu'une), et TYPER les points en grenade/equipement dans la decision (la nature du point

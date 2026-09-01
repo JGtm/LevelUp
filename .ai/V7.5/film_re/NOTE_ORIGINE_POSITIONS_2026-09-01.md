@@ -684,3 +684,30 @@ refactorisation.
   cartes : DECISION PRODUIT, hors du perimetre de ce lot.
 - **Quatre cartes de `map_objectives` pourraient entrer au catalogue** (75 contre 72). Ajouter
   des cartes change le perimetre servi — hors lot.
+
+---
+
+## ADDENDUM 2026-09-01 (après double revue, ronde 2) — chiffres et vocabulaire rectifiés
+
+Les sections ci-dessus ont été écrites avec le verrou de non-régression à UN terme
+(`memesSocles`). Le verrou en porte trois depuis la ronde 1 — `objects_n`, `level_id` et les
+socles — et cela change le résultat publié :
+
+| | note ci-dessus | catalogue LIVRÉ |
+|---|---|---|
+| cartes sautées (points non établis) | 9 | **16** |
+| cartes acceptées | 63 | **56** |
+| points d'apparition | 1 934 | **1 662** |
+
+`memesSocles` seul ne vérifiait RIEN sur une carte sans socle : deux listes vides sont égales.
+Sept cartes de plus se révèlent dérivées ; elles recevaient jusqu'ici des points issus d'un
+fichier qui n'était pas le leur. Les mesures de recherche (41 appariements, 33 en production,
+taux de base 33,2 %) sont INCHANGÉES : elles portent sur Catalyst, qui reste acceptée.
+
+**Vocabulaire** : le booléen `mapCatalogMissing` décrit plus haut a été RETIRÉ au schéma 32. Il
+est remplacé par `spawnPointsState`, à trois valeurs — `map_absent`, `not_established`,
+`established` — parce que deux états faisaient lire « carte connue, aucun point » aux cartes
+sautées, c'est-à-dire l'inverse de ce que le drapeau devait montrer.
+
+**Fusions de points** : 60 points à natures mélangées sur 25 cartes. Le générateur les
+journalise carte par carte ; la nature publiée y est celle du représentant.

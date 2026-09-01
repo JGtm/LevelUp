@@ -3,7 +3,7 @@ package replaybuild
 // spawnpoints_test.go — LA TRADUCTION CATALOGUE -> ETAT, cablee.
 //
 // Ce chemin n'avait AUCUN test : replier « cle absente » sur « points etablis » ne faisait rien
-// tomber, alors que c'est exactement le defaut que le lot corrige — les neuf cartes sautees se
+// tomber, alors que c'est exactement le defaut que le lot corrige — les seize cartes sautees se
 // lisaient « carte connue, aucun point » au lieu de « points non etablis ».
 
 import (
