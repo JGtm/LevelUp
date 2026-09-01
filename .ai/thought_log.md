@@ -80761,3 +80761,55 @@ deux oracles — les detonations NOMMEES du releve A5 (le +100/+150 du poseur do
 gamertag) et les `personal_score_awards` de l'API cote base, qui NOMMENT chaque recompense. Une
 fois la valeur de la POSE identifiee, chaque pose est datee ET attribuee par gamertag — sans
 aucun decodage ECS.
+
+---
+
+## [2026-09-01] Classement des recompenses du pied : l'armement n'est recompense NULLE PART — et l'attribution par gamertag vaut pour TOUS les modes
+
+**Statut** : Complete. Un negatif definitif, une percee transverse.
+
+**TEMPS 1 — L'ATTRIBUTION PAR COINCIDENCE, REFUTEE PAR MOI-MEME.** La premiere version prenait
+« la recompense individuelle la plus proche de l'explosion » pour le poseur. Faux : les valeurs
+coincidentes sont +20/+50/+100 — du combat. La table nommait l'auteur du dernier frag, pas le
+poseur. Corrigee dans la doc de l'instrument AVANT que quiconque ne s'en serve ; le nommage du
+detonateur reste au statborg (chemin livre).
+
+**TEMPS 2 — LE NEGATIF EST DEFINITIF, ET IL EST BORNE PAR CONSTRUCTION.** Aucune valeur de
+recompense n'a un delai constant avant l'explosion (dispersions 54-60 % sur les recompenses au
+poseur presume). Et l'enumeration des valeurs est CLOSE : le petit octet de la valeur (l'octet 47
+du bloc) borne le domaine — {10, 20, 50, 100, 150, 200, 220} sur les neuf films, rien d'autre.
+**L'armement de la bombe n'est recompense par AUCUN score personnel.** Coherent avec le statborg
+(bande de mode vide) et avec la nature du mode : un mode SCRIPTE (`primitive_carriable_arming_base`
+en Lua), dont la logique passe par le script et non par les canaux natifs.
+
+Les rares (+150/+200/+220) sont des medailles ou des primes de fin : la salve de +150 aux QUATRE
+joueurs de l'equipe gagnante tombe a +25 ms de la DERNIERE explosion de `c75f33b8`. Leur nommage
+exact passera par l'oracle des medailles cote base — chantier a part.
+
+**LA PERCEE TRANSVERSE — 100 % D'ATTRIBUTION DIRECTE.** Les evenements de mode des autres modes
+(+10 : tic de zone, de colline, de crane) portent TOUS leur gamertag en clair dans le bloc :
+
+	Oddball     43716616 : 60/60 avec gamertag
+	KOTH        7f1bbf06 : 45/45
+	Strongholds 696a9d7c : 77/77
+
+La production attribue aujourd'hui ces evenements par le pont d'identite slot->XUID resolu PAR
+LES MORTS (`ResolveRoundIdentity`), avec ses pertes documentees. Le gamertag est DANS le bloc
+depuis le debut — l'attribution directe est possible pour tous les modes, sans pont. C'est un
+chantier de production a ouvrir (lecture du champ gamertag dans `decodeTh10Block`, jointure
+gamertag->xuid par le roster DB) — PAS un fix opportuniste d'aujourd'hui.
+
+**OU EN EST LA QUESTION DE L'UTILISATEUR (« qu'est-ce qu'on a en evenements de mode Assaut »).**
+Le releve est desormais complet et chaque case est fermee par une mesure :
+- detonation : LIVREE (statborg), datee et attribuee ;
+- pose/armement : absent du statborg (bande vide), absent des recompenses (enumeration close),
+  absent de ti=13 (egalite murmur3), absent de ti=11 image-cle (corps statique) ; reste UNE
+  piste film (l'anneau ti=12, sans plancher) et UNE voie sure (meche constante -> armement =
+  explosion - meche) ;
+- ramassage/porteur/desamorcage : aucun canal natif — mode scripte. Le desamorcage et le
+  ramassage n'ont pas eu d'occurrence oracle dans le corpus, leur absence est presumee (meme
+  logique de script), pas mesuree.
+
+**Prochaine etape** : le plancher de l'anneau ti=12 (1 000 tirages nuls, instrument deja ecrit
+par le lot) — c'est la DERNIERE piste film pour l'armement. Si elle tombe : meche constante,
+mesurable une fois pour toutes depuis les 28 couples (fin d'anneau, explosion) deja dates.
