@@ -1,3 +1,48 @@
+## [2026-09-01] Réconciliation compile : couche killsource ramenée de feat/v75 — Complété
+
+**Contexte** : `feat/precision-arme` (base RE, `wt/precision`) ne compilait plus
+(`go build ./internal/...`) : `service/match_view_data_loaders.go` — le CALLER v75 — importe
+`service/killsourceload`, paquet ABSENT de cette branche. La branche est un revert PARTIEL et
+incohérent du lot killsource du 2026-08-29 (câblage DI, champs match_view/teammates présents ;
+port, paquet, impl duckdb, intégration fragdist/domain absents). Mission : ramener UNIQUEMENT la
+couche killsource depuis feat/v75, sans toucher au RE film ni à la feature précision.
+
+**Décision technique** : trois classes de fichiers.
+1. **NEUFS (checkout v75 verbatim)** : `port/kill_source_class.go`, `service/killsourceload/load.go`
+   + `load_test.go`, `platform/duckdb/killsource_class_repo.go`, `service/fragdist/fragdist_killsource_test.go`.
+2. **RESTAURÉS v75 (revert killsource PUR vérifié — diff 100 % killsource/LabelEN, zéro contenu
+   précision)** : `domain/frag_distribution.go`, `service/fragdist/fragdist.go` + `fragdist_test.go`,
+   `service/match_view_builders_combat.go`, `port/weapon_kills.go` (champ LabelEN),
+   `service/synthesis_service.go`, `service/explorer_service.go`,
+   `service/explorer_target_frag_distribution.go`, `service/session_page_frag_distribution.go`,
+   `service/teammates/teammates_squad_charts_weapons_perf.go`, + tests
+   `service/match_view_frag_distribution_test.go`, `service/teammates/squad_frag_distribution_test.go`.
+3. **GREFFÉS chirurgicalement (fichiers MIXTES — divergence non-killsource laissée intacte)** :
+   `platform/duckdb/weapon_resolver.go` (ajout `offArsenalMeta` + `resolveOffArsenalKeys`, le reste du
+   fichier diverge de v75) ; `service/timeseries_service.go` et `service/session_page_service.go`
+   (champ `killSourceRepo` + `WithKillSourceRepo` + plumbing `sources` — leur divergence `first_blood`
+   `buildSoloFirstBlood(matches)` NON touchée).
+
+**Murs identifiés et NON franchis (hors mission)** : (a) **KillDistance** (POC LOT G.3, 2026-08-30 :
+`port.KillDistanceRepository`, `killDistanceRepoFor`, `NewKillDistanceRepo`) — feature v75 distincte
+absente de la branche, laissée absente (`match_view_service.go`/`registry_pages.go` ne manquent QUE
+d'elle côté non-killsource) ; (b) divergence **first_blood** (`matches`/`currentMatches`) — laissée ;
+(c) **classifier** `games/halo_infinite/killsource_registry.go` + entrées `games/weapons/registry.go`
+equipment/environmental : NON réclamés par le compilateur (assertion de type), NON ramenés — la feature
+killsource reste donc INERTE sur cette branche RE (repo nil au runtime), état honnête, pas un stub ;
+(d) `registry_pages_explorer.go` ne chaîne pas `WithKillSourceRepo` (killsource Explorer inert) — laissé.
+
+**Résultats** : `go build ./internal/...` VERT (exit 0). `go test ./internal/service/killsourceload/`
+OK. Non-régression précision VERTE : `go test ./internal/analysis/filmdec/ ./internal/analysis/
+./internal/persist/ ./internal/sync/killcollector/ ./internal/games/halo_infinite/ -count=1` OK.
+`go vet ./internal/service/killsourceload/` propre ; `go vet` des paquets touchés (fragdist, domain,
+service, teammates, duckdb) propre ; `gofmt -l` propre. Tests fragdist (dont killsource) + domain
+VERTS. **Confirmation** : `domain/frag_distribution_test.go` était DÉJÀ en version v75 sur la branche
+alors que son code non-test était reverté → le paquet domain ne compilait pas ses tests avant ; le
+revert de `frag_distribution.go` a réaligné. **Conclusion** : compile réconcilié, couche killsource
+cohérente de bout en bout ; feature killsource inerte au runtime jusqu'au retour du classifier lors
+d'un futur merge avec feat/v75.
+
 ## [2026-09-01] Précision arme/distance — Lot 3 : mapper film + passe killcollector + persist distance + capability — Complété
 
 **Contexte** : worktree dédié `wt/precision` (`feat/precision-arme`). Lot 3 du plan
