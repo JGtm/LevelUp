@@ -1,3 +1,34 @@
+## [2026-09-01] Hygiene du depot — les GOCACHE isoles entrent au .gitignore, le plan « source unique de l'arme » est verse — Complete
+
+Constat d'un `git status` : l'arbre suivi etait propre et `feat/v75` au niveau de son amont
+(0 commit local non pousse), mais deux entrees non suivies trainaient.
+
+**`.gocache-merge/` — 1,4 Go, 9 386 fichiers.** Un vrai GOCACHE (`README` + `trim.txt` du
+runtime Go), pose a la main pour un merge. Ce n'est pas un accident isole : le depot pratique
+les GOCACHE isoles depuis des mois (merges, gates paralleles, executeurs en worktree — cf.
+`.gocache-merge-31`, les consignes de `HANDOFF_SUPERVISEUR_2026-08-18.md`, la regle « pas de
+`go` concurrents, cache corrompu »). Aucune regle ne les couvrait dans `.gitignore` : chaque
+pose faisait apparaitre un gigaoctet en non-suivi, avec le risque de l'aspirer dans un
+`git add -A`. Regle posee en glob — `.gocache*/` — dans la section « Build artifacts Go »,
+pour couvrir les variantes a venir sans y revenir.
+
+**`.ai/V7.5/PLAN_SOURCE_UNIQUE_ARME_2026-09-01.md`** — document de chantier de 40 Ko qui
+n'avait jamais ete commite ; `.ai/V7.5/` est versionne (927 fichiers suivis), sa place est ici.
+Il porte les 13 decisions tranchees du chantier en cours (suppression du producteur
+`weapon_kills` Halo Infinite, migration title-owned qui fait disparaitre table et vue du seul
+fichier `halo_infinite`, resolution de l'arme a la lecture depuis `source_tag`, fusion des deux
+chemins de chargement) — et il est deja cite par l'entree « Volet B » du 2026-09-01
+ci-dessus, qui en execute les etapes B1-B3. Une reference vers un fichier non versionne.
+
+**Sur la duree de vie du cache.** Le cache de build Go se purge tout seul : les entrees non
+utilisees depuis 5 jours sont supprimees, mais **uniquement quand une commande `go` tourne avec
+ce `GOCACHE`** (au plus une passe par jour, horodatee dans `trim.txt` — ici 1788275056, soit
+aujourd'hui). Un GOCACHE orphelin, que plus aucune commande ne vise, ne se vide donc jamais :
+il faut le supprimer a la main. Celui-ci est conserve (demande utilisateur), desormais ignore.
+
+**Perimetre** : aucun code touche, aucun gate applicable (diff = 1 regle `.gitignore` +
+2 documents). Prochaine etape : rien de suspendu par ce lot.
+
 ## [2026-09-01] Volet B — le rejeu 2D au fil de l'eau : une étape installée partout, muette, et sans rattrapage — Complété
 
 Worktree dédié `LevelUp-wt-rejeu-fil`, branche `wt/rejeu-fil-de-l-eau` (base `55d6c7ee5`).
