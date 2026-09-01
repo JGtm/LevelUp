@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 )
 
 // WeaponKillFilters parametre la lecture aggregate des kills par arme.
@@ -107,6 +108,18 @@ type WeaponKillRow struct {
 	// IsGrenadeMelee : true si la valeur vient d'highlight_events (grenade ou
 	// melee), false si elle vient de weapon_kills (arme primaire).
 	IsGrenadeMelee bool `json:"is_grenade_melee,omitempty"`
+	// FromDamageSource : la ligne a ete MESUREE dans la source de degat du film
+	// (`match_kill_events_latest.source_tag`), et non reconstruite par correlation de tirs.
+	//
+	// POURQUOI CE CHAMP EXISTE, ET CE QU'IL N'EST PAS. Ce n'est pas un drapeau de
+	// fonctionnalite : c'est la PROVENANCE de la mesure, au meme titre que
+	// FragClassEntry.Authoritative. Elle tranche une question que la classe seule ne peut
+	// pas trancher : les classes `equipment` et `environmental` sont servies quand un film
+	// les a mesurees, et laissees en « Non attribue » sinon. Sans elle, le bucket
+	// `h5_environmental` de Halo 5 — qui porte un identifiant numerique et vient de
+	// `weapon_kills` — ferait apparaitre une classe Environnement dans le sunburst du
+	// second titre, hors du perimetre de la bascule du 2026-09-01.
+	FromDamageSource bool `json:"from_damage_source,omitempty"`
 	// MechanicKills : sous-ensemble de Kills qui ne sont PAS des kills d'ARME mais des
 	// mécaniques natives Halo 5 (mêlée/assassinat/coup au sol/charge d'épaule) attribuées
 	// à l'arme TENUE dans weapon_kills (kill_kind <> 'weapon'). Sur Infinite kill_kind est
@@ -141,4 +154,20 @@ type WeaponKillsRepository interface {
 		slug string,
 		filters WeaponKillFilters,
 	) ([]WeaponKillRow, error)
+}
+
+// AggregateKey identifie l'ARME d'une ligne pour une agregation par arme.
+//
+// POURQUOI PAS SIMPLEMENT WeaponID. Depuis la bascule du 2026-09-01, une ligne peut venir
+// de la source de degat du film et designer un objet hors arsenal (repulseur, bobine,
+// environnement) qui n'a AUCUN identifiant numerique au registre : son WeaponID vaut 0.
+// Trois objets distincts partageraient donc la meme cle et fusionneraient en une seule
+// ligne de tableau. La cle de registre les separe.
+//
+// POURQUOI PAS SIMPLEMENT WeaponKey. Une meme arme peut porter PLUSIEURS identifiants
+// numeriques (variantes, skins : le BR de Halo 2, le SPNKr retro). Keyer sur la seule cle
+// les fusionnerait, ce qui changerait les tableaux de Halo 5 — hors perimetre. Le COUPLE
+// preserve l'un et l'autre.
+func (r WeaponKillRow) AggregateKey() string {
+	return strconv.FormatInt(r.WeaponID, 10) + "|" + r.WeaponKey
 }

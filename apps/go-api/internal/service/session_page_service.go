@@ -37,9 +37,6 @@ type SessionPageService struct {
 	// (sunburst v2) de la session. Optionnel — nil → FragDistribution best-effort
 	// (classes API servies, ventilation gun retombant dans « Non attribué »).
 	weaponKillsRepo port.WeaponKillsRepository
-	// killSourceRepo (optionnel) : kills par SOURCE DE DEGAT du film (repulseur, bobines,
-	// chute). Cf. WithKillSourceRepo.
-	killSourceRepo port.KillSourceClassRepository
 	// weaponAccuracyRepo : loader weapon_accuracy agrégé pour le graphe « Précision
 	// par arme » de la session (Halo 5 natif, MIROIR de weaponKillsRepo). Optionnel —
 	// nil ou capability absente (Infinite) → WeaponAccuracy best-effort nil (le front
@@ -82,18 +79,6 @@ func (s *SessionPageService) WithPlayerMatchesRepo(repo port.PlayerMatchesReposi
 // match-history). Permet à la colonne "Rang" d'afficher "X/Y" en phase de placement.
 func (s *SessionPageService) WithCSRThresholds(resolver CSRThresholdResolver) *SessionPageService {
 	s.csrThreshold = resolver
-	return s
-}
-
-// WithWeaponKillsRepo injecte le loader weapon_kills (P5) alimentant la répartition
-// hiérarchique des frags (sunburst v2) par session. Optionnel.
-// WithKillSourceRepo injecte le loader des kills par SOURCE DE DEGAT du film — ceux que
-// l'attribution arme-a-feu ne peut pas voir (repulseur, bobines, chute), faute de record
-// de degat du tireur. Optionnel : nil (ou titre sans capability `film.kill_source`, le
-// cablage n'injecte alors rien) => ces kills restent dans « Non attribue », exactement
-// comme avant le lot du 2026-08-29.
-func (s *SessionPageService) WithKillSourceRepo(repo port.KillSourceClassRepository) *SessionPageService {
-	s.killSourceRepo = repo
 	return s
 }
 

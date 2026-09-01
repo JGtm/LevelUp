@@ -174,16 +174,10 @@ type MatchViewService struct {
 	// MANCHES et non en points (regulation.toml [rounds_decide]). Nil/absent → l'en-tête
 	// affiche le score de l'API, comportement d'avant le 2026-08-29.
 	roundsDecide map[string]bool
-	// killSourceRepo (optionnel) : loader des kills par SOURCE DE DEGAT du film
-	// (repulseur, bobines, chute). Nil, ou titre sans capability film.kill_source =>
-	// ces kills restent dans « Non attribue » du sunburst, comme avant le lot du
-	// 2026-08-29. Degradation gracieuse : ce n est pas une panne, c est un titre sans
-	// decodeur de film.
-	killSourceRepo port.KillSourceClassRepository
 	// killDistanceRepo (optionnel) : loader « distance par arme, par joueur »
 	// (POC LOT G.3, plan retours-utilisateur §3bis DEC-8). Nil, ou titre sans
 	// capability film.kill_source => pas de bloc, jamais d'erreur. Dégradation
-	// gracieuse identique à killSourceRepo (même gate, cf. wire.killDistanceRepoFor).
+	// gracieuse posée au câblage (même gate, cf. wire.killDistanceRepoFor).
 	killDistanceRepo port.KillDistanceRepository
 	// replaySvc (optionnel) : service du rejeu 2D, interrogé UNIQUEMENT pour la
 	// présence de l'artefact (IsAvailable = un os.Stat). Nil → ReplayAvailable
@@ -254,17 +248,6 @@ func (s *MatchViewService) WithObjectiveEventsRepo(r port.ObjectiveEventsReposit
 // jamais l'artefact. Dégradation gracieuse si nil (pas de lien côté front).
 func (s *MatchViewService) WithReplay(svc port.ReplayService) *MatchViewService {
 	s.replaySvc = svc
-	return s
-}
-
-// WithKillSourceRepo injecte le loader des kills par SOURCE DE DÉGÂT du film — ceux que
-// l'attribution arme-à-feu ne peut pas voir (répulseur, bobines, chute), parce qu'ils
-// n'émettent aucun record de dégât du tireur.
-//
-// Dégradation gracieuse si nil ou si le titre n'a pas la capability : ces kills restent
-// dans « Non attribué », exactement comme avant le lot du 2026-08-29.
-func (s *MatchViewService) WithKillSourceRepo(r port.KillSourceClassRepository) *MatchViewService {
-	s.killSourceRepo = r
 	return s
 }
 

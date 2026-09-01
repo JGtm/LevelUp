@@ -74,3 +74,27 @@ func (KillSourceRegistry) KillSourceRegistryKey(sourceTag uint32) (string, bool)
 func (a *AssetURLAdapter) KillSourceRegistryKey(sourceTag uint32) (string, bool) {
 	return KillSourceRegistry{}.KillSourceRegistryKey(sourceTag)
 }
+
+// KillSourceClassName nomme la CLASSE d'une source de degat — pour la JOURNALISATION
+// seule (port.KillSourceDescriber).
+//
+// POURQUOI CETTE METHODE EXISTE. Un kill que le rejeu 2D sait nommer mais que le graphe
+// classe « Non attribue » ne doit pas disparaitre en silence (decision D13 du plan du
+// 2026-09-01). Le lecteur qui l'ecarte a besoin de citer la classe de la source pour que la
+// ligne de journal soit exploitable — « 159 morts de classe VEHICULE ecartees » se traite,
+// « 159 morts ecartees » ne se traite pas. Aucune decision de comportement n'en depend :
+// c'est du texte pour un humain.
+func (KillSourceRegistry) KillSourceClassName(sourceTag uint32) (string, bool) {
+	l, ok := damagetag.Lookup(sourceTag)
+	if !ok {
+		return "", false
+	}
+	return string(l.Class), true
+}
+
+// KillSourceClassName sur l'adapter d'assets : MEME table, meme reponse. Le cablage ne
+// connait que l'adapter d'assets ; c'est par lui qu'il decouvre les deux interfaces
+// optionnelles de la source de degat.
+func (a *AssetURLAdapter) KillSourceClassName(sourceTag uint32) (string, bool) {
+	return KillSourceRegistry{}.KillSourceClassName(sourceTag)
+}

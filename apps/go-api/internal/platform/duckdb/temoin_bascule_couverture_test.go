@@ -20,7 +20,9 @@ package duckdb
 
 import (
 	"context"
+	"fmt"
 	"sort"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/domain"
@@ -163,4 +165,47 @@ func ecrireArbitrageMelee(r *temoinRapport, tags []temoinTag, reg map[string][2]
 	r.ligne("Ecart `melee_kills` moins melee NUE : %+d. Ecart `melee_kills` moins (nue + arme) : %+d.",
 		counts.Melee-meleeNue, counts.Melee-meleeNue-meleeArme)
 	r.ligne("")
+}
+
+// ecrireVentilationServie publie la ventilation telle que les six surfaces la servent
+// APRES la bascule : lecteur adosse a la source de degat, passe au builder de production.
+//
+// Elle differe de la colonne « source de degat » de la comparaison : celle-ci est une
+// mesure brute des tags, celle-la traverse `fragdist` et subit donc ses regles — totaux
+// API pour melee et grenade, ventilation par role pour les armes a feu, residu calcule.
+func ecrireVentilationServie(r *temoinRapport, d domain.FragDistribution,
+	counts domain.FragKillTypeCounts,
+) {
+	r.ligne("## Ventilation SERVIE par les six surfaces apres la bascule")
+	r.ligne("")
+	r.ligne("| classe | frags | autoritatif | niveau 2 |")
+	r.ligne("|---|---:|---|---|")
+	for _, c := range d.Classes {
+		r.ligne("| %s | %d | %t | %s |", c.Class, c.Kills, c.Authoritative, resumeRoles(c.Roles))
+	}
+	somme := 0
+	for _, c := range d.Classes {
+		somme += c.Kills
+	}
+	r.ligne("| **total** | %d | | |", somme)
+	r.ligne("")
+	r.ligne("Invariant : la somme des classes vaut le total de frags API (%d) — %t.",
+		counts.Total, somme == counts.Total)
+	r.ligne("")
+}
+
+// resumeRoles rend le niveau 2 d'une classe en une cellule lisible.
+func resumeRoles(roles []domain.FragRoleEntry) string {
+	if len(roles) == 0 {
+		return "_feuille_"
+	}
+	parts := make([]string, 0, len(roles))
+	for _, e := range roles {
+		nom := e.Label
+		if nom == "" {
+			nom = e.Role
+		}
+		parts = append(parts, fmt.Sprintf("%s %d", nom, e.Kills))
+	}
+	return strings.Join(parts, ", ")
 }

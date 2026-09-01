@@ -18,7 +18,6 @@ import (
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/port"
-	"levelup/go-api/internal/service/killsourceload"
 
 	"golang.org/x/sync/errgroup"
 )
@@ -74,12 +73,6 @@ type matchViewData struct {
 	matchCitations []domain.CitationMatchViewRow
 	richCitations  []domain.HomeMatchCitationRaw
 	histRows       []domain.MatchHistAvgRow
-	// killSourceClasses : kills du joueur AGREGES PAR CLASSE depuis la source de degat
-	// — ceux que l attribution arme-a-feu ne voit pas (repulseur, bobines, chute).
-	// A ne pas confondre avec `killSources` ci-dessus : celui-la est la source PAR MORT
-	// pour l icone du kill feed, celui-ci est un COMPTE PAR JOUEUR pour le sunburst.
-	// Vide = titre sans decodeur de film, match jamais decode, ou aucune de ces morts.
-	killSourceClasses []port.KillSourceClassRow
 	// killDistances : POC (LOT G.3, plan retours-utilisateur §3bis DEC-8) —
 	// distance mesurée par (xuid, weapon_key) pour CE match, tous les joueurs
 	// (pas seulement le viewer). Nil si le titre n'a pas de killDistanceRepo
@@ -229,21 +222,7 @@ func (s *MatchViewService) loadMatchViewDataParallel(ctx context.Context, matchI
 		d.histRows, e = s.repo.GetHistoryForAvg(gctx, s.xuid)
 		return e
 	})
-	// Le GATE de capability est pose au CABLAGE (wire), la ou le TitleDataAdapter et sa
-	// CapabilityMap sont disponibles : `film.kill_source` est une capability DATA-LEVEL
-	// (games.CapabilityKey, capabilities.toml), pas une capability title-level. Ici, un
-	// repo non nil VEUT DIRE que le titre l a. Zero comparaison de slug.
-	if s.killSourceRepo != nil {
-		goLoad(gctx, g, matchID, "kill_source_classes", func() error {
-			// SANS ERREUR, contrairement a ses voisins : le foyer `killsourceload.Load`
-			// est best-effort par contrat — il logge et degrade, la vue reste juste
-			// (ces kills retombent dans « Non attribue »). Rendre une erreur ici
-			// annulerait TOUT le groupe pour une degradation deja absorbee.
-			d.killSourceClasses = s.loadMatchKillSourceClasses(gctx, matchID)
-			return nil
-		})
-	}
-	// Même doctrine que kill_source_classes ci-dessus : le gate de capability est
+	// Le GATE de capability est posé au CÂBLAGE (wire.killDistanceRepoFor) : un repo
 	// posé au câblage (wire.killDistanceRepoFor) — un repo non nil veut dire que
 	// le titre a film.kill_source. Zéro comparaison de slug.
 	if s.killDistanceRepo != nil {
@@ -508,7 +487,7 @@ func (s *MatchViewService) buildMatchViewFromData(
 	// scoreboard (compteurs natifs melee/grenade/spartan de la ligne is_me) + les bulk
 	// weapon kills du viewer (classes gun). hasMechanics via capability (jamais slug==).
 	combat.FragDistribution = buildViewerFragDistribution(
-		findViewerScoreboardRow(team.Scoreboard), d.bulkWeapons, d.killSourceClasses,
+		findViewerScoreboardRow(team.Scoreboard), d.bulkWeapons,
 		titleHasNativeKillMechanics(s.titleSlug),
 	)
 	if combat.FragDistribution != nil {
@@ -697,19 +676,4 @@ func strDeref(s *string) string {
 		return "<nil>"
 	}
 	return *s
-}
-
-// loadMatchKillSourceClasses charge les kills du joueur courant par source de degat.
-//
-// Perimetre volontairement etroit : CE match, CE joueur — ce qui satisfait aussi le
-// garde-fou anti-scan-complet des filtres. Le chargement lui-meme passe par le foyer
-// unique `loadKillSourceClasses` (killsource_load.go), partage avec les agregats.
-// Aucune erreur rendue : `killsourceload.Load` est best-effort par contrat (il logge la
-// panne puis degrade), et une erreur remontee ici annulerait tout le groupe de chargement
-// pour une degradation deja absorbee.
-func (s *MatchViewService) loadMatchKillSourceClasses(
-	ctx context.Context, matchID string,
-) []port.KillSourceClassRow {
-	return killsourceload.Load(ctx, s.killSourceRepo, "match view", s.titleSlug,
-		[]string{matchID}, []string{s.xuid})
 }

@@ -302,3 +302,81 @@ func resolveWeaponKeyLabelsAny(ctx context.Context, meta *DB, titleSlug string, 
 	}
 	return out
 }
+
+// weaponKeyResolved — les dimensions d'une cle de registre, plus son identifiant numerique
+// CANONIQUE quand elle en porte un.
+//
+// POURQUOI L'IDENTIFIANT NUMERIQUE EST ICI. La source de degat rend une CLE, jamais un id.
+// Or `port.WeaponKillRow` en porte un, et deux consommateurs s'en servent : l'URL de
+// l'image d'arme (`AssetURLAdapter.WeaponImageURL`) et rien d'autre depuis que les
+// agregats sont keyes par `weapon_key`. Resoudre la cle vers son id canonique
+// (`MIN(id_value)`, deterministe) rend donc l'image SANS demander au lecteur de connaitre
+// le film. Une cle hors arsenal n'a aucun id : `numericID` vaut 0, et c'est exact —
+// elle n'existe pas dans `weapon_ids`, par construction (garde-rail
+// weapons.TestHorsArsenalHINFSansIdNumerique).
+type weaponKeyResolved struct {
+	class     string
+	role      string
+	family    string
+	label     string // FR-first (repli EN)
+	labelEN   string // EN-first (repli FR)
+	numericID int64  // 0 = cle sans identifiant numerique (hors arsenal)
+}
+
+// resolveWeaponKeyDimensions resout un lot de weapon_key vers leurs dimensions completes.
+//
+// SANS le filtre `wi.weapon_key IS NULL` de resolveOffArsenalKeys : ce filtre servait a
+// departager DEUX voies de comptage concurrentes (arme a feu contre hors arsenal) ; il n'y
+// en a plus qu'une (D11 du plan du 2026-09-01), donc plus rien a departager. L'agregat
+// `MIN(wi.id_value)` remplace la jointure fan-out : une arme peut porter plusieurs ids
+// (variantes, skins) et un LEFT JOIN nu rendrait N lignes pour une cle.
+//
+// Best-effort, jamais de panic : registre absent -> map vide (le lecteur ne remonte alors
+// aucune ligne, et le sunburst retombe sur « Non attribue »).
+func resolveWeaponKeyDimensions(ctx context.Context, meta *DB, titleSlug string, keys []string) map[string]weaponKeyResolved {
+	out := map[string]weaponKeyResolved{}
+	if meta == nil || len(keys) == 0 || !weaponRegistryAvailable(ctx, meta) {
+		return out
+	}
+	labelExpr, labelENExpr, nameJoin := "''", "''", ""
+	if weaponNameLabelsAvailable(ctx, meta) {
+		labelExpr = "COALESCE(NULLIF(MIN(wnl.name_fr),''), NULLIF(MIN(wnl.name_en),''), '')"
+		labelENExpr = "COALESCE(NULLIF(MIN(wnl.name_en),''), NULLIF(MIN(wnl.name_fr),''), '')"
+		nameJoin = " LEFT JOIN weapon_name_labels wnl ON wnl.title_slug = w.title_slug AND wnl.weapon_key = w.weapon_key"
+	}
+	args := make([]any, 0, len(keys)+1)
+	args = append(args, titleSlug)
+	for _, k := range keys {
+		args = append(args, k)
+	}
+	query := "SELECT w.weapon_key, COALESCE(MIN(w.class), '') AS class," +
+		" COALESCE(MIN(w.role), '') AS role, COALESCE(MIN(w.family_key), '') AS family," +
+		" " + labelExpr + " AS label, " + labelENExpr + " AS label_en," +
+		" COALESCE(MIN(wi.id_value), '') AS id_value" +
+		" FROM weapons w" +
+		" LEFT JOIN weapon_ids wi ON wi.title_slug = w.title_slug AND wi.weapon_key = w.weapon_key" +
+		nameJoin +
+		" WHERE w.title_slug = ? AND w.weapon_key IN (" + Placeholders(len(keys)) + ")" +
+		" GROUP BY w.weapon_key"
+	rows, err := meta.Query(ctx, query, args...)
+	if err != nil {
+		// weaponRegistryAvailable a confirme les tables : une erreur ici est une anomalie
+		// de requete, pas un schema non migre. On la SIGNALE avant de degrader.
+		slog.WarnContext(ctx, "weapon resolver: key dimensions query failed",
+			"title", titleSlug, "keys", len(keys), "err", err)
+		return out
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var key, class, role, family, label, labelEN, idValue string
+		if err := rows.Scan(&key, &class, &role, &family, &label, &labelEN, &idValue); err != nil {
+			continue
+		}
+		r := weaponKeyResolved{class: class, role: role, family: family, label: label, labelEN: labelEN}
+		if u, perr := strconv.ParseUint(idValue, 10, 64); perr == nil {
+			r.numericID = int64(u) //nolint:gosec // reinterpretation bit-a-bit, cf. UBigint
+		}
+		out[key] = r
+	}
+	return out
+}
