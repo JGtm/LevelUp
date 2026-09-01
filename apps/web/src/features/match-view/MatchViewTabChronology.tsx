@@ -7,6 +7,7 @@
  */
 import { EngagementMatchSection } from '@/features/engagement/EngagementMatchSection'
 import { MatchEquipmentUsageSection } from '@/features/match-replay/MatchEquipmentUsageSection'
+import { MatchPadControlSection } from '@/features/match-replay/MatchPadControlSection'
 import { FeatureGate } from '@/lib/capabilities/FeatureGate'
 import type {
   MatchHighlightEvent,
@@ -96,6 +97,18 @@ export function MatchViewTabChronology({
           clé de cache, aucun appel de plus. Le rejeu montre ces gestes image par image ; ce
           tableau les compte. Sans artefact ou sans grandeur mesurée, il ne rend rien. */}
       <MatchEquipmentUsageSection
+        playerSlug={playerSlug}
+        matchId={matchId}
+        replayAvailable={replayAvailable}
+        scoreboard={scoreboard}
+        locale={locale}
+      />
+
+      {/* Le CONTRÔLE DES ARMES SPÉCIALES (film), juste après le bilan d'équipement dont il est
+          le complément : celui-ci compte les socles vidés SANS ramasseur, celui-là les nomme
+          (padPickups[].xuid, schéma 30). Même artefact, même clé de cache, aucun appel de
+          plus. Sans artefact, sans socle ou sans prise attribuée, il ne rend rien. */}
+      <MatchPadControlSection
         playerSlug={playerSlug}
         matchId={matchId}
         replayAvailable={replayAvailable}

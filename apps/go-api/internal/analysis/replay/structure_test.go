@@ -486,8 +486,40 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   comblent un trou, elles ne doublonnent pas `equipmentChanges`.
 	//   Détail : internal/analysis/replay/document_pickups.go, pad_pickup_dating.go,
 	//   internal/analysis/filmdec/biped_pickups.go, .ai/V7.5/film_re/NOTE_BIPED_PICKUP_2026-08-31.md.
-	if SchemaVersion != 30 {
-		t.Fatalf("SchemaVersion = %d, attendu 30 : incrémenter exige une raison écrite ci-dessus "+
+	// v31 — LE NOM DE L'OBJET RAMASSÉ (`pickups[].family`), ET UNE NATURE À TROIS VALEURS.
+	//   Le schéma 30 publiait un identifiant BRUT que rien ne nommait pour les classes non-arme.
+	//   LE NOM VIENT DES FICHIERS DU JEU, PAS D'UNE STATISTIQUE — et c'est la raison de la
+	//   montée. Le `R(32)` de ces classes est un GlobalID de tag `eqip` : le manifeste
+	//   `[[equipment_objects]]` du titre le nomme, bâti en remontant la chaîne
+	//   `sofd -> sofa -> {string_id, eqip}` dans les modules installés (2026-08-18).
+	//   MESURE DU 2026-09-01, deux films de référence : 82/82 et 36/36 des ramassages non-arme
+	//   résolus (8/8 identifiants distincts, les MÊMES sur les deux films), ZÉRO chevauchement
+	//   avec le catalogue d'armes dans les deux sens, et concordance 2/2 avec les deux étiquettes
+	//   que la corrélation avait acquises de son côté par deux voies indépendantes
+	//   (`eef5d48d` = propulseur, `8e2dc574` = mur — un rang que la palette ne nommait pas).
+	//   La voie de corrélation du lot précédent plafonnait à 19,5 % / 25,0 % : elle n'est pas
+	//   fausse pour autant, c'est elle qui VALIDE la table aujourd'hui.
+	//   `kind` PASSE DE DEUX À TROIS VALEURS, et la séparation vient du NOM : une fois les
+	//   identifiants résolus, la classe 2 est grenade dans 100,0 % de ses événements et la
+	//   classe 3 dans 0,0 %, sur les deux films, sans un seul identifiant réparti sur les deux
+	//   classes. `item` N'EST PAS RENOMMÉ — il reste le repli des classes non-arme dont la
+	//   nature n'est pas établie (le R(3) porte huit valeurs, quatre sont observées).
+	//   CE QUE v31 REFUSE : descendre un libellé (`family` est un SLUG, la traduction reste au
+	//   client — règle multi-titre) ; inventer un nom qu'elle n'a pas (un identifiant hors
+	//   catalogue sort SANS `family`, et `coverage.pickups.unknownFamilies` le compte — le
+	//   manifeste ne déclare que 21 objets, les trous doivent se voir) ; et publier l'ORIGINE
+	//   d'une prise (socle de la carte contre objet tombé au sol), mesurée non concluante le
+	//   2026-09-01 — 25,6 % d'injectivité contre 50 % exigés, et le dépôt ne déclare aucun point
+	//   d'apparition d'équipement. La réfutation reste en place.
+	//   UN ARTEFACT 30 SE LIT SANS CHANGEMENT : il ne porte simplement ni `family` ni les deux
+	//   natures fines, et son `kind` vaut `item` là où un 31 dirait `grenade` ou `equipment`.
+	//   Détail : internal/analysis/replay/document_pickups.go,
+	//   .ai/V7.5/film_re/NOTE_NOMMAGE_ORIGINE_2026-09-01.md.
+	//   RISQUE DE COLLISION DE NUMÉRO, consigné comme au 29->30 : ce lot prend le 31 sur
+	//   `wt/pickup-nommage` alors que le 30 vient d'arriver sur `feat/v75`. L'arbitrage se fait
+	//   au merge, par renumérotation.
+	if SchemaVersion != 31 {
+		t.Fatalf("SchemaVersion = %d, attendu 31 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

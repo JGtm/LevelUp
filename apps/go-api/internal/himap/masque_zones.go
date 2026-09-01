@@ -170,6 +170,26 @@ func (r *Rendu) EffaceHorsZones(masque []bool) int {
 // La regle : on inonde le vide depuis les bords de l'image ; ce que l'inondation n'atteint
 // PAS est un trou ferme, entoure de matiere. Ceux-la seulement sont combles.
 func (r *Rendu) CombleTrous(masque []bool) int {
+	atteint := r.videOuvertSurLexterieur()
+
+	comble := 0
+	for k := range r.z {
+		if !math.IsInf(r.z[k], -1) || atteint[k] || k >= len(masque) || !masque[k] {
+			continue
+		}
+		if r.solSuppose == nil {
+			r.solSuppose = make([]bool, len(r.z))
+		}
+		r.solSuppose[k] = true
+		comble++
+	}
+	return comble
+}
+
+// videOuvertSurLexterieur inonde le vide depuis les quatre bords de l'image, en connexite a 4.
+// Rend, par cellule, si le vide y communique avec l'exterieur : ce que l'inondation n'atteint pas
+// est un trou FERME, entoure de matiere. Extrait de CombleTrous, a l'identique.
+func (r *Rendu) videOuvertSurLexterieur() []bool {
 	vide := func(k int) bool { return math.IsInf(r.z[k], -1) }
 	atteint := make([]bool, len(r.z))
 	pile := make([]int, 0, r.NX+r.NY)
@@ -201,19 +221,7 @@ func (r *Rendu) CombleTrous(masque []bool) int {
 		pousse(i, j-1)
 		pousse(i, j+1)
 	}
-
-	comble := 0
-	for k := range r.z {
-		if !vide(k) || atteint[k] || k >= len(masque) || !masque[k] {
-			continue
-		}
-		if r.solSuppose == nil {
-			r.solSuppose = make([]bool, len(r.z))
-		}
-		r.solSuppose[k] = true
-		comble++
-	}
-	return comble
+	return atteint
 }
 
 // SolSuppose dit si une cellule porte un sol suppose (cf. CombleTrous).

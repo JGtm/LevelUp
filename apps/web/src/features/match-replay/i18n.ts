@@ -325,6 +325,27 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       killBadgeHint:
         "Le meilleur épisode du match pour cette famille. Même réserve que les états actifs : la source de l'épisode n'est pas distinguée (ramassage ou capacité déclenchée), ses bornes sont à la précision de la retransmission près, et le camo seul reste sous le seuil de mesure en lecture large.",
     },
+    padControl: {
+      title: 'Contrôle des armes spéciales',
+      titleHint:
+        "Les armes de socle prises pendant le match, et par qui. Chaque prise vient de l'événement de ramassage écrit dans le film : il est daté à la milliseconde et porte son ramasseur. Une occupation de socle qu'aucun ramassage ne couvre — ou que plusieurs couvrent — n'est comptée pour personne : on ne devine pas un ramasseur, on s'abstient et on le dit sous le tableau.",
+      colPlayer: 'Joueur',
+      colTotal: 'Prises de socle',
+      teamTotal: 'Total équipe',
+      attributedFmt: (attributed, occupations) =>
+        `${attributed} prise${attributed > 1 ? 's' : ''} attribuée${attributed > 1 ? 's' : ''} sur ${occupations} occupation${occupations > 1 ? 's' : ''} de socle mesurée${occupations > 1 ? 's' : ''}.`,
+      missingFmt: (missing) =>
+        `${missing} occupation${missing > 1 ? 's' : ''} hors tableau :`,
+      gapFmt: {
+        ambiguous: (n) =>
+          `${n} ambiguë${n > 1 ? 's' : ''} (plusieurs ramassages de la même arme dans la fenêtre)`,
+        uncovered: (n) => `${n} sans ramassage correspondant dans le film`,
+        unnamed: (n) => `${n} datée${n > 1 ? 's' : ''} sans ramasseur nommé`,
+        powerup: (n) =>
+          `${n} sur socle de bonus (jamais rattachable : un bonus s'identifie par un nom, pas par une famille d'arme)`,
+        unjoined: (n) => `${n} au nom d'un joueur que le film n'a pas vu vivre`,
+      },
+    },
     ammoFullLabel: 'Munitions pleines',
     gaugeLabel: 'charge restante',
     exportVideo: 'Exporter la vidéo',
@@ -667,6 +688,27 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       },
       killBadgeHint:
         "The best episode of the match for this family. Same reserve as active states: the episode's source is not told apart (picked up or triggered), its bounds are at broadcast precision, and camo alone stays under the measurement threshold in broad reading.",
+    },
+    padControl: {
+      title: 'Power weapon control',
+      titleHint:
+        'The pad weapons picked up during the match, and by whom. Every pickup comes from the pickup event written in the film: it is timed to the millisecond and carries its picker. A pad occupancy no pickup covers — or that several cover — is counted for nobody: a picker is never guessed, the measurement abstains and says so below the table.',
+      colPlayer: 'Player',
+      colTotal: 'Pad pickups',
+      teamTotal: 'Team total',
+      attributedFmt: (attributed, occupations) =>
+        `${attributed} pickup${attributed > 1 ? 's' : ''} attributed out of ${occupations} measured pad occupanc${occupations > 1 ? 'ies' : 'y'}.`,
+      missingFmt: (missing) =>
+        `${missing} occupanc${missing > 1 ? 'ies' : 'y'} outside the table:`,
+      gapFmt: {
+        ambiguous: (n) =>
+          `${n} ambiguous (several pickups of the same weapon inside the window)`,
+        uncovered: (n) => `${n} with no matching pickup in the film`,
+        unnamed: (n) => `${n} timed with no named picker`,
+        powerup: (n) =>
+          `${n} on a power-up pad (never attachable: a power-up is identified by a name, not by a weapon family)`,
+        unjoined: (n) => `${n} named for a player the film never saw alive`,
+      },
     },
     ammoFullLabel: 'Ammo full',
     gaugeLabel: 'charge left',

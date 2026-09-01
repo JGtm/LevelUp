@@ -346,7 +346,39 @@ package replay
 // cette borne. Les classes non-arme SONT publiées, sur mesure et non par principe : 80,5 % et
 // 72,2 % d'entre elles n'ont AUCUNE émission i48 du même slot à moins de 500 ms (témoin décalé
 // à 0,0 %) — elles comblent un trou, elles ne doublonnent pas `equipmentChanges`.
-const SchemaVersion = 30
+//
+// CE QUE LA VERSION 31 PORTE : LE NOM DE L'OBJET RAMASSÉ (`pickups[].family`), et une nature
+// de ramassage à trois valeurs au lieu de deux.
+//
+// D'OÙ VIENT LE NOM, ET POURQUOI CE N'EST PAS UNE STATISTIQUE. Le `R(32)` des classes non-arme
+// est un GlobalID de tag `eqip` : le manifeste `[[equipment_objects]]` du titre le nomme, et ce
+// manifeste a été bâti en remontant la chaîne `sofd -> sofa -> {string_id, eqip}` dans les
+// FICHIERS DU JEU (2026-08-18). Mesure du 2026-09-01 sur les deux films de référence :
+// 82/82 et 36/36 des ramassages non-arme résolus, 8/8 identifiants distincts, ZÉRO
+// chevauchement avec le catalogue d'armes dans les deux sens, et concordance 2/2 avec les deux
+// étiquettes que la corrélation avait acquises de son côté. Les armes se résolvent par le même
+// geste dans `LabelCatalog.Keys` (famille -> weapon_key).
+//
+// CE QUE LA VERSION 31 TRANCHE. `kind` distinguait l'arme du reste ; il distingue désormais
+// `weapon` / `grenade` (classe 2) / `equipment` (classe 3). La séparation ne vient pas d'une
+// corrélation mais du NOM : une fois les identifiants résolus, la classe 2 est grenade dans
+// 100,0 % de ses événements et la classe 3 dans 0,0 %, deux films, aucun identifiant réparti
+// sur les deux classes. `item` N'EST PAS RENOMMÉ : il reste le repli des classes non-arme dont
+// la nature n'est pas établie.
+//
+// CE QUE LA VERSION 31 REFUSE. De descendre un libellé : `family` est un SLUG, la traduction
+// reste au client (règle multi-titre). De remplir un nom qu'elle n'a pas : un identifiant
+// qu'aucun catalogue ne connaît sort SANS `family`, et `coverage.pickups.unknownFamilies` le
+// compte — le manifeste ne déclare que 21 objets, les trous doivent se voir. Et de publier
+// l'ORIGINE d'une prise (socle de la carte contre objet tombé au sol) : mesurée le 2026-09-01,
+// non concluante (25,6 % d'injectivité contre 50 % exigés), et le dépôt ne déclare aucun point
+// d'apparition d'équipement. La réfutation reste en place.
+//
+// RISQUE DE COLLISION DE NUMÉRO, consigné comme au schéma 29->30 : ce lot prend le 31 sur la
+// branche `wt/pickup-nommage` alors que le 30 vient d'arriver sur `feat/v75`. Un autre chantier
+// peut prendre le 31 le même jour ; l'arbitrage se fait au merge, par renumérotation, comme la
+// dernière fois.
+const SchemaVersion = 31
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {

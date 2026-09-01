@@ -158,7 +158,6 @@ type sousEnteteProfil struct {
 	palette        map[uint32]int
 	n              int
 	p0, p1, p2     float64
-	posMoyPayload  float64
 	cardinalitePay int
 }
 

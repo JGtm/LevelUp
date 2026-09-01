@@ -29,7 +29,9 @@
  *     canal-là reste au niveau du MATCH, il ne descend sur aucune ligne de joueur. Depuis le
  *     schéma 30 (2026-08-31) `padPickups[].xuid` PEUT être renseigné (l'événement natif porte
  *     son ramasseur), mais cet écran n'a pas été repensé pour l'exploiter : ne pas descendre
- *     reste le comportement VOULU, et ce n'est plus une impossibilité, c'est un choix.
+ *     reste le comportement VOULU, et ce n'est plus une impossibilité, c'est un choix. Le
+ *     ramasseur NOMMÉ est le sujet d'un tableau à part — `padControlLogic.ts` / la section
+ *     « Contrôle des armes spéciales », juste sous celle-ci dans l'onglet Chronologie.
  *
  * RÉPULSEUR ET PROPULSEUR N'ONT AUCUNE GRANDEUR ICI, et c'est une absence de DONNÉE, pas un
  * oubli : le film ne publie aucun canal d'activation pour ces deux capacités (le chantier qui

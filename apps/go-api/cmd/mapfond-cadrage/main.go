@@ -201,7 +201,7 @@ func mesureBruit(img image.Image, b image.Rectangle) float64 {
 // luminance rend la clarte d'un pixel sur 0..255, ponderee comme l'oeil la percoit.
 func luminance(img image.Image, x, y int) int {
 	r, g, bl, _ := img.At(x, y).RGBA()
-	return int((299*int(r>>8) + 587*int(g>>8) + 114*int(bl>>8)) / 1000)
+	return (299*int(r>>8) + 587*int(g>>8) + 114*int(bl>>8)) / 1000
 }
 
 func abs(v int) int {
