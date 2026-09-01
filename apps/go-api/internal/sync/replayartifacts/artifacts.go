@@ -257,26 +257,37 @@ func etatArtefact(path string, facts port.MatchFacts) (aJour, complet bool) {
 // purge effacera, et un travail hors fenêtre coûterait un décodage pour rien.
 // Best-effort de bout en bout : aucun retour, aucune erreur ne remonte au cycle.
 func Run(ctx context.Context, d Deps, insertedIDs []string) {
-	if d.Placement == replaybuild.PlacementOff || d.WithRead == nil || len(insertedIDs) == 0 {
+	if !armee(ctx, d) {
 		return
 	}
-	if d.Placement == replaybuild.PlacementLocal && d.Fetcher == nil {
-		return // sans client film, rien à télécharger ni à décoder ici
-	}
+	titre := ctxkeys.TitleSlug(ctx)
+	observability.IncCounterT(titre, CompteurCycles)
 	var work []buildWork
 	d.WithRead(ctx, "replay_select", func(sharedDB *sql.DB) {
 		work = selectBuildWork(ctx, sharedDB, d.MetaDB, insertedIDs, d.RetentionMonths)
 		attachMatchFacts(ctx, sharedDB, work)
 	})
+	observability.AddIntT(titre, CompteurSelectionnes, int64(len(work)))
 	if len(work) == 0 {
+		// SÉLECTION VIDE ≠ ÉTAPE MUETTE. Sans cette ligne, « la fenêtre de rétention a tout
+		// écarté » et « l'étape n'a jamais tourné » s'écrivent pareil dans le journal : rien.
+		slog.DebugContext(ctx, "post-sync: rejeu 2D — aucun match à traiter ce cycle",
+			"gamertag", d.Gamertag, "inseres", len(insertedIDs), "retention_mois", d.RetentionMonths)
 		return
 	}
 	if d.Placement == replaybuild.PlacementWorker {
+		// La file, elle, est faite pour s'allonger : le chemin ouvrier n'est pas plafonné,
+		// donc il ne laisse aucun reliquat derrière lui.
+		observability.SetIntT(titre, CompteurRetard, 0)
 		enqueueAll(ctx, d, work)
 		return
 	}
+	// JAUGE, PAS COMPTEUR : ce qui reste à faire APRÈS ce cycle. Publiée MÊME À ZÉRO — une
+	// clé absente de /debug/vars ne se distingue pas d'une étape qui ne tourne pas, et c'est
+	// précisément l'ambiguïté que ce lot ferme.
+	observability.SetIntT(titre, CompteurRetard, int64(max(0, len(work)-maxPerCycle)))
 	if len(work) > maxPerCycle {
-		slog.InfoContext(ctx, "post-sync: rejeu 2D — lot borné, solde au backfill CLI",
+		slog.InfoContext(ctx, "post-sync: rejeu 2D — lot borné, solde au cycle suivant",
 			"gamertag", d.Gamertag, "selected", len(work), "cap", maxPerCycle)
 		work = work[:maxPerCycle]
 	}
@@ -291,13 +302,53 @@ func Run(ctx context.Context, d Deps, insertedIDs []string) {
 			"gamertag", d.Gamertag, "titleSlug", d.TitleSlug, "err", err)
 		return
 	}
-	built, filmsSaved := buildAll(ctx, d, work)
-	observability.AddIntT(ctxkeys.TitleSlug(ctx), "postsync_replay_artifacts_built_total", int64(built))
-	observability.AddIntT(ctxkeys.TitleSlug(ctx), "postsync_replay_films_persisted_total", int64(filmsSaved))
-	if built > 0 || filmsSaved > 0 {
-		slog.InfoContext(ctx, "post-sync: rejeu 2D",
-			"gamertag", d.Gamertag, "built", built, "films_persisted", filmsSaved, "selected", len(work))
+	publierBilan(ctx, d, buildAll(ctx, d, work), len(work))
+}
+
+// armee dit si l'étape peut travailler, et DIT POURQUOI quand elle ne le peut pas.
+//
+// Les trois refus étaient muets. « Le réglage dit off », « aucun segment de lecture n'est
+// câblé » et « le client ne sait pas lire un film » produisaient le même journal que « l'étape
+// n'existe pas » : rien. Le niveau suit la nature du refus — une configuration se dit en
+// DEBUG, un câblage manquant est un WARN.
+func armee(ctx context.Context, d Deps) bool {
+	switch {
+	case d.Placement == replaybuild.PlacementOff:
+		// Choix de configuration assumé. Les DÉGRADATIONS (« local » refusé en production,
+		// « worker » sans file câblée) ont déjà averti dans Hook.Placement — les répéter ici
+		// doublerait la ligne.
+		slog.DebugContext(ctx, "post-sync: rejeu 2D éteint (replay_build_location)",
+			"gamertag", d.Gamertag)
+		return false
+	case d.WithRead == nil:
+		slog.WarnContext(ctx, "post-sync: rejeu 2D désarmée — aucun segment de lecture câblé",
+			"gamertag", d.Gamertag)
+		return false
+	case d.Placement == replaybuild.PlacementLocal && d.Fetcher == nil:
+		// Le câblage a déjà émis le WARN nominatif (SignalerClientSansChunks, qui connaît le
+		// type du client) : ici on ne fait que tracer la sortie.
+		slog.DebugContext(ctx, "post-sync: rejeu 2D — sans client film, rien à archiver ni à décoder",
+			"gamertag", d.Gamertag)
+		return false
 	}
+	return true
+}
+
+// publierBilan publie les compteurs du cycle et le résumé, MÊME QUAND RIEN N'A ÉTÉ CONSTRUIT.
+//
+// Le résumé était conditionné à `built > 0 || filmsSaved > 0`. Un cycle où les cinq films
+// étaient expirés, ou où la cuisson échouait cinq fois, ne laissait donc aucune trace — le
+// cas qu'il est le plus utile de voir. Même correction que celle déjà appliquée au chemin de
+// mise en file.
+func publierBilan(ctx context.Context, d Deps, b bilanCuisson, selectionnes int) {
+	titre := ctxkeys.TitleSlug(ctx)
+	observability.AddIntT(titre, CompteurConstruits, int64(b.construits))
+	observability.AddIntT(titre, CompteurFilmsPersistes, int64(b.filmsSauves))
+	observability.AddIntT(titre, CompteurDejaAJour, int64(b.dejaAJour))
+	slog.InfoContext(ctx, "post-sync: rejeu 2D",
+		"gamertag", d.Gamertag, "built", b.construits, "films_persisted", b.filmsSauves,
+		"deja_a_jour", b.dejaAJour, "sans_film", b.sansFilm, "echecs", b.echecs,
+		"selected", selectionnes)
 }
 
 // enqueueAll met les matchs du lot dans la file durable — le chemin du VPS web,
@@ -365,8 +416,9 @@ func enqueueAll(ctx context.Context, d Deps, work []buildWork) {
 			appauvris++
 		}
 	}
-	observability.AddIntT(ctxkeys.TitleSlug(ctx), "postsync_replay_jobs_enqueued_total", int64(queued))
-	observability.AddIntT(ctxkeys.TitleSlug(ctx), "postsync_replay_artifacts_factless_requeued_total", int64(appauvris))
+	observability.AddIntT(ctxkeys.TitleSlug(ctx), CompteurEnfiles, int64(queued))
+	observability.AddIntT(ctxkeys.TitleSlug(ctx), CompteurDejaAJour, int64(skipped))
+	observability.AddIntT(ctxkeys.TitleSlug(ctx), CompteurAppauvrisReEnfiles, int64(appauvris))
 	// Le résumé sort dès qu'il y a eu du travail à examiner. Le conditionner à
 	// `queued > 0 || skipped > 0` rendait MUET le cas où tout a été refusé (film expiré sur
 	// tout le lot) : un cycle entier sans la moindre trace au niveau INFO.
@@ -377,9 +429,22 @@ func enqueueAll(ctx context.Context, d Deps, work []buildWork) {
 	}
 }
 
-// buildAll persiste le film puis construit l'artefact de chaque match du lot. Rend
-// (artefacts construits, films persistés).
-func buildAll(ctx context.Context, d Deps, work []buildWork) (built, filmsSaved int) {
+// bilanCuisson : ce que le cycle a fait, et POURQUOI il n'a rien fait quand c'est le cas.
+//
+// Un simple couple (construits, films) ne distingue pas « tout était déjà à jour » de « tous
+// les films sont expirés » ni de « la cuisson a échoué cinq fois » — trois situations qui
+// appellent trois actions différentes et qui s'écrivaient toutes « 0 ».
+type bilanCuisson struct {
+	construits  int
+	filmsSauves int
+	dejaAJour   int
+	sansFilm    int
+	echecs      int
+}
+
+// buildAll persiste le film puis construit l'artefact de chaque match du lot.
+func buildAll(ctx context.Context, d Deps, work []buildWork) bilanCuisson {
+	var b bilanCuisson
 	paths := titlePkg.NewPathResolver(d.RepoRoot)
 	// LE CAS « PAS DE CONSTRUCTION CÂBLÉE » SE DIT UNE FOIS PAR CYCLE, pas une fois par film :
 	// c'est un état de configuration, pas un incident de match. Le pont disque, lui, continue —
@@ -394,10 +459,11 @@ func buildAll(ctx context.Context, d Deps, work []buildWork) (built, filmsSaved 
 		}
 		saved, ok := persistFilmToCache(ctx, d, w.matchID)
 		if !ok {
+			b.sansFilm++
 			continue // film absent/expiré côté serveur : rien à construire (débité en debug)
 		}
 		if saved {
-			filmsSaved++
+			b.filmsSauves++
 		}
 		// MÊME RÈGLE QUE LA MISE EN FILE : la version de schéma ne suffit pas. Un artefact
 		// appauvri déposé par un ouvrier d'avant le transport des faits porte le bon numéro ;
@@ -408,6 +474,7 @@ func buildAll(ctx context.Context, d Deps, work []buildWork) (built, filmsSaved 
 		}
 		aJour, complet := etatArtefact(paths.ReplayArtifactPath(d.TitleSlug, w.matchID), w.facts)
 		if aJour && complet {
+			b.dejaAJour++
 			continue
 		}
 		if aJour {
@@ -428,13 +495,14 @@ func buildAll(ctx context.Context, d Deps, work []buildWork) (built, filmsSaved 
 			}
 			logFn(ctx, "post-sync: artefact rejeu non construit",
 				"gamertag", d.Gamertag, "match_id", w.matchID, "err", berr)
+			b.echecs++
 			continue
 		}
-		built++
+		b.construits++
 		slog.InfoContext(ctx, "post-sync: artefact rejeu construit",
 			"gamertag", d.Gamertag, "match_id", w.matchID, "tracks", out.Tracks, "bytes", out.Bytes)
 	}
-	return built, filmsSaved
+	return b
 }
 
 // persistFilmToCache télécharge les chunks COMPLETS du film et les persiste au cache
