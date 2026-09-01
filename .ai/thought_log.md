@@ -83376,3 +83376,33 @@ Non tranché, consigné avec sa signature.
 **Prochaine étape** : re-dumper les `.mvar`, histogrammer tous les `type_id` aux 12 coordonnées
 publiées, élargir `mapvar.PadFamilyOf`, rejouer l'instrument — le seau ABSTENTION doit
 s'effondrer au profit du seau SOCLE. C'est ce test-là qui tranchera.
+
+---
+
+## [2026-09-01] Vérification `.module` → `.mvar` : réfutée, mais le blocage tombe autrement
+
+**Statut** : Complété (vérification documentaire, aucun appel réseau, aucune écriture hors note).
+
+**La chaîne `.module` ne rend PAS les placements d'objets, et le dépôt le dit noir sur blanc.**
+La chaîne Forge établie le 2026-08-10 (`himap/cuisson_forge.go`) va dans l'autre sens :
+`objet .mvar --type_id--> tag food (.module) --refs--> maillages`. Le `.mvar` est la SOURCE des
+objets (liste, positions, `type_id`) ; le `.module` ne fait que résoudre un `type_id` en modèle.
+C'est le piège « canevas + rack » du lot 5, et il est chiffré : Vagabond porte **788 instances
+dans son canevas contre 4 709 objets dans son `.mvar`**. `himap` CONSOMME des `.mvar`, il n'en
+produit pas. **Maillon manquant nommé : la LISTE des objets et leurs positions.**
+
+**Mais en cherchant, j'ai trouvé mieux que la voie `.module`.** `cmd/mapobj-build` TÉLÉCHARGE les
+`.mvar` depuis l'API UGC Discovery (authentifiée, ADR 0023, aucune re-capture de jeton), et porte
+exactement les trois drapeaux nécessaires : `--save-mvar` (dépose les fichiers — la source qui
+manquait), `--from-file … --dump-objects` (écrit TOUS les objets d'une variante : l'histogramme
+des `type_id` demandé), `--refresh-from` (régénère le catalogue hors ligne). Les jetons sont en
+place. La condition de reprise n'est donc pas « attendre un dump perdu » : c'est **une commande
+réseau**, et la séquence complète est écrite dans la note.
+
+**Je ne l'ai pas exécutée**, et c'est délibéré : déclencher des appels authentifiés sur le compte
+Halo de l'utilisateur, écrire des `.mvar` et régénérer un catalogue partagé sortent du périmètre
+d'un lot de recherche hors ligne en lecture seule. La décision lui revient — elle est à une
+commande près.
+
+**Ce que ça change au verdict** : « bloqué » devient « réalisable, non exécuté », et la
+réfutation porte désormais sur la voie `.module` elle-même, pas sur la faisabilité.

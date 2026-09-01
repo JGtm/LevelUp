@@ -31,8 +31,9 @@ gardes `PICKUP_FILM` + `PICKUP_MAP` + `ORIGINE_MAPID` et `ORIGINE_FILM`.
 **Les `.mvar` ne sont plus au depot.** Zero fichier trouve (arborescence `Scripts`, `Downloads`,
 `Documents`, dossier d'installation du jeu). Le catalogue a ete genere le 2026-08-19 depuis un
 dossier de dump qui n'existe plus. **On ne peut donc pas elargir la liste blanche dans ce lot** :
-la source manque. Ce n'est pas « les .mvar ne declarent pas l'equipement » — c'est « on ne peut
-pas le verifier aujourd'hui ». La distinction compte, et la condition de reprise en decoule.
+la source manque SUR DISQUE. Ce n'est pas « les .mvar ne declarent pas l'equipement » — c'est
+« on ne peut pas le verifier hors ligne aujourd'hui ». La distinction compte, et la suite le
+montre : la source est re-telechargeable (voir « VERIFICATION COMPLEMENTAIRE » plus bas).
 
 ## ETAPE 3 — L'ETALON, ET CE QU'IL REVELE
 
@@ -138,8 +139,77 @@ font pas un lien ; c'est note pour qui reprendra.
 - **PLAUSIBLE** : les 12 regroupements d'abstentions sont des points d'apparition d'equipement
   absents du catalogue. Recurrent, groupe, mais non verifie a la source.
 - **NON TRANCHE** : ce qu'EST `00007ca9`.
-- **BLOQUE, pas refute** : l'elargissement du catalogue aux types d'equipement/grenades. Les
-  `.mvar` manquent.
+- **REFUTE** : que la chaine `.module` puisse rendre les placements d'objets. Elle va dans
+  l'autre sens (le `.module` resout un `type_id` en modele ; le `.mvar` porte la liste et les
+  positions). Maillon manquant nomme : la LISTE des objets.
+- **PLUS BLOQUE, mais NON EXECUTE** : l'elargissement du catalogue. Les `.mvar` sont
+  re-telechargeables par `cmd/mapobj-build --save-mvar` (API UGC, auth en place). C'est une
+  commande reseau sur le compte de l'utilisateur — hors perimetre d'un lot de recherche hors
+  ligne. Sequence prete a lancer ci-dessus.
+
+## VERIFICATION COMPLEMENTAIRE — la chaine `.module` rend-elle les `.mvar` ? NON, mais il y a mieux
+
+Question posee : le chantier cartes ayant resolu l'extraction de la geometrie 2D depuis les
+`.module` du jeu installe, cette meme chaine permettrait-elle de re-extraire les placements
+d'objets — et donc de lever le blocage sans dossier de dump ?
+
+**REPONSE : NON, et le depot le documente noir sur blanc.** La chaine Forge etablie le
+2026-08-10 (`internal/himap/cuisson_forge.go`, sondes `sonde_forge_gamefiles_test.go`) va dans
+l'AUTRE SENS :
+
+```
+objet .mvar --type_id--> tag `food` (GlobalID, forge_objects-rtx-new.module)
+           --refs inline--> tags `rtgo` (maillages)
+           --Pos/Up/Forward--> repere monde
+```
+
+Le `.mvar` est la SOURCE des objets — leur liste, leurs positions, leur `type_id`. Le `.module`
+ne fait que RESOUDRE un `type_id` en modele 3D. C'est exactement le piege « canevas + rack »
+du lot 5 cartes, et le depot le chiffre : « Vagabond n'est pas cuite — **788 instances dans son
+canevas contre 4 709 objets dans son `.mvar`**. Sa carte est le RACK D'OBJETS, pas le module. »
+
+**LE MAILLON MANQUANT EST DONC PRECIS** : la LISTE des objets et leurs positions. Seul le
+`.mvar` la porte ; aucun `.module` ne la contient. `himap` CONSOMME des `.mvar`
+(`cartes_forge.go`, `callouts.go`), il n'en PRODUIT pas.
+
+### MAIS LE BLOCAGE TOMBE QUAND MEME — par une autre voie, deja au depot
+
+En cherchant, j'ai trouve mieux que la voie `.module` : **`cmd/mapobj-build` TELECHARGE les
+`.mvar`** depuis l'API UGC Discovery de Halo (authentifiee, jeton Spartan de l'auth existante,
+ADR 0023, aucune re-capture). Il porte exactement les trois drapeaux qu'il faut :
+
+| drapeau | ce qu'il fait |
+|---|---|
+| `--save-mvar <dossier>` | depose chaque `.mvar` telecharge — **la source qui manquait** |
+| `--from-file <x.mvar> --dump-objects <out.json>` | ecrit **TOUS** les objets de la variante (diagnostic) — **l'histogramme des `type_id` demande** |
+| `--refresh-from <dossier>` | regenere tout le catalogue HORS LIGNE depuis des `.mvar` locaux |
+
+La condition de reprise n'est donc PAS « attendre un dump perdu » : c'est **une commande
+reseau**, sur le compte Halo de l'utilisateur. Les jetons sont en place
+(`data/auth/watcher_tokens/` porte un xuid reel).
+
+**JE NE L'AI PAS EXECUTEE.** Ce lot est une recherche hors ligne en lecture seule ; declencher
+des appels authentifies sur le compte Halo de l'utilisateur, ecrire des `.mvar` et regenerer un
+catalogue partage sortent de son perimetre. La decision revient a l'utilisateur, et elle est a
+une commande pres.
+
+### La sequence exacte, prete a lancer
+
+```
+# 1. Recuperer les deux variantes (un appel reseau par carte, politesse 1 s)
+go run ./cmd/mapobj-build --player <Gamertag> --save-mvar <dossier>     --map-id <map_id de Catalyst> --map-id <map_id de Cliffhanger>
+
+# 2. Histogramme de TOUS les objets d'une variante — le test des 12 coordonnees
+go run ./cmd/mapobj-build --from-file <dossier>/catalyst_catalyst.mvar     --map-id <map_id> --dump-objects /tmp/objets_catalyst.json
+
+# 3. Chercher, dans ce dump, les objets situes aux 12 positions publiees plus haut :
+#    le(s) type_id qui s'y trouve(nt) est le type d'apparition d'equipement cherche.
+
+# 4. Elargir `mapvar.PadFamilyOf` a ce(s) type_id, puis regenerer le catalogue des socles
+go run ./cmd/mapopads-build --from <dossier>
+
+# 5. Rejouer l'instrument : le seau ABSTENTION doit s'effondrer au profit du seau SOCLE.
+```
 
 ## Condition de reprise
 
