@@ -80503,3 +80503,66 @@ global le filtre `Chained` ne laisse passer qu'une poignee de lectures par film 
 relacher le filtre en assumant le bruit et chercher un signal statistique, soit gagner de la
 selectivite sur l'ANCRE (le vrai levier, comme la bande vient de le montrer) plutot que sur les
 composants.
+
+---
+
+## [2026-09-01] L'en-tete de record lu dans le jeu — l'ancre du depot est CONFIRMEE, pas corrigee
+
+**Statut** : Complete. Une piste fermee, deux fonctions du jeu nommees.
+
+**CE QUE GHIDRA A RENDU.** Le lecteur d'en-tete de record est `FUN_141f85fe0`, appele par les DEUX
+lecteurs de record (`FUN_142e309b4` et `FUN_142e30b9c`), qui enchainent tous deux sur
+`FUN_14076cb60`, la boucle de composants. Sa grammaire :
+
+	R(6)                                  -> typeIndex de l'archetype
+	FUN_1406d3140(ti, lecteur, 7, &id)    -> l'identifiant d'entite
+	FUN_1406d676c(lecteur)                -> alignement
+	valide SSI typeIndex < 0x32 ET id != -1 ET position <= taille x 8
+
+Le `< 0x32` justifie enfin `kfArchMax = 50` du depot, qui etait une constante sans source.
+
+`FUN_1406d3140` decompose l'identifiant :
+
+	largeur = FUN_1406d310c(capacite)     -> CEIL(LOG2(capacite))
+	R(largeur)                            -> index de slot, plus une base
+	R(2)                                  -> generation
+	id = generation << 30 | (base + index)
+
+**LE POINT QUI COMPTE : la largeur du slot n'est pas une constante du binaire.** Elle vaut
+`ceil(log2(capacite du pool))`, et la table `DAT_1451f98d0` est NULLE dans l'image statique — elle
+est peuplee au chargement de carte. Meme classe de probleme que les composants a precision
+runtime deja documentes.
+
+**DONC ELLE SE MESURE.** Balayage de la largeur de slot (12 a 16) x largeur de porte (1 a 3),
+meme corpus, meme oracle, plancher de reference 3 % :
+
+| | porte=1 | porte=2 | porte=3 |
+|---|---|---|---|
+| slot=12 | 13,1 % |  7,1 % | 4,4 % |
+| slot=13 | 14,1 % |  7,7 % | 4,9 % |
+| slot=14 | 12,9 % | **20,9 %** | 5,9 % |
+| slot=15 | 15,7 % | 13,2 % | 6,7 % |
+| slot=16 | 12,7 % |  9,8 % | 4,1 % |
+
+`slot=14 porte=2` domine, **a nombre de marches EGAL** (37 901 contre 37 902 pour `slot=13
+porte=2`) : ce n'est pas un effet de selectivite.
+
+**ET CE GAGNANT EST L'EN-TETE DU DEPOT.** `matchWorldObjectRecord` lit `R(1)` de prefixe + `R(13)`
+de slot + `R(2)` de generation + `R(2)` de porte + `R(3)` de compte = **21 bits**, exactement la
+largeur de `slot=14 porte=2`. Le decoupage en `1 + 13` est la meme lecture qu'un `R(14)` dont on
+exige le bit de tete a 1 — et cette exigence supplementaire explique l'ecart entre les 20,9 %
+d'ici et les 29,3 % du chainage de production.
+
+Les deux sources concordent : `ceil(log2(16 384)) = 14`.
+
+**L'ancre n'est donc pas le trou.** Ce balayage FERME une piste, et c'est son utilite : il
+interdit d'y revenir. Restent, pour le chainage : la selectivite du test de fin
+(`worldObjectHeaderAt`, qui passe deja a 3 % des positions arbitraires — le renforcer ferait
+monter le taux sans rien prouver de plus), et la semantique meme du chainage sur un flux ou les
+records d'archetypes DIFFERENTS s'entrelacent.
+
+**Prochaine etape** : ne plus chercher a monter le chainage. Il vaut 29 % pour un plancher de 3 %
+et un plafond mesure de 77 % sur l'archetype de reference ; la marge restante ne se gagne pas sur
+l'ancre, qui vient d'etre confirmee par deux sources independantes. La question utile redevient la
+JAUGE : relacher le filtre `Chained` et chercher un signal statistique sur les 265 records
+porteurs de i12.
