@@ -249,11 +249,13 @@ func TestTemoinBasculeArme(t *testing.T) {
 	ancienne := ventilationAncienneChaine(t, b, scope, counts)
 	nouvelle := ventilationNouvelleChaine(t, b, scope, counts)
 	ecrireComparaison(r, counts, ancienne, nouvelle)
+	ecrireVentilationServie(r, ventilationServie(t, b, scope, counts), counts)
 	ecrireConcordance(r, t, b, scope, counts)
 }
 
-// ventilationAncienneChaine : le sunburst tel qu'il est SERVI aujourd'hui — `weapon_kills`
-// pour les armes a feu, source de degat pour les trois classes hors arsenal.
+// ventilationAncienneChaine : le sunburst tel que `weapon_kills` le sert — la chaine que
+// la bascule remplace. Elle reste mesurable apres la bascule : le lecteur historique n'est
+// pas supprime (il sert Halo 5), seul le cablage de Halo Infinite change.
 func ventilationAncienneChaine(t *testing.T, b *temoinBase, s temoinScope,
 	counts domain.FragKillTypeCounts,
 ) domain.FragDistribution {
@@ -265,13 +267,25 @@ func ventilationAncienneChaine(t *testing.T, b *temoinBase, s temoinScope,
 	if err != nil {
 		t.Fatalf("ancienne chaine (weapon_kills) : %v", err)
 	}
-	src := NewKillSourceClassRepo(b.pdb, halo_infinite.NewKillSourceRegistry())
-	sources, err := src.LoadKillSourceClassesAggregated(context.Background(), temoinSlug,
-		port.KillSourceClassFilters{MatchIDs: s.matchIDs, XUIDs: s.xuids})
+	return fragdist.Build(rows, counts, false)
+}
+
+// ventilationServie : le sunburst tel que le CABLAGE le sert desormais sur les six
+// surfaces — le lecteur adosse a la source de degat, passe au MEME builder que la
+// production. C'est la mesure que le gate A1 demande : non plus « ce que la source dit »
+// mais « ce que la page affiche ».
+func ventilationServie(t *testing.T, b *temoinBase, s temoinScope,
+	counts domain.FragKillTypeCounts,
+) domain.FragDistribution {
+	t.Helper()
+	repo := NewKillSourceWeaponKillsRepo(b.pdb, halo_infinite.NewKillSourceRegistry())
+	rows, err := repo.LoadWeaponKillsAggregated(context.Background(), temoinSlug, port.WeaponKillFilters{
+		MatchIDs: s.matchIDs, XUIDs: s.xuids, ResolveRoles: true, IncludeGrenadeMelee: true,
+	})
 	if err != nil {
-		t.Fatalf("ancienne chaine (hors arsenal) : %v", err)
+		t.Fatalf("nouvelle chaine (source de degat) : %v", err)
 	}
-	return fragdist.Build(rows, sources, counts, false)
+	return fragdist.Build(rows, counts, false)
 }
 
 // classesTriees rend les classes d'une distribution indexees par nom.

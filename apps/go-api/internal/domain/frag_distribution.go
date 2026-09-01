@@ -95,29 +95,32 @@ func IsNonCombatFragClass(class string) bool {
 	return nonCombatFragClasses[class]
 }
 
-// perWeaponFragClasses regroupe les classes SERVIES PAR LE REGISTRE dont le niveau 2 du
-// sunburst est ventilé par ENGIN (weapon_key du registre) et non par rôle de combat : sur
-// ces classes, `role` et `family` valent la classe elle-même dans le registre (tous les
-// véhicules portent class=role=family="vehicle"), un niveau 2 par rôle serait donc un arc
-// unique sans information. La clé de niveau 2 est le weapon_key ; le libellé vient de
+// perWeaponFragClasses regroupe les classes dont le niveau 2 du sunburst est ventilé par
+// OBJET (weapon_key du registre) et non par rôle de combat : sur ces classes, `role` et
+// `family` valent la classe elle-même dans le registre (tous les véhicules portent
+// class=role=family="vehicle"), un niveau 2 par rôle serait donc un arc unique sans
+// information. La clé de niveau 2 est le weapon_key ; le libellé vient de
 // config/titles/{slug}/mappings/weapon_names.toml via metadata.weapon_name_labels
-// (jamais de nom d'engin en dur côté Go).
+// (jamais de nom d'objet en dur côté Go).
 //
-// PORTÉE : ce set ne dit PAS « toutes les classes à niveau 2 par objet ». Il AIGUILLE la
-// provenance REGISTRE (fragdist.registryRoles) et rien d'autre. Depuis le 2026-08-29,
-// equipment et environmental se ventilent AUSSI par objet (bobines, répulseur, chute) —
-// même forme de niveau 2, mais servie par la 3ᵉ provenance (source de dégât du film,
-// fragdist.buildKillSourceFragClasses), qui appelle `perWeaponRoles` en direct sans
-// passer par ce prédicat. Les y ajouter les ferait remonter par le chemin registre, ce
-// que le lot a explicitement refusé (cf. le POURQUOI dans buildKillSourceFragClasses).
+// PORTÉE : ce set décrit la FORME du niveau 2, pas la PROVENANCE des frags. Depuis la
+// bascule de l'arme du kill (2026-09-01), `equipment` et `environmental` s'y trouvent
+// aussi — leur niveau 2 est un objet (bobine à plasma, répulseur) exactement comme celui
+// d'un engin. Savoir SI une classe est servie est une autre question, tranchée dans
+// fragdist.isRegistryFragClass par la provenance de la ligne : une ligne mesurée par la
+// source de dégât du film sert ces classes, une ligne issue de `weapon_kills` non — sans
+// quoi le bucket `h5_environmental` de Halo 5, qui porte un identifiant numérique, ferait
+// apparaître une classe Environnement dans le sunburst du second titre.
 var perWeaponFragClasses = map[string]bool{
-	FragClassVehicle: true,
-	FragClassTurret:  true,
+	FragClassVehicle:       true,
+	FragClassTurret:        true,
+	FragClassEquipment:     true,
+	FragClassEnvironmental: true,
 }
 
-// IsPerWeaponFragClass indique si le niveau 2 d'une classe SERVIE PAR LE REGISTRE se
-// ventile par ENGIN (weapon_key) plutôt que par rôle de combat. Cf. perWeaponFragClasses
-// (et sa note de portée : d'autres classes ont un niveau 2 par objet par une autre voie).
+// IsPerWeaponFragClass indique si le niveau 2 d'une classe se ventile par OBJET
+// (weapon_key) plutôt que par rôle de combat. Cf. perWeaponFragClasses (et sa note de
+// portée : la forme du niveau 2 ne dit pas la provenance des frags).
 func IsPerWeaponFragClass(class string) bool {
 	return perWeaponFragClasses[class]
 }

@@ -15,7 +15,6 @@ import (
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/fragdist"
-	"levelup/go-api/internal/service/killsourceload"
 )
 
 // squadScope porte le périmètre commun aux breakdowns par-arme de la page Escouade
@@ -141,14 +140,8 @@ func (s *TeammatesService) buildSquadWeaponKills(
 	// Infinite (cap off) : mechByGT nil → comportement inchangé.
 	hasMechanics := titleHasNativeKillMechanics(s.titleSlug)
 	mechByGT := s.loadSquadMechanicsByGT(ctx, sharedMatches, xuids, gtByXUID, hasMechanics)
-	// 3ᵉ provenance (lot 2026-08-29) : les kills que l'attribution arme-à-feu ne voit pas
-	// (répulseur, bobines, chute). MÊME scope que les armes ci-dessus, un seul appel pour
-	// tous les xuids. Repo non câblé (titre sans capability film.kill_source) → nil, et la
-	// ventilation est byte-identique à ce qu'elle était.
-	sources := killsourceload.Load(ctx, s.killSourceRepo, "squad", s.titleSlug, sharedMatches, xuids)
 	fragClasses := squadFragClassesByPlayer(squadFragInputs{
 		rows:           rows,
-		sources:        sources,
 		playersOrdered: playersOrdered,
 		xuidByPlayer:   xuidByPlayer,
 		perf:           perf,
@@ -175,13 +168,16 @@ func aggregateSquadWeaponBars(rows []port.WeaponKillRow, gtByXUID map[string]str
 		kills          map[string]int
 		total          int
 	}
-	bars := make(map[int64]*barAgg)
+	// Cle d arme : le COUPLE (identifiant, cle de registre) — cf.
+	// port.WeaponKillRow.AggregateKey.
+	bars := make(map[string]*barAgg)
 	for _, r := range rows {
 		gt, ok := gtByXUID[r.XUID]
 		if !ok {
 			continue
 		}
-		b, exists := bars[r.WeaponID]
+		cleArme := r.AggregateKey()
+		b, exists := bars[cleArme]
 		if !exists {
 			b = &barAgg{
 				weaponID:       r.WeaponID,
@@ -190,7 +186,7 @@ func aggregateSquadWeaponBars(rows []port.WeaponKillRow, gtByXUID map[string]str
 				isGrenadeMelee: r.IsGrenadeMelee,
 				kills:          make(map[string]int),
 			}
-			bars[r.WeaponID] = b
+			bars[cleArme] = b
 		}
 		b.kills[gt] += r.Kills
 		b.total += r.Kills
@@ -301,11 +297,10 @@ func aggregateFragCounts(pts []domain.SquadPerformanceSeriesPoint) domain.FragKi
 // spartan_ability et le split Mêlée (D-P6-2 résolu). nil si aucune classe produite.
 // squadFragInputs regroupe les entrées par joueur de la ventilation par classe. Un
 // struct, PAS des paramètres : la signature en portait déjà 6, et la 3ᵉ provenance
-// (sources de dégât du film, lot 2026-08-29) en aurait ajouté un 7ᵉ — au-delà de la règle
+// (sources de dégât du film, lot 2026-08-29) en avait ajouté un 7ᵉ — au-delà de la règle
 // des 5 du dépôt. Même motif que killFeedInputs côté service.
 type squadFragInputs struct {
 	rows           []port.WeaponKillRow
-	sources        []port.KillSourceClassRow
 	playersOrdered []string
 	xuidByPlayer   map[string]string
 	perf           map[string][]domain.SquadPerformanceSeriesPoint
@@ -327,15 +322,6 @@ func squadFragClassesByPlayer(in squadFragInputs) map[string][]domain.FragClassE
 			rowsByGT[gt] = append(rowsByGT[gt], r)
 		}
 	}
-	// Les sources de dégât se réindexent par gamertag comme les rows : même clé (xuid),
-	// même table de correspondance. Un joueur sans aucune de ces morts n'a pas d'entrée —
-	// fragdist.Build reçoit alors nil et rend exactement ce qu'il rendait avant.
-	sourcesByGT := make(map[string][]port.KillSourceClassRow, len(in.playersOrdered))
-	for _, s := range in.sources {
-		if gt := gtByXUID[s.XUID]; gt != "" {
-			sourcesByGT[gt] = append(sourcesByGT[gt], s)
-		}
-	}
 	out := make(map[string][]domain.FragClassEntry, len(in.playersOrdered))
 	for _, gt := range in.playersOrdered {
 		counts := aggregateFragCounts(in.perf[gt])
@@ -344,7 +330,7 @@ func squadFragClassesByPlayer(in squadFragInputs) map[string][]domain.FragClassE
 			counts.GroundPound = m.GroundPound
 			counts.ShoulderBash = m.ShoulderBash
 		}
-		fd := fragdist.Build(rowsByGT[gt], sourcesByGT[gt], counts, in.hasMechanics)
+		fd := fragdist.Build(rowsByGT[gt], counts, in.hasMechanics)
 		if len(fd.Classes) > 0 {
 			out[gt] = fd.Classes
 		}

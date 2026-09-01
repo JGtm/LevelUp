@@ -68,7 +68,7 @@ func TestBuild_InfiniteCapOff(t *testing.T) {
 		// mécaniques natives absentes (Infinite)
 	}
 	// gun=30, melee=6, grenade=4 → attribué=40 ; total=50 → unattributed=10.
-	fd := Build(heterogeneousInfiniteRows(), nil, counts, false)
+	fd := Build(heterogeneousInfiniteRows(), counts, false)
 	assertFragInvariants(t, fd)
 
 	if _, ok := findFragClass(fd, domain.FragClassSpartanAbility); ok {
@@ -116,7 +116,7 @@ func TestBuild_H5CapOn(t *testing.T) {
 	}
 	// gun=21, melee=melee+assass=14, grenade=5, spartan=5 → attribué=45 ; total=50 →
 	// unattributed=5. (assassinat ⊄ mêlée : compteurs API disjoints, cf. meleeRoles.)
-	fd := Build(rows, nil, counts, true)
+	fd := Build(rows, counts, true)
 	assertFragInvariants(t, fd)
 
 	spartan, ok := findFragClass(fd, domain.FragClassSpartanAbility)
@@ -158,7 +158,7 @@ func TestBuild_CanonicalOrder(t *testing.T) {
 		GroundPound: 5,
 		Total:       40,
 	}
-	fd := Build(rows, nil, counts, true) // 15 gun +5+5+5 spartan =30 ; total 40 → unattr 10
+	fd := Build(rows, counts, true) // 15 gun +5+5+5 spartan =30 ; total 40 → unattr 10
 	assertFragInvariants(t, fd)
 	want := []string{
 		domain.FragClassShoulder, domain.FragClassSidearm, domain.FragClassHeavy,
@@ -185,7 +185,7 @@ func TestBuild_AssassinationGreaterThanMelee(t *testing.T) {
 		Assassination: 4, // > melee : disjoint, aucun clamp
 		Total:         6, // melee 2 + assass 4 (les assassinats SONT des kills du total)
 	}
-	fd := Build(nil, nil, counts, true)
+	fd := Build(nil, counts, true)
 	assertFragInvariants(t, fd)
 	melee, ok := findFragClass(fd, domain.FragClassMelee)
 	if !ok || melee.Kills != 6 || len(melee.Roles) != 2 {
@@ -203,7 +203,7 @@ func TestBuild_AssassinationGreaterThanMelee(t *testing.T) {
 // le total.
 func TestBuild_NoResidualWhenExact(t *testing.T) {
 	rows := []port.WeaponKillRow{{WeaponID: 40, Kills: 10, Class: "shoulder", Role: "automatic"}}
-	fd := Build(rows, nil, domain.FragKillTypeCounts{Total: 10}, false)
+	fd := Build(rows, domain.FragKillTypeCounts{Total: 10}, false)
 	assertFragInvariants(t, fd)
 	if _, ok := findFragClass(fd, domain.FragClassUnattributed); ok {
 		t.Error("attribution exacte : aucune classe unattributed attendue")
@@ -230,7 +230,7 @@ func TestBuild_GrenadeSubLevelByType(t *testing.T) {
 	}
 	// total API grenade = 6 ; typé = 5 (frag 3 + plasma 2) → résidu « autre grenade » = 1.
 	counts := domain.FragKillTypeCounts{Grenade: 6, Total: 20}
-	fd := Build(rows, nil, counts, false)
+	fd := Build(rows, counts, false)
 	assertFragInvariants(t, fd)
 	g, ok := findFragClass(fd, domain.FragClassGrenade)
 	if !ok || g.Kills != 6 || !g.Authoritative {
@@ -253,7 +253,7 @@ func TestBuild_GrenadeSubLevelByType(t *testing.T) {
 // TestBuild_GrenadeLeafWhenNoTypedRows : sans row grenade typée (donnée absente), la classe
 // Grenade reste une FEUILLE (dégradation data-driven, ni Infinite ni H5 en dur).
 func TestBuild_GrenadeLeafWhenNoTypedRows(t *testing.T) {
-	fd := Build(nil, nil, domain.FragKillTypeCounts{Grenade: 4, Total: 10}, false)
+	fd := Build(nil, domain.FragKillTypeCounts{Grenade: 4, Total: 10}, false)
 	assertFragInvariants(t, fd)
 	g, ok := findFragClass(fd, domain.FragClassGrenade)
 	if !ok || g.Kills != 4 || g.Roles != nil {
@@ -268,7 +268,7 @@ func TestBuild_GrenadeLeafWhenOverAttributed(t *testing.T) {
 	rows := []port.WeaponKillRow{
 		{WeaponID: 50, Kills: 5, Class: "grenade", Role: "grenade", Family: "frag_grenade"},
 	}
-	fd := Build(rows, nil, domain.FragKillTypeCounts{Grenade: 4, Total: 10}, false)
+	fd := Build(rows, domain.FragKillTypeCounts{Grenade: 4, Total: 10}, false)
 	assertFragInvariants(t, fd)
 	g, ok := findFragClass(fd, domain.FragClassGrenade)
 	if !ok || g.Kills != 4 || g.Roles != nil {
@@ -287,7 +287,7 @@ func TestBuild_MechanicKillsExcludedFromGunClasses(t *testing.T) {
 		{WeaponID: 60, Kills: 9, Class: "shoulder", Role: "automatic", MechanicKills: 2},
 	}
 	counts := domain.FragKillTypeCounts{Melee: 3, Total: 10}
-	fd := Build(rows, nil, counts, true)
+	fd := Build(rows, counts, true)
 	assertFragInvariants(t, fd) // Σ classes == 10 (sinon le non-retrait ferait 12 > 10)
 	sh, ok := findFragClass(fd, domain.FragClassShoulder)
 	if !ok || sh.Kills != 7 {
@@ -332,7 +332,7 @@ func h5VehicleRows() []port.WeaponKillRow {
 func TestBuild_H5VehiclesVentilatedPerVehicle(t *testing.T) {
 	// gun=10, vehicle=14, turret=3, melee=2, grenade=1 → 30 = total (résidu nul).
 	counts := domain.FragKillTypeCounts{Melee: 2, Grenade: 1, Total: 30}
-	fd := Build(h5VehicleRows(), nil, counts, true)
+	fd := Build(h5VehicleRows(), counts, true)
 	assertFragInvariants(t, fd)
 
 	veh, ok := findFragClass(fd, domain.FragClassVehicle)
@@ -388,7 +388,7 @@ func TestBuild_H5VehiclesVentilatedPerVehicle(t *testing.T) {
 // aucune row de cette classe, donc aucun arc. Sortie byte-identique à l'avant-3.2.
 func TestBuild_TitleWithoutVehicles_NoVehicleClass(t *testing.T) {
 	counts := domain.FragKillTypeCounts{Melee: 6, Grenade: 4, Total: 50}
-	fd := Build(heterogeneousInfiniteRows(), nil, counts, false)
+	fd := Build(heterogeneousInfiniteRows(), counts, false)
 	assertFragInvariants(t, fd)
 	for _, class := range []string{domain.FragClassVehicle, domain.FragClassTurret} {
 		if c, ok := findFragClass(fd, class); ok {
@@ -410,7 +410,7 @@ func TestBuild_VehicleWithoutWeaponKey_StaysLeaf(t *testing.T) {
 			WeaponKey: "h5_vehicle_warthog", Label: "Warthog"},
 		{WeaponID: 999999, Kills: 2, Class: "vehicle", Role: "vehicle"}, // hors registre
 	}
-	fd := Build(rows, nil, domain.FragKillTypeCounts{Total: 10}, true)
+	fd := Build(rows, domain.FragKillTypeCounts{Total: 10}, true)
 	assertFragInvariants(t, fd)
 	veh, ok := findFragClass(fd, domain.FragClassVehicle)
 	if !ok || veh.Kills != 7 {
@@ -439,7 +439,7 @@ func TestBuild_VehicleLabelENPropagates(t *testing.T) {
 		{WeaponID: 3010146366, Kills: 4, Class: "vehicle", Role: "vehicle",
 			WeaponKey: "h5_vehicle_ghost", Label: "", LabelEN: "Ghost"},
 	}
-	fd := Build(rows, nil, domain.FragKillTypeCounts{Total: 10}, true)
+	fd := Build(rows, domain.FragKillTypeCounts{Total: 10}, true)
 	assertFragInvariants(t, fd)
 	veh, ok := findFragClass(fd, domain.FragClassVehicle)
 	if !ok || len(veh.Roles) != 2 {

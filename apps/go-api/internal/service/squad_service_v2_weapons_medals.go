@@ -49,9 +49,12 @@ func BuildWeaponsTable(
 	if len(rows) == 0 {
 		return nil
 	}
-	// Aggreger par (weapon_id, xuid).
+	// Aggreger par (arme, xuid). La cle d arme est le COUPLE (identifiant, cle de
+	// registre) — cf. port.WeaponKillRow.AggregateKey : les objets hors arsenal n ont
+	// aucun identifiant numerique et fusionneraient sinon en une seule ligne.
 	type key struct {
 		weaponID       int64
+		weaponKey      string
 		isGrenadeMelee bool
 	}
 	type weaponData struct {
@@ -61,7 +64,7 @@ func BuildWeaponsTable(
 	}
 	agg := make(map[key]*weaponData, len(rows))
 	for _, r := range rows {
-		k := key{weaponID: r.WeaponID, isGrenadeMelee: r.IsGrenadeMelee}
+		k := key{weaponID: r.WeaponID, weaponKey: r.WeaponKey, isGrenadeMelee: r.IsGrenadeMelee}
 		w, ok := agg[k]
 		if !ok {
 			w = &weaponData{killsByID: make(map[string]int)}
