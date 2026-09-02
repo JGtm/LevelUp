@@ -133,8 +133,14 @@ const AT_TOP_PX = 4
  */
 // Exporté pour la ligne de présence (ReplayPresenceLine.tsx) : même filet, même gouttière
 // d'horloge — une quatrième forme de ligne qui divergerait d'un pixel se verrait.
+/**
+ * LE RETRAIT À GAUCHE EST SUR LA LIGNE, PAS SUR LA LISTE (correction du 2026-09-02). Posé sur
+ * le `<ul>`, il décalait AUSSI le filet séparateur de chaque entrée — les traits rentraient avec
+ * le texte, et l'oeil ne voyait donc aucun retrait du tout. Ici, la ligne garde sa largeur
+ * pleine (son `border-bottom` court d'un bord à l'autre) et c'est son CONTENU qui rentre.
+ */
 export const FEED_ROW =
-  'replay-feed-row flex shrink-0 flex-nowrap items-center gap-2 overflow-hidden py-[5px] pr-2 text-xs'
+  'replay-feed-row flex shrink-0 flex-nowrap items-center gap-2 overflow-hidden py-[5px] pl-2.5 pr-2 text-xs'
 
 interface Props {
   /**
@@ -213,16 +219,12 @@ export function ReplayKillFeed({
       <div className={`${HUD_BAND_CLASS} text-foreground`} style={hudBandStyle(null)}>
         {t.killFeedTitle}
       </div>
-      {/* `pl-1.5` : LA GOUTTIÈRE D'HORLOGE NE COLLE PLUS AU BORD (2026-09-02, retour
-          utilisateur). Elle ouvre chaque ligne et venait donc buter sur la bordure du panneau,
-          là où tout le reste du fil respire. Le retrait est à GAUCHE seulement — à droite, la
-          barre de défilement occupe déjà la marge quand le fil est long. */}
       <ul
         ref={listRef}
         onScroll={(e) => {
           atTopRef.current = e.currentTarget.scrollTop <= AT_TOP_PX
         }}
-        className="mt-2 flex min-h-[4.5rem] flex-1 flex-col overflow-y-auto pl-2.5"
+        className="mt-2 flex min-h-[4.5rem] flex-1 flex-col overflow-y-auto"
         aria-live="off"
       >
         {count === 0 && <li className="text-xs text-muted-foreground">{t.killFeedEmpty}</li>}
