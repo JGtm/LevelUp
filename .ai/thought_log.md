@@ -1,3 +1,22 @@
+## [2026-09-02] T0 film — CLOTURE : merge sur feat/v75, schema renumerote 37, CI verte hors dette lint externe — Complete
+
+Chantier clos sous `.ai/V7.5/PLAN_T0_FILM_2026-09-02.md`. **D3** : gate visuel VALIDE par
+le user (« ok c'est bon »). **Merge** : collision de schema arbitree par renumerotation
+36 -> 37 (l'identite des vies garde le 36 pris sur feat/v75 ; constante, chroniques,
+replaySchemaLogic, goldens et regenerations rejoues sur l'etat merge) ; fixture
+`presenceFeed.test.ts` completee du `leadInFrame` requis ; feat/v75 a bouge DEUX fois
+pendant l'operation (rattrapages merges). Gates merges tous verts (build, tests Go,
+tsc, vitest 2038/2038, lint web, archlint) ; push `62c9a8181` apres pose de l'env CGO
+(le hook pre-push go-vet-cgo exige gcc msys64 sur le PATH). **CI de branche** : tous
+les jobs verts SAUF golangci-lint — exactement les 2 `unparam` preexistants d'autres
+chantiers (`filmdec/weapon_hit_distance_resolver.go:178`, `killcollector/hits.go:171`),
+zero rouge imputable au lot, correction laissee aux chantiers proprietaires (fichiers
+sous worktrees actifs). **Bilan produit** : detecteur en prod (schema 37), lecteur cale
+sur le T0 mesure + preambule 1 s, base locale reparee (101 film_movement), garde
+anti-ecrasement, backfill general sequence au Backlog Notion, recuisson au registre en
+attente d'accord user. Prochaine etape : rien pour ce chantier — worktree `t0-film`
+candidat au housekeeping apres tag v7.5.0.
+
 ## [2026-09-02] T0 film — LOT D (D1/D2/D4/D5) : la base locale est reparee, la suite est sequencee — En cours (reste D3 gate visuel + D6 cloture)
 
 Sous le plan `.ai/V7.5/PLAN_T0_FILM_2026-09-02.md`. **Decision technique** : execution du
