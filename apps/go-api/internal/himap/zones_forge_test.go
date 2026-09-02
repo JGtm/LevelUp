@@ -96,3 +96,46 @@ func TestZonesIgnoreLesAutresObjets(t *testing.T) {
 		t.Fatalf("zones retenues : %+v, attendu la seule zone 3", zs)
 	}
 }
+
+// TestPrismeRetourneEcarte — L'ANOMALIE DATEE DU 2026-08-27, refusee et non redressee.
+//
+// Sur une poignee de zones du corpus, l'emplacement 8 vaut -56,00 m : le prisme se retrouve
+// base au-dessus du sommet. Les emplacements 5 a 8 se lisant a la file, une valeur impossible
+// en 8 met en doute 5 et 6 — donc le POLYGONE. On refuse la zone entiere.
+func TestPrismeRetourneEcarte(t *testing.T) {
+	retournee := zoneTest(11, 0, 0, 8, 6, mapvar.Vec3{X: 1})
+	retournee.ShapeRaw.S7 = int64(2 * 65536)   // 2 m au-dessus
+	retournee.ShapeRaw.S8 = int64(-56 * 65536) // -56 m au-dessous : impossible
+	saine := zoneTest(12, 30, 30, 8, 6, mapvar.Vec3{X: 1})
+
+	zs := ZonesNommeesForge([]mapvar.Object{retournee, saine})
+	if len(zs) != 1 || zs[0].StringID != 12 {
+		t.Fatalf("zones retenues : %+v, attendu la seule zone saine (12)", zs)
+	}
+	if zs[0].ZHaut <= zs[0].ZBas {
+		t.Errorf("zone saine : tranche [%f;%f] inversee", zs[0].ZBas, zs[0].ZHaut)
+	}
+}
+
+// TestZonePorteSonIndiceEtSonCentre — la tracabilite et le centre 3D, les deux champs dont le
+// catalogue de callouts a besoin : l'indice retrouve l'objet dans la variante, le centre sert
+// l'affectation d'un joueur a sa zone (distance 3D, sinon deux etages se confondent).
+func TestZonePorteSonIndiceEtSonCentre(t *testing.T) {
+	o := zoneTest(5, 12, -7, 8, 6, mapvar.Vec3{X: 1})
+	o.Index = 3412
+	o.Pos.Z = 9.5
+	zs := ZonesNommeesForge([]mapvar.Object{o})
+	if len(zs) != 1 {
+		t.Fatalf("zones retenues : %d, attendu 1", len(zs))
+	}
+	if zs[0].Index != 3412 {
+		t.Errorf("index = %d, attendu 3412", zs[0].Index)
+	}
+	if zs[0].Pos != [3]float64{12, -7, 9.5} {
+		t.Errorf("centre = %v, attendu [12 -7 9.5]", zs[0].Pos)
+	}
+	// zoneTest pose 2 m au-dessus et 1 m au-dessous du centre.
+	if zs[0].ZHaut != 11.5 || zs[0].ZBas != 8.5 {
+		t.Errorf("tranche = [%f;%f], attendu [8.5;11.5]", zs[0].ZBas, zs[0].ZHaut)
+	}
+}
