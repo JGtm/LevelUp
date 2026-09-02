@@ -61,33 +61,33 @@ lot A puis lot C séquentiels ; lot B (web) peut courir en parallèle du lot A.
 
 ### Étapes
 
-- [ ] A1. `platform/duckdb/match_view_repo_extras.go` (`GetMatchKVPairs`, ~L183-217) :
+- [x] A1. `platform/duckdb/match_view_repo_extras.go` (`GetMatchKVPairs`, ~L183-217) :
       scanner `killer_xuid`, `killer_gamertag`, `victim_xuid` en `sql.NullString`
       (`victim_gamertag` et `time_ms` sont NOT NULL au DDL — scan nu conservé),
       mapping `.Valid ? String : ""` vers `KVPairRaw`. Documenter la sémantique D2
       sur le struct (`domain/match_view_raw.go:380-390`).
-- [ ] A2. Supprimer l'avalement silencieux du 2e niveau : dans `GetMatchKVPairs`,
+- [x] A2. Supprimer l'avalement silencieux du 2e niveau : dans `GetMatchKVPairs`,
       l'erreur de `QueryContext` reste tolérée (table absente, commentaire existant),
       mais une erreur de SCAN doit remonter — elle remonte déjà ; vérifier qu'après
       A1 il ne reste AUCUN chemin qui rende `nil, nil` sur données présentes.
-- [ ] A3. `service/match_view_killfeed_weapon.go` : `victimsByKill` (~L74-91) accepte
+- [x] A3. `service/match_view_killfeed_weapon.go` : `victimsByKill` (~L74-91) accepte
       une victime à xuid vide si `VictimGT != ""` (clé inchangée tueur+instant ; la
       garde d'unanimité compare le gamertag quand les deux xuids sont vides).
       `decorateVictim` (~L175-186) ne pose `VictimXUID`/`VictimTeamID` que s'ils
       existent, pose toujours le gamertag.
-- [ ] A4. Garde manquante mesurée (agent d'audit B) : `buildTugEvents`
+- [x] A4. Garde manquante mesurée (agent d'audit B) : `buildTugEvents`
       (`match_view_builders_combat.go:220-231`) compte TOUTES les paires — ajouter
       le skip des paires à xuid vide (D2). Vérifier sur pièces que `buildKDEvents`,
       `buildKillerVictimPairs`, `buildNemesisMap` (`match_view_builders_team.go:304-314`)
       et `SynthesizeKillEventsFromKVPairs` sautent déjà les xuids vides — sinon,
       même garde.
-- [ ] A5. Tests : (a) test repo DuckDB `:memory:` — fixture `match_kill_events` avec
+- [x] A5. Tests : (a) test repo DuckDB `:memory:` — fixture `match_kill_events` avec
       1 ligne bot-victime + 1 ligne bot-tueur + 2 humaines → `GetMatchKVPairs` rend
       les 4 paires sans erreur ; (b) test `victimsByKill`/`decorateVictim` cas bot
       (victime nommée sans xuid, pas d'équipe) ; (c) test `buildTugEvents` ignore
       les paires à xuid vide ; (d) test de non-régression `decorateKillFeed` complet
       sur mini-fixture à bot.
-- [ ] A6. Vérification frontend SUR PIÈCES (lecture seule, aucun code attendu) :
+- [x] A6. Vérification frontend SUR PIÈCES (lecture seule, aucun code attendu) :
       `KillLine` rend une victime par `victimGamertag` seul (`ReplayKillFeed.tsx:474-479`)
       et `marks.get('')`/`allyOf` tolèrent le xuid vide. Consigner le constat.
 
@@ -110,16 +110,16 @@ ancré `^--- FAIL:` + `$LASTEXITCODE`.
 
 ### Étapes
 
-- [ ] B1. `ReplayFeedName.tsx` : ne plus rendre `PlayerMark` (le fil n'affiche plus
+- [x] B1. `ReplayFeedName.tsx` : ne plus rendre `PlayerMark` (le fil n'affiche plus
       AUCUN glyphe — `me` était déjà retiré, `friend` part avec D5). L'encre
       `success` (`feedNameInk`) et le `sr-only` du joueur actif restent. Mettre à
       jour l'en-tête du fichier ET celui de `ReplayKillFeed.tsx` (règles C1)
       — pas de doc inversée.
-- [ ] B2. Chasse au code mort (règle n°7) : si `PlayerMark` n'a plus d'usage dans le
+- [x] B2. Chasse au code mort (règle n°7) : si `PlayerMark` n'a plus d'usage dans le
       FIL, retirer l'import ; vérifier ses autres usages (carte via `ReplayCanvas`,
       légendes) avant toute suppression plus large — la carte le GARDE (D5).
       `marksByGamertag`/`marks` restent nécessaires (encre success). Statuer.
-- [ ] B3. Tests : adapter `ReplayKillFeed.test.tsx` (assertions de glyphe) ; ajouter
+- [x] B3. Tests : adapter `ReplayKillFeed.test.tsx` (assertions de glyphe) ; ajouter
       l'assertion inverse (aucun `PlayerMark` rendu dans une ligne de fil avec ami).
 
 ### Gate B
@@ -138,7 +138,7 @@ sur le témoin (le pilote fournit URL + points à vérifier).
 
 ### Étapes
 
-- [ ] C1. Générer la table de correspondance D3 : requête corpus
+- [x] C1. Générer la table de correspondance D3 : requête corpus
       (`(type_hint, medal_value) → medal_name`, 124 entrées, 0 ambiguë — requête du
       diagnostic dans le thought_log), croiser avec `medal_definitions.name_en`
       (noms absents du référentiel = consignés, pas inventés). Livrer en constante
@@ -146,7 +146,7 @@ sur le témoin (le pilote fournit URL + points à vérifier).
       test qui échoue si une clé du corpus de test n'est pas couverte.
       Emplacement : `internal/games/halo_infinite/` (savoir film title-specific),
       exposé au collector via l'adapter existant — PAS de `slug ==` (capability).
-- [ ] C2. `sync/collect.go:115-123` : remplir `TypeHint` (manquant pour TOUS les
+- [x] C2. `sync/collect.go:115-123` : remplir `TypeHint` (manquant pour TOUS les
       events depuis la bascule persist) et, pour les medal, `RawJSON`
       `{"medal_name": "..."}` via C1. `persist.HighlightEventInsert` gagne les
       champs nécessaires ; `persistHighlightEvents` (`shared_persister.go:432-448`)
@@ -156,21 +156,22 @@ sur le témoin (le pilote fournit URL + points à vérifier).
       explicitement DetailsJSON→type_hint pour H5, RawJSON→raw_json pour tous).
       Multi-titre : aucun comportement nouveau pour un titre sans table C1
       (dégradation = raw_json absent, comme aujourd'hui).
-- [ ] C3. Tests : unit collector (event medal → insert avec type_hint + raw_json
+- [x] C3. Tests : unit collector (event medal → insert avec type_hint + raw_json
       correct ; event kill → type_hint seul), unit persister (colonnes séparées,
       NULL propres), non-régression H5 ingest (detail numérique intact).
-- [ ] C4. Backfill (D6) : step de migration AU NOM NEUF qui, pour chaque match ayant
+- [x] C4. Backfill (D6) : step de migration AU NOM NEUF qui, pour chaque match ayant
       des events medal à `raw_json IS NULL` (mesure : 415 matchs / 22 031 events),
       relit le chunk highlight du film EN CACHE (`killcollector` cache films),
       re-parse (`analysis.ParseHighlightEvents`), apparie par (xuid, time_ms,
       event_type) et UPDATE `raw_json` + `type_hint`. Film absent du cache = match
       consigné et sauté (best-effort compté, jamais silencieux). Sérialisé, plafond
       par run, `slog.InfoContext` de progression (`match_id`, compteurs).
-- [ ] C5. Gate intégration OBLIGATOIRE (persist/sync/migration touchés) puis run du
+- [~] C5. (gate intégration FAIT et vert ; le RUN du backfill part en séquence release
+      — Backlog Notion, décision user du 02/09) Gate intégration OBLIGATOIRE (persist/sync/migration touchés) puis run du
       backfill sur la DB locale : DEMANDER au user (serveur à arrêter). Validation
       témoin : le match `1b2d9e08...` affiche ses 32 médailles au fil ; comptage
       recoupé avec `medals_earned` (ordre de grandeur par joueur).
-- [ ] C6. Revue adversariale (skill `adversarial-review`) du diff persist/sync avant
+- [x] C6. Revue adversariale (skill `adversarial-review`) du diff persist/sync avant
       merge — lot à risque au sens CLAUDE.md.
 
 ### Gate C
@@ -186,7 +187,7 @@ go -C apps/go-api vet ./...
 
 ## Clôture (pilote)
 
-- [ ] Chaque lot : entrée thought_log + commit sur `feat/v75` (demander avant commit),
+- [x] Chaque lot : entrée thought_log + commit sur `feat/v75` (demander avant commit),
       worktree nettoyé après merge.
 - [ ] CI de branche verte AU NIVEAU JOB après le dernier merge (`gh run list`).
 - [ ] Registre des reports : toute découverte non traitée y entre avec sa condition
@@ -232,4 +233,20 @@ détail dans le thought_log. Prochain geste si tout est vide : lancer lot A et l
   service + intégration KVPairs verts). En attente : commit + merge.
 - Lot B : TERMINÉ et vérifié sur pièces (diff relu, gates rapportés verts : typecheck,
   lint, 5 711 tests). En attente : gate visuel user + commit + merge.
-- Lot C : à lancer APRÈS merge du lot A.
+- Lot C : implémenté (C1-C4 + C5-prep, déviation D6→CLI acceptée : un step de migration
+  tournerait au boot serveur, le process à arrêter). Revue adversariale RONDE 1 rendue
+  (2 relecteurs, lentilles L1 anti-ART + L6 tests) : 6 constats recevables, 22 conditions
+  vérifiées qui tiennent. Triage pilote : 2 P1 corrigés en ronde de correction
+  (`strPtr` inexistant → binaire de test persist ne compilait pas sous -tags=integration ;
+  SECOND écrivain highlight_events non réparé — voie complétion/convergence
+  `persistCombatCompletion`/`insertCompletionHighlightEvents`, sans raw_json, qui
+  ré-ouvrait le trou à chaque cycle) + 1 P2 fonctionnel corrigé (--limit sans curseur ne
+  progressait pas sur matchs sans film) + 2 P2 tests ajoutés (chunk indécodable, erreur
+  cache). CONSIGNÉS sans correction : atomicité transactionnelle non testée (stdlib,
+  couture d'injection non souhaitée) ; aucun ratchet ne couvre les writers DuckDB hors
+  internal/sync (préexistant — le nouveau writer ops est hors de portée des gardes).
+- Lot D (retour user 02/09, hors plan initial) : suffixe « [bot] » retiré de l'AFFICHAGE
+  au chokepoint `displayPlayerName` + routage des surfaces à noms bruts — exécuteur web
+  en cours, worktree `wt/nom-bots`. Le marqueur reste en DONNÉES.
+- Run du backfill : décision user 02/09 — PAS de run local, la passe part dans la
+  séquence release du Backlog Notion (ajoutée après la remédiation du cache appauvri).
