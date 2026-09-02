@@ -119,6 +119,8 @@ func main() {
 		exitErr = runBackfillH5KillMechanics(cfg, args)
 	case "backfill-killsource":
 		exitErr = runBackfillKillSource(cfg, args)
+	case "backfill-medailles-feed":
+		exitErr = runBackfillMedaillesFeed(cfg, args)
 	case "archive-films":
 		exitErr = runArchiveFilms(cfg, args)
 	case "backfill-replay":
@@ -178,6 +180,7 @@ Commandes:
   backfill-squad-creators Réinscrit le créateur manquant dans les escouades legacy (append-only, idempotent, --dry-run dispo, serveur arrêté)
   backfill-h5-kill-mechanics Corrige les mécaniques de kill H5 (assassination/ground_pound/shoulder_bash) écrites à 0 avant l'activation du mapper (re-fetch carnage, UPDATE ciblé, --dry-run dispo, serveur arrêté)
   backfill-killsource Remplit match_kill_events + match_weapon_shots : décodage HORS LIGNE des films en cache (gros films en dernier, reprenable par decoder_rev) puis producteur credit-seul depuis highlight_events (--dry-run, --limit, --films-only, --credit-only, serveur arrêté). --online --gamertag <GT> va CHERCHER les films absents du cache et les y archive : c'est ce qui rattrape l'attribution des assistances, sans film il n'y en a aucune
+  backfill-medailles-feed Rend leur nom aux médailles déjà en base : relit HORS LIGNE le chunk highlight des films en cache, apparie par (xuid, time_ms) et remplit highlight_events.raw_json + type_hint, restés vides depuis avril 2026 (415 matchs / 22 031 events sans identité, donc aucune médaille au fil des éliminations). Film absent du cache = match consigné et sauté (--dry-run, --limit, --cache, serveur arrêté)
   archive-films   Télécharge et CONSERVE les films manquants du cache local (manifeste + chunks complets, sans aucun décodage). Les films EXPIRENT côté 343 et ne se retéléchargent jamais : cette passe est la seule qui les sauve. Lecture seule sur la base (elle ne peut rien corrompre) mais SERVEUR ARRÊTÉ quand même : DuckDB n'autorise qu'un processus par fichier (--dry-run, --limit, --gamertag, --sauter-marques)
   backfill-replay Construit les artefacts de rejeu 2D de tous les films en cache : décodage HORS LIGNE via la librairie replaybuild, UN PROCESSUS PAR FILM (un film-bombe n'emporte plus la passe ni la machine ; gros films en dernier, reprenable par SchemaVersion, échecs ventilés : carte hors catalogue, mémoire, mort subite) (--dry-run, --limit, --force, --only-existing, --mem-limit-gib)
   migrate         Migrer les donnees vers le namespace multi-titres
