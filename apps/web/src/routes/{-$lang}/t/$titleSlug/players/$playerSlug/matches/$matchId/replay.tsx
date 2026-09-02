@@ -359,7 +359,7 @@ function ReplayPage() {
               colonne courte le second : aucun des deux ne peut être exprimé sans l'autre. */}
           <aside className="relative">
             <div className="flex max-h-[80vh] flex-col gap-3 xl:absolute xl:inset-0 xl:max-h-none">
-              <div className="flex max-h-[60vh] min-h-0 shrink-0 flex-col overflow-hidden xl:max-h-[min(30rem,calc(100%-12rem))]">
+              <div className="flex max-h-[60vh] min-h-0 flex-col overflow-hidden xl:max-h-[30rem]">
                 {/* PAS DE `marks` ICI (2026-08-25) : les fiches ne portent plus de glyphe
                     d'identité. La table reste servie à la CARTE (forme du point) et au FIL
                     (glyphe devant un nom), ses deux derniers lecteurs. */}
@@ -372,7 +372,7 @@ function ReplayPage() {
                   header={matchView?.header}
                 />
               </div>
-              <div className="flex min-h-0 flex-1 flex-col">
+              <div className="flex min-h-0 flex-1 flex-col xl:min-h-[12rem]">
                 <ReplayKillFeed
                   entries={feedEntries}
                   nowMs={nowMs}

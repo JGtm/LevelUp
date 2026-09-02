@@ -88771,3 +88771,45 @@ Aussi : `pl-1.5` sur le fil — la gouttiere d'horloge butait sur la bordure du 
 **Conclusion / prochaine etape** : gate visuel utilisateur. Restent hors perimetre : les
 prereglages de son (idee utilisateur retenue, non traitee), le zoom (surimpression d'angle,
 glisser + croix directionnelle), et les zones des cartes Forge (agent en cours).
+
+---
+
+## [2026-09-02] Rejeu 2D : la correction des fiches n avait produit AUCUN CSS — et le garde-rail ne pouvait pas le voir
+
+**Statut** : Complete (code + gates) ; merge vers feat/v75 dans la foulee.
+
+**Le defaut, et il est instructif.** Le plafond des fiches livre le matin s ecrivait
+`xl:max-h-[min(30rem,calc(100%-12rem))]` — une seule classe disant les deux bornes. Elle est
+passee au typecheck, aux tests, au lint, a ete commitee et mergee. Mais `calc(100%-12rem)` n est
+PAS du CSS valide : dans `calc()`, les operateurs `+` et `-` exigent des espaces autour. Tailwind
+ne produisait donc aucune regle, les fiches n avaient plus AUCUN plafond, et le
+`overflow-hidden` du conteneur les tronquait exactement comme avant.
+
+Le garde-rail que j avais ecrit verifiait `toContain('xl:max-h-[min(30rem,calc(100%-12rem))]')`.
+Il passait. **Un test qui grep une chaine ne peut pas juger du CSS qu elle produit.** Ce qu il
+peut faire, c est interdire la construction qui l a rendu aveugle : le garde-rail refuse
+desormais tout `calc(` dans ce fichier, et la regle s ecrit en deux classes valides —
+`xl:max-h-[30rem]` sur les fiches, `xl:min-h-[12rem]` sur le fil.
+
+Corollaire de forme : les fiches perdent `shrink-0` et gagnent `min-h-0`. C est le PLANCHER du
+fil qui les fait ceder sur une colonne courte ; avec `shrink-0`, un 4v4 aurait pris toute la
+place et le plancher n aurait rien eu a quoi ceder.
+
+**Les autres retours du meme tour** :
+
+- LEGENDE DE LA CHALEUR — elle vivait DANS le conteneur `mx-auto` de la toile, qui est CENTRE et
+  souvent plus etroit que la colonne : sur une carte allongee dans un ecran large, elle flottait
+  au milieu du cadre. Remontee d un cran, elle s ancre au BLOC.
+- FIL — `pl-1.5` etait trop discret pour se voir, passe a `pl-2.5`.
+- LECTEUR — trois zones, transport au CENTRE. Le centrage tient a `flex-1` sur les DEUX flancs :
+  a base nulle et croissance egale ils prennent la meme largeur quoi qu ils contiennent, donc le
+  milieu tombe au centre exact et y reste quand une commande laterale apparait ou disparait.
+- LECTURE AUTOMATIQUE — bouton facon YouTube a gauche du lecteur, et elle QUITTE le tiroir : deux
+  commandes pour un meme reglage invitent a croire qu elles different. Ses tests ont demenage
+  avec elle.
+- TIROIR — effets et sons par categorie passent en deux colonnes.
+
+**Resultats observes** : typecheck EXIT=0 ; 167 fichiers / 2335 tests verts ; lint 0 erreur.
+
+**Conclusion / prochaine etape** : gate visuel. Restent : le ZOOM (surimpression d angle, glisser
++ croix directionnelle) que l utilisateur reclame, les prereglages de son, et les zones Forge.

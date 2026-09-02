@@ -85,8 +85,6 @@ interface ReplaySettingsDrawerProps {
    * le lecteur ouvert : il décide de son état de départ, lu une fois au montage (cf.
    * `useReplayPlayback`).
    */
-  autoPlay: boolean
-  onToggleAutoPlay: () => void
   showAim: boolean
   onToggleAim: () => void
   showZones: boolean
@@ -132,43 +130,6 @@ interface ReplaySettingsDrawerProps {
 }
 
 /**
- * LA LECTURE a sa propre section, en TÊTE du tiroir : c'est le seul réglage qui parle du
- * LECTEUR et non de ce qu'il montre. Le ranger parmi les calques ferait lire « lecture
- * automatique » comme un calque de plus.
- *
- * ELLE NE COMMANDE PAS LE REJEU OUVERT, et l'infobulle le dit : basculer ce réglage ne met ni
- * en lecture ni en pause. « Lecture » et « Pause » sont à la barre, sous le terrain — deux
- * commandes qui feraient la même chose seraient une invitation à croire qu'elles diffèrent.
- */
-function PlaybackSection({
-  locale, autoPlay, onToggleAutoPlay,
-}: {
-  locale: ReplayLocale
-  autoPlay: boolean
-  onToggleAutoPlay: () => void
-}) {
-  const t = REPLAY_TEXT[locale]
-  return (
-    // PLUS DE TITRE DE SECTION (2026-09-02) : un en-tête « Lecture » pour UN interrupteur
-    // coûtait sa ligne à tout le monde et n'apprenait rien — « Lecture automatique » se
-    // suffit. La section reste un `<section>` : elle garde son rang dans le document, elle
-    // perd seulement son étiquette redondante.
-    //
-    // ELLE N'A PAS DÉMÉNAGÉ, ET C'EST DÉLIBÉRÉ. On avait envisagé de la ranger dans le menu
-    // Vitesse ; l'utilisateur l'a écarté, à raison : un menu « Vitesse » parle de vitesse, y
-    // cacher une préférence de démarrage la rendrait introuvable.
-    <section>
-      <SettingsToggle
-        label={t.autoPlay}
-        pressed={autoPlay}
-        onToggle={onToggleAutoPlay}
-        hint={t.autoPlayHint}
-      />
-    </section>
-  )
-}
-
-/**
  * Les EFFETS D'ÉVÉNEMENT ont leur propre section, séparée des calques : un calque montre un
  * ÉTAT du terrain (une visée, des zones, une chaleur), un effet montre un INSTANT (un tir,
  * une mort). Les mélanger ferait lire « éclairs de bouche » comme un fond de carte.
@@ -195,7 +156,10 @@ function EffectsSection({
         {t.effects}
         <InfoMark text={t.layerShotFxCoverage} />
       </h3>
-      <div className="flex flex-col gap-0.5">
+      {/* DEUX COLONNES, UNE RANGEE (demande utilisateur du 2026-09-02 : « les effets peuvent
+          etre sur une rangee »). Ils sont exactement deux : les empiler coutait une ligne
+          pour rien dans un panneau qui en fait desormais 416 de large. */}
+      <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
         <SettingsToggle
           label={t.layerShotFx}
           pressed={showShotFx}
@@ -260,7 +224,9 @@ function SoundSection({ locale, sound }: { locale: ReplayLocale; sound: ReplaySo
   return (
     <section className="space-y-1">
       <h3 className="text-xs font-medium text-muted-foreground">{t.soundCategoriesTitle}</h3>
-      <div className="flex flex-col gap-0.5">
+      {/* DEUX COLONNES, DEUX RANGEES (meme demande) : quatre categories empilees faisaient
+          quatre lignes la ou deux suffisent. */}
+      <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
         {SOUND_CATEGORIES.map((category) => (
           <SettingsToggle
             key={category}
@@ -316,8 +282,6 @@ function useDrawerDismiss(
 export function ReplaySettingsDrawer({
   locale,
   onClose,
-  autoPlay,
-  onToggleAutoPlay,
   showAim,
   onToggleAim,
   showZones,
@@ -377,7 +341,6 @@ export function ReplaySettingsDrawer({
         </button>
       </div>
 
-      <PlaybackSection locale={locale} autoPlay={autoPlay} onToggleAutoPlay={onToggleAutoPlay} />
       <LayersSection
         locale={locale}
         showAim={showAim}
