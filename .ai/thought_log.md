@@ -89085,3 +89085,38 @@ pendant le rendu, passee dans un effet), pas tus.
 **Conclusion / prochaine etape** : le GLISSER reste ouvert, chiffre : il faut le blit recadre
 (les calques cuisent une fenetre elargie, le dessin y decoupe la portion visible) et son cout
 memoire de x2,25 constant. C'est aussi le socle du SUIVI D'UN JOUEUR.
+
+---
+
+## [2026-09-02] Rejeu 2D : le glisser — et le cout memoire redoute n a pas ete paye
+
+**Statut** : Complete (code + gates) ; merge vers feat/v75 dans la foulee.
+
+**Decision technique principale** : j avais chiffre le glisser a x2,25 de memoire (~92 Mo) parce
+que je supposais une cuisson a MARGE — cuire plus large que le visible pour pouvoir se deplacer
+sans recuire. Le BLIT DECALE la rend inutile.
+
+Un deplacement est une TRANSLATION PURE : la meme image, posee ailleurs. Pendant le geste on
+gele donc la cuisson (`frozen`) et le dessin recopie les calques avec un decalage
+(`layerOffset`) — exact, pas approche, parce que les deux projections partagent leur echelle
+tant que le zoom n a pas change. **Surcout memoire : ZERO.**
+
+Le seul artefact est une bande non peinte au bord d attaque pendant le geste, sur les calques
+cuits ; le fond de carte, dessine directement, suit parfaitement. Elle disparait au relachement.
+
+Trois points qui ne se devinent pas :
+- ON NE GELE JAMAIS PENDANT UN ZOOM. L echelle change alors, et un decalage ne replacerait pas
+  une image cuite pour une autre echelle. Le gel est lie au glisser, et a lui seul.
+- LA CAPTURE DU POINTEUR n est pas un detail : sans elle, un glisser qui deborde du terrain —
+  le cas normal quand on tire vers un bord — se terminerait sans `pointerup`, et la carte
+  resterait collee au curseur.
+- LE GLISSER PASSE PAR `hoverHandlers`, pas par un second `{...spread}` sur la meme balise :
+  deux spreads ne se composent pas, le second ecrase le `onPointerMove` du premier et le survol
+  mourrait en silence le jour ou on l ajoute.
+
+**Resultats observes** : typecheck EXIT=0 ; 169 fichiers / 2370 tests verts (10 neufs) ; lint 0
+erreur. `ReplayCanvas.tsx` a 664 pour un plafond de 665 — trois commentaires condenses pour
+tenir, aucun code retire.
+
+**Conclusion / prochaine etape** : gate visuel. Le SUIVI D UN JOUEUR reste devant : il a
+desormais tout son socle (cadrage par les bornes, gel de cuisson, blit decale).

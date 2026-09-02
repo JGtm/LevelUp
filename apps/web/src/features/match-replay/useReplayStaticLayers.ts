@@ -33,6 +33,17 @@ export interface StaticLayersInput {
   view: CanvasView
   /** Repeindre la scène — appelé après chaque cuisson, et à l'extinction de la chaleur. */
   redraw: () => void
+  /**
+   * GELER LA CUISSON (2026-09-02, glisser). Pendant un glisser le cadrage change à chaque
+   * mouvement de pointeur ; recuire à cette cadence est hors de question — le sol reconstruit
+   * fait ~45 000 cellules. Mais un glisser est une TRANSLATION PURE : l'appelant recopie donc
+   * le calque déjà cuit avec un décalage (`layerOffset`), ce qui est exact et gratuit. La
+   * cuisson reprend au relâchement, quand `frozen` retombe.
+   *
+   * On ne gèle JAMAIS pendant un zoom : l'échelle change alors, et un décalage ne suffirait
+   * plus à replacer une image cuite pour une autre échelle.
+   */
+  frozen?: boolean
   floor: { grid: FloorGrid | null; style: FloorStyle }
   zones: {
     zones: readonly CalloutZoneReady[]
@@ -49,6 +60,13 @@ export interface StaticLayersInput {
 
 /** Les quatre canvas hors écran, dans l'ordre où ils se recopient. */
 export interface StaticLayers {
+  /**
+   * LE CADRAGE AVEC LEQUEL LES CALQUES ONT ÉTÉ CUITS — `null` tant qu'aucune cuisson n'a eu
+   * lieu. C'est lui que l'appelant compare au cadrage courant pour savoir de combien décaler
+   * sa recopie. Sans cette valeur, un calque gelé serait recopié à sa place d'origine, et le
+   * décor resterait immobile pendant que les joueurs se déplacent.
+   */
+  cookedRef: RefObject<CanvasView | null>
   floorRef: RefObject<HTMLCanvasElement | null>
   zonesRef: RefObject<HTMLCanvasElement | null>
   heatRef: RefObject<HTMLCanvasElement | null>
@@ -82,7 +100,14 @@ export function useReplayStaticLayers({
   zones,
   heat,
   objectives,
+  frozen = false,
 }: StaticLayersInput): StaticLayers {
+  const cookedRef = useRef<CanvasView | null>(null)
+  // Le cadrage de la DERNIÈRE cuisson. Il ne bouge pas tant que le gel dure : c'est ce qui
+  // permet de calculer le décalage de recopie, et c'est aussi ce qui le rend juste.
+  useEffect(() => {
+    if (!frozen) cookedRef.current = view
+  }, [view, frozen])
   const floorRef = useRef<HTMLCanvasElement | null>(null)
   const zonesRef = useRef<HTMLCanvasElement | null>(null)
   const heatRef = useRef<HTMLCanvasElement | null>(null)
@@ -90,16 +115,19 @@ export function useReplayStaticLayers({
 
   const { grid: floorGrid, style: floorStyle } = floor
   useEffect(() => {
+    // GELÉ : on garde le calque tel quel, l'appelant le recopiera décalé (cf. `frozen`).
+    if (frozen) return
     if (!floorGrid || view.width === 0) {
       floorRef.current = null
       return
     }
     floorRef.current = cookLayer(view, (ctx) => drawFloorLayer(ctx, floorGrid, view, floorStyle))
     redraw()
-  }, [floorGrid, floorStyle, view, redraw])
+  }, [floorGrid, floorStyle, view, redraw, frozen])
 
   const { zones: zoneList, bigColors, fineInk, locale } = zones
   useEffect(() => {
+    if (frozen) return
     if (zoneList.length === 0 || view.width === 0) {
       zonesRef.current = null
       return
@@ -108,10 +136,11 @@ export function useReplayStaticLayers({
       drawCalloutsLayer(ctx, [...zoneList], view, { bigColors, fineInk, locale }),
     )
     redraw()
-  }, [zoneList, bigColors, fineInk, locale, view, redraw])
+  }, [zoneList, bigColors, fineInk, locale, view, redraw, frozen])
 
   const { grid: heatGrid, ramp } = heat
   useEffect(() => {
+    if (frozen) return
     if (!heatGrid || view.width === 0 || ramp.length === 0) {
       heatRef.current = null
       // REPEINDRE APRÈS AVOIR ÉTEINT : à l'arrêt, rien d'autre ne déclenche de redessin
@@ -124,10 +153,11 @@ export function useReplayStaticLayers({
       drawHeatmapLayer(ctx, heatGrid, view, { ramp, k: dpr }),
     )
     redraw()
-  }, [heatGrid, ramp, view, redraw])
+  }, [heatGrid, ramp, view, redraw, frozen])
 
   const { elements, colorOfTeam } = objectives
   useEffect(() => {
+    if (frozen) return
     if (elements.length === 0 || view.width === 0) {
       objectivesRef.current = null
       return
@@ -136,7 +166,7 @@ export function useReplayStaticLayers({
       drawObjectivesLayer(ctx, [...elements], view, { colorOfTeam }),
     )
     redraw()
-  }, [elements, colorOfTeam, view, redraw])
+  }, [elements, colorOfTeam, view, redraw, frozen])
 
-  return { floorRef, zonesRef, heatRef, objectivesRef }
+  return { floorRef, zonesRef, heatRef, objectivesRef, cookedRef }
 }
