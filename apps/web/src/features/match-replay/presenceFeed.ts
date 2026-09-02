@@ -69,18 +69,20 @@ export function presenceEntries(
   const origin = Number.isFinite(doc.originMs) ? (doc.originMs as number) : 0
   const out: ReplayFeedEntry[] = []
   for (const p of players) {
-    if (p.lives.length === 0) continue
     const rawName = playerName(p)
     if (!rawName) continue
     // Suffixe « [bot] » = marqueur de donnée killsource (schéma 36), retiré avant
     // d'entrer dans la ligne de présence (« a rejoint » / « a quitté »).
     const name = stripBotSuffix(rawName)
+    // LE CHEMIN API NE DEMANDE AUCUNE VIE : un remplaçant dont le pont n'a pas pu nommer
+    // les vies (bot du match témoin 1b2d9e08) a quand même rejoint la partie — la base le
+    // date, la ligne s'affiche. Seul le REPLI film exige des vies : il n'a rien d'autre.
     const api = apiPresence(p, name, matchStartMs, origin, playWindow)
     if (api) {
       out.push(...api)
       continue
     }
-    out.push(...filmPresence(p, name, playWindow, doc))
+    if (p.lives.length > 0) out.push(...filmPresence(p, name, playWindow, doc))
   }
   return out
 }

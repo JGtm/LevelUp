@@ -35,6 +35,8 @@ import { cardChrome, hasUnderLayer, playerCardFx } from './playerCardFx'
 import { ReplayCountersBadge } from './ReplayCountersBadge'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
 import { frameToMs, msToFrames, positionAt, trackWindow } from './replayLogic'
+import type { PresenceHeader } from './presenceFeed'
+import { buildSeats, groupSeatsByTeam, seatOccupantAt } from './seatLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
 import { ReplayInventoryRow } from './ReplayInventoryRow'
 import { EliminatedBox, VitalityBar } from './ReplayVitality'
@@ -42,7 +44,6 @@ import { ReplayWeaponsRow } from './ReplayWeaponsRow'
 import {
   buildPlayers,
   buildSlotOwnership,
-  groupByTeam,
   playerName,
   playerStateAt,
   sideResolver,
@@ -80,6 +81,8 @@ interface ReplayTeamsProps {
   locale: ReplayLocale
   /** Camp de chaque xuid : il donne sa couleur au titre de la colonne (allié / adverse). */
   xuidMeta?: XuidMeta
+  /** En-tête du match (heure de début) : le repère des relais de siège (cf. seatLogic). */
+  header?: PresenceHeader | null
 }
 
 // LA FICHE COMPACTE EST DEVENUE LA FICHE (décision utilisateur du 2026-08-24 : « fiches
@@ -87,11 +90,16 @@ interface ReplayTeamsProps {
 // deux rangées d'inventaire, munitions des armes rangées — est SUPPRIMÉE avec son réglage.
 
 export function ReplayTeams({
-  doc, scoreboard, frame, locale, xuidMeta,
+  doc, scoreboard, frame, locale, xuidMeta, header,
 }: ReplayTeamsProps) {
   const t = REPLAY_TEXT[locale]
   const players = useMemo(() => buildPlayers(doc, scoreboard), [doc, scoreboard])
-  const groups = useMemo(() => groupByTeam(players), [players])
+  // LA FICHE EST UN SIÈGE, PAS UN JOUEUR (retour user 2026-09-02) : un remplacé cède sa
+  // fiche à son remplaçant à l'image du relais — un 4v4 garde huit fiches, quel que soit le
+  // nombre de relais. L'appariement vient de la participation API (cf. seatLogic.ts) ; sans
+  // elle, chaque joueur garde son siège — l'affichage d'avant.
+  const seats = useMemo(() => buildSeats(players, header, doc), [players, header, doc])
+  const groups = useMemo(() => groupSeatsByTeam(seats), [seats])
   const vitalityFade = useMemo(() => msToFrames(VITALITY_FADE_MS, doc), [doc])
   const readingFull = useMemo(() => msToFrames(READING_FULL_MS, doc), [doc])
   const flashFrames = useMemo(() => Math.max(1, msToFrames(FLASH_MS, doc)), [doc])
@@ -170,16 +178,16 @@ export function ReplayTeams({
           className="flex h-full min-h-0 flex-col gap-1.5"
         >
           <ReplayTeamHeader
-            players={group.players}
+            players={group.seats.map((s) => seatOccupantAt(s, frame))}
             side={group.side}
             xuidMeta={xuidMeta}
             locale={locale}
           />
           <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto">
-            {group.players.map((p) => (
+            {group.seats.map((seat) => (
               <PlayerCard
-                key={p.xuid}
-                player={p}
+                key={seat.key}
+                player={seatOccupantAt(seat, frame)}
                 doc={doc}
                 frame={frame}
                 presence={presence}

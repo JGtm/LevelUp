@@ -104,7 +104,9 @@ describe('buildPlayers', () => {
         { ...track(600, undefined, 0, 60), bot: '343 Aloysius [bot]' },
       ],
     })
-    const botRow = { ...row('', '343 Aloysius [bot]', 'Cobra'), xuid: '' }
+    // La ligne de base d'un bot : xuid `bid(N.0)`, `is_bot`, gamertag résolu SANS suffixe
+    // (v_gamertag_lookup) — la jointure se fait sur le nom NU des deux côtés.
+    const botRow = { ...row('bid(8.0)', '343 Aloysius', 'Cobra'), is_bot: true }
     const players = buildPlayers(d, [row('A', 'Alpha', 'Eagle'), botRow])
     expect(players).toHaveLength(2)
     const bot = players.find((p) => p.bot)!

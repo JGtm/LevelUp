@@ -28,6 +28,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 
 	"levelup/go-api/internal/analysis/filmdec"
@@ -230,6 +231,7 @@ func (b *Builder) BuildBytes(matchID string, mapNames []string, filmDir string, 
 		NeutralDeaths:   b.neutralDeaths(matchID, ksRes),
 		Kills:           b.killRefs(matchID, filmDir, ksRes),
 		Bots:            botIdentities(ksRes),
+		Successions:     botSuccessions(matchID, facts, ksRes),
 		Objectives:      stats.objectives,
 		Score:           stats.score,
 		Flag:            stats.flag,
@@ -372,6 +374,42 @@ func botIdentities(res *killsource.Result) []replay.BotIdentity {
 		}
 		out = append(out, replay.BotIdentity{FilmIndex: b.Slot, Name: b.Name + " [bot]"})
 	}
+	return out
+}
+
+// botSuccessions construit les RELAIS (cf. replay/successions.go) : pour chaque ligne de
+// participation `bid(N.0)` arrivée EN COURS de partie, le nom du bot vient du roster
+// BOT_METADATA du décodage killsource (BotID N — la clé exacte), l'instant de la base.
+// Un bot déclaré par la base mais absent du roster du film n'entre pas : sans nom lu, on
+// n'attribue rien — et l'écart se journalise, jamais avalé.
+func botSuccessions(matchID string, facts port.MatchFacts, res *killsource.Result) []replay.Succession {
+	if res == nil || len(res.Roster.Bots) == 0 {
+		return nil
+	}
+	nameByID := make(map[int]string, len(res.Roster.Bots))
+	for _, b := range res.Roster.Bots {
+		if b.Name != "" {
+			nameByID[b.BotID] = b.Name + " [bot]"
+		}
+	}
+	var out []replay.Succession
+	for _, p := range facts.Players {
+		if !p.JoinedInProgress || p.JoinMatchMS == nil {
+			continue
+		}
+		var id int
+		if _, err := fmt.Sscanf(p.XUID, "bid(%d.0)", &id); err != nil {
+			continue // un humain qui rejoint est nommé par le fil des morts, pas par relais
+		}
+		name, ok := nameByID[id]
+		if !ok {
+			slog.Warn("replaybuild: bot arrivé en cours de partie absent du roster du film — relais impossible",
+				"match_id", matchID, "bid", p.XUID)
+			continue
+		}
+		out = append(out, replay.Succession{BotName: name, SwitchMatchMS: *p.JoinMatchMS})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].SwitchMatchMS < out[j].SwitchMatchMS })
 	return out
 }
 
