@@ -286,6 +286,9 @@ export interface ReplayText {
   layerAim: string
   layerAimHint: string
   /** Zones nommées (callouts officiels) : calque + libellé de la fiche. */
+  layerGroupPlayers: string
+  layerGroupTerrain: string
+  layerGroupObjectives: string
   layerZones: string
   layerZonesHint: string
   /** Noms des joueurs sous leur marqueur (calque éteignable — un BTB à 24 joueurs). */
