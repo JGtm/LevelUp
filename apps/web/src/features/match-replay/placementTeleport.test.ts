@@ -10,7 +10,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { ReplayEquipmentPlacement } from '@/lib/api/types'
 
-import { lastTeleportAge, riftTeleports, type RiftTeleport } from './placementTeleport'
+import { lastTeleportAge, riftTeleports, spentTranslocations, translocatorRanks, type RiftTeleport } from './placementTeleport'
 import type { ReplayDocumentReady, ReplayTrackReady } from './replayNormalize'
 
 type Abilities = ReplayDocumentReady['abilities']
@@ -176,5 +176,57 @@ describe('lastTeleportAge — l âge du passage le plus récent d un slot', () =
 
   it('deux passages advenus : l âge du plus récent', () => {
     expect(lastTeleportAge([passage(3, 10), passage(3, 40)], 3, 50)).toBe(10)
+  })
+})
+
+describe('translocatorRanks — la table du document nomme les rangs, le littéral n est qu un repli', () => {
+  it('lit le rang de CHAQUE famille de palette par la racine « transloc » (fr comme en)', () => {
+    expect(
+      translocatorRanks({
+        '11': { fr: 'Translocateur quantique', en: 'Quantum Translocator' },
+        '20': { fr: 'Grappin', en: 'Grappleshot' },
+      }),
+    ).toEqual(new Set([11]))
+    // Famille B : le rang change, la table le dit — le littéral 11 aurait rendu le calque muet.
+    expect(
+      translocatorRanks({
+        '20': { fr: 'Grappin', en: 'Grappleshot' },
+        '21': { fr: '', en: 'Quantum Translocator' },
+      }),
+    ).toEqual(new Set([21]))
+  })
+
+  it('sans table, ou sans rang reconnu : le repli famille A (11)', () => {
+    expect(translocatorRanks(undefined)).toEqual(new Set([11]))
+    expect(translocatorRanks({ '20': { fr: 'Grappin', en: 'Grappleshot' } })).toEqual(new Set([11]))
+  })
+})
+
+describe('spentTranslocations — l usage MESURÉ est le déclencheur principal de l éclat', () => {
+  const change = (kind: 'taken' | 'spent', from: number, slot = 3, t = 40) => ({
+    kind,
+    from,
+    slot,
+    t,
+    r: -1,
+  })
+
+  it('retient les `spent` dont le rang consommé est un translocateur, et eux seuls', () => {
+    const moments = spentTranslocations(
+      [change('spent', 11), change('spent', 4), change('taken', 11, 5, 60)],
+      new Set([11]),
+    )
+    expect(moments).toEqual([{ slot: 3, frame: 40 }])
+  })
+
+  it('suit la table des rangs — famille B comprise', () => {
+    expect(spentTranslocations([change('spent', 21, 7, 12)], new Set([21]))).toEqual([
+      { slot: 7, frame: 12 },
+    ])
+  })
+
+  it('les moments nourrissent lastTeleportAge comme un passage spatial', () => {
+    const moments = spentTranslocations([change('spent', 11, 3, 40)], new Set([11]))
+    expect(lastTeleportAge(moments, 3, 45)).toBe(5)
   })
 })
