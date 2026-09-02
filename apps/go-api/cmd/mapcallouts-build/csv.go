@@ -3,11 +3,15 @@ package main
 // csv.go — les LIBELLÉS officiels des zones, depuis la copie versionnée de
 // callouts_i18n.csv (data/titles/{slug}/reference/).
 //
-// LE CSV EST LA SOURCE FIGÉE DES LIBELLÉS : il résout les 816 string_id du corpus vers
-// le libellé joueur EN et FR (extraction uslg faite UNE fois par la recherche — on ne
-// re-extrait pas uslg, règle du plan parité lot 3). Une ligne par named location,
-// indexée (carte, volumeIndex) ; le string_id de la ligne se VÉRIFIE contre celui du
-// tag — une divergence est un CSV périmé, jamais une zone à publier quand même.
+// LE CSV EST LA SOURCE FIGÉE DES LIBELLÉS DES CARTES INTÉGRÉES : il résout les 816 zones
+// du corpus natif vers le libellé joueur EN et FR. Une ligne par named location, indexée
+// (carte, volumeIndex) ; le string_id de la ligne se VÉRIFIE contre celui du tag — une
+// divergence est un CSV périmé, jamais une zone à publier quand même.
+//
+// IL NE COUVRE QUE CE CORPUS-LÀ (463 string_id). Le vocabulaire des cartes Forge est
+// celui du JEU (778 noms de lieu au tag `locs`) : il est résolu par le LEXIQUE, extrait
+// des listes de chaînes `uslg` — voir lexique.go. Les deux se rejoignent sans se
+// contredire : le lexique reproduit les 463 string_id de ce CSV au caractère près.
 
 import (
 	"encoding/csv"
@@ -35,6 +39,10 @@ type libelles map[string]map[int]libelle
 // 2026-08-27 : 439 des 463 chaînes du CSV figurent au tag global `locs`, celui que les
 // variantes référencent). Le CSV est cohérent sur cette clé, et `chargeLibelles` REFUSE
 // un CSV où deux lignes se contrediraient.
+//
+// CET INDEX EST COMPLÉTÉ PAR LE LEXIQUE (lexique.go) avant la passe Forge : seul, il ne
+// résolvait que 66 des 266 string_id employés par la rotation Forge (25 %) ; avec le
+// lexique, 266/266.
 type libellesParStringID map[uint32]libelle
 
 // Colonnes attendues du CSV (en-tête vérifié : un CSV réordonné doit échouer).
