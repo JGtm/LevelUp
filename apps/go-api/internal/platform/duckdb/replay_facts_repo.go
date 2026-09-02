@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"strings"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/port"
 )
 
@@ -95,11 +96,24 @@ func (r *ReplayFactsRepo) registryFacts(ctx context.Context, matchID string) (po
 	return out, nil
 }
 
-// playerFacts lit les lignes de match des participants.
+// playerFacts lit les lignes de match des participants — y compris la PARTICIPATION
+// (lot sièges 2026-09-02) : les drapeaux joined/left_in_progress et leurs instants,
+// ramenés en millisecondes depuis le début CANONIQUE du match (fragment timezone
+// canonique, règle n°8 — jamais `start_time` brut). Ces instants alimentent les
+// fermetures par RELAIS du rejeu (un remplaçant hérite des vies anonymes qui suivent
+// son arrivée). Les lignes de bot (`bid(N.0)`) sont GARDÉES : ce sont précisément les
+// remplaçants.
 func (r *ReplayFactsRepo) playerFacts(ctx context.Context, matchID string) ([]port.MatchPlayerFact, error) {
+	start := analysis.SQLStartTimeCanonical("mr")
 	rows, err := r.shared.QueryContext(ctx,
-		`SELECT xuid, COALESCE(kills, 0), COALESCE(deaths, 0), COALESCE(assists, 0), COALESCE(team_id, -1)
-		 FROM match_participants WHERE match_id = ? ORDER BY xuid`, matchID)
+		`SELECT p.xuid, COALESCE(p.kills, 0), COALESCE(p.deaths, 0), COALESCE(p.assists, 0),
+		        COALESCE(p.team_id, -1),
+		        COALESCE(p.joined_in_progress, FALSE), COALESCE(p.left_in_progress, FALSE),
+		        CAST(epoch_ms(p.first_joined_time) - epoch_ms(`+start+`) AS BIGINT),
+		        CAST(epoch_ms(p.last_leave_time) - epoch_ms(`+start+`) AS BIGINT)
+		 FROM match_participants p
+		 JOIN match_registry mr ON mr.match_id = p.match_id
+		 WHERE p.match_id = ? ORDER BY p.xuid`, matchID)
 	if err != nil {
 		return nil, fmt.Errorf("faits de rejeu : lecture match_participants : %w", err)
 	}
@@ -108,11 +122,19 @@ func (r *ReplayFactsRepo) playerFacts(ctx context.Context, matchID string) ([]po
 	var out []port.MatchPlayerFact
 	for rows.Next() {
 		var p port.MatchPlayerFact
-		if err := rows.Scan(&p.XUID, &p.Kills, &p.Deaths, &p.Assists, &p.TeamID); err != nil {
+		var joinMS, leaveMS sql.NullInt64
+		if err := rows.Scan(&p.XUID, &p.Kills, &p.Deaths, &p.Assists, &p.TeamID,
+			&p.JoinedInProgress, &p.LeftInProgress, &joinMS, &leaveMS); err != nil {
 			return nil, fmt.Errorf("faits de rejeu : lecture match_participants (scan) : %w", err)
 		}
 		if p.XUID == "" {
 			continue // sans xuid, la ligne ne peut apparier aucun slot
+		}
+		if joinMS.Valid {
+			p.JoinMatchMS = &joinMS.Int64
+		}
+		if leaveMS.Valid {
+			p.LeaveMatchMS = &leaveMS.Int64
 		}
 		out = append(out, p)
 	}

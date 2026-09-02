@@ -133,6 +133,10 @@ type Options struct {
 	// paquet-ci est title-agnostic. FilmIndex est le slot de roster déclaré, Name porte le
 	// suffixe « [bot] ». Vide = film sans bot, ou décodage killsource indisponible.
 	Bots []BotIdentity
+	// Successions : les RELAIS lus dans la base (un remplaçant arrive à cet instant de
+	// l'axe du match) — la source des fermetures par relais (cf. successions.go). Vide =
+	// aucun remplacement, ou faits de participation indisponibles.
+	Successions []Succession
 	// Objectives : les actions d'objectif NOMMÉES ET IDENTIFIÉES PAR MANCHE (cf. objectives.go).
 	// Entrée de DONNÉES, comme Loadouts et Grenades.
 	//
@@ -532,6 +536,10 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	// LES BOTS ENTRENT APRÈS LES HUMAINS : une vie nommée par un xuid n'est jamais écrasée,
 	// et seuls les slots que le pont attribue à un index de bot prennent son nom.
 	nameBotTracks(doc.Tracks, own.Owner, opt.Bots)
+	// LES RELAIS EN DERNIER : le remplaçant hérite des vies restées anonymes après tout ce
+	// que la lecture et les fermetures savaient nommer (cf. successions.go).
+	attributeSuccessions(doc.Tracks, opt.Successions, origin, step,
+		own.DeathOffsetMS, own.DeathOffsetMatches)
 	doc.Roster = buildRoster(opt.PlayerIndices, gamertagsOf(opt.Deaths), opt.Bots)
 	// L'ORIGINE se publie APRÈS le pont : son témoin (le calage du fil des morts) en sort.
 	doc.OriginMs = resolveOriginMs(origin, opt.FilmClockOriginUS, own.DeathOffsetMS, own.DeathOffsetMatches)

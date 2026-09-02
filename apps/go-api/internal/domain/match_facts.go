@@ -28,6 +28,16 @@ type MatchPlayerFact struct {
 	// TeamID est le camp du joueur ; -1 quand la base ne le porte pas. Sert à rattacher les
 	// slots d'entité d'équipe aux camps quand les scores du registre sont à égalité.
 	TeamID int `json:"teamId"`
+	// Participation (API PlayerParticipationInfo, lot sièges 2026-09-02) : QUI a rejoint ou
+	// quitté EN COURS de partie, et QUAND — en millisecondes depuis le début CANONIQUE du
+	// match (le même axe que le fil des morts, donc calable sur l'horloge du film par le
+	// pont). C'est la source des FERMETURES PAR RELAIS : un remplaçant (bot `bid(N.0)`)
+	// hérite des vies anonymes qui suivent son arrivée. Nil = colonnes absentes (matchs
+	// anciens) — aucune fermeture par relais, jamais une devinette.
+	JoinedInProgress bool   `json:"joinedInProgress,omitempty"`
+	LeftInProgress   bool   `json:"leftInProgress,omitempty"`
+	JoinMatchMS      *int64 `json:"joinMatchMs,omitempty"`
+	LeaveMatchMS     *int64 `json:"leaveMatchMs,omitempty"`
 }
 
 // MatchFacts est CE QUE LA BASE SAIT DU MATCH ET QUE LE FILM NE DIT PAS.

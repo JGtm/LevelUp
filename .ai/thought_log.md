@@ -88609,3 +88609,37 @@ suivante serait partie en oscillation.
 hors périmètre — ce lot donne toute la place que la mise en page permet ; le zoom est ce qui
 irait AU-DELÀ, et c'est là, seulement là, que la recuisson des calques deviendrait un vrai
 sujet (une projection déplaçable entraîne le survol, les infobulles et les quatre calques).
+
+---
+
+## [2026-09-02] SIEGES : la fiche suit l occupant — le remplacement est une substitution
+
+**Statut** : Complété (code + artefact témoin recuit) ; gate visuel au user.
+
+**Le retour qui a redressé le modèle** (user, match témoin 1b2d9e08) : Winterhawk quitte,
+343 Razzle le remplace À LA SECONDE (participation API : leave 22:31:14 = join 22:31:14,
+même équipe) — et l'écran montrait 7 fiches + une fiche fantôme « hors film », bot invisible,
+aucune ligne « a rejoint ». Le bon modèle est LE SIÈGE : un 4v4 = 8 fiches, la fiche montre
+son OCCUPANT à l'image lue, et ça chaîne (A -> bot -> B sur le même siège).
+
+**Livré** :
+- Go, fermetures PAR RELAIS (`replay/successions.go`) : la base date l'arrivée du remplaçant
+  (facts de participation étendus — fragment timezone canonique), le pont cale l'axe match ->
+  film (DeathOffset), et le remplaçant hérite des vies anonymes par CHAÎNE DE FENÊTRES à
+  candidat unique (première vie [arrivée-2s,+20s], suivantes [fin+2s,+25s]) — le standard des
+  fermetures, contesté = stop. Nécessaire parce que le fil des morts ne porte AUCUNE mort de
+  bot (mesuré : 77 morts, 0 sans xuid). Témoin recuit : 6 vies attribuées à Razzle, pion
+  visible. `botSuccessions` (replaybuild) joint `bid(N.0)` <-> BOT_METADATA par BotID.
+- Web, sièges (`seatLogic.ts`) : appariement partant<->rejoignant par équipe + proximité des
+  horodatages API (fenêtre 120 s), chaînes suivies, relais converti en frame par la doctrine
+  des médias ; `ReplayTeams` rend une fiche PAR SIÈGE (`seatOccupantAt(frame)`). Sans
+  participation : chacun son siège (affichage d'avant).
+- Fil : le chemin API n'exige plus de vies (le « a rejoint » de Razzle s'affiche même quand
+  le pont n'a rien pu nommer) ; jointure scoreboard des bots corrigée (`is_bot` +
+  `stripBotSuffix` — les lignes bot ont un xuid `bid(N.0)`, pas un xuid vide).
+
+**Gates** : go vet/test (replay, replaybuild, duckdb) verts ; tsc 0 ; vitest match-replay 136
+fichiers / 2062 verts ; artefact témoin 94 tracks, relais journalisé. Serveur air à jour.
+
+**Prochaine étape** : gate visuel user sur 1b2d9e08 (8 fiches, bascule Winterhawk->Razzle à
+~4:35, pion Razzle, lignes a quitté/a rejoint), puis --only-existing à sa demande.

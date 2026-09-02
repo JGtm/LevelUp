@@ -15,7 +15,7 @@
  * Tout ce fichier est PUR : aucun React, aucun canvas, donc testable.
  */
 import type { MatchScoreboardRow } from '@/lib/api/types'
-import { displayPlayerName } from '@/lib/players/displayName'
+import { displayPlayerName, stripBotSuffix } from '@/lib/players/displayName'
 
 import { refineAbilityReading, refineWeaponsReading } from './changeRefine'
 import type { PlayerMarkKind } from './playerMarks'
@@ -117,12 +117,15 @@ export function buildPlayers(
     p.lives.push(track)
   }
   const board = new Map(scoreboard.map((r) => [r.xuid, r]))
-  // LA JOINTURE D'UN BOT SE FAIT PAR GAMERTAG, faute de xuid des deux côtés : la base écrit
-  // le même nom suffixé « [bot] » que le film. Un nom absent du scoreboard laisse `board`
-  // vide — le bot reste dans le groupe sans équipe, jamais dans un camp deviné.
-  const boardByName = new Map(scoreboard.filter((r) => !r.xuid).map((r) => [r.gamertag, r]))
+  // LA JOINTURE D'UN BOT SE FAIT PAR GAMERTAG, faute de xuid commun : la base identifie ses
+  // bots par `is_bot` (xuid `bid(N.0)`, gamertag résolu SANS suffixe), le film par le nom
+  // suffixé « [bot] » — la clé de jointure est le nom NU des deux côtés. Un nom absent du
+  // scoreboard laisse `board` vide — le bot reste sans équipe, jamais un camp deviné.
+  const boardByName = new Map(
+    scoreboard.filter((r) => r.is_bot).map((r) => [stripBotSuffix(r.gamertag), r]),
+  )
   for (const p of byXUID.values()) {
-    p.board = p.bot ? boardByName.get(p.filmName ?? '') : board.get(p.xuid)
+    p.board = p.bot ? boardByName.get(stripBotSuffix(p.filmName ?? '')) : board.get(p.xuid)
     p.lives.sort((a, b) => trackWindow(a).start - trackWindow(b).start)
   }
   return [...byXUID.values()]
