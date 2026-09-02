@@ -139,3 +139,26 @@ pas un avertissement a taire.
   coin bas-droit face au fil.
 - **Le SUIVI D'UN JOUEUR** reste le vrai usage d'un rejeu, et le zoom manuel en est le socle.
 - **Le glisser**, si l'usage le reclame, avec son cout desormais instruit.
+
+## Etape 7 — Molette et clavier (demande du 2026-09-02, apres le lot)
+
+- [x] 7.1 `canvasToWorld` — l'inverse EXACT de `worldToCanvas`, teste par aller-retour. Il
+      existe pour une seule raison : savoir quel point du monde est sous le pointeur.
+- [x] 7.2 `zoomTowards` — le centre qui laisse un point IMMOBILE quand le zoom change :
+      `c' = p + (c - p) x (zoomAvant / zoomApres)`.
+- [x] 7.3 `useReplayZoom.zoomAt(dir, towards)` — MEME chemin que les boutons (memes paliers,
+      meme rebornage), avec le point a garder fixe en plus.
+- [x] 7.4 `useReplayWheelZoom` — ecouteur NON PASSIF pose a la main (React attache `onWheel` en
+      passif, `preventDefault` y est ignore et la page defilerait sous la carte), accumulateur
+      de delta (un pave tactile emet des dizaines d'evenements de quelques pixels par geste).
+- [x] 7.5 Clavier dans `useReplayShortcuts` — `+`/`=` et `-`/`_`, Maj+fleches pour la croix.
+      UN SEUL ecouteur clavier, pas deux : les fleches nues valent le saut temporel, et deux
+      ecouteurs concurrents sur les memes touches finissent par se marcher dessus.
+- [x] 7.6 Tests : aller-retour de projection, point vise immobile, molette = memes paliers.
+
+Gate : `tsc -b` EXIT=0 ; **168 fichiers, 2360 tests, 0 echec** ; lint 0 erreur, 23
+avertissements prexistants. `ReplayCanvas.tsx` : 663/665.
+
+DEUX AVERTISSEMENTS NEUFS TRAITES A LEUR CAUSE, pas tus : une reference ecrite pendant le
+RENDU (React la reserve au calcul — une valeur ecrite la peut etre perdue si le rendu est
+abandonne) est passee dans un effet, dans les deux hooks concernes.

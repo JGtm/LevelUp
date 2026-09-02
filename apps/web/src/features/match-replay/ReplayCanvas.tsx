@@ -88,6 +88,7 @@ import { drawTracksLayer } from './replayMarkers'
 import { useReplayTiming } from './useReplayTiming'
 import { CANVAS_PAD, exportRenderScale, useReplayView, type ReplayMapBackgroundLayer } from './useReplayView'
 import { useReplayViewport } from './useReplayViewport'
+import { useReplayWheelZoom } from './useReplayWheelZoom'
 
 
 
@@ -241,6 +242,7 @@ export function ReplayCanvas({
     useReplayFx(doc, kills, t0Ms, timing.aimHold, mapObjectives)
   // La CARTE DE CHALEUR : grille cuite, rampe du thème et lecture réellement servie —
   // toute la logique vit dans le hook, le canvas ne fait que poser le calque.
+  useReplayWheelZoom(canvasRef, zoom, canvasView) // molette : memes paliers que les boutons
   const heat = useReplayHeatmap(doc, bounds, killFx, {
     show: showHeatmap,
     mode: heatmapMode,
@@ -564,7 +566,7 @@ export function ReplayCanvas({
   // imposée par le cliquet : pistes, dominance, médias, horloges et raccourcis sont LA FRISE.
   const timeline = useReplayTimeline({
     doc, playWindow, feedEntries, media, marks: marks ?? NO_MARKS, renderWidth, locale,
-    lead: teamCascades, playback, toggleSound: sound.toggle,
+    lead: teamCascades, playback, toggleSound: sound.toggle, zoom,
   })
   // LE TIROIR, groupé de même (useReplayDrawer) : les disponibilités viennent des calques, les
   // bascules de `useReplaySettings`, et l'état d'ouverture du hook lui-même (2026-08-30).
