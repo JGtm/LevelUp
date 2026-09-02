@@ -88192,3 +88192,27 @@ vitest presence 13 verts (API prime, silence affirmatif, clamp fenêtre, replis)
 
 **Conclusion / prochaine étape** : sonde de calibration du compteur de respawn (ancres user
 8 s / 10 s suicide + latence d'affichage).
+
+---
+
+## [2026-09-02] Compteur de respawn : l unite est CALIBREE (ancres user 8 s / 10 s)
+
+**Statut** : Complété (calibration) ; publication reportée (couverture).
+
+**Décision technique principale** : sonde de recherche `respawn_calibration_research_test.go`
+(gardée GAME_FILM, sautée en CI, un film par processus — D17) sur la chaîne séquentielle
+existante (`ScanFilmGameEntitiesChain`, records CERTAINS avec slot + horodatage) : par
+épisode actif, régression de T0/T1 contre l'horloge du film — la PENTE donne l'unité sans
+rien supposer.
+
+**Résultats observés** (4 films, 5 épisodes régressables) : **T0 = secondes RESTANTES**
+(pente -1,00/s exacte partout) ; **T1 = durée TOTALE du respawn en secondes** (8 et 10
+observés, rien d'autre — les deux ancres données par le user) ; première lecture à N-1 s,
+cohérente avec la latence d'apparition du compteur qu'il décrit. Réserves consignées au
+registre : lectures isolées à grandes valeurs partagées entre slots (autre régime, à
+trancher) ; couverture chaîne ~1/3 des paquets = 1-7 lectures/film pour ~100 morts — trop
+clairsemée pour publier un décompte PAR MORT.
+
+**Conclusion / prochaine étape** : la condition « unité jamais calibrée » du registre est
+LEVÉE ; la publication au schéma suivant attend un chemin de lecture à meilleure couverture
+(bande ti=5 débruitée par le domaine calibré <= 10 s, ou image-clé).
