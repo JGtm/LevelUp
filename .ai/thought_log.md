@@ -1,3 +1,113 @@
+## [2026-09-02] Callouts Forge — le lexique des noms de lieu : 266/266 string_id resolus, 2 536 zones sur 2 536 nommees — Complete
+
+**Le probleme, chiffre.** Le catalogue venait de s'ouvrir aux cartes Forge (61 cartes,
+2 392 zones) mais **869 zones seulement portaient un libelle (36 %)** : les zones PORTENT
+toutes un `string_id` — elles sont donc nommees dans le jeu — et c'est notre RESOLUTION qui
+plafonnait, a 66 des 266 `string_id` employes (25 %). Retour utilisateur : « toutes les zones
+sont nommees, elles sont utilisees en competitif et les pros ont besoin des noms de zones ».
+Une carte aux deux tiers muette ne sert a rien en competitif.
+
+**L'etat de l'art tenait, verifie sur pieces avant de creuser** (le corpus `.mvar` annonce
+s'etait deja revele absent une fois). Rejoue le 2026-09-02 :
+`TestSondeUslgTexteDansLesRessources` rend exactement ce qu'il annoncait — 488 tags `uslg`,
+tag de 1 184 octets, un bloc de 18 langues, blob de ressources de 520 385 octets avec du texte
+ASCII lisible. En revanche le corpus `.mvar` etait **de nouveau absent** (3 fichiers dans
+`.ai/V7.5/dumps/mapvar/`) : re-telecharge par `--forge-fetch`, qui a reproduit la mesure de
+reference au chiffre pres (61 cartes / 2 392 zones / 869 nommees / 66 sur 266).
+
+**Decision technique principale — le blob n'est pas une soupe d'octets, c'est une CHAINE DE
+TAGS.** Le blob de ressources d'un `uslg` porte **18 sous-fichiers `ucsh` CONCATENES**, un par
+langue, chacun un tag complet ; le suivant commence a `headerSize + dataSize`. Dans chacun :
+la racine est la struct sans proprietaire (`owner == -1`), la **table d'index** est le TagBlock
+du champ 0 de cette racine (N paires `{ u32 string_id, u32 offset }`), et le **texte** est le
+bloc designe par la premiere reference de donnee (chaines UTF-8 terminees par NUL).
+
+Deux pieges leves, et c'est ce qui separe la sonde du decodeur :
+- **`0x150` n'etait pas une adresse mais une coincidence.** La table se trouve par la
+  struct-table du sous-fichier : `0x154` sur le plus gros tag, `0x144` ailleurs. Un offset en
+  dur — ou l'hypothese « 4 blocs » — ratait **451 des 488 tags** (ceux qui n'ont que 3 blocs,
+  faute de second TagBlock). Premiere passe : 37 tags decodes, 0 recouvrement. Apres lecture
+  generique des tables : 488 sur 488.
+- **La langue ne se devine pas.** L'ordre des 18 slots n'est PAS croissant
+  (`0..9, 11, 12, 15, 17, 10, 13, 14, 16`) : il se LIT dans le tag. `0 = anglais`,
+  `3 = francais`, verifies par la traduction d'une chaine connue sur les 18 slots (« Out of
+  Ammo » / « Munitions epuisees » / « Keine Munition mehr »...). Lire le slot 3 en supposant
+  « francais » donnerait le bon resultat par accident aujourd'hui et le mauvais au prochain
+  ajout de langue.
+
+**La preuve que le hash EST le string_id, et qu'elle ne devait rien a la chance.** Le lexique
+decode reproduit **les 463 `string_id` de `callouts_i18n.csv` avec un texte EN et FR identique
+au caractere pres : 0 absent, 0 divergence** — la table figee entiere, celle validee zone par
+zone en aout sur les 22 cartes integrees — et il resout **777/777** entrees du vocabulaire
+global `locs`. C'est le garde-rail permanent, pas seulement une verification du jour.
+
+**La liste des noms de lieu n'est PAS designee par un indice en dur.** `LexiqueLieux` prend,
+parmi les 488 `uslg`, celui qui couvre le mieux le vocabulaire `locs`, et EXIGE qu'il le couvre
+entierement. Un indice en dur (ce serait #4024) casserait a la prochaine mise a jour du jeu
+sans que rien ne le signale ; ce critere-la echoue bruyamment.
+
+**Ce qui a ete livre.** `internal/himap/uslg.go` (decodeur + vocabulaire `locs`, format
+documente au champ pres) ; `data/titles/halo_infinite/reference/callouts_lexique.csv`
+(810 noms de lieu, `string_id;en;fr`, trie — donnee de reference VERSIONNEE, comme
+`map_structure`) ; `cmd/mapcallouts-build/lexique.go` (ecriture, lecture, fusion) et la bascule
+`--lexique`. La fusion **REFUSE toute divergence** avec le CSV fige plutot que d'en trancher
+une au hasard : un faux nom de zone en competitif est pire qu'un nom absent.
+
+**Resultats mesures, avant / apres** (rotation du 2026-08-27, meme CLI, meme corpus) :
+
+| grandeur | avant | apres |
+|---|---|---|
+| string_id de lieu resolus | 66 / 266 (25 %) | **266 / 266 (100 %)** |
+| zones Forge portant un libelle | 869 / 2 392 (36 %) | **2 536 / 2 536 (100 %)** |
+| cartes Forge publiees | 61 | **64** |
+| cartes ecartees faute de zone nommable | 3 | **0** |
+
+Les 3 cartes gagnees sont les Vallaheim (48 zones chacune), dont le vocabulaire etait
+entierement hors du CSV natif. **Toutes les cartes passent a 100 %** : Kaiketsu 41 -> 105,
+Solution 41 -> 100, Interference 39 -> 84, Last Broadcast 34 -> 81, Starboard 29 -> 95,
+Refuge 20 -> 83, Opulence 16 -> 64. Controle d'aspect sur « The Pit » : Tree House / Cabane,
+Security / Salle de surveillance, Pit / Fosse, Courtyard / Grande cour — les callouts reels.
+
+**La section native est INCHANGEE**, verifie et pas supposé : `jq -S '.maps'` et `.brut` sont
+octet pour octet identiques a HEAD.
+
+**Tests.** Temoins HORS LIGNE (`cmd/mapcallouts-build/lexique_test.go`, aucune dependance au
+jeu) : 7 libelles reels absents du CSV et employes par des dizaines de zones ; le garde-rail
+463/463 contre le CSV fige ; la forme du fichier (en-tete, tri, pas de moitie de couple) ; le
+refus de divergence a la fusion. ANTI-REGRESSION sur les fichiers du jeu
+(`internal/himap/uslg_gamefiles_test.go`, skip sans installation) : le vocabulaire fait bien
+778 entrees, le lexique les nomme toutes en EN et FR, et le decodeur **reproduit le fichier
+versionne a l'identique dans les deux sens** (aucune manquante, aucune divergente, aucune
+nouvelle). Les deux ensemble ferment la boucle. Reproductibilite verifiee : lexique regenere
+apres refactorisation, meme md5.
+
+**Portee : `go build ./...` vert, `golangci-lint` 0 issue sur les deux paquets touches,
+`go test ./cmd/mapcallouts-build/ ./internal/analysis/replay/` vert, tests `himap` cibles
+verts. Documentation inversee corrigee dans le meme commit** (la sonde ne dit plus « reste a
+decoder », `csv.go` ne dit plus « on ne re-extrait pas uslg », `callouts_catalog.go` ne dit
+plus que les libelles vides sont frequents sur Forge, et le seuil « au moins une zone nommee »
+de `forge.go` est documente comme ne mordant plus).
+
+**Ce qui n'a PAS ete fait, et pourquoi.** Les 16 autres langues ne sont pas extraites : le
+decodeur les lit toutes, le lexique n'en ecrit que deux parce que le depot est bilingue par
+typage — ajouter une langue sera une colonne, pas un re-decodage. Le seuil « au moins une zone
+nommee » est conserve bien qu'il ne morde plus : il redeviendrait la bonne reponse le jour ou
+le jeu introduirait un nom absent du lexique versionne. Et aucun nom n'est invente : la regle
+tient, elle n'a simplement plus d'occasion de s'appliquer.
+
+**Decouverte hors perimetre, consignee au registre, NON traitee** : la passe NATIVE du
+catalogue n'est pas reproductible d'une machine a l'autre. Rejouee ici depuis
+`D:/SteamLibrary` (le catalogue au depot venait de `C:/Program Files (x86)/Steam`), elle rend
+un fichier plus PETIT de 645 Ko — le champ `source` ecrit le chemin d'installation au depot, et
+la section native perd des sommets de polygone (cause probable non verifiee : `decoupeCarte`
+re-derive les contours depuis les fonds publies). Le lot a donc restaure la section native
+depuis HEAD et n'a rejoue que `maps_by_id`.
+
+**Prochaine etape : le GATE VISUEL, et sa nature a change.** Il n'y a plus de contours muets,
+mais il y a maintenant un libelle PARTOUT — c'est la densite de texte qui n'a jamais ete
+regardee, sur des cartes a 100 zones. Planche a faire sur une carte dense (Kaiketsu, Solution)
+et une petite (Takamanohara, 17 zones), main a l'utilisateur.
+
 ## [2026-09-02] Callouts Forge — le catalogue gagne un espace de cles map_id : 61 cartes, 2 392 zones servies au rejeu — Complete
 
 **Le probleme, sur pieces.** `map_callouts.json` n'avait qu'UNE table, indexee par module

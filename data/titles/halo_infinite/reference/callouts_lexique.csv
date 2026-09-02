@@ -1,0 +1,811 @@
+string_id;en;fr
+0x006C9BEF;Wall Base;Socle mural
+0x01633487;Lakeside;Bord du lac
+0x0225EB16;Balcony;Balcon
+0x0271869D;Turbine;Turbine
+0x02A40CEA;Relic;Relique
+0x02A5CFDB;West Platform;Plateforme ouest
+0x02B26622;Eagle Base;Base de l'aigle
+0x02F9C367;Refinery Paddock;Enclos de la raffinerie
+0x033EC3C2;Gold Attic;Grenier d’or
+0x0350A56A;Commercial Alley;Rue commerçante
+0x04469A6A;Hex Center Road;Route centrale hexagonale
+0x046AD09D;Spiral;Spirale
+0x048023C7;North Trench;Tranchée nord
+0x049DD79F;High Path;Haut chemin
+0x049E1DE6;Atrium;Atrium
+0x05BE479F;Dried Jumps;Sauts secs
+0x05F8AE89;Hex Narrow Passage;Passage hexagonal étroit
+0x0629263F;Tower 1;Tour 1
+0x0673B399;Overpass;Passerelle aérienne
+0x06A2D795;Turbine Pit;Fosse à turbine
+0x06A8D5BE;Front Cliff Base;Base avant de la falaise
+0x06E9E8FE;Elevator;Ascenseur
+0x070A6CEE;Rock Pocket;Poche de rochers
+0x0783F945;Sneaky;Coupe-gorge
+0x078DA096;Cooling;Refroidissement
+0x07AFE0ED;Eagle Sneaky;Coupe-gorge Eagle
+0x07BD6222;Tower Basement;Sous-sol de la tour
+0x07FB36B7;North Rampart;Rempart nord
+0x08054638;Officer George's Desk;Bureau de l'officier George
+0x0814B63D;Middle Ramp;Rampe centrale
+0x081614A2;Overgrown Rat Tunnel;Tunnel à rats luxuriant
+0x081DC1A5;West Balcony;Balcon ouest
+0x08258326;Red Street;Rue rouge
+0x083A62CC;Small Rock;Petit rocher
+0x0874D317;Basin;Bassin
+0x0923953C;Camo Platform;Plateforme camouflée
+0x09401C2C;Center Passage;Passage central
+0x095E2E95;Window;Fenêtre
+0x09CCD03B;North Bridge;Pont nord
+0x09E88BC3;Bottom Catwalk;Passerelle inférieure
+0x09F5EB1A;High Cargo;Cargaison en hauteur
+0x0A16C501;Cobalt Base;Socle de cobalt
+0x0A1EAD79;Thats Pretty Neat!;C’est plutôt chouette !
+0x0A9699B9;Cove;Anse
+0x0A99F6A7;House Window;Fenêtre de maison
+0x0AD751E2;Bridge;Pont
+0x0B361E11;Garage;Garage
+0x0BBED0AE;Overgrown Rat Hole;Trou de rat luxuriant
+0x0C39A044;Hex Archway Road;Route de la voûte hexagonale
+0x0C9E460F;South Yard;Cour sud
+0x0CDE6FAE;Cliffs;Falaises
+0x0D5F5C5C;Restaurant;Restaurant
+0x0D855374;Viewpoint;Point de vue
+0x0E2DE875;Cobra Basement;Sous-sol Cobra
+0x0E3A56CF;Chasm;Précipice
+0x0E62A3B1;Street;Rue
+0x0E8B9E88;Eagle Ramp;Rampe Eagle
+0x0E9E1B5C;Camo Maintenance;Maintenance camouflée
+0x0EDD82E2;Knoll;Butte
+0x0F091E4D;The Pit;La fosse
+0x0F1B9205;West Nest;Nid ouest
+0x0F3725F4;Jail;Prison
+0x0F4EC82B;Crawl Space;Espace étroit
+0x0FA942DB;Rock Vault;Coffre rocheux
+0x0FD8EE97;Loading Docks;Quais de chargement
+0x0FEBAB2B;West Outside;Extérieur ouest
+0x1006DAC3;Mosh Pit;Pogo
+0x1044F489;Sandwich;Sandwich
+0x107E0247;Bravo;Bravo
+0x10858A8E;Low Temple;Bas temple
+0x10BF381F;Laundry;Blanchisserie
+0x10DD42BC;South Closet;Coin sud
+0x113CEB4E;Brutes;Brutes
+0x11CC5221;East Base;Base est
+0x1238C4A1;Loop;Bretelle
+0x12E4BC12;Yellow Courtyard;Grande cour jaune
+0x12F2E5CF;High Track;Voie élevée
+0x1316FB49;Juliet;Juliet
+0x133A909F;Maintenance Elbow Stairs;Coude d'escalier de maintenance
+0x1371697A;Under Cat Walk;Sous la passerelle
+0x13722847;Eagle Street;Rue Eagle
+0x13B6FC64;Red Platform;Plateforme rouge
+0x14133382;Dried Bat Ledge;Corniche de chauve-souris sèche
+0x1421A36F;Tower Stairs;Escaliers de la tour
+0x1421DD7B;Cave Pit;Fosse de la grotte
+0x14911CF4;East Nest;Nid est
+0x149A71B1;Overgrown Sneaky;Coupe-gorge luxuriant
+0x1576F2F5;Silo Ledge;Corniche de silo
+0x158CEE1B;Rock Switchback;Route sinueuse et rocheuse
+0x1596828C;Dried Mid;Milieu sec
+0x15B11A74;Stairs;Escaliers
+0x1689A252;Picnic;Pique-nique
+0x1711A2F9;Cobalt Bridge;Pont de cobalt
+0x17521CD9;East Junction;Jonction est
+0x177AB986;West Courtyard;Grande cour ouest
+0x17A0BD92;Sanctuary;Sanctuaire
+0x187FD8CC;East Sneaky;Coupe-gorge est
+0x18D54407;Gazebo;Kiosque
+0x18DC0DD8;Vat;Cuve
+0x197747D8;Camo Nest;Nid camouflé
+0x19A9480E;Sandwich House;Maison à sandwich
+0x19E151C2;Bunker Nest;Nid du bunker
+0x1A8F95F6;Station Square;Place du poste de police
+0x1AED6AD6;YEEEHAAAAAAAAAAAW;OUUUAIIIIIIIIIIIS
+0x1B0016D9;Cobalt Back Room;Arrière-salle de cobalt
+0x1B5CB39D;Mythic;Mythique
+0x1B8148DF;Worm Hole;Trou de ver
+0x1C893F2D;Low Track;Voie basse
+0x1DA8BA74;Canyon Base;Base du canyon
+0x1DF08620;Switch Back;Échangeur arrière
+0x1EF5EDA0;Radiator;Radiateur
+0x1EFDB643;North Track;Piste nord
+0x1F369F86;Tree House;Cabane
+0x1FBEDC13;Eagle Tunnel;Tunnel Eagle
+0x1FD9B22A;Rock Overlook;Promontoire rocheux
+0x2065625E;Middle;Centre
+0x208B86F0;Power Core;Noyau de puissance
+0x208BC082;West Landing;Parvis ouest
+0x20E36662;Lift;Monte-charge
+0x20E4AD7E;Slide;Glissière
+0x21243E47;West Bunker;Bunker ouest
+0x219C937A;Old Town Bar;Bar de vieille ville
+0x21A876CC;South Cave;Grotte sud
+0x21C1A455;Communications;Communications
+0x21D96A97;Garbage Chute;Vide-ordures
+0x21EAEBC6;Small Rocks;Petits rochers
+0x223FC514;Station;Station
+0x226282C3;Maintenance;Maintenance
+0x22908E62;Ramp;Rampe
+0x23329AE1;Blamite Ledge;Corniche de blamite
+0x23855809;Bunker;Bunker
+0x238E7993;Camo Flank;Flanc camouflé
+0x239D5F78;Launch Pad;Rampe de lancement
+0x24221F2D;Energy Bridge;Pont énergétique
+0x24473E5A;Armory;Armurerie
+0x2488C0FF;East Cave;Grotte est
+0x250DD42E;Pump;Pompe
+0x25181F95;Sandwich Altar;Autel sandwich
+0x25F35196;Turbine Blast Deck;Pont d'explosion de la turbine
+0x2694B015;Radar Shipping;Aire de chargement du radar
+0x26EC4E34;Green Tunnel;Tunnel vert
+0x27804B73;Pipe Ramp;Rampe incurvée
+0x2780B4BD;Operations Tower;Tour des opérations
+0x28D774FE;Red Bend;Virage rouge
+0x28F6351D;Cobra Tower;Tour Cobra
+0x2A574A23;Overhang;Avancée
+0x2AF36E94;Center Rock Path;Chemin rocheux central
+0x2B1C162F;Crack;Crevasse
+0x2B60FFB0;Overshield Closet;Placard blindé
+0x2C0FE0EA;Sandwich Idol;Idole sandwich
+0x2C126426;Cliff Base Interior;Intérieur de la base de la falaise
+0x2C33B220;West Trench;Tranchée ouest
+0x2C4E9524;Gold Base;Base d’or
+0x2D6AACDE;South Edge;Côté sud
+0x2E3AFC0F;North Alley;Allée nord
+0x2E448683;Refinery Backroads;Petites routes de la raffinerie
+0x2E6D67D9;Red Courtyard;Grande cour rouge
+0x2ED63696;Bunker Platform;Plateforme du bunker
+0x2F1980FA;Turbine Base;Base de turbine
+0x2F25D8C1;Cobra Sneaky;Coupe-gorge Cobra
+0x2F632C53;Pit;Fosse
+0x2F7ED9F7;East Flight Deck;Poste de pilotage est
+0x2FA84D8B;South Platform;Plateforme sud
+0x2FBFAAE3;Rail;Rail
+0x3047ADB9;South Landing;Parvis sud
+0x305CD04A;Overgrown Flank;Flanc luxuriant
+0x30839EF0;Overgrown Jumps;Sauts luxuriants
+0x30BD170F;South Tunnel;Tunnel sud
+0x31520A67;Station Inside;Poste de police (intérieur)
+0x317190AD;South Catwalk;Passerelle sud
+0x318BBABE;Overgrown Street;Rue luxuriante
+0x31D8461B;Woods;Bois
+0x321E1059;Overgrown Landing;Ponton luxuriant
+0x327260B6;West Gate;Porte ouest
+0x32B1168C;Terminal;Terminal
+0x32FC8386;Crates;Caisses
+0x33598517;Shelter;Abri
+0x338C7469;West Base;Base ouest
+0x352C506F;South Tower;Tour sud
+0x352D4955;Cobalt Attic;Grenier de cobalt
+0x355BA48C;Enclave;Enclave
+0x35CD21C8;Charlie;Charlie
+0x35F87BEA;Antenna;Antenne
+0x3622EBA0;Sandwiches;Sandwichs
+0x362481A3;Pipes;Tuyaux
+0x364C0B6D;Down Hill;Pente
+0x36A0EFAC;Dried Rat Hole;Trou de rat sec
+0x36E6A152;Yellow Base;Base jaune
+0x379FDD28;Elevator 2;Ascenseur 2
+0x3A223989;Front Canyon Base;Base avant du canyon
+0x3A39C9F3;High Power;Haute tension
+0x3A4981D6;Low Power;Énergie basse
+0x3A4CFF6B;Dried Back Nest;Nid arrière sec
+0x3A4F3739;East Deadlands;Terres mortes de l’Est
+0x3A832995;Overgrown Platform;Plateforme luxuriante
+0x3B67FC9B;Canyon Base;Base du canyon
+0x3BB26A39;Overshield Attic;Grenier blindé
+0x3C322F12;Echo;Echo
+0x3C7CBAB9;North Landing;Parvis nord
+0x3C7D8520;West Bridge;Pont ouest
+0x3CF86E98;Horseshoe;Fer à cheval
+0x3D5DCDD9;Low Yard;Dépôt en contrebas
+0x3DC4B9C3;West Flight Deck;Poste de pilotage ouest
+0x3DF61E10;Hollow Tree;Arbre creux
+0x3EA9803B;East Edge;Côté est
+0x3EF694F5;West Lookout;Guet ouest
+0x3F16A5B4;Den;Tanière
+0x3F84E256;West Ramp;Rampe ouest
+0x3FCBA21B;Grand Hall;Grande salle
+0x4079DDCE;Flank Steak;Flanc
+0x408F7EDD;Arch;Arche
+0x413378DA;North Closet;Coin nord
+0x4154FCBB;East Bend;Virage est
+0x416E3F65;Overshield Pit;Fosse blindée
+0x41CC618B;East Stairs;Escaliers est
+0x41E33994;Rock Narrow Passage;Passage étroit et rocheux
+0x424DA34A;Bog;Marais
+0x427D2413;Red Tunnel;Tunnel rouge
+0x42BFAC07;East Bunker;Bunker est
+0x43CBF363;Loading Dock;Quai de chargement
+0x43CC3D4F;Rock Forest;Forêt de rochers
+0x44596CF7;Fountain;Fontaine
+0x445A1D49;Overgrown Courtyard;Cour luxuriante
+0x44DF1726;Under Bridge;Sous le pont
+0x45156CEB;Switch;Interrupteur
+0x4518DDBE;Hex Basement;Sous-sol hexagonal
+0x457FCAE6;Air Ventilation Shaft;Puits de ventilation
+0x4696B518;Basement;Sous-sol
+0x46A83F5C;Gulch;Ravin
+0x4709F2A6;Overwatch;Surveillance
+0x478BB1C3;Red Basement;Sous-sol rouge
+0x47923640;Long Stairs;Grands escaliers
+0x47FFD805;West Stairs;Escaliers ouest
+0x4865C8B4;Hex Power Node;Nœud d'alimentation hexagonal
+0x48ACE7C8;Yellow Bend;Virage jaune
+0x48CCF1C4;Launch Bay;Aire de décollage
+0x4928CB0B;Hex Landing;Aire d'atterrissage hexagonale
+0x499D224C;Hill;Colline
+0x4A09D443;Silos;Silos
+0x4A108CBD;Dried Stage;Scène sèche
+0x4A40553A;Deck;Pont
+0x4AC048A2;Blue Courtyard;Grande cour bleue
+0x4B024263;Pool;Bassin
+0x4B6B8B87;Overshield Rampart;Rempart blindé
+0x4C2A0485;Canal;Canal
+0x4CD14822;Spawn;Apparition
+0x4E9E5E09;River;Rivière
+0x4EBBB218;Camo Rampart;Rempart camouflé
+0x4F41C8C3;Overgrown Base;Base luxuriante
+0x4F476193;Transmat;Téléporteur
+0x4F5B8FC2;Gold Bridge;Pont d’or
+0x4F9BDABE;Cave;Grotte
+0x4FCA2784;Outlook;Poste d'observation
+0x50C1E0FD;Canyon Wall;Paroi du canyon
+0x50DD86E1;Dried Landing;Ponton sec
+0x5117486F;Main Street;Grande rue
+0x512DCA7A;Monolith;Monolithe
+0x5131A9CB;Data;Centre de données
+0x5155806D;East Trench;Tranchée est
+0x5281EFCF;East Lookout;Guet est
+0x52AA091A;Bottom Mid;Milieu bas
+0x52EF4752;Alley;Allée
+0x5328996B;Lookout;Poste de guet
+0x53650488;Arc Street;Rue courbée
+0x53853465;Cave;Grotte
+0x5390E36B;Creek;Crique
+0x53A090AE;Landing;Parvis
+0x53EAC345;Island;Île
+0x548F1484;Camo Short Bridge;Petit pont camouflé
+0x54F76157;West Alley;Allée ouest
+0x555CA63B;Top Mid;Milieu haut
+0x55ED0E33;Foxtrot;Foxtrot
+0x568259BC;Orange Pipes;Tuyaux orange
+0x56CABEA8;Perch;Perchoir
+0x574282C2;North Courtyard;Grande cour nord
+0x578DB990;No Power;Sans énergie
+0x57A9E8DD;Yard;Cour
+0x57C163A2;Hex Overlook;Promontoire hexagonal
+0x5840CE3F;Under Bridge;Sous le pont
+0x585348DB;Overshield Window;Fenêtre blindée
+0x585D81D3;Blue Bend;Virage bleu
+0x58F17AD2;Hatch;Sas
+0x59E2B8E1;Side Line;Ligne latérale
+0x59EEA68A;Flowers;Fleurs
+0x5A03E08D;Control Room 2;Salle de contrôle 2
+0x5A27F79B;Grotto;Cavité
+0x5A74156B;Hex Vault Overlook;Promontoire du coffre hexagonal
+0x5A93C1E7;Radar Control;Contrôle du radar
+0x5AE925D2;Dock;Quai
+0x5B67F54D;Overgrown Bottom Street;Rue du bas luxuriante
+0x5BF429B3;Plank;Planche
+0x5C437F4C;East Alley;Allée est
+0x5C7AF9D4;North Catwalk;Passerelle nord
+0x5C802FFE;Overshield Ramp;Rampe blindée
+0x5CDDCB28;Center Hex Path;Chemin hexagonal central
+0x5D4596F0;Three;Trois
+0x5DC6CBAD;North Tower;Tour nord
+0x5E42CF85;Waterfront;Rivage
+0x5E5087E6;West Rampart;Rempart ouest
+0x5E68B5E8;Dunes;Dunes
+0x5E710142;Yep, this is death...;Oui, c'est la mort...
+0x5E8B13A0;Secret Tunnel;Tunnel secret
+0x5F0685BE;Spiral Shortcut;Raccourci en spirale
+0x5F7FDD25;East Rampart;Rempart est
+0x6021CEBA;Rock Landing;Aire d'atterrissage rocheuse
+0x60B29C4D;East Sign;Panneau est
+0x60F0FB60;North Tree House;Cabane nord
+0x610ADEC4;Logging Camp;Camp de bûcherons
+0x610D3B49;Hello There!;Salut, tout le monde !
+0x61CAC52B;East Track;Piste est
+0x61F119C5;South Trench;Tranchée sud
+0x62247A03;Spine;Squelette
+0x624531A7;Beacon;Balise
+0x6247C30A;Blue Ramp;Rampe bleue
+0x62982FF2;Commercial District;Quartier commerçant
+0x62CBB7F3;Camo Staging;Relais camouflé
+0x630F9736;East Tower;Tour est
+0x63B63E21;Eagle Platform;Plateforme Eagle
+0x63D486F1;North Bend;Virage nord
+0x640B2652;Oscar's House;Maison d'Oscar
+0x64F4A4C6;Refinery Garage;Garage de la raffinerie
+0x65E100C1;Low Ruins;Basses ruines
+0x66309118;East Spawn;Point de réapparition est
+0x663EF171;Sinkhole;Doline
+0x673ED747;Tooth Pick;Cure-dent
+0x675AE256;Cliff Edge;Bord de la falaise
+0x67F1CDF4;Overshield Platform;Plateforme blindée
+0x68222273;Meadow;Prairie
+0x68553B32;Lockers;Casiers
+0x68DC05DB;Hollows;Creux
+0x68F92EAA;Launch Ramps;Rampes de lancement
+0x69490AD2;West Basement;Sous-sol ouest
+0x69ACDB79;Wing;Aile
+0x69BCBBEA;Barrels;Barils
+0x69FECC90;Rock Vault Courtyard;Cour du coffre rocheux
+0x6A14508E;Canyon Roadway;Route du canyon
+0x6A5D3262;Gold Flank;Flanc d’or
+0x6AC96C7C;Cage;Cage
+0x6AD17F05;Wind Tunnel;Soufflerie
+0x6AFC2041;High Base;Base en hauteur
+0x6C23E099;Top Catwalk;Passerelle supérieure
+0x6C880E93;Blue Street;Rue bleue
+0x6C88E8C7;Pyramid;Pyramide
+0x6D110799;Cobalt Flank;Flanc de cobalt
+0x6DE07FDC;Attic;Grenier
+0x6E3E6A9F;Camo Deck;Pont camouflé
+0x6E5E7B39;Blue Basement;Sous-sol bleu
+0x6E628CF7;Over Look;Belvédère
+0x6EAB9097;South Underpass;Passage sous-terrain sud
+0x6EBD0E1C;Crossroads;Croisement
+0x6EC30761;Pocket;Poche
+0x6ED8A6F7;Crash Site;Site du crash
+0x6F0EE882;Dried Rat Tunnel;Tunnel à rats sec
+0x6F5748BC;Low Base;Base en contrebas
+0x6F63BA33;One;Un
+0x6F950840;East Window;Fenêtre est
+0x6F9B20D4;Overshield Nerd;Crack blindé
+0x705F1586;Delta;Delta
+0x7098A0B0;Rock Center Road;Route centrale rocheuse
+0x70A11EBA;Dried Courtyard;Cour sèche
+0x714590DB;West Tree House;Cabane ouest
+0x714C148B;West Elbow;Coude ouest
+0x715A3D68;Center Complex;Complexe du centre
+0x7210E244;Icicles;Glaçons
+0x7297603B;Two;Deux
+0x72BCDA69;West Junction;Jonction ouest
+0x72C55D18;Cobra Base;Base Cobra
+0x72FE6C83;Grand Blamites;Blamites sublimes
+0x7300C18E;Red Tower;Tour rouge
+0x731950D4;Lakeside Crossroads;Croisement du bord du lac
+0x74153538;Overshield Vent;Conduit blindé
+0x746087B6;No Man's Land;No man's land
+0x75149706;Subway;Métro
+0x75F9173F;South Outside;Extérieur sud
+0x763DA4AF;Cobalt Short Cut;Raccourci de cobalt
+0x763EB6FD;Radar Pass;Col du radar
+0x76523863;South Bunker;Bunker sud
+0x77032DAB;Whirlpool Dam;Siphon de barrage
+0x7710E402;Cat;Chat
+0x77302C96;Drill;Foreuse
+0x77309927;Overgrown Attic;Grenier luxuriant
+0x775FB9E3;Sneaky Path;Coupe-gorge
+0x77B68A81;Security;Salle de surveillance
+0x77E94A2A;Green Base;Base verte
+0x77EDA78F;Garden;Jardin
+0x780936AD;Ridgeline;Arête
+0x7872377A;Yellow Basement;Sous-sol jaune
+0x787558D5;Yellow Tower;Tour jaune
+0x79114C5C;House;Maison
+0x7934FDD3;Center Pit;Fosse centrale
+0x795E14FE;Heaven;Ciel
+0x7A1577A5;Dried Base;Base sèche
+0x7A1ABAED;Nook;Sentier
+0x7AAF373E;Overgrown Nest;Nid luxuriant
+0x7C0E35D1;Rock;Rocher
+0x7C146C98;Room;Chambre
+0x7C3E5FCB;West Track;Piste ouest
+0x7C4D6810;West Catwalk;Passerelle ouest
+0x7C5E53F6;Camo Junction;Jonction camouflée
+0x7D66F352;East Elbow;Coude est
+0x7E3181F5;Red Sneaky;Coupe-gorge rouge
+0x7E4384A5;Dried Back Base;Base arrière sèche
+0x7E72F918;Overgrown Ramp;Rampe luxuriante
+0x7EE20AFA;Arc Street Hallway;Couloir rue courbée
+0x7F1EC949;Blue Tunnel;Tunnel bleu
+0x7F8881F4;Alpha;Alpha
+0x7FA14D6E;Big Rock;Gros rocher
+0x7FAA3EAC;Cobalt;Cobalt
+0x7FCFB093;Tunnel;Tunnel
+0x80218521;Red Base;Base rouge
+0x80406115;Frigate Base;Base de la frégate
+0x80652353;Overshield Long Bridge;Long pont blindé
+0x806A5412;Elevator Tunnel;Tunnel ascenseur
+0x80A3BCE2;Last Stand;Dernier bastion
+0x81FA4C06;Porch;Porche
+0x826B70DF;Overgrown Mohawk;Mohawk luxuriant
+0x826C620A;Lava;Lave
+0x827480AD;Middle Bridge;Pont central
+0x830FFA22;Gravity Lift;Ascenseur gravitationnel
+0x832DBB57;Back Tunnel;Tunnel arrière
+0x8335A6EA;Elbow;Coude
+0x8348F5D6;Plaza;Plaza
+0x83A1F635;East Balcony;Balcon est
+0x83D91929;Main Street Alley;Allée de la grande rue
+0x83DB7513;Operations;Opérations
+0x8455E590;Back Road;Route secondaire
+0x8509F7DB;Wizard Rock;Rocher du magicien
+0x85BA3BC6;Bottom Base;Base du bas
+0x85D23E7A;Eagle Window;Fenêtre Eagle
+0x85F88730;Weapon Range;Polygone de tir
+0x86D21E3E;Big River;Grande rivière
+0x8723743E;Catwalk;Passerelle
+0x87BD0EC3;Overgrown Back Ledge;Arrière-corniche luxuriante
+0x87C43D3D;Bridge Falls;Cascade du pont
+0x87EAE2FF;Hex Forest;Forêt hexagonale
+0x87F9EE0F;Wreckage;Épave
+0x885AA3D0;Courtyard;Grande cour
+0x898B1F86;Movement Course;Trajectoire de déplacement
+0x89C194ED;Palm Tree;Palmier
+0x89C47537;Plaza Stairs;Escaliers de la place
+0x8A0E8C10;East Courtyard;Grande cour est
+0x8AB92BF6;Dried Big Door;Grande porte sèche
+0x8B22ED4F;West Window;Fenêtre ouest
+0x8BA7EF37;Dried Diving Board;Plongeoir sec
+0x8BCF6A60;Skinny;Goulet
+0x8C08900D;Pumping Station;Station de pompage
+0x8C6321E8;Planters;Serre
+0x8CC56DD2;Posters;Affiches
+0x8CDF1B0E;Camo Closet;Recoin camouflé
+0x8CDF30D5;Cobra Street;Rue Cobra
+0x8CE258BB;Overhang;Avancée
+0x8CF023F4;East Yard;Cour est
+0x8D96091B;Stumps;Souches
+0x8DD9CDBF;Generator Tunnel;Tunnel du générateur
+0x8E5E0D31;Northwest Rocks;Rochers nord-ouest
+0x8EC32070;Shipping;Aire de transbordement
+0x8FABCAB8;Dried Hut;Cabane sèche
+0x904EF102;Green Window;Fenêtre verte
+0x90681E69;West Sneaky;Coupe-gorge ouest
+0x90A108F7;Overgrown Long Hall;Longère luxuriante
+0x90B5BB6E;Southwest Rocks;Rochers sud-ouest
+0x90B7A761;Back Gravity lift;Ascenseur gravitationnel arrière
+0x90C3C943;Hydro;Hydro
+0x911A0F92;Cobra Platform;Plateforme Cobra
+0x911CEFCE;Blue Refrigeration;Refroidissement bleu
+0x918F4CEE;Sad Trees;Arbres mornes
+0x91A9216E;North Basement;Sous-sol nord
+0x9221AB24;Radar Frontage;Façade du radar
+0x925DBB0C;Broken Ring;Anneau brisé
+0x92737611;East Closet;Coin est
+0x9284D280;Blast Pit;Fosse à explosion
+0x936AD79A;Cafe;Café
+0x9390C4FB;Incoming;Activation
+0x93F75773;Yellow Tunnel;Tunnel jaune
+0x9417AEEF;East Underpass;Passage sous-terrain est
+0x94370955;Back Blamite;Blamite sèche
+0x94B4F201;Gate;Portail
+0x95321674;Lobby;Accueil
+0x956A349E;West Underpass;Passage souterrain ouest
+0x95D7A351;Pit Ridgeline;Ligne de crête de la fosse
+0x96A4A8F6;Road;Route
+0x9718DB00;Generator;Générateur
+0x975F7311;Dried Back Ledge;Arrière-corniche sèche
+0x979F39E1;Grad Board;Tableau grad
+0x985956E8;Arc Street Bend;Virage rue courbée
+0x98A8F643;North Yard;Cour nord
+0x98BFD031;Yellow Refrigeration;Refroidissement jaune
+0x98C937C6;Depot;Dépôt
+0x9943FE60;West Sign;Panneau ouest
+0x99520652;Dome;Dôme
+0x999E1D9B;West Cave;Grotte ouest
+0x9A0A5936;Dried Flank;Flanc sec
+0x9A203BF3;Overshield Maintenance;Maintenance blindée
+0x9A7FA40D;Dried Mohawk;Crête sèche
+0x9A98DCB2;Stump;Souche
+0x9ADF8852;AA Gun;Batterie antiaérienne
+0x9B11C6EA;Ledge;Corniche
+0x9C390FD3;Hex Vault;Coffre hexagonal
+0x9C4BA91B;Eagle Courtyard;Grande cour Eagle
+0x9C825B6D;West Edge;Côté ouest
+0x9CDBA8DE;Catwalk;Passerelle
+0x9D161DCB;Control Room;Salle de contrôle
+0x9D899AEB;Drill Platform;Plateforme de forage
+0x9E0CCD46;South Spawn;Point de réapparition sud
+0x9E27DD72;North Sneaky;Coupe-gorge nord
+0x9E69A08A;North Outside;Extérieur nord
+0x9EA9EFC0;North Ramp;Rampe nord
+0x9F56E032;Hall;Hall
+0x9FD14688;Cart Hallway;Couloir à chariot
+0xA02D2A84;Red Ramp;Rampe rouge
+0xA04DBA78;T Junction;Jonction T
+0xA0C025BC;Bottom Nest;Nid du bas
+0xA1963DE7;Dried Sneaky;Coupe-gorge sec
+0xA1CD43CB;Overshield Pocket;Poche blindée
+0xA1F6179A;Dried Patio;Patio sec
+0xA264EE9F;Gold Jungle;Jungle d'or
+0xA2942B0A;Yellow Platform;Plateforme jaune
+0xA29816EF;Dried Street;Rue sèche
+0xA2F8ECA3;Facility;Local
+0xA3463240;Cathedral;Cathédrale
+0xA3F3D842;Eagle Basement;Sous-sol Eagle
+0xA4176B11;Yellow Sneaky;Coupe-gorge jaune
+0xA46AB294;Crosspoint;Point de croisement
+0xA4A98A70;South Balcony;Balcon sud
+0xA54909B9;Canal Stairs;Escaliers du canal
+0xA5D3C246;Truck;Camion
+0xA5E65DAE;Frigate Blast Deck;Pont d'explosion de la frégate
+0xA61782C5;Cave Lift;Monte-charge de la grotte
+0xA6510037;Cliff Base;Base de la falaise
+0xA6A5F925;Blast House;Maison à explosion
+0xA6EF850C;East Tunnel;Tunnel est
+0xA71AEB01;Top Nest;Nid du haut
+0xA745EDA2;Gallery;Galerie
+0xA8048D7C;Stargate;Porte des étoiles
+0xA81505C8;Shrine;Lieu saint
+0xA86D5AC7;North Spawn;Point de réapparition nord
+0xA87C0135;Subway Nest;Planque du métro
+0xA8ACA0C0;East Catwalk;Passerelle est
+0xA8B6F96B;Old Town;Vieille ville
+0xA8F50152;Cliffside;Versant de falaise
+0xA92ECB44;Red Window;Fenêtre rouge
+0xA9BF3270;Pillar;Pilier
+0xA9D02179;Overgrown Big Door;Grande porte luxuriante
+0xA9E7B33C;South Basement;Sous-sol sud
+0xAA1E31FA;Hole;Trou
+0xAA64B439;Green Ramp;Rampe verte
+0xAA6C8944;House Elbow;Coude de maison
+0xAAB1E1A1;Archway;Voûte
+0xAB50B931;Underpass;Passage souterrain
+0xAB84953C;Overlook;Promontoire
+0xABA81E9B;Center Bridge;Pont central
+0xABBA2150;Rock Junction;Jonction rocheuse
+0xAD057EC5;Cobra Courtyard;Grande cour Cobra
+0xAD65575C;Old Town Stairs;Escaliers de vieille ville
+0xAD83C6C9;Red Hallway;Couloir rouge
+0xAD96BDA9;Stalls;Stands
+0xADE28BA7;Swing;Balançoire
+0xAE6887BA;Overshield Junction;Intersection blindée
+0xAEBC9D42;Track Tunnel;Tunnel à voie
+0xAED5C45C;Blue Window;Fenêtre bleue
+0xAF047E83;Closed Hall;Salle fermée
+0xAF26A040;Overshield Street;Rue blindée
+0xB0252F36;Bay Doors;Portes du compartiment
+0xB070EFCA;We have been trying to reach you about your warthog's Extended Warranty;Nous cherché à vous contacter au sujet de l'extension de garantie de votre warthog
+0xB15407D9;Overgrown Pillars;Piliers luxuriants
+0xB163BF93;Rock Vault Hike;Promenade du coffre rocheux
+0xB1995834;West Deadlands;Terres mortes de l’Ouest
+0xB1CEB9D7;Trench;Tranchée
+0xB2217CCE;Control;Contrôle
+0xB2775A39;West Tunnel;Tunnel ouest
+0xB2FE386B;West Market Bridge;Pont du marché ouest
+0xB3137162;West Closet;Coin ouest
+0xB355B7FD;East Bridge;Pont est
+0xB36C81A3;Cobra Bend;Virage Cobra
+0xB3B76089;Junction;Jonction
+0xB3CD2B97;Dog;Chien
+0xB40B5870;Camo Attic;Grenier camouflé
+0xB4CAB331;AI Lab;Labo IA
+0xB5279A8A;Hex Vault Courtyard;Cour du coffre hexagonal
+0xB5D6DDDF;West Street;Rue ouest
+0xB5D92C37;Blast Pit;Fosse à explosion
+0xB5DF1199;Green Sneaky;Coupe-gorge vert
+0xB6C10F1F;South Sneaky;Coupe-gorge sud
+0xB7D4604C;Subway Stairs;Escaliers du métro
+0xB95027C1;Overgrown Back Base;Base arrière luxuriante
+0xB9510B50;Pipe Hall;Salle des tuyaux
+0xB985A6C6;Sad Trombone;Trombone triste
+0xB98ACBBF;High Ruins;Hautes ruines
+0xBA33339A;Base;Base
+0xBA4D6F22;Overgrown Patio;Patio luxuriant
+0xBABF6E7F;Low Cargo;Cargaison en contrebas
+0xBC0FAA35;Engine;Machinerie
+0xBC56AAEB;Altar;Autel
+0xBC989C20;Camo Nerd;Nerd camouflé
+0xBCF295F6;Elevator 1;Ascenseur 1
+0xBD329923;Overgrown Stage;Scène luxuriante
+0xBE1609FF;Free Money;Argent gratuit
+0xBE6E2483;High Yard;Dépôt en hauteur
+0xBE7F08BB;Cobra Tunnel;Tunnel Cobra
+0xBEADAE22;Outpost;Avant-poste
+0xBEC4CC1E;North Underpass;Passage souterrain nord
+0xBEDC16EC;South Point;Point sud
+0xBEFB5A6C;Door;Porte
+0xBF05AC7E;Green Courtyard;Grande cour verte
+0xBF0A4EF1;Cliff Roadway;Route de la falaise
+0xBF147595;East Basement;Sous-sol est
+0xBF495A81;Hex Archway;Voûte hexagonale
+0xC0064772;Maintenance Bay;Baie de maintenance
+0xC02A2E13;Garbage Chute;Vide-ordures
+0xC0426E20;Batteries;Accumulateurs
+0xC0736875;Big Rock Junction;Carrefour du gros rocher
+0xC093DEB8;Control Room Stairs;Escalier de la salle de contrôle
+0xC0AFE8F9;Rock Vault Overlook;Promontoire du coffre rocheux
+0xC0CB72A5;Tunnel;Tunnel
+0xC0D5A74D;Blue Sneaky;Coupe-gorge bleu
+0xC0E59FD0;Dried Pillars;Piliers secs
+0xC1192245;Tower Outside;Extérieur de tour
+0xC177D49A;Camo Vent;Conduit camouflé
+0xC209C90B;Bird Nest;Nid d’oiseau
+0xC21D2B46;East Outside;Extérieur est
+0xC3001CF5;Sub;Sous-marin
+0xC3F87E92;Overgrown Diving Board;Plongeoir luxuriant
+0xC49B2856;Overshield Staging;Mise en scène blindée
+0xC53D390C;Frigate Interchange;Échangeur de la frégate
+0xC55A5EB7;Hex Roof;Toit hexagonal
+0xC56C106E;Clegg;Clegg
+0xC5D70431;OHH NOOO;OOOH NOOON
+0xC6BC6267;Eagle Bend;Virage Eagle
+0xC6C72CFF;Rocky Pass;Col rocheux
+0xC6DBEC7E;Radar Garage;Garage du radar
+0xC6F20EE0;The Cut;La séparation
+0xC753DDCD;North Tunnel;Tunnel nord
+0xC78B0AE5;North Platform;Plateforme nord
+0xC8201C79;Dried Platform;Plateforme sèche
+0xC835D0BC;Hallway Drop;Couloir dénivelé
+0xC83F5C8E;Outside;Extérieur
+0xC935A854;Control Room 1;Salle de contrôle 1
+0xC942D21A;Hex Vault Hike;Promenade du coffre hexagonal
+0xC977819C;East Market Bridge;Pont du marché est
+0xC97F7071;Cliffside Trail;Sentier de la falaise
+0xC9E13F7F;Dried Long Hall;Long couloir sec
+0xCABCABE2;Rock Archway;Voûte rocheuse
+0xCB9DE182;North Stairs;Escaliers nord
+0xCC95163A;West Tower;Tour ouest
+0xCC991348;Market;Marché
+0xCCBB8E07;What The?!?!;Qu'est-ce que...
+0xCCF13C23;Tunnel Drop;Tunnel dénivelé
+0xCD164BE0;West Yard;Cour ouest
+0xCD20561C;Blue Base;Base bleue
+0xCD4E9DDC;Yard Pillars;Piliers de cour
+0xCD58D77A;Cobra Window;Fenêtre Cobra
+0xCDA9E201;Station Tower 1;Tour du poste de police 1
+0xCE34B62B;Overshield Deck;Pont blindé
+0xCECE31C8;Nest;Nid
+0xCF43083D;South Elbow;Coude sud
+0xCFB43E1F;Oasis;Oasis
+0xD05C29BE;Rampart;Rempart
+0xD06B7F94;Camo Pocket;Poche camouflée
+0xD075C1D9;Triple Sandwich jr;Triple Sandwich Jr
+0xD0E50B00;East Ramp;Rampe est
+0xD1755CCF;North Bunker;Bunker nord
+0xD1885AB2;Sanctuary;Sanctuaire
+0xD1C88F8D;Station Balcony;Balcon du poste de police
+0xD20A369B;Blamite Tunnel;Tunnel de blamite
+0xD2AED194;South Alley;Allée sud
+0xD3FDD332;Bend;Virage
+0xD47CED3D;Gold Back Room;Arrière-salle dorée
+0xD52E7B8B;Cliff's Thinking Spot;Point de réflexion de la falaise
+0xD5EC0B05;Platform;Plateforme
+0xD6D6F13D;Dried Attic;Grenier sec
+0xD6ED80C1;Big Rocks;Gros rochers
+0xD6F189E0;Subway Bend;Virage de métro
+0xD7447D9E;North Elbow;Coude nord
+0xD7727330;South Track;Piste sud
+0xD8FE773A;West Gate;Porte ouest
+0xD991EDE0;North Street;Rue nord
+0xD9D605DB;Dried Bottom Street;Bout de rue sèche
+0xD9E444D4;Overshield Flank;Flanc blindé
+0xD9FB95D3;Overgrown Mid;Milieu luxuriant
+0xD9FF4E5C;Comms Tower;Tour de communication
+0xDA57D876;South Courtyard;Grande cour sud
+0xDA6F0312;Locker Room;Vestiaire
+0xDA8A30CE;Lower Horseshoe;Fer à cheval inférieur
+0xDBA89F78;Watchtower;Mirador
+0xDBC987EE;South Nest;Nid sud
+0xDBF379E0;Blue Utility;Utilitaire bleu
+0xDCFDABCA;Tower Base;Base de la tour
+0xDD28A839;Landing Pad;Aire d'atterrissage
+0xDD405E09;Gold Short Cut;Raccourci d'or
+0xDDB4E2CA;Overgrown Nest;Nid luxuriant
+0xDDC45B1F;Overshield Nest;Nid blindé
+0xDDDB531C;Weapon Platform;Plateforme d'armes
+0xDDFDBA74;Flappy Flap;Envol
+0xDE13D3D5;Overgrown Hut;Cabane luxuriante
+0xDEFA6EF8;Camo Cannon;Canon camouflé
+0xDEFC83FA;North Balcony;Balcon nord
+0xDF51DC5D;Waterfall Base;Base de la cascade
+0xDF6D6B78;Chasm;Précipice
+0xDFC6F119;Overgrowth;Broussailles
+0xE0156660;Library;Bibliothèque
+0xE07C3C59;Green Tower;Tour verte
+0xE0E445A4;West Bend;Virage ouest
+0xE0F7E11C;Camo Window;Fenêtre camouflée
+0xE0FD8D98;Dried Ramp;Rampe sèche
+0xE1494FAF;Tower 3;Tour 3
+0xE1DA81A8;South Lookout;Guet sud
+0xE20A6A74;Cobalt Jungle;Jungle de cobalt
+0xE245B9A2;Atrium;Atrium
+0xE3007F14;Jungle;Jungle
+0xE32DB67C;Overshield Short Bridge;Pont court blindé
+0xE33C1767;Yellow Street;Rue jaune
+0xE3561DA4;Green Building;Bâtiment vert
+0xE39B2625;Green Basement;Sous-sol vert
+0xE45D1F70;Gold;Or
+0xE4A95F42;YEET;YEET
+0xE4E9691B;South Rampart;Rempart sud
+0xE5004C00;Tram;Tram
+0xE50BCCA1;Yellow Window;Fenêtre jaune
+0xE56092FE;Cave;Grotte
+0xE56ACB1E;Load Zone;Zone de chargement
+0xE5AC3DAC;Camo Ramp;Rampe camouflée
+0xE602003C;North Lookout;Guet nord
+0xE6507880;East Platform;Plateforme est
+0xE65F6834;Cavern;Caverne
+0xE70C23CC;Down River;En aval
+0xE76A36E4;Refinery Frontage;Façade de la raffinerie
+0xE7916508;Rock Archway Road;Route de la voûte rocheuse
+0xE88B9D09;Blue Tower;Tour bleue
+0xE8963B1D;Hallway;Couloir
+0xE8FE21B8;North Nest;Nid nord
+0xE9351F59;Sanctum;Sanctuaire
+0xE941D002;Pick it up!;Collecte
+0xE95D794C;High Temple;Haut temple
+0xE9B1B9B3;Yellow Ramp;Rampe jaune
+0xEAD02120;Camo Long Bridge;Long pont camouflé
+0xEAFB8D89;Creek Bed;Lit du ruisseau
+0xEB4D8AA5;Top Base;Base supérieure
+0xEBA3445B;Hotel;Hôtel
+0xEBE36681;South Ramp;Rampe sud
+0xEC3DBFA5;Old Town Alley;Rue de vieille ville
+0xECA6A608;East Street;Rue est
+0xECDC28FB;North Cave;Grotte nord
+0xECEA65CB;East Landing;Parvis est
+0xED0D78C0;Cathedral;Cathédrale
+0xEDD300BC;South Stairs;Escaliers sud
+0xEDF5FC09;Storage;Réserve
+0xEE21C1FB;Green Street;Rue verte
+0xEE5FAE67;House Pillars;Piliers de maison
+0xEE62BE20;Refinery Control;Contrôle de la raffinerie
+0xEEBAD262;Tower;Tour
+0xEEDC0432;Green Platform;Plateforme verte
+0xEF02C6D4;Piston;Piston
+0xEF3B5CD1;Eagle Tower;Tour Eagle
+0xEF98E4B7;Southeast Garden;Jardin sud-est
+0xEFF359A0;North Base;Base nord
+0xF01AD1E5;Open Hall;Salle ouverte
+0xF1249B80;Green Bend;Virage vert
+0xF18CBE6B;South Tree House;Cabane sud
+0xF1F1BDDC;South Bend;Coude sud
+0xF2AD7360;Overlook;Promontoire
+0xF3641AE1;Top Balcony;Balcon supérieur
+0xF3697DC7;Hex Switchback;Route sinueuse hexagonale
+0xF37953D2;Cobra Ramp;Rampe Cobra
+0xF3DC414E;Tanks;Chars
+0xF3F303D2;Camo Pit;Fosse camouflée
+0xF407F943;Rocks;Rochers
+0xF44BCADA;Cargo;Cargo
+0xF44EFA5D;Long Hall;Longère
+0xF4B420E6;Up River;En amont
+0xF4BDAD29;Mohawk;Crête iroquoise
+0xF50331D9;South Street;Rue sud
+0xF5180B04;Whirlpool Ledge;Bord de siphon
+0xF55661D3;Tower 2;Tour 2
+0xF59BCB5B;Blue Pipes;Tuyaux bleus
+0xF5F5D03D;Station Tower 2;Tour du poste de police 2
+0xF69A77E5;Tower Base;Base de la tour
+0xF6BC0577;East Tree House;Cabane est
+0xF6EB6E82;South Base;Base sud
+0xF6F70241;East Gate;Porte est
+0xF7D5BA23;Green Drop;Dénivelé vert
+0xF8078D17;Test Chamber;Salle de test
+0xF836A2AB;Yellow Utility;Utilitaire jaune
+0xF8A3269C;West Spawn;Point de réapparition ouest
+0xF8DDAB0C;Subway Balcony;Balcon du métro
+0xF8EE3758;Closet;Recoin
+0xF9C49F0E;Rock Power Node;Nœud d'alimentation des rochers
+0xFA62B65D;Overlook;Promontoire
+0xFAA9026F;Hex Pocket;Poche hexagonale
+0xFAC25659;Utility;Utilitaire
+0xFAD97A46;Northeast Garden;Jardin nord-est
+0xFB59D83A;Blue Platform;Plateforme bleue
+0xFB87E8AC;Cross;Croix
+0xFBEE4AC3;Camo Street;Rue camouflée
+0xFBF9264B;North Window;Fenêtre nord
+0xFBFC9206;Launch Tower;Tour de lancement
+0xFC1B9C3B;Blamite Jump;Saut de blamite
+0xFC68FE8F;Dip;Dépression
+0xFC7C8DAD;We Love You Halo!;Halo, on t'aime !
+0xFD0D1FFA;Overgrown Bat Ledge;Corniche de chauve-souris luxuriante
+0xFD67B788;Dried Nest;Nid sec
+0xFDDCEA3E;Ha Ha Get Wrecked!;Ha ha, dans ta tronche !
+0xFDEDC0C4;North Edge;Côté nord
+0xFE43F759;South Window;Fenêtre sud
+0xFE76AB16;Stage;Scène
+0xFE86E32B;Turbine Interchange;Échangeur de la turbine
+0xFEA3C1CD;Hex Junction;Jonction hexagonale
+0xFF0E8195;Processing;Traitement
+0xFF8DDC54;South Bridge;Pont sud
+0xFF90B02D;Overshield Cannon;Canon blindé
+0xFFD3EB55;Cave Pass;Col de la grotte
