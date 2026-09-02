@@ -88216,3 +88216,26 @@ clairsemée pour publier un décompte PAR MORT.
 **Conclusion / prochaine étape** : la condition « unité jamais calibrée » du registre est
 LEVÉE ; la publication au schéma suivant attend un chemin de lecture à meilleure couverture
 (bande ti=5 débruitée par le domaine calibré <= 10 s, ou image-clé).
+
+---
+
+## [2026-09-02] Respawn phase 2 : la couverture est un NEGATIF mesure — publication reportee sine die
+
+**Statut** : Complété (mesure) ; publication NON viable en l'état.
+
+**Décision technique principale** : sonde `respawn_coverage_research_test.go` (filmdec,
+gardée GAME_FILM) — voie bande + voie chaîne, débruitées par la calibration du matin
+(actif, T1 ∈ {8,10}, T0 <= T1 : le bruit passe ce filtre à ~1e-5), épisodes cohérents à
+-1/s, jointure aux morts par l'arithmétique du compteur (mort = t − (D − k) s), morts et
+calage d'horloge en copies d'instrument du canon replay (cycle d'import).
+
+**Résultats observés** (3 films) : 1/92, 2/186 et 0/93 morts couvertes (1,1 % au mieux).
+Le compteur émet ~8 mises à jour par mort (des centaines par film) : le plafond est la
+RECONNAISSANCE des records ti=5 du delta — bande noyée dans son bruit d'ancrage (2663
+candidats -> 44 plausibles au mieux), chaîne désynchronisée à 61-68 %. Même mur que la
+borne d'arrêt R7-e, quantifié pour ce composant. Consigné au registre avec sa condition
+(réouverture de la RE des désérialiseurs — décision user).
+
+**Conclusion / prochaine étape** : AUCUNE côté produit — le décompte dérivé (exact quand
+une vie suivante existe) + l'état « hors film » restent l'état de l'art. L'acquis du jour
+(unité calibrée) est documenté et servira si la RE rouvre.
