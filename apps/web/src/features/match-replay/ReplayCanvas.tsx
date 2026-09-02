@@ -19,7 +19,7 @@
  * joueurs sur le film témoin), et un joueur changeait donc de teinte à chaque réapparition.
  * Les tokens de série ne servent plus qu'aux ZONES NOMMÉES, qui sont des lieux, pas des gens.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 
 import { getSeriesColors } from '@/lib/accessibility/plotlyColorscale'
 import { useColorPaletteVersion } from '@/lib/accessibility/useColorPaletteVersion'
@@ -85,7 +85,8 @@ import type { ReplayWindowBounds } from './replayWindow'
 import { drawProjectilesLayer } from './replayProjectiles'
 import { drawTracksLayer } from './replayMarkers'
 import { useReplayTiming } from './useReplayTiming'
-import { CANVAS_HEIGHT, CANVAS_PAD, exportRenderScale, useReplayView, type ReplayMapBackgroundLayer } from './useReplayView'
+import { CANVAS_PAD, exportRenderScale, useReplayView, type ReplayMapBackgroundLayer } from './useReplayView'
+import { useReplayViewport } from './useReplayViewport'
 
 
 
@@ -160,7 +161,8 @@ export function ReplayCanvas({
   // L'HORLOGE AFFICHÉE et la publication bridée vivent dans useReplayClock (dixième extraction).
   const { clockRef, tick: clockTick } = useReplayClock({ doc, playWindow, onFrameChange })
 
-  const [width, setWidth] = useState(0)
+  // CE QUE L'ÉCRAN OFFRE (useReplayViewport) ; ce que la carte en retient, c'est useReplayView.
+  const { width, freeHeight } = useReplayViewport(containerRef, canvasRef)
   // L'OBJET DE RÉGLAGES RESTE ENTIER (2026-08-28) : le tiroir en consomme la quasi-totalité ;
   // le dessin ne lit que les valeurs — d'où cette destructuration-là (cf. useReplayDrawer).
   const settings = useReplaySettings()
@@ -208,8 +210,8 @@ export function ReplayCanvas({
   // verticale, projection partagée et trame d'altitudes : une seule chaîne de décision, qui
   // vit dans `useReplayView` (neuvième extraction imposée par le cliquet de taille). Les noms
   // sortent inchangés : le dessin en dessous lit exactement les mêmes valeurs qu'avant.
-  const { mapImage, bounds, renderWidth, zRange, canvasView, floorGrid } = useReplayView({
-    doc, background, width,
+  const { mapImage, bounds, renderWidth, renderHeight: viewH, zRange, canvasView, floorGrid } = useReplayView({
+    doc, background, width, freeHeight,
   })
 
   // Une couleur de série PAR grande zone : la rotation de teinte du POC, en tokens.
@@ -244,17 +246,6 @@ export function ReplayCanvas({
     span: heatmapSpan,
     frameRef,
   })
-
-  // Largeur responsive (ResizeObserver du conteneur).
-  useEffect(() => {
-    const el = containerRef.current
-    if (!el) return
-    const ro = new ResizeObserver((entries) => {
-      setWidth(Math.max(Math.floor(entries[0]?.contentRect.width ?? 0), 0))
-    })
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [])
 
   // LE REDESSIN, PAR RÉFÉRENCE : les calques statiques doivent pouvoir repeindre la scène
   // apres cuisson, mais ils se declarent AVANT `draw` — ils lisent donc la version courante
@@ -331,27 +322,27 @@ export function ReplayCanvas({
     if (!ctx) return
     const dpr = (window.devicePixelRatio || 1) * exportRenderScale.current
     const pw = Math.round(renderWidth * dpr)
-    const ph = Math.round(CANVAS_HEIGHT * dpr)
+    const ph = Math.round(viewH * dpr)
     if (canvas.width !== pw || canvas.height !== ph) {
       canvas.width = pw
       canvas.height = ph
     }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-    ctx.clearRect(0, 0, renderWidth, CANVAS_HEIGHT)
+    ctx.clearRect(0, 0, renderWidth, viewH)
 
     const view = canvasView
     const frame = frameRef.current
     // ORDRE DES CALQUES, du fond vers le sujet : le sol porte les trajectoires, qui portent les
     // événements. Inverser noierait les joueurs.
     const bgRect = mapImage
-      ? backgroundRect(mapImage.calibration, bounds, renderWidth, CANVAS_HEIGHT, CANVAS_PAD)
+      ? backgroundRect(mapImage.calibration, bounds, renderWidth, viewH, CANVAS_PAD)
       : null
     if (mapImage && bgRect) {
       // L'image ENTIÈRE est posée sur son emprise monde ; le canvas rogne le débord. La
       // projection est affine et sans rotation, donc deux coins suffisent (mapBackground.ts).
       ctx.drawImage(mapImage.image, bgRect.x, bgRect.y, bgRect.width, bgRect.height)
     } else if (floorRef.current) {
-      ctx.drawImage(floorRef.current, 0, 0, renderWidth, CANVAS_HEIGHT)
+      ctx.drawImage(floorRef.current, 0, 0, renderWidth, viewH)
     } else if (doc.geometry?.length) {
       // REPLI, pas un doublon : sans fichier de structure figé, la carte n'a pas de sol
       // reconstruit et les props Forge redeviennent le seul repère disponible. Ils couvrent
@@ -362,17 +353,17 @@ export function ReplayCanvas({
     // pose SUR la carte et SOUS tout ce qui la nomme ou s'y déplace. Elle ne masque rien —
     // son opacité est bornée, et elle laisse le décor transparaître (heatmapLayer.ts).
     if (heatRef.current) {
-      ctx.drawImage(heatRef.current, 0, 0, renderWidth, CANVAS_HEIGHT)
+      ctx.drawImage(heatRef.current, 0, 0, renderWidth, viewH)
     }
     // Les ZONES NOMMÉES par-dessus le fond, sous tout ce qui bouge : c'est le vocabulaire
     // du terrain, pas un événement. Calque statique recopié (cuit hors écran).
     if (showZones && zonesRef.current) {
-      ctx.drawImage(zonesRef.current, 0, 0, renderWidth, CANVAS_HEIGHT)
+      ctx.drawImage(zonesRef.current, 0, 0, renderWidth, viewH)
     }
     // Les OBJECTIFS DU MODE par-dessus le vocabulaire : c'est l'enjeu du match (zones de
     // capture, apparitions de drapeau), il prime sur les noms de lieux. Statique aussi.
     if (objectivesRef.current) {
-      ctx.drawImage(objectivesRef.current, 0, 0, renderWidth, CANVAS_HEIGHT)
+      ctx.drawImage(objectivesRef.current, 0, 0, renderWidth, viewH)
     }
     // Les projectiles passent SOUS les joueurs : ce sont des objets du terrain, pas le sujet.
     if (doc.projectiles?.length) {
@@ -507,7 +498,7 @@ export function ReplayCanvas({
     doc, geometryColor, bounds, zRange, timing, clockTick, wallInk, riftInk,
     // Refs STABLES : la regle de dependances ne le sait pas d'un hook maison.
     floorRef, zonesRef, heatRef, objectivesRef, grenadeIconsRef,
-    renderWidth, canvasView,
+    renderWidth, viewH, canvasView,
     placements.counts.drawable,
     placements.windowTime,
     placements.toggles,
@@ -625,7 +616,7 @@ export function ReplayCanvas({
               <canvas
                 ref={canvasRef}
                 className="block"
-                style={{ width: renderWidth || '100%', height: CANVAS_HEIGHT }}
+                style={{ width: renderWidth || '100%', height: viewH }}
                 {...hoverHandlers(placements.hover, weaponPads, flags)}
               />
               {/* Les infobulles des trois calques survolables (cf. ReplayCanvasTips). */}

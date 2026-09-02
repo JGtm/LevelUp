@@ -19,6 +19,7 @@ import {
   sceneBounds,
   trackWindow,
   trailAt,
+  usefulHeight,
   worldToCanvas,
 } from './replayLogic'
 import type { ReplayTrackReady } from './replayNormalize'
@@ -78,6 +79,40 @@ describe('fitWidth', () => {
     expect(fitWidth(square, 900, 480, 24)).toBeCloseTo(480))
   it('ne dépasse jamais la largeur disponible', () =>
     expect(fitWidth({ minX: 0, minY: 0, maxX: 100, maxY: 10 }, 600, 480, 24)).toBe(600))
+})
+
+// LE PLAFOND PAR CARTE (2026-09-02) : jusqu'où le terrain gagne-t-il à grandir ? Passé le point
+// où la largeur devient limitante, un pixel de hauteur de plus n'ajoute plus de carte mais une
+// bande vide. Ce plafond ne peut donc pas être une constante — il dépend du ratio de la scène.
+describe('usefulHeight', () => {
+  const square = { minX: 0, minY: 0, maxX: 10, maxY: 10 }
+  const wide = { minX: 0, minY: 0, maxX: 40, maxY: 10 }
+  const tall = { minX: 0, minY: 0, maxX: 10, maxY: 40 }
+
+  it('scène carrée : la hauteur utile égale la largeur disponible', () =>
+    expect(usefulHeight(square, 900, 24)).toBeCloseTo(900))
+
+  it('scène ALLONGÉE : elle sature bien plus bas — le reste serait du vide', () => {
+    const useful = usefulHeight(wide, 900, 24)
+    expect(useful).toBeCloseTo((900 - 48) / 4 + 48)
+    expect(useful).toBeLessThan(300)
+  })
+
+  it('scène ÉTIRÉE en profondeur : elle peut au contraire tout prendre', () =>
+    expect(usefulHeight(tall, 900, 24)).toBeGreaterThan(900))
+
+  // C'est l'inverse EXACT de fitWidth : à la hauteur utile, la largeur nécessaire est
+  // exactement la largeur disponible. Si les deux divergeaient, le cadrage laisserait une bande
+  // vide sur un axe ou sur l'autre.
+  it('est bien l inverse de fitWidth — aller-retour sans perte', () => {
+    for (const bounds of [square, wide, tall]) {
+      const useful = usefulHeight(bounds, 900, 24)
+      expect(fitWidth(bounds, 10_000, useful, 24)).toBeCloseTo(900)
+    }
+  })
+
+  it('ne rend jamais une hauteur dégénérée, même sur une largeur nulle', () =>
+    expect(usefulHeight(wide, 0, 24)).toBeGreaterThan(0))
 })
 
 describe('altitudeAt', () => {
