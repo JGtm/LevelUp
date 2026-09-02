@@ -519,3 +519,33 @@ export function zoomTowards(
   const k = Math.max(fromZoom, 1) / Math.max(toZoom, 1)
   return { x: point.x + (center.x - point.x) * k, y: point.y + (center.y - point.y) * k }
 }
+
+/**
+ * layerOffset — OÙ POSER UN CALQUE DÉJÀ CUIT quand le cadrage a bougé depuis sa cuisson.
+ *
+ * # POURQUOI IL EXISTE
+ *
+ * Pendant un glisser, le cadrage change à chaque mouvement de pointeur. Recuire les calques
+ * statiques à cette cadence est hors de question — le sol reconstruit fait ~45 000 cellules.
+ * Mais un glisser est une TRANSLATION PURE : la même image, posée ailleurs. Il suffit donc de
+ * recopier le calque cuit avec un décalage, et c'est EXACT — pas une approximation qu'on
+ * corrigerait après coup.
+ *
+ * # COMMENT
+ *
+ * Le pixel (0,0) du calque cuit désigne un point du monde, celui que SA projection y plaçait.
+ * On demande où ce même point tombe dans la projection COURANTE : c'est le décalage. Les deux
+ * projections partagent leur échelle tant que le zoom n'a pas changé (mêmes dimensions de
+ * fenêtre), donc le résultat est une translation et rien d'autre.
+ *
+ * Au changement de ZOOM, l'échelle diffère et un décalage ne suffirait plus : c'est pourquoi
+ * l'appelant ne gèle la cuisson que pendant un glisser, jamais pendant un zoom.
+ */
+export function layerOffset(
+  cooked: { bounds: ReplayBounds; width: number; height: number; pad: number } | null,
+  view: { bounds: ReplayBounds; width: number; height: number; pad: number },
+): XY {
+  if (!cooked) return { x: 0, y: 0 }
+  const p = canvasToWorld({ x: 0, y: 0 }, cooked.bounds, cooked.width, cooked.height, cooked.pad)
+  return worldToCanvas(p, view.bounds, view.width, view.height, view.pad)
+}
