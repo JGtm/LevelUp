@@ -1,28 +1,31 @@
 /**
- * MatchKillDistanceSection — POC (LOT G.3, 2026-08-30, plan
- * .ai/PLAN_RETOURS_UTILISATEUR_2026-08-29.md §3bis DEC-8) : « kills par arme
- * sur la distance » + distance moyenne par arme, PAR JOUEUR, pour ce match.
+ * MatchKillDistanceSection — LA DISTANCE DES FRAGS PAR ARME, un graphe par joueur.
  *
- * Cadrage utilisateur MOT POUR MOT (2026-08-30) : « mettre le nombre de kills
- * par armes sur la distance et indiquer la distance moyenne pour chaque
- * arme... pour chaque joueur. Pour le moment c'est tout ce qu'on va faire au
- * niveau de la lecture de la distance. » — vue match UNIQUEMENT, par joueur,
- * kills DU TUEUR seulement (arme et distance de l'ASSISTANT explicitement
- * fermés). Rien d'autre : pas d'agrégat multi-matchs, pas de portée par arme.
+ * Né tableau (LOT G.3-POC, 2026-08-30, DEC-8 : périmètre réduit) ; l'utilisateur a rouvert
+ * la décision le 2026-09-02 : « un bâton pour chaque arme avec plus proche / plus loin et un
+ * indicateur sur la moyenne ». Le bâton court de min à max, le losange marque la moyenne —
+ * la projection et l'option vivent dans `_killDistanceChart.ts` (pur, testé). Le cadrage du
+ * POC tient toujours : vue match UNIQUEMENT, par joueur, kills du TUEUR seulement — pas
+ * d'agrégat multi-matchs.
  *
- * Gabarit structurel : MatchObjectivesSection.tsx (mêmes classes de tableau,
- * mêmes tokens, même repli sur le scoreboard pour gamertag + total de kills —
- * `combat_tab.kill_distance_by_weapon` ne porte QUE le xuid, cf. domain Go).
+ * L'ÉTAT VIDE SE DIT DÉSORMAIS (2026-09-02, retour user « je ne vois rien du tout ») : sans
+ * frag mesuré, la section affiche POURQUOI (positions non mesurées sur ce match — la
+ * quasi-totalité tant que le backfill de masse n'a pas tourné) au lieu de disparaître. Une
+ * section qui rend null n'est pas découvrable, et son absence se lit « bug ».
  *
- * État vide : `combat_tab.kill_distance_by_weapon` absent/vide (titre sans
- * capture positions, backfill non joué, ou couverture du match sous le
- * plancher mesuré 75,8 %) -> RIEN. Pas de cadre vide, pas de « bientôt
- * disponible » — c'est le cas de la quasi-totalité des matchs tant que le
- * backfill de masse n'a pas tourné en prod.
+ * Le DÉNOMINATEUR D'HONNÊTETÉ reste : « X/Y frags mesurés » par joueur + la réserve de
+ * couverture en pied — un bâton de portée sans lui laisserait croire à l'exhaustivité
+ * (couverture plancher mesurée : 75,8 %).
  */
+import { useCallback, useMemo } from 'react'
+
+import { ChartCard } from '@/components/charts/ChartCard'
+import { resolveToken } from '@/lib/accessibility'
 import type { MatchKillDistancePlayer, MatchScoreboardRow } from '@/lib/api/types'
+import { getEChartsThemeColors } from '@/lib/echarts/themeColors'
 import { useAppShellStore } from '@/stores/appShellStore'
 
+import { buildKillDistanceOption, killDistanceBars, type KillDistanceBar } from './_killDistanceChart'
 import type { MatchViewText } from './i18n'
 
 interface Props {
@@ -40,77 +43,72 @@ function playerContext(
   return { gamertag: row?.gamertag ?? xuid, totalKills: row?.kills ?? 0 }
 }
 
+/** Hauteur du graphe d'un joueur : une rangée par arme, bornée pour rester une vignette. */
+function chartHeight(barCount: number): number {
+  return Math.max(96, 48 + 26 * barCount)
+}
+
+function PlayerDistanceChart({ bars, t }: { bars: KillDistanceBar[]; t: MatchViewText }) {
+  const buildOption = useCallback(() => {
+    const tc = getEChartsThemeColors()
+    return buildKillDistanceOption({
+      bars,
+      tc,
+      rangeColor: resolveToken('chart-series-1'),
+      avgColor: resolveToken('perf-tier-2'),
+      fmtDistance: t.killDistanceAvgFmt,
+      labels: {
+        kills: t.killDistanceColKills,
+        min: t.killDistanceMinLabel,
+        avg: t.killDistanceColAvg,
+        max: t.killDistanceMaxLabel,
+      },
+    })
+  }, [bars, t])
+  return (
+    <ChartCard
+      series={[{ key: 'distance', datapoints: bars }]}
+      buildOption={buildOption}
+      height={chartHeight(bars.length)}
+      className="border-0 shadow-none"
+    />
+  )
+}
+
 export function MatchKillDistanceSection({ players, scoreboard, t }: Props) {
   const locale = useAppShellStore((s) => s.locale)
   const board = scoreboard ?? []
-  const rows = players ?? []
-
-  // État vide soigné : rien à mesurer -> aucune carte (pas de cadre vide).
-  if (rows.length === 0) return null
+  const rows = useMemo(() => players ?? [], [players])
 
   return (
     <section className="rounded-lg border-2 border-border" aria-label={t.killDistanceTitle}>
-      <h3 className="flex items-center gap-2 px-3 py-2 text-sm font-bold uppercase tracking-wider text-foreground">
+      <h3 className="px-3 py-2 text-sm font-bold uppercase tracking-wider text-foreground">
         {t.killDistanceTitle}
-        <span className="rounded-full border border-warning/40 bg-warning/10 px-2 py-0.5 text-3xs font-semibold normal-case tracking-normal text-warning">
-          {t.killDistancePocBadge}
-        </span>
       </h3>
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-3xs">
-          <thead>
-            <tr className="text-muted-foreground">
-              <th className="border border-border border-b-2 px-2 py-1 text-left">
-                {t.killDistanceColWeapon}
-              </th>
-              <th className="border border-border border-b-2 px-2 py-1 text-right">
-                {t.killDistanceColKills}
-              </th>
-              <th className="border border-border border-b-2 px-2 py-1 text-right">
-                {t.killDistanceColAvg}
-              </th>
-            </tr>
-          </thead>
+      {rows.length === 0 ? (
+        <p className="px-3 pb-3 text-xs text-muted-foreground">{t.killDistanceEmpty}</p>
+      ) : (
+        <>
           {rows.map((player) => {
             const { gamertag, totalKills } = playerContext(player.xuid, board)
-            const measured = (player.weapons ?? []).reduce((sum, w) => sum + w.measured_kills, 0)
+            const weapons = player.weapons ?? []
+            const measured = weapons.reduce((sum, w) => sum + w.measured_kills, 0)
             const isMe = board.find((r) => r.xuid === player.xuid)?.is_me ?? false
+            const bars = killDistanceBars(weapons, locale)
             return (
-              <tbody key={player.xuid} className={isMe ? 'bg-info/10' : ''}>
-                <tr>
-                  <th
-                    colSpan={3}
-                    className="border border-border px-3 py-1 text-left text-xs font-semibold text-foreground"
-                  >
-                    {t.killDistancePlayerHeaderFmt(gamertag, measured, totalKills)}
-                  </th>
-                </tr>
-                {(player.weapons ?? []).map((w) => (
-                  <tr key={w.weapon_key}>
-                    <td className="border border-border px-2 py-1 text-left">
-                      {(locale === 'en' ? w.label_en : w.label) || w.weapon_key}
-                    </td>
-                    <td className="border border-border px-2 py-1 text-right tabular-nums">
-                      <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-primary/10 px-1.5 py-0.5 font-semibold text-primary">
-                        {w.measured_kills}
-                      </span>
-                    </td>
-                    <td className="border border-border px-2 py-1 text-right tabular-nums">
-                      {t.killDistanceAvgFmt(w.avg_distance_m)}
-                      {w.measured_kills > 1 && (
-                        <span className="ml-1 text-muted-foreground">
-                          {t.killDistanceRangeFmt(w.min_distance_m, w.max_distance_m)}
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
+              <div key={player.xuid} className={isMe ? 'bg-info/10' : ''}>
+                <p className="px-3 pt-1 text-xs font-semibold text-foreground">
+                  {t.killDistancePlayerHeaderFmt(gamertag, measured, totalKills)}
+                </p>
+                <PlayerDistanceChart bars={bars} t={t} />
+              </div>
             )
           })}
-        </table>
-      </div>
-      <p className="px-3 pb-2 pt-2 text-[11px] text-muted-foreground">{t.killDistanceReserve}</p>
+          <p className="px-3 pb-2 pt-1 text-[11px] text-muted-foreground">
+            {t.killDistanceReserve}
+          </p>
+        </>
+      )}
     </section>
   )
 }
