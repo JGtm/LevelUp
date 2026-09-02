@@ -321,12 +321,12 @@ Prerequis : verdict 0.7 = zero divergence sur les 11 films du corpus (sinon : ar
       `decodeKillSource`, `killRefs`, `BuildFromFilm` recoivent le `*Film`. Appelants inchanges :
       `api/wire/registry_replay_build.go:66`, `cmd/replay-build`, `cmd_backfill_replay_child.go`,
       `replaychild`, `replay-worker`.
-- [ ] 1.4 `killsource.Decode(ctx, matchID, film *filmsource.Film, ...)` ; `inflate`,
+- [x] 1.4 `killsource.Decode(ctx, matchID, film *filmsource.Film, ...)` ; `inflate`,
       `splitPackets`, `dirChunks`, `ChunkSource`, `MemoryChunks` supprimes ; `loadFilm` ne fait
       plus que trier `t0` depuis `film.Packets`. Appelants migres : `replaybuild/kills.go:33`,
       `sync/killcollector/collector.go:284` (+ `bridge.go:100` : `filmsource.MemoryChunks` et
       `ChunkMeta` construits depuis les `haloclient.FilmChunk`), `cmd/killsource/main.go:206`.
-- [ ] 1.5 `objectiveevents` : les NEUF points d'entree qui prennent un `FilmSource` passent a
+- [x] 1.5 `objectiveevents` : les NEUF points d'entree qui prennent un `FilmSource` passent a
       `*filmsource.Film` — `Extract` (`extract.go:103`), `CaptureBurstTimes` (`extract.go:312`),
       `StatRecords` (`statborg.go:176`), `StatRecordsCtx` (`statborg.go:186`), `NamedEvents`
       (`named.go:190`), `CrossCheckNamedEvents` (`named.go:393`), `SlotIdentity`
@@ -354,20 +354,39 @@ Prerequis : verdict 0.7 = zero divergence sur les 11 films du corpus (sinon : ar
       la justification « cycle d'import » devient caduque) est SUPPRIME et remplace par
       l'assertion de compilation `var _ filmsource.Source = (*Source)(nil)`. `sync/comeback.go:98`
       et `replaybuild/zones.go` n'utilisent que `ObjectiveTypeOf` : intacts.
-- [ ] 1.6 `sync/killcollector/positions.go:170-186` : un `Film` charge une fois depuis les chunks
+- [x] 1.6 `sync/killcollector/positions.go:170-186` : un `Film` charge une fois depuis les chunks
       en memoire, les quatre balayages le recoivent (`:170`, `:175` `ScanFilmClockOrigin`, `:181`
       `ScanFilmDeaths`, `:186` `ScanFilmPlayerIndices`). `cmd/zone-attribution/measure.go:90,234`,
       `cmd/statnames-sweep/sweep.go:99` et `cmd/oddball-terrain/decode.go:64` (`ScanFilmDeaths(dir)`
       juste sous leur `StatRecordsCtx`) : charge le film UNE fois puis `BuildFromFilm(film)` /
       `ScanDeaths(film)` — jamais un `*Film` plus une enveloppe `dir` dans le meme CLI.
-- [ ] 1.7 Enveloppes D2 : inventaire par grep des appelants `ScanFilm*(dir` restants (tests de
+- [x] 1.7 Enveloppes D2 : inventaire par grep des appelants `ScanFilm*(dir` restants (tests de
       recherche, `cmd/tmp_*`, `cmd/*` non production) ; enveloppe conservee la ou un appelant
       existe, supprimee sinon.
-- [ ] 1.8 Test structurel « zero disque » : `BuildFromFilm` sur un `Film` charge par
+      INVENTAIRE DU 2026-09-03 (tableau complet au §10) : 40 formes `dir` — 39 marquees
+      « ENVELOPPE D2 » dans leur commentaire + `GroundWeaponPositions` (qui delegue aux deux
+      autres, marquee depuis) ; CHACUNE a au moins un appelant, TOUS dans des `_test.go` de
+      `analysis/filmdec` et `analysis/replay` (plus trois delegations internes a `filmdec`) ;
+      ZERO appelant de production (aucun dans `replaybuild`, `sync`, `api`, `cmd`) ; donc AUCUNE
+      suppression. La liste fermee d'`archlint` coincide exactement avec ces 40 noms.
+- [x] 1.8 Test structurel « zero disque » : `BuildFromFilm` sur un `Film` charge par
       `Load(MemoryChunks)` depuis la mini-bobine, avec `opt.MapQuant` fourni (entree Cliffhanger du
       catalogue, comme `golden_assembly_test.go:87`) — tout acces disque residuel echoue le test
       (le repertoire n'existe pas).
-- [ ] 1.9 Garde-rails `archlint` (allowlists datees) : `zlib.NewReader` — liste FERMEE :
+      FAIT : `replay/zero_disque_test.go`, deux tests. Le film vient de trois `os.ReadFile` +
+      `filmsource.Load(MemoryChunks, meta{Index:1,2,3})` — jamais `LoadDir` — et le decodage
+      s'execute apres `t.Chdir` vers un repertoire temporaire VIDE (restaure par le nettoyage,
+      avant la suppression du repertoire). Methode en trois pieces, ecrite dans l'en-tete du
+      fichier : (1) CONTROLE que la bobine n'est plus atteignable par son chemin relatif depuis
+      ce repertoire ; (2) `BuildFromFilm` doit rendre l'erreur EXACTE « aucun slot biped (ti=35)
+      dans les keyframes du film » — toute autre, au premier chef une erreur d'ouverture, echoue
+      le test ; (3) le repertoire courant est verifie VIDE apres coup. Second test : les SEPT
+      familles de la liste fermee D4c decodent avec SUCCES depuis ce meme repertoire vide, sous
+      leur forme FILM — c'est ce qui couvre le pipeline au-dela du premier balayage, puisque
+      `BuildFromFilm` s'arrete aux positions sur cette bobine. Limite ECRITE : un acces par
+      chemin ABSOLU echapperait a la mesure (bornee par `BuildFromFilm` qui ne recoit aucun
+      chemin, et par la regle 2 d'`archlint`).
+- [x] 1.9 Garde-rails `archlint` (allowlists datees) : `zlib.NewReader` — liste FERMEE :
       `filmsource/film.go` · `analysis/highlight_event_parser.go:107` (parseur autonome appele par
       `sync/collect.go:111`, `engine_highlight_events.go:203`, `convergence_backfill_events.go:281`
       sur des blobs bruts ou zlib) · `sync/haloclient/halo_client_http.go:59` et
@@ -380,9 +399,27 @@ Prerequis : verdict 0.7 = zero divergence sur les 11 films du corpus (sinon : ar
       `minifilm_test.go` n'appelle d'ailleurs que `zlib.NewWriterLevel`) ; `os.ReadFile` dans
       `filmdec/*.go` hors chargeurs de catalogue (`map_bounds.go`) ; `ScanFilm[A-Za-z]*\(dir`
       interdit dans les sites de production de D2 ; `filmsource` n'importe rien du depot.
-- [ ] 1.10 Ratchet : `internal/archlint/filmdec_package_vars_test.go` compte les declarations
+      ETAT FINAL (2026-09-03) : les quatre regles existent. Ajouts de cet item aux acquis des
+      agents 1.2-1.5 — (a) `killsource` rejoint `filmdec`/`objectiveevents`/`replay` dans la
+      regle « zlib interdit » (l'item 1.4 lui a retire son inflate) ; (b) les paquets de
+      PRODUCTION de la regle des enveloppes passent de 2 a 7, au site pres de D2
+      (`objectiveevents`, `killsource`, `sync/killcollector`, `api/wire`, `cmd/zone-attribution`
+      manquaient) ; (c) REGLE 4 NEUVE : l'allowlist des importateurs de `compress/zlib` de tout
+      `apps/go-api` est fermee et verifiee DANS LES DEUX SENS (site en trop = echec ; entree
+      morte = echec). Elle compte NEUF sites et non sept : le plan avait ecrit la liste avant que
+      le lot 0 ne cree `cmd/replay-equiv/walkers.go`, qui porte en copie de mesure les trois
+      marcheurs historiques et leur inflate (note N-AD — a trancher au lot 6). Les trois regles
+      ajoutees/etendues sont verifiees DISCRIMINANTES par violation temporaire, restauree.
+- [x] 1.10 Ratchet : `internal/archlint/filmdec_package_vars_test.go` compte les declarations
       `var` de niveau paquet dans `filmdec/*.go` non-test (compte gele a la valeur mesuree au
       moment du lot, justification datee) — le compte ne doit pas croitre (D10).
+      MESURE DU 2026-09-03 : 113 NOMS declares par un `var` de niveau paquet (98 declarations,
+      109 specs, 0 identifiant blanc) — c'est le compte gele, et la convention (un bloc
+      `var (a; b)` vaut deux) est ecrite dans l'en-tete du test. Le test echoue si le compte
+      CROIT, avec le detail par fichier ; une BAISSE passe et journalise le nouveau compte a
+      inscrire, pour que le resserrage reste conscient. Discriminance verifiee dans les deux
+      sens (var temporaire ajoutee -> echec a 115 ; constante portee a 120 -> passe en
+      annoncant 113).
 - Gate 1 : `go run ./cmd/replay-equiv -corpus ...` IDENTIQUE (11 films, toutes etapes, artefact) ;
   `go test ./internal/analysis/... ./internal/replaybuild/ ./internal/games/halo_infinite/film/... ./internal/sync/killcollector/ ./internal/archlint/ ./cmd/...`
   vert ; `make go-api-lint` sans nouvelle dette ; mesure des 4 temoins (§6) au journal.
@@ -681,6 +718,141 @@ identique a celui en place hors lots de correction, ou le garde anti-regression 
     exigerait de passer `deaths` par `Options`, ce qui deplacerait l'etape observee `deaths` :
     hors mandat de ce lot, a rouvrir si la mesure montre que le parse compte.
 
+- 2026-09-02 (agent 1.4 + part killcollector de 1.6) — CINQ NOTES, dont UNE DETTE ROUGE
+  ANTERIEURE AU CHANTIER :
+  - **N-S. LES GOLDENS `killsource` SUR FILMS REELS SONT DEJA ROUGES A LA BASE DU LOT**, et ce
+    n'est PAS le lot 1 qui les a fait bouger. `TestGoldenFilms` (gate `KILLSOURCE_FIXTURES`, donc
+    JAMAIS joue en CI) echoue sur 3 des 4 films de reference, avec les MEMES trois ecarts a
+    l'octet aux trois points de mesure — apres l'item 1.4, a HEAD `c17f4941f`, et a `900384f50`
+    (la base du plan), rejoues dans un worktree jetable (`git worktree add --detach`, supprime
+    depuis) : `000d5950` calibration « score 346 » -> 347 ; `9b191a7f` « croissance x1.157 » ->
+    x1.158 ; `fccc61cd` « source appartenant a la victime : 2 propose(s) » -> 3 (2 publiees dans
+    les deux cas, donc AUCUNE ligne publiee ne change). `78919882` passe partout. La derive est
+    donc anterieure au chantier et dormante : c'est EXACTEMENT le motif que
+    `killsource/minibobine_test.go` denonce dans son propre en-tete (« un gate optionnel est un
+    garde qui ne peut pas echouer »), retombe sur le golden qui l'avait inspire. NON TRAITE
+    (hors perimetre, et regenerer un golden hors lot de correction est interdit par D4) : a
+    dater et a trancher hors plan — soit on retrouve le commit qui a bouge, soit on refige avec
+    le diff au journal.
+  - **N-T. L'identite de la traduction `filmsource` -> `killsource` est MESUREE, pas affirmee.**
+    Un test de diagnostic temporaire (recopie de l'ancien `DirChunks` + `inflate` (io.ReadAll) +
+    `splitPackets`, compare au film charge) rend sur les quatre films de fixture : chunks
+    IDENTIQUES a l'octet (position par position) et **0 ecart** sur 60 970 / 72 651 / 88 407 /
+    69 607 paquets, sur `(chunk, idx, type, ts, taille)`. C'est la preuve directe que la regle
+    (3) de D3 (terminateur type 7 EMIS) se neutralise exactement par le filtre de type pose dans
+    `packetsOf`, et que le film n'a ni gagne ni perdu un octet. Test supprime apres mesure (il
+    aurait ete un musee de l'ancienne grammaire).
+  - N-U. `sync/killcollector/collector.go` passe de 537 a 546 L (dette PREEXISTANTE, deja
+    au-dessus du seuil de 500 avant ce lot) : +9 lignes pour le chargement unique du film et son
+    refus d'erreur (jamais avale). `golangci-lint run` rend 0 issue sur les quatre paquets
+    touches. `positions.go`, lui, passe de 346 a 330 L (le pont disque supprime).
+  - N-V. `.ai/V7.5/killweapon/GUIDE_KILLSOURCE.md` et `PLAN_BRANCHEMENT_KILLSOURCE.md` citent
+    `killsource.DirChunks` / `MemoryChunks` dans leurs exemples de cablage : documentation
+    devenue fausse par la suppression de ces symboles. NON TRAITE (hors perimetre du lot) —
+    a reprendre a l'item 6.2 avec `docs/COMMANDS.md`.
+  - N-W. DEUX CHANGEMENTS DE COMPORTEMENT declares, tous deux sur des chemins de DEGRADATION :
+    (1) `replaybuild.decodeKillSource` journalisait en **Debug** « chunks illisibles » quand
+    `DirChunks` echouait ; le film etant desormais charge en amont, ce cas arrive comme
+    `ErrNoChunk` et se journalise en **Info** — la cause, elle, est deja journalisee en Warn par
+    `chargerFilm`, donc l'information n'est pas perdue mais montee d'un niveau ;
+    (2) cote positions, le compteur `killsource_positions_pont_echec` garde son NOM (un compteur
+    publie est une interface) mais n'a plus qu'une cause : la sequence trouee. Les causes
+    « disque plein / chemin illisible » disparaissent avec le repertoire temporaire.
+
+- 2026-09-02 (agent 1.5 + part CLI de 1.6) — SEPT NOTES, dont UNE MESURE QUI A CHANGE UNE
+  DECISION DU LOT :
+  - **N-X. LE MANIFESTE LISTE BIEN LE CHUNK 00, donc `StatRecordsCtx` le consommait.** La
+    question posee a l'entree de l'item (« les ChunkMeta du manifeste listent-elles le registre ? »)
+    est tranchee sur pieces : 1 380 manifestes du cache sur 1 380 portent une entree `index: 0`,
+    et son `chunk_type` vaut 1 partout. L'ancienne boucle iterait donc le registre comme les
+    autres. LE JEU DE CHUNKS CONSOMME EST PRESERVE A L'IDENTIQUE, et le piege D3 sur ce chunk ne
+    mord pas : les en-tetes degeneres du registre portent une TAILLE NULLE, donc des trames
+    VIDES, dont `scanFrameForRecords` ne tire aucun enregistrement (`lim = 0*8 - statTailBits`
+    est negatif). Que la nouvelle grammaire s'arrete au premier d'entre eux ne retire donc aucun
+    record — mesure, pas raisonnement : cf. N-Z.
+  - **N-Y. UN FILM DU CACHE PORTE DES CHUNKS HORS MANIFESTE, et sans filtre il aurait ete date
+    faux.** `7b0d89c4` a `chunk_31.bin` et `chunk_32.bin` sur disque sans entree au manifeste
+    (seul cas sur 1 380 ; deux autres films, `33b9fbe9` et `f8c067d7`, ont l'inverse : un
+    manifeste complet et zero fichier). L'ancienne `FilmSource` iterait le MANIFESTE et ne les
+    voyait jamais ; le film de `filmsource.LoadDir`, lui, porte tous les fichiers PRESENTS. D'ou
+    `objectiveevents.manifestChunks` (et son jumeau `replaybuild.chunksDuManifeste` pour
+    l'horloge de la bombe) : un chunk sans type de manifeste n'a pas de `start_ms`, donc rien
+    d'y datable. LE CRITERE EST MESURE : sur les 1 380 manifestes, `chunk_type` ne prend que 1
+    (en-tete), 2 (jeu) et 3 (pied) — JAMAIS 0, la valeur que `LoadDir` synthetise pour un fichier
+    hors manifeste. La distinction compte aussi en aval : `filmdec/navpoint_radial_scan.go`
+    teste `start, hasStart := startMS[c]`, donc inscrire un chunk inconnu a zero lui dirait
+    « ce chunk commence a 0 » au lieu de « je ne sais pas ».
+  - **N-Z. L'IDENTITE EST PROUVEE PAR EMPREINTES, avant ET apres.** Deux tests temporaires
+    (supprimes) : le premier a compare, sur le CODE D'AVANT, `StatRecordsCtx(FilmSource)` a une
+    reimplementation `filmsource` — 10 films (les 9 du corpus + `7b0d89c4`), empreintes SHA-256
+    des enregistrements (temps, slot, manche, composants) IDENTIQUES, bursts identiques, pied
+    identique a l'octet ; le second a rejoue les memes empreintes sur le CODE MIGRE et les a
+    comparees aux valeurs relevees. 592 / 2 208 / 1 131 / 1 199 / 1 089 / 1 647 / 890 / 9 111 /
+    619 / 638 enregistrements, meme empreinte des deux cotes. La variante SANS le filtre de N-Y
+    a ete mesuree aussi : elle rend le meme resultat sur ces 10 films — le filtre est donc une
+    garantie, pas un correctif. AUCUNE CUISSON COMPLETE LANCEE (chaine en vol) : le harnais des
+    9 films reste au pilote.
+  - **N-AA. LE GARDE-RAIL `filmcache_guard_test.go` EST SUPPRIME, ET SES TROIS DEROGATIONS AVEC.**
+    Il cherchait par expression reguliere les implementations de `objectiveevents.FilmSource`
+    (methode `Chunks() []ChunkMeta`), interface qui n'existe plus, et son allowlist portait trois
+    entrees justifiees par le CYCLE D'IMPORT `filmcache -> objectiveevents` que ce lot supprime.
+    Remplace par `var _ filmsource.Source = (*Source)(nil)` dans `filmcache.go`. La derogation
+    tombee, les deux copies de la disposition du cache qu'elle abritait sont parties avec elle :
+    `objectiveevents/extract_test.go` et `assaut_footer_research_test.go` passent par
+    `filmcache.LoadFilm` (le troisieme fichier allowliste, `statborg_rounds_test.go`, ne lisait
+    pas le disque — sa source etait un buffer repete, devenu `filmsource.Load(MemoryChunks)`).
+  - N-AB. `filmcache.Source` change de forme : `Chunks()` devient `Meta() []filmsource.ChunkMeta`
+    et `ChunkData(numero)` devient `Chunk(position)` — le contrat de `filmsource.Source`, ou
+    l'indice est la POSITION dans le manifeste et non le numero de fichier. Deux nouveaux
+    chargeurs, `LoadFilm(root, short)` et `LoadFilmDir(chunkDir)`, font manifeste + `LoadDir` en
+    un appel : ils sont le chemin UNIQUE du cache vers un film, et ils prennent les FICHIERS
+    presents (pas les entrees du manifeste), donc un cache partiel rend un film ampute plutot
+    qu'une erreur — exactement la degradation d'avant, ou chaque chunk absent etait saute.
+  - N-AC. CHANGEMENT DE COMPORTEMENT declare, sur un chemin de degradation : `readFilmStats`
+    gardait sur « manifeste absent » et rendait alors un `filmStats` vide ; il garde desormais
+    sur « film illisible OU manifeste absent ». Le cas neuf est le film dont le manifeste existe
+    mais dont AUCUN chunk n'est sur disque (`33b9fbe9`, `f8c067d7`) : il produisait avant un
+    `ScoreInput` a zero enregistrement, il produit maintenant un `filmStats` vide. INOBSERVABLE
+    en sortie : sans chunk, `BuildFromFilm` echoue juste apres sur `ErrNoFilmChunk` et la cuisson
+    ne rend aucun artefact dans les deux cas (verifie sur pieces : `filmdec.FilmChunkNumbers`
+    rend nil sur un film nul).
+  - N-AD. `cmd/replay-equiv/walkers.go` porte les TROIS marcheurs historiques en copie de mesure
+    et cite leurs originaux par fichier et par ligne (`objectiveevents/film.go:120-140`, etc.).
+    Apres les items 1.4 et 1.5, aucun de ces originaux n'existe plus : le mode `-walkers` mesure
+    desormais de l'histoire, et ses commentaires pointent dans le vide. NON TRAITE (le harnais
+    est au pilote, et la mesure 0.7 qu'il servait est close) — a trancher au lot 6 : le mode
+    disparait avec sa raison d'etre, ou son en-tete dit qu'il fige une comparaison historique.
+
+- 2026-09-03 (agent 1.7-1.10) — QUATRE NOTES, dont UNE LISTE DU PLAN PRISE EN DEFAUT :
+  - **N-AE. LA LISTE « SEPT SITES ZLIB » DE L'ITEM 1.9 ETAIT INCOMPLETE — IL Y EN A NEUF (avec
+    `filmsource`).** Le site manquant est `cmd/replay-equiv/walkers.go`, cree par le lot 0
+    LUI-MEME (mode `-walkers` de la mesure 0.7) : il porte en copie les trois marcheurs
+    historiques et leur inflate. Le plan avait ecrit sa liste fermee avant que ce fichier
+    n'existe — la lecon de methode du §10 (« une liste dite fermee se verifie par un grep dont la
+    commande est ecrite dans l'item ») vaut aussi pour les listes que le chantier fait BOUGER en
+    cours de route. Le site est allowliste avec sa justification datee et le renvoi a N-AD ; la
+    decision de fond (retirer le mode, ou declarer qu'il fige une comparaison historique) reste
+    au lot 6, NON TRAITEE ici.
+  - N-AF. `filmdec/keyframe_entity_queue.go` porte DEUX formes `dir` qui ne se declarent PAS
+    enveloppes D2 : `FirstPacketOfType` et `AllPacketsOfType`, baties sur `ReadFilmChunk` +
+    `CountFilmChunks` + `WalkPackets`. Quatre appelants, tous des tests de `filmdec`. Elles ne
+    sont pas dans la liste fermee d'`archlint` (elles ne sont pas des balayages) mais elles
+    maintiennent vivante l'entree `keyframe_entity_queue.go` de l'allowlist `os.*` — a replier
+    au lot 6 avec les enveloppes. Meme famille : `GroundWeaponPositions` chargeait DEUX films par
+    appel (un par enveloppe deleguee) ; sans consequence (instrument de mesure sous garde
+    `GW_FILM`), et desormais marquee D2.
+  - N-AG. LE CRITERE DE RETRAIT DES ENVELOPPES (lot 6, « le grep ne rend plus que leurs
+    definitions ») EST PLUS CHER QUE PREVU, et c'est mesure : `ReadFilmChunk` compte 177 sites
+    d'appel et `CountFilmChunks` 130, tous dans des tests de recherche de `filmdec` et `replay`
+    (contre 1 a 6 pour la plupart des `ScanFilm*`). Retirer les enveloppes suppose donc de
+    migrer ~300 appels de tests de recherche vers `filmcache.LoadFilm` / `FilmChunkAt` : a
+    chiffrer au lot 6 avant de le promettre.
+  - N-AH. COUT EN TEMPS DE TEST : `TestZeroDisqueBalayagesSupportes` (item 1.8) decode la
+    mini-bobine par sept familles, soit ~15 s ; la suite `analysis/replay` passe a ~60 s. Le
+    recouvrement avec `TestEquivalenceMiniFilm` (memes sept familles, par les enveloppes `dir`)
+    est assume : l'un mesure l'IDENTITE des sorties, l'autre l'ABSENCE de disque, et fusionner
+    les deux ferait un test qui echoue pour deux raisons distinctes. A revoir si la CI serre.
+
 ## 9. Revue du plan (plan-review, 2026-09-02)
 
 Relecteur frais, grille `plan-review` + verification sur pieces. Verdict initial : « a refaire
@@ -919,3 +1091,186 @@ seul), 10 000 coherent comme dernier rempart.
   vertes, `golangci-lint` 0 issue sur les six paquets touches. Decouvertes N-M a N-R au §8 (trois
   changements de comportement declares, tous hors corpus). AUCUNE CUISSON LANCEE, rien committe :
   le harnais des 9 films est au pilote.
+- 2026-09-02 (lot 1, item 1.4 + la moitie killcollector de 1.6, agent) — LE DECODEUR DE LA SOURCE
+  DE DEGAT NE LIT PLUS LE DISQUE. `killsource.Decode(ctx, name, film *filmsource.Film, opts)` :
+  `ChunkSource`, `MemoryChunks`, `DirChunks`/`dirChunks`, `inflate` et `splitPackets` SUPPRIMES
+  (aucun appelant restant, tests compris) ; `loadFilm` ne fait plus que traduire le film charge
+  (`Chunk(i)` -> `f.chunks`, `AllPackets` -> `f.packets`) et trier `t0`. LE FILTRE DE TYPE 7 EST
+  LA CLE DE L'IDENTITE et il est documente sur place (`packetsOf`) : `filmsource` EMET le
+  terminateur CHUNK_END (regle 3 de D3 revisee), l'ancien `splitPackets` s'arretait sur
+  `taille <= 0` et ne l'emettait jamais ; le terminateur etant le DERNIER paquet de son chunk, le
+  filtrer restitue l'ancien jeu jusqu'au rang `idx`. Verifie que le type 7 ne traverse AUCUN
+  filtre aval : les trois consommateurs de `f.packets` selectionnent deja par type (0 pour `t0` et
+  le scan, 2 pour la timeline, 12 pour les bots) et `feed.go` lit des CHUNKS, pas des paquets. LE
+  REGISTRE RESTE LU PAR OCTETS DE CHUNK, PAS PAR PAQUETS : `newTimeline` lit `f.chunks[0]`, qui
+  vaut `film.Chunk(0)` — la POSITION 0 de la source, exactement comme avant (`DirChunks` triait
+  `chunk_00.bin` en tete, `FilmOf` place l'en-tete a l'index 0) ; aucun `Packets(0)` n'est
+  demande. VERROU PROCESS INCHANGE : `filmdec.LockProcessDecode()` + `resetGlobals()` au meme
+  endroit, avant `prepare` — seul le CHARGEMENT est sorti du verrou (il ne touche aucun global).
+  APPELANTS : `replaybuild/kills.go` recoit le film que `BuildBytes` charge deja (plus aucun
+  second chargement dans la cuisson ; `collecterEntreesCatalogue` echange `filmDir` contre
+  `film`, 6 parametres comme avant, ordre des etapes observees intact —
+  `replaybuild/observe_test.go` vert) ; `killcollector` charge le film UNE fois par passe
+  (`ChunkSourceOf` -> `FilmOf`, `ChunkSourceForMatch` -> `FilmForMatch`, metadonnees
+  POSITIONNELLES construites depuis les `haloclient.FilmChunk`) et le partage entre les morts ET
+  les positions ; `cmd/killsource` charge par `filmsource.LoadDir` (le chronometre ne mesure plus
+  que le decodage) ; six fichiers de test migres vers `filmsource.LoadDir`/`Load`. MOITIE
+  KILLCOLLECTOR DE 1.6 : le PONT DISQUE de `positions.go` est SUPPRIME (`writeChunksToTempDir` et
+  ses six tests) — les quatre balayages prennent le film deja charge (`ScanBipedPositions`,
+  `ScanClockOrigin`, `ScanDeaths`, `ScanPlayerIndices`), soit quatre ecritures de fichiers, quatre
+  relectures et quatre decompressions du film entier en moins par match. Le seul controle qui
+  protegeait d'une position FAUSSE survit tel quel, en memoire : `refuserSequenceTrouee` (meme
+  regle que `CountFilmChunks(dir) != maxIdx` — chunks de donnees 1..N tous presents et non vides),
+  avec ses tests. Item 1.6 reste `[ ]` : sa moitie `cmd/*` appartient a l'agent parallele.
+  IDENTITE PROUVEE PAR MESURE, pas par raisonnement (note N-T au §8) : 0 ecart sur 291 635 paquets
+  et sur tous les chunks des quatre films de fixture. GATE : `gofmt -l` vide sur les paquets
+  touches, `go build ./...` vert, `go test` vert sur `killsource` (goldens de la mini-bobine
+  compris, INCONDITIONNELS), `replaybuild`, `killcollector` (dont `-tags=integration` avec les
+  films reels, 72 s) et `archlint` ; `golangci-lint run` 0 issue sur les quatre paquets. DEUX
+  GATES NON RENDUS, ET POURQUOI : (1) `go vet ./...` et `go test ./internal/analysis/replay/` ne
+  COMPILENT PAS, uniquement a cause de l'item 1.5 en vol chez l'agent parallele (toutes les
+  erreurs sont des `objectiveevents.FilmSource` / `StatRecordsCtx` dans `replay/*_test.go`,
+  `objectiveevents/*_test.go` et `filmdec/navpoint_ti12_radial_test.go` — aucune ne cite un
+  symbole de ce lot ; `go build ./...`, lui, est vert) ; (2) `gofmt -l` signale
+  `cmd/zone-attribution/measure.go`, fichier du meme agent. DECOUVERTE ROUGE ANTERIEURE AU
+  CHANTIER : N-S au §8 — `TestGoldenFilms` (gate `KILLSOURCE_FIXTURES`) echoue DEJA sur
+  `900384f50`, a l'identique. Rien committe.
+- 2026-09-02 (lot 1, item 1.5 + part CLI de 1.6) — `objectiveevents` NE LIT PLUS DE FILM. Les
+  NEUF points d'entree prennent un `*filmsource.Film` deja charge (`Extract`, `CaptureBurstTimes`,
+  `StatRecords`, `StatRecordsCtx`, `NamedEvents`, `CrossCheckNamedEvents`, `SlotIdentity`,
+  `SlotIdentityResolved`, `SlotIdentityFromDeaths`) ; `decompressChunk`, `walkFrames`,
+  `framePacket`, `FilmSource` et `ChunkMeta` sont SUPPRIMES — le troisieme inflate et le
+  troisieme marcheur du depot. Il ne reste que `framesOf` (filtre de type 0 sur les paquets deja
+  decoupes) et `manifestChunks`. LA QUESTION DU CHUNK 00 EST TRANCHEE SUR PIECES ET NON SUPPOSEE
+  (note N-X au §8) : le manifeste le LISTE (1 380/1 380, `chunk_type` 1), `StatRecordsCtx` le
+  consommait, et il le consomme encore — les en-tetes degeneres que la nouvelle grammaire ne
+  franchit pas ne portaient que des trames VIDES, d'ou zero enregistrement des deux cotes.
+  LE JEU DE CHUNKS CONSOMME EST PRESERVE PAR CONSTRUCTION : `manifestChunks` ne rend que les
+  chunks DECRITS PAR LE MANIFESTE, comme l'ancienne boucle sur `src.Chunks()` — un film du cache
+  (`7b0d89c4`) porte deux fichiers hors manifeste que le film charge expose et que l'ancienne
+  source ne voyait pas (note N-Y ; critere mesure : `chunk_type` vaut 1, 2 ou 3 sur les
+  1 380 manifestes, jamais 0). IDENTITE MESUREE, DEUX FOIS, PAR EMPREINTES (note N-Z) : sur 10
+  films (les 9 du corpus + `7b0d89c4`), les enregistrements, les bursts de capture et le pied de
+  film sont identiques a l'octet entre le code d'avant et le code migre. `filmcache` N'IMPORTE
+  PLUS `objectiveevents` : il expose `Meta() []filmsource.ChunkMeta`, implemente
+  `filmsource.Source` (assertion de compilation, qui REMPLACE `filmcache_guard_test.go` et ses
+  trois derogations devenues caduques — note N-AA) et gagne `LoadFilm`/`LoadFilmDir`, chemin
+  unique du cache vers un film. PART CLI DE 1.6 : `cmd/zone-attribution`, `cmd/statnames-sweep`,
+  `cmd/oddball-terrain` et `cmd/diag_weapons_v3` chargent le film UNE fois par film et le passent
+  a tous leurs consommateurs (plus un seul `ScanFilmDeaths(dir)` sous un `StatRecordsCtx`) ; la
+  moitie `killcollector` etant rendue par l'agent 1.4, l'item 1.6 est CLOS. ~40 fichiers de test
+  migres (`replay`, `filmdec`, `objectiveevents`) : les producteurs de source deviennent des
+  chargeurs de film (`p2aBobine`, `zcOpenFilm`, `newDiskFilm`, `objDiskFilm = filmsource.Film`,
+  `filmRepete`), `p2aSource` supprime faute d'appelant. GARDE-RAIL (item 1.9) :
+  `objectiveevents` rejoint `filmdec` et `replay` dans `archlint/no_film_reread_test.go` (zlib
+  interdit) — regle verifiee DISCRIMINANTE par un import temporaire. Notes N-X a N-AD au §8, dont
+  un changement de comportement declare et inobservable (N-AC) et une dette de doc laissee au
+  lot 6 (N-AD, les copies de mesure de `cmd/replay-equiv` n'ont plus d'original). GATE :
+  `gofmt -l` vide, `go vet ./...` vide, `go build ./...` vert, suites completes vertes sur
+  `objectiveevents` (avec `FILM_CACHE_ROOT`, verite terrain rejouee), `filmcache`, `replaybuild`,
+  `replay`, `filmdec`, `archlint` et `./cmd/...`, `golangci-lint run` 0 issue sur les dix paquets
+  touches. Seuils : `statborg.go` 584 L (585 avant — la dette PREEXISTANTE ne croit pas),
+  tous les autres fichiers touches sous 500 L. AUCUNE CUISSON LANCEE, rien committe.
+- 2026-09-03 (lot 1, items 1.7 a 1.10, agent) — LES ENVELOPPES SONT INVENTORIEES, LE ZERO DISQUE
+  EST PROUVE, LES GARDE-RAILS SONT A L'ETAT FINAL DU LOT. Rien committe.
+  **1.7 — INVENTAIRE DES 40 FORMES `dir`.** Trente-neuf se declarent « ENVELOPPE D2 » dans leur
+  commentaire (grep du marqueur, pas de la signature : cinq d'entre elles ont une signature
+  multi-lignes et quatre nomment leur parametre `filmDir` — un grep sur `(dir string` en aurait
+  manque neuf) ; la quarantieme, `GroundWeaponPositions`, est une forme `dir` qui DELEGUE aux
+  deux autres et ne portait pas le marqueur : il lui a ete ajoute. CHACUNE a au moins un
+  appelant : AUCUNE suppression. Tous les appelants sont des `_test.go` de `analysis/filmdec` ou
+  `analysis/replay`, plus quatre delegations internes a `filmdec` (`keyframe_entity_queue.go` x3,
+  `keyframe_ground_weapons.go` x1) ; ZERO appelant de production — rien dans `replaybuild`,
+  `sync`, `api`, ni sous `cmd/`. La liste fermee d'`archlint`
+  (`enveloppesInterditesEnProduction`) coincide EXACTEMENT avec ces 40 noms (verifie par
+  comparaison d'ensembles, aucun nom en trop ni manquant). HORS MODULE, un dernier appelant
+  existe et il est nomme pour que l'inventaire soit complet :
+  `.ai/V7.5/outillage/precision_projectiles/tmp_projorig/scan.go` (`ScanFilmGrenadeThrows`,
+  `ScanFilmProjectiles`) — outillage de recherche, hors `apps/go-api`, donc ni compile par
+  `go build ./...` ni couvert par les garde-rails ; aucune consequence sur la production.
+
+  | Enveloppe D2 | Appelants | tests `filmdec` | tests `replay` | Hors test |
+  |---|---|---|---|---|
+  | `ScanFilmAbilityRanks` | 6 | 2 | 4 | aucun |
+  | `ScanFilmBipedPickups` | 19 | 2 | 17 | aucun |
+  | `ScanFilmBipedPositions` | 47 | 10 | 37 | aucun |
+  | `ScanFilmCamoStates` | 1 | 0 | 1 | aucun |
+  | `ScanFilmCarrierMarks` | 1 | 0 | 1 | aucun |
+  | `ScanFilmClockOrigin` | 17 | 0 | 17 | aucun |
+  | `ScanFilmDeaths` | 38 | 0 | 38 | aucun |
+  | `ScanFilmEquipmentChanges` | 6 | 2 | 4 | aucun |
+  | `ScanFilmEquipmentCreations` | 2 | 0 | 2 | aucun |
+  | `ScanFilmEquipmentCreationsForBand` | 6 | 4 | 2 | aucun |
+  | `ScanFilmEquipmentPlacements` | 11 | 3 | 8 | aucun |
+  | `ScanFilmEquipmentState` | 3 | 2 | 1 | aucun |
+  | `ScanFilmFireEvents` | 13 | 2 | 11 | aucun |
+  | `ScanFilmGrappleReads` | 2 | 0 | 2 | aucun |
+  | `ScanFilmGrenadeThrows` | 5 | 0 | 5 | aucun |
+  | `ScanFilmGroundWeaponCreations` | 1 | 0 | 1 | aucun |
+  | `ScanFilmGroundWeaponCreationsForBand` | 6 | 0 | 6 | aucun |
+  | `ScanFilmHeldWeaponChanges` | 13 | 5 | 8 | aucun |
+  | `ScanFilmInventoryDeltas` | 4 | 1 | 3 | aucun |
+  | `ScanFilmKeyframeGroundWeapons` | 7 | 2 | 5 | aucun |
+  | `ScanFilmKeyframeInventory` | 11 | 0 | 11 | aucun |
+  | `ScanFilmKeyframeLoadouts` | 14 | 4 | 10 | aucun |
+  | `ScanFilmManagedProperties` | 11 | 0 | 11 | aucun |
+  | `ScanFilmNavpointRadial` | 4 | 4 | 0 | aucun |
+  | `ScanFilmObjectives` | 4 | 2 | 2 | aucun |
+  | `ScanFilmPlayerIndices` | 21 | 0 | 21 | aucun |
+  | `ScanFilmProjectiles` | 4 | 1 | 3 | aucun |
+  | `ScanFilmUnitEquipment` | 3 | 1 | 2 | aucun |
+  | `ScanFilmWorldObjectKeyframes` | 9 | 2 | 7 | aucun |
+  | `ScanFilmWorldObjects` | 12 | 8 | 4 | aucun |
+  | `ScanFilmWorldObjectsForBand` | 3 | 0 | 3 | aucun |
+  | `ScanFilmZoomEvents` | 4 | 0 | 4 | aucun |
+  | `CalibrateMPPWidths` | 3 | 3 | 0 | aucun |
+  | `DetectI0Layout` | 28 | 24 | 3 | definition exclue |
+  | `EquipmentArchetype` | 4 | 4 | 0 | aucun |
+  | `GroundWeaponSlotBand` | 5 | 0 | 4 | +1 delegation `GroundWeaponPositions` |
+  | `GroundWeaponPositions` | 1 | 1 | 0 | aucun |
+  | `WorldObjectPositionsForBand` | 7 | 0 | 6 | +1 delegation `GroundWeaponPositions` |
+  | `ReadFilmChunk` | 177 | 120 | 54 | +3 `keyframe_entity_queue.go` |
+  | `CountFilmChunks` | 130 | 72 | 55 | +3 `keyframe_entity_queue.go` |
+
+  **1.8 — TEST STRUCTUREL ZERO DISQUE** (`replay/zero_disque_test.go`, deux tests). Le film est
+  charge par `os.ReadFile` des trois chunks puis `filmsource.Load(MemoryChunks, meta)` avec les
+  Index REELS 1, 2, 3 — jamais `LoadDir` — et le decodage tourne apres `t.Chdir` vers un
+  repertoire temporaire VIDE. METHODE, en trois pieces mesurees plutot qu'affirmees : (1) un
+  CONTROLE verifie que la mini-bobine n'est plus atteignable par son chemin relatif depuis ce
+  repertoire (sans lui, « repertoire vide » ne serait qu'une intention) ; (2) `BuildFromFilm`
+  doit rendre l'erreur EXACTE « aucun slot biped (ti=35) dans les keyframes du film » — toute
+  autre erreur, au premier chef une erreur d'ouverture, echoue le test ; (3) le repertoire est
+  verifie vide apres coup. Comme `BuildFromFilm` s'arrete a son PREMIER balayage sur cette
+  bobine, un SECOND test rejoue depuis le meme repertoire vide les SEPT familles de la liste
+  fermee D4c sous leur forme FILM : elles doivent REUSSIR, et leur succes est la preuve qu'elles
+  decodent entierement en memoire. DISCRIMINANCE VERIFIEE : une relecture residuelle inseree
+  temporairement dans `BuildFromFilm` (chemin relatif) fait rougir le test 1, la meme dans
+  `ScanDeaths` fait rougir le test 2 ; les deux sondes ont ete retirees (fichiers restaures a
+  l'octet). LIMITE ECRITE dans l'en-tete : un acces par chemin ABSOLU echapperait a la mesure —
+  elle est bornee par la signature de `BuildFromFilm` (aucun chemin) et par la regle 2
+  d'`archlint`.
+  **1.9 — CE QUI MANQUAIT AUX GARDE-RAILS.** Les agents 1.2-1.5 avaient pose : zlib interdit
+  dans `filmdec`/`replay`/`objectiveevents`, `os.*` interdit dans `filmdec` hors allowlist
+  datee, enveloppes interdites dans `replay`/`replaybuild`, `filmsource` feuille. TROIS AJOUTS :
+  (a) `killsource` rejoint les paquets sans inflate — l'item 1.4 lui a retire le sien, et rien
+  ne l'empechait de revenir ; (b) les paquets de PRODUCTION de la regle des enveloppes passent
+  de 2 a 7, au site pres de D2 (`objectiveevents`, `killsource`, `sync/killcollector`,
+  `api/wire`, `cmd/zone-attribution`) ; (c) REGLE 4 NEUVE, `TestAllowlistZlibFermee` : les
+  importateurs de `compress/zlib` de tout `apps/go-api` (hors `_test.go`) sont une liste FERMEE,
+  verifiee DANS LES DEUX SENS — un site en trop echoue, et une entree MORTE echoue aussi (une
+  allowlist qui garde des entrees mortes ne mesure plus rien). Elle compte NEUF sites la ou le
+  plan en annoncait sept : cf. note N-AE. Les trois regles sont verifiees DISCRIMINANTES par
+  violation temporaire (import zlib dans `killsource`, appel d'enveloppe dans `killcollector`,
+  entree morte dans l'allowlist), toutes restaurees.
+  **1.10 — RATCHET DES VARIABLES DE PAQUET** (`archlint/filmdec_package_vars_test.go`).
+  Comptage par `go/ast` des NOMS declares par un `var` de niveau paquet dans les fichiers
+  non-test de `filmdec` : **113** (98 declarations, 109 specs, 0 identifiant blanc — un bloc
+  `var (a; b)` vaut deux, c'est deux morceaux d'etat). Gele a 113, justification datee du
+  2026-09-03 renvoyant a D10 : le chantier ne de-globalise pas, mais il ne laisse pas l'etat
+  croitre. Le test echoue si le compte CROIT (avec le detail par fichier) ; une BAISSE passe et
+  journalise le compte a inscrire, pour que le resserrage soit conscient. Discriminance verifiee
+  dans les deux sens.
+  GATE : `gofmt -l` vide (module entier), `go vet ./internal/analysis/... ./internal/archlint/`
+  vide, `go build ./...` vert, `go test ./internal/analysis/replay/ ./internal/analysis/filmdec/
+  ./internal/archlint/ -count=1` vert (59,6 s / 0,8 s / 6,5 s), `golangci-lint run` 0 issue sur
+  `analysis/replay` et `archlint`. Decouvertes N-AE a N-AH au §8. AUCUNE CUISSON LANCEE.

@@ -1,3 +1,76 @@
+## [2026-09-03] Cuisson perf, lot 1 CLOS — une seule lecture du film, identite 9/9, aucun gain de vitesse (assume) — Complete
+
+Cloture du lot 1 de `.ai/V7.5/PLAN_CUISSON_PERF.md` (4 agents, gates et commits par le pilote).
+
+**Decision technique principale** : la chaine de cuisson entiere consomme un `*filmsource.Film`
+charge et decompresse UNE fois (grammaire D3 mesuree) — filmdec (31 balayages), replay (4),
+killsource, objectiveevents, killcollector ; 40 enveloppes `dir` restent pour les seuls tests de
+recherche (zero appelant de production, inventaire exhaustif au §10 du plan) ; `filmcache l'
+implemente sans plus importer objectiveevents (le cycle d'import est mort) ; garde-rails : zlib
+en liste fermee sur tout le module (verifiee dans les deux sens), os.* interdit dans filmdec,
+enveloppes interdites dans 7 paquets de production, filmsource feuille, 113 vars de paquet
+filmdec gelees, test « zero disque » discriminant.
+
+**Resultats observes** :
+- Identite prouvee DEUX fois par le harnais (9 films x 45 empreintes contre les references du
+  lot 0) : apres 1.1-1.3, puis apres le lot complet — 9/9 identiques a chaque fois. Preuves
+  intermediaires par mesure : 0 ecart sur 291 635 paquets (killsource, 4 films), empreintes
+  identiques a l'octet sur 10 films (objectiveevents).
+- VITESSE : AUCUN GAIN MESURABLE sur les temoins (2 min 24 - 3 min 03, dans le bruit de la
+  reference) — consigne sans fard au §4 des mesures. L'inflate x40 ne pesait que ~12 s sur 144
+  pour un film moyen ; les boucles de balayage bit a bit dominent. Gains attendus aux lots 2
+  (bande/layout/registre partages, ~45 s cumules des 6 scanners delta) et 4 (boucles chaudes,
+  `playerIndices` 35-40 s). Gain de bord reel : killcollector n'ecrit/relit plus le film sur
+  disque 4 fois par match.
+- Decouverte N-S : 3 goldens killsource (gate optionnel jamais joue en CI) derivaient DEJA a la
+  base du plan — consignes, pas refiges (D4).
+
+**Conclusion / prochaine etape** : commit L1b ; lot 2 (FilmContext : bande de slots, layout,
+archetypes partages) puis lot 3 sous decision D13/lot 4b (temoin Live Fire = bombe memoire).
+
+## [2026-09-02] Cuisson lot 1 (item 1.4 + moitie killcollector de 1.6) — le decodeur de la source de degat ne lit plus le disque — Complete
+
+Item 1.4 de `.ai/V7.5/PLAN_CUISSON_PERF.md`, plus la moitie `killcollector` de l'item 1.6.
+Branche `wt/cuisson-perf`, rien committe.
+
+**Decision technique principale** : `killsource.Decode` prend un `*filmsource.Film` deja charge.
+Le paquet perd sa source de chunks (`ChunkSource`, `MemoryChunks`, `DirChunks`), son inflate et
+son marcheur de paquets — la troisieme copie des trois. `loadFilm` ne fait plus que traduire le
+film et trier les paquets type-0. L'IDENTITE TIENT A UN FILTRE, ecrit et documente sur place :
+`filmsource` emet le terminateur CHUNK_END (type 7) que l'ancien `splitPackets` n'emettait pas
+(il s'arretait sur `taille <= 0`) ; comme ce terminateur est le DERNIER paquet de son chunk, le
+filtrer par type restitue l'ancien jeu de paquets jusqu'au rang. Le registre, lui, reste lu par
+OCTETS de chunk (`f.chunks[0]` = `film.Chunk(0)`, la position 0 de la source), jamais par
+paquets. Verrou process `filmdec.LockProcessDecode` inchange ; seul le chargement, qui ne touche
+aucun global, est sorti du verrou.
+
+**Resultats observes** :
+- Identite MESUREE, pas affirmee : un diagnostic temporaire comparant l'ancienne entree
+  (`DirChunks` + `inflate` + `splitPackets` recopies) au film charge rend, sur les quatre films
+  de fixture, des chunks identiques a l'octet et **0 ecart sur 291 635 paquets**
+  (`chunk, idx, type, ts, taille`). Test supprime apres mesure.
+- La cuisson ne charge plus le film qu'une fois : `decodeKillSource` recoit le film de
+  `BuildBytes`. Ordre des etapes observees intact (`replaybuild/observe_test.go` vert).
+- Le collecteur de morts partage un seul film entre les morts et les positions : le PONT DISQUE
+  de `positions.go` (ecriture de N `chunk_NN.bin` dans un temporaire, puis quatre relectures et
+  quatre decompressions du film entier) est supprime. Son unique controle utile — le refus d'une
+  sequence trouee, qui empeche une position FAUSSE — survit en memoire avec ses tests.
+- Gate : `gofmt -l` vide sur mes paquets, `go build ./...` vert, `go test` vert sur `killsource`
+  (goldens inconditionnels de la mini-bobine compris), `replaybuild`, `killcollector` (dont
+  `-tags=integration` sur films reels) et `archlint` ; `golangci-lint` 0 issue.
+
+**Decouverte rouge, ANTERIEURE au chantier** (N-S au §8 du plan) : `TestGoldenFilms` de
+`killsource` — gate optionnel `KILLSOURCE_FIXTURES`, donc jamais joue en CI — echoue sur 3 des
+4 films de reference, avec les MEMES trois ecarts a `900384f50` (la base du plan), a HEAD et
+apres l'item 1.4. Verifie dans un worktree jetable, supprime depuis. Aucune ligne publiee ne
+change (calibration, et un candidat propose de plus non publie). Non traite : hors perimetre, et
+refiger un golden hors lot de correction est interdit par D4.
+
+**Prochaine etape** : `go vet ./...` et la suite `internal/analysis/replay` ne compilent pas tant
+que l'item 1.5 de l'agent parallele est en vol (toutes les erreurs sont des `objectiveevents`
+dans des `*_test.go`) — a rejouer une fois 1.5 rendu. Item 1.6 reste ouvert : sa moitie `cmd/*`
+appartient au meme agent.
+
 ## [2026-09-02] Cuisson perf, lot 0 CLOS — harnais d'equivalence, determinisme prouve, reference HEAD — Complete
 
 Cloture du lot 0 de `.ai/V7.5/PLAN_CUISSON_PERF.md` (pilotage : agents pour le code et les

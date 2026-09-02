@@ -1,11 +1,13 @@
 package killcollector
 
-// positions_test.go — LE PONT (chunks synthétiques -> répertoire), LA COMPOSITION PURE, ET LE
-// REFUS PROPRE. Aucun test ici n'ouvre de base ni ne lit de film réel — c'est le rôle de
-// positions_integration_test.go (fixture réelle, gate KILLSOURCE_FIXTURES) et de
+// positions_test.go — LE CHARGEMENT DU FILM (chunks synthétiques -> `filmsource.Film`), LA
+// COMPOSITION PURE, ET LE REFUS PROPRE. Aucun test ici n'ouvre de base ni ne lit de film réel —
+// c'est le rôle de positions_integration_test.go (fixture réelle, gate KILLSOURCE_FIXTURES) et de
 // kill_position_persister_test.go (persister, :memory:). Ce fichier verrouille exactement ce que
-// G.2bis a ajouté : le pont disque, le filtrage des identités, la traduction en lignes, et que
-// CHAQUE refus s'arrête AVANT toute tentative d'écriture (acquireShared panique s'il est appelé).
+// G.2bis a ajouté : l'entrée des chunks, le filtrage des identités, la traduction en lignes, et
+// que CHAQUE refus s'arrête AVANT toute tentative d'écriture (acquireShared panique s'il est
+// appelé). Le pont disque qu'il verrouillait a disparu au lot 1 (item 1.6) : son seul contrôle
+// utile, le refus d'une séquence trouée, est verrouillé ici sous son nouveau nom.
 
 import (
 	"bytes"
@@ -13,7 +15,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"os"
 	"testing"
 
 	"levelup/go-api/internal/analysis/filmdec"
@@ -24,8 +25,8 @@ import (
 	"levelup/go-api/internal/sync/haloclient"
 )
 
-// zlibCompressForTest compresse b, pour verifier que le pont recopie les octets tels quels
-// (compresses ou non) et que c'est ReadFilmChunk qui decompresse a la lecture.
+// zlibCompressForTest compresse b, pour verifier qu'un chunk COMPRESSE (la forme du cache
+// herite) arrive decompresse aux balayages — c'est `filmsource` qui inflate, une seule fois.
 func zlibCompressForTest(t *testing.T, b []byte) []byte {
 	t.Helper()
 	var buf bytes.Buffer
@@ -39,100 +40,137 @@ func zlibCompressForTest(t *testing.T, b []byte) []byte {
 	return buf.Bytes()
 }
 
-// ─── writeChunksToTempDir : le pont ────────────────────────────────────────────────────────
+// ─── FilmOf : le chargement, et refuserSequenceTrouee : le refus ───────────────────────────
+//
+// LE PONT DISQUE A DISPARU AU LOT 1 (PLAN_CUISSON_PERF, item 1.6) : les chunks téléchargés ne
+// sont plus recopiés dans un répertoire temporaire pour être relus quatre fois. `FilmOf` les
+// charge une fois (`filmsource`), et le seul contrôle qui protégeait d'une position FAUSSE — le
+// refus d'une séquence trouée — est conservé tel quel, en mémoire.
 
-func TestWriteChunksToTempDir_EcritEtSeRelitParFilmdec(t *testing.T) {
+func TestFilmOf_ChargeLesChunksALeurIndex(t *testing.T) {
 	chunks := []haloclient.FilmChunk{
-		{Index: 1, Data: []byte("chunk-un-donnees")},
-		{Index: 2, Data: []byte("chunk-deux-donnees")},
+		{Index: 1, ChunkType: 2, StartMS: 100, Data: []byte("chunk-un-donnees")},
+		{Index: 2, ChunkType: 2, StartMS: 200, Data: []byte("chunk-deux-donnees")},
 	}
-	dir, cleanup, err := writeChunksToTempDir(chunks)
+	film, err := FilmOf(chunks)
 	if err != nil {
-		t.Fatalf("writeChunksToTempDir: %v", err)
+		t.Fatalf("FilmOf: %v", err)
 	}
-	defer cleanup()
-
-	if got := filmdec.CountFilmChunks(dir); got != 2 {
-		t.Fatalf("CountFilmChunks = %d, attendu 2", got)
+	if got := film.NumChunks(); got != 3 {
+		t.Fatalf("NumChunks = %d, attendu 3 (dimensionne sur l index MAX, en-tete compris)", got)
 	}
-	got1, err := filmdec.ReadFilmChunk(dir, 1)
-	if err != nil || string(got1) != "chunk-un-donnees" {
-		t.Errorf("chunk 1 relu = %q, err=%v", got1, err)
+	if got := string(film.Chunk(1)); got != "chunk-un-donnees" {
+		t.Errorf("chunk 1 = %q", got)
 	}
-	got2, err := filmdec.ReadFilmChunk(dir, 2)
-	if err != nil || string(got2) != "chunk-deux-donnees" {
-		t.Errorf("chunk 2 relu = %q, err=%v", got2, err)
+	if got := string(film.Chunk(2)); got != "chunk-deux-donnees" {
+		t.Errorf("chunk 2 = %q", got)
+	}
+	// LES METADONNEES SONT POSITIONNELLES et portent le manifeste : c'est par elles que les
+	// balayages traduisent un NUMERO de chunk en position (filmdec.FilmChunkNumbers).
+	meta := film.Meta()
+	if len(meta) != 3 {
+		t.Fatalf("Meta = %d entrees, attendu 3", len(meta))
+	}
+	for i, m := range meta {
+		if m.Index != i {
+			t.Errorf("Meta[%d].Index = %d, attendu %d (la position EST le numero ici)", i, m.Index, i)
+		}
+	}
+	if meta[2].ChunkType != 2 || meta[2].StartMS != 200 {
+		t.Errorf("Meta[2] = %+v, attendu le type et le debut du manifeste", meta[2])
 	}
 }
 
-// TestWriteChunksToTempDir_ZlibRoundTrip — le pont RECOPIE, il ne décode rien : un chunk
-// COMPRESSÉ doit se relire décompressé exactement comme le cache film hérité le sert déjà
-// (haloclient.LocalFilmCache), parce que c'est ReadFilmChunk qui décompresse à LA LECTURE.
-func TestWriteChunksToTempDir_ZlibRoundTrip(t *testing.T) {
+// TestFilmOf_ZlibRoundTrip — les chunks descendent COMPRESSÉS du cache hérité et CLAIRS des
+// téléchargements récents. `filmsource` décompresse à la charge, une fois pour tous les lecteurs
+// (avant, chacune des quatre lectures repayait cette décompression).
+func TestFilmOf_ZlibRoundTrip(t *testing.T) {
 	compressed := zlibCompressForTest(t, []byte("payload-compresse"))
-	dir, cleanup, err := writeChunksToTempDir([]haloclient.FilmChunk{{Index: 1, Data: compressed}})
+	film, err := FilmOf([]haloclient.FilmChunk{{Index: 1, Data: compressed}})
 	if err != nil {
-		t.Fatalf("writeChunksToTempDir: %v", err)
+		t.Fatalf("FilmOf: %v", err)
 	}
-	defer cleanup()
-
-	got, err := filmdec.ReadFilmChunk(dir, 1)
-	if err != nil {
-		t.Fatalf("ReadFilmChunk: %v", err)
-	}
-	if string(got) != "payload-compresse" {
+	if got := string(film.Chunk(1)); got != "payload-compresse" {
 		t.Errorf("chunk decompresse = %q, attendu %q", got, "payload-compresse")
 	}
 }
 
-// TestWriteChunksToTempDir_RefuseUnTrouDeSequence — un index manquant ferait lire les quatre
-// scanners disque sur un PRÉFIXE silencieux du film (filmdec.CountFilmChunks s'arrête au premier
-// trou) : le pont refuse plutôt que de laisser passer une lecture partielle plausible.
-func TestWriteChunksToTempDir_RefuseUnTrouDeSequence(t *testing.T) {
-	chunks := []haloclient.FilmChunk{
-		{Index: 1, Data: []byte("a")},
-		{Index: 3, Data: []byte("c")}, // 2 absent
+// TestFilmOf_NumerosDeChunksVusParLesBalayages — LE CONTRAT QUI REMPLACE LE PONT DISQUE, et le
+// seul qui pouvait se perdre en route : les quatre balayages parcourent les chunks de DONNÉES par
+// NUMÉRO (`filmdec.FilmChunkNumbers`), là où ils comptaient `filmdec.CountFilmChunks(dir)` — donc
+// 1..N depuis chunk_01. Le film chargé en mémoire doit rendre exactement les mêmes numéros, sinon
+// `ScanDeaths` (qui prend le DERNIER numéro comme chunk du kill-feed) et `ScanClockOrigin` (qui
+// lit le numéro 1) changeraient de cible sans rien signaler.
+func TestFilmOf_NumerosDeChunksVusParLesBalayages(t *testing.T) {
+	film, err := FilmOf([]haloclient.FilmChunk{
+		{Index: 0, ChunkType: 1, Data: []byte("entete")},
+		{Index: 1, ChunkType: 2, Data: []byte("replication-1")},
+		{Index: 2, ChunkType: 2, Data: []byte("replication-2")},
+		{Index: 3, ChunkType: 3, Data: []byte("killfeed")},
+	})
+	if err != nil {
+		t.Fatalf("FilmOf: %v", err)
 	}
-	dir, _, err := writeChunksToTempDir(chunks)
-	if err == nil {
-		t.Fatalf("attendu un refus (trou de sequence), obtenu dir=%q", dir)
+	nums := filmdec.FilmChunkNumbers(film)
+	if len(nums) != 3 || nums[0] != 1 || nums[2] != 3 {
+		t.Fatalf("numeros = %v, attendu [1 2 3] (le registre exclu, le kill-feed en dernier)", nums)
+	}
+	// Le NUMÉRO adresse bien la position : c'est ce que `FilmChunkAt` traduit pour les balayages.
+	raw, _, ok := filmdec.FilmChunkAt(film, 3)
+	if !ok || string(raw) != "killfeed" {
+		t.Errorf("chunk numero 3 = %q (ok=%v), attendu le kill-feed", raw, ok)
 	}
 }
 
-// TestWriteChunksToTempDir_ChunkVideEstUnTrou — un chunk DÉCLARÉ mais absent du disque source
-// (Data vide) est un trou au même titre qu'un index manquant — même règle que ChunkSourceOf.
-func TestWriteChunksToTempDir_ChunkVideEstUnTrou(t *testing.T) {
-	chunks := []haloclient.FilmChunk{
+// TestRefuserSequenceTrouee_RefuseUnTrouDeSequence — un index manquant ferait lire les quatre
+// balayages sur un film AMPUTÉ, en silence (un chunk vide ne rend aucun paquet) : le contrôle
+// refuse plutôt que de laisser passer une lecture partielle plausible.
+func TestRefuserSequenceTrouee_RefuseUnTrouDeSequence(t *testing.T) {
+	film, err := FilmOf([]haloclient.FilmChunk{
+		{Index: 1, Data: []byte("a")},
+		{Index: 3, Data: []byte("c")}, // 2 absent
+	})
+	if err != nil {
+		t.Fatalf("FilmOf: %v", err)
+	}
+	if err := refuserSequenceTrouee(film); err == nil {
+		t.Fatal("attendu un refus (trou de sequence), obtenu nil")
+	}
+}
+
+// TestRefuserSequenceTrouee_ChunkVideEstUnTrou — un chunk DÉCLARÉ mais sans octets (Data vide)
+// est un trou au même titre qu'un index manquant : il ne rend aucun paquet.
+func TestRefuserSequenceTrouee_ChunkVideEstUnTrou(t *testing.T) {
+	film, err := FilmOf([]haloclient.FilmChunk{
 		{Index: 1, Data: []byte("a")},
 		{Index: 2, Data: nil},
+	})
+	if err != nil {
+		t.Fatalf("FilmOf: %v", err)
 	}
-	if _, _, err := writeChunksToTempDir(chunks); err == nil {
+	if err := refuserSequenceTrouee(film); err == nil {
 		t.Fatal("attendu un refus (chunk 2 vide = trou), obtenu nil")
 	}
 }
 
-func TestWriteChunksToTempDir_CleanupSupprimeLeRepertoire(t *testing.T) {
-	dir, cleanup, err := writeChunksToTempDir([]haloclient.FilmChunk{{Index: 1, Data: []byte("a")}})
+// TestRefuserSequenceTrouee_AucunChunkDeDonneesPasse — le contrôle ne juge pas l'absence de
+// contenu (0 chunk de données = 0 trou) ; c'est aux LECTEURS (ScanBipedPositions, etc.) de
+// refuser un film vide. Verrouille la frontière entre les deux responsabilités, comme le faisait
+// le pont disque avant lui.
+func TestRefuserSequenceTrouee_AucunChunkDeDonneesPasse(t *testing.T) {
+	film, err := FilmOf(nil)
 	if err != nil {
-		t.Fatalf("writeChunksToTempDir: %v", err)
+		t.Fatalf("FilmOf(nil): %v", err)
 	}
-	cleanup()
-	if _, err := os.Stat(dir); !os.IsNotExist(err) {
-		t.Errorf("le repertoire temporaire survit au cleanup (stat err=%v)", err)
+	if err := refuserSequenceTrouee(film); err != nil {
+		t.Errorf("un film sans chunk de donnees doit passer ce controle, obtenu : %v", err)
 	}
 }
 
-// TestWriteChunksToTempDir_AucunChunkRendUnRepertoireVideSansErreur — le pont lui-même ne juge
-// pas l'absence de contenu (0 chunks = 0 trou) ; c'est aux LECTEURS (ScanFilmBipedPositions, etc.)
-// de refuser un répertoire vide. Verrouille la frontière entre les deux responsabilités.
-func TestWriteChunksToTempDir_AucunChunkRendUnRepertoireVideSansErreur(t *testing.T) {
-	dir, cleanup, err := writeChunksToTempDir(nil)
-	if err != nil {
-		t.Fatalf("writeChunksToTempDir(nil): %v", err)
-	}
-	defer cleanup()
-	if got := filmdec.CountFilmChunks(dir); got != 0 {
-		t.Errorf("CountFilmChunks = %d, attendu 0", got)
+// TestRefuserSequenceTrouee_FilmNil — le film absent est refusé ici, jamais déréférencé plus bas.
+func TestRefuserSequenceTrouee_FilmNil(t *testing.T) {
+	if err := refuserSequenceTrouee(nil); err == nil {
+		t.Fatal("attendu un refus (film nil), obtenu nil")
 	}
 }
 

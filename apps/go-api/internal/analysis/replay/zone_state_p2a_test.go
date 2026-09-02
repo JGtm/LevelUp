@@ -28,8 +28,8 @@ import (
 	"strings"
 	"testing"
 
+	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/analysis/replay/mapvar"
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 )
 
 // SEUILS DE LA PHASE 2a — ecrits avant la mesure (arbitrage §Phase 2a).
@@ -85,7 +85,7 @@ func TestZoneEtatPhase2a(t *testing.T) {
 	out := p2aOutDir(t)
 
 	p2aCheckRegistre(t, dir)
-	src := p2aSource(t, dir)
+	src := p2aBobine(t, dir)
 	sc := p2aScanFilm(t, dir, p2aStartMS(src))
 	dureeMS := sc.t1MS - sc.t0MS
 	var sbAncrage strings.Builder
@@ -133,7 +133,7 @@ type p2aEntree struct {
 	sc    *p2aScan
 	doc   ReplayDocument
 	zones []Zone
-	src   *filmcache.Source
+	src   *filmsource.Film
 }
 
 // p2aRolesDuMode rend les roles de zone a retenir pour le film. En Strongholds, le role du mode

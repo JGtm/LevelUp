@@ -130,7 +130,7 @@ func bandeDoc(t *testing.T, dir, short string, film p2aFilm,
 	e bandeEntree,
 ) (ReplayDocument, uint64) {
 	t.Helper()
-	caps := p2aCaptures(p2aSource(t, dir), film)
+	caps := p2aCaptures(p2aBobine(t, dir), film)
 	zone := ZoneInput{
 		Scanned: true, Reads: e.sc.Reads, Zones: e.zones, Roles: string(e.role),
 		TeamByXUID: film.p2aTeams(), Hill: film.Mode == "KOTH",

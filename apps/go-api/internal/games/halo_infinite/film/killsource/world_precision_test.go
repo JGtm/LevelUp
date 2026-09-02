@@ -57,6 +57,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/analysis/filmdec"
+	"levelup/go-api/internal/analysis/filmsource"
 )
 
 const (
@@ -150,7 +151,7 @@ func TestKillSourceWalkArchetypes(t *testing.T) {
 	prev := filmdec.WorldObjectPrecision
 	t.Cleanup(func() { filmdec.WorldObjectPrecision = prev })
 
-	src, err := DirChunks(dir)
+	src, err := filmsource.LoadDir(dir, nil)
 	if err != nil {
 		t.Fatalf("chunks de %s : %v", dir, err)
 	}
@@ -337,7 +338,7 @@ func ksPrecRun(t *testing.T, dir string, axisW [3]uint) ksPrecMeasure {
 	t.Cleanup(func() { filmdec.WorldObjectPrecision = prev })
 	filmdec.WorldObjectPrecision.AxisW = axisW
 
-	src, err := DirChunks(dir)
+	src, err := filmsource.LoadDir(dir, nil)
 	if err != nil {
 		t.Fatalf("chunks de %s : %v", dir, err)
 	}

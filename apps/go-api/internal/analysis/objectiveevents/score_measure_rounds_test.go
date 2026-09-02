@@ -1,6 +1,10 @@
 package objectiveevents
 
-import "sort"
+import (
+	"sort"
+
+	"levelup/go-api/internal/analysis/filmsource"
+)
 
 // score_measure_rounds_test.go — la grammaire d'ancrage ETENDUE de l'item A.0b.1 : lire les
 // enregistrements statborg que la grammaire de production REJETTE, et reconstruire le score
@@ -96,22 +100,17 @@ type statRecordExt struct {
 
 // statRecordsExt decode un film avec la grammaire etendue. Meme balayage et meme horloge que
 // [StatRecords] : seules la forme de liste et les familles de composants changent.
-func statRecordsExt(src FilmSource) []statRecordExt {
+func statRecordsExt(film *filmsource.Film) []statRecordExt {
 	var out []statRecordExt
-	for _, meta := range src.Chunks() {
-		raw, ok := src.ChunkData(meta.Index)
-		if !ok {
-			continue
-		}
-		data := decompressChunk(raw)
-		frames := walkFrames(data)
+	for _, c := range manifestChunks(film) {
+		frames := framesOf(film, c.pos)
 		if len(frames) == 0 {
 			continue
 		}
-		base := frames[0].us
+		base := frames[0].TS
 		for _, f := range frames {
-			tMS := meta.StartMS + int((f.us-base)/1000)
-			out = append(out, scanFrameExt(data[f.off:f.off+f.size], tMS)...)
+			tMS := c.meta.StartMS + int((f.TS-base)/1000)
+			out = append(out, scanFrameExt(f.Payload, tMS)...)
 		}
 	}
 	sort.SliceStable(out, func(i, j int) bool {

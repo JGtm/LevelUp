@@ -35,11 +35,11 @@ func scoreAt(pts []ScorePoint, tMS int) map[int]int64 {
 // (Strongholds, Nomad) donne « 3:10 : score 69-30 » et l'API donne 200-94 au final. Les
 // deux doivent tomber, sinon le decodage n'est pas celui du score de mode.
 func TestScoreCurveStrongholdsGroundTruth(t *testing.T) {
-	src, ok := newDiskFilmSource(t, "696a9d7c")
+	bobine, ok := newDiskFilm(t, "696a9d7c")
 	if !ok {
 		t.Skipf("film 696a9d7c absent du cache (%s=%q)", filmCacheEnv, cacheRoot())
 	}
-	pts := ScoreCurve(src)
+	pts := ScoreCurve(bobine)
 	if len(pts) == 0 {
 		t.Fatal("aucune emission de score decodee")
 	}
@@ -77,13 +77,13 @@ func TestScoreCurveStrongholdsGroundTruth(t *testing.T) {
 // footer) et les increments de score (composant 0 des paquets FRAME) sont decodes par des
 // chemins qui n'ont rien en commun ; ils doivent tomber au meme instant.
 func TestScoreCurveMatchesCTFCaptures(t *testing.T) {
-	src, ok := newDiskFilmSource(t, "530820e5")
+	bobine, ok := newDiskFilm(t, "530820e5")
 	if !ok {
 		t.Skipf("film 530820e5 absent du cache (%s=%q)", filmCacheEnv, cacheRoot())
 	}
-	events := Extract("530820e5", "CTF:Arena", src, MapRoster{})
+	events := Extract("530820e5", "CTF:Arena", bobine, MapRoster{})
 	teamPts := []ScorePoint{}
-	for _, p := range ScoreCurve(src) {
+	for _, p := range ScoreCurve(bobine) {
 		if IsTeamSlot(p.Slot) {
 			teamPts = append(teamPts, p)
 		}

@@ -31,6 +31,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis/filmdec"
+	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/domain/title"
 	halo "levelup/go-api/internal/games/halo_infinite"
@@ -215,7 +216,7 @@ func (b *Builder) BuildBytes(matchID string, mapNames []string, filmDir string, 
 	deaths := lireMorts(film)
 	logPhase("film", matchID, tFilm)
 	tStats := time.Now()
-	stats := readFilmStats(ctx, matchID, src, facts, deaths)
+	stats := readFilmStats(ctx, matchID, film, facts, deaths)
 	logPhase("stats", matchID, tStats)
 	b.observe("score", stats.score)
 	b.observe("objectives", stats.objectives)
@@ -232,7 +233,7 @@ func (b *Builder) BuildBytes(matchID string, mapNames []string, filmDir string, 
 		stats.score.TargetScore, _ = b.regulation.ScoreTarget(facts.GameVariantName)
 		stats.score.HoldTicksPerPoint, _ = b.regulation.HoldTicksPerPoint(facts.GameVariantName)
 	}
-	cat := b.collecterEntreesCatalogue(matchID, filmDir, facts, mapNames, &stats, deaths)
+	cat := b.collecterEntreesCatalogue(matchID, film, facts, mapNames, &stats, deaths)
 	tDecode := time.Now()
 	doc, err := replay.BuildFromFilm(matchID, b.titleSlug, film, replay.Options{
 		FrameIntervalMS: b.interval,
@@ -294,11 +295,12 @@ type entreesCatalogue struct {
 // `stats` est pris par POINTEUR parce que les socles de drapeau s'ajoutent à `stats.flag`, qui
 // part ensuite tel quel dans les options du décodage.
 //
-// `filmDir` y reste : `decodeKillSource` ouvre encore les chunks lui-meme (item 1.4 du plan).
-// `deaths` est l'unique lecture du fil des morts, partagee avec `readFilmStats`.
+// `film` est celui que `BuildBytes` a charge une fois : `decodeKillSource` n'ouvre plus rien
+// lui-meme (item 1.4 du plan). `deaths` est l'unique lecture du fil des morts, partagee avec
+// `readFilmStats`.
 func (b *Builder) collecterEntreesCatalogue(
-	matchID, filmDir string, facts port.MatchFacts, mapNames []string, stats *filmStats,
-	deaths filmDeaths,
+	matchID string, film *filmsource.Film, facts port.MatchFacts, mapNames []string,
+	stats *filmStats, deaths filmDeaths,
 ) entreesCatalogue {
 	// Les SOCLES de drapeau viennent du catalogue de carte, pas du film : ils s'ajoutent aux
 	// lectures que le second décodage a déjà faites (cf. flagspawns.go).
@@ -315,7 +317,7 @@ func (b *Builder) collecterEntreesCatalogue(
 	// `replay.BuildFromFilm` — au lieu de deux, comme avant la jointure des frags sous
 	// effet actif (PLAN_RETOURS_UTILISATEUR_2026-08-29 §LOT F.1).
 	tKS := time.Now()
-	ksRes := b.decodeKillSource(matchID, filmDir)
+	ksRes := b.decodeKillSource(matchID, film)
 	logPhase("killsource", matchID, tKS)
 	b.observe("killsource", ksRes)
 	// Les POINTS D'APPARITION viennent du catalogue des socles, par map_id — ils donnent leur

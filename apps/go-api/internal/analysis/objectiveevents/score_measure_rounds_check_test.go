@@ -31,7 +31,7 @@ func TestLotAPhase0bisManches(t *testing.T) {
 	or := loadOracle(t, oraclePath, short)
 
 	t.Setenv(filmCacheEnv, root)
-	src, ok := newDiskFilmSource(t, short)
+	bobine, ok := newDiskFilm(t, short)
 	if !ok {
 		t.Fatalf("manifeste du film %s absent sous %s", short, root)
 	}
@@ -42,7 +42,7 @@ func TestLotAPhase0bisManches(t *testing.T) {
 		}
 	}
 	start := time.Now()
-	recs := statRecordsExt(src)
+	recs := statRecordsExt(bobine)
 	decodeMS := time.Since(start).Milliseconds()
 	if len(recs) == 0 {
 		t.Fatalf("aucun enregistrement lu par la grammaire etendue dans %s", filmDir)

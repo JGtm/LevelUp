@@ -1,6 +1,10 @@
 package objectiveevents
 
-import "sort"
+import (
+	"sort"
+
+	"levelup/go-api/internal/analysis/filmsource"
+)
 
 // named.go — les EVENEMENTS DE JOUEUR NOMMES, lus par le COMPOSANT et non par la valeur.
 //
@@ -187,8 +191,8 @@ type NamedEvent struct {
 // Un mode sans table (KOTH, Oddball) rend nil — pas d'erreur, pas de nom invente. Les
 // emplacements de `hill` et `ball` n'ont pas encore ete nommes : le balayage est le meme,
 // c'est le corpus qui manque.
-func NamedEvents(src FilmSource, objectiveType string) []NamedEvent {
-	return NamedEventsFrom(StatRecords(src), objectiveType)
+func NamedEvents(film *filmsource.Film, objectiveType string) []NamedEvent {
+	return NamedEventsFrom(StatRecords(film), objectiveType)
 }
 
 // NamedEventsFrom est le coeur pur : il travaille sur des enregistrements deja decodes, ce
@@ -390,8 +394,8 @@ func CountsBySlot(evs []NamedEvent) map[int]map[string]int {
 // donc la redondance est une source de controle GRATUITE et interne au film — si `comp 12 A`
 // et `comp 2 A` divergent sur un slot, l'un des deux decodages a derape sur ce slot, et on
 // le sait sans oracle externe.
-func CrossCheckNamedEvents(src FilmSource, objectiveType string) map[int]map[string][2]int {
-	return crossCheckFrom(StatRecords(src), objectiveType)
+func CrossCheckNamedEvents(film *filmsource.Film, objectiveType string) map[int]map[string][2]int {
+	return crossCheckFrom(StatRecords(film), objectiveType)
 }
 
 // crossCheckFrom est le coeur pur de [CrossCheckNamedEvents].

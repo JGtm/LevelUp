@@ -114,7 +114,7 @@ func d3iSerieDe(t *testing.T, dir, short string) (d3iSerie, bool) {
 	if err != nil {
 		t.Fatalf("%s : origine d'horloge illisible : %v", short, err)
 	}
-	recs := objectiveevents.StatRecords(p2aSource(t, dir))
+	recs := objectiveevents.StatRecords(p2aBobine(t, dir))
 	debut, fin, ok := d3iBornesMatch(recs)
 	if !ok {
 		t.Logf("NON EXPLOITABLE %s : aucun enregistrement d'entite — le match n'a pas de duree. "+

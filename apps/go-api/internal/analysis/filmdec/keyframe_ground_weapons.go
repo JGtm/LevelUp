@@ -174,6 +174,10 @@ func GroundWeaponSlotBand(dir string) map[uint32]bool {
 // 2026-08-17).
 //
 // HORS LIGNE (I/O disque sur tout le film).
+//
+// ENVELOPPE D2, HORS PRODUCTION (marquee a l'item 1.7, 2026-09-03 : elle chargeait deux films
+// par appel — un par enveloppe deleguee — sans porter le marqueur que l'inventaire des
+// enveloppes cherche). Son unique consommateur est l'instrument de mesure cite ci-dessus.
 func GroundWeaponPositions(dir string, wr *Vec3Range) map[uint32][]WorldObjectSample {
 	if wr == nil {
 		return map[uint32][]WorldObjectSample{}

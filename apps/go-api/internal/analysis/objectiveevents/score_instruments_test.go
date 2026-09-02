@@ -1,6 +1,10 @@
 package objectiveevents
 
-import "sort"
+import (
+	"sort"
+
+	"levelup/go-api/internal/analysis/filmsource"
+)
 
 // score_instruments_test.go — LES COURBES QUI NE SERVENT QU AUX INSTRUMENTS DE MESURE.
 //
@@ -21,8 +25,8 @@ import "sort"
 // En Strongholds le composant n'est emis que par les 2 entites d'equipe ; en CTF les 8
 // entites de joueur l'emettent aussi, ou il vaut leur compte de captures. Ce que porte le
 // composant depend donc du mode — c'est une mesure, pas une supposition.
-func ScoreCurve(src FilmSource) []ScorePoint {
-	return ScoreCurveFrom(StatRecords(src))
+func ScoreCurve(film *filmsource.Film) []ScorePoint {
+	return ScoreCurveFrom(StatRecords(film))
 }
 
 // ScoreCurveFrom est le coeur pur : il travaille sur des enregistrements deja decodes, ce qui
@@ -64,8 +68,8 @@ func ScoreCurveFrom(recs []StatRecord) []ScorePoint {
 // Autre limite mesuree : les increments ne sont pas atomiques. Plusieurs actions tombant
 // dans le meme paquet se somment (125 = 100 + 25 observe en CTF). Un increment ne se lit
 // donc pas comme UNE action.
-func PersonalScoreCurve(src FilmSource) []ScorePoint {
-	return collectComponent(StatRecords(src), personalScoreComp, true)
+func PersonalScoreCurve(film *filmsource.Film) []ScorePoint {
+	return collectComponent(StatRecords(film), personalScoreComp, true)
 }
 
 // collectComponent extrait un composant des enregistrements ; useB choisit la valeur B

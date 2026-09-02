@@ -153,7 +153,7 @@ func TestCollineSeuilGardeE1(t *testing.T) {
 	}
 	ownerSlot := d.slot + 1
 
-	recs := objectiveevents.StatRecords(p2aSource(t, dir))
+	recs := objectiveevents.StatRecords(p2aBobine(t, dir))
 	score := objectiveevents.SeriesTotal(recs, objectiveevents.ModeScoreComponent, true)
 	slots := d2ScoreSlots(score)
 	if len(slots) != 2 {

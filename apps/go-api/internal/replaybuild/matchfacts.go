@@ -11,10 +11,11 @@ package replaybuild
 //	les ACTIONS D'OBJECTIF nommees (capture, retour, prise de zone) et attribuees a un xuid.
 //
 // UN SEUL DECODAGE POUR LES DEUX, et c'est la raison d'etre du fichier : les fonctions de
-// facade d'`objectiveevents` (`NamedEvents`, `SlotIdentity`) re-decodent le film
-// a chaque appel. Les enchainer coûterait trois balayages complets la ou un seul suffit — sur
+// facade d'`objectiveevents` (`NamedEvents`, `SlotIdentity`) re-balaient les enregistrements a
+// chaque appel. Les enchainer coûterait trois balayages complets la ou un seul suffit — sur
 // une machine qui paie deja le decodage des positions, ce n'est pas un detail (0,6 a 2,4 s et
-// jusqu'a 21 Mo par film, mesure du corpus de 22).
+// jusqu'a 21 Mo par film, mesure du corpus de 22). Depuis le lot 1 de PLAN_CUISSON_PERF, le
+// FILM lui-meme n'est de toute facon plus relu : il arrive charge (`filmload.go`).
 //
 // # POURQUOI C'EST ICI ET PAS DANS `analysis/replay`
 //
@@ -34,9 +35,9 @@ import (
 	"log/slog"
 	"strconv"
 
+	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/analysis/objectiveevents"
 	"levelup/go-api/internal/analysis/replay"
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/port"
 )
 
@@ -68,13 +69,18 @@ type filmStats struct {
 // Rend un filmStats VIDE (score nil) quand le film n'est pas lisible par cette porte : le
 // document sort alors sans courbe de score ET sans couverture de score, ce qui dit « rien n'a
 // ete lu » plutot que « rien n'existait ».
-func readFilmStats(ctx context.Context, matchID string, src *filmcache.Source,
+//
+// LES DEUX REFUS SONT DISTINCTS, et ils l'etaient deja : un film ILLISIBLE (chunks absents du
+// cache) et un film SANS MANIFESTE. Le second garde son sens apres le lot 1 — le film se charge
+// tres bien sans manifeste, mais aucun de ses chunks n'a alors de type ni de `start_ms`, donc
+// rien n'est datable ici (cf. [chunksDuManifeste]).
+func readFilmStats(ctx context.Context, matchID string, film *filmsource.Film,
 	facts port.MatchFacts, deaths filmDeaths,
 ) filmStats {
-	if src == nil {
-		return filmStats{} // manifeste absent ou illisible — deja journalise par ouvrirManifeste
+	if film == nil || len(chunksDuManifeste(film)) == 0 {
+		return filmStats{} // film illisible ou manifeste absent — deja journalise par filmload.go
 	}
-	recs, truncated := objectiveevents.StatRecordsCtx(ctx, src, matchID)
+	recs, truncated := objectiveevents.StatRecordsCtx(ctx, film, matchID)
 	if len(recs) == 0 {
 		slog.InfoContext(ctx, "replaybuild: aucun enregistrement d'entite dans le film — courbe de score vide",
 			"match_id", matchID)
@@ -94,12 +100,36 @@ func readFilmStats(ctx context.Context, matchID string, src *filmcache.Source,
 			Truncated:  truncated,
 		},
 		objectives: identifiedEvents(ctx, matchID, deaths, recs, facts.GameVariantName),
-		flag:       flagInput(recs, src),
+		flag:       flagInput(recs, film),
 		vip:        vipInput(recs, isVipVariant(facts.GameVariantName)),
 		skull:      skullInput(recs, isSkullVariant(facts.GameVariantName)),
-		bomb: bombInput(src, isArmableBombVariant(facts.GameVariantName),
+		bomb: bombInput(film, isArmableBombVariant(facts.GameVariantName),
 			isBombVariant(facts.GameVariantName)),
 	}
+}
+
+// chunksDuManifeste rend les chunks du film que le MANIFESTE decrit.
+//
+// ZERO N'EST PAS UN TYPE DE CHUNK : c'est ce que `filmsource.LoadDir` synthetise pour un
+// `chunk_NN.bin` present au cache mais ABSENT du manifeste. Mesure du 2026-09-02 sur les
+// 1 380 manifestes du cache : trois valeurs seulement — 1 pour l'en-tete, 2 pour les chunks de
+// jeu, 3 pour le pied — et jamais 0. Un chunk hors manifeste n'a donc pas de debut connu, et
+// l'inscrire a zero dans l'horloge dirait au balayage de l'anneau « ce chunk commence a 0 » au
+// lieu de « je ne sais pas » (`filmdec/navpoint_radial_scan.go`, `hasStart`). Un film du cache
+// est dans ce cas : `7b0d89c4` porte les fichiers 31 et 32 sans les avoir au manifeste.
+func chunksDuManifeste(film *filmsource.Film) []filmsource.ChunkMeta {
+	if film == nil {
+		return nil
+	}
+	meta := film.Meta()
+	out := make([]filmsource.ChunkMeta, 0, len(meta))
+	for _, m := range meta {
+		if m.ChunkType == 0 {
+			continue
+		}
+		out = append(out, m)
+	}
+	return out
 }
 
 // bombInput assemble ce que LA BOMBE lit hors film, sous ses DEUX gardes de mode :
@@ -112,13 +142,14 @@ func readFilmStats(ctx context.Context, matchID string, src *filmcache.Source,
 //	         famille bomb, One Bomb comprise.
 //
 // Hors de la famille bomb, il rend un input VIDE : ni balayage, ni calque, ni couverture.
-func bombInput(src objectiveevents.FilmSource, armable, carry bool) replay.BombInput {
+func bombInput(film *filmsource.Film, armable, carry bool) replay.BombInput {
 	in := replay.BombInput{CarryScanned: carry}
 	if !armable {
 		return in
 	}
-	clock := map[int]int{}
-	for _, c := range src.Chunks() {
+	chunks := chunksDuManifeste(film)
+	clock := make(map[int]int, len(chunks))
+	for _, c := range chunks {
 		clock[c.Index] = c.StartMS
 	}
 	in.Scanned = true
@@ -153,15 +184,15 @@ func vipInput(recs []objectiveevents.StatRecord, isVip bool) replay.VipInput {
 // morts) ; les BURSTS DE CAPTURE, eux, sont des evenements de score et se lisent ailleurs dans
 // le film. Sans eux le discriminant de mode ne tient pas : la table d'emplacements du drapeau,
 // appliquee a un film Oddball, rend 1 470 « prises » et 994 « vols ». Le cout est un parcours de
-// plus, sur une chaine qui en fait deja une dizaine pour le meme film.
+// plus des paquets deja decoupes — depuis le lot 1, ce n'est plus une relecture du film.
 //
 // AUCUN FAIT DE MATCH N'ENTRE ICI, et c'est ce qui rend le calque publiable hors ligne : le
 // porteur se nomme par les INSTANTS DE MORT, jamais par les lignes de match.
-func flagInput(recs []objectiveevents.StatRecord, src objectiveevents.FilmSource) replay.FlagInput {
+func flagInput(recs []objectiveevents.StatRecord, film *filmsource.Film) replay.FlagInput {
 	return replay.FlagInput{
 		Scanned: true,
 		Records: recs,
-		Bursts:  objectiveevents.CaptureBurstTimes(src),
+		Bursts:  objectiveevents.CaptureBurstTimes(film),
 	}
 }
 
