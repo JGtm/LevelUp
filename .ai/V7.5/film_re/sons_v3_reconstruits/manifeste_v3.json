@@ -1,7 +1,7 @@
 {
   "genere_le": "2026-09-02",
-  "revision": "11 (RECONSTRUCTION COMPLETE — lot V3E. Tout fichier a la racine d'un dossier livre est desormais un RENDU D'EVENEMENT ENTIER : toutes les couches simultanees sommees au GAIN DE CHEMIN HIRC COMPLET (parents actor-mixer + MakeUpGain + gain de noeud, et non plus un gain relatif entre couches), offsets de couche appliques (AkPropID_InitialDelay = 59, jamais lu avant), hauteur declaree appliquee (AkPropID_Pitch = 2), mode de boucle du conteneur respecte (AkTransitionMode 5 = CADENCE, lectures qui se chevauchent), valeur CENTRALE des fourchettes RANGED appliquee, une seule normalisation a -1 dBFS. Les couches isolees passent en sous-dossier stems/. MOTEURS refaits depuis les VRAIES banques covenant/bannis du module pc/globals/common (Ghost ccd43fa8, Wraith fda12da2, Banshee c682f736, Chopper 1bb9f097) : rev9 servait au Ghost la banque 01862ab3, atteinte par le hlmt du Warthog. Voir V3E_RECONSTRUCTION_COMPLETE_2026-09-02.md. rev10 disait : AJOUTE la section destruction (six banques exp_vehicle par taille x faction).)",
-  "tir_livre": "Wasp, Scorpion, Gungoose, Warthog (banques _veh_ FNV-1) + Falcon (mitrailleuse).",
+  "revision": "12 (TIRS COVENANT / BANNIS — lot V3F. AJOUTE la section tir_covenant_v3f : Ghost, Banshee, Wraith, Chopper. Les evenements de tir de ces quatre vehicules sont DESIGNES PAR LE CHAMP NOMME « Weapon Fire Sound » du tag weap (nouveau mode `tir-vehi`, module any/globals/common), et non plus devines : weap 00015435 (Ghost), 0000aa68 + 0000aa69 (Banshee), 121b4009 (Wraith), b40e9618 (Chopper). CORRECTION MAJEURE DE rev11 : les evenements que le lot V3E a rendus sous deplacement/moteur_*.wav et deplacement/contact_*.wav SONT CES MEMES EVENEMENTS DE TIR — le verdict de l'utilisateur (« ce sont des sons d'armes ») est confirme sur pieces, sur les SIX vehicules (Scorpion et Warthog compris). Le groupe de switch 2275666646 n'est PAS un regime moteur : ses etats sont les hachages FNV-1 de exterioropen / exteriorsmall / exteriormed / exteriorlarge / interiornarrow / interiorsmall / interiormed / interiorlarge — c'est l'ESPACE DE L'AUDITEUR (reverberation), et le lot V3F rend l'etat par DEFAUT declare par la banque, toujours exterieur. Voir V3F_TIRS_COVENANT_2026-09-02.md. rev11 disait : RECONSTRUCTION COMPLETE, lot V3E.)",
+  "tir_livre": "Wasp, Scorpion, Gungoose, Warthog (banques _veh_ FNV-1) + Falcon (mitrailleuse) + Ghost, Banshee, Wraith, Chopper (lot V3F).",
   "deplacement": "DISTINCT PAR VEHICULE. Boucle EN CONDUITE (rev9) : etat de switch a diesel/regime soutenu (pas le ralenti par defaut), couches SUPERPOSEES et sommees (semantique arbre.go), niveaux calibres par mesure RMS. Fichiers deplacement/moteur_conduite_boucle8s.wav (+ couches isolees). e793c135/06ba1096 = lit commun de presence, PAS le moteur.",
   "sadt_verdict": "REFUTE comme moteur par vehicule : sadt 2b6f1d67 est PARTAGE Ghost+Scorpion ; le handler du FourCC 'sadt' (FUN_1404cc908) est un simple test de groupe, aucune structure audio. sadt ne porte pas le moteur.",
   "per_vehicule": "EXTRACTIBLES et rendus : Ghost=souffle+thrum (bank 01862ab3, event 47361baf) ; Scorpion=grondement+chenilles (bank 05a51e0a, events 951f76c0/d5c7daeb) ; Warthog=combustion (bank a52af042, events 68b1a949/38b83eb8). Timbres spectralement distincts, conformes a la verite terrain.",
@@ -477,7 +477,6 @@
   "reconstruction_v3e": {
     "reproche_traite": "« tu n'as rendu que les fichiers isoles, pas reconstitues avec leur format wwise et reglages de package » (utilisateur, 2026-09-02).",
     "table_akpropid": {
-      "source": "table AkPropID des versions de bank 113+, CONFIRMEE par le releve des identifiants reellement presents dans les 11 banques ouvertes",
       "0": "Volume",
       "2": "Pitch",
       "4": "HPF",
@@ -491,6 +490,7 @@
       "59": "InitialDelay",
       "70": "AttenuationID",
       "71": "NON DECODEE (2 occurrences) — octets bruts consignes dans le rapport V3E",
+      "source": "table AkPropID des versions de bank 113+, CONFIRMEE par le releve des identifiants reellement presents dans les 11 banques ouvertes",
       "desaccord_corrige": "proprietes.go lit l'identifiant 17 comme InitialDelay ; 17 est Probability et n'apparait sur AUCUN noeud de ces banques. Le delai est le 59, ce qui explique le « zero delai partout » des lots precedents."
     },
     "gain_de_chemin": {
@@ -4228,5 +4228,507 @@
         }
       ]
     }
+  },
+  "alerte_v3f_deplacement": "LES FICHIERS deplacement/moteur_*.wav ET deplacement/contact_*.wav DE rev11 SONT DES SONS DE TIR. Preuve : le champ nomme « Weapon Fire Sound » du tag weap de chaque vehicule designe exactement le couple d'evenements que V3E a rendus sous ces noms (Scorpion 251190f3/951f76c0, Warthog 38b83eb8/68b1a949, Wasp e22a0d32/b0554fc9 et 5baca8ee/ad6b4715, Falcon d36e3c93/2b145170, Ghost a91f9f78/603d9e29, Banshee bdb30da6/851558f7 et f76415db/6ed9c3bc, Wraith 46b14f04/aa6215eb, Chopper 66b341e8/1adf8067). Le lot V3F NE SUPPRIME RIEN (hors perimetre) : il livre les memes evenements sous tir/, au bon nom, au bon etat de switch. Le vrai deplacement reste le lsnd PARTAGE 06ba1096 / banque e793c135 (section Mouvement_generique_partage).",
+  "tir_covenant_v3f": {
+    "date": "2026-09-02",
+    "rapport": "V3F_TIRS_COVENANT_2026-09-02.md",
+    "outil_ajoute": "cmd/weapon-sounds, mode `tir-vehi` (tir_vehicules.go, 204 L) : vehi -> refs weap INLINE -> champ nomme « Weapon Fire Sounds » -> tags lsnd/snd! -> sbnk + mots. Module any/globals/common-rtx-new.module.",
+    "trois_preuves": {
+      "1_champ_nomme": "Le tag `weap` designe son son de tir par le champ « Weapon Fire Sound » de weap.xml. Le tag de son ainsi designe porte, dans son corps, EXACTEMENT DEUX identifiants d'evenement de la banque du vehicule (sur 7 a 14 evenements presents). Probabilite de coincidence sur 94 a 120 mots u32 : ~4e-7.",
+      "2_mono_stereo": "Regle etablie par le lot armes (PLAN_EXTRACTION_SONS_ARMES, 2026-08-15) : « les evenements vont par paires mono/stereo : troisieme et premiere personne ». Verifiee ici : dans chacun des cinq couples designes, un evenement n'a QUE des medias mono (3e personne) et l'autre QUE des medias stereo (1re personne). 0 exception sur 10 evenements.",
+      "3_cadence": "La cadence declaree par le tag `weap` (barrels -> rounds per second) multipliee par le nombre de canons egale la cadence du conteneur (AkTransitionMode 5). Ghost 225 cpm x2 = 450/min contre 0,130 s = 461/min ; Banshee 240 x2 = 480 contre 0,125 s = 480 ; Chopper 120 x2 = 240 contre 0,250 s = 240. Temoin UNSC : Falcon LMG 780 cpm contre 0,077 s = 779/min."
+    },
+    "temoin_de_methode": "La meme chaine, appliquee aux CINQ vehicules dont l'utilisateur a valide les tirs (Scorpion, Warthog, Wasp, Gungoose, Falcon), retombe sur les evenements deja livres : Scorpion 251190f3 (3P, mono, 2,25 s) / 951f76c0 (1P, stereo, 6,34 s) contre tir_M1_3p 2,95 s / tir_M1_1p 7,51 s du manifeste rev9. La methode n'a donc pas ete calibree sur les covenant : elle est verifiee sur du deja-accepte.",
+    "switch_2275666646": {
+      "nature": "ESPACE DE L'AUDITEUR (reverberation), pas un regime moteur. Huit des neuf etats sont casses par hachage FNV-1 32 bits (minuscules, sans separateur).",
+      "etats": {
+        "163696720": "interiornarrow",
+        "356702912": "exteriorsmall (DEFAUT des banques Wraith, Chopper, Banshee-6ed9c3bc, et cote UNSC)",
+        "1093928064": "NON CASSE (balayage de ~30 M de noms candidats infructueux) ; il pointe sur un enfant propre, donc ce n'est pas un alias",
+        "1136871302": "interiorlarge",
+        "1248419637": "interiormed",
+        "1975887784": "exteriorlarge",
+        "2311227951": "exteriormed",
+        "3561860439": "exterioropen (DEFAUT des banques Ghost et Banshee-851558f7)",
+        "3707760930": "interiorsmall"
+      },
+      "consequence": "rev11 lisait ces etats comme cinq paliers de regime monotone et rendait le « palier 4 » (1248419637 = interiormed) : c'est une reverberation d'interieur moyen. Le lot V3F rend l'etat par DEFAUT de la banque, toujours exterieur."
+    },
+    "regle_de_rendu": {
+      "coups": "-mode rendu-event -duree 0 -tirages 2, une SEULE normalisation a -1 dBFS pour les deux tirages. Tirage 1 = variante d'indice 0 sur chaque couche (convention V3E) ; tirage 2 = tirage aleatoire reel. Graine 7, portee a 11 quand la graine 7 retombait sur l'indice 0 et livrait deux fichiers identiques (Chopper 1P, Wraith 1P, Banshee M2 1P).",
+      "rafales": "-duree 3 (CHOIX DECLARE, 3,00 s de declenchements a la cadence reelle du conteneur), un seul tirage. Absentes pour les armes one-shot (Wraith, Banshee M2). tir_RAFALE.wav = copie de tir_RAFALE_M1_3p.wav (la 3e personne est la perspective du rejeu 2D, decision produit du lot armes).",
+      "medias": "wem du .pck du vehicule (complets) quand ils y sont, wem embarques du chunk DIDX de la banque sinon. Le decodage vgmstream est identique au bit pres a celui du dossier utilisateur (248/78/230/78 fichiers compares, ecart de duree max 0,0000 s).",
+      "pas_d_egalisation": "aucune egalisation, aucune compression, aucun limiteur. Une seule multiplication scalaire apres la somme."
+    },
+    "vehicules": [
+      {
+        "nom": "Ghost",
+        "banque": "ccd43fa8 (pc/globals/common)",
+        "vehi": [
+          "0000d3dc",
+          "5b80c406",
+          "9af9e693"
+        ],
+        "weap": "00015435",
+        "tag_son": "lsnd 809481d1",
+        "cadence_tag_cpm": 225,
+        "canons": 2,
+        "cadence_conteneur_s": 0.13,
+        "arme": "canons a plasma jumeles (tir continu)",
+        "event_3p": {
+          "event": "a91f9f78",
+          "couches": 3,
+          "variantes": [
+            16,
+            15,
+            16
+          ],
+          "bus": "8165b6c5",
+          "wems": 47,
+          "dans_le_pck": 47,
+          "part_du_dossier_utilisateur_pct": 18.9,
+          "canaux": "mono",
+          "duree_medias_s": [
+            0.12,
+            0.68
+          ],
+          "gain_amont_db": -12,
+          "ranged_volume_db": [
+            -3,
+            0
+          ],
+          "ranged_pitch_cents": [
+            [
+              -80,
+              80
+            ],
+            [
+              -85,
+              80
+            ],
+            [
+              -40,
+              40
+            ]
+          ]
+        },
+        "event_1p": {
+          "event": "603d9e29",
+          "etat_rendu": "3561860439 (exterioropen, DEFAUT)",
+          "couches": 2,
+          "variantes": [
+            24,
+            1
+          ],
+          "bus": [
+            "5a880943",
+            "1f17314c"
+          ],
+          "wems_tous_etats": 121,
+          "dans_le_pck": 100,
+          "part_du_dossier_utilisateur_pct": 40.2,
+          "canaux": "stereo",
+          "gain_amont_db": [
+            -7,
+            -4
+          ],
+          "cadence_s": [
+            0.13,
+            0.1
+          ]
+        },
+        "fichiers": [
+          {
+            "fichier": "tir_M1_3p_1.wav",
+            "duree_s": 0.128,
+            "rms_dbfs": -12.76,
+            "centroide_hz": 1788
+          },
+          {
+            "fichier": "tir_M1_3p_2.wav",
+            "duree_s": 0.645,
+            "rms_dbfs": -20,
+            "centroide_hz": 2068
+          },
+          {
+            "fichier": "tir_M1_1p_1.wav",
+            "duree_s": 0.678,
+            "rms_dbfs": -19.5,
+            "centroide_hz": 4996
+          },
+          {
+            "fichier": "tir_M1_1p_2.wav",
+            "duree_s": 0.125,
+            "rms_dbfs": -15.59,
+            "centroide_hz": 3258
+          },
+          {
+            "fichier": "tir_RAFALE_M1_3p.wav",
+            "duree_s": 3,
+            "rms_dbfs": -14.53,
+            "centroide_hz": 2083
+          },
+          {
+            "fichier": "tir_RAFALE_M1_1p.wav",
+            "duree_s": 3,
+            "rms_dbfs": -12.22,
+            "centroide_hz": 2908
+          },
+          {
+            "fichier": "tir_RAFALE.wav",
+            "duree_s": 3,
+            "rms_dbfs": -14.53,
+            "centroide_hz": 2083
+          }
+        ]
+      },
+      {
+        "nom": "Banshee",
+        "banque": "c682f736 (pc/globals/common)",
+        "vehi": [
+          "000026ed",
+          "0001530a",
+          "c6e79dcc"
+        ],
+        "armes": [
+          {
+            "mode": "M1",
+            "weap": "0000aa68",
+            "tag_son": "lsnd 572c0c57",
+            "cadence_tag_cpm": 240,
+            "canons": 2,
+            "cadence_conteneur_s": 0.125,
+            "arme": "canons a plasma jumeles (tir continu)"
+          },
+          {
+            "mode": "M2",
+            "weap": "0000aa69",
+            "tag_son": "snd! dc3d707b",
+            "cadence_tag_cpm": null,
+            "cadence_conteneur_s": 0,
+            "arme": "tir lourd unique (bombe / canon a combustible) — aucune cadence declaree, aucun conteneur en boucle"
+          }
+        ],
+        "event_M1_3p": {
+          "event": "bdb30da6",
+          "couches": 3,
+          "variantes": [
+            19,
+            19,
+            19
+          ],
+          "bus": "8165b6c5",
+          "wems": 57,
+          "dans_le_pck": 57,
+          "part_du_dossier_utilisateur_pct": 24.7,
+          "canaux": "mono",
+          "duree_medias_s": [
+            0.12,
+            0.16
+          ],
+          "gain_amont_db": -7
+        },
+        "event_M1_1p": {
+          "event": "851558f7",
+          "etat_rendu": "3561860439 (exterioropen, DEFAUT)",
+          "couches": 2,
+          "variantes": [
+            26,
+            1
+          ],
+          "bus": [
+            "5a880943",
+            "1f17314c"
+          ],
+          "wems_tous_etats": 131,
+          "dans_le_pck": 0,
+          "part_du_dossier_utilisateur_pct": 0,
+          "canaux": "stereo",
+          "note": "SEUL evenement retenu dont AUCUN media n'est dans le .pck : ses 131 medias vivent uniquement dans le chunk DIDX de la banque. Son identification ne repose donc PAS sur le recoupement de dossier mais sur le champ nomme + la regle mono/stereo + la cadence."
+        },
+        "event_M2_3p": {
+          "event": "f76415db",
+          "couches": 3,
+          "variantes": [
+            6,
+            6,
+            6
+          ],
+          "bus": "8165b6c5",
+          "wems": 18,
+          "dans_le_pck": 18,
+          "part_du_dossier_utilisateur_pct": 7.8,
+          "canaux": "mono",
+          "duree_medias_s": [
+            1.2,
+            1.3
+          ]
+        },
+        "event_M2_1p": {
+          "event": "6ed9c3bc",
+          "etat_rendu": "356702912 (exteriorsmall, DEFAUT)",
+          "couches": 2,
+          "variantes": [
+            6,
+            1
+          ],
+          "bus": [
+            "5a880943",
+            "1f17314c"
+          ],
+          "wems_tous_etats": 31,
+          "dans_le_pck": 30,
+          "part_du_dossier_utilisateur_pct": 13,
+          "canaux": "stereo"
+        },
+        "fichiers": [
+          {
+            "fichier": "tir_M1_3p_1.wav",
+            "duree_s": 0.125,
+            "rms_dbfs": -15.61,
+            "centroide_hz": 2113
+          },
+          {
+            "fichier": "tir_M1_3p_2.wav",
+            "duree_s": 0.125,
+            "rms_dbfs": -16.3,
+            "centroide_hz": 2227
+          },
+          {
+            "fichier": "tir_M1_1p_1.wav",
+            "duree_s": 0.125,
+            "rms_dbfs": -12.52,
+            "centroide_hz": 2861
+          },
+          {
+            "fichier": "tir_M1_1p_2.wav",
+            "duree_s": 0.125,
+            "rms_dbfs": -12.51,
+            "centroide_hz": 3013
+          },
+          {
+            "fichier": "tir_M2_3p_1.wav",
+            "duree_s": 1.283,
+            "rms_dbfs": -17.77,
+            "centroide_hz": 1498
+          },
+          {
+            "fichier": "tir_M2_3p_2.wav",
+            "duree_s": 1.26,
+            "rms_dbfs": -17.19,
+            "centroide_hz": 1475
+          },
+          {
+            "fichier": "tir_M2_1p_1.wav",
+            "duree_s": 5.574,
+            "rms_dbfs": -21.12,
+            "centroide_hz": 1791
+          },
+          {
+            "fichier": "tir_M2_1p_2.wav",
+            "duree_s": 6.554,
+            "rms_dbfs": -22.11,
+            "centroide_hz": 1847
+          },
+          {
+            "fichier": "tir_RAFALE_M1_3p.wav",
+            "duree_s": 3,
+            "rms_dbfs": -16.29,
+            "centroide_hz": 2711
+          },
+          {
+            "fichier": "tir_RAFALE_M1_1p.wav",
+            "duree_s": 3,
+            "rms_dbfs": -12.59,
+            "centroide_hz": 2804
+          },
+          {
+            "fichier": "tir_RAFALE.wav",
+            "duree_s": 3,
+            "rms_dbfs": -16.29,
+            "centroide_hz": 2711
+          }
+        ]
+      },
+      {
+        "nom": "Wraith",
+        "banque": "fda12da2 (pc/globals/common)",
+        "vehi": [
+          "233c877d"
+        ],
+        "weap": "121b4009",
+        "tag_son": "snd! 5116c72e",
+        "cadence_tag_cpm": null,
+        "cadence_conteneur_s": 0,
+        "arme": "mortier a plasma — one-shot : aucune cadence declaree, conteneurs en mode 0 (pas de boucle). AUCUNE rafale livree.",
+        "event_3p": {
+          "event": "46b14f04",
+          "couches": 3,
+          "variantes": [
+            6,
+            6,
+            6
+          ],
+          "bus": "8165b6c5",
+          "wems": 18,
+          "dans_le_pck": 18,
+          "part_du_dossier_utilisateur_pct": 22.8,
+          "canaux": "mono",
+          "duree_medias_s": [
+            1.89,
+            3.6
+          ],
+          "gain_amont_db": -8
+        },
+        "event_1p": {
+          "event": "aa6215eb",
+          "etat_rendu": "356702912 (exteriorsmall, DEFAUT)",
+          "couches": 2,
+          "variantes": [
+            6,
+            1
+          ],
+          "bus": [
+            "5a880943",
+            "1f17314c"
+          ],
+          "wems_tous_etats": 31,
+          "dans_le_pck": 30,
+          "part_du_dossier_utilisateur_pct": 38,
+          "canaux": "stereo"
+        },
+        "fichiers": [
+          {
+            "fichier": "tir_M1_3p_1.wav",
+            "duree_s": 3.2,
+            "rms_dbfs": -20.04,
+            "centroide_hz": 1973
+          },
+          {
+            "fichier": "tir_M1_3p_2.wav",
+            "duree_s": 3.2,
+            "rms_dbfs": -21.1,
+            "centroide_hz": 2080
+          },
+          {
+            "fichier": "tir_M1_1p_1.wav",
+            "duree_s": 6.845,
+            "rms_dbfs": -22.01,
+            "centroide_hz": 2102
+          },
+          {
+            "fichier": "tir_M1_1p_2.wav",
+            "duree_s": 6.845,
+            "rms_dbfs": -21.75,
+            "centroide_hz": 2015
+          }
+        ]
+      },
+      {
+        "nom": "Chopper",
+        "banque": "1bb9f097 (pc/globals/common)",
+        "vehi": [
+          "002ba902",
+          "3d4a8a5a"
+        ],
+        "weap": "b40e9618",
+        "tag_son": "lsnd f87b01a8",
+        "cadence_tag_cpm": 120,
+        "canons": 2,
+        "cadence_conteneur_s": 0.25,
+        "arme": "canons jumeles (tir continu)",
+        "event_3p": {
+          "event": "66b341e8",
+          "couches": 3,
+          "variantes": [
+            6,
+            6,
+            6
+          ],
+          "bus": "8165b6c5",
+          "wems": 18,
+          "dans_le_pck": 18,
+          "part_du_dossier_utilisateur_pct": 22.8,
+          "canaux": "mono",
+          "duree_medias_s": [
+            0.99,
+            1.54
+          ],
+          "gain_amont_db": -8,
+          "delai_s": 0.038
+        },
+        "event_1p": {
+          "event": "1adf8067",
+          "etat_rendu": "356702912 (exteriorsmall, DEFAUT)",
+          "couches": 2,
+          "variantes": [
+            6,
+            1
+          ],
+          "bus": [
+            "5a880943",
+            "1f17314c"
+          ],
+          "wems_tous_etats": 31,
+          "dans_le_pck": 30,
+          "part_du_dossier_utilisateur_pct": 38,
+          "canaux": "stereo",
+          "delai_s": 0.038
+        },
+        "fichiers": [
+          {
+            "fichier": "tir_M1_3p_1.wav",
+            "duree_s": 1.464,
+            "rms_dbfs": -25.29,
+            "centroide_hz": 2628
+          },
+          {
+            "fichier": "tir_M1_3p_2.wav",
+            "duree_s": 1.444,
+            "rms_dbfs": -25.73,
+            "centroide_hz": 2646
+          },
+          {
+            "fichier": "tir_M1_1p_1.wav",
+            "duree_s": 4.398,
+            "rms_dbfs": -21.82,
+            "centroide_hz": 2724
+          },
+          {
+            "fichier": "tir_M1_1p_2.wav",
+            "duree_s": 4.366,
+            "rms_dbfs": -22.13,
+            "centroide_hz": 2634
+          },
+          {
+            "fichier": "tir_RAFALE_M1_3p.wav",
+            "duree_s": 3.038,
+            "rms_dbfs": -18.15,
+            "centroide_hz": 2880
+          },
+          {
+            "fichier": "tir_RAFALE_M1_1p.wav",
+            "duree_s": 3.038,
+            "rms_dbfs": -12.56,
+            "centroide_hz": 3416
+          },
+          {
+            "fichier": "tir_RAFALE.wav",
+            "duree_s": 3.038,
+            "rms_dbfs": -18.15,
+            "centroide_hz": 2880
+          }
+        ]
+      }
+    ],
+    "dossiers_embarques_utilisateur": "INEXPLOITABLES pour ce lot, et c'est mesure : les quatre dossiers `*_EMBARQUES` du poste utilisateur ont une intersection VIDE avec le chunk DIDX de la vraie banque du vehicule (0/65 Ghost, 0/52 Wraith, 0/279 Banshee, 0/40 Chopper) alors que le dossier de base y est a 100 % (248/248, 78/78, 230/230, 78/78). Cause identifiee pour le Ghost : `Covenant_ghost_EMBARQUES` est identique fichier pour fichier (65/65) a `bt_bank01862ab3_EMB`, c'est-a-dire au DIDX de la banque 01862ab3 — celle du Warthog (erreur d'attribution corrigee par V3D §10). La cle « 1re personne = _EMBARQUES » ne tient donc pas ; c'est la regle MONO/STEREO qui departage les perspectives.",
+    "reserves": [
+      "Le juge final reste l'utilisateur : aucune de ces reconstructions n'a ete comparee a une capture en jeu.",
+      "Les gains de bus restent inconnus (aucun objet Bus dans les banques ouvertes) : exacts a l'interieur d'un bus, decales d'une constante inconnue entre deux bus.",
+      "La duree de rafale (3,00 s) est un CHOIX, pas une mesure : la recette de la rafale du lot du 2026-08-31 n'est pas reproductible depuis les rapports.",
+      "L'etat 1093928064 du groupe 2275666646 n'est pas casse.",
+      "Le nombre de canons (x2) qui ferme la preuve de cadence est une connaissance du jeu, pas une lecture de tag : le tag ne declare que la cadence par canon."
+    ]
   }
 }
