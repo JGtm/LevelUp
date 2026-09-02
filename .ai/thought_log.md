@@ -1,3 +1,33 @@
+## [2026-09-02] Plan « cuisson des artefacts de rejeu : decoder une fois » — ecrit, relu deux fois — En cours
+
+Suite de l'audit du meme jour (`.ai/AUDIT_CUISSON_REPLAY_PERF_2026-09-02.md`, deplace dans ce
+worktree). Go utilisateur pour cadrer le chantier avec revue de plan avant execution. Worktree
+dedie `LevelUp-wt-cuisson-perf`, branche `wt/cuisson-perf` (base `feat/v75` `900384f50`), cache
+film partage monte par jonctions (`data/cache/{film_chunks,film_manifests,mvar,replays}`).
+
+**Decision technique principale** : `.ai/V7.5/PLAN_CUISSON_PERF.md` — trois responsabilites
+(source du film / contexte du film / balayages purs), la source dans un paquet FEUILLE
+`internal/analysis/filmsource` (toute autre place cree un cycle d'import, demontre par
+`go list -deps` et cinq tests internes de `filmdec`), equivalence prouvee par digests figes
+depuis l'ancien code AVEC les faits du match, un film par processus borne, observateur dans le
+code de production plutot qu'une copie de l'orchestration. Pas de parallelisme intra-decodeur
+(refute par l'audit), pas de de-globalisation.
+
+**Resultats observes** : premiere revue adversariale = « a refaire partiellement » (9 bloquants :
+cycle d'import, trois marcheurs de paquets DIVERGENTS donc lot 1 non pur par construction,
+equivalence vacuante sans faits, mini-bobine incapable de `BuildFromFilm`, harnais enchainant
+12 films dans un processus non borne, une dizaine de sites de production non inventories).
+Plan reecrit. Seconde revue = « executable apres corrections » (3 bloquants : ordre de creation
+du verrou d'attente, 9 points d'entree `FilmSource` et non 3, plafond `incrementTimes` sur la
+mauvaise grandeur — `p.Value - prev` premier terme compris ; 11 recevables), toutes integrees.
+Lecon : une « liste fermee » se verifie par un grep dont la commande est ecrite dans l'item.
+
+**Conclusion / prochaine etape** : plan pret ; decisions par defaut soumises a l'utilisateur
+(D7 verrou a deux regimes, D8 ouvrier sans ecriture locale, D9 `validateArtifact` intact, D13
+bornes 10 000 / 1 000 000, R-11 films hors corpus divergents acceptes comme corrections) ; puis
+lot 0 (reference, instrumentation, mesure de divergence sur 1 380 films). Aucun code modifie,
+rien de commite : commit du plan + registre a la demande de l'utilisateur.
+
 ## [2026-09-02] « Premier frag / premiere mort » passe au rendu SVG — Complete
 
 Retour utilisateur : le graphe « paraissait ne pas etre normal », et la raison finit par etre
