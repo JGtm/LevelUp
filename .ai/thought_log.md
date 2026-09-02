@@ -2263,6 +2263,227 @@ réapparition. **C'est un réglage d'auteur, pas une constante de classe** : `un
 **Prochaine étape** : lire le scénario (`scnr`) des `.module` — `internal/himap` lit déjà index,
 BSP, géométrie et callouts, mais pas les placements d'objets de scénario. État complet :
 `.ai/V7.5/ETAT_VEHICULES_2026-08-31.md`.
+## [2026-08-31] CTF — la CONTESTATION est retirée : la mesure donne raison à l'observation du joueur — Complété
+
+L'utilisateur avait demandé la contestation le matin ; il a corrigé le tir en la voyant décrite :
+« en jeu je n'ai pas constaté d'arrêt de la jauge ou de reset, sauf si on reprend le drapeau
+adverse. Mais ce fonctionnement on devrait déjà l'avoir. » Il a raison sur les deux points.
+
+**LA MESURE EXPLIQUE SON OBSERVATION, elle ne la contredit pas.** Instrument étendu au comptage
+des ENNEMIS dans la zone, sur les six films du corpus : **72 lâchers voient un ennemi entrer, et
+56 d'entre eux finissent par une REPRISE** ; le séjour ennemi dure 1,65 s en moyenne, 4,9 s au
+maximum. À 1,3 m d'un drapeau tombé, un ennemi ne conteste pas — **il RAMASSE**. L'état
+`Contested` existe bien dans la bibliothèque `parcel_deliver_object.lua`, mais celle-ci sert aussi
+la bombe d'Assaut, où l'objet ne se reprend pas de la même façon. En CTF, la reprise gagne toujours
+la course.
+
+**J'AVAIS LIVRÉ SUR LA SEULE FOI DU VOCABULAIRE DU SCRIPT**, sans effet visible pour le confirmer.
+C'est l'erreur de méthode du jour : un nom de fonction dans un binaire dit ce que le moteur SAIT
+faire, pas ce que le mode joué FAIT. Retiré : le rendu (anneau pointillé, jauge tenue), le champ
+`FlagReturnZone.ContestRadiusM`, la clé `contest_radius_m` du manifeste, `enemiesOf` côté client —
+règle 0 code mort.
+
+**« ON DEVRAIT DÉJÀ L'AVOIR » : oui, et c'est vérifié.** Le seul reset que le joueur observe est
+celui de la reprise, et il tombe d'une propriété du calque plutôt que d'une ligne dédiée : un
+intervalle qui n'est pas `dropped` ferme le lâcher, et le suivant en rouvre un NEUF dont
+l'accumulateur repart de zéro (`mergedDrops`). Un test le FIGE désormais — sans lui, une future
+fusion des lâchers contigus pourrait l'effacer sans que rien ne tombe.
+
+**Chiffre corrigé au passage** : les blocs de documentation du schéma 29 citaient encore l'accord
+« 18 cas sur 22 (81,8 %) », qui était le chiffre CIRCULAIRE d'avant la correction de méthode. Le
+bon est **15 / 15 = 100 %**, compté par ÉVÉNEMENT crédité distinct.
+
+**Gates** : `go test ./...` (CGO, hors `himap`) EXIT=0, `go vet` 0, golangci-lint **0 issues**,
+`gofmt` propre ; vitest **542 fichiers / 5 616 tests VERT**, typecheck cache purgé VERT, eslint
+0 erreur. `openapi.yaml` et `generated.ts` régénérés.
+## [2026-08-31] CTF — le retour au contact TRANCHÉ par la mesure, la doc corrigée — Complété
+
+L'utilisateur demandait plus concret sur deux points restés flous. L'un des deux se referme.
+
+**`flagTouchReturnEnabled` : illisible, mais PLUS BESOIN DE LE LIRE.** Le réglage dit si toucher
+son propre drapeau tombé le renvoie INSTANTANÉMENT. Sa valeur reste hors de portée (booléen
+dédupliqué dans le pool, et `false` est émis dès le premier champ de la table — `complete = false`
+— donc « dédupliqué donc vrai » ne tient pas). **La mesure répond à sa place** : un renvoi au
+contact donnerait un séjour NUL dans la zone, or le séjour ajusté vaut **3,1 s à un défenseur** et
+n'est jamais nul. Le contact seul ne renvoie donc pas en Arena — ce que la description de
+l'utilisateur disait déjà (« se mettre dedans permet de le retourner plus vite »).
+
+**Doc corrigée dans le même commit** (anti-pattern « doc inversée ») : `flag_carries.go` affirmait
+« le toucher le RENVOIE ». **CE QUE LA RÈGLE D'ATTRIBUTION EN RETIENT NE BOUGE PAS** : instantané
+ou non, un joueur ne PORTE pas son propre drapeau, donc un portage reste toujours celui du drapeau
+adverse. Seule la formulation était fausse. Le même en-tête gagne le cas de la variante neutre, où
+la règle devient sans objet (un seul drapeau, celui de personne).
+
+**Le socle neutre est au MILIEU — confirmé par l'utilisateur, et par le catalogue.** Aquarius bases
+(−13,0) / (13,0), socle neutre (0,0) ; Bazaar (−23,0) / (23,0) → (0,3) ; Catalyst (0,21) / (0,−21)
+→ (0,0) ; Behemoth 75 / 32 → 54. C'est exactement le point que le mode neutre retient depuis le
+lot précédent. **Limite consignée** : Absolution et Banished Narrows ne déclarent AUCUN socle
+neutre au catalogue — le discriminant ne peut pas y basculer et garde la variante ordinaire (bon
+défaut, faux si ces cartes hébergeaient la variante). Au registre.
+
+**Gates** : `go test ./internal/analysis/replay/` VERT, `gofmt` propre. Diff de commentaires et de
+documents seulement — aucun chemin de code touché.
+## [2026-08-31] CTF — la contestation et le DRAPEAU NEUTRE : le discriminant de variante classe 6/6 — Complété
+
+Suite immédiate du lot de la zone de retour, sur demande de l'utilisateur après lecture du premier
+rendu : « la contestation je la veux bien stp. Pour le drapeau neutre aussi faut le gérer. » Les
+deux étaient au registre des questions ouvertes de `PLAN_CTF_ZONE_RETOUR_2026-08-30.md`.
+
+### LE DRAPEAU NEUTRE — un discriminant qui ne lit que le film, un oracle qui n'en lit rien
+
+**Le trou** : `replaybuild/flagspawns.go` écartait le socle NEUTRE en amont, pour une raison
+valable (sur une partie ordinaire il ferait un troisième drapeau immobile). Conséquence : une
+partie **à drapeau neutre** publiait DEUX drapeaux qui n'existaient pas et répartissait entre eux
+les portages d'un objet unique. **Le parc n'est pas marginal : 25 matchs `CTF:Arena Neutral Flag`
+en base, et 23 de leurs films sont en cache.**
+
+**Le mode n'est pas dans le film** — le constructeur du rejeu est hors ligne et ne connaît pas
+`game_variant_name`. Mais l'OBJET tranche : il ne renaît que CHEZ LUI. Le tri passe donc du
+fournisseur de socles (qui décidait du mode sans le savoir) au CALQUE, qui voit les naissances.
+Seuil écrit avant la mesure : **≥ 3 naissances au socle neutre ET strictement plus qu'aux socles
+d'équipe** ; le défaut reste la variante ordinaire.
+
+**CONTRÔLE À ORACLE DISJOINT — 6/6.** Le discriminant ne lit que le film ; l'oracle est la
+variante déclarée par l'API du titre. Trois films neutres dont la carte est au catalogue
+d'objectifs contre les trois films ordinaires du corpus :
+
+    64e8adfa  ordinaire  centre  1  équipes 28     530820e5  ordinaire  centre  3  équipes 12
+    53ce4390  ordinaire  centre  0  équipes  0     a1995edc  NEUTRE     centre 13  équipes  0
+    323ec1cf  NEUTRE     centre 11  équipes  1     e94163af  NEUTRE     centre 10  équipes  0
+
+`530820e5` est le cas qui justifie la SECONDE moitié du seuil : trois naissances au centre y
+suffiraient au premier critère, et c'est « strictement plus qu'aux socles d'équipe » qui le tient.
+
+**Ce que le mode neutre change en aval** : rien d'autre que le jeu de socles. Un seul socle, donc
+un seul drapeau, d'équipe -1 ; sa rentrée se date comme les autres ; **et la zone de retour
+disparaît d'elle-même** — elle appartient au camp propriétaire, un drapeau neutre n'en a pas, le
+client ne trouve personne à compter et la jauge se réduit à la minuterie. C'est la règle du jeu,
+obtenue sans qu'aucune branche ne la dise. Corollaire corrigé au passage : `sideOf` rendait
+« adverse » pour une équipe -1 — le premier camp qui n'est pas le mien emportait la comparaison.
+
+### LA CONTESTATION — ce qui se lit, et ce qui refuse de se lire
+
+Le script nomme tout : `GetAnyEnemyTeamInOuterArea` -> `Contested`, puis `ContestedRefilling` au
+taux `flagContestRefillRate`. **Le rayon de contestation vaut 1,3, comme celui du retour**, et
+c'est une déduction sûre : sa valeur est DÉDUPLIQUÉE dans le pool (le chunk ne réémet pas une
+constante déjà présente), donc elle vaut l'une des trois déjà émises — `0,1`, `true`, `1,3` — et
+1,3 est la seule qui soit un rayon. Les deux cylindres diffèrent par leur HAUTEUR
+(`cylinderInnerHeight` / `cylinderOuterHeight`), pas par leur rayon.
+
+**CE QUI REFUSE DE SE LIRE, et pourquoi la déduction s'arrête là** : `flagContestRefillRate` est
+dédupliqué parmi une dizaine de nombres. Et la tentation « booléen dédupliqué donc vrai » ne tient
+PAS — `false` est émis dès le début de la même table (`complete = false`), ce qui laisse
+`flagContestedStateEnabled` et `flagTouchReturnEnabled` illisibles eux aussi.
+
+**Décision de rendu, et c'est l'affirmation la plus faible des deux** : le rejeu **TIENT** la
+jauge pendant la contestation au lieu de la faire reculer. Un recul inventé serait une vitesse
+fausse à l'écran ; un arrêt est seulement une progression qu'on ne réclame pas. Et l'arrêt ne fait
+pas mentir la fin : la jauge est remise à l'échelle pour atteindre 1 à l'image du retour OBSERVÉ.
+À l'écran, trois lectures sans un mot de texte : anneau fin (personne), anneau ÉPAIS (des
+défenseurs, ça va plus vite), anneau POINTILLÉ (contesté, ça ne bouge plus).
+
+### Ce que le corpus neutre apprend en prime
+
+Les parties à drapeau neutre sont le cas où PERSONNE ne peut renvoyer le drapeau : tous leurs
+retours sont des expirations. Le plus long épisode inoccupé du corpus élargi vaut **28,7 s**, et
+rien ne le dépasse — `reset_seconds = 30` reste la meilleure valeur soutenue. L'accord des deux
+chaînes est inchangé : **15/15 = 100 %**, écart médian 1 frame. Le rayon garde son creux de
+dispersion à 1,3-1,5 m.
+
+**Gates** : `go test ./...` (CGO, hors `himap`) **EXIT=0**, `go vet ./...` **0**, `golangci-lint
+--new-from-merge-base=origin/main` **0 issues**, `gofmt` propre ; vitest **542 fichiers / 5 617 tests
+VERT**, typecheck cache purgé VERT, eslint 0 erreur. `openapi.yaml` et `generated.ts` régénérés.
+La sonde `cmd/tmp_ctflua` est SUPPRIMÉE du dépôt et archivée hors dépôt (règle 0 code mort).
+
+**Reste** : le taux de recul de la contestation (bytecode à décoder, pas seulement le pool) et le
+retour au contact (`flagTouchReturnEnabled`, illisible pour la même raison) sont au registre des
+reports. Plan : `.ai/V7.5/PLAN_CTF_ZONE_RETOUR_2026-08-30.md` §4 ter et §4 quater.
+
+## [2026-08-31] CTF — la zone de retour du drapeau : retour automatique daté, zone et jauge publiées — Complété
+
+**Le trou que l'utilisateur a nommé** (30/08) : « quand le drapeau de notre équipe est en dehors
+de son emplacement, il a une zone autour de lui ; s'y mettre le retourne plus vite, et sinon la
+jauge se vide et il finit par revenir ». Le rejeu n'en avait RIEN : `flag_carries_lives.go`
+écrivait en toutes lettres que le retour automatique n'était pas simulé, faute d'avoir su le
+dater — et le corpus portait des `dropped` de 100 à 162 s qui n'ont jamais existé à l'écran.
+
+**LA CHAÎNE NEUVE — l'objet, pas les compteurs.** Le retour automatique n'est crédité à personne,
+donc le statborg n'en porte rien. Mais l'OBJET le dit : une vie libre du drapeau (`ti=42`) qui
+NAÎT à moins de 1,5 m d'un socle est le drapeau qui rentre, datée à la frame — et le socle LE
+NOMME, ce que `flag_returns` ne fait pas. La tentative antérieure avait échoué en mesurant un
+PROXY (lâcher → prise suivante au socle) ; celle-ci observe.
+
+**DEUX CORRECTIONS DE MÉTHODE avant que le contrôle veuille dire quelque chose** — notées parce
+qu'elles se reproduiront :
+
+1. **CIRCULARITÉ.** La première version lisait le retour crédité sur les spans `home` du
+   document. Or la production ramène désormais AUSSI le drapeau sur la naissance de l'objet : un
+   `home` ne dit plus quelle chaîne l'a produit, et l'instrument se confrontait à lui-même (il
+   annonçait 81,8 % pour cette seule raison). Les crédits se relisent maintenant sur les
+   ÉVÉNEMENTS BRUTS du statborg.
+2. **DÉNOMINATEUR.** `flag_returns` NE NOMME PAS SON DRAPEAU. Rapporté aux épisodes, un même
+   événement se retrouve attribué aux DEUX drapeaux tombés (mesuré : les instants 2109 et 2670 de
+   `64e8adfa`), et la moitié de ces attributions est fausse par construction. Le contrôle se
+   compte donc par ÉVÉNEMENT DISTINCT ; et les films dont la carte est hors du catalogue
+   d'objectifs (`53ce4390`, Behemoth : zéro socle) sortent du dénominateur — sans socle la chaîne
+   objet se tait par construction, l'y compter mesurerait le catalogue de cartes.
+
+**RÉSULTAT DU CONTRÔLE (seuil 80 % écrit avant la mesure) : 15 / 15 = 100 %.** Les quinze retours
+crédités distincts des deux films de Catalyst ont TOUS une naissance d'objet au socle à moins
+d'une seconde — écarts min = 0, **médiane = 1 frame**, max = 1 frame. Deux chaînes disjointes
+(compteurs de statistique d'un côté, records de création du monde de l'autre) qui tombent à la
+frame : la chaîne objet est licite pour dater ce que le crédit ne voit pas.
+
+**LES VALEURS DU JEU, LUES DANS SON PROPRE SCRIPT.** Les tags `hsc*` sont du Lua compilé qui garde
+ses noms ; leur pool de constantes se déroule (entrées typées GROS-BOUTISTES : `0x03` + flottant
+simple, `0x04` + longueur sur 8 octets + chaîne). `parcel_deliver_object.lua`, table CONFIG :
+`innerAreaMonitorRadius = 1,3` · `cylinderHeight = 2` · `updateDeltaSeconds = 0,1` ·
+`flagResetSeconds = 15` (défaut de bibliothèque, écrasé par `FlagInitArgs.returnTimer`) ·
+`flagCarrierMovespeedScalar = 0,715` — cette dernière est LE TÉMOIN du décodage : c'est la
+pénalité de vitesse du porteur, vérifiable en jeu. Le script nomme aussi la loi que l'utilisateur
+pressentait sans en être sûr : **`CalculateReturnRateHarmonic`** — série harmonique, donc « plus
+on est, plus ça va vite » MAIS à rendement décroissant (1 ; 1+1/2 ; 1+1/2+1/3). Il nomme enfin
+deux choses dont il n'a pas parlé : un rayon EXTÉRIEUR de contestation, et les états `Contested` /
+`ContestedRefilling` (registre des reports).
+
+**RAYON — deux chaînes indépendantes, même réponse.** L'ajustement du modèle du jeu
+(`D/reset + b·∫H(n)dt = 1`, `b` devant être constant) a son minimum de dispersion à **1,5 m
+(cv 0,83) puis 1,3 m (cv 0,84)**, et se dégrade de part et d'autre (0,5 m → 1,50 ; 3 m → 1,09 ;
+5 m → 1,84). La valeur lue dans le jeu tombe dans ce creux. Retour à un seul défenseur : **3,1 s**.
+**MINUTERIE NUE : la mesure la plus faible du lot**, et c'est écrit comme tel — une seule
+observation propre (29,1 s ; les épisodes courts « déserts » sont des retours joueur dont la
+position n'a pas été échantillonnée, le tableau le montre). `reset_seconds = 30` est la meilleure
+valeur soutenue, pas une mesure serrée. Report inscrit.
+
+**LIVRÉ — schéma 29** :
+- `flagObjectHomecomings` (flag_objects.go) + l'événement de vie `flagLifeHome`
+  (flag_carries_lives.go), avec son ABSTENTION : quand un AUTRE drapeau gît au point de naissance,
+  rien n'est renvoyé et l'abstention se compte (`ambiguousHomecomings`). Effet sur le corpus :
+  **9 + 2 = 11 lâchers interminables enfin fermés**, et `retoursAmbigus` de `64e8adfa` passe de 7
+  à 5 — un drapeau rentré libère le suivant.
+- `doc.flagReturnZone` : la RÈGLE du mode (rayon, minuterie, durée solo), déclarée dans
+  `config/titles/halo_infinite/mappings/replay_labels.toml [flag_return_zone]` avec sa
+  provenance ; absente = rien de dessiné (dégradation gracieuse, title-agnostic).
+- Web : `flagReturnZone.ts` — cercle à l'échelle de la carte, jauge en arc sur son propre plancher
+  de lisibilité, anneau qui s'épaissit dès qu'un défenseur est dedans. L'OCCUPATION SE COMPTE CHEZ
+  LE CLIENT, et c'est une contrainte, pas un choix : l'équipe d'un joueur n'est pas dans le film.
+  Le modèle donne la FORME, l'observation donne les BORNES (la jauge est remise à l'échelle pour
+  atteindre 1 à l'image du retour observé).
+
+**Gates** : `go test ./...` (CGO, hors `himap` local-lent) **EXIT=0**, `go vet ./...` **0**,
+`golangci-lint --new-from-merge-base=origin/main` **0 issues**, `gofmt` propre ; vitest **542
+fichiers / 5 614 tests VERT**, typecheck cache purgé VERT, eslint 0 erreur (24 avertissements
+TanStack préexistants). Deux cliquets mis à jour AVEC leur justification écrite, comme ils
+l'exigent : `SchemaVersion` 28 → 29 (`structure_test.go`) et `wantReplayDocumentFields` 44 → 45
+(`contracttest`) ; `openapi.yaml` et `generated.ts` régénérés, jamais écrits à la main ; golden
+d'assemblage régénéré (seule la ligne de schéma change — `000d5950` est sur une carte sans socle
+au catalogue, donc aucune rentrée n'y apparaît). Instrument de recherche sous garde
+`OBJ_FILM`/`OBJ_REPO`, jamais en CI.
+
+**Reste** : la CONTESTATION n'est ni mesurée ni dessinée ; `outerAreaMonitorRadius` et
+`timeToRespawnFlag` restent NON LUS (dédupliqués dans le pool de constantes) ; le corpus de mesure
+se réduit à deux films faute de socles au catalogue. Les quatre reports sont au registre. Plan et
+protocole : `.ai/V7.5/PLAN_CTF_ZONE_RETOUR_2026-08-30.md`.
 
 ## [2026-08-30] Sons — le merge ramassage fournit les déclencheurs, les quatre sons muets sont câblés — Complété
 

@@ -412,7 +412,29 @@ package replay
 // prise suivante, le client la dérive des périodes et des pistes déjà publiées (dernier
 // point du lâcheur), sans qu'aucune position inventée n'entre dans l'artefact. Chronique,
 // sources et refus : document_bomb_carries.go.
-const SchemaVersion = 34
+//
+// CE QUE LA VERSION 35 PORTE. LE RETOUR DU DRAPEAU DE CTF, dans ses deux moitiés. (1) Le retour
+// AUTOMATIQUE est enfin DATÉ : un drapeau resté au sol rentre chez lui quand l'OBJET renaît à son
+// socle (`coverage.flagCarries.homeByObject`). Jusqu'ici aucune chaîne ne le datait — le statborg
+// ne crédite personne — et les états `dropped` couraient jusqu'à la reprise ou la fin de l'axe,
+// des lâchers de plus de deux minutes qui n'ont jamais existé à l'écran. Contrôle : sur les
+// retours que le statborg CRÉDITE, les deux chaînes tombent à la même frame dans 15 cas sur 15
+// (100 %, écart médian 1 frame ; compté par ÉVÉNEMENT crédité DISTINCT, `flag_returns` ne nommant
+// pas son drapeau). (2) `flagReturnZone` publie la RÈGLE du mode — rayon de la zone de
+// retour, minuterie à vide, durée à un défenseur — que le titre déclare dans son manifeste. LA
+// CONTESTATION N'EN FAIT PAS PARTIE : le jeu la décrit, mais l'utilisateur ne l'a jamais observée,
+// ses constantes sont illisibles, et la mesure explique le silence (sur 72 lâchers où un ennemi
+// entre dans la zone, 56 finissent par une REPRISE — à 1,3 m, un ennemi ne conteste pas, il
+// RAMASSE). (3) LA VARIANTE « DRAPEAU NEUTRE » est reconnue : elle ne publie
+// plus DEUX drapeaux qui n'existent pas mais UN SEUL, d'équipe -1, au socle du centre. Le mode
+// n'est pas dans le film — c'est l'OBJET qui tranche, par le socle où il renaît, et la couverture
+// publie le verdict avec les deux comptes qui le fondent (`neutralFlag`, `neutralBirths`,
+// `teamBirths`). Un artefact 34 doit se lire « à re-cuire » : ses drapeaux au sol n'ont ni retour
+// automatique ni zone, et ses parties à drapeau neutre portent un drapeau de trop. (Ce lot avait
+// pris le 29 sur `wt/ctf-zone-retour` pendant que la lunette, les ramassages et la bombe
+// prenaient 29-34 sur `feat/v75` : renumerote 35 au merge du 2026-09-02, l'arbitrage ecrit aux
+// schemas 30, 31 et 33.)
+const SchemaVersion = 35
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {
@@ -643,6 +665,15 @@ type ReplayDocument struct {
 	// FlagCarries est LA VIE DE CHAQUE DRAPEAU de CTF, en intervalles d'état (forme, sources et refus :
 	// document_objectives_live.go). Absente hors CTF — `coverage.flagCarries` dit lequel des deux silences.
 	FlagCarries []FlagCarry `json:"flagCarries,omitempty"`
+	// FlagReturnZone est LA RÈGLE DE RETOUR du mode, telle que le manifeste du titre la donne
+	// (schéma 35) : le rayon de la zone autour d'un drapeau tombé, la minuterie qui le ramène
+	// tout seul, et la durée quand UN défenseur s'y tient. Le client en tire le cercle et la
+	// jauge ; l'occupation, elle, se compte chez lui — l'équipe d'un joueur n'est PAS dans le
+	// film (cf. Track.Team), elle vit dans la base et le client la joint déjà.
+	//
+	// ABSENTE quand le titre ne la déclare pas, ou quand le film n'est pas une partie de CTF :
+	// rien à dessiner, et surtout pas un cercle sur un mode qui n'en a pas.
+	FlagReturnZone *FlagReturnZone `json:"flagReturnZone,omitempty"`
 	// ObjectiveObjects est OÙ SE TROUVE L'OBJET D'OBJECTIF QUAND PERSONNE NE LE PORTE — les vies
 	// LIBRES du crâne d'Oddball (forme, canal et refus : document_objective_objects.go). Un trou
 	// entre deux vies est un portage, mais le document ne dit PAS par qui : l'oracle du porteur a
