@@ -385,7 +385,7 @@ describe('ReplayTeams — hauteur constante vivant/mort', () => {
     const aliveRows = cardRows(alive)
     alive.unmount()
     const dead = render(<ReplayTeams doc={doc} scoreboard={[]} frame={140} locale="fr" />)
-    expect(dead.getByText('Réapparition ?')).toBeTruthy()
+    expect(dead.getByText('ne revient plus')).toBeTruthy()
     expect(cardRows(dead)).toBe(aliveRows)
   })
 })
@@ -427,16 +427,17 @@ describe('ReplayTeams — mort et réapparition', () => {
     expect(box.className).toContain('h-full')
   })
 
-  it('la LACUNE garde le gabarit du décompte — la cellule ne change pas selon ce qu’elle porte', () => {
+  it('la LACUNE garde le gabarit monospace — la cellule ne change pas selon ce qu’elle porte', () => {
     const view = renderTeams({}, 140)
-    const lacune = view.getByText('Réapparition ?')
+    const lacune = view.getByText('ne revient plus')
     expect(lacune.className).toContain('font-mono')
-    expect(lacune.className).toContain('text-[15px]')
   })
 
-  it('mort sans vie suivante : « Réapparition ? », jamais un délai deviné', () => {
+  it('mort sans vie suivante : « Hors film / ne revient plus », jamais un délai deviné ni une attente inventée (retour user 02/09)', () => {
     renderTeams({}, 140)
-    expect(screen.getByText('Réapparition ?')).toBeTruthy()
+    expect(screen.getByText('Hors film')).toBeTruthy()
+    expect(screen.getByText('ne revient plus')).toBeTruthy()
+    expect(screen.queryByText('Éliminé')).toBeNull()
   })
 
   // PLUS DE LISERÉ GAUCHE (2026-08-25), et depuis l'option 2a plus de PEINTURE de mort sur
@@ -1065,7 +1066,7 @@ describe('ReplayTeams — la fiche unique', () => {
 
   it('la fiche MORTE reste lisible : le retour s’affiche', () => {
     const vue = renderCard({}, 140)
-    expect(vue.getByText('Réapparition ?')).toBeTruthy()
+    expect(vue.getByText('ne revient plus')).toBeTruthy()
   })
 
   /**
@@ -1080,7 +1081,7 @@ describe('ReplayTeams — la fiche unique', () => {
     const attendu = rangees(vivante)
     vivante.unmount()
     const morte = renderCard({}, 140)
-    expect(morte.getByText('Réapparition ?')).toBeTruthy()
+    expect(morte.getByText('ne revient plus')).toBeTruthy()
     expect(rangees(morte)).toBe(attendu)
   })
 

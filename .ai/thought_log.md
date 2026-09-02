@@ -88061,3 +88061,49 @@ donnée au contrat — réouverture = décision produit + backfill DEC-6.
 **Conclusion / prochaine étape** : lots 1 (duels NULL scan), 2 (frises), 3 (translocateur spent)
 et 5 (identité des vies, D4 = maintenant) prêts à exécuter ; toute visibilité rejeu (CTF zone,
 marques de fiche, futurs 5.x) attend UNE re-cuisson soumise à accord user.
+
+---
+
+## [2026-09-02] Execution des retours user : lots 1-3, graphe distance, lot 5 (schema 36) — SANS cuisson
+
+**Statut** : Complété (exécution) ; visibilité rejeu en attente de re-cuisson (décision user).
+
+**Décision technique principale** : exécution séquentielle des lots du plan
+`.ai/PLAN_RETOURS_REJEU_MATCHVIEW_2026-09-02.md`, un commit par lot, aucune cuisson lancée.
+
+- **Lot 1 (duels)** : scan Q20 en `sql.NullString` (NULL bot -> ""), erreurs du chemin
+  best-effort journalisées, `buildNemesisMap` écarte les xuid vides (bots jamais dans les
+  duels). Test d'intégration bot + test unitaire némésis.
+- **Lot 2 (frises)** : `sameLeadSegments` (suite des meneurs + frontières, tolérance pixel
+  0,005) remplace `scoreMirrorsFrags` (égalité stricte qui réaffichait le doublon au premier
+  kill non attribué).
+- **Lot 3 (translocateur)** : l'éclat de fiche s'allume sur le `spent` mesuré
+  (`spentTranslocations`) ; `translocatorRanks` lit `abilityLabels` (famille B couverte, le
+  littéral 11 devient un repli) ; décision « spent muet » re-documentée (audio seulement).
+- **Graphe distance (P8, DEC-8 rouvert par le user)** : `_killDistanceChart.ts` pur (bâton
+  min->max en barres empilées à socle transparent + losange de moyenne en scatter), un graphe
+  par joueur, dénominateur d'honnêteté gardé ; L'ÉTAT VIDE SE DIT (« distances non mesurées
+  sur ce match ») au lieu de rendre null — c'est pourquoi le user ne voyait « rien du tout ».
+- **Lot 5 (identité des vies, schéma 36)** : une track = UNE VIE (`decimateTracks` découpe à
+  `lifeGapUS`), nommage PAR VIE (`nameTracksByLives` + `nameClosedLives` pour les
+  fermetures) — le cas Sylvanus (slot recyclé) porte une identité par occupant ; BOTS au
+  roster (`roster[].bot`, sans xuid) et sur les vies pontées (`tracks[].bot`, via
+  `Options.Bots` <- `ksRes.Roster.Bots`, décodage killsource déjà payé) ; web : clé
+  `bot:<nom>`, jointure scoreboard par gamertag ; « Hors film / ne revient plus » remplace
+  le « Réapparition ? » éternel ; `coverage.bridge` consommé (diagnostic rosterEmpty).
+
+**Résultats observés** : golden 000d5950 réassemblé — 104 traces (99 avant, découpe par vie),
+93 nommées (INCHANGÉ : les fermetures nomment désormais la vie qu'elles closent), les
+segments anonymes d'un slot nommé restent anonymes (l'héritage de slot était le bug).
+Gates verts partout : go build/vet, tests replay/replaybuild/contracttest/duckdb/service,
+openapi-gen régénéré (+ generated.ts), tsc 0, vitest match-replay 2022, match-view 267.
+
+**Non fait, et pourquoi** :
+- 5.4 compteur de respawn réel : entiers BRUTS jamais calibrés (protocole cmd/tmp_vitals
+  non joué) — publier une unité devinée est interdit. Report au REGISTRE avec condition.
+- 5.6 vérification Sylvanus + gates visuels (lots 3/5) : exigent une cuisson, interdite ce
+  lot. Reprise : re-cuire UN film témoin (Sylvanus + un CTF récent) sur accord user — cela
+  rallumera aussi les marques d'objectif (D3) et la zone de retour CTF (schéma 35).
+
+**Conclusion / prochaine étape** : tout le code des 7 retours est livré ou statué. Prochaine
+étape = décision de cuisson (film témoin d'abord), puis gate visuel user.

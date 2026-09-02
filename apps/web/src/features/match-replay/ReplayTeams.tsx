@@ -132,9 +132,19 @@ export function ReplayTeams({
   const scoreTimeline = useMemo(() => scoreTimelineOf(doc), [doc])
 
   if (groups.length === 0) {
+    // LE DIAGNOSTIC DU PONT S'AFFICHE AVEC LE CONSTAT (coverage.bridge, consommé depuis le
+    // 2026-09-02) : « aucune vie rattachée » sans ses dénominateurs se lisait comme un bug
+    // muet — avec eux, on voit si le film n'a rien nommé (0/N) ou si la table d'index est
+    // tombée (collisions).
+    const bridge = doc.coverage?.bridge
     return (
       <div className="rounded-lg border border-border bg-card p-3">
         <p className="text-xs text-muted-foreground">{t.rosterEmpty}</p>
+        {bridge && (
+          <p className="mt-1 text-3xs text-muted-foreground">
+            {t.bridgeDiag(bridge.livesNamed, bridge.livesTotal, bridge.slotCollisions)}
+          </p>
+        )}
       </div>
     )
   }

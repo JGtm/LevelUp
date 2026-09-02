@@ -599,8 +599,15 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   re-cuire » — ses drapeaux au sol n'ont ni retour automatique ni zone. Détail :
 	//   internal/analysis/replay/flag_objects.go et .ai/V7.5/PLAN_CTF_ZONE_RETOUR_2026-08-30.md.
 	//   (Ce lot avait pris le 29 sur wt/ctf-zone-retour ; renumerote 35 au merge du 2026-09-02.)
-	if SchemaVersion != 35 {
-		t.Fatalf("SchemaVersion = %d, attendu 35 : incrémenter exige une raison écrite ci-dessus "+
+	// v36 — L'IDENTITÉ DES VIES : une track = UNE VIE (découpe `lifeGapUS`, la règle de
+	//   `buildLifeSpans`, appliquée aux tracks), nommage PAR VIE (un slot recyclé porte une
+	//   identité par occupant — le cas Sylvanus du retour user 2026-09-02), et LES BOTS
+	//   (`roster[].bot` sans xuid + `tracks[].bot` sur les vies que le pont attribue à un
+	//   index de BOT_METADATA). Un artefact 35 se lit « à re-cuire ». REFUS : l'héritage de
+	//   slot pour les segments anonymes (c'était le bug), et le compteur de respawn réel
+	//   (unité jamais calibrée — condition de reprise au registre).
+	if SchemaVersion != 36 {
+		t.Fatalf("SchemaVersion = %d, attendu 36 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

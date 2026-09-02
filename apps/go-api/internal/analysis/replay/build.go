@@ -128,6 +128,11 @@ type Options struct {
 	// player_index.go). Second maillon du pont, et lui aussi une lecture. Absente, aucun tir
 	// ni lancer n'est publié.
 	PlayerIndices PlayerIndexTable
+	// Bots : les bots que le film DÉCLARE (BOT_METADATA, paquet type 12), fournis par
+	// l'assembleur — le décodage vit chez son propriétaire unique (film/killsource), et ce
+	// paquet-ci est title-agnostic. FilmIndex est le slot de roster déclaré, Name porte le
+	// suffixe « [bot] ». Vide = film sans bot, ou décodage killsource indisponible.
+	Bots []BotIdentity
 	// Objectives : les actions d'objectif NOMMÉES ET IDENTIFIÉES PAR MANCHE (cf. objectives.go).
 	// Entrée de DONNÉES, comme Loadouts et Grenades.
 	//
@@ -521,9 +526,13 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	// agit sans avoir de corps nommé. Cf. closures.go.
 	own := buildOwners(indexBySlot(sorted), opt.Deaths, opt.PlayerIndices, fireRefs(fire))
 	// L'IDENTITÉ se pose sur les traces dès que le pont existe : sans elle, un client ne peut
-	// ni nommer un joueur, ni regrouper ses vies, ni colorer une équipe.
-	nameTracks(doc.Tracks, own.SlotXUID)
-	doc.Roster = buildRoster(opt.PlayerIndices, gamertagsOf(opt.Deaths))
+	// ni nommer un joueur, ni regrouper ses vies, ni colorer une équipe. Le nommage se fait
+	// PAR VIE depuis le 2026-09-02 — un slot recyclé porte une identité par occupant.
+	nameTracksByLives(doc.Tracks, own.lives, origin, step)
+	// LES BOTS ENTRENT APRÈS LES HUMAINS : une vie nommée par un xuid n'est jamais écrasée,
+	// et seuls les slots que le pont attribue à un index de bot prennent son nom.
+	nameBotTracks(doc.Tracks, own.Owner, opt.Bots)
+	doc.Roster = buildRoster(opt.PlayerIndices, gamertagsOf(opt.Deaths), opt.Bots)
 	// L'ORIGINE se publie APRÈS le pont : son témoin (le calage du fil des morts) en sort.
 	doc.OriginMs = resolveOriginMs(origin, opt.FilmClockOriginUS, own.DeathOffsetMS, own.DeathOffsetMatches)
 	slog.Info("pont slot->joueur",
@@ -778,13 +787,24 @@ func keepShotsOfPublishedTracks(shots []Shot, tracks []Track) []Shot {
 }
 
 // decimateTracks projette les positions sur la grille de frames (un point par slot et par
-// frame, le premier observé gagne) et produit une track par slot, dans l'ordre de première
-// apparition.
+// frame, le premier observé gagne) et produit UNE TRACK PAR VIE — un slot qui disparaît plus
+// de `lifeGapUS` puis revient ouvre une nouvelle track, la MÊME règle de découpe que
+// `buildLifeSpans` (lot identité des vies, 2026-09-02).
+//
+// POURQUOI PAR VIE ET PLUS PAR SLOT. Une track unique par slot fusionnait les vies d'un slot
+// RECYCLÉ (partant remplacé par un arrivant ou un bot) : le premier porteur nommé gardait
+// tout l'intervalle, le second n'avait aucune vie — sa fiche restait « Éliminé /
+// Réapparition ? » pendant que son corps se déplaçait sous le nom du premier. Le contrat
+// client (buildSlotOwnership, résolveurs frame-aware par slot) attend des vies disjointes.
+// L'ordre reste celui de première apparition du slot, les vies d'un slot en ordre
+// chronologique — déterministe, artefact diffable.
 func decimateTracks(sorted []filmdec.BipedPosition, origin, step uint64, minPoints int,
 	scoped func(slot uint32, tsUS uint64) int) []Track {
 	type acc struct {
+		done      [][]Point // les vies CLOSES de ce slot, dans l'ordre
 		pts       []Point
 		lastFrame int
+		lastUS    uint64
 	}
 	accs := map[uint32]*acc{}
 	var order []uint32
@@ -799,6 +819,15 @@ func decimateTracks(sorted []filmdec.BipedPosition, origin, step uint64, minPoin
 			accs[p.Slot] = a
 			order = append(order, p.Slot)
 		}
+		// Trou au-delà de lifeGapUS = NOUVELLE VIE : la track courante se clôt, la suivante
+		// s'ouvre. Même seuil que buildLifeSpans — deux découpes divergentes rendraient le
+		// nommage par vie inappariable.
+		if len(a.pts) > 0 && int64(p.TimestampUS)-int64(a.lastUS) > lifeGapUS {
+			a.done = append(a.done, a.pts)
+			a.pts = nil
+			a.lastFrame = -1
+		}
+		a.lastUS = p.TimestampUS
 		if frame == a.lastFrame {
 			continue
 		}
@@ -840,17 +869,19 @@ func decimateTracks(sorted []filmdec.BipedPosition, origin, step uint64, minPoin
 	}
 	tracks := make([]Track, 0, len(order))
 	for _, slot := range order {
-		pts := accs[slot].pts
-		if len(pts) < minPoints {
-			continue
+		a := accs[slot]
+		for _, pts := range append(a.done, a.pts) {
+			if len(pts) < minPoints {
+				continue
+			}
+			tracks = append(tracks, Track{
+				Slot:       slot,
+				Team:       -1,
+				Points:     pts,
+				StartFrame: pts[0].T,
+				EndFrame:   pts[len(pts)-1].T,
+			})
 		}
-		tracks = append(tracks, Track{
-			Slot:       slot,
-			Team:       -1,
-			Points:     pts,
-			StartFrame: pts[0].T,
-			EndFrame:   pts[len(pts)-1].T,
-		})
 	}
 	return tracks
 }

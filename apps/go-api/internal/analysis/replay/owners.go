@@ -90,6 +90,11 @@ type OwnerReport struct {
 	// à part de FromDeaths — sans quoi le pont dirait « tout vient de la lecture » alors que
 	// non.
 	Closures closureReport
+	// lives : les vies découpées et nommées, telles que le nommage les a laissées. Interne au
+	// paquet : c'est la source du nommage PAR VIE des tracks (nameTracksByLives, lot identité
+	// des vies 2026-09-02) — un slot recyclé y porte une identité PAR OCCUPANT, là où SlotXUID
+	// n'en retient qu'une par slot (première nommée, collisions comptées).
+	lives []lifeSpan
 }
 
 // buildOwners construit le pont à partir du seul fil des morts.
@@ -108,6 +113,7 @@ func buildOwners(tracks map[uint32]slotTrack, deaths []Death, idx PlayerIndexTab
 	off, matched := bestDeathOffset(lives, deaths)
 	rep.DeathOffsetMS, rep.DeathOffsetMatches = off, matched
 	rep.DeathsNamed = nameLivesByDeaths(lives, deaths, off)
+	rep.lives = lives
 	if rep.DeathsNamed == 0 {
 		return rep
 	}
@@ -122,7 +128,44 @@ func buildOwners(tracks map[uint32]slotTrack, deaths []Death, idx PlayerIndexTab
 	// `len(Owner)` reste lisible : c'est exactement ce que les fermetures ont ajouté.
 	rep.Owner, rep.Closures = closeBridge(tracks, owners, lives, deaths, off, idx.ByXUID, fire)
 	rep.SlotXUID = extendSlotXUID(byXUID, rep.Owner, idx.ByXUID)
+	// LES FERMETURES NOMMENT AUSSI LA VIE (lot identité des vies, 2026-09-02) : le nommage des
+	// tracks se fait désormais PAR VIE, et une vie fermée sans identité redeviendrait anonyme à
+	// l'écran alors que le pont la connaît. Un slot fermé qui porte PLUSIEURS vies anonymes
+	// s'abstient — la fermeture a désigné un corps, pas tous.
+	nameClosedLives(rep.lives, owners, rep.Owner, idx.ByXUID)
 	return rep
+}
+
+// nameClosedLives pose l'identité d'une fermeture sur l'UNIQUE vie anonyme du slot fermé.
+// `before` est la table AVANT fermetures : seuls les slots qu'elles ont ajoutés sont parcourus.
+func nameClosedLives(lives []lifeSpan, before, after map[uint32]int, xuidToIndex map[uint64]int) {
+	indexToXUID := make(map[int]uint64, len(xuidToIndex))
+	for x, i := range xuidToIndex {
+		indexToXUID[i] = x
+	}
+	for slot, pi := range after {
+		if _, wasNamed := before[slot]; wasNamed {
+			continue
+		}
+		x, ok := indexToXUID[pi]
+		if !ok {
+			continue
+		}
+		anon := -1
+		for i := range lives {
+			if lives[i].slot != slot || lives[i].xuid != 0 {
+				continue
+			}
+			if anon >= 0 {
+				anon = -2 // plusieurs vies anonymes : on ne tranche pas
+				break
+			}
+			anon = i
+		}
+		if anon >= 0 {
+			lives[anon].xuid = x
+		}
+	}
 }
 
 // extendSlotXUID pose l'identité sur les slots que les fermetures ont attribués. Sans cela, un
