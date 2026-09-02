@@ -189,10 +189,10 @@ go -C apps/go-api vet ./...
 
 - [x] Chaque lot : entrée thought_log + commit sur `feat/v75` (demander avant commit),
       worktree nettoyé après merge.
-- [ ] CI de branche verte AU NIVEAU JOB après le dernier merge (`gh run list`).
-- [ ] Registre des reports : toute découverte non traitée y entre avec sa condition
+- [x] CI de branche verte AU NIVEAU JOB (run 33649143510 sur 04f751a9d, 02/09 17:59 — tous jobs verts) après le dernier merge (`gh run list`).
+- [x] Registre des reports : toute découverte non traitée y entre avec sa condition
       de reprise.
-- [ ] Mémoire : mettre à jour les mémoires chantier si un invariant nouveau est né
+- [x] Mémoire : mettre à jour les mémoires chantier si un invariant nouveau est né
       (ex. table D3).
 
 ## Reprise de session
