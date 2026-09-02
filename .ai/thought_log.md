@@ -1,3 +1,35 @@
+## [2026-09-02] T0 par premier mouvement (research) : le countdown est une constante du film — Complete (mesure), portage a suivre
+
+Retour user : le rejeu du match `1b2d9e08` demarre sur ~20 s de statues. Cause tracee :
+`t0_ms` (Q13, `match_registry.real_start_time`) vaut 1 ms — l'API a rendu des
+`first_joined_time` colles au `start_time` pour TOUS les joueurs (+1..+14 ms), le filet de
+`ComputeT0` ne peut pas le voir (les sources concordent entre elles). Motif recurrent :
+~10-15 % des matchs depuis mai. Le chart premier frag lit le MEME t0 → decale pareil, juste
+invisible sur un axe de 5 min.
+
+**Decision** : mesurer un T0 derive du film (premier mouvement apres les statues) contre
+l'etalon API. Research test `internal/analysis/replay/t0_mouvement_research_test.go`
+(worktree wt/t0-film), corpus = 106 artefacts locaux + TSV match_registry (1 958 matchs).
+
+**Resultats (verifies sur piece, PASS 1,8 s)** :
+- MARGE CONSTANTE : premier mouvement a 22 700 ms de la frame 0 du film, sigma 299 ms,
+  CV 1,3 %, sur 83 films. Le countdown part de la replication des positions (`originMs`),
+  pas du `start_time` — c'est une constante moteur.
+- Deux regimes de demarrage de film : 83 filment le decompte, 18 ont la frame 0 SUR le
+  coup d'envoi (marge 200-400 ms) — memes plages de t0_film, la mesure vaut. CONSEQUENCE
+  (tranchee par le user 02/09) : garder le detecteur PAR MATCH, aucune constante en dur.
+- L'etalon API est le plus malade des deux : 41/101 matchs a exactement -1 h/-2 h (bug TZ
+  first_joined_time connu), et sur les 49 sains sigma 12,8 s contre 9,8 s au film, min
+  17,8 s / max 91,7 s (countdowns jamais vus a l'ecran).
+- Degeneres : 10/11 countdowns plausibles (15-45 s) ; `1b2d9e08` → t0_film 31 862 ms
+  (chargement 9,1 s + decompte 22,8 s), recoupe l'observation user.
+- Variante « mediane des joueurs » REFUTEE (+241 s : une piste = une vie, pas un joueur).
+
+**Prochaine etape** : lot portage (go user) — helper canonique du detecteur, champ artefact,
+priorite film sur API degenere/aberrant, preambule UX 1 s cote lecteur (confort, PAS dans le
+T0 stocke), reparation des 101 artefacts existants SANS recuisson (positions deja dans le
+JSON). Plan a passer par plan-review avant execution.
+
 ## [2026-09-02] Diagnostic kill feed du rejeu (retour user) : victimes et medailles absentes — Complete (diagnostic seul, AUCUN fix)
 
 Retour user sur le rejeu (temoin `1b2d9e08-4c0c-430c-9760-a245d48b222e`) : aucune victime
