@@ -67,7 +67,6 @@ function style(over: Partial<MarkerStyle> = {}): MarkerStyle {
     showAim: false,
     markOfSlot: () => undefined,
     nameOfSlot: () => "Spartan",
-    showNames: true,
     showTrail: true,
     selfInk: "rgb(4 4 4)",
     deathInk: "rgb(5 5 5)",

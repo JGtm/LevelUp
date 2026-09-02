@@ -7,7 +7,7 @@
  * de choix (ce qu'on mesure, sur quelle durée) : elle pèse à elle seule autant que les
  * quatre autres, et c'est la seule dont l'affichage dépend de ce que le film porte.
  */
-import { SettingsChoice, SettingsToggle } from './ReplaySettingsToggle'
+import { SettingsSegments, SettingsToggle } from './ReplaySettingsToggle'
 
 import type { HeatmapMode, HeatmapSpan } from './heatmapLayer'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
@@ -51,39 +51,42 @@ export function HeatmapSection({
           onToggle={heatmap.onToggle}
           hint={t.layerHeatmapHint}
         />
-        {/* LES DEUX LECTURES SONT UN CHOIX EXCLUSIF, pas deux interrupteurs : d'ou
-            `SettingsChoice` et non `SettingsToggle` depuis le 2026-08-29 (cf. l'en-tete du
-            composant). Le CALQUE lui-meme, au-dessus, est bien un oui/non. */}
+        {/* LES DEUX AXES SONT DES CHOIX EXCLUSIFS, pas des interrupteurs — c'était déjà le
+            sens de `SettingsChoice` depuis le 2026-08-29. CE QUI CHANGE LE 2026-09-02 (« faut
+            revoir la partie Ce que la chaleur mesure ») : ils passent en SEGMENTÉ, une ligne
+            par axe au lieu d'un paragraphe-étiquette suivi d'options empilées.
+
+            Le défaut n'était pas cosmétique. Un paragraphe gris qui sert d'étiquette n'en est
+            pas une, et des options empilées les unes sur les autres ressemblent à des
+            interrupteurs indépendants : rien dans la forme ne disait qu'on ne pouvait pas en
+            allumer deux. Le rail segmenté le dit sans un mot. Au passage, les deux axes
+            tombent de huit lignes à deux. */}
         {heatmap.show && modes.length > 1 && (
-          <>
-            <p className="pt-1 text-xs text-muted-foreground">{t.heatmapReading}</p>
-            {modes.map((m) => (
-              <SettingsChoice
-                key={m}
-                label={t.heatmapMode[m]}
-                pressed={heatmap.mode === m}
-                onToggle={() => heatmap.onSetMode(m)}
-                hint={t.heatmapModeHint[m]}
-              />
-            ))}
-          </>
+          <SettingsSegments
+            label={t.heatmapReading}
+            value={heatmap.mode}
+            options={modes.map((m) => ({
+              value: m,
+              label: t.heatmapMode[m],
+              hint: t.heatmapModeHint[m],
+            }))}
+            onSelect={heatmap.onSetMode}
+          />
         )}
-        {/* LA PORTÉE est un second choix, distinct de la lecture : « ce qu'on mesure » et
-            « sur quelle durée » sont deux questions, et les mettre en une seule liste ferait
-            croire à quatre calques là où il y a deux axes. */}
+        {/* LA PORTÉE est un second axe, distinct de la lecture : « ce qu'on mesure » et « sur
+            quelle durée » sont deux questions, et les fondre en une seule liste ferait croire
+            à quatre calques là où il y a deux axes. Deux rails, donc, et pas un. */}
         {heatmap.show && (
-          <>
-            <p className="pt-1 text-xs text-muted-foreground">{t.heatmapSpanTitle}</p>
-            {HEATMAP_SPANS.map((s) => (
-              <SettingsChoice
-                key={s}
-                label={t.heatmapSpan[s]}
-                pressed={heatmap.span === s}
-                onToggle={() => heatmap.onSetSpan(s)}
-                hint={t.heatmapSpanHint[s]}
-              />
-            ))}
-          </>
+          <SettingsSegments
+            label={t.heatmapSpanTitle}
+            value={heatmap.span}
+            options={HEATMAP_SPANS.map((s) => ({
+              value: s,
+              label: t.heatmapSpan[s],
+              hint: t.heatmapSpanHint[s],
+            }))}
+            onSelect={heatmap.onSetSpan}
+          />
         )}
       </div>
     </section>

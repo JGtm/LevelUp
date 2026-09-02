@@ -88609,3 +88609,37 @@ suivante serait partie en oscillation.
 hors périmètre — ce lot donne toute la place que la mise en page permet ; le zoom est ce qui
 irait AU-DELÀ, et c'est là, seulement là, que la recuisson des calques deviendrait un vrai
 sujet (une projection déplaçable entraîne le survol, les infobulles et les quatre calques).
+
+---
+
+## [2026-09-02] Rejeu 2D : regression des fiches corrigee, ~47 px rendus au lecteur, tiroir degraisse
+
+**Statut** : Complete (3 etapes, 3.3 statuee [!]) ; commit en attente d'autorisation.
+
+**Decision technique principale** : trois etapes issues de la revue UI de l'utilisateur.
+
+1. LES FICHES cessent d'etre un pourcentage de la carte. Double cause etablie par le calcul :
+   une fiche coute ~100 px, un 4v4 en demande 442 ; la rangee valait 773 px (62 % = 479, ca
+   tenait a 37 px pres) et tombe a 653 sur ecran contraint (62 % = 405). A 5v5 (542 px) ca ne
+   tenait DEJA pas avant — le defaut prexistait sur les gros effectifs, la hauteur elastique
+   n'a fait que l'etendre au 4v4. Plafond desormais `min(30rem, 100% - 12rem)` : les deux
+   bornes disent des choses differentes et aucune ne peut s'exprimer sans l'autre.
+2. LE LECTEUR rend ~47 px, qui deviennent du terrain sans que personne les recalcule
+   (`freeSpaceFor` deduit le chrome par soustraction). Le temps a quitte la barre pour suivre
+   le point qui avance : `--played` se pose sur le PARENT du champ, l'heritage des proprietes
+   personnalisees laissant le degrade intact tout en rendant la variable lisible par la bulle.
+3. LE TIROIR perd « Noms », le son « Objectifs » et l'en-tete « Lecture » ; les deux axes de la
+   chaleur passent en segmente (8 lignes -> 2). Un `Exclude<SoundCategory, 'objective'>` tient
+   la paire liste/libelles au compilateur.
+
+**Resultats observes** : typecheck EXIT=0 ; 166 fichiers / 2328 tests verts ; lint 0 erreur.
+
+**Le point le plus utile de la session** : la verification sur pieces a bloque l'item 3.3. La
+grille a deux colonnes des calques, que l'utilisateur avait validee sur ma proposition, a DEJA
+ete posee le 2026-08-24 puis retiree le 2026-08-29 pour une raison mesuree (tiroir `w-72`, deux
+rails a 130 px tronquent « Objets laches au sol »). Je n'avais pas verifie cet historique avant
+de proposer. Non traitee, statuee [!], decision rendue avec ses trois options.
+
+**Conclusion / prochaine etape** : gate visuel utilisateur, arbitrage sur 3.3, puis commit.
+Decouverte non traitee : la frise expose son numero d'image comme valeur ARIA, `aria-valuetext`
+porterait le mm:ss.

@@ -340,18 +340,26 @@ function ReplayPage() {
           </section>
           {/* FICHES AU-DESSUS, FIL EN DESSOUS, même largeur (demande du 2026-08-24) : un
               rejeu se lit en balayant du terrain vers les joueurs, puis vers l'événement.
-              Les fiches gardent leur hauteur naturelle (bornée à 62 % de la colonne, elles
-              défilent au-delà — BTB) ; le fil PERMANENT (verdict user 2026-08-13) remplit
-              tout le reste et défile dedans.
+              Les fiches gardent leur hauteur naturelle (bornée, elles défilent au-delà — BTB) ;
+              le fil PERMANENT (verdict user 2026-08-13) remplit tout le reste et défile dedans.
 
-              AUCUNE HAUTEUR MINIMALE ICI : la colonne en portait une (12 rem), qui ne mordait
-              que dans le trou où le rejeu est arrivé avant la vue du match — fiches et fil y
-              tiennent en ~160 px, et les 32 px manquants étaient du vide sous lequel il n'y
-              avait rien. C'est exactement le scroll fantôme qu'on chasse. Hors de ce trou,
-              fiches + fil dépassent toujours cette borne : elle ne servait rien. */}
+              LE PLAFOND DES FICHES N'EST PLUS UN POURCENTAGE DE LA CARTE (2026-09-02). Il valait
+              62 % de la rangée, dont la hauteur est celle de la colonne carte — donc, depuis que
+              cette carte est élastique, une promesse exprimée en fiches adossée à une hauteur
+              variable. Le calcul : une fiche coûte ~100 px, un en-tête d'équipe ~30, soit 442 px
+              pour un 4v4. La rangée valait 773 px (62 % = 479, il tenait à 37 px près) ; sur un
+              écran contraint elle tombe à 653 (62 % = 405, il ne tient plus). Et à 5v5 (542 px)
+              il ne tenait DÉJÀ pas avant — le défaut préexistait sur les gros effectifs, la
+              hauteur élastique n'a fait que l'étendre au 4v4.
+
+              LE PLAFOND EST DONC EN PIXELS, ET BORNÉ PAR LA PLACE DU FIL :
+              `min(30rem, 100% - 12rem)` dit les deux choses d'un coup — au plus 30 rem (de quoi
+              loger un 4v4 entier avec de la marge), et jamais au point de laisser moins de
+              12 rem au fil. Sur une colonne haute c'est le premier terme qui mord, sur une
+              colonne courte le second : aucun des deux ne peut être exprimé sans l'autre. */}
           <aside className="relative">
             <div className="flex max-h-[80vh] flex-col gap-3 xl:absolute xl:inset-0 xl:max-h-none">
-              <div className="flex max-h-[60vh] min-h-0 shrink-0 flex-col overflow-hidden xl:max-h-[62%]">
+              <div className="flex max-h-[60vh] min-h-0 shrink-0 flex-col overflow-hidden xl:max-h-[min(30rem,calc(100%-12rem))]">
                 {/* PAS DE `marks` ICI (2026-08-25) : les fiches ne portent plus de glyphe
                     d'identité. La table reste servie à la CARTE (forme du point) et au FIL
                     (glyphe devant un nom), ses deux derniers lecteurs. */}

@@ -462,19 +462,34 @@ export const EQUIPMENT_PLACEMENT_SOUND_STEMS: Readonly<Record<string, string>> =
  */
 export const GRAPPLE_SOUND_STEM = 'grapple_fire'
 
-/** Les cinq catégories filtrables du tiroir de réglages (phase 2, décision du 16/08). */
-export const SOUND_CATEGORIES: readonly SoundCategory[] = [
+/**
+ * LES CATÉGORIES QUE L'UTILISATEUR PEUT COUPER. Elles étaient cinq (phase 2, décision du
+ * 16/08) ; « Objectifs » en est sorti le 2026-09-02 sur retour utilisateur — « c'était pas
+ * clair du tout » : dans une liste de bascules, « Objectifs » se lit comme un CALQUE, pas comme
+ * une famille de sons. Les sons d'objectif jouent désormais toujours.
+ *
+ * CE N’EST PAS LA LISTE DES CATÉGORIES : le type SoundCategory en compte toujours cinq, car
+ * classer un son reste utile. C'est la liste de ce qui se RÈGLE. Une préférence stockée qui
+ * nommerait encore « objective » ne se relit donc plus, et la catégorie se rallume d'elle-même.
+ */
+/**
+ * Le sous-type des categories REGLABLES. Il existe pour que le compilateur tienne la paire :
+ * une categorie retiree d ici doit perdre son libelle i18n, et reciproquement. Sans lui, le
+ * retrait de « Objectifs » compilait avec un libelle manquant a l execution.
+ */
+export type TogglableSoundCategory = Exclude<SoundCategory, 'objective'>
+
+export const SOUND_CATEGORIES: readonly TogglableSoundCategory[] = [
   'weapon',
   'grenade',
   'melee',
   'equipment',
-  'objective',
 ]
 
 /** Filtre par catégorie : une entrée par catégorie, `true` = catégorie audible. */
 export type SoundCategoryFilter = Readonly<Record<SoundCategory, boolean>>
 
-/** Le comportement D'AUJOURD'HUI, inchangé par défaut : les cinq catégories sonnent. */
+/** Le comportement D'AUJOURD'HUI, inchangé par défaut : tout sonne. */
 export const SOUND_CATEGORIES_DEFAULT: SoundCategoryFilter = {
   weapon: true,
   grenade: true,

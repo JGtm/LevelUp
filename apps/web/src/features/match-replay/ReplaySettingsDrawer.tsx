@@ -73,8 +73,6 @@ interface ReplaySettingsDrawerProps {
   onToggleAim: () => void
   showZones: boolean
   onToggleZones: () => void
-  showNames: boolean
-  onToggleNames: () => void
   /** La TRAÎNÉE des marqueurs (retour du 2026-08-18) : allumée par défaut, éteignable. */
   showTrail: boolean
   onToggleTrail: () => void
@@ -133,16 +131,21 @@ function PlaybackSection({
 }) {
   const t = REPLAY_TEXT[locale]
   return (
-    <section className="space-y-1">
-      <h3 className="text-xs font-medium text-muted-foreground">{t.playbackTitle}</h3>
-      <div className="flex flex-col gap-0.5">
-        <SettingsToggle
-          label={t.autoPlay}
-          pressed={autoPlay}
-          onToggle={onToggleAutoPlay}
-          hint={t.autoPlayHint}
-        />
-      </div>
+    // PLUS DE TITRE DE SECTION (2026-09-02) : un en-tête « Lecture » pour UN interrupteur
+    // coûtait sa ligne à tout le monde et n'apprenait rien — « Lecture automatique » se
+    // suffit. La section reste un `<section>` : elle garde son rang dans le document, elle
+    // perd seulement son étiquette redondante.
+    //
+    // ELLE N'A PAS DÉMÉNAGÉ, ET C'EST DÉLIBÉRÉ. On avait envisagé de la ranger dans le menu
+    // Vitesse ; l'utilisateur l'a écarté, à raison : un menu « Vitesse » parle de vitesse, y
+    // cacher une préférence de démarrage la rendrait introuvable.
+    <section>
+      <SettingsToggle
+        label={t.autoPlay}
+        pressed={autoPlay}
+        onToggle={onToggleAutoPlay}
+        hint={t.autoPlayHint}
+      />
     </section>
   )
 }
@@ -301,8 +304,6 @@ export function ReplaySettingsDrawer({
   onToggleAim,
   showZones,
   onToggleZones,
-  showNames,
-  onToggleNames,
   showTrail,
   onToggleTrail,
   zonesAvailable,
@@ -355,8 +356,6 @@ export function ReplaySettingsDrawer({
         onToggleAim={onToggleAim}
         showZones={showZones}
         onToggleZones={onToggleZones}
-        showNames={showNames}
-        onToggleNames={onToggleNames}
         showTrail={showTrail}
         onToggleTrail={onToggleTrail}
         zonesAvailable={zonesAvailable}

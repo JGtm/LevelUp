@@ -93,7 +93,13 @@ export interface ReplayPlaybackForTimeline {
 }
 
 /** L'objet unique que le canvas repasse tel quel à la barre (patron de `ReplaySound`). */
-export type ReplayTimeline = ComponentProps<typeof ReplayTimelineTracks>
+/**
+ * TOUT CE QUE LA FRISE DEMANDE, SAUF L'HORLOGE. Depuis que le temps s'affiche sous le curseur
+ * (2026-09-02), la frise reçoit aussi `clockRef` — mais cette référence appartient au CANVAS
+ * (`useReplayClock`), pas à ce hook : elle traverse la barre de lecture et se greffe au dernier
+ * moment. L'exclure ici est ce qui empêche ce hook de prétendre la fournir.
+ */
+export type ReplayTimeline = Omit<ComponentProps<typeof ReplayTimelineTracks>, 'clockRef'>
 
 export function useReplayTimeline(o: ReplayTimelineOptions): ReplayTimeline {
   const { doc, playWindow, feedEntries, marks, lead, playback, toggleSound, renderWidth, locale } = o
@@ -135,11 +141,6 @@ export function useReplayTimeline(o: ReplayTimelineOptions): ReplayTimeline {
     [mediaItems, frameIntervalMs, scale],
   )
 
-  const { startClock, midClock, endClock } = useMemo(
-    () => axisClocks(scale.from, scale.span, frameIntervalMs, clockOf),
-    [scale.from, scale.span, frameIntervalMs, clockOf],
-  )
-
   useReplayShortcuts({
     togglePlay: playback.togglePlay,
     seekBy: playback.seekBy,
@@ -169,9 +170,6 @@ export function useReplayTimeline(o: ReplayTimelineOptions): ReplayTimeline {
     // OUVRIR UN MÉDIA MET LE REJEU EN PAUSE : la frise n'appelle ceci que lorsque la lecture
     // tourne, donc la bascule vaut « pause » — jamais un redémarrage inattendu.
     onRequestPause: playback.togglePlay,
-    startClock,
-    midClock,
-    endClock,
     locale,
   }
 }
@@ -243,22 +241,3 @@ export function reduceFeed(
   return { kills, deaths, frags }
 }
 
-/**
- * axisClocks date les trois repères sous la frise : début, milieu, fin de la FENÊTRE. Sans
- * échelle temporelle (artefact sans axe T réel), les trois restent vides plutôt que d'afficher
- * une durée fabriquée à partir d'un index d'images.
- */
-function axisClocks(
-  fromFrame: number,
-  span: number,
-  frameIntervalMs: number | undefined,
-  clockOf: (replayMs: number) => string,
-): { startClock: string; midClock: string; endClock: string } {
-  if (!frameIntervalMs || span <= 0) return { startClock: '', midClock: '', endClock: '' }
-  const msOf = (frame: number) => clockOf(frame * frameIntervalMs)
-  return {
-    startClock: msOf(fromFrame),
-    midClock: msOf(fromFrame + span / 2),
-    endClock: msOf(fromFrame + span),
-  }
-}

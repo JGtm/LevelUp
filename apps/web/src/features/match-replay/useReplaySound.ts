@@ -196,7 +196,9 @@ function useSoundCategoryFilter(): {
     grenade: !categoriesOff.has('grenade'),
     melee: !categoriesOff.has('melee'),
     equipment: !categoriesOff.has('equipment'),
-    objective: !categoriesOff.has('objective'),
+    // TOUJOURS VRAI : « Objectifs » n'est plus réglable (cf. SOUND_CATEGORIES). La lecture
+    // du stockage l'ignore déjà, ce littéral dit la même chose au type.
+    objective: true,
   }), [categoriesOff])
 
   const toggleCategory = useCallback((category: SoundCategory) => {

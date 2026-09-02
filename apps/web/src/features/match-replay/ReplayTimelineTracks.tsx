@@ -77,10 +77,14 @@ interface ReplayTimelineTracksProps {
   /** Ouvrir un média met le rejeu EN PAUSE : la lightbox le dit, l'appelant l'applique. */
   playing: boolean
   onRequestPause: () => void
-  /** Les bornes de l'axe, déjà en mm:ss (le foyer du dépôt les met en forme). */
-  startClock: string
-  midClock: string
-  endClock: string
+  /**
+   * LA BULLE DE TEMPS, écrite par `useReplayClock` en impératif (demande utilisateur du
+   * 2026-09-02, qui remplace les trois bornes début/milieu/fin). Elle ne reçoit pas une chaîne
+   * mais une RÉFÉRENCE, et c'est tout l'intérêt : le texte change soixante fois par seconde,
+   * le passer en prop coûterait un rendu par image de la frise entière — pistes, vignettes de
+   * médias et champ compris.
+   */
+  clockRef: RefObject<HTMLSpanElement | null>
   locale: ReplayLocale
 }
 
@@ -88,7 +92,7 @@ export function ReplayTimelineTracks({
   sliderRef, minFrame, maxFrame, onScrub,
   own, allies, dominance, score, allyOf, labelOf, media, showMediaTrack,
   tracksExpanded, onToggleTracks,
-  playing, onRequestPause, startClock, midClock, endClock, locale,
+  playing, onRequestPause, clockRef, locale,
 }: ReplayTimelineTracksProps) {
   const t = REPLAY_TEXT[locale]
   const [openId, setOpenId] = useState<string | null>(null)
@@ -215,10 +219,30 @@ export function ReplayTimelineTracks({
               [&::-moz-range-thumb]:h-3.5 [&::-moz-range-thumb]:w-3.5 [&::-moz-range-thumb]:border-0
               [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-foreground"
           />
-          <div className="pointer-events-none flex justify-between text-[9.5px] tabular-nums text-muted-foreground">
-            <span>{startClock}</span>
-            <span>{midClock}</span>
-            <span>{endClock}</span>
+          {/* LE TEMPS SUIT LE POINT QUI AVANCE (demande utilisateur du 2026-09-02). Il
+              remplace les trois bornes début / milieu / fin, qui disaient une information
+              constante sur trois lignes de plus, et le grand chrono qui vivait vingt pixels
+              plus bas dans une autre taille : DEUX éléments pour une seule question — « où
+              j'en suis » — désormais répondue à l'endroit exact où on la pose.
+
+              `left: var(--played)` : la même variable que le remplissage de la piste, écrite
+              par `useReplayPlayback.writeCursor` sur le parent (cf. son commentaire). Texte et
+              position suivent donc la lecture par le MÊME chemin impératif, sans un rendu.
+
+              `clamp` retient la bulle dans la frise à ses deux extrémités : centrée sur le
+              curseur, elle déborderait de sa demi-largeur à 0 % et à 100 %. */}
+          <div className="pointer-events-none relative h-[15px]">
+            {/* `aria-hidden` ET C'EST DÉLIBÉRÉ : le champ juste au-dessus porte déjà
+                `aria-label={t.time}`. Nommer la bulle pareil donnerait DEUX éléments du même
+                nom pour une seule information — une gêne pour qui navigue au lecteur d'écran,
+                et une ambiguïté pour qui teste par le nom accessible. La bulle est le doublon
+                VISIBLE d'une valeur que le champ expose déjà. */}
+            <span
+              ref={clockRef}
+              aria-hidden="true"
+              className="absolute -translate-x-1/2 whitespace-nowrap text-[11px] font-medium tabular-nums text-muted-foreground"
+              style={{ left: 'clamp(1.4rem, var(--played, 0%), calc(100% - 1.4rem))' }}
+            />
           </div>
         </div>
       </div>
