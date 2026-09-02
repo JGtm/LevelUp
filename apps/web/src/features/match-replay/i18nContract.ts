@@ -623,13 +623,13 @@ export interface ReplayText {
   tracksExpand: string
   unknownPlayer: string
   /**
-   * Marques d'identité devant un nom. Le glyphe « moi » ne se DESSINE plus nulle part
-   * (demande utilisateur du 2026-08-24) : `markMe` ne sert plus qu'au libellé lecteur
-   * d'écran du fil (retirer un dessin ne doit pas retirer une information). La marque
-   * « ami » garde son glyphe.
+   * `markMe` — dernier vestige textuel des glyphes d'identité du fil. Le rond du joueur actif
+   * ne se DESSINE plus nulle part depuis le 2026-08-24 ; le glyphe « ami » qui restait au fil
+   * (ex-`PlayerMark.tsx`) est retiré à son tour le 2026-09-02 (décision D5) — sa clé
+   * `markFriend` part avec lui. `markMe` ne sert donc plus qu'au libellé lecteur d'écran du
+   * joueur de la page (retirer un dessin ne doit pas retirer une information).
    */
   markMe: string
-  markFriend: string
   healthLabel: string
   shieldLabel: string
   abilityLabel: string

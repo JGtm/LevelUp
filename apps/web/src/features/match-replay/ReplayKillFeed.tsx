@@ -39,9 +39,10 @@
  * et fait défiler à l'intérieur. Le sens de lecture ne change pas : le plus récent en tête,
  * descendre va chercher les événements anciens.
  *
- * LES NOMS PASSENT TOUS PAR `FeedName` (ReplayFeedName.tsx), qui porte les deux règles du
- * retour C1 du 18/08 : le glyphe « joueur actif » ne s'affiche plus ICI (les fiches et la
- * carte le gardent), et un joueur marqué — moi ou un ami — écrit son nom au token `success`.
+ * LES NOMS PASSENT TOUS PAR `FeedName` (ReplayFeedName.tsx), qui ne dessine PLUS AUCUN glyphe
+ * ici depuis la décision D5 du 2026-09-02 (la carte garde sa propre grammaire de formes,
+ * `replayMarkers.ts`) : un joueur marqué — moi ou un ami — se reconnaît au token `success`
+ * porté par son nom, seul.
  *
  * L'ASSISTANCE NE S'AFFICHE QUE NOMMÉE (décision utilisateur 2026-08-12) : marque
  * d'assistance, marque d'identité de l'assistant, Nom, « - part % », puis la part du
