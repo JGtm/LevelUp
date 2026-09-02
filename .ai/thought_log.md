@@ -1,3 +1,38 @@
+## [2026-09-02] Diagnostic kill feed du rejeu (retour user) : victimes et medailles absentes — Complete (diagnostic seul, AUCUN fix)
+
+Retour user sur le rejeu (temoin `1b2d9e08-4c0c-430c-9760-a245d48b222e`) : aucune victime
+au fil, aucune medaille, et le glyphe « ami » n'est pas voulu. Demande = diagnostic pur.
+
+**Cause 1 — victimes : regression du 2026-08-03 (bascule Q20 sur `match_kill_events_latest`,
+commit 39da43fbf).** La table canonique porte legitimement des lignes a `victim_xuid` /
+`feed_killer_xuid` NULL (morts de film sans attribution feed — 7/83 sur le temoin). Or
+`GetMatchKVPairs` (Q20, `match_view_repo_extras.go`) scanne dans des `string` nus de
+`domain.KVPairRaw` : la premiere ligne NULL fait echouer `rows.Scan` et perd TOUTES les
+paires ; `goLoad("kv_pairs")` avale l'erreur en WARN. Preuve au log `service.log` :
+`Scan error on column index 2, name "victim_xuid": converting NULL to string is
+unsupported` sur ce match. En base, l'appariement est pourtant parfait (76/76 cles exactes
+feed<->paires). Ampleur : **245 matchs** ont >=1 ligne NULL → zero victime nommee, et
+COLLATERAL Match View : tug-of-war/Dominance, KD timeline, duels (tous les lecteurs de
+`kvPairs`) vides sur ces matchs.
+
+**Cause 2 — medailles : trou structurel, pas une regression.** Le fil exige `medal_name`,
+lu de `highlight_events.raw_json` — or AUCUN writer Go n'ecrit `raw_json` (ni
+`sync.InsertHighlightEvents`, ni `persist.persistHighlightEvents`, ni l'import OpenSpartan
+qui passe par le premier). C'etait un artefact de l'ere Python. `analysis.HighlightEvent`
+porte `MedalType` (numerique) mais pas le nom, et la resolution service se fait PAR NOM
+(`LookupMedalMetaByName`). Mesure : 415 matchs ont 100 % de leurs events medal sans
+raw_json (tous les matchs recents ; les 964 matchs OK s'arretent au 2026-04-06). La
+feature medailles du fil (aout, temoin 000d5950 = vieux match) n'a donc JAMAIS marche sur
+un match synchronise par le pipeline Go.
+
+**Point 3 — glyphe « ami » : decision produit, pas un bug.** Rendu par
+`FeedName` → `PlayerMark` kind `friend` (`ReplayFeedName.tsx` — le glyphe `me` est deja
+supprime du fil depuis C1 du 18/08, la marque `friend` etait volontairement gardee).
+Source : `settings.friend_gamertags` via `buildPlayerMarks`. Le user n'en veut pas au fil.
+
+Prochaine etape : au user de decider le lot de correction (Q20 tolerant aux NULL +
+persistance du nom de medaille + retrait du glyphe ami du fil).
+
 ## [2026-09-02] « Premier frag / premiere mort » passe au rendu SVG — Complete
 
 Retour utilisateur : le graphe « paraissait ne pas etre normal », et la raison finit par etre
@@ -87967,3 +88002,37 @@ propres sur les fichiers touchés. Web : N/A (aucun fichier web/i18n touché, le
 Conclusion : exposition retirée, acquis backend conservés sur `feat/precision-arme`. Plan REMISÉ +
 Lots 4/5/6 statués `[!]` ; report inscrit au `REGISTRE_REPORTS.md` (condition de reprise : compteur
 ECS validé OU pairing fiabilisé pour les automatiques). SHA à consigner après commit.
+
+---
+
+## [2026-09-02] Merges ctf-zone-retour + precision-arme, branches mortes purgees, D3 resolu
+
+**Statut** : Complété.
+
+**Décision technique principale** : les deux merges approuvés par le user sont faits sur
+feat/v75, chacun avec ses gardes :
+- `wt/ctf-zone-retour` (dddfff0df) : le schéma pris 29 sur la branche est renuméroté **35**
+  (la tête avait avancé à 34 pendant la session parallèle : lunette 29, ramassages 30-32,
+  bombe 33/34). Chronique contracttest 47->48, golden réassemblé (seule la ligne de schéma),
+  thought_log/registre résolus en union.
+- `feat/precision-arme` (8f309ce86) : repris = décodeur des touches (weapon_hits*), table
+  `match_weapon_hit_distance` + persister + step de migration, passe `collectHits` (gated
+  `weapon_accuracy` not_exposed), fix d'index num=denom, goldens killsource, docs de remise.
+  NON repris (garde anti-résurrection) : la couche killsource dupliquée par la branche pour
+  compiler (pré-D11/A1) — fragdist (Build 3 args), killsourceload/, port/kill_source_class.go,
+  câblages services — revenus à la version feat/v75 ; `shared_weapon_kills_v3` reste mort.
+
+**Résultats observés** : go build/vet 0 issue ; tests verts sur filmdec, killcollector,
+migration, fragdist, persist, duckdb, replay (golden 35), halo_infinite (goldens killsource),
+service, contracttest ; openapi-gen -check à jour ; web tsc 0, vitest match-replay 2014 verts.
+Branches distantes supprimées sur demande : feat/filmdec-killweapon, feat/filmdec-continuation,
+feat/weapon-attribution-v3. wt/assaut-bombe : mergé par la session parallèle (7658ec435).
+
+**D3 résolu sans code** : le design C2 des effets de fiche est DÉJÀ livré (ec0c81928 + bomb
+d50b14b38/db30ad7c4) ; le non-affichage = artefacts antérieurs aux schémas porteurs ou mode
+Slayer. P8 instruit (graphe distance par arme) : tableau POC existant, graphe fermé par DEC-8,
+donnée au contrat — réouverture = décision produit + backfill DEC-6.
+
+**Conclusion / prochaine étape** : lots 1 (duels NULL scan), 2 (frises), 3 (translocateur spent)
+et 5 (identité des vies, D4 = maintenant) prêts à exécuter ; toute visibilité rejeu (CTF zone,
+marques de fiche, futurs 5.x) attend UNE re-cuisson soumise à accord user.

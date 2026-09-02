@@ -117,13 +117,14 @@ jamais sur le libellé de mode (le mode n'est d'ailleurs pas connu du lecteur).
   rendus sont identiques.
 - **D2 (P5)** : TRANCHÉ — kills joueur↔joueur récupérés, les bots ne seront JAMAIS
   affichés dans les duels (pas de phase 2 identité bot).
-- **D3 (P3)** : le rendu vient d'un design Claude Design, option **C2** de l'artefact
-  `6ee3b700-4d30-4396-b730-1d5834319661` (~30/08). Artefact NON lisible d'ici (servi en
-  lecteur public non membre — vraisemblablement porté par un autre compte) ; AUCUNE
-  branche locale/distante ne contient ce travail (vérifié le 02/09 : 5 branches en
-  avance sur feat/v75, aucune ne touche les FX de fiche). **Bloquant lot 4** : le user
-  fournit le handoff (zip exporté de Claude Design : implementation/ + .dc.html) ou le
-  récupère auprès des collègues.
+- **D3 (P3)** : RÉSOLU le 02/09 (collègue, vérifié sur pièces) — le design C2 est DÉJÀ
+  LIVRÉ sur feat/v75 : commit `ec0c81928` (30/08, « la marque de l'objectif ») +
+  extensions `d50b14b38`/`db30ad7c4` (genre bomb, schéma 30). La marque ne s'allume que
+  si l'artefact porte flagCarries (≥15) / vipCrown (22) / skullCarries (23) /
+  bombCarries (30) / objectives de zone, et seulement sur les modes à objectif. Le
+  non-affichage observé = artefacts cuits avant ces schémas, ou mode Slayer. **Lot 4
+  reformulé** : rien à coder — vérification visuelle après re-cuisson d'un film témoin
+  CTF/Strongholds récent.
 - **D4 (P1/P4)** : TRANCHÉ — lot 5 MAINTENANT. Le compteur `player-respawn-timer`
   (§6.3) est inclus dans le même schéma pour ne cuire qu'une fois (item 5.4 ACTIF).
   Re-cuisson : toujours soumise à accord explicite, un film témoin d'abord.
@@ -223,6 +224,20 @@ web `make check-types && make test-web` ; gate visuel user sur le film Sylvanus 
 - Reprise de session : ce fichier (statuts) + `.ai/thought_log.md` (dernière entrée).
 - Tout report → `.ai/V7.5/REGISTRE_REPORTS.md` avec condition de reprise.
 - Commits : demander avant chaque commit (règle 16). Pas de re-cuisson sans accord.
+
+## P8 (ajout 02/09) — Graphe « distance des kills par arme » (demande du collègue)
+
+Le graphe n'existe pas, mais 90 % de la chaîne existe. Livré le 30/08 (LOT G.3-POC,
+`b4a985163`) : un TABLEAU (`MatchKillDistanceSection.tsx`, onglet Résumé) — libellé,
+nb de frags, distance moyenne, plage min–max en suffixe texte. Il rend `null` sans
+donnée mesurée — cas de la quasi-totalité des matchs tant que le backfill de masse n'a
+pas tourné (40/1948 artefacts = 2,1 % ; DEC-6 : backfill soumis à accord). Côté Go RIEN
+à faire : `min/max/avg_distance_m` sont au contrat (`combat_tab.kill_distance_by_weapon`,
+jointure `match_kill_events_latest` × `kill_positions_latest`). Le « bâton par arme »
+(portée) a été FERMÉ par DEC-8 (plan retours 29/08) — le rouvrir est une décision
+produit ; le coût est UN composant web (ECharts custom min→max + marqueur moyenne),
+en gardant le dénominateur d'honnêteté (couverture plancher 75,8 %). Ne pas confondre
+avec la précision-distance du film (`match_weapon_hit_distance`), remisée le 01/09.
 
 ## Relevé des branches non mergées (2026-09-02, demande user pour D3)
 
