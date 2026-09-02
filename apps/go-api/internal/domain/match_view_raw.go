@@ -377,16 +377,35 @@ type KillAssistRaw struct {
 // KVPairRaw : données brutes de Q20 (single-match, MatchID non peuplé) et du
 // loader batch SquadRepository.LoadKVPairs (Q32c, MatchID peuplé pour le
 // regroupement multi-match de la synthèse d'events kill/death title-agnostic).
+//
+// UN XUID VIDE N'EST PAS UN XUID INCONNU : C'EST UNE ABSENCE D'IDENTITÉ. La canonique
+// `match_kill_events` porte les morts de BOT avec un `xuid` NULL et un `gamertag`
+// renseigné — un bot n'a pas de XUID. Q20 sert ce NULL TEL QUEL (jamais de COALESCE vers
+// la chaîne vide au SQL : il fusionnerait tous les bots en un joueur fantôme, piège gardé
+// par TestPasDeXuidNormaliseEnChaineVide) et le scanner le rend en "".
+//
+// Ce que "" impose aux consommateurs, et c'est une règle, pas une précaution :
+//   - Tout AGRÉGAT par acteur (Dominance/tug, KD timeline, antagonistes, némésis,
+//     synthèse d'events kill/death) SAUTE la paire dès qu'un des deux xuid est vide.
+//     Les duels et les courbes sont HUMAINS SEULEMENT — c'est la sémantique d'avant
+//     la bascule du 2026-08-03, où l'ancienne table ne savait pas représenter un bot.
+//   - Seul le KILL FEED, qui NOMME au lieu d'agréger, exploite une ligne à xuid vide :
+//     il affiche le gamertag du bot. Un journal cite ce qui s'est passé ; un agrégat
+//     répond sur des joueurs.
 type KVPairRaw struct {
 	// MatchID : peuplé uniquement par les lectures batch (LoadKVPairs). Vide ("")
 	// pour le chemin single-match Q20 qui scope déjà la requête par match_id.
-	MatchID    string
+	MatchID string
+	// KillerXUID / VictimXUID : "" = acteur SANS identité (bot), cf. doctrine ci-dessus.
 	KillerXUID string
+	// KillerGT : peut être vide (colonne NULLABLE au DDL) — un tueur non nommé.
 	KillerGT   string
 	VictimXUID string
-	VictimGT   string
-	KillCount  int
-	TimeMS     int64
+	// VictimGT : NOT NULL au DDL, donc toujours renseigné. C'est ce qui permet au feed
+	// de nommer une victime bot que son xuid ne désigne pas.
+	VictimGT  string
+	KillCount int
+	TimeMS    int64
 }
 
 // MatchNeighbors : matchs adjacents (prev/next) pour la navigation de la page détail.
