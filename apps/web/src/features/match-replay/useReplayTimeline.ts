@@ -50,7 +50,7 @@ import { roundTransitions } from './roundsLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
 import { displayClockMs, type ReplayWindowBounds } from './replayWindow'
 import { usePersistedFlag, TIMELINE_EXPANDED_KEY } from './useReplaySettings'
-import { useReplayShortcuts } from './useReplayShortcuts'
+import { useReplayShortcuts, type ReplayShortcutHandlers } from './useReplayShortcuts'
 
 /** Ce que le canvas prête à la frise : le document, le cadrage, le fil et la lecture. */
 export interface ReplayTimelineOptions {
@@ -76,6 +76,8 @@ export interface ReplayTimelineOptions {
   toggleSound: () => void
   /** Largeur de dessin : 0 = pas de rejeu à l'écran, le clavier n'écoute rien. */
   renderWidth: number
+  /** Le cadrage, relaye tel quel aux raccourcis clavier (cf. useReplayShortcuts). */
+  zoom?: ReplayShortcutHandlers['zoom']
   locale: ReplayLocale
 }
 
@@ -102,7 +104,7 @@ export interface ReplayPlaybackForTimeline {
 export type ReplayTimeline = Omit<ComponentProps<typeof ReplayTimelineTracks>, 'clockRef'>
 
 export function useReplayTimeline(o: ReplayTimelineOptions): ReplayTimeline {
-  const { doc, playWindow, feedEntries, marks, lead, playback, toggleSound, renderWidth, locale } = o
+  const { doc, playWindow, feedEntries, marks, lead, playback, toggleSound, renderWidth, locale, zoom } = o
   const { media: mediaItems = EMPTY_MEDIA } = o
   const { frameIntervalMs, frameCount } = doc
   // LE REPLI EST UNE PRÉFÉRENCE DU LECTEUR, pas un calque : il ne passe pas par le tiroir mais
@@ -149,6 +151,7 @@ export function useReplayTimeline(o: ReplayTimelineOptions): ReplayTimeline {
     toggleSound,
     skipSeconds: SKIP_SECONDS,
     enabled: renderWidth > 0,
+    zoom,
   })
 
   return {

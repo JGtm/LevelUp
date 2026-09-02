@@ -89049,3 +89049,39 @@ erreur. `ReplayCanvas.tsx` a 661 lignes pour un plafond de 665.
 de fenetre), la cohabitation de la surimpression avec le fil. Restent ouverts : le SUIVI d'un
 joueur (le vrai usage d'un rejeu, dont le zoom manuel est le socle) et le glisser si l'usage le
 reclame, avec son cout desormais instruit.
+
+---
+
+## [2026-09-02] Rejeu 2D : molette et clavier — la molette calee sur les paliers, pas continue
+
+**Statut** : Complete (code + gates) ; merge vers feat/v75 dans la foulee.
+
+**Decision technique principale** : mon objection d'origine contre la molette (« un zoom continu
+recuit les calques a chaque cran ») tombe des qu'on la CALE SUR LES PALIERS existants : elle
+devient une autre facon d'appuyer sur +/-, meme chemin, meme rebornage, meme cout. Ce qui
+interdit du meme coup qu'un zoom a la molette et un zoom au bouton divergent.
+
+Elle grossit VERS LE CURSEUR : `canvasToWorld` (l'inverse exact de `worldToCanvas`, teste par
+aller-retour) donne le point du monde sous le pointeur, `zoomTowards` repose le centre pour qu'il
+reste immobile — `c' = p + (c - p) x (zoomAvant / zoomApres)`. C'est la difference entre une
+molette qui attrape ce qu'on vise et une qui le chasse.
+
+Deux pieges qui ne se voient pas a la lecture :
+- React attache `onWheel` en ecouteur PASSIF : `preventDefault` y est ignore et la page
+  defilerait sous la carte. Il n'y a pas de prop pour lever ca — l'ecouteur est pose a la main
+  en `{ passive: false }`.
+- l'accumulateur de delta n'est pas un confort : un pave tactile emet des dizaines d'evenements
+  de quelques pixels par geste, un cran par evenement traverserait toute l'echelle d'un coup.
+
+CLAVIER : `+`/`=` et `-`/`_` (les variantes sans Maj comptent — sur beaucoup de dispositions `+`
+exige Maj), Maj+fleches pour la croix. UN SEUL ecouteur : les fleches nues restent le saut
+temporel, geste le plus frequent d'un rejeu, et deux ecouteurs concurrents sur les memes touches
+finissent toujours par se marcher dessus.
+
+**Resultats observes** : typecheck EXIT=0 ; 168 fichiers / 2360 tests verts ; lint 0 erreur, 23
+avertissements prexistants — deux neufs ont ete traites A LEUR CAUSE (une reference ecrite
+pendant le rendu, passee dans un effet), pas tus.
+
+**Conclusion / prochaine etape** : le GLISSER reste ouvert, chiffre : il faut le blit recadre
+(les calques cuisent une fenetre elargie, le dessin y decoupe la portion visible) et son cout
+memoire de x2,25 constant. C'est aussi le socle du SUIVI D'UN JOUEUR.

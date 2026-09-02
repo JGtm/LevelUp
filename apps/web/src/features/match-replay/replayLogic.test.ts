@@ -19,7 +19,9 @@ import {
   sceneBounds,
   trackWindow,
   trailAt,
+  canvasToWorld,
   usefulHeight,
+  zoomTowards,
   visibleBounds,
   clampCenter,
   sceneCenter,
@@ -394,5 +396,39 @@ describe('la surface a cuire est invariante au zoom', () => {
         expect(usefulHeight(v, 900, 24)).toBeCloseTo(base, 6)
       }
     }
+  })
+})
+
+// LA MOLETTE GROSSIT VERS LE CURSEUR, et ces deux fonctions sont ce qui le permet.
+describe('canvasToWorld et zoomTowards', () => {
+  const b = { minX: 0, minY: 0, maxX: 100, maxY: 60 }
+
+  // L'ALLER-RETOUR EST L'INVARIANT QUI COMPTE : deux projections écrites séparément finissent
+  // toujours par diverger d'un demi-pixel, et un demi-pixel par cran de molette devient un
+  // décalage franc en cinq crans.
+  it('est l inverse exact de worldToCanvas', () => {
+    for (const p of [{ x: 0, y: 0 }, { x: 100, y: 60 }, { x: 37, y: 12.5 }]) {
+      const c = worldToCanvas(p, b, 900, 480, 24)
+      const back = canvasToWorld(c, b, 900, 480, 24)
+      expect(back.x).toBeCloseTo(p.x, 6)
+      expect(back.y).toBeCloseTo(p.y, 6)
+    }
+  })
+
+  it('le point visé reste IMMOBILE à l écran quand le zoom change', () => {
+    const c0 = sceneCenter(b)
+    const vise = { x: 80, y: 15 }
+    // Sa position à l'écran avant le cran...
+    const avant = worldToCanvas(vise, visibleBounds(b, 1, c0.x, c0.y), 900, 480, 24)
+    // ...et après, une fois le centre repositionné par zoomTowards.
+    const c1 = zoomTowards(c0, vise, 1, 2)
+    const apres = worldToCanvas(vise, visibleBounds(b, 2, c1.x, c1.y), 900, 480, 24)
+    expect(apres.x).toBeCloseTo(avant.x, 6)
+    expect(apres.y).toBeCloseTo(avant.y, 6)
+  })
+
+  it('viser le centre ne déplace pas le centre', () => {
+    const c0 = sceneCenter(b)
+    expect(zoomTowards(c0, c0, 1, 3)).toEqual(c0)
   })
 })
