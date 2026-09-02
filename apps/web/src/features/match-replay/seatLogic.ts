@@ -98,7 +98,21 @@ function seatSide(occupants: SeatOccupant[]): string | null {
   return null
 }
 
-/** partant.xuid -> son successeur (joueur + image du relais). */
+/**
+ * partant.xuid -> son successeur (joueur + image du relais).
+ *
+ * L'APPARIEMENT EST ORDINAL, PAR ÉQUIPE (intuition user 2026-09-02, cohérente avec
+ * l'allocation des indices observée — Razzle prend 8, le premier indice libre AU-DESSUS
+ * des humains) : le jeu comble les places dans l'ordre des départs, donc le k-ième
+ * ARRIVANT remplace le k-ième PARTANT. Un appariement « au plus proche » pouvait CROISER
+ * deux paires quand les écarts départ/arrivée étaient irréguliers. La fenêtre reste une
+ * borne de bon sens : une paire dont l'écart la dépasse ne s'apparie pas (l'arrivant garde
+ * son propre siège — remplissage d'une place restée vide, pas un relais).
+ *
+ * LES ARRIVÉES À LA MÊME SECONDE se départagent par l'INDICE DE FILM (roster) : les
+ * indices s'allouent à l'arrivée, un indice plus petit est — à réutilisation près — un
+ * arrivant plus ancien. Les départs à la même seconde restent départagés par ordre stable.
+ */
 function pairSuccessions(
   players: readonly ReplayPlayer[],
   header: PresenceHeader | null | undefined,
@@ -107,31 +121,55 @@ function pairSuccessions(
   const out = new Map<string, SeatOccupant>()
   const matchStartMs = parseInstant(header?.start_time)
   if (matchStartMs === null) return out
-  const leavers = players.filter(
-    (p) => p.board?.left_in_progress && parseInstant(p.board.last_leave_time) !== null,
-  )
-  const joiners = players
-    .filter((p) => p.board?.joined_in_progress && parseInstant(p.board.first_joined_time) !== null)
-    .sort(
-      (a, b) => parseInstant(a.board?.first_joined_time)! - parseInstant(b.board?.first_joined_time)!,
-    )
-  const taken = new Set<string>()
-  for (const j of joiners) {
-    const joinMs = parseInstant(j.board?.first_joined_time)!
-    let best: ReplayPlayer | null = null
-    let bestGap = SEAT_RELAY_WINDOW_MS + 1
-    for (const l of leavers) {
-      if (taken.has(l.xuid) || l.xuid === j.xuid) continue
-      if (l.board?.team_side !== j.board?.team_side) continue
-      const gap = Math.abs(joinMs - parseInstant(l.board?.last_leave_time)!)
-      if (gap < bestGap) {
-        best = l
-        bestGap = gap
+  const filmIdx = filmIndexByIdentity(doc)
+  const sides = new Set<string>()
+  for (const p of players) {
+    const side = p.board?.team_side
+    if (side != null) sides.add(side)
+  }
+  for (const side of [...sides].sort()) {
+    const leavers = players
+      .filter(
+        (p) =>
+          p.board?.team_side === side &&
+          p.board.left_in_progress &&
+          parseInstant(p.board.last_leave_time) !== null,
+      )
+      .sort(
+        (a, b) => parseInstant(a.board?.last_leave_time)! - parseInstant(b.board?.last_leave_time)!,
+      )
+    const joiners = players
+      .filter(
+        (p) =>
+          p.board?.team_side === side &&
+          p.board.joined_in_progress &&
+          parseInstant(p.board.first_joined_time) !== null,
+      )
+      .sort((a, b) => {
+        const dt = parseInstant(a.board?.first_joined_time)! - parseInstant(b.board?.first_joined_time)!
+        if (dt !== 0) return dt
+        return (filmIdx.get(a.xuid) ?? 0) - (filmIdx.get(b.xuid) ?? 0)
+      })
+    const n = Math.min(leavers.length, joiners.length)
+    for (let k = 0; k < n; k++) {
+      const l = leavers[k]
+      const j = joiners[k]
+      const joinMs = parseInstant(j.board?.first_joined_time)!
+      if (Math.abs(joinMs - parseInstant(l.board?.last_leave_time)!) > SEAT_RELAY_WINDOW_MS) {
+        continue
       }
+      out.set(l.xuid, { player: j, fromFrame: frameOfAbs(joinMs, matchStartMs, doc) })
     }
-    if (!best) continue
-    taken.add(best.xuid)
-    out.set(best.xuid, { player: j, fromFrame: frameOfAbs(joinMs, matchStartMs, doc) })
+  }
+  return out
+}
+
+/** identité (xuid ou `bot:<nom>`) -> indice de film du roster — le départage des arrivées. */
+function filmIndexByIdentity(doc: ReplayDocumentReady): Map<string, number> {
+  const out = new Map<string, number>()
+  for (const e of doc.roster ?? []) {
+    const key = e.xuid || (e.bot && e.name ? `bot:${e.name}` : '')
+    if (key) out.set(key, e.filmIndex)
   }
   return out
 }

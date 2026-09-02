@@ -78,6 +78,38 @@ describe('buildSeats — le scénario témoin', () => {
     expect(seats.map((s) => s.occupants.length)).toEqual([1, 1])
   })
 
+  it("DEUX relais sur la même équipe : l'appariement est ORDINAL (k-ième partant ↔ k-ième arrivant), jamais « au plus proche »", () => {
+    // L1 part à 22:28:20, L2 à 22:30:00 ; J1 arrive à 22:30:05, J2 à 22:30:10. Un
+    // appariement « au plus proche » donnerait J1→L2 (5 s) et J2→L1 (110 s) — CROISÉ.
+    // Le jeu comble dans l'ordre des départs : J1→L1, J2→L2.
+    const l1 = joueur('L1', 't0', { left_in_progress: true, last_leave_time: '2026-09-01T22:28:20Z' })
+    const l2 = joueur('L2', 't0', { left_in_progress: true, last_leave_time: '2026-09-01T22:30:00Z' })
+    const j1 = joueur('J1', 't0', { joined_in_progress: true, first_joined_time: '2026-09-01T22:30:05Z' })
+    const j2 = joueur('J2', 't0', { joined_in_progress: true, first_joined_time: '2026-09-01T22:30:10Z' })
+    const seats = buildSeats([l1, l2, j1, j2], HEADER, DOC)
+    expect(seats).toHaveLength(2)
+    expect(seats.find((s) => s.key === 'L1')!.occupants.map((o) => o.player.xuid)).toEqual(['L1', 'J1'])
+    expect(seats.find((s) => s.key === 'L2')!.occupants.map((o) => o.player.xuid)).toEqual(['L2', 'J2'])
+  })
+
+  it("deux arrivées à la MÊME seconde se départagent par l'indice de film (alloué à l'arrivée)", () => {
+    const doc = {
+      ...DOC,
+      roster: [
+        { xuid: '', filmIndex: 9, name: 'B2 [bot]', bot: true },
+        { xuid: '', filmIndex: 8, name: 'B1 [bot]', bot: true },
+      ],
+    } as ReplayDocumentReady
+    const l1 = joueur('L1', 't0', { left_in_progress: true, last_leave_time: '2026-09-01T22:28:00Z' })
+    const l2 = joueur('L2', 't0', { left_in_progress: true, last_leave_time: '2026-09-01T22:29:00Z' })
+    const b2 = joueur('bot:B2 [bot]', 't0', { joined_in_progress: true, first_joined_time: '2026-09-01T22:29:00Z' })
+    const b1 = joueur('bot:B1 [bot]', 't0', { joined_in_progress: true, first_joined_time: '2026-09-01T22:29:00Z' })
+    const seats = buildSeats([l1, l2, b2, b1], HEADER, doc)
+    // B1 (indice 8) est l'arrivant le plus ancien : il remplace le premier parti.
+    expect(seats.find((s) => s.key === 'L1')!.occupants[1].player.xuid).toBe('bot:B1 [bot]')
+    expect(seats.find((s) => s.key === 'L2')!.occupants[1].player.xuid).toBe('bot:B2 [bot]')
+  })
+
   it('sans en-tête (pas de repère absolu), chacun garde son siège — l’affichage d’avant', () => {
     const partant = joueur('A', 't0', {
       left_in_progress: true,
