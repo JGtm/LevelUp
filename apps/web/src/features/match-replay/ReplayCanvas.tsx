@@ -604,7 +604,7 @@ export function ReplayCanvas({
           {/* Le bouton du TIROIR DE RÉGLAGES vit tout à droite de la barre de lecture
               (demande du 2026-08-24) : la barre du haut, qui ne portait plus que lui, est
               supprimée — le rejeu gagne sa hauteur. */}
-          <div className="p-3 pb-0">
+          <div className="relative p-3 pb-0">
             {/* La légende se pose DANS le cadre du canvas (coin bas-gauche) : une échelle
                 de couleur lue à côté de sa carte n'est plus une échelle. Le conteneur
                 relatif n'existe que pour elle — sans carte de chaleur, rien n'y flotte. */}
@@ -622,8 +622,14 @@ export function ReplayCanvas({
                 locale={locale} width={renderWidth} ownerNameOf={nameOfSlot} playWindow={playWindow}
                 placement={placements.hover.hover} pad={weaponPads.hover} flag={flags.hover}
               />
-              {heat.grid && <ReplayHeatmapLegend locale={locale} mode={heat.grid.mode} />}
             </div>
+            {/* LA LÉGENDE S'ANCRE AU BLOC, PLUS À LA TOILE (2026-09-02, retour utilisateur :
+                « il faut le mettre sur le côté gauche du bloc avec un léger padding »). Elle
+                vivait DANS le conteneur `mx-auto` de la toile — qui est CENTRÉ et souvent plus
+                étroit que la colonne : sur une carte allongée dans un écran large, la légende
+                flottait donc au milieu du cadre, à gauche de la carte mais loin du bord.
+                Remontée d'un cran, elle se cale sur le bord gauche du bloc, où on la cherche. */}
+            {heat.grid && <ReplayHeatmapLegend locale={locale} mode={heat.grid.mode} />}
           </div>
           {/* LA BARRE DE LECTURE, SORTIE DU `p-3` LE 2026-09-02 : dedans, 12 px de carte
               l'encadraient de trois côtés ; ici elle va bord à bord. Elle reste DANS
@@ -633,6 +639,7 @@ export function ReplayCanvas({
             playing={playback.playing} onTogglePlay={playback.togglePlay}
             onRestart={playback.restart} onSeekBy={playback.seekBy}
             clockRef={clockRef} timeline={timeline}
+            autoPlay={settings.autoPlay} onToggleAutoPlay={settings.toggleAutoPlay}
             speed={multiplier} onSetSpeed={settings.setSpeed}
             sound={sound} capture={capture} locale={locale}
             settingsOpen={drawer.open} onToggleSettings={drawer.toggle}
