@@ -35,11 +35,20 @@ const cotesCylindreZone = 24
 
 // ZoneNommee est une zone de callout posee sur la carte : son identite et son contour.
 type ZoneNommee struct {
+	// Index est le rang de l'objet dans la variante — la SEULE cle de tracabilite d'une zone
+	// Forge (elle n'a pas d'indice de volume `levl`). C'est elle que le catalogue publie sous
+	// `volume_index`, et elle qui permet de retrouver l'objet dans un dump de variante.
+	Index int
 	// StringID est le condensat du nom, a resoudre contre le tableau du tag `locs`. Il n'est
 	// PAS un texte : la traduction vit dans `callouts_i18n.csv`, qui n'en couvre encore qu'une
 	// partie. Une zone dont le nom nous manque borne quand meme la carte — le rognage n'a
 	// jamais eu besoin de savoir lire.
 	StringID uint32
+	// Pos est le point de reference de l'objet, en metres monde. C'est le centre 3D dont le
+	// rejeu se sert pour affecter un joueur a sa zone (`zoneAt` compare des distances 3D,
+	// sinon deux etages superposes se confondent). Le contour seul ne le donne pas : il est
+	// plat, et deux zones l'une au-dessus de l'autre ont le meme.
+	Pos [3]float64
 	// Contour est le polygone au sol, en coordonnees monde.
 	Contour [][2]float64
 	// ZBas, ZHaut : l'extension verticale de la zone, en absolu.
@@ -56,7 +65,7 @@ func ZonesNommeesForge(objs []mapvar.Object) []ZoneNommee {
 			continue
 		}
 		sh := o.Shape()
-		if sh == nil {
+		if sh == nil || !prismeLisible(sh) {
 			continue
 		}
 		c := contourDeZone(o, sh)
@@ -64,7 +73,9 @@ func ZonesNommeesForge(objs []mapvar.Object) []ZoneNommee {
 			continue
 		}
 		out = append(out, ZoneNommee{
+			Index:    o.Index,
 			StringID: o.LocationID,
+			Pos:      [3]float64{o.Pos.X, o.Pos.Y, o.Pos.Z},
 			Contour:  c,
 			ZBas:     o.Pos.Z - sh.DownZ,
 			ZHaut:    o.Pos.Z + sh.UpZ,
@@ -75,6 +86,23 @@ func ZonesNommeesForge(objs []mapvar.Object) []ZoneNommee {
 	}
 	return out
 }
+
+// prismeLisible refuse les enregistrements de forme ABERRANTS.
+//
+// L'ANOMALIE EST DANS LA DONNEE, ET ELLE EST DATEE (2026-08-27, corpus de 4 161 objets) :
+// sur une poignee de zones, l'emplacement 8 vaut 0xFFC80000 — soit -56,00 m en virgule fixe
+// 16.16 — et l'emplacement 7 est parfois absent. Le prisme s'en trouve RETOURNE : sa base
+// passe au-dessus de son sommet.
+//
+// POURQUOI ON REFUSE AU LIEU DE REDRESSER. Les emplacements 5 a 8 sont lus a la file : si 7
+// manque ou si 8 porte une valeur impossible, rien ne garantit que 5 et 6 — la largeur et la
+// profondeur, donc LE POLYGONE — soient encore a leur place. Redresser la hauteur publierait
+// une empreinte au sol dont on ne sait plus si elle est la bonne. C'est la meme regle que
+// `verifieAABBRelative` sur les cartes natives : un enregistrement qui ne verifie plus son
+// invariant est une structure inconnue, pas une donnee a rattraper.
+//
+// MESURE SUR LA ROTATION (2026-09-02) : 87 zones ecartees sur 2 566, reparties sur 3 cartes.
+func prismeLisible(sh *mapvar.Shape) bool { return sh.UpZ+sh.DownZ > 0 }
 
 // ContoursDeZones rend les seuls polygones, dans la forme qu'attend `MasqueZones`.
 func ContoursDeZones(zs []ZoneNommee) [][][2]float64 {
