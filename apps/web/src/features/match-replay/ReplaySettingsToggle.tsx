@@ -133,6 +133,56 @@ function ToggleTrack({ on }: { on: boolean }) {
  * le réglage n'accepte pas — et sa pastille éteinte se lirait « désactivé » sur une option qui
  * n'attend qu'un clic pour devenir la lecture courante.
  */
+/**
+ * SettingsSegments — UN CHOIX EXCLUSIF SUR UNE SEULE LIGNE.
+ *
+ * POURQUOI IL EXISTE (2026-09-02, retour utilisateur sur « Ce que la chaleur mesure »). Un
+ * choix exclusif rendu en `SettingsChoice` empilés coûte une ligne par option, précédée d'un
+ * paragraphe gris qui fait office d'étiquette. Deux axes — ce qu'on mesure, sur quelle durée —
+ * y prenaient huit lignes, et surtout : des options empilées RESSEMBLENT à des interrupteurs
+ * indépendants. On croit pouvoir en allumer deux.
+ *
+ * Le segmenté dit la contrainte par sa forme : un rail, des cases jointives, une seule
+ * enfoncée. Étiquette à gauche, choix à droite — la même grammaire que `SettingsToggle`, dont
+ * il est le frère à N états.
+ *
+ * `role="radiogroup"` et non un groupe de boutons pressés : c'est un choix parmi N, et les
+ * technologies d'assistance doivent l'annoncer comme tel.
+ */
+export function SettingsSegments<T extends string>({
+  label, value, options, onSelect,
+}: {
+  label: string
+  value: T
+  options: readonly { value: T; label: string; hint?: string }[]
+  onSelect: (value: T) => void
+}) {
+  return (
+    <div className="flex items-center justify-between gap-2 py-0.5">
+      <span className="shrink-0 text-xs text-muted-foreground">{label}</span>
+      <div role="radiogroup" aria-label={label} className="flex rounded-md border border-border p-px">
+        {options.map((o) => (
+          <button
+            key={o.value}
+            type="button"
+            role="radio"
+            aria-checked={value === o.value}
+            title={o.hint}
+            onClick={() => onSelect(o.value)}
+            className={`cursor-pointer rounded-[5px] px-2 py-1 text-[11px] font-medium transition-colors ${
+              value === o.value
+                ? 'bg-primary text-primary-foreground'
+                : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+            }`}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export function SettingsChoice({
   label, pressed, onToggle, hint,
 }: {

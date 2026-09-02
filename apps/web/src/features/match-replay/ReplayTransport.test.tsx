@@ -59,9 +59,6 @@ function makeTimeline(over: Partial<ReplayTimeline> = {}): ReplayTimeline {
     onToggleTracks: vi.fn(),
     playing: true,
     onRequestPause: vi.fn(),
-    startClock: '0:00',
-    midClock: '2:30',
-    endClock: '5:00',
     locale: 'fr',
     ...over,
   }
@@ -238,13 +235,21 @@ describe('ReplayTransport — ce qui sort du rejeu', () => {
 
   // LES PASTILLES SONT NOMMÉES À L'ŒIL (planche 2a) : le texte court accompagne l'icône, sans
   // remplacer le nom accessible — trois icônes muettes côte à côte se ressemblent toutes.
-  it('les pastilles portent leur texte court, et gardent leur nom accessible long', () => {
+  // LES LIBELLÉS SONT TOMBÉS LE 2026-09-02 (« vire les labels Image et exporter ») : les
+  // pastilles sont des icônes. CE QUI NE DOIT PAS TOMBER AVEC EUX, c'est leur NOM ACCESSIBLE —
+  // une icône sans nom est une régression pour qui navigue au lecteur d'écran, et c'est
+  // exactement ce qu'un retrait de libellé fait perdre quand personne ne le tient.
+  it('les pastilles sont des icônes nues, mais gardent leur nom accessible long', () => {
     renderTransport()
-    expect(screen.getByRole('button', { name: "Capturer l'image" }).textContent).toContain('Image')
-    expect(screen.getByRole('button', { name: 'Enregistrer la vidéo' }).textContent).toContain('REC')
+    const image = screen.getByRole('button', { name: "Capturer l'image" })
+    const rec = screen.getByRole('button', { name: 'Enregistrer la vidéo' })
+    expect(image.textContent).not.toContain('Image')
+    expect(rec.textContent).not.toContain('REC')
+    expect(image.getAttribute('title')).toBeTruthy()
+    expect(rec.getAttribute('title')).toBeTruthy()
   })
 
-  it('en cours d’enregistrement, la pastille dit « Arrêter »', () => {
+  it('en cours d’enregistrement, la pastille le dit par son nom accessible', () => {
     renderTransport({
       capture: {
         captureImage: vi.fn(),
@@ -254,9 +259,7 @@ describe('ReplayTransport — ce qui sort du rejeu', () => {
     videoExport: null,
       },
     })
-    expect(
-      screen.getByRole('button', { name: "Arrêter l'enregistrement" }).textContent,
-    ).toContain('Arrêter')
+    expect(screen.getByRole('button', { name: "Arrêter l'enregistrement" })).toBeTruthy()
   })
 
   it('à l’arrêt : le bouton dit « Enregistrer la vidéo » et lance au clic', () => {

@@ -177,12 +177,19 @@ export function useReplayPlayback(o: ReplayPlaybackOptions): ReplayPlayback {
    * writeCursor POSE LE CURSEUR : la valeur du champ, et le REMPLISSAGE de la frise habillée.
    *
    * `--played` est la part parcourue, en pourcentage de la fenêtre. Le dégradé de la piste la
-   * consomme depuis les classes du champ lui-même (`ReplayTimelineTracks.tsx`, variantes
+   * consomme depuis les classes du champ (`ReplayTimelineTracks.tsx`, variantes
    * `[&::-webkit-slider-runnable-track]` / `[&::-moz-range-track]` — même technique que le
    * volume dans `ReplaySoundControls.tsx`) : aucune feuille de style à tenir à jour, et aucun
    * rendu React pour un remplissage qui suit la lecture. Elle s'écrit ICI et nulle part
    * ailleurs — un chemin qui déplacerait le curseur sans elle laisserait le remplissage figé
    * sur la position précédente.
+   *
+   * ELLE SE POSE SUR LE PARENT, ET PAS SUR LE CHAMP (2026-09-02). Les propriétés
+   * personnalisées HÉRITENT : le champ la reçoit donc exactement comme avant, son dégradé ne
+   * change pas d'un pixel. Ce qui change, c'est que la BULLE DE TEMPS — un frère du champ,
+   * depuis que les bornes début/milieu/fin ont laissé la place au temps sous le curseur —
+   * peut la lire elle aussi. Posée sur le champ, elle serait restée invisible à tout ce qui
+   * n'est pas lui : un `input` n'a pas de descendants.
    */
   const writeCursor = useCallback(
     (frame: number) => {
@@ -193,7 +200,8 @@ export function useReplayPlayback(o: ReplayPlaybackOptions): ReplayPlayback {
       const pct = span > 0 ? ((frame - startFrame) / span) * 100 : 0
       // Borné : la frise ne se remplit ni en deçà de son début ni au-delà de sa fin, même si
       // un appelant lui sert une image hors fenêtre.
-      el.style.setProperty('--played', `${Math.min(100, Math.max(0, pct))}%`)
+      const played = `${Math.min(100, Math.max(0, pct))}%`
+      ;(el.parentElement ?? el).style.setProperty('--played', played)
     },
     [startFrame, endFrame],
   )
