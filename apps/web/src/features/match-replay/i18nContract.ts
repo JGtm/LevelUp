@@ -465,6 +465,7 @@ export interface ReplayText {
   heatLegendHint: string
   /** Fiches joueur : ce qui est lu, et ce qui ne l'est pas. */
   rosterEmpty: string
+  bridgeDiag: (named: number, total: number, collisions: number) => string
   teamUnknown: string
   /** Libellé d'équipe (cascade `lib/halo/teamLabel.ts`, mêmes textes que la Match View). */
   teamLabelFmt: (name: string) => string
@@ -642,7 +643,8 @@ export interface ReplayText {
   /** L'encadré de la fiche morte (option 2a) : le mot d'état, puis le décompte lu. */
   eliminatedLabel: string
   respawnIn: string
-  respawnUnknown: string
+  goneLabel: string
+  goneValue: string
   /** Ligne d'inventaire : grenades, capacité, munitions. */
   inventoryAge: string
   inventoryAhead: string

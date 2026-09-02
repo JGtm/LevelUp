@@ -134,7 +134,12 @@ jamais sur le libellé de mode (le mode n'est d'ailleurs pas connu du lecteur).
 
 ## Lots (ordre = risque/effort croissant)
 
-### Lot 1 — Duels & confrontations : réparer le scan NULL (Go) — RAPIDE
+> ÉTAT D'EXÉCUTION (2026-09-02, « tu peux y aller, sans cuisson ») : lots 1, 2, 3 FAITS
+> (commits séparés, gates verts, items [x] sauf 1.5 → Découvertes) ; graphe distance FAIT
+> (P8, DEC-8 rouvert) ; lot 5 FAIT sous schéma 36 (détail à son encart). AUCUNE cuisson
+> lancée : rien de visible dans le rejeu avant la re-cuisson décidée par le user.
+
+### Lot 1 — Duels & confrontations : réparer le scan NULL (Go) — FAIT 02/09
 
 - [ ] 1.1 `domain.KVPairRaw` : `KillerXUID`/`VictimXUID` passent en `*string` (ou
   `sql.NullString` au scan, patron de `match_view_repo_assist_pairs.go:157`). JAMAIS de
@@ -152,7 +157,7 @@ jamais sur le libellé de mode (le mode n'est d'ailleurs pas connu du lecteur).
 Gate : `cd apps/go-api && go test ./internal/platform/duckdb/... ./internal/service/...`
 + vérification manuelle sur un des 245 matchs cassés (ex. `52fc79ef`) : section remplie.
 
-### Lot 2 — Frise dominance masquée quand identique (web) — RAPIDE
+### Lot 2 — Frise dominance masquée quand identique (web) — FAIT 02/09
 
 - [ ] 2.1 Selon D1 : comparaison des suites de segments dominance vs score dans
   `useReplayTimeline.scoreTrack` (ou tolérance dans `scoreMirrorsFrags`).
@@ -161,7 +166,7 @@ Gate : `cd apps/go-api && go test ./internal/platform/duckdb/... ./internal/serv
 
 Gate : `make check-types && make test-web`.
 
-### Lot 3 — Effet translocateur branché sur l'usage réel (web) — MOYEN
+### Lot 3 — Effet translocateur branché sur l'usage réel (web) — FAIT 02/09
 
 - [ ] 3.1 Résolution du rang translocateur via `doc.abilityLabels` (fin du littéral 11
   seul — couvre les familles A et B).
@@ -189,25 +194,29 @@ translocateur est consommé (témoins à désigner par le user).
 Gate : `make check-types && make test-web` + gate visuel utilisateur (témoins CTF +
 zones à désigner).
 
-### Lot 5 — Identité des vies, roster bots, état « hors film » (Go + web) — LOURD, sous D4
+### Lot 5 — Identité des vies, roster bots, état « hors film » — EXÉCUTÉ le 02/09 (schéma 36)
 
-Pré-requis : D4 tranché (schéma d'artefact bougera ; visible seulement après re-cuisson
-décidée par le user — jamais lancée par un agent).
-
-- [ ] 5.1 Découpe des tracks PAR VIE dans `decimateTracks` (appliquer `lifeGapUS` comme
-  `buildLifeSpans`) et nommage PAR VIE dans `nameTracks` (fin du nommage par slot) — corrige H3.
-- [ ] 5.2 Roster étendu humains + bots : brancher la lecture BOT_METADATA
-  (`killsource/botmeta.go` — RÉUTILISER, ne pas dupliquer le décodeur) dans le build du
-  rejeu ; fiches bots nommées, suffixe « [bot] » — corrige H4.
-- [ ] 5.3 Diagnostic à l'écran : publier/consommer `coverage.bridge` (livesNamed/Total,
-  slotCollisions) ; troisième état front « hors film / non transmis » dans
-  `playerStateAt` quand plus aucune vie n'existe pour ce joueur (fin du « Réapparition ? »
-  menteur) — corrige H1/H5 côté affichage.
-- [ ] 5.4 (selon D4b) `player-respawn-timer` lu et publié → compteur de réapparition réel.
-- [ ] 5.5 Golden réassemblé, `EXPECTED_REPLAY_SCHEMA_VERSION` incrémenté, gates films de
-  référence (patron des lots précédents : critères écrits AVANT le run).
-- [ ] 5.6 Vérification ciblée sur le match Sylvanus cité par le user (slotCollisions
-  attendu > 0) — re-cuisson d'UN film uniquement, avec accord explicite préalable.
+- [x] 5.1 Découpe des tracks PAR VIE (`decimateTracks` applique `lifeGapUS`) + nommage PAR
+  VIE (`nameTracksByLives` ; les fermetures nomment aussi la vie qu'elles closent,
+  `nameClosedLives`). Golden : 99→104 traces, 93 nommées (inchangé), les segments anonymes
+  d'un slot nommé RESTENT anonymes (l'héritage de slot était le bug).
+- [x] 5.2 Bots : `Options.Bots` fournis par replaybuild depuis `ksRes.Roster.Bots`
+  (décodage killsource déjà payé, bots non épinglés exclus) ; `roster[].bot` (sans xuid) +
+  `tracks[].bot` (via le pont/fermeture A) ; web = clé synthétique `bot:<nom>`, jointure
+  scoreboard par gamertag (`is_bot` existait déjà côté base).
+- [x] 5.3 Troisième état : « Hors film / ne revient plus » remplace « Éliminé /
+  Réapparition ? » quand aucune vie suivante n'existe ; `coverage.bridge` consommé
+  (diagnostic sous `rosterEmpty`).
+- [!] 5.4 Compteur de respawn réel NON publié : les 21 bits sont des entiers BRUTS dont
+  l'unité n'a jamais été calibrée (protocole `cmd/tmp_vitals` jamais joué) — publier une
+  unité devinée est interdit. Condition de reprise au REGISTRE_REPORTS (campagne de
+  calibration sur films témoins).
+- [x] 5.5 Schéma 36 (chronique document.go + structure_test + EXPECTED web), golden
+  réassemblé, openapi + generated.ts régénérés. Gates : go build/vet/tests (replay,
+  replaybuild, contracttest), tsc, vitest match-replay 2022 verts.
+- [!] 5.6 Vérification Sylvanus : NÉCESSITE une cuisson — interdite ce lot (décision user
+  « sans cuisson »). Reprise : re-cuire UN film témoin Sylvanus avec accord explicite,
+  vérifier fiches des remplaçants + bots + état hors film.
 
 Gate : `cd apps/go-api && go test ./internal/analysis/... && go vet ./...` + golangci ;
 web `make check-types && make test-web` ; gate visuel user sur le film Sylvanus re-cuit.

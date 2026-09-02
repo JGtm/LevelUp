@@ -9778,6 +9778,7 @@ export interface components {
             sys_bytes: number;
         };
         RosterEntry: {
+            bot?: boolean;
             /** Format: int64 */
             filmIndex: number;
             name?: string;
@@ -11579,6 +11580,7 @@ export interface components {
             wins: number;
         };
         Track: {
+            bot?: string;
             /** Format: int64 */
             endFrame?: number;
             name?: string;

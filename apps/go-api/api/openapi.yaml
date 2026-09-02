@@ -21150,6 +21150,8 @@ components:
     RosterEntry:
       additionalProperties: false
       properties:
+        bot:
+          type: boolean
         filmIndex:
           format: int64
           type: integer
@@ -25752,6 +25754,8 @@ components:
     Track:
       additionalProperties: false
       properties:
+        bot:
+          type: string
         endFrame:
           format: int64
           type: integer

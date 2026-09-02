@@ -201,6 +201,8 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       "Échelle étalonnée sur les lieux fréquentés (médiane au bas, 95e centile en haut) : au-delà, la couleur sature. Un seul point extrême ne peut donc pas écraser le reste de la carte.",
     rosterEmpty:
       "Aucune vie du film n'a pu être rattachée à un joueur : le rejeu reste anonyme.",
+    bridgeDiag: (named: number, total: number, collisions: number) =>
+      `Pont du film : ${named}/${total} vies nommées, ${collisions} collision(s) de slot.`,
     teamUnknown: 'Sans équipe',
     teamLabelFmt: (name) => `Équipe ${name}`,
     teamNumberedFmt: (n) => `Équipe ${n}`,
@@ -257,7 +259,8 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     grenadeThrown: 'Grenade lancée',
     eliminatedLabel: 'Éliminé',
     respawnIn: 'Réapparition dans',
-    respawnUnknown: 'Réapparition ?',
+    goneLabel: 'Hors film',
+    goneValue: 'ne revient plus',
     inventoryAge: 'Inventaire lu il y a',
     inventoryAhead: 'Inventaire de la première image-clé de cette vie, lue dans',
     grenadeSelected: 'Type équipé : le seul porté, donc celui qui partira au prochain lancer.',
@@ -572,6 +575,8 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     heatLegendHint:
       'Scale calibrated on the visited places (median at the bottom, 95th percentile at the top): beyond that, the colour saturates. A single extreme spot therefore cannot flatten the rest of the map.',
     rosterEmpty: 'No life from the film could be attached to a player: the replay stays anonymous.',
+    bridgeDiag: (named: number, total: number, collisions: number) =>
+      `Film bridge: ${named}/${total} lives named, ${collisions} slot collision(s).`,
     teamUnknown: 'No team',
     teamLabelFmt: (name) => `Team ${name}`,
     teamNumberedFmt: (n) => `Team ${n}`,
@@ -627,7 +632,8 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     grenadeThrown: 'Grenade thrown',
     eliminatedLabel: 'Eliminated',
     respawnIn: 'Respawn in',
-    respawnUnknown: 'Respawn ?',
+    goneLabel: 'Out of film',
+    goneValue: 'does not return',
     inventoryAge: 'Inventory read',
     inventoryAhead: 'Inventory from the first keyframe of this life, read in',
     grenadeSelected: 'Equipped type: the only one carried, so the one the next throw will use.',
