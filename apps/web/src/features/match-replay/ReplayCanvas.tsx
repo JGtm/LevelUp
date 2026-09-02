@@ -190,7 +190,7 @@ export function ReplayCanvas({
   }, [markerColors, doc.roster.length, paletteVersion])
   // Identité PAR SLOT ET PAR IMAGE (un slot est réattribué entre manches) : strict pour les
   // marqueurs/vies, `colorOfSlotOrLast` pour la frontière (objets lâchés, morts). Cf. useSlotIdentity.
-  const { colorOfSlot, colorOfSlotOrLast, markOfSlot, nameOfSlot, sideOfSlot } = useSlotIdentity({
+  const { colorOfSlot, colorOfSlotOrLast, markOfSlot, nameOfSlot, nameOfXuid, sideOfSlot } = useSlotIdentity({
     doc,
     scoreboard,
     xuidMeta,
@@ -297,7 +297,7 @@ export function ReplayCanvas({
     doc, view: canvasView, enabled: showGroundWeapons,
     ink: { fill: markInk.fill, outline: neutralInk }, redraw,
   })
-  const vehicles = useReplayVehicles({ doc, view: canvasView, enabled: showVehicles, showNames, colorOfSlot, nameOfSlot, neutralInk, labelStroke, redraw }) // schéma 29 ; prédicat embarqué C7 pour drawTracksLayer.
+  const vehicles = useReplayVehicles({ doc, view: canvasView, enabled: showVehicles, showNames, showAim, colorOfSlot, nameOfSlot, nameOfXuid, neutralInk, labelStroke, redraw }) // schéma 29 ; prédicat embarqué C7 ; cône du conducteur + nom par xuid (2026-09-02).
   // LES POSES D'ÉQUIPEMENT (schéma 10) : comptes, axe de temps, bascules et survol dans un
   // seul hook (useReplayPlacements). Les LÂCHÉS DE PUISSANCE suivent leur bascule, et rien
   // d'autre — plus de garde de mode par-dessus (2026-08-20).

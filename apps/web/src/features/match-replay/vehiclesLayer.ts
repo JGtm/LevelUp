@@ -1,5 +1,6 @@
 /**
- * vehiclesLayer.ts — LES VÉHICULES sur la carte du rejeu (schéma 29) : géométrie pure et tracé.
+ * vehiclesLayer.ts — LES VÉHICULES sur la carte du rejeu (schéma 29) : la géométrie et les
+ * règles, sans une ligne de canvas.
  *
  * CE QUE CE CALQUE AFFIRME. Une entrée de `doc.vehicles` est LA VIE D'UN VÉHICULE : où il naît,
  * sa trajectoire échantillonnée avec son cap, ses épisodes d'occupation (qui est à bord et
@@ -7,11 +8,19 @@
  * toujours `unknown` côté document — et ce calque ne dessine JAMAIS d'effet de destruction :
  * le sprite s'efface NETTEMENT à `t1max`, rien de plus (décision de cadrage du plan).
  *
- * QUATRE RESPONSABILITÉS PURES, TESTABLES SANS CANVAS : l'ORIENTATION (`vehicleHeadingAt` +
- * `vehicleScreenAngle`), la TAILLE (`vehicleSpriteScale`, ancrée sur le pion), l'OCCUPATION
- * (`vehicleActiveRides`, `vehicleColorAt`) et le PRÉDICAT EMBARQUÉ (`buildEmbarkedPredicate`,
- * consommé par `replayMarkers.drawTracksLayer` pour supprimer le pion d'un occupant). Le tracé
- * canvas (`drawVehiclesLayer`) ne fait qu'assembler ces quatre réponses image par image.
+ * CINQ RESPONSABILITÉS PURES, TESTABLES SANS CANVAS : le REFUS DU DÉCOR (`vehicleIsDecor`,
+ * `vehicleCanEmbark`), l'ORIENTATION (`vehicleHeadingAt`, `vehicleScreenAngle`,
+ * `vehicleAimAngle`), la TAILLE (`vehicleSpriteScale`, ancrée sur le pion), l'OCCUPATION
+ * (`vehicleActiveRides`, `vehicleDriverAt`, `vehicleColorAt`) et le PRÉDICAT EMBARQUÉ
+ * (`buildEmbarkedPredicate`, consommé par `replayMarkers.drawTracksLayer` pour supprimer le pion
+ * d'un occupant). LE TRACÉ CANVAS EST À CÔTÉ (`vehiclesPaint.ts`, extrait le 2026-09-02 quand le
+ * cône du conducteur a fait franchir à ce fichier le seuil de taille du dépôt) : il ne fait
+ * qu'assembler ces cinq réponses image par image.
+ *
+ * CE QUE CE CALQUE REFUSE DE DESSINER — LES FAMILLES NON JOUABLES (verdict utilisateur du
+ * 2026-09-02, après visionnage réel). Voir `FAMILLES_NON_JOUABLES` : ce sont des entités de
+ * DÉCOR, pas des véhicules de la partie, et elles ne doivent NI se dessiner, NI nommer
+ * quiconque, NI faire disparaître un pion.
  *
  * ORIENTATION — LA CONSTANTE D'ÉCART D'ÉCRAN (GATE C6). Les échantillons portent un cap MONDE
  * (`VehicleSample.h`, convention `Point.h` : 0° = +X, 90° = +Y, sens `atan2(y,x)`), mais les
@@ -34,15 +43,65 @@
  */
 import type { ReplayVehicleRide } from '@/lib/api/types'
 
-import { drawRotatedSprite } from './replayDraw'
-import { drawNameLabel, type LabelStyle } from './replayLabels'
 import { CORE_RADIUS } from './replayMarkers'
 import { lastIndexAt, positionAt, type XY } from './replayLogic'
 import type { ReplayVehicleTrackReady } from './replayNormalize'
-import { project, type PlacementView } from './placementShapes'
-import { traceDiamond } from './weaponPadsLayer'
 
-export type { PlacementView as VehicleView } from './placementShapes'
+// --- FAMILLES REFUSÉES ------------------------------------------------------------------------
+
+/**
+ * FAMILLES_NON_JOUABLES — les familles que ce calque IGNORE ENTIÈREMENT.
+ *
+ * SOURCE : verdict utilisateur du 2026-09-02 après visionnage réel du rejeu (« sur Behemoth,
+ * des falcon apparaissent alors que la partie n'en avait aucun »), recoupé sur l'artefact
+ * `0d76e8f1` — le châssis `0x0000254b` est bien le modèle du Falcon, mais il est porté par des
+ * entités de DÉCOR : vitesse moyenne 0,3-0,8 m/s sur toute leur vie (l'une n'a parcouru
+ * strictement aucune distance), vivantes du début à la fin du film. Le Falcon, le Pelican, le
+ * Phantom et le Skiff ne sont PAS pilotables en multijoueur Halo Infinite : une entité qui porte
+ * leur modèle est un élément de mise en scène, jamais un véhicule de la partie.
+ *
+ * CE N'EST PAS UNE CORRECTION DU DOCUMENT. Le serveur a raison de publier ces vies : il recense
+ * ce que le film contient (archétype ti=40), et le châssis EST celui d'un Falcon. C'est
+ * l'AFFICHAGE qui doit se taire — d'où un ensemble tenu ici, côté calque, et pas un filtre Go.
+ *
+ * TROIS CONSÉQUENCES, TOUTES NÉCESSAIRES :
+ *  1. AUCUN DESSIN — ni sprite, ni marqueur de repli : un décor ne se montre pas comme un
+ *     véhicule (c'est la plainte initiale).
+ *  2. AUCUN NOM — les noms d'occupants ne sont écrits que sur des véhicules réels.
+ *  3. AUCUNE PARTICIPATION AU PRÉDICAT EMBARQUÉ — et c'était le dégât le plus grave : le liant
+ *     « trou de position » a prêté à un de ces props TROIS épisodes d'occupation (slot 771 de
+ *     l'artefact cité), ce qui ESCAMOTAIT le pion des joueurs passés à côté. Un faux embarquement
+ *     efface un joueur bien réel de la carte ; le refus doit donc porter d'abord ici.
+ */
+export const FAMILLES_NON_JOUABLES: ReadonlySet<string> = new Set([
+  'falcon',
+  'pelican',
+  'phantom',
+  'skiff',
+])
+
+/**
+ * vehicleIsDecor — vrai quand la famille est refusée par `FAMILLES_NON_JOUABLES`. Une famille
+ * VIDE (châssis non résolu) n'est PAS du décor : on ne sait pas ce que c'est, et le losange
+ * neutre continue de le dire.
+ */
+export function vehicleIsDecor(family: string | undefined): boolean {
+  return family !== undefined && FAMILLES_NON_JOUABLES.has(family)
+}
+
+/**
+ * vehicleCanEmbark — une vie de véhicule peut-elle faire DISPARAÎTRE le pion d'un joueur ?
+ *
+ * DEUX REFUS, POUR LA MÊME RAISON : un pion supprimé est un joueur qu'on n'affiche plus, et cela
+ * ne se justifie que si le véhicule qui le porte est, lui, affiché et certain. Le décor est
+ * refusé (cf. `FAMILLES_NON_JOUABLES`), et le CHÂSSIS NON RÉSOLU aussi : un épisode d'occupation
+ * posé sur une famille inconnue peut porter sur n'importe quoi — dont un autre prop — et le prix
+ * de l'erreur (un joueur effacé) est plus lourd que celui de l'abstention (un pion de trop
+ * pendant qu'il conduit).
+ */
+export function vehicleCanEmbark(track: ReplayVehicleTrackReady): boolean {
+  return track.family !== undefined && track.family !== '' && !vehicleIsDecor(track.family)
+}
 
 // --- ORIENTATION ----------------------------------------------------------------------------
 
@@ -94,6 +153,19 @@ export function vehicleHeadingAt(track: ReplayVehicleTrackReady, frame: number):
  */
 export function vehicleScreenAngle(headingDeg: number): number {
   return ((90 - headingDeg) * Math.PI) / 180
+}
+
+/**
+ * vehicleAimAngle — LE MÊME CAP, mais pour le CÔNE DE VISÉE, et ce n'est PAS le même angle.
+ *
+ * `vehicleScreenAngle` oriente une IMAGE dessinée nez-en-haut : elle porte le quart de tour qui
+ * rattrape la convention du sprite. Le cône, lui, est une forme tracée à l'angle nu — comme le
+ * cône des pions (`replayAimCone` : « monde -> canevas, l'axe Y est inversé, donc l'angle l'est
+ * aussi »), il n'a besoin QUE de l'inversion de signe. Confondre les deux ferait pointer le cône
+ * à 90° du nez du véhicule : d'où deux fonctions nommées, et pas une constante partagée.
+ */
+export function vehicleAimAngle(headingDeg: number): number {
+  return (-headingDeg * Math.PI) / 180
 }
 
 // --- POSITION ET FENÊTRE D'AFFICHAGE ---------------------------------------------------------
@@ -196,7 +268,7 @@ export function vehicleSpriteScale(naturalHeightPx: number, mmPerPx: number): nu
 }
 
 /** Demi-diagonale du petit losange neutre d'un châssis non résolu — le noyau d'un pion. */
-const VEHICLE_UNKNOWN_HALF_PX = CORE_RADIUS
+export const VEHICLE_UNKNOWN_HALF_PX = CORE_RADIUS
 
 // --- OCCUPATION -------------------------------------------------------------------------------
 
@@ -213,6 +285,22 @@ export function vehicleActiveRides(
   return track.rides
     .filter((r) => frame >= r.t0 && frame <= r.t1)
     .sort((a, b) => (a.seat ?? Number.POSITIVE_INFINITY) - (b.seat ?? Number.POSITIVE_INFINITY))
+}
+
+/**
+ * vehicleDriverAt — L'ÉPISODE DU CONDUCTEUR à `frame` (siège 0), ou `null`.
+ *
+ * SEUL LE SIÈGE 0 COMPTE, et un siège NON LU ne fait pas l'affaire : c'est le conducteur, et lui
+ * seul, dont on peut affirmer où il regarde (décision utilisateur du chantier : « à l'arrêt on
+ * assume qu'il regarde devant lui ; en mouvement, la direction du déplacement »). La visée d'un
+ * passager ou d'un tourelleur est INDÉPENDANTE de celle du véhicule — elle est inconnue, et rien
+ * ne la remplace.
+ */
+export function vehicleDriverAt(
+  track: ReplayVehicleTrackReady,
+  frame: number,
+): ReplayVehicleRide | null {
+  return vehicleActiveRides(track, frame).find((r) => r.seat === 0) ?? null
 }
 
 /**
@@ -249,12 +337,18 @@ export function vehicleColorAt(
  * deux occupants du MÊME véhicule (conducteur + passagers, Warthog 3 places, Razorback 4...)
  * reprennent leur pion chacun à SA frame de sortie, sans dépendre l'un de l'autre — c'est le sens
  * même de « plusieurs épisodes SIMULTANÉS », pas une propriété qu'il faut recoder ici.
+ *
+ * SEULES LES VIES QUI PASSENT `vehicleCanEmbark` Y ENTRENT (2026-09-02) : ni décor, ni châssis
+ * non résolu. Un épisode posé sur l'un ou l'autre effacerait un joueur bien réel de la carte,
+ * sans rien montrer à sa place — c'est exactement ce qu'ont produit les trois faux épisodes du
+ * prop Falcon de l'artefact `0d76e8f1`.
  */
 export function buildEmbarkedPredicate(
   tracks: readonly ReplayVehicleTrackReady[],
 ): (slot: number, frame: number) => boolean {
   const bySlot = new Map<number, ReplayVehicleRide[]>()
   for (const track of tracks) {
+    if (!vehicleCanEmbark(track)) continue
     for (const ride of track.rides) {
       const list = bySlot.get(ride.slot)
       if (list) list.push(ride)
@@ -268,129 +362,3 @@ export function buildEmbarkedPredicate(
   }
 }
 
-// --- TRACÉ --------------------------------------------------------------------------------
-
-/** Ce que le calque a besoin de savoir de l'instant courant. */
-export interface VehicleTime {
-  frame: number
-  /** Densité de pixels : toutes les tailles d'écran de ce fichier la suivent. */
-  k: number
-}
-
-/** Dimensions natives + échelle manifeste d'UNE famille — indépendant de la teinte. */
-export interface VehicleSpriteSize {
-  naturalHeightPx: number
-  mmPerPx: number
-}
-
-/** Ce que le calque emprunte au thème, au document et aux vignettes déjà cuites. */
-export interface VehicleStyle {
-  /** Encre du « aucun occupant connu » (token sémantique, résolu par l'appelant). */
-  neutralInk: string
-  /** Encre du CONTOUR des noms — même contrat que `replayMarkers`/`replayLabels`. */
-  labelStroke: string
-  /** Calque des NOMS (bouton « Noms » partagé avec les pions, décision de cadrage). */
-  showNames: boolean
-  /**
-   * Vignette DÉJÀ TEINTE (family × couleur résolue), ou `null` — l'image source ou sa teinte
-   * n'ont pas encore fini de charger : RIEN NE LA REMPLACE, elle apparaît après coup (même
-   * contrat que les vignettes de socle, `useReplayWeaponPads`).
-   */
-  spriteOf: (family: string, color: string) => CanvasImageSource | null
-  /** Dimensions natives + mm/px du manifeste pour une famille, ou `null` si pas encore chargées. */
-  sizeOf: (family: string) => VehicleSpriteSize | null
-  colorOfSlot: (slot: number, frame: number) => string | null
-  nameOfSlot: (slot: number, frame: number) => string | null
-}
-
-/** Écart entre deux noms empilés, en pixels d'écran (police partagée avec `replayLabels.ts`). */
-const VEHICLE_NAME_LINE_STEP_PX = 10
-
-/**
- * drawUnknownVehicleMarker — LE CHÂSSIS NON RÉSOLU : un petit losange neutre, JAMAIS le sprite
- * d'un véhicule voisin (décision de cadrage). Même vocabulaire que les socles (`weaponPadsLayer
- * .traceDiamond`, réutilisée) : un losange dit « objet de la carte, pas un joueur ».
- */
-function drawUnknownVehicleMarker(ctx: CanvasRenderingContext2D, c: XY, color: string, k: number): void {
-  ctx.globalAlpha = 1
-  ctx.fillStyle = color
-  traceDiamond(ctx, c, VEHICLE_UNKNOWN_HALF_PX * k)
-  ctx.fill()
-}
-
-/**
- * drawVehicleOccupantNames — LES NOMS EMPILÉS d'un véhicule (C7) : conducteur en premier, puis
- * passagers par siège croissant (`vehicleActiveRides` a déjà trié). CHAQUE NOM PORTE SA PROPRE
- * couleur d'occupant (comme un pion) — ce sont, en pratique, presque toujours la même équipe,
- * mais rien ici ne force une teinte unique. Un occupant dont l'identité n'est pas résolue
- * (`nameOfSlot` rend `null`) SAUTE SA LIGNE plutôt que de laisser un blanc.
- */
-function drawVehicleOccupantNames(
-  ctx: CanvasRenderingContext2D,
-  rides: readonly ReplayVehicleRide[],
-  frame: number,
-  c: XY,
-  baseEdgePx: number,
-  style: Pick<VehicleStyle, 'nameOfSlot' | 'colorOfSlot' | 'labelStroke'>,
-  k: number,
-): void {
-  const label: LabelStyle = { k, labelStroke: style.labelStroke }
-  let line = 0
-  for (const ride of rides) {
-    const name = style.nameOfSlot(ride.slot, frame)
-    if (!name) continue
-    const color = style.colorOfSlot(ride.slot, frame) ?? style.labelStroke
-    drawNameLabel(ctx, c, name, label, color, baseEdgePx + VEHICLE_NAME_LINE_STEP_PX * line * k)
-    line++
-  }
-}
-
-/**
- * drawVehiclesLayer trace TOUS les véhicules VISIBLES à l'image courante.
- *
- * ORDRE DU DOCUMENT, comme les armes au sol : aucun arbitrage de recouvrement n'est fait ici.
- */
-export function drawVehiclesLayer(
-  ctx: CanvasRenderingContext2D,
-  tracks: readonly ReplayVehicleTrackReady[],
-  view: PlacementView,
-  time: VehicleTime,
-  style: VehicleStyle,
-): void {
-  if (tracks.length === 0 || view.width === 0) return
-  ctx.save()
-  for (const track of tracks) {
-    if (!vehicleVisibleAt(track, time.frame)) continue
-    const world = vehiclePositionAt(track, time.frame)
-    if (!world) continue
-    const c = project(world, view)
-    const color = vehicleColorAt(track, time.frame, style.colorOfSlot) ?? style.neutralInk
-    // ÉDGE PAR DÉFAUT (chassis non résolu, ou vignette pas encore chargée) : le plancher de
-    // lisibilité, seule mesure disponible avant qu'une taille réelle ne soit connue. TOUJOURS
-    // MULTIPLIÉ PAR `time.k`, comme la branche sprite juste en dessous — un pixel d'écran
-    // déclaré ici n'a de sens qu'à la densité du périphérique (même règle que `replayMarkers`).
-    let edgePx = (VEHICLE_FLOOR_PX / 2) * time.k
-    if (!track.family) {
-      drawUnknownVehicleMarker(ctx, c, color, time.k)
-      edgePx = VEHICLE_UNKNOWN_HALF_PX * time.k
-    } else {
-      const size = style.sizeOf(track.family)
-      const sprite = size ? style.spriteOf(track.family, color) : null
-      if (size && sprite) {
-        const angle = vehicleScreenAngle(vehicleHeadingAt(track, time.frame))
-        const scaleRatio = vehicleSpriteScale(size.naturalHeightPx, size.mmPerPx)
-        ctx.globalAlpha = 1
-        drawRotatedSprite(ctx, sprite, c.x, c.y, angle, scaleRatio * time.k)
-        edgePx = (vehicleScreenLengthPx(size.naturalHeightPx, size.mmPerPx) / 2) * time.k
-      }
-      // Sinon : image ou manifeste pas encore chargés — rien ne remplace le sprite (même
-      // contrat que les vignettes de socle), le nom garde le repli de plancher ci-dessus.
-    }
-    if (style.showNames) {
-      const rides = vehicleActiveRides(track, time.frame)
-      if (rides.length > 0) drawVehicleOccupantNames(ctx, rides, time.frame, c, edgePx, style, time.k)
-    }
-  }
-  ctx.globalAlpha = 1
-  ctx.restore()
-}

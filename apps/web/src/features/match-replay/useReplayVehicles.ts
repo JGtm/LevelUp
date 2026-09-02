@@ -28,11 +28,8 @@ import { useTitleSlug } from '@/lib/title-routing'
 import type { PlacementView } from './placementShapes'
 import { tintedIconCanvas } from './replayDraw'
 import type { ReplayDocumentReady } from './replayNormalize'
-import {
-  buildEmbarkedPredicate,
-  drawVehiclesLayer,
-  type VehicleSpriteSize,
-} from './vehiclesLayer'
+import { buildEmbarkedPredicate, vehicleIsDecor } from './vehiclesLayer'
+import { drawVehiclesLayer, type VehicleSpriteSize } from './vehiclesPaint'
 
 /** Une entrée de `index.json` (lot A) : seuls les deux champs utiles ici sont lus. */
 interface VehicleManifestEntry {
@@ -47,9 +44,17 @@ export interface VehiclesInput {
   enabled: boolean
   /** Calque des NOMS (bouton partagé avec les pions) : les noms empilés le suivent. */
   showNames: boolean
+  /** Calque de la VISÉE (le MÊME bouton que les pions) : le cône du conducteur le suit. */
+  showAim: boolean
   /** Identité PAR SLOT ET PAR IMAGE (cf. `useSlotIdentity`) : même source que les pions. */
   colorOfSlot: (slot: number, frame: number) => string | null
   nameOfSlot: (slot: number, frame: number) => string | null
+  /**
+   * Nom d'un joueur par XUID — SOURCE PRIORITAIRE de l'étiquette d'un occupant, parce que le
+   * document nomme l'occupant lui-même (`VehicleRide.xuid`) alors que le pont slot->joueur
+   * dépend, lui, d'une trace de bipède jointe à un xuid (cf. `VehicleStyle.nameOfXuid`).
+   */
+  nameOfXuid: (xuid: string) => string | null
   /** Encre du « aucun occupant connu » (token sémantique, résolu par l'appelant). */
   neutralInk: string
   /** Encre du contour des noms (cf. `useReplayInks`). */
@@ -77,8 +82,10 @@ export function useReplayVehicles({
   view,
   enabled,
   showNames,
+  showAim,
   colorOfSlot,
   nameOfSlot,
+  nameOfXuid,
   neutralInk,
   labelStroke,
   redraw,
@@ -97,12 +104,14 @@ export function useReplayVehicles({
 
   // LES SPRITES SOURCES, une par FAMILLE employée par `doc.vehicleLabels` — chargés UNE FOIS,
   // jamais reteints ici (la teinture par équipe se fait à la demande, cf. `spriteOf`).
+  // LES FAMILLES DE DÉCOR SONT SAUTÉES : le calque ne les dessine pas (cf.
+  // `FAMILLES_NON_JOUABLES`), leur image n'a donc aucune raison de traverser le réseau.
   const rawImagesRef = useRef<Map<string, HTMLImageElement>>(new Map())
   useEffect(() => {
     if (!enabled) return
     const map = rawImagesRef.current
     for (const family of Object.keys(labels ?? {})) {
-      if (map.has(family)) continue
+      if (map.has(family) || vehicleIsDecor(family)) continue
       const url = labels?.[family]?.img
       if (!url) continue
       const im = new Image()
@@ -180,11 +189,16 @@ export function useReplayVehicles({
         tracks,
         view,
         { frame, k },
-        { neutralInk, labelStroke, showNames, spriteOf, sizeOf, colorOfSlot, nameOfSlot },
+        { neutralInk, labelStroke, showNames, showAim, spriteOf, sizeOf, colorOfSlot, nameOfSlot, nameOfXuid },
       )
     },
-    [enabled, tracks, view, neutralInk, labelStroke, showNames, spriteOf, sizeOf, colorOfSlot, nameOfSlot],
+    [enabled, tracks, view, neutralInk, labelStroke, showNames, showAim, spriteOf, sizeOf, colorOfSlot, nameOfSlot, nameOfXuid],
   )
 
-  return { available: tracks.length > 0, paint, isEmbarkedAt }
+  // « DISPONIBLE » = AU MOINS UN VÉHICULE QUE LE CALQUE DESSINERAIT. Un film qui ne porte que du
+  // décor (Falcon & consorts, cf. `FAMILLES_NON_JOUABLES`) n'a pas de calque à commander : la
+  // bascule ne s'affiche pas, plutôt que d'allumer un calque resté vide.
+  const available = useMemo(() => tracks.some((t) => !vehicleIsDecor(t.family)), [tracks])
+
+  return { available, paint, isEmbarkedAt }
 }

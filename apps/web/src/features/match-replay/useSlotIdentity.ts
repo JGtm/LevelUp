@@ -33,6 +33,7 @@ import {
   colorResolver,
   colorResolverOrLast,
   markResolver,
+  nameByXuidResolver,
   nameResolver,
   sideResolver,
   type ReplayPlayer,
@@ -56,6 +57,15 @@ export interface SlotIdentity {
   colorOfSlotOrLast: (slot: number, frame: number) => string | null
   markOfSlot: (slot: number, frame: number) => PlayerMarkKind | undefined
   nameOfSlot: (slot: number, frame: number) => string | null
+  /**
+   * Nom d'affichage d'un joueur DÉSIGNÉ PAR SON XUID — indépendant du slot et de l'image.
+   *
+   * Pour les consommateurs qui tiennent l'identité de leur côté plutôt que par le pont
+   * slot->joueur : c'est le cas d'un ÉPISODE D'OCCUPATION de véhicule (`VehicleRide.xuid`), que
+   * le document nomme lui-même et qui reste nommable même quand la trace de bipède du slot n'a
+   * pas de xuid (cf. `rosterLogic.nameByXuidResolver`).
+   */
+  nameOfXuid: (xuid: string) => string | null
   /**
    * CAMP de la vie qui occupe le slot à l'image (`team_side`), null quand il est inconnu ou le
    * slot libre. Distinct de la couleur : celle-ci ne connaît que « allié / adverse » vu du
@@ -155,7 +165,8 @@ export function useSlotIdentity({
   )
   const markOfSlot = useMemo(() => markResolver(ownership, marks ?? NO_MARKS), [ownership, marks])
   const nameOfSlot = useMemo(() => nameResolver(ownership), [ownership])
+  const nameOfXuid = useMemo(() => nameByXuidResolver(players), [players])
   const sideOfSlot = useMemo(() => sideResolver(ownership), [ownership])
 
-  return { colorOfSlot, colorOfSlotOrLast, markOfSlot, nameOfSlot, sideOfSlot }
+  return { colorOfSlot, colorOfSlotOrLast, markOfSlot, nameOfSlot, nameOfXuid, sideOfSlot }
 }
