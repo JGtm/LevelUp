@@ -12,6 +12,18 @@
  * Note bots : les identifiants bot "bid(N.0)" ne sont PAS masqués ici — ils sont
  * résolus côté serveur (BotSQLCase → "343 …") ; un bot inconnu résiduel reste
  * lisible tel quel plutôt que d'être étiqueté à tort "Joueur".
+ *
+ * SUFFIXE " [bot]" — RETIRÉ À L'AFFICHAGE (retour user 2026-09-02). Le producteur
+ * killsource écrit le gamertag d'un bot avec le suffixe littéral ` [bot]`
+ * (`apps/go-api/internal/games/halo_infinite/film/killsource/roster.go`,
+ * `botSuffix`) et l'artefact de rejeu (schéma 36) le porte pareil : c'est un
+ * MARQUEUR DE DONNÉES, pas un choix d'affichage — l'écran n'a pas à le répéter,
+ * d'autant que le contexte le dit déjà (badge « Bot », style atténué). Xbox
+ * interdit les crochets dans un gamertag : aucun joueur réel ne peut porter ce
+ * suffixe, le retrait est donc sans risque de confusion. `stripBotSuffix` est
+ * exporté pour les rares points d'affichage qui ne passent pas par
+ * `displayPlayerName` (ex. un littéral déjà masqué par sa propre logique) —
+ * jamais pour recopier le suffixe ailleurs.
  */
 
 /**
@@ -37,9 +49,23 @@ export function maskedPlayerLabel(xuid: string): string {
   return `Joueur ${tail}`
 }
 
+/** Suffixe de DONNÉES posé par killsource sur le gamertag d'un bot — jamais un
+ * choix d'affichage (cf. en-tête du fichier). Casse exacte, miroir du Go. */
+const BOT_SUFFIX = ' [bot]'
+
+/**
+ * stripBotSuffix retire le suffixe ` [bot]` FINAL d'un gamertag, s'il y est —
+ * jamais une occurrence en plein milieu du nom (donnée aberrante que ce helper
+ * ne réinterprète pas). `displayPlayerName` l'applique déjà : n'appeler ce
+ * helper directement que pour un point d'affichage qui ne passe pas par lui.
+ */
+export function stripBotSuffix(gamertag: string): string {
+  return gamertag.endsWith(BOT_SUFFIX) ? gamertag.slice(0, -BOT_SUFFIX.length) : gamertag
+}
+
 /**
  * Nom d'affichage d'un joueur, GARANTI sans format xuid brut :
- *  - `gamertag` non vide et non xuid-like → `gamertag`
+ *  - `gamertag` non vide et non xuid-like → `gamertag`, suffixe bot retiré
  *  - sinon `xuid` fourni → `maskedPlayerLabel(xuid)`
  *  - sinon → "Joueur inconnu"
  */
@@ -48,7 +74,7 @@ export function displayPlayerName(
   xuid?: string | null,
 ): string {
   const gt = gamertag?.trim()
-  if (gt && !isXuidLike(gt)) return gt
+  if (gt && !isXuidLike(gt)) return stripBotSuffix(gt)
   const xu = xuid?.trim()
   if (xu) return maskedPlayerLabel(xu)
   return 'Joueur inconnu'

@@ -42,6 +42,7 @@ import { squadManifest, type SquadManifestKey } from '@/lib/i18n/generated/squad
 import { tokenVar } from '@/lib/accessibility'
 import { AllyEnemySplitBar, KDSplitBar } from '@/features/_shared/EncounterSplitBars'
 import { NUMERIC_SORT, localeTextSortingFn } from '@/features/explorer/explorerMatchesClientSort'
+import { displayPlayerName } from '@/lib/players/displayName'
 import { HeaderLabelTooltip } from '@/lib/table/columnMeta'
 import { ariaSortOf, sortSuffixOf } from './sortHeader'
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
@@ -312,7 +313,9 @@ export function MatchEncountersTable({ rows, locale = 'fr', onPlayerClick, hideC
           const r = ctx.row.original
           // Pas de lien Explorer pour les bots (xuid 'bid(...)' sans historique cross-match).
           const linkable = !r.is_bot && (Boolean(playerSlug) || Boolean(onPlayerClick))
-          const displayGamertag = r.gamertag
+          // Suffixe « [bot] » = marqueur de DONNÉES (killsource), pas d'affichage —
+          // le badge Bot ci-dessous le dit déjà (chokepoint displayName.ts).
+          const displayGamertag = displayPlayerName(r.gamertag, r.xuid)
           return (
             <span className="whitespace-nowrap">
               {linkable ? (

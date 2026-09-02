@@ -32,6 +32,7 @@ import type {
   MatchViewRank,
 } from '@/lib/api/types'
 import { formatDurationMMSS } from '@/lib/formatters'
+import { displayPlayerName } from '@/lib/players/displayName'
 import { HeaderLabelTooltip } from '@/lib/table/columnMeta'
 import type { MatchViewText } from './i18n'
 import { MatchObjectivesSection } from './MatchObjectivesSection'
@@ -403,7 +404,9 @@ function TeamScoreboard({
           // Pas de lien vers Explorer pour les bots : ils n'existent pas hors
           // de ce match (leur xuid 'bid(N.0)' n'a aucun historique cross-match).
           const linkable = !r.is_me && !r.is_bot && playerSlug
-          const displayGamertag = r.gamertag
+          // Le suffixe « [bot] » est un marqueur de DONNÉES (killsource) : l'écran ne le
+          // répète pas, le badge Bot ci-dessous le dit déjà (chokepoint displayName.ts).
+          const displayGamertag = displayPlayerName(r.gamertag, r.xuid)
           return (
             <span className="whitespace-nowrap">
               <span className="mr-1 text-muted-foreground">{isExpanded ? '▾' : '▸'}</span>
