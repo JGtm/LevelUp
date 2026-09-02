@@ -72,21 +72,16 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       grenade: 'Grenades',
       melee: 'Mêlée',
       equipment: 'Équipements',
-      objective: 'Objectifs',
     },
     captureImage: "Capturer l'image",
     recordVideo: 'Enregistrer la vidéo',
     stopRecording: "Arrêter l'enregistrement",
     recordHint:
       "L'enregistrement filme le rejeu tel qu'il défile : changer de vitesse ou déplacer le curseur se voit dans le fichier. Démarrer relance la lecture si elle est en pause ; mettre en pause ou laisser le film finir arrête l'enregistrement et télécharge le clip.",
-    captureImageShort: 'Image',
     // « REC » et « Arrêter » : la convention des lecteurs, identique dans les deux langues
     // pour la première — c'est le mot qu'on cherche du regard sur un bouton d'enregistrement.
-    recordVideoShort: 'REC',
-    stopRecordingShort: 'Arrêter',
     settingsButton: 'Réglages',
     settingsClose: 'Fermer les réglages',
-    playbackTitle: 'Lecture',
     autoPlay: 'Lecture automatique',
     autoPlayHint:
       "Allumé, le rejeu démarre tout seul à l'ouverture de la page. Éteint — le réglage par défaut — il s'ouvre en pause au coup d'envoi et attend le bouton Lecture. Le choix est retenu d'un match à l'autre ; il ne met ni en lecture ni en pause le rejeu déjà ouvert.",
@@ -97,8 +92,6 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     layerZones: 'Zones',
     layerZonesHint:
       'Zones nommées officielles de la carte, extraites du jeu. Les grandes zones pavent le terrain ; les contours pointillés sont des étages imbriqués.',
-    layerNames: 'Noms',
-    layerNamesHint: 'Le nom de chaque joueur sous son marqueur.',
     layerTrail: 'Traînée',
     layerTrailHint:
       "Les sept dernières secondes parcourues, derrière chaque marqueur. L'opacité monte vers la tête : la trace la plus visible est celle de l'instant, et c'est ce qui donne le sens du déplacement.",
@@ -368,7 +361,6 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     ammoFullLabel: 'Munitions pleines',
     gaugeLabel: 'charge restante',
     exportVideo: 'Exporter la vidéo',
-    exportVideoShort: 'Exporter',
     exportHint:
       "L'export recalcule le film aussi vite que la machine le permet : le fichier ne se paie pas en temps de match.",
     exportDialogTitle: 'Exporter le rejeu en vidéo',
@@ -460,19 +452,14 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       grenade: 'Grenades',
       melee: 'Melee',
       equipment: 'Equipment',
-      objective: 'Objectives',
     },
     captureImage: 'Capture image',
     recordVideo: 'Record video',
     stopRecording: 'Stop recording',
     recordHint:
       'Recording films the replay as it plays: changing speed or moving the cursor shows up in the file. Starting resumes playback if it is paused; pausing, or letting the film end, stops the recording and downloads the clip.',
-    captureImageShort: 'Image',
-    recordVideoShort: 'REC',
-    stopRecordingShort: 'Stop',
     settingsButton: 'Settings',
     settingsClose: 'Close settings',
-    playbackTitle: 'Playback',
     autoPlay: 'Auto-play',
     autoPlayHint:
       'Turned on, the replay starts on its own when the page opens. Turned off — the default — it opens paused at kickoff and waits for the Play button. The choice is kept from one match to the next; it neither plays nor pauses a replay that is already open.',
@@ -483,8 +470,6 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     layerZones: 'Zones',
     layerZonesHint:
       'Official named map zones, extracted from the game. Large zones tile the terrain; dashed outlines are nested floors.',
-    layerNames: 'Names',
-    layerNamesHint: "Each player's name under their marker.",
     layerTrail: 'Trail',
     layerTrailHint:
       'The last seven seconds travelled, behind every marker. Opacity rises towards the head: the most visible trace is always the current one, and that is what gives the direction of travel.',
@@ -751,7 +736,6 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     ammoFullLabel: 'Ammo full',
     gaugeLabel: 'charge left',
     exportVideo: 'Export video',
-    exportVideoShort: 'Export',
     exportHint:
       'The export recomputes the film as fast as the machine allows: the file does not cost you a match length.',
     exportDialogTitle: 'Export replay as video',

@@ -173,7 +173,6 @@ export interface MarkerStyle {
   /** Nom à écrire sous le marqueur ; `null` = slot sans propriétaire à l'image, donc sans étiquette. */
   nameOfSlot: (slot: number, frame: number) => string | null
   /** Calque des noms (bouton « Noms », allumé par défaut) : un BTB doit pouvoir l'éteindre. */
-  showNames: boolean
   /** Calque de la TRAÎNÉE (bouton « Traînée », allumé par défaut) — retour du 2026-08-18. */
   showTrail: boolean
   /** Encre du DOUBLE CONTOUR et du halo du joueur de la page (token `success`, cf. useReplayInks). */
@@ -290,7 +289,7 @@ function drawLivingTrack(
   drawMarker(ctx, c, style, color, fl, shape)
   // LE NOM SOUS LE POINT, jamais à côté d'une croix de mort : la ligne ci-dessus n'est
   // atteinte que pour une vie EN COURS (drawDeathMark rend avant).
-  const name = style.showNames ? style.nameOfSlot(track.slot, style.frame) : null
+  const name = style.nameOfSlot(track.slot, style.frame)
   if (name) drawNameLabel(ctx, c, name, style, color, markerEdge(fl, style.k, shape))
 }
 

@@ -66,7 +66,6 @@ function style(over: Partial<MarkerStyle> = {}): MarkerStyle {
     showAim: false,
     markOfSlot: () => undefined,
     nameOfSlot: () => "Spartan",
-    showNames: true,
     showTrail: true,
     selfInk: "rgb(4 4 4)",
     deathInk: "rgb(5 5 5)",
@@ -120,11 +119,8 @@ describe("étiquette de nom (D4)", () => {
     expect(fill.args[2] as number).toBeGreaterThan(arc.args[1] as number);
   });
 
-  it("n écrit rien quand le calque des noms est éteint", () => {
-    const ops = trace({ showNames: false });
-    expect(count(ops, "fillText")).toBe(0);
-    expect(count(ops, "strokeText")).toBe(0);
-  });
+  // Le calque des noms n a plus de bascule depuis le 2026-09-02 : il ecrit TOUJOURS. Le seul
+  // cas ou rien ne s ecrit est le suivant — une vie dont on ignore le proprietaire.
 
   it("n écrit rien pour une vie sans propriétaire (aucun nom à donner)", () => {
     const ops = trace({ nameOfSlot: () => null });
@@ -480,7 +476,6 @@ describe("traînée en option et joueur de la page (V1, 2026-08-18)", () => {
     const mine = trace({
       markOfSlot: (): PlayerMarkKind => "me",
       selfInk: "rgb(7 7 7)",
-      showNames: false,
     });
     // Le double contour : deux `stroke` à l'encre dédiée, de rayons DIFFÉRENTS.
     const strokeStyles = mine

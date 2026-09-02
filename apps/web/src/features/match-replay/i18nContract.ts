@@ -229,7 +229,7 @@ export interface ReplayText {
   soundFastHint: string
   /** Filtre des sons par catégorie (tiroir de réglages, phase 2, décision du 16/08). */
   soundCategoriesTitle: string
-  soundCategory: Record<'weapon' | 'grenade' | 'melee' | 'equipment' | 'objective', string>
+  soundCategory: Record<'weapon' | 'grenade' | 'melee' | 'equipment', string>
   /**
    * LA CAPTURE D'IMAGE (2026-08-26) : un bouton en icône dans la barre de lecture, qui
    * télécharge la scène courante en PNG. Le libellé dit le GESTE, pas la technique — « PNG »,
@@ -266,9 +266,6 @@ export interface ReplayText {
    * d'écran annonce. Ce mot-ci est ce que l'ŒIL lit sans survoler : trois icônes muettes côte
    * à côte se ressemblent toutes, un mot les départage d'un coup.
    */
-  captureImageShort: string
-  recordVideoShort: string
-  stopRecordingShort: string
   /** Le tiroir de réglages (décision utilisateur du 16/08) : bouton et panneau partagent
    *  le même intitulé — ouvrir dit ce qu'on va trouver derrière. */
   settingsButton: string
@@ -282,7 +279,6 @@ export interface ReplayText {
    * rejeu ouvert, il décide de son état de DÉPART. Sans cette phrase, on l'essaierait comme un
    * bouton « Lecture » et on conclurait qu'il ne marche pas.
    */
-  playbackTitle: string
   autoPlay: string
   autoPlayHint: string
   /** Calques que le lecteur peut éteindre. */
@@ -293,8 +289,6 @@ export interface ReplayText {
   layerZones: string
   layerZonesHint: string
   /** Noms des joueurs sous leur marqueur (calque éteignable — un BTB à 24 joueurs). */
-  layerNames: string
-  layerNamesHint: string
   /**
    * TRAÎNÉE derrière chaque marqueur (V1, retour utilisateur du 2026-08-18 : « avoir la
    * traînée en option »). ALLUMÉE par défaut : c'est elle qui dit le SENS d'un déplacement,
@@ -760,7 +754,6 @@ export interface ReplayText {
    * emballement du rejeu.
    */
   exportVideo: string
-  exportVideoShort: string
   exportHint: string
   exportDialogTitle: string
   exportFrom: string
