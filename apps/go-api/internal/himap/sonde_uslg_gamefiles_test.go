@@ -22,11 +22,17 @@ package himap
 //	   est en ASCII lisible : « Pick up Blind Skull », « Out of Ammo », « Cindershot »... La
 //	   table d'index vit vers 0x150 du blob, par paires de mots de 32 bits croissants.
 //
-// CE QUI RESTE A FAIRE (et que cette sonde ne fait PAS) : decoder cette table d'index pour
-// relier un string_id a son offset de chaine. Tant que ce n'est pas fait, une zone dont le
-// libelle manque est publiee SANS texte — jamais avec un nom de repli invente.
+// SUITE DONNEE, LE MEME JOUR : la table d'index est DECODEE et le chantier est clos. Le
+// blob n'est pas une soupe d'octets mais 18 sous-fichiers `ucsh` CONCATENES (un par langue,
+// dans l'ordre du bloc des 18) ; dans chacun, la table d'index est le TagBlock du champ 0
+// de la racine — N paires { u32 string_id, u32 offset } — et le texte est le bloc de la
+// premiere reference de donnee. Le decodeur de production vit dans uslg.go (format
+// documente au champ pres) ; il rend 810 noms de lieu en 18 langues et reproduit les 463
+// string_id de callouts_i18n.csv au caractere pres, EN et FR.
 //
-// La sonde ne conclut pas au-dela : elle mesure et journalise. Aucun octet n'est ecrit.
+// Cette sonde reste au depot comme MESURE : c'est elle qui etablit ce que le tag ne porte
+// PAS (le point 1 ferme la piste `locs`, le point 2 celle du texte dans le tag). Elle ne
+// conclut pas au-dela : elle mesure et journalise. Aucun octet n'est ecrit.
 
 import (
 	"path/filepath"

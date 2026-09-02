@@ -9,7 +9,8 @@ package main
 //	  -> mapvar.Parse                          arbre Bond de la variante
 //	  -> himap.ZonesNommeesForge               objets TypeIDZoneNommee -> polygones monde,
 //	                                           râteliers (palettes d'objets) écartés
-//	  -> jointure des libellés par STRING_ID   callouts_i18n.csv (csv.go, index parSID)
+//	  -> jointure des libellés par STRING_ID   callouts_lexique.csv (lexique.go), complété
+//	                                           par callouts_i18n.csv (csv.go, index parSID)
 //	  -> classement grandes/fines              classify.go, pas desserré (pasDeClassement)
 //	  -> entrée sous MapsByID[map_id]
 //
@@ -25,6 +26,11 @@ package main
 // En revanche, dès qu'une zone est nommée, TOUTES les zones de la carte sont publiées,
 // muettes comprises : leur géométrie est mesurée, et le rendu saute simplement le libellé
 // vide (calloutsLayer.ts, drawLabels). On n'invente jamais un nom de repli.
+//
+// DEPUIS LE LEXIQUE (2026-09-02) CE SEUIL NE MORD PLUS : les 266 string_id employés par la
+// rotation sont tous résolus, donc 2 536 zones sur 2 536 portent un texte et aucune carte
+// n'est écartée. La règle reste écrite et testée — elle redeviendrait la bonne réponse le
+// jour où le jeu introduirait un nom que le lexique versionné ne connaît pas encore.
 
 import (
 	"fmt"

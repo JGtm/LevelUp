@@ -9,7 +9,7 @@
 //	  -> tag levl (internal/himap.ReadModuleCallouts : offsets documentés au champ près)
 //	  -> jointure des libellés FR/EN par (carte, volume_index) sur callouts_i18n.csv
 //	     (copie VERSIONNÉE — data/titles/{slug}/reference/callouts_i18n.csv : 816/816
-//	     résolus par string_id, on ne re-extrait PAS uslg)
+//	     résolus par string_id)
 //	  -> classement grandes/fines par recouvrement (classify.go, étalonné sur le POC)
 //	  -> Ridgeline : polygones remplacés par le dump DÉCOUPÉ versionné (decoupe.go)
 //
@@ -19,7 +19,13 @@
 //
 // PASSE FORGE (cartes communautaires, clé = map_id). N'EXIGE PAS LE JEU — elle lit les
 // `map.mvar` téléchargés (forge.go, forge_fetch.go). Voir ces fichiers pour la chaîne et
-// pour la règle de publication d'une carte.
+// pour la règle de publication d'une carte. Ses libellés viennent du LEXIQUE versionné
+// (lexique.go), joints par string_id : sans lui la couverture retombe à 25 %.
+//
+// LE LEXIQUE (`--lexique`, EXIGE LE JEU) est la troisième production de ce binaire, et la
+// seule qui n'écrit pas dans le catalogue : il régénère
+// data/titles/{slug}/reference/callouts_lexique.csv depuis les listes de chaînes `uslg`
+// (internal/himap.LexiqueLieux). Il ne se rejoue qu'à une mise à jour du jeu.
 //
 // LES DEUX PASSES SONT INDÉPENDANTES ET NE S'ÉCRASENT PAS : une reconstruction native
 // CONSERVE la section Forge du catalogue existant, et `--forge-only` conserve la section
@@ -32,6 +38,8 @@
 //	CGO_ENABLED=1 go run ./cmd/mapcallouts-build                       # passe native seule
 //	CGO_ENABLED=1 go run ./cmd/mapcallouts-build --forge-only --forge-fetch
 //	                                                                   # passe Forge seule
+//	CGO_ENABLED=1 go run ./cmd/mapcallouts-build --lexique --forge-only
+//	                                                                   # lexique + passe Forge
 package main
 
 import (
@@ -77,17 +85,22 @@ type options struct {
 	cacheForge  string
 	forgeOnly   bool
 	forgeFetch  bool
+	lexique     bool
 	delaiFetch  time.Duration
 	res         *title.PathResolver
 }
 
 func main() {
 	opts := lisOptions()
+	if opts.lexique {
+		construitLexique(opts)
+	}
 	labels, labelsParSID, err := chargeLibelles(opts.i18nPath)
 	if err != nil {
 		slog.Error("libellés", "err", err)
 		os.Exit(1)
 	}
+	labelsParSID = joinsLexique(opts, labelsParSID)
 	cat := chargeCatalogueExistant(opts.outPath, opts.titleSlug)
 	if !opts.forgeOnly {
 		passeNative(&cat, opts, labels)
@@ -108,6 +121,7 @@ func lisOptions() options {
 	flag.StringVar(&o.cacheForge, "forge-cache", "", "cache local des .mvar (défaut : .ai/V7.5/dumps/mapvar)")
 	flag.BoolVar(&o.forgeOnly, "forge-only", false, "ne pas reconstruire la partie native (n'exige pas le jeu installé)")
 	flag.BoolVar(&o.forgeFetch, "forge-fetch", false, "télécharger les map.mvar manquants (stockage blob UGC, sans jeton)")
+	flag.BoolVar(&o.lexique, "lexique", false, "régénérer callouts_lexique.csv depuis les listes de chaînes du jeu (exige l'installation)")
 	ms := flag.Int("forge-rate-ms", 300, "délai entre deux téléchargements (politesse)")
 	flag.Parse()
 
@@ -143,6 +157,56 @@ func lisOptions() options {
 		o.cacheForge = filepath.Join(append([]string{root}, cacheVariantesParDefaut...)...)
 	}
 	return o
+}
+
+// construitLexique régénère le lexique des noms de lieu depuis les fichiers du jeu.
+// Il ÉCHOUE bruyamment plutôt que d'écrire un lexique partiel : le catalogue publié
+// s'appuie dessus pour nommer les zones des cartes Forge.
+func construitLexique(opts options) {
+	racine, err := himap.DeployRoot()
+	if err != nil {
+		slog.Error("lexique : installation du jeu", "err", err)
+		os.Exit(1)
+	}
+	lex, err := himap.LexiqueLieux(racine)
+	if err != nil {
+		slog.Error("lexique : extraction", "err", err)
+		os.Exit(1)
+	}
+	path := cheminLexique(opts.outPath)
+	n, ecartes, err := ecritLexique(path, lex)
+	if err != nil {
+		slog.Error("lexique : écriture", "err", err, "path", path)
+		os.Exit(1)
+	}
+	slog.Info("lexique écrit", "path", path, "entrees", n, "ecartees_texte_manquant", ecartes)
+}
+
+// joinsLexique complète l'index par string_id avec le lexique versionné.
+//
+// Son absence est journalisée en AVERTISSEMENT et n'arrête rien : le catalogue natif
+// n'en dépend pas. Mais elle fait retomber la couverture Forge au seul vocabulaire des
+// cartes intégrées — un silence ici publierait des cartes muettes sans le dire.
+func joinsLexique(opts options, base libellesParStringID) libellesParStringID {
+	path := cheminLexique(opts.outPath)
+	lex, err := chargeLexique(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			slog.Warn("lexique absent — les zones Forge hors vocabulaire natif resteront muettes",
+				"path", path, "regenerer", "mapcallouts-build --lexique")
+			return base
+		}
+		slog.Error("lexique illisible — rien écrit", "err", err, "path", path)
+		os.Exit(1)
+	}
+	fusion, ajouts, err := fusionneLexique(base, lex)
+	if err != nil {
+		slog.Error("lexique incohérent avec callouts_i18n.csv — rien écrit", "err", err)
+		os.Exit(1)
+	}
+	slog.Info("lexique chargé", "entrees", len(lex), "string_id_ajoutes", ajouts,
+		"string_id_joignables", len(fusion))
+	return fusion
 }
 
 // chargeCatalogueExistant relit le catalogue déjà sur disque. Son absence est le cas d'une
