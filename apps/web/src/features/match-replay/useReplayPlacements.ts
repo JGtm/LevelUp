@@ -27,7 +27,7 @@ import {
   type PlacementView,
   type PlacementWindowTime,
 } from './equipmentPlacementsLayer'
-import { riftTeleports, type RiftTeleport } from './placementTeleport'
+import { riftTeleports, translocatorRanks, type RiftTeleport } from './placementTeleport'
 import { frameToMs } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
 import { usePlacementHover, type PlacementHoverHandlers } from './usePlacementHover'
@@ -89,8 +89,14 @@ export function useReplayPlacements({
   // document et jamais par image. Il vit ici et non dans le composant pour la même raison que
   // les comptes : c'est une lecture des poses, et le composant n'a pas à la refaire.
   const teleports = useMemo(
-    () => riftTeleports(doc.equipmentPlacements, doc.tracks, doc.abilities),
-    [doc.equipmentPlacements, doc.tracks, doc.abilities],
+    () =>
+      riftTeleports(
+        doc.equipmentPlacements,
+        doc.tracks,
+        doc.abilities,
+        translocatorRanks(doc.abilityLabels),
+      ),
+    [doc.equipmentPlacements, doc.tracks, doc.abilities, doc.abilityLabels],
   )
 
   const toggles = useMemo<PlacementToggles>(

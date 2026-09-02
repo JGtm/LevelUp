@@ -48,11 +48,36 @@ import { nearestReading } from './rosterLogic'
 const FAMILLE_FAILLE = 'translocator_beacon'
 
 /**
- * Rang du translocateur quantique dans la palette de capacités du film (famille A). Le rang
- * est établi côté serveur — `internal/analysis/filmdec/translocateur_test.go` en fait foi — et
- * le document le confirme lui-même : `abilityLabels` associe 11 à « translocateur quantique ».
+ * Rang du translocateur quantique dans la palette de capacités du film — FAMILLE A SEULEMENT.
+ * Le rang est établi côté serveur (`internal/analysis/filmdec/translocateur_test.go`) et le
+ * document le confirme : `abilityLabels` associe 11 à « translocateur quantique ». C'est le
+ * REPLI des documents sans table de libellés ; partout ailleurs, `translocatorRanks` lit la
+ * table — un film famille B (rangs 19-22) rendrait ce littéral muet (bug du 2026-09-02 :
+ * `portaitLeTranslocateur` était faux partout hors famille A, silencieusement).
  */
 const RANG_TRANSLOCATEUR = 11
+
+/**
+ * translocatorRanks — les rangs de palette qui NOMMENT le translocateur dans CE document.
+ *
+ * La table `abilityLabels` est la seule correspondance rang→objet que l'artefact publie, et
+ * elle suit la famille de palette du film (A : 11 ; B : un rang de 19-22) — la lire est donc
+ * le seul chemin qui couvre les deux familles sans deviner. La reconnaissance se fait sur la
+ * RACINE du mot (`transloc`), présente dans les deux locales publiées (« Translocateur
+ * quantique » / « Quantum Translocator ») : comparer un libellé entier serait cassé à la
+ * première retouche de traduction. Sans table, ou sans rang reconnu : le repli famille A.
+ */
+export function translocatorRanks(
+  labels: ReplayDocumentReady['abilityLabels'],
+): ReadonlySet<number> {
+  const ranks = new Set<number>()
+  for (const [rank, label] of Object.entries(labels ?? {})) {
+    const text = `${label?.fr ?? ''} ${label?.en ?? ''}`.toLowerCase()
+    if (text.includes('transloc')) ranks.add(Number(rank))
+  }
+  if (ranks.size === 0) ranks.add(RANG_TRANSLOCATEUR)
+  return ranks
+}
 
 /**
  * Distance minimale du saut, en mètres, et fenêtre en frames. À 100 ms la frame, 12 m en 3
@@ -165,9 +190,10 @@ function estUnePorte(saut: SautBrut, tous: readonly SautBrut[]): boolean {
 function portaitLeTranslocateur(
   saut: SautBrut,
   abilities: ReplayDocumentReady["abilities"],
+  ranks: ReadonlySet<number>,
 ): boolean {
   const lecture = nearestReading(abilities, saut.slot, saut.frame)
-  return lecture !== null && lecture.age >= 0 && lecture.value.r === RANG_TRANSLOCATEUR
+  return lecture !== null && lecture.age >= 0 && ranks.has(lecture.value.r)
 }
 
 /**
@@ -179,7 +205,7 @@ function portaitLeTranslocateur(
  * passage À VENIR ne compte pas : l'éclat date un événement advenu, jamais annoncé.
  */
 export function lastTeleportAge(
-  teleports: readonly RiftTeleport[],
+  teleports: readonly TranslocationMoment[],
   slot: number,
   frame: number,
 ): number {
@@ -193,6 +219,37 @@ export function lastTeleportAge(
 }
 
 /**
+ * Un moment de translocation réduit à ce que la FICHE consomme : quelle vie, quelle image.
+ * `RiftTeleport` en est la version spatiale (le lien sur la carte a besoin de `from`/`to`) ;
+ * les usages datés par `equipmentChanges` (`spentTranslocations`) n'ont pas de positions.
+ */
+export interface TranslocationMoment {
+  slot: number
+  frame: number
+}
+
+/**
+ * spentTranslocations — les USAGES MESURÉS du translocateur : les `spent` du calque
+ * d'équipement dont le rang consommé est un rang de translocateur.
+ *
+ * C'est LE déclencheur principal de l'éclat de fiche (2026-09-02) : le pipeline date chaque
+ * consommation à la frame (schéma 26), là où l'heuristique spatiale `riftTeleports` — 4
+ * détections sur 39 films, ses seuils l'assument — reste le canal du LIEN sur la carte, seul
+ * endroit qui exige un vecteur. Avant ce branchement, le `spent` n'alimentait aucun effet et
+ * l'éclat ne s'allumait statistiquement jamais.
+ */
+export function spentTranslocations(
+  changes: ReplayDocumentReady['equipmentChanges'],
+  ranks: ReadonlySet<number>,
+): TranslocationMoment[] {
+  const out: TranslocationMoment[] = []
+  for (const c of changes) {
+    if (c.kind === 'spent' && ranks.has(c.from)) out.push({ slot: c.slot, frame: c.t })
+  }
+  return out
+}
+
+/**
  * riftTeleports — tous les passages du film, dans l'ordre des frames d'arrivée.
  *
  * Pure et sans état : le calque la fait passer par un mémo, jamais par image.
@@ -201,13 +258,16 @@ export function riftTeleports(
   placements: readonly ReplayEquipmentPlacement[],
   lives: readonly ReplayTrackReady[],
   abilities: ReplayDocumentReady["abilities"],
+  // Les rangs qui nomment le translocateur dans CE document (`translocatorRanks`). Le défaut
+  // est le repli famille A — les appelants de production passent toujours la table lue.
+  ranks: ReadonlySet<number> = new Set([RANG_TRANSLOCATEUR]),
 ): RiftTeleport[] {
   const bruts = sautsBruts(lives)
   if (bruts.length === 0) return []
   const failles = placements.filter((p) => p.family === FAMILLE_FAILLE)
   const out: RiftTeleport[] = []
   for (const s of bruts) {
-    if (!portaitLeTranslocateur(s, abilities)) continue
+    if (!portaitLeTranslocateur(s, abilities, ranks)) continue
     if (estUnePorte(s, bruts)) continue
     const corroboree = failles.some(
       (f) => f.owner === s.slot && f.t0 <= s.frame && s.frame <= f.t1 && distance(s.to, f) <= ARRIVEE_M,

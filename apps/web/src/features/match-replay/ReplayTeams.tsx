@@ -29,7 +29,7 @@ import { NO_ZONES, zonePresenceAt, type ZonePresence, type ZoneScene } from './e
 import { objectiveMarkAt } from './objectiveMark'
 import { ReplayObjectiveMark } from './ReplayObjectiveMark'
 import { equippedWeapons } from './equippedLogic'
-import { lastTeleportAge, riftTeleports, type RiftTeleport } from './placementTeleport'
+import { lastTeleportAge, riftTeleports, spentTranslocations, translocatorRanks, type TranslocationMoment } from './placementTeleport'
 import { cardChrome, hasUnderLayer, playerCardFx } from './playerCardFx'
 import { ReplayCountersBadge } from './ReplayCountersBadge'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
@@ -103,10 +103,17 @@ export function ReplayTeams({
   // réattribué entre manches, le camp doit suivre l'occupant. Le capteur adverse le lit à
   // l'image du joueur interrogé / à la pose du capteur (cf. equipmentZones).
   const sideOfSlot = useMemo(() => sideResolver(buildSlotOwnership(players)), [players])
-  const teleports = useMemo(
-    () => riftTeleports(doc.equipmentPlacements, doc.tracks, doc.abilities),
-    [doc],
-  )
+  // L'ÉCLAT DE TRANSLOCATION A DEUX SOURCES (2026-09-02) : les usages MESURÉS du calque
+  // d'équipement (`spent` du rang translocateur — le canal principal, daté à la frame par le
+  // schéma 26) et les passages spatiaux corroborés (`riftTeleports` — rendement faible assumé,
+  // il reste le canal du lien sur la carte). La fiche ne consomme que (slot, frame).
+  const teleports = useMemo(() => {
+    const ranks = translocatorRanks(doc.abilityLabels)
+    return [
+      ...riftTeleports(doc.equipmentPlacements, doc.tracks, doc.abilities, ranks),
+      ...spentTranslocations(doc.equipmentChanges, ranks),
+    ]
+  }, [doc])
   const fxScene = useMemo<CardFxScene>(
     () => ({
       zones: {
@@ -188,7 +195,7 @@ export function ReplayTeams({
 interface CardFxScene {
   zones: ZoneScene
   time: PlacementWindowTime
-  teleports: readonly RiftTeleport[]
+  teleports: readonly TranslocationMoment[]
 }
 
 interface PlayerCardProps {
