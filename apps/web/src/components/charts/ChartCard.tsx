@@ -90,6 +90,21 @@ export interface ChartCardProps<T = unknown> {
    * ajouté. Prop absente = rendu strictement identique à l'existant.
    */
   reviewKey?: string
+  /**
+   * Moteur de rendu ECharts. `canvas` par défaut — c'est le mode historique de tous les
+   * graphes de l'app, et le seul qui tienne les séries denses (un point = un pixel).
+   *
+   * `svg` rend le graphe INDÉPENDANT DE LA RÉSOLUTION : le texte est du vrai texte, peint
+   * par le moteur de polices du navigateur, net au zoom comme après un changement d'écran.
+   * Le canvas, lui, est un bitmap figé au `devicePixelRatio` du MONTAGE — sur un écran à
+   * mise à l'échelle fractionnaire (125 %, 150 %) ses libellés paraissent flous à côté du
+   * texte DOM qui les entoure. Retour utilisateur du 2026-09-02 sur « Premier frag /
+   * première mort », dont l'essentiel de la lecture EST du texte dans le canvas.
+   *
+   * À N'ACTIVER QUE SUR LES GRAPHES PAUVRES EN POINTS : le SVG crée un nœud DOM par point.
+   * Les deux graphes denses du dossier (Heatmap2DChart, ScatterChart) restent en canvas.
+   */
+  renderer?: 'canvas' | 'svg'
 }
 
 /**
@@ -110,6 +125,7 @@ export function ChartCard<T = unknown>({
   legend,
   onEvents,
   reviewKey,
+  renderer = 'canvas',
 }: ChartCardProps<T>) {
   const isEmpty = !loading && !error && series.length === 0
   // Le themeVersion s'incrémente lors d'un toggle data-theme : on l'inclut
@@ -173,7 +189,7 @@ export function ChartCard<T = unknown>({
               notMerge
               lazyUpdate
               theme={undefined}
-              opts={{ devicePixelRatio: window.devicePixelRatio }}
+              opts={{ devicePixelRatio: window.devicePixelRatio, renderer }}
               onEvents={onEvents}
               data-testid="chart-card-echarts"
             />

@@ -152,6 +152,13 @@ export function FirstBloodLanes({
       emptyMessage={emptyMessage ?? formatMessage(firstBloodManifest, 'first_blood.empty', locale)}
       height={firstBloodLanesHeight(lanes.length)}
       buildOption={buildOption}
+      // SVG et pas canvas : la colonne de gauche (pseudo, « méd. 50s → 1m04 »,
+      // « +14s d'avance ») est l'essentiel de la lecture de ce graphe, et c'est du TEXTE.
+      // En canvas il est peint dans un bitmap figé au devicePixelRatio du montage, donc
+      // visiblement plus flou que le texte DOM qui l'entoure sur un écran à mise à
+      // l'échelle fractionnaire. Le coût du SVG — un nœud DOM par point — reste négligeable
+      // ici : quelques points par joueur, pas un nuage dense.
+      renderer="svg"
     />
   )
 }

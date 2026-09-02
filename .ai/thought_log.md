@@ -1,3 +1,64 @@
+## [2026-09-02] « Premier frag / premiere mort » passe au rendu SVG — Complete
+
+Retour utilisateur : le graphe « paraissait ne pas etre normal », et la raison finit par etre
+dite — **l'image n'est pas nette**. Ce n'etait donc pas une question de nature (canvas vs
+DOM) mais de QUALITE DE RENDU.
+
+**Diagnostic.** `ChartCard` monte ECharts avec `opts={{ devicePixelRatio: window.devicePixelRatio }}`
+et aucun `renderer` : c'est donc le canvas par defaut, pour les 28 graphes du dossier. Un
+canvas est un bitmap fige au `devicePixelRatio` du MONTAGE. Sur un ecran a mise a l'echelle
+fractionnaire (125 %, 150 %), son texte parait flou a cote du texte DOM qui l'entoure — et ce
+graphe-ci est celui qui en porte le PLUS : la colonne de gauche (pseudo, « med. 50s -> 1m04 »,
+« +14s d'avance ») est l'essentiel de sa lecture. D'ou l'effet, visible ici et pas ailleurs.
+
+**Decision utilisateur : ce graphe SEULEMENT.** `ChartCard` recoit une option
+`renderer?: 'canvas' | 'svg'` (defaut `canvas` — comportement historique strictement
+inchange pour les 27 autres), et `FirstBloodLanes` l'active. Le SVG rend le graphe
+INDEPENDANT DE LA RESOLUTION : vrai texte peint par le moteur de polices du navigateur, net
+au zoom comme apres un changement d'ecran.
+
+**Pourquoi pas partout** : le SVG cree un noeud DOM par point. Les deux graphes denses du
+dossier (`Heatmap2DChart`, `ScatterChart`) restent en canvas, et le commentaire de l'option
+le dit — pour qu'un futur appelant sache a quoi il s'engage avant de l'activer.
+
+**GATES** : `tsc -b` 0 apres purge de `node_modules/.tmp` ; eslint 0 sur les deux fichiers ;
+vitest `src/components/charts` 28 fichiers / 236 tests verts. Go non concerne.
+
+**Au passage, CI VERTE** sur `7c6a65e89` (purge baseline + Escouade) : les 8 jobs passent,
+E2E Playwright skippe par conception.
+
+## [2026-09-02] Audit perf cuisson des artefacts de rejeu — registre livre — Complete
+
+Demande utilisateur : pistes pour passer de ~3 min 30 a 60-100 s par artefact (bump de
+schema vehicules a venir -> re-cuisson de masse). Audit sous `adversarial-audit` adapte
+(axe performance) : 4 auditeurs frais + 3 verificateurs adverses, zero modification de code.
+
+**Decision technique principale** : le registre est la seule sortie —
+`.ai/AUDIT_CUISSON_REPLAY_PERF_2026-09-02.md`. 7 constats retenus (6 P1, 1 P2 escalade),
+9 ecartes (dont 2 refutes majeurs).
+
+**Resultats observes** :
+- Le film est relu du disque et redecompresse en zlib ~36-40 fois PAR ARTEFACT
+  (`ReadFilmChunk` sans memoization, chaque `ScanFilm*` reboucle tout) : ~750 Mo traites
+  pour ~20 Mo utiles (x37). Le patron correctif existe deja dans le depot
+  (`killsource.loadFilm`, variantes `...ForBand`).
+- Les 3 min 30 sont du decodage pur (compilation go run <= 1,2 % des temoins) ; temoins
+  de 278 s au schema 18, HEAD (34) fait plus de balayages. Assemblage/ecriture < 1 s.
+- REFUTE en verification adverse : la parallelisation multi-thread du decodeur (5 scanners
+  a etat inter-chunk irreductible ; `MPPWidths` ecrit en boucle interne et lu par toute
+  traversee ; >= 80 globaux mutables + 28 hooks). La piste demandee « multi-thread » est
+  fermee en l'etat — les gains sont ailleurs.
+- Boucles chaudes chiffrees (map par bit candidat, lecteurs 1 bit/iteration — 78 % CPU au
+  profil 2026-08-01, `NamedEventsFrom` x22 re-balayages) ; orchestration (ouvrier
+  telechargements sequentiels, double lecture d'artefact, duree mesuree puis jetee).
+
+**Conclusion / prochaine etape** : phases proposees au registre — 0 instrumenter,
+1 decoder-une-fois + partage bande/layout + boucles chaudes (objectif 60-100 s plausible),
+2 orchestration, 3 debit de masse (2 creneaux + Job Object) si besoin ; faire 0-1 AVANT le
+bump vehicules. Escalades : portee du verrou solo (1 chemin sur 4), allegement
+`validateArtifact`, divergence layout des 6 scanners delta (justesse, temoin multi-region
+a cuire). Registre non commite — commit a la demande de l'utilisateur.
+
 ## [2026-09-02] Baseline purgee des tests morts, et l'Escouade rebranchee sur la source de l'arme — Complete
 
 Suite directe du lot precedent : la CI de `feat/v75` est passee au vert sur 7 jobs sur 8, et
