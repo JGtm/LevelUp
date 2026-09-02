@@ -89013,3 +89013,39 @@ place des options elles-memes.
 **Resultats observes** : typecheck EXIT=0 ; 137 fichiers / 2068 tests verts.
 
 **Conclusion / prochaine etape** : gate visuel. Le zoom reste a ouvrir.
+
+---
+
+## [2026-09-02] Rejeu 2D : le zoom — et il tient en une idee, « le zoom retrecit les bornes »
+
+**Statut** : Complete (code + gates) ; merge vers feat/v75 dans la foulee.
+
+**Decision technique principale** : la tentation etait d'ajouter `{echelle, panX, panY}` au
+cadrage et de les appliquer partout — donc de toucher `worldToCanvas`, `canvasScale`, le survol,
+les quatre calques et les infobulles, et d'introduire DEUX facons de dire ou tombe un point du
+monde. Or la projection est ENTIEREMENT definie par ses bornes : `worldToCanvas` mappe `bounds`
+vers la toile. Zoomer, c'est donc retrecir les bornes ; se deplacer, c'est les translater.
+
+Ce que ca rend gratuit :
+- le SURVOL suit sans une ligne (il lit la meme projection que le dessin) ;
+- les CALQUES STATIQUES cuisent la FENETRE a la resolution de l'ecran, donc leur surface ne
+  depend PAS du niveau de zoom — la crainte d'une memoire qui enfle est evitee par
+  construction, et non par une precaution a maintenir. Deux tests l'epinglent par sa
+  consequence : `fitWidth` et `usefulHeight` rendent la meme valeur a tous les paliers.
+
+Le SEUL endroit ou le zoom apparait dans le dessin : le fond de carte, qui recevait la scene et
+recoit desormais la fenetre. Sans quoi l'image serait restee cadree large pendant que les
+joueurs zoomaient — l'image et les points auraient cesse de designer le meme endroit.
+
+Paliers DISCRETS (1x / 1,5x / 2x / 3x) et croix directionnelle, en surimpression au coin
+bas-droit (la legende de chaleur tient le bas-gauche). Pas de glisser : il recuirait les calques
+a chaque mouvement de pointeur. A 1x la croix se desactive SEULE — la fenetre vaut la scene, il
+n'existe qu'une position legale, et personne n'a eu a ecrire la regle.
+
+**Resultats observes** : typecheck EXIT=0 ; 168 fichiers / 2353 tests verts (18 neufs) ; lint 0
+erreur. `ReplayCanvas.tsx` a 661 lignes pour un plafond de 665.
+
+**Conclusion / prochaine etape** : gate visuel — la lisibilite a 3x, le pas de la croix (un quart
+de fenetre), la cohabitation de la surimpression avec le fil. Restent ouverts : le SUIVI d'un
+joueur (le vrai usage d'un rejeu, dont le zoom manuel est le socle) et le glisser si l'usage le
+reclame, avec son cout desormais instruit.

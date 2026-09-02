@@ -27,9 +27,10 @@ import type { ReplayBounds, ReplayMapBackgroundCalibration } from '@/lib/api/typ
 
 import { coversPlayedArea } from './mapBackground'
 import { buildFloorGrid, type FloorGrid } from './mapFloor'
-import { fitWidth, sceneBounds, usefulHeight } from './replayLogic'
+import { fitWidth, sceneBounds, usefulHeight, visibleBounds } from './replayLogic'
 import type { CanvasView } from './replayDraw'
 import type { ReplayDocumentReady } from './replayNormalize'
+import { useReplayZoom, type ReplayZoom } from './useReplayZoom'
 
 // LA HAUTEUR DE DESSIN N'EST PLUS FIXE (2026-09-02) : elle est le moindre de ce que l'écran
 // laisse et de ce que la carte peut utiliser. La largeur, elle, suit toujours le ratio de la
@@ -153,6 +154,13 @@ export interface ReplayView {
   canvasView: CanvasView
   /** Trame d'altitudes du sol reconstruit — `null` quand un fond figé la remplace. */
   floorGrid: FloorGrid | null
+  /**
+   * L'ÉTAT DE NAVIGATION — palier de grossissement et centre. Il vit ICI et non chez l'appelant
+   * parce qu'il a besoin des BORNES DE LA SCÈNE pour se borner, et que ces bornes se décident
+   * dans ce hook (elles dépendent du fond de carte retenu). Le sortir obligerait l'appelant à
+   * les recalculer, donc à tenir une seconde définition de « la scène ».
+   */
+  zoom: ReplayZoom
 }
 
 export function useReplayView({
@@ -205,10 +213,25 @@ export function useReplayView({
   )
   // LE CADRAGE, une fois : le dessin ET le survol doivent lire la MÊME projection — un
   // pointeur qui viserait un autre cadre que celui peint ne toucherait rien.
+  //
+  // LA FENÊTRE VISIBLE REMPLACE LA SCÈNE DANS LA PROJECTION (2026-09-02, zoom). C'est TOUT ce
+  // que le zoom change dans ce fichier, et c'est voulu : la projection est entièrement définie
+  // par ses bornes, donc rétrécir les bornes suffit à grossir. `worldToCanvas`, `canvasScale`,
+  // le survol, le fond de carte et les quatre calques statiques suivent sans une ligne.
+  //
+  // LA TAILLE DE DESSIN, ELLE, RESTE CALCULÉE SUR LA SCÈNE (`renderWidth`/`renderHeight`
+  // ci-dessus) : `visibleBounds` préserve l'aspect, donc le résultat est le même — mais le dire
+  // sur la scène garde ces deux valeurs STABLES au zoom. Le terrain ne doit pas changer de
+  // taille quand on grossit ; c'est ce qu'on y montre qui change.
+  const zoom = useReplayZoom(bounds)
+  const viewBounds = useMemo(
+    () => visibleBounds(bounds, zoom.level, zoom.center.x, zoom.center.y),
+    [bounds, zoom.level, zoom.center],
+  )
   const canvasView = useMemo(
-    () => ({ bounds, width: renderWidth, height: renderHeight, pad: CANVAS_PAD }),
-    [bounds, renderWidth, renderHeight],
+    () => ({ bounds: viewBounds, width: renderWidth, height: renderHeight, pad: CANVAS_PAD }),
+    [viewBounds, renderWidth, renderHeight],
   )
 
-  return { mapImage, bounds, renderWidth, renderHeight, zRange, canvasView, floorGrid }
+  return { mapImage, bounds, renderWidth, renderHeight, zRange, canvasView, floorGrid, zoom }
 }

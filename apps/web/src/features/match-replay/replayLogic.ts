@@ -161,6 +161,103 @@ export function usefulHeight(bounds: ReplayBounds, available: number, pad: numbe
   return Math.max((available - 2 * pad) * (bh / bw) + 2 * pad, 2 * pad + 1)
 }
 
+/**
+ * LES PALIERS DE ZOOM, et pourquoi ce ne sont pas des crans continus.
+ *
+ * Changer le cadrage fait RECUIRE les quatre calques statiques (le sol et ses ~45 000 cellules
+ * en tête). Un zoom continu — la molette — en déclencherait un par cran, donc des dizaines par
+ * geste. Des paliers rendent chaque changement rare, prévisible, et NOMMABLE à l'écran : « 2x »
+ * se lit, « 1,37x » ne veut rien dire pour qui regarde un match.
+ */
+export const ZOOM_LEVELS = [1, 1.5, 2, 3] as const
+export type ZoomLevel = (typeof ZOOM_LEVELS)[number]
+
+function clamp(v: number, lo: number, hi: number): number {
+  return v < lo ? lo : v > hi ? hi : v
+}
+
+/**
+ * clampCenter — le centre de la fenêtre, ramené là où la fenêtre reste DANS la scène.
+ *
+ * Exporté séparément de `visibleBounds` parce que l'état du zoom en a besoin sans vouloir les
+ * bornes : quand on baisse le zoom, le centre courant peut devenir illégal (une fenêtre plus
+ * large ne tient plus aussi près du bord) et il faut le rapprocher AVANT de le stocker — sinon
+ * l'état garde une valeur que l'affichage corrige en silence, et les deux divergent.
+ *
+ * À zoom 1 la fenêtre vaut la scène : les deux bornes du `clamp` se rejoignent, il ne reste
+ * qu'une position possible. La croix directionnelle se désactive donc d'elle-même, sans que
+ * personne ait à écrire la règle « pas de déplacement à zoom 1 ».
+ */
+export function clampCenter(
+  scene: ReplayBounds,
+  zoom: number,
+  cx: number,
+  cy: number,
+): { x: number; y: number } {
+  const halfW = Math.max(scene.maxX - scene.minX, 0) / (2 * Math.max(zoom, 1))
+  const halfH = Math.max(scene.maxY - scene.minY, 0) / (2 * Math.max(zoom, 1))
+  return {
+    x: clamp(cx, scene.minX + halfW, scene.maxX - halfW),
+    y: clamp(cy, scene.minY + halfH, scene.maxY - halfH),
+  }
+}
+
+/**
+ * visibleBounds — LA FENÊTRE VISIBLE, et c'est TOUT ce que le zoom change.
+ *
+ * # POURQUOI PAR LES BORNES, ET PAS PAR UNE ÉCHELLE
+ *
+ * La tentation était d'ajouter `{échelle, panX, panY}` au cadrage et de les appliquer partout.
+ * Cela aurait touché `worldToCanvas`, `canvasScale`, le survol, les quatre calques et les
+ * infobulles — et surtout introduit DEUX façons de dire où tombe un point du monde, qui
+ * auraient divergé au premier oubli.
+ *
+ * Or la projection est entièrement définie par les BORNES : `worldToCanvas` mappe `bounds` vers
+ * la toile. Zoomer, c'est donc rétrécir les bornes ; se déplacer, c'est les translater. Rien
+ * d'autre ne bouge — le survol lit la même projection que le dessin, il suit sans une ligne.
+ *
+ * # CE QUE ÇA RÈGLE GRATUITEMENT
+ *
+ * Les calques statiques cuisent depuis le cadrage : avec des bornes rétrécies, ils cuisent la
+ * FENÊTRE à la résolution de l'écran. Leur surface ne dépend donc PAS du niveau de zoom — la
+ * crainte d'une mémoire qui enfle avec le grossissement est évitée par construction, et non par
+ * une précaution qu'il faudrait maintenir.
+ *
+ * # L'ASPECT EST PRÉSERVÉ
+ *
+ * Les deux dimensions sont divisées par le MÊME facteur. Sans cela, `usefulHeight` (le plafond
+ * de hauteur calculé par carte) et le cadrage se contrediraient à chaque palier : la fenêtre
+ * réclamerait une forme que la toile ne peut pas lui donner, et la carte flotterait dans des
+ * bandes vides qui changeraient de taille à chaque cran.
+ *
+ * L'amplitude verticale (`minZ`/`maxZ`) traverse inchangée : le zoom est plan, il ne dit rien
+ * des étages.
+ */
+export function visibleBounds(
+  scene: ReplayBounds,
+  zoom: number,
+  cx: number,
+  cy: number,
+): ReplayBounds {
+  const z = Math.max(zoom, 1)
+  const halfW = Math.max(scene.maxX - scene.minX, 0) / (2 * z)
+  const halfH = Math.max(scene.maxY - scene.minY, 0) / (2 * z)
+  const c = clampCenter(scene, z, cx, cy)
+  return {
+    minX: c.x - halfW,
+    maxX: c.x + halfW,
+    minY: c.y - halfH,
+    maxY: c.y + halfH,
+    minZ: scene.minZ,
+    maxZ: scene.maxZ,
+  }
+}
+
+/** Le centre de la scène — la position de départ du cadrage, et celle du retour à 1x. */
+export function sceneCenter(scene: ReplayBounds): { x: number; y: number } {
+  return { x: (scene.minX + scene.maxX) / 2, y: (scene.minY + scene.maxY) / 2 }
+}
+
 /** canvasScale = pixels par unité monde pour le même cadrage que worldToCanvas. */
 export function canvasScale(
   bounds: ReplayBounds,
