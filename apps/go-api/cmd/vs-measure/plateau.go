@@ -64,6 +64,11 @@ type plateauCfg struct {
 	xplateau float64
 	rotArme  bool // pivoter l'arme de 180 degres autour de Z avant la pose (V2, refuse : defaut false)
 	rot180   bool // pivoter le sprite final de 180 degres dans le plan de l'image (nez en haut)
+	// tForce : translation imposee (m) de l'arme, qui court-circuite la detection de zone.
+	// Sert a poser une arme sur un COUPLE DE NOEUDS du chassis (lot Gungoose 2026-09-02 :
+	// les deux pods du canon jumele tombent sur les marqueurs (+0.285, +-0.126, +0.322)).
+	tForce   *[3]float64
+	permChas uint32 // permutation du chassis a rendre (defaut `default`)
 }
 
 // canevas : un rendu au cadre fixe et son PNG, avec les conversions pixel <-> repere local.
@@ -119,6 +124,8 @@ func plateauMain(args []string) {
 	rotArme := fs.Bool("rotarme", false, "pivoter l'arme de 180 degres autour de Z avant la pose (canon vers -X ; V2 refusee, l'orientation authored canon vers +X = avant est la bonne)")
 	rot180 := fs.Bool("rot180", true, "pivoter le sprite final de 180 degres (nez +X en haut)")
 	pivote := fs.String("pivote", "", "PNG existants a pivoter de 180 degres vers -out (virgule)")
+	tforce := fs.String("tforce", "", "translation imposee de l'arme x,y,z (m) : court-circuite la detection de zone")
+	permchas := fs.String("permchassis", "", "permutation (StringId hex) du chassis a rendre en plus de `default`")
 	_ = fs.Parse(args)
 
 	chemins, err := cheminsModules(*variant, listeModules(*mods))
@@ -128,7 +135,11 @@ func plateauMain(args []string) {
 	must(err)
 	must(os.MkdirAll(*out, 0o755))
 	cfg := plateauCfg{out: *out, cadre: *cadre, cell: *cellmm / 1000.0, epais: *epais, marge: *marge, erode: *erode,
-		seuilUnion: *seuilUnion, xplateau: *xplateau, rotArme: *rotArme, rot180: *rot180}
+		seuilUnion: *seuilUnion, xplateau: *xplateau, rotArme: *rotArme, rot180: *rot180,
+		tForce: parseTranslation(*tforce), permChas: permDefault}
+	if ids := splitHex(*permchas); len(ids) == 1 {
+		cfg.permChas = ids[0]
+	}
 
 	ids := splitHex(*chassis)
 	if len(ids) != 1 {
@@ -143,6 +154,28 @@ func plateauMain(args []string) {
 			pivoteFichier(p, cfg)
 		}
 	}
+}
+
+// parseTranslation lit « x,y,z » (metres) ; rend nil si la chaine est vide ou illisible.
+func parseTranslation(spec string) *[3]float64 {
+	if strings.TrimSpace(spec) == "" {
+		return nil
+	}
+	parts := strings.Split(spec, ",")
+	if len(parts) != 3 {
+		fmt.Printf("-tforce %q illisible (attendu x,y,z)\n", spec)
+		return nil
+	}
+	var t [3]float64
+	for i, p := range parts {
+		v, err := strconv.ParseFloat(strings.TrimSpace(p), 64)
+		if err != nil {
+			fmt.Printf("-tforce %q : composante %d illisible (%v)\n", spec, i, err)
+			return nil
+		}
+		t[i] = v
+	}
+	return &t
 }
 
 func parseArmes(spec string) []armeSpec {
@@ -175,9 +208,9 @@ func traiteChassis(idx *himap.ModuleIndex, id uint32, cfg plateauCfg) (canevas, 
 	must(err)
 	regions, err := himap.ModeRegions(tag)
 	must(err)
-	base := sectionsDeVariante(regions, permDefault)
+	base := sectionsDeVariante(regions, cfg.permChas)
 	ch := rendCanevas([]himap.PartAssemblage{{Asset: asset, SectionsChoisies: base}}, cfg)
-	imprimeMesure("chassis_default", asset, base)
+	imprimeMesure(fmt.Sprintf("chassis_perm_%08x", cfg.permChas), asset, base)
 	ecrisPNG(filepath.Join(cfg.out, "chassis.png"), ch.img)
 	ox, oy := ch.pixel(0, 0)
 	e := emprise(ch.img, 0)
@@ -283,13 +316,17 @@ type poseArme struct {
 	tRendu [3]float64
 }
 
-func calculePose(m mesuresArme, plat plateau, rot bool) poseArme {
+func calculePose(m mesuresArme, plat plateau, rot bool, force *[3]float64) poseArme {
 	p := poseArme{s: 1}
 	if rot {
 		p.s = -1
 	}
-	// s*base + tEff = plat.
-	p.tEff = [3]float64{plat.X - p.s*m.base[0], plat.Y - p.s*m.base[1], plat.Z - m.zmin}
+	if force != nil {
+		p.tEff = *force
+	} else {
+		// s*base + tEff = plat.
+		p.tEff = [3]float64{plat.X - p.s*m.base[0], plat.Y - p.s*m.base[1], plat.Z - m.zmin}
+	}
 	p.tRendu = [3]float64{p.s * p.tEff[0], p.s * p.tEff[1], p.tEff[2]}
 	return p
 }
@@ -317,7 +354,7 @@ func traiteArme(idx *himap.ModuleIndex, a armeSpec, ch canevas, plat plateau, cf
 		return
 	}
 	m := mesureArme(tag, asset, cfg.epais)
-	p := calculePose(m, plat, cfg.rotArme)
+	p := calculePose(m, plat, cfg.rotArme, cfg.tForce)
 	fmt.Printf("ARME %s mode=%#08x emprise X[%+.3f..%+.3f] Y[%+.3f..%+.3f] Z[%+.3f..%+.3f] ; base (tranche %.2f m, %d sommets) centre=(%+.3f,%+.3f) ; emprise-centre=(%+.3f,%+.3f)",
 		a.nom, a.id, m.bbMin[0], m.bbMax[0], m.bbMin[1], m.bbMax[1], m.zmin, m.zmax, cfg.epais, m.nBase,
 		m.base[0], m.base[1], (m.bbMin[0]+m.bbMax[0])/2, (m.bbMin[1]+m.bbMax[1])/2)
