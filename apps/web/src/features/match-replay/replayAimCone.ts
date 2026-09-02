@@ -74,7 +74,48 @@ export function drawAimCone(
   const fresh = freshness(read.age, style.timing.aimHold, AIM_FADE)
   // Monde -> canevas : l'axe Y est inversé, donc l'angle l'est aussi.
   const ang = (-read.value * Math.PI) / 180
-  const R = AIM_LENGTH * pitchScale(heldPitch(track.points, style, read.age)) * style.k
+  drawAimSector(ctx, c, ang, style.k, color, {
+    lengthScale: pitchScale(heldPitch(track.points, style, read.age)),
+    fresh,
+  })
+}
+
+/** Ce que le SECTEUR laisse choisir à son appelant, en plus de l'angle et de l'encre. */
+export interface AimSectorOptions {
+  /**
+   * Multiplie la longueur de référence (52 px). Le cône d'un PION y met son élévation
+   * (`pitchScale`) ; un appelant qui n'a pas d'élévation à dire laisse 1 — « à plat », qui est
+   * exactement le sens de l'absence (cf. la note du champ `p` ci-dessus).
+   */
+  lengthScale?: number
+  /** Fraîcheur de la mesure, 0..1 : elle module l'opacité. 1 = mesure de l'instant. */
+  fresh?: number
+}
+
+/**
+ * drawAimSector — LE SECTEUR DE VISÉE lui-même : la géométrie et les opacités, sans la mesure.
+ *
+ * EXTRAIT DE `drawAimCone` LE 2026-09-02 (lot véhicules) : un joueur EMBARQUÉ ne réplique plus
+ * son bipède, donc plus aucun cap de visée — mais le VÉHICULE, lui, porte un cap, et la décision
+ * utilisateur du chantier est de l'employer (« à l'arrêt on assume qu'il regarde devant lui ; en
+ * mouvement, la direction du déplacement »). Le calque des véhicules a donc besoin du MÊME cône,
+ * à partir d'un angle qu'il calcule lui-même — pas d'une seconde géométrie qui divergerait au
+ * premier réglage (règle « ≤ 2 copies »).
+ *
+ * `ang` EST DÉJÀ EN RADIANS CANEVAS (l'inversion monde -> écran appartient à l'appelant, qui
+ * seul sait de quel cap il part), et l'appelant fournit aussi sa densité `k` et son encre : ce
+ * bloc ne connaît ni marqueur, ni piste, ni thème.
+ */
+export function drawAimSector(
+  ctx: CanvasRenderingContext2D,
+  c: XY,
+  ang: number,
+  k: number,
+  color: string,
+  options: AimSectorOptions = {},
+): void {
+  const { lengthScale = 1, fresh = 1 } = options
+  const R = AIM_LENGTH * lengthScale * k
   const gradient = ctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, R)
   gradient.addColorStop(0, color)
   gradient.addColorStop(1, 'transparent')

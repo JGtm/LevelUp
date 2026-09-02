@@ -16,6 +16,10 @@ import type { ReplayVehicleTrackReady } from './replayNormalize'
 import {
   buildEmbarkedPredicate,
   vehicleActiveRides,
+  vehicleAimAngle,
+  vehicleCanEmbark,
+  vehicleDriverAt,
+  vehicleIsDecor,
   vehicleColorAt,
   vehicleHeadingAt,
   vehiclePositionAt,
@@ -51,6 +55,50 @@ function sample(over: Partial<ReplayVehicleSample>): ReplayVehicleSample {
 function ride(over: Partial<ReplayVehicleRide>): ReplayVehicleRide {
   return { t0: 0, t1: 100, slot: 1, src: 'event', ...over }
 }
+
+describe('vehicleIsDecor / vehicleCanEmbark — le refus des familles non jouables', () => {
+  it('les quatre familles de DÉCOR sont refusées (Falcon, Pelican, Phantom, Skiff)', () => {
+    for (const f of ['falcon', 'pelican', 'phantom', 'skiff']) expect(vehicleIsDecor(f)).toBe(true)
+  })
+
+  it('une famille JOUABLE et un CHÂSSIS NON RÉSOLU ne sont pas du décor', () => {
+    for (const f of ['warthog', 'mongoose', 'ghost', 'wasp']) expect(vehicleIsDecor(f)).toBe(false)
+    expect(vehicleIsDecor(undefined)).toBe(false)
+  })
+
+  it('EMBARQUER — donc effacer un pion — n’est permis qu’à une famille jouable ET résolue', () => {
+    expect(vehicleCanEmbark(track({ family: 'warthog' }))).toBe(true)
+    expect(vehicleCanEmbark(track({ family: 'falcon' }))).toBe(false)
+    expect(vehicleCanEmbark(track({ family: undefined }))).toBe(false)
+    expect(vehicleCanEmbark(track({ family: '' }))).toBe(false)
+  })
+})
+
+describe('vehicleAimAngle — le cap du CÔNE, distinct de celui du sprite nez-en-haut', () => {
+  it('inverse le seul signe (convention monde -> canevas), sans le quart de tour du sprite', () => {
+    expect(vehicleAimAngle(0)).toBeCloseTo(0, 10)
+    expect(vehicleAimAngle(90)).toBeCloseTo(-Math.PI / 2, 10)
+    expect(vehicleAimAngle(180)).toBeCloseTo(-Math.PI, 10)
+  })
+
+  it('N’EST PAS `vehicleScreenAngle` : les confondre ferait pointer le cône à 90° du nez', () => {
+    expect(vehicleAimAngle(0)).not.toBeCloseTo(vehicleScreenAngle(0), 3)
+    expect(vehicleAimAngle(90)).not.toBeCloseTo(vehicleScreenAngle(90), 3)
+  })
+})
+
+describe('vehicleDriverAt — le conducteur, et lui seul', () => {
+  it('rend l’épisode du siège 0 quand il couvre l’image', () => {
+    const t = track({ rides: [ride({ slot: 9, seat: 1 }), ride({ slot: 7, seat: 0 })] })
+    expect(vehicleDriverAt(t, 50)?.slot).toBe(7)
+  })
+
+  it('null pour un passager seul, un siège NON LU, ou hors de la fenêtre de l’épisode', () => {
+    expect(vehicleDriverAt(track({ rides: [ride({ slot: 9, seat: 2 })] }), 50)).toBeNull()
+    expect(vehicleDriverAt(track({ rides: [ride({ slot: 9, seat: undefined })] }), 50)).toBeNull()
+    expect(vehicleDriverAt(track({ rides: [ride({ slot: 7, seat: 0, t0: 0, t1: 10 })] }), 50)).toBeNull()
+  })
+})
 
 describe('vehicleHeadingAt — orientation (décision de cadrage)', () => {
   it('JAMAIS MOBILE (aucun échantillon) : cap par défaut, nez vers le haut de l’écran', () => {
@@ -213,6 +261,18 @@ describe('buildEmbarkedPredicate — pion embarqué, MULTI-PASSAGERS (C7, rappel
     expect(isEmbarkedAt(10, 95)).toBe(true)
     // Le conducteur sort à 100 à son tour, indépendamment.
     expect(isEmbarkedAt(10, 101)).toBe(false)
+  })
+
+  it('un FAUX épisode posé sur un prop de DÉCOR n’embarque PERSONNE (bug du 2026-09-02)', () => {
+    // Le liant « trou de position » a prêté trois épisodes à un prop Falcon : le pion des
+    // joueurs passés à côté disparaissait de la carte. Un décor n’embarque plus.
+    const prop = track({ family: 'falcon', rides: [ride({ slot: 10, seat: 0, t0: 0, t1: 100 })] })
+    expect(buildEmbarkedPredicate([prop])(10, 50)).toBe(false)
+  })
+
+  it('un épisode posé sur un CHÂSSIS NON RÉSOLU n’embarque personne non plus', () => {
+    const unknown = track({ family: undefined, rides: [ride({ slot: 10, seat: 0, t0: 0, t1: 100 })] })
+    expect(buildEmbarkedPredicate([unknown])(10, 50)).toBe(false)
   })
 
   it('un slot jamais embarqué (aucune occupation, aucun véhicule) : toujours faux', () => {
