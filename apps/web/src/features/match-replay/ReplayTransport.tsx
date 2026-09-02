@@ -55,6 +55,12 @@ interface ReplayTransportProps {
   onSeekBy: (seconds: number) => void
   /** L'horloge est écrite par la boucle de dessin (textContent), pas par React. */
   clockRef: RefObject<HTMLSpanElement | null>
+  /**
+   * LA LECTURE AUTOMATIQUE, arrivée du tiroir le 2026-09-02. Elle ne commande PAS le lecteur
+   * ouvert : elle décide de son état de départ, lu une fois au montage (useReplayPlayback).
+   */
+  autoPlay: boolean
+  onToggleAutoPlay: () => void
   /** La frise et ses pistes, en UN objet (même motif que `leadMarks` avant elle). */
   timeline: Omit<ComponentProps<typeof ReplayTimelineTracks>, 'clockRef'>
   speed: number
@@ -68,7 +74,7 @@ interface ReplayTransportProps {
 }
 
 export function ReplayTransport({
-  playing, onTogglePlay, onRestart, onSeekBy, clockRef, timeline,
+  playing, onTogglePlay, onRestart, onSeekBy, clockRef, timeline, autoPlay, onToggleAutoPlay,
   speed, onSetSpeed, sound, capture, locale,
   settingsOpen, onToggleSettings, settingsButtonRef,
 }: ReplayTransportProps) {
@@ -108,8 +114,39 @@ export function ReplayTransport({
 
       {/* L'ÉCART AVEC LA FRISE TOMBE DE 20 À 6 px (2026-09-02) : les commandes appartiennent à
           la frise qu'elles pilotent, un blanc de 20 px en faisait deux blocs étrangers. */}
+      {/* TROIS ZONES, ET LE TRANSPORT AU MILIEU DU BLOC (demande utilisateur du 2026-09-02).
+          Les commandes s'alignaient à gauche, ce qui les collait au bord et laissait un grand
+          vide à droite. Le centrage tient à `flex-1` sur les DEUX flancs : à base nulle et
+          croissance égale, ils prennent la même largeur quoi qu'ils contiennent — le groupe du
+          milieu tombe donc au centre exact, et il y reste quand une commande latérale apparaît
+          ou disparaît (l'enregistrement, absent sans WebCodecs). Un `justify-between` à trois
+          enfants aurait décentré le transport dès que les flancs auraient différé. */}
       <div className="mt-1.5 flex items-center gap-3.5">
-        <div className="flex items-center gap-1.5">
+        {/* À GAUCHE : ce qui se règle. La lecture automatique y a rejoint le son et la vitesse
+            (« on a carrément la place pour un bouton comme YouTube ») — elle a QUITTÉ le
+            tiroir, elle n'y est plus en double : deux commandes pour un même réglage invitent
+            à croire qu'elles diffèrent. */}
+        <div className="flex flex-1 items-center gap-2">
+          <button
+            type="button"
+            onClick={onToggleAutoPlay}
+            role="switch"
+            aria-checked={autoPlay}
+            aria-label={t.autoPlay}
+            title={`${t.autoPlay} — ${t.autoPlayHint}`}
+            className={`inline-flex h-[30px] cursor-pointer items-center gap-1.5 rounded-full px-2 text-[10.5px] font-medium transition-colors ${
+              autoPlay
+                ? 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+            }`}
+          >
+            <AutoPlayIcon on={autoPlay} />
+          </button>
+          <ReplaySoundControls sound={sound} locale={locale} />
+          <ReplaySpeedMenu speed={speed} onSetSpeed={onSetSpeed} locale={locale} />
+        </div>
+
+        <div className="flex shrink-0 items-center gap-1.5">
           <RoundButton onClick={onRestart} label={`${t.restart} (R)`} ghost disabled={busy}>
             <RestartIcon />
           </RoundButton>
@@ -135,13 +172,9 @@ export function ReplayTransport({
           </RoundButton>
         </div>
 
-        {/* LES RÉGLAGES DE LECTURE : le son, puis la vitesse. Des réglages, pas des commandes. */}
-        <div className="flex items-center gap-2">
-          <ReplaySoundControls sound={sound} locale={locale} />
-          <ReplaySpeedMenu speed={speed} onSetSpeed={onSetSpeed} locale={locale} />
-        </div>
-
-        <div className="flex-1" />
+        {/* À DROITE : ce qui SORT du rejeu. `flex-1 justify-end` fait le pendant exact du flanc
+            gauche — c'est ce couple qui tient le transport au centre. */}
+        <div className="flex flex-1 items-center justify-end">
 
         {/* CE QUI SORT DU REJEU, dans son propre cartouche et NOMMÉ. Le bouton d'enregistrement
             ne se rend pas quand le navigateur ne sait pas filmer une toile (décision 7) : une
@@ -228,7 +261,34 @@ export function ReplayTransport({
           <SlidersIcon />
         </button>
       </div>
+      </div>
     </div>
+  )
+}
+
+/**
+ * L'icône de LECTURE AUTOMATIQUE, sur le modèle des lecteurs vidéo : un rail et sa pastille,
+ * pleins quand c'est armé, en creux sinon. Elle ne porte pas de libellé — le bouton est un
+ * `role="switch"` avec son nom accessible, et la barre n'a plus la place d'un mot de plus.
+ */
+function AutoPlayIcon({ on }: { on: boolean }) {
+  return (
+    <svg viewBox="0 0 28 16" className="h-[15px] w-[26px]" aria-hidden="true">
+      <rect
+        x="1"
+        y="3"
+        width="26"
+        height="10"
+        rx="5"
+        fill={on ? 'currentColor' : 'none'}
+        stroke="currentColor"
+        strokeWidth="1.5"
+        opacity={on ? 0.35 : 0.6}
+      />
+      {/* La pastille glisse d'un bord à l'autre : l'état se lit sans couleur, donc sans
+          dépendre d'une distinction que tout le monde ne fait pas. */}
+      <circle cx={on ? 19 : 9} cy="8" r="3.2" fill="currentColor" />
+    </svg>
   )
 }
 

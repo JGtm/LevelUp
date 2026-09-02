@@ -81,13 +81,11 @@ function renderDrawer(over: Partial<Parameters<typeof ReplaySettingsDrawer>[0]> 
   const onToggleShotFx = vi.fn()
   const onToggleKillFx = vi.fn()
   const onSetMarkerColors = vi.fn()
-  const onToggleAutoPlay = vi.fn()
   const utils = render(
     <ReplaySettingsDrawer
       locale="fr"
       onClose={onClose}
-      autoPlay
-      onToggleAutoPlay={onToggleAutoPlay}
+
       showAim
       onToggleAim={onToggleAim}
       showZones
@@ -115,31 +113,9 @@ function renderDrawer(over: Partial<Parameters<typeof ReplaySettingsDrawer>[0]> 
   )
   return {
     ...utils, onClose, onToggleAim, onToggleZones, onToggleTrail, onSetSpeed,
-    onToggleShotFx, onToggleKillFx, onSetMarkerColors, onToggleAutoPlay,
+    onToggleShotFx, onToggleKillFx, onSetMarkerColors,
   }
 }
-
-describe('ReplaySettingsDrawer — lecture automatique (point 22 du 2026-08-29)', () => {
-  it('la bascule est proposée, reflète autoPlay et appelle SON callback', () => {
-    const { onToggleAutoPlay, onToggleAim } = renderDrawer({ autoPlay: false })
-    const sw = screen.getByRole('switch', { name: 'Lecture automatique' })
-    expect(sw).toHaveAttribute('aria-checked', 'false')
-    fireEvent.click(sw)
-    expect(onToggleAutoPlay).toHaveBeenCalledTimes(1)
-    expect(onToggleAim).not.toHaveBeenCalled()
-  })
-
-  // LA RÉSERVE EST À L'ÉCRAN, pas dans un commentaire : ce réglage ne commande pas le rejeu
-  // ouvert (il décide de son état de DÉPART, lu au montage par `useReplayPlayback`). Sans
-  // cette phrase, on l'essaierait comme un bouton « Lecture » et on le croirait cassé.
-  it('dit en clair qu il ne met ni en lecture ni en pause le rejeu ouvert', () => {
-    renderDrawer()
-    expect(screen.getByRole('switch', { name: 'Lecture automatique' })).toHaveAttribute(
-      'title',
-      expect.stringContaining('ni en lecture ni en pause'),
-    )
-  })
-})
 
 describe('ReplaySettingsDrawer — les deux formes de commande (2026-08-29)', () => {
   // UN OUI/NON EST UN INTERRUPTEUR, UN CHOIX EXCLUSIF RESTE UN BOUTON PRESSÉ. La demande
@@ -413,7 +389,7 @@ describe('ReplaySettingsDrawer — cohabitation avec la légende de la carte de 
     expect(panel.closest('body')).toBeTruthy()
     const legend = render(<ReplayHeatmapLegend locale="fr" mode="presence" />)
     const box = legend.container.firstElementChild as HTMLElement
-    expect(box.className).toContain('left-2')
+    expect(box.className).toContain('left-3')
     expect(box.className).toContain('bottom-2')
   })
 })

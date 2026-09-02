@@ -222,7 +222,7 @@ export function ReplayKillFeed({
         onScroll={(e) => {
           atTopRef.current = e.currentTarget.scrollTop <= AT_TOP_PX
         }}
-        className="mt-2 flex min-h-[4.5rem] flex-1 flex-col overflow-y-auto pl-1.5"
+        className="mt-2 flex min-h-[4.5rem] flex-1 flex-col overflow-y-auto pl-2.5"
         aria-live="off"
       >
         {count === 0 && <li className="text-xs text-muted-foreground">{t.killFeedEmpty}</li>}
