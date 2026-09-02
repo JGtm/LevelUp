@@ -40,7 +40,6 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/analysis/filmdec"
-	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/analysis/objectiveevents"
 )
 
@@ -102,7 +101,7 @@ type BombInput struct {
 // sans compte à rebours, jamais avec un compte à rebours deviné.
 //
 // HORS LIGNE — appelée par BuildFromFilm, sous LockProcessDecode.
-func decodeFilmBombReads(film *filmsource.Film, matchID string, in BombInput) []filmdec.NavpointRadialRead {
+func decodeFilmBombReads(fc *filmdec.FilmContext, matchID string, in BombInput) []filmdec.NavpointRadialRead {
 	if !in.Scanned {
 		return nil
 	}
@@ -111,7 +110,7 @@ func decodeFilmBombReads(film *filmsource.Film, matchID string, in BombInput) []
 			"match_id", matchID)
 		return nil
 	}
-	sc, err := filmdec.ScanNavpointRadial(film, in.ChunkStartMS)
+	sc, err := filmdec.ScanNavpointRadial(fc, in.ChunkStartMS)
 	if err != nil {
 		slog.Warn("armement : anneau ti=12 illisible — rejeu sans compte a rebours",
 			"err", err, "match_id", matchID)

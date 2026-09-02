@@ -201,22 +201,22 @@ func equipmentFieldIndices(arch Archetype) [EquipmentFieldCount]int {
 
 // EquipmentArchetype charge l'archétype des objets d'équipement (ti=37) du registre du film.
 //
-// ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle [EquipmentArchetypeOf].
+// ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle [FilmContext.EquipmentArchetype].
 func EquipmentArchetype(dir string) (Archetype, error) {
 	film, err := filmsource.LoadDir(dir, nil)
 	if err != nil {
 		return Archetype{}, err
 	}
-	return EquipmentArchetypeOf(film)
+	return NewFilmContext(film).EquipmentArchetype()
 }
 
-// EquipmentArchetypeOf charge l'archétype ti=37 du registre d'un film DEJA CHARGE.
-func EquipmentArchetypeOf(film *filmsource.Film) (Archetype, error) {
-	reg, err := filmRegistry(film)
+// EquipmentArchetype rend l'archétype ti=37 du registre du film, ANALYSE UNE FOIS par le contexte
+// (lot 2, 2026-09-03 : la calibration MPP et les deux balayages de création le redemandaient).
+func (c *FilmContext) EquipmentArchetype() (Archetype, error) {
+	arch, _, ok, err := c.archetype(EquipmentTypeIndex)
 	if err != nil {
 		return Archetype{}, err
 	}
-	arch, ok := reg.Archetype(EquipmentTypeIndex)
 	if !ok {
 		return Archetype{}, fmt.Errorf("archétype équipement %d absent du registre", EquipmentTypeIndex)
 	}
@@ -236,23 +236,23 @@ func ScanFilmEquipmentState(dir string) ([]EquipmentStateSample, EquipmentStateS
 	if err != nil {
 		return nil, EquipmentStateStats{}, err
 	}
-	return ScanEquipmentState(film)
+	return ScanEquipmentState(NewFilmContext(film))
 }
 
 // ScanEquipmentState décode l'état des objets d'équipement d'un film DEJA CHARGE.
-func ScanEquipmentState(film *filmsource.Film) ([]EquipmentStateSample, EquipmentStateStats, error) {
+func ScanEquipmentState(fc *FilmContext) ([]EquipmentStateSample, EquipmentStateStats, error) {
 	var st EquipmentStateStats
-	nums := FilmChunkNumbers(film)
+	nums := fc.ChunkNumbers()
 	if len(nums) == 0 {
 		return nil, st, ErrNoFilmChunk
 	}
-	band := worldObjectSlotBand(film, EquipmentTypeIndex)
+	band := worldObjectSlotBand(fc.Film(), EquipmentTypeIndex)
 	if len(band) == 0 {
 		return nil, st, fmt.Errorf("aucun slot d'archétype ti=%d dans les keyframes du film",
 			EquipmentTypeIndex)
 	}
 	st.Slots = len(band)
-	arch, err := EquipmentArchetypeOf(film)
+	arch, err := fc.EquipmentArchetype()
 	if err != nil {
 		return nil, st, err
 	}
@@ -267,7 +267,7 @@ func ScanEquipmentState(film *filmsource.Film) ([]EquipmentStateSample, Equipmen
 
 	var out []EquipmentStateSample
 	for _, c := range nums {
-		data, pks, ok := FilmChunkAt(film, c)
+		data, pks, ok := fc.ChunkAt(c)
 		if !ok {
 			continue
 		}

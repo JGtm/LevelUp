@@ -25,7 +25,6 @@ import (
 	"log/slog"
 
 	"levelup/go-api/internal/analysis/filmdec"
-	"levelup/go-api/internal/analysis/filmsource"
 )
 
 // padArchetype dit CE QUI CHANGE d'un archétype d'objet du monde à l'autre : son typeIndex, le
@@ -36,7 +35,7 @@ import (
 type padArchetype struct {
 	ti    int
 	label string
-	scan  func(film *filmsource.Film, wr *filmdec.Vec3Range, band map[uint32]bool) (
+	scan  func(fc *filmdec.FilmContext, wr *filmdec.Vec3Range, band map[uint32]bool) (
 		[]filmdec.EquipmentCreation, filmdec.EquipmentCreationStats, error)
 }
 
@@ -64,11 +63,11 @@ func worldEquipmentArchetype() padArchetype {
 //
 // HORS LIGNE — appelée par BuildFromFilm, sous LockProcessDecode.
 func decodeFilmPadScans(
-	film *filmsource.Film, matchID string, wr *filmdec.Vec3Range, mpp filmdec.MPPWidths,
+	fc *filmdec.FilmContext, matchID string, wr *filmdec.Vec3Range, mpp filmdec.MPPWidths,
 ) PadScans {
 	return PadScans{
-		Weapons:  decodeFilmPadScan(film, matchID, wr, mpp, groundWeaponArchetype()),
-		Powerups: decodeFilmPadScan(film, matchID, wr, mpp, worldEquipmentArchetype()),
+		Weapons:  decodeFilmPadScan(fc, matchID, wr, mpp, groundWeaponArchetype()),
+		Powerups: decodeFilmPadScan(fc, matchID, wr, mpp, worldEquipmentArchetype()),
 	}
 }
 
@@ -92,23 +91,23 @@ func decodeFilmPadScans(
 //
 // HORS LIGNE — appelée par BuildFromFilm, sous LockProcessDecode.
 func decodeFilmPadScan(
-	film *filmsource.Film, matchID string, wr *filmdec.Vec3Range, mpp filmdec.MPPWidths,
+	fc *filmdec.FilmContext, matchID string, wr *filmdec.Vec3Range, mpp filmdec.MPPWidths,
 	arch padArchetype,
 ) WorldObjectScan {
 	defer gwInstallMPPWidths(mpp)()
-	kf := filmdec.ScanWorldObjectKeyframes(film, arch.ti)
+	kf := filmdec.ScanWorldObjectKeyframes(fc.Film(), arch.ti)
 	if len(kf.Band) == 0 {
 		slog.Warn("socles : aucun slot de l archetype aux images-cles — rejeu sans ce calque",
 			"archetype", arch.label, "match_id", matchID, "imagesCles", len(kf.TimesUS))
 		return WorldObjectScan{}
 	}
-	cre, st, err := arch.scan(film, wr, kf.Band)
+	cre, st, err := arch.scan(fc, wr, kf.Band)
 	if err != nil {
 		slog.Warn("socles : records de creation illisibles — rejeu sans ce calque",
 			"archetype", arch.label, "err", err, "match_id", matchID)
 		return WorldObjectScan{}
 	}
-	tracks, err := filmdec.ScanWorldObjectsForBand(film, wr, kf.Band)
+	tracks, err := filmdec.ScanWorldObjectsForBand(fc.Film(), wr, kf.Band)
 	if err != nil {
 		slog.Warn("socles : pistes delta illisibles — AUCUN socle publie (sans elles, toute"+
 			" apparition passerait pour un objet apparu au repos)",

@@ -79,21 +79,22 @@ type AbilityRankStats struct {
 // qui est un global de paquet. L'appelant doit détenir LockProcessDecode (BuildFromFilm le
 // fait). Le hook est restauré à la sortie, y compris en cas d'erreur.
 //
-// ScanFilmAbilityRanks est l'ENVELOPPE D2, HORS PRODUCTION : elle charge le film puis appelle
-// [ScanAbilityRanks]. La cuisson, elle, passe un film deja charge.
+// ScanFilmAbilityRanks est l'ENVELOPPE D2, HORS PRODUCTION : elle charge le film, ouvre un
+// contexte pour elle seule, puis appelle [ScanAbilityRanks]. La cuisson, elle, passe le contexte
+// qu'elle partage entre tous ses balayages.
 func ScanFilmAbilityRanks(dir string) ([]AbilityRank, AbilityRankStats, error) {
 	film, err := filmsource.LoadDir(dir, nil)
 	if err != nil {
 		return nil, AbilityRankStats{}, err
 	}
-	return ScanAbilityRanks(film)
+	return ScanAbilityRanks(NewFilmContext(film))
 }
 
 // ScanAbilityRanks decode les identites de capacite d'un film DEJA CHARGE. Cf.
 // [ScanFilmAbilityRanks] pour la doctrine du balayage.
-func ScanAbilityRanks(film *filmsource.Film) ([]AbilityRank, AbilityRankStats, error) {
+func ScanAbilityRanks(fc *FilmContext) ([]AbilityRank, AbilityRankStats, error) {
 	var out []AbilityRank
-	st, err := walkAbilityEmissions(film, func(e abilityEmission) {
+	st, err := walkAbilityEmissions(fc, func(e abilityEmission) {
 		if e.Rank == AbilitySetNoRank {
 			return
 		}
@@ -127,21 +128,21 @@ type abilityEmission struct {
 //
 // Le hook est LA grammaire : c'est le déserialiseur lui-même qui publie, on ne relit pas les
 // bits à côté de lui. Deux lecteurs du même champ divergeraient.
-func walkAbilityEmissions(film *filmsource.Film, visit func(abilityEmission)) (AbilityRankStats, error) {
+func walkAbilityEmissions(fc *FilmContext, visit func(abilityEmission)) (AbilityRankStats, error) {
 	var st AbilityRankStats
-	chunks := FilmChunkNumbers(film)
+	chunks := fc.ChunkNumbers()
 	if len(chunks) == 0 {
 		return st, ErrNoFilmChunk
 	}
-	slots := bipedSlotBand(film, chunks)
+	slots := fc.BipedSlots()
 	if len(slots) == 0 {
 		return st, fmt.Errorf("aucun slot biped (ti=%d) dans les keyframes du film", BipedTypeIndex)
 	}
-	lay, _, err := DetectI0LayoutOf(film)
+	lay, err := fc.I0Layout()
 	if err != nil {
 		return st, fmt.Errorf("découpage i0 illisible : %w", err)
 	}
-	arch, err := bipedArchetype(film)
+	arch, err := fc.bipedArchetype()
 	if err != nil {
 		return st, err
 	}
@@ -159,7 +160,7 @@ func walkAbilityEmissions(film *filmsource.Film, visit func(abilityEmission)) (A
 
 	minRecord := bipedHeaderBits + bipedIndexBits*bipedMinMaskCnt + lay.TotalBits()
 	for _, c := range chunks {
-		data, pks, ok := FilmChunkAt(film, c)
+		data, pks, ok := fc.ChunkAt(c)
 		if !ok {
 			continue
 		}
@@ -200,13 +201,13 @@ func walkAbilityEmissions(film *filmsource.Film, visit func(abilityEmission)) (A
 	return st, nil
 }
 
-// bipedArchetype charge l'archétype biped depuis le registre du film (chunk_00).
-func bipedArchetype(film *filmsource.Film) (Archetype, error) {
-	reg, err := filmRegistry(film)
+// bipedArchetype rend l'archétype biped du registre du film (chunk_00), ANALYSE UNE FOIS par le
+// contexte (lot 2, 2026-09-03 : cinq balayages delta le redemandaient, donc cinq re-analyses).
+func (c *FilmContext) bipedArchetype() (Archetype, error) {
+	arch, _, ok, err := c.archetype(BipedTypeIndex)
 	if err != nil {
 		return Archetype{}, err
 	}
-	arch, ok := reg.Archetype(BipedTypeIndex)
 	if !ok {
 		return Archetype{}, fmt.Errorf("archétype biped %d absent du registre", BipedTypeIndex)
 	}

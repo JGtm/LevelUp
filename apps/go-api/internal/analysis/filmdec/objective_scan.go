@@ -168,30 +168,30 @@ func ScanFilmObjectives(dir string) (ObjectiveScan, error) {
 	if err != nil {
 		return ObjectiveScan{}, err
 	}
-	return ScanObjectives(film)
+	return ScanObjectives(NewFilmContext(film))
 }
 
 // ScanObjectives décode les champs publiés de ti=11 d'un film DEJA CHARGE.
-func ScanObjectives(film *filmsource.Film) (ObjectiveScan, error) {
+func ScanObjectives(fc *FilmContext) (ObjectiveScan, error) {
 	sc := ObjectiveScan{}
-	nums := FilmChunkNumbers(film)
+	nums := fc.ChunkNumbers()
 	if len(nums) == 0 {
 		return sc, ErrNoFilmChunk
 	}
-	band := observedSlotBand(film, ObjectiveTypeIndex)
+	band := observedSlotBand(fc.Film(), ObjectiveTypeIndex)
 	if len(band) == 0 {
 		return sc, fmt.Errorf("aucun slot d'archetype ti=%d dans les keyframes du film",
 			ObjectiveTypeIndex)
 	}
 	sc.Slots = len(band)
-	arch, reg, err := objectiveArchetype(film)
+	arch, reg, err := fc.objectiveArchetype()
 	if err != nil {
 		return sc, err
 	}
 	w := objectiveWalk{arch: arch, reg: reg, sc: &sc}
 	defer w.install()()
 	for _, c := range nums {
-		data, pks, ok := FilmChunkAt(film, c)
+		data, pks, ok := fc.ChunkAt(c)
 		if !ok {
 			continue
 		}
@@ -220,12 +220,11 @@ func ScanObjectives(film *filmsource.Film) (ObjectiveScan, error) {
 // LE DECOUPAGE DU REGISTRE CHANGE AVEC LE BUILD (mesure du lot 0) : les noms sont lus du film,
 // jamais supposes aux index attendus — c'est `consumeByName` qui route, et un archetype dont les
 // noms ne sont pas ceux de ti=11 rend simplement zero lecture.
-func objectiveArchetype(film *filmsource.Film) (Archetype, *Registry, error) {
-	reg, err := filmRegistry(film)
+func (c *FilmContext) objectiveArchetype() (Archetype, *Registry, error) {
+	arch, reg, ok, err := c.archetype(ObjectiveTypeIndex)
 	if err != nil {
 		return Archetype{}, nil, err
 	}
-	arch, ok := reg.Archetype(ObjectiveTypeIndex)
 	if !ok {
 		return Archetype{}, nil, fmt.Errorf("archetype ti=%d absent du registre", ObjectiveTypeIndex)
 	}

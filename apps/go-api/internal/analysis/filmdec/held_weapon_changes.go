@@ -98,15 +98,15 @@ func ScanFilmHeldWeaponChanges(
 	if err != nil {
 		return nil, HeldWeaponChangeStats{}, err
 	}
-	return ScanHeldWeaponChanges(film, spawnSet)
+	return ScanHeldWeaponChanges(NewFilmContext(film), spawnSet)
 }
 
 // ScanHeldWeaponChanges décode les changements d'arme en main d'un film DEJA CHARGE.
 func ScanHeldWeaponChanges(
-	film *filmsource.Film, spawnSet func(slot uint32, at uint64) (map[uint32]bool, bool),
+	fc *FilmContext, spawnSet func(slot uint32, at uint64) (map[uint32]bool, bool),
 ) ([]HeldWeaponChange, HeldWeaponChangeStats, error) {
 	var st HeldWeaponChangeStats
-	cfg, err := newHeldWeaponScan(film)
+	cfg, err := newHeldWeaponScan(fc)
 	if err != nil {
 		return nil, st, err
 	}
@@ -125,7 +125,7 @@ func ScanHeldWeaponChanges(
 	prevFam, seen := map[key]uint32{}, map[key]bool{}
 	var out []HeldWeaponChange
 	for _, c := range cfg.chunks {
-		data, pks, ok := FilmChunkAt(film, c)
+		data, pks, ok := fc.ChunkAt(c)
 		if !ok {
 			continue
 		}
@@ -210,22 +210,22 @@ type heldWeaponScan struct {
 
 // newHeldWeaponScan résout la configuration. Les index d'emplacement d'arme viennent des NOMS
 // du registre du film, jamais de constantes : un index de composant est un numéro de build.
-func newHeldWeaponScan(film *filmsource.Film) (heldWeaponScan, error) {
+func newHeldWeaponScan(fc *FilmContext) (heldWeaponScan, error) {
 	var s heldWeaponScan
-	s.chunks = FilmChunkNumbers(film)
+	s.chunks = fc.ChunkNumbers()
 	if len(s.chunks) == 0 {
 		return s, ErrNoFilmChunk
 	}
-	s.slots = bipedSlotBand(film, s.chunks)
+	s.slots = fc.BipedSlots()
 	if len(s.slots) == 0 {
 		return s, fmt.Errorf("aucun slot biped (ti=%d) dans les keyframes du film", BipedTypeIndex)
 	}
-	lay, _, err := DetectI0LayoutOf(film)
+	lay, err := fc.I0Layout()
 	if err != nil {
 		return s, fmt.Errorf("découpage i0 illisible : %w", err)
 	}
 	s.lay = lay
-	arch, err := bipedArchetype(film)
+	arch, err := fc.bipedArchetype()
 	if err != nil {
 		return s, err
 	}

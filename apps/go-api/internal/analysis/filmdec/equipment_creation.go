@@ -174,21 +174,21 @@ func ScanFilmEquipmentCreations(dir string, wr *Vec3Range) ([]EquipmentCreation,
 	if err != nil {
 		return nil, EquipmentCreationStats{}, err
 	}
-	return ScanEquipmentCreations(film, wr)
+	return ScanEquipmentCreations(NewFilmContext(film), wr)
 }
 
 // ScanEquipmentCreations décode les records de création d'équipement d'un film DEJA CHARGE.
-func ScanEquipmentCreations(film *filmsource.Film, wr *Vec3Range) ([]EquipmentCreation, EquipmentCreationStats, error) {
+func ScanEquipmentCreations(fc *FilmContext, wr *Vec3Range) ([]EquipmentCreation, EquipmentCreationStats, error) {
 	var st EquipmentCreationStats
-	if len(FilmChunkNumbers(film)) == 0 {
+	if len(fc.ChunkNumbers()) == 0 {
 		return nil, st, ErrNoFilmChunk
 	}
-	band := worldObjectSlotBand(film, EquipmentTypeIndex)
+	band := worldObjectSlotBand(fc.Film(), EquipmentTypeIndex)
 	if len(band) == 0 {
 		return nil, st, fmt.Errorf("aucun slot d'archétype ti=%d dans les keyframes du film",
 			EquipmentTypeIndex)
 	}
-	return ScanEquipmentCreationsForBand(film, wr, band)
+	return ScanEquipmentCreationsForBand(fc, wr, band)
 }
 
 // ScanFilmEquipmentCreationsForBand balaye une BANDE DE SLOTS donnée. La bande est un paramètre
@@ -206,23 +206,23 @@ func ScanFilmEquipmentCreationsForBand(
 	if err != nil {
 		return nil, EquipmentCreationStats{}, err
 	}
-	return ScanEquipmentCreationsForBand(film, wr, band)
+	return ScanEquipmentCreationsForBand(NewFilmContext(film), wr, band)
 }
 
 // ScanEquipmentCreationsForBand balaye une bande de slots donnée dans un film DEJA CHARGE.
 func ScanEquipmentCreationsForBand(
-	film *filmsource.Film, wr *Vec3Range, band map[uint32]bool,
+	fc *FilmContext, wr *Vec3Range, band map[uint32]bool,
 ) ([]EquipmentCreation, EquipmentCreationStats, error) {
 	var st EquipmentCreationStats
 	if wr == nil {
 		return nil, st, fmt.Errorf("bornes monde absentes : sans elles le décodeur ne rend que des quanta")
 	}
-	nums := FilmChunkNumbers(film)
+	nums := fc.ChunkNumbers()
 	if len(nums) == 0 {
 		return nil, st, ErrNoFilmChunk
 	}
 	st.Slots = len(band)
-	arch, err := EquipmentArchetypeOf(film)
+	arch, err := fc.EquipmentArchetype()
 	if err != nil {
 		return nil, st, err
 	}
@@ -233,7 +233,7 @@ func ScanEquipmentCreationsForBand(
 	w := equipCreationWalk{comps: len(arch.Components), wr: wr, band: band, cur: &cur}
 	var out []EquipmentCreation
 	for _, c := range nums {
-		data, pks, ok := FilmChunkAt(film, c)
+		data, pks, ok := fc.ChunkAt(c)
 		if !ok {
 			continue
 		}
