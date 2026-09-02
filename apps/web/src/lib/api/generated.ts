@@ -5355,6 +5355,7 @@ export interface components {
             score?: components["schemas"]["ScoreCoverage"];
             shots: components["schemas"]["LayerCoverage"];
             skullCarries?: components["schemas"]["SkullCarriesCoverage"];
+            vehicles?: components["schemas"]["VehicleCoverage"];
             verdict?: {
                 [key: string]: string;
             };
@@ -9592,6 +9593,10 @@ export interface components {
             structureBounds?: components["schemas"]["Bounds"];
             titleSlug: string;
             tracks: components["schemas"]["Track"][] | null;
+            vehicleLabels?: {
+                [key: string]: components["schemas"]["VehicleLabel"];
+            };
+            vehicles?: components["schemas"]["VehicleTrack"][] | null;
             vipCrown?: components["schemas"]["VipPeriod"][] | null;
             weaponChanges?: components["schemas"]["WeaponChange"][] | null;
             weaponLabels?: {
@@ -11476,6 +11481,102 @@ export interface components {
             y: number;
             /** Format: double */
             z: number;
+        };
+        VehicleCoverage: {
+            /** Format: int64 */
+            ambiguous: number;
+            /** Format: int64 */
+            familyResolved: number;
+            /** Format: int64 */
+            familyUnknown: number;
+            /** Format: int64 */
+            lives: number;
+            /** Format: int64 */
+            noPosition: number;
+            /** Format: int64 */
+            published: number;
+            /** Format: int64 */
+            rides: number;
+            /** Format: int64 */
+            ridesFromEvent: number;
+            /** Format: int64 */
+            ridesFromGap: number;
+            /** Format: int64 */
+            ridesMixed: number;
+            /** Format: int64 */
+            ridesNamed: number;
+            /** Format: int64 */
+            ridesWithSeat: number;
+            /** Format: int64 */
+            samples: number;
+            scanned: boolean;
+            unknownChassis?: {
+                [key: string]: number;
+            };
+            /** Format: int64 */
+            vehiclesRidden: number;
+            /** Format: int64 */
+            withChassis: number;
+            /** Format: int64 */
+            withHeading: number;
+            /** Format: int64 */
+            withSpawn: number;
+        };
+        VehicleLabel: {
+            img?: string;
+            tinted?: boolean;
+        };
+        VehicleRide: {
+            /** Format: int64 */
+            seat?: number;
+            /** Format: int32 */
+            slot: number;
+            src: string;
+            /** Format: int64 */
+            t0: number;
+            /** Format: int64 */
+            t1: number;
+            xuid?: string;
+        };
+        VehicleSample: {
+            /** Format: float */
+            h?: number;
+            /** Format: int64 */
+            t: number;
+            /** Format: float */
+            x: number;
+            /** Format: float */
+            y: number;
+            /** Format: float */
+            z?: number;
+        };
+        VehicleSpawn: {
+            /** Format: float */
+            h?: number;
+            /** Format: float */
+            x: number;
+            /** Format: float */
+            y: number;
+            /** Format: float */
+            z?: number;
+        };
+        VehicleTrack: {
+            chassis?: string;
+            end: string;
+            family?: string;
+            /** Format: int32 */
+            gen: number;
+            rides?: components["schemas"]["VehicleRide"][] | null;
+            samples?: components["schemas"]["VehicleSample"][] | null;
+            /** Format: int32 */
+            slot: number;
+            spawn?: components["schemas"]["VehicleSpawn"];
+            /** Format: int64 */
+            t0: number;
+            /** Format: int64 */
+            t1: number;
+            /** Format: int64 */
+            t1max: number;
         };
         VipCrownCoverage: {
             /** Format: int64 */

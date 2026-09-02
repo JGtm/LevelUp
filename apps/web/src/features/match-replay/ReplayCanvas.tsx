@@ -49,6 +49,7 @@ import { useGrenadeIcons } from './useGrenadeIcons'
 import { useZoneStates } from './useZoneStates'
 import { useReplayWeaponPads } from './useReplayWeaponPads'
 import { useReplayGroundWeapons } from './useReplayGroundWeapons'
+import { useReplayVehicles } from './useReplayVehicles'
 import type { ReplayLocale } from './i18n'
 import type { EndMatchSoundSpec } from './endMatchSound'
 import type { ReplayFeedEntry } from './killFeedLogic'
@@ -84,8 +85,6 @@ import { drawProjectilesLayer } from './replayProjectiles'
 import { drawTracksLayer } from './replayMarkers'
 import { useReplayTiming } from './useReplayTiming'
 import { CANVAS_HEIGHT, CANVAS_PAD, exportRenderScale, useReplayView, type ReplayMapBackgroundLayer } from './useReplayView'
-
-
 
 interface ReplayCanvasProps {
   doc: ReplayDocumentReady
@@ -167,8 +166,7 @@ export function ReplayCanvas({
   const {
     showAim, showZones, showNames, showTrail, showHeatmap, heatmapMode, heatmapSpan,
     showShotFx, showKillFx, showPlacements, showUnnamedPlacements, showDroppedPlacements,
-    showWeaponPads, showGroundWeapons, showFlagCarries, showVipCrown, showSkullCarrier, speed: multiplier,
-    markerColors,
+    showWeaponPads, showGroundWeapons, showFlagCarries, showVipCrown, showSkullCarrier, showVehicles, speed: multiplier, markerColors,
   } = settings
   // SON : coupé par défaut, câblage dans le hook (replaySound.ts, lecture replayAudio.ts, camps
   // objectiveSound.ts, fin endMatch, « manche terminée » locale-aware — la `locale` ne sert qu'à lui).
@@ -299,6 +297,7 @@ export function ReplayCanvas({
     doc, view: canvasView, enabled: showGroundWeapons,
     ink: { fill: markInk.fill, outline: neutralInk }, redraw,
   })
+  const vehicles = useReplayVehicles({ doc, view: canvasView, enabled: showVehicles, showNames, colorOfSlot, nameOfSlot, neutralInk, labelStroke, redraw }) // schéma 29 ; prédicat embarqué C7 pour drawTracksLayer.
   // LES POSES D'ÉQUIPEMENT (schéma 10) : comptes, axe de temps, bascules et survol dans un
   // seul hook (useReplayPlacements). Les LÂCHÉS DE PUISSANCE suivent leur bascule, et rien
   // d'autre — plus de garde de mode par-dessus (2026-08-20).
@@ -408,6 +407,7 @@ export function ReplayCanvas({
         { colorOfSlot: colorOfSlotOrLast, neutral: floorStyle.edge, wall: wallInk, rift: riftInk },
       )
     }
+    vehicles.paint(ctx, frame, dpr)
     drawTracksLayer(ctx, doc.tracks, view, {
       colorOfSlot,
       ink: floorStyle.edge,
@@ -422,7 +422,7 @@ export function ReplayCanvas({
       showTrail,
       selfInk,
       deathInk: shotColor,
-      labelStroke,
+      labelStroke, embarkedAtSlot: vehicles.isEmbarkedAt, // PION EMBARQUÉ (C7).
     })
     // Le « ! » PAR-DESSUS le marqueur du tireur, centré dans le noyau : il se lit sur le
     // point, il se dessine donc juste après lui. Même interrupteur que l'éclair de bouche
@@ -531,7 +531,7 @@ export function ReplayCanvas({
     // Le TRACÉ seul, jamais l'objet du hook : `hover` change à chaque mouvement de pointeur,
     // et le mettre ici ferait recuire `draw` (donc toute la scène) pour une infobulle.
     weaponPads,
-    groundWeapons,
+    groundWeapons, vehicles,
     shotColor,
     grenadeColor,
     eventHoldFrames,
@@ -603,7 +603,7 @@ export function ReplayCanvas({
       groundWeapons: groundWeapons.available,
       flagCarries: flags.available,
       vipCrown: vipCrown.available,
-      skullCarrier: skullCarrier.available,
+      skullCarrier: skullCarrier.available, vehicles: vehicles.available,
     },
   })
   // CE QUI SORT DU REJEU (image, vidéo) vit dans useReplayCapture : le canvas prête sa TOILE, son

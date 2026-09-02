@@ -43,6 +43,7 @@ export type {
   ReplayGroundWeaponControls,
   ReplayPlacementControls,
   ReplaySkullCarrierControls,
+  ReplayVehicleControls,
   ReplayVipCrownControls,
   ReplayWeaponPadControls,
 } from './ReplaySettingsLayers'
@@ -52,6 +53,7 @@ import type {
   ReplayGroundWeaponControls,
   ReplayPlacementControls,
   ReplaySkullCarrierControls,
+  ReplayVehicleControls,
   ReplayVipCrownControls,
   ReplayWeaponPadControls,
 } from './ReplaySettingsLayers'
@@ -91,6 +93,8 @@ interface ReplaySettingsDrawerProps {
   vipCrown: ReplayVipCrownControls
   /** Le PORTEUR DU CRÂNE d'Oddball (schéma 23) : un seul calque, allumé par défaut. */
   skullCarrier: ReplaySkullCarrierControls
+  /** Les VÉHICULES (schéma 29) : un seul calque, allumé par défaut. */
+  vehicles: ReplayVehicleControls
   heatmap: ReplayHeatmapControls
   /** Éclairs de bouche (tous les tirs) et trait tueur -> victime : deux réglages distincts. */
   showShotFx: boolean
@@ -308,6 +312,7 @@ export function ReplaySettingsDrawer({
   flagCarries,
   vipCrown,
   skullCarrier,
+  vehicles,
   heatmap,
   showShotFx,
   onToggleShotFx,
@@ -361,6 +366,7 @@ export function ReplaySettingsDrawer({
         flagCarries={flagCarries}
         vipCrown={vipCrown}
         skullCarrier={skullCarrier}
+        vehicles={vehicles}
       />
       <EffectsSection
         locale={locale}

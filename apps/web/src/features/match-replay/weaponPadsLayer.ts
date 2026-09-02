@@ -111,11 +111,18 @@ const PAD_DIAMOND_GROWTH = 1.25
 /**
  * traceDiamond pose le contour d'un losange centré, de demi-diagonale `half` (sommet en haut).
  *
- * UNE SEULE COPIE POUR LES DEUX USAGES — la marque et son halo d'incertitude. Deux tracés de la
- * même forme divergeraient au premier réglage, et l'écart serait invisible : un halo légèrement
- * désaligné de son losange reste crédible.
+ * UNE SEULE COPIE POUR LES DEUX USAGES ICI — la marque et son halo d'incertitude. Deux tracés de
+ * la même forme divergeraient au premier réglage, et l'écart serait invisible : un halo
+ * légèrement désaligné de son losange reste crédible.
+ *
+ * EXPORTÉE depuis le lot véhicules (2026-09-02) : le repère « famille de châssis non résolue »
+ * de `vehiclesLayer.ts` est le même losange neutre que ce fichier trace déjà pour un socle — le
+ * vocabulaire du dépôt pour « un objet de la carte, pas un joueur » (cf. `replayMarkers.corePath`,
+ * troisième copie du même tracé). RÉUTILISER cette fonction plutôt que d'en écrire une troisième
+ * est ce que CLAUDE.md n°6 demande à la 3e copie — la centralisation complète des trois (dont
+ * `replayMarkers.ts`) reste une dette pré-existante, hors périmètre de ce lot (cf. Découvertes).
  */
-function traceDiamond(ctx: CanvasRenderingContext2D, c: XY, half: number): void {
+export function traceDiamond(ctx: CanvasRenderingContext2D, c: XY, half: number): void {
   ctx.beginPath()
   ctx.moveTo(c.x, c.y - half)
   ctx.lineTo(c.x + half, c.y)

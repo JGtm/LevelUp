@@ -2787,6 +2787,33 @@ export type ReplayGaugePoint = components['schemas']['GaugePoint']
 // les incohérences. Absente = personne n'a lu le film pour ce calque.
 export type ReplayFlagCarriesCoverage = components['schemas']['FlagCarriesCoverage']
 
+// LA VIE D'UN VÉHICULE (schéma 29) : où il naît, sa trajectoire échantillonnée avec son cap,
+// ses épisodes d'occupation (qui est à bord et quand), et jusqu'à quelle frame l'afficher.
+// `end` vaut TOUJOURS `unknown` (cf. `apps/go-api/internal/analysis/replay/document_vehicles.go`) :
+// la datation de la destruction a été mesurée et RÉFUTÉE (V3_DESTRUCTION_DATEE_2026-09-02) — la
+// disparition du sprite n'est donc jamais à lire comme une explosion.
+export type ReplayVehicleTrack = components['schemas']['VehicleTrack']
+// La naissance d'un véhicule : position, et JAMAIS de cap (`h` absent par construction — la
+// feuille d'orientation du record de création n'est pas lisible, cf. le commentaire Go). Le
+// client oriente le véhicule sur son PREMIER échantillon mobile, ou nez vers le haut de l'écran
+// s'il n'en a aucun.
+export type ReplayVehicleSpawn = components['schemas']['VehicleSpawn']
+// Un point de trajectoire : position + cap (`h`, en degrés, MÊME convention que `Point.h` — 0 =
+// +X, 90 = +Y). `h` est la direction de la VÉLOCITÉ à cet instant ; à l'arrêt il vaut le DERNIER
+// cap connu (reporté), jamais recalculé sur du bruit.
+export type ReplayVehicleSample = components['schemas']['VehicleSample']
+// Un ÉPISODE D'OCCUPATION : un bipède (son `slot`) à bord de 'T0' à 'T1'. `seat` (0 = conducteur)
+// est un POINTEUR — nil = aucun événement apparié. `xuid` vide = occupant non nommé, l'épisode
+// reste publié. Deux épisodes d'un même véhicule peuvent se chevaucher (plusieurs passagers).
+export type ReplayVehicleRide = components['schemas']['VehicleRide']
+// Le sprite d'une FAMILLE de châssis, posé À LA REQUÊTE par le service (jamais dans l'artefact) :
+// pas de FR/EN (nom propre du jeu), `tinted` dit que le visuel se teint en `multiply` (traits
+// noirs, cf. `tintedIconCanvas`).
+export type ReplayVehicleLabel = components['schemas']['VehicleLabel']
+// Ce que le calque véhicules a vu, résolu, et refusé de dire — publiée même sans véhicule (même
+// raison que `placements`/`groundWeapons` : distinguer une carte sans véhicule d'un film non lu).
+export type ReplayVehicleCoverage = components['schemas']['VehicleCoverage']
+
 // ---------------------------------------------------------------------------
 // Schémas 25 à 27 du document de rejeu — ÉCRITS À LA MAIN, et voici pourquoi.
 //

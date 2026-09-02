@@ -191,6 +191,13 @@ type Coverage struct {
 	// leur ramasseur, et comment leurs fins se répartissent entre observé et ouvert. Publiée
 	// même vide, même raison que `weaponChanges`.
 	GroundWeaponItems *GroundWeaponItemsCoverage `json:"groundWeaponItems,omitempty"`
+	// Vehicles est la couverture du calque des VÉHICULES (schéma 29, cf. document_vehicles.go) :
+	// vies recensées, publiées, celles dont le châssis est lu et résolu en famille de sprite (et
+	// le détail des châssis NON résolus, châssis par châssis), points de trajectoire, et les
+	// épisodes d'occupation ventilés par précision de leurs bornes. Publiée même vide, même
+	// raison que `placements` et `groundWeapons` : un film d'arène sans véhicule et un film qu'on
+	// n'a pas su balayer rendent tous deux zéro véhicule — seul `scanned` les distingue.
+	Vehicles *VehicleCoverage `json:"vehicles,omitempty"`
 	// ObjectiveObjects est la couverture du calque des objets d'objectif LIBRES : combien le
 	// manifeste en déclare de publiables, combien de vies et de points sortent, et ce qui a été
 	// écarté hors axe (cf. document_objective_objects.go).

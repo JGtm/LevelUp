@@ -93,6 +93,10 @@ type Options struct {
 	// TROIS lectures chacun, `Scanned` disant qu'elles ont abouti (cf. build_ground_weapons.go).
 	// Entree de DONNEES, comme Placements. Absente = rejeu sans socles — jamais des socles devines.
 	Pads PadScans
+	// Vehicles : ce que le film rend sur les VEHICULES (`ti=40`) — recensement, creations,
+	// nuage de positions et evenements d'embarquement (cf. build_vehicles.go). Entree de
+	// DONNEES, comme Pads. `Scanned` faux = rejeu sans vehicules, jamais des vehicules devines.
+	Vehicles VehicleScan
 	// Deaths : le fil des morts du film (chunk highlight), qui NOMME les vies et fonde TOUT le
 	// rattachement (cf. lives.go). Entrée de DONNÉES comme les précédentes.
 	//
@@ -362,6 +366,10 @@ func BuildFromFilm(matchID, titleSlug, filmDir string, opt Options) (ReplayDocum
 	// SOCLES : archetypes 42 (armes) et 37 (power-ups), sur la MEME horloge, AUX LARGEURS MPP que
 	// la calibration des POSES vient de mesurer sur ce film (cf. build_ground_weapons.go).
 	opt.Pads = decodeFilmPadScans(filmDir, &worldRange, opt.PlacementStats.Calibration.Widths)
+	// VEHICULES : archetype 40, sur la MEME horloge et AUX MEMES largeurs MPP que les socles —
+	// le mot d'identite du chassis se lit derriere les memes deux champs de largeur variable
+	// (cf. build_vehicles.go).
+	opt.Vehicles = decodeFilmVehicleScan(filmDir, &worldRange, opt.PlacementStats.Calibration.Widths)
 	// MARQUEUR DE PORTAGE : le controle independant du calque du drapeau, lu aux images-cles du
 	// MEME film — sur les seuls films de CTF (cf. build_objectives_live.go).
 	opt.Flag.Marks = decodeFilmCarrierMarks(filmDir, opt.Flag)
@@ -564,6 +572,11 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 		replayClock{origin: origin, step: step, frames: doc.FrameCount})
 	doc.Coverage.GroundWeaponItems = &gwiCov
 	logGroundWeaponItems(gwiCov)
+	// LES VEHICULES, sur le MEME nuage NON decime de bipedes (ce sont ses TROUS qui portent les
+	// episodes d'occupation) et le MEME pont slot -> xuid que les tirs — cf. build_vehicles.go.
+	// Pose APRES la couverture : il publie la sienne.
+	attachVehicles(&doc, opt.Vehicles, sorted, own,
+		replayClock{origin: origin, step: step, frames: doc.FrameCount})
 	// La VIE DES DRAPEAUX, sur les pistes PUBLIEES (le drapeau porte est a la position de son
 	// porteur, et c'est celle-la que le client dessine) — cf. build_objectives_live.go.
 	attachFlagCarries(&doc, opt, own, replayClock{origin: origin, step: step, frames: doc.FrameCount})

@@ -10646,6 +10646,8 @@ components:
           $ref: '#/components/schemas/LayerCoverage'
         skullCarries:
           $ref: '#/components/schemas/SkullCarriesCoverage'
+        vehicles:
+          $ref: '#/components/schemas/VehicleCoverage'
         verdict:
           additionalProperties:
             type: string
@@ -20713,6 +20715,16 @@ components:
           type:
             - array
             - "null"
+        vehicleLabels:
+          additionalProperties:
+            $ref: '#/components/schemas/VehicleLabel'
+          type: object
+        vehicles:
+          items:
+            $ref: '#/components/schemas/VehicleTrack'
+          type:
+            - array
+            - "null"
         vipCrown:
           items:
             $ref: '#/components/schemas/VipPeriod'
@@ -25530,6 +25542,211 @@ components:
         - x
         - "y"
         - z
+      type: object
+    VehicleCoverage:
+      additionalProperties: false
+      properties:
+        ambiguous:
+          format: int64
+          type: integer
+        familyResolved:
+          format: int64
+          type: integer
+        familyUnknown:
+          format: int64
+          type: integer
+        lives:
+          format: int64
+          type: integer
+        noPosition:
+          format: int64
+          type: integer
+        published:
+          format: int64
+          type: integer
+        rides:
+          format: int64
+          type: integer
+        ridesFromEvent:
+          format: int64
+          type: integer
+        ridesFromGap:
+          format: int64
+          type: integer
+        ridesMixed:
+          format: int64
+          type: integer
+        ridesNamed:
+          format: int64
+          type: integer
+        ridesWithSeat:
+          format: int64
+          type: integer
+        samples:
+          format: int64
+          type: integer
+        scanned:
+          type: boolean
+        unknownChassis:
+          additionalProperties:
+            format: int64
+            type: integer
+          type: object
+        vehiclesRidden:
+          format: int64
+          type: integer
+        withChassis:
+          format: int64
+          type: integer
+        withHeading:
+          format: int64
+          type: integer
+        withSpawn:
+          format: int64
+          type: integer
+      required:
+        - scanned
+        - lives
+        - published
+        - noPosition
+        - withSpawn
+        - withChassis
+        - familyResolved
+        - familyUnknown
+        - samples
+        - withHeading
+        - rides
+        - vehiclesRidden
+        - ridesNamed
+        - ridesFromEvent
+        - ridesMixed
+        - ridesFromGap
+        - ridesWithSeat
+        - ambiguous
+      type: object
+    VehicleLabel:
+      additionalProperties: false
+      properties:
+        img:
+          type: string
+        tinted:
+          type: boolean
+      type: object
+    VehicleRide:
+      additionalProperties: false
+      properties:
+        seat:
+          format: int64
+          type: integer
+        slot:
+          format: int32
+          minimum: 0
+          type: integer
+        src:
+          type: string
+        t0:
+          format: int64
+          type: integer
+        t1:
+          format: int64
+          type: integer
+        xuid:
+          type: string
+      required:
+        - t0
+        - t1
+        - slot
+        - src
+      type: object
+    VehicleSample:
+      additionalProperties: false
+      properties:
+        h:
+          format: float
+          type: number
+        t:
+          format: int64
+          type: integer
+        x:
+          format: float
+          type: number
+        "y":
+          format: float
+          type: number
+        z:
+          format: float
+          type: number
+      required:
+        - t
+        - x
+        - "y"
+      type: object
+    VehicleSpawn:
+      additionalProperties: false
+      properties:
+        h:
+          format: float
+          type: number
+        x:
+          format: float
+          type: number
+        "y":
+          format: float
+          type: number
+        z:
+          format: float
+          type: number
+      required:
+        - x
+        - "y"
+      type: object
+    VehicleTrack:
+      additionalProperties: false
+      properties:
+        chassis:
+          type: string
+        end:
+          type: string
+        family:
+          type: string
+        gen:
+          format: int32
+          minimum: 0
+          type: integer
+        rides:
+          items:
+            $ref: '#/components/schemas/VehicleRide'
+          type:
+            - array
+            - "null"
+        samples:
+          items:
+            $ref: '#/components/schemas/VehicleSample'
+          type:
+            - array
+            - "null"
+        slot:
+          format: int32
+          minimum: 0
+          type: integer
+        spawn:
+          $ref: '#/components/schemas/VehicleSpawn'
+        t0:
+          format: int64
+          type: integer
+        t1:
+          format: int64
+          type: integer
+        t1max:
+          format: int64
+          type: integer
+      required:
+        - slot
+        - gen
+        - t0
+        - t1
+        - t1max
+        - end
       type: object
     VipCrownCoverage:
       additionalProperties: false
