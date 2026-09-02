@@ -37,6 +37,9 @@ type armesCfg struct {
 	out   string
 	cadre float64
 	cell  float64
+	// axe : axe local vers le haut de la vue. HautZ = vue de dessus (defaut) ; HautY = PROFIL
+	// (image = plan X-Z, +X a droite, +Z en haut) — sert a lire le sens d'un canon.
+	axe himap.AxeHaut
 }
 
 func armesMain(args []string) {
@@ -53,9 +56,16 @@ func armesMain(args []string) {
 	sons := fs.String("sons", "", "weap (hex, virgule) dont suivre la chaine sonore -> banques nommees (FNV-1)")
 	nodes := fs.String("nodes", "", "modes (hex, virgule) dont dumper le squelette")
 	hashes := fs.String("hashes", "", "StringId (hex, virgule) a nommer par brute-force murmur3 (sans modules)")
+	refvers := fs.String("refvers", "", "recherche INVERSE : tags (hex, virgule) dont on veut les PORTEURS de reference")
+	refgroupes := fs.String("refgroupes", "vehi", "groupes a balayer pour -refvers (virgule ; * = tous les groupes indexes)")
+	groupes := fs.Bool("groupes", false, "inventaire des groupes indexes (groupe -> nombre de tags)")
+	refsde := fs.String("refsde", "", "tags (hex, virgule) dont lister TOUTES les refs sortantes par groupe")
+	refsdeGroupes := fs.String("refsdegroupes", "*", "groupes retenus pour -refsde (virgule ; * = tous)")
+	extrait := fs.String("extrait", "", "tags (hex, virgule) dont ecrire les octets bruts dans <out>/<id>.bin")
 	out := fs.String("out", ".", "dossier de sortie des PNG")
 	cadre := fs.Float64("cadre", 5, "demi-emprise du canevas fixe (m)")
 	cellmm := fs.Int("cellmm", 8, "mm/pixel")
+	axe := fs.String("axe", "z", "axe haut du rendu : z = vue de dessus (defaut), y = profil (plan X-Z), x = face")
 	_ = fs.Parse(args)
 
 	if *hashes != "" {
@@ -71,8 +81,20 @@ func armesMain(args []string) {
 	idx, err := himap.NewModuleIndex(chemins...)
 	must(err)
 	must(os.MkdirAll(*out, 0o755))
-	cfg := armesCfg{out: *out, cadre: *cadre, cell: float64(*cellmm) / 1000.0}
+	cfg := armesCfg{out: *out, cadre: *cadre, cell: float64(*cellmm) / 1000.0, axe: axeHaut(*axe)}
 
+	if *groupes {
+		inventaireGroupes(idx)
+	}
+	if *refvers != "" {
+		refsInverses(idx, splitHex(*refvers), motsCles(*refgroupes))
+	}
+	for _, id := range splitHex(*refsde) {
+		dumpRefsDe(idx, id, motsCles(*refsdeGroupes))
+	}
+	for _, id := range splitHex(*extrait) {
+		extraitTag(idx, id, cfg.out)
+	}
 	if *weapScan != "" {
 		scanGroupe(idx, "weap", motsCles(*weapScan), true, *weapMesure, cfg)
 	}
@@ -400,7 +422,7 @@ func rendPiece(idx *himap.ModuleIndex, id uint32, cfg armesCfg) {
 func rendSet(asset *himap.RuntimeGeoAsset, set map[int]bool, chemin string, cfg armesCfg) {
 	mn := [2]float64{-cfg.cadre, -cfg.cadre}
 	mx := [2]float64{cfg.cadre, cfg.cadre}
-	o := himap.OptionsSprite{AxeHaut: himap.HautZ, CellMetres: cfg.cell, CadreMin: &mn, CadreMax: &mx}
+	o := himap.OptionsSprite{AxeHaut: cfg.axe, CellMetres: cfg.cell, CadreMin: &mn, CadreMax: &mx}
 	r, err := himap.RenduAssemblage([]himap.PartAssemblage{{Asset: asset, SectionsChoisies: set}}, o)
 	if err != nil {
 		fmt.Printf("  rendu %s KO: %v\n", filepath.Base(chemin), err)

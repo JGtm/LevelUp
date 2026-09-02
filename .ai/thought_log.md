@@ -1,3 +1,47 @@
+## [2026-09-02] Vehicules — Gungoose : la permutation 0x02c9ed0a etait un JEU DE PNEUS ; la vraie arme est un objet `scen` attache par la meme `sofa` que le weap `veh_un_wargoose` — Complété
+
+**Question utilisateur** : « on a bien les deux lance-missiles dessus ? Y a pas un module comme
+pour les warthogs a placer ? ». Reponse : NON, le sprite actuel ne les a pas — et OUI, il y a un
+module a placer.
+
+**Decision technique** : ne plus faire confiance a la piste « permutation du render_model »
+(le lot Warthog l'avait deja invalidee) et enumerer par les TAGS. Deux outils ajoutes au driver
+jetable `cmd/vs-measure` (nouveau `goose.go`) : recherche INVERSE `-refvers` (qui reference tel
+tag, balayage octet a octet de tous les tags des groupes demandes) et `-refsde` (toutes les refs
+sortantes d'un tag, par groupe). Plus `-axe=y` (rendu de profil), `-tforce`, `-permchassis`.
+
+**Resultats observes** :
+- Permutation `0x02c9ed0a` du `mode 0x9e581380` : 7 regions, mesurees une par une = **4 pneus**
+  (sections 23/30/35/46, 1 764 sommets chacun, MEME maillage, 0,386 x 0,102 x 0,343, aux 4 moyeux)
+  + **3 garde-boue** (20/38 arriere, 43 avant pleine largeur), region[06] supprimee. Image de
+  difference : seules les 4 roues changent. Ce n'est pas une arme — c'est exactement le piege
+  « socles/garde-boue » du Warthog. `sprites_v4/gungoose.png` actuel = cette permutation (et a
+  6 mm/px au lieu de 10 : 1,67x trop grand).
+- Recherche inverse de `weap 0x0042678e` (Gungoose, banque `veh_un_wargoose`, manifeste V3) sur
+  15 517 tags / 2 passes de modules : **0 objet-enfant `vehi`**. La piste Warthog ne s'applique pas.
+- **Chaine prouvee** : `vcdd 0xe3ef53f0` -> `vehi 0x000025aa` (Mongoose) + `sofd 0x79b55260` ->
+  `sofa 0x6d1193cc` -> { `uwfa 0xe3d5dc10` -> `weap 0x0042678e` ; `scen 0x004164ed` ->
+  `hlmt 0x004164eb` -> `mode 0x004164ea` }. Arme sonore et geometrie sur le MEME tag. Temoin :
+  la variante nue (`vcdd 0x29c4c340` -> `sofa 0xf8eb3113`) n'a ni `uwfa` ni `scen`. Les deux
+  `vcdd` du Gungoose imposent la permutation `default`, jamais `0x02c9ed0a`.
+- `mode 0x004164ea` = **canons jumeles** : 1 section, 3 686 sommets, 0,303 x 0,346 x 0,123 m,
+  racine `b_pedestal` (murmur3 resolu), deux noeuds symetriques a (+0,007 ; -+0,128 ; -0,019).
+  Le chassis porte le couple de marqueurs (+0,285 ; -+0,126 ; +0,322) : ecart 2 mm en Y ->
+  `T = (+0,278 ; 0,000 ; +0,341)`. La detection de zone (methode Warthog) donne independamment
+  `T = (+0,303 ; 0 ; +0,439)`, a 2,5 cm.
+- **Sens de X du Mongoose : +X = AVANT** (guidon cX +0,32, poignees +0,37, pare-chocs +0,41,
+  garde-boue avant pleine largeur +0,286, essieu directeur a parent commun ; porte-bagages plat
+  -0,55, antenne -0,46, crochet de remorquage -0,655). Sprite pivote de 180 deg comme la famille
+  Warthog. Note : `sprites_v4/mongoose.png` est encore nez en BAS.
+
+**Conclusion / prochaine etape** : planche-contact `PLANCHE_CONTACT_ARMES_GUNGOOSE_2026-09-02.png`
+(13 entrees, Mongoose en n.REF, colonnes isole/pose, 2 images de difference) + rapport
+`CONTACT_ARMES_GUNGOOSE_2026-09-02.md` + 4 candidats dans `gungoose_candidats/`.
+`sprites_v4/gungoose.png` NON reecrit : l'utilisateur pointe (avis : n.10, canons non pivotes).
+Lecon transverse : une « permutation d'arme » de render_model n'est jamais l'arme ; l'arme d'une
+variante de vehicule se trouve par la chaine `vcdd -> sofd -> sofa`, ou le `uwfa` (le weap, donc
+l'identite sonore) et le `scen` (la geometrie) sont cote a cote.
+
 ## [2026-09-02] Vehicules — Warthog arme V3 : la rotation Z de l'arme (V2) etait une sur-interpretation, orientation authored conservee (canon vers l'AVANT) — Complété
 
 **Correction utilisateur** : le placement V2 (arme au centre du grand rectangle du plateau arriere)
