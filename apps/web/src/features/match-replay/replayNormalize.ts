@@ -32,6 +32,7 @@ import type {
   ReplayProjectile,
   ReplaySurface,
   ReplayTrack,
+  ReplayVehicleTrack,
   ReplayWeaponPad,
   ReplayZoneState,
 } from '@/lib/api/types'
@@ -95,6 +96,16 @@ export type ReplayObjectiveObjectReady = Filled<ReplayObjectiveObjectLife, 'pts'
  * lisait comme une jauge, et c'est ce que le schéma 18 corrige (décision du plan, lot C-ter).
  */
 export type ReplayZoneStateReady = Filled<ReplayZoneState, 'spans' | 'gauge'>
+/**
+ * ReplayVehicleTrackReady — la vie d'un véhicule dont les DEUX tableaux imbriqués sont comblés.
+ *
+ * MÊME PATRON QUE `weaponPads` : `samples` (la trajectoire) et `rides` (les épisodes
+ * d'occupation) sont nullables au contrat, et un véhicule qui arriverait avec `samples: null`
+ * ferait tomber le calque à l'exécution — pas à la compilation. `spawn` N'EST PAS comblé : ce
+ * n'est pas un tableau mais un objet optionnel (absent quand le record de création n'a pas été
+ * lu), et un objet vide inventerait une naissance que le film ne montre pas.
+ */
+export type ReplayVehicleTrackReady = Filled<ReplayVehicleTrack, 'samples' | 'rides'>
 
 /**
  * ReplayDocumentReady — le document tel que le rendu a le droit de le lire : chaque
@@ -126,6 +137,7 @@ export type ReplayDocumentReady = Omit<
   | 'skullCarries'
   | 'structure'
   | 'tracks'
+  | 'vehicles'
   | 'vipCrown'
   | 'weaponChanges'
   | 'weaponPads'
@@ -191,6 +203,14 @@ export type ReplayDocumentReady = Omit<
   shots: NonNullable<ReplayDocument['shots']>
   structure: ReplaySurfaceReady[]
   tracks: ReplayTrackReady[]
+  /**
+   * LA VIE DE CHAQUE VÉHICULE du match (schéma 29) : où il naît, sa trajectoire, ses épisodes
+   * d'occupation, jusqu'à quelle frame l'afficher. `end` vaut toujours `unknown` — jamais une
+   * destruction (cf. `ReplayVehicleTrack`). Vide = artefact antérieur au schéma 29, ou film sans
+   * véhicule — `coverage.vehicles` distingue les deux. `vehicleLabels` (non comblé : c'est une
+   * table, pas un tableau) nomme les familles employées et pointe leur sprite.
+   */
+  vehicles: ReplayVehicleTrackReady[]
   weaponPads: ReplayWeaponPadReady[]
   zoneStates: ReplayZoneStateReady[]
   /**
@@ -309,6 +329,11 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     shots: raw.shots ?? [],
     structure: (raw.structure ?? []).map((s) => ({ ...s, poly: (s.poly ?? []) as ReplayXY[] })),
     tracks: (raw.tracks ?? []).map((t) => ({ ...t, points: t.points ?? [] })),
+    // LA VIE DE CHAQUE VÉHICULE (schéma 29). Absent = artefact antérieur, ou film sans véhicule
+    // (`coverage.vehicles` distingue les deux). LES DEUX TABLEAUX IMBRIQUÉS SE COMBLENT AUSSI
+    // (`samples`, `rides`), même patron que `tracks` et `weaponPads` : `spawn`, lui, N'EST PAS un
+    // tableau et reste tel quel (absent = record de création non lu, jamais un objet inventé).
+    vehicles: (raw.vehicles ?? []).map((v) => ({ ...v, samples: v.samples ?? [], rides: v.rides ?? [] })),
     // Les SOCLES D'ARME du match (schéma 11). Absent = le film n'en porte aucun : rien ne se
     // dessine, jamais un socle deviné. Une donnée de MATCH, pas de carte — l'arme qui apparaît
     // sur un socle change d'un match à l'autre, la position non.

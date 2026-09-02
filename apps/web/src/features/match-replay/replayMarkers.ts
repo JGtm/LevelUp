@@ -91,8 +91,14 @@ const TRAIL_ALPHA_HEAD = 0.63
  * DISPARAÎT, et l'étage cesse d'être une couleur de trace pour devenir un anneau fin à l'encre
  * du thème.
  */
-/** Rayon du noyau du marqueur, et son accroissement par étage. */
-const CORE_RADIUS = 3.4
+/**
+ * Rayon du noyau du marqueur, et son accroissement par étage.
+ *
+ * EXPORTÉE depuis le lot véhicules (2026-09-02) : la règle de taille des véhicules (décision de
+ * cadrage du plan) s'ancre sur le pion — « Mongoose ≈ 1,5-2 pions de long » — et a besoin de
+ * CETTE valeur pour ne pas la redéclarer en dur ailleurs (cf. `vehiclesLayer.ts`).
+ */
+export const CORE_RADIUS = 3.4
 const CORE_PER_FLOOR = 0.7
 /**
  * Anneaux concentriques : un par étage au-dessus du sol (règle du COMPTE inchangée). Le
@@ -187,6 +193,20 @@ export interface MarkerStyle {
   deathInk: string
   /** Encre du CONTOUR des noms — sombre dans les deux thèmes (cf. replayLabels.ts). */
   labelStroke: string
+  /**
+   * PION EMBARQUÉ (lot véhicules, 2026-09-02, décision utilisateur) : vrai quand le slot est à
+   * bord d'un véhicule à cette image — un ÉPISODE D'OCCUPATION couvre `frame` (`VehicleRide`,
+   * `vehiclesLayer.buildEmbarkedPredicate`). Le bipède ne réplique plus sa position pendant
+   * l'épisode (le flux est interrompu, cf. `document_vehicles.go`) : le pion figé au point
+   * d'embarquement SERAIT INVENTÉ si on le dessinait encore — le véhicule teinté porte
+   * désormais l'information, et son nom est reporté sur le véhicule (empilé, conducteur en
+   * premier). Absent = comportement inchangé (aucun véhicule au document, ou calque désactivé).
+   *
+   * SUPPRIME TOUT — marqueur, traînée, croix de mort — PAS SEULEMENT LE MARQUEUR : la traînée
+   * lirait sinon un mouvement que le film ne montre pas, et une mort à bord (rare) reprendrait
+   * au point d'embarquement plutôt qu'à la sortie.
+   */
+  embarkedAtSlot?: (slot: number, frame: number) => boolean
 }
 
 /**
@@ -216,6 +236,12 @@ export function drawTracksLayer(
   ctx.lineCap = 'round'
   ctx.lineJoin = 'round'
   tracks.forEach((track) => {
+    // PION EMBARQUÉ : rien ne se dessine pour ce slot à cette image — ni marqueur, ni traînée,
+    // ni croix de mort. Le véhicule qui le porte (vehiclesLayer.ts) affiche l'information à sa
+    // place. Vérifié EN PREMIER, avant toute résolution de couleur : un slot embarqué reste
+    // « vivant » côté données (son bipède n'est pas mort), la branche croix de mort ne doit donc
+    // jamais s'y substituer.
+    if (style.embarkedAtSlot?.(track.slot, style.frame)) return
     // La couleur est celle du PROPRIÉTAIRE DE CETTE VIE : on résout donc l'identité à une image
     // BORNÉE à la fenêtre de la vie. Vivant, c'est l'image courante ; en croix de mort, c'est la
     // fin de la vie (l'image courante peut être au-delà, où le slot est libre ou déjà repris par

@@ -50,6 +50,16 @@ func main() {
 		plateauMain(os.Args[2:])
 		return
 	}
+	// Sous-commande `sprite` (emprise opaque d'un PNG deja rendu) : cf. sprite.go.
+	if len(os.Args) > 1 && os.Args[1] == "sprite" {
+		spriteMain(os.Args[2:])
+		return
+	}
+	// Sous-commande `rot180` (pivote un PNG deja rendu de 180 deg) : cf. rot180.go.
+	if len(os.Args) > 1 && os.Args[1] == "rot180" {
+		rot180Main(os.Args[2:])
+		return
+	}
 	fs := flag.NewFlagSet("vs-measure", flag.ExitOnError)
 	mods := fs.String("modules", "", "modules a ouvrir (basenames ou variant:basename, virgule)")
 	variant := fs.String("variant", "any", "variante deploy: any|pc|ds")

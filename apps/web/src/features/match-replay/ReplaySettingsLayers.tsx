@@ -95,6 +95,13 @@ export interface ReplaySkullCarrierControls {
   onToggle: () => void
 }
 
+/** Les VÉHICULES (schéma 29) : un seul calque, allumé par défaut. */
+export interface ReplayVehicleControls {
+  available: boolean
+  show: boolean
+  onToggle: () => void
+}
+
 export interface LayersSectionProps {
   locale: ReplayLocale
   showAim: boolean
@@ -112,12 +119,13 @@ export interface LayersSectionProps {
   flagCarries: ReplayFlagControls
   vipCrown: ReplayVipCrownControls
   skullCarrier: ReplaySkullCarrierControls
+  vehicles: ReplayVehicleControls
 }
 
 export function LayersSection({
   locale, showAim, onToggleAim, showZones, onToggleZones, showNames, onToggleNames,
   showTrail, onToggleTrail, zonesAvailable, placements, weaponPads, groundWeapons, flagCarries,
-  vipCrown, skullCarrier,
+  vipCrown, skullCarrier, vehicles,
 }: LayersSectionProps) {
   const t = REPLAY_TEXT[locale]
   return (
@@ -199,6 +207,17 @@ export function LayersSection({
             pressed={groundWeapons.show}
             onToggle={groundWeapons.onToggle}
             hint={t.layerGroundWeaponsHint}
+          />
+        )}
+        {/* LES VÉHICULES sont des OBJETS qui bougent, comme les joueurs — mais ce sont des
+            meubles du terrain que le conducteur teinte, pas l'enjeu du mode. Ils rejoignent
+            donc le groupe des socles et des armes au sol plutôt que celui des drapeaux. */}
+        {vehicles.available && (
+          <SettingsToggle
+            label={t.layerVehicles}
+            pressed={vehicles.show}
+            onToggle={vehicles.onToggle}
+            hint={t.layerVehiclesHint}
           />
         )}
         {/* Les DRAPEAUX sont l'ENJEU du mode, pas un meuble : ils bougent, ils changent de

@@ -1,0 +1,314 @@
+package replay
+
+// document_vehicles.go — LA FORME PUBLIEE du calque des VEHICULES, et ce que le film prouve de
+// chacun de ses champs.
+//
+// L OBJET EST LA VIE D UN VEHICULE : ou il nait, ou il passe, qui le conduit, et jusqu a quand le
+// montrer. Il est le pendant, pour `ti=40`, de ce que `groundWeapons` est pour `ti=42` — meme
+// bornage par le recensement des images-cles, meme refus de publier une fin que le film ne
+// montre pas.
+//
+// CE QUE LE CALQUE REFUSE DE DIRE, ET C EST LE POINT LE PLUS IMPORTANT DE CE FICHIER : POURQUOI
+// un vehicule cesse d exister. Le lot V3 a mesure la voie « destruction datee par la mort du
+// conducteur » sur 460 vies et 12 films, avec huit gates ecrits avant mesure
+// (`V3_DESTRUCTION_DATEE_2026-09-02.md`). Sept echouent, et le seul qui passe est le CONTROLE.
+// Les trois faits qui ferment la question :
+//
+//	1. AUCUNE des 460 vies n a d occupant encore a bord a la fin serree de son flux (0 sur 64
+//	   vies a candidat) — un vehicule replique sa position 13 a 36 s (mediane par lot) APRES
+//	   avoir ete quitte. La fin de trajectoire est une MISE AU REPOS, pas une disparition ;
+//	2. la mort de l occupant PENDANT son episode est ANTI-correlee : 3 cas sur 80 (3,8 %) contre
+//	   17 sur 80 (21,3 %) pour le temoin a occupant decale sur le MEME intervalle ;
+//	3. la mort JUSTE APRES la sortie ne depasse pas le hasard : +7,5 points sur le corpus, sous
+//	   le seuil de 10, et un seul lot sur trois au-dessus.
+//
+// `VehicleTrack.End` vaut donc `unknown`, et RIEN d autre. Publier `destruction` sur ce corpus
+// serait affirmer ce qui a ete refute. La valeur est ANGLAISE comme toutes les enumerations du
+// contrat (`pickup`/`seen`/`open`, `OriginUnknown = "unknown"`, `event`/`mixed`/`gap`) — revue
+// adversariale 2026-09-02 : une seule valeur francaise aurait coute un changement de contrat
+// apres backfill.
+
+import "log/slog"
+
+// VehicleEndUnknown est la SEULE valeur que `VehicleTrack.End` prend aujourd hui.
+//
+// LE CHAMP EXISTE QUAND MEME, et ce n est pas un champ mort : il est le contrat par lequel le
+// client sait qu il ne doit PAS lire la disparition du sprite comme une destruction. Sans lui,
+// « le sprite s efface » se lirait naturellement « le vehicule a explose » — exactement l erreur
+// que la mesure interdit. D autres valeurs s ajouteront le jour ou un signal les datera : les
+// deux voies restent ouvertes et sont ecrites au rapport V3 § 6 (la grammaire de bits d `i2`/`i3`
+// pour `ti=40`, et l evenement de degat de type 0 de la liste, jamais decode).
+const VehicleEndUnknown = "unknown"
+
+// VehicleTrack est LA VIE D UN VEHICULE, de sa naissance a la derniere preuve de sa presence.
+//
+// LA VIE, PAS LE SLOT : le pool de slots reboucle et la generation ne fait que 2 bits, donc
+// `(slot, gen)` est la seule cle. Deux vies d un meme slot sont deux vehicules differents.
+type VehicleTrack struct {
+	// Slot / Gen identifient la vie dans le film. Publies ensemble, jamais l un sans l autre.
+	Slot uint32 `json:"slot"`
+	Gen  uint32 `json:"gen"`
+	// Chassis est le mot d identite `MPPWord32` du record de creation, en hexadecimal 8 chiffres
+	// — MEME convention d ecriture que `Loadout.W` et `GroundWeapon.W`. Vide quand le record de
+	// creation n a pas ete lu (la vie sort alors avec sa seule trajectoire).
+	//
+	// IL RESTE A COTE DE LA FAMILLE, jamais a sa place : regle du depot, on ne stocke jamais une
+	// resolution qui peut s ameliorer. Un chassis absent de la table garde donc son hexadecimal a
+	// l ecran, et n emprunte pas le sprite d un voisin.
+	Chassis string `json:"chassis,omitempty"`
+	// Family est la famille de chassis resolue par `vehicle_families.go` (`warthog`, `ghost`,
+	// `mongoose`...). Vide = chassis inconnu de la table : le client dessine un marqueur neutre.
+	// C est elle, et elle seule, qui nomme le sprite servi (cf. `VehicleLabel`).
+	Family string `json:"family,omitempty"`
+	// T0 / T1 / T1Max bornent l affichage, sur le meme axe que `Point.T`.
+	//
+	// MEME DOCTRINE QUE LES ARMES AU SOL : `T1` est la DERNIERE PREUVE de presence (dernier
+	// echantillon de position, ou derniere image-cle qui recense la vie — le plus tardif des
+	// deux), `T1Max` la PREMIERE PREUVE d absence (premiere image-cle qui ne la recense plus).
+	// Entre les deux il y a ~20 s que le film ne documente pas : le client choisit son rendu dans
+	// cet intervalle, mais il choisit dans du MESURE. Sans preuve d absence, `T1Max` vaut la
+	// derniere frame du document — le vehicule est encore la a la fin.
+	//
+	// `T0` prefere l instant du record de CREATION (date a la milliseconde) au premier
+	// recensement (borne a ~20 s pres) quand ce record a ete lu.
+	T0    int `json:"t0"`
+	T1    int `json:"t1"`
+	T1Max int `json:"t1max"`
+	// End est la CAUSE de la fin de vie. Voir `VehicleEndUnknown` : une seule valeur aujourd hui,
+	// et c est une mesure, pas une lacune.
+	End string `json:"end"`
+	// Spawn est la position de NAISSANCE, en metres monde, lue dans le record de creation.
+	// Absente quand ce record n a pas ete lu.
+	//
+	// ELLE VAUT PLUS QU UN PREMIER POINT DE TRAJECTOIRE : les vehicules naissent a des
+	// emplacements FIXES et EXACTS (rayon d amas 0,00 m ; 6 emplacements sur Behemoth en grille
+	// 2x3, 4-5 sur Launch Site — V2_SPAWNS_COOLDOWNS_2026-09-01 § 1), et un vehicule que personne
+	// n a conduit n a AUCUN echantillon de trajectoire : sa naissance est tout ce qu on sait de
+	// lui, et elle suffit a le dessiner.
+	Spawn *VehicleSpawn `json:"spawn,omitempty"`
+	// Samples est la trajectoire, projetee sur la grille de frames du document (un point par
+	// frame, le premier observe gagne). Vide = le vehicule n a jamais bouge, ou son flux n a pas
+	// ete lu — `Spawn` reste alors la seule position.
+	Samples []VehicleSample `json:"samples,omitempty"`
+	// Rides sont les EPISODES D OCCUPATION de cette vie, dans l ordre. Un meme vehicule en porte
+	// plusieurs : la vie `slot=771` de `0d76e8f1` a connu trois occupants successifs. Vide =
+	// aucun episode mesure — ce qui n est PAS « personne ne l a conduit » : la primitive
+	// n attribue que 15,6 a 21,1 % des vies (limite publiee au rapport V1, item 1).
+	Rides []VehicleRide `json:"rides,omitempty"`
+}
+
+// VehicleSpawn est la naissance d un vehicule : ou, et sous quel cap.
+type VehicleSpawn struct {
+	// X / Y / Z en metres monde, memes axes que `Point.X`/`Y`.
+	X float32 `json:"x"`
+	Y float32 `json:"y"`
+	Z float32 `json:"z,omitempty"`
+	// H serait le CAP de naissance. IL EST TOUJOURS ABSENT, et le champ est la pour le dire.
+	//
+	// L orientation d un vehicule vit dans la feuille 4 du default-state de `ti=40` — un
+	// quaternion derriere une porte de flux, dont la largeur depend de globaux de CONFIGURATION
+	// RUNTIME illisibles dans l image statique (`filmdec/default_state_ti40.go`, § 3 du dossier
+	// RE). Le port la modelise ABSENTE. Un cap de naissance suppose ferait tourner le sprite dans
+	// une direction que rien ne mesure ; le client oriente donc le vehicule sur son PREMIER
+	// echantillon mobile, ou pas du tout.
+	H *float32 `json:"h,omitempty"`
+}
+
+// VehicleSample est une position du vehicule sur l axe de frames.
+type VehicleSample struct {
+	// T est l index de frame, sur le meme axe que `Point.T`.
+	T int `json:"t"`
+	// X / Y / Z en metres monde.
+	X float32 `json:"x"`
+	Y float32 `json:"y"`
+	Z float32 `json:"z,omitempty"`
+	// H est le CAP en degres dans le plan XY, MEME convention que `Point.H` (0 = +X, 90 = +Y,
+	// meme origine et meme sens que `atan2(Y, X)`).
+	//
+	// D OU IL VIENT, ET POURQUOI PAS D AILLEURS. Il est la direction de la VELOCITE `i1` du meme
+	// record que la position. C est la SEULE orientation de vehicule que la mesure valide : `i2`
+	// est REFUTE (medianes d ecart 40 a 137 deg sur quatre films, et le temoin par permutation
+	// rend la meme chose — il n y a aucune association) et `i21` est ABSENT de `ti=40` (0,00 % du
+	// masque sur 81 540 records, quand le meme deserialiseur le capture sur 48 a 55 % des records
+	// de bipede). `i1`, lui, s accorde au deplacement a 1,7-2,1 deg de mediane (R = 0,992 a
+	// 0,997), temoin par melange 51 a 88 deg.
+	//
+	// UN VEHICULE A L ARRET GARDE LE CAP SOUS LEQUEL IL S EST ARRETE : sous 5 m/s la direction
+	// d une velocite quasi nulle est du bruit, le dernier cap connu est donc reporte. Absent
+	// tant qu aucun echantillon mobile n a ete vu depuis le debut de la vie.
+	//
+	// PIEGE omitempty evite a l ecriture, comme `Point.H` : un cap qui s arrondit a 0 est publie
+	// comme 360 (le meme angle), sans quoi il serait omis et relu comme « pas d orientation ».
+	H float32 `json:"h,omitempty"`
+}
+
+// VehicleRide est un EPISODE D OCCUPATION : un joueur a bord de ce vehicule, de `T0` a `T1`.
+//
+// CE QU IL GARANTIT : entre `T0` et `T1`, le flux de position de ce bipede est INTERROMPU et sa
+// derniere position connue etait a moins de 1,5 m de ce vehicule. C est la signature d un occupant
+// attache — signal a x20,3 et x30,5 le hasard sur les deux films du gate V1, temoin fantome NUL.
+//
+// CE QU IL NE GARANTIT PAS : l exhaustivite (la primitive n attribue que 15,6 a 21,1 % des vies
+// de vehicule), ni l unicite (une vie peut porter deux episodes chevauchants — conducteur et
+// passager ne se departagent pas par la geometrie ; l ambiguite est PUBLIEE, pas cachee).
+type VehicleRide struct {
+	// T0 / T1 bornent l episode sur l axe de frames.
+	T0 int `json:"t0"`
+	T1 int `json:"t1"`
+	// Slot est le slot du BIPEDE occupant : il designe la Track concernee.
+	Slot uint32 `json:"slot"`
+	// XUID est l identite de l occupant, en decimal (meme forme que `Track.XUID`). Vide quand le
+	// pont du fil des morts n a pas nomme ce slot : l episode reste publie — le vehicule EST
+	// occupe, c est son occupant qui est inconnu.
+	//
+	// C EST LUI QUI DONNE SA COULEUR AU VEHICULE : le client joint xuid -> equipe -> couleur,
+	// exactement comme pour une trajectoire de joueur.
+	XUID string `json:"xuid,omitempty"`
+	// Seat est le siege lu dans l evenement (`R(6)`), 0 = conducteur. POINTEUR : le siege 0 est
+	// la valeur la PLUS frequente et la plus utile du champ (93,8 % des sorties, 21 des
+	// 22 embarquements mesures), et `omitempty` sur un entier l effacerait exactement comme une
+	// absence de lecture. Nil = aucun evenement apparie, ou charge trop courte.
+	Seat *int `json:"seat,omitempty"`
+	// Src dit D OU viennent les bornes : `event` (les deux datees a la milliseconde par la liste
+	// d evenements), `mixed` (une des deux), `gap` (aucune — le seul trou de position, borne a la
+	// demi-seconde du flux).
+	//
+	// IL EST PUBLIE PARCE QUE LES TROIS N ONT PAS LA MEME PRECISION, et qu un client qui anime
+	// une montee en vehicule doit pouvoir le savoir.
+	Src string `json:"src"`
+}
+
+// VehicleCoverage dit ce que le calque a vu, resolu, et refuse de dire.
+//
+// ELLE EST PUBLIEE MEME QUAND AUCUN VEHICULE NE L EST, meme raison que `placements` et
+// `groundWeapons` : un film d arene sans vehicule, un film dont la bande `ti=40` est vide et un
+// film qu on n a pas su balayer rendent tous trois zero vehicule — seuls ces compteurs les
+// distinguent. Son ABSENCE dit encore autre chose : l appelant n a rien fourni a lire.
+type VehicleCoverage struct {
+	// Scanned dit que le film a ete balaye jusqu au bout (les trois lectures ont abouti).
+	Scanned bool `json:"scanned"`
+	// Lives est le nombre de vies RECENSEES aux images-cles ; Published celles qui sortent ;
+	// NoPosition celles qui n avaient ni naissance lue ni echantillon — rien a dessiner.
+	Lives      int `json:"lives"`
+	Published  int `json:"published"`
+	NoPosition int `json:"noPosition"`
+	// WithSpawn / WithChassis : vies publiees dont le record de creation a ete lu, et parmi
+	// elles celles dont le mot d identite a ete transmis.
+	WithSpawn   int `json:"withSpawn"`
+	WithChassis int `json:"withChassis"`
+	// FamilyResolved / FamilyUnknown ventilent `WithChassis` selon que la table nomme la famille
+	// ou non. LEUR SOMME EST LE DENOMINATEUR HONNETE du calque de sprites : publier
+	// « N vehicules dessines » sans dire combien restent sans sprite laisserait croire a
+	// l exhaustivite.
+	FamilyResolved int `json:"familyResolved"`
+	FamilyUnknown  int `json:"familyUnknown"`
+	// UnknownChassis compte les vies par mot d identite NON RESOLU (hexadecimal 8 chiffres).
+	// C est le TEMOIN qui rompt le silence : sans lui, un chassis frequent absent de la table
+	// ferait disparaitre un tiers des vehicules d une carte sans que rien ne le dise.
+	UnknownChassis map[string]int `json:"unknownChassis,omitempty"`
+	// Samples est le nombre total de points de trajectoire publies ; WithHeading ceux qui portent
+	// un cap. Un vehicule jamais conduit n a ni l un ni l autre.
+	Samples     int `json:"samples"`
+	WithHeading int `json:"withHeading"`
+	// Rides est le nombre d episodes d occupation ; VehiclesRidden les vies qui en portent au
+	// moins un ; RidesNamed ceux dont l occupant est nomme par le pont.
+	Rides          int `json:"rides"`
+	VehiclesRidden int `json:"vehiclesRidden"`
+	RidesNamed     int `json:"ridesNamed"`
+	// RidesFromEvent / RidesMixed / RidesFromGap ventilent les episodes par PRECISION de leurs
+	// bornes (cf. `VehicleRide.Src`). Somme == Rides.
+	RidesFromEvent int `json:"ridesFromEvent"`
+	RidesMixed     int `json:"ridesMixed"`
+	RidesFromGap   int `json:"ridesFromGap"`
+	// RidesWithSeat : episodes dont le siege a ete lu dans un evenement.
+	RidesWithSeat int `json:"ridesWithSeat"`
+	// Ambiguous compte les vies portant DEUX episodes qui se chevauchent : conducteur et passager
+	// ne se departagent pas par la geometrie. Publie, jamais cache (regle du lot V1).
+	Ambiguous int `json:"ambiguous"`
+}
+
+// tallyVehicleCoverage compte, sur les vies PUBLIEES, ce que la couverture annonce. Un compteur
+// qui se remplirait ailleurs qu ici finirait par diverger du tableau qu il decrit.
+func tallyVehicleCoverage(tracks []VehicleTrack, cov *VehicleCoverage) {
+	cov.Published = len(tracks)
+	for _, tr := range tracks {
+		if tr.Spawn != nil {
+			cov.WithSpawn++
+		}
+		if tr.Chassis != "" {
+			cov.WithChassis++
+			if tr.Family != "" {
+				cov.FamilyResolved++
+			} else {
+				cov.FamilyUnknown++
+				cov.UnknownChassis[tr.Chassis]++
+			}
+		}
+		cov.Samples += len(tr.Samples)
+		for _, s := range tr.Samples {
+			if s.H != 0 {
+				cov.WithHeading++
+			}
+		}
+		tallyVehicleRides(tr.Rides, cov)
+	}
+}
+
+// tallyVehicleRides compte les episodes d UNE vie et releve leurs chevauchements.
+func tallyVehicleRides(rides []VehicleRide, cov *VehicleCoverage) {
+	if len(rides) == 0 {
+		return
+	}
+	cov.VehiclesRidden++
+	cov.Rides += len(rides)
+	for i, r := range rides {
+		if r.XUID != "" {
+			cov.RidesNamed++
+		}
+		if r.Seat != nil {
+			cov.RidesWithSeat++
+		}
+		switch r.Src {
+		case VehicleRideSrcEvent:
+			cov.RidesFromEvent++
+		case VehicleRideSrcMixed:
+			cov.RidesMixed++
+		default:
+			cov.RidesFromGap++
+		}
+		// Les episodes d une vie sont TRIES par T0 : un chevauchement se voit sur le voisin.
+		if i > 0 && r.T0 <= rides[i-1].T1 {
+			cov.Ambiguous++
+		}
+	}
+}
+
+// logVehicleCoverage journalise le calque avec les MEMES denominateurs que l artefact.
+//
+// LE SILENCE QU IL FAUT ROMPRE : des vies publiees dont AUCUNE ne resout de famille n est pas
+// « un film sans vehicule reconnaissable », c est une lecture qui a echoue en bloc — largeurs du
+// bloc MPP non reinstallees, ou grammaire du default-state qui a bouge. Sans ce warn, un film
+// entier sortirait avec zero sprite sans que rien ne le signale.
+func logVehicleCoverage(c *VehicleCoverage) {
+	if c == nil {
+		return
+	}
+	slog.Info("rejeu : vehicules",
+		"balaye", c.Scanned, "viesRecensees", c.Lives, "publiees", c.Published,
+		"sansPosition", c.NoPosition, "avecNaissance", c.WithSpawn, "avecChassis", c.WithChassis,
+		"famillesResolues", c.FamilyResolved, "famillesInconnues", c.FamilyUnknown,
+		"echantillons", c.Samples, "avecCap", c.WithHeading)
+	slog.Info("rejeu : occupation des vehicules",
+		"episodes", c.Rides, "vehiculesOccupes", c.VehiclesRidden, "occupantsNommes", c.RidesNamed,
+		"bornesParEvenement", c.RidesFromEvent, "bornesMixtes", c.RidesMixed,
+		"bornesParTrou", c.RidesFromGap, "avecSiege", c.RidesWithSeat, "ambigus", c.Ambiguous)
+	for id, n := range c.UnknownChassis {
+		slog.Info("rejeu : chassis de vehicule NON RESOLU — vies publiees sans sprite",
+			"chassis", id, "vies", n)
+	}
+	if c.WithChassis > 0 && c.FamilyResolved == 0 {
+		slog.Warn("rejeu : AUCUN chassis de vehicule resolu alors que le mot d identite a ete lu"+
+			" — table de familles a completer, ou lecture du bloc MPP a verifier",
+			"chassisLus", c.WithChassis)
+	}
+}

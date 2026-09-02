@@ -157,6 +157,11 @@ const NULLABLE_ARRAYS = [
   // d'absence), ou aucune preuve de disparition (`open`). Les armes de SOCLE restent à
   // `weaponPads` : deux vérités pour un même objet seraient une de trop.
   'groundWeapons',
+  // `vehicles` : LA VIE DE CHAQUE VÉHICULE du match (schéma 29, 2026-09-02) — naissance,
+  // trajectoire échantillonnée (cap compris), épisodes d'occupation, borne d'affichage. `end`
+  // vaut TOUJOURS `inconnue` : la datation de la destruction a été mesurée et RÉFUTÉE (le
+  // conducteur sort vivant, le véhicule réplique encore 13-36 s après avoir été quitté).
+  'vehicles',
 ] as const
 
 /** (1) La liste couvre EXACTEMENT les tableaux nullables du contrat — ni plus, ni moins. */
@@ -235,8 +240,14 @@ const NULLABLE_ARRAY_PATHS = [
   'weaponChanges',
   'equipmentChanges',
   'groundWeapons',
+  'vehicles',
   // Dans les ÉLÉMENTS d'un tableau de tête — ce que la garde de racine ne voyait pas.
   'flagCarries[].spans',
+  // La vie d'un véhicule (schéma 29) porte DEUX tableaux imbriqués nullables : sa trajectoire
+  // (`samples`) et ses épisodes d'occupation (`rides`). `spawn`, lui, n'est PAS un tableau — un
+  // objet optionnel absent quand le record de création n'a pas été lu — et ne figure donc pas ici.
+  'vehicles[].samples',
+  'vehicles[].rides',
   // La trajectoire d'une vie libre d'objet d'objectif (schema 21) : comblee par la
   // frontiere, comme `flagCarries[].spans` — une vie qui arriverait avec `pts: null` ferait
   // tomber le calque a l'execution, pas a la compilation.
@@ -369,9 +380,15 @@ describe('la frontière du document de rejeu', () => {
       loadouts: [{ t: 0, slot: 1 }],
       flagCarries: [{ team: 0 }],
       zoneStates: [{ zoneRef: 0 }],
+      vehicles: [{ slot: 5, gen: 1, t0: 0, t1: 100, t1max: 100, end: 'inconnue' }],
     } as unknown as ReplayDocument
     const ready = normalizeReplayDocument(raw)
     expect(ready.flagCarries[0].spans, 'flagCarries[].spans').toEqual([])
+    expect(ready.vehicles[0].samples, 'vehicles[].samples').toEqual([])
+    expect(ready.vehicles[0].rides, 'vehicles[].rides').toEqual([])
+    // `spawn` N'EST PAS un tableau : absent reste absent, jamais un objet inventé qui se lirait
+    // comme une naissance que le film ne montre pas.
+    expect(ready.vehicles[0].spawn ?? null).toBeNull()
     expect(ready.zoneStates[0].spans, 'zoneStates[].spans').toEqual([])
     // La jauge en direct (schéma 18) : un artefact plus ancien ne la porte pas, et elle se
     // comble à VIDE — « aucun arc », jamais le sommet statique à sa place.

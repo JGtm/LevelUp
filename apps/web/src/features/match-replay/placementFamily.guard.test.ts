@@ -277,6 +277,18 @@ describe('garde-rail : le vocabulaire des familles de pose', () => {
  *     depuis la quatorzieme. Il rend desormais `{ open, toggle, buttonRef, panel }` ; le canvas
  *     n'en garde que l'usage, et pas une ligne de logique ne se deplace.
  * Le plafond SUIT le fichier vers le bas, comme a chaque extraction depuis 861.
+ *
+ * 678 -> 678 le 2026-09-02 (lot VEHICULES, schema 29) : un CALQUE FRERE de plus (sprites
+ * teintes, cap dans le sens du deplacement), PLUS une donnee transverse que nul calque
+ * precedent ne portait — le PREDICAT EMBARQUE (C7) que `drawTracksLayer` consomme pour
+ * supprimer le pion d'un occupant. Toute la logique est dans `vehiclesLayer.ts` (pur) et
+ * `useReplayVehicles.ts` (le hook, dix-septieme de la famille) ; le canvas ne gagne que le
+ * cablage IRREDUCTIBLE : un import, l'appel du hook, une ligne de peinture, une dependance de
+ * `draw`, une entree de disponibilite du tiroir, et le branchement d'`embarkedAtSlot` sur le
+ * style du calque des pions. Le plafond NE BOUGE PAS D'UNE LIGNE, et l'addition a ete PAYEE
+ * comme le veut la regle, sans extraction coincidente cette fois : deux lignes vides
+ * accidentelles (double saut avant `interface ReplayCanvasProps`) et une mise en ligne unique
+ * des commentaires du cablage vehicules ont absorbe le reste.
  */
 describe('garde-rail : la taille du canvas du rejeu ne remonte pas', () => {
   it('ReplayCanvas.tsx reste sous son plafond', () => {

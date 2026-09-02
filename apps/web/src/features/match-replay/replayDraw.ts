@@ -357,6 +357,17 @@ export interface TintedIconOptions {
   mirrored?: boolean
   /** Teindre à l'encre donnée (défaut) ou garder les couleurs de l'image. */
   tinted?: boolean
+  /**
+   * Mode de composition de la teinte (2026-09-02, lot véhicules) : `'source-in'` (DÉFAUT,
+   * comportement STRICTEMENT INCHANGÉ) — la teinte REMPLACE la couleur du sprite, c'est le
+   * mode des masques HUD (blanc/gris + alpha). `'multiply'` — la teinte se MULTIPLIE avec les
+   * couleurs du sprite : le blanc devient l'encre, le NOIR RESTE NOIR (les traits de volume des
+   * sprites véhicules, cf. `.ai/V7.5/film_re/V4_RAPPORT_SPRITES_2026-08-31.md` §10.1).
+   * `multiply` ne respecte PAS l'alpha à lui seul (`fillRect` en mode multiply rend opaque tout
+   * pixel de fond transparent) : un second passage `destination-in` avec l'image d'origine
+   * réapplique le canal alpha du sprite après le `fillRect`.
+   */
+  composite?: 'source-in' | 'multiply'
 }
 
 export function tintedIconCanvas(
@@ -364,7 +375,7 @@ export function tintedIconCanvas(
   color: string,
   options: TintedIconOptions = {},
 ): HTMLCanvasElement {
-  const { mirrored = false, tinted = true } = options
+  const { mirrored = false, tinted = true, composite = 'source-in' } = options
   const off = document.createElement('canvas')
   off.width = Math.max(1, img.naturalWidth)
   off.height = Math.max(1, img.naturalHeight)
@@ -376,12 +387,26 @@ export function tintedIconCanvas(
   }
   octx.drawImage(img, 0, 0)
   if (!tinted) return off
-  octx.globalCompositeOperation = 'source-in'
+  octx.globalCompositeOperation = composite
   octx.fillStyle = color
-  // `source-in` s'applique au canvas ENTIER : le rectangle se pose donc dans le repère de
-  // départ, sinon le miroir le décalerait hors du cadre.
+  // `source-in`/`multiply` s'appliquent au canvas ENTIER : le rectangle se pose donc dans le
+  // repère de départ, sinon le miroir le décalerait hors du cadre.
   octx.setTransform(1, 0, 0, 1, 0, 0)
   octx.fillRect(0, 0, off.width, off.height)
+  if (composite === 'multiply') {
+    // `multiply` a rendu tout le canvas opaque (y compris le fond, auparavant transparent) :
+    // on redessine le sprite dans le MÊME repère que le premier tracé (miroir compris, pour
+    // rester aligné pixel à pixel) et on ne garde, via `destination-in`, que ce que son canal
+    // alpha recouvre — le fond redevient transparent, les traits noirs gardent leur alpha quasi
+    // pleine, le remplissage garde son alpha d'ombrage (0,80..1).
+    if (mirrored) {
+      octx.translate(off.width, 0)
+      octx.scale(-1, 1)
+    }
+    octx.globalCompositeOperation = 'destination-in'
+    octx.drawImage(img, 0, 0)
+    octx.setTransform(1, 0, 0, 1, 0, 0)
+  }
   return off
 }
 
@@ -436,4 +461,43 @@ export function drawGrenadesLayer(
     }
   }
   ctx.globalAlpha = 1
+}
+
+/**
+ * drawRotatedSprite — LA ROTATION BITMAP DU REJEU, sans précédent avant le lot véhicules
+ * (2026-09-02). Repris du seul repère du dépôt qui tourne déjà une image autour d'un point —
+ * `glow()` dans `muzzleFlash.ts:159-165` (translate + rotate + scale, puis restore) — plutôt
+ * que d'inventer une seconde mécanique pour le même besoin.
+ *
+ * `angle` EST DÉJÀ EN RADIANS CANEVAS, pas en cap monde : la conversion (inversion de signe,
+ * cf. `drawShotsLayer` : « monde -> canevas, l'axe Y est inversé, donc l'angle l'est aussi »)
+ * est la responsabilité de L'APPELANT, qui seul sait de quel cap il part. Ce helper ne fait
+ * QUE la géométrie d'écran : centrer l'image sur `(x, y)`, la tourner, la mettre à l'échelle.
+ *
+ * `scale` EST UN FACTEUR MULTIPLICATIF DES PIXELS NATURELS DE L'IMAGE, pas une taille cible en
+ * pixels d'écran : c'est l'appelant (`vehiclesLayer.ts`) qui calcule ce facteur à partir de la
+ * taille voulue à l'écran et de la résolution du sprite — exactement le rôle que `ctx.scale`
+ * joue déjà dans `glow()`. `drawImage` est ensuite posé à SA taille NATURELLE, centrée sur
+ * l'origine du repère mis à l'échelle : le canevas fait le reste.
+ *
+ * SANS IMAGE VALIDE (chargement pas encore abouti, dimensions nulles), RIEN NE SE DESSINE —
+ * jamais un rectangle de repli qui prétendrait montrer un véhicule.
+ */
+export function drawRotatedSprite(
+  ctx: CanvasRenderingContext2D,
+  img: CanvasImageSource,
+  x: number,
+  y: number,
+  angle: number,
+  scale: number,
+): void {
+  const w = 'width' in img && typeof img.width === 'number' ? img.width : 0
+  const h = 'height' in img && typeof img.height === 'number' ? img.height : 0
+  if (w <= 0 || h <= 0 || scale <= 0) return
+  ctx.save()
+  ctx.translate(x, y)
+  ctx.rotate(angle)
+  ctx.scale(scale, scale)
+  ctx.drawImage(img, -w / 2, -h / 2, w, h)
+  ctx.restore()
 }

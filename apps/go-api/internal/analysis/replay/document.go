@@ -304,7 +304,28 @@ package replay
 // n'est pas diagonale (un même objet lié à trois rangs ; à candidat unique, 0 à 2 paires par
 // film, incohérentes). Le ramassage d'équipement reste dans `equipmentChanges` (QUI et QUAND),
 // sans lien vers l'objet du sol.
-const SchemaVersion = 28
+//
+// CE QUE LA VERSION 29 PORTE, ET CE QU'ELLE REFUSE. Les VÉHICULES (`vehicles`) : la vie de
+// chaque véhicule `ti=40` du match — naissance (position exacte du record de création), identité
+// de châssis (`MPPWord32`, stable inter-build) résolue en famille de sprite, trajectoire
+// échantillonnée sur la grille du document avec son CAP, et les ÉPISODES D'OCCUPATION (qui est à
+// bord, de quand à quand, sur quel siège). Le champ est optionnel, mais la version monte pour la
+// raison exacte des montées v14/v16/v21/v22/v25/v26/v27 : la reprise du backfill se fait par
+// SchemaVersion, et un artefact 28 ne porte AUCUN véhicule — le calque n'existerait pas.
+// NIVEAU DE PREUVE, INÉGAL ET IL DOIT SE LIRE ICI. Ce qui est SÛR : les positions (la grammaire
+// bipède rend 99,4-100 % de pas sous 35 m/s sur la bande `ti=40`, contre 21-42 % pour celle des
+// objets du monde) ; le CAP par la vélocité `i1` (écart médian 1,7-2,1 deg au déplacement sur
+// 4 films, R = 0,992-0,997, témoin par mélange 51-88 deg) ; l'identité `MPPWord32` (constance
+// 100 % par vie, et 5 valeurs sur 7 survivent au changement de build ET de carte). Ce qui est
+// PARTIEL : l'occupation, dont la primitive n'attribue que 15,6-21,1 % des vies (mais à x20-x30
+// le hasard, témoin fantôme NUL) ; et la table de familles, dont la couverture est publiée
+// châssis par châssis (`coverage.vehicles.unknownChassis`).
+// CE QUE LA VERSION REFUSE, mesure à l'appui (V3_DESTRUCTION_DATEE_2026-09-02, 460 vies /
+// 12 films / 8 gates) : la DESTRUCTION datée. Zéro occupant à bord à la fin serrée du flux, mort
+// à bord ANTI-corrélée (3,8 % contre 21,3 % au témoin), véhicule qui réplique encore 13 à 36 s
+// après avoir été quitté. `VehicleTrack.End` vaut `unknown`, et la disparition du sprite ne dit
+// PAS que le véhicule a explosé. Détail : internal/analysis/replay/document_vehicles.go.
+const SchemaVersion = 29
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {
@@ -441,6 +462,18 @@ type ReplayDocument struct {
 	// daté, ou recensement des images-clés) — jamais une durée de table. Les armes de socle
 	// restent au calque `weaponPads`. Absent si le film n'en porte aucune.
 	GroundWeapons []GroundWeapon `json:"groundWeapons,omitempty"`
+	// Vehicles est LA VIE DE CHAQUE VÉHICULE du match (cf. document_vehicles.go) : où il naît,
+	// sa trajectoire échantillonnée avec son cap, ses épisodes d'occupation (qui est à bord et
+	// quand), et jusqu'à quelle frame l'afficher. La fin est une BORNE de recensement et sa
+	// cause vaut `unknown` — la datation de la destruction a été mesurée et RÉFUTÉE. Absent
+	// quand le film ne porte aucun véhicule ; `coverage.vehicles` dit lequel des silences.
+	Vehicles []VehicleTrack `json:"vehicles,omitempty"`
+	// VehicleLabels nomme les FAMILLES de châssis employées par `vehicles` et pointe leur
+	// sprite — REMPLI À LA REQUÊTE par le service, jamais écrit dans l'artefact (même règle et
+	// même raison que `mapObjectives` : ce qui se résout d'un catalogue du titre se résout au
+	// service, sinon les artefacts déjà cuits resteraient muets). Absent quand aucune famille
+	// n'est résolue.
+	VehicleLabels map[string]VehicleLabel `json:"vehicleLabels,omitempty"`
 	// WeaponPads (les SOCLES D'ARME du match) et PadPickups (leurs occupations ACHEVÉES) : une
 	// donnée de MATCH et non de carte, publiée seulement là où la récurrence est mesurée.
 	// Forme, chronique et refus de publication : document_ground_weapons.go.

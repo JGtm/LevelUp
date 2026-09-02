@@ -28,6 +28,15 @@
 //	            identifiant Wwise (chunk BKHD). C'est ce qui permet de trouver une banque
 //	            qui n'a AUCUN pack sur le disque — les banques de mode (drapeau, bastion,
 //	            extraction) et 14 des 17 banques d'equipement. Detail dans `banks_noms.go`.
+//	remonter-banque  module `any/globals` : la chaine A L'ENVERS, banque -> `snd!` -> ... ->
+//	            `vehi`. Detail dans `remonter_banque.go` — c'est ce qui dit QUEL vehicule
+//	            joue QUELLE banque d'explosion.
+//	pck-banques module `pc/globals` : rattache N `.pck` a leur `sbnk` par intersection des
+//	            `.wem`, en UNE charge du module. Detail dans `pck_banques.go` — la
+//	            convention de nommage FNV-1 tombe sur les familles covenant/banished.
+//	pck-dump    AUCUN module : extrait les `.wem` COMPLETS (streames) d'un `.pck` AKPK.
+//	            Detail dans `pck_dump.go` — la version embarquee dans une banque est un
+//	            prefetch tronque, le media complet vit dans le pack.
 //	eqip-arbre  module `pc/globals` : la STRUCTURE des evenements d'une banque
 //	            (couches simultanees vs variantes, gains, delais, couverture). Detail
 //	            dans `eqip_arbre.go` — c'est ce qui manque pour RECONSTRUIRE un son.
@@ -97,6 +106,14 @@ func main() {
 	etroit := flag.Bool("etroit", false, "valider les sons contre le seul pck de l'arme (comportement d'origine)")
 	eqipIDs := flag.String("eqip", "", "identifiants de tags `eqip` cibles (hexa, virgules) ; vide = tous (modes eqip-sons/eqip-banks)")
 	exclure := flag.String("exclure", "", "identifiants de banks a exclure du triage (mode eqip-durees), hexa, virgules")
+	eventsIDs := flag.String("events", "", "identifiants d'evenements a dumper (mode hirc-event), hexa, virgules ; vide = tous")
+	etatsSwitch := flag.String("etats", "", "etats de conteneur Switch a FORCER (mode hirc-event), DECIMAL, virgules ; vide = etat par defaut")
+	dossierWav := flag.String("wav", "", "dossier des .wav decodes, nommes <wem>.wav (mode rendu-event)")
+	dest := flag.String("dest", "", "dossier de sortie des rendus (mode rendu-event)")
+	nomRendu := flag.String("nom", "evenement", "nom de base des fichiers rendus (mode rendu-event)")
+	tirages := flag.Int("tirages", 3, "nombre de tirages complets a rendre (mode rendu-event)")
+	graine := flag.Int64("graine", 1, "graine du tirage de variantes (mode rendu-event)")
+	dureeBoucle := flag.Float64("duree", 0, "duree de boucle en secondes ; 0 = one-shot (mode rendu-event)")
 	flag.Parse()
 
 	racine, err := resoudreDeploy(*deploy)
@@ -261,6 +278,49 @@ func main() {
 		err = nommerBanques(chemin, dossier, *sortie)
 	case "vehi-sons":
 		err = sonsDeVehicules(chemin, *sortie)
+	case "remonter-banque":
+		err = remonterDepuisBanques(chemin, parserHexa(*banksSup), *limite)
+	case "pck-banques":
+		err = banquesDesPacks(chemin, *pck, *sortie)
+	case "hirc-event":
+		etats := map[uint32]bool{}
+		for _, s := range strings.Split(*etatsSwitch, ",") {
+			if s = strings.TrimSpace(s); s == "" {
+				continue
+			}
+			v, e := strconv.ParseUint(s, 10, 32)
+			if e != nil {
+				err = fmt.Errorf("option -etats : %q : %w", s, e)
+				break
+			}
+			etats[uint32(v)] = true
+		}
+		if err == nil {
+			err = dumperEvenements(chemin, parserHexa(*banksSup), parserHexa(*eventsIDs), etats, *sortieTir)
+		}
+	case "rendu-event":
+		var etatRendu uint64
+		if s := strings.TrimSpace(*etatsSwitch); s != "" {
+			if etatRendu, err = strconv.ParseUint(s, 10, 32); err != nil {
+				err = fmt.Errorf("option -etats (mode rendu-event, une seule valeur) : %w", err)
+				break
+			}
+		}
+		err = rendreEvenements(optionsRendu{
+			Plan: *sortie, Dossier: *dossierWav, Dest: *dest, Nom: *nomRendu, Sortie: *sortieTir,
+			Events: parserHexa(*eventsIDs), Tirages: *tirages, Graine: *graine,
+			DureeS: *dureeBoucle, Etat: uint32(etatRendu),
+		})
+	case "mesurer-wav":
+		err = mesurerWavs(*dossierWav, temoins, strings.TrimSpace(*wem) == "", *sortieTir)
+	case "pck-dump":
+		filtre := map[uint32]bool{}
+		if strings.TrimSpace(*wem) != "" {
+			for _, id := range temoins {
+				filtre[id] = true
+			}
+		}
+		err = extrairePck(*pck, *sortieTir, filtre)
 	default:
 		err = fmt.Errorf("mode inconnu %q", *mode)
 	}

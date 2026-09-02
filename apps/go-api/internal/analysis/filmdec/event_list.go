@@ -79,6 +79,25 @@ func PacketHeadEventType(pay []byte) (typ int, present bool) {
 // référence. Runtime en toute rigueur (cf. IDLowBits), mais 13 vaut sur les films de référence.
 const dom7RefWidth = 13
 
+// dom2RefWidth / dom3RefWidth : largeurs des domaines 2 et 3, les DOMAINES DES RÉFÉRENCES DE
+// L'EMBARQUEMENT (lus dans l'exécutable le 2026-09-02, cf. boardRefs). Ni l'un ni l'autre ne
+// porte de sonde : `FUN_1406d3140` ne la lit que pour le domaine 1.
+//
+// LA LARGEUR EST RUNTIME EN TOUTE RIGUEUR — `FUN_1406d310c(count)` rend ceil(log2(count)) sur une
+// table initialisée à l'exécution, illisible dans l'image statique. Les deux valeurs ci-dessous
+// sont donc MESURÉES, chacune par son propre oracle (balayage de largeurs, event_list_board_test.go,
+// 8 films / 22 embarquements) :
+//   - domaine 2 = 8 : l'occupant tombe dans la bande bipède 22/22 = 100 % et ouvre un trou du flux
+//     de position à l'instant de l'événement dans 77,3 % des cas (témoin décalé : 0 %). À 7 bits le
+//     recoupement s'effondre à 4,5 %, à 9 bits la bande n'est plus tenue (72,7 %), à 13 bits 9,1 %.
+//   - domaine 3 = 7 : départagé par le SIÈGE, qui se lit après les trois réfs. À 7 bits le siège de
+//     l'embarquement égale celui de la sortie appariée dans 5/6 = 83,3 % des cas et vaut 0 sur 21/22
+//     (même « siège dominant 0 » que la sortie) ; à 8 bits l'accord tombe à 0/6, à 13 bits 4/6.
+const (
+	dom2RefWidth = 8
+	dom3RefWidth = 7
+)
+
 // guardedRef est une référence d'entité gardée décodée.
 type guardedRef struct {
 	Present bool
@@ -144,8 +163,9 @@ type VehicleEvent struct {
 
 	// OccupantPresent : la référence 0 (l'unité) est présente.
 	OccupantPresent bool
-	// OccupantSonde : la sonde de la réf 0 (domaine 1). 1 = index bipède-relatif (9 bits),
-	// 0 = slot absolu (13 bits).
+	// OccupantSonde : la sonde de la réf 0 de la SORTIE (domaine 1). 1 = index bipède-relatif
+	// (9 bits), 0 = slot absolu (13 bits). Toujours 0 pour un EMBARQUEMENT : ses réfs sont en
+	// domaines 2/3/7, et `FUN_1406d3140` ne lit la sonde que pour le domaine 1.
 	OccupantSonde int
 	// OccupantSlot est le slot de l'unité : base bipède + index si sonde=1, index brut sinon.
 	OccupantSlot uint32
@@ -161,50 +181,89 @@ type VehicleEvent struct {
 // la plage de slots bipèdes du film (min de la bande) ; `inBand` teste l'appartenance d'un slot
 // à la bande. Rend ok=false si le type de tête n'est pas board/exit.
 //
-// GRAMMAIRE (mesurée sur corpus + dispatcher Ghidra) :
-//   - ref0 = l'unité (domaine 1, sonde). Pour la SORTIE, sonde=1 sur 237/237 : l'occupant est
-//     un bipède, slot = base + index(9). Validé : 95,6 % des occupants tombent dans la bande.
-//   - SORTIE : ref1 (domaine 1) + ref2 (domaine 7) puis R(6) siège. Siège = 0 sur 224/237
-//     (94,5 %) — « conducteur qui descend », conforme au « siège dominant 0 » mesuré.
-//   - EMBARQUEMENT : ref1 + ref2 (domaine 7) puis R(6) siège. Siège = 16 dominant (mesuré ;
-//     échantillon corpus réduit, board = 374 vs exit = 5 600). RÉF0 de l'embarquement porte une
-//     sonde variable (souvent 0) : son occupant est moins net que celui de la sortie.
+// GRAMMAIRE — les DOMAINES des trois réfs sont lus dans l'exécutable, un descripteur par type
+// d'événement (cf. decodeExitRefs et boardRefs, qui portent chacun l'adresse de leur vtable) :
+//   - SORTIE (`unit_exit_vehicle`) : réfs en domaines 1, 1, 7 puis R(6) siège. La réf 0 est
+//     l'occupant : sonde=1 sur 237/237, slot = base + index(9), 95,5 % en bande ; siège = 0 sur
+//     93,8 % — « conducteur qui descend ».
+//   - EMBARQUEMENT (`biped_board_vehicle`) : réfs en domaines 2, 3, 7 puis R(6) siège. AUCUNE
+//     sonde (elle n'existe que pour le domaine 1). La réf 0 est l'occupant, slot = base +
+//     index(8).
 func decodeVehicleEvent(pay []byte, base uint32, inBand map[uint32]bool) (VehicleEvent, bool) {
 	typ, present := PacketHeadEventType(pay)
 	if !present || (typ != EventBipedBoardVehicle && typ != EventUnitExitVehicle) {
 		return VehicleEvent{}, false
 	}
 	ev := VehicleEvent{Kind: typ}
-	ref0 := readDom1Ref(pay, eventPayloadStartBit)
-	if ref0.Present {
-		ev.OccupantPresent = true
-		ev.OccupantSonde = ref0.Sonde
-		if ref0.Sonde == 1 {
-			ev.OccupantSlot = base + ref0.Index
-		} else {
-			ev.OccupantSlot = ref0.Index
-		}
-		ev.OccupantInBand = inBand[ev.OccupantSlot]
-	}
-	// Position du siège : après ref0, deux références gardées puis R(6). La SORTIE lit ref1 en
-	// domaine 1 (sonde), l'EMBARQUEMENT en domaine 7 — départage mesuré par la valeur du siège
-	// (sortie -> 0, embarquement -> 16).
 	var seatBit int
-	switch typ {
-	case EventUnitExitVehicle:
-		r1 := readDom1Ref(pay, ref0.EndBit)
-		r2 := readPlainRef(pay, r1.EndBit, dom7RefWidth)
-		seatBit = r2.EndBit
-	default: // EventBipedBoardVehicle
-		r1 := readPlainRef(pay, ref0.EndBit, dom7RefWidth)
-		r2 := readPlainRef(pay, r1.EndBit, dom7RefWidth)
-		seatBit = r2.EndBit
+	if typ == EventUnitExitVehicle {
+		seatBit = decodeExitRefs(pay, base, inBand, &ev)
+	} else {
+		seatBit = decodeBoardRefs(pay, base, inBand, &ev)
 	}
 	if seatBit+vehicleSeatBits <= len(pay)*8 {
 		ev.Seat = readBitsAt(pay, seatBit, vehicleSeatBits)
 		ev.SeatValid = true
 	}
 	return ev, true
+}
+
+// decodeExitRefs lit les trois références gardées d'une SORTIE et rend le bit du siège.
+// Domaines lus dans l'exécutable (vtable+0x58 du descripteur `unit_exit_vehicle`, 0x14080a018) :
+// réf 0 -> domaine 1, réf 1 -> domaine 1, réf 2 -> domaine 7. C'est exactement la grammaire
+// validée par la mesure (occupant en bande 95,5 %, siège 0 sur 93,8 %).
+func decodeExitRefs(pay []byte, base uint32, inBand map[uint32]bool, ev *VehicleEvent) int {
+	r0 := readDom1Ref(pay, eventPayloadStartBit)
+	if r0.Present {
+		ev.OccupantPresent = true
+		ev.OccupantSonde = r0.Sonde
+		if r0.Sonde == 1 {
+			ev.OccupantSlot = base + r0.Index
+		} else {
+			ev.OccupantSlot = r0.Index
+		}
+		ev.OccupantInBand = inBand[ev.OccupantSlot]
+	}
+	r1 := readDom1Ref(pay, r0.EndBit)
+	r2 := readPlainRef(pay, r1.EndBit, dom7RefWidth)
+	return r2.EndBit
+}
+
+// boardRefs lit les TROIS références gardées d'un EMBARQUEMENT (`biped_board_vehicle`).
+//
+// LES DOMAINES VIENNENT DE L'EXÉCUTABLE, PAS D'UNE DEVINETTE (lecture Ghidra du 2026-09-02).
+// Le dispatcher (FUN_14080AADE) lit, pour chaque réf i de 0 à 2, un bit de garde puis appelle
+// `vtable+0x58 (this, i)` qui rend le DOMAINE de cette réf, puis l'id-reader `FUN_1406d3140`.
+// Le descripteur de l'embarquement est la vtable 0x143d0d330 (son thunk de nom, vtable+0x08 =
+// 0x14119e9b0, pointe la chaîne « biped_board_vehicle » en 0x143c97f80) ; son vtable+0x58 vaut
+// 0x142f1556c, dont le code est un simple aiguillage sur l'index de réf :
+//
+//	test edx,edx ; je  -> mov eax,2 ; ret      réf 0 -> DOMAINE 2
+//	sub  edx,1   ; je  -> mov eax,3 ; ret      réf 1 -> DOMAINE 3
+//	                     mov eax,7 ; ret       réf 2 -> DOMAINE 7
+//
+// C'était l'inconnue du portage du 2026-09-01, qui lisait la réf 0 en domaine 1 (avec sonde) et
+// les deux suivantes en domaine 7 : trois domaines faux sur trois. `FUN_1406d3140` ne lit la
+// SONDE que pour le domaine 1 (`if (param_3 == 1 && ReadBit())`), donc AUCUNE des trois réfs de
+// l'embarquement n'en porte — d'où la « sonde variable » observée à la mesure, qui n'était que
+// le premier bit de l'index.
+func boardRefs(pay []byte) (r0, r1, r2 guardedRef) {
+	r0 = readPlainRef(pay, eventPayloadStartBit, dom2RefWidth)
+	r1 = readPlainRef(pay, r0.EndBit, dom3RefWidth)
+	r2 = readPlainRef(pay, r1.EndBit, dom7RefWidth)
+	return r0, r1, r2
+}
+
+// decodeBoardRefs remplit l'occupant d'un EMBARQUEMENT et rend le bit du siège. L'occupant est la
+// réf 0 (domaine 2), rapportée à la base de la bande bipède comme pour la sortie.
+func decodeBoardRefs(pay []byte, base uint32, inBand map[uint32]bool, ev *VehicleEvent) int {
+	r0, _, r2 := boardRefs(pay)
+	if r0.Present {
+		ev.OccupantPresent = true
+		ev.OccupantSlot = base + r0.Index
+		ev.OccupantInBand = inBand[ev.OccupantSlot]
+	}
+	return r2.EndBit
 }
 
 // ScanFilmVehicleEvents décode tous les événements d'embarquement / sortie de véhicule des

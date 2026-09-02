@@ -441,8 +441,33 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   tombe à la mort AVEC les grenades du mort, le lien spatial prise i48 -> pose attrape le
 	//   mauvais objet (matrice GlobalID x rang non diagonale ; à candidat unique, 0-2 paires par
 	//   film, incohérentes). Détail : internal/analysis/replay/equipment_placements.go.
-	if SchemaVersion != 28 {
-		t.Fatalf("SchemaVersion = %d, attendu 28 : incrémenter exige une raison écrite ci-dessus "+
+	//
+	// v29 — LES VÉHICULES (`vehicles`). La vie de chaque véhicule `ti=40` du match : naissance
+	//   (position du record de création, à des emplacements mesurés FIXES au rayon 0,00 m),
+	//   identité de châssis (`MPPWord32`) résolue en famille de sprite, trajectoire échantillonnée
+	//   sur la grille du document avec son CAP, et les ÉPISODES D'OCCUPATION (qui est à bord, de
+	//   quand à quand, sur quel siège). Champ omitempty, même raison de monter que
+	//   v14/v16/v21/v22/v25/v26/v27 : c'est la CLÉ DE REPRISE du backfill — le calque des
+	//   véhicules n'existe que sur un artefact qui le porte, un v28 doit se lire « à re-cuire ».
+	//   NIVEAU DE PREUVE, INÉGAL, et il doit se lire ici. SÛR : les positions (la grammaire bipède
+	//   rend 99,4-100 % de pas sous 35 m/s sur la bande `ti=40`, contre 21,2-41,8 % pour celle des
+	//   objets du monde) ; le CAP par la vélocité `i1` (écart médian au déplacement 1,7-2,1 deg sur
+	//   4 films, R = 0,992-0,997, témoin par mélange déterministe 51-88 deg) ; l'identité
+	//   `MPPWord32` (constance 100 % par vie, 5 valeurs sur 7 survivent au changement de build ET
+	//   de carte, donc c'est un GlobalID de tag). PARTIEL, et publié comme tel : l'occupation, dont
+	//   la primitive du « début de trou de position » n'attribue que 15,6-21,1 % des vies — mais à
+	//   x20,3 et x30,5 le hasard, TÉMOIN FANTÔME NUL (0 contre 12 et 14) ; et la table de familles,
+	//   dont la couverture est publiée châssis par châssis (`coverage.vehicles.unknownChassis`).
+	//   CE QUE LA VERSION REFUSE, et c'est une réfutation mesurée (V3_DESTRUCTION_DATEE_2026-09-02,
+	//   460 vies / 12 films / 8 gates, 7 échouent) : la DESTRUCTION datée. Zéro vie avec un occupant
+	//   encore à bord à la fin serrée de son flux ; mort à bord ANTI-corrélée (3/80 = 3,8 % contre
+	//   17/80 = 21,3 % au témoin à occupant décalé sur le MÊME intervalle) ; véhicule qui réplique
+	//   encore 13 à 36 s (médiane par lot) après avoir été quitté — la fin de trajectoire est une
+	//   MISE AU REPOS, pas une disparition. `VehicleTrack.End` vaut donc `inconnue`, et la
+	//   disparition du sprite ne dit PAS que le véhicule a explosé.
+	//   Détail : internal/analysis/replay/document_vehicles.go.
+	if SchemaVersion != 29 {
+		t.Fatalf("SchemaVersion = %d, attendu 29 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

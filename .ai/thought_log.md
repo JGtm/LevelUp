@@ -1,3 +1,294 @@
+## [2026-09-02] Rejeu 2D — INTEGRATION DES VEHICULES (lots A/B/C/D du plan) + revue adversariale corrigee — Complété (preuve visuelle utilisateur en attente)
+
+**Plan** : .ai/V7.5/PLAN_INTEGRATION_REJEU_VEHICULES.md (grille plan-review, decisions tranchees :
+un document, pas de capability replay, taille ancree au pion, pion embarque multi-passagers,
+tourelles = vehicules sans translation, end=unknown seul).
+
+**LOT A (assets)** : static/vehicles-assets/halo_infinite/replay/ (18 PNG + index.json mesure),
+KindVehicle Go + web, option composite multiply de tintedIconCanvas (source-in intact).
+**LOT B (Go)** : build_vehicles/vehicle_tracks/vehicle_rides/vehicle_families/document_vehicles
++ VehicleLabel a la requete (service) + SchemaVersion 29 + openapi. Episodes d occupation
+board->exit (grammaire board Ghidra : domaines 2/3/7, occupant 100% en bande). Table MPPWord32
+-> famille 21 entrees sourcees ; fe32c0f4/cb96ca07 = warthog par la chaine de destruction V3D
+(hlmt daf7f543). Sur les 2 artefacts de demo : 29/29 et 11/11 familles resolues.
+**LOT C (web)** : vehiclesLayer + useReplayVehicles (patron weaponPads), drawRotatedSprite
+(1re rotation bitmap du depot, angle (90-h) prouve 4 points cardinaux + 0,5 deg sur donnees
+reelles), taille = manifeste ancre pion (Mongoose ~1,75 pion), pion+nom+trainee supprimes par
+occupant embarque (multi-rides simultanes, sieges), toggle+i18n FR/EN.
+**Echelles** : 7 sprites sur 18 etaient faux (Pelican +354%, Skiff +114%, Ghost -36%...) —
+re-rendus a 10 mm/px, planche PLANCHE_ECHELLES. Orientations par heuristique geometrique :
+l utilisateur signale des sens faux sur la planche -> correction a pointer (suivi).
+**Revue adversariale (REVUE_ADVERSARIALE_REJEU)** : GO avec reserves, TOUTES traitees avant
+commit : .gocache-agentA (167 Mo) supprime + .gitignore ; VehicleEndUnknown "inconnue"->"unknown"
+(coherence contrat) ; clamp des episodes dans [t0,t1max] (+2 tests, joueur invisible corrige) ;
+i18n honnete (dessine jusqu a la PREMIERE preuve d absence) ; fausse citation C6 corrigee ;
+predicat embarque gate sur le toggle (calque eteint = pions rendus).
+**SONS — verdict utilisateur** : V3E (reconstruction Wwise complete, 4 reglages jamais lus) =
+ENCORE FAUX. Les packs vehicules portent l audio des ARMES ; des vehicules sans event moteur =
+preuve de mauvaise piste. PISTE BANQUES FERMEE pour les moteurs -> CAPTURE EN JEU (protocole
+convenu). Destructions conservees « a confronter a la capture ». Rotation tourelle Scorpion
+(validee) restauree apres suppression par l agent V3E.
+
+**Prochaines etapes** : (1) preuve visuelle utilisateur (merge local vers feat/v75, l app n a
+pas de donnees dans le worktree) ; (2) corrections d orientation pointees par l utilisateur ;
+(3) capture audio en jeu ; (4) gate-push/CI avant tout merge distant.
+
+## [2026-09-02] Vehicules V3E — RECONSTRUCTION COMPLETE : l'evenement Wwise entier (gain de chemin HIRC, offsets, cadence de grains), destructions refaites et moteurs covenant depuis les VRAIES banques — Complété
+
+**Decision technique** : arreter de sommer des couches « au gain relatif » et lire le paquet
+Wwise en entier. Nouveau lecteur `NodeBaseParams` complet (`hirc_noeuds.go`) : `OverrideBusId`,
+`DirectParentID` et TOUTES les proprietes, avec les octets bruts de celles que la table ne nomme
+pas. Nouveau mode `hirc-event` (dump d'un evenement : chaine action -> conteneurs -> Sound, gain
+de chemin COMPLET parents compris, offsets, hauteur, fourchettes RANGED, table de `Switch` etat
+par etat, un dump par etat) et nouveau mode `rendu-event` (melange en `float64`, tirages
+independants par couche, mode de boucle du conteneur respecte, UNE normalisation a -1 dBFS).
+Mode `mesurer-wav` en prime : fiche spectrale par FFT, pour ne plus dependre de quatre appels
+ffmpeg par fichier. Declencheur : reproche utilisateur — « tu n'as rendu que les fichiers isoles,
+pas reconstitues avec leur format wwise et reglages de package ».
+
+**Resultats observes** :
+- **La table `AkPropID` de `proprietes.go` etait fausse sur le delai.** L'identifiant 17
+  (lu comme `InitialDelay`) n'apparait sur AUCUN noeud des 12 banques ouvertes ; c'est le **59**,
+  present 25 fois, avec des valeurs de 0,05 a 0,25 s. Le « zero delai partout » des lots
+  precedents etait un artefact de lecture, pas une propriete des donnees.
+- **`MakeUpGain` (id 6) n'avait jamais ete lu** : 15 occurrences. Et le gain des PARENTS
+  actor-mixer (`DirectParentID`) n'avait jamais ete somme : jusqu'a **-14,5 dB** de chemin amont
+  sur le Ghost, **+7 dB** sur la lointaine du Wraith.
+- **Destructions, ce que ca change** : le lit sub etait a **-2 dB** de son niveau reel sur
+  small_unsc et small_covenant (ActorMixer parent `1f009c9e` a -2 dB) et a **+3 dB** sur med_unsc
+  et med_covenant (`33a0f093` a +3 dB) ; l'explosion du **Ghost** pose ses trois couches proches
+  **100 ms APRES** le lit sub ; la lointaine du **Warthog/Wasp** est jouee **+380 cents plus
+  haut** (3,97 s -> 3,19 s) ; les deux lointaines du Wraith/Banshee gagnent **+7 dB** d'amont.
+  Mesure avant/apres sur `explosion.wav` (meme tirage) : l'ecart `RMS moins bande 3-8 kHz` passe
+  de 16,22 a 19,91 dB sur le Chopper, de 15,35 a 17,57 sur le Ghost, et ne bouge que de 0,26 dB
+  sur le Scorpion, dont le lit etait deja juste.
+- **Moteurs : l'evenement se trouve par la STRUCTURE, plus par le spectre.** Un seul evenement
+  par banque traverse le `Switch` du groupe **2275666646** : Ghost `603d9e29` (banque `ccd43fa8`),
+  Wraith `aa6215eb` (`fda12da2`), Banshee `6ed9c3bc` (`c682f736`), Chopper `1adf8067`
+  (`1bb9f097`), Scorpion `951f76c0`, Warthog `68b1a949`.
+- **L'echelle de regime a NEUF etats et CINQ paliers** (rev9 en voyait cinq), et elle est
+  **monotone sur les six vehicules** : ralenti `356702912`/`3561860439` (le DEFAUT), bas
+  `1093928064`, intermediaire `1136871302`, **conduite `1248419637`/`3707760930`**, plein regime
+  `163696720`. rev9 rendait le palier 4 pour le Scorpion mais le palier 5 pour le Warthog : deux
+  vehicules cote a cote ne tournaient pas au meme regime. rev11 rend le palier 4 partout.
+- **Le moteur du Ghost est un NUAGE DE GRAINS, pas une boucle** : conteneur en boucle infinie,
+  `AkTransitionMode` = **5 (CADENCE)**, une lecture toutes les **0,130 s** pour des grains de
+  0,12 a 0,68 s, soit quatre a cinq grains superposes en permanence. Cadences mesurees : Ghost
+  0,130 s, Banshee 0,125 s, Chopper 0,250 s. En repeter un seul pendant 8 s donnait un hachage
+  periodique — c'est exactement ce que faisaient les lots precedents.
+- **Le bus nomme les evenements sans nom** : `5a880943` = moteur proche (switch), `1f17314c` =
+  lit sub du moteur, `8165b6c5` = contact avec le sol (chenilles Scorpion, roues Warthog,
+  antigrav covenant), `0f233096` = **cinq evenements par banque, un par palier de regime**, joues
+  hors switch (moteur a distance). Cinq evenements pour cinq paliers, sur les six banques.
+- **Verite terrain respectee** : Ghost a crest 11,8 et centroide 2870 Hz (texture continue), rien
+  de la signature « jeep » de V3B (cycles de rev de 1,15 s, centroide 1805 Hz) ; chenilles du
+  Scorpion a 4237 Hz de centroide et bande 3-8 kHz a -18,98 dB, 25 dB au-dessus de son moteur.
+  Temoin de comparabilite du centroide : le wem `1033065922` mesure 4747 Hz ici contre 4687 Hz
+  dans V3B (1,3 % d'ecart).
+- **Attribution Ghost re-verifiee** : les quatre medias que rev9 servait (`192653757`,
+  `68830349`, `835658180`, `52024965`) sont absents du pack du Ghost (248) COMME de celui du
+  Warthog (78), et d'un balayage des **841 packs** du jeu. Ils n'existent que dans `01862ab3`.
+- **Defaut de rendu trouve et corrige DANS le lot** : la montee mono -> stereo faisait pointer
+  les deux canaux sur le meme tableau, donc le gain de chemin etait applique **deux fois** sur
+  les seules couches mono (+7 dB rendus a +14 dB). Detecte en mesurant les stems (couche stereo
+  a -10,27 dB comme prevu, couche mono a -5,27 au lieu de -15,27). Corrige, et garde par
+  `wav_io_test.go`.
+- **Non decodable, DIT et non tu** : `AkPropID 71` = 55,0, octets `[00 00 5c 42]`, sur quatre
+  ActorMixer de la chaine lointaine — hors du chemin de tout fichier livre. Le `HPF` (id 4,
+  valeurs 10/16/20/35, dont la couche 2 de chaque explosion) est LU mais NON APPLIQUE : la
+  correspondance Wwise 0..100 -> Hz n'est pas dans la banque. Le lit sub covenant `87187708` ne
+  fait que 0,031 s et n'existe dans aucun pack : regle retenue (un media absent de tout pack est
+  complet dans la banque), defendable mais refutable a l'oreille.
+- **Zero objet `Bus` dans les 12 banques** : les gains de bus restent inconnus. Les couches d'un
+  meme bus sont exactes au dixieme de dB ; l'equilibre inter-bus est la seule incertitude qui
+  reste — bien plus etroit que le « calibre par cible de RMS » de rev9.
+
+**Conclusion / prochaine etape** : livre — 8 vehicules en `destruction/` (evenement complet +
+3 tirages + 2 etats lointains + `stems/`), 6 vehicules en `deplacement/` (conduite palier 4,
+plein regime / boost palier 5, contact au sol, amorce et queue reelles pour le Scorpion,
+`stems/`). Rapport `V3E_RECONSTRUCTION_COMPLETE_2026-09-02.md`, manifeste rev11 (champ
+`reconstruction_v3e` : 27 evenements decrits noeud par noeud, 45 lots de rendu mesures). Code
+additif sous `cmd/weapon-sounds/` (8 fichiers, tous < 500 L, `gofmt`/`vet`/`test`/`build` verts).
+AUCUN commit, AUCUN `git add`, WAV non commites. **Prochaine etape : ecoute utilisateur.** Trois
+points a trancher a l'oreille en priorite — (1) le lit sub covenant de 31 ms boucle a 100 ms
+sonne-t-il comme un thrum ou comme un bourdonnement ; (2) le palier 5 est-il bien la poussee du
+Ghost/Wraith/Banshee ou seulement un haut regime ; (3) faut-il appliquer le `HPF` declare sur la
+couche 2 des explosions. Restent non traites : le cas « eau peu profonde » de la destruction
+(V3D §9) et les moteurs du Wasp et du Gungoose, hors mandat de ce lot.
+
+## [2026-09-02] Vehicules V3D — sons de DESTRUCTION : six banques `exp_vehicle` par taille x faction, 8 vehicules rendus, et une erreur d'attribution de rev9 mise au jour — Complété
+
+**Decision technique** : ne pas chercher l'explosion dans la banque du vehicule (c'est ce que
+faisait l'intuition heritee des tirs et des moteurs), mais partir du disque. Les `.pck` du jeu
+portent des noms en clair : `sb_008_exp_vehicle_{small,med,large}_{unsc,covenant}` — six banques
+d'explosion de vehicule, indexees par TAILLE et par FACTION. Restait la seule question qui
+decide : QUEL vehicule joue QUELLE banque. La descente `vehi -> lsnd/snd!/effe -> sbnk`
+(`vehicules_sons.go`) ne repond pas (elle ne franchit qu'un niveau d'`effe` et n'atteint que les
+deux effets partages par les 13 vehicules). J'ai donc lu la chaine A L'ENVERS : nouveau mode
+`remonter-banque` (banque -> `snd!` -> ... -> `vehi`, balayage inline par niveau, filtre 16 bits).
+
+**Resultats observes** :
+- **Chaine complete et sans ambiguite** : `vehi -> hlmt -> foot (table de MATERIAU) -> snd! ->
+  sbnk exp_vehicle_<taille>_<faction> -> event a 4 COUCHES SIMULTANEES` (3 couches de 6 variantes
+  + 1 lit sub partage). One-shot : aucun switch, aucun RTPC, aucun delai — a l'oppose du moteur.
+- **Remontee UNSC** (`any/globals`) : niveau 0 = 9 `snd!`, niveau 1 = 3 `effe` + 3 `foot` +
+  3 `stai`, niveau 2 = **4 `hlmt` seulement**, niveau 3 = 8 `vehi`. L'ancre nommee qui ferme la
+  lecture : `hlmt e7fe7564` est deja documente comme le chassis SCORPION
+  (`ASSEMBLAGE_ENFANTS_2026-09-01.md`), et c'est lui qui mene a `exp_vehicle_LARGE_unsc`.
+- **Mapping** : Mongoose/Gungoose -> `969f4dc6` (small_unsc, event `1c0dae6d`) ; Warthog (toute la
+  famille) et Wasp -> `c468fb55` (med_unsc, `2152102c`) ; Scorpion -> `94d43e95` (large_unsc,
+  `dcc7bca1`) ; Ghost -> `b1f8608b` (small_cv, `8b33a81a`) ; Chopper -> `3fdc61a7` (med_cv,
+  `ed7cfa4b`) ; Wraith + Banshee + Phantom -> `2eaae6d7` (large_cv, `1bf6fdde`).
+- **Designation prouvee par `sndscan`** : chaque `snd!` porte EXACTEMENT un identifiant
+  d'evenement en clair. Celui que le vehicule pose est TOUJOURS l'evenement a 4 couches.
+- **Le lit generique partage existe** (c'etait la question du mandat) : `224468375` (0,30 s,
+  mono, 3-8 kHz a **-73,6 dB** = sub pur) porte par les DEUX banques « small », unsc et covenant,
+  et par **le meme noeud de couche `16ad77c5`** ; `686882988` (0,92 s, 3-8 kHz a -71,8 dB) porte
+  par les QUATRE banques med et large des deux factions.
+- **Spectre conforme** : melanges livres a crest 17,2-20,6 dB (un moteur en boucle est a 4 dB),
+  corps grave a 1 dB du RMS global, haut 3-8 kHz a -32..-38 dB, durees 3,20 a 5,36 s.
+- **Etats alternatifs `stai`** : chaque banque appaire deux evenements a une couche, mesures
+  11 a 27 dB sous l'explosion proche, transitoire adouci = tres probablement les versions
+  LOINTAINES. Etiquette assumee comme une lecture du spectre, pas un nom lu.
+- **Negatifs mesures** : les banques de DEBRIS (`exp_ge_debris_*`) remontent a 16 `proj` et
+  9 `eqip`, **aucun `vehi`** ; la boucle d'epave `burningvehicle_loop_a` remonte a un `forg`
+  (objet Forge) ; les objets-ENFANTS (canon `0000d4ff`, collier `0000d500`, tourelles de Warthog
+  `64b925eb`/`bcfb852f`/`dd7f9102`) n'ont AUCUN evenement de destruction propre — l'explosion est
+  posee une seule fois, par le chassis. Le dossier `Falcon_LMG` n'aura donc pas de `destruction/`.
+- **Materiau** : le tag `foot` est une table de materiau ; il apparie systematiquement
+  l'explosion au SOL avec une explosion en EAU PEU PROFONDE (`exp_*_watershallow`). Le lot livre
+  le cas sol ; le cas eau est localise, non rendu.
+- **ALERTE hors perimetre, non corrigee** : **rev9 attribue au Ghost la banque `01862ab3`, qui
+  n'est pas la sienne.** Intersection pack Ghost (248 medias) / `01862ab3` : 1/248 en references
+  HIRC (bruit) et **0/65** en medias embarques. La vraie banque du Ghost est **`ccd43fa8`** dans
+  **`pc/globals/common`** (248/248 sur les deux liens). Et `01862ab3` est atteinte par les `vehi`
+  dont le `hlmt` est `daf7f543` = celui du WARTHOG. Cause racine : V3B/V3C n'a jamais ouvert
+  `pc/globals/common-rtx-new.module` (2,86 Go), qui porte TOUTES les banques covenant/bannis
+  (Ghost `ccd43fa8`, Wraith `fda12da2`, Banshee `c682f736`, Chopper `1bb9f097`). Les attributions
+  UNSC de rev9 (Scorpion `05a51e0a`, rockethog `a52af042`, wargoose `38167604`, Wasp `4993b379`)
+  sont, elles, confirmees 78-268/78-268.
+- **Piege corrige en cours** : la premiere remontee rendait 46 618 tags au niveau 2 — les
+  sentinelles `00000000`/`ffffffff` (les « pas de reference » des tables de tags) etaient restees
+  dans l'ensemble cible. Exclues, le niveau 2 tombe a 4 tags. Second piege : la somme des couches
+  ecretait a 0 dBFS quand elle etait ecrite en entier 24 bits ; rendu refait en `pcm_f32le` avec
+  une seule normalisation finale a -1 dBFS.
+- **Livre** : `sons_v3_reconstruits/<Vehicule>/destruction/` pour Gungoose, Warthog_roquettes,
+  Wasp, Scorpion, Ghost, Chopper (nouveau), Wraith (nouveau), Banshee (nouveau) — 9 fichiers
+  chacun (`explosion.wav`, `_v2`, `_v3`, `couche_1..3`, `lit_sub_partage`,
+  `explosion_lointaine_A/B`), 72 WAV, non commites comme le reste du dossier.
+- **Code ajoute, uniquement sous `cmd/weapon-sounds/`** (additif, `gofmt`/`go vet`/`go build`
+  verts, tous les fichiers < 500 L et toutes les fonctions < 80 L) : `pck_dump.go` (mode
+  `pck-dump` : `.pck` AKPK -> `.wem` complets SANS module — ferme le trou « script Python hors
+  depot » ouvert par le scout S1), `pck_banques.go` (mode `pck-banques` : N packs -> leur `sbnk`
+  en UNE charge de module, avec les deux liens mesures separement, REF/HIRC et EMB/DIDX),
+  `remonter_banque.go` (mode `remonter-banque`). `trouverSbnk` existant ne pouvait pas servir :
+  il echantillonne les 24 identifiants les plus BAS du pack, precisement ceux que les banques
+  covenant ne citent pas (score mesure 1/24, verdict faux ; balayage complet : 248/248).
+
+**Conclusion / prochaine etape** : les sons de destruction sont livres pour les 8 vehicules du
+corpus, avec la chaine de tags complete et la mesure spectrale pour chacun. Rapport
+`.ai/V7.5/film_re/V3D_DESTRUCTION_SONS_2026-09-02.md`, manifeste `sons_v3_reconstruits/
+manifeste_v3.json` passe en **rev10** (section `destruction` + champ `correction_ghost`).
+Le juge reste l'utilisateur : ces WAV n'ont pas ete compares a une capture en jeu. Suite
+naturelle, dans un lot dedie : re-mesurer les boucles de DEPLACEMENT covenant/bannis sur les
+vraies banques de `pc/globals/common` (le Ghost de rev9 est a refaire).
+
+## [2026-09-02] Vehicules V3 item B — l'occupant de l'EMBARQUEMENT resolu par Ghidra : refs en domaines 2/3/7 (pas 1/7/7), occupant en bande 100 % (0 % avant) — Complété
+
+**Decision technique** : reprendre l'impasse du portage de la liste d'evenements (01/09, § 4 :
+« l'occupant de l'embarquement n'est pas resolu, sa ref 0 porte une sonde variable et tombe hors
+bande »). Le blocage venait d'une fausse piste : la table 0x144724A90 n'est PAS celle des handlers
+d'evenements — lue en memoire, elle pointe des CHAINES de medailles (« AuntieDot »,
+« DespawnSad »). Le bon chemin part de `FUN_14080ada0`, qui rend le nom d'un type via
+`vtable+0x08` : chaine `"biped_board_vehicle"` (0x143c97f80) -> xref = thunk de nom (0x14119e9b0,
+`LEA RAX,[rip+off]; RET`) -> xref = slot de vtable (0x143d0d338) -> **vtable 0x143d0d330** ->
+`vtable+0x58` = **0x142f1556c**, l'aiguillage qui rend le DOMAINE de chaque ref. Ghidra en HTTP
+direct, LECTURE SEULE (les deux aiguillages ne sont pas definis comme fonctions : lus en octets
+bruts par `read_memory` et desassembles a la main, aucun `create_function`).
+
+**Resultats observes** :
+- **EMBARQUEMENT : refs en domaines 2, 3, 7** (`test edx,edx; je -> eax=2` / `sub edx,1; je ->
+  eax=3` / `eax=7`), et non 1, 7, 7. **METHODE CONTROLEE** : le meme emplacement du descripteur
+  `unit_exit_vehicle` (vtable 0x143d0c708, +0x58 = 0x14080a018) rend **1, 1, 7** — exactement la
+  grammaire de la sortie deja validee par la mesure.
+- **La sonde n'existe que pour le domaine 1** : `FUN_1406d3140` la lit sous `if (param_3 == 1 &&
+  ReadBit())`. La « sonde variable » de l'embarquement n'etait que le premier bit de son index.
+- **Les LARGEURS sont runtime** (`FUN_1406d310c(count) = ceil(log2(count))` sur `DAT_1451f98d0`,
+  en BSS) : impossibles a lire statiquement, donc MESUREES par balayage. **dom2 = 8** (occupant en
+  bande 22/22 = 100 %, ouvre un trou de position 77,3 %, temoin 0 % ; a 7 bits le recoupement
+  tombe a 4,5 %, a 9 bits la bande a 72,7 %). **dom3 = 7**, departage par un oracle independant,
+  le SIEGE : accord avec le siege de la sortie appariee 5/6 = 83,3 % et siege 0 sur 21/22 (meme
+  « siege dominant 0 » que la sortie) ; a 8 bits l'accord est 0/6.
+- **Effet mesure** : dump `0d76e8f1` `BOARD occ_slot=3160 inBand=false seat=16` ->
+  **`occ_slot=561 inBand=true seat=0`** ; validation 5 films : occupant en bande **68/68 = 100 %**
+  (95,5 % avant, aucun board en bande), siege board **0 x 16**.
+- **Gate de recoupement a 90 % NON ATTEINT (77,3 %) — mais la reference non plus** : le controle
+  de non-regression (la SORTIE, deja validee) rend **90,7 %** sur le meme corpus avec la meme
+  primitive quanta. L'embarquement est a 85 % du taux de la reference, temoin NUL. Devenir :
+  6/22 = 27,3 % suivis d'une sortie du meme occupant (mais **6/6 trajets complets** et **ecart de
+  numerotation 0 sur 6/6** entre domaines 1 et 2 — pas de base a corriger), et cote `replay`
+  (gate B5) mort de l'occupant 2/5 = 40 % contre 1/5 = 20 % au temoin. Ensemble : 4/5 = 80 % des
+  embarquements finissent par une sortie du meme occupant OU par sa mort (n=5, dit comme tel).
+  Le ratio corpus board:exit = 1:15 explique le reste : la masse des montees en vehicule n'emet
+  pas de `biped_board_vehicle`.
+- **Bug d'instrument corrige, note car il fabriquait un faux negatif** : l'appariement
+  embarquement -> sortie tournait dans la boucle qui REMPLISSAIT la liste des sorties, donc chaque
+  embarquement ne voyait que les sorties anterieures — B4 rendait 0/22, ce qui ressemblait a une
+  refutation. Deux passes explicites : 6/22.
+
+**Conclusion / prochaine etape** : porte en production dans `event_list.go` (additif, sortie
+intacte, garde-fou de cadrage `fire_events == head type36` toujours bit-exact, comptes corpus
+inchanges 348/5144), avec un garde-rail **sans environnement** `TestBoardEventGrammar` (payload
+synthetique + temoin : les memes bits relus en grammaire de sortie doivent rendre un occupant
+different). Restent ouverts : (a) la largeur runtime par film (lecture de `DAT_1451f98d0` a
+l'execution, debogueur), (b) le SENS des refs 1 et 2 (la ref 2, domaine 7, est le candidat
+vehicule mais elle est gardee-absente presque partout), (c) marcher la liste ENTIERE pour
+retrouver les sorties manquantes. Rapport :
+`.ai/V7.5/film_re/V3_EMBARQUEMENT_2026-09-02.md`.
+
+## [2026-09-02] Vehicules V3 item A — dater la destruction par la mort du conducteur : REFUTE (0/460 vies), mais la fin de trajectoire n'est PAS la destruction et l'episode d'occupation est valide a 100 % — Complété
+
+**Decision technique** : refaire la mesure du lot V2 item 4b (« une mort coincide avec la fin de
+vie d'un vehicule », conclue au hasard : 52 % vs 48 %) en la RESTREIGNANT a l'occupant nomme, que
+V1a.4/V1c (debut de trou de position a < 1,5 m d'un vehicule) et V2b (evenement de sortie) savent
+desormais designer. Gate ecrit AVANT mesure, en constantes nommees, avec temoin a occupant DECALE
+(rotation de 3 crans du roster trie : meme densite de morts, autre identite). Trois etages
+successifs, chacun avec son gate ecrit avant sa propre mesure : (1) l'occupant est-il encore a
+bord a la fin serree du vehicule, (2) meurt-il DANS son trou d'embarquement, (3) meurt-il au BORD
+du trou (ejection). Deux instruments neufs sous garde `V3_DESTR_FILMS`/`V3_DESTR_ROOT`, aucun
+fichier de production touche.
+
+**Resultats observes** (12 films, 3 regimes : Behemoth SF, Launch Site SF, Behemoth non-SF ;
+460 vies de vehicule, 80 episodes d'occupation) :
+- **Gate 1-3 ECHOUENT : 0 occupant encore a bord a la fin serree, sur 64 vies a candidat.** Cause
+  mesuree, et c'est le fait le plus utile du lot : **le flux de position du vehicule continue 13 a
+  36 s (mediane par lot) APRES que son occupant l'a quitte**. « Fin de trajectoire = destruction »
+  est REFUTE — meme piege que `EquipmentLifeSpan.T1US` (mise au repos, pas disparition). Un slot
+  porte plusieurs occupants successifs (`0d76e8f1` slot=771 : 512 puis 514 puis 515).
+- **Gate 4 ECHOUE, et ANTI-correle : mort a bord 3/80 = 3,8 % contre 17/80 = 21,3 % au temoin
+  (-17,5 pts).** Le conducteur ne meurt pas dans le vehicule : il en sort.
+- **Gate 7 ECHOUE : mort a +/-3 s de la fermeture du trou 21,3 % contre 13,8 % au temoin
+  (+7,5 pts, seuil 10).** Un lot sur trois passe (+16,0), deux echouent (+3,3 et +4,0) : bruit
+  d'echantillon. Ecart signe toujours POSITIF (mediane +1,0 a +2,3 s) = le joueur descend PUIS se
+  fait tuer a pied.
+- **Gate 6 (controle) PASSE et vaut a lui seul le lot** : 69/80 trous (86,3 %) portent un
+  evenement de sortie de leur occupant, et **69/69 = 100 %** de ces sorties ferment le trou a
+  +/-2 s. C'est le recoupement V2b (10/10 sur UN film) reproduit sur 12 films. Temps a bord
+  median 11,2-12,5 s.
+- Piege corrige, note car il fausse toute mesure de trou : V1c ne compte les trous que sur les
+  echantillons `HasWorld`, `indexBySlot` garde tout — lire la fermeture sur le flux complet la
+  fait tomber juste apres l'ouverture (`v3dMondeSeul` aligne les deux flux).
+
+**Conclusion / prochaine etape** : A3 (point d'entree de production) **NON ECRIT** — le plan le
+conditionnait au passage du gate, et publier une « cause = destruction » sur un signal refute
+serait du code mort porteur d'une fausse promesse. Ce qui merite une production est l'EPISODE
+D'OCCUPATION (`VehicleRide` : occupant, vehicule, embarquement ~0,5 s, sortie a la ms, siege),
+a trancher par le superviseur. Deux voies restent ouvertes pour DATER la destruction :
+(a) la grammaire de bits d'i2/i3 pour `ti=40` (Ghidra), sans quoi i4 reste du bruit — reprise
+deja posee par V2b ; (b) **le type 0 « degats » de la liste d'evenements (1 313 occurrences sur
+`0d76e8f1`, jamais decode)**, moins cher car le cadrage de la liste est deja porte et prouve
+bit-exact. Rapport : `.ai/V7.5/film_re/V3_DESTRUCTION_DATEE_2026-09-02.md`.
+
 ## [2026-09-02] Vehicules — Gungoose : la permutation 0x02c9ed0a etait un JEU DE PNEUS ; la vraie arme est un objet `scen` attache par la meme `sofa` que le weap `veh_un_wargoose` — Complété
 
 **Question utilisateur** : « on a bien les deux lance-missiles dessus ? Y a pas un module comme

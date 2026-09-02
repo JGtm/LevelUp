@@ -21,6 +21,8 @@ func Folder(k Kind) string {
 		return "weapons-assets"
 	case KindCommendation:
 		return "commendations"
+	case KindVehicle:
+		return "vehicles-assets"
 	}
 	return ""
 }

@@ -363,6 +363,16 @@ export interface ReplayText {
   layerGroundWeapons: string
   layerGroundWeaponsHint: string
   /**
+   * LES VÉHICULES (schéma 29) : le nom du calque et sa réserve.
+   *
+   * LA RÉSERVE DIT LA FIN DE VIE, et c'est le point qui trompe le plus facilement : la
+   * disparition du sprite n'est PAS une destruction — le film ne date aucune destruction
+   * (mesuré et réfuté, `V3_DESTRUCTION_DATEE_2026-09-02.md`). Le calque cesse de dessiner un
+   * véhicule à la dernière preuve de sa présence, jamais au moment où il explose.
+   */
+  layerVehicles: string
+  layerVehiclesHint: string
+  /**
    * LE NOM D'UN SOCLE QUI NE PORTE PAS UNE ARME (schéma 17). Les clés sont les familles
    * d'équipement publiées par le document (`weaponPads[].weapon`), énumérées une par une dans
    * `weaponPadFamilies.ts` — d'où le typage : une famille ajoutée là-bas sans libellé ici ne

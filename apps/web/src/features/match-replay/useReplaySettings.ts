@@ -38,6 +38,7 @@ const SHOW_GROUND_WEAPONS_KEY = 'replay-show-ground-weapons'
 const SHOW_FLAG_CARRIES_KEY = 'replay-show-flag-carries'
 const SHOW_VIP_CROWN_KEY = 'replay-show-vip-crown'
 const SHOW_SKULL_CARRIER_KEY = 'replay-show-skull-carrier'
+const SHOW_VEHICLES_KEY = 'replay-show-vehicles'
 const MARKER_COLORS_KEY = 'replay-marker-colors'
 
 /**
@@ -180,6 +181,17 @@ const SHOW_FLAG_CARRIES_DEFAULT = true
 const SHOW_VIP_CROWN_DEFAULT = true
 const SHOW_SKULL_CARRIER_DEFAULT = true
 
+/**
+ * LES VÉHICULES SONT ALLUMÉS PAR DÉFAUT (schéma 29, lot du 2026-09-02) : c'est l'objectif même
+ * du chantier (« rejouer un match ... avec véhicules visibles »), au même titre que les socles
+ * ou les drapeaux — un objet du terrain qui change la lecture du match, pas un effet de style.
+ * Le film qui n'en porte aucun (`coverage.vehicles`) n'affiche ni calque ni bascule.
+ *
+ * Ce n'est pas un demi-livrable (CLAUDE.md n°11) : le calque est complet, l'interrupteur est un
+ * RÉGLAGE D'AFFICHAGE offert au lecteur — une carte de Grande Bataille reste dense.
+ */
+const SHOW_VEHICLES_DEFAULT = true
+
 /** Les deux lectures de couleur des points, dans l'ordre où le tiroir les propose. */
 export type MarkerColorsMode = 'team' | 'player'
 export const MARKER_COLORS_MODES: readonly MarkerColorsMode[] = ['team', 'player']
@@ -274,6 +286,9 @@ export interface ReplaySettings {
    */
   showSkullCarrier: boolean
   toggleSkullCarrier: () => void
+  /** Calque des VÉHICULES (schéma 29). Allumé par défaut (cf. SHOW_VEHICLES_DEFAULT). */
+  showVehicles: boolean
+  toggleVehicles: () => void
   /** Couleur des points des joueurs : par équipe (défaut) ou distincte par joueur. */
   markerColors: MarkerColorsMode
   setMarkerColors: (mode: MarkerColorsMode) => void
@@ -373,6 +388,7 @@ export function useReplaySettings(): ReplaySettings {
     SHOW_SKULL_CARRIER_KEY,
     SHOW_SKULL_CARRIER_DEFAULT,
   )
+  const [showVehicles, toggleVehicles] = usePersistedFlag(SHOW_VEHICLES_KEY, SHOW_VEHICLES_DEFAULT)
   const [heatmapMode, setHeatmapModeState] = useState(() =>
     readStoredChoice(HEATMAP_MODE_KEY, HEATMAP_MODE_DEFAULT, HEATMAP_MODES),
   )
@@ -442,6 +458,8 @@ export function useReplaySettings(): ReplaySettings {
     toggleVipCrown,
     showSkullCarrier,
     toggleSkullCarrier,
+    showVehicles,
+    toggleVehicles,
     markerColors,
     setMarkerColors,
     autoPlay,
