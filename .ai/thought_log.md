@@ -81,8 +81,10 @@ TestObjectifBombState PASS (82,9 s) — EXIT=0 (logs scratchpad AB_pied_rejeu.lo
 AB_bombstate_rejeu.log). Toute la ligne bombe est désormais contenue : les 7 branches
 wt/* répondent « ancêtre de feat/v75 ».
 
-**Prochaine étape** : push, CI au niveau job (les 3-4 ratchets hérités cartes/mvar + origine
-restent à leurs chantiers).
+**Verdict CI (même jour)** : run de `7658ec435` VERT sur TOUS les jobs — y compris le gate
+Linux ./... complet (les ratchets hérités cartes/mvar + origine ont été soldés par leurs
+chantiers ce matin). Critère de clôture du mode branche unique atteint : la ligne bombe
+est entièrement mergée et la CI est verte au niveau job.
 
 ## [2026-09-02] Audit perf cuisson des artefacts de rejeu — registre livre — Complete
 
