@@ -88703,3 +88703,23 @@ de proposer. Non traitee, statuee [!], decision rendue avec ses trois options.
 **Conclusion / prochaine etape** : gate visuel utilisateur, arbitrage sur 3.3, puis commit.
 Decouverte non traitee : la frise expose son numero d'image comme valeur ARIA, `aria-valuetext`
 porterait le mm:ss.
+
+---
+
+## [2026-09-02] Sieges : l appariement passe a l ORDINAL (intuition user sur l allocation des indices)
+
+**Statut** : Complété.
+
+**Décision** : le user a raisonné sur l'allocation des indices (0-7 humains, l'arrivant prend
+le premier libre au-dessus — Razzle=8 le confirme) : le jeu comble les places DANS L'ORDRE
+DES DÉPARTS. L'appariement partant<->arrivant devient donc ORDINAL par équipe (k-ième
+partant <-> k-ième arrivant), là où le glouton « au plus proche » pouvait CROISER deux paires
+à écarts irréguliers (testé : L1@28:20/L2@30:00 vs J1@30:05/J2@30:10 — le plus proche donnait
+J1->L2). Arrivées à la même seconde départagées par l'INDICE DE FILM du roster (alloué à
+l'arrivée) ; la fenêtre 120 s reste une borne de bon sens par paire. Réserve documentée :
+un slot libéré par un bot peut être réutilisé (Aloysius->PardonMy slot=8), l'indice n'encode
+donc l'ordre qu'à réutilisation près — le temps prime, l'indice départage.
+
+**Gates** : tsc 0, vitest match-replay 137 fichiers / 2067 verts (2 tests ordinal + départage
+par indice ajoutés). Cas « part et revient » : jamais observé par le user — reste en limite
+théorique, rien de plus investi.
