@@ -88723,3 +88723,51 @@ donc l'ordre qu'à réutilisation près — le temps prime, l'indice départage.
 **Gates** : tsc 0, vitest match-replay 137 fichiers / 2067 verts (2 tests ordinal + départage
 par indice ajoutés). Cas « part et revient » : jamais observé par le user — reste en limite
 théorique, rien de plus investi.
+
+---
+
+## [2026-09-02] Rejeu 2D : le tiroir sort du cadre — portail ancre, 416 px, calques groupes en 2 colonnes
+
+**Statut** : Complete (code + gates) ; merge vers feat/v75 dans la foulee (demande utilisateur).
+
+**Decision technique principale** : la question de l'utilisateur — « est-ce que ce tiroir sort
+du cadre ou pas ? » — avait une reponse nette : NON. Le tiroir vivait en
+`absolute inset-y-0 right-0` DANS la carte du rejeu, que son `overflow-hidden` decoupait au
+bord. C'est ce qui bloquait DEUX choses a la fois, sans que le lien soit visible :
+
+- il ne pouvait pas deborder sur la colonne de droite (fiches, fil) ;
+- il ne pouvait pas depasser 264 px utiles — et c'est exactement la raison pour laquelle les
+  calques en deux colonnes avaient ete retires le 2026-08-29 (deux rails a 130 px tronquent
+  « Objets laches au sol »).
+
+Le portail resout donc les deux d'un coup : `createPortal` sur `body` + `position: fixed`, place
+par `useAnchoredPanel` a partir du rectangle du bouton. AUCUN `z-index` ne fait sortir un enfant
+d'un ancetre en `overflow-hidden` — il faut quitter le sous-arbre, c'est la condition et pas un
+detail d'implementation. Largeur 416 px, soit ~190 px par colonne.
+
+Trois points du placement meritent d'etre notes parce qu'ils ne se devinent pas :
+
+- ANCRAGE PAR LE BAS (`bottom`), pas par le haut : le bouton est en bas de la carte, le panneau
+  ouvre vers le haut, et un ancrage bas le fait grandir sans qu'on ait a connaitre sa hauteur.
+- `scroll` EN CAPTURE : le declencheur vit dans le `<main>` du shell, qui defile. Un ecouteur
+  `scroll` sur `window` sans capture ne verrait jamais ce defilement — l'evenement ne remonte
+  pas. En capture, il passe par `window` a la descente.
+- L'ETAT DEMARRE CENTRE, JAMAIS NUL. Premiere version : rendre `null` tant que la mesure
+  n'existe pas. 27 tests sont tombes, et ils avaient raison — un premier rendu nul fait naitre
+  le panneau APRES le montage, donc le focus qui doit y entrer s'execute sur un panneau absent.
+  Le repli centre sert aussi en production si le bouton se demonte sous un panneau ouvert.
+
+Les CALQUES sont groupes (Joueurs / Terrain / Objectifs) et en deux colonnes, avec UNE
+exception : les poses d'equipement restent en une colonne, parce qu'elles ont des bascules
+filles conditionnelles — en deux colonnes, une fille se retrouverait A COTE de sa mere au lieu
+d'etre dessous, et la dependance cesserait de se voir. Le groupe « Objectifs » disparait en
+entier hors des modes concernes, titre compris : c'est le gain cache du groupement, une liste
+plate y laissait un trou qu'on ne savait pas nommer.
+
+Aussi : `pl-1.5` sur le fil — la gouttiere d'horloge butait sur la bordure du panneau.
+
+**Resultats observes** : typecheck EXIT=0 ; 167 fichiers / 2332 tests verts ; lint 0 erreur.
+
+**Conclusion / prochaine etape** : gate visuel utilisateur. Restent hors perimetre : les
+prereglages de son (idee utilisateur retenue, non traitee), le zoom (surimpression d'angle,
+glisser + croix directionnelle), et les zones des cartes Forge (agent en cours).
