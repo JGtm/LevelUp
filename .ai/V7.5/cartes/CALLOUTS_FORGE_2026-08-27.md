@@ -88,13 +88,12 @@ fine. `map_fond_reglages.json`, cle `01af558d`.
 
 ## 5. Ce qui reste
 
-> **MAJ 2026-09-02** — le rejeu 2D affiche desormais les zones des cartes Forge. Voir
-> la section 7 pour ce qui a ete livre, ce qui a ete mesure, et ce qui reste vraiment.
+> **MAJ 2026-09-02** — le rejeu 2D affiche desormais les zones des cartes Forge (section 7),
+> et TOUTES portent leur nom depuis le decodage du lexique `uslg` (section 8).
 
-- **Le texte joueur manque pour 63 % des zones** : 434 StringId distincts employes, 432 dans
-  `locs`, mais **160 seulement** portent un libelle dans `callouts_i18n.csv`. Les 274 autres
-  demandent une extraction `uslg` — la meme chaine qui a produit le CSV. **C'est le vrai reste
-  de travail, plus gros que le decodage.** La geometrie, elle, n'a pas besoin des noms.
+- ~~**Le texte joueur manque pour 63 % des zones**~~ **LIVRE le 2026-09-02** (section 8) :
+  l'extraction `uslg` est faite, le lexique versionne resout **266/266** StringId de la
+  rotation et **2 536 zones sur 2 536** portent un libelle FR/EN.
 - ~~**Le rejeu 2D n'affiche toujours pas les callouts des cartes Forge**~~ **LIVRE le
   2026-09-02** (section 7).
 - **31 zones sur 4 161 ont des formes aberrantes** (30 sur `argyle`, 1 sur `detachment`) :
@@ -184,13 +183,86 @@ du bruit, pas une information. 3 cartes sont ecartees par cette regle.
 
 ### Ce qui reste vraiment
 
-1. **L'extraction `uslg` des 200 StringId sans texte** — c'est le seul vrai reste. Sonde du
-   2026-09-02 (`himap/sonde_uslg_gamefiles_test.go`) : le tag `locs` ne porte AUCUN texte
-   (root de 64 o, un bloc de 778 entrees de 4 o, point) ; le groupe `uslg` (488 tags) ne porte
-   qu'un bloc de **18 entrees = les 18 langues** ; **le texte est dans le BLOB DE RESSOURCES**
-   du tag uslg (520 Ko, ASCII lisible : « Pick up Blind Skull », « Out of Ammo »), table
-   d'index vers `0x150`. Reste a decoder cette table pour relier un string_id a son offset.
+1. ~~**L'extraction `uslg` des 200 StringId sans texte**~~ **LIVRE le 2026-09-02** — section 8.
 2. **Les cartes hors rotation du 2026-08-27** : l'inventaire est date. Une carte jouee depuis
    n'y est pas — il faudra le regenerer (balayage Discovery authentifie, une fois).
-3. **Gate visuel** : aucune planche n'a ete faite. Le rendu d'une carte Forge dont 2 zones sur
-   3 sont muettes n'a jamais ete regarde a l'ecran.
+3. **Gate visuel** : aucune planche n'a ete faite. Le rendu d'une carte Forge n'a jamais ete
+   regarde a l'ecran — maintenant que toutes ses zones portent un nom, c'est le vrai reste.
+
+## 8. Le lexique des noms de lieu — LIVRE le 2026-09-02
+
+### Le format, decode
+
+Le blob de ressources d'un tag `uslg` n'est pas une soupe d'octets : c'est **18 sous-fichiers
+`ucsh` CONCATENES**, un par langue, dans l'ordre du bloc des 18 du tag. Chaque sous-fichier est
+un tag complet, et le suivant commence a `headerSize + dataSize`.
+
+| element | ou |
+|---|---|
+| longueurs | `+0x38` headerSize, `+0x3C` dataSize |
+| comptes | `+0x18` deps, `+0x1C` blocs, `+0x20` structs, `+0x24` dataRefs |
+| table des blocs | `0x50 + deps*0x18`, 0x10/entree (taille, section, offset) |
+| table des structs | `+ blocs*0x10`, 0x20/entree (type, cible, proprietaire, champ) |
+| table des dataRefs | `+ structs*0x20`, 0x14/entree (bloc cible a `+0x08`) |
+| **racine** | la struct SANS proprietaire (`owner == -1`) |
+| **table d'index** | le TagBlock au champ 0 de la racine : N x `{ u32 string_id, u32 offset }` |
+| **texte** | le bloc de la 1re dataRef : chaines UTF-8 terminees par NUL |
+
+Deux pieges leves :
+
+- **`0x150` n'etait pas une adresse, c'etait une coincidence.** La table d'index se trouve par
+  la struct-table du sous-fichier ; sur le plus gros `uslg` elle tombe a `0x154`, ailleurs a
+  `0x144`. Un offset en dur ratait 451 des 488 tags (ceux qui ont 3 blocs et non 4).
+- **La langue ne se devine pas.** L'ordre des 18 slots n'est PAS croissant :
+  `0..9, 11, 12, 15, 17, 10, 13, 14, 16`. Il se lit dans le tag. `0 = anglais`, `3 = francais`,
+  verifies par la traduction d'une chaine connue sur les 18 slots.
+
+### La preuve que le hash EST le string_id
+
+Le lexique decode reproduit **les 463 string_id de `callouts_i18n.csv` avec un texte EN et FR
+identique au caractere pres — 0 absent, 0 divergence** — et resout **777/777** entrees du
+vocabulaire global `locs`. Ce n'est pas un echantillon : c'est la table figee entiere, validee
+zone par zone en aout sur les 22 cartes integrees.
+
+### Ce qui a ete livre
+
+| brique | fichier |
+|---|---|
+| decodeur `uslg` + vocabulaire `locs` | `internal/himap/uslg.go` |
+| lexique versionne `string_id;en;fr` (810 entrees) | `data/titles/halo_infinite/reference/callouts_lexique.csv` |
+| ecriture / lecture / fusion du lexique | `cmd/mapcallouts-build/lexique.go` |
+| bascule `--lexique` + jointure avant les passes | `cmd/mapcallouts-build/main.go` |
+| temoins hors ligne + garde-rail contre le CSV fige | `cmd/mapcallouts-build/lexique_test.go` |
+| anti-regression du decodeur sur les fichiers du jeu | `internal/himap/uslg_gamefiles_test.go` |
+
+Commande : `CGO_ENABLED=1 go run ./cmd/mapcallouts-build --lexique --forge-only`.
+`--lexique` EXIGE le jeu installe ; il ne se rejoue qu'a une mise a jour du jeu. La LECTURE du
+lexique n'exige rien : c'est de la donnee versionnee, comme `map_structure`.
+
+### La mesure — avant / apres
+
+| grandeur | avant | apres |
+|---|---|---|
+| StringId de lieu resolus | 66 / 266 (25 %) | **266 / 266 (100 %)** |
+| zones Forge portant un libelle | 869 / 2 392 (36 %) | **2 536 / 2 536 (100 %)** |
+| cartes Forge publiees | 61 | **64** |
+| cartes ecartees faute de zone nommable | 3 (Vallaheim x3) | **0** |
+
+Les 3 cartes gagnees sont les Vallaheim (48 zones chacune) : leur vocabulaire etait
+entierement hors du CSV natif. **Toutes les cartes passent a 100 %** — les plus fournies :
+Kaiketsu 41 -> 105, Solution 41 -> 100, Interference 39 -> 84, Last Broadcast 34 -> 81,
+Starboard 29 -> 95, Refuge 20 -> 83, Opulence 16 -> 64.
+
+La section native est INCHANGEE (22 cartes, 816 zones, octet pour octet) : seule `maps_by_id`
+bouge.
+
+### Ce qui n'a PAS ete fait, et pourquoi
+
+- **Les 16 autres langues** ne sont pas extraites. Le decodeur les lit toutes ; le lexique n'en
+  ecrit que deux, parce que le depot est bilingue par typage (`Record<Locale, T>`). Ajouter une
+  langue = ajouter une colonne, pas re-decoder.
+- **Le seuil « au moins une zone nommee » est conserve** meme s'il ne mord plus : il
+  redeviendrait la bonne reponse le jour ou le jeu introduirait un nom absent du lexique
+  versionne.
+- **Aucun nom n'est invente.** La regle de la section precedente tient telle quelle ; elle n'a
+  simplement plus d'occasion de s'appliquer sur cette rotation.

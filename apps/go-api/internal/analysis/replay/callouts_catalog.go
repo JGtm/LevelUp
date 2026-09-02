@@ -118,10 +118,12 @@ type CalloutZone struct {
 	// Name est le nom de CONCEPTION (possiblement tronqué à 32 octets par le format). VIDE
 	// sur une carte Forge : le map.mvar ne porte que le StringId du lieu, pas son texte.
 	Name string `json:"name"`
-	// EN et FR sont les libellés joueur officiels (816/816 résolus par string_id sur les
-	// cartes intégrées). VIDES quand le StringId de la zone n'a pas encore de texte joueur —
-	// cas fréquent sur les cartes Forge, dont le vocabulaire dépasse celui des 22 natives.
-	// Le rendu dessine alors le contour SANS libellé : jamais de nom de repli inventé.
+	// EN et FR sont les libellés joueur officiels : 816/816 sur les cartes intégrées, et
+	// 2 536/2 536 sur les cartes Forge depuis que le lexique des noms de lieu est extrait des
+	// listes de chaînes du jeu (2026-09-02 — avant, le vocabulaire Forge n'était résolu qu'à
+	// 25 % et les deux tiers des zones étaient muettes). Ils restent VIDES si le jeu
+	// introduit un nom que le lexique versionné ne connaît pas encore : le rendu dessine
+	// alors le contour SANS libellé — jamais de nom de repli inventé.
 	EN string `json:"en"`
 	FR string `json:"fr"`
 	// X, Y, Z : le point de référence du volume. C'est le centre 3D qu'utilise zoneAt —
