@@ -104,8 +104,6 @@ export function useReplayDrawer(o: ReplayDrawerOptions): ReplayDrawer {
       onToggleAim: s.toggleAim,
       showZones: s.showZones,
       onToggleZones: s.toggleZones,
-      showNames: s.showNames,
-      onToggleNames: s.toggleNames,
       showTrail: s.showTrail,
       onToggleTrail: s.toggleTrail,
       zonesAvailable: available.zones,

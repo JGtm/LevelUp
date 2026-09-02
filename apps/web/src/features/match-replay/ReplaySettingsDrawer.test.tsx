@@ -76,7 +76,6 @@ function renderDrawer(over: Partial<Parameters<typeof ReplaySettingsDrawer>[0]> 
   const onClose = vi.fn()
   const onToggleAim = vi.fn()
   const onToggleZones = vi.fn()
-  const onToggleNames = vi.fn()
   const onToggleTrail = vi.fn()
   const onSetSpeed = vi.fn()
   const onToggleShotFx = vi.fn()
@@ -93,8 +92,6 @@ function renderDrawer(over: Partial<Parameters<typeof ReplaySettingsDrawer>[0]> 
       onToggleAim={onToggleAim}
       showZones
       onToggleZones={onToggleZones}
-      showNames
-      onToggleNames={onToggleNames}
       showTrail
       onToggleTrail={onToggleTrail}
       zonesAvailable
@@ -117,7 +114,7 @@ function renderDrawer(over: Partial<Parameters<typeof ReplaySettingsDrawer>[0]> 
     />,
   )
   return {
-    ...utils, onClose, onToggleAim, onToggleZones, onToggleNames, onToggleTrail, onSetSpeed,
+    ...utils, onClose, onToggleAim, onToggleZones, onToggleTrail, onSetSpeed,
     onToggleShotFx, onToggleKillFx, onSetMarkerColors, onToggleAutoPlay,
   }
 }
@@ -151,17 +148,28 @@ describe('ReplaySettingsDrawer — les deux formes de commande (2026-08-29)', ()
   // réglage n'accepte pas. Ce test épingle la frontière, qui se perdrait à la relecture.
   it('les calques et les catégories de son sont des interrupteurs', () => {
     renderDrawer({ heatmap: makeHeatmap({ show: true }) })
-    for (const nom of ['Visée', 'Noms', 'Traînée', 'Zones', 'Carte de chaleur', 'Armes']) {
+    for (const nom of ['Visée', 'Traînée', 'Zones', 'Carte de chaleur', 'Armes']) {
       expect(screen.getByRole('switch', { name: nom })).toBeTruthy()
     }
   })
 
-  it('les choix exclusifs restent des boutons pressés', () => {
+  it('les choix exclusifs ne sont JAMAIS des interrupteurs', () => {
     renderDrawer({ heatmap: makeHeatmap({ show: true }) })
     for (const nom of ['Présence', 'Éliminations', 'Par équipe', 'Par joueur']) {
-      expect(screen.getByRole('button', { name: nom })).toBeTruthy()
       expect(screen.queryByRole('switch', { name: nom })).toBeNull()
     }
+  })
+
+  // LES DEUX AXES DE LA CHALEUR SONT PASSÉS EN SEGMENTÉ le 2026-09-02 : un choix parmi N
+  // s'annonce en radiogroup/radio, pas comme une grappe de boutons pressés. C'est la forme
+  // qui porte la contrainte — des options empilées laissaient croire qu'on pouvait en allumer
+  // deux. Les couleurs de marqueur, elles, restent des boutons : leur liste n'a pas bougé.
+  it('les axes de la chaleur sont un choix radio, pas une grappe de boutons', () => {
+    renderDrawer({ heatmap: makeHeatmap({ show: true }) })
+    for (const nom of ['Présence', 'Éliminations']) {
+      expect(screen.getByRole('radio', { name: nom })).toBeTruthy()
+    }
+    expect(screen.getAllByRole('radiogroup').length).toBeGreaterThanOrEqual(2)
   })
 })
 
@@ -175,26 +183,23 @@ describe('ReplaySettingsDrawer — calques', () => {
     expect(onToggleZones).not.toHaveBeenCalled()
   })
 
-  // Le calque des NOMS n'a PAS de condition de disponibilité, contrairement aux zones : un
-  // rejeu a toujours des joueurs, donc toujours des noms à écrire ou à taire.
-  it('bascule Noms : toujours proposée, reflète showNames, appelle onToggleNames au clic', () => {
-    const { onToggleNames, onToggleAim } = renderDrawer({ showNames: false, zonesAvailable: false })
-    const btn = screen.getByRole('switch', { name: 'Noms' })
-    expect(btn).toHaveAttribute('aria-checked', 'false')
-    fireEvent.click(btn)
-    expect(onToggleNames).toHaveBeenCalledTimes(1)
-    expect(onToggleAim).not.toHaveBeenCalled()
+  // LE CALQUE DES NOMS N'A PLUS DE BASCULE (2026-09-02) : il est toujours allumé. Le test
+  // garde l'ABSENCE — sans lui, une revue future la réintroduirait par symétrie avec les
+  // autres calques, et le tiroir reprendrait la ligne qu'on vient de lui faire rendre.
+  it('aucune bascule « Noms » : le calque est toujours allumé', () => {
+    renderDrawer({ zonesAvailable: false })
+    expect(screen.queryByRole('switch', { name: 'Noms' })).toBeNull()
   })
 
   // V1 (2026-08-18) : la TRAÎNÉE devient un calque comme les autres — toujours proposée (elle
   // n'a aucune condition de disponibilité : une vie a toujours un passé), allumée par défaut.
   it('bascule Traînée : toujours proposée, reflète showTrail, appelle onToggleTrail au clic', () => {
-    const { onToggleTrail, onToggleNames } = renderDrawer({ showTrail: false, zonesAvailable: false })
+    const { onToggleTrail, onToggleAim } = renderDrawer({ showTrail: false, zonesAvailable: false })
     const btn = screen.getByRole('switch', { name: 'Traînée' })
     expect(btn).toHaveAttribute('aria-checked', 'false')
     fireEvent.click(btn)
     expect(onToggleTrail).toHaveBeenCalledTimes(1)
-    expect(onToggleNames).not.toHaveBeenCalled()
+    expect(onToggleAim).not.toHaveBeenCalled()
   })
 
   it('bouton Zones absent quand la carte n a pas de zones nommées', () => {
@@ -284,21 +289,15 @@ describe('ReplaySettingsDrawer — carte de chaleur', () => {
 
   it('calque allumé : les deux lectures, la courante pressée (choix exclusif)', () => {
     renderDrawer({ heatmap: makeHeatmap({ show: true, mode: 'kills' }) })
-    expect(screen.getByRole('button', { name: 'Présence' })).toHaveAttribute(
-      'aria-pressed',
-      'false',
-    )
-    expect(screen.getByRole('button', { name: 'Éliminations' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    )
+    expect(screen.getByRole('radio', { name: 'Présence' })).toHaveAttribute('aria-checked', 'false')
+    expect(screen.getByRole('radio', { name: 'Éliminations' })).toHaveAttribute('aria-checked', 'true')
   })
 
   it('cliquer une lecture appelle onSetMode avec SA clé, jamais la bascule du calque', () => {
     const onSetMode = vi.fn()
     const onToggle = vi.fn()
     renderDrawer({ heatmap: makeHeatmap({ show: true, onSetMode, onToggle }) })
-    fireEvent.click(screen.getByRole('button', { name: 'Éliminations' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'Éliminations' }))
     expect(onSetMode).toHaveBeenCalledTimes(1)
     expect(onSetMode).toHaveBeenCalledWith('kills')
     expect(onToggle).not.toHaveBeenCalled()

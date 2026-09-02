@@ -167,7 +167,7 @@ export function ReplayCanvas({
   // le dessin ne lit que les valeurs — d'où cette destructuration-là (cf. useReplayDrawer).
   const settings = useReplaySettings()
   const {
-    showAim, showZones, showNames, showTrail, showHeatmap, heatmapMode, heatmapSpan,
+    showAim, showZones, showTrail, showHeatmap, heatmapMode, heatmapSpan,
     showShotFx, showKillFx, showPlacements, showUnnamedPlacements, showDroppedPlacements,
     showWeaponPads, showGroundWeapons, showFlagCarries, showVipCrown, showSkullCarrier, showBombCarrier, speed: multiplier,
     markerColors,
@@ -410,7 +410,6 @@ export function ReplayCanvas({
       showAim,
       markOfSlot,
       nameOfSlot,
-      showNames,
       showTrail,
       selfInk,
       deathInk: shotColor,
@@ -533,7 +532,6 @@ export function ReplayCanvas({
     sideOfSlot,
     markOfSlot,
     nameOfSlot,
-    showNames,
     showTrail,
     selfInk,
     labelStroke,
@@ -606,7 +604,7 @@ export function ReplayCanvas({
           {/* Le bouton du TIROIR DE RÉGLAGES vit tout à droite de la barre de lecture
               (demande du 2026-08-24) : la barre du haut, qui ne portait plus que lui, est
               supprimée — le rejeu gagne sa hauteur. */}
-          <div className="p-3">
+          <div className="p-3 pb-0">
             {/* La légende se pose DANS le cadre du canvas (coin bas-gauche) : une échelle
                 de couleur lue à côté de sa carte n'est plus une échelle. Le conteneur
                 relatif n'existe que pour elle — sans carte de chaleur, rien n'y flotte. */}
@@ -626,25 +624,20 @@ export function ReplayCanvas({
               />
               {heat.grid && <ReplayHeatmapLegend locale={locale} mode={heat.grid.mode} />}
             </div>
-            {/* LA BARRE DE LECTURE : icônes, vitesse et son au niveau de la lecture
-                (demandes du 2026-08-24) — extraite dans ReplayTransport. */}
-            <ReplayTransport
-              playing={playback.playing}
-              onTogglePlay={playback.togglePlay}
-              onRestart={playback.restart}
-              onSeekBy={playback.seekBy}
-              clockRef={clockRef}
-              timeline={timeline}
-              speed={multiplier}
-              onSetSpeed={settings.setSpeed}
-              sound={sound}
-              capture={capture}
-              locale={locale}
-              settingsOpen={drawer.open}
-              onToggleSettings={drawer.toggle}
-              settingsButtonRef={drawer.buttonRef}
-            />
           </div>
+          {/* LA BARRE DE LECTURE, SORTIE DU `p-3` LE 2026-09-02 : dedans, 12 px de carte
+              l'encadraient de trois côtés ; ici elle va bord à bord. Elle reste DANS
+              `containerRef` — c'est ce qui permet à `useReplayViewport` de déduire le chrome
+              par soustraction, donc de rendre au terrain ce que la barre économise. */}
+          <ReplayTransport
+            playing={playback.playing} onTogglePlay={playback.togglePlay}
+            onRestart={playback.restart} onSeekBy={playback.seekBy}
+            clockRef={clockRef} timeline={timeline}
+            speed={multiplier} onSetSpeed={settings.setSpeed}
+            sound={sound} capture={capture} locale={locale}
+            settingsOpen={drawer.open} onToggleSettings={drawer.toggle}
+            settingsButtonRef={drawer.buttonRef}
+          />
         </div>
         {/* Le panneau se pose SUR la carte, à droite (retour de planche du 16/08 : « je vois
             plus un panneau par dessus »). Il ne mange donc plus la largeur du canvas — et il

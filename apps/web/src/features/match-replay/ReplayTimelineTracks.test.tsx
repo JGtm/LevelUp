@@ -60,9 +60,7 @@ function renderTracks(over: Partial<Parameters<typeof ReplayTimelineTracks>[0]> 
       onToggleTracks={onToggleTracks}
       playing
       onRequestPause={onRequestPause}
-      startClock="0:00"
-      midClock="2:30"
-      endClock="5:00"
+      clockRef={createRef<HTMLSpanElement>()}
       locale="fr"
       {...over}
     />,
@@ -78,11 +76,16 @@ describe('ReplayTimelineTracks — les quatre pistes sont nommées', () => {
     }
   })
 
-  it('les trois repères de l’axe datent le match, pas le film', () => {
-    renderTracks({ startClock: '0:00', midClock: '4:07', endClock: '8:15' })
-    expect(screen.getByText('0:00')).toBeTruthy()
-    expect(screen.getByText('4:07')).toBeTruthy()
-    expect(screen.getByText('8:15')).toBeTruthy()
+  // LES TROIS BORNES DE L'AXE ONT DISPARU LE 2026-09-02 : le temps suit desormais le point qui
+  // avance (demande utilisateur). Ce test garde la BULLE — sa presence, son ancrage sur la meme
+  // variable que le remplissage, et le fait qu'elle ne redonne PAS un nom accessible deja pris.
+  it('le temps se lit sous le curseur, pas en trois bornes figees', () => {
+    const ref = createRef<HTMLSpanElement>()
+    renderTracks({ clockRef: ref })
+    expect(ref.current).toBeTruthy()
+    expect(ref.current?.getAttribute('aria-hidden')).toBe('true')
+    // La bulle suit le curseur par la MEME variable que le remplissage de la piste.
+    expect(ref.current?.getAttribute('style') ?? '').toContain('--played')
   })
 
   it('le curseur garde ses bornes et son nom accessible', () => {
@@ -248,15 +251,16 @@ describe('ReplayTimelineTracks — la piste médias', () => {
  * les raccourcis clavier restent en place ; seules les pistes s'en vont.
  */
 describe('ReplayTimelineTracks — le repli des pistes', () => {
-  it('REPLIÉ : plus une seule piste, mais le curseur et ses bornes restent', () => {
-    renderTracks({ tracksExpanded: false, media: [placed()] })
+  it('REPLIÉ : plus une seule piste, mais le curseur et son temps restent', () => {
+    const ref = createRef<HTMLSpanElement>()
+    renderTracks({ tracksExpanded: false, media: [placed()], clockRef: ref })
     for (const label of ['Toi', 'Alliés', 'Dominance', 'Médias']) {
       expect(screen.queryByText(label)).toBeNull()
     }
     expect(screen.queryByRole('button', { name: 'Capture Streets' })).toBeNull()
     expect(screen.getByLabelText('Temps de match')).toBeTruthy()
-    expect(screen.getByText('0:00')).toBeTruthy()
-    expect(screen.getByText('5:00')).toBeTruthy()
+    // Le repli emporte les pistes, jamais la lecture du temps.
+    expect(ref.current).toBeTruthy()
   })
 
   /**

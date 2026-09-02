@@ -16,11 +16,10 @@ import {
 } from './useReplaySettings'
 
 describe('useReplaySettings — valeurs par défaut', () => {
-  it("visée, zones et noms allumés, vitesse à 1x — comportement inchangé sans préférence stockée", () => {
+  it("visée et zones allumées, vitesse à 1x — comportement inchangé sans préférence stockée", () => {
     const { result } = renderHook(() => useReplaySettings())
     expect(result.current.showAim).toBe(true)
     expect(result.current.showZones).toBe(true)
-    expect(result.current.showNames).toBe(true)
     // V1 : la traînée est une OPTION depuis le 18/08, mais elle reste ALLUMÉE par défaut —
     // le marqueur validé le 16/08 la comptait dans son « Parfait ».
     expect(result.current.showTrail).toBe(true)
@@ -112,7 +111,6 @@ describe('useReplaySettings — préférences persistées (localStorage, comme l
     const first = renderHook(() => useReplaySettings())
     act(() => first.result.current.toggleAim())
     act(() => first.result.current.toggleZones())
-    act(() => first.result.current.toggleNames())
     act(() => first.result.current.toggleTrail())
     act(() => first.result.current.setSpeed(2))
     first.unmount()
@@ -120,7 +118,6 @@ describe('useReplaySettings — préférences persistées (localStorage, comme l
     const { result } = renderHook(() => useReplaySettings())
     expect(result.current.showAim).toBe(false)
     expect(result.current.showZones).toBe(false)
-    expect(result.current.showNames).toBe(false)
     expect(result.current.showTrail).toBe(false)
     expect(result.current.speed).toBe(2)
   })

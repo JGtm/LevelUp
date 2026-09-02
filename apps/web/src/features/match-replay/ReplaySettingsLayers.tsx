@@ -108,8 +108,6 @@ export interface LayersSectionProps {
   onToggleAim: () => void
   showZones: boolean
   onToggleZones: () => void
-  showNames: boolean
-  onToggleNames: () => void
   showTrail: boolean
   onToggleTrail: () => void
   zonesAvailable: boolean
@@ -123,7 +121,7 @@ export interface LayersSectionProps {
 }
 
 export function LayersSection({
-  locale, showAim, onToggleAim, showZones, onToggleZones, showNames, onToggleNames,
+  locale, showAim, onToggleAim, showZones, onToggleZones,
   showTrail, onToggleTrail, zonesAvailable, placements, weaponPads, groundWeapons, flagCarries,
   vipCrown, skullCarrier, bombCarrier,
 }: LayersSectionProps) {
@@ -139,12 +137,11 @@ export function LayersSection({
           défile déjà, n'avait pas besoin de gagner. */}
       <div className="flex flex-col gap-0.5">
         <SettingsToggle label={t.layerAim} pressed={showAim} onToggle={onToggleAim} hint={t.layerAimHint} />
-        <SettingsToggle
-          label={t.layerNames}
-          pressed={showNames}
-          onToggle={onToggleNames}
-          hint={t.layerNamesHint}
-        />
+        {/* LE CALQUE DES NOMS N'A PLUS DE BASCULE (2026-09-02, demande utilisateur) : il est
+            toujours allumé. Un nom sous un marqueur n'est pas un habillage dont on débat, c'est
+            ce qui rend le rejeu lisible — et la bascule coûtait une ligne de tiroir à tout le
+            monde pour un réglage que personne ne change. Le flag, sa clé de stockage et ses
+            libellés sont partis avec elle. */}
         <SettingsToggle
           label={t.layerTrail}
           pressed={showTrail}

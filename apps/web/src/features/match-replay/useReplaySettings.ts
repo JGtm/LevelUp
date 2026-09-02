@@ -22,7 +22,6 @@ import {
 
 const SHOW_AIM_KEY = 'replay-show-aim'
 const SHOW_ZONES_KEY = 'replay-show-zones'
-const SHOW_NAMES_KEY = 'replay-show-names'
 const SHOW_TRAIL_KEY = 'replay-show-trail'
 const SPEED_KEY = 'replay-speed'
 const SHOW_HEATMAP_KEY = 'replay-show-heatmap'
@@ -212,8 +211,6 @@ export interface ReplaySettings {
    * est ce qui distingue un coéquipier d'un autre, la couleur ne dit que le camp. Un BTB à
    * 24 joueurs doit néanmoins pouvoir l'éteindre.
    */
-  showNames: boolean
-  toggleNames: () => void
   /**
    * Calque de la TRAÎNÉE (V1, retour utilisateur du 2026-08-18 : « avoir la traînée en
    * option »). ALLUMÉE par défaut, comme aujourd'hui : elle fait partie du marqueur validé
@@ -345,7 +342,6 @@ export function usePersistedFlag(key: string, fallback: boolean): [boolean, () =
 export function useReplaySettings(): ReplaySettings {
   const [showAim, toggleAim] = usePersistedFlag(SHOW_AIM_KEY, true)
   const [showZones, toggleZones] = usePersistedFlag(SHOW_ZONES_KEY, true)
-  const [showNames, toggleNames] = usePersistedFlag(SHOW_NAMES_KEY, true)
   const [showTrail, toggleTrail] = usePersistedFlag(SHOW_TRAIL_KEY, true)
   const [showHeatmap, toggleHeatmap] = usePersistedFlag(SHOW_HEATMAP_KEY, SHOW_HEATMAP_DEFAULT)
   const [showShotFx, toggleShotFx] = usePersistedFlag(SHOW_SHOT_FX_KEY, SHOW_SHOT_FX_DEFAULT)
@@ -425,8 +421,6 @@ export function useReplaySettings(): ReplaySettings {
     toggleAim,
     showZones,
     toggleZones,
-    showNames,
-    toggleNames,
     showTrail,
     toggleTrail,
     showHeatmap,
