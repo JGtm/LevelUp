@@ -66,7 +66,7 @@ import {
 import type { ReplayDocumentReady } from './replayNormalize'
 import { EXPORT_FPS, canExportVideo, openVideoExport, type VideoExportSink } from './replayVideoEncoder'
 import { displayClockMs, type ReplayWindowBounds } from './replayWindow'
-import { EXPORT_SUPERSAMPLE, exportRenderScale } from './useReplayView'
+import { exportRenderScale, exportScaleFor } from './useReplayView'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
 import type { ReplaySoundEvent } from './replaySoundVariants'
 import { readVictory } from './victoryLogic'
@@ -312,7 +312,13 @@ export function useReplayExport(o: ReplayExportOptions): ReplayExport {
         // perte de nettete d'un clip vient du sous-echantillonnage chroma de H.264, qu'aucun
         // debit ne rachete. Le redessin suivant applique la nouvelle taille au backing store,
         // et c'est ELLE que l'encodeur doit recevoir — d'ou l'ordre : echelle, trace, ouverture.
-        exportRenderScale.current = EXPORT_SUPERSAMPLE
+        //
+        // LE FACTEUR SE CALCULE, IL N'EST PLUS CONSTANT (2026-09-02) : depuis que la toile
+        // s'adapte a l'ecran, un facteur fixe ferait dependre le format du fichier de la taille
+        // de la fenetre de qui exporte. `exportScaleFor` vise une hauteur de sortie STABLE — une
+        // toile de 480 est doublee (le comportement d'avant, au pixel pres), une toile de 720
+        // multipliee par 1,33, et les deux sortent la meme video.
+        exportRenderScale.current = exportScaleFor(canvas.clientHeight)
         o.redraw()
         const mix = options?.sound === false ? null : await mixExportAudio(o, bounds, plan)
         // LE MAINTIEN SE CALCULE UNE FOIS LE SON CONNU (cf. `holdMsFor`), et le plan se refait :

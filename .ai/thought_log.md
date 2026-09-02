@@ -88526,3 +88526,86 @@ borne d'arrêt R7-e, quantifié pour ce composant. Consigné au registre avec sa
 **Conclusion / prochaine étape** : AUCUNE côté produit — le décompte dérivé (exact quand
 une vie suivante existe) + l'état « hors film » restent l'état de l'art. L'acquis du jour
 (unité calibrée) est documenté et servira si la RE rouvre.
+
+---
+
+## [2026-09-02] Rejeu 2D : le terrain tient dans l'écran — tête compactée + hauteur élastique
+
+**Statut** : Complété (code + gates) ; commit en attente d'autorisation utilisateur.
+
+**Décision technique principale** : la hauteur du canvas cesse d'être une constante. Mesure
+préalable : il fallait ~965 px de viewport pour voir bandeau + terrain + frise + contrôles,
+alors qu'un 1080p à 125 % (défaut de la plupart des portables) n'en offre que ~768. Deux
+leviers qui s'additionnent — le canvas est le SEUL élément élastique de la pile, le bloc
+transport (~207 px) étant des commandes incompressibles.
+
+1. La tête passe sur la ligne du fil d'Ariane (`MatchBreadcrumb` gagne `leaf` / `detail` /
+   `action`, tous optionnels — les appels de `MatchViewPage` sont intacts). Au passage, un
+   doublon littéral disparaît : `replay.tsx` et `ReplayMatchRecall` appelaient tous deux
+   `buildMatchHeadingStr` sur les mêmes arguments, « Slayer sur Streets » s'imprimait deux
+   fois à 50 px d'écart. Et « Retour au match » devient « Fiche du match » : la flèche du fil
+   fait `history.back()`, ce lien vise une destination fixe — deux choses différentes ne
+   portent pas le même mot. Gain net ~76 px.
+2. `useReplayViewport` (neuf) négocie la hauteur avec le cadre qui défile.
+   `CANVAS_HEIGHT_MAX = 480` est la valeur d'AVANT : le terrain ne grandit jamais, il ne fait
+   que rétrécir jusqu'à un plancher de 360. Ce choix met l'export hors du chantier —
+   `renderWidth` étant dérivé de la hauteur, un plafond relevé aurait grossi les vidéos
+   exportées pour tout le monde, et rendu leurs dimensions dépendantes de la taille de fenêtre.
+
+**Résultats observés** : typecheck EXIT=0 ; 165 fichiers / 2318 tests verts (13 neufs) ;
+lint 0 erreur (23 avertissements préexistants, aucun dans les fichiers touchés).
+`ReplayCanvas.tsx` passe de 665 à 656 lignes alors qu'il était PILE à son plafond — l'effet
+`ResizeObserver` remplacé par un appel de hook rend 9 lignes.
+
+Garde-fous posés contre la tempête de recuisson des 4 calques statiques (le sol fait ~45 000
+cellules) : quantification à 8 px — une variation plus petite ne produit aucune valeur neuve,
+donc aucun rendu — et délai d'immobilité de 120 ms. Ce n'était pas un risque de mémoire
+(chaque cuisson REMPLACE la précédente, le nombre de calques est fixé à 4, et le plafond les
+borne SOUS leur taille actuelle) mais de CPU/GC. Un test dédié couvre la convergence : la
+mesure déclenchée par le propre ajustement du hook doit retomber sur la même valeur.
+
+**Conclusion / prochaine étape** : gate visuel utilisateur (1080p à 100 % et à 125 %) puis
+commit sur `wt/hauteur-rejeu` → `feat/v75`. Le zoom/pan navigable reste hors périmètre,
+à rouvrir seulement si le besoin s'avère être « lire le détail » et non « ça ne tient pas ».
+Découverte non traitée : `AppShell` en `h-screen` gagnerait à passer en `h-dvh` (mobile).
+
+---
+
+## [2026-09-02] Rejeu 2D : révision — le terrain GRANDIT (plafond par carte + export invariant)
+
+**Statut** : Complété (code + gates) ; commit en attente d'autorisation utilisateur.
+
+**Décision technique principale** : révision de D2 du plan du jour, sur contestation
+utilisateur (« pourquoi ça grandirait jamais ? on a des grandes images de map »). J'avais
+plafonné la hauteur à sa valeur d'alors (480) pour mettre l'export hors du chantier.
+Vérification faite, l'argument ne tenait qu'à moitié : les dimensions d'export dépendent DÉJÀ
+de `devicePixelRatio`, un écran 2x exportant deux fois plus grand qu'un 1x. L'export n'a jamais
+été canonique.
+
+Trois pièces remplacent le plafond constant :
+
+1. `replayLogic.usefulHeight` — le plafond PAR CARTE, inverse exact de `fitWidth`. `canvasScale`
+   prend le plus petit des deux rapports : passé le point où la largeur devient limitante, un
+   pixel de hauteur de plus n'agrandit plus la carte, il ajoute une bande vide. Ce point dépend
+   du ratio de la scène — aucune constante ne pouvait l'exprimer.
+2. `CANVAS_HEIGHT_CEILING = 720`, plafond DUR qui ne borne plus que la mémoire des quatre
+   calques statiques (~41 Mio à 900x720 en densité 2, contre ~28 Mio avant).
+3. `exportScaleFor(h) = min(960 / h, 2)` — le suréchantillonnage cesse d'être constant. 960 est
+   la ligne mesurée du tableau chroma déjà documenté dans `useReplayView.ts`. Une toile de 480
+   est doublée (comportement d'avant au pixel près), une toile de 720 multipliée par 1,33 : les
+   deux sortent la MÊME vidéo. L'export devient invariant à la taille d'écran — il est donc plus
+   stable APRÈS ce chantier qu'avant.
+
+Frontière posée au passage : `useReplayViewport` mesure la PLACE (une offre), `useReplayView`
+décide du CADRAGE (elle seule connaît les bornes de la scène). Et le chrome du conteneur est
+désormais mesuré dans le DOM plutôt que déduit d'une hauteur recopiée : le DOM dit ce qui est
+peint, une copie dirait ce qu'on croit avoir demandé — à la première divergence, la mesure
+suivante serait partie en oscillation.
+
+**Résultats observés** : `tsc -b --force` EXIT=0 ; 165 fichiers / 2325 tests verts ; lint
+0 erreur. `ReplayCanvas.tsx` reste à 656 lignes (plafond 665).
+
+**Conclusion / prochaine étape** : gate visuel utilisateur, puis commit. Le zoom/pan reste
+hors périmètre — ce lot donne toute la place que la mise en page permet ; le zoom est ce qui
+irait AU-DELÀ, et c'est là, seulement là, que la recuisson des calques deviendrait un vrai
+sujet (une projection déplaçable entraîne le survol, les infobulles et les quatre calques).

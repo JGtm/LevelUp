@@ -142,6 +142,25 @@ export function fitWidth(
   return Math.min(available, Math.max(needed, 2 * pad + 1))
 }
 
+/**
+ * usefulHeight — LA HAUTEUR AU-DELÀ DE LAQUELLE ON N'AJOUTE PLUS DE CARTE, MAIS DU VIDE.
+ *
+ * C'est l'inverse exact de `fitWidth`, et il répond à une question que la hauteur fixe n'avait
+ * jamais eu à poser : jusqu'où le terrain gagne-t-il à grandir ? `canvasScale` prend le PLUS
+ * PETIT des deux rapports (largeur/largeur de scène, hauteur/hauteur de scène). Passé le point
+ * où la largeur devient le facteur limitant, chaque pixel de hauteur en plus n'agrandit plus
+ * rien : il ajoute une bande vide au-dessus et au-dessous de la carte.
+ *
+ * Ce plafond est donc PAR CARTE. Une carte quasi carrée peut occuper beaucoup de hauteur dans
+ * une colonne large ; une carte très allongée sature bien avant. C'est ce que le plafond
+ * constant ne pouvait pas exprimer.
+ */
+export function usefulHeight(bounds: ReplayBounds, available: number, pad: number): number {
+  const bw = Math.max(bounds.maxX - bounds.minX, 1e-6)
+  const bh = Math.max(bounds.maxY - bounds.minY, 1e-6)
+  return Math.max((available - 2 * pad) * (bh / bw) + 2 * pad, 2 * pad + 1)
+}
+
 /** canvasScale = pixels par unité monde pour le même cadrage que worldToCanvas. */
 export function canvasScale(
   bounds: ReplayBounds,
