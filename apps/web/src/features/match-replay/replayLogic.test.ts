@@ -20,6 +20,7 @@ import {
   trackWindow,
   trailAt,
   canvasToWorld,
+  layerOffset,
   usefulHeight,
   zoomTowards,
   visibleBounds,
@@ -430,5 +431,45 @@ describe('canvasToWorld et zoomTowards', () => {
   it('viser le centre ne déplace pas le centre', () => {
     const c0 = sceneCenter(b)
     expect(zoomTowards(c0, c0, 1, 3)).toEqual(c0)
+  })
+})
+
+// LE DÉCALAGE DES CALQUES CUITS pendant un glisser. La propriété qui compte n'est pas la
+// formule mais son EXACTITUDE : un déplacement est une translation pure, donc recopier l'image
+// décalée doit poser chaque point du monde exactement là où un recuit l'aurait posé.
+describe('layerOffset', () => {
+  const scene = { minX: 0, minY: 0, maxX: 100, maxY: 60 }
+  const cadre = (b: typeof scene) => ({ bounds: b, width: 900, height: 480, pad: 24 })
+
+  it('sans cuisson connue, aucun décalage', () => {
+    expect(layerOffset(null, cadre(scene))).toEqual({ x: 0, y: 0 })
+  })
+
+  it('cadrage inchangé : décalage nul', () => {
+    const v = cadre(scene)
+    const off = layerOffset(v, v)
+    expect(off.x).toBeCloseTo(0, 9)
+    expect(off.y).toBeCloseTo(0, 9)
+  })
+
+  // L'INVARIANT : après décalage, un point du monde tombe au même pixel que si l'on avait recuit.
+  it('replace un point du monde exactement où un recuit l aurait mis', () => {
+    const c = sceneCenter(scene)
+    const cuit = cadre(visibleBounds(scene, 2, c.x, c.y))
+    const apres = cadre(visibleBounds(scene, 2, c.x + 7, c.y - 4))
+    const off = layerOffset(cuit, apres)
+    for (const p of [{ x: 40, y: 25 }, { x: 62, y: 33 }]) {
+      const dansLeCuit = worldToCanvas(p, cuit.bounds, cuit.width, cuit.height, cuit.pad)
+      const recuit = worldToCanvas(p, apres.bounds, apres.width, apres.height, apres.pad)
+      expect(dansLeCuit.x + off.x).toBeCloseTo(recuit.x, 6)
+      expect(dansLeCuit.y + off.y).toBeCloseTo(recuit.y, 6)
+    }
+  })
+
+  it('se déplacer vers la droite décale le calque vers la gauche', () => {
+    const c = sceneCenter(scene)
+    const cuit = cadre(visibleBounds(scene, 2, c.x, c.y))
+    const apres = cadre(visibleBounds(scene, 2, c.x + 10, c.y))
+    expect(layerOffset(cuit, apres).x).toBeLessThan(0)
   })
 })
