@@ -352,6 +352,31 @@ export function nameByXuidResolver(
 }
 
 /**
+ * colorByXuidResolver — LA MÊME COULEUR D'ÉQUIPE, mais demandée PAR XUID et sans image.
+ *
+ * POURQUOI IL EXISTE (2026-09-02, teinte des véhicules). `colorResolver` répond à « de quelle
+ * couleur est la vie qui occupe CE SLOT à CETTE IMAGE » — la seule question juste pour un pion.
+ * Mais un ÉPISODE D'OCCUPATION de véhicule nomme son occupant LUI-MÊME (`VehicleRide.xuid`), et
+ * pendant l'épisode le bipède ne réplique plus : le pont slot->joueur est alors MUET là où il
+ * faudrait qu'il parle — c'est exactement le défaut que le contrat de `VehicleRide.xuid`
+ * annonçait pourtant résolu (« c'est lui qui donne sa couleur au véhicule »). Résoudre par xuid
+ * tient cette promesse ; le pont par slot reste le REPLI, comme pour le nom.
+ *
+ * XUID INCONNU DU ROSTER -> `null` : aucun joueur du match ne le porte, on ne lui invente pas
+ * d'équipe. Xuid connu SANS ligne de scoreboard -> encre neutre (même règle que le pont par
+ * slot : le joueur existe, son camp est inconnu).
+ */
+export function colorByXuidResolver(
+  players: readonly ReplayPlayer[],
+  colorOf: (ally: boolean) => string,
+  isAlly: (xuid: string) => boolean,
+  neutral: string,
+): (xuid: string) => string | null {
+  const byXuid = new Map(players.map((p) => [p.xuid, p]))
+  return (xuid) => teamColorOfOwner(byXuid.get(xuid) ?? null, colorOf, isAlly, neutral)
+}
+
+/**
  * PlayerState — ce qu'un joueur est à une image donnée, lu dans le film.
  *
  * `shield` est null quand aucune mesure n'existe dans la fenêtre de maintien : c'est

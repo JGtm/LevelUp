@@ -44,6 +44,30 @@ const vehicleCensusTolUS = uint64(20_000_000)
 // pas. Elle est deterministe parce que le nuage entre trie par instant.
 const vehicleSampleStrideFrames = 1
 
+// vehicleRelayRadiusM est la distance EN PLAN sous laquelle la NAISSANCE d une vie et la
+// DERNIERE POSITION CONNUE d une autre designent LE MEME vehicule, pas deux.
+//
+// LE BUG QU IL CORRIGE, VU PAR L UTILISATEUR EN VISIONNAGE : quand un vehicule est pris, un
+// DOUBLE reste quelques secondes a l ancienne place. Le film ne deplace pas l objet, il le
+// RE-CREE sous un NOUVEAU SLOT : la vie garee (naissance seule, aucun echantillon, aucun
+// occupant) cesse d etre recensee, et une vie du meme chassis demarre AU MEME POINT. Les deux
+// sont publiees, donc deux sprites — l ancien restant visible jusqu a `t1max`, c est-a-dire
+// jusqu a ~20 s (l intervalle d image-cle).
+//
+// LA MESURE (2026-09-02, sur les deux artefacts de demonstration) : 10 paires sur `0d76e8f1`,
+// 3 sur `fccc61cd`, ecart de position 0,00 m dans 12 cas et 0,01 m dans le dernier, TEMOIN NUL
+// (0 paire quand on exige des chassis DIFFERENTS aux memes criteres). Le rayon est fixe a 0,5 m
+// — cinquante fois la dispersion mesuree, et tres en dessous de l espacement des emplacements
+// d apparition (rayon d amas 0,00 m, 6 emplacements distincts sur Behemoth, V2 § 1).
+const vehicleRelayRadiusM = 0.5
+
+// vehicleRelayMarginFrames est la marge accordee au-dela de `T1Max` pour accueillir un relais.
+// ELLE VAUT ZERO, et c est une mesure : les 13 relais observes demarrent tous DANS
+// [`T1` .. `T1Max`], jamais apres. Une marge n ajouterait aucun relais reel et n elargirait que
+// la surface de faux positifs. Elle est nommee pour que le jour ou un film la demande, le
+// changement soit une decision datee et pas un chiffre glisse dans une condition.
+const vehicleRelayMarginFrames = 0
+
 // vehicleMinSpeedMPS est la vitesse au-dela de laquelle la direction de la velocite `i1` vaut un
 // CAP. C est le seuil de l oracle V1a.3 (rapport `V1A_RAPPORT_2026-08-31.md` § 3.1), sous lequel
 // la mesure a valide `i1` : ecart median au deplacement de 1,7 a 2,1 deg sur quatre films
@@ -95,8 +119,133 @@ func buildVehicleTracks(
 		out = append(out, tr)
 	}
 	sortVehicleTracks(out)
+	// LES RELAIS SE FUSIONNENT AVANT LE COMPTAGE : la couverture doit decrire ce qui est PUBLIE,
+	// pas ce qui a ete assemble. `Published` baisse donc exactement de `Merged`.
+	out, cov.Merged = mergeVehicleRelays(out)
 	tallyVehicleCoverage(out, &cov)
 	return out, cov
+}
+
+// mergeVehicleRelays fond les vies EN RELAIS : deux vies consecutives du MEME chassis, au MEME
+// point, dont la seconde commence dans l intervalle non observe de la premiere. Rend la tranche
+// fusionnee et le NOMBRE de fusions.
+//
+// POURQUOI ICI ET PAS AU RECENSEMENT. Le recensement voit des SLOTS, et deux slots differents y
+// sont deux objets — il a raison, c est ce que le film dit. C est au niveau de la VIE PUBLIEE,
+// une fois la naissance, la trajectoire et les bornes connues, que le relais se reconnait : il
+// faut la position, le chassis ET les deux bornes d affichage pour trancher.
+//
+// LES CHAINES SONT COUVERTES (A -> B -> C) : la boucle repart tant qu une fusion a eu lieu, et
+// la vie fusionnee porte la fin de B, donc C se presente ensuite comme le relais de A+B. L ordre
+// est celui de `sortVehicleTracks` (T0, slot, generation) : la fusion est deterministe.
+func mergeVehicleRelays(tracks []VehicleTrack) ([]VehicleTrack, int) {
+	merged := 0
+	for {
+		i, j, ok := findVehicleRelay(tracks)
+		if !ok {
+			return tracks, merged
+		}
+		tracks[i] = mergeVehicleRelay(tracks[i], tracks[j])
+		tracks = append(tracks[:j], tracks[j+1:]...)
+		merged++
+	}
+}
+
+// findVehicleRelay rend le PREMIER couple (vie finissante, vie relais) de la tranche.
+func findVehicleRelay(tracks []VehicleTrack) (int, int, bool) {
+	for i := range tracks {
+		for j := range tracks {
+			if i != j && isVehicleRelay(tracks[i], tracks[j]) {
+				return i, j, true
+			}
+		}
+	}
+	return 0, 0, false
+}
+
+// isVehicleRelay dit si `b` est la RE-CREATION de `a`. Les trois conditions sont cumulatives et
+// aucune n est negociable : un chassis different est un autre vehicule, un point different est un
+// autre emplacement, et un debut hors de l intervalle non observe est une coexistence reelle.
+func isVehicleRelay(a, b VehicleTrack) bool {
+	if a.Chassis == "" || a.Chassis != b.Chassis {
+		return false
+	}
+	if b.T0 < a.T1 || b.T0 > a.T1Max+vehicleRelayMarginFrames {
+		return false
+	}
+	ax, ay, aok := vehicleTrackLastPos(a)
+	bx, by, bok := vehicleTrackFirstPos(b)
+	return aok && bok && planDist(ax, ay, bx, by) <= vehicleRelayRadiusM
+}
+
+// mergeVehicleRelay fond `b` dans `a` : la NAISSANCE et le debut de `a`, la TRAJECTOIRE et les
+// bornes de fin de `b`, les episodes des deux — reclampes a la fenetre resultante par le meme
+// `clampVehicleRides` que l assemblage.
+//
+// L IDENTITE PUBLIEE EST CELLE DE `a`, la vie qui commence : c est elle qui porte le record de
+// creation (position exacte de naissance) et le `t0` date a la milliseconde. Le slot de `b` ne
+// disparait pas d une information utile — `(slot, gen)` n a de sens qu a l interieur du film.
+func mergeVehicleRelay(a, b VehicleTrack) VehicleTrack {
+	out := a
+	out.Samples = appendVehicleSamples(a.Samples, b.Samples)
+	out.T1, out.T1Max, out.End = b.T1, b.T1Max, b.End
+	if out.T1Max < out.T1 {
+		out.T1Max = out.T1
+	}
+	rides := append(append([]VehicleRide(nil), a.Rides...), b.Rides...)
+	sort.SliceStable(rides, func(i, j int) bool {
+		if rides[i].T0 != rides[j].T0 {
+			return rides[i].T0 < rides[j].T0
+		}
+		return rides[i].Slot < rides[j].Slot
+	})
+	out.Rides = clampVehicleRides(rides, out.T0, out.T1Max)
+	if out.Spawn == nil {
+		out.Spawn = b.Spawn
+	}
+	return out
+}
+
+// appendVehicleSamples enchaine deux trajectoires en gardant l axe de frames STRICTEMENT
+// croissant : un echantillon du relais anterieur au dernier point de la vie precedente serait un
+// retour en arriere, et le client interpole entre points consecutifs.
+func appendVehicleSamples(a, b []VehicleSample) []VehicleSample {
+	if len(a) == 0 {
+		return b
+	}
+	out := append([]VehicleSample(nil), a...)
+	lastT := a[len(a)-1].T
+	for _, s := range b {
+		if s.T <= lastT {
+			continue
+		}
+		out = append(out, s)
+		lastT = s.T
+	}
+	return out
+}
+
+// vehicleTrackFirstPos rend la PREMIERE position connue d une vie : son premier echantillon, ou
+// sa naissance quand elle n a jamais bouge.
+func vehicleTrackFirstPos(tr VehicleTrack) (x, y float32, ok bool) {
+	if len(tr.Samples) > 0 {
+		return tr.Samples[0].X, tr.Samples[0].Y, true
+	}
+	if tr.Spawn != nil {
+		return tr.Spawn.X, tr.Spawn.Y, true
+	}
+	return 0, 0, false
+}
+
+// vehicleTrackLastPos rend la DERNIERE position connue d une vie, meme repli.
+func vehicleTrackLastPos(tr VehicleTrack) (x, y float32, ok bool) {
+	if n := len(tr.Samples); n > 0 {
+		return tr.Samples[n-1].X, tr.Samples[n-1].Y, true
+	}
+	if tr.Spawn != nil {
+		return tr.Spawn.X, tr.Spawn.Y, true
+	}
+	return 0, 0, false
 }
 
 // vehicleLives construit les vies bornees a partir du recensement, et DECOUPE les vies

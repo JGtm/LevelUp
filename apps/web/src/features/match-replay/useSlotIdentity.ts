@@ -30,6 +30,7 @@ import { NO_MARKS, type PlayerMarkKind } from './playerMarks'
 import {
   buildPlayers,
   buildSlotOwnership,
+  colorByXuidResolver,
   colorResolver,
   colorResolverOrLast,
   markResolver,
@@ -66,6 +67,18 @@ export interface SlotIdentity {
    * pas de xuid (cf. `rosterLogic.nameByXuidResolver`).
    */
   nameOfXuid: (xuid: string) => string | null
+  /**
+   * Couleur d'équipe d'un joueur DÉSIGNÉ PAR SON XUID — indépendante du slot et de l'image, pour
+   * les consommateurs qui tiennent l'identité de leur côté. C'est le cas d'un ÉPISODE
+   * D'OCCUPATION de véhicule (`VehicleRide.xuid`), dont le contrat serveur promet qu'il donne sa
+   * couleur au véhicule : pendant l'épisode le bipède ne réplique plus, `colorOfSlot` est donc
+   * muet là où il faudrait qu'il parle (cf. `rosterLogic.colorByXuidResolver`).
+   *
+   * ELLE SUIT LE MODE COURANT : couleurs d'équipe par défaut, couleurs distinctes par joueur
+   * quand l'option du tiroir est active — un véhicule teint d'une autre façon que le pion de son
+   * conducteur trahirait le réglage.
+   */
+  colorOfXuid: (xuid: string) => string | null
   /**
    * CAMP de la vie qui occupe le slot à l'image (`team_side`), null quand il est inconnu ou le
    * slot libre. Distinct de la couleur : celle-ci ne connaît que « allié / adverse » vu du
@@ -166,7 +179,33 @@ export function useSlotIdentity({
   const markOfSlot = useMemo(() => markResolver(ownership, marks ?? NO_MARKS), [ownership, marks])
   const nameOfSlot = useMemo(() => nameResolver(ownership), [ownership])
   const nameOfXuid = useMemo(() => nameByXuidResolver(players), [players])
+  const colorOfXuid = useMemo(
+    () =>
+      distinctColors && distinctColors.length > 0
+        ? distinctColorByXuid(players, distinctColors)
+        : colorByXuidResolver(players, teamColorOf, isAlly, neutral),
+    [players, distinctColors, teamColorOf, isAlly, neutral],
+  )
   const sideOfSlot = useMemo(() => sideResolver(ownership), [ownership])
 
-  return { colorOfSlot, colorOfSlotOrLast, markOfSlot, nameOfSlot, nameOfXuid, sideOfSlot }
+  return {
+    colorOfSlot, colorOfSlotOrLast, colorOfXuid, markOfSlot, nameOfSlot, nameOfXuid, sideOfSlot,
+  }
+}
+
+/**
+ * distinctColorByXuid — le mode « couleurs distinctes par joueur », demandé PAR XUID : le RANG du
+ * joueur dans la jointure, exactement comme `distinctColorFactory` le fait par slot. Sans lui, un
+ * véhicule garderait sa couleur d'équipe quand tous les pions passent en couleurs distinctes.
+ */
+function distinctColorByXuid(
+  players: readonly ReplayPlayer[],
+  colors: readonly string[],
+): (xuid: string) => string | null {
+  const rank = new Map<string, number>(players.map((p, i) => [p.xuid, i]))
+  return (xuid) => {
+    const i = rank.get(xuid)
+    if (i === undefined || colors.length === 0) return null
+    return colors[i % colors.length]
+  }
 }

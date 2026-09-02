@@ -289,6 +289,14 @@ describe('garde-rail : le vocabulaire des familles de pose', () => {
  * comme le veut la regle, sans extraction coincidente cette fois : deux lignes vides
  * accidentelles (double saut avant `interface ReplayCanvasProps`) et une mise en ligne unique
  * des commentaires du cablage vehicules ont absorbe le reste.
+ *
+ * 678 -> 678 le 2026-09-02 (schema 30, TIRS EN VEHICULE + teinte par xuid) : le calque des
+ * vehicules gagne une SOURCE D'IDENTITE, `colorOfXuid`, parce que le pont slot->joueur est MUET
+ * pendant un episode d'occupation (le bipede ne replique plus) alors que le document, lui, nomme
+ * son occupant. Tout est dans `rosterLogic.ts` / `useSlotIdentity.ts` / `vehiclesLayer.ts` ; le
+ * canvas ne gagne QUE deux jetons — un de plus a la deconstruction de `useSlotIdentity`, un de
+ * plus a l'appel de `useReplayVehicles`. AUCUNE ligne : les deux tiennent sur les lignes
+ * existantes, et le plafond ne bouge pas d'un cran.
  */
 describe('garde-rail : la taille du canvas du rejeu ne remonte pas', () => {
   it('ReplayCanvas.tsx reste sous son plafond', () => {

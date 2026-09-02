@@ -48,6 +48,12 @@ export interface VehiclesInput {
   showAim: boolean
   /** Identité PAR SLOT ET PAR IMAGE (cf. `useSlotIdentity`) : même source que les pions. */
   colorOfSlot: (slot: number, frame: number) => string | null
+  /**
+   * Couleur d'équipe par XUID — SOURCE PRIORITAIRE de la teinte d'un occupant, pour la raison
+   * EXACTE de `nameOfXuid` : le document nomme l'occupant lui-même, le pont slot->joueur est muet
+   * pendant l'épisode (cf. `VehicleStyle.colorOfXuid`).
+   */
+  colorOfXuid: (xuid: string) => string | null
   nameOfSlot: (slot: number, frame: number) => string | null
   /**
    * Nom d'un joueur par XUID — SOURCE PRIORITAIRE de l'étiquette d'un occupant, parce que le
@@ -84,6 +90,7 @@ export function useReplayVehicles({
   showNames,
   showAim,
   colorOfSlot,
+  colorOfXuid,
   nameOfSlot,
   nameOfXuid,
   neutralInk,
@@ -189,10 +196,10 @@ export function useReplayVehicles({
         tracks,
         view,
         { frame, k },
-        { neutralInk, labelStroke, showNames, showAim, spriteOf, sizeOf, colorOfSlot, nameOfSlot, nameOfXuid },
+        { neutralInk, labelStroke, showNames, showAim, spriteOf, sizeOf, colorOfSlot, colorOfXuid, nameOfSlot, nameOfXuid },
       )
     },
-    [enabled, tracks, view, neutralInk, labelStroke, showNames, showAim, spriteOf, sizeOf, colorOfSlot, nameOfSlot, nameOfXuid],
+    [enabled, tracks, view, neutralInk, labelStroke, showNames, showAim, spriteOf, sizeOf, colorOfSlot, colorOfXuid, nameOfSlot, nameOfXuid],
   )
 
   // « DISPONIBLE » = AU MOINS UN VÉHICULE QUE LE CALQUE DESSINERAIT. Un film qui ne porte que du

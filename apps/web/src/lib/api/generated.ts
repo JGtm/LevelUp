@@ -10167,6 +10167,8 @@ export interface components {
             slot: number;
             /** Format: int64 */
             t: number;
+            /** Format: int32 */
+            v?: number;
             w?: string;
             /** Format: float */
             x: number;
@@ -11492,6 +11494,8 @@ export interface components {
             /** Format: int64 */
             lives: number;
             /** Format: int64 */
+            merged: number;
+            /** Format: int64 */
             noPosition: number;
             /** Format: int64 */
             published: number;
@@ -11510,6 +11514,16 @@ export interface components {
             /** Format: int64 */
             samples: number;
             scanned: boolean;
+            /** Format: int64 */
+            shots: number;
+            /** Format: int64 */
+            shotsAmbiguous: number;
+            /** Format: int64 */
+            shotsNoRide: number;
+            /** Format: int64 */
+            shotsUnplaced: number;
+            /** Format: int64 */
+            shotsVehicleWeapon: number;
             unknownChassis?: {
                 [key: string]: number;
             };

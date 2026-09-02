@@ -22146,6 +22146,10 @@ components:
         t:
           format: int64
           type: integer
+        v:
+          format: int32
+          minimum: 0
+          type: integer
         w:
           type: string
         x:
@@ -25558,6 +25562,9 @@ components:
         lives:
           format: int64
           type: integer
+        merged:
+          format: int64
+          type: integer
         noPosition:
           format: int64
           type: integer
@@ -25587,6 +25594,21 @@ components:
           type: integer
         scanned:
           type: boolean
+        shots:
+          format: int64
+          type: integer
+        shotsAmbiguous:
+          format: int64
+          type: integer
+        shotsNoRide:
+          format: int64
+          type: integer
+        shotsUnplaced:
+          format: int64
+          type: integer
+        shotsVehicleWeapon:
+          format: int64
+          type: integer
         unknownChassis:
           additionalProperties:
             format: int64
@@ -25609,6 +25631,7 @@ components:
         - lives
         - published
         - noPosition
+        - merged
         - withSpawn
         - withChassis
         - familyResolved
@@ -25623,6 +25646,11 @@ components:
         - ridesFromGap
         - ridesWithSeat
         - ambiguous
+        - shots
+        - shotsAmbiguous
+        - shotsUnplaced
+        - shotsNoRide
+        - shotsVehicleWeapon
       type: object
     VehicleLabel:
       additionalProperties: false

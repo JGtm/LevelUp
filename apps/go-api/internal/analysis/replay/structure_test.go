@@ -466,8 +466,29 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   MISE AU REPOS, pas une disparition. `VehicleTrack.End` vaut donc `inconnue`, et la
 	//   disparition du sprite ne dit PAS que le véhicule a explosé.
 	//   Détail : internal/analysis/replay/document_vehicles.go.
-	if SchemaVersion != 29 {
-		t.Fatalf("SchemaVersion = %d, attendu 29 : incrémenter exige une raison écrite ci-dessus "+
+	//
+	// v30 — LES TIRS DES JOUEURS EMBARQUÉS (`shots[].v`). Un occupant attaché cesse de répliquer
+	//   la position de son bipède : la porte des tirs, qui pose chaque tir sur cette position,
+	//   écartait TOUS les tirs partis d'un véhicule. Mesure du 2026-09-02 sur `0d76e8f1` :
+	//   1 166 tirs publiés, 12 épisodes d'occupation, ZÉRO tir pendant un épisode. Une seconde
+	//   porte (`vehicle_shots.go`) reprend ces orphelins, leur donne la position INTERPOLÉE du
+	//   véhicule et les marque de son slot (`v`) — sans quoi le client chercherait un pion qui
+	//   n'existe pas. Champ omitempty, même raison de monter que v25/v26/v27/v29 : c'est la CLÉ
+	//   DE REPRISE du backfill, un artefact 29 est MUET au volant.
+	//   NIVEAU DE PREUVE — un ORACLE INDÉPENDANT le fonde, et il ne doit rien à la géométrie (le
+	//   record de tir ne porte AUCUNE position monde ; le critère est l'IDENTITÉ, le film écrivant
+	//   son tireur). Les identifiants d'arme se lisent en deux moitiés de 32 bits : les 1 166 tirs
+	//   publiés portent TOUS la moitié basse `0x42C9679F` (19 familles personnelles) ; les 23
+	//   événements à moitié basse NULLE sont TOUS écartés par la porte du bipède (23/23) — une
+	//   arme qu'on ne porte pas à pied, tirée par un joueur qui ne réplique plus. 17 de ces 23
+	//   (73,9 %) tombent dans un épisode publié, contre 6 des 229 orphelins d'arme personnelle
+	//   (2,6 %) : enrichissement x28. Témoin temporel (6 décalages de ±30 à ±120 s) : 12,2 en
+	//   moyenne contre 23.
+	//   CE QUE LA VERSION REFUSE : les tirs AMBIGUS (deux slots du même joueur répliquant tous
+	//   deux une position) — leur signature est celle d'un joueur qui n'est PAS embarqué.
+	//   Détail : internal/analysis/replay/vehicle_shots.go.
+	if SchemaVersion != 30 {
+		t.Fatalf("SchemaVersion = %d, attendu 30 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

@@ -325,7 +325,26 @@ package replay
 // à bord ANTI-corrélée (3,8 % contre 21,3 % au témoin), véhicule qui réplique encore 13 à 36 s
 // après avoir été quitté. `VehicleTrack.End` vaut `unknown`, et la disparition du sprite ne dit
 // PAS que le véhicule a explosé. Détail : internal/analysis/replay/document_vehicles.go.
-const SchemaVersion = 29
+//
+// CE QUE LA VERSION 30 PORTE, ET CE QU'ELLE REFUSE. Les TIRS DES JOUEURS EMBARQUÉS. Un occupant
+// attaché cesse de répliquer la position de son bipède (primitive V1a.4) : la porte des tirs, qui
+// pose chaque tir sur la position du BIPÈDE à cet instant, écartait donc TOUS les tirs tirés
+// depuis un véhicule sous la cause « sans slot » — mesuré sur `0d76e8f1` : 1 166 tirs publiés,
+// 12 épisodes d'occupation, et ZÉRO tir pendant un épisode. Une seconde porte
+// (`vehicle_shots.go`) reprend ces orphelins et leur donne la position INTERPOLÉE du véhicule
+// occupé ; les tirs ainsi posés portent le marqueur `shots[].v` (le slot du véhicule), sans quoi
+// le client chercherait un pion qui n'existe pas à cet instant. Le champ est optionnel, mais la
+// version monte pour la raison exacte des montées v14/v16/v21/v22/v25/v26/v27/v29 : la reprise du
+// backfill se fait par SchemaVersion, et un artefact 29 est MUET au volant.
+// CE QUE LE CRITÈRE EST, ET CE QU'IL N'EST PAS. Il est l'IDENTITÉ, pas la géométrie : le record
+// de tir porte son tireur (`FilmIndex`, écrit dans le film), l'épisode d'occupation porte son
+// occupant, et l'instant les recoupe. Aucun critère de distance n'était possible — le record de
+// tir ne porte AUCUNE position monde, il n'y a rien à comparer au véhicule. Le témoin est donc
+// temporel : les mêmes tirs contre les mêmes épisodes décalés de 60 s.
+// CE QUE LA VERSION REFUSE : les tirs AMBIGUS (deux slots du même joueur répliquant tous deux une
+// position). Leur signature est celle d'un joueur qui n'est PAS embarqué ; les reprendre
+// mélangerait un défaut du pont slot -> joueur avec un embarquement.
+const SchemaVersion = 30
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {
@@ -665,6 +684,20 @@ type Shot struct {
 	// Weapon est l'identifiant global 64 bits de l'arme, en hexadécimal (un entier 64 bits
 	// ne survit pas au `number` JavaScript). Clé de metadata.weapon_labels.weapon_id.
 	Weapon string `json:"w,omitempty"`
+	// Vehicle est le SLOT DU VÉHICULE d'où part le tir, quand le tireur était EMBARQUÉ.
+	//
+	// À QUOI IL SERT, ET POURQUOI IL FAUT UN MARQUEUR. Sur un tir à pied, `X`/`Y` sont la
+	// position du BIPÈDE : le client peut retrouver le tireur dans ses pistes et y accrocher ce
+	// qu'il veut. Sur un tir en véhicule, le bipède ne réplique plus (primitive V1a.4) et
+	// `X`/`Y` sont la position INTERPOLÉE DU VÉHICULE : sans ce champ, le client ne saurait pas
+	// que la piste du `Slot` est muette à cet instant, et chercherait un pion qui n'existe pas.
+	// Il porte le slot plutôt qu'un booléen pour que l'effet puisse s'ancrer sur LE véhicule
+	// concerné — c'est la même clé que `VehicleTrack.Slot`.
+	//
+	// POINTEUR, comme `VehicleRide.Seat` et pour la même raison : un slot vaut zéro en droit, et
+	// `omitempty` sur un entier effacerait ce zéro exactement comme une absence de véhicule.
+	// Nil = tir à pied, et c'est le cas nominal.
+	Vehicle *uint32 `json:"v,omitempty"`
 }
 
 // Bounds est l'étendue alignée sur les axes de tous les points de trajectoire, dans le

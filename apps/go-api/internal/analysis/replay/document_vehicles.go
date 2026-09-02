@@ -163,6 +163,18 @@ type VehicleRide struct {
 	//
 	// C EST LUI QUI DONNE SA COULEUR AU VEHICULE : le client joint xuid -> equipe -> couleur,
 	// exactement comme pour une trajectoire de joueur.
+	//
+	// ET IL N Y A PAS DE CHAMP `team` A COTE, ce qui a ete demande et mesure le 2026-09-02.
+	// L EQUIPE N EST PAS DANS LE FILM — c est le meme fait que celui ecrit sur `Track.Team`, qui
+	// vaut -1 pour tout le monde : le film ne porte ni camp, ni couleur, ni score par camp. Elle
+	// vit dans la BASE, avec le gamertag, et le document est HORS LIGNE par construction (il se
+	// cuit depuis les seuls chunks, sans ouvrir la moindre DuckDB — c est ce qui le rend
+	// backfillable). Publier `team` ici obligerait soit a ouvrir la base dans le chemin de
+	// cuisson (ce que tout le calque refuse), soit a la remplir A LA REQUETE cote service, ou le
+	// CLIENT tient deja le scoreboard : ce serait une seconde source pour la meme jointure, et
+	// c est l anti-patron n°8 du depot. LA JOINTURE RESTE DONC CHEZ LE CLIENT — et pour qu elle
+	// tienne la promesse ci-dessus, elle passe par le XUID (`colorByXuidResolver`) et non plus par
+	// le pont slot -> joueur, qui est MUET pendant l episode puisque le bipede ne replique plus.
 	XUID string `json:"xuid,omitempty"`
 	// Seat est le siege lu dans l evenement (`R(6)`), 0 = conducteur. POINTEUR : le siege 0 est
 	// la valeur la PLUS frequente et la plus utile du champ (93,8 % des sorties, 21 des
@@ -192,6 +204,12 @@ type VehicleCoverage struct {
 	Lives      int `json:"lives"`
 	Published  int `json:"published"`
 	NoPosition int `json:"noPosition"`
+	// Merged compte les vies FONDUES dans leur precedente (cf. `mergeVehicleRelays`) : le film
+	// RE-CREE un vehicule sous un nouveau slot au lieu de le deplacer, et sans cette fusion
+	// l ancienne vie restait a l ecran comme un DOUBLE, a l ancienne place, pendant l intervalle
+	// non observe (~20 s). `Published` vaut donc « vies assemblees - Merged » : le compteur est
+	// publie pour que la baisse du nombre de vehicules affiches soit LISIBLE et non suspecte.
+	Merged int `json:"merged"`
 	// WithSpawn / WithChassis : vies publiees dont le record de creation a ete lu, et parmi
 	// elles celles dont le mot d identite a ete transmis.
 	WithSpawn   int `json:"withSpawn"`
@@ -225,6 +243,29 @@ type VehicleCoverage struct {
 	// Ambiguous compte les vies portant DEUX episodes qui se chevauchent : conducteur et passager
 	// ne se departagent pas par la geometrie. Publie, jamais cache (regle du lot V1).
 	Ambiguous int `json:"ambiguous"`
+	// Shots / ShotsAmbiguous / ShotsUnplaced / ShotsNoRide sont la SECONDE PORTE DES TIRS
+	// (`vehicle_shots.go`) : les tirs des joueurs EMBARQUES, que la porte du bipede ecarte
+	// puisqu un occupant attache ne replique plus sa position.
+	//
+	// LEUR DENOMINATEUR EST `ShotsNoRide` : les orphelins qu AUCUN episode ne couvre. Sans lui,
+	// « N tirs en vehicule » ne se juge pas — on ne saurait pas si la porte en a laisse dix ou
+	// mille. `Shots` compte les tirs POSES (donc publies dans `shots` avec leur marqueur `v`),
+	// `ShotsAmbiguous` ceux que DEUX vehicules distincts se disputent au meme instant (artefact
+	// du pont, jamais tranche), `ShotsUnplaced` ceux dont la vie de vehicule n avait ni
+	// echantillon ni naissance ou poser le tir.
+	Shots          int `json:"shots"`
+	ShotsAmbiguous int `json:"shotsAmbiguous"`
+	ShotsUnplaced  int `json:"shotsUnplaced"`
+	ShotsNoRide    int `json:"shotsNoRide"`
+	// ShotsVehicleWeapon compte, PARMI `Shots`, ceux dont l arme n est PAS de la famille
+	// personnelle (cf. `vehicleWeaponLowHalf`) — une arme qu on ne porte pas a pied.
+	//
+	// C EST LE TEMOIN DU CALQUE, et il est independant de tout ce qui a servi a rattacher : ni
+	// l instant, ni l identite, ni la geometrie n entrent dans la lecture d un identifiant
+	// d arme. Un rapport `ShotsVehicleWeapon / Shots` qui s effondrerait dirait que la seconde
+	// porte s est mise a ramasser des tirs a pied. Le reste (`Shots - ShotsVehicleWeapon`) n est
+	// PAS du bruit par construction : un passager tire son propre fusil depuis le vehicule.
+	ShotsVehicleWeapon int `json:"shotsVehicleWeapon"`
 }
 
 // tallyVehicleCoverage compte, sur les vies PUBLIEES, ce que la couverture annonce. Un compteur
@@ -295,6 +336,7 @@ func logVehicleCoverage(c *VehicleCoverage) {
 	}
 	slog.Info("rejeu : vehicules",
 		"balaye", c.Scanned, "viesRecensees", c.Lives, "publiees", c.Published,
+		"relaisFusionnes", c.Merged,
 		"sansPosition", c.NoPosition, "avecNaissance", c.WithSpawn, "avecChassis", c.WithChassis,
 		"famillesResolues", c.FamilyResolved, "famillesInconnues", c.FamilyUnknown,
 		"echantillons", c.Samples, "avecCap", c.WithHeading)
