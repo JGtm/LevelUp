@@ -528,7 +528,8 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	// Les TIRS entrent dans la construction du pont — non pour désigner un tireur (l'événement
 	// porte déjà son auteur), mais parce que la fermeture A a besoin de savoir QUAND un joueur
 	// agit sans avoir de corps nommé. Cf. closures.go.
-	own := buildOwners(indexBySlot(sorted), opt.Deaths, opt.PlayerIndices, fireRefs(fire))
+	refs := fireRefs(fire)
+	own := buildOwners(indexBySlot(sorted), opt.Deaths, opt.PlayerIndices, refs)
 	// L'IDENTITÉ se pose sur les traces dès que le pont existe : sans elle, un client ne peut
 	// ni nommer un joueur, ni regrouper ses vies, ni colorer une équipe. Le nommage se fait
 	// PAR VIE depuis le 2026-09-02 — un slot recyclé porte une identité par occupant.
@@ -539,7 +540,7 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	// LES RELAIS EN DERNIER : le remplaçant hérite des vies restées anonymes après tout ce
 	// que la lecture et les fermetures savaient nommer (cf. successions.go).
 	attributeSuccessions(doc.Tracks, opt.Successions, origin, step,
-		own.DeathOffsetMS, own.DeathOffsetMatches)
+		own.DeathOffsetMS, own.DeathOffsetMatches, refs)
 	doc.Roster = buildRoster(opt.PlayerIndices, gamertagsOf(opt.Deaths), opt.Bots)
 	// L'ORIGINE se publie APRÈS le pont : son témoin (le calage du fil des morts) en sort.
 	doc.OriginMs = resolveOriginMs(origin, opt.FilmClockOriginUS, own.DeathOffsetMS, own.DeathOffsetMatches)

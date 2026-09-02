@@ -88643,3 +88643,29 @@ fichiers / 2062 verts ; artefact témoin 94 tracks, relais journalisé. Serveur 
 
 **Prochaine étape** : gate visuel user sur 1b2d9e08 (8 fiches, bascule Winterhawk->Razzle à
 ~4:35, pion Razzle, lignes a quitté/a rejoint), puis --only-existing à sa demande.
+
+---
+
+## [2026-09-02] Relais durcis par l INDICE : les tirs departagent les remplacants simultanes
+
+**Statut** : Complété.
+
+**Question user** : « les remplaçants n'ont pas de player index qui les différencie ? »
+Vérifié sur pièces (témoin 1b2d9e08) : l'indice de réplication n'est PAS hérité du partant
+(Winterhawk idx 0, Razzle idx 8) — il ne porte pas le lien partant->remplaçant, l'appariement
+par équipe + horodatages API reste la source de CE lien (et à horodatages identiques, aucune
+donnée n'existe qui départagerait mieux). MAIS l'indice différencie les ARRIVANTS entre eux :
+leurs TIRS sont indexés.
+
+**Livré** :
+- `Succession.FilmIndex` + corroboration par TIR dans `candidateIn` : quand deux vies
+  candidates naissent dans la même fenêtre (deux remplaçants simultanés), un tir de l'indice
+  du remplaçant tombé dans EXACTEMENT UNE candidate vote pour elle ; des votes opposés ou un
+  tir couvert par les deux = contesté, on ne tranche pas. Tests : levée par tir, tir qui ne
+  peut pas mentir.
+- `buildRoster` : DEUX BOTS PEUVENT PARTAGER UN INDEX (mesuré RE_LOG 7ter.62 : Aloysius puis
+  PardonMy, les deux slot=8 — des remplaçants successifs du même siège) — le dédoublonnage ne
+  refuse plus que les collisions bot<->humain, et déduplique par NOM.
+
+**Gates** : go vet/test replay+replaybuild verts, témoin recuit inchangé (6 vies Razzle,
+0 contestation à lever sur ce film — le canal est en place pour les matchs à relais multiples).

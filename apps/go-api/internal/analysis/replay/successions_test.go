@@ -21,7 +21,7 @@ func TestAttributeSuccessionsChainsUniqueCandidates(t *testing.T) {
 		succTrack(602, 2000, 2100, "", ""), // caméra de fin : hors fenêtres, reste anonyme
 	}
 	attributeSuccessions(tracks, []Succession{{BotName: "343 Razzle [bot]", SwitchMatchMS: 60_000}},
-		0, 100_000, 0, 10)
+		0, 100_000, 0, 10, nil)
 	if tracks[1].Bot != "343 Razzle [bot]" || tracks[2].Bot != "343 Razzle [bot]" {
 		t.Errorf("la chaîne doit nommer les deux vies du relais : %+v", tracks)
 	}
@@ -37,7 +37,7 @@ func TestAttributeSuccessionsStopsOnContest(t *testing.T) {
 		succTrack(601, 620, 910, "", ""),
 	}
 	attributeSuccessions(tracks, []Succession{{BotName: "343 Razzle [bot]", SwitchMatchMS: 60_000}},
-		0, 100_000, 0, 10)
+		0, 100_000, 0, 10, nil)
 	if tracks[0].Bot != "" || tracks[1].Bot != "" {
 		t.Errorf("deux candidates = contesté, aucune attribution : %+v", tracks)
 	}
@@ -47,8 +47,51 @@ func TestAttributeSuccessionsNeedsClockBridge(t *testing.T) {
 	// Sans calage morts->film (0 apparié), les deux horloges ne se parlent pas : rien.
 	tracks := []Track{succTrack(600, 610, 900, "", "")}
 	attributeSuccessions(tracks, []Succession{{BotName: "343 Razzle [bot]", SwitchMatchMS: 60_000}},
-		0, 100_000, 0, 0)
+		0, 100_000, 0, 0, nil)
 	if tracks[0].Bot != "" {
 		t.Errorf("sans offset apparié, aucune attribution : %+v", tracks)
+	}
+}
+
+func TestAttributeSuccessionsLiftsContestByFire(t *testing.T) {
+	// DEUX remplaçants simultanés : deux vies anonymes naissent dans la même fenêtre. Le
+	// TIR départage — chaque vie contient un tir de l'indice de SON remplaçant, lu dans le
+	// film, jamais deviné. Un seul des deux tire : sa vie est levée, l'autre chaîne
+	// s'arrête contestée.
+	tracks := []Track{
+		succTrack(600, 610, 900, "", ""),
+		succTrack(601, 620, 910, "", ""),
+	}
+	fire := []FireEventRef{
+		// Les deux vies se chevauchent (61-90 s et 62-91 s) : seuls les tirs tombes dans
+		// la partie NON PARTAGEE d une vie votent.
+		{FilmIndex: 8, TimestampUS: 61_500_000}, // avant la naissance du slot 601 -> vote 600
+		{FilmIndex: 9, TimestampUS: 90_500_000}, // apres la mort du slot 600 -> vote 601
+	}
+	attributeSuccessions(tracks, []Succession{
+		{BotName: "343 A [bot]", FilmIndex: 8, SwitchMatchMS: 60_000},
+		{BotName: "343 B [bot]", FilmIndex: 9, SwitchMatchMS: 60_000},
+	}, 0, 100_000, 0, 10, fire)
+	if tracks[0].Bot != "343 A [bot]" || tracks[1].Bot != "343 B [bot]" {
+		t.Errorf("les tirs indexés doivent départager les deux relais : %+v", tracks)
+	}
+}
+
+func TestAttributeSuccessionsFireCannotLieAcrossTwoCandidates(t *testing.T) {
+	// L'indice du remplaçant tire dans LES DEUX candidates (fenêtres qui se chevauchent,
+	// tir posthume mal daté…) : la corroboration ne tranche pas, la chaîne s'arrête.
+	tracks := []Track{
+		succTrack(600, 610, 900, "", ""),
+		succTrack(601, 620, 910, "", ""),
+	}
+	fire := []FireEventRef{
+		{FilmIndex: 8, TimestampUS: 61_500_000}, // vote 600
+		{FilmIndex: 8, TimestampUS: 90_500_000}, // vote 601 — deux votes opposes du MEME indice
+	}
+	attributeSuccessions(tracks, []Succession{
+		{BotName: "343 A [bot]", FilmIndex: 8, SwitchMatchMS: 60_000},
+	}, 0, 100_000, 0, 10, fire)
+	if tracks[0].Bot != "" || tracks[1].Bot != "" {
+		t.Errorf("deux candidates tirées = contesté, aucune attribution : %+v", tracks)
 	}
 }
