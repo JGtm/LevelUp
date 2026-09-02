@@ -173,7 +173,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     layerHeatmap: 'Carte de chaleur',
     layerHeatmapHint:
       "Où le match s'est joué, sur tout le match. Une cellule jamais atteinte reste vide : « froid » veut dire peu fréquenté, l'absence de couleur veut dire jamais vu.",
-    heatmapReading: 'Ce que la chaleur mesure',
+    heatmapReading: 'Mesure',
     heatmapMode: {
       presence: 'Présence',
       kills: 'Éliminations',
@@ -182,10 +182,10 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       presence: 'Temps passé par les joueurs, lu dans les trajectoires du film.',
       kills: "Morts comptées à l'endroit où la victime est tombée, pas d'où le tir partait.",
     },
-    heatmapSpanTitle: 'Sur quelle durée',
+    heatmapSpanTitle: 'Durée',
     heatmapSpan: {
-      match: 'Toute la partie',
-      live: "Jusqu'à l'image courante",
+      match: 'Partie',
+      live: 'Progressif',
     },
     heatmapSpanHint: {
       match:
@@ -554,7 +554,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     layerHeatmap: 'Heat map',
     layerHeatmapHint:
       'Where the match was played, over the whole match. A cell never reached stays empty: "cold" means seldom visited, no colour at all means never seen.',
-    heatmapReading: 'What the heat measures',
+    heatmapReading: 'Measure',
     heatmapMode: {
       presence: 'Presence',
       kills: 'Kills',
@@ -563,10 +563,10 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       presence: 'Time spent by players, read from the film trails.',
       kills: 'Deaths counted where the victim fell, not where the shot came from.',
     },
-    heatmapSpanTitle: 'Over what period',
+    heatmapSpanTitle: 'Duration',
     heatmapSpan: {
-      match: 'Whole match',
-      live: 'Up to the current frame',
+      match: 'Match',
+      live: 'Progressive',
     },
     heatmapSpanHint: {
       match:
