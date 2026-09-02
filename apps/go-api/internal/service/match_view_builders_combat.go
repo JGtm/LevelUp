@@ -217,9 +217,19 @@ func buildKillerVictimPairs(
 	return pairs
 }
 
+// buildTugEvents convertit les paires en events de Dominance (tug-of-war).
+//
+// D2 — LES BOTS N'ENTRENT PAS DANS LA DOMINANCE. Une paire dont un des deux xuid est vide
+// désigne un acteur SANS identité (cf. doctrine domain.KVPairRaw). La Dominance oppose
+// DEUX CAMPS : un bot n'appartient ni à l'un ni à l'autre, et le compter le verserait
+// mécaniquement au camp adverse (isAlly est faux par défaut). C'est la sémantique
+// d'avant la bascule du 2026-08-03, où l'ancienne table ne portait aucune ligne de bot.
 func buildTugEvents(kvPairs []domain.KVPairRaw, myXUID string) []analysis.TugOfWarEvent {
 	events := make([]analysis.TugOfWarEvent, 0, len(kvPairs))
 	for _, kv := range kvPairs {
+		if kv.KillerXUID == "" || kv.VictimXUID == "" {
+			continue
+		}
 		isAlly := kv.KillerXUID == myXUID
 		events = append(events, analysis.TugOfWarEvent{
 			TimeMS:    kv.TimeMS,
@@ -291,9 +301,18 @@ func buildImpactInput(events []domain.EventRaw, scoreboard []domain.ScoreboardRa
 	}
 }
 
+// buildKDEvents dérive la courbe K/D du viewer depuis les paires.
+//
+// D2 — MÊME GARDE QUE LA DOMINANCE, et elle n'est PAS redondante avec la comparaison à
+// myXUID : une mort infligée par un bot porte un KillerXUID vide et un VictimXUID égal au
+// viewer, donc elle passerait le test `kv.VictimXUID == myXUID` et creuserait la courbe.
+// Les agrégats restent humains seulement (sémantique d'avant le 2026-08-03).
 func buildKDEvents(kvPairs []domain.KVPairRaw, myXUID string) []analysis.KDEvent {
 	events := make([]analysis.KDEvent, 0, len(kvPairs)*2)
 	for _, kv := range kvPairs {
+		if kv.KillerXUID == "" || kv.VictimXUID == "" {
+			continue
+		}
 		if kv.KillerXUID == myXUID {
 			events = append(events, analysis.KDEvent{
 				TimeMS:    kv.TimeMS,
