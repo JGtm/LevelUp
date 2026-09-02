@@ -37,6 +37,7 @@ import { getSquadText } from '@/features/squad/i18n'
 import { REPLAY_TEXT } from '@/features/match-replay/i18n'
 import { useMatchReplay } from '@/features/match-replay/queries'
 import type { MatchImpactBadge, MatchScoreboardRow } from '@/lib/api/types'
+import { stripBotSuffix } from '@/lib/players/displayName'
 import { computeEquipmentKillBadges } from './equipmentKillBadges'
 import type { MatchViewText } from './i18n'
 
@@ -155,7 +156,9 @@ export function MatchImpactBadgesBar({
       ))}
       {sorted.map((b) => {
         const player = b.player_xuid ? xuidIndex.get(b.player_xuid) : undefined
-        const rawGamertag = player?.gamertag ?? null
+        // Suffixe « [bot] » = marqueur de donnée killsource, retiré avant le garde
+        // xuid-brut ci-dessous (qui vise un tout autre défaut de donnée).
+        const rawGamertag = player?.gamertag ? stripBotSuffix(player.gamertag) : null
         const gamertag = isRawXUID(rawGamertag) ? null : rawGamertag
         const isMe = player?.is_me ?? false
         const time = BADGE_META[b.key]?.hideTime ? null : formatTime(b.time_ms)

@@ -23,6 +23,8 @@
  * n'émet rien (rester mort entre deux manches d'élimination est normal). L'API, elle,
  * n'a pas ce problème — ses drapeaux sont par match.
  */
+import { stripBotSuffix } from '@/lib/players/displayName'
+
 import type { ReplayFeedEntry } from './killFeedLogic'
 import { frameToMs, trackWindow } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
@@ -68,8 +70,11 @@ export function presenceEntries(
   const out: ReplayFeedEntry[] = []
   for (const p of players) {
     if (p.lives.length === 0) continue
-    const name = playerName(p)
-    if (!name) continue
+    const rawName = playerName(p)
+    if (!rawName) continue
+    // Suffixe « [bot] » = marqueur de donnée killsource (schéma 36), retiré avant
+    // d'entrer dans la ligne de présence (« a rejoint » / « a quitté »).
+    const name = stripBotSuffix(rawName)
     const api = apiPresence(p, name, matchStartMs, origin, playWindow)
     if (api) {
       out.push(...api)

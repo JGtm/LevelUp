@@ -21,6 +21,7 @@ import {
 } from '@/lib/replay/scoreTimeline'
 import type { XuidMeta } from '@/features/match-view/xuidMeta'
 import type { MatchScoreboardRow } from '@/lib/api/types'
+import { stripBotSuffix } from '@/lib/players/displayName'
 
 import { ReplayTeamHeader } from './ReplayTeamHeader'
 import { activeEquipmentAt } from './equipmentFx'
@@ -230,7 +231,10 @@ function PlayerCard({ player, doc, frame, presence, vitalityFade, readingFull, f
   // valent pour tout le match — c'est ce qu'elle affichait avant ce lot.
   const live = playerCountersAt(scoreTimeline, player.xuid, frame)
   const state = playerStateAt(player, frame, presence)
-  const name = playerName(player) ?? t.unknownPlayer
+  // Suffixe « [bot] » = marqueur de donnée killsource (schéma 36), pas d'affichage —
+  // retiré ici sans toucher au repli `t.unknownPlayer` (playerName() reste `null`-able).
+  const rawName = playerName(player)
+  const name = (rawName ? stripBotSuffix(rawName) : null) ?? t.unknownPlayer
   const equipped = state.life ? equippedWeapons(doc, state.life.slot, frame) : null
   // L'index de FILM du joueur : la clé des lancers de grenade (l'auteur y est écrit).
   const filmIndex = doc.roster.find((r) => r.xuid === player.xuid)?.filmIndex ?? null
