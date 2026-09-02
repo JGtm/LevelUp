@@ -386,10 +386,14 @@ func botSuccessions(matchID string, facts port.MatchFacts, res *killsource.Resul
 	if res == nil || len(res.Roster.Bots) == 0 {
 		return nil
 	}
-	nameByID := make(map[int]string, len(res.Roster.Bots))
+	type botRef struct {
+		name string
+		idx  int
+	}
+	byID := make(map[int]botRef, len(res.Roster.Bots))
 	for _, b := range res.Roster.Bots {
 		if b.Name != "" {
-			nameByID[b.BotID] = b.Name + " [bot]"
+			byID[b.BotID] = botRef{name: b.Name + " [bot]", idx: b.Slot}
 		}
 	}
 	var out []replay.Succession
@@ -401,13 +405,15 @@ func botSuccessions(matchID string, facts port.MatchFacts, res *killsource.Resul
 		if _, err := fmt.Sscanf(p.XUID, "bid(%d.0)", &id); err != nil {
 			continue // un humain qui rejoint est nommé par le fil des morts, pas par relais
 		}
-		name, ok := nameByID[id]
+		ref, ok := byID[id]
 		if !ok {
 			slog.Warn("replaybuild: bot arrivé en cours de partie absent du roster du film — relais impossible",
 				"match_id", matchID, "bid", p.XUID)
 			continue
 		}
-		out = append(out, replay.Succession{BotName: name, SwitchMatchMS: *p.JoinMatchMS})
+		out = append(out, replay.Succession{
+			BotName: ref.name, FilmIndex: ref.idx, SwitchMatchMS: *p.JoinMatchMS,
+		})
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].SwitchMatchMS < out[j].SwitchMatchMS })
 	return out

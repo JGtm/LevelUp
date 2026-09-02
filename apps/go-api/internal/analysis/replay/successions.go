@@ -35,6 +35,10 @@ type Succession struct {
 	// BotName est le nom d'affichage du remplaçant, suffixe « [bot] » compris — la même
 	// forme que Track.Bot et RosterEntry.Name.
 	BotName string
+	// FilmIndex est l'indice de RÉPLICATION du remplaçant (BOT_METADATA) : c'est lui qui
+	// DIFFÉRENCIE deux remplaçants simultanés — leurs TIRS sont indexés, et un tir de cet
+	// indice tombé dans une vie candidate la corrobore (cf. la levée de contestation).
+	FilmIndex int
 	// SwitchMatchMS est l'instant d'arrivée sur l'axe du MATCH (le même que Death.TimeMS).
 	SwitchMatchMS int64
 }
@@ -49,21 +53,28 @@ const (
 
 // attributeSuccessions pose le nom du remplaçant sur les vies que la chaîne lui rend.
 // `deathOffsetMS` est le calage axe-match -> axe-film du pont ; sans lui (0 apparié), rien
-// n'est attribué — les deux horloges ne se parlent pas.
+// n'est attribué — les deux horloges ne se parlent pas. `fire` (les tirs, indexés par
+// joueur de film) sert à LEVER une contestation : quand deux vies candidates naissent dans
+// la même fenêtre (deux remplaçants simultanés), celle qui CONTIENT un tir de l'indice du
+// remplaçant est la sienne — un tir est une lecture, pas une devinette. Deux candidates
+// tirées, ou aucune : la chaîne s'arrête.
 func attributeSuccessions(tracks []Track, successions []Succession,
-	origin, step uint64, deathOffsetMS int64, offsetMatches int) {
+	origin, step uint64, deathOffsetMS int64, offsetMatches int, fire []FireEventRef) {
 	if len(successions) == 0 || offsetMatches == 0 {
 		return
 	}
-	claimed, halted := 0, 0
+	claimed, halted, liftedByFire := 0, 0, 0
 	for _, s := range successions {
 		switchUS := (s.SwitchMatchMS + deathOffsetMS) * 1000
 		from, to := switchUS-successionLeadUS, switchUS+successionFirstUS
 		for {
-			i := uniqueAnonymousIn(tracks, origin, step, from, to)
+			i, lifted := candidateIn(tracks, origin, step, from, to, s.FilmIndex, fire)
 			if i < 0 {
 				halted++
 				break
+			}
+			if lifted {
+				liftedByFire++
 			}
 			tracks[i].Bot = s.BotName
 			claimed++
@@ -71,14 +82,16 @@ func attributeSuccessions(tracks []Track, successions []Succession,
 			from, to = endUS+successionGapMinUS, endUS+successionGapMaxUS
 		}
 	}
-	slog.Info("rejeu : fermetures par relais",
-		"successions", len(successions), "viesAttribuees", claimed, "chainesArretees", halted)
+	slog.Info("rejeu : fermetures par relais", "successions", len(successions),
+		"viesAttribuees", claimed, "chainesArretees", halted, "contestationsLeveesParTir", liftedByFire)
 }
 
-// uniqueAnonymousIn rend l'index de l'UNIQUE track anonyme qui naît dans [fromUS, toUS],
-// -1 sinon (aucune, ou plus d'une — les deux arrêtent la chaîne).
-func uniqueAnonymousIn(tracks []Track, origin, step uint64, fromUS, toUS int64) int {
-	found := -1
+// candidateIn rend l'index de la track anonyme retenue dans [fromUS, toUS] : l'unique
+// candidate, ou — à plusieurs — l'unique candidate CORROBORÉE par un tir de l'indice du
+// remplaçant. -1 sinon (le second retour dit si un tir a départagé).
+func candidateIn(tracks []Track, origin, step uint64, fromUS, toUS int64,
+	filmIndex int, fire []FireEventRef) (int, bool) {
+	var cands []int
 	for i := range tracks {
 		if tracks[i].XUID != "" || tracks[i].Bot != "" {
 			continue
@@ -87,10 +100,51 @@ func uniqueAnonymousIn(tracks []Track, origin, step uint64, fromUS, toUS int64) 
 		if startUS < fromUS || startUS > toUS {
 			continue
 		}
-		if found >= 0 {
-			return -1 // contesté : on ne tranche pas
-		}
-		found = i
+		cands = append(cands, i)
 	}
-	return found
+	if len(cands) == 1 {
+		return cands[0], false
+	}
+	if len(cands) < 2 {
+		return -1, false
+	}
+	// UN TIR NE VOTE QUE S'IL TOMBE DANS EXACTEMENT UNE CANDIDATE : deux vies qui se
+	// chevauchent contiennent les mêmes instants, et un tir couvert par les deux ne dit
+	// rien. Des votes pour DEUX candidates différentes = contesté (un tir mal daté ne doit
+	// pas pouvoir mentir).
+	voted := -1
+	for _, f := range fire {
+		if f.FilmIndex != filmIndex {
+			continue
+		}
+		holder := -1
+		for _, i := range cands {
+			if !trackContains(tracks[i], origin, step, f.TimestampUS) {
+				continue
+			}
+			if holder >= 0 {
+				holder = -2 // couvert par deux candidates : ce tir ne vote pas
+				break
+			}
+			holder = i
+		}
+		if holder < 0 {
+			continue
+		}
+		if voted >= 0 && voted != holder {
+			return -1, false
+		}
+		voted = holder
+	}
+	if voted >= 0 {
+		return voted, true
+	}
+	return -1, false
+}
+
+// trackContains dit si l'instant tombe dans la fenêtre de la vie.
+func trackContains(tr Track, origin, step uint64, tsUS uint64) bool {
+	fromUS := origin + uint64(tr.StartFrame)*step
+	toUS := origin + uint64(tr.EndFrame+1)*step
+	return tsUS >= fromUS && tsUS < toUS
 }

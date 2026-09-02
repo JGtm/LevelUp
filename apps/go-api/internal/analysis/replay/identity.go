@@ -160,26 +160,30 @@ type BotIdentity struct {
 // est aléatoire, et un artefact qui change d'octets à chaque build sans changer de contenu
 // est indiffable.
 //
-// UN BOT DONT L'INDEX EST DÉJÀ TENU PAR UN HUMAIN N'ENTRE PAS : les deux déclarations se
+// UN BOT DONT L'INDEX EST TENU PAR UN HUMAIN N'ENTRE PAS : les deux déclarations se
 // contredisent, et le fil des morts (une lecture par xuid) l'emporte sur un paquet de
-// métadonnées. Le refus est silencieux ici — le compte des bots publiés se lit au roster.
+// métadonnées. DEUX BOTS PEUVENT PARTAGER UN INDEX, et c'est mesuré (RE_LOG 7ter.62 :
+// « 343 Aloysius » puis « 343 PardonMy », les deux déclarant slot=8) — des remplaçants
+// SUCCESSIFS sur le même siège de réplication. Ils entrent tous les deux : le nom les
+// différencie, l'index dit le siège.
 func buildRoster(idx PlayerIndexTable, names map[uint64]string, bots []BotIdentity) []RosterEntry {
 	if len(idx.ByXUID) == 0 && len(bots) == 0 {
 		return nil
 	}
 	out := make([]RosterEntry, 0, len(idx.ByXUID)+len(bots))
-	taken := make(map[int]bool, len(idx.ByXUID))
+	humanIdx := make(map[int]bool, len(idx.ByXUID))
 	for x, pi := range idx.ByXUID {
-		taken[pi] = true
+		humanIdx[pi] = true
 		out = append(out, RosterEntry{
 			XUID: strconv.FormatUint(x, 10), FilmIndex: pi, Name: names[x],
 		})
 	}
+	seen := map[string]bool{}
 	for _, b := range bots {
-		if taken[b.FilmIndex] || b.Name == "" {
+		if humanIdx[b.FilmIndex] || b.Name == "" || seen[b.Name] {
 			continue
 		}
-		taken[b.FilmIndex] = true
+		seen[b.Name] = true
 		out = append(out, RosterEntry{FilmIndex: b.FilmIndex, Name: b.Name, Bot: true})
 	}
 	sort.Slice(out, func(i, j int) bool {
