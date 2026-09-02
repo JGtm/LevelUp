@@ -29,6 +29,7 @@ import {
   vehicleHeadingAt,
   vehicleIsDecor,
   vehiclePositionAt,
+  vehicleRideColor,
   vehicleScreenAngle,
   vehicleScreenLengthPx,
   vehicleSpriteScale,
@@ -76,6 +77,15 @@ export interface VehicleStyle {
   /** Dimensions natives + mm/px du manifeste pour une famille, ou `null` si pas encore chargées. */
   sizeOf: (family: string) => VehicleSpriteSize | null
   colorOfSlot: (slot: number, frame: number) => string | null
+  /**
+   * Couleur d'équipe d'un joueur PAR XUID — la SOURCE PRIORITAIRE de la teinte d'un occupant,
+   * pour la raison EXACTE de `nameOfXuid` ci-dessous et sur les mêmes films : pendant l'épisode
+   * le bipède ne réplique plus, le pont `colorOfSlot` est donc muet là où le document, lui,
+   * nomme l'occupant (`VehicleRide.xuid`). Le contrat serveur promettait déjà cette couleur
+   * (`document_vehicles.go` : « c'est lui qui donne sa couleur au véhicule ») ; la jointure par
+   * slot ne la tenait pas. Le pont reste le repli.
+   */
+  colorOfXuid: (xuid: string) => string | null
   nameOfSlot: (slot: number, frame: number) => string | null
   /**
    * Nom d'un joueur PAR XUID — la SOURCE PRIORITAIRE de l'étiquette d'un occupant.
@@ -120,7 +130,8 @@ function drawVehicleOccupantNames(
   frame: number,
   c: XY,
   baseEdgePx: number,
-  style: Pick<VehicleStyle, 'nameOfSlot' | 'nameOfXuid' | 'colorOfSlot' | 'labelStroke' | 'neutralInk'>,
+  style: Pick<VehicleStyle,
+    'nameOfSlot' | 'nameOfXuid' | 'colorOfSlot' | 'colorOfXuid' | 'labelStroke' | 'neutralInk'>,
   k: number,
 ): void {
   const label: LabelStyle = { k, labelStroke: style.labelStroke }
@@ -132,7 +143,7 @@ function drawVehicleOccupantNames(
     // lettres avec cette même encre — un nom rempli à la couleur de son propre contour est un
     // pâté illisible, c'est-à-dire un nom perdu. L'encre du « aucun camp connu » est faite pour
     // ça, et c'est déjà celle du véhicule sans occupant résolu.
-    const color = style.colorOfSlot(ride.slot, frame) ?? style.neutralInk
+    const color = vehicleRideColor(ride, frame, style) ?? style.neutralInk
     drawNameLabel(ctx, c, name, label, color, baseEdgePx + VEHICLE_NAME_LINE_STEP_PX * line * k)
     line++
   }
@@ -175,7 +186,7 @@ function drawVehicleAimCone(
   ctx: CanvasRenderingContext2D,
   track: ReplayVehicleTrackReady,
   time: VehicleTime,
-  style: Pick<VehicleStyle, 'showAim' | 'colorOfSlot'>,
+  style: Pick<VehicleStyle, 'showAim' | 'colorOfSlot' | 'colorOfXuid'>,
   c: XY,
 ): void {
   if (!style.showAim) return
@@ -184,7 +195,7 @@ function drawVehicleAimCone(
   // L'ENCRE EST CELLE DU PION DU MÊME JOUEUR, sans repli : un cône neutre dirait « quelqu'un
   // regarde par là » sans dire qui — le calque des pions applique la même règle (une vie sans
   // couleur ne se dessine pas).
-  const color = style.colorOfSlot(driver.slot, time.frame)
+  const color = vehicleRideColor(driver, time.frame, style)
   if (!color) return
   drawAimSector(ctx, c, vehicleAimAngle(vehicleHeadingAt(track, time.frame)), time.k, color)
 }
@@ -211,7 +222,7 @@ export function drawVehiclesLayer(
     const world = vehiclePositionAt(track, time.frame)
     if (!world) continue
     const c = project(world, view)
-    const color = vehicleColorAt(track, time.frame, style.colorOfSlot) ?? style.neutralInk
+    const color = vehicleColorAt(track, time.frame, style) ?? style.neutralInk
     drawVehicleAimCone(ctx, track, time, style, c)
     // ÉDGE PAR DÉFAUT (chassis non résolu, ou vignette pas encore chargée) : le plancher de
     // lisibilité, seule mesure disponible avant qu'une taille réelle ne soit connue. TOUJOURS

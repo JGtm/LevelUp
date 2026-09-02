@@ -304,6 +304,32 @@ export function vehicleDriverAt(
 }
 
 /**
+ * VehicleInk — LES DEUX SOURCES DE LA COULEUR D'UN OCCUPANT, dans leur ordre de priorité.
+ *
+ * `colorOfXuid` LIT CE QUE LE DOCUMENT AFFIRME : l'épisode d'occupation porte le xuid de son
+ * occupant, et c'est ce que son contrat serveur promet (« c'est lui qui donne sa couleur au
+ * véhicule », `document_vehicles.go`). `colorOfSlot` est le PONT slot->joueur, qui répond « qui
+ * occupe ce slot à cette image » — muet pendant l'épisode quand la trace du bipède n'a pas été
+ * jointe à un joueur. Le pont reste donc le REPLI, exactement comme pour le nom.
+ */
+export interface VehicleInk {
+  colorOfXuid: (xuid: string) => string | null
+  colorOfSlot: (slot: number, frame: number) => string | null
+}
+
+/**
+ * vehicleRideColor — la couleur d'UN occupant : le xuid du document d'abord, le pont ensuite.
+ */
+export function vehicleRideColor(
+  ride: ReplayVehicleRide,
+  frame: number,
+  ink: VehicleInk,
+): string | null {
+  const byXuid = ride.xuid ? ink.colorOfXuid(ride.xuid) : null
+  return byXuid ?? ink.colorOfSlot(ride.slot, frame)
+}
+
+/**
  * vehicleColorAt — la teinte du véhicule à `frame` (décision de cadrage C7) : la couleur du
  * CONDUCTEUR (siège 0) quand il est actif et son identité résolue ; À DÉFAUT, celle de
  * N'IMPORTE QUEL occupant actif dont l'identité est connue ; sinon `null` (neutre — l'appelant
@@ -312,16 +338,16 @@ export function vehicleDriverAt(
 export function vehicleColorAt(
   track: ReplayVehicleTrackReady,
   frame: number,
-  colorOfSlot: (slot: number, frame: number) => string | null,
+  ink: VehicleInk,
 ): string | null {
   const active = vehicleActiveRides(track, frame)
   const driver = active.find((r) => r.seat === 0)
   if (driver) {
-    const c = colorOfSlot(driver.slot, frame)
+    const c = vehicleRideColor(driver, frame, ink)
     if (c) return c
   }
   for (const r of active) {
-    const c = colorOfSlot(r.slot, frame)
+    const c = vehicleRideColor(r, frame, ink)
     if (c) return c
   }
   return null

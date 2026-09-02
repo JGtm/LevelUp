@@ -33,13 +33,43 @@ package replay
 // PUR : aucune I/O, aucune lecture de film. Les entrees sont deja decodees.
 
 import (
-	"math"
 	"sort"
 	"strconv"
 
 	"levelup/go-api/internal/analysis/filmdec"
 )
 
+// CES SEUILS ONT ETE REMIS EN CAUSE LE 2026-09-02, ET LA MESURE LES A CONFIRMES. Le calque
+// publiait 12 episodes sur 45 vies (`0d76e8f1`) et 2 sur 21 (`fccc61cd`) ; l hypothese etait que
+// les portes de cette page etaient trop serrees. L instrument `vehicules_v4_couverture_test.go`
+// a mesure chaque porte contre un ORACLE — un trou CONFIRME par un evenement d embarquement ou
+// de sortie de la liste (grammaire portee et validee, V3). VERDICT, sur les deux films :
+//
+//	LE RAYON N EST PAS LA PORTE. Les 10 trous confirmes de `0d76e8f1` et les 2 de `fccc61cd`
+//	sont TOUS sous 1,5 m — d25 0,6 m, d50 0,9 m, d90 1,2 m. Elargir a 3, 5, 8 ou 12 m n ajoute
+//	AUCUN trou confirme et fait passer les trous NON confirmes de 2 a 4, 5, 8 puis 8 (a 3 s),
+//	pendant que le temoin decale de 60 s en ramasse 1, 2, 4 puis 6 : ce qu on gagnerait est du
+//	hasard, et il est deja compte.
+//
+//	LE SEUIL DE TROU NON PLUS. A 3 s, 1,5 s et 0,8 s le nombre de trous CONFIRMES vaut 10, 10
+//	et 10 (`0d76e8f1`) — exactement le meme. Seuls les non confirmes montent (16, 24, 45).
+//
+//	LA FRAICHEUR NON PLUS. 9 des 10 trous confirmes avaient un echantillon de vehicule de moins
+//	d une seconde, et aucun n a eu besoin de la position de naissance.
+//
+//	ET L OCCUPANT NE REPLIQUE VRAIMENT PLUS. L hypothese inverse — des trajets invisibles parce
+//	que le bipede continue d emettre — a ete testee par la CO-MOBILITE
+//	(`vehicules_v4_comobilite_test.go`) : sur 1 347 instants de vehicule EN MOUVEMENT, AUCUN
+//	couple (vehicule, bipede) ne reste sous 3 m plus de 1,6 s. Il n y a pas de population cachee.
+//
+// CE QUI RESTE, MESURE ET NON CORRIGE : le SILENCE TERMINAL. Un occupant qui ne re-emet JAMAIS
+// (mort a bord, encore a bord a la fin) n ouvre aucun trou — la primitive exige un point APRES le
+// silence. L oracle des ARMES DE VEHICULE (cf. `vehicle_shots.go`) le chiffre : 6 tirs sur 23 a
+// `0d76e8f1`, 8 sur 16 a `fccc61cd`. Aucun seuil n est justifiable aujourd hui pour les recuperer
+// — le vehicule le plus proche du dernier point replique est a 2,6 m sur un film et a 29,3 m sur
+// l autre. Ouvrir la porte sur cette base echangerait de la precision contre du rappel sans
+// preuve ; la decouverte est ecrite, elle n est pas traitee.
+//
 // Seuils de l episode d occupation. Aucun n est neuf : ce sont ceux sous lesquels le signal a ete
 // mesure, et les changer rendrait les chiffres publies incomparables aux rapports.
 const (
@@ -218,14 +248,14 @@ func vehicleNearestTo(
 		slots = append(slots, s)
 	}
 	sort.Slice(slots, func(i, j int) bool { return slots[i] < slots[j] })
-	best, found, bestD := uint32(0), false, math.MaxFloat64
+	best, found, bestD := uint32(0), false, 0.0
 	for _, s := range slots {
 		p, gap, ok := vehicleSampleNear(vehBySlot[s], e.TimestampUS)
 		if !ok || gap > vehicleNearestSampleUS {
 			continue
 		}
-		d := math.Hypot(float64(e.X-p.X), float64(e.Y-p.Y))
-		if d <= vehicleBoardRadiusM && d < bestD {
+		d := planDist(e.X, e.Y, p.X, p.Y)
+		if d <= vehicleBoardRadiusM && (!found || d < bestD) {
 			best, bestD, found = s, d, true
 		}
 	}

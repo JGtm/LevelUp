@@ -29,7 +29,7 @@ func TestCoverageBalancedOnEmptyInputs(t *testing.T) {
 		{"sans rien", nil, nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			shots, cov := buildShots(tc.pos, events, 1_000_000, 100_000, tc.owner)
+			shots, _, cov := buildShots(tc.pos, events, 1_000_000, 100_000, tc.owner)
 			if len(shots) != 0 {
 				t.Errorf("aucun tir ne devrait etre publie, obtenu %d", len(shots))
 			}
@@ -45,7 +45,7 @@ func TestCoverageBalancedOnEmptyInputs(t *testing.T) {
 
 func TestCoverageBalancedWithNoEvents(t *testing.T) {
 	// Zéro disponible : la somme doit valoir zéro, pas produire un compteur fantôme.
-	_, cov := buildShots(nil, nil, 0, 100_000, nil)
+	_, _, cov := buildShots(nil, nil, 0, 100_000, nil)
 	if cov.Available != 0 || !cov.Balanced() {
 		t.Errorf("couverture incoherente sur entree vide : %+v", cov)
 	}
@@ -63,7 +63,7 @@ func TestCoverageCountsOutOfWindow(t *testing.T) {
 	pos := []filmdec.BipedPosition{posAt(10, 1_000_000, 1, 1, 90)}
 	far := 1_000_000 + uint64(shotPosToleranceUS) + 500_000
 	events := []filmdec.FireEvent{fireAt(far, 3, 90)}
-	shots, cov := buildShots(pos, events, 1_000_000, 100_000, map[uint32]int{10: 3})
+	shots, _, cov := buildShots(pos, events, 1_000_000, 100_000, map[uint32]int{10: 3})
 	if len(shots) != 0 {
 		t.Fatalf("un tir hors fenetre ne doit pas etre publie : %+v", shots)
 	}

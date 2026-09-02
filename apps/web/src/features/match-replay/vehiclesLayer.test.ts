@@ -216,22 +216,49 @@ describe('vehicleColorAt — teinte du véhicule (C7)', () => {
     [1, '#111'],
     [2, '#222'],
   ])
-  const colorOfSlot = (slot: number) => colors.get(slot) ?? null
+  const ink = {
+    colorOfSlot: (slot: number) => colors.get(slot) ?? null,
+    colorOfXuid: () => null,
+  }
 
   it('couleur du CONDUCTEUR (siège 0) quand elle est résolue', () => {
     const t = track({ rides: [ride({ slot: 1, seat: 0 }), ride({ slot: 2, seat: 1 })] })
-    expect(vehicleColorAt(t, 50, colorOfSlot)).toBe('#111')
+    expect(vehicleColorAt(t, 50, ink)).toBe('#111')
   })
 
   it('à défaut (conducteur inconnu) : la couleur de N’IMPORTE QUEL occupant connu', () => {
     const t = track({ rides: [ride({ slot: 99, seat: 0 }), ride({ slot: 2, seat: 1 })] })
-    expect(vehicleColorAt(t, 50, colorOfSlot)).toBe('#222')
+    expect(vehicleColorAt(t, 50, ink)).toBe('#222')
   })
 
   it('aucun occupant, ou aucun résolu : null (neutre, l’appelant pose son encre de thème)', () => {
-    expect(vehicleColorAt(track({ rides: [] }), 50, colorOfSlot)).toBeNull()
+    expect(vehicleColorAt(track({ rides: [] }), 50, ink)).toBeNull()
     const t = track({ rides: [ride({ slot: 98, seat: 0 }), ride({ slot: 99, seat: 1 })] })
-    expect(vehicleColorAt(t, 50, colorOfSlot)).toBeNull()
+    expect(vehicleColorAt(t, 50, ink)).toBeNull()
+  })
+
+  // ESCALADE N°1 DU RAPPORT DE VISIONNAGE (2026-09-02) : le contrat serveur de `VehicleRide.xuid`
+  // promet que c'est LUI qui donne sa couleur au véhicule. Le pont slot->joueur est muet pendant
+  // l'épisode (le bipède ne réplique plus) — le xuid doit donc PRIMER, et suffire seul.
+  it('le XUID du document PRIME sur le pont slot->joueur', () => {
+    const inkBoth = {
+      colorOfSlot: () => '#pont',
+      colorOfXuid: (x: string) => (x === 'X1' ? '#document' : null),
+    }
+    const t = track({ rides: [ride({ slot: 1, seat: 0, xuid: 'X1' })] })
+    expect(vehicleColorAt(t, 50, inkBoth)).toBe('#document')
+  })
+
+  it('xuid inconnu du roster : REPLI sur le pont slot->joueur', () => {
+    const inkBoth = { colorOfSlot: () => '#pont', colorOfXuid: () => null }
+    const t = track({ rides: [ride({ slot: 1, seat: 0, xuid: 'inconnu' })] })
+    expect(vehicleColorAt(t, 50, inkBoth)).toBe('#pont')
+  })
+
+  it('épisode SANS xuid : le pont reste la seule source', () => {
+    const inkBoth = { colorOfSlot: () => '#pont', colorOfXuid: () => '#jamais' }
+    const t = track({ rides: [ride({ slot: 1, seat: 0 })] })
+    expect(vehicleColorAt(t, 50, inkBoth)).toBe('#pont')
   })
 })
 

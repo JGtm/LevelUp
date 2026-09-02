@@ -1,3 +1,26 @@
+## [2026-09-02] Rejeu vehicules — V4 : tirs en vehicule, plafond de couverture MESURE, fusion des fantomes (schema 30) — Complété
+
+**Tirs en vehicule** : le record de tir ne porte PAS de position monde (premisse corrigee) ->
+rattachement par IDENTITE (tireur du film x occupant de l episode x instant), pose a la position
+interpolee du vehicule (ecart max 0,003 m). Temoin decisif = l ARME : moitie basse 0x42C9679F sur
+100% des 1166 tirs a pied ; les 23 evenements a moitie basse nulle sont tous rejetes par la porte
+bipede, 73,9% tombent dans un episode publie (enrichissement x28 vs orphelins d arme personnelle).
+0d76e8f1 : 1166 -> 1189 tirs publies (+23 marques v). Champ Shot.v, schema 29->30.
+**Couverture des episodes** : les 4 pistes d assouplissement REFUTEES une a une (d90 des trous
+confirmes = 1,2 m < 1,5 ; trous confirmes constants a 3/1,5/0,8 s ; 0 besoin du repli naissance ;
+0 hors fenetre) + hypothese co-mobilite testee (0 couple < 3 m > 1,6 s sur 1347 instants). CAUSE
+RACINE : le film n atteste que ~10 trajets (0d76e8f1) et 3 (fccc61cd) — la production est AU
+PLAFOND (12 et 2). Seul manque reel : le SILENCE TERMINAL (occupant qui ne re-emet jamais),
+inattribuable sans seuil injustifiable (2,6 m vs 29,3 m selon film) — consigne, pas corrige.
+**Couleur** : team absente du film (Track.Team=-1) -> contrat tenu cote web (colorOfXuid, xuid du
+document prioritaire, pont slot en repli — meme patron que le nom).
+**Fantomes (bug utilisateur)** : le film RE-CREE les vehicules sous un nouveau slot (parfois par
+vagues) ; fusion des vies en relais (meme chassis, <= 0,5 m, fenetre [t1..t1max]) : 10+3 paires
+-> 0+0, vies 30->20 et 11->8 (merged=10/3), temoin chassis-differents = 0 fusion, chaines par
+point fixe, 9 tests fixtures. planDist ajoute dans geometry.go (unique ecriture plan, dist3 intact).
+**Gates** : gofmt/vet/tests Go verts sans env ; web typecheck/lint/5676 tests ; openapi +
+generate-types ; golden 1 ligne (schema) ; artefacts schema 30 reconstruits et copies dans l app.
+
 ## [2026-09-02] Vehicules V3F — LES TIRS COVENANT / BANNIS, et la preuve que les « moteurs » du lot V3E sont des sons d'ARMES — Complété
 
 **Decision technique** : arreter de deviner l'evenement de tir par recoupement de medias et le
