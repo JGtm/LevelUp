@@ -37,9 +37,15 @@ import type { ReplayWindowBounds } from './replayWindow'
 /** Un document 10 Hz : une image toutes les 100 ms. */
 const FRAME_MS = 100
 
-/** Le match court de l'image 100 (10 s) à l'image 400 (40 s) sur l'axe du film. */
+/**
+ * Le match court de l'image 100 (10 s) à l'image 400 (40 s) sur l'axe du film.
+ *
+ * `leadInFrame` (une seconde plus tôt, image 90) n'intéresse QUE la lecture : la frise part du
+ * coup d'envoi, et ces tests d'échelle le vérifient en creux — aucun d'eux ne le lit.
+ */
 const FENETRE: ReplayWindowBounds = {
   startFrame: 100,
+  leadInFrame: 90,
   endFrame: 400,
   startMs: 10_000,
   endMs: 40_000,

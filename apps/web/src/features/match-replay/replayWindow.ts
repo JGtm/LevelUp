@@ -26,6 +26,27 @@
  * arrive 4,5 s APRÈS le coup d'envoi (originMs 39 772 > t0_ms 35 238). Le film n'a rien à
  * montrer avant sa propre image zéro.
  *
+ * DEUX SOURCES POUR LE COUP D'ENVOI, ET LE FILM PASSE DEVANT (D5 du plan T0-film, 2026-09-02).
+ * `header.t0_ms` est ESTIMÉ des `first_joined_time` de l'API : dégénéré (~0 ms) sur 10 à 15 %
+ * des matchs, et décalé d'une heure entière sur une part du corpus (dette TZ historique).
+ * `doc.t0FilmMs` est MESURÉ dans le film — l'instant du premier mouvement réel des joueurs,
+ * détecté par match, sans constante en dur. La mesure tranche : dispersion 9 752 ms pour le
+ * film contre 12 764 ms pour l'API sur le même corpus de 101 matchs, et aucune valeur
+ * invraisemblable côté film. Le champ est donc préféré PARTOUT où il existe ; son absence
+ * (artefact antérieur au schéma 36, ou refus du détecteur) fait retomber sur l'API, sans
+ * dégradation par rapport à avant ce lot.
+ *
+ * LA BORNE DE FIN, ELLE, RESTE SUR `header.t0_ms`, et ce n'est pas une inconséquence : sa
+ * justesse ne vient pas de l'ancrage mais de la COMPENSATION décrite plus haut — le serveur
+ * a soustrait CE t0-là pour produire `playable_duration_seconds`. Y substituer le T0 film
+ * casserait l'annulation et déplacerait la fin de l'écart entre les deux horloges.
+ *
+ * LE PRÉAMBULE (`leadInFrame`) EST UN CONFORT DE LECTURE, PAS UN CADRAGE (D3, user 02/09) :
+ * la lecture se pose UNE seconde avant le coup d'envoi, le temps de poser les yeux sur la
+ * scène avant que l'action parte. Rien d'autre ne bouge — l'horloge affichée, la frise et les
+ * bornes d'export restent sur `startMs` / `startFrame`, et l'horloge lit donc 0:00 pendant ce
+ * préambule (plancher de `displayClockMs`).
+ *
  * LA BORNE DE FIN N'UTILISE JAMAIS LE CALQUE DE SCORE, et c'est une mesure, pas une opinion :
  * le dernier point du score tombe 1,5 à 1,6 s avant la fin déclarée sur les trois témoins
  * gagnés au score — mais 133 s avant sur 64e8adfa, qui s'est terminé AU TEMPS. Une borne tirée
@@ -45,10 +66,29 @@ import type { ReplayDocumentReady } from './replayNormalize'
 /** Ce que la fenêtre lit de l'en-tête du match : les deux bornes de l'axe du MATCH. */
 export type ReplayWindowHeader = Pick<MatchViewHeader, 't0_ms' | 'playable_duration_seconds'>
 
+/**
+ * PRÉAMBULE DE LECTURE, en millisecondes AVANT le coup d'envoi (D3, user 2026-09-02).
+ *
+ * Une seconde : de quoi voir la scène s'installer avant que l'action parte, sans jamais
+ * redonner à voir le countdown d'avant-match. Ce n'est PAS un déplacement du cadrage — la
+ * fenêtre de gameplay, l'horloge et l'export ne connaissent que `startMs` / `startFrame`.
+ */
+export const LEAD_IN_MS = 1000
+
 /** La fenêtre de gameplay, dans les deux unités du rejeu (images pour la frise, ms pour l'horloge). */
 export interface ReplayWindowBounds {
-  /** Première image du gameplay : la borne basse de la frise ET le point de départ de la lecture. */
+  /**
+   * Première image du gameplay : la borne basse de la FRISE, l'origine de l'horloge affichée
+   * et le début de la plage d'export. Ce n'est plus l'endroit où la lecture SE POSE — celui-là
+   * est `leadInFrame`, une seconde plus tôt.
+   */
   startFrame: number
+  /**
+   * OÙ LA LECTURE SE POSE, une seconde en deçà du coup d'envoi (`LEAD_IN_MS`) — jamais avant
+   * l'image zéro du film. C'est la SEULE borne que le préambule déplace : la frise part
+   * toujours de `startFrame`, et l'horloge affiche 0:00 tant que la lecture est en deçà.
+   */
+  leadInFrame: number
   /** Dernière image du gameplay : la lecture s'y arrête, la frise n'en sort pas. */
   endFrame: number
   /** Instant du coup d'envoi sur l'axe du film, en ms — l'origine de l'horloge AFFICHÉE. */
@@ -73,14 +113,20 @@ export function replayWindow(
   const lastFrame = doc.frameCount - 1
   if (lastFrame <= 0) return null
 
-  const t0Ms = header?.t0_ms ?? 0
-  const startMs = Math.max(0, t0Ms - originMs)
+  // LE T0 DE L'API sert la borne de FIN, et elle seule : c'est lui que le serveur a soustrait
+  // pour produire `playable_duration_seconds` (cf. l'en-tête, § de la compensation).
+  const apiT0Ms = header?.t0_ms ?? 0
+  // LE T0 DU DÉBUT PRÉFÈRE LE FILM : mesuré au premier mouvement, contre estimé des
+  // `first_joined_time`. Les deux sont sur l'axe du MATCH, la soustraction est la même.
+  const startT0Ms = doc.t0FilmMs ?? apiT0Ms
+  const startMs = Math.max(0, startT0Ms - originMs)
   const filmEndMs = frameToMs(lastFrame, doc)
-  const endMs = Math.min(t0Ms + playableSeconds * 1000 - originMs, filmEndMs)
+  const endMs = Math.min(apiT0Ms + playableSeconds * 1000 - originMs, filmEndMs)
   const startFrame = clampFrame(Math.round(msToFrames(startMs, doc)), lastFrame)
   const endFrame = clampFrame(Math.round(msToFrames(endMs, doc)), lastFrame)
   if (endFrame <= startFrame) return null
-  return { startFrame, endFrame, startMs, endMs }
+  const leadInFrame = clampFrame(Math.round(msToFrames(startMs - LEAD_IN_MS, doc)), lastFrame)
+  return { startFrame, leadInFrame, endFrame, startMs, endMs }
 }
 
 /**
