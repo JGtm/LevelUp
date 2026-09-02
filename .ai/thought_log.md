@@ -1,3 +1,45 @@
+## [2026-09-02] Vehicules V3F — LES TIRS COVENANT / BANNIS, et la preuve que les « moteurs » du lot V3E sont des sons d'ARMES — Complété
+
+**Decision technique** : arreter de deviner l'evenement de tir par recoupement de medias et le
+faire DESIGNER par le champ nomme du tag. Nouveau mode `tir-vehi` (`cmd/weapon-sounds/tir_vehicules.go`,
+204 L, additif) : `vehi` -> refs `weap` INLINE -> champ « Weapon Fire Sound » de `weap.xml` ->
+tags `lsnd`/`snd!` -> `sbnk` + mots du corps. La chaine `lot`/`lot-tir` ne balayait que les packs
+`wea_`/`tur_`/`whizby_` : aucun `weap` de CHASSIS n'avait jamais ete resolu par elle, d'ou le trou.
+
+**Resultats observes** :
+- Le tag de tir de chaque vehicule porte EXACTEMENT DEUX identifiants d'evenement de sa propre
+  banque (sur 7 a 14) : Ghost `a91f9f78`/`603d9e29`, Banshee `bdb30da6`/`851558f7` (M1) et
+  `f76415db`/`6ed9c3bc` (M2), Wraith `46b14f04`/`aa6215eb`, Chopper `66b341e8`/`1adf8067`.
+- Regle 3P/1P confirmee 10/10 : l'evenement 3P n'a QUE des medias mono, le 1P QUE du stereo
+  (regle du lot armes du 2026-08-15, jamais appliquee aux vehicules).
+- Cadence du tag x nb de canons = cadence du conteneur (mode 5) : Ghost 450 contre 0,130 s,
+  Banshee 480 contre 0,125 s, Chopper 240 contre 0,250 s, temoin Falcon 780 contre 0,077 s.
+- **LE VERDICT UTILISATEUR EST DEMONTRE** : les evenements que V3E a rendus sous
+  `deplacement/moteur_*.wav` et `deplacement/contact_*.wav` SONT ces evenements de tir, sur les
+  SIX vehicules. Temoin : le Scorpion `951f76c0` est a la fois `deplacement/moteur_conduite` (V3E)
+  et `tir/tir_M1_1p_1.wav` (deja valide par l'utilisateur comme un tir).
+- **Le switch 2275666646 n'est pas un regime moteur** : 8 de ses 9 etats casses par FNV-1 =
+  `exterioropen`/`exteriorsmall`/`exteriormed`/`exteriorlarge`/`interiornarrow`/`interiorsmall`/
+  `interiormed`/`interiorlarge`. C'est l'ESPACE DE L'AUDITEUR. V3E rendait `interiormed`.
+  V3F rend l'etat par DEFAUT de la banque, toujours exterieur.
+- Cle `_EMBARQUES` du mandat REFUTEE : 0 intersection avec le DIDX des vraies banques ;
+  `Covenant_ghost_EMBARQUES` est identique 65/65 a `bt_bank01862ab3_EMB`, le DIDX de la banque du
+  Warthog (erreur d'attribution corrigee par V3D §10).
+
+**Livre** : `sons_v3_reconstruits/{Ghost,Banshee,Wraith,Chopper}/tir/` (29 WAV a la racine + 40 stems, non
+commites), convention de nommage des 5 dossiers `tir/` valides ; pas de rafale pour le Wraith
+(mortier one-shot) ni la Banshee M2. Manifeste `rev12` (section `tir_covenant_v3f` +
+`alerte_v3f_deplacement`). Rapport `.ai/V7.5/film_re/V3F_TIRS_COVENANT_2026-09-02.md`.
+Gates verts : `gofmt`, `go vet`, `go test ./cmd/weapon-sounds/`, `go build`. Decodage vgmstream
+verifie identique au dossier utilisateur (434 fichiers, ecart de duree max 0,0000 s).
+
+**Hors perimetre, signale et NON traite** : les `deplacement/*.wav` des six vehicules portent des
+sons de tir sous des noms de moteur — rien supprime ni renomme, l'utilisateur tranche.
+
+**Prochaine etape** : ecoute utilisateur des 4 dossiers `tir/`. Si valides, decider du sort des
+`deplacement/` (suppression ou renommage) ; le vrai deplacement reste le `lsnd` PARTAGE `06ba1096`
+/ banque `e793c135`, et la capture en jeu reste la voie pour un moteur par vehicule.
+
 ## [2026-09-02] Rejeu 2D — INTEGRATION DES VEHICULES (lots A/B/C/D du plan) + revue adversariale corrigee — Complété (preuve visuelle utilisateur en attente)
 
 **Plan** : .ai/V7.5/PLAN_INTEGRATION_REJEU_VEHICULES.md (grille plan-review, decisions tranchees :

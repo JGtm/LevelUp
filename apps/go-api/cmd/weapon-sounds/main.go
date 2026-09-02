@@ -28,6 +28,10 @@
 //	            identifiant Wwise (chunk BKHD). C'est ce qui permet de trouver une banque
 //	            qui n'a AUCUN pack sur le disque — les banques de mode (drapeau, bastion,
 //	            extraction) et 14 des 17 banques d'equipement. Detail dans `banks_noms.go`.
+//	tir-vehi    module `any/globals` : le son de TIR d'une ARME DE VEHICULE, par le champ
+//	            nomme « Weapon Fire Sound ». Detail dans `tir_vehicules.go` — la chaine
+//	            `lot`/`lot-tir` ne balaie que les packs d'armes et de tourelles, jamais les
+//	            chassis `sb_010_veh_*`, et la banque du chassis ne porte pas le tir.
 //	remonter-banque  module `any/globals` : la chaine A L'ENVERS, banque -> `snd!` -> ... ->
 //	            `vehi`. Detail dans `remonter_banque.go` — c'est ce qui dit QUEL vehicule
 //	            joue QUELLE banque d'explosion.
@@ -278,6 +282,8 @@ func main() {
 		err = nommerBanques(chemin, dossier, *sortie)
 	case "vehi-sons":
 		err = sonsDeVehicules(chemin, *sortie)
+	case "tir-vehi":
+		err = tirDesVehicules(chemin, parserHexa(*eqipIDs), *sortie)
 	case "remonter-banque":
 		err = remonterDepuisBanques(chemin, parserHexa(*banksSup), *limite)
 	case "pck-banques":
