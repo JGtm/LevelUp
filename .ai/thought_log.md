@@ -1,3 +1,59 @@
+## [2026-09-02] T0 film — LOT B : le lecteur web prefere le T0 mesure, et se pose une seconde avant — Complete
+
+Suite du lot A sous le plan `.ai/V7.5/PLAN_T0_FILM_2026-09-02.md` (decisions D1-D6 fermes).
+Perimetre : B1-B4, TypeScript sous `apps/web/src/features/match-replay/`. Aucun ecrit en base,
+aucune route touchee, aucun lot C/D entame.
+
+**Decision technique principale** : `replayWindow.ts` porte desormais DEUX t0 nommes
+separement. `apiT0Ms` (l'en-tete de la Match View) sert la borne de FIN et elle seule ;
+`startT0Ms = doc.t0FilmMs ?? apiT0Ms` sert la borne basse et l'origine d'horloge. La fin ne
+suit PAS le film, et ce n'est pas une inconsequence : sa justesse vient de la COMPENSATION
+`playable_duration_seconds = duration - t0_ms/1000` faite par le serveur avec le t0 de l'API —
+substituer l'autre terme casserait l'annulation et deplacerait la fin de l'ecart entre les deux
+horloges (9,8 s contre 12,8 s de dispersion mesures au lot A). Le T0 film prime partout
+ailleurs (D5).
+
+**Le preambule est une position, pas un cadrage** (D3, user 02/09). `LEAD_IN_MS = 1000` et le
+nouveau champ `ReplayWindowBounds.leadInFrame` : la lecture se pose une seconde avant le coup
+d'envoi, le temps de poser les yeux sur la scene. TROIS chemins de `useReplayPlayback` le
+lisent — pose initiale, `rewind()` et la borne BASSE de `seekTo` (donc `seekBy` et
+`stepFrames` avec lui). `startFrame` publie reste le coup d'envoi : c'est lui que la frise
+prend pour minimum, que l'horloge prend pour origine et que l'export propose. Champ REQUIS et
+non optionnel — un champ optionnel aurait laisse les 8 fixtures existantes passer sans jamais
+eprouver le preambule.
+
+**Verification sur pieces demandee par B3, et elle corrige une hypothese du plan** : le plan
+supposait qu'aucun consommateur ne lisait la borne basse via le hook de lecture. Faux —
+`useReplayTimeline` publie `minFrame: playback.startFrame`, le minimum du champ `input[range]`
+de la frise. La decision tient quand meme, precisement parce que `startFrame` ne bouge pas.
+Consequence a connaitre pour le gate visuel : pendant la seconde de preambule, le champ borne
+sa propre valeur au coup d'envoi et `--played` est deja borne a 0 % — la frise reste immobile a
+son debut pendant que la scene joue. Comportement voulu, pas une desynchro. Tous les autres
+(`useReplayClock`, `trackScale`, `defaultExportBounds`, et les 8 surcadres `ReplayKillFeed` /
+`ReplayScoreBanner` / `ReplayPlacementTip` / `ReplayVictoryOverlay` / `ReplayCanvasTips` /
+`exportOverlayPanels` / `useReplayCapture` / `useReplayExport`) recoivent bien `playWindow` en
+prop.
+
+**Resultats observes** :
+- `npm run typecheck` apres purge de `node_modules/.tmp` -> EXIT_TSC=0. Premier passage ROUGE,
+  et c'est le champ requis qui l'a produit : 4 litteraux `ReplayWindowBounds` NON annotes,
+  invisibles au grep du type, vus par le compilateur.
+- vitest cible (9 fichiers : les 2 touches + 7 non-regressions) -> EXIT_VITEST=0, 229/229.
+  Premier passage ROUGE sur un cas non repere : « en pause, le curseur se pose quand meme au
+  coup d'envoi » — c'est la pose initiale sur le chemin « lecture automatique eteinte ».
+- vitest du dossier entier `src/features/match-replay` -> EXIT_VITEST_ALL=0, 134 fichiers /
+  2 027 tests. Le cliquet de taille reste vert malgre les paragraphes ajoutes aux deux
+  en-tetes.
+- eslint cible (11 fichiers) -> EXIT_ESLINT=0 ; `npm run lint` complet -> EXIT_LINT=0
+  (23 warnings preexistants `react-hooks/incompatible-library` sur TanStack Table, aucun dans
+  le perimetre).
+
+**Conclusion / prochaine etape** : le lecteur est pret cote web ; il ne verra le T0 film que
+sur les artefacts RECUITS (lot D4, qui exige l'accord explicite du user — regle post-sinistre
+du 31/08). Prochaine etape = lot C (CLI de reparation + fil de l'eau), dont le gate impose la
+suite d'integration complete `-tags=integration -p 1`. Non commite : la main revient a
+l'orchestrateur.
+
 ## [2026-09-02] T0 film — LOT A : detecteur de production, champ d'artefact, schema 36 — Complete
 
 Portage de la mesure du matin (research test `a5a468a16`) en code servi, sous le plan

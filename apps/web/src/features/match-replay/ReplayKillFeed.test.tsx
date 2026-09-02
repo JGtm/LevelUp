@@ -139,7 +139,7 @@ describe('ReplayKillFeed — synchronisation et permanence', () => {
       <ReplayKillFeed
         entries={buildFeedEntries(kills, [], T0, null)}
         nowMs={35_400}
-        playWindow={{ startFrame: 184, endFrame: 4_000, startMs: T0, endMs: 400_000 }}
+        playWindow={{ startFrame: 184, leadInFrame: 174, endFrame: 4_000, startMs: T0, endMs: 400_000 }}
         scoreboard={SCOREBOARD}
         xuidMeta={META}
         locale="fr"
