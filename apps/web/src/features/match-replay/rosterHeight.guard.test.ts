@@ -38,12 +38,29 @@ describe('garde-rail : la hauteur des fiches ne dépend plus de celle de la cart
   it('le plafond borne bien les DEUX cotés : la taille des fiches et la place laissée au fil', () => {
     // Sans le second terme, une colonne courte donnerait tout aux fiches et rien au fil ;
     // sans le premier, un BTB à 24 fiches remplirait toute la colonne.
-    expect(src).toContain('xl:max-h-[min(30rem,calc(100%-12rem))]')
+    expect(src).toContain('xl:max-h-[30rem]')
+    expect(src).toContain('xl:min-h-[12rem]')
   })
 
-  it('les fiches ne se compressent pas — c est le fil qui absorbe', () => {
-    // `shrink-0` sur les fiches + `flex-1` sur le fil : la règle de partage tient en deux
-    // classes, et l'inverser rendrait les fiches illisibles avant que le fil ne le devienne.
-    expect(src).toMatch(/shrink-0[^"]*xl:max-h-\[min\(30rem/)
+  // LA LEÇON DU 2026-09-02, ET ELLE A COÛTÉ UNE LIVRAISON POUR RIEN. La première version de ce
+  // plafond s'écrivait `xl:max-h-[min(30rem,calc(100%-12rem))]` — une seule classe qui disait
+  // les deux bornes. Elle est passée au typecheck, aux tests, au lint et a été livrée : le test
+  // ci-dessus vérifiait la CHAÎNE, et la chaîne était bien là. Mais `calc(100%-12rem)` n'est pas
+  // du CSS valide (les opérateurs + et - y exigent des espaces), Tailwind ne produisait donc
+  // AUCUNE règle, et les fiches se retrouvaient sans plafond du tout.
+  //
+  // Un test qui grep une chaîne ne peut pas juger du CSS qu'elle produit. Ce qu'il PEUT faire,
+  // c'est interdire la construction qui l'a rendu aveugle.
+  it('aucun calc() dans une valeur arbitraire — la syntaxe qui a rendu le grep aveugle', () => {
+    expect(src).not.toContain('calc(')
+  })
+
+  it('sur une colonne courte, c est le PLANCHER du fil qui fait céder les fiches', () => {
+    // Les fiches sont rétrécissables (`min-h-0`, plus de `shrink-0`) et le fil porte un
+    // plancher : c'est ce couple qui répartit. Avec `shrink-0` sur les fiches, un 4v4 dans une
+    // colonne de 400 px prendrait tout et le fil n'aurait rien — le plancher ne servirait
+    // alors à rien, puisque rien ne pourrait lui céder la place.
+    expect(src).toMatch(/min-h-0[^"]*xl:max-h-\[30rem\]/)
+    expect(src).not.toMatch(/shrink-0[^"]*xl:max-h-\[30rem\]/)
   })
 })

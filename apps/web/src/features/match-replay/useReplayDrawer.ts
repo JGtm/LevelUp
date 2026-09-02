@@ -98,8 +98,6 @@ export function useReplayDrawer(o: ReplayDrawerOptions): ReplayDrawer {
       onClose,
       // LA LECTURE AUTOMATIQUE (point 22 du 2026-08-29) : un reglage persiste comme les autres,
       // mais lu au MONTAGE par `useReplayPlayback` — le tiroir n'en porte que la bascule.
-      autoPlay: s.autoPlay,
-      onToggleAutoPlay: s.toggleAutoPlay,
       showAim: s.showAim,
       onToggleAim: s.toggleAim,
       showZones: s.showZones,

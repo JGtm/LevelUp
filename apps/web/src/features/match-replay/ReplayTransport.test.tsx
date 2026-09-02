@@ -75,6 +75,8 @@ function renderTransport(over: Partial<Parameters<typeof ReplayTransport>[0]> = 
   const utils = render(
     <ReplayTransport
       playing
+      autoPlay={false}
+      onToggleAutoPlay={vi.fn()}
       onTogglePlay={onTogglePlay}
       onRestart={onRestart}
       onSeekBy={onSeekBy}
@@ -437,5 +439,32 @@ describe('ReplayTransport — le panneau est ancre la ou il doit l etre', () => 
     expect(ancre).toHaveClass('relative')
     // Et c'est bien celle qui contient le bouton d'export.
     expect(ancre).toContainElement(screen.getByRole('button', { name: 'Exporter la vidéo' }))
+  })
+})
+
+/**
+ * LA LECTURE AUTOMATIQUE A QUITTÉ LE TIROIR le 2026-09-02 (« on a carrément la place pour un
+ * bouton comme YouTube ») : ces tests ont déménagé depuis `ReplaySettingsDrawer.test.tsx`, avec
+ * leur raison d'être. Le point le plus important est le DERNIER — ce bouton ne met ni en lecture
+ * ni en pause, et rien à l'écran ne le distingue de « Lecture » sinon son nom et son infobulle.
+ */
+describe('ReplayTransport — lecture automatique', () => {
+  it('est un interrupteur, reflète son état et appelle SON callback', () => {
+    const onToggleAutoPlay = vi.fn()
+    const { onTogglePlay } = renderTransport({ autoPlay: false, onToggleAutoPlay })
+    const sw = screen.getByRole('switch', { name: 'Lecture automatique' })
+    expect(sw).toHaveAttribute('aria-checked', 'false')
+    fireEvent.click(sw)
+    expect(onToggleAutoPlay).toHaveBeenCalledTimes(1)
+    // La commande VOISINE est celle qu'on risque de toucher : les deux parlent de lecture.
+    expect(onTogglePlay).not.toHaveBeenCalled()
+  })
+
+  it('dit en clair qu il ne met ni en lecture ni en pause le rejeu ouvert', () => {
+    renderTransport()
+    expect(screen.getByRole('switch', { name: 'Lecture automatique' })).toHaveAttribute(
+      'title',
+      expect.stringContaining('ni en lecture ni en pause'),
+    )
   })
 })
