@@ -16811,6 +16811,8 @@ components:
         expected_kills:
           format: double
           type: number
+        first_joined_time:
+          type: string
         gamertag:
           type: string
         grenade_kills:
@@ -16832,6 +16834,8 @@ components:
           type: boolean
         is_mvp:
           type: boolean
+        joined_in_progress:
+          type: boolean
         kda:
           format: double
           type: number
@@ -16841,6 +16845,10 @@ components:
         kills_stddev:
           format: double
           type: number
+        last_leave_time:
+          type: string
+        left_in_progress:
+          type: boolean
         locally_estimated:
           type: boolean
         max_killing_spree:

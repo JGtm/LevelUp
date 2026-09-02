@@ -71,6 +71,10 @@ func scanScoreboardRow(rows *sql.Rows) (domain.ScoreboardRaw, error) {
 	// top_weapon_id est UBIGINT côté DuckDB → scanner en *uint64 pour
 	// éviter l'overflow int64 sur les hash de filmshell (bit63=1).
 	var topWeaponU *uint64
+	// Participation : nullable au DDL (matchs d'avant les colonnes) — sql.Null*, jamais
+	// des types nus (la leçon Q20 du 2026-09-02 : une seule ligne NULL casse tout le scan).
+	var joined, left sql.NullBool
+	var firstJoined, lastLeave sql.NullTime
 	if err := rows.Scan(
 		&s.XUID,
 		&s.Gamertag,
@@ -106,9 +110,14 @@ func scanScoreboardRow(rows *sql.Rows) (domain.ScoreboardRaw, error) {
 		&s.DeathsExpected,
 		&s.KillsStdDev,
 		&s.DeathsStdDev,
+		&joined,
+		&left,
+		&firstJoined,
+		&lastLeave,
 	); err != nil {
 		return domain.ScoreboardRaw{}, err
 	}
+	applyParticipation(&s, joined, left, firstJoined, lastLeave)
 	if topWeaponU != nil {
 		v := int64(*topWeaponU) //nolint:gosec
 		s.TopWeaponID = &v
@@ -129,6 +138,27 @@ func scanScoreboardRow(rows *sql.Rows) (domain.ScoreboardRaw, error) {
 	s.KillsStdDev = sanitizeF64(s.KillsStdDev)
 	s.DeathsStdDev = sanitizeF64(s.DeathsStdDev)
 	return s, nil
+}
+
+// applyParticipation pose les champs de participation (nullable) sur la ligne scannée.
+// Les instants sortent en UTC — la base est saine depuis la correction TZ du 2026-05-29,
+// et normaliser ici garantit qu'un RFC3339 servi au client ne portera jamais un fuseau.
+func applyParticipation(s *domain.ScoreboardRaw, joined, left sql.NullBool,
+	firstJoined, lastLeave sql.NullTime) {
+	if joined.Valid {
+		s.JoinedInProgress = &joined.Bool
+	}
+	if left.Valid {
+		s.LeftInProgress = &left.Bool
+	}
+	if firstJoined.Valid {
+		t := firstJoined.Time.UTC()
+		s.FirstJoinedTime = &t
+	}
+	if lastLeave.Valid {
+		t := lastLeave.Time.UTC()
+		s.LastLeaveTime = &t
+	}
 }
 
 // attachTopWeaponLabels résout les libellés d'armes top-weapon du scoreboard.
