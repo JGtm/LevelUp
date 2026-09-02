@@ -4,16 +4,33 @@ Retour user sur le rejeu (temoin `1b2d9e08-4c0c-430c-9760-a245d48b222e`) : aucun
 au fil, aucune medaille, et le glyphe « ami » n'est pas voulu. Demande = diagnostic pur.
 
 **Cause 1 — victimes : regression du 2026-08-03 (bascule Q20 sur `match_kill_events_latest`,
-commit 39da43fbf).** La table canonique porte legitimement des lignes a `victim_xuid` /
-`feed_killer_xuid` NULL (morts de film sans attribution feed — 7/83 sur le temoin). Or
-`GetMatchKVPairs` (Q20, `match_view_repo_extras.go`) scanne dans des `string` nus de
-`domain.KVPairRaw` : la premiere ligne NULL fait echouer `rows.Scan` et perd TOUTES les
-paires ; `goLoad("kv_pairs")` avale l'erreur en WARN. Preuve au log `service.log` :
-`Scan error on column index 2, name "victim_xuid": converting NULL to string is
-unsupported` sur ce match. En base, l'appariement est pourtant parfait (76/76 cles exactes
-feed<->paires). Ampleur : **245 matchs** ont >=1 ligne NULL → zero victime nommee, et
-COLLATERAL Match View : tug-of-war/Dominance, KD timeline, duels (tous les lecteurs de
-`kvPairs`) vides sur ces matchs.
+commit 39da43fbf), declenchee par les lignes BOT.** Les « frags manquants » sont les kills
+sur un BOT (temoin : 6 kills sur « 343 Razzle [bot] » + 1 kill PAR le bot). La fiabilite
+est bien 100 % : les 83 morts sont en base avec leur gamertag, mais un bot n'a pas de xuid
+→ `victim_xuid`/`feed_killer_xuid` NULL (design DOCUMENTE de Q20, « le xuid NULL est SERVI
+TEL QUEL », queries_match.go:410-416 ; garde-rail : ne JAMAIS coalescer en chaine vide,
+kill_events_source.go). Or le scanner `GetMatchKVPairs` (match_view_repo_extras.go:204-213)
+lit dans des `string` nus de `domain.KVPairRaw` : la premiere ligne bot fait echouer
+`rows.Scan` et perd TOUTES les paires du match ; `goLoad("kv_pairs")` avale l'erreur en
+WARN. Preuve `service.log` : `converting NULL to string is unsupported` sur le temoin.
+Ampleur : **245/1376 matchs (~18 %)** ont >=1 ligne bot — casses depuis le 03/08, mais
+seulement quand un leaver a ete remplace par un bot (d'ou « ca marchait la semaine
+derniere » : session du 27/08 = 5 matchs sains sur 8).
+
+**Audit large (2 agents, ~20 lecteurs de la canonique passes en revue) : Q20 est le SEUL
+point de rupture du depot.** Tous les autres lecteurs sont proteges (`IS NOT NULL` au SQL,
+`sql.NullString`, agregats, ou `continue` sur erreur de scan) : Q21b armes, Q21c assists,
+Q21d paires d'assistance, Q23b encounters, kill_distance, killsource armes
+(explorer/home), Q26/Q27/Q28 carriere/relations, Q30 moments, Q32c/d escouade, citations,
+timeseries (repli synthetique filtre), halo5 events source, health checks. L'ARTEFACT de
+rejeu 2D ne lit AUCUNE base (source = film) — non expose. Surfaces perdues via
+`d.kvPairs` vide (matchs a bot uniquement) : Dominance/tug-of-war, KD timeline, chart
+antagonistes (Combat), nemesis (Equipe), victimes du kill feed (Match View + rejeu), et
+cote rejeu : effets de mort orientes tueur→victime (killFx) + calque heatmap « morts »
++ lignes de mort neutres majoritairement vetoees. Halo 5 : cascade via
+synthesizeEventRawFromKVPairs (kill-feed entier, badges, cadence, roles).
+Piege pour le fix : `buildTugEvents` compte TOUTES les paires sans garde — servir les
+paires bot change les comptes tug ; a arbitrer dans le lot de correction.
 
 **Cause 2 — medailles : trou structurel, pas une regression.** Le fil exige `medal_name`,
 lu de `highlight_events.raw_json` — or AUCUN writer Go n'ecrit `raw_json` (ni
@@ -23,7 +40,13 @@ porte `MedalType` (numerique) mais pas le nom, et la resolution service se fait 
 (`LookupMedalMetaByName`). Mesure : 415 matchs ont 100 % de leurs events medal sans
 raw_json (tous les matchs recents ; les 964 matchs OK s'arretent au 2026-04-06). La
 feature medailles du fil (aout, temoin 000d5950 = vieux match) n'a donc JAMAIS marche sur
-un match synchronise par le pipeline Go.
+un match synchronise par le pipeline Go. Contre-verification du « ca marchait la semaine
+derniere » : les 8 matchs de JGtm du 27/08 ont 310 events medal, 0 avec nom — ce qui a ete
+vu marcher etait les temoins pre-avril du gate visuel. AGGRAVANT pour le fix : `type_hint`
+est aussi NULL depuis aout (le persister y met DetailsJSON, nil sur Infinite) et n'est de
+toute facon qu'un poids de tri (50/100/150), PAS une identite — l'identite d'une medaille
+post-avril n'existe nulle part en base ; recuperation = re-parse des films (caches) avec un
+parser qui persiste le nom, ou mapping MedalType→nom si le parser l'expose.
 
 **Point 3 — glyphe « ami » : decision produit, pas un bug.** Rendu par
 `FeedName` → `PlayerMark` kind `friend` (`ReplayFeedName.tsx` — le glyphe `me` est deja
