@@ -434,7 +434,25 @@ package replay
 // pris le 29 sur `wt/ctf-zone-retour` pendant que la lunette, les ramassages et la bombe
 // prenaient 29-34 sur `feat/v75` : renumerote 35 au merge du 2026-09-02, l'arbitrage ecrit aux
 // schemas 30, 31 et 33.)
-const SchemaVersion = 35
+//
+// CE QUE LA VERSION 36 PORTE. LE COUP D'ENVOI, DATE PAR LE FILM (`t0FilmMs`) : l'instant ou la
+// grille se leve, lu dans le PREMIER MOUVEMENT des pistes au lieu d'etre estime des
+// `first_joined_time` de l'API. L'estimation d'API degenere a ~0 ms sur 10-15 % des matchs
+// (elle date alors le coup d'envoi au chargement) ; le film, lui, le porte directement, et la
+// mesure du 2026-09-02 le montre PLUS STABLE que l'etalon — ecart-type 9 752 ms contre
+// 12 764 ms sur les 49 matchs au T0-API sain, avec une marge interne au film de CV 0,013.
+// Champ optionnel, mais la version monte pour la raison exacte des montees v4 (l'origine) et
+// v22 : la reprise du backfill se fait par SchemaVersion, et un artefact 35 doit se lire
+// « a re-cuire », pas « a jour » — sans quoi aucun rejeu deja cuit ne demarrerait sur le coup
+// d'envoi. `coverage.t0Film` publie le verdict, refus compris. CE QUE LA VERSION REFUSE : un
+// zero ambigu. Pas de mouvement detectable, une rafale de depart a moins de deux partants, ou
+// un premier mouvement a plus de 120 s de la frame 0 -> champ ABSENT, refus journalise, raison
+// publiee. Chronique, seuils et mesures : t0_film.go.
+//
+// RISQUE DE COLLISION DE NUMERO, consigne comme aux schemas 29->30, 31 et 33 : ce lot prend le
+// 36 sur la branche `wt/t0-film` alors que le 35 vient d'arriver sur `feat/v75`. Un autre
+// chantier peut prendre le 36 le meme jour ; l'arbitrage se fait au merge, par renumerotation.
+const SchemaVersion = 36
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {
@@ -475,6 +493,26 @@ type ReplayDocument struct {
 	// donc traitée en repli alors qu'elle est mesurée. ABSENT veut dire, et seulement :
 	// l'origine n'est pas établie — le client retombe alors sur son appariement.
 	OriginMs *int64 `json:"originMs,omitempty"`
+	// T0FilmMs est LE COUP D'ENVOI DU MATCH mesuré dans le film, sur la MÊME horloge
+	// qu'`OriginMs` (celle du fil des éliminations) : l'instant où la grille se lève, daté par
+	// le premier mouvement des pistes.
+	//
+	// CE QU'IL FERME. Le T0 servi jusqu'ici est estimé des `first_joined_time` de l'API ; sur
+	// 10-15 % des matchs ces horodatages collent au `start_time` et le T0 tombe à ~0, ce qui
+	// fait démarrer le rejeu sur des joueurs statufiés pendant tout le décompte. Ce champ le
+	// mesure au lieu de l'estimer, et la mesure est plus stable que l'étalon (écart-type
+	// 9 752 ms contre 12 764 ms sur les 49 matchs au T0-API sain).
+	//
+	// D'OÙ IL VIENT : `originMs` plus la frame du premier mouvement détecté, toutes pistes
+	// confondues. Aucune base, aucune horloge murale, aucune constante de jeu en dur — le
+	// détecteur mesure par match. Seuils, refus et mesures : t0_film.go.
+	//
+	// POINTEUR, PAS int64 : même PIÈGE omitempty que sur `OriginMs` ci-dessus. Un coup d'envoi
+	// exactement à zéro (film dont la frame 0 est le coup d'envoi ET dont l'origine est nulle)
+	// serait omis et relu comme « pas de mesure ». ABSENT veut dire, et seulement : le
+	// détecteur a REFUSÉ — `coverage.t0Film.reason` dit lequel des trois refus, et le client
+	// retombe sur le T0 de l'API.
+	T0FilmMs *int64 `json:"t0FilmMs,omitempty"`
 	// Geometry est le fond de carte : props Forge orientés (repères contextuels, pas les
 	// sols). Absent si la géométrie n'a pas été fournie au build.
 	Geometry []MapObject `json:"geometry,omitempty"`

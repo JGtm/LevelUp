@@ -1,3 +1,53 @@
+## [2026-09-02] T0 film — LOT A : detecteur de production, champ d'artefact, schema 36 — Complete
+
+Portage de la mesure du matin (research test `a5a468a16`) en code servi, sous le plan
+`.ai/V7.5/PLAN_T0_FILM_2026-09-02.md` (decisions D1-D6 fermes). Perimetre : A1-A8, Go +
+regenerations. Aucun ecrit en base, aucun lot B/C/D entame.
+
+**Decision technique principale** : le detecteur (`internal/analysis/replay/t0_film.go`, 324 L)
+prend une entree NEUTRE (`T0FilmTrack{XUID, Points}`) et non `[]Track`. Motif : la CLI du lot C
+decodera l'artefact au minimum (240 Mo de corpus, pas de desserialisation des 40 champs) et
+elle doit appeler le MEME detecteur ; `t0FilmTracksOf([]Track)` fait le pont cote build. La
+FENETRE GLISSANTE de cumul (`t0FilmWindow`) est un type a elle seule, expressement pour que le
+research test l'EMPRUNTE au lieu d'en garder une copie — regle du depot des <= 2 copies, prise
+au sens strict : une mesure qui valide une copie ne valide pas le code servi.
+
+**Ce que le lot pose** :
+- Champ `ReplayDocument.T0FilmMs *int64` (`t0FilmMs,omitempty`) — POINTEUR, meme piege
+  omitempty qu'`OriginMs` : un coup d'envoi mesure a zero reste une mesure.
+- `Coverage.T0Film` (`T0FilmCoverage`) publie le verdict MEME EN CAS DE REFUS : les trois refus
+  D6 (aucun mouvement / rafale < 2 partants / plus de 120 s apres la frame 0) plus un quatrieme
+  ajoute (`noFrameInterval`) rendent tous le meme champ absent, seule la raison les distingue.
+  Refus = `slog.Warn` avec `match_id` et raison, jamais un zero ambigu.
+- `SchemaVersion` 35 -> 36 (collision inter-worktrees consignee, renumeroter au merge) ;
+  `wantReplayDocumentFields` 48 -> 49 ; `EXPECTED_REPLAY_SCHEMA_VERSION` 35 -> 36 ; contrat
+  OpenAPI et `generated.ts` regeneres (purement additifs : +31 L et +15 L).
+
+**Resultats observes** :
+- ISO-VERDICT du research test PROUVE apres refonte (il appelle desormais la production) :
+  marge mediane 22 700 ms, ecart-type 299 ms, CV 0,013 sur n=83 ; rafale mediane 6 ; accord
+  1er->3e 100 ms ; 49 sains / 11 degeneres / 41 aberrants ; dispersion 9 752 ms (film) contre
+  12 764 ms (API) ; degeneres 10/11 plausibles, `1b2d9e08` a 31 862 ms. Chiffre pour chiffre.
+- CONTROLE CROISE non prevu au plan : le chemin de PRODUCTION (build complet, pistes decimees
+  a 100 ms) et le chemin de RECHERCHE (artefact relu, pistes brutes) donnent le MEME instant
+  sur 000d5950 — 26 304 ms, marge 22 700 ms, 98/99 pistes en mouvement. La decimation ne
+  deplace pas le premier mouvement.
+- Gate A vert, codes de sortie releves : tests replay + contracttest EXIT=0,
+  `TestOpenAPIYAMLIsUpToDate` vert apres regeneration, `go vet` EXIT=0, grep de la fenetre
+  glissante = un seul exemplaire. Un premier passage ROUGE
+  (`TestStructureIsOptionalInDocument`) a exige la raison ECRITE du bump de schema : entree
+  v36 redigee, aucun garde-rail affaibli.
+
+**Decouvertes consignees, NON traitees** (section du plan) : `FlagReturnZone` (schema 35) est
+absent de `replaySchemas` du contract test — le trou que la revue P2-3 avait bouche pour
+`Pickup` s'est rouvert au champ suivant ; et 2 issues `unparam` du ratchet golangci sur des
+fichiers de `feat/v75` hors de ce lot (filmdec, killcollector).
+
+**Prochaine etape** : lot B (lecteur web — `replayWindow.ts` prefere `doc.t0FilmMs`, preambule
+`leadInFrame` de 1 s en confort de LECTURE seulement, D3/D5). Rien n'est encore ecrit en base :
+la reparation de l'historique est le lot C, et la recuisson d'artefacts reste soumise a
+l'accord explicite du user (D4, regle post-sinistre du 31/08).
+
 ## [2026-09-02] T0 par premier mouvement (research) : le countdown est une constante du film — Complete (mesure), portage a suivre
 
 Retour user : le rejeu du match `1b2d9e08` demarre sur ~20 s de statues. Cause tracee :

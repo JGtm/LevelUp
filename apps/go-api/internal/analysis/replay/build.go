@@ -577,6 +577,16 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	// « sur M vies » se lirait comme une exhaustivite.
 	doc.Coverage.Equipment = equipmentCoverage(doc.EquipmentEpisodes, doc.Tracks)
 	doc.Coverage.Equipment.KillsRead = killsRead
+	// LE COUP D'ENVOI, date par le premier mouvement des pistes (cf. t0_film.go). Il se pose
+	// APRES la couverture et non a cote d'`OriginMs` (l. 528) pour deux raisons : son verdict
+	// vit dans `doc.Coverage`, qui n'existe qu'ici, et il se calcule sur les pistes PUBLIEES,
+	// posees juste au-dessus. SANS ORIGINE, PAS DE COUP D'ENVOI : le resultat est un instant
+	// sur l'horloge du fil, et sans origine cette horloge n'est pas etablie — publier une
+	// mesure calee sur zero la rendrait fausse de 3,6 s a 50,8 s selon le match.
+	if doc.OriginMs != nil {
+		doc.T0FilmMs, doc.Coverage.T0Film = DetectT0Film(
+			t0FilmTracksOf(doc.Tracks), interval, *doc.OriginMs, matchID)
+	}
 	// Les TRACTIONS de grappin : fenetre mesuree par vie + ancre en coordonnees monde
 	// (cf. grapple_lines.go). L'ancre exige les bornes de la carte : sans MapQuant,
 	// aucune traction (regle map_bounds.go — pas de bornes, pas de coordonnee monde).

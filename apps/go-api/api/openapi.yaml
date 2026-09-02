@@ -10784,6 +10784,8 @@ components:
           $ref: '#/components/schemas/LayerCoverage'
         skullCarries:
           $ref: '#/components/schemas/SkullCarriesCoverage'
+        t0Film:
+          $ref: '#/components/schemas/T0FilmCoverage'
         verdict:
           additionalProperties:
             type: string
@@ -21017,6 +21019,9 @@ components:
             - "null"
         structureBounds:
           $ref: '#/components/schemas/Bounds'
+        t0FilmMs:
+          format: int64
+          type: integer
         titleSlug:
           type: string
         tracks:
@@ -24547,6 +24552,32 @@ components:
       required:
         - label
         - kills
+      type: object
+    T0FilmCoverage:
+      additionalProperties: false
+      properties:
+        burst:
+          format: int64
+          type: integer
+        detected:
+          type: boolean
+        marginMs:
+          format: int64
+          type: integer
+        moving:
+          format: int64
+          type: integer
+        reason:
+          type: string
+        tracks:
+          format: int64
+          type: integer
+      required:
+        - detected
+        - tracks
+        - moving
+        - burst
+        - marginMs
       type: object
     TableStatus:
       additionalProperties: false

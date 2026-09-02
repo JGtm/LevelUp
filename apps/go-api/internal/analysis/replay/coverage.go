@@ -255,6 +255,17 @@ type Coverage struct {
 	// FAUX N'EST PAS « PAS DE DONNÉE » : les calques sont publiés, mais leur axe de temps n'est
 	// pas fiable. Le rendu les masque plutôt que de les poser au mauvais instant.
 	OriginResolved bool `json:"originResolved"`
+	// T0Film est le verdict du détecteur de COUP D'ENVOI (schéma 36, cf. t0_film.go) : détecté
+	// ou refusé et pourquoi, avec les deux chiffres qui fondent le verdict — la rafale de
+	// départ et la marge depuis la frame 0.
+	//
+	// ELLE EST PUBLIÉE MÊME QUAND LE DÉTECTEUR REFUSE, pour la raison exacte de `placements`
+	// et `groundWeapons` : un film sans mouvement, un film où un seul joueur part et un film
+	// qui démarre trop tard rendent tous trois un `t0FilmMs` absent — seule la raison les
+	// distingue. Son ABSENCE dit encore autre chose : l'origine de la frame 0 n'étant pas
+	// établie, le détecteur n'a même pas été lancé (son résultat vivrait sur une horloge
+	// inconnue).
+	T0Film *T0FilmCoverage `json:"t0Film,omitempty"`
 	// Verdict dit, calque par calque, si le résultat est publiable. Repris du chantier
 	// voisin, qui sait annoncer « 371 couples sur 371, verdict nominal ».
 	Verdict map[string]string `json:"verdict,omitempty"`

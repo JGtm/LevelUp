@@ -5420,6 +5420,7 @@ export interface components {
             score?: components["schemas"]["ScoreCoverage"];
             shots: components["schemas"]["LayerCoverage"];
             skullCarries?: components["schemas"]["SkullCarriesCoverage"];
+            t0Film?: components["schemas"]["T0FilmCoverage"];
             verdict?: {
                 [key: string]: string;
             };
@@ -9733,6 +9734,8 @@ export interface components {
             skullCarries?: components["schemas"]["SkullCarry"][] | null;
             structure?: components["schemas"]["Surface"][] | null;
             structureBounds?: components["schemas"]["Bounds"];
+            /** Format: int64 */
+            t0FilmMs?: number;
             titleSlug: string;
             tracks: components["schemas"]["Track"][] | null;
             vipCrown?: components["schemas"]["VipPeriod"][] | null;
@@ -11140,6 +11143,18 @@ export interface components {
             kills: number;
             label: string;
             role?: string;
+        };
+        T0FilmCoverage: {
+            /** Format: int64 */
+            burst: number;
+            detected: boolean;
+            /** Format: int64 */
+            marginMs: number;
+            /** Format: int64 */
+            moving: number;
+            reason?: string;
+            /** Format: int64 */
+            tracks: number;
         };
         TableStatus: {
             exists: boolean;
