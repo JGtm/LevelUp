@@ -219,6 +219,13 @@ détail dans le thought_log. Prochain geste si tout est vide : lancer lot A et l
   test et la clé i18n `markFriend` (règle n°7). `playerMarks.ts` (types/marques) reste,
   massivement utilisé.
 
+- (branche, 02/09) CI feat/v75 ROUGE au job « CI » AVANT nos lots (runs 33617021230 puis
+  33621731531) : `TestNoRewrittenSlotBand` (`internal/archlint`) échoue sur
+  `deto_attribution_helpers_test.go` commité par le chantier deto/explosifs
+  (`922d70f2f`). HORS PÉRIMÈTRE de ce plan — à traiter par la session deto. Tant que ce
+  rouge tient, le critère « CI verte au niveau JOB » de la clôture ne peut pas être
+  constaté pour nos lots (leçon VF-16 : ne pas laisser un rouge public s'installer).
+
 ## État d'avancement (pilote, 2026-09-02)
 
 - Lot A : TERMINÉ et vérifié sur pièces (diff relu, tests rejoués indépendamment :
