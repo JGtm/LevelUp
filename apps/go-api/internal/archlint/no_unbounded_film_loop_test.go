@@ -69,6 +69,11 @@ var filmBuildAllowedCallers = map[string]string{
 		"ne boucle sur rien",
 	"internal/replaychild/replaychild.go": "2026-08-26 — ENFANT BORNE du post-sync : un film " +
 		"par processus, sentinelle armee, aucune base ouverte ; le PARENT range les octets",
+	"cmd/replay-equiv/child.go": "2026-09-02 — harnais d'equivalence de la cuisson " +
+		"(PLAN_CUISSON_PERF D4b) : un film par processus, sentinelle armee, verrou solo en " +
+		"attente bornee, aucune base ouverte. Le PARENT (parent.go) lit le corpus et ne decode " +
+		"rien — il n'enchaine jamais deux films dans un processus, c'est le motif des quatre " +
+		"sinistres RAM que ce ratchet garde",
 }
 
 func TestNoUnboundedFilmLoop(t *testing.T) {

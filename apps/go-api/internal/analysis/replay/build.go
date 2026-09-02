@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"math"
 	"sort"
+	"time"
 
 	"levelup/go-api/internal/analysis/filmdec"
 	"levelup/go-api/internal/analysis/objectiveevents"
@@ -204,6 +205,15 @@ type Options struct {
 	// Cliffhanger — sur toutes les autres cartes. Les porter dans un second champ aurait laissé
 	// armer l'une sans l'autre : un seul champ, donc, et l'oubli devient impossible.
 	MapQuant *filmdec.MapQuantEntry
+	// Observe recoit chaque etape de BuildFromFilm et sa sortie (cf. observe.go). Nil = rien —
+	// mais EN PRODUCTION IL N'EST JAMAIS NIL : `replaybuild.BuildBytes` passe toujours sa
+	// methode `b.observe`, qui teste elle-meme si un observateur est branche (cf. observe.go).
+	Observe Observer
+	// clock date la fin du balayage precedent, pour la duree Debug par balayage (cf. observe.go).
+	// NON EXPORTE ET SANS REGLAGE : c'est BuildFromFilm qui l'arme, au moment ou le decodage
+	// commence — un appelant qui le fournirait daterait le premier balayage depuis sa propre
+	// preparation. Nil (BuildFromPositions, tests) = aucune mesure, aucun cout.
+	clock *stepClock
 }
 
 func (o Options) frameIntervalMS() int {
@@ -261,10 +271,16 @@ func BuildFromFilm(matchID, titleSlug, filmDir string, opt Options) (ReplayDocum
 	// directions est donc toujours active pour l'artefact. Elle n'altère aucune position
 	// (lecture seule après le vec3 d'i0).
 	scan.CaptureDirs = true
+	// L'HORLOGE DES BALAYAGES PART ICI, et pas a l'entree de la fonction : ce qui precede est
+	// l'attente du verrou process et la lecture du catalogue, qui ne sont le temps d'aucun
+	// balayage. A partir d'ici, chaque `opt.observe` ferme le balayage qu'il annonce
+	// (cf. observe.go).
+	opt.clock = &stepClock{last: time.Now()}
 	positions, err := filmdec.ScanFilmBipedPositions(filmDir, scan)
 	if err != nil {
 		return ReplayDocument{}, err
 	}
+	opt.observe("positions", positions)
 	// Les tirs sont décodés du MÊME film et sur la MÊME horloge que les positions ; leur
 	// absence n'est pas fatale (un film sans event de tir reste un rejeu valide).
 	shots, err := filmdec.ScanFilmFireEvents(filmDir)
@@ -272,6 +288,7 @@ func BuildFromFilm(matchID, titleSlug, filmDir string, opt Options) (ReplayDocum
 		slog.Warn("events de tir illisibles — rejeu sans tirs", "err", err, "filmDir", filmDir)
 		shots = nil
 	}
+	opt.observe("fire", shots)
 	// Armes portées : lues dans les keyframes du MÊME film, sur la MÊME horloge. Leur
 	// absence n'est pas fatale (un rejeu sans armes reste un rejeu valide).
 	loadouts, err := filmdec.ScanFilmKeyframeLoadouts(filmDir, loadoutFamilies())
@@ -280,6 +297,7 @@ func BuildFromFilm(matchID, titleSlug, filmDir string, opt Options) (ReplayDocum
 		loadouts = nil
 	}
 	opt.Loadouts = loadouts
+	opt.observe("loadouts", loadouts)
 	// PRISES ET LACHERS D'ARME : le composant d'identite d'arme n'entre au masque du flux
 	// delta que lorsqu'un emplacement CHANGE (cf. filmdec/held_weapon_changes.go). Le
 	// predicat de spawn vient des loadouts qu'on vient de lire : sans lui, la PREMIERE
@@ -296,6 +314,8 @@ func BuildFromFilm(matchID, titleSlug, filmDir string, opt Options) (ReplayDocum
 			"emissions", wStats.Emissions, "repetitions", wStats.Repeats)
 	}
 	opt.WeaponChanges = weaponChanges
+	opt.observe("heldWeaponChanges", weaponChanges)
+	opt.observe("heldWeaponChanges.stats", wStats)
 	// RAMASSAGES NATIFS : l'evenement `biped_pickup` de la liste d'evenements, en tete des
 	// paquets delta. AUTRE SOURCE que le canal ci-dessus (qui lit un composant du bipede
 	// PENDANT la traversee d'un record) : celui-ci lit des bits que personne d'autre ne lit,
@@ -312,6 +332,8 @@ func BuildFromFilm(matchID, titleSlug, filmDir string, opt Options) (ReplayDocum
 			"refusesHorsBande", pStats.RefusedOffBand, "refLargeInattendue", pStats.UnexpectedWideRef)
 	}
 	opt.Pickups, opt.PickupStats = pickups, pStats
+	opt.observe("pickups", pickups)
+	opt.observe("pickups.stats", pStats)
 	// Inventaire complet : MÊMES images-clés, MÊME horloge, même record de biped que les armes
 	// portées. Absence non fatale — un rejeu sans grenades reste un rejeu valide.
 	inventory, invStats, err := ScanFilmKeyframeInventory(filmDir, loadoutFamilies(), 0)
@@ -325,6 +347,8 @@ func BuildFromFilm(matchID, titleSlug, filmDir string, opt Options) (ReplayDocum
 			"grenadesParAncre", invStats.GrenadesByAnchor, "grenadesParPosition", invStats.GrenadesByPosition)
 	}
 	opt.Inventory = inventory
+	opt.observe("inventory", inventory)
+	opt.observe("inventory.stats", invStats)
 	// Inventaire suivi dans les paquets DELTA : les compteurs de grenades (i22) et le jeu
 	// selectionne (i47), transmis AU CHANGEMENT donc places la ou l'etat bouge. Absence non
 	// fatale — l'axe des grenades retombe sur les seules images-cles.
@@ -343,6 +367,8 @@ func BuildFromFilm(matchID, titleSlug, filmDir string, opt Options) (ReplayDocum
 	}
 	opt.InventoryDeltas = invDeltas
 	opt.InventoryDeltaAmmoRefused = dStats.AmmoRefused
+	opt.observe("inventoryDeltas", invDeltas)
+	opt.observe("inventoryDeltas.stats", dStats)
 	// Identite de la capacite portee : lue dans les paquets DELTA, sur la MEME horloge. Rare
 	// (une transmission par vie environ) mais elle porte le rang COMPLET, la ou les images-cles
 	// ne voient que 16..23. Absence non fatale — le rejeu retombe sur cette seule fenetre.
@@ -356,6 +382,8 @@ func BuildFromFilm(matchID, titleSlug, filmDir string, opt Options) (ReplayDocum
 			"lues", aStats.Read, "illisibles", aStats.Unread, "sansIdentite", aStats.Gated)
 	}
 	opt.AbilityRanks = abilityRanks
+	opt.observe("abilityRanks", abilityRanks)
+	opt.observe("abilityRanks.stats", aStats)
 	// RAMASSAGES ET CONSOMMATIONS D'EQUIPEMENT : meme composant qu'au-dessus (i48), autre
 	// question — non plus « que porte ce joueur » mais « que vient-il de ramasser ou d'user ».
 	// Le temoin de NAISSANCE vient des positions BRUTES lues plus haut : sans lui, une
@@ -373,6 +401,8 @@ func BuildFromFilm(matchID, titleSlug, filmDir string, opt Options) (ReplayDocum
 			"reapparitions", eStats.Spawned, "manqueesEstimees", eStats.MissedEstimate)
 	}
 	opt.EquipmentChanges, opt.EquipmentChangeStats = equipChanges, eStats
+	opt.observe("equipmentChanges", equipChanges)
+	opt.observe("equipmentChanges.stats", eStats)
 	// Etat du camouflage : la voie i28 queue[1], lue dans les paquets DELTA, sur la MEME
 	// horloge (cf. filmdec/camo_state.go). Absence non fatale — le rejeu sort sans episodes
 	// de camouflage, jamais avec des episodes devines.
@@ -386,6 +416,8 @@ func BuildFromFilm(matchID, titleSlug, filmDir string, opt Options) (ReplayDocum
 			"lues", cStats.Read, "illisibles", cStats.Unread, "sansVoie", cStats.NoChannel)
 	}
 	opt.CamoStates = camoStates
+	opt.observe("camoStates", camoStates)
+	opt.observe("camoStates.stats", cStats)
 	// Evenements de grappin : le corps tag==3 d'i59, lu dans les paquets DELTA, sur la
 	// MEME horloge (cf. filmdec/grapple_state.go). Absence non fatale — le rejeu sort sans
 	// tractions de grappin, jamais avec des tractions devinees.
@@ -400,6 +432,8 @@ func BuildFromFilm(matchID, titleSlug, filmDir string, opt Options) (ReplayDocum
 			"tag3", gStats.Tag3, "corpsCasses", gStats.BodyBroken)
 	}
 	opt.GrappleReads = grappleReads
+	opt.observe("grappleReads", grappleReads)
+	opt.observe("grappleReads.stats", gStats)
 	// POSES d'equipement : records de CREATION de l'archetype 37, sur la MEME horloge
 	// (cf. equipment_placements.go — decodage, journal et refus y vivent ensemble).
 	// LA LUNETTE (schema 24) : les bascules vivent dans la liste d'evenements en tete de
@@ -408,27 +442,35 @@ func BuildFromFilm(matchID, titleSlug, filmDir string, opt Options) (ReplayDocum
 	// prolonger une entree dont la sortie n'a pas ete lue (cf. filmdec.ZoomStateAt).
 	// Reconstruction a plusieurs causes de fermeture (cf. zoom_state.go) ; les vies viennent
 	// des positions deja balayees, aucune lecture supplementaire.
-	opt.Scoped = buildScopedLookup(
-		filmdec.ScanFilmZoomEvents(filmDir),
-		buildLifeSpans(indexBySlot(positions)),
-		zoomHoldUS,
-	)
+	zoomEvents := filmdec.ScanFilmZoomEvents(filmDir)
+	// L'OBSERVATEUR PASSE APRES LA RECONSTRUCTION, ET C'EST VOULU : `buildScopedLookup` est un
+	// O(n) sur les evenements qu'on vient de balayer, il appartient a l'etape `zoomEvents`.
+	// Observe avant lui, l'horloge de observe() aurait impute son cout a l'etape SUIVANTE
+	// (`placements`), qui ne fait pourtant rien de la lunette.
+	opt.Scoped = buildScopedLookup(zoomEvents, buildLifeSpans(indexBySlot(positions)), zoomHoldUS)
+	opt.observe("zoomEvents", zoomEvents)
 	opt.Placements, opt.PlacementStats = decodeFilmPlacements(filmDir, &worldRange)
+	opt.observe("placements", opt.Placements)
+	opt.observe("placements.stats", opt.PlacementStats)
 	// SOCLES : archetypes 42 (armes) et 37 (power-ups), sur la MEME horloge, AUX LARGEURS MPP que
 	// la calibration des POSES vient de mesurer sur ce film (cf. build_ground_weapons.go).
 	opt.Pads = decodeFilmPadScans(filmDir, &worldRange, opt.PlacementStats.Calibration.Widths)
+	opt.observe("pads", opt.Pads)
 	// MARQUEUR DE PORTAGE : le controle independant du calque du drapeau, lu aux images-cles du
 	// MEME film — sur les seuls films de CTF (cf. build_objectives_live.go).
 	opt.Flag.Marks = decodeFilmCarrierMarks(filmDir, opt.Flag)
+	opt.observe("carrierMarks", opt.Flag.Marks)
 	// PROPRIETES RESEAU ti=13 : l'etat des zones (jauge de capture, proprietaire), lu dans les
 	// paquets delta du MEME film — sur les seuls matchs dont l'appelant a fourni le catalogue de
 	// zones (cf. build_zones.go).
 	opt.Zone.Reads = decodeFilmZoneReads(filmDir, matchID, len(opt.Zone.Zones))
 	opt.Zone.Scanned = len(opt.Zone.Zones) > 0
+	opt.observe("zoneReads", opt.Zone.Reads)
 	// ANNEAU D'ARMEMENT ti=12 : la jauge d'armement de la bombe, lue dans les paquets delta du
 	// MEME film — sur les seuls matchs que l'appelant reconnait Assaut armable (cf.
 	// bomb_armings.go ; jamais One Bomb, ou le canal ne tient pas).
 	opt.Bomb.Reads = decodeFilmBombReads(filmDir, matchID, opt.Bomb)
+	opt.observe("bombReads", opt.Bomb.Reads)
 	// Lancers de grenade : décodés des paquets delta du MÊME film, sur la MÊME horloge.
 	// Absence non fatale, comme les tirs et les armes portées.
 	grenades, err := filmdec.ScanFilmGrenadeThrows(filmDir)
@@ -437,6 +479,7 @@ func BuildFromFilm(matchID, titleSlug, filmDir string, opt Options) (ReplayDocum
 		grenades = nil
 	}
 	opt.Grenades = grenades
+	opt.observe("grenades", grenades)
 	// Trajectoires de projectile : memes chunks, meme horloge. Absence non fatale.
 	proj, err := filmdec.ScanFilmProjectiles(filmDir, &worldRange)
 	if err != nil {
@@ -444,6 +487,7 @@ func BuildFromFilm(matchID, titleSlug, filmDir string, opt Options) (ReplayDocum
 		proj = nil
 	}
 	opt.Projectiles = proj
+	opt.observe("projectiles", proj)
 	// Le fil des morts NOMME les vies. Sans lui, le pont est vide et NI les tirs NI les lancers
 	// ne sont publiés : ce n'est pas une dégradation cosmétique, d'où un warn explicite.
 	deaths, err := ScanFilmDeaths(filmDir)
@@ -453,6 +497,7 @@ func BuildFromFilm(matchID, titleSlug, filmDir string, opt Options) (ReplayDocum
 		deaths = nil
 	}
 	opt.Deaths = deaths
+	opt.observe("deaths", deaths)
 	// L'index de joueur SE LIT dans le film (cf. player_index.go) : le roster vient du fil des
 	// morts, et les 5 bits qui précèdent chaque xuid donnent son index. Sans cette table, aucun
 	// tir ni lancer n'est publié — comme sans le fil des morts.
@@ -469,6 +514,7 @@ func BuildFromFilm(matchID, titleSlug, filmDir string, opt Options) (ReplayDocum
 		}
 		opt.PlayerIndices = table
 	}
+	opt.observe("playerIndices", opt.PlayerIndices)
 	// L'origine d'horloge du film : deux en-têtes de paquet, aucune estimation (cf.
 	// origin.go). Son absence n'est pas fatale — le document sort sans origine, et le
 	// client retombe sur l'appariement.
@@ -478,6 +524,7 @@ func BuildFromFilm(matchID, titleSlug, filmDir string, opt Options) (ReplayDocum
 		clockUS = 0
 	}
 	opt.FilmClockOriginUS = clockUS
+	opt.observe("clockOrigin", clockUS)
 	return BuildFromPositions(matchID, titleSlug, positions, shots, opt), nil
 }
 

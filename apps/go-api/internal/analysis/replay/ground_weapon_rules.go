@@ -198,7 +198,17 @@ func gwPadsSortClusters(out []gwPadCluster, assign []int) ([]gwPadCluster, []int
 	return sorted, assign
 }
 
-// gwPadsLess est l'ordre TOTAL des apparitions : instant, puis nature, famille et position.
+// gwPadsLess est l'ordre TOTAL des apparitions : instant, puis nature, famille et position,
+// PUIS la classe et la vie delta.
+//
+// POURQUOI LES DEUX DERNIERS CRITERES (correction du 2026-09-02, item 0.4bis etendu de
+// PLAN_CUISSON_PERF). Les six premiers champs ne couvrent pas la structure : `Class` et
+// `HasDelta` restaient hors de la comparaison, si bien que deux apparitions nees au meme
+// instant au meme endroit sous la meme famille — le cas d'un socle qui reapparait sur un film
+// BTB a 26 joueurs — n'etaient pas separees alors qu'elles ne portent PAS la meme chose. Meme
+// patron que `lessTrack` (filmdec/projectiles.go) : le departage n'utilise QUE des champs de
+// l'apparition, jamais une adresse ni un rang d'iteration de map. Deux apparitions que ce
+// comparateur ne separe pas sont identiques champ pour champ.
 func gwPadsLess(a, b gwPadApparition) bool {
 	switch {
 	case a.TUS != b.TUS:
@@ -211,8 +221,12 @@ func gwPadsLess(a, b gwPadApparition) bool {
 		return a.X < b.X
 	case a.Y != b.Y:
 		return a.Y < b.Y
+	case a.Z != b.Z:
+		return a.Z < b.Z
+	case a.Class != b.Class:
+		return a.Class < b.Class
 	}
-	return a.Z < b.Z
+	return !a.HasDelta && b.HasDelta
 }
 
 // gwPadsClusterLess est l'ordre TOTAL des grappes rendues.
@@ -345,8 +359,15 @@ func gwPadsStdDev(v []float64) float64 {
 // jetait. Le calque des armes au sol (schéma 27) le publie ; le nommer ici plutôt que par un
 // second appariement garantit que le lâcheur nommé est EXACTEMENT celui qui a fait la classe.
 func gwPadsClass(lives map[uint32][]equipLife, a gwPadApparition) (string, int) {
-	for slot, vs := range lives {
-		for _, v := range vs {
+	// LE PARCOURS EST TRIE, ET C'EST UNE CORRECTION (2026-09-02, item 0.4bis de
+	// PLAN_CUISSON_PERF). Cette boucle rend le PREMIER slot qui satisfait la fenetre et la
+	// distance ; en iterant la map directement, « le premier » dependait de l'ordre d'iteration
+	// — aleatoire a chaque execution. Mesure sur `000d5950` : quatre armes au sol publiaient un
+	// `dropper` different d'une cuisson a l'autre (553 ou 556, 599 ou 602), pour le meme film et
+	// le meme code. Le tri ne change que le departage des EX AEQUO (plusieurs joueurs dans la
+	// fenetre ET dans le rayon) : c'est desormais le plus petit slot, au lieu du hasard.
+	for _, slot := range sortedZoneSlots(lives) {
+		for _, v := range lives[slot] {
 			if equipTimeGap(a.TUS, v.to) > originDropWindowUS {
 				continue
 			}

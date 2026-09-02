@@ -190,7 +190,24 @@ func lessSample(a, b ProjectileSample) bool {
 	return a.Z < b.Z
 }
 
-// lessTrack : ordre total sur les vies (naissance, puis slot, puis génération).
+// lessTrack : ordre total sur les vies (naissance, slot, génération, PUIS la piste elle-même).
+//
+// POURQUOI LE DÉPARTAGE PAR LA PISTE (correction du 2026-09-02, item 0.4bis de
+// PLAN_CUISSON_PERF). Le triplet (naissance, slot, génération) N'EST PAS total, et c'était un
+// non-déterminisme mesurable : `splitLives` coupe une vie sur un trou de 250 ms MAIS AUSSI sur
+// un record `at rest`, si bien que plusieurs segments d'un même couple (slot, gen) peuvent
+// commencer au MÊME horodatage — ce qui arrive sur les objets du monde immobiles. Mesuré sur
+// `000d5950` : 3 pistes sur 549 partagent un triplet dans la bande `ti=42` (armes au sol), 3
+// sur 477 dans la bande `ti=37` (équipement). Comme `out` est bâti en itérant la MAP `lives` et
+// que `sort.Slice` n'est pas stable, l'ordre des ex æquo changeait à CHAQUE exécution — et cet
+// ordre n'est pas cosmétique : `replay.projectileBirths` retrie ces naissances et `birthNear`
+// prend celle d'un INDICE donné (cf. le commentaire de ScanFilmWorldObjectsForBand), donc deux
+// cuissons du même film pouvaient publier deux positions de naissance différentes.
+//
+// Le départage n'utilise QUE des données de la piste (longueur, puis les échantillons dans
+// l'ordre) : jamais une adresse mémoire ni le rang d'itération de la map, qui rendraient le
+// résultat non reproductible d'un processus à l'autre. Deux pistes que ce comparateur ne
+// sépare pas sont IDENTIQUES champ pour champ — les échanger ne change donc pas la sortie.
 func lessTrack(a, b ProjectileTrack) bool {
 	if a.Pts[0].TimestampUS != b.Pts[0].TimestampUS {
 		return a.Pts[0].TimestampUS < b.Pts[0].TimestampUS
@@ -198,7 +215,47 @@ func lessTrack(a, b ProjectileTrack) bool {
 	if a.Slot != b.Slot {
 		return a.Slot < b.Slot
 	}
-	return a.Gen < b.Gen
+	if a.Gen != b.Gen {
+		return a.Gen < b.Gen
+	}
+	if len(a.Pts) != len(b.Pts) {
+		return len(a.Pts) < len(b.Pts)
+	}
+	for i := range a.Pts {
+		if c := compareSample(a.Pts[i], b.Pts[i]); c != 0 {
+			return c < 0
+		}
+	}
+	return false
+}
+
+// compareSample ordonne deux échantillons sur TOUS leurs champs — c'est ce qui rend le
+// départage de lessTrack indépendant de l'ordre d'arrivée.
+func compareSample(a, b ProjectileSample) int {
+	switch {
+	case a.TimestampUS != b.TimestampUS:
+		return signe(a.TimestampUS < b.TimestampUS)
+	case a.X != b.X:
+		return signe(a.X < b.X)
+	case a.Y != b.Y:
+		return signe(a.Y < b.Y)
+	case a.Z != b.Z:
+		return signe(a.Z < b.Z)
+	case a.AtRest != b.AtRest:
+		return signe(!a.AtRest)
+	case a.Chunk != b.Chunk:
+		return signe(a.Chunk < b.Chunk)
+	default:
+		return 0
+	}
+}
+
+// signe rend -1 si la comparaison est vraie, +1 sinon.
+func signe(inferieur bool) int {
+	if inferieur {
+		return -1
+	}
+	return 1
 }
 
 // projectileGapUS est le trou temporel au-delà duquel deux échantillons d'un même couple

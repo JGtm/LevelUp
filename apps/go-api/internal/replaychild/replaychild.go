@@ -35,6 +35,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"levelup/go-api/internal/filmproc"
 	"levelup/go-api/internal/port"
@@ -144,15 +145,36 @@ func valueOf(args []string, flag string) string {
 	return ""
 }
 
+// Result : ce que la cuisson d'UN film rend au parent — les octets ET LA MESURE.
+//
+// POURQUOI LA MESURE VOYAGE AVEC LES OCTETS (PLAN_CUISSON_PERF §3 D5). Le lanceur mesure deja
+// les deux (`filmproc.Result.Dur` et `.Peak`, ce dernier par le protocole du tube), et `Spawn`
+// les jetait : le log de succes du post-sync ne pouvait donc rien dire du temps ni de la memoire
+// de la cuisson qu'il venait de payer. Les rendre ici est le SEUL chemin par lequel ces deux
+// chiffres atteignent l'orchestrateur — un `slog` pose dans l'enfant finirait dans le tube du
+// journal, pas dans la ligne de bilan du cycle.
+type Result struct {
+	// Blob est le document SERIALISE, tel que l'enfant l'a depose.
+	Blob []byte
+	// Dur est la duree de bout en bout de l'ENFANT (lancement compris), pas celle du seul
+	// decodage : c'est ce que le cycle a reellement paye pour ce film.
+	Dur time.Duration
+	// Peak est le pic memoire de l'enfant en octets, tel qu'il s'est mesure lui-meme. ZERO
+	// QUAND L'ENFANT EST MORT AVANT DE POUVOIR SE MESURER — une valeur nulle ne veut donc pas
+	// dire « pas de memoire », elle veut dire « pas de mesure ».
+	Peak uint64
+}
+
 // Spawn est le cote PARENT : il serialise la requete, lance l'enfant borne, et rend les OCTETS
-// de l'artefact. Il n'ecrit RIEN a la place canonique — c'est l'appelant qui range.
+// de l'artefact AVEC leur mesure. Il n'ecrit RIEN a la place canonique — c'est l'appelant qui
+// range.
 //
 // TOUT CE QU'IL CREE, IL LE SUPPRIME : la requete et le depot sont des fichiers temporaires du
 // parent. Un enfant tue en vol ne laisse donc rien derriere lui.
-func Spawn(ctx context.Context, req Request) ([]byte, error) {
+func Spawn(ctx context.Context, req Request) (Result, error) {
 	dir, err := os.MkdirTemp("", "levelup-filmchild-")
 	if err != nil {
-		return nil, fmt.Errorf("repertoire temporaire: %w", err)
+		return Result{}, fmt.Errorf("repertoire temporaire: %w", err)
 	}
 	defer func() { _ = os.RemoveAll(dir) }()
 
@@ -160,33 +182,33 @@ func Spawn(ctx context.Context, req Request) ([]byte, error) {
 	reqPath := filepath.Join(dir, "request.json")
 	blob, err := json.Marshal(req)
 	if err != nil {
-		return nil, fmt.Errorf("serialisation de la requete: %w", err)
+		return Result{}, fmt.Errorf("serialisation de la requete: %w", err)
 	}
 	if err := os.WriteFile(reqPath, blob, 0o600); err != nil {
-		return nil, fmt.Errorf("ecriture de la requete: %w", err)
+		return Result{}, fmt.Errorf("ecriture de la requete: %w", err)
 	}
 
 	runner, err := filmproc.NewRunner(req.RepoRoot, os.Stdout)
 	if err != nil {
-		return nil, err
+		return Result{}, err
 	}
 	res := runner.Run(ctx, []string{Flag, reqPath})
 	switch res.Issue {
 	case filmproc.IssueOK:
 	case filmproc.IssueSkipped:
-		return nil, fmt.Errorf("%w (candidats: %v)", replaybuild.ErrMapNotInCatalog, req.MapNames)
+		return Result{}, fmt.Errorf("%w (candidats: %v)", replaybuild.ErrMapNotInCatalog, req.MapNames)
 	case filmproc.IssueMemory:
-		return nil, fmt.Errorf("cuisson abandonnee : plafond memoire depasse (pic %d octets)", res.Peak)
+		return Result{}, fmt.Errorf("cuisson abandonnee : plafond memoire depasse (pic %d octets)", res.Peak)
 	default:
 		// MORT SUBITE COMPRISE : un enfant tue par l'OS ne doit jamais passer pour un succes.
-		return nil, fmt.Errorf("cuisson en echec (issue %s, code %d): %v", res.Issue, res.Code, res.Err)
+		return Result{}, fmt.Errorf("cuisson en echec (issue %s, code %d): %v", res.Issue, res.Code, res.Err)
 	}
 	out, err := os.ReadFile(req.OutPath)
 	if err != nil {
-		return nil, fmt.Errorf("octets de l'artefact illisibles: %w", err)
+		return Result{}, fmt.Errorf("octets de l'artefact illisibles: %w", err)
 	}
 	if len(out) == 0 {
-		return nil, fmt.Errorf("l'enfant a rendu un artefact VIDE pour %s", req.MatchID)
+		return Result{}, fmt.Errorf("l'enfant a rendu un artefact VIDE pour %s", req.MatchID)
 	}
-	return out, nil
+	return Result{Blob: out, Dur: res.Dur, Peak: res.Peak}, nil
 }

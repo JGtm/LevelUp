@@ -182,8 +182,90 @@ func padObjects(
 			out = append(out, o)
 		}
 	}
-	sort.Slice(out, func(i, j int) bool { return gwPadsLess(out[i].Appar, out[j].Appar) })
+	sort.Slice(out, func(i, j int) bool { return gwPickupLess(out[i], out[j]) })
 	return out, rejected
+}
+
+// gwPickupLess est l'ordre TOTAL des objets au sol : l'apparition d'abord, PUIS l'objet lui-même.
+//
+// POURQUOI LE DÉPARTAGE PAR L'OBJET (correction du 2026-09-02, item 0.4bis étendu de
+// PLAN_CUISSON_PERF). `out` est bâti en itérant la MAP `byKey` — dont l'ordre change à chaque
+// exécution — et `sort.Slice` n'est pas stable : deux objets que l'apparition seule ne sépare pas
+// voyaient donc l'aléa décider de leur rang. Et l'apparition NE SUFFIT PAS : elle ne porte que
+// l'instant, la nature, la famille, la position et la classe, quand l'objet porte en plus sa clé
+// de vie, son identifiant d'arme, sa position de référence, son bornage, son ramasseur et son
+// lâcheur. Deux armes de la même famille nées au même instant à la même position quantifiée —
+// ce que réveille un film BTB à 26 joueurs — étaient strictement ex æquo.
+//
+// CE N'EST PAS COSMÉTIQUE : `gwItemLinkPickups` (document_ground_weapon_items.go) parcourt cette
+// tranche DANS SON ORDRE et attribue la prise au PREMIER objet à distance minimale (`d < bestD`,
+// strict) ; deux cuissons du même film pouvaient donc nommer deux ramasseurs différents.
+//
+// Le départage n'utilise QUE des données de l'objet : jamais une adresse mémoire, jamais le rang
+// d'itération de la map, qui ne se reproduiraient pas d'un processus à l'autre. Deux objets que
+// ce comparateur ne sépare pas sont identiques champ pour champ — les échanger ne change donc
+// pas la sortie. Même patron que `lessTrack` (filmdec/projectiles.go) et `lessPlacement`
+// (filmdec/equipment_placements.go).
+func gwPickupLess(a, b gwPickupObject) bool {
+	switch {
+	case gwPadsLess(a.Appar, b.Appar):
+		return true
+	case gwPadsLess(b.Appar, a.Appar):
+		return false
+	case a.Key.Slot != b.Key.Slot:
+		return a.Key.Slot < b.Key.Slot
+	case a.Key.Gen != b.Key.Gen:
+		return a.Key.Gen < b.Key.Gen
+	case a.FamilyID != b.FamilyID:
+		return a.FamilyID < b.FamilyID
+	case a.Pos != b.Pos:
+		return gwPosLess(a.Pos, b.Pos)
+	case a.Moved != b.Moved:
+		return !a.Moved
+	case a.Status != b.Status:
+		return a.Status < b.Status
+	case a.DropperSlot != b.DropperSlot:
+		return a.DropperSlot < b.DropperSlot
+	}
+	return gwPickupStateLess(a, b)
+}
+
+// gwPosLess ordonne deux positions de référence, axe par axe.
+func gwPosLess(a, b [3]float32) bool {
+	for i := range a {
+		if a[i] != b[i] {
+			return a[i] < b[i]
+		}
+	}
+	return false
+}
+
+// gwPickupStateLess ferme l'ordre sur le BORNAGE et le PASSAGE — les derniers champs de l'objet,
+// ceux que l'apparition ne dit pas.
+//
+// `Picker.DistM` est le seul flottant nu de la chaîne : un NaN y casserait l'antisymétrie. Il
+// n'est pas atteignable (c'est une distance euclidienne entre positions déquantifiées d'entiers),
+// et cette réserve est écrite pour le jour où un autre champ flottant entrerait dans la structure.
+func gwPickupStateLess(a, b gwPickupObject) bool {
+	switch {
+	case a.Bounds.LowUS != b.Bounds.LowUS:
+		return a.Bounds.LowUS < b.Bounds.LowUS
+	case a.Bounds.HighUS != b.Bounds.HighUS:
+		return a.Bounds.HighUS < b.Bounds.HighUS
+	case a.Bounds.SeenKF != b.Bounds.SeenKF:
+		return a.Bounds.SeenKF < b.Bounds.SeenKF
+	case a.Bounds.NeverPicked != b.Bounds.NeverPicked:
+		return !a.Bounds.NeverPicked
+	case a.Bounds.NoLaterKF != b.Bounds.NoLaterKF:
+		return !a.Bounds.NoLaterKF
+	case a.Picker.Found != b.Picker.Found:
+		return !a.Picker.Found
+	case a.Picker.TUS != b.Picker.TUS:
+		return a.Picker.TUS < b.Picker.TUS
+	case a.Picker.Slot != b.Picker.Slot:
+		return a.Picker.Slot < b.Picker.Slot
+	}
+	return a.Picker.DistM < b.Picker.DistM
 }
 
 // gwRejects ventile les créations ÉCARTÉES de la chaîne des socles. `total` est le terme de

@@ -112,6 +112,23 @@ sont par `NamedEventsFrom`, pas par leur taille (lot 4b).
   comme corrections declarees (sur ces films les trois marcheurs actuels se contredisent DEJA
   entre eux — il n'existe pas d'ancienne verite unique a preserver), plutot que d'etendre le
   corpus a des films que les gates ne pourraient de toute facon pas declarer « identiques ».
+- **D3 — REVISION du 2026-09-02 sur la mesure 0.7 (1 378 films) et le diagnostic paquet par paquet
+  (3 films, tous chunks).** FAITS : sur les chunks de DONNEES (01..N), l'unique paquet de taille 0
+  est le marqueur CHUNK_END (type 7), en DERNIERE position, sans un octet apres — 27/27, 32/32,
+  43/43 chunks sur `000d5950`, `7344d24f`, `60ae07c4`, et 1 378/1 378 films au meme motif ;
+  `killsource` ne diverge jamais parce que sa regle `size <= 0` attrape ce terminateur ; aucun flux
+  zlib tronque dans tout le cache ; `chunk_00` (le REGISTRE, pas un flux de paquets) porte 13-14
+  en-tetes degeneres `size = 0` au MILIEU (types 0, et un type 29806 sur `60ae07c4`) — seul chunk
+  ou `objectiveevents` diverge, et aucun consommateur legitime ne le marche comme des paquets.
+  GRAMMAIRE RETENUE (remplace « arret sur size <= 0 ») : (1) en-tete de 16 octets, arret si
+  `off+16+size > len` ; (2) le paquet est EMIS, taille 0 comprise ; (3) arret APRES un paquet de
+  type 7 (le terminateur est emis, comme `filmdec` — qui ne trouvait rien apres — et filtre par
+  type chez `killsource`) ; (4) arret AVANT EMISSION sur un paquet de taille 0 qui n'est PAS de type 7 — le paquet degenere n'est pas emis, comme chez killsource (en-tete
+  degenere : `chunk_00` seulement, ou `killsource` s'arrete deja la). Effets attendus, A PROUVER
+  par les digests des 11 films au lot 1 : `filmdec` identique sur tout chunk de donnees ;
+  `killsource` voit un paquet de type 7 de plus par chunk (filtre par type en aval) et le meme
+  `chunk_00` ; `objectiveevents` perd des trames VIDES de `chunk_00` (aucun record dedans). La
+  regle d'ARRET de D3 reste : un digest du corpus qui bouge au lot 1 = arret et escalade.
 - **D3bis — Refacto pur et correction ne se melangent jamais dans un lot.** Lot 2 passe aux six
   balayages delta le layout AUTO-DETECTE calcule une fois (sortie identique) ; c'est le lot 3,
   seul, qui bascule sur le layout du CATALOGUE (sortie differente sur Live Fire, et seulement la).
@@ -139,7 +156,7 @@ sont par `NamedEventsFrom`, pas par leur taille (lot 4b).
   Le tube du runner fusionne stdout et stderr et relaie le journal (`runner.go:190-192`) : il ne
   transporte AUCUNE donnee de digest. Le PARENT compare ensuite le fichier de l'enfant a
   `testdata/equivalence/<film>.tsv` (ou l'y copie avec `-update`) et nomme la PREMIERE etape qui
-  differe. Declare au ratchet `no_unbounded_film_loop_test.go` (« enfant borne, un film par
+  differe ; chaque TSV porte en tete `# digest-grammar: N` (`digest.GrammarVersion`), verifie avant toute comparaison — une version differente est une erreur d'INFRASTRUCTURE (re-figer par -update), jamais un ecart d'etape. Declare au ratchet `no_unbounded_film_loop_test.go` (« enfant borne, un film par
   processus ») et arme sa sentinelle (second ratchet). Le harnais N'ENCHAINE JAMAIS deux films
   dans un processus — c'est le motif des quatre sinistres RAM ;
   (c) `TestEquivalenceMiniFilm` (Go test, CI) : digests des balayages que la mini-bobine
@@ -206,7 +223,7 @@ et le commit du lot est fait (prefixe `cuisson-perf(L<n>)`).
 
 ### Lot 0 — Reference, instrumentation, mesure de divergence — effort moyen
 
-- [ ] 0.1 Corpus FERME (verifie present au cache le 2026-09-02, chunks / Mo compresses) :
+- [x] 0.1 Corpus FERME (verifie present au cache le 2026-09-02, chunks / Mo compresses) :
       `000d5950` Cliffhanger Fiesta (28 / 20,2) · `01e1f945` Catalyst KOTH (30 / 22,5) · `64e8adfa`
       CTF (45 / 33,7) · `7344d24f` Strongholds (33 / 25,8) · `696a9d7c` Strongholds (31 / 26,6) ·
       `084a804d` CTF, temoin historique 19 min (57 / 58,9) · `1c4c63c2` LE PLUS GROS film du cache
@@ -216,7 +233,7 @@ et le commit du lot est fait (prefixe `cuisson-perf(L<n>)`).
       `BOMBES.txt` : `51101d1d` (13 / 9,1), `a349fea8` (51 / 65,9). Fichier
       `apps/go-api/internal/analysis/replay/testdata/equivalence/CORPUS.txt`, colonnes : short8,
       carte(s) candidate(s), variante, chunks, Mo, raison — cartes et variante REMPLIES PAR 0.2.
-- [ ] 0.2 Export des faits : `levelup replay-facts-export --out <dir> <short8...>` — lit, par
+- [x] 0.2 Export des faits : `levelup replay-facts-export --out <dir> <short8...>` — lit, par
       `OpenReadForQuery` (lecture seule, sure meme si le serveur tient la base — il ecoute sur
       :8000 au moment ou ce plan est ecrit), pour chaque match : `port.MatchFacts`
       (`ReplayFactsRepo.FactsForMatch`, deja appele depuis `cmd_backfill_replay_child.go:95`) et
@@ -228,24 +245,36 @@ et le commit du lot est fait (prefixe `cuisson-perf(L<n>)`).
       faits, zones, actions d'objectif, VIP/crane/bombe, socles et points d'apparition sont
       COURT-CIRCUITES (`zones.go:78-82`, `matchfacts.go:103-107,192`) et l'equivalence ne les
       verrait pas (revue §9, constat 6).
-- [ ] 0.3 Observateur (D4a) : `replay.Options.Observe` + appels dans `BuildFromFilm` apres chaque
+- [x] 0.3 Observateur (D4a) : `replay.Options.Observe` + appels dans `BuildFromFilm` apres chaque
       balayage, et dans `BuildBytes` pour chaque sortie de `readFilmStats`, `ksRes`, catalogues,
       blob. Test unitaire : sur la mini-bobine, la liste des etapes observees est exactement la
       liste FERMEE attendue (un balayage ajoute sans etape observee fait echouer le test).
-- [ ] 0.4 `filmproc.AcquireSoloWait(ctx, cacheRoot, tool, id, max)` (D7) dans `solo.go`, avec
+- [x] 0.4 `filmproc.AcquireSoloWait(ctx, cacheRoot, tool, id, max)` (D7) dans `solo.go`, avec
       son test (deux acquisitions concurrentes sur la meme racine : la seconde attend, puis passe
       quand la premiere relache ; depasse `max`, elle refuse). PUIS `cmd/replay-equiv` (D4b) :
       parent + enfant (meme binaire, drapeau interne), `filmproc.Runner`, `AcquireSoloWait`,
       sentinelle `filmproc.Arm` ; `-update`, `-corpus`, `-films`, `-out` (enfant) ; sortie du
       parent : premiere etape qui differe, par film. Declare au ratchet avec sa justification
       datee. `TestEquivalenceMiniFilm` (D4c).
-- [ ] 0.5 Figer les digests a `900384f50` : `-update` sur les 11 films, puis UNE SECONDE
+- [x] 0.4bis (ajoute le 2026-09-02, correction declaree) — NON-DETERMINISME du decodeur, revele par le
+      harnais avant tout figeage : quatre sites batissaient une tranche en iterant une map puis la
+      triaient sur une cle NON totale (ou rendaient le premier trouve) — `filmdec/projectiles.go`
+      `lessTrack` (naissances des objets du monde), `filmdec/equipment_placements.go`
+      `confirmPlacements`, `objectiveevents/slotidentity_rounds.go` `roundStartsOf`,
+      `replay/ground_weapon_rules.go` `gwPadsClass` (le `dropper` publie d'une arme au sol etait
+      TIRE AU SORT parmi les ex aequo : `groundWeapons[95-97].dropper` = 553 ou 556 selon
+      l'execution sur `000d5950`). Ordre rendu TOTAL par des donnees de la piste (jamais l'adresse
+      ni l'ordre d'iteration), test `filmdec/projectile_track_order_test.go` (4 ordres d'entree,
+      1 sortie). Seul l'ordre des ex aequo change, et il etait aleatoire — aucune ancienne verite a
+      preserver. Neuf sites de la meme famille a l`ASSEMBLAGE sont reperes et NON touches (§8) :
+      le figeage du corpus dira s'ils bougent.
+- [x] 0.5 Figer les digests a `900384f50` : `-update` sur les 11 films, puis UNE SECONDE
       EXECUTION sans `-update` qui doit passer — preuve de DETERMINISME du harnais (une iteration
       de map non triee residuelle se verrait ici). Les deux sorties au journal.
-- [ ] 0.6 Instrumentation (D5) : durees par balayage/phase ; `replaychild.Spawn` → `Built{Blob,
+- [x] 0.6 Instrumentation (D5) : durees par balayage/phase ; `replaychild.Spawn` → `Built{Blob,
       Dur, Peak}` et `BuildOneFunc` ; log de succes post-sync avec `duration` ; `cmd/replay-build` :
       `logging.InstallCLILevel(repoRoot, niveau(LEVELUP_LOG_LEVEL))`, duree totale, `-cpuprofile`.
-- [ ] 0.7 Mesure de divergence des grammaires (D3) : `cmd/replay-equiv -walkers` — pour CHAQUE
+- [x] 0.7 Mesure de divergence des grammaires (D3) : `cmd/replay-equiv -walkers` — pour CHAQUE
       film du cache (1 380), inflate une fois par chunk, puis compare, chunk par chunk, le jeu de
       paquets (type, ts, taille) vu par les trois marcheurs de la chaine de cuisson et par la
       grammaire retenue — sur les QUATRE axes de D3 : `size == 0`, `CHUNK_END`, borne haute avec
@@ -255,10 +284,10 @@ et le commit du lot est fait (prefixe `cuisson-perf(L<n>)`).
       films divergents avec l'axe et le consommateur touches, nombre de films a flux tronque.
       Verdict ecrit : le lot 1 est-il un refacto pur sur le corpus (D3) ? La liste des films
       divergents hors corpus est soumise a l'utilisateur (D3, R-11).
-- [ ] 0.8 Mesure de reference HEAD (§6) sur `01e1f945`, `7344d24f`, `696a9d7c`, `1c4c63c2` :
+- [x] 0.8 Mesure de reference HEAD (§6) sur `01e1f945`, `7344d24f`, `696a9d7c`, `1c4c63c2` :
       duree totale, duree par balayage, pic, profil CPU de `01e1f945` →
       `MESURES_CUISSON_PERF.md` §reference.
-- [ ] 0.9 Note dans `.ai/V7.5/replay2d/registre_film/LOTCTER_VOLET3.md` : les pics RAM de
+- [x] 0.9 Note dans `.ai/V7.5/replay2d/registre_film/LOTCTER_VOLET3.md` : les pics RAM de
       `cout_machine.tsv` mesurent le processus `go` lanceur, pas le decodeur (audit C6).
 - Gate 0 : `cd apps/go-api && go test ./internal/analysis/replay/ ./internal/analysis/filmdec/ ./internal/replaybuild/ ./internal/sync/replayartifacts/ ./internal/replaychild/ ./internal/archlint/ ./cmd/levelup/... ./cmd/replay-equiv/...`
   vert ; `go run ./cmd/replay-equiv -corpus internal/analysis/replay/testdata/equivalence/CORPUS.txt`
@@ -377,7 +406,7 @@ Prerequis : verdict 0.7 = zero divergence sur les 11 films du corpus (sinon : ar
       la regle EXACTE de `build.go:257-259`, ecrite une fois pour les positions ET les six
       balayages.
 - [ ] 3.2 Equivalence : identique sur les 10 films non-Live Fire ; sur `60ae07c4` les digests
-      CHANGENT — `-update -films 60ae07c4`, journal avec le diff des comptes par balayage, et une
+      CHANGENT — `-update -films 60ae07c4` (le TSV garde son marqueur de grammaire courant), journal avec le diff des comptes par balayage, et une
       cuisson `replay-build` de `60ae07c4` dont le journal ne porte plus « decoupage i0 illisible ».
 - [ ] 3.3 Test unitaire de la regle sur des entrees du VRAI catalogue (Live Fire : gate 6,
       region 1 ; Cliffhanger : gate 5) et une entree sans largeurs (repli).
@@ -505,7 +534,106 @@ identique a celui en place hors lots de correction, ou le garde anti-regression 
 
 ## 8. Decouvertes (a noter, ne pas traiter)
 
-_(vide a la creation)_
+- 2026-09-02 (agent instrumentation, lot 0) : le meme vice de mesure que C6 existe pour lotBP —
+  `LOTBP_PHASE0.md:376,395` cite `lotBP/cout_machine.tsv`, produit par `lotBP/run_one.ps1:41` qui
+  echantillonne le pic du LANCEUR `go` (`go test`), pas du binaire qui decode. Non annote (0.9 vise
+  lotCter). A traiter : une note datee identique.
+- 2026-09-02 (agent instrumentation) — NOTE CORRIGEE LE 2026-09-02 APRES VERIFICATION SUR PIECES
+  (revue adversariale, constat C3). La note d'origine disait « dette preexistante :
+  `internal/replaybuild/replaybuild.go` depassait deja 500 lignes (535 avant, 547 apres les
+  4 phases) ». C'EST FAUX : a la base du lot (`0c70e3bbc`), le fichier faisait **488 lignes** et
+  `BuildBytes` **62 lignes** — les deux SOUS les seuils. Le depassement (549 lignes, `BuildBytes`
+  a 92) a donc ete CREE PAR LE LOT 0, pas herite. Corrige dans le lot meme : les gardes de
+  lecture d'artefact partent dans `internal/replaybuild/artifact_digest.go` (scission pure,
+  commentaires intacts) -> 462 lignes, et les lectures de catalogue sortent de `BuildBytes` dans
+  `collecterEntreesCatalogue` -> 66 lignes, ordre des etapes observees inchange
+  (`replaybuild/observe_test.go` descend desormais dans la sous-fonction). Reste VRAI et
+  preexistant : `cmd/replay-build/main.go` `main()` faisait bien 83 lignes a la base (ramene a 68
+  par l'extraction d'`armerProtections`, puis 73 avec la fermeture du profil CPU sous la
+  sentinelle, constat C7).
+- 2026-09-02 (pilote) : `metadata.duckdb` est tenue en exclusivite par le serveur de dev (l'export
+  0.2 a degrade les noms EN en `map_name` bruts, sans consequence ici) ; `shared_matches_v2.duckdb`
+  s'ouvre en lecture pendant que le serveur tourne. Aucune action.
+
+- 2026-09-02 (agent harnais, 0.4bis) : neuf sites de la MEME famille (tranche batie en iterant une
+  map, cle de tri non totale) a l'ASSEMBLAGE du document, non touches parce qu'ils n'atteignent que
+  l'etape `artifact` — stable sur `000d5950` : `replay/ground_weapon_objects.go:185` (`gwPadsLess`),
+  `replay/grapple_lines.go:117`, `replay/build_objective_objects.go:95`, `replay/flag_objects.go:142`,
+  `replay/score_timeline.go:338`, `replay/zone_states_hill.go:427`, `replay/zone_states_owner.go:112`
+  (tri sur `gauge[ref]` seul), `filmdec/navpoint_radial_rises.go:65,68`, `filmdec/i0_layout.go:228`.
+  Un film a drapeau, a zones ou a manches peut en reveiller un : le figeage du corpus (0.5, trois
+  passes) le dira — si oui, correction declaree 0.4bis etendue, sinon dette a traiter hors lot.
+  Verifies SURS : `killsource/feed.go:133`, `killsource/botmeta.go:150`,
+  `replay/equipment_placements.go:439`. Dette : `filmdec/lessSample` n'est pas total (ignore
+  `AtRest`, `Chunk`) mais son entree est d'ordre deterministe ; `sortedZoneSlots` (reutilise par
+  `gwPadsClass`) porte un nom « zone » pour un helper generique — renommer toucherait 4 sites.
+
+  **STATUE LE 2026-09-02 (agent 0.4bis etendu, apres le temoin `084a804d` — BTB Heavies CTF,
+  26 joueurs : 44 etapes de balayage identiques mais artefact different, donc le residu est a
+  l'assemblage).** Chaque site re-verifie sur pieces. CINQ CORRIGES, QUATRE SURS, UN SITE
+  SUPPLEMENTAIRE TROUVE.
+
+  | Site | Statut | Cle de departage ajoutee / preuve de surete |
+  |---|---|---|
+  | `replay/ground_weapon_objects.go:185` | `[x]` corrige | `gwPickupLess` : apparition, puis cle de vie, `FamilyID`, `Pos`, `Moved`, `Status`, `DropperSlot`, bornage et ramasseur — tous les champs de `gwPickupObject`. `gwPadsLess` gagne `Class` puis `HasDelta` (total sur `gwPadApparition`) ; sans effet sur `ground_weapon_rules.go:144`, ou `gwAtRestOf` ne passe QUE des apparitions `spawned` sans delta. Impact reel : `gwItemLinkPickups` parcourt cette tranche DANS SON ORDRE et prend le premier a `d < bestD` strict — le ramasseur publie changeait. |
+  | `replay/grapple_lines.go:117` | `[~]` sur | `out` est bati en parcourant `slots` TRIE (`:102`), les lectures d'un slot viennent de la tranche `reads` et sont triees `SliceStable` ; le tri final est `SliceStable`. Entree deterministe + tri stable = sortie deterministe. Non touche. |
+  | `replay/build_objective_objects.go:95` | `[x]` corrige | `objectiveObjectLess` : T0, famille, T1, En, Fr, longueur puis points. Le couple d'hier ne separait RIEN (une seule famille publiee) et le `SliceStable` reconduisait l'ordre d'entree — le commentaire affirmait une independance qu'il n'avait pas. |
+  | `replay/flag_objects.go:142` | `[x]` corrige | `flagFreeLess` gagne T1US, ID, longueur puis les echantillons (`flagFreeSampleLess`). Le triplet de tete n'est pas total : une meme cle peut porter deux creations au MEME instant (la fin de vie est la creation suivante). |
+  | `replay/score_timeline.go:338` | `[~]` sur | `out` est bati en parcourant `slots` issu de `sort.Ints` (`:325`) et le tri est `SliceStable`. Non touche. |
+  | `replay/zone_states_hill.go:427` | `[~]` sur | `spans` vient de `byRef[ref]` bati en parcourant la tranche `periods` via `hillSpansOf` (pure, sur `runs` tranche) ; `refs` est `sort.Ints` ; tri `SliceStable`. Non touche. |
+  | `replay/zone_states_owner.go:112` | `[x]` corrige | Tri sur `(gauge[ref], ref)`. Le slot de jauge N'EST PAS une cle : `pairGaugeSlots` garantit au plus une jauge PAR ZONE, jamais au plus une zone par jauge (contrairement a `electZoneOwners` et son `held`). L'alea decidait quelle zone s'appelle A. |
+  | `filmdec/navpoint_radial_rises.go:65,68` | `[x]` corrige | `lessNavpointRise` : fin, slot, puis StartMS, QStart, QEnd, Samples. (EndMS, Slot) n'est pas total — deux lectures d'un meme slot a la meme ms font deux montees qui finissent sur la meme borne. Consomme par `replay/bomb_armings.go:152`. |
+  | `filmdec/i0_layout.go:228` | `[~]` sur | Le parcours de `bySlot` n'alimente que des COMPTEURS (`rep.Pairs`, `flips[k]`) : l'addition est commutative, aucune tranche n'en sort. Le tri interne `(chunk, pkt)` recoit une entree d'ordre deterministe (la tranche `samples`). Non touche. |
+  | `replay/equipment_placements.go:556` (`equipmentOwner`) | `[x]` **SITE SUPPLEMENTAIRE** | Argmin de distance sur la MAP `best` avec `<` STRICT : a egalite exacte — coordonnees quantifiees, 26 joueurs — le PREMIER TROUVE gagnait, donc un rang d'iteration. Departage par slot croissant. C'est le poseur publie de chaque equipement. |
+
+  Six tests d'ordre ajoutes (un par site corrige), tous verifies DISCRIMINANTS (le comparateur
+  d'avant, rejoue dans un fichier temporaire, rend bien deux sorties differentes) :
+  `replay/{ground_weapon_object,flag_free_life,objective_object,zone_letter_ranks,equipment_owner}_order_test.go`
+  et `filmdec/navpoint_rise_order_test.go` — les tests d'ordre passent de QUATRE a DIX.
+
+- 2026-09-02 (agent 0.4bis etendu) — BALAYAGE COMPLET DU CHEMIN D'ASSEMBLAGE, ce qui reste
+  NON CORRIGE (sur, mais pas pour la raison qu'on croit) :
+  - N-I. **Deterministe par l'entree, pas par la cle** — quatre tris de la chaine des socles et
+    du calque des armes portent une cle NON TOTALE mais recoivent une entree d'ordre
+    deterministe : `ground_weapon_objects.go:276` et `ground_weapon_pads.go:331` (tri des membres
+    sur `Appar.TUS` SEUL), `document_ground_weapon_items.go:180` (`(T0, W)`),
+    `replay/equipment_placements.go:404` (`(T0, ID)`). Ils sont surs UNE FOIS le site 185 corrige,
+    et pas avant — leur surete est un HERITAGE, pas une propriete. Le commentaire de
+    `gwPadWeaponID` affirme « l'ordre des membres est total » : c'est faux au sens litteral
+    (deterministe, oui ; total, non). Doc a nuancer, cle a fermer si un jour l'entree change.
+  - N-J. `filmdec/i0_layout.go` (`profileI0`) — le tri `(chunk, pkt)` n'est pas total ET
+    l'appariement qui suit (`b.pkt <= a.pkt` -> saut) rend le resultat SENSIBLE a l'ordre des ex
+    aequo : deux echantillons du meme slot dans le MEME paquet decident lequel se compare au
+    paquet suivant. Sur uniquement parce que la tranche `samples` arrive dans un ordre
+    deterministe. Fragile — meme famille que `lessSample` (note precedente).
+  - N-K. `replay/skull_carries.go:216` — tranche batie en iterant une map de maps ; les seuls ex
+    aequo possibles sur `(t0MS, round, xuid)` sont des portages a xuid VIDE (deux slots non
+    nommes), et ceux-la sont TOUS ecartes en aval (`buildSkullCarries`, `cov.NoBridge`). Sur par
+    un filtre aval, pas par la cle.
+  - N-L. `replay/equipment_placements.go` passe de 585 a 594 lignes (dette PREEXISTANTE, deja
+    au-dessus du seuil de 500 avant ce lot) : +9 lignes par la correction du poseur. `golangci-lint
+    run` rend 0 issue sur les deux paquets.
+  - Verifies SURS au passage, sans changement : `modalZone` / `sortedZoneRefs` /
+    `electZoneOwners` / `zoneRefsOf` (parcours tries, `>` strict), `clearModalZone`,
+    `hillVotesInRamps` (somme), `slotFor` et `overlapsNamedLife` (predicats d'unicite),
+    `extendSlotXUID` (injectivite garantie par `injectiveOrEmpty`), `playerRoundsByXUID`
+    (unicite garantie par `withoutContestedXUID`), `buildRoster`, `applyFlagReturn`
+    (« le SEUL au sol »), `flagOpenings` (les ex aequo fusionnent avant le tri),
+    `trancheAmbiguites`, `pad_pickup_dating` (>= 2 candidats = abstention),
+    `MatchEquipmentLife`, `placementEnds` (ecriture indexee), `AbsIndexHistogram`,
+    `cloneSlots`, `bandeObserveeKeyframes`, `DropIsolated`, `fillSlotBand`.
+
+- 2026-09-02 (seconde ronde) : N-F — les comparateurs `compareSample` (`filmdec/projectiles.go:234`)
+  et `lessPlacement` affirment un ordre total sans reserve alors qu'un NaN casserait
+  l'antisymetrie ; non atteignable (coordonnees dequantifiees d'entiers), doc a nuancer si un
+  flottant nu entre un jour dans ces structs. N-G — `replay/build.go` passe de 875 a 922 L et
+  `BuildFromFilm` de ~262 a 292 L par l'observateur (intrinseque a D4a, exempte funlen par la
+  config lint) : dette CREEE par le lot 0, a resorber au lot 1 (la migration `Scan*(film)` scinde
+  naturellement la fonction). N-H — `neutralDeaths`/`killRefs` evalues avant `structureFor`
+  depuis la scission C3 (avant : dans le litteral Options) ; sans effet, `structureFor` est un
+  memo idempotent. 0.4bis : les tests d'ordre sont au nombre de QUATRE
+  (`projectile_track_order_test.go`, `equipment_placement_order_test.go`,
+  `slotidentity_rounds_order_test.go`, `ground_weapon_dropper_order_test.go`).
 
 ## 9. Revue du plan (plan-review, 2026-09-02)
 
@@ -595,3 +723,105 @@ seul), 10 000 coherent comme dernier rempart.
   l'utilisateur avant execution : D7 (verrou a deux regimes), D8 (l'ouvrier n'ecrit plus en
   local), D9 (pas d'allegement de `validateArtifact`), D13 (bornes 10 000 / 1 000 000), R-11
   (films hors corpus divergents acceptes comme corrections). Prochaine etape : lot 0.
+- 2026-09-02 (lot 0, en cours) — Le pilote ne code plus : execution par agents (Opus) sous ce plan,
+  revue adversariale par contexte frais, gates/statuts/journal/commits par le pilote (demande
+  utilisateur). Fait avant le basculement : 0.1 (`CORPUS.txt`, `BOMBES.txt`), 0.2 (`levelup
+  replay-facts-export`, 13 fichiers de faits — `metadata.duckdb` etait tenue par le serveur de
+  dev : les cartes candidates sont les `map_name` BRUTS du registre, tous resolus au catalogue de
+  bornes par `NormalizeMapName` ; la base partagee, elle, s'est ouverte en lecture sans arreter le
+  serveur), 0.3 (observateur + `BuildFromFilmSteps` / `BuildBytesSteps*` + gardes structurels sur
+  la SOURCE — la mini-bobine ne permet pas d'executer `BuildFromFilm` : aucune image-cle de
+  bipede, `ScanFilmBipedPositions` refuse ; le test 0.3 lit donc le corps de la fonction, patron
+  archlint), `AcquireSoloWait` (un test d'annulation a corriger : double `%w`). Confie aux agents :
+  le reste de 0.4 (paquet `digest`, `FactsFile`, `cmd/replay-equiv` + mode `-walkers`,
+  `TestEquivalenceMiniFilm`), 0.6, 0.9. Le pilote lancera 0.5, 0.7, 0.8.
+- 2026-09-02 (lot 0, en cours) — Agents rendus : 0.6 et 0.9 (instrumentation) gate vert ; harnais
+  (`digest`, `FactsFile`, `cmd/replay-equiv` + `-walkers`, `TestEquivalenceMiniFilm`) gate vert.
+  DEUX DECOUVERTES DU HARNAIS, avant tout figeage : (1) NON-DETERMINISME en production —
+  `filmdec/projectiles.go:159-176` (`ScanFilmWorldObjectsForBand`) itere une map puis trie par
+  `sort.Slice` (instable) sur `lessTrack` (`:194-202`, cle `(Pts[0].TimestampUS, Slot, Gen)`) : sur
+  `000d5950`, 3 pistes ex aequo sur `ti=42` (549) et 3 sur `ti=37` (477) — l'etape `pads` change
+  d'empreinte d'une execution a l'autre, et le commentaire de `:169-175` dit que cet ordre decide des
+  positions de naissance publiees. Correction PREALABLE au 0.5 (item 0.4bis, correction declaree :
+  seul l'ordre des ex aequo change, et il etait aleatoire — aucune ancienne verite a preserver).
+  (2) D3 : sur `000d5950`, 28/28 chunks divergent entre `filmdec.WalkPackets` et la grammaire
+  unifiee, axe `taille_nulle` ; `killsource` s'accorde partout ; `objectiveevents` diverge sur
+  1 chunk. Diagnostic demande (quels paquets : type, position) AVANT toute escalade.
+- 2026-09-02 (lot 0, suite) — 0.7 EXECUTE par le pilote : 1 380 films en 6 min 55 s
+  (`tmp/replay-equiv.exe -walkers`), resultats au §2 de `MESURES_CUISSON_PERF.md` : 0 flux tronque,
+  `killsource` = grammaire unifiee partout, `filmdec` divergent sur TOUS les chunks de 1 378 films,
+  `objectiveevents` sur exactement 1 chunk par film. Diagnostic paquet par paquet (agent, 3 films,
+  tous chunks) : le paquet de taille 0 des chunks de donnees est le terminateur CHUNK_END (type 7),
+  dernier, rien apres ; `chunk_00` (registre) porte des en-tetes degeneres au milieu. D3 REVISEE
+  sur ces faits (§3) : la grammaire emet le terminateur puis s'arrete — plus « arret sur taille 0 » ;
+  la regle d'arret sur digest divergent au lot 1 reste. 0.4bis : quatre non-determinismes corriges
+  (dont un `dropper` d'arme au sol tire au sort), deux constructions identiques sur `000d5950`.
+  0.5 lance par le pilote (trois passes : creation, puis deux verifications). Revue adversariale du
+  lot lancee en parallele (contexte frais). 0.8 attend une machine au repos.
+- 2026-09-02 (lot 0, suite) — SECONDE RONDE de revue (contexte frais, consigne refuter) : les 7
+  corrections et 5 notes de la premiere ronde TIENNENT toutes (deplacement pur prouve par diff
+  contre la base, lint 0 issue, gates verts). Deux reprises avant commit, dépechees : N-A (le tri
+  des cles de map de `digest` n'etait pas deterministe quand deux cles distinctes ont le meme
+  rendu — la famille 0.4bis logee dans l'instrument de certification ; departage par le rendu de
+  la valeur) et N-B (marqueur `# digest-grammar: N` dans les TSV de reference, sans lequel un
+  changement du rendu se lit comme une regression du decodeur — 6 TSV sur 9 etaient restes sous
+  l'ancienne grammaire, indetectable). Notes portees au §8 : N-C a N-H. Regle (4) de D3
+  desambiguisee ci-dessus (arret AVANT emission).
+- 2026-09-02 (lot 0, suite) — MESURE 0.7 REJOUEE avec la grammaire D3 REVISEE (binaire corrige,
+  6 min 40) : 1 378 films, 0 tronque, `filmdec` divergent sur EXACTEMENT 1 chunk par film (le
+  registre `chunk_00`, jamais consomme comme flux de paquets), `killsource` divergent du seul
+  terminateur emis (paquet type 7, filtre par type en aval) sur les chunks de donnees,
+  `objectiveevents` idem registre. Les chunks de DONNEES sont bit-identiques entre `filmdec` et
+  la grammaire retenue sur tout le cache : le prerequis « lot 1 = refacto pur » est acquis, a
+  confirmer par les empreintes. Resultats au §2 de `MESURES_CUISSON_PERF.md` ; figeage des 11
+  references relance apres les reprises N-A/N-B (les TSV mixtes ont ete detruits).
+- 2026-09-02 (lot 0, figeage) — DEUX FILMS DU CORPUS SONT DES BOMBES MEMOIRE, reveles par le
+  figeage (le harnais a fait son travail de sonde) : `1c4c63c2` (BTB One Flag, le plus gros du
+  cache) tue au plafond 3 Gio a 3,96 Gio en 4,5 s ; `60ae07c4` (Live Fire, Ranked:Oddball —
+  LE TEMOIN DU LOT 3) tue a 4,02 Gio en 2 min 12. Profil « gigaoctets en secondes » = famille
+  `NamedEventsFrom` presumee (les deux modes portent des evenements nommes) ; a confirmer par le
+  profil heap au lot 4b. CONSEQUENCES : corpus ACTIF des lots 1-2 = 9 films (les 9 references
+  figees et verifiees) ; `1c4c63c2` et `60ae07c4` rejoignent le regime BOMBES (D11, empreintes
+  figees au lot 4b) ; le LOT 3 depend desormais du plafond D13 — decision a trancher a l'entree
+  du lot 3 : passer le lot 4b AVANT le lot 3, ou figer le temoin Live Fire avec un plafond
+  releve (`-mem-gib 6`) si son pic reel le permet. `CORPUS.txt`/`BOMBES.txt` a realigner au
+  commit du lot. La mesure 0.8 de `1c4c63c2` echouera au plafond : attendu, journalise.
+- 2026-09-02 (lot 0, 0.4bis ETENDU) — Le temoin `084a804d` (BTB Heavies CTF, 26 joueurs) a
+  tranche : 44 etapes de balayage IDENTIQUES entre deux cuissons, artefact different (meme taille
+  7 249 908, sha different) — le residu est bien a l'ASSEMBLAGE, comme la note des neuf sites le
+  redoutait. Les neuf sites ont ete re-verifies sur pieces un par un : CINQ CORRIGES
+  (`ground_weapon_objects.go` + `gwPadsLess`, `flag_objects.go`, `build_objective_objects.go`,
+  `zone_states_owner.go` — les lettres A/B/C de zone tiraient au sort quand deux zones partagent
+  un slot de jauge —, `filmdec/navpoint_radial_rises.go`), QUATRE DECLARES SURS AVEC PREUVE
+  (`grapple_lines.go`, `score_timeline.go`, `zone_states_hill.go` : entree triee + tri stable ;
+  `filmdec/i0_layout.go` : compteurs commutatifs). Le balayage du reste du chemin d'assemblage a
+  livre UN SITE QUE L'INVENTAIRE AVAIT MANQUE, de la meme famille « premier-trouve d'une
+  iteration de map » : `replay/equipment_placements.go` `equipmentOwner` prenait l'argmin de
+  distance par un `<` strict en iterant une map — a egalite exacte (coordonnees quantifiees,
+  26 joueurs) le POSEUR PUBLIE de chaque equipement etait tire au sort. Corrige par le slot.
+  Six tests d'ordre ajoutes, chacun verifie DISCRIMINANT en rejouant le comparateur d'avant
+  (fichier temporaire, supprime) : les tests d'ordre passent de quatre a dix. Statut par site,
+  cle de departage et preuves de surete au §8 ; decouvertes non traitees en N-I a N-L (dont une
+  doc a nuancer et une fragilite d'appariement dans `profileI0`). Gate : `gofmt -l` vide,
+  `go vet ./internal/analysis/...` vide, `go build ./...` vide, suites completes
+  `filmdec` + `replay` vertes, `golangci-lint run` 0 issue sur les deux paquets. AUCUNE CUISSON
+  LANCEE (chaine en vol) : la preuve est les tests d'ordre et la lecture. Rien committe.
+- 2026-09-02 (lot 0, cloture) — Assemblage rendu deterministe (6 sites corriges dont
+  `equipmentOwner`, manque de l'inventaire ; 4 prouves surs ; 10 tests d'ordre au total) apres que
+  les passes de verification ont revele un ecart vivant sur `084a804d` (44 balayages identiques,
+  artefact seul different, 3 sha distincts en 3 cuissons). Re-figeage puis DEUX verifications
+  finales : 9/9 identiques, deux fois. 0.5 et 0.8 clos — reference HEAD au §1 de
+  `MESURES_CUISSON_PERF.md` (temoins a 2 min 24 - 2 min 49, decodage = ~94 % du temps,
+  `playerIndices` poste n°1 a 35-40 s). Gate de cloture lance (suite complete + integration
+  -p 1) ; commit du lot a sa sortie verte. CI de branche : branche jamais poussee, aucun run
+  distant a verifier — la CI jugera au premier push.
+- 2026-09-02 (pilote, gate de cloture) : `go test ./...` complet echoue sur DEUX points HORS
+  perimetre — (a) `internal/sync/v2` : erreur transitoire du cache de build Windows
+  (« Ressources systeme insuffisantes ») pendant que la chaine de cuisson tournait en
+  parallele ; VERT au rejeu isole ; (b) `internal/himap` `TestBalayageCoquille` : balayage des
+  27 cartes depuis les FICHIERS DU JEU installes (garde `DeployRoot`, skip en CI), duree reelle
+  > 25 min, donc > au timeout de 10 min de `go test ./...` — echec STRUCTUREL et PREEXISTANT
+  sur toute machine ou le jeu est installe, quel que soit le commit (le lot 0 ne touche aucun
+  fichier de `himap`). A traiter hors lot : borne `BALAYAGE_CARTES` par defaut, tag dedie, ou
+  timeout declare. Les gates du lot (paquets touches + integration -p 1 + vet + lint) sont
+  VERTS.
