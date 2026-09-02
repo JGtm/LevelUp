@@ -27,6 +27,28 @@ vitest `src/components/charts` 28 fichiers / 236 tests verts. Go non concerne.
 **Au passage, CI VERTE** sur `7c6a65e89` (purge baseline + Escouade) : les 8 jobs passent,
 E2E Playwright skippe par conception.
 
+## [2026-09-02] Merge wt/assaut-bombe dans feat/v75 — le dechiffrement du pied rejoint la branche
+
+**Statut** : Complété
+
+**Décision technique** : l'utilisateur a repéré le trou — le merge d'hier contenait
+l'INSTRUMENT du pied (assaut_footer_research_test.go, via la fusion de la jauge) mais pas le
+DÉCHIFFREMENT : trois commits de wt/assaut-bombe postérieurs à cette fusion manquaient à
+feat/v75 (`31781536d` négatif bombstate ti=13, `3fe484014` ancre du pied 558 L, `9df1b27e4`
+classement des récompenses 430 L). Merge direct, conflit journal seul (les deux côtés gardés).
+Gardes passés AVANT push cette fois : aucun FilmSource, aucun littéral chemin de jeu ni
+halowaypoint ni repo-root dans les trois fichiers ; archlint + filmcache locaux ne nomment
+aucun fichier de la ligne.
+
+**Résultats observés** : rejeu complet sur films réels (ASSAUT_CACHE) : les 9 tests du pied
+PASS (ancre 6,2 s, classement, familles, explosion, pose, étendu, rares, témoins) et
+TestObjectifBombState PASS (82,9 s) — EXIT=0 (logs scratchpad AB_pied_rejeu.log,
+AB_bombstate_rejeu.log). Toute la ligne bombe est désormais contenue : les 7 branches
+wt/* répondent « ancêtre de feat/v75 ».
+
+**Prochaine étape** : push, CI au niveau job (les 3-4 ratchets hérités cartes/mvar + origine
+restent à leurs chantiers).
+
 ## [2026-09-02] Audit perf cuisson des artefacts de rejeu — registre livre — Complete
 
 Demande utilisateur : pistes pour passer de ~3 min 30 a 60-100 s par artefact (bump de
@@ -86529,3 +86551,131 @@ sur pièces, plan en 5 lots ordonnés par risque croissant :
 sort des bots dans les duels, rendu des effets de fiche, timing du lot lourd « identité
 des vies » — schéma d'artefact + re-cuisson soumise à accord, option 60 fps). Puis lots
 1-2 (rapides), 3-4 (web), 5 (lourd, sous D4).
+## [2026-09-01] `BombObjectState` cherche par EGALITE dans ti=13 : negatif, et sa portee est bornee
+
+**Statut** : Complete.
+
+**LA PISTE.** Ghidra a rendu l'enumeration `BombObjectState` (`FUN_14034a0d0`) avec ses ordinaux :
+None=0, Unarmed=1, Armed=2, Disarming=3, Contested=4. **Pas d'etat « Arming »** — poser la bombe
+passe par `Contested`, donc l'instant ou l'etat vaut 4 EST le debut de l'armement. Or `ti=13` est
+un sac de proprietes NOMMEES (`i0` = identifiant de 32 bits) et les films d'Assaut en portent HUIT
+slots. La phase A7 y avait cherche une PROGRESSION et un tag 3 — un etat ne croit pas, il SAUTE.
+Bon archetype, mauvais critere.
+
+**LE NOM EST CALCULABLE.** `FUN_140748a74` est un **murmur3 x86_32 graine 0** sur la chaine
+normalisee (minuscules, `-` et espace -> `_`, saut de ligne -> `#`) : constantes 0xcc9e2d51,
+0x1b873593, rotation 13, 0xe6546b64, fmix32 0x85ebca6b / 0xc2b2ae35, toutes verifiees. Donc
+**murmur3("bombobjectstate") = 0x19813E20** — la recherche devient une EGALITE, pas une
+correlation. (Le lot parallele avait teste un nommage par dictionnaire, mais en **FNV-1**, la
+famille des identifiants Wwise : ce n'est pas la meme fonction, sa reponse ne couvrait pas
+celle-ci.)
+
+**ZERO MODIFICATION DE PRODUCTION** : `SetProbeHook` publie deja `ti=13 i0`, le depot avait prevu
+ce besoin exact.
+
+**RESULTAT : 0x19813E20 n'apparait dans AUCUN des 13 films.**
+
+**ET LE BALAYAGE BORNE SON PROPRE NEGATIF.** Le chainage de `ti=13` en Assaut vaut **1,9 a 4,7 %**
+— le plancher — contre 32 a 77 % sur les temoins. Et les films d'Assaut rendent 12 a 51 noms
+DISTINCTS pour HUIT slots : un slot porte UNE propriete nommee, donc huit slots ne peuvent pas
+porter cinquante noms. Ces lectures sont du bruit. Ce qui est etabli est donc « `ti=13` ne parle
+pas en Assaut » — ce que le miroir disait deja — et non « l'etat de la bombe n'est replique nulle
+part ». Il l'est forcement quelque part : le HUD l'affiche.
+
+**L'ACQUIS DURABLE EST AILLEURS.** L'instrument rend, par film et par mode, les IDENTIFIANTS de
+propriete reellement vus. Sur les temoins, ou le chainage est bon, c'est un **DICTIONNAIRE de
+proprietes reseau a nommer**, et le nommage est mecanique. C'est la voie pour nommer les jauges de
+zone de Strongholds et de KOTH, lues sans etre comprises depuis le lot C-bis.
+
+---
+
+## [2026-09-01] Le pied de film DECHIFFRE : c'est le flux des recompenses, gamertags EN CLAIR — et le negatif Assaut etait une erreur de lecture
+
+**Statut** : Complete pour le dechiffrement ; le classement des recompenses de mode reste ouvert.
+
+**LE DOUTE DE L'UTILISATEUR, ET IL AVAIT RAISON.** Ma synthese affirmait « pied de film quasi
+absent en Assaut (6 blocs / 9 films) ». C'etait faux comme generalisation : les 6 blocs etaient
+les seuls `th=10`. Le pied d'Assaut est AUSSI RICHE que celui des autres modes — 88 a 589 blocs
+par film, contre 187 a 454 chez les temoins.
+
+**TROIS SONDES, TROIS ETAGES.**
+1. `TestAssautPiedAncre` — l'ancre XUID seule, histogramme des octets suivants : les pieds
+   d'Assaut font 0,2 a 1,6 Mo et fourmillent de XUID ; l'ancre de production `[2D C0]` y est
+   presente au meme taux que chez les temoins.
+2. `TestAssautPiedFamilles` — dedoublonnage PAR MARQUEUR DE FIN au bit : les comptes tombent
+   EXACTEMENT sur ceux de l'ancre de production (Oddball 208 = 208, 9f57c612 168 = 168...), les
+   deux geometries se valident mutuellement. Familles : temoins = th 10/20/50/100/150 ; Assaut =
+   pareil SAUF th=10 (6 blocs sur un seul film).
+3. `TestAssautPiedExplosion` — vidage des 60 octets : **LE BLOC PORTE LE GAMERTAG DE L'ACTEUR EN
+   CLAIR (UTF-16LE)**, la VALEUR de la recompense en u32 grand-boutien aux octets 44-47, et
+   l'instant aux octets 48-51.
+
+**CE QUE CA RENOMME.** L'octet 47 que la production lit comme « type_hint » est le PETIT OCTET
+DE LA VALEUR : th=10 -> +10, th=20 -> +20, th=50 -> +50, th=100 -> +100. Le pied est LE FLUX DES
+RECOMPENSES DE SCORE PERSONNEL. Les « evenements th=10 » d'Oddball/KOTH/Strongholds — ce que
+`extractFromTh10` decode en production — sont les recompenses de +10 : le tic de colline, de
+zone, de possession du crane. L'Assaut n'a PAS de tic a +10, et c'est tout ce que « th=10
+absent » voulait dire.
+
+**CE QUE L'ASSAUT PORTE.** Des paires simultanees +50/+20 (combat : frag et son pendant), du
++100, et des valeurs RARES qui sont les candidates de mode : **+150 en salve d'equipe a +25 ms
+APRES une explosion (quatre joueurs d'un coup — la prime d'equipe de la detonation)**, +150
+isole, +200 et +220 exceptionnels. La pose et le desamorcage sont vraisemblablement la-dedans.
+
+**PROCHAINE ETAPE, une seule** : classer les recompenses d'Assaut par (valeur, contexte) contre
+deux oracles — les detonations NOMMEES du releve A5 (le +100/+150 du poseur doit tomber sur son
+gamertag) et les `personal_score_awards` de l'API cote base, qui NOMMENT chaque recompense. Une
+fois la valeur de la POSE identifiee, chaque pose est datee ET attribuee par gamertag — sans
+aucun decodage ECS.
+
+---
+
+## [2026-09-01] Classement des recompenses du pied : l'armement n'est recompense NULLE PART — et l'attribution par gamertag vaut pour TOUS les modes
+
+**Statut** : Complete. Un negatif definitif, une percee transverse.
+
+**TEMPS 1 — L'ATTRIBUTION PAR COINCIDENCE, REFUTEE PAR MOI-MEME.** La premiere version prenait
+« la recompense individuelle la plus proche de l'explosion » pour le poseur. Faux : les valeurs
+coincidentes sont +20/+50/+100 — du combat. La table nommait l'auteur du dernier frag, pas le
+poseur. Corrigee dans la doc de l'instrument AVANT que quiconque ne s'en serve ; le nommage du
+detonateur reste au statborg (chemin livre).
+
+**TEMPS 2 — LE NEGATIF EST DEFINITIF, ET IL EST BORNE PAR CONSTRUCTION.** Aucune valeur de
+recompense n'a un delai constant avant l'explosion (dispersions 54-60 % sur les recompenses au
+poseur presume). Et l'enumeration des valeurs est CLOSE : le petit octet de la valeur (l'octet 47
+du bloc) borne le domaine — {10, 20, 50, 100, 150, 200, 220} sur les neuf films, rien d'autre.
+**L'armement de la bombe n'est recompense par AUCUN score personnel.** Coherent avec le statborg
+(bande de mode vide) et avec la nature du mode : un mode SCRIPTE (`primitive_carriable_arming_base`
+en Lua), dont la logique passe par le script et non par les canaux natifs.
+
+Les rares (+150/+200/+220) sont des medailles ou des primes de fin : la salve de +150 aux QUATRE
+joueurs de l'equipe gagnante tombe a +25 ms de la DERNIERE explosion de `c75f33b8`. Leur nommage
+exact passera par l'oracle des medailles cote base — chantier a part.
+
+**LA PERCEE TRANSVERSE — 100 % D'ATTRIBUTION DIRECTE.** Les evenements de mode des autres modes
+(+10 : tic de zone, de colline, de crane) portent TOUS leur gamertag en clair dans le bloc :
+
+	Oddball     43716616 : 60/60 avec gamertag
+	KOTH        7f1bbf06 : 45/45
+	Strongholds 696a9d7c : 77/77
+
+La production attribue aujourd'hui ces evenements par le pont d'identite slot->XUID resolu PAR
+LES MORTS (`ResolveRoundIdentity`), avec ses pertes documentees. Le gamertag est DANS le bloc
+depuis le debut — l'attribution directe est possible pour tous les modes, sans pont. C'est un
+chantier de production a ouvrir (lecture du champ gamertag dans `decodeTh10Block`, jointure
+gamertag->xuid par le roster DB) — PAS un fix opportuniste d'aujourd'hui.
+
+**OU EN EST LA QUESTION DE L'UTILISATEUR (« qu'est-ce qu'on a en evenements de mode Assaut »).**
+Le releve est desormais complet et chaque case est fermee par une mesure :
+- detonation : LIVREE (statborg), datee et attribuee ;
+- pose/armement : absent du statborg (bande vide), absent des recompenses (enumeration close),
+  absent de ti=13 (egalite murmur3), absent de ti=11 image-cle (corps statique) ; reste UNE
+  piste film (l'anneau ti=12, sans plancher) et UNE voie sure (meche constante -> armement =
+  explosion - meche) ;
+- ramassage/porteur/desamorcage : aucun canal natif — mode scripte. Le desamorcage et le
+  ramassage n'ont pas eu d'occurrence oracle dans le corpus, leur absence est presumee (meme
+  logique de script), pas mesuree.
+
+**Prochaine etape** : le plancher de l'anneau ti=12 (1 000 tirages nuls, instrument deja ecrit
+par le lot) — c'est la DERNIERE piste film pour l'armement. Si elle tombe : meche constante,
+mesurable une fois pour toutes depuis les 28 couples (fin d'anneau, explosion) deja dates.
