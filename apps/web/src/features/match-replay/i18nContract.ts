@@ -199,6 +199,21 @@ export interface ReplayText {
    * aucune icône, la ligne garde son repère neutre.
    */
   killFeedDeathKind: Record<'environment' | 'suicide', string>
+  /**
+   * Lignes d'ENTRÉE/SORTIE de partie du fil (presenceFeed.ts, 2026-09-02). Deux sources,
+   * deux vocabulaires : la PARTICIPATION API (drapeaux joined/left_in_progress, précise —
+   * libellés affirmatifs) et le REPLI dérivé des bornes de vie du film (matchs sans les
+   * colonnes) — dont le libellé de sortie reste au FAIT (« ne reviendra plus ») : le film
+   * ne distingue pas un départ d'une élimination définitive, l'infobulle porte la réserve.
+   */
+  presenceJoined: string
+  presenceLeft: string
+  presenceJoinedHint: string
+  presenceLeftHint: string
+  presenceJoinedDerived: string
+  presenceLeftDerived: string
+  presenceJoinedDerivedHint: string
+  presenceLeftDerivedHint: string
   /** Sons du rejeu (lot 5 parité) : COUPÉ PAR DÉFAUT, l'utilisateur l'active. */
   sound: string
   soundHint: string
@@ -465,6 +480,7 @@ export interface ReplayText {
   heatLegendHint: string
   /** Fiches joueur : ce qui est lu, et ce qui ne l'est pas. */
   rosterEmpty: string
+  bridgeDiag: (named: number, total: number, collisions: number) => string
   teamUnknown: string
   /** Libellé d'équipe (cascade `lib/halo/teamLabel.ts`, mêmes textes que la Match View). */
   teamLabelFmt: (name: string) => string
@@ -623,13 +639,13 @@ export interface ReplayText {
   tracksExpand: string
   unknownPlayer: string
   /**
-   * Marques d'identité devant un nom. Le glyphe « moi » ne se DESSINE plus nulle part
-   * (demande utilisateur du 2026-08-24) : `markMe` ne sert plus qu'au libellé lecteur
-   * d'écran du fil (retirer un dessin ne doit pas retirer une information). La marque
-   * « ami » garde son glyphe.
+   * `markMe` — dernier vestige textuel des glyphes d'identité du fil. Le rond du joueur actif
+   * ne se DESSINE plus nulle part depuis le 2026-08-24 ; le glyphe « ami » qui restait au fil
+   * (ex-`PlayerMark.tsx`) est retiré à son tour le 2026-09-02 (décision D5) — sa clé
+   * `markFriend` part avec lui. `markMe` ne sert donc plus qu'au libellé lecteur d'écran du
+   * joueur de la page (retirer un dessin ne doit pas retirer une information).
    */
   markMe: string
-  markFriend: string
   healthLabel: string
   shieldLabel: string
   abilityLabel: string
@@ -642,7 +658,8 @@ export interface ReplayText {
   /** L'encadré de la fiche morte (option 2a) : le mot d'état, puis le décompte lu. */
   eliminatedLabel: string
   respawnIn: string
-  respawnUnknown: string
+  goneLabel: string
+  goneValue: string
   /** Ligne d'inventaire : grenades, capacité, munitions. */
   inventoryAge: string
   inventoryAhead: string

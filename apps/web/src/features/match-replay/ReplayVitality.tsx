@@ -84,7 +84,7 @@ export function VitalityBar({
  * LE RETOUR EST LU, PAS DÉDUIT D'UNE CONSTANTE : c'est l'image de départ de la vie suivante du
  * même joueur. Mesure publiée sur le film de référence : 90 épisodes de mort, 82 avec un retour
  * lisible, médiane 8,0 s, 66 sur 82 exactement à 7,9-8,0 s. Les 8 sans retour affichent une
- * LACUNE — `respawnUnknown`, dans le MÊME gabarit que le décompte — jamais un délai deviné,
+ * LACUNE — « Hors film / ne revient plus » (goneLabel/goneValue) — jamais un délai deviné,
  * ce serait remplacer une mesure absente par une moyenne.
  *
  * L'ENCADRÉ REMPLIT LA ZONE FIXE DE LA FICHE (`h-full`) : la hauteur totale reste identique
@@ -119,13 +119,15 @@ export function EliminatedBox({
         className="shrink-0 text-[9.5px] font-bold uppercase tracking-[.18em]"
         style={{ color: rouge }}
       >
-        {t.eliminatedLabel}
+        {state.respawnFrame < 0 ? t.goneLabel : t.eliminatedLabel}
       </span>
       {state.respawnFrame < 0 ? (
-        // « Réapparition ? » sans infobulle de méthode : la justification (fin de partie sans
-        // vie suivante) vit dans le commentaire de PlayerState.respawnFrame, pas à l'écran.
-        <span className="min-w-0 truncate font-mono text-[15px] font-bold tabular-nums text-foreground">
-          {t.respawnUnknown}
+        // SANS VIE SUIVANTE, LE JOUEUR NE REVIENT PLUS DANS LE FILM — et c'est TOUT ce que la
+        // donnée dit (mort de fin de partie, départ en cours de match, vie jamais nommée). Le
+        // « Réapparition ? » d'avant affirmait une attente qui n'existait pas : un partant
+        // restait « en attente de respawn » jusqu'au bout (retour user 2026-09-02).
+        <span className="min-w-0 truncate font-mono text-[13px] font-bold text-foreground">
+          {t.goneValue}
         </span>
       ) : (
         <span

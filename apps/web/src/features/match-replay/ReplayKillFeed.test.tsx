@@ -423,9 +423,10 @@ describe('ReplayKillFeed — les TROIS états de l’assistance, jamais confondu
 })
 
 /**
- * LES MARQUES D'IDENTITÉ (décision D5, 2026-08-16) : le même glyphe que les fiches et que la
- * forme du marqueur sur la carte, devant CHAQUE nom du fil. Elles s'ajoutent à la couleur du
- * nom, qui continue de dire l'équipe.
+ * LES MARQUES D'IDENTITÉ (décision D5, 2026-08-16 — révisée le 2026-09-02) : la carte garde
+ * sa propre grammaire de FORMES (losange/anneau/cercle, `replayMarkers.ts`) ; le fil, lui, ne
+ * porte plus AUCUN glyphe, quelle que soit la marque — seule l'encre `success` du nom dit
+ * encore « moi » ou « ami », sans consommer un signe par ligne.
  */
 describe('ReplayKillFeed — marques « moi » et « ami »', () => {
   function sbRow(xuid: string, gamertag: string, isMe = false): MatchScoreboardRow {
@@ -470,28 +471,31 @@ describe('ReplayKillFeed — marques « moi » et « ami »', () => {
   }
 
   /**
-   * C1 (2026-08-18) — LE GLYPHE « JOUEUR ACTIF » SORT DU FIL, LA COULEUR LE REMPLACE.
+   * D5 RÉVISÉE (2026-09-02) — PLUS AUCUN GLYPHE AU FIL, QUELLE QUE SOIT LA MARQUE.
    *
-   * « Il y a un symbole rond dans un cercle affiché, je sais pas ce que c'est » : c'était ce
-   * glyphe. Le fil ne le porte plus ; la marque « ami », elle, reste (elle distingue des gens
-   * dont rien d'autre ne dit qu'on les connaît). Les deux joueurs marqués — moi ET mes amis —
-   * écrivent désormais leur nom au token `success`, jamais à la couleur d'équipe.
+   * Le rond « joueur actif » était déjà parti (retour C1, 18/08 — « il y a un symbole rond
+   * dans un cercle affiché, je sais pas ce que c'est »). Le glyphe « ami » qui lui survivait
+   * seul (deux silhouettes, ex-`PlayerMark.tsx`) le rejoint : le fil ne dessine plus rien.
+   * `PlayerMark.tsx` était le SEUL composant à rendre un `<svg>` dans une ligne du fil (l'icône
+   * d'arme et le badge d'assistance sont des masques CSS, les médailles des `<img>`) —
+   * chercher un `<svg>` dans une rangée est donc une preuve directe d'absence.
    */
-  it('le glyphe MOI a disparu du fil, celui d’AMI reste', () => {
-    renderMarked(
+  it('aucune ligne ne rend de glyphe, marquée ami ou moi', () => {
+    const { container } = renderMarked(
       [kill({ tMs: 1_000, xuid: 'foe', victimXuid: 'me', victimGamertag: 'JGtm' })],
       new Map([
         ['foe', 'friend'],
         ['me', 'me'],
       ]),
     )
-    expect(screen.getByRole('img', { name: 'Ami' })).toBeTruthy()
+    expect(screen.queryByRole('img', { name: 'Ami' })).toBeNull()
     expect(screen.queryByRole('img', { name: 'Moi' })).toBeNull()
+    expect(container.querySelectorAll('li svg')).toHaveLength(0)
     // L'information ne disparaît pas pour autant : elle reste lisible d'un lecteur d'écran.
     expect(screen.getByText('(Moi)')).toBeTruthy()
   })
 
-  it('le joueur actif ET ses amis écrivent leur nom au token success', () => {
+  it('le joueur actif ET ses amis écrivent leur nom au token success, SANS aucun glyphe', () => {
     const { container } = renderMarked(
       [kill({ tMs: 1_000, xuid: 'foe', victimXuid: 'me', victimGamertag: 'JGtm' })],
       new Map([
@@ -507,6 +511,7 @@ describe('ReplayKillFeed — marques « moi » et « ami »', () => {
     for (const n of noms) {
       expect((n as HTMLElement).style.color).toBe('var(--ac-success)')
     }
+    expect(container.querySelectorAll('li svg')).toHaveLength(0)
   })
 
   it('un joueur SANS marque garde la couleur de son équipe', () => {
@@ -521,20 +526,23 @@ describe('ReplayKillFeed — marques « moi » et « ami »', () => {
   })
 
   it('ne marque personne quand aucune marque n’est fournie', () => {
-    renderFeed([kill({ tMs: 1_000, xuid: 'foe' })], 20_000, 0)
+    const { container } = renderFeed([kill({ tMs: 1_000, xuid: 'foe' })], 20_000, 0)
     expect(screen.queryByRole('img', { name: 'Ami' })).toBeNull()
     expect(screen.queryByRole('img', { name: 'Moi' })).toBeNull()
+    expect(container.querySelectorAll('li svg')).toHaveLength(0)
   })
 
-  it('marque aussi l’ASSISTANT, qui n’est nommé que par son gamertag', () => {
+  it('marque aussi l’ASSISTANT à l’encre success, toujours sans glyphe', () => {
     // L'événement du film ne porte pas le xuid de l'assistant : la marque passe par le
     // scoreboard, seule table qui joint gamertag et xuid. Sans cela, il serait le seul nom
-    // du fil sans glyphe.
-    renderMarked(
+    // du fil sans encre marquée.
+    const { container } = renderMarked(
       [kill({ tMs: 1_000, xuid: 'me', assistState: 'named', assistGamertag: 'Cobra01' })],
       new Map([['foe', 'friend']]),
     )
-    expect(screen.getByRole('img', { name: 'Ami' })).toBeTruthy()
+    const assistant = screen.getByText('Cobra01') as HTMLElement
+    expect(assistant.style.color).toBe('var(--ac-success)')
+    expect(container.querySelectorAll('li svg')).toHaveLength(0)
   })
 })
 

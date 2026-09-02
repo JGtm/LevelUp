@@ -46,6 +46,18 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       environment: 'Chute ou sortie de zone',
       suicide: 'Tué par sa propre arme',
     },
+    presenceJoined: 'a rejoint la partie',
+    presenceLeft: 'a quitté la partie',
+    presenceJoinedHint:
+      "Horodatage de participation de l'API du match : le joueur a rejoint en cours de partie.",
+    presenceLeftHint:
+      "Horodatage de participation de l'API du match : le joueur a quitté avant la fin.",
+    presenceJoinedDerived: 'entre en partie',
+    presenceLeftDerived: 'ne reviendra plus',
+    presenceJoinedDerivedHint:
+      "Première apparition bien après le coup d'envoi, dérivée des vies du film (participation API absente sur ce match).",
+    presenceLeftDerivedHint:
+      "Dernière vie du film bien avant la fin : un départ — ou une élimination définitive sur un mode à manches, le film ne les distingue pas (participation API absente sur ce match).",
     sound: 'Son',
     soundHint:
       "Sons d'armes sur les éliminations, les lancers de grenade et les activations d'équipement, coupés à la seconde. Une arme sans son enregistré reste muette. Coupé par défaut.",
@@ -201,6 +213,8 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       "Échelle étalonnée sur les lieux fréquentés (médiane au bas, 95e centile en haut) : au-delà, la couleur sature. Un seul point extrême ne peut donc pas écraser le reste de la carte.",
     rosterEmpty:
       "Aucune vie du film n'a pu être rattachée à un joueur : le rejeu reste anonyme.",
+    bridgeDiag: (named: number, total: number, collisions: number) =>
+      `Pont du film : ${named}/${total} vies nommées, ${collisions} collision(s) de slot.`,
     teamUnknown: 'Sans équipe',
     teamLabelFmt: (name) => `Équipe ${name}`,
     teamNumberedFmt: (n) => `Équipe ${n}`,
@@ -245,7 +259,6 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     tracksExpand: 'Déplier les pistes',
     unknownPlayer: 'Joueur inconnu',
     markMe: 'Moi',
-    markFriend: 'Ami',
     healthLabel: 'Santé',
     shieldLabel: 'Bouclier',
     abilityLabel: "Capacité d'armure équipée",
@@ -257,7 +270,8 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     grenadeThrown: 'Grenade lancée',
     eliminatedLabel: 'Éliminé',
     respawnIn: 'Réapparition dans',
-    respawnUnknown: 'Réapparition ?',
+    goneLabel: 'Hors film',
+    goneValue: 'ne revient plus',
     inventoryAge: 'Inventaire lu il y a',
     inventoryAhead: 'Inventaire de la première image-clé de cette vie, lue dans',
     grenadeSelected: 'Type équipé : le seul porté, donc celui qui partira au prochain lancer.',
@@ -420,6 +434,18 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       environment: 'Fall or out of bounds',
       suicide: 'Killed by their own weapon',
     },
+    presenceJoined: 'joined the game',
+    presenceLeft: 'left the game',
+    presenceJoinedHint:
+      'Match API participation timestamp: this player joined in progress.',
+    presenceLeftHint:
+      'Match API participation timestamp: this player left before the end.',
+    presenceJoinedDerived: 'joins the game',
+    presenceLeftDerived: 'will not return',
+    presenceJoinedDerivedHint:
+      'First appearance well after kickoff, derived from the film lives (no API participation on this match).',
+    presenceLeftDerivedHint:
+      'Last film life well before the end: a leaver — or a final elimination in a round-based mode; the film does not tell them apart (no API participation on this match).',
     sound: 'Sound',
     soundHint:
       'Weapon sounds on kills, grenade throws and equipment activations, cut at one second. A weapon with no recorded sound stays silent. Off by default.',
@@ -572,6 +598,8 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     heatLegendHint:
       'Scale calibrated on the visited places (median at the bottom, 95th percentile at the top): beyond that, the colour saturates. A single extreme spot therefore cannot flatten the rest of the map.',
     rosterEmpty: 'No life from the film could be attached to a player: the replay stays anonymous.',
+    bridgeDiag: (named: number, total: number, collisions: number) =>
+      `Film bridge: ${named}/${total} lives named, ${collisions} slot collision(s).`,
     teamUnknown: 'No team',
     teamLabelFmt: (name) => `Team ${name}`,
     teamNumberedFmt: (n) => `Team ${n}`,
@@ -616,7 +644,6 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     tracksExpand: 'Expand tracks',
     unknownPlayer: 'Unknown player',
     markMe: 'Me',
-    markFriend: 'Friend',
     healthLabel: 'Health',
     shieldLabel: 'Shield',
     abilityLabel: 'Equipped armor ability',
@@ -627,7 +654,8 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     grenadeThrown: 'Grenade thrown',
     eliminatedLabel: 'Eliminated',
     respawnIn: 'Respawn in',
-    respawnUnknown: 'Respawn ?',
+    goneLabel: 'Out of film',
+    goneValue: 'does not return',
     inventoryAge: 'Inventory read',
     inventoryAhead: 'Inventory from the first keyframe of this life, read in',
     grenadeSelected: 'Equipped type: the only one carried, so the one the next throw will use.',

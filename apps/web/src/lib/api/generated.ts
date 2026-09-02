@@ -8025,6 +8025,7 @@ export interface components {
             expected_deaths?: number;
             /** Format: double */
             expected_kills?: number;
+            first_joined_time?: string;
             gamertag: string;
             /** Format: int64 */
             grenade_kills?: number;
@@ -8037,12 +8038,15 @@ export interface components {
             is_lvp?: boolean;
             is_me: boolean;
             is_mvp?: boolean;
+            joined_in_progress?: boolean;
             /** Format: double */
             kda?: number;
             /** Format: int64 */
             kills?: number;
             /** Format: double */
             kills_stddev?: number;
+            last_leave_time?: string;
+            left_in_progress?: boolean;
             locally_estimated?: boolean;
             /** Format: int64 */
             max_killing_spree?: number;
@@ -9781,6 +9785,7 @@ export interface components {
             sys_bytes: number;
         };
         RosterEntry: {
+            bot?: boolean;
             /** Format: int64 */
             filmIndex: number;
             name?: string;
@@ -11594,6 +11599,7 @@ export interface components {
             wins: number;
         };
         Track: {
+            bot?: string;
             /** Format: int64 */
             endFrame?: number;
             name?: string;

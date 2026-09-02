@@ -63,24 +63,52 @@ type killFeedInputs struct {
 // victimRef : la victime d'une clé (tueur, instant), et le conflit éventuel — deux
 // victimes distinctes sur la même clé (double kill au même millisecond) n'en nomment
 // AUCUNE, exactement la règle de Q21b pour l'arme.
+//
+// xuid PEUT ÊTRE VIDE : c'est une victime BOT (cf. doctrine domain.KVPairRaw). Le feed
+// NOMME au lieu d'agréger, donc l'absence de xuid ne lui retire rien — le gamertag suffit
+// à écrire la ligne. C'est la seule surface qui exploite une paire à xuid vide.
 type victimRef struct {
 	xuid     string
 	gamertag string
 	conflict bool
 }
 
+// memeVictime dit si une paire désigne la victime DÉJÀ retenue sur cette clé.
+//
+// Deux xuid renseignés se comparent par xuid — l'identité forte. Dès qu'un des deux
+// manque (victime bot), il ne reste que le nom : le comparer est le seul moyen de
+// distinguer deux bots tués au même instant par le même tueur. Comparer un xuid vide à
+// un xuid vide déclarerait « même victime » pour deux bots différents, et le feed
+// nommerait le mauvais.
+func memeVictime(v *victimRef, kv *domain.KVPairRaw) bool {
+	if v.xuid != "" && kv.VictimXUID != "" {
+		return v.xuid == kv.VictimXUID
+	}
+	return v.gamertag == kv.VictimGT
+}
+
 // victimsByKill indexe les paires killer→victim par clé de mort, avec la garde
 // d'unanimité.
+//
+// Le TUEUR bot (KillerXUID vide) reste écarté : la clé d'appariement est son xuid, et le
+// feed ne porte aucun event de kill pour lui — indexer sous la clé vide ne pourrait que
+// polluer les kills d'un joueur dont le xuid manquerait. La VICTIME bot, elle, entre dès
+// qu'elle est nommée.
 func victimsByKill(pairs []domain.KVPairRaw) map[killFeedKey]*victimRef {
 	out := make(map[killFeedKey]*victimRef, len(pairs))
 	for i := range pairs {
 		kv := &pairs[i]
-		if kv.KillerXUID == "" || kv.VictimXUID == "" {
+		if kv.KillerXUID == "" {
+			continue
+		}
+		if kv.VictimXUID == "" && kv.VictimGT == "" {
+			// Ni xuid ni nom : rien à afficher, et l'indexer masquerait une vraie victime
+			// sur la même clé en la faisant passer pour un conflit.
 			continue
 		}
 		key := killFeedKey{xuid: kv.KillerXUID, timeMS: kv.TimeMS}
 		if v, ok := out[key]; ok {
-			if v.xuid != kv.VictimXUID {
+			if !memeVictime(v, kv) {
 				v.conflict = true
 			}
 			continue
@@ -172,16 +200,25 @@ func decorateKillFeed(ctx context.Context, events []domain.MatchHighlightEvent, 
 
 // decorateVictim pose la victime d'UN kill : son xuid, son gamertag (celui de la paire,
 // jamais complété par une supposition) et son équipe si le scoreboard la connaît.
+//
+// CHAQUE CHAMP EST POSÉ SÉPARÉMENT, ET C'EST LE POINT. Une victime BOT n'a pas de xuid
+// et n'apparaît dans aucun scoreboard : lui poser un `VictimXUID` de chaîne vide
+// donnerait au front un identifiant qui ressemble à un joueur (il croiserait les marques
+// et les équipes sur cette clé-là), et une équipe résolue sur la clé "" serait celle du
+// premier venu. Le nom, lui, est toujours vrai — c'est tout ce que le feed a besoin
+// d'écrire.
 func decorateVictim(e *domain.MatchHighlightEvent, v *victimRef, teamByXUID map[string]int) {
-	x := v.xuid
-	e.VictimXUID = &x
+	if v.xuid != "" {
+		x := v.xuid
+		e.VictimXUID = &x
+		if team, ok := teamByXUID[v.xuid]; ok {
+			t := team
+			e.VictimTeamID = &t
+		}
+	}
 	if v.gamertag != "" {
 		gt := v.gamertag
 		e.VictimGamertag = &gt
-	}
-	if team, ok := teamByXUID[v.xuid]; ok {
-		t := team
-		e.VictimTeamID = &t
 	}
 }
 

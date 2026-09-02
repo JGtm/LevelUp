@@ -39,9 +39,10 @@
  * et fait défiler à l'intérieur. Le sens de lecture ne change pas : le plus récent en tête,
  * descendre va chercher les événements anciens.
  *
- * LES NOMS PASSENT TOUS PAR `FeedName` (ReplayFeedName.tsx), qui porte les deux règles du
- * retour C1 du 18/08 : le glyphe « joueur actif » ne s'affiche plus ICI (les fiches et la
- * carte le gardent), et un joueur marqué — moi ou un ami — écrit son nom au token `success`.
+ * LES NOMS PASSENT TOUS PAR `FeedName` (ReplayFeedName.tsx), qui ne dessine PLUS AUCUN glyphe
+ * ici depuis la décision D5 du 2026-09-02 (la carte garde sa propre grammaire de formes,
+ * `replayMarkers.ts`) : un joueur marqué — moi ou un ami — se reconnaît au token `success`
+ * porté par son nom, seul.
  *
  * L'ASSISTANCE NE S'AFFICHE QUE NOMMÉE (décision utilisateur 2026-08-12) : marque
  * d'assistance, marque d'identité de l'assistant, Nom, « - part % », puis la part du
@@ -78,6 +79,7 @@ import { ASSIST_ICON_STEM, AssistMark } from './ReplayAssistMark'
 import { MedalBadges } from './MedalBadges'
 import { NO_MARKS, type PlayerMarkKind } from './playerMarks'
 import { FeedName } from './ReplayFeedName'
+import { ReplayPresenceLine } from './ReplayPresenceLine'
 import { HUD_BAND_CLASS, hudBandStyle } from './hudBand'
 import {
   feedAt,
@@ -129,7 +131,9 @@ const AT_TOP_PX = 4
  * LE FILET SÉPARATEUR (`replay-feed-row`, globals.css — option 2a) remplace le fond arrondi
  * d'avant : un trait fin entre `background` et `border`, qui structure la liste sans peser.
  */
-const FEED_ROW =
+// Exporté pour la ligne de présence (ReplayPresenceLine.tsx) : même filet, même gouttière
+// d'horloge — une quatrième forme de ligne qui divergerait d'un pixel se verrait.
+export const FEED_ROW =
   'replay-feed-row flex shrink-0 flex-nowrap items-center gap-2 overflow-hidden py-[5px] pr-2 text-xs'
 
 interface Props {
@@ -255,7 +259,7 @@ function allyOf(xuidMeta: XuidMeta, xuid: string, fallback: boolean): boolean {
  * tabulaires, encre discrète. Les trois formes de ligne l'ouvrent — c'est la colonne qui
  * rend le fil balayable d'un regard.
  */
-function FeedClock({ ms }: { ms: number }) {
+export function FeedClock({ ms }: { ms: number }) {
   return (
     <span
       className="shrink-0 font-mono text-[10.5px] tabular-nums text-muted-foreground"
@@ -293,6 +297,20 @@ function FeedLine({
   marksByGamertag: ReadonlyMap<string, PlayerMarkKind>
   locale: ReplayLocale
 }) {
+  if (entry.presence) {
+    // ENTRÉE/SORTIE DE PARTIE (presenceFeed.ts) : même résolution d'encre que les autres
+    // formes de ligne — l'équipe du scoreboard quand elle est jointe, le repli sinon.
+    const p = entry.presence
+    return (
+      <ReplayPresenceLine
+        presence={p}
+        replayMs={entry.replayMs}
+        color={colorOf(teamIDByXuid.get(p.xuid) ?? null, allyOf(xuidMeta, p.xuid, false))}
+        mark={marks.get(p.xuid)}
+        locale={locale}
+      />
+    )
+  }
   if (entry.death) {
     return (
       <DeathLine
@@ -473,7 +491,7 @@ function KillLine({
       )}
       {k.victimGamertag && (
         <>
-          <FeedName kind={marks.get(k.victimXuid)} name={k.victimGamertag} locale={locale}
+          <FeedName kind={marks.get(k.victimXuid)} name={displayPlayerName(k.victimGamertag, k.victimXuid)} locale={locale}
             color={colorOf(k.victimTeamID, allyOf(xuidMeta, k.victimXuid, !k.ally))} />
         </>
       )}
@@ -495,7 +513,7 @@ function KillLine({
           title={t.killFeedAssistHint}
         >
           <AssistMark label={t.killFeedAssistMark} />
-          <FeedName name={k.assistGamertag} locale={locale}
+          <FeedName name={displayPlayerName(k.assistGamertag)} locale={locale}
             kind={marksByGamertag.get(normalizeGamertagKey(k.assistGamertag))} />
           {k.assistDamagePct != null && (
             <span className="shrink-0 font-mono tabular-nums">

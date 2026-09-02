@@ -1858,6 +1858,15 @@ export interface MatchScoreboardRow {
   is_me: boolean
   /** True si participant détecté comme bot (xuid au format "bid(N.0)"). */
   is_bot?: boolean
+  /**
+   * Participation (API PlayerParticipationInfo) : QUI a rejoint/quitté EN COURS de
+   * partie, et QUAND (RFC3339 UTC). Absents sur les matchs d'avant les colonnes — le
+   * rejeu dérive alors la présence des bornes de vie du film (presenceFeed.ts).
+   */
+  joined_in_progress?: boolean | null
+  left_in_progress?: boolean | null
+  first_joined_time?: string | null
+  last_leave_time?: string | null
   rank: number | null
   score: number | null
   kills: number | null

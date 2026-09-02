@@ -229,6 +229,7 @@ func (b *Builder) BuildBytes(matchID string, mapNames []string, filmDir string, 
 		Labels:          b.labels,
 		NeutralDeaths:   b.neutralDeaths(matchID, ksRes),
 		Kills:           b.killRefs(matchID, filmDir, ksRes),
+		Bots:            botIdentities(ksRes),
 		Objectives:      stats.objectives,
 		Score:           stats.score,
 		Flag:            stats.flag,
@@ -348,6 +349,29 @@ func (b *Builder) neutralDeaths(matchID string, res *killsource.Result) []replay
 	}
 	slog.Info("replaybuild: morts sans revendication typées", "match_id", matchID,
 		"publiees", len(out), "orphelines", res.Stats.Unclaimed.Population)
+	return out
+}
+
+// botIdentities projette les bots que le film déclare (BOT_METADATA, décodage killsource
+// DÉJÀ fait) vers l'assemblage du rejeu. Le suffixe « [bot] » suit la même règle que le
+// kill-feed (killsource.botSuffix) : un consommateur ne doit jamais confondre un bot avec
+// un joueur. Les bots NON ÉPINGLÉS (slot contredisant l'espace des humains) n'entrent pas —
+// leur index est une anomalie déclarée, pas une identité.
+func botIdentities(res *killsource.Result) []replay.BotIdentity {
+	if res == nil || len(res.Roster.Bots) == 0 {
+		return nil
+	}
+	unpinned := make(map[int]bool, len(res.Roster.UnpinnedBots))
+	for _, b := range res.Roster.UnpinnedBots {
+		unpinned[b.BotID] = true
+	}
+	out := make([]replay.BotIdentity, 0, len(res.Roster.Bots))
+	for _, b := range res.Roster.Bots {
+		if b.Name == "" || unpinned[b.BotID] {
+			continue
+		}
+		out = append(out, replay.BotIdentity{FilmIndex: b.Slot, Name: b.Name + " [bot]"})
+	}
 	return out
 }
 
