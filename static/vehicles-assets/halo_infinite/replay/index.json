@@ -7,7 +7,7 @@
   "date": "2026-09-02",
   "statut": "valide",
   "source_report": "ECHELLES_SPRITES_2026-09-02.md",
-  "note": "Rendu V4 (-cote=256, cadrage auto) mesure a 10,25-10,26 mm/px (chassis mode 0xb07d7500, dX=2,503 m / dY=2,347 m vs opaque 244x229 px) : dans la tolerance +-3% (+2,6%) par coincidence de taille, NON retouche."
+  "note": "Rendu V4 (-cote=256, cadrage auto) mesure a 10,25-10,26 mm/px (chassis mode 0xb07d7500, dX=2,503 m / dY=2,347 m vs opaque 244x229 px) : dans la tolerance +-3% (+2,6%) par coincidence de taille, NON retouche. ORIENTATION corrigee le 2026-09-02 (verdict utilisateur, haut = avant) : rotation 180 deg - la convention V4 \"+X = arriere\" etait fausse, +X = AVANT pour tous les vehicules."
  },
  {
   "file": "chopper.png",
@@ -77,7 +77,7 @@
   "date": "2026-09-02",
   "statut": "ignore-non-jouable",
   "source_report": "ECHELLES_SPRITES_2026-09-02.md",
-  "note": "Regenere par ASSEMBLAGE_ENFANTS_CORRIGE_2026-09-01.md (ordre-peintre, chassis + phantom_g, cadre=7/cellmm=10 fixe) - source_report V4 obsolete pour ce fichier. Reconfirme mesure le 2026-09-02 : opaque 1072x734 px vs chassis dX=10,725 m/dY=7,347 m => 10,00-10,01 mm/px, inchange. Caveat deja documente (V4 §10.4) : modele en unites compactes, pas a l'echelle lore. phantom_g (tourelle) minuscule/peu visible, non retouche (hors perimetre)."
+  "note": "Regenere par ASSEMBLAGE_ENFANTS_CORRIGE_2026-09-01.md (ordre-peintre, chassis + phantom_g, cadre=7/cellmm=10 fixe) - source_report V4 obsolete pour ce fichier. Reconfirme mesure le 2026-09-02 : opaque 1072x734 px vs chassis dX=10,725 m/dY=7,347 m => 10,00-10,01 mm/px, inchange. Caveat deja documente (V4 §10.4) : modele en unites compactes, pas a l'echelle lore. phantom_g (tourelle) minuscule/peu visible, non retouche (hors perimetre). ORIENTATION corrigee le 2026-09-02 (verdict utilisateur, haut = avant) : rotation 180 deg - la convention V4 \"+X = arriere\" etait fausse, +X = AVANT pour tous les vehicules."
  },
  {
   "file": "razorback.png",
@@ -107,7 +107,7 @@
   "date": "2026-09-02",
   "statut": "valide",
   "source_report": "ASSEMBLAGE_ENFANTS_CORRIGE_2026-09-01.md",
-  "note": "Regenere par ASSEMBLAGE_ENFANTS_CORRIGE_2026-09-01.md (ordre-peintre, chassis + collier + canon, cadre=7/cellmm=10 fixe) - source_report V4 obsolete pour ce fichier. Reconfirme mesure le 2026-09-02 (ECHELLES_SPRITES_2026-09-02.md) : opaque 380x252 px vs chassis dY=2,511 m => 9,96 mm/px, inchange. Composition armee (canon+collier) verifiee a l'oeil."
+  "note": "Regenere par ASSEMBLAGE_ENFANTS_CORRIGE_2026-09-01.md (ordre-peintre, chassis + collier + canon, cadre=7/cellmm=10 fixe) - source_report V4 obsolete pour ce fichier. Reconfirme mesure le 2026-09-02 (ECHELLES_SPRITES_2026-09-02.md) : opaque 380x252 px vs chassis dY=2,511 m => 9,96 mm/px, inchange. Composition armee (canon+collier) verifiee a l'oeil. ORIENTATION corrigee le 2026-09-02 (verdict utilisateur, haut = avant) : rotation 180 deg - la convention V4 \"+X = arriere\" etait fausse, +X = AVANT pour tous les vehicules."
  },
  {
   "file": "shade.png",
@@ -167,7 +167,7 @@
   "date": "2026-09-02",
   "statut": "valide",
   "source_report": "ECHELLES_SPRITES_2026-09-02.md",
-  "note": "Rendu V4 (-cote=256, cadrage auto) mesure a 10,27-10,29 mm/px (mode 0x06d6ce82, dX=2,507 m / dY=2,109 m vs opaque 244x205 px) : dans la tolerance +-3% (+2,8%) par coincidence de taille, NON retouche. Armes integrees au chassis (pas de tourelle-enfant separee, cf. ASSEMBLAGE_ENFANTS_2026-09-01.md)."
+  "note": "Rendu V4 (-cote=256, cadrage auto) mesure a 10,27-10,29 mm/px (mode 0x06d6ce82, dX=2,507 m / dY=2,109 m vs opaque 244x205 px) : dans la tolerance +-3% (+2,8%) par coincidence de taille, NON retouche. Armes integrees au chassis (pas de tourelle-enfant separee, cf. ASSEMBLAGE_ENFANTS_2026-09-01.md). ORIENTATION corrigee le 2026-09-02 (verdict utilisateur, haut = avant) : rotation 180 deg - la convention V4 \"+X = arriere\" etait fausse, +X = AVANT pour tous les vehicules."
  },
  {
   "file": "wraith.png",
@@ -177,6 +177,6 @@
   "date": "2026-09-02",
   "statut": "valide",
   "source_report": "ASSEMBLAGE_ENFANTS_CORRIGE_2026-09-01.md",
-  "note": "Regenere par ASSEMBLAGE_ENFANTS_CORRIGE_2026-09-01.md (ordre-peintre, chassis + tourelle plasma wraith_g, cadre=7/cellmm=10 fixe) - source_report V4 obsolete pour ce fichier. Reconfirme mesure le 2026-09-02 (ECHELLES_SPRITES_2026-09-02.md) : opaque 305x296 px vs chassis dX=3,057 m/dY=2,963 m => 10,01-10,02 mm/px, inchange. Composition armee (tourelle plasma) verifiee a l'oeil."
+  "note": "Regenere par ASSEMBLAGE_ENFANTS_CORRIGE_2026-09-01.md (ordre-peintre, chassis + tourelle plasma wraith_g, cadre=7/cellmm=10 fixe) - source_report V4 obsolete pour ce fichier. Reconfirme mesure le 2026-09-02 (ECHELLES_SPRITES_2026-09-02.md) : opaque 305x296 px vs chassis dX=3,057 m/dY=2,963 m => 10,01-10,02 mm/px, inchange. Composition armee (tourelle plasma) verifiee a l'oeil. ORIENTATION corrigee le 2026-09-02 (verdict utilisateur, haut = avant) : rotation 180 deg - la convention V4 \"+X = arriere\" etait fausse, +X = AVANT pour tous les vehicules."
  }
 ]
