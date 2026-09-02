@@ -57,12 +57,31 @@ type EnrichmentRow struct {
 }
 
 // HighlightEventInsert — row pour shared.highlight_events.
+//
+// DEUX COLONNES, TROIS CHAMPS — la table porte `type_hint INTEGER` et
+// `raw_json VARCHAR`, et le croisement historique des deux vaut d'être écrit :
+//
+//   - TypeHint : le canal NUMÉRIQUE canonique. Halo Infinite y met l'octet
+//     `type_hint` du bloc event du film (analysis.HighlightEvent.TypeHint), qui
+//     dit la nature de l'event (50 kill, 20 mort, 10 mode, poids de médaille).
+//   - DetailsJSON : le canal numérique HÉRITÉ, au nom trompeur. Halo 5 y met
+//     l'identifiant de médaille sous forme de chaîne, et le persister le verse
+//     dans `type_hint` — pas dans `raw_json` (games/halo_5/ingest/medals.go).
+//     Le nom du champ est une séquelle ; sa cible, elle, est bien `type_hint`.
+//   - RawJSON : le document `raw_json` lui-même. Sur un event `medal` Halo
+//     Infinite il porte `{"medal_name":"..."}` — l'identité que le fil des
+//     éliminations lit (platform/duckdb.medalNameFromRawJSON).
+//
+// Un row ne renseigne JAMAIS TypeHint ET DetailsJSON : ils visent la même
+// colonne. En cas de conflit TypeHint l'emporte (persist.valeurTypeHint).
 type HighlightEventInsert struct {
 	MatchID     string  `json:"match_id"`
 	XUID        *string `json:"xuid,omitempty"`
 	EventType   string  `json:"event_type"`
 	TimeMS      int     `json:"time_ms"`
+	TypeHint    *int    `json:"type_hint,omitempty"`
 	DetailsJSON *string `json:"details_json,omitempty"`
+	RawJSON     *string `json:"raw_json,omitempty"`
 }
 
 // WeaponKillInsert — row pour shared.weapon_kills.

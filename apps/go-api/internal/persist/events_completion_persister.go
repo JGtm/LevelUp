@@ -57,14 +57,24 @@ import (
 
 // HLEventCompletion — une row highlight_events pour la complétion.
 //
-// Mappe sur (match_id, event_type, time_ms, xuid, type_hint). match_id est porté
-// par l'input (commun à toutes les rows). XUID est déjà sérialisé en décimal par
-// le caller (strconv.FormatUint), conformément au schéma VARCHAR de la colonne.
+// Mappe sur (match_id, event_type, time_ms, xuid, type_hint, raw_json). match_id
+// est porté par l'input (commun à toutes les rows). XUID est déjà sérialisé en
+// décimal par le caller (strconv.FormatUint), conformément au schéma VARCHAR de
+// la colonne.
+//
+// RawJSON porte l'identité de la médaille (`{"medal_name":"..."}`) sur les events
+// `medal`, nil partout ailleurs. Il existe parce que cette voie est le SECOND
+// écrivain vivant de la table : le flux primaire (collect→persist) n'est pas seul,
+// la complétion/convergence réécrit les events des matchs dont le film n'était pas
+// publié au sync primaire, ou qui étaient déjà en registry via un coéquipier. Tant
+// que ce chemin n'écrivait pas `raw_json`, chaque cycle rouvrait le trou que le
+// flux primaire venait de fermer (revue adversariale du 2026-09-02).
 type HLEventCompletion struct {
 	XUID      string
 	EventType string
 	TimeMS    int
 	TypeHint  int
+	RawJSON   *string
 }
 
 // KVPairCompletion — une row killer_victim_pairs (forme par-kill).
@@ -225,8 +235,8 @@ func insertCompletionHighlightEvents(ctx context.Context, tx *sql.Tx, matchID st
 		return 0, nil
 	}
 	stmt, err := tx.PrepareContext(ctx, `
-		INSERT OR IGNORE INTO highlight_events (match_id, event_type, time_ms, xuid, type_hint)
-		VALUES (?, ?, ?, ?, ?)`)
+		INSERT OR IGNORE INTO highlight_events (match_id, event_type, time_ms, xuid, type_hint, raw_json)
+		VALUES (?, ?, ?, ?, ?, ?)`)
 	if err != nil {
 		return 0, fmt.Errorf("persist: EventsCompletion prepare highlight_events %s: %w", matchID, err)
 	}
@@ -234,7 +244,7 @@ func insertCompletionHighlightEvents(ctx context.Context, tx *sql.Tx, matchID st
 
 	inserted := 0
 	for _, e := range events {
-		res, execErr := stmt.ExecContext(ctx, matchID, e.EventType, e.TimeMS, e.XUID, e.TypeHint)
+		res, execErr := stmt.ExecContext(ctx, matchID, e.EventType, e.TimeMS, e.XUID, e.TypeHint, e.RawJSON)
 		if execErr != nil {
 			return 0, fmt.Errorf("persist: EventsCompletion insert highlight_events %s: %w", matchID, execErr)
 		}

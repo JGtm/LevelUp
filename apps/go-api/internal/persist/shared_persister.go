@@ -429,15 +429,38 @@ func persistKillPositions(ctx context.Context, tx *sql.Tx, rows []KillPositionIn
 	return nil
 }
 
+// valeurTypeHint choisit ce qui part dans la colonne `type_hint`, que DEUX champs
+// visent (cf. doc de HighlightEventInsert) : le canal numérique canonique TypeHint,
+// sinon le canal hérité DetailsJSON (Halo 5, identifiant de médaille en chaîne),
+// sinon NULL. L'ordre est un arbitrage, pas une fusion : un row ne renseigne jamais
+// les deux.
+func valeurTypeHint(e HighlightEventInsert) any {
+	if e.TypeHint != nil {
+		return *e.TypeHint
+	}
+	if e.DetailsJSON != nil {
+		return *e.DetailsJSON
+	}
+	return nil
+}
+
+// persistHighlightEvents écrit la timeline des events de highlight.
+//
+// COLONNES SÉPARÉES : `type_hint` reçoit un NOMBRE (nature de l'event), `raw_json`
+// reçoit un DOCUMENT (l'identité de la médaille pour Halo Infinite). Avant le
+// 2026-09-02 la seule colonne écrite était `type_hint`, et elle recevait
+// `DetailsJSON` — d'où 415 matchs dont les events medal n'avaient AUCUNE identité
+// (le fil des éliminations lit `raw_json.medal_name`). Le rattrapage de ces matchs
+// est une passe hors ligne (ops.BackfillIdentiteMedailles).
 func persistHighlightEvents(ctx context.Context, tx *sql.Tx, rows []HighlightEventInsert) error {
 	if len(rows) == 0 {
 		return nil
 	}
 	for _, e := range rows {
 		_, err := tx.ExecContext(ctx, `
-			INSERT INTO highlight_events (match_id, event_type, time_ms, xuid, type_hint)
-			VALUES (?, ?, ?, ?, ?)`,
-			e.MatchID, e.EventType, e.TimeMS, e.XUID, e.DetailsJSON,
+			INSERT INTO highlight_events (match_id, event_type, time_ms, xuid, type_hint, raw_json)
+			VALUES (?, ?, ?, ?, ?, ?)`,
+			e.MatchID, e.EventType, e.TimeMS, e.XUID, valeurTypeHint(e), e.RawJSON,
 		)
 		if err != nil {
 			return fmt.Errorf("persist: INSERT highlight_events %s/%s/%d: %w",
