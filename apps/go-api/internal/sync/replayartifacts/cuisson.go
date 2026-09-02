@@ -186,8 +186,13 @@ func buildAll(ctx context.Context, d Deps, work []buildWork) bilanCuisson {
 			continue
 		}
 		b.construits++
+		// LA DUREE ET LE PIC VIENNENT DE L'ENFANT (cf. buildone.go) : c'est la seule ligne du
+		// cycle qui dit ce qu'a coute un film. Un pic a zero signifie « non mesure » — un enfant
+		// mort avant de se mesurer —, jamais « aucune memoire ».
 		slog.InfoContext(ctx, "post-sync: artefact rejeu construit",
-			"gamertag", d.Gamertag, "match_id", w.matchID, "tracks", out.Tracks, "bytes", out.Bytes)
+			"gamertag", d.Gamertag, "match_id", w.matchID,
+			"tracks", out.stored.Tracks, "bytes", out.stored.Bytes,
+			"duration", out.dur, "pic_octets", out.peak)
 	}
 	return b
 }

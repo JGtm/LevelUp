@@ -1,3 +1,133 @@
+## [2026-09-02] Cuisson perf, lot 0 CLOS — harnais d'equivalence, determinisme prouve, reference HEAD — Complete
+
+Cloture du lot 0 de `.ai/V7.5/PLAN_CUISSON_PERF.md` (pilotage : agents pour le code et les
+revues, pilote pour gates/statuts/journal/commit — demande utilisateur).
+
+**Decision technique principale** : l'equivalence se prouve desormais par outillage —
+`cmd/replay-equiv` (un film par processus borne : verrou solo en attente, priorite basse,
+sentinelle), empreintes par etape (`internal/analysis/digest`, grammaire versionnee v2,
+marqueur dans chaque TSV), observateur dans le code de production (45 etapes), faits du match
+figes par film. Deux rondes de revue adversariale integrees.
+
+**Resultats observes** :
+- Determinisme de la cuisson PROUVE : 2 verifications completes x 9 films = 9/9 identiques
+  (45 empreintes par film, artefact compris). Pour y arriver, DIX sites de non-determinisme
+  reels corriges (0.4bis + extension assemblage) — dont trois qui publiaient des donnees
+  tirees au sort (lacheur d'arme au sol, poseur d'equipement, proprietaire de zone A/B) ;
+  10 tests d'ordre discriminants.
+- Reference HEAD posee (`MESURES_CUISSON_PERF.md` §1) : temoins a 2 min 24 - 2 min 49,
+  decodage = ~94 % du temps, assemblage+serialisation 8 ms ; poste n°1 inattendu :
+  `playerIndices` 35-40 s ; six scanners delta ~45 s cumules ; killsource 8-9 s seulement.
+- Grammaire D3 tranchee SUR MESURE (1 378 films) : le paquet taille 0 des chunks de donnees
+  est le terminateur CHUNK_END (type 7, dernier, rien apres) ; grammaire revisee (le
+  terminateur est emis) = 0 divergence sur les chunks de donnees de tout le cache.
+- DEUX NOUVELLES BOMBES MEMOIRE revelees par le figeage : `1c4c63c2` (3,96 Gio en 4,5 s) et
+  `60ae07c4` (Live Fire — le temoin du lot 3 ; 4,02 Gio en 2 min 12) — reclasses au regime
+  D11, le lot 3 depend du plafond D13 (decision a l'entree du lot 3).
+- Instrumentation en production : durees par balayage (Debug) et par phase (Info), duree+pic
+  remontes par l'enfant jusqu'au log post-sync, `replay-build` avec journal CLI et profils.
+
+**Conclusion / prochaine etape** : lot 0 clos au gate (suite complete + integration -p 1 +
+vet + lint 0 issue) ; commit sur `wt/cuisson-perf` (jamais pousse — la CI jugera au premier
+push). Prochaine etape : lot 1 (paquet feuille `filmsource`, decoder une fois) sous le meme
+protocole — cible principale eclairee par la reference : `playerIndices`, socles/poses, et
+les six scanners delta.
+
+## [2026-09-02] Harnais d'equivalence — reprises de la 2e ronde de revue (N-A, N-B, N-C, N-E)
+
+**Statut** : Complété (branche `wt/cuisson-perf`, non committé — le pilote décide du commit).
+
+**N-A — le digest d'une map n'était PAS déterministe.** `digest.table` triait les paires par le
+seul rendu de la CLÉ ; or la grammaire ne porte pas les noms de type, donc deux clés DISTINCTES
+peuvent rendre les mêmes octets. Mesuré avant correction : `map[any]int{int32(1):100,
+int64(1):200}` rendait **2 empreintes sur 200 tours** (176/24), et deux clés pointeur vers des
+valeurs égales également (174/26) — l'ordre aléatoire d'itération de map fuyait dans le flux.
+Correction : `departager()` ordonne les groupes de clés à rendu égal par le rendu de la VALEUR
+(calculé UNIQUEMENT en cas de conflit, puis réutilisé à l'écriture — coût nul dans le cas
+courant). Deux entrées dont clé ET valeur rendent les mêmes octets sont indiscernables par
+construction. La garantie de l'en-tête du paquet, qui affirmait l'indépendance à l'ordre
+d'insertion SANS condition, énonce désormais la condition réelle.
+
+**N-B — marqueur de version de grammaire.** `digest.GrammarVersion = 2` (v1 = rendu sans
+préfixes de longueur ; v2 = préfixes `s:`/`b:`/`n:` + départage des clés de map), avec
+`GrammarLine()`/`ParseGrammarLine()` en écriture unique (`digest/grammar.go`). L'enfant de
+`replay-equiv` écrit `# digest-grammar: 2` en PREMIÈRE ligne du TSV ; le parent la vérifie avant
+toute comparaison et classe un écart de version en **INFRA** (« références figées sous la
+grammaire N, harnais en N' : re-figer par -update »), jamais en ÉCART d'étape ; `-update`
+l'écrit. Même contrat dans `TestEquivalenceMiniFilm`. Motif : le 2026-09-02, 6 TSV sur 9 étaient
+restés sous la v1 et l'écart se lisait comme une régression du décodeur.
+**Les 9 TSV de corpus ont été SUPPRIMÉS** (mélange de grammaires) — le pilote re-fige tout par
+`-update` ; `minifilm.tsv` régénéré : seule la ligne de grammaire change, **les 7 empreintes
+sont identiques** (le départage ne modifie aucune valeur réelle).
+
+**N-C** : le WARN des socles journalisait `comptes["spawnPointsState"]`, c'est-à-dire la
+LONGUEUR de la chaîne. Le collecteur retient désormais la valeur des étapes-chaînes
+(`map_absent` / `not_established` / `established`).
+
+**N-E** : `TestAxeBorneHaute` asserte enfin la sortie de `marcheObjectiveevents` (l'axe porte sur
+la MARCHE, pas sur la sortie : il avance sans l'offset mais son test d'émission le reprend) ;
+deux cas ajoutés — terminateur en première position, et chunk sans terminateur (axe
+`fin_de_tampon`).
+
+**Gates** : `gofmt -l` vide ; `go vet` (digest, replay, replay-equiv) OK ; `go test` digest +
+replay-equiv OK ; `go test ./internal/analysis/replay/ -run 'TestObserve|TestEquivalenceMiniFilm|TestGolden'`
+OK ; `golangci-lint run` sur les 3 paquets : **0 issue** ; `go build ./cmd/...` OK.
+
+**Prochaine étape** : le pilote re-fige le corpus (`replay-equiv -update`) sous la grammaire 2.
+
+## [2026-09-02] Cuisson perf, lot 0 — corrections de la revue adversariale (B1, C1-C7, N1/N2/N4/N6/N7) — Complete
+
+Sous-agent de correction, worktree `LevelUp-wt-cuisson-perf` (`wt/cuisson-perf`). Rien commite,
+aucune cuisson lancee, aucun TSV du corpus regenere (seul `minifilm.tsv` l'a ete, cf. ci-dessous).
+
+**Decision technique principale** : le paquet `internal/analysis/digest` passe au PREFIXE DE
+LONGUEUR. Quatre collisions etaient CONSTRUCTIBLES (`[]string{"a,b"}` == `[]string{"a","b"}` ;
+une cle de map portant `=` ; `[][]byte{{1,2},{3}}` == `{{1,2,44,3}}` ; `[]byte("<nil>")` ==
+`[]byte(nil)`) — un harnais d'equivalence qui accepte des collisions constructibles ne prouve
+rien. Toute chaine imbriquee s'ecrit `s:<len>:<octets>`, toute tranche d'octets imbriquee
+`b:<len>:<octets>`, le nul `n:`. LE CAS RACINE RESTE BRUT : une `[]byte` passee directement a
+`Of` est hachee telle quelle, parce que l'empreinte d'un artefact DOIT etre celle que
+`sha256sum` rend sur le fichier range — la contrepartie (a la racine, `[]byte(nil)` vaut zero
+octet) est ecrite en tete du paquet. La marche gagne une BORNE DE PROFONDEUR (1 000) : le garde
+de cycle ne suivait que les pointeurs, et `m := map[string]any{}; m["soi"] = m` faisait deborder
+la pile.
+
+**Resultats observes** :
+- Grammaire unifiee de `cmd/replay-equiv -walkers` alignee sur D3 REVISEE (elle implementait
+  encore la grammaire ABANDONNEE : arret sur `size <= 0` sans emettre). Le terminateur de type 7
+  est desormais EMIS puis ferme le chunk ; l'arret sans emission est reserve a l'en-tete degenere
+  (taille 0, type != 7) de `chunk_00`. En-tete du fichier corrige (il decrivait l'abandonnee sous
+  le titre « la grammaire retenue » — doc inversee).
+- Dette CREEE par le lot et notee a tort comme heritee (§8 du plan) : a la base `0c70e3bbc`,
+  `replaybuild.go` faisait **488** lignes et `BuildBytes` **62** — sous les seuils. Corrige dans
+  le lot : scission pure vers `internal/replaybuild/artifact_digest.go` (462 L) et extraction de
+  `collecterEntreesCatalogue` (`BuildBytes` a 66 L). Le garde `replaybuild/observe_test.go`
+  DESCEND desormais dans la sous-fonction — sans quoi il aurait declare huit etapes disparues,
+  ou aurait ete « corrige » en les retirant de la liste, rendant l'equivalence aveugle sur les
+  zones, les socles et les frags.
+- `cmd/replay-equiv` n'installait AUCUN handler slog, dans aucun de ses deux roles : les
+  degradations de `replaybuild` etaient muettes et `-update` pouvait figer du vide sans un mot.
+  `logging.InstallCLILevel` installe pour les deux roles, plus une DEFENSE DE FOND dans l'enfant
+  (WARN quand `zones` ou `spawnPoints` comptent 0 malgre un `MapID` non vide, l'aiguillage de
+  variante venant de `objectiveevents.ObjectiveTypeOf`). Le niveau `LEVELUP_LOG_LEVEL` est
+  centralise en `logging.ConsoleLevelFromEnv()` — une troisieme copie de la table de niveaux
+  aurait viole la regle des 2 copies.
+- Profil CPU de `cmd/replay-build` ferme AUSSI quand la sentinelle memoire tranche (le
+  commentaire le promettait, le rappel sortait sans) : c'est precisement sur un film qui explose
+  qu'on veut pouvoir lire le profil.
+- Trois tests d'ordre TOTAL ajoutes pour les corrections 0.4bis qui n'en avaient pas :
+  `lessPlacement`, `roundStartsOf`, `gwPadsClass`.
+- `minifilm.tsv` regenere (C6 change les empreintes) : comptes IDENTIQUES sur les 7 etapes,
+  empreintes changees sur `fire`, `inventory` et `deaths` (les seules qui portent des chaines ou
+  des octets) — la preuve que le changement est un changement de RENDU, pas de contenu.
+
+**Conclusion / prochaine etape** : gate vert (gofmt, vet, tests digest/filmdec/objectiveevents/
+replaybuild/archlint/replay-equiv, `TestObserve|TestEquivalenceMiniFilm|TestGolden`, build des
+quatre binaires, `golangci-lint` a 0 issue sur le perimetre). RESTE AU PILOTE : re-figer les TSV
+du corpus (C6 change toutes les empreintes) et relancer la mesure `-walkers` (C1 change la
+grammaire mesuree — la section §divergence de `MESURES_CUISSON_PERF.md` decrit desormais un
+resultat obtenu avec la grammaire abandonnee).
+
 ## [2026-09-02] Plan « cuisson des artefacts de rejeu : decoder une fois » — ecrit, relu deux fois — En cours
 
 Suite de l'audit du meme jour (`.ai/AUDIT_CUISSON_REPLAY_PERF_2026-09-02.md`, deplace dans ce
@@ -86521,3 +86651,5 @@ nos fichiers (24 warnings preexistants ailleurs) ; vitest **546 fichiers / 5641 
 reconcilier avec la garde One Bomb du compte a rebours) ; RE-CUISSON INTERDITE par le user —
 rien ne s'affiche en app avant la levee ; son de prise/lacher de bombe volontairement absent
 (aucun stem designe — meme regle que le crane).
+
+---

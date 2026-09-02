@@ -1,0 +1,24 @@
+# CORPUS D'EQUIVALENCE — PLAN_CUISSON_PERF §4 item 0.1 (fige le 2026-09-02)
+#
+# Une ligne par film : short8 | cartes candidates (ordre de ResolveMapEntry, depuis <short8>.facts.json) |
+# variante | chunks | Mo compresses | raison de presence.
+# Les cartes et la variante viennent de `levelup replay-facts-export` (registre + faits), jamais de la
+# main ; les tailles ont ete mesurees au cache le 2026-09-02. Les noms de carte sont les map_name BRUTS
+# du registre (metadata.duckdb etait tenue par le serveur a l'export) : tous resolvent au catalogue de
+# bornes par NormalizeMapName (suffixes « - ranked » et « heavies » retires).
+#
+# `60ae07c4` (Live Fire) est le SEUL film dont les digests changent au lot 3 (layout du catalogue pour
+# les six balayages delta) ; les 10 autres doivent rester IDENTIQUES a chaque lot de refacto pur.
+000d5950 | Cliffhanger | Slayer:Arena Super Fiesta | 28 | 20.2 | temoin historique (golden d'assemblage, mini-bobine)
+01e1f945 | Catalyst | KOTH:Arena | 30 | 22.5 | temoin historique 278 s (decomposition par horodatages) ; zones KOTH
+64e8adfa | Catalyst | CTF:Arena | 45 | 33.7 | temoin historique (sept grandeurs) ; CTF arene
+7344d24f | Vagabond | Strongholds:Arena | 33 | 25.8 | temoin Strongholds (239-260 s) ; zones
+696a9d7c | Vagabond | Strongholds:Arena | 31 | 26.6 | temoin Strongholds (230-284 s) ; zones
+084a804d | Fortitude Heavies | BTB Heavies:CTF | 57 | 58.9 | temoin historique 19 min, BTB 26 joueurs, CTF
+ # BOMBE MEMOIRE (figeage 2026-09-02 : 3,96 Gio en 4,5 s, tue au plafond) — regime D11, empreinte au lot 4b
+#1c4c63c2 | Refuge | BTB:One Flag CTF | 69 | 88.0 | LE PLUS GROS film du cache — hypothese memoire au pire cas
+53ce4390 | Behemoth | CTF:Arena | 41 | 31.8 | ancre historique des bursts de capture CTF
+d9781168 | Dredge | Oddball:Arena | 39 | 29.8 | Oddball (porteur du crane)
+9f57c612 | Curfew | Assault:One Bomb | 27 | 19.8 | Assaut One Bomb, temoin des tests navpoint_ti12 (portage de bombe)
+ # BOMBE MEMOIRE (figeage 2026-09-02 : 4,02 Gio en 2 min 12) — temoin du LOT 3, regime D11, cf. journal du plan
+#60ae07c4 | Live Fire - Ranked | Ranked:Oddball | 44 | 32.0 | Live Fire : carte a plus de 2 regions — ECART ATTENDU AU LOT 3 SEULEMENT

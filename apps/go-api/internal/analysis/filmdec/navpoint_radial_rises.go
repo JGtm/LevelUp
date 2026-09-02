@@ -65,13 +65,37 @@ func NavpointContiguousRises(reads []NavpointRadialRead) []NavpointRise {
 		sort.Slice(s, func(i, j int) bool { return s[i].TMS < s[j].TMS })
 		out = append(out, navpointRisesOfSeries(slot, s)...)
 	}
-	sort.Slice(out, func(i, j int) bool {
-		if out[i].EndMS != out[j].EndMS {
-			return out[i].EndMS < out[j].EndMS
-		}
-		return out[i].Slot < out[j].Slot
-	})
+	sort.Slice(out, func(i, j int) bool { return lessNavpointRise(out[i], out[j]) })
 	return out
+}
+
+// lessNavpointRise est l'ordre TOTAL des montees : fin, slot, PUIS la montee elle-meme.
+//
+// POURQUOI LE DEPARTAGE PAR LA MONTEE (correction du 2026-09-02, item 0.4bis etendu de
+// PLAN_CUISSON_PERF). `out` est bati en iterant la MAP `series` — dont l'ordre change a chaque
+// execution — et `sort.Slice` n'est pas stable. Le couple (EndMS, Slot) N'EST PAS total : la
+// serie d'UN slot peut porter deux lectures a la MEME milliseconde (les navpoints vont par
+// paires et le tri de la serie ne separe que sur l'instant), et deux montees successives du meme
+// slot finissent alors sur la meme borne. Leur rang etait donc tire au sort — et il compte :
+// `replay/bomb_armings.go` lit ces montees dans l'ordre pour dater les armements de bombe.
+//
+// Le departage n'utilise QUE des champs de la montee, jamais une adresse ni un rang d'iteration.
+// Deux montees que ce comparateur ne separe pas sont identiques champ pour champ. Meme patron
+// que `lessTrack` (projectiles.go) et `lessPlacement` (equipment_placements.go).
+func lessNavpointRise(a, b NavpointRise) bool {
+	switch {
+	case a.EndMS != b.EndMS:
+		return a.EndMS < b.EndMS
+	case a.Slot != b.Slot:
+		return a.Slot < b.Slot
+	case a.StartMS != b.StartMS:
+		return a.StartMS < b.StartMS
+	case a.QStart != b.QStart:
+		return a.QStart < b.QStart
+	case a.QEnd != b.QEnd:
+		return a.QEnd < b.QEnd
+	}
+	return a.Samples < b.Samples
 }
 
 // navpointRisesOfSeries decoupe UNE serie triee en montees contigues au sens du protocole.

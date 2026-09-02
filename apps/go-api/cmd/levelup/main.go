@@ -123,6 +123,8 @@ func main() {
 		exitErr = runArchiveFilms(cfg, args)
 	case "backfill-replay":
 		exitErr = runBackfillReplay(cfg, args)
+	case "replay-facts-export":
+		exitErr = runReplayFactsExport(cfg, args)
 	case "migrate":
 		exitErr = runMigrate(cfg, args)
 	case "restore-csr":
@@ -180,6 +182,7 @@ Commandes:
   backfill-killsource Remplit match_kill_events + match_weapon_shots : décodage HORS LIGNE des films en cache (gros films en dernier, reprenable par decoder_rev) puis producteur credit-seul depuis highlight_events (--dry-run, --limit, --films-only, --credit-only, serveur arrêté). --online --gamertag <GT> va CHERCHER les films absents du cache et les y archive : c'est ce qui rattrape l'attribution des assistances, sans film il n'y en a aucune
   archive-films   Télécharge et CONSERVE les films manquants du cache local (manifeste + chunks complets, sans aucun décodage). Les films EXPIRENT côté 343 et ne se retéléchargent jamais : cette passe est la seule qui les sauve. Lecture seule sur la base (elle ne peut rien corrompre) mais SERVEUR ARRÊTÉ quand même : DuckDB n'autorise qu'un processus par fichier (--dry-run, --limit, --gamertag, --sauter-marques)
   backfill-replay Construit les artefacts de rejeu 2D de tous les films en cache : décodage HORS LIGNE via la librairie replaybuild, UN PROCESSUS PAR FILM (un film-bombe n'emporte plus la passe ni la machine ; gros films en dernier, reprenable par SchemaVersion, échecs ventilés : carte hors catalogue, mémoire, mort subite) (--dry-run, --limit, --force, --only-existing, --mem-limit-gib)
+  replay-facts-export  Exporte les faits de match (JSON, forme de replay-build --facts) et les cartes candidates de matchs nommes, pour le harnais d'equivalence des rejeux (--out, --title)
   migrate         Migrer les donnees vers le namespace multi-titres
   restore-csr     Restaurer les CSR historiques depuis un backup DuckDB legacy (--gamertag X --backup PATH [--dry-run] [--mode preserve|overwrite])
   add-title       Initialiser l'arborescence d'un nouveau titre de jeu

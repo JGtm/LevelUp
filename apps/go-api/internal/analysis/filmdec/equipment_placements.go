@@ -156,6 +156,40 @@ func ScanFilmEquipmentPlacements(
 	return out, st, nil
 }
 
+// lessPlacement ordonne les poses : instant de pose, slot, génération, PUIS la pose elle-même.
+//
+// POURQUOI LE DÉPARTAGE PAR LA POSE (correction du 2026-09-02, item 0.4bis de
+// PLAN_CUISSON_PERF). `out` est bâti en itérant la MAP `best` — dont l'ordre change à chaque
+// exécution — et `sort.Slice` n'est pas stable : tout triplet (T0US, slot, génération) en ex
+// æquo laissait donc l'aléa décider du rang publié. Et le triplet N'EST PAS total : la clé de
+// `best` est (slot, génération, DÉBUT DE VIE), si bien que deux vies distinctes du même couple
+// peuvent porter le même instant de création. Même défaut, même remède que `lessTrack`
+// (projectiles.go) : le départage n'utilise QUE des champs de la pose, jamais une adresse ni un
+// rang d'itération. Deux poses que ce comparateur ne sépare pas sont identiques champ pour
+// champ — les échanger ne change pas la sortie.
+func lessPlacement(a, b EquipmentPlacement) bool {
+	switch {
+	case a.T0US != b.T0US:
+		return a.T0US < b.T0US
+	case a.Life.Slot != b.Life.Slot:
+		return a.Life.Slot < b.Life.Slot
+	case a.Life.Gen != b.Life.Gen:
+		return a.Life.Gen < b.Life.Gen
+	case a.T1US != b.T1US:
+		return a.T1US < b.T1US
+	case a.X != b.X:
+		return a.X < b.X
+	case a.Y != b.Y:
+		return a.Y < b.Y
+	case a.Z != b.Z:
+		return a.Z < b.Z
+	case a.GlobalID != b.GlobalID:
+		return a.GlobalID < b.GlobalID
+	default:
+		return a.Points < b.Points
+	}
+}
+
 // confirmPlacements garde les records que l'oracle de position confirme, et n'en rend qu'un par
 // VIE — le plus ancien, celui qui date la pose.
 //
@@ -193,15 +227,7 @@ func confirmPlacements(
 	for _, p := range best {
 		out = append(out, p)
 	}
-	sort.Slice(out, func(i, j int) bool {
-		if out[i].T0US != out[j].T0US {
-			return out[i].T0US < out[j].T0US
-		}
-		if out[i].Life.Slot != out[j].Life.Slot {
-			return out[i].Life.Slot < out[j].Life.Slot
-		}
-		return out[i].Life.Gen < out[j].Life.Gen
-	})
+	sort.Slice(out, func(i, j int) bool { return lessPlacement(out[i], out[j]) })
 	st.Placements = len(out)
 	return out
 }
