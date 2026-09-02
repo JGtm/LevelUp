@@ -1,3 +1,19 @@
+## [2026-09-02] T0 film — LOT D (D1/D2/D4/D5) : la base locale est reparee, la suite est sequencee — En cours (reste D3 gate visuel + D6 cloture)
+
+Sous le plan `.ai/V7.5/PLAN_T0_FILM_2026-09-02.md`. **Decision technique** : execution du
+`--commit` sans arret de serveur (port 8000 verifie LIBRE avant — rien a arreter, rien
+redemarre). **Resultats** : 101 lignes `match_registry` reparees (`film_movement`),
+partition sans reste (106 = 101 + 5 refus artefactSansOrigine + 0 + 0), controle en base
+apres ecriture : temoins `1b2d9e08` = 31 862 ms / `72b0a25e` = 38 951 ms exacts ;
+distribution t0_quality : ok 1670 / NULL 176 / film_movement 101 / suspicious_high 11 /
+negative 1. **Decisions user** : recuisson REPORTEE (« la recuisson attendra ») —
+registre + [!] au plan ; backfill general du T0 = OUI a la release — tache Notion posee
+sous « Sequence a derouler a la release, dans l'ordre » (Backlog LevelUp), passe API
+`backfill_t0` puis passe film `backfill_t0_film`, serveur arrete, temoins de validation
+nommes. Deux entrees au REGISTRE_REPORTS (recuisson+prod ; report fil de l'eau limite au
+placement local, accroche SetArtifactStoredSink). **Prochaine etape** : D3 gate visuel
+user (`1b2d9e08`, `72b0a25e`, un match sain) puis D6 (delivery-checklist + CI de branche).
+
 ## [2026-09-02] T0 film — LOT C : le coup d envoi mesure entre en base, et rien ne l ecrase — Complete
 
 Reprise du lot C sous le plan `.ai/V7.5/PLAN_T0_FILM_2026-09-02.md` (decisions D1-D6 fermes),
