@@ -312,6 +312,12 @@ func buildNemesisMap(
 
 	result := make(map[string]*nemesisEntry)
 	for _, kv := range kvPairs {
+		// Un xuid vide désigne un BOT (NULL de la canonique, cf. GetMatchKVPairs) : les bots
+		// n'entrent JAMAIS dans les duels (décision user 2026-09-02) — et les agréger sous la
+		// clé "" fusionnerait tous les bots en un némésis fantôme.
+		if kv.KillerXUID == "" || kv.VictimXUID == "" {
+			continue
+		}
 		if kv.VictimXUID == myXUID {
 			if _, ok := result[kv.KillerXUID]; !ok {
 				gt := gtMap[kv.KillerXUID]
