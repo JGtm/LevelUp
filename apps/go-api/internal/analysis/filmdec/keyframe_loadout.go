@@ -1,8 +1,9 @@
 package filmdec
 
 import (
-	"fmt"
 	"sort"
+
+	"levelup/go-api/internal/analysis/filmsource"
 )
 
 // keyframe_loadout.go — ARMES PORTÉES par chaque biped, lues dans les keyframes type-2.
@@ -62,20 +63,34 @@ type KeyframeLoadout struct {
 // anti-hasard en tête de fichier, qui suppose un catalogue de l'ordre de la centaine).
 //
 // HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requête.
+//
+// ScanFilmKeyframeLoadouts est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
+// [ScanKeyframeLoadouts].
 func ScanFilmKeyframeLoadouts(dir string, known map[uint32]bool) ([]KeyframeLoadout, error) {
+	if len(known) == 0 {
+		return nil, nil // catalogue vide : rien a chercher, et rien a charger
+	}
+	film, err := filmsource.LoadDir(dir, nil)
+	if err != nil {
+		return nil, err
+	}
+	return ScanKeyframeLoadouts(film, known)
+}
+
+// ScanKeyframeLoadouts décode les armes portées aux images-clés d'un film DEJA CHARGE.
+func ScanKeyframeLoadouts(film *filmsource.Film, known map[uint32]bool) ([]KeyframeLoadout, error) {
 	if len(known) == 0 {
 		return nil, nil
 	}
-	n := CountFilmChunks(dir)
 	var out []KeyframeLoadout
 	read := 0
-	for c := 1; c <= n; c++ {
-		chunk, err := ReadFilmChunk(dir, c)
-		if err != nil {
+	for _, c := range FilmChunkNumbers(film) {
+		chunk, pks, ok := FilmChunkAt(film, c)
+		if !ok {
 			continue
 		}
 		read++
-		for _, p := range WalkPackets(chunk) {
+		for _, p := range pks {
 			if p.Type != PacketTypeKeyframe {
 				continue
 			}
@@ -86,7 +101,7 @@ func ScanFilmKeyframeLoadouts(dir string, known map[uint32]bool) ([]KeyframeLoad
 		}
 	}
 	if read == 0 {
-		return nil, fmt.Errorf("aucun chunk film lisible dans %s", dir)
+		return nil, ErrNoReadableFilmChunk
 	}
 	return out, nil
 }

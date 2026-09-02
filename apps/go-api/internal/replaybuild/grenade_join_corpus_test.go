@@ -57,7 +57,7 @@ func TestPhase0_PoidsDesTagsAmbigusDeGrenade(t *testing.T) {
 	cache := cacheDesFilms(t)
 	b := nouveauBalayage()
 	for _, path := range artefactsDuCorpus(t, corpus) {
-		f, ok := chargerFilm(t, path, cache)
+		f, ok := chargerArtefactEtFilm(t, path, cache)
 		if !ok {
 			b.echecs++
 			continue
@@ -173,7 +173,7 @@ func TestPhase1_JointureDuLancerSurLOracle(t *testing.T) {
 	var desaccords []string
 	films, lancersPublies, lancersDisponibles := 0, 0, 0
 	for _, path := range artefactsDuCorpus(t, corpus) {
-		f, ok := chargerFilm(t, path, cache)
+		f, ok := chargerArtefactEtFilm(t, path, cache)
 		if !ok {
 			continue
 		}

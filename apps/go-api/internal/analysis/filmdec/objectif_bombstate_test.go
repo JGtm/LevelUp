@@ -182,7 +182,7 @@ func bsFilm(t *testing.T, cache, id string) *bsBilan {
 	if !ok {
 		return nil
 	}
-	band := observedSlotBand(dir, n, ManagedPropertyTypeIndex)
+	band := observedSlotBandDir(dir, n, ManagedPropertyTypeIndex)
 	if len(band) == 0 {
 		return nil
 	}

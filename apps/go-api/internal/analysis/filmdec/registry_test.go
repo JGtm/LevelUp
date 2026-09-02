@@ -1,9 +1,6 @@
 package filmdec
 
-import (
-	"os"
-	"testing"
-)
+import "testing"
 
 // buildBlock renders one 64-slot archetype block from ordered component names.
 func buildBlock(names []string) []byte {
@@ -37,11 +34,12 @@ func TestParseRegistrySynthetic(t *testing.T) {
 	}
 }
 
-// chunk00Path is the dev cache; the integration test skips when it is absent.
-const chunk00Path = `c:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/film_chunks/000d5950/chunk_00.bin`
+// chunk00Dir is the dev cache film directory; the integration test skips when it is absent.
+const chunk00Dir = `c:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/film_chunks/000d5950`
 
 func TestParseRegistryBipedBlock35(t *testing.T) {
-	raw, err := os.ReadFile(chunk00Path)
+	// ReadFilmChunk DECOMPRESSE : ParseRegistryChunk ne le fait plus (lot 1).
+	raw, err := ReadFilmChunk(chunk00Dir, 0)
 	if err != nil {
 		t.Skipf("chunk_00 absent (%v)", err)
 	}

@@ -6,6 +6,7 @@ import (
 	"log/slog"
 
 	"levelup/go-api/internal/analysis/filmdec"
+	"levelup/go-api/internal/analysis/filmsource"
 )
 
 // origin.go — L'ORIGINE DE LA FRAME 0, PUBLIEE SUR L'HORLOGE DU FIL.
@@ -76,14 +77,23 @@ const originControlMinMatches = 5
 // zero de l'horloge sur laquelle les highlight events sont dates.
 //
 // HORS LIGNE (I/O disque) — jamais depuis un chemin de requete.
+// ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle [ScanClockOrigin].
 func ScanFilmClockOrigin(filmDir string) (uint64, error) {
-	raw, err := filmdec.ReadFilmChunk(filmDir, 1)
+	film, err := filmsource.LoadDir(filmDir, nil)
 	if err != nil {
-		return 0, fmt.Errorf("chunk 1 (origine d'horloge) : %w", err)
+		return 0, err
 	}
-	packets := filmdec.WalkPackets(raw)
+	return ScanClockOrigin(film)
+}
+
+// ScanClockOrigin rend l'horodatage moteur du PREMIER PAQUET d'un film DEJA CHARGE.
+func ScanClockOrigin(film *filmsource.Film) (uint64, error) {
+	_, packets, ok := filmdec.FilmChunkAt(film, 1)
+	if !ok {
+		return 0, fmt.Errorf("chunk 1 (origine d'horloge) : absent du film")
+	}
 	if len(packets) == 0 {
-		return 0, fmt.Errorf("chunk 1 (origine d'horloge) : aucun paquet lisible dans %s", filmDir)
+		return 0, fmt.Errorf("chunk 1 (origine d'horloge) : aucun paquet lisible")
 	}
 	return packets[0].TimestampUS, nil
 }

@@ -33,6 +33,7 @@ import (
 	"log/slog"
 
 	"levelup/go-api/internal/analysis/filmdec"
+	"levelup/go-api/internal/analysis/filmsource"
 )
 
 // decodeFilmZoneReads balaye les proprietes reseau de `ti=13` et JOURNALISE ce qu'il en est.
@@ -40,16 +41,16 @@ import (
 // TOUT ECHEC EST NON FATAL : un film dont l'archetype n'est pas au registre, ou dont aucun slot
 // n'apparait aux images-cles, reste un rejeu parfaitement valide — simplement sans etat de zone.
 // Le refus est journalise, jamais avale.
-func decodeFilmZoneReads(filmDir, matchID string, zones int) []filmdec.ManagedPropertyRead {
+func decodeFilmZoneReads(film *filmsource.Film, matchID string, zones int) []filmdec.ManagedPropertyRead {
 	if zones == 0 {
 		slog.Debug("rejeu : aucune zone au catalogue — proprietes ti=13 non balayees",
-			"match_id", matchID, "filmDir", filmDir)
+			"match_id", matchID)
 		return nil
 	}
-	sc, err := filmdec.ScanFilmManagedProperties(filmDir)
+	sc, err := filmdec.ScanManagedProperties(film)
 	if err != nil {
 		slog.Info("rejeu : proprietes ti=13 illisibles — rejeu sans etat de zone",
-			"err", err, "match_id", matchID, "filmDir", filmDir)
+			"err", err, "match_id", matchID)
 		return nil
 	}
 	slog.Info("rejeu : proprietes ti=13 balayees",

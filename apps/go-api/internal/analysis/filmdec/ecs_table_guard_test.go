@@ -309,7 +309,8 @@ func TestG2TableSuitLeRegistreDuFilm(t *testing.T) {
 		want[strconv.Itoa(r.TI)+"|"+strconv.Itoa(r.I)+"|"+r.Component] = r.Level
 	}
 	for _, dir := range dirs {
-		raw, err := os.ReadFile(filepath.Join(dir, "chunk_00.bin"))
+		// ReadFilmChunk DECOMPRESSE : ParseRegistryChunk ne le fait plus (lot 1).
+		raw, err := ReadFilmChunk(dir, 0)
 		if err != nil {
 			t.Fatalf("%s : chunk_00 illisible (%v)", dir, err)
 		}

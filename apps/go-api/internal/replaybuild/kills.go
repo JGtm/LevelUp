@@ -50,12 +50,14 @@ func (b *Builder) decodeKillSource(matchID, filmDir string) *killsource.Result {
 // LA RÉSOLUTION EST HORS LIGNE, ENTIÈREMENT FILM-NATIVE : ce paquet n'ouvre AUCUNE base (même
 // contrat que neutralDeaths et que le reste de replaybuild). `killsource.Kill.Feed.Killer`
 // porte un GAMERTAG (ou `xuid:<N>` en repli, cf. killsource.XUIDNamePrefix) ; le pont
-// gamertag -> xuid vient du fil des morts DU FILM (replay.ScanFilmDeaths) : chaque mort y
-// porte le xuid ET le gamertag de sa victime dans le MÊME enregistrement — aucune table
-// externe à charger. C'est un second appel à ScanFilmDeaths (matchfacts.go en fait déjà un,
-// pour l'identité des actions d'objectif) : relire un petit chunk binaire est bon marché, et
-// c'est le même choix que `analysis/replay` fait déjà en interne entre ses propres calques.
-func (b *Builder) killRefs(matchID, filmDir string, res *killsource.Result) replay.KillsInput {
+// gamertag -> xuid vient du fil des morts DU FILM : chaque mort y porte le xuid ET le gamertag
+// de sa victime dans le MÊME enregistrement — aucune table externe à charger.
+//
+// LA LECTURE EST PARTAGÉE DEPUIS LE LOT 1 (2026-09-02) : ce fichier et `matchfacts.go`
+// ouvraient et reparsaient chacun le chunk highlight, pour en tirer le même fil. Ils reçoivent
+// désormais le MÊME résultat, lu une fois par `BuildBytes` — mêmes valeurs, mêmes refus
+// journalisés, une décompression et un parse de moins par cuisson.
+func (b *Builder) killRefs(matchID string, deaths filmDeaths, res *killsource.Result) replay.KillsInput {
 	if res == nil {
 		return replay.KillsInput{}
 	}
@@ -64,13 +66,12 @@ func (b *Builder) killRefs(matchID, filmDir string, res *killsource.Result) repl
 			"match_id", matchID, "kills", len(res.Kills))
 		return replay.KillsInput{}
 	}
-	deaths, err := replay.ScanFilmDeaths(filmDir)
-	if err != nil {
+	if deaths.err != nil {
 		slog.Info("replaybuild: fil des morts illisible — frags sous effet actif non mesurés",
-			"err", err, "match_id", matchID)
+			"err", deaths.err, "match_id", matchID)
 		return replay.KillsInput{}
 	}
-	byGamertag := gamertagXUIDIndex(deaths)
+	byGamertag := gamertagXUIDIndex(deaths.list)
 	refs := make([]replay.EquipmentKillRef, 0, len(res.Kills))
 	unresolved := 0
 	for _, k := range res.Kills {

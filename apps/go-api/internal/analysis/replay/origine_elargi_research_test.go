@@ -156,8 +156,8 @@ func TestOrigineAvecCatalogueElargi(t *testing.T) {
 	s := glResolve(t)
 	base := oriPads(t)
 	pads, ajouts := oriPadsElargis(t, base)
-	_, pst := decodeFilmPlacements(s.dir, &s.wr)
-	pu := decodeFilmPadScans(s.dir, &s.wr, pst.Calibration.Widths).Powerups
+	_, pst := decodeFilmPlacementsDir(s.dir, &s.wr)
+	pu := decodeFilmPadScansDir(s.dir, &s.wr, pst.Calibration.Widths).Powerups
 	if !pu.Scanned || len(pu.Creations) == 0 {
 		t.Fatalf("voie des power-ups muette : scanned=%v creations=%d", pu.Scanned, len(pu.Creations))
 	}

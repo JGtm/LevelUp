@@ -75,7 +75,7 @@ func hwResolve(t *testing.T, dir string) hwSetup {
 	for i := 1; i <= n; i++ {
 		chunks = append(chunks, i)
 	}
-	slots := bipedSlotBand(dir, chunks)
+	slots := bipedSlotBandDir(dir, chunks)
 	if len(slots) == 0 {
 		t.Fatalf("aucun slot biped dans les keyframes de %s", dir)
 	}
@@ -83,7 +83,7 @@ func hwResolve(t *testing.T, dir string) hwSetup {
 	if err != nil {
 		t.Fatalf("decoupage i0 illisible : %v", err)
 	}
-	arch, err := bipedArchetype(dir)
+	arch, err := bipedArchetypeDir(dir)
 	if err != nil {
 		t.Fatalf("archetype biped illisible : %v", err)
 	}

@@ -86653,3 +86653,43 @@ rien ne s'affiche en app avant la levee ; son de prise/lacher de bombe volontair
 (aucun stem designe — meme regle que le crane).
 
 ---
+
+---
+
+## [2026-09-02] Cuisson lot 1 (items 1.2/1.3) — les balayages ne relisent plus le film
+
+**Statut** : Complété (gate vert, rien committé — le harnais des 9 films est au pilote).
+
+**Décision technique principale.** Les ~30 `ScanFilm*(dir)` de `filmdec` et les quatre de
+`replay` obtiennent chacun leur forme `Scan*(film *filmsource.Film, ...)` ;
+`BuildFromFilm(matchID, titleSlug, film, opt)` remplace `filmDir` ; `replaybuild.BuildBytes`
+charge le film UNE fois et le passe à tout le monde. Les formes `dir` survivent en enveloppes
+minces (D2) pour la quarantaine de tests et instruments qui n'ont qu'un chemin sous la main —
+aucune n'a d'appelant de production, et un garde-rail `archlint` (parse go/ast, liste fermée de
+40 noms) l'interdit désormais. `ParseRegistryChunk` perd son inflate, `inflateChunk` meurt :
+`filmdec` et `replay` n'importent plus `compress/zlib`.
+
+**Le point qui a demandé une décision** : la POSITION d'un chunk dans le film ne vaut pas son
+NUMÉRO. Une bobine sans `chunk_00` (la mini-bobine de fixture) a son premier chunk de DONNÉES à
+la position 0 ; les confondre marcherait un chunk de données comme un registre. `LoadDir`
+synthétise donc toujours `ChunkMeta.Index` depuis le nom de fichier et fusionne le manifeste PAR
+NUMÉRO, jamais par position (un téléchargement partiel décalerait tout). Côté consommateur,
+`filmdec.FilmChunkNumbers` s'arrête au premier trou de numérotation — la règle de l'ancien
+`CountFilmChunks`, héritée SCIEMMENT parce que le lot est un refacto pur, et qui tombera avec les
+enveloppes.
+
+**Résultats observés.** Deux points de chargement en production, et deux seulement
+(`replaybuild/filmload.go`, `cmd/zone-attribution/measure.go`). Le pont `FilmChunkAt` est prouvé
+équivalent à `ReadFilmChunk` + `WalkPackets` sur un vrai chunk, bornes de payload comprises.
+`TestEquivalenceMiniFilm` (empreintes FIGÉES) passe : identité prouvée en CI sur les sept
+familles que la mini-bobine supporte. Gate complet vert, `golangci-lint` 0 issue. Dette de taille
+résorbée par déplacements purs : `replay/build.go` 922 -> 415 lignes.
+
+**Trois changements de comportement déclarés**, tous hors corpus : un chunk illisible fait
+échouer le chargement au lieu d'être sauté (refus bruyant plutôt qu'artefact amputé) ; le chunk
+highlight arrive décompressé à `ParseHighlightEvents`, qui accepte les deux formes ; sur un flux
+zlib tronqué (aucun sur 1 378 films) le fil des morts rend désormais le partiel au lieu d'une
+erreur. Détail en N-M à N-R du §8 de `PLAN_CUISSON_PERF.md`.
+
+**Prochaine étape** : le pilote lance le harnais d'équivalence (9 films). Items 1.4 à 1.8 aux
+agents suivants (`killsource`, `objectiveevents`, `killcollector`, CLI de recherche).

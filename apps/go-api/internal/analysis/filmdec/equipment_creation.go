@@ -34,7 +34,11 @@ package filmdec
 //
 // HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requête.
 
-import "fmt"
+import (
+	"fmt"
+
+	"levelup/go-api/internal/analysis/filmsource"
+)
 
 // EquipmentCreationField désigne l'un des deux champs que le default-state de ti=37 lisait et
 // jetait. L'ordre est celui du flux.
@@ -162,18 +166,29 @@ type EquipmentCreationStats struct {
 // `equipmentCreationHook`, qui est un global de paquet. Le hook est restauré à la sortie.
 //
 // HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requête.
+//
+// ScanFilmEquipmentCreations est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
+// [ScanEquipmentCreations].
 func ScanFilmEquipmentCreations(dir string, wr *Vec3Range) ([]EquipmentCreation, EquipmentCreationStats, error) {
+	film, err := filmsource.LoadDir(dir, nil)
+	if err != nil {
+		return nil, EquipmentCreationStats{}, err
+	}
+	return ScanEquipmentCreations(film, wr)
+}
+
+// ScanEquipmentCreations décode les records de création d'équipement d'un film DEJA CHARGE.
+func ScanEquipmentCreations(film *filmsource.Film, wr *Vec3Range) ([]EquipmentCreation, EquipmentCreationStats, error) {
 	var st EquipmentCreationStats
-	n := CountFilmChunks(dir)
-	if n == 0 {
-		return nil, st, fmt.Errorf("aucun chunk film dans %s", dir)
+	if len(FilmChunkNumbers(film)) == 0 {
+		return nil, st, ErrNoFilmChunk
 	}
-	band := worldObjectSlotBand(dir, n, EquipmentTypeIndex)
+	band := worldObjectSlotBand(film, EquipmentTypeIndex)
 	if len(band) == 0 {
-		return nil, st, fmt.Errorf("aucun slot d'archétype ti=%d dans les keyframes de %s",
-			EquipmentTypeIndex, dir)
+		return nil, st, fmt.Errorf("aucun slot d'archétype ti=%d dans les keyframes du film",
+			EquipmentTypeIndex)
 	}
-	return ScanFilmEquipmentCreationsForBand(dir, wr, band)
+	return ScanEquipmentCreationsForBand(film, wr, band)
 }
 
 // ScanFilmEquipmentCreationsForBand balaye une BANDE DE SLOTS donnée. La bande est un paramètre
@@ -181,19 +196,33 @@ func ScanFilmEquipmentCreations(dir string, wr *Vec3Range) ([]EquipmentCreation,
 // vus porter cet archétype) passe par le MÊME code que la mesure — sans quoi le contrôle ne
 // contrôlerait pas le décodeur mais une variante de lui (règle établie par
 // WorldObjectPositionsForBand).
+//
+// ScanFilmEquipmentCreationsForBand est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
+// [ScanEquipmentCreationsForBand].
 func ScanFilmEquipmentCreationsForBand(
 	dir string, wr *Vec3Range, band map[uint32]bool,
+) ([]EquipmentCreation, EquipmentCreationStats, error) {
+	film, err := filmsource.LoadDir(dir, nil)
+	if err != nil {
+		return nil, EquipmentCreationStats{}, err
+	}
+	return ScanEquipmentCreationsForBand(film, wr, band)
+}
+
+// ScanEquipmentCreationsForBand balaye une bande de slots donnée dans un film DEJA CHARGE.
+func ScanEquipmentCreationsForBand(
+	film *filmsource.Film, wr *Vec3Range, band map[uint32]bool,
 ) ([]EquipmentCreation, EquipmentCreationStats, error) {
 	var st EquipmentCreationStats
 	if wr == nil {
 		return nil, st, fmt.Errorf("bornes monde absentes : sans elles le décodeur ne rend que des quanta")
 	}
-	n := CountFilmChunks(dir)
-	if n == 0 {
-		return nil, st, fmt.Errorf("aucun chunk film dans %s", dir)
+	nums := FilmChunkNumbers(film)
+	if len(nums) == 0 {
+		return nil, st, ErrNoFilmChunk
 	}
 	st.Slots = len(band)
-	arch, err := EquipmentArchetype(dir)
+	arch, err := EquipmentArchetypeOf(film)
 	if err != nil {
 		return nil, st, err
 	}
@@ -203,12 +232,12 @@ func ScanFilmEquipmentCreationsForBand(
 
 	w := equipCreationWalk{comps: len(arch.Components), wr: wr, band: band, cur: &cur}
 	var out []EquipmentCreation
-	for c := 1; c <= n; c++ {
-		data, err := ReadFilmChunk(dir, c)
-		if err != nil {
+	for _, c := range nums {
+		data, pks, ok := FilmChunkAt(film, c)
+		if !ok {
 			continue
 		}
-		for _, pk := range WalkPackets(data) {
+		for _, pk := range pks {
 			if pk.Type != PacketTypeDelta {
 				continue
 			}

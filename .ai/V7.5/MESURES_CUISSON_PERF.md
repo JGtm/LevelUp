@@ -121,3 +121,23 @@ avant les corrections d'assemblage (aucun ex aequo actif) : leurs references n'o
 ## 4. Mesures par lot (1, 2, 4, 6) — meme protocole que §1
 
 _a remplir a chaque cloture de lot_
+### Lot 1, apres items 1.1-1.3 (source unique du film) — 2026-09-02, 22:20-23:12
+
+Equivalence : **9/9 identiques** contre les references du lot 0 (45 empreintes par film) — les
+items 1.1-1.3 sont un refacto pur, prouve.
+
+| film | L0 (reference) | L1 (items 1-3) | delta |
+|---|---|---|---|
+| `01e1f945` | 2 min 24 (decodage 2 min 15) | 2 min 35 (decodage 2 min 27) | +8 % — bruit |
+| `7344d24f` | 2 min 49 (2 min 38) | 2 min 53 (2 min 39) | +2 % — bruit |
+| `696a9d7c` | 2 min 43 (2 min 33) | 3 min 03 (2 min 44) | +12 % — bruit + soiree chargee |
+
+VERDICT HONNETE : aucun gain de vitesse mesurable a ce stade, pics memoire +~0,05 Gio (le film
+decompresse reste resident — attendu et borne). L'hypothese « l'inflate x40 pese lourd » est
+INFIRMEE pour les films de 20-30 Mo : une passe d'inflate y vaut ~0,3 s (mesure walkers :
+33 Go du cache en ~7 min), soit ~12 s sur 144 — noyees dans le cout des boucles de balayage
+bit a bit, qui relisent desormais la RAM au lieu du cache de pages de l'OS. Les gains attendus
+restent devant : lot 2 (bande/layout/registre partages — les 6 scanners delta pesent 40-46 s
+cumules), lot 4 (boucles chaudes — `playerIndices` 35-40 s, lecteurs de bits). La valeur des
+items 1.1-1.3 est structurelle : une source unique, la grammaire mesuree, les enveloppes hors
+production, les garde-rails — le socle sans lequel les lots suivants ne se prouvent pas.

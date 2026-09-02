@@ -6,6 +6,7 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/analysis/filmdec"
+	"levelup/go-api/internal/analysis/filmsource"
 )
 
 // equipment_placements.go — LES POSES d'équipement sur la carte : le mur de protection, le
@@ -313,18 +314,18 @@ func equipmentOrigin(lives []equipLife, p filmdec.EquipmentPlacement) string {
 //
 // HORS LIGNE — appelée par BuildFromFilm, sous LockProcessDecode.
 func decodeFilmPlacements(
-	filmDir string, worldRange *filmdec.Vec3Range,
+	film *filmsource.Film, matchID string, worldRange *filmdec.Vec3Range,
 ) ([]filmdec.EquipmentPlacement, filmdec.EquipmentPlacementStats) {
-	pl, st, err := filmdec.ScanFilmEquipmentPlacements(filmDir, worldRange)
+	pl, st, err := filmdec.ScanEquipmentPlacements(film, worldRange)
 	switch {
 	case err != nil:
 		slog.Warn("poses d'equipement illisibles — rejeu sans equipement pose",
-			"err", err, "filmDir", filmDir)
+			"err", err, "match_id", matchID)
 		return nil, st
 	case !st.Calibration.Widths.Valid():
 		slog.Warn("poses d'equipement : le decoupage du bloc de replication n'a pas ete tranche"+
 			" sur ce film — AUCUNE pose publiee plutot que du bruit",
-			"filmDir", filmDir, "ancres", st.Calibration.Anchors,
+			"match_id", matchID, "ancres", st.Calibration.Anchors,
 			"vies", st.Calibration.Lives, "chunksLus", st.Calibration.Chunks)
 	default:
 		slog.Info("poses d'equipement : records de creation ti=37",

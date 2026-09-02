@@ -46,7 +46,7 @@ func TestEquipmentCreationWidth(t *testing.T) {
 	t.Cleanup(func() { SetMPPWidths(prevW) })
 
 	n := CountFilmChunks(dir)
-	band := worldObjectSlotBand(dir, n, EquipmentTypeIndex)
+	band := worldObjectSlotBandDir(dir, n, EquipmentTypeIndex)
 	arch, err := EquipmentArchetype(dir)
 	if err != nil {
 		t.Fatalf("archétype ti=%d illisible : %v", EquipmentTypeIndex, err)
@@ -64,7 +64,7 @@ func TestEquipmentCreationWidth(t *testing.T) {
 	t.Logf("   STRUCTURE : axes i0 %v (somme %d) · %d chunks · %d slots ti=%d · %d slots bipède"+
 		" · %d composants d'archétype · %d vies ti=%d",
 		lay.AxisW, lay.AxisW[0]+lay.AxisW[1]+lay.AxisW[2], n, len(band), EquipmentTypeIndex,
-		len(bipedSlotBand(dir, equipWidthChunkList(n))), len(arch.Components), len(tracks),
+		len(bipedSlotBandDir(dir, equipWidthChunkList(n))), len(arch.Components), len(tracks),
 		EquipmentTypeIndex)
 	if !ok {
 		t.Logf("   VERDICT : la calibration NE TRANCHE PAS — ce film ne publierait aucune pose")

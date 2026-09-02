@@ -199,11 +199,23 @@ func (b *Builder) BuildBytes(matchID string, mapNames []string, filmDir string, 
 	if err != nil {
 		return Built{}, err
 	}
-	// LES QUATRE PHASES SONT CHRONOMETREES (cf. timing.go) : ce sont les quatre travaux qui
-	// relisent le film, et le total ci-dessous n'est utile que si on sait lequel l'a mange.
+	// LES PHASES SONT CHRONOMETREES (cf. timing.go) : ce sont les travaux qui lisent le film, et
+	// le total ci-dessous n'est utile que si on sait lequel l'a mange.
 	debutTotal := time.Now()
+	ctx := context.Background()
+	// LE FILM EST DECOMPRESSE UNE FOIS ICI, POUR TOUTE LA CUISSON (lot 1, PLAN_CUISSON_PERF
+	// item 1.3). Avant, chacun des ~20 balayages de `BuildFromFilm` relisait et redecompressait
+	// le film entier depuis le disque. Le manifeste, deja ouvert pour le statborg, donne le
+	// type et le debut de chaque chunk ; les NUMEROS, eux, viennent des fichiers presents.
+	tFilm := time.Now()
+	src := ouvrirManifeste(ctx, matchID, filmDir)
+	film := chargerFilm(ctx, matchID, filmDir, src)
+	// UNE SEULE LECTURE DU FIL DES MORTS pour les deux consommateurs de cet etage
+	// (`identifiedEvents` et `killRefs`, qui ouvraient chacun le chunk highlight).
+	deaths := lireMorts(film)
+	logPhase("film", matchID, tFilm)
 	tStats := time.Now()
-	stats := readFilmStats(context.Background(), matchID, filmDir, facts)
+	stats := readFilmStats(ctx, matchID, src, facts, deaths)
 	logPhase("stats", matchID, tStats)
 	b.observe("score", stats.score)
 	b.observe("objectives", stats.objectives)
@@ -220,9 +232,9 @@ func (b *Builder) BuildBytes(matchID string, mapNames []string, filmDir string, 
 		stats.score.TargetScore, _ = b.regulation.ScoreTarget(facts.GameVariantName)
 		stats.score.HoldTicksPerPoint, _ = b.regulation.HoldTicksPerPoint(facts.GameVariantName)
 	}
-	cat := b.collecterEntreesCatalogue(matchID, filmDir, facts, mapNames, &stats)
+	cat := b.collecterEntreesCatalogue(matchID, filmDir, facts, mapNames, &stats, deaths)
 	tDecode := time.Now()
-	doc, err := replay.BuildFromFilm(matchID, b.titleSlug, filmDir, replay.Options{
+	doc, err := replay.BuildFromFilm(matchID, b.titleSlug, film, replay.Options{
 		FrameIntervalMS: b.interval,
 		Geometry:        b.geometry,
 		Structure:       b.structureFor(entry.Module),
@@ -281,8 +293,12 @@ type entreesCatalogue struct {
 //
 // `stats` est pris par POINTEUR parce que les socles de drapeau s'ajoutent à `stats.flag`, qui
 // part ensuite tel quel dans les options du décodage.
+//
+// `filmDir` y reste : `decodeKillSource` ouvre encore les chunks lui-meme (item 1.4 du plan).
+// `deaths` est l'unique lecture du fil des morts, partagee avec `readFilmStats`.
 func (b *Builder) collecterEntreesCatalogue(
 	matchID, filmDir string, facts port.MatchFacts, mapNames []string, stats *filmStats,
+	deaths filmDeaths,
 ) entreesCatalogue {
 	// Les SOCLES de drapeau viennent du catalogue de carte, pas du film : ils s'ajoutent aux
 	// lectures que le second décodage a déjà faites (cf. flagspawns.go).
@@ -309,7 +325,7 @@ func (b *Builder) collecterEntreesCatalogue(
 	b.observe("spawnPointsState", mapState)
 	neutral := b.neutralDeaths(matchID, ksRes)
 	b.observe("neutralDeaths", neutral)
-	kills := b.killRefs(matchID, filmDir, ksRes)
+	kills := b.killRefs(matchID, deaths, ksRes)
 	b.observe("killRefs", kills)
 	return entreesCatalogue{
 		zones: zones, zoneRoles: zoneRoles,

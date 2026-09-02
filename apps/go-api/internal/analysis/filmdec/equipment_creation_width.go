@@ -34,6 +34,8 @@ package filmdec
 import (
 	"fmt"
 	"sort"
+
+	"levelup/go-api/internal/analysis/filmsource"
 )
 
 // EquipmentLifeKey identifie une vie d'objet du monde : LA PAIRE (slot, génération), jamais le
@@ -220,19 +222,32 @@ func (c MPPCalibration) String() string {
 // Rend (calibration, true) quand un découpage devance nettement les autres ; (calibration, false)
 // sinon — et dans ce cas l'appelant NE PUBLIE PAS, il le dit. Un défaut silencieux servirait des
 // poses inventées, et un identifiant lu 3 bits trop tôt est une invention.
+// ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle [CalibrateMPPWidthsOf].
 func CalibrateMPPWidths(
 	dir string, wr *Vec3Range, band map[uint32]bool, spans map[EquipmentLifeKey][]EquipmentLifeSpan,
+) (MPPCalibration, bool) {
+	film, err := filmsource.LoadDir(dir, nil)
+	if err != nil {
+		return MPPCalibration{ByWidths: map[MPPWidths]int{}, Lives: len(spans)}, false
+	}
+	return CalibrateMPPWidthsOf(film, wr, band, spans)
+}
+
+// CalibrateMPPWidthsOf mesure le découpage du bloc MPP sur un film DEJA CHARGE.
+func CalibrateMPPWidthsOf(
+	film *filmsource.Film, wr *Vec3Range, band map[uint32]bool,
+	spans map[EquipmentLifeKey][]EquipmentLifeSpan,
 ) (MPPCalibration, bool) {
 	cal := MPPCalibration{ByWidths: map[MPPWidths]int{}, Lives: len(spans)}
 	if wr == nil || len(band) == 0 || len(spans) == 0 {
 		return cal, false
 	}
-	arch, err := EquipmentArchetype(dir)
+	arch, err := EquipmentArchetypeOf(film)
 	if err != nil {
 		return cal, false
 	}
-	n := CountFilmChunks(dir)
-	if n == 0 {
+	nums := FilmChunkNumbers(film)
+	if len(nums) == 0 {
 		return cal, false
 	}
 	defer SetMPPWidths(CurrentMPPWidths())
@@ -245,13 +260,13 @@ func CalibrateMPPWidths(
 		eps:   EquipmentPosEps(wr),
 		cal:   &cal,
 	}
-	for c := 1; c <= n; c++ {
-		data, err := ReadFilmChunk(dir, c)
-		if err != nil {
+	for _, c := range nums {
+		data, pks, ok := FilmChunkAt(film, c)
+		if !ok {
 			continue
 		}
 		cal.Chunks++
-		for _, pk := range WalkPackets(data) {
+		for _, pk := range pks {
 			if pk.Type == PacketTypeDelta {
 				pr.scanPayload(pk.Payload(data), pk.TimestampUS)
 			}

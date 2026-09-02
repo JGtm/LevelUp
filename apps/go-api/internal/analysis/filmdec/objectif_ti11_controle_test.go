@@ -73,9 +73,9 @@ func TestObjectifTi11DeltaControleTi13(t *testing.T) {
 			if !ok {
 				continue
 			}
-			band := worldObjectSlotBand(dir, n, ti)
+			band := worldObjectSlotBandDir(dir, n, ti)
 			if observee {
-				band = observedSlotBand(dir, n, ti)
+				band = observedSlotBandDir(dir, n, ti)
 			}
 			if len(band) == 0 {
 				continue

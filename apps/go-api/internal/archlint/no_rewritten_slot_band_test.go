@@ -42,8 +42,10 @@ var slotBandScope = filepath.Join("analysis", "filmdec")
 // slotBandAllowed : les SEULS fichiers autorisés à tenir une liste d'exclusion de slots, avec la
 // raison de chacun. Ajouter une entrée ici est une décision, pas une formalité.
 var slotBandAllowed = map[string]string{
-	// La règle COMBLÉE, avec la mesure du 2026-07-26 qui l'a établie.
-	"projectiles.go": "règle COMBLÉE (worldObjectSlotBand / slotBandExcluding)",
+	// La règle COMBLÉE, avec la mesure du 2026-07-26 qui l'a établie. Elle a quitté
+	// `projectiles.go` au lot 1 de PLAN_CUISSON_PERF (2026-09-02, deplacement pur : le fichier
+	// passait au-dessus de 500 lignes) pour rejoindre sa jumelle observée.
+	"slot_band_filled.go": "règle COMBLÉE (worldObjectSlotBand / slotBandExcluding)",
 	// La règle OBSERVÉE, avec la mesure du 2026-09-01 qui l'a séparée de la précédente.
 	"slot_band_observed.go": "règle OBSERVÉE (observedSlotBand)",
 	// Relève seen/others dans la MÊME marche que le recensement, puis délègue la règle à

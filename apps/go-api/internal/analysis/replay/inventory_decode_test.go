@@ -7,16 +7,27 @@ import (
 	"testing"
 )
 
-// inventory_decode_test.go — LA TÉLÉMÉTRIE DE COUVERTURE DU DÉCODEUR (audit
-// AUDIT_AVAL_INVENTAIRE_2026-08-24.md, point 3) : un chunk illisible ne doit plus disparaître
-// sans laisser de trace. `TestMiniFilmDecodesTheKeyframes` (minifilm_test.go) couvre déjà le
-// cas nominal (Stats.Records == len(inv), aucun chunk illisible) ; ce fichier couvre le cas
-// dégradé qu'aucun test du paquet n'exerçait avant ce lot.
+// inventory_decode_test.go — CE QU'UN CHUNK ILLISIBLE PRODUIT, ET CE QUE LE LOT 1 Y A CHANGÉ.
+//
+// AVANT LE LOT 1 (audit AUDIT_AVAL_INVENTAIRE_2026-08-24.md, point 3), chaque balayage lisait
+// les chunks LUI-MÊME : un chunk illisible était sauté par un `continue` et compté dans
+// `Stats.ChunksUnread`, et le film sortait avec une FRACTION de ses images-clés — d'où ce
+// compteur, réclamé par l'audit pour que la fraction se voie.
+//
+// DEPUIS LE LOT 1 (PLAN_CUISSON_PERF item 1.2, 2026-09-02), le film est chargé UNE fois par
+// `filmsource.LoadDir` avant tout balayage, et un chunk illisible fait ÉCHOUER CE CHARGEMENT.
+// La dégradation silencieuse devient donc un REFUS EXPLICITE : la cuisson ne produit plus un
+// artefact amputé qui se lirait comme un film pauvre, elle s'arrête et le dit. `ChunksUnread`
+// reste publié (il entre dans l'empreinte de l'étape `inventory.stats`) et vaut désormais zéro
+// sur un film chargé — un chunk absent du film ne peut plus être demandé par le balayage.
+//
+// `TestMiniFilmDecodesTheKeyframes` (minifilm_test.go) couvre le cas nominal.
 
 // filmDirWithBadChunk construit un répertoire de film minimal portant UN chunk illisible :
-// `chunk_%02d.bin` est un RÉPERTOIRE, pas un fichier. `os.Stat` le voit (CountFilmChunks le
-// compte donc), mais `os.ReadFile` échoue dessus sur toutes les plateformes — c'est le geste
-// le plus portable pour simuler une lecture disque qui échoue sans dépendre de permissions.
+// `chunk_%02d.bin` est un RÉPERTOIRE, pas un fichier. Le glob de `filmsource.DirSource` le voit
+// (c'est bien un `chunk_NN.bin`), mais `os.ReadFile` échoue dessus sur toutes les plateformes —
+// c'est le geste le plus portable pour simuler une lecture disque qui échoue sans dépendre de
+// permissions.
 func filmDirWithBadChunk(t *testing.T, goodChunks int) string {
 	t.Helper()
 	dir := t.TempDir()
@@ -42,52 +53,64 @@ func chunkFileName(n int) string {
 	return fmt.Sprintf("chunk_%02d.bin", n)
 }
 
-// TestScanFilmKeyframeInventoryCountsUnreadableChunks : un chunk illisible AUTRE que la
-// totalité du film est désormais COMPTÉ, pas seulement avalé par un `continue` nu. Le
-// balayage réussit quand même (les chunks lisibles restants suffisent) — c'est la
-// distinction que l'audit demandait : « le film peut sortir avec une fraction seulement de
-// ses images-clés d'inventaire décodées, et rien ne le distingue d'un film sain avec moins
-// de keyframes » devient mesurable.
-func TestScanFilmKeyframeInventoryCountsUnreadableChunks(t *testing.T) {
+// TestScanFilmKeyframeInventoryRefuseUnChunkIllisible : un chunk illisible AU MILIEU d'un film
+// par ailleurs sain fait échouer le CHARGEMENT, donc le balayage — il n'est plus sauté.
+//
+// C'EST UN CHANGEMENT DE COMPORTEMENT DU LOT 1, ET IL EST VOULU : décoder une fois exige de
+// charger le film une fois, et un film dont un chunk manque n'est pas le film. Le refus arrive
+// tôt et bruyamment (`replaybuild.chargerFilm` le journalise, la cuisson finit sur
+// `ErrNoTracks`) au lieu de produire un artefact amputé indiscernable d'un film pauvre.
+func TestScanFilmKeyframeInventoryRefuseUnChunkIllisible(t *testing.T) {
 	dir := filmDirWithBadChunk(t, 2)
 	known := map[uint32]bool{1: true}
 	inv, st, err := ScanFilmKeyframeInventory(dir, known, 0)
-	if err != nil {
-		t.Fatalf("ScanFilmKeyframeInventory : %v (au moins un chunk lisible, pas d'erreur attendue)", err)
+	if err == nil {
+		t.Fatal("chunk illisible : une erreur était attendue — un film amputé n'est pas un film")
 	}
-	if len(inv) != 0 {
-		t.Errorf("%d inventaire(s) décodé(s) sur des chunks vides, attendu 0", len(inv))
+	if inv != nil {
+		t.Errorf("inventaire non nil malgré l'échec de chargement : %+v", inv)
 	}
-	if st.Chunks != 3 {
-		t.Errorf("Stats.Chunks = %d, attendu 3 (2 lisibles + 1 illisible)", st.Chunks)
-	}
-	if st.ChunksUnread != 1 {
-		t.Errorf("Stats.ChunksUnread = %d, attendu 1 — c'est exactement ce que l'audit reprochait "+
-			"de ne voir NULLE PART (ni compteur, ni log)", st.ChunksUnread)
-	}
-	if st.Keyframes != 0 {
-		t.Errorf("Stats.Keyframes = %d, attendu 0 (chunks vides, aucun paquet)", st.Keyframes)
-	}
-	if st.Records != len(inv) {
-		t.Errorf("Stats.Records = %d, attendu %d (== len(inv), aucun filtrage dans keyframeInventories)",
-			st.Records, len(inv))
+	if st != (KeyframeInventoryStats{}) {
+		t.Errorf("Stats = %+v, attendu la valeur zéro : aucun chunk n'a été balayé", st)
 	}
 }
 
-// TestScanFilmKeyframeInventoryAllChunksUnreadable : quand AUCUN chunk n'est lisible, l'erreur
-// remonte (comportement inchangé), et la Stats le documente plutôt que de rester à zéro sans
-// qu'on sache si c'est parce que le film est vide ou parce qu'il est corrompu.
+// TestScanFilmKeyframeInventoryAllChunksUnreadable : un répertoire dont AUCUN chunk n'est
+// lisible échoue aussi — comportement inchangé, par une autre voie (le chargement, et non le
+// compteur `ChunksUnread`).
 func TestScanFilmKeyframeInventoryAllChunksUnreadable(t *testing.T) {
 	dir := filmDirWithBadChunk(t, 0)
 	known := map[uint32]bool{1: true}
-	inv, st, err := ScanFilmKeyframeInventory(dir, known, 0)
+	inv, _, err := ScanFilmKeyframeInventory(dir, known, 0)
 	if err == nil {
 		t.Fatal("aucun chunk lisible : une erreur était attendue")
 	}
 	if inv != nil {
 		t.Errorf("inventaire non nil malgré l'échec total : %+v", inv)
 	}
-	if st.Chunks != 1 || st.ChunksUnread != 1 {
-		t.Errorf("Stats = %+v, attendu Chunks=1 ChunksUnread=1", st)
+}
+
+// TestScanKeyframeInventoryCompteLesChunks : sur un film CHARGÉ, `Stats.Chunks` compte les
+// chunks de données et `ChunksUnread` reste à zéro — le dénominateur que l'audit réclamait
+// continue d'être publié, sur la grandeur qui a encore un sens après le lot 1.
+func TestScanKeyframeInventoryCompteLesChunks(t *testing.T) {
+	dir := t.TempDir()
+	for i := 1; i <= 3; i++ {
+		if err := os.WriteFile(filepath.Join(dir, chunkFileName(i)), nil, 0o644); err != nil {
+			t.Fatalf("écriture du chunk %d : %v", i, err)
+		}
+	}
+	inv, st, err := ScanFilmKeyframeInventory(dir, map[uint32]bool{1: true}, 0)
+	if err != nil {
+		t.Fatalf("ScanFilmKeyframeInventory : %v", err)
+	}
+	if len(inv) != 0 {
+		t.Errorf("%d inventaire(s) décodé(s) sur des chunks vides, attendu 0", len(inv))
+	}
+	if st.Chunks != 3 || st.ChunksUnread != 0 {
+		t.Errorf("Stats = %+v, attendu Chunks=3 ChunksUnread=0", st)
+	}
+	if st.Keyframes != 0 || st.Records != 0 {
+		t.Errorf("Stats = %+v, attendu aucune image-clé et aucun record (chunks vides)", st)
 	}
 }

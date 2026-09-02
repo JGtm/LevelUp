@@ -35,6 +35,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/analysis/filmdec"
+	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 )
 
@@ -95,8 +96,11 @@ func agExtraire(t *testing.T, cache, id string) ([]BombArming, *BombArmingsCover
 	for _, c := range src.Chunks() {
 		clock[c.Index] = c.StartMS
 	}
-	dir := filepath.Join(cache, "film_chunks", id)
-	reads := decodeFilmBombReads(dir, id, BombInput{Scanned: true, ChunkStartMS: clock})
+	film, err := filmsource.LoadDir(filepath.Join(cache, "film_chunks", id), nil)
+	if err != nil {
+		t.Fatalf("chunks du film %s illisibles : %v", id, err)
+	}
+	reads := decodeFilmBombReads(film, id, BombInput{Scanned: true, ChunkStartMS: clock})
 	agDiagnostiquerMontees(t, id, reads, a5ExplosionTimes(id))
 	// Grille synthétique : originMS=0, pas 100 ms, axe assez long pour tout le film — le gate
 	// juge les délais en ms, la conversion en frames est couverte par les tests unitaires.

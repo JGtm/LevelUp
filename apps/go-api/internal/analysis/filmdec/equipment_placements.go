@@ -51,6 +51,8 @@ package filmdec
 import (
 	"fmt"
 	"sort"
+
+	"levelup/go-api/internal/analysis/filmsource"
 )
 
 // EquipmentPlacement est UNE pose d'objet d'équipement, telle que le film la porte.
@@ -112,24 +114,38 @@ type EquipmentPlacementStats struct {
 // écrit `mppLeadBits`. L'appelant doit détenir LockProcessDecode ; les globaux sont restaurés.
 //
 // HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requête.
+//
+// ScanFilmEquipmentPlacements est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
+// [ScanEquipmentPlacements].
 func ScanFilmEquipmentPlacements(
 	dir string, wr *Vec3Range,
+) ([]EquipmentPlacement, EquipmentPlacementStats, error) {
+	film, err := filmsource.LoadDir(dir, nil)
+	if err != nil {
+		return nil, EquipmentPlacementStats{ByID: map[uint32]int{}}, err
+	}
+	return ScanEquipmentPlacements(film, wr)
+}
+
+// ScanEquipmentPlacements décode les POSES d'objets d'équipement d'un film DEJA CHARGE. Cf.
+// [ScanFilmEquipmentPlacements] pour la doctrine du balayage.
+func ScanEquipmentPlacements(
+	film *filmsource.Film, wr *Vec3Range,
 ) ([]EquipmentPlacement, EquipmentPlacementStats, error) {
 	st := EquipmentPlacementStats{ByID: map[uint32]int{}}
 	if wr == nil {
 		return nil, st, fmt.Errorf("bornes monde absentes : sans elles le décodeur ne rend que des quanta")
 	}
-	n := CountFilmChunks(dir)
-	if n == 0 {
-		return nil, st, fmt.Errorf("aucun chunk film dans %s", dir)
+	if len(FilmChunkNumbers(film)) == 0 {
+		return nil, st, ErrNoFilmChunk
 	}
-	band := worldObjectSlotBand(dir, n, EquipmentTypeIndex)
+	band := worldObjectSlotBand(film, EquipmentTypeIndex)
 	if len(band) == 0 {
-		return nil, st, fmt.Errorf("aucun slot d'archétype ti=%d dans les keyframes de %s",
-			EquipmentTypeIndex, dir)
+		return nil, st, fmt.Errorf("aucun slot d'archétype ti=%d dans les keyframes du film",
+			EquipmentTypeIndex)
 	}
 	st.Slots = len(band)
-	tracks, err := ScanFilmWorldObjects(dir, wr, EquipmentTypeIndex)
+	tracks, err := ScanWorldObjects(film, wr, EquipmentTypeIndex)
 	if err != nil {
 		return nil, st, err
 	}
@@ -137,14 +153,14 @@ func ScanFilmEquipmentPlacements(
 	st.Lives = len(spans)
 
 	defer SetMPPWidths(CurrentMPPWidths())
-	cal, ok := CalibrateMPPWidths(dir, wr, band, spans)
+	cal, ok := CalibrateMPPWidthsOf(film, wr, band, spans)
 	st.Calibration, st.Scanned = cal, true // le film a été lu ; reste à savoir s'il a tranché
 	if !ok {
 		return nil, st, nil // le film n'a pas tranché : aucune pose, et les stats le disent
 	}
 	SetMPPWidths(cal.Widths)
 
-	cre, cst, err := ScanFilmEquipmentCreationsForBand(dir, wr, band)
+	cre, cst, err := ScanEquipmentCreationsForBand(film, wr, band)
 	if err != nil {
 		return nil, st, err
 	}
