@@ -400,14 +400,17 @@ describe('ReplaySettingsDrawer — effets d événement', () => {
 })
 
 describe('ReplaySettingsDrawer — cohabitation avec la légende de la carte de chaleur', () => {
-  it('le panneau tient le bord DROIT, la légende le coin bas-GAUCHE : deux coins opposés', () => {
-    // Depuis que le panneau se pose SUR la carte (16/08), il pourrait masquer ce qui vit
-    // dans le cadre du canvas. La légende est le seul élément dans ce cas — elle est ancrée
-    // à l'opposé, et le panneau reste AU-DESSUS si un écran étroit les rapproche : c'est
-    // l'ordre correct (un panneau ouvert prime une légende), pas une collision.
+  // LE PANNEAU A QUITTÉ LE CADRE le 2026-09-02 : il n'est plus `absolute right-0` dans la carte
+  // mais un portail `fixed`, placé par `useAnchoredPanel`. Ce que le test garde n'est donc plus
+  // sa position — elle est calculée, pas déclarée — mais les DEUX invariants qui survivent au
+  // changement : il flotte hors du flux, et il passe AU-DESSUS de la légende si un écran étroit
+  // les rapproche (un panneau ouvert prime une légende ; ce n'est pas une collision).
+  it('le panneau flotte hors du flux et prime la légende, qui garde son coin bas-GAUCHE', () => {
     const panel = renderDrawer().getByRole('region', { name: 'Réglages' })
-    expect(panel.className).toContain('right-0')
-    expect(panel.className).toContain('z-20')
+    expect(panel.className).toContain('fixed')
+    expect(panel.className).toContain('z-50')
+    // Hors du cadre = hors du sous-arbre de la carte : il se rend sur `body`.
+    expect(panel.closest('body')).toBeTruthy()
     const legend = render(<ReplayHeatmapLegend locale="fr" mode="presence" />)
     const box = legend.container.firstElementChild as HTMLElement
     expect(box.className).toContain('left-2')
