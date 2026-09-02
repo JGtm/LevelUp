@@ -491,7 +491,7 @@ function KillLine({
       )}
       {k.victimGamertag && (
         <>
-          <FeedName kind={marks.get(k.victimXuid)} name={k.victimGamertag} locale={locale}
+          <FeedName kind={marks.get(k.victimXuid)} name={displayPlayerName(k.victimGamertag, k.victimXuid)} locale={locale}
             color={colorOf(k.victimTeamID, allyOf(xuidMeta, k.victimXuid, !k.ally))} />
         </>
       )}
@@ -513,7 +513,7 @@ function KillLine({
           title={t.killFeedAssistHint}
         >
           <AssistMark label={t.killFeedAssistMark} />
-          <FeedName name={k.assistGamertag} locale={locale}
+          <FeedName name={displayPlayerName(k.assistGamertag)} locale={locale}
             kind={marksByGamertag.get(normalizeGamertagKey(k.assistGamertag))} />
           {k.assistDamagePct != null && (
             <span className="shrink-0 font-mono tabular-nums">
