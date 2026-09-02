@@ -1,3 +1,85 @@
+## [2026-09-02] T0 film — LOT C : le coup d envoi mesure entre en base, et rien ne l ecrase — Complete
+
+Reprise du lot C sous le plan `.ai/V7.5/PLAN_T0_FILM_2026-09-02.md` (decisions D1-D6 fermes),
+apres la mort en plein vol de l executant precedent : du travail non commite, non verifie,
+potentiellement incomplet. Premiere action : INVENTAIRE avant toute ecriture, fichier par
+fichier, verdict ecrit. Douze fichiers examines, douze juges sains, UNE correction —
+`convergence.go` n avait pas ete passe a `gofmt` (le litteral `Deps{}` avait perdu son
+alignement). Aucun test ne l aurait vu ; `gofmt -l` le voyait.
+
+**Decision technique principale, et c est celle du predecesseur qu il fallait valider ou
+rejeter** : l ecriture du T0-film dans `match_registry` au fil de l eau passe par
+`internal/persist/T0FilmPersister` plutot que par une entree d allowlist du garde-rail.
+Verification sur pieces : `shared_write_guard_test.go` scanne tout l arbre SAUF `_test.go`,
+`/migration(s)/`, `/ops/`, `/cmd/` et `/scripts/`, et n autorise `match_registry` que depuis
+`internal/persist/` ou depuis une liste nommee de DETTES legacy. Une ecriture neuve n a rien
+a faire dans une liste de dettes : la voie persist est la bonne, et elle est GARDEE. Corollaire
+verifie aussi : la CLI, elle, vit sous `/cmd/` donc hors du scan — son UPDATE direct est
+legitime, exactement comme celui de `cmd/backfill_t0`.
+
+**C3 tranche par la preuve, pas par une garde de precaution.** La question du plan etait :
+un re-sync reecrit-il `real_start_time` ? REPONSE : NON, et la preuve tient en trois lignes
+de code. `persist.SharedPersister.Persist` (`shared_persister.go:82-94`) sort en no-op quand
+le `match_id` existe deja ; `persistMatchRegistry` (l. 146-205) est un INSERT NU, sans
+`ON CONFLICT` ; `transforms.go:122-125` n injecte le T0 estime que dans la LIGNE, avant
+persistance, jamais par UPDATE. Deux CLI du depot documentent deja cet invariant noir sur
+blanc (`cmd/backfill-team-scores/main.go:14`, `cmd/backfill-team-rounds/main.go:6`). Aucune
+garde a poser la. Mais la verification a trouve le VRAI danger, que le plan ne nommait pas :
+`cmd/backfill_t0`, qui ecrit le T0 ESTIME sur tout le corpus et aurait annule la reparation
+a la premiere passe de rattrapage. La garde est donc posee LA (`ecarterLesFilms` +
+`loadFilmT0Matches`, 3 tests), pas sur un chemin qui ne mord pas.
+
+**Une portee qu il faut dire, parce qu elle n est pas celle qu on croit** : le fil de l eau
+(C2) ne couvre que le placement `local`. En PRODUCTION le defaut est `worker`
+(`replaybuild.DecidePlacement` : reglage vide + instance de production -> `worker`), et sur
+ce chemin `replayartifacts.Run` sort apres `enqueueAll` sans rien cuire — il n y a pas d
+« apres la cuisson » dans le cycle. La limite est ecrite dans `t0film.go` et assumee ; elle
+n est pas contournee. Le point d accroche pour la fermer plus tard sans toucher un handler
+existe deja : `replaybuild.SetArtifactStoredSink`, notifie par `StoreArtifact` sur TOUS les
+chemins de depot, ouvrier compris. C est un lot a part entiere, pas un ajout discret a C2.
+
+**Resultats observes** :
+- `go build ./...` -> `EXIT_BUILD=0` ; `go vet` (6 paquets touches) -> `EXIT_VET=0` ;
+  `gofmt -l` propre apres correction.
+- `go test` cible (42 paquets : sync, persist, analysis/replay, analysis/timeline, cmd) ->
+  `EXIT_TESTS=0`.
+- `bash apps/go-api/scripts/check_lease_enforcement.sh` -> `EXIT_LEASE=0`.
+- **Suite d integration COMPLETE** `-tags=integration -p 1 -count=1 -timeout 600s`, en six
+  groupes de paquets (le plafond de 10 min par commande interdit un `./...` d un seul tenant) :
+  `SYNC_PERSIST=0` · `API=0` · `PLATFORM_GAMES=0` · `CMD_ET_RESTE=0` · `INTERNAL_RESTE=1` ·
+  `ANALYSIS=127` puis 0 au rejeu. Les deux non-zero, expliques et non imputables au lot :
+  `ANALYSIS=127` est une mort du processus `go` a l entree de `internal/analysis/replay`
+  apres neuf paquets verts, sans aucun test rouge — rejoue seul sur les cinq paquets
+  restants, TOUS VERTS (`EXIT_INTEG_ANALYSIS_RETRY=0`) ; `INTERNAL_RESTE=1` tient a
+  exactement deux paquets, `internal/archlint` (deja rouge AVANT le lot sur
+  `deto_attribution_helpers_test.go`, commit `922d70f2f`, hors perimetre) et
+  `internal/himap` (voir ci-dessous). Les 55 autres verts.
+- **`internal/himap` TUE en cours de suite, et c est une decision assumee** : le binaire est
+  monte a **17,4 Go de RSS en 21 s** et a fait tomber la memoire libre de la machine a 2,3 Go
+  sur 31,2. Quatrieme bombe RAM du chantier ; processus arrete, memoire libre revenue a
+  19,7 Go dans la seconde. Le paquet est INTOUCHE par le lot et n importe rien de lui ; sa
+  limite locale etait deja au registre des reports (« au-dela du timeout Go de 10 min »),
+  mais sans le chiffre de RAM — il y entre maintenant. Aucun test n a ete desactive : un
+  paquet est declare injouable localement, et c est ecrit.
+- **Dry-run sur le corpus REEL** (serveur air arrete et verifie, `LEVELUP_REPO_ROOT` sur le
+  depot principal, ouverture LECTURE SEULE, aucun `--commit`) -> `EXIT_DRYRUN=0`.
+  **106 artefacts = 101 reparations + 5 refus + 0 sans ligne + 0 inchange** — la partition ne
+  laisse aucun reste. Les 5 refus sont TOUS `artefactSansOrigine`, soit exactement les
+  « 5 sans originMs » du research test ; **aucun refus du detecteur lui-meme** sur les 101
+  exploitables. T0 film min/mediane/max = **25 907 / 33 725 / 78 119 ms** : le plancher est
+  celui que le lot A avait mesure par un chemin disjoint. Les trois temoins nommes retombent
+  sur leurs valeurs publiees (`000d5950` 26 304, `1b2d9e08` 31 862, `72b0a25e` 38 951), et
+  les deux derniers portent aujourd hui en base 1 ms et 0 ms. 21 matchs sont dans le regime
+  degenere (0-2 ms) et le film leur rend 26 a 69 s.
+
+**Conclusion / prochaine etape** : le lot C est complet et prouve, rien n est differe. UN
+point demande l oeil du user avant le `--commit` (D2) : 11 matchs sur 101 datent le coup
+d envoi au-dela de 50 s, dont 5 au-dela de 60 s (max `af3500aa` a 78 119 ms). Ce n est pas un
+refus — le detecteur borne la marge depuis la frame 0, pas le total — et l API dit « long »
+sur les memes matchs (`af3500aa` : 91 679 ms). Piste : des films qui commencent avant le
+`start_time`. A trancher a l oeil, pas par un seuil ajoute en douce. Non commite : la main
+revient a l orchestrateur.
+
 ## [2026-09-02] T0 film — LOT B : le lecteur web prefere le T0 mesure, et se pose une seconde avant — Complete
 
 Suite du lot A sous le plan `.ai/V7.5/PLAN_T0_FILM_2026-09-02.md` (decisions D1-D6 fermes).
