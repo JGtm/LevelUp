@@ -88142,3 +88142,30 @@ openapi-gen régénéré (+ generated.ts), tsc 0, vitest match-replay 2022, matc
 
 **Conclusion / prochaine étape** : tout le code des 7 retours est livré ou statué. Prochaine
 étape = décision de cuisson (film témoin d'abord), puis gate visuel user.
+
+---
+
+## [2026-09-02] Fil des eliminations : lignes d entree/sortie de partie (presence)
+
+**Statut** : Complété.
+
+**Décision technique principale** : le film ne portant AUCUN événement de connexion (mesuré,
+liste d'événements = kill/death/medal/mode), la présence se DÉRIVE des bornes de vie
+(demande user : « tout est indiqué au niveau des timestamps ») — module pur
+`presenceFeed.ts` : première vie > 10 s après le coup d'envoi = « entre en partie » ;
+dernière vie > 20 s avant la fin = « ne reviendra plus » (>2x la réapparition médiane
+mesurée 8,0 s). SEULES la première et la dernière vie parlent : un trou ENTRE deux vies
+n'émet rien — sur un mode à élimination, rester mort entre deux manches est normal, en
+déduire des allers-retours spammerait le fil. Libellé de sortie AU FAIT (le film ne
+distingue pas un départ d'une élimination définitive — réserve en infobulle).
+
+**Résultats observés** : lignes fusionnées dans le fil par la route (mergeFeedWithPresence,
+même axe, recalage d'horloge hérité de la liste), glyphe vectoriel porte+flèche à l'encre
+d'équipe (`ReplayPresenceLine.tsx`, FEED_ROW/FeedClock exportés — 4e forme de ligne, même
+filet), bots nommés via leur clé `bot:<nom>`. reduceFeed (frises) ignore ces lignes par
+construction. Gates : tsc 0, eslint 0, vitest match-replay 134 fichiers verts (7 tests
+presenceFeed). Anciens artefacts : signal partiel mais jamais faux (vies fusionnées par
+slot = moins de sorties détectées) ; complet après re-cuisson 36.
+
+**Conclusion / prochaine étape** : gate visuel à la re-cuisson du film témoin, avec le
+reste du lot 5.

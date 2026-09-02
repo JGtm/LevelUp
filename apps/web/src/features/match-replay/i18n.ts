@@ -46,6 +46,12 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       environment: 'Chute ou sortie de zone',
       suicide: 'Tué par sa propre arme',
     },
+    presenceJoined: 'entre en partie',
+    presenceLeft: 'ne reviendra plus',
+    presenceJoinedHint:
+      "Première apparition bien après le coup d'envoi, lue dans les vies du film : un arrivant en cours de partie.",
+    presenceLeftHint:
+      "Dernière vie du film pour ce joueur, bien avant la fin : un départ — ou une élimination définitive sur un mode à manches, le film ne les distingue pas.",
     sound: 'Son',
     soundHint:
       "Sons d'armes sur les éliminations, les lancers de grenade et les activations d'équipement, coupés à la seconde. Une arme sans son enregistré reste muette. Coupé par défaut.",
@@ -422,6 +428,12 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       environment: 'Fall or out of bounds',
       suicide: 'Killed by their own weapon',
     },
+    presenceJoined: 'joins the game',
+    presenceLeft: 'will not return',
+    presenceJoinedHint:
+      'First appearance well after kickoff, read from the film lives: a mid-game joiner.',
+    presenceLeftHint:
+      'Last film life for this player, well before the end: a leaver — or a final elimination in a round-based mode; the film does not tell them apart.',
     sound: 'Sound',
     soundHint:
       'Weapon sounds on kills, grenade throws and equipment activations, cut at one second. A weapon with no recorded sound stays silent. Off by default.',
