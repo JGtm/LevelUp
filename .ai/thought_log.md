@@ -1,3 +1,38 @@
+## [2026-09-02] Lots A (victimes/bots) et B (glyphe ami) executes et merges — Complete ; lot C (medailles) lance
+
+Plan `.ai/V7.5/PLAN_KILLFEED_VICTIMES_MEDAILLES_GLYPHE_2026-09-02.md`, execution par
+executeurs pilotes (Opus lot A, Sonnet lot B), worktrees dedies, CR verifies sur pieces.
+
+**Lot A merge** (`wt/killfeed-bots`, commit 2cb5a1dce) : complement du fix partiel
+71a8801b2 d une autre session — `killer_gamertag` (3e colonne NULLABLE) en NullString
+(prouve par revert : cassait encore le scan), victime bot NOMMEE au kill feed
+(comparaison par gamertag quand le xuid manque, cas deux-bots-meme-instant traite),
+`decorateVictim` ne pose plus xuid/equipe inexistants, gardes D2 sur `buildTugEvents`
+ET `buildKDEvents` (une mort infligee par un bot passait `VictimXUID == myXUID` et
+creusait la courbe du viewer). Doctrine posee sur `domain.KVPairRaw`. 12 tests neufs.
+Gates : service+duckdb+domain verts, integration KVPairs `-p 1` vert (rejoue par le
+pilote independamment).
+
+**Lot B merge** (`wt/feed-glyphe`, commit 2c53c8bd7) : plus aucun glyphe au fil (D5),
+encre `success` et sr-only conserves. Decouverte validee : la carte n a JAMAIS utilise
+le composant SVG `PlayerMark` (formes dessinees au canvas, `replayMarkers.ts`) →
+`PlayerMark.tsx` + test + cle i18n `markFriend` supprimes (regle n7). Typecheck (purge
+.tmp), lint, 5711 tests verts.
+
+**Question user en cours de merge (medailles « en double »)** : exact — deux magasins.
+`medals_earned` (agregat API par joueur, SANS timestamps) sert Resume/citations : c est
+pour ca que « toutes les medailles » sont visibles meme sur les matchs recents. Les
+events `medal` du film ont les timestamps mais plus d identite depuis avril. Le join
+agregat↔timestamps est impossible des qu un joueur a >1 type de medaille dans le match
+(aucun moyen de savoir quel event est laquelle) — d ou le lot C qui recupere l identite
+dans les octets du film (bijection (type_hint, medal_type)→nom mesuree parfaite,
+124 cles, 0 ambigue). La « duplication » agregat+events existe depuis l ere Python et
+aucun lecteur ne double-compte. `medals_earned` servira d ORACLE de validation au
+backfill (C5).
+
+Reste : gate visuel user (temoin 1b2d9e08 : victimes + « 343 Razzle [bot] » ×6, zero
+glyphe, amis en vert), lot C en cours, CI de branche a verifier apres push.
+
 ## [2026-09-02] Diagnostic kill feed du rejeu (retour user) : victimes et medailles absentes — Complete (diagnostic seul, AUCUN fix)
 
 Retour user sur le rejeu (temoin `1b2d9e08-4c0c-430c-9760-a245d48b222e`) : aucune victime

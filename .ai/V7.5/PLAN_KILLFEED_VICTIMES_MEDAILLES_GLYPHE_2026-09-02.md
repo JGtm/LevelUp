@@ -201,4 +201,28 @@ détail dans le thought_log. Prochain geste si tout est vide : lancer lot A et l
 
 ## Découvertes (hors périmètre — ne pas traiter)
 
-- (vide)
+- (lot A, 02/09) Une AUTRE session avait déjà posé une partie du fix sur `feat/v75`
+  (commit `71a8801b2` : xuid en NullString, garde némésis, 2 tests). L'exécuteur a
+  complété sans dupliquer : `killer_gamertag` (3e colonne NULLABLE, cassait encore le
+  scan — prouvé par revert), victime bot nommée au feed, gardes tug/KD. Constat : la
+  garde KD n'était pas cosmétique (une mort infligée par un bot passait
+  `VictimXUID == myXUID` et creusait la courbe du viewer).
+- (lot A) Deux doctrines opposées pour la même table, chacune documentée : Q32c filtre
+  les NULL au SQL (agrégat), Q20 les tolère au scanner (journal). Pas d'action.
+- (lot A) `gofmt` réécrit `''` en `”` dans les commentaires godoc — `queries_squad.go:209`
+  porte déjà la séquelle (ligne trompeuse). Non traité.
+- (lot A) Les tests `platform/duckdb` sont sous `//go:build integration` : le gate rapide
+  ne les exécute pas — la CI de branche (job intégration `-p 1`) les couvre.
+- (lot B) Hypothèse du plan invalidée sur pièces : la carte n'a jamais utilisé le
+  composant SVG `PlayerMark` (elle dessine ses formes au canvas, `replayMarkers.ts`).
+  Après retrait du fil, `PlayerMark.tsx` était du code mort intégral → supprimé avec son
+  test et la clé i18n `markFriend` (règle n°7). `playerMarks.ts` (types/marques) reste,
+  massivement utilisé.
+
+## État d'avancement (pilote, 2026-09-02)
+
+- Lot A : TERMINÉ et vérifié sur pièces (diff relu, tests rejoués indépendamment :
+  service + intégration KVPairs verts). En attente : commit + merge.
+- Lot B : TERMINÉ et vérifié sur pièces (diff relu, gates rapportés verts : typecheck,
+  lint, 5 711 tests). En attente : gate visuel user + commit + merge.
+- Lot C : à lancer APRÈS merge du lot A.
