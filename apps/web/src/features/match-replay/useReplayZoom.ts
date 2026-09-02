@@ -72,6 +72,8 @@ export interface ReplayZoom {
    * différence entre une molette qui attrape et une molette qui chasse.
    */
   zoomAt: (dir: number, towards: { x: number; y: number }) => void
+  /** Déplacement en UNITÉS MONDE. La croix et le glisser s'y ramènent tous les deux. */
+  panBy: (dx: number, dy: number) => void
 }
 
 export function useReplayZoom(scene: ReplayBounds): ReplayZoom {
@@ -110,16 +112,26 @@ export function useReplayZoom(scene: ReplayBounds): ReplayZoom {
     setRaw(null)
   }, [])
 
-  const panStep = useCallback(
+  // LE DÉPLACEMENT EN UNITÉS MONDE est le primitif ; la croix et le glisser s'y ramènent tous
+  // les deux. Le hook ne connaît donc toujours pas les pixels — c'est le geste qui convertit.
+  const panBy = useCallback(
     (dx: number, dy: number) => {
       setRaw((prev) => {
         const from = prev ?? sceneCenter(scene)
-        const stepX = ((scene.maxX - scene.minX) / level) * PAN_STEP_RATIO
-        const stepY = ((scene.maxY - scene.minY) / level) * PAN_STEP_RATIO
-        return clampCenter(scene, level, from.x + dx * stepX, from.y + dy * stepY)
+        return clampCenter(scene, level, from.x + dx, from.y + dy)
       })
     },
     [scene, level],
+  )
+
+  const panStep = useCallback(
+    (dx: number, dy: number) => {
+      panBy(
+        dx * ((scene.maxX - scene.minX) / level) * PAN_STEP_RATIO,
+        dy * ((scene.maxY - scene.minY) / level) * PAN_STEP_RATIO,
+      )
+    },
+    [panBy, scene, level],
   )
 
   // LA MOLETTE PASSE PAR LE MÊME CHEMIN QUE LES BOUTONS — mêmes paliers, même rebornage. Elle
@@ -152,5 +164,6 @@ export function useReplayZoom(scene: ReplayBounds): ReplayZoom {
     zoomOut,
     reset,
     panStep,
+    panBy,
   }
 }

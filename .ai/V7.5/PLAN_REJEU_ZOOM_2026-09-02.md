@@ -138,7 +138,7 @@ pas un avertissement a taire.
   la croix (un quart de fenetre : trop grand ? trop petit ?), et la place de la surimpression au
   coin bas-droit face au fil.
 - **Le SUIVI D'UN JOUEUR** reste le vrai usage d'un rejeu, et le zoom manuel en est le socle.
-- **Le glisser**, si l'usage le reclame, avec son cout desormais instruit.
+- ~~Le glisser~~ — FAIT le 2026-09-02 (etape 8), et sans le cout memoire redoute.
 
 ## Etape 7 — Molette et clavier (demande du 2026-09-02, apres le lot)
 
@@ -162,3 +162,35 @@ avertissements prexistants. `ReplayCanvas.tsx` : 663/665.
 DEUX AVERTISSEMENTS NEUFS TRAITES A LEUR CAUSE, pas tus : une reference ecrite pendant le
 RENDU (React la reserve au calcul — une valeur ecrite la peut etre perdue si le rendu est
 abandonne) est passee dans un effet, dans les deux hooks concernes.
+
+## Etape 8 — Le glisser (2026-09-02)
+
+- [x] 8.1 `layerOffset` — ou poser un calque deja cuit quand le cadrage a bouge depuis sa
+      cuisson. Le pixel (0,0) du calque designe un point du monde ; on demande ou ce point
+      tombe dans la projection COURANTE. Exact, parce qu'un deplacement est une translation
+      pure et que les deux projections partagent leur echelle.
+- [x] 8.2 `useReplayZoom.panBy` en unites MONDE — le primitif ; la croix et le glisser s'y
+      ramenent tous les deux. Le hook ne connait toujours pas les pixels.
+- [x] 8.3 `useReplayDrag` — conversion pixels -> monde par `canvasScale`, capture du pointeur
+      (sans elle, un glisser qui deborde du terrain se terminerait sans `pointerup` et la carte
+      resterait collee au curseur), et le drapeau `dragging`.
+- [x] 8.4 `useReplayStaticLayers.frozen` — les quatre cuissons s'arretent pendant le geste et
+      reprennent au relachement. JAMAIS pendant un zoom : l'echelle change alors, et un
+      decalage ne replacerait pas une image cuite pour une autre echelle.
+- [x] 8.5 `hoverHandlers(layers, pan?)` — le glisser passe par la, pas par un second
+      `{...spread}` sur la meme balise : deux spreads ne se composent pas, le second ecrase le
+      `onPointerMove` du premier et le survol mourrait en silence.
+- [x] 8.6 Tests : 4 sur `layerOffset` (dont l'invariant « replace un point exactement ou un
+      recuit l'aurait mis »), 6 sur `useReplayDrag` (sens, conversion, gel).
+
+**LE COUT MEMOIRE REDOUTE N'A PAS ETE PAYE.** L'estimation annoncee (x2,25, ~92 Mo) supposait
+une cuisson a MARGE. Le blit decale la rend inutile : on recopie l'image existante ailleurs,
+sans rien cuire de plus. **Surcout memoire : ZERO.**
+
+Le seul artefact est une bande non peinte au bord d'attaque pendant le geste, sur les calques
+cuits — pas sur le fond de carte, dessine directement, qui suit donc parfaitement. Elle
+disparait au relachement. C'est le prix assume de ne rien couter : la solution sans bande
+demanderait de la memoire en permanence pour un geste occasionnel.
+
+Gate : `tsc -b` EXIT=0 ; **169 fichiers, 2370 tests, 0 echec** ; lint 0 erreur, 23
+avertissements prexistants. `ReplayCanvas.tsx` : 664/665.

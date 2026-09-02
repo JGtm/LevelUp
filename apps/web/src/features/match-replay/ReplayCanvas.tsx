@@ -81,7 +81,7 @@ import {
   drawKillFxLayer,
   drawShotsLayer,
 } from './replayDraw'
-import { frameToMs } from './replayLogic'
+import { frameToMs, layerOffset } from './replayLogic'
 import type { ReplayWindowBounds } from './replayWindow'
 import { drawProjectilesLayer } from './replayProjectiles'
 import { drawTracksLayer } from './replayMarkers'
@@ -89,6 +89,7 @@ import { useReplayTiming } from './useReplayTiming'
 import { CANVAS_PAD, exportRenderScale, useReplayView, type ReplayMapBackgroundLayer } from './useReplayView'
 import { useReplayViewport } from './useReplayViewport'
 import { useReplayWheelZoom } from './useReplayWheelZoom'
+import { useReplayDrag } from './useReplayDrag'
 
 
 
@@ -243,6 +244,7 @@ export function ReplayCanvas({
   // La CARTE DE CHALEUR : grille cuite, rampe du thème et lecture réellement servie —
   // toute la logique vit dans le hook, le canvas ne fait que poser le calque.
   useReplayWheelZoom(canvasRef, zoom, canvasView) // molette : memes paliers que les boutons
+  const drag = useReplayDrag(zoom, canvasView)
   const heat = useReplayHeatmap(doc, bounds, killFx, {
     show: showHeatmap,
     mode: heatmapMode,
@@ -261,9 +263,10 @@ export function ReplayCanvas({
   // LES CALQUES STATIQUES (sol, zones nommées, chaleur, objectifs), cuits hors écran et
   // recopiés par la boucle : quatre effets qui partageaient la même amorce et recopiaient
   // chacun le cadrage — ils vivent dans useReplayStaticLayers, qui lit `canvasView`.
-  const { floorRef, zonesRef, heatRef, objectivesRef } = useReplayStaticLayers({
+  const { floorRef, zonesRef, heatRef, objectivesRef, cookedRef } = useReplayStaticLayers({
     view: canvasView,
     redraw,
+    frozen: drag.dragging,
     floor: { grid: floorGrid, style: floorStyle },
     zones: { zones: calloutZones, bigColors: zoneColors, fineInk: floorStyle.edge, locale },
     heat: { grid: heat.grid, ramp: heat.ramp },
@@ -337,9 +340,10 @@ export function ReplayCanvas({
     const frame = frameRef.current
     // ORDRE DES CALQUES, du fond vers le sujet : le sol porte les trajectoires, qui portent les
     // événements. Inverser noierait les joueurs.
-    // LE FOND SUIT LA FENÊTRE, PAS LA SCÈNE (`canvasView.bounds` et non `bounds`) : c'est ce qui
-    // le fait grossir avec le reste. Servi sur la scène, il resterait cadré large pendant que
-    // les joueurs zooment — l'image et les points cesseraient de désigner le même endroit.
+    // LE FOND SUIT LA FENETRE, PAS LA SCENE : sinon il resterait cadre large pendant que les
+    // joueurs zooment, et l'image cesserait de designer le meme endroit qu'eux.
+    // Pendant un glisser, cuisson gelee : les calques se recopient DECALES (cf. layerOffset).
+    const lo = layerOffset(cookedRef.current, canvasView)
     const bgRect = mapImage
       ? backgroundRect(mapImage.calibration, canvasView.bounds, renderWidth, viewH, CANVAS_PAD)
       : null
@@ -348,28 +352,25 @@ export function ReplayCanvas({
       // projection est affine et sans rotation, donc deux coins suffisent (mapBackground.ts).
       ctx.drawImage(mapImage.image, bgRect.x, bgRect.y, bgRect.width, bgRect.height)
     } else if (floorRef.current) {
-      ctx.drawImage(floorRef.current, 0, 0, renderWidth, viewH)
+      ctx.drawImage(floorRef.current, lo.x, lo.y, renderWidth, viewH)
     } else if (doc.geometry?.length) {
       // REPLI, pas un doublon : sans fichier de structure figé, la carte n'a pas de sol
       // reconstruit et les props Forge redeviennent le seul repère disponible. Ils couvrent
       // 3,4 % du terrain — c'est peu, et c'est mieux qu'un fond vide.
       drawGeometryLayer(ctx, doc.geometry, view, { color: geometryColor, z: zRange })
     }
-    // La CARTE DE CHALEUR juste au-dessus du fond : c'est une lecture du terrain, elle se
-    // pose SUR la carte et SOUS tout ce qui la nomme ou s'y déplace. Elle ne masque rien —
-    // son opacité est bornée, et elle laisse le décor transparaître (heatmapLayer.ts).
+    // La CARTE DE CHALEUR sur le fond et sous tout ce qui nomme ou se deplace : une lecture
+    // du terrain, a l'opacite bornee — elle laisse le decor transparaitre (heatmapLayer.ts).
     if (heatRef.current) {
-      ctx.drawImage(heatRef.current, 0, 0, renderWidth, viewH)
+      ctx.drawImage(heatRef.current, lo.x, lo.y, renderWidth, viewH)
     }
-    // Les ZONES NOMMÉES par-dessus le fond, sous tout ce qui bouge : c'est le vocabulaire
-    // du terrain, pas un événement. Calque statique recopié (cuit hors écran).
+    // Les ZONES NOMMEES sous ce qui bouge : le vocabulaire du terrain, pas un evenement.
     if (showZones && zonesRef.current) {
-      ctx.drawImage(zonesRef.current, 0, 0, renderWidth, viewH)
+      ctx.drawImage(zonesRef.current, lo.x, lo.y, renderWidth, viewH)
     }
-    // Les OBJECTIFS DU MODE par-dessus le vocabulaire : c'est l'enjeu du match (zones de
-    // capture, apparitions de drapeau), il prime sur les noms de lieux. Statique aussi.
+    // Les OBJECTIFS DU MODE par-dessus le vocabulaire : l'enjeu prime sur les noms de lieux.
     if (objectivesRef.current) {
-      ctx.drawImage(objectivesRef.current, 0, 0, renderWidth, viewH)
+      ctx.drawImage(objectivesRef.current, lo.x, lo.y, renderWidth, viewH)
     }
     // Les projectiles passent SOUS les joueurs : ce sont des objets du terrain, pas le sujet.
     if (doc.projectiles?.length) {
@@ -502,7 +503,7 @@ export function ReplayCanvas({
   }, [
     doc, geometryColor, zRange, timing, clockTick, wallInk, riftInk,
     // Refs STABLES : la regle de dependances ne le sait pas d'un hook maison.
-    floorRef, zonesRef, heatRef, objectivesRef, grenadeIconsRef,
+    floorRef, zonesRef, heatRef, objectivesRef, grenadeIconsRef, cookedRef,
     renderWidth, viewH, canvasView,
     placements.counts.drawable,
     placements.windowTime,
@@ -621,7 +622,7 @@ export function ReplayCanvas({
                 ref={canvasRef}
                 className="block"
                 style={{ width: renderWidth || '100%', height: viewH }}
-                {...hoverHandlers(placements.hover, weaponPads, flags)}
+                {...hoverHandlers([placements.hover, weaponPads, flags], drag)}
               />
               {/* Les infobulles des trois calques survolables (cf. ReplayCanvasTips). */}
               <ReplayCanvasTips
