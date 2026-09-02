@@ -9,10 +9,12 @@
 // dépendances en paramètres — il ne connaît ni SyncEngine ni aucun type privé du paquet
 // sync.
 //
-// LE PAQUET EN QUATRE FICHIERS (découpage du 2026-09-01) : artifacts.go décide QUOI faire
+// LE PAQUET PAR RESPONSABILITÉ (découpage du 2026-09-01) : artifacts.go décide QUOI faire
 // (le hook, les dépendances, l'orchestration d'un cycle), backlog.go dit SUR QUOI (les insérés
 // puis le rattrapage), cuisson.go fait le travail (pont disque, construction, mise en file),
-// journal.go dit ce que le cycle a fait.
+// buildone.go délègue la construction hors du processus, mvar_rattrapage.go comble le catalogue
+// de cartes, t0film.go reporte au registre le coup d'envoi mesuré dans le film, et journal.go
+// dit ce que le cycle a fait.
 //
 // CE QUE FAIT L'ÉTAPE. Après runKillSource, l'étape 1.57 (le film vient d'être exploité pour
 // la source des kills : c'est le moment où il est disponible ET récent — et l'étape 1.57 l'a
@@ -184,6 +186,14 @@ type Deps struct {
 	// WithRead ouvre un segment de LECTURE shared court — c'est le paquet sync qui porte
 	// le lease et sa dégradation best-effort ; ici on ne fait que l'emprunter.
 	WithRead func(ctx context.Context, step string, fn func(sharedDB *sql.DB))
+	// AcquireWriter ouvre un segment d'ÉCRITURE shared COURT, acquis APRÈS la cuisson et
+	// relâché aussitôt (cf. t0film.go) — jamais pendant un décodage. Même patron que le
+	// burst du collecteur de kills (`killcollector.PostSyncDeps.AcquireWriter`).
+	//
+	// NIL = LE COUP D'ENVOI MESURÉ N'EST PAS REPORTÉ AU REGISTRE, et c'est journalisé : un
+	// chemin de sync sans writer câblé cuit ses artefacts mais laisse `real_start_time` sur
+	// le T0 estimé de l'API. Aucune autre partie de l'étape n'en dépend.
+	AcquireWriter func(ctx context.Context) (*sql.DB, func(), error)
 	// MetaDB (optionnel) résout le nom EN de la carte. Nil = map_name brut seul.
 	MetaDB *sql.DB
 	// RepoRoot, TitleSlug : résolution des chemins d'artefact et du catalogue du titre.
@@ -318,7 +328,11 @@ func Run(ctx context.Context, d Deps, insertedIDs []string) {
 			"gamertag", d.Gamertag, "titleSlug", d.TitleSlug, "err", err)
 		return
 	}
-	publierBilan(ctx, d, buildAll(ctx, d, work), len(work))
+	b := buildAll(ctx, d, work)
+	// LE REPORT DU COUP D'ENVOI VIENT APRÈS TOUTE CUISSON, jamais entre deux : c'est ce qui
+	// garantit que le burst writer ne recouvre aucun décodage (cf. t0film.go).
+	reporterT0Film(ctx, d, b.t0Film)
+	publierBilan(ctx, d, b, len(work))
 }
 
 // selectionnerLeTravail compose le lot du cycle et rend le retard qui subsiste après lui.
