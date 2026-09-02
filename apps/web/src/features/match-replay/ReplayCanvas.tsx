@@ -32,6 +32,7 @@ import type { CalloutZoneReady } from './calloutsLayer'
 
 import { ReplayHeatmapLegend } from './ReplayHeatmapLegend'
 import { ReplayTransport } from './ReplayTransport'
+import { ReplayZoomControl } from './ReplayZoomControl'
 import { useTeamCascades } from './useTeamCascades'
 import { drawObjectivePulses, normalizeMapObjectives } from './objectivesLayer'
 import { drawZoneStates } from './zoneStatesLayer'
@@ -210,7 +211,7 @@ export function ReplayCanvas({
   // verticale, projection partagée et trame d'altitudes : une seule chaîne de décision, qui
   // vit dans `useReplayView` (neuvième extraction imposée par le cliquet de taille). Les noms
   // sortent inchangés : le dessin en dessous lit exactement les mêmes valeurs qu'avant.
-  const { mapImage, bounds, renderWidth, renderHeight: viewH, zRange, canvasView, floorGrid } = useReplayView({
+  const { mapImage, bounds, renderWidth, renderHeight: viewH, zRange, canvasView, floorGrid, zoom } = useReplayView({
     doc, background, width, freeHeight,
   })
 
@@ -334,8 +335,11 @@ export function ReplayCanvas({
     const frame = frameRef.current
     // ORDRE DES CALQUES, du fond vers le sujet : le sol porte les trajectoires, qui portent les
     // événements. Inverser noierait les joueurs.
+    // LE FOND SUIT LA FENÊTRE, PAS LA SCÈNE (`canvasView.bounds` et non `bounds`) : c'est ce qui
+    // le fait grossir avec le reste. Servi sur la scène, il resterait cadré large pendant que
+    // les joueurs zooment — l'image et les points cesseraient de désigner le même endroit.
     const bgRect = mapImage
-      ? backgroundRect(mapImage.calibration, bounds, renderWidth, viewH, CANVAS_PAD)
+      ? backgroundRect(mapImage.calibration, canvasView.bounds, renderWidth, viewH, CANVAS_PAD)
       : null
     if (mapImage && bgRect) {
       // L'image ENTIÈRE est posée sur son emprise monde ; le canvas rogne le débord. La
@@ -494,7 +498,7 @@ export function ReplayCanvas({
     // qu'on vient de peindre (cf. useReplayClock).
     clockTick(frame)
   }, [
-    doc, geometryColor, bounds, zRange, timing, clockTick, wallInk, riftInk,
+    doc, geometryColor, zRange, timing, clockTick, wallInk, riftInk,
     // Refs STABLES : la regle de dependances ne le sait pas d'un hook maison.
     floorRef, zonesRef, heatRef, objectivesRef, grenadeIconsRef,
     renderWidth, viewH, canvasView,
@@ -630,6 +634,7 @@ export function ReplayCanvas({
                 flottait donc au milieu du cadre, à gauche de la carte mais loin du bord.
                 Remontée d'un cran, elle se cale sur le bord gauche du bloc, où on la cherche. */}
             {heat.grid && <ReplayHeatmapLegend locale={locale} mode={heat.grid.mode} />}
+            <ReplayZoomControl zoom={zoom} locale={locale} />
           </div>
           {/* LA BARRE DE LECTURE, SORTIE DU `p-3` LE 2026-09-02 : dedans, 12 px de carte
               l'encadraient de trois côtés ; ici elle va bord à bord. Elle reste DANS

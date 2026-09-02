@@ -20,6 +20,10 @@ import {
   trackWindow,
   trailAt,
   usefulHeight,
+  visibleBounds,
+  clampCenter,
+  sceneCenter,
+  ZOOM_LEVELS,
   worldToCanvas,
 } from './replayLogic'
 import type { ReplayTrackReady } from './replayNormalize'
@@ -285,5 +289,110 @@ describe('sceneBounds avec un fond de carte posé', () => {
     const serre = sceneBounds(makeDoc({ geometryBounds: { minX: -1, minY: -1, maxX: 1, maxY: 1 } }), true)
     const large = sceneBounds(makeDoc({ geometryBounds: props }), true)
     expect(large).toEqual(serre)
+  })
+})
+
+// LE ZOOM EST UN CHANGEMENT DE BORNES (2026-09-02) : c'est la décision qui rend le lot petit,
+// et ces tests sont ce qui la tient. Si `visibleBounds` cessait de préserver l'aspect ou de
+// garder la fenêtre dans la scène, la projection partagée par le dessin ET le survol
+// mentirait — un pointeur viserait un autre cadre que celui peint.
+describe('visibleBounds — le zoom rétrécit les bornes', () => {
+  const scene = { minX: 0, minY: 0, maxX: 100, maxY: 60 }
+  const c = sceneCenter(scene)
+
+  it('à zoom 1, la fenêtre EST la scène', () => {
+    expect(visibleBounds(scene, 1, c.x, c.y)).toMatchObject(scene)
+  })
+
+  it('préserve l aspect de la scène à tous les paliers', () => {
+    const ratio = (scene.maxX - scene.minX) / (scene.maxY - scene.minY)
+    for (const z of ZOOM_LEVELS) {
+      const v = visibleBounds(scene, z, c.x, c.y)
+      expect((v.maxX - v.minX) / (v.maxY - v.minY)).toBeCloseTo(ratio, 9)
+    }
+  })
+
+  it('divise chaque dimension par le facteur', () => {
+    const v = visibleBounds(scene, 2, c.x, c.y)
+    expect(v.maxX - v.minX).toBeCloseTo(50)
+    expect(v.maxY - v.minY).toBeCloseTo(30)
+  })
+
+  // ON NE SE DÉPLACE PAS HORS CARTE : un centre absurde est ramené, jamais servi tel quel.
+  it('la fenêtre ne sort JAMAIS de la scène, même sur un centre aberrant', () => {
+    for (const z of ZOOM_LEVELS) {
+      for (const [px, py] of [[-1e6, -1e6], [1e6, 1e6], [0, 60], [100, 0]]) {
+        const v = visibleBounds(scene, z, px, py)
+        expect(v.minX).toBeGreaterThanOrEqual(scene.minX - 1e-9)
+        expect(v.maxX).toBeLessThanOrEqual(scene.maxX + 1e-9)
+        expect(v.minY).toBeGreaterThanOrEqual(scene.minY - 1e-9)
+        expect(v.maxY).toBeLessThanOrEqual(scene.maxY + 1e-9)
+      }
+    }
+  })
+
+  // À zoom 1 la fenêtre vaut la scène : il n'existe qu'UNE position légale. C'est ce qui
+  // désactive la croix directionnelle sans qu'on ait à écrire la règle.
+  it('à zoom 1, le centre n a qu une position possible', () => {
+    for (const [px, py] of [[-999, 999], [10, 10], [90, 50]]) {
+      expect(clampCenter(scene, 1, px, py)).toEqual(c)
+    }
+  })
+
+  it('l amplitude verticale traverse inchangée — le zoom est plan', () => {
+    const withZ = { ...scene, minZ: -3, maxZ: 12 }
+    const v = visibleBounds(withZ, 3, c.x, c.y)
+    expect(v.minZ).toBe(-3)
+    expect(v.maxZ).toBe(12)
+  })
+
+  // BAISSER LE ZOOM peut rendre le centre courant illégal : une fenêtre plus large ne tient
+  // plus aussi près du bord. Le rebornage doit alors ramener, pas laisser filer.
+  it('en dézoomant depuis un coin, le centre se reborne', () => {
+    const coin = clampCenter(scene, 3, scene.maxX, scene.maxY)
+    const apres = clampCenter(scene, 1.5, coin.x, coin.y)
+    expect(apres.x).toBeLessThan(coin.x)
+    expect(apres.y).toBeLessThan(coin.y)
+    const v = visibleBounds(scene, 1.5, apres.x, apres.y)
+    expect(v.maxX).toBeLessThanOrEqual(scene.maxX + 1e-9)
+  })
+
+  it('un aller-retour de zoom au centre ne dérive pas', () => {
+    let p = clampCenter(scene, 1, c.x, c.y)
+    for (const z of [1.5, 2, 3, 2, 1.5, 1]) p = clampCenter(scene, z, p.x, p.y)
+    expect(p.x).toBeCloseTo(c.x, 9)
+    expect(p.y).toBeCloseTo(c.y, 9)
+  })
+})
+
+// LA TAILLE DE DESSIN NE DÉPEND PAS DU ZOOM, et c'est ce qui garantit que la MÉMOIRE des quatre
+// calques statiques n'en dépend pas non plus : ils cuisent à `view.width x view.height`. La
+// crainte d'une mémoire qui enfle avec le grossissement est donc évitée par construction — mais
+// elle ne le reste que tant que `visibleBounds` préserve l'aspect. D'où ce test, qui l'épingle
+// par sa CONSÉQUENCE plutôt que par sa formule.
+describe('la surface a cuire est invariante au zoom', () => {
+  const scenes = [
+    { minX: 0, minY: 0, maxX: 100, maxY: 60 },
+    { minX: -20, minY: 5, maxX: 30, maxY: 95 },
+  ]
+  it('fitWidth rend la meme largeur a tous les paliers', () => {
+    for (const scene of scenes) {
+      const c = sceneCenter(scene)
+      const base = fitWidth(scene, 900, 480, 24)
+      for (const z of ZOOM_LEVELS) {
+        const v = visibleBounds(scene, z, c.x, c.y)
+        expect(fitWidth(v, 900, 480, 24)).toBeCloseTo(base, 6)
+      }
+    }
+  })
+  it('usefulHeight rend la meme hauteur a tous les paliers', () => {
+    for (const scene of scenes) {
+      const c = sceneCenter(scene)
+      const base = usefulHeight(scene, 900, 24)
+      for (const z of ZOOM_LEVELS) {
+        const v = visibleBounds(scene, z, c.x, c.y)
+        expect(usefulHeight(v, 900, 24)).toBeCloseTo(base, 6)
+      }
+    }
   })
 })
