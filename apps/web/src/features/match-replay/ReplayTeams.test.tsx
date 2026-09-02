@@ -954,11 +954,13 @@ describe('ReplayTeams — compteurs de fiche : publiés, ou ceux de la base', ()
 })
 
 /**
- * LE GLYPHE D'IDENTITÉ A QUITTÉ LES FICHES (demande utilisateur du 2026-08-25). Ces cas sont le
- * VERROU du retrait, et pas une simple absence constatée : ils montent la situation qui faisait
- * apparaître la marque — le joueur de la page ET un ami dans la même colonne — et vérifient que
- * la colonne n'écrit plus rien. Le glyphe, lui, n'est pas supprimé : il reste au FIL des
- * éliminations (`ReplayFeedName`), où un nom défile au milieu d'autres, et il y est testé.
+ * LE GLYPHE D'IDENTITÉ A QUITTÉ LES FICHES (demande utilisateur du 2026-08-25), PUIS LE FIL
+ * LUI-MÊME (décision D5, 2026-09-02). Ces cas sont le VERROU du retrait sur les fiches, et pas
+ * une simple absence constatée : ils montent la situation qui faisait apparaître la marque —
+ * le joueur de la page ET un ami dans la même colonne — et vérifient que la colonne n'écrit
+ * plus rien. Le glyphe ne se dessine plus NULLE PART dans l'app (cf. `ReplayKillFeed.test.tsx`,
+ * describe « marques « moi » et « ami » ») — seule l'encre `success` du nom en dit encore
+ * quelque chose, et seulement au fil.
  */
 describe('ReplayTeams — plus aucune marque d’identité sur les fiches', () => {
   it('ni « Moi » ni « Ami », même avec les deux sur le tableau de bord', () => {
