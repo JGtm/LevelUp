@@ -1,3 +1,70 @@
+## [2026-09-02] Callouts Forge — le catalogue gagne un espace de cles map_id : 61 cartes, 2 392 zones servies au rejeu — Complete
+
+**Le probleme, sur pieces.** `map_callouts.json` n'avait qu'UNE table, indexee par module
+installe. Une carte Forge n'a pas de module (le jeu ne range sous `levels/multi/` que les
+cartes integrees et les canevas, et un canevas ne pose aucune zone). `MapCallouts` s'arretait
+donc apres l'essai par module -> 404 `map_callouts_not_available`, et cote web
+`ReplayCanvas.tsx:573` calcule `zones: calloutZones.length > 0` : sans zones servies, la
+bascule « Zones » n'existe pas. **Diagnostic confirme : rien a corriger cote web**, le manque
+etait entierement backend + donnees. L'extraction, elle, existait DEJA en production
+(`himap.ZonesNommeesForge`, `mapvar.Object.LocationID`) — seule l'ALIMENTATION manquait,
+exactement comme l'annoncaient les en-tetes corriges le 2026-08-27.
+
+**Un point de l'etat de l'art s'est revele faux sur pieces** : le corpus de `.mvar` (« 96
+fichiers, 257 variantes ») N'EST PLUS SUR LE DISQUE — `.ai/V7.5/dumps/mapvar/` ne portait que
+3 fichiers, et `C:\Users\Guillaume\Projects\LevelUp\.ai\re_dump\mapvar` (chemin en dur dans
+`sonde_locs_gamefiles_test.go`) n'existe pas. La matiere premiere a ete re-telechargee.
+
+**Decision technique principale.** Deux espaces de cles dans un seul fichier, jamais melanges :
+`maps` (module, cartes integrees) et `maps_by_id` (asset UGC, cartes Forge). Le service essaie
+le module PUIS le map_id — l'ordre n'est pas arbitraire, une carte integree a une entree de
+meilleure qualite (polygones designer decoupes sur le decor, libelles 816/816). Schema NON
+bumpe : la section est optionnelle et additive, la bumper forcerait une reconstruction native
+qui exige le jeu ET les fonds publies pour une modif qui ne touche aucune de ses 816 zones.
+
+**Alimentation.** `mapcallouts-build` gagne une passe Forge (`--forge-only [--forge-fetch]`)
+qui N'EXIGE PAS le jeu : elle lit l'inventaire UGC VERSIONNE
+(`.ai/V7.5/cartes/inventaire_rotation_ugc_2026-08-27.json`) et telecharge les `map.mvar`
+depuis le stockage blob, **sans jeton** (seul le Discovery en exige un ;
+`mapcatalog.Client.FetchFileAt` factorise le GET, netguard conserve). Les deux passes ne
+s'ecrasent jamais : une reconstruction native conserve la section Forge et reciproquement.
+Le rejeu reste 100 % hors ligne A LA LECTURE — il lit le JSON versionne, comme pour
+`map_objectives`.
+
+**Libelles : la regle tranchee.** Une zone dont le string_id n'a pas de texte joueur est
+PUBLIEE SANS LIBELLE. Ni omise (sa geometrie est mesuree), ni affublee d'un repli invente
+(« aucun nom devine » — la regle du chantier). Le rendu saute deja les libelles vides
+(`calloutsLayer.ts`, `drawLabels`) : zero changement web. Seuil unique : une carte n'entre au
+catalogue que si AU MOINS UNE zone est nommee — un calque entierement muet sous une bascule
+« Zones nommees » serait du bruit.
+
+**Anomalie traitee.** Les formes aberrantes documentees le 2026-08-27 (emplacement 8 =
+-56,00 m) donnent un prisme retourne. `himap.prismeLisible` les REFUSE au lieu de les
+redresser : les emplacements 5 a 8 se lisant a la file, une valeur impossible en 8 met en
+doute la largeur et la profondeur, donc le polygone (meme regle que `verifieAABBRelative`).
+87 zones ecartees sur 2 566, 3 cartes.
+
+**Resultats mesures** (rotation du 2026-08-27, 83 cartes Forge visees) : 82 variantes
+telechargees / 0 echec ; **61 cartes publiees, 2 392 zones, 869 nommees (36 %)** ; 266
+string_id de lieu distincts dont **66 resolus (25 %)** par `callouts_i18n.csv` ; 19 cartes
+sans zone nommee (essentiellement des NATIVES republiees en asset UGC — deja couvertes par
+leur module) ; 3 cartes a zones mais aucune nommable ; `Forbidden` correctement ecarte par le
+filtre ratelier. Catalogue : 2,06 -> 3,64 Mo, diff PUREMENT additive (0 ligne supprimee).
+Temoins reels : `TestCatalogueCalloutsForgeLivreEstExploitable` (61 cartes, invariants) et
+`TestMapCallouts_ForgeDonneesReelles` (Insolence, 41 zones dont 7 nommees, resolue par map_id
+SEUL). Gates : build OK, `go test` service+replay+mapvar+mapcatalog+handlers+mapcallouts-build
+OK, himap cible OK, gofmt propre, **golangci-lint : 0 issue sur les fichiers touches**,
+`openapi-gen -check` a jour (aucun DTO modifie).
+
+**Conclusion / prochaine etape.** Le seul vrai reste est l'extraction `uslg` des 200 string_id
+sans texte. Sonde posee (`himap/sonde_uslg_gamefiles_test.go`) : le tag `locs` ne porte AUCUN
+texte (root 64 o, un bloc de 778 entrees de 4 o) ; les 488 tags `uslg` ne portent qu'un bloc de
+**18 entrees = les 18 langues** ; **le texte est dans le BLOB DE RESSOURCES** du tag (520 Ko,
+ASCII lisible), table d'index vers `0x150` — reste a la decoder. Secondaire : l'inventaire UGC
+est date du 2026-08-27 (une carte jouee depuis n'y est pas) ; et **aucun gate visuel n'a ete
+fait** — le rendu d'une carte Forge dont deux zones sur trois sont muettes n'a jamais ete
+regarde a l'ecran. Detail complet : `.ai/V7.5/cartes/CALLOUTS_FORGE_2026-08-27.md` section 7.
+
 ## [2026-09-02] T0 film — CLOTURE : merge sur feat/v75, schema renumerote 37, CI verte hors dette lint externe — Complete
 
 Chantier clos sous `.ai/V7.5/PLAN_T0_FILM_2026-09-02.md`. **D3** : gate visuel VALIDE par
