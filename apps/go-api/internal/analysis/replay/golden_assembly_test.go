@@ -297,6 +297,7 @@ func renderAssembly(doc ReplayDocument) string {
 	} else {
 		p("origine de la frame 0 : NON ETABLIE (le client retombe sur l appariement)")
 	}
+	renderT0Film(p, doc)
 	p("")
 
 	renderTracks(p, doc)
@@ -319,6 +320,25 @@ func renderAssembly(doc ReplayDocument) string {
 	renderLabels(p, doc)
 	renderBounds(p, doc)
 	return b.String()
+}
+
+// renderT0Film fige LE COUP D ENVOI et son verdict (cf. t0_film.go). Le refus est rendu AVEC
+// ses deux chiffres : une ligne « non date » sans la rafale ni la marge ne dirait pas si le
+// film est muet ou si un seul joueur a bouge.
+func renderT0Film(p func(string, ...any), doc ReplayDocument) {
+	c := doc.Coverage.T0Film
+	if c == nil {
+		p("coup d envoi : NON MESURE (sans origine, l horloge du resultat serait inconnue)")
+		return
+	}
+	if doc.T0FilmMs == nil {
+		p("coup d envoi : REFUSE (%s) · %d/%d piste(s) en mouvement · rafale %d · marge %d ms",
+			c.Reason, c.Moving, c.Tracks, c.Burst, c.MarginMs)
+		return
+	}
+	p("coup d envoi date par le film : %d ms · %d/%d piste(s) en mouvement · rafale %d · "+
+		"marge depuis la frame 0 : %d ms",
+		*doc.T0FilmMs, c.Moving, c.Tracks, c.Burst, c.MarginMs)
 }
 
 func renderTracks(p func(string, ...any), doc ReplayDocument) {

@@ -125,6 +125,7 @@ var replaySchemas = []struct {
 	// — exactement le couple que le garde omitempty<->required existe pour verifier.
 	{"Pickup", replay.Pickup{}},
 	{"PickupCoverage", replay.PickupCoverage{}},
+	{"T0FilmCoverage", replay.T0FilmCoverage{}},
 	{"Coverage", replay.Coverage{}},
 	{"LayerCoverage", replay.LayerCoverage{}},
 	{"BridgeHealth", replay.BridgeHealth{}},
@@ -502,9 +503,26 @@ var replaySchemas = []struct {
 //	                      se lit dans les etats `home` de `flagCarries`, et son compte dans
 //	                      `coverage.flagCarries.homeByObject`.
 //
-// Les dix-sept fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
+//	48 -> 49  2026-09-02  UN champ, LE COUP D ENVOI DATE PAR LE FILM (schema 36, pris sur
+//	                      wt/t0-film alors que le 35 venait d arriver sur feat/v75 —
+//	                      renumeroter au merge si un autre lot a pris le 36) :
+//	                      - `t0FilmMs` : l instant ou la grille se leve, sur la MEME horloge
+//	                        qu `originMs`, lu dans le PREMIER MOUVEMENT des pistes au lieu d
+//	                        etre estime des `first_joined_time` de l API (degeneres a ~0 ms sur
+//	                        10-15 % des matchs). Mesure du 2026-09-02 : ecart-type 9 752 ms
+//	                        contre 12 764 ms pour l etalon sur 49 matchs sains, marge interne
+//	                        au film de CV 0,013 sur 83 matchs.
+//	                      POINTEUR ET NON int64, comme `originMs` : le PIEGE omitempty ferme —
+//	                      un coup d envoi mesure a zero resterait une mesure. ABSENT = le
+//	                      detecteur a REFUSE, et `coverage.t0Film.reason` dit lequel des trois
+//	                      refus (aucun mouvement / rafale a moins de deux partants / plus de
+//	                      120 s apres la frame 0). Le bloc `T0FilmCoverage` entre au meme
+//	                      moment dans `replaySchemas` : la lecon P2-3 du 2026-09-01 (`Pickup`
+//	                      absent de la table pendant deux schemas) est appliquee tout de suite.
+//
+// Les dix-huit fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
 // chiffre ne le dise. Contrat regenere (`make openapi-gen`), jamais ecrit a la main.
-const wantReplayDocumentFields = 48
+const wantReplayDocumentFields = 49
 
 // TestReplayContractDescribesEveryPublishedField : AUCUN CHAMP PUBLIE SANS DESCRIPTION, ET
 // AUCUNE DESCRIPTION SANS CHAMP.

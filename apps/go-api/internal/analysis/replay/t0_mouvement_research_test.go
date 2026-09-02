@@ -30,21 +30,19 @@ package replay
 //
 // Sans l'un des deux le test SAUTE : ni le corpus ni l'etalon ne sont versionnes.
 //
-// ## LE DETECTEUR, ET LES DEUX PIEGES QU'IL EVITE
+// ## LE DETECTEUR EST CELUI DE LA PRODUCTION
 //
-// Par piste (une piste = UNE VIE, cf. `Track.XUID`), sur la serie de points :
+// Ce test N'A PLUS DE DETECTEUR A LUI : il appelle `t0_film.go` — les seuils, la construction
+// des pas, la fenetre glissante et le compte de la rafale. C'est la regle du depot (au plus
+// deux copies d'un meme motif) appliquee au sens strict : une mesure qui valide une copie ne
+// valide pas le code servi. Ce qui reste ici est la STATISTIQUE, l'etalon et les variantes.
 //
-//  1. le premier point d'une piste n'ouvre aucun pas (rien a soustraire) ;
-//  2. un pas dont les deux points sont separes de plus de `t0mFenetreMS` est une RUPTURE, pas un
-//     deplacement — le film ne replique la position que lorsqu'elle change, donc un joueur
-//     immobile pendant le decompte n'a AUCUN point entre la frame 0 et son depart (temoin sur
-//     1b2d9e08 : le slot 512 a un point a t=0 puis plus rien jusqu'a t=227). Compter ce pas
-//     comme un deplacement daterait le coup d'envoi a la frame 0 de tous les films ;
-//  3. un pas de plus de `t0mSautM` est une TELEPORTATION (apparition, arrivee tardive), pas une
-//     locomotion : rupture aussi.
-//
-// MOUVEMENT = le cumul des pas contigus depasse `t0mCumulM` dans une fenetre glissante de
-// `t0mFenetreMS`. Un jitter d'une seule image ne suffit donc pas.
+// Rappel de ce que le detecteur fait, le detail etant en tete de `t0_film.go` : par piste (une
+// piste = UNE VIE, cf. `Track.XUID`), le premier point n'ouvre aucun pas ; un pas de plus de
+// `t0FilmWindowMS` est une RUPTURE (trou de replication — un joueur immobile n'a AUCUN point
+// entre la frame 0 et son depart, temoin sur 1b2d9e08 : le slot 512 a un point a t=0 puis plus
+// rien jusqu'a t=227) ; un pas de plus de `t0FilmJumpM` est une TELEPORTATION, rupture aussi ;
+// et MOUVEMENT = cumul des pas contigus au-dela de `t0FilmCumulM` dans une fenetre glissante.
 //
 // `t0_film_ms = originMs + frameDuPremierMouvement * frameIntervalMs` — `originMs` etant
 // l'instant de la frame 0 sur l'axe du match (schema >= 4, cf. document.go / origin.go), la
@@ -119,17 +117,6 @@ import (
 	"testing"
 )
 
-// --- Seuils du detecteur, ecrits avant la mesure (cf. en-tete pour le raisonnement) ---
-const (
-	// t0mSautM : au-dela, le pas est une teleportation, pas une locomotion.
-	t0mSautM = 5.0
-	// t0mCumulM : le deplacement cumule qui fait un mouvement.
-	t0mCumulM = 0.5
-	// t0mFenetreMS : largeur de la fenetre glissante de cumul, ET duree maximale d'un pas
-	// exploitable (au-dela, le film n'a rien replique : c'est une rupture).
-	t0mFenetreMS = 1000
-)
-
 // --- Bornes du corpus SAIN ---
 //
 // LA BORNE HAUTE EST UN AJUSTEMENT ASSUME, et il faut le dire : la consigne definissait le
@@ -149,9 +136,6 @@ const (
 // premier mouvement a moins de 2 s de la frame 0 est un film qui commence apres le coup d'envoi.
 const t0mMargeCensureMS = 2000
 
-// t0mRafaleMS : la fenetre dans laquelle on compte les joueurs qui partent AVEC le premier.
-const t0mRafaleMS = 1000
-
 // --- Lecture minimale de l'artefact ---
 
 type t0mPoint struct {
@@ -167,6 +151,15 @@ type t0mTrack struct {
 	Points []t0mPoint `json:"points"`
 }
 
+// t0mPointsProduction ramene les points relus a la forme que le detecteur de production lit.
+func t0mPointsProduction(pts []t0mPoint) []T0FilmPoint {
+	out := make([]T0FilmPoint, len(pts))
+	for i, p := range pts {
+		out[i] = T0FilmPoint{T: p.T, X: p.X, Y: p.Y, Z: p.Z}
+	}
+	return out
+}
+
 type t0mDoc struct {
 	SchemaVersion   int        `json:"schemaVersion"`
 	MatchID         string     `json:"matchId"`
@@ -176,80 +169,34 @@ type t0mDoc struct {
 	Tracks          []t0mTrack `json:"tracks"`
 }
 
-// t0mPas est un deplacement entre deux points CONSECUTIFS d'une meme piste.
-type t0mPas struct {
-	tDebut, tFin int
-	d            float64
-	// rupture : le pas ne peut pas etre lu comme une locomotion (trou de replication ou
-	// teleportation). Il remet l'accumulateur a zero au lieu de l'alimenter.
-	rupture bool
-}
-
-// t0mPasDeLaPiste ramene une piste a la suite de ses pas. Le premier point n'ouvre aucun pas.
-func t0mPasDeLaPiste(pts []t0mPoint, pasMS int) []t0mPas {
-	if len(pts) < 2 {
-		return nil
-	}
-	tri := append([]t0mPoint(nil), pts...)
-	sort.Slice(tri, func(i, j int) bool { return tri[i].T < tri[j].T })
-	out := make([]t0mPas, 0, len(tri)-1)
-	for i := 1; i < len(tri); i++ {
-		a, b := tri[i-1], tri[i]
-		d := dist3([3]float32{a.X, a.Y, a.Z}, [3]float32{b.X, b.Y, b.Z})
-		dtMS := (b.T - a.T) * pasMS
-		out = append(out, t0mPas{
-			tDebut:  a.T,
-			tFin:    b.T,
-			d:       d,
-			rupture: dtMS > t0mFenetreMS || d > t0mSautM,
-		})
-	}
-	return out
-}
-
-// t0mAnalysePiste parcourt les pas d'une piste et rend :
-//   - la frame du PREMIER MOUVEMENT (-1 quand la piste n'en porte aucun) ;
+// t0mAnalysePiste rend, pour UNE piste :
+//   - la frame du PREMIER MOUVEMENT (-1 quand la piste n'en porte aucun), telle que le
+//     detecteur de PRODUCTION la calcule (`t0FilmFirstMovement`) ;
 //   - le pas unitaire MAXIMAL et le cumul de fenetre MAXIMAL observes strictement AVANT
 //     `frameCoupe` — le plancher de bruit. `frameCoupe < 0` desactive cette mesure.
-func t0mAnalysePiste(pas []t0mPas, pasMS, frameCoupe int) (mouv int, maxPas, maxCumul float64) {
-	mouv = -1
-	// La fenetre glissante, en FRAMES : les pas contigus retenus et leur somme.
-	largeur := t0mFenetreMS / pasMS
-	var fTDebut []int
-	var fD []float64
-	somme := 0.0
+//
+// LE PLANCHER DE BRUIT EST LA SEULE PIECE PROPRE A LA RECHERCHE, et il emprunte quand meme sa
+// fenetre a la production (`t0FilmWindow`) : mesurer le bruit avec une autre fenetre que celle
+// qui decide ne jugerait pas le seuil servi.
+func t0mAnalysePiste(pas []t0FilmStep, pasMS, frameCoupe int) (mouv int, maxPas, maxCumul float64) {
+	mouv = t0FilmFirstMovement(pas, pasMS)
+	if frameCoupe < 0 {
+		return mouv, 0, 0
+	}
+	w := newT0FilmWindow(pasMS)
 	for _, p := range pas {
-		if p.rupture {
-			fTDebut, fD, somme = fTDebut[:0], fD[:0], 0
+		somme := w.push(p)
+		if p.rupture || p.endFrame >= frameCoupe {
 			continue
 		}
-		fTDebut = append(fTDebut, p.tDebut)
-		fD = append(fD, p.d)
-		somme += p.d
-		// La fenetre se mesure du DEBUT du pas le plus ancien a la FIN du pas courant.
-		for len(fD) > 1 && (p.tFin-fTDebut[0]) > largeur {
-			somme -= fD[0]
-			fTDebut, fD = fTDebut[1:], fD[1:]
+		if p.dist > maxPas {
+			maxPas = p.dist
 		}
-		if frameCoupe >= 0 && p.tFin < frameCoupe {
-			if p.d > maxPas {
-				maxPas = p.d
-			}
-			if somme > maxCumul {
-				maxCumul = somme
-			}
-		}
-		if mouv < 0 && somme > t0mCumulM {
-			mouv = p.tFin
+		if somme > maxCumul {
+			maxCumul = somme
 		}
 	}
 	return mouv, maxPas, maxCumul
-}
-
-// t0mDepart est le premier mouvement d'une piste : sa frame et l'identite de son porteur.
-type t0mDepart struct {
-	frame int
-	xuid  string
 }
 
 // t0mMesureMatch est le resultat du detecteur sur un artefact.
@@ -259,7 +206,7 @@ type t0mMesureMatch struct {
 	originMs int64
 	pasMS    int
 	// premiers : le premier mouvement de CHAQUE piste qui en porte un, trie par frame.
-	premiers []t0mDepart
+	premiers []t0FilmDeparture
 	// pistes : nombre de pistes lues ; sansMouvement : celles qui n'en portent aucun.
 	pistes, sansMouvement int
 	// slots : nombre de XUID distincts, c'est-a-dire l'EFFECTIF du match. Le premier jet
@@ -319,28 +266,10 @@ func (m t0mMesureMatch) marge() int64 {
 // rafale compte les pistes dont le premier mouvement tombe a moins de `fenetreMS` du tout
 // premier. C'EST LE TEMOIN DIRECT DE L'HYPOTHESE : si la grille se leve d'un coup, l'essentiel
 // de l'effectif part ensemble. Un « premier mouvement » isole serait, lui, un artefact.
+//
+// Le compte est celui de la PRODUCTION (`t0FilmBurst`), qui en fait sa condition de refus.
 func (m t0mMesureMatch) rafale(fenetreMS int64) int {
-	if len(m.premiers) == 0 {
-		return 0
-	}
-	base := int64(m.premiers[0].frame) * int64(m.pasMS)
-	// PAR XUID, pas par piste : deux vies du meme joueur ne font pas deux partants.
-	vus := map[string]bool{}
-	n := 0
-	for _, d := range m.premiers {
-		if int64(d.frame)*int64(m.pasMS)-base > fenetreMS {
-			break
-		}
-		if d.xuid == "" {
-			n++
-			continue
-		}
-		if !vus[d.xuid] {
-			vus[d.xuid] = true
-			n++
-		}
-	}
-	return n
+	return t0FilmBurst(m.premiers, m.pasMS, fenetreMS)
 }
 
 // t0mAnalyseDoc applique le detecteur a tout un document. `frameCoupe` borne la mesure du
@@ -362,16 +291,16 @@ func t0mAnalyseDoc(doc *t0mDoc, frameCoupe int) t0mMesureMatch {
 			continue
 		}
 		m.pistes++
-		pas := t0mPasDeLaPiste(pts, doc.FrameIntervalMS)
+		pas := t0FilmSteps(t0mPointsProduction(pts), doc.FrameIntervalMS)
 		mouv, maxPas, maxCumul := t0mAnalysePiste(pas, doc.FrameIntervalMS, frameCoupe)
 		if mouv < 0 {
 			m.sansMouvement++
 		} else {
-			m.premiers = append(m.premiers, t0mDepart{frame: mouv, xuid: doc.Tracks[i].XUID})
+			m.premiers = append(m.premiers, t0FilmDeparture{frame: mouv, xuid: doc.Tracks[i].XUID})
 		}
 		if frameCoupe >= 0 {
 			for _, p := range pas {
-				if !p.rupture && p.tFin < frameCoupe {
+				if !p.rupture && p.endFrame < frameCoupe {
 					m.pasAvantCoupe++
 				}
 			}
@@ -653,7 +582,7 @@ func TestT0MouvementContreEtalonAPI(t *testing.T) {
 			} else {
 				t0FilmsLibres = append(t0FilmsLibres, float64(p))
 			}
-			r := m.rafale(t0mRafaleMS)
+			r := m.rafale(t0FilmBurstMS)
 			rafales = append(rafales, float64(r))
 			if m.slots > 0 {
 				partsRafale = append(partsRafale, 100*float64(r)/float64(m.slots))
@@ -702,7 +631,7 @@ func TestT0MouvementContreEtalonAPI(t *testing.T) {
 				prefixe: pref, pair: ref.pairName, t0API: ref.t0APIms,
 				premier: p, troisieme: tr, med: md, ok: ok,
 				pistes: m.pistes, joueursQuiBougent: len(m.premiers), originMs: m.originMs,
-				marge: m.marge(), rafale: m.rafale(t0mRafaleMS), effectif: m.slots,
+				marge: m.marge(), rafale: m.rafale(t0FilmBurstMS), effectif: m.slots,
 			})
 			if !ok {
 				c.degeneresSansDetection++
@@ -794,17 +723,17 @@ func t0mPublierPlancher(t *testing.T, pas, cumuls []float64, nPas int) {
 		sc.mediane, sc.moyenne, sc.p95, sc.maxi)
 	depassent := 0
 	for _, v := range cumuls {
-		if v > t0mCumulM {
+		if v > t0FilmCumulM {
 			depassent++
 		}
 	}
 	t.Logf("matchs dont le decompte depasse deja le seuil de %.2f m : %d / %d = %.1f %%",
-		t0mCumulM, depassent, len(cumuls), pct100(depassent, len(cumuls)))
+		t0FilmCumulM, depassent, len(cumuls), pct100(depassent, len(cumuls)))
 	t.Logf("LECTURE : la MEDIANE est le chiffre qui juge le seuil — a %.3f m de cumul maximal, la "+
 		"moitie des fenetres de decompte sont muettes, et %.2f m est huit fois au-dessus de ce "+
 		"bruit. Les depassements ne sont PAS du jitter (p95 a %.3f m, c'est de la course) : ce "+
 		"sont les matchs ou le T0-API tombe APRES le coup d'envoi, donc ou la fenetre contient "+
-		"du jeu reel.", sc.mediane, t0mCumulM, sc.p95)
+		"du jeu reel.", sc.mediane, t0FilmCumulM, sc.p95)
 }
 
 // t0mPublierSains publie la confrontation sur le corpus sain, variante par variante.
@@ -848,7 +777,7 @@ func t0mPublierTemoinsFilm(t *testing.T, marges, rafales, parts, ecarts []float6
 	t.Logf("== TEMOINS INTERNES AU FILM (aucun etalon en jeu) ==")
 	sr, sp := t0mCalcStats(rafales), t0mCalcStats(parts)
 	t.Logf("RAFALE DE DEPART — pistes qui bougent dans les %d ms du premier : mediane %.0f · "+
-		"moyenne %.1f · min %.0f · max %.0f", t0mRafaleMS, sr.mediane, sr.moyenne, sr.mini, sr.maxi)
+		"moyenne %.1f · min %.0f · max %.0f", t0FilmBurstMS, sr.mediane, sr.moyenne, sr.mini, sr.maxi)
 	t.Logf("  soit, en part de l'effectif (slots distincts) : mediane %.1f %% · moyenne %.1f %% · "+
 		"p5 %.1f %%", sp.mediane, sp.moyenne, sp.p5)
 	se := t0mCalcStats(ecarts)
