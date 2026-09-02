@@ -188,57 +188,55 @@ function ReplayPage() {
 
   const hasReplay = !!data && data.tracks.length > 0
 
-  // Fil d'Ariane : même label que la vue match (mode + map). La date est portée par la
-  // ReplayMatchRecall ci-dessous, pas besoin de la répéter ici.
+  // Fil d'Ariane : même label que la vue match (mode + map). Il est calculé ICI et NULLE PART
+  // AILLEURS — le rappel du match, qui le recalculait, ne porte plus que la date et la playlist.
   const matchLabel = buildMatchHeadingStr(matchView?.header.map_ui, matchView?.header.mode_ui, locale)
 
-  // CE QUI DÉBORDAIT N'ÉTAIT PAS DU CONTENU (retour du 2026-08-27 : « je peux descendre
-  // alors qu'il n'y a rien »). Cette page est une pile RIGIDE — titre, bandeau de score, et
-  // une carte dont la hauteur est constante — dans un shell où seul le <main> défile. Quand
-  // le dépassement de la pile est PLUS PETIT que la marge basse de la page, défiler ne révèle
-  // que du vide : c'est le fantôme, et il ne peut pas disparaître tant que la page a une
-  // marge basse et une carte fixe — il peut rétrécir. Les marges verticales tombent donc de
-  // 24 à 12 px (le vide défilable au pire des cas est divisé par deux), et la ligne de rappel
-  // gagnée ci-dessous vit dans une hauteur RÉSERVÉE : la pile ne gagne pas un pixel sur
-  // l'avant-correctif — aucune fenêtre qui tenait juste ne se met à défiler (revue R1).
-  // CE QUE ÇA NE RÈGLE PAS : sous ~730 px de fenêtre (1366x768, ou 1080p à 150 %), c'est la
-  // carte elle-même qui ne tient plus dans l'écran. Là, le scroll a quelque chose à montrer,
-  // et le corriger demanderait une hauteur de carte qui s'adapte — hors périmètre ici (D8).
+  // TOUTE LA TÊTE TIENT SUR LA LIGNE DU FIL D'ARIANE (demande du 2026-09-02 : « la partie sous
+  // la L1 pourrait être compactée un peu »). Elle occupait ~84 px de plus en répétant ce que le
+  // fil disait déjà : un `h1` sous un fil qui nomme la page, et un rappel du match qui rappelait
+  // le libellé du fil. Le `h1` devient le SEGMENT FEUILLE (sémantique intacte, icône comprise),
+  // le rappel devient le complément de ce segment, et le lien vers la fiche s'aligne à droite.
+  //
+  // POURQUOI ÇA COMPTE ICI PLUS QU'AILLEURS : sur cette page, le budget vertical est la
+  // ressource rare. Le canvas est le seul élément élastique de la pile (le bloc transport est
+  // incompressible, ce sont des commandes) — chaque pixel rendu par la tête devient donc un
+  // pixel de terrain, via le clamp de `useReplayViewport`. Compaction et hauteur élastique ne
+  // s'opposent pas : la première alimente la seconde.
+  //
+  // « FICHE DU MATCH », PAS « RETOUR AU MATCH » : la flèche du fil, juste à gauche, fait
+  // `router.history.back()` — l'historique, donc n'importe quoi. Ce lien-ci vise une
+  // destination fixe, qu'on en vienne ou non. Deux choses différentes ne portent pas le même
+  // mot, et le libellé ne se conditionne PAS à l'historique : il clignoterait selon le parcours.
   return (
     <div className="flex flex-col">
-      <MatchBreadcrumb playerSlug={playerSlug} matchLabel={matchLabel} locale={locale} />
-      <div className="space-y-4 px-6 py-3">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <h1 className="flex items-center gap-2 text-lg font-semibold">
-            <img src={themedIconSrc('replay', theme)} alt="" aria-hidden className="h-5 w-auto" />
+      <MatchBreadcrumb
+        playerSlug={playerSlug}
+        matchLabel={matchLabel}
+        locale={locale}
+        leaf={
+          <h1 className="flex items-center gap-1.5 text-sm font-semibold">
+            <img src={themedIconSrc('replay', theme)} alt="" aria-hidden className="h-4 w-auto" />
             {t.title}
           </h1>
-          {/* DE QUEL MATCH PARLE-T-ON ? (retour du 2026-08-27) La page match le dit en tête ;
-              le rejeu montrait un terrain sans jamais le nommer. Les libellés sont déjà en
-              mémoire — c'est la vue du match que la page monte pour ses fiches et son fil.
-              LA HAUTEUR EST RÉSERVÉE dès le premier rendu (revue R1) : cette vue peut arriver
-              APRÈS le rejeu, et une ligne qui pousse de 20 px ce qu'on est en train de lire
-              est un saut — le vide réservé, lui, ne promet rien et ne fait rien bouger. */}
-          <div className="mt-1 min-h-6">
-            <ReplayMatchRecall
-              mapUI={matchView?.header.map_ui}
-              modeUI={matchView?.header.mode_ui}
-              startTimeLabel={matchView?.header.start_time_label}
-              playlistLabel={matchView?.header.playlist_label}
-              locale={locale}
-            />
-          </div>
-        </div>
-        <Link
-          to="/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId"
-          params={params}
-          className="inline-flex h-8 shrink-0 items-center justify-center gap-2 rounded-md border border-border bg-transparent px-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          {t.back}
-        </Link>
-      </div>
-
+        }
+        detail={
+          <ReplayMatchRecall
+            startTimeLabel={matchView?.header.start_time_label}
+            playlistLabel={matchView?.header.playlist_label}
+          />
+        }
+        action={
+          <Link
+            to="/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId"
+            params={params}
+            className="inline-flex h-7 items-center justify-center gap-2 rounded-md border border-border bg-transparent px-2.5 text-xs font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {t.back}
+          </Link>
+        }
+      />
+      <div className="space-y-4 px-6 pb-3">
       {isLoading && <p className="text-sm text-muted-foreground">{t.loading}</p>}
 
       {!isLoading && !hasReplay && (
