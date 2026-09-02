@@ -79,6 +79,7 @@ import { ASSIST_ICON_STEM, AssistMark } from './ReplayAssistMark'
 import { MedalBadges } from './MedalBadges'
 import { NO_MARKS, type PlayerMarkKind } from './playerMarks'
 import { FeedName } from './ReplayFeedName'
+import { ReplayPresenceLine } from './ReplayPresenceLine'
 import { HUD_BAND_CLASS, hudBandStyle } from './hudBand'
 import {
   feedAt,
@@ -130,7 +131,9 @@ const AT_TOP_PX = 4
  * LE FILET SÉPARATEUR (`replay-feed-row`, globals.css — option 2a) remplace le fond arrondi
  * d'avant : un trait fin entre `background` et `border`, qui structure la liste sans peser.
  */
-const FEED_ROW =
+// Exporté pour la ligne de présence (ReplayPresenceLine.tsx) : même filet, même gouttière
+// d'horloge — une quatrième forme de ligne qui divergerait d'un pixel se verrait.
+export const FEED_ROW =
   'replay-feed-row flex shrink-0 flex-nowrap items-center gap-2 overflow-hidden py-[5px] pr-2 text-xs'
 
 interface Props {
@@ -256,7 +259,7 @@ function allyOf(xuidMeta: XuidMeta, xuid: string, fallback: boolean): boolean {
  * tabulaires, encre discrète. Les trois formes de ligne l'ouvrent — c'est la colonne qui
  * rend le fil balayable d'un regard.
  */
-function FeedClock({ ms }: { ms: number }) {
+export function FeedClock({ ms }: { ms: number }) {
   return (
     <span
       className="shrink-0 font-mono text-[10.5px] tabular-nums text-muted-foreground"
@@ -294,6 +297,20 @@ function FeedLine({
   marksByGamertag: ReadonlyMap<string, PlayerMarkKind>
   locale: ReplayLocale
 }) {
+  if (entry.presence) {
+    // ENTRÉE/SORTIE DE PARTIE (presenceFeed.ts) : même résolution d'encre que les autres
+    // formes de ligne — l'équipe du scoreboard quand elle est jointe, le repli sinon.
+    const p = entry.presence
+    return (
+      <ReplayPresenceLine
+        presence={p}
+        replayMs={entry.replayMs}
+        color={colorOf(teamIDByXuid.get(p.xuid) ?? null, allyOf(xuidMeta, p.xuid, false))}
+        mark={marks.get(p.xuid)}
+        locale={locale}
+      />
+    )
+  }
   if (entry.death) {
     return (
       <DeathLine

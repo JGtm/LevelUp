@@ -21,6 +21,8 @@ import {
   useReplayMapImage,
 } from '@/features/match-replay/queries'
 import { buildFeedEntries, collectMedalEvents } from '@/features/match-replay/killFeedLogic'
+import { mergeFeedWithPresence, presenceEntries } from '@/features/match-replay/presenceFeed'
+import { buildPlayers } from '@/features/match-replay/rosterLogic'
 import { buildReplayMedia } from '@/features/match-replay/replayMediaLogic'
 import { buildPlayerMarks } from '@/features/match-replay/playerMarks'
 import { ReplayCanvas } from '@/features/match-replay/ReplayCanvas'
@@ -138,15 +140,28 @@ function ReplayPage() {
     () => finalScoreFromHeader(matchView?.header),
     [matchView?.header],
   )
+  // LE CADRAGE SUR LE MATCH RÉEL, CALCULÉ UNE FOIS ICI (déplacé avant le fil le 2026-09-02 :
+  // les lignes de présence en ont besoin) — le film déborde le match du countdown et d'une
+  // queue de 5-6 s, et les deux bornes demandent l'artefact ET l'en-tête.
+  const playWindow = useMemo(
+    () => (data ? replayWindow(data, matchView?.header) : null),
+    [data, matchView?.header],
+  )
   // LE FIL ALIGNÉ, ASSEMBLÉ ICI ET NULLE PART AILLEURS (planche 2a, 2026-08-28) : la colonne
   // de droite l'affiche, la frise du lecteur en tire ses pistes « Toi » et « Alliés ». Un
   // second appel côté canvas referait tout le recalage — et surtout, deux recalages menés
   // séparément peuvent diverger : la marque d'une élimination sur la frise ne serait alors
   // plus exactement la ligne qu'on lit dans le fil.
-  const feedEntries = useMemo(
-    () => buildFeedEntries(kills, medalEvents, t0Ms, data),
-    [kills, medalEvents, t0Ms, data],
-  )
+  // LES LIGNES D'ENTRÉE/SORTIE s'y fusionnent (demande user 2026-09-02) : dérivées des
+  // bornes de vie du document (presenceFeed.ts), triées sur le même axe que le reste.
+  const feedEntries = useMemo(() => {
+    const base = buildFeedEntries(kills, medalEvents, t0Ms, data)
+    if (!data) return base
+    return mergeFeedWithPresence(
+      base,
+      presenceEntries(buildPlayers(data, scoreboard ?? []), playWindow, data),
+    )
+  }, [kills, medalEvents, t0Ms, data, scoreboard, playWindow])
   // LES MÉDIAS DU MATCH, RECALÉS ICI ET NULLE PART AILLEURS (phase 2, 2026-08-28) : ce sont
   // ceux de l'onglet médias du match, déjà en mémoire — la page monte la vue du match pour ses
   // fiches et son fil, aucun appel de plus. Leur horodatage est ABSOLU (l'heure de la capture),
@@ -162,11 +177,6 @@ function ReplayPage() {
   // demandent l'artefact ET l'en-tête — deux requêtes distinctes qui ne se rejoignent qu'à ce
   // niveau. La lecture, la frise, l'horloge, le fil et les infobulles la reçoivent ; aucun ne
   // la recalcule. `null` = pas de cadrage établi, tout le monde retombe sur le film entier.
-  const playWindow = useMemo(
-    () => (data ? replayWindow(data, matchView?.header) : null),
-    [data, matchView?.header],
-  )
-
   // LA FIN DE PARTIE SONORE (lot C), lue ICI comme le cadrage et pour la même raison : elle
   // croise l'en-tête (l'issue du joueur de la page) et le scoreboard (ses camps), deux données
   // qui ne se rejoignent qu'à ce niveau. C'est la MÊME lecture que l'écran de fin ci-dessous —

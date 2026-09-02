@@ -127,6 +127,12 @@ export interface ReplayFeedEntry {
   kill: ReplayKill | null
   medal: MedalEvent | null
   death: ReplayDeath | null
+  /**
+   * Ligne d'ENTRÉE/SORTIE de partie, dérivée des bornes de vie (cf. presenceFeed.ts,
+   * 2026-09-02). Optionnel : seules les lignes fusionnées par `mergeFeedWithPresence`
+   * le portent — ce fichier n'en produit jamais.
+   */
+  presence?: import('./presenceFeed').PresenceEvent | null
 }
 
 /**

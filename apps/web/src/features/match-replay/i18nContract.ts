@@ -199,6 +199,15 @@ export interface ReplayText {
    * aucune icône, la ligne garde son repère neutre.
    */
   killFeedDeathKind: Record<'environment' | 'suicide', string>
+  /**
+   * Lignes d'ENTRÉE/SORTIE de partie du fil (presenceFeed.ts, 2026-09-02), dérivées des
+   * bornes de vie. Le libellé de sortie reste au FAIT (« ne reviendra plus ») : le film ne
+   * distingue pas un départ d'une élimination définitive — l'infobulle porte la réserve.
+   */
+  presenceJoined: string
+  presenceLeft: string
+  presenceJoinedHint: string
+  presenceLeftHint: string
   /** Sons du rejeu (lot 5 parité) : COUPÉ PAR DÉFAUT, l'utilisateur l'active. */
   sound: string
   soundHint: string
