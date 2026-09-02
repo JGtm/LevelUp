@@ -6,7 +6,6 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/analysis/filmdec"
-	"levelup/go-api/internal/analysis/filmsource"
 )
 
 // equipment_placements.go — LES POSES d'équipement sur la carte : le mur de protection, le
@@ -314,9 +313,9 @@ func equipmentOrigin(lives []equipLife, p filmdec.EquipmentPlacement) string {
 //
 // HORS LIGNE — appelée par BuildFromFilm, sous LockProcessDecode.
 func decodeFilmPlacements(
-	film *filmsource.Film, matchID string, worldRange *filmdec.Vec3Range,
+	fc *filmdec.FilmContext, matchID string, worldRange *filmdec.Vec3Range,
 ) ([]filmdec.EquipmentPlacement, filmdec.EquipmentPlacementStats) {
-	pl, st, err := filmdec.ScanEquipmentPlacements(film, worldRange)
+	pl, st, err := filmdec.ScanEquipmentPlacements(fc, worldRange)
 	switch {
 	case err != nil:
 		slog.Warn("poses d'equipement illisibles — rejeu sans equipement pose",

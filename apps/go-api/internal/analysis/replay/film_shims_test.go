@@ -35,17 +35,17 @@ func filmDeDir(dir string) *filmsource.Film {
 func decodeFilmPlacementsDir(
 	dir string, wr *filmdec.Vec3Range,
 ) ([]filmdec.EquipmentPlacement, filmdec.EquipmentPlacementStats) {
-	return decodeFilmPlacements(filmDeDir(dir), dir, wr)
+	return decodeFilmPlacements(filmdec.NewFilmContext(filmDeDir(dir)), dir, wr)
 }
 
 // decodeFilmPadScansDir : [decodeFilmPadScans] depuis un repertoire.
 func decodeFilmPadScansDir(dir string, wr *filmdec.Vec3Range, mpp filmdec.MPPWidths) PadScans {
-	return decodeFilmPadScans(filmDeDir(dir), dir, wr, mpp)
+	return decodeFilmPadScans(filmdec.NewFilmContext(filmDeDir(dir)), dir, wr, mpp)
 }
 
 // decodeFilmPadScanDir : [decodeFilmPadScan] depuis un repertoire.
 func decodeFilmPadScanDir(
 	dir string, wr *filmdec.Vec3Range, mpp filmdec.MPPWidths, arch padArchetype,
 ) WorldObjectScan {
-	return decodeFilmPadScan(filmDeDir(dir), dir, wr, mpp, arch)
+	return decodeFilmPadScan(filmdec.NewFilmContext(filmDeDir(dir)), dir, wr, mpp, arch)
 }

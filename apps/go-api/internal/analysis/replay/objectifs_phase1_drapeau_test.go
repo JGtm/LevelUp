@@ -406,6 +406,7 @@ func objGroundWeapons(t *testing.T, root, id string, quant *filmdec.MapQuantEntr
 		t.Fatalf("chunks du film %s illisibles : %v", id, err)
 	}
 	wr := quant.Range()
-	_, st := decodeFilmPlacements(film, id, &wr)
-	return decodeFilmPadScan(film, id, &wr, st.Calibration.Widths, groundWeaponArchetype())
+	fc := filmdec.NewFilmContext(film)
+	_, st := decodeFilmPlacements(fc, id, &wr)
+	return decodeFilmPadScan(fc, id, &wr, st.Calibration.Widths, groundWeaponArchetype())
 }

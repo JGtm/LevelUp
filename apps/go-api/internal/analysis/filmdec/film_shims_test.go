@@ -46,17 +46,17 @@ func observedSlotBandDir(dir string, _, typeIndex int) map[uint32]bool {
 	return observedSlotBand(filmDeDir(dir), typeIndex)
 }
 
-// bipedArchetypeDir : [bipedArchetype] depuis un repertoire.
+// bipedArchetypeDir : [FilmContext.bipedArchetype] depuis un repertoire.
 func bipedArchetypeDir(dir string) (Archetype, error) {
-	return bipedArchetype(filmDeDir(dir))
+	return NewFilmContext(filmDeDir(dir)).bipedArchetype()
 }
 
-// objectiveArchetypeDir : [objectiveArchetype] depuis un repertoire.
+// objectiveArchetypeDir : [FilmContext.objectiveArchetype] depuis un repertoire.
 func objectiveArchetypeDir(dir string) (Archetype, *Registry, error) {
-	return objectiveArchetype(filmDeDir(dir))
+	return NewFilmContext(filmDeDir(dir)).objectiveArchetype()
 }
 
-// filmArchetypeDir : [filmArchetype] depuis un repertoire.
+// filmArchetypeDir : [FilmContext.filmArchetype] depuis un repertoire.
 func filmArchetypeDir(dir string, ti int) (Archetype, *Registry, error) {
-	return filmArchetype(filmDeDir(dir), ti)
+	return NewFilmContext(filmDeDir(dir)).filmArchetype(ti)
 }

@@ -119,30 +119,30 @@ func ScanFilmNavpointRadial(dir string, chunkStartMS map[int]int) (*NavpointRadi
 	if err != nil {
 		return &NavpointRadialScan{Blocked: map[int]int{}}, err
 	}
-	return ScanNavpointRadial(film, chunkStartMS)
+	return ScanNavpointRadial(NewFilmContext(film), chunkStartMS)
 }
 
 // ScanNavpointRadial balaye l'anneau ti=12 d'un film DEJA CHARGE.
-func ScanNavpointRadial(film *filmsource.Film, chunkStartMS map[int]int) (*NavpointRadialScan, error) {
+func ScanNavpointRadial(fc *FilmContext, chunkStartMS map[int]int) (*NavpointRadialScan, error) {
 	sc := &NavpointRadialScan{Blocked: map[int]int{}}
-	nums := FilmChunkNumbers(film)
+	nums := fc.ChunkNumbers()
 	if len(nums) == 0 {
 		return sc, ErrNoFilmChunk
 	}
-	kf := ScanWorldObjectKeyframes(film, navpointRadialArchIndex)
+	kf := ScanWorldObjectKeyframes(fc.Film(), navpointRadialArchIndex)
 	band := bandeObserveeKeyframes(kf)
 	sc.KeyCensus, sc.SlotsBand, sc.SlotsObserved = len(kf.SeenUS), len(kf.Band), len(band)
 	if len(band) == 0 {
 		return sc, nil
 	}
-	arch, reg, err := filmArchetype(film, navpointRadialArchIndex)
+	arch, reg, err := fc.filmArchetype(navpointRadialArchIndex)
 	if err != nil {
 		return sc, err
 	}
 	w := navpointRadialWalk{arch: arch, reg: reg, sc: sc}
 	defer w.install()()
 	for _, c := range nums {
-		data, pks, ok := FilmChunkAt(film, c)
+		data, pks, ok := fc.ChunkAt(c)
 		if !ok {
 			continue
 		}
@@ -172,12 +172,11 @@ func bandeObserveeKeyframes(kf WorldObjectKeyframes) map[uint32]bool {
 // filmArchetype charge UN archetype du registre du film. PARTAGEE : ti=12 (production) et
 // l'instrument ti=10 s'en servent (le chemin ti=11 garde `objectiveArchetype`, qui ne rend pas
 // les memes erreurs).
-func filmArchetype(film *filmsource.Film, ti int) (Archetype, *Registry, error) {
-	reg, err := filmRegistry(film)
+func (c *FilmContext) filmArchetype(ti int) (Archetype, *Registry, error) {
+	arch, reg, ok, err := c.archetype(ti)
 	if err != nil {
 		return Archetype{}, nil, err
 	}
-	arch, ok := reg.Archetype(ti)
 	if !ok {
 		return Archetype{}, nil, fmt.Errorf("archetype ti=%d absent du registre", ti)
 	}

@@ -115,28 +115,15 @@ func FilmChunkAt(f *filmsource.Film, num int) ([]byte, []FilmPacket, bool) {
 // FilmRegistryChunk rend les octets DECOMPRESSES du registre (le chunk NUMERO 0). ok=false quand
 // le film n'en porte pas — une bobine partielle, une fixture : les lecteurs de registre rendent
 // alors leur erreur habituelle, pas un registre vide qui se lirait comme un archetype absent.
+//
+// SON UNIQUE LECTEUR EST [FilmContext.Registry] (lot 2, 2026-09-03), qui l'analyse UNE fois par
+// film : la douzaine de re-analyses par cuisson a disparu avec `filmRegistry`.
 func FilmRegistryChunk(f *filmsource.Film) ([]byte, bool) {
 	pos := filmChunkPos(f, 0)
 	if pos < 0 {
 		return nil, false
 	}
 	return f.Chunk(pos), true
-}
-
-// filmRegistry lit et analyse le registre du film (chunk NUMERO 0). LE SEUL lecteur de registre
-// du paquet : les six accesseurs d'archetype (`bipedArchetype`, `EquipmentArchetypeOf`,
-// `groundWeaponArchetype`, `filmArchetype`, `objectiveArchetype`, `managedPropertyArchetype`) en
-// derivent tous, chacun ne gardant que son message d'archetype manquant.
-//
-// LE REGISTRE EST RE-ANALYSE A CHAQUE APPEL, comme avant le lot 1 : le decodage, lui, ne se fait
-// plus qu'une fois (le chunk est deja decompresse). Le parse unique est le lot 2 du plan
-// (`FilmContext.Registry`) — le poser ici melangerait deux lots.
-func filmRegistry(f *filmsource.Film) (*Registry, error) {
-	raw, ok := FilmRegistryChunk(f)
-	if !ok {
-		return nil, ErrNoRegistryChunk
-	}
-	return ParseRegistryChunk(raw)
 }
 
 // filmChunkPos traduit un NUMERO de chunk en position dans le film, ou -1.

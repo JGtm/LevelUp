@@ -230,23 +230,23 @@ func CalibrateMPPWidths(
 	if err != nil {
 		return MPPCalibration{ByWidths: map[MPPWidths]int{}, Lives: len(spans)}, false
 	}
-	return CalibrateMPPWidthsOf(film, wr, band, spans)
+	return CalibrateMPPWidthsOf(NewFilmContext(film), wr, band, spans)
 }
 
 // CalibrateMPPWidthsOf mesure le découpage du bloc MPP sur un film DEJA CHARGE.
 func CalibrateMPPWidthsOf(
-	film *filmsource.Film, wr *Vec3Range, band map[uint32]bool,
+	fc *FilmContext, wr *Vec3Range, band map[uint32]bool,
 	spans map[EquipmentLifeKey][]EquipmentLifeSpan,
 ) (MPPCalibration, bool) {
 	cal := MPPCalibration{ByWidths: map[MPPWidths]int{}, Lives: len(spans)}
 	if wr == nil || len(band) == 0 || len(spans) == 0 {
 		return cal, false
 	}
-	arch, err := EquipmentArchetypeOf(film)
+	arch, err := fc.EquipmentArchetype()
 	if err != nil {
 		return cal, false
 	}
-	nums := FilmChunkNumbers(film)
+	nums := fc.ChunkNumbers()
 	if len(nums) == 0 {
 		return cal, false
 	}
@@ -261,7 +261,7 @@ func CalibrateMPPWidthsOf(
 		cal:   &cal,
 	}
 	for _, c := range nums {
-		data, pks, ok := FilmChunkAt(film, c)
+		data, pks, ok := fc.ChunkAt(c)
 		if !ok {
 			continue
 		}

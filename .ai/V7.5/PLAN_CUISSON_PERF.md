@@ -426,20 +426,47 @@ Prerequis : verdict 0.7 = zero divergence sur les 11 films du corpus (sinon : ar
 
 ### Lot 2 — Contexte du film partage — effort moyen
 
-- [ ] 2.1 `filmdec.FilmContext{BipedSlots, Layout, BipedArch, EquipmentArch, GroundWeaponArch,
-      Registry}` construit UNE fois dans `BuildFromFilm` (layout : AUTO-DETECTE — D3bis) ; les six
-      balayages delta (`held_weapon_changes.go:204`, `inventory_delta.go:196`, `ability_rank.go:123`
-      partage par `equipment_changes.go:129`, `camo_state.go:92`, `grapple_state.go:89`) et
-      `biped_pickups.go:163` le recoivent ; `bipedSlotBand`/`DetectI0Layout`/`bipedArchetype` n'y
+- [x] 2.1 `filmdec.FilmContext` construit UNE fois dans `BuildFromFilm` (layout : AUTO-DETECTE —
+      D3bis) ; les six balayages delta (`held_weapon_changes.go`, `inventory_delta.go`,
+      `ability_rank.go` partage par `equipment_changes.go`, `camo_state.go`, `grapple_state.go`) et
+      `biped_pickups.go` le recoivent ; `bipedSlotBand`/`DetectI0LayoutOf`/`bipedArchetype` n'y
       sont plus appeles.
-- [ ] 2.2 Double `worldObjectSlotBand` des poses (`equipment_placements.go:126` vs
-      `projectiles.go:115`) : une seule bande, passee (`...ForBand`).
-- [ ] 2.3 Registre chunk_00 parse une fois (`FilmContext.Registry`) ; les ~10 re-parses
+      FAIT (2026-09-03) : `filmdec/film_context.go`, `NewFilmContext(film) *FilmContext` +
+      accesseurs `Film/ChunkNumbers/ChunkAt/BipedSlots/I0Layout/Registry`. DEUX ECARTS ASSUMES
+      par rapport a la lettre de l'item, tous deux pour l'IDENTITE (details au §10) : le
+      constructeur ne rend PAS d'erreur (les trois derivations echouent sur des films legitimes
+      et chaque balayage doit rejouer SON message a SON etape), et les champs sont PRIVES derriere
+      des accesseurs (un layout ou un registre se lit avec l'erreur qui va avec). Memoisation
+      PARESSEUSE : le premier calcul a lieu exactement la ou il avait lieu avant.
+- [x] 2.2 Double `worldObjectSlotBand` des poses (`equipment_placements.go` vs `projectiles.go`) :
+      une seule bande, passee (`...ForBand`).
+      FAIT : `ScanEquipmentPlacements` appelle `ScanWorldObjectsForBand(film, wr, band)` au lieu de
+      `ScanWorldObjects(film, wr, ti=37)`, qui relevait la MEME bande une seconde fois. Les deux
+      gardes que `ScanWorldObjects` posait avant de deleguer (aucun chunk, bande vide) sont deja
+      passees trois lignes plus haut : la substitution est exacte.
+- [x] 2.3 Registre chunk_00 parse une fois (`FilmContext.Registry`) ; les ~10 re-parses
       (`bipedArchetype`, `EquipmentArchetype`, `groundWeaponArchetype`,
       `managedPropertyArchetype`, `filmArchetype`) le consomment.
-- [ ] 2.4 Garde-rail : `DetectI0Layout(`, `bipedSlotBand(`, `ParseRegistryChunk(` appeles
+      FAIT : les SIX accesseurs d'archetype (les cinq nommes + `objectiveArchetype`, migre pour
+      que l'allowlist de 2.4 soit fermee) deviennent des methodes de `*FilmContext` et lisent
+      `c.Registry()` ; `filmdec.filmRegistry` est SUPPRIME. Mesure du re-parse supprime : 10 a 12
+      analyses par cuisson -> 1.
+- [x] 2.4 Garde-rail : `DetectI0Layout(`, `bipedSlotBand(`, `ParseRegistryChunk(` appeles
       uniquement depuis le constructeur de contexte (allowlist).
+      FAIT : `internal/archlint/no_recomputed_film_context_test.go`, DEUX regles. (1) Dans
+      `filmdec` hors _test, ces trois calculs (plus l'enveloppe `DetectI0Layout(dir)`) ne
+      s'appellent que depuis une allowlist FERMEE de SEPT couples `fichier/fonction -> calcul` —
+      le contexte (3), la bande REDUITE que `DetectI0LayoutOf` releve pour lui-meme sur six chunks
+      et son enveloppe D2 (2), et `ScanBipedPositions` (2, hors perimetre — note N-AI). Le garde
+      nomme la FONCTION ENGLOBANTE, pas le fichier : un second appel ajoute dans un fichier deja
+      liste echoue. (2) Hors `filmdec`, aucun paquet de production de la cuisson n'analyse le
+      registre lui-meme, allowlist fermee a UNE entree (`killsource/world.go`, D14). Les deux
+      regles sont verifiees DANS LES DEUX SENS et DISCRIMINANTES par violation temporaire
+      (appel `bipedSlotBand` reintroduit dans `camo_state.go`, `ParseRegistryChunk` dans
+      `build_zones.go`, entree morte dans l'allowlist), toutes restaurees.
 - Gate 2 : equivalence IDENTIQUE ; tests des paquets touches verts ; lint ; mesure §6 au journal.
+  ETAT : gates de code verts (details au §10). L'EQUIVALENCE 9 FILMS ET LA MESURE §6 RESTENT A
+  FAIRE — le pilote lance le harnais et les temoins ; aucune cuisson n'a ete lancee par l'agent.
 
 ### Lot 3 — Correction Live Fire : le layout du catalogue pour les six balayages — effort rapide
 
@@ -852,6 +879,43 @@ identique a celui en place hors lots de correction, ou le garde anti-regression 
     recouvrement avec `TestEquivalenceMiniFilm` (memes sept familles, par les enveloppes `dir`)
     est assume : l'un mesure l'IDENTITE des sorties, l'autre l'ABSENCE de disque, et fusionner
     les deux ferait un test qui echoue pour deux raisons distinctes. A revoir si la CI serre.
+  - N-AI. `ScanBipedPositions` RELEVE ENCORE SA PROPRE BANDE (et detecte le decoupage quand
+    `opt.Layout` est nil) : c'est la HUITIEME bande bipede de la cuisson, la seule que le lot 2
+    n'a pas mutualisee. Raison ecrite : ses deux valeurs sont CONDITIONNELLES a des options —
+    la bande porte sur `opt.Chunks` (une sous-liste quand un instrument la restreint) et la
+    detection ne sert que de repli. Les brancher sur le contexte demanderait de trancher le cas
+    de la sous-liste, ce qui n'est plus un refacto pur, et le plan ne le demande pas (item 2.1
+    nomme les six delta + `biped_pickups`). Les deux appels sont ALLOWLISTES au garde-rail 2.4
+    avec cette justification et un retrait cible au lot 4 (item 4.1 change la representation de
+    la bande). Cout mesure : une marche de l'image-cle de tete de chaque chunk, une fois par film.
+  - N-AJ. `killsource/world.go` ANALYSE ENCORE LE REGISTRE LUI-MEME (`filmdec.ParseRegistryChunk`
+    sur `f.chunks[0]`) : c'est desormais la SEULE analyse de registre de la chaine de cuisson qui
+    ne passe pas par `FilmContext`. Hors perimetre SANS CONDITION (D14) ; l'entree est isolee dans
+    l'allowlist de la regle 2 du garde-rail 2.4, donc elle se verra le jour ou killsource entrera
+    dans un plan.
+  - N-AK. LA BANDE DE `DetectI0LayoutOf` N'EST PAS CELLE DU CONTEXTE, et ce n'est pas une dette :
+    la detection releve la sienne sur les SIX PREMIERS chunks (`detectMaxChunks`), le contexte sur
+    TOUS les chunks de donnees. Deux valeurs differentes ; les confondre changerait la detection —
+    donc changerait la sortie. Ecrit dans l'allowlist du garde-rail pour qu'un futur « pourquoi
+    deux bandes ? » trouve la reponse a cote du code.
+  - N-AL. IL RESTE QUATRE MARCHES COMPLETES DES IMAGES-CLES pour les bandes d'OBJETS DU MONDE, et
+    deux d'entre elles calculent la MEME valeur : `ScanEquipmentPlacements` releve
+    `worldObjectSlotBand(ti=37)` tandis que `decodeFilmPadScan(ti=37)` releve
+    `ScanWorldObjectKeyframes(ti=37).Band`, qui applique le MEME `slotBandExcluding` aux MEMES
+    images-cles. S'y ajoutent `ScanWorldObjectKeyframes(ti=42)` et `worldObjectSlotBand(ti=41)`
+    (projectiles), qui portent sur d'autres archetypes. L'item 2.2 ne nommait que la paire
+    `equipment_placements`/`projectiles`, qui est traitee ; la paire ti=37 restante ne l'est PAS
+    (perimetre ferme). A chiffrer au lot 4 : le recensement (`SeenUS`) et la bande sortent deja de
+    la meme marche, un `FilmContext.WorldObjectKeyframes(ti)` memoise les rendrait tous les deux.
+  - N-AM. LE CONTEXTE A ELARGI LE PERIMETRE DE SIGNATURES AU-DELA DES SEPT BALAYAGES NOMMES, et
+    c'etait la condition pour que l'allowlist de 2.4 soit FERMEE : huit autres formes film
+    (`ScanUnitEquipment`, `ScanEquipmentCreations(ForBand)`, `CalibrateMPPWidthsOf`,
+    `ScanGroundWeaponCreations(ForBand)`, `ScanEquipmentState`, `ScanManagedProperties`,
+    `ScanNavpointRadial`, `ScanObjectives`, `ScanEquipmentPlacements`) prennent desormais un
+    `*FilmContext` a la place du `*filmsource.Film`, parce qu'elles lisent un archetype. AUCUNE
+    n'a d'appelant hors `filmdec` et `replay` (verifie par grep avant migration) : le cout de
+    l'elargissement est nul cote appelants, et le benefice est qu'aucun accesseur d'archetype ne
+    peut plus re-analyser le registre.
 
 ## 9. Revue du plan (plan-review, 2026-09-02)
 
@@ -1274,3 +1338,71 @@ seul), 10 000 coherent comme dernier rempart.
   vide, `go build ./...` vert, `go test ./internal/analysis/replay/ ./internal/analysis/filmdec/
   ./internal/archlint/ -count=1` vert (59,6 s / 0,8 s / 6,5 s), `golangci-lint run` 0 issue sur
   `analysis/replay` et `archlint`. Decouvertes N-AE a N-AH au §8. AUCUNE CUISSON LANCEE.
+
+### Lot 2 — Contexte du film partage (2026-09-03) — CLOS cote code, equivalence a la charge du pilote
+
+**CE QUE LE LOT FERME.** Le lot 1 avait supprime les ~36 relectures du film ; restait le second
+etage du meme defaut. Sur le film DEJA CHARGE, chaque balayage recalculait pour son compte les
+trois memes derivations, qui ne dependent pourtant que du film. Comptage sur le chemin de
+production de `BuildFromFilm`, AVANT / APRES :
+
+| Derivation | Avant (par cuisson) | Apres | Qui recalculait |
+|---|---|---|---|
+| `bipedSlotBand` (tous chunks) | 8 | 2 | positions, ramassages natifs, + les 6 canaux delta |
+| `DetectI0LayoutOf` (6 chunks bit a bit + sa bande) | 6 | 1 | held_weapon, inventory_delta, ability_rank, equipment_changes, camo, grapple |
+| `ParseRegistryChunk` (chunk_00) | 10 a 12 | 1 | 6 x biped, calibration MPP, creations ti=37 (x2), ti=42, + ti=13 et ti=12 selon le mode |
+| `worldObjectSlotBand(ti=37)` dans les poses | 2 | 1 | `ScanEquipmentPlacements` puis `ScanWorldObjects` (item 2.2) |
+
+Le « 2 » de la bande bipede est `ScanBipedPositions`, hors perimetre et allowliste (note N-AI).
+
+**PAR BALAYAGE (item 2.1).** `ScanHeldWeaponChanges`, `ScanInventoryDeltas`, `ScanAbilityRanks`,
+`ScanEquipmentChanges` (par `walkAbilityEmissions`), `ScanCamoStates`, `ScanGrappleReads` :
+chacun faisait `FilmChunkNumbers` + `bipedSlotBand` + `DetectI0LayoutOf` + `bipedArchetype` ;
+chacun lit desormais `fc.ChunkNumbers()` + `fc.BipedSlots()` + `fc.I0Layout()` +
+`fc.bipedArchetype()`. `ScanBipedPickups` : `bipedSlotBand` -> `fc.BipedSlots()`. L'ORDRE des
+gardes et les MESSAGES d'erreur sont conserves mot pour mot — c'est ce qui fait que
+`replay/zero_disque_test.go`, qui exige l'erreur EXACTE de la mini-bobine, passe sans modification.
+
+**POURQUOI LA MEMOISATION EST PARESSEUSE.** Un constructeur qui calculerait tout d'avance
+deplacerait le premier calcul AVANT le premier balayage — donc avant l'installation des largeurs
+d'axe et avant le demarrage de l'horloge des etapes — et ferait travailler un film qui echoue des
+les positions. Paresseux, le premier calcul a lieu exactement la ou il avait lieu avant (le
+premier balayage qui en a besoin) ; les suivants le lisent. C'est aussi ce qui garantit « jamais
+pire qu'avant » aux enveloppes D2, qui ouvrent leur propre contexte a chaque appel.
+
+**POURQUOI `NewFilmContext` NE REND PAS D'ERREUR** (ecart assume par rapport a la signature
+suggeree `(*FilmContext, error)`). Les trois derivations echouent sur des films LEGITIMES : une
+bobine partielle n'a pas de `chunk_00`, un film trop court ne donne pas trois frontieres nettes
+dans i0, un film nil arrive quand `replaybuild.chargerFilm` a echoue. Chaque balayage rend
+aujourd'hui SON message a SON etape ; refuser au constructeur changerait ces messages ET l'etape
+a laquelle la cuisson s'arrete. Le contexte MEMORISE donc l'echec et chaque accesseur le rejoue a
+l'identique, autant de fois qu'on le lui demande. Meme raison pour les champs prives : un layout
+et un registre se lisent avec l'erreur qui va avec.
+
+**LA PREUVE D'IDENTITE, EN DEUX PIECES.**
+  1. RAISONNEMENT VERIFIE SUR PIECES : les trois calculs sont des fonctions PURES des octets du
+     film. `bipedSlotBand` -> `WalkKeyframeWorld` (maps locales, aucun global) ;
+     `DetectI0LayoutOf` -> `matchBipedHeaderRaw` + `readBitsAt` + `profileI0` (constantes et
+     arithmetique, aucun hook) ; `ParseRegistryChunk` -> `parseRegistry` (lecture d'octets ; son
+     seul effet de bord est `warnUnknownRegistry`, qui journalise UNE fois par empreinte, a
+     l'echelle du process). Aucun global mute entre les etapes 4 et 11 n'entre dans ces trois
+     calculs — les balayages n'y installent que des hooks, restaures par `defer`. Les entrees
+     etant identiques (`FilmChunkNumbers(film)` dans les deux mondes), les sorties le sont.
+  2. TEST DIFFERENTIEL : `filmdec/film_context_test.go` compare, sur le MEME film, ce que le
+     contexte rend et ce que le recalcul direct rend — numeros de chunks, bande (slot par slot),
+     decoupage (valeur ET erreur), registre (empreinte + composants et drapeaux, archetype par
+     archetype), plus le second appel (memoisation : meme valeur, et la MEME instance de
+     registre). Deux etages : la MINI-BOBINE en CI, qui n'a ni registre ni slot bipede et prouve
+     donc l'egalite des ECHECS (les six accesseurs d'archetype rendent tous `ErrNoRegistryChunk`),
+     et un VRAI film sous `FILM_CONTEXT_FILM`, qui prouve l'egalite des valeurs NON VIDES et
+     refuse de passer si le film est trop pauvre pour prouver quoi que ce soit. Passe sur
+     `000d5950` (10,8 s), `7344d24f` (18,6 s) et `60ae07c4` (21,0 s) — dont Live Fire, ou le
+     decoupage auto-detecte est justement celui que le lot 3 remplacera.
+
+**GATE.** `gofmt -l .` vide (module entier) · `go vet ./...` vide · `go build ./...` vert ·
+`go test ./internal/analysis/filmsource/ ./internal/analysis/filmdec/ ./internal/analysis/replay/
+./internal/replaybuild/ ./internal/archlint/ -count=1` vert (0,25 s / 1,4 s / 39,1 s / 0,7 s /
+17,1 s) · `go test ./internal/games/halo_infinite/film/killsource/ ./internal/sync/replayartifacts/
+./cmd/replay-equiv/ -count=1` vert · `golangci-lint run ./internal/analysis/filmdec/...
+./internal/analysis/replay/... ./internal/archlint/...` : 0 issue. Decouvertes N-AI a N-AM au §8.
+AUCUNE CUISSON LANCEE — l'equivalence 9 films et les temoins §6 sont a la charge du pilote.

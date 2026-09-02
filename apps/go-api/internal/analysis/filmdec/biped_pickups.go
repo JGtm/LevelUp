@@ -155,24 +155,24 @@ func ScanFilmBipedPickups(dir string) ([]BipedPickup, BipedPickupStats, error) {
 	if err != nil {
 		return nil, BipedPickupStats{}, err
 	}
-	return ScanBipedPickups(film)
+	return ScanBipedPickups(NewFilmContext(film))
 }
 
 // ScanBipedPickups décode les ramassages natifs d'un film DEJA CHARGE.
-func ScanBipedPickups(film *filmsource.Film) ([]BipedPickup, BipedPickupStats, error) {
+func ScanBipedPickups(fc *FilmContext) ([]BipedPickup, BipedPickupStats, error) {
 	var st BipedPickupStats
-	chunks := FilmChunkNumbers(film)
+	chunks := fc.ChunkNumbers()
 	if len(chunks) == 0 {
 		return nil, st, ErrNoFilmChunk
 	}
 	// La bande de bipèdes sert de SENTINELLE : un slot reconstruit hors bande dénonce une
 	// largeur d'index inadaptée à ce film. Son absence n'empêche pas de décoder, elle
 	// désactive seulement le rejet — et on le dit dans les stats.
-	band := bipedSlotBand(film, chunks)
+	band := fc.BipedSlots()
 
 	var out []BipedPickup
 	for _, c := range chunks {
-		data, pks, ok := FilmChunkAt(film, c)
+		data, pks, ok := fc.ChunkAt(c)
 		if !ok {
 			continue
 		}

@@ -42,24 +42,24 @@ func ScanFilmUnitEquipment(dir string) ([]UnitEquipmentEmission, error) {
 	if err != nil {
 		return nil, err
 	}
-	return ScanUnitEquipment(film)
+	return ScanUnitEquipment(NewFilmContext(film))
 }
 
 // ScanUnitEquipment décode les émissions d'i26 d'un film DEJA CHARGE.
-func ScanUnitEquipment(film *filmsource.Film) ([]UnitEquipmentEmission, error) {
-	chunks := FilmChunkNumbers(film)
+func ScanUnitEquipment(fc *FilmContext) ([]UnitEquipmentEmission, error) {
+	chunks := fc.ChunkNumbers()
 	if len(chunks) == 0 {
 		return nil, ErrNoFilmChunk
 	}
-	slots := bipedSlotBand(film, chunks)
+	slots := fc.BipedSlots()
 	if len(slots) == 0 {
 		return nil, fmt.Errorf("aucun slot biped (ti=%d) dans les keyframes du film", BipedTypeIndex)
 	}
-	lay, _, err := DetectI0LayoutOf(film)
+	lay, err := fc.I0Layout()
 	if err != nil {
 		return nil, fmt.Errorf("découpage i0 illisible : %w", err)
 	}
-	arch, err := bipedArchetype(film)
+	arch, err := fc.bipedArchetype()
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +85,7 @@ func ScanUnitEquipment(film *filmsource.Film) ([]UnitEquipmentEmission, error) {
 	var out []UnitEquipmentEmission
 	minRecord := bipedHeaderBits + bipedIndexBits*bipedMinMaskCnt + lay.TotalBits()
 	for _, c := range chunks {
-		data, pks, ok := FilmChunkAt(film, c)
+		data, pks, ok := fc.ChunkAt(c)
 		if !ok {
 			continue
 		}

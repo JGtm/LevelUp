@@ -88,25 +88,25 @@ func ScanFilmGrappleReads(dir string) ([]GrappleRead, GrappleStats, error) {
 	if err != nil {
 		return nil, GrappleStats{}, err
 	}
-	return ScanGrappleReads(film)
+	return ScanGrappleReads(NewFilmContext(film))
 }
 
 // ScanGrappleReads décode les événements de grappin d'un film DEJA CHARGE.
-func ScanGrappleReads(film *filmsource.Film) ([]GrappleRead, GrappleStats, error) {
+func ScanGrappleReads(fc *FilmContext) ([]GrappleRead, GrappleStats, error) {
 	var st GrappleStats
-	chunks := FilmChunkNumbers(film)
+	chunks := fc.ChunkNumbers()
 	if len(chunks) == 0 {
 		return nil, st, ErrNoFilmChunk
 	}
-	slots := bipedSlotBand(film, chunks)
+	slots := fc.BipedSlots()
 	if len(slots) == 0 {
 		return nil, st, fmt.Errorf("aucun slot biped (ti=%d) dans les keyframes du film", BipedTypeIndex)
 	}
-	lay, _, err := DetectI0LayoutOf(film)
+	lay, err := fc.I0Layout()
 	if err != nil {
 		return nil, st, fmt.Errorf("découpage i0 illisible : %w", err)
 	}
-	arch, err := bipedArchetype(film)
+	arch, err := fc.bipedArchetype()
 	if err != nil {
 		return nil, st, err
 	}
@@ -130,7 +130,7 @@ func ScanGrappleReads(film *filmsource.Film) ([]GrappleRead, GrappleStats, error
 
 	minRecord := bipedHeaderBits + bipedIndexBits*bipedMinMaskCnt + lay.TotalBits()
 	for _, c := range chunks {
-		data, pks, ok := FilmChunkAt(film, c)
+		data, pks, ok := fc.ChunkAt(c)
 		if !ok {
 			continue
 		}

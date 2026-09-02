@@ -100,7 +100,7 @@ func agExtraire(t *testing.T, cache, id string) ([]BombArming, *BombArmingsCover
 	if err != nil {
 		t.Fatalf("chunks du film %s illisibles : %v", id, err)
 	}
-	reads := decodeFilmBombReads(film, id, BombInput{Scanned: true, ChunkStartMS: clock})
+	reads := decodeFilmBombReads(filmdec.NewFilmContext(film), id, BombInput{Scanned: true, ChunkStartMS: clock})
 	agDiagnostiquerMontees(t, id, reads, a5ExplosionTimes(id))
 	// Grille synthétique : originMS=0, pas 100 ms, axe assez long pour tout le film — le gate
 	// juge les délais en ms, la conversion en frames est couverte par les tests unitaires.

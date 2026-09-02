@@ -126,12 +126,12 @@ func ScanFilmEquipmentChanges(
 	if err != nil {
 		return nil, EquipmentChangeStats{}, err
 	}
-	return ScanEquipmentChanges(film, bornAt)
+	return ScanEquipmentChanges(NewFilmContext(film), bornAt)
 }
 
 // ScanEquipmentChanges décode les changements d'équipement porté d'un film DEJA CHARGE.
 func ScanEquipmentChanges(
-	film *filmsource.Film, bornAt func(slot uint32) (uint64, bool),
+	fc *FilmContext, bornAt func(slot uint32) (uint64, bool),
 ) ([]EquipmentChange, EquipmentChangeStats, error) {
 	var st EquipmentChangeStats
 	var out []EquipmentChange
@@ -142,7 +142,7 @@ func ScanEquipmentChanges(
 	}
 	per := map[uint32]*state{}
 
-	walk, err := walkAbilityEmissions(film, func(e abilityEmission) {
+	walk, err := walkAbilityEmissions(fc, func(e abilityEmission) {
 		s := per[e.Slot]
 		if s == nil {
 			s = &state{rank: AbilitySetNoRank}

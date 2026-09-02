@@ -109,12 +109,12 @@ func ScanFilmInventoryDeltas(dir string) ([]InventoryDelta, InventoryDeltaStats,
 	if err != nil {
 		return nil, InventoryDeltaStats{}, err
 	}
-	return ScanInventoryDeltas(film)
+	return ScanInventoryDeltas(NewFilmContext(film))
 }
 
 // ScanInventoryDeltas décode l'inventaire suivi dans les paquets delta d'un film DEJA CHARGE.
-func ScanInventoryDeltas(film *filmsource.Film) ([]InventoryDelta, InventoryDeltaStats, error) {
-	sc, err := newInvDeltaScanner(film)
+func ScanInventoryDeltas(fc *FilmContext) ([]InventoryDelta, InventoryDeltaStats, error) {
+	sc, err := newInvDeltaScanner(fc)
 	if err != nil {
 		return nil, InventoryDeltaStats{}, err
 	}
@@ -122,7 +122,7 @@ func ScanInventoryDeltas(film *filmsource.Film) ([]InventoryDelta, InventoryDelt
 	defer restore()
 
 	for _, c := range sc.chunks {
-		data, pks, ok := FilmChunkAt(film, c)
+		data, pks, ok := fc.ChunkAt(c)
 		if !ok {
 			continue
 		}
@@ -200,20 +200,20 @@ func (sc *invDeltaScanner) resetRecord() {
 }
 
 // newInvDeltaScanner résout tout ce qui ne dépend PAS du paquet — une fois pour le film.
-func newInvDeltaScanner(film *filmsource.Film) (*invDeltaScanner, error) {
-	chunks := FilmChunkNumbers(film)
+func newInvDeltaScanner(fc *FilmContext) (*invDeltaScanner, error) {
+	chunks := fc.ChunkNumbers()
 	if len(chunks) == 0 {
 		return nil, ErrNoFilmChunk
 	}
-	slots := bipedSlotBand(film, chunks)
+	slots := fc.BipedSlots()
 	if len(slots) == 0 {
 		return nil, fmt.Errorf("aucun slot biped (ti=%d) dans les keyframes du film", BipedTypeIndex)
 	}
-	lay, _, err := DetectI0LayoutOf(film)
+	lay, err := fc.I0Layout()
 	if err != nil {
 		return nil, fmt.Errorf("découpage i0 illisible : %w", err)
 	}
-	arch, err := bipedArchetype(film)
+	arch, err := fc.bipedArchetype()
 	if err != nil {
 		return nil, err
 	}

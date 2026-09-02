@@ -124,28 +124,35 @@ func ScanFilmEquipmentPlacements(
 	if err != nil {
 		return nil, EquipmentPlacementStats{ByID: map[uint32]int{}}, err
 	}
-	return ScanEquipmentPlacements(film, wr)
+	return ScanEquipmentPlacements(NewFilmContext(film), wr)
 }
 
 // ScanEquipmentPlacements décode les POSES d'objets d'équipement d'un film DEJA CHARGE. Cf.
 // [ScanFilmEquipmentPlacements] pour la doctrine du balayage.
+//
+// LA BANDE DE SLOTS N'EST RELEVÉE QU'UNE FOIS (lot 2 de PLAN_CUISSON_PERF, item 2.2). Ce
+// balayage relevait la sienne, puis appelait `ScanWorldObjects`, qui relevait EXACTEMENT LA
+// MÊME (`worldObjectSlotBand(film, ti=37)`) pour son propre compte — deux marches complètes des
+// images-clés du film pour une seule valeur. Il passe désormais par la forme `...ForBand`, qui
+// existe précisément pour ça ; les deux gardes que `ScanWorldObjects` posait avant de déléguer
+// (aucun chunk de données, bande vide) sont déjà passées trois lignes plus haut.
 func ScanEquipmentPlacements(
-	film *filmsource.Film, wr *Vec3Range,
+	fc *FilmContext, wr *Vec3Range,
 ) ([]EquipmentPlacement, EquipmentPlacementStats, error) {
 	st := EquipmentPlacementStats{ByID: map[uint32]int{}}
 	if wr == nil {
 		return nil, st, fmt.Errorf("bornes monde absentes : sans elles le décodeur ne rend que des quanta")
 	}
-	if len(FilmChunkNumbers(film)) == 0 {
+	if len(fc.ChunkNumbers()) == 0 {
 		return nil, st, ErrNoFilmChunk
 	}
-	band := worldObjectSlotBand(film, EquipmentTypeIndex)
+	band := worldObjectSlotBand(fc.Film(), EquipmentTypeIndex)
 	if len(band) == 0 {
 		return nil, st, fmt.Errorf("aucun slot d'archétype ti=%d dans les keyframes du film",
 			EquipmentTypeIndex)
 	}
 	st.Slots = len(band)
-	tracks, err := ScanWorldObjects(film, wr, EquipmentTypeIndex)
+	tracks, err := ScanWorldObjectsForBand(fc.Film(), wr, band)
 	if err != nil {
 		return nil, st, err
 	}
@@ -153,14 +160,14 @@ func ScanEquipmentPlacements(
 	st.Lives = len(spans)
 
 	defer SetMPPWidths(CurrentMPPWidths())
-	cal, ok := CalibrateMPPWidthsOf(film, wr, band, spans)
+	cal, ok := CalibrateMPPWidthsOf(fc, wr, band, spans)
 	st.Calibration, st.Scanned = cal, true // le film a été lu ; reste à savoir s'il a tranché
 	if !ok {
 		return nil, st, nil // le film n'a pas tranché : aucune pose, et les stats le disent
 	}
 	SetMPPWidths(cal.Widths)
 
-	cre, cst, err := ScanEquipmentCreationsForBand(film, wr, band)
+	cre, cst, err := ScanEquipmentCreationsForBand(fc, wr, band)
 	if err != nil {
 		return nil, st, err
 	}

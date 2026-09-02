@@ -152,30 +152,30 @@ func ScanFilmManagedProperties(dir string) (ManagedPropertyScan, error) {
 	if err != nil {
 		return ManagedPropertyScan{}, err
 	}
-	return ScanManagedProperties(film)
+	return ScanManagedProperties(NewFilmContext(film))
 }
 
 // ScanManagedProperties décode les propriétés réseau ti=13 d'un film DEJA CHARGE.
-func ScanManagedProperties(film *filmsource.Film) (ManagedPropertyScan, error) {
+func ScanManagedProperties(fc *FilmContext) (ManagedPropertyScan, error) {
 	sc := ManagedPropertyScan{}
-	nums := FilmChunkNumbers(film)
+	nums := fc.ChunkNumbers()
 	if len(nums) == 0 {
 		return sc, ErrNoFilmChunk
 	}
-	band := observedSlotBand(film, ManagedPropertyTypeIndex)
+	band := observedSlotBand(fc.Film(), ManagedPropertyTypeIndex)
 	if len(band) == 0 {
 		return sc, fmt.Errorf("aucun slot d'archetype ti=%d dans les keyframes du film",
 			ManagedPropertyTypeIndex)
 	}
 	sc.Slots = len(band)
-	arch, err := managedPropertyArchetype(film)
+	arch, err := fc.managedPropertyArchetype()
 	if err != nil {
 		return sc, err
 	}
 	w := managedPropertyWalk{arch: arch}
 	defer w.install()()
 	for _, c := range nums {
-		data, pks, ok := FilmChunkAt(film, c)
+		data, pks, ok := fc.ChunkAt(c)
 		if !ok {
 			continue
 		}
@@ -194,12 +194,11 @@ func ScanManagedProperties(film *filmsource.Film) (ManagedPropertyScan, error) {
 // LE DECOUPAGE DU REGISTRE CHANGE AVEC LE BUILD (mesure du lot 0) : les noms sont lus du film,
 // jamais supposes aux index attendus — c'est `consumeByName` qui route, et un archetype dont les
 // noms ne sont pas ceux de ti=13 rend simplement zero lecture.
-func managedPropertyArchetype(film *filmsource.Film) (Archetype, error) {
-	reg, err := filmRegistry(film)
+func (c *FilmContext) managedPropertyArchetype() (Archetype, error) {
+	arch, _, ok, err := c.archetype(ManagedPropertyTypeIndex)
 	if err != nil {
 		return Archetype{}, err
 	}
-	arch, ok := reg.Archetype(ManagedPropertyTypeIndex)
 	if !ok {
 		return Archetype{}, fmt.Errorf("archetype ti=%d absent du registre", ManagedPropertyTypeIndex)
 	}

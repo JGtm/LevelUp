@@ -1,3 +1,47 @@
+## [2026-09-03] Cuisson perf, lot 2 — le film ne se derive plus qu'une fois (bande, decoupage i0, registre) — En cours (equivalence a la charge du pilote)
+
+Items 2.1 a 2.4 de `.ai/V7.5/PLAN_CUISSON_PERF.md`, worktree `LevelUp-wt-cuisson-perf`
+(`wt/cuisson-perf`). Aucun commit, aucune cuisson : le pilote lance le harnais 9 films et les
+temoins.
+
+**Decision technique principale** : `filmdec.FilmContext`, construit UNE fois par
+`replay.BuildFromFilm` et passe aux balayages, porte les trois derivations qui ne dependent que du
+film — bande de slots bipede, decoupage d'i0 AUTO-DETECTE (le catalogue est le lot 3, D3bis),
+registre ECS de `chunk_00`. Le lot 1 avait supprime les ~36 relectures du film ; celui-ci
+supprime le second etage du meme defaut, les recalculs sur le film deja charge : bande bipede
+8 -> 2 par cuisson, detection i0 6 -> 1, analyse du registre 10-12 -> 1, plus la double bande
+ti=37 des poses 2 -> 1 (item 2.2, par le motif `...ForBand` existant). Les six accesseurs
+d'archetype deviennent des methodes du contexte ; `filmdec.filmRegistry` disparait.
+
+**Deux choix qui ont demande une decision, tous deux dictes par l'IDENTITE.** (1) La memoisation
+est PARESSEUSE : un constructeur qui calculerait tout d'avance deplacerait le premier calcul avant
+le premier balayage — donc avant l'installation des largeurs d'axe et le demarrage de l'horloge
+des etapes — et ferait travailler un film qui echoue des les positions ; paresseux, le premier
+calcul a lieu exactement la ou il avait lieu avant. (2) `NewFilmContext` ne rend PAS d'erreur
+(ecart assume sur la signature suggeree) : les trois derivations echouent sur des films legitimes
+(bobine sans `chunk_00`, film trop court, film nil quand le chargement a echoue) et chaque
+balayage doit rejouer SON message a SON etape — refuser au constructeur changerait ces messages et
+l'etape a laquelle la cuisson s'arrete.
+
+**Resultats observes.** Identite prouvee en deux pieces : (a) les trois calculs sont des fonctions
+PURES des octets du film — verifie sur pieces jusqu'aux feuilles (`WalkKeyframeWorld`,
+`matchBipedHeaderRaw`/`readBitsAt`, `parseRegistry`), aucun global mute entre les etapes 4 et 11
+n'y entre ; (b) `filmdec/film_context_test.go` compare contexte et recalcul direct sur le meme
+film — numeros de chunks, bande slot par slot, decoupage (valeur ET erreur), registre (empreinte,
+composants, drapeaux), memoisation (meme instance au second appel). Deux etages : la mini-bobine
+en CI (elle n'a ni registre ni slot bipede : elle prouve l'egalite des ECHECS) et un vrai film
+sous `FILM_CONTEXT_FILM`, passe sur `000d5950`, `7344d24f` et `60ae07c4`. Garde-rail
+`archlint/no_recomputed_film_context_test.go` : allowlist fermee de sept couples
+`fichier/fonction -> calcul`, verifiee dans les deux sens et discriminante par violation
+temporaire restauree. Gate vert : `gofmt -l` vide, `go vet ./...`, `go build ./...`, les huit
+paquets de test du lot, `golangci-lint` 0 issue.
+
+**Conclusion / prochaine etape.** Le pilote lance le harnais d'equivalence (9 films, identite 9/9
+attendue) puis mesure les temoins §6 — le gain vise est ~15-20 s par film. Cinq decouvertes hors
+perimetre notees au §8 (N-AI a N-AM), dont la huitieme bande bipede de `ScanBipedPositions`
+(conditionnelle a `opt.Chunks`, allowlistee, retrait cible au lot 4) et la paire de bandes ti=37
+restante entre les poses et les socles.
+
 ## [2026-09-03] Cuisson perf, lot 1 CLOS — une seule lecture du film, identite 9/9, aucun gain de vitesse (assume) — Complete
 
 Cloture du lot 1 de `.ai/V7.5/PLAN_CUISSON_PERF.md` (4 agents, gates et commits par le pilote).

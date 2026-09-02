@@ -73,6 +73,18 @@ func BuildFromFilm(matchID, titleSlug string, film *filmsource.Film, opt Options
 	// directions est donc toujours active pour l'artefact. Elle n'altère aucune position
 	// (lecture seule après le vec3 d'i0).
 	scan.CaptureDirs = true
+	// LE CONTEXTE DU FILM EST OUVERT UNE FOIS, ICI, ET TOUS LES BALAYAGES LE PARTAGENT (lot 2
+	// de PLAN_CUISSON_PERF, 2026-09-03). Il porte les trois derivations qui ne dependent que du
+	// film — bande de slots bipede, decoupage d'i0 AUTO-DETECTE, registre chunk_00 — que huit,
+	// six et douze balayages recalculaient chacun pour leur compte sur le film pourtant deja
+	// charge. Il ne LIT rien a la construction : chaque derivation est calculee au premier
+	// balayage qui la demande, donc a l'endroit exact ou elle l'etait avant (cf.
+	// filmdec/film_context.go), et les suivants la lisent.
+	//
+	// LE DECOUPAGE DU CONTEXTE EST L'AUTO-DETECTE, PAS CELUI DU CATALOGUE ci-dessus : le lot 2
+	// ne change aucune sortie. Faire lire `opt.MapQuant.Layout()` aux six balayages delta —
+	// ce qui corrige Live Fire — est le lot 3, et lui seul (D3bis).
+	fc := filmdec.NewFilmContext(film)
 	// L'HORLOGE DES BALAYAGES PART ICI, et pas a l'entree de la fonction : ce qui precede est
 	// l'attente du verrou process et la lecture du catalogue, qui ne sont le temps d'aucun
 	// balayage. A partir d'ici, chaque `opt.observe` ferme le balayage qu'il annonce
@@ -106,7 +118,7 @@ func BuildFromFilm(matchID, titleSlug string, film *filmsource.Film, opt Options
 	// emission d'un emplacement serait comptee comme une prise alors qu'elle peut n'etre que
 	// la re-annonce d'une arme deja portee. Absence non fatale — le rejeu sort sans
 	// ramassages, jamais avec des ramassages devines.
-	weaponChanges, wStats, err := filmdec.ScanHeldWeaponChanges(film, spawnSetFrom(loadouts))
+	weaponChanges, wStats, err := filmdec.ScanHeldWeaponChanges(fc, spawnSetFrom(loadouts))
 	if err != nil {
 		slog.Warn("changements d arme illisibles — rejeu sans ramassages", "err", err, "match_id", matchID)
 		weaponChanges = nil
@@ -122,7 +134,7 @@ func BuildFromFilm(matchID, titleSlug string, film *filmsource.Film, opt Options
 	// paquets delta. AUTRE SOURCE que le canal ci-dessus (qui lit un composant du bipede
 	// PENDANT la traversee d'un record) : celui-ci lit des bits que personne d'autre ne lit,
 	// avant la trame. Il date a la milliseconde ET nomme le ramasseur. Absence non fatale.
-	pickups, pStats, err := filmdec.ScanBipedPickups(film)
+	pickups, pStats, err := filmdec.ScanBipedPickups(fc)
 	if err != nil {
 		slog.Warn("ramassages natifs illisibles — rejeu sans ramassages natifs", "err", err, "match_id", matchID)
 		pickups, pStats = nil, filmdec.BipedPickupStats{}
@@ -154,7 +166,7 @@ func BuildFromFilm(matchID, titleSlug string, film *filmsource.Film, opt Options
 	// Inventaire suivi dans les paquets DELTA : les compteurs de grenades (i22) et le jeu
 	// selectionne (i47), transmis AU CHANGEMENT donc places la ou l'etat bouge. Absence non
 	// fatale — l'axe des grenades retombe sur les seules images-cles.
-	invDeltas, dStats, err := filmdec.ScanInventoryDeltas(film)
+	invDeltas, dStats, err := filmdec.ScanInventoryDeltas(fc)
 	if err != nil {
 		slog.Warn("inventaire delta illisible — grenades sans rafraichissement entre images-cles",
 			"err", err, "match_id", matchID)
@@ -174,7 +186,7 @@ func BuildFromFilm(matchID, titleSlug string, film *filmsource.Film, opt Options
 	// Identite de la capacite portee : lue dans les paquets DELTA, sur la MEME horloge. Rare
 	// (une transmission par vie environ) mais elle porte le rang COMPLET, la ou les images-cles
 	// ne voient que 16..23. Absence non fatale — le rejeu retombe sur cette seule fenetre.
-	abilityRanks, aStats, err := filmdec.ScanAbilityRanks(film)
+	abilityRanks, aStats, err := filmdec.ScanAbilityRanks(fc)
 	if err != nil {
 		slog.Warn("identites de capacite illisibles — rejeu sans rang complet", "err", err, "match_id", matchID)
 		abilityRanks = nil
@@ -191,7 +203,7 @@ func BuildFromFilm(matchID, titleSlug string, film *filmsource.Film, opt Options
 	// Le temoin de NAISSANCE vient des positions BRUTES lues plus haut : sans lui, une
 	// reapparition equipee serait comptee comme un ramassage, ce qui double le decompte sur
 	// les modes ou les joueurs renaissent equipes. Absence non fatale.
-	equipChanges, eStats, err := filmdec.ScanEquipmentChanges(film, birthOfLives(positions))
+	equipChanges, eStats, err := filmdec.ScanEquipmentChanges(fc, birthOfLives(positions))
 	if err != nil {
 		slog.Warn("changements d equipement illisibles — rejeu sans ramassages d equipement",
 			"err", err, "match_id", matchID)
@@ -208,7 +220,7 @@ func BuildFromFilm(matchID, titleSlug string, film *filmsource.Film, opt Options
 	// Etat du camouflage : la voie i28 queue[1], lue dans les paquets DELTA, sur la MEME
 	// horloge (cf. filmdec/camo_state.go). Absence non fatale — le rejeu sort sans episodes
 	// de camouflage, jamais avec des episodes devines.
-	camoStates, cStats, err := filmdec.ScanCamoStates(film)
+	camoStates, cStats, err := filmdec.ScanCamoStates(fc)
 	if err != nil {
 		slog.Warn("etat de camouflage illisible — rejeu sans episodes de camo", "err", err, "match_id", matchID)
 		camoStates = nil
@@ -223,7 +235,7 @@ func BuildFromFilm(matchID, titleSlug string, film *filmsource.Film, opt Options
 	// Evenements de grappin : le corps tag==3 d'i59, lu dans les paquets DELTA, sur la
 	// MEME horloge (cf. filmdec/grapple_state.go). Absence non fatale — le rejeu sort sans
 	// tractions de grappin, jamais avec des tractions devinees.
-	grappleReads, gStats, err := filmdec.ScanGrappleReads(film)
+	grappleReads, gStats, err := filmdec.ScanGrappleReads(fc)
 	if err != nil {
 		slog.Warn("evenements de grappin illisibles — rejeu sans tractions", "err", err, "match_id", matchID)
 		grappleReads = nil
@@ -251,12 +263,12 @@ func BuildFromFilm(matchID, titleSlug string, film *filmsource.Film, opt Options
 	// (`placements`), qui ne fait pourtant rien de la lunette.
 	opt.Scoped = buildScopedLookup(zoomEvents, buildLifeSpans(indexBySlot(positions)), zoomHoldUS)
 	opt.observe("zoomEvents", zoomEvents)
-	opt.Placements, opt.PlacementStats = decodeFilmPlacements(film, matchID, &worldRange)
+	opt.Placements, opt.PlacementStats = decodeFilmPlacements(fc, matchID, &worldRange)
 	opt.observe("placements", opt.Placements)
 	opt.observe("placements.stats", opt.PlacementStats)
 	// SOCLES : archetypes 42 (armes) et 37 (power-ups), sur la MEME horloge, AUX LARGEURS MPP que
 	// la calibration des POSES vient de mesurer sur ce film (cf. build_ground_weapons.go).
-	opt.Pads = decodeFilmPadScans(film, matchID, &worldRange, opt.PlacementStats.Calibration.Widths)
+	opt.Pads = decodeFilmPadScans(fc, matchID, &worldRange, opt.PlacementStats.Calibration.Widths)
 	opt.observe("pads", opt.Pads)
 	// MARQUEUR DE PORTAGE : le controle independant du calque du drapeau, lu aux images-cles du
 	// MEME film — sur les seuls films de CTF (cf. build_objectives_live.go).
@@ -265,13 +277,13 @@ func BuildFromFilm(matchID, titleSlug string, film *filmsource.Film, opt Options
 	// PROPRIETES RESEAU ti=13 : l'etat des zones (jauge de capture, proprietaire), lu dans les
 	// paquets delta du MEME film — sur les seuls matchs dont l'appelant a fourni le catalogue de
 	// zones (cf. build_zones.go).
-	opt.Zone.Reads = decodeFilmZoneReads(film, matchID, len(opt.Zone.Zones))
+	opt.Zone.Reads = decodeFilmZoneReads(fc, matchID, len(opt.Zone.Zones))
 	opt.Zone.Scanned = len(opt.Zone.Zones) > 0
 	opt.observe("zoneReads", opt.Zone.Reads)
 	// ANNEAU D'ARMEMENT ti=12 : la jauge d'armement de la bombe, lue dans les paquets delta du
 	// MEME film — sur les seuls matchs que l'appelant reconnait Assaut armable (cf.
 	// bomb_armings.go ; jamais One Bomb, ou le canal ne tient pas).
-	opt.Bomb.Reads = decodeFilmBombReads(film, matchID, opt.Bomb)
+	opt.Bomb.Reads = decodeFilmBombReads(fc, matchID, opt.Bomb)
 	opt.observe("bombReads", opt.Bomb.Reads)
 	// Lancers de grenade : décodés des paquets delta du MÊME film, sur la MÊME horloge.
 	// Absence non fatale, comme les tirs et les armes portées.

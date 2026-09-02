@@ -141,3 +141,22 @@ restent devant : lot 2 (bande/layout/registre partages — les 6 scanners delta 
 cumules), lot 4 (boucles chaudes — `playerIndices` 35-40 s, lecteurs de bits). La valeur des
 items 1.1-1.3 est structurelle : une source unique, la grammaire mesuree, les enveloppes hors
 production, les garde-rails — le socle sans lequel les lots suivants ne se prouvent pas.
+### Lot 2 (contexte du film partage) — 2026-09-03, 01:05-01:52
+
+Equivalence : **9/9 identiques**. Mesures temoins (meme protocole §6) :
+
+| film | L0 (reference) | L1 | L2 | gain L0->L2 |
+|---|---|---|---|---|
+| `01e1f945` | 2 min 24 | 2 min 35 | **1 min 36** | **-33 %** — DANS LA CIBLE 60-100 s |
+| `7344d24f` | 2 min 49 | 2 min 53 | **1 min 55** | **-32 %** |
+| `696a9d7c` | 2 min 43 | 3 min 03 | **1 min 50** | **-33 %** |
+
+Enfants du harnais (vs lot 1) : `000d5950` 1 min 52 -> 1 min 13 ; `084a804d` 19 min 56 ->
+**12 min 06** (-39 %) ; `53ce4390` 4 min 07 -> 2 min 41 ; `d9781168` 2 min 55 -> 1 min 58 ;
+`9f57c612` 2 min 07 -> 1 min 29. Pics memoire inchanges (0,17-0,45 Gio).
+
+Lecture : mutualiser bande de slots (8->2), detection de layout (6->1) et registre (10-12->1)
+vaut ~50-55 s par film moyen — bien plus que l'estimation (~15-20 s), parce que la detection et
+la bande sont des passes de resynchronisation bit a bit (le poste chaud du profil) et que le
+registre allouait ~1 067 chaines par lecture. Le solde vers <= 100 s partout est au lot 4
+(`playerIndices` 35-40 s, lecteurs de bits, consultation de map par bit candidat).
