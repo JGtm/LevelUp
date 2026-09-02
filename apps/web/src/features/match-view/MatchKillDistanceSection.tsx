@@ -23,6 +23,7 @@ import { ChartCard } from '@/components/charts/ChartCard'
 import { resolveToken } from '@/lib/accessibility'
 import type { MatchKillDistancePlayer, MatchScoreboardRow } from '@/lib/api/types'
 import { getEChartsThemeColors } from '@/lib/echarts/themeColors'
+import { stripBotSuffix } from '@/lib/players/displayName'
 import { useAppShellStore } from '@/stores/appShellStore'
 
 import { buildKillDistanceOption, killDistanceBars, type KillDistanceBar } from './_killDistanceChart'
@@ -40,7 +41,9 @@ function playerContext(
   scoreboard: MatchScoreboardRow[],
 ): { gamertag: string; totalKills: number } {
   const row = scoreboard.find((r) => r.xuid === xuid)
-  return { gamertag: row?.gamertag ?? xuid, totalKills: row?.kills ?? 0 }
+  // Repli xuid INCHANGÉ (comportement testé, réouverture DEC-8 02/09) : seul le
+  // suffixe « [bot] » — marqueur de donnée killsource — est retiré du gamertag trouvé.
+  return { gamertag: row?.gamertag ? stripBotSuffix(row.gamertag) : xuid, totalKills: row?.kills ?? 0 }
 }
 
 /** Hauteur du graphe d'un joueur : une rangée par arme, bornée pour rester une vignette. */

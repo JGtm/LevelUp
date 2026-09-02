@@ -69,7 +69,7 @@ describe('presenceEntries — ce qui parle, et ce qui se tait', () => {
     expect(presenceEntries([player('A', [life(512, 900, 1_200)])], null, DOC)).toEqual([])
   })
 
-  it('un bot porte son nom et son drapeau ; un joueur innommable se tait', () => {
+  it('un bot porte son nom (suffixe de donnée retiré) et son drapeau ; un joueur innommable se tait', () => {
     const bot = player('bot:343 Oscar [bot]', [life(600, 900, 2_480)], {
       bot: true,
       filmName: '343 Oscar [bot]',
@@ -77,7 +77,9 @@ describe('presenceEntries — ce qui parle, et ce qui se tait', () => {
     const anonyme = { xuid: 'X', lives: [life(601, 900, 2_480)] } as ReplayPlayer
     const out = presenceEntries([bot, anonyme], WINDOW, DOC)
     expect(out).toHaveLength(1)
-    expect(out[0].presence).toMatchObject({ kind: 'joined', name: '343 Oscar [bot]', bot: true })
+    // Le film écrit le gamertag suffixé (marqueur de donnée, cf. killsource/roster.go) ;
+    // la ligne de présence, elle, ne le répète pas (retour user 2026-09-02, lot D).
+    expect(out[0].presence).toMatchObject({ kind: 'joined', name: '343 Oscar', bot: true })
   })
 })
 
