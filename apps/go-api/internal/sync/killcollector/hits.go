@@ -166,6 +166,13 @@ func (c *KillSourceCollector) resolveHitDistanceFunc(
 }
 
 // hitsScanFailed compte et journalise un echec de scan, et rend le triplet d abandon (best-effort).
+//
+// Le premier resultat est TOUJOURS nil et c est le point : un abandon rend une passe VIDE, et le
+// triplet epouse la signature des appelants (`return c.hitsScanFailed(...)`) pour que chaque site
+// d echec tienne en une ligne. Exemption unparam datee 2026-09-02 (ratchet CI) — la scinder
+// forcerait quatre `return nil, ...` sans rien clarifier.
+//
+//nolint:unparam // resultat 0 toujours nil par construction (triplet d abandon), cf. ci-dessus.
 func (c *KillSourceCollector) hitsScanFailed(
 	ctx context.Context, matchID, etape string, err error,
 ) ([]persist.WeaponAccuracyInsert, persist.WeaponHitDistanceBatch, bool) {
