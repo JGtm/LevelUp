@@ -50,8 +50,8 @@ import (
 // index de COMPOSANT, qui sont resolus par nom. La raison est asymetrique et documentee :
 // l'index d'archetype est le `ti` de 6 bits du record d'image-cle, la meme constante que
 // `BipedTypeIndex`/`EquipmentTypeIndex` du paquet ; le decoupage qui bouge d'un build a
-// l'autre (mesure du lot 0 : `06dfe6d9` 116/1 031 slots contre 118/1 067) est celui des
-// COMPOSANTS a l'interieur d'un archetype.
+// l'autre (mesure du lot 0, comptes re-mesures au lot 3 : `06dfe6d9` 49 blocs/1 031 slots
+// contre 50/1 067) est celui des COMPOSANTS a l'interieur d'un archetype.
 const (
 	GameEngineTypeIndex   = 0
 	PlayerEngineTypeIndex = 5

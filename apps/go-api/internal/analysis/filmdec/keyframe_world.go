@@ -17,10 +17,12 @@ package filmdec
 const (
 	kfSent     = 0xFFFFFFFF // id sentinelle
 	kfTableCap = 8192       // borne haute de slot
-	// objectArchetypeCount (.exe DAT_144e61d88 COUNT=0x32) : ti valide < 50. Borne SÉMANTIQUE
-	// (pas len(reg.Archetypes)=118, qui est la borne trop large « morte ») car ti tient sur 6 bits
-	// et le cap objet réel = 50. Constante Halo Infinite : un autre titre exigerait de re-sourcer
-	// ce COUNT depuis son .exe (walker keyframe = RE Halo-Infinite-spécifique pour l'instant).
+	// objectArchetypeCount (.exe DAT_144e61d88 COUNT=0x32) : ti valide < 50. Borne SÉMANTIQUE,
+	// sourcée de l'exe — et le lot 3 (2026-08-30) a fermé la boucle par l'autre bout :
+	// len(reg.Archetypes) vaut AUSSI 50 depuis que parseRegistry s'arrête à la fin structurelle
+	// du registre (le « 118 » d'avant était la taille du fichier divisée par celle d'un bloc).
+	// Constante Halo Infinite : un autre titre exigerait de re-sourcer ce COUNT depuis son .exe
+	// (walker keyframe = RE Halo-Infinite-spécifique pour l'instant).
 	kfArchMax = 50
 	// keyframeRecordTIBit est la position, EN BITS DEPUIS LE DEBUT DU RECORD, du champ `ti`
 	// de 6 bits : c'est le point exact ou TraverseEntity doit prendre la main (en-tete

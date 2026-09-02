@@ -2,9 +2,11 @@ package filmdec
 
 // chunk00_carte_research_test.go — LOT D2 : LA CARTE EXHAUSTIVE DE chunk_00.
 //
-// CE QUE LE DEPOT SAIT DEJA. `registry.go` lit chunk_00 comme une suite de blocs
-// d'archetype de 16 640 octets (64 slots de 260) et n'en retient que les slots a nom non
-// vide : 118 blocs, 49 porteurs, 1 067 couples (archetype, composant). Personne n'a jamais
+// CE QUE LE DEPOT SAVAIT A L'OUVERTURE DU LOT. `registry.go` lisait chunk_00 comme une suite
+// de blocs d'archetype de 16 640 octets (64 slots de 260) et n'en retenait que les slots a
+// nom non vide : « 118 blocs », 49 porteurs, 1 067 couples (archetype, composant) — le 118
+// etant en realite `len(fichier)/taille_bloc`, tranche au lot 3 : le registre fait 50 blocs
+// et parseRegistry s'arrete desormais a sa fin structurelle. Personne n'avait jamais
 // regarde le RESTE : ce que valent les octets hors des noms, ce qu'il y a APRES le dernier
 // bloc, et si deux films rendent vraiment le meme buffer.
 //

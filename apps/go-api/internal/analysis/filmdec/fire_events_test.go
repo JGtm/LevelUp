@@ -66,27 +66,38 @@ func TestDecodeFireEventLayout(t *testing.T) {
 	}
 }
 
-// TestDecodeFireEventAimGatedOff : hors du chemin « record vide », la visée n'est PAS lue.
-// Le champ existe toujours dans le flux mais après des boucles de longueur variable : le
-// décodeur doit refuser plutôt que lire des bits qui ne sont pas les bons.
+// TestDecodeFireEventAimGatedOff : sur un record réellement NON MODAL, la visée n'est PAS lue.
+//
+// CONTRAT MIS À JOUR (2026-08-31, câblage de la visée modale). Auparavant la visée n'était lisible
+// que sur le sous-ensemble « record vide » (drapeaux 110/111/112), et ce test construisait des
+// paquets à drapeaux hors de ce motif pour vérifier qu'aucune visée n'en sortait. Le décodeur
+// forward (fire_aim_modal.go) pose désormais la visée sur TOUT le record MODAL — 0 cible et
+// 0 composante de dégât — quelle que soit la valeur des drapeaux. La prémisse « visée non lisible
+// hors du chemin sûr » n'est donc plus vraie que pour les records réellement NON MODAUX : ceux
+// qui portent au moins une cible ou une composante, dont les boucles ont une largeur venant d'une
+// table peuplée au runtime, non localisable hors ligne. Les anciens cas synthétiques (surtout des
+// zéros) se décodaient par hasard en record modal et auraient récolté une visée PARASITE ; ils
+// sont remplacés par des records vraiment non modaux, construits à la grammaire Ghidra, que le
+// forward doit refuser (ok=false) — et donc aucune visée ne doit sortir de decodeFireEvent.
 func TestDecodeFireEventAimGatedOff(t *testing.T) {
 	for _, tc := range []struct {
-		name  string
-		flags [3]uint64
+		name           string
+		targets, comps int
 	}{
-		{"compteurs non nuls", [3]uint64{0, 0, 0}},
-		{"porte 111 ouverte", [3]uint64{1, 1, 0}},
-		{"porte 112 ouverte", [3]uint64{1, 0, 1}},
+		{"une cible", 1, 0},
+		{"trois cibles", 3, 0},
+		{"une composante de degat", 0, 1},
+		{"cible et composante", 2, 2},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			w := &bitWriter{}
-			w.putBits(0, 7, uint64(FireEventType))
-			w.putBits(fireFlagsBit+2, 1, tc.flags[0])
-			w.putBits(fireFlagsBit+3, 1, tc.flags[1])
-			w.putBits(fireFlagsBit+4, 1, tc.flags[2])
-			w.putBits(fireAimBit, int(FireAimBits), 12345)
-			if e, _ := decodeFireEvent(w.buf); e.HasAim {
-				t.Errorf("visée décodée hors du chemin sûr (drapeaux %v)", tc.flags)
+			pay := buildNonModalFire(tc.targets, tc.comps)
+			if _, ok := modalAimBit(pay); ok {
+				t.Fatalf("record non modal (%d cible(s), %d composante(s)) accepté comme modal : "+
+					"le forward localiserait une visée parasite", tc.targets, tc.comps)
+			}
+			if e, _ := decodeFireEvent(pay); e.HasAim {
+				t.Errorf("visée décodée sur un record non modal (%d cible(s), %d composante(s))",
+					tc.targets, tc.comps)
 			}
 		})
 	}

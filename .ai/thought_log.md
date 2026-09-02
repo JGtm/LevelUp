@@ -4399,6 +4399,652 @@ Avec lui, le test devient discriminant : un tir du joueur P avec l arme W doit e
 l inventaire de P, pas dans celui de n importe qui. Le temoin retombe alors loin du plafond.
 Piste de construction : apparier, par vie, la suite des tirs d un FilmIndex aux inventaires
 d images-cles des slots candidats — l appariement qui explique le plus de tirs nomme le slot.
+## [2026-09-01] Précision par arme Infinite — Lot 4a (vue a) : recalage ABERRANT, UI non allumée — Complété (escaladé)
+
+**Contexte** : Lot 4a du `PLAN_PRECISION_ARME_DISTANCE`, vue (a) SEULE (zone WRITE/filmdec
+interdite). Question user portée par la mission : « c'est fiable ? ». Trois axes : idempotence,
+DI, UI — précédés d'un recalage film vs API obligatoire avant tout câblage.
+
+**Vérifications sur pièces** :
+1. **Idempotence** — garantie à l'ÉCRITURE : `WeaponHitDistancePersister.insertAccuracy` fait un
+   SELECT-then-INSERT (skip si le match a déjà des lignes `weapon_accuracy`) ; la distance,
+   append-only, régénère par `decode_pass` (vue `_latest`). Prouvé par
+   `TestWeaponHitDistanceIdempotenceAccuracy` (intégration, déjà vert). La lecture brute
+   `FROM weapon_accuracy` est donc sûre (génération unique) — aucune vue `_latest` à ajouter.
+2. **DI** — `WithWeaponAccuracyRepo(NewWeaponAccuracyRepo(pdb))` câblé INCONDITIONNELLEMENT
+   (title-agnostic) dans `SynthesisCtx`/`Timeseries`/`SessionPage`/`TeammatesCtx` → le Synthèse
+   d'Infinite reçoit le repo. Gate web `useCapability('weapon_accuracy')` lit la capability produit
+   du bootstrap (posée sur Infinite au Lot 3). DI + capability + chart = déjà en place (Lot 3).
+
+**Décision technique (recalage mesuré)** : instrument = code de prod `filmdec` via
+`TestLot1AttribArmeTir` (W=1 s, une-touche-par-tir, clé WeaponID), 8 films, vs
+`AVG(match_participants.accuracy)` lu RO sur le shared prod (B-swap). Résultats :
+- Ratio film/API GLOBAL 0.06–0.75 (≈12×, anti-corrélé : film le plus haut en API = le plus bas
+  en film). Pas d'ancrage de recalage.
+- Armes AUTOMATIQUES invraisemblables : MA40 AR à 0.9 % (00761d27) et 3.3 % (008e1bba) alors que
+  l'API du match est à 40–42 %. La méthode une-touche-par-tir à W=1 s sature sur les cadences
+  élevées (le film émet ~190 `damage_aftermath` pour 245+ tirs).
+- Faux 0 % des armes projectile : Ravager/SPNKr/Mangler passent Nmin=8 et seraient écrits à 0 %
+  (mapper + persister ne posent PAS la porte « capturée » du plan §6 ; `buildWeaponAccuracy` ne
+  filtre que par `WeaponClassHasAccuracy`, qui laisse passer ces « guns »).
+- Grain « balle » seul plausible (000d5950 ~25 % vs API 28 %) mais noyé.
+- Prod `weapon_accuracy` Infinite = 0 ligne (la passe film n'a jamais backfillé).
+
+**Résultats observés** : gate baseline vert — `go build ./internal/...` OK ;
+`go test ./internal/service/ ./internal/platform/duckdb/ ./internal/games/halo_infinite/ -count=1`
+OK (aucun changement de code Go). Note complète :
+`.ai/V7.5/film_re/RECALAGE_WEAPON_ACCURACY_FILM_2026-09-01.md`.
+
+**Conclusion / prochaine étape** : recalage ABERRANT au grain qui alimente la vue → UI NON câblée
+(`[!]` au plan, report au REGISTRE_REPORTS). Deux verrous en zone WRITE/filmdec (interdite Lot 4a,
+= décision pilote) : (V1) méthode de pairing qui écrase les automatiques ; (V2) porte « capturée »
+plan §6 absente du persister. La capability `weapon_accuracy` Infinite (posée au Lot 3) est
+PRÉMATURÉE ; recommandation : la gater OFF jusqu'à V1+V2, ou n'afficher que le grain balle recalé.
+Escaladé au pilote — pas d'unwind unilatéral d'un lot précédent.
+
+## [2026-09-01] Réconciliation compile : couche killsource ramenée de feat/v75 — Complété
+
+**Contexte** : `feat/precision-arme` (base RE, `wt/precision`) ne compilait plus
+(`go build ./internal/...`) : `service/match_view_data_loaders.go` — le CALLER v75 — importe
+`service/killsourceload`, paquet ABSENT de cette branche. La branche est un revert PARTIEL et
+incohérent du lot killsource du 2026-08-29 (câblage DI, champs match_view/teammates présents ;
+port, paquet, impl duckdb, intégration fragdist/domain absents). Mission : ramener UNIQUEMENT la
+couche killsource depuis feat/v75, sans toucher au RE film ni à la feature précision.
+
+**Décision technique** : trois classes de fichiers.
+1. **NEUFS (checkout v75 verbatim)** : `port/kill_source_class.go`, `service/killsourceload/load.go`
+   + `load_test.go`, `platform/duckdb/killsource_class_repo.go`, `service/fragdist/fragdist_killsource_test.go`.
+2. **RESTAURÉS v75 (revert killsource PUR vérifié — diff 100 % killsource/LabelEN, zéro contenu
+   précision)** : `domain/frag_distribution.go`, `service/fragdist/fragdist.go` + `fragdist_test.go`,
+   `service/match_view_builders_combat.go`, `port/weapon_kills.go` (champ LabelEN),
+   `service/synthesis_service.go`, `service/explorer_service.go`,
+   `service/explorer_target_frag_distribution.go`, `service/session_page_frag_distribution.go`,
+   `service/teammates/teammates_squad_charts_weapons_perf.go`, + tests
+   `service/match_view_frag_distribution_test.go`, `service/teammates/squad_frag_distribution_test.go`.
+3. **GREFFÉS chirurgicalement (fichiers MIXTES — divergence non-killsource laissée intacte)** :
+   `platform/duckdb/weapon_resolver.go` (ajout `offArsenalMeta` + `resolveOffArsenalKeys`, le reste du
+   fichier diverge de v75) ; `service/timeseries_service.go` et `service/session_page_service.go`
+   (champ `killSourceRepo` + `WithKillSourceRepo` + plumbing `sources` — leur divergence `first_blood`
+   `buildSoloFirstBlood(matches)` NON touchée).
+
+**Murs identifiés et NON franchis (hors mission)** : (a) **KillDistance** (POC LOT G.3, 2026-08-30 :
+`port.KillDistanceRepository`, `killDistanceRepoFor`, `NewKillDistanceRepo`) — feature v75 distincte
+absente de la branche, laissée absente (`match_view_service.go`/`registry_pages.go` ne manquent QUE
+d'elle côté non-killsource) ; (b) divergence **first_blood** (`matches`/`currentMatches`) — laissée ;
+(c) **classifier** `games/halo_infinite/killsource_registry.go` + entrées `games/weapons/registry.go`
+equipment/environmental : NON réclamés par le compilateur (assertion de type), NON ramenés — la feature
+killsource reste donc INERTE sur cette branche RE (repo nil au runtime), état honnête, pas un stub ;
+(d) `registry_pages_explorer.go` ne chaîne pas `WithKillSourceRepo` (killsource Explorer inert) — laissé.
+
+**Résultats** : `go build ./internal/...` VERT (exit 0). `go test ./internal/service/killsourceload/`
+OK. Non-régression précision VERTE : `go test ./internal/analysis/filmdec/ ./internal/analysis/
+./internal/persist/ ./internal/sync/killcollector/ ./internal/games/halo_infinite/ -count=1` OK.
+`go vet ./internal/service/killsourceload/` propre ; `go vet` des paquets touchés (fragdist, domain,
+service, teammates, duckdb) propre ; `gofmt -l` propre. Tests fragdist (dont killsource) + domain
+VERTS. **Confirmation** : `domain/frag_distribution_test.go` était DÉJÀ en version v75 sur la branche
+alors que son code non-test était reverté → le paquet domain ne compilait pas ses tests avant ; le
+revert de `frag_distribution.go` a réaligné. **Conclusion** : compile réconcilié, couche killsource
+cohérente de bout en bout ; feature killsource inerte au runtime jusqu'au retour du classifier lors
+d'un futur merge avec feat/v75.
+
+## [2026-09-01] Précision arme/distance — Lot 3 : mapper film + passe killcollector + persist distance + capability — Complété
+
+**Contexte** : worktree dédié `wt/precision` (`feat/precision-arme`). Lot 3 du plan
+`PLAN_PRECISION_ARME_DISTANCE_2026-08-31.md` : produire la donnée de précision Infinite DEPUIS LE
+FILM et l'écrire, en réutilisant l'infra existante (Lots 1-2 faits : migration
+`match_weapon_hit_distance` + API pure `filmdec.PairWeaponHits`/scanners). Cinq sous-étapes.
+
+**Décision technique** :
+1. **Résolveur distance productionisé** (`filmdec/weapon_hit_distance_resolver.go`) : `BuildBipedTracks`
+   (positions bipèdes par slot via `ScanFilmBipedPositions`), `ResolveHitDistanceBase` (balayage des
+   bases `lot1chBases≥400`, la plus résolvante gagne — même mesure que sondeBaseSweep),
+   `NewWeaponHitDistanceFunc`/`FilmWeaponHitDistance` (WeaponHitDistanceFunc à injecter dans
+   PairWeaponHits), `DetectFilmWorldRange` (bornes carte par signature de largeurs d'axe). Copie #2 du
+   résolveur sonde de recherche (≤ 2, règle 6).
+2. **Mapper** `games/halo_infinite/ingest/weapon_accuracy_film.go` (miroir H5) : `MapWeaponAccuracyFilm`
+   agrège `[]WeaponHitStats` par (xuid, weapon_id) → `[]WeaponAccuracyInsert` (shots_fired=ShotsPaired,
+   shots_landed=Hits, drops=0) + `WeaponHitDistanceBatch` (dist_bucket_json JSON, dist_n). Pont
+   FilmIndex→xuid injecté ; indice non résolu/arme nulle/0 tir écartés ; collision d'indice agrégée.
+3. **Persister** `persist/weapon_hit_distance_persister.go` : `WeaponHitDistancePersister.PersistPass`
+   écrit les DEUX tables sous un lease. `EvaluateHitsGate` = copie UNIQUE de la porte Nmin=8
+   (migration.WeaponHitsMinShots). **Déviation consignée** : `persistWeaponAccuracy` (chemin
+   BatchBuilder) est un no-op sur un match déjà inséré → la passe film écrit weapon_accuracy en
+   DIRECT (forme SQL identique) avec **garde SELECT-then-INSERT** anti-doublon (table sans decode_pass) ;
+   distance = append-only (decode_pass + `_latest`). Anti-ART : INSERT purs, rien à allowlister.
+4. **Passe** `killcollector/hits.go` : `collectHits` greffé dans `collect()`, DIR-BASE (les scanners
+   Lot 2 lisent chunk_NN.bin — rejeu mémoire = duplication du décodeur, interdit), best-effort. Gate
+   `CapWeaponAccuracy`. Résout FilmIndex→xuid par `resolvePlayerIndices` EXISTANT. Branché via
+   `ConfigureFilmAccuracy(filmDir, mapBoundsPath)` — non configuré (chemin live) = sauté proprement.
+5. **Capability** : `match.weapon.accuracy` → `supported` (capabilities.toml + adapter_data.go
+   CapabilityMap, commentaires datés — la vieille note « taux non publiable HitLikely » remplacée) ;
+   produit `weapon_accuracy` ajouté au descripteur Infinite BUILT-IN (`registry.go` — Infinite n'a pas
+   de title.toml). Jamais slug== (ratchet vert).
+
+**Résultats** : tous les gates verts. `go test ./internal/persist/ ./internal/sync/killcollector/
+./internal/games/halo_infinite/ -count=1` OK ; `go test -tags=integration -p 1 ./internal/persist/`
+OK (23 s, anti-ART) ; ratchet slug (`archlint`) + ART (`sync`) OK ; mapper (4 tests) + persister
+(6 tests intégration) + capability (porte via résolveur invoqué, sans film) OK ; gofmt/vet propres ;
+fichiers ≤ 219 L, fonctions ≤ 60 L. **Réserves consignées (§11 du plan)** : (a) équivalence
+FilmIndex↔indice de réplication NON validée sur film — instrumentée (`killsource_hits_indices_non_resolus`),
+gate visuel Lot 4 tranche ; (b) casse PRÉ-EXISTANTE `internal/service/killsourceload` (paquet importé
+absent du disque) + `port.KillSourceClassRepository` indéfini → `internal/service`/`api*`/`scheduler`/
+`worldenrich`/`teammates`/`halo_5 livesync` ne compilent pas — HORS périmètre (interdiction de toucher
+`internal/service`/`cmd/*`), le gate `./internal/...` global échoue là-dessus, exécuté sur les paquets
+compilables. **Prochaine étape** : Lot 4 (vues a/c allumées + groupement par classe ; lèvera la casse
+service teammates qu'il doit toucher).
+
+## [2026-09-01] Précision arme/distance — Lot 2 : décodeur dégât + pairing + distance sortis du _test — Complété
+
+**Contexte** : worktree dédié `wt/precision` (`feat/precision-arme`). Lot 2 du plan
+`PLAN_PRECISION_ARME_DISTANCE_2026-08-31.md` : le décodage `damage_aftermath`, l'appariement
+tir↔dégât et la distance n'existaient que comme code de RECHERCHE dans des `_test.go` de
+`internal/analysis/filmdec`. Objectif : les sortir en code de PRODUCTION (non-test, exporté) pour
+que le Lot 3 (passe killcollector) puisse les appeler. Refactor recherche→prod, pas de nouvel algo.
+
+**Décision technique** : deux fichiers prod neufs. `weapon_hits.go` expose l'API pure
+`PairWeaponHits(shots []WeaponShot, damages []WeaponDamage, window, dist) []WeaponHitStats` — par
+(FilmIndex, WeaponID) : `ShotsPaired` (tirs appariables), `Hits` (tir apparié à ≥1 dégât du même
+attaquant dom-1 dans W, UN tir → UNE touche = plus proche dans la fenêtre) et `DistBuckets`
+(histogramme tireur→victime, `dist` injectée = nil autorisé). Constantes `WeaponHitPairWindowUS`
+(1 s), `WeaponHitDistanceEdges` {2,5,10,15,25,40}, `WeaponHitBucket`. Scanners `ScanFilmWeaponShots`
+(0xD2 t36) et `ScanFilmWeaponDamages` (0xC0 t0, rend aussi la base-512). `weapon_hits_decode.go`
+accueille les décodeurs DÉPLACÉS des `_test` (une seule copie) : `lot1RefDom/lot1RefDom1/
+lot1RefDomWidths/lot1Dequant/lot1DmgResult/lot1DecodeDamageAftermath` + résolution slot
+`lot1chBases/lot1chIsBiped/lot1ArgmaxBase`. Anti-duplication (CLAUDE.md règle 6) : `sondeScanDamage`,
+`attribCollectShots`, `attribM2`/`attribM3`, `sondeBucket`, `sondeDistEdges` DÉLÈGUENT au code prod ;
+la distance est INJECTÉE dans `PairWeaponHits` (le résolveur de position à chemin relatif reste
+côté recherche — sa productionisation propre est du ressort du Lot 3). Helpers partagés
+(`attribShot`/`attribCollectShots`/`attribBuildIndex`/`attribMin`/`attribMax`, consommés par
+lot1_nmin/lot1_cadence_detente/lot1_degats_type1/deto/geo) conservés comme adaptateurs
+(`lot1_attrib_helpers_test.go`) déléguant au prod.
+
+**Résultats** : gate vert. `go test ./internal/analysis/filmdec/ -count=1` OK (8,85 s) ; `gofmt -l`
+vide ; `go vet` propre ; fichiers ≤ 500 L (296/155/154), fonctions ≤ 80 L (`PairWeaponHits` 60).
+Test unitaire pur neuf `weapon_hits_test.go` (9 cas, sans DuckDB/film) : apparié/non apparié/hors
+fenêtre/un tir→une touche pour N dégâts/non-appariable écarté/bucket/distance non résolue/clés/
+`WeaponHitBucket`. Reproduction sur film 000d5950 (`LOT1_TRAME_FILM`) via le code productionisé :
+245 tirs / 190 dégâts, base 512 ; **sweep W=1000 ms = 100/245 (40,8 %) vs témoin +3 s 5,3 % → 7,7×
+≥ 3** (M1 avant 16,7× / arrière 8,0× → TENU) ; M2/M3 par arme cohérents (Needler proche 2-5 m,
+BR75 10-15 m, sens physique tenu).
+
+**Conclusion / prochaine étape** : Lot 2 CLOS. Lot 3 = mapper `games/halo_infinite/ingest/
+weapon_accuracy_film.go` (pairing → `[]WeaponAccuracyInsert` + rows distance), greffe
+`killcollector/hits.go` (résout FilmIndex→xuid), persist `weapon_hit_distance_persister.go`
+(INSERT-only), activer capability Infinite.
+
+## [2026-09-01] Précision arme/distance — Lot 1 : table sœur distance + vue _latest + Nmin — Complété
+
+**Contexte** : worktree dédié `wt/precision` (branche `feat/precision-arme`). Exécution du Lot 1 du
+plan `PLAN_PRECISION_ARME_DISTANCE_2026-08-31.md` : poser le schéma de la DISTANCE des touches par
+arme (table sœur de `match_weapon_shots`, la précision réutilisant la table existante
+`weapon_accuracy`) et fixer le seuil de porte Nmin par mesure. Périmètre strict Lot 1 — pas de
+persister ni de passe film (Lot 3).
+
+**Décision technique** : nouvelle table append-only `match_weapon_hit_distance` (shared,
+`TargetShared`, grain match×xuid×weapon_id ; colonnes `dist_bucket_json`/`dist_n` + traçage
+`decode_pass`/`decoder_rev`/`written_at`), recette calquée EXACTEMENT sur
+`steps_shared_weapon_shots.go` : INSERT-only ADR 0026, PK technique `id` sur séquence, `weapon_id`
+UBIGINT inséré en chaîne décimale (piège bit de poids fort), vue `_latest` qui retient LA DERNIÈRE
+PASSE par match (pas la dernière ligne par clé). `decoder_rev = "whd-v1"`. Enregistrée dans
+`order.go` AVANT `shared_weapon_kills_v3` — position imposée par l'ordre d'init (alphabétique par
+nom de fichier : `weapon_hit_distance` < `weapon_kills` < `weapon_shots`), vérifiée par le no-op
+test. Nmin mesuré par un instrument neuf `filmdec/lot1_nmin_effectif_research_test.go` (garde
+LOT1_TRAME_FILM, réutilise attribCollectShots/attribBuildIndex/lot1mtNear).
+
+**Résultats** : gate vert — `go test ./internal/migration/ -run WeaponHitDistance` OK (3 cas :
+dernière passe, multi-match, weapon_id UBIGINT haut bit) ; `CanonicalOrder`/`SortByCanonical` OK ;
+`gofmt -l` vide ; `go vet` propre ; fichiers ≤ 500 L. Mesure Nmin (W=250 ms, 12 chunks) : clés
+(joueur,arme) 33/14/34, médiane tirs/clé 5/60/5 ; sous-ensemble « ≥8 tirs » STABLE à 11 clés sur
+les 3 films → **Nmin = 8** (`WeaponHitsMinShots`), même ordre de grandeur que le garde-fou `n<5` de
+l'instrument d'attribution, relevé à 8 car la distance exige 2 positions résolues. Réserve : les
+touches par clé sont plus rares sur la fenêtre témoin tronquée (12 chunks), l'effectif réel sur un
+match complet est supérieur.
+
+**Conclusion / prochaine étape** : Lot 1 CLOS. Lot 2 = décoder dégât `damage_aftermath` + pairing
+tir↔dégât (W=1s) + distance sortis du `_test` dans `filmdec` (non-test), avec test unitaire pur du
+pairing.
+
+## [2026-09-01] Owner du projectile — lien de CHAMP absent du projectile vivant, present QU'A LA MORT — Complété
+
+**Contexte** : worktree dédié `wt/trame-owner`. Suite de la réserve « projectile→owner » laissée
+par NOTE_TOUCHES_EXPLOSIVES. Objectif : trouver le CHAMP qui relie une touche explosive non fatale
+à son tireur (pas une jointure temporelle). Instrument `projectile_owner_research_test.go`
+(+ `_helpers`), garde LOT1_TRAME_FILM, borné 12 chunks. Films 000d5950 / 01e1f945 / 00502e52.
+
+**Décision technique** : Ghidra — l'objet porte bien un DamageOwner (`Object_Get/SetDamageOwner
+Object/Player`, `Unit_GetReceivedDamage_WeakDamageOwner*`, `Equipment_GetOwnerUnit`) ; le handler
+`Object_GetDamageOwnerPlayer`=FUN_1407b905c le résout au RUNTIME (pas un composant répliqué). Le
+dead-state EnumB (+0x08 = killer-absolute-participant-index) EST ce DamageOwner matérialisé à la
+mort. Candidat film testé : i10 object-parent-state de ti=41, dont la branche libre lit un handle
+R(13) dom1 (même espace que les bipèdes) — valeur avant jetée, publiée via ObjectParentState.FreeID
+(edits prod sans changement de bits). Censure ROBUSTE des masques ti=41 via matchWorldObjectRecord
+(M1b), indépendante du rendement des trames propres.
+
+**Résultats** : M1b sur 6132 / 2824 / 2747 records ti=41 → i10 (parent-state) = 0,0 / 0,1 / 0,0 % ;
+i9 (multiplayer-properties) = 0,1 / 0,0 / 0,0 %. Le projectile en vol ne réplique QUE du cinématique
+(i0 position 100 %, i1/i2/i3, occasionnellement i18/i19/i20). Les 2-3 FreeID captés (5022,197,6688)
+sont étalés, ne résolvent à aucun bipède. M2 oracle : tueurs dead-state de faible cardinalité (0:4,
+9:1 etc.) — le lien de champ existe mais QU'À LA MORT. M3 : 0/50, 0/13, 0/9 dégâts explosifs
+résolvent réf1 à un slot ti=41 vivant (projectile transitoire).
+
+**Conclusion** : le lien de champ projectile→tireur existe uniquement au dead-state (kills, 97,6 %).
+Le projectile VIVANT ne porte pas d'owner dans le film → touches explosives NON FATALES non
+attribuables par lien de champ ; la jointure temporelle tir↔impact reste la seule voie. Réf. réf0
+dom5 (owner vs entité) = tranchée : c'est l'entité projectile, pas l'owner. Note :
+`.ai/V7.5/film_re/NOTE_PROJECTILE_OWNER_2026-09-01.md`. gofmt + go vet + tests composants verts.
+Prochaine étape : si feature accuracy explosifs, assumer la jointure-au-tir (pas de champ à espérer).
+
+## [2026-09-01] Touches explosives — présentes dans le film, attribuables tireur+arme par jointure au tir — Complété
+
+**Contexte** : worktree dédié `wt/trame-explo`. Le verdict précédent (« armes lourdes = 0 % de
+touches en type 0 ») CONTREDISAIT l'API (accuracy compte les explosifs). Hypothèse : notre
+appariement exige que le responsable du dégât (`damage_aftermath` 0xC0 t0, réf1 dom1) résolve au
+slot bipède du tireur ; pour un explosif réf1 = le PROJECTILE, jamais un joueur → raté, mais le
+dégât existe. Instrument `explo_touches_research_test.go` (+ `_helpers`), garde LOT1_TRAME_FILM,
+borné 12 chunks, 6 mesures. Films 000d5950 / 01e1f945 / 00502e52.
+
+**Décision technique** : classer chaque 0xC0 t0 par résolution de réf1 (absente / bipède direct /
+NON-bipède candidat projectile). Discriminant DENSITÉ-INDÉPENDANT = magnitude (M5) ; confond
+« tireur mort en cours de chunk » écarté par résolution CHRONO vs fin-de-chunk (M6).
+
+**Résultats** : classe NON-BIPÈDE sur les 2 films à explosifs = victime réf0 résolue ~98 %,
+magnitude ~2x le tir direct (3.0 vs 1.4-1.5), réf1 liée à RIEN en fin de chunk (39/52, 12/16). M6
+DÉCISIF : 96,2 % (000d5950) et 81,2 % (00502e52) de la classe non-bipède ne sont JAMAIS un joueur
+aux deux instants (projectile authentique, mag 2.9) ; confond « mort depuis » marginal (4-19 %).
+Attribution (M4, fenêtre de vol 2 s) : tireur+arme UNIQUE dans 100 % / 58 % des touches coïncidant
+un tir lourd (0xD2 t36 porte attaquant + WeaponID). M3 (coïncidence brute) confondu par la densité
+des tirs lourds sur Fiesta (témoin 44 %) ; TIENT sur 00502e52 (75 % vs 25 %, 3x). Rappel : les
+KILLS explosifs sont déjà attribués par le dead-state i11 (TUEUR + tag source, 97,6 %).
+
+**Conclusion** : les touches explosives non fatales SONT dans le film ; attribuables tireur+arme
+par JOINTURE probabiliste au tir (fenêtre de vol), l'arme venant du WeaponID du tir (pas du tag
+source). Réserve : lien de CHAMP non fatal exigerait de résoudre projectile→owner (réf0 dom5 des
+événements 0xC2/0xC3, sens non tranché) — piste vivante. Note :
+`.ai/V7.5/film_re/NOTE_TOUCHES_EXPLOSIVES_2026-09-01.md`. gofmt + go vet verts. Prochaine étape :
+si feature accuracy explosifs, décider jointure-au-tir vs creuser projectile-owner.
+
+## [2026-08-31] Attribution PAR LE TIR de la précision/distance par arme — lien réel, viable sous conditions — Complété
+
+**Contexte** : worktree dédié `wt/trame-attrib`. Une sonde précédente (`lot1_sonde_precision_*`)
+keyait la précision par le TAG SOURCE du dégât (projectile/effet, autre espace d'id) — mauvais
+lien. Correction : l'arme est connue par le TIR (`WeaponID` de `action_weapon_fire` 0xD2 t36,
+offsets fixes). Pont réutilisé de `lot1_modal_touche` : attaquant du tir (ref0 dom1) == responsable
+du dégât (ref1 dom1, `damage_aftermath` 0xC0 t0), même espace brut, fenêtre temporelle. Instrument
+`lot1_attrib_arme_tir_research_test.go` (garde LOT1_TRAME_FILM, borné 12 chunks), noms via
+`analysis.WeaponIDToName` (map statique, pas de cycle).
+
+**Décision technique** : 5 mesures + sweep de fenêtre. Seuils écrits avant : W=250 ms (comme
+modal_touche), OFF=3 s (témoin), verdict au ratio témoin.
+
+**Résultats chiffrés (000d5950 / 01e1f945 / 00502e52)** : M1 lien tir->dégât TENU partout (ratio
+témoin AVANT 16.7x / 2.8x / 3.7x, ARRIÈRE 8.0x / 4.2x / 5.4x). M1bis sweep DÉCISIF : le dégât est
+horodaté à l'IMPACT, pas au tir ; à 250 ms le taux est un plancher (16.7/4.3/17.4 %), à ~1 s il
+double-triple (40.8/12.1/39.9 %) avec ratio témoin encore ~4-8x -> le 250 ms pré-enregistré était
+trop serré. M2 précision par arme : DEUX catégories parmi les « 0 % à 250 ms » — (1) récupérables
+à fenêtre large (Disruptor 94 %, Needler 100 %, VK78 100 %, BR75, Pulse Carbine, S7 Sniper…), (2)
+NON émises même à 2 s (M41 SPNKr, Hydra, Skewer, Ravager, Shock Rifle, Mangler, Stalker, Bulldog =
+classe explosif/faisceau/lourd -> dégât hors `damage_aftermath`, probable type 1). M3 distance : où
+capturée, ordre physiquement sensé et STABLE (Needler ~4-8 m le plus court, BR75 ~11-16 m le plus
+long) ; 01e1f945 désactivée (signature carte ambiguë catalyst/deadlock). M4 : 0 dégât sans refs sur
+les 3 films -> exclusion non-arme = non-problème ici ; sources anonymes anticipées (0x00d9dbf765/95)
+absentes comme classe. M5 : tag source n'intersecte JAMAIS le WeaponID (0 %) -> valide l'attribution
+par le tir, pas par la source.
+
+**Conclusion / prochaine étape** : note `film_re/NOTE_ATTRIBUTION_ARME_TIR_2026-08-31.md`. Mécanisme
+correct, lien réel. Précision par arme VIABLE sous conditions (fenêtre ~1 s, pas 250 ms ; classe
+« balle » seulement ; recalage API obligatoire), NON universelle (trou de couverture par classe).
+Distance plus robuste que la précision. Piste future (hors périmètre) : percer
+`damage_section_response` (0xC0 t1) pour la classe lourde. gofmt + go vet verts, rien câblé en prod.
+
+## [2026-08-31] Visée des tirs NON-MODAUX — grammaire des 2 boucles PERCÉE, mais visée non validable par l'oracle — Complété
+
+**Contexte** : worktree dédié `wt/trame-nonmodal`. Le décodeur modal (`fire_aim_modal.go`) ne
+lit la visée que sur le tir propre (0 cible, 0 composante), à post-comptes+2. Le non-modal (tir
+qui touche) insère deux boucles de longueur variable avant la visée. Objectif : les percer.
+
+**Décision technique** : Ghidra sur `FUN_14080C1F8` tracé instruction par instruction. Boucle
+composantes = N × (R(2)+R(1)+R(32)) = 35 bits FIXES (param_5=0 confirmé). Boucle cibles = P ×
+(R(4)+R(1)[hit] ; si hit: R(3)+(N<3?R(1):R(4))+R(16)+3·W) avec W = FUN_14102bd24(mode,
+component[idx].R2) = min(mode,6) si R2==1 sinon mode (mode=12 si P==1 sinon 4). W vient d'une
+table PURE, pas de dépendance runtime : les deux boucles + les composites (cd5b8/eff64,
+grammaires re-vérifiées au désassemblage) sont ENTIÈREMENT décodables hors ligne — RÉFUTE la
+réserve « boucles runtime-width » de la note modale. Instrument
+`lot1_visee_nonmodale_research_test.go` (garde LOT1_TRAME_FILM).
+
+**Résultats chiffrés (000d5950 / 01e1f945 / 00502e52)** : distribution binaire (0,0)=raté et
+(1,1)=touché — 0 record composante-seule / cible-seule, donc isolation empirique d'une boucle
+IMPOSSIBLE. Oracle de concentration : FONCTIONNE sur le modal (visée@d=2 = 83 / 77 / 87 %, axe x
+saturé E|x|~0.2, contrôle 25-44 %) mais le non-modal reste au BRUIT (34 / 28 / 29 %,
+E|x|=E|y|=E|z|~0.5) ; max sur toute la fenêtre + scan 0..220 depuis après-boucles ne dépasse
+jamais nettement le contrôle. COUVERTURE 0 %. Causes : validité cubemap non discriminante à 30
+bits (face<6 quasi toujours) ; faux positifs sur les champs faible-entropie (R(32) → face 0 →
+axe saturé artificiel) ; le tir qui touche vise à élévations variées (unitaire uniforme = 0.5
+partout = indiscernable du bruit).
+
+**Conclusion / prochaine étape** : note `film_re/NOTE_VISEE_NONMODALE_2026-08-31.md`. Le DÉCODE
+non-modal est désormais possible (grammaire complète) mais sa CORRECTION n'est pas prouvable
+hors ligne avec l'oracle disponible — négatif honnête, rien câblé en prod. Piste future (hors
+périmètre) : un oracle de PROFONDEUR DE TRAME validerait la position indépendamment de
+l'orientation de la visée.
+
+## [2026-08-31] Percer la trame — damage_aftermath : ref0 = BLESSÉ, ref1 = RESPONSABLE ; monde chronologique inutile — Complété
+
+**Contexte** : worktree dédié `wt/trame-recherche`, en parallèle de `wt/trame-film`. Deux
+questions sur `damage_aftermath` (0xC0 type 0), qui porte deux références domaine-1 résolvant
+toutes deux en slots de bipède.
+
+**Décision technique** : deux instruments sous garde `LOT1_TRAME_FILM`, un film par process.
+(A) Départager blessé/attaquant par la BAISSE DE VITALITÉ (santé i4 + bouclier i5, décodés
+offline par `ScanFilmBipedPositions`/CaptureDirs) du slot résolu autour de l'instant du dégât.
+Base calibrée par couverture-vitalité max (512 sur les 3 films) : le critère « bipède lié » de
+`victime_slot` ne discrimine pas entre bases voisines (bande contiguë). (B) Reconstruire le
+monde chronologique (seuls les tick-frames antérieurs à l'événement) vs fin-de-chunk, même base.
+
+**Résultats chiffrés (000d5950 / 01e1f945 / 00502e52)** : (A) la vitalité du slot de **ref0
+baisse dans 94,8 / 70,6 / 92,4 %** des dégâts, ref1 seulement 13,3 / 37,5 / 1,7 % ; en
+tête-à-tête ref1 ne gagne JAMAIS (63 gagnants ref0, 0 ref1, 9 ambigus). ref0 est présente sur
+100 % des dégâts (toute victime), ref1 parfois absente (attaquant / dégât d'environnement).
+CONCLUSION : **ref0 = blessé (touché), ref1 = responsable (attaquant)**. Le témoin « soin »
+(magnitude négative, Kscale=-1) N'est PAS corroboré (0 % de hausse de vitalité) — à ne pas lire
+comme un soin. (B) gain chronologique NÉGLIGEABLE (0 à +2 pts ; le AVANT reproduit
+`victime_slot` à 82,1 %). Les bipèdes sont liés dès l'image-clé et persistent : le plafond
+82-89 % n'est pas temporel mais vient de l'ambiguïté de la référence (largeur 9/13 bits selon
+la sonde, génération), que le rejeu chronologique ne touche pas.
+
+**Conclusion / prochaine étape** : note `film_re/NOTE_VICTIME_MONDE_CHRONO_2026-08-31.md`.
+Leçon transverse : le taux « base+index = bipède lié » est un proxy FAIBLE de correction (il
+récompense les bases voisines qui tombent sur des bipèdes voisins) ; le vrai juge est la baisse
+de vitalité. Instruments : `lot1_degats_blesse_research_test.go`, `lot1_monde_chrono_research_test.go`.
+PROCHAINE : câbler ref0=victime / ref1=attaquant dans le décodeur de dégâts si un lecteur le demande.
+
+## [2026-08-31] Percer la trame — VISÉE MODALE PERCÉE : le plafond 19 % tombe (×3-6), grammaire Ghidra + oracle de concentration — Complété
+
+**Contexte** : ultracode, suite. L'agent Ghidra dédié « percer le cadrage de la visée type 105 »
+a rendu la grammaire de charge de FUN_14080C1F8 tracée instruction par instruction (type 105 =
+0xD2 = le « type 36 » du modèle-M). Il tranche pourquoi `fire_events.go` plafonne à 19 % : ses
+offsets fixes (attaquant @36, arme @44/76, visée @113) ne valent que sur le « chemin record
+vide ». Réserve honnête de l'agent (vérifiée juste) : largeurs des 3 refs en-tête = table
+runtime nulle au repos → boucles non-modales non localisables hors ligne.
+
+**Décision technique** : instrument `lot1_visee_ghidra_research_test.go` confrontant mon décodeur
+modèle-M à la grammaire Ghidra, jugé par l'ORACLE DE CONCENTRATION (une vraie visée unitaire
+sature un axe ; le bruit uniforme reste ~26 %). DEUX corrections trouvées : (1) **polarité du
+champ d** (saute R(5) si garde==0, pas ==1) → position post-comptes STABLE à 111 sur 100 % des
+paquets à visée vide ; (2) **les 2 lecteurs composites cd5b8/eff64 sont PARASITES** dans le
+chemin modal — la vraie visée est à **post-comptes + 2** (= 113 pour le cas vide, bits
+identiques à fire_events).
+
+**Résultats chiffrés (5 témoins)** : sur les paquets que fire_events NE couvre PAS, la visée à
+post-comptes+2 sature un axe à **97-100 %** (contrôle 18-39 %), pic NET à +2 (bruit à +1/+3).
+Couverture : **33 → 210 (×6,4)** et **143 → 491 (×3,4)**. Verdict TENU sur les 5. Note dédiée
+`film_re/NOTE_VISEE_TIR_2026-08-31.md`. `BitReader` borné (bits hors tampon = 0) → décodage
+forward sûr en prod.
+
+**Conclusion / prochaine étape** : réponse à « on a pas mieux que 19 % ? » = OUI, le cas modal
+(tir propre) est entièrement percé. PROCHAINE : câbler le chemin modal dans
+`decodeFireEvent` (supersète le chemin 19 %, régénère les goldens replay `shots.go`) ; le
+cas non-modal reste runtime-width (complément). Instrument de recherche committé d'abord.
+
+## [2026-08-31] Percer la trame — damage_aftermath (872k) DÉCODÉ ET PROUVÉ : source + dégât + victime, l'oracle de trame tranche — En cours
+
+**Contexte** : ultracode, suite. 2e workflow multi-agents `damage-aftermath-reader` (10 agents,
+0 erreur, 722k tokens) : grammaire bit-exacte complète de damage_aftermath (type 0, octet 0xC0,
+872k) — source (tag), bloc dégât (magnitude R(5) sur [0,16] + 2e scalaire), victime (ref
+domaine 0). Corrections adverses intégrées (largeurs 19, victime 15 bits). 3 refs d'en-tête du
+type 0 = domaines 1/1/7 (lus dans l'exe).
+
+**Décision technique** : poser enfin l'ORACLE DE TRAME DISCRIMINANT (celui qui manquait au
+type 36) — décoder l'événement EN ENTIER, lire le bit de continuation, puis la trame, et
+mesurer sa PROFONDEUR (records/paquet), comparée à un témoin décalé de +3 bits. LEÇON : la
+métrique discriminante est la PROFONDEUR, pas le taux de fermeture (au témoin, la trame se
+ferme trivialement en 0 record sur un faux marqueur → taux de fermeture trompeusement haut).
+
+**Résultats chiffrés (2 films de référence)** : profondeur **2,2-2,4 records/paquet** au bon
+cadrage (≈ 0xA0 tick 2,9) contre **0,17** au témoin +3 bits = **facteur 13, TENU**. Le build
+ancien 06dfe6d9 (grammaire composants différente) rend moins — effet de build, hors sujet.
+Rendu produit : SOURCE 10-11 tags distincts (arme/effet), DÉGÂT groupé, PARTICIPANTS ref0/ref1
+domaine 1 (22-24/15-21 distincts = blessé/responsable), VICTIME domaine-0 finale 6-15 %.
+**C'est la voie touches : chaque damage_aftermath = un coup au but, avec source + magnitude +
+participants. 872k sur le corpus.** Deux bugs corrigés en route (bit de continuation oublié ;
+oracle masques 1-7 saturé → bascule sur la profondeur).
+
+**Suite (deux tâches en parallèle, demande user)** : (A) DÉGÂT EN CLAIR RÉSOLU — magnitude =
+dq(R(5), 0, DAT_143cd8454=16.0) sur 32 niveaux, porte d'échelle = Kscale=DAT_143cd84ec=-1.0 =
+BIT DE SIGNE (positif=dégât, négatif=SOIN/recharge). Mesure : moyenne ~1,5 sur [0,16], 10-19 %
+négatifs. Câblé (lot1Dequant). (B) CALIBRATION VISÉE type 36 INCONCLUANTE (publiée telle
+quelle, TestLot1ViseeCalibration) : balayage de la longueur post-visée, AUCUN pic net (meilleur
+K = 1,30 record/paquet, ratio médiane 1,2× vs 13× pour damage) — les champs post-visée sont de
+longueur variable, ce qui étale le balayage. Visée toujours plausible non prouvée ; la prouver
+demande de décoder les champs post-visée du type 36 en entier (comme damage_aftermath).
+
+**CORRECTION (challenge user « on gère déjà la visée ») — la visée est RÉELLE et PROUVÉE** :
+`fire_events.go` la lit à l'offset FIXE bit 113 pour 19 % des records. Oracle géométrique
+(`TestLot1ViseeCompare`) : une vraie visée est concentrée près de l'horizontale (E petit sur un
+axe), le bruit est uniforme (E~0.5). Mesure 2 films : **fire@113 : E|x|=0.27, E|y|=0.79, part
+x<0.3 = 70 % = STRUCTURE NETTE = vraie visée**, alors que ma position modèle-M (~80-81) et le
+contrôle sont au niveau du bruit. VERDICT TENU. Donc mon « inconcluant » ne portait PAS sur la
+visée mais sur MA reconstruction : bug de cadrage de ~32 bits entre l'arme et la visée (fire
+lit l'arme sur 64 bits @44/76, mon modèle sur 32 → visée 32 bits trop tôt sur du bruit ; en
+plus ma position est variable là où la vérité est fixe à 113). **La visée est acquise
+(fire_events fait foi)** ; mon décodeur type 36 a juste un résidu de cadrage post-arme, redondant
+avec la victime de damage_aftermath.
+
+**Suite (challenge user « on a pas mieux que 19 % ? »)** : 3e workflow `type36-full-charge`
+(10 agents) a caractérisé la charge complète du type 36 (boucles composantes 35 bits/comp,
+cibles avec VICTIME R(3) domaine-6 valeurs 0..5 + vecteur 3*R(w) w∈{4,6,12} data-dépendant,
+ancre visée@113 cas vide confirmée). MAIS le cadrage N'EST PAS CLOS : (1) la grammaire workflow
+littérale trouve 0 cas vide (préambule décalé — mes 3 refs consomment de vrais bits omis par le
+workflow) ; (2) mon en-tête + arme forcée à 33/64/65/96 : la visée ne tombe jamais à 113 ni
+n'est structurée. Il y a ~27 bits entre type et attaquant@36 que ni mon en-tête ni le workflow
+ne reproduisent. VERDICT : la visée existe dans ~tous les tirs (pas une limite de donnée) mais
+la décoder hors cas vide demande de réconcilier exactement le préambule avec les boucles — NON
+RÉSOLU malgré 2 workflows. fire_events (19 %, cas vide) reste la source en prod. Expériences V2/V3
+supprimées (négatifs), findings dans la note.
+
+**Croisement (demande user) — RÉSOLU : la ref de dégât EST un slot joueur.** Ma 1re passe
+concluait à tort « handle runtime irrésoluble ». Le user a insisté (« on a pas déjà le
+slot-joueur ? ») → j'ai vérifié sur pièces. Le workflow avait montré victime = (gen<<30)|(base+
+index) ; je lisais l'index BRUT sans la BASE. Mesure `TestLot1VictimeSlot` : avec base ~512
+(= début de la plage des slots bipèdes), `base+index` tombe sur un BIPÈDE LIÉ (un joueur) dans
+**82,1 % (ref0) / 89,3 % (ref1) au meilleur réglage, 2 films**. Donc la ref domaine-1 est un
+index de bipède : `slot = biped_range_lo + index`, et slot→joueur est le pont EXISTANT
+(killsource/roster). Le maillon manquant n'était PAS slot→joueur mais la base. « Qui a été
+touché » devient NOMMABLE pour les 872 k dégâts (pas que les kills). RESTE : départager
+attaquant vs blessé (les 2 sont bipèdes) ; monde chronologique (killsource.timeline) pour monter
+le taux. LEÇON : quand le user dit « on a déjà X », vérifier sur pièces avant de conclure à
+l'impossible — ma conclusion « mur du handle » était fausse.
+
+**Agent Ghidra lancé** (demande user) sur le cadrage de la visée du type 36, à rebours depuis
+l'ancre fire_events (attaquant@36/arme@44-107/visée@113). En cours.
+
+**Conclusion / prochaine étape** : attendre le rapport de l'agent Ghidra pour le préambule visée
+(>19 %) ; le blessé par nom attend la résolution de handle domaine-1 (hors film). Note :
+`film_re/NOTE_MODELE_EVENEMENTS_2026-08-30.md`.
+
+## [2026-08-31] Percer la trame — les deux lecteurs composites du type 36 PERCÉS (workflow) ; en-tête tir PROUVÉ, visée plausible non prouvée — En cours
+
+**Contexte** : ultracode. Workflow multi-agents `type36-subreaders` (11 agents, 0 erreur,
+821 k tokens) : décompilation parallèle + vérification adverse au DÉSASSEMBLAGE + synthèse des
+deux lecteurs composites de la charge du type 36 (FUN_1406cd5b8, FUN_1408eff64). Une
+correction adverse intégrée (le vérificateur de FUN_140c9eabc a rendu confirmed=false et
+corrigé la grammaire). Grammaires câblées (lot1SkipCd5b8/lot1SkipEff64).
+
+**Décision technique** : valider par ORACLE DISCRIMINANT, pas par le vecteur de visée (qui
+s'est révélé NON discriminant à 30 bits — 6·gridSize²≈2³⁰, un offset faux valide aussi 100 %,
+mesuré). Oracle retenu : le champ catégoriel (peu de valeurs distinctes au bon offset,
+beaucoup pour du bruit).
+
+**Résultats chiffrés (2 films)** : (a) EN-TÊTE PROUVÉ — l'arme (variant_name) est catégorielle
+à **11,0 %** de distinctes (27/245) et **10,9 %** (30/276) contre un témoin de bruit à
+**79-81 %** ; type=36 et attaquant présents 100 %. Le tireur et son arme se décodent bit-exact
+pour les 2,5 M d'action_weapon_fire. (b) VISÉE R(30) PLAUSIBLE NON PROUVÉE — vecteur valide
+240/240 mais oracle non discriminant ; oracle catégoriel du code faiblement favorable (50,8 %
+vs 56,2 % ; 26,7 % vs 34,2 %) non concluant. Les composites ont une grammaire RE-vérifiée
+(chaîne indépendante) mais leur validation bout-en-bout attend l'ORACLE DE TRAME.
+
+**Conclusion / prochaine étape** : poser le juge définitif = décoder l'événement 36 EN ENTIER
+(champs post-visée + largeurs runtime calibrées par balayage) puis la TRAME de records, et
+vérifier masques 1..7 (99 % bon cadrage vs 10 % hasard) — le seul oracle discriminant pour
+les composites+visée. NE PAS surestimer la visée avant. Note :
+`film_re/NOTE_MODELE_EVENEMENTS_2026-08-30.md`.
+
+## [2026-08-30] Percer la trame — LE MODÈLE DE PAQUET EST PERCÉ : [config][liste d'événements][trame] — et la LUNETTE REVIENT dans la bobine — Complété (modèle établi)
+
+**Contexte** : lot 1, poursuite en autonomie. Après la levée de réserve à monde propre
+(0xC2 k=6 confirmé 99,3 % identique ; 0xC0 k=9 NET sur 2 films ; 0xD2/0xD3 en pelotons
+serrés = largeur VARIABLE), la mesure des largeurs par paquet a fait apparaître la
+structure : bits 2..8 = un R(7) dont la valeur tombe pile sur la table des types du lot E.
+
+**Décision technique** : formuler le modèle M — paquet delta = [1 bit configuration]
+[liste d'événements (grammaire E PROUVÉE au désassemblage : continuation, R(7) type,
+3 réfs gardées par domaine, charge)][trame de records] — et le tester DE BOUT EN BOUT sur
+la famille à charge fixe la plus courte : 0xCA = type 21 unit_zoom (charge R(2) ; domaines
+des réfs lus dans l'exe : vtable+0x58 du descripteur → 4/8/7 → R(9)/R(13)/R(13)).
+
+**Résultats chiffrés** (TestLot1EvenementZoom, 2 films × 12 chunks, critères écrits avant) :
+type lu = 21 sur **97/97 et 86/86** paquets 0xCA ; réf0 (l'unité) présente **100 %** ;
+charge = **{0,1} uniquement** = niveaux {−1, 0} = **paires entrée/sortie de lunette**
+(50/47 et 48/38) ; après l'événement, la TRAME se ferme à 37,8 % (témoin 0xA0 : 36,3 %) et
+20,0 % avec masques 1..7 à **99,4 % / 99,3 %** — M3 TENU deux fois. Chaîne 2 indépendante :
+l'arithmétique octet0 = 0xC0|(type>>1) tombe juste sur TOUTES les familles (0xD2→36
+action_weapon_fire, 0xD3→38/39 reload/throw-grenade, 0xC0→0/1 damage_aftermath,
+0xC2→4/5 projectile_detonate, 0xE9→82/83…). **Modèle établi — deux chaînes sans étape
+commune.**
+
+**Conséquences lourdes** : (1) **la conclusion « aucun événement de zoom dans la bobine »
+(chantier visée, négatif triple-verrouillé) est RÉFUTÉE** — les trois chaînes du négatif
+partageaient le même décalage d'un bit (type = octet&0x7F au lieu de bits 2..8) ; ~400 k
+événements unit_zoom sur le corpus, avec l'unité en réf0 ; (2) 0xD2 = action_weapon_fire
+(la charge du type 36 = cible pour visée complète + victime) ; (3) le « gisement 0xD3 » =
+recharges + amorces de grenade ; (4) 0xC0 (983 k) = damage_aftermath, gisement dégâts ;
+(5) le mystère « en-tête par famille » est dissous : c'était la longueur de l'événement de
+tête. Note : `film_re/NOTE_MODELE_EVENEMENTS_2026-08-30.md`.
+
+**Suite de nuit — corpus + type 36 + voie précision (demande user)** : (a) passe corpus
+1 367 films : distribution des types de tête 100 % plausible, fermeture arithmétique
+weapon_reload 404 027 + biped_throw_initiate 124 235 = 528 262 = le compte historique de
+0xD3 ; biped_pickup 236 860 (utile chantier ramassage) ; PlayerKilledEvent 108. (b) Charge
+du type 36 décompilée : squelette complet consigné — variant_name R(32) = l'ARME (nommée
+dans l'exe), boucle cibles avec réf DOMAINE 6 = LA VICTIME, visée R(30) TOUJOURS présente
+en mode film ; comptes résolus (code à préfixe) ; domaines réfs = 1 (ATTAQUANT, sonde), 8,
+7. (c) VOIE PRÉCISION consignée (demande user en cours de session) : touches = n2 cibles
+du type 36 (+ damage_aftermath 872 k) ; dénominateur = décréments munitions i37 ;
+mesure préliminaire 000d5950 : type=36 245/245, attaquant 245/245, 27 armes propres,
+comptes lus à 98 % toutVide — RÉSERVE : à juger par la visée R(30) une fois
+FUN_1406cd5b8/FUN_1408eff64 résolus, ne pas bâtir avant.
+
+**Suite (31/08) — le juge visée + véhicules (demande user)** : (a) le contrôle décisif est la
+visée R(30) en bout de chaîne du type 36. Cas modal (0 cible, 0 composante) : 229/240 ont des
+portes non vides dans les deux sous-lecteurs COMPOSITES (FUN_1406cd5b8, FUN_1408eff64) donc
+sautés ; les 11 restants donnent **11 vecteurs unitaires VALIDES / 11** — signal positif mais
+n trop faible, il faut fermer les deux composites (forme lue : R(1) porte + tag R(2) +
+R(32)/R(6) selon tag) pour lever les 229. NE PAS conclure précision avant. Sous-lecteurs
+résolus : FUN_141fcf670=R(7)+R(1), FUN_1406d00ec=[R(1):-1|R(2)], FUN_14080cc68=deux comptes
+(code à préfixe), FUN_1407ef8e4=R(3), FUN_1407f0278=R(2). (b) VÉHICULES (corpus, octets
+corrigés — piège base 0xC0 pas 0x80) : embarquement (type 8) 374 sur 154 films, sortie
+(type 22) 5 600 sur 279 films, enter (53) 0 ; siège R(6) et occupant (ref0) décodés
+proprement. Entrées ET sorties présentes et lisibles.
+
+**Conclusion / prochaine étape** : fermer FUN_1406cd5b8 + FUN_1408eff64 champ par champ pour
+lever les 229 sautés et porter le n de la visée à quelques centaines (le vrai verdict
+précision) ; associer réf0 aux joueurs ; puis décodeur type 36 confronté au golden killsource.
+Le user est informé et très demandeur (touches, pickups, véhicules).
+
+## [2026-08-30] Percer la trame — lot 1 suite : cadrage 0xC2/0xD2 ÉTABLI sur 2 films, RÉTRACTATION du DEL de tête — En cours
+
+**Contexte** : poursuite du lot 1 (session du soir). Trois instruments ajoutés au même
+fichier de recherche, un négatif publié pour chacun des deux qui ne tranchent pas.
+
+**Décision technique principale** : ne retenir comme arbitre QUE le discriminant de masques
+par famille (84,8 % vs 10,7 %), après avoir mesuré que (a) le cadrage PAR PAQUET diverge à
+en-tête identique (k=7/13/15/20 sur la même tête ; 0xE9 : 0 k acceptable sur 255 paquets) et
+(b) l'inférence de chaîne est NON CONCLUANTE par défaut d'instrument (métrique « fin propre »
+gagnée par les trames vides ; lecture au-delà du payload) — deux négatifs publiés tels quels.
+
+**Résultats chiffrés** : le balayage à discriminant de masques SE REPRODUIT sur `00502e52` :
+0xC2 -> k=6 (98,4 %, n=62 ; 99,3 %/135 sur 000d5950), 0xD2 -> k=8 (98,2 %, n=57 ; 86,2 %/80),
+témoin 0xA0 -> k=2 (99,4 %/23 658). **Cadrage établi sur deux films.** RÉTRACTATION : le
+« record DEL de tête » du commit précédent était un artefact du cadrage k=2 ; sous le cadrage
+propre, le 1er record est un DELTA sur un slot transitoire NON LIÉ (172/245 sur 0xD2@8,
+183/183 sur 0xC2@6, 125/125 sur 0xD3@6). 0xD3 : k=6 sur les deux films mais faible
+(41,5 %/36,5 %) — en-tête plus complexe, ouvert. Ghidra : la lecture normale tourne en
+branche B du record-loop (FUN_1428e24bc, chemin de restauration, force DAT_14474cd78=0 puis
+restaure) ; la largeur d'identifiant vient d'une table sélectionnée par le bit 0 du paquet
+(source runtime du IDLowBits calibré : 11/14 selon film). Le 2e bit d'amorce reste non
+localisé statiquement (blocs « unreachable » désassemblés : nettoyage seulement).
+
+**Carte des composants (décodage intégré, monde unique, chaque famille sous son cadrage)** :
+les records aboutis de 0xD2 portent game-engine-screen-sequence, tacmap-areaofinterest,
+player-waypoint/vehicle-entrance-ban, et un record **ti=37 (équipement) avec
+object-dead-state-component i11** + equipment-control-signal/energy-delay — profil
+« événement d'objet/équipement », cohérent kill-events. RÉSERVE D'INSTRUMENT consignée : le
+balayage d'amorce partageait son monde entre familles décodées au même k (0xC2 : 135 records
+au balayage, 0 au décodage intégré propre) — les k gagnants tiennent (2 films, marges
+nettes), les POURCENTAGES sont à re-mesurer à monde propre avant de bâtir dessus.
+
+**Conclusion / prochaine étape** : table de synthèse publiée dans le miroir Notion (demande
+utilisateur), avec la réserve. Suite du lot 1 : re-mesure du balayage à monde propre, percer
+l'en-tête famille (6 bits sur 0xC2… que signifient-ils), faire tomber les familles NON
+CONCLUANT (plus de chunks/films), puis décoder les records après le transitoire de tête sur
+0xD2/0xD3 et confronter au golden killsource.
+
+## [2026-08-30] Percer la trame — lot 1 ouvert : DEL de tête sur 0xD2/0xD3, vues 2/3, et l'amorce qui varie par famille — En cours
+
+**Contexte** : plan `.ai/V7.5/PLAN_PERCER_TRAME_FILM_2026-08-30.md`, lot 1 (les 528 262
+paquets 0xD3 écartés). Branche `wt/trame-film`. Trois instruments sous garde `LOT1_TRAME_FILM`
+(`lot1_familles_trame_research_test.go`), témoin calibré `000d5950`, 12 chunks.
+
+**Décision technique** : confirmer d'abord POSITIVEMENT le modèle de trame (point 6 laissé
+ouvert par le lot D) en rejouant `DecodeFrameRecords` par famille de premier octet, référence
+interne 0xA0 ; puis départager les cadrages par le discriminant établi (masques 1..7 : 84,8 %
+sous la bonne grammaire, 10,7 % au hasard).
+
+**Résultats chiffrés** : (1) L1-C1 TENU pour 0xD2 (34,3 % de fermetures propres vs seuil
+18,1 %), 0xD3 RATE de 2,1 pts (publié) ; L1-C2 TENU pour 0xD3 : 47 slots distincts du 1er
+record (les « 50 » du lot D, recoupés sans étape commune). **Les trames 0xD2/0xD3 commencent
+100 % par un record DEL d'une entité TRANSITOIRE** (jamais déclarée par une image-clé —
+profil projectile) ; 0xD2 recycle 12 slots. (2) Les familles « vides » (0xC0/C2/C3/C4/C7,
+100 % fermées à 0 record, payload non lu) portent leurs records dans les VUES 2/3 :
+`DecodeFrameViews(3)` rend 454 records et ≥2 vues sur 100 % des paquets 0xC0 — réserve :
+l'inférence lit au-delà du payload (couverture > 100 %, records fantômes). (3) **L'amorce
+varie par famille** : k=2 gagne sur 0xA0 (témoin, 99,2 %/21 546), k=6 sur 0xC2 (99,3 %/135),
+k=8 sur 0xD2 (86,2 %/80, NET) — les familles à bit 2 = 1 portent un en-tête supplémentaire
+propre à la famille. Décompilé FUN_1406cd128 : DEUX grammaires de record-loop (global
+DAT_14474cd78), la 2e à largeur d'id dépendant du bit de configuration du paquet.
+
+**Conclusion / prochaine étape** : le gisement 0xD3 s'ouvre par la sémantique de cet en-tête,
+pas par des offsets figés. Ordre écrit dans `film_re/NOTE_FAMILLES_TRAME_2026-08-30.md` :
+(a) sémantique de l'en-tête (piste Ghidra ci-dessus), (b) re-balayage sur plus de chunks pour
+les familles NON CONCLUANT, (c) décodage des records suivants de 0xD2/0xD3 et confrontation au
+golden killsource (garde-fou du plan). Lot 2 non ouvert (ordre du plan respecté).
+
+## [2026-08-30] Percer la trame — lot 3 : le registre fait 50 blocs, pas 118 — Complété
+
+**Contexte** : plan `.ai/V7.5/PLAN_PERCER_TRAME_FILM_2026-08-30.md`, lot 3 (à faire en premier).
+Conflit : le dossier tenait 118 blocs d'archétype, le lot D en trouvait 50. Branche
+`wt/trame-film`, worktree dédié `LevelUp-wt-trame-film` (wt-visee occupé par une autre session,
+restitué intact après une bascule de branche malencontreuse de ma part, annulée).
+
+**Décision technique** : `parseRegistry` s'arrête désormais à la FIN STRUCTURELLE du registre
+(helper `registryBlockTail` : suite de slots nommés, slot de terminaison dont seul `flags` peut
+être non nul — c'est le niveau « un cran plus loin » du décalage R7-e —, zéros jusqu'au bout du
+bloc). Le « 118 » était `len(fichier)/taille_bloc` : il annexait table par type, identification
+du build et corps du match au registre.
+
+**Résultats chiffrés** (instrument `lot3_registre_compte_research_test.go`, 1 367 films) :
+C1 fin structurelle = bloc d'identification : 1362/1362 (100 %). C3 builds `HI_1_12/13` :
+50 blocs, 1 067 slots sur 1253/1253. Builds antérieurs : 49 blocs, 1 029..1 034 slots
+(`06dfe6d9` : 49/1 031, empreinte `0x5827362c37d2adb3` inchangée). C2 (prévalence prédite
+< 1 %) RÉFUTÉ et publié : 397 films (29 %) portaient 541 slots fantômes, 100 % au-delà du bloc
+d'identification (C2') — l'alerte « empreinte inconnue » se déclenchait à tort sur eux, dont
+`00162144` que G2 n'avait jamais vu (ROUGE dès qu'on le lui donne, slot « B » bloc 71).
+Goldens killsource : 98 kills publiés, accord 85/0, ancres Theater, contrôle négatif INCHANGÉS ;
+4 compteurs de diagnostic ±1 (plus d'essais sur 68 archétypes vides), régénérés. Gates :
+filmdec/replay/killsource verts (fixtures armées), gofmt/vet/golangci 0.
+
+**Conclusion / prochaine étape** : l'inventaire 325 noms / 1 067 couples est CONFIRMÉ corpus
+entier — rien à rouvrir côté lunette. Doctrine corrigée (commentaires 118→50, 116→49). Détail :
+`film_re/NOTE_COMPTE_REGISTRE_2026-08-30.md`. Suite : lot 1 (les 528 262 paquets écartés).
 
 ## [2026-08-28] Rejeu Oddball — 4 lots intégrés dans feat/v75 (score par joueur/manche, deux-DinoR00, bandeau par manche, crâne socle) — Complété
 
@@ -86900,3 +87546,424 @@ Le releve est desormais complet et chaque case est fermee par une mesure :
 **Prochaine etape** : le plancher de l'anneau ti=12 (1 000 tirages nuls, instrument deja ecrit
 par le lot) — c'est la DERNIERE piste film pour l'armement. Si elle tombe : meche constante,
 mesurable une fois pour toutes depuis les 28 couples (fin d'anneau, explosion) deja dates.
+## [2026-08-31] Visee modale CABLEE EN PRODUCTION — le plafond 19 % tombe pour le rejeu 2D
+
+**Statut : Complete.** Branche `wt/trame-film`, worktree dedie `LevelUp-wt-trame-film`. Suite de
+la percee `8a8aa3239` (NOTE_VISEE_TIR_2026-08-31). La visee modale, prouvee sur 5 films, est
+desormais posee par le decodeur de PRODUCTION.
+
+**Verdict RE-CONFIRME sur 3 films avant tout code** (TestLot1ViseeGhidra, garde LOT1_TRAME_FILM,
+12 chunks) : post-comptes = 111 sur 100 % des records a visee vide (33/33, 143/143, 48/48), donc
+visee a post-comptes+2 = 113 = exactement ce que fire_events lisait deja. Concentration de l'axe
+du GAIN 97-99 % contre controle 18-35 %. TENU partout.
+
+**Decision technique.** Nouveau fichier `filmdec/fire_aim_modal.go` : decodeur forward
+`modalAimBit` qui porte la grammaire Ghidra (FUN_14080C1F8) avec la polarite du champ d CABLEE EN
+DUR (saut R(5) si garde==0) et SANS les deux lecteurs composites (parasites dans le chemin modal).
+Il rend la position post-comptes+2 pour un record modal (0 cible, 0 composante), ou ok=false pour
+non-modal / court / bloc-horodatage. `decodeFireEvent` : (1) chemin fixe historique inchange
+(flags vides -> bit 113, ancre, zero regression), (2) extension modale via le forward SOUS garde
+`!e.HasAim`, donc strictement additive. Lecture centralisee `readAimAt` (bornee) partagee par les
+deux chemins.
+
+**Le piege de test traite.** L'ancienne premisse « visee non lisible hors du chemin sur » n'est
+plus vraie que pour les records reellement NON MODAUX. Deux tests qui construisaient des paquets
+a offsets fixes (surtout des zeros) se decodaient par hasard en modal et recoltaient une visee
+parasite : `TestDecodeFireEventAimGatedOff` (fire_events_test) et `TestFireRecordAimOnlyOnTheSafePath`
+(event_decoders_test) reconstruits pour utiliser des records reellement non modaux (>= 1 cible /
+composante, construits a la grammaire) que le forward refuse. Ancre `TestDecodeFireEventLayout`
+gardee VERTE. Nouveaux tests `TestModalAimBitWalksRealisticHeader` (en-tete realiste : 3 refs +
+d/e/f) et `TestModalAimBitOnMinimalRecord` : visee lue a post-comptes+2, valeur relue correcte.
+
+**Resultats mesures.** Couverture FireEvent HasAim (12 chunks temoins) : 33->210 (x6,4), 143->491
+(x3,4), 48->218 (x4,5). Sur le film de reference COMPLET 000d5950, tirs publies avec un cap de
+visee : **90 -> 401** (x4,5) sur 483 tirs. Goldens rejeu regeneres (fixture inputs + assembly) :
+diff du golden d'assemblage = UNE seule ligne (la ligne de cap), tout le reste inchange
+(rattachement 483/519, armes 483, projectiles 439) — donc tirs existants strictement inchanges.
+Tests filmdec + replay VERTS, go vet propre, gofmt applique.
+
+**Reserve (agent Ghidra, JUSTE, inchangee).** Les records NON modaux (>= 1 cible / composante) ont
+des boucles de largeur runtime, non localisables hors ligne. La visee y reste inaccessible ; c'est
+le complement de la couverture modale.
+
+**Prochaine etape.** Possible : porter la couverture aux records non-modaux exigerait la table
+runtime `0x1451f98d0` (hors portee hors ligne). Gate visuel du rejeu 2D (le cap des tirs sur la
+carte) a la main de l'utilisateur.
+
+---
+
+## [2026-08-31] Recherche : vitalite du film (i4/i5) et « MODAL = RATE ? » — Complete
+
+**Statut : Complete.** Deux questions utilisateur tranchees sur pieces, deux instruments
+`_test.go` (garde `LOT1_TRAME_FILM`) + NOTE `.ai/V7.5/film_re/NOTE_VITALITE_ET_MODAL_2026-08-31.md`.
+Perimetre `internal/analysis/filmdec`. Corpus 000d5950 / 01e1f945 / 00502e52. gofmt + go vet verts.
+
+**Q1 — la vitalite du film est-elle une decouverte, ou ce que le rejeu affiche deja ?** VERDICT :
+i4 (`object-body-vitality`, sante, [-1,1]->frac[0,1]) et i5 (`object-shield-vitality`, bouclier,
+[0,4]->frac[0,1], surbouclier = quantum brut Q>64) sont EXACTEMENT `BipedPosition.HealthAt()` /
+`ShieldAt()` — que le rejeu 2D publie DEJA en `Point.Hp`/`Point.Sh` (`replay/build.go:647-651`,
+`replay/document_aim.go`), alimente par `ScanFilmBipedPositions(CaptureDirs)` (build.go:218). Ce
+n'est PAS une source distincte ni plus precise : c'est la vitalite canonique du film, deja cablee.
+Mesure (instrument `lot1_vitalite_source_research_test.go`) : couverture sante ~0,5-0,6 %,
+bouclier ~16-28 % (le film ne replique la vitalite qu'au CHANGEMENT — structurel, pas un defaut) ;
+temoin de forme i5 tous dans [0,64] sauf le film a surbouclier (01e1f945, 6,6 % Q>64, jusqu'a 3,5).
+La fiche PRODUIT (match view web) est une AUTRE surface : agregat API `DamageDealt`/`DamageTaken`
+(`sync/transforms.go:323`, `sync/schema.go:219`), pas la vitalite par instant du film.
+
+**Q2 — « modal = rate ? »** VERDICT : « MODAL != RATE » TENU sur 3 films. Un tir modal (0xD2 t36,
+0 cible 0 composante) PEUT toucher ; son coup au but est range dans un `damage_aftermath` (0xC0 t0)
+SEPARE. Instrument `lot1_modal_touche_research_test.go` : appariement attaquant(ref0 tir) vs
+responsable(ref1 degat), meme espace domaine-1, fenetre +/-250 ms, soins exclus. Discriminant = le
+RATIO au temoin decale (T+3s), PAS le taux absolu (plafonne par la densite des degats). Coincidence
+meme-tireur : AVANT 1,6-16,2x le temoin, ARRIERE 4,9-18,2x. Nuance chiffree : taux absolu partiel
+(16-21 % a +/-250ms, 28-33 % a +/-500ms) car (a) damage_aftermath sous-replique, (b) vrais rates
+existent. On tranche : la partie « coup au but » n'est JAMAIS dans le tir modal — elle vit dans le
+0xC0.
+
+**Correction de metrique assumee.** Le seuil ABSOLU pre-enregistre (>=25 %) etait le mauvais
+discriminant (il teste la densite d'echantillonnage, pas l'hypothese) ; remplace par le ratio
+au temoin decale (avant+arriere), documente dans l'en-tete de l'instrument et la NOTE. L'instrument
+ne « fail » jamais (readout t.Logf) — revision transparente, pas un gate desactive.
+
+**Decouverte notee, NON traitee (hors perimetre).** L'en-tete de `filmdec/fire_events.go` affirme
+« il n'y a pas de record de tir manque » ; en tension avec 57-86 % de tirs modaux pour ~16-20 % de
+coincidence degat meme-tireur. Coherent avec un `action_weapon_fire` emis a chaque tir (touche OU
+rate). A revoir si le sujet revient.
+
+**Prochaine etape.** Rien de bloquant. Le lien exact tir->victime reste hors portee hors ligne
+(boucles cibles/composantes = largeur runtime, table 0x1451f98d0).
+
+## [2026-08-31] Sonde de fiabilite « precision par arme et par distance » depuis le film — Complete
+
+**Statut : Complete** (branche `wt/trame-sonde`, worktree dedie).
+
+**Decision technique.** Instrument `filmdec/lot1_sonde_precision_research_test.go`
+(`TestLot1SondePrecisionDistance`, garde `LOT1_TRAME_FILM`, un film/process, borne 12 chunks),
+COMPOSITION pure des decodeurs existants (aucune reimplementation) : `ScanFilmFireEvents` +
+grammaire de reference type 36 (`variant_name`) cote tir, `lot1DecodeDamageAftermath` +
+`lot1RefDom1` cote degat, `ScanFilmBipedPositions` cote positions. 7 mesures sur 000d5950
+(Cliffhanger), 01e1f945 (Catalyst), 00502e52 (Bazaar). NOTE :
+`.ai/V7.5/film_re/NOTE_SONDE_PRECISION_DISTANCE_2026-08-31.md`.
+
+**Resultats observes.** M1 arme (variant_name) categorielle (11-30 distinctes), FilmIndex=8
+(plausible). M2 source presente 100 %, tag `399949091` commun Cliffhanger+Bazaar. M3 JOIN
+tir<->degat = 0 % sur les 3 films, toutes cles : espaces d'id DISJOINTS (confirme
+components_object.go 0/786) -> table `source de degat -> arme` requise. M4 resolvabilite 96,1 /
+73,0 / 97,3 % (base 512, calibree sur le pic de resolvabilite ; l'argmax structurel est instable).
+M5 distances physiquement ordonnees (medianes courte/longue portee coherentes). M6 (test central) :
+biais NON UNIFORME — cote positions aucun biais (~100 %), mais cote REFS certaines sources
+frequentes ne portent AUCUN handle d'en-tete (ex. `3655071589`, 62 degats Cliffhanger, 0 % capture)
+et disparaissent de la forme. M7 degats/tir varie x15 entre films (0,05-0,78) : sous-replication
+massivement film-dependante.
+
+**Verdict.** (a) distance des touches par arme = FAISABLE mais BIAISEE (exclure/annoter les sources
+sans refs avant livraison). (b) precision par arme = PAS ENCORE (join impossible sans table, +
+biais residuel, + petit echantillon a recaler sur le total API). Cle d'arme qui joint : NON.
+
+**Gate.** gofmt clean, `go vet ./internal/analysis/filmdec/` vert (GOCACHE prive), test `ok`
+(readouts t.Logf, aucun fail). Decouvertes notees, non traitees : batir la table source->arme,
+caracteriser les sources sans refs (`3655071589`, `95`).
+
+## [2026-08-31] Plan precision + distance par arme (film) — REDIGE
+
+**Statut.** Complete (plan, pas de code de prod). `.ai/V7.5/PLAN_PRECISION_ARME_DISTANCE_2026-08-31.md`,
+revu grille `plan-review`. Cible d'execution : feat/v75.
+
+**Mesure tranchee (detente vs balle).** Instrument neuf
+`filmdec/lot1_cadence_detente_research_test.go` (garde LOT1_TRAME_FILM, 12 chunks, -count=1).
+Espacement inter-tir par (tireur, arme) : MA40 auto UNIMODAL ~83ms (controle positif = 720 RPM),
+BR75 BIMODAL (intra-rafale ~67ms + inter-rafale 200-500ms sur 2 films). => le film emet un
+action_weapon_fire PAR BALLE, pas par detente. Denominateur film shots_decoded directement
+comparable a shots_fired API, aucune conversion rafale. Le seul ecart film<->API = echantillon
+partiel (~15% deficit), d'ou porte +-10% + recalage.
+
+**Decisions du plan.** Attribution PAR LE TIR (pas HitLikely mort, pas deconvolution, pas
+trajectoire). Denominateur deja en prod (match_weapon_shots). Ajout NUMERATEUR+distance dans table
+soeur append-only match_weapon_hits (grain match x joueur x arme, vue _latest, porte par-arme,
+decoder_rev distinct). W=1s (pas 250ms). Phase 1 = classe balle ; Phase 2 = classe lourde via
+damage_section_response type 1 (dependance externe). Calcul greffe sur la passe killcollector ;
+recalage API = lecture future hors perimetre. Capability film.weapon_hits (halo_infinite),
+absente h5.
+
+**A reconcilier (Lot 0).** Doc-header fire_events.go affirme 0xD2 = record de degat (touche =
+propriete de tous les records) — contredit par le pont M1 (0xD2 tir vs 0xC0 degat, appariement
+17-51%). Correction doc avant tout code.
+
+**Gate.** gofmt clean, go vet ./internal/analysis/filmdec/ vert (GOCACHE prive), les 3 films
+passent. Plan commite sur wt/trame-plan (plan(precision):), pas de push.
+
+## [2026-08-31] damage_section_response (type 1, 0xC0) — grammaire percée, enjeu armes lourdes RÉFUTÉ
+
+**Statut : Complété.** Worktree `wt/trame-type1`. Objectif : percer le type 1 de l'octet
+0xC0 (même octet que `damage_aftermath` type 0, bit de type R(7)=1) et tester si les armes
+LOURDES (SPNKr, Hydra, Skewer, Ravager, Shock, Mangler, Stalker, Bulldog, Fuel Rod) —
+qui affichent 0 % de touches en type 0 — attribuent leur dégât via le type 1.
+
+**Décision technique.** Ghidra : descripteur `0x144724f78` → vtable `0x143d0fa10`. Domaines
+d'en-tête (`vtable+0x58` = `FUN_14080a048`, switch) : ref0 dom1, ref1 dom8, ref2 dom7 (type 0
+était dom1/dom1/dom7 = DEUX entités ; type 1 n'en a qu'UNE). Charge (`vtable+0x68` =
+`FUN_140968368`, 28 o) désassemblée au bit : `R(5) ; R(1) g1 (polarité inversée, si 0: R(4)) ;
+R(3) ; R(1) g2 (si 1: R(19) direction unité, FUN_1406d8288 = 0 bit)`. Min 10 / max 33 bits.
+AUCUN tag source, AUCUNE magnitude, AUCUNE 2e entité. Instrument
+`lot1_degats_type1_research_test.go` (garde `LOT1_TRAME_FILM`, borné 12 chunks, oracle de trame
++ appariement tir↔type1, réutilise `attribCollectShots`, `lot1RefDom1/lot1RefDom`, `lot1chIsBiped`).
+
+**Résultats (3 films 000d5950 / 01e1f945 / 00502e52).** Type 1 RARE (55/22/42 paquets).
+Oracle : profondeur réelle 3.00/2.75/3.78 records/paquet vs témoin +3b 0.00 → grammaire
+VALIDÉE (TENU ×3). ref0 (dom1) présente 100 %, résout au biped base 512 = la VICTIME.
+ref1 (dom8) et ref2 (dom7) : présentes 0 % sur les 3 films → aucune référence d'attaquant.
+Armes lourdes : lien par clé ref0==attaquant ≤3,3 % (bruit), coïncidence dominée par le taux
+de base (armes non lourdes montent aussi haut) → VERDICT RATE ×3.
+
+**Conclusion.** Type 1 = réponse de section (section touchée + direction), PAS un dégât
+autoritaire, ne porte que la victime. Le trou de précision des armes lourdes RESTE OUVERT
+(ni type 0 ni type 1 exploitable ; piste ECS projectile/détonation hors périmètre). Garde-fou
+respecté : négatif chiffré, rien survendu. Gate : gofmt clean, `go vet
+./internal/analysis/filmdec/` vert (GOCACHE privé). NOTE :
+`.ai/V7.5/film_re/NOTE_DAMAGE_SECTION_RESPONSE_2026-08-31.md`.
+
+## [2026-09-01] Événements projectile : détonate/impact NE portent PAS le tireur — Complété
+
+Statut : Complété. Décision technique : percer `projectile_detonate` (0xC2 type 5) et
+`projectile_impact_effect` (0xC3 types 6/7) pour récupérer la précision des armes à projectile
+(SPNKr, Hydra, Skewer, Ravager, Shock, Mangler, Stalker, Bulldog) — 0 % de touches en type 0,
+type 1 réfuté. Ghidra : chaînes `projectile_detonate`/`projectile_impact_effect` confirmées,
+descripteurs 0x143d0bae8 / 0x143d0bb80, commutateur de domaine partagé 0x1408096ec, lecteurs
+de charge 0x1408096f8 / 0x1410f03b4. Résultat clé LU DANS L'EXE : le commutateur rend
+domaine 5 pour le slot 0 et ASSERTE (INT3) pour tout slot > 0 -> **une SEULE référence
+d'entité en en-tête** (vs dom1/dom1/dom7 de damage_aftermath). Largeur du domaine 5 =
+ceil(log2(capacité pool)) via table RUNTIME DAT_1451f98d0 VIDE en statique -> calibrée par film
+(invariant « slots 1+2 absents » : w=8, 8, 10). Charge : `variant-name` R(32) (tag de variante
+PROJECTILE, pas arme). Résultats film (000d5950/01e1f945/00502e52) : (1) ref0 = pool projectile
+étalé (67-179 distincts, 0..1001), n'atterrit sur AUCUN bipède -> c'est le projectile, pas le
+tireur ; (2) variant-name ~96-100 % distincte -> non catégorielle, 0 % ∩ variantes de tir ->
+ne nomme pas l'arme ; (3) coïncidence temporelle tir lourd ↔ événement NON discriminante
+(événements denses, témoin +3 s à 23-38 %, bilan lourdes 1,3-2,0× seulement, un film sous le
+témoin). CONCLUSION : comme le type 1, ces événements ne permettent PAS d'attribuer les armes
+à projectile à leur tireur/arme. Seule piste résiduelle (handle projectile dom5 -> tir
+d'origine) NON franchissable hors ligne (table runtime absente). Trou de précision armes à
+projectile RESTE OUVERT. Garde-fou respecté : négatif chiffré, rien survendu. Instrument :
+`internal/analysis/filmdec/lot1_projectiles_research_test.go` (+ `_helpers_test.go`), garde
+`LOT1_TRAME_FILM`, borné 12 chunks. Gate : gofmt propre, `go vet ./internal/analysis/filmdec/`
+vert (GOCACHE privé). NOTE : `.ai/V7.5/film_re/NOTE_PROJECTILES_2026-08-31.md`.
+
+## [2026-09-01] Côté VICTIME : aucun champ répliqué « dernier attaquant » non-fatal — Complété
+
+Statut : Complété. Question (utilisateur) : le bipède réplique-t-il, côté VICTIME, un champ
+« dégât reçu / dernier attaquant » portant l'INSTIGATEUR d'un coup (explosif compris), mis à jour
+à CHAQUE coup et pas seulement à la mort ? Réponse : NON — le struct existe dans le MOTEUR mais
+c'est une valeur RUNTIME, pas un composant répliqué. Preuves : (1) GHIDRA — famille de getters de
+reflection/script `Unit_GetReceivedDamage_{WeakDamageOwnerObject 0x143c58f78, WeakDamageOwnerPlayer
+0x143c58e10, WeakDamageSourceObject 0x143c58e40, TimeStamp, Normalized, Body, Shield}`, chaînes
+`.rdata` référencées comme DATA depuis la table de binding FUN_140e61df8 ; le struct DISTINGUE bien
+l'OWNER (tireur) de la SOURCE (projectile) et porte un TimeStamp (cache transitoire de RAM, écrasé
+par coup), mais ce sont des GETTERS — aucune réplication. (2) SCHÉMA — l'archétype bipède (ti=35)
+réplique EXACTEMENT 64 composants énumérés depuis le registre du film ; AUCUN nom ne matche
+received-damage/damage-owner/last-attacker/aftermath ; les seuls composants dégât sont i4 santé,
+i5 bouclier, i6 régions, i7 sections, i11 dead-state ; i6/i7 ne portent aucune réf ; i11 (dead-state)
+est le SEUL porteur d'un attaquant et c'est l'événement de LA MORT. Contrôle : aucun archétype de la
+table ECS n'a de composant received-damage/aftermath. (3) CORPUS (3 films, tous modes, 12 chunks) —
+la VITALITÉ est répliquée per-tick (bouclier i5 sur 14,9/25,5/15,3 % des records) mais i11 dead-state
+est quasi absent des records per-tick : 000d5950 (Fiesta) 0/77858, 01e1f945 0/70508, 00502e52
+1/73228, contre 190/44/150 touches (damage_aftermath 0xC0 type 0). Le pendant NON-FATAL du dead-state
+n'existe donc pas côté victime ; le film ne porte l'attaquant non-fatal que par l'ÉVÉNEMENT
+damage_aftermath, dont le « responsable » pour un explosif est le PROJECTILE (cf. explo_touches),
+pas le tireur — l'OWNER runtime n'est pas sérialisé. Confirme/complète projectile_owner (24d192ba5,
+« lien QU'À LA MORT ») : ni projectile vivant ni victime ne portent l'instigateur hors mort. La mort
+explosive reste couverte (i11/killsource 97,6 %). Garde-fou respecté : négatif prouvé sur pièces,
+distinction composant-répliqué vs valeur-runtime explicite, rien survendu. Instrument :
+`internal/analysis/filmdec/victime_degat_recu_research_test.go` (garde LOT1_TRAME_FILM, borné 12
+chunks, lecture seule). Gate : gofmt propre, `go vet ./internal/analysis/filmdec/` vert (GOCACHE
+privé). NOTE : `.ai/V7.5/film_re/NOTE_VICTIME_DEGAT_RECU_2026-09-01.md`.
+
+## [2026-09-01] PlayerGameEventSmall (0xE9, type 82) DECODE — pas de touche arme (Complété)
+
+Décision technique : décodage bit-exact du type 82 (~923 k événements corpus, jamais décodé),
+grammaire lue dans l'exe (descripteur PGES = objet 0x143d0ec18, refs d'en-tête domaines
+{0,8,7} via fonction 0x142ef7f6c calibrée contre damage {1,1,7}/fire, lecteur de charge
+FUN_14080add8 -> FUN_14080ae70). Charge = sac de propriétés nommées typées : R(32) A
+(type/enum) + R(8) B + liste [nom R(32) + sélecteur R(3) + valeur typée] + bloc « text »
+optionnel + R(32) masque final. Validé par l'ORACLE DE TRAME (même juge que damage_aftermath).
+
+Résultats (3 films, 12 chunks) : oracle TENU partout (3.16-3.37 records/paquet vs témoin 0.00) ;
+champ A catégoriel (16-31 valeurs distinctes, ~7-8 %, enum d'événement partagé 606/519/607/320) ;
+propriétés quasi absentes (0 sur 2 films, 70/364 à 1 propriété int32 sur le 3e) ; 0 intersection
+WeaponID sur 843 événements ; coïncidence événement<->tir AU NIVEAU/SOUS le témoin décalé ; refs
+d'en-tête absentes à 100 %. Conclusion : PlayerGameEventSmall = événements de jeu du joueur
+(médailles/score/mode), PAS un enregistrement de touche ; AUCUNE attribution tireur+arme, ne
+couvre pas les explosifs. Garde-fou respecté : négatif chiffré, rien survendu.
+
+Prochaine étape : trou touches explosives non fatales RESTE OUVERT (jointure de vol seule voie).
+Piste hors sujet : nommer l'enum du champ A (signal médailles/score) = chantier séparé.
+Instrument : `internal/analysis/filmdec/playergameevent_0xe9_research_test.go` (+ `_helpers_test.go`),
+garde `LOT1_TRAME_FILM`, borné 12 chunks. Gate : gofmt propre, `go vet ./internal/analysis/filmdec/`
+vert (GOCACHE privé). NOTE : `.ai/V7.5/film_re/NOTE_PLAYERGAMEEVENT_0XE9_2026-09-01.md`.
+
+## [2026-09-01] Jointure geometrique pour les touches explosives — Complete (resultat honnete, negatif sur le splash)
+
+Statut : Complete. Chantier trame-geo (worktree dedie, branche wt/trame-geo, GOCACHE prive).
+
+Objectif : attribuer les TOUCHES EXPLOSIVES non fatales a leur tireur par une jointure
+GEOMETRIQUE (visee i21 + positions + vitesse par arme), robuste au BTB, la ou la jointure
+temporelle seule echoue ; valider contre la verite terrain dead-state (tueur EnumB, 97,6 %).
+
+Decision technique : instrument `geo_explosifs_research_test.go` (+ helpers/measures/finder).
+Touche explosive = damage_aftermath 0xC0 a ref1 NON-bipede ; victime ref0 -> slot (base bipede
+DETECTEE par sweep, propre au film) -> position. Tir lourd = 0xD2 t36 (attaquant dom1 -> slot,
+FilmIndex, WeaponID). Score = alignement(visee, direction tireur->victime) + ecart de temps de
+vol. Pont d'identite roster(EnumA/B)<->FilmIndex appris des morts. Films : 000d5950 (Fiesta,
+cliffhanger), 00502e52 (bazaar), 4f77afc1 (BTB Forge 16 tireurs, bornes du canevas Forge
+partage [15,15,17] forcees via "flood gulch").
+
+Resultats : (M0) la visee est VALIDEE sur 3 cartes dont le BTB — angle visee->victime sur les
+degats DIRECTS = mediane 2,2 / 3,6 / 2,2 deg (79/84, 59/100, 16/17 sous 5-15 deg). Le pont
+visee+positions+base est correct, y compris grande carte Forge. (M2) MAIS l'explosif est du
+SPLASH : le meilleur alignement d'une touche explosive tombe a 45-90 deg pour ~94 % des cas
+(victime hors de l'axe de visee) ; touches confirmees < 15 deg = 2/34 (Fiesta, et ce sont du
+Stalker hitscan) et 0/5 (bazaar). L'aim-join attribue le DIRECT, pas le splash. (M3) verite
+terrain NON evaluable dans filmdec : la recolte de morts par trame propre rend 5 (arene) / 0
+(BTB) morts -> 0 touche fatale ; l'extracteur robuste (killsource) est hors paquet. Statut [!]
+bloque, a rebrancher sur killsource. (M4) pas d'echantillon ambigu : Fiesta a 1 seul tireur
+lourd/fenetre (ambiguite nulle), BTB Forge a des armes lourdes trop rares (0 touche coincidante).
+(M1) vitesse par arme non calibrable (2 hits, hitscan).
+
+Conclusion : la geometrie de visee est un excellent attributeur du DIRECT et un FILTRE
+anti-coincidence (94 % des appariements temporels sont a > 30 deg, non alignes), PAS un
+attributeur de splash. Attribuer l'explosif demande le POINT DE DETONATION (events 0xC2/0xC3,
+tireur du projectile non resolu) — piste vivante, l'aim-join ne la remplace pas. Rien survendu :
+negatif chiffre. Instrument : `geo_explosifs_*_test.go` (garde LOT1_TRAME_FILM / LOT1_CORPUS,
+borne 16 chunks). Gate : gofmt propre, go vet vert (GOCACHE prive). NOTE :
+`.ai/V7.5/film_re/NOTE_JOINTURE_GEOMETRIQUE_EXPLOSIFS_2026-09-01.md`.
+
+## [2026-09-01] Attribution des touches explosives par la PISTE DE DETONATION — Complété
+
+Statut : Complété (recherche, worktree wt/trame-deto). Décision technique : le splash frappe la
+victime HORS axe (~57 deg, non attribuable), mais le POINT DE DETONATION est SUR l'axe. Source
+fiable du point = dernière position répliquée de l'entité projectile ti=41 (ScanFilmProjectiles),
+PAS un événement 0xC2/0xC3 (qui ne portent pas de position). Piège corrigé : installer
+WorldObjectPrecision PAR CARTE (SetWorldObjectPrecisionFromLayout) avant tout scan projectile hors
+BuildFromFilm — sinon Forge [15,15,17] se décode à la mauvaise échelle (naissance 241 u -> 1,66 u).
+
+Résultats. M1 (coeur) : visée -> détonation alignée à 6,3 deg (M41 SPNKr arène) / 4,3 deg (Fuel Rod
+SPNKr BTB), témoin 61-85 deg ; le Stalker Rifle (HITSCAN, faux appariement à une grenade) ressort à
+109,6 deg et vitesse absurde 2,7 u/s -> à écarter par la ventilation par arme. M0 : naissance<->tireur
+1,36 u (arène) / 1,73 u (BTB) vs témoin 18-42 u. M3 : détonation -> tireur (alignement+temps de vol)
+juste à 98,2 % (arène) / 82,8 % (BTB) vs temporel 92,7/75,9 % vs témoin 18,2/6,9 % ; gain géométrique
+le plus net en BTB (sous-ensemble ambigu >=2 tireurs : 71,4 %). M4 (rattachement spatial des touches
+splash) REFUTÉ (couverture < 20 %, pic à -1 s = trou réplication<->impact) ; voie fiable = M3.
+
+Réserves : fiable pour projectiles DIRECTS seulement (grenades/cloche : réplication cesse avant la
+mèche) ; geoIsDirect sur-classe (Stalker, Bulldog = hitscan) ; 00502e52 sans lanceur, 01e1f945 base
+bipède 29 % -> inconclusifs. Instrument : deto_attribution_{research,helpers}_test.go (garde
+LOT1_TRAME_FILM, borne 16). Gate : gofmt propre, go vet vert (GOCACHE privé). NOTE :
+.ai/V7.5/film_re/NOTE_DETONATION_ATTRIBUTION_2026-09-01.md. Prochaine étape possible : lier la ref1
+non-bipède d'une touche au SLOT du projectile ti=41 (lien exact, non géométrique).
+
+## [2026-09-01] Verification adverse — attribution detonation->tireur->splash — Complété
+
+Rôle : REFUTER l'attribution de la note NOTE_DETONATION_ATTRIBUTION. Instrument étendu
+(deto_attribution_groundtruth_test.go, M5 vérité terrain + M6 confond ; garde LOT1_TRAME_FILM,
+override LOT1_MAXCHUNKS pour moissonner les films arène). gofmt/vet verts, GOCACHE privé.
+
+Décision technique : le M3 de la note valide detonation->tireur contre l'oracle NAISSANCE (tir
+lourd dont le tireur est le plus proche de la naissance du projectile) — oracle et gagnant
+géométrique dérivent des MÊMES tracks : coherence interne, PAS vérité terrain. La vraie preuve est
+le dead-state (EnumB = tueur). M5 relie chaque MORT à sa détonation source et compare 4 voies au
+tueur EnumB->FilmIndex.
+
+Résultats : (1) VERITE TERRAIN INDISPONIBLE — le harvest de morts par rejeu-par-chunk
+(geoCollectDamageKills, sans localisateur d'events) récolte 5/2/0/0 morts sur 000d5950/00502e52/
+4f77afc1 (une partie en compte ~50), 0 kill explosif appariable, 0 touche fatale non-bipède. Même
+plafond dans l'instrument établi geo_explosifs : sa section "M3 vérité terrain" a toujours été à 0
+évaluable. L'attribution n'a JAMAIS été confrontée au vrai tueur d'un kill explosif. (2) CONFOND
+NET (M6) : pic visée->détonation des vrais lanceurs 27/27 (arène) et 13/15 (BTB) sous 15 deg ; témoin
+visée+3s 3/14 et 4/12 ; témoin aléatoire diffus. L'alignement EST discriminant. (3) BTB #3 : géo
+82,8% vs temporel 75,9% vs témoin décalé 6,9% (vs oracle naissance) ; sous-ensemble ambigu 14/29 des
+détonations → géo 71,4%. Gain géo/temporel réel mais modeste (~7 pts), grand écart vs témoin. (4)
+SPLASH : rattachement touche<->détonation < 20% (arène), 0 (BTB) — réfuté, confirmé.
+
+Conclusion : l'attribution SURVIT comme PLAUSIBLE (cohérence interne forte + discriminant net +
+gain géo en BTB), NON PROUVÉE (aucun accord vérité terrain mesurable, harvest de morts data-starved
+in-package ; le walker validé 97,6% est dans killsource qui importe filmdec — cycle interdit). SHA à
+consigner après commit.
+
+## [2026-09-01] Precision par arme — pont d'indice num=denom (Lot 3, reserve levee) — Complété
+
+Tache : lever la reserve du Lot 3 (precision par arme) AVANT l'UI. Le numerateur (touches, film)
+keyait le tireur sur `filmdec.WeaponHitStats.FilmIndex` (`decodeFireEvent`, bits 36-40 >>1 = 4 bits),
+le denominateur (tirs, match_weapon_shots) sur `analysis.PlayerIndex5` (5 bits) ; le pont
+FilmIndex->xuid (`resolvePlayerIndices`) est keye sur le 5 bits. Si FilmIndex != PlayerIndex5, num
+et denom pointent des joueurs differents -> precision fausse, cassee en BTB.
+
+Decision technique : le 4 bits n'etait que la MOITIE BASSE du champ 5 bits (invariant algebrique
+`ShooterIndex5 & 0x0F == FilmIndex`). L'ancre paquet de filmdec place le champ au bit 35 du payload,
+qui coincide au bit pres avec `event_start+31` d'analysis. Correctif en couches (filmdec ne peut pas
+importer analysis, cycle) : `fire_events.go` expose `FireEvent.ShooterIndex5` (bits 35-39, R(5) sans
+>>1) + accesseur `ReadShooterIndex5` ; `ScanFilmWeaponShots` key le numerateur dessus. `FilmIndex`
+(4 bits) reste INCHANGE pour le regroupement visee de replay (pas de fix opportuniste hors perimetre).
+
+Resultats mesures (corpus film_chunks, arene 000d5950/01e1f945/00502e52 + BTB 4f77afc1) :
+- `TestWeaponIndexNumDenomEquivalence` (analysis) : mismatch 0 sur TOUS les records correles au
+  denominateur — 4342 records BTB + tous les records arene. Table de correspondance publiee : arene
+  idx4==idx5 (max 7) ; BTB idx5 atteint 23 (lobby 24) quand idx4 sature a 15, 1778 records idx5>=16
+  (les 8 paires 16-23 -> 0-7 que le 4 bits fusionnait). num-cle == denom-cle PROUVE.
+- `TestWeaponIndexGroundTruth` (filmdec) : arene = correction NO-OP (idx4==idx5, tables d'identite
+  identiques, non-regression) ; BTB = 4 bits structurellement insuffisant (distinct=16/max=15) la ou
+  le 5 bits couvre le lobby reel de 24 (distinct=24/max=23), preuve par denombrement. NB : l'heuristique
+  geoBuildIdentity est bruitee (non-injective des l'arene ou idx4==idx5) — son injectivite n'isole PAS
+  la largeur d'indice ; on mesure le signal non confondu (bornes d'indice).
+
+Gates : gate principal (filmdec/analysis/persist/killcollector/halo_infinite) VERT ; golden replay
+(`Golden|MiniFilm`) VERT (visee non regressee) ; integration -p 1 persist anti-ART VERT ; go vet +
+gofmt propres ; fichiers <500 L, fonctions <80 L.
+
+Conclusion : reserve §11 du plan LEVEE + doc-header `hits.go` mis a jour (verdict mesure). Num et
+denom keyent desormais identique (ShooterIndex5 == PlayerIndex5). SHA a consigner apres commit.
+
+## [2026-09-01] Remise chantier précision par arme — capability retirée, acquis conservés
+
+Statut : Complété (remise).
+
+Contexte : décision FERME du pilote/user. La précision PAR ARME dérivée du film est NON FIABLE
+(recalage aberrant : le pairing tir↔dégât rate ~40 %+ des touches, armes automatiques à 0,9-3,3 %
+vs ~40 % côté API — cf. `.ai/V7.5/film_re/RECALAGE_WEAPON_ACCURACY_FILM_2026-09-01.md`, commit
+`945c9fdb7`). On remise : garder les acquis backend, retirer l'exposition. La précision GLOBALE
+reste servie par l'API.
+
+Décision technique : retrait des 3 SEULS points d'exposition posés au Lot 3 (revert de l'ajout à
+Infinite ; Halo 5 reste le fournisseur natif de `weapon_accuracy`) —
+1. `internal/games/halo_infinite/adapter_data.go` : `games.CapWeaponAccuracy` (data-level
+   `match.weapon.accuracy`) `CapSupported` -> `CapNotExposed` (ferme la porte `collectHits` :
+   la passe film ne s'exécute plus pour Infinite).
+2. `config/titles/halo_infinite/mappings/capabilities.toml` : `"match.weapon.accuracy"`
+   `"supported"` -> `"not_exposed"` (restaure la cohérence avec la note existante sur
+   `film.weapon_shots` : « le taux est match.weapon.accuracy, et il est not_exposed »).
+3. `internal/domain/title/registry.go` : `CapWeaponAccuracy` (title-level `weapon_accuracy`)
+   RETIRÉE de la liste produit built-in d'Infinite -> `useCapability('weapon_accuracy')` web = false
+   -> charts a/c masqués pour Infinite.
+
+Conservé intact (acquis) : fix d'index `ShooterIndex5`/filmdec, décodeur `weapon_hits*.go`,
+`weapon_hit_distance_resolver.go`, table/migration `match_weapon_hit_distance`, persister, mapper
+`weapon_accuracy_film.go`, passe `killcollector/hits.go`, capability de STOCKAGE `film.weapon_shots`
+(gouverne le stockage, pas la publication). Aucun fichier supprimé.
+
+Anti-doc-inversée : le commentaire const `CapWeaponAccuracy` (registry.go ~89-96) disait DÉJÀ
+« Halo Infinite : non » (le Lot 3 avait oublié de le mettre à jour) — il redevient correct sans
+retouche. Les 3 commentaires d'exposition (adapter_data.go, capabilities.toml, registry.go liste)
+sont réécrits pour décrire l'état RÉEL : not_exposed, remisé, raison = recalage aberrant, reprise =
+piste compteur ECS.
+
+Dégradation gracieuse (vérifiée par lecture) : `WeaponAccuracyRepo.LoadWeaponAccuracyAggregated`
+renvoie `games.ErrCapabilityNotSupported` quand la table est absente (title-agnostic) ; le service
+Synthèse omet le champ `WeaponAccuracy` ; le front masque via `useCapability`. Aucun panic, aucun
+500. Test `TestCapabilitiesTOMLMatchesHardcoded` (parité TOML↔Go Infinite) : vert (les deux côtés
+changés cohéremment). Tests de parité title-level (`capabilities_parity_test.go`) : verts (Halo 5
+accorde toujours `weapon_accuracy`, aucune allowlist orpheline requise). Aucun test à inverser.
+
+Gates : `go build ./internal/...` VERT ; `go test ./internal/domain/title/ ./internal/games/...
+./internal/service/ -count=1` VERT (dont ratchets slug + capability parité) ; `go vet` + `gofmt -l`
+propres sur les fichiers touchés. Web : N/A (aucun fichier web/i18n touché, le front est inchangé).
+
+Conclusion : exposition retirée, acquis backend conservés sur `feat/precision-arme`. Plan REMISÉ +
+Lots 4/5/6 statués `[!]` ; report inscrit au `REGISTRE_REPORTS.md` (condition de reprise : compteur
+ECS validé OU pairing fiabilisé pour les automatiques). SHA à consigner après commit.
