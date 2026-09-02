@@ -25,6 +25,7 @@ import (
 	"log/slog"
 
 	"levelup/go-api/internal/analysis/filmdec"
+	"levelup/go-api/internal/analysis/filmsource"
 )
 
 // padArchetype dit CE QUI CHANGE d'un archétype d'objet du monde à l'autre : son typeIndex, le
@@ -35,7 +36,7 @@ import (
 type padArchetype struct {
 	ti    int
 	label string
-	scan  func(dir string, wr *filmdec.Vec3Range, band map[uint32]bool) (
+	scan  func(film *filmsource.Film, wr *filmdec.Vec3Range, band map[uint32]bool) (
 		[]filmdec.EquipmentCreation, filmdec.EquipmentCreationStats, error)
 }
 
@@ -43,14 +44,14 @@ type padArchetype struct {
 func groundWeaponArchetype() padArchetype {
 	return padArchetype{
 		ti: filmdec.GroundWeaponTypeIndex, label: "armes au sol (ti=42)",
-		scan: filmdec.ScanFilmGroundWeaponCreationsForBand,
+		scan: filmdec.ScanGroundWeaponCreationsForBand,
 	}
 }
 
 func worldEquipmentArchetype() padArchetype {
 	return padArchetype{
 		ti: filmdec.EquipmentTypeIndex, label: "power-ups de socle (ti=37)",
-		scan: filmdec.ScanFilmEquipmentCreationsForBand,
+		scan: filmdec.ScanEquipmentCreationsForBand,
 	}
 }
 
@@ -63,11 +64,11 @@ func worldEquipmentArchetype() padArchetype {
 //
 // HORS LIGNE — appelée par BuildFromFilm, sous LockProcessDecode.
 func decodeFilmPadScans(
-	filmDir string, wr *filmdec.Vec3Range, mpp filmdec.MPPWidths,
+	film *filmsource.Film, matchID string, wr *filmdec.Vec3Range, mpp filmdec.MPPWidths,
 ) PadScans {
 	return PadScans{
-		Weapons:  decodeFilmPadScan(filmDir, wr, mpp, groundWeaponArchetype()),
-		Powerups: decodeFilmPadScan(filmDir, wr, mpp, worldEquipmentArchetype()),
+		Weapons:  decodeFilmPadScan(film, matchID, wr, mpp, groundWeaponArchetype()),
+		Powerups: decodeFilmPadScan(film, matchID, wr, mpp, worldEquipmentArchetype()),
 	}
 }
 
@@ -91,26 +92,27 @@ func decodeFilmPadScans(
 //
 // HORS LIGNE — appelée par BuildFromFilm, sous LockProcessDecode.
 func decodeFilmPadScan(
-	filmDir string, wr *filmdec.Vec3Range, mpp filmdec.MPPWidths, arch padArchetype,
+	film *filmsource.Film, matchID string, wr *filmdec.Vec3Range, mpp filmdec.MPPWidths,
+	arch padArchetype,
 ) WorldObjectScan {
 	defer gwInstallMPPWidths(mpp)()
-	kf := filmdec.ScanFilmWorldObjectKeyframes(filmDir, arch.ti)
+	kf := filmdec.ScanWorldObjectKeyframes(film, arch.ti)
 	if len(kf.Band) == 0 {
 		slog.Warn("socles : aucun slot de l archetype aux images-cles — rejeu sans ce calque",
-			"archetype", arch.label, "filmDir", filmDir, "imagesCles", len(kf.TimesUS))
+			"archetype", arch.label, "match_id", matchID, "imagesCles", len(kf.TimesUS))
 		return WorldObjectScan{}
 	}
-	cre, st, err := arch.scan(filmDir, wr, kf.Band)
+	cre, st, err := arch.scan(film, wr, kf.Band)
 	if err != nil {
 		slog.Warn("socles : records de creation illisibles — rejeu sans ce calque",
-			"archetype", arch.label, "err", err, "filmDir", filmDir)
+			"archetype", arch.label, "err", err, "match_id", matchID)
 		return WorldObjectScan{}
 	}
-	tracks, err := filmdec.ScanFilmWorldObjectsForBand(filmDir, wr, kf.Band)
+	tracks, err := filmdec.ScanWorldObjectsForBand(film, wr, kf.Band)
 	if err != nil {
 		slog.Warn("socles : pistes delta illisibles — AUCUN socle publie (sans elles, toute"+
 			" apparition passerait pour un objet apparu au repos)",
-			"archetype", arch.label, "err", err, "filmDir", filmDir)
+			"archetype", arch.label, "err", err, "match_id", matchID)
 		return WorldObjectScan{}
 	}
 	slog.Info("socles : balayage d archetype",

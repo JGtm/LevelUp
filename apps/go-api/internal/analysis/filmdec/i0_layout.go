@@ -35,6 +35,8 @@ package filmdec
 import (
 	"fmt"
 	"sort"
+
+	"levelup/go-api/internal/analysis/filmsource"
 )
 
 // Découpage de l'en-tête d'i0, seule partie NON dérivée du film (source : Ghidra).
@@ -141,26 +143,37 @@ func (s i0Sample) bit(k int) uint64 { return (s.bits[k>>6] >> (63 - uint(k&63)))
 // DetectI0Layout lit le découpage d'i0 DANS le film de dir. Retourne le découpage, le
 // rapport de mesure, et une erreur si le profil ne fait pas apparaître trois frontières
 // nettes (film trop court, ou grammaire de record différente).
+// DetectI0Layout est l'ENVELOPPE D2, HORS PRODUCTION : elle charge le film puis appelle
+// [DetectI0LayoutOf]. La cuisson passe un film deja charge.
 func DetectI0Layout(dir string) (I0Layout, I0LayoutReport, error) {
-	n := CountFilmChunks(dir)
-	if n == 0 {
-		return I0Layout{}, I0LayoutReport{}, fmt.Errorf("aucun chunk film dans %s", dir)
+	film, err := filmsource.LoadDir(dir, nil)
+	if err != nil {
+		return I0Layout{}, I0LayoutReport{}, err
 	}
-	scanned := make([]int, 0, detectMaxChunks)
-	for c := 1; c <= n && len(scanned) < detectMaxChunks; c++ {
-		scanned = append(scanned, c)
+	return DetectI0LayoutOf(film)
+}
+
+// DetectI0LayoutOf lit le découpage d'i0 DANS un film DEJA CHARGE. Cf. [DetectI0Layout].
+func DetectI0LayoutOf(film *filmsource.Film) (I0Layout, I0LayoutReport, error) {
+	nums := FilmChunkNumbers(film)
+	if len(nums) == 0 {
+		return I0Layout{}, I0LayoutReport{}, ErrNoFilmChunk
 	}
-	slots := bipedSlotBand(dir, scanned)
+	scanned := nums
+	if len(scanned) > detectMaxChunks {
+		scanned = scanned[:detectMaxChunks]
+	}
+	slots := bipedSlotBand(film, scanned)
 	if len(slots) == 0 {
-		return I0Layout{}, I0LayoutReport{}, fmt.Errorf("aucun slot biped (ti=%d) dans %s", BipedTypeIndex, dir)
+		return I0Layout{}, I0LayoutReport{}, fmt.Errorf("aucun slot biped (ti=%d) dans le film", BipedTypeIndex)
 	}
 	var samples []i0Sample
 	for _, c := range scanned {
-		data, err := ReadFilmChunk(dir, c)
-		if err != nil {
+		data, pks, ok := FilmChunkAt(film, c)
+		if !ok {
 			continue
 		}
-		for _, pk := range WalkPackets(data) {
+		for _, pk := range pks {
 			if pk.Type != PacketTypeDelta {
 				continue
 			}
@@ -170,8 +183,8 @@ func DetectI0Layout(dir string) (I0Layout, I0LayoutReport, error) {
 	rep := profileI0(samples)
 	rep.Boundaries = i0Boundaries(rep.FlipRate)
 	if len(rep.Boundaries) < 3 {
-		return I0Layout{}, rep, fmt.Errorf("profil i0 non concluant dans %s : %d frontière(s) détectée(s) sur %d paires",
-			dir, len(rep.Boundaries), rep.Pairs)
+		return I0Layout{}, rep, fmt.Errorf("profil i0 non concluant : %d frontière(s) détectée(s) sur %d paires",
+			len(rep.Boundaries), rep.Pairs)
 	}
 	b := rep.Boundaries
 	lay := I0Layout{
@@ -179,7 +192,7 @@ func DetectI0Layout(dir string) (I0Layout, I0LayoutReport, error) {
 		AxisW:    [3]uint{uint(b[0] - DefaultI0GateBits), uint(b[1] - b[0]), uint(b[2] - b[1])},
 	}
 	if !lay.Valid() {
-		return lay, rep, fmt.Errorf("découpage i0 implausible dans %s : %s", dir, lay)
+		return lay, rep, fmt.Errorf("découpage i0 implausible : %s", lay)
 	}
 	return lay, rep, nil
 }

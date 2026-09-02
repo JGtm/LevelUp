@@ -36,6 +36,7 @@ import (
 	"strconv"
 
 	"levelup/go-api/internal/analysis/filmdec"
+	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/analysis/objectiveevents"
 )
 
@@ -84,14 +85,14 @@ type FlagInput struct {
 // silence ici laisserait croire que les images-cles ne portaient rien.
 //
 // HORS LIGNE — appelee par BuildFromFilm, sous LockProcessDecode.
-func decodeFilmCarrierMarks(filmDir string, in FlagInput) filmdec.CarrierMarkScan {
+func decodeFilmCarrierMarks(film *filmsource.Film, matchID string, in FlagInput) filmdec.CarrierMarkScan {
 	if !in.Scanned || !flagFilmSignalsOf(in).IsFlagFilm() {
 		return filmdec.CarrierMarkScan{}
 	}
-	marks, err := filmdec.ScanFilmCarrierMarks(filmDir)
+	marks, err := filmdec.ScanCarrierMarks(film)
 	if err != nil {
 		slog.Warn("drapeau : marqueur de portage illisible — calque publie sans son controle",
-			"err", err, "filmDir", filmDir)
+			"err", err, "match_id", matchID)
 		return filmdec.CarrierMarkScan{}
 	}
 	return marks

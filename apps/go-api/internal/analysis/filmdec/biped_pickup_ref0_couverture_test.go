@@ -20,6 +20,8 @@ package filmdec
 import (
 	"os"
 	"testing"
+
+	"levelup/go-api/internal/analysis/filmsource"
 )
 
 // bpkBaseDom2 est la base du domaine 2 etablie par TestBipedPickupRef0Base : ecart
@@ -53,7 +55,11 @@ func TestBipedPickupRef0Couverture(t *testing.T) {
 	for i := 1; i <= f.chunks; i++ {
 		chunks = append(chunks, i)
 	}
-	bande := bipedSlotBand(f.dir, chunks)
+	film, err := filmsource.LoadDir(f.dir, nil)
+	if err != nil {
+		t.Fatalf("chargement du film %s : %v", f.dir, err)
+	}
+	bande := bipedSlotBand(film, chunks)
 	if len(bande) == 0 {
 		t.Skip("bande de bipedes vide : pas de mesure possible")
 	}

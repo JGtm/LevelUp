@@ -84,7 +84,7 @@ func TestI48PaletteRank(t *testing.T) {
 	for i := 1; i <= n; i++ {
 		chunks = append(chunks, i)
 	}
-	slots := bipedSlotBand(dir, chunks)
+	slots := bipedSlotBandDir(dir, chunks)
 	if len(slots) == 0 {
 		t.Fatalf("aucun slot biped (ti=%d) dans les keyframes de %s", BipedTypeIndex, dir)
 	}

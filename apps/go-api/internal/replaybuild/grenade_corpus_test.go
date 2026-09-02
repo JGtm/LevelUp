@@ -296,9 +296,9 @@ type filmDeLArtefact struct {
 	lancers  []lancerGrenade
 }
 
-// chargerFilm lit l'artefact et decode le film du meme match. (nil, false) quand l'un des deux
+// chargerArtefactEtFilm lit l'artefact et decode le film du meme match. (nil, false) quand l'un des deux
 // manque ou refuse.
-func chargerFilm(t *testing.T, path, cacheFilms string) (*filmDeLArtefact, bool) {
+func chargerArtefactEtFilm(t *testing.T, path, cacheFilms string) (*filmDeLArtefact, bool) {
 	t.Helper()
 	doc := lireArtefact(t, path)
 	if doc.OriginMs == nil {

@@ -1,6 +1,6 @@
 package filmdec
 
-import "fmt"
+import "levelup/go-api/internal/analysis/filmsource"
 
 // grenade_events.go — LANCERS DE GRENADE, lus par balayage d'un marqueur dans les paquets
 // delta (type-0).
@@ -137,17 +137,28 @@ func (g GrenadeThrow) Rank() (int, bool) { return GrenadeRankOf(g.TypeID) }
 // ScanFilmGrenadeThrows décode tous les lancers de grenade du film de dir.
 //
 // HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requête.
+//
+// ScanFilmGrenadeThrows est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
+// [ScanGrenadeThrows].
 func ScanFilmGrenadeThrows(dir string) ([]GrenadeThrow, error) {
-	n := CountFilmChunks(dir)
+	film, err := filmsource.LoadDir(dir, nil)
+	if err != nil {
+		return nil, err
+	}
+	return ScanGrenadeThrows(film)
+}
+
+// ScanGrenadeThrows décode les lancers de grenade d'un film DEJA CHARGE.
+func ScanGrenadeThrows(film *filmsource.Film) ([]GrenadeThrow, error) {
 	var out []GrenadeThrow
 	read := 0
-	for c := 1; c <= n; c++ {
-		chunk, err := ReadFilmChunk(dir, c)
-		if err != nil {
+	for _, c := range FilmChunkNumbers(film) {
+		chunk, pks, ok := FilmChunkAt(film, c)
+		if !ok {
 			continue
 		}
 		read++
-		for _, p := range WalkPackets(chunk) {
+		for _, p := range pks {
 			if p.Type != PacketTypeDelta {
 				continue
 			}
@@ -158,7 +169,7 @@ func ScanFilmGrenadeThrows(dir string) ([]GrenadeThrow, error) {
 		}
 	}
 	if read == 0 {
-		return nil, fmt.Errorf("aucun chunk film lisible dans %s", dir)
+		return nil, ErrNoReadableFilmChunk
 	}
 	return out, nil
 }

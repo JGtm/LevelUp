@@ -29,6 +29,8 @@ import (
 	"sort"
 	"strings"
 	"testing"
+
+	"levelup/go-api/internal/analysis/filmsource"
 )
 
 // chunk00Films rend les repertoires de film de la garde d'environnement.
@@ -54,7 +56,7 @@ func readChunk00(t *testing.T, dir string) (raw, data []byte) {
 	if err != nil {
 		t.Fatalf("lecture chunk_00 de %s : %v", dir, err)
 	}
-	return b, inflateChunk(b)
+	return b, filmsource.Inflate(b)
 }
 
 // slotSpan decrit la zone REELLEMENT lue par parseRegistry dans un slot nomme :

@@ -6,12 +6,18 @@ package replay
 // manque est un balayage que le refacto peut casser sans que rien ne le dise. La mini-bobine
 // ne permet pas d'EXECUTER BuildFromFilm (aucune image-cle de bipede : ScanFilmBipedPositions
 // refuse), et le corpus reel n'est pas en CI. Le garde porte donc sur la SOURCE, comme les
-// ratchets d'archlint : il lit le corps de BuildFromFilm dans build.go et exige que
+// ratchets d'archlint : il lit le corps de BuildFromFilm dans build_from_film.go et exige que
 //
 //  1. les litteraux `opt.observe("...")` , dans l'ordre du source, soient EXACTEMENT
 //     BuildFromFilmSteps ;
-//  2. chaque appel de balayage (`ScanFilm*`, `decodeFilm*`) ait son etape : autant d'appels de
+//  2. chaque appel de balayage (`Scan*`, `decodeFilm*`) ait son etape : autant d'appels de
 //     balayage que d'etapes hors `.stats`. Un balayage ajoute sans `opt.observe` casse ce compte.
+//
+// LE PREFIXE EST `Scan` DEPUIS LE LOT 1 (2026-09-02), ET C'EST UNE EXTENSION DELIBEREE DU GARDE.
+// Les balayages prenaient un REPERTOIRE et s'appelaient `ScanFilmXxx(dir)` ; ils prennent
+// desormais un `*filmsource.Film` deja charge et s'appellent `ScanXxx(film)` — les formes `dir`
+// survivent en enveloppes hors production (D2), et AUCUNE n'est appelee ici. Garder `ScanFilm`
+// aurait rendu le compte a 5 sur 22 : le garde aurait cesse de garder en silence.
 
 import (
 	"go/ast"
@@ -23,20 +29,27 @@ import (
 	"testing"
 )
 
-// buildFromFilmBody rend le corps de BuildFromFilm dans build.go.
+// buildFromFilmBody rend le corps de BuildFromFilm dans build_from_film.go.
 func buildFromFilmBody(t *testing.T) *ast.BlockStmt {
 	t.Helper()
-	f, err := parser.ParseFile(token.NewFileSet(), "build.go", nil, 0)
+	f, err := parser.ParseFile(token.NewFileSet(), "build_from_film.go", nil, 0)
 	if err != nil {
-		t.Fatalf("build.go illisible : %v", err)
+		t.Fatalf("build_from_film.go illisible : %v", err)
 	}
 	for _, d := range f.Decls {
 		if fn, ok := d.(*ast.FuncDecl); ok && fn.Name.Name == "BuildFromFilm" && fn.Recv == nil {
 			return fn.Body
 		}
 	}
-	t.Fatal("BuildFromFilm introuvable dans build.go")
+	t.Fatal("BuildFromFilm introuvable dans build_from_film.go")
 	return nil
+}
+
+// estBalayage dit si un nom de fonction est un BALAYAGE de film : la forme film (`ScanXxx`), la
+// forme repertoire heritee (`ScanFilmXxx`, enveloppe D2 — aucune n'est appelee ici) ou un
+// decodeur de calque (`decodeFilmXxx`).
+func estBalayage(nom string) bool {
+	return strings.HasPrefix(nom, "Scan") || strings.HasPrefix(nom, "decodeFilm")
 }
 
 // observedSteps rend les litteraux observes et le nombre d'appels de balayage, dans l'ordre du
@@ -58,7 +71,7 @@ func observedSteps(body *ast.BlockStmt) (steps []string, scans int) {
 				s, _ := strconv.Unquote(lit.Value)
 				steps = append(steps, s)
 			}
-		case strings.HasPrefix(name, "ScanFilm") || strings.HasPrefix(name, "decodeFilm"):
+		case estBalayage(name):
 			scans++
 		}
 		return true
@@ -69,8 +82,7 @@ func observedSteps(body *ast.BlockStmt) (steps []string, scans int) {
 		if !ok {
 			return true
 		}
-		if id, ok := call.Fun.(*ast.Ident); ok &&
-			(strings.HasPrefix(id.Name, "ScanFilm") || strings.HasPrefix(id.Name, "decodeFilm")) {
+		if id, ok := call.Fun.(*ast.Ident); ok && estBalayage(id.Name) {
 			scans++
 		}
 		return true
@@ -81,7 +93,7 @@ func observedSteps(body *ast.BlockStmt) (steps []string, scans int) {
 func TestObserveEtapesBuildFromFilm(t *testing.T) {
 	steps, scans := observedSteps(buildFromFilmBody(t))
 	if !slices.Equal(steps, BuildFromFilmSteps) {
-		t.Fatalf("les etapes observees dans build.go ne sont pas BuildFromFilmSteps\n  source  : %v\n  liste   : %v", steps, BuildFromFilmSteps)
+		t.Fatalf("les etapes observees dans build_from_film.go ne sont pas BuildFromFilmSteps\n  source  : %v\n  liste   : %v", steps, BuildFromFilmSteps)
 	}
 	horsStats := 0
 	for _, s := range BuildFromFilmSteps {

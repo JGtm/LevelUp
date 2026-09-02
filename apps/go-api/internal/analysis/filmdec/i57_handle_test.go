@@ -211,7 +211,7 @@ func i57hLogValues(t *testing.T, samples []i57hSample) {
 // publie leurs taux — y compris nuls.
 func i57hControlC2(t *testing.T, samples []i57hSample, lives map[eaLifeKey]*eaLife, s eaFilmSetup) {
 	n := CountFilmChunks(s.dir)
-	ti37band := worldObjectSlotBand(s.dir, n, EquipmentTypeIndex)
+	ti37band := worldObjectSlotBandDir(s.dir, n, EquipmentTypeIndex)
 	var withRef []i57hSample
 	for _, sm := range samples {
 		if sm.hasRef && sm.ref != 0xFFFFFF {

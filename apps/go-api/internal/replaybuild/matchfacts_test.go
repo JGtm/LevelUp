@@ -2,6 +2,7 @@ package replaybuild
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"levelup/go-api/internal/analysis/objectiveevents"
@@ -76,7 +77,8 @@ func TestTeamByXUIDSansCampConnuRendNil(t *testing.T) {
 //
 // Sans famille d'objectif (mode sans table nommee ou variante inconnue), aucun emplacement n'est
 // nomme : `identifiedEvents` rend nil AVANT de toucher au disque (le fil des morts n'est meme pas
-// relu). Le `filmDir` volontairement absent le prouve — s'il etait lu, l'appel echouerait dessus.
+// relu). Le fil des morts volontairement EN ERREUR le prouve — s'il etait consomme, l'appel
+// journaliserait le refus et rendrait nil pour une autre raison que la garde de mode.
 func TestIdentifiedEventsSansFamilleNeNommeRien(t *testing.T) {
 	recs := []objectiveevents.StatRecord{{
 		TimeMS: 1_000, Slot: 10, Round: 0,
@@ -87,7 +89,7 @@ func TestIdentifiedEventsSansFamilleNeNommeRien(t *testing.T) {
 		"variante inconnue":            "",
 	} {
 		t.Run(nom, func(t *testing.T) {
-			got := identifiedEvents(context.Background(), "m", "repertoire-absent", recs, variant)
+			got := identifiedEvents(context.Background(), "m", filmDeaths{err: errors.New("film absent")}, recs, variant)
 			if got != nil {
 				t.Errorf("%d action(s), attendu nil : un mode sans table nommee ne nomme rien", len(got))
 			}

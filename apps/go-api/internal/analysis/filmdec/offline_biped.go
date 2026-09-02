@@ -40,6 +40,8 @@ package filmdec
 import (
 	"fmt"
 	"sort"
+
+	"levelup/go-api/internal/analysis/filmsource"
 )
 
 // BipedTypeIndex est le typeIndex (ti) des entités biped (joueurs) dans le registre film.
@@ -156,43 +158,58 @@ func DefaultScanFilmOptions() ScanFilmOptions {
 // ScanFilmBipedPositions décode toutes les positions absolues de bipeds des chunks du
 // film situé dans dir. Les chunks illisibles sont ignorés (le film peut être partiel) ;
 // une erreur n'est renvoyée que si AUCUN chunk n'a pu être lu.
+// ScanFilmBipedPositions est l'ENVELOPPE D2, HORS PRODUCTION : elle charge le film puis appelle
+// [ScanBipedPositions]. La cuisson passe un film deja charge (une seule decompression).
 func ScanFilmBipedPositions(dir string, opt ScanFilmOptions) ([]BipedPosition, error) {
+	// LE REFUS DE BORNES PRECEDE LE CHARGEMENT, et c'est l'ordre d'origine : un appelant sans
+	// bornes doit recevoir ErrUnknownMapBounds, pas une erreur de lecture de repertoire. Le
+	// message garde le chemin du film, que la forme `Scan*(film)` n'a plus.
 	if opt.WorldRange == nil && !opt.QuantaOnly {
 		return nil, fmt.Errorf("%w (film %s) : renseigner ScanFilmOptions.WorldRange, ou QuantaOnly pour n'obtenir que les quanta", ErrUnknownMapBounds, dir)
 	}
+	film, err := filmsource.LoadDir(dir, nil)
+	if err != nil {
+		return nil, err
+	}
+	return ScanBipedPositions(film, opt)
+}
+
+// ScanBipedPositions décode les positions absolues de bipeds d'un film DEJA CHARGE. Cf.
+// [ScanFilmBipedPositions] pour la doctrine du balayage.
+func ScanBipedPositions(film *filmsource.Film, opt ScanFilmOptions) ([]BipedPosition, error) {
+	if opt.WorldRange == nil && !opt.QuantaOnly {
+		return nil, fmt.Errorf("%w : renseigner ScanFilmOptions.WorldRange, ou QuantaOnly pour n'obtenir que les quanta", ErrUnknownMapBounds)
+	}
 	chunks := opt.Chunks
 	if len(chunks) == 0 {
-		n := CountFilmChunks(dir)
-		for i := 1; i <= n; i++ {
-			chunks = append(chunks, i)
-		}
+		chunks = FilmChunkNumbers(film)
 	}
 	if len(chunks) == 0 {
-		return nil, fmt.Errorf("aucun chunk film dans %s", dir)
+		return nil, ErrNoFilmChunk
 	}
-	slots := bipedSlotBand(dir, chunks)
+	slots := bipedSlotBand(film, chunks)
 	if len(slots) == 0 {
-		return nil, fmt.Errorf("aucun slot biped (ti=%d) dans les keyframes de %s", BipedTypeIndex, dir)
+		return nil, fmt.Errorf("aucun slot biped (ti=%d) dans les keyframes du film", BipedTypeIndex)
 	}
 	var lay I0Layout
 	if opt.Layout != nil {
 		lay = *opt.Layout
 	} else {
-		detected, _, err := DetectI0Layout(dir)
+		detected, _, err := DetectI0LayoutOf(film)
 		if err != nil {
-			return nil, fmt.Errorf("découpage i0 illisible dans %s : %w", dir, err)
+			return nil, fmt.Errorf("découpage i0 illisible : %w", err)
 		}
 		lay = detected
 	}
 	var out []BipedPosition
 	read := 0
 	for _, c := range chunks {
-		data, err := ReadFilmChunk(dir, c)
-		if err != nil {
+		data, pks, ok := FilmChunkAt(film, c)
+		if !ok {
 			continue
 		}
 		read++
-		for _, pk := range WalkPackets(data) {
+		for _, pk := range pks {
 			if pk.Type != PacketTypeDelta {
 				continue
 			}
@@ -203,7 +220,7 @@ func ScanFilmBipedPositions(dir string, opt ScanFilmOptions) ([]BipedPosition, e
 		}
 	}
 	if read == 0 {
-		return nil, fmt.Errorf("aucun chunk film lisible dans %s", dir)
+		return nil, ErrNoReadableFilmChunk
 	}
 	out = DropIsolated(out, opt.IsolationGapMS)
 	if opt.WorldRange == nil {
@@ -217,15 +234,15 @@ func ScanFilmBipedPositions(dir string, opt ScanFilmOptions) ([]BipedPosition, e
 // n'apparaît que dans le keyframe d'après), trous comblés entre min et max — les slots
 // biped sont alloués dans une bande contiguë, et un biped créé PUIS détruit à l'intérieur
 // d'un chunk n'apparaît dans aucun keyframe.
-func bipedSlotBand(dir string, chunks []int) map[uint32]bool {
+func bipedSlotBand(film *filmsource.Film, chunks []int) map[uint32]bool {
 	seen := map[uint32]bool{}
 	scan := append(append([]int{}, chunks...), chunks[len(chunks)-1]+1)
 	for _, c := range scan {
-		data, err := ReadFilmChunk(dir, c)
-		if err != nil {
+		data, pks, ok := FilmChunkAt(film, c)
+		if !ok {
 			continue
 		}
-		for _, pk := range WalkPackets(data) {
+		for _, pk := range pks {
 			if pk.Type != PacketTypeKeyframe {
 				continue
 			}

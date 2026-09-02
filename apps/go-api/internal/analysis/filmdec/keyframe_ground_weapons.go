@@ -1,8 +1,9 @@
 package filmdec
 
 import (
-	"fmt"
 	"sort"
+
+	"levelup/go-api/internal/analysis/filmsource"
 )
 
 // keyframe_ground_weapons.go — ARMES AU SOL, lues dans les keyframes type-2.
@@ -58,20 +59,34 @@ type KeyframeGroundWeapon struct {
 // sélectivité du balayage (cf. l'ancrage anti-hasard de keyframe_loadout.go).
 //
 // HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requête.
+//
+// ScanFilmKeyframeGroundWeapons est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
+// [ScanKeyframeGroundWeapons].
 func ScanFilmKeyframeGroundWeapons(dir string, known map[uint32]bool) ([]KeyframeGroundWeapon, error) {
+	if len(known) == 0 {
+		return nil, nil // catalogue vide : rien a chercher, et rien a charger
+	}
+	film, err := filmsource.LoadDir(dir, nil)
+	if err != nil {
+		return nil, err
+	}
+	return ScanKeyframeGroundWeapons(film, known)
+}
+
+// ScanKeyframeGroundWeapons décode les armes au sol des images-clés d'un film DEJA CHARGE.
+func ScanKeyframeGroundWeapons(film *filmsource.Film, known map[uint32]bool) ([]KeyframeGroundWeapon, error) {
 	if len(known) == 0 {
 		return nil, nil
 	}
-	n := CountFilmChunks(dir)
 	var out []KeyframeGroundWeapon
 	read := 0
-	for c := 1; c <= n; c++ {
-		chunk, err := ReadFilmChunk(dir, c)
-		if err != nil {
+	for _, c := range FilmChunkNumbers(film) {
+		chunk, pks, ok := FilmChunkAt(film, c)
+		if !ok {
 			continue
 		}
 		read++
-		for _, p := range WalkPackets(chunk) {
+		for _, p := range pks {
 			if p.Type != PacketTypeKeyframe {
 				continue
 			}
@@ -82,7 +97,7 @@ func ScanFilmKeyframeGroundWeapons(dir string, known map[uint32]bool) ([]Keyfram
 		}
 	}
 	if read == 0 {
-		return nil, fmt.Errorf("aucun chunk film lisible dans %s", dir)
+		return nil, ErrNoReadableFilmChunk
 	}
 	return out, nil
 }
@@ -111,8 +126,13 @@ func keyframeGroundWeapons(pay []byte, known map[uint32]bool) []KeyframeGroundWe
 // rate l'essentiel).
 //
 // HORS LIGNE (I/O disque sur tout le film).
+// ENVELOPPE D2, HORS PRODUCTION : consommee par les instruments de mesure des armes au sol.
 func GroundWeaponSlotBand(dir string) map[uint32]bool {
-	return worldObjectSlotBand(dir, CountFilmChunks(dir), GroundWeaponTypeIndex)
+	film, err := filmsource.LoadDir(dir, nil)
+	if err != nil {
+		return nil
+	}
+	return worldObjectSlotBand(film, GroundWeaponTypeIndex)
 }
 
 // GroundWeaponPositions rend, par slot d'arme au sol, les positions monde décodées des paquets
@@ -170,18 +190,23 @@ func GroundWeaponPositions(dir string, wr *Vec3Range) map[uint32][]WorldObjectSa
 // (`replay/ground_weapon_research_test.go`, garde GW_FILM). Ce n'est pas un décodeur de production.
 //
 // HORS LIGNE (I/O disque sur tout le film).
+//
+// ENVELOPPE D2, HORS PRODUCTION : son unique consommateur est l'instrument de mesure ci-dessus.
 func WorldObjectPositionsForBand(dir string, wr *Vec3Range, band map[uint32]bool) map[uint32][]WorldObjectSample {
 	out := map[uint32][]WorldObjectSample{}
 	if wr == nil || len(band) == 0 {
 		return out
 	}
-	n := CountFilmChunks(dir)
-	for c := 1; c <= n; c++ {
-		chunk, err := ReadFilmChunk(dir, c)
-		if err != nil {
+	film, err := filmsource.LoadDir(dir, nil)
+	if err != nil {
+		return out
+	}
+	for _, c := range FilmChunkNumbers(film) {
+		chunk, pks, ok := FilmChunkAt(film, c)
+		if !ok {
 			continue
 		}
-		for _, p := range WalkPackets(chunk) {
+		for _, p := range pks {
 			if p.Type != PacketTypeDelta {
 				continue
 			}

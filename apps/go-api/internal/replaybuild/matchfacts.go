@@ -68,17 +68,11 @@ type filmStats struct {
 // Rend un filmStats VIDE (score nil) quand le film n'est pas lisible par cette porte : le
 // document sort alors sans courbe de score ET sans couverture de score, ce qui dit « rien n'a
 // ete lu » plutot que « rien n'existait ».
-func readFilmStats(ctx context.Context, matchID, filmDir string, facts port.MatchFacts) filmStats {
-	src, found, err := filmcache.OpenChunkDir(filmDir)
-	switch {
-	case err != nil:
-		slog.WarnContext(ctx, "replaybuild: manifeste de film illisible — rejeu sans courbe de score",
-			"err", err, "match_id", matchID, "filmDir", filmDir)
-		return filmStats{}
-	case !found:
-		slog.InfoContext(ctx, "replaybuild: film sans manifeste au cache — rejeu sans courbe de score",
-			"match_id", matchID, "filmDir", filmDir)
-		return filmStats{}
+func readFilmStats(ctx context.Context, matchID string, src *filmcache.Source,
+	facts port.MatchFacts, deaths filmDeaths,
+) filmStats {
+	if src == nil {
+		return filmStats{} // manifeste absent ou illisible — deja journalise par ouvrirManifeste
 	}
 	recs, truncated := objectiveevents.StatRecordsCtx(ctx, src, matchID)
 	if len(recs) == 0 {
@@ -99,7 +93,7 @@ func readFilmStats(ctx context.Context, matchID, filmDir string, facts port.Matc
 			TeamScores: facts.TeamScores,
 			Truncated:  truncated,
 		},
-		objectives: identifiedEvents(ctx, matchID, filmDir, recs, facts.GameVariantName),
+		objectives: identifiedEvents(ctx, matchID, deaths, recs, facts.GameVariantName),
 		flag:       flagInput(recs, src),
 		vip:        vipInput(recs, isVipVariant(facts.GameVariantName)),
 		skull:      skullInput(recs, isSkullVariant(facts.GameVariantName)),
@@ -184,22 +178,22 @@ func flagInput(recs []objectiveevents.StatRecord, src objectiveevents.FilmSource
 // variante inconnue) ou sans aucun emplacement nomme, aucun nom n'est possible ; sans fil des
 // morts lisible, aucun slot ne peut etre apparie par manche. Chacun rend nil, journalise.
 //
-// LE FIL DES MORTS EST RELU ICI (`replay.ScanFilmDeaths`) : c'est le meme chunk que
-// `BuildFromFilm` relira pour les autres calques (un seul fichier highlight, borne, sans verrou
-// filmdec). Le second decodage du statborg, lui, n'est PAS refait — `recs` est reutilise.
-func identifiedEvents(ctx context.Context, matchID, filmDir string,
+// LE FIL DES MORTS N'EST PLUS RELU ICI (lot 1, 2026-09-02) : il arrive DEJA LU, par `deaths`.
+// C'est la meme lecture que `killRefs` consomme (kills.go), la ou les deux ouvraient et
+// reparsaient chacune le chunk highlight. Le second decodage du statborg, lui, n'a jamais ete
+// refait — `recs` est reutilise.
+func identifiedEvents(ctx context.Context, matchID string, deaths filmDeaths,
 	recs []objectiveevents.StatRecord, variant string) []objectiveevents.IdentifiedEvent {
 	named := objectiveevents.NamedEventsFrom(recs, objectiveevents.ObjectiveTypeOf(variant))
 	if len(named) == 0 {
 		return nil
 	}
-	deaths, err := replay.ScanFilmDeaths(filmDir)
-	if err != nil {
+	if deaths.err != nil {
 		slog.WarnContext(ctx, "replaybuild: fil des morts illisible — actions d'objectif non identifiees",
-			"err", err, "match_id", matchID, "nommees", len(named))
+			"err", deaths.err, "match_id", matchID, "nommees", len(named))
 		return nil
 	}
-	out := identifyRoundEvents(named, recs, deathInstantsOf(deaths))
+	out := identifyRoundEvents(named, recs, deathInstantsOf(deaths.list))
 	slog.InfoContext(ctx, "replaybuild: actions d'objectif identifiees par manche",
 		"match_id", matchID, "nommees", len(named), "identifiees", len(out))
 	return out

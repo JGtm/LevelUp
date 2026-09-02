@@ -2,12 +2,11 @@ package replay
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"sort"
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/filmdec"
+	"levelup/go-api/internal/analysis/filmsource"
 )
 
 // deaths_source.go — LE FIL DES MORTS, LU DANS LE FILM.
@@ -30,16 +29,36 @@ import (
 //
 // HORS LIGNE (I/O disque) — jamais depuis un chemin de requête ; l'API sert l'artefact
 // pré-construit.
+//
+// ENVELOPPE D2, HORS PRODUCTION (lot 1, 2026-09-02) : la cuisson appelle [ScanDeaths] sur un
+// film déjà chargé.
 func ScanFilmDeaths(filmDir string) ([]Death, error) {
-	n := filmdec.CountFilmChunks(filmDir)
-	if n == 0 {
-		return nil, fmt.Errorf("aucun chunk film lisible dans %s", filmDir)
+	film, err := filmsource.LoadDir(filmDir, nil)
+	if err != nil {
+		return nil, err
+	}
+	return ScanDeaths(film)
+}
+
+// ScanDeaths lit le fil des morts d'un film DEJA CHARGE.
+//
+// LES OCTETS SONT DEJA DECOMPRESSES, et `analysis.ParseHighlightEvents` l'accepte : il tente un
+// `zlib.NewReader` et, s'il echoue, traite l'entree comme du clair — c'est la double tolerance
+// qu'il porte depuis l'incident du 2026-05-22 (le cache historique stockait les chunks
+// compresses, les telechargements recents ne le font plus). Lui donner le chunk deja inflate
+// rend donc EXACTEMENT les memes evenements, sans une seconde decompression du plus gros chunk
+// du film.
+func ScanDeaths(film *filmsource.Film) ([]Death, error) {
+	nums := filmdec.FilmChunkNumbers(film)
+	if len(nums) == 0 {
+		return nil, filmdec.ErrNoReadableFilmChunk
 	}
 	// Le chunk des highlight events est le DERNIER du manifest : c'est sa définition, pas
 	// une constante à deviner par film.
-	raw, err := os.ReadFile(filepath.Join(filmDir, fmt.Sprintf("chunk_%02d.bin", n)))
-	if err != nil {
-		return nil, fmt.Errorf("chunk highlight (%d) : %w", n, err)
+	n := nums[len(nums)-1]
+	raw, _, ok := filmdec.FilmChunkAt(film, n)
+	if !ok {
+		return nil, fmt.Errorf("chunk highlight (%d) : absent du film", n)
 	}
 	evs, err := analysis.ParseHighlightEvents(raw, 0)
 	if err != nil {

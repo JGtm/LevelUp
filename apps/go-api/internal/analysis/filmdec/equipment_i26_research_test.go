@@ -43,9 +43,9 @@ func eqiScan(t *testing.T, s hwSetup) []UnitEquipmentEmission {
 // eqiBands rend les bandes de slots par archetype, lues des images-cles.
 func eqiBands(dir string) (ti37, ti42, biped map[uint32]bool) {
 	n := CountFilmChunks(dir)
-	ti37 = worldObjectSlotBand(dir, n, EquipmentTypeIndex)
-	ti42 = worldObjectSlotBand(dir, n, GroundWeaponTypeIndex)
-	biped = bipedSlotBand(dir, chunkList(n))
+	ti37 = worldObjectSlotBandDir(dir, n, EquipmentTypeIndex)
+	ti42 = worldObjectSlotBandDir(dir, n, GroundWeaponTypeIndex)
+	biped = bipedSlotBandDir(dir, chunkList(n))
 	return ti37, ti42, biped
 }
 

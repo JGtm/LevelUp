@@ -45,7 +45,7 @@ func TestLiveFireRegionIndex(t *testing.T) {
 	for c := 1; c <= n && len(scanned) < detectMaxChunks; c++ {
 		scanned = append(scanned, c)
 	}
-	slots := bipedSlotBand(dir, scanned)
+	slots := bipedSlotBandDir(dir, scanned)
 	if len(slots) == 0 {
 		t.Fatalf("aucun slot biped dans %s", dir)
 	}

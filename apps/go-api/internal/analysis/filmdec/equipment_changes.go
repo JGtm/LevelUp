@@ -1,5 +1,7 @@
 package filmdec
 
+import "levelup/go-api/internal/analysis/filmsource"
+
 // equipment_changes.go — LES RAMASSAGES ET LES CONSOMMATIONS D'ÉQUIPEMENT, datés.
 //
 // CE QUE C'EST. L'équipement d'un joueur — la capacité d'armure : grappin, répulseur, mur de
@@ -114,8 +116,22 @@ const equipmentFirstCounter = 5
 // savoir.
 //
 // UN SEUL DÉCODAGE filmdec À LA FOIS PAR PROCESS (cf. ScanFilmAbilityRanks).
+//
+// ScanFilmEquipmentChanges est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
+// [ScanEquipmentChanges].
 func ScanFilmEquipmentChanges(
 	dir string, bornAt func(slot uint32) (uint64, bool),
+) ([]EquipmentChange, EquipmentChangeStats, error) {
+	film, err := filmsource.LoadDir(dir, nil)
+	if err != nil {
+		return nil, EquipmentChangeStats{}, err
+	}
+	return ScanEquipmentChanges(film, bornAt)
+}
+
+// ScanEquipmentChanges décode les changements d'équipement porté d'un film DEJA CHARGE.
+func ScanEquipmentChanges(
+	film *filmsource.Film, bornAt func(slot uint32) (uint64, bool),
 ) ([]EquipmentChange, EquipmentChangeStats, error) {
 	var st EquipmentChangeStats
 	var out []EquipmentChange
@@ -126,7 +142,7 @@ func ScanFilmEquipmentChanges(
 	}
 	per := map[uint32]*state{}
 
-	walk, err := walkAbilityEmissions(dir, func(e abilityEmission) {
+	walk, err := walkAbilityEmissions(film, func(e abilityEmission) {
 		s := per[e.Slot]
 		if s == nil {
 			s = &state{rank: AbilitySetNoRank}

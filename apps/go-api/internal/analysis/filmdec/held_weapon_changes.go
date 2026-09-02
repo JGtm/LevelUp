@@ -19,7 +19,11 @@ package filmdec
 //
 // HORS LIGNE par construction (I/O disque sur tout le film) — jamais depuis un chemin de requête.
 
-import "fmt"
+import (
+	"fmt"
+
+	"levelup/go-api/internal/analysis/filmsource"
+)
 
 // HeldWeaponChangeKind qualifie un changement d'arme en main.
 type HeldWeaponChangeKind string
@@ -84,11 +88,25 @@ type HeldWeaponChangeStats struct {
 // relevé d'image-clé qui précède — il sert à qualifier la PREMIÈRE émission d'un emplacement,
 // dont l'état de départ vient du spawn et non du flux. Il peut être nil : les premières
 // émissions sont alors qualifiées `taken` par défaut, ce qui surestime les prises.
+//
+// ScanFilmHeldWeaponChanges est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
+// [ScanHeldWeaponChanges].
 func ScanFilmHeldWeaponChanges(
 	dir string, spawnSet func(slot uint32, at uint64) (map[uint32]bool, bool),
 ) ([]HeldWeaponChange, HeldWeaponChangeStats, error) {
+	film, err := filmsource.LoadDir(dir, nil)
+	if err != nil {
+		return nil, HeldWeaponChangeStats{}, err
+	}
+	return ScanHeldWeaponChanges(film, spawnSet)
+}
+
+// ScanHeldWeaponChanges décode les changements d'arme en main d'un film DEJA CHARGE.
+func ScanHeldWeaponChanges(
+	film *filmsource.Film, spawnSet func(slot uint32, at uint64) (map[uint32]bool, bool),
+) ([]HeldWeaponChange, HeldWeaponChangeStats, error) {
 	var st HeldWeaponChangeStats
-	cfg, err := newHeldWeaponScan(dir)
+	cfg, err := newHeldWeaponScan(film)
 	if err != nil {
 		return nil, st, err
 	}
@@ -107,11 +125,11 @@ func ScanFilmHeldWeaponChanges(
 	prevFam, seen := map[key]uint32{}, map[key]bool{}
 	var out []HeldWeaponChange
 	for _, c := range cfg.chunks {
-		data, err := ReadFilmChunk(dir, c)
-		if err != nil {
+		data, pks, ok := FilmChunkAt(film, c)
+		if !ok {
 			continue
 		}
-		for _, pk := range WalkPackets(data) {
+		for _, pk := range pks {
 			if pk.Type != PacketTypeDelta {
 				continue
 			}
@@ -192,25 +210,22 @@ type heldWeaponScan struct {
 
 // newHeldWeaponScan résout la configuration. Les index d'emplacement d'arme viennent des NOMS
 // du registre du film, jamais de constantes : un index de composant est un numéro de build.
-func newHeldWeaponScan(dir string) (heldWeaponScan, error) {
+func newHeldWeaponScan(film *filmsource.Film) (heldWeaponScan, error) {
 	var s heldWeaponScan
-	n := CountFilmChunks(dir)
-	if n == 0 {
-		return s, fmt.Errorf("aucun chunk film dans %s", dir)
+	s.chunks = FilmChunkNumbers(film)
+	if len(s.chunks) == 0 {
+		return s, ErrNoFilmChunk
 	}
-	for i := 1; i <= n; i++ {
-		s.chunks = append(s.chunks, i)
-	}
-	s.slots = bipedSlotBand(dir, s.chunks)
+	s.slots = bipedSlotBand(film, s.chunks)
 	if len(s.slots) == 0 {
-		return s, fmt.Errorf("aucun slot biped (ti=%d) dans les keyframes de %s", BipedTypeIndex, dir)
+		return s, fmt.Errorf("aucun slot biped (ti=%d) dans les keyframes du film", BipedTypeIndex)
 	}
-	lay, _, err := DetectI0Layout(dir)
+	lay, _, err := DetectI0LayoutOf(film)
 	if err != nil {
-		return s, fmt.Errorf("découpage i0 illisible dans %s : %w", dir, err)
+		return s, fmt.Errorf("découpage i0 illisible : %w", err)
 	}
 	s.lay = lay
-	arch, err := bipedArchetype(dir)
+	arch, err := bipedArchetype(film)
 	if err != nil {
 		return s, err
 	}
@@ -222,7 +237,7 @@ func newHeldWeaponScan(dir string) (heldWeaponScan, error) {
 		}
 	}
 	if len(s.weaponIdx) == 0 {
-		return s, fmt.Errorf("aucun %s dans l'archétype biped de %s", compWeaponStateTypeInfo, dir)
+		return s, fmt.Errorf("aucun %s dans l'archétype biped du film", compWeaponStateTypeInfo)
 	}
 	s.minRecord = bipedHeaderBits + bipedIndexBits*bipedMinMaskCnt + lay.TotalBits()
 	return s, nil

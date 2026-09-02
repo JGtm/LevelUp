@@ -298,12 +298,12 @@ et le commit du lot est fait (prefixe `cuisson-perf(L<n>)`).
 
 Prerequis : verdict 0.7 = zero divergence sur les 11 films du corpus (sinon : arret, escalade).
 
-- [ ] 1.1 `internal/analysis/filmsource` (D1) : `source.go` (Source, MemoryChunks, DirSource),
+- [x] 1.1 `internal/analysis/filmsource` (D1) : `source.go` (Source, MemoryChunks, DirSource),
       `film.go` (ChunkMeta, Packet, Film, Load, LoadDir, inflate, framing D3), tests unitaires sur
       des chunks CONSTRUITS (zlib d'octets connus : un paquet, deux paquets, size 0, CHUNK_END,
       flux tronque — valeurs calculables, pas arbitraires) + test « aucun import du depot »
       (archlint).
-- [ ] 1.2 `filmdec` : `FilmPacket`/`WalkPackets`/`ReadFilmChunk`/`CountFilmChunks`/`inflateChunk`
+- [x] 1.2 `filmdec` : `FilmPacket`/`WalkPackets`/`ReadFilmChunk`/`CountFilmChunks`/`inflateChunk`
       remplaces par `filmsource` ; `ParseRegistryChunk` recoit des octets deja decompresses
       (`registry.go:104` perd son inflate) ; les 17 `ScanFilm*` de `build.go:264-475` et les
       balayages hors plage (`bomb_armings.go:113`, `build_ground_weapons.go:97,109`,
@@ -311,7 +311,11 @@ Prerequis : verdict 0.7 = zero divergence sur les 11 films du corpus (sinon : ar
       leur forme `Scan*(film, ...)` ; `replay.BuildFromFilm(matchID, title, film *filmsource.Film,
       opt)` ; `deaths_source`, `origin`, `player_index`, `inventory_decode` idem ; le chunk
       highlight se lit UNE fois (`kills.go:67`, `matchfacts.go:196`, `build.go:449`).
-- [ ] 1.3 `replaybuild.BuildBytes`/`BuildMatch` gardent leur signature (`filmDir string`) et
+      ECART STATUE (2026-09-02, consigne du pilote) : le chunk highlight n'est plus DECOMPRESSE
+      qu'une fois, mais encore PARSE deux fois — une lecture partagee par `kills.go` et
+      `matchfacts.go`, et celle de `BuildFromFilm`, qui RESTE pour ne pas deplacer l'etape
+      observee `deaths` (note N-R du §8).
+- [x] 1.3 `replaybuild.BuildBytes`/`BuildMatch` gardent leur signature (`filmDir string`) et
       chargent le film UNE fois (`filmsource.LoadDir(filmDir, meta)` avec `meta` du manifeste via
       `filmcache.OpenChunkDir`, deja ouvert en `matchfacts.go:72`) ; `readFilmStats`,
       `decodeKillSource`, `killRefs`, `BuildFromFilm` recoivent le `*Film`. Appelants inchanges :
@@ -635,6 +639,48 @@ identique a celui en place hors lots de correction, ou le garde anti-regression 
   (`projectile_track_order_test.go`, `equipment_placement_order_test.go`,
   `slotidentity_rounds_order_test.go`, `ground_weapon_dropper_order_test.go`).
 
+- 2026-09-02 (agent 1.2/1.3) — CINQ NOTES, dont TROIS CHANGEMENTS DE COMPORTEMENT declares (aucun
+  n'atteint les 9 films du corpus, tous atteignent des films PATHOLOGIQUES) :
+  - **N-M. Un chunk ILLISIBLE (erreur d'E/S) fait desormais echouer le CHARGEMENT du film**, la ou
+    chaque balayage le sautait et le comptait (`KeyframeInventoryStats.ChunksUnread`). Decoder une
+    fois exige de charger une fois : `filmsource.Load` rend l'erreur du premier chunk illisible.
+    Consequence VOULUE et plus sure : `replaybuild.chargerFilm` journalise, tous les balayages
+    degradent, la cuisson finit sur `ErrNoTracks` — un refus bruyant remplace un artefact ampute
+    indiscernable d'un film pauvre. `ChunksUnread` reste PUBLIE (il entre dans l'empreinte de
+    l'etape `inventory.stats`, on ne touche pas a la forme des sorties) et vaut structurellement
+    zero sur le chemin film. Les deux tests qui exercaient l'ancienne degradation
+    (`replay/inventory_decode_test.go`) sont reecrits sur le nouveau contrat, avec l'historique.
+  - **N-N. Le chunk highlight arrive DECOMPRESSE a `analysis.ParseHighlightEvents`.** Il accepte
+    les deux formes depuis l'incident du 2026-05-22 (double tolerance : il tente un
+    `zlib.NewReader` et retombe sur le clair), donc memes evenements — une decompression du plus
+    gros chunk du film en moins. NUANCE MESURABLE : sur un flux zlib TRONQUE, l'ancien chemin
+    rendait une ERREUR (`ParseHighlightEvents decompress:`) et le fil des morts etait vide ; le
+    nouveau lit le PARTIEL rendu par `filmsource`. La mesure 0.7 n'a trouve aucun flux tronque sur
+    1 378 films : le cas est theorique, mais il est ecrit.
+  - **N-O. `ParseRegistryChunk` n'inflate plus** (garde-rail `zlib` oblige). Deux tests de
+    `filmdec` lui passaient le chunk_00 BRUT par `os.ReadFile` — `ecs_table_guard_test.go` et
+    `equipment_grammar_audit_research_test.go` — et rendaient desormais un registre VIDE en
+    silence ; migres vers `ReadFilmChunk(dir, 0)`, qui decompresse. Les deux appelants de
+    production hors `filmdec` passaient deja du decompresse (`killsource/world.go`
+    `f.chunks[0]`, `cmd/rdata_weapon_scan` via son propre `inflate`) : verifie sur pieces.
+  - N-P. DETTE DE TAILLE, resorbee par DEPLACEMENTS PURS (aucune ligne de logique changee) :
+    `replay/build.go` 922 -> 415 L (`build_from_film.go` 331, `options.go` 226) — c'est la
+    resorption que la note N-G annoncait ; `filmdec/projectiles.go` 525 -> 469 L
+    (`slot_band_filled.go` 70, la regle COMBLEE rejoint sa jumelle observee). RESTE au-dessus du
+    seuil, dette PREEXISTANTE : `replay/equipment_placements.go` 595 L (+1 ligne, l'import de
+    `filmsource`). Consequence des deplacements : TROIS allowlists nommaient `replay/build.go` ou
+    `projectiles.go` par leur chemin — `filmdec/world_object_precision_guard_test.go`,
+    `archlint/no_unbounded_film_loop_test.go`, `archlint/no_rewritten_slot_band_test.go` — et une
+    quatrieme, `replay/observe_test.go`, le PARSE par son nom. Toutes repointees.
+  - N-Q. `replaybuild.collecterEntreesCatalogue` passe de 5 a 6 parametres (seuil CLAUDE.md n°5 :
+    5 ; seuil lint effectif du depot : 7, decision mesuree documentee dans `.golangci.yml`).
+    Le fil des morts partage est le 6e. `lint` vert.
+  - N-R. Le fil des morts est encore PARSE deux fois par cuisson : une fois par `replaybuild`
+    (partagee entre `identifiedEvents` et `killRefs` — c'etait deux avant) et une fois dans
+    `BuildFromFilm`. Le chunk, lui, n'est plus decompresse qu'une fois. La troisieme reduction
+    exigerait de passer `deaths` par `Options`, ce qui deplacerait l'etape observee `deaths` :
+    hors mandat de ce lot, a rouvrir si la mesure montre que le parse compte.
+
 ## 9. Revue du plan (plan-review, 2026-09-02)
 
 Relecteur frais, grille `plan-review` + verification sur pieces. Verdict initial : « a refaire
@@ -825,3 +871,51 @@ seul), 10 000 coherent comme dernier rempart.
   fichier de `himap`). A traiter hors lot : borne `BALAYAGE_CARTES` par defaut, tag dedie, ou
   timeout declare. Les gates du lot (paquets touches + integration -p 1 + vet + lint) sont
   VERTS.
+- 2026-09-02 (lot 1, item 1.1) — Le paquet FEUILLE `internal/analysis/filmsource` existe
+  (`doc.go`, `source.go`, `film.go`, 2 fichiers de test) : stdlib seule, zero import du depot,
+  grammaire D3 REVISEE appliquee dans l'ordre exact de ses quatre regles, inflate pre-dimensionne
+  (`bytes.Buffer.Grow` ratio x6 borne a 64 Mio + `io.Copy`, pas d'`io.ReadAll` nu) rendant le
+  PARTIEL sur flux tronque, payloads en SOUS-TRANCHES du chunk (documente : garder un paquet
+  retient son chunk). 17 tests, tous sur des chunks CONSTRUITS sauf le dernier — et c'est celui-la
+  qui verrouille D3 : sur la mini-bobine reelle, le chunk highlight rend le MEME jeu de paquets que
+  `filmdec.WalkPackets` (index, type, ts, payload octet pour octet). Les trois variantes rejetees
+  ont ete REJOUEES pour prouver les tests discriminants : sans la regle (4) un test rougit, sans la
+  regle (3) deux rougissent, et la candidate abandonnee « arret sur taille <= 0 » fait rougir le
+  test du film REEL — la mesure 0.7 est donc rejouee en CI, en une seconde, sur trois chunks.
+  Garde-rail `internal/archlint/filmsource_leaf_test.go` : parse des imports (go/parser, pas un
+  grep — le paquet CITE les chemins du cycle dans ses commentaires), `_test.go` exclus (le test
+  externe importe `filmdec` pour la comparaison ci-dessus), verifie discriminant par un import
+  temporaire. AUCUN consommateur touche (1.2+). Gate : `gofmt -l` vide, `go vet` vide,
+  `go test ./internal/analysis/filmsource/ ./internal/archlint/` vert, `golangci-lint` 0 issue,
+  `go build ./...` vert. Fichiers 61-331 L, fonctions < 60 L. Rien committe.
+- 2026-09-02 (lot 1, items 1.2 et 1.3) — LES BALAYAGES NE RELISENT PLUS LE FILM. Les ~30
+  `ScanFilm*(dir)` de `filmdec` et les quatre de `replay` ont chacun leur forme
+  `Scan*(film *filmsource.Film, ...)` ; `BuildFromFilm(matchID, titleSlug, film, opt)` remplace
+  `filmDir` ; `replaybuild.BuildBytes` charge le film UNE fois (manifeste `filmcache.OpenChunkDir`
+  traduit en `[]filmsource.ChunkMeta` par la couche d'assemblage — `filmsource` reste FEUILLE) et
+  le passe a tout le monde. `ParseRegistryChunk` perd son inflate ; `inflateChunk` meurt ;
+  `filmdec` et `replay` n'importent plus `compress/zlib`. DEUX points de chargement en production,
+  et deux seulement : `replaybuild/filmload.go` (la cuisson) et `cmd/zone-attribution/measure.go`
+  (la mesure). REGLE D'INDEXATION POSEE (le piege n°1 des notes de l'agent 1.1) : `LoadDir`
+  synthetise TOUJOURS `ChunkMeta.Index` depuis le nom du fichier et fusionne le manifeste PAR
+  NUMERO, jamais par position — une bobine sans `chunk_00` (la mini-bobine) a son premier chunk de
+  DONNEES a la position 0, et les confondre marcherait un chunk de donnees comme un registre.
+  Cote consommateur, `filmdec.FilmChunkNumbers` s'arrete au premier trou de numerotation, comme
+  l'ancien `CountFilmChunks` : refacto PUR, la regle est heritee sciemment et tombera avec les
+  enveloppes. Le pont `filmdec.FilmChunkAt` est prouve EQUIVALENT a `ReadFilmChunk` +
+  `WalkPackets` sur un vrai chunk, bornes de payload comprises
+  (`filmdec/film_chunks_test.go`). ENVELOPPES D2 : les 40 formes `dir` survivent, TOUTES avec des
+  appelants hors production (verifie fonction par fonction), aucune supprimee, aucune appelee
+  depuis la cuisson. FIL DES MORTS : une seule lecture partagee par `identifiedEvents` et
+  `killRefs` (elles ouvraient chacune le chunk highlight). GARDE-RAILS (item 1.9, partie 1.2/1.3) :
+  `archlint/no_film_reread_test.go` — zlib interdit dans `filmdec`/`replay`, `os.*` interdit dans
+  `filmdec` hors allowlist datee (3 fichiers), aucun appel d'enveloppe depuis `replay` et
+  `replaybuild` (liste FERMEE de 40 noms, parse go/ast et non grep : ces paquets CITENT les noms
+  interdits dans leurs commentaires). Les trois regles verifiees DISCRIMINANTES par violation
+  temporaire. Gate : `gofmt -l` vide, `go vet ./...` vide, `go build ./...` vert, suites completes
+  `filmsource`/`filmdec`/`replay`/`replaybuild`/`archlint`/`replay-equiv` vertes (dont
+  `TestEquivalenceMiniFilm`, qui compare aux empreintes FIGEES : identite prouvee en CI sur les
+  sept familles que la mini-bobine supporte), `replayartifacts`/`cmd/levelup`/`cmd/zone-attribution`
+  vertes, `golangci-lint` 0 issue sur les six paquets touches. Decouvertes N-M a N-R au §8 (trois
+  changements de comportement declares, tous hors corpus). AUCUNE CUISSON LANCEE, rien committe :
+  le harnais des 9 films est au pilote.

@@ -31,6 +31,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/analysis/filmdec"
+	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/analysis/objectiveevents"
 	"levelup/go-api/internal/analysis/replay/mapvar"
 )
@@ -399,8 +400,12 @@ func objGroundWeapons(t *testing.T, root, id string, quant *filmdec.MapQuantEntr
 	dir := objChunkDir(root, id)
 	release := filmdec.LockProcessDecode()
 	defer release()
-	defer installWorldObjectPrecision(*quant, dir)()
+	defer installWorldObjectPrecision(*quant, id)()
+	film, err := filmsource.LoadDir(dir, nil)
+	if err != nil {
+		t.Fatalf("chunks du film %s illisibles : %v", id, err)
+	}
 	wr := quant.Range()
-	_, st := decodeFilmPlacements(dir, &wr)
-	return decodeFilmPadScan(dir, &wr, st.Calibration.Widths, groundWeaponArchetype())
+	_, st := decodeFilmPlacements(film, id, &wr)
+	return decodeFilmPadScan(film, id, &wr, st.Calibration.Widths, groundWeaponArchetype())
 }

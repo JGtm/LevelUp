@@ -267,7 +267,7 @@ func equipCreatorControl(t *testing.T, dir string, samples []EquipmentStateSampl
 	for i := 1; i <= n; i++ {
 		chunks = append(chunks, i)
 	}
-	band := bipedSlotBand(dir, chunks)
+	band := bipedSlotBandDir(dir, chunks)
 	lo, hi := uint32(1)<<31, uint32(0)
 	for s := range band {
 		if s < lo {

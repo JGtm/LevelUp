@@ -55,7 +55,7 @@ func TestI22DeltaResearch(t *testing.T) {
 	for i := 1; i <= n; i++ {
 		chunks = append(chunks, i)
 	}
-	slots := bipedSlotBand(dir, chunks)
+	slots := bipedSlotBandDir(dir, chunks)
 	if len(slots) == 0 {
 		t.Fatalf("aucun slot biped dans les keyframes de %s", dir)
 	}
@@ -63,7 +63,7 @@ func TestI22DeltaResearch(t *testing.T) {
 	if err != nil {
 		t.Fatalf("decoupage i0 illisible : %v", err)
 	}
-	arch, err := bipedArchetype(dir)
+	arch, err := bipedArchetypeDir(dir)
 	if err != nil {
 		t.Fatalf("archetype biped : %v", err)
 	}
@@ -175,12 +175,12 @@ func TestInventoryComponentsDeltaCensus(t *testing.T) {
 	for i := 1; i <= n; i++ {
 		chunks = append(chunks, i)
 	}
-	slots := bipedSlotBand(dir, chunks)
+	slots := bipedSlotBandDir(dir, chunks)
 	lay, _, err := DetectI0Layout(dir)
 	if err != nil {
 		t.Fatalf("i0 : %v", err)
 	}
-	arch, err := bipedArchetype(dir)
+	arch, err := bipedArchetypeDir(dir)
 	if err != nil {
 		t.Fatalf("archetype : %v", err)
 	}
@@ -273,12 +273,12 @@ func TestInventoryValuesDeltaProbe(t *testing.T) {
 	for i := 1; i <= n; i++ {
 		chunks = append(chunks, i)
 	}
-	slots := bipedSlotBand(dir, chunks)
+	slots := bipedSlotBandDir(dir, chunks)
 	lay, _, err := DetectI0Layout(dir)
 	if err != nil {
 		t.Fatalf("i0 : %v", err)
 	}
-	arch, err := bipedArchetype(dir)
+	arch, err := bipedArchetypeDir(dir)
 	if err != nil {
 		t.Fatalf("archetype : %v", err)
 	}

@@ -65,8 +65,9 @@ var filmBuildAllowedCallers = map[string]string{
 		"declenchee a la main. Aucune boucle",
 	"cmd/zone-attribution/measure.go": "2026-08-26 — ENFANT de la passe bornee (passe.go) : " +
 		"un film par processus, plafond de MESURE (2 Gio) et priorite basse via internal/filmproc",
-	"internal/analysis/replay/build.go": "2026-08-26 — la DEFINITION de BuildFromFilm ; elle " +
-		"ne boucle sur rien",
+	"internal/analysis/replay/build_from_film.go": "2026-08-26 — la DEFINITION de " +
+		"BuildFromFilm ; elle ne boucle sur rien. Fichier renomme au lot 1 de PLAN_CUISSON_PERF " +
+		"(2026-09-02) : le decodage a quitte `build.go`, qui garde l'assemblage",
 	"internal/replaychild/replaychild.go": "2026-08-26 — ENFANT BORNE du post-sync : un film " +
 		"par processus, sentinelle armee, aucune base ouverte ; le PARENT range les octets",
 	"cmd/replay-equiv/child.go": "2026-09-02 — harnais d'equivalence de la cuisson " +

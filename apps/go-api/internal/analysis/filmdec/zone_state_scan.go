@@ -42,7 +42,11 @@ package filmdec
 //
 // HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de requete.
 
-import "fmt"
+import (
+	"fmt"
+
+	"levelup/go-api/internal/analysis/filmsource"
+)
 
 // ManagedPropertyTypeIndex est l'index d'archetype des proprietes reseau d'objet gere.
 const ManagedPropertyTypeIndex = 13
@@ -140,30 +144,42 @@ type ManagedPropertyScan struct {
 //
 // UN SEUL DECODAGE filmdec A LA FOIS PAR PROCESS : ce balayage installe un hook global de
 // paquet. Il est restaure a la sortie, y compris en cas d'erreur.
+//
+// ScanFilmManagedProperties est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
+// [ScanManagedProperties].
 func ScanFilmManagedProperties(dir string) (ManagedPropertyScan, error) {
-	sc := ManagedPropertyScan{}
-	n := CountFilmChunks(dir)
-	if n == 0 {
-		return sc, fmt.Errorf("aucun chunk film dans %s", dir)
+	film, err := filmsource.LoadDir(dir, nil)
+	if err != nil {
+		return ManagedPropertyScan{}, err
 	}
-	band := observedSlotBand(dir, n, ManagedPropertyTypeIndex)
+	return ScanManagedProperties(film)
+}
+
+// ScanManagedProperties décode les propriétés réseau ti=13 d'un film DEJA CHARGE.
+func ScanManagedProperties(film *filmsource.Film) (ManagedPropertyScan, error) {
+	sc := ManagedPropertyScan{}
+	nums := FilmChunkNumbers(film)
+	if len(nums) == 0 {
+		return sc, ErrNoFilmChunk
+	}
+	band := observedSlotBand(film, ManagedPropertyTypeIndex)
 	if len(band) == 0 {
-		return sc, fmt.Errorf("aucun slot d'archetype ti=%d dans les keyframes de %s",
-			ManagedPropertyTypeIndex, dir)
+		return sc, fmt.Errorf("aucun slot d'archetype ti=%d dans les keyframes du film",
+			ManagedPropertyTypeIndex)
 	}
 	sc.Slots = len(band)
-	arch, err := managedPropertyArchetype(dir)
+	arch, err := managedPropertyArchetype(film)
 	if err != nil {
 		return sc, err
 	}
 	w := managedPropertyWalk{arch: arch}
 	defer w.install()()
-	for c := 1; c <= n; c++ {
-		data, err := ReadFilmChunk(dir, c)
-		if err != nil {
+	for _, c := range nums {
+		data, pks, ok := FilmChunkAt(film, c)
+		if !ok {
 			continue
 		}
-		for _, pk := range WalkPackets(data) {
+		for _, pk := range pks {
 			if pk.Type != PacketTypeDelta {
 				continue
 			}
@@ -178,19 +194,14 @@ func ScanFilmManagedProperties(dir string) (ManagedPropertyScan, error) {
 // LE DECOUPAGE DU REGISTRE CHANGE AVEC LE BUILD (mesure du lot 0) : les noms sont lus du film,
 // jamais supposes aux index attendus — c'est `consumeByName` qui route, et un archetype dont les
 // noms ne sont pas ceux de ti=13 rend simplement zero lecture.
-func managedPropertyArchetype(dir string) (Archetype, error) {
-	raw, err := ReadFilmChunk(dir, 0)
+func managedPropertyArchetype(film *filmsource.Film) (Archetype, error) {
+	reg, err := filmRegistry(film)
 	if err != nil {
-		return Archetype{}, fmt.Errorf("chunk_00 (registre) illisible dans %s : %w", dir, err)
-	}
-	reg, err := ParseRegistryChunk(raw)
-	if err != nil {
-		return Archetype{}, fmt.Errorf("registre illisible dans %s : %w", dir, err)
+		return Archetype{}, err
 	}
 	arch, ok := reg.Archetype(ManagedPropertyTypeIndex)
 	if !ok {
-		return Archetype{}, fmt.Errorf("archetype ti=%d absent du registre de %s",
-			ManagedPropertyTypeIndex, dir)
+		return Archetype{}, fmt.Errorf("archetype ti=%d absent du registre", ManagedPropertyTypeIndex)
 	}
 	return arch, nil
 }
