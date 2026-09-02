@@ -88668,7 +88668,6 @@ leurs TIRS sont indexés.
   refuse plus que les collisions bot<->humain, et déduplique par NOM.
 
 **Gates** : go vet/test replay+replaybuild verts, témoin recuit inchangé (6 vies Razzle,
-0 contestation à lever sur ce film — le canal est en place pour les matchs à relais multiples).
 ---
 ---
 
