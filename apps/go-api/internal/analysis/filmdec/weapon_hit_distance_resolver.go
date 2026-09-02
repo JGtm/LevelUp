@@ -91,8 +91,8 @@ func ResolveHitDistanceBase(damages []WeaponDamage, tracks map[uint32][]hitPosSa
 			if d.VictimIdx < 0 || d.ResponsibleIdx < 0 {
 				continue
 			}
-			_, okv := nearestSample(tracks[uint32(b+d.VictimIdx)], d.TimestampUS, WeaponHitPosToleranceUS)
-			_, oka := nearestSample(tracks[uint32(b+d.ResponsibleIdx)], d.TimestampUS, WeaponHitPosToleranceUS)
+			_, okv := nearestSample(tracks[uint32(b+d.VictimIdx)], d.TimestampUS)
+			_, oka := nearestSample(tracks[uint32(b+d.ResponsibleIdx)], d.TimestampUS)
 			if okv && oka {
 				res++
 			}
@@ -113,8 +113,8 @@ func NewWeaponHitDistanceFunc(tracks map[uint32][]hitPosSample, base int) Weapon
 		if d.VictimIdx < 0 || d.ResponsibleIdx < 0 {
 			return 0, false
 		}
-		pv, okv := nearestSample(tracks[uint32(base+d.VictimIdx)], d.TimestampUS, WeaponHitPosToleranceUS)
-		pa, oka := nearestSample(tracks[uint32(base+d.ResponsibleIdx)], d.TimestampUS, WeaponHitPosToleranceUS)
+		pv, okv := nearestSample(tracks[uint32(base+d.VictimIdx)], d.TimestampUS)
+		pa, oka := nearestSample(tracks[uint32(base+d.ResponsibleIdx)], d.TimestampUS)
 		if !okv || !oka {
 			return 0, false
 		}
@@ -174,8 +174,12 @@ func DetectFilmWorldRange(dir, catalogPath, mapNameOverride string) (*Vec3Range,
 	return &r, nil
 }
 
-// nearestSample rend la position du slot la plus proche de T dans [T-tol, T+tol], et sa validite.
-func nearestSample(track []hitPosSample, T, tol uint64) (hitPosSample, bool) {
+// nearestSample rend la position du slot la plus proche de T dans la fenetre
+// [T-WeaponHitPosToleranceUS, T+WeaponHitPosToleranceUS], et sa validite. La tolerance est la
+// constante MESUREE du chantier — elle etait un parametre que tous les appelants passaient a
+// l'identique (unparam, ratchet CI) ; re-parametrer le jour ou une mesure exigera une autre fenetre.
+func nearestSample(track []hitPosSample, T uint64) (hitPosSample, bool) {
+	const tol = WeaponHitPosToleranceUS
 	if len(track) == 0 {
 		return hitPosSample{}, false
 	}
