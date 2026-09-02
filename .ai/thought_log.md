@@ -88880,3 +88880,26 @@ place et le plancher n aurait rien eu a quoi ceder.
 
 **Conclusion / prochaine etape** : gate visuel. Restent : le ZOOM (surimpression d angle, glisser
 + croix directionnelle) que l utilisateur reclame, les prereglages de son, et les zones Forge.
+
+---
+
+## [2026-09-02] Fil du rejeu : le retrait etait sur la LISTE, il devait etre sur la LIGNE
+
+**Statut** : Complete ; merge vers feat/v75 dans la foulee.
+
+**Decision technique principale** : le retrait a gauche du fil, pose la veille sur le `<ul>`,
+decalait AUSSI le filet separateur de chaque entree (`replay-feed-row`, `border-bottom` dans
+globals.css). Les traits rentraient avec le texte, donc l oeil ne voyait aucun retrait — le
+diagnostic de l utilisateur etait exact : « c est que ce qu il y a entre les lignes qu il faut
+padding ». Le `pl` passe de la liste a `FEED_ROW` : la ligne garde sa largeur pleine, son filet
+court d un bord a l autre, et c est son CONTENU qui rentre.
+
+Aussi, sur retour : les etiquettes des deux axes de la carte de chaleur raccourcies — « Ce que la
+chaleur mesure » -> « Mesure », « Sur quelle duree » -> « Duree », et ses options
+« Toute la partie » / « Jusqu a l image courante » -> « Partie » / « Progressif ». Un rail
+segmente met l etiquette et les options sur UNE ligne : des libelles de phrase y volaient la
+place des options elles-memes.
+
+**Resultats observes** : typecheck EXIT=0 ; 137 fichiers / 2068 tests verts.
+
+**Conclusion / prochaine etape** : gate visuel. Le zoom reste a ouvrir.
