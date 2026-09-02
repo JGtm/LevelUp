@@ -1,3 +1,160 @@
+## [2026-09-02] Vehicules — Warthog arme V3 : la rotation Z de l'arme (V2) etait une sur-interpretation, orientation authored conservee (canon vers l'AVANT) — Complété
+
+**Correction utilisateur** : le placement V2 (arme au centre du grand rectangle du plateau arriere)
+est valide (« parfait »), le rockethog n.13 aussi, MAIS la rotation de 180 degres autour de Z que
+V2 appliquait aux armes n.15 (mitrailleuse) et n.16 (gauss) est refusee : « pourquoi as-tu fait
+pivoter la tourelle ? ». L'orientation AUTHORED (canon vers +X modele = vers l'AVANT du Warthog,
+par-dessus l'habitacle, position de repos de la LAAG et du Gauss) est la bonne. V2 avait deduit
+« canon vers l'arriere » du seul fait que le plateau est a l'arriere : sur-interpretation.
+
+**Decision technique** : n.15 et n.16 refaits avec EXACTEMENT la chaine V2 (`vs-measure plateau`,
+cadre 5 m, 10 mm/px, `-xplateau=-1`, erosion 1, union 0,6, rectangle du haut 40 x 51 px centre
+(505,5 ; 447,0) px = X -0,585 / Y 0,000 / Z 0,420, centre de base = tranche basse 8 cm, ordre
+peintre, rognage, rotation finale 180 deg de l'image) mais `-rotarme=false` : translation seule,
+aucune rotation de l'arme. Le drapeau `-rotarme` est conserve (defaut bascule a false, en-tete de
+`plateau.go` corrige), pas active. T = (-0,577 ; 0,000 ; +0,420) pour la LAAG (V2 : -0,593) et
+(-0,548 ; +0,001 ; +0,419) pour le Gauss (V2 : -0,622) : le centre de base n'est plus retourne,
+d'ou 1,6 / 7,4 cm d'ecart en X ; ecart centre de base / centre du rectangle = 0,00 cellule.
+
+**Resultats** : `sprites_v4/warthog.png` et `warthog_gauss.png` ECRASES, 112 x 222 px chacun
+(V2 : 246 / 245 — le canon ne deborde plus le pare-chocs, il est au-dessus de l'habitacle :
+emprise posee X[-0,77..+0,18] / X[-0,78..+0,17]), chassis 210 px a y[6..215], centre du rectangle
+a (55,5 ; 163,0) comme le rockethog. Controle a l'oeil (planche
+`PLANCHE_WARTHOG_FINAL_V3_2026-09-02.png`) : arme en bas au centre du rectangle, canon vers le
+HAUT du sprite (avant) ; bloc lateral du Gauss a Y -0,39 (repere arme) -> a DROITE du sprite nez
+en haut (= -Y du vehicule), rotation d'image pure, pas de miroir. `rockethog.png` et
+`razorback.png` NON touches. Rapport : section « V3 » ajoutee a `WARTHOG_FINAL_V2_2026-09-02.md`.
+himap et cmd/vehicle-sprite intacts ; gofmt/vet/build OK ; aucun commit.
+
+**Conclusion / prochaine etape** : ne jamais deduire l'orientation d'une arme de la position de
+son point d'attache — l'orientation authored du `mode` enfant fait foi tant qu'aucune donnee
+(squelette, animation de repos) ne dit le contraire. Prochaine etape : validation visuelle
+utilisateur de V3 ; si OK, commit du lot et suppression du driver jetable `cmd/vs-measure`.
+
+## [2026-09-02] Vehicules — Warthog arme V2 : AVANT/ARRIERE INVERSES en V1, corrige par l'utilisateur (+X = AVANT pour la famille Warthog) — Complété
+
+**Erreur V1 corrigee par l'utilisateur** : « tu as confondu l'avant et l'arriere du vehicule, je te
+parle bien du rectangle EN HAUT de l'image ». V1 avait cherche le plateau dans la moitie BASSE du
+rendu (X local > 0) et pose l'arme dans le V du CAPOT. Dans le rendu (remap {Y,-X}) le HAUT = X < 0
+= ARRIERE (grand rectangle blanc du plateau), le BAS = X > 0 = AVANT (capot en V, pare-chocs
+anguleux). **Decision : +X = AVANT pour la famille Warthog** (inverse du Scorpion, +X = arriere) —
+le sens de X est PAR MODELE, pas une convention universelle. Consequence : le Razorback (meme
+chassis, valide en forme) etait aussi nez en bas -> pivote de 180 degres avec le lot.
+
+**Decision technique** : meme methode (masque blanc sans trait, erosion 1, composantes 4-connexes,
+10 mm/px = echelle du Razorback) restreinte a X < 0 (`-xplateau=-1`). Plus grande composante =
+interieur du grand rectangle : 40 x 51 px = 0,40 x 0,51 m, centre (505,5 ; 447,0) px = local
+X -0,585 / Y 0,000, Z 0,420 ; la 2e composante fait 15 % (pas d'union). Robuste : erosion 0/1/2 ->
+X -0,575/-0,585/-0,585, Y 0,000. Les 3 armes sont authored canon vers +X (= avant) -> **pivotees de
+180 degres autour de Z** avant la pose (canon vers l'arriere, deborde le pare-chocs ARRIERE) ;
+faute de rotation dans `himap.PartAssemblage`, rotation de l'IMAGE de l'arme rendue au canevas
+symetrique (= (X,Y)->(-X,-Y) exact) avec T_rendu = -T. T (apres rotation) : rockethog
+-0,520/-0,001/+0,424 ; LAAG -0,593/0,000/+0,420 ; Gauss -0,622/-0,001/+0,419. Puis **rotation finale
+de 180 degres** du sprite (rotation, pas miroir : chiralite du Gauss conservee) -> nez en haut,
+arme en bas, canon vers le bas, comme les autres vehicules du lot.
+
+**Resultats** : ecart centre de base / centre du rectangle = 0,00 cellule (3 armes) ; chassis 210 px
+(y[6..215]) dans les 3 sprites, Razorback 211 px ; meme sens de rotation pour les 4 ; controle a
+l'oeil sur la planche (bloc A arriere en haut : arme au milieu du rectangle du haut, canon vers le
+haut ; bloc B : nez en haut, arme en bas). Limite : l'eclairement (direction fixe) tourne avec
+l'image -> ombrage du chassis inverse par rapport aux autres vehicules (alpha 0,80..1, subtil).
+
+**Livrables** : `sprites_v4/{warthog,rockethog,warthog_gauss,razorback}.png` ECRASES
+(112x246 / 112x222 / 112x245 / 127x250), `PLANCHE_WARTHOG_FINAL_V2_2026-09-02.png`,
+`WARTHOG_FINAL_V2_2026-09-02.md`. Code : `cmd/vs-measure/plateau.go` + `plateau_detect.go`
+(drapeaux `-xplateau`, `-rotarme`, `-rot180`, `-pivote`), en-tete de `main.go` corrige (sens de X
+par modele). himap et cmd/vehicle-sprite intacts. gofmt/vet/build OK, aucun commit. Prochaine
+etape : validation visuelle utilisateur ; si OK, commit du lot et suppression du driver jetable.
+
+## [2026-09-02] Vehicules — Warthog arme : arme posee au CENTRE DU PLATEAU (rectangle blanc arriere) — Complété
+
+**Pointage utilisateur (definitif)** sur la planche-contact : n.13 = LANCE-ROQUETTES (`0xbe74e831`),
+n.15 = MITRAILLEUSE/LAAG (`0xc0803caa`), n.16 = CANON GAUSS (`0x9c7f3b54`) — tous pc:globals, comme le
+chassis `0x561f2ca7`. Pose « T = noeud n[006] (+0,765) » REJETEE : « au centre du rectangle blanc a
+l'arriere, la plus grande aire sans rien » = le pont arriere.
+
+**Decision technique** : placement VISUEL mesure sur le rendu, pas par noeud moteur. Chassis `default`
+rendu seul au canevas fixe (cadre 5 m, 10 mm/px = echelle de razorback.png valide : 101 x 211 px) ->
+masque blanc sans trait (alpha>0, non noir), moitie arriere, erosion 1 px, composantes 4-connexes. Deux
+zones d'aire voisine (1257 / 1171 px) separees par les traits en V du couvercle-moteur : interieur du V
+(Z 0,67) et U du plancher (Z 0,57) -> le rectangle percu = leur REUNION (regle `-union=0.6`) :
+0,72 x 0,61 m, centre (504,5 ; 559,0) px = local X +0,535 / Y -0,010, Z 0,674. Par arme : centroide de
+la tranche basse (8 cm) amene sur ce centre (T rockethog +0,470/-0,009/+0,678 ; LAAG +0,543/-0,010/
++0,673 ; Gauss +0,572/-0,009/+0,673) ; ordre peintre (chassis puis arme), rognage du composite.
+
+**Resultats** : ecart centre arme / centre plateau = 0,00 cellule (par construction, controle imprime +
+croix sur la planche) ; robuste a l'erosion 0/1/2 a 10 mm/px (X +0,535 constant) ; a 8 mm/px le U se
+scinde (biais Y 6 cm) -> 10 mm/px retenu. Canon LAAG/Gauss deborde le pare-chocs de 0,3 m (attendu).
+Pivot `0x99d45ed9` NON retenu comme centre : 28 cm derriere la base ronde. Chassis 210 px vs 211 px
+Razorback.
+
+**Livrables** : `sprites_v4/{warthog,rockethog,warthog_gauss}.png` ECRASES (112 x 253/222/252),
+`PLANCHE_WARTHOG_FINAL_2026-09-02.png`, `WARTHOG_FINAL_2026-09-02.md`. Code : `cmd/vs-measure/
+plateau.go` + `plateau_detect.go` (driver jetable, non commite ; himap et cmd/vehicle-sprite intacts).
+gofmt/vet/build OK, aucun commit. Prochaine etape : validation visuelle utilisateur ; si OK, commit du
+lot (sprites + rapports) et suppression du driver jetable (0 code mort).
+
+## [2026-09-01] Vehicules — CORRECTION de lecture : toute la famille Warthog armee est NON validee — En cours
+
+**Erreur de lecture corrigee par l utilisateur.** « Je les valide tous sauf warthog » designait la FAMILLE
+Warthog (chaingun, roquettes, gauss), pas le seul chaingun. Rockethog et Warthog Gauss n ont JAMAIS ete
+valides : ils sont restes au rendu V4 (permutations de region) dont l utilisateur disait deja « rien n est
+monte a l arriere ». Seul le RAZORBACK (cargo) est valide -> le chassis de la famille est bon, le defaut
+est l ARME ARRIERE pour les trois. Le commit f32784673 a embarque rockethog.png / warthog_gauss.png en les
+presentant comme valides : FAUX, ce sont des tentatives V4 a remplacer.
+
+**Decision : ne plus deviner.** Agent lance pour une ENUMERATION EXHAUSTIVE des geometries candidates
+d arme arriere (enfants vehi, TOUTES les permutations de la region tourelle, et piste neuve : tags weap
+de la famille dont le modele avait ete declare absent AVANT la correction du resolveur — a re-tester),
+rendues isolees + assemblees a la meme echelle, a cote du Razorback valide, sur une planche-contact ou
+l utilisateur POINTE (PLANCHE_CONTACT_ARMES_WARTHOG_2026-09-01). Aucun sprite reecrit avant ce choix.
+
+## [2026-09-01] Rework Warthog + Gungoose — LAAG surdimensionnee / pods gungoose — Complété
+
+**Retour user** : Warthog LAAG (via `warthog_g 0x0000e0da`) trop grosse/mal placee ; Gungoose pods
+avant peut-etre manquants.
+
+**Mesure decisive** : `warthog_g 0x0000e0da` = dX 2,39 m (> chassis 2,24 m), centroide cX +1,74
+(hors chassis, 3 sections) = MAUVAIS ASSET (barillet LAAG deploye vers l'arriere). Directive Ghidra
+(attache = transformee de noeud {echelle,rot,T} ; `GHIDRA_ATTACHEMENT_VEHICULE_2026-09-01.md`)
+testee SUR PIECE : parse du squelette du chassis (bloc racine +64, 124 o/noeud, echelle a +40) ->
+les **106 noeuds ont echelle = 1,000** -> AUCUNE echelle de noeud a l'origine du « trop grosse ».
+Noeud de mount plausible par position `n[006] 0xe1a390ba` = arriere-centre (+0,765,0,+0,541),
+echelle 1. -> cas « mauvais asset » prevu par la directive -> retour a la piste silhouette.
+
+**Correctif** : la LAAG correcte est DEJA dans le render_model du chassis en PERMUTATION
+`0x06c86db1` (region[17] sec 84-85, 0,26x0,76 m, cX +0,93 arriere-centre, co-reperee par
+construction). `warthog.png` = cette permutation (pas d'enfant compose). Gungoose : pods avant =
+PERMUTATION `0x02c9ed0a` (sec 20,23,35,38 ; aucun `gungoose_g`), PRESENTS, atteignant le nez
+(X -0,64) sans depasser (nez a -0,655) ; `gungoose.png` regenere a echelle lisible (cellmm=6).
+
+**Livrables** : `sprites_v4/{warthog,gungoose}.png`, `PLANCHE_WARTHOG_GUNGOOSE_2026-09-01.png`,
+`REWORK_WARTHOG_GUNGOOSE_2026-09-01.md`. Code : `himap/noeuds.go`+`noeuds_test.go` (brique
+transformee de noeud, reproduit FUN_140474790, testee), `cmd/vs-measure` (mesures boite/centroide +
+dump squelette). `PartAssemblage` NON etendu (aucun noeud non-identite dans le perimetre -> eviter
+du code mort). gofmt/vet/test OK, aucun commit, `cmd/vehicle-sprite` non modifie.
+
+## [2026-09-01] Vehicules — commit de vague f32784673 + V2b (occupant/destruction/cooldown) + garde-rail dist3 — Complété
+
+**Commit f32784673** (branche wt/vehicules-tourelles) : assemblage parent/enfant (himap
+objet_isole+vehicules+tagblocks_diag ; cmd/vehicle-sprite assemble+compose+diag+variantes), decodeur
+liste d'evenements (filmdec/event_list), 9 tests V1/V2/V2b, sprites (famille Warthog armee chaingun/roquettes/gauss + gungoose NON valides, en
+rework), rapports + planches, manifeste rev9. EXCLUS : WAV de sons (transitoires), warthog/gungoose
+(rework), parasites de racine (supprimes).
+
+**V2b (3 signaux, gates ecrits AVANT mesure, donnees reelles ; rapport V2B_ATTACHEMENT_VITALITE)** :
+(1) occupant par attachement i10 REFUTE (0/19) -> le relais est la liste d'evenements monte/descend
+(sorties = occupant a la ms, recoupement V1a.4 parfait 10/10) ; embarquement = deser Ghidra restant.
+(2) destruction par i4->0 REFUTEE (i4 = bruit pour ti=40 : 51% de pas decroissants vs 13-26% bipedes ;
+cause : i2/i3 non decodes avant i4 desynchronisent le curseur) -> datation par la MORT DU CONDUCTEUR
+(voie validee user). (3) cooldown par methode des socles RESOLU hors Super Fiesta (Behemoth ~58 s,
+CV 0,17, 4/6 pads) ; en SF non resolu (densite : vehicules concurrents par pad).
+
+**Garde-rail rattrape par le gate** : v2dDist/v2cDist avaient recopie la formule de distance 3D ->
+TestUneSeuleFormuleDeDistance3D rouge. Corrige : adaptateur d'une ligne vers dist3 (unique ecriture,
+geometry.go), import math retire. LECON : lancer les tests du package AVANT de committer un instrument,
+meme « lecture seule » — un garde-rail de factorisation attrape la formule recopiee.
+
 ## [2026-09-01] Sprites vehicules — assemblage parent/enfant (tourelle/canon = objet-enfant) — Complété
 
 **Insight (utilisateur) CONFIRME** : un vehicule n'est pas un seul render_model ; la tourelle/le
@@ -81494,52 +81651,32 @@ autres vehicules (event moteur deja identifie), egalisation, livraison. LECON : 
 sonne maigre, verifier QUEL etat de switch est rendu — le defaut est souvent le ralenti, pas la
 conduite.
 
-## [2026-09-01] Vehicules — sprites tourelle = OBJET-ENFANT (assemblage) + V1/V2b decodes — Complete (rework warthog/gungoose)
 
-**Sprites : la tourelle est un objet-enfant, pas une section du chassis (insight utilisateur, PROUVE).**
-Le mode de chassis rendu seul n'a qu'un anneau de tourelle vide (Scorpion 0x39918211) ; le canon est un
-vehi SEPARE (scorpion_c -> mode 0x60dd0e4e), resolu par la meme chaine vehi->hlmt->mode. Le lien
-parent->enfant est par NOM DE FAMILLE (pas de tagref inline dans le tag parent). Modeles enfants
-co-reperes dans le repere du vehicule -> assemblage a translation nulle correct. Resolveur
-RefModeleVehicule corrige (plancher 0x100 + parasitesVehicule nomme {0x1f,0x3a73,0x27d0} + chaine hlmt
-avant ref directe) pour debloquer les hlmt de tourelle a petit hash (warthog_g -> hlmt 0x0000e0d4).
-Retour utilisateur : assemblage refait en ORDRE PEINTRE sur canevas fixe (chassis + tourelle rendus
-separement, meme cadre/cellmm, compose2d source-over tourelle EN DERNIER, rognage du composite seul)
--> placement + echelle + superposition (tourelle TOUJOURS au-dessus).
+## [2026-09-01] Vehicules — planche-contact des armes arriere Warthog (enumeration exhaustive, verdict weap) — Complete
 
-**Validation utilisateur (gate visuel).** Valides : Scorpion (canon), Wraith (plasma), Razorback
-(cargo) + tout le lot V4. REFUSES : Warthog (assets de tourelle trop gros, ne ressemblent pas) et
-Gungoose (lance-missiles a revoir) -> creuser, Ghidra. Ghost/Banshee/Chopper : arme INTEGREE au chassis
-(aucun vehi-enfant, verifie scan+diag). Phantom : non jouable -> ignore (phantom_g minuscule authored a
-l'origine, negligeable).
+**Contexte.** Trois rejets de suite des sprites Warthog armes (chaingun/roquettes/gauss) ; seul le
+Razorback est valide. Consigne : ne pas deviner, enumerer TOUTES les geometries candidates d'arme
+arriere (weap, enfants vehi, permutations) et livrer une planche ou l'utilisateur pointe.
 
-**V1 conducteur + visee.** Attribution du conducteur (pour la teinte equipe) par le debut du trou de
-position ; i21 (unit-desired-aiming-vector) ABSENT du flux ti=40 -> a l'arret on assume le regard vers
-l'avant, en mouvement on prend i1.
+**Decision technique.** Driver jetable `cmd/vs-measure armes` (non commite, aucun code partage
+touche) : scan des 192 `weap` avec le resolveur corrige + refs brutes par groupe, scan des 67 `vehi`,
+rendu de CHAQUE (region, permutation) du mode chassis et de chaque enfant sur un canevas fixe commun
+(cadre 5 m, 8 mm/px), mesures bbox/centroide, squelettes, chaine sonore FNV-1, brute-force murmur3
+des noms de noeuds. Planche composee en PowerShell/System.Drawing (27 candidats + reference).
 
-**V2b (3 signaux, gates ecrits AVANT mesure, sur donnees reelles).** (1) Occupant par attachement i10 :
-REFUTE (0/19 resolvent vers un vehicule). Le RELAIS est la liste d'evenements monte/descend
-(filmdec.ScanFilmVehicleEvents) : les SORTIES donnent l'occupant a la ms, recoupement V1a.4 parfait
-(10/10 ferment un trou de position a l'instant exact). Embarquement = deser Ghidra restant. (2)
-Destruction par i4->0 (body-vitality) : REFUTE au niveau VALEUR (i4 = bruit pour ti=40 : 51% de pas
-decroissants vs 13-26% sur bipedes ; cause : i2/i3 non decodes avant i4 desynchronisent le curseur).
-Voie pratique validee par l'utilisateur : dater la destruction par la MORT DU CONDUCTEUR (dead-state
-bipede, resolu 97,6%). (3) Cooldown par la methode des socles : RESOLU hors Super Fiesta (Behemoth
-~58 s, CV 0,17, 4/6 pads etablis) ; en SF non resolu (densite : vehicules concurrents par pad) --
-l'echec du lot V2 etait un artefact du corpus SF, pas de la methode.
+**Resultats.** (1) `weap` : 128 modes resolus au total, TOUS armes tenues (dY <= 0,30 m) ; les 9
+weap de la famille Warthog n'ont AUCUNE ref hlmt/mode au balayage brut -> pas de geometrie de
+tourelle sur les weap (le lot V4 avait raison, pour une autre raison que le plancher). (2) MAIS
+croisement decisif : l'enfant `vehi 0xbcfb852f` (mode `0xbe74e831`) reference le `weap 0xc7d50912`
+= ROCKETHOG du manifeste sons -> pod de roquettes IDENTIFIE. (3) Les enfants ne sont PAS co-reperes
+(base Z=0, pivot `0x99d45ed9` a (+0,27,0,+0,40) partage par 4 enfants) : il faut les translater au
+noeud d'attache du chassis (candidat par position n[006] `0xe1a390ba` (+0,765,0,+0,541), dont le Z
+egale le sommet des socles region[17]) ; la conclusion « translation nulle » du rapport ASSEMBLAGE
+ne tenait que sur le Scorpion (pivot a l'origine). (4) Les 3 sprites rejetes = groupes de perms
+(socles 0,2-0,3 m + garde-boue + plaques) : jamais une arme. (5) `mode` par nom ASCII : 0/2250.
 
-**Garde-rail rattrape par le gate.** Deux instruments (v2dDist, v2cDist) avaient RECOPIE la formule de
-distance 3D -> TestUneSeuleFormuleDeDistance3D rouge. Corrige : adaptateur d'une ligne vers dist3
-(unique ecriture, geometry.go), import math retire. build + vet + tests filmdec/replay verts (CGO off) ;
-himap = *_gamefiles_test.go gardes par la presence des modules (skippent en CI).
-
-**Commite.** Code (himap objet_isole + vehicules + tagblocks_diag ; cmd/vehicle-sprite
-assemble+compose+diag+variantes ; filmdec event_list), 9 tests, sprites (hors warthog/gungoose en
-rework), rapports V1/V2/V2b/event-list/assemblage + planches, manifeste rev9. Artefact Le Garage a jour.
-WAV de sons non commites (transitoires). Libelle son corrige : l'"allumage" Scorpion = rotation de la
-tourelle.
-
-**Prochaines etapes.** (1) Rework tourelles Warthog + Gungoose (bons assets + echelle) via Ghidra. (2)
-Datation de destruction par la mort du conducteur (voie validee). (3) Occupant a l'embarquement (deser
-Ghidra de l'event board). (4) Moteurs au sol = capture en jeu (son modele au runtime, non
-reconstructible depuis les banques).
+**Conclusion / prochaine etape.** Livre `PLANCHE_CONTACT_ARMES_WARTHOG_2026-09-01.png` +
+`CONTACT_ARMES_WARTHOG_2026-09-01.md`. Avis (non impose) : roquettes = n.13 `0xbe74e831` (prouve),
+chaingun = n.14 `0x6b17fdb5` (forme), gauss = n.15 `0xc0803caa` (forme), tous en pose T=noeud. Les
+sprites v4 ne sont PAS reecrits : attendre que l'utilisateur pointe (numero + colonne), puis
+regenerer (n.13/15/16 in-module avec le chassis en pc:globals ; n.14/17 via canevas 2D).
