@@ -469,3 +469,53 @@ export function footprint(o: ReplayMapObject): XY[] {
     y: o.y + ux * sin + uy * cos,
   }))
 }
+
+/**
+ * canvasToWorld — L'INVERSE EXACT de `worldToCanvas`.
+ *
+ * Il existe pour UNE raison : savoir quel point du monde se trouve sous le pointeur, afin que la
+ * molette grossisse VERS le curseur. Sans lui, la molette ne pourrait que grossir vers le centre
+ * de la fenêtre — c'est-à-dire déplacer sous la souris ce qu'on visait avec elle.
+ *
+ * Il reprend la formule de `worldToCanvas` à l'envers, terme pour terme, et le test d'aller-
+ * retour est ce qui garantit qu'ils ne divergeront pas : deux projections écrites séparément
+ * finissent toujours par se contredire d'un demi-pixel, et un demi-pixel de dérive à chaque cran
+ * de molette devient un décalage franc en cinq crans.
+ */
+export function canvasToWorld(
+  c: XY,
+  bounds: ReplayBounds,
+  width: number,
+  height: number,
+  pad: number,
+): XY {
+  const bw = Math.max(bounds.maxX - bounds.minX, 1e-6)
+  const bh = Math.max(bounds.maxY - bounds.minY, 1e-6)
+  const scale = Math.min((width - 2 * pad) / bw, (height - 2 * pad) / bh)
+  if (!(scale > 0)) return { x: bounds.minX, y: bounds.maxY }
+  const offsetX = (width - bw * scale) / 2
+  const offsetY = (height - bh * scale) / 2
+  return {
+    x: bounds.minX + (c.x - offsetX) / scale,
+    y: bounds.maxY - (c.y - offsetY) / scale,
+  }
+}
+
+/**
+ * zoomTowards — le centre qui laisse un point du monde IMMOBILE à l'écran quand le zoom change.
+ *
+ * La formule tient en une ligne, et elle se démontre : un point `p` est à la même position
+ * RELATIVE dans la fenêtre avant et après si son écart au centre est divisé par le même facteur
+ * que la fenêtre elle-même. D'où `c' = p + (c - p) x (zoomAvant / zoomApres)`.
+ *
+ * C'est ce qui fait qu'une molette « attrape » l'endroit qu'on vise au lieu de le chasser.
+ */
+export function zoomTowards(
+  center: XY,
+  point: XY,
+  fromZoom: number,
+  toZoom: number,
+): XY {
+  const k = Math.max(fromZoom, 1) / Math.max(toZoom, 1)
+  return { x: point.x + (center.x - point.x) * k, y: point.y + (center.y - point.y) * k }
+}

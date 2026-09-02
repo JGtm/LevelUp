@@ -21,20 +21,28 @@
  * plus aussi près du bord, et le centre doit reculer. Sans rebornage à l'écriture, il resterait
  * dans un coin où plus rien ne peut le suivre.
  *
- * # PAS DE GLISSER, ET LA RAISON EST MESURABLE
+ * # TROIS GESTES, UN SEUL CHEMIN
  *
- * La demande laissait le choix (« soit le déplacement à la souris soit une croix
- * directionnelle »). La croix gagne pour deux raisons. L'horloge tourne : glisser pendant que
- * l'action bouge, c'est poursuivre le jeu à la souris. Et surtout, un glisser change le cadrage
- * à CHAQUE mouvement de pointeur — donc recuit les quatre calques statiques à chaque image. Il
- * faudrait un blit décalé et une cuisson à marge pour l'éviter. La croix va par pas discrets :
- * une cuisson par clic, exactement le coût d'un redimensionnement de fenêtre.
+ * La croix, la molette (`useReplayWheelZoom`) et le clavier (`useReplayShortcuts`) appellent tous
+ * les MÊMES actions, avec les mêmes paliers et le même rebornage. C'est ce qui interdit qu'un
+ * zoom à la molette et un zoom au bouton finissent par ne plus donner le même résultat.
+ *
+ * LE GLISSER N'Y EST PAS, et la raison est mesurable : il change le cadrage à CHAQUE mouvement
+ * de pointeur, donc recuit les quatre calques statiques à chaque image (le sol fait ~45 000
+ * cellules, 10 à 45 ms par cuisson). L'éviter demande un blit recadré et une cuisson à marge —
+ * un lot en soi, chiffré, pas encore fait. Les trois gestes ci-dessus vont par pas DISCRETS :
+ * une cuisson par cran, exactement le coût d'un redimensionnement de fenêtre.
  */
 import { useCallback, useMemo, useState } from 'react'
 
 import type { ReplayBounds } from '@/lib/api/types'
 
-import { ZOOM_LEVELS, clampCenter, sceneCenter, type ZoomLevel } from './replayLogic'
+import { ZOOM_LEVELS, clampCenter, sceneCenter, zoomTowards, type ZoomLevel } from './replayLogic'
+
+/** Un indice de palier, ramene dans la liste. Un seul endroit ou cette borne s ecrit. */
+function clampIndex(i: number): number {
+  return Math.min(Math.max(i, 0), ZOOM_LEVELS.length - 1)
+}
 
 /**
  * Le pas de la croix, en fraction de la fenêtre VISIBLE (et non de la scène). Un quart : assez
@@ -55,6 +63,15 @@ export interface ReplayZoom {
   reset: () => void
   /** Un pas de croix. `dx`/`dy` valent -1, 0 ou 1 ; `dy` positif va vers le HAUT de la carte. */
   panStep: (dx: number, dy: number) => void
+  /**
+   * UN CRAN DE MOLETTE, VERS UN POINT DU MONDE. `dir` vaut +1 (grossir) ou -1 (réduire) ;
+   * `towards` est le point sous le pointeur, qui doit rester IMMOBILE à l'écran.
+   *
+   * Sans ce second argument, la molette ne pourrait grossir que vers le centre de la fenêtre —
+   * c'est-à-dire déplacer sous la souris exactement ce qu'on visait avec elle. C'est la
+   * différence entre une molette qui attrape et une molette qui chasse.
+   */
+  zoomAt: (dir: number, towards: { x: number; y: number }) => void
 }
 
 export function useReplayZoom(scene: ReplayBounds): ReplayZoom {
@@ -72,14 +89,14 @@ export function useReplayZoom(scene: ReplayBounds): ReplayZoom {
   )
 
   const zoomIn = useCallback(() => {
-    setIndex((i) => Math.min(i + 1, ZOOM_LEVELS.length - 1))
+    setIndex((i) => clampIndex(i + 1))
   }, [])
 
   // EN DÉZOOMANT, LE CENTRE SE REBORNE — cf. l'en-tête. Il se calcule à partir du centre
   // COURANT (déjà légal) et du palier D'ARRIVÉE, jamais du palier qu'on quitte.
   const zoomOut = useCallback(() => {
     setIndex((i) => {
-      const next = Math.max(i - 1, 0)
+      const next = clampIndex(i - 1)
       setRaw((prev) => {
         const from = prev ?? sceneCenter(scene)
         return clampCenter(scene, ZOOM_LEVELS[next], from.x, from.y)
@@ -105,9 +122,29 @@ export function useReplayZoom(scene: ReplayBounds): ReplayZoom {
     [scene, level],
   )
 
+  // LA MOLETTE PASSE PAR LE MÊME CHEMIN QUE LES BOUTONS — mêmes paliers, même rebornage. Elle
+  // n'ajoute qu'une chose : le point à garder immobile. C'est ce qui interdit qu'un « zoom à la
+  // molette » et un « zoom au bouton » finissent par ne plus donner le même résultat.
+  const zoomAt = useCallback(
+    (dir: number, towards: { x: number; y: number }) => {
+      setIndex((i) => {
+        const next = clampIndex(dir > 0 ? i + 1 : i - 1)
+        if (next === i) return i
+        setRaw((prev) => {
+          const from = prev ?? sceneCenter(scene)
+          const moved = zoomTowards(from, towards, ZOOM_LEVELS[i], ZOOM_LEVELS[next])
+          return clampCenter(scene, ZOOM_LEVELS[next], moved.x, moved.y)
+        })
+        return next
+      })
+    },
+    [scene],
+  )
+
   return {
     level,
     center,
+    zoomAt,
     canZoomIn: index < ZOOM_LEVELS.length - 1,
     canZoomOut: index > 0,
     canPan: level > 1,

@@ -122,3 +122,44 @@ describe('useReplayZoom', () => {
     expect(result.current.center).toEqual(sceneCenter(SCENE))
   })
 })
+
+// LA MOLETTE PASSE PAR LE MÊME CHEMIN QUE LES BOUTONS. Ces tests le tiennent : si `zoomAt`
+// prenait un jour un raccourci (sauter le rebornage, changer de palier autrement), le zoom au
+// bouton et le zoom à la molette cesseraient de donner le même résultat — et personne ne le
+// verrait avant de comparer les deux gestes sur la même carte.
+describe('useReplayZoom — la molette', () => {
+  it('monte et descend les MÊMES paliers que les boutons', () => {
+    const { result } = render()
+    const cible = { x: 80, y: 50 }
+    act(() => result.current.zoomAt(1, cible))
+    expect(result.current.level).toBe(ZOOM_LEVELS[1])
+    act(() => result.current.zoomAt(-1, cible))
+    expect(result.current.level).toBe(1)
+  })
+
+  it('ne dépasse jamais les bornes de l échelle', () => {
+    const { result } = render()
+    const cible = { x: 50, y: 30 }
+    for (let i = 0; i < 10; i += 1) act(() => result.current.zoomAt(1, cible))
+    expect(result.current.level).toBe(ZOOM_LEVELS[ZOOM_LEVELS.length - 1])
+    for (let i = 0; i < 10; i += 1) act(() => result.current.zoomAt(-1, cible))
+    expect(result.current.level).toBe(1)
+  })
+
+  it('grossir vers un coin y déplace le centre, sans sortir de la scène', () => {
+    const { result } = render()
+    const avant = { ...result.current.center }
+    act(() => result.current.zoomAt(1, { x: SCENE.maxX, y: SCENE.maxY }))
+    expect(result.current.center.x).toBeGreaterThan(avant.x)
+    expect(result.current.center.y).toBeGreaterThan(avant.y)
+    expect(dansLaScene(result.current.level, result.current.center)).toBe(true)
+  })
+
+  it('grossir vers le centre ne déplace pas le centre', () => {
+    const { result } = render()
+    const avant = { ...result.current.center }
+    act(() => result.current.zoomAt(1, avant))
+    expect(result.current.center.x).toBeCloseTo(avant.x, 9)
+    expect(result.current.center.y).toBeCloseTo(avant.y, 9)
+  })
+})
