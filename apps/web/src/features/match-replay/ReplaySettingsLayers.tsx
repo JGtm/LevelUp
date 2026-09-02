@@ -15,6 +15,8 @@
  * sans zone nommée, sans socle publié, sans drapeau, sans couronne, sans crâne n'affiche pas la
  * bascule correspondante. Un interrupteur qui ne fait rien trompe plus qu'il n'informe.
  */
+import type { ReactNode } from 'react'
+
 import { SettingsToggle } from './ReplaySettingsToggle'
 
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
@@ -129,126 +131,154 @@ export function LayersSection({
   return (
     <section className="space-y-1">
       <h3 className="text-xs font-medium text-muted-foreground">{t.layers}</h3>
-      {/* UNE LIGNE PAR CALQUE depuis le 2026-08-29 (« je préfère un toggle plutôt que des
-          boutons »). Ces bascules vivaient en GRILLE À DEUX COLONNES depuis le 2026-08-24
-          (« un élément par ligne c'est inefficace ») : un interrupteur, lui, se lit sur son
-          rail — libellé à gauche, état à droite — et deux rails côte à côte dans 130 px
-          tronqueraient « Objets lâchés au sol » pour gagner une hauteur que le tiroir, qui
-          défile déjà, n'avait pas besoin de gagner. */}
-      <div className="flex flex-col gap-0.5">
+      {/* LA FORME DE LA COMMANDE reste l'interrupteur (2026-08-29, « je préfère un toggle
+          plutôt que des boutons ») : un rail, libellé à gauche, état à droite. Ce qui a changé
+          le 2026-09-02, c'est la LARGEUR dont il dispose — cf. l'en-tête de `LayerGroup`. */}
+      {/* LES JOUEURS : ce qui se dit d'une personne à l'écran. Le calque des NOMS n'y figure
+          plus (2026-09-02) — il est toujours allumé. Un nom sous un marqueur n'est pas un
+          habillage dont on débat, c'est ce qui rend le rejeu lisible. */}
+      <LayerGroup title={t.layerGroupPlayers}>
         <SettingsToggle label={t.layerAim} pressed={showAim} onToggle={onToggleAim} hint={t.layerAimHint} />
-        {/* LE CALQUE DES NOMS N'A PLUS DE BASCULE (2026-09-02, demande utilisateur) : il est
-            toujours allumé. Un nom sous un marqueur n'est pas un habillage dont on débat, c'est
-            ce qui rend le rejeu lisible — et la bascule coûtait une ligne de tiroir à tout le
-            monde pour un réglage que personne ne change. Le flag, sa clé de stockage et ses
-            libellés sont partis avec elle. */}
         <SettingsToggle
           label={t.layerTrail}
           pressed={showTrail}
           onToggle={onToggleTrail}
           hint={t.layerTrailHint}
         />
-        {zonesAvailable && (
-          <SettingsToggle
-            label={t.layerZones}
-            pressed={showZones}
-            onToggle={onToggleZones}
-            hint={t.layerZonesHint}
-          />
-        )}
-        {/* Les POSES sont un calque, pas un effet : elles montrent un ÉTAT du terrain (un mur
-            EST là de t0 à t1), là où un éclair de bouche montre un instant. La bascule des
-            objets non identifiés n'apparaît qu'avec elles — elle ne commanderait rien sinon. */}
-        {placements.available && (
-          <>
+      </LayerGroup>
+
+      {/* LE TERRAIN : des lieux et des objets, pas des gens. Les EMPLACEMENTS D'ARME sont une
+          récurrence spatiale mesurée ; les ARMES AU SOL sont des objets qui gisent là où ils
+          sont tombés — on peut vouloir les socles sans le fouillis, et l'inverse. */}
+      {(zonesAvailable || weaponPads.available || groundWeapons.available) && (
+        <LayerGroup title={t.layerGroupTerrain}>
+          {zonesAvailable && (
             <SettingsToggle
-              label={t.layerPlacements}
-              pressed={placements.show}
-              onToggle={placements.onToggle}
-              hint={t.layerPlacementsHint}
+              label={t.layerZones}
+              pressed={showZones}
+              onToggle={onToggleZones}
+              hint={t.layerZonesHint}
             />
-            {placements.show && placements.droppedAvailable && (
-              <SettingsToggle
-                label={t.layerPlacementsDropped}
-                pressed={placements.showDropped}
-                onToggle={placements.onToggleDropped}
-                hint={t.layerPlacementsDroppedHint}
-              />
-            )}
-            {placements.show && placements.unnamedAvailable && (
-              <SettingsToggle
-                label={t.layerPlacementsUnnamed}
-                pressed={placements.showUnnamed}
-                onToggle={placements.onToggleUnnamed}
-                hint={t.layerPlacementsUnnamedHint}
-              />
-            )}
-          </>
-        )}
-        {/* Les EMPLACEMENTS D'ARME sont un calque du terrain eux aussi, mais leur donnée est
-            une récurrence spatiale mesurée, pas un geste de joueur : d'où une bascule à part. */}
-        {weaponPads.available && (
+          )}
+          {weaponPads.available && (
+            <SettingsToggle
+              label={t.layerWeaponPads}
+              pressed={weaponPads.show}
+              onToggle={weaponPads.onToggle}
+              hint={t.layerWeaponPadsHint}
+            />
+          )}
+          {groundWeapons.available && (
+            <SettingsToggle
+              label={t.layerGroundWeapons}
+              pressed={groundWeapons.show}
+              onToggle={groundWeapons.onToggle}
+              hint={t.layerGroundWeaponsHint}
+            />
+          )}
+        </LayerGroup>
+      )}
+
+      {/* LES POSES RESTENT EN UNE COLONNE, et c'est la seule exception à la grille. Elles ont
+          des bascules FILLES qui n'apparaissent qu'avec elles (objets lâchés, non identifiés) :
+          en deux colonnes, une fille se retrouverait à côté de sa mère au lieu d'être dessous,
+          et la dépendance — qui est toute l'information — cesserait de se voir. */}
+      {placements.available && (
+        <div className="flex flex-col gap-0.5">
           <SettingsToggle
-            label={t.layerWeaponPads}
-            pressed={weaponPads.show}
-            onToggle={weaponPads.onToggle}
-            hint={t.layerWeaponPadsHint}
+            label={t.layerPlacements}
+            pressed={placements.show}
+            onToggle={placements.onToggle}
+            hint={t.layerPlacementsHint}
           />
-        )}
-        {/* LES ARMES AU SOL sont des OBJETS, pas des lieux : elles ne réapparaissent pas, elles
-            gisent là où elles sont tombées. D'où une bascule à part de celle des emplacements —
-            on peut vouloir voir les socles sans le fouillis des armes lâchées, et l'inverse. */}
-        {groundWeapons.available && (
-          <SettingsToggle
-            label={t.layerGroundWeapons}
-            pressed={groundWeapons.show}
-            onToggle={groundWeapons.onToggle}
-            hint={t.layerGroundWeaponsHint}
-          />
-        )}
-        {/* Les DRAPEAUX sont l'ENJEU du mode, pas un meuble : ils bougent, ils changent de
-            main, et leur position EST la lecture du match. Ils restent dans les calques —
-            un drapeau au sol est un état du terrain, pas un instant. */}
-        {flagCarries.available && (
-          <SettingsToggle
-            label={t.layerFlagCarries}
-            pressed={flagCarries.show}
-            onToggle={flagCarries.onToggle}
-            hint={t.layerFlagCarriesHint}
-          />
-        )}
-        {/* LA COURONNE VIP est l'ENJEU du mode, comme les drapeaux : elle suit le porteur, sa
-            présence EST la lecture du match. Un film hors VIP n'en publie aucune. */}
-        {vipCrown.available && (
-          <SettingsToggle
-            label={t.layerVipCrown}
-            pressed={vipCrown.show}
-            onToggle={vipCrown.onToggle}
-            hint={t.layerVipCrownHint}
-          />
-        )}
-        {/* LE PORTEUR DU CRÂNE est l'ENJEU d'Oddball : il suit le porteur, sa présence EST la
-            lecture du match. Un film hors Oddball n'en publie aucun. */}
-        {skullCarrier.available && (
-          <SettingsToggle
-            label={t.layerSkullCarrier}
-            pressed={skullCarrier.show}
-            onToggle={skullCarrier.onToggle}
-            hint={t.layerSkullCarrierHint}
-          />
-        )}
-        {/* LA BOMBE est l'ENJEU d'Assaut : portée elle suit son porteur, lâchée elle reste au
-            dernier point de son lâcheur jusqu'à la reprise ou l'explosion. Un film hors
-            Assaut n'en publie aucune. */}
-        {bombCarrier.available && (
-          <SettingsToggle
-            label={t.layerBombCarrier}
-            pressed={bombCarrier.show}
-            onToggle={bombCarrier.onToggle}
-            hint={t.layerBombCarrierHint}
-          />
-        )}
-      </div>
+          {placements.show && placements.droppedAvailable && (
+            <SettingsToggle
+              label={t.layerPlacementsDropped}
+              pressed={placements.showDropped}
+              onToggle={placements.onToggleDropped}
+              hint={t.layerPlacementsDroppedHint}
+            />
+          )}
+          {placements.show && placements.unnamedAvailable && (
+            <SettingsToggle
+              label={t.layerPlacementsUnnamed}
+              pressed={placements.showUnnamed}
+              onToggle={placements.onToggleUnnamed}
+              hint={t.layerPlacementsUnnamedHint}
+            />
+          )}
+        </div>
+      )}
+
+      {/* LES ENJEUX DU MODE : drapeau, couronne, crâne, bombe. Ils bougent, ils changent de
+          main, et leur position EST la lecture du match. LE GROUPE DISPARAÎT EN ENTIER hors des
+          modes concernés — sur un Slayer, il ne laisse même pas son titre. C'est le gain caché
+          du groupement : une liste plate y laissait un trou qu'on ne savait pas nommer. */}
+      {(flagCarries.available ||
+        vipCrown.available ||
+        skullCarrier.available ||
+        bombCarrier.available) && (
+        <LayerGroup title={t.layerGroupObjectives}>
+          {flagCarries.available && (
+            <SettingsToggle
+              label={t.layerFlagCarries}
+              pressed={flagCarries.show}
+              onToggle={flagCarries.onToggle}
+              hint={t.layerFlagCarriesHint}
+            />
+          )}
+          {vipCrown.available && (
+            <SettingsToggle
+              label={t.layerVipCrown}
+              pressed={vipCrown.show}
+              onToggle={vipCrown.onToggle}
+              hint={t.layerVipCrownHint}
+            />
+          )}
+          {skullCarrier.available && (
+            <SettingsToggle
+              label={t.layerSkullCarrier}
+              pressed={skullCarrier.show}
+              onToggle={skullCarrier.onToggle}
+              hint={t.layerSkullCarrierHint}
+            />
+          )}
+          {bombCarrier.available && (
+            <SettingsToggle
+              label={t.layerBombCarrier}
+              pressed={bombCarrier.show}
+              onToggle={bombCarrier.onToggle}
+              hint={t.layerBombCarrierHint}
+            />
+          )}
+        </LayerGroup>
+      )}
     </section>
+  )
+}
+
+/**
+ * LayerGroup — un sous-titre, puis ses bascules SUR DEUX COLONNES.
+ *
+ * LES DEUX COLONNES SONT REVENUES LE 2026-09-02, ET IL FAUT DIRE POURQUOI : elles avaient été
+ * posées le 2026-08-24 puis RETIRÉES le 2026-08-29, parce qu'un interrupteur se lit sur son
+ * rail — libellé à gauche, état à droite — et que deux rails dans les 264 px utiles du tiroir
+ * `w-72` tronquaient « Objets lâchés au sol ». Cette raison était juste, et elle a cessé de
+ * valoir : le tiroir est passé à 26 rem (~392 px utiles) en devenant un panneau flottant, soit
+ * ~190 px par colonne. Ce n'est donc pas un retour en arrière, c'est la même décision prise
+ * dans une largeur qui n'est plus la même.
+ *
+ * LE GROUPEMENT, LUI, EST NEUF, et c'est lui qui paie la place du sous-titre : une liste plate
+ * de douze bascules ne dit pas de quoi elle parle, et ses trous — un groupe entier absent hors
+ * de son mode — n'y étaient pas lisibles.
+ */
+function LayerGroup({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="space-y-0.5">
+      <p className="text-[11px] font-medium uppercase tracking-[0.06em] text-muted-foreground/70">
+        {title}
+      </p>
+      <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">{children}</div>
+    </div>
   )
 }

@@ -6,11 +6,20 @@
  * catégories : useReplaySound).
  *
  * PANNEAU EN SURIMPRESSION, PAS UNE MODALE (retour de planche du 16/08 : « je vois plus un
- * panneau par dessus »). Il se pose SUR la carte, dans le cadre du rejeu — le canvas ne se
- * retaille donc plus à l'ouverture, et le rendu ne saute pas. Ce qui reste d'une modale : on
- * en sort par Échap, par le bouton, ou en cliquant dehors, et le focus entre au panneau à
- * l'ouverture. Ce qui n'en est pas : ni fond assombri, ni piège de focus, ni lecture
- * suspendue — le rejeu continue de tourner derrière.
+ * panneau par dessus »). Il se pose SUR le rejeu — le canvas ne se retaille donc pas à
+ * l'ouverture, et le rendu ne saute pas. Ce qui reste d'une modale : on en sort par Échap, par
+ * le bouton, ou en cliquant dehors, et le focus entre au panneau à l'ouverture. Ce qui n'en est
+ * pas : ni fond assombri, ni piège de focus, ni lecture suspendue — le rejeu tourne derrière.
+ *
+ * IL A QUITTÉ LE CADRE LE 2026-09-02 (demande utilisateur : « est-ce que ce tiroir sort du
+ * cadre ? […] si la taille de l'écran le permet, c'est bien qu'il puisse s'afficher au-dessus
+ * du killfeed ou des fiches »). Il vivait en `absolute inset-y-0 right-0` DANS la carte du
+ * rejeu, que son `overflow-hidden` découpait au bord : ni débordement sur la colonne de droite,
+ * ni largeur supérieure à ce que la carte lui laissait. Il se rend désormais en PORTAIL sur
+ * `body`, en position fixe, centré sur le bouton qui l'ouvre (`useAnchoredPanel`) — aucun
+ * `z-index` ne fait sortir un enfant d'un ancêtre en `overflow-hidden`, il faut quitter le
+ * sous-arbre. C'est ce qui a rendu la largeur de 416 px possible, donc les calques sur deux
+ * colonnes, qui butaient depuis le 2026-08-29 sur les 264 px utiles de l'ancien tiroir.
  *
  * DES INTERRUPTEURS, PLUS DES BOUTONS (retour utilisateur du 2026-08-29 : « pour les réglages
  * je préfère un toggle plutôt que des boutons comme aujourd'hui »). Tout ce qui est un OUI/NON
@@ -26,15 +35,24 @@
  * les 500 lignes du dépôt.
  */
 import { useEffect, useRef, type RefObject } from 'react'
+import { createPortal } from 'react-dom'
 
 import { InfoMark, SettingsChoice, SettingsToggle } from './ReplaySettingsToggle'
-
+import { useAnchoredPanel } from './useAnchoredPanel'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
 import { HeatmapSection, type ReplayHeatmapControls } from './ReplayHeatmapSection'
 import { LayersSection } from './ReplaySettingsLayers'
 import { SOUND_CATEGORIES } from './replaySound'
 import { MARKER_COLORS_MODES, type MarkerColorsMode } from './useReplaySettings'
 import type { ReplaySound } from './useReplaySound'
+
+/**
+ * LA LARGEUR DU PANNEAU, en px et pas en classe : le hook de placement en a besoin pour le
+ * centrer sur son declencheur, et deux sources pour une meme largeur divergeraient au premier
+ * ajustement. 416 px moins les marges internes laissent ~190 px par colonne de calques — c est
+ * ce qui rend enfin possible la grille a deux colonnes (cf. l en-tete de LayerGroup).
+ */
+const PANEL_WIDTH = 416
 
 /** Réexportés : les sections ont déménagé, la surface d'appel du tiroir n'a pas bougé. */
 export type { ReplayHeatmapControls } from './ReplayHeatmapSection'
@@ -328,14 +346,24 @@ export function ReplaySettingsDrawer({
   // `tabIndex={-1}` rend le panneau focusable sans l'insérer dans l'ordre de tabulation.
   const panelRef = useRef<HTMLDivElement>(null)
   useDrawerDismiss(panelRef, triggerRef, onClose)
+  const pos = useAnchoredPanel(triggerRef, PANEL_WIDTH)
 
-  return (
+  // IL SORT DU CADRE DEPUIS LE 2026-09-02 (demande utilisateur). Il vivait en
+  // `absolute inset-y-0 right-0` DANS la carte du rejeu, que son `overflow-hidden` découpait au
+  // bord : il ne pouvait ni déborder sur la colonne de droite, ni être plus large que ce que la
+  // carte lui laissait — et c'est cette largeur qui interdisait les calques sur deux colonnes.
+  //
+  // LE PORTAIL EST LA CONDITION, PAS UN DÉTAIL D'IMPLÉMENTATION : aucune valeur de `z-index` ne
+  // fait sortir un enfant d'un ancêtre en `overflow-hidden`. Il faut quitter le sous-arbre.
+  //
+  return createPortal(
     <div
       ref={panelRef}
       tabIndex={-1}
       role="region"
       aria-label={t.settingsButton}
-      className="absolute inset-y-0 right-0 z-20 flex w-72 flex-col gap-3 overflow-y-auto border-l border-border bg-card px-3 py-3 text-sm shadow-xl outline-none"
+      style={{ left: pos.left, bottom: pos.bottom, width: PANEL_WIDTH, maxHeight: pos.maxHeight }}
+      className="fixed z-50 flex flex-col gap-3 overflow-y-auto rounded-lg border border-border bg-card px-3 py-3 text-sm shadow-xl outline-none"
     >
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold">{t.settingsButton}</h2>
@@ -381,6 +409,7 @@ export function ReplaySettingsDrawer({
         onSetMarkerColors={onSetMarkerColors}
       />
       <SoundSection locale={locale} sound={sound} />
-    </div>
+    </div>,
+    document.body,
   )
 }
