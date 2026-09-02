@@ -286,6 +286,16 @@ export interface ReplayText {
   layerAim: string
   layerAimHint: string
   /** Zones nommées (callouts officiels) : calque + libellé de la fiche. */
+  zoomGroup: string
+  zoomIn: string
+  zoomOut: string
+  zoomReset: string
+  /** « Tout » à 1x, sinon le facteur — cf. ReplayZoomControl. */
+  zoomLevelFmt: (zoom: number) => string
+  panUp: string
+  panDown: string
+  panLeft: string
+  panRight: string
   layerGroupPlayers: string
   layerGroupTerrain: string
   layerGroupObjectives: string
