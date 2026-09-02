@@ -37,13 +37,14 @@ package objectiveevents
 //	go test ./internal/analysis/objectiveevents/ -run AssautPiedDeFilm -v -timeout 30m
 
 import (
-	"encoding/json"
 	"fmt"
 	"math"
 	"os"
-	"path/filepath"
 	"sort"
 	"testing"
+
+	"levelup/go-api/internal/analysis/filmsource"
+	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 )
 
 // afExplosions : les instants d'explosion DATES du releve A0.3 (`A_PROTOCOLE.md` §2), recopies
@@ -65,46 +66,19 @@ const (
 	afCVMax      = 0.20
 )
 
-// afSource lit le cache film SANS passer par `filmcache` : ce paquet lui est AMONT, et
-// l'importer ferait un cycle. Trente lignes de relecture valent mieux qu'une inversion de
-// dependance posee pour une sonde.
-type afSource struct {
-	chunks []ChunkMeta
-	dir    string
-}
-
-func (s afSource) Chunks() []ChunkMeta { return s.chunks }
-
-func (s afSource) ChunkData(index int) ([]byte, bool) {
-	raw, err := os.ReadFile(filepath.Join(s.dir, fmt.Sprintf("chunk_%02d.bin", index)))
-	if err != nil {
-		return nil, false
-	}
-	return raw, true
-}
-
-// afOuvrir lit le manifeste et rend la source, ou faux si le film manque.
-func afOuvrir(t *testing.T, cache, id string) (afSource, bool) {
+// afOuvrir charge le film depuis une racine de cache DONNEE (la sonde reçoit la sienne par
+// `ASSAUT_CACHE`, pas par `FILM_CACHE_ROOT`), ou faux si le film manque.
+//
+// Par `filmcache`, comme le reste du paquet depuis l'item 1.5 : la copie locale de la
+// disposition du cache que portait cette sonde etait justifiee par un cycle d'import que le
+// lot 1 a supprime (cf. [newDiskFilm]).
+func afOuvrir(t *testing.T, cache, id string) (*filmsource.Film, bool) {
 	t.Helper()
-	raw, err := os.ReadFile(filepath.Join(cache, "film_manifests", id+".json"))
+	film, ok, err := filmcache.LoadFilm(cache, id)
 	if err != nil {
-		return afSource{}, false
+		t.Fatalf("%s : chargement du film : %v", id, err)
 	}
-	var mf struct {
-		Chunks []struct {
-			Index     int `json:"index"`
-			ChunkType int `json:"chunk_type"`
-			StartMS   int `json:"start_ms"`
-		} `json:"chunks"`
-	}
-	if err := json.Unmarshal(raw, &mf); err != nil {
-		t.Fatalf("%s : manifeste illisible : %v", id, err)
-	}
-	src := afSource{dir: filepath.Join(cache, "film_chunks", id)}
-	for _, c := range mf.Chunks {
-		src.chunks = append(src.chunks, ChunkMeta{Index: c.Index, ChunkType: c.ChunkType, StartMS: c.StartMS})
-	}
-	return src, len(src.chunks) > 0
+	return film, ok
 }
 
 // afBloc est un bloc du pied, avec son indice de type LU et non filtre.
@@ -189,11 +163,11 @@ func TestAssautPiedDeFilm(t *testing.T) {
 	couverts := map[int]int{}
 	total := 0
 	for _, id := range films {
-		src, ok := afOuvrir(t, cache, id)
+		bobine, ok := afOuvrir(t, cache, id)
 		if !ok {
 			t.Fatalf("film %s absent du cache (%s)", id, cache)
 		}
-		footer, ok := footerData(src)
+		footer, ok := footerData(bobine)
 		if !ok {
 			t.Logf("%s : AUCUN PIED DE FILM lisible", id)
 			continue

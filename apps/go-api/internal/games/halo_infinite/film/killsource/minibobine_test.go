@@ -70,6 +70,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/analysis/filmsource"
 )
 
 // miniBobineDir : la bobine versionnee, relative au paquet.
@@ -98,7 +99,7 @@ const miniBobinePlancher = 10
 // TestGoldenMiniBobine : LE GOLDEN INCONDITIONNEL. Aucune variable d environnement, aucune
 // fixture hors depot — il tourne partout ou `go test ./...` tourne, donc en CI.
 func TestGoldenMiniBobine(t *testing.T) {
-	src, err := DirChunks(miniBobineDir)
+	src, err := filmsource.LoadDir(miniBobineDir, nil)
 	if err != nil {
 		t.Fatalf("mini-bobine illisible sous %s : %v — elle est VERSIONNEE, son absence est une "+
 			"erreur, pas une raison d ignorer le test", miniBobineDir, err)
@@ -189,7 +190,7 @@ func TestMiniBobineRegenerer(t *testing.T) {
 			"des octets versionnes)")
 	}
 	source := filepath.Join(dir, miniBobineFilm)
-	src, err := DirChunks(source)
+	src, err := filmsource.LoadDir(source, nil)
 	if err != nil {
 		t.Fatalf("film source illisible : %v", err)
 	}
@@ -208,15 +209,13 @@ func TestMiniBobineRegenerer(t *testing.T) {
 
 // chunkHighlight : l index du chunk qui porte le plus de kills — la meme detection PAR CONTENU
 // que [loadKillFeed], et pour la meme raison.
-func chunkHighlight(t *testing.T, src ChunkSource) int {
+func chunkHighlight(t *testing.T, src *filmsource.Film) int {
 	t.Helper()
 	best, bestN := -1, 0
 	for i := 0; i < src.NumChunks(); i++ {
-		raw, err := src.Chunk(i)
-		if err != nil {
-			continue
-		}
-		evs, err := analysis.ParseHighlightEvents(raw, 0)
+		// Le chunk arrive DECOMPRESSE (`filmsource` l a inflate au chargement) ;
+		// `ParseHighlightEvents` accepte les deux formes depuis l incident du 2026-05-22.
+		evs, err := analysis.ParseHighlightEvents(src.Chunk(i), 0)
 		if err != nil {
 			continue
 		}

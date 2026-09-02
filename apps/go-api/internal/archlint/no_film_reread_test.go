@@ -16,15 +16,16 @@
 //
 // # LES TROIS REGLES
 //
-//  1. `zlib.NewReader` est INTERDIT dans `filmdec` et `replay` (hors _test) — l'unique
-//     decompresseur de la chaine de cuisson est `filmsource.Inflate`. Liste des sites
-//     survivants ailleurs dans le depot : item 1.9 du plan.
+//  1. `zlib.NewReader` est INTERDIT dans les paquets de la chaine de cuisson (hors _test) —
+//     l'unique decompresseur y est `filmsource.Inflate`.
 //  2. `os.ReadFile` / `os.ReadDir` / `os.Open` sont INTERDITS dans `filmdec` (hors _test) sauf
 //     dans les fichiers de l'allowlist datee ci-dessous : les chargeurs de CATALOGUE (qui ne
 //     lisent pas de film) et les enveloppes D2 declarees.
-//  3. Aucun appel d'ENVELOPPE `dir` depuis les sites de PRODUCTION (`analysis/replay` et
-//     `replaybuild`, hors _test) : la production passe un film deja charge. La liste des
-//     enveloppes est FERMEE et ecrite ici.
+//  3. Aucun appel d'ENVELOPPE `dir` depuis les sites de PRODUCTION de D2 (hors _test) : la
+//     production passe un film deja charge. La liste des enveloppes est FERMEE et ecrite ici,
+//     celle des paquets de production reprend D2 au site pres.
+//  4. L'allowlist des importateurs de `compress/zlib` du DEPOT ENTIER est FERMEE (regle 1 par
+//     paquet, regle 4 par depot) : un inflate qui reapparait n'importe ou se voit.
 //
 // # POURQUOI go/ast ET PAS UN GREP
 //
@@ -37,9 +38,11 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 	"testing"
 )
@@ -80,11 +83,25 @@ func fichiersGoNonTest(t *testing.T, pkgDir string) map[string]*ast.File {
 	return out
 }
 
-// paquetsSansInflate : les deux paquets de la chaine de cuisson qui n'ont plus le droit de
+// paquetsSansInflate : les paquets de la chaine de cuisson qui n'ont plus le droit de
 // decompresser eux-memes, relatifs a apps/go-api.
+//
+// `objectiveevents` y est entre a l'item 1.5 (2026-09-02) : il portait le TROISIEME inflate et
+// le TROISIEME marcheur de paquets du depot (`decompressChunk`, `walkFrames`), et c'est celui
+// dont la grammaire divergeait le plus — il n'emettait que le type 0, s'arretait sur CHUNK_END
+// sans l'emettre, bornait la taille SANS l'offset, et marchait le BRUT COMPRESSE quand
+// l'inflate echouait. Ses neuf points d'entree prennent desormais un `*filmsource.Film`.
+//
+// `killsource` y est entre a l'item 1.9 (2026-09-02), apres que l'item 1.4 lui a retire son
+// `inflate` (`io.ReadAll` sur un `zlib.NewReader`, `chunks.go:90`) en meme temps que
+// `ChunkSource`, `MemoryChunks`, `DirChunks` et `splitPackets` : c'etait le PREMIER des trois
+// inflates du depot, et son film arrive maintenant deja charge (`Decode(ctx, name, film, opts)`).
+// Le reste du depot est couvert par l'allowlist FERMEE de la regle 4.
 var paquetsSansInflate = []string{
 	"internal/analysis/filmdec",
+	"internal/analysis/objectiveevents",
 	"internal/analysis/replay",
+	"internal/games/halo_infinite/film/killsource",
 }
 
 // TestPasDeZlibDansLaChaineDeCuisson — REGLE 1.
@@ -188,10 +205,26 @@ var enveloppesInterditesEnProduction = []string{
 	"ScanFilmDeaths", "ScanFilmClockOrigin", "ScanFilmPlayerIndices", "ScanFilmKeyframeInventory",
 }
 
-// paquetsDeProduction : les paquets ou l'appel d'une enveloppe est interdit.
+// paquetsDeProduction : les paquets ou l'appel d'une enveloppe est interdit. C'est la liste des
+// SITES DE PRODUCTION de la regle D2 du plan, au paquet pres (item 1.9, complete le 2026-09-02 :
+// les quatre derniers manquaient — ils ne peuvent pas appeler d'enveloppe aujourd'hui, et c'est
+// precisement ce qu'un ratchet garde).
+//
+//	internal/analysis/replay        BuildFromFilm et les balayages du document
+//	internal/replaybuild            la cuisson (BuildBytes / BuildMatch)
+//	internal/analysis/objectiveevents  ses neuf points d'entree prennent un *filmsource.Film
+//	internal/games/halo_infinite/film/killsource  Decode recoit le film deja charge
+//	internal/sync/killcollector     positions.go : le pont disque a disparu a l'item 1.6
+//	internal/api/wire               registry_replay_build.go : le cablage de l'API
+//	cmd/zone-attribution            measure.go : charge le film UNE fois (item 1.6)
 var paquetsDeProduction = []string{
 	"internal/analysis/replay",
 	"internal/replaybuild",
+	"internal/analysis/objectiveevents",
+	"internal/games/halo_infinite/film/killsource",
+	"internal/sync/killcollector",
+	"internal/api/wire",
+	"cmd/zone-attribution",
 }
 
 // TestProductionNAppellePasLesEnveloppes — REGLE 3.
@@ -226,6 +259,111 @@ func TestProductionNAppellePasLesEnveloppes(t *testing.T) {
 			"elles existent pour les tests et les instruments de recherche. La cuisson recoit un "+
 			"`*filmsource.Film` deja charge et appelle la forme film (`ScanXxx(film, ...)`).",
 			strings.Join(violations, "\n  "))
+	}
+}
+
+// sitesZlibAutorises : L'ALLOWLIST FERMEE des fichiers non-test qui importent `compress/zlib`
+// dans tout `apps/go-api` (regle 4, item 1.9 du plan, 2026-09-02). Chemins relatifs a la racine
+// du module, separateur `/`.
+//
+// POURQUOI UNE LISTE FERMEE ET PAS UNE INTERDICTION PAR PAQUET. Avant le lot 1, TROIS inflates
+// divergents cohabitaient dans la chaine de cuisson (`filmdec`, `objectiveevents`,
+// `killsource`) — et il a fallu une mesure sur 1 378 films pour prouver qu'ils voyaient les
+// memes octets. Un quatrieme se serait ajoute sans bruit dans n'importe quel paquet : la regle
+// par paquet ne l'aurait vu que si le paquet avait ete prevu. La liste ci-dessous est donc
+// exhaustive et VERIFIEE DANS LES DEUX SENS — un site en trop echoue, un site disparu aussi
+// (une allowlist qui garde des entrees mortes ne dit plus rien).
+//
+// RETRAIT CIBLE : lot 6 pour `cmd/replay-equiv/walkers.go` (cf. ci-dessous). Les autres sont
+// permanents — ils ne decompressent pas un film de cuisson.
+var sitesZlibAutorises = map[string]string{
+	"internal/analysis/filmsource/film.go": "L'UNIQUE inflate de la chaine de cuisson (D1). " +
+		"Rend le PARTIEL sur flux tronque : un film Theater se termine parfois net.",
+	"internal/analysis/highlight_event_parser.go": "Parseur autonome du fil des morts, appele " +
+		"sur des blobs BRUTS ou zlib (sync/collect.go, engine_highlight_events.go, " +
+		"convergence_backfill_events.go) : sa double tolerance date de l'incident du 2026-05-22.",
+	"internal/sync/haloclient/halo_client_http.go": "Validation d'un chunk AU TELECHARGEMENT, " +
+		"avant tout stockage : ce n'est pas un decodage de film.",
+	"cmd/replay-worker/job.go": "Meme validation au telechargement, cote ouvrier.",
+	"internal/hinavmesh/conteneur.go": "AUTRE DOMAINE (conteneurs de navmesh du jeu), " +
+		"aucun rapport avec les chunks de film.",
+	"cmd/fetch_film_chunks/main.go":    "Outil de RECHERCHE : telecharge et inspecte des chunks.",
+	"cmd/diag_weapons_v3/positions.go": "Outil de DIAGNOSTIC des armes v3.",
+	"cmd/rdata_weapon_scan/main.go":    "Outil de RECHERCHE (balayage de rdata).",
+	"cmd/replay-equiv/walkers.go": "HARNAIS DE MESURE du lot 0 : il porte en COPIE les trois " +
+		"marcheurs historiques et leur inflate, pour la mesure 0.7 des grammaires. Ses " +
+		"originaux n'existent plus depuis les items 1.4/1.5 (note N-AD du plan) : a trancher " +
+		"au lot 6 — le mode disparait, ou son en-tete dit qu'il fige une comparaison historique.",
+}
+
+// dossiersIgnoresPourZlib : ce que le balayage du depot ne parse pas.
+var dossiersIgnoresPourZlib = map[string]bool{
+	"testdata": true, "node_modules": true, "vendor": true, ".git": true,
+}
+
+// TestAllowlistZlibFermee — REGLE 4.
+func TestAllowlistZlibFermee(t *testing.T) {
+	racine := apiRootDepuisIci(t)
+	fset := token.NewFileSet()
+	trouves := map[string]bool{}
+	err := filepath.WalkDir(racine, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			if dossiersIgnoresPourZlib[d.Name()] {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		name := d.Name()
+		if !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") {
+			return nil
+		}
+		f, perr := parser.ParseFile(fset, path, nil, parser.ImportsOnly)
+		if perr != nil {
+			return perr
+		}
+		for _, imp := range f.Imports {
+			if strings.Trim(imp.Path.Value, `"`) != "compress/zlib" {
+				continue
+			}
+			rel, rerr := filepath.Rel(racine, path)
+			if rerr != nil {
+				return rerr
+			}
+			trouves[filepath.ToSlash(rel)] = true
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("balayage du depot : %v", err)
+	}
+	var enTrop, disparus []string
+	for site := range trouves {
+		if _, ok := sitesZlibAutorises[site]; !ok {
+			enTrop = append(enTrop, site)
+		}
+	}
+	for site := range sitesZlibAutorises {
+		if !trouves[site] {
+			disparus = append(disparus, site)
+		}
+	}
+	sort.Strings(enTrop)
+	sort.Strings(disparus)
+	if len(enTrop) > 0 {
+		t.Errorf("NOUVEL inflate hors allowlist :\n  %s\n"+
+			"Le film se decompresse UNE fois, par `filmsource` (lot 1 de PLAN_CUISSON_PERF). "+
+			"Si ce site ne decompresse PAS un film (telechargement, autre domaine, outil de "+
+			"recherche), l'ajouter a `sitesZlibAutorises` avec sa justification et sa date.",
+			strings.Join(enTrop, "\n  "))
+	}
+	if len(disparus) > 0 {
+		t.Errorf("entrees MORTES de l'allowlist (le fichier n'importe plus zlib) :\n  %s\n"+
+			"Les retirer : une allowlist qui garde des entrees mortes n'est plus une mesure de "+
+			"ce que le depot fait, et le lot 6 ne saurait plus ce qu'il reste a fermer.",
+			strings.Join(disparus, "\n  "))
 	}
 }
 

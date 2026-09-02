@@ -1,6 +1,10 @@
 package objectiveevents
 
-import "sort"
+import (
+	"sort"
+
+	"levelup/go-api/internal/analysis/filmsource"
+)
 
 // slotidentity.go — QUI est le joueur derriere un slot d'entite du statborg.
 //
@@ -66,8 +70,8 @@ type PlayerLine struct {
 // Ne depend d'AUCUN mode : les frags, morts et assistances sont des statistiques de base,
 // repliquees quel que soit le type de partie. L'appariement fonctionne donc aussi en
 // Slayer, KOTH ou Oddball, ou aucun emplacement d'objectif n'est nomme.
-func SlotIdentity(src FilmSource, lines []PlayerLine) map[int]string {
-	return SlotIdentityFrom(StatRecords(src), lines)
+func SlotIdentity(film *filmsource.Film, lines []PlayerLine) map[int]string {
+	return SlotIdentityFrom(StatRecords(film), lines)
 }
 
 // SlotIdentityFrom est le coeur pur : il travaille sur des enregistrements deja decodes.

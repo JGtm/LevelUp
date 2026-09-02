@@ -107,7 +107,7 @@ func TestCollineProprieteOracle(t *testing.T) {
 // TERMINAL. Le premier point d'une equipe compte s'il est deja > 0 (le score part de zero).
 func ctIncrements(t *testing.T, e ctEntree) []ctIncrement {
 	t.Helper()
-	src := p2aSource(t, e.dir)
+	src := p2aBobine(t, e.dir)
 	recs := objectiveevents.StatRecords(src)
 	series := objectiveevents.SeriesTotal(recs, objectiveevents.ModeScoreComponent, true)
 	var out []ctIncrement

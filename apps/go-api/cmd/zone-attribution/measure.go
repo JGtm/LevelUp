@@ -71,7 +71,16 @@ const nullShiftFrames = 300
 // measure croise un match : film -> trajectoires + actions, puis prepare les temoins.
 func (r *runner) measure(ctx context.Context, m eligible) result {
 	res := result{m: m}
-	src, ok, err := filmcache.Open(r.cacheDir, m.short)
+	lines, err := loadPlayerLines(ctx, r.db, m.full)
+	if err != nil {
+		res.err = err
+		return res
+	}
+	// LE FILM EST CHARGE UNE FOIS pour les trois consommateurs de cette mesure (les
+	// enregistrements d'entite, le pont d'identite par instants de mort, et le decodage
+	// complet) : jamais un `*Film` d'un cote et une enveloppe `dir` de l'autre — ce serait
+	// deux decompressions du meme film.
+	film, ok, err := filmcache.LoadFilm(r.cacheDir, m.short)
 	if err != nil {
 		res.err = err
 		return res
@@ -80,20 +89,7 @@ func (r *runner) measure(ctx context.Context, m eligible) result {
 		res.err = fmt.Errorf("manifeste de film absent")
 		return res
 	}
-	lines, err := loadPlayerLines(ctx, r.db, m.full)
-	if err != nil {
-		res.err = err
-		return res
-	}
-	// LE FILM EST CHARGE UNE FOIS pour les deux consommateurs de cette mesure (le pont
-	// d'identite par instants de mort, et le decodage complet) : jamais un `*Film` d'un cote
-	// et une enveloppe `dir` de l'autre — ce serait deux decompressions du meme film.
-	film, err := filmsource.LoadDir(filmcache.ChunkDir(r.cacheDir, m.short), metaDeSource(src))
-	if err != nil {
-		res.err = err
-		return res
-	}
-	identified := identifyZoneActions(src, lines, film)
+	identified := identifyZoneActions(lines, film)
 	res.identified = len(identified)
 
 	doc, err := replay.BuildFromFilm(m.short, r.slug, film,
@@ -204,10 +200,10 @@ func shiftBy(actions []replay.ObjectiveAction, frameCount, delta int) []replay.O
 // `64e8adfa` et `24dbb67d`, plan objectifs vivants phase 0). Le repli par INSTANTS DE MORT
 // n'emprunte rien a la base, tient sur un film tronque, et ne se declenche que s'il nomme
 // STRICTEMENT plus de slots — un film complet rend donc exactement ce qu'il rendait avant.
-func identifyZoneActions(src objectiveevents.FilmSource, lines []objectiveevents.PlayerLine,
+func identifyZoneActions(lines []objectiveevents.PlayerLine,
 	film *filmsource.Film) []objectiveevents.IdentifiedEvent {
-	named := objectiveevents.NamedEvents(src, objectiveevents.ObjectiveTypeZone)
-	identity, st := objectiveevents.SlotIdentityResolved(src, lines, deathInstantsOf(film))
+	named := objectiveevents.NamedEvents(film, objectiveevents.ObjectiveTypeZone)
+	identity, st := objectiveevents.SlotIdentityResolved(film, lines, deathInstantsOf(film))
 	if st.Source != objectiveevents.IdentitySourceTotals || st.Conflicts > 0 {
 		fmt.Printf("    pont d'identite : voie %q (%d par totaux, %d par instants de mort, "+
 			"%d desaccords ecartes)\n", st.Source, st.ByTotals, st.ByDeaths, st.Conflicts)
@@ -249,23 +245,6 @@ func deathInstantsOf(film *filmsource.Film) []objectiveevents.DeathInstant {
 	for _, d := range deaths {
 		out = append(out, objectiveevents.DeathInstant{
 			XUID: strconv.FormatUint(d.XUID, 10), TimeMS: int(d.TimeMS),
-		})
-	}
-	return out
-}
-
-// metaDeSource traduit l'index du manifeste dans la forme de `filmsource` — meme traduction que
-// `replaybuild.metaDuManifeste`, et pour la meme raison : `filmsource` est un paquet FEUILLE, il
-// ne connait pas `filmcache`. Deux sites, donc deux copies : la troisieme devra centraliser.
-func metaDeSource(src objectiveevents.FilmSource) []filmsource.ChunkMeta {
-	if src == nil {
-		return nil
-	}
-	chunks := src.Chunks()
-	out := make([]filmsource.ChunkMeta, 0, len(chunks))
-	for _, c := range chunks {
-		out = append(out, filmsource.ChunkMeta{
-			Index: c.Index, ChunkType: c.ChunkType, StartMS: c.StartMS,
 		})
 	}
 	return out

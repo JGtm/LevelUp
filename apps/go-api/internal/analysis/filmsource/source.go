@@ -5,8 +5,9 @@ package filmsource
 // Ce paquet ne sait pas TELECHARGER un film : c'est deliberement la responsabilite de l'appelant
 // (le telechargement est le vrai cout, il est batchable et il a deja son chemin store-first). Il
 // ne connait qu'une interface a deux methodes, ce qui rend le decodage testable a partir d'octets
-// en memoire, sans disque et sans reseau. La forme est celle de `killsource.ChunkSource`, dont ce
-// fichier reprend la doctrine — y compris la lecon ci-dessous.
+// en memoire, sans disque et sans reseau. La forme reprend celle de l ancien
+// `killsource.ChunkSource` — supprime au lot 1 (item 1.4), ce paquet ayant pris sa place — dont ce
+// fichier herite la doctrine, y compris la lecon ci-dessous.
 //
 // PIEGE HISTORIQUE, ET IL A COUTE UN KILL-FEED ENTIER : tout l'outillage de retro-ingenierie
 // bornait la lecture au chunk 41. Un film BTB en compte 63, et son chunk HIGHLIGHT est le n62 —

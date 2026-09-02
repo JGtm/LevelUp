@@ -279,9 +279,18 @@ func (c *KillSourceCollector) collect(ctx context.Context, matchID string) (Kill
 		return OutcomeNoFilm, 0, nil
 	}
 
+	// LE FILM EST DECOMPRESSE ET DECOUPE UNE SEULE FOIS POUR TOUTE LA PASSE (lot 1 de
+	// PLAN_CUISSON_PERF, items 1.4 et 1.6) : les morts le lisent ci-dessous, les positions plus
+	// bas — la ou chacune des cinq lectures payait avant sa propre decompression du film entier.
+	film, err := FilmOf(chunks)
+	if err != nil {
+		observability.AddInt(metricDecodeError, 1)
+		return OutcomeNoFilm, 0, fmt.Errorf("chargement du film %s: %w", matchID, err)
+	}
+
 	// `nil` = la CONFIGURATION GELEE, celle qui a produit les chiffres publies. Ne jamais
 	// passer d Options ici sans une raison ecrite : ce sont elles qui definissent le decodage.
-	res, err := killsource.Decode(ctx, matchID, ChunkSourceOf(chunks), nil)
+	res, err := killsource.Decode(ctx, matchID, film, nil)
 	if err != nil {
 		// Un film sans kill-feed n est pas une panne : c est un film dont on ne peut rien
 		// publier. Le distinguer evite qu un backfill s arrete sur un vieux match.
@@ -313,11 +322,11 @@ func (c *KillSourceCollector) collect(ctx context.Context, matchID string) (Kill
 	// differentes. Il se journalise et se compte — jamais il n avale la passe.
 	c.collectShots(ctx, matchID, chunks, ids)
 
-	// LES POSITIONS, SUR LES MEMES CHUNKS ET LA MEME LISTE DE MORTS (G.2bis) — memes garanties
+	// LES POSITIONS, SUR LE MEME FILM ET LA MEME LISTE DE MORTS (G.2bis) — memes garanties
 	// que les tirs : best-effort, jamais de remise en cause des morts deja ecrites. `batch.Deaths`
 	// est la liste PRE-FUSION (avant MergeCreditAndFilm dans c.write) : seule population qui peut
 	// structurellement avoir une position (cf. l en-tete de positions.go).
-	c.collectPositions(ctx, matchID, chunks, ids, batch.Deaths)
+	c.collectPositions(ctx, matchID, film, ids, batch.Deaths)
 
 	return OutcomeWritten, publiees, nil
 }

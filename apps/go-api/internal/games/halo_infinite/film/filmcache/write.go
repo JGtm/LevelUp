@@ -1,9 +1,9 @@
 package filmcache
 
 // write.go — LE writer du cache film. Il vit DANS ce paquet pour la meme raison que le
-// lecteur : la disposition du cache n'est declaree qu'ici (garde-rail
-// filmcache_guard_test.go), et un writer qui vivrait ailleurs re-divergerait au premier
-// renommage de chunk.
+// lecteur : la disposition du cache n'est declaree qu'ici (cf. l'en-tete de
+// filmcache.go), et un writer qui vivrait ailleurs re-divergerait au premier renommage de
+// chunk.
 //
 // POURQUOI UN WRITER, alors que le cache etait historiquement herite du projet Python :
 // les films EXPIRENT cote serveur Halo (~29 % du corpus deja perdus). Le pont disque du
@@ -32,7 +32,7 @@ import (
 // repaierait le reseau. Trois appelants avaient besoin de cette preparation et la
 // reconstituaient chacun de leur cote — dont le detour consistant a deriver le dossier des
 // manifestes en prenant le parent du chemin d un manifeste fictif. La disposition n est
-// declaree que dans ce paquet (garde-rail filmcache_guard_test.go) : sa CREATION doit y vivre
+// declaree que dans ce paquet (cf. l'en-tete de filmcache.go) : sa CREATION doit y vivre
 // aussi, sinon elle re-diverge au premier renommage.
 func EnsureDirs(root string) error {
 	if strings.TrimSpace(root) == "" {

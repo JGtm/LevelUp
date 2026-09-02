@@ -70,6 +70,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis/filmdec"
+	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/games/halo_infinite/film/damagetag"
 	"levelup/go-api/internal/games/halo_infinite/film/killsource"
 )
@@ -292,7 +293,7 @@ func adsBalayage(t *testing.T, dir string) ([]filmdec.BipedPosition, map[uint32]
 // une arme unique serait une invention.
 func adsArmesParInstant(t *testing.T, dir string) map[int]killsource.SourceTruth {
 	t.Helper()
-	src, err := killsource.DirChunks(dir)
+	src, err := filmsource.LoadDir(dir, nil)
 	if err != nil {
 		t.Fatalf("chunks du film : %v", err)
 	}

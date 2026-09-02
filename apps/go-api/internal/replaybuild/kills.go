@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 
+	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/games/halo_infinite/film/killsource"
 )
@@ -21,16 +22,16 @@ import (
 // decodeKillSource décode killsource UNE SEULE FOIS par match. neutralDeaths ET killRefs en
 // dérivent tous les deux — avant le lot F.1, seul neutralDeaths décodait ; lui ajouter un
 // second appel aurait payé une DEUXIÈME fois le verrou filmdec partagé pour le même fait.
-// nil = décodage impossible (chunks illisibles ou source non décodable), déjà journalisé ici :
+// nil = décodage impossible (film absent ou source non décodable), déjà journalisé ici :
 // les deux appelants n'ont qu'à tester le nil.
-func (b *Builder) decodeKillSource(matchID, filmDir string) *killsource.Result {
-	src, err := killsource.DirChunks(filmDir)
-	if err != nil {
-		slog.Debug("replaybuild: chunks illisibles pour la source de dégât — morts neutres et frags sous effet non décodés",
-			"err", err, "match_id", matchID)
-		return nil
-	}
-	res, err := killsource.Decode(context.Background(), matchID, src, nil)
+//
+// LE FILM EST CELUI QUE `BuildBytes` A DÉJÀ CHARGÉ (lot 1, PLAN_CUISSON_PERF item 1.4) : ce
+// décodage ouvrait et redécompressait le film ENTIER pour son propre compte, en plus des
+// balayages. `film` nil (chunks illisibles, déjà journalisé par `chargerFilm`) n'est plus une
+// lecture ratée ici mais un refus en amont — `killsource.Decode` rend alors `ErrNoChunk`, et le
+// journal en Info ci-dessous reste la SEULE trace côté cuisson, au même niveau qu'avant.
+func (b *Builder) decodeKillSource(matchID string, film *filmsource.Film) *killsource.Result {
+	res, err := killsource.Decode(context.Background(), matchID, film, nil)
 	if err != nil {
 		slog.Info("replaybuild: source de dégât non décodée — morts neutres et frags sous effet non décodés",
 			"err", err, "match_id", matchID)

@@ -93,7 +93,7 @@ func agExtraire(t *testing.T, cache, id string) ([]BombArming, *BombArmingsCover
 		t.Fatalf("film %s absent du cache (%s) : %v — le gate exige les trois films", id, cache, err)
 	}
 	clock := map[int]int{}
-	for _, c := range src.Chunks() {
+	for _, c := range src.Meta() {
 		clock[c.Index] = c.StartMS
 	}
 	film, err := filmsource.LoadDir(filepath.Join(cache, "film_chunks", id), nil)

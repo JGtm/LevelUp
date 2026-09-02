@@ -65,19 +65,29 @@ func processMatchPositions(ctx context.Context, c *conn, cfg runConfig, m matchR
 	return nil
 }
 
-// collectPositionChunks lit + décompresse chaque chunk TYPE_2 du film et le
-// présente sous forme de positions.ChunkInput (Data = contenu DÉCOMPRESSÉ).
+// collectPositionChunks lit + décompresse chaque chunk du film et le présente sous forme de
+// positions.ChunkInput (Data = contenu DÉCOMPRESSÉ).
+//
+// CE CHEMIN N'EST PAS CELUI DE LA CUISSON, et c'est délibéré (§7 de PLAN_CUISSON_PERF) :
+// `analysis/positions` sert la vue de match côté serveur, il porte son propre marcheur de
+// paquets et il n'est PAS migré vers `filmsource`. D'où l'inflate local, à l'allowlist datée du
+// garde-rail (item 1.9). L'indice est ici la POSITION dans le manifeste, que
+// [filmcache.Source.Chunk] et [filmcache.Source.Meta] partagent.
 func collectPositionChunks(src *filmcache.Source) []positions.ChunkInput {
-	var out []positions.ChunkInput
-	for _, meta := range src.Chunks() {
-		raw, ok := src.ChunkData(meta.Index)
-		if !ok {
+	meta := src.Meta()
+	out := make([]positions.ChunkInput, 0, len(meta))
+	for i, m := range meta {
+		raw, err := src.Chunk(i)
+		if err != nil {
+			// Chunk absent du cache : le film est partiel. On le DIT (l'erreur porte le film et
+			// le chemin) et on continue — c'est la dégradation d'avant, sans le silence.
+			fmt.Printf("  chunk illisible : %v\n", err)
 			continue
 		}
 		out = append(out, positions.ChunkInput{
 			Data:      decompressZlib(raw),
-			StartMS:   meta.StartMS,
-			ChunkType: meta.ChunkType,
+			StartMS:   m.StartMS,
+			ChunkType: m.ChunkType,
 		})
 	}
 	return out

@@ -18,14 +18,14 @@ package replaybuild
 //	les MORTS      lireMorts        — le chunk highlight, parse UNE fois pour les deux
 //	               consommateurs de cet etage.
 //
-// # POURQUOI LA TRADUCTION DU MANIFESTE VIT ICI
+// # OU VIT LA CONNAISSANCE DU MANIFESTE
 //
 // `filmsource` est un paquet FEUILLE : il n'importe rien du depot (garde-rail
 // `archlint/filmsource_leaf_test.go`), donc il ne connait ni `filmcache` ni le format du
-// manifeste. C'est cette couche d'ASSEMBLAGE qui sait ou vit le cache du titre — la meme
-// frontiere que pour les faits de match. La traduction tient en une boucle, et elle est le prix
-// a payer pour que `filmsource` reste importable par `filmdec`, `killsource` et
-// `objectiveevents` sans cycle.
+// manifeste. C'est `filmcache` qui lit le manifeste et le rend DEJA dans la forme de
+// `filmsource` ([filmcache.Source.Meta]) — la traduction manuelle qui vivait ici a disparu a
+// l'item 1.5, quand `filmcache` a cesse d'importer `objectiveevents`. Cette couche
+// d'ASSEMBLAGE, elle, reste celle qui sait ou vit le cache du titre.
 
 import (
 	"context"
@@ -75,22 +75,18 @@ func chargerFilm(ctx context.Context, matchID, filmDir string, src *filmcache.So
 	return film
 }
 
-// metaDuManifeste traduit l'index du manifeste dans la forme de `filmsource` (cf. l'en-tete).
-// Manifeste absent : nil — `filmsource.LoadDir` synthetise alors les numeros de chunk depuis les
-// noms de fichiers, ce qui suffit a tous les balayages (seul le start_ms par chunk, que
-// l'armement de la bombe demande, vient du manifeste, et il passe par un autre chemin).
+// metaDuManifeste rend l'index du manifeste, ou nil s'il n'y en a pas.
+//
+// MANIFESTE ABSENT N'EST PAS FATAL : `filmsource.LoadDir` synthetise alors les NUMEROS de chunk
+// depuis les noms de fichiers, ce qui suffit aux balayages de `filmdec`. Ce qui manque, ce sont
+// le TYPE et le DEBUT de chaque chunk — donc les enregistrements d'entite (`objectiveevents`
+// ne balaie que les chunks decrits par le manifeste) et l'horloge de l'armement de la bombe.
+// `readFilmStats` le dit et le journalise plutot que de publier une courbe vide.
 func metaDuManifeste(src *filmcache.Source) []filmsource.ChunkMeta {
 	if src == nil {
 		return nil
 	}
-	chunks := src.Chunks()
-	out := make([]filmsource.ChunkMeta, 0, len(chunks))
-	for _, c := range chunks {
-		out = append(out, filmsource.ChunkMeta{
-			Index: c.Index, ChunkType: c.ChunkType, StartMS: c.StartMS,
-		})
-	}
-	return out
+	return src.Meta()
 }
 
 // filmDeaths porte L'UNIQUE lecture du fil des morts de cet etage, et SON ERREUR.

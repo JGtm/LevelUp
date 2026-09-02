@@ -3,24 +3,30 @@
 // vers des []domain.ObjectiveEvent (mode-agnostique, cf.
 // .ai/PLAN_WEAPON_ATTRIBUTION_V3.md §10).
 //
-// Algos PURS : zéro accès DB, zéro Streamlit. L'IO (lecture des chunks/manifest,
-// résolution xuid->team via match_participants) est fournie par l'appelant via
-// FilmSource + Roster. Le CLI diagnostic v3 (shadow) câble la source disque + le
-// roster DB ; les tests câblent une source disque sur data/cache.
+// Algos PURS : zéro accès DB, zéro Streamlit, ET DEPUIS LE 2026-09-02 ZÉRO LECTURE DE FILM.
+// Les neuf points d'entrée reçoivent un `*filmsource.Film` DÉJÀ CHARGÉ — chunks décompressés
+// et paquets découpés une fois pour toute la cuisson (lot 1 de PLAN_CUISSON_PERF, item 1.5).
+// Ce paquet n'a plus ni inflate ni marcheur de paquets : il en portait le troisième, et les
+// trois divergeaient (mesure sur 1 378 films, §2b de MESURES_CUISSON_PERF.md). La résolution
+// xuid->team reste fournie par l'appelant (Roster, issu de match_participants).
+//
+// LES CHUNKS CONSOMMÉS SONT CEUX DU MANIFESTE, et rien d'autre (cf. [manifestChunks]) : c'est
+// exactement ce que faisait l'ancienne `FilmSource`, qui itérait l'index du manifeste.
 //
 // film.go porte les PRIMITIVES de décodage adaptées des décodeurs jetables
 // validés (tmp_film_explore/{filmx,ctfcap,ctfsig,t2score,firemap}) :
-//   - load+zlib d'un chunk ; marche des paquets 16 octets ;
+//   - sélection des paquets FRAME parmi ceux que `filmsource` a découpés ;
 //   - extraction des events footer th=10 (interactions objectif horodatées) ;
 //   - détection des bursts de capture CTF (échelle 6-tiers) avec match_ms.
 //
 // (Retrait 2026-08-01, lot C de PLAN_DETTE_AVANT_MERGE : `extractType2` — extraction du
-// payload du premier paquet TYPE_2 — n'avait aucun appelant. La marche de paquets vit dans
-// walkFrames, qui parcourt le même conteneur ; elle ne portait pas de grammaire coûteuse à
+// payload du premier paquet TYPE_2 — n'avait aucun appelant. La marche de paquets vivait dans
+// walkFrames, qui parcourait le même conteneur ; elle ne portait pas de grammaire coûteuse à
 // rétablir. `readBitsBE`, retirée au même titre, est REVENUE à l'intégration de
 // `feat/re-mode-score` le 2026-08-05 : cette branche est partie d'AVANT le retrait et lui a
 // donné son appelant — `statborg.go`, qui lit la chaîne d'enregistrements du statborg à des
-// offsets non alignés. Le retrait était exact au moment où il a été fait ; il ne l'est plus.)
+// offsets non alignés. Le retrait était exact au moment où il a été fait ; il ne l'est plus.
+// `walkFrames` et `decompressChunk` ont suivi le 2026-09-02, remplacées par `filmsource`.)
 //
 // Faits de décode VALIDÉS (RESEARCH_THEATER_RE.md §M, §M-ter) :
 //   - footer = chunk de plus haut index, chunk_type 3 ; ses events th=10 = les
@@ -34,19 +40,98 @@ package objectiveevents
 
 import (
 	"bytes"
-	"compress/zlib"
-	"encoding/binary"
-	"io"
+	"context"
+	"log/slog"
 	"sort"
+
+	"levelup/go-api/internal/analysis/filmsource"
 )
 
-// Packet types du conteneur film (en-tête 16 octets : [type u16le][b2][b3][size
-// u32le][us u64le]). Seuls ceux consommés ici sont nommés.
+// packetFrame = le type de paquet consommé ici : FRAME, snapshot/delta d'état horodaté (us).
+// Le découpage lui-même (en-tête 16 octets, terminateur CHUNK_END) appartient à `filmsource`.
+const packetFrame = 0
+
+// Types de chunk du MANIFESTE, tels que [filmsource.ChunkMeta.ChunkType] les porte.
+//
+// ZÉRO N'EST PAS UN TYPE : c'est ce que `filmsource.LoadDir` synthétise pour un `chunk_NN.bin`
+// PRÉSENT au cache mais ABSENT du manifeste. Mesure du 2026-09-02 sur les 1 380 manifestes du
+// cache : trois valeurs seulement — 1 pour l'en-tête (`chunk_00`, le registre), 2 pour les
+// chunks de jeu, 3 pour le pied — et jamais 0. Un chunk hors manifeste n'a donc ni type ni
+// `start_ms` connus, et ce paquet ne le consomme pas (cf. [manifestChunks]).
 const (
-	packetFrame = 0  // FRAME : snapshot/delta d'état horodaté (us)
-	packetEnd   = 7  // CHUNK_END
-	packetHdr   = 16 // taille de l'en-tête de paquet
+	chunkTypeInconnu = 0
+	chunkTypeJeu     = 2
+	chunkTypePied    = 3
 )
+
+// manifestChunk = un chunk du film QUE LE MANIFESTE DÉCRIT : sa position dans le film (l'index
+// que prennent [filmsource.Film.Chunk] et [filmsource.Film.Packets]) et ses métadonnées.
+type manifestChunk struct {
+	pos  int
+	meta filmsource.ChunkMeta
+}
+
+// manifestChunks rend les chunks du film décrits par le manifeste, dans l'ordre du film.
+//
+// POURQUOI CE FILTRE EXISTE, ET CE QU'IL PRÉSERVE. Avant le 2026-09-02, ce paquet recevait une
+// `FilmSource` et itérait l'index du MANIFESTE : un fichier de chunk présent au cache mais
+// absent du manifeste n'était jamais lu. Le film chargé par `filmsource.LoadDir`, lui, porte
+// TOUS les fichiers présents. Sans ce filtre, ces chunks-là seraient balayés avec un `start_ms`
+// de zéro — donc datés faux. Un film du cache est dans ce cas (`7b0d89c4`, chunks 31 et 32).
+//
+// Un film sans aucune métadonnée de manifeste rend une liste VIDE : c'est le seul résultat
+// honnête (rien n'est datable), et [chunksDatables] le journalise plutôt que de le taire.
+func manifestChunks(film *filmsource.Film) []manifestChunk {
+	if film == nil {
+		return nil
+	}
+	meta := film.Meta()
+	out := make([]manifestChunk, 0, len(meta))
+	for i, m := range meta {
+		if m.ChunkType == chunkTypeInconnu {
+			continue
+		}
+		out = append(out, manifestChunk{pos: i, meta: m})
+	}
+	return out
+}
+
+// chunksDatables rend les chunks du manifeste et JOURNALISE le cas où il n'y en a aucun.
+//
+// Un film chargé SANS manifeste porte des paquets mais aucun `start_ms` : rien n'y est datable.
+// Se taire ferait lire « ce film ne porte rien » là où il faut lire « on ne sait pas dater ce
+// film » — deux faits différents, et le second est réparable (le manifeste, lui, se retélécharge).
+func chunksDatables(ctx context.Context, film *filmsource.Film, matchID string) []manifestChunk {
+	chunks := manifestChunks(film)
+	if len(chunks) == 0 {
+		slog.InfoContext(ctx, "objectiveevents: film sans chunk décrit par le manifeste — rien à dater",
+			"match_id", matchID, "chunks_du_film", filmChunkCount(film))
+	}
+	return chunks
+}
+
+// filmChunkCount rend le nombre de chunks du film, ou 0 pour un film absent — de quoi dire au
+// journal si « aucun chunk du manifeste » veut dire « pas de film » ou « pas de manifeste ».
+func filmChunkCount(film *filmsource.Film) int {
+	if film == nil {
+		return 0
+	}
+	return film.NumChunks()
+}
+
+// framesOf rend les paquets FRAME (type 0) du chunk à la POSITION `pos` dans le film, dans
+// l'ordre du chunk. C'est tout ce qui reste de l'ancien `walkFrames` : le découpage est fait
+// une fois par `filmsource`, il ne reste qu'à choisir le type.
+func framesOf(film *filmsource.Film, pos int) []filmsource.Packet {
+	pks := film.Packets(pos)
+	out := make([]filmsource.Packet, 0, len(pks))
+	for _, p := range pks {
+		if p.Type == packetFrame {
+			out = append(out, p)
+		}
+	}
+	return out
+}
 
 // Bornes plausibles d'un xuid Halo (filtre anti-bruit du scan footer).
 const (
@@ -90,52 +175,6 @@ func readU64LEAtBit(data []byte, bit int) uint64 {
 		x |= uint64(readByteAtBit(data, bit+i*8)) << (uint(i) * 8)
 	}
 	return x
-}
-
-// decompressChunk renvoie le contenu décompressé d'un chunk film. Les chunks
-// sont compressés en zlib (magic 0x78) ; un chunk non compressé est renvoyé tel
-// quel (robustesse). Adapté du load() de tmp_film_explore.
-func decompressChunk(raw []byte) []byte {
-	if len(raw) >= 2 && raw[0] == 0x78 {
-		r, err := zlib.NewReader(bytes.NewReader(raw))
-		if err == nil {
-			defer r.Close()
-			if inf, err := io.ReadAll(r); err == nil {
-				return inf
-			}
-		}
-	}
-	return raw
-}
-
-// framePacket = un paquet FRAME décodé (us absolu + tranche de payload).
-type framePacket struct {
-	us   uint64
-	size int
-	off  int // offset du payload dans data (après l'en-tête 16 octets)
-}
-
-// walkFrames marche les paquets 16 octets et renvoie tous les FRAME (type 0) avec
-// leur us + offset de payload. Adapté de walkFrames (ctfcap/ctfsig).
-func walkFrames(data []byte) []framePacket {
-	var out []framePacket
-	off := 0
-	for off+packetHdr <= len(data) {
-		typ := binary.LittleEndian.Uint16(data[off:])
-		size := int(binary.LittleEndian.Uint32(data[off+4:]))
-		us := binary.LittleEndian.Uint64(data[off+8:])
-		if size < 0 || size > len(data) {
-			break
-		}
-		if typ == packetFrame && off+packetHdr+size <= len(data) {
-			out = append(out, framePacket{us: us, size: size, off: off + packetHdr})
-		}
-		off += packetHdr + size
-		if typ == packetEnd {
-			break
-		}
-	}
-	return out
 }
 
 // th10Event = un event highlight de type_hint==10 (interaction objectif) décodé
@@ -249,26 +288,22 @@ type captureBurst struct {
 	matchMS int
 }
 
-// scanCaptureBursts détecte les bursts de capture CTF sur un chunk gameplay
-// (type 2) décompressé. startMS = start_ms du chunk (manifest) ; on convertit
-// l'us de chaque FRAME en ms match via le premier FRAME comme ancre (la première
-// frame du chunk = état complet, ignorée). Adapté de ctfcap detect.
-func scanCaptureBursts(data []byte, startMS int) []captureBurst {
-	frames := walkFrames(data)
+// scanCaptureBursts détecte les bursts de capture CTF dans les FRAME d'un chunk gameplay
+// (type 2). startMS = start_ms du chunk (manifest) ; on convertit l'us de chaque FRAME en ms
+// match via le premier FRAME comme ancre (la première frame du chunk = état complet, ignorée).
+// Adapté de ctfcap detect.
+func scanCaptureBursts(frames []filmsource.Packet, startMS int) []captureBurst {
 	if len(frames) == 0 {
 		return nil
 	}
-	first := frames[0].us
+	first := frames[0].TS
 	var out []captureBurst
 	for i, f := range frames {
 		if i == 0 {
 			continue // frame d'état complet de début de chunk
 		}
-		if f.off+f.size > len(data) {
-			continue
-		}
-		if countDistinctTiers(data[f.off:f.off+f.size]) >= captureMinTiers {
-			matchMS := startMS + int(int64(f.us-first)/1000)
+		if countDistinctTiers(f.Payload) >= captureMinTiers {
+			matchMS := startMS + int(int64(f.TS-first)/1000)
 			out = append(out, captureBurst{matchMS: matchMS})
 		}
 	}

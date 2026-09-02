@@ -78,6 +78,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis/filmdec"
+	"levelup/go-api/internal/analysis/filmsource"
 	"levelup/go-api/internal/analysis/objectiveevents"
 	"levelup/go-api/internal/analysis/replay/mapvar"
 	"levelup/go-api/internal/domain/title"
@@ -305,11 +306,11 @@ func lettresPaires(t *testing.T, dir string, film lettresFilm, doc ReplayDocumen
 	m *lettresMesure,
 ) []zonePair {
 	t.Helper()
-	src, ok, err := filmcache.OpenChunkDir(dir)
+	bobine, ok, err := filmcache.LoadFilmDir(dir)
 	if err != nil || !ok {
 		t.Fatalf("film %s : manifeste illisible (ok=%v err=%v)", film.short, ok, err)
 	}
-	caps := lettresCaptures(t, src, lettresRoster(t, film.short))
+	caps := lettresCaptures(t, bobine, lettresRoster(t, film.short))
 	m.captures = len(caps)
 	actions := make([]ObjectiveAction, 0, len(caps))
 	for _, e := range caps {
@@ -328,7 +329,7 @@ func lettresPaires(t *testing.T, dir string, film lettresFilm, doc ReplayDocumen
 }
 
 // lettresCaptures rend les captures de zone nommees et identifiees par xuid.
-func lettresCaptures(t *testing.T, src objectiveevents.FilmSource,
+func lettresCaptures(t *testing.T, film *filmsource.Film,
 	roster []p2aPlayer,
 ) []objectiveevents.IdentifiedEvent {
 	t.Helper()
@@ -338,12 +339,12 @@ func lettresCaptures(t *testing.T, src objectiveevents.FilmSource,
 			XUID: p.XUID, Kills: p.Kills, Deaths: p.Deaths, Assists: p.Assists,
 		})
 	}
-	named := objectiveevents.NamedEvents(src, objectiveevents.ObjectiveTypeZone)
+	named := objectiveevents.NamedEvents(film, objectiveevents.ObjectiveTypeZone)
 	if len(named) > lettresMaxNamed {
 		t.Fatalf("%d evenements nommes, plafond %d — la bombe `incrementTimes` du registre",
 			len(named), lettresMaxNamed)
 	}
-	identity := objectiveevents.SlotIdentity(src, lines)
+	identity := objectiveevents.SlotIdentity(film, lines)
 	out := make([]objectiveevents.IdentifiedEvent, 0, 256)
 	for _, e := range objectiveevents.IdentifyNamedEvents(named, identity) {
 		if e.Stat == objectiveevents.StatZoneCaptures || e.Stat == objectiveevents.StatZoneSecures {
