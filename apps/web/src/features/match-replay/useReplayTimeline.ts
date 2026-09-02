@@ -36,8 +36,9 @@ import {
   buildScoreDominance,
   placeMedia,
   roundSeparators,
-  scoreMirrorsFrags,
+  sameLeadSegments,
   trackScale,
+  type DominanceSegment,
   type ReplayMediaItem,
   type ReplayScoreTrack,
   type TrackDeath,
@@ -125,7 +126,7 @@ export function useReplayTimeline(o: ReplayTimelineOptions): ReplayTimeline {
     () => buildFragDominance(frags, frameIntervalMs ?? 0, scale),
     [frags, frameIntervalMs, scale],
   )
-  const score = useMemo(() => scoreTrack(doc, frags, scale), [doc, frags, scale])
+  const score = useMemo(() => scoreTrack(doc, dominance, scale), [doc, dominance, scale])
   // LES MÉDIAS ARRIVENT DE LA PAGE, déjà sur l'axe du rejeu (phase 2, 2026-08-28) : ce hook ne
   // fait que les POSER sur l'échelle de la frise, comme il pose les marques du fil. Le recalage,
   // lui, a eu lieu une seule fois dans `buildReplayMedia`.
@@ -182,7 +183,10 @@ export function useReplayTimeline(o: ReplayTimelineOptions): ReplayTimeline {
  * répéterait ce qui est déjà à l'écran, ou n'est pas mesurée » :
  *  1. AUCUN CALQUE DE SCORE exploitable : artefact antérieur au schéma 12, ou horloge du film
  *     non recalée (`scoreTimelineOf` porte cette garde et rend `undefined`).
- *  2. LE SCORE N'EST QUE LE COMPTE DES FRAGS (Slayer, mesuré) : la piste DOMINANCE le dit déjà.
+ *  2. LA PISTE SERAIT LE SOSIE DE LA DOMINANCE (Slayer : le score EST le compte des frags) —
+ *     mêmes meneurs, mêmes frontières au pixel près (`sameLeadSegments`, décision user D1
+ *     2026-09-02). L'ancienne garde comparait les totaux à l'égalité stricte et un seul kill
+ *     non attribué réaffichait le doublon.
  *  3. MOINS DE DEUX CAMPS IDENTIFIÉS : `buildScoreDominance` rend alors une liste vide, et une
  *     rangée vide se lirait « personne n'a marqué » au lieu de « on ne sait pas ».
  *
@@ -191,14 +195,14 @@ export function useReplayTimeline(o: ReplayTimelineOptions): ReplayTimeline {
  */
 function scoreTrack(
   doc: ReplayDocumentReady,
-  frags: readonly TrackFrag[],
+  dominance: readonly DominanceSegment[],
   scale: TrackScale,
 ): ReplayScoreTrack | null {
   const timeline = scoreTimelineOf(doc)
   if (!timeline) return null
-  if (scoreMirrorsFrags(timeline.teams, frags)) return null
   const segments = buildScoreDominance(leaderStates(timeline), scale)
   if (segments.length === 0) return null
+  if (sameLeadSegments(segments, dominance)) return null
   return { segments, rounds: roundSeparators(roundTransitions(timeline), scale) }
 }
 
