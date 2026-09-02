@@ -1,16 +1,21 @@
 /**
- * MatchKillDistanceSection.test.tsx — POC (LOT G.3, 2026-08-30). Couvre :
- * rendu nominal (2 joueurs, 2 armes, frags mesurés + distance), état vide
- * (retourne null), formats FR/EN de la distance moyenne, repli du libellé sur
- * weapon_key, et l'absence de plage min–max sur un kill mesuré unique.
+ * MatchKillDistanceSection.test.tsx — le graphe de distance par arme (réouverture DEC-8,
+ * 2026-09-02). Couvre : rendu nominal (en-têtes de joueur, section présente), l'ÉTAT VIDE
+ * QUI SE DIT (retour user « je ne vois rien du tout » — la section explique au lieu de
+ * disparaître), et le repli gamertag→xuid. Le graphe lui-même (bâton min→max + losange de
+ * moyenne) est testé PUR dans `_killDistanceChart.test.ts` — ici ECharts est mocké (jsdom).
  */
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 
 import { MatchKillDistanceSection } from './MatchKillDistanceSection'
 import { MATCH_VIEW_TEXT } from './i18n'
 import { useAppShellStore } from '@/stores/appShellStore'
 import type { MatchKillDistancePlayer, MatchScoreboardRow } from '@/lib/api/types'
+
+vi.mock('echarts-for-react', () => ({
+  default: () => <div data-testid="echarts-mock" />,
+}))
 
 const PLAYERS: MatchKillDistancePlayer[] = [
   {
@@ -62,47 +67,15 @@ afterEach(() => {
 })
 
 describe('MatchKillDistanceSection', () => {
-  it('rend le décompte, la moyenne et la plage min-max par joueur/arme (locale FR)', () => {
+  it('rend la section, un en-tête par joueur (X/Y frags mesurés) et un graphe par joueur', () => {
     render(
       <MatchKillDistanceSection players={PLAYERS} scoreboard={SCOREBOARD} t={MATCH_VIEW_TEXT.fr} />,
     )
-
     expect(screen.getByText('Distance par arme')).toBeInTheDocument()
-    expect(screen.getByText('POC')).toBeInTheDocument()
-    // En-tête de groupe joueur : gamertag + frags mesurés / total du scoreboard.
     expect(screen.getByText('Alice — 3/8 frags mesurés')).toBeInTheDocument()
     expect(screen.getByText('Bob — 1/5 frags mesurés')).toBeInTheDocument()
-    // Libellé résolu.
-    expect(screen.getByText('BR75')).toBeInTheDocument()
-    // Distance moyenne FR : virgule décimale + plage min–max (>1 kill mesuré).
-    expect(screen.getByText('12,4 m')).toBeInTheDocument()
-    expect(screen.getByText('(3,1–21,6 m)')).toBeInTheDocument()
-  })
-
-  it("replie le libellé sur weapon_key quand label et label_en sont vides", () => {
-    render(
-      <MatchKillDistanceSection players={PLAYERS} scoreboard={SCOREBOARD} t={MATCH_VIEW_TEXT.fr} />,
-    )
-    expect(screen.getByText('hinf_repulsor')).toBeInTheDocument()
-  })
-
-  it("n'affiche aucune plage min-max sur un seul kill mesuré", () => {
-    render(
-      <MatchKillDistanceSection players={PLAYERS} scoreboard={SCOREBOARD} t={MATCH_VIEW_TEXT.fr} />,
-    )
-    // Le kill unique du répulseur (5 m) ne porte pas de "(5,0–5,0 m)".
-    expect(screen.queryByText('(5,0–5,0 m)')).not.toBeInTheDocument()
-  })
-
-  it('utilise le libellé EN et le format décimal EN (point) en locale en', () => {
-    useAppShellStore.setState({ locale: 'en' })
-    render(
-      <MatchKillDistanceSection players={PLAYERS} scoreboard={SCOREBOARD} t={MATCH_VIEW_TEXT.en} />,
-    )
-    expect(screen.getByText('Distance by weapon')).toBeInTheDocument()
-    expect(screen.getByText('Sniper Rifle')).toBeInTheDocument()
-    expect(screen.getByText('12.4 m')).toBeInTheDocument()
-    expect(screen.getByText('(3.1–21.6 m)')).toBeInTheDocument()
+    // La réserve de couverture reste au pied : le bâton ne prétend pas à l'exhaustivité.
+    expect(screen.getByText(/couverture partielle/)).toBeInTheDocument()
   })
 
   it('replie sur le xuid quand le joueur est absent du scoreboard', () => {
@@ -110,24 +83,22 @@ describe('MatchKillDistanceSection', () => {
     expect(screen.getByText('xuid(1) — 3/0 frags mesurés')).toBeInTheDocument()
   })
 
-  it('ne rend rien quand players est vide', () => {
-    const { container } = render(
-      <MatchKillDistanceSection players={[]} scoreboard={SCOREBOARD} t={MATCH_VIEW_TEXT.fr} />,
-    )
-    expect(container).toBeEmptyDOMElement()
+  it("SANS frag mesuré, la section DIT pourquoi au lieu de disparaître (retour user 02/09)", () => {
+    for (const players of [[] as MatchKillDistancePlayer[], null, undefined]) {
+      const { unmount } = render(
+        <MatchKillDistanceSection players={players} scoreboard={SCOREBOARD} t={MATCH_VIEW_TEXT.fr} />,
+      )
+      expect(screen.getByText('Distance par arme')).toBeInTheDocument()
+      expect(screen.getByText(/Distances non mesurées sur ce match/)).toBeInTheDocument()
+      unmount()
+    }
   })
 
-  it('ne rend rien quand players est null', () => {
-    const { container } = render(
-      <MatchKillDistanceSection players={null} scoreboard={SCOREBOARD} t={MATCH_VIEW_TEXT.fr} />,
+  it('titre EN en locale en', () => {
+    useAppShellStore.setState({ locale: 'en' })
+    render(
+      <MatchKillDistanceSection players={PLAYERS} scoreboard={SCOREBOARD} t={MATCH_VIEW_TEXT.en} />,
     )
-    expect(container).toBeEmptyDOMElement()
-  })
-
-  it('ne rend rien quand players est undefined', () => {
-    const { container } = render(
-      <MatchKillDistanceSection players={undefined} scoreboard={SCOREBOARD} t={MATCH_VIEW_TEXT.fr} />,
-    )
-    expect(container).toBeEmptyDOMElement()
+    expect(screen.getByText('Distance by weapon')).toBeInTheDocument()
   })
 })
