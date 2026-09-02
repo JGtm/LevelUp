@@ -46,12 +46,18 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       environment: 'Chute ou sortie de zone',
       suicide: 'Tué par sa propre arme',
     },
-    presenceJoined: 'entre en partie',
-    presenceLeft: 'ne reviendra plus',
+    presenceJoined: 'a rejoint la partie',
+    presenceLeft: 'a quitté la partie',
     presenceJoinedHint:
-      "Première apparition bien après le coup d'envoi, lue dans les vies du film : un arrivant en cours de partie.",
+      "Horodatage de participation de l'API du match : le joueur a rejoint en cours de partie.",
     presenceLeftHint:
-      "Dernière vie du film pour ce joueur, bien avant la fin : un départ — ou une élimination définitive sur un mode à manches, le film ne les distingue pas.",
+      "Horodatage de participation de l'API du match : le joueur a quitté avant la fin.",
+    presenceJoinedDerived: 'entre en partie',
+    presenceLeftDerived: 'ne reviendra plus',
+    presenceJoinedDerivedHint:
+      "Première apparition bien après le coup d'envoi, dérivée des vies du film (participation API absente sur ce match).",
+    presenceLeftDerivedHint:
+      "Dernière vie du film bien avant la fin : un départ — ou une élimination définitive sur un mode à manches, le film ne les distingue pas (participation API absente sur ce match).",
     sound: 'Son',
     soundHint:
       "Sons d'armes sur les éliminations, les lancers de grenade et les activations d'équipement, coupés à la seconde. Une arme sans son enregistré reste muette. Coupé par défaut.",
@@ -428,12 +434,18 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       environment: 'Fall or out of bounds',
       suicide: 'Killed by their own weapon',
     },
-    presenceJoined: 'joins the game',
-    presenceLeft: 'will not return',
+    presenceJoined: 'joined the game',
+    presenceLeft: 'left the game',
     presenceJoinedHint:
-      'First appearance well after kickoff, read from the film lives: a mid-game joiner.',
+      'Match API participation timestamp: this player joined in progress.',
     presenceLeftHint:
-      'Last film life for this player, well before the end: a leaver — or a final elimination in a round-based mode; the film does not tell them apart.',
+      'Match API participation timestamp: this player left before the end.',
+    presenceJoinedDerived: 'joins the game',
+    presenceLeftDerived: 'will not return',
+    presenceJoinedDerivedHint:
+      'First appearance well after kickoff, derived from the film lives (no API participation on this match).',
+    presenceLeftDerivedHint:
+      'Last film life well before the end: a leaver — or a final elimination in a round-based mode; the film does not tell them apart (no API participation on this match).',
     sound: 'Sound',
     soundHint:
       'Weapon sounds on kills, grenade throws and equipment activations, cut at one second. A weapon with no recorded sound stays silent. Off by default.',

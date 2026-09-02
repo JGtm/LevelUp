@@ -63,14 +63,21 @@ export function ReplayPresenceLine({
 }) {
   const t = REPLAY_TEXT[locale]
   const joined = presence.kind === 'joined'
+  // Deux sources, deux vocabulaires : l'API affirme (« a rejoint / a quitté »), le repli
+  // film reste au fait (« entre en partie / ne reviendra plus ») — cf. presenceFeed.ts.
+  const api = presence.source === 'api'
+  const label = joined
+    ? (api ? t.presenceJoined : t.presenceJoinedDerived)
+    : (api ? t.presenceLeft : t.presenceLeftDerived)
+  const hint = joined
+    ? (api ? t.presenceJoinedHint : t.presenceJoinedDerivedHint)
+    : (api ? t.presenceLeftHint : t.presenceLeftDerivedHint)
   return (
-    <li className={FEED_ROW} title={joined ? t.presenceJoinedHint : t.presenceLeftHint}>
+    <li className={FEED_ROW} title={hint}>
       <FeedClock ms={replayMs} />
       <PresenceGlyph kind={presence.kind} color={color} />
       <FeedName kind={mark} color={color} locale={locale} className="font-medium" name={presence.name} />
-      <span className="min-w-0 truncate text-muted-foreground">
-        {joined ? t.presenceJoined : t.presenceLeft}
-      </span>
+      <span className="min-w-0 truncate text-muted-foreground">{label}</span>
     </li>
   )
 }

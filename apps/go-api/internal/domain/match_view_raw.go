@@ -114,9 +114,16 @@ type PlayerMatchStatsRaw struct {
 
 // ScoreboardRaw : données brutes de Q12 (une ligne du scoreboard).
 type ScoreboardRaw struct {
-	XUID             string
-	Gamertag         string
-	IsBot            bool
+	XUID     string
+	Gamertag string
+	IsBot    bool
+	// Participation (API PlayerParticipationInfo, colonnes match_participants) : nil sur
+	// les matchs antérieurs aux colonnes. Les horodatages sont des instants ABSOLUS (UTC —
+	// bug TZ des matchs anciens corrigé en base le 2026-05-29).
+	JoinedInProgress *bool
+	LeftInProgress   *bool
+	FirstJoinedTime  *time.Time
+	LastLeaveTime    *time.Time
 	TeamID           *int
 	RankInTeam       *int
 	OutcomeCode      int

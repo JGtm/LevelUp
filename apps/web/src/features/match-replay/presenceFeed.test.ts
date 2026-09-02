@@ -81,6 +81,81 @@ describe('presenceEntries — ce qui parle, et ce qui se tait', () => {
   })
 })
 
+describe('presenceEntries — la PARTICIPATION API prime sur la dérivation film', () => {
+  // Match démarré à minuit UTC ; artefact calé 4 s plus tard (originMs).
+  const HEADER = { start_time: '2026-09-01T00:00:00Z' }
+  const DOC_ORIGIN = { ...DOC, originMs: 4_000 } as ReplayDocumentReady
+  const board = (over: Record<string, unknown>) =>
+    ({ xuid: 'A', gamertag: 'Alpha', ...over }) as ReplayPlayer['board']
+
+  it("un drapeau joined_in_progress pose l'entrée à l'horodatage API, recalé comme les médias", () => {
+    // Rejoint à 00:01:40 → (100 000 − 0) − 4 000 = 96 000 ms sur l'axe du rejeu.
+    const p = player('A', [life(600, 900, 2_400)], {
+      board: board({
+        joined_in_progress: true,
+        first_joined_time: '2026-09-01T00:01:40Z',
+        left_in_progress: false,
+      }),
+    })
+    const [e] = presenceEntries([p], WINDOW, DOC_ORIGIN, HEADER)
+    expect(e.presence).toMatchObject({ kind: 'joined', source: 'api', name: 'Alpha' })
+    expect(e.replayMs).toBe(96_000)
+  })
+
+  it('left_in_progress pose la sortie API ; les DEUX drapeaux peuvent parler', () => {
+    const p = player('A', [life(600, 900, 1_200)], {
+      board: board({
+        joined_in_progress: true,
+        first_joined_time: '2026-09-01T00:01:40Z',
+        left_in_progress: true,
+        last_leave_time: '2026-09-01T00:03:20Z',
+      }),
+    })
+    const out = presenceEntries([p], WINDOW, DOC_ORIGIN, HEADER)
+    expect(out.map((e) => e.presence?.kind)).toEqual(['joined', 'left'])
+    expect(out[1].replayMs).toBe(196_000)
+    expect(out[1].presence?.source).toBe('api')
+  })
+
+  it("des drapeaux à FALSE font TAIRE le joueur : l'API affirme, le film ne la contredit pas", () => {
+    // Les bornes de vie déclencheraient les deux lignes du repli — l'API dit non.
+    const p = player('A', [life(600, 900, 1_200)], {
+      board: board({ joined_in_progress: false, left_in_progress: false }),
+    })
+    expect(presenceEntries([p], WINDOW, DOC_ORIGIN, HEADER)).toEqual([])
+  })
+
+  it("sans drapeaux (colonnes NULL) ou sans en-tête, le REPLI film reprend la main", () => {
+    const sansDrapeaux = player('A', [life(600, 900, 2_400)], { board: board({}) })
+    const [e] = presenceEntries([sansDrapeaux], WINDOW, DOC_ORIGIN, HEADER)
+    expect(e.presence).toMatchObject({ kind: 'joined', source: 'film' })
+    const avecDrapeaux = player('A', [life(600, 900, 2_400)], {
+      board: board({ joined_in_progress: true, first_joined_time: '2026-09-01T00:01:40Z' }),
+    })
+    const [f] = presenceEntries([avecDrapeaux], WINDOW, DOC_ORIGIN, null)
+    expect(f.presence?.source).toBe('film')
+  })
+
+  it("un drapeau vrai SANS horodatage lisible ne pose rien : pas d'instant inventé", () => {
+    const p = player('A', [life(600, 100, 2_480)], {
+      board: board({ joined_in_progress: true, left_in_progress: false }),
+    })
+    expect(presenceEntries([p], WINDOW, DOC_ORIGIN, HEADER)).toEqual([])
+  })
+
+  it("l'instant API est borné à la fenêtre de gameplay", () => {
+    const p = player('A', [life(600, 100, 2_480)], {
+      board: board({
+        joined_in_progress: true,
+        first_joined_time: '2026-09-01T00:00:01Z', // avant le coup d'envoi recalé
+        left_in_progress: false,
+      }),
+    })
+    const [e] = presenceEntries([p], WINDOW, DOC_ORIGIN, HEADER)
+    expect(e.replayMs).toBe(WINDOW.startMs)
+  })
+})
+
 describe('mergeFeedWithPresence — un seul axe de temps', () => {
   it('fusionne et retrie ; sans présence, le fil ressort tel quel', () => {
     const feedLine = (key: string, replayMs: number): ReplayFeedEntry => ({

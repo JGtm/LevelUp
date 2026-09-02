@@ -550,8 +550,15 @@ type MatchScoreboardRow struct {
 	TeamColor string `json:"team_color,omitempty"`
 	IsMe      bool   `json:"is_me"`
 	IsBot     bool   `json:"is_bot,omitempty"`
-	IsMVP     bool   `json:"is_mvp,omitempty"`
-	IsLVP     bool   `json:"is_lvp,omitempty"`
+	// Participation (API PlayerParticipationInfo) : QUI a rejoint/quitté EN COURS de
+	// partie, et QUAND (RFC3339 UTC). Absents sur les matchs d'avant les colonnes — le
+	// rejeu dérive alors la présence des bornes de vie du film (presenceFeed.ts).
+	JoinedInProgress *bool   `json:"joined_in_progress,omitempty"`
+	LeftInProgress   *bool   `json:"left_in_progress,omitempty"`
+	FirstJoinedTime  *string `json:"first_joined_time,omitempty"`
+	LastLeaveTime    *string `json:"last_leave_time,omitempty"`
+	IsMVP            bool    `json:"is_mvp,omitempty"`
+	IsLVP            bool    `json:"is_lvp,omitempty"`
 	// PerformanceScore : score de performance (0..100) calculé sur l'historique
 	// du joueur. Disponible uniquement pour les joueurs trackés (main + amis).
 	// Source : player_match_enrichment.performance_score de la player DB.

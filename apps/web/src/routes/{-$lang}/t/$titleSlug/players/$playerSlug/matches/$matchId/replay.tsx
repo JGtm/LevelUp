@@ -159,9 +159,9 @@ function ReplayPage() {
     if (!data) return base
     return mergeFeedWithPresence(
       base,
-      presenceEntries(buildPlayers(data, scoreboard ?? []), playWindow, data),
+      presenceEntries(buildPlayers(data, scoreboard ?? []), playWindow, data, matchView?.header),
     )
-  }, [kills, medalEvents, t0Ms, data, scoreboard, playWindow])
+  }, [kills, medalEvents, t0Ms, data, scoreboard, playWindow, matchView?.header])
   // LES MÉDIAS DU MATCH, RECALÉS ICI ET NULLE PART AILLEURS (phase 2, 2026-08-28) : ce sont
   // ceux de l'onglet médias du match, déjà en mémoire — la page monte la vue du match pour ses
   // fiches et son fil, aucun appel de plus. Leur horodatage est ABSOLU (l'heure de la capture),

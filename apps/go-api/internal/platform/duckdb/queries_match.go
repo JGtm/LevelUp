@@ -89,7 +89,14 @@ SELECT
     p.kills_expected,
     p.deaths_expected,
     p.kills_stddev,
-    p.deaths_stddev
+    p.deaths_stddev,
+    -- Participation (API PlayerParticipationInfo) : QUI a rejoint/quitté en cours de
+    -- partie, et QUAND — la source PRÉCISE des lignes d'entrée/sortie du rejeu
+    -- (2026-09-02). NULL sur les matchs d'avant la colonne : le lecteur dégrade.
+    p.joined_in_progress,
+    p.left_in_progress,
+    p.first_joined_time,
+    p.last_leave_time
 FROM match_participants p
 LEFT JOIN v_gamertag_lookup vg ON vg.xuid = p.xuid
 LEFT JOIN me_perfect m ON p.xuid = m.xuid

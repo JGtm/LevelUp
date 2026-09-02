@@ -88169,3 +88169,26 @@ slot = moins de sorties détectées) ; complet après re-cuisson 36.
 
 **Conclusion / prochaine étape** : gate visuel à la re-cuisson du film témoin, avec le
 reste du lot 5.
+
+---
+
+## [2026-09-02] Presence v2 : la participation API remplace les marges arbitraires
+
+**Statut** : Complété.
+
+**Décision technique principale** : retour user (« l'API nous dit précisément quand ») —
+les colonnes `joined_in_progress` / `left_in_progress` / `first_joined_time` /
+`last_leave_time` de `match_participants` (PlayerParticipationInfo, TZ corrigé en base le
+29/05) montent au scoreboard de match_view (Q12 + ScoreboardRaw en sql.Null* — la leçon Q20
+— + DTO RFC3339 UTC). Le fil du rejeu consomme l'API D'ABORD (libellés AFFIRMATIFS « a
+rejoint / a quitté la partie », recalage absolu->axe = la doctrine des médias ; des drapeaux
+à FALSE font TAIRE le joueur) ; la dérivation film (marges 10/20 s) devient le REPLI des
+matchs sans colonnes, avec ses propres libellés au fait (« entre en partie / ne reviendra
+plus »).
+
+**Résultats observés** : garde TestSeedSchemaColumnParity attrapée puis satisfaite (seeds de
+test) ; go vet/test duckdb+service+contracttest verts ; openapi/generated régénérés ; tsc 0,
+vitest presence 13 verts (API prime, silence affirmatif, clamp fenêtre, replis).
+
+**Conclusion / prochaine étape** : sonde de calibration du compteur de respawn (ancres user
+8 s / 10 s suicide + latence d'affichage).
