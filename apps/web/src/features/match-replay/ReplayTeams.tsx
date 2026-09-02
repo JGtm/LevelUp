@@ -21,6 +21,7 @@ import {
 } from '@/lib/replay/scoreTimeline'
 import type { XuidMeta } from '@/features/match-view/xuidMeta'
 import type { MatchScoreboardRow } from '@/lib/api/types'
+import { stripBotSuffix } from '@/lib/players/displayName'
 
 import { ReplayTeamHeader } from './ReplayTeamHeader'
 import { activeEquipmentAt } from './equipmentFx'
@@ -132,9 +133,19 @@ export function ReplayTeams({
   const scoreTimeline = useMemo(() => scoreTimelineOf(doc), [doc])
 
   if (groups.length === 0) {
+    // LE DIAGNOSTIC DU PONT S'AFFICHE AVEC LE CONSTAT (coverage.bridge, consommé depuis le
+    // 2026-09-02) : « aucune vie rattachée » sans ses dénominateurs se lisait comme un bug
+    // muet — avec eux, on voit si le film n'a rien nommé (0/N) ou si la table d'index est
+    // tombée (collisions).
+    const bridge = doc.coverage?.bridge
     return (
       <div className="rounded-lg border border-border bg-card p-3">
         <p className="text-xs text-muted-foreground">{t.rosterEmpty}</p>
+        {bridge && (
+          <p className="mt-1 text-3xs text-muted-foreground">
+            {t.bridgeDiag(bridge.livesNamed, bridge.livesTotal, bridge.slotCollisions)}
+          </p>
+        )}
       </div>
     )
   }
@@ -220,7 +231,10 @@ function PlayerCard({ player, doc, frame, presence, vitalityFade, readingFull, f
   // valent pour tout le match — c'est ce qu'elle affichait avant ce lot.
   const live = playerCountersAt(scoreTimeline, player.xuid, frame)
   const state = playerStateAt(player, frame, presence)
-  const name = playerName(player) ?? t.unknownPlayer
+  // Suffixe « [bot] » = marqueur de donnée killsource (schéma 36), pas d'affichage —
+  // retiré ici sans toucher au repli `t.unknownPlayer` (playerName() reste `null`-able).
+  const rawName = playerName(player)
+  const name = (rawName ? stripBotSuffix(rawName) : null) ?? t.unknownPlayer
   const equipped = state.life ? equippedWeapons(doc, state.life.slot, frame) : null
   // L'index de FILM du joueur : la clé des lancers de grenade (l'auteur y est écrit).
   const filmIndex = doc.roster.find((r) => r.xuid === player.xuid)?.filmIndex ?? null

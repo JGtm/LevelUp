@@ -435,24 +435,40 @@ package replay
 // prenaient 29-34 sur `feat/v75` : renumerote 35 au merge du 2026-09-02, l'arbitrage ecrit aux
 // schemas 30, 31 et 33.)
 //
-// CE QUE LA VERSION 36 PORTE. LE COUP D'ENVOI, DATE PAR LE FILM (`t0FilmMs`) : l'instant ou la
+// CE QUE LA VERSION 36 PORTE : L'IDENTITÉ DES VIES (lot du 2026-09-02, retour user « joueurs
+// en attente de respawn éternels / quit-rejoin-bots »). (1) UNE TRACK = UNE VIE, réellement :
+// la découpe applique `lifeGapUS` (la règle de `buildLifeSpans`) là où une track par SLOT
+// fusionnait les vies d'un slot recyclé — le premier porteur nommé « vivait » à la place de
+// son remplaçant, dont la fiche restait « Éliminé » à jamais. (2) LE NOMMAGE SE FAIT PAR VIE
+// (`nameTracksByLives`, les fermetures nomment aussi la vie qu'elles closent) : un slot
+// recyclé porte une identité PAR OCCUPANT. (3) LES BOTS EXISTENT : `roster[].bot` (entrée
+// sans xuid, nom suffixé « [bot] », déclarée par BOT_METADATA) et `tracks[].bot` (le nom du
+// bot sur les vies que le pont attribue à son index — fermeture A, jamais une devinette).
+// La version monte pour la raison des montées v22/v23/v33 : la reprise du backfill se fait
+// par SchemaVersion, et un artefact 35 doit se lire « à re-cuire » — sans quoi aucun rejeu
+// déjà cuit ne montrerait ni les occupants d'un slot recyclé ni les bots.
+// CE QUE LA VERSION REFUSE : nommer une vie que rien ne fonde (les segments anonymes d'un
+// slot nommé RESTENT anonymes — l'héritage de slot était exactement le bug corrigé) ; et le
+// COMPTEUR DE RESPAWN RÉEL (`player-respawn-timer`, ti=5 i1) — décodé mais aux entiers BRUTS
+// dont l'unité n'a jamais été calibrée (protocole cmd/tmp_vitals non joué) : publier une
+// grandeur à unité devinée est interdit ici, la condition de reprise est au registre.
+//
+// CE QUE LA VERSION 37 PORTE. LE COUP D'ENVOI, DATE PAR LE FILM (`t0FilmMs`) : l'instant ou la
 // grille se leve, lu dans le PREMIER MOUVEMENT des pistes au lieu d'etre estime des
 // `first_joined_time` de l'API. L'estimation d'API degenere a ~0 ms sur 10-15 % des matchs
 // (elle date alors le coup d'envoi au chargement) ; le film, lui, le porte directement, et la
 // mesure du 2026-09-02 le montre PLUS STABLE que l'etalon — ecart-type 9 752 ms contre
 // 12 764 ms sur les 49 matchs au T0-API sain, avec une marge interne au film de CV 0,013.
 // Champ optionnel, mais la version monte pour la raison exacte des montees v4 (l'origine) et
-// v22 : la reprise du backfill se fait par SchemaVersion, et un artefact 35 doit se lire
+// v22 : la reprise du backfill se fait par SchemaVersion, et un artefact 36 doit se lire
 // « a re-cuire », pas « a jour » — sans quoi aucun rejeu deja cuit ne demarrerait sur le coup
 // d'envoi. `coverage.t0Film` publie le verdict, refus compris. CE QUE LA VERSION REFUSE : un
 // zero ambigu. Pas de mouvement detectable, une rafale de depart a moins de deux partants, ou
 // un premier mouvement a plus de 120 s de la frame 0 -> champ ABSENT, refus journalise, raison
-// publiee. Chronique, seuils et mesures : t0_film.go.
-//
-// RISQUE DE COLLISION DE NUMERO, consigne comme aux schemas 29->30, 31 et 33 : ce lot prend le
-// 36 sur la branche `wt/t0-film` alors que le 35 vient d'arriver sur `feat/v75`. Un autre
-// chantier peut prendre le 36 le meme jour ; l'arbitrage se fait au merge, par renumerotation.
-const SchemaVersion = 36
+// publiee. Chronique, seuils et mesures : t0_film.go. (Ce lot avait pris le 36 sur
+// `wt/t0-film` pendant que l'identite des vies prenait le 36 sur `feat/v75` : renumerote 37
+// au merge du 2026-09-02 — l'arbitrage par renumerotation ecrit aux schemas 30, 31, 33 et 35.)
+const SchemaVersion = 37
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {
@@ -774,6 +790,11 @@ type RosterEntry struct {
 	// PAS, et que seule la base porte : l'équipe, et les compteurs du match. Vide si
 	// l'enregistrement ne le portait pas.
 	Name string `json:"name,omitempty"`
+	// Bot est vrai pour une entrée déclarée par BOT_METADATA (schéma 36) : son XUID est VIDE
+	// — un bot n'en a pas, et le normaliser en pseudo-identifiant fusionnerait des bots — et
+	// son Name porte le suffixe « [bot] », comme la base l'écrit. FilmIndex est le slot du
+	// roster de réplication que le paquet type 12 déclare.
+	Bot bool `json:"bot,omitempty"`
 }
 
 // Loadout est l'ensemble des armes PORTÉES par un slot à un instant de référence.
@@ -875,7 +896,15 @@ type Track struct {
 	// (cf. lives.go). Vide quand la vie n'a pas été nommée — 15 vies sur 105 sur le film de
 	// référence, dont 4 antérieures au début réel du match et 6 survivants de fin de partie,
 	// que le film ne clôt par aucun événement.
-	XUID   string  `json:"xuid,omitempty"`
+	XUID string `json:"xuid,omitempty"`
+	// Bot est le NOM du bot qui porte cette vie (schéma 36), suffixe « [bot] » compris — un
+	// bot n'a pas de xuid, et c'est le seul cas où une vie est nommée sans en avoir un.
+	//
+	// D'OÙ IL VIENT : BOT_METADATA (paquet type 12) déclare slot de roster + nom, et le pont
+	// des fermetures attribue un slot de biped à cet index quand l'unicité le permet
+	// (cf. nameBotTracks). Une vie de bot que le pont ne peut pas attribuer reste anonyme —
+	// même règle que les humains : rien plutôt que faux.
+	Bot    string  `json:"bot,omitempty"`
 	Points []Point `json:"points"`
 	// StartFrame / EndFrame (optionnels) bornent la vie de la track sur l'axe de temps :
 	// le client peut masquer l'entité hors de cette fenêtre au lieu de la figer.

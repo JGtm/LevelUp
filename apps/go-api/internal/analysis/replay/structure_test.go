@@ -599,7 +599,14 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   re-cuire » — ses drapeaux au sol n'ont ni retour automatique ni zone. Détail :
 	//   internal/analysis/replay/flag_objects.go et .ai/V7.5/PLAN_CTF_ZONE_RETOUR_2026-08-30.md.
 	//   (Ce lot avait pris le 29 sur wt/ctf-zone-retour ; renumerote 35 au merge du 2026-09-02.)
-	// v36 — LE COUP D'ENVOI, DATÉ PAR LE FILM (`t0FilmMs`). Le T0 servi jusqu'ici est ESTIMÉ
+	// v36 — L'IDENTITÉ DES VIES : une track = UNE VIE (découpe `lifeGapUS`, la règle de
+	//   `buildLifeSpans`, appliquée aux tracks), nommage PAR VIE (un slot recyclé porte une
+	//   identité par occupant — le cas Sylvanus du retour user 2026-09-02), et LES BOTS
+	//   (`roster[].bot` sans xuid + `tracks[].bot` sur les vies que le pont attribue à un
+	//   index de BOT_METADATA). Un artefact 35 se lit « à re-cuire ». REFUS : l'héritage de
+	//   slot pour les segments anonymes (c'était le bug), et le compteur de respawn réel
+	//   (unité jamais calibrée — condition de reprise au registre).
+	// v37 — LE COUP D'ENVOI, DATÉ PAR LE FILM (`t0FilmMs`). Le T0 servi jusqu'ici est ESTIMÉ
 	//   des `first_joined_time` de l'API : sur 10-15 % des matchs ces horodatages collent au
 	//   `start_time`, le T0 tombe à ~0, et le rejeu démarre sur des joueurs statufiés pendant
 	//   tout le décompte — le défaut que l'utilisateur voit à l'écran. Le film le MESURE : la
@@ -613,17 +620,17 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   POURQUOI LA VERSION MONTE alors que le champ est OPTIONNEL — la raison exacte des
 	//   montées v4 (l'origine) et v22 : la reprise du backfill se fait par SchemaVersion, et
 	//   sans bump aucun rejeu déjà cuit ne démarrerait jamais sur le coup d'envoi.
-	//   CE QUE v36 REFUSE : un zéro ambigu. Pas de mouvement détectable, rafale à moins de deux
+	//   CE QUE v37 REFUSE : un zéro ambigu. Pas de mouvement détectable, rafale à moins de deux
 	//   partants, ou premier mouvement à plus de 120 s de la frame 0 -> champ ABSENT (pointeur
 	//   nil, même piège omitempty qu'`originMs`), refus journalisé, raison publiée dans
 	//   `coverage.t0Film`. Et AUCUNE CONSTANTE ABSOLUE : la marge de 22 700 ms est un témoin
 	//   documentaire, jamais une valeur servie — le détecteur mesure par match.
 	//   Détail : internal/analysis/replay/t0_film.go et .ai/V7.5/PLAN_T0_FILM_2026-09-02.md.
-	//   (Ce lot prend le 36 sur wt/t0-film alors que le 35 vient d'arriver sur feat/v75 :
-	//   renuméroter au merge si un autre chantier a pris le 36, arbitrage écrit aux schémas
+	//   (Ce lot avait pris le 36 sur wt/t0-film pendant que l'identité des vies prenait le 36
+	//   sur feat/v75 : renuméroté 37 au merge du 2026-09-02, arbitrage écrit aux schémas
 	//   30, 31, 33 et 35.)
-	if SchemaVersion != 36 {
-		t.Fatalf("SchemaVersion = %d, attendu 36 : incrémenter exige une raison écrite ci-dessus "+
+	if SchemaVersion != 37 {
+		t.Fatalf("SchemaVersion = %d, attendu 37 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

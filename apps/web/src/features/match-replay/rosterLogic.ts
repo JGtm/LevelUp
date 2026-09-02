@@ -30,13 +30,25 @@ import type { ReplayDocumentReady, ReplayTrackReady } from './replayNormalize'
  * du film introuvable dans la base est un signal, pas un détail à masquer.
  */
 export interface ReplayPlayer {
+  /**
+   * Identité du joueur : le xuid en décimal, ou — pour un BOT, qui n'en a pas — la clé
+   * synthétique `bot:<nom>` (schéma 36). La clé ne sort jamais à l'écran : elle sert les
+   * Map de ce fichier et des résolveurs, le nom affiché vient de `filmName`/`board`.
+   */
   xuid: string
+  /** Vrai pour un bot déclaré par le film (roster/tracks `bot`). */
+  bot?: boolean
   /** Ligne du scoreboard du match, quand la jointure aboutit. */
   board?: MatchScoreboardRow
   /** Gamertag écrit par le FILM. Sert quand la base n'a rien à dire sur ce joueur. */
   filmName?: string
   /** Toutes les vies de ce joueur, dans l'ordre du temps. */
   lives: ReplayTrackReady[]
+}
+
+/** Clé d'identité d'un bot dans les tables de ce fichier — jamais affichée. */
+export function botKey(name: string): string {
+  return `bot:${name}`
 }
 
 /**
@@ -82,25 +94,35 @@ export function buildPlayers(
   const byXUID = new Map<string, ReplayPlayer>()
   // L'ordre du roster du film donne un ordre STABLE et reproductible ; à défaut, l'ordre
   // d'apparition des traces. Jamais l'ordre d'itération d'une Map remplie au hasard.
+  // UN BOT N'A PAS DE XUID (schéma 36) : son identité de table est `bot:<nom>` — deux bots
+  // homonymes fusionneraient, et c'est assumé : le film ne donne rien de plus discriminant.
   for (const entry of doc.roster ?? []) {
-    byXUID.set(entry.xuid, {
-      xuid: entry.xuid,
+    const key = entry.xuid || (entry.bot && entry.name ? botKey(entry.name) : '')
+    if (!key) continue
+    byXUID.set(key, {
+      xuid: key,
+      bot: entry.bot || undefined,
       filmName: entry.name,
       lives: [],
     })
   }
   for (const track of doc.tracks) {
-    if (!track.xuid) continue
-    let p = byXUID.get(track.xuid)
+    const key = track.xuid || (track.bot ? botKey(track.bot) : '')
+    if (!key) continue
+    let p = byXUID.get(key)
     if (!p) {
-      p = { xuid: track.xuid, lives: [] }
-      byXUID.set(track.xuid, p)
+      p = { xuid: key, bot: track.bot ? true : undefined, filmName: track.bot, lives: [] }
+      byXUID.set(key, p)
     }
     p.lives.push(track)
   }
   const board = new Map(scoreboard.map((r) => [r.xuid, r]))
+  // LA JOINTURE D'UN BOT SE FAIT PAR GAMERTAG, faute de xuid des deux côtés : la base écrit
+  // le même nom suffixé « [bot] » que le film. Un nom absent du scoreboard laisse `board`
+  // vide — le bot reste dans le groupe sans équipe, jamais dans un camp deviné.
+  const boardByName = new Map(scoreboard.filter((r) => !r.xuid).map((r) => [r.gamertag, r]))
   for (const p of byXUID.values()) {
-    p.board = board.get(p.xuid)
+    p.board = p.bot ? boardByName.get(p.filmName ?? '') : board.get(p.xuid)
     p.lives.sort((a, b) => trackWindow(a).start - trackWindow(b).start)
   }
   return [...byXUID.values()]

@@ -124,7 +124,8 @@ func openEventsBackfillDBsWithRegistry(t *testing.T, registryDDL string) (player
 			event_type VARCHAR,
 			time_ms    INTEGER,
 			xuid       VARCHAR,
-			type_hint  INTEGER
+			type_hint  INTEGER,
+			raw_json   VARCHAR
 		);
 		CREATE TABLE killer_victim_pairs (
 			match_id        VARCHAR,

@@ -407,7 +407,7 @@ export function PlayerDetailPanel({ row, killerVictim, citations, header, rank, 
         )}
         {localData && <LocalSection data={localData} t={t} />}
       </div>
-      <Footer isTracked={isTracked} isMe={row.is_me} isBot={row.is_bot ?? false} gamertag={row.gamertag} playerSlug={playerSlug} t={t} />
+      <Footer isTracked={isTracked} isMe={row.is_me} isBot={row.is_bot ?? false} gamertag={displayPlayerName(row.gamertag, row.xuid)} playerSlug={playerSlug} t={t} />
     </div>
   )
 }

@@ -233,6 +233,40 @@ l'etalon API. Research test `internal/analysis/replay/t0_mouvement_research_test
 priorite film sur API degenere/aberrant, preambule UX 1 s cote lecteur (confort, PAS dans le
 T0 stocke), reparation des 101 artefacts existants SANS recuisson (positions deja dans le
 JSON). Plan a passer par plan-review avant execution.
+## [2026-09-02] Lots A (victimes/bots) et B (glyphe ami) executes et merges — Complete ; lot C (medailles) lance
+
+Plan `.ai/V7.5/PLAN_KILLFEED_VICTIMES_MEDAILLES_GLYPHE_2026-09-02.md`, execution par
+executeurs pilotes (Opus lot A, Sonnet lot B), worktrees dedies, CR verifies sur pieces.
+
+**Lot A merge** (`wt/killfeed-bots`, commit 2cb5a1dce) : complement du fix partiel
+71a8801b2 d une autre session — `killer_gamertag` (3e colonne NULLABLE) en NullString
+(prouve par revert : cassait encore le scan), victime bot NOMMEE au kill feed
+(comparaison par gamertag quand le xuid manque, cas deux-bots-meme-instant traite),
+`decorateVictim` ne pose plus xuid/equipe inexistants, gardes D2 sur `buildTugEvents`
+ET `buildKDEvents` (une mort infligee par un bot passait `VictimXUID == myXUID` et
+creusait la courbe du viewer). Doctrine posee sur `domain.KVPairRaw`. 12 tests neufs.
+Gates : service+duckdb+domain verts, integration KVPairs `-p 1` vert (rejoue par le
+pilote independamment).
+
+**Lot B merge** (`wt/feed-glyphe`, commit 2c53c8bd7) : plus aucun glyphe au fil (D5),
+encre `success` et sr-only conserves. Decouverte validee : la carte n a JAMAIS utilise
+le composant SVG `PlayerMark` (formes dessinees au canvas, `replayMarkers.ts`) →
+`PlayerMark.tsx` + test + cle i18n `markFriend` supprimes (regle n7). Typecheck (purge
+.tmp), lint, 5711 tests verts.
+
+**Question user en cours de merge (medailles « en double »)** : exact — deux magasins.
+`medals_earned` (agregat API par joueur, SANS timestamps) sert Resume/citations : c est
+pour ca que « toutes les medailles » sont visibles meme sur les matchs recents. Les
+events `medal` du film ont les timestamps mais plus d identite depuis avril. Le join
+agregat↔timestamps est impossible des qu un joueur a >1 type de medaille dans le match
+(aucun moyen de savoir quel event est laquelle) — d ou le lot C qui recupere l identite
+dans les octets du film (bijection (type_hint, medal_type)→nom mesuree parfaite,
+124 cles, 0 ambigue). La « duplication » agregat+events existe depuis l ere Python et
+aucun lecteur ne double-compte. `medals_earned` servira d ORACLE de validation au
+backfill (C5).
+
+Reste : gate visuel user (temoin 1b2d9e08 : victimes + « 343 Razzle [bot] » ×6, zero
+glyphe, amis en vert), lot C en cours, CI de branche a verifier apres push.
 
 ## [2026-09-02] Diagnostic kill feed du rejeu (retour user) : victimes et medailles absentes — Complete (diagnostic seul, AUCUN fix)
 
@@ -88297,3 +88331,146 @@ donnée au contrat — réouverture = décision produit + backfill DEC-6.
 **Conclusion / prochaine étape** : lots 1 (duels NULL scan), 2 (frises), 3 (translocateur spent)
 et 5 (identité des vies, D4 = maintenant) prêts à exécuter ; toute visibilité rejeu (CTF zone,
 marques de fiche, futurs 5.x) attend UNE re-cuisson soumise à accord user.
+
+---
+
+## [2026-09-02] Execution des retours user : lots 1-3, graphe distance, lot 5 (schema 36) — SANS cuisson
+
+**Statut** : Complété (exécution) ; visibilité rejeu en attente de re-cuisson (décision user).
+
+**Décision technique principale** : exécution séquentielle des lots du plan
+`.ai/PLAN_RETOURS_REJEU_MATCHVIEW_2026-09-02.md`, un commit par lot, aucune cuisson lancée.
+
+- **Lot 1 (duels)** : scan Q20 en `sql.NullString` (NULL bot -> ""), erreurs du chemin
+  best-effort journalisées, `buildNemesisMap` écarte les xuid vides (bots jamais dans les
+  duels). Test d'intégration bot + test unitaire némésis.
+- **Lot 2 (frises)** : `sameLeadSegments` (suite des meneurs + frontières, tolérance pixel
+  0,005) remplace `scoreMirrorsFrags` (égalité stricte qui réaffichait le doublon au premier
+  kill non attribué).
+- **Lot 3 (translocateur)** : l'éclat de fiche s'allume sur le `spent` mesuré
+  (`spentTranslocations`) ; `translocatorRanks` lit `abilityLabels` (famille B couverte, le
+  littéral 11 devient un repli) ; décision « spent muet » re-documentée (audio seulement).
+- **Graphe distance (P8, DEC-8 rouvert par le user)** : `_killDistanceChart.ts` pur (bâton
+  min->max en barres empilées à socle transparent + losange de moyenne en scatter), un graphe
+  par joueur, dénominateur d'honnêteté gardé ; L'ÉTAT VIDE SE DIT (« distances non mesurées
+  sur ce match ») au lieu de rendre null — c'est pourquoi le user ne voyait « rien du tout ».
+- **Lot 5 (identité des vies, schéma 36)** : une track = UNE VIE (`decimateTracks` découpe à
+  `lifeGapUS`), nommage PAR VIE (`nameTracksByLives` + `nameClosedLives` pour les
+  fermetures) — le cas Sylvanus (slot recyclé) porte une identité par occupant ; BOTS au
+  roster (`roster[].bot`, sans xuid) et sur les vies pontées (`tracks[].bot`, via
+  `Options.Bots` <- `ksRes.Roster.Bots`, décodage killsource déjà payé) ; web : clé
+  `bot:<nom>`, jointure scoreboard par gamertag ; « Hors film / ne revient plus » remplace
+  le « Réapparition ? » éternel ; `coverage.bridge` consommé (diagnostic rosterEmpty).
+
+**Résultats observés** : golden 000d5950 réassemblé — 104 traces (99 avant, découpe par vie),
+93 nommées (INCHANGÉ : les fermetures nomment désormais la vie qu'elles closent), les
+segments anonymes d'un slot nommé restent anonymes (l'héritage de slot était le bug).
+Gates verts partout : go build/vet, tests replay/replaybuild/contracttest/duckdb/service,
+openapi-gen régénéré (+ generated.ts), tsc 0, vitest match-replay 2022, match-view 267.
+
+**Non fait, et pourquoi** :
+- 5.4 compteur de respawn réel : entiers BRUTS jamais calibrés (protocole cmd/tmp_vitals
+  non joué) — publier une unité devinée est interdit. Report au REGISTRE avec condition.
+- 5.6 vérification Sylvanus + gates visuels (lots 3/5) : exigent une cuisson, interdite ce
+  lot. Reprise : re-cuire UN film témoin (Sylvanus + un CTF récent) sur accord user — cela
+  rallumera aussi les marques d'objectif (D3) et la zone de retour CTF (schéma 35).
+
+**Conclusion / prochaine étape** : tout le code des 7 retours est livré ou statué. Prochaine
+étape = décision de cuisson (film témoin d'abord), puis gate visuel user.
+
+---
+
+## [2026-09-02] Fil des eliminations : lignes d entree/sortie de partie (presence)
+
+**Statut** : Complété.
+
+**Décision technique principale** : le film ne portant AUCUN événement de connexion (mesuré,
+liste d'événements = kill/death/medal/mode), la présence se DÉRIVE des bornes de vie
+(demande user : « tout est indiqué au niveau des timestamps ») — module pur
+`presenceFeed.ts` : première vie > 10 s après le coup d'envoi = « entre en partie » ;
+dernière vie > 20 s avant la fin = « ne reviendra plus » (>2x la réapparition médiane
+mesurée 8,0 s). SEULES la première et la dernière vie parlent : un trou ENTRE deux vies
+n'émet rien — sur un mode à élimination, rester mort entre deux manches est normal, en
+déduire des allers-retours spammerait le fil. Libellé de sortie AU FAIT (le film ne
+distingue pas un départ d'une élimination définitive — réserve en infobulle).
+
+**Résultats observés** : lignes fusionnées dans le fil par la route (mergeFeedWithPresence,
+même axe, recalage d'horloge hérité de la liste), glyphe vectoriel porte+flèche à l'encre
+d'équipe (`ReplayPresenceLine.tsx`, FEED_ROW/FeedClock exportés — 4e forme de ligne, même
+filet), bots nommés via leur clé `bot:<nom>`. reduceFeed (frises) ignore ces lignes par
+construction. Gates : tsc 0, eslint 0, vitest match-replay 134 fichiers verts (7 tests
+presenceFeed). Anciens artefacts : signal partiel mais jamais faux (vies fusionnées par
+slot = moins de sorties détectées) ; complet après re-cuisson 36.
+
+**Conclusion / prochaine étape** : gate visuel à la re-cuisson du film témoin, avec le
+reste du lot 5.
+
+---
+
+## [2026-09-02] Presence v2 : la participation API remplace les marges arbitraires
+
+**Statut** : Complété.
+
+**Décision technique principale** : retour user (« l'API nous dit précisément quand ») —
+les colonnes `joined_in_progress` / `left_in_progress` / `first_joined_time` /
+`last_leave_time` de `match_participants` (PlayerParticipationInfo, TZ corrigé en base le
+29/05) montent au scoreboard de match_view (Q12 + ScoreboardRaw en sql.Null* — la leçon Q20
+— + DTO RFC3339 UTC). Le fil du rejeu consomme l'API D'ABORD (libellés AFFIRMATIFS « a
+rejoint / a quitté la partie », recalage absolu->axe = la doctrine des médias ; des drapeaux
+à FALSE font TAIRE le joueur) ; la dérivation film (marges 10/20 s) devient le REPLI des
+matchs sans colonnes, avec ses propres libellés au fait (« entre en partie / ne reviendra
+plus »).
+
+**Résultats observés** : garde TestSeedSchemaColumnParity attrapée puis satisfaite (seeds de
+test) ; go vet/test duckdb+service+contracttest verts ; openapi/generated régénérés ; tsc 0,
+vitest presence 13 verts (API prime, silence affirmatif, clamp fenêtre, replis).
+
+**Conclusion / prochaine étape** : sonde de calibration du compteur de respawn (ancres user
+8 s / 10 s suicide + latence d'affichage).
+
+---
+
+## [2026-09-02] Compteur de respawn : l unite est CALIBREE (ancres user 8 s / 10 s)
+
+**Statut** : Complété (calibration) ; publication reportée (couverture).
+
+**Décision technique principale** : sonde de recherche `respawn_calibration_research_test.go`
+(gardée GAME_FILM, sautée en CI, un film par processus — D17) sur la chaîne séquentielle
+existante (`ScanFilmGameEntitiesChain`, records CERTAINS avec slot + horodatage) : par
+épisode actif, régression de T0/T1 contre l'horloge du film — la PENTE donne l'unité sans
+rien supposer.
+
+**Résultats observés** (4 films, 5 épisodes régressables) : **T0 = secondes RESTANTES**
+(pente -1,00/s exacte partout) ; **T1 = durée TOTALE du respawn en secondes** (8 et 10
+observés, rien d'autre — les deux ancres données par le user) ; première lecture à N-1 s,
+cohérente avec la latence d'apparition du compteur qu'il décrit. Réserves consignées au
+registre : lectures isolées à grandes valeurs partagées entre slots (autre régime, à
+trancher) ; couverture chaîne ~1/3 des paquets = 1-7 lectures/film pour ~100 morts — trop
+clairsemée pour publier un décompte PAR MORT.
+
+**Conclusion / prochaine étape** : la condition « unité jamais calibrée » du registre est
+LEVÉE ; la publication au schéma suivant attend un chemin de lecture à meilleure couverture
+(bande ti=5 débruitée par le domaine calibré <= 10 s, ou image-clé).
+
+---
+
+## [2026-09-02] Respawn phase 2 : la couverture est un NEGATIF mesure — publication reportee sine die
+
+**Statut** : Complété (mesure) ; publication NON viable en l'état.
+
+**Décision technique principale** : sonde `respawn_coverage_research_test.go` (filmdec,
+gardée GAME_FILM) — voie bande + voie chaîne, débruitées par la calibration du matin
+(actif, T1 ∈ {8,10}, T0 <= T1 : le bruit passe ce filtre à ~1e-5), épisodes cohérents à
+-1/s, jointure aux morts par l'arithmétique du compteur (mort = t − (D − k) s), morts et
+calage d'horloge en copies d'instrument du canon replay (cycle d'import).
+
+**Résultats observés** (3 films) : 1/92, 2/186 et 0/93 morts couvertes (1,1 % au mieux).
+Le compteur émet ~8 mises à jour par mort (des centaines par film) : le plafond est la
+RECONNAISSANCE des records ti=5 du delta — bande noyée dans son bruit d'ancrage (2663
+candidats -> 44 plausibles au mieux), chaîne désynchronisée à 61-68 %. Même mur que la
+borne d'arrêt R7-e, quantifié pour ce composant. Consigné au registre avec sa condition
+(réouverture de la RE des désérialiseurs — décision user).
+
+**Conclusion / prochaine étape** : AUCUNE côté produit — le décompte dérivé (exact quand
+une vie suivante existe) + l'état « hors film » restent l'état de l'art. L'acquis du jour
+(unité calibrée) est documenté et servira si la RE rouvre.
