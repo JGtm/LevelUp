@@ -233,6 +233,39 @@ l'etalon API. Research test `internal/analysis/replay/t0_mouvement_research_test
 priorite film sur API degenere/aberrant, preambule UX 1 s cote lecteur (confort, PAS dans le
 T0 stocke), reparation des 101 artefacts existants SANS recuisson (positions deja dans le
 JSON). Plan a passer par plan-review avant execution.
+## [2026-09-02] Lots C (medailles) et D (noms de bots) merges + CI archlint reparee — Complete
+
+**Lot C merge** (`wt/medailles-feed`, commit f80ec0719) : identite des medailles au fil.
+Table (type_hint, medal_type)→nom GENEREE du corpus pre-avril (bijection mesuree
+124↔124, 0 ambigue, 44 568 events), DEUX ecrivains repares (collect ET voie
+completion/convergence — le second decouvert par la revue adversariale, il rouvrait le
+trou a chaque cycle), persister a colonnes separees (canal H5 preserve), CLI
+`backfill-medailles-feed` hors ligne prete (run planifie a la RELEASE — tache ajoutee
+au Backlog Notion, decision user). Revue adversariale 2 rondes : ronde 1 = 6 constats
+recevables (2 P1 corriges + --limit + 2 tests), ronde 2 = 5/5 corrections tiennent,
+0 constat, P0+P1 2→0. Gates : 50 paquets rapides + 15 paquets integration -p 1 + vet,
+tous EXIT 0 ; contre-verifications pilote independantes vertes.
+LECON consignee : les DDL de test recopiees a la main derivent du vrai schema
+(2 realignees — c est ce qui rendait le trou du second ecrivain indetectable) ; aucun
+ratchet ne couvre les writers DuckDB hors internal/sync (preexistant).
+
+**Lot D merge** (`wt/nom-bots`, commit cd9ae3282) : suffixe « [bot] » retire de
+l AFFICHAGE au chokepoint `displayPlayerName` (+`stripBotSuffix` exporte), 12 surfaces
+routees (affichage seulement, cles de logique brutes), garde-rail anti-litteral
+`botSuffix.guard.test.ts`. Le marqueur reste en DONNEES (killsource, schema 36).
+Badge « Bot » du scoreboard = seul indicateur. Typecheck/lint/5734 tests verts.
+
+**CI archlint reparee** (mandat user « corrige meme si c est pas de ta faute ») :
+`TestNoRewrittenSlotBand` rougissait la CI de branche depuis le merge deto
+(`deto_attribution_helpers_test.go`, commit 922d70f2f). Verdict d enquete : le fichier
+ne REECRIT PAS la regle de bande — il releve seen/others BORNE aux n premiers chunks
+(lecon RAM) puis delegue a `slotBandExcluding`, le pattern deja allowliste de
+world_object_census.go. Fix = entree d allowlist justifiee et datee dans
+`no_rewritten_slot_band_test.go` ; suite archlint complete verte en local (26 s).
+
+Reste : CI de branche a verifier au niveau JOB apres push ; gate visuel user (temoin
+1b2d9e08) toujours ouvert ; run backfill medailles a la release.
+
 ## [2026-09-02] Lots A (victimes/bots) et B (glyphe ami) executes et merges — Complete ; lot C (medailles) lance
 
 Plan `.ai/V7.5/PLAN_KILLFEED_VICTIMES_MEDAILLES_GLYPHE_2026-09-02.md`, execution par
