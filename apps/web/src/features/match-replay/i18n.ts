@@ -16,7 +16,7 @@ export type ReplayLocale = Locale
 export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
   fr: {
     title: 'Rejeu 2D',
-    back: 'Retour au match',
+    back: 'Fiche du match',
     play: 'Lecture',
     pause: 'Pause',
     restart: 'Recommencer',
@@ -404,7 +404,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
   },
   en: {
     title: '2D replay',
-    back: 'Back to match',
+    back: 'Match details',
     play: 'Play',
     pause: 'Pause',
     restart: 'Restart',
