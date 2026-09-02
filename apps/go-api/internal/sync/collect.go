@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/games/halo_infinite/film/medalname"
 	"levelup/go-api/internal/persist"
 )
 
@@ -112,19 +113,16 @@ func buildBatchFromFetchedMatchCtx(
 		if err != nil {
 			parseErr = fmt.Errorf("ParseHighlightEvents: %w", err)
 		} else if len(events) > 0 {
-			heInserts := make([]persist.HighlightEventInsert, 0, len(events))
+			heInserts, medaillesSansNom := highlightEventInserts(ctx, fm.MatchID, events)
+			if medaillesSansNom > 0 {
+				slog.InfoContext(ctx, "collect: medailles du film sans identite (couple inconnu de la table)",
+					"match_id", fm.MatchID, "events_medal_sans_nom", medaillesSansNom)
+			}
 			for _, ev := range events {
-				xuidStr := strconv.FormatUint(ev.XUID, 10)
-				heInserts = append(heInserts, persist.HighlightEventInsert{
-					MatchID:   fm.MatchID,
-					XUID:      &xuidStr,
-					EventType: ev.EventType,
-					TimeMS:    ev.TimeMS,
-				})
 				// Alias additionnels depuis events (joueurs hors participants).
 				if ev.Gamertag != "" && ev.XUID != 0 {
 					aliases = append(aliases, persist.XUIDAliasInsert{
-						XUID: xuidStr, Gamertag: ev.Gamertag, LastSeen: now,
+						XUID: strconv.FormatUint(ev.XUID, 10), Gamertag: ev.Gamertag, LastSeen: now,
 					})
 				}
 			}
@@ -243,6 +241,70 @@ func buildBatchFromFetchedMatchCtx(
 	)
 	applyCompletionBitsToBatch(batch, skillOK)
 	return batch, parseErr
+}
+
+// highlightEventInserts projette les events parsés du film en lignes
+// shared.highlight_events, AVEC leur identité.
+//
+// DEUX CHAMPS QUE LE COLLECTEUR JETAIT. Le parseur décode `type_hint` (b[47], la
+// nature de l'event) et `medal_type` (b[59]) depuis chaque bloc de 60 octets ; le
+// collecteur ne persistait ni l'un ni l'autre depuis la bascule Collect→Persist.
+// Conséquence mesurée le 2026-09-02 : 415 matchs / 22 031 events `medal` sans
+// aucune identité, donc AUCUNE médaille au fil des éliminations (le lecteur
+// dépend de `raw_json.medal_name`).
+//
+//   - `type_hint` part pour TOUS les events : c'est une quantité mesurée du film,
+//     et la colonne existe depuis toujours.
+//   - `raw_json` ne part que pour les `medal`, et seulement si le couple
+//     (type_hint, medal_type) est connu de la table mesurée. Un couple inconnu ne
+//     donne PAS de nom voisin : la ligne reste sans identité (dégradation
+//     d'aujourd'hui) et le compteur retourné le dit.
+//
+// L'import du paquet du titre est direct et assumé : le chunk highlight N'EXISTE
+// que pour Halo Infinite (c'est son format de film qui le produit), et le paquet
+// `sync` racine porte déjà des imports du même ordre (career.go →
+// halo_infinite/rankedplaylists). Aucune comparaison de slug n'entre ici.
+func highlightEventInserts(
+	ctx context.Context, matchID string, events []analysis.HighlightEvent,
+) (inserts []persist.HighlightEventInsert, medaillesSansNom int) {
+	inserts = make([]persist.HighlightEventInsert, 0, len(events))
+	for _, ev := range events {
+		xuidStr := strconv.FormatUint(ev.XUID, 10)
+		typeHint := ev.TypeHint
+		row := persist.HighlightEventInsert{
+			MatchID:   matchID,
+			XUID:      &xuidStr,
+			EventType: ev.EventType,
+			TimeMS:    ev.TimeMS,
+			TypeHint:  &typeHint,
+		}
+		if ev.EventType == analysis.EventTypeMedal {
+			if raw, ok := rawJSONMedaille(ctx, ev); ok {
+				row.RawJSON = &raw
+			} else {
+				medaillesSansNom++
+			}
+		}
+		inserts = append(inserts, row)
+	}
+	return inserts, medaillesSansNom
+}
+
+// rawJSONMedaille rend le document `raw_json` d'un event medal, ou false si son
+// couple est inconnu de la table mesurée. L'échec de sérialisation est loggé puis
+// dégradé en « sans identité » — jamais avalé, jamais fatal pour le match.
+func rawJSONMedaille(ctx context.Context, ev analysis.HighlightEvent) (string, bool) {
+	nom, connu := medalname.Lookup(ev.TypeHint, ev.MedalType)
+	if !connu {
+		return "", false
+	}
+	raw, err := analysis.MedalRawJSON(nom)
+	if err != nil {
+		slog.WarnContext(ctx, "collect: document raw_json de medaille non serialisable",
+			"medaille", nom, "type_hint", ev.TypeHint, "medal_type", ev.MedalType, "err", err)
+		return "", false
+	}
+	return raw, true
 }
 
 // applyCompletionBitsToBatch agrège les bits de complétude sur la registry row du
