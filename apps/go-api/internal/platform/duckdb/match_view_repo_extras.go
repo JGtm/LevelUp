@@ -211,13 +211,17 @@ func (r *MatchViewRepo) GetMatchKVPairs(ctx context.Context, matchID string) ([]
 		// est servi tel quel par le SQL, jamais COALESCE — garde-rail
 		// TestPasDeXuidNormaliseEnChaineVide). Côté Go, NULL devient "" dans KVPairRaw ;
 		// tout consommateur qui AGRÈGE par xuid doit écarter "" (bots jamais fusionnés en un
-		// acteur fantôme) — buildKillerVictimPairs et buildNemesisMap le font. Avant ce scan
+		// acteur fantôme) — cf. la doctrine du struct domain.KVPairRaw. Avant ce scan
 		// (2026-09-02), une seule ligne de bot faisait échouer TOUT le chargement : la
 		// section Duels était vide sur 245 matchs Infinite qui avaient la donnée.
-		var killerXUID, victimXUID sql.NullString
+		//
+		// TROIS colonnes en NullString, pas deux : `feed_killer_gamertag` est NULLABLE au DDL
+		// (steps_shared_kill_events.go — seuls `victim_gamertag` et `time_ms` sont NOT NULL),
+		// donc un tueur inconnu la vide et casserait le scan exactement comme les xuid.
+		var killerXUID, killerGT, victimXUID sql.NullString
 		if err := rows.Scan(
 			&killerXUID,
-			&kv.KillerGT,
+			&killerGT,
 			&victimXUID,
 			&kv.VictimGT,
 			&kv.KillCount,
@@ -226,6 +230,7 @@ func (r *MatchViewRepo) GetMatchKVPairs(ctx context.Context, matchID string) ([]
 			return nil, fmt.Errorf("MatchViewRepo.GetMatchKVPairs scan: %w", err)
 		}
 		kv.KillerXUID = killerXUID.String
+		kv.KillerGT = killerGT.String
 		kv.VictimXUID = victimXUID.String
 		results = append(results, kv)
 	}
