@@ -81,10 +81,13 @@ type ObjectParentState struct {
 	// --- branche Attached == false ------------------------------------------------
 	// FreeRead dit que le bloc `1408f0ac4` a été lu (il l'est ssi Param < 2) ; FreeBits
 	// compte ses bits — 1 quand sa porte est fermée, 16 quand elle transmet un
-	// identifiant. La VALEUR de cet identifiant n'est pas publiée : la lire exigerait de
-	// toucher `consume1408f0ac4`, qui sert cinq autres composants.
-	FreeRead bool
-	FreeBits int
+	// identifiant. HasFreeID/FreeID publient DÉSORMAIS cet identifiant (index R(13),
+	// espace de handle dom1, le même que les bipèdes) : la sonde owner du projectile
+	// teste s'il pointe le tireur.
+	FreeRead  bool
+	FreeBits  int
+	HasFreeID bool
+	FreeID    uint64
 	// HasAlt11 / Alt11 : le R(11) optionnel de cette branche.
 	HasAlt11 bool
 	Alt11    uint32
@@ -134,7 +137,7 @@ func consumeObjectParentState(br *BitReader, recordStateParam uint32, typeIndex 
 		if recordStateParam < 2 {
 			st.FreeRead = true
 			at := br.BitPos()
-			consume1408f0ac4(br)
+			st.HasFreeID, st.FreeID = consume1408f0ac4(br)
 			st.FreeBits = br.BitPos() - at
 			if br.ReadBit() {
 				st.HasAlt11, st.Alt11 = true, uint32(br.ReadBits(11))

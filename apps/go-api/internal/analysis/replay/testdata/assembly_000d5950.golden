@@ -31,7 +31,7 @@ par aucun evenement reste sans identite, et c est une LIMITE, pas une erreur
 rejets : slot introuvable=36 · slot ambigu=0 · hors fenetre=0 · sans trace publiee=0
 somme de controle : rattaches + rejets = disponibles -> 519 = 519 (equilibre : true)
 verdict : nominal
-483 tir(s) publie(s) · 90 avec un cap de visee lisible · 483 avec une arme nommee
+483 tir(s) publie(s) · 401 avec un cap de visee lisible · 483 avec une arme nommee
 
 ## GRENADES — le lancer porte son auteur ; ce qui se mesure est OU il est pose
 70 rattache(s) / 70 disponible(s) = 100.0 %

@@ -54,14 +54,32 @@ func TestRegistryFingerprintDomain(t *testing.T) {
 		}
 	}
 
-	// Le bourrage : les slots au-dela du dernier nom portent du bruit ; l'empreinte l'ignore.
+	// Le flags du slot de terminaison (0x01/0x02 sur les films reels, decalage R7-e) : il fait
+	// partie du bourrage LICITE d'un bloc et n'entre pas dans l'empreinte.
+	term := append([]byte(nil), base...)
+	binary.LittleEndian.PutUint32(term[2*registrySlotSize+4:], 2)
+	if got := RegistryFingerprint(parseRegistry(term)); got != ref {
+		t.Errorf("le flags du slot de terminaison change l'empreinte (%#016x != %#016x)", got, ref)
+	}
+
+	// La section qui SUIT le registre (bloc entier de bruit) : elle n'entre ni dans les
+	// archetypes ni dans l'empreinte — c'est la fin structurelle mesuree au lot 3 (2026-08-30).
+	suite := append(append([]byte(nil), base...), bytes.Repeat([]byte{0xa5}, archetypeBlockSize)...)
+	if reg := parseRegistry(suite); len(reg.Archetypes) != 1 || RegistryFingerprint(reg) != ref {
+		t.Errorf("la section suivant le registre entre dans le parse (%d blocs, %#016x != %#016x)",
+			len(reg.Archetypes), RegistryFingerprint(reg), ref)
+	}
+
+	// Du bruit DANS le bourrage d'un bloc (hors flags de terminaison) : ce n'est plus un bloc
+	// de registre — le parse s'arrete AVANT lui (regle « suite nommee puis zeros », verifiee
+	// sur les 1 367 films du corpus, lot3_registre_compte_research_test.go).
 	bruite := append([]byte(nil), base...)
-	for i := 2 * registrySlotSize; i < len(bruite); i++ {
+	for i := 2*registrySlotSize + 8; i < len(bruite); i++ {
 		bruite[i] = 0xa5
 	}
-	if got := RegistryFingerprint(parseRegistry(bruite)); got != ref {
-		t.Errorf("le bourrage change l'empreinte (%#016x != %#016x) : elle alerterait sur du bruit",
-			got, ref)
+	if reg := parseRegistry(bruite); len(reg.Archetypes) != 0 {
+		t.Errorf("un bloc au bourrage bruite a ete accepte comme registre (%d blocs)",
+			len(reg.Archetypes))
 	}
 	if RegistryFingerprint(nil) != 0 {
 		t.Error("RegistryFingerprint(nil) doit rendre 0")
