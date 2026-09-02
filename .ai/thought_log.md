@@ -86491,3 +86491,41 @@ nos fichiers (24 warnings preexistants ailleurs) ; vitest **546 fichiers / 5641 
 reconcilier avec la garde One Bomb du compte a rebours) ; RE-CUISSON INTERDITE par le user —
 rien ne s'affiche en app avant la levee ; son de prise/lacher de bombe volontairement absent
 (aucun stem designe — meme regle que le crane).
+
+---
+
+## [2026-09-02] Instruction des 7 retours user (rejeu 2D + match view) — analyse et plan
+
+**Statut** : Complété (analyse + plan). Exécution en attente des décisions D1-D5.
+
+**Décision technique principale** : instruction par 4 enquêtes de code parallèles, constats
+sur pièces, plan en 5 lots ordonnés par risque croissant :
+`.ai/PLAN_RETOURS_REJEU_MATCHVIEW_2026-09-02.md`.
+
+**Résultats observés** :
+- « Éliminé / Réapparition ? » éternel + quit/rejoin/bots (Sylvanus) = RACINE COMMUNE :
+  une vie n'est nommée que par une mort du fil à ±150 ms (`lives.go`) ; partants, bots,
+  survivants et slots recyclés donnent des vies anonymes invisibles pendant que la fiche
+  reste « morte ». `decimateTracks` = 1 track PAR SLOT sans découpe par trou, nommage par
+  slot → slot recyclé attribué au premier occupant. Décodeur BOT_METADATA existe dans
+  `killsource/botmeta.go`, non branché sur le rejeu. `coverage.bridge.slotCollisions`
+  publié mais jamais lu par le front.
+- Translocateur : l'effet de fiche existe ; le déclencheur est l'heuristique spatiale
+  `riftTeleports` (4 détections / 39 films) alors que `equipmentChanges kind='spent'`
+  (schéma 26) est publié et consommé par zéro effet ; rang 11 en dur (famille A seule),
+  `doc.abilityLabels` jamais lu côté web.
+- Effets de fiche drapeau/zone : `flag_grabs` publié, zéro consommateur ;
+  `flag_captures` = effet canvas-only ; `CardFxInput` n'a aucun canal d'événement.
+  Aucune branche non fusionnée ne porte ces FX (vérifié sur les 5 branches en avance).
+- Duels & confrontations vide : régression 2026-08-03 (`39da43fbf`) — Q20 sert les xuid
+  NULL des bots, scan Go en `string` nu → échec à la 1re ligne de bot, erreur avalée en
+  WARN best-effort. Mesuré : 245 matchs Infinite cassés récupérables + 583 sans source
+  (films expirés, vide légitime) = 42,3 % de sections vides.
+- Export vidéo : DÉJÀ 30 fps stricts (`EXPORT_FPS`, horodatage posé) — aucune action.
+- Frises dominance/score : le masquage Slayer existe (`scoreMirrorsFrags`) mais exige
+  l'égalité stricte score/frags ; un seul kill non attribué réaffiche le doublon.
+
+**Conclusion / prochaine étape** : décisions D1-D5 au user (critère de masquage frise,
+sort des bots dans les duels, rendu des effets de fiche, timing du lot lourd « identité
+des vies » — schéma d'artefact + re-cuisson soumise à accord, option 60 fps). Puis lots
+1-2 (rapides), 3-4 (web), 5 (lourd, sous D4).
