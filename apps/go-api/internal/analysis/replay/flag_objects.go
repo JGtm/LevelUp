@@ -323,3 +323,62 @@ func flagFreeAtDrop(r flagCarryRaw, ctx flagCarryCtx, scan FlagCarryScan) (flagF
 	}
 	return best, found
 }
+
+// flagHomecoming est LE DRAPEAU QUI RENTRE, DATE ET NOMME : la naissance d'une vie libre A UN
+// SOCLE.
+//
+// # POURQUOI CETTE LECTURE EST NEUVE, ET CE QU'ELLE DEBLOQUE
+//
+// Le retour AUTOMATIQUE — le drapeau que plus personne ne touche et que le jeu ramene chez lui —
+// n'est credite a AUCUN joueur : le statborg n'en porte rien, et le calque le laissait donc au
+// sol jusqu'a la fin de l'axe (des laches de plus de deux minutes, qui n'ont jamais existe a
+// l'ecran). La tentative anterieure cherchait le delai par un PROXY (l'ecart entre le lacher et
+// la prise suivante au socle) et l'a trouve trop disperse pour trancher.
+//
+// L'OBJET, LUI, LE DIT. Un drapeau qui rentre est RE-CREE a son socle : c'est un record de
+// creation, date a la frame, et le SOCLE LE NOMME — ce que `flag_returns` ne fait pas (cf.
+// `applyFlagReturn`, qui s'abstient des que deux drapeaux sont au sol).
+//
+// LA MEME DISTANCE QUE PARTOUT : `originDropMaxDist`, celle de la regle du lacher. Aucun seuil
+// neuf n'est introduit ici.
+type flagHomecoming struct {
+	// flag est l'indice du socle, donc du drapeau.
+	flag int
+	// at est l'instant sur l'horloge du MATCH, la meme que celle des portages.
+	at int64
+	// x, y est le point de naissance — il sert a ecarter le drapeau ADVERSE qui gisait la.
+	x, y float32
+}
+
+// flagObjectHomecomings rend, triees, les rentrees que l'objet DATE. Vides quand la carte est
+// hors du catalogue d'objectifs (aucun socle : aucune rentree ne se nomme).
+func flagObjectHomecomings(scan FlagCarryScan, ctx flagCarryCtx) []flagHomecoming {
+	if len(scan.Free) == 0 || len(scan.Spawns) == 0 {
+		return nil
+	}
+	out := make([]flagHomecoming, 0, len(scan.Free))
+	for _, l := range scan.Free {
+		x, y := l.First()
+		f, ok := flagSpawnAt(scan.Spawns, x, y)
+		if !ok {
+			continue
+		}
+		at := ctx.matchMSOfFrame(frameOf(l.T0US, ctx.origin, ctx.step))
+		out = append(out, flagHomecoming{flag: f, at: at, x: x, y: y})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].at < out[j].at })
+	return out
+}
+
+// flagSpawnAt rend l'indice du socle LE PLUS PROCHE d'un point, s'il est a moins de
+// [originDropMaxDist]. Le plus proche, et non le premier : deux socles peuvent se toucher sur
+// une carte etroite, et un drapeau ne rentre que chez lui.
+func flagSpawnAt(spawns []FlagSpawn, x, y float32) (int, bool) {
+	best, bestD := -1, float64(originDropMaxDist*originDropMaxDist)
+	for i, s := range spawns {
+		if d := sqDist(s.X, s.Y, x, y); d <= bestD {
+			best, bestD = i, d
+		}
+	}
+	return best, best >= 0
+}

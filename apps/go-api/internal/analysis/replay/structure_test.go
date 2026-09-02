@@ -575,8 +575,32 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   publiée (aucun canal mesuré) : le client la dérive des périodes et des pistes (dernier
 	//   point du lâcheur). Un artefact 33 se lit « à re-cuire ». Détail :
 	//   document_bomb_carries.go.
-	if SchemaVersion != 34 {
-		t.Fatalf("SchemaVersion = %d, attendu 34 : incrémenter exige une raison écrite ci-dessus "+
+	// v35 — LE RETOUR DU DRAPEAU DE CTF, dans ses deux moitiés. (1) LE RETOUR AUTOMATIQUE EST
+	//   DATÉ. Le jeu ramène chez lui un drapeau resté au sol ; aucun compteur du statborg ne le
+	//   dit, puisque personne n'est crédité — et les états `dropped` couraient donc jusqu'à la
+	//   reprise ou la fin de l'axe, des lâchers de plus de deux minutes qui n'ont jamais existé à
+	//   l'écran. L'OBJET, lui, le dit : une vie libre du drapeau qui NAÎT À SON SOCLE est le
+	//   drapeau qui rentre, et le socle LE NOMME (ce que `flag_returns` ne fait pas). CONTRÔLE
+	//   écrit avant la mesure et TENU : sur les retours que le statborg CRÉDITE, les deux chaînes
+	//   — disjointes — tombent à la même frame dans 15 cas sur 15 (100 %, seuil 80 %, écart
+	//   médian 1 frame ; compté par ÉVÉNEMENT crédité DISTINCT, `flag_returns` ne nommant pas son
+	//   drapeau). (2) `flagReturnZone` publie la RÈGLE du mode : rayon de la zone de
+	//   retour, minuterie à vide, durée à un défenseur — la CONTESTATION en est écartée par la
+	//   mesure (sur 72 lâchers où un ennemi entre dans la zone, 56 finissent par une REPRISE : à
+	//   1,3 m un ennemi ne conteste pas, il RAMASSE) et par l'observation de l'utilisateur.
+	//   (3) LA VARIANTE « DRAPEAU NEUTRE » est
+	//   reconnue et ne publie plus qu'UN drapeau, d'équipe -1, au socle du centre — le mode n'est
+	//   pas dans le film, c'est l'OBJET qui tranche par le socle où il renaît, et la couverture
+	//   publie le verdict avec ses deux comptes (`neutralFlag`, `neutralBirths`, `teamBirths`).
+	//   Le rayon (1,3) est LU dans le script du jeu
+	//   (`innerAreaMonitorRadius`) et CORROBORÉ par l'ajustement sur les films (minimum de
+	//   dispersion à 1,3-1,5 m) ; les durées sont MESURÉES. L'occupation, elle, se compte chez le
+	//   client : l'équipe d'un joueur n'est pas dans le film. Un artefact 34 doit se lire « à
+	//   re-cuire » — ses drapeaux au sol n'ont ni retour automatique ni zone. Détail :
+	//   internal/analysis/replay/flag_objects.go et .ai/V7.5/PLAN_CTF_ZONE_RETOUR_2026-08-30.md.
+	//   (Ce lot avait pris le 29 sur wt/ctf-zone-retour ; renumerote 35 au merge du 2026-09-02.)
+	if SchemaVersion != 35 {
+		t.Fatalf("SchemaVersion = %d, attendu 35 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

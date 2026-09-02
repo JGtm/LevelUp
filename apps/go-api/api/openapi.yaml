@@ -12913,6 +12913,9 @@ components:
         ambiguousCarrierKills:
           format: int64
           type: integer
+        ambiguousHomecomings:
+          format: int64
+          type: integer
         ambiguousReturns:
           format: int64
           type: integer
@@ -12939,12 +12942,20 @@ components:
           type: integer
         flagFilm:
           type: boolean
+        homeByObject:
+          format: int64
+          type: integer
         markerConfirmed:
           format: int64
           type: integer
         markerObserved:
           format: int64
           type: integer
+        neutralBirths:
+          format: int64
+          type: integer
+        neutralFlag:
+          type: boolean
         noBridge:
           format: int64
           type: integer
@@ -12978,6 +12989,9 @@ components:
         steals:
           format: int64
           type: integer
+        teamBirths:
+          format: int64
+          type: integer
       required:
         - flagFilm
         - bursts
@@ -12998,6 +13012,11 @@ components:
         - closedOverlaps
         - ambiguousCarrierKills
         - ambiguousReturns
+        - homeByObject
+        - ambiguousHomecomings
+        - neutralFlag
+        - neutralBirths
+        - teamBirths
         - spawns
         - objectLives
         - closedByObject
@@ -13018,6 +13037,23 @@ components:
       required:
         - team
         - spans
+      type: object
+    FlagReturnZone:
+      additionalProperties: false
+      properties:
+        radiusM:
+          format: float
+          type: number
+        resetSeconds:
+          format: float
+          type: number
+        soloSeconds:
+          format: float
+          type: number
+      required:
+        - radiusM
+        - resetSeconds
+        - soloSeconds
       type: object
     FlagSpan:
       additionalProperties: false
@@ -20843,6 +20879,8 @@ components:
           type:
             - array
             - "null"
+        flagReturnZone:
+          $ref: '#/components/schemas/FlagReturnZone'
         frameCount:
           format: int64
           type: integer

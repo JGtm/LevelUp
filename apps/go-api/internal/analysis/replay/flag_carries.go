@@ -35,10 +35,22 @@ import (
 //
 // # A quel DRAPEAU un portage appartient
 //
-// En CTF on ne porte jamais son propre drapeau (le toucher le RENVOIE, c'est `flag_returns`). Un
+// En CTF on ne porte jamais son propre drapeau : on le RENVOIE, et c'est `flag_returns`. Un
 // portage appartient donc toujours au drapeau adverse — mais « adverse » suppose de connaitre
 // l'equipe du porteur, et **l'equipe n'est pas dans le film** (cf. `Track.Team`). L'attribution
 // passe donc par la GEOMETRIE, en deux regles qui suivent le comportement de l'objet :
+//
+// LE RENVOI N'EST PAS INSTANTANE, ET LA PHRASE LE DISAIT A TORT jusqu'au 2026-08-31 (« le toucher
+// le RENVOIE »). Le renvoi demande de SE TENIR dans la zone du drapeau tombe pendant ~3,1 s seul,
+// moins a plusieurs (mesure du chantier de la zone de retour). Le reglage du jeu qui rendrait le
+// contact instantane — `flagTouchReturnEnabled` — n'est pas lisible dans le script, mais la
+// mesure tranche a sa place : un renvoi instantane donnerait un sejour nul, or il ne l'est
+// jamais. CE QUE LA REGLE D'ATTRIBUTION EN RETIENT NE CHANGE PAS : instantane ou non, un joueur
+// ne PORTE pas son propre drapeau.
+//
+// EN VARIANTE « DRAPEAU NEUTRE », il n'y a qu'UN drapeau et il n'est celui de personne : la regle
+// ci-dessus devient sans objet, et tous les portages tombent dans ce drapeau unique parce qu'un
+// seul socle est retenu (`flag_neutral.go`).
 //
 //	un VOL (`flag_steals`) se fait AU SOCLE : le drapeau est celui du socle le plus proche ;
 //	une PRISE (`flag_grabs`) ramasse un drapeau DEJA au sol : c'est celui qui y est, si l'un
@@ -147,9 +159,14 @@ func buildFlagCarries(scan FlagCarryScan, ctx flagCarryCtx) ([]FlagCarry, *FlagC
 	if !scan.Scanned {
 		return nil, nil
 	}
+	// LA VARIANTE SE TRANCHE AVANT TOUT LE RESTE : le jeu de socles retenu decide combien de
+	// drapeaux existent, et donc a quoi chaque portage s'attache (cf. flag_neutral.go).
+	choix := flagChooseSpawns(scan)
+	scan.Spawns = choix.Spawns
 	cov := &FlagCarriesCoverage{
 		FlagFilm: scan.Signals.IsFlagFilm(), Bursts: scan.Signals.Bursts,
 		Captures: scan.Signals.Captures, Steals: scan.Signals.Steals, Spawns: len(scan.Spawns),
+		NeutralFlag: choix.Neutral, NeutralBirths: choix.NeutralBirths, TeamBirths: choix.TeamBirths,
 	}
 	if !cov.FlagFilm {
 		return nil, cov
