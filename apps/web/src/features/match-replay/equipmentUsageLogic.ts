@@ -33,10 +33,14 @@
  *     ramasseur NOMMÉ est le sujet d'un tableau à part — `padControlLogic.ts` / la section
  *     « Contrôle des armes spéciales », juste sous celle-ci dans l'onglet Chronologie.
  *
- * RÉPULSEUR ET PROPULSEUR N'ONT AUCUNE GRANDEUR ICI, et c'est une absence de DONNÉE, pas un
- * oubli : le film ne publie aucun canal d'activation pour ces deux capacités (le chantier qui
- * le cherche est en cours). Une colonne vide affirmerait « zéro utilisation » là où la vérité
- * est « non mesuré ».
+ * RÉPULSEUR ET PROPULSEUR N'ONT AUCUNE GRANDEUR ICI, et depuis le 2026-09-03 ce n'est plus la
+ * même raison pour les deux. Le RÉPULSEUR est une absence de DONNÉE, pas un oubli : le film ne
+ * publie aucun canal d'activation pour lui — neuf canaux fouillés, négatif mesuré (lots R8/R9)
+ * — et une colonne vide affirmerait « zéro utilisation » là où la vérité est « non mesuré ». Le
+ * PROPULSEUR, lui, EST mesuré (schéma 38, `abilityImpulses`, validé 5/5 contre un relevé
+ * Theater) : s'il n'a pas de colonne, c'est une DÉCISION — le geste dure une demi-seconde,
+ * l'utilisateur l'a voulu sur la CARTE (le dash du pion, `thrusterDashFx.ts`) et pas sur la
+ * fiche. Le chantier qui cherchait ces canaux est CLOS pour ces deux capacités.
  *
  * LE PONT SLOT -> JOUEUR -> ÉQUIPE EST CELUI DU REJEU, réutilisé tel quel (`buildPlayers`,
  * `indexBySlot`, `groupByTeam` de rosterLogic) : un slot est une VIE, son propriétaire est le
@@ -226,7 +230,9 @@ export function tallyIsEmpty(t: EquipmentUsageTally): boolean {
  * quatre grenades (leurs poses `deployed` sont des LANCERS, déjà comptés par `grenades[]`, les
  * compter deux fois ferait deux colonnes d'un même geste) et les trois capacités `grapple`,
  * `thruster`, `repulsor` (l'appareil lui-même, pas un objet ; le grappin a sa colonne de
- * TRACTIONS, les deux autres n'ont aucun canal d'activation mesuré).
+ * TRACTIONS ; le répulseur n'a aucun canal d'activation mesuré ; le propulseur en a un depuis
+ * le 2026-09-03, schéma 38, mais son geste dure une demi-seconde et se lit sur la CARTE — le
+ * dash du pion —, pas dans un compte de tableau : décision utilisateur du même jour).
  *
  * Réutiliser cette table plutôt qu'en écrire une deuxième est la règle des ≤ 2 copies : le jour
  * où une famille change de statut, elle change ici aussi, sans qu'on y pense.

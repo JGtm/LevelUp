@@ -173,6 +173,20 @@ const NULLABLE_ARRAYS = [
   // par période (xuid, t0, t1, closed), le patron de `skullCarries` sur le canal des armes
   // tenues. La garde de mode est côté serveur : toute la famille bomb, One Bomb comprise.
   'bombCarries',
+  // `translocations` : LES TÉLÉPORTATIONS DU TRANSLOCATEUR (schéma 38, 2026-09-03) — une entrée
+  // PLATE par saut : (t, slot) ET le va-et-vient (`fx/fy/fz` -> `tx/ty/tz`), tous deux lus dans
+  // l'ÉVÉNEMENT type 117 du film — jamais un seuil spatial, jamais le `spent` (jusqu'à 16,5 s de
+  // retard mesuré), jamais une discontinuité de piste. La consommation P2 (éclat, va-et-vient,
+  // faille) viendra la lire ici ; la frontière la comble dès le schéma.
+  'translocations',
+  // `abilityImpulses` : LES IMPULSIONS DE CAPACITÉ (schéma 38, 2026-09-03) — une entrée PLATE
+  // par geste (t, slot, family) : l'usage MESURÉ du propulseur, daté par le corps `tag == 1`
+  // des composants i57/i59 du film (le même dont le tag 3 porte le grappin) et ATTRIBUÉ par le
+  // rang de capacité de la MÊME VIE, jamais par un seuil de vitesse. Le calque ne couvre que
+  // les familles que le titre déclare MESURÉES — le répulseur n'y est pas, et le serveur le
+  // compte (`coverage.abilityImpulses.otherFamily`). La consommation viendra la lire ici ; la
+  // frontière la comble dès le schéma.
+  'abilityImpulses',
 ] as const
 
 /** (1) La liste couvre EXACTEMENT les tableaux nullables du contrat — ni plus, ni moins. */
@@ -254,6 +268,12 @@ const NULLABLE_ARRAY_PATHS = [
   // Schéma 29 : le RAMASSAGE NATIF, calque PLAT lui aussi — l'objet ne porte que des nombres
   // et des chaînes (instant, slot, xuid, identifiant de catalogue, nature, classe brute).
   'pickups',
+  // `translocations` (schéma 38) : téléportation PLATE — (t, slot) et six coordonnées
+  // optionnelles, que des nombres : un seul chemin, la racine.
+  'translocations',
+  // `abilityImpulses` (schéma 38) : impulsion PLATE — (t, slot, family), deux nombres et une
+  // chaîne : un seul chemin, la racine.
+  'abilityImpulses',
   // `bombArmings` (schéma 33) : armement PLAT, aucun tableau imbriqué — un seul chemin, la racine.
   'bombArmings',
   // `bombCarries` (schéma 34) : portage PLAT, aucun tableau imbriqué — un seul chemin, la racine.

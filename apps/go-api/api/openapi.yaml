@@ -7027,6 +7027,62 @@ components:
             $ref: '#/components/schemas/ApiError'
       description: Authentification requise
   schemas:
+    AbilityImpulse:
+      additionalProperties: false
+      properties:
+        family:
+          type: string
+        slot:
+          format: int32
+          minimum: 0
+          type: integer
+        t:
+          format: int64
+          type: integer
+      required:
+        - t
+        - slot
+        - family
+      type: object
+    AbilityImpulseCoverage:
+      additionalProperties: false
+      properties:
+        beforeOrigin:
+          format: int64
+          type: integer
+        componentAbsent:
+          type: boolean
+        episodes:
+          format: int64
+          type: integer
+        noIdentity:
+          format: int64
+          type: integer
+        noResolver:
+          format: int64
+          type: integer
+        otherFamily:
+          format: int64
+          type: integer
+        published:
+          format: int64
+          type: integer
+        reads:
+          format: int64
+          type: integer
+        unpublished:
+          format: int64
+          type: integer
+      required:
+        - reads
+        - episodes
+        - published
+        - beforeOrigin
+        - unpublished
+        - noIdentity
+        - otherFamily
+        - noResolver
+      type: object
     AbilityRead:
       additionalProperties: false
       properties:
@@ -10742,6 +10798,8 @@ components:
     Coverage:
       additionalProperties: false
       properties:
+        abilityImpulses:
+          $ref: '#/components/schemas/AbilityImpulseCoverage'
         bombArmings:
           $ref: '#/components/schemas/BombArmingsCoverage'
         bombCarries:
@@ -10786,6 +10844,8 @@ components:
           $ref: '#/components/schemas/SkullCarriesCoverage'
         t0Film:
           $ref: '#/components/schemas/T0FilmCoverage'
+        translocations:
+          $ref: '#/components/schemas/TranslocationCoverage'
         verdict:
           additionalProperties:
             type: string
@@ -11465,11 +11525,16 @@ components:
         from:
           format: int64
           type: integer
+        gap:
+          format: int64
+          type: integer
         kind:
           type: string
         r:
           format: int64
           type: integer
+        recovered:
+          type: boolean
         slot:
           format: int32
           minimum: 0
@@ -11508,6 +11573,9 @@ components:
         published:
           format: int64
           type: integer
+        recovered:
+          format: int64
+          type: integer
         repeats:
           format: int64
           type: integer
@@ -11532,6 +11600,7 @@ components:
         - counterJumps
         - livesFirstOffSpec
         - repeats
+        - recovered
       type: object
     EquipmentCoverage:
       additionalProperties: false
@@ -20852,6 +20921,12 @@ components:
           type:
             - array
             - "null"
+        abilityImpulses:
+          items:
+            $ref: '#/components/schemas/AbilityImpulse'
+          type:
+            - array
+            - "null"
         abilityLabels:
           additionalProperties:
             $ref: '#/components/schemas/Label'
@@ -21045,6 +21120,12 @@ components:
         tracks:
           items:
             $ref: '#/components/schemas/Track'
+          type:
+            - array
+            - "null"
+        translocations:
+          items:
+            $ref: '#/components/schemas/Translocation'
           type:
             - array
             - "null"
@@ -25832,6 +25913,63 @@ components:
         - slot
         - team
         - points
+      type: object
+    Translocation:
+      additionalProperties: false
+      properties:
+        fx:
+          format: float
+          type: number
+        fy:
+          format: float
+          type: number
+        fz:
+          format: float
+          type: number
+        slot:
+          format: int32
+          minimum: 0
+          type: integer
+        t:
+          format: int64
+          type: integer
+        tx:
+          format: float
+          type: number
+        ty:
+          format: float
+          type: number
+        tz:
+          format: float
+          type: number
+      required:
+        - t
+        - slot
+      type: object
+    TranslocationCoverage:
+      additionalProperties: false
+      properties:
+        beforeOrigin:
+          format: int64
+          type: integer
+        events:
+          format: int64
+          type: integer
+        positioned:
+          format: int64
+          type: integer
+        published:
+          format: int64
+          type: integer
+        unpublished:
+          format: int64
+          type: integer
+      required:
+        - events
+        - published
+        - beforeOrigin
+        - unpublished
+        - positioned
       type: object
     UnreadCount:
       additionalProperties: false

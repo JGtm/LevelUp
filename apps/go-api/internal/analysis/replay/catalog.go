@@ -35,6 +35,22 @@ type LabelCatalog struct {
 	// (abilities.go) qui choisit laquelle s'applique, et qui refuse quand la signature du
 	// film est ambiguë. Tables partielles par nature.
 	Abilities []AbilityPalette
+	// AbilityImpulseFamilies énumère les FAMILLES de capacité dont l'USAGE est MESURÉ par le
+	// canal d'impulsion du bipède (i57/i59 tag 1, cf. document_ability_impulses.go). Posée par
+	// la COUCHE TITRE après NewLabelCatalog, comme Icons et EquipmentFamilies : elle n'entre
+	// dans aucune jointure de construction.
+	//
+	// POURQUOI UNE LISTE ET PAS UNE CONSTANTE. Ce paquet ne sait pas ce qu'est un propulseur,
+	// et il ne doit pas l'apprendre : le rang varie d'une palette à l'autre (5 / 21) et le
+	// canal n'est mesuré que pour une famille (rapport R8 §8.8 : 0,361 impulsion par vie de
+	// propulseur contre 0,011 pour le répulseur — plus porté — et 0,000 sur 132 vies de
+	// grappin, qui a son propre tag ; rapport R9 : le répulseur N'EST PAS dans ce canal,
+	// négatif mesuré). Le titre déclare ce que sa mesure établit ; le calque écarte le reste
+	// ET LE COMPTE.
+	//
+	// VIDE = aucun usage mesuré sur ce canal pour ce titre : le calque ne publie rien. Une
+	// dégradation, jamais une erreur.
+	AbilityImpulseFamilies []string
 	// Icons pointe l'icône extraite d'une famille d'arme. Posée par la COUCHE TITRE
 	// (elle seule connaît ses URLs d'assets), APRÈS NewLabelCatalog — d'où un champ et
 	// pas un sixième paramètre. Une famille absente garde son libellé sans visuel :

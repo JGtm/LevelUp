@@ -27,7 +27,9 @@ import {
   type PlacementView,
   type PlacementWindowTime,
 } from './equipmentPlacementsLayer'
-import { riftTeleports, translocatorRanks, type RiftTeleport } from './placementTeleport'
+import { translocationLinks } from './placementTeleport'
+import type { RiftScene } from './placementRift'
+import { riftStations } from './riftStations'
 import { frameToMs } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
 import { usePlacementHover, type PlacementHoverHandlers } from './usePlacementHover'
@@ -51,7 +53,13 @@ export interface ReplayPlacementsInput {
 }
 
 export interface ReplayPlacements {
-  /** Ce que le document donne à dessiner, compté par la porte du tracé (`placementKind`). */
+  /**
+   * Ce que le document donne à dessiner. `drawable` passe par la porte du tracé
+   * (`placementKind`) ET compte les FAILLES du translocateur : celles-ci ne sont pas des poses
+   * — la pose du translocateur est illisible, ce sont ses ÉCHANGES qui la situent — mais elles
+   * se dessinent dans le même calque, sous la même bascule. Les en exclure éteindrait la
+   * commande du tiroir sur un film dont la seule chose à montrer serait une faille.
+   */
   counts: { drawable: number; unnamed: number; dropped: number }
   /** L'axe de temps qui borne la fenêtre d'une pose (cf. `placementEndFrame`). */
   windowTime: PlacementWindowTime
@@ -59,8 +67,14 @@ export interface ReplayPlacements {
   toggles: PlacementToggles
   /** La pose sous le curseur et ses gestionnaires de pointeur. */
   hover: PlacementHoverHandlers
-  /** Les passages par une faille du film (cf. `placementTeleport`). */
-  teleports: readonly RiftTeleport[]
+  /**
+   * TOUT CE QUE LE TRANSLOCATEUR DONNE À DESSINER, en un seul objet mémoïsé : les VA-ET-VIENT
+   * (`teleports`, le lien bref d'un bout à l'autre) et les STATIONS de la faille (`rifts`, où
+   * elle est et jusqu'à quand). Ils voyagent ensemble parce qu'ils sont la MÊME lecture — le
+   * calque `translocations[]` — et parce que la boucle du canvas les passe telles quelles à la
+   * scène du calque : deux champs séparés y feraient deux lignes de glue pour rien.
+   */
+  rift: RiftScene
 }
 
 export function useReplayPlacements({
@@ -71,11 +85,28 @@ export function useReplayPlacements({
   showUnnamed,
   showDropped,
 }: ReplayPlacementsInput): ReplayPlacements {
+  // LES DEUX BALAYAGES DE DOCUMENT DU CALQUE — les VA-ET-VIENT (le lien bref sur la carte) et
+  // les STATIONS de la faille (où elle est, jusqu'à quand). Tous deux se lisent dans
+  // `translocations[]`, l'ÉVÉNEMENT du film : aucune heuristique de piste, aucun seuil de
+  // distance, et rien du tout sur un artefact qui ne porte pas ce calque. Ils vivent ici et non
+  // dans le composant pour la même raison que les comptes : c'est une lecture du document, et
+  // le composant n'a pas à la refaire à chaque image.
+  const rift = useMemo(
+    () => ({ teleports: translocationLinks(doc.translocations), rifts: riftStations(doc) }),
+    [doc],
+  )
+
   // LES COMPTES PASSENT PAR LA MÊME PORTE QUE LE TRACÉ : une commande du tiroir ne s'allume
-  // que si quelque chose se dessinerait derrière elle (même règle que le bouton Zones).
-  const counts = useMemo(
+  // que si quelque chose se dessinerait derrière elle (même règle que le bouton Zones). Les
+  // failles s'y ajoutent — elles se dessinent dans ce calque sans être des poses (cf. le
+  // contrat de `counts`).
+  const placementCounts = useMemo(
     () => countDrawablePlacements(doc.equipmentPlacements),
     [doc.equipmentPlacements],
+  )
+  const counts = useMemo(
+    () => ({ ...placementCounts, drawable: placementCounts.drawable + rift.rifts.length }),
+    [placementCounts, rift],
   )
 
   // L'axe de temps : `frameMs` est la durée RÉELLE d'une image (le ping du capteur bat en
@@ -83,20 +114,6 @@ export function useReplayPlacements({
   const windowTime = useMemo(
     () => ({ frameMs: frameToMs(1, doc), frames: doc.frameCount }),
     [doc],
-  )
-
-  // Les PASSAGES par une faille : un balayage de toutes les pistes, donc calculé une fois par
-  // document et jamais par image. Il vit ici et non dans le composant pour la même raison que
-  // les comptes : c'est une lecture des poses, et le composant n'a pas à la refaire.
-  const teleports = useMemo(
-    () =>
-      riftTeleports(
-        doc.equipmentPlacements,
-        doc.tracks,
-        doc.abilities,
-        translocatorRanks(doc.abilityLabels),
-      ),
-    [doc.equipmentPlacements, doc.tracks, doc.abilities, doc.abilityLabels],
   )
 
   const toggles = useMemo<PlacementToggles>(
@@ -114,5 +131,5 @@ export function useReplayPlacements({
     showDropped,
   })
 
-  return { counts, windowTime, toggles, hover, teleports }
+  return { counts, windowTime, toggles, hover, rift }
 }
