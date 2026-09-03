@@ -19,10 +19,10 @@
 //	    -playlists 6233381c-fc96-40b9-b1ff-f6a4de72dd7a -limit 200 -dry-run
 //
 // Réparation (aucun scrape, cf. restore_best.go) — ré-insère le meilleur lot
-// historique là où le lot servi est dégradé :
+// historique là où le lot servi est dégradé, sur UNE saison nommée ('all' refusé) :
 //
-//	go run ./cmd/snapshot-world-leaderboard -restore-best             # simulation
-//	go run ./cmd/snapshot-world-leaderboard -restore-best -execute    # écrit
+//	go run ./cmd/snapshot-world-leaderboard -restore-best -season csrseason13-2
+//	go run ./cmd/snapshot-world-leaderboard -restore-best -season csrseason13-2 -execute
 package main
 
 import (
@@ -54,7 +54,7 @@ func main() {
 	dryRun := flag.Bool("dry-run", false, "scrape et affiche les comptes sans écrire")
 	titleSlug := flag.String("title", "halo_infinite", "slug du titre (défaut halo_infinite)")
 	restoreBest := flag.Bool("restore-best", false,
-		"ne scrape RIEN : ré-insère le meilleur lot historique pour chaque (saison, playlist) dont le lot servi est dégradé (dry-run sauf -execute)")
+		"ne scrape RIEN : ré-insère le meilleur lot historique des playlists de -season (saison PRÉCISE requise, 'all' refusé) dont le lot servi est dégradé (dry-run sauf -execute)")
 	execute := flag.Bool("execute", false, "avec -restore-best : écrit réellement (sinon simulation)")
 	flag.Parse()
 
@@ -69,10 +69,24 @@ func main() {
 	log := slog.Default().With("module", logging.ModuleLeaderboard, "job", "snapshot-world-leaderboard")
 	ctx := context.Background()
 
-	// Mode réparation : aucun scrape, aucune saison à fournir — le balayage part de
-	// ce qui est DÉJÀ en base (cf. restore_best.go).
+	// Mode réparation : aucun scrape, le balayage part de ce qui est DÉJÀ en base
+	// (cf. restore_best.go). Le périmètre doit être NOMMÉ : une restauration écrit
+	// dans la seule archive du classement mondial, on n'y touche pas « partout à la
+	// fois » — d'où une saison précise exigée, et 'all' explicitement refusé.
 	if *restoreBest {
-		runRestoreMode(ctx, log, *sharedDBPath, *titleSlug, *execute)
+		s := strings.TrimSpace(*season)
+		if s == "" {
+			fatal("-restore-best exige -season <saison> (ex: -season csrseason13-2) : la restauration écrit, son périmètre doit être explicite")
+		}
+		if strings.EqualFold(s, "all") {
+			fatal("-restore-best refuse -season all : restaurer toutes les saisons d'un coup n'est pas un périmètre explicite ; relancer saison par saison")
+		}
+		runRestoreMode(ctx, log, restoreOptions{
+			sharedDBPath: *sharedDBPath,
+			titleSlug:    *titleSlug,
+			season:       s,
+			execute:      *execute,
+		})
 		return
 	}
 

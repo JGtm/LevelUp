@@ -222,6 +222,14 @@ visuelle = MAIN AU USER (`http://localhost:5173/t/halo_infinite/players/JGtm/com
 - (op 3.4) le checkpoint du backfill (`data/world_backfill_checkpoint.json`, juillet)
   marque csrseason13-2 « déjà complète » et la SKIPPE — la reprise doit passer
   `-force -skip-existing` (ignorer le checkpoint, ne fetcher que les joueurs manquants).
+- (revue) `internal/archlint` n'était dans aucun gate de lot — le littéral d'URL du Lot 1
+  n'a été attrapé que par la suite complète. Les prochains gates backend qui touchent
+  logs/chemins devraient inclure `./internal/archlint/...` (10 s).
+- (revue, mineurs M1-M5 non traités) : garantie Entries-non-nil du chemin nominal portée
+  par les repos, pas le service · `written_at` frais du restore rend la saison « fraîche »
+  pour le cron ~20 h · `openSharedRW` du CLI hors provider/dblease (pré-existant, échec
+  sûr par verrou) · validation Location limitée au préfixe `csrseason` · coexistence
+  `-dry-run`/`-execute` dans l'aide du CLI.
 
 ## Journal d'exécution
 
@@ -265,6 +273,19 @@ visuelle = MAIN AU USER (`http://localhost:5173/t/halo_infinite/players/JGtm/com
   service/handlers/duckdb + integration, build. Item 3.4 (backfill) : 13-2 skippée par le
   checkpoint de juillet (« déjà complète ») → reprise `-force -skip-existing` ; 13-3 en
   cours dans la fenêtre serveur-arrêté accordée par le user.
+- **2026-09-03 — Revue adversariale (contexte frais) + correctifs.** Verdict initial
+  no-merge : 0 bloquant, 4 SÉRIEUX, 5 mineurs, 13 invariants conformes. Correctifs tous
+  livrés et gates verts : S1 escalade ERROR des refus consécutifs par playlist (>3, reset
+  sur tout lot accepté, fail-open compris — un lot écrit clôt la série) ; S2 règle D1
+  plafonnée par la profondeur demandée (`candidateDepthLimit`, 0 = sans plafond — fin du
+  gel cron-200 face aux archives profondes ; décision : sur saison active, le servi est
+  le frais, l'archive profonde est un filet) ; S3 `-restore-best` exige `-season` nommée
+  (refus de `all`, deux FATAL explicites, testé) ; S4 tri effectif dérivé au rendu
+  (`resolveSort` pure) — retombe sur le rang quand la colonne triée est masquée, choix
+  utilisateur préservé, aria-sort vérifié. + littéral `www.halowaypoint.com` retiré du
+  message d'escalade (seul échec de la suite d'intégration complète — garde-rail
+  archlint). Gates rejoués : build, 5 packages Go dont archlint, integration WorldCSR,
+  vet ./..., web complet 3554 tests.
 
 ## Protocole de reprise
 
