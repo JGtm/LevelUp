@@ -252,7 +252,7 @@ func TestDegradedBatchReason(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			reason := degradedBatchReason(tc.served, tc.candid)
+			reason := duckdb.DegradedBatchReason(tc.served, tc.candid)
 			if refused := reason != ""; refused != tc.wantRefused {
 				t.Errorf("servi=%+v candidat=%+v → refusé=%v (%q), attendu refusé=%v",
 					tc.served, tc.candid, refused, reason, tc.wantRefused)

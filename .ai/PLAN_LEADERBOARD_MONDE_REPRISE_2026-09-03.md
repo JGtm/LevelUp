@@ -100,24 +100,33 @@ compiler (découverte Lot 2). Les tests persist anti-ART complets restent au gat
 
 ## Lot 3 — Restauration des lots sains (op données, rapide)
 
-- [ ] 3.1 `cmd/snapshot-world-leaderboard` : flag `-restore-best` — pour chaque
-      (saison, playlist) dont le lot servi est strictement plus pauvre qu'un lot historique
-      (critères D1), ré-INSÉRER le meilleur lot avec `fetched_at` frais via
-      `InsertWorldCSRSnapshot` (append-only, aucune suppression). Idempotent : skip si le
-      lot servi est déjà le meilleur. Dry-run par défaut, `-execute` pour écrire.
-- [ ] 3.2 Exécution locale (serveur ARRÊTÉ — writer unique dblease), puis relance serveur.
-- [ ] 3.3 Test : `:memory:` — lot dégradé servi + lot sain historique → restore → la vue
-      `_latest` sert le contenu sain ; re-run → no-op.
+- [x] 3.1 `cmd/snapshot-world-leaderboard` : flag `-restore-best` (dry-run par défaut,
+      `-execute` pour écrire), sélection du meilleur lot par (with_xuid, rows, fetched_at),
+      verdict = `duckdb.DegradedBatchReason(meilleur, servi)` — la règle D1 réutilisée à
+      l'envers, une seule définition (déplacée du scheduler vers
+      `leaderboard_world_batch_stats.go`, deux callers). Ré-INSERT append-only,
+      idempotent par construction. EN PLUS (découverte Lot 2 retenue) : le chemin de
+      scrape du CLI passe par le même garde-fou que le cron (`cliBatchRefusalReason`).
+- [x] 3.2 Exécution locale FAITE (serveur arrêté puis relancé) : dry-run = exactement les
+      3 couples dégradés du 07/07 identifiés, 37 sains intacts ; `-execute` = 3 restaurés,
+      0 échec ; re-run = « 0 à restaurer, 40 déjà au meilleur » (idempotence prouvée).
+- [x] 3.3 Tests : `TestWorldCSRBestBatch_RestoreCycle` (duckdb, integration — sélection,
+      verdict, restauration, append-only, idempotence) + test d'orchestration CLI qui
+      verrouille que le dry-run n'écrit rien.
+- [!] 3.4 (constat de gate) Enrichissement de la population restaurée : la mesure réelle
+      donne (13-2, Arène) = 200 lignes / 200 xuid / 87 enrichies sur le LOT, mais le
+      top-100 AFFICHÉ (limit=100) n'en joint que 34 — les stats existantes datent des
+      populations scrapées début juillet, pas du top-100 du lot 11:17. Le correctif est
+      OPÉRATIONNEL, pas du code : `cmd/backfill-world-player-stats -season csrseason13-2`
+      (+ 13-3 dans la même fenêtre), qui cible par construction la population SERVIE
+      (WorldSeasonPlayers lit la vue _latest) avec les xuid pré-seedés des snapshots
+      restaurés. Fenêtre serveur arrêté ~15-40 min — DÉCISION USER sur le créneau
+      (maintenant / soir / au merge). Statué [!] en attendant ce créneau.
 
-**Gate Lot 3** :
-```
-diag_q ... "SELECT count(*), sum(CASE WHEN COALESCE(l.xuid,'')<>'' THEN 1 ELSE 0 END), count(s.gamertag) \
-  FROM world_csr_leaderboard_latest l LEFT JOIN world_player_season_stats_latest s \
-  ON lower(s.gamertag)=lower(l.gamertag) AND s.season_id=l.season_id AND s.playlist_id=l.playlist_id \
-  WHERE l.season_id='csrseason13-2' AND l.playlist_id='edfef3ac-9cbe-4fa2-b949-8f29deafd483'"
-```
-Attendu : 100 lignes, 100 xuid, ≥ 80 enrichies. Sonde HTTP authentifiée (cookie signé HMAC
-avec `LEVELUP_SESSION_SECRET` de `.env.local`) : ≥ 80 entrées avec `match_count`.
+**Gate Lot 3 (mesuré)** : SQL = 200 lignes / 200 xuid / 87 enrichies (critère ≥ 80 sur le
+lot : PASSÉ ; l'attendu initial « 100 lignes » supposait le lot 11:25 — le meilleur lot
+réel est le 11:17 à 200 lignes, plus riche en archive). Sonde HTTP top-100 : 100 entrées /
+100 xuid / 34 match_count → critère « ≥ 80 affichées enrichies » REPORTÉ à l'item 3.4.
 
 ## Lot 4 — UI honnête + contrat robuste (full-stack, moyen)
 
@@ -178,6 +187,15 @@ HTTP 200 corps vide structuré ; capture visuelle = MAIN AU USER (URL exacte fou
   table : un lot accepté au `fetched_at` antérieur au lot servi serait inséré sans jamais
   être servi. Sans effet aujourd'hui (le scraper pose `time.Now().UTC()`) — hypothèse à
   ne pas casser.
+- (Lot 3, exécuteur) asymétrie de signatures dans `leaderboard_world_batch_stats.go`
+  (`WorldCSRServedBatchStats(…, titleSlug, seasonID, playlistID)` vs
+  `WorldCSRBestBatch(…, key)`) — harmonisable sur `WorldCSRBatchKey`, non fait (le Lot 2
+  est commité).
+- (Lot 3, exécuteur) `TestDegradedBatchReason` vit dans `scheduler` alors que la fonction
+  est dans `duckdb` — symétrie source/test à rétablir un jour.
+- (Lot 3, exécuteur) `-restore-best` ignore `-dry-run` (c'est `-execute` qui commande dans
+  ce mode) : deux drapeaux de simulation coexistent dans l'aide, libellés explicites mais
+  confusion possible pour un opérateur pressé.
 
 ## Journal d'exécution
 
@@ -201,6 +219,16 @@ HTTP 200 corps vide structuré ; capture visuelle = MAIN AU USER (URL exacte fou
   vue servirait l'ancien lot et les tests d'acceptation ne prouveraient rien). Gate
   rejoué par l'orchestrateur : scheduler + halo + duckdb (integration -run WorldCSR) +
   vet + build, tout vert.
+- **2026-09-03 — Lot 3 CLOS (3.4 statué [!], créneau user).** `-restore-best` livré (règle
+  D1 centralisée `duckdb.DegradedBatchReason`, une définition / deux callers ; scrape CLI
+  protégé aussi). Exécution réelle : dry-run = exactement les 3 couples du 07/07 ;
+  execute = 3 restaurés 0 échec ; re-run idempotent (0 à restaurer / 40 au meilleur).
+  Après restauration : 13-2 est à 100 % xuid sur TOUTES les playlists (Assassin 115
+  enrichies, Duo 101, Arène 87 sur le lot). Constat de gate : le top-100 AFFICHÉ de
+  l'Arène ne joint que 34 stats → enrichissement de la population servie à compléter par
+  le backfill opérationnel (item 3.4, fenêtre à choisir par le user). L'ordre de mérite
+  (xuid avant volume, fraîcheur en dernier) est assumé : l'archive prime, l'enrichissement
+  se complète par l'outil dédié.
 
 ## Protocole de reprise
 
