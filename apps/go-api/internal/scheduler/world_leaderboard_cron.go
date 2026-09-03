@@ -272,7 +272,7 @@ func (c *WorldLeaderboardCron) runOnceForTitle(ctx context.Context, titleSlug st
 	}
 
 	// 3. Scraper toutes les playlists HORS lease writer (réseau lent).
-	entries, scraped := c.scrapeAll(ctx, season, playlists)
+	entries, scraped := c.scrapeAll(ctx, titleSlug, season, playlists)
 	if len(entries) == 0 {
 		slog.WarnContext(ctx, "world_leaderboard_cron: aucune entrée scrapée — rien à persister",
 			"module", logging.ModuleLeaderboard, "titleSlug", titleSlug, "season", season)
@@ -395,7 +395,13 @@ func (c *WorldLeaderboardCron) snapshotIsFresh(ctx context.Context, season strin
 
 // scrapeAll scrape chaque playlist pour la saison donnée et concatène les entrées.
 // Best-effort par playlist. Retourne aussi le total scrapé (pour le log).
-func (c *WorldLeaderboardCron) scrapeAll(ctx context.Context, season string, playlists []string) ([]domain.LeaderboardEntry, int) {
+//
+// Deux filtres s'appliquent AVANT de retenir un lot, tous deux par playlist et hors
+// lease writer : le plancher absolu de cohérence (minEntries) puis le garde-fou de
+// qualité relatif au lot déjà servi (batchIsDegraded, décision D1 — cf.
+// world_leaderboard_quality.go). Une playlist filtrée est simplement absente du lot
+// inséré : les autres sont persistées et le cycle se termine normalement.
+func (c *WorldLeaderboardCron) scrapeAll(ctx context.Context, titleSlug, season string, playlists []string) ([]domain.LeaderboardEntry, int) {
 	all := make([]domain.LeaderboardEntry, 0, len(playlists)*c.limit)
 	total := 0
 	for _, pl := range playlists {
@@ -415,6 +421,12 @@ func (c *WorldLeaderboardCron) scrapeAll(ctx context.Context, season string, pla
 			slog.InfoContext(ctx, "world_leaderboard_cron: snapshot playlist trop court — ignoré (glitch probable, snapshot précédent conservé)",
 				"module", logging.ModuleLeaderboard, "season", season, "playlist", pl,
 				"entries", len(entries), "min", c.minEntries)
+			continue
+		}
+		// Garde-fou D1 : un lot effondré (volume ou identification) ne doit jamais
+		// remplacer le lot servi — la vue _latest sert le dernier batch, et ces
+		// snapshots sont la seule archive du classement mondial.
+		if len(entries) > 0 && c.batchIsDegraded(ctx, titleSlug, season, pl, entries) {
 			continue
 		}
 		total += len(entries)
