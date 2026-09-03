@@ -89705,3 +89705,68 @@ et `WorldObjectPrecision` tenus, aucune ecriture, aucune DuckDB ouverte, aucun c
 partie 2.c regardee en entier, ou l'on note chaque declenchement du repulseur — c'est le seul
 chemin vers un verdict sur son enregistrement.
 
+
+---
+
+## [2026-09-03] R9 — Le REPULSEUR : les trois portes sont fermees, le negatif devient structurel — Complete
+
+**Statut** : Complete (retro-ingenierie STATIQUE, lecture seule, aucun commit, aucune DuckDB
+ouverte, Ghidra headless arrete en fin de lot). Branche `wt/r9-repulseur` (depuis
+`wt/lecture-equipement`). Rapport : `.ai/V7.5/replay2d/RAPPORT_R9_REPULSEUR_2026-09-03.md`.
+Instruments : 6 fichiers `apps/go-api/internal/analysis/filmdec/r9_*_research_test.go`, gardes
+par `R8_FILMS` / `R8_BOUNDS` / `R8_IDS`, sautes par defaut, `gofmt`/`go vet` verts.
+
+**Decision technique principale** : ne juger AUCUN canal sans un temoin positif inscrit AVANT
+la mesure, et publier le denominateur de bruit de chaque instrument. Deux idees ont paye plus
+que les portes elles-memes : (1) le bit `a` de la branche `tag == 3` d'i57 se DERIVE de
+l'issue de `walkRecordTo` (le deser rend false ssi `a != 0`) — aucune copie de la marche de
+production n'a ete necessaire ; (2) le recensement du masque de ti=37 porte son propre etalon
+de bruit, puisque l'archetype n'a que 31 composants et que tout comptage sur i31..i63 est une
+fausse reconnaissance.
+
+**Resultats observes** :
+- PORTE (a) FERMEE — le `tag == 3` d'i57 est le GRAPPIN predit : sur 4 films, 100 % des
+  lectures passent par `a == 1` (la moitie PORTEE est morte) et 90 a 100 % tombent sur le rang
+  du grappin, 0 a 7 % sur celui du repulseur ; oracle du voisin SOUS le temoin aleatoire.
+  Report 3 du registre R8 solde.
+- LE TAG EST SATURE — les quatre valeurs du `R(2)` sont attribuees (0 et 2 = deux etats de
+  repos avec la MEME distribution de rangs, 1 = propulseur, 3 = grappin). Aucune place libre.
+- PORTE (b) FERMEE DEUX FOIS — la jointure d'identite par les handles d'i26 plafonne a 3,2 %
+  (contre 13,2 % par les poses : i26 n'emet que 170 fois par film) ; et le canal d'etat de
+  ti=37 ne transmet RIEN au-dessus du bruit — `equipment-activated` a 204 annonces pour un
+  plancher de faux positifs mesure a ~210, `equipment-control-signal` (i22, decouvert ce lot,
+  jamais lu, `R(4)`) a 126, et ses 126 valeurs sont UNIFORMES sur les 16 possibles, une par
+  entite. Report 4 du registre R8 solde par la negative.
+- i54 FERME SUR LES DEUX ORACLES — R8 ne l'avait juge qu'a la vitesse, que le repulseur ne
+  produit pas. Rejuge a l'IDENTITE : aucune cellule au-dela de 27 % sur le rang du repulseur.
+- PORTE (c) FERMEE, DANS SA FORME LA PLUS FORTE — au lieu d'instruire i56 seul, recensement du
+  masque bipede par rang porte, SANS ancre (celui de R8 dependait d'une bouffee de vitesse que
+  le repulseur ne produit pas). Le recensement DETECTE le surbouclier (i5 a 0,561 sur son rang
+  contre 0,215 ailleurs) et le grappin (i59 a 0,023, i56 a 0,004) ; le repulseur, rang le mieux
+  echantillonne du film avec 36 939 records, n'est le maximum d'AUCUN des 64 composants. Le
+  temoin PRE-INSCRIT (i28 x camouflage) a echoue et les deux temoins qui passent sont
+  POSTERIEURS : le negatif est publie avec cette reserve ecrite.
+- LA FACE VICTIME NE MONTRE RIEN, ET LA MESURE EST SOUS-PUISSANTE (dit) — les voisins d'un
+  porteur de repulseur ne sont pas pousses plus que ceux d'un temoin ; mais le temoin positif
+  (le propulseur, sur sa propre poussee) ne separe qu'a 1,4-1,8. Corollaire : l'oracle physique
+  qui servait a R8 a fermer sa « piste A » est aveugle au repulseur — la piste A tient encore,
+  mais sur son argument i48 seul, pas sur deux.
+- GHIDRA — `KnockbackTargetComponent` existe dans le moteur et n'est PAS dans les 64 composants
+  repliques du bipede (la liste est pleine, borne dure du masque). `RepulsorField` n'est qu'un
+  nom dans la table des equipements. Cinq composants de ti=37 sont lus-jetes par
+  `consumeByName`, dont i22 et i28.
+- DECOUVERTE A CONSIGNER — le reconnaisseur de records ti=37 a un plancher de faux positifs de
+  ~210 par index et par film ; tous les comptes ti=37 publies (dont les « 856 lectures de
+  charges » et les « 45 baisses » de R8) doivent etre relus avec ce plancher.
+
+**Conclusion / prochaine etape** : ce que le visionneur Theater emploie n'est PAS etabli, et
+c'est ecrit tel quel. Deux pistes chiffrees au par. 9 du rapport : (1) porter la grammaire du
+type d'evenement 14 `PlayEffectOnObject`, PRESENT dans les films et non porte (il bloque
+48 listes sur 12 films, R7) — c'est la forme meme d'un effet rejouable ; (2) instruire les
+composants d'etat de ti=37 dans les IMAGES-CLES, ou ils sont peut-etre transmis alors qu'ils
+ne le sont pas dans les deltas. Et surtout : **le report le plus rentable est la VERITE TERRAIN
+Theater du repulseur** — huit canaux ont ete juges sans jamais disposer d'un seul instant
+d'usage certain, alors que le grappin en a 1 101 et que c'est pour cela qu'on l'a trouve.
+
+---
+
