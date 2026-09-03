@@ -89784,3 +89784,129 @@ carte, les deux sens de l echappatoire, et le premier ecrit d un titre.
 
 **Conclusion / prochaine etape** : le chantier ouvert par HANDOFF_FONDS_CARTE_2026-09-03 est clos,
 reports compris. Reste a committer.
+
+## [2026-09-03] Merge du lot fonds dans feat/v75, et la CI rouge qui l attendait
+
+**Statut** : Complete pour le merge et le correctif ; CI en cours d observation.
+
+**Decision technique principale — l ordre des operations.** Le worktree principal portait
+305 lignes de `.ai/` non commitees d une session parallele, dont `thought_log.md` que le merge
+touche : git refuse alors le merge. La regle du depot interdit `git stash` et prescrit un commit
+WIP a sa place, c est donc ce qui a ete fait (`journal(wip)`, Markdown seul, aucune relecture ni
+modification du contenu). Le conflit sur `thought_log.md` a ete resolu en gardant LES DEUX blocs.
+Merge `--no-ff` conforme aux lots precedents, puis push.
+
+**LA CI DE feat/v75 ETAIT DEJA ROUGE, depuis le push du 2026-09-02** (run 33667780959, job « Go
+Coverage + Baseline non-regression »). Cinq tests, une seule cause : le lot sieges a ajoute quatre
+champs de PRESENCE sans propager aux deux endroits qui les derivent.
+
+- `TestOpenAPIYAMLIsUpToDate` : `api/openapi.yaml` non regenere — 654 184 octets commites contre
+  654 421 generes, divergence des la ligne 16542, quatre champs manquants (`joinMatchMs`,
+  `joinedInProgress`, `leaveMatchMs`, `leftInProgress`). `make openapi-gen` PUIS
+  `make generate-types` : le second maillon compte autant, sans lui le front resterait type sur
+  l ancien contrat avec un tsc vert.
+- Les quatre `TestReplayFacts*` : « Binder Error: Table p does not have a column named
+  joined_in_progress ». La DDL du fixture est une COPIE de celle de production, et une copie
+  derive — exactement la lecon deja consignee. Elle a recu les quatre colonnes plus
+  `start_time_utc` et `start_time`, les deux faces du temps canonique dont la requete derive les
+  instants.
+
+**Trois durcissements plutot qu une rustine** : les INSERT nomment desormais leurs colonnes (une
+DDL positionnelle casse tous les cas des qu une colonne s ajoute) ; le cas nominal COUVRE la
+presence — un joueur au coup d envoi, un autre qui entre a 90 s, verifie jusqu a `JoinMatchMS` —
+la ou aucune assertion ne touchait les champs du lot ; et l en-tete du fixture enonce la regle a
+tenir quand la requete de production bouge.
+
+**Resultats observes** : les cinq tests passent en local (`-tags=integration -p 1`),
+`TestOpenAPIYAMLIsUpToDate` vert, `check-generated-types-fresh.mjs` vert. Pousse sur `feat/v75`
+(a916e7744).
+
+**Conclusion / prochaine etape** : surveiller le run CI de a916e7744 jusqu au bout. Rappel : la
+CI ne se declenche PAS sur les branches `wt/**` — seul le merge dans `feat/v75` la joue.
+
+---
+
+## [2026-09-03] Classements — revue adversariale : 4 SERIEUX corriges, merge debloque
+
+**Statut** : Complete (vague de revue) ; restent re-run integration complet, backfills,
+gate-push, go user pour merge.
+
+**Decision technique principale** : les 4 constats SERIEUX du relecteur frais retenus et
+corriges — S1 escalade ERROR des refus consecutifs (symetrie avec la decouverte, reset sur
+tout lot ecrit) ; S2 la regle D1 compare desormais a min(profondeur servie, profondeur
+demandee) — un candidat au plafond de SA limite n est jamais « effondre » face a une
+archive plus profonde (decision : sur saison active le servi est le frais, l archive est
+un filet) ; S3 -restore-best exige -season nommee et refuse all (le run VPS visera
+csrseason13-2) ; S4 tri effectif derive au rendu, retombe sur le rang quand la colonne
+triee est masquee. Bonus suite integration : litteral halowaypoint retire du message
+d escalade (garde-rail archlint — seul echec de toute la suite).
+
+**Resultats observes** : gates verts des deux executeurs, re-verifies sur pieces (regle
+plafonnee lue, FATAL du scoping testes en reel par l executeur). Decouverte methodo :
+archlint absent des gates de lot — ajoute aux consignes des futurs gates backend.
+
+**Conclusion / prochaine etape** : commit de la vague, re-run suite integration (script
+corrige en UTF-8 via cmd), fin du backfill 13-3 puis 13-2 -force -skip-existing, relance
+serveur, gate-push, delivery-checklist, preavis deploy et go user.
+
+---
+
+## [2026-09-03] Classements — pre-merge complet : tous gates verts, CI branche en cours
+
+**Statut** : En attente (verdict CI branche + go user pour merge).
+
+**Decision technique principale** : livraison verifiee maillon par maillon — suite
+integration complete v2 (etat final, -tags=integration -p 1 ./...) EXIT=0 zero fail ;
+baseline de tests OK (11712 courants >= 8761 baseline, 0 echec) ; ratchet golangci
+--new-from-merge-base 0 issue ; delivery-checklist deroulee (0 TODO, 0 fmt.Println,
+tailles fichiers/fonctions tenues, i18n FR+EN, append-only intact) ; branche POUSSEE sur
+origin (fix/*, aucun deploy) pour le verdict CI d autorite, monitore.
+
+**Resultats observes** : backfill 13-3 termine SEUL dans la fenetre accordee (145/145
+joueurs, 310 lignes, 0 erreur, 1h23) ; serveur air relance, sondes authentifiees vertes —
+13-3 Arene 100 entrees/100 xuid/45 match_count, 13-2 Arene 100/100/34. Couverture 43-45 %
+sur 13-3 = saison jeune + 20 comptes no-data ; croitra par le cron quotidien. NOTE : le
+serveur local (feat/v75) sert l ANCIENNE UI — les bandeaux D2 et selecteurs couples
+arrivent au merge. Reste 13-2 -force (~1 h, creneau user) — plan item 3.4 statue [~].
+
+**Conclusion / prochaine etape** : CI verte au niveau job → demander le GO de merge au
+user (preavis deploy prod auto), merge sur main local puis push, verifs post-deploy VPS
+(restore 13-2 + backfills avec preavis), MAJ registre des reports, retrait jonction
+node_modules avant worktree remove.
+
+## [2026-09-03] CI de feat/v75 VERTE au niveau job — le lot fonds est clos
+
+**Statut** : Complete.
+
+**Resultat** : run 33752805992 sur `08255b670`, **8 jobs verts** (Go Lint, Go Lease Enforcement
+ADR 0013, Frontend TypeScript + Vite, Go Coverage + Baseline non-regression avec
+`-tags=integration` sur `./...` complet, OpenAPI Lint, Go Build + Test ubuntu ET windows, Go
+Contract Test), E2E React saute comme d habitude. `Deploy Pre-Check` et `Secrets (gitleaks)`
+verts sur le meme push. C est le critere de cloture du mode branche unique.
+
+**Il a fallu DEUX tours, et les deux causes sont instructives.**
+
+Tour 1 — rouge HERITE, pas le mien : le lot sieges du 2026-09-02 avait ajoute quatre champs de
+presence sans regenerer `openapi.yaml` ni mettre a jour la DDL du fixture `replay_facts`. Cinq
+tests. La CI etait rouge depuis la veille et le lot suivant l aurait heritee a son tour.
+
+Tour 2 — rouge de MON lot, et les deux garde-rails ont eu raison :
+
+- `TestNoNewRawStartTimeLiteral` a attrape mon litteral SQL brut dans
+  `cmd/mapfond-inventaire/lecture.go`, ecrit sous un commentaire qui citait la regle qu il
+  violait. Lecon : citer une regle dans un commentaire ne la respecte pas ; seul l appel au
+  fragment partage est cherchable, et c est ce que le ratchet compte.
+- `TestRegistreAllowlistSansEntreePerimee` a exige le retrait des cinq entrees d allowlist que
+  la publication des fonds venait de perimer. Le cliquet a fonctionne EXACTEMENT comme prevu :
+  il impose le retrait au moment meme de la publication, pas « un jour ». L allowlist tombe de
+  7 map_id / 120 matchs a 2 entrees / 2 matchs, et le test mesure 121 cartes jouees sur 123
+  avec un fond.
+
+**Ce qu il faut retenir pour le prochain lot** : la CI ne se declenche PAS sur les branches
+`wt/**` (`ci.yml` liste main, feat, feature, fix, hotfix, refactor, perf, docs, chore,
+integration). Un lot n est donc jamais CI-verifie tant qu il reste sur sa branche de travail —
+c est precisement pour cela que le rouge du 2026-09-02 avait pu vivre une journee.
+
+**Conclusion / prochaine etape** : `feat/v75` est a `08255b670`, verte, poussee. Le chantier des
+fonds de carte est clos. Rien n est deploye : le tag v7.5.0 et le merge vers `main` restent a
+faire, et c est une decision utilisateur (push sur main = deploiement prod).
