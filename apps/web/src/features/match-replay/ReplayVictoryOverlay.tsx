@@ -198,6 +198,10 @@ function TeamPanel({ team, scoreboard, titleSlug, title, t, score, finalScore }:
  * masque qui échoue ne masque plus RIEN — l'aplat s'afficherait en carré de couleur pleine, au
  * milieu de l'écran. Tant que l'image n'est pas chargée, il n'y a pas de filigrane ; le panneau
  * reste entier, il n'a jamais eu besoin du logo pour dire comment le match s'est terminé.
+ *
+ * IL EST CENTRÉ SUR LE BLOC, PAS ANCRÉ À SON HAUT : un `absolute` sans coordonnées se pose à
+ * la position statique — le haut du bloc — et ses 18 rem débordaient vers le bas, décalant
+ * visuellement l'ensemble message + emblème dans le cadre. Centre du bloc, translaté de moitié.
  */
 function TeamLogoWatermark({ src, color }: { src: string | null; color: string }) {
   const [loaded, setLoaded] = useState(false)
@@ -220,7 +224,7 @@ function TeamLogoWatermark({ src, color }: { src: string | null; color: string }
       {loaded && (
         <span
           aria-hidden
-          className="pointer-events-none absolute h-[min(18rem,60vh)] w-[min(18rem,60vh)] opacity-20"
+          className="pointer-events-none absolute left-1/2 top-1/2 h-[min(18rem,60vh)] w-[min(18rem,60vh)] -translate-x-1/2 -translate-y-1/2 opacity-20"
           style={mask}
         />
       )}
