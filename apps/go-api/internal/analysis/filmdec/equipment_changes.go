@@ -172,6 +172,8 @@ type equipEmission struct {
 	abilityEmission
 	recovered bool
 	off       int
+	// head : la récupérée vient de la fenêtre de TÊTE de sa vie (cf. equipRecovered.head).
+	head bool
 }
 
 // assembleEquipmentChanges est LA FUSION — pure, testable sans film : émissions strictes +
@@ -229,13 +231,20 @@ func mergeEquipEmissions(
 	for _, e := range strict {
 		merged[e.Slot] = append(merged[e.Slot], equipEmission{abilityEmission: e, off: -1})
 	}
+	// hasHead : les vies dont une récupérée vient de la fenêtre de TÊTE. Leur chaîne commence
+	// au compteur VIRTUEL equipRecoveryHeadCounter, et c'est cette amorce que le verrou final
+	// doit voir (revue ronde 2, « verrou tête partielle »).
+	hasHead := map[uint32]bool{}
 	for _, r := range recovered {
-		merged[r.Slot] = append(merged[r.Slot],
-			equipEmission{abilityEmission: r.abilityEmission, recovered: true, off: r.off})
+		merged[r.Slot] = append(merged[r.Slot], equipEmission{
+			abilityEmission: r.abilityEmission, recovered: true, off: r.off, head: r.head})
+		if r.head {
+			hasHead[r.Slot] = true
+		}
 	}
 	for slot, list := range merged {
 		sort.Slice(list, func(i, j int) bool { return equipEmissionLess(list[i], list[j]) })
-		list = pruneRecoveredViolations(list)
+		list = pruneRecoveredViolations(list, hasHead[slot])
 		merged[slot] = list
 		for _, e := range list {
 			if e.recovered {
@@ -268,16 +277,24 @@ func equipEmissionLess(a, b equipEmission) bool {
 // TRIÉE, pas seulement dans acceptEquipRecovery — un départage de paquet frontière peut
 // intercaler une récupérée à contre-chaîne. Toute récupérée dont le RETRAIT fait baisser le
 // nombre de répétitions ou de sauts est retirée ; les strictes ne sont jamais touchées.
-func pruneRecoveredViolations(list []equipEmission) []equipEmission {
+//
+// `head` dit que la vie porte une récupérée de TÊTE : la vérification part alors du compteur
+// VIRTUEL qui précède la première émission (equipRecoveryHeadCounter), la MÊME amorce que
+// buildEquipRecoveryWindows a employée pour prédire les candidats. Sans elle, le verrou
+// comparait une chaîne amorcée à une chaîne SANS amorce et retirait toute récupération de
+// tête PARTIELLE non contiguë à la première stricte — perte conservatrice, mais perte
+// (revue ronde 2, « verrou tête partielle » ; sonde : première stricte c7, fromC=4, seul c5
+// retrouvé -> la récupérée disparaissait).
+func pruneRecoveredViolations(list []equipEmission, head bool) []equipEmission {
 	for again := true; again; {
 		again = false
-		baseRep, baseJumps := chainViolations(list)
+		baseRep, baseJumps := chainViolations(list, head)
 		for i, e := range list {
 			if !e.recovered {
 				continue
 			}
 			without := append(append([]equipEmission{}, list[:i]...), list[i+1:]...)
-			if rep, jumps := chainViolations(without); rep < baseRep || jumps < baseJumps {
+			if rep, jumps := chainViolations(without, head); rep < baseRep || jumps < baseJumps {
 				list, again = without, true
 				break
 			}
@@ -286,16 +303,22 @@ func pruneRecoveredViolations(list []equipEmission) []equipEmission {
 	return list
 }
 
-// chainViolations compte les répétitions et les sauts d'une chaîne triée d'émissions.
-func chainViolations(list []equipEmission) (repeats, jumps int) {
-	for i := 1; i < len(list); i++ {
-		switch counterStep(list[i-1].Counter, list[i].Counter) {
-		case 0:
-			repeats++
-		case 1:
-		default:
-			jumps++
+// chainViolations compte les répétitions et les sauts d'une chaîne triée d'émissions. Avec
+// `head`, la chaîne est amorcée par le compteur VIRTUEL de tête de vie : la première émission
+// se juge alors contre lui, exactement comme les fenêtres de tête la prédisent.
+func chainViolations(list []equipEmission, head bool) (repeats, jumps int) {
+	prev, seen := uint32(equipRecoveryHeadCounter), head
+	for _, e := range list {
+		if seen {
+			switch counterStep(prev, e.Counter) {
+			case 0:
+				repeats++
+			case 1:
+			default:
+				jumps++
+			}
 		}
+		prev, seen = e.Counter, true
 	}
 	return repeats, jumps
 }

@@ -564,19 +564,27 @@ func renderEquipment(p func(string, ...any), doc ReplayDocument) {
 }
 
 // renderTranslocations fige le calque des TELEPORTATIONS du translocateur (schema 38) :
-// datees par l evenement 117 du film — jamais devinees d un seuil spatial, jamais datees du
-// `spent`. Le film de reference (Fiesta Cliffhanger) peut n en porter aucune : le zero se
-// fige AVEC ses compteurs, sinon il se confondrait avec une lecture qui aurait echoue.
+// datees ET SITUEES par l evenement 117 du film — jamais devinees d un seuil spatial, jamais
+// datees du `spent`, jamais derivees d une discontinuite de piste. Le va-et-vient se fige
+// AVEC son compteur (`positioned`) : un saut publie sans lui est une charge non lue, pas un
+// saut vers l origine du monde. Le film de reference (Fiesta Cliffhanger) peut n en porter
+// aucune : le zero se fige AVEC ses compteurs, sinon il se confondrait avec une lecture qui
+// aurait echoue.
 func renderTranslocations(p func(string, ...any), doc ReplayDocument) {
 	p("## TRANSLOCATEUR — teleportations datees par l EVENEMENT du film, jamais devinees d un seuil")
 	if c := doc.Coverage.Translocations; c != nil {
-		p("%d evenement(s) -> %d publie(s) · %d avant l origine · %d sans piste publiee",
-			c.Events, c.Published, c.BeforeOrigin, c.Unpublished)
+		p("%d evenement(s) -> %d publie(s) (%d avec va-et-vient) · %d avant l origine · %d sans piste publiee",
+			c.Events, c.Published, c.Positioned, c.BeforeOrigin, c.Unpublished)
 	} else {
 		p("aucune couverture (rien n a ete fourni a lire)")
 	}
 	for _, tr := range doc.Translocations {
-		p("  slot=%d t=%d", tr.Slot, tr.T)
+		if tr.FX == nil {
+			p("  slot=%d t=%d (sans va-et-vient)", tr.Slot, tr.T)
+			continue
+		}
+		p("  slot=%d t=%d (%.2f,%.2f,%.2f) -> (%.2f,%.2f,%.2f)",
+			tr.Slot, tr.T, *tr.FX, *tr.FY, *tr.FZ, *tr.TX, *tr.TY, *tr.TZ)
 	}
 	p("")
 }

@@ -11626,16 +11626,30 @@ export interface components {
             xuid?: string;
         };
         Translocation: {
+            /** Format: float */
+            fx?: number;
+            /** Format: float */
+            fy?: number;
+            /** Format: float */
+            fz?: number;
             /** Format: int32 */
             slot: number;
             /** Format: int64 */
             t: number;
+            /** Format: float */
+            tx?: number;
+            /** Format: float */
+            ty?: number;
+            /** Format: float */
+            tz?: number;
         };
         TranslocationCoverage: {
             /** Format: int64 */
             beforeOrigin: number;
             /** Format: int64 */
             events: number;
+            /** Format: int64 */
+            positioned: number;
             /** Format: int64 */
             published: number;
             /** Format: int64 */

@@ -215,7 +215,8 @@ type Coverage struct {
 	EquipmentChanges *EquipmentChangeCoverage `json:"equipmentChanges,omitempty"`
 	// Translocations est la couverture des TÉLÉPORTATIONS du translocateur (schéma 38, cf.
 	// document_translocations.go) : têtes 117 décodées, publiées, écartées avant l'origine
-	// ou sans piste. Publiée même quand aucune ne l'est, pour la même raison que
+	// ou sans piste, et PORTANT LEUR VA-ET-VIENT (`positioned` — la charge de l'événement a
+	// pu être déquantifiée). Publiée même quand aucune ne l'est, pour la même raison que
 	// `weaponChanges` : un film sans translocateur et un film qu'on n'a pas su balayer
 	// rendent tous deux zéro téléportation — seuls ces compteurs les distinguent.
 	Translocations *TranslocationCoverage `json:"translocations,omitempty"`

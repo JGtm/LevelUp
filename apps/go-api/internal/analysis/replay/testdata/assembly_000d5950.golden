@@ -70,7 +70,7 @@ capacites nommees : 20=en:"Grappleshot"/fr:"grappin", 21=en:"Thruster"/fr:"propu
 couverture : 104 vie(s) publiee(s) · camo 22 vie(s) / 36 episode(s) · surbouclier 0 vie(s) / 0 episode(s)
 
 ## TRANSLOCATEUR — teleportations datees par l EVENEMENT du film, jamais devinees d un seuil
-0 evenement(s) -> 0 publie(s) · 0 avant l origine · 0 sans piste publiee
+0 evenement(s) -> 0 publie(s) (0 avec va-et-vient) · 0 avant l origine · 0 sans piste publiee
 
 ## GRAPPIN — tractions datees par vie, l ancre en coordonnees monde (fenetre MESUREE)
 25 traction(s) sur 15 vie(s) · lectures : 32 tir(s) + 25 accroche(s) · 7 rate(s) · 0 corps non decodable(s)

@@ -234,15 +234,124 @@ comparateur inversé, ts[0], référence figée vérifiée contre d28a3aa6a lign
 17 conditions tiennent. UN défaut nouveau, P2 CONSIGNÉ (pas corrigé dans ce diff, borne
 de boucle) : voir Découvertes « verrou tête partielle ». P0+P1 : 7 → 0. LOT MERGEABLE.
 
+### Lot P1bis — la charge du 117 entre en production (schéma 38 ENRICHI, pas de 39)
+
+Commandé après la ronde 2 et AVANT toute cuisson : le schéma 38 n'est déployé nulle part
+(aucun artefact 38 hors répertoires de test), on l'enrichit avant sa première cuisson.
+
+- [x] P1bis.1 (R6.A) FAIT le 03/09 — `ScanFilmTranslocatorTeleports(dir, *MapQuantEntry)`
+      décode la CHARGE de l'événement 117 et rend les positions MONDE :
+      `[R(1) g0 ; si g0 : R(32)]` puis DEUX vecteurs quantifiés (A = départ, B = arrivée).
+      Les deux pièges de R6 sont respectés et TESTÉS : porte de région INVERSÉE
+      (`TestDecodeTranslocJumpPorteInversee` — bit 1 = bornes moteur ±20000/22 bits, branche
+      implémentée parce qu'elle EST le layout, jamais observée), et déquantification aux
+      bornes VRAIES du catalogue (`MapQuantEntry.Range()` + `DequantBipedAxis`, aucune
+      troisième copie de la formule ; le champ `bounds` de l'artefact n'est jamais lu).
+      Document : `translocations[].fx/fy/fz -> tx/ty/tz` (POINTEURS, patron `GrappleLine`
+      pour le style et `EquipmentPlacement.H` pour le piège omitempty), SIX champs
+      SOLIDAIRES armés par `setTranslocationJump`. Preuves unitaires :
+      TestDecodeTranslocJump (ordre A=départ/B=arrivée), TestBuildTranslocationsVaEtVient.
+- [x] P1bis.2 FAIT — DÉGRADATION HONNÊTE + couverture : carte hors catalogue, entrée sans
+      largeurs d'axe, région étrangère au catalogue, charge tronquée -> la translocation se
+      publie SANS positions (l'instant et le slot restent lus), et
+      `coverage.translocations.positioned` porte le dénominateur (journal : `positionnees` /
+      `sansPosition`). Preuves : TestDecodeTranslocJumpDegradation (4 cas),
+      TestTranslocEntryUsable (enveloppe des largeurs).
+- [x] P1bis.3 FAIT — schéma MAINTENU à 38 et mis à jour EN COHÉRENCE : chronique v38
+      (document.go §1 + champ `Translocations` + coverage.go), structure_test.go,
+      golden réassemblé (fixture REPLAYINPUTS11 -> **12** : la suite des sections change même
+      si le film de référence ne porte aucune téléportation ; `renderTranslocations` fige le
+      va-et-vient), contracttest vert, `api/openapi.yaml` régénéré (+22 lignes : fx/fy/fz,
+      tx/ty/tz, `positioned` requis), `make generate-types` (+14 lignes generated.ts),
+      frontière web mise à jour en COMMENTAIRE seul (le calque reste PLAT — que des nombres),
+      `make check-types` exit 0, vitest replayContract 13/13.
+- [x] P1bis.4 FAIT — correction du P2 de la ronde 2 (« verrou tête partielle ») : le
+      candidat de RÉCUPÉRATION porte désormais l'origine de sa fenêtre (`equipRecovered.head`
+      -> `equipEmission.head`), et `pruneRecoveredViolations`/`chainViolations` amorcent la
+      chaîne au compteur VIRTUEL `equipRecoveryHeadCounter` quand la vie porte une récupérée
+      de tête — la MÊME amorce que `buildEquipRecoveryWindows` a employée pour prédire les
+      candidats. Preuves : TestVerrouTeteConserveUneRecuperationPartielle (la sonde exacte du
+      relecteur : première stricte c7, fromC=4, seul c5 retrouvé -> CONSERVÉE, Recovered=1,
+      1 saut résiduel) et TestVerrouTeteRetireUneRecupereeQuiViole (récupérée de tête en
+      répétition -> RETIRÉE : l'amorce ne relâche aucune garde). Mutation rejouée et TUÉE :
+      amorce forcée à `false` -> la sonde reproduit exactement `out=2, Recovered=0`.
+- [x] P1bis.5 FAIT — VALIDATION DYNASTY sur pièces (`TestP1bisPositionsDynasty`, gaté
+      P1_FILM + P1_MAP) : 3/3 événements positionnés, écarts aux discontinuités de piste
+      publiées **0,00-0,10 m** — slot 535 (2.79,152.19) -> (17.34,135.50) contre l'ancre A1
+      (2.79,152.17) -> (17.34,135.50) : départ 0,02 m, arrivée 0,00 m ; slot 560 #1 arrivée
+      (17.35,123.11) contre (17.35,123.20) : 0,09 m ; slot 560 #2 (11.31,116.66) ->
+      (18.42,120.25) contre (11.32,116.69) -> (18.34,120.19) : départ 0,03 m, arrivée 0,10 m.
+      CONTRÔLE ÉLARGI (même instrument, cartes calibrées R6) : a0c36016 4/4, f2966f08 2/2,
+      4577fcc4 6/6, faff9935 3/3 — **18/18 positionnés**, le chemin de production reproduit
+      le rapport R6. Non-régression P1 rejouée à l'identique : récupération Dynasty
+      (2 récupérées, 0 résiduel), exemption (+7 échantillons, 0 hors fenêtre), invariance
+      sans tête 117 (188 979 identiques).
+
+Gate P1bis : `CGO_ENABLED=0 go test ./internal/analysis/filmdec/ ./internal/analysis/replay/...
+./internal/replaybuild/... ./contracttest/` (0 `--- FAIL:`) + `go vet` exit 0 +
+`gofmt -l internal/ contracttest/` vide + `make check-types` exit 0.
+
+REVUE ADVERSARIALE P1bis RONDE 1 (03/09, relecteur frais) : 0 P0, 16 conditions vérifiées qui
+tiennent (polarité de la porte de région sur ses DEUX branches, ordre A=départ/B=arrivée aux
+deux étages, déquantification par le catalogue, solidarité des 6 pointeurs, dégradation
+honnête, invariant artefact < 38, et la morsure du correctif du verrou). 4 constats, dont 3
+corrigés DANS le lot :
+
+- [x] G1 (P1) `equipment_recovery.go:363` — la propagation `c.head = w.head` n'était couverte
+      par RIEN : la neutraliser laissait la suite verte, donc le défaut que le lot corrige
+      revenait intégralement. CORRIGÉ : assertion sur l'origine de fenêtre de chaque candidat
+      accepté (`wantHead` dans `TestTemoinDeCompteurRefuseLeBruit`, plus le cas de MILIEU de
+      vie à `false` dans `TestTemoinDeCompteurAccepteLeComblementExact`) ET un test DE BOUT EN
+      BOUT qui ne fabrique aucun `head` à la main
+      (`TestVerrouTeteBoutEnBoutParLaFenetre` : fenêtre -> `acceptEquipRecovery` -> fusion).
+      Mutation rejouée : `c.head = false` fait tomber DEUX tests (avant : zéro).
+      `TestVerrouTeteRetireUneRecupereeQuiViole` porte désormais la mention explicite que son
+      entrée est hors de ce qu'`acceptEquipRecovery` peut produire (défense en profondeur), et
+      renvoie vers le cas atteignable (`TestAssembleDepartageDeterministeAuPaquetFrontiere`).
+      LIMITE DITE : la mutation « amorce posée PARTOUT » (`head` toujours vrai) survit encore
+      — et c'est une équivalence, pas un trou de test : l'amorce ne change un verdict que si
+      une RÉCUPÉRÉE occupe l'indice 0 de la chaîne, ce qui n'arrive que pour une fenêtre de
+      tête (une fenêtre de milieu s'ouvre à l'instant de la stricte précédente). La rendre
+      distinguable exigerait une entrée contorsionnée ; noté plutôt que fabriqué.
+- [x] G2 (a) FAIT — le commentaire v12 de `golden_inputs_test.go` affirmait « les octets figés
+      ne bougent pas » : MESURÉ FAUX (98 octets diffèrent hors magie). Corrigé pour dire la
+      vérité, sa cause et pourquoi ce n'est pas une régression de données de ce lot. MESURE
+      AJOUTÉE ICI (copie du fixture, `-update`, `cmp`, restauration) : deux régénérations
+      SUCCESSIVES du même film rendent des fixtures DIFFÉRENTES — le fixture n'est pas
+      reproductible, indépendamment de ce lot.
+- [~] G2 (b) — hors périmètre, NON corrigé : consigné en « Découvertes » (ordre non total de
+      `lessTrack` + `sort.Slice` instable). `projectiles.go` n'est pas touché.
+- [x] G3 FAIT — la chronique 49->50 de `contracttest/replay_contract_test.go` décrivait encore
+      la forme d'AVANT P1bis (anti-pattern « doc inversée », CLAUDE.md n°9) alors que
+      `document.go`, `structure_test.go`, `document_translocations.go` et `replayNormalize.ts`
+      décrivaient la forme finale. Elle énumère désormais `fx/fy/fz` -> `tx/ty/tz` sur
+      Translocation et `positioned` sur TranslocationCoverage, sous la convention « ajouts sans
+      nouveau champ racine » qu'elle porte déjà.
+- [x] G4 FAIT — `transloc_events.go` : la branche `br.Remaining() < 0` de `decodeTranslocJump`
+      était INATTEIGNABLE (`readTranslocVec` ne rend `true` qu'à `Remaining() >= 0`) et son
+      commentaire lui attribuait une protection déjà tenue ailleurs — code mort + doc fausse
+      (CLAUDE.md n°7 et n°9). Branche SUPPRIMÉE, la vraie garde gardée et commentée comme
+      unique. Test rendu DISCRIMINANT : la coupe est CALCULÉE du layout et tombe entre les deux
+      vecteurs (départ complet, arrivée entièrement absente), plus un cas de coupe au milieu du
+      départ. Mutation rejouée : retirer la vraie garde fait tomber
+      `TestDecodeTranslocJumpDegradation` (avant : vert).
+
+Gates rejoués après corrections : 5/5 paquets ok, 0 `--- FAIL:`, `go vet` exit 0,
+`gofmt -l internal/ contracttest/` vide, `make check-types` exit 0. Validation Dynasty
+INCHANGÉE (3/3 positionnés, écarts 0,00-0,10 m) et contrôle élargi inchangé (18/18).
+
 ### Lot P2 — Web : consommer la lecture fiable (après P1)
 
 - [ ] P2.1 Éclat de fiche daté par `translocations[]` (l'événement, plus jamais le spent) ;
       `spentTranslocations` retiré ou réduit au repli des artefacts < 38 (kill-switch daté).
-- [ ] P2.2 Lien du va-et-vient sur la carte : from/to dérivés de la discontinuité de piste à
-      la frame de l'événement ; `riftTeleports` (heuristique spatiale) retiré (CLAUDE.md n7)
-      — les artefacts < 38 gardent le comportement actuel via le repli.
-- [ ] P2.3 Faille dessinée APRÈS le premier échange (position = point de départ du saut,
-      forme `drawRift` existante), déplacée à chaque échange, éteinte à fin mesurée
+- [ ] P2.2 Lien du va-et-vient sur la carte : from/to LUS SUR L'ÉVÉNEMENT
+      (`translocations[].fx/fy/fz -> tx/ty/tz`, P1bis) — plus aucune dérivation de
+      discontinuité de piste ; un saut sans ces six champs (charge non lue) ne trace rien.
+      `riftTeleports` (heuristique spatiale) retiré (CLAUDE.md n7) — les artefacts < 38
+      gardent le comportement actuel via le repli.
+- [ ] P2.3 Faille dessinée APRÈS le premier échange (position = point de DÉPART du saut,
+      c'est-à-dire `fx/fy` — le translocateur ÉCHANGE les positions ; forme `drawRift`
+      existante), déplacée à chaque échange, éteinte à fin mesurée
       (spent/`recovered`, mort du porteur) — jamais à demeure (point user expiration).
 - [ ] P2.4 `from` sous `gap` traité comme inconnu par les consommateurs (vignette comprise).
 - [ ] P2.5 i18n FR/EN si libellé ; tests logic ; plafonds de taille.
@@ -277,11 +386,10 @@ Gate P2 : `make check-types && make test-web` + gate visuel user sur un film re-
       têtes marchées. Verdict : « aucune trace ; indéterminé formellement, faisceau vers
       jamais émis en multi » (42/43/93 gestes IA/campagne, 48/31/119 requêtes C2S, 104
       notification ciblée). Répulseur/propulseur : le film ne les enregistre pas — clos.
-- Conséquence produit : **P1bis** (à exécuter après la ronde 2 de revue, AVANT toute
-  cuisson) — `translocations[]` gagne les positions from/to décodées de la charge (le
-  schéma 38 n'est déployé nulle part : on l'enrichit avant sa première cuisson, pas de 39).
-  Le lien du va-et-vient (P2.2) se lira alors de l'événement seul, sans dérivation de
-  discontinuité de piste.
+- Conséquence produit : **P1bis — FAIT le 03/09** (voir le lot dédié) : `translocations[]`
+  porte les positions from/to décodées de la charge, schéma 38 maintenu (enrichi avant sa
+  première cuisson, pas de 39). Le lien du va-et-vient (P2.2) se lit désormais de
+  l'événement seul, sans dérivation de discontinuité de piste.
 
 ### Re-cuisson
 
@@ -290,13 +398,38 @@ jamais de cuisson de masse sans décision séparée.
 
 ## Découvertes / suites à arbitrer (issues de R1-R2, hors périmètre des lots courants)
 
-- P2 revue ronde 2 (03/09) — VERROU TÊTE PARTIELLE : `equipment_changes.go:271`
-  (`pruneRecoveredViolations`) / cause `:290` (`chainViolations` ignore le compteur virtuel
-  de tête `equipRecoveryHeadCounter`) : une récupérée de TÊTE de vie partielle non contiguë
-  à la première stricte (ex. c5 seul retrouvé pour fromC=4, première stricte c7) est
-  acceptée par le témoin puis RETIRÉE par le verrou (sonde exécutée : out=2, Recovered=0).
-  Perte conservatrice (aucune donnée fausse), périmètre étroit. Piste : amorcer
-  `chainViolations` avec le compteur virtuel de tête. À CORRIGER EN P1bis avec son test.
+- ~~P2 revue ronde 2 (03/09) — VERROU TÊTE PARTIELLE~~ : **CORRIGÉ en P1bis.4 le 03/09.**
+  Constat d'origine : `pruneRecoveredViolations` / `chainViolations` ignoraient le compteur
+  virtuel de tête `equipRecoveryHeadCounter`, si bien qu'une récupérée de TÊTE de vie
+  partielle et non contiguë à la première stricte (c5 seul retrouvé pour fromC=4, première
+  stricte c7) était acceptée par le témoin puis RETIRÉE par le verrou (sonde : out=2,
+  Recovered=0). Correctif appliqué : l'origine de la fenêtre voyage avec le candidat
+  (`equipRecovered.head` → `equipEmission.head`) et la vérification de chaîne s'amorce au
+  compteur virtuel quand la vie porte une récupérée de tête — la MÊME amorce que la
+  prédiction des candidats. Tests : `TestVerrouTeteConserveUneRecuperationPartielle` (la
+  sonde exacte, CONSERVÉE) et `TestVerrouTeteRetireUneRecupereeQuiViole` (récupérée de tête
+  en répétition, RETIRÉE) dans `filmdec/equipment_assemble_test.go` ; mutation « amorce
+  jamais posée » rejouée et TUÉE (elle reproduit out=2, Recovered=0). Effet sur Dynasty :
+  AUCUN (ses deux récupérations de tête étaient complètes) — la correction rend une
+  récupération que le corpus témoin ne perdait pas, elle ferme un cas de perte silencieuse.
+- G2 revue P1bis ronde 1 (03/09) — FIXTURE GOLDEN NON REPRODUCTIBLE, ordre non total en
+  amont : `filmdec.lessTrack` (`projectiles.go:194-202`) ordonne les vies de projectile sur
+  (naissance, slot, gen), mais `out` porte des SEGMENTS (`splitLives` en produit plusieurs par
+  clé) et le tri est un `sort.Slice` NON STABLE, dont l'entrée vient d'une MAP. Le commentaire
+  de `projectiles.go:173-175` affirme pourtant « le couple (slot, gen) est unique par
+  construction […] l'ordre est total » — le film de référence le réfute (le relecteur y relève
+  trois pistes `slot=2180 gen=0` de même naissance ; ordre passé de [7,9,3] à [9,3,7] / [9,7,3]).
+  MESURÉ dans ce lot : deux régénérations SUCCESSIVES du même film rendent des fixtures
+  DIFFÉRENTES (copie, `-update`, `cmp`, restauration) — 98 octets diffèrent hors magie sur la
+  régénération de P1bis alors que la section des téléportations écrit exactement les mêmes
+  octets (le film de référence n'en porte aucune). CONSÉQUENCE : un futur diff du fixture ne
+  distingue plus une régression de données du bruit d'ordonnancement, et
+  `replay.projectileBirths` / `birthNear` lisent ces naissances PAR INDICE — donc l'ordre peut
+  choisir la position publiée d'un lancer, ce que le commentaire de `projectiles.go` dit
+  lui-même. NON TRAITÉ ICI (hors périmètre P1bis, `projectiles.go` non touché) : à cadrer
+  séparément — un critère de départage supplémentaire (chunk/offset du premier échantillon, ou
+  l'indice de segment) rendrait l'ordre réellement total, et le commentaire doit être corrigé
+  dans le même commit.
 - R6 latéral (03/09) — `unit_zoom` (type 21) apparaît EN POSITION 2 de la liste
   d'événements (5 occurrences) : le canal zoom de production ne lit que les TÊTES → il
   sous-compte. Dette du canal zoom existant, hors chantier — à cadrer séparément.

@@ -220,9 +220,12 @@ export type ReplayDocumentReady = Omit<
   structure: ReplaySurfaceReady[]
   tracks: ReplayTrackReady[]
   /**
-   * LES TÉLÉPORTATIONS DU TRANSLOCATEUR (schéma 38) : une entrée PLATE par saut (t, slot),
-   * datée par l'ÉVÉNEMENT type 117 du film — jamais un seuil spatial, jamais le `spent`
-   * (jusqu'à 16,5 s de retard mesuré). Vide = artefact antérieur au schéma 38, ou film sans
+   * LES TÉLÉPORTATIONS DU TRANSLOCATEUR (schéma 38) : une entrée PLATE par saut — (t, slot)
+   * et le VA-ET-VIENT (`fx/fy/fz` -> `tx/ty/tz`), tous deux lus dans l'ÉVÉNEMENT type 117 du
+   * film — jamais un seuil spatial, jamais le `spent` (jusqu'à 16,5 s de retard mesuré),
+   * jamais une discontinuité de piste. Les six coordonnées sont SOLIDAIRES : présentes
+   * ensemble, ou absentes en bloc (charge non lue) — `coverage.translocations.positioned`
+   * dit combien de sauts les portent. Vide = artefact antérieur au schéma 38, ou film sans
    * translocateur — `coverage.translocations` distingue les deux.
    */
   translocations: NonNullable<ReplayDocument['translocations']>
@@ -319,9 +322,9 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     // (xuid, t0, t1, closed), aucun tableau imbriqué. Absent = artefact antérieur, ou film non
     // reconnu Oddball — `coverage.skullCarries` distingue les deux.
     skullCarries: raw.skullCarries ?? [],
-    // LES TÉLÉPORTATIONS DU TRANSLOCATEUR (schéma 38) : une entrée plate par saut (t, slot),
-    // datée par l'ÉVÉNEMENT du film. Absent = artefact antérieur au schéma 38, ou film sans
-    // translocateur — `coverage.translocations` distingue les deux.
+    // LES TÉLÉPORTATIONS DU TRANSLOCATEUR (schéma 38) : une entrée plate par saut — (t, slot)
+    // et le va-et-vient, datés et situés par l'ÉVÉNEMENT du film. Absent = artefact antérieur
+    // au schéma 38, ou film sans translocateur — `coverage.translocations` distingue les deux.
     translocations: raw.translocations ?? [],
     // LES OBJETS D'OBJECTIF LIBRES (schéma 21) : une entrée par VIE de l'objet hors portage.
     // Absent = artefact antérieur, mode sans objet porté, ou film qui n'en porte pas —

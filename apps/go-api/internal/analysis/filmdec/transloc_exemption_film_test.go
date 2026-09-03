@@ -8,6 +8,10 @@ package filmdec
 //
 // Gardés par P1_FILM / P1_FILM_SANS117 (les films ne sont pas versionnés), skip par défaut.
 //
+// LE SCAN Y PASSE `nil` COMME ENTRÉE DE CATALOGUE, et c'est délibéré : l'exemption ne consomme
+// que l'INSTANT et le SLOT des événements. Les positions de la charge sont validées à part
+// (transloc_positions_film_test.go), sur le film et la carte du cas index.
+//
 //	CGO_ENABLED=0 P1_FILM=<depot>/data/cache/film_chunks/1b2d9e08 \
 //	  go test ./internal/analysis/filmdec/ -run '^TestP1Exemption' -v -timeout 30m
 //	CGO_ENABLED=0 P1_FILM_SANS117=<depot>/data/cache/film_chunks/7344d24f \
@@ -61,7 +65,7 @@ func TestP1ExemptionVitesseDynasty(t *testing.T) {
 	}
 	release := LockProcessDecode()
 	defer release()
-	evts := ScanFilmTranslocatorTeleports(dir)
+	evts := ScanFilmTranslocatorTeleports(dir, nil)
 	for _, e := range evts {
 		t.Logf("EVENEMENT 117 slot %d @%dus", e.Slot, e.TimestampUS)
 	}
@@ -114,7 +118,7 @@ func TestP1InvarianceSansTete117(t *testing.T) {
 	}
 	release := LockProcessDecode()
 	defer release()
-	evts := ScanFilmTranslocatorTeleports(dir)
+	evts := ScanFilmTranslocatorTeleports(dir, nil)
 	if len(evts) != 0 {
 		t.Fatalf("%d tête(s) 117 sur le film témoin — choisir un film SANS translocateur"+
 			" (R3 : 696a9d7c, 7344d24f)", len(evts))

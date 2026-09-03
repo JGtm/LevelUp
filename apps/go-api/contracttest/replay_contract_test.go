@@ -529,14 +529,23 @@ var replaySchemas = []struct {
 //	49 -> 50  2026-09-03  UN champ, la LECTURE FIABLE des usages d equipement (schema 38,
 //	                      lot P1 du PLAN_LECTURE_FIABLE_EQUIPEMENT_2026-09-03) :
 //	                      - `translocations` : LES TELEPORTATIONS DU TRANSLOCATEUR, datees
-//	                        par l evenement type 117 du film (precision 18/18, rappel 8/8
-//	                        sur 5 films — rapport R1). Le client cessera d en deviner par
-//	                        seuil spatial (> 4 m : aveugle a un saut de 3,24 m mesure) ou de
-//	                        les dater du `spent` (jusqu a 16,5 s de retard mesure).
+//	                        ET SITUEES par l evenement type 117 du film (precision 18/18,
+//	                        rappel 8/8 sur 5 films — rapport R1). Le client cessera d en
+//	                        deviner par seuil spatial (> 4 m : aveugle a un saut de 3,24 m
+//	                        mesure) ou de les dater du `spent` (jusqu a 16,5 s de retard
+//	                        mesure).
 //	                      Ce lot ajoute AUSSI, sans nouveau champ racine : `recovered` et
 //	                      `gap` sur EquipmentChange (la recuperation gatee par le temoin de
 //	                      compteur, et le saut residuel — decisions D1/D3), `recovered` sur
 //	                      EquipmentChangeCoverage, et le bloc `coverage.translocations`.
+//	                      Puis, au lot P1bis et TOUJOURS sans nouveau champ racine (le schema
+//	                      38 est enrichi avant sa premiere cuisson, pas remplace par un 39) :
+//	                      `fx/fy/fz` -> `tx/ty/tz` sur Translocation — le VA-ET-VIENT lu dans
+//	                      la CHARGE de l evenement (layout source de l executable, valide
+//	                      18/18 a 0,00-0,26 m des discontinuites de piste, rapport R6 par.1),
+//	                      six champs SOLIDAIRES absents en bloc quand la charge n a pas pu
+//	                      etre dequantifiee — et `positioned` sur TranslocationCoverage, qui
+//	                      en porte le denominateur.
 //	                      Les deux types du calque entrent dans replaySchemas DANS LE MEME
 //	                      LOT (lecon P2-3 du 2026-09-01).
 //
