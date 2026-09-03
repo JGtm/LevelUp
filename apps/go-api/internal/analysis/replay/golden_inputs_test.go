@@ -77,8 +77,10 @@ func goldenInputsPath() string {
 // quoi faire. [TestGoldenInputsVersionGuard] verrouille le refus explicite.
 //
 // v13 (2026-09-03, lot P3) : le fixture porte les IMPULSIONS DE CAPACITE (corps tag==1 des
-// composants i57/i59) et les statistiques de leur balayage, que BuildFromFilm decode
-// desormais. La magie monte parce que la SUITE DES SECTIONS change (un fixture v12 relu par
+// composants i57/i59) et les statistiques de leur balayage — dont le temoin `Scanned`, ajoute
+// a la revue de ronde 1 (constat H1) : sans lui le fixture rendrait une couverture de zeros
+// indistinguable d un balayage qui n a jamais tourne, et l assemblage publierait ce zero comme
+// une mesure. Que BuildFromFilm decode desormais. La magie monte parce que la SUITE DES SECTIONS change (un fixture v12 relu par
 // ce codec derailerait des la premiere pose d equipement). LE FILM DE REFERENCE EN PORTE :
 // `000d5950` est de famille B, ou le propulseur est le rang 21, et le lot R8 y a mesure
 // 43 lectures `tag == 1` dont 38 sur ce rang — le golden exerce donc le calque pour de vrai,
@@ -570,6 +572,9 @@ func encodeGoldenInputs(g *goldenInputs) []byte {
 	w.u(uint64(g.AbilityImpulseStats.Unread))
 	w.u(uint64(g.AbilityImpulseStats.Tag1))
 	w.bool8(g.AbilityImpulseStats.Absent)
+	// `Scanned` VOYAGE AVEC LES AUTRES : sans lui, un fixture rendrait une couverture de zeros
+	// indistinguable d un balayage qui n a jamais tourne (constat H1 de la revue de ronde 1).
+	w.bool8(g.AbilityImpulseStats.Scanned)
 
 	// Les POSES, puis la CALIBRATION qui les rend lisibles. Les deux vont ensemble : une
 	// liste vide ne dit pas la meme chose selon que le film a tranche sa largeur ou non.
@@ -1003,6 +1008,7 @@ func decodeGoldenInputs(blob []byte) (*goldenInputs, error) {
 	g.AbilityImpulseStats = filmdec.AbilityImpulseStats{
 		Records: int(r.u()), WithI57: int(r.u()), WithI59: int(r.u()),
 		Read: int(r.u()), Unread: int(r.u()), Tag1: int(r.u()), Absent: r.bool8(),
+		Scanned: r.bool8(),
 	}
 
 	n = int(r.u())

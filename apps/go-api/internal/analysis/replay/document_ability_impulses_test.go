@@ -308,3 +308,49 @@ func TestFoldAbilityImpulses_OrdreTotalParInstantPuisSlot(t *testing.T) {
 		}
 	}
 }
+
+// TestBuildFromPositions_PasDeCouvertureQuandLeBalayageNAPasTourne — LE CONSTAT H1 DE LA
+// REVUE, ferme, sur le CHEMIN DE PRODUCTION (BuildFromPositions).
+//
+// Les quatre portes de `ScanFilmAbilityImpulses` (aucun chunk, aucun slot bipede aux
+// images-cles, decoupage i0 indetectable, registre illisible) rendent une erreur ;
+// `BuildFromFilm` journalise et poursuit avec `nil, AbilityImpulseStats{}`. Publier alors une
+// couverture de zeros affirmerait « le balayage a tourne, le composant est la, personne ne
+// s'en est servi » sur un film ou rien n'a jamais ete lu — la faute exacte que
+// `attachInventoryCoverage` (inventory.go) documente et interdit. L'ABSENCE de bloc dit encore
+// autre chose, et c'est la distinction sur laquelle repose toute la doctrine de coverage.go.
+func TestBuildFromPositions_PasDeCouvertureQuandLeBalayageNAPasTourne(t *testing.T) {
+	base := Options{FilmClockOriginUS: 1_000_000}
+
+	// (a) BALAYAGE EN ECHEC (le repli de BuildFromFilm) : AUCUNE couverture.
+	doc := BuildFromPositions("m", "halo_infinite", positionsPourOrigine(), nil, base)
+	if doc.Coverage == nil {
+		t.Fatal("document sans couverture du tout : le scenario ne mesure plus rien")
+	}
+	if doc.Coverage.AbilityImpulses != nil {
+		t.Fatalf("couverture publiee alors que le balayage n a pas tourne : %+v",
+			*doc.Coverage.AbilityImpulses)
+	}
+
+	// (b) BALAYAGE ABOUTI SUR UN FILM QUI NE DECLARE PAS LE COMPOSANT : la couverture EST
+	// publiee, et elle porte `componentAbsent`. Un zero de balayage n'est pas l'autre.
+	base.AbilityImpulseStats = filmdec.AbilityImpulseStats{Scanned: true, Absent: true}
+	doc = BuildFromPositions("m", "halo_infinite", positionsPourOrigine(), nil, base)
+	cov := doc.Coverage.AbilityImpulses
+	if cov == nil {
+		t.Fatal("balayage abouti mais aucune couverture : un resultat de lecture s est perdu")
+	}
+	if !cov.ComponentAbsent || cov.Reads != 0 {
+		t.Fatalf("couverture %+v : attendue vide et marquee componentAbsent", *cov)
+	}
+
+	// (c) BALAYAGE ABOUTI SUR UN FILM QUI DECLARE LE COMPOSANT SANS AUCUNE IMPULSION : la
+	// couverture est publiee, a zero et SANS `componentAbsent` — le troisieme zero, distinct
+	// des deux autres.
+	base.AbilityImpulseStats = filmdec.AbilityImpulseStats{Scanned: true, Records: 1234}
+	doc = BuildFromPositions("m", "halo_infinite", positionsPourOrigine(), nil, base)
+	cov = doc.Coverage.AbilityImpulses
+	if cov == nil || cov.ComponentAbsent || cov.Reads != 0 {
+		t.Fatalf("couverture %+v : attendue publiee, a zero, sans componentAbsent", cov)
+	}
+}
