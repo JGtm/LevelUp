@@ -89603,3 +89603,44 @@ seulement sur les tetes. Deux suites au plan : (1) la grammaire de PRODUCTION
 `lot1DecodeDamageAftermath` est mesuree DOUTEUSE par le meme oracle et touche 872 k evenements
 de degats deja exploites — chantier a ouvrir ; (2) la liste complete est un canal neuf (x2,5
 d evenements lisibles), a exploiter quand un besoin le justifiera.
+
+---
+
+## [2026-09-03] R8 — L'usage du PROPULSEUR est dans le film : i57/i59, tag 1 — Complete
+
+**Statut** : Complete (retro-ingenierie, lecture seule, aucun commit, aucune DuckDB ouverte).
+Rapport : `.ai/V7.5/replay2d/RAPPORT_R8_USAGE_REPULSEUR_PROPULSEUR_2026-09-03.md`.
+Instruments : 9 fichiers `apps/go-api/internal/analysis/filmdec/r8_*_research_test.go`, gardes
+par `R8_ARTIFACTS` / `R8_FILMS` / `R8_BOUNDS` / `R8_IDS`, sautes par defaut.
+
+**Decision technique principale** : cesser de deviner quel composant porte l'usage, et partir
+d'une ANCRE avec un TEMOIN POSITIF. Le grappin fournit les deux — ses instants d'usage sont
+certains (`ScanFilmGrappleReads`) et son canal est connu : le corps `tag == 3` du composant
+i59 `biped-spartan-ability-non-predicted-state`. Or ce tag est un R(2) : il a QUATRE valeurs,
+et la production n'en exploitait qu'une. Croiser le TAG avec le rang de capacite porte (i48,
+lu dans la MEME vie et anterieurement a l'instant) et avec un oracle de vitesse a repondu.
+
+**Resultats observes** :
+- PROPULSEUR TROUVE — `tag == 1` d'i57/i59. Sur les 4 films de famille A : 0,361 impulsion par
+  vie de propulseur (22 sur 61) contre 0,000 pour le grappin (0 sur 132 vies — il a son propre
+  tag), le detecteur, le mur, l'ecran occultant et le champ de reparation. Pic de vitesse
+  median 6,2 a 8,8 m/s contre 2,9 a 3,6 pour un instant tire au hasard dans la meme vie. Les
+  desers sont DEJA en production (`spartanAbilityHook`, `abilityNonPredictedHook`) : aucune
+  grammaire a porter, seulement un scan et une jointure.
+- REPULSEUR NON TROUVE — 1 impulsion sur 90 vies (0,011) alors qu'il est PLUS porte que le
+  propulseur (90 vies contre 61). Negatif mesure, pas suppose.
+- PISTE A REFUTEE — les poses `equipmentPlacements` `deployed` de ces deux familles ne datent
+  aucun geste (oracle physique avec temoin positif grappin ; zero `spent` i48 en coincidence
+  sur 76 poses).
+- PIEGE CONSIGNE — `WorldObjectPrecision` est un global de paquet que seul
+  `replay.installWorldObjectPrecision` pose : un instrument qui l'oublie rend 13 poses au lieu
+  de 537 sur `00ba2e1c`, SANS aucune erreur. Il s'identifie sans base de donnees
+  (`DetectI0Layout` + `map_quant_bounds.json`, les largeurs d'axe servant de cle).
+
+**Conclusion / prochaine etape** : livrer le propulseur (un `ScanFilmAbilityImpulses` calque sur
+`ScanFilmGrappleReads`, tag 1 au lieu de 3, joint au rang i48 par vie) ; pour le repulseur,
+trois portes chiffrees au par. 11 du rapport, la plus prometteuse etant la branche `tag == 3`
+d'i57 (`consumeSpartanAbilityTag3`), portee partiellement car gatee sur un octet d'etat runtime.
+
+---
+
