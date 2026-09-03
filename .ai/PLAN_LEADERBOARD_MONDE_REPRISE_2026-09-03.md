@@ -113,15 +113,15 @@ compiler (découverte Lot 2). Les tests persist anti-ART complets restent au gat
 - [x] 3.3 Tests : `TestWorldCSRBestBatch_RestoreCycle` (duckdb, integration — sélection,
       verdict, restauration, append-only, idempotence) + test d'orchestration CLI qui
       verrouille que le dry-run n'écrit rien.
-- [!] 3.4 (constat de gate) Enrichissement de la population restaurée : la mesure réelle
-      donne (13-2, Arène) = 200 lignes / 200 xuid / 87 enrichies sur le LOT, mais le
-      top-100 AFFICHÉ (limit=100) n'en joint que 34 — les stats existantes datent des
-      populations scrapées début juillet, pas du top-100 du lot 11:17. Le correctif est
-      OPÉRATIONNEL, pas du code : `cmd/backfill-world-player-stats -season csrseason13-2`
-      (+ 13-3 dans la même fenêtre), qui cible par construction la population SERVIE
-      (WorldSeasonPlayers lit la vue _latest) avec les xuid pré-seedés des snapshots
-      restaurés. Fenêtre serveur arrêté ~15-40 min — DÉCISION USER sur le créneau
-      (maintenant / soir / au merge). Statué [!] en attendant ce créneau.
+- [~] 3.4 Enrichissement des populations servies — MOITIÉ FAITE (fenêtre user du 03/09) :
+      **13-3 COMPLÈTE** — 145/145 joueurs du top-100 des 3 playlists, 310 lignes, 0 erreur,
+      1h23 (xuid pré-seedés des snapshots, PeopleHub court-circuité) ; couverture affichée
+      43-45 % = saison jeune (peu de matchs/joueur, 20 comptes no-data) + le cron quotidien
+      la fera croître ; sonde authentifiée post-run : 13-3 Arène = 100 entrées / 100 xuid /
+      45 match_count. **13-2 RESTANTE** : le checkpoint de juillet la marque « déjà
+      complète » → reprise `-force -skip-existing` (~1 h serveur arrêté), créneau à fixer
+      par le user (soir, ou fenêtre VPS post-deploy). Sonde 13-2 Arène actuelle : 100
+      entrées / 100 xuid / 34 match_count.
 
 **Gate Lot 3 (mesuré)** : SQL = 200 lignes / 200 xuid / 87 enrichies (critère ≥ 80 sur le
 lot : PASSÉ ; l'attendu initial « 100 lignes » supposait le lot 11:25 — le meilleur lot
