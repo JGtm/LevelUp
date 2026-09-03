@@ -221,6 +221,56 @@ récurrente supprime — les artefacts plus anciens. `0` = illimité.
 La commande d'opérateur ignore volontairement ce réglage (cf. `cmd/levelup backfill-replay`) :
 celui qui la tape a déjà décidé où il construit, sur sa machine, avec ses films en cache.
 
+### Rejeu 2D — outillage de construction (faits, équivalence, profils)
+
+Outils d'opérateur de la chaîne de construction des artefacts (« cuisson » dans le plan
+`.ai/V7.5/PLAN_CUISSON_PERF.md`). Ils lisent le cache local de films ; les deux outils hors ligne
+n'ont besoin d'aucune base et décodent un film par processus enfant borné (plafond mémoire dur,
+priorité CPU basse, verrou solo).
+
+```bash
+cd apps/go-api
+go run ./cmd/levelup replay-facts-export --out internal/analysis/replay/testdata/equivalence \
+  [--title slug] <short8|match_id>...
+```
+
+Écrit un `<short8>.facts.json` par match — lignes de match, scores des deux camps, variante,
+identités de carte candidates — dans la forme que `replay-build --facts` lit déjà. Sans ces faits,
+zones, actions d'objectif, VIP/crâne/bombe, socles et points d'apparition sont court-circuités et
+une passe d'équivalence serait vacuante. Lecture seule (`OpenReadForQuery`) ; la commande échoue
+franchement au lieu d'écrire des faits vides — arrêter un serveur qui tient la base partagée en
+écriture.
+
+```bash
+go run ./cmd/replay-equiv                          # tout le corpus (CORPUS.txt), comparaison seule
+go run ./cmd/replay-equiv -films 000d5950 -update  # (re)fige les références d'un seul film
+go run ./cmd/replay-equiv -walkers -walkers-out tmp/walkers.tsv
+# flags : -corpus F  -films a,b (remplace le corpus)  -update  -mem-gib N (défaut 3, 0 = désarmé)
+#         -title slug  -walkers  -walkers-out F
+```
+
+Le harnais d'équivalence de la construction : il hache la sortie de **chaque** balayage, pas
+seulement l'artefact final, ce qui localise une divergence au balayage près. Parent et enfant vivent
+dans le même binaire — le parent planifie et ne décode rien, chaque film naît dans un enfant borné
+(verrou solo en attente bornée, sentinelle) et meurt avec sa RAM. Les références vivent dans
+`internal/analysis/replay/testdata/equivalence/<short8>.tsv`, chacune ouverte par son marqueur
+`# digest-grammar: N` : une référence figée sous une autre grammaire est une panne
+d'infrastructure (« re-figer par `-update` »), jamais un écart de décodage. `-update` réécrit ces
+références au lieu de les comparer — pour une correction déclarée seulement. `-walkers` mesure la
+divergence des grammaires de découpage sur tout le cache de films au lieu de comparer des
+empreintes.
+
+```bash
+LEVELUP_LOG_LEVEL=debug go run ./cmd/replay-build --map "<nom de carte>" --facts <f>.facts.json \
+  --cpuprofile tmp/<f>.cpu.prof --memprofile tmp/<f>.heap.prof <short8> [dossierFilm]
+```
+
+Mesure d'une construction unitaire (protocole §6 du plan) : `LEVELUP_LOG_LEVEL=debug` fait
+apparaître la durée de chaque balayage (le binaire installe un handler slog) ; `--cpuprofile` et
+`--memprofile` écrivent des profils pprof (`go tool pprof`), celui du tas après la construction. Les
+trois sont inertes par défaut, et les options doivent précéder `<matchId>` — le paquet flag arrête
+l'analyse au premier argument positionnel.
+
 ### Notifications
 
 ```bash
