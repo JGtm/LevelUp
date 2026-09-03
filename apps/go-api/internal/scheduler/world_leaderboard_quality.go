@@ -11,11 +11,11 @@
 // rien ne les sert, et ces snapshots sont la SEULE archive du classement mondial
 // (Halo Waypoint retire les saisons passées : csrseason13-2 a disparu du site).
 //
-// Règle appliquée (décision D1 du plan de reprise) — un lot candidat est REFUSÉ si un
-// lot est déjà servi ET que l'un des deux effondrements est constaté :
-//   - VOLUME : le candidat a moins de la moitié des lignes du lot servi ;
-//   - IDENTITÉ : le lot servi est massivement identifié (couverture xuid >= 90 %) et
-//     le candidat n'a plus AUCUN xuid.
+// Règle appliquée : décision D1, définie UNE SEULE FOIS dans
+// duckdb.DegradedBatchReason (volume effondré ou identification effondrée) — ce
+// fichier n'en est qu'un appelant. L'autre appelant est le CLI -restore-best, qui
+// s'en sert dans l'autre sens (le lot servi mérite-t-il d'être remplacé par un
+// meilleur lot historique ?) : une seule règle, deux usages, aucune redéfinition.
 //
 // Un refus est un SKIP de la playlist, jamais une erreur de cycle : les autres
 // playlists sont persistées normalement et le lot servi reste en place. Le plancher
@@ -33,16 +33,6 @@ import (
 )
 
 const (
-	// degradedBatchMinRowRatio : part MINIMALE des lignes du lot servi qu'un candidat
-	// doit atteindre. En dessous (< 50 %), on considère la capture tronquée. Le
-	// classement mondial ne perd pas la moitié de ses joueurs classés d'un jour à
-	// l'autre — mais une page à moitié rendue, si.
-	degradedBatchMinRowRatio = 0.5
-	// servedXUIDCoverageFloor : couverture xuid à partir de laquelle le lot servi est
-	// considéré comme massivement identifié. Un candidat à 0 xuid face à un tel lot
-	// signale un parsing cassé (le xuid vient du même payload que le gamertag), pas
-	// une évolution réelle du classement.
-	servedXUIDCoverageFloor = 0.9
 	// worldBatchRefusedMetric : compteur expvar des lots refusés (toutes causes),
 	// exposé sur /debug/vars → levelup.<nom>. Un compteur qui grimpe = Waypoint rend
 	// des pages dégradées de façon répétée ; le classement servi, lui, reste sain.
@@ -72,8 +62,8 @@ func (c *WorldLeaderboardCron) batchIsDegraded(
 	if !ok {
 		return false // première capture de cette playlist : rien à protéger.
 	}
-	candidate := worldBatchStatsOf(entries)
-	reason := degradedBatchReason(served, candidate)
+	candidate := duckdb.WorldCSRStatsOfEntries(entries)
+	reason := duckdb.DegradedBatchReason(served, candidate)
 	if reason == "" {
 		return false
 	}
@@ -84,32 +74,6 @@ func (c *WorldLeaderboardCron) batchIsDegraded(
 		"servi_lignes", served.Rows, "servi_xuid", served.WithXUID,
 		"candidat_lignes", candidate.Rows, "candidat_xuid", candidate.WithXUID)
 	return true
-}
-
-// degradedBatchReason applique la décision D1 et retourne la cause du refus en clair
-// (chaîne vide = lot acceptable). Fonction pure : toute la règle métier est ici, donc
-// testable sans base ni réseau.
-func degradedBatchReason(served, candidate duckdb.WorldCSRBatchStats) string {
-	if float64(candidate.Rows) < degradedBatchMinRowRatio*float64(served.Rows) {
-		return "effondrement du volume (moins de la moitié des lignes servies)"
-	}
-	if served.XUIDCoverage() >= servedXUIDCoverageFloor && candidate.WithXUID == 0 {
-		return "effondrement de l'identification (lot servi identifié, candidat sans aucun xuid)"
-	}
-	return ""
-}
-
-// worldBatchStatsOf mesure un lot candidat EN MÉMOIRE, avec la même définition que
-// duckdb.WorldCSRServedBatchStats côté base — les deux jeux de chiffres doivent être
-// comparables pour que la règle ait un sens.
-func worldBatchStatsOf(entries []domain.LeaderboardEntry) duckdb.WorldCSRBatchStats {
-	stats := duckdb.WorldCSRBatchStats{Rows: len(entries)}
-	for _, e := range entries {
-		if e.XUID != "" {
-			stats.WithXUID++
-		}
-	}
-	return stats
 }
 
 // servedBatchStats lit la qualité du lot servi via un reader RO court (même discipline
