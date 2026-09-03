@@ -89944,3 +89944,23 @@ invariant est reecrit sans lui — « a la hauteur utile, la toile a le ratio ex
 0 erreur. `ReplayCanvas.tsx` a 662/665.
 
 **Conclusion / prochaine etape** : gate visuel du zoom, qui etait la derniere reserve.
+
+---
+
+## [2026-09-03] Rejeu 2D : « Tout » retire du niveau de zoom — un mot au milieu d une echelle
+
+**Statut** : Complete ; merge vers feat/v75.
+
+**Decision technique principale** : le temoin de grossissement affichait « Tout » au niveau 1
+(EN : « All ») pour signifier « toute la carte est visible ». Question de l utilisateur : « ca
+veut dire quoi Tout au niveau du zoom ? » — et la question EST la reponse. Un mot au milieu d une
+echelle de nombres (1,5x / 2x / 3x) casse la serie : on ne sait plus si on lit un niveau ou un
+etat, donc on s arrete pour se le demander.
+
+Le temoin affiche desormais « 1x » comme les autres. L information perdue — « on voit tout » —
+n en est pas une : le bouton « moins » est DESACTIVE a ce niveau, ce qui dit deja qu on ne peut
+pas reculer davantage. La forme portait l information mieux que le mot.
+
+**Resultats observes** : typecheck EXIT=0 ; 138 fichiers / 2088 tests verts ; lint 0 erreur.
+
+**Conclusion / prochaine etape** : reste l arbitrage sur la largeur des colonnes du tiroir.
