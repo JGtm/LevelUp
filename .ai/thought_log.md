@@ -1,3 +1,65 @@
+## [2026-09-03] Cuisson perf, lot 4b — la mesure prealable a arrete le lot : la borne ecrite passe SOUS le pire cas sain — En cours (escalade utilisateur ouverte)
+
+Item 4b.1 de `.ai/V7.5/PLAN_CUISSON_PERF.md`, worktree `LevelUp-wt-cuisson-perf`
+(`wt/cuisson-perf`, HEAD `7d0af4440`). Aucun commit, **aucune ligne de code de production
+modifiee** (`git status` vide) : la decision D13 imposait de MESURER avant de poser la borne, et
+la mesure interdit de la poser telle qu'elle est ecrite.
+
+**Decision technique principale : ARRETER plutot que d'ajuster la borne de mon propre chef.**
+D13 fixait « rejet d'un deroulage `p.Value - prev > 10 000` dans `incrementTimes` », avec pour
+premisse ecrite que « la pire anomalie connue est un saut de 66 », et prescrivait une escalade si
+la mesure depassait 1 000. Elle vaut **17 306** (`d9781168`, Oddball, `comp 20 B`, slot 12,
+t = 345 931 ms) : 260 fois la premisse, 17 fois le seuil d'escalade, et surtout **1,73 fois
+AU-DESSUS de la borne proposee**. Poser 10 000 aurait rejete un point d'un film SAIN du corpus
+d'equivalence, donc fait bouger une reference qui doit rester figee — exactement ce que le gate
+du lot interdit. Choisir moi-meme 100 000 aurait re-decide un « defaut ferme » (§3) sans
+l'utilisateur. Le lot s'arrete donc a 4b.1 ; 4b.2 et 4b.3 sont statues `[!]`, 4b.4 `[~]`.
+
+**Methode.** Outil de mesure temporaire (un `_test.go` du paquet `objectiveevents`, seul endroit
+d'ou `rawSeriesByKey` / `cumulateRounds` / `RealRounds` sont visibles), un film par processus,
+supprime apres releve. Il rejoue le chemin de production jusqu'a l'entree de `incrementTimes`
+— memes filtres, meme cumul de manches — sur les 58 comps x 2 cotes, et marque ceux que la
+production deroule REELLEMENT. Point de methode qui a tout permis : **il somme les sauts sans
+jamais materialiser un evenement**, donc il mesure les films-bombes sans les faire exploser
+(`51101d1d` : 0,3 s, quelques Mo, la ou une cuisson demande 26 Go).
+
+**Resultats observes.** Films sains : huit sur neuf tiennent sous 2 (total 110 a 538 evenements) ;
+`d9781168` porte a lui seul l'anomalie (17 306 ; 21 160 evenements). Bombes, jamais cuites :
+`51101d1d` 2 163 333 610 (`20 B`), `60ae07c4` 2 148 206 590 (`21 A`), `a349fea8` 1 107 820 492
+(`21 B`), `1c4c63c2` 537 698 416 (`22 A`). **La cause de la bombe RAM du 2026-08-24 est confirmee
+arithmetiquement** : 2 163 333 677 evenements x 8 o = 17,31 Go de `[]int`, et le `growslice` final
+(8,65 Go copies vers 17,31 Go, les deux vivants) demande 25,96 Go — les « ~26 Go » du registre,
+retrouves a 0,2 % pres, sans profil heap. Les deux lignes du `REGISTRE_REPORTS.md` (bombe RAM et
+profiling non confirme) recoivent leur note datee.
+
+**Ce qui a ete appris, et qui vaut au-dela de ce lot.** (1) **La table FLAG est deroulee sur TOUS
+les films, hors de son mode** (`build_objectives_live.go:104`, pour seulement DECIDER si le film
+est un CTF ; idem la table VIP) — alors que `named.go` documente en tete que « le sens d'un
+emplacement DEPEND DU MODE ». C'est par la que trois bombes sur quatre explosent, `60ae07c4`
+compris, qui est un Oddball dont la famille n'a aucune table. Le detecteur paie le deroulage
+complet de huit emplacements pour n'en consommer que trois COMPTEURS. (2) **L'anomalie est un
+enregistrement mal aligne, pas un emplacement** : sur `60ae07c4`, trois comps sautent ensemble sur
+le meme slot au meme instant (2,1 Md / 1,7 Md / 31). Un plafond par pas coupe les gros canaux et
+laisse passer les petits : c'est un rempart memoire, pas un filtre d'anomalie. (3) **Le deroulage
+geant existe aussi sur huit des neuf films SAINS**, sur des emplacements que personne ne lit
+(2,4 a 3,9 milliards) : la frontiere « sain / bombe » n'est pas la qualite du decodage, c'est le
+hasard de savoir si l'emplacement fautif appartient a une table lue — donc toute extension future
+de `namedStatSlots` (les emplacements `hill` et `ball`, annonces comme « pas encore nommes ») arme
+une bombe si la borne n'est pas posee d'abord. (4) `statMaxRecordsPerFilm` borne les POINTS, pas
+les EVENEMENTS : un plafond total verifie seulement ENTRE les series laisse un seul appel de
+`incrementTimes` allouer 2,6 Gio — l'implementation devra passer le budget restant.
+
+**Conclusion / prochaine etape.** Le lot est suspendu a UN arbitrage : la valeur de la borne par
+pas. Les deux populations sont separees d'un facteur 31 000 (17 306 contre 537 698 416), donc
+toute valeur de `]17 306 ; 537 698 416[` laisse les neuf films sains a l'octet pres et tue les
+quatre bombes ; le journal du plan propose 100 000 (marge des deux cotes) ou 1 000 000 (aligne sur
+le plafond total). Le plafond TOTAL de 1 000 000 par film, lui, est valide par la mesure (47x le
+pire total sain) et n'attend rien. Des la borne tranchee : 4b.2 (avec le budget passe a
+`incrementTimes`), puis 4b.3 — et le temoin Live Fire `60ae07c4` du LOT 3, aujourd'hui bloque,
+cuira dans la foulee puisque sa bombe est bien celle-ci. Gate verifie malgre l'arret : `gofmt -l`
+vide, `go vet` vide, tests des trois paquets verts, `golangci-lint run` code 0 (baseline), et
+harnais complet **9 identiques / 0 different**.
+
 ## [2026-09-03] Cuisson perf, lot 4 — la lecture de bits par mot : le profil designait d'autres primitives que le plan — En cours (equivalence a la charge du pilote)
 
 Items 4.1 a 4.4 (+ 4.6, ajoute par le pilote) de `.ai/V7.5/PLAN_CUISSON_PERF.md`, worktree
