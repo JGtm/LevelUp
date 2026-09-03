@@ -1,3 +1,61 @@
+## [2026-09-03] Rejeu vehicules — V7 : la destruction N'EST PAS dans la liste d'evenements, mais le VEHICULE y est (le domaine 1 est celui des UNITES) — Complété
+
+**Question** : parmi les 28 types de tete jamais decodes du registre V6, lequel date la DESTRUCTION
+d'un vehicule ? **REPONSE : AUCUN.** Cinq angles independants, tous negatifs, tous chiffres.
+`VehicleTrack.End` reste `unknown`, aucun fichier de production modifie. Ghidra MORT : tout est
+mesure, `CGO_ENABLED=0`, GOCACHE isole, avant-plan, aucun commit.
+
+**L'ACQUIS QUI COMPTE — LE DOMAINE 1 EST CELUI DES UNITES, BIPEDES *ET* VEHICULES.** Sur les
+references de domaine 1 a sonde = 1, la partition « bande bipede OU bande `ti=40` » vaut **100,0 %**
+(types 1 et 7), **99,96 %** (type 0, 18 489 / 18 497) et **99,8 %** (type 36) sur 12 films — quand
+les deux bandes ne couvrent que 20 a 33 % des index possibles. La base est le minimum de la bande
+bipede, et l'index de 9 bits porte au-dela jusqu'aux slots 768+. Forme qui porte la preuve : parmi
+les references dont l'index SORT de la bande bipede, **99,6 a 100,0 %** tombent dans la bande
+`ti=40`, la ou le hasard en mettrait **3 a 16 %**. (Le temoin de cadrage a +1 bit est DEGENERE et
+c'est ecrit tel quel au rapport § 6 : relu au bit 10 il ne resélectionne que les references
+vehicule.) **Le lot V6 avait cherche le vehicule en domaine 7 et l'y avait refute ; il est en
+domaine 1.**
+
+**CONSEQUENCE MESUREE, HORS PERIMETRE ET NON TRAITEE : LA REFERENCE 1 DE LA SORTIE *EST* LE
+VEHICULE — 105 / 105 sorties de 12 films, 100,0 % en bande, zero bipede, zero hors bande.** Le
+calque resout aujourd'hui le vehicule d'un episode par la GEOMETRIE (ancre 3 m, 48/49) alors que
+l'evenement le NOMME. Note au rapport § 14 item 1 avec ce qu'il faudrait pour le prendre ; pas
+touche (regle du perimetre).
+
+**LA VOIE NOMMEE PAR V3 § 6 EST OUVERTE ET REFUTEE.** Le type 0 (« degat ») vise bien une unite :
+3 099 de ses 18 684 instances designent un VEHICULE. Mais leur ecart median a la FIN SERREE du
+vehicule vaut **-21,0 s** et seules **0,7 %** tombent a moins d'une seconde — indiscernable du
+controle type 36 (le tir : -14,5 s, 2,0 %). Meme forme pour les types 1 et 7 (-15,2 et -16,5 s).
+**Ce sont des degats, pas des destructions.** Aucun DRAPEAU de letalite ne les separe : sur 247 bits
+de charge balayes, le meilleur separe 101 instances sur 3 099 a 44,6 % — et le controle type 36
+produit le meme genre de « meilleur bit » a 37,5 %.
+
+**LE TEMOIN NATUREL DU CORPUS FONCTIONNE** (40 films, 27 sans vehicule / 13 avec) : les deux
+evenements connus sortent en tete de la signature cherchee (type 22 sortie **0,04** par film sans
+vehicule contre **23,54** avec, r = 0,973 ; type 8 **0,00** / **1,08**, r = 0,921) et deux types la
+contredisent (le 15 est ANTI-correle, le 109 n'existe que sans vehicule). Les types NEUFS a
+signature identique — **2, 40, 41, 118** — sont depouilles instance par instance : seul le **118**
+resout un vehicule (89,5 %), et **0 %** de ses instances tombe en fin de vie (salves de 3 a 6 au
+milieu de la vie : evenement d'ETAT, pas de fin).
+
+**NEGATIFS COMPLEMENTAIRES.** Balayage aveugle (bits 9..120 x largeurs {7,8,9,11,13} x 2
+adressages, 12 films) : meilleur couple a 13,3 % sur un effectif exploitable, gate a 90 %.
+Coincidence temporelle avec les 195 fins serrees : purete maximale **12,5 %** sur huit instances,
+tous les types frequents entre 3,7 et 6,6 % — au niveau de leur propre temoin.
+
+**LIVRE** : huit instruments `*_test.go` neufs sous garde `V7_ROOT` (`vehicules_v7_{refs,temps,
+correl,dom1,chaine,cible,letal,delta}_test.go`), 8 SKIP sans environnement. **AUCUN code de
+production touche**, `SchemaVersion` reste 30, pas d'OpenAPI, pas de golden, pas d'artefact
+reconstruit (rien a reconstruire). gofmt vide, vet exit 0, `go test filmdec + replay` sans env :
+`grep -c '^--- FAIL:'` = **0**.
+
+**PROCHAINE ETAPE** : rapport `.ai/V7.5/film_re/V7_DESTRUCTION_EVENEMENT_2026-09-02.md` § 14 —
+l'item 1 (la sortie nomme son vehicule) est le seul gain de production immediat et il demande son
+propre lot avec ses gates avant/apres ; l'item 5 rappelle que la destruction n'est peut-etre pas
+dans la liste du tout, auquel cas la voie est la grammaire d'`i2`/`i3` pour `ti=40`.
+
+---
+
 ## [2026-09-03] Rejeu vehicules — V6 : la liste d'evenements N'A PAS de suite (temoin), et la machine d'etats d'occupation par occupant — Complété
 
 **Question** : le ratio board:exit = 1:15 vient-il de notre decodeur, qui ne lit que l'evenement de
