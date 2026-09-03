@@ -16539,9 +16539,19 @@ components:
         deaths:
           format: int64
           type: integer
+        joinMatchMs:
+          format: int64
+          type: integer
+        joinedInProgress:
+          type: boolean
         kills:
           format: int64
           type: integer
+        leaveMatchMs:
+          format: int64
+          type: integer
+        leftInProgress:
+          type: boolean
         teamId:
           format: int64
           type: integer
