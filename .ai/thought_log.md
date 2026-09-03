@@ -89249,3 +89249,256 @@ justement le geste qui a provoque quatre sinistres RAM. Non traite, a decider av
 **Conclusion / prochaine etape** : une carte sans fond cale n a desormais plus rien sous les
 joueurs (hors props Forge). Le chantier des fonds devient donc le seul chemin, et il avance —
 +8 cartes par heritage variante->base le meme jour.
+
+## [2026-09-03] Fonds de carte : l inventaire des manques est REFAIT par la mesure, et Live Fire cuit pour la premiere fois
+
+**Statut** : En cours (worktree `wt/fonds-manquants`, rien de commite, rien de publie en production).
+
+**Decision technique principale** : ecrire l outil que le handoff reclamait
+(`cmd/mapfond-inventaire`) plutot que de croire sa liste. Il rejoue la resolution EXACTE de
+`replayService.resolveBackgroundKey` — stat du sidecar sous `map_id`, puis
+`replay.MapBackgroundIndex.Lookup` sur les memes noms candidats que `MapKeysForMatch` — et il
+croise le resultat avec les playlists de `match_registry`. Il appelle le MEME index que la
+production au lieu d en recopier la regle : une copie divergerait sans qu aucun test ne le voie.
+
+**Resultats observes** :
+
+- LA LISTE DU HANDOFF NE DECRIT PAS LE PRODUIT. Ses 23 cartes viennent du CATALOGUE DE ZONES ;
+  les cartes qui manquent A L ECRAN sont celles qui ont ete JOUEES. Sur 150 identites de carte
+  du registre, **4 cartes seulement n ont pas de fond** : Live Fire (3 assets, 71 matchs),
+  Detachment (25), Argyle (22), plus Cole Protocol (1 match, Firefight) et TFF Night Of The
+  Undead (1 match, playlist personnalisee). Apostle, Aqueduct, Arrival, Daimyo, Dead Water,
+  Exiled, Kusini Bay, Last Broadcast, Suban, Vallaheim, Waterworks n apparaissent pas : elles ne
+  sont pas jouees par les joueurs suivis.
+- LA QUESTION OUVERTE DU HANDOFF EST TRANCHEE, et par la playlist, pas par le nombre de joueurs :
+  `player_count` compte les joueurs SUIVIS (2 sur Argyle, 5 sur Live Fire), il ne dit rien de la
+  taille de la partie. Les trois cartes qui restent sont de l arene (Quick Play, Ranked Arena,
+  Team Snipers, Super Fiesta) ; les deux autres sont hors perimetre par leur playlist.
+- « Argyle est deja servie » (handoff §2.2) est FAUX : aucun sidecar du catalogue ne la nomme.
+- L outil de requete existait deja : `cmd/diag_q`, et il lit `shared_matches_v2` en lecture seule
+  meme quand le serveur local la tient. `metadata.duckdb`, elle, est tenue en EXCLUSIF par le
+  serveur — l inventaire a tourne sur `metadata-prebuilt.zip` (22/06) pour nommer les assets.
+  A rejouer sur la base vivante avant de clore : sans les noms d asset, 20 cartes ressortent au
+  lieu de 8, dont 12 fantomes.
+
+**LIVE FIRE — PREMIERE CUISSON, et ce qu elle apprend.** Cuite sans levier, elle rend 119,0 x
+117,9 m et DEUX amas disjoints. Cause mesuree : `himap.ChoisitBSP` designe bien le bon tag
+(63,2 x 63,8 m), mais **les bornes declarees d un bsp ne bornent pas la pose de ses instances** —
+`common-rtx-new` pose plusieurs petites arenes dans le meme bsp, et la matiere dessinee depasse
+de 43 m en Y les bornes du bsp retenu. Le cadre aux ancres ne peut pas trancher : les 24 ancres
+tiennent dans une bande de 9,0 x 25,0 m. Le masque des zones nommees non plus : les 55 zones de
+`sgh_interlock` couvrent X [-8,9 ; 74,7] et Y [16,2 ; 98,1], donc les DEUX amas.
+
+Ce qui a marche : borner a la boite du bsp retenu (`boiteUtile` [-16,7 -10,1 46,5 53,7], valeurs
+LUES dans le module, pas tracees a l oeil) + `rogneAuxZones` + habillage encre. Cadre 1 643 x
+1 207 px, **21 ancres sur 28 avec du sol**, une seule arene lisible. L ecretage a ete essaye puis
+RETIRE : il descend a 17/28 (il coute 4 ancres pour ramener l ecart median de -7,37 a -3,38 m).
+
+**Degradation connue** : les passes `sddt` (zone jouable) et eau exigent
+`any/levels/multi/globals/common-rtx-new.module`, absent de l installation — la geometrie commune
+n a pas de pendant dans la racine `any`. Live Fire n a pas d eau ; il manque le bornage sddt.
+
+**Conclusion / prochaine etape** : image soumise a l utilisateur pour le gate visuel (la recette
+interdit de publier une image qu il n a pas vue). Si le verdict est positif : recuire sans
+`--out-dir`, passer la ligne du registre a VALIDEE avec verbatim, committer. Detachment et Argyle
+sont bloquees en amont — elles n ont AUCUNE entree dans `map_objectives.json`, donc pas d ancre,
+donc pas de cadre ; les debloquer demande un `mapobj-build --map-id` authentifie, a demander.
+
+## [2026-09-03] Live Fire est VALIDEE et publiee — et la reconstruction du catalogue de callouts a bien mordu
+
+**Statut** : Complete cote carte (gate utilisateur obtenu), non commite.
+
+**Verbatim du gate** : « Ah oui c'est exactement cette map je la reconnais tres bien ! Par contre
+faut couper un peu les toits. Et remplir le sol avec une couleur, mais que a l'interieur de la
+silhouette », puis « Y a juste un trait horizontal a droite en haut a virer et c'est 100% valide ».
+
+**Decision technique principale** : les trois demandes se sont traduites par trois leviers
+EXISTANTS, dont un qui ne marchait pas.
+
+1. `ecreteToits` + `plafondArene: 8` — le defaut est 6, donc on coupe MOINS que la recette, ce
+   que « un peu » demandait. Cout mesure et assume : 21 ancres sur 28 avec du sol sans lui,
+   **17 sur 28** avec ; le cran de 6 m coute exactement les memes quatre, monter le plafond ne
+   les recupere donc pas.
+2. `combleTrous` — **195 030 cellules** d aplat dans les trous FERMES du masque des zones. C est
+   bien ce levier et non `combleZonesEntieres`, qui aurait rempli aussi les vides OUVERTS, donc
+   deborde hors de la silhouette : la demande disait « que a l interieur ».
+3. `rogneAuxComposantesAncrees` — **IL ETAIT INERTE SUR LES CARTES NATIVES.** Declare dans
+   `reglageCarte`, donc offert a toutes les cartes, il n etait cable que dans `cuisson_forge.go`.
+   Arme sur Live Fire il rendait une image identique A L OCTET PRES (hash verifie). Cable ce jour
+   dans `himap.OptionsCuisson` + le chemin natif de `cmd/mapfond-build`, juste apres `BoiteUtile`
+   pour ne juger que ce qui reste. Effet : **15 700 cellules effacees, 1 composante gardee sur
+   36**, cadre 1 643 -> **1 302** x 1 192 px, ancres inchangees a 17/28. Le trait horizontal en
+   haut a droite disparait, la diagonale en bas a gauche aussi.
+
+**LE PIEGE DU HANDOFF S EST REFERME, ET LE GARDE-RAIL L A ATTRAPE.** Publier le fond fait basculer
+`TestCatalogueCalloutsLivreEstExploitable` : la regle est « une carte est `decoupe` SI ET SEULEMENT
+SI son fond est publie ». La reconstruction native de `map_callouts.json` a donc ete lancee — et
+elle a rejoue exactement la non-reproductibilite documentee : fichier **3,71 Mo -> 2,97 Mo**,
+**32 716 nombres perdus** soit environ 16 400 sommets, repartis sur 16 cartes
+(btb_fragmentation -9 372, btb_highpower -4 786, btb_exiled -4 299, va_behemoth -4 120...). Les
+comptes de zones, eux, ne bougeaient pas (3 352 zones, 64 entrees Forge) : **un compte de zones ne
+voit pas une perte de sommets.**
+
+Traitement applique, celui que le handoff prescrit : restaurer depuis HEAD et ne garder QUE ce
+qu on produit. Le bloc `sgh_interlock` du fichier reconstruit a ete recolle dans le fichier de
+HEAD (lignes 114874-117738). Verification : delta de sommets NUL sur les 21 autres cartes,
+`sgh_interlock` +5, memes cles, 878 insertions / 938 suppressions. 42 zones sur 55 sont desormais
+decoupees sur le decor ; **13 restent brutes** — Lobby, AI Lab, Locker Room, Movement Course,
+Hallway, Armory, Weapon Range, Landing Pad — ce sont les salles du second amas, celui que
+`boiteUtile` retire. A regarder si une zone nommee doit un jour porter du sol.
+
+**Resultats observes** : fond publie sous `map_backgrounds/sgh_interlock.png` (126 988 octets,
+identique a l octet pres a l image gatee), sidecar declarant les deux identites. L inventaire
+retombe de 8 lignes a **4** : les 71 matchs de Live Fire et Live Fire - Ranked sont servis.
+107 fonds, 232 identites, 0 ambiguite. Tests verts : `internal/himap` (liste sans `_gamefiles_`,
+13,3 s), `internal/analysis/replay`, `cmd/mapfond-build`, `cmd/mapcallouts-build`.
+
+**Conclusion / prochaine etape** : restent Detachment (25 matchs) et Argyle (22), bloquees en
+amont — aucune entree dans `map_objectives.json`, donc aucune ancre, donc aucun cadre. Le
+deblocage passe par `mapobj-build --map-id <uuid> --player <GT>`, un appel reseau authentifie par
+carte, a demander a l utilisateur. Report ouvert : `cmd/mapfond-inventaire` n a pas de test qui
+verifie qu il reste d accord avec `resolveBackgroundKey` — c est pourtant sa seule raison d etre.
+
+## [2026-09-03] Detachment et Argyle DEBLOQUEES — le level_id nomme la toile que l asset ne publie pas
+
+**Statut** : En cours (Detachment soumis au gate visuel, Argyle cuite mais pas encore presentable).
+
+**Decision technique principale** : le registre les portait « BLOQUEE canevas inconnu ». La mesure
+dit autre chose, et il y avait DEUX blocages empiles, pas un.
+
+1. AUCUNE ANCRE. Ni Detachment ni Argyle n avaient d entree dans `map_objectives.json` — donc pas
+   d ancre, donc pas de cadre, donc rien a cuire. `mapobj-build` les a rapatriees : Detachment
+   4 511 objets / **14 objectifs**, Argyle 5 002 / **14**. Le blocage etait la, pas au canevas.
+2. CANEVAS INCONNU. Leur asset ne publie pas de fichier-lien de canevas — c est vrai. Mais le
+   `level_id` le dit sans lui, et c est deja le critere de `TestPreuveLevelIDCartes` :
+   **1 437 677 928** est la toile de The Pit et Houseki (`fo09_academy`), **426 470 249** celle
+   d Empyrean, Solitude et Shogun (`fo11_blank`). Les deux cartes sont declarees dans
+   `himap.CartesForge` sur cette preuve.
+
+**COMMENT LE RESEAU A ETE JOUE SANS TOUCHER AU WORKTREE PRINCIPAL.** Les jetons vivent dans le
+depot principal (`data/auth/watcher_tokens/`), pas dans le worktree dedie, et un refresh ROTATIONNE
+le RT : copier le fichier aurait fabrique deux verites. Sequence retenue : `mapobj-build` lance
+DEPUIS le principal (jetons vivants), le catalogue regenere copie de cote, puis
+`git checkout` immediat du fichier dans le principal — verifie propre — et le catalogue copie
+installe dans le worktree dedie. Verification : 126 -> 128 cartes, 2 680 -> 2 708 roles, **aucune
+carte perdue**. Un premier essai par le chemin hors ligne (`--from-file`) avait ete ecarte : il
+rend `public_name` et `version_id` VIDES, donc un fond sans identite pour l index des noms.
+
+**Resultats observes** — deux passes, et la premiere etait la bouillie attendue :
+
+| | sans levier | + navmesh | + composantes / tolerance |
+|---|---|---|---|
+| Detachment | 2 417 x 2 935 | 2 332 x 2 038 | **1 526 x 1 666** |
+| Argyle | 2 514 x 3 001 | 1 090 x 2 300 | **1 090 x 1 614** |
+
+28 ancres sur 28 avec du sol a chaque passe : aucun levier n a coute de terrain. `navmeshReference`
++ `rogneAuNavmesh` (blobs rapatries sans jeton : 5 559 520 et 258 090 octets) font le gros du
+travail, comme sur Isolation. `rogneAuxComposantesAncrees` retire ensuite 65 125 cellules sur
+Detachment (1 composante gardee sur 4) et 118 798 sur Argyle (1 sur 326). Argyle recoit en plus
+`toleranceNavmesh: 3` : c est une carte couverte, et sans elle on voit les toits au lieu du sol.
+
+**Conclusion / prochaine etape** : Detachment soumise au gate — reste a trancher si l ilot de
+droite appartient a la carte (il porte une ancre, donc le rognage aux composantes le garde).
+Argyle est cuite mais encore tres chargee : un second levier sera probablement necessaire avant de
+la presenter. Rien de publie pour ces deux cartes, tout est en scratch.
+
+## [2026-09-03] Detachment et Argyle VALIDEES et publiees — plus aucune carte jouee en mode supporte sans fond
+
+**Statut** : Complete (les deux gates obtenus), non commite.
+
+**Verbatim** : « Detachment est parfaite » ; puis pour Argyle « faut juste remplir tous les trous a
+l interieur de la silhouette et retirer un peu de toits comme pour live fire », et « ok argyle
+validée ! ».
+
+**Decision technique principale — la demande d Argyle etait la MEME que celle de Live Fire, mais
+elle ne pouvait pas passer par les memes leviers, et pour deux raisons mesurees.**
+
+1. LE COMBLEMENT. `combleTrous` exige les zones nommees ; Argyle est une carte Forge, elle n en a
+   pas. Le pendant est `combleAuMaillage`, qui pose le sol suppose partout ou le MAILLAGE dit qu on
+   marche. La contrainte « que a l interieur de la silhouette » est alors garantie par
+   construction : sur une carte Forge, le maillage EST la silhouette jouee.
+2. LES TOITS. `ecreteToits` a ete REFUSE, sur la regle de couverture de la recette : Argyle est
+   mesuree **couverte a 53,2 pour cent**, largement au-dessus du seuil d un tiers — le regime exact
+   de Launch Site (53,5) ou l ecretage avait substitue 162 139 cellules a 245 307 et rendu une
+   arene creuse. Sur une carte couverte l ecretage REMPLACE la substitution au lieu de s y
+   ajouter, et ici la substitution est celle du maillage, c est-a-dire ce qui rend la carte
+   lisible. Levier retenu : `toleranceNavmesh` serre de 3 a 2 m, qui vide les surfaces loin du sol
+   SANS desarmer la substitution.
+
+**DEUX GARDE-RAILS ONT MORDU PENDANT LE LOT, ET AUCUN N A ETE CONTOURNE.**
+
+- `TestCatalogueObjectifsModulesDistincts` : les deux entrees arrivaient avec `module: "map"` —
+  exactement la regression du 2026-08-25 que ce test decrit, « un tirage reseau a ecrase `module`
+  par le nom de fichier servi ». Corrige en `detachment_map` / `argyle_map`, la convention du reste
+  du catalogue. La correction est DURABLE sans toucher au code : `gardeModuleConnu` conserve un
+  module deja connu a la prochaine regeneration.
+- `TestFondForgeJamaisSousCleModule` : rouge tant qu Argyle etait declaree sans fond publie. Il
+  disait vrai ; il est passe au vert par la publication, pas par un amenagement.
+
+**Resultats observes** : Detachment 1 526 x 1 666 px, Argyle 1 090 x 1 707 px, **14 ancres sur 14**
+chacune, images identiques a l octet pres a celles qui ont ete gatees. Le catalogue des fonds passe
+a **109**, 236 identites, 0 ambiguite. L inventaire des cartes JOUEES sans fond tombe de 8 lignes a
+**2** : Cole Protocol (1 match, Firefight) et TFF Night Of The Undead (1 match, playlist
+personnalisee) — les deux hors perimetre du rejeu. **Plus aucune carte jouee en mode supporte n est
+sans fond.** Tests verts : `internal/analysis/replay`, `internal/himap` (cles Forge et reglages),
+`cmd/mapfond-build`, `cmd/mapobj-build`, `cmd/mapcallouts-build`, `cmd/mapnav-fetch`.
+
+**Conclusion / prochaine etape** : le chantier ouvert par HANDOFF_FONDS_CARTE_2026-09-03 est solde
+sur son perimetre produit. Reports ouverts, tous ecrits : les 13 zones de `sgh_interlock` qui
+restent brutes faute de decor sous elles ; l absence de test d accord entre `cmd/mapfond-inventaire`
+et `resolveBackgroundKey` ; et la non-reproductibilite de la passe native de `mapcallouts-build`,
+qui reste un piege arme pour le prochain qui publiera un fond de carte NATIVE.
+
+## [2026-09-03] Les trois reports du lot fonds sont soldes — dont un qui n en etait pas un
+
+**Statut** : Complete.
+
+**REPORT 1 — LES 13 ZONES « BRUTES » DE LIVE FIRE : FAUSSE ALERTE, et la mesure le dit.**
+Question de l utilisateur : « on est en 2D donc on devrait etre bon au niveau du sol non ? ». Oui,
+et pour deux raisons independantes.
+
+D abord, une zone gardee BRUTE nomme quand meme : `zoneAt` interroge le polygone servi, et le
+decoupage n est qu un affinage de PRECISION (il empeche une zone de reclamer un joueur qui est a
+cote). Rien n est casse par une zone non decoupee.
+
+Ensuite, et c est le point : les 13 zones ne sont pas de Live Fire. Leurs centroides le montrent
+sans ambiguite. Les callouts de l arene — Tunnel, Canal, Yard, House, Nest, Tower, Platform, Green
+Building, Green Bend, Turbine, Brutes, Storage, Overlook, Grad Board — tiennent tous dans
+**x [-9 ; 27], y [16 ; 47]**, c est-a-dire dans la boite publiee. Les 13 brutes — Weapon Range,
+Movement Course, AI Lab, Armory, Locker Room, Lobby, Landing Pad — sont a **y [66 ; 98]**, un
+batiment situe 30 a 50 m au nord : c est l ACADEMIE, que le meme tag `levl` declare parce que la
+geometrie commune loge plusieurs petites arenes. Aucune ancre d objectif n y tombe. Report FERME,
+il n y avait rien a corriger.
+
+**REPORT 2 — L INVENTAIRE EST DESORMAIS TENU A LA PRODUCTION.** `cmd/mapfond-inventaire` n avait
+aucun test, alors que sa seule raison d etre est de resoudre comme
+`replayService.resolveBackgroundKey`. Deux familles ajoutees, et il fallait les DEUX : six cas de
+comportement sur un repertoire fabrique (map_id prioritaire sur l index — le cas ou l inversion
+servirait le fond d une AUTRE carte —, rattrapage par nom, nom d asset avant libelle brut,
+heritage variante vers base, variante qui garde son propre fond, carte inconnue) ; et un
+GARDE-RAIL DE SOURCE qui compte les chemins de resolution du fichier de production. Le
+comportement seul ne verrait rien : un troisieme chemin ajoute cote service laisserait ces tests
+verts et l inventaire faux. Le garde verifie aussi l ORDRE (map_id avant index) et echoue avec un
+message qui dit quoi faire.
+
+**REPORT 3 — LE CATALOGUE DE CALLOUTS NE PEUT PLUS MAIGRIR EN SILENCE.**
+`cmd/mapcallouts-build/garde_perte.go` compare la sortie a ce qui est deja sur le disque, carte
+par carte, sur le nombre de SOMMETS (contour + parties + trous), et refuse d ecrire des qu une
+carte en perd. Seuil ZERO. Une carte qui DISPARAIT compte comme une perte totale. Echappatoire
+explicite et bruyante : `--accepte-perte`, qui journalise chaque carte perdante avec ses deux
+comptes.
+
+Pourquoi les sommets et pas autre chose : les trois invariants deja poses comptent les cartes
+(22), les zones (816) et les libelles (816/816) — **aucun des trois n avait bouge** le
+2026-09-03 pendant que 16 400 sommets disparaissaient sur 16 cartes. Le temoin du test rejoue
+exactement cette forme : memes cartes, memes zones, moins de sommets. Cinq autres cas couvrent le
+gain (le decoupage nominal doit passer), le comptage de `Parts`/`Holes` (ne compter que `Polygon`
+ferait passer un decoupage REUSSI pour une perte et bloquerait la chaine), la disparition d une
+carte, les deux sens de l echappatoire, et le premier ecrit d un titre.
+
+**Resultats observes** : `go vet` propre sur cmd/, himap et replay ; tests verts sur
+`cmd/mapfond-inventaire` (nouveau), `cmd/mapcallouts-build` (6 nouveaux cas),
+`cmd/mapfond-build`, `cmd/mapobj-build`, `cmd/mapnav-fetch`, `internal/analysis/replay`.
+
+**Conclusion / prochaine etape** : le chantier ouvert par HANDOFF_FONDS_CARTE_2026-09-03 est clos,
+reports compris. Reste a committer.
