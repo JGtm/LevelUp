@@ -5,6 +5,7 @@ package duckdb
 import (
 	"context"
 	"database/sql"
+	"slices"
 	"testing"
 	"time"
 
@@ -317,5 +318,51 @@ func TestGetWorldLeaderboardCatalog(t *testing.T) {
 	}
 	if unknownLabel != "unknown-pl" {
 		t.Errorf("libellé inconnu = %q, attendu fallback sur l'asset_id", unknownLabel)
+	}
+}
+
+// TestGetWorldLeaderboardCatalog_PlaylistIDsPerSeason (Lot 4.2) : chaque saison
+// porte les playlists RÉELLEMENT relevées pour elle. Sans ça, le front croise les
+// deux listes plates et propose des couples jamais capturés (tableau vide).
+func TestGetWorldLeaderboardCatalog_PlaylistIDsPerSeason(t *testing.T) {
+	shared := openMemDB(t)
+	applyWorldLeaderboardMigration(t, shared.SQLDb())
+	ctx := context.Background()
+
+	now := time.Now().UTC()
+	// 13-3 relevée sur 2 playlists, 13-2 sur une seule : le couple (13-2, pl-b)
+	// n'existe pas et ne doit apparaître nulle part.
+	rows := []domain.LeaderboardEntry{
+		{Season: "csrseason13-3", Playlist: "pl-a", Rank: 1, Gamertag: "A", CSRValue: 2000, Tier: "Onyx", FetchedAt: now},
+		{Season: "csrseason13-3", Playlist: "pl-b", Rank: 1, Gamertag: "B", CSRValue: 1900, Tier: "Onyx", FetchedAt: now},
+		{Season: "csrseason13-2", Playlist: "pl-a", Rank: 1, Gamertag: "C", CSRValue: 1800, Tier: "Diamond", FetchedAt: now},
+	}
+	if _, err := InsertWorldCSRSnapshot(ctx, shared.SQLDb(), "halo_infinite", rows); err != nil {
+		t.Fatalf("InsertWorldCSRSnapshot: %v", err)
+	}
+
+	cat, err := NewLeaderboardRepo(&PlayerDB{Shared: shared}).GetWorldLeaderboardCatalog(ctx, "halo_infinite")
+	if err != nil {
+		t.Fatalf("GetWorldLeaderboardCatalog: %v", err)
+	}
+	got := map[string][]string{}
+	for _, s := range cat.Seasons {
+		got[s.ID] = s.PlaylistIDs
+	}
+	if want := []string{"pl-a", "pl-b"}; !slices.Equal(got["csrseason13-3"], want) {
+		t.Errorf("13-3 playlist_ids = %v, attendu %v", got["csrseason13-3"], want)
+	}
+	if want := []string{"pl-a"}; !slices.Equal(got["csrseason13-2"], want) {
+		t.Errorf("13-2 playlist_ids = %v, attendu %v (le couple (13-2, pl-b) n'existe pas)", got["csrseason13-2"], want)
+	}
+	// Les listes plates restent inchangées (compat) : 2 saisons, 2 playlists.
+	if len(cat.Seasons) != 2 || len(cat.Playlists) != 2 {
+		t.Errorf("listes plates = %d saisons / %d playlists, attendu 2 / 2", len(cat.Seasons), len(cat.Playlists))
+	}
+	// Les playlists (liste plate) ne portent JAMAIS de couples.
+	for _, p := range cat.Playlists {
+		if len(p.PlaylistIDs) != 0 {
+			t.Errorf("playlist %s porte playlist_ids=%v, attendu vide", p.ID, p.PlaylistIDs)
+		}
 	}
 }

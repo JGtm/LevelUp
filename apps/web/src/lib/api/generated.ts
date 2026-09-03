@@ -6362,6 +6362,7 @@ export interface components {
             display_name: string;
             enriched: boolean;
             id: string;
+            playlist_ids?: string[] | null;
         };
         LeaderboardEntry: {
             /** Format: double */

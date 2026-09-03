@@ -176,6 +176,14 @@ type LeaderboardCatalogRef struct {
 	// classement seul (le front badge « stats détaillées indisponibles »). Pertinent
 	// pour les saisons uniquement ; toujours false pour les playlists.
 	Enriched bool `json:"enriched"`
+	// PlaylistIDs : playlists RÉELLEMENT relevées pour cette saison (couples
+	// (saison, playlist) mesurés dans world_csr_leaderboard_latest). Renseigné sur
+	// les entrées Seasons uniquement ; toujours vide sur les playlists. Le front
+	// couple ses deux sélecteurs avec : sans ça, changer de saison peut désigner un
+	// couple jamais capturé → tableau vide. `omitempty` : absent = pas d'info de
+	// couplage (vieux backend, ou saison dont les couples n'ont pas pu être lus) →
+	// le front retombe sur la liste plate Playlists.
+	PlaylistIDs []string `json:"playlist_ids,omitempty"`
 }
 
 // LeaderboardCatalog liste les saisons et playlists pour lesquelles des snapshots

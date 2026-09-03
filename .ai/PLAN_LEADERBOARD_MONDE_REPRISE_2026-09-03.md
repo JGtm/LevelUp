@@ -130,19 +130,35 @@ réel est le 11:17 à 200 lignes, plus riche en archive). Sonde HTTP top-100 : 1
 
 ## Lot 4 — UI honnête + contrat robuste (full-stack, moyen)
 
-- [ ] 4.1 Backend : saison/playlist absents du GET page → réponse 200 vide (plus jamais le
-      500 `leaderboard_error` pour paramètres manquants) ; test handler httptest.
-- [ ] 4.2 Backend : `LeaderboardCatalog` expose les playlists PAR SAISON (couples réels
-      mesurés en base) en PLUS des listes plates (compat) ; `make generate-types`.
-- [ ] 4.3 Front `LeaderboardBlock` : appliquer D2 (seuil 25 % + bandeau i18n FR+EN dans le
-      manifest commun) ; sélecteur playlist filtré par saison sélectionnée,
-      `effectivePlaylist` retombe sur la 1re playlist DE la saison ; tests vitest.
-- [ ] 4.4 Vérifier au passage la découverte `total_local` absent du JSON (tag ?) — corriger
-      si trivial, sinon consigner en §Découvertes.
+- [x] 4.1 Backend : saison/playlist absents (blancs inclus) sur csr-world → 200 vide +
+      WARN, le repo n'est même pas appelé (prouvé par mock strict) ; `Entries` jamais nil
+      sur TOUS les retours anticipés (ratchet NoNilSlices — couvrait aussi un trou
+      pré-existant du chemin « titre sans capability ») ; nouveau
+      `handlers/leaderboard_test.go` httptest de bout en bout.
+- [x] 4.2 Backend : `LeaderboardCatalogRef.PlaylistIDs` (`playlist_ids,omitempty`, saisons
+      seulement) — couples réels via `SELECT DISTINCT` isolé dans
+      `leaderboard_world_catalog_seasons.go` (84 L ; le repo DESCEND à 725 L, la
+      décoration Enriched déplacée avec) ; couples en best-effort AVEC WARN (front
+      retombe sur la liste plate), Enriched reste une erreur dure ; openapi + generated.ts
+      régénérés (`openapi-gen` + `make generate-types`, checks « à jour » verts).
+- [x] 4.3 Front : logique extraite dans `LeaderboardBlock.logic.ts` (seuils exportés
+      `ENRICHED_COLUMNS_MIN_RATIO=0.25` / `ENRICHED_FULL_RATIO=0.8`, bornes inclusives) +
+      sous-composants `LeaderboardNotes`/`LeaderboardSelector` (le .tsx redescend à
+      539 L) ; sélecteurs couplés avec double dégradation (champ absent, filtrage vide) ;
+      bandeaux ICU chiffrés `{enriched}/{total}` FR+EN (`common.leaderboard.
+      enrichment_unavailable` / `enrichment_partial`) ; bandeau « indisponibles » masqué
+      sur saison archivée (note existante équivalente) ; 5 cas composant + 12 cas bornes.
+- [x] 4.4 Élucidé, AUCUN bug : le champ Go `TotalLocal` porte `json:"total"` — le nom de
+      fil est `total`, présent et requis dans openapi/generated ; « total_local » n'a
+      jamais existé sur le fil (ma sonde grep-ait le mauvais nom). Figé par test HTTP
+      (`TestLeaderboardPage_TotalFieldNameOnTheWire`).
 
-**Gate Lot 4** : `make check-types && make test-web` ; sonde authentifiée sans paramètres →
-HTTP 200 corps vide structuré ; capture visuelle = MAIN AU USER (URL exacte fournie :
-`http://localhost:5173/t/halo_infinite/players/JGtm/community`).
+**Gate Lot 4 (rejoué orchestrateur)** : `tsc -b --force` 0 erreur ; vitest leaderboard
+35/35 ; go service+handlers+duckdb (integration `WorldCSR|Catalog`) verts ; build vert.
+Exécuteur : `make test-web` complet 3547 pass / 14 skips pré-existants hors périmètre ;
+eslint périmètre 0 warning ; lint:fields 0. Sonde HTTP live sans paramètres : couverte par
+le httptest de bout en bout (serveur local arrêté pendant la fenêtre backfill) ; capture
+visuelle = MAIN AU USER (`http://localhost:5173/t/halo_infinite/players/JGtm/community`).
 
 ## Livraison
 
@@ -196,6 +212,16 @@ HTTP 200 corps vide structuré ; capture visuelle = MAIN AU USER (URL exacte fou
 - (Lot 3, exécuteur) `-restore-best` ignore `-dry-run` (c'est `-execute` qui commande dans
   ce mode) : deux drapeaux de simulation coexistent dans l'aide, libellés explicites mais
   confusion possible pour un opérateur pressé.
+- (Lot 4, exécuteur) le ratchet `TestDTOs_NoNilSlicesOnEmptyInput` n'exerce que le chemin
+  halo_infinite : le retour « titre sans capability » sérialisait `entries: null` sans
+  être attrapé (corrigé par construction au 4.1, le ratchet reste aveugle à ce chemin).
+- (Lot 4, exécuteur) `LeaderboardResponse.total` n'est lu nulle part côté web — champ de
+  contrat sans consommateur.
+- (Lot 4, exécuteur) `LeaderboardCatalogRef` sert saisons ET playlists mais porte deux
+  champs saison-seulement (`enriched`, `playlist_ids`) — un type dédié clarifierait.
+- (op 3.4) le checkpoint du backfill (`data/world_backfill_checkpoint.json`, juillet)
+  marque csrseason13-2 « déjà complète » et la SKIPPE — la reprise doit passer
+  `-force -skip-existing` (ignorer le checkpoint, ne fetcher que les joueurs manquants).
 
 ## Journal d'exécution
 
@@ -229,6 +255,16 @@ HTTP 200 corps vide structuré ; capture visuelle = MAIN AU USER (URL exacte fou
   le backfill opérationnel (item 3.4, fenêtre à choisir par le user). L'ordre de mérite
   (xuid avant volume, fraîcheur en dernier) est assumé : l'archive prime, l'enrichissement
   se complète par l'outil dédié.
+- **2026-09-03 — Lot 4 CLOS.** Exécuteur frais (103 outils, tous gates verts). 500→200
+  vide prouvé par mock strict + httptest bout-en-bout ; catalogue par saison
+  (`playlist_ids`) avec openapi/generated régénérés et checks fraîcheur verts ; front :
+  logique extraite testable (`LeaderboardBlock.logic.ts`), sélecteurs couplés à double
+  dégradation, bandeaux ICU chiffrés FR+EN, fichier composant ramené SOUS son niveau
+  d'avant-lot (539 L) ; `total_local` élucidé = non-bug (nom de fil `total`), figé par
+  test. Gates rejoués orchestrateur : tsc --force, vitest 35/35, go
+  service/handlers/duckdb + integration, build. Item 3.4 (backfill) : 13-2 skippée par le
+  checkpoint de juillet (« déjà complète ») → reprise `-force -skip-existing` ; 13-3 en
+  cours dans la fenêtre serveur-arrêté accordée par le user.
 
 ## Protocole de reprise
 
