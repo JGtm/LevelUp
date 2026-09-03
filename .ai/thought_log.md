@@ -89568,3 +89568,38 @@ tant qu il tient, un diff de fixture ne distingue pas une regression du bruit d 
 
 ---
 
+
+---
+
+## [2026-09-03] R7 : la liste complete d evenements se marche — et le repulseur n est pas dans le film
+
+**Statut** : Complete (recherche ; aucun fichier de production modifie).
+
+**Decision technique principale** : commande utilisateur — « on ne l arrete pas tant qu on n a
+pas le propulseur et le repulseur ». Le verrou etait la LARGEUR de charge par type : sans elle
+on ne sait pas ou commence l evenement suivant, donc on ne lisait que la TETE de chaque paquet.
+Il a saute par derivation systematique depuis l executable : domaines des references extraits
+mecaniquement (30 thunks — dix lectures de R6 corrigees au passage), largeurs derivees des
+lecteurs decompiles sous une regle unique (le flux porte son compteur de bits consommes).
+
+**Resultats observes** : 96,5 % des listes marchees integralement (91 845/95 133 ; 12 films,
+430 046 paquets delta, 236 321 evenements traverses). Cadrage PROUVE et non suppose : oracle de
+trame a facteur 7,8 contre temoin decale de +3 bits (seuil 3 ecrit d avance), et les 18
+evenements 117 de R6 retrouves au metre avec leur Script suivant 18/18. VERDICT : repulseur
+(104) et propulseur (42, 43) ABSENTS du film — la preuve tient sur la POSITION 1 d une liste,
+dont le cadrage est certain : les temoins positifs y sont tous a hauteur de leur part, les
+cibles y sont a ZERO pour 42, 30 et 16 attendues. Les 108 occurrences derriere une tete sont de
+la derive (reference constante 4224). Seule trace de la famille : 105 EquipmentObjectKnockedBack
+(l objet pousse), 8 tetes.
+
+**Ce que je n ai PAS verifie, et je le dis** : la prediction ecrite avant mesure (« les cibles
+tombent a zero une fois les predecesseurs fautifs corriges ») est FAUSSE en l etat — apres
+correction partielle du type 5 les occurrences montent (104 : 108 -> 123). Le verdict ne repose
+pas sur elle mais sur le test de position 1.
+
+**Conclusion / prochaine etape** : le chantier equipement est CLOS cote lecture — il n y a rien
+a lire pour le repulseur et le propulseur, et c est desormais etabli sur la liste entiere, plus
+seulement sur les tetes. Deux suites au plan : (1) la grammaire de PRODUCTION
+`lot1DecodeDamageAftermath` est mesuree DOUTEUSE par le meme oracle et touche 872 k evenements
+de degats deja exploites — chantier a ouvrir ; (2) la liste complete est un canal neuf (x2,5
+d evenements lisibles), a exploiter quand un besoin le justifiera.
