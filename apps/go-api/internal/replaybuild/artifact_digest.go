@@ -5,8 +5,12 @@ package replaybuild
 // Ce fichier ne CONSTRUIT rien. Il porte les fonctions qui INTERROGENT un artefact sur disque
 // (est-il a la version de schema courante ? porte-t-il des compteurs de joueur ?) et l'ecriture
 // qui le range. Elles vivaient dans `replaybuild.go` et l'avaient pousse au-dela des 500 lignes
-// du depot : ce fichier est une SCISSION PURE, aucun corps n'a change, aucun commentaire n'a ete
-// touche — seul l'emplacement bouge.
+// du depot : ce fichier est ne d'une SCISSION PURE, aucun corps n'a change, aucun commentaire
+// n'a ete touche — seul l'emplacement bougeait.
+//
+// DEPUIS : `ArtifactHasPlayerCounters` a ete SUPPRIMEE (lot 6, constat 6.3 — plus aucun appelant
+// de production depuis que les gardes lisent le digest une seule fois, item 5.3). Sa doctrine
+// vit sur [Digest.HasPlayerCounters], qui est le predicat qu'elle decrivait.
 
 import (
 	"encoding/json"
@@ -30,8 +34,27 @@ func ArtifactUpToDate(path string) bool {
 	return ok && d.UpToDate()
 }
 
-// ArtifactHasPlayerCounters dit si l'artefact au chemin donné PORTE des compteurs de joueur
-// (`scoreTimeline.players` non vide). Faux aussi quand le fichier est absent ou illisible.
+// Digest : les seules marques d'un artefact que les gardes ont à lire. Une SEULE forme de
+// lecture pour tous — deux structures anonymes concurrentes finiraient par diverger sur le nom
+// d'un champ, et le garde deviendrait muet sans que rien ne le signale.
+//
+// EXPORTÉ AU LOT 5 DE PLAN_CUISSON_PERF (item 5.3) : les appelants qui posent DEUX questions
+// sur le même artefact (« à jour ? » puis « avec des compteurs ? ») le lisaient DEUX FOIS,
+// c'est-à-dire deux `os.ReadFile` et deux désérialisations d'un document de ~2 Mo par match et
+// par cycle. Ils lisent désormais une fois et interrogent le résultat.
+type Digest struct {
+	MatchID       string
+	SchemaVersion int
+	Players       int
+	Tracks        int
+	Bytes         int
+}
+
+// UpToDate : l'artefact porte-t-il la version de schéma COURANTE (cf. replay.SchemaVersion).
+func (d Digest) UpToDate() bool { return d.SchemaVersion == replay.SchemaVersion }
+
+// HasPlayerCounters : l'artefact PORTE-T-IL des compteurs de joueur (`scoreTimeline.players`
+// non vide).
 //
 // CE QU'IL AFFIRME, ET CE QU'IL N'AFFIRME PAS. Il constate une PROPRIÉTÉ DU DOCUMENT, il ne
 // devine pas comment il a été cuit. L'implication ne vaut que dans un sens :
@@ -61,33 +84,11 @@ func ArtifactUpToDate(path string) bool {
 // LUI porterait l'implication dans les deux sens — forcerait un incrément de
 // `replay.SchemaVersion`, donc la re-cuisson de tout le cache, aujourd'hui bloquée par la bombe
 // RAM de `NamedEventsFrom` (registre du 2026-08-24). C'est la dette assumée de ce choix.
-func ArtifactHasPlayerCounters(path string) bool {
-	d, ok := ArtifactDigest(path)
-	return ok && d.HasPlayerCounters()
-}
-
-// Digest : les seules marques d'un artefact que les gardes ont à lire. Une SEULE forme de
-// lecture pour tous — deux structures anonymes concurrentes finiraient par diverger sur le nom
-// d'un champ, et le garde deviendrait muet sans que rien ne le signale.
 //
-// EXPORTÉ AU LOT 5 DE PLAN_CUISSON_PERF (item 5.3) : les appelants qui posent DEUX questions
-// sur le même artefact (« à jour ? » puis « avec des compteurs ? ») le lisaient DEUX FOIS,
-// c'est-à-dire deux `os.ReadFile` et deux désérialisations d'un document de ~2 Mo par match et
-// par cycle. Ils lisent désormais une fois et interrogent le résultat.
-type Digest struct {
-	MatchID       string
-	SchemaVersion int
-	Players       int
-	Tracks        int
-	Bytes         int
-}
-
-// UpToDate : l'artefact porte-t-il la version de schéma COURANTE (cf. replay.SchemaVersion).
-func (d Digest) UpToDate() bool { return d.SchemaVersion == replay.SchemaVersion }
-
-// HasPlayerCounters : l'artefact porte-t-il des compteurs de joueur. CE QU'IL AFFIRME ET CE
-// QU'IL N'AFFIRME PAS : cf. l'en-tête d'[ArtifactHasPlayerCounters] — le vide est une
-// PRÉSOMPTION d'appauvrissement, jamais une preuve.
+// CET EN-TÊTE VIENT D'`ArtifactHasPlayerCounters` (lot 6, constat 6.3) : cette forme-là lisait le
+// disque pour poser la seule question des compteurs, et n'avait plus aucun appelant de production
+// depuis que les gardes lisent le digest UNE fois (item 5.3). Elle a été supprimée ; sa doctrine,
+// elle, décrit le PRÉDICAT et vaut donc pour cette vue.
 func (d Digest) HasPlayerCounters() bool { return d.Players > 0 }
 
 // ArtifactDigest lit UNE FOIS l'artefact au chemin donné et rend ses marques. ok=false si

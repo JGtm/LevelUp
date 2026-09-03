@@ -85,8 +85,10 @@ func TestClasserReparation(t *testing.T) {
 // TestClasserReparation_UneSeuleLectureParArtefact — PLAN_CUISSON_PERF item 5.3.
 //
 // La classification posait TROIS questions au disque pour un seul candidat : un `os.Stat`, puis
-// `ArtifactUpToDate` (lecture complete + deserialisation), puis `ArtifactHasPlayerCounters` (une
-// SECONDE lecture complete du meme document de plusieurs mega-octets). Une passe en examine des
+// `ArtifactUpToDate` (lecture complete + deserialisation), puis le predicat de compteurs de
+// joueur (une SECONDE lecture complete du meme document de plusieurs mega-octets ; cette
+// forme-la a ete supprimee au lot 6, c'est desormais `replaybuild.Digest.HasPlayerCounters`).
+// Une passe en examine des
 // milliers. Le digest repond a tout d'une lecture ; le compteur de production le prouve.
 func TestClasserReparation_UneSeuleLectureParArtefact(t *testing.T) {
 	repo := t.TempDir()

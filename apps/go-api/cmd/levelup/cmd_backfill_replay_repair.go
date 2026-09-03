@@ -21,8 +21,8 @@ package main
 //
 // On re-cuit un artefact SI ET SEULEMENT SI il est au schema COURANT, SANS compteurs de joueur, ET
 // que la base porte des lignes de match (`len(facts.Players) > 0`). Les trois vacuites LEGITIMES
-// (film sans entites, appariement ambigu, aucun compteur dans la fenetre — cf. l'en-tete
-// d'`ArtifactHasPlayerCounters`) restent SAUTEES quand la base n'a pas de joueurs : re-cuire ne
+// (film sans entites, appariement ambigu, aucun compteur dans la fenetre — cf. l'en-tete de
+// `replaybuild.Digest.HasPlayerCounters`) restent SAUTEES quand la base n'a pas de joueurs : re-cuire ne
 // donnerait rien, et decoder pour rien est precisement ce que le blindage memoire cherche a eviter.
 //
 // # LES FAITS SE LISENT PAR LE MEME PORT QUE L'OUVRIER, EN LECTURE COURTE
@@ -68,8 +68,9 @@ const (
 // ET appauvri — un artefact riche, hors schema ou absent ne coute aucune lecture DuckDB.
 //
 // UNE SEULE LECTURE DE L'ARTEFACT (PLAN_CUISSON_PERF item 5.3). La forme precedente faisait un
-// `os.Stat` PUIS deux ouvertures completes du meme document (`ArtifactUpToDate`, puis
-// `ArtifactHasPlayerCounters`) — trois passages sur le disque par candidat, sur des passes qui en
+// `os.Stat` PUIS deux ouvertures completes du meme document (`ArtifactUpToDate`, puis le predicat
+// de compteurs de joueur, aujourd'hui [replaybuild.Digest.HasPlayerCounters]) — trois passages
+// sur le disque par candidat, sur des passes qui en
 // examinent des milliers. Le digest repond a tout d'un coup ; le `Stat` ne subsiste que dans la
 // branche degradee, ou il tranche la SEULE nuance que le digest ne porte pas : absent (rien a
 // reparer) contre present-mais-illisible (domaine de `--only-existing` ordinaire).

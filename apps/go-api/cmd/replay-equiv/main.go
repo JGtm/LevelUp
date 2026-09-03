@@ -25,21 +25,28 @@
 // (`-out`) : le tube du lanceur fusionne stdout et stderr et ne transporte qu'un JOURNAL, jamais
 // une donnee de mesure.
 //
-// # LES DEUX MODES
+// # LE MODE, ET CELUI QUI A DISPARU
 //
 //	replay-equiv [-corpus F] [-films a,b] [-update]   equivalence : digests par etape + artefact
-//	replay-equiv -walkers [-films a,b]                divergence des grammaires de decoupage (D3)
 //
 // `-corpus` ne nomme QUE la liste des films : les digests de reference et les faits vivent a
 // l'emplacement canonique (cf. dossierEquivalence) — un fichier de corpus ailleurs ne deplace
 // pas la reference.
+//
+// LE MODE `-walkers` A ETE RETIRE AU LOT 6 (2026-09-03). Il portait EN COPIE les trois marcheurs
+// de paquets historiques pour mesurer leur divergence (D3, item 0.7) ; leurs originaux ont
+// disparu aux items 1.4/1.5, la copie ne comparait donc plus qu'a elle-meme. La mesure, elle,
+// reste : figee au §2 de `.ai/V7.5/MESURES_CUISSON_PERF.md`, et rejouee en CI en une seconde par
+// le test de la mini-bobine de `internal/analysis/filmsource` (qui compare la grammaire retenue
+// a `filmdec.WalkPackets` sur un vrai chunk). Pour re-mesurer un jour : commit `aa694442f` et
+// anterieurs.
 //
 // Exemple (depuis apps/go-api) :
 //
 //	LEVELUP_REPO_ROOT=<repo> go run ./cmd/replay-equiv -films 000d5950 -update
 //	LEVELUP_REPO_ROOT=<repo> go run ./cmd/replay-equiv          # les 11 films du corpus
 //
-// PLAN_CUISSON_PERF §3 D4b et D3, §4 items 0.4, 0.5 et 0.7.
+// PLAN_CUISSON_PERF §3 D4b, §4 items 0.4 et 0.5.
 package main
 
 import (
@@ -60,14 +67,12 @@ const outilNom = "replay-equiv"
 
 // options porte les drapeaux des DEUX roles : le parent planifie, l'enfant traite un film.
 type options struct {
-	repoRoot   string
-	titleSlug  string
-	corpus     string
-	films      string
-	update     bool
-	memGiB     int
-	walkers    bool
-	walkersOut string
+	repoRoot  string
+	titleSlug string
+	corpus    string
+	films     string
+	update    bool
+	memGiB    int
 	// child, film et out ne sont poses que par le PARENT, pour son enfant.
 	child bool
 	film  string
@@ -85,7 +90,7 @@ func main() {
 	os.Exit(executer(o))
 }
 
-// executer aiguille vers l'un des quatre roles et rend le code de sortie.
+// executer aiguille vers l'un des deux roles et rend le code de sortie.
 //
 // LE JOURNAL EST INSTALLE ICI, POUR LES DEUX ROLES, ET IL NE L'ETAIT PAS DU TOUT. Sans handler,
 // ce binaire gardait le defaut de la bibliotheque : les Debug etaient perdus et — bien plus
@@ -95,16 +100,10 @@ func main() {
 // stderr de l'enfant : le journal de l'enfant remonte donc dans celui du parent.
 func executer(o options) int {
 	defer logging.InstallCLILevel(o.repoRoot, logging.ConsoleLevelFromEnv())()
-	switch {
-	case o.child && o.walkers:
-		return enfantWalkers(o)
-	case o.child:
+	if o.child {
 		return enfantEquivalence(o)
-	case o.walkers:
-		return parentWalkers(o)
-	default:
-		return parentEquivalence(o)
 	}
+	return parentEquivalence(o)
 }
 
 // lireDrapeaux analyse la ligne de commande et resout la racine du depot.
@@ -121,10 +120,6 @@ func lireDrapeaux() (options, error) {
 		"ecrit les digests de reference au lieu de les comparer (lots 0, 3 et 4b UNIQUEMENT)")
 	flag.IntVar(&o.memGiB, "mem-gib", filmproc.DefaultLimitGiB,
 		"plafond memoire de chaque enfant, en gibioctets (0 = desarme)")
-	flag.BoolVar(&o.walkers, "walkers", false,
-		"mesure la divergence des grammaires de decoupage sur les films du cache (D3, item 0.7)")
-	flag.StringVar(&o.walkersOut, "walkers-out", "",
-		"fichier TSV de la mesure -walkers (defaut : tmp/walkers.tsv sous la racine)")
 	flag.BoolVar(&o.child, "child", false, "INTERNE : role d'enfant, un seul film")
 	flag.StringVar(&o.film, "film", "", "INTERNE : le film short8 de l'enfant")
 	flag.StringVar(&o.out, "out", "", "INTERNE : fichier de sortie de l'enfant")
@@ -139,9 +134,6 @@ func lireDrapeaux() (options, error) {
 	}
 	if o.corpus == "" {
 		o.corpus = filepath.Join(dossierEquivalence(o.repoRoot), "CORPUS.txt")
-	}
-	if o.walkersOut == "" {
-		o.walkersOut = filepath.Join(o.repoRoot, "tmp", "walkers.tsv")
 	}
 	if o.child && o.film == "" {
 		return o, errors.New("role d'enfant sans -film : rien a traiter")

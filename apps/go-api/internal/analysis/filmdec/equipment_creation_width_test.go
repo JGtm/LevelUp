@@ -47,7 +47,7 @@ func TestEquipmentCreationWidth(t *testing.T) {
 
 	n := CountFilmChunks(dir)
 	band := worldObjectSlotBandDir(dir, n, EquipmentTypeIndex)
-	arch, err := EquipmentArchetype(dir)
+	arch, err := EquipmentArchetypeDir(dir)
 	if err != nil {
 		t.Fatalf("archétype ti=%d illisible : %v", EquipmentTypeIndex, err)
 	}

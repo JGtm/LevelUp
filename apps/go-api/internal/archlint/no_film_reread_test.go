@@ -14,11 +14,12 @@
 // elles portent une DATE : elles tomberont avec les enveloppes, quand plus aucun appelant hors
 // production n'en aura besoin (lot 6, au plus tot).
 //
-// # LES TROIS REGLES
+// # LES QUATRE REGLES
 //
 //  1. `zlib.NewReader` est INTERDIT dans les paquets de la chaine de cuisson (hors _test) —
 //     l'unique decompresseur y est `filmsource.Inflate`.
-//  2. `os.ReadFile` / `os.ReadDir` / `os.Open` sont INTERDITS dans `filmdec` (hors _test) sauf
+//  2. Les lectures de disque (`os.ReadFile` / `ReadDir` / `Open` / `OpenFile` / `Stat`, et
+//     `filepath.Glob` — cf. [lecturesDisque]) sont INTERDITES dans `filmdec` (hors _test) sauf
 //     dans les fichiers de l'allowlist datee ci-dessous : les chargeurs de CATALOGUE (qui ne
 //     lisent pas de film) et les enveloppes D2 declarees.
 //  3. Aucun appel d'ENVELOPPE `dir` depuis les sites de PRODUCTION de D2 (hors _test) : la
@@ -143,8 +144,25 @@ var fichiersFilmdecLisantLeDisque = map[string]bool{
 	"keyframe_entity_queue.go": true,
 }
 
-// lecturesDisque : les appels `os.*` qui touchent le systeme de fichiers.
-var lecturesDisque = map[string]bool{"ReadFile": true, "ReadDir": true, "Open": true, "Stat": true}
+// lecturesDisque : les appels `os.*` (et `filepath.Glob`) qui touchent le systeme de fichiers.
+//
+// `OpenFile` ET `Glob` AJOUTES AU LOT 6 (constat 5 de la revue de branche) : la liste ne portait
+// que `ReadFile`, `ReadDir`, `Open` et `Stat`. Les deux portes ouvertes etaient reelles et
+// triviales a franchir — `os.OpenFile(path, os.O_RDONLY, 0)` lit exactement ce que `os.Open` lit,
+// et `filepath.Glob` enumere un repertoire de chunks aussi bien que `os.ReadDir`. Une allowlist
+// qui laisse le meme geste passer sous un autre nom ne mesure plus rien.
+//
+// LA REGLE NE COUVRE QUE `internal/analysis/filmdec` : `filmsource` est HORS de son perimetre par
+// construction (il n'est pas dans `pkgDir`), et c'est voulu — c'est LE paquet autorise a lire un
+// film, l'unique chargeur de la chaine (D1).
+var lecturesDisque = map[string]bool{
+	"ReadFile": true, "ReadDir": true, "Open": true, "OpenFile": true, "Stat": true, "Glob": true,
+}
+
+// paquetsLecteursDeDisque : les identifiants de paquet dont un appel de [lecturesDisque] compte
+// comme une lecture. `filepath` y est pour `Glob` seul — aucun autre nom de la liste n'existe
+// dans ce paquet, l'union ne peut donc pas sur-detecter.
+var paquetsLecteursDeDisque = map[string]bool{"os": true, "filepath": true}
 
 // TestFilmdecNeLitPasLeDisqueHorsAllowlist — REGLE 2.
 func TestFilmdecNeLitPasLeDisqueHorsAllowlist(t *testing.T) {
@@ -164,8 +182,8 @@ func TestFilmdecNeLitPasLeDisqueHorsAllowlist(t *testing.T) {
 				return true
 			}
 			id, ok := sel.X.(*ast.Ident)
-			if ok && id.Name == "os" && lecturesDisque[sel.Sel.Name] {
-				violations = append(violations, nom+" -> os."+sel.Sel.Name)
+			if ok && paquetsLecteursDeDisque[id.Name] && lecturesDisque[sel.Sel.Name] {
+				violations = append(violations, nom+" -> "+id.Name+"."+sel.Sel.Name)
 			}
 			return true
 		})
@@ -186,6 +204,15 @@ func TestFilmdecNeLitPasLeDisqueHorsAllowlist(t *testing.T) {
 //
 // La liste couvre les enveloppes exportees de `filmdec` et de `replay`. Les formes film
 // (`ScanXxx(film, ...)`) ne sont PAS ici : ce sont elles que la production appelle.
+//
+// ELLE NE PORTE QUE DES NOMS SANS HOMONYME, ET C'EST UNE CONDITION DE VALIDITE (lot 6, constat 4).
+// Le test compare des NOMS d'appeles : il parse l'AST et ne type rien, donc `fc.Xxx()` et
+// `filmdec.Xxx()` lui sont indiscernables. Une enveloppe homonyme d'une methode rendrait la regle
+// NON DISCRIMINANTE — elle interdirait l'appel legitime. Un seul cas existait,
+// `EquipmentArchetype` (enveloppe `dir`) contre `FilmContext.EquipmentArchetype` (la methode que
+// la cuisson appelle) : l'enveloppe s'appelle desormais `EquipmentArchetypeDir`. Avant d'ajouter
+// un nom ici, verifier qu'aucune methode ne le porte
+// (`grep -rE '^func \([^)]+\) <Nom>\('`).
 var enveloppesInterditesEnProduction = []string{
 	// filmdec
 	"ScanFilmAbilityRanks", "ScanFilmBipedPickups", "ScanFilmBipedPositions", "ScanFilmCamoStates",
@@ -198,7 +225,7 @@ var enveloppesInterditesEnProduction = []string{
 	"ScanFilmObjectives", "ScanFilmProjectiles", "ScanFilmUnitEquipment",
 	"ScanFilmWorldObjectKeyframes", "ScanFilmWorldObjects", "ScanFilmWorldObjectsForBand",
 	"ScanFilmZoomEvents",
-	"DetectI0Layout", "EquipmentArchetype", "CalibrateMPPWidths",
+	"DetectI0Layout", "EquipmentArchetypeDir", "CalibrateMPPWidths",
 	"GroundWeaponSlotBand", "GroundWeaponPositions", "WorldObjectPositionsForBand",
 	"ReadFilmChunk", "CountFilmChunks",
 	// replay
@@ -274,8 +301,11 @@ func TestProductionNAppellePasLesEnveloppes(t *testing.T) {
 // exhaustive et VERIFIEE DANS LES DEUX SENS — un site en trop echoue, un site disparu aussi
 // (une allowlist qui garde des entrees mortes ne dit plus rien).
 //
-// RETRAIT CIBLE : lot 6 pour `cmd/replay-equiv/walkers.go` (cf. ci-dessous). Les autres sont
-// permanents — ils ne decompressent pas un film de cuisson.
+// LE SITE `cmd/replay-equiv/walkers.go` A DISPARU AU LOT 6 (2026-09-03), avec le mode `-walkers`
+// lui-meme : il portait EN COPIE les trois marcheurs historiques et leur inflate pour la mesure
+// 0.7, et leurs originaux n'existaient plus depuis les items 1.4/1.5 — la copie ne comparait
+// donc plus qu'a elle-meme. La mesure reste figee au §2 de `MESURES_CUISSON_PERF.md`. Les entrees
+// restantes sont PERMANENTES : aucune ne decompresse un film de cuisson.
 var sitesZlibAutorises = map[string]string{
 	"internal/analysis/filmsource/film.go": "L'UNIQUE inflate de la chaine de cuisson (D1). " +
 		"Rend le PARTIEL sur flux tronque : un film Theater se termine parfois net.",
@@ -290,10 +320,6 @@ var sitesZlibAutorises = map[string]string{
 	"cmd/fetch_film_chunks/main.go":    "Outil de RECHERCHE : telecharge et inspecte des chunks.",
 	"cmd/diag_weapons_v3/positions.go": "Outil de DIAGNOSTIC des armes v3.",
 	"cmd/rdata_weapon_scan/main.go":    "Outil de RECHERCHE (balayage de rdata).",
-	"cmd/replay-equiv/walkers.go": "HARNAIS DE MESURE du lot 0 : il porte en COPIE les trois " +
-		"marcheurs historiques et leur inflate, pour la mesure 0.7 des grammaires. Ses " +
-		"originaux n'existent plus depuis les items 1.4/1.5 (note N-AD du plan) : a trancher " +
-		"au lot 6 — le mode disparait, ou son en-tete dit qu'il fige une comparaison historique.",
 }
 
 // dossiersIgnoresPourZlib : ce que le balayage du depot ne parse pas.

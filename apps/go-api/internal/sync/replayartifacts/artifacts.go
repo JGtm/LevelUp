@@ -259,8 +259,9 @@ func attachMatchFacts(ctx context.Context, sharedDB *sql.DB, work []buildWork) {
 //
 // `complet` est une PRÉSOMPTION, pas une preuve : sans lignes de match, il n'y a rien de mieux
 // à espérer d'une reconstruction, donc l'artefact est réputé complet ; avec des lignes, l'absence
-// de compteurs de joueur le fait présumer appauvri (cf. l'en-tête d'ArtifactHasPlayerCounters
-// pour les trois vacuités légitimes que cette présomption peut confondre).
+// de compteurs de joueur le fait présumer appauvri (cf. l'en-tête de
+// `replaybuild.Digest.HasPlayerCounters` pour les trois vacuités légitimes que cette présomption
+// peut confondre).
 // UNE SEULE LECTURE DU FICHIER, ET C'EST L'ITEM 5.3 DE PLAN_CUISSON_PERF : les deux questions
 // (« à jour ? », « avec des compteurs ? ») ouvraient chacune l'artefact — deux `os.ReadFile` et
 // deux désérialisations d'un document de ~2 Mo, pour chaque match de chaque cycle, sur les DEUX

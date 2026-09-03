@@ -2,7 +2,7 @@ package replayartifacts
 
 // cuisson_test.go — LES PROTECTIONS DU CYCLE DE CUISSON (lot 5 de PLAN_CUISSON_PERF).
 //
-// Quatre proprietes, et aucune ne decode le moindre film : le pont disque et la cuisson sont
+// Cinq proprietes, et aucune ne decode le moindre film : le pont disque et la cuisson sont
 // injectes.
 //
 //  1. l'artefact deja sur disque est lu UNE fois par match (item 5.3) ;
@@ -11,7 +11,10 @@ package replayartifacts
 //  3. le film du match SUIVANT se telecharge PENDANT la cuisson du courant, un seul d'avance,
 //     dans l'ordre, et aucune goroutine ne survit au cycle (item 5.6) ;
 //  4. un verrou de decodage tenu par un autre processus compte en ECHEC du cycle, jamais en
-//     succes ni en blocage (item 5.7).
+//     succes ni en blocage (item 5.7) ;
+//  5. sous [PlancherCuisson], la cuisson ne part PAS : le match est reporte au cycle suivant
+//     sans echec ni WARN — mais SANS cuisson cablee le pont disque continue, le plancher ne
+//     protegeant qu'une cuisson (constat 6.3 de la revue de branche).
 
 import (
 	"context"
@@ -182,6 +185,74 @@ func TestBuildAll_DeadlineSuitLeSoldeDeBudget(t *testing.T) {
 	}
 	if got := deadlineDuFilm(Deps{DeadlineParFilm: time.Second}, time.Hour); got != time.Second {
 		t.Errorf("borne injectee : %v, attendu 1s", got)
+	}
+}
+
+// TestBuildAll_SoldeSousLePlancher_ReporteSansEchec — constat 6.3 de la revue de branche.
+//
+// LE CAS QUE LA REVUE A TROUVE : un solde de budget POSITIF (la garde d'entree de boucle passe
+// donc) mais minuscule. La borne du film valait alors ce solde, `cuireUnMatch` recevait un
+// contexte deja expire, l'enfant mourait a la naissance, le film comptait en ECHEC et un WARN
+// « artefact rejeu non construit » accusait le decodage d'une panne qui n'existe pas. Sous
+// [PlancherCuisson], la cuisson NE PART PLUS : le budget s'applique entre deux matchs, et un
+// report est nominal (Info), pas un incident.
+func TestBuildAll_SoldeSousLePlancher_ReporteSansEchec(t *testing.T) {
+	f := &fetcherFilms{}
+	avant := runtime.NumGoroutine()
+	var appels int
+	d := Deps{
+		RepoRoot: t.TempDir(), TitleSlug: titlePkg.DefaultSlug, CacheRoot: t.TempDir(),
+		Fetcher: f, Budget: PlancherCuisson / 2,
+		BuildOne: func(context.Context, BuildOneRequest) (BuildOneResult, error) {
+			appels++
+			return BuildOneResult{}, errors.New("aucune cuisson ne doit partir sous le plancher")
+		},
+	}
+	b := buildAll(context.Background(), d, []buildWork{{matchID: "m1"}, {matchID: "m2"}})
+
+	if appels != 0 {
+		t.Errorf("%d cuisson(s) lancee(s) sous le plancher, attendu 0", appels)
+	}
+	if b.echecs != 0 {
+		t.Errorf("echecs = %d, attendu 0 : un report n'est pas un echec", b.echecs)
+	}
+	if b.construits != 0 {
+		t.Errorf("construits = %d, attendu 0", b.construits)
+	}
+	if !b.budgetEpuise {
+		t.Error("le bilan ne signale pas le budget epuise : le cycle suivant ne saurait pas qu'il reste du travail")
+	}
+	// LE FILM EST QUAND MEME PERSISTE, et c'est le point : il EXPIRE cote serveur Halo,
+	// l'artefact non. Le report ne coute donc pas le film.
+	if b.filmsSauves != 1 {
+		t.Errorf("films persistes = %d, attendu 1 (le pont disque a fait son travail avant le report)",
+			b.filmsSauves)
+	}
+	verifierAucuneGoroutineSurvivante(t, avant)
+}
+
+// TestBuildAll_SoldeSousLePlancher_SansCuissonCablee_PersisteQuandMeme — le REVERS du plancher.
+//
+// Sans `BuildOne`, la boucle n'est plus qu'un pont disque : il n'y a aucune cuisson a proteger
+// d'une deadline derisoire, et un arret anticipe ne ferait que perdre des films — qui EXPIRENT
+// cote serveur Halo, la ou un artefact se refait. Le plancher ne doit donc pas s'appliquer.
+func TestBuildAll_SoldeSousLePlancher_SansCuissonCablee_PersisteQuandMeme(t *testing.T) {
+	f := &fetcherFilms{}
+	d := Deps{
+		RepoRoot: t.TempDir(), TitleSlug: titlePkg.DefaultSlug, CacheRoot: t.TempDir(),
+		Fetcher: f, Budget: PlancherCuisson / 2, // sous le plancher, mais positif
+	}
+	b := buildAll(context.Background(), d, []buildWork{{matchID: "m1"}, {matchID: "m2"}})
+
+	if b.filmsSauves != 2 {
+		t.Errorf("films persistes = %d, attendu 2 : sans cuisson cablee, le pont disque continue",
+			b.filmsSauves)
+	}
+	if b.budgetEpuise {
+		t.Error("budget signale epuise : le plancher ne s'applique pas quand rien ne cuit")
+	}
+	if b.echecs != 0 || b.construits != 0 {
+		t.Errorf("bilan = %+v, attendu 0 echec et 0 construit", b)
 	}
 }
 

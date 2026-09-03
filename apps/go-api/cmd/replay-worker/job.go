@@ -24,6 +24,7 @@ import (
 
 	"levelup/go-api/internal/api/handlers"
 	"levelup/go-api/internal/domain"
+	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/filmproc"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/port"
@@ -268,7 +269,16 @@ func (w *worker) buildAndSend(ctx context.Context, job *domain.BuildQueueJob) (s
 	//
 	// PRIS APRÈS LE TÉLÉCHARGEMENT ET RENDU AVANT L'ENVOI : le verrou protège la RAM du
 	// DÉCODAGE, pas le réseau. L'étendre au transfert immobiliserait la machine pour rien.
-	lock, err := filmproc.AcquireSoloWait(ctx, w.workDir, outilOuvrier, p.MatchID, attenteVerrouOuvrier)
+	//
+	// ENRACINÉ SUR LE CACHE DU DÉPÔT, PAS SUR `w.workDir` (lot 6, constat 7). Le verrou vit à
+	// `<racine>/data/cache/film_decode.lock` : c'est le contrat de `filmproc.AcquireSolo`, et
+	// c'est là que le prennent les TROIS autres points d'entrée (post-sync, passe de backfill,
+	// `replay-build`). Tant que `--work` n'est pas passé, `w.workDir` VAUT ce cache et l'exclusion
+	// tenait par coïncidence ; dès qu'un ouvrier distant passe `--work`, il posait son verrou dans
+	// un dossier que personne d'autre ne regarde — et l'exclusion annoncée juste au-dessus
+	// n'existait plus. `w.repoRoot` est garanti non vide (le binaire sort en 2 sans `--repo`).
+	verrouRoot := titlePkg.NewPathResolver(w.repoRoot).CacheRootDir()
+	lock, err := filmproc.AcquireSoloWait(ctx, verrouRoot, outilOuvrier, p.MatchID, attenteVerrouOuvrier)
 	if err != nil {
 		return "", fmt.Errorf("decodage refuse : %w", err)
 	}

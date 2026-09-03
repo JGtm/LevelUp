@@ -97,7 +97,7 @@ func (a Archetype) indicesOfFirst(name string) int {
 // déclare. C'est la pièce : les index cités par le plan sont vérifiés ici, pas supposés.
 func equipLogArchetype(t *testing.T, dir string) Archetype {
 	t.Helper()
-	arch, err := EquipmentArchetype(dir)
+	arch, err := EquipmentArchetypeDir(dir)
 	if err != nil {
 		t.Fatalf("archétype ti=%d illisible : %v", EquipmentTypeIndex, err)
 	}

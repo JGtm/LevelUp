@@ -109,10 +109,10 @@ func TestEtapesAttenduesPorteLesTroisListes(t *testing.T) {
 
 func TestArgsEnfantPorteLaRacineEtLeMode(t *testing.T) {
 	o := options{repoRoot: "/depot", titleSlug: "halo_infinite", memGiB: 3}
-	args := argsEnfant(o, "000d5950", "/tmp/x.tsv", []string{"-walkers"})
+	args := argsEnfant(o, "000d5950", "/tmp/x.tsv")
 	joint := strings.Join(args, " ")
 	for _, veut := range []string{"-child", "-film 000d5950", "-out /tmp/x.tsv",
-		"-repo-root /depot", "-title halo_infinite", "-mem-gib 3", "-walkers"} {
+		"-repo-root /depot", "-title halo_infinite", "-mem-gib 3"} {
 		if !strings.Contains(joint, veut) {
 			t.Errorf("args de l'enfant sans %q : %s", veut, joint)
 		}
