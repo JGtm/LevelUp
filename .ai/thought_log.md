@@ -89249,3 +89249,285 @@ justement le geste qui a provoque quatre sinistres RAM. Non traite, a decider av
 **Conclusion / prochaine etape** : une carte sans fond cale n a desormais plus rien sous les
 joueurs (hors props Forge). Le chantier des fonds devient donc le seul chemin, et il avance —
 +8 cartes par heritage variante->base le meme jour.
+
+---
+
+## [2026-09-03] Rejeu 2D : translocateur toujours muet — le web est sain, la DONNEE n a rien a lui donner
+
+**Statut** : Complete (diagnostic seul, aucun code modifie).
+
+**Decision technique principale** : constat utilisateur « toujours pas d effet R3-1/R3-3 sur le
+dernier match Dynasty ». Verification sur pieces : le cablage du 02/09 (`f3bd18fd7`,
+spentTranslocations + translocatorRanks + riftTeleports) est en place et correct. Le silence
+vient des donnees, a deux niveaux.
+
+**Resultats observes** (artefact 1b2d9e08, cuit le 02/09 20:10, JGtm au roster) :
+- Match Dynasty : 7 prises du translocateur (jamais JGtm), ZERO spent rang 11, zero saut >10 m
+  chez les 7 porteurs -> personne n a teleporte ni consomme. Les 3 poses translocator_beacon
+  sont l OBJET LACHE A LA MORT : les vies des poseurs s achevent exactement a la frame des
+  poses (958/1030/1061). Sur CE match il n y avait rien a eclairer — silence correct.
+- R3-1 STRUCTUREL (parc entier, 12 films concernes) : 16 poses translocator_beacon = 15
+  dropped + 1 unknown, ZERO deployed — or le calque ne dessine la faille que sur deployed.
+  Contre-epreuve decisive : 10 spent rang 11 sur 4 films (= 10 teleportations reelles, donc
+  autant de failles ouvertes en jeu) et AUCUNE pose correspondante, ni beacon ni `other`.
+  L entite de la faille ACTIVEE n est PAS capturee par le canal ti=37/eqip : 0x730dc70f est
+  l objet RAMASSABLE. La faille du 27/08 ne peut s afficher sur aucun artefact existant.
+- R3-3 : les deux canaux sont troues. `spent` : 8 films sur 12 avec prises n en ont aucun ;
+  quand il existe il date 14-26 s APRES le saut reel (sauf 1 cas colle a 1 frame) — le
+  translocateur permet plusieurs sauts, le spent date l epuisement. `riftTeleports` : seuil
+  12 m / 3 frames ; les sauts reels mesures font 8 a 21 m en 1 frame — la moitie passe sous
+  le seuil.
+- Autres equipements (question user) : cote poses, AUCUNE autre famille a 0 % deployed (mur
+  51 %, capteur 17 %, champ 20 %, traqueur 3/15, ecran occultant 9/105 — faible, a surveiller).
+  Cote spent, tout ce qui est branche dessus sous-reagit : parc famille A repulseur 7 spent /
+  366 taken, grappin 14/264, mur 14/153, propulseur 14/94, detecteur 5/41. Consommateur
+  principal : l extinction de la vignette d equipement (refineAbilityReading) — famille A
+  (rangs 1-12) sans resync keyframe (fenetre kf = 16..23), la vignette reste allumee apres
+  usage jusqu a la mort. Famille B (19-22) resynchronise, spent bien mieux couvert (r19 :
+  118 spent / 59 taken).
+
+**Conclusion / prochaine etape** : matchs temoins ou l eclat DOIT se voir aujourd hui :
+4577fcc4, a0c36016, f2966f08, faff9935 (spent reels). Pistes a decider : (1) R3-3 — detecter
+le passage par la trajectoire seule (seuil ~8 m / 1 frame chez porteur confirme) et dater
+l eclat au saut, pas au spent ; (2) R3-1 — chantier RE : retrouver l entite de la faille dans
+le film ; en attendant, option produit : dessiner la faille a l ARRIVEE du saut detecte ;
+(3) vignette famille A — trou documente, a cadrer.
+
+---
+
+## [2026-09-03] CORRECTIF translocateur : Dynasty portait DEUX translocations reelles — ma conclusion « rien a eclairer » etait fausse
+
+**Statut** : Complete (diagnostic corrige, aucun code modifie).
+
+**Decision technique principale** : contre-observation user (« JGtm l a utilise, on voit un
+saut sans mourir ; un adversaire aussi ») verifiee et CONFIRMEE. Mon balayage d hier ne
+couvrait que les 7 porteurs ENREGISTRES par le canal — or le canal rate des prises : c est
+precisement le defaut. Lecon de methode : ne jamais restreindre une recherche de verite
+terrain aux seuls slots que le canal suspect a bien voulu enregistrer.
+
+**Resultats observes** (artefact 1b2d9e08) :
+- JGtm slot 535 : saut de 22,1 m en 1 frame a t=1762, vie continue 48 s. Sa prise du
+  translocateur (entre 1378 et 1762) n a JAMAIS ete decodee — et le canal le SAVAIT :
+  coverage.equipmentChanges publie counterJumps=1 / missedEstimate=1 sur ce match, le saut
+  de compteur R(3) est exactement cette emission manquee. Consequence en cascade : le spent
+  de 1851 porte from=4 (grappin, dernier rang vu) -> spentTranslocations le rejette ; la
+  derniere lecture abilities du slot est r=4 -> portaitLeTranslocateur rejette un saut de
+  22 m. UNE emission manquee aveugle LES DEUX canaux.
+- SpiffyDart86537 slot 560 : saut de 7,8 m a t=3420 (prise r=11 bien decodee a 3191), mort a
+  3432. Sous le seuil 12 m/3 frames, et aucune emission d epuisement (mort pendant l effet).
+- Auto-mesure du canal sur 67 films : 3 158 emissions decodees, 165 manquees entre deux vues
+  (5,0 %), 114 vies sur 2 503 (4,6 %) amputees de leur debut. Le taux brut est conforme au
+  ~95 % documente, mais l AMPLIFICATION est le vrai probleme : en famille A (rangs 1-12,
+  hors fenetre keyframe 16-23) il n y a AUCUNE resynchronisation — une emission manquee
+  corrompt from/etat porteur jusqu a la fin de la vie, et les consommateurs (filtre from,
+  garde porteur) traitent le canal comme s il etait complet.
+- Le temoin de completude (counterJumps/missedEstimate/livesFirstOffSpec) est publie par
+  FILM dans coverage et consomme par PERSONNE ; par EMISSION, l information existe au
+  decodage (saut de compteur) mais n est pas publiee.
+
+**Conclusion / prochaine etape** : chantier « fiabiliser la lecture des usages d equipement »
+propose au user, lots esquisses : (A) passage par la cinematique seule (saut intra-vie
+>= ~6 m / 1 frame, grappin <= ~2 m/frame, exclusion portes existante ; porteur requis
+seulement en zone grise) + eclat date au saut ; (B) publier le marqueur `gap` par emission
+(schema +1, nouveaux films seulement) ; (C) spent a from perime requalifiable quand gap +
+saut cinematique concordent ; (D) RE entite faille (worktree dedie) ; (E) vignette famille A
+(degradation honnete). Encart du PLAN_RETOURS mis a jour dans le meme geste.
+
+---
+
+## [2026-09-03] Chantier « lecture fiable des usages d equipement » — ouvert, agents R1/R2 lances
+
+**Statut** : En cours (pilotage).
+
+**Decision technique principale** : decision user — pas de regle arbitraire (le lot « saut
+spatial >= X m » est ABANDONNE : une teleportation peut faire 50 cm) ; on cherche les
+ENREGISTREMENTS du film eux-memes. Chantier pilote par agents. Worktree
+`LevelUp-wt-lecture-equipement`, branche `wt/lecture-equipement`, plan
+`.ai/PLAN_LECTURE_FIABLE_EQUIPEMENT_2026-09-03.md` (revu contre la grille plan-review :
+statuts d items, gates = rapports rejouables, reprise, decouvertes).
+
+**Resultats observes** : lots R1 (entite de la faille activee — creations tous ti,
+recensement images-cles, canal des evenements ; ancres A1/A2 de Dynasty) et R2 (emission
+i48 manquee du slot 535 : octets presents mais rates par le scanner, ou absents du film ;
+puis echantillon de ~10 counterJumps du parc) lances en parallele, worktrees isoles,
+instruments env-gated, lecture seule, aucun commit agent. R3 (filtre MaxSpeedMPS=100)
+attendra la fin de R1 ; R4 (marqueur `gap`, schema +1) est gate par la decision D3.
+
+**Conclusion / prochaine etape** : consolider les rapports R1/R2 a leur arrivee dans le
+worktree du chantier, statuer les items du plan, presenter les verdicts et les decisions
+D1-D4 au user. Aucun commit sans son accord.
+
+---
+
+## [2026-09-03] Page Classements vide — diagnostic sur pieces (aucune modif de code)
+
+**Statut** : Complete (diagnostic seul ; correctif non lance, en attente d arbitrage user).
+
+**Decision technique principale** : ne rien supposer, tout prouver par sonde. Endpoints
+appeles en local avec un cookie de session SIGNE (HMAC du secret `.env.local`) pour passer
+`RequirePlayerOwnership` ; donnees lues par `cmd/diag_q` compile en CGO (msys64), DB
+ouverte en read_only, binaire temporaire supprime apres coup.
+
+**Resultats observes** :
+- API et capability NE SONT PAS en cause : `/pages/leaderboard/catalog` rend 8 saisons +
+  7 playlists ; le bootstrap declare bien `world.leaderboard` ; la vue par defaut
+  (csrseason13-2 + Arene classee) rend 86 lignes, gamertag + CSR + palier PLEINS.
+- Ce qui est vide, c est l ENRICHISSEMENT : 4/86 lignes portent `match_count`, 0/86
+  portent un xuid → colonnes FDA/Frags/victoires a « — » sur ~95 % des lignes, et le
+  compte local n est jamais surligne (`isLocalXUID` compare un xuid vide).
+- CAUSE RACINE — la vue `world_csr_leaderboard_latest` retient `max(fetched_at)` par
+  (titre, saison, playlist) : DERNIER LOT GAGNE, sans notion de qualite. Historique du
+  couple (13-2, Arene) : lot 03/07 11:25 = 100 lignes / 100 xuid / **88 % enrichi** ;
+  lot 07/07 05:27 = 86 lignes / **0 xuid** / **4,7 % enrichi**. Le cycle degrade du 07/07
+  a donc masque DEFINITIVEMENT un lot sain. Le « 90 % » dont se souvient le user est
+  mesure a 88 %.
+- Le plancher de coherence (`world_leaderboard_cron.go` scrapeAll, `minEntries` = 25) est
+  ABSOLU et ne compte que les LIGNES : une chute 200 → 86 (-57 %) passe, et l effondrement
+  xuid 100 % → 0 % n est controle nulle part.
+- L enrichissement se joint par `lower(gamertag)` et non par xuid : 824 lignes de stats
+  existent pour (13-2, Arene), seules 4 se joignent aux 86 servies.
+- 3 playlists sur 7 n ont AUCUNE stat pour 13-2, mais `hasEnrichment` (un seul
+  `match_count` non nul suffit) allume quand meme les 11 colonnes enrichies.
+- `GetCSRWorldLeaderboard` rend une erreur DURE si saison ou playlist est vide → HTTP 500
+  `leaderboard_error` la ou tout le reste du domaine degrade en 200 vide.
+- Le cron est en echec TOTAL depuis le 13/07 (267 occurrences local + prod) : la page-graine
+  Waypoint rend 404, `discoverActiveSeason` echoue et `runOnceForTitle` retourne nil — la
+  degradation est classee nominale, donc AUCUNE alerte apres deux mois sans scrape.
+
+**Conclusion / prochaine etape** : le correctif minimal n est PAS un re-scrape (Waypoint
+404 aujourd hui) mais un changement de regle de selection du lot servi + des garde-fous de
+qualite au scrape. Pistes soumises au user, rien n a ete modifie.
+
+---
+
+## [2026-09-03] Classements — contre-verification du diagnostic + plan de reprise
+
+**Statut** : Complete (plan redige, en attente du go user — « ok plan » ne vaut pas go).
+
+**Decision technique principale** : verification adversariale AVANT plan. Trois faits
+nouveaux prouves en live : (1) Halo Waypoint est VIVANT — la saison courante est
+csrseason13-3, __NEXT_DATA__ intact, player.xuid + gamertag presents sur les 100 entrees
+de la page 1 (curl brut) ; (2) l ancienne saison csrseason13-2 rend 404 ET a disparu du
+menu deroulant — l hypothese fondatrice de la graine de decouverte (« une saison capturee
+rend toujours sa page ») est refutee, le cron est un point fixe mort, PAS auto-resolutif ;
+(3) la resolution gamertag→xuid multi-comptes avec respect des debits demandee par le user
+EXISTE deja (internal/worldenrich : chaine PeopleHub→Profil Xbox, round-robin 429,
+ratebudget.ForXUID, cache persistant) — reutiliser, rien a reimplementer. Verifie aussi :
+world_player_season_stats n a PAS de colonne xuid (jointure gamertag) → le lot « xuid de
+bout en bout » (recette ADR 0026) est DIFFERE au registre des reports ; le cycle du 07/07
+n a AUCUNE ligne d enrichissement au log (enricher nil = skip silencieux, ligne 429-431 du
+cron) la ou 06/26 et 07/01 en ont.
+
+**Resultats observes** : plan ecrit — .ai/PLAN_LEADERBOARD_MONDE_REPRISE_2026-09-03.md
+(grille plan-review passee : decisions D1-D4 tranchees par defaut, gates en commandes
+exactes, statuts d items, reports, protocole de reprise). Lots : 1 decouverte reparee
+(repli base-URL + escalade + logs honnetes), 2 garde-fous qualite au persist (seuils D1),
+3 restauration append-only des lots sains du 03/07 (-restore-best, dry-run d abord),
+4 UI honnete (seuil colonnes + bandeau + selecteurs couples + 500→200).
+
+**Conclusion / prochaine etape** : presenter solutions + plan au user ; attendre le go
+explicite et le nom de branche valide (propose : fix/leaderboard-monde-reprise-scrape,
+worktree dedie). Merge final = deploy prod auto, a annoncer.
+
+---
+
+## [2026-09-03] Classements — Lot 1 CLOS (decouverte par redirection + escalade)
+
+**Statut** : Complete (Lot 1) ; chantier en cours, Lot 2 a suivre.
+
+**Decision technique principale** : la saison active se lit dans le header Location du 307
+de /halo-infinite/leaderboards (suivi de redirection desactive) — repli branche dans
+discoverActiveSeason apres epuisement des pages-graines ; escalade WARN→ERROR au-dela de
+3 cycles consecutifs sans decouverte (jauge expvar world_leaderboard_season_discovery_
+fail_streak) ; enrich() plus jamais silencieux quand l enricher manque. Correctif de
+revue : extraction world_leaderboard_discovery.go (cron 642→451 L, seuil 500 respecte).
+
+**Resultats observes** : gate test/vet/build vert rejoue par l orchestrateur ; verification
+sur donnees reelles (binaire worktree contre checkout principal, air arrete/restaure) —
+graines 13-2 en 404, saison csrseason13-3 obtenue PAR LE REPLI, cycle termine : 516
+lignes inserees, 516/516 avec xuid, Legacy (2 entrees) rejetee par le plancher existant.
+Effet de bord vertueux : la graine persistee redevient une saison VIVANTE, meme l ancien
+binaire red-decouvre desormais. Ce cycle n a couvert que les 4 playlists statiques
+(decouverte playlists via page-graine morte a cet instant) — auto-repare au cycle suivant.
+
+**Conclusion / prochaine etape** : commit Lot 1 sur fix/leaderboard-monde-reprise-scrape
+(worktree LevelUp-wt-leaderboard), lancement Lot 2 (garde-fous qualite au persist, seuils
+D1). Details : .ai/PLAN_LEADERBOARD_MONDE_REPRISE_2026-09-03.md (journal).
+
+---
+
+## [2026-09-03] Classements — Lot 2 CLOS (garde-fous qualite au persist)
+
+**Statut** : Complete (Lot 2) ; Lot 3 a suivre (restauration + protection CLI).
+
+**Decision technique principale** : decision D1 isolee en fonction PURE degradedBatchReason
+(cause en clair reutilisee dans le WARN) dans world_leaderboard_quality.go ; mesure du lot
+candidat en memoire ISO-definition avec la requete SQL du lot servi (WorldCSRBatchStats,
+extrait dans leaderboard_world_batch_stats.go — le repo a 733 L reste byte-identique) ;
+application par playlist dans scrapeAll, hors lease writer, reader RO court, FAIL-OPEN si
+la qualite du lot servi est illisible (on ne gele jamais une premiere capture). Refus =
+skip + WARN chiffre + expvar world_leaderboard_batch_refused_total.
+
+**Resultats observes** : 6 tests (refus volume, refus xuid, acceptations, refus PARTIEL
+sur vraie shared DB migree, bornes table-driven) ; piege de test evite — candidats a
+fetched_at POSTERIEUR au lot servi, sinon la vue _latest servirait l ancien lot et les
+tests d acceptation ne prouveraient rien. Gate rejoue par l orchestrateur : vert, y
+compris le test du helper sous -tags=integration (decouverte : la commande sans tag ne
+fait que compiler ce fichier de test — gate du plan amende).
+
+**Conclusion / prochaine etape** : commit Lot 2, puis Lot 3 : flag -restore-best du CLI
+snapshot-world-leaderboard + execution locale (serveur arrete) + brancher le meme
+garde-fou D1 sur le chemin de scrape du CLI (decouverte Lot 2 : il ecrit sans protection).
+
+---
+
+## [2026-09-03] Classements — Lot 3 CLOS : restauration reelle des lots sains
+
+**Statut** : Complete (3.1/3.2/3.3) ; 3.4 statue [!] — enrichissement de la population
+servie via backfill operationnel, creneau a trancher par le user.
+
+**Decision technique principale** : le verdict de restauration REUTILISE la regle D1 a
+l envers — DegradedBatchReason(meilleur, servi) != "" ssi le lot servi serait refuse face
+au meilleur — d ou une idempotence par construction (apres restauration, servi == meilleur
+→ regle rend ""). Regle centralisee dans duckdb (une definition, deux callers cron + CLI),
+scrape du CLI protege par le meme garde-fou. Ordre de merite du meilleur lot : with_xuid
+DESC puis rows DESC puis fetched_at DESC (un classement sans xuid ne se joint a rien).
+
+**Resultats observes** : dry-run = EXACTEMENT les 3 couples degrades du 07/07 (Assassin
+85/0, Arene 86/0, Duo 200/0), 37 couples sains intacts ; execute = 3 restaures, 0 echec ;
+re-run = 0 a restaurer / 40 au meilleur. Etat 13-2 apres restauration : 100 % xuid sur
+toutes les playlists, enrichies Assassin 115 / Duo 101 / Arene 87 (sur le lot de 200).
+CONSTAT : le top-100 affiche de l Arene ne joint que 34 stats (les stats de juillet
+couvrent d autres tranches de population) → completer par backfill-world-player-stats
+-season csrseason13-2 (+13-3), qui cible par construction la population SERVIE avec les
+xuid pre-seedes. Fenetre serveur arrete ~15-40 min, creneau propose au user.
+
+**Conclusion / prochaine etape** : commit Lot 3 apres la retouche d extraction de main()
+(en cours), lancement Lot 4 (UI honnete + contrat), puis gate-push et merge (prevenir :
+deploy prod auto) + rejouer restore + backfill sur le VPS.
+
+---
+
+## [2026-09-03] Classements — Lot 4 CLOS (UI honnete + contrat robuste)
+
+**Statut** : Complete (4.1-4.4). Reste : fin du backfill 3.4 (13-2 a reprendre en -force),
+gate-push, delivery-checklist + adversarial-review, merge main (prevenir : deploy prod).
+
+**Decision technique principale** : couverture d enrichissement = fonction pure exportee
+(LeaderboardBlock.logic.ts, seuils 25 %/80 % bornes inclusives) pilotant colonnes ET
+bandeaux ICU chiffres {enriched}/{total} FR+EN ; selecteurs saison-playlist couples via
+LeaderboardCatalogRef.PlaylistIDs (couples reels de la vue _latest, best-effort AVEC warn,
+double degradation front) ; 500 → 200 vide sur couple incomplet AVEC Entries=[] sur tous
+les retours anticipes (ratchet NoNilSlices — couvrait un trou pre-existant du chemin
+sans-capability). total_local = NON-BUG : le fil s appelle total (json:"total"), fige par
+test ; ma sonde du diagnostic grep-ait le mauvais nom.
+
+**Resultats observes** : gates rejoues orchestrateur — tsc -b --force 0 erreur, vitest
+leaderboard 35/35, go service+handlers+duckdb+integration verts, build vert ; executeur :
+make test-web 3547 pass (14 skips pre-existants hors perimetre), eslint perimetre 0
+warning. LeaderboardBlock.tsx ramene a 539 L (sous son niveau d avant-lot), repo duckdb a
+725 L (sous son niveau d avant-chantier).
+
+**Conclusion / prochaine etape** : commit Lot 4 ; fin de fenetre backfill (13-3 en cours,
+13-2 a relancer -force -skip-existing) ; relance serveur ; puis Livraison (gate-push,
+delivery-checklist, adversarial-review du diff persist, merge avec preavis deploy).
