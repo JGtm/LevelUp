@@ -487,8 +487,32 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   CE QUE LA VERSION REFUSE : les tirs AMBIGUS (deux slots du même joueur répliquant tous
 	//   deux une position) — leur signature est celle d'un joueur qui n'est PAS embarqué.
 	//   Détail : internal/analysis/replay/vehicle_shots.go.
-	if SchemaVersion != 30 {
-		t.Fatalf("SchemaVersion = %d, attendu 30 : incrémenter exige une raison écrite ci-dessus "+
+	//
+	// v31 — LA VISÉE DE CHAQUE OCCUPANT DE VÉHICULE (`vehicles[].rides[].aim`). Un occupant
+	//   attaché cesse de répliquer sa POSITION (primitive du « trou »), et le dépôt en concluait
+	//   qu'il ne répliquait plus RIEN : le cône du conducteur était dessiné au CAP DU CHÂSSIS,
+	//   l'artilleur et le passager n'avaient aucun cône. La faute était dans le DÉTECTEUR —
+	//   `ScanBipedRecords` exige un `i0` absolu et un masque commençant par 0, quand la forme la
+	//   plus fréquente de la bande bipède est `i21,i25`, un record de VISÉE SANS POSITION
+	//   (22 963 lectures sur le seul `0d76e8f1`). Champ omitempty, même raison de monter que
+	//   v25/v26/v27/v29/v30 : c'est la CLÉ DE REPRISE du backfill, un artefact 30 fait viser tous
+	//   ses occupants dans l'axe du châssis.
+	//   NIVEAU DE PREUVE (V11_ORIENTATION_TOURELLE_2026-09-03, 5 films). PRÉSENCE : 4 832 à
+	//   24 050 lectures par film, 46,5 à 231,2 par slot bipède, contre 0,2 à 0,9 par slot sur une
+	//   bande FANTÔME de même cardinalité (x155 à x925). JUSTESSE : appariée à la lecture `i21`
+	//   AVEC position du même slot à moins de 200 ms, écart médian de cap 0,2 à 0,5 deg
+	//   (R 0,979-0,989) contre 75,7 à 93,7 deg au témoin par mélange (R 0,011-0,134) — la
+	//   référence étant `Point.H`, déjà publié et validé par l'oracle du kill. COUVERTURE :
+	//   35 / 35 (100 %) des épisodes attestés par la sortie portent au moins une visée à bord, à
+	//   5 à 46 lectures/s, quand le même épisode porte 0 ou 1 lecture `i21` avec position.
+	//   UTILITÉ : la visée n'est PAS le cap du châssis — médiane 15,7-21,8 deg, q3 39,6-52,9 deg.
+	//   CE QUE LA VERSION REFUSE, réfutation mesurée AVEC TÉMOIN : l'orientation de la TOURELLE en
+	//   tant qu'objet. L'entité tourelle ne réplique rien (139,6 et 85,5 en-têtes par slot contre
+	//   86,3 et 194,2 au FANTÔME, formes de masque plates) et `i31`/`i41`/`i42` de `ti=40` ne sont
+	//   jamais émis. Le cône de l'artilleur vient de L'HOMME, pas de la tourelle.
+	//   Détail : internal/analysis/replay/vehicle_rides_aim.go.
+	if SchemaVersion != 31 {
+		t.Fatalf("SchemaVersion = %d, attendu 31 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

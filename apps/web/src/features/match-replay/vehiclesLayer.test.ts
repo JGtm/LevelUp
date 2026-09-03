@@ -10,9 +10,9 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import type { ReplayVehicleRide, ReplayVehicleSample } from '@/lib/api/types'
+import type { ReplayVehicleSample } from '@/lib/api/types'
 
-import type { ReplayVehicleTrackReady } from './replayNormalize'
+import type { ReplayVehicleRideReady, ReplayVehicleTrackReady } from './replayNormalize'
 import {
   buildEmbarkedPredicate,
   vehicleActiveRides,
@@ -56,8 +56,8 @@ function sample(over: Partial<ReplayVehicleSample>): ReplayVehicleSample {
   return { t: 0, x: 0, y: 0, ...over }
 }
 
-function ride(over: Partial<ReplayVehicleRide>): ReplayVehicleRide {
-  return { t0: 0, t1: 100, slot: 1, src: 'event', ...over }
+function ride(over: Partial<ReplayVehicleRideReady> = {}): ReplayVehicleRideReady {
+  return { t0: 0, t1: 100, slot: 1, src: 'event', aim: [], ...over }
 }
 
 describe('vehicleIsDecor / vehicleCanEmbark — le refus des familles non jouables', () => {

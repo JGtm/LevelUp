@@ -78,7 +78,7 @@ func v4DiagnosticUnFilm(t *testing.T, root string, f v0Film) {
 	if !ok {
 		return
 	}
-	tracks, cov := buildVehicleTracks(ctx.scan, ctx.bip, ctx.own, ctx.clock)
+	tracks, cov, _ := buildVehicleTracks(ctx.scan, ctx.bip, ctx.own, ctx.clock)
 	ag := v4MesureTirs(ctx, tracks)
 	t.Logf("V4-TIRS %s (%s) — episodes=%d nommes=%d | tirs dispo=%d rattaches=%d sansSlot=%d"+
 		" ambigus=%d horsFenetre=%d",

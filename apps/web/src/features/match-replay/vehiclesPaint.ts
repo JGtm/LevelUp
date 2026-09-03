@@ -18,17 +18,16 @@ import type { ReplayVehicleRide } from '@/lib/api/types'
 import { drawExplosion, EXPLOSION_MS } from './explosionFx'
 import type { FxInk } from './fxInk'
 import { project, type PlacementView } from './placementShapes'
-import { drawAimSector } from './replayAimCone'
+import { aimLengthScale, drawAimSector } from './replayAimCone'
 import { drawRotatedSprite } from './replayDraw'
 import { drawNameLabel, type LabelStyle } from './replayLabels'
 import type { XY } from './replayLogic'
 import type { ReplayVehicleTrackReady } from './replayNormalize'
+import { vehicleOccupantAimAt } from './vehiclesAim'
 import {
   vehicleActiveRides,
-  vehicleAimAngle,
   vehicleColorAt,
   vehicleDestructionFrame,
-  vehicleDriverAt,
   vehicleExplosionKindOf,
   vehicleHeadingAt,
   vehicleIsDecor,
@@ -192,41 +191,50 @@ function occupantName(
 }
 
 /**
- * drawVehicleAimCone — LE CÔNE DE VISÉE DU CONDUCTEUR, posé sur le véhicule.
+ * drawVehicleAimCones — UN CÔNE DE VISÉE PAR OCCUPANT, posé sur le véhicule.
  *
  * POURQUOI IL EXISTE (retour utilisateur du 2026-09-02, après visionnage réel). Un joueur
- * EMBARQUÉ ne réplique plus son bipède : son cap de visée n'existe plus dans le film, et son
- * pion — donc son cône — a disparu de la carte (décision « PION EMBARQUÉ » du plan). Il ne
- * restait alors AUCUN indice de direction sur un véhicule pourtant conduit. La décision du
- * chantier comble ce trou sans rien inventer : « à l'arrêt on assume qu'il regarde devant lui ;
- * en mouvement, la direction du déplacement » — c'est-à-dire EXACTEMENT le cap du véhicule
- * (`vehicleHeadingAt`, qui tient déjà ces deux régimes).
+ * EMBARQUÉ ne réplique plus la position de son bipède : son pion — donc son cône — a disparu de
+ * la carte (décision « PION EMBARQUÉ » du plan), et il ne restait AUCUN indice de direction sur
+ * un véhicule pourtant conduit. La première version comblait ce trou avec le CAP DU VÉHICULE, et
+ * pour le seul conducteur : « à l'arrêt on assume qu'il regarde devant lui ; en mouvement, la
+ * direction du déplacement ».
  *
- * CE QU'IL N'AFFIRME PAS : la visée d'un PASSAGER ou d'un TOURELLEUR. Elle est indépendante du
- * véhicule et le film ne la porte pas — seul le siège 0 obtient un cône (`vehicleDriverAt`).
+ * CE QUI A CHANGÉ AU SCHÉMA 31, ET C'EST TOUT L'OBJET DU LOT. Le film porte la visée RÉELLE de
+ * CHAQUE occupant — conducteur, artilleur et passager, chacun sur son propre slot bipède — en
+ * continu pendant tout l'épisode ; elle était invisible parce que le décodeur exigeait une
+ * position dans le même record (lot V11). Le document la publie (`ReplayVehicleRide.aim`), et
+ * `vehicleOccupantAimAt` la préfère au cap du châssis, dont elle s'écarte de 15,7 à 21,8 deg en
+ * médiane (q3 39,6-52,9 deg). CHAQUE occupant actif obtient donc SON cône, à SA couleur.
+ *
+ * LE CAP DU CHÂSSIS RESTE LE REPLI, occupant par occupant, quand la série n'a pas de lecture en
+ * vigueur à cette image — un artefact antérieur au schéma 31 rend donc exactement le rendu
+ * d'avant pour son conducteur, et rien de plus pour les autres sièges (ils n'ont pas de série).
  *
  * MÊME GÉOMÉTRIE ET MÊMES OPACITÉS QUE LE CÔNE DES PIONS : c'est le module `replayAimCone` qui
- * trace (`drawAimSector`), pas une copie locale. Deux différences, toutes deux voulues : pas
- * d'ÉLÉVATION (un cap de déplacement est horizontal — le cône garde sa longueur de référence,
- * ce que ce module lit déjà comme « à plat ») et pas de FRAÎCHEUR (le cap du véhicule est celui
- * de l'image, pas une mesure de visée qu'on maintient en pâlissant).
+ * trace (`drawAimSector`), pas une copie locale, et l'ÉLÉVATION passe par le même barème de
+ * longueur (`aimLengthScale`). Une seule différence subsiste, voulue : pas de FRAÎCHEUR — la
+ * série d'un occupant est dense (5 à 46 lectures/s pour 10 frames/s) et son maintien est court
+ * (`VEHICLE_AIM_HOLD_FRAMES`), il n'y a pas de visée « vieille » à faire pâlir.
  */
-function drawVehicleAimCone(
+function drawVehicleAimCones(
   ctx: CanvasRenderingContext2D,
   track: ReplayVehicleTrackReady,
+  rides: readonly ReplayVehicleRide[],
   time: VehicleTime,
   style: Pick<VehicleStyle, 'showAim' | 'colorOfSlot' | 'colorOfXuid'>,
   c: XY,
 ): void {
   if (!style.showAim) return
-  const driver = vehicleDriverAt(track, time.frame)
-  if (!driver) return
-  // L'ENCRE EST CELLE DU PION DU MÊME JOUEUR, sans repli : un cône neutre dirait « quelqu'un
-  // regarde par là » sans dire qui — le calque des pions applique la même règle (une vie sans
-  // couleur ne se dessine pas).
-  const color = vehicleRideColor(driver, time.frame, style)
-  if (!color) return
-  drawAimSector(ctx, c, vehicleAimAngle(vehicleHeadingAt(track, time.frame)), time.k, color)
+  for (const ride of rides) {
+    // L'ENCRE EST CELLE DU PION DU MÊME JOUEUR, sans repli : un cône neutre dirait « quelqu'un
+    // regarde par là » sans dire qui — le calque des pions applique la même règle (une vie sans
+    // couleur ne se dessine pas). Un occupant non résolu ne reçoit donc aucun cône.
+    const color = vehicleRideColor(ride, time.frame, style)
+    if (!color) continue
+    const aim = vehicleOccupantAimAt(track, ride, time.frame)
+    drawAimSector(ctx, c, aim.ang, time.k, color, { lengthScale: aimLengthScale(aim.pitchDeg) })
+  }
 }
 
 /**
@@ -338,7 +346,11 @@ export function drawVehiclesLayer(
       if (world) {
         const c = project(world, view)
         const color = vehicleColorAt(track, time.frame, style) ?? style.neutralInk
-        drawVehicleAimCone(ctx, track, time, style, c)
+        // LES OCCUPANTS SONT LUS UNE FOIS pour les deux calques qui les consomment (cônes puis
+        // noms) : `vehicleActiveRides` trie, filtre et alloue — l'appeler deux fois par véhicule
+        // et par image serait un doublon de travail autant qu'un doublon de source.
+        const rides = vehicleActiveRides(track, time.frame)
+        drawVehicleAimCones(ctx, track, rides, time, style, c)
         // ÉDGE PAR DÉFAUT (chassis non résolu, ou vignette pas encore chargée) : le plancher de
         // lisibilité, seule mesure disponible avant qu'une taille réelle ne soit connue. TOUJOURS
         // MULTIPLIÉ PAR `time.k`, comme la branche sprite juste en dessous — un pixel d'écran
@@ -360,9 +372,8 @@ export function drawVehiclesLayer(
           // Sinon : image ou manifeste pas encore chargés — rien ne remplace le sprite (même
           // contrat que les vignettes de socle), le nom garde le repli de plancher ci-dessus.
         }
-        if (style.showNames) {
-          const rides = vehicleActiveRides(track, time.frame)
-          if (rides.length > 0) drawVehicleOccupantNames(ctx, rides, time.frame, c, edgePx, style, time.k)
+        if (style.showNames && rides.length > 0) {
+          drawVehicleOccupantNames(ctx, rides, time.frame, c, edgePx, style, time.k)
         }
       }
     }

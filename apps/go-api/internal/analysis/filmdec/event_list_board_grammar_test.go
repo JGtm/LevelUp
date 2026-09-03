@@ -69,14 +69,7 @@ func TestBoardEventGrammar(t *testing.T) {
 	// Témoin : LES MÊMES BITS de charge, mais lus par la grammaire de la SORTIE (domaines
 	// 1/1/7, avec sonde). Seul le champ de type change ; tout ce qui suit est identique.
 	sortie := append([]byte(nil), pay...)
-	for i := 0; i < eventTypeBits; i++ {
-		bit := 2 + i
-		masque := byte(1) << uint(7-bit%8)
-		sortie[bit/8] &^= masque
-		if EventUnitExitVehicle>>uint(eventTypeBits-1-i)&1 == 1 {
-			sortie[bit/8] |= masque
-		}
-	}
+	evbForceType(sortie, EventUnitExitVehicle)
 	evx, ok := decodeVehicleEvent(sortie, base, band)
 	if !ok || evx.Kind != EventUnitExitVehicle {
 		t.Fatalf("témoin sortie non décodé : ok=%v kind=%d", ok, evx.Kind)

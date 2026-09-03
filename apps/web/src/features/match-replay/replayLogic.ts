@@ -288,8 +288,15 @@ export function heldReading(
   return null
 }
 
-/** lastIndexAt rend l'index du dernier point d'horodatage <= t (-1 si aucun), par dichotomie. */
-export function lastIndexAt(points: ReplayPoint[], t: number): number {
+/**
+ * lastIndexAt rend l'index du dernier point d'horodatage <= t (-1 si aucun), par dichotomie.
+ *
+ * SIGNATURE ÉLARGIE LE 2026-09-03 (schéma 31) : elle ne lit QUE `t`, et la série de visée d'un
+ * occupant de véhicule (`ReplayVehicleAim`, sans `x`/`y`) a exactement le même besoin. L'élargir
+ * évite une seconde dichotomie copiée dans `vehiclesLayer.ts` (règle « ≤ 2 copies ») ; un
+ * `ReplayPoint[]` reste assignable tel quel.
+ */
+export function lastIndexAt(points: readonly { t: number }[], t: number): number {
   if (points.length === 0 || t < points[0].t) return -1
   let lo = 0
   let hi = points.length - 1

@@ -17,13 +17,13 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import type { ReplayVehicleRide, ReplayVehicleSample } from '@/lib/api/types'
+import type { ReplayVehicleAim, ReplayVehicleSample } from '@/lib/api/types'
 
 import { EXPLOSION_MS } from './explosionFx'
 import type { FxInk } from './fxInk'
 import { count, recordingContext, type CanvasOp } from './test/recordingContext'
 import { project, type PlacementView } from './placementShapes'
-import type { ReplayVehicleTrackReady } from './replayNormalize'
+import type { ReplayVehicleRideReady, ReplayVehicleTrackReady } from './replayNormalize'
 import { drawVehiclesLayer, type VehicleStyle, type VehicleTime } from './vehiclesPaint'
 
 const VIEW: PlacementView = {
@@ -53,8 +53,8 @@ function sample(over: Partial<ReplayVehicleSample>): ReplayVehicleSample {
   return { t: 0, x: 0, y: 0, ...over }
 }
 
-function ride(over: Partial<ReplayVehicleRide>): ReplayVehicleRide {
-  return { t0: 0, t1: 100, slot: 1, src: 'event', ...over }
+function ride(over: Partial<ReplayVehicleRideReady> = {}): ReplayVehicleRideReady {
+  return { t0: 0, t1: 100, slot: 1, src: 'event', aim: [], ...over }
 }
 
 /** Un sprite déjà chargé et déjà teint : le calque n'en lit que les dimensions. */
@@ -209,7 +209,7 @@ describe('drawVehiclesLayer — le NOM de l’occupant (retour utilisateur : « 
   })
 })
 
-describe('drawVehiclesLayer — le CÔNE DE VISÉE du conducteur (retour utilisateur : « absent »)', () => {
+describe('drawVehiclesLayer — LE CÔNE DE VISÉE DE CHAQUE OCCUPANT (schéma 31)', () => {
   const coneCount = (ops: CanvasOp[]) => count(ops, 'createRadialGradient')
 
   it('un véhicule avec CONDUCTEUR actif porte un cône', () => {
@@ -230,10 +230,66 @@ describe('drawVehiclesLayer — le CÔNE DE VISÉE du conducteur (retour utilisa
     expect(to).toBeGreaterThan(0)
   })
 
-  it('AUCUN cône sans conducteur : passager seul, siège non lu, ou véhicule vide', () => {
+  it('AUCUN cône sur un véhicule VIDE : sans occupant, rien ne regarde nulle part', () => {
     expect(coneCount(paint([track({ rides: [] })]))).toBe(0)
-    expect(coneCount(paint([track({ rides: [ride({ slot: 8, seat: 2 })] })]))).toBe(0)
-    expect(coneCount(paint([track({ rides: [ride({ slot: 8, seat: undefined })] })]))).toBe(0)
+  })
+
+  it('UN CÔNE PAR OCCUPANT (schéma 31) : l’artilleur et le passager en ont un, eux aussi', () => {
+    // C'EST LE POINT DU LOT V11. Avant le schéma 31, seul le siège 0 obtenait un cône : la visée
+    // d'un artilleur était réputée absente du film. Elle y est — sur SON slot bipède, en continu.
+    const trois = track({
+      rides: [
+        ride({ slot: 7, seat: 0, aim: [{ t: 50, h: 10 }] }),
+        ride({ slot: 8, seat: 1, aim: [{ t: 50, h: 200 }] }),
+        ride({ slot: 9, seat: 2, aim: [{ t: 50, h: 300 }] }),
+      ],
+    })
+    expect(coneCount(paint([trois]))).toBe(3)
+  })
+
+  it('CHAQUE cône prend l’angle de SA visée, pas celui du voisin ni celui du châssis', () => {
+    const deux = track({
+      samples: [sample({ t: 0, x: 50, y: 50, h: 0 })], // châssis plein est : angle canevas 0
+      rides: [
+        ride({ slot: 7, seat: 0, aim: [{ t: 50, h: 90 }] }),
+        ride({ slot: 8, seat: 1, aim: [{ t: 50, h: 180 }] }),
+      ],
+    })
+    // Le milieu de l'arc est l'angle du cône : `(from + to) / 2`.
+    const milieux = paint([deux])
+      .filter((o) => o.op === 'arc')
+      .map((o) => (((o.args[3] as number) + (o.args[4] as number)) / 2))
+    expect(milieux).toHaveLength(2)
+    expect(milieux[0]).toBeCloseTo((-90 * Math.PI) / 180, 10)
+    expect(milieux[1]).toBeCloseTo((-180 * Math.PI) / 180, 10)
+  })
+
+  it('REPLI sur le cap du châssis quand l’épisode n’a pas de visée à cet instant', () => {
+    // Châssis plein est (cap 0°) : le cône du conducteur vaut l'angle canevas 0, exactement comme
+    // au schéma 30 — un artefact antérieur rend donc le même dessin qu'avant.
+    const sansVisee = track({
+      samples: [sample({ t: 0, x: 50, y: 50, h: 0 })],
+      rides: [ride({ slot: 7, seat: 0, aim: [] })],
+    })
+    const arc = paint([sansVisee]).find((o) => o.op === 'arc')
+    expect(((arc?.args[3] as number) + (arc?.args[4] as number)) / 2).toBeCloseTo(0, 10)
+    // Une lecture TROP ANCIENNE (au-delà du maintien) est traitée comme une absence : même repli.
+    const perimee = track({
+      samples: [sample({ t: 0, x: 50, y: 50, h: 0 })],
+      rides: [ride({ slot: 7, seat: 0, t0: 0, t1: 100, aim: [{ t: 5, h: 200 }] })],
+    })
+    const arc2 = paint([perimee]).find((o) => o.op === 'arc')
+    expect(((arc2?.args[3] as number) + (arc2?.args[4] as number)) / 2).toBeCloseTo(0, 10)
+  })
+
+  it('L’ÉLÉVATION allonge ou raccourcit le cône, comme pour un pion', () => {
+    const rayon = (aim: ReplayVehicleAim[]) => {
+      const ops = paint([track({ rides: [ride({ slot: 7, seat: 0, aim })] })])
+      return ops.find((o) => o.op === 'createRadialGradient')?.args[5] as number
+    }
+    const plat = rayon([{ t: 50, h: 90 }])
+    expect(rayon([{ t: 50, h: 90, p: 60 }])).toBeGreaterThan(plat)
+    expect(rayon([{ t: 50, h: 90, p: -60 }])).toBeLessThan(plat)
   })
 
   it('AUCUN cône quand le calque de VISÉE est éteint (même bouton que les pions)', () => {
@@ -241,9 +297,15 @@ describe('drawVehiclesLayer — le CÔNE DE VISÉE du conducteur (retour utilisa
     expect(coneCount(paint([track({ rides: [ride({ slot: 7, seat: 0 })] })], off))).toBe(0)
   })
 
-  it('AUCUN cône quand l’équipe du conducteur n’est pas résolue (on ne colorie pas un inconnu)', () => {
+  it('AUCUN cône pour un occupant dont l’identité n’est pas résolue (on ne colorie pas un inconnu)', () => {
     const anon = style({ colorOfSlot: () => null })
-    expect(coneCount(paint([track({ rides: [ride({ slot: 7, seat: 0 })] })], anon))).toBe(0)
+    const deux = track({
+      rides: [
+        ride({ slot: 7, seat: 0, aim: [{ t: 50, h: 90 }] }),
+        ride({ slot: 8, seat: 1, aim: [{ t: 50, h: 180 }] }),
+      ],
+    })
+    expect(coneCount(paint([deux], anon))).toBe(0)
   })
 
   it('le cône est posé SOUS le sprite : il se dessine avant lui', () => {

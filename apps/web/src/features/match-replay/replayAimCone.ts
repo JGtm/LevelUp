@@ -75,7 +75,7 @@ export function drawAimCone(
   // Monde -> canevas : l'axe Y est inversé, donc l'angle l'est aussi.
   const ang = (-read.value * Math.PI) / 180
   drawAimSector(ctx, c, ang, style.k, color, {
-    lengthScale: pitchScale(heldPitch(track.points, style, read.age)),
+    lengthScale: aimLengthScale(heldPitch(track.points, style, read.age)),
     fresh,
   })
 }
@@ -149,7 +149,12 @@ function heldPitch(
 }
 
 /**
- * pitchScale : ce que l'élévation fait à la LONGUEUR du cône — `1 + 0,55 × sin(p)`.
+ * aimLengthScale : ce que l'élévation fait à la LONGUEUR du cône — `1 + 0,55 × sin(p)`.
+ *
+ * EXPORTÉE LE 2026-09-03 (schéma 31) : le cône d'un OCCUPANT DE VÉHICULE lit désormais une vraie
+ * élévation (`ReplayVehicleAim.p`, même composant `i21`, même convention que `Point.p`) et doit
+ * donc la traduire de la MÊME façon qu'un pion — sinon deux barèmes de longueur coexisteraient
+ * pour la même grandeur.
  *
  * CE N'EST PLUS UNE PROJECTION, ET C'EST DÉLIBÉRÉ. La version précédente valait `cos(p)`, la
  * part horizontale d'un regard incliné : physiquement juste, mais PAIRE — plonger de 30° et
@@ -172,7 +177,7 @@ function heldPitch(
  * moitié centrale du champ raccourcirait donc un cône qui monte — on l'écrête plutôt que de
  * laisser la lecture s'inverser.
  */
-function pitchScale(pitchDeg: number): number {
+export function aimLengthScale(pitchDeg: number): number {
   const bounded = Math.max(-AIM_PITCH_CLAMP_DEG, Math.min(AIM_PITCH_CLAMP_DEG, pitchDeg))
   return 1 + AIM_PITCH_SWING * Math.sin((bounded * Math.PI) / 180)
 }

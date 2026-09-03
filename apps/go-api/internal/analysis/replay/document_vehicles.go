@@ -188,6 +188,47 @@ type VehicleRide struct {
 	// IL EST PUBLIE PARCE QUE LES TROIS N ONT PAS LA MEME PRECISION, et qu un client qui anime
 	// une montee en vehicule doit pouvoir le savoir.
 	Src string `json:"src"`
+	// Aim est LA VISEE DE CET OCCUPANT pendant son episode, echantillonnee sur la grille de
+	// frames du document (schema 31). Vide = aucune lecture dans la fenetre.
+	//
+	// CE QU ELLE EST : la visee de l HOMME, pas l orientation du vehicule ni celle de la
+	// tourelle. Chaque occupant — conducteur, artilleur, passager — garde son slot bipede
+	// pendant tout l episode et continue d y emettre `i21`, dans des records qui ne portent
+	// AUCUNE position (`filmdec.ScanFilmBipedAimOnly`). Un vehicule a donc autant de visees que
+	// d occupants, et elles sont independantes.
+	//
+	// CE QU ELLE REMPLACE : le cap du CHASSIS, que le client employait faute de mieux pour le
+	// cone du conducteur. La mesure V11 chiffre l ecart entre les deux — mediane 15,7 a
+	// 21,8 deg, q3 39,6 a 52,9 deg sur 4 films — et l artilleur comme le passager n avaient,
+	// eux, aucun cone du tout.
+	//
+	// Provenance, gates et convention d echantillonnage : `vehicle_rides_aim.go`.
+	Aim []VehicleAim `json:"aim,omitempty"`
+}
+
+// VehicleAim est UNE lecture de visee d occupant, posee sur l axe de frames.
+//
+// LES DEUX ANGLES SONT CEUX DU PION (`Point.H` / `Point.P`), au bit pres : ils sortent du MEME
+// composant `i21` et du MEME accesseur (`filmdec.aimHeadingDegFromRaw` / `aimPitchDegFromRaw`,
+// detenteur unique depuis le lot V11). Le client n a donc qu une convention d angle a connaitre,
+// qu il dessine le cone d un pion a pied ou celui d un occupant de vehicule.
+type VehicleAim struct {
+	// T est l index de frame, sur le meme axe que `Point.T` et `VehicleSample.T`.
+	T int `json:"t"`
+	// H est le CAP de visee en degres dans le plan XY, MEME convention que `Point.H` (0 = +X,
+	// 90 = +Y, sens `atan2(Y, X)`).
+	//
+	// PIEGE omitempty evite a l ecriture, exactement comme `Point.H` et `VehicleSample.H` : un
+	// cap qui s arrondit a 0 est publie comme 360 (le meme angle), sans quoi il serait omis et
+	// relu comme « pas de visee » (cf. `headingForJSON`).
+	H float32 `json:"h,omitempty"`
+	// P est l ELEVATION de visee en degres, positif = vers le HAUT, MEME convention et MEME
+	// reserve que `Point.P`.
+	//
+	// CONTRAT DE L ABSENCE, identique a celui de `Point.P` : `p` absent avec `h` present se lit
+	// « A PLAT », jamais « inconnu » — publie quand |p| >= 0,05 deg, omis en dessous (cf.
+	// `pitchForJSON`). Le client en fait la LONGUEUR du cone, signe compris.
+	P float32 `json:"p,omitempty"`
 }
 
 // VehicleCoverage dit ce que le calque a vu, resolu, et refuse de dire.
@@ -240,6 +281,25 @@ type VehicleCoverage struct {
 	RidesFromGap   int `json:"ridesFromGap"`
 	// RidesWithSeat : episodes dont le siege a ete lu dans un evenement.
 	RidesWithSeat int `json:"ridesWithSeat"`
+	// AimReads / RidesWithAim / AimSamples / AimRideFrames sont LA COUVERTURE DE LA VISEE
+	// D OCCUPANT (schema 31), et les quatre sont necessaires parce qu ils distinguent quatre
+	// pannes differentes que « 0 visee publiee » confondrait :
+	//
+	//	AimReads       lectures BRUTES rendues par le balayage du film, tous slots bipedes
+	//	               confondus (`filmdec.ScanFilmBipedAimOnly`). A zero alors que des episodes
+	//	               existent : c est le DECODEUR qui n a rien lu — grammaire d en-tete qui a
+	//	               bouge, ou bande de slots vide —, pas le film qui serait muet. Ordre de
+	//	               grandeur mesure : 4 832 a 24 050 par film (5 films, lot V11).
+	//	RidesWithAim   episodes portant au moins une lecture. Le denominateur est `Rides` ; la
+	//	               mesure V11 rend 35/35 sur les episodes attestes par la sortie.
+	//	AimSamples     points PUBLIES (un par frame au plus, cf. `vehicleRideAimOf`).
+	//	AimRideFrames  frames couvertes par les episodes, toutes vies confondues. C est le
+	//	               DENOMINATEUR de `AimSamples` : sans lui, « 4 120 points de visee » ne dit
+	//	               pas si la serie est continue ou trouee.
+	AimReads      int `json:"aimReads"`
+	RidesWithAim  int `json:"ridesWithAim"`
+	AimSamples    int `json:"aimSamples"`
+	AimRideFrames int `json:"aimRideFrames"`
 	// Ambiguous compte les vies portant DEUX episodes qui se chevauchent : conducteur et passager
 	// ne se departagent pas par la geometrie. Publie, jamais cache (regle du lot V1).
 	Ambiguous int `json:"ambiguous"`
@@ -309,6 +369,13 @@ func tallyVehicleRides(rides []VehicleRide, cov *VehicleCoverage) {
 		if r.Seat != nil {
 			cov.RidesWithSeat++
 		}
+		// LA FENETRE EST INCLUSIVE aux deux bouts (`T0` et `T1` sont deux frames affichees) :
+		// un episode d une seule frame en couvre UNE, pas zero.
+		cov.AimRideFrames += r.T1 - r.T0 + 1
+		if len(r.Aim) > 0 {
+			cov.RidesWithAim++
+			cov.AimSamples += len(r.Aim)
+		}
 		switch r.Src {
 		case VehicleRideSrcEvent:
 			cov.RidesFromEvent++
@@ -343,7 +410,19 @@ func logVehicleCoverage(c *VehicleCoverage) {
 	slog.Info("rejeu : occupation des vehicules",
 		"episodes", c.Rides, "vehiculesOccupes", c.VehiclesRidden, "occupantsNommes", c.RidesNamed,
 		"bornesParEvenement", c.RidesFromEvent, "bornesMixtes", c.RidesMixed,
-		"bornesParTrou", c.RidesFromGap, "avecSiege", c.RidesWithSeat, "ambigus", c.Ambiguous)
+		"bornesParTrou", c.RidesFromGap, "avecSiege", c.RidesWithSeat, "ambigus", c.Ambiguous,
+		"lecturesDeViseeBrutes", c.AimReads, "episodesAvecVisee", c.RidesWithAim,
+		"pointsDeVisee", c.AimSamples, "framesDEpisode", c.AimRideFrames)
+	// LE SILENCE QU IL FAUT ROMPRE, et il est le pendant exact du warn de `logVehicleCoverage` :
+	// des episodes publies dont AUCUN ne porte de visee n est pas « un film ou personne ne
+	// regardait », c est le balayage `i21` sans position qui n a rien rendu. La mesure V11 rend
+	// 35 episodes attestes sur 35 porteurs d au moins une lecture, sur 5 films.
+	if c.Rides > 0 && c.RidesWithAim == 0 {
+		slog.Warn("rejeu : AUCUN episode d occupation ne porte de visee alors que des episodes"+
+			" existent — le balayage des records de visee SANS position n a rien rendu, le cone"+
+			" retombe partout sur le cap du chassis",
+			"episodes", c.Rides, "lecturesBrutes", c.AimReads)
+	}
 	for id, n := range c.UnknownChassis {
 		slog.Info("rejeu : chassis de vehicule NON RESOLU — vies publiees sans sprite",
 			"chassis", id, "vies", n)

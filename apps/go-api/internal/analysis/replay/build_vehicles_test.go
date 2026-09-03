@@ -98,7 +98,7 @@ func TestVehiculeVieSansOccupant(t *testing.T) {
 			vehPos(700, 4_000_000, -100.7, 53.7),
 		},
 	}
-	got, cov := buildVehicleTracks(scan, nil, OwnerReport{}, vehClock())
+	got, cov, _ := buildVehicleTracks(scan, nil, OwnerReport{}, vehClock())
 	if len(got) != 1 {
 		t.Fatalf("vies publiees = %d, attendu 1 : une vie recensee avec naissance DOIT sortir, "+
 			"meme si personne ne l a conduite", len(got))
@@ -159,7 +159,7 @@ func TestVehiculeEpisodeBoardExit(t *testing.T) {
 		vehPos(bipedSlot, 17_000_000, 3, 3),
 	}
 	own := OwnerReport{SlotXUID: map[uint32]uint64{bipedSlot: 2533274800000001}}
-	got, cov := buildVehicleTracks(scan, bipeds, own, vehClock())
+	got, cov, _ := buildVehicleTracks(scan, bipeds, own, vehClock())
 	if len(got) != 1 || len(got[0].Rides) != 1 {
 		t.Fatalf("vies = %d, episodes = %v : un trou de position pres du vehicule DOIT rendre "+
 			"un episode", len(got), got)
@@ -201,7 +201,7 @@ func TestVehiculeEpisodeSansEvenement(t *testing.T) {
 		vehPos(bipedSlot, 5_000_000, 0.4, 0),
 		vehPos(bipedSlot, 17_000_000, 3, 3),
 	}
-	got, _ := buildVehicleTracks(scan, bipeds, OwnerReport{}, vehClock())
+	got, _, _ := buildVehicleTracks(scan, bipeds, OwnerReport{}, vehClock())
 	if len(got) != 1 || len(got[0].Rides) != 1 {
 		t.Fatalf("un episode etait attendu, obtenu %v", got)
 	}
@@ -235,7 +235,7 @@ func TestVehiculeTrouLoinDuVehicule(t *testing.T) {
 		vehPos(42, 5_000_000, 12, 0), // 12 m du vehicule : bien au-dela des 1,5 m
 		vehPos(42, 17_000_000, 12, 0),
 	}
-	got, cov := buildVehicleTracks(scan, bipeds, OwnerReport{}, vehClock())
+	got, cov, _ := buildVehicleTracks(scan, bipeds, OwnerReport{}, vehClock())
 	if len(got) != 1 {
 		t.Fatalf("vies = %d, attendu 1", len(got))
 	}
@@ -254,7 +254,7 @@ func TestVehiculeFamilleInconnue(t *testing.T) {
 		Creations: []filmdec.EquipmentCreation{vehCreation(key, 1_800_000, 5, 5, vehChassisUnknown)},
 		Positions: []filmdec.BipedPosition{vehPos(701, 3_000_000, 5, 5)},
 	}
-	got, cov := buildVehicleTracks(scan, nil, OwnerReport{}, vehClock())
+	got, cov, _ := buildVehicleTracks(scan, nil, OwnerReport{}, vehClock())
 	if len(got) != 1 {
 		t.Fatalf("vies = %d, attendu 1 : un chassis inconnu ne supprime pas le vehicule", len(got))
 	}
@@ -289,7 +289,7 @@ func TestVehiculeCapParVelocite(t *testing.T) {
 			vehMoving(t, 700, 5_000_000, 0, 10, [3]float32{0, 1, 0}, 0.2), // quasi a l arret
 		},
 	}
-	got, cov := buildVehicleTracks(scan, nil, OwnerReport{}, vehClock())
+	got, cov, _ := buildVehicleTracks(scan, nil, OwnerReport{}, vehClock())
 	if len(got) != 1 || len(got[0].Samples) != 3 {
 		t.Fatalf("echantillons = %v, attendu 3", got)
 	}
@@ -334,7 +334,7 @@ func TestVehiculeDeuxViesDunMemeSlot(t *testing.T) {
 			vehPos(700, 50_000_000, 9, 9),
 		},
 	}
-	got, cov := buildVehicleTracks(scan, nil, OwnerReport{}, vehClock())
+	got, cov, _ := buildVehicleTracks(scan, nil, OwnerReport{}, vehClock())
 	if len(got) != 2 {
 		t.Fatalf("vies = %d, attendu 2 : le recensement separe deux generations d un meme slot", len(got))
 	}
@@ -354,7 +354,7 @@ func TestVehiculeDeuxViesDunMemeSlot(t *testing.T) {
 // --- Silences : « pas balaye » n est pas « aucun vehicule » ------------------------------------
 
 func TestVehiculeNonBalayeNePublieRien(t *testing.T) {
-	got, cov := buildVehicleTracks(VehicleScan{}, nil, OwnerReport{}, vehClock())
+	got, cov, _ := buildVehicleTracks(VehicleScan{}, nil, OwnerReport{}, vehClock())
 	if got != nil {
 		t.Errorf("vies = %v, attendu nil : un film non balaye ne publie aucun vehicule", got)
 	}
@@ -371,7 +371,7 @@ func TestVehiculeVieSansPositionNiNaissance(t *testing.T) {
 		Scanned:   true,
 		Keyframes: vehKeyframes([]uint64{2_000_000, 22_000_000}, key, []uint64{2_000_000}),
 	}
-	got, cov := buildVehicleTracks(scan, nil, OwnerReport{}, vehClock())
+	got, cov, _ := buildVehicleTracks(scan, nil, OwnerReport{}, vehClock())
 	if len(got) != 0 {
 		t.Fatalf("vies publiees = %v, attendu aucune", got)
 	}

@@ -127,7 +127,12 @@ func v2bProcessFilm(t *testing.T, dir, short8 string, entry MapQuantEntry, ag *v
 	}
 	// Balayage vitalite : QuantaOnly (pas besoin de coordonnees monde) + CaptureDirs (porte i4/i5).
 	// MaxSpeed/Isolation a 0 : aucun echantillon de vitalite n'est ecarte par un filtre de position.
-	opt := ScanFilmOptions{RequireTag1: false, DropSaturated: true, CaptureDirs: true, QuantaOnly: true}
+	// DynPrecOrientation : ti=40 porte les variantes `-dynamic-precision-` d'i2 et i3
+	// (FUN_140c5f7ec / FUN_140d87740), pas celles du bipede. Sans ce drapeau le curseur
+	// arrive decale sur i4 — c'est la cause racine du bruit mesure le 2026-09-01.
+	// V2B_LEGACY_I2I3=1 rejoue l'ancienne grammaire (temoin de la correction).
+	opt := ScanFilmOptions{RequireTag1: false, DropSaturated: true, CaptureDirs: true, QuantaOnly: true,
+		DynPrecOrientation: os.Getenv("V2B_LEGACY_I2I3") == ""}
 	lay := entry.Layout()
 	if lay.Valid() {
 		opt.Layout = &lay

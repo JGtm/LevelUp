@@ -248,6 +248,11 @@ const NULLABLE_ARRAY_PATHS = [
   // objet optionnel absent quand le record de création n'a pas été lu — et ne figure donc pas ici.
   'vehicles[].samples',
   'vehicles[].rides',
+  // TROISIÈME NIVEAU (schéma 31) : la SÉRIE DE VISÉE d'un épisode d'occupation — un tableau
+  // nullable DANS un tableau imbriqué, le premier du document. Elle est comblée comme les autres
+  // (`ReplayVehicleRideReady`) : un épisode sans lecture arrive à vide, et le cône retombe alors
+  // sur le cap du châssis au lieu de tomber à l'exécution.
+  'vehicles[].rides[].aim',
   // La trajectoire d'une vie libre d'objet d'objectif (schema 21) : comblee par la
   // frontiere, comme `flagCarries[].spans` — une vie qui arriverait avec `pts: null` ferait
   // tomber le calque a l'execution, pas a la compilation.

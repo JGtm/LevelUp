@@ -80,7 +80,7 @@ func TestScanBipedRecords_CaptureDirs(t *testing.T) {
 // direction interrompt la capture au lieu de décoder du bruit.
 func TestScanRecordDirs_StopsOnUnknownComponent(t *testing.T) {
 	pay := make([]byte, 64)
-	out, vit := scanRecordDirs(pay, 0, len(pay)*8, []int{0, 7, 21})
+	out, vit := scanRecordDirs(pay, 0, len(pay)*8, []int{0, 7, 21}, dirsGrammar{})
 	if out.HasVel || out.HasYaw || out.HasAim {
 		t.Errorf("capture après un composant inconnu : %+v", out)
 	}
@@ -102,7 +102,7 @@ func TestScanRecordVitals_ReachedThroughAngularVelocity(t *testing.T) {
 	w.bits(0, 1)          // i5 : pas de bloc de regen
 	w.bits(0x1234, 16)    // i5 : mot inline
 	w.bits(0b1010, 4)     // i5 : quatre drapeaux
-	_, vit := scanRecordDirs(w.buf, 0, len(w.buf)*8, []int{0, 3, 4, 5})
+	_, vit := scanRecordDirs(w.buf, 0, len(w.buf)*8, []int{0, 3, 4, 5}, dirsGrammar{})
 	if !vit.HasBody || !vit.HasShield {
 		t.Fatalf("vitalité non atteinte à travers i3 : %+v", vit)
 	}

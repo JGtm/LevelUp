@@ -40,12 +40,20 @@ package filmdec
 //	R(1) gate (cVar5)
 //	if gate == 0: R(19)   (0x13: packed forward+up direction index)
 //	R(8)                  (always: trailing magnitude/roll word)
-func consumeObjectForwardAndUp(br *BitReader) {
+func consumeObjectForwardAndUp(br *BitReader) { _, _ = decodeObjectForwardAndUp(br) }
+
+// decodeObjectForwardAndUp lit EXACTEMENT les mêmes bits que consumeObjectForwardAndUp et
+// rend la direction packée quand elle est présente (gate == 0). Même contrat que
+// decodeObjectBodyVitality : la grammaire ne vit qu'ici, le sauteur de bits n'en est que
+// la façade.
+func decodeObjectForwardAndUp(br *BitReader) (dir uint32, has bool) {
 	gate := br.ReadBit() // FUN_140c5fa84 leading R(1)
 	if !gate {
-		br.ReadBits(19) // 0x13 packed direction
+		dir = uint32(br.ReadBits(19)) // 0x13 packed direction
+		has = true
 	}
 	br.ReadBits(8) // trailing word (unconditional)
+	return dir, has
 }
 
 // consumeObjectBodyVitality (i4) mirrors FUN_140fb8978.

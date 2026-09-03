@@ -97,7 +97,9 @@ type vehicleLife struct {
 func buildVehicleTracks(
 	scan VehicleScan, bipeds []filmdec.BipedPosition, own OwnerReport, clock replayClock,
 ) ([]VehicleTrack, VehicleCoverage, vehicleRideStats) {
-	cov := VehicleCoverage{Scanned: scan.Scanned, UnknownChassis: map[string]int{}}
+	// `AimReads` compte ce que le FILM a rendu, pas ce que les episodes en retiennent : c est lui
+	// qui distingue « aucun occupant ne visait » de « le decodeur n a rien lu ».
+	cov := VehicleCoverage{Scanned: scan.Scanned, UnknownChassis: map[string]int{}, AimReads: len(scan.Aims)}
 	if !scan.Scanned || clock.step == 0 {
 		return nil, cov, vehicleRideStats{}
 	}
@@ -107,7 +109,8 @@ func buildVehicleTracks(
 	bySlot := vehiclePositionsBySlot(scan.Positions)
 	rides, st := buildVehicleRides(vehicleRideInputs{
 		vehBySlot: bySlot, bipeds: bipeds, events: scan.Events, own: own, lives: lives,
-		drawable: vehicleDrawableLives(lives, spawns, bySlot), clock: clock,
+		aimBySlot: vehicleAimBySlot(scan.Aims),
+		drawable:  vehicleDrawableLives(lives, spawns, bySlot), clock: clock,
 	})
 	out := make([]VehicleTrack, 0, len(lives))
 	for _, l := range lives {
@@ -405,6 +408,8 @@ func clampVehicleRides(rides []VehicleRide, t0, t1max int) []VehicleRide {
 		if r.T1 > t1max {
 			r.T1 = t1max
 		}
+		// LA SERIE DE VISEE SUIT SON EPISODE (cf. clampVehicleRideAim).
+		r.Aim = clampVehicleRideAim(r.Aim, r.T0, r.T1)
 		out = append(out, r)
 	}
 	if len(out) == 0 {

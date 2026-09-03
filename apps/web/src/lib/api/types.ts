@@ -2821,6 +2821,12 @@ export type ReplayVehicleSample = components['schemas']['VehicleSample']
 // est un POINTEUR — nil = aucun événement apparié. `xuid` vide = occupant non nommé, l'épisode
 // reste publié. Deux épisodes d'un même véhicule peuvent se chevaucher (plusieurs passagers).
 export type ReplayVehicleRide = components['schemas']['VehicleRide']
+// UNE LECTURE DE VISÉE D'OCCUPANT (schéma 31), sur l'axe de frames : `h` = cap, `p` = élévation,
+// MÊMES conventions que `Point.h`/`Point.p` (même composant `i21`, même accesseur côté Go). C'est
+// la visée de L'HOMME à bord — conducteur, artilleur ou passager, chacun la sienne —, jamais
+// l'orientation du châssis ni celle de la tourelle (celle-ci ne réplique RIEN : réfutée avec
+// témoin au lot V11). `p` absent se lit « À PLAT », jamais « inconnu ».
+export type ReplayVehicleAim = components['schemas']['VehicleAim']
 // Le sprite d'une FAMILLE de châssis, posé À LA REQUÊTE par le service (jamais dans l'artefact) :
 // pas de FR/EN (nom propre du jeu), `tinted` dit que le visuel se teint en `multiply` (traits
 // noirs, cf. `tintedIconCanvas`).
