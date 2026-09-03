@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "module": "dd600260-d91c-4d77-9990-3f35873c90a1",
+  "mapNames": [
+    "Argyle",
+    "argyle_map"
+  ],
+  "image": "dd600260-d91c-4d77-9990-3f35873c90a1.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-09-03T09:57:51.7781741Z",
+  "style": "encre",
+  "calibration": {
+    "metersPerPixel": 0.04570486450195312,
+    "originX": -24.928527923583985,
+    "originY": 38.991967651367176,
+    "widthPx": 1090,
+    "heightPx": 1707,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 14,
+    "anchorsInFrame": 14,
+    "anchorsWithGround": 14,
+    "anchorMedianGapM": 0.3621651522085685,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 52.23435302734375,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.531900838314754,
+    "covered": true,
+    "cellsSubstituted": 425438,
+    "cellsAssumedFloor": 454571,
+    "forgeObjects": 5002,
+    "forgeObjectsDrawn": 4962,
+    "forgeObjectsWithoutModel": 31,
+    "forgeDeathVolumes": 9
+  }
+}

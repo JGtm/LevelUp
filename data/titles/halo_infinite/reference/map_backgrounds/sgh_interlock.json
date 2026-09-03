@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "module": "sgh_interlock",
+  "mapNames": [
+    "Live Fire - Ranked",
+    "live_fire_-_ranked",
+    "live fire",
+    "live_fire",
+    "live_fire_-_ranked_sgh_interlock",
+    "live_fire_sgh_interlock"
+  ],
+  "image": "sgh_interlock.png",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-09-03T09:14:06.9035965Z",
+  "style": "encre",
+  "calibration": {
+    "metersPerPixel": 0.04478166611989339,
+    "originX": -19.33409832350413,
+    "originY": 58.065996061325066,
+    "widthPx": 1302,
+    "heightPx": 1192,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 28,
+    "anchorsInFrame": 28,
+    "anchorsWithGround": 17,
+    "anchorMedianGapM": -3.705472835302353,
+    "instancesDrawn": 5911,
+    "instancesScenery": 369,
+    "playLevelZ": -0.06599999308586119,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.22029300605518753,
+    "covered": false,
+    "cellsSubstituted": 93058,
+    "cellsClipped": 51818,
+    "cellsAssumedFloor": 195030
+  },
+  "degradations": [
+    "sddt : module any/globals introuvable : GetFileAttributesEx D:\\SteamLibrary\\steamapps\\common\\Halo Infinite\\deploy\\any\\levels\\multi\\globals\\common-rtx-new.module: Le chemin d’accès spécifié est introuvable.",
+    "eau : module any/globals introuvable : GetFileAttributesEx D:\\SteamLibrary\\steamapps\\common\\Halo Infinite\\deploy\\any\\levels\\multi\\globals\\common-rtx-new.module: Le chemin d’accès spécifié est introuvable."
+  ]
+}
