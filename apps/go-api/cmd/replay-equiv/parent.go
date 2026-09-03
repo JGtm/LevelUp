@@ -74,7 +74,7 @@ func parentEquivalence(o options) int {
 	var b bilan
 	for _, film := range films {
 		sortie := filepath.Join(tmp, film+".tsv")
-		res := runner.Run(context.Background(), argsEnfant(o, film, sortie, nil))
+		res := runner.Run(context.Background(), argsEnfant(o, film, sortie))
 		fmt.Printf("%-9s %-12s %9s  pic %5.2f Gio\n",
 			film, res.Issue, res.Dur.Round(time.Millisecond), gio(res.Peak))
 		compterIssue(&b, p, res, film, sortie)
@@ -127,15 +127,17 @@ func compterIssue(b *bilan, p passe, res filmproc.Result, film, sortie string) {
 	fmt.Printf("  %s : identique\n", film)
 }
 
-// argsEnfant construit la ligne de commande d'un enfant. `extra` porte les drapeaux propres a un
-// mode (par exemple `-walkers`).
-func argsEnfant(o options, film, sortie string, extra []string) []string {
-	args := []string{
+// argsEnfant construit la ligne de commande d'un enfant.
+//
+// ELLE PORTAIT UN `extra []string` pour les drapeaux propres a un mode : le seul consommateur
+// etait `-walkers`, retire au lot 6. Un parametre qu'un seul appelant renseigne a `nil` ne
+// documente plus rien — il se supprime avec le mode.
+func argsEnfant(o options, film, sortie string) []string {
+	return []string{
 		"-child", "-film", film, "-out", sortie,
 		"-repo-root", o.repoRoot, "-title", o.titleSlug,
 		"-mem-gib", strconv.Itoa(o.memGiB),
 	}
-	return append(args, extra...)
 }
 
 // etapesAttendues : toutes les etapes de BuildBytes et de BuildFromFilm, DANS L'ORDRE.

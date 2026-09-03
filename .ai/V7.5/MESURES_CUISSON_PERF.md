@@ -44,6 +44,13 @@ Profils : `tmp/01e1f945.cpu.prof`, `tmp/01e1f945.heap.prof` (+ 7344d24f, 696a9d7
 
 ## 2. Divergence des marcheurs de paquets (item 0.7, decision D3)
 
+> **LE MODE `-walkers` N'EXISTE PLUS** (retire au lot 6, 2026-09-03) : il portait EN COPIE les
+> trois marcheurs historiques, dont les originaux ont disparu aux items 1.4/1.5 — il ne comparait
+> donc plus qu'a lui-meme. Cette section FAIT FOI et reste la reference de la mesure ; la grammaire
+> retenue, elle, est rejouee a chaque CI par le test de la mini-bobine de
+> `internal/analysis/filmsource` (comparaison a `filmdec.WalkPackets`, paquet par paquet, sur un
+> vrai chunk). Pour rejouer la mesure complete sur le cache : commit `aa694442f` ou anterieur.
+
 ### 2a. Premiere mesure (grammaire CANDIDATE « arret sur taille 0 », ABANDONNEE)
 
 2026-09-02, 13:41-13:48 (6 min 55), 1 380 films, un enfant borne par film. Resultat : 0 flux

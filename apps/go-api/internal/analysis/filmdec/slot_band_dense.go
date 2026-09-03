@@ -1,6 +1,6 @@
 package filmdec
 
-// slot_set.go — LA BANDE DE SLOTS BIPEDE, EN TABLEAU INDEXE.
+// slot_band_dense.go — LA BANDE DE SLOTS BIPEDE, EN TABLEAU INDEXE.
 //
 // POURQUOI. Un slot bipede tient sur [bipedSlotBits] bits : le domaine entier vaut 8 192
 // valeurs, et une bande en compte une vingtaine. Les detecteurs d'en-tete

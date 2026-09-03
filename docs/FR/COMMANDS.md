@@ -244,9 +244,8 @@ franchement au lieu d'écrire des faits vides — arrêter un serveur qui tient 
 ```bash
 go run ./cmd/replay-equiv                          # tout le corpus (CORPUS.txt), comparaison seule
 go run ./cmd/replay-equiv -films 000d5950 -update  # (re)fige les références d'un seul film
-go run ./cmd/replay-equiv -walkers -walkers-out tmp/walkers.tsv
 # flags : -corpus F  -films a,b (remplace le corpus)  -update  -mem-gib N (défaut 3, 0 = désarmé)
-#         -title slug  -walkers  -walkers-out F
+#         -title slug
 ```
 
 Le harnais d'équivalence de la construction : il hache la sortie de **chaque** balayage, pas
@@ -256,9 +255,12 @@ dans le même binaire — le parent planifie et ne décode rien, chaque film na�
 `internal/analysis/replay/testdata/equivalence/<short8>.tsv`, chacune ouverte par son marqueur
 `# digest-grammar: N` : une référence figée sous une autre grammaire est une panne
 d'infrastructure (« re-figer par `-update` »), jamais un écart de décodage. `-update` réécrit ces
-références au lieu de les comparer — pour une correction déclarée seulement. `-walkers` mesure la
-divergence des grammaires de découpage sur tout le cache de films au lieu de comparer des
-empreintes.
+références au lieu de les comparer — pour une correction déclarée seulement. Le mode `-walkers`
+(divergence des grammaires de découpage sur tout le cache de films) a été **retiré** en 2026-09 :
+il portait en copie trois marcheurs de paquets historiques dont les originaux n'existent plus, il
+ne se comparait donc plus qu'à lui-même. Sa mesure reste figée au §2 de
+`.ai/V7.5/MESURES_CUISSON_PERF.md` et rejouée en CI par le test de la mini-bobine de
+`internal/analysis/filmsource`.
 
 ```bash
 LEVELUP_LOG_LEVEL=debug go run ./cmd/replay-build --map "<nom de carte>" --facts <f>.facts.json \

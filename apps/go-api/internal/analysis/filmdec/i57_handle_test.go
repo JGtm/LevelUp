@@ -447,7 +447,7 @@ func i57hPairReport(t *testing.T, label string, events, sorted []uint64) {
 
 // i57hLogLifeEnds répond à l'item C.4 : les vies ti=37 ont-elles une FIN lisible ?
 func i57hLogLifeEnds(t *testing.T, dir string, lives map[eaLifeKey]*eaLife) {
-	arch, err := EquipmentArchetype(dir)
+	arch, err := EquipmentArchetypeDir(dir)
 	if err != nil {
 		t.Fatalf("archétype ti=37 illisible : %v", err)
 	}

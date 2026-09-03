@@ -583,6 +583,9 @@ Prerequis : verdict 0.7 = zero divergence sur les 11 films du corpus (sinon : ar
       la decouverte N-V (`GUIDE_KILLSOURCE.md` cite encore `killsource.MemoryChunks`/`DirChunks`,
       symboles supprimes au lot 1) — a reprendre par le pilote.
 - [ ] 6.3 `delivery-checklist` ; `adversarial-review` du diff complet (lots a risque : 1 et 5).
+      EN COURS (2026-09-03) : la revue de branche est FAITE et ses sept constats sont CORRIGES
+      (plancher de cuisson, `ArtifactHasPlayerCounters` supprimee, mode `-walkers` retire, quatre
+      gardes durcis — detail au journal §10). Reste au pilote : `delivery-checklist` et le go/no-go.
 - [ ] 6.4 Proposition de merge dans `feat/v75` (pas de push sans accord ; la re-cuisson de masse
       n'est PAS dans ce plan : elle suit le schema vehicules).
 - Gate 6 : `make gate-push` vert.
@@ -1920,3 +1923,102 @@ plus. A reprendre par le pilote (perimetre de l'agent : `docs/` + l'audit + ce �
 
 **AUCUNE CUISSON, AUCUN CODE, AUCUN COMMIT.** Le diff se limite a `docs/COMMANDS.md`,
 `docs/FR/COMMANDS.md`, `.ai/AUDIT_CUISSON_REPLAY_PERF_2026-09-02.md` et ce plan.
+
+### Lot 6, item 6.3 — Corrections de la revue de branche (2026-09-03) — 7/7 constats traites
+
+**A1 — UNE CUISSON NE PART PLUS POUR SE FAIRE TUER.**
+`internal/sync/replayartifacts/cuisson.go` : nouvelle constante `PlancherCuisson = 30 * time.Second`
+et garde `if d.BuildOne != nil && solde < PlancherCuisson` posee JUSTE AVANT `cuireUnMatch`
+(`cuisson.go:221-242`). Le solde etait mesure APRES `pont.film()` et `deadlineDuFilm` n'avait pas
+de plancher : un solde nul ou minuscule rendait un contexte DEJA EXPIRE, l'enfant mourait a la
+naissance, le film comptait en ECHEC et un WARN « artefact rejeu non construit » accusait le
+decodage d'une panne inexistante —
+l'exact contraire de la doctrine du fichier (« le budget s'applique ENTRE deux matchs »). Desormais :
+`budgetEpuise = true`, journal INFO « solde de budget sous le plancher de cuisson, match reporte au
+cycle suivant » (un report est nominal, pas un incident), et sortie de boucle. LE FILM RESTE
+PERSISTE — il expire cote serveur, l'artefact non ; le cycle suivant reprend le match avec son film
+deja en cache. TRENTE SECONDES SONT MESUREES : la cuisson d'un temoin vaut 15,7 / 18,6 / 18,2 s
+apres le lot 4 (§1 de `MESURES_CUISSON_PERF.md`), soit un plancher au-dessus de la mediane et un
+dixieme de `BudgetParCycle`. La deadline dure `min(solde, 15 min)` reste pour les cuissons lancees,
+et son en-tete dit maintenant que le solde recu n'est jamais sous le plancher. Test
+`TestBuildAll_SoldeSousLePlancher_ReporteSansEchec` (budget positif mais sous le plancher : 0 appel
+a `BuildOne`, 0 echec, `budgetEpuise` vrai, 1 film persiste, aucune goroutine survivante) — verifie
+DISCRIMINANT en neutralisant la garde (`if false`) : les quatre assertions rougissent. Le test
+existant du `BuildOne` bloquant (budget 1 min, donc au-dessus du plancher) reste vert.
+NUANCE TROUVEE EN CODANT, ET COUVERTE : le plancher ne s'applique QUE si une cuisson est cablee
+(`d.BuildOne != nil`). Sans elle, la boucle n'est plus qu'un pont disque — aucune cuisson a
+proteger d'une deadline derisoire, et s'arreter tot ne ferait que perdre des films qui EXPIRENT
+cote serveur. Second test `TestBuildAll_SoldeSousLePlancher_SansCuissonCablee_PersisteQuandMeme`
+(2 films persistes, `budgetEpuise` faux), lui aussi verifie discriminant en retirant la garde.
+
+**A2 — `ArtifactHasPlayerCounters` SUPPRIMEE, SA DOCTRINE DEPLACEE.**
+`internal/replaybuild/artifact_digest.go` : la fonction n'avait plus aucun appelant de production
+depuis l'item 5.3 (verifie au grep : quatre commentaires et un test, zero appel). Son en-tete
+doctrinal — les trois vacuites legitimes, « un appelant ne doit JAMAIS en deduire a re-cuire a lui
+seul », le choix du signal et la dette du champ `factsApplied` — vit desormais sur
+`Digest.HasPlayerCounters` (`artifact_digest.go:56-92`), qui est le predicat qu'il decrivait. Les
+commentaires qui la citaient par nom sont repointes : `artifact_store.go:155`,
+`replayartifacts/artifacts.go:263`, `replayartifacts/cuisson.go:71`,
+`cmd/levelup/cmd_backfill_replay_repair.go:25` (les quatre de la revue) et, pour les deux mentions
+HISTORIQUES qui decrivaient l'ancienne triple lecture, `cmd_backfill_replay_repair.go:72` et
+`cmd_backfill_replay_repair_test.go:90` (le nom mort disparait, le fait raconte reste vrai).
+ECART ASSUME AU MANDAT, a arbitrer : le test n'a pas ete supprime mais REPOINTE
+(`TestArtifactHasPlayerCounters` -> `TestDigestHasPlayerCounters`, memes cinq formes de document,
+meme oracle, appel par `ArtifactDigest(p).HasPlayerCounters()`). Raison : ces cinq cas etaient la
+SEULE couverture du predicat (« courbe sans joueurs », « aucune courbe », « json illisible »), et le
+predicat, lui, est vivant — quatre sites de production le lisent. Supprimer la fonction morte ne
+demandait pas de perdre la mesure de la regle.
+
+**A3 — LE MODE `-walkers` EST RETIRE (decision pilote).**
+Supprimes : `cmd/replay-equiv/walkers.go`, `walkers_parent.go`, `walkers_test.go`, les drapeaux
+`-walkers` / `-walkers-out` et leur aiguillage (`main.go` : `executer` retombe a deux roles, les
+champs `walkers`/`walkersOut` disparaissent), et l'entree `cmd/replay-equiv/walkers.go` de
+`sitesZlibAutorises` (la regle 4 « entree morte = echec » l'exigeait — verifiee DISCRIMINANTE en
+reintroduisant l'entree : « entrees MORTES de l'allowlist »). Consequence traitee, pas reportee :
+`argsEnfant` perd son parametre `extra []string`, dont `-walkers` etait l'unique consommateur, et
+son test suit. Docs realignes aux DEUX `COMMANDS.md` (regle 15) : les drapeaux disparaissent du bloc
+d'exemple, un paragraphe dit le retrait et ou la mesure survit. **MODE RETIRE AU LOT 6 : la mesure
+reste figee dans `MESURES_CUISSON_PERF.md` §2 et rejouable en CI par le test de la mini-bobine de
+`internal/analysis/filmsource` ; pour re-mesurer un jour, partir du commit `aa694442f` ou
+anterieur.** La meme phrase est ecrite dans l'en-tete de `cmd/replay-equiv/main.go`.
+
+**CORRECTIONS 4 A 7 — LES GARDES.**
+(4) `archlint/no_film_reread_test.go:201` — la regle 3 compare des NOMS d'appeles (AST, aucun
+typage) : `EquipmentArchetype` designait a la fois l'enveloppe `dir` et la METHODE
+`FilmContext.EquipmentArchetype` que la cuisson appelle, donc la regle aurait rougi sur l'appel
+LEGITIME. L'enveloppe est renommee `EquipmentArchetypeDir` (`filmdec/equipment_state.go:213`, quatre
+appelants de test), la liste fermee suit, et son en-tete pose la condition de validite (« que des
+noms sans homonyme », avec la commande de verification). C'etait la SEULE collision des 40 noms
+(grep sur la liste entiere). Preuve : une sonde temporaire dans `internal/replaybuild` appelant les
+DEUX formes fait rougir l'enveloppe et LAISSE PASSER `fc.EquipmentArchetype()`.
+(5) `OpenFile` et `Glob` ajoutes a `lecturesDisque` (`:147`) — `os.OpenFile(p, os.O_RDONLY, 0)` lit
+ce que `os.Open` lit et `filepath.Glob` enumere ce que `os.ReadDir` enumere ; le predicat accepte
+donc les qualificateurs `os` ET `filepath` (aucun autre nom de la liste n'existe dans `filepath` :
+pas de sur-detection). Rien ne rougit dans `filmdec` (aucun `os.OpenFile` ni `filepath.Glob` hors
+tests), et `filmsource` reste HORS du perimetre de la regle par construction — elle ne balaye que
+`internal/analysis/filmdec`, et `filmsource` est LE paquet autorise a lire (D1). Verifie
+DISCRIMINANT par une sonde portant les deux appels.
+(6) `filmdec/slot_band_dense.go:3` — l'en-tete disait « slot_set.go » : corrige. Balayage du paquet :
+aucun autre en-tete menteur (les trois ecarts detectes sont des `_test.go` qui citent leur fichier
+sous test, ce qui est la convention).
+(7) `cmd/replay-worker/job.go:280` — le verrou solo est ENRACINE sur
+`titlePkg.NewPathResolver(w.repoRoot).CacheRootDir()` au lieu de `w.workDir`. Le commentaire
+annoncait l'exclusion avec le post-sync alors que `--work` deplacait le verrou dans un dossier que
+personne d'autre ne regarde ; les trois autres points d'entree (post-sync, passe de backfill,
+`replay-build`) prennent tous le verrou a la racine du cache du depot, et c'est le contrat ecrit
+d'`AcquireSolo`. `w.repoRoot` EXISTE et est obligatoire (`cmd/replay-worker/main.go:87` : sortie 2
+sans `--repo`), le code a donc ete change plutot que le commentaire nuance.
+
+**GATE (execute dans le worktree, 2026-09-03).** `gofmt -l .` : VIDE · `go vet ./...` : vide,
+code 0 · `go build ./...` : vide, code 0 ·
+`go test ./internal/sync/replayartifacts/ ./internal/replaybuild/ ./internal/archlint/
+./cmd/replay-equiv/ ./cmd/replay-worker/... -count=1` : **tout ok** (replayartifacts 0,329 s ·
+replaybuild 0,553 s · archlint 5,603 s · replay-equiv 0,269 s · replay-worker 0,199 s), code **0** ·
+`go test -tags=integration -p 1 ./internal/sync/replayartifacts/ -count=1` : **ok 5,561 s**,
+code **0** · `golangci-lint run` : 273 issues, **baseline INCHANGEE** (meme total qu'au lot 5) ;
+`golangci-lint run --new-from-rev=HEAD` : **0 issue** ; aucune issue ne pointe un fichier touche
+(grep sur les neuf fichiers du diff). Seuils : `cuisson.go` 338 L, `job.go` 451 L,
+`no_film_reread_test.go` 405 L, tous < 500 ; `buildAll` 63 lignes < 80.
+
+**AUCUNE CUISSON, AUCUN COMMIT** (interdits du mandat) : aucun binaire reconstruit, aucun digest
+regenere, `tmp/` et `CORPUS.txt` intacts.

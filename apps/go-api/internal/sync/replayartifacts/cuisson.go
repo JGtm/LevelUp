@@ -68,7 +68,7 @@ func enqueueAll(ctx context.Context, d Deps, work []buildWork) {
 			//
 			// PRÉSOMPTION, PAS PREUVE : l'artefact peut être vide de compteurs pour une raison
 			// légitime (film sans enregistrement d'entité, appariement ambigu, aucun compteur
-			// dans la fenêtre — cf. l'en-tête d'ArtifactHasPlayerCounters). La re-cuisson rendra
+			// dans la fenêtre — cf. l'en-tête de `replaybuild.Digest.HasPlayerCounters`). La re-cuisson rendra
 			// alors le même document. Le résidu est BORNÉ des deux côtés : en fréquence, parce
 			// que la sélection ne voit que les matchs INSÉRÉS du cycle (un match ne repasse pas
 			// ici à chaque sync) ; en dégâts, parce que `StoreArtifact` refuse toute régression.
@@ -137,9 +137,32 @@ type bilanCuisson struct {
 // demande.
 const DeadlineParFilm = 15 * time.Minute
 
+// PlancherCuisson : le solde de budget SOUS LEQUEL AUCUNE CUISSON NE SE LANCE.
+//
+// POURQUOI IL EXISTE (revue du lot 6, constat 6.3). La borne d'un film vaut
+// `min(solde, DeadlineParFilm)` et n'avait pas de plancher : un solde de deux secondes — ou nul —
+// donnait à la cuisson un contexte DÉJÀ EXPIRÉ. L'enfant était tué aussitôt né, le film comptait
+// en ÉCHEC, et un WARN « artefact rejeu non construit » accusait le décodage d'une panne qui n'en
+// était pas une. C'est exactement ce que la doctrine de ce fichier interdit : LE BUDGET S'APPLIQUE
+// ENTRE DEUX MATCHS, JAMAIS AU MILIEU D'UN — et une cuisson lancée pour être tuée trois lignes
+// plus loin, c'est le milieu d'un match. Sous le plancher, le cycle REPORTE (Info, pas Warn : un
+// report est nominal) et le match revient au cycle suivant, l'étape étant idempotente.
+//
+// TRENTE SECONDES, ET C'EST MESURÉ : après le lot 4, un film témoin se cuit en 15 à 19 s
+// (`MESURES_CUISSON_PERF.md` §1 : 15,7 / 18,6 / 18,2 s). Trente secondes laissent donc passer la
+// cuisson médiane et refusent celles qui n'ont plus la place de finir. Le pire film sain du corpus
+// (BTB à 26 joueurs, ~1 min 40) ne rentre dans aucun plancher raisonnable : le reporter au cycle
+// suivant EST le bon comportement, et sa borne dure reste [DeadlineParFilm]. La valeur est un
+// dixième de [BudgetParCycle] — le cycle ne se prive que de sa dernière tranche.
+const PlancherCuisson = 30 * time.Second
+
 // deadlineDuFilm rend la borne effective d'UNE cuisson : le minimum du solde de budget et de
 // [DeadlineParFilm]. Rien ne sert de laisser un enfant courir vingt minutes quand le cycle
 // s'arrête dans trois.
+//
+// LE SOLDE REÇU N'EST JAMAIS SOUS [PlancherCuisson] : l'appelant a déjà refusé de lancer la
+// cuisson en dessous (cf. `buildAll`). Cette fonction ne rend donc plus jamais un délai
+// dérisoire — un contexte expiré à la naissance était un échec compté pour rien.
 func deadlineDuFilm(d Deps, restant time.Duration) time.Duration {
 	max := DeadlineParFilm
 	if d.DeadlineParFilm > 0 {
@@ -173,6 +196,8 @@ func buildAll(ctx context.Context, d Deps, work []buildWork) bilanCuisson {
 		}
 		// LE BUDGET S'APPLIQUE ENTRE DEUX MATCHS, jamais au milieu d'un : couper une cuisson
 		// en cours ne rendrait qu'un artefact tronqué. Le solde repart au cycle suivant.
+		// (Le solde RÉSIDUEL, lui, est jugé plus bas contre [PlancherCuisson] : à zéro on
+		// s'arrête ici, sous le plancher on s'arrête juste avant de cuire.)
 		if time.Since(debut) >= budget {
 			b.budgetEpuise = true
 			slog.InfoContext(ctx, "post-sync: rejeu 2D — budget de cycle épuisé, solde au cycle suivant",
@@ -193,7 +218,28 @@ func buildAll(ctx context.Context, d Deps, work []buildWork) bilanCuisson {
 		if film.sauve {
 			b.filmsSauves++
 		}
-		cuireUnMatch(ctx, d, w, &b, budget-time.Since(debut))
+		// SOUS LE PLANCHER, ON REPORTE — ON NE CUIT PAS POUR SE FAIRE TUER. Le solde se mesure
+		// ICI, après le pont disque : télécharger a pris du temps, et ce qu'il reste ne suffit
+		// peut-être plus. Lancer quand même donnerait un contexte expiré à la naissance, donc un
+		// ÉCHEC compté et un WARN pour une panne qui n'existe pas (cf. [PlancherCuisson]).
+		//
+		// LE FILM, LUI, EST DÉJÀ PERSISTÉ, et c'est l'essentiel : il EXPIRE côté serveur Halo,
+		// l'artefact non. Le cycle suivant reprendra ce match avec son film déjà en cache.
+		//
+		// LE PLANCHER NE S'APPLIQUE QUE SI UNE CUISSON EST CÂBLÉE. Sans `BuildOne`, cette boucle
+		// n'est plus qu'un pont disque : il n'y a AUCUNE cuisson à protéger d'une deadline
+		// dérisoire, et s'arrêter tôt ne ferait que perdre des films qui expirent. Le budget
+		// PLEIN (garde d'entrée de boucle) reste alors la seule borne.
+		solde := budget - time.Since(debut)
+		if d.BuildOne != nil && solde < PlancherCuisson {
+			b.budgetEpuise = true
+			slog.InfoContext(ctx, "post-sync: rejeu 2D — solde de budget sous le plancher de cuisson, match reporté au cycle suivant",
+				"gamertag", d.Gamertag, "match_id", w.matchID, "solde", solde,
+				"plancher", PlancherCuisson,
+				"traites", b.construits+b.dejaAJour+b.sansFilm+b.echecs)
+			break
+		}
+		cuireUnMatch(ctx, d, w, &b, solde)
 	}
 	return b
 }
@@ -203,6 +249,10 @@ func buildAll(ctx context.Context, d Deps, work []buildWork) bilanCuisson {
 // EXTRAITE DE `buildAll` LE 2026-09-03 (items 5.5/5.6) : la boucle porte désormais le pont
 // disque et son préchargement, la cuisson d'un match porte sa deadline. Les deux tenaient
 // ensemble au-delà des 80 lignes du dépôt, et elles ne répondent pas à la même question.
+//
+// `restant` VAUT AU MOINS [PlancherCuisson] : c'est la boucle qui refuse d'appeler ici quand le
+// solde ne suffit plus (constat 6.3). Cette fonction n'a donc jamais à se demander si sa deadline
+// est tenable — elle l'est par construction.
 func cuireUnMatch(ctx context.Context, d Deps, w buildWork, b *bilanCuisson, restant time.Duration) {
 	// MÊME RÈGLE QUE LA MISE EN FILE : la version de schéma ne suffit pas. Un artefact
 	// appauvri déposé par un ouvrier d'avant le transport des faits porte le bon numéro ;

@@ -236,9 +236,8 @@ a server that holds the shared DB in write.
 ```bash
 go run ./cmd/replay-equiv                            # whole corpus (CORPUS.txt), compare only
 go run ./cmd/replay-equiv -films 000d5950 -update    # (re-)freeze the references of one film
-go run ./cmd/replay-equiv -walkers -walkers-out tmp/walkers.tsv
 # flags: -corpus F  -films a,b (replaces the corpus)  -update  -mem-gib N (default 3, 0 = off)
-#        -title slug  -walkers  -walkers-out F
+#        -title slug
 ```
 
 The equivalence harness of the build chain: it hashes the output of **every** scan, not just the
@@ -248,8 +247,11 @@ wait, sentinel) and dies with its RAM. References live in
 `internal/analysis/replay/testdata/equivalence/<short8>.tsv`, each opening with its
 `# digest-grammar: N` marker: a reference frozen under another grammar is an infrastructure failure
 ("re-freeze with `-update`"), never a decoding difference. `-update` rewrites those references
-instead of comparing them — for a declared correction only. `-walkers` measures the divergence
-of the packet-splitting grammars over the whole film cache instead of comparing digests.
+instead of comparing them — for a declared correction only. The `-walkers` mode (divergence of the
+packet-splitting grammars over the whole film cache) was **removed** in 2026-09: it carried a copy
+of three historical packet walkers whose originals no longer exist, so it only compared against
+itself. Its measurement stays frozen in `.ai/V7.5/MESURES_CUISSON_PERF.md` §2 and is replayed in CI
+by the mini-reel test of `internal/analysis/filmsource`.
 
 ```bash
 LEVELUP_LOG_LEVEL=debug go run ./cmd/replay-build --map "<map name>" --facts <f>.facts.json \

@@ -199,10 +199,18 @@ func equipmentFieldIndices(arch Archetype) [EquipmentFieldCount]int {
 	return out
 }
 
-// EquipmentArchetype charge l'archétype des objets d'équipement (ti=37) du registre du film.
+// EquipmentArchetypeDir charge l'archétype des objets d'équipement (ti=37) du registre du film.
 //
 // ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle [FilmContext.EquipmentArchetype].
-func EquipmentArchetype(dir string) (Archetype, error) {
+//
+// LE SUFFIXE `Dir` N'EST PAS UN ORNEMENT (lot 6, constat 4 de la revue de branche). Elle
+// s'appelait `EquipmentArchetype`, exactement comme la MÉTHODE que la production appelle : le
+// garde-rail `archlint.TestProductionNAppellePasLesEnveloppes` compare des NOMS d'appelés (il
+// parse l'AST, il ne type rien), et il aurait donc rougi le jour où un paquet de production
+// aurait écrit `fc.EquipmentArchetype()` — l'appel LÉGITIME. Une règle qui interdit le bon geste
+// finit désactivée. Le nom porte désormais la distinction : c'est la seule des 40 enveloppes qui
+// entrait en collision avec une méthode (vérifié au grep sur la liste entière).
+func EquipmentArchetypeDir(dir string) (Archetype, error) {
 	film, err := filmsource.LoadDir(dir, nil)
 	if err != nil {
 		return Archetype{}, err

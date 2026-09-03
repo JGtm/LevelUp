@@ -1,3 +1,64 @@
+## [2026-09-03] Cuisson perf, lot 6.3 — les sept constats de la revue de branche sont corriges : plancher de cuisson, code mort supprime, gardes rendus discriminants — Complete (7/7)
+
+Item 6.3 de `.ai/V7.5/PLAN_CUISSON_PERF.md`, worktree `LevelUp-wt-cuisson-perf`
+(`wt/cuisson-perf`, base `d3af3f3bf`). **Aucun commit** (demande du pilote), aucune cuisson lancee,
+`tmp/` et `CORPUS.txt` intacts.
+
+**Decision technique principale : un budget presque epuise doit REPORTER, pas cuire pour se faire
+tuer.** La borne d'une cuisson valait `min(solde de budget, 15 min)` sans plancher : quand le pont
+disque avait mange le budget, `cuireUnMatch` recevait un contexte deja expire, l'enfant mourait a la
+naissance, le film comptait en ECHEC et un WARN accusait le decodage d'une panne inexistante — soit
+exactement ce que la doctrine du fichier interdit (« le budget s'applique ENTRE deux matchs, jamais
+au milieu d'un »). `PlancherCuisson = 30 s` (mesure : la cuisson d'un temoin vaut 15-19 s apres le
+lot 4, et 30 s est un dixieme du budget de cycle) arrete la boucle AVANT de cuire, en INFO, en
+gardant le film persiste — il expire cote serveur, l'artefact non. Nuance trouvee en codant et
+couverte par un second test : le plancher ne s'applique QUE si une cuisson est cablee
+(`d.BuildOne != nil`) — sans elle la boucle n'est plus qu'un pont disque, et s'arreter tot ne
+ferait que perdre des films.
+
+**Ce qui a ete supprime plutot que garde.** `replaybuild.ArtifactHasPlayerCounters` n'avait plus
+aucun appelant de production depuis l'item 5.3 : supprimee, son en-tete doctrinal (les trois
+vacuites legitimes, « jamais en deduire a re-cuire ») deplace sur `Digest.HasPlayerCounters`, et les
+six commentaires qui la citaient repointes. Le mode `-walkers` de `cmd/replay-equiv` (3 fichiers,
+2 drapeaux, l'aiguillage, l'entree d'allowlist zlib et le parametre `extra` d'`argsEnfant` devenu
+sans consommateur) est retire sur decision du pilote : il portait EN COPIE trois marcheurs de
+paquets dont les originaux ont disparu aux items 1.4/1.5 — il ne se comparait plus qu'a lui-meme.
+La mesure survit la ou elle doit : figee au §2 de `MESURES_CUISSON_PERF.md`, rejouee en CI par le
+test de la mini-bobine de `filmsource`, re-mesurable depuis le commit `aa694442f`.
+
+**Lecon a garder : un garde-rail qui interdit le bon geste finit desactive.** Le ratchet des
+enveloppes `dir` compare des NOMS d'appeles (il parse l'AST, il ne type rien) et portait
+`EquipmentArchetype` — nom que porte AUSSI la methode `FilmContext.EquipmentArchetype` que la
+cuisson appelle legitimement. L'enveloppe est renommee `EquipmentArchetypeDir`, et la liste fermee
+porte desormais sa condition de validite (« que des noms sans homonyme », avec la commande de
+verification). Meme famille : `lecturesDisque` ne listait que `ReadFile/ReadDir/Open/Stat` — le
+meme geste passait sous `os.OpenFile` ou `filepath.Glob`, les deux sont ajoutes. Et le verrou solo
+de l'ouvrier etait enracine sur `w.workDir` alors que son commentaire annoncait l'exclusion avec le
+post-sync : des qu'un ouvrier distant passe `--work`, il posait son verrou dans un dossier que
+personne d'autre ne regarde. Il est enracine sur `PathResolver(w.repoRoot).CacheRootDir()`, comme
+les trois autres points d'entree et comme le contrat ecrit d'`AcquireSolo`.
+
+**Resultats observes.** Chaque garde touche a ete verifie DISCRIMINANT par violation temporaire,
+supprimee ensuite : la garde du plancher neutralisee (`if false`) fait rougir les quatre assertions
+du nouveau test ; une sonde `os.OpenFile` + `filepath.Glob` dans `filmdec` fait rougir la regle 2 ;
+une sonde qui appelle les DEUX formes d'`EquipmentArchetype` depuis `replaybuild` fait rougir
+l'enveloppe et LAISSE PASSER la methode ; l'entree d'allowlist zlib reintroduite est signalee
+« entree MORTE ». Gate : `gofmt -l .` vide, `go vet ./...` et `go build ./...` codes 0,
+`go test` des cinq paquets du perimetre code 0 (archlint 5,6 s, le reste sous la seconde),
+`go test -tags=integration -p 1 ./internal/sync/replayartifacts/` code 0 (5,561 s),
+`golangci-lint run` 273 issues (baseline inchangee) et `--new-from-rev=HEAD` 0 issue.
+
+**Ecart assume, a arbitrer par le pilote.** Le mandat demandait de supprimer
+`TestArtifactHasPlayerCounters` avec sa fonction ; il a ete REPOINTE sur
+`ArtifactDigest(p).HasPlayerCounters()` (renomme `TestDigestHasPlayerCounters`) parce que ses cinq
+formes de document etaient la SEULE couverture d'un predicat toujours vivant, lu par quatre sites de
+production. Supprimer la fonction morte ne demandait pas de perdre la mesure de la regle.
+
+**Conclusion / prochaine etape.** Les sept constats sont statues `[x]`, rien n'est reporte. Reste
+au pilote pour clore le lot 6 : l'item 6.1 (mesure finale), le `delivery-checklist` de l'item 6.3,
+et la decouverte N-V ouverte depuis le 6.2 (`GUIDE_KILLSOURCE.md` cite encore
+`killsource.MemoryChunks`/`DirChunks`, symboles supprimes au lot 1).
+
 ## [2026-09-03] Cuisson perf, lot 5 — orchestration et protections : le cycle ne peut plus etre pris en otage, et un seul processus decode a la fois — Complete (7/7 items)
 
 Lot 5 (items 5.1 a 5.7) de `.ai/V7.5/PLAN_CUISSON_PERF.md`, worktree `LevelUp-wt-cuisson-perf`

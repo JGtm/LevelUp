@@ -152,7 +152,7 @@ func validateArtifact(titleSlug, matchID string, blob []byte) (replay.ReplayDocu
 // des faits, et `chargerFaitsReplay` qui dégrade à vide pour TOUTE une passe de backfill si son
 // unique ouverture de base échoue.
 //
-// C'EST AUSSI LE FILET DU PRÉDICAT DE FRAÎCHEUR. `ArtifactHasPlayerCounters` ne peut que
+// C'EST AUSSI LE FILET DU PRÉDICAT DE FRAÎCHEUR. [Digest.HasPlayerCounters] ne peut que
 // PRÉSUMER l'appauvrissement (trois vacuités légitimes, cf. son en-tête) : avec ce garde, une
 // présomption fausse coûte au pire un décodage gâché, jamais un artefact rétrogradé.
 //
