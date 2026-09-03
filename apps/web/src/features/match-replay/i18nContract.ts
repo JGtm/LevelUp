@@ -140,9 +140,20 @@ export interface PadControlText {
   title: string
   /** Infobulle du titre : d'où vient l'attribution, et ce qu'elle refuse de faire. */
   titleHint: string
-  colPlayer: string
-  colTotal: string
-  teamTotal: string
+  /**
+   * LE GRAPHE (2026-09-03) : une arme par ligne, deux bâtons superposés, une échelle commune.
+   * `axisPickups` nomme cette échelle — sans lui, une graduation « 0 1 2 3 » ne dit pas de
+   * quoi elle compte les unités.
+   */
+  axisPickups: string
+  /** Infobulle d'un segment : le joueur, son camp, le socle, ses prises. */
+  barTipFmt: (player: string, team: string, weapon: string, count: number) => string
+  /**
+   * L'ANNOTATION DE DROITE : les occupations de CE socle dont l'événement natif ne nomme pas le
+   * ramasseur. Elles ne sont versées à aucun camp — les afficher à part est la seule façon de
+   * dire « ce socle a changé de mains plus souvent que la ligne ne le montre » sans inventer.
+   */
+  unnamedFmt: (count: number) => string
   /** Le dénominateur : « N prises attribuées sur M occupations de socle ». */
   attributedFmt: (attributed: number, occupations: number) => string
   /** L'annonce du reste, avant la ventilation par cause. */

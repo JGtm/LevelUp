@@ -355,10 +355,11 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     padControl: {
       title: 'Contrôle des armes spéciales',
       titleHint:
-        "Les armes de socle prises pendant le match, et par qui. Chaque prise vient de l'événement de ramassage écrit dans le film : il est daté à la milliseconde et porte son ramasseur. Une occupation de socle qu'aucun ramassage ne couvre — ou que plusieurs couvrent — n'est comptée pour personne : on ne devine pas un ramasseur, on s'abstient et on le dit sous le tableau.",
-      colPlayer: 'Joueur',
-      colTotal: 'Prises de socle',
-      teamTotal: 'Total équipe',
+        "Les armes de socle prises pendant le match, et par qui. Chaque prise vient de l'événement de ramassage écrit dans le film : il est daté à la milliseconde et porte son ramasseur. Une occupation de socle qu'aucun ramassage ne couvre — ou que plusieurs couvrent — n'est comptée pour personne : on ne devine pas un ramasseur, on s'abstient et on le dit sous le graphe.",
+      axisPickups: 'nombre de prises',
+      barTipFmt: (player, team, weapon, count) =>
+        `${player} (${team}) — ${weapon} : ${count} prise${count > 1 ? 's' : ''}`,
+      unnamedFmt: (count) => `+ ${count} sans nom`,
       attributedFmt: (attributed, occupations) =>
         `${attributed} prise${attributed > 1 ? 's' : ''} attribuée${attributed > 1 ? 's' : ''} sur ${occupations} occupation${occupations > 1 ? 's' : ''} de socle mesurée${occupations > 1 ? 's' : ''}.`,
       missingFmt: (missing) =>
@@ -744,10 +745,11 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     padControl: {
       title: 'Power weapon control',
       titleHint:
-        'The pad weapons picked up during the match, and by whom. Every pickup comes from the pickup event written in the film: it is timed to the millisecond and carries its picker. A pad occupancy no pickup covers — or that several cover — is counted for nobody: a picker is never guessed, the measurement abstains and says so below the table.',
-      colPlayer: 'Player',
-      colTotal: 'Pad pickups',
-      teamTotal: 'Team total',
+        'The pad weapons picked up during the match, and by whom. Every pickup comes from the pickup event written in the film: it is timed to the millisecond and carries its picker. A pad occupancy no pickup covers — or that several cover — is counted for nobody: a picker is never guessed, the measurement abstains and says so below the chart.',
+      axisPickups: 'pickup count',
+      barTipFmt: (player, team, weapon, count) =>
+        `${player} (${team}) — ${weapon}: ${count} pickup${count > 1 ? 's' : ''}`,
+      unnamedFmt: (count) => `+ ${count} unnamed`,
       attributedFmt: (attributed, occupations) =>
         `${attributed} pickup${attributed > 1 ? 's' : ''} attributed out of ${occupations} measured pad occupanc${occupations > 1 ? 'ies' : 'y'}.`,
       missingFmt: (missing) =>
