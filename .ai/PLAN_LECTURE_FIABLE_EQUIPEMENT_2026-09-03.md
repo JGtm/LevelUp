@@ -396,7 +396,48 @@ Gate P2 : `make check-types && make test-web` + gate visuel user sur un film re-
 Un film témoin d'abord (Dynasty `1b2d9e08`), sur accord explicite user, après P1+P2 —
 jamais de cuisson de masse sans décision séparée.
 
+## Lot R7 — La liste COMPLÈTE d'événements (commandé par l'utilisateur le 03/09 : « on ne
+## l'arrête pas tant qu'on n'a pas le propulseur et le répulseur ») — FAIT 03/09
+
+- [x] R7.1 VERROU DES LARGEURS SAUTÉ : pour les 123 types, domaines extraits mécaniquement
+      (30 thunks ; correction de dix lectures erronées de R6) et largeurs de charge dérivées
+      des lecteurs décompilés (règle unique : le flux porte son compteur de bits consommés).
+      **96,5 % des listes marchées intégralement** (91 845/95 133, 12 films, 430 046 paquets,
+      236 321 événements traversés) — contre « la tête seule » avant ce lot.
+- [x] R7.2 CADRAGE PROUVÉ, pas supposé : oracle de trame = facteur 7,8 contre témoin décalé
+      de +3 bits (seuil 3 écrit d'avance) ; oracle 117 = les 18 événements de R6 retrouvés au
+      mètre (0,00-0,26 m), avec le `Script` qui les suit 18/18.
+- [x] R7.3 VERDICT RÉPULSEUR / PROPULSEUR : **ABSENTS DU FILM**, négatif MESURÉ. La preuve
+      ne repose pas sur une absence mais sur la POSITION 1 d'une liste, dont le cadrage est
+      certain (38,9 % des événements) : tous les témoins positifs y sont à hauteur de leur
+      part (117 : 19 pour 16 attendues ; zoom : 5 903 pour 2 510 ; pose d'équipement : 356
+      pour 144), tandis que 104 `EquipmentKnockbackPlayer` = **0 pour 42 attendues**,
+      42 `biped_dodge` = **0 pour 30**, 43 = **0 pour 16**. Les 108 occurrences vues derrière
+      une tête sont de la DÉRIVE (référence constante 4224 ; 75 % suivent deux grammaires
+      imparfaites). Seule trace réelle de la famille : 105 `EquipmentObjectKnockedBack` —
+      l'OBJET poussé, pas le joueur — 8 têtes sur 12 films. Le négatif de R5/R6 est confirmé
+      et RENFORCÉ : il portait sur les têtes, il porte désormais sur la liste entière.
+- [!] R7.4 PRÉDICTION NON VÉRIFIÉE, DITE COMME TELLE (rapport §4.6) : après correction
+      structurelle du type 5, les occurrences de dérive ne tombent pas (104 : 108 → 123).
+      Deux causes dites : le type 0 reste douteux (production, non corrigé), et deux largeurs
+      du type 5 ne se lisent pas au site d'appel (calibration à 6 % d'écart, seuil 30 % :
+      NON CONCLUANT). **Le verdict R7.3 ne repose PAS sur cette prédiction.**
+- Rapport : `RAPPORT_R7_TRAME_COMPLETE_2026-09-03.md` (§7 rédigé pour publication ;
+  16 instruments `r7_*_research_test.go`).
+
 ## Découvertes / suites à arbitrer (issues de R1-R2, hors périmètre des lots courants)
+
+- **P1 (03/09) — LA DÉCOUVERTE LA PLUS LOURDE DE R7, hors périmètre, NON CORRIGÉE** : la
+  grammaire de PRODUCTION `lot1DecodeDamageAftermath` (`filmdec/weapon_hits_decode.go`,
+  type 0 `damage_aftermath`) est mesurée DOUTEUSE par l'oracle de trame — 1,161 contre une
+  médiane de 1,793, sur 2 297 listes à un seul événement. Elle touche **872 000 événements
+  de dégâts déjà exploités en production**. Ce lot étant en lecture seule, rien n'a été
+  corrigé. À instruire dans son propre chantier AVANT toute exploitation nouvelle du canal
+  dégâts — et l'oracle de trame de R7 est précisément l'instrument qui sait la juger.
+- R7 ouvre un canal neuf : la liste complète multiplie par ~2,5 les événements lisibles par
+  paquet et rend accessibles des types jamais vus en tête. Deux verrous restants pour le
+  fermer : les deux largeurs du type 5 (registres non posés par un immédiat local) et ~60
+  types rares encore opaques.
 
 - ~~P2 revue ronde 2 (03/09) — VERROU TÊTE PARTIELLE~~ : **CORRIGÉ en P1bis.4 le 03/09.**
   Constat d'origine : `pruneRecoveredViolations` / `chainViolations` ignoraient le compteur
