@@ -25,6 +25,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"path"
 	"regexp"
 	"strings"
 	"time"
@@ -41,7 +42,15 @@ const logModule = "leaderboard"
 
 const (
 	waypointLeaderboardHost = "https://www.halowaypoint.com"
-	defaultLeaderboardPage  = 100 // pageSize observé (fallback si absent du payload)
+	// leaderboardsBasePath : racine des pages classement. Sans saison ni playlist,
+	// Waypoint y répond par une redirection vers la saison ACTIVE (cf.
+	// FetchActiveSeasonByRedirect) ; avec saison + playlist, elle rend la page.
+	leaderboardsBasePath = "/halo-infinite/leaderboards"
+	// seasonIDPrefix : préfixe des identifiants de saison CSR Waypoint
+	// ("csrseason13-3"). Sert à valider ce que rend une redirection.
+	seasonIDPrefix         = "csrseason"
+	defaultScraperTimeout  = 20 * time.Second
+	defaultLeaderboardPage = 100 // pageSize observé (fallback si absent du payload)
 	// Garde-fou : jamais plus de pages que ça (évite une boucle infinie si la
 	// détection de fin échoue). 25 pages × 100 = 2500 joueurs max par playlist.
 	leaderboardMaxPages = 25
@@ -62,7 +71,7 @@ type LeaderboardScraper struct {
 // remplace par la dernière saison persistée via SetSeedSeason (F11).
 func NewLeaderboardScraper(politeDelay time.Duration) *LeaderboardScraper {
 	return &LeaderboardScraper{
-		client:     &http.Client{Timeout: 20 * time.Second},
+		client:     &http.Client{Timeout: defaultScraperTimeout},
 		host:       waypointLeaderboardHost,
 		perPage:    politeDelay,
 		seedSeason: seedSeasonID,
@@ -174,13 +183,77 @@ type WaypointRef struct {
 // seedSeasonID est la graine de découverte par DÉFAUT (fallback F11/LB3), utilisée
 // tant que le cron n'a pas injecté de dernière saison persistée (DB vide au tout
 // premier boot). Sa seule fonction est de construire une URL leaderboard qui rend la
-// page : la valeur retournée est TOUJOURS seasons[0] (la saison active du jour), qui
-// se corrige d'elle-même même si cette graine est périmée. Les saisons passées
-// restent accessibles indéfiniment sur Halo Waypoint (cf. fixture : csrseason3-1 →
-// 13-2 toutes sélectionnables). En régime établi, le cron remplace cette constante
-// par la dernière saison réellement capturée (SetSeedSeason), garantie de rendre la
-// page — la graine figée ne peut donc plus geler la découverte.
+// page : la valeur retournée est TOUJOURS seasons[0] (la saison active du jour).
+//
+// ATTENTION — les saisons passées NE restent PAS accessibles indéfiniment sur Halo
+// Waypoint : csrseason13-2 a été RETIRÉE du site en 2026-09 (404 sur toutes ses
+// playlists, saison absente du menu déroulant), ce qui a gelé la découverte pendant
+// 267 cycles. Une graine périmée — la constante ci-dessous comme la dernière saison
+// persistée injectée par SetSeedSeason — est donc un POINT FIXE MORT : elle ne peut
+// pas se corriger d'elle-même. Le repli qui, lui, ne dépend d'aucune graine est
+// FetchActiveSeasonByRedirect (header Location de la racine des classements).
 const seedSeasonID = "csrseason13-2"
+
+// FetchActiveSeasonByRedirect découvre la saison CSR active SANS page-graine : la
+// racine des classements (leaderboardsBasePath, sans saison ni playlist) répond par
+// une redirection 307 dont le header `Location` porte la saison active
+// (`/halo-infinite/leaderboards/csrseason13-3`). Le header SEUL suffit — aucun HTML
+// n'est lu, donc aucune dépendance au markup ni à une playlist de référence.
+//
+// C'est le repli de secours de FetchActiveSeason (menu déroulant), dont l'URL de
+// découverte dépend d'une saison-graine qui finit par être retirée du site (cf.
+// seedSeasonID). Redirections NON suivies : les suivre mènerait à une page playlist
+// par défaut qui peut rendre 500, et perdrait l'information cherchée.
+func (s *LeaderboardScraper) FetchActiveSeasonByRedirect(ctx context.Context) (string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, s.host+leaderboardsBasePath, nil)
+	if err != nil {
+		return "", fmt.Errorf("FetchActiveSeasonByRedirect: requête: %w", err)
+	}
+	req.Header.Set("User-Agent", scraperUserAgent)
+	req.Header.Set("Accept", "text/html,application/xhtml+xml")
+	req.Header.Set("Accept-Language", "en-US,en;q=0.9")
+
+	// Mode démo : même coupe-circuit que fetchPageBytes (page publique, la requête
+	// partirait sinon sans aucun token). L'appelant traite l'erreur par son repli.
+	if err := netguard.Check(ctx, "waypoint_leaderboard.discover_season"); err != nil {
+		return "", err
+	}
+
+	resp, err := s.noRedirectClient().Do(req)
+	if err != nil {
+		return "", fmt.Errorf("FetchActiveSeasonByRedirect: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < http.StatusMultipleChoices || resp.StatusCode >= http.StatusBadRequest {
+		return "", fmt.Errorf("FetchActiveSeasonByRedirect: statut HTTP %d, redirection attendue vers la saison active", resp.StatusCode)
+	}
+	loc, err := resp.Location()
+	if err != nil {
+		return "", fmt.Errorf("FetchActiveSeasonByRedirect: en-tête Location exploitable absent (statut %d): %w", resp.StatusCode, err)
+	}
+	season := path.Base(strings.TrimRight(strings.TrimSpace(loc.Path), "/"))
+	if !strings.HasPrefix(season, seasonIDPrefix) {
+		return "", fmt.Errorf("FetchActiveSeasonByRedirect: Location %q ne désigne pas une saison (préfixe %q attendu)", loc.Path, seasonIDPrefix)
+	}
+	slog.InfoContext(ctx, "saison active découverte par redirection (sans page-graine)",
+		"module", logModule, "season", season, "status", resp.StatusCode)
+	return season, nil
+}
+
+// noRedirectClient construit le client de la sonde de redirection : jumeau du client
+// principal (même timeout, transport par défaut mutualisé) mais qui NE SUIT PAS les
+// redirections — le header Location EST la réponse cherchée.
+func (s *LeaderboardScraper) noRedirectClient() *http.Client {
+	timeout := defaultScraperTimeout
+	if s.client != nil && s.client.Timeout > 0 {
+		timeout = s.client.Timeout
+	}
+	return &http.Client{
+		Timeout:       timeout,
+		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
+	}
+}
 
 // FetchActiveSeason découvre la saison CSR active en lisant le menu déroulant de
 // la page Halo Waypoint (seasons[0], la liste étant ordonnée du plus récent au
@@ -286,8 +359,8 @@ func (r WaypointRef) FrenchName() string {
 
 // fetchPageBytes récupère le HTML brut d'une page du classement.
 func (s *LeaderboardScraper) fetchPageBytes(ctx context.Context, seasonID, playlistID string, page int) ([]byte, error) {
-	url := fmt.Sprintf("%s/halo-infinite/leaderboards/%s/%s?page=%d",
-		s.host, seasonID, playlistID, page)
+	url := fmt.Sprintf("%s%s/%s/%s?page=%d",
+		s.host, leaderboardsBasePath, seasonID, playlistID, page)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err

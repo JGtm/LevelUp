@@ -13175,6 +13175,12 @@ components:
           type: boolean
         id:
           type: string
+        playlist_ids:
+          items:
+            type: string
+          type:
+            - array
+            - "null"
       required:
         - id
         - display_name
