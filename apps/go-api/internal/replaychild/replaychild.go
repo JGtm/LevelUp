@@ -37,6 +37,7 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/filmproc"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/replaybuild"
@@ -45,6 +46,11 @@ import (
 // Flag : le drapeau qui fait d'un processus l'enfant de cuisson. Il n'est pas destine a la main
 // de l'operateur — c'est un protocole interne, pas une commande.
 const Flag = "-film-child"
+
+// outilPostSync : le nom que le verrou de decodage porte quand c'est le post-sync qui le tient.
+// Un operateur a qui l'on refuse le verrou doit lire QUI travaille (cf. filmproc/solo.go) ; ce
+// nom est donc du texte d'interface, pas un detail.
+const outilPostSync = "post-sync"
 
 // Request : ce que le parent demande a l'enfant.
 type Request struct {
@@ -94,7 +100,7 @@ func RunChild(args []string) int {
 		return filmproc.CodePreparation
 	}
 
-	g := filmproc.Arm("post-sync", filmproc.DefaultLimitGiB, func(peak uint64) {
+	g := filmproc.Arm(outilPostSync, filmproc.DefaultLimitGiB, func(peak uint64) {
 		// LE PIC PART AVANT LA MORT : `os.Exit` ne joue pas les differes.
 		filmproc.EmitPeak(peak)
 		fmt.Fprintf(os.Stderr, "enfant de cuisson : plafond memoire depasse (%d octets) — film abandonne\n", peak)
@@ -172,6 +178,27 @@ type Result struct {
 // TOUT CE QU'IL CREE, IL LE SUPPRIME : la requete et le depot sont des fichiers temporaires du
 // parent. Un enfant tue en vol ne laisse donc rien derriere lui.
 func Spawn(ctx context.Context, req Request) (Result, error) {
+	// LE VERROU SOLO EST PRIS PAR LE PARENT, EN REFUS IMMEDIAT (PLAN_CUISSON_PERF §3 D7).
+	//
+	// PAR LE PARENT parce que c'est lui qui decide de faire naitre un processus : un verrou pris
+	// dans l'enfant aurait deja coute le lancement, la lecture du catalogue de bornes et les
+	// libelles du titre avant de constater qu'il fallait renoncer.
+	//
+	// EN REFUS IMMEDIAT parce que le post-sync n'a rien a attendre : le match manquant revient
+	// au cycle suivant (l'etape est idempotente, l'artefact deja a jour n'est pas reconstruit),
+	// tandis qu'une attente bloquerait la synchronisation entiere derriere un decodage qui ne
+	// lui appartient pas. Les PASSES, elles, attendent leur tour (`AcquireSoloWait`) : elles
+	// n'ont pas de cycle suivant.
+	//
+	// Le refus remonte comme une erreur de cuisson : le film compte en ECHEC du cycle, avec le
+	// detenteur nomme dans le message (cf. `filmproc.soloBusyError`).
+	cacheRoot := title.NewPathResolver(req.RepoRoot).CacheRootDir()
+	lock, err := filmproc.AcquireSolo(cacheRoot, outilPostSync, req.MatchID)
+	if err != nil {
+		return Result{}, fmt.Errorf("cuisson non lancee : %w", err)
+	}
+	defer lock.Release()
+
 	dir, err := os.MkdirTemp("", "levelup-filmchild-")
 	if err != nil {
 		return Result{}, fmt.Errorf("repertoire temporaire: %w", err)

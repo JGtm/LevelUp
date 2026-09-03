@@ -1,3 +1,52 @@
+## [2026-09-03] Cuisson perf, lot 5 — orchestration et protections : le cycle ne peut plus etre pris en otage, et un seul processus decode a la fois — Complete (7/7 items)
+
+Lot 5 (items 5.1 a 5.7) de `.ai/V7.5/PLAN_CUISSON_PERF.md`, worktree `LevelUp-wt-cuisson-perf`
+(`wt/cuisson-perf`, base `5b9e9bca3`). **Aucun commit** (demande du pilote), aucune cuisson lancee,
+`tmp/` intact.
+
+**Decision technique principale : les trois protections manquantes du cycle sont des BORNES, pas
+des reglages — et chacune a son regime ecrit.** (1) Une cuisson qui ne rend jamais la main tenait
+la synchronisation entiere : le budget de cycle s'applique ENTRE deux matchs et ne pouvait rien
+contre elle. Elle est desormais bornee par `min(solde de budget, 15 min)` autour de `BuildOne` ; le
+film coupe compte en echec, le cycle continue. (2) Le verrou solo (cree au lot 0) est cable a ses
+DEUX regimes : refus IMMEDIAT pour le post-sync (il vit dans le serveur — attendre bloquerait toute
+la synchronisation, et son match revient au cycle suivant), attente BORNEE a 10 min pour les passes
+(l'enfant de backfill et l'ouvrier n'ont pas de cycle suivant : un refus sur simple chevauchement
+ferait echouer un film sain). (3) Le prechargement du film suivant est de profondeur 1 STRICTE,
+parce que ~24 Mo de morceaux vivent en RAM du serveur entre le CDN et l'ecriture du cache — le
+processus qui tient les bases en ecriture n'accumule pas des films.
+
+**Ce qui a ete supprime plutot qu'ajoute.** L'ouvrier n'ecrit ni ne relit plus d'artefact local
+(`BuildBytes` au lieu de `BuildMatch` : D8) ; les gardes de fraicheur lisent l'artefact UNE fois au
+lieu de deux (`replaybuild.ArtifactDigest` exporte, `ArtifactUpToDate` et
+`ArtifactHasPlayerCounters` devenues des vues) ; et `cmd/levelup/backfill_child.go` passe de 250 a
+45 lignes en abandonnant sa copie du lanceur parent/enfant au profit d'`internal/filmproc`.
+
+**Protocoles preserves, verifies un par un.** Les codes de sortie du backfill etaient DEJA ceux de
+`filmproc` (0 / 10 / 11 / 12 / 13), le marqueur de pic est le meme chaine pour chaine, et les
+libelles du recap restent ceux de la passe (« carte hors catalogue (echec voulu) », pas « ecarte »).
+Seule modification observable du lot : le resume JSON d'un job d'ouvrier perd `artifact_path` —
+consequence directe de D8, et le champ n'avait aucun lecteur dans le depot.
+
+**Resultats observes.** Gains structurels, non chronometres ici (la mesure revient au lot 6) : un
+film de 30 morceaux tient desormais la latence CDN 4 fois au lieu de 30 (parallelisme borne a 8,
+modele `haloclient`) ; le pont disque et le decodage ne s'attendent plus ; deux lectures completes
+d'un artefact de ~2 Mo par match et par cycle disparaissent ; la passe de backfill herite de la
+priorite CPU basse, qu'elle n'avait pas. Gate : `gofmt -l` vide, `go vet ./...` vide,
+`go build ./...` vide, les huit paquets du gate verts (code 0), **`go test -tags=integration -p 1
+./internal/sync/... -count=1` vert, code de sortie 0** (sync 120 s), `archlint` vert,
+`golangci-lint run --new-from-rev=HEAD` : **0 issue** (baseline 273 inchangee). Aucun garde
+affaibli : le garde-rail de `cmd/levelup` est au contraire DURCI (aucun fichier du paquet n'a plus
+le droit de lancer un processus), et l'allowlist du ratchet `no_unbounded_film_loop_test.go` gagne
+le regime date de chacun des trois sites.
+
+**Conclusion / prochaine etape.** Lot 5 clos cote code ; il reste au pilote un test de bout en bout
+(rien n'a ete cuit). Quatre decouvertes notees au §8 (N-AW a N-AZ), dont deux liees : la sentinelle
+memoire de `cmd/levelup` reste un doublon de `filmproc.Guard` (hors perimetre de l'item, qui ne
+visait que codes/marqueur/relais), et c'est pour cela que l'enfant de backfill ne rend pas son
+verrou avant `os.Exit` — la peremption le reprend en ~6 s, mecanisme documente. Le lot 3 reste en
+attente du lot 4b (escalade utilisateur D13 toujours ouverte).
+
 ## [2026-09-03] Cuisson perf, lot 4b — la mesure prealable a arrete le lot : la borne ecrite passe SOUS le pire cas sain — En cours (escalade utilisateur ouverte)
 
 Item 4b.1 de `.ai/V7.5/PLAN_CUISSON_PERF.md`, worktree `LevelUp-wt-cuisson-perf`

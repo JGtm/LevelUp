@@ -200,6 +200,10 @@ type Deps struct {
 	// Budget : durée maximale d'une passe de cycle. 0 = BudgetParCycle (le contrat de
 	// production) ; négatif = « déjà épuisé ». N'est renseigné que par les tests.
 	Budget time.Duration
+	// DeadlineParFilm : borne DURE d'UNE cuisson. 0 = DeadlineParFilm (le contrat de
+	// production). N'est renseigné que par les tests — même seam que Budget, et pour la même
+	// raison : prouver qu'une garde existe sans attendre le quart d'heure qu'elle borne.
+	DeadlineParFilm time.Duration
 	// Enqueue : la mise en file, utilisée seulement si Placement == worker.
 	Enqueue EnqueueFunc
 	// BuildOne construit l'artefact d'un film HORS DU PROCESSUS et rend ses octets (cf.
@@ -257,11 +261,16 @@ func attachMatchFacts(ctx context.Context, sharedDB *sql.DB, work []buildWork) {
 // à espérer d'une reconstruction, donc l'artefact est réputé complet ; avec des lignes, l'absence
 // de compteurs de joueur le fait présumer appauvri (cf. l'en-tête d'ArtifactHasPlayerCounters
 // pour les trois vacuités légitimes que cette présomption peut confondre).
+// UNE SEULE LECTURE DU FICHIER, ET C'EST L'ITEM 5.3 DE PLAN_CUISSON_PERF : les deux questions
+// (« à jour ? », « avec des compteurs ? ») ouvraient chacune l'artefact — deux `os.ReadFile` et
+// deux désérialisations d'un document de ~2 Mo, pour chaque match de chaque cycle, sur les DEUX
+// chemins post-sync. Le digest répond aux deux d'une seule lecture.
 func etatArtefact(path string, facts port.MatchFacts) (aJour, complet bool) {
-	if !replaybuild.ArtifactUpToDate(path) {
+	d, ok := replaybuild.ArtifactDigest(path)
+	if !ok || !d.UpToDate() {
 		return false, false
 	}
-	return true, len(facts.Players) == 0 || replaybuild.ArtifactHasPlayerCounters(path)
+	return true, len(facts.Players) == 0 || d.HasPlayerCounters()
 }
 
 // Run — étape post-sync 1.58 : selon le lieu de construction réglé, ou bien pont

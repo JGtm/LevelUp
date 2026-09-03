@@ -545,22 +545,22 @@ Prerequis : verdict 0.7 = zero divergence sur les 11 films du corpus (sinon : ar
 
 ### Lot 5 — Orchestration et protections — effort moyen
 
-- [ ] 5.1 Ouvrier : telechargement des chunks en parallele borne (8), sur le modele de
+- [x] 5.1 Ouvrier : telechargement des chunks en parallele borne (8), sur le modele de
       `haloclient/halo_client_film.go:241-267` ; test `httptest` : 30 chunks, ordre restitue, une
       erreur = echec du job, aucune goroutine qui fuit.
-- [ ] 5.2 Ouvrier : `BuildBytes` + envoi des octets, plus d'ecriture ni de relecture locale (D8) ;
+- [x] 5.2 Ouvrier : `BuildBytes` + envoi des octets, plus d'ecriture ni de relecture locale (D8) ;
       test : aucun fichier ecrit sous `replays/`.
-- [ ] 5.3 `replaybuild.ArtifactDigest(path)` exporte ; `etatArtefact` (`artifacts.go:260-265`) et
+- [x] 5.3 `replaybuild.ArtifactDigest(path)` exporte ; `etatArtefact` (`artifacts.go:260-265`) et
       `cmd_backfill_replay_repair.go:73-76` lisent UNE fois ; `ArtifactUpToDate`/
       `ArtifactHasPlayerCounters` deviennent des vues du digest ; test : une ouverture par artefact.
-- [ ] 5.4 Backfill : `runnerEnfant` (`cmd/levelup/backfill_child.go`) migre sur `filmproc.Runner`
+- [x] 5.4 Backfill : `runnerEnfant` (`cmd/levelup/backfill_child.go`) migre sur `filmproc.Runner`
       (priorite basse + fin du doublon codes/marqueur/relais) ; test du runner etendu.
-- [ ] 5.5 Post-sync : deadline par enfant = min(budget de cycle restant, 15 min) autour de
+- [x] 5.5 Post-sync : deadline par enfant = min(budget de cycle restant, 15 min) autour de
       `BuildOne` (`cuisson.go:175`) ; test : un `BuildOne` bloquant est coupe, compte en `echecs`,
       le cycle continue.
-- [ ] 5.6 Post-sync : prechargement du film N+1 (profondeur 1) pendant la cuisson de N, abandonne
+- [x] 5.6 Post-sync : prechargement du film N+1 (profondeur 1) pendant la cuisson de N, abandonne
       si le budget est epuise ; test avec doubles (ordre des ecritures, budget respecte).
-- [ ] 5.7 Verrou solo (D7) : CABLAGE de l'existant (cree au 0.4) — `replaychild.Spawn` prend
+- [x] 5.7 Verrou solo (D7) : CABLAGE de l'existant (cree au 0.4) — `replaychild.Spawn` prend
       `AcquireSolo` (immediat), l'enfant de backfill et l'ouvrier prennent `AcquireSoloWait`
       (attente 10 min) ; allowlist du ratchet mise a jour (regime de chaque site) ; tests : le
       post-sync refuse et compte en `echecs` quand le verrou est tenu ; l'enfant de backfill
@@ -1029,6 +1029,41 @@ identique a celui en place hors lots de correction, ou le garde anti-regression 
     ne protege donc pas : l'implementation de 4b.2 devra passer le budget restant a
     `incrementTimes` (ce qui n'est pas un plafond par appel — le plafond et sa valeur restent
     detenus par `NamedEventsFrom`), ou compter la serie avant de la materialiser.
+
+- 2026-09-03 (agent lot 5) — decouvertes N-AW a N-AZ.
+  - N-AW. **La sentinelle memoire de `cmd/levelup` reste un DOUBLON de `filmproc.Guard`.** Le lot 5
+    (item 5.4) a supprime le doublon des CODES, du MARQUEUR de pic et du RELAIS ; il n'a pas touche
+    a `cmd/levelup/backfill_memlimit.go` (`sentinelleMemoire`, `armerPlafondMemoire`,
+    `empreinteMemoire`, `margeDure`, `periodeSentinelle`), qui reproduit ligne pour ligne
+    `internal/filmproc/memguard.go` — memes deux compteurs runtime, meme marge +25 %, meme
+    echantillonnage 250 ms. Il en va de meme pour `cmd/replay-worker/memlimit.go`. Les deux sont
+    ALLOWLISTES en connaissance de cause au ratchet `no_unbounded_film_loop_test.go`
+    (`sentinelleTokens` : « les deux `main` qui portent encore leur propre sentinelle, avec leur
+    doctrine d'arret propre documentee sur place »). La difference reelle entre les trois est la
+    DOCTRINE D'ARRET (l'enfant rend un code, l'ouvrier rapporte au serveur puis s'arrete), et
+    `filmproc.Arm` la porte deja par callback : la migration est faisable, elle n'etait pas dans le
+    perimetre de l'item. A traiter hors plan.
+  - N-AX. **La sentinelle de l'enfant de backfill ne rend pas le verrou solo avant `os.Exit`.**
+    `sentinelleMemoire.veiller` (`backfill_memlimit.go:120-135`) emet le pic puis appelle
+    `os.Exit(filmproc.CodeMemory)` : le fichier de verrou pose par l'item 5.7 survit donc a la mort
+    du processus, jusqu'a sa reprise par le mecanisme de peremption (3 battements, ~6 s). Ce n'est
+    pas une fuite — c'est le cas nominal que `solo.go` documente (« un verrou pose par un processus
+    TUE doit pouvoir etre repris ») — mais le harnais d'equivalence, lui, fait MIEUX : son callback
+    appelle `lock.Release()` avant `os.Exit` (`cmd/replay-equiv/child.go:85`). Uniformiser demande
+    de donner un callback a `armerPlafondMemoire`, c'est-a-dire de traiter N-AW d'abord.
+  - N-AY. **`ArtifactUpToDate` lit desormais un peu plus que la version de schema.** Devenue une vue
+    du digest (item 5.3), elle deserialise la meme structure de tete que lui (`matchId`,
+    `schemaVersion`, `tracks`, `scoreTimeline.players`). Un artefact dont le `schemaVersion` serait
+    juste mais dont `tracks` ne serait pas un tableau se lit maintenant « perime » la ou il se
+    lisait « a jour ». Aucun artefact du cache n'est dans ce cas (ils sortent tous du meme
+    `json.Marshal`), et la conduite qui en decoule est plus sure (re-cuire un document malforme) :
+    note pour memoire, pas un correctif a prevoir.
+  - N-AZ. **Le champ `artifact_path` du compte rendu d'ouvrier a disparu, sans lecteur pour s'en
+    plaindre.** L'item 5.2 l'a retire du JSON de resultat (`cmd/replay-worker/job.go`) : il nommait
+    un fichier de la machine de l'ouvrier, qu'aucun code du depot ne lit
+    (`grep -rn "artifact_path" apps/` ne rendait que le site qui l'ecrivait) et que personne d'autre
+    ne pouvait ouvrir. Le resume garde `match_id`, `module`, `tracks`, `bytes` (l'accuse du serveur)
+    et `chunks`. Consequence observable : la colonne « resultat » de l'admin perd une ligne.
 
 ## 9. Revue du plan (plan-review, 2026-09-02)
 
@@ -1725,3 +1760,121 @@ baseline inchangee · **harnais complet `tmp/replay-equiv.exe` (binaire du lot 4
 9 identiques, 0 different, 0 ecarte, 0 echec, 0 illisible** (passe complete relancee
 apres coup pour relever les chiffres : pics 0,17 a 0,41 Gio ; 13,6 s a 1 min 42 par film,
 `084a804d` etant le temoin 19 min a 26 joueurs). Decouvertes N-AS a N-AV au §8.
+
+### Lot 5 — Orchestration et protections (2026-09-03) — CLOS, 7/7 items
+
+**CE QUE LE LOT CHANGE, EN UN PARAGRAPHE PAR ITEM.**
+
+**5.1 — L'ouvrier telecharge ses morceaux en parallele, borne a 8.**
+`cmd/replay-worker/job.go:305-345` (`fetchChunks`) : `errgroup.WithContext` + `SetLimit(8)`, un
+SLOT PRE-ALLOUE par morceau, aucun mutex, aucun tri apres coup — l'ordre du job est l'ordre rendu
+PAR CONSTRUCTION. Modele suivi au site pres : `internal/sync/haloclient/halo_client_film.go:241-267`
+(la constante `chunkParallelism = 8` cite `filmChunkParallelism` et sa raison). La garde « contexte
+deja annule = aucun appel reseau » est ECRITE (`errgroup` aurait lance les taches pour les voir
+echouer sur leur propre contexte). Tests (`job_test.go`) : 30 morceaux, ordre ET donnees restitues
+slot par slot, simultaneite maximale observee > 1 et <= 8 (le serveur de test la compte), un
+morceau en 404 fait echouer le job entier sans lot partiel, et aucune goroutine ne survit
+(comptage apres fermeture du serveur de test — ses connexions persistantes tiennent des goroutines
+des deux cotes, les compter comme des fuites rendrait le garde-fou inutilisable).
+
+**5.2 — L'ouvrier ne range plus rien (D8).** `job.go:280-283` : `BuildBytes` remplace `BuildMatch`,
+et la relecture disque de l'artefact (`os.ReadFile(out.ArtifactPath)`) DISPARAIT. Deux
+entrees/sorties de plusieurs megaoctets par job en moins, et un ouvrier distant qui n'ecrit plus
+dans une arborescence de depot qu'il n'a pas. **Seule modification observable de protocole du
+lot** : le resume JSON du job perd `artifact_path` (aucun lecteur dans tout le depot, cf. N-AZ) et
+garde `match_id`, `module`, `tracks`, `bytes`, `chunks`. Tests : un cas fonctionnel (le pont disque
+ecrit bien les morceaux, RIEN n'apparait sous `replays/`) et un GARDE-RAIL de source (`BuildBytes`
+present ; `BuildMatch(`, `ArtifactPath`, `os.ReadFile(` interdits dans le paquet de l'ouvrier).
+
+**5.3 — Un artefact, une lecture.** `internal/replaybuild/artifact_digest.go` exporte
+`ArtifactDigest(path) (Digest, bool)` et le type `Digest` (champs exportes ; `artifactDigest` et
+`readArtifactDigest` disparaissent, `artifact_store.go` suit). `ArtifactUpToDate` et
+`ArtifactHasPlayerCounters` deviennent des VUES (`d.UpToDate()`, `d.HasPlayerCounters()`) —
+signatures publiques inchangees, leurs appelants a une seule question (`cmd_backfill_replay.go:231`,
+`registry_build_queue.go:297`) intacts. Les deux appelants a DEUX questions lisent une fois :
+`etatArtefact` (`internal/sync/replayartifacts/artifacts.go:249-262`) et `classerReparation`
+(`cmd/levelup/cmd_backfill_replay_repair.go:68-90`, ou le `os.Stat` ne subsiste que dans la branche
+degradee — c'est la seule nuance que le digest ne porte pas, absent contre present-mais-illisible,
+et les cinq categories de recap gardent donc exactement leur sens). LA MESURE EST UN COMPTEUR DE
+PRODUCTION : `replay_artifact_digest_reads_total` (`replaybuild.CompteurLecturesArtefact`),
+incremente au seul site de lecture disque ; les tests comptent par lui (post-sync :
+`cuisson_test.go` ; reparation : `cmd_backfill_replay_repair_test.go`).
+
+**5.4 — La passe de backfill abandonne sa copie du lanceur.** `cmd/levelup/backfill_child.go` passe
+de 250 a 45 lignes : codes de sortie, categories d'issue, marqueur de pic, relais et environnement
+de l'enfant sont supprimes au profit d'`internal/filmproc` (il ne reste que `listeDrapeau`, qui n'a
+rien a voir avec le lancement de processus). **LE PROTOCOLE OBSERVABLE EST INCHANGE** : les codes
+etaient DEJA les memes valeurs (0 / 10 / 11 / 12 / 13 — `codeEnfantHorsCatalogue` = `CodeSkipped`,
+`codeEnfantErreurDecodage` = `CodeFailed`, `codeEnfantPreparation` = `CodePreparation`,
+`codeEnfantMemoire` = `CodeMemory`), le marqueur est le meme (`__levelup_pic_octets__=`), et les
+LIBELLES du recap restent ceux de la passe (`libelleIssue` traduit `filmproc.Issue` en mots de
+cuisson — « carte hors catalogue (echec voulu) » n'est pas « ecarte »). Sites : `os.Exit` du child
+(`cmd_backfill_replay.go:158`) inchange, `cmd_backfill_replay_passe.go:46,56,88,114`,
+`cmd_backfill_replay_child.go`, `backfill_memlimit.go:131-132`. **GAIN NON DEMANDE MAIS REEL** :
+`filmproc.Runner` lance ses enfants en PRIORITE CPU BASSE, ce que la copie locale ne faisait pas —
+la passe de backfill etait le dernier point d'entree a saturer la machine de travail a priorite
+normale. Tests : le protocole quitte `cmd/levelup` (les cas doublons y sont supprimes, ils vivaient
+deja dans `filmproc`) et le lanceur gagne un test DE BOUT EN BOUT sur un VRAI processus
+(`internal/filmproc/runner_child_test.go` : le binaire de test se re-execute en enfant, chaque code
+du protocole est rendu par un vrai `os.Exit`, le pic traverse le tube, les DEUX flux du journal
+ressortent, une ligne de 200 Kio n'est pas coupee, un binaire introuvable est une mort subite). Le
+garde-rail du paquet est DURCI, pas affaibli : `backfill_child_guard_test.go` tolerait (et exigeait)
+`exec.CommandContext` dans un fichier — il l'interdit desormais dans TOUT le paquet.
+
+**5.5 — Une cuisson ne peut plus tenir le cycle.** `internal/sync/replayartifacts/cuisson.go` :
+`DeadlineParFilm = 15 min`, `deadlineDuFilm(d, restant) = min(solde de budget, 15 min)`, applique
+par `context.WithTimeout` autour de `buildAndStoreOne` dans `cuireUnMatch`. Le budget de cycle
+s'applique ENTRE deux matchs : il ne pouvait rien contre un enfant qui ne rend jamais la main, et
+la synchronisation entiere attendait derriere (PSA, agregats, medias). Un film coupe compte en
+`echecs` et le cycle CONTINUE. `Deps.DeadlineParFilm` est le seam de test (meme idiome que
+`Deps.Budget` : « renseigne par les tests seulement »). Test : un `BuildOne` qui attend
+`ctx.Done()` est coupe a 80 ms, compte en echec, et le film suivant est bien tente.
+
+**5.6 — Le film N+1 se telecharge pendant la cuisson de N.** Nouveau fichier
+`internal/sync/replayartifacts/prefetch.go` (`pontDisque`, profondeur 1 stricte). Reseau et CPU ne
+s'attendent plus ; la doctrine memoire est ECRITE dans l'en-tete : ~24 Mo de morceaux tenus en RAM
+du serveur entre la reponse du CDN et `filmcache.Write`, borne a UN film quel que soit le lot (deux
+doubleraient la retention pour un gain nul). Le prechargement part AVANT tout `continue` (un match
+sans film ne prive pas le suivant de son avance), ne part PAS si le budget est epuise, est toujours
+CONSOMME ou ABANDONNE (jamais deux telechargements en vol), et `defer pont.fermer()` garantit
+qu'aucune goroutine ne survit au cycle — attendue, pas seulement annulee. Un abandon ne journalise
+plus « film illisible » en WARN mais « telechargement abandonne (cycle termine) » en DEBUG (jamais
+muet). Tests avec doubles : la cuisson de m1 ne rend la main qu'apres avoir VU passer la demande de
+film de m2 (preuve de simultaneite : un pont sequentiel echouerait sur le delai de garde), ordre
+[m1 m2 m3] preserve, 3 films persistes (un prechargement consomme n'est pas re-telecharge), budget
+epuise = aucun telechargement, et comptage de goroutines avant/apres.
+
+**5.7 — Le verrou solo est cable, a ses deux regimes (D7).** REFUS IMMEDIAT pour le post-sync :
+`replaychild.Spawn` (`internal/replaychild/replaychild.go:186-200`) prend `AcquireSolo` sur
+`PathResolver.CacheRootDir()` AVANT de faire naitre l'enfant — un refus ne coute donc ni processus
+ni lecture de catalogue — et il remonte en ECHEC du cycle, detenteur nomme. ATTENTE BORNEE
+(10 min) pour les passes : l'enfant de backfill (`cmd_backfill_replay_child.go:56-67`,
+`attenteVerrouPasse`) et l'ouvrier (`cmd/replay-worker/job.go:260-276`, `attenteVerrouOuvrier`,
+verrou pris APRES le telechargement et rendu AVANT l'envoi — il protege la RAM du decodage, pas le
+reseau). Allowlist du ratchet `no_unbounded_film_loop_test.go` mise a jour avec le regime et la
+date de chacun des trois sites. Tests : `replaychild_test.go` (refus immediat, < 2 s, message
+nommant le detenteur, verrou du detenteur intact) ; `cmd_backfill_replay_verrou_test.go` (l'enfant
+n'a PAS rendu la main pendant que le verrou etait tenu, puis repart des qu'il est rendu et echoue
+plus loin sur le catalogue absent — donc APRES le verrou) ; `cuisson_test.go` (un `ErrDecodeBusy`
+compte en `echecs` sans arreter le cycle).
+
+**GATE (execute dans le worktree, 2026-09-03).** `gofmt -l` sur `cmd/` et `internal/` : VIDE ·
+`go vet ./...` : vide · `go build ./...` : vide ·
+`go test ./internal/sync/... ./internal/filmproc/ ./internal/replaychild/ ./internal/replaybuild/
+./cmd/replay-worker/... ./cmd/levelup/... -count=1` : **tout ok** (sync 41,3 s · haloclient 5,4 s ·
+replayartifacts 0,57 s · filmproc 2,4 s · replaychild 0,32 s · replaybuild 0,68 s · replay-worker
+0,45 s · levelup 0,97 s), code de sortie **0** ·
+`go test -tags=integration -p 1 ./internal/sync/... -count=1` : **tout ok** (sync 120,0 s ·
+killcollector 7,2 s · replayartifacts 3,47 s · v2 13,3 s), code de sortie **0** ·
+`go test ./internal/archlint/ -count=1` : ok 5,4 s · `go test ./internal/api/... ./cmd/... -count=1`
+(hors gate, par prudence — le renommage `Digest` traverse `api/wire`) : ok ·
+`golangci-lint run` : 273 issues, **baseline inchangee** ; `golangci-lint run --new-from-rev=HEAD` :
+**0 issue**, et aucune issue ne pointe un fichier touche par le lot. Seuils : plus gros fichier
+touche `cmd/replay-worker/job.go` a 441 lignes (< 500), aucune fonction au-dela de 80 lignes
+(`buildAll` a ete scindee : `cuireUnMatch` porte la decision par match, `prefetch.go` le pont).
+
+**AUCUNE CUISSON LANCEE** (interdit du lot) : `tmp/` intact, aucun binaire reconstruit, aucun digest
+regenere, `CORPUS.txt` inchange. Le test de bout en bout revient au pilote. Decouvertes N-AW a N-AZ
+au §8 (dont deux qui se tiennent : la sentinelle memoire de `cmd/levelup` reste un doublon de
+`filmproc.Guard`, et c'est pour cela que l'enfant de backfill ne rend pas son verrou avant
+`os.Exit` — la peremption du verrou le reprend en ~6 s).

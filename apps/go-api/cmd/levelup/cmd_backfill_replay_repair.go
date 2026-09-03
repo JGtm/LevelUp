@@ -66,14 +66,25 @@ const (
 //
 // `joueursEnBase` est APPELE PARESSEUSEMENT : on ne lit la base que pour un artefact deja juge a jour
 // ET appauvri — un artefact riche, hors schema ou absent ne coute aucune lecture DuckDB.
+//
+// UNE SEULE LECTURE DE L'ARTEFACT (PLAN_CUISSON_PERF item 5.3). La forme precedente faisait un
+// `os.Stat` PUIS deux ouvertures completes du meme document (`ArtifactUpToDate`, puis
+// `ArtifactHasPlayerCounters`) — trois passages sur le disque par candidat, sur des passes qui en
+// examinent des milliers. Le digest repond a tout d'un coup ; le `Stat` ne subsiste que dans la
+// branche degradee, ou il tranche la SEULE nuance que le digest ne porte pas : absent (rien a
+// reparer) contre present-mais-illisible (domaine de `--only-existing` ordinaire).
 func classerReparation(path string, joueursEnBase func() int) etatReparation {
-	if _, err := os.Stat(path); err != nil {
-		return reparationSansArtefact
-	}
-	if !replaybuild.ArtifactUpToDate(path) {
+	d, ok := replaybuild.ArtifactDigest(path)
+	if !ok {
+		if _, err := os.Stat(path); err != nil {
+			return reparationSansArtefact
+		}
 		return reparationHorsSchema
 	}
-	if replaybuild.ArtifactHasPlayerCounters(path) {
+	if !d.UpToDate() {
+		return reparationHorsSchema
+	}
+	if d.HasPlayerCounters() {
 		return reparationDejaComplet
 	}
 	if joueursEnBase() > 0 {

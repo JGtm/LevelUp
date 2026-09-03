@@ -370,7 +370,7 @@ func (b *Builder) BuildMatch(matchID string, mapNames []string, filmDir string, 
 		return Outcome{}, fmt.Errorf("écriture artefact %s: %w", outPath, err)
 	}
 	return Outcome{ArtifactPath: outPath, Module: built.Module, Tracks: built.Tracks,
-		Bytes: surDisque.bytes}, nil
+		Bytes: surDisque.Bytes}, nil
 }
 
 // neutralDeaths rend les entrées d'artefact déjà résolues (type de mort + pictogramme du

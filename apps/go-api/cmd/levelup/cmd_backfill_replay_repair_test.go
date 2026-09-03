@@ -13,6 +13,8 @@ import (
 	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/observability"
+	"levelup/go-api/internal/replaybuild"
 )
 
 // ecrireArtefactAvecJoueurs pose un artefact portant une version de schema ET un nombre donne de
@@ -77,6 +79,47 @@ func TestClasserReparation(t *testing.T) {
 				t.Fatalf("resolveur appele = %v, veut %v (lecture DB paresseuse)", appele, c.appelDB)
 			}
 		})
+	}
+}
+
+// TestClasserReparation_UneSeuleLectureParArtefact — PLAN_CUISSON_PERF item 5.3.
+//
+// La classification posait TROIS questions au disque pour un seul candidat : un `os.Stat`, puis
+// `ArtifactUpToDate` (lecture complete + deserialisation), puis `ArtifactHasPlayerCounters` (une
+// SECONDE lecture complete du meme document de plusieurs mega-octets). Une passe en examine des
+// milliers. Le digest repond a tout d'une lecture ; le compteur de production le prouve.
+func TestClasserReparation_UneSeuleLectureParArtefact(t *testing.T) {
+	repo := t.TempDir()
+	slug := titlePkg.DefaultSlug
+	ecrireArtefactAvecJoueurs(t, repo, slug, idPetitA, replay.SchemaVersion, 0) // a jour, appauvri
+	path := titlePkg.NewPathResolver(repo).ReplayArtifactPath(slug, idPetitA)
+
+	avant := observability.LoadCounter(replaybuild.CompteurLecturesArtefact)
+	if got := classerReparation(path, func() int { return 8 }); got != reparationACuire {
+		t.Fatalf("etat = %d, veut %d — l'oracle du cas est faux", got, reparationACuire)
+	}
+	if n := observability.LoadCounter(replaybuild.CompteurLecturesArtefact) - avant; n != 1 {
+		t.Errorf("%d lecture(s) disque pour un candidat, attendu 1 : la classification rouvre "+
+			"le meme artefact pour ses questions suivantes", n)
+	}
+}
+
+// TestClasserReparation_IllisibleNEstPasAbsent — le digest ne distingue pas « absent » de
+// « illisible » (les deux appellent la meme prudence), mais les CATEGORIES DE RECAP, si : un
+// artefact present mais illisible releve de `--only-existing` ordinaire, pas de « rien a reparer ».
+// C'est la seule raison pour laquelle un `os.Stat` subsiste, et seulement dans cette branche.
+func TestClasserReparation_IllisibleNEstPasAbsent(t *testing.T) {
+	repo := t.TempDir()
+	path := titlePkg.NewPathResolver(repo).ReplayArtifactPath(titlePkg.DefaultSlug, idPetitA)
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.WriteFile(path, []byte("{ceci n est pas du JSON"), 0o644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	if got := classerReparation(path, func() int { return 0 }); got != reparationHorsSchema {
+		t.Errorf("artefact illisible classe %d, veut %d (hors schema) — un fichier present ne "+
+			"doit pas se compter comme absent", got, reparationHorsSchema)
 	}
 }
 

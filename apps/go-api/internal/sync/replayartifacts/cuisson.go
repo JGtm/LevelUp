@@ -120,11 +120,46 @@ type bilanCuisson struct {
 	budgetEpuise bool
 }
 
+// DeadlineParFilm : la borne DURE de la cuisson d'UN film, quand le budget du cycle en laisse
+// autant.
+//
+// POURQUOI ELLE EXISTE (PLAN_CUISSON_PERF item 5.5). Le budget de cycle s'applique ENTRE deux
+// matchs : il ne peut rien contre un enfant qui ne rend jamais la main. Un enfant bloqué —
+// spirale GC sous le plafond souple, disque qui ne répond plus, processus suspendu par l'OS —
+// tenait donc le cycle de synchronisation INDÉFINIMENT, et avec lui tout ce qui vient après
+// (PSA, agrégats, médias). La deadline coupe l'enfant, le film compte en échec, et le cycle
+// continue : c'est la même doctrine que le protocole de codes de sortie — la santé de la passe
+// ne dépend jamais de la santé d'un film.
+//
+// QUINZE MINUTES, ET C'EST LARGE À DESSEIN : le film le plus cher du corpus se cuit en moins de
+// deux minutes (mesures §6 du plan). Cette borne n'est pas un réglage de performance, c'est un
+// dernier rempart — la couper court transformerait un film lent en échec, ce que personne ne
+// demande.
+const DeadlineParFilm = 15 * time.Minute
+
+// deadlineDuFilm rend la borne effective d'UNE cuisson : le minimum du solde de budget et de
+// [DeadlineParFilm]. Rien ne sert de laisser un enfant courir vingt minutes quand le cycle
+// s'arrête dans trois.
+func deadlineDuFilm(d Deps, restant time.Duration) time.Duration {
+	max := DeadlineParFilm
+	if d.DeadlineParFilm > 0 {
+		max = d.DeadlineParFilm
+	}
+	if restant < max {
+		return restant
+	}
+	return max
+}
+
 // buildAll persiste le film puis construit l'artefact de chaque match du lot.
 func buildAll(ctx context.Context, d Deps, work []buildWork) bilanCuisson {
 	var b bilanCuisson
 	debut, budget := time.Now(), budgetDuCycle(d)
-	paths := titlePkg.NewPathResolver(d.RepoRoot)
+	// LE PONT DISQUE PRECHARGE LE FILM SUIVANT pendant la cuisson du courant (cf. prefetch.go).
+	// `fermer` est différé : aucune goroutine de téléchargement ne survit au cycle, quelle que
+	// soit la sortie de la boucle (budget, contexte annulé, lot épuisé).
+	pont := &pontDisque{d: d}
+	defer pont.fermer()
 	// LE CAS « PAS DE CONSTRUCTION CÂBLÉE » SE DIT UNE FOIS PAR CYCLE, pas une fois par film :
 	// c'est un état de configuration, pas un incident de match. Le pont disque, lui, continue —
 	// un film persisté est irremplaçable (ils EXPIRENT côté serveur Halo).
@@ -132,7 +167,7 @@ func buildAll(ctx context.Context, d Deps, work []buildWork) bilanCuisson {
 		slog.WarnContext(ctx, "post-sync: aucune construction hors processus câblée — films persistés, cuisson SAUTÉE",
 			"gamertag", d.Gamertag, "titleSlug", d.TitleSlug, "selectionnes", len(work))
 	}
-	for _, w := range work {
+	for i, w := range work {
 		if ctx.Err() != nil {
 			break
 		}
@@ -144,57 +179,78 @@ func buildAll(ctx context.Context, d Deps, work []buildWork) bilanCuisson {
 				"gamertag", d.Gamertag, "budget", budget, "traites", b.construits+b.dejaAJour+b.sansFilm+b.echecs)
 			break
 		}
-		saved, ok := persistFilmToCache(ctx, d, w.matchID)
-		if !ok {
+		film := pont.film(ctx, w.matchID)
+		// LE PRECHARGEMENT PART AVANT LA CUISSON, ET AVANT TOUT `continue` : c'est pendant les
+		// dizaines de secondes de décodage que le lien est libre. Un match sans film ou déjà à
+		// jour ne doit pas priver le SUIVANT de son avance.
+		if i+1 < len(work) {
+			pont.precharger(ctx, work[i+1].matchID, budget-time.Since(debut))
+		}
+		if !film.dispo {
 			b.sansFilm++
 			continue // film absent/expiré côté serveur : rien à construire (débité en debug)
 		}
-		if saved {
+		if film.sauve {
 			b.filmsSauves++
 		}
-		// MÊME RÈGLE QUE LA MISE EN FILE : la version de schéma ne suffit pas. Un artefact
-		// appauvri déposé par un ouvrier d'avant le transport des faits porte le bon numéro ;
-		// le sauter ici le figerait, sur le chemin même qui a les faits sous la main pour le
-		// réparer (ils sont passés à BuildMatch quinze lignes plus bas).
-		if d.BuildOne == nil {
-			continue // avertissement deja emis une fois pour le cycle
-		}
-		aJour, complet := etatArtefact(paths.ReplayArtifactPath(d.TitleSlug, w.matchID), w.facts)
-		if aJour && complet {
-			b.dejaAJour++
-			continue
-		}
-		if aJour {
-			slog.InfoContext(ctx, "post-sync: rejeu 2D — artefact au bon schéma mais SANS compteurs de joueur, reconstruit",
-				"gamertag", d.Gamertag, "match_id", w.matchID, "lignes_de_match", len(w.facts.Players))
-		}
-		short := titlePkg.FilmShortMatchID(w.matchID)
-		// LA CUISSON PART HORS DU PROCESSUS (lot BUILDALL, 2026-08-26) : l'enfant décode et rend
-		// les OCTETS, le serveur les range. Le garde anti-régression et la notification restent
-		// dans `StoreArtifact`, donc exactement où ils étaient.
-		out, berr := buildAndStoreOne(ctx, d, w, filmcache.ChunkDir(d.CacheRoot, short))
-		if berr != nil {
-			// Carte hors catalogue = échec voulu (Forge) ; le reste = erreur réelle.
-			// Les deux sont best-effort, mais seuls les seconds méritent un WARN.
-			logFn := slog.WarnContext
-			if strings.Contains(berr.Error(), replaybuild.ErrMapNotInCatalog.Error()) {
-				logFn = slog.DebugContext
-			}
-			logFn(ctx, "post-sync: artefact rejeu non construit",
-				"gamertag", d.Gamertag, "match_id", w.matchID, "err", berr)
-			b.echecs++
-			continue
-		}
-		b.construits++
-		// LA DUREE ET LE PIC VIENNENT DE L'ENFANT (cf. buildone.go) : c'est la seule ligne du
-		// cycle qui dit ce qu'a coute un film. Un pic a zero signifie « non mesure » — un enfant
-		// mort avant de se mesurer —, jamais « aucune memoire ».
-		slog.InfoContext(ctx, "post-sync: artefact rejeu construit",
-			"gamertag", d.Gamertag, "match_id", w.matchID,
-			"tracks", out.stored.Tracks, "bytes", out.stored.Bytes,
-			"duration", out.dur, "pic_octets", out.peak)
+		cuireUnMatch(ctx, d, w, &b, budget-time.Since(debut))
 	}
 	return b
+}
+
+// cuireUnMatch décide si CE match se re-cuit, le cuit sous deadline, et compte le résultat.
+//
+// EXTRAITE DE `buildAll` LE 2026-09-03 (items 5.5/5.6) : la boucle porte désormais le pont
+// disque et son préchargement, la cuisson d'un match porte sa deadline. Les deux tenaient
+// ensemble au-delà des 80 lignes du dépôt, et elles ne répondent pas à la même question.
+func cuireUnMatch(ctx context.Context, d Deps, w buildWork, b *bilanCuisson, restant time.Duration) {
+	// MÊME RÈGLE QUE LA MISE EN FILE : la version de schéma ne suffit pas. Un artefact
+	// appauvri déposé par un ouvrier d'avant le transport des faits porte le bon numéro ;
+	// le sauter ici le figerait, sur le chemin même qui a les faits sous la main pour le
+	// réparer (ils sont passés à la cuisson quelques lignes plus bas).
+	if d.BuildOne == nil {
+		return // avertissement deja emis une fois pour le cycle
+	}
+	paths := titlePkg.NewPathResolver(d.RepoRoot)
+	aJour, complet := etatArtefact(paths.ReplayArtifactPath(d.TitleSlug, w.matchID), w.facts)
+	if aJour && complet {
+		b.dejaAJour++
+		return
+	}
+	if aJour {
+		slog.InfoContext(ctx, "post-sync: rejeu 2D — artefact au bon schéma mais SANS compteurs de joueur, reconstruit",
+			"gamertag", d.Gamertag, "match_id", w.matchID, "lignes_de_match", len(w.facts.Players))
+	}
+	short := titlePkg.FilmShortMatchID(w.matchID)
+	// LA CUISSON PART HORS DU PROCESSUS (lot BUILDALL, 2026-08-26) : l'enfant décode et rend
+	// les OCTETS, le serveur les range. Le garde anti-régression et la notification restent
+	// dans `StoreArtifact`, donc exactement où ils étaient.
+	//
+	// SOUS DEADLINE (item 5.5) : passé cette borne, l'enfant est TUÉ (le contexte est celui de
+	// `exec.CommandContext`), le film compte en échec, et le cycle passe au suivant.
+	cctx, annuler := context.WithTimeout(ctx, deadlineDuFilm(d, restant))
+	defer annuler()
+	out, berr := buildAndStoreOne(cctx, d, w, filmcache.ChunkDir(d.CacheRoot, short))
+	if berr != nil {
+		// Carte hors catalogue = échec voulu (Forge) ; le reste = erreur réelle.
+		// Les deux sont best-effort, mais seuls les seconds méritent un WARN.
+		logFn := slog.WarnContext
+		if strings.Contains(berr.Error(), replaybuild.ErrMapNotInCatalog.Error()) {
+			logFn = slog.DebugContext
+		}
+		logFn(ctx, "post-sync: artefact rejeu non construit",
+			"gamertag", d.Gamertag, "match_id", w.matchID, "err", berr)
+		b.echecs++
+		return
+	}
+	b.construits++
+	// LA DUREE ET LE PIC VIENNENT DE L'ENFANT (cf. buildone.go) : c'est la seule ligne du
+	// cycle qui dit ce qu'a coute un film. Un pic a zero signifie « non mesure » — un enfant
+	// mort avant de se mesurer —, jamais « aucune memoire ».
+	slog.InfoContext(ctx, "post-sync: artefact rejeu construit",
+		"gamertag", d.Gamertag, "match_id", w.matchID,
+		"tracks", out.stored.Tracks, "bytes", out.stored.Bytes,
+		"duration", out.dur, "pic_octets", out.peak)
 }
 
 // persistFilmToCache télécharge les chunks COMPLETS du film et les persiste au cache
@@ -203,6 +259,15 @@ func buildAll(ctx context.Context, d Deps, work []buildWork) bilanCuisson {
 func persistFilmToCache(ctx context.Context, d Deps, matchID string) (saved, available bool) {
 	chunks, found, err := d.Fetcher.GetFilmChunks(ctx, matchID)
 	if err != nil {
+		// UN PRECHARGEMENT ABANDONNE N'EST PAS UN FILM ILLISIBLE. Le pont disque tourne aussi en
+		// avance de phase (cf. prefetch.go) : quand le cycle se termine, son contexte est annulé
+		// et le téléchargement en vol échoue — au niveau WARN, ce serait une fausse alerte à
+		// chaque fin de cycle. Jamais muet pour autant : le renoncement se dit en DEBUG.
+		if ctx.Err() != nil {
+			slog.DebugContext(ctx, "post-sync: rejeu 2D — téléchargement de film abandonné (cycle terminé)",
+				"gamertag", d.Gamertag, "match_id", matchID, "err", err)
+			return false, false
+		}
 		slog.WarnContext(ctx, "post-sync: film illisible — rejeu non construit",
 			"gamertag", d.Gamertag, "match_id", matchID, "err", err)
 		return false, false
