@@ -389,7 +389,7 @@ export function ReplayCanvas({
         // Les VIES et leur CAMP voyagent avec les poses : le ping du capteur révèle les
         // adversaires du poseur, et « adversaire » est une relation entre deux vies. Le camp
         // est celui de la base (`team_side`), jamais le drapeau « allié » vu de la page.
-        { placements: doc.equipmentPlacements, lives: doc.tracks, sideOfSlot, teleports: placements.teleports },
+        { placements: doc.equipmentPlacements, lives: doc.tracks, sideOfSlot, rift: placements.rift },
         view,
         {
           frame,
@@ -523,7 +523,7 @@ export function ReplayCanvas({
     killFx,
     grenadeRest,
     objectivePulses,
-    placements.teleports,
+    placements.rift,
     zones,
     flags,
     objectiveObjects,

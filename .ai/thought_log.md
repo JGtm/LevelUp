@@ -89975,3 +89975,107 @@ mais jamais les deux ensemble.
 
 **Conclusion / prochaine etape** : constats de la ronde = 3 -> 0 sur les deux passes, lot
 mergeable. Suite : P2 (consommation web), la frontiere est deja comble.
+
+---
+
+## [2026-09-03] P2 — Web : la faille du translocateur se lit dans l'evenement, plus jamais dans une piste
+
+**Statut** : Complete (gates verts ; reste le gate VISUEL utilisateur sur un film re-cuit temoin).
+
+**Decision technique principale** : le client cesse de DEDUIRE les usages du translocateur et
+lit le calque `translocations[]` (schema 38, evenement 117 du film). Deux tranchages, tous deux
+demandes par le lot :
+
+1. `riftTeleports` — l'heuristique spatiale (saut > 12 m en < 3 images, croise avec le porteur
+   et les portes de carte) — est SUPPRIMEE avec ses cinq seuils, son type `RiftTeleport`, son
+   champ `viaRift` et ses tests. Motif : c'est precisement ce que la doctrine du chantier
+   abandonne (tout seuil de distance invente une regle ; le corpus porte un saut de 3,24 m
+   qu'aucun seuil ne voit), et son rendement etait de 4 detections sur 39 films.
+2. `spentTranslocations` — le `spent` du calque d'equipement — est CONSERVE mais reduit au REPLI
+   des artefacts anterieurs au schema 38, sous kill-switch date (bascule 2026-09-03, retrait
+   cible 2026-12-01, critere mesurable « plus aucun artefact servi sans
+   `coverage.translocations` »). Motif : la production est 100 % pre-38 tant que la re-cuisson
+   n'a pas eu lieu ; le supprimer eteindrait sur tout le parc un effet livre la veille. UN SEUL
+   CANAL A LA FOIS : le calque publie gagne des qu'il existe — les melanger ferait scintiller
+   deux fois le meme usage, a 16,5 s d'ecart.
+
+**Ce qui se voit a l'ecran** : l'eclat de fiche est desormais date a l'instant vrai du geste
+(le `spent` le datait avec jusqu'a 16,5 s de retard). Le lien du va-et-vient relie les deux
+positions LUES DANS L'EVENEMENT ; sans positions publiees, rien ne se trace et l'eclat reste
+seul. La FAILLE (nouveau `riftStations.ts`) apparait au PREMIER echange, a la position que le
+joueur QUITTE — c'est la semantique du va-et-vient, la balise echange sa place avec lui —, se
+DEPLACE a chaque echange suivant, et s'eteint a sa fin mesuree : le `spent` du rang
+translocateur (recuperee ou stricte, sans distinction) ou la mort du porteur. Jamais a demeure,
+et rien avant le premier echange : la pose est illisible, negatif mesure sur trois canaux.
+
+**`gap` : un `from` inconnu, ni vrai ni faux** — foyer unique `identityIsUnknown`. Le repli
+s'abstient (un eclat AFFIRME un geste), la faille ne se ferme pas et retombe sur la mort du
+porteur. La vignette d'equipement n'etait PAS concernee — verifie sur pieces : elle lit `r`
+(le rang porte, ecrit par l'emission) et jamais `from` — et cette propriete est desormais
+verrouillee par un test, pour qu'un futur passage par `from` fasse rougir la CI.
+
+**Resultats observes** :
+- `make check-types` exit 0 ; `make test-web` exit 0 — 560 fichiers, 5 802 tests, 14 skippes,
+  0 echec. `npx eslint` exit 0 sur les dix fichiers touches. Aucune couleur en dur.
+- Plafonds tenus SANS relever un cliquet : `equipmentPlacementsLayer.ts` reste a 519 L et
+  `ReplayCanvas.tsx` a 662 L (cliquet 665) — les ajouts ont ete payes en fusionnant
+  `teleports` + `rifts` en un seul objet `RiftScene`, qui est de toute facon la meme lecture.
+- TROIS ROUGES ANTERIEURS leves parce qu'ils bloquaient le gate (dettes P1/P3 du meme jour) :
+  la copie web de `SchemaVersion` restee a 37 ; le garde-rail de cardinalite du manifeste, dont
+  le decoupage lisait `[[equipment_objects]]` en SOUS-CHAINE et comptait un commentaire ajoute
+  par le lot du propulseur (corrige en ANCRANT sur la ligne entiere, cardinalite 21 conservee) ;
+  et `recovered`/`gap` absents du type manuel `ReplayEquipmentChange`.
+
+**Conclusion / prochaine etape** : P2 est complet cote code. Il reste (a) le gate VISUEL de
+l'utilisateur, qui suppose la re-cuisson d'un film temoin (`1b2d9e08`) — a demander
+explicitement, jamais de cuisson en lot ; (b) deux decouvertes ecrites au plan et NON traitees :
+le bloc manuel des schemas 25-27 de `types.ts` a atteint son critere de retrait, et
+`PLACEMENT_RENDER.translocator_beacon = 'rift'` garde une regle de rendu que rien ne declenche
+(0 pose `deployed` sur 16 au parc) et qui dessinerait une faille a demeure si elle se
+declenchait.
+
+---
+
+## [2026-09-03] P2 — revue ronde 1 : la faille intermediaire ne se bornait pas, et le depart brillait double
+
+**Statut** : Complete (3 constats du relecteur, tous corriges dans le lot ; gates rejoues verts).
+
+**Decision technique principale** : la fin mesuree d'un equipement ne borne plus la SEULE
+derniere station de la faille — elle borne CHAQUE station, pour son propre compte.
+`riftEnd` devient `stationEnd` et se calcule par echange : `min(echange suivant - 1,
+stationEnd(...))`, ou la borne de mort est celle de la vie qui COUVRE cet echange-la.
+
+**Ce que le relecteur a trouve, et pourquoi ca comptait** :
+- K1 (P1) — deux declenchements transcrits et executes : (a) un `spent` du rang translocateur
+  ENTRE deux echanges laissait la premiere faille vivre 5 s apres la fin mesuree de son
+  equipement (le « jamais a demeure » du contrat, viole une station sur deux) ; (b) sur un slot
+  REATTRIBUE, la premiere station courait 119 images apres la mort de son porteur, pendant la
+  vie du joueur suivant — exactement ce que le commentaire de `lifeEnd` annonce interdire.
+  PORTEE : dormant en production (le parc est 100 % pre-38, donc zero station), le defaut se
+  serait allume a la PREMIERE re-cuisson — au moment ou l'utilisateur regarde.
+- K2 (P2) — la raison d'etre de `lifeEnd` n'etait verifiee par rien : aucun cas ne construisait
+  deux pistes du MEME slot. La mutation « la derniere piste de ce slot » laissait les 13 cas ET
+  les 5 804 tests verts.
+- K3 (P2) — le point QUITTE etait peint deux fois pendant les 600 ms du lien (station + bout
+  `from` du lien), halo composite deux fois. Aucun test ne passait `teleports` et `rifts` non
+  vides ensemble.
+
+**Resultats observes** :
+- Les TROIS mutations ont ete rejouees et TUEES : borner a nouveau les stations intermediaires
+  sur le seul echange suivant fait tomber 2 tests ; `lifeEnd` = « derniere piste du slot » en
+  fait tomber 3 ; `paintFrom: true` en fait tomber 1. Avant les correctifs : zero.
+- C'est la STATION qui reste au point quitte et le bout du lien qui s'efface, pas l'inverse :
+  le bout du lien retrecit et perd son alpha, donc le garder aurait fait CLIGNOTER la faille a
+  l'instant precis ou le lien se termine.
+- Nettoyage au passage : `drawRiftLink` passe de 6 a 4 parametres (objet `RiftLinkDraw`), et
+  `drawRiftLink` / `drawTeleportLinks` cessent d'etre exportees — plus aucun appelant hors du
+  fichier depuis que `drawRiftLayer` est la porte unique.
+- Gates : `make check-types` exit 0, `make test-web` exit 0 — 560 fichiers, 5 811 tests,
+  14 skippes, 0 echec ; `npx eslint` exit 0 ; aucune couleur en dur. Plafonds inchanges
+  (`equipmentPlacementsLayer.ts` 519 L, `ReplayCanvas.tsx` 662 L pour un cliquet a 665).
+
+**Conclusion / prochaine etape** : constats de la ronde = 3 -> 0, lot mergeable. Reste le gate
+VISUEL de l'utilisateur, qui suppose la re-cuisson du film temoin `1b2d9e08` — a demander
+explicitement, jamais de cuisson en lot. Les deux decouvertes hors perimetre (bloc manuel des
+schemas 25-27 de `types.ts` a son critere de retrait ; `PLACEMENT_RENDER.translocator_beacon`
+garde une regle de rendu que rien ne declenche) restent ecrites au plan et NON traitees.

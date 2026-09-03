@@ -482,11 +482,11 @@ describe('countDrawablePlacements — la porte du comptage est celle du tracé',
 })
 
 describe('le LIEN de téléportation', () => {
-  const passage = { slot: 3, frame: 48, from: { x: 1, y: 1 }, to: { x: 9, y: 9 }, viaRift: false }
+  const passage = { slot: 3, frame: 48, from: { x: 1, y: 1 }, to: { x: 9, y: 9 } }
 
   /** Les opérations d un tracé de lien : le pointillé est sa signature. */
   function liens(frame: number) {
-    return draw([], { ...TIME, frame }, { teleports: [passage] })
+    return draw([], { ...TIME, frame }, { rift: { teleports: [passage], rifts: [] } })
       .filter((o) => o.op === 'setLineDash' && Array.isArray(o.args[0]) && o.args[0].length > 0)
   }
 
@@ -504,7 +504,7 @@ describe('le LIEN de téléportation', () => {
   })
 
   it('porte les encres de la faille, jamais la couleur d équipe du joueur', () => {
-    const encres = draw([], { ...TIME, frame: 49 }, { teleports: [passage] })
+    const encres = draw([], { ...TIME, frame: 49 }, { rift: { teleports: [passage], rifts: [] } })
       .filter((o) => o.op === 'set strokeStyle')
       .map((o) => o.args[0])
     expect(encres).toContain('faille-coeur')
@@ -512,7 +512,7 @@ describe('le LIEN de téléportation', () => {
   })
 
   it('relie les DEUX positions mesurées : le départ et l arrivée', () => {
-    const ops = draw([], { ...TIME, frame: 49 }, { teleports: [passage] })
+    const ops = draw([], { ...TIME, frame: 49 }, { rift: { teleports: [passage], rifts: [] } })
     const depart = projected(1, 1)
     const arrivee = projected(9, 9)
     const courbe = ops.find((o) => o.op === 'quadraticCurveTo' && o.args[2] === arrivee.x)
@@ -521,7 +521,82 @@ describe('le LIEN de téléportation', () => {
   })
 
   it('sans passage, le calque n émet rien de plus qu avant', () => {
-    expect(draw([], TIME, { teleports: [] }).filter((o) => o.op === 'setLineDash')).toHaveLength(0)
+    expect(draw([], TIME, { rift: { teleports: [], rifts: [] } }).filter((o) => o.op === 'setLineDash')).toHaveLength(0)
+  })
+})
+
+describe('LA FAILLE, dessinée par ses STATIONS et non par une pose', () => {
+  /** Une station : la faille est en (5, 5) des images 20 à 40, et nulle part ailleurs. */
+  const station = { slot: 3, t0: 20, t1: 40, x: 5, y: 5 }
+
+  /** Le halo elliptique de la faille signe son tracé (cf. drawRift). */
+  function halos(frame: number) {
+    return draw([], { ...TIME, frame }, { rift: { teleports: [], rifts: [station] } }).filter(
+      (o) => o.op === 'createRadialGradient',
+    )
+  }
+
+  it('rien AVANT le premier échange : la pose du translocateur est illisible', () => {
+    expect(halos(19)).toHaveLength(0)
+  })
+
+  it('elle se dessine pendant sa station, aux encres FIXES de la faille', () => {
+    expect(halos(20)).toHaveLength(1)
+    expect(halos(40)).toHaveLength(1)
+    const encres = draw([], { ...TIME, frame: 30 }, { rift: { teleports: [], rifts: [station] } })
+      .filter((o) => o.op === 'set strokeStyle')
+      .map((o) => o.args[0])
+    expect(encres).toContain('faille-bord')
+    expect(encres).not.toContain('equipe')
+  })
+
+  it('rien APRÈS la fin mesurée : jamais à demeure', () => {
+    expect(halos(41)).toHaveLength(0)
+  })
+
+  it('elle se dessine à sa position monde, projetée comme le reste du calque', () => {
+    const c = projected(5, 5)
+    const ops = draw([], { ...TIME, frame: 30 }, { rift: { teleports: [], rifts: [station] } })
+    expect(ops.some((o) => o.op === 'translate' && o.args[0] === c.x && o.args[1] === c.y)).toBe(true)
+  })
+})
+
+/**
+ * K3 (revue ronde 1, 2026-09-03) — UN POINT N'EST JAMAIS PEINT DEUX FOIS.
+ *
+ * La station et le bout `from` du lien qui l'ouvre sont LE MÊME objet : même vie, même image
+ * d'échange, même point. Les peindre tous deux composait le halo deux fois — ce point brillait,
+ * pendant les 600 ms du lien, plus fort qu'à n'importe quelle autre image. Le halo est ici le
+ * témoin : un `createRadialGradient` par faille peinte.
+ */
+describe('LA FAILLE ET SON LIEN ensemble — le point quitté n est peint qu une fois', () => {
+  /** Le saut qui ouvre la station : même vie, même image, même point de départ. */
+  const lien = { slot: 3, frame: 20, from: { x: 5, y: 5 }, to: { x: 9, y: 9 } }
+  const station = { slot: 3, t0: 20, t1: 400, x: 5, y: 5 }
+
+  function halos(frame: number, scene: { teleports: typeof lien[]; rifts: typeof station[] }) {
+    return draw([], { ...TIME, frame }, { rift: scene }).filter(
+      (o) => o.op === 'createRadialGradient',
+    ).length
+  }
+
+  it('pendant le lien : DEUX failles peintes — la station au départ, le bout du lien à l arrivée', () => {
+    // Sans la correction : TROIS (station + les deux bouts du lien), le départ compté deux fois.
+    expect(halos(21, { teleports: [lien], rifts: [station] })).toBe(2)
+  })
+
+  it('après le lien : la station SEULE reste, à pleine taille', () => {
+    // frameMs = 100 dans la fixture : le lien couvre 20..25, la frame 26 est au-delà.
+    expect(halos(26, { teleports: [lien], rifts: [station] })).toBe(1)
+  })
+
+  it('un lien SANS station à son départ garde ses deux bouts (artefact sans positions ailleurs)', () => {
+    expect(halos(21, { teleports: [lien], rifts: [] })).toBe(2)
+  })
+
+  it('l appariement se fait sur (vie, image), pas sur des coordonnées : une AUTRE vie garde son bout', () => {
+    const autreVie = { ...station, slot: 9 }
+    expect(halos(21, { teleports: [lien], rifts: [autreVie] })).toBe(3)
   })
 })
 

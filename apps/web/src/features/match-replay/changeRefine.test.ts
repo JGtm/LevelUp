@@ -155,3 +155,28 @@ describe('refineAbilityReading — la consommation est une MESURE', () => {
     expect(refineAbilityReading(base, [], 1, 60)).toBe(base)
   })
 })
+
+/**
+ * P2.4 (2026-09-03) — LA VIGNETTE D'ÉQUIPEMENT N'EST PAS CONCERNÉE PAR `gap`, ET C'EST UNE
+ * PROPRIÉTÉ À VERROUILLER, PAS UNE COÏNCIDENCE.
+ *
+ * Le saut de compteur résiduel invalide `from` — le rang PRÉCÉDENT, reconstruit de proche en
+ * proche — et lui seul. `r` est ce que l'émission PORTE : le rang désormais tenu, lu
+ * directement. Cette fonction ne lit que `r` ; elle doit donc rendre exactement la même chose
+ * avec et sans `gap`. Le jour où quelqu'un ferait passer la vignette par `from`, ce test
+ * tomberait — c'est sa raison d'être.
+ */
+describe('refineAbilityReading — `gap` ne change rien : la vignette lit `r`, jamais `from`', () => {
+  it('un ramassage sous saut de compteur donne le MÊME rang qu’une chaîne saine', () => {
+    const base = { rank: 11, age: 30, src: 'kf' }
+    const saine = refineAbilityReading(base, [equip({ t: 50, r: 20, from: 11 })], 1, 60)
+    const trouee = refineAbilityReading(base, [equip({ t: 50, r: 20, from: 11, gap: 2 })], 1, 60)
+    expect(trouee).toEqual(saine)
+    expect(trouee?.rank).toBe(20)
+  })
+
+  it('une consommation sous saut de compteur vide la vignette comme les autres', () => {
+    const consomme = equip({ t: 50, kind: 'spent', r: REPLAY_NO_ABILITY_RANK, from: 4, gap: 1 })
+    expect(refineAbilityReading({ rank: 20, age: 30, src: 'kf' }, [consomme], 1, 60)).toBeNull()
+  })
+})
