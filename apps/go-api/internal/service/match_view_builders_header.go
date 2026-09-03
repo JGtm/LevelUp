@@ -12,12 +12,14 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/analysis/modelabel"
 	"levelup/go-api/internal/analysis/narrative"
 	skillv2 "levelup/go-api/internal/analysis/skill_v2"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/port"
 )
 
@@ -278,6 +280,49 @@ func applyMatchHeaderModeCategory(h *domain.MatchViewHeader, meta *domain.MatchM
 		return
 	}
 	h.ModeCategory = taxonomy.Classify(*meta.PairName)
+}
+
+// applyMatchHeaderScoreTimeline renseigne ScoreTimelineKind — COMMENT le bloc « Score dans
+// le temps » de la vue match doit se montrer sur le mode joué (rien / barres d'instants /
+// courbe).
+//
+// ICI ET PAS DANS LE BUILDER, pour la même raison que la Prolongation et le score : la
+// table est portée par le service (buildMatchHeader est déjà à la limite de paramètres).
+//
+// LA SOURCE EST LE `pair_name` BRUT, dont on ne retire que le suffixe de CARTE. Deux
+// libellés étaient possibles et le mauvais coûtait cher :
+//
+//	h.ModeUI                      LOCALE-AWARE — sous UI FR, « Slayer » y est déjà devenu
+//	                              « Assassin » : aucun jeton de la table ne matcherait.
+//	NormalizeModeLabel(pairName)  MANGE le jeton sur toute une famille de pair_name
+//	                              (« Super Fiesta:Slayer » -> « Super Fiesta »,
+//	                              « Team Slayer:Arena » -> « Arena ») : 460 matchs du
+//	                              registre local au mauvais verdict, dont les 429 du mode
+//	                              le plus joué du corpus (mesure du 2026-09-03).
+//
+// D'où `modelabel.StripMapSuffix` SEUL : le retrait du nom de carte protège des collisions
+// entre un jeton de mode et un nom de carte, et rien d'autre n'est touché.
+//
+// LE REPLI SE DIT PAR L'ABSENCE : `curve` est le comportement par défaut du client, donc le
+// servir explicitement serait redire le défaut sur chaque match. Le champ ne porte que ce
+// qui CHANGE quelque chose.
+//
+// TITLE-AGNOSTIC : `resolve` est la règle du TITRE COURANT, injectée au boot depuis
+// regulation.toml. Nil (titre sans table) → champ vide → le client garde la courbe.
+// Aucune comparaison de slug.
+func applyMatchHeaderScoreTimeline(
+	h *domain.MatchViewHeader, meta *domain.MatchMetaRaw, resolve func(string) string,
+) {
+	if h == nil || meta == nil || resolve == nil || meta.PairName == nil {
+		return
+	}
+	label := modelabel.StripMapSuffix(*meta.PairName)
+	if label == "" {
+		return
+	}
+	if kind := resolve(label); kind != mappings.ScoreTimelineCurve {
+		h.ScoreTimelineKind = kind
+	}
 }
 
 // applyMatchHeaderScore pose le score de l'en-tête : le libellé, ce qu'il porte (points ou

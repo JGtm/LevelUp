@@ -8213,6 +8213,7 @@ export interface components {
             score_points_label?: string;
             /** Format: int64 */
             score_theirs?: number;
+            score_timeline_kind?: string;
             /** Format: date-time */
             start_time?: string;
             start_time_label: string;

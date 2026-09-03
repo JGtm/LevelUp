@@ -1117,6 +1117,19 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 		}
 	}
 
+	// Lecture du bloc « Score dans le temps » PAR TITRE (même regulation.toml, table
+	// [score_timeline]) → l'en-tête de la vue match dit au client s'il doit masquer le
+	// bloc (Slayer), poser des barres aux instants de marque (drapeau, colline, bombe) ou
+	// garder la courbe. C'est la MÉTHODE du jeu de règles qui voyage, pas une copie de la
+	// table : l'appariement se fait par jeton de mode, jamais par clé exacte. Titre sans
+	// déclaration → absent → le client garde la courbe.
+	scoreTimelineKind := make(map[string]func(string) string)
+	for _, slug := range multiTitleSlugs {
+		if rset, ok := fieldMappingsRegistry.GetRegulation(slug); ok {
+			scoreTimelineKind[slug] = rset.ScoreTimelineKind
+		}
+	}
+
 	reg := wire.NewServiceRegistry(cfg, tokenProvider).
 		WithTitleResolver(titleResolver).
 		WithCapabilities(hiCaps).
@@ -1125,7 +1138,8 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 		WithRankImageURLsByTitle(rankImageURLsByTitle).
 		WithPlaylistLabelOverrides(playlistLabelOverrides).
 		WithRegulationSeconds(regulationSeconds).
-		WithRoundsDecide(roundsDecide)
+		WithRoundsDecide(roundsDecide).
+		WithScoreTimelineKind(scoreTimelineKind)
 
 	// V72-27 : câble le résolveur de libellé de rang FR consommé par les
 	// notifications post-sync (career_rank) — même RankCatalog HI que

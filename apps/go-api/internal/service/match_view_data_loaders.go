@@ -354,6 +354,10 @@ func (s *MatchViewService) buildMatchViewFromData(
 	// raison que la ligne au-dessus — la table `[rounds_decide]` est portée par le
 	// service. Table absente → lecture en points, comportement d'avant le 2026-08-29.
 	applyMatchHeaderScore(&header, meta, d.stats, s.roundsDecide)
+	// Lecture du bloc « Score dans le temps » (rien / barres d'instants / courbe) : même
+	// raison d'être ici que les deux lignes au-dessus — la règle est portée par le service.
+	// Règle absente → champ vide → le client garde la courbe.
+	applyMatchHeaderScoreTimeline(&header, meta, s.scoreTimelineKind)
 	// Présence de l'artefact de rejeu 2D : un os.Stat, jamais une lecture. Même
 	// raison d'être ici que le flag « Prolongation » — la dépendance est portée par
 	// le service, pas par le builder.

@@ -37,7 +37,6 @@ import {
   type EChartsThemeColors,
 } from '@/components/charts/_utils'
 import { useMatchReplay } from '@/features/match-replay/queries'
-import { resolveToken } from '@/lib/accessibility'
 import { getEChartsThemeColors } from '@/lib/echarts/themeColors'
 import { resolveTeamLabel } from '@/lib/halo/teamLabel'
 import { parseTeamSideID } from '@/lib/halo/teamNames'
@@ -46,6 +45,8 @@ import type { MatchScoreboardRow } from '@/lib/api/types'
 
 import { buildScoreCurve, formatClock, teamIdsOf, type ScoreCurve, type ScoreCurveSeries } from './_scoreCurve'
 import type { MatchViewText } from './i18n'
+import { SCORE_TIMELINE_HIDDEN } from './scoreTimelineKind'
+import { teamSeriesColor } from './teamSeriesColor'
 import { resolveXuidMeta } from './xuidMeta'
 
 interface Props {
@@ -55,6 +56,13 @@ interface Props {
   replayAvailable: boolean
   scoreboard: MatchScoreboardRow[] | null | undefined
   meXUID: string | null
+  /**
+   * `header.score_timeline_kind` — la lecture du bloc décidée par la DONNÉE du titre
+   * (`regulation.toml [score_timeline]`). `hidden` efface cette carte : le mode marque au
+   * FRAG et « Frags cumulés » le dit déjà, juste au-dessus dans le même onglet. Absent ou
+   * inconnu = la courbe, le repli sûr.
+   */
+  scoreTimelineKind?: string
   t: MatchViewText
 }
 
@@ -64,6 +72,7 @@ export function MatchScoreCurveChart({
   replayAvailable,
   scoreboard,
   meXUID,
+  scoreTimelineKind,
   t,
 }: Props) {
   const { data } = useMatchReplay(playerSlug, matchId, replayAvailable)
@@ -101,6 +110,9 @@ export function MatchScoreCurveChart({
     [curve, t],
   )
 
+  // Le mode marque au FRAG (Slayer) : la carte s'efface — la garde vit ICI et pas seulement
+  // chez l'appelant, pour qu'aucun futur point de montage ne la contourne.
+  if (scoreTimelineKind === SCORE_TIMELINE_HIDDEN) return null
   // Pas d'artefact, pas de calque, ou mode sans compteur : RIEN. Pas de cadre vide.
   if (!curve || data?.coverage?.score?.modeSupported === false) return null
 
@@ -120,12 +132,6 @@ export function MatchScoreCurveChart({
   )
 }
 
-/** La couleur d'une équipe : ses tokens allié/adverse, encre neutre quand le camp est inconnu. */
-function colorOf(serie: ScoreCurveSeries, tc: EChartsThemeColors): string {
-  if (serie.ally === null) return tc.axisLabel
-  return resolveToken(serie.ally ? 'team-ally' : 'team-enemy')
-}
-
 /**
  * scoreCurveOption — l'option ECharts, extraite du composant pour rester lisible.
  *
@@ -139,7 +145,7 @@ function scoreCurveOption(
   tc: EChartsThemeColors,
   t: MatchViewText,
 ): EChartsCoreOption {
-  const couleurs = new Map(curve.series.map((s) => [s.teamId, colorOf(s, tc)]))
+  const couleurs = new Map(curve.series.map((s) => [s.teamId, teamSeriesColor(s.ally, tc)]))
   return {
     backgroundColor: CHART_BG,
     grid: getGridBase({ bottom: 44, left: 40, right: 16, top: 12 }),
