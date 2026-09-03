@@ -1,3 +1,105 @@
+## [2026-09-03] Match view — donnees des deux temoins chargees ; 9 formes proposees pour les trois blocs en tableau — En cours
+
+**Prerequis utilisateur : les deux temoins doivent porter leurs donnees.** Matchs
+`f0220a96` (Community:Team Slayer sur Starboard, 38-50) et `696a9d7c`
+(Arena:Strongholds sur Vagabond, 200-94). Constat sur pieces : les deux artefacts de rejeu
+existent deja (schema 34, `scoreTimeline` publie, `originResolved` vrai) — le score dans le
+temps etait donc deja servi. En revanche `kill_positions_latest` etait VIDE sur tout le
+corpus (0 ligne, 0 match) : la distance par arme n'avait de mesure nulle part.
+
+**Comment la passe a ete restreinte a deux films SANS toucher au code.**
+`backfill-killsource` n'a pas de filtre par match, et `--force` sur le cache complet
+redecoderait 949 films. Le filtre de candidature passe par
+`film_manifests/{court}.json` du cache resolu par `--cache` : un cache MIROIR ne portant
+que les deux manifestes et les deux repertoires de chunks reduit le plan a exactement deux
+films. `levelup backfill-killsource --cache <miroir> --force --films-only`, serveur arrete,
+2 min 13 s, 0 erreur. 170 lignes de positions ecrites (68 + 102).
+
+**Le temoin Slayer ne portera PAS de distance par arme, et c'est une mesure, pas un bug.**
+La passe de `f0220a96` est `publishable = false` : sante en ALERTE (16 dead-states a `jpt!`
+valide portant un indice hors du roster retenu — le roster du film compte 9 noms pour 8
+sieges), couverture 77,3 % pour un plancher a 100 %. `killDistanceQuery` exige
+`e.publishable` : l'attribution par kill est refusee par construction sur ce match.
+`696a9d7c` rend 92 morts mesurees, 8 joueurs, 3 a 6 armes chacun — le rendu s'y verifie.
+
+**Neuf formes proposees, sur donnees reelles de `696a9d7c`.** Les trois blocs en tableau
+(usages d'equipements, controle des armes speciales, objectifs) recoivent chacun trois
+formes graphiques au gabarit de l'app, publiees en artefact. Aucun code produit : la
+decision de forme appartient a l'utilisateur.
+
+**Formes retenues par l'utilisateur** (mock v2 valide) : usages d'equipement = classement par
+geste EN GRILLE (noms alignes, une echelle et un axe par colonne) + part de chaque equipe en
+pourcentage ; armes speciales = une ligne par arme avec DEUX batons superposes (un par camp),
+axe = nombre de prises ; objectifs = grille par joueur + face-a-face des deux camps. Aucun
+nuage de points. Legendes en pied, centrees. Les vues d'objectif suivent les colonnes du mode
+(`detectObjectiveMode`) : demontre sur Bastion (3 grandeurs) et sur CTF `fdcc8634` (4).
+**Assaut ne peut PAS avoir de bloc objectif** : `match_objective_stats` n'a aucune colonne de
+bombe et l'API n'en fournit aucune.
+
+**Lot 1 livre en worktree dedie** (`wt/match-view-retours`, 3 commits, ni push ni merge) :
+primitive `components/ui/section-card.tsx` + garde-rail (les 4 sections divergentes migrees
+au gabarit « Citations ») · table `[score_timeline]` de `regulation.toml` (schema 5) +
+`header.score_timeline_kind` + `MatchScoreEventsChart` (barres verticales aux instants de
+marque, meme calque, meme cle de cache) · « Assistances » a droite d'« Antagonistes » avec le
+cas cellule fantome traite.
+
+**LE DEFAUT QUE LA REVUE A ATTRAPE, et il tenait a la source d'appariement.** La regle
+etait appariee sur `analysis.NormalizeModeLabel(pair_name)`, comme `objective_roles.toml`.
+Or cette normalisation GARDE le prefixe d'identite de playlist et jette le sous-mode :
+`Super Fiesta:Slayer` -> `Super Fiesta`, ou le jeton « Slayer » n'existe plus. Mesure sur le
+registre local : **460 matchs au mauvais verdict, dont les 429 du mode le plus joue du
+corpus** (+ `Super Husky Raid:CTF` 11, `Team Snipers` 10, et les `pair_name` de forme
+`Mode:Playlist` — `Team Slayer:Arena` -> `Arena`). Correctif : appariement sur le `pair_name`
+BRUT, dont on ne retire que le suffixe de carte (`modelabel.StripMapSuffix`, regex unique du
+depot, `NormalizeModeLabel` y delegue son etape 3). Controle croise sur les 70 `pair_name`
+distincts du registre : 1 194 masques (toutes variantes Slayer, FFA et Shotty Snipes
+comprises), 403 en barres (drapeau/colline/bombe), 275 en courbe (Bastion, Oddball, Total
+Control, Stockpile, VIP, Extraction, Land Grab, variantes UUID) — zero faux positif. Le
+champ ne porte QUE `hidden`/`events` : `curve` etant le defaut du client, le servir
+redirait le defaut sur chaque match.
+
+**Decouverte hors perimetre, NON traitee** : `service/replay_map_objectives.go` a la meme
+cecite (`objectiveRoleSpecs` apparie sur le libelle normalise). `Husky Raid:CTF` (3) et
+`Super Husky Raid:CTF` (11) ne recoivent donc probablement AUCUN role `flag_spawn` /
+`flag_delivery` dans le rejeu 2D, et `Husky Raid:Assault` (1) perd `assault_bomb` —
+~15 matchs a calque d'objectifs muet. Le geste correctif serait le meme (`StripMapSuffix`).
+
+**Lot 2 livre** (4 commits de plus sur la meme branche, ni push ni merge) : primitive
+`components/charts/ValueGrid` + `valueGridModel` (grille alignee, une echelle et un axe PAR
+COLONNE — elle sert DEUX blocs, d'ou `components/` et non une feature), puis les trois
+tableaux remplaces par les formes du mock v2. Rendu DOM/CSS et non ECharts : l'alignement des
+lignes d'une colonne a l'autre est un probleme de MISE EN PAGE, que cinq grilles ECharts
+calculeraient separement. Couleurs d'equipe = jetons `team-ally`/`team-enemy` partout
+(`teamTokenCssVar`, pendant DOM de `teamSeriesColor`) — le bloc Objectifs quitte donc la
+cascade d'IDENTITE et suit desormais les reglages d'accessibilite.
+
+**Deux ecarts au mock, ASSUMES par l'executeur et a arbitrer par l'utilisateur.**
+(1) La vue 1 des equipements affiche les colonnes REELLES du modele
+(`equipmentUsageColumns`) : sur le temoin Bastion cela fait une douzaine de colonnes
+(camouflage compte/duree/frags, surbouclier idem, poses par famille, grenades par type) la
+ou le mock en montrait cinq. La grille defile horizontalement dans sa carte. (2) La vue 2
+compte une ligne par GROUPE (5) et non par famille : un groupe porte des colonnes d'unites
+differentes (episodes / duree / frags), les additionner n'aurait pas de sens — d'ou la
+grandeur `usageGestureCount`. Consequence visible : « Murs » et « Capteurs » partagent une
+ligne et une teinte.
+
+**Point de dette a surveiller** : la table `USAGE_GROUP_TOKENS` emprunte la famille `frag-*`
+(la seule dont la distance perceptuelle toutes-paires est tenue PALETTE PAR PALETTE). C'est
+exactement l'emprunt que la creation de la famille `frag-*` avait supprime le 2026-08-29 pour
+les frags eux-memes. Le garde-rail `fragClass.colorSource.guard` ne le voit pas (il n'interdit
+que les cles de CLASSE). Correction propre : une famille dediee `equip-*` declaree dans les
+QUATRE palettes. Non fait — cout reel sur Okabe-Ito.
+
+**Decouvertes hors perimetre** : `ANTAGONIST_TOKENS` et `ASSIST_TOKENS` sont deux copies de
+la meme liste de 11 jetons · quatre barres DOM proches (`proportional-bar`, `outcome-bar`,
+`composite-progress-bar`, `combat-yield-bar`) qui pourraient fusionner · `weaponsOf`
+(padControlLogic) n'expose pas un socle dont TOUTES les occupations sont anonymes · le ratchet
+`lint-cross-feature-imports` est AU PLAFOND (7/7).
+
+**Prochaine etape.** Merge de `wt/match-view-retours` dans `feat/v75` (accord utilisateur
+requis) — 7 commits. Puis arbitrage des deux ecarts au mock sur pieces.
+Le mock SESSION (Solo + Escouade, 18 formes) est publie et attend le choix de l'utilisateur.
+
 ## [2026-09-03] Fonds de carte du rejeu 2D — la premisse « reutiliser les dessins » est REFUTEE ; +8 cartes par l'heritage variante -> base — Complete
 
 **Ce qui etait demande, et ce que la mesure a renverse.** La mission partait d'un etat de
@@ -89964,3 +90066,35 @@ pas reculer davantage. La forme portait l information mieux que le mot.
 **Resultats observes** : typecheck EXIT=0 ; 138 fichiers / 2088 tests verts ; lint 0 erreur.
 
 **Conclusion / prochaine etape** : reste l arbitrage sur la largeur des colonnes du tiroir.
+
+---
+
+
+## [2026-09-03] Classements — LIVRE EN PROD (v7.3.1) + ecrasement de base ANNULE sur mesure
+
+**Statut** : Complete. Chantier clos.
+
+**Decision technique principale** : le user autorisait l ecrasement de la base prod par la
+locale (« la locale est toujours plus avancee »). MESURE AVANT ACTION (conteneurs arretes,
+sauvegarde faite, diag_q compile pour Linux via docker golang:1.26-bookworm — bullseye
+donne un binaire glibc trop recent) : la premisse est FAUSSE. Prod > local sur tout ce qui
+compte : matchs 1984 vs 1959, participants 28497 vs 28291, world_player_season_stats 11377
+vs 10328, et surtout enrichissement SERVI de csrseason13-2 a 84-94 % (168/188/176 sur 200)
+contre 34 % en local. L ecrasement aurait detruit 25 matchs + 206 participations + ~1000
+lignes de stats et fait CHUTER l enrichissement de ~90 % a 34 %. ANNULE, aucune ecriture ;
+prod redemarree (downtime ~4 min), sauvegarde VPS supprimee sur consigne user.
+
+**Resultats observes** : la PROD S EST REPAREE SEULE au deploiement — binaire 12:49, cycle
+de boot, saison csrseason13-3 decouverte PAR LA REDIRECTION et scrapee : 515 lignes,
+100 % xuid sur 3 playlists. Le correctif Lot 1 valide en production sans intervention.
+Reste a la prod : enrichissement de 13-3 (0 %), que le cron fait cette nuit 04:00.
+Backfill local 13-2 : 28 joueurs restants traites en 5m41 puis « saison complete » — 34 %
+est le PLAFOND REEL (comptes desactives + horizon API), pas un manque : le bandeau chiffre
+du Lot 4 l annonce desormais au lieu d afficher un mur de tirets.
+Livraison : merge 036c47629 + badge 98bd7c143, tag v7.3.1, Release verte, CI main verte.
+
+**Conclusion / prochaine etape** : verifier le cron prod du 04/09 04:00 (log « cycle
+termine » saison 13-3 + enrichissement). Ecart residuel connu et ASSUME : prod sert 13-2
+sans xuid (pas de surlignage/Explorer sur cette archive), local a les xuid mais moins d
+enrichissement — aucune des deux n a tout ; non bloquant, la saison active est complete
+des deux cotes. Worktrees retires (jonction node_modules d abord), branche conservee.
