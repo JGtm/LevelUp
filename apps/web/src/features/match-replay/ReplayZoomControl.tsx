@@ -46,7 +46,12 @@ export function ReplayZoomControl({
         </Key>
         {/* LE NIVEAU EST UN TEXTE, PAS UNE JAUGE : « 2x » se lit d'un coup d'oeil et se dit à
             voix haute. C'est aussi ce qui rend les paliers discrets défendables — une valeur
-            continue n'aurait rien à afficher ici. */}
+            continue n'aurait rien à afficher ici.
+
+            IL AFFICHAIT « TOUT » AU GROSSISSEMENT 1 jusqu'au 2026-09-03, pour dire « toute la
+            carte est visible ». Retiré sur question de l'utilisateur : un mot au milieu d'une
+            échelle de nombres casse la série, et on ne sait plus si on lit un niveau ou un
+            état. Le « moins » désactivé dit déjà qu'on est au minimum. */}
         <span className="min-w-[2.1rem] text-center font-mono text-[10.5px] tabular-nums text-muted-foreground">
           {t.zoomLevelFmt(zoom.level)}
         </span>
