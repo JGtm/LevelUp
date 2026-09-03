@@ -5,17 +5,26 @@
  * CE QUE CE CALQUE AFFIRME. Une entrée de `doc.vehicles` est LA VIE D'UN VÉHICULE : où il naît,
  * sa trajectoire échantillonnée avec son cap, ses épisodes d'occupation (qui est à bord et
  * quand), et jusqu'à quelle frame l'afficher. La fin est une BORNE DE RECENSEMENT — `end` vaut
- * toujours `unknown` côté document — et ce calque ne dessine JAMAIS d'effet de destruction :
- * le sprite s'efface NETTEMENT à `t1max`, rien de plus (décision de cadrage du plan).
+ * AUJOURD'HUI toujours `unknown` côté document, et dans ce cas le sprite s'efface NETTEMENT à
+ * `t1max`, sans aucun effet de destruction.
  *
- * CINQ RESPONSABILITÉS PURES, TESTABLES SANS CANVAS : le REFUS DU DÉCOR (`vehicleIsDecor`,
+ * DEPUIS LE 2026-09-03 (schéma 30, EN AVANCE DE PHASE — cf. `ReplayVehicleTrack` dans
+ * `lib/api/types.ts`), CE N'EST PLUS LE SEUL RÉGIME : quand `end` publie `"destroyed"` avec
+ * `tEnd` (`vehicleDestructionFrame`), la fin devient une PREUVE au lieu d'une borne — le sprite
+ * cesse à `tEnd` (qui prend alors l'autorité sur `t1max`, cf. `vehicleVisibleAt`) et
+ * `vehiclesPaint.ts` y ancre l'explosion demandée par l'utilisateur (« il faut aussi la
+ * destruction et un effet UI »). AUCUN artefact actuel ne porte ce régime — tant que le Go ne
+ * mesure pas la destruction, ce texte ne change RIEN à ce qui s'affiche.
+ *
+ * SIX RESPONSABILITÉS PURES, TESTABLES SANS CANVAS : le REFUS DU DÉCOR (`vehicleIsDecor`,
  * `vehicleCanEmbark`), l'ORIENTATION (`vehicleHeadingAt`, `vehicleScreenAngle`,
  * `vehicleAimAngle`), la TAILLE (`vehicleSpriteScale`, ancrée sur le pion), l'OCCUPATION
- * (`vehicleActiveRides`, `vehicleDriverAt`, `vehicleColorAt`) et le PRÉDICAT EMBARQUÉ
+ * (`vehicleActiveRides`, `vehicleDriverAt`, `vehicleColorAt`), le PRÉDICAT EMBARQUÉ
  * (`buildEmbarkedPredicate`, consommé par `replayMarkers.drawTracksLayer` pour supprimer le pion
- * d'un occupant). LE TRACÉ CANVAS EST À CÔTÉ (`vehiclesPaint.ts`, extrait le 2026-09-02 quand le
- * cône du conducteur a fait franchir à ce fichier le seuil de taille du dépôt) : il ne fait
- * qu'assembler ces cinq réponses image par image.
+ * d'un occupant) et la DESTRUCTION (`vehicleDestructionFrame`, `vehicleExplosionKindOf`). LE
+ * TRACÉ CANVAS EST À CÔTÉ (`vehiclesPaint.ts`, extrait le 2026-09-02 quand le cône du conducteur
+ * a fait franchir à ce fichier le seuil de taille du dépôt) : il ne fait qu'assembler ces six
+ * réponses image par image.
  *
  * CE QUE CE CALQUE REFUSE DE DESSINER — LES FAMILLES NON JOUABLES (verdict utilisateur du
  * 2026-09-02, après visionnage réel). Voir `FAMILLES_NON_JOUABLES` : ce sont des entités de
@@ -87,6 +96,86 @@ export const FAMILLES_NON_JOUABLES: ReadonlySet<string> = new Set([
  */
 export function vehicleIsDecor(family: string | undefined): boolean {
   return family !== undefined && FAMILLES_NON_JOUABLES.has(family)
+}
+
+// --- DESTRUCTION (schéma 30 — EN AVANCE DE PHASE, cf. ReplayVehicleTrack dans types.ts) --------
+
+/**
+ * VEHICLE_END_DESTROYED — LA SEULE valeur de `track.end` que ce calque traite comme une preuve
+ * de destruction. Nommée plutôt que semée en littéral (même raison que `FAMILLES_NON_JOUABLES`) :
+ * un seul endroit à changer si le Go choisit un autre mot. Toute AUTRE valeur — `"unknown"`
+ * aujourd'hui, systématiquement — est lue comme « fin non affirmée » : rien ne se dessine.
+ */
+export const VEHICLE_END_DESTROYED = 'destroyed'
+
+/**
+ * vehicleDestructionFrame — l'index de frame de la destruction, ou `null` quand elle n'est PAS
+ * établie. DEUX CONDITIONS, LES DEUX NÉCESSAIRES (demande explicite du lot) : `end` doit valoir
+ * `VEHICLE_END_DESTROYED` ET `tEnd` doit être publié. Un document qui affirmerait l'un sans
+ * l'autre (mesure Go partielle) ne déclenche rien plutôt que de deviner une frame — même
+ * prudence que `vehiclePositionAt` refusant d'inventer une position.
+ *
+ * TANT QUE LE GO NE PUBLIE QUE `end: "unknown"` (l'état actuel de CHAQUE artefact existant),
+ * cette fonction rend TOUJOURS `null` : zéro changement visible, et c'est le comportement
+ * attendu de ce lot — il rend le calque PRÊT, il n'invente pas la mesure.
+ */
+export function vehicleDestructionFrame(track: ReplayVehicleTrackReady): number | null {
+  if (track.end !== VEHICLE_END_DESTROYED) return null
+  return track.tEnd ?? null
+}
+
+/**
+ * VehicleExplosionKind — LES DEUX MISES EN SCÈNE DEMANDÉES PAR L'UTILISATEUR, mot pour mot :
+ * « explosion plasma et explosion "normale" pour les véhicules humains ».
+ */
+export type VehicleExplosionKind = 'plasma' | 'normal'
+
+/**
+ * VEHICLE_PLASMA_FAMILIES — TABLE FACTION -> EFFET (nommée et commentée, comme demandé) : les
+ * châssis Covenant/Bannis, à énergie, reçoivent l'explosion PLASMA. La Shade (tourelle montée
+ * Covenant, immobile — cf. `VEHICLE_DEFAULT_HEADING_DEG`) reste une énergie Covenant même sans
+ * jamais se déplacer, elle entre donc ici et pas dans la table humaine ci-dessous.
+ *
+ * TOUTE AUTRE FAMILLE — y compris VIDE (châssis non résolu) ou inconnue de ce calque — REÇOIT LE
+ * REPLI NORMAL (`vehicleExplosionKindOf`) : c'est un choix NEUTRE et documenté, jamais une
+ * affirmation Covenant par défaut. La liste humaine (`VEHICLE_HUMAN_FAMILIES`) n'est donc pas
+ * consultée par le code — elle n'existe QUE pour documenter la couverture de la demande
+ * utilisateur et sert de fixture aux tests (vehiclesLayer.test.ts / vehiclesPaint.test.ts).
+ */
+export const VEHICLE_PLASMA_FAMILIES: ReadonlySet<string> = new Set([
+  'ghost',
+  'banshee',
+  'wraith',
+  'chopper',
+  'shade',
+])
+
+/**
+ * VEHICLE_HUMAN_FAMILIES — LES CHÂSSIS UNSC/HUMAINS explicitement cités par la demande
+ * utilisateur : ils reçoivent l'explosion NORMALE, mais par le REPLI (« toute famille qui n'est
+ * pas dans `VEHICLE_PLASMA_FAMILIES` »), pas par une seconde table consultée au rendu — deux
+ * tables actives auraient pu diverger (une famille absente des deux, par exemple un futur
+ * châssis) sans qu'aucun test ne le voie.
+ */
+export const VEHICLE_HUMAN_FAMILIES: ReadonlySet<string> = new Set([
+  'warthog',
+  'rockethog',
+  'warthog_gauss',
+  'razorback',
+  'mongoose',
+  'gungoose',
+  'scorpion',
+  'wasp',
+  'tourelle_montee',
+])
+
+/**
+ * vehicleExplosionKindOf — LA FACTION DE LA DÉFLAGRATION. `undefined`/`''` (châssis non résolu)
+ * et toute famille absente de `VEHICLE_PLASMA_FAMILIES` (y compris une famille future, inconnue
+ * de ce calque) reçoivent `'normal'` — le repli neutre documenté ci-dessus.
+ */
+export function vehicleExplosionKindOf(family: string | undefined): VehicleExplosionKind {
+  return family !== undefined && VEHICLE_PLASMA_FAMILIES.has(family) ? 'plasma' : 'normal'
 }
 
 /**
@@ -175,9 +264,18 @@ export function vehicleAimAngle(headingDeg: number): number {
  * affirmerait une présence que le film réfute. Décision de cadrage : « disparition NETTE » —
  * aucun estompage entre `t1`/`t1max` (à la différence des armes au sol) : le véhicule est plein
  * jusqu'à `t1max` inclus, rien après.
+ *
+ * `tEnd` FAIT AUTORITÉ SUR `t1max` QUAND LA DESTRUCTION EST ÉTABLIE (schéma 30, cf.
+ * `vehicleDestructionFrame`) : la demande utilisateur du lot (« il faut aussi la destruction et
+ * un effet UI ») veut que le SPRITE cesse au moment exact de la destruction, pas à la dernière
+ * preuve de présence du recensement — l'explosion (`vehiclesPaint.ts`) prend ensuite le relais à
+ * la MÊME frame, sur SA propre fenêtre, indépendamment de cette visibilité. Tant que le document
+ * ne publie que `end: "unknown"` (aujourd'hui, toujours), `vehicleDestructionFrame` rend `null`
+ * et ce repli sur `t1max` est donc EXACTEMENT le comportement actuel — zéro changement visible.
  */
 export function vehicleVisibleAt(track: ReplayVehicleTrackReady, frame: number): boolean {
-  return frame >= track.t0 && frame <= track.t1max
+  const lastFrame = vehicleDestructionFrame(track) ?? track.t1max
+  return frame >= track.t0 && frame <= lastFrame
 }
 
 /**

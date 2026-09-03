@@ -2790,9 +2790,24 @@ export type ReplayFlagCarriesCoverage = components['schemas']['FlagCarriesCovera
 // LA VIE D'UN VÉHICULE (schéma 29) : où il naît, sa trajectoire échantillonnée avec son cap,
 // ses épisodes d'occupation (qui est à bord et quand), et jusqu'à quelle frame l'afficher.
 // `end` vaut TOUJOURS `unknown` (cf. `apps/go-api/internal/analysis/replay/document_vehicles.go`) :
-// la datation de la destruction a été mesurée et RÉFUTÉE (V3_DESTRUCTION_DATEE_2026-09-02) — la
-// disparition du sprite n'est donc jamais à lire comme une explosion.
-export type ReplayVehicleTrack = components['schemas']['VehicleTrack']
+// la datation de la destruction a été mesurée et RÉFUTÉE une première fois
+// (V3_DESTRUCTION_DATEE_2026-09-02) — la disparition du sprite n'était alors JAMAIS à lire comme
+// une explosion.
+//
+// `tEnd` EST UNE DÉCLARATION EN AVANCE DE PHASE (2026-09-03) : un second lot Go mesure une
+// nouvelle fois la destruction (schéma 30) pendant que ce lot web prépare le calque. Le contrat
+// GÉNÉRÉ (`generated.ts`) ne porte NI `tEnd` NI de valeur `"destroyed"` pour `end` — l'un et
+// l'autre sont donc ajoutés ici À LA MAIN, en TOLÉRANT (optionnel), le temps que
+// `make openapi-gen` les régénère : un artefact actuel (`end` toujours `"unknown"`, `tEnd`
+// absent) traverse ce type sans aucun changement de comportement. `end` reste un `string` NU
+// (pas un littéral `'unknown' | 'destroyed'`) parce que c'est déjà ainsi côté généré — le
+// resserrer ici romprait le ré-export si le Go publie un jour une troisième valeur. Le calque lit
+// `VEHICLE_END_DESTROYED` (vehiclesLayer.ts) plutôt qu'un littéral semé à chaque appelant.
+export type ReplayVehicleTrack = components['schemas']['VehicleTrack'] & {
+  /** Index de frame de la destruction (schéma 30, `omitempty` côté Go). Absent tant que la
+   *  mesure n'a pas abouti — voir l'en-tête ci-dessus. */
+  tEnd?: number
+}
 // La naissance d'un véhicule : position, et JAMAIS de cap (`h` absent par construction — la
 // feuille d'orientation du record de création n'est pas lisible, cf. le commentaire Go). Le
 // client oriente le véhicule sur son PREMIER échantillon mobile, ou nez vers le haut de l'écran

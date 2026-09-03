@@ -297,7 +297,7 @@ export function ReplayCanvas({
     doc, view: canvasView, enabled: showGroundWeapons,
     ink: { fill: markInk.fill, outline: neutralInk }, redraw,
   })
-  const vehicles = useReplayVehicles({ doc, view: canvasView, enabled: showVehicles, showNames, showAim, colorOfSlot, colorOfXuid, nameOfSlot, nameOfXuid, neutralInk, labelStroke, redraw }) // schéma 30 ; prédicat embarqué C7 ; cône du conducteur + nom ET couleur par xuid (2026-09-02).
+  const vehicles = useReplayVehicles({ doc, view: canvasView, enabled: showVehicles, showNames, showAim, colorOfSlot, colorOfXuid, nameOfSlot, nameOfXuid, neutralInk, labelStroke, explosionInk: fxInk, reducedMotion, redraw }) // schéma 30 ; prédicat embarqué C7 ; cône du conducteur + nom ET couleur par xuid (2026-09-02) ; explosion de destruction (2026-09-03, en avance de phase).
   // LES POSES D'ÉQUIPEMENT (schéma 10) : comptes, axe de temps, bascules et survol dans un
   // seul hook (useReplayPlacements). Les LÂCHÉS DE PUISSANCE suivent leur bascule, et rien
   // d'autre — plus de garde de mode par-dessus (2026-08-20).
