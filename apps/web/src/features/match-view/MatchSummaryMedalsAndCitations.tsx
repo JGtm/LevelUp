@@ -4,6 +4,7 @@ import { dropShadowForDifficulty } from '@/lib/medalDifficulty'
 import { CitationProgressRing } from '@/components/ui/citation-progress-ring'
 import { citationMastery } from '@/lib/citations/mastery'
 import { MedalIcon } from '@/components/ui/MedalIcon'
+import { SectionCard } from '@/components/ui/section-card'
 import type { MatchViewText } from './i18n'
 
 /**
@@ -26,9 +27,18 @@ function buildTooltip(name: string, description?: string | null): string {
   return name
 }
 
-// Mimétique de ChartCard (apps/web/src/components/charts/ChartCard.tsx) :
-// même bordure / padding / titre avec border-b — pour s'aligner visuellement
-// avec les cartes de la même rangée (dont MatchFragCard).
+// PaneCard — le CORPS d'une carte de médailles / citations ; son chrome vient de
+// `SectionCard` (components/ui/section-card.tsx), le gabarit unique du dépôt, dont ce bloc
+// était justement la référence désignée par l'utilisateur (2026-09-03).
+//
+// CE QUI RESTE ICI, ET POURQUOI : le plancher de hauteur du corps et l'état vide CENTRÉ.
+// Ce sont des propriétés du contenu (une carte à deux médailles doit rester aérée, un
+// « Aucune médaille » doit tomber au milieu), pas du chrome — les autres cartes de section
+// n'en veulent pas.
+//
+// PAS de `label` passé à SectionCard : sans nom accessible, l'ARIA n'expose pas la section
+// comme région — l'arbre reste celui du `<div>` que cette carte posait, et la carte voisine
+// de la même rangée (MatchFragCard, un ChartCard) n'en est pas une non plus.
 function PaneCard({
   title,
   children,
@@ -40,11 +50,10 @@ function PaneCard({
   isEmpty: boolean
   emptyMessage: string
 }) {
-  // `flex flex-col` + corps `flex-1` : la carte remplit la cellule de grille que
-  // sa voisine étire, sans jamais réserver de hauteur quand rien ne l'étire.
+  // Corps `flex-1` : la carte remplit la cellule de grille que sa voisine étire, sans
+  // jamais réserver de hauteur quand rien ne l'étire.
   return (
-    <div className="relative flex flex-col rounded-lg border border-border bg-card">
-      <div className="flex-none border-b border-border px-3 py-2 text-sm font-medium">{title}</div>
+    <SectionCard title={title}>
       <div
         className={`flex-1 p-3${isEmpty ? ' flex items-center justify-center' : ''}`}
         style={{ minHeight: MEDALS_CARD_MIN_BODY_HEIGHT }}
@@ -56,7 +65,7 @@ function PaneCard({
           <div className="flex flex-wrap gap-x-5 gap-y-4">{children}</div>
         )}
       </div>
-    </div>
+    </SectionCard>
   )
 }
 

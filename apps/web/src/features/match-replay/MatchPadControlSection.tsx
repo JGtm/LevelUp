@@ -31,6 +31,7 @@
  */
 import { useMemo } from 'react'
 
+import { SectionCard } from '@/components/ui/section-card'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 import { resolveTeamLabel } from '@/lib/halo/teamLabel'
 import { HeaderLabelTooltip } from '@/lib/table/columnMeta'
@@ -82,12 +83,16 @@ export function MatchPadControlSection({
   if (!control?.hasData) return null
 
   return (
-    <section className="rounded-lg border-2 border-border" aria-label={t.padControl.title}>
-      <h3 className="px-3 py-2 text-sm font-bold uppercase tracking-wider text-foreground">
+    <SectionCard
+      title={t.padControl.title}
+      label={t.padControl.title}
+      titleAdornment={(label) => (
         <HeaderLabelTooltip text={t.padControl.titleHint} focusable>
-          <span>{t.padControl.title}</span>
+          <span>{label}</span>
         </HeaderLabelTooltip>
-      </h3>
+      )}
+      footer={<PadControlFootnotes control={control} t={t} />}
+    >
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-3xs">
           <thead>
@@ -120,8 +125,7 @@ export function MatchPadControlSection({
           ))}
         </table>
       </div>
-      <PadControlFootnotes control={control} t={t} />
-    </section>
+    </SectionCard>
   )
 }
 
