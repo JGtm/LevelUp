@@ -1,51 +1,34 @@
 /**
- * placementTeleport — LE PASSAGE PAR LA FAILLE : reconnaître, dans les pistes du film,
- * l'instant où un joueur se déplace INSTANTANÉMENT d'un point à un autre.
+ * placementTeleport — LES USAGES DU TRANSLOCATEUR QUANTIQUE, lus dans l'ÉVÉNEMENT DU FILM.
  *
- * DEUX VERROUS, ET IL FAUT LES DEUX. Ils viennent tous deux de l'utilisateur (2026-08-27) :
- * « les téléportations tu peux sans doute les voir avec un joueur qui se déplace
- * instantanément d'un point à l'autre à une vitesse supérieure à celle de la course », puis
- * « on n'a pas un composant qui permet d'identifier l'équipement ? quand un joueur l'a et
- * quand il l'active ? ». Le second a corrigé la trajectoire de ce module : le film PUBLIE la
- * capacité portée par chaque slot (canal `abilities`, cf. `nearestReading`), et le
- * translocateur quantique y occupe le rang 11.
+ * CE FICHIER A CHANGÉ DE FONDATION LE 2026-09-03, et c'est le point à comprendre avant d'y
+ * toucher. Il portait jusque-là DEUX lectures indirectes, toutes deux abandonnées :
  *
- *  A. LE PORTEUR — au moment du saut, la dernière lecture de capacité de ce slot vaut 11.
- *     C'est le verrou décisif : il ne repose sur aucune heuristique de mouvement, mais sur un
- *     canal indépendant qui dit qui a l'équipement en main.
- *  B. LA PORTE DE CARTE — le vecteur du saut n'est pas partagé par plusieurs joueurs.
+ *  - une HEURISTIQUE SPATIALE (`riftTeleports`) qui cherchait, dans les pistes, un joueur se
+ *    déplaçant de plus de 12 m en moins de 3 images. Elle rendait 4 détections sur 39 films,
+ *    et surtout : tout seuil de distance INVENTE une règle — une téléportation peut faire
+ *    50 cm (mesuré : un saut de 3,24 m sur `1b2d9e08`, invisible à tous les seuils). Décision
+ *    utilisateur du 2026-09-03 (« je ne veux pas de choix ou de règle arbitraire, je veux de
+ *    la lecture fiable ») : SUPPRIMÉE, avec ses tests et ses imports (CLAUDE.md n°7) ;
+ *  - le `spent` du calque d'équipement (`spentTranslocations`), qui date la FIN de
+ *    l'équipement et non son usage : la mesure des modes de fin donne jusqu'à 16,5 s de
+ *    retard, et trois `spent` du corpus n'ont aucun usage connu. Il ne subsiste QUE comme
+ *    repli daté des artefacts antérieurs au schéma 38 (cf. `spentTranslocations`).
  *
- * CE QUE MESURE LE CORPUS LOCAL (39 films, 2026-08-27), et pourquoi aucun des deux verrous ne
- * suffit seul :
- *  - une frame dure 100 ms. Un Spartan court à ~8 m/s (0,8 m par frame), le grappin culmine
- *    vers 25 m/s (2,5 m). Les 32 sauts relevés font 12 à 47 m en UNE frame, soit 120 à
- *    470 m/s : entre la traversée la plus rapide du jeu et le plus petit saut mesuré, il y a
- *    un facteur cinq. Le seuil n'a donc pas besoin d'être fin ;
- *  - le verrou A SEUL en retient 6. Deux de trop : le slot 742 de `06dfe6d9` franchit deux
- *    fois une porte de la carte pendant qu'il porte le translocateur ;
- *  - le verrou B SEUL en retient 4 — les bons, mais par une heuristique de forme : 28 sauts
- *    portent dans un même film LE MÊME VECTEUR au signe près, ±(38,0 / 12,0) sur l'un,
- *    ±(32,3 / −0,7) sur l'autre, emprunté par plusieurs vies dans les deux sens. Ce sont les
- *    portes de la carte, dont les deux bouches sont fixes ;
- *  - LES DEUX ENSEMBLE en retiennent 4, et les quatre tombent dans une fenêtre où ce slot
- *    précis tient le translocateur (slot 742 : rang 11 lu à t5928, remplacé à t6496, saut à
- *    t6196 ; slot 754 : 11 à t6226, saut à t6517 ; slot 607 : 11 à t5627, sauts à t5863 et
- *    t5899). Deux canaux indépendants qui concordent quatre fois sur quatre.
+ * CE QUI LES REMPLACE : `translocations[]` (schéma 38). Chaque usage émet un événement type
+ * 117 dans la bobine — précision 18/18, rappel 8/8 sur 5 films (rapport R1 §4) — et sa charge
+ * porte les DEUX positions du saut, lues dans l'exécutable et validées à 0,00-0,26 m
+ * (rapport R6 §1). Plus aucune dérivation : l'événement EST la mesure.
  *
- * LA FAILLE ELLE-MÊME NE SERT PAS DE PREUVE. Les 7 poses de translocateur du corpus sont
- * toutes d'origine `dropped` — lâchées à la mort du porteur, jamais déployées : aucune faille
- * n'y est jamais dessinée. Une première version exigeait une faille active à l'arrivée et ne
- * rendait donc RIEN. Le champ `viaRift` garde cette corroboration quand elle existe ; il vaut
- * `false` partout dans le corpus local.
+ * LA SÉMANTIQUE EST UN VA-ET-VIENT, et elle gouverne tout ce que le rendu affirme : la balise
+ * ÉCHANGE sa position avec le joueur à chaque usage — l'arrivée d'un saut est le départ du
+ * précédent, à 0,09 m près sur la mesure. Après un échange, la faille est donc au point de
+ * DÉPART (`fx/fy`). Où elle se trouve AVANT le premier échange n'est lisible d'AUCUN canal
+ * (négatif mesuré sur trois : R1 §1-3 et R6 §1.4) : on ne dessine donc rien avant lui — voir
+ * `riftStations.ts`, qui porte cette partie.
  */
-import type { ReplayEquipmentPlacement } from '@/lib/api/types'
-
-import type { ReplayDocumentReady, ReplayTrackReady } from './replayNormalize'
+import type { ReplayDocumentReady } from './replayNormalize'
 import type { XY } from './replayLogic'
-import { nearestReading } from './rosterLogic'
-
-/** Famille de la pose, telle que la sert le backend (cf. replay_labels.toml). */
-const FAMILLE_FAILLE = 'translocator_beacon'
 
 /**
  * Rang du translocateur quantique dans la palette de capacités du film — FAMILLE A SEULEMENT.
@@ -53,7 +36,7 @@ const FAMILLE_FAILLE = 'translocator_beacon'
  * document le confirme : `abilityLabels` associe 11 à « translocateur quantique ». C'est le
  * REPLI des documents sans table de libellés ; partout ailleurs, `translocatorRanks` lit la
  * table — un film famille B (rangs 19-22) rendrait ce littéral muet (bug du 2026-09-02 :
- * `portaitLeTranslocateur` était faux partout hors famille A, silencieusement).
+ * la reconnaissance était fausse partout hors famille A, silencieusement).
  */
 const RANG_TRANSLOCATEUR = 11
 
@@ -66,6 +49,10 @@ const RANG_TRANSLOCATEUR = 11
  * RACINE du mot (`transloc`), présente dans les deux locales publiées (« Translocateur
  * quantique » / « Quantum Translocator ») : comparer un libellé entier serait cassé à la
  * première retouche de traduction. Sans table, ou sans rang reconnu : le repli famille A.
+ *
+ * ELLE NE SERT PLUS À RECONNAÎTRE UN USAGE — l'événement 117 s'en charge — mais à lire le
+ * calque d'ÉQUIPEMENT : la FIN de l'équipement (`riftStations.ts`) et le repli des artefacts
+ * antérieurs au schéma 38 (`spentTranslocations`) y passent tous deux par un rang.
  */
 export function translocatorRanks(
   labels: ReplayDocumentReady['abilityLabels'],
@@ -80,120 +67,147 @@ export function translocatorRanks(
 }
 
 /**
- * Distance minimale du saut, en mètres, et fenêtre en frames. À 100 ms la frame, 12 m en 3
- * frames valent déjà 40 m/s — cinq fois la course, et le double du grappin à son maximum.
+ * Un moment de translocation réduit à ce que la FICHE consomme : quelle vie, quelle image.
+ * `TeleportLink` en est la version SITUÉE (le lien sur la carte a besoin des deux bouts) ;
+ * une translocation dont la charge n'a pas été lue n'a que ce couple-là.
  */
-const SAUT_M_MIN = 12
-const SAUT_FRAMES_MAX = 3
-
-/**
- * Tolérance d'appariement de deux vecteurs de saut, en mètres. Les deux bouches d'une porte
- * sont fixes, mais le joueur n'y entre pas deux fois au même centimètre : sur les mesures, un
- * même vecteur varie de ±1 m d'un passage à l'autre. 2 m couvre cette dispersion sans
- * confondre deux portes distinctes (les plus proches mesurées sont à 20 m l'une de l'autre).
- */
-const TOLERANCE_PORTE_M = 2
-/**
- * Nombre de VIES distinctes qui doivent emprunter le même vecteur pour qu'il soit tenu pour une
- * porte de la carte. Deux, parce qu'un joueur seul peut très bien se téléporter deux fois vers
- * la même faille — c'est la PLURALITÉ DES JOUEURS qui prouve que le passage appartient au
- * terrain et non à un équipement.
- */
-const VIES_POUR_UNE_PORTE = 2
-
-/** Tolérance à l'arrivée pour corroborer un passage par une faille du même joueur, en mètres. */
-const ARRIVEE_M = 6
-
-/** Un passage mesuré : qui, quand, d'où, vers où. */
-export interface RiftTeleport {
-  /** Slot de la vie qui franchit. */
-  slot: number
-  /** Frame d'ARRIVÉE — l'instant que le calque date pour effacer le lien. */
-  frame: number
-  /** Position quittée (dernier point avant le saut). */
-  from: XY
-  /** Position atteinte. */
-  to: XY
-  /**
-   * Vrai quand une faille ACTIVE du même joueur se trouve à l'arrivée : le passage est alors
-   * corroboré par un second canal. Faux ne veut pas dire « douteux », seulement « la pose n'a
-   * pas été enregistrée » — cas de tout le corpus local.
-   */
-  viaRift: boolean
-}
-
-interface SautBrut {
+export interface TranslocationMoment {
   slot: number
   frame: number
-  from: XY
-  to: XY
-  /** Vecteur du saut, ramené à un sens unique : une porte et son retour se répondent. */
-  dx: number
-  dy: number
 }
 
-function distance(a: XY, b: XY): number {
-  return Math.hypot(a.x - b.x, a.y - b.y)
+/** Un va-et-vient MESURÉ : la vie, l'image, le point quitté et le point atteint. */
+export interface TeleportLink extends TranslocationMoment {
+  /** Position quittée — c'est là que la balise se retrouve après l'échange. */
+  from: XY
+  /** Position atteinte par le joueur. */
+  to: XY
+}
+
+/** Une téléportation du document, telle que le calque la publie. */
+type Translocation = ReplayDocumentReady['translocations'][number]
+
+/**
+ * planarJump — les deux bouts du saut d'une translocation, ou `null` quand la charge n'a pas
+ * été lue.
+ *
+ * LES SIX COORDONNÉES SONT SOLIDAIRES au contrat (armées ensemble ou pas du tout,
+ * cf. `document_translocations.go`) ; le plan n'en consomme que quatre, et on les vérifie
+ * toutes les quatre plutôt que de faire confiance à la solidarité — `0` est une valeur
+ * légitime, `undefined` ne l'est pas, et un `?? 0` dessinerait un saut vers l'origine du monde.
+ */
+function planarJump(t: Translocation): { from: XY; to: XY } | null {
+  const { fx, fy, tx, ty } = t
+  if (fx === undefined || fy === undefined || tx === undefined || ty === undefined) return null
+  return { from: { x: fx, y: fy }, to: { x: tx, y: ty } }
 }
 
 /**
- * Ramène un vecteur à un sens canonique (dx > 0, ou dy > 0 quand dx est nul), pour qu'un aller
- * et son retour tombent sur la même clé.
+ * translocationMoments — l'INSTANT de chaque usage publié, avec ou sans position.
+ *
+ * C'est la source de l'éclat de fiche : une translocation sans va-et-vient lisible reste un
+ * usage MESURÉ (l'événement l'atteste), seule sa géométrie manque.
  */
-function sensUnique(dx: number, dy: number): { dx: number; dy: number } {
-  if (dx < 0 || (dx === 0 && dy < 0)) return { dx: -dx, dy: -dy }
-  return { dx, dy }
+export function translocationMoments(
+  translocations: readonly Translocation[],
+): TranslocationMoment[] {
+  return translocations.map((t) => ({ slot: t.slot, frame: t.t }))
 }
 
-/** Tous les sauts instantanés du film, sans jugement sur leur cause. */
-function sautsBruts(lives: readonly ReplayTrackReady[]): SautBrut[] {
-  const out: SautBrut[] = []
-  for (const vie of lives) {
-    const pts = vie.points
-    for (let i = 1; i < pts.length; i++) {
-      const a = pts[i - 1]
-      const b = pts[i]
-      if (b.t - a.t > SAUT_FRAMES_MAX) continue
-      if (distance(a, b) < SAUT_M_MIN) continue
-      const v = sensUnique(b.x - a.x, b.y - a.y)
-      out.push({ slot: vie.slot, frame: b.t, from: { x: a.x, y: a.y }, to: { x: b.x, y: b.y }, ...v })
-    }
+/**
+ * translocationLinks — les va-et-vient SITUÉS, dans l'ordre des images.
+ *
+ * Une translocation sans positions n'en produit AUCUN : on date le geste sur la fiche, on ne
+ * trace aucun lien sur la carte. `coverage.translocations.positioned` dit combien en portent.
+ */
+export function translocationLinks(
+  translocations: readonly Translocation[],
+): TeleportLink[] {
+  const out: TeleportLink[] = []
+  for (const t of translocations) {
+    const jump = planarJump(t)
+    if (!jump) continue
+    out.push({ slot: t.slot, frame: t.t, ...jump })
+  }
+  out.sort((a, b) => a.frame - b.frame)
+  return out
+}
+
+/**
+ * hasTranslocationLayer — CE DOCUMENT A-T-IL ÉTÉ LU POUR LE CALQUE DES TÉLÉPORTATIONS ?
+ *
+ * DEUX PREUVES, ET LA PREMIÈRE EST LA SEULE QUI COUVRE LE SILENCE. La couverture est posée
+ * SANS CONDITION par le constructeur du schéma 38 (`build.go` :
+ * `doc.Coverage.Translocations = &trCov`, y compris à zéro événement) : sa présence sépare
+ * exactement « le calque a tourné, il n'a rien trouvé » de « l'artefact est antérieur au
+ * schéma 38 ». Une téléportation publiée est l'autre preuve — un artefact antérieur ne peut
+ * pas en porter — et elle sert de filet si un producteur servait le calque sans sa couverture.
+ */
+export function hasTranslocationLayer(doc: ReplayDocumentReady): boolean {
+  return doc.coverage?.translocations !== undefined || doc.translocations.length > 0
+}
+
+/**
+ * identityIsUnknown — le rang PRÉCÉDENT annoncé par cette émission est-il hors d'usage ?
+ *
+ * `gap > 0` = n émissions manquent ENCORE juste avant elle, après récupération (schéma 38,
+ * décision D3). `from` n'est alors ni vrai ni faux : il est INCONNU, et tout consommateur doit
+ * le traiter comme tel. Le cas mesuré est le `spent` de JGtm sur `1b2d9e08`, qui porte
+ * `from = 4` (le grappin) parce que sa PRISE du translocateur a été manquée : une seule
+ * émission perdue aveugle le filtre.
+ *
+ * FOYER UNIQUE DE LA RÈGLE (CLAUDE.md n°6) : `spentTranslocations` et `riftStations` la lisent
+ * ici, jamais chacun la sienne. Un artefact antérieur au schéma 38 ne publie pas `gap` — la
+ * porte est alors ouverte, ce qui est exactement le comportement d'avant.
+ */
+export function identityIsUnknown(
+  change: ReplayDocumentReady['equipmentChanges'][number],
+): boolean {
+  return (change.gap ?? 0) > 0
+}
+
+/**
+ * spentTranslocations — REPLI DES ARTEFACTS ANTÉRIEURS AU SCHÉMA 38, et rien d'autre.
+ *
+ * KILL-SWITCH DATÉ (modèle `platform/duckdb/shared_reader_legacy.go`) :
+ *   - bascule du défaut : 2026-09-03 — depuis le schéma 38, l'éclat vient de
+ *     `translocations[]` (l'ÉVÉNEMENT), et cette fonction n'est plus jamais appelée sur un
+ *     artefact qui porte ce calque (cf. `teleportMoments`) ;
+ *   - retrait cible : 2026-12-01 ;
+ *   - critère mesurable : plus aucun artefact servi sans `coverage.translocations`
+ *     (`hasTranslocationLayer` vrai partout), c'est-à-dire re-cuisson complète du parc.
+ *
+ * CE QU'IL VAUT, DIT SANS FARD. Le `spent` date la FIN de l'équipement, pas l'usage : jusqu'à
+ * 16,5 s de retard mesuré, et trois `spent` du corpus n'ont aucun usage connu. Il reste
+ * néanmoins le SEUL signal daté d'un artefact ancien — le supprimer éteindrait l'éclat sur
+ * tout le parc en production tant que la re-cuisson n'a pas eu lieu.
+ *
+ * IL S'ABSTIENT SUR UNE IDENTITÉ INCONNUE (`identityIsUnknown`) : un éclat AFFIRME un geste,
+ * et on n'affirme pas sur un `from` que le témoin de compteur dit hors d'usage.
+ */
+export function spentTranslocations(
+  changes: ReplayDocumentReady['equipmentChanges'],
+  ranks: ReadonlySet<number>,
+): TranslocationMoment[] {
+  const out: TranslocationMoment[] = []
+  for (const c of changes) {
+    if (c.kind !== 'spent' || identityIsUnknown(c)) continue
+    if (ranks.has(c.from)) out.push({ slot: c.slot, frame: c.t })
   }
   return out
 }
 
 /**
- * estUnePorte — le saut emprunte-t-il un vecteur que PLUSIEURS VIES ont emprunté ?
+ * teleportMoments — LES INSTANTS que la fiche fait scintiller, par le meilleur canal
+ * disponible pour CE document.
  *
- * On compte les VIES et non les sauts : un même joueur qui passe quatre fois par la même porte
- * ne prouve rien de plus qu'un joueur qui se téléporte quatre fois vers sa faille. C'est le
- * partage entre joueurs qui distingue le terrain de l'équipement.
+ * UN SEUL CANAL À LA FOIS, ET C'EST LA RÈGLE : mélanger l'événement et le `spent` ferait
+ * scintiller deux fois le même usage (l'un à l'instant vrai, l'autre jusqu'à 16,5 s plus
+ * tard). Le calque publié gagne dès qu'il existe, le repli ne sert que là où il n'existe pas.
  */
-function estUnePorte(saut: SautBrut, tous: readonly SautBrut[]): boolean {
-  const vies = new Set<number>()
-  for (const autre of tous) {
-    if (Math.abs(autre.dx - saut.dx) > TOLERANCE_PORTE_M) continue
-    if (Math.abs(autre.dy - saut.dy) > TOLERANCE_PORTE_M) continue
-    vies.add(autre.slot)
-  }
-  return vies.size >= VIES_POUR_UNE_PORTE
-}
-
-/**
- * portaitLeTranslocateur — VERROU A : ce slot avait-il l'équipement en main à cet instant ?
- *
- * UNE LECTURE À VENIR NE PROUVE RIEN. `nearestReading` sait rendre la plus proche lecture
- * FUTURE quand une vie n'en a pas encore eu, et c'est le bon service pour afficher un
- * inventaire ; ici ce serait un contresens — « il portera le translocateur dans dix secondes »
- * ne dit pas qu'il le portait au saut. D'où l'exigence d'un âge positif ou nul.
- */
-function portaitLeTranslocateur(
-  saut: SautBrut,
-  abilities: ReplayDocumentReady["abilities"],
-  ranks: ReadonlySet<number>,
-): boolean {
-  const lecture = nearestReading(abilities, saut.slot, saut.frame)
-  return lecture !== null && lecture.age >= 0 && ranks.has(lecture.value.r)
+export function teleportMoments(doc: ReplayDocumentReady): TranslocationMoment[] {
+  if (hasTranslocationLayer(doc)) return translocationMoments(doc.translocations)
+  return spentTranslocations(doc.equipmentChanges, translocatorRanks(doc.abilityLabels))
 }
 
 /**
@@ -216,64 +230,4 @@ export function lastTeleportAge(
     if (age === -1 || a < age) age = a
   }
   return age
-}
-
-/**
- * Un moment de translocation réduit à ce que la FICHE consomme : quelle vie, quelle image.
- * `RiftTeleport` en est la version spatiale (le lien sur la carte a besoin de `from`/`to`) ;
- * les usages datés par `equipmentChanges` (`spentTranslocations`) n'ont pas de positions.
- */
-export interface TranslocationMoment {
-  slot: number
-  frame: number
-}
-
-/**
- * spentTranslocations — les USAGES MESURÉS du translocateur : les `spent` du calque
- * d'équipement dont le rang consommé est un rang de translocateur.
- *
- * C'est LE déclencheur principal de l'éclat de fiche (2026-09-02) : le pipeline date chaque
- * consommation à la frame (schéma 26), là où l'heuristique spatiale `riftTeleports` — 4
- * détections sur 39 films, ses seuils l'assument — reste le canal du LIEN sur la carte, seul
- * endroit qui exige un vecteur. Avant ce branchement, le `spent` n'alimentait aucun effet et
- * l'éclat ne s'allumait statistiquement jamais.
- */
-export function spentTranslocations(
-  changes: ReplayDocumentReady['equipmentChanges'],
-  ranks: ReadonlySet<number>,
-): TranslocationMoment[] {
-  const out: TranslocationMoment[] = []
-  for (const c of changes) {
-    if (c.kind === 'spent' && ranks.has(c.from)) out.push({ slot: c.slot, frame: c.t })
-  }
-  return out
-}
-
-/**
- * riftTeleports — tous les passages du film, dans l'ordre des frames d'arrivée.
- *
- * Pure et sans état : le calque la fait passer par un mémo, jamais par image.
- */
-export function riftTeleports(
-  placements: readonly ReplayEquipmentPlacement[],
-  lives: readonly ReplayTrackReady[],
-  abilities: ReplayDocumentReady["abilities"],
-  // Les rangs qui nomment le translocateur dans CE document (`translocatorRanks`). Le défaut
-  // est le repli famille A — les appelants de production passent toujours la table lue.
-  ranks: ReadonlySet<number> = new Set([RANG_TRANSLOCATEUR]),
-): RiftTeleport[] {
-  const bruts = sautsBruts(lives)
-  if (bruts.length === 0) return []
-  const failles = placements.filter((p) => p.family === FAMILLE_FAILLE)
-  const out: RiftTeleport[] = []
-  for (const s of bruts) {
-    if (!portaitLeTranslocateur(s, abilities, ranks)) continue
-    if (estUnePorte(s, bruts)) continue
-    const corroboree = failles.some(
-      (f) => f.owner === s.slot && f.t0 <= s.frame && s.frame <= f.t1 && distance(s.to, f) <= ARRIVEE_M,
-    )
-    out.push({ slot: s.slot, frame: s.frame, from: s.from, to: s.to, viaRift: corroboree })
-  }
-  out.sort((a, b) => a.frame - b.frame)
-  return out
 }

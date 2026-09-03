@@ -2857,8 +2857,32 @@ export interface ReplayEquipmentChange {
   kind: 'taken' | 'spent'
   /** Rang de palette désormais porté, ou `REPLAY_NO_ABILITY_RANK` sur une consommation. */
   r: number
-  /** Rang précédent sur cette vie, ou `REPLAY_NO_ABILITY_RANK` quand il n'est pas lisible. */
+  /**
+   * Rang précédent sur cette vie, ou `REPLAY_NO_ABILITY_RANK` quand il n'est pas lisible.
+   *
+   * IL N'EST UNE IDENTITÉ QUE SI `gap` EST ABSENT OU NUL — voir ci-dessous.
+   */
   from: number
+  /**
+   * L'émission vient de la RÉCUPÉRATION GATÉE (schéma 38) : ses octets existent dans le film
+   * sous une forme que le balayage strict rejette par construction, et son compteur comble
+   * EXACTEMENT un saut annoncé par le témoin de rotation. La provenance est publiée pour que le
+   * client puisse la DIRE, jamais pour qu'il la dévalue : la certification vient du témoin, pas
+   * du chemin. Une récupérée vaut donc exactement une stricte.
+   */
+  recovered?: boolean
+  /**
+   * Le saut de compteur RÉSIDUEL depuis l'émission précédente de la même vie, APRÈS
+   * récupération (schéma 38) : absent ou 0 = chaîne saine ; n > 0 = n émissions manquent
+   * ENCORE juste avant celle-ci.
+   *
+   * SOUS UN SAUT, `from` N'EST PAS UNE IDENTITÉ FIABLE — et il n'est pas faux pour autant : il
+   * est INCONNU, et tout consommateur doit le traiter comme tel (le cas mesuré est le `spent`
+   * de JGtm sur `1b2d9e08`, qui porte le rang du grappin parce que sa prise du translocateur a
+   * été manquée). Le foyer de cette règle côté web est `identityIsUnknown`
+   * (`features/match-replay/placementTeleport.ts`).
+   */
+  gap?: number
 }
 
 /**

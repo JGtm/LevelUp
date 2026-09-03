@@ -506,21 +506,132 @@ exit 0 + `gofmt -l internal/ contracttest/` vide + `make check-types` exit 0. **
 
 ### Lot P2 — Web : consommer la lecture fiable (après P1)
 
-- [ ] P2.1 Éclat de fiche daté par `translocations[]` (l'événement, plus jamais le spent) ;
-      `spentTranslocations` retiré ou réduit au repli des artefacts < 38 (kill-switch daté).
-- [ ] P2.2 Lien du va-et-vient sur la carte : from/to LUS SUR L'ÉVÉNEMENT
-      (`translocations[].fx/fy/fz -> tx/ty/tz`, P1bis) — plus aucune dérivation de
-      discontinuité de piste ; un saut sans ces six champs (charge non lue) ne trace rien.
-      `riftTeleports` (heuristique spatiale) retiré (CLAUDE.md n7) — les artefacts < 38
-      gardent le comportement actuel via le repli.
-- [ ] P2.3 Faille dessinée APRÈS le premier échange (position = point de DÉPART du saut,
-      c'est-à-dire `fx/fy` — le translocateur ÉCHANGE les positions ; forme `drawRift`
-      existante), déplacée à chaque échange, éteinte à fin mesurée
-      (spent/`recovered`, mort du porteur) — jamais à demeure (point user expiration).
-- [ ] P2.4 `from` sous `gap` traité comme inconnu par les consommateurs (vignette comprise).
-- [ ] P2.5 i18n FR/EN si libellé ; tests logic ; plafonds de taille.
+- [x] P2.1 FAIT — l'éclat de fiche est daté par `translocations[]` : `ReplayTeams.tsx` appelle
+      `teleportMoments(doc)`, qui rend les instants de l'ÉVÉNEMENT dès que le document porte le
+      calque. **DÉCISION : `spentTranslocations` est CONSERVÉ, réduit au REPLI** des artefacts
+      antérieurs au schéma 38, sous kill-switch daté (`placementTeleport.ts` : bascule
+      2026-09-03, retrait cible 2026-12-01, critère mesurable « plus aucun artefact servi sans
+      `coverage.translocations` », c'est-à-dire re-cuisson complète du parc). JUSTIFICATION : la
+      production est 100 % pré-38 tant que la re-cuisson n'a pas eu lieu — le supprimer
+      éteindrait, sur tout le parc, un effet livré le 2026-09-02. UN SEUL CANAL À LA FOIS : le
+      calque publié gagne dès qu'il existe (mélanger les deux ferait scintiller deux fois le
+      même usage, à 16,5 s d'écart). Preuve : `placementTeleport.test.ts`, « teleportMoments —
+      un seul canal à la fois » (3 cas : calque à zéro téléportation qui bat un `spent` bien
+      formé ; absence de calque qui rend la main au repli ; instant de l'événement contre
+      `spent` à +165 frames).
+- [x] P2.2 FAIT — le lien se lit sur l'événement (`translocationLinks`, `fx/fy -> tx/ty`), et
+      une translocation sans positions ne trace RIEN (les quatre coordonnées du plan sont
+      vérifiées une à une : `0` est une valeur, `undefined` non). **DÉCISION : `riftTeleports`
+      SUPPRIMÉ** avec ses cinq constantes de seuil, ses fonctions privées, son type
+      `RiftTeleport`, son champ `viaRift` et ses tests — plus aucun appelant (grep vide sur
+      `apps/web` et `apps/go-api`). JUSTIFICATION : c'est l'heuristique spatiale que la doctrine
+      du chantier abandonne (« tout seuil de distance invente une règle » — le corpus porte un
+      saut de 3,24 m qu'aucun seuil ne voit), son rendement était de 4 détections sur 39 films,
+      et le repli de P2.1 couvre déjà les artefacts anciens pour l'ÉCLAT. Le LIEN disparaît sur
+      ces artefacts-là : c'est le prix, dit. Preuve : `placementTeleport.test.ts`,
+      « translocationLinks — le lien se lit sur l'événement, jamais sur la piste ».
+- [x] P2.3 FAIT — `riftStations.ts` (nouveau) : une STATION par échange situé, `t0` = l'image de
+      l'échange, position = `fx/fy` (le point QUITTÉ — sémantique du va-et-vient), `t1` = l'image
+      d'avant l'échange suivant, et pour la dernière la FIN MESURÉE. Cette fin est le premier des
+      deux faits : le `spent` du rang translocateur à partir du dernier échange (récupéré ou
+      strict, sans distinction — la certification vient du témoin, pas du chemin), ou la MORT DU
+      PORTEUR (fin de la vie qui COUVRE l'échange, jamais la dernière piste du slot). Tracé :
+      `drawRiftLayer` (`placementRift.ts`) réutilise `drawRift` et les encres fixes
+      `PlacementInk.rift`. Preuves : `riftStations.test.ts` (13 cas — rien avant le premier
+      échange, position au départ, déplacement et clôture à l'image d'avant, épuisement,
+      expiration tardive, émission récupérée, mort du porteur, `spent` d'un autre rang / d'une
+      autre vie / antérieur au dernier échange) et `equipmentPlacementsLayer.test.ts`, « LA
+      FAILLE, dessinée par ses STATIONS et non par une pose » (4 cas).
+- [x] P2.4 FAIT — foyer unique `identityIsUnknown(change)` (`placementTeleport.ts`) : `gap > 0`
+      rend `from` INCONNU. Les DEUX consommateurs de `from` le lisent — `spentTranslocations`
+      s'abstient (un éclat AFFIRME un geste), `riftStations` ne ferme pas la faille et retombe
+      sur la mort du porteur (borne plus tardive, mais mesurée). LA VIGNETTE D'ÉQUIPEMENT est
+      couverte par CONSTAT VÉRIFIÉ SUR PIÈCES, pas par correctif : `ReplayInventoryRow` →
+      `abilityAt` → `refineAbilityReading` ne lit que `r` (le rang porté, écrit par l'émission
+      elle-même), jamais `from`. La propriété est désormais VERROUILLÉE
+      (`changeRefine.test.ts`, « `gap` ne change rien : la vignette lit `r`, jamais `from` »),
+      pour qu'un futur passage par `from` fasse rougir la CI. Frontière : `recovered` et `gap`
+      ajoutés au type manuel `ReplayEquipmentChange` (`lib/api/types.ts`) — c'est ce que le
+      garde-rail `deltaLayersContract.guard.test.ts` réclamait depuis le schéma 38.
+- [x] P2.5 FAIT — AUCUNE string UI ajoutée (l'éclat et la faille sont des formes, et l'infobulle
+      du translocateur existait déjà) : rien à traduire, `i18n.ts` inchangé. Tests logic : deux
+      fichiers neufs/refondus, deux étendus, tous en logique pure. Plafonds :
+      `placementTeleport.ts` 233 L (était 270), `riftStations.ts` 145 L, `placementRift.ts`
+      239 L, `equipmentPlacementsLayer.ts` 519 L — INCHANGÉ à la ligne près (dette gelée NON
+      accrue : les deux ajouts ont été payés en fusionnant `teleports` + `rifts` en un seul
+      `RiftScene`), et `ReplayCanvas.tsx` 662 L, INCHANGÉ (cliquet à 665).
 
-Gate P2 : `make check-types && make test-web` + gate visuel user sur un film re-cuit témoin.
+Gate P2 : `make check-types` exit 0 et `make test-web` exit 0 le 2026-09-03 — **560 fichiers,
+5 802 tests passés, 14 skippés, 0 échec**. `npx eslint` exit 0 sur les dix fichiers touchés.
+Aucune couleur en dur ajoutée (grep hex + classes Tailwind : vide). RESTE : le gate VISUEL de
+l'utilisateur sur un film re-cuit témoin — il n'est pas franchi ici, aucune re-cuisson n'ayant
+été demandée.
+
+TROIS ROUGES ANTÉRIEURS ONT DÛ ÊTRE LEVÉS pour que le gate passe (ils bloquaient `make
+test-web` ; ce ne sont pas des fix opportunistes) — tous trois sont des dettes des lots P1/P3 du
+même jour, aucun n'appartient à P2 :
+1. `replaySchemaLogic.guard` : `EXPECTED_REPLAY_SCHEMA_VERSION` restait à 37 alors que le Go est
+   passé à 38. Copie locale mise à 38.
+2. `placementPanels.guard` : la cardinalité du manifeste comptait 22 objets pour 21. CAUSE
+   TROUVÉE, pas contournée — le découpage lisait `[[equipment_objects]]` en SOUS-CHAÎNE, et le
+   commentaire ajouté au TOML par le lot du propulseur (`4877e026a`) cite ce nom de table : le
+   bloc fantôme rendait `id = "famille_a"`, une palette de capacités. Découpage ANCRÉ sur la
+   ligne entière ; la cardinalité de 21 est conservée telle quelle.
+3. `deltaLayersContract.guard` : `recovered` / `gap` manquaient au type manuel (cf. P2.4).
+
+REVUE ADVERSARIALE P2 RONDE 1 (03/09, relecteur frais, gates rejoués verts) : **16 conditions
+vérifiées qui tiennent** — dont l'exclusivité des deux canaux, la faille bien au point QUITTÉ et
+la récurrence du va-et-vient sur trois usages, la solidarité des six coordonnées NON présumée
+côté web (`planarJump` vérifie ses quatre champs un à un, `0` reste une valeur), le kill-switch
+conforme au modèle (bascule + cible + critère), et la suppression de `riftTeleports` COMPLÈTE
+(grep vide sur les deux applications). 3 constats, **tous corrigés DANS le lot** :
+
+- [x] K1 (P1) LA FIN MESURÉE NE BORNAIT QUE LA DERNIÈRE STATION — `riftStations.ts` calculait
+      `riftEnd` UNE fois, pour le dernier échange, et bornait les stations intermédiaires sur le
+      seul « échange suivant − 1 ». Deux déclenchements transcrits par le relecteur et rejoués :
+      (a) un `spent` du rang translocateur ENTRE deux échanges (le joueur épuise son
+      translocateur, en ramasse un autre, s'en ressert) laissait la première faille vivre 5 s
+      APRÈS la fin mesurée de son équipement — le « jamais à demeure » du contrat violé sur une
+      station sur deux ; (b) sur un slot RÉATTRIBUÉ (pistes [0,180] puis [200,400], échanges à
+      100 et 300), la première station courait jusqu'à 299 — **119 images après la mort de son
+      porteur, pendant la vie d'un autre occupant du slot**, exactement ce que le commentaire de
+      `lifeEnd` annonce interdire. CORRIGÉ : `riftEnd` devient `stationEnd` et se calcule POUR
+      CHAQUE station (`Math.min(échange suivant − 1, stationEnd(...))`), la borne de mort étant
+      celle de la vie qui COUVRE cet échange-là. Un `spent` d'une vie ultérieure du même slot
+      tombe alors hors fenêtre de lui-même. Preuves : `riftStations.test.ts`, « un `spent` ENTRE
+      deux échanges ferme la station qu'il suit, PAS la suivante (K1-a) » (assertion sur
+      `s[0].t1` ET `s[1].t1`) et le describe « le SLOT est réattribué » (3 cas). Mutation
+      rejouée et TUÉE : borner à nouveau les intermédiaires sur le seul échange suivant fait
+      tomber 2 tests (avant : zéro).
+      **PORTÉE** : dormant en production aujourd'hui — le parc est 100 % pré-38, donc zéro
+      station publiée ; le défaut se serait allumé à la PREMIÈRE re-cuisson, c'est-à-dire au
+      moment précis où l'utilisateur regarde.
+- [x] K2 (P2) LA RAISON D'ÊTRE DE `lifeEnd` N'ÉTAIT VÉRIFIÉE PAR RIEN — aucun cas ne construisait
+      deux pistes du MÊME slot (la fabrique `doc()` servait une piste par slot, et le seul cas
+      multi-vies employait deux slots distincts). Mutation du relecteur reproduite : remplacer la
+      recherche de la vie qui COUVRE l'image par « la dernière piste de ce slot » laissait les
+      13 cas du fichier ET les 5 804 tests VERTS. CORRIGÉ : fabrique `deuxVies()` = `[vie(3,
+      0, 180), vie(3, 200, 400)]` et trois cas qui l'exercent. Mutation rejouée et TUÉE : elle
+      fait désormais tomber 3 tests.
+- [x] K3 (P2) LE POINT QUITTÉ ÉTAIT PEINT DEUX FOIS — `drawRiftLayer` peignait la station, puis
+      `drawRiftLink` repeignait une faille aux DEUX bouts du lien, dont le bout `from` : pendant
+      les 600 ms du lien, ce point recevait deux glyphes superposés (halo composité deux fois) et
+      brillait plus fort qu'à toute autre image. Aucun test ne passait `teleports` et `rifts` non
+      vides ENSEMBLE. CORRIGÉ : `drawRiftLink` prend un objet `RiftLinkDraw` porteur d'un
+      `paintFrom` (au passage : 4 paramètres au lieu de 6, cf. CLAUDE.md n°5), et le lien renonce
+      à son bout de départ quand une station le tient. C'est la STATION qui reste — stable, à
+      pleine taille : garder le bout du lien à sa place ferait clignoter la faille à l'instant où
+      le lien se termine (le bout s'efface en alpha et rétrécit, la station non). L'appariement
+      se fait sur (vie, image d'échange), pas sur des coordonnées flottantes. `drawRiftLink` et
+      `drawTeleportLinks` cessent d'être exportées — plus aucun appelant hors du fichier
+      (CLAUDE.md n°7). Preuve : `equipmentPlacementsLayer.test.ts`, « LA FAILLE ET SON LIEN
+      ensemble — le point quitté n'est peint qu'une fois » (4 cas, dont l'autre vie qui garde son
+      bout). Mutation rejouée et TUÉE.
+
+Gates rejoués après corrections : `make check-types` exit 0, `make test-web` exit 0 —
+**560 fichiers, 5 811 tests passés, 14 skippés, 0 échec** ; `npx eslint` exit 0 ; aucune couleur
+en dur. Plafonds toujours tenus : `equipmentPlacementsLayer.ts` 519 L et `ReplayCanvas.tsx`
+662 L, INCHANGÉS ; `riftStations.ts` 154 L, `placementRift.ts` 288 L.
 
 ### Lot R5 — Recherche : les événements des AUTRES équipements (parallèle)
 
@@ -590,6 +701,28 @@ jamais de cuisson de masse sans décision séparée.
   16 instruments `r7_*_research_test.go`).
 
 ## Découvertes / suites à arbitrer (issues de R1-R2, hors périmètre des lots courants)
+
+- **P2 (03/09) — LE BLOC MANUEL DES SCHÉMAS 25-27 A ATTEINT SON CRITÈRE DE RETRAIT, NON TRAITÉ.**
+  `lib/api/types.ts` porte trois interfaces écrites à la main (`ReplayWeaponChange`,
+  `ReplayEquipmentChange`, `ReplayGroundWeapon`) et l'intersection `ReplayDocumentDeltaLayers`,
+  parce que le contrat n'avait pas été régénéré quand ces calques sont sortis. Le critère de
+  retrait ÉCRIT DANS LE FICHIER est désormais rempli : `grep groundWeapons
+  apps/go-api/api/openapi.yaml` rend bien le champ de `ReplayDocument` (lignes 10823 et 21017),
+  et `generated.ts` porte `EquipmentChange`, `WeaponChange` et `GroundWeapon` complets. Le
+  retrait consiste à remplacer les trois interfaces par des ré-exports
+  `components['schemas'][...]` et à supprimer l'intersection — avec un piège à instruire : le
+  contrat généré type `kind` en `string` là où le type manuel porte une UNION (`'taken' |
+  'spent'`), et plusieurs consommateurs s'appuient sur l'union. Hors périmètre P2 : ce lot s'est
+  borné à AJOUTER `recovered` et `gap` au type manuel (ce que le garde-rail exigeait).
+- **P2 (03/09) — LA POSE `translocator_beacon` GARDE UNE RÈGLE DE RENDU QUE RIEN NE PEUT
+  DÉCLENCHER, non traitée.** `PLACEMENT_RENDER.translocator_beacon = 'rift'` ne dessine que sur
+  `origin === 'deployed'` — or le parc mesuré compte 16 poses de cette famille : 15 `dropped`,
+  1 `unknown`, ZÉRO `deployed` (R1 §1-3). Depuis P2.3, la faille se dessine par ses STATIONS ;
+  cette entrée de table est donc du vocabulaire probablement mort, et si elle se déclenchait un
+  jour elle dessinerait une faille À DEMEURE — exactement ce que le point utilisateur sur
+  l'expiration interdit. La passer à `null` fait cascader DEUX garde-rails
+  (`placementFamily.guard`, `placementDropped.guard`, qui exige qu'une famille dessinée déployée
+  se dessine aussi lâchée) : c'est un lot à part, pas un fix opportuniste.
 
 - **P3 (03/09) — `make go-api-lint` ÉTAIT DÉJÀ ROUGE avant ce lot, 4 constats ANTÉRIEURS, non
   corrigés** (aucun des fichiers n'est touché par P3) : `filmdec/offline_filters.go:145`
