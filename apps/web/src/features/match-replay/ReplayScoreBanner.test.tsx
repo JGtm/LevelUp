@@ -87,7 +87,7 @@ describe('ReplayScoreBanner — ce qui est écrit', () => {
   it('CADRÉ : l’horloge est celle du GAMEPLAY, pas celle du film (D-A2)', () => {
     // Coup d'envoi à 14,861 s de film : 65 s de film = 50,139 s de jeu.
     renderBanner({
-      playWindow: { startFrame: 149, endFrame: 4_929, startMs: 14_861, endMs: 492_861 },
+      playWindow: { startFrame: 149, leadInFrame: 139, endFrame: 4_929, startMs: 14_861, endMs: 492_861 },
     })
     expect(screen.getByText('0:50')).toBeInTheDocument()
     expect(screen.queryByText('1:05')).not.toBeInTheDocument()

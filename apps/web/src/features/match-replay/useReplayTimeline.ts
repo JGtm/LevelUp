@@ -36,8 +36,9 @@ import {
   buildScoreDominance,
   placeMedia,
   roundSeparators,
-  scoreMirrorsFrags,
+  sameLeadSegments,
   trackScale,
+  type DominanceSegment,
   type ReplayMediaItem,
   type ReplayScoreTrack,
   type TrackDeath,
@@ -49,7 +50,7 @@ import { roundTransitions } from './roundsLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
 import { displayClockMs, type ReplayWindowBounds } from './replayWindow'
 import { usePersistedFlag, TIMELINE_EXPANDED_KEY } from './useReplaySettings'
-import { useReplayShortcuts } from './useReplayShortcuts'
+import { useReplayShortcuts, type ReplayShortcutHandlers } from './useReplayShortcuts'
 
 /** Ce que le canvas prête à la frise : le document, le cadrage, le fil et la lecture. */
 export interface ReplayTimelineOptions {
@@ -75,6 +76,8 @@ export interface ReplayTimelineOptions {
   toggleSound: () => void
   /** Largeur de dessin : 0 = pas de rejeu à l'écran, le clavier n'écoute rien. */
   renderWidth: number
+  /** Le cadrage, relaye tel quel aux raccourcis clavier (cf. useReplayShortcuts). */
+  zoom?: ReplayShortcutHandlers['zoom']
   locale: ReplayLocale
 }
 
@@ -92,10 +95,16 @@ export interface ReplayPlaybackForTimeline {
 }
 
 /** L'objet unique que le canvas repasse tel quel à la barre (patron de `ReplaySound`). */
-export type ReplayTimeline = ComponentProps<typeof ReplayTimelineTracks>
+/**
+ * TOUT CE QUE LA FRISE DEMANDE, SAUF L'HORLOGE. Depuis que le temps s'affiche sous le curseur
+ * (2026-09-02), la frise reçoit aussi `clockRef` — mais cette référence appartient au CANVAS
+ * (`useReplayClock`), pas à ce hook : elle traverse la barre de lecture et se greffe au dernier
+ * moment. L'exclure ici est ce qui empêche ce hook de prétendre la fournir.
+ */
+export type ReplayTimeline = Omit<ComponentProps<typeof ReplayTimelineTracks>, 'clockRef'>
 
 export function useReplayTimeline(o: ReplayTimelineOptions): ReplayTimeline {
-  const { doc, playWindow, feedEntries, marks, lead, playback, toggleSound, renderWidth, locale } = o
+  const { doc, playWindow, feedEntries, marks, lead, playback, toggleSound, renderWidth, locale, zoom } = o
   const { media: mediaItems = EMPTY_MEDIA } = o
   const { frameIntervalMs, frameCount } = doc
   // LE REPLI EST UNE PRÉFÉRENCE DU LECTEUR, pas un calque : il ne passe pas par le tiroir mais
@@ -125,18 +134,13 @@ export function useReplayTimeline(o: ReplayTimelineOptions): ReplayTimeline {
     () => buildFragDominance(frags, frameIntervalMs ?? 0, scale),
     [frags, frameIntervalMs, scale],
   )
-  const score = useMemo(() => scoreTrack(doc, frags, scale), [doc, frags, scale])
+  const score = useMemo(() => scoreTrack(doc, dominance, scale), [doc, dominance, scale])
   // LES MÉDIAS ARRIVENT DE LA PAGE, déjà sur l'axe du rejeu (phase 2, 2026-08-28) : ce hook ne
   // fait que les POSER sur l'échelle de la frise, comme il pose les marques du fil. Le recalage,
   // lui, a eu lieu une seule fois dans `buildReplayMedia`.
   const media = useMemo(
     () => placeMedia(mediaItems, frameIntervalMs ?? 0, scale),
     [mediaItems, frameIntervalMs, scale],
-  )
-
-  const { startClock, midClock, endClock } = useMemo(
-    () => axisClocks(scale.from, scale.span, frameIntervalMs, clockOf),
-    [scale.from, scale.span, frameIntervalMs, clockOf],
   )
 
   useReplayShortcuts({
@@ -147,6 +151,7 @@ export function useReplayTimeline(o: ReplayTimelineOptions): ReplayTimeline {
     toggleSound,
     skipSeconds: SKIP_SECONDS,
     enabled: renderWidth > 0,
+    zoom,
   })
 
   return {
@@ -168,9 +173,6 @@ export function useReplayTimeline(o: ReplayTimelineOptions): ReplayTimeline {
     // OUVRIR UN MÉDIA MET LE REJEU EN PAUSE : la frise n'appelle ceci que lorsque la lecture
     // tourne, donc la bascule vaut « pause » — jamais un redémarrage inattendu.
     onRequestPause: playback.togglePlay,
-    startClock,
-    midClock,
-    endClock,
     locale,
   }
 }
@@ -182,7 +184,10 @@ export function useReplayTimeline(o: ReplayTimelineOptions): ReplayTimeline {
  * répéterait ce qui est déjà à l'écran, ou n'est pas mesurée » :
  *  1. AUCUN CALQUE DE SCORE exploitable : artefact antérieur au schéma 12, ou horloge du film
  *     non recalée (`scoreTimelineOf` porte cette garde et rend `undefined`).
- *  2. LE SCORE N'EST QUE LE COMPTE DES FRAGS (Slayer, mesuré) : la piste DOMINANCE le dit déjà.
+ *  2. LA PISTE SERAIT LE SOSIE DE LA DOMINANCE (Slayer : le score EST le compte des frags) —
+ *     mêmes meneurs, mêmes frontières au pixel près (`sameLeadSegments`, décision user D1
+ *     2026-09-02). L'ancienne garde comparait les totaux à l'égalité stricte et un seul kill
+ *     non attribué réaffichait le doublon.
  *  3. MOINS DE DEUX CAMPS IDENTIFIÉS : `buildScoreDominance` rend alors une liste vide, et une
  *     rangée vide se lirait « personne n'a marqué » au lieu de « on ne sait pas ».
  *
@@ -191,14 +196,14 @@ export function useReplayTimeline(o: ReplayTimelineOptions): ReplayTimeline {
  */
 function scoreTrack(
   doc: ReplayDocumentReady,
-  frags: readonly TrackFrag[],
+  dominance: readonly DominanceSegment[],
   scale: TrackScale,
 ): ReplayScoreTrack | null {
   const timeline = scoreTimelineOf(doc)
   if (!timeline) return null
-  if (scoreMirrorsFrags(timeline.teams, frags)) return null
   const segments = buildScoreDominance(leaderStates(timeline), scale)
   if (segments.length === 0) return null
+  if (sameLeadSegments(segments, dominance)) return null
   return { segments, rounds: roundSeparators(roundTransitions(timeline), scale) }
 }
 
@@ -239,22 +244,3 @@ export function reduceFeed(
   return { kills, deaths, frags }
 }
 
-/**
- * axisClocks date les trois repères sous la frise : début, milieu, fin de la FENÊTRE. Sans
- * échelle temporelle (artefact sans axe T réel), les trois restent vides plutôt que d'afficher
- * une durée fabriquée à partir d'un index d'images.
- */
-function axisClocks(
-  fromFrame: number,
-  span: number,
-  frameIntervalMs: number | undefined,
-  clockOf: (replayMs: number) => string,
-): { startClock: string; midClock: string; endClock: string } {
-  if (!frameIntervalMs || span <= 0) return { startClock: '', midClock: '', endClock: '' }
-  const msOf = (frame: number) => clockOf(frame * frameIntervalMs)
-  return {
-    startClock: msOf(fromFrame),
-    midClock: msOf(fromFrame + span / 2),
-    endClock: msOf(fromFrame + span),
-  }
-}

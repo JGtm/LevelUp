@@ -22,6 +22,13 @@ package replay
 // que de la traçabilité, lu par personne. Il EST l'index inverse : une carte republiée sous un
 // nouvel asset garde son nom, donc retrouve son fond sans qu'on écrive une ligne de donnée.
 //
+// LE SECOND DÉFAUT, MESURÉ LE 2026-09-03 : LA VARIANTE ORPHELINE. « The Pit - Ranked » et
+// « Empyrean - Ranked » sont au catalogue de zones, se jouent, et n'ont pas de fond — alors que
+// « The Pit » et « Empyrean » en ont un, au même repère. Idem pour cinq variantes Firefight de
+// cartes natives (Breaker, Cliffhanger, Deadlock, Fragmentation, Scarr). Le suffixe de playlist
+// ne change pas la géométrie ; il ne devrait pas coûter le fond. `Lookup` essaie donc
+// l'identité de base APRÈS l'identité exacte — jamais avant, cf. `suffixesVariante`.
+//
 // CE QUI REND LA CHOSE SÛRE. Une identité portée par DEUX clés est AMBIGUË : elle est retirée
 // de l'index (aucun fond) et publiée dans `Ambigues()` — jamais résolue au hasard. Servir le
 // fond d'une AUTRE carte est pire que n'en servir aucun. Un garde-rail vérifie que le catalogue
@@ -64,10 +71,53 @@ const suffixeIdentiteModule = "_map"
 // est déjà là autrement : les sidecars déclarent les variantes EXPLICITEMENT
 // (`aquarius_-_ranked_map`, `oasis_heavies_map`), et la déclaration bat la règle devinée.
 //
+// Le rabotage n'est pas perdu pour autant : il vit dans `identiteDeBase`, que `Lookup`
+// n'essaie QU'APRÈS l'identité exacte. L'ordre est ce qui rend les deux compatibles.
+//
 // Mesuré le 2026-08-27 sur les 84 fonds publiés : 184 identités distinctes, ZÉRO collision.
 func NormalizeMapIdentity(s string) string {
 	n := strings.ToLower(strings.Join(strings.Fields(s), "_"))
 	return strings.TrimSuffix(n, suffixeIdentiteModule)
+}
+
+// suffixesVariante : suffixes de nom qui désignent une VARIANTE de playlist ou de sandbox d'une
+// carte — même géométrie, donc même calage, donc même fond.
+//
+// LES DEUX PREMIERS SONT DÉJÀ ÉTABLIS AILLEURS : `filmdec.variantSuffixes` les raboté pour les
+// bornes de déquantification, sur la preuve du `level_id` (même niveau moteur => même BSP).
+// C'est la SECONDE copie de cette liste, et la dernière permise : une troisième doit la
+// centraliser. Elle n'est pas fusionnée avec la première parce que les deux ne raboteraient pas
+// au même moment — filmdec rabote TOUJOURS, ici on ne rabote qu'en dernier recours.
+//
+// « firefight » S'AJOUTE ICI, MESURÉ LE 2026-09-03 sur le catalogue versionné :
+//
+//   - `btb_exiled.json` déclare lui-même « Oasis », « Oasis Firefight », « Oasis Heavies » et
+//     « Oasis Sentry Defense » : la cuisson tient déjà ces quatre noms pour UNE carte.
+//   - Dans `map_callouts.json` (section `maps_by_id`), les 10 paires variante/base présentes
+//     ont la MÊME signature de zones (libellé + x,y,z + nombre de sommets) et la même emprise
+//     monde à 0,000 m près — 0,122 m sur Kusini Bay, 1 mm sur Vallaheim Firefight.
+//   - Sur les 19 paires variante/base dont les DEUX fonds sont publiés, 12 partagent déjà le
+//     même sidecar et les 7 cuites séparément s'accordent à 0,012 m en originX et 0,021 m en
+//     originY. Le pire écart de taille (Refuge Heavies, 46 x 47 px) vient du recadrage sur la
+//     matière, pas du repère.
+//
+// « sentry defense » N'Y EST PAS : les deux seules cartes qui le portent (Oasis, Highpower) sont
+// natives et leur sidecar les déclare déjà. Un suffixe qui ne rattrape aucune carte serait du
+// code mort.
+var suffixesVariante = []string{"_-_ranked", "_heavies", "_firefight"}
+
+// identiteDeBase rend l'identité de la carte de BASE d'une variante, ou la chaîne vide quand
+// l'identité n'en est pas une. Un seul suffixe est retiré : les noms composés (« Oasis Heavies
+// Firefight ») n'existent pas au catalogue, et les empiler ferait deviner plus loin que ce qui
+// est mesuré.
+func identiteDeBase(identite string) string {
+	for _, suffixe := range suffixesVariante {
+		base := strings.TrimSuffix(identite, suffixe)
+		if base != identite && base != "" {
+			return base
+		}
+	}
+	return ""
 }
 
 // MapBackgroundIndex est l'index inverse identité -> clé de fond publiée.
@@ -79,12 +129,31 @@ type MapBackgroundIndex struct {
 
 // Lookup rend la clé de fond d'une identité de carte. `false` quand l'identité est inconnue OU
 // ambiguë — l'appelant dégrade sans fond, il ne choisit pas.
+//
+// DEUX ESSAIS, DANS CET ORDRE, ET L'ORDRE EST TOUT. L'identité EXACTE d'abord : une variante
+// qui a son propre fond cuit (Insolence Heavies, Origin - Ranked, Vallaheim Firefight) garde le
+// sien, et le catalogue ne gagne aucune ambiguïté. L'identité de BASE ensuite, et seulement
+// quand la première n'a rien rendu : une variante sans fond hérite alors de celui de sa carte,
+// mesuré au même repère (cf. `suffixesVariante`). Une base ambiguë reste hors de
+// `parIdentite`, donc la seconde passe ne sert rien non plus — servir le fond d'une AUTRE carte
+// reste pire que n'en servir aucun.
+//
+// L'HÉRITAGE NE VA QUE DANS UN SENS : variante -> base. Une carte de base ne prend jamais le
+// fond d'une de ses variantes, faute de savoir laquelle.
 func (i *MapBackgroundIndex) Lookup(nom string) (string, bool) {
 	if i == nil {
 		return "", false
 	}
-	cle, ok := i.parIdentite[NormalizeMapIdentity(nom)]
-	return cle, ok
+	identite := NormalizeMapIdentity(nom)
+	if cle, ok := i.parIdentite[identite]; ok {
+		return cle, true
+	}
+	if base := identiteDeBase(identite); base != "" {
+		if cle, ok := i.parIdentite[base]; ok {
+			return cle, true
+		}
+	}
+	return "", false
 }
 
 // Ambigues rend les identités portées par plusieurs clés, avec leurs clés triées. Vide en

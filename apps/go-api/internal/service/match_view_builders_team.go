@@ -52,6 +52,13 @@ func buildTeamTabFull(
 	extremes := analysis.ComputeMVPLVP(scoreboard)
 
 	rows := make([]domain.MatchScoreboardRow, 0, len(scoreboard))
+	rfc3339Ptr := func(t *time.Time) *string {
+		if t == nil {
+			return nil
+		}
+		s := t.Format(time.RFC3339)
+		return &s
+	}
 	for _, s := range scoreboard {
 		oc, dr, dpk, dpd := computeScoreboardRowCombatYield(s, games.EffectiveHpToKill(titleSlug))
 
@@ -59,6 +66,10 @@ func buildTeamTabFull(
 			XUID:                s.XUID,
 			Gamertag:            s.Gamertag,
 			IsBot:               s.IsBot,
+			JoinedInProgress:    s.JoinedInProgress,
+			LeftInProgress:      s.LeftInProgress,
+			FirstJoinedTime:     rfc3339Ptr(s.FirstJoinedTime),
+			LastLeaveTime:       rfc3339Ptr(s.LastLeaveTime),
 			IsMe:                s.XUID == myXUID,
 			IsMVP:               extremes.MVPXUID != "" && s.XUID == extremes.MVPXUID,
 			IsLVP:               extremes.LVPXUID != "" && s.XUID == extremes.LVPXUID,
@@ -312,6 +323,12 @@ func buildNemesisMap(
 
 	result := make(map[string]*nemesisEntry)
 	for _, kv := range kvPairs {
+		// Un xuid vide désigne un BOT (NULL de la canonique, cf. GetMatchKVPairs) : les bots
+		// n'entrent JAMAIS dans les duels (décision user 2026-09-02) — et les agréger sous la
+		// clé "" fusionnerait tous les bots en un némésis fantôme.
+		if kv.KillerXUID == "" || kv.VictimXUID == "" {
+			continue
+		}
 		if kv.VictimXUID == myXUID {
 			if _, ok := result[kv.KillerXUID]; !ok {
 				gt := gtMap[kv.KillerXUID]

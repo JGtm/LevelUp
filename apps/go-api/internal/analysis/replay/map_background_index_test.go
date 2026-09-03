@@ -98,6 +98,86 @@ func TestIndexFondsResoutNomEtModule(t *testing.T) {
 	}
 }
 
+// TestIndexFondsVarianteHeriteDeSaBase : une variante de playlist sans fond doit recevoir celui
+// de sa carte de base — et une variante QUI A LE SIEN doit garder le sien.
+//
+// CE QUE CE TEST TIENT. L'héritage est un DERNIER recours, pas une normalisation : le jour où
+// l'ordre des deux essais s'inverserait, « Insolence Heavies » se mettrait à servir l'image
+// d'Insolence alors que la sienne est publiée, et personne ne le verrait à l'écran (les deux
+// cartes se ressemblent). Le test fixe donc les deux sens dans le même cas.
+func TestIndexFondsVarianteHeriteDeSaBase(t *testing.T) {
+	dir := t.TempDir()
+	// The Pit : la base est publiée, la variante Ranked ne l'est pas (cas mesuré le 2026-09-03).
+	sidecarFond(t, dir, "648ae7aa-c5d0-4f80-861a-79eb30440fcb", "The Pit", "the_pit_map")
+	// Insolence : les DEUX sont publiées, chacune sous son propre asset.
+	sidecarFond(t, dir, "1111aaaa-0000-0000-0000-000000000001", "Insolence", "insolence_map")
+	sidecarFond(t, dir, "2222bbbb-0000-0000-0000-000000000002", "Insolence Heavies", "insolence_heavies_map")
+	// Une carte native dont le sidecar déclare déjà sa variante Firefight.
+	sidecarFond(t, dir, "btb_exiled", "Oasis", "oasis_firefight_map")
+
+	idx, err := BuildMapBackgroundIndex(dir)
+	if err != nil {
+		t.Fatalf("BuildMapBackgroundIndex : %v", err)
+	}
+	if len(idx.Ambigues()) != 0 {
+		t.Fatalf("Ambigues() = %v, veut vide — l'héritage ne doit fabriquer aucune ambiguïté", idx.Ambigues())
+	}
+	cas := map[string]string{
+		// Hérité : la variante n'a pas de fond, sa base en a un.
+		"The Pit - Ranked":     "648ae7aa-c5d0-4f80-861a-79eb30440fcb",
+		"the_pit_-_ranked_map": "648ae7aa-c5d0-4f80-861a-79eb30440fcb",
+		"Oasis Firefight":      "btb_exiled",
+		// Exact : la variante a le sien, elle le garde.
+		"Insolence Heavies": "2222bbbb-0000-0000-0000-000000000002",
+		"Insolence":         "1111aaaa-0000-0000-0000-000000000001",
+	}
+	for nom, veut := range cas {
+		got, ok := idx.Lookup(nom)
+		if !ok || got != veut {
+			t.Errorf("Lookup(%q) = %q,%v — veut %q,true", nom, got, ok, veut)
+		}
+	}
+	// L'héritage ne remonte pas : une base sans fond ne prend pas celui d'une variante.
+	sansFond := t.TempDir()
+	sidecarFond(t, sansFond, "e8268e75-6583-42ad-9e0f-6a5b0a49b0c9", "Vallaheim Firefight", "vallaheim_firefight_map")
+	idx2, err := BuildMapBackgroundIndex(sansFond)
+	if err != nil {
+		t.Fatalf("BuildMapBackgroundIndex (2e) : %v", err)
+	}
+	if cle, ok := idx2.Lookup("Vallaheim"); ok {
+		t.Errorf("Lookup(\"Vallaheim\") = %q,true — une base ne doit pas hériter d'une variante", cle)
+	}
+	// Une base AMBIGUË ne se transmet pas non plus.
+	amb := t.TempDir()
+	sidecarFond(t, amb, "3333cccc-0000-0000-0000-000000000003", "Warehouse", "warehouse_map")
+	sidecarFond(t, amb, "4444dddd-0000-0000-0000-000000000004", "Warehouse", "warehouse_map")
+	idx3, err := BuildMapBackgroundIndex(amb)
+	if err != nil {
+		t.Fatalf("BuildMapBackgroundIndex (3e) : %v", err)
+	}
+	if cle, ok := idx3.Lookup("Warehouse Heavies"); ok {
+		t.Errorf("Lookup(\"Warehouse Heavies\") = %q,true — une base ambiguë ne se transmet pas", cle)
+	}
+}
+
+// TestIdentiteDeBase : le rabotage lui-même, hors index.
+func TestIdentiteDeBase(t *testing.T) {
+	cas := map[string]string{
+		"the_pit_-_ranked":     "the_pit",
+		"insolence_heavies":    "insolence",
+		"oasis_firefight":      "oasis",
+		"the_pit":              "",
+		"oasis_sentry_defense": "", // hors liste : aucune carte ne l'a jamais réclamé
+		"_heavies":             "", // rien devant le suffixe : pas une carte
+		"":                     "",
+	}
+	for entree, veut := range cas {
+		if got := identiteDeBase(entree); got != veut {
+			t.Errorf("identiteDeBase(%q) = %q, veut %q", entree, got, veut)
+		}
+	}
+}
+
 // TestIndexFondsEcarteLesAmbiguites : servir le fond d'une AUTRE carte est pire que n'en servir
 // aucun. Deux cartes publiées qui portent le même nom ne résolvent donc NI l'une NI l'autre.
 func TestIndexFondsEcarteLesAmbiguites(t *testing.T) {

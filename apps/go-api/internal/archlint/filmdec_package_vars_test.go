@@ -27,6 +27,16 @@ package archlint
 // et sur un perimetre anterieur) — la seule grandeur qui fait foi ici est celle que ce test
 // mesure lui-meme.
 //
+// RE-MESURE DU 2026-09-03, APRES LA RECONCILIATION AVEC `feat/v75` : 116. Les TROIS de plus
+// viennent de l'AMONT, pas du chantier — deux fichiers neufs du chantier « precision par arme »
+// (remise le 2026-09-01, acquis backend conserves) : `weapon_hits.go`
+// (`WeaponHitDistanceEdges`, les bornes de l'histogramme de distance) et `weapon_hits_decode.go`
+// (`lot1RefDomWidths`, `lot1chBases`, deux tables de grammaire mesurees). Le ratchet monte a 116
+// parce qu'il gele CE QUE LE CHANTIER TROUVE, et qu'il a trouve une base qui a bouge : il
+// continue d'interdire au chantier d'en ajouter. Ces trois-la sont des TABLES CONSTANTES
+// deguisees en `var` (Go n'a pas de `const` composite) — leur retrait naturel est un `const`
+// scalaire ou une fonction, pas une de-globalisation.
+//
 // # COMMENT LE FAIRE BOUGER
 //
 //   - VERS LE HAUT : interdit tant que ce chantier dure. Un nouveau reglage de decodage se passe
@@ -52,7 +62,7 @@ import (
 
 // filmdecVarsGeles : le compte GELE des variables de paquet de `filmdec` (cf. l'en-tete pour la
 // convention de comptage et la date de mesure).
-const filmdecVarsGeles = 113
+const filmdecVarsGeles = 116
 
 // TestFilmdecPackageVarsNeCroitPas — LE RATCHET.
 func TestFilmdecPackageVarsNeCroitPas(t *testing.T) {

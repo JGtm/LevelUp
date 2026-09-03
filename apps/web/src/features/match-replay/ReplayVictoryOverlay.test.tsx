@@ -55,6 +55,9 @@ const META = new Map([
 /** La fenêtre de gameplay du témoin : la fin tombe au frame 500. */
 const WINDOW: ReplayWindowBounds = {
   startFrame: 10,
+  // Le préambule de lecture est à l'image zéro ici (le coup d'envoi tombe à 1 s) : l'écran de
+  // fin ne le lit pas — il ne connaît que la borne HAUTE.
+  leadInFrame: 0,
   endFrame: 500,
   startMs: 1_000,
   endMs: 50_000,

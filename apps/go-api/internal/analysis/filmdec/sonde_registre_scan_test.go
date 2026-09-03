@@ -12,8 +12,9 @@ package filmdec
 // decodages, et une passe qui rend quatre reponses en vaut quatre qui en rendent une.
 //
 // AUCUN INDEX D'ARCHETYPE N'EST CABLE. Le lot 0 a mesure que le registre CHANGE avec le build
-// (`06dfe6d9` : 116 archetypes / 1 031 slots contre 118 / 1 067 ailleurs) : un « ti=47 » ecrit
-// en dur serait juste sur ce corpus et faux au prochain patch. Chaque archetype est donc
+// (`06dfe6d9` : 49 blocs / 1 031 slots contre 50 / 1 067 ailleurs — comptes re-mesures au
+// lot 3) : un « ti=47 » ecrit en dur serait juste sur ce corpus et faux au prochain patch.
+// Chaque archetype est donc
 // retrouve DANS LE REGISTRE DU FILM par un composant qui le nomme.
 //
 // LES VALEURS VIENNENT DU DESERIALISEUR, PAS D'UN SECOND LECTEUR. La marche consomme les

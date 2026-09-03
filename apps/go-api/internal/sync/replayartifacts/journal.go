@@ -71,6 +71,14 @@ const (
 	JaugeMvarSansMapID     = "postsync_mvar_matchs_sans_map_id"
 	JaugeMvarHorsObjectifs = "postsync_mvar_cartes_hors_catalogue_objectifs"
 	JaugeMvarEchecs        = "postsync_mvar_echecs"
+	// Report du coup d'envoi mesure dans le film vers `match_registry` (cf. t0film.go).
+	// CompteurT0FilmReportes : lignes de registre corrigees ; CompteurT0FilmDejaLa : matchs
+	// deja marques `film_movement` a la meme valeur (la garde a mordu) ; CompteurT0FilmEchecs :
+	// writer indisponible, absent du cablage, ou UPDATE refuse — un defaut, jamais un etat
+	// normal.
+	CompteurT0FilmReportes = "postsync_replay_t0_film_reportes_total"
+	CompteurT0FilmDejaLa   = "postsync_replay_t0_film_deja_a_jour_total"
+	CompteurT0FilmEchecs   = "postsync_replay_t0_film_echecs_total"
 )
 
 // SignalerClientSansChunks journalise et compte l'échec de l'assertion `ChunksFetcher` faite

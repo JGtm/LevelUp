@@ -254,6 +254,26 @@ var paquetsDeProduction = []string{
 	"cmd/zone-attribution",
 }
 
+// appelsDEnveloppeAutorises : L'ALLOWLIST FERMEE de la regle 3. Clef : `paquet/fichier.go ->
+// enveloppe`. Elle est verifiee DANS LES DEUX SENS — un site en trop echoue, une entree MORTE
+// aussi : une allowlist qui garde des entrees mortes ne mesure plus ce que le depot fait.
+//
+//	internal/sync/killcollector/hits.go
+//	          ARRIVE PAR L'AMONT (merge de `feat/v75` du 2026-09-03). Le numerateur de precision
+//	          par arme est DIR-BASE PAR CONCEPTION — son en-tete l'ecrit : il se greffe sur le
+//	          film DEJA sur disque (`ConfigureFilmAccuracy(dir, ...)`, cache local), la ou la
+//	          cuisson recoit des chunks en memoire. La passe est DESACTIVEE en production
+//	          (Infinite ne declare pas `match.weapon.accuracy` depuis la remise du 2026-09-01, et
+//	          `ConfigureFilmAccuracy` n'a aucun appelant hors tests) : aucune cuisson ne paie ces
+//	          relectures aujourd'hui. Lui donner la forme film exige de creer les formes
+//	          `Scan*(film)` de trois balayages neufs de l'amont — hors perimetre d'une
+//	          reconciliation de branche. RETRAIT CIBLE : le lot qui rallume la precision par arme,
+//	          ou celui qui migre `hits.go`. Consigne au registre des reports.
+var appelsDEnveloppeAutorises = map[string]string{
+	"internal/sync/killcollector/hits.go -> ReadFilmChunk":   "amont 2026-09-03, passe desactivee",
+	"internal/sync/killcollector/hits.go -> CountFilmChunks": "amont 2026-09-03, passe desactivee",
+}
+
 // TestProductionNAppellePasLesEnveloppes — REGLE 3.
 //
 // Les DEFINITIONS des enveloppes de `replay` vivent dans ces memes fichiers : le test ne compte
@@ -265,6 +285,7 @@ func TestProductionNAppellePasLesEnveloppes(t *testing.T) {
 		interdites[n] = true
 	}
 	racine := apiRootDepuisIci(t)
+	vus := map[string]bool{}
 	var violations []string
 	for _, pkg := range paquetsDeProduction {
 		for nom, f := range fichiersGoNonTest(t, filepath.Join(racine, filepath.FromSlash(pkg))) {
@@ -273,19 +294,37 @@ func TestProductionNAppellePasLesEnveloppes(t *testing.T) {
 				if !ok {
 					return true
 				}
-				if appele := nomAppele(call.Fun); interdites[appele] {
-					violations = append(violations, pkg+"/"+nom+" -> "+appele)
+				appele := nomAppele(call.Fun)
+				if !interdites[appele] {
+					return true
+				}
+				cle := pkg + "/" + nom + " -> " + appele
+				vus[cle] = true
+				if _, autorise := appelsDEnveloppeAutorises[cle]; !autorise {
+					violations = append(violations, cle)
 				}
 				return true
 			})
 		}
 	}
+	var morts []string
+	for cle := range appelsDEnveloppeAutorises {
+		if !vus[cle] {
+			morts = append(morts, cle)
+		}
+	}
+	sort.Strings(violations)
+	sort.Strings(morts)
 	if len(violations) > 0 {
-		t.Fatalf("la production appelle une enveloppe `dir` :\n  %s\n"+
+		t.Errorf("la production appelle une enveloppe `dir` :\n  %s\n"+
 			"Ces enveloppes chargent un film ENTIER par appel (regle D2 de PLAN_CUISSON_PERF) : "+
 			"elles existent pour les tests et les instruments de recherche. La cuisson recoit un "+
 			"`*filmsource.Film` deja charge et appelle la forme film (`ScanXxx(film, ...)`).",
 			strings.Join(violations, "\n  "))
+	}
+	if len(morts) > 0 {
+		t.Errorf("entrees MORTES de `appelsDEnveloppeAutorises` (l'appel n'existe plus) :\n  %s\n"+
+			"Les retirer.", strings.Join(morts, "\n  "))
 	}
 }
 

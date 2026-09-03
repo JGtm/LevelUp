@@ -19,6 +19,14 @@ import {
   sceneBounds,
   trackWindow,
   trailAt,
+  canvasToWorld,
+  layerOffset,
+  usefulHeight,
+  zoomTowards,
+  visibleBounds,
+  clampCenter,
+  sceneCenter,
+  ZOOM_LEVELS,
   worldToCanvas,
 } from './replayLogic'
 import type { ReplayTrackReady } from './replayNormalize'
@@ -78,6 +86,40 @@ describe('fitWidth', () => {
     expect(fitWidth(square, 900, 480, 24)).toBeCloseTo(480))
   it('ne dépasse jamais la largeur disponible', () =>
     expect(fitWidth({ minX: 0, minY: 0, maxX: 100, maxY: 10 }, 600, 480, 24)).toBe(600))
+})
+
+// LE PLAFOND PAR CARTE (2026-09-02) : jusqu'où le terrain gagne-t-il à grandir ? Passé le point
+// où la largeur devient limitante, un pixel de hauteur de plus n'ajoute plus de carte mais une
+// bande vide. Ce plafond ne peut donc pas être une constante — il dépend du ratio de la scène.
+describe('usefulHeight', () => {
+  const square = { minX: 0, minY: 0, maxX: 10, maxY: 10 }
+  const wide = { minX: 0, minY: 0, maxX: 40, maxY: 10 }
+  const tall = { minX: 0, minY: 0, maxX: 10, maxY: 40 }
+
+  it('scène carrée : la hauteur utile égale la largeur disponible', () =>
+    expect(usefulHeight(square, 900, 24)).toBeCloseTo(900))
+
+  it('scène ALLONGÉE : elle sature bien plus bas — le reste serait du vide', () => {
+    const useful = usefulHeight(wide, 900, 24)
+    expect(useful).toBeCloseTo((900 - 48) / 4 + 48)
+    expect(useful).toBeLessThan(300)
+  })
+
+  it('scène ÉTIRÉE en profondeur : elle peut au contraire tout prendre', () =>
+    expect(usefulHeight(tall, 900, 24)).toBeGreaterThan(900))
+
+  // C'est l'inverse EXACT de fitWidth : à la hauteur utile, la largeur nécessaire est
+  // exactement la largeur disponible. Si les deux divergeaient, le cadrage laisserait une bande
+  // vide sur un axe ou sur l'autre.
+  it('est bien l inverse de fitWidth — aller-retour sans perte', () => {
+    for (const bounds of [square, wide, tall]) {
+      const useful = usefulHeight(bounds, 900, 24)
+      expect(fitWidth(bounds, 10_000, useful, 24)).toBeCloseTo(900)
+    }
+  })
+
+  it('ne rend jamais une hauteur dégénérée, même sur une largeur nulle', () =>
+    expect(usefulHeight(wide, 0, 24)).toBeGreaterThan(0))
 })
 
 describe('altitudeAt', () => {
@@ -250,5 +292,184 @@ describe('sceneBounds avec un fond de carte posé', () => {
     const serre = sceneBounds(makeDoc({ geometryBounds: { minX: -1, minY: -1, maxX: 1, maxY: 1 } }), true)
     const large = sceneBounds(makeDoc({ geometryBounds: props }), true)
     expect(large).toEqual(serre)
+  })
+})
+
+// LE ZOOM EST UN CHANGEMENT DE BORNES (2026-09-02) : c'est la décision qui rend le lot petit,
+// et ces tests sont ce qui la tient. Si `visibleBounds` cessait de préserver l'aspect ou de
+// garder la fenêtre dans la scène, la projection partagée par le dessin ET le survol
+// mentirait — un pointeur viserait un autre cadre que celui peint.
+describe('visibleBounds — le zoom rétrécit les bornes', () => {
+  const scene = { minX: 0, minY: 0, maxX: 100, maxY: 60 }
+  const c = sceneCenter(scene)
+
+  it('à zoom 1, la fenêtre EST la scène', () => {
+    expect(visibleBounds(scene, 1, c.x, c.y)).toMatchObject(scene)
+  })
+
+  it('préserve l aspect de la scène à tous les paliers', () => {
+    const ratio = (scene.maxX - scene.minX) / (scene.maxY - scene.minY)
+    for (const z of ZOOM_LEVELS) {
+      const v = visibleBounds(scene, z, c.x, c.y)
+      expect((v.maxX - v.minX) / (v.maxY - v.minY)).toBeCloseTo(ratio, 9)
+    }
+  })
+
+  it('divise chaque dimension par le facteur', () => {
+    const v = visibleBounds(scene, 2, c.x, c.y)
+    expect(v.maxX - v.minX).toBeCloseTo(50)
+    expect(v.maxY - v.minY).toBeCloseTo(30)
+  })
+
+  // ON NE SE DÉPLACE PAS HORS CARTE : un centre absurde est ramené, jamais servi tel quel.
+  it('la fenêtre ne sort JAMAIS de la scène, même sur un centre aberrant', () => {
+    for (const z of ZOOM_LEVELS) {
+      for (const [px, py] of [[-1e6, -1e6], [1e6, 1e6], [0, 60], [100, 0]]) {
+        const v = visibleBounds(scene, z, px, py)
+        expect(v.minX).toBeGreaterThanOrEqual(scene.minX - 1e-9)
+        expect(v.maxX).toBeLessThanOrEqual(scene.maxX + 1e-9)
+        expect(v.minY).toBeGreaterThanOrEqual(scene.minY - 1e-9)
+        expect(v.maxY).toBeLessThanOrEqual(scene.maxY + 1e-9)
+      }
+    }
+  })
+
+  // À zoom 1 la fenêtre vaut la scène : il n'existe qu'UNE position légale. C'est ce qui
+  // désactive la croix directionnelle sans qu'on ait à écrire la règle.
+  it('à zoom 1, le centre n a qu une position possible', () => {
+    for (const [px, py] of [[-999, 999], [10, 10], [90, 50]]) {
+      expect(clampCenter(scene, 1, px, py)).toEqual(c)
+    }
+  })
+
+  it('l amplitude verticale traverse inchangée — le zoom est plan', () => {
+    const withZ = { ...scene, minZ: -3, maxZ: 12 }
+    const v = visibleBounds(withZ, 3, c.x, c.y)
+    expect(v.minZ).toBe(-3)
+    expect(v.maxZ).toBe(12)
+  })
+
+  // BAISSER LE ZOOM peut rendre le centre courant illégal : une fenêtre plus large ne tient
+  // plus aussi près du bord. Le rebornage doit alors ramener, pas laisser filer.
+  it('en dézoomant depuis un coin, le centre se reborne', () => {
+    const coin = clampCenter(scene, 3, scene.maxX, scene.maxY)
+    const apres = clampCenter(scene, 1.5, coin.x, coin.y)
+    expect(apres.x).toBeLessThan(coin.x)
+    expect(apres.y).toBeLessThan(coin.y)
+    const v = visibleBounds(scene, 1.5, apres.x, apres.y)
+    expect(v.maxX).toBeLessThanOrEqual(scene.maxX + 1e-9)
+  })
+
+  it('un aller-retour de zoom au centre ne dérive pas', () => {
+    let p = clampCenter(scene, 1, c.x, c.y)
+    for (const z of [1.5, 2, 3, 2, 1.5, 1]) p = clampCenter(scene, z, p.x, p.y)
+    expect(p.x).toBeCloseTo(c.x, 9)
+    expect(p.y).toBeCloseTo(c.y, 9)
+  })
+})
+
+// LA TAILLE DE DESSIN NE DÉPEND PAS DU ZOOM, et c'est ce qui garantit que la MÉMOIRE des quatre
+// calques statiques n'en dépend pas non plus : ils cuisent à `view.width x view.height`. La
+// crainte d'une mémoire qui enfle avec le grossissement est donc évitée par construction — mais
+// elle ne le reste que tant que `visibleBounds` préserve l'aspect. D'où ce test, qui l'épingle
+// par sa CONSÉQUENCE plutôt que par sa formule.
+describe('la surface a cuire est invariante au zoom', () => {
+  const scenes = [
+    { minX: 0, minY: 0, maxX: 100, maxY: 60 },
+    { minX: -20, minY: 5, maxX: 30, maxY: 95 },
+  ]
+  it('fitWidth rend la meme largeur a tous les paliers', () => {
+    for (const scene of scenes) {
+      const c = sceneCenter(scene)
+      const base = fitWidth(scene, 900, 480, 24)
+      for (const z of ZOOM_LEVELS) {
+        const v = visibleBounds(scene, z, c.x, c.y)
+        expect(fitWidth(v, 900, 480, 24)).toBeCloseTo(base, 6)
+      }
+    }
+  })
+  it('usefulHeight rend la meme hauteur a tous les paliers', () => {
+    for (const scene of scenes) {
+      const c = sceneCenter(scene)
+      const base = usefulHeight(scene, 900, 24)
+      for (const z of ZOOM_LEVELS) {
+        const v = visibleBounds(scene, z, c.x, c.y)
+        expect(usefulHeight(v, 900, 24)).toBeCloseTo(base, 6)
+      }
+    }
+  })
+})
+
+// LA MOLETTE GROSSIT VERS LE CURSEUR, et ces deux fonctions sont ce qui le permet.
+describe('canvasToWorld et zoomTowards', () => {
+  const b = { minX: 0, minY: 0, maxX: 100, maxY: 60 }
+
+  // L'ALLER-RETOUR EST L'INVARIANT QUI COMPTE : deux projections écrites séparément finissent
+  // toujours par diverger d'un demi-pixel, et un demi-pixel par cran de molette devient un
+  // décalage franc en cinq crans.
+  it('est l inverse exact de worldToCanvas', () => {
+    for (const p of [{ x: 0, y: 0 }, { x: 100, y: 60 }, { x: 37, y: 12.5 }]) {
+      const c = worldToCanvas(p, b, 900, 480, 24)
+      const back = canvasToWorld(c, b, 900, 480, 24)
+      expect(back.x).toBeCloseTo(p.x, 6)
+      expect(back.y).toBeCloseTo(p.y, 6)
+    }
+  })
+
+  it('le point visé reste IMMOBILE à l écran quand le zoom change', () => {
+    const c0 = sceneCenter(b)
+    const vise = { x: 80, y: 15 }
+    // Sa position à l'écran avant le cran...
+    const avant = worldToCanvas(vise, visibleBounds(b, 1, c0.x, c0.y), 900, 480, 24)
+    // ...et après, une fois le centre repositionné par zoomTowards.
+    const c1 = zoomTowards(c0, vise, 1, 2)
+    const apres = worldToCanvas(vise, visibleBounds(b, 2, c1.x, c1.y), 900, 480, 24)
+    expect(apres.x).toBeCloseTo(avant.x, 6)
+    expect(apres.y).toBeCloseTo(avant.y, 6)
+  })
+
+  it('viser le centre ne déplace pas le centre', () => {
+    const c0 = sceneCenter(b)
+    expect(zoomTowards(c0, c0, 1, 3)).toEqual(c0)
+  })
+})
+
+// LE DÉCALAGE DES CALQUES CUITS pendant un glisser. La propriété qui compte n'est pas la
+// formule mais son EXACTITUDE : un déplacement est une translation pure, donc recopier l'image
+// décalée doit poser chaque point du monde exactement là où un recuit l'aurait posé.
+describe('layerOffset', () => {
+  const scene = { minX: 0, minY: 0, maxX: 100, maxY: 60 }
+  const cadre = (b: typeof scene) => ({ bounds: b, width: 900, height: 480, pad: 24 })
+
+  it('sans cuisson connue, aucun décalage', () => {
+    expect(layerOffset(null, cadre(scene))).toEqual({ x: 0, y: 0 })
+  })
+
+  it('cadrage inchangé : décalage nul', () => {
+    const v = cadre(scene)
+    const off = layerOffset(v, v)
+    expect(off.x).toBeCloseTo(0, 9)
+    expect(off.y).toBeCloseTo(0, 9)
+  })
+
+  // L'INVARIANT : après décalage, un point du monde tombe au même pixel que si l'on avait recuit.
+  it('replace un point du monde exactement où un recuit l aurait mis', () => {
+    const c = sceneCenter(scene)
+    const cuit = cadre(visibleBounds(scene, 2, c.x, c.y))
+    const apres = cadre(visibleBounds(scene, 2, c.x + 7, c.y - 4))
+    const off = layerOffset(cuit, apres)
+    for (const p of [{ x: 40, y: 25 }, { x: 62, y: 33 }]) {
+      const dansLeCuit = worldToCanvas(p, cuit.bounds, cuit.width, cuit.height, cuit.pad)
+      const recuit = worldToCanvas(p, apres.bounds, apres.width, apres.height, apres.pad)
+      expect(dansLeCuit.x + off.x).toBeCloseTo(recuit.x, 6)
+      expect(dansLeCuit.y + off.y).toBeCloseTo(recuit.y, 6)
+    }
+  })
+
+  it('se déplacer vers la droite décale le calque vers la gauche', () => {
+    const c = sceneCenter(scene)
+    const cuit = cadre(visibleBounds(scene, 2, c.x, c.y))
+    const apres = cadre(visibleBounds(scene, 2, c.x + 10, c.y))
+    expect(layerOffset(cuit, apres).x).toBeLessThan(0)
   })
 })

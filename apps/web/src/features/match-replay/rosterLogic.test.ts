@@ -93,6 +93,37 @@ describe('buildPlayers', () => {
     expect(players[0].lives).toHaveLength(1)
   })
 
+  it('un BOT a une fiche : clé synthétique, vies groupées, scoreboard joint par gamertag (schéma 36)', () => {
+    const d = doc({
+      roster: [
+        { xuid: 'A', filmIndex: 0 },
+        { xuid: '', filmIndex: 8, name: '343 Aloysius [bot]', bot: true },
+      ],
+      tracks: [
+        track(512, 'A', 0, 50),
+        { ...track(600, undefined, 0, 60), bot: '343 Aloysius [bot]' },
+      ],
+    })
+    // La ligne de base d'un bot : xuid `bid(N.0)`, `is_bot`, gamertag résolu SANS suffixe
+    // (v_gamertag_lookup) — la jointure se fait sur le nom NU des deux côtés.
+    const botRow = { ...row('bid(8.0)', '343 Aloysius', 'Cobra'), is_bot: true }
+    const players = buildPlayers(d, [row('A', 'Alpha', 'Eagle'), botRow])
+    expect(players).toHaveLength(2)
+    const bot = players.find((p) => p.bot)!
+    expect(bot.xuid).toBe('bot:343 Aloysius [bot]')
+    expect(bot.lives).toHaveLength(1)
+    expect(bot.filmName).toBe('343 Aloysius [bot]')
+    // La jointure par gamertag donne l'équipe — jamais un camp deviné.
+    expect(bot.board?.team_side).toBe('Cobra')
+  })
+
+  it('un bot absent du scoreboard reste sans équipe — pas de camp inventé', () => {
+    const d = doc({ tracks: [{ ...track(600, undefined, 0, 60), bot: '343 Oscar [bot]' }] })
+    const [bot] = buildPlayers(d, [row('A', 'Alpha', 'Eagle')])
+    expect(bot.bot).toBe(true)
+    expect(bot.board).toBeUndefined()
+  })
+
   it('garde un joueur du film introuvable au scoreboard, sans ligne', () => {
     const d = doc({ roster: [{ xuid: 'Z', filmIndex: 0 }], tracks: [track(512, 'Z', 0, 50)] })
     const players = buildPlayers(d, [row('A', 'Alpha', 'Eagle')])

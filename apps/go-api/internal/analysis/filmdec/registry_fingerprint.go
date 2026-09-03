@@ -39,7 +39,9 @@ import (
 
 // KnownRegistryFingerprint est l'empreinte du registre de REFERENCE — celui sur lequel toute
 // la grammaire portee de ce paquet a ete etablie, et celui que decrit `testdata/ecs_table.tsv`
-// (118 blocs, 49 archetypes porteurs, 1 067 slots non vides).
+// (50 blocs, 49 archetypes porteurs, 1 067 slots non vides — le « 118 blocs » cite avant le
+// lot 3 du plan « percer la trame » etait `len(fichier)/taille_bloc`, un artefact de division
+// qui annexait les sections suivantes de chunk_00 au registre).
 //
 // RECALCULEE LE 2026-08-17 (lot 0, item 0.3) et NON RECOPIEE. Elle ne vaut pas le
 // `0xa413610cd08e4355` cite par le commentaire de `registry.go`, et l'ecart est explique :
@@ -49,8 +51,10 @@ import (
 //
 // CE QUE LA MESURE A TROUVE DU PREMIER COUP, ET QUI CHANGE UNE CROYANCE DU DEPOT : le registre
 // N'EST PAS identique sur tous les films. `000d5950` et `64e8adfa` rendent bien la meme valeur
-// (118 blocs / 1 067 slots), mais `06dfe6d9` rend `0x5827362c37d2adb3` sur **116 blocs et
-// 1 031 slots non vides** — 2 archetypes et 36 composants de moins. La stabilite mesuree au
+// (50 blocs / 1 067 slots), mais `06dfe6d9` rend `0x5827362c37d2adb3` sur **49 blocs et
+// 1 031 slots non vides** — 1 bloc, 1 porteur et 36 composants de moins (compte de blocs
+// re-mesure au lot 3 apres la borne structurelle ; l'empreinte de ce film n'a pas bouge, il
+// ne portait aucun slot fantome). La stabilite mesuree au
 // lot table ECS (« bit-a-bit identique sur 000d5950, 00502e52, 07aa428d ») vaut DANS UN BUILD,
 // pas entre builds. C'est exactement ce que cette empreinte est faite de dire, et l'alerte se
 // declenche a bon droit sur ce film : sa grammaire n'est pas celle que la table decrit.

@@ -5420,6 +5420,7 @@ export interface components {
             score?: components["schemas"]["ScoreCoverage"];
             shots: components["schemas"]["LayerCoverage"];
             skullCarries?: components["schemas"]["SkullCarriesCoverage"];
+            t0Film?: components["schemas"]["T0FilmCoverage"];
             verdict?: {
                 [key: string]: string;
             };
@@ -6345,6 +6346,8 @@ export interface components {
             /** Format: int64 */
             ambiguousCarrierKills: number;
             /** Format: int64 */
+            ambiguousHomecomings: number;
+            /** Format: int64 */
             ambiguousReturns: number;
             /** Format: int64 */
             bursts: number;
@@ -6362,9 +6365,14 @@ export interface components {
             dropsRepositioned: number;
             flagFilm: boolean;
             /** Format: int64 */
+            homeByObject: number;
+            /** Format: int64 */
             markerConfirmed: number;
             /** Format: int64 */
             markerObserved: number;
+            /** Format: int64 */
+            neutralBirths: number;
+            neutralFlag: boolean;
             /** Format: int64 */
             noBridge: number;
             /** Format: int64 */
@@ -6387,11 +6395,21 @@ export interface components {
             spawns: number;
             /** Format: int64 */
             steals: number;
+            /** Format: int64 */
+            teamBirths: number;
         };
         FlagCarry: {
             spans: components["schemas"]["FlagSpan"][] | null;
             /** Format: int64 */
             team: number;
+        };
+        FlagReturnZone: {
+            /** Format: float */
+            radiusM: number;
+            /** Format: float */
+            resetSeconds: number;
+            /** Format: float */
+            soloSeconds: number;
         };
         FlagSpan: {
             state: string;
@@ -8007,6 +8025,7 @@ export interface components {
             expected_deaths?: number;
             /** Format: double */
             expected_kills?: number;
+            first_joined_time?: string;
             gamertag: string;
             /** Format: int64 */
             grenade_kills?: number;
@@ -8019,12 +8038,15 @@ export interface components {
             is_lvp?: boolean;
             is_me: boolean;
             is_mvp?: boolean;
+            joined_in_progress?: boolean;
             /** Format: double */
             kda?: number;
             /** Format: int64 */
             kills?: number;
             /** Format: double */
             kills_stddev?: number;
+            last_leave_time?: string;
+            left_in_progress?: boolean;
             locally_estimated?: boolean;
             /** Format: int64 */
             max_killing_spree?: number;
@@ -9680,6 +9702,7 @@ export interface components {
             equipmentEpisodes?: components["schemas"]["EquipmentEpisode"][] | null;
             equipmentPlacements?: components["schemas"]["EquipmentPlacement"][] | null;
             flagCarries?: components["schemas"]["FlagCarry"][] | null;
+            flagReturnZone?: components["schemas"]["FlagReturnZone"];
             /** Format: int64 */
             frameCount: number;
             /** Format: int64 */
@@ -9715,6 +9738,8 @@ export interface components {
             skullCarries?: components["schemas"]["SkullCarry"][] | null;
             structure?: components["schemas"]["Surface"][] | null;
             structureBounds?: components["schemas"]["Bounds"];
+            /** Format: int64 */
+            t0FilmMs?: number;
             titleSlug: string;
             tracks: components["schemas"]["Track"][] | null;
             vipCrown?: components["schemas"]["VipPeriod"][] | null;
@@ -9760,6 +9785,7 @@ export interface components {
             sys_bytes: number;
         };
         RosterEntry: {
+            bot?: boolean;
             /** Format: int64 */
             filmIndex: number;
             name?: string;
@@ -11123,6 +11149,18 @@ export interface components {
             label: string;
             role?: string;
         };
+        T0FilmCoverage: {
+            /** Format: int64 */
+            burst: number;
+            detected: boolean;
+            /** Format: int64 */
+            marginMs: number;
+            /** Format: int64 */
+            moving: number;
+            reason?: string;
+            /** Format: int64 */
+            tracks: number;
+        };
         TableStatus: {
             exists: boolean;
             name: string;
@@ -11561,6 +11599,7 @@ export interface components {
             wins: number;
         };
         Track: {
+            bot?: string;
             /** Format: int64 */
             endFrame?: number;
             name?: string;

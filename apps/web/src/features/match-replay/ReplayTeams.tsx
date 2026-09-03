@@ -21,6 +21,7 @@ import {
 } from '@/lib/replay/scoreTimeline'
 import type { XuidMeta } from '@/features/match-view/xuidMeta'
 import type { MatchScoreboardRow } from '@/lib/api/types'
+import { stripBotSuffix } from '@/lib/players/displayName'
 
 import { ReplayTeamHeader } from './ReplayTeamHeader'
 import { activeEquipmentAt } from './equipmentFx'
@@ -29,11 +30,13 @@ import { NO_ZONES, zonePresenceAt, type ZonePresence, type ZoneScene } from './e
 import { objectiveMarkAt } from './objectiveMark'
 import { ReplayObjectiveMark } from './ReplayObjectiveMark'
 import { equippedWeapons } from './equippedLogic'
-import { lastTeleportAge, riftTeleports, type RiftTeleport } from './placementTeleport'
+import { lastTeleportAge, riftTeleports, spentTranslocations, translocatorRanks, type TranslocationMoment } from './placementTeleport'
 import { cardChrome, hasUnderLayer, playerCardFx } from './playerCardFx'
 import { ReplayCountersBadge } from './ReplayCountersBadge'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
 import { frameToMs, msToFrames, positionAt, trackWindow } from './replayLogic'
+import type { PresenceHeader } from './presenceFeed'
+import { buildSeats, groupSeatsByTeam, seatOccupantAt } from './seatLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
 import { ReplayInventoryRow } from './ReplayInventoryRow'
 import { EliminatedBox, VitalityBar } from './ReplayVitality'
@@ -41,7 +44,6 @@ import { ReplayWeaponsRow } from './ReplayWeaponsRow'
 import {
   buildPlayers,
   buildSlotOwnership,
-  groupByTeam,
   playerName,
   playerStateAt,
   sideResolver,
@@ -79,6 +81,8 @@ interface ReplayTeamsProps {
   locale: ReplayLocale
   /** Camp de chaque xuid : il donne sa couleur au titre de la colonne (allié / adverse). */
   xuidMeta?: XuidMeta
+  /** En-tête du match (heure de début) : le repère des relais de siège (cf. seatLogic). */
+  header?: PresenceHeader | null
 }
 
 // LA FICHE COMPACTE EST DEVENUE LA FICHE (décision utilisateur du 2026-08-24 : « fiches
@@ -86,11 +90,16 @@ interface ReplayTeamsProps {
 // deux rangées d'inventaire, munitions des armes rangées — est SUPPRIMÉE avec son réglage.
 
 export function ReplayTeams({
-  doc, scoreboard, frame, locale, xuidMeta,
+  doc, scoreboard, frame, locale, xuidMeta, header,
 }: ReplayTeamsProps) {
   const t = REPLAY_TEXT[locale]
   const players = useMemo(() => buildPlayers(doc, scoreboard), [doc, scoreboard])
-  const groups = useMemo(() => groupByTeam(players), [players])
+  // LA FICHE EST UN SIÈGE, PAS UN JOUEUR (retour user 2026-09-02) : un remplacé cède sa
+  // fiche à son remplaçant à l'image du relais — un 4v4 garde huit fiches, quel que soit le
+  // nombre de relais. L'appariement vient de la participation API (cf. seatLogic.ts) ; sans
+  // elle, chaque joueur garde son siège — l'affichage d'avant.
+  const seats = useMemo(() => buildSeats(players, header, doc), [players, header, doc])
+  const groups = useMemo(() => groupSeatsByTeam(seats), [seats])
   const vitalityFade = useMemo(() => msToFrames(VITALITY_FADE_MS, doc), [doc])
   const readingFull = useMemo(() => msToFrames(READING_FULL_MS, doc), [doc])
   const flashFrames = useMemo(() => Math.max(1, msToFrames(FLASH_MS, doc)), [doc])
@@ -103,10 +112,17 @@ export function ReplayTeams({
   // réattribué entre manches, le camp doit suivre l'occupant. Le capteur adverse le lit à
   // l'image du joueur interrogé / à la pose du capteur (cf. equipmentZones).
   const sideOfSlot = useMemo(() => sideResolver(buildSlotOwnership(players)), [players])
-  const teleports = useMemo(
-    () => riftTeleports(doc.equipmentPlacements, doc.tracks, doc.abilities),
-    [doc],
-  )
+  // L'ÉCLAT DE TRANSLOCATION A DEUX SOURCES (2026-09-02) : les usages MESURÉS du calque
+  // d'équipement (`spent` du rang translocateur — le canal principal, daté à la frame par le
+  // schéma 26) et les passages spatiaux corroborés (`riftTeleports` — rendement faible assumé,
+  // il reste le canal du lien sur la carte). La fiche ne consomme que (slot, frame).
+  const teleports = useMemo(() => {
+    const ranks = translocatorRanks(doc.abilityLabels)
+    return [
+      ...riftTeleports(doc.equipmentPlacements, doc.tracks, doc.abilities, ranks),
+      ...spentTranslocations(doc.equipmentChanges, ranks),
+    ]
+  }, [doc])
   const fxScene = useMemo<CardFxScene>(
     () => ({
       zones: {
@@ -125,9 +141,19 @@ export function ReplayTeams({
   const scoreTimeline = useMemo(() => scoreTimelineOf(doc), [doc])
 
   if (groups.length === 0) {
+    // LE DIAGNOSTIC DU PONT S'AFFICHE AVEC LE CONSTAT (coverage.bridge, consommé depuis le
+    // 2026-09-02) : « aucune vie rattachée » sans ses dénominateurs se lisait comme un bug
+    // muet — avec eux, on voit si le film n'a rien nommé (0/N) ou si la table d'index est
+    // tombée (collisions).
+    const bridge = doc.coverage?.bridge
     return (
       <div className="rounded-lg border border-border bg-card p-3">
         <p className="text-xs text-muted-foreground">{t.rosterEmpty}</p>
+        {bridge && (
+          <p className="mt-1 text-3xs text-muted-foreground">
+            {t.bridgeDiag(bridge.livesNamed, bridge.livesTotal, bridge.slotCollisions)}
+          </p>
+        )}
       </div>
     )
   }
@@ -152,16 +178,16 @@ export function ReplayTeams({
           className="flex h-full min-h-0 flex-col gap-1.5"
         >
           <ReplayTeamHeader
-            players={group.players}
+            players={group.seats.map((s) => seatOccupantAt(s, frame))}
             side={group.side}
             xuidMeta={xuidMeta}
             locale={locale}
           />
           <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto">
-            {group.players.map((p) => (
+            {group.seats.map((seat) => (
               <PlayerCard
-                key={p.xuid}
-                player={p}
+                key={seat.key}
+                player={seatOccupantAt(seat, frame)}
                 doc={doc}
                 frame={frame}
                 presence={presence}
@@ -188,7 +214,7 @@ export function ReplayTeams({
 interface CardFxScene {
   zones: ZoneScene
   time: PlacementWindowTime
-  teleports: readonly RiftTeleport[]
+  teleports: readonly TranslocationMoment[]
 }
 
 interface PlayerCardProps {
@@ -213,7 +239,10 @@ function PlayerCard({ player, doc, frame, presence, vitalityFade, readingFull, f
   // valent pour tout le match — c'est ce qu'elle affichait avant ce lot.
   const live = playerCountersAt(scoreTimeline, player.xuid, frame)
   const state = playerStateAt(player, frame, presence)
-  const name = playerName(player) ?? t.unknownPlayer
+  // Suffixe « [bot] » = marqueur de donnée killsource (schéma 36), pas d'affichage —
+  // retiré ici sans toucher au repli `t.unknownPlayer` (playerName() reste `null`-able).
+  const rawName = playerName(player)
+  const name = (rawName ? stripBotSuffix(rawName) : null) ?? t.unknownPlayer
   const equipped = state.life ? equippedWeapons(doc, state.life.slot, frame) : null
   // L'index de FILM du joueur : la clé des lancers de grenade (l'auteur y est écrit).
   const filmIndex = doc.roster.find((r) => r.xuid === player.xuid)?.filmIndex ?? null

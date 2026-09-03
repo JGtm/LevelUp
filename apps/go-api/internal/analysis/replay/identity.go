@@ -20,18 +20,38 @@ import (
 	"strings"
 )
 
-// nameTracks pose le xuid du porteur sur chaque trace dont le slot est ponté.
+// nameTracksByLives pose le xuid du porteur sur chaque trace PAR VIE : une trace est nommée
+// par la vie nommée du MÊME slot qui la recouvre le mieux — jamais par le slot seul.
 //
-// UNE TRACE SANS XUID RESTE SANS XUID : le champ est vide, pas rempli d'un « inconnu » ni du
-// porteur d'un slot voisin. C'est la même règle que celle qui a fait supprimer le vote — mieux
-// vaut ne rien afficher que quelque chose de faux.
-func nameTracks(tracks []Track, slotXUID map[uint32]uint64) {
-	if len(slotXUID) == 0 {
+// POURQUOI PAR VIE (lot identité des vies, 2026-09-02). Le nommage par slot (`SlotXUID`)
+// donnait tout l'intervalle d'un slot RECYCLÉ à son premier porteur nommé : le remplaçant
+// (arrivant, bot) n'existait pas et l'ancien « vivait » à sa place. Les tracks étant
+// désormais découpées à la MÊME règle que les vies (`lifeGapUS`, cf. decimateTracks), la
+// correspondance track <-> vie est un recouvrement franc — le meilleur recouvrement suffit,
+// et un recouvrement nul ne nomme rien.
+//
+// UNE TRACE SANS VIE NOMMÉE RESTE SANS XUID : le champ est vide, pas rempli d'un « inconnu »
+// ni du porteur d'un slot voisin. C'est la même règle que celle qui a fait supprimer le vote
+// — mieux vaut ne rien afficher que quelque chose de faux.
+func nameTracksByLives(tracks []Track, lives []lifeSpan, origin, step uint64) {
+	if len(lives) == 0 {
 		return
 	}
 	for i := range tracks {
-		if x, ok := slotXUID[tracks[i].Slot]; ok {
-			tracks[i].XUID = strconv.FormatUint(x, 10)
+		from := int64(origin) + int64(tracks[i].StartFrame)*int64(step)
+		to := int64(origin) + int64(tracks[i].EndFrame)*int64(step) + int64(step) - 1
+		var bestXUID uint64
+		var bestOverlap int64
+		for _, l := range lives {
+			if l.slot != tracks[i].Slot || l.xuid == 0 {
+				continue
+			}
+			if ov := minI64(to, l.to) - maxI64(from, l.from); ov > bestOverlap {
+				bestOverlap, bestXUID = ov, l.xuid
+			}
+		}
+		if bestXUID != 0 {
+			tracks[i].XUID = strconv.FormatUint(bestXUID, 10)
 		}
 	}
 }
@@ -128,18 +148,43 @@ func FamilyOfWeaponID(id string) (uint32, bool) {
 	return uint32(v), true
 }
 
-// buildRoster publie les joueurs du film, triés par index pour que l'artefact soit
-// reproductible : l'ordre d'itération d'une map Go est aléatoire, et un artefact qui change
-// d'octets à chaque build sans changer de contenu est indiffable.
-func buildRoster(idx PlayerIndexTable, names map[uint64]string) []RosterEntry {
-	if len(idx.ByXUID) == 0 {
+// BotIdentity est un bot tel que le film le DÉCLARE (BOT_METADATA), réduit à ce que
+// l'assemblage consomme : son index de roster et son nom d'affichage.
+type BotIdentity struct {
+	FilmIndex int
+	Name      string
+}
+
+// buildRoster publie les joueurs du film — humains du fil des morts, puis bots déclarés —
+// triés par index pour que l'artefact soit reproductible : l'ordre d'itération d'une map Go
+// est aléatoire, et un artefact qui change d'octets à chaque build sans changer de contenu
+// est indiffable.
+//
+// UN BOT DONT L'INDEX EST TENU PAR UN HUMAIN N'ENTRE PAS : les deux déclarations se
+// contredisent, et le fil des morts (une lecture par xuid) l'emporte sur un paquet de
+// métadonnées. DEUX BOTS PEUVENT PARTAGER UN INDEX, et c'est mesuré (RE_LOG 7ter.62 :
+// « 343 Aloysius » puis « 343 PardonMy », les deux déclarant slot=8) — des remplaçants
+// SUCCESSIFS sur le même siège de réplication. Ils entrent tous les deux : le nom les
+// différencie, l'index dit le siège.
+func buildRoster(idx PlayerIndexTable, names map[uint64]string, bots []BotIdentity) []RosterEntry {
+	if len(idx.ByXUID) == 0 && len(bots) == 0 {
 		return nil
 	}
-	out := make([]RosterEntry, 0, len(idx.ByXUID))
+	out := make([]RosterEntry, 0, len(idx.ByXUID)+len(bots))
+	humanIdx := make(map[int]bool, len(idx.ByXUID))
 	for x, pi := range idx.ByXUID {
+		humanIdx[pi] = true
 		out = append(out, RosterEntry{
 			XUID: strconv.FormatUint(x, 10), FilmIndex: pi, Name: names[x],
 		})
+	}
+	seen := map[string]bool{}
+	for _, b := range bots {
+		if humanIdx[b.FilmIndex] || b.Name == "" || seen[b.Name] {
+			continue
+		}
+		seen[b.Name] = true
+		out = append(out, RosterEntry{FilmIndex: b.FilmIndex, Name: b.Name, Bot: true})
 	}
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].FilmIndex != out[j].FilmIndex {
@@ -148,4 +193,35 @@ func buildRoster(idx PlayerIndexTable, names map[uint64]string) []RosterEntry {
 		return out[i].XUID < out[j].XUID
 	})
 	return out
+}
+
+// nameBotTracks pose le NOM d'un bot sur les vies que le pont attribue à son index.
+//
+// LA PORTE EST LE PONT, PAS UNE DEVINETTE : `owner` (slot -> index) ne contient un slot que
+// par une lecture ou une fermeture à candidat unique (cf. owners.go / closures.go). Un bot
+// n'ayant pas de xuid, ses slots n'entrent jamais par le fil des morts — seules les
+// fermetures (un bot TIRE, fermeture A) peuvent les apporter. Une vie déjà nommée par un
+// xuid n'est jamais écrasée : sur un slot recyclé humain -> bot, l'humain garde SES vies.
+func nameBotTracks(tracks []Track, owner map[uint32]int, bots []BotIdentity) {
+	if len(owner) == 0 || len(bots) == 0 {
+		return
+	}
+	nameByIndex := make(map[int]string, len(bots))
+	for _, b := range bots {
+		if b.Name != "" {
+			nameByIndex[b.FilmIndex] = b.Name
+		}
+	}
+	for i := range tracks {
+		if tracks[i].XUID != "" {
+			continue
+		}
+		pi, ok := owner[tracks[i].Slot]
+		if !ok {
+			continue
+		}
+		if name, isBot := nameByIndex[pi]; isBot {
+			tracks[i].Bot = name
+		}
+	}
 }

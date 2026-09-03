@@ -37,7 +37,7 @@ export function ReplayHeatmapLegend({ locale, mode }: ReplayHeatmapLegendProps) 
   const arrets = heatmapRampTokens('intensity').map(tokenCssVar)
   return (
     <div
-      className="absolute bottom-2 left-2 rounded border border-border bg-card/85 px-2 py-1.5 text-[10px] leading-tight text-muted-foreground"
+      className="absolute bottom-2 left-3 rounded border border-border bg-card/85 px-2 py-1.5 text-[10px] leading-tight text-muted-foreground"
       title={t.heatLegendHint}
     >
       <div className="font-medium text-foreground">{t.heatmapMode[mode]}</div>

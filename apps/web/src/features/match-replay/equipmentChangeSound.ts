@@ -16,6 +16,11 @@
  * (`grappleLines`), le répulseur par son kill. Un jingle générique de « consommation »
  * DOUBLERAIT ces sons-là au même instant. Les familles dont l'usage n'est pas encore mesuré
  * restent muettes — même règle que partout : on ne devine pas.
+ *
+ * Depuis le 2026-09-02, le `spent` n'est plus INERTE pour autant : le TRANSLOCATEUR y prend
+ * son éclat de fiche (`spentTranslocations`, cf. `placementTeleport.ts`) — un effet VISUEL,
+ * pas un son. Le muet de ce fichier ne concerne que l'audio, et il tient : aucun stem n'est
+ * désigné pour la translocation (même règle que le crâne).
  */
 import type { ReplayDocumentReady } from './replayNormalize'
 import { frameToMs } from './replayLogic'

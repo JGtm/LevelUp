@@ -23,7 +23,7 @@ import {
   placeMedia,
   ratioOfMs,
   roundSeparators,
-  scoreMirrorsFrags,
+  sameLeadSegments,
   THUMB_PX,
   trackLeft,
   trackScale,
@@ -37,9 +37,15 @@ import type { ReplayWindowBounds } from './replayWindow'
 /** Un document 10 Hz : une image toutes les 100 ms. */
 const FRAME_MS = 100
 
-/** Le match court de l'image 100 (10 s) à l'image 400 (40 s) sur l'axe du film. */
+/**
+ * Le match court de l'image 100 (10 s) à l'image 400 (40 s) sur l'axe du film.
+ *
+ * `leadInFrame` (une seconde plus tôt, image 90) n'intéresse QUE la lecture : la frise part du
+ * coup d'envoi, et ces tests d'échelle le vérifient en creux — aucun d'eux ne le lit.
+ */
 const FENETRE: ReplayWindowBounds = {
   startFrame: 100,
+  leadInFrame: 90,
   endFrame: 400,
   startMs: 10_000,
   endMs: 40_000,
@@ -290,36 +296,46 @@ describe('roundSeparators — où les manches se touchent', () => {
 })
 
 /**
- * LE TRI DE LA PISTE SCORE. Il se fait sur la DONNÉE et non sur le nom du mode : « en Slayer,
- * le score EST le compte des frags » est une MESURE (état de l'art des modes, témoin
- * `000d5950` : 43-50 au score = 43-50 frags). Comparer un libellé serait faux au premier mode
- * dérivé et illisible sur un second titre.
+ * LE TRI DE LA PISTE SCORE (décision user D1, 2026-09-02). Il se fait sur LE RENDU et non sur
+ * le nom du mode ni sur les totaux : deux pistes qui dessinent les mêmes bandes sont un
+ * doublon, on n'en montre qu'une. L'ancienne garde (`scoreMirrorsFrags`, totaux à l'égalité
+ * stricte) laissait le doublon réapparaître au premier kill non attribué — le cas nominal en
+ * Assassin, pas l'exception.
  */
-describe('scoreMirrorsFrags — le score de ce match n’est-il que les frags ?', () => {
-  const equipes = (a: number, b: number) => [
-    { teamId: 0, total: [{ v: a }] },
-    { teamId: 1, total: [{ v: b }] },
-  ]
-  const fragsDe = (a: number, b: number) => [
-    ...Array.from({ length: a }, (_, i) => ({ replayMs: 10_000 + i, teamId: 0 })),
-    ...Array.from({ length: b }, (_, i) => ({ replayMs: 20_000 + i, teamId: 1 })),
-  ]
-
-  it('SLAYER : chaque camp finit au score exact de ses frags — la piste serait un doublon', () => {
-    expect(scoreMirrorsFrags(equipes(43, 50), fragsDe(43, 50))).toBe(true)
+describe('sameLeadSegments — les deux pistes dessineraient-elles la même chose ?', () => {
+  const seg = (teamId: number | null, from: number, to: number, i = 0) => ({
+    key: `s${i}`,
+    from,
+    to,
+    teamId,
   })
 
-  it('MODE À OBJECTIF : le score dit autre chose que les duels — la piste a sa place', () => {
-    expect(scoreMirrorsFrags(equipes(3, 0), fragsDe(28, 31))).toBe(false)
+  it('SLAYER : mêmes meneurs, mêmes frontières — la piste score serait un doublon', () => {
+    const dominance = [seg(null, 0, 0.2, 0), seg(0, 0.2, 0.7, 1), seg(1, 0.7, 1, 2)]
+    const score = [seg(null, 0, 0.201, 3), seg(0, 0.201, 0.699, 4), seg(1, 0.699, 1, 5)]
+    expect(sameLeadSegments(score, dominance)).toBe(true)
   })
 
-  it('PRUDENT : un fil incomplet fait apparaître la piste, jamais disparaître', () => {
-    // Un doublon se voit et se corrige ; une piste manquante ne se voit pas.
-    expect(scoreMirrorsFrags(equipes(43, 50), fragsDe(41, 50))).toBe(false)
+  it('MODE À OBJECTIF : un meneur diverge — la piste a sa place', () => {
+    const dominance = [seg(null, 0, 0.2), seg(0, 0.2, 1)]
+    const score = [seg(null, 0, 0.2), seg(1, 0.2, 1)]
+    expect(sameLeadSegments(score, dominance)).toBe(false)
   })
 
-  it('sans aucun camp identifié, il n’y a rien à comparer : la piste ne se masque pas', () => {
-    expect(scoreMirrorsFrags([], [])).toBe(false)
+  it('une frontière au-delà du pixel de tolérance rend les pistes DIFFÉRENTES', () => {
+    const dominance = [seg(0, 0, 0.5), seg(1, 0.5, 1)]
+    const score = [seg(0, 0, 0.55), seg(1, 0.55, 1)]
+    expect(sameLeadSegments(score, dominance)).toBe(false)
+  })
+
+  it('des suites de longueurs différentes ne sont jamais le même dessin', () => {
+    const dominance = [seg(0, 0, 1)]
+    const score = [seg(0, 0, 0.5), seg(1, 0.5, 1)]
+    expect(sameLeadSegments(score, dominance)).toBe(false)
+  })
+
+  it('deux listes vides ne masquent rien : rien n’est comparé', () => {
+    expect(sameLeadSegments([], [])).toBe(false)
   })
 })
 

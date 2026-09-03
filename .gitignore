@@ -331,3 +331,4 @@ tools/ce/*.csv
 # blobs-infiniteugc.svc.halowaypoint.com via la page publique Waypoint. Le résultat extrait
 # est versionné dans data/titles/{slug}/reference/map_objectives.json — c'est lui qui fait foi.
 .ai/V7.5/dumps/mapvar/
+.gocache-*/

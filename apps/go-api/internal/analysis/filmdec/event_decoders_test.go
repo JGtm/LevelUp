@@ -89,25 +89,30 @@ func TestFireRecordLayout(t *testing.T) {
 
 // TestFireRecordAimOnlyOnTheSafePath : LA VISEE N EST LUE QUE LA OU ELLE EST LOCALISABLE.
 //
-// Hors du chemin « record vide » (drapeaux 110 = 1, 111 = 0, 112 = 0), le champ existe toujours
-// mais vit APRES des boucles de longueur variable dont une largeur vient d une table remplie au
-// runtime. Le decodeur ne devine pas : il n expose rien. C est cette abstention qu on teste —
-// elle est le contraire d une lacune, et un refactor « qui lit toujours la visee » serait une
-// regression silencieuse.
+// L ENSEMBLE LOCALISABLE S EST ELARGI le 2026-08-31 (cablage de la visee modale). Il reunit
+// desormais deux chemins : l ANCRE a offsets fixes (le record vide, drapeaux 110=1, 111=0, 112=0,
+// visee au bit 113) ET le decodeur forward de la grammaire Ghidra (fire_aim_modal.go), qui pose
+// la visee sur TOUT le record MODAL (0 cible, 0 composante) a post-comptes+2. Ce qui reste HORS du
+// localisable, et que le decodeur refuse toujours, ce sont les records NON MODAUX : au moins une
+// cible ou une composante de degat, dont les boucles ont une largeur venant d une table remplie au
+// runtime. Le decodeur ne devine pas : sur ces records, il n expose rien — un refactor « qui lit
+// toujours la visee » serait une regression silencieuse.
+//
+// NOTE : les anciens cas negatifs de ce test (drapeaux hors motif vide sur un paquet a offsets
+// FIXES) ne prouvent plus rien — un tel paquet est modal par la grammaire et porte donc une visee.
+// Le negatif se prouve maintenant sur des records reellement non modaux, construits a la grammaire.
 func TestFireRecordAimOnlyOnTheSafePath(t *testing.T) {
 	const aim = 0x15555555 & ((1 << 30) - 1)
+	// Ancre : le record vide garde sa visee au bit 113 fixe (zero regression).
 	sur, _ := decodeFireEvent(buildFireRecord(1, 1, [5]uint8{0, 0, 1, 0, 0}, aim))
 	if !sur.HasAim {
-		t.Error("chemin sur (110=1, 111=0, 112=0) : la visee doit etre lue")
+		t.Error("chemin fixe (110=1, 111=0, 112=0) : la visee doit etre lue au bit 113")
 	}
-	for _, f := range [][5]uint8{
-		{0, 0, 0, 0, 0}, // 110 = 0 : pas le chemin du record vide
-		{0, 0, 1, 1, 0}, // 111 = 1 : une porte est ouverte, le champ a bouge
-		{0, 0, 1, 0, 1}, // 112 = 1 : idem
-	} {
-		if e, _ := decodeFireEvent(buildFireRecord(1, 1, f, aim)); e.HasAim {
-			t.Errorf("drapeaux %v : la visee a ete lue hors du chemin sur — le champ n y est "+
-				"pas localisable hors ligne, et la lire revient a inventer une direction", f)
+	// Hors du localisable : un record NON MODAL n expose aucune visee.
+	for _, nm := range []struct{ targets, comps int }{{1, 0}, {0, 2}, {3, 1}} {
+		if e, _ := decodeFireEvent(buildNonModalFire(nm.targets, nm.comps)); e.HasAim {
+			t.Errorf("visee lue sur un record non modal (%d cible(s), %d composante(s)) — hors du "+
+				"localisable, la lire revient a inventer une direction", nm.targets, nm.comps)
 		}
 	}
 }

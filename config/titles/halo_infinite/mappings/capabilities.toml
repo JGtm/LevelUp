@@ -65,14 +65,18 @@ schema_version = 1
 "match.events.timeline"  = "degraded"
 "match.killfeed.per_kill" = "degraded"
 "match.events.spatial"   = "not_exposed"
-# Précision par arme : not_exposed, ET LA RAISON A CHANGÉ le 2026-08-02 (J4-4).
-# Ce n'est plus « la table n'est pas peuplée » : la passe de film écrit désormais les
-# tirs par arme (cf. film.weapon_shots). C'est que LE TAUX N'EST PAS PUBLIABLE — calculé
-# sur le corpus entier il INVERSE l'ordre MA40/Sidekick par rapport à la référence de
-# l'API. Ce n'est pas une imprécision, c'est une réponse fausse. 4 armes seulement
-# tiennent à ±0,03, et seulement sur les joueurs dont l'arme domine ≥ 80 % de leurs tirs.
-# Critère de bascule : une population de publication déclarée DANS LE CODE, et l'écart à
-# l'API publié à côté du taux (PLAN_BRANCHEMENT_KILLSOURCE §4.2).
+# Précision par arme : REMISÉE le 2026-09-01 (not_exposed). Le numérateur reconstruit du
+# film par l'APPARIEMENT tir↔dégât (action_weapon_fire 0xD2 ↔ damage_aftermath 0xC0 du même
+# attaquant, NOTE_ATTRIBUTION_ARME_TIR_2026-08-31) s'est révélé NON FIABLE au recalage : le
+# pairing rate ~40 %+ des touches et les armes automatiques ressortent à 0,9-3,3 % vs ~40 %
+# côté API (RECALAGE_WEAPON_ACCURACY_FILM_2026-09-01, commit 945c9fdb7). On REMISE : le code
+# backend (décodeur, mapper killcollector/hits.go, persister, table match_weapon_hit_distance)
+# est conservé, seule l'exposition est retirée. Cette clé data-level gate le numérateur film
+# (collectHits) : not_exposed ⇒ la passe film ne s'exécute pas pour Infinite, et le front
+# useCapability('weapon_accuracy') repasse à false (charts a/c masqués). La précision GLOBALE
+# reste servie par l'API. Reprise : piste compteur ECS (cf. .ai/V7.5/REGISTRE_REPORTS.md).
+# Cohérent avec la note « le taux est match.weapon.accuracy, et il est not_exposed » sur
+# film.weapon_shots plus bas.
 "match.weapon.accuracy"  = "not_exposed"
 # Libellés de playlist préfixés d'une catégorie matchmaking ("Arène delta : Héritage")
 # à retirer pour l'affichage (analysis.NormalizePlaylistLabel). Trait d'affichage du

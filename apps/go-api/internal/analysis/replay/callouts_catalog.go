@@ -3,23 +3,32 @@ package replay
 // CATALOGUE DE CALLOUTS — lecteur du fichier de référence figé par titre
 // (data/titles/{slug}/reference/map_callouts.json, cf. PathResolver.MapCalloutsPath).
 //
-// CE QUE C'EST : les ZONES NOMMÉES officielles des cartes intégrées (tag levl du jeu,
-// libellés FR/EN résolus hors ligne depuis le tag uslg — 816 zones sur 22 cartes,
-// liaison nom<->volume 816/816). Produit par cmd/mapcallouts-build, qui exige le jeu
-// installé : le résultat est VERSIONNÉ comme donnée de référence — même règle que
-// map_structure, map_quant_bounds et map_objectives — et le rejeu d'un match reste
-// 100 % hors ligne.
+// CE QUE C'EST : les ZONES NOMMÉES officielles des cartes, DEUX SOURCES SOUS UN SEUL
+// FICHIER, et une clé par source :
 //
-// LA CLÉ EST LE MODULE INSTALLÉ (« ridgeline », « ctf_bazaar »), celui que porte déjà
-// map_quant_bounds.json : le lien nom affiché -> module reste déclaré à UN seul endroit.
-// AUCUNE CARTE FORGE N'EST AU CATALOGUE AUJOURD'HUI, ET C'EST UNE LACUNE, PAS UN FAIT DE
-// CONSTRUCTION. Cet en-tête a longtemps affirmé le contraire ; la mesure du 2026-08-27 l'a
-// renversé. Ce qui est vrai : un CANEVAS ne porte aucune zone nommée (mesuré sur les 8 canevas
-// installés). Ce qui est faux : en déduire qu'une CARTE Forge n'en a pas. Ses zones vivent
-// dans son map.mvar, chacune un objet de type himap.TypeIDZoneNommee portant un StringId qui
-// se résout contre le tag global locs — 18 zones sur Isolation, dont « cave » et « top mid ».
-// Les alimenter demande une clé map_id à côté des clés-module, et l'extraction des libellés
-// manquants : 274 des 434 StringId employés n'ont pas encore de texte joueur.
+//	Maps      clé = MODULE INSTALLÉ (« ridgeline », « ctf_bazaar ») — cartes intégrées, tag
+//	          levl du jeu, libellés FR/EN figés dans callouts_i18n.csv (816 zones sur
+//	          22 cartes, liaison nom<->volume 816/816).
+//	MapsByID  clé = MAP_ID (asset UGC) — cartes FORGE, objets `himap.TypeIDZoneNommee` du
+//	          map.mvar de la carte. Même vocabulaire de StringId que les natives.
+//
+// Le tout est produit par cmd/mapcallouts-build et VERSIONNÉ comme donnée de référence —
+// même règle que map_structure, map_quant_bounds et map_objectives — le rejeu d'un match
+// reste 100 % hors ligne à la lecture.
+//
+// POURQUOI DEUX ESPACES DE CLÉS ET PAS UN. Une carte Forge n'a PAS de module : le jeu ne
+// range sous `levels/multi/` que les cartes intégrées et les CANEVAS, et un canevas ne
+// porte aucune zone nommée (mesuré sur les 8 installés — c'est le zéro qui avait fait
+// conclure, à tort, que les cartes Forge n'en avaient pas). Son identité est son asset UGC.
+// Mélanger les deux dans une seule table ferait dépendre la lecture d'une devinette sur la
+// forme de la clé.
+//
+// LE LIBELLÉ PEUT MANQUER, ET LA ZONE EST PUBLIÉE QUAND MÊME (EN/FR vides). Le vocabulaire
+// des lieux Forge dépasse celui des 22 cartes natives : `callouts_i18n.csv` ne couvre qu'une
+// partie des StringId employés. Une zone muette garde sa géométrie MESURÉE ; lui coller un
+// libellé de repli (« Zone 7 », le hash) afficherait un nom que le jeu ne prononce pas —
+// la règle du chantier est « aucun nom deviné ». Le rendu saute les libellés vides sans
+// rien changer (calloutsLayer.ts, drawLabels).
 
 import (
 	"encoding/json"
@@ -29,12 +38,19 @@ import (
 )
 
 // MapCalloutsSchemaVersion est la version de forme attendue du catalogue.
+//
+// ELLE NE BOUGE PAS AVEC L'ARRIVÉE DES CARTES FORGE, ET C'EST DÉLIBÉRÉ : `maps_by_id` est
+// une section OPTIONNELLE et purement additive — un lecteur ancien l'ignore, un lecteur neuf
+// devant un fichier sans elle dégrade proprement (pas de zones pour les cartes Forge, ce qui
+// était déjà l'état du monde). La bumper forcerait une reconstruction complète de la partie
+// NATIVE, qui exige le jeu installé ET les fonds publiés, pour une modification qui ne touche
+// pas une seule de ses 816 zones.
 const MapCalloutsSchemaVersion = 1
 
-// ErrCalloutsUnknownMap signale un module absent du catalogue de callouts. Cas COURANT : le
-// catalogue couvre les 22 cartes intégrées et aucune carte Forge — non parce qu'elles n'ont
-// pas de zones (elles en ont, cf. l'en-tête), mais parce que leur alimentation reste à
-// écrire. L'appelant dégrade, il n'échoue pas.
+// ErrCalloutsUnknownMap signale une carte absente du catalogue de callouts — module inconnu
+// (Lookup) ou map_id inconnu (LookupByID). Cas COURANT : toutes les cartes Forge ne sont pas
+// extraites, et une carte hors rotation n'a jamais été vue. L'appelant dégrade, il n'échoue
+// pas.
 var ErrCalloutsUnknownMap = errors.New("replay: carte absente du catalogue de callouts")
 
 // Provenance du polygone livré pour une carte.
@@ -46,6 +62,12 @@ const (
 	// fond publié viennent de la chaîne universelle (internal/mapdecoupe, masque alpha du
 	// fond). Une carte sans fond publié reste `brut` — jamais un découpage deviné.
 	CalloutsProvenanceDecoupe = "decoupe"
+	// CalloutsProvenanceMvar : le volume posé par le créateur dans Forge, lu dans les objets
+	// du map.mvar (boîte ORIENTÉE par son vecteur avant, ou cylindre approché). Jamais
+	// découpé : une carte Forge n'a pas de tag levl à confronter, et son fond publié ne borne
+	// pas ses zones — mesuré sur Isolation le 2026-08-27, le rognage aux zones coûte une ancre
+	// d'objectif, donc les zones ne couvrent pas tout le terrain joué.
+	CalloutsProvenanceMvar = "mvar"
 )
 
 // MapCalloutsCatalog est le catalogue figé, tel qu'il est sur disque.
@@ -62,6 +84,9 @@ type MapCalloutsCatalog struct {
 	// rejeu (contrat OpenAPI) : y ajouter le brut le mettrait sur le réseau à chaque match
 	// pour un besoin de traçabilité hors ligne. Le catalogue, lui, n'est jamais servi.
 	Brut map[string][]CalloutBrutZone `json:"brut,omitempty"`
+	// MapsByID porte les cartes FORGE, clé = map_id (asset UGC). Optionnelle : son absence
+	// est l'état d'un catalogue produit avant l'extraction Forge, pas une erreur.
+	MapsByID map[string]MapCalloutsEntry `json:"maps_by_id,omitempty"`
 }
 
 // CalloutBrutZone est le polygone d'origine d'une zone, conservé après découpage.
@@ -73,21 +98,32 @@ type CalloutBrutZone struct {
 // MapCalloutsEntry est l'entrée d'une carte — c'est aussi la charge utile servie au
 // rejeu 2D (le service la rend telle quelle, résolue par module comme le fond de carte).
 type MapCalloutsEntry struct {
+	// Module est le module installé pour une carte intégrée, et RESTE VIDE pour une carte
+	// Forge : elle n'en a pas, son identité est la clé de MapsByID (le map_id).
 	Module string `json:"module"`
-	// Provenance dit d'où viennent les polygones : CalloutsProvenanceBrut ou
-	// CalloutsProvenanceDecoupe. Une valeur par carte — le producteur ne mélange pas.
+	// Provenance dit d'où viennent les polygones : CalloutsProvenanceBrut,
+	// CalloutsProvenanceDecoupe ou CalloutsProvenanceMvar. Une valeur par carte — le
+	// producteur ne mélange pas.
 	Provenance string        `json:"provenance"`
 	Zones      []CalloutZone `json:"zones"`
 }
 
 // CalloutZone est une zone nommée, en mètres monde (le repère des trajectoires).
 type CalloutZone struct {
-	// VolumeIndex est l'indice du volume dans le tag levl — la clé de traçabilité vers
-	// callouts_i18n.csv et les dumps de recherche.
+	// VolumeIndex est l'indice du volume dans le tag levl pour une carte intégrée — la clé
+	// de traçabilité vers callouts_i18n.csv et les dumps de recherche. Pour une carte FORGE
+	// c'est le RANG DE L'OBJET dans le map.mvar, qui joue le même rôle : retrouver la zone
+	// dans sa source. Les deux espaces ne se croisent jamais (deux catalogues de clés).
 	VolumeIndex int `json:"volume_index"`
-	// Name est le nom de CONCEPTION (possiblement tronqué à 32 octets par le format).
+	// Name est le nom de CONCEPTION (possiblement tronqué à 32 octets par le format). VIDE
+	// sur une carte Forge : le map.mvar ne porte que le StringId du lieu, pas son texte.
 	Name string `json:"name"`
-	// EN et FR sont les libellés joueur officiels (816/816 résolus par string_id).
+	// EN et FR sont les libellés joueur officiels : 816/816 sur les cartes intégrées, et
+	// 2 536/2 536 sur les cartes Forge depuis que le lexique des noms de lieu est extrait des
+	// listes de chaînes du jeu (2026-09-02 — avant, le vocabulaire Forge n'était résolu qu'à
+	// 25 % et les deux tiers des zones étaient muettes). Ils restent VIDES si le jeu
+	// introduit un nom que le lexique versionné ne connaît pas encore : le rendu dessine
+	// alors le contour SANS libellé — jamais de nom de repli inventé.
 	EN string `json:"en"`
 	FR string `json:"fr"`
 	// X, Y, Z : le point de référence du volume. C'est le centre 3D qu'utilise zoneAt —
@@ -131,17 +167,33 @@ func LoadMapCallouts(path string) (*MapCalloutsCatalog, error) {
 	return &c, nil
 }
 
-// Lookup rend l'entrée d'une carte par son module installé.
+// Lookup rend l'entrée d'une carte INTÉGRÉE par son module installé.
 //
-// ErrCalloutsUnknownMap est le cas NOMINAL des cartes Forge : l'appelant dégrade — pas
-// de calque zones — et n'échoue jamais.
+// ErrCalloutsUnknownMap est le cas NOMINAL d'une carte Forge, qui n'a pas de module :
+// l'appelant enchaîne sur LookupByID, il n'échoue jamais.
 func (c *MapCalloutsCatalog) Lookup(module string) (MapCalloutsEntry, error) {
-	if c == nil {
+	if c == nil || module == "" {
 		return MapCalloutsEntry{}, ErrCalloutsUnknownMap
 	}
 	e, ok := c.Maps[module]
 	if !ok {
 		return MapCalloutsEntry{}, fmt.Errorf("%w : %q", ErrCalloutsUnknownMap, module)
+	}
+	return e, nil
+}
+
+// LookupByID rend l'entrée d'une carte FORGE par son map_id (asset UGC).
+//
+// UN map_id VIDE EST UNE ABSENCE, PAS UNE ERREUR : le registre ne nomme pas toujours la
+// carte d'un vieux match. Une carte hors catalogue non plus — l'extraction ne couvre que les
+// variantes téléchargées.
+func (c *MapCalloutsCatalog) LookupByID(mapID string) (MapCalloutsEntry, error) {
+	if c == nil || mapID == "" {
+		return MapCalloutsEntry{}, ErrCalloutsUnknownMap
+	}
+	e, ok := c.MapsByID[mapID]
+	if !ok {
+		return MapCalloutsEntry{}, fmt.Errorf("%w : map_id %q", ErrCalloutsUnknownMap, mapID)
 	}
 	return e, nil
 }

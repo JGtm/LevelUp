@@ -186,14 +186,20 @@ func (r *MatchViewRepo) GetMatchKVPairs(ctx context.Context, matchID string) ([]
 
 	sharedDB, release, err := r.sharedRead().Get(ctx)
 	if err != nil {
+		// Dégradation best-effort assumée (duels vides), mais JAMAIS muette : sans cette
+		// trace, un lecteur cassé est indistinguable d'un match sans donnée (régression
+		// du 2026-08-03, restée invisible un mois faute de log).
+		slog.WarnContext(ctx, "match_view: kv_pairs shared reader indisponible",
+			"match_id", matchID, "err", err)
 		return nil, nil
 	}
 	defer release()
 	rows, err := sharedDB.QueryContext(ctx, Q20KVPairs, matchID)
 	if err != nil {
-		// Q20 lit la TABLE `killer_victim_pairs` directement depuis le 2026-08-02 (la vue
-		// v_killer_victim_full a été supprimée avec la bascule J4 ; elle ne fait plus partie du
-		// schéma). La table peut manquer sur une DB non migrée → duels vides, jamais d'erreur.
+		// La table canonique peut manquer sur une DB non migrée → duels vides, jamais
+		// d'erreur — mais toujours une trace (même raison que ci-dessus).
+		slog.WarnContext(ctx, "match_view: kv_pairs requete Q20 en echec",
+			"match_id", matchID, "err", err)
 		return nil, nil
 	}
 	defer rows.Close()
@@ -201,16 +207,31 @@ func (r *MatchViewRepo) GetMatchKVPairs(ctx context.Context, matchID string) ([]
 	var results []domain.KVPairRaw
 	for rows.Next() {
 		var kv domain.KVPairRaw
+		// killer_xuid / victim_xuid sont NULL sur les lignes de BOT (doctrine Q20 : le NULL
+		// est servi tel quel par le SQL, jamais COALESCE — garde-rail
+		// TestPasDeXuidNormaliseEnChaineVide). Côté Go, NULL devient "" dans KVPairRaw ;
+		// tout consommateur qui AGRÈGE par xuid doit écarter "" (bots jamais fusionnés en un
+		// acteur fantôme) — cf. la doctrine du struct domain.KVPairRaw. Avant ce scan
+		// (2026-09-02), une seule ligne de bot faisait échouer TOUT le chargement : la
+		// section Duels était vide sur 245 matchs Infinite qui avaient la donnée.
+		//
+		// TROIS colonnes en NullString, pas deux : `feed_killer_gamertag` est NULLABLE au DDL
+		// (steps_shared_kill_events.go — seuls `victim_gamertag` et `time_ms` sont NOT NULL),
+		// donc un tueur inconnu la vide et casserait le scan exactement comme les xuid.
+		var killerXUID, killerGT, victimXUID sql.NullString
 		if err := rows.Scan(
-			&kv.KillerXUID,
-			&kv.KillerGT,
-			&kv.VictimXUID,
+			&killerXUID,
+			&killerGT,
+			&victimXUID,
 			&kv.VictimGT,
 			&kv.KillCount,
 			&kv.TimeMS,
 		); err != nil {
 			return nil, fmt.Errorf("MatchViewRepo.GetMatchKVPairs scan: %w", err)
 		}
+		kv.KillerXUID = killerXUID.String
+		kv.KillerGT = killerGT.String
+		kv.VictimXUID = victimXUID.String
 		results = append(results, kv)
 	}
 	return results, rows.Err()

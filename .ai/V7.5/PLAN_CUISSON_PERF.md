@@ -2336,3 +2336,127 @@ Seuils : `film_context.go` 270 L, `build_from_film.go` 344 L, `film_context_cata
 **AUCUN COMMIT** (interdit du mandat). Fichiers modifies : `filmdec/film_context.go`,
 `replay/build_from_film.go`, `replay/testdata/equivalence/60ae07c4.tsv`, ce plan ; ajoute :
 `filmdec/film_context_catalogue_test.go`. Decouvertes N-BD a N-BG au §8.
+
+### Reconciliation avec `feat/v75` (2026-09-03) — merge resolu, sorties re-figees en CHANGEMENT DECLARE AMONT
+
+Le chantier avait branche a `900384f50`. `feat/v75` a avance de ~150 commits (324 fichiers), dont
+les deux merges les plus recents : `f6d236d2e` « les variantes heritent du calage de leur carte de
+base » et `ceabaad67` « suppression du sol reconstruit ». `git merge --no-ff --no-commit feat/v75` :
+**4 conflits**, 17 fichiers croisant le chantier. Aucun commit (mandat du pilote).
+
+**Regle appliquee a chaque conflit : la SEMANTIQUE amont est preservee integralement, dans NOTRE
+architecture.** Un hunk amont qui touchait une fonction que le chantier a deplacee a ete REJOUE a la
+main dans le nouveau fichier, jamais reintroduit dans l'ancienne forme.
+
+| Conflit | Ce que l'amont voulait | Resolution |
+|---|---|---|
+| `analysis/replay/build.go` | ajouter `Bots []BotIdentity` et `Successions []Succession` a `Options` | Le bloc en conflit EST celui que le lot 1 a sorti de `build.go` (`Options` + `BuildFromFilm` + les 17 enveloppes). Verifie sur pieces : l'amont n'y touche QUE ces deux champs (diff bloc-a-bloc base contre amont). Bloc supprime cote nous ; les deux champs REJOUES dans `replay/options.go`, au meme rang (entre `PlayerIndices` et `Objectives`), commentaires amont inclus. Les trois autres hunks amont de `build.go` (`BuildFromPositions` : nommage par vie + bots + relais + `DetectT0Film` ; `decimateTracks` : une track PAR VIE) sont hors du bloc deplace et se sont fusionnes seuls. |
+| `replaybuild/replaybuild.go` | `Bots: botIdentities(ksRes)` / `Successions: botSuccessions(matchID, facts, ksRes)` dans les options de `BuildFromFilm` | Le lot 6.1 a extrait `collecterEntreesCatalogue` — c'est la que `ksRes` vit desormais. Les deux projections y sont calculees et voyagent dans `entreesCatalogue` (champs `bots`, `successions`). **AUCUNE etape observee ajoutee** : ce sont des projections de `killsource`, deja observe — le contrat d'`observe_test.go` et les digests sont intacts. `botIdentities`/`botSuccessions` (fonctions amont) sont prises telles quelles. |
+| `sync/replayartifacts/cuisson.go` | apres `b.construits++`, lire `t0FilmMs` sur l'artefact RANGE et l'empiler dans `bilanCuisson.t0Film` (report en base a la fin du lot, cf. `t0film.go`) | Le lot 5 a extrait `cuireUnMatch` de `buildAll` : le geste amont est rejoue LA, sur `out.stored.Path` (notre `storedOne{stored, dur, peak}` au lieu du `stored` nu de l'amont). Le champ `t0Film` du bilan et le `reporterT0Film` d'`artifacts.go` se sont fusionnes seuls. |
+| `.ai/thought_log.md` | deux blocs d'entrees inseres aux memes ancres (tete de fichier, et une ancre au milieu) | UNION des deux, nos entrees en tete de chaque bloc puis celles de l'amont — aucune entree perdue des deux cotes. Le separateur `---` en double laisse par le merge a ete supprime (meme defaut que le commit amont `63583b45e`). |
+
+`.ai/V7.5/REGISTRE_REPORTS.md` a fusionne seul en UNION (nos trois clotures + les lignes de
+l'amont) — verifie ligne a ligne.
+
+**DEUX RUPTURES DE COMPILATION LAISSEES PAR L'AUTO-MERGE**, toutes deux dans des tests de recherche
+NEUFS de l'amont qui appelaient des symboles que le lot 1 a supprimes. Intention amont rejouee, pas
+contournee :
+
+- `filmdec/lot3_registre_compte_research_test.go` appelait `inflateChunk` (retire de `filmdec` au
+  lot 1) -> `filmsource.Inflate`, qui EST le meme inflate (partiel sur flux tronque). Mesure
+  inchangee.
+- `filmdec/projectile_owner_helpers_test.go` appelait `worldObjectSlotBand(dir, n, ti)` ->
+  `worldObjectSlotBandDir(dir, n, ti)`, le shim `_test` du lot 1 qui charge le film une fois puis
+  appelle `worldObjectSlotBand(film, ti)`. Mesure inchangee.
+
+**`replay.SchemaVersion` : AUCUNE COLLISION.** Base 34, notre branche 34 (le chantier n'a jamais
+bumpe — c'est un refacto), amont **37** (35 zone de retour CTF, 36 identite des vies, 37
+renumerotation T0 film). Le merge prend 37, rien a arbitrer. **Le commit « suppression du sol
+reconstruit » ne touche AUCUN fichier `.go`** : c'est un retrait 100 % front (`mapFloor.ts`,
+`drawFloorLayer`, le calque de `useReplayStaticLayers`). Cote serveur, `Builder.structureFor` ->
+`replay.LoadMapStructure` et les champs `structure` / `structureBounds` du document sont
+INTACTS — report amont assume (retrait = changement de schema + re-cuisson totale). Rien n'a ete
+debranche ici, et rien ne devait l'etre. Sans effet sur le harnais par surcroit : les deux seules
+cartes a structure figee sont `ridgeline` et `sgh_streets`, aucune des 13 cartes du corpus.
+
+**BALAYAGES ET ETAPES : aucun ajout ni retrait.** L'amont n'ajoute aucun balayage a
+`BuildFromFilm` (le seul hunk dans le bloc deplace etait les deux champs d'`Options`) ; les 45
+etapes observees sont les memes sur les 13 films (aucune ligne ajoutee ni retiree dans les TSV).
+`DetectT0Film` travaille sur `doc.Tracks` dans `BuildFromPositions` : ce n'est pas un balayage de
+film, il n'entre pas dans la liste observee.
+
+**TROIS GARDES ONT ROUGI, mises a jour DANS LE SENS DE L'INTENTION AMONT :**
+
+1. `archlint/filmdec_package_vars_test.go` — 113 -> **116**. Les trois `var` de plus viennent de
+   l'amont : `weapon_hits.go` (`WeaponHitDistanceEdges`) et `weapon_hits_decode.go`
+   (`lot1RefDomWidths`, `lot1chBases`), trois TABLES CONSTANTES du chantier « precision par arme »
+   (remise le 2026-09-01, acquis backend conserves). Le ratchet gele ce que le chantier TROUVE : il
+   monte a 116 et continue d'interdire au chantier d'en ajouter. Justification datee en tete du
+   fichier.
+2. `archlint/no_film_reread_test.go` (regle 3) — le fichier amont `sync/killcollector/hits.go`
+   appelle `ReadFilmChunk` et `CountFilmChunks` depuis un paquet de PRODUCTION. La regle gagne une
+   ALLOWLIST `appelsDEnveloppeAutorises`, verifiee DANS LES DEUX SENS (site en trop = echec, entree
+   morte = echec) et fermee a ces deux entrees.
+3. `archlint/no_recomputed_film_context_test.go` — regle 1 :
+   `weapon_hit_distance_resolver.go/DetectFilmWorldRange -> DetectI0Layout` (l'amont resout les
+   bornes monde d'une carte par la signature de largeurs d'axe, depuis un REPERTOIRE) ; regle 2 :
+   `internal/sync/killcollector/hits.go` analyse le registre pour ses propres balayages.
+
+   POURQUOI ALLOWLISTER ET NON MIGRER : la passe est **desactivee en production** — Infinite ne
+   declare pas la capability `match.weapon.accuracy` depuis la remise du 2026-09-01, et
+   `ConfigureFilmAccuracy` n'a **aucun appelant hors tests** (verifie par grep). Aucune cuisson ne
+   paie ces relectures aujourd'hui. La migrer exige de creer les formes `Scan*(film)` de trois
+   balayages neufs de l'amont (`ScanFilmWeaponShots`, `ScanFilmWeaponDamages`, `BuildBipedTracks`) :
+   un lot, pas une resolution de conflit. **Consigne au registre des reports**, retrait cible = le
+   lot qui rallume la precision par arme.
+
+**GATES (executes dans le worktree, 2026-09-03).** `gofmt -l .` VIDE · `go build ./...` code 0 ·
+`go vet ./...` code 0 · `go test ./internal/analysis/... ./internal/replaybuild/
+./internal/games/halo_infinite/film/... ./internal/sync/... ./internal/archlint/ ./cmd/... -count=1`
+**code 0** · `go test -tags=integration -p 1 ./internal/sync/... -count=1` **code 0** ·
+`golangci-lint run` : **324 issues** (baseline 273 avant merge) — les 51 de plus sont TOUTES sur du
+code amont ; croisement mesure : **zero issue sur un fichier touche par le chantier**
+(`900384f50..HEAD`), zero sur les fichiers de la resolution.
+
+**HARNAIS — LES ECARTS SONT CEUX QUE L'AMONT DECLARE.** `tmp/replay-equiv.exe` rebati, passe
+complete SANS `-update` : **0 identique, 13 different**. Premiere etape en ecart, film par film :
+
+| premiere etape en ecart | films | cause amont |
+|---|---|---|
+| `flag` | `000d5950`, `01e1f945`, `64e8adfa`, `1c4c63c2`, `53ce4390`, `60ae07c4`, `51101d1d`, `a349fea8` | `replaybuild/flagspawns.go` : le socle NEUTRE ne se filtre plus ici, il voyage et c'est le calque qui tranche (`replay/flag_neutral.go`) |
+| `fire` | `7344d24f`, `696a9d7c`, `084a804d`, `d9781168`, `9f57c612` | `filmdec/fire_events.go` : champ `ShooterIndex5` (5 bits, bit 35) + visee MODALE etendue (`fire_aim_modal.go`) |
+
+**CORRELATION MESUREE, PAS DEDUITE** (c'est ce qui autorise le refigeage) : le digest `flag` bouge
+sur EXACTEMENT les 8 films dont la carte declare un `flag_spawn` de `team_index = -1` au catalogue
+`map_objectives.json` (Cliffhanger, Catalyst x2, Refuge, Fortress, Behemoth, Live Fire,
+Fragmentation Heavies), et sur AUCUN des 5 qui n'en declarent pas (Vagabond x2 : zero socle ;
+Fortitude Heavies : 6 socles 0/1 ; Curfew et Dredge : 2 socles 0/1). 13/13, zero exception.
+
+Le diff COMPLET des TSV (apres refigeage) ne fait bouger que QUATRE noms d'etape, et **aucun compte
+d'etape ne change** — tous les autres balayages (`positions`, `deaths`, `objectives`, `score`,
+`zones`, `killRefs`, `neutralDeaths`, `spawnPoints`, les six canaux delta...) sont IDENTIQUES AU
+BIT PRES, ce qui est la preuve que l'architecture du chantier a traverse le merge sans dommage :
+
+| etape | films touches | compte | cause amont |
+|---|---|---|---|
+| `fire` | **13/13** + mini-bobine | inchange partout (519, 2154, 2917, 2246, 6014, 9391, 2229, 3401, 2127, 1635, 843, 4137, 2879) | `ShooterIndex5` + visee modale |
+| `flag` | 8/13 | 1 (struct) | socle neutre au voyage |
+| `killsource` | **1/13** (`a349fea8`) | 1 (struct) | registre borne a sa FIN STRUCTURELLE : 50 blocs et non 118 (`filmdec/registry.go`, `registryBlockTail`, commit amont `b9390a9f5`). Meme cause que les trois `.golden` de `killsource` que l'amont a lui-meme refiges |
+| `artifact` | 13/13 | **+2 798 a +18 277 octets** | schema 34 -> **37** : une track PAR VIE, `bots`/roster, `successions`, `t0FilmMs`, `flagReturnZone` |
+
+Diff des octets d'artefact : `000d5950` 2 491 294 -> 2 494 868 (+3 574) · `01e1f945` 1 931 332 ->
+1 938 734 (+7 402) · `64e8adfa` 3 068 141 -> 3 079 371 (+11 230) · `7344d24f` 2 341 058 ->
+2 352 835 (+11 777) · `696a9d7c` 2 210 190 -> 2 218 094 (+7 904) · `084a804d` 7 249 908 ->
+7 268 185 (+18 277) · `1c4c63c2` 7 412 636 -> 7 428 299 (+15 663) · `53ce4390` 2 682 991 ->
+2 691 917 (+8 926) · `d9781168` 2 573 297 -> 2 585 346 (+12 049) · `9f57c612` 1 575 147 ->
+1 581 250 (+6 103) · `60ae07c4` 3 030 137 -> 3 035 124 (+4 987) · `51101d1d` 647 015 -> 649 813
+(+2 798) · `a349fea8` 6 890 562 -> 6 896 221 (+5 659).
+
+**REFIGEAGE puis VERIFICATION.** `-update` sur les 13 films (13 identiques a l'ecriture), puis passe
+complete SANS `-update` : **13 identiques, 0 different, 0 ecarte, 0 echec, 0 illisible** — le
+refigeage est deterministe. Durees 4,8 s a 1 min 53, pics 0,09 a 0,65 Gio : **le gain du chantier est
+intact apres le merge** (temoins `01e1f945` 18,0 s, `7344d24f` 21,0 s, `696a9d7c` 20,5 s, tous tres
+en dessous de la cible de 100 s). L'etage CI (`TestEquivalenceMiniFilm`) a ete refige de meme : une
+seule ligne bouge, `fire`, compte identique (519).
+
+**AUCUN COMMIT** (mandat) : l'arbre est resolu, l'index pret, le pilote verifie et committe.

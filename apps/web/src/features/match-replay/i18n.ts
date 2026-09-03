@@ -16,7 +16,7 @@ export type ReplayLocale = Locale
 export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
   fr: {
     title: 'Rejeu 2D',
-    back: 'Retour au match',
+    back: 'Fiche du match',
     play: 'Lecture',
     pause: 'Pause',
     restart: 'Recommencer',
@@ -46,6 +46,18 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       environment: 'Chute ou sortie de zone',
       suicide: 'Tué par sa propre arme',
     },
+    presenceJoined: 'a rejoint la partie',
+    presenceLeft: 'a quitté la partie',
+    presenceJoinedHint:
+      "Horodatage de participation de l'API du match : le joueur a rejoint en cours de partie.",
+    presenceLeftHint:
+      "Horodatage de participation de l'API du match : le joueur a quitté avant la fin.",
+    presenceJoinedDerived: 'entre en partie',
+    presenceLeftDerived: 'ne reviendra plus',
+    presenceJoinedDerivedHint:
+      "Première apparition bien après le coup d'envoi, dérivée des vies du film (participation API absente sur ce match).",
+    presenceLeftDerivedHint:
+      "Dernière vie du film bien avant la fin : un départ — ou une élimination définitive sur un mode à manches, le film ne les distingue pas (participation API absente sur ce match).",
     sound: 'Son',
     soundHint:
       "Sons d'armes sur les éliminations, les lancers de grenade et les activations d'équipement, coupés à la seconde. Une arme sans son enregistré reste muette. Coupé par défaut.",
@@ -60,21 +72,16 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       grenade: 'Grenades',
       melee: 'Mêlée',
       equipment: 'Équipements',
-      objective: 'Objectifs',
     },
     captureImage: "Capturer l'image",
     recordVideo: 'Enregistrer la vidéo',
     stopRecording: "Arrêter l'enregistrement",
     recordHint:
       "L'enregistrement filme le rejeu tel qu'il défile : changer de vitesse ou déplacer le curseur se voit dans le fichier. Démarrer relance la lecture si elle est en pause ; mettre en pause ou laisser le film finir arrête l'enregistrement et télécharge le clip.",
-    captureImageShort: 'Image',
     // « REC » et « Arrêter » : la convention des lecteurs, identique dans les deux langues
     // pour la première — c'est le mot qu'on cherche du regard sur un bouton d'enregistrement.
-    recordVideoShort: 'REC',
-    stopRecordingShort: 'Arrêter',
     settingsButton: 'Réglages',
     settingsClose: 'Fermer les réglages',
-    playbackTitle: 'Lecture',
     autoPlay: 'Lecture automatique',
     autoPlayHint:
       "Allumé, le rejeu démarre tout seul à l'ouverture de la page. Éteint — le réglage par défaut — il s'ouvre en pause au coup d'envoi et attend le bouton Lecture. Le choix est retenu d'un match à l'autre ; il ne met ni en lecture ni en pause le rejeu déjà ouvert.",
@@ -82,11 +89,21 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     layerAim: 'Visée',
     layerAimHint:
       "Cône de regard : la direction où le joueur regarde, décodée du même enregistrement que la position. Le jeu ne la retransmet que lorsqu'elle change : une mesure ancienne pâlit au lieu de disparaître, et rien n'est dessiné au-delà de cinq secondes. Un trait court se pose à la POINTE du cône quand la visée n'est pas à plat : vers l'extérieur si le joueur lève la tête, vers l'intérieur s'il pique. Le cône raccourcit dans les deux cas — sa longueur seule ne les distinguerait pas.",
+    zoomGroup: 'Cadrage de la carte',
+    zoomIn: 'Grossir (+ ou molette)',
+    zoomOut: 'Réduire (− ou molette)',
+    zoomReset: 'Revoir toute la carte',
+    zoomLevelFmt: (z: number) => (z === 1 ? 'Tout' : `${String(z).replace('.', ',')}x`),
+    panUp: 'Déplacer vers le haut (Maj + flèche haut)',
+    panDown: 'Déplacer vers le bas (Maj + flèche bas)',
+    panLeft: 'Déplacer vers la gauche (Maj + flèche gauche)',
+    panRight: 'Déplacer vers la droite (Maj + flèche droite)',
+    layerGroupPlayers: 'Joueurs',
+    layerGroupTerrain: 'Terrain',
+    layerGroupObjectives: 'Objectifs',
     layerZones: 'Zones',
     layerZonesHint:
       'Zones nommées officielles de la carte, extraites du jeu. Les grandes zones pavent le terrain ; les contours pointillés sont des étages imbriqués.',
-    layerNames: 'Noms',
-    layerNamesHint: 'Le nom de chaque joueur sous son marqueur.',
     layerTrail: 'Traînée',
     layerTrailHint:
       "Les sept dernières secondes parcourues, derrière chaque marqueur. L'opacité monte vers la tête : la trace la plus visible est celle de l'instant, et c'est ce qui donne le sens du déplacement.",
@@ -165,7 +182,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     layerHeatmap: 'Carte de chaleur',
     layerHeatmapHint:
       "Où le match s'est joué, sur tout le match. Une cellule jamais atteinte reste vide : « froid » veut dire peu fréquenté, l'absence de couleur veut dire jamais vu.",
-    heatmapReading: 'Ce que la chaleur mesure',
+    heatmapReading: 'Mesure',
     heatmapMode: {
       presence: 'Présence',
       kills: 'Éliminations',
@@ -174,10 +191,10 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       presence: 'Temps passé par les joueurs, lu dans les trajectoires du film.',
       kills: "Morts comptées à l'endroit où la victime est tombée, pas d'où le tir partait.",
     },
-    heatmapSpanTitle: 'Sur quelle durée',
+    heatmapSpanTitle: 'Durée',
     heatmapSpan: {
-      match: 'Toute la partie',
-      live: "Jusqu'à l'image courante",
+      match: 'Partie',
+      live: 'Progressif',
     },
     heatmapSpanHint: {
       match:
@@ -201,6 +218,8 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       "Échelle étalonnée sur les lieux fréquentés (médiane au bas, 95e centile en haut) : au-delà, la couleur sature. Un seul point extrême ne peut donc pas écraser le reste de la carte.",
     rosterEmpty:
       "Aucune vie du film n'a pu être rattachée à un joueur : le rejeu reste anonyme.",
+    bridgeDiag: (named: number, total: number, collisions: number) =>
+      `Pont du film : ${named}/${total} vies nommées, ${collisions} collision(s) de slot.`,
     teamUnknown: 'Sans équipe',
     teamLabelFmt: (name) => `Équipe ${name}`,
     teamNumberedFmt: (n) => `Équipe ${n}`,
@@ -245,7 +264,6 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     tracksExpand: 'Déplier les pistes',
     unknownPlayer: 'Joueur inconnu',
     markMe: 'Moi',
-    markFriend: 'Ami',
     healthLabel: 'Santé',
     shieldLabel: 'Bouclier',
     abilityLabel: "Capacité d'armure équipée",
@@ -257,7 +275,8 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     grenadeThrown: 'Grenade lancée',
     eliminatedLabel: 'Éliminé',
     respawnIn: 'Réapparition dans',
-    respawnUnknown: 'Réapparition ?',
+    goneLabel: 'Hors film',
+    goneValue: 'ne revient plus',
     inventoryAge: 'Inventaire lu il y a',
     inventoryAhead: 'Inventaire de la première image-clé de cette vie, lue dans',
     grenadeSelected: 'Type équipé : le seul porté, donc celui qui partira au prochain lancer.',
@@ -354,7 +373,6 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     ammoFullLabel: 'Munitions pleines',
     gaugeLabel: 'charge restante',
     exportVideo: 'Exporter la vidéo',
-    exportVideoShort: 'Exporter',
     exportHint:
       "L'export recalcule le film aussi vite que la machine le permet : le fichier ne se paie pas en temps de match.",
     exportDialogTitle: 'Exporter le rejeu en vidéo',
@@ -390,7 +408,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
   },
   en: {
     title: '2D replay',
-    back: 'Back to match',
+    back: 'Match details',
     play: 'Play',
     pause: 'Pause',
     restart: 'Restart',
@@ -420,6 +438,18 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       environment: 'Fall or out of bounds',
       suicide: 'Killed by their own weapon',
     },
+    presenceJoined: 'joined the game',
+    presenceLeft: 'left the game',
+    presenceJoinedHint:
+      'Match API participation timestamp: this player joined in progress.',
+    presenceLeftHint:
+      'Match API participation timestamp: this player left before the end.',
+    presenceJoinedDerived: 'joins the game',
+    presenceLeftDerived: 'will not return',
+    presenceJoinedDerivedHint:
+      'First appearance well after kickoff, derived from the film lives (no API participation on this match).',
+    presenceLeftDerivedHint:
+      'Last film life well before the end: a leaver — or a final elimination in a round-based mode; the film does not tell them apart (no API participation on this match).',
     sound: 'Sound',
     soundHint:
       'Weapon sounds on kills, grenade throws and equipment activations, cut at one second. A weapon with no recorded sound stays silent. Off by default.',
@@ -434,19 +464,14 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       grenade: 'Grenades',
       melee: 'Melee',
       equipment: 'Equipment',
-      objective: 'Objectives',
     },
     captureImage: 'Capture image',
     recordVideo: 'Record video',
     stopRecording: 'Stop recording',
     recordHint:
       'Recording films the replay as it plays: changing speed or moving the cursor shows up in the file. Starting resumes playback if it is paused; pausing, or letting the film end, stops the recording and downloads the clip.',
-    captureImageShort: 'Image',
-    recordVideoShort: 'REC',
-    stopRecordingShort: 'Stop',
     settingsButton: 'Settings',
     settingsClose: 'Close settings',
-    playbackTitle: 'Playback',
     autoPlay: 'Auto-play',
     autoPlayHint:
       'Turned on, the replay starts on its own when the page opens. Turned off — the default — it opens paused at kickoff and waits for the Play button. The choice is kept from one match to the next; it neither plays nor pauses a replay that is already open.',
@@ -454,11 +479,21 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     layerAim: 'Aim',
     layerAimHint:
       'Look cone: the direction the player is looking at, decoded from the same record as the position. The game only retransmits it when it changes: an older reading fades instead of vanishing, and nothing is drawn beyond five seconds. A short tick sits at the TIP of the cone when the aim is not level: outwards when the player looks up, inwards when they look down. The cone shortens either way — its length alone could not tell them apart.',
+    zoomGroup: 'Map framing',
+    zoomIn: 'Zoom in (+ or wheel)',
+    zoomOut: 'Zoom out (− or wheel)',
+    zoomReset: 'Show the whole map',
+    zoomLevelFmt: (z: number) => (z === 1 ? 'All' : `${z}x`),
+    panUp: 'Pan up (Shift + up arrow)',
+    panDown: 'Pan down (Shift + down arrow)',
+    panLeft: 'Pan left (Shift + left arrow)',
+    panRight: 'Pan right (Shift + right arrow)',
+    layerGroupPlayers: 'Players',
+    layerGroupTerrain: 'Terrain',
+    layerGroupObjectives: 'Objectives',
     layerZones: 'Zones',
     layerZonesHint:
       'Official named map zones, extracted from the game. Large zones tile the terrain; dashed outlines are nested floors.',
-    layerNames: 'Names',
-    layerNamesHint: "Each player's name under their marker.",
     layerTrail: 'Trail',
     layerTrailHint:
       'The last seven seconds travelled, behind every marker. Opacity rises towards the head: the most visible trace is always the current one, and that is what gives the direction of travel.',
@@ -537,7 +572,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     layerHeatmap: 'Heat map',
     layerHeatmapHint:
       'Where the match was played, over the whole match. A cell never reached stays empty: "cold" means seldom visited, no colour at all means never seen.',
-    heatmapReading: 'What the heat measures',
+    heatmapReading: 'Measure',
     heatmapMode: {
       presence: 'Presence',
       kills: 'Kills',
@@ -546,10 +581,10 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       presence: 'Time spent by players, read from the film trails.',
       kills: 'Deaths counted where the victim fell, not where the shot came from.',
     },
-    heatmapSpanTitle: 'Over what period',
+    heatmapSpanTitle: 'Duration',
     heatmapSpan: {
-      match: 'Whole match',
-      live: 'Up to the current frame',
+      match: 'Match',
+      live: 'Progressive',
     },
     heatmapSpanHint: {
       match:
@@ -572,6 +607,8 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     heatLegendHint:
       'Scale calibrated on the visited places (median at the bottom, 95th percentile at the top): beyond that, the colour saturates. A single extreme spot therefore cannot flatten the rest of the map.',
     rosterEmpty: 'No life from the film could be attached to a player: the replay stays anonymous.',
+    bridgeDiag: (named: number, total: number, collisions: number) =>
+      `Film bridge: ${named}/${total} lives named, ${collisions} slot collision(s).`,
     teamUnknown: 'No team',
     teamLabelFmt: (name) => `Team ${name}`,
     teamNumberedFmt: (n) => `Team ${n}`,
@@ -616,7 +653,6 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     tracksExpand: 'Expand tracks',
     unknownPlayer: 'Unknown player',
     markMe: 'Me',
-    markFriend: 'Friend',
     healthLabel: 'Health',
     shieldLabel: 'Shield',
     abilityLabel: 'Equipped armor ability',
@@ -627,7 +663,8 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     grenadeThrown: 'Grenade thrown',
     eliminatedLabel: 'Eliminated',
     respawnIn: 'Respawn in',
-    respawnUnknown: 'Respawn ?',
+    goneLabel: 'Out of film',
+    goneValue: 'does not return',
     inventoryAge: 'Inventory read',
     inventoryAhead: 'Inventory from the first keyframe of this life, read in',
     grenadeSelected: 'Equipped type: the only one carried, so the one the next throw will use.',
@@ -723,7 +760,6 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     ammoFullLabel: 'Ammo full',
     gaugeLabel: 'charge left',
     exportVideo: 'Export video',
-    exportVideoShort: 'Export',
     exportHint:
       'The export recomputes the film as fast as the machine allows: the file does not cost you a match length.',
     exportDialogTitle: 'Export replay as video',
