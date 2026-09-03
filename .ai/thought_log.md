@@ -1,3 +1,148 @@
+## [2026-09-03] Rejeu vehicules — V6 : la liste d'evenements N'A PAS de suite (temoin), et la machine d'etats d'occupation par occupant — Complété
+
+**Question** : le ratio board:exit = 1:15 vient-il de notre decodeur, qui ne lit que l'evenement de
+TETE de chaque paquet ? Premisse fondatrice du plan revise du lot V5B. **REPONSE : NON, et le
+temoin le prouve.** Ghidra MORT : tout est mesure, `CGO_ENABLED=0`, GOCACHE isole, avant-plan.
+
+**GRAMMAIRE D'ENCHAINEMENT ETABLIE.** Le bit qui suit la charge d'un evenement vehicule de tete
+vaut 0 (fin de liste) sur **99/100** instances (temoins -1 / +1 bit : 5 % / 0 %), et il reste
+1 300 a 2 800 bits derriere : la trame ECS. La longueur d'un evenement est une CONSTANTE PAR TYPE,
+mesuree au bit pres : sortie **42 bits** (debut de trame 43 sur **307/307** paquets de 40 films),
+embarquement **52 bits** (53 sur 14/14). Decomposition exacte avec les largeurs deja portees le
+02/09 : sortie `9 + [13+13+1] + 6 + 1`, embarquement `9 + [11+10+16] + 6 + 1` — recoupement
+independant du portage Ghidra, aucun parametre ajuste.
+
+**ANCRAGE AVAL REFUTE COMME ORACLE DE LONGUEUR.** « Fin propre de trame » : vrai dans **0,0 %** des
+cas AU VRAI DEBUT (34 538 paquets a liste vide, verite terrain). Score de repli (profondeur de
+marche) : gagnant unique dans **23,3 %** par paquet, et AGREGE sur 250 sorties il pointe **S = 47
+au lieu de 43** (rang 4) — biaise, pas seulement bruite. Le decodeur ECS n'est pas bit-exact, il ne
+peut pas servir de regle. La marche sequentielle des types inconnus reste donc fermee.
+
+**MAIS LA QUESTION EST TRANCHEE PAR LA SIGNATURE.** Puisqu'un evenement vehicule TERMINE la liste,
+son cadrage est contraint de bout en bout (15 bits board / 17 bits exit + occupant en bande) : on
+balaie les 400 premiers decalages de TOUS les paquets delta. 8 films, 296 595 paquets, 1,2 x 10^8
+essais. **Reel hors tete : 1 894. Temoins (corps decale de +1/+2/+3/+4 bits) : 4 246 / 1 539 /
+3 400 / 2 881, moyenne 3 017.** Le reel est SOUS ses temoins, et les sieges des candidats sont
+UNIFORMES sur 0..7 (les vrais valent 0 a 94-95 %). **Il n'y a AUCUN embarquement hors tete.** Le
+1:15 est une propriete du film : le moteur n'emet `biped_board_vehicle` que pour un sous-ensemble
+des montees. Registre des 30 types de tete au rapport.
+
+**REF 2 DE L'EMBARQUEMENT : CE N'EST PAS LE VEHICULE.** Les trois refs sont PRESENTES (22/22, ce
+qui explique les 37 bits), mais la valeur de la ref 2 ne tombe dans la bande `ti=40` dans **0/22**
+des cas, ni dans celle des armes au sol (0/22), et elle ne prend que **4 valeurs distinctes** sur
+22 instances de 8 films (180, 116, 244, 208) : un identifiant de definition, pas d'instance.
+
+**MACHINE D'ETATS LIVREE ET BRANCHEE** (`replay/vehicle_rides_events.go`, additif ; `buildVehicleRides`
+la consomme d'abord, le trou passe en REPLI). Par OCCUPANT : embarquement ouvre, sortie ferme,
+sortie orpheline ouvre au dernier point replique, episode ouvert -> reapparition sinon fin de vie
+du vehicule (SILENCE TERMINAL, **5 sur 49** episodes de 5 films, la ou l'ancien pilotage en
+attribuait 0). Vehicule resolu par la position avec DEUX ancres (debut puis fin).
+
+**UN SEUL SEUIL NOUVEAU, ET SA TABLE** : `vehicleEventAnchorRadiusM = 3,0 m`. La population n'est
+pas celle du lot V4 (le rayon du trou DECIDE de l'embarquement ; celui de l'ancre ne choisit que
+QUEL vehicule, l'evenement ayant deja prouve l'embarquement). Mesure sur 49 episodes attestes,
+5 films : 1,5 m -> 39/49 rattaches (1 ambigu, temoin 1) · 2,0 m -> 46/49 (1, 1) · **3,0 m -> 48/49
+(1, 1)** · 5,0 m -> 48/49 (2, 2) · 12 m -> 49/49 (4, 3). 3 m est le dernier rayon qui ne coute RIEN.
+
+**DEUX PIEGES CORRIGES SUR MESURE** : (1) la regle anti-doublon naive faisait PERDRE un episode
+(12 -> 11 sur `0d76e8f1`) parce qu'un episode d'evenement NON RESOLU supprimait quand meme le trou
+qui savait le rattacher — seuls les episodes PUBLIES ferment desormais la porte ; (2) la borne
+« reapparition » du silence terminal est posee par SEMANTIQUE, et il est dit qu'elle **n'a change
+aucun chiffre** sur les deux films (le slot 561 ne reapparait vraiment jamais).
+
+**ARTEFACTS** : `0d76e8f1` **12 -> 13** episodes (11 mixtes + 2 trou, 11 nommes, **10 -> 11** avec
+siege, ambigus 1 -> 3 = multi-occupants publies) ; `fccc61cd` **2 -> 3** (+50 %, 3 avec siege).
+Tirs en vehicule INCHANGES (23 et 0) : les episodes gagnes ne portaient pas d'orphelin d'arme de
+vehicule — dit tel quel. SchemaVersion **inchange (30)** : memes champs, aucun contrat touche.
+
+**Gates** : gofmt vide · `go vet` filmdec+replay exit 0 · `CGO_ENABLED=0 go test
+./internal/analysis/filmdec/ ./internal/analysis/replay/ -count=1` VERT sans env (0 `--- FAIL:`) ·
+`CGO_ENABLED=1` service + replaybuild verts · fichiers <= 500 L, fonctions <= 80 L · pas de
+regeneration OpenAPI (contrat inchange). `internal/analysis/filmdec/` **non modifie** (5
+instruments `_test.go` seulement) : le garde-fou de cadrage est intact par construction.
+
+**Conclusion / prochaine etape** : le plafond de couverture des episodes est le FILM, pas le
+decodeur — c'est desormais demontre par deux voies independantes (le bloc d'image-cle au lot V5B,
+la liste d'evenements ici). La seule piste restante pour gagner des episodes est le TIR EN
+VEHICULE comme SOURCE (et non plus comme consommateur) : un tir d'arme de vehicule nomme son
+tireur et prouve son occupation, mais aucune methode justifiable ne resout le vehicule a cet
+instant — 180 orphelins hors episode sur `0d76e8f1`. Rapport :
+`.ai/V7.5/film_re/V6_LISTE_COMPLETE_2026-09-02.md`
+
+## [2026-09-03] Rejeu vehicules — V5B : le bloc de 89 bits OUVERT — c'est du MOUVEMENT, pas de l'occupation — Complété
+
+**Question** : lire le CONTENU du bloc supplementaire du record d'image-cle d'un vehicule (+89
+bits, mesure au lot V5). Ghidra toujours MORT : tout est mesure. Corpus 8 films, oracle = les
+episodes attestes (sortie decodee + trou du flux de position), garde-fou `SlotGap == 1`.
+**LE BLOC EST BIEN UNE INSERTION** : le modele « O = F[0:p] + BLOC(d) + F[p:] » explique 95,4 a
+97,7 % des bits compares contre 66-91 % aux deux modeles degeneres ; `d = 89` EXACTEMENT sur 10
+blocs sur 18, 6 films ; `p` varie (364 a 422 bits depuis le debut du record — pas de porte a
+decalage fixe). Temoin libre/libre a 96-98 % d'accord PARTOUT : la chute n'est pas de la derive.
+**IL NE NOMME PERSONNE — refutation exhaustive avec temoin par permutation.** Balayage de tout le
+dictionnaire du chantier (4 formes d'entite du lot V5, refs gardees w=7/8/13 des evenements
+board/exit, siege R(6)) x 185 decalages x 18 instances : meilleur canal **1/18 = 5,6 %**, et le
+temoin par permutation des occupants donne **1/18 lui aussi**. Le siege « passe » a 16/18 mais le
+temoin permute fait 16/18 : les 18 sieges attestes valent 0, le canal lit un zero.
+**LE RESULTAT QUI CORRIGE LE LOT V5** : le facteur explicatif est la CINEMATIQUE. Mesure SANS
+aucun oracle sur 104 records ti=40 de 8 films — un vehicule A L'ARRET porte un exces >= 89 bits
+dans **25,0 %** des cas, EN MOUVEMENT dans **66,2 %**. Deux cas le montrent a l'unite : le
+vehicule 781 de `53ce4390` a la MEME longueur (2 398) libre-en-mouvement qu'occupe-en-mouvement,
+et 2 309 a l'arret ; le vehicule 775 de `21468645` fait +89 sans aucune occupation attestee. A
+mouvement controle l'occupation attestee ajoute un residu (80,0 % contre 58,1 %, n=68) mais la
+classe temoin est contaminee (ratio board:exit = 1:15) : non exploitable.
+**« Un bloc par occupant » NON TESTABLE** : aucun vehicule du corpus n'a 2 occupants attestes
+SIMULTANEMENT. Le Warthog multi-occupants de `0d76e8f1` se defait a l'appariement (ep6/ep8
+sequentiels sur le vehicule 773, ep7 apparie au vehicule 792).
+**Les longueurs ne sont pas un quantum de 89** : 2 vehicules sur 9 ont toutes leurs longueurs
+congruentes mod 89. `+89` et `+190` se repetent, le reste (19, 20, 52, 108, 137, 171, 279, 348...)
+non. Plusieurs blocs optionnels, pas une unite de comptage — d'ou le choix de traiter 89 comme un
+PLANCHER dans le decodeur livre.
+**Livre** : `filmdec/vehicle_occupancy.go` (production, additif, exporte) —
+`ScanFilmVehicleOccupancy` / `VehicleKeyframeStates` (exces de longueur par image-cle et par
+vehicule, ligne de base par chassis, `Measurable` = SlotGap==1) et `FindKeyframeBlockInsertion`
+(localisateur d'insertion par max. de vraisemblance, pur, lineaire) ; 3 garde-rails SANS
+environnement ; 4 instruments gardes `V5_ROOT`/`V5_FILMS`. Le contrat est ecrit dans l'en-tete
+AVEC les chiffres de la refutation : ce n'est PAS un oracle d'occupation.
+**Conclusion / prochaine etape** : la voie image-cle est close pour l'occupation. Le goulot est
+ailleurs et il est mecanique : marcher la liste ENTIERE d'evenements (aujourd'hui seul
+l'evenement de TETE de chaque paquet est decode) pour redresser le ratio board:exit de 1:15, puis
+machine d'etats [board -> exit] par occupant, vehicule resolu par la position (appariement 12/12
+sur les films-demo). Rapport : `.ai/V7.5/film_re/V5B_BLOC_OCCUPATION_2026-09-02.md`.
+
+## [2026-09-03] Rejeu vehicules — V5 : ou est l'ETAT D'OCCUPATION courant ? (4 pistes refutees, 1 signal trouve) — Complété
+
+**Question** : les evenements board/exit sont des TRANSITIONS ; le Theatre affiche l'occupant a
+tout instant et permet le seek, donc l'etat est serialise quelque part. Cherche par CORRELATION
+SUPERVISEE contre les episodes attestes (10 sur 0d76e8f1, 2 sur fccc61cd ; appariement episode ->
+vehicule par la position, 12/12). Ghidra MORT (curl exit 7) : tout est mesure.
+**Les 4 pistes de champ sont REFUTEES, chacune avec son temoin** : (1) image-cle cote joueur —
+balayage 28 610 canaux (4 extracteurs x 2 ancres x tous decalages), 0 passant ; presence sans
+decalage 0/11 contre 22,7 % de fond ; (2) composants ti=40 en delta — 314 records exploitables
+sur tout le film, aucune valeur repetee, 0 en bande ; (3) entites-enfants (sieges/tourelles) —
+vies contenues dans un episode reel 114/67/109 contre TEMOIN 125/83/121 (le temoin fait mieux) ;
+(5, ajout utilisateur) flux delta — sonde neuve sur les 3 formes de champ de reference, i10 lu
+dans 0,15 % des records bipede propres.
+**CE QUI EST TROUVE** : le record d'IMAGE-CLE d'un vehicule est plus long quand il est OCCUPE.
+Test apparie vehicule-contre-lui-meme, 8 films : 16/17 = 94,1 %, ecart moyen +151 bits, temoin
+decale 37 s 3/12 = 25,0 % (signes p ~ 2,7e-4). Ecart RECURRENT +89 bits sur 3 films independants.
+Controle de specificite : la meme mesure cote BIPEDE ne donne rien (64,3 % reel contre 81,8 % au
+temoin) — le signal est propre au vehicule.
+**Confondant trouve et neutralise (facteur 9)** : WalkKeyframeWorld saute les records a Field26
+non nul, donc une « longueur » peut couvrir plusieurs records. Sans filtre +1 348 bits, restreint
+aux records a voisin de slot immediat +151. Le filtre monte la proportion et baisse le temoin.
+**Bogue de methode corrige** : inferUnboundArchetype essaie chaque archetype sur les memes bits
+(lectures SPECULATIVES) et polluait l'attribution par position — 9 613 lectures -> 1 210. Le hook
+neuf rejoint posCaptureHook/dynPrecHook dans les mises a nil (idem validatedResync, repair).
+**Gates** : (a) occupant a toute frame >= 90 % ECHOUE (aucun signal ne nomme l'occupant ; la voie
+image-cle plafonne a 7/12 = 58,3 % de couverture) ; (b) PASSE ; (c) siege ECHOUE ; (d) temoin
+decale PASSE. Victoire PARTIELLE : occupation d'un vehicule, pas identite de l'occupant.
+**Livre** (additif, non branche dans replay) : filmdec/keyframe_record_spans.go
+(KeyframeRecordSpans + ScanFilmKeyframeRecordSpans, garde-fou SlotGap) et filmdec/unit_ref_probe.go
+(SetUnitRefHook), avec 2 garde-rails SANS environnement. gofmt/vet/tests filmdec+replay verts.
+**Prochaine etape** : LIRE le bloc de +89 bits (diff bit a bit du meme vehicule occupe/libre) et
+tester l'hypothese « un bloc par occupant » — s'il porte le siege et l'occupant, (a) et (c)
+tombent d'un coup. Rapport : .ai/V7.5/film_re/V5_ETAT_OCCUPATION_2026-09-02.md
+
 ## [2026-09-02] Rejeu vehicules — V4 : tirs en vehicule, plafond de couverture MESURE, fusion des fantomes (schema 30) — Complété
 
 **Tirs en vehicule** : le record de tir ne porte PAS de position monde (premisse corrigee) ->
