@@ -112,9 +112,10 @@ interface ReplayCanvasProps {
   /** Appelé à cadence réduite avec l'image courante : sert aux panneaux hors canvas. */
   onFrameChange?: (frame: number) => void
   /**
-   * Fond de carte figé. Absent = la carte n'a pas d'image (seules 21 en ont) : le rejeu
-   * garde son sol reconstruit, qui reste lisible. Ce n'est pas un mode dégradé caché,
-   * c'est le cas nominal des autres cartes.
+   * Fond de carte figé. Absent = pas d'image CALÉE pour cette carte, et le rejeu retombe sur
+   * le sol reconstruit. C'est une LACUNE, pas un mode : `map_structure` ne contient que DEUX
+   * fichiers, et 129 vues du dessus dessinées dorment dans `static/maps` sans le calage qui
+   * les rendrait utilisables ici. (Il a longtemps dit « seules 21 en ont » : il y en a 106.)
    */
   background?: ReplayMapBackgroundLayer | null
   /**
