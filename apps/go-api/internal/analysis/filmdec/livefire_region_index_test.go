@@ -46,7 +46,7 @@ func TestLiveFireRegionIndex(t *testing.T) {
 		scanned = append(scanned, c)
 	}
 	slots := bipedSlotBandDir(dir, scanned)
-	if len(slots) == 0 {
+	if slots.Count() == 0 {
 		t.Fatalf("aucun slot biped dans %s", dir)
 	}
 	var samples []i0Sample

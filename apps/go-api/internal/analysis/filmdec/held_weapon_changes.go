@@ -201,7 +201,7 @@ func classifyHeldWeaponChange(
 // heldWeaponScan porte la configuration résolue une fois pour un film.
 type heldWeaponScan struct {
 	chunks    []int
-	slots     map[uint32]bool
+	slots     SlotBand
 	lay       I0Layout
 	arch      Archetype
 	weaponIdx map[int]bool
@@ -217,7 +217,7 @@ func newHeldWeaponScan(fc *FilmContext) (heldWeaponScan, error) {
 		return s, ErrNoFilmChunk
 	}
 	s.slots = fc.BipedSlots()
-	if len(s.slots) == 0 {
+	if s.slots.Count() == 0 {
 		return s, fmt.Errorf("aucun slot biped (ti=%d) dans les keyframes du film", BipedTypeIndex)
 	}
 	lay, err := fc.I0Layout()

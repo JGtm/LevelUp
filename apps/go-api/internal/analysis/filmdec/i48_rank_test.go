@@ -85,7 +85,7 @@ func TestI48PaletteRank(t *testing.T) {
 		chunks = append(chunks, i)
 	}
 	slots := bipedSlotBandDir(dir, chunks)
-	if len(slots) == 0 {
+	if slots.Count() == 0 {
 		t.Fatalf("aucun slot biped (ti=%d) dans les keyframes de %s", BipedTypeIndex, dir)
 	}
 	lay, _, err := DetectI0Layout(dir)
@@ -160,7 +160,7 @@ func i48Archetype(t *testing.T, dir string) Archetype {
 }
 
 // i48Scan parcourt les paquets delta et lit i48 partout où le masque l'annonce.
-func i48Scan(dir string, chunks []int, slots map[uint32]bool, w i48Walk) ([]i48Sample, i48Stats) {
+func i48Scan(dir string, chunks []int, slots SlotBand, w i48Walk) ([]i48Sample, i48Stats) {
 	var (
 		out []i48Sample
 		st  i48Stats

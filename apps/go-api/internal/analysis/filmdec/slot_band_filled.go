@@ -62,7 +62,7 @@ func worldObjectSlotBand(film *filmsource.Film, typeIndex int) map[uint32]bool {
 // relève bande et recensement dans la MÊME marche d'images-clés). Deux copies d'une règle de
 // bande divergeraient au premier correctif — et celle-ci a déjà été corrigée une fois.
 func slotBandExcluding(seen, others map[uint32]bool) map[uint32]bool {
-	band := fillSlotBand(seen)
+	band := filledSlotMap(seen)
 	for s := range others {
 		delete(band, s)
 	}

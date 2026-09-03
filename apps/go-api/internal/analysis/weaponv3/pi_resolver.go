@@ -41,7 +41,15 @@ func (b bitReader) bit(p int) int {
 }
 
 // readBits lit n bits à partir de bp, MSB-first.
+//
+// Lecture par MOT de 64 bits (cf. [wordBitsAt]) des que le depart est positif et la largeur
+// tient sur 64 bits ; sinon la boucle d'origine, seule a porter le bourrage a ZERO d'une
+// position NEGATIVE (`ResolveXuidToPI` relit les 5 bits qui PRECEDENT le motif : sur un motif
+// trouve au tout debut du chunk, elle recule sous zero).
 func (b bitReader) readBits(bp, n int) uint64 {
+	if bp >= 0 && n >= 0 && n <= 64 {
+		return wordBitsAt(b.data, bp, uint(n))
+	}
 	var v uint64
 	for i := 0; i < n; i++ {
 		v = (v << 1) | uint64(b.bit(bp+i))
@@ -67,13 +75,8 @@ func ResolveXuidToPI(rosterXuids []uint64, chunk []byte) map[uint64]int {
 	}
 	br := newBitReader(chunk)
 	for _, x := range rosterXuids {
-		target := xuidTargetPattern(x)
-		for bp := 0; bp+64 <= br.total; bp++ {
-			if br.readBits(bp, 64) != target {
-				continue
-			}
+		if bp, ok := findPattern64(chunk, xuidTargetPattern(x)); ok {
 			out[x] = int(br.readBits(bp-PIBits, PIBits))
-			break
 		}
 	}
 	return out

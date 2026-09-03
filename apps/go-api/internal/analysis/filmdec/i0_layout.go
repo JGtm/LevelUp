@@ -164,7 +164,7 @@ func DetectI0LayoutOf(film *filmsource.Film) (I0Layout, I0LayoutReport, error) {
 		scanned = scanned[:detectMaxChunks]
 	}
 	slots := bipedSlotBand(film, scanned)
-	if len(slots) == 0 {
+	if slots.Count() == 0 {
 		return I0Layout{}, I0LayoutReport{}, fmt.Errorf("aucun slot biped (ti=%d) dans le film", BipedTypeIndex)
 	}
 	var samples []i0Sample
@@ -201,7 +201,7 @@ func DetectI0LayoutOf(film *filmsource.Film) (I0Layout, I0LayoutReport, error) {
 // chaque en-tête biped reconnu. L'en-tête (préfixe/slot/tag/masque) est la seule hypothèse ;
 // à partir d'i0 rien n'est supposé, hormis les 4 bits spine+useDefault nuls qui identifient
 // le chemin absolu à région explicite.
-func collectI0Samples(pay []byte, slots map[uint32]bool, chunk, pkt int, out []i0Sample) []i0Sample {
+func collectI0Samples(pay []byte, slots SlotBand, chunk, pkt int, out []i0Sample) []i0Sample {
 	total := len(pay) * 8
 	const preGate = i0SpineBits + i0UseDefaultBits
 	for p := 0; p+bipedHeaderBits+bipedIndexBits*bipedMinMaskCnt+detectWindow <= total; {

@@ -55,7 +55,7 @@ type hwEvent struct {
 type hwSetup struct {
 	dir       string
 	chunks    []int
-	slots     map[uint32]bool
+	slots     SlotBand
 	lay       I0Layout
 	arch      Archetype
 	weaponIdx map[int]bool
@@ -76,7 +76,7 @@ func hwResolve(t *testing.T, dir string) hwSetup {
 		chunks = append(chunks, i)
 	}
 	slots := bipedSlotBandDir(dir, chunks)
-	if len(slots) == 0 {
+	if slots.Count() == 0 {
 		t.Fatalf("aucun slot biped dans les keyframes de %s", dir)
 	}
 	lay, _, err := DetectI0Layout(dir)
@@ -205,7 +205,7 @@ func TestHeldWeaponDeltaCensus(t *testing.T) {
 	defer release()
 	s := hwResolve(t, dir)
 	t.Logf("film=%s chunks=%d slots_biped=%d emplacements_arme=%d index_i42=%d",
-		dir, len(s.chunks), len(s.slots), len(s.weaponIdx), s.selIdx)
+		dir, len(s.chunks), s.slots.Count(), len(s.weaponIdx), s.selIdx)
 
 	ev, records, withComp := hwScan(s)
 	ident, sel := 0, 0

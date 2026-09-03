@@ -99,7 +99,7 @@ func ScanGrappleReads(fc *FilmContext) ([]GrappleRead, GrappleStats, error) {
 		return nil, st, ErrNoFilmChunk
 	}
 	slots := fc.BipedSlots()
-	if len(slots) == 0 {
+	if slots.Count() == 0 {
 		return nil, st, fmt.Errorf("aucun slot biped (ti=%d) dans les keyframes du film", BipedTypeIndex)
 	}
 	lay, err := fc.I0Layout()

@@ -188,7 +188,12 @@ func ReadBitsAtForDiag(b []byte, pos, n int) uint32 { return readBitsAt(b, pos, 
 // Sans lui, tout record déclarant i3 s'arrêtait avant i4/i5 ET avant i21. Conséquence
 // mesurée et publiée : la couverture du cap de visée CHANGE (elle augmente) ; c'est un
 // effet de bord assumé d'un décodeur qui va plus loin, pas une modification de la position.
-func scanRecordDirs(pay []byte, at, total int, idx []int) (componentDirs, componentVitals) {
+// Le lecteur `br` est FOURNI PAR L'APPELANT et REUTILISE : les deux composants de vitalite
+// (i4 et i5) repositionnent le meme lecteur par `SetBitPos` au lieu d'en allouer un chacun.
+// C'etaient deux allocations PAR RECORD BIPEDE, sur un balayage qui en reconnait des
+// dizaines de milliers par film. `br` doit etre lie au payload balaye.
+func scanRecordDirs(br *BitReader, at, total int, idx []int) (componentDirs, componentVitals) {
+	pay := br.buf
 	var out componentDirs
 	var vit componentVitals
 	at += i0TailBits // queue d'i0 (handleSel + regionPresent)
@@ -202,9 +207,9 @@ func scanRecordDirs(pay []byte, at, total int, idx []int) (componentDirs, compon
 		case 3:
 			at, ok = readAngularVelocityComponent(pay, at, total)
 		case 4:
-			at, ok = readBodyVitalityComponent(pay, at, total, &vit)
+			at, ok = readBodyVitalityComponent(br, at, total, &vit)
 		case 5:
-			at, ok = readShieldVitalityComponent(pay, at, total, &vit)
+			at, ok = readShieldVitalityComponent(br, at, total, &vit)
 		case 21:
 			readAimingVectorComponent(pay, at, total, &out)
 			return out, vit // i21 capturé : la suite du record ne nous intéresse pas
@@ -241,11 +246,10 @@ func readAngularVelocityComponent(pay []byte, at, total int) (int, bool) {
 // readBodyVitalityComponent consomme i4 et capture la santé. La GRAMMAIRE n'est pas
 // réécrite ici : on positionne un BitReader sur le payload et on appelle le décodeur
 // canonique (vitality.go), seul détenteur de la forme du composant.
-func readBodyVitalityComponent(pay []byte, at, total int, vit *componentVitals) (int, bool) {
+func readBodyVitalityComponent(br *BitReader, at, total int, vit *componentVitals) (int, bool) {
 	if at+bodyVitalityBits > total {
 		return at, false
 	}
-	br := NewBitReader(pay)
 	br.SetBitPos(at)
 	vit.Body = decodeObjectBodyVitality(br)
 	vit.HasBody = true
@@ -256,11 +260,10 @@ func readBodyVitalityComponent(pay []byte, at, total int, vit *componentVitals) 
 // 55 bits selon deux portes internes) : on exige d'abord le minimum lisible, puis on
 // vérifie après coup que le décodage n'a pas débordé — un décodage qui déborde rendrait des
 // zéros de bourrage, c'est-à-dire un bouclier faux.
-func readShieldVitalityComponent(pay []byte, at, total int, vit *componentVitals) (int, bool) {
+func readShieldVitalityComponent(br *BitReader, at, total int, vit *componentVitals) (int, bool) {
 	if at+shieldVitalityMinBits > total {
 		return at, false
 	}
-	br := NewBitReader(pay)
 	br.SetBitPos(at)
 	s := decodeObjectShieldVitality(br)
 	if br.BitPos() > total {

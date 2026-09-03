@@ -1,3 +1,75 @@
+## [2026-09-03] Cuisson perf, lot 4 — la lecture de bits par mot : le profil designait d'autres primitives que le plan — En cours (equivalence a la charge du pilote)
+
+Items 4.1 a 4.4 (+ 4.6, ajoute par le pilote) de `.ai/V7.5/PLAN_CUISSON_PERF.md`, worktree
+`LevelUp-wt-cuisson-perf` (`wt/cuisson-perf`). Aucun commit, aucune cuisson : le pilote lance le
+harnais 11 films et les temoins §6. L'item 4.5 (mesure) est statue `[!]` pour cette raison.
+
+**LE PROFIL A ETE LU AVANT DE TOUCHER AU CODE, ET IL A DEPLACE LE LOT.** Sur
+`tmp/L1_01e1f945.cpu.prof` (152,35 s d'echantillons), les deux primitives que l'item 4.2 NOMMAIT
+— `readBitsAt` et `BitReader.ReadBits` — pesent 0,62 % et rien du tout. Le temps est ailleurs :
+`filmdec.kfReadBits` 58,40 % flat (appelee pour CHAQUE position de bit du payload d'image-cle par
+`kfScanNext`, 62 % en cumul) et `weaponv3.bitReader.bit` 20,84 % flat (26 % en cumul, entierement
+sous `ResolveXuidToPI`, soit le balayage `playerIndices` que `tmp/refL2_01e1f945.log` chronometre
+a 38,47 s sur ~96 s de cuisson). Les quatre primitives ont ete traitees, en donnant la priorite a
+celles que la mesure designe. C'est la decouverte N-AO : le plan nommait ses primitives par
+lecture de code, pas par mesure.
+
+**Decision technique principale** : une seule primitive de lecture par mot, `wordBitsAt`
+(`filmdec/bits_word.go` ; jumelle dans `weaponv3`), sur laquelle QUATRE fonctions branchent leur
+chemin rapide — et chacune GARDE sa boucle bit a bit d'origine pour le domaine ou les deux ne
+coincident pas. C'est la clause D6 du plan, et elle est le coeur du lot : la semantique hors
+tampon est preservee PAR FONCTION — `readBitsAt` PANIQUE, `ReadBits` / `kfReadBits` / `PeekBits`
+rendent des zeros de bourrage — et toute position negative ou largeur > 64 repasse par l'ancien
+chemin. Un geste supplementaire, pur, sur la boucle d'ancrage : `kfScanNext` lisait les 32 bits
+d'identifiant pour son test de sentinelle puis `kfValidAnchor` LES RELISAIT ; `kfAnchorFromID`
+prend l'identifiant deja lu, memes gardes.
+
+**Resultats observes** (micro-mesures Go, Ryzen 7 9850X3D — elles NE VALENT PAS la mesure §6) :
+`kfScanNext` 5,23 ms -> 0,57 ms (9,2x) ; `ResolveXuidToPI` sur un chunk de 1 Mio, 8 xuids absents,
+2 459,6 ms -> 25,3 ms (97x) ; `readBitsAt` 13 bits 11,99 us -> 7,86 us (1,5x). Rapportes aux
+cumuls du profil, cela vise les deux tiers du temps de cuisson — le chiffre reel sortira de la
+mesure du pilote. Les autres items : bande de slots bipede en tableau indexe (`SlotBand`, un
+booleen par slot sur le domaine 2^13, construite une fois par balayage au lieu d'une consultation
+de map par bit candidat) ; deux allocations de `BitReader` par record bipede supprimees et
+`ascendingFromZero` qui valide dans un tampon de pile avant d'allouer ; `NamedEventsFrom` qui
+regroupe en UNE passe (`RealRounds` calcule une fois au lieu d'une fois par emplacement) avec la
+cle de tri completee par `Comp` et `Side` (plan §9 R-8 : le determinisme n'etait qu'accidentel).
+
+**Ce qui a ete appris, et qui vaut au-dela de ce lot.** (1) `SlotBand` est un STRUCT et non un
+`[]bool` nu, parce que `len(bande)` veut dire « combien de slots » dans tout le depot et vaudrait
+8 192 sur une tranche dense : le struct fait ECHOUER LA COMPILATION sur chaque usage de forme
+« map » au lieu de le laisser mentir, et c'est le compilateur qui a trouve les 30 sites, pas une
+relecture. (2) D6 se trompe sur le domaine de `ReadBits` : `components_batch7.go:137-138` lit une
+largeur sur 12 BITS DU FLUX puis `ReadBits(w)`, donc jusqu'a 4 095 (N-AN) — la semantique « seuls
+les 64 derniers bits, mais le curseur avance de n » est reelle et a du etre preservee. (3)
+`seriesBySlot` a failli etre supprimee comme code mort apres le regroupement : elle a encore un
+appelant de PRODUCTION, `countsOf` -> `CrossCheckNamedEvents` (N-AR).
+
+**Preuve d'identite, en trois pieces** — toutes locales, la vraie preuve etant le harnais du
+pilote : (a) tests differentiels D6 contre des COPIES DE REFERENCE des implementations d'avant,
+recopiees dans les `_test` et nulle part ailleurs, sur tampons aleatoires a graine fixee, toutes
+largeurs 0..64 (plus 65..200), positions autour de chaque frontiere d'octet, de mot et de fin de
+tampon, cas hors tampon compris — avec deux tests dedies aux DEUX semantiques de bord ;
+(b) `TestFindPattern64MatchesReference`, qui implante le motif xuid a chaque decalage de bit 0..7
+et jusqu'a la position 0, celle ou la relecture des 5 bits d'index recule sous zero ;
+(c) `TestNamedEventsFromOnePassMatchesReference`, qui oppose la forme d'avant a la nouvelle sur un
+corpus construit touchant chaque filtre (deux manches, slots d'equipe, emission a -115, score de
+mode hors domaine, manche fortuite), sur les cinq familles d'objectif.
+
+**Seuil de fichier tenu dans le lot meme** : le regroupement de 4.4 portait `named.go` de 441 a
+505 lignes ; depassement CREE par ce lot, donc corrige dedans (lecon du lot 0) — `named_series.go`
+recoit la chaine `enregistrements -> series cumulees`, scission pure, 339 + 178 lignes.
+
+**Gate** : `gofmt -l .` vide · `go vet ./...` vide · `go build ./...` vert · les six suites du
+gate 4 vertes, plus `killsource` et `weaponv3` · `go test ./...` (module entier) vert ·
+`golangci-lint run` : 273 issues = la baseline, ZERO nouvelle.
+
+**Conclusion / prochaine etape** : lot 4 clos cote code, `[!]` assume sur 4.5. Le pilote lance
+`replay-equiv` (11 films, identite EXIGEE : c'est un refacto pur) et les temoins §6 ; le verdict
+§1.2 s'ecrit sur ces chiffres. Deux leviers chiffres et volontairement non pris sont au §8 :
+la bande d'objets du monde (N-AP, 0,8 % du profil contre douze signatures exportees) et la fenetre
+glissante de `kfScanNext` (N-AQ). Le lot 3 reste apres le 4b, par decision anterieure.
+
 ## [2026-09-03] Cuisson perf, lot 2 — le film ne se derive plus qu'une fois (bande, decoupage i0, registre) — En cours (equivalence a la charge du pilote)
 
 Items 2.1 a 2.4 de `.ai/V7.5/PLAN_CUISSON_PERF.md`, worktree `LevelUp-wt-cuisson-perf`

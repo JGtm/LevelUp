@@ -69,7 +69,7 @@ type FilmContext struct {
 	chunks    []int
 	chunksLus bool
 
-	slots    map[uint32]bool
+	slots    SlotBand
 	slotsLus bool
 
 	lay    I0Layout
@@ -130,9 +130,9 @@ func (c *FilmContext) ChunkAt(num int) ([]byte, []FilmPacket, bool) {
 // CE N'EST PAS LA BANDE DE `DetectI0LayoutOf`, qui releve la SIENNE sur les six premiers chunks
 // seulement : deux valeurs differentes, deux calculs, et c'est pourquoi la detection garde le
 // sien (cf. i0_layout.go).
-func (c *FilmContext) BipedSlots() map[uint32]bool {
+func (c *FilmContext) BipedSlots() SlotBand {
 	if c == nil {
-		return nil
+		return SlotBand{}
 	}
 	if !c.slotsLus {
 		if nums := c.ChunkNumbers(); len(nums) > 0 {

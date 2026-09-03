@@ -44,7 +44,7 @@ func TestScanBipedRecords_RoundTrip(t *testing.T) {
 	writeBipedRecord(w, slot, 1, 3, 4096, 5000, 8192)
 	w.bits(0, 64) // queue
 
-	got := ScanBipedRecords(w.buf, map[uint32]bool{slot: true}, cliffLayout, scanOptWorld())
+	got := ScanBipedRecords(w.buf, NewSlotBand(map[uint32]bool{slot: true}), cliffLayout, scanOptWorld())
 	if len(got) != 1 {
 		t.Fatalf("attendu 1 record, obtenu %d (%+v)", len(got), got)
 	}
@@ -64,24 +64,24 @@ func TestScanBipedRecords_Rejects(t *testing.T) {
 
 	w := &bitWriter{}
 	writeBipedRecord(w, slot, 1, 3, 4096, 5000, 8192)
-	if got := ScanBipedRecords(w.buf, map[uint32]bool{999: true}, cliffLayout, opt); len(got) != 0 {
+	if got := ScanBipedRecords(w.buf, NewSlotBand(map[uint32]bool{999: true}), cliffLayout, opt); len(got) != 0 {
 		t.Errorf("slot hors bande accepté: %+v", got)
 	}
 
 	w2 := &bitWriter{}
 	writeBipedRecord(w2, slot, 2, 3, 4096, 5000, 8192) // tag != 1
-	if got := ScanBipedRecords(w2.buf, map[uint32]bool{slot: true}, cliffLayout, opt); len(got) != 0 {
+	if got := ScanBipedRecords(w2.buf, NewSlotBand(map[uint32]bool{slot: true}), cliffLayout, opt); len(got) != 0 {
 		t.Errorf("tag != 1 accepté: %+v", got)
 	}
 
 	w3 := &bitWriter{}
 	writeBipedRecord(w3, slot, 1, 3, 0, 5000, 8192) // qx == 0 -> écrêté
-	if got := ScanBipedRecords(w3.buf, map[uint32]bool{slot: true}, cliffLayout, opt); len(got) != 0 {
+	if got := ScanBipedRecords(w3.buf, NewSlotBand(map[uint32]bool{slot: true}), cliffLayout, opt); len(got) != 0 {
 		t.Errorf("quantum saturé accepté: %+v", got)
 	}
 	noDrop := opt
 	noDrop.DropSaturated = false
-	if got := ScanBipedRecords(w3.buf, map[uint32]bool{slot: true}, cliffLayout, noDrop); len(got) != 1 {
+	if got := ScanBipedRecords(w3.buf, NewSlotBand(map[uint32]bool{slot: true}), cliffLayout, noDrop); len(got) != 1 {
 		t.Errorf("DropSaturated=false devrait conserver le record, obtenu %d", len(got))
 	}
 }

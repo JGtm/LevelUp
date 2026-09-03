@@ -60,11 +60,11 @@ func TestBipedPickupRef0Couverture(t *testing.T) {
 		t.Fatalf("chargement du film %s : %v", f.dir, err)
 	}
 	bande := bipedSlotBand(film, chunks)
-	if len(bande) == 0 {
+	if bande.Count() == 0 {
 		t.Skip("bande de bipedes vide : pas de mesure possible")
 	}
 	minS, maxS := uint32(1<<30), uint32(0)
-	for s := range bande {
+	for _, s := range bande.Slots() {
 		if s < minS {
 			minS = s
 		}
@@ -73,7 +73,7 @@ func TestBipedPickupRef0Couverture(t *testing.T) {
 		}
 	}
 	t.Logf("== COUVERTURE de `slot = %d + ref0` · %s ==", bpkBaseDom2, f.dir)
-	t.Logf("bande de bipedes : %d slots, de %d a %d", len(bande), minS, maxS)
+	t.Logf("bande de bipedes : %d slots, de %d a %d", bande.Count(), minS, maxS)
 
 	dans, total := map[uint64]int{}, map[uint64]int{}
 	temoin := map[uint64]int{}
@@ -82,10 +82,10 @@ func TestBipedPickupRef0Couverture(t *testing.T) {
 		total[e.Kind]++
 		s := bpkSlot(e)
 		slots[uint64(s)]++
-		if bande[s] {
+		if bande.Has(s) {
 			dans[e.Kind]++
 		}
-		if bande[uint32(bpkBaseDom2+int(evs[(i+1)%len(evs)].Ref0))] {
+		if bande.Has(uint32(bpkBaseDom2 + int(evs[(i+1)%len(evs)].Ref0))) {
 			temoin[e.Kind]++
 		}
 	}

@@ -483,21 +483,31 @@ Prerequis : verdict 0.7 = zero divergence sur les 11 films du corpus (sinon : ar
 
 ### Lot 4 — Boucles chaudes (refacto pur) — effort moyen
 
-- [ ] 4.1 Bande de slots en tableau indexe (`bipedSlotBits = 13` → 8 192 entrees) a la place de
+- [x] 4.1 Bande de slots en tableau indexe (`bipedSlotBits = 13` → 8 192 entrees) a la place de
       `map[uint32]bool` dans `matchBipedHeaderRaw` (`offline_biped.go:332`) et ses repliques
       (`ability_rank.go:159-162`, `camo_state.go:139-142`, `grapple_state.go:131-134`,
       `held_weapon_changes.go:120-123`, `i0_layout.go:194-197`, `biped_pickups`).
-- [ ] 4.2 `readBitsAt` et `BitReader.ReadBits` par mot ; test differentiel D6 (n = 0..64,
+      FAIT sur le chemin BIPEDE (type `SlotBand`, `filmdec/slot_band_dense.go`). Le chemin
+      OBJET DU MONDE (`matchWorldObjectRecord`) reste sur la map — decouverte N-AP.
+- [x] 4.2 `readBitsAt` et `BitReader.ReadBits` par mot ; test differentiel D6 (n = 0..64,
       frontieres, semantique hors tampon preservee par fonction).
-- [ ] 4.3 `offline_aim.go:248,263` : un lecteur reutilise par `SetBitPos` ; `ascendingFromZero`
+      ELARGI PAR LE PROFIL a `kfReadBits` (58-61 % du CPU) et `PeekBits` : cf. journal.
+- [x] 4.3 `offline_aim.go:248,263` : un lecteur reutilise par `SetBitPos` ; `ascendingFromZero`
       (`offline_biped.go:359-364`) valide AVANT d'allouer.
-- [ ] 4.4 `objectiveevents.NamedEventsFrom` : un seul balayage de `recs` regroupe par cle a la
+- [x] 4.4 `objectiveevents.NamedEventsFrom` : un seul balayage de `recs` regroupe par cle a la
       place des ~22 `rawSeriesByRound`/`RealRounds` (`named.go:207-212`) ; la cle de tri
       (`named.go:224-235`, aujourd'hui `TimeMS, Slot, Stat`) gagne `Comp` et `Side` — la sortie
       n'est deterministe qu'accidentellement (iteration de map + `Stat` unique par famille) et un
       second emplacement non redondant casserait tous les digests sans test pour le dire.
       Identique sur les 11 films (les faits du corpus rendent ce gate NON vacuant, cf. 0.2).
-- [ ] 4.5 Mesure §6 des 4 temoins + profil CPU de `01e1f945` au journal, comparee a la reference.
+      Identite locale prouvee par differentiel contre la forme d'avant
+      (`named_onepass_test.go`) ; l'identite 11 films reste a la charge du pilote.
+- [x] 4.6 (AJOUTE au lot 4 par le pilote, sur lecture du profil) `replay.ScanPlayerIndices` /
+      `weaponv3.ResolveXuidToPI` : le balayage du motif xuid de 64 bits lit un MOT par octet au
+      lieu de 64 bits par position. C'etait le poste numero 1 mesure (38,5 s sur 96 s de cuisson).
+- [!] 4.5 Mesure §6 des 4 temoins + profil CPU de `01e1f945` au journal, comparee a la reference.
+      NON TRAITE : la cuisson est a la charge du pilote (aucune cuisson lancee par l'agent du
+      lot 4). Mesures de substitution au journal : micro-mesures Go des primitives reecrites.
 - Gate 4 : equivalence IDENTIQUE (11 films) ; tests differentiels verts ; lint ; mesure au
   journal ; verdict §1.2 ecrit (atteint / ecart statue) — le lot 5 s'execute dans les deux cas.
 
@@ -916,6 +926,50 @@ identique a celui en place hors lots de correction, ou le garde anti-regression 
     n'a d'appelant hors `filmdec` et `replay` (verifie par grep avant migration) : le cout de
     l'elargissement est nul cote appelants, et le benefice est qu'aucun accesseur d'archetype ne
     peut plus re-analyser le registre.
+
+- 2026-09-03 (agent lot 4) — decouvertes N-AN a N-AR.
+  - N-AN. LE DOMAINE DE `BitReader.ReadBits` N'EST PAS 0..64, contrairement a ce qu'ecrit D6.
+    `components_batch7.go:137-138` (`consumeTrackFrameComponent`, FUN_142ed740c) lit une largeur
+    `w` sur 12 BITS DU FLUX puis fait `br.ReadBits(w)` : `w` peut donc valoir jusqu'a 4 095.
+    Trois autres sites passent une largeur venue du flux ou d'une table
+    (`components_managed_property.go:174`, `components_biped_ability.go:217`,
+    `components_object.go:418`). La semantique d'origine pour `n > 64` — la valeur ne garde que
+    les 64 DERNIERS bits lus, et le curseur avance quand meme de `n` — est donc REELLE, et elle a
+    ete preservee (chemin bit a bit conserve, verrouille par
+    `TestReadBitsWordWideMatchesReference`). D6 est a amender : « domaine reel 0..64 » vaut pour
+    les appels a largeur LITTERALE, pas pour la fonction.
+  - N-AO. LE PROFIL NE DESIGNE PAS LES PRIMITIVES QUE LE PLAN NOMMAIT. Au profil du lot 1
+    (`tmp/L1_01e1f945.cpu.prof`, 152 s d'echantillons), `readBitsAt` pese 0,62 % et
+    `BitReader.ReadBits` n'apparait pas du tout ; ce sont `filmdec.kfReadBits` (58,4 % flat) et
+    `weaponv3.bitReader.bit` (20,8 % flat) qui portent le temps. Les deux primitives nommees par
+    le plan ont ete reecrites quand meme — meme famille, meme test differentiel — mais le gain
+    vient d'ailleurs. A retenir pour les prochains lots de perf : ce plan-ci nommait ses
+    primitives par lecture de code, pas par mesure.
+  - N-AP. LA BANDE D'OBJETS DU MONDE N'A PAS ETE DENSIFIEE, ET C'EST UN CHOIX CHIFFRE.
+    `runtime.mapaccess1_fast32` pese 2,28 s sur 152 s (1,5 %), reparti en 1,18 s pour
+    `matchWorldObjectRecord` et 0,92 s pour `matchBipedHeaderRaw`. Seul le second est traite :
+    densifier le premier obligeait a changer le type de retour de `worldObjectSlotBand` /
+    `observedSlotBand` / `slotBandExcluding`, donc DOUZE signatures exportees en `...ForBand`
+    (`ScanWorldObjectsForBand`, `ScanEquipmentCreationsForBand`, `CalibrateMPPWidthsOf`,
+    `WorldObjectPositionsForBand`, `GroundWeaponSlotBand`, le champ `WorldObjectCensus.Band`...),
+    consommees hors `filmdec` par `replay` et par ~24 sites de tests de recherche — dont
+    `build_ground_weapons.go:99` (`len(kf.Band) == 0`), ou une conversion silencieuse en tranche
+    dense aurait CHANGE le comportement de production sans erreur de compilation. Pour 0,8 % du
+    profil, dans un lot de refacto PUR dont l'identite est jugee par un harnais que l'agent
+    n'execute pas, le rapport n'y etait pas. A rouvrir avec le harnais sous la main.
+  - N-AQ. LES PRIMITIVES DE BITS NE SONT PLUS INLINEES, et le budget de l'inliner l'explique :
+    `wordBitsAt` coute 111 pour un budget de 80, parce que `binary.BigEndian.Uint64` s'y inline
+    (huit chargements). Un cout d'appel est donc paye par lecture ; il reste tres inferieur au
+    gain (`kfScanNext` : 5,23 ms -> 0,79 ms puis 0,57 ms, soit 8,9x, micro-mesure sur tampon
+    aleatoire de 256 Kio). LEVIER RESTANT, NON PRIS : une fenetre GLISSANTE dans `kfScanNext`
+    (`id(q+1) = (id(q) << 1 | bit(q+31)) & 0xFFFFFFFF`) supprimerait la lecture par position ;
+    estime a quelques secondes de plus sur la cuisson. Ce n'est plus une reecriture de primitive
+    mais une reformulation de la boucle d'ancrage : a faire avec le harnais d'equivalence.
+  - N-AR. `seriesBySlot` A FAILLI ETRE SUPPRIMEE A TORT. Apres le regroupement en une passe, elle
+    n'a plus d'appelant dans `NamedEventsFrom` — mais `countsOf` (`named.go`, qui alimente
+    `CrossCheckNamedEvents`, PRODUCTION) l'appelle toujours. Une suppression « code mort » fondee
+    sur le seul appelant visible aurait casse le controle croise. Note ici parce que le meme piege
+    guette toute factorisation de ce fichier : `named.go` a DEUX consommateurs de series, pas un.
 
 ## 9. Revue du plan (plan-review, 2026-09-02)
 
@@ -1399,6 +1453,13 @@ et un registre se lisent avec l'erreur qui va avec.
      `000d5950` (10,8 s), `7344d24f` (18,6 s) et `60ae07c4` (21,0 s) — dont Live Fire, ou le
      decoupage auto-detecte est justement celui que le lot 3 remplacera.
 
+**SEUIL DE FICHIER TENU DANS LE LOT MEME.** Le regroupement de 4.4 portait
+`objectiveevents/named.go` de 441 a 505 lignes — au-dela du seuil de 500. Depassement CREE par
+ce lot, donc corrige dedans (lecon du lot 0, §8) : `named_series.go` recoit tout ce qui va d'une
+liste d'enregistrements a une suite cumulee (`rawSeriesByKey`, `seriesBySlot`,
+`rawSeriesByRound`, `cumulateRounds`, `sortedRounds`, `incrementTimes`), scission PURE,
+commentaires intacts -> 339 + 178 lignes.
+
 **GATE.** `gofmt -l .` vide (module entier) · `go vet ./...` vide · `go build ./...` vert ·
 `go test ./internal/analysis/filmsource/ ./internal/analysis/filmdec/ ./internal/analysis/replay/
 ./internal/replaybuild/ ./internal/archlint/ -count=1` vert (0,25 s / 1,4 s / 39,1 s / 0,7 s /
@@ -1406,3 +1467,112 @@ et un registre se lisent avec l'erreur qui va avec.
 ./cmd/replay-equiv/ -count=1` vert · `golangci-lint run ./internal/analysis/filmdec/...
 ./internal/analysis/replay/... ./internal/archlint/...` : 0 issue. Decouvertes N-AI a N-AM au §8.
 AUCUNE CUISSON LANCEE — l'equivalence 9 films et les temoins §6 sont a la charge du pilote.
+
+### Lot 4 — Boucles chaudes (2026-09-03) — CLOS cote code, equivalence a la charge du pilote
+
+**LE PROFIL A ETE LU AVANT D'OPTIMISER, ET IL A DEPLACE LE LOT.** Top 10 de
+`tmp/L1_01e1f945.cpu.prof` (binaire `tmp/replay-build.exe`, 152,35 s d'echantillons, lot 1) :
+
+| flat | cum | fonction |
+|---|---|---|
+| 88,97 s (58,40 %) | 89,00 s | `filmdec.kfReadBits` |
+| 31,75 s (20,84 %) | 31,88 s | `weaponv3.bitReader.bit` |
+| 8,15 s (5,35 %) | 40,07 s | `weaponv3.bitReader.readBits` |
+| 4,62 s (3,03 %) | 94,77 s | `filmdec.kfScanNext` |
+| 2,11 s (1,38 %) | 2,11 s | `filmdec.PeekBits` |
+| 1,14 s (0,75 %) | 27,93 s | `filmdec.kfValidAnchor` |
+| 1,07 s (0,70 %) | 1,68 s | `replay.nearestFreeEnd` |
+| 1,02 s (0,67 %) | 2,28 s | `runtime.mapaccess1_fast32` |
+| 1,00 s (0,66 %) | 3,27 s | `filmdec.matchBipedHeader` |
+| 0,94 s (0,62 %) | 0,94 s | `filmdec.readBitsAt` |
+
+Deux enseignements, tous deux contraires a ce que le plan supposait (decouverte N-AO) :
+`readBitsAt` et `BitReader.ReadBits` — les deux primitives NOMMEES par l'item 4.2 — pesent 0,62 %
+et rien du tout ; le temps est chez `kfReadBits` (58 %, appelee pour CHAQUE position de bit du
+payload d'image-cle par `kfScanNext`) et chez le lecteur de `weaponv3` (26 % en cumul, entierement
+sous `ResolveXuidToPI`, c'est-a-dire le balayage `playerIndices` que `tmp/refL2_01e1f945.log`
+chronometre a 38,47 s sur ~96 s de cuisson). Le lot a donc traite les quatre primitives, en
+donnant la priorite a celles que la mesure designe.
+
+**4.2 — LECTURE PAR MOT DE 64 BITS.** `filmdec/bits_word.go` porte `wordBitsAt(buf, pos, n)`
+(chemin rapide : un `binary.BigEndian.Uint64` + deux decalages ; `wordBitsAtEdge` pour la queue de
+tampon et le champ a cheval sur un neuvieme octet). Quatre primitives y branchent leur chemin
+rapide — `BitReader.ReadBits`, `kfReadBits`, `readBitsAt`, `PeekBits` — et CHACUNE garde sa boucle
+bit a bit d'origine pour le domaine ou les deux ne coincident pas. C'est la clause de D6 :
+**la semantique hors tampon est preservee PAR FONCTION**, `readBitsAt` PANIQUE, les trois autres
+rendent des zeros, et une position negative ou une largeur > 64 (N-AN : elle existe reellement)
+repasse toujours par l'ancienne boucle.
+
+Preuve : `filmdec/bits_word_test.go` et `weaponv3/bits_word_test.go` embarquent une COPIE DE
+REFERENCE de chaque implementation d'avant et l'opposent a la nouvelle sur des tampons aleatoires
+a graine fixee (tailles 0, 1, 2, 3, 7, 8, 9, 15, 16, 17, 23, 31, 64, 65 octets), toutes les
+largeurs 0..64, et les positions autour de chaque frontiere d'octet, de mot et de fin de tampon —
+positions negatives et lectures entierement hors tampon comprises. Deux tests dedies verrouillent
+les DEUX semantiques de bord : `TestReadBitsAtPanicsOutOfBufferLikeReference` (la panique tombe
+exactement la ou la reference paniquait, ni plus tot ni plus tard) et
+`TestReadBitsZeroPadsOutOfBuffer`. Un troisieme, `TestReadBitsWordWideMatchesReference`, couvre
+les largeurs 65..200 (N-AN).
+
+Un second geste, PUR, sur la boucle d'ancrage : `kfScanNext` lisait les 32 bits d'identifiant pour
+son test de sentinelle puis `kfValidAnchor` LES RELISAIT. `kfAnchorFromID` prend l'identifiant
+deja lu ; memes gardes, meme logique, `id` etant une fonction pure de (buf, q).
+
+Micro-mesure (tampon aleatoire 256 Kio, fenetre 120 000 bits, Ryzen 7 9850X3D) :
+`kfScanNext` **5,23 ms -> 0,57 ms (9,2x)** ; `readBitsAt` sur 13 bits 11,99 us -> 7,86 us (1,5x).
+
+**4.6 — `ResolveXuidToPI` (poste n1).** Le balayage cherchait un motif de 64 bits en relisant 64
+bits UN PAR UN a chaque position de bit du chunk, pour chaque xuid du roster, et
+`ScanPlayerIndices` le fait sur TOUS les chunks de replication (28 sur `01e1f945`). `findPattern64`
+lit desormais un mot big-endian par OCTET et en deduit les huit decalages avec le seul octet
+suivant — meme ordre de parcours, donc la MEME premiere position, donc le meme index publie.
+Micro-mesure sur un chunk de 1 Mio et 8 xuids absents (pire cas, balayage complet) :
+**2 459,6 ms -> 25,3 ms, 97x**. Le differentiel `TestFindPattern64MatchesReference` implante le
+motif a chaque decalage de bit 0..7 et a plusieurs profondeurs, dont la position 0 — celle ou la
+relecture des 5 bits de `player_index` RECULE SOUS ZERO et doit y lire des zeros.
+
+**4.1 — BANDE DE SLOTS DENSE.** `filmdec/slot_band_dense.go` : `SlotBand` = un booleen par slot
+(domaine 8 192 = 2^13), construit UNE fois par balayage. `matchBipedHeaderRaw` l'interrogeait
+par `map[uint32]bool` a CHAQUE bit candidat. Le type est un STRUCT et non un `[]bool` nu, et c'est
+le point de methode : `len(bande)` veut dire « combien de slots » dans tout le depot, et vaudrait
+8 192 sur une tranche dense — le struct fait ECHOUER LA COMPILATION sur chaque usage de forme
+« map » (`len`, indexation, `range`) au lieu de le laisser mentir. C'est le compilateur qui a
+trouve les 30 sites a convertir, pas une relecture. Perimetre : le chemin BIPEDE seul
+(`bipedSlotBand`, `fillSlotBand`, `FilmContext.BipedSlots`, `matchBipedHeader(Raw)`,
+`collectI0Samples`, `ScanBipedRecords` et les six repliques). Le chemin OBJET DU MONDE reste sur
+la map : decouverte N-AP, avec le chiffre qui justifie l'abstention.
+
+**4.3 — DEUX ALLOCATIONS PAR RECORD SUPPRIMEES.** `readBodyVitalityComponent` et
+`readShieldVitalityComponent` allouaient chacun un `NewBitReader` par record bipede ; ils prennent
+desormais le lecteur que `ScanBipedRecords` alloue UNE fois par payload et le repositionnent par
+`SetBitPos`. `ascendingFromZero` valide la liste d'index dans un tampon de PILE
+(`[bipedMaxMaskCnt]int`) et n'alloue la tranche qu'une fois la liste acceptee — le test echoue sur
+l'immense majorite des positions candidates, donc l'allocation etait jetee a chaque rejet.
+
+**4.4 — `NamedEventsFrom` EN UNE PASSE.** `rawSeriesByKey` groupe les emissions de TOUS les
+emplacements non redondants en un seul parcours de `recs`, et `RealRounds` est calcule UNE fois :
+la forme d'avant appelait `seriesBySlot` par emplacement, donc `rawSeriesByRound` ET `RealRounds`
+une fois chacun par emplacement — seize marches completes pour la table CTF. Les filtres, leur
+ordre et l'ordre d'insertion par (emplacement, slot, manche) sont conserves mot pour mot. La cle
+de tri gagne `Comp` et `Side` (plan §9 R-8) : sur les tables actuelles cela ne change RIEN, parce
+qu'un nom de statistique n'y vient que d'un emplacement — mais c'etait une coincidence, et
+`TestSortNamedEventsOrdreTotal` la remplace par une garantie. Identite locale prouvee par
+`TestNamedEventsFromOnePassMatchesReference` : la forme d'AVANT est recopiee dans le `_test` et
+opposee a la nouvelle sur un corpus construit qui touche chaque filtre (deux manches, slots
+d'equipe, emission negative a -115, score de mode hors domaine A=66/B=16635, manche 9 fortuite),
+sur les cinq familles d'objectif.
+
+**CE QUI N'A PAS ETE FAIT, ET POURQUOI.** L'item 4.5 (mesure des quatre temoins + profil) est
+statue `[!]` : aucune cuisson n'a ete lancee par cet agent, le harnais est au pilote. Les
+micro-mesures Go ci-dessus en tiennent lieu a titre indicatif et NE VALENT PAS la mesure §6.
+La bande d'objets du monde n'a pas ete densifiee (N-AP, 0,8 % du profil contre douze signatures
+exportees). La fenetre glissante de `kfScanNext` n'a pas ete posee (N-AQ).
+
+**GATE.** `gofmt -l .` vide (module entier) · `go vet ./...` vide · `go build ./...` vert ·
+`go test ./internal/analysis/filmsource/ ./internal/analysis/filmdec/ ./internal/analysis/replay/
+./internal/analysis/objectiveevents/ ./internal/replaybuild/ ./internal/archlint/ -count=1` vert
+(0,52 s / 0,91 s / 11,20 s / 0,39 s / 0,77 s / 6,57 s) · `go test
+./internal/games/halo_infinite/film/killsource/ ./internal/analysis/weaponv3/ -count=1` vert ·
+`go test ./...` (module entier) vert · `golangci-lint run` : 273 issues, soit la baseline —
+ZERO nouvelle issue (une `unparam` introduite en cours de route a ete corrigee avant cloture).
+Goldens inchanges. Decouvertes N-AN a N-AR au §8. AUCUNE CUISSON LANCEE : l'equivalence 11 films
+et les temoins §6 restent a la charge du pilote, et c'est eux qui prononcent le refacto PUR.
