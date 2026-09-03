@@ -15,6 +15,7 @@ import { drawDeathMarker, drawShotEffect } from './shotEffects'
 import { MELEE_LINK_MAX_M, type KillFxEntry } from './killFx'
 import { drawMeleeStar, meleeStarProgress } from './meleeStar'
 import { altitudeRatio, canvasScale, footprint, worldToCanvas } from './replayLogic'
+import { vehicleShotOrigin, type VehicleMountSpriteSize } from './vehicleWeaponMounts'
 
 /** Cadrage du canvas (mêmes paramètres que worldToCanvas). */
 export interface CanvasView {
@@ -203,7 +204,10 @@ export interface EventWindow {
  * CE QUE LE POINT SIGNIFIE, et il faut que le rendu le respecte : le film n'enregistre que les
  * tirs qui INFLIGENT un dégât. Un tir dessiné a donc touché. Sa DIRECTION est celle du REGARD
  * du tireur à cet instant (relu dans sa trajectoire, cf. shotFx.ts) — sans lecture, une
- * bouffée ronde, jamais une direction inventée.
+ * bouffée ronde, jamais une direction inventée. SUR UN TIR EN VÉHICULE, le point ET la
+ * direction viennent du MONTAGE de l'arme plutôt que du regard (`vehicleShotOrigin`, demande
+ * utilisateur du 2026-09-03 — « si ça vient du passager, faut que le tir vienne du siège
+ * passager qui a une tourelle »).
  *
  * CE CALQUE A CHANGÉ DE NATURE le 2026-08-15 (étape 2 du plan des effets de tirs) : il
  * dessinait une TRACE de 62 px dans la couleur du TIREUR ; il dessine désormais un éclair
@@ -221,11 +225,13 @@ export function drawShotsLayer(
     const age = win.frame - s.frame
     if (age < 0 || age > win.hold) continue
     const c = worldToCanvas(s, view.bounds, view.width, view.height, view.pad)
+    const { origin, angle } = vehicleShotOrigin({
+      h: s.h, vehicleShot: s.vehicleShot, center: c, sizeOf: style.vehicleSizeOf, k: style.k,
+    })
     drawMuzzleFlash(ctx, s.fam, s.tint, {
-      x: c.x,
-      y: c.y,
-      // Monde -> canevas : l'axe Y est inversé, donc l'angle l'est aussi.
-      angle: s.h === null ? null : (-s.h * Math.PI) / 180,
+      x: origin.x,
+      y: origin.y,
+      angle,
       fade: 1 - age / Math.max(win.hold, 1),
       reduced: style.reducedMotion,
       seed: s.seed,
@@ -246,6 +252,12 @@ export interface ShotStyle {
   /** Densité du canevas : l'éclair s'adresse à l'œil, sa taille est en pixels d'écran. */
   k: number
   reducedMotion: boolean
+  /**
+   * Taille du sprite d'une famille de véhicule, ou `null` (pas encore chargé). Optionnel :
+   * un appelant qui ne câble pas le calque véhicules (tests, ou futur écran sans véhicules)
+   * garde le repli centre pour tout tir en véhicule, jamais une exception.
+   */
+  vehicleSizeOf?: (family: string) => VehicleMountSpriteSize | null
 }
 
 /** Style du calque des morts : la couleur du tueur, et le repli quand il n'a pas de trace. */

@@ -447,10 +447,10 @@ export function ReplayCanvas({
     // « éliminations » de la carte de chaleur, qui n'est pas un effet.
     const win = { frame, hold: eventHoldFrames, frameMs: frameToMs(1, doc) }
     if (showShotFx && shotFx.length > 0) {
+      // vehicleSizeOf : origine des tirs en véhicule sur LA MÊME source de tailles que le
+      // calque véhicules (`useReplayVehicles.sizeOf`), jamais un second chargement.
       drawShotsLayer(ctx, shotFx, view, { ...win, hold: shotHoldFrames }, {
-        ink: fxInk,
-        k: dpr,
-        reducedMotion,
+        ink: fxInk, k: dpr, reducedMotion, vehicleSizeOf: vehicles.sizeOf,
       })
     }
     if (doc.grenades?.length) {

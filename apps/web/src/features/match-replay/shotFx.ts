@@ -2,6 +2,15 @@
  * shotFx.ts — CE QU'ON SAIT D'UN TIR AVANT DE LE DESSINER : où, quand, quelle forme,
  * quelle teinte, et dans quelle direction le tireur REGARDAIT.
  *
+ * TIRS EN VÉHICULE (2026-09-03) : `doc.shots[i].v` marque un tir tiré depuis le véhicule de ce
+ * slot (même clé que `VehicleTrack.slot`) — `x`/`y` valent alors la position INTERPOLÉE DU
+ * VÉHICULE (centre), pas celle d'un tireur (le bipède ne réplique plus une fois embarqué,
+ * `document.go`). Ce module résout ICI, une fois, ce qui NE DÉPEND QUE DU FILM (le véhicule
+ * porteur et son cap à l'instant du tir, `vehicleHeadingAt`) et le montage de l'arme
+ * (`vehicleWeaponMountOf`, table statique) ; ce qui dépend du SPRITE CHARGÉ (sa taille, donc le
+ * décalage écran réel) reste au tracé (`drawShotsLayer`), qui seul connaît `sizeOf` — même
+ * découpage précalcul/canevas que le reste du fichier.
+ *
  * LA MESURE QUI A DÉBLOQUÉ CE CALQUE (2026-08-15). Le rendu orientait un tir par le champ
  * `h` de l'ÉVÉNEMENT de tir : présent sur 90 tirs sur 483 du film témoin (18,6 %), 16,1 %
  * sur les 23 artefacts locaux. D'où l'impression d'absence d'effet. Or le cap de REGARD
@@ -27,6 +36,23 @@ import { fxTintOf, type FxTint } from './fxInk'
 import { familyOf, type ShotFamily } from './shotEffects'
 import { heldReading, isAliveAt } from './replayLogic'
 import type { ReplayDocumentReady, ReplayTrackReady } from './replayNormalize'
+import { vehicleHeadingAt } from './vehiclesLayer'
+import { vehicleWeaponMountOf, type VehicleWeaponMount } from './vehicleWeaponMounts'
+
+/**
+ * VehicleShotSource — CE QU'IL FAUT, EN PLUS DU CENTRE, POUR PLACER L'EFFET AU BON MONTAGE
+ * (`vehicleWeaponMounts.vehicleShotPlacement`, appelé au tracé une fois le sprite chargé).
+ * `null` sur `ShotFxEntry.vehicleShot` = tir à pied, OU tir en véhicule dont l'arme n'a pas de
+ * montage connu (`vehicleWeaponMountOf` rend `null`) : le repli reste alors le centre du
+ * véhicule, exactement le comportement d'avant ce fichier.
+ */
+export interface VehicleShotSource {
+  mount: VehicleWeaponMount
+  /** Famille du véhicule porteur (clé de `sizeOf`/`spriteOf`, cf. `VehicleStyle`). */
+  family: string | undefined
+  /** Cap MONDE du véhicule à l'instant du tir (`vehicleHeadingAt`), degrés, convention `Point.h`. */
+  headingDeg: number
+}
 
 /** Un tir prêt à dessiner : coordonnées MONDE, la conversion en pixels dépend du cadrage. */
 export interface ShotFxEntry {
@@ -43,6 +69,8 @@ export interface ShotFxEntry {
   tint: FxTint
   /** Germe stable : deux lectures du même instant redonnent la même forme. */
   seed: number
+  /** Tir en véhicule dont l'arme a un montage connu ; `null` sinon (repli sur le centre). */
+  vehicleShot: VehicleShotSource | null
 }
 
 /**
@@ -80,7 +108,29 @@ export function buildShotFx(doc: ReplayDocumentReady, aimHoldFrames: number): Sh
       fam,
       tint: fxTintOf(label?.tint),
       seed: s.t + s.slot,
+      vehicleShot: vehicleShotSourceOf(doc, s.v, s.w, s.t),
     })
   }
   return out
+}
+
+/**
+ * vehicleShotSourceOf — RÉSOUT UNE FOIS ce que le rendu aura besoin de savoir sur un tir en
+ * véhicule : le véhicule porteur (par `v`, MÊME clé que `VehicleTrack.slot`), le montage de
+ * l'arme (par `w`) et le cap du véhicule à l'instant `t`. `null` dès qu'un maillon manque —
+ * pas de véhicule marqué, véhicule introuvable (film incohérent), ou arme sans montage connu —
+ * et le tir garde alors sa position de centre déjà publiée par le document.
+ */
+function vehicleShotSourceOf(
+  doc: ReplayDocumentReady,
+  vehicleSlot: number | undefined,
+  weaponTag: string | undefined,
+  t: number,
+): VehicleShotSource | null {
+  if (vehicleSlot === undefined) return null
+  const mount = vehicleWeaponMountOf(weaponTag)
+  if (!mount) return null
+  const track = doc.vehicles.find((v) => v.slot === vehicleSlot)
+  if (!track) return null
+  return { mount, family: track.family, headingDeg: vehicleHeadingAt(track, t) }
 }

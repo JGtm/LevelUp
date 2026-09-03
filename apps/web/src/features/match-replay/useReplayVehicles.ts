@@ -81,6 +81,13 @@ export interface Vehicles {
    * point d'embarquement resterait faux même si on choisit de ne pas dessiner le véhicule.
    */
   isEmbarkedAt: (slot: number, frame: number) => boolean
+  /**
+   * Dimensions natives + échelle manifeste d'UNE famille, ou `null` (chargement pas encore
+   * abouti). EXPOSÉ depuis le 2026-09-03 pour `drawShotsLayer` (origine des tirs en véhicule,
+   * `vehicleWeaponMounts.vehicleShotPlacement`) : LA MÊME source déjà chargée ici pour dessiner
+   * le sprite, jamais un second chargement du manifeste ou des images (règle ≤ 2 copies).
+   */
+  sizeOf: (family: string) => VehicleSpriteSize | null
 }
 
 export function useReplayVehicles({
@@ -185,7 +192,7 @@ export function useReplayVehicles({
     const raw = rawImagesRef.current.get(family)
     const mmPerPx = manifestRef.current?.get(family)
     if (!raw || mmPerPx === undefined) return null
-    return { naturalHeightPx: raw.naturalHeight, mmPerPx }
+    return { naturalWidthPx: raw.naturalWidth, naturalHeightPx: raw.naturalHeight, mmPerPx }
   }, [])
 
   const paint = useCallback(
@@ -207,5 +214,5 @@ export function useReplayVehicles({
   // bascule ne s'affiche pas, plutôt que d'allumer un calque resté vide.
   const available = useMemo(() => tracks.some((t) => !vehicleIsDecor(t.family)), [tracks])
 
-  return { available, paint, isEmbarkedAt }
+  return { available, paint, isEmbarkedAt, sizeOf }
 }

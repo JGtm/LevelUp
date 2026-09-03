@@ -66,7 +66,7 @@ function style(over: Partial<VehicleStyle> = {}): VehicleStyle {
     showNames: true,
     showAim: true,
     spriteOf: () => SPRITE,
-    sizeOf: () => ({ naturalHeightPx: 128, mmPerPx: 10 }),
+    sizeOf: () => ({ naturalWidthPx: 128, naturalHeightPx: 128, mmPerPx: 10 }),
     colorOfSlot: () => '#equipe',
     colorOfXuid: () => null,
     nameOfSlot: () => 'PION-BRIDGE',
