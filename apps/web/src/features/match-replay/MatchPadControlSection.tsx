@@ -1,12 +1,19 @@
 /**
- * MatchPadControlSection — LE CONTRÔLE DES ARMES SPÉCIALES D'UN MATCH, par joueur et par équipe.
+ * MatchPadControlSection — LE CONTRÔLE DES ARMES SPÉCIALES D'UN MATCH, une arme par ligne.
  *
  * CE QUE LA PAGE NE SAVAIT PAS DIRE, ET CE QUE LE BILAN D'ÉQUIPEMENT REFUSAIT DE DIRE. La
  * section voisine (`MatchEquipmentUsageSection`) compte les socles VIDÉS, au niveau du match et
  * sans ramasseur : c'était la seule chose vraie tant que `padPickups[].xuid` valait `null`
- * partout. L'événement natif de ramassage l'a levée (SCHÉMA 30) : ce tableau-ci nomme le
+ * partout. L'événement natif de ramassage l'a levée (SCHÉMA 30) : ce bloc-ci nomme le
  * ramasseur socle par socle, et c'est la stat de domination tactique demandée — qui a tenu le
  * fusil de précision, qui a raflé l'épée.
+ *
+ * LA FORME EST UN GRAPHE, PLUS UN TABLEAU (2026-09-03, retours utilisateur). Une ligne par
+ * arme : son nom à gauche, deux bâtons superposés — le camp du joueur de la page au-dessus,
+ * l'adverse en dessous — et dans chaque bâton un segment par joueur du camp. L'ÉCHELLE EST
+ * COMMUNE À TOUTES LES LIGNES (toutes comptent la même chose : des prises), avec un axe entier
+ * en pied. La question « qui a tenu le lance-roquettes » se lit alors en une ligne au lieu d'un
+ * balayage de colonne.
  *
  * ELLE VIT DANS `match-replay/` ET NON DANS `match-view/`, pour la raison qui vaut déjà pour sa
  * voisine : le VOCABULAIRE. Chaque nom d'arme qu'elle écrit vient du catalogue du document ou de
@@ -21,32 +28,45 @@
  * de cache que ses voisines (`useMatchReplay`, gaté par `header.replay_available`) : les blocs de
  * l'onglet partagent un seul téléchargement.
  *
- * CE QUE L'ÉCRAN DIT DE SA PROPRE MESURE, et il doit le dire : le tableau ne montre QUE les
- * occupations dont l'événement natif nomme le ramasseur. Toutes les autres sont réelles, et la
- * note de bas de tableau les compte par CAUSE — ambiguës, non couvertes, datées sans nom, socles
- * de bonus hors jointure. Sans elle, le lecteur croirait tenir la totalité des socles du match.
+ * CE QUE L'ÉCRAN DIT DE SA PROPRE MESURE, et il doit le dire : le graphe ne montre QUE les
+ * occupations dont l'événement natif nomme le ramasseur. Les autres sont réelles — celles d'un
+ * socle affiché sont annotées à DROITE de sa ligne (« + N sans nom »), jamais versées à un camp,
+ * et la note de pied les compte toutes par CAUSE : ambiguës, non couvertes, datées sans nom,
+ * socles de bonus hors jointure. Sans elle, le lecteur croirait tenir la totalité des socles.
  *
- * Aucun calcul ici : tout vient de `padControlLogic`. Gabarit structurel :
- * `MatchEquipmentUsageSection.tsx` — mêmes classes de tableau, mêmes tokens.
+ * COULEURS. Les camps prennent `teamTokenCssVar` — les jetons `team-ally` / `team-enemy` que les
+ * réglages d'accessibilité surchargent, et NON la cascade d'identité de `teamColor.ts` (cf.
+ * l'en-tête de `match-view/teamSeriesColor.ts`). Les joueurs d'un camp s'en distinguent par un
+ * éclaircissement, calculé par `padControlChart`.
+ *
+ * Aucun calcul ici : tout vient de `padControlLogic` (les mesures) et `padControlChart` (la
+ * projection).
  */
-import { useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
 
+import { ChartLegend } from '@/components/charts/ChartLegend'
 import { SectionCard } from '@/components/ui/section-card'
+import { Tooltip } from '@/components/ui/tooltip'
+import { teamTokenCssVar } from '@/features/match-view/teamSeriesColor'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 import { resolveTeamLabel } from '@/lib/halo/teamLabel'
 import { HeaderLabelTooltip } from '@/lib/table/columnMeta'
 
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
 import type { ReplayText } from './i18nContract'
+import { buildPadControlBars, type PadBarModel, type PadBarRow } from './padControlChart'
 import {
   buildPadControl,
   padControlGaps,
   padControlMissing,
   type PadControl,
-  type PadControlTeam,
 } from './padControlLogic'
 import { useMatchReplay } from './queries'
 import { padNameFor } from './useReplayWeaponPads'
+
+/** Largeur de la colonne des noms d'arme, et de l'annotation de droite (px). */
+const NAME_WIDTH = 148
+const NOTE_WIDTH = 78
 
 interface Props {
   playerSlug: string
@@ -68,19 +88,36 @@ export function MatchPadControlSection({
   const { data } = useMatchReplay(playerSlug, matchId, replayAvailable)
   const board = useMemo(() => scoreboard ?? [], [scoreboard])
   const control = useMemo(() => (data ? buildPadControl(data, board) : null), [data, board])
-  // Le NOM d'un socle passe par la cascade unique du rejeu (famille d'équipement, puis catalogue
-  // du document, puis identifiant brut) : aucune seconde table de noms n'est écrite ici.
-  const weaponNames = useMemo(
-    () =>
-      data && control
-        ? control.weapons.map((weapon) => padNameFor(weapon, data.weaponLabels, t, locale))
-        : [],
-    [data, control, t, locale],
+  const meSide = useMemo(() => board.find((r) => r.is_me)?.team_side ?? null, [board])
+
+  const teamLabel = useCallback(
+    (side: string | null) =>
+      resolveTeamLabel(side ? board.filter((r) => (r.team_side ?? '') === side) : [], side, t),
+    [board, t],
   )
-  const meXUID = useMemo(() => board.find((r) => r.is_me)?.xuid ?? null, [board])
+  // « Allié » = du côté du joueur de la page ; camp inconnu -> encre neutre (cf. teamSeriesColor).
+  const allyOf = useCallback(
+    (side: string | null) => (side == null || meSide == null ? null : side === meSide),
+    [meSide],
+  )
+  const bars = useMemo(
+    () =>
+      control && data
+        ? buildPadControlBars({
+            control,
+            weaponLabel: (weapon) => padNameFor(weapon, data.weaponLabels, t, locale),
+            teamLabel,
+            teamColor: (side) => teamTokenCssVar(allyOf(side)),
+            // Le camp du joueur de la page passe EN HAUT du bâton : c'est sa page. Le camp
+            // inconnu ferme la marche — on ne le glisse pas entre les deux camps nommés.
+            teamRank: (side) => (allyOf(side) === true ? 0 : side == null ? 2 : 1),
+          })
+        : null,
+    [control, data, t, locale, teamLabel, allyOf],
+  )
 
   // Double porte : pas d'artefact, ou aucune prise attribuée -> rien du tout.
-  if (!control?.hasData) return null
+  if (!control?.hasData || !bars) return null
 
   return (
     <SectionCard
@@ -93,113 +130,120 @@ export function MatchPadControlSection({
       )}
       footer={<PadControlFootnotes control={control} t={t} />}
     >
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-3xs">
-          <thead>
-            <tr className="text-muted-foreground">
-              <th className="border border-border border-b-2 px-2 py-1 text-left">
-                {t.padControl.colPlayer}
-              </th>
-              <th className="border border-border border-b-2 px-2 py-1 text-right font-semibold">
-                {t.padControl.colTotal}
-              </th>
-              {weaponNames.map((name, i) => (
-                <th
-                  key={control.weapons[i]}
-                  className="border border-border border-b-2 px-2 py-1 text-right"
-                >
-                  {name}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          {control.byTeam.map((team) => (
-            <PadControlTeamBody
-              key={team.side ?? 'sans-equipe'}
-              team={team}
-              board={board}
-              weapons={control.weapons}
-              meXUID={meXUID}
-              t={t}
-            />
-          ))}
-        </table>
+      <div className="px-3 pb-3 pt-3">
+        <PadControlBars model={bars} t={t} />
+        <ChartLegend
+          className="pt-3"
+          items={(bars.rows[0]?.sticks ?? []).map((stick) => ({
+            key: stick.side ?? 'sans-equipe',
+            label: stick.label,
+            color: teamTokenCssVar(allyOf(stick.side)),
+          }))}
+        />
       </div>
     </SectionCard>
   )
 }
 
+/** La grille du graphe : nom d'arme | bâtons | annotation. Reprise à l'identique par l'axe. */
+const ROW_GRID = { gridTemplateColumns: `${NAME_WIDTH}px 1fr ${NOTE_WIDTH}px`, gap: 12 }
+
 /**
- * PadControlTeamBody — un camp : son en-tête, ses joueurs (du plus preneur au moins preneur), et
- * son total.
+ * PadControlBars — les lignes d'arme, puis l'axe commun.
  *
- * LE CAMP SANS NOM EST UN CAMP QUAND MÊME (`side` null) : ce sont les joueurs que le film a vus
- * vivre et que le scoreboard ignore. Ils gardent leur ligne sous « Sans équipe » — le trou se
- * montre, il ne se comble pas, et surtout on ne les verse pas dans un camp au hasard.
+ * L'AXE EST HORS DES LIGNES et posé sur la MÊME grille : c'est ce qui garantit que sa
+ * graduation « 3 » tombe à l'aplomb du bout d'un bâton de trois prises.
  */
-function PadControlTeamBody({
-  team,
-  board,
-  weapons,
-  meXUID,
-  t,
-}: {
-  team: PadControlTeam
-  board: MatchScoreboardRow[]
-  weapons: string[]
-  meXUID: string | null
-  t: ReplayText
-}) {
-  const rows = board.filter((r) => (r.team_side ?? '') === (team.side ?? ''))
-  const label = resolveTeamLabel(team.side ? rows : [], team.side, t)
+function PadControlBars({ model, t }: { model: PadBarModel; t: ReplayText }) {
   return (
-    <tbody>
-      <tr>
-        <th
-          colSpan={weapons.length + 2}
-          className="border border-border px-3 py-1 text-left text-xs font-semibold text-foreground"
-        >
-          {label}
-        </th>
-      </tr>
-      {team.players.map((p) => (
-        // Clé composite : un xuid peut manquer (entrée de film sans identité résolue) et
-        // plusieurs lignes se percuteraient sur une clé vide.
-        <tr key={`${p.xuid}||${p.name}`} className={p.xuid === meXUID ? 'bg-info/10' : ''}>
-          <td className="border border-border px-2 py-1 text-left">{p.name}</td>
-          <td className="border border-border px-2 py-1 text-right font-semibold tabular-nums">
-            {p.total}
-          </td>
-          {weapons.map((weapon) => (
-            <td key={weapon} className="border border-border px-2 py-1 text-right tabular-nums">
-              {p.byWeapon[weapon] ?? 0}
-            </td>
-          ))}
-        </tr>
-      ))}
-      <tr className="font-semibold text-foreground">
-        <td className="border border-border px-2 py-1 text-left">{t.padControl.teamTotal}</td>
-        <td className="border border-border px-2 py-1 text-right tabular-nums">
-          {team.total.total}
-        </td>
-        {weapons.map((weapon) => (
-          <td key={weapon} className="border border-border px-2 py-1 text-right tabular-nums">
-            {team.total.byWeapon[weapon] ?? 0}
-          </td>
+    <div className="overflow-x-auto">
+      <div className="min-w-[560px]">
+        {model.rows.map((row) => (
+          <PadWeaponRow key={row.weapon} row={row} t={t} />
         ))}
-      </tr>
-    </tbody>
+        <div className="grid" style={ROW_GRID}>
+          <div />
+          <div className="relative h-4 border-t border-border text-3xs text-muted-foreground tabular-nums">
+            {model.ticks.map((tick) => (
+              <span
+                key={tick}
+                className="absolute top-0.5 -translate-x-1/2"
+                style={{ left: `${(tick / model.bound) * 100}%` }}
+              >
+                {tick}
+              </span>
+            ))}
+          </div>
+          <div />
+        </div>
+        <div className="grid" style={ROW_GRID}>
+          <div />
+          <div className="text-center text-3xs text-muted-foreground">{t.padControl.axisPickups}</div>
+          <div />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/** Une arme : son nom, ses deux bâtons superposés, et ce qui n'a pas de ramasseur nommé. */
+function PadWeaponRow({ row, t }: { row: PadBarRow; t: ReplayText }) {
+  return (
+    <div className="mb-2.5 grid items-center" style={ROW_GRID}>
+      <div className="truncate text-right text-xs" title={row.label}>
+        {row.label}
+      </div>
+      <div className="flex flex-col gap-[3px]">
+        {row.sticks.map((stick) => (
+          <div
+            key={stick.side ?? 'sans-equipe'}
+            className="flex h-[13px] overflow-hidden bg-muted"
+          >
+            {stick.segments.map((seg) => {
+              const tip = t.padControl.barTipFmt(seg.name, stick.label, row.label, seg.count)
+              return (
+                // Le segment porte son nombre quand il est assez large : sous ~11 % du rail le
+                // chiffre se fait rogner et vaut moins que la place qu'il prend. Le retrait de
+                // 2 px ouvre la saignée qui sépare deux joueurs du même camp.
+                // `text-white` : libellé posé SUR l'aplat du camp, quelle que soit la palette
+                // réglée — un contraste de texte dans un aplat, pas une couleur sémantique.
+                <div
+                  key={seg.xuid}
+                  className="mr-[2px] h-full"
+                  style={{ width: `calc(${seg.fraction * 100}% - 2px)` }}
+                >
+                  <Tooltip content={tip} className="h-full w-full">
+                    <div
+                      className="flex h-full w-full items-center justify-center overflow-hidden whitespace-nowrap text-3xs font-semibold text-white"
+                      style={{ backgroundColor: seg.color }}
+                      tabIndex={0}
+                      role="img"
+                      aria-label={tip}
+                    >
+                      {seg.fraction * 100 > 11 ? seg.count : ''}
+                    </div>
+                  </Tooltip>
+                </div>
+              )
+            })}
+          </div>
+        ))}
+      </div>
+      <div className="text-3xs text-muted-foreground tabular-nums">
+        {row.unnamed > 0 ? t.padControl.unnamedFmt(row.unnamed) : ''}
+      </div>
+    </div>
   )
 }
 
 /**
- * PadControlFootnotes — le dénominateur, et TOUT ce que le tableau ne montre pas.
+ * PadControlFootnotes — le dénominateur, et TOUT ce que le graphe ne montre pas.
  *
- * LA SOMME DOIT SE VÉRIFIER À L'ŒIL : prises attribuées + occupations hors tableau = occupations
+ * LA SOMME DOIT SE VÉRIFIER À L'ŒIL : prises attribuées + occupations hors graphe = occupations
  * mesurées, ventilées par cause.
  *
  * Le document sans bloc de datation n'existe pas en production (cf. `PadControl.coverage`) : la
- * note est alors simplement omise, sans phrase dédiée — le tableau, lui, reste rendu.
+ * note est alors simplement omise, sans phrase dédiée — le graphe, lui, reste rendu.
  */
 function PadControlFootnotes({ control, t }: { control: PadControl; t: ReplayText }) {
   const p = t.padControl
@@ -207,7 +251,7 @@ function PadControlFootnotes({ control, t }: { control: PadControl; t: ReplayTex
   const gaps = padControlGaps(control)
   if (!control.coverage) return null
   return (
-    <div className="space-y-1 px-3 pb-2 pt-2 text-[11px] text-muted-foreground">
+    <div className="space-y-1 border-t border-border px-3 pb-2 pt-2 text-[11px] text-muted-foreground">
       <p>{p.attributedFmt(control.attributed, control.coverage.occupations)}</p>
       {missing > 0 && gaps.length > 0 && (
         <p>
