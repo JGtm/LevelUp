@@ -32,8 +32,12 @@ import type { PadEquipmentFamilyKey } from './weaponPadFamilies'
  *     (`padPickups[].xuid` est publié depuis le schéma 30 mais cet écran ne l'exploite pas) :
  *     la ligne reste au niveau du MATCH, et aucun
  *     libellé ne doit laisser croire qu'on connaît le ramasseur.
- *  3. `notMeasured` — répulseur et propulseur n'ont AUCUN canal d'activation dans le film. Pas
- *     de colonne vide (elle se lirait « zéro utilisation ») : une phrase qui le dit.
+ *  3. `notMeasured` — le RÉPULSEUR n'a aucun canal d'activation dans le film (neuf canaux
+ *     fouillés, négatif mesuré le 2026-09-03). Pas de colonne vide (elle se lirait « zéro
+ *     utilisation ») : une phrase qui le dit. LE PROPULSEUR EN EST SORTI le même jour — son
+ *     usage est mesuré (schéma 38, `abilityImpulses`) et validé contre un relevé Theater ; il
+ *     n'a pas de colonne pour autant, parce que le geste dure une demi-seconde et se lit sur
+ *     la CARTE (le dash du pion), pas dans un compte de tableau. La phrase dit les deux.
  *  4. LA CELLULE « — » DES COLONNES DE FRAGS (cf. `equipmentUsageColumns.ts`, `killsCell`) —
  *     un match dont `EquipmentUsageCoverage.killsRead` est faux écrit « — », jamais un zéro :
  *     pas un texte à part, un CARACTÈRE, identique dans les deux langues (même convention que

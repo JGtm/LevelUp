@@ -633,6 +633,115 @@ Gates rejoués après corrections : `make check-types` exit 0, `make test-web` e
 en dur. Plafonds toujours tenus : `equipmentPlacementsLayer.ts` 519 L et `ReplayCanvas.tsx`
 662 L, INCHANGÉS ; `riftStations.ts` 154 L, `placementRift.ts` 288 L.
 
+### Lot P4 — Web : l'USAGE DU PROPULSEUR à l'écran et à l'oreille (après P3)
+
+Commandé par l'utilisateur le 03/09, dans ses mots : « Nan trop bref pour mettre sur la fiche
+mais un petit effet sur le pion oui, fait un truc qui fait comme un dash. Tu peux mettre le son
+si c'est pas déjà fait ». **PAS D'EFFET DE FICHE** — le geste dure une demi-seconde, une fiche
+ne le montrerait pas.
+
+- [x] P4.1 FAIT — **LE DASH SUR LE PION** (`thrusterDashFx.ts`, 303 L) : un sillage en coin
+      posé DERRIÈRE le marqueur (décollé de 5 px de son noyau, pour que le pion reste lisible)
+      plus deux chevrons qui pointent dans le sens de la poussée. Longueur 20 px d'écran,
+      étirement en easeOutCubic (le patron de l'onde du capteur et de l'onde de choc), durée
+      **460 ms en temps RÉEL du match** (`frameMs`, jamais un nombre d'images : en lecture
+      accélérée le geste reste aussi bref). Encre = couleur d'ÉQUIPE de la vie qui pousse,
+      résolue à l'image de L'IMPULSION et non à l'image courante (un slot est réattribué aux
+      réapparitions — même règle que `SensorReveal.ownerFrame`). Une vie sans propriétaire ne
+      peint rien. **LA DIRECTION SE LIT DANS LA TRAJECTOIRE** (`tracks[].points`, la même
+      interpolation que le marqueur) : fenêtre AVANT de 280 ms d'abord — la poussée suit le
+      déclenchement —, repli sur l'ARRIÈRE quand la vie se ferme pendant le dash. **Sans
+      déplacement mesurable, AUCUN dash** : le seul seuil du fichier (0,05 u monde) est une
+      garde contre la normalisation d'un vecteur nul, PAS une règle de détection — l'existence
+      du geste vient du film, jamais d'une vitesse. `prefers-reduced-motion` : forme POSÉE,
+      pleine longueur et opacité constante (0,55) pendant toute la fenêtre — convention de
+      `revealAlpha`, l'information reste, l'animation s'éteint. Aucun calque hors écran :
+      deux projections et une poignée de traits par dash actif. Zéro littéral de couleur.
+- [~] P4.1bis **PRIX DU CLIQUET DE TAILLE, payé par extraction** — couvert par P4.1.
+      `ReplayCanvas.tsx` était à 662 L pour un plafond de 665
+      (`placementFamily.guard.test.ts`) : le dash y demandait 4 lignes de glue. Plutôt que de
+      relever le cliquet, **DIX-HUITIÈME EXTRACTION : `useReplayAbilityFx.ts`** — les DEUX
+      gestes de capacité qui agissent sur leur porteur (câble de grappin, schéma 8 ; dash du
+      propulseur, schéma 38) y sont bâtis ET peints ensemble. Le regroupement n'est pas de
+      circonstance : même famille de geste, même moment de la pile de calques, même absence
+      d'objet posé (`PLACEMENT_RENDER` les met déjà tous deux à `null`). `buildGrappleFx` quitte
+      `useReplayFx` (aucun doublon laissé derrière). Résultat : canvas à **660 L**, cliquet
+      INCHANGÉ à 665.
+- [x] P4.2 FAIT — **LE SON**, câblé sur le MÊME instant (`abilityImpulseSound.ts`, 54 L,
+      patron d'`equipmentChangeSound.ts`). Table **PAR FAMILLE**
+      (`ABILITY_IMPULSE_SOUND_STEMS`) et non un stem nu comme le grappin : le calque publie une
+      `family`, une famille sans stem reste MUETTE — jamais le son d'une voisine. Catégorie
+      ÉQUIPEMENT : couper « Équipements » coupe le dash comme elle coupe le grappin.
+      **ASSETS COPIÉS DANS LE MÊME LOT** (l'avertissement du rapport d'extraction : les deux
+      assertions du garde-rail sont symétriques, trois `.wav` sans stem le rendent ROUGE) :
+      `thruster_activate{,_v2,_v3}.wav` (0,996 / 0,895 / 0,830 s, 48 kHz stéréo, crête
+      -1,00 dBTP) + le rapport `.ai/V7.5/RE_SON_PROPULSEUR_2026-09-03.md`. Trois variantes
+      déclarées dans `SOUND_VARIANTS` **exactement comme `grapple_fire`** — l'événement du jeu
+      est un `RandomSequence` « 1 parmi 3 », le tirage se fait à la LECTURE. Garde-rail
+      d'assets mis à jour dans ses trois tables (manifeste, classe de durée `longs`,
+      `SOURCES_COURTES` avec les trois durées mesurées) : **VERT**.
+- [x] P4.3 FAIT — **L'INFOBULLE DEVENUE FAUSSE, corrigée en FR ET EN** (`i18n.ts`,
+      `equipmentUsage.notMeasured`). Elle affirmait « Répulseur et propulseur n'apparaissent
+      pas : le film ne publie aucun canal d'activation pour ces deux capacités » — vrai pour le
+      répulseur, FAUX pour le propulseur depuis P3. Elle dit désormais l'état réel : le
+      répulseur n'a aucun canal (neuf fouillés, négatif mesuré) ; le propulseur a son canal
+      d'usage mesuré et validé contre un relevé Theater, et ses poussées se voient sur la CARTE
+      et non dans ce tableau, parce que le geste dure une demi-seconde. **GREP DES AUTRES
+      PORTEURS DE LA MÊME AFFIRMATION PÉRIMÉE**, tous corrigés (règle « doc inversée ») :
+      `i18nContract.ts` §3, `MatchEquipmentUsageSection.tsx` (en-tête) et son test,
+      `equipmentUsageLogic.ts` (deux endroits : en-tête et `isDeployableFamily`) et son test,
+      `replaySound.ts` (« restent muets »). Aucune colonne n'est AJOUTÉE au tableau : décision
+      utilisateur, le geste ne se compte pas sur une fiche.
+- [x] P4.4 FAIT — **TESTS** : `thrusterDashFx.test.ts` (19 cas) verrouille les quatre règles
+      demandées — l'effet ne part qu'aux instants publiés (famille hors table, vie non publiée,
+      document vide : rien) ; la durée est BORNÉE et en temps réel (la même image sur une
+      grille plus lente est encore dans la fenêtre) ; la direction suit le déplacement (fenêtre
+      avant, repli arrière, `null` sans déplacement, et le tracé bascule quand on inverse la
+      direction) ; `reducedMotion` pose la forme (deux images donnent un tracé IDENTIQUE, et le
+      contrôle NÉGATIF montre qu'elles diffèrent sans la préférence). Plus : l'encre vient de
+      l'appelant, et elle se résout à l'image de l'impulsion (mutation tuée : un test compte
+      les images passées à `colorOfSlot`). `abilityImpulseSound.test.ts` (7 cas) : un son par
+      impulsion à sa frame convertie, famille sans stem muette, les trois variantes attachées,
+      et la piste entière sous la catégorie Équipements (allumée / coupée).
+
+#### Revue adversariale P4 — ronde 1 (1 relecteur frais, 03/09) : 16 conditions tiennent, 3 constats, TOUS CORRIGÉS
+
+- [x] **A1 (P0) — `buildThrusterDashFx` ÉCRASAIT LES VIES D'UN MÊME SLOT.** `new Map(doc.tracks.map(t => [t.slot, t.points]))` ne garde que la DERNIÈRE piste du slot — or
+      le slot de biped est réattribué à chaque réapparition, invariant écrit à quatre endroits
+      du dossier (`shotFx.ts`, `fireMark.ts`, `riftStations.ts`, `replayMarkers.ts`). DEUX
+      conséquences, les deux graves : (a) cas dominant, l'instant précède les points retenus,
+      `positionAt` rend `null`, et **toutes les poussées d'un slot sauf celles de sa dernière
+      vie disparaissaient en silence — alors que le SON partait quand même** (`abilityImpulseSound.ts` ne joint aucune piste) : on entendait le dash sans le voir ;
+      (b) si l'instant tombait dans la fenêtre de la vie usurpatrice, le sillage se peignait à
+      la position et dans la direction d'UN AUTRE JOUEUR, avec la couleur du vrai porteur.
+      CORRIGÉ par le patron canonique de la maison, recopié et non réinventé
+      (`fireMark.ts:50-59`, `shotFx.ts:62-73`) : `Map<number, ReplayTrackReady[]>` puis
+      `.find(l => isAliveAt(l, imp.t))`. **DEUX MUTATIONS REJOUÉES ET TUÉES** par le test neuf
+      « DEUX VIES du même slot : chaque impulsion prend la vie qui COUVRE son instant »
+      (fixture canonique de `fireMark.test.ts` — vies [10,20] et [30,40], directions
+      orthogonales pour que la confusion se voie) : `.at(-1)` (l'ancien défaut) ROUGE,
+      `.at(0)` ROUGE. Second test ajouté : une impulsion **entre deux vies** ne dessine rien.
+- [x] **A2 (P2) — `available` était du code mort** (CLAUDE.md n°7) : calculé, exporté, et
+      `grep` sur tout `apps/web/src` sans un seul lecteur — à la différence de
+      `vipCrown.available` / `skullCarrier.available` / `bombBlast.available`, consommés par le
+      bandeau de disponibilité du canvas. Son commentaire lui inventait en plus un usage que le
+      canvas n'a pas. SUPPRIMÉ ; `ReplayAbilityFx` ne porte plus que `paint`, et son commentaire
+      dit désormais POURQUOI il n'a pas de drapeau. Même traitement pour trois exports sans
+      importeur ni test — `DASH_FAMILIES`, `DashProgress`, `DashTime` redeviennent privés du
+      module (`DashStyle` reste exporté : le test le lit).
+- [x] **A3 (P2) — DOC INVERSÉE dans le fichier même que le lot modifie** : `ReplayCanvas.tsx`
+      annonçait « les effets précalculés du film (tirs, « ! », morts, fins de vol, **grappin**)
+      … vivent dans `useReplayFx` » alors que le grappin en était parti deux lignes plus bas.
+      Réécrit : la liste dit les cinq mémos réels et le départ du grappin est daté, avec sa
+      destination.
+
+Gate P4 (REJOUÉ après corrections) : `make check-types` **exit 0** ; `make test-web`
+**exit 0 — 562 fichiers, 5 837 tests passés, 14 skippés, 0 échec** ; `npx eslint` sur les
+fichiers touchés exit 0 ; garde-rail d'assets sonores VERT (les deux assertions symétriques) ;
+zéro couleur en dur ; cliquet `ReplayCanvas.tsx` INCHANGÉ à 665 pour un fichier à 662 L. Reste à
+l'utilisateur : le GATE VISUEL du dash (forme, longueur, lisibilité sur le pion) et l'écoute du
+son en situation.
+
 ### Lot R5 — Recherche : les événements des AUTRES équipements (parallèle)
 
 - [ ] R5.1 Inventaire des types d'événements nommés (annexe A de la grammaire, table
@@ -724,6 +833,36 @@ jamais de cuisson de masse sans décision séparée.
   (`placementFamily.guard`, `placementDropped.guard`, qui exige qu'une famille dessinée déployée
   se dessine aussi lâchée) : c'est un lot à part, pas un fix opportuniste.
 
+- **P4 (03/09) — LE TABLEAU D'ÉQUIPEMENT N'A TOUJOURS AUCUNE COLONNE POUR LE PROPULSEUR, et
+  c'est désormais une DÉCISION et non une absence de donnée — non traité, à arbitrer plus
+  tard.** L'usage est mesuré (schéma 38) ; l'utilisateur a tranché « trop bref pour mettre sur
+  la fiche », donc P4 s'est borné à corriger la PHRASE. Le jour où une lecture agrégée
+  d'usages de capacité aurait du sens (par exemple « N poussées » à côté de « N tractions de
+  grappin », qui a sa colonne), elle se décidera à part : `equipmentUsageLogic.ts` sait déjà
+  compter par famille, et `coverageGrappleFmt` donne le gabarit de la phrase de couverture.
+- **P4 (03/09) — LES TROIS VARIANTES MONO `blast_nonplayer` NE SONT PAS LIVRÉES, à dessein.**
+  La banque du propulseur porte le MÊME dash entendu depuis un AUTRE joueur (0,742 / 0,888 /
+  0,977 s, archivées hors dépôt par le lot d'extraction). Aucune autre capacité ne fait cette
+  distinction aujourd'hui, et un asset que rien ne joue est un asset mort que le garde-rail
+  refuse. Un lot qui voudrait distinguer « mon propulseur » de « celui d'en face » n'a rien à
+  re-mesurer — mais il devra le faire pour TOUTES les capacités, pas pour celle-ci seule.
+- **P4 revue ronde 1 (03/09) — `buildGrappleFx` PORTE LE MÊME DÉFAUT QUE LE P0 CORRIGÉ, et il
+  est ANTÉRIEUR à ce lot : NON TRAITÉ.** `grappleLayer.ts:50` indexe
+  `new Map(doc.tracks.map(t => [t.slot, t.points]))` — c'est le modèle qui a été recopié dans le
+  dash, et il écrase les vies d'un même slot exactement pareil : une traction d'une vie
+  antérieure va chercher les points de la DERNIÈRE vie du slot. Conséquence attendue, la même
+  qu'au dash : la ligne disparaît (instant hors des points retenus) ou se trace depuis la
+  position d'un autre joueur. Le correctif est connu et tient en trois lignes (le patron
+  `Map<number, ReplayTrackReady[]>` + `.find(isAliveAt)`), mais il change le comportement d'un
+  calque livré en production le 2026-08-20 et demande sa propre fixture à deux vies : c'est un
+  lot à part, pas un fix opportuniste (règle n°7 du contrat d'exécution). **À traiter avant la
+  re-cuisson du parc** — c'est elle qui rendra le défaut visible.
+- **P4 (03/09) — LE DASH NE SE DESSINE PAS QUAND LA TRAJECTOIRE NE BOUGE PAS, et ce silence
+  n'est pas quantifié.** L'effet a besoin d'une direction ; sans déplacement mesurable autour
+  de l'instant (aucune des deux fenêtres), l'impulsion est publiée mais rien n'est peint. Sur
+  le corpus, le pic mesuré (6,2-8,8 m/s) rend le cas improbable — mais AUCUNE mesure n'a compté
+  combien d'impulsions du parc tombent dans ce trou, faute d'artefact 38 cuit. À mesurer à la
+  re-cuisson, en même temps que le reste du calque.
 - **P3 (03/09) — `make go-api-lint` ÉTAIT DÉJÀ ROUGE avant ce lot, 4 constats ANTÉRIEURS, non
   corrigés** (aucun des fichiers n'est touché par P3) : `filmdec/offline_filters.go:145`
   QF1001 (loi de De Morgan applicable, code du lot P1.4) ; `filmdec/transloc_events.go:172`
