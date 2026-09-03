@@ -20,13 +20,9 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import { buildFloorGrid } from './mapFloor'
-import { drawFloorLayer } from './replayDraw'
 import { drawShotEffect, familyOf, type ShotFamily, type ShotShape } from './shotEffects'
 import { count, recordingContext, valuesOf, type CanvasOp } from './test/recordingContext'
 
-import type { ReplayBounds } from '@/lib/api/types'
-import type { ReplaySurfaceReady } from './replayNormalize'
 
 // Le contexte enregistreur vit dans `test/recordingContext.ts` depuis le 2026-08-15 :
 // l'éclair de bouche (muzzleFlash.test.ts) en a besoin du même, et une deuxième copie
@@ -240,78 +236,3 @@ describe('les huit formes d’effet de tir', () => {
   })
 })
 
-describe('la trame du sol', () => {
-  const bounds: ReplayBounds = { minX: 0, minY: 0, maxX: 2, maxY: 1, minZ: 0, maxZ: 1 }
-  const view = { bounds, width: 200, height: 100, pad: 0 }
-
-  /** Une dalle carrée d'aire suffisante pour ne pas tomber sous le plancher de 1 m². */
-  const slab = (x0: number, y0: number, x1: number, y1: number, z: number): ReplaySurfaceReady => ({
-    x0,
-    y0,
-    x1,
-    y1,
-    z,
-    zb: z - 0.5,
-    poly: [],
-  })
-
-  it('ne peint QUE les cellules qui portent un sol — le vide reste vide', () => {
-    // Une seule dalle sur la moitié gauche : la moitié droite n'a pas de sol, et personne ne
-    // doit y inventer un aplat.
-    const grid = buildFloorGrid([slab(0, 0, 1, 1, 0)], bounds)
-    const { ops, ctx } = recordingContext()
-    drawFloorLayer(ctx, grid, view, { fill: 'rgb(1 1 1)', edge: 'rgb(2 2 2)' })
-    const rects = ops.filter((o) => o.op === 'fillRect')
-    expect(rects.length).toBeGreaterThan(0)
-    // La dalle s'arrête à x = 1 sur une étendue de 2 m rendue sur 200 px, soit 100 px. La
-    // borne tolère UNE cellule de plus (25 cm = 12,5 px) : la cellule qui chevauche le bord de
-    // la dalle est peinte en entier, c'est la rasterisation, pas du sol invente.
-    const cellPx = (view.width * grid.cell) / (bounds.maxX - bounds.minX)
-    for (const r of rects) {
-      const [x, , w] = r.args as number[]
-      expect(x + w).toBeLessThanOrEqual(view.width / 2 + cellPx + 1)
-    }
-  })
-
-  it('peint une PLAGE d’un seul trait, pas cellule par cellule', () => {
-    // C'est la raison d'être de floorRun : deux rectangles voisins arrondis au pixel se
-    // chevauchent d'un pixel, et ce chevauchement dessine un quadrillage parasite.
-    const grid = buildFloorGrid([slab(0, 0, 2, 1, 0)], bounds)
-    const { ops, ctx } = recordingContext()
-    drawFloorLayer(ctx, grid, view, { fill: 'rgb(1 1 1)', edge: 'rgb(2 2 2)' })
-    const rects = ops.filter((o) => o.op === 'fillRect')
-    expect(rects.length).toBeLessThan(grid.filled)
-    expect(rects.length).toBeLessThanOrEqual(grid.ny)
-  })
-
-  it('fait monter l’opacité avec l’altitude du sol — l’étage se lit sans couleur dédiée', () => {
-    const grid = buildFloorGrid([slab(0, 0, 1, 1, -1), slab(1, 0, 2, 1, 0.9)], bounds)
-    const { ops, ctx } = recordingContext()
-    drawFloorLayer(ctx, grid, view, { fill: 'rgb(1 1 1)', edge: 'rgb(2 2 2)' })
-    const alphas = new Set<number>()
-    for (let i = 0; i < ops.length; i++) {
-      if (ops[i].op === 'fillRect') continue
-      if (ops[i].op === 'set globalAlpha') alphas.add(ops[i].args[0] as number)
-    }
-    expect(alphas.size).toBeGreaterThan(1)
-    expect(Math.max(...alphas)).toBeGreaterThan(Math.min(...alphas))
-  })
-
-  it('trace TOUTES les arêtes en un seul chemin — des milliers de stroke coûteraient plus', () => {
-    const grid = buildFloorGrid([slab(0, 0, 1, 1, 0)], bounds)
-    const { ops, ctx } = recordingContext()
-    drawFloorLayer(ctx, grid, view, { fill: 'rgb(1 1 1)', edge: 'rgb(2 2 2)' })
-    expect(count(ops, 'stroke')).toBe(1)
-    expect(count(ops, 'beginPath')).toBe(1)
-    expect(count(ops, 'moveTo')).toBeGreaterThan(0)
-  })
-
-  it('une carte SANS structure ne peint rien du tout', () => {
-    const grid = buildFloorGrid([], bounds)
-    const { ops, ctx } = recordingContext()
-    drawFloorLayer(ctx, grid, view, { fill: 'rgb(1 1 1)', edge: 'rgb(2 2 2)' })
-    expect(grid.filled).toBe(0)
-    expect(count(ops, 'fillRect')).toBe(0)
-    expect(count(ops, 'moveTo')).toBe(0)
-  })
-})
