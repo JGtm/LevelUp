@@ -109,6 +109,10 @@ type WorldLeaderboardCron struct {
 	// premier succès. Atomique : RunOnce est appelable hors du ticker (endpoint
 	// admin force-refresh, tests).
 	seasonDiscoveryFails atomic.Int64
+	// batchRefusals : refus CONSÉCUTIFS du garde-fou de qualité, PAR PLAYLIST
+	// (cf. world_leaderboard_quality.go). Process-local, remis à zéro dès qu'un lot
+	// de la playlist est accepté.
+	batchRefusals refusalStreaks
 }
 
 // WithStatsEnricher branche l'enrichissement Phase C (agrégateur multi-tokens).

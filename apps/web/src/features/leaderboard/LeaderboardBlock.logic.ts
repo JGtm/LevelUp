@@ -101,3 +101,48 @@ export function playlistsForSeason<T extends { value: string }>(
 export function pickEffectiveOption(options: readonly { value: string }[], current: string): string {
   return options.some((o) => o.value === current) ? current : (options[0]?.value ?? current)
 }
+
+/**
+ * Clés de tri portées par les colonnes ENRICHIES (celles qui disparaissent sous le
+ * seuil de couverture). `rank` et `csr` en sont exclus : ces colonnes sont
+ * toujours là. Idem `matches`/`value`, qui appartiennent aux catégories de stats.
+ */
+export const ENRICHED_SORT_KEYS: readonly string[] = [
+  'kda',
+  'kills',
+  'deaths',
+  'assists',
+  'win_rate',
+  'world_matches',
+  'accuracy',
+  'dmg_per_kill',
+  'dmg_per_death',
+]
+
+/** La clé de tri appartient-elle à une colonne enrichie ? */
+export function isEnrichedSortKey(key: string): boolean {
+  return ENRICHED_SORT_KEYS.includes(key)
+}
+
+/** Tri par défaut : le rang, croissant — le seul toujours affichable. */
+export const DEFAULT_SORT: { key: string; dir: 'asc' | 'desc' } = { key: 'rank', dir: 'asc' }
+
+/**
+ * resolveSort donne le tri EFFECTIVEMENT appliqué au rendu.
+ *
+ * Quand les colonnes enrichies ne sont pas affichées, un tri posé sur l'une
+ * d'elles ordonnerait la table par une colonne invisible — et resterait
+ * inannulable, puisque l'en-tête qui le porte a disparu. On retombe alors sur le
+ * rang croissant. L'état du composant n'est PAS modifié (aucun setState dans un
+ * effet) : le tri choisi revient tel quel dès que les colonnes réapparaissent.
+ */
+export function resolveSort(
+  sortKey: string,
+  sortDir: 'asc' | 'desc',
+  enrichedColumnsShown: boolean,
+): { key: string; dir: 'asc' | 'desc' } {
+  if (!enrichedColumnsShown && isEnrichedSortKey(sortKey)) {
+    return { ...DEFAULT_SORT }
+  }
+  return { key: sortKey, dir: sortDir }
+}

@@ -309,6 +309,68 @@ describe('LeaderboardBlock', () => {
     expect(playlistSelect().value).toBe(DOUBLES)
   })
 
+  // ─── Tri actif sur une colonne qui disparaît (S4) ───────────────────────────
+
+  it('tri sur une colonne enrichie : neutralisé quand elle disparaît, restauré quand elle revient', async () => {
+    // Deux relevés servis par la même page : 13.3 couvert (colonnes enrichies),
+    // 4.1 sous le seuil (aucune ligne enrichie → colonnes masquées).
+    const covered = [
+      { ...enrichedRow(1), kills: 10 },
+      { ...enrichedRow(2), kills: 300 },
+      { ...enrichedRow(3), kills: 200 },
+    ]
+    const bare = [plainRow(1), plainRow(2), plainRow(3), plainRow(4)]
+    server.use(
+      http.get(p('/players/:playerSlug/pages/leaderboard'), ({ request }) => {
+        const season = new URL(request.url).searchParams.get('season')
+        const entries = season === 'csrseason4-1' ? bare : covered
+        return HttpResponse.json({
+          entries,
+          category: 'csr-world',
+          season_id: season,
+          playlist_id: ARENA,
+          title_slug: 'halo_infinite',
+          total: entries.length,
+        })
+      }),
+    )
+    mockCatalog([
+      { id: 'csrseason13-3', display_name: 'Infinite (13.3)', enriched: true, playlist_ids: [ARENA] },
+      { id: 'csrseason4-1', display_name: 'Saison 4.1', enriched: true, playlist_ids: [ARENA] },
+    ])
+    renderWithProviders(<LeaderboardBlock playerSlug="test-player" />)
+
+    const gamertagOrder = () =>
+      screen
+        .getAllByRole('row')
+        .slice(1)
+        .map((r) => r.querySelectorAll('td')[1]?.textContent)
+    // En-têtes portant réellement le tri : aria-sort ascending/descending (les
+    // colonnes non triables n'ont pas l'attribut, les triables inactives ont 'none').
+    const sortedHeaders = () =>
+      screen
+        .getAllByRole('columnheader')
+        .filter((th) => ['ascending', 'descending'].includes(th.getAttribute('aria-sort') ?? ''))
+        .map((th) => [th.textContent, th.getAttribute('aria-sort')])
+
+    // Tri par Frags décroissant : l'ordre s'écarte du rang.
+    await waitFor(() => expect(screen.getByRole('button', { name: /Frags/ })).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: /Frags/ }))
+    await waitFor(() => expect(gamertagOrder()).toEqual(['Enrichi2', 'Enrichi3', 'Enrichi1']))
+
+    // Relevé sous le seuil : la colonne Frags disparaît → retour à l'ordre du rang,
+    // et le SEUL en-tête marqué trié est « # » (aucun indicateur fantôme).
+    fireEvent.change(screen.getByLabelText('Saison'), { target: { value: 'csrseason4-1' } })
+    await waitFor(() => expect(gamertagOrder()).toEqual(['Brut1', 'Brut2', 'Brut3', 'Brut4']))
+    expect(screen.queryByRole('button', { name: /Frags/ })).not.toBeInTheDocument()
+    expect(sortedHeaders()).toEqual([['#▲', 'ascending']])
+
+    // Retour au relevé couvert : le tri choisi n'a pas été perdu, seulement neutralisé.
+    fireEvent.change(screen.getByLabelText('Saison'), { target: { value: 'csrseason13-3' } })
+    await waitFor(() => expect(gamertagOrder()).toEqual(['Enrichi2', 'Enrichi3', 'Enrichi1']))
+    expect(sortedHeaders()).toEqual([['Frags▼', 'descending']])
+  })
+
   it('catalogue sans playlist_ids (backend antérieur) : toutes les playlists restent proposées', async () => {
     mockLeaderboard(ENTRIES)
     mockCatalog(

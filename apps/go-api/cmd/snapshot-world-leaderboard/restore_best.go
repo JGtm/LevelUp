@@ -29,11 +29,22 @@ import (
 	"levelup/go-api/internal/platform/duckdb"
 )
 
-// runRestoreMode exécute le balayage de restauration sur toute la base d'un titre.
+// restoreOptions rassemble les réglages du mode réparation. `season` est OBLIGATOIRE
+// et désigne UNE saison précise : une restauration écrit dans la seule archive du
+// classement mondial, elle ne doit jamais s'appliquer à un périmètre qu'on n'a pas
+// nommé (cf. validation dans main.go).
+type restoreOptions struct {
+	sharedDBPath string
+	titleSlug    string
+	season       string
+	execute      bool
+}
+
+// runRestoreMode exécute le balayage de restauration sur UNE saison d'un titre.
 // Ouvre la shared DB en RW (comme le reste du job : serveur API arrêté requis) même
 // en dry-run — les migrations doivent être appliquées pour que la vue _latest existe.
-func runRestoreMode(ctx context.Context, log *slog.Logger, dbPath, titleSlug string, execute bool) {
-	db, err := openSharedRW(dbPath)
+func runRestoreMode(ctx context.Context, log *slog.Logger, opt restoreOptions) {
+	db, err := openSharedRW(opt.sharedDBPath)
 	if err != nil {
 		fatal("open shared DB: %v", err)
 	}
@@ -42,38 +53,50 @@ func runRestoreMode(ctx context.Context, log *slog.Logger, dbPath, titleSlug str
 		fatal("migration shared: %v", err)
 	}
 
-	fmt.Printf("Restauration du meilleur lot — titre %s%s\n", titleSlug, dryRunSuffix(!execute))
-	restored, alreadyBest, failed, err := restoreBestBatches(ctx, log, db, titleSlug, execute)
+	fmt.Printf("Restauration du meilleur lot — titre %s, saison %s%s\n",
+		opt.titleSlug, opt.season, dryRunSuffix(!opt.execute))
+	restored, alreadyBest, failed, err := restoreBestBatches(ctx, log, db, opt)
 	if err != nil {
 		fatal("restauration: %v", err)
 	}
 
 	verb := "à restaurer"
-	if execute {
+	if opt.execute {
 		verb = "restauré(s)"
 	}
-	log.InfoContext(ctx, "restore-best terminé", "titleSlug", titleSlug, "execute", execute,
-		"restored", restored, "already_best", alreadyBest, "failed", failed)
+	log.InfoContext(ctx, "restore-best terminé", "titleSlug", opt.titleSlug, "season", opt.season,
+		"execute", opt.execute, "restored", restored, "already_best", alreadyBest, "failed", failed)
 	fmt.Printf("\nTerminé : %d couple(s) %s, %d déjà au meilleur, %d en échec.%s\n",
-		restored, verb, alreadyBest, failed, executeHint(execute, restored))
+		restored, verb, alreadyBest, failed, executeHint(opt.execute, restored))
 }
 
-// restoreBestBatches parcourt les couples (saison, playlist) et restaure ceux dont le
-// lot SERVI serait refusé face au meilleur lot historique. Retourne les compteurs.
+// restoreBestBatches parcourt les playlists de la saison demandée et restaure celles
+// dont le lot SERVI serait refusé face au meilleur lot historique. Retourne les
+// compteurs. Le périmètre est strictement borné à opt.season : les autres saisons ne
+// sont ni lues ni touchées.
 //
 // Le verdict réutilise la règle du garde-fou de capture, prise à l'envers :
 // DegradedBatchReason(référence = meilleur lot, candidat = lot servi). Si le lot servi
 // aurait été refusé face au meilleur, c'est exactement qu'il ne mérite pas d'être
 // servi. Une seule définition de « dégradé » pour la prévention et la réparation.
+//
+// Profondeur : on passe 0 (aucun plafond) — le but de la réparation est justement de
+// servir l'archive la plus riche, sans borner la référence à une profondeur de cycle.
 func restoreBestBatches(
-	ctx context.Context, log *slog.Logger, db *sql.DB, titleSlug string, execute bool,
+	ctx context.Context, log *slog.Logger, db *sql.DB, opt restoreOptions,
 ) (restored, alreadyBest, failed int, err error) {
-	keys, err := duckdb.WorldCSRSeasonPlaylistPairs(ctx, db, titleSlug)
+	all, err := duckdb.WorldCSRSeasonPlaylistPairs(ctx, db, opt.titleSlug)
 	if err != nil {
 		return 0, 0, 0, err
 	}
+	keys := make([]duckdb.WorldCSRBatchKey, 0, len(all))
+	for _, k := range all {
+		if k.SeasonID == opt.season {
+			keys = append(keys, k)
+		}
+	}
 	if len(keys) == 0 {
-		fmt.Println("  (aucun snapshot en base)")
+		fmt.Printf("  (aucun snapshot pour la saison %s)\n", opt.season)
 		return 0, 0, 0, nil
 	}
 	for _, key := range keys {
@@ -86,7 +109,7 @@ func restoreBestBatches(
 			fmt.Printf("  %s / %s : ERREUR de lecture (couple ignoré)\n", key.SeasonID, key.PlaylistID)
 			continue
 		}
-		reason := duckdb.DegradedBatchReason(best.Stats, served)
+		reason := duckdb.DegradedBatchReason(best.Stats, served, 0)
 		if reason == "" {
 			alreadyBest++
 			fmt.Printf("  %s / %s : déjà au meilleur (%s)\n", key.SeasonID, key.PlaylistID, describe(served))
@@ -95,7 +118,7 @@ func restoreBestBatches(
 		fmt.Printf("  %s / %s : servi %s  <-  meilleur %s du %s — %s\n",
 			key.SeasonID, key.PlaylistID, describe(served), describe(best.Stats),
 			best.FetchedAt.Format(time.RFC3339), reason)
-		if !execute {
+		if !opt.execute {
 			restored++ // en dry-run, le compteur annonce ce qui SERAIT restauré
 			continue
 		}
@@ -137,10 +160,14 @@ func restoreOne(ctx context.Context, db *sql.DB, key duckdb.WorldCSRBatchKey, be
 // cliBatchRefusalReason applique au scrape du CLI le MÊME garde-fou que le cron :
 // un lot effondré face au lot servi n'est pas écrit. Chaîne vide = lot acceptable.
 //
+// depthLimit = le -limit de CE run (0 = échelle complète) : sans lui, un run peu
+// profond serait refusé pour toujours face à une archive plus profonde, alors qu'il a
+// ramené exactement ce qu'on lui a demandé (cf. duckdb.DegradedBatchReason).
+//
 // FAIL-OPEN, comme le cron : si la qualité du lot servi est illisible, on laisse
 // passer. Un problème de lecture ne doit jamais empêcher une capture — le risque
 // inverse (bloquer toute écriture) est le plus coûteux.
-func cliBatchRefusalReason(ctx context.Context, db *sql.DB, key duckdb.WorldCSRBatchKey, entries []domain.LeaderboardEntry) string {
+func cliBatchRefusalReason(ctx context.Context, db *sql.DB, key duckdb.WorldCSRBatchKey, entries []domain.LeaderboardEntry, depthLimit int) string {
 	if db == nil || len(entries) == 0 {
 		return ""
 	}
@@ -153,7 +180,7 @@ func cliBatchRefusalReason(ctx context.Context, db *sql.DB, key duckdb.WorldCSRB
 	if !ok {
 		return "" // première capture de ce couple : rien à protéger.
 	}
-	return duckdb.DegradedBatchReason(served, duckdb.WorldCSRStatsOfEntries(entries))
+	return duckdb.DegradedBatchReason(served, duckdb.WorldCSRStatsOfEntries(entries), depthLimit)
 }
 
 // describe rend un lot lisible en une ligne de sortie CLI.

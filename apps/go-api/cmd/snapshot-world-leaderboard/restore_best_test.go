@@ -75,28 +75,36 @@ func servedOf(t *testing.T, db *sql.DB, key duckdb.WorldCSRBatchKey) duckdb.Worl
 	return stats
 }
 
+// seedDegradedCouple pose un lot sain (ancien) puis un lot dégradé (récent) : c'est
+// le dégradé qui est servi, donc une restauration est due.
+func seedDegradedCouple(t *testing.T, db *sql.DB, key duckdb.WorldCSRBatchKey) {
+	t.Helper()
+	ctx := context.Background()
+	if _, err := duckdb.InsertWorldCSRSnapshot(ctx, db, key.TitleSlug,
+		testBatch(key, 10, 10, time.Date(2026, 7, 3, 4, 0, 0, 0, time.UTC), "Sain")); err != nil {
+		t.Fatalf("insert lot sain (%s): %v", key.SeasonID, err)
+	}
+	if _, err := duckdb.InsertWorldCSRSnapshot(ctx, db, key.TitleSlug,
+		testBatch(key, 3, 0, time.Date(2026, 7, 7, 4, 0, 0, 0, time.UTC), "Degrade")); err != nil {
+		t.Fatalf("insert lot dégradé (%s): %v", key.SeasonID, err)
+	}
+}
+
 func TestRestoreBestBatches_DryRunThenExecuteThenNoop(t *testing.T) {
 	db := openTestSharedDB(t)
 	ctx := context.Background()
 	log := slog.Default()
 	key := duckdb.WorldCSRBatchKey{TitleSlug: "halo_infinite", SeasonID: "csrseason13-2", PlaylistID: "pl-arena"}
+	opt := restoreOptions{titleSlug: key.TitleSlug, season: key.SeasonID}
 
-	// Lot sain (2026-07-03) puis lot dégradé (2026-07-07) : c'est le dégradé qui est servi.
-	if _, err := duckdb.InsertWorldCSRSnapshot(ctx, db, key.TitleSlug,
-		testBatch(key, 10, 10, time.Date(2026, 7, 3, 4, 0, 0, 0, time.UTC), "Sain")); err != nil {
-		t.Fatalf("insert lot sain: %v", err)
-	}
-	if _, err := duckdb.InsertWorldCSRSnapshot(ctx, db, key.TitleSlug,
-		testBatch(key, 3, 0, time.Date(2026, 7, 7, 4, 0, 0, 0, time.UTC), "Degrade")); err != nil {
-		t.Fatalf("insert lot dégradé: %v", err)
-	}
+	seedDegradedCouple(t, db, key)
 	if s := servedOf(t, db, key); s.Rows != 3 || s.WithXUID != 0 {
 		t.Fatalf("lot servi initial = %+v, attendu {Rows:3 WithXUID:0}", s)
 	}
 
 	// 1. DRY-RUN : annonce la restauration, n'écrit rien.
 	rawBefore := rawCount(t, db)
-	restored, already, failed, err := restoreBestBatches(ctx, log, db, key.TitleSlug, false)
+	restored, already, failed, err := restoreBestBatches(ctx, log, db, opt)
 	if err != nil {
 		t.Fatalf("dry-run: %v", err)
 	}
@@ -111,7 +119,8 @@ func TestRestoreBestBatches_DryRunThenExecuteThenNoop(t *testing.T) {
 	}
 
 	// 2. EXÉCUTION : le lot sain redevient servi, l'historique est préservé.
-	restored, already, failed, err = restoreBestBatches(ctx, log, db, key.TitleSlug, true)
+	opt.execute = true
+	restored, already, failed, err = restoreBestBatches(ctx, log, db, opt)
 	if err != nil {
 		t.Fatalf("execute: %v", err)
 	}
@@ -127,7 +136,7 @@ func TestRestoreBestBatches_DryRunThenExecuteThenNoop(t *testing.T) {
 
 	// 3. SECOND PASSAGE : rien à faire, aucune ligne supplémentaire.
 	rawAfterRestore := rawCount(t, db)
-	restored, already, failed, err = restoreBestBatches(ctx, log, db, key.TitleSlug, true)
+	restored, already, failed, err = restoreBestBatches(ctx, log, db, opt)
 	if err != nil {
 		t.Fatalf("2e passage: %v", err)
 	}
@@ -136,5 +145,50 @@ func TestRestoreBestBatches_DryRunThenExecuteThenNoop(t *testing.T) {
 	}
 	if got := rawCount(t, db); got != rawAfterRestore {
 		t.Errorf("2e passage a écrit %d ligne(s) — le mode doit être rejouable sans empiler", got-rawAfterRestore)
+	}
+}
+
+// TestRestoreBestBatches_ScopedToRequestedSeason : le périmètre est la saison
+// demandée, et elle seule. Une autre saison tout aussi dégradée ne doit être ni
+// restaurée, ni comptée — une restauration écrit dans la seule archive du classement,
+// son périmètre doit être exactement celui que l'opérateur a nommé.
+func TestRestoreBestBatches_ScopedToRequestedSeason(t *testing.T) {
+	db := openTestSharedDB(t)
+	ctx := context.Background()
+	log := slog.Default()
+	cible := duckdb.WorldCSRBatchKey{TitleSlug: "halo_infinite", SeasonID: "csrseason13-2", PlaylistID: "pl-arena"}
+	horsScope := duckdb.WorldCSRBatchKey{TitleSlug: "halo_infinite", SeasonID: "csrseason12-1", PlaylistID: "pl-arena"}
+
+	seedDegradedCouple(t, db, cible)
+	seedDegradedCouple(t, db, horsScope)
+
+	restored, already, failed, err := restoreBestBatches(ctx, log, db,
+		restoreOptions{titleSlug: cible.TitleSlug, season: cible.SeasonID, execute: true})
+	if err != nil {
+		t.Fatalf("restauration: %v", err)
+	}
+	if restored != 1 || already != 0 || failed != 0 {
+		t.Errorf("→ restored=%d already=%d failed=%d, attendu 1/0/0 (la saison hors périmètre ne compte pas)",
+			restored, already, failed)
+	}
+	if s := servedOf(t, db, cible); s.Rows != 10 || s.WithXUID != 10 {
+		t.Errorf("saison ciblée servie = %+v, attendu {Rows:10 WithXUID:10}", s)
+	}
+	if s := servedOf(t, db, horsScope); s.Rows != 3 || s.WithXUID != 0 {
+		t.Errorf("saison hors périmètre servie = %+v, attendu {Rows:3 WithXUID:0} (intouchée)", s)
+	}
+
+	// Saison sans aucun snapshot : sortie propre, aucun compteur, aucune écriture.
+	rawBefore := rawCount(t, db)
+	restored, already, failed, err = restoreBestBatches(ctx, log, db,
+		restoreOptions{titleSlug: cible.TitleSlug, season: "csrseason99-9", execute: true})
+	if err != nil {
+		t.Fatalf("saison inconnue: %v", err)
+	}
+	if restored != 0 || already != 0 || failed != 0 {
+		t.Errorf("saison inconnue → %d/%d/%d, attendu 0/0/0", restored, already, failed)
+	}
+	if got := rawCount(t, db); got != rawBefore {
+		t.Errorf("saison inconnue a écrit %d ligne(s)", got-rawBefore)
 	}
 }

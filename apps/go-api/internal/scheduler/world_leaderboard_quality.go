@@ -20,11 +20,17 @@
 // Un refus est un SKIP de la playlist, jamais une erreur de cycle : les autres
 // playlists sont persistées normalement et le lot servi reste en place. Le plancher
 // absolu minEntries (cron) s'applique en amont et reste indépendant de cette règle.
+//
+// Mais un garde-fou qui refuse SANS FIN est lui-même une panne : la playlist cesse
+// d'être rafraîchie et le classement servi vieillit en silence. Les refus consécutifs
+// sont donc comptés par playlist (refusalStreaks) et le log passe en ERROR au-delà de
+// maxSilentBatchRefusals — même logique que l'escalade de la découverte de saison.
 package scheduler
 
 import (
 	"context"
 	"log/slog"
+	"sync"
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/observability"
@@ -37,7 +43,47 @@ const (
 	// exposé sur /debug/vars → levelup.<nom>. Un compteur qui grimpe = Waypoint rend
 	// des pages dégradées de façon répétée ; le classement servi, lui, reste sain.
 	worldBatchRefusedMetric = "world_leaderboard_batch_refused_total"
+	// maxSilentBatchRefusals : refus CONSÉCUTIFS tolérés en WARN pour une même
+	// playlist. Au-delà (strictement plus), le log passe en ERROR : un refus isolé
+	// protège le classement comme prévu, mais une SÉRIE veut dire que la playlist
+	// n'est plus rafraîchie du tout — le garde-fou est alors devenu la panne, et
+	// personne ne le verrait dans le flot des WARN quotidiens.
+	maxSilentBatchRefusals = 3
 )
+
+// refusalStreaks compte les refus CONSÉCUTIFS par playlist. Process-local, protégé
+// par mutex : les playlists sont traitées séquentiellement aujourd'hui, mais RunOnce
+// est appelable hors du ticker (endpoint admin, tests) et rien ne doit dépendre de
+// cette hypothèse.
+type refusalStreaks struct {
+	mu     sync.Mutex
+	counts map[string]int
+}
+
+// record incrémente la série de la playlist et retourne sa nouvelle valeur.
+func (r *refusalStreaks) record(playlist string) int {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.counts == nil {
+		r.counts = make(map[string]int)
+	}
+	r.counts[playlist]++
+	return r.counts[playlist]
+}
+
+// reset efface la série de la playlist (un lot accepté clôt la série en cours).
+func (r *refusalStreaks) reset(playlist string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	delete(r.counts, playlist)
+}
+
+// streak retourne la série courante de la playlist (0 si aucune).
+func (r *refusalStreaks) streak(playlist string) int {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.counts[playlist]
+}
 
 // batchIsDegraded indique si le lot candidat doit être REFUSÉ pour cette playlist.
 // Lit la qualité du lot servi hors lease writer (reader RO court, acquis puis relâché
@@ -57,22 +103,38 @@ func (c *WorldLeaderboardCron) batchIsDegraded(
 		slog.WarnContext(ctx, "world_leaderboard_cron: qualité du lot servi illisible — garde-fou non appliqué (lot accepté)",
 			"module", logging.ModuleLeaderboard, "titleSlug", titleSlug,
 			"season", season, "playlist", playlist, "err", err)
+		c.batchRefusals.reset(playlist)
 		return false
 	}
 	if !ok {
+		c.batchRefusals.reset(playlist)
 		return false // première capture de cette playlist : rien à protéger.
 	}
 	candidate := duckdb.WorldCSRStatsOfEntries(entries)
-	reason := duckdb.DegradedBatchReason(served, candidate)
+	// c.limit = profondeur que CE cycle avait le droit de ramener : sans elle, un lot
+	// servi plus profond (archive CLI) refuserait éternellement le top nominal du cron.
+	reason := duckdb.DegradedBatchReason(served, candidate, c.limit)
 	if reason == "" {
+		c.batchRefusals.reset(playlist)
 		return false
 	}
 	observability.IncCounter(worldBatchRefusedMetric)
-	slog.WarnContext(ctx, "world_leaderboard_cron: lot dégradé REFUSÉ — le classement servi est conservé (aucune écriture pour cette playlist)",
+	streak := c.batchRefusals.record(playlist)
+	attrs := []any{
 		"module", logging.ModuleLeaderboard, "titleSlug", titleSlug,
 		"season", season, "playlist", playlist, "raison", reason,
 		"servi_lignes", served.Rows, "servi_xuid", served.WithXUID,
-		"candidat_lignes", candidate.Rows, "candidat_xuid", candidate.WithXUID)
+		"candidat_lignes", candidate.Rows, "candidat_xuid", candidate.WithXUID,
+		"profondeur_demandee", c.limit, "consecutive_refusals", streak,
+	}
+	if streak > maxSilentBatchRefusals {
+		slog.ErrorContext(ctx, "world_leaderboard_cron: lot REFUSÉ depuis plusieurs cycles consécutifs — cette playlist n'est PLUS "+
+			"rafraîchie (le garde-fou protège un classement qui vieillit ; vérifier que Halo Waypoint rend encore la page "+
+			"complète, ou que le lot servi n'est pas une archive plus profonde que ce cycle)", attrs...)
+		return true
+	}
+	slog.WarnContext(ctx, "world_leaderboard_cron: lot dégradé REFUSÉ — le classement servi est conservé (aucune écriture pour cette playlist)",
+		attrs...)
 	return true
 }
 

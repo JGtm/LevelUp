@@ -184,7 +184,7 @@ func (c *WorldLeaderboardCron) noteSeasonDiscoveryFailure(ctx context.Context, t
 	if streak > maxSilentSeasonDiscoveryFails {
 		slog.ErrorContext(ctx, "world_leaderboard_cron: saison active indécouvrable depuis plusieurs cycles consécutifs — "+
 			"le classement mondial N'EST PLUS mis à jour (page-graine ET repli par redirection en échec ; "+
-			"vérifier que www.halowaypoint.com/halo-infinite/leaderboards redirige toujours vers la saison active)", attrs...)
+			"vérifier que la racine des classements Halo Waypoint redirige toujours vers la saison active)", attrs...)
 		return
 	}
 	slog.WarnContext(ctx, "world_leaderboard_cron: saison active indécouvrable (page-graine et repli par redirection en échec) — "+

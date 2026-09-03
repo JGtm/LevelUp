@@ -127,7 +127,7 @@ func (r *snapshotRunner) season(ctx context.Context, s string) (rows, inserted i
 		// ne doit pas masquer le relevé servi — la vue _latest sert le dernier
 		// lot écrit, et ces snapshots sont la seule archive.
 		key := duckdb.WorldCSRBatchKey{TitleSlug: r.opt.titleSlug, SeasonID: s, PlaylistID: pl}
-		if reason := cliBatchRefusalReason(ctx, r.db, key, entries); reason != "" {
+		if reason := cliBatchRefusalReason(ctx, r.db, key, entries, r.opt.limit); reason != "" {
 			fmt.Printf("  %s : lot REFUSE — %s (relevé servi conservé)\n", pl, reason)
 			r.log.WarnContext(ctx, "lot dégradé refusé — aucune écriture pour cette playlist",
 				"season", s, "playlist", pl, "raison", reason, "candidat_lignes", len(entries))

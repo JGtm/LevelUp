@@ -48,9 +48,26 @@ const (
 //   - le cron, avant de persister un lot fraîchement scrapé (reference = lot servi) ;
 //   - le CLI -restore-best, pour décider si le lot SERVI mérite d'être remplacé par
 //     un meilleur lot historique (reference = meilleur lot, candidate = lot servi).
-func DegradedBatchReason(reference, candidate WorldCSRBatchStats) string {
-	if float64(candidate.Rows) < DegradedBatchMinRowRatio*float64(reference.Rows) {
-		return "effondrement du volume (moins de la moitié des lignes de référence)"
+//
+// candidateDepthLimit = profondeur MAXIMALE que le candidat pouvait atteindre (le
+// -limit de son appelant) ; 0 = aucun plafond (échelle complète demandée).
+//
+// À quoi sert ce plafond : les deux producteurs ne capturent pas la même profondeur.
+// Le cron s'arrête à 200 entrées par playlist, alors que le CLI lancé avec -limit 0
+// peut en archiver jusqu'à 2500. Comparer brutalement les volumes gèlerait le cron
+// pour toujours dès qu'un lot profond a été servi : 200 lignes face à 2500 tombent
+// sous la moitié, donc chaque cycle quotidien serait refusé alors qu'il a fait
+// exactement le travail demandé. On borne donc la référence à ce que le candidat
+// avait le DROIT de ramener : un lot au plafond de sa propre limite n'est jamais
+// « effondré ». La règle d'identification (xuid), elle, ne dépend pas de la
+// profondeur et s'applique telle quelle.
+func DegradedBatchReason(reference, candidate WorldCSRBatchStats, candidateDepthLimit int) string {
+	expected := reference.Rows
+	if candidateDepthLimit > 0 && candidateDepthLimit < expected {
+		expected = candidateDepthLimit
+	}
+	if float64(candidate.Rows) < DegradedBatchMinRowRatio*float64(expected) {
+		return "effondrement du volume (moins de la moitié des lignes attendues)"
 	}
 	if reference.XUIDCoverage() >= ServedXUIDCoverageFloor && candidate.WithXUID == 0 {
 		return "effondrement de l'identification (référence identifiée, candidat sans aucun xuid)"

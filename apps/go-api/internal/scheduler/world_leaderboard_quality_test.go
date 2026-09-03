@@ -233,31 +233,105 @@ func TestWorldLeaderboardCron_PartialRefusalKeepsHealthyPlaylist(t *testing.T) {
 }
 
 // TestDegradedBatchReason couvre les BORNES de la décision D1 sur la fonction pure :
-// exactement 50 % accepté, juste en dessous refusé ; seuil de couverture xuid à 90 %.
+// exactement 50 % accepté, juste en dessous refusé ; seuil de couverture xuid à 90 % ;
+// et le plafonnement par la profondeur demandée (profondeurs hétérogènes cron/CLI).
 func TestDegradedBatchReason(t *testing.T) {
 	cases := []struct {
 		name           string
 		served, candid duckdb.WorldCSRBatchStats
+		depth          int // profondeur demandée par le candidat (0 = sans plafond)
 		wantRefused    bool
 	}{
-		{"volume exactement 50 %", stats(100, 100), stats(50, 50), false},
-		{"volume juste sous 50 %", stats(100, 100), stats(49, 49), true},
-		{"volume effondré (incident 07/07)", stats(200, 200), stats(86, 0), true},
-		{"croissance", stats(100, 100), stats(120, 120), false},
-		{"xuid effondré, servi à 100 %", stats(100, 100), stats(100, 0), true},
-		{"xuid effondré, servi à 90 %", stats(100, 90), stats(100, 0), true},
-		{"xuid effondré mais servi à 89 % (sous le seuil)", stats(100, 89), stats(100, 0), false},
-		{"xuid partiel (pas zéro) toléré", stats(100, 100), stats(100, 5), false},
-		{"servi sans xuid, candidat sans xuid", stats(100, 0), stats(100, 0), false},
+		{"volume exactement 50 %", stats(100, 100), stats(50, 50), 0, false},
+		{"volume juste sous 50 %", stats(100, 100), stats(49, 49), 0, true},
+		{"volume effondré (incident 07/07)", stats(200, 200), stats(86, 0), 0, true},
+		{"croissance", stats(100, 100), stats(120, 120), 0, false},
+		{"xuid effondré, servi à 100 %", stats(100, 100), stats(100, 0), 0, true},
+		{"xuid effondré, servi à 90 %", stats(100, 90), stats(100, 0), 0, true},
+		{"xuid effondré mais servi à 89 % (sous le seuil)", stats(100, 89), stats(100, 0), 0, false},
+		{"xuid partiel (pas zéro) toléré", stats(100, 100), stats(100, 5), 0, false},
+		{"servi sans xuid, candidat sans xuid", stats(100, 0), stats(100, 0), 0, false},
+
+		// Profondeurs hétérogènes : le cron plafonne à 200, une archive CLI peut
+		// porter 2500 lignes. Sans plafonnement, le cycle nominal serait refusé POUR
+		// TOUJOURS alors qu'il a ramené exactement ce qu'on lui a demandé.
+		{"cycle au plafond face à une archive profonde", stats(2500, 2500), stats(200, 200), 200, false},
+		{"même cas sans plafond : refusé (le gel d'origine)", stats(2500, 2500), stats(200, 200), 0, true},
+		{"cycle sous son propre plafond", stats(2500, 2500), stats(80, 80), 200, true},
+		{"plafond plus grand que le servi : sans effet", stats(100, 100), stats(49, 49), 5000, true},
+		{"xuid effondré malgré le plafond (règle indépendante)", stats(2500, 2500), stats(200, 0), 200, true},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			reason := duckdb.DegradedBatchReason(tc.served, tc.candid)
+			reason := duckdb.DegradedBatchReason(tc.served, tc.candid, tc.depth)
 			if refused := reason != ""; refused != tc.wantRefused {
-				t.Errorf("servi=%+v candidat=%+v → refusé=%v (%q), attendu refusé=%v",
-					tc.served, tc.candid, refused, reason, tc.wantRefused)
+				t.Errorf("servi=%+v candidat=%+v profondeur=%d → refusé=%v (%q), attendu refusé=%v",
+					tc.served, tc.candid, tc.depth, refused, reason, tc.wantRefused)
 			}
 		})
+	}
+}
+
+// TestWorldLeaderboardCron_AcceptsNominalDepthAgainstDeeperArchive (S2, bout en bout) :
+// un cycle qui ramène tout ce que sa limite autorise ne doit PAS être refusé face à un
+// lot servi plus profond (archive capturée par le CLI en échelle complète). Sans le
+// plafonnement, cette playlist ne serait plus jamais rafraîchie.
+func TestWorldLeaderboardCron_AcceptsNominalDepthAgainstDeeperArchive(t *testing.T) {
+	provider, db := newSharedProviderForTest(t)
+	seedServedBatch(t, db, "pl-a", 30, 30) // archive profonde déjà servie
+
+	scraper := &stubScraper{
+		season:  qualityTestSeason,
+		entries: batchEntries(10, 10, candidateT1, "Cycle"), // le cycle plafonne à 10
+	}
+	c := newQualityCron(t, provider, scraper, "pl-a")
+	c.limit = 10 // profondeur demandée par CE cycle
+
+	c.RunOnce(context.Background())
+
+	if rows, xuid := servedBatchOf(t, db, "pl-a"); rows != 10 || xuid != 10 {
+		t.Errorf("lot servi = (%d, %d), attendu (10, 10) : le cycle au plafond de sa limite ne doit pas être refusé", rows, xuid)
+	}
+}
+
+// TestWorldLeaderboardCron_RefusalEscalatesAfterStreak (S1) : un garde-fou qui refuse
+// sans fin est lui-même une panne — la playlist n'est plus rafraîchie. Les 3 premiers
+// refus consécutifs restent en WARN, le 4e passe en ERROR ; un lot accepté remet la
+// série à zéro.
+func TestWorldLeaderboardCron_RefusalEscalatesAfterStreak(t *testing.T) {
+	provider, db := newSharedProviderForTest(t)
+	seedServedBatch(t, db, "pl-a", 10, 10)
+
+	scraper := &stubScraper{
+		season:  qualityTestSeason,
+		entries: batchEntries(3, 3, candidateT1, "Tronque"), // 30 % → refusé à chaque cycle
+	}
+	c := newQualityCron(t, provider, scraper, "pl-a")
+	rec := captureLogs(t)
+	ctx := context.Background()
+
+	for i := 1; i <= 4; i++ {
+		c.RunOnce(ctx)
+		if got := c.batchRefusals.streak("pl-a"); got != i {
+			t.Fatalf("après %d refus : série = %d, attendu %d", i, got, i)
+		}
+	}
+	if got := rec.countAtLevel(slog.LevelWarn, "lot dégradé REFUSÉ"); got != maxSilentBatchRefusals {
+		t.Errorf("WARN de refus = %d, attendu %d", got, maxSilentBatchRefusals)
+	}
+	if got := rec.countAtLevel(slog.LevelError, "REFUSÉ depuis plusieurs cycles consécutifs"); got != 1 {
+		t.Errorf("ERROR d'escalade = %d, attendu 1 (au-delà de %d refus consécutifs)", got, maxSilentBatchRefusals)
+	}
+	// Le classement servi n'a pas bougé pendant toute la série.
+	if rows, _ := servedBatchOf(t, db, "pl-a"); rows != 10 {
+		t.Errorf("lot servi = %d lignes, attendu 10 (aucun refus ne doit écrire)", rows)
+	}
+
+	// Un lot sain accepté clôt la série.
+	scraper.entries = batchEntries(12, 12, candidateT1, "Frais")
+	c.RunOnce(ctx)
+	if got := c.batchRefusals.streak("pl-a"); got != 0 {
+		t.Errorf("série après un lot accepté = %d, attendu 0 (reset)", got)
 	}
 }
 

@@ -87,7 +87,9 @@ func TestWorldCSRBestBatch_RestoreCycle(t *testing.T) {
 	}
 
 	// Verdict D1 : le lot SERVI serait refusé face au meilleur → restauration due.
-	if reason := DegradedBatchReason(best.Stats, servedStatsOrFail(t, db, key)); reason == "" {
+	// Profondeur 0 = aucun plafond, comme le CLI -restore-best : la réparation vise
+	// l'archive la plus riche, sans borner la référence à une profondeur de cycle.
+	if reason := DegradedBatchReason(best.Stats, servedStatsOrFail(t, db, key), 0); reason == "" {
 		t.Fatal("la règle ne réclame pas la restauration alors que le lot servi est effondré")
 	}
 
@@ -140,7 +142,7 @@ func TestWorldCSRBestBatch_RestoreCycle(t *testing.T) {
 	if !best2.FetchedAt.Equal(tRestore) {
 		t.Errorf("meilleur lot après restauration daté %v, attendu %v (le lot restauré)", best2.FetchedAt, tRestore)
 	}
-	if reason := DegradedBatchReason(best2.Stats, servedStatsOrFail(t, db, key)); reason != "" {
+	if reason := DegradedBatchReason(best2.Stats, servedStatsOrFail(t, db, key), 0); reason != "" {
 		t.Errorf("2e passage : la règle réclame encore une restauration (%q) — le -restore-best boucherait", reason)
 	}
 }
