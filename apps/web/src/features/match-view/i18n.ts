@@ -141,6 +141,16 @@ export interface MatchViewText {
   scoreCurveSource: string
   scoreCurveTruncated: string
   scoreCurveLead: string
+  /**
+   * LES POINTS MARQUÉS DANS LE TEMPS — la lecture que prennent les modes qui marquent en
+   * trois à cinq fois sur tout le match (drapeau, colline, bombe), là où la courbe serait
+   * un escalier vide. Même source, même réserve de pied que la courbe.
+   */
+  scoreEventsTitle: string
+  /** Points pris à cet instant, dans l'infobulle (ex. « +1 point »). */
+  scoreEventsScoredFmt: (points: number) => string
+  /** Score cumulé du camp juste après cette marque (ex. « Score : 2 »). */
+  scoreEventsTotalFmt: (total: number) => string
   combatCadenceTitle: string
   combatKillsLabel: string
   combatDeathsLabel: string
@@ -400,6 +410,9 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     scoreCurveTruncated:
       'Lecture du film incomplète — la courbe s’arrête avant la fin du match.',
     scoreCurveLead: 'Retournement',
+    scoreEventsTitle: 'Points marqués dans le temps',
+    scoreEventsScoredFmt: (points) => `+${points} point${points > 1 ? 's' : ''}`,
+    scoreEventsTotalFmt: (total) => `Score : ${total}`,
     combatCadenceTitle: 'Cadence des frags',
     combatKillsLabel: 'Frags',
     combatDeathsLabel: 'Morts',
@@ -695,6 +708,9 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     scoreCurveTruncated:
       'Incomplete film reading — the curve stops before the end of the match.',
     scoreCurveLead: 'Lead change',
+    scoreEventsTitle: 'Scoring moments',
+    scoreEventsScoredFmt: (points) => `+${points} point${points > 1 ? 's' : ''}`,
+    scoreEventsTotalFmt: (total) => `Score: ${total}`,
     combatCadenceTitle: 'Kill cadence',
     combatKillsLabel: 'Kills',
     combatDeathsLabel: 'Deaths',

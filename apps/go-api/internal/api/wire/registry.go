@@ -85,6 +85,13 @@ type ServiceRegistry struct {
 	// « 2 - 1 manches » plutôt que le cumul de points. Titre sans fichier → absent de la
 	// map → tout reste en points (dégradation sûre).
 	roundsDecide map[string]map[string]bool
+	// scoreTimelineKind : PAR TITRE (slug → règle « libellé de mode normalisé →
+	// lecture du bloc Score dans le temps »), chargée depuis regulation.toml
+	// [score_timeline] au boot. Une FONCTION par titre et non une table : l'appariement
+	// se fait par jeton de mode (mot entier), pas par clé exacte — la règle voyage
+	// entière plutôt que d'être réimplémentée côté service. Titre sans table → absent
+	// de la map → l'en-tête laisse le champ vide et le client garde la courbe.
+	scoreTimelineKind map[string]func(string) string
 	// MT-09 (PMT-12) : factory player-scoped PAR TITRE. Le slug est une CLÉ de
 	// map (lookup title-agnostic), jamais une comparaison littérale — un 2e titre
 	// enregistre son builder au boot, sans toucher aux factories. Remplace les
@@ -520,6 +527,24 @@ func (r *ServiceRegistry) WithRegulationSeconds(byTitle map[string]map[string]in
 func (r *ServiceRegistry) WithRoundsDecide(byTitle map[string]map[string]bool) *ServiceRegistry {
 	r.roundsDecide = byTitle
 	return r
+}
+
+// WithScoreTimelineKind injecte la règle PAR TITRE de lecture du bloc « Score dans le
+// temps » (slug → libellé de mode normalisé → `hidden`/`events`/`curve`), chargée depuis
+// regulation.toml au boot. Retourne le registry pour chaînage.
+func (r *ServiceRegistry) WithScoreTimelineKind(byTitle map[string]func(string) string) *ServiceRegistry {
+	r.scoreTimelineKind = byTitle
+	return r
+}
+
+// scoreTimelineKindFor retourne la règle de lecture du bloc « Score dans le temps » du
+// titre du joueur, ou nil si le titre n'en déclare pas (→ le client garde la courbe).
+// Lookup par CLÉ de map, jamais de comparaison de slug.
+func (r *ServiceRegistry) scoreTimelineKindFor(pdb *duckdb.PlayerDB) func(string) string {
+	if r.scoreTimelineKind == nil || pdb == nil {
+		return nil
+	}
+	return r.scoreTimelineKind[pdb.TitleSlug]
 }
 
 // roundsDecideFor retourne la table « se lit en manches » du titre du joueur, ou nil si le
