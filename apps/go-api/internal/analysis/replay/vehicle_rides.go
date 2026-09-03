@@ -116,7 +116,35 @@ type vehicleRideInputs struct {
 	// lives sont les vies de vehicule, avec leur fenetre — c est elle qui rattache un episode a
 	// une GENERATION, que le nuage de positions ne porte pas.
 	lives []vehicleLife
-	clock replayClock
+	// drawable dit, par vie, si le calque saura la DESSINER : elle a une naissance lue, ou au
+	// moins un echantillon dans sa fenetre. C est le MEME predicat que `vehicleTrackOf`, et il
+	// est ici parce que le nom porte par un evenement peut designer une vie que le calque ne
+	// publie pas — la TOURELLE d un Warthog, entite `ti=40` attachee qui ne replique jamais sa
+	// position (cf. `vehicleLifeFromEvent`).
+	drawable map[filmdec.EquipmentLifeKey]bool
+	clock    replayClock
+}
+
+// vehicleDrawableLives rend les vies que le calque saura DESSINER : celles qui ont une naissance
+// lue, ou au moins un echantillon de position DANS leur fenetre. C est le predicat de publication
+// de `vehicleTrackOf`, calcule ici parce que le rattachement d un episode en a besoin AVANT
+// l assemblage — un nom d evenement qui designe une vie non dessinable ferait disparaitre
+// l occupant (cf. `vehicleLifeFromEvent`, et la tourelle du Warthog qui l a revele).
+func vehicleDrawableLives(
+	lives []vehicleLife, spawns map[filmdec.EquipmentLifeKey]filmdec.EquipmentCreation,
+	bySlot map[uint32][]filmdec.BipedPosition,
+) map[filmdec.EquipmentLifeKey]bool {
+	out := make(map[filmdec.EquipmentLifeKey]bool, len(lives))
+	for _, l := range lives {
+		if sp, ok := spawns[l.key]; ok && sp.TimestampUS > 0 {
+			out[l.key] = true
+			continue
+		}
+		pts := bySlot[l.key.Slot]
+		i := sort.Search(len(pts), func(k int) bool { return pts[k].TimestampUS >= l.loUS })
+		out[l.key] = i < len(pts) && pts[i].TimestampUS <= l.hiUS
+	}
+	return out
 }
 
 // vehicleGap est une interruption du flux de position d un bipede.
@@ -127,24 +155,55 @@ type vehicleGap struct {
 	last filmdec.BipedPosition
 }
 
-// buildVehicleRides rend les episodes d occupation par vie de vehicule. PUR.
+// vehicleRideStats compte PAR QUELLE VOIE chaque episode a trouve son vehicule. Il n est PAS
+// publie dans le document (le contrat ne bouge pas) : il est journalise, et les instruments le
+// lisent. Sans lui, « N episodes » ne dirait pas si c est le nom porte par l evenement ou une
+// distance de 3 m qui les a rattaches — c est-a-dire la seule chose que le lot V8 a changee.
+type vehicleRideStats struct {
+	// episodes est le nombre d episodes d EVENEMENT construits par la machine d etats (avant
+	// rattachement) ; nommes ceux dont la sortie porte une reference de vehicule.
+	episodes, nommes int
+	// parEvenement / parEvenementProche / parGeometrie / perdus ventilent le rattachement.
+	parEvenement, parEvenementProche, parGeometrie, perdus int
+	// repli est le nombre d episodes venus du TROU de position (seconde source).
+	repli int
+}
+
+// buildVehicleRides rend les episodes d occupation par vie de vehicule, et le bilan de leur
+// rattachement. PUR.
 //
 // DEUX SOURCES, DANS CET ORDRE (lot V6). La machine d etats par OCCUPANT
 // (`vehicle_rides_events.go`) passe d abord : ses bornes sont des EVENEMENTS de la liste, dates a
 // la milliseconde et valides (occupant en bande 100 %). Le TROU du flux de position ne sert plus
 // qu en REPLI, pour les episodes qu aucun evenement n atteste — aux memes portes qu avant.
-func buildVehicleRides(in vehicleRideInputs) map[filmdec.EquipmentLifeKey][]VehicleRide {
+func buildVehicleRides(
+	in vehicleRideInputs,
+) (map[filmdec.EquipmentLifeKey][]VehicleRide, vehicleRideStats) {
+	var st vehicleRideStats
 	if in.clock.step == 0 || len(in.lives) == 0 {
-		return nil
+		return nil, st
 	}
 	boards, exits := vehicleEventsByOccupant(in.events)
 	bySlot := vehiclePositionsBySlot(in.bipeds)
 	out := map[filmdec.EquipmentLifeKey][]VehicleRide{}
 	var kept []vehicleEpisode
 	for _, ep := range vehicleEventEpisodes(boards, exits, bySlot) {
+		st.episodes++
+		if ep.vehValid {
+			st.nommes++
+		}
 		key, r, resolved, ok := vehicleRideFromEpisode(ep, bySlot, in)
 		if !ok {
+			st.perdus++
 			continue
+		}
+		switch resolved.resolvedBy {
+		case vehicleResolvedByEvent:
+			st.parEvenement++
+		case vehicleResolvedByEventNearest:
+			st.parEvenementProche++
+		default:
+			st.parGeometrie++
 		}
 		out[key] = append(out[key], r)
 		kept = append(kept, resolved)
@@ -166,6 +225,7 @@ func buildVehicleRides(in vehicleRideInputs) map[filmdec.EquipmentLifeKey][]Vehi
 			continue
 		}
 		out[key] = append(out[key], vehicleRideOf(g, boards[g.slot], exits[g.slot], in))
+		st.repli++
 	}
 	for k := range out {
 		v := out[k]
@@ -176,7 +236,7 @@ func buildVehicleRides(in vehicleRideInputs) map[filmdec.EquipmentLifeKey][]Vehi
 			return v[i].Slot < v[j].Slot
 		})
 	}
-	return out
+	return out, st
 }
 
 // vehicleRideOf assemble UN episode : les bornes du trou, affinees par les evenements quand ils

@@ -89,6 +89,18 @@ type vehicleEpisode struct {
 	// openEnd : aucune sortie n a ferme l episode — il se ferme a la REAPPARITION de l occupant
 	// si elle existe, sinon a la fin de vie du vehicule (SILENCE TERMINAL vrai).
 	openEnd bool
+	// vehSlot / vehValid / vehAtUS : LE VEHICULE NOMME PAR L EVENEMENT, et l instant ou il le
+	// nomme. Ils viennent de la SORTIE (`filmdec.VehicleEvent.VehicleSlot`, reference 1 de
+	// domaine 1) ; un EMBARQUEMENT n en porte pas — ses trois references sont en domaines 2/3/7
+	// et AUCUNE ne resout un slot `ti=40` (0/15 sur 12 films, rapport V8 § 2). Un episode ferme
+	// par un second embarquement, ou un SILENCE TERMINAL, sort donc sans nom : c est exactement
+	// la population que la geometrie continue de rattacher.
+	vehSlot  uint32
+	vehValid bool
+	vehAtUS  uint64
+	// resolvedBy dit PAR QUELLE VOIE le vehicule a ete trouve. Rempli par
+	// `vehicleRideFromEpisode` sur l episode qu il rend ; nul sur un episode non rattache.
+	resolvedBy vehicleResolvedBy
 	// reappearUS : premier instant ou l occupant re-emet une position APRES le debut. Zero =
 	// jamais. UN OCCUPANT QUI MEURT A BORD REAPPARAIT (il respawne et re-replique) : sans cette
 	// borne, son episode courrait jusqu a la fin de vie du vehicule et le montrerait au volant
@@ -168,6 +180,11 @@ func vehicleEpisodesOfOccupant(
 		}
 		open.endUS, open.openEnd = ev.TimestampUS, false
 		open.borders++
+		// LA SORTIE NOMME LE VEHICULE — c est elle, et elle seule, qui le fait (105/105 en bande
+		// `ti=40`, zero bipede, zero hors bande sur 12 films).
+		if ev.VehicleSlotValid {
+			open.vehSlot, open.vehValid, open.vehAtUS = ev.VehicleSlot, true, ev.TimestampUS
+		}
 		// LE SIEGE DE LA SORTIE PRIME : c est celui dont la mesure est la plus fournie
 		// (siege 0 sur 93,8 % des sorties, n = 237) et il s accorde a celui de l embarquement
 		// apparie dans 5 cas sur 6 (V3).
@@ -211,23 +228,32 @@ func vehicleEpisodeCovers(eps []vehicleEpisode, g vehicleGap) bool {
 
 // vehicleRideFromEpisode rattache un episode a une VIE de vehicule et rend l episode publiable.
 //
-// DEUX ANCRES, DANS CET ORDRE : le dernier point replique par l occupant AVANT le debut (c est
-// la position d embarquement, celle sous laquelle le signal a ete mesure), puis le premier point
-// APRES la fin (la position de debarquement). La seconde n existe pas pour un silence terminal,
-// et c est justement pour cela que la premiere passe d abord.
+// L EVENEMENT PASSE AVANT LA GEOMETRIE (lot V8, 2026-09-03). La SORTIE NOMME son vehicule : sa
+// reference 1 est de domaine 1 — le domaine des UNITES, bipedes ET vehicules — et elle tombe dans
+// la bande `ti=40` sur 105 / 105 sorties de 12 films, zero bipede, zero hors bande, quand le
+// hasard en mettrait 3 a 16 %. Un nom exact ne se remplace pas par une distance : la geometrie
+// (rayon `vehicleEventAnchorRadiusM`) devient le REPLI, pour les episodes qu aucune sortie ne
+// nomme — ceux que ferme un second embarquement, et les SILENCES TERMINAUX.
+//
+// LE REPLI GEOMETRIQUE, INCHANGE, GARDE SES DEUX ANCRES : le dernier point replique par
+// l occupant AVANT le debut (la position d embarquement), puis le premier point APRES la fin (la
+// position de debarquement). La seconde n existe pas pour un silence terminal, et c est justement
+// pour cela que la premiere passe d abord.
 func vehicleRideFromEpisode(
 	ep vehicleEpisode, bySlot map[uint32][]filmdec.BipedPosition, in vehicleRideInputs,
 ) (filmdec.EquipmentLifeKey, VehicleRide, vehicleEpisode, bool) {
 	pts := bySlot[ep.slot]
-	a0, ok0 := vehicleAnchorAt(pts, ep.startUS, false)
-	life, ok := vehicleLifeForAnchor(a0, ok0, ep.startUS, in)
-	if !ok && !ep.openEnd {
-		a1, ok1 := vehicleAnchorAt(pts, ep.endUS, true)
-		life, ok = vehicleLifeForAnchor(a1, ok1, ep.endUS, in)
+	life, src := vehicleLifeFromEvent(ep, in)
+	if src == vehicleResolvedNone {
+		var ok bool
+		if life, ok = vehicleLifeFromGeometry(ep, pts, in); ok {
+			src = vehicleResolvedByGeometry
+		}
 	}
-	if !ok {
+	if src == vehicleResolvedNone {
 		return filmdec.EquipmentLifeKey{}, VehicleRide{}, vehicleEpisode{}, false
 	}
+	ep.resolvedBy = src
 	if ep.openEnd {
 		ep.endUS = life.hiUS
 		if ep.reappearUS > ep.startUS && ep.reappearUS < ep.endUS {
@@ -243,6 +269,117 @@ func vehicleRideFromEpisode(
 		r.XUID = strconv.FormatUint(x, 10)
 	}
 	return life.key, r, ep, true
+}
+
+// Comment le vehicule d un episode a ete resolu. INTERNE — le document ne publie pas ce champ
+// (le contrat ne bouge pas), mais le journal et les instruments en vivent : sans lui, « 49
+// episodes publies » ne dirait pas si c est l evenement ou la distance qui les a rattaches.
+type vehicleResolvedBy int
+
+const (
+	// vehicleResolvedNone : aucune des deux voies n a rendu de vie — l episode n est pas publie.
+	vehicleResolvedNone vehicleResolvedBy = iota
+	// vehicleResolvedByEvent : la sortie nomme le vehicule, et l instant de la sortie tombe DANS
+	// la fenetre d une vie de ce slot. C est le cas nominal.
+	vehicleResolvedByEvent
+	// vehicleResolvedByEventNearest : la sortie nomme le vehicule, mais son instant ne tombe dans
+	// AUCUNE fenetre de vie de ce slot — la vie la plus proche dans le temps est retenue.
+	//
+	// POURQUOI CE CAS EXISTE, MESURE : la fenetre d une vie s arrete a la premiere image-cle qui
+	// ne la recense plus, et les images-cles sont espacees de ~20 s. Une sortie peut donc tomber
+	// APRES cette borne (5 sorties sur 105, ecart maximal 41,9 s — rapport V8 § 2). Le nom, lui,
+	// reste exact : c est la FENETRE qui est trop courte, pas la reference qui est fausse. La vie
+	// retenue est ensuite ramenee dans sa fenetre d affichage par `clampVehicleRides`, qui ecarte
+	// l episode s il lui est entierement exterieur — le cas se solde donc au pire par un episode
+	// non publie, jamais par un episode attribue au mauvais vehicule.
+	vehicleResolvedByEventNearest
+	// vehicleResolvedByGeometry : aucun nom — le vehicule le plus proche de l ancre, sous
+	// `vehicleEventAnchorRadiusM`.
+	vehicleResolvedByGeometry
+)
+
+// vehicleLifeFromEvent resout la vie du vehicule NOMME par l evenement, ET REFUSE une vie que le
+// calque ne publiera pas.
+//
+// POURQUOI CE REFUS — C EST LA MESURE DU LOT V8, ET ELLE EST INSTRUCTIVE. Sur 41 episodes ou les
+// deux voies repondent (5 films), 35 designent la MEME vie et 6 divergent. Les 6 ont exactement la
+// meme forme : l evenement nomme une vie MUETTE (aucun echantillon de position, aucun record de
+// creation, donc ni chassis ni sprite) dont le voisin immediat `slot + 1`, RECENSE A LA MEME
+// FENETRE, porte le chassis et la trajectoire. Cinq de ces voisins sont des `warthog`, un est un
+// `falcon` — les deux seules familles du corpus a tourelle d artilleur —, et les six episodes
+// portent le siege 0. Sur les 50 vies muettes du corpus, le voisin `slot + 1` a la MEME fenetre
+// est un warthog (23) ou un falcon (10) ou un chassis non resolu (3), JAMAIS un ghost, un
+// mongoose, un chopper ni une banshee.
+//
+// L EXPLICATION LA PLUS ECONOMIQUE, et elle recoupe un rapport anterieur : le Warthog est un
+// ASSEMBLAGE — sa tourelle (`warthog_g`) est un tag `vehi` a part entiere
+// (`ASSEMBLAGE_ENFANTS_2026-09-01.md`), donc une entite `ti=40` de plus, ATTACHEE au chassis et
+// qui ne replique donc jamais sa position. La tourelle est elle-meme une UNITE qui porte un
+// siege : l ARTILLEUR y monte, et son siege y vaut 0 comme celui du conducteur vaut 0 sur le
+// chassis. L evenement de sortie nommerait alors l unite REELLEMENT quittee — chassis pour le
+// conducteur, tourelle pour l artilleur —, ce que le calque ne sait pas distinguer aujourd hui.
+// Les deux voies auraient RAISON ; elles ne repondraient pas a la meme question. CE DERNIER PAS
+// N EST PAS PROUVE (aucune verite terrain ne dit qui, du conducteur ou de l artilleur, sortait) ;
+// ce qui est mesure, c est la forme des six cas et la famille des voisins.
+//
+// CE QUE LE CALQUE PEUT EN FAIRE AUJOURD HUI : rien de plus, parce qu il ne publie qu un sprite
+// par vehicule et que la tourelle n en a pas. Un episode accroche a une vie muette serait ECARTE a
+// la publication (`vehicleTrackOf` refuse une vie sans naissance ni echantillon) — c est-a-dire un
+// occupant PERDU. La regle est donc : le nom prime, SAUF quand il designe une vie que le calque ne
+// dessinera pas ; la geometrie, qui designe le chassis porteur, reprend alors la main. Mesure
+// avant / apres a l appui : sans ce garde-fou, l artefact perdait 4 episodes sur 41.
+func vehicleLifeFromEvent(ep vehicleEpisode, in vehicleRideInputs) (vehicleLife, vehicleResolvedBy) {
+	l, src := vehicleLifeNamedByEvent(ep, in.lives)
+	if src != vehicleResolvedNone && !in.drawable[l.key] {
+		return vehicleLife{}, vehicleResolvedNone
+	}
+	return l, src
+}
+
+// vehicleLifeNamedByEvent est la resolution NUE : la vie du slot que l evenement nomme, sans le
+// garde-fou de publiabilite. Separee pour que les instruments puissent mesurer ce que l evenement
+// DIT, et pas seulement ce que le calque en RETIENT.
+func vehicleLifeNamedByEvent(
+	ep vehicleEpisode, lives []vehicleLife,
+) (vehicleLife, vehicleResolvedBy) {
+	if !ep.vehValid {
+		return vehicleLife{}, vehicleResolvedNone
+	}
+	best, found, bestGap := vehicleLife{}, false, uint64(0)
+	for _, l := range lives {
+		if l.key.Slot != ep.vehSlot {
+			continue
+		}
+		if ep.vehAtUS >= l.loUS && ep.vehAtUS <= l.hiUS {
+			// LES FENETRES D UN MEME SLOT NE SE RECOUVRENT PAS (`assignVehicleWindows` les
+			// decoupe) : la reponse exacte est unique, on peut rendre la premiere.
+			return l, vehicleResolvedByEvent
+		}
+		g := ep.vehAtUS - l.hiUS
+		if ep.vehAtUS < l.loUS {
+			g = l.loUS - ep.vehAtUS
+		}
+		if !found || g < bestGap {
+			best, bestGap, found = l, g, true
+		}
+	}
+	if !found {
+		return vehicleLife{}, vehicleResolvedNone
+	}
+	return best, vehicleResolvedByEventNearest
+}
+
+// vehicleLifeFromGeometry est le REPLI : le vehicule le plus proche d une des deux ancres.
+func vehicleLifeFromGeometry(
+	ep vehicleEpisode, pts []filmdec.BipedPosition, in vehicleRideInputs,
+) (vehicleLife, bool) {
+	a0, ok0 := vehicleAnchorAt(pts, ep.startUS, false)
+	life, ok := vehicleLifeForAnchor(a0, ok0, ep.startUS, in)
+	if ok || ep.openEnd {
+		return life, ok
+	}
+	a1, ok1 := vehicleAnchorAt(pts, ep.endUS, true)
+	return vehicleLifeForAnchor(a1, ok1, ep.endUS, in)
 }
 
 // vehicleRideSrcOf traduit le nombre de bornes datees par un evenement en provenance publiee.
