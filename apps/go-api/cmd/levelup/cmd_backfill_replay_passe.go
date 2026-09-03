@@ -13,6 +13,8 @@ import (
 	"os"
 	"strconv"
 	"time"
+
+	"levelup/go-api/internal/filmproc"
 )
 
 // replayBackfillReport : le rapport par categories.
@@ -43,7 +45,11 @@ func executerPasseReplay(
 	ctx context.Context, repoRoot string, o replayBackfillOptions, cacheRoot string,
 	aFaire []replayCandidat, r *replayBackfillReport,
 ) error {
-	runner, err := nouveauRunnerEnfant(repoRoot, os.Stdout)
+	// LE LANCEUR EST CELUI DU DEPOT (`internal/filmproc`, PLAN_CUISSON_PERF item 5.4) : meme
+	// protocole de codes de sortie, meme interception du marqueur de pic memoire, meme relais
+	// de journal — et EN PLUS la priorite CPU basse, qui manquait a la copie locale. Cette
+	// passe tourne sur la machine de travail de l'utilisateur pendant qu'il s'en sert.
+	runner, err := filmproc.NewRunner(repoRoot, os.Stdout)
 	if err != nil {
 		return err
 	}
@@ -53,9 +59,9 @@ func executerPasseReplay(
 	debut := time.Now()
 	var picMax uint64
 	for i, c := range aFaire {
-		res := runner.executer(ctx, argsEnfantReplay(o, cacheRoot, c))
-		if res.picOctets > picMax {
-			picMax = res.picOctets
+		res := runner.Run(ctx, argsEnfantReplay(o, cacheRoot, c))
+		if res.Peak > picMax {
+			picMax = res.Peak
 		}
 		traiterResultatEnfant(r, res, c.matchID, i+1, len(aFaire))
 	}
@@ -85,43 +91,48 @@ func argsEnfantReplay(o replayBackfillOptions, cacheRoot string, c replayCandida
 }
 
 // traiterResultatEnfant compte l'issue, la journalise et l'affiche.
-func traiterResultatEnfant(r *replayBackfillReport, res resultatEnfant, matchID string, rang, total int) {
-	switch res.issue {
-	case issueOK:
+func traiterResultatEnfant(r *replayBackfillReport, res filmproc.Result, matchID string, rang, total int) {
+	switch res.Issue {
+	case filmproc.IssueOK:
 		r.construits++
-	case issueHorsCatalogue:
+	case filmproc.IssueSkipped:
 		r.horsCatalogue++
-	case issueErreurDecodage:
+	case filmproc.IssueFailed:
 		r.erreurs++
-	case issuePreparation:
+	case filmproc.IssuePreparation:
 		r.preparation++
-	case issueMemoire:
+	case filmproc.IssueMemory:
 		r.mortsMemoire++
 	default:
 		r.mortsSubites++
 	}
-	if res.issue != issueOK && res.issue != issueHorsCatalogue {
+	if res.Issue != filmproc.IssueOK && res.Issue != filmproc.IssueSkipped {
 		slog.Error("backfill-replay: enfant en echec — LA PASSE CONTINUE",
-			"match_id", matchID, "issue", libelleIssue(res.issue),
-			"code", res.code, "err", res.err,
-			"duree_s", res.duree.Seconds(), "pic_octets", res.picOctets)
+			"match_id", matchID, "issue", libelleIssue(res.Issue),
+			"code", res.Code, "err", res.Err,
+			"duree_s", res.Dur.Seconds(), "pic_octets", res.Peak)
 	}
 	fmt.Printf("  [%d/%d] %s : %s — code %d, %s%s\n", rang, total, matchID,
-		libelleIssue(res.issue), res.code, res.duree.Round(time.Second), suffixePic(res.picOctets))
+		libelleIssue(res.Issue), res.Code, res.Dur.Round(time.Second), suffixePic(res.Peak))
 }
 
 // libelleIssue : le mot que lit l'operateur.
-func libelleIssue(i issueEnfant) string {
+//
+// LES MOTS SONT CEUX DE LA PASSE, PAS CEUX DU LANCEUR. `filmproc.Issue.String()` rend des
+// libelles de journal generiques (« ecarte », « echec ») ; ici on nomme ce que la categorie veut
+// dire POUR UNE CUISSON D'ARTEFACT — « carte hors catalogue » est un echec VOULU, et l'operateur
+// qui lit le recap doit le distinguer d'une erreur de decodage sans consulter un tableau.
+func libelleIssue(i filmproc.Issue) string {
 	switch i {
-	case issueOK:
+	case filmproc.IssueOK:
 		return "construit"
-	case issueHorsCatalogue:
+	case filmproc.IssueSkipped:
 		return "carte hors catalogue (echec voulu)"
-	case issueErreurDecodage:
+	case filmproc.IssueFailed:
 		return "ERREUR de decodage"
-	case issuePreparation:
+	case filmproc.IssuePreparation:
 		return "ECHEC de preparation"
-	case issueMemoire:
+	case filmproc.IssueMemory:
 		return "MORT MEMOIRE (plafond depasse)"
 	default:
 		return "MORT SUBITE (crash / tue par l'OS)"

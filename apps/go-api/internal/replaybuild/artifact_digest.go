@@ -13,24 +13,21 @@ import (
 	"os"
 
 	"levelup/go-api/internal/analysis/replay"
+	"levelup/go-api/internal/observability"
 )
 
 // ArtifactUpToDate dit si l'artefact au chemin donné existe ET porte la version de schéma
 // courante. C'est LA clé de reprise des backfills (cf. replay.SchemaVersion) : un artefact
 // d'une version antérieure se lit « à re-cuire », jamais « à jour ». Un fichier illisible
 // est traité comme périmé (il sera réécrit), pas comme une erreur.
+//
+// C'EST UNE VUE DU DIGEST, PLUS UNE LECTURE (PLAN_CUISSON_PERF item 5.3). Elle reste exportée
+// parce qu'elle a des appelants qui n'ont besoin que d'elle (`cmd_backfill_replay.go`,
+// `registry_build_queue.go`) ; ceux qui posent DEUX questions sur le même fichier lisent
+// [ArtifactDigest] UNE fois et interrogent le résultat.
 func ArtifactUpToDate(path string) bool {
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		return false
-	}
-	var head struct {
-		SchemaVersion int `json:"schemaVersion"`
-	}
-	if err := json.Unmarshal(raw, &head); err != nil {
-		return false
-	}
-	return head.SchemaVersion == replay.SchemaVersion
+	d, ok := ArtifactDigest(path)
+	return ok && d.UpToDate()
 }
 
 // ArtifactHasPlayerCounters dit si l'artefact au chemin donné PORTE des compteurs de joueur
@@ -65,34 +62,58 @@ func ArtifactUpToDate(path string) bool {
 // `replay.SchemaVersion`, donc la re-cuisson de tout le cache, aujourd'hui bloquée par la bombe
 // RAM de `NamedEventsFrom` (registre du 2026-08-24). C'est la dette assumée de ce choix.
 func ArtifactHasPlayerCounters(path string) bool {
-	d, ok := readArtifactDigest(path)
-	return ok && d.players > 0
+	d, ok := ArtifactDigest(path)
+	return ok && d.HasPlayerCounters()
 }
 
-// artifactDigest : les seules marques d'un artefact que les gardes ont à lire. Une SEULE forme
-// de lecture pour tous — deux structures anonymes concurrentes finiraient par diverger sur le
-// nom d'un champ, et le garde deviendrait muet sans que rien ne le signale.
-type artifactDigest struct {
-	matchID       string
-	schemaVersion int
-	players       int
-	tracks        int
-	bytes         int
+// Digest : les seules marques d'un artefact que les gardes ont à lire. Une SEULE forme de
+// lecture pour tous — deux structures anonymes concurrentes finiraient par diverger sur le nom
+// d'un champ, et le garde deviendrait muet sans que rien ne le signale.
+//
+// EXPORTÉ AU LOT 5 DE PLAN_CUISSON_PERF (item 5.3) : les appelants qui posent DEUX questions
+// sur le même artefact (« à jour ? » puis « avec des compteurs ? ») le lisaient DEUX FOIS,
+// c'est-à-dire deux `os.ReadFile` et deux désérialisations d'un document de ~2 Mo par match et
+// par cycle. Ils lisent désormais une fois et interrogent le résultat.
+type Digest struct {
+	MatchID       string
+	SchemaVersion int
+	Players       int
+	Tracks        int
+	Bytes         int
 }
 
-// readArtifactDigest lit un artefact sur disque. ok=false si absent ou illisible : dans le
-// doute, l'appelant traite l'artefact comme inexploitable, jamais comme bon.
-func readArtifactDigest(path string) (artifactDigest, bool) {
+// UpToDate : l'artefact porte-t-il la version de schéma COURANTE (cf. replay.SchemaVersion).
+func (d Digest) UpToDate() bool { return d.SchemaVersion == replay.SchemaVersion }
+
+// HasPlayerCounters : l'artefact porte-t-il des compteurs de joueur. CE QU'IL AFFIRME ET CE
+// QU'IL N'AFFIRME PAS : cf. l'en-tête d'[ArtifactHasPlayerCounters] — le vide est une
+// PRÉSOMPTION d'appauvrissement, jamais une preuve.
+func (d Digest) HasPlayerCounters() bool { return d.Players > 0 }
+
+// ArtifactDigest lit UNE FOIS l'artefact au chemin donné et rend ses marques. ok=false si
+// absent ou illisible : dans le doute, l'appelant traite l'artefact comme inexploitable, jamais
+// comme bon — il ne peut PAS distinguer les deux cas ici, et c'est voulu (les deux appellent la
+// même conduite ; celui qui a besoin de la nuance fait son propre `os.Stat`, cf.
+// `cmd_backfill_replay_repair.go`).
+//
+// LE COMPTEUR EST LA MESURE DE CETTE LECTURE, et il a un rôle : c'est par lui que les gardes de
+// fraîcheur (post-sync, backfill) prouvent qu'ils n'ouvrent qu'UNE fois par artefact. Un cycle
+// qui doublerait ses lectures se verrait dans /debug/vars avant de se voir dans un profil.
+func ArtifactDigest(path string) (Digest, bool) {
+	observability.IncCounter(CompteurLecturesArtefact)
 	raw, err := os.ReadFile(path)
 	if err != nil {
-		return artifactDigest{}, false
+		return Digest{}, false
 	}
 	return digestFromBytes(raw)
 }
 
+// CompteurLecturesArtefact : le nombre de lectures disque d'artefact faites par les gardes.
+const CompteurLecturesArtefact = "replay_artifact_digest_reads_total"
+
 // digestFromBytes lit les marques d'un artefact déjà en mémoire (cas du dépôt d'un ouvrier :
 // le blob est là, le relire depuis le disque serait absurde).
-func digestFromBytes(raw []byte) (artifactDigest, bool) {
+func digestFromBytes(raw []byte) (Digest, bool) {
 	var head struct {
 		MatchID       string            `json:"matchId"`
 		SchemaVersion int               `json:"schemaVersion"`
@@ -102,14 +123,14 @@ func digestFromBytes(raw []byte) (artifactDigest, bool) {
 		} `json:"scoreTimeline"`
 	}
 	if err := json.Unmarshal(raw, &head); err != nil {
-		return artifactDigest{}, false
+		return Digest{}, false
 	}
-	return artifactDigest{
-		matchID:       head.MatchID,
-		schemaVersion: head.SchemaVersion,
-		players:       len(head.ScoreTimeline.Players),
-		tracks:        len(head.Tracks),
-		bytes:         len(raw),
+	return Digest{
+		MatchID:       head.MatchID,
+		SchemaVersion: head.SchemaVersion,
+		Players:       len(head.ScoreTimeline.Players),
+		Tracks:        len(head.Tracks),
+		Bytes:         len(raw),
 	}, true
 }
 
@@ -129,5 +150,5 @@ func writeArtifact(outPath, titleSlug, matchID string, doc replay.ReplayDocument
 	if err != nil {
 		return 0, err
 	}
-	return surDisque.bytes, nil
+	return surDisque.Bytes, nil
 }
