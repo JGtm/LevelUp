@@ -312,6 +312,7 @@ func renderAssembly(doc ReplayDocument) string {
 	renderGrenadeReads(p, doc)
 	renderAbilities(p, doc)
 	renderEquipment(p, doc)
+	renderTranslocations(p, doc)
 	renderGrapple(p, doc)
 	renderPlacements(p, doc)
 	renderGroundWeapons(p, doc)
@@ -558,6 +559,24 @@ func renderEquipment(p func(string, ...any), doc ReplayDocument) {
 	if c := doc.Coverage.Equipment; c != nil {
 		p("couverture : %d vie(s) publiee(s) · camo %d vie(s) / %d episode(s) · surbouclier %d vie(s) / %d episode(s)",
 			c.TracksTotal, c.CamoLives, c.CamoEpisodes, c.OvershieldLives, c.OvershieldEpisodes)
+	}
+	p("")
+}
+
+// renderTranslocations fige le calque des TELEPORTATIONS du translocateur (schema 38) :
+// datees par l evenement 117 du film — jamais devinees d un seuil spatial, jamais datees du
+// `spent`. Le film de reference (Fiesta Cliffhanger) peut n en porter aucune : le zero se
+// fige AVEC ses compteurs, sinon il se confondrait avec une lecture qui aurait echoue.
+func renderTranslocations(p func(string, ...any), doc ReplayDocument) {
+	p("## TRANSLOCATEUR — teleportations datees par l EVENEMENT du film, jamais devinees d un seuil")
+	if c := doc.Coverage.Translocations; c != nil {
+		p("%d evenement(s) -> %d publie(s) · %d avant l origine · %d sans piste publiee",
+			c.Events, c.Published, c.BeforeOrigin, c.Unpublished)
+	} else {
+		p("aucune couverture (rien n a ete fourni a lire)")
+	}
+	for _, tr := range doc.Translocations {
+		p("  slot=%d t=%d", tr.Slot, tr.T)
 	}
 	p("")
 }

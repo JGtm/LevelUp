@@ -629,8 +629,23 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   (Ce lot avait pris le 36 sur wt/t0-film pendant que l'identité des vies prenait le 36
 	//   sur feat/v75 : renuméroté 37 au merge du 2026-09-02, arbitrage écrit aux schémas
 	//   30, 31, 33 et 35.)
-	if SchemaVersion != 37 {
-		t.Fatalf("SchemaVersion = %d, attendu 37 : incrémenter exige une raison écrite ci-dessus "+
+	// v38 — LA LECTURE FIABLE DES USAGES D'ÉQUIPEMENT (lot P1 du chantier du 2026-09-03,
+	//   décisions user D1-D4). Trois champs optionnels et un changement de contenu, et la
+	//   version monte pour la raison exacte des montées v14/v22/v25 : la reprise du backfill
+	//   se fait par SchemaVersion, et un artefact 37 ne porte ni `translocations[]` (les
+	//   téléportations datées par l'ÉVÉNEMENT type 117 du film — précision 18/18, rappel 8/8,
+	//   rapport R1), ni `equipmentChanges[].recovered` (l'émission manquée retrouvée par la
+	//   récupération GATÉE PAR LE TÉMOIN DE COMPTEUR — jamais par relâchement des gardes, le
+	//   relâchement inconditionnel étant réfuté par +800 fausses acceptations sur 10 films),
+	//   ni `equipmentChanges[].gap` (le saut RÉSIDUEL de compteur : un `from` sous gap se lit
+	//   comme inconnu, pas comme faux). Le CONTENU des pistes bouge aussi : le filtre de
+	//   vitesse est levé à ±200 ms d'un événement 117 du même slot (51/51 rejets à tort
+	//   couverts, 0 fausse exemption, invariance bit à bit prouvée contre une implémentation
+	//   de RÉFÉRENCE figée — la sémantique d'avant l'exemption — sur film sans tête 117).
+	//   CE QUI N'EST PAS PUBLIÉ : la position de la faille posée (aucune entité répliquée
+	//   lisible — négatif mesuré R1 §1-3).
+	if SchemaVersion != 38 {
+		t.Fatalf("SchemaVersion = %d, attendu 38 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

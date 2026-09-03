@@ -468,7 +468,51 @@ package replay
 // publiee. Chronique, seuils et mesures : t0_film.go. (Ce lot avait pris le 36 sur
 // `wt/t0-film` pendant que l'identite des vies prenait le 36 sur `feat/v75` : renumerote 37
 // au merge du 2026-09-02 — l'arbitrage par renumerotation ecrit aux schemas 30, 31, 33 et 35.)
-const SchemaVersion = 37
+//
+// CE QUE LA VERSION 38 PORTE : LA LECTURE FIABLE DES USAGES D'EQUIPEMENT (lot P1 du
+// PLAN_LECTURE_FIABLE_EQUIPEMENT_2026-09-03, decisions user D1-D4 — « pas d'heuristique :
+// les ENREGISTREMENTS du film, ou rien »). Trois choses, un seul chantier :
+//
+// (1) `translocations[]` — LES TELEPORTATIONS DU TRANSLOCATEUR, datees par l'EVENEMENT du
+// film (type 117 `EquipmentTranslocatorTeleportEffects`, nom source de l'exe) : precision
+// 18/18 et rappel 8/8 sur 5 films (rapport R1). Jusqu'ici le client DEVINAIT la
+// teleportation d'un seuil spatial (> 4 m — aveugle a un saut de 3,24 m mesure) ou la
+// datait du `spent`, qui peut suivre l'usage de 16,5 s. `coverage.translocations` compte
+// les ecartees.
+//
+// (2) `equipmentChanges[].recovered` et `[].gap` — LE CANAL i48 SE REPARE ET PUBLIE SON
+// RESIDU. La recuperation GATEE PAR LE TEMOIN DE COMPTEUR (R2 : les octets des emissions
+// manquees existent dans ~3 cas sur 4, sous deux formes que le balayage strict rejette par
+// construction — record sans i0, masque dense R(64) a l'ordre de bits fige par P1.0 sur 44
+// temoins) re-balaye les SEULES fenetres de saut et n'accepte un candidat QUE s'il comble
+// exactement le saut ; le relachement inconditionnel est REFUTE (+800 fausses acceptations
+// sur 10 films, R2 §5). `gap` publie le saut RESIDUEL apres recuperation : un `from` sous
+// gap n'est plus une identite fiable, et le document le dit au lieu de le laisser croire.
+// Cas fondateur (Dynasty 1b2d9e08) : la prise du translocateur de JGtm etait invisible et
+// son `spent` portait `from=4` (le grappin) — l'emission recuperee (c6, rang 11) le
+// corrige, et les stats comptent les recuperees A PART (`coverage.equipmentChanges.
+// recovered` ; les temoins missedEstimate/counterJumps/livesFirstOffSpec decrivent la
+// chaine FINALE, ce qui manque ENCORE).
+//
+// (3) LE FILTRE DE VITESSE S'EXEMPTE SUR PIECE (aucun champ neuf, mais le CONTENU des
+// pistes bouge) : `DropTeleports` rejetait 1 a 3 echantillons REELS par teleportation
+// (51/51 rejets a tort mesures, R3), il est leve a ±200 ms d'un evenement 117 du MEME
+// slot — jamais ailleurs : invariance bit a bit prouvee CONTRE UNE IMPLEMENTATION DE
+// REFERENCE FIGEE (la semantique d'avant l'exemption, copiee verbatim dans le test), sur
+// donnees synthetiques (TestDropTeleportsInvarianceSansEvenement) et sur film sans tete
+// 117 (TestP1InvarianceSansTete117, 188 979 echantillons identiques a la reference).
+//
+// Champs optionnels, mais la version monte pour la raison exacte des montees v14/v22/v25 :
+// la reprise du backfill se fait par SchemaVersion, et un artefact 37 doit se lire « a
+// re-cuire », pas « a jour » — sans quoi aucun rejeu deja cuit ne porterait ni les
+// teleportations ni les emissions recuperees. CE QUE LA VERSION NE PORTE PAS : la POSITION
+// de la faille posee (aucune entite repliquee lisible — negatif mesure R1 §1-3 : entre la
+// pose et le premier echange, aucun canal ne la connait), et rien pour les trois `spent`
+// sans evenement 117 du corpus (hors TETE de liste ou expiration sans usage, non departage
+// R1 §4.3 — la LISTE COMPLETE d'evenements est un chantier distinct). Chronique :
+// document_translocations.go, document_equipment_changes.go, filmdec/equipment_recovery.go,
+// filmdec/transloc_events.go, filmdec/offline_filters.go.
+const SchemaVersion = 38
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {
@@ -629,6 +673,11 @@ type ReplayDocument struct {
 	// ÉCARTÉES : ce ne sont pas des ramassages, et ce que le joueur porte à sa naissance est
 	// déjà dans `abilities`. Absent si le film n'en porte aucun.
 	EquipmentChanges []EquipmentChange `json:"equipmentChanges,omitempty"`
+	// Translocations est la liste des TÉLÉPORTATIONS du translocateur (cf.
+	// document_translocations.go) : qui saute, à quelle frame — daté par l'ÉVÉNEMENT du film
+	// (type 117), jamais déduit d'un seuil spatial ni du `spent` (qui peut suivre l'usage de
+	// 16,5 s). Absent si le film n'en porte aucune.
+	Translocations []Translocation `json:"translocations,omitempty"`
 	// GroundWeapons est la liste des ARMES AU SOL individuelles (cf.
 	// document_ground_weapon_items.go) : où chacune gît, de quand à quand l'afficher, qui l'a
 	// lâchée et qui l'a prise quand le flux delta le dit. Les fins sont OBSERVÉES (ramassage

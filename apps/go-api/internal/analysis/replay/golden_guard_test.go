@@ -24,6 +24,7 @@ import (
 // phrasesGolden : ce que la sortie figee doit DIRE, et pas seulement chiffrer.
 var phrasesGolden = []string{
 	"AUCUN OCTET DE FILM n est lu pour produire cette sortie",
+	"teleportations datees par l EVENEMENT du film, jamais devinees d un seuil",
 	"l ASSEMBLAGE ; le DECODAGE est verrouille a part par la mini-bobine",
 	"une trace est UNE VIE, pas un joueur (le slot migre a chaque reapparition)",
 	"NOMMEE(S) par le pont (fil des morts, puis fermetures)",
