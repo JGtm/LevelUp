@@ -1,3 +1,22 @@
+## [2026-09-03] Cuisson perf — CHANTIER LIVRE : 3 min 30 -> 15-19 s (-89 %), branche mergeable — Complete
+
+Fin des lots 0/1/2/4/5/6 de `.ai/V7.5/PLAN_CUISSON_PERF.md` (12 commits sur `wt/cuisson-perf`).
+
+**Resultats** : temoins a 15,7 / 18,6 / 18,2 s (references 2 min 24 - 2 min 49) ; BTB 26 joueurs
+19 min 54 -> 1 min 40 ; identite prouvee a CHAQUE lot par le harnais (45 empreintes x 9 films) ;
+harnais complet passe de ~40 min a ~5 min. En chemin : 10 non-determinismes de production
+corriges (donnees tirees au sort dans les rejeux), 2 nouvelles bombes memoire identifiees et
+expliquees a l'arithmetique pres, le cycle d'import filmcache->objectiveevents dissous, le
+verrou solo cable sur 4 chemins sur 4, ~15 garde-rails discriminants poses.
+
+**Gates de cloture** : revue adversariale de branche (0 bloquant, 7 corrections livrees),
+gate-push vert (lint Go branche 0 issue, baseline tests, web 0 erreur), integration -p 1 exit 0.
+
+**Restent** : D13 (borne anti-bombe, escalade — proposition 100 000) -> lot 4b (plafond +
+figeage des 4 bombes) -> lot 3 (justesse Live Fire) ; re-cuisson de masse au schema vehicules
+(~1 h 30 - 2 h au tarif mesure, contre ~55 h projetees a l'audit) ; merge dans feat/v75 a la
+main de l'utilisateur.
+
 ## [2026-09-03] Cuisson perf, lot 6.3 — les sept constats de la revue de branche sont corriges : plancher de cuisson, code mort supprime, gardes rendus discriminants — Complete (7/7)
 
 Item 6.3 de `.ai/V7.5/PLAN_CUISSON_PERF.md`, worktree `LevelUp-wt-cuisson-perf`
