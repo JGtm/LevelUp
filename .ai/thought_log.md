@@ -89910,3 +89910,37 @@ c est precisement pour cela que le rouge du 2026-09-02 avait pu vivre une journe
 **Conclusion / prochaine etape** : `feat/v75` est a `08255b670`, verte, poussee. Le chantier des
 fonds de carte est clos. Rien n est deploye : le tag v7.5.0 et le merge vers `main` restent a
 faire, et c est une decision utilisateur (push sur main = deploiement prod).
+
+---
+
+## [2026-09-03] Rejeu 2D : la toile prend tout le bloc — « quand je zoome c est croppe »
+
+**Statut** : Complete (code + gates) ; merge vers feat/v75 dans la foulee.
+
+**Decision technique principale** : retour utilisateur — « c est presque parfait mais c est le
+panneau qui est etroit ? quand je zoom c est croppe alors que le bloc du replay est assez
+grand ». Diagnostic : la toile epousait le ratio de la SCENE (`renderWidth = fitWidth(scene,
+dispo, renderHeight, pad)`). Or des que la hauteur est bornee par l ECRAN — le cas courant — ce
+calcul rend une largeur INFERIEURE au bloc : la toile etait plus etroite que la carte, avec des
+marges vides de part et d autre, et l image zoomee se coupait a ses bords pendant que la place
+d a cote ne servait a rien.
+
+CE N EST PLUS LA TOILE QUI PREND LA FORME DE LA SCENE, C EST LA FENETRE QUI PREND LA FORME DE LA
+TOILE. `renderWidth` vaut desormais la largeur disponible, et `frameBounds` (neuf) elargit la
+scene sur l axe non limitant jusqu au ratio de la toile. Les bandes vides d hier deviennent de
+l espace monde : a grossissement 1 le rendu est identique, mais des qu on zoome la fenetre
+retrecit depuis ce cadre et remplit la toile entiere.
+
+LE CADRE, ET NON LA SCENE, EST DEVENU LA REFERENCE DU ZOOM (`clampCenter`, `visibleBounds`,
+`useReplayZoom`). Borner sur la scene aurait arrete le deplacement avant les bords de ce qu on
+voit, et le zoom serait reparti d une forme qui n est pas celle de la toile : le recadrage
+serait revenu au premier cran.
+
+`fitWidth` n avait plus d appelant de production : supprime avec ses tests (CLAUDE.md n7). Son
+invariant est reecrit sans lui — « a la hauteur utile, la toile a le ratio exact de la carte ».
+
+**Resultats observes** : typecheck EXIT=0 ; 168 fichiers / 2355 tests verts (5 neufs sur
+`frameBounds`, dont « zoomee, la fenetre garde le ratio de la toile — donc la remplit ») ; lint
+0 erreur. `ReplayCanvas.tsx` a 662/665.
+
+**Conclusion / prochaine etape** : gate visuel du zoom, qui etait la derniere reserve.
