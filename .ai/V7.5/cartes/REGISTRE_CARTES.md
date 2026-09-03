@@ -113,9 +113,23 @@ metres (attendu : -0,29). `matchs` = somme des matchs de tous les map_id servis 
 
 Statut par defaut `A CUIRE`, sauf les trois blocages nommes ci-dessous.
 
-- `BLOQUEE natif sans tag sbsp` — **Live Fire** (3 map_id, 71 matchs) : deja instruite
-  (`HANDOFF_PORT_TRIANGLES` §1 ter), aucune cuisson possible en l'etat.
-- `BLOQUEE canevas inconnu` — **Detachment** (25 matchs), **Argyle** (22 matchs).
+- **Live Fire** (3 map_id, 71 matchs) — **VALIDEE 2026-09-03**, verbatim utilisateur : « Ah oui
+  c'est exactement cette map je la reconnais tres bien ! Par contre faut couper un peu les toits.
+  Et remplir le sol avec une couleur, mais que a l'interieur de la silhouette », puis « Y a juste
+  un trait horizontal a droite en haut a virer et c'est 100% valide ». Le blocage precedent
+  (`BLOQUEE natif sans tag sbsp`) est LEVE : la geometrie vit dans
+  `pc/globals/common-rtx-new.module`. Fond publie sous `sgh_interlock`, 1 302 x 1 192 px, il sert
+  aussi Live Fire - Ranked (le sidecar declare les deux identites). Reglages et mesures : entree
+  `sgh_interlock` de `map_fond_reglages.json`.
+- **Detachment** (25 matchs) — **VALIDEE 2026-09-03**, verbatim : « Detachment est parfaite ».
+  Fond publie sous `d39600e2`, 1 526 x 1 666 px, 14/14 ancres.
+- **Argyle** (22 matchs) — **VALIDEE 2026-09-03**, verbatim : « ok argyle validée ! » apres
+  « faut juste remplir tous les trous a l'interieur de la silhouette et retirer un peu de toits
+  comme pour live fire ». Fond publie sous `dd600260`, 1 090 x 1 707 px, 14/14 ancres.
+- Les deux portaient `BLOQUEE canevas inconnu`. Diagnostic corrige : le blocage PREMIER etait
+  l'absence d'entree dans `map_objectives.json` (aucune ancre, donc aucun cadre) ; le canevas, lui,
+  se lit dans le `level_id` sans le fichier-lien manquant — `fo09_academy` pour Detachment,
+  `fo11_blank` pour Argyle. Les deux sont declarees dans `himap.CartesForge`.
 - Le reste : cartes Forge du reliquat, `.mvar` au depot, chaine deja ecrite
   (`RAPPORT_FONDS_MAP_ID_2026-08-13.md`, section « Reliquat »).
 

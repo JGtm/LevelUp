@@ -100,6 +100,10 @@ func (e *environnement) cuitNatives(ctx context.Context) []bilanAsset {
 			RogneAuxZones:          e.rogneAuxZonesDe(c.cle),
 			MargeZones:             e.margeZonesDe(c.cle),
 			BoiteUtile:             e.boiteUtileDe(c.cle),
+			// Le MEME reglage que sur le chemin Forge, et c est tout le point : il est declare
+			// pour toutes les cartes et n etait cable que la, donc sans effet et en silence sur
+			// une carte native.
+			RogneAuxComposantesAncrees: e.rogneAuxComposantesAncreesDe(c.cle),
 		})
 		if err != nil {
 			if errors.Is(err, himap.ErrAucunTagSbsp) {

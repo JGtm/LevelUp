@@ -621,6 +621,24 @@ var CartesForge = []CarteForge{
 		FichierMvar:   "47823612-9de0-4ca9-8a95-b3a6ebd7ca91_map.mvar",
 		ModuleCanevas: CanevasBlank,
 	},
+	// Detachment et Argyle, declarees le 2026-09-03. Le registre les portait « BLOQUEE canevas
+	// inconnu » parce que leur asset ne publie PAS de fichier-lien de canevas — celui qu on lit
+	// d ordinaire pour nommer la toile. Le level_id le dit sans lui, et c est deja le critere de
+	// `TestPreuveLevelIDCartes` : 1 437 677 928 est la toile de The Pit et Houseki (fo09_academy),
+	// 426 470 249 celle d Empyrean, Solitude et Shogun (fo11_blank). Leurs `.mvar` portent 14
+	// objectifs chacun, ce qui leve aussi l autre blocage : elles n avaient aucune ancre.
+	{
+		MapID:         "d39600e2-3c35-4a3a-bdf5-7b3cbdde98e1",
+		Nom:           "Detachment",
+		FichierMvar:   "detachment_map.mvar",
+		ModuleCanevas: CanevasAcademy,
+	},
+	{
+		MapID:         "dd600260-d91c-4d77-9990-3f35873c90a1",
+		Nom:           "Argyle",
+		FichierMvar:   "argyle_map.mvar",
+		ModuleCanevas: CanevasBlank,
+	},
 }
 
 // EstCanevasForge dit si un dossier installe est le CANEVAS d'une carte Forge declaree — donc
