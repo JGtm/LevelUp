@@ -89249,3 +89249,96 @@ justement le geste qui a provoque quatre sinistres RAM. Non traite, a decider av
 **Conclusion / prochaine etape** : une carte sans fond cale n a desormais plus rien sous les
 joueurs (hors props Forge). Le chantier des fonds devient donc le seul chemin, et il avance —
 +8 cartes par heritage variante->base le meme jour.
+
+---
+
+## [2026-09-03] R1 lecture fiable equipement — la teleportation du translocateur EST un evenement nomme du film (type 117) ; la pose ne cree aucune entite — Complete
+
+**Question (lot R1 de `PLAN_LECTURE_FIABLE_EQUIPEMENT_2026-09-03.md`)** : quand un joueur
+ACTIVE le translocateur, le film enregistre-t-il quelque chose ? Instruments (recherche pure,
+gardes par `FAILLE_FILM`, skip par defaut) :
+`filmdec/faille_activation_research_test.go` (creations NEW tous archetypes lisibles, deltas
+d'objet du monde, recensement d'images-cles) et
+`filmdec/faille_activation_events_research_test.go` (canal des evenements, tetes de liste).
+
+**Decision technique principale** : chercher l'ENREGISTREMENT du film (entite datee OU
+evenement date), aucune heuristique de seuil spatial. Piege d'horloge appris : les paquets
+sont dates sur l'horloge MOTEUR ; ancres en horloge FILM decalees par l'origine (premier
+paquet du chunk 1, modele `replay.ScanFilmClockOrigin`).
+
+**Resultats** : (1) ENTITES : negatif mesure sur `1b2d9e08` — 0 creation NEW a <= 3 m des
+ancres (ti 37/38/42/43, 90 acceptees toutes a 10-40 m = churn des socles), 0 vie delta pres
+des ancres hors presence physique du poseur, recensement sans candidat corrobore. La faille
+n'est pas une entite repliquee lisible. (2) EVENEMENTS : POSITIF — type 117
+`EquipmentTranslocatorTeleportEffects` (nom exe, annexe A GRAMMAIRE_EVENTS), UN evenement par
+TELEPORTATION exécutee, ref0 = slot du bipede (porte 1 + index 8 bits base 512 + gen 2),
+emis 5-80 ms AVANT la discontinuite de position. Precision 18/18 sur 5 films (chaque
+evenement = un saut reel 3,24-25,36 m verifie a l'artefact), rappel 8/8 sur les
+teleportations mesurees ; il revele en prime des teleportations invisibles au seuil de 4 m
+(3,24 m sur `1b2d9e08`) et des usages de slots hors ancres (555 x2, 610). 3 spent sur 10
+n'ont aucun evenement (expiration sans usage, ou evenement hors tete de liste — le scanner ne
+lit que la tete, limite `zoom_events.go`). Semantique etablie : VA-ET-VIENT (la balise
+echange sa position avec le joueur).
+
+**Conclusion / prochaine etape** : rapport complet avec commandes rejouables dans
+`.ai/V7.5/replay2d/RAPPORT_R1_FAILLE_ACTIVATION_2026-09-03.md`. Brique de production
+candidate (hors R1, decision superviseur) : lecteur type `ScanFilmTranslocatorTeleports` sur
+le modele de `zoom_events.go` — datation exacte sans heuristique. Reserves ouvertes : liste
+d'evenements complete (au-dela de la tete), charge utile de `FUN_140f04fb8` (position de la
+faille probablement dedans).
+
+
+---
+
+
+## [2026-09-03] R2 — Emissions i48 manquees : verdict SCANNER (77 %), correctif gate par le temoin
+
+**Statut** : Complete (lot R2 du PLAN_LECTURE_FIABLE_EQUIPEMENT_2026-09-03, agent de recherche).
+**Decision technique** : confrontation strict/relache sur fenetres bornees, avec PREDICTION du
+compteur R(3) avant balayage. Cas index (1b2d9e08, slot 535) : l'emission manquante EXISTE dans
+les octets — record SANS i0, masque [17 25 48 56], chunk 9 paquet 134 bit 3055, compteur 6
+(predit) rang 11 (translocateur) ; garde fautive = ascendingFromZero (premier index = 0).
+**Resultats** : 13 sauts (12 echantillonnes + index) : 10 SCANNER / 3 FILM (77 %) en lecture
+liberale, 8/13 en conservatrice ; deux formes de records rejetees identifiees (sans-i0, masque
+dense R(64) ordre bit k = composant 63-k). Controle negatif : l'acceptation inconditionnelle
+est REFUTEE (+800 fausses acceptations sur 10 films, sauts 14->310, repetitions 0->122) — le
+correctif propose est la recuperation gatee par la fermeture des chaines de compteur (rapport §6,
+decision D1 user).
+**Livrables** : apps/go-api/internal/analysis/filmdec/i48_manques_research_test.go,
+i48_manques_parc_research_test.go (env-gates I48M_*), .ai/V7.5/replay2d/RAPPORT_R2_I48_MANQUES_2026-09-03.md.
+**Prochaine etape** : decision D1 (appliquer la recuperation gatee) ; R4 (marqueur gap) pour les
+manques FILM residuels ; figer l'ordre de bits dense sur plus de temoins avant application.
+
+
+---
+
+
+## [2026-09-03] R3 — Filtre MaxSpeedMPS=100 : cout mesure (borne a 3 echantillons), option A retenue en proposition
+
+**Statut** : Complete (lot R3 du PLAN_LECTURE_FIABLE_EQUIPEMENT_2026-09-03, agent de recherche).
+**Decision technique** : re-derivation des 18 teleportations par le recensement des tetes 117
+(meme canal que R1, denominateurs identiques), decodage sans filtre en QUANTA sur fenetres
+[evenement-5s, +10s] bornees par chunks, dequantification par l'entree de CATALOGUE
+(map_quant_bounds.json) avec identification de carte par calibration contre l'artefact
+(ecart 0,004-0,030 m) — PIEGE DECOUVERT : le champ `bounds` de l'artefact est un cadrage
+d'affichage, PAS l'AABB de dequantification (1re execution compressee ~10x). Simulation
+decision par decision de la semantique exacte de DropTeleports.
+**Resultats** : la premisse « cascade jusqu'a la fin de la vie » est fausse — maxRejectStreak=3
+borne le rejet (offline_biped.go:144). 18/18 mesures : 51 rejets a tort au total (1-3 par
+saut, jamais plus), retard du 1er point produit 49 ms median / 149 ms pire ; ARTEFACT : aucun
+saut perdu, arrivee publiee +1 frame (15) ou +0 (3) = la grille de 100 ms, seul effet du
+filtre = deplacement 0,00-0,20 m du 1er point d'arrivee ; les 4 trous de frames observes sont
+des pauses d'emission du film (>= +500 ms du saut), pas le filtre. Lateral : les transitions
+de manche relocalisent tous les slots d'un coup et subissent le meme rejet (3 instants, 17
+points reels rejetes, y compris sur le temoin 7344d24f). Options : A (exemption ±200 ms d'un
+evenement 117 du meme slot) couvre 51/51, 0 fausse exemption, 0 changement temoins (0 tete
+117 / 34115 et 36203 paquets delta) ; B (reancrage corrobore, k mesure = 2 suffirait,
+profondeur arrivees 8/8 vs aberration 0) couvre autant mais MODIFIE les films sans
+translocateur (5 points sur 7344d24f) — exclu par le cahier des charges.
+**Livrables** : apps/go-api/internal/analysis/filmdec/vitesse_filtre_research_test.go,
+vitesse_filtre_outils_research_test.go, vitesse_filtre_artefact_research_test.go (env-gates
+VITESSE_*), .ai/V7.5/replay2d/RAPPORT_R3_FILTRE_VITESSE_2026-09-03.md. go vet vert.
+**Prochaine etape** : decision D2 user (proposition : option A, via la brique
+ScanFilmTranslocatorTeleports deja cadree R1 §6) ; noter que le benefice visible artefact est
+minime (<= 0,20 m) — le vrai gain est en amont (positions brutes exactes pour D4 et les
+consommateurs de ScanFilmBipedPositions).
