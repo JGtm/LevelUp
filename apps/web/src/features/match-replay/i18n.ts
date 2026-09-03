@@ -341,7 +341,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       unattributedFmt: (count) =>
         `${count} geste${count > 1 ? 's' : ''} mesuré${count > 1 ? 's' : ''} sans propriétaire (vie sans joueur, ou poseur non mesuré) : hors du tableau.`,
       notMeasured:
-        "Répulseur et propulseur n'apparaissent pas : le film ne publie aucun canal d'activation pour ces deux capacités. Une colonne vide se lirait « zéro utilisation ».",
+        "Le répulseur n'apparaît pas : neuf canaux du film ont été fouillés, aucun ne date son activation. Une colonne vide se lirait « zéro utilisation ». Le propulseur, lui, a désormais son canal d'usage mesuré — validé contre un relevé Theater — et ses poussées se voient sur la carte du rejeu, pas dans ce tableau : le geste dure une demi-seconde.",
       killBadgeFmt: {
         camo: (kills) => `${kills} frags sous camouflage`,
         overshield: (kills) => `${kills} frags sous surbouclier`,
@@ -728,7 +728,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       unattributedFmt: (count) =>
         `${count} measured gesture${count > 1 ? 's' : ''} with no owner (life with no player, or unmeasured deployer): outside the table.`,
       notMeasured:
-        'Repulsor and thruster are absent: the film publishes no activation channel for those two abilities. An empty column would read as "zero uses".',
+        'The repulsor is absent: nine channels of the film were searched, none dates its activation. An empty column would read as "zero uses". The thruster now has its own measured usage channel — validated against a Theater reading — and its bursts show on the replay map, not in this table: the gesture lasts half a second.',
       killBadgeFmt: {
         camo: (kills) => `${kills} kills under camo`,
         overshield: (kills) => `${kills} kills under overshield`,

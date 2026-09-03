@@ -37,7 +37,7 @@ import { useTeamCascades } from './useTeamCascades'
 import { drawObjectivePulses, normalizeMapObjectives } from './objectivesLayer'
 import { drawZoneStates } from './zoneStatesLayer'
 import { drawFireMarks } from './fireMark'
-import { drawGrappleLayer } from './grappleLayer'
+import { useReplayAbilityFx } from './useReplayAbilityFx'
 import { drawEquipmentPlacementsLayer } from './equipmentPlacementsLayer'
 import { ReplayCanvasTips } from './ReplayCanvasTips'
 import { useReplayPlacements } from './useReplayPlacements'
@@ -237,11 +237,16 @@ export function ReplayCanvas({
   // Traînée, cône, croix de mort, apparition, rémanences et fins de vol : toutes les durées
   // du rejeu, converties une fois pour ce document (useReplayTiming).
   const { baseFps, timing, eventHoldFrames, shotHoldFrames, restWindow } = useReplayTiming(doc)
-  // LES EFFETS PRÉCALCULÉS DU FILM (tirs, « ! » du tireur, morts, fins de vol, grappin) : cinq
-  // listes en coordonnées monde, cuites une fois pour ce document. Elles vivent dans
-  // `useReplayFx` — onzième extraction imposée par le cliquet de taille, noms inchangés.
-  const { shotFx, fireMarks, killFx, grenadeRestFx, grappleFx, objectivePulses } =
+  // LES EFFETS PRÉCALCULÉS DU FILM (tirs, « ! » du tireur, morts, fins de vol, pulses
+  // d'objectif) : cinq listes en coordonnées monde, cuites une fois pour ce document. Elles
+  // vivent dans `useReplayFx` — onzième extraction imposée par le cliquet de taille. LE
+  // GRAPPIN N'Y EST PLUS depuis le 2026-09-03 : il a rejoint le dash du propulseur juste
+  // au-dessous, où les deux gestes de capacité sont bâtis ET peints ensemble.
+  const { shotFx, fireMarks, killFx, grenadeRestFx, objectivePulses } =
     useReplayFx(doc, kills, t0Ms, timing.aimHold, mapObjectives)
+  // LES GESTES DE CAPACITÉ SUR LEUR PORTEUR (grappin, propulseur) : bâtis et peints par un
+  // seul hook — ils ne posent rien au sol, ils se lisent sur le pion (cf. useReplayAbilityFx).
+  const abilityFx = useReplayAbilityFx({ doc, view: canvasView, grappleInk, colorOfSlot, reducedMotion })
   // La CARTE DE CHALEUR : grille cuite, rampe du thème et lecture réellement servie —
   // toute la logique vit dans le hook, le canvas ne fait que poser le calque.
   useReplayWheelZoom(canvasRef, zoom, canvasView) // molette : memes paliers que les boutons
@@ -429,14 +434,10 @@ export function ReplayCanvas({
       })
     }
 
-    // La LIGNE DE GRAPPIN juste au-dessus des trajectoires et SOUS les effets de tir :
-    // c'est un lien joueur -> point d'accroche, il se lit sur la trajectoire sans couvrir
-    // les événements. Fenêtre MESURÉE [t0, t1] : la ligne suit le joueur qui se déplace
-    // vers l'ancre, puis disparaît à l'arrivée. Statique par frame (reduced-motion par
-    // construction).
-    if (grappleFx.length > 0) {
-      drawGrappleLayer(ctx, grappleFx, view, frame, grappleInk)
-    }
+    // LES GESTES DE CAPACITÉ juste au-dessus des trajectoires et SOUS les effets de tir : le
+    // câble du grappin et le dash du propulseur se lisent sur le pion sans couvrir les
+    // événements (cf. useReplayAbilityFx).
+    abilityFx.paint(ctx, frame, dpr)
     // Les événements passent APRÈS les trajectoires : ils se lisent sur elles. Les DEUX
     // effets d'événement sont ÉTEIGNABLES depuis le tiroir (décision du 16/08) : c'est le
     // DESSIN qui s'éteint, jamais la mesure — `killFx` continue d'alimenter la lecture
@@ -518,8 +519,7 @@ export function ReplayCanvas({
     shotFx,
     fireMarks,
     fxInk,
-    grappleFx,
-    grappleInk,
+    abilityFx,
     killFx,
     grenadeRest,
     objectivePulses,

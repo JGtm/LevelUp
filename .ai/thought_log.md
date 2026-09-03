@@ -90079,3 +90079,123 @@ VISUEL de l'utilisateur, qui suppose la re-cuisson du film temoin `1b2d9e08` —
 explicitement, jamais de cuisson en lot. Les deux decouvertes hors perimetre (bloc manuel des
 schemas 25-27 de `types.ts` a son critere de retrait ; `PLACEMENT_RENDER.translocator_beacon`
 garde une regle de rendu que rien ne declenche) restent ecrites au plan et NON traitees.
+
+## [2026-09-03] P4 (web) — L'usage du propulseur : un dash sur le pion, le son du jeu, et l'infobulle remise a l'endroit
+
+**Statut** : Complete (lot P4 du chantier « lecture fiable des usages d'equipement », branche
+`wt/lecture-equipement`, worktree dedie). Non commite : le superviseur relit.
+
+**Demande de l'utilisateur, dans ses mots** : « Nan trop bref pour mettre sur la fiche mais un
+petit effet sur le pion oui, fait un truc qui fait comme un dash. Tu peux mettre le son si
+c'est pas deja fait ». Donc AUCUN effet de fiche — le geste dure une demi-seconde.
+
+**Decision technique principale — LA DIRECTION SE LIT, ELLE NE SE DEVINE PAS.** L'impulsion
+publiee par le schema 38 (`abilityImpulses[]`, {t, slot, family}) date le geste et rien d'autre :
+elle ne porte ni cap ni vecteur. Le dash s'oriente donc par la TRAJECTOIRE du porteur autour de
+l'instant (`tracks[].points`, la meme interpolation que le marqueur), fenetre AVANT de 280 ms
+d'abord — la poussee suit le declenchement — puis repli sur l'ARRIERE quand la vie se ferme
+pendant le dash (`positionAt` fige alors la derniere position, la fenetre avant devient nulle).
+Sans deplacement mesurable, AUCUN dash : le seul seuil du fichier (0,05 u monde) est une garde
+contre la normalisation d'un vecteur nul, PAS une regle de detection — l'existence du geste
+vient du film, jamais d'une vitesse. C'est la doctrine du chantier tenue jusqu'au rendu.
+
+**Ce que le dash donne a l'ecran** (`thrusterDashFx.ts`, 303 L) : un sillage en coin DERRIERE le
+marqueur, decolle de 5 px de son noyau pour que le pion reste lisible, plus deux chevrons qui
+pointent dans le sens de la poussee. 20 px d'ecran de long, etirement en easeOutCubic (le patron
+de l'onde du capteur et de l'onde de choc), 460 ms en temps REEL du match — jamais un nombre
+d'images, sinon le geste s'allongerait en lecture acceleree. Encre = couleur d'EQUIPE de la vie
+qui pousse, resolue a l'image de L'IMPULSION et non a l'image courante (un slot est reattribue
+aux reapparitions). `prefers-reduced-motion` : forme POSEE, pleine longueur et opacite constante
+pendant toute la fenetre — convention de `revealAlpha`, l'information reste, l'animation
+s'eteint. Zero calque hors ecran, zero litteral de couleur.
+
+**LE PRIX DU CLIQUET, PAYE PAR EXTRACTION ET NON PAR UN RELEVEMENT.** `ReplayCanvas.tsx` etait a
+662 L pour un plafond de 665 : le dash y demandait 4 lignes de glue. DIX-HUITIEME EXTRACTION,
+`useReplayAbilityFx.ts` — les DEUX gestes de capacite qui agissent sur leur porteur (cable de
+grappin, schema 8 ; dash du propulseur, schema 38) y sont batis ET peints ensemble. Le
+regroupement n'est pas de circonstance : meme famille de geste, meme moment de la pile de
+calques, meme absence d'objet pose (`PLACEMENT_RENDER` les met deja tous deux a `null`).
+`buildGrappleFx` quitte `useReplayFx`, aucun doublon laisse derriere. Canvas a 660 L, cliquet
+inchange.
+
+**Le son** (`abilityImpulseSound.ts`, 54 L) : cable sur le MEME instant, categorie EQUIPEMENT
+(couper « Equipements » coupe le dash comme elle coupe le grappin). Table PAR FAMILLE et non un
+stem nu comme le grappin — le calque publie une `family`, une famille sans stem reste MUETTE,
+jamais le son d'une voisine. Les trois `.wav` du lot d'extraction sont COPIES DANS LE MEME LOT,
+et c'est obligatoire : les deux assertions du garde-rail d'assets sont symetriques (« chaque
+stem a son fichier » ET « chaque fichier est joue par un stem »), trois orphelins le rendent
+rouge. Variantes declarees dans `SOUND_VARIANTS` exactement comme `grapple_fire` — l'evenement
+du jeu est un `RandomSequence` « 1 parmi 3 », le tirage se fait a la LECTURE.
+
+**L'infobulle remise a l'endroit (FR et EN)** : `equipmentUsage.notMeasured` affirmait
+« Repulseur et propulseur n'apparaissent pas : le film ne publie aucun canal d'activation pour
+ces deux capacites ». Vrai pour le repulseur, FAUX pour le propulseur depuis P3. Elle dit
+desormais l'etat reel, et le grep a sorti CINQ autres porteurs de la meme affirmation perimee
+(`i18nContract.ts`, `MatchEquipmentUsageSection.tsx` + son test, `equipmentUsageLogic.ts` a deux
+endroits + son test, `replaySound.ts`) — tous corriges dans le lot, regle « doc inversee ».
+Aucune colonne AJOUTEE au tableau : l'utilisateur a tranche, le geste ne se compte pas sur une
+fiche.
+
+**Resultats observes / gates** : `make check-types` exit 0 ; `make test-web` exit 0 —
+562 fichiers, 5 835 tests passes, 14 skippes, 0 echec ; `npx eslint` sur les fichiers touches
+exit 0 ; garde-rail d'assets sonores VERT ; aucune couleur en dur ; `ReplayCanvas.tsx` a 660 L
+pour un cliquet a 665, INCHANGE. Tests neufs : `thrusterDashFx.test.ts` (19 cas — instants
+publies, duree bornee en temps reel, direction qui suit le deplacement et bascule quand on
+l'inverse, mouvement reduit AVEC son controle negatif) et `abilityImpulseSound.test.ts` (7 cas).
+
+**Conclusion / prochaine etape** : reste le GATE VISUEL de l'utilisateur (forme, longueur et
+lisibilite du dash sur le pion) et l'ecoute du son en situation — les deux supposent la
+re-cuisson d'un film temoin, a demander explicitement, jamais de cuisson en lot. Trois
+decouvertes hors perimetre ecrites au plan et NON traitees : l'absence de colonne « poussees »
+est desormais une decision et non un manque de donnee ; les trois variantes mono
+`blast_nonplayer` restent non livrees a dessein ; et le silence du dash sans deplacement
+mesurable n'est pas quantifie sur le parc, faute d'artefact 38 cuit.
+
+## [2026-09-04] P4 — revue ronde 1 : le dash prenait la mauvaise VIE, et le son partait quand meme
+
+**Statut** : Complete (3 constats de la revue adversariale P4, tous corriges ; toujours aucun
+commit, le superviseur relit).
+
+**LE P0, et il vaut d'etre ecrit en entier parce que c'est une lecon deja apprise quatre fois
+dans ce dossier.** `buildThrusterDashFx` joignait les impulsions aux pistes par
+`new Map(doc.tracks.map(t => [t.slot, t.points]))`. Un `Map` ne garde que la DERNIERE piste du
+slot — or le slot de biped est REATTRIBUE a chaque reapparition, invariant ecrit noir sur blanc
+dans `shotFx.ts`, `fireMark.ts`, `riftStations.ts` et `replayMarkers.ts`, avec sa fixture
+canonique (`fireMark.test.ts`, « Deux VIES du meme slot »). J'avais recopie le raccourci de
+`buildGrappleFx` sans verifier qu'il tenait l'invariant : il ne le tient pas non plus.
+
+**Les deux consequences etaient graves, et la premiere etait SILENCIEUSE :** dans le cas
+dominant, l'instant de l'impulsion precede les points de la vie retenue, `positionAt` rend
+`null`, et toutes les poussees d'un slot sauf celles de sa DERNIERE vie disparaissaient de la
+carte — pendant que le son partait quand meme, parce que `abilityImpulseSound.ts` ne joint
+aucune piste. Le joueur aurait entendu le dash sans le voir, et rien n'aurait signale l'ecart.
+Dans l'autre cas, l'instant tombe dans la fenetre de la vie usurpatrice : le sillage se peint
+alors a la position et dans la direction d'UN AUTRE JOUEUR, avec la couleur du vrai porteur —
+une affirmation fausse sur ce qui s'est passe dans la partie.
+
+**Correctif : le patron canonique de la maison, RECOPIE et non reinvente**
+(`fireMark.ts:50-59`, `shotFx.ts:62-73`) — `Map<number, ReplayTrackReady[]>` puis
+`.find(l => isAliveAt(l, imp.t))`. Test neuf sur la fixture canonique (vies [10,20] et [30,40],
+directions ORTHOGONALES pour que la confusion se voie), plus un second cas : une impulsion
+ENTRE deux vies ne dessine rien. **Deux mutations rejouees et TUEES** : `.at(-1)` (l'ancien
+defaut exact) ROUGE, `.at(0)` ROUGE. Aucun cas anterieur ne posait deux pistes d'un meme slot —
+c'est precisement pourquoi le defaut passait.
+
+**Les deux P2.** `available` etait du code mort : calcule, exporte, et zero lecteur sur tout
+`apps/web/src` — a la difference de `vipCrown.available` / `bombBlast.available`, consommes par
+le bandeau de disponibilite. Pire, son commentaire lui inventait un usage que le canvas n'a pas.
+Supprime ; le commentaire dit desormais POURQUOI ce hook n'a pas de drapeau. Meme traitement
+pour `DASH_FAMILIES`, `DashProgress` et `DashTime`, redevenus prives du module (aucun importeur,
+aucun test). Et une DOC INVERSEE dans le fichier meme que le lot modifiait : `ReplayCanvas.tsx`
+annoncait encore le grappin dans `useReplayFx` deux lignes au-dessus de l'appel qui ne le rend
+plus. J'avais fait ce grep pour l'infobulle et pas pour mon propre diff.
+
+**Gates rejoues** : `make check-types` exit 0 ; `make test-web` exit 0 — 562 fichiers,
+5 837 tests passes, 14 skippes, 0 echec ; `npx eslint` exit 0 ; garde-rail d'assets sonores
+VERT ; `ReplayCanvas.tsx` a 662 L pour un cliquet a 665, inchange.
+
+**Conclusion / prochaine etape** : constats 3 -> 0. UNE DECOUVERTE LOURDE ecrite au plan et NON
+traitee : `buildGrappleFx` (`grappleLayer.ts:50`) porte le MEME defaut, anterieur a ce lot —
+c'est le modele qui a ete recopie. Le correctif tient en trois lignes mais change un calque
+livre en production le 2026-08-20 et demande sa propre fixture a deux vies : lot a part, a
+traiter AVANT la re-cuisson du parc, qui est ce qui rendra le defaut visible.

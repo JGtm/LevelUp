@@ -174,6 +174,7 @@ import { objectiveSoundEvents, type ObjectiveSide } from './objectiveSound'
 import { padSpawnSoundEvents } from './padSpawnSound'
 import { weaponChangeSoundEvents } from './weaponChangeSound'
 import { equipmentChangeSoundEvents } from './equipmentChangeSound'
+import { abilityImpulseSoundEvents } from './abilityImpulseSound'
 import { roundOverSoundEvents } from './roundOverSound'
 import { skullSoundEvents } from './skullSound'
 import { zoneSoundEvents } from './zoneSound'
@@ -188,6 +189,7 @@ export { SKULL_SOUND_STEMS, skullSoundEvents } from './skullSound'
 export { PAD_SPAWN_SOUND_STEM, EQUIPMENT_PAD_SPAWN_SOUND_STEM, padSpawnSoundEvents } from './padSpawnSound'
 export { WEAPON_CHANGE_SOUND_STEMS, weaponChangeSoundEvents } from './weaponChangeSound'
 export { EQUIPMENT_PICKUP_SOUND_STEM, equipmentChangeSoundEvents } from './equipmentChangeSound'
+export { ABILITY_IMPULSE_SOUND_STEMS, abilityImpulseSoundEvents } from './abilityImpulseSound'
 export { ROUND_OVER_SOUND_STEMS, roundOverSoundEvents } from './roundOverSound'
 
 /**
@@ -389,14 +391,16 @@ export const EQUIPMENT_SOUND_STEMS: Readonly<
  * par le VOTE (« les votes priment sur tout critère », `RECETTE_SONS_ARMES` §5) : il faut une
  * écoute, pas une mesure de plus.
  *
- * RESTENT MUETS AUSSI, par décision et non par manque : le propulseur et le répulseur (que
- * `PLACEMENT_RENDER` ne DESSINE pas non plus — ce sont des capacités qui agissent sur leur
- * porteur, pas des objets posés), les deux bonus, et l'objet non identifié `other` (il a
- * pourtant SA banque, `92c830f5`, 38 `.wem` — mais un objet qu'on ne sait pas nommer n'a pas
- * à s'annoncer, et son dessin dépend d'une bascule que le son ne partage pas). LE GRAPPIN
- * N'EST PLUS DE CEUX-LÀ (lot G, 2026-08-20) : il sonne désormais, mais par SA PROPRE table
- * (`GRAPPLE_SOUND_STEM` ci-dessous, jointe à `doc.grappleLines`, schéma 8) — ce n'est pas un
- * objet posé au sens de CETTE table-ci.
+ * RESTENT MUETS AUSSI, par décision et non par manque : le répulseur (que `PLACEMENT_RENDER`
+ * ne DESSINE pas non plus — c'est une capacité qui agit sur son porteur, pas un objet posé ;
+ * son activation n'est dans aucun canal, négatif mesuré sur neuf le 2026-09-03, et son seul
+ * son reste celui de son kill), les deux bonus, et l'objet non identifié `other` (il a pourtant
+ * SA banque, `92c830f5`, 38 `.wem` — mais un objet qu'on ne sait pas nommer n'a pas à
+ * s'annoncer, et son dessin dépend d'une bascule que le son ne partage pas). LE GRAPPIN
+ * (lot G, 2026-08-20) ET LE PROPULSEUR (2026-09-03) N'EN SONT PLUS : ils sonnent par LEURS
+ * PROPRES tables — `GRAPPLE_SOUND_STEM` ci-dessous (`doc.grappleLines`, schéma 8) et
+ * `ABILITY_IMPULSE_SOUND_STEMS` (`abilityImpulseSound.ts`, `doc.abilityImpulses`, schéma 38).
+ * Ce ne sont pas des objets posés au sens de CETTE table-ci.
  */
 export const EQUIPMENT_PLACEMENT_SOUND_STEMS_END: Readonly<Record<string, string>> = {
   // Le champ de réparation SONNE SA FIN depuis le 2026-08-26, et c'est une décision produit
@@ -668,6 +672,10 @@ export function buildSoundTimeline(
     // instant depuis le 2026-08-27 ; la consommation reste muette (elle sonne déjà par sa
     // famille). Doctrine : `equipmentChangeSound.ts`.
     out.push(...equipmentChangeSoundEvents(doc))
+    // L'USAGE D'UNE CAPACITÉ QUI POUSSE SON PORTEUR (schéma 38) : le propulseur, daté par le
+    // film et validé 5/5 contre un relevé Theater. Un son par impulsion publiée, à sa frame ;
+    // aucune fin sonnée — le geste EST une impulsion. Table par famille : `abilityImpulseSound.ts`.
+    out.push(...abilityImpulseSoundEvents(doc))
   }
   // Les ACTIONS D'OBJECTIF : chacune sonne à sa frame, dans le camp de son auteur. Sans
   // résolveur de camp (appelant qui n'a pas le tableau de score), les seules actions qui

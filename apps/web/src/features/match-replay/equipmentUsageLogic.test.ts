@@ -7,7 +7,8 @@
  *   - le joueur HORS SCOREBOARD garde sa ligne, SANS équipe — le trou se montre ;
  *   - l'ANONYME reste anonyme : les socles de bonus vidés ne descendent sur aucune ligne ;
  *   - ce qui est mesuré sans propriétaire est COMPTÉ à part, jamais versé au hasard ;
- *   - répulseur et propulseur n'ont AUCUNE grandeur : aucune colonne, aucun zéro.
+ *   - répulseur et propulseur n'ouvrent AUCUNE colonne de pose : aucune grandeur, aucun zéro
+ *     (l'usage du propulseur est mesuré depuis le schéma 38, mais il se lit sur la carte).
  *
  * Les fixtures passent par `testReplayDoc`, la seule porte du document de test (garde-rail
  * `testDoc.guard.test.ts`) : elles décrivent un document de TRANSPORT, comme le serveur l'envoie.
@@ -260,7 +261,7 @@ describe('buildEquipmentUsage — poses déployées et objets lâchés', () => {
     expect(u.hasData).toBe(false)
   })
 
-  it('n’ouvre AUCUNE grandeur pour le répulseur et le propulseur — aucun canal mesuré', () => {
+  it('n’ouvre AUCUNE grandeur de POSE pour le répulseur et le propulseur', () => {
     const doc = temoin({
       equipmentPlacements: [
         pose('repulsor', 'deployed', 1),

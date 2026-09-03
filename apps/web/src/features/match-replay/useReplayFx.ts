@@ -20,7 +20,6 @@ import { useMemo } from 'react'
 import type { KillEvent } from '@/features/match-view/_momentum'
 
 import { buildFireMarks } from './fireMark'
-import { buildGrappleFx } from './grappleLayer'
 import { buildGrenadeRestFx } from './grenadeFx'
 import { buildKillFx } from './killFx'
 import { buildObjectivePulses, type ObjectiveElementReady } from './objectivesLayer'
@@ -45,8 +44,9 @@ export function useReplayFx(
   const killFx = useMemo(() => buildKillFx(doc, kills ?? [], t0Ms ?? 0), [doc, kills, t0Ms])
   // Fins de vol de grenade : le lien lancer -> projectile est dans l'artefact (v3).
   const grenadeRestFx = useMemo(() => buildGrenadeRestFx(doc), [doc])
-  // Les tractions de grappin, jointes une fois aux points de leur vie (schéma 8).
-  const grappleFx = useMemo(() => buildGrappleFx(doc), [doc])
+  // LES TRACTIONS DE GRAPPIN ONT QUITTÉ CE HOOK le 2026-09-03 : elles ont rejoint la poussée du
+  // propulseur dans `useReplayAbilityFx`, où les deux gestes de capacité sur leur porteur sont
+  // bâtis ET peints ensemble. Rien d'autre n'a bougé.
   // Les PULSES d'action d'objectif (capture, retour, prise de zone) : précalculés en monde,
   // comme les effets de mort. Ils dépendent aussi des objectifs statiques servis à la requête.
   const objectivePulses = useMemo(
@@ -54,5 +54,5 @@ export function useReplayFx(
     [doc, mapObjectives],
   )
 
-  return { shotFx, fireMarks, killFx, grenadeRestFx, grappleFx, objectivePulses }
+  return { shotFx, fireMarks, killFx, grenadeRestFx, objectivePulses }
 }
