@@ -48,8 +48,16 @@ export interface VehicleTime {
   k: number
 }
 
-/** Dimensions natives + échelle manifeste d'UNE famille — indépendant de la teinte. */
+/**
+ * Dimensions natives + échelle manifeste d'UNE famille — indépendant de la teinte.
+ *
+ * `naturalWidthPx` a rejoint `naturalHeightPx` le 2026-09-03 : ce calque n'en avait besoin que
+ * pour la longueur (l'axe de mise à l'échelle), mais `vehicleWeaponMounts.vehicleShotPlacement`
+ * a besoin des DEUX pour placer une ancre latérale (`ax`) dans le repère du sprite — même
+ * source (`img.naturalWidth`), zéro requête de plus.
+ */
 export interface VehicleSpriteSize {
+  naturalWidthPx: number
   naturalHeightPx: number
   mmPerPx: number
 }

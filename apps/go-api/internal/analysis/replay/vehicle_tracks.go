@@ -345,8 +345,41 @@ func vehicleTrackOf(
 	}
 	tr.Samples = samples
 	tr.T0, tr.T1, tr.T1Max = vehicleBounds(l, spawn, lastSeenUS, clock)
+	if !vehicleFamilyIsRideable(tr.Family) {
+		// AUCUN EPISODE SUR UN VEHICULE NON PILOTABLE. La vie reste publiee (sa trajectoire est
+		// vraie) mais elle ne porte pas d occupant : un episode accroche a un decor escamoterait
+		// le pion d un joueur reel passe a proximite. Vu par l utilisateur en visionnage
+		// (2026-09-02) sur `fccc61cd`, ou un prop de la famille `falcon` — quasi immobile, vivant
+		// tout le match — s etait vu attribuer un trajet. Le calque web filtre deja ces familles
+		// a l affichage ; la garde est ici AUSSI pour que le document ne l affirme pas.
+		tr.Rides = nil
+		return tr, true
+	}
 	tr.Rides = clampVehicleRides(rides, tr.T0, tr.T1Max)
 	return tr, true
+}
+
+// vehicleFamillesNonPilotables sont les familles que le multijoueur Halo Infinite ne laisse pas
+// conduire : transports scriptes et decor. DECISION UTILISATEUR (2026-09-02) : « les pelicans ne
+// sont pas jouables en multiplayer a ce jour (sauf parties custom locales, mais on ne les gere
+// pas dans l app, par decision) ».
+//
+// ELLES RESTENT PUBLIEES : leur vie est vraie, et le client choisit de ne pas les dessiner. Ce
+// qui est interdit ici, c est de leur attribuer un OCCUPANT — une affirmation, elle, qui serait
+// fausse. La meme liste vit cote web (`vehiclesLayer.FAMILLES_NON_JOUABLES`) ; les deux se
+// justifient : le document refuse de l affirmer, le calque refuse de le dessiner.
+var vehicleFamillesNonPilotables = map[string]bool{
+	"falcon":  true,
+	"pelican": true,
+	"phantom": true,
+	"skiff":   true,
+}
+
+// vehicleFamilyIsRideable dit si une famille peut porter un episode d occupation. Une famille
+// VIDE (chassis inconnu de la table) ne le peut pas non plus : on ne sait pas ce que c est, donc
+// on n affirme rien de qui serait a bord.
+func vehicleFamilyIsRideable(family string) bool {
+	return family != "" && !vehicleFamillesNonPilotables[family]
 }
 
 // clampVehicleRides ramene chaque episode d occupation dans la fenetre d affichage de la vie
