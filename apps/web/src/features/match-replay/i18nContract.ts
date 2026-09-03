@@ -45,8 +45,22 @@ import type { PadEquipmentFamilyKey } from './weaponPadFamilies'
  */
 export interface EquipmentUsageText {
   title: string
-  colPlayer: string
-  teamTotal: string
+  /**
+   * LES DEUX VUES EMPILEES DE LA SECTION (2026-09-03). Le tableau a deux niveaux d'en-tete a
+   * ete remplace par un graphe : `viewByPlayer` classe les joueurs geste par geste,
+   * `viewTeamShare` dit quel camp s'est appuye sur quel outil. Deux titres et pas un : les
+   * deux vues repondent a deux questions, et une carte sans titre de vue laisserait croire
+   * a deux lectures de la meme.
+   */
+  viewByPlayer: string
+  viewTeamShare: string
+  /** Infobulle d'une barre de la grille : joueur, grandeur, valeur DEJA ecrite. */
+  gridTipFmt: (player: string, column: string, value: string) => string
+  /**
+   * Infobulle d'un segment de part d'equipe. Le COMPTE BRUT y figure avec son total, jamais
+   * le seul pourcentage : deux segments a 50 % ne disent pas s'ils valent 1 ou 40.
+   */
+  shareTipFmt: (team: string, family: string, count: number, total: number) => string
   /** Tractions de grappin : la seule ACTIVATION de capacité que le film mesure et attribue. */
   groupGrapple: string
   groupGrappleHint: string

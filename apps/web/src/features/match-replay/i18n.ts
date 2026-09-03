@@ -308,8 +308,11 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     },
     equipmentUsage: {
       title: "Usages d'équipement",
-      colPlayer: 'Joueur',
-      teamTotal: 'Total équipe',
+      viewByPlayer: 'Nombre de gestes par joueur',
+      viewTeamShare: "Part de chaque équipe, geste par geste",
+      gridTipFmt: (player, column, value) => `${player} — ${column} : ${value}`,
+      shareTipFmt: (team, family, count, total) =>
+        `${team} — ${family} : ${count} sur ${total}`,
       groupGrapple: 'Grappin',
       groupGrappleHint:
         "Tractions de grappin lues dans le film — la seule activation de capacité que la mesure sait attribuer à un joueur. Un tir sans accroche n'est pas une traction : il est compté à part et n'entre pas dans cette colonne.",
@@ -339,7 +342,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       coverageGrappleFmt: (pulls, lives) =>
         `${pulls} traction${pulls > 1 ? 's' : ''} de grappin lue${pulls > 1 ? 's' : ''}, réparties sur ${lives} vie${lives > 1 ? 's' : ''}.`,
       unattributedFmt: (count) =>
-        `${count} geste${count > 1 ? 's' : ''} mesuré${count > 1 ? 's' : ''} sans propriétaire (vie sans joueur, ou poseur non mesuré) : hors du tableau.`,
+        `${count} geste${count > 1 ? 's' : ''} mesuré${count > 1 ? 's' : ''} sans propriétaire (vie sans joueur, ou poseur non mesuré) : hors des deux vues.`,
       notMeasured:
         "Répulseur et propulseur n'apparaissent pas : le film ne publie aucun canal d'activation pour ces deux capacités. Une colonne vide se lirait « zéro utilisation ».",
       killBadgeFmt: {
@@ -696,8 +699,10 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     },
     equipmentUsage: {
       title: 'Equipment usage',
-      colPlayer: 'Player',
-      teamTotal: 'Team total',
+      viewByPlayer: 'Gesture count by player',
+      viewTeamShare: "Each team's share, gesture by gesture",
+      gridTipFmt: (player, column, value) => `${player} — ${column}: ${value}`,
+      shareTipFmt: (team, family, count, total) => `${team} — ${family}: ${count} of ${total}`,
       groupGrapple: 'Grappleshot',
       groupGrappleHint:
         'Grapple pulls read from the film — the only ability activation the measurement can attribute to a player. A shot with no anchor is not a pull: it is counted separately and never enters this column.',
@@ -726,7 +731,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       coverageGrappleFmt: (pulls, lives) =>
         `${pulls} grapple pull${pulls > 1 ? 's' : ''} read, spread over ${lives} ${lives > 1 ? 'lives' : 'life'}.`,
       unattributedFmt: (count) =>
-        `${count} measured gesture${count > 1 ? 's' : ''} with no owner (life with no player, or unmeasured deployer): outside the table.`,
+        `${count} measured gesture${count > 1 ? 's' : ''} with no owner (life with no player, or unmeasured deployer): outside both views.`,
       notMeasured:
         'Repulsor and thruster are absent: the film publishes no activation channel for those two abilities. An empty column would read as "zero uses".',
       killBadgeFmt: {

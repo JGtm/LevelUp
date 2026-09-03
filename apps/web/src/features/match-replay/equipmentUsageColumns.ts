@@ -1,5 +1,5 @@
 /**
- * equipmentUsageColumns.ts — LES COLONNES DU TABLEAU DES USAGES, et surtout LEURS NOMS.
+ * equipmentUsageColumns.ts — LES COLONNES DE LA GRILLE DES USAGES, et surtout LEURS NOMS.
  *
  * EXTRAIT DE `equipmentUsageLogic.ts` LE 2026-08-25 (lot D du backlog Notion) : ce dernier
  * portait l'agrégation ET la mise en colonnes, et il arrivait à 498 lignes — le seuil du dépôt
@@ -53,51 +53,79 @@ export function grenadeTypeLabel(
   return catalogText(doc.grenadeLabels[rank], locale) ?? t.equipmentUsage.grenadeRankFmt(rank)
 }
 
-/** Une colonne du tableau : son en-tête, et ce qu'elle écrit pour un compteur. */
+/**
+ * LES CINQ FAMILLES DE GESTE, et il n'y en a pas une sixième. Ces clés sont l'axe de
+ * regroupement de tout ce que la section montre : les colonnes de la grille, la couleur des
+ * barres, et les lignes de la vue « part de chaque équipe ». Le typage les rend exhaustives —
+ * une famille ajoutée ici force la table des encres à la peindre (cf. `equipmentUsageChart`).
+ */
+export type UsageGroupKey = 'grapple' | 'episodes' | 'deployed' | 'dropped' | 'grenades'
+
+/**
+ * Une colonne : son en-tête, sa VALEUR pour un compteur, et comment cette valeur s'écrit.
+ *
+ * LA COLONNE REND UN NOMBRE, PLUS UNE CHAÎNE (2026-09-03) : la section est devenue un GRAPHE,
+ * et une barre se dessine sur une valeur. Le formatage reste ici — l'échelle de la colonne, sa
+ * graduation et sa cellule doivent s'écrire avec la MÊME plume, sans quoi l'axe et la valeur
+ * qu'il gradue ne parlent pas la même langue.
+ *
+ * `value` rend `null` pour une grandeur NON MESURÉE (cf. `killsValue`), jamais un zéro : un
+ * zéro est une mesure, et l'écran ne doit pas les confondre.
+ */
 export interface UsageColumn {
   key: string
   label: string
-  cell: (tally: EquipmentUsageTally) => string
+  value: (tally: EquipmentUsageTally) => number | null
+  /** Écrit une valeur de cette colonne (entier, m:ss…). Sert aussi aux graduations d'axe. */
+  format: (value: number) => string
+  /** La colonne porte une durée : sa graduation médiane ne s'arrondit pas à l'entier. */
+  duration?: boolean
 }
 
 /** Un groupe de colonnes : l'en-tête de premier niveau et sa réserve de mesure. */
 export interface UsageColumnGroup {
-  key: string
+  key: UsageGroupKey
   label: string
   hint: string
   columns: UsageColumn[]
 }
 
-/** Une valeur entière de cellule. Zéro s'écrit ZÉRO : c'est une mesure, pas une absence. */
-function intCell(n: number | undefined): string {
-  return String(n ?? 0)
+/** Une valeur entière. Zéro reste ZÉRO : c'est une mesure, pas une absence. */
+function intValue(n: number | undefined): number {
+  return n ?? 0
+}
+
+/** L'écriture d'un entier. */
+function intFormat(n: number): string {
+  return String(n)
 }
 
 /**
- * Une DURÉE cumulée de cellule, en m:ss. MÊME RÈGLE QUE `intCell`, et c'est le sujet.
+ * Une DURÉE cumulée, en SECONDES — l'unité de `formatDurationMMSS`, et celle de l'échelle.
  *
  * `formatDurationMMSS` rend son repli pour toute valeur nulle — juste pour une durée de
  * MATCH (un match de zéro seconde n'a pas eu lieu), faux ici : la colonne n'existe que
- * parce que la famille est mesurée sur ce match, et la cellule voisine (nombre d'épisodes)
+ * parce que la famille est mesurée sur ce match, et la colonne voisine (nombre d'épisodes)
  * écrit déjà « 0 » pour le même joueur. Un « — » à côté d'un « 0 » se lit « non mesuré »
- * alors que la mesure a bien eu lieu et vaut zéro.
- *
- * Le repli reste donc à sa place — l'absence de la COLONNE, décidée en amont par
- * `usage.columns.episodes` — et n'a rien à faire dans la cellule.
+ * alors que la mesure a bien eu lieu et vaut zéro. D'où le repli « 0:00 », qui sert aussi
+ * de graduation de gauche à l'axe de la colonne.
  */
-function durationCell(ms: number | undefined): string {
-  return formatDurationMMSS((ms ?? 0) / 1000, '0:00')
+function durationValue(ms: number | undefined): number {
+  return (ms ?? 0) / 1000
+}
+function durationFormat(seconds: number): string {
+  return formatDurationMMSS(seconds, '0:00')
 }
 
 /**
- * Une cellule de FRAGS SOUS EFFET ACTIF. MÊME PRINCIPE QUE `intCell`, une exception : un
- * match dont la jointure n'a pas pu être tentée (`killsRead` faux) écrit « — », jamais un
- * zéro qui se lirait comme une mesure de zéro frag (PLAN_RETOURS_UTILISATEUR_2026-08-29
- * §LOT F.2, EquipmentUsageCoverage.killsRead).
+ * Les FRAGS SOUS EFFET ACTIF. MÊME PRINCIPE QUE `intValue`, une exception : un match dont la
+ * jointure n'a pas pu être tentée (`killsRead` faux) n'a RIEN de mesuré — la valeur est nulle,
+ * la barre reste vide et la cellule écrit le repli de non-mesure, jamais un zéro qui se lirait
+ * comme une mesure de zéro frag (PLAN_RETOURS_UTILISATEUR_2026-08-29 §LOT F.2,
+ * EquipmentUsageCoverage.killsRead).
  */
-const KILLS_NOT_MEASURED = '—'
-function killsCell(kills: number | undefined, killsRead: boolean): string {
-  return killsRead ? intCell(kills) : KILLS_NOT_MEASURED
+function killsValue(kills: number | undefined, killsRead: boolean): number | null {
+  return killsRead ? intValue(kills) : null
 }
 
 /**
@@ -119,7 +147,14 @@ export function usageColumnGroups(
       key: 'grapple',
       label: u.groupGrapple,
       hint: u.groupGrappleHint,
-      columns: [{ key: 'pulls', label: u.groupGrapple, cell: (x) => intCell(x.grapplePulls) }],
+      columns: [
+        {
+          key: 'pulls',
+          label: u.groupGrapple,
+          value: (x) => intValue(x.grapplePulls),
+          format: intFormat,
+        },
+      ],
     })
   }
   if (usage.columns.episodes.length > 0) {
@@ -134,17 +169,21 @@ export function usageColumnGroups(
         {
           key: `${fam}.count`,
           label: `${u.activeFamily[fam]} (${u.activeCount})`,
-          cell: (x: EquipmentUsageTally) => intCell(x.episodes[fam]?.count),
+          value: (x: EquipmentUsageTally) => intValue(x.episodes[fam]?.count),
+          format: intFormat,
         },
         {
           key: `${fam}.ms`,
           label: `${u.activeFamily[fam]} (${u.activeDuration})`,
-          cell: (x: EquipmentUsageTally) => durationCell(x.episodes[fam]?.ms),
+          value: (x: EquipmentUsageTally) => durationValue(x.episodes[fam]?.ms),
+          format: durationFormat,
+          duration: true,
         },
         {
           key: `${fam}.kills`,
           label: u.activeKillsFamily[fam],
-          cell: (x: EquipmentUsageTally) => killsCell(x.episodes[fam]?.kills, killsRead),
+          value: (x: EquipmentUsageTally) => killsValue(x.episodes[fam]?.kills, killsRead),
+          format: intFormat,
         },
       ]),
     })
@@ -161,7 +200,8 @@ export function usageColumnGroups(
       columns: families.map((family) => ({
         key: `${key}.${family}`,
         label: equipmentFamilyLabel(family, t),
-        cell: (x: EquipmentUsageTally) => intCell(x[pick][family]),
+        value: (x: EquipmentUsageTally) => intValue(x[pick][family]),
+        format: intFormat,
       })),
     })
   }
@@ -173,7 +213,8 @@ export function usageColumnGroups(
       columns: usage.columns.grenades.map((rank) => ({
         key: `grenade.${rank}`,
         label: grenadeTypeLabel(doc, rank, t, locale),
-        cell: (x: EquipmentUsageTally) => intCell(x.grenades[rank]),
+        value: (x: EquipmentUsageTally) => intValue(x.grenades[rank]),
+        format: intFormat,
       })),
     })
   }
