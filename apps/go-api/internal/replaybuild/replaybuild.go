@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"log/slog"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"time"
 
@@ -242,6 +243,8 @@ func (b *Builder) BuildBytes(matchID string, mapNames []string, filmDir string, 
 		Labels:          b.labels,
 		NeutralDeaths:   cat.neutral,
 		Kills:           cat.kills,
+		Bots:            cat.bots,
+		Successions:     cat.successions,
 		Objectives:      stats.objectives,
 		Score:           stats.score,
 		Flag:            stats.flag,
@@ -276,7 +279,8 @@ func (b *Builder) BuildBytes(matchID string, mapNames []string, filmDir string, 
 
 // entreesCatalogue porte ce que la construction lit HORS DU FILM : les zones et leurs rôles,
 // les points d'apparition, et ce que le décodage killsource en tire (morts neutres, références
-// de frag). Les socles de drapeau, eux, se posent directement dans `stats.flag`.
+// de frag, identités de bot et relais). Les socles de drapeau, eux, se posent directement dans
+// `stats.flag`.
 type entreesCatalogue struct {
 	zones            []replay.Zone
 	zoneRoles        string
@@ -284,6 +288,8 @@ type entreesCatalogue struct {
 	spawnPointsState string
 	neutral          []replay.NeutralDeath
 	kills            replay.KillsInput
+	bots             []replay.BotIdentity
+	successions      []replay.Succession
 }
 
 // collecterEntreesCatalogue rassemble tout ce que `BuildFromFilm` reçoit SANS l'avoir décodé
@@ -329,10 +335,17 @@ func (b *Builder) collecterEntreesCatalogue(
 	b.observe("neutralDeaths", neutral)
 	kills := b.killRefs(matchID, deaths, ksRes)
 	b.observe("killRefs", kills)
+	// Les IDENTITÉS DE BOT et les RELAIS sortent du MÊME décodage killsource (amont
+	// 2026-09-02/03) : ils se calculent ici, où `ksRes` vit, et voyagent avec les autres
+	// entrées. Aucune étape observée ne s'ajoute — ce sont des projections de `killsource`,
+	// déjà observé plus haut.
+	bots := botIdentities(ksRes)
+	successions := botSuccessions(matchID, facts, ksRes)
 	return entreesCatalogue{
 		zones: zones, zoneRoles: zoneRoles,
 		spawnPts: spawnPts, spawnPointsState: mapState,
 		neutral: neutral, kills: kills,
+		bots: bots, successions: successions,
 	}
 }
 
@@ -430,6 +443,71 @@ func (b *Builder) neutralDeaths(matchID string, res *killsource.Result) []replay
 	}
 	slog.Info("replaybuild: morts sans revendication typées", "match_id", matchID,
 		"publiees", len(out), "orphelines", res.Stats.Unclaimed.Population)
+	return out
+}
+
+// botIdentities projette les bots que le film déclare (BOT_METADATA, décodage killsource
+// DÉJÀ fait) vers l'assemblage du rejeu. Le suffixe « [bot] » suit la même règle que le
+// kill-feed (killsource.botSuffix) : un consommateur ne doit jamais confondre un bot avec
+// un joueur. Les bots NON ÉPINGLÉS (slot contredisant l'espace des humains) n'entrent pas —
+// leur index est une anomalie déclarée, pas une identité.
+func botIdentities(res *killsource.Result) []replay.BotIdentity {
+	if res == nil || len(res.Roster.Bots) == 0 {
+		return nil
+	}
+	unpinned := make(map[int]bool, len(res.Roster.UnpinnedBots))
+	for _, b := range res.Roster.UnpinnedBots {
+		unpinned[b.BotID] = true
+	}
+	out := make([]replay.BotIdentity, 0, len(res.Roster.Bots))
+	for _, b := range res.Roster.Bots {
+		if b.Name == "" || unpinned[b.BotID] {
+			continue
+		}
+		out = append(out, replay.BotIdentity{FilmIndex: b.Slot, Name: b.Name + " [bot]"})
+	}
+	return out
+}
+
+// botSuccessions construit les RELAIS (cf. replay/successions.go) : pour chaque ligne de
+// participation `bid(N.0)` arrivée EN COURS de partie, le nom du bot vient du roster
+// BOT_METADATA du décodage killsource (BotID N — la clé exacte), l'instant de la base.
+// Un bot déclaré par la base mais absent du roster du film n'entre pas : sans nom lu, on
+// n'attribue rien — et l'écart se journalise, jamais avalé.
+func botSuccessions(matchID string, facts port.MatchFacts, res *killsource.Result) []replay.Succession {
+	if res == nil || len(res.Roster.Bots) == 0 {
+		return nil
+	}
+	type botRef struct {
+		name string
+		idx  int
+	}
+	byID := make(map[int]botRef, len(res.Roster.Bots))
+	for _, b := range res.Roster.Bots {
+		if b.Name != "" {
+			byID[b.BotID] = botRef{name: b.Name + " [bot]", idx: b.Slot}
+		}
+	}
+	var out []replay.Succession
+	for _, p := range facts.Players {
+		if !p.JoinedInProgress || p.JoinMatchMS == nil {
+			continue
+		}
+		var id int
+		if _, err := fmt.Sscanf(p.XUID, "bid(%d.0)", &id); err != nil {
+			continue // un humain qui rejoint est nommé par le fil des morts, pas par relais
+		}
+		ref, ok := byID[id]
+		if !ok {
+			slog.Warn("replaybuild: bot arrivé en cours de partie absent du roster du film — relais impossible",
+				"match_id", matchID, "bid", p.XUID)
+			continue
+		}
+		out = append(out, replay.Succession{
+			BotName: ref.name, FilmIndex: ref.idx, SwitchMatchMS: *p.JoinMatchMS,
+		})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].SwitchMatchMS < out[j].SwitchMatchMS })
 	return out
 }
 

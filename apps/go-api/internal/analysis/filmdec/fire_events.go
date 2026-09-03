@@ -11,10 +11,17 @@ import (
 // CE QU'EST CE RECORD (RE Ghidra, dispatcher EventDispatch_Generic_ReadType7 @0x14080AADE) :
 // chaque paquet de type 0 commence par un CHAMP DE TYPE D'EVENT sur 7 BITS ; le
 // désérialiseur est `vtable[type] + 0x68` (table de handlers @0x144724A90). Le type 105
-// pointe sur FUN_14080C1F8 — c'est le « record de dégât » déjà identifié par ailleurs dans
-// le projet. Autrement dit : le « fire event » et le « record de dégât 0xd2 » sont LE MÊME
-// RECORD, et il n'existe QUE lorsqu'un dégât est appliqué (il n'y a pas de record de tir
-// manqué : « touché » est une propriété de tous les records lus ici).
+// pointe sur FUN_14080C1F8 : c'est le record de **TIR** (`action_weapon_fire`, un coup tiré),
+// PAS un record de dégât. LE DÉGÂT EST UN RECORD DISTINCT — `damage_aftermath` (octet 0xC0,
+// type 0), avec son propre attaquant et sa victime. Un tir n'est donc PAS forcément une touche :
+// la touche se reconstruit en APPARIANT un tir 0xD2 à un `damage_aftermath` 0xC0 du même
+// attaquant dans une fenêtre temporelle (méthode PAR LE TIR, `NOTE_ATTRIBUTION_ARME_TIR_2026-08-31`).
+// « Touché » n'est PAS une propriété de tous les records lus ici — c'est ce que la précision par
+// arme (tirs qui touchent / tirs) mesure justement.
+//
+// (Correctif Lot 0 du plan précision/distance : l'ancienne rédaction affirmait « 0xD2 = record de
+// dégât, touché = propriété de tous les records » — faux, contredit par l'appariement tir↔dégât
+// à 17-51 % et des précisions par arme variables 19-100 %.)
 //
 // Conséquence pratique majeure : `payload[0] >> 1` donne le type en O(1). Le balayage
 // bit-à-bit par « marqueur 11 bits » de l'ancienne génération de scanners est inutile — ce
@@ -32,14 +39,18 @@ import (
 //	bits 44..75  (32) ARME : moitié haute (famille)
 //	bits 76..107 (32) ARME : moitié basse (variante)  -> weapon_id 64 bits du projet
 //	bits 108..112 (5) cinq drapeaux ; 110 = « compteurs nuls », 111 et 112 = deux portes
-//	bits 113..142 (30) VISÉE — direction cubemap 30 bits, lue SEULEMENT si
-//	                   bit110 == 1 && bit111 == 0 && bit112 == 0 (chemin « record vide »).
+//	bits 113..142 (30) VISÉE — direction cubemap 30 bits, à l'offset FIXE 113 pour le seul
+//	                   sous-ensemble « record vide » (bit110 == 1 && bit111 == 0 && bit112 == 0).
 //
-// Hors de ce chemin, la visée existe toujours mais après des boucles de longueur VARIABLE
-// (composantes de dégât, liste des cibles) dont une largeur vient d'une table remplie au
-// runtime : elle n'est donc PAS localisable hors ligne. Ce décodeur ne devine pas — il
-// n'expose la visée que sur le chemin sûr (mesuré : 19 % des records longs sur 000d5950,
-// 10 % sur 01e1f945).
+// LA VISÉE N'EST PLUS BORNÉE À CE SOUS-ENSEMBLE. `fire_aim_modal.go` porte la grammaire Ghidra
+// réelle du record (FUN_14080C1F8) et localise la visée sur TOUT le record MODAL — 0 cible et
+// 0 composante de dégât — à la position post-comptes + 2, qui coïncide avec le bit 113 sur les
+// records vides (post-comptes = 111). L'offset fixe reste l'ANCRE du cas vide (zéro régression) ;
+// le chemin modal l'ÉTEND à 3-6× plus de tirs (mesuré : 33→210, 143→491, 48→218 sur trois films).
+//
+// Restent hors de portée hors ligne : les records NON modaux (≥ 1 cible / composante), dont les
+// boucles ont une largeur venant d'une table remplie au runtime. Ce décodeur ne devine pas — il
+// n'expose la visée que là où la grammaire la localise avec certitude.
 //
 // NON RÉSOLU, à ne pas prétendre : la VICTIME n'est pas décodée (elle vit dans la liste des
 // cibles, de largeur runtime). Un record type 105 dit qui tire, avec quoi, quand, et vers
@@ -53,6 +64,17 @@ const (
 	fireVariantBit  = 7
 	fireAttackerBit = 36
 	fireAttackerW   = 5
+	// fireShooterBit / fireShooterW — L'INDICE DE TIREUR SUR SA LARGEUR RÉELLE : 5 bits à
+	// l'offset 35, soit le bit qui PRÉCÈDE le champ « attaquant x2 » (36..40). Le champ
+	// `fireAttackerBit` >>1 ne rend que les bits 36..39 (4 bits) : il TRONQUE l'indice à sa
+	// moitié basse et sature à 15 au-delà de 16 joueurs (BTB), FUSIONNANT deux tireurs distincts.
+	// L'indice complet inclut le bit 35 en tête : readBitsAt(pay, 35, 5) = bits 35..39. C'est
+	// EXACTEMENT le champ que lit `analysis.FireEvent.PlayerIndex5` (event_start+31, 5 bits) —
+	// donc l'indice qu'écrit `shared.match_weapon_shots` (le DÉNOMINATEUR de la précision). La
+	// relation est algébrique : ShooterIndex5 & 0x0F == FilmIndex (l'ancien 4 bits). Prouvée sur
+	// pièces par TestWeaponIndexNumDenomEquivalence (paquets 0xD2 arène + BTB 4f77afc1).
+	fireShooterBit  = 35
+	fireShooterW    = 5
 	fireWeaponHiBit = 44
 	fireWeaponLoBit = 76
 	fireWeaponW     = 32
@@ -89,7 +111,20 @@ type FireEvent struct {
 	//
 	// L'IDENTITÉ D'UN JOUEUR EST SON XUID. Toute jointure passe par lui ; cet index ne sert
 	// qu'à regrouper les événements d'un même tireur À L'INTÉRIEUR d'un film.
+	//
+	// LARGEUR 4 BITS, ET C'EST UNE TRONCATURE. FilmIndex = bits 36..39 (le champ attaquant x2 >>1) :
+	// il perd le bit 35, la MOITIÉ HAUTE de l'indice. Sous 17 joueurs (arène) le bit 35 est
+	// toujours 0, donc FilmIndex == ShooterIndex5 ; au-delà (BTB) il sature à 15 et fusionne deux
+	// tireurs. Le regroupement intra-film de la visée (replay) s'en contente — l'arène n'a jamais
+	// plus de 16 joueurs. Pour PONTER vers un xuid (précision par arme), utiliser ShooterIndex5.
 	FilmIndex int
+	// ShooterIndex5 est le MÊME indice de tireur sur sa largeur RÉELLE (5 bits, bit 35) : bits
+	// 35..39, sans troncature. C'est le champ ALIGNÉ sur `analysis.FireEvent.PlayerIndex5` et donc
+	// sur l'indice de `shared.match_weapon_shots` (le dénominateur de la précision). Le pont
+	// FilmIndex->xuid (resolvePlayerIndices, killcollector) est keyé sur ce 5 bits : le
+	// NUMÉRATEUR de la précision DOIT keyer identique, sinon num et dénom pointent des joueurs
+	// différents au-delà de 16 (bug corrigé Lot 3). Invariant : ShooterIndex5 & 0x0F == FilmIndex.
+	ShooterIndex5 int
 	// WeaponID est l'identifiant global 64 bits de l'arme : clé directe de
 	// metadata.weapon_labels.weapon_id et de analysis.WeaponIDToName.
 	WeaponID uint64
@@ -162,6 +197,20 @@ func ReadAttackerIndex(pay []byte) int {
 	return int(readBitsAt(pay, fireAttackerBit, fireAttackerW)) >> 1
 }
 
+// ReadShooterIndex5 lit l'indice de tireur SUR SA LARGEUR RÉELLE (5 bits, bit 35) d'un payload de
+// record type 105, aux MÊMES offsets que `decodeFireEvent`. Rend -1 si le payload est trop court.
+//
+// EXPORTÉ POUR LA MESURE : c'est la clé de tireur du NUMÉRATEUR de précision, et l'instrument
+// d'équivalence (TestWeaponIndexNumDenomEquivalence, package analysis) confronte cette valeur à
+// `analysis.FireEvent.PlayerIndex5` sur les mêmes records 0xD2. Un seul endroit déclare l'offset
+// du champ (fireShooterBit), et c'est ce fichier — comme ReadAttackerIndex pour le 4 bits.
+func ReadShooterIndex5(pay []byte) int {
+	if len(pay)*8 < fireShooterBit+fireShooterW {
+		return -1
+	}
+	return int(readBitsAt(pay, fireShooterBit, fireShooterW))
+}
+
 // decodeFireEvent lit la tête du record type 105 d'un payload de paquet. Rend ok=false, sans
 // rien lire, si le payload est trop court pour porter cette tête.
 //
@@ -183,16 +232,24 @@ func decodeFireEvent(pay []byte) (FireEvent, bool) {
 	}
 	e := FireEvent{Variant: int(pay[0]) & 1}
 	e.FilmIndex = int(readBitsAt(pay, fireAttackerBit, fireAttackerW)) >> 1
+	e.ShooterIndex5 = int(readBitsAt(pay, fireShooterBit, fireShooterW))
 	e.WeaponID = uint64(readBitsAt(pay, fireWeaponHiBit, fireWeaponW))<<32 |
 		uint64(readBitsAt(pay, fireWeaponLoBit, fireWeaponW))
 	for i := 0; i < fireFlagsCount; i++ {
 		e.Flags[i] = uint8(readBitsAt(pay, fireFlagsBit+i, 1))
 	}
-	// Chemin sûr uniquement : les trois drapeaux qui commandent la position du champ.
-	if e.Flags[2] == 1 && e.Flags[3] == 0 && e.Flags[4] == 0 &&
-		len(pay)*8 >= fireAimBit+int(FireAimBits) {
-		if v, ok := DecodeAimVectorChecked(readBitsAt(pay, fireAimBit, int(FireAimBits)), FireAimBits); ok {
-			e.HasAim, e.Aim = true, v
+	// 1) ANCRE offsets-fixes : le sous-ensemble « record vide » (drapeaux 110/111/112) pose la
+	//    visée au bit 113. Inchangé — c'est ce que la production lisait déjà, zéro régression.
+	if e.Flags[2] == 1 && e.Flags[3] == 0 && e.Flags[4] == 0 {
+		readAimAt(pay, &e, fireAimBit)
+	}
+	// 2) EXTENSION modale : la grammaire Ghidra (fire_aim_modal.go) localise la visée sur TOUT le
+	//    record modal — pas seulement le cas vide — à post-comptes + 2. Sur les records vides ce
+	//    forward retombe EXACTEMENT sur 113 (post-comptes = 111 sur 5 films), donc il n'apporte
+	//    que le GAIN : les tirs propres qui portaient des drapeaux hors du cas vide.
+	if !e.HasAim {
+		if aimBit, ok := modalAimBit(pay); ok {
+			readAimAt(pay, &e, aimBit)
 		}
 	}
 	return e, true

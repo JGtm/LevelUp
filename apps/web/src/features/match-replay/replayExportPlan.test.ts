@@ -21,7 +21,9 @@ const DOC = testReplayDoc({ frameIntervalMs: 50, frameCount: 200 })
 
 describe('defaultExportBounds — la plage proposée', () => {
   it('est la fenêtre de GAMEPLAY quand elle est connue', () => {
-    const w = { startFrame: 20, endFrame: 180, startMs: 1000, endMs: 9000 }
+    // `leadInFrame` (le préambule de LECTURE, D3) est ici pour le type : l'export propose la
+    // fenêtre de gameplay, jamais la seconde qui la précède.
+    const w = { startFrame: 20, leadInFrame: 0, endFrame: 180, startMs: 1000, endMs: 9000 }
     expect(defaultExportBounds(DOC, w)).toEqual({ startFrame: 20, endFrame: 180 })
   })
 

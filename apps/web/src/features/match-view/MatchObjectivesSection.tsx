@@ -25,6 +25,7 @@ import { useCapability } from '@/lib/capabilities/capabilities'
 import { formatDurationMMSS } from '@/lib/formatters/duration'
 import { resolveTeamLabel } from '@/lib/halo/teamLabel'
 import { parseTeamSideID } from '@/lib/halo/teamNames'
+import { displayPlayerName } from '@/lib/players/displayName'
 import { HeaderLabelTooltip } from '@/lib/table/columnMeta'
 
 import type { MatchViewText } from './i18n'
@@ -121,7 +122,7 @@ export function MatchObjectivesSection({ rows, teams, myTeamSide, t }: Props) {
                   // Clé composite : le xuid peut être vide (joueurs H5 sans xuid) →
                   // plusieurs lignes key="" en collision. gamertag + index désambiguïsent.
                   <tr key={`${r.xuid}||${r.gamertag}||${idx}`} className={r.is_me ? 'bg-info/10' : ''}>
-                    <td className="border border-border px-2 py-1 text-left">{r.gamertag}</td>
+                    <td className="border border-border px-2 py-1 text-left">{displayPlayerName(r.gamertag, r.xuid)}</td>
                     {cols.map((c) => (
                       <td key={String(c.key)} className="border border-border px-2 py-1 text-right tabular-nums">
                         {fmtCell(r.objective?.[c.key], c)}

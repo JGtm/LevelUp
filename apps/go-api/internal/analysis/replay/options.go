@@ -124,6 +124,15 @@ type Options struct {
 	// player_index.go). Second maillon du pont, et lui aussi une lecture. Absente, aucun tir
 	// ni lancer n'est publié.
 	PlayerIndices PlayerIndexTable
+	// Bots : les bots que le film DÉCLARE (BOT_METADATA, paquet type 12), fournis par
+	// l'assembleur — le décodage vit chez son propriétaire unique (film/killsource), et ce
+	// paquet-ci est title-agnostic. FilmIndex est le slot de roster déclaré, Name porte le
+	// suffixe « [bot] ». Vide = film sans bot, ou décodage killsource indisponible.
+	Bots []BotIdentity
+	// Successions : les RELAIS lus dans la base (un remplaçant arrive à cet instant de
+	// l'axe du match) — la source des fermetures par relais (cf. successions.go). Vide =
+	// aucun remplacement, ou faits de participation indisponibles.
+	Successions []Succession
 	// Objectives : les actions d'objectif NOMMÉES ET IDENTIFIÉES PAR MANCHE (cf. objectives.go).
 	// Entrée de DONNÉES, comme Loadouts et Grenades.
 	//

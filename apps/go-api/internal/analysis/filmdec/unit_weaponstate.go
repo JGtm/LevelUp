@@ -68,7 +68,9 @@ func consumeID2(br *BitReader) {
 // LES RETOURS ONT ÉTÉ AJOUTÉS LE 2026-08-30 (sonde i26) SANS CHANGER UN BIT : la valeur et
 // les deux bits de queue étaient consommés puis jetés. Avec le rangeMax par défaut (0x1FFF),
 // la valeur fait 13 bits et la queue 2 — les largeurs EXACTES d'un slot d'entité et d'une
-// génération : c'est ce que la sonde d'i26 va vérifier.
+// génération : c'est ce que la sonde d'i26 va vérifier. (La branche precision-arme rendait
+// la valeur seule pour consumeObjectParentState : la signature à deux retours la couvre,
+// l'appelant ignore `tail`.)
 func readVarWidthInt(br *BitReader, rangeMax uint32, probe bool) (val uint64, tail uint64) {
 	if probe {
 		br.ReadBit() // FUN_1406cf008 probe bit (param_3==1 only)
@@ -77,7 +79,7 @@ func readVarWidthInt(br *BitReader, rangeMax uint32, probe bool) (val uint64, ta
 	if w > 0 {
 		val = br.ReadBits(uint(w))
 	}
-	tail = br.ReadBits(2) // 2 trailing bits
+	tail = br.ReadBits(2) // 2 trailing bits (génération du handle)
 	return val, tail
 }
 
@@ -94,7 +96,14 @@ func SetDefaultReplRange(v uint32) { defaultReplRange = v }
 //
 // CONFIRMED (asm): FUN_140f72e48 / FUN_1409685d8 / FUN_14058c058 all call
 // FUN_1408f0ac4(...,0). FUN_1406d3140 reads its probe R(1) only when param_3==1.
-func consume1408f0ac4(br *BitReader) { consume1408f0ac4Probe(br, false) }
+// consume1408f0ac4 rend (présent, id) où id est l'index R(W) lu quand la porte est ouverte.
+// La quasi-totalité des appelants l'appellent comme instruction et jettent ces valeurs
+// (aucun bit lu ne change) ; seul consumeObjectParentState les garde, pour sonder si l'id
+// d'un projectile en vol pointe son tireur (index dom1, même espace que les bipèdes).
+func consume1408f0ac4(br *BitReader) (bool, uint64) {
+	val, _, present := consume1408f0ac4Probe(br, false)
+	return present, val
+}
 
 // consume1408f0ac4Probe is FUN_1408f0ac4 with the FUN_1406d3140 param_3 made
 // explicit. unit-actor-control's two slot calls pass param_3 == 1 (probe present);

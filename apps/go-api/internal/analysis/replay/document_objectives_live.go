@@ -125,6 +125,38 @@ const (
 	FlagStateHome = "home"
 )
 
+// FlagReturnZone est LA REGLE DE RETOUR du drapeau, telle que le manifeste du titre la donne
+// (schema 35). Elle ne decrit PAS ce match-ci : elle decrit le MODE, et c'est pour cela qu'elle
+// est publiee une fois et non par lacher.
+//
+// LE MODELE, ET D'OU IL VIENT. Le jeu remplit une jauge de retour au taux `1/reset + H(n)/solo`,
+// ou `n` est le nombre de defenseurs dans la zone et `H` la SERIE HARMONIQUE — son propre script
+// nomme la fonction `CalculateReturnRateHarmonic`. Deux defenseurs valent donc 1 + 1/2, trois
+// 1 + 1/2 + 1/3 : le rendement decroit, il n'est jamais lineaire.
+//
+// CE QUE LE CLIENT EN FAIT, ET POURQUOI CE N'EST PAS CALCULE ICI. Le modele donne la FORME de la
+// jauge ; ses BORNES viennent de l'observation (le lacher, puis le retour date). Mais compter les
+// defenseurs exige de savoir a quelle equipe appartient chaque joueur — et l'equipe N'EST PAS
+// DANS LE FILM (cf. Track.Team). Le constructeur du rejeu est hors ligne et n'ouvre aucune base ;
+// le client, lui, a deja joint le tableau de bord pour colorer les camps. C'est donc lui qui
+// compte, et cette table est ce qu'il lui faut pour le faire.
+// LA CONTESTATION N'EN FAIT PAS PARTIE, ET C'EST UNE DECISION MESUREE. Le jeu decrit un etat
+// `Contested` — un ENNEMI du proprietaire dans la zone bloque le retour — puis un
+// `ContestedRefilling` ou la jauge repart en arriere. Trois faits l'ont ecarte : l'utilisateur ne
+// l'a jamais observe en jeu ; ni le reglage qui l'active ni son taux ne sont lisibles dans le
+// script (constantes dedupliquees) ; et la mesure explique le silence — sur 72 lachers ou un
+// ennemi entre dans la zone, 56 finissent par une REPRISE, sejour moyen 1,65 s. A 1,3 m d'un
+// drapeau tombe, un ennemi ne conteste pas : il RAMASSE. La seule interruption visible est la
+// reprise, et le calque la rend deja — un nouveau lacher ouvre une jauge NEUVE.
+type FlagReturnZone struct {
+	// RadiusM est le rayon de la zone de RETOUR, dans les MEMES coordonnees que `FlagSpan.X/Y`.
+	RadiusM float32 `json:"radiusM"`
+	// ResetSeconds est la duree qu'un drapeau au sol met a rentrer TOUT SEUL.
+	ResetSeconds float32 `json:"resetSeconds"`
+	// SoloSeconds est la duree qu'il met avec UN defenseur dans la zone.
+	SoloSeconds float32 `json:"soloSeconds"`
+}
+
 // FlagSpan est UN intervalle d'etat du drapeau.
 type FlagSpan struct {
 	// State vaut [FlagStateCarried], [FlagStateCarriedOpen], [FlagStateDropped] ou
@@ -225,6 +257,27 @@ type FlagCarriesCoverage struct {
 	// AmbiguousReturns : evenements `flag_returns` survenus alors que zero ou plusieurs drapeaux
 	// etaient au sol. Ils ne renvoient alors aucun drapeau a sa base.
 	AmbiguousReturns int `json:"ambiguousReturns"`
+	// HomeByObject compte les drapeaux ramenes chez eux par la RENTREE DE L'OBJET — une vie libre
+	// nee a leur socle alors qu'ils etaient au sol (cf. `flagObjectHomecomings`).
+	//
+	// C'EST LE COMPTE DES RETOURS AUTOMATIQUES, ceux que personne ne provoque et qu'aucun
+	// compteur du statborg ne credite. Avant le schema 35 ils n'existaient pas et les laches
+	// couraient jusqu'a la reprise ou la fin de l'axe — des etats `dropped` de plus de deux
+	// minutes, qui n'ont jamais existe a l'ecran. Un retour DEJA credite ne s'y compte pas : la
+	// rentree ne fait alors rien.
+	HomeByObject int `json:"homeByObject"`
+	// AmbiguousHomecomings : rentrees ecartees parce qu'un AUTRE drapeau gisait au point de
+	// naissance — rien ne dit lequel des deux vient d'etre recree.
+	AmbiguousHomecomings int `json:"ambiguousHomecomings"`
+	// NeutralFlag dit que la partie a ete reconnue « DRAPEAU NEUTRE » : un seul drapeau, au socle
+	// du centre, que les deux camps se disputent. Le mode n'est PAS dans le film — c'est l'OBJET
+	// qui tranche, par le socle ou il renait (cf. flag_neutral.go).
+	NeutralFlag bool `json:"neutralFlag"`
+	// NeutralBirths / TeamBirths sont les deux comptes qui FONDENT ce verdict : les naissances de
+	// l'objet au socle neutre, et celles aux socles d'equipe. Publies pour que le verdict se
+	// verifie au lieu de se croire.
+	NeutralBirths int `json:"neutralBirths"`
+	TeamBirths    int `json:"teamBirths"`
 	// Spawns est le nombre de socles `flag_spawn` connus de la carte. Zero : la carte est hors
 	// du catalogue d'objectifs, tous les portages tombent dans UN drapeau d'equipe -1.
 	Spawns int `json:"spawns"`

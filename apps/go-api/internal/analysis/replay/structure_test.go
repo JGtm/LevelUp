@@ -575,8 +575,62 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   publiée (aucun canal mesuré) : le client la dérive des périodes et des pistes (dernier
 	//   point du lâcheur). Un artefact 33 se lit « à re-cuire ». Détail :
 	//   document_bomb_carries.go.
-	if SchemaVersion != 34 {
-		t.Fatalf("SchemaVersion = %d, attendu 34 : incrémenter exige une raison écrite ci-dessus "+
+	// v35 — LE RETOUR DU DRAPEAU DE CTF, dans ses deux moitiés. (1) LE RETOUR AUTOMATIQUE EST
+	//   DATÉ. Le jeu ramène chez lui un drapeau resté au sol ; aucun compteur du statborg ne le
+	//   dit, puisque personne n'est crédité — et les états `dropped` couraient donc jusqu'à la
+	//   reprise ou la fin de l'axe, des lâchers de plus de deux minutes qui n'ont jamais existé à
+	//   l'écran. L'OBJET, lui, le dit : une vie libre du drapeau qui NAÎT À SON SOCLE est le
+	//   drapeau qui rentre, et le socle LE NOMME (ce que `flag_returns` ne fait pas). CONTRÔLE
+	//   écrit avant la mesure et TENU : sur les retours que le statborg CRÉDITE, les deux chaînes
+	//   — disjointes — tombent à la même frame dans 15 cas sur 15 (100 %, seuil 80 %, écart
+	//   médian 1 frame ; compté par ÉVÉNEMENT crédité DISTINCT, `flag_returns` ne nommant pas son
+	//   drapeau). (2) `flagReturnZone` publie la RÈGLE du mode : rayon de la zone de
+	//   retour, minuterie à vide, durée à un défenseur — la CONTESTATION en est écartée par la
+	//   mesure (sur 72 lâchers où un ennemi entre dans la zone, 56 finissent par une REPRISE : à
+	//   1,3 m un ennemi ne conteste pas, il RAMASSE) et par l'observation de l'utilisateur.
+	//   (3) LA VARIANTE « DRAPEAU NEUTRE » est
+	//   reconnue et ne publie plus qu'UN drapeau, d'équipe -1, au socle du centre — le mode n'est
+	//   pas dans le film, c'est l'OBJET qui tranche par le socle où il renaît, et la couverture
+	//   publie le verdict avec ses deux comptes (`neutralFlag`, `neutralBirths`, `teamBirths`).
+	//   Le rayon (1,3) est LU dans le script du jeu
+	//   (`innerAreaMonitorRadius`) et CORROBORÉ par l'ajustement sur les films (minimum de
+	//   dispersion à 1,3-1,5 m) ; les durées sont MESURÉES. L'occupation, elle, se compte chez le
+	//   client : l'équipe d'un joueur n'est pas dans le film. Un artefact 34 doit se lire « à
+	//   re-cuire » — ses drapeaux au sol n'ont ni retour automatique ni zone. Détail :
+	//   internal/analysis/replay/flag_objects.go et .ai/V7.5/PLAN_CTF_ZONE_RETOUR_2026-08-30.md.
+	//   (Ce lot avait pris le 29 sur wt/ctf-zone-retour ; renumerote 35 au merge du 2026-09-02.)
+	// v36 — L'IDENTITÉ DES VIES : une track = UNE VIE (découpe `lifeGapUS`, la règle de
+	//   `buildLifeSpans`, appliquée aux tracks), nommage PAR VIE (un slot recyclé porte une
+	//   identité par occupant — le cas Sylvanus du retour user 2026-09-02), et LES BOTS
+	//   (`roster[].bot` sans xuid + `tracks[].bot` sur les vies que le pont attribue à un
+	//   index de BOT_METADATA). Un artefact 35 se lit « à re-cuire ». REFUS : l'héritage de
+	//   slot pour les segments anonymes (c'était le bug), et le compteur de respawn réel
+	//   (unité jamais calibrée — condition de reprise au registre).
+	// v37 — LE COUP D'ENVOI, DATÉ PAR LE FILM (`t0FilmMs`). Le T0 servi jusqu'ici est ESTIMÉ
+	//   des `first_joined_time` de l'API : sur 10-15 % des matchs ces horodatages collent au
+	//   `start_time`, le T0 tombe à ~0, et le rejeu démarre sur des joueurs statufiés pendant
+	//   tout le décompte — le défaut que l'utilisateur voit à l'écran. Le film le MESURE : la
+	//   grille se lève d'un coup, donc le PREMIER MOUVEMENT des pistes date le coup d'envoi.
+	//   TÉMOINS INTERNES AU FILM (2026-09-02, 101 artefacts) : rafale de départ à 6 joueurs de
+	//   médiane sur 8-9 ; écart 1er -> 3e partant de 100 ms de médiane ; marge depuis la frame 0
+	//   à 22 700 ms d'écart-type 299 ms, CV 0,013 sur 83 matchs. CONTRÔLE contre l'étalon :
+	//   t0_film a un écart-type de 9 752 ms contre 12 764 ms pour t0_api sur les 49 matchs au
+	//   T0-API sain, et ne descend jamais sous 25 907 ms là où l'API tombe à 17 804 ms. Sur les
+	//   11 matchs dégénérés, 10 décomptes sur 11 dans la plage plausible 15-45 s.
+	//   POURQUOI LA VERSION MONTE alors que le champ est OPTIONNEL — la raison exacte des
+	//   montées v4 (l'origine) et v22 : la reprise du backfill se fait par SchemaVersion, et
+	//   sans bump aucun rejeu déjà cuit ne démarrerait jamais sur le coup d'envoi.
+	//   CE QUE v37 REFUSE : un zéro ambigu. Pas de mouvement détectable, rafale à moins de deux
+	//   partants, ou premier mouvement à plus de 120 s de la frame 0 -> champ ABSENT (pointeur
+	//   nil, même piège omitempty qu'`originMs`), refus journalisé, raison publiée dans
+	//   `coverage.t0Film`. Et AUCUNE CONSTANTE ABSOLUE : la marge de 22 700 ms est un témoin
+	//   documentaire, jamais une valeur servie — le détecteur mesure par match.
+	//   Détail : internal/analysis/replay/t0_film.go et .ai/V7.5/PLAN_T0_FILM_2026-09-02.md.
+	//   (Ce lot avait pris le 36 sur wt/t0-film pendant que l'identité des vies prenait le 36
+	//   sur feat/v75 : renuméroté 37 au merge du 2026-09-02, arbitrage écrit aux schémas
+	//   30, 31, 33 et 35.)
+	if SchemaVersion != 37 {
+		t.Fatalf("SchemaVersion = %d, attendu 37 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

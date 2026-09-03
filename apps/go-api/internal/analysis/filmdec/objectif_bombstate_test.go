@@ -63,6 +63,29 @@ package filmdec
 // TEMOIN : les memes identifiants sont releves sur KOTH, Strongholds et CTF. Un identifiant qui
 // n'apparait QU'EN ASSAUT est un candidat meme si ce n'est pas celui-la.
 //
+// # LE VERDICT : NEGATIF, ET SA PORTEE EXACTE (mesure du 2026-09-01, 13 films)
+//
+// **0x19813E20 n'apparait dans AUCUN film.** L'etat de la bombe n'est pas replique comme
+// propriete nommee de `ti=13`.
+//
+// MAIS IL FAUT BORNER CE NEGATIF, et le balayage le borne lui-meme. Le chainage de `ti=13` sur
+// les films d'Assaut vaut **1,9 a 4,7 %** — le plancher — contre 32 a 77 % sur les temoins. Et
+// les films d'Assaut rendent 12 a 51 noms DISTINCTS pour HUIT slots seulement : un slot porte UNE
+// propriete nommee, donc huit slots ne peuvent pas porter cinquante noms. **Ces lectures sont du
+// bruit**, et le negatif se lit donc ainsi :
+//
+//	CE QUI EST ETABLI     `ti=13` ne parle pas en Assaut — ce que le miroir disait deja. La
+//	                      question « BombObjectState y est-il ? » n'a pas de reponse lisible
+//	                      parce que le canal lui-meme n'a rien a dire dans ce mode.
+//	CE QUI NE L'EST PAS   que l'etat de la bombe ne soit replique NULLE PART. Il l'est
+//	                      forcement quelque part : le HUD l'affiche.
+//
+// L'INSTRUMENT RESTE UTILE POUR AUTRE CHOSE, et c'est son acquis durable : il rend, par film et
+// par mode, les IDENTIFIANTS de propriete reellement vus. Sur les temoins — ou le chainage est
+// bon — c'est un DICTIONNAIRE de proprietes reseau a nommer, et le nommage est mecanique
+// (murmur3 d'un nom en clair du binaire). C'est la voie pour nommer les jauges de zone de
+// Strongholds et de KOTH, qui sont lues sans etre comprises depuis le lot C-bis.
+//
 // REGIME : garde `ASSAUT_CACHE`. Aucune base, aucun reseau, sentinelle memoire armee.
 //
 //	$env:ASSAUT_CACHE="C:/.../data/cache"

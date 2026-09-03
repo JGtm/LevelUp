@@ -624,10 +624,16 @@ func (s postSyncFilmSteps) runReplayArtifacts(ctx context.Context, insertedIDs [
 		replayartifacts.SignalerClientSansMvar(ctx, e.gamertag, fmt.Sprintf("%T", s.client))
 	}
 	replayartifacts.Run(ctx, replayartifacts.Deps{
-		BuildOne:        e.replayArtifacts.BuildOne,
-		Fetcher:         fetcher,
-		MvarFetcher:     mvarFetcher,
-		WithRead:        s.withRead,
+		BuildOne:    e.replayArtifacts.BuildOne,
+		Fetcher:     fetcher,
+		MvarFetcher: mvarFetcher,
+		WithRead:    s.withRead,
+		// Le writer est acquis APRÈS toute cuisson et relâché aussitôt (burst court) : le
+		// segment de lecture de la sélection est rendu depuis longtemps, donc les deux ne se
+		// chevauchent jamais — même garde anti-deadlock que le burst de la kill source.
+		AcquireWriter: func(c context.Context) (*sql.DB, func(), error) {
+			return s.shared.Write(c, "replay_t0_film")
+		},
 		MetaDB:          e.metaDB,
 		RepoRoot:        e.repoRoot,
 		TitleSlug:       e.titleSlug,

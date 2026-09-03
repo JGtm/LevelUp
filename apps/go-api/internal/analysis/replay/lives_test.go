@@ -126,8 +126,12 @@ func TestNameTracksLeavesUnbridgedLivesAnonymous(t *testing.T) {
 	// Une vie que le fil des morts n'a pas nommee reste SANS identite. La remplir d'un
 	// « inconnu » ou du porteur d'un slot voisin serait exactement la faute qui a fait
 	// supprimer le vote : mieux vaut ne rien afficher que quelque chose de faux.
-	tracks := []Track{{Slot: 512}, {Slot: 513}}
-	nameTracks(tracks, map[uint32]uint64{512: 2533274800000001})
+	tracks := []Track{
+		{Slot: 512, StartFrame: 0, EndFrame: 9},
+		{Slot: 513, StartFrame: 0, EndFrame: 9},
+	}
+	lives := []lifeSpan{{slot: 512, from: 0, to: 1_000_000, xuid: 2533274800000001}}
+	nameTracksByLives(tracks, lives, 0, 100_000)
 	if tracks[0].XUID != "2533274800000001" {
 		t.Errorf("la trace pontee doit porter son xuid en decimal, obtenu %q", tracks[0].XUID)
 	}
@@ -136,12 +140,31 @@ func TestNameTracksLeavesUnbridgedLivesAnonymous(t *testing.T) {
 	}
 }
 
+func TestNameTracksByLivesNamesEachOccupantOfARecycledSlot(t *testing.T) {
+	// LE CAS SYLVANUS (retour user 2026-09-02) : un slot recyclé — partant remplacé par un
+	// arrivant — porte DEUX vies nommées différemment. Le nommage par slot donnait tout au
+	// premier ; le nommage par vie donne à chaque track l'identité de SON occupant.
+	tracks := []Track{
+		{Slot: 512, StartFrame: 0, EndFrame: 9},   // vie 1 : 0 à 0,9 s
+		{Slot: 512, StartFrame: 80, EndFrame: 99}, // vie 2 : 8,0 à 9,9 s (après le trou)
+	}
+	lives := []lifeSpan{
+		{slot: 512, from: 0, to: 900_000, xuid: 111},
+		{slot: 512, from: 8_000_000, to: 9_900_000, xuid: 222},
+	}
+	nameTracksByLives(tracks, lives, 0, 100_000)
+	if tracks[0].XUID != "111" || tracks[1].XUID != "222" {
+		t.Errorf("chaque occupant doit garder SA vie : obtenu %q puis %q",
+			tracks[0].XUID, tracks[1].XUID)
+	}
+}
+
 func TestBuildRosterIsSortedAndStable(t *testing.T) {
 	// L'ordre d'iteration d'une map Go est aleatoire : sans tri, l'artefact changerait
 	// d'octets a chaque build sans changer de contenu, et deviendrait indiffable.
 	idx := PlayerIndexTable{ByXUID: map[uint64]int{2533274800000003: 2, 2533274800000001: 0,
 		2533274800000002: 1}}
-	first := buildRoster(idx, nil)
+	first := buildRoster(idx, nil, nil)
 	if len(first) != 3 || first[0].FilmIndex != 0 || first[2].FilmIndex != 2 {
 		t.Fatalf("roster mal trie : %+v", first)
 	}
@@ -149,11 +172,11 @@ func TestBuildRosterIsSortedAndStable(t *testing.T) {
 		t.Errorf("xuid attendu en decimal, obtenu %q", first[0].XUID)
 	}
 	for i := 0; i < 20; i++ {
-		if got := buildRoster(idx, nil); got[0].XUID != first[0].XUID || got[2].XUID != first[2].XUID {
+		if got := buildRoster(idx, nil, nil); got[0].XUID != first[0].XUID || got[2].XUID != first[2].XUID {
 			t.Fatalf("roster non reproductible entre deux appels : %+v puis %+v", first, got)
 		}
 	}
-	if buildRoster(PlayerIndexTable{}, nil) != nil {
+	if buildRoster(PlayerIndexTable{}, nil, nil) != nil {
 		t.Errorf("sans table d'index, pas de roster invente")
 	}
 }
@@ -188,5 +211,42 @@ func TestBuildOwnersPublishesNothingWithoutDeaths(t *testing.T) {
 	// TOUT le pont vient de la lecture : c'est l'invariant que le verdict controle aussi.
 	if rep2.FromDeaths != len(rep2.Owner) {
 		t.Errorf("le pont doit venir ENTIEREMENT de la lecture : %+v", rep2)
+	}
+}
+
+func TestBuildRosterPublishesDeclaredBots(t *testing.T) {
+	// Les bots de BOT_METADATA entrent au roster SANS xuid, avec leur nom suffixé — et un
+	// bot dont l'index est déjà tenu par un humain est refusé : le fil des morts (une
+	// lecture par identité) l'emporte sur un paquet de métadonnées.
+	idx := PlayerIndexTable{ByXUID: map[uint64]int{2533274800000001: 0}}
+	bots := []BotIdentity{
+		{FilmIndex: 8, Name: "343 Aloysius [bot]"},
+		{FilmIndex: 0, Name: "343 Conflit [bot]"}, // index tenu par l'humain -> refusé
+		{FilmIndex: 9, Name: ""},                  // sans nom -> rien à publier
+	}
+	got := buildRoster(idx, nil, bots)
+	if len(got) != 2 {
+		t.Fatalf("attendu humain + 1 bot, obtenu %+v", got)
+	}
+	if got[1].XUID != "" || !got[1].Bot || got[1].Name != "343 Aloysius [bot]" || got[1].FilmIndex != 8 {
+		t.Errorf("entrée bot inattendue : %+v", got[1])
+	}
+}
+
+func TestNameBotTracksNamesBridgedSlotsOnly(t *testing.T) {
+	// Une vie de bot n'est nommée que si le PONT attribue son slot à l'index du bot ; une
+	// vie déjà nommée par un xuid n'est JAMAIS écrasée (slot recyclé humain -> bot).
+	tracks := []Track{
+		{Slot: 600},                           // pont -> index 8 (bot)
+		{Slot: 601},                           // hors pont : reste anonyme
+		{Slot: 602, XUID: "2533274800000001"}, // humain nommé : intouchable
+	}
+	owner := map[uint32]int{600: 8, 602: 8}
+	nameBotTracks(tracks, owner, []BotIdentity{{FilmIndex: 8, Name: "343 Aloysius [bot]"}})
+	if tracks[0].Bot != "343 Aloysius [bot]" {
+		t.Errorf("la vie pontée vers l'index du bot doit porter son nom, obtenu %q", tracks[0].Bot)
+	}
+	if tracks[1].Bot != "" || tracks[2].Bot != "" || tracks[2].XUID == "" {
+		t.Errorf("vies hors pont ou déjà nommées inchangées, obtenu %+v", tracks)
 	}
 }

@@ -66,6 +66,9 @@ type ReplayLabelSet struct {
 	// Table a part de la precedente : autre archetype, autre chaine d'etablissement
 	// (cf. loader_replay_labels_objectives.go).
 	objObjects map[uint32]ObjectiveObject
+	// flagZone : la regle de retour du drapeau (cf. loader_replay_labels_flagzone.go). Zero quand
+	// le titre ne la declare pas — le rejeu ne dessine alors ni cercle ni jauge.
+	flagZone FlagReturnZone
 }
 
 // replayLabelsTOML — projection brute du fichier.
@@ -77,6 +80,7 @@ type replayLabelsTOML struct {
 	ShotTints    map[string]string      `toml:"shot_tints"`
 	EquipObjects []equipmentObjectEntry `toml:"equipment_objects"`
 	ObjObjects   []objectiveObjectEntry `toml:"objective_objects"`
+	FlagZone     *flagReturnZoneTOML    `toml:"flag_return_zone"`
 }
 
 type abilityPaletteEntry struct {
@@ -198,6 +202,15 @@ func (s *ReplayLabelSet) ObjectiveObjects() map[uint32]ObjectiveObject {
 	return out
 }
 
+// FlagReturnZone retourne la regle de retour du drapeau. Zero quand le titre ne la declare pas :
+// l'appelant ne dessine alors ni zone ni jauge (cf. loader_replay_labels_flagzone.go).
+func (s *ReplayLabelSet) FlagReturnZone() FlagReturnZone {
+	if s == nil {
+		return FlagReturnZone{}
+	}
+	return s.flagZone
+}
+
 // TitleSlug retourne le slug declare.
 func (s *ReplayLabelSet) TitleSlug() string {
 	if s == nil {
@@ -263,6 +276,10 @@ func LoadReplayLabelsFromBytes(path string, raw []byte) (*ReplayLabelSet, error)
 	if err != nil {
 		return nil, err
 	}
+	zone, err := parseFlagReturnZone(path, doc.FlagZone)
+	if err != nil {
+		return nil, err
+	}
 	return &ReplayLabelSet{
 		titleSlug:     doc.Meta.TitleSlug,
 		schemaVersion: doc.Meta.SchemaVersion,
@@ -272,6 +289,7 @@ func LoadReplayLabelsFromBytes(path string, raw []byte) (*ReplayLabelSet, error)
 		shotTints:     tints,
 		equipObjects:  equip,
 		objObjects:    objs,
+		flagZone:      zone,
 	}, nil
 }
 

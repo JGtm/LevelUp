@@ -108,14 +108,28 @@ func (a *Asset) MvarPaths() []string {
 
 // FetchMvar télécharge un fichier de variante depuis le stockage blob.
 func (c *Client) FetchMvar(ctx context.Context, asset *Asset, relPath string) ([]byte, error) {
-	endpoint := strings.TrimSuffix(asset.Files.Prefix, "/") + "/" + relPath
-	body, err := c.get(ctx, endpoint, false)
+	body, err := c.FetchFileAt(ctx, asset.Files.Prefix, relPath)
 	if err != nil {
 		return nil, err
 	}
 	slog.InfoContext(ctx, "mapobj: mvar téléchargé",
 		"asset_id", asset.AssetID, "file", relPath, "bytes", len(body))
 	return body, nil
+}
+
+// FetchFileAt télécharge un fichier du STOCKAGE BLOB à partir d'un préfixe déjà connu.
+//
+// POURQUOI CE POINT D'ENTRÉE EXISTE À CÔTÉ DE FetchMvar. Le préfixe blob d'une carte n'a
+// pas à être re-résolu quand on l'a déjà : l'inventaire UGC versionné
+// (.ai/V7.5/cartes/inventaire_rotation_ugc_*.json) le porte pour chaque carte de la
+// rotation. Le stockage blob répond SANS jeton — seul le Discovery en exige un — donc ce
+// chemin-là n'a besoin d'aucune authentification, et un `Client` à jetons nil suffit.
+// Il reste soumis à `netguard` comme toute émission sortante d'`internal/`.
+func (c *Client) FetchFileAt(ctx context.Context, prefix, relPath string) ([]byte, error) {
+	if prefix == "" || relPath == "" {
+		return nil, fmt.Errorf("préfixe blob ou chemin relatif vide (%q, %q)", prefix, relPath)
+	}
+	return c.get(ctx, strings.TrimSuffix(prefix, "/")+"/"+relPath, false)
 }
 
 // get exécute un GET. withAuth pose les en-têtes Spartan/Clearance ; le stockage

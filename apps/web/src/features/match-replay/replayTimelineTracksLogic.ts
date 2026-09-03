@@ -264,8 +264,8 @@ function clampFrameRatio(frame: number, scale: TrackScale): number {
  *
  * ELLE NE S'AFFICHE PAS EN SLAYER, et c'est mesuré, pas supposé : « le score du Slayer EST le
  * compte de frags » (état de l'art des modes, témoin `000d5950` : score API 43-50 = somme des
- * frags par équipe). La piste y répéterait celle du dessus. Le tri se fait sur la DONNÉE, pas
- * sur un libellé de mode — cf. `scoreMirrorsFrags`.
+ * frags par équipe). La piste y répéterait celle du dessus. Le tri se fait sur le RENDU, pas
+ * sur un libellé de mode — cf. `sameLeadSegments`.
  *
  * `states` vient de `leaderStates` (lib/replay/scoreTimeline) : un état par changement,
  * ÉGALITÉS COMPRISES, daté en IMAGES du document. Le reste est la règle de la dominance —
@@ -332,31 +332,39 @@ export function roundSeparators(
 }
 
 /**
- * scoreMirrorsFrags — LE SCORE DE CE MATCH N'EST-IL QUE LE COMPTE DES FRAGS ?
+ * sameLeadSegments — LES DEUX PISTES DESSINERAIENT-ELLES LA MÊME CHOSE ?
  *
- * C'est le tri qui décide de montrer la piste SCORE, et il se fait sur la DONNÉE plutôt que
+ * C'est le tri qui décide de montrer la piste SCORE, et il se fait sur LE RENDU plutôt que
  * sur le nom du mode : comparer un libellé (« Slayer ») serait faux au premier mode dérivé
- * (Super Fiesta est un Slayer, Attrition ne l'est pas) et illisible sur un second titre. La
- * mesure de l'état de l'art est directe : en Slayer, le score final de chaque équipe EGALE sa
- * somme de frags (témoin `000d5950`, 43-50).
+ * (Super Fiesta est un Slayer, Attrition ne l'est pas) et illisible sur un second titre.
  *
- * PRUDENT PAR CONSTRUCTION : à la moindre différence, on rend `false` et la piste s'affiche. Un
- * fil incomplet (tueur hors scoreboard, kill non apparié) fait donc apparaître une piste
- * redondante en Slayer — un doublon, jamais un mensonge. L'inverse (masquer la piste d'un mode
- * à objectif) coûterait la lecture que ce lot ajoute.
+ * HISTOIRE DE LA GARDE (2026-09-02, décision user D1). La première version
+ * (`scoreMirrorsFrags`) comparait les TOTAUX finaux score/frags à l'égalité stricte : un seul
+ * kill au camp non résolu (suicide, environnemental, acteur hors scoreboard) suffisait à
+ * réafficher le doublon — c'était le cas nominal en Assassin, pas l'exception. La garde
+ * compare désormais ce que l'utilisateur voit : la SUITE DES MENEURS et les FRONTIÈRES des
+ * bandes. Deux pistes identiques à l'écran = un doublon, on n'en montre qu'une.
+ *
+ * LA TOLÉRANCE DE FRONTIÈRE est une affaire de PIXEL, pas de donnée : les deux pistes datent
+ * la même bascule sur deux horloges (le fil des éliminations en ms, le calque de score en
+ * frames), et ces horloges se recalent à mieux qu'une frame. En ratio de frise,
+ * SAME_TRACK_EPS couvre cet écart de quantification — en dessous d'un demi-pour-cent de la
+ * largeur, aucune différence n'est lisible. Deux suites de meneurs DIFFÉRENTES, elles, ne
+ * passent jamais : le premier segment divergent rend `false`.
  */
-export function scoreMirrorsFrags(
-  teams: readonly { teamId?: number | null; total: readonly { v: number }[] }[],
-  frags: readonly TrackFrag[],
+export const SAME_TRACK_EPS = 0.005
+
+export function sameLeadSegments(
+  a: readonly DominanceSegment[],
+  b: readonly DominanceSegment[],
 ): boolean {
-  const withId = teams.filter((t) => t.teamId != null)
-  if (withId.length === 0) return false
-  const counted = new Map<number, number>()
-  for (const f of frags) counted.set(f.teamId, (counted.get(f.teamId) ?? 0) + 1)
-  return withId.every((t) => {
-    const final = t.total.length === 0 ? 0 : t.total[t.total.length - 1].v
-    return final === (counted.get(t.teamId as number) ?? 0)
-  })
+  if (a.length === 0 || a.length !== b.length) return false
+  for (let i = 0; i < a.length; i++) {
+    if (a[i].teamId !== b[i].teamId) return false
+    if (Math.abs(a[i].from - b[i].from) > SAME_TRACK_EPS) return false
+    if (Math.abs(a[i].to - b[i].to) > SAME_TRACK_EPS) return false
+  }
+  return true
 }
 
 /** Le camp SEUL en tête au compte donné, ou `null` (égalité) — même règle que `leaderAt`. */

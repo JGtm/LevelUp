@@ -38,29 +38,48 @@ type shapedPoly struct {
 // Les zones sans forme ne sont pas classées (elles ne se dessinent pas) ; une carte à
 // zone unique rend cette zone grande — rien ne la recouvre.
 func classifyBig(zones []shapedPoly) map[int]bool {
-	out := make(map[int]bool, len(zones))
-	boxes := make([][4]float64, len(zones))
+	return classifyBigAvecPas(zones, classifyCell)
+}
+
+// classifyBigAvecPas est le même classement à PAS CHOISI.
+//
+// POURQUOI LE PAS EST PARAMÉTRABLE. Le raster coûte (emprise / pas)² par zone, et les
+// zones d'une carte FORGE se comptent en dizaines sur un canevas de 500 m de côté : à
+// 0,25 m une seule zone de 250 m rendrait un million de cellules, chacune confrontée à
+// toutes les autres. Le pas natif reste celui étalonné sur Ridgeline (`classifyBig`) ;
+// l'appelant Forge le desserre à emprise constante (cf. `pasDeClassement`).
+func classifyBigAvecPas(zones []shapedPoly, pas float64) map[int]bool {
+	r := classementRaster{zones: zones, cell: pas, boxes: make([][4]float64, len(zones))}
 	for i, z := range zones {
-		boxes[i] = bbox(z.poly)
+		r.boxes[i] = bbox(z.poly)
 	}
+	out := make(map[int]bool, len(zones))
 	for i, z := range zones {
-		out[z.vi] = coveredFraction(z, boxes[i], zones, boxes, i) <= classifyCoveredMax
+		out[z.vi] = r.couverture(i) <= classifyCoveredMax
 	}
 	return out
 }
 
-// coveredFraction mesure la fraction de l'emprise de `z` recouverte par l'UNION des
+// classementRaster porte le corpus de zones et le pas du raster, le temps d'un classement.
+type classementRaster struct {
+	zones []shapedPoly
+	boxes [][4]float64
+	cell  float64
+}
+
+// couverture mesure la fraction de l'emprise de la zone `self` recouverte par l'UNION des
 // autres zones.
-func coveredFraction(z shapedPoly, box [4]float64, all []shapedPoly, boxes [][4]float64, self int) float64 {
+func (r classementRaster) couverture(self int) float64 {
+	z, box := r.zones[self], r.boxes[self]
 	inside, covered := 0, 0
-	for y := box[1] + classifyCell/2; y < box[3]; y += classifyCell {
-		for x := box[0] + classifyCell/2; x < box[2]; x += classifyCell {
+	for y := box[1] + r.cell/2; y < box[3]; y += r.cell {
+		for x := box[0] + r.cell/2; x < box[2]; x += r.cell {
 			if !pointInPoly(z.poly, x, y) {
 				continue
 			}
 			inside++
-			for j, o := range all {
-				if j == self || !boxContains(boxes[j], x, y) {
+			for j, o := range r.zones {
+				if j == self || !boxContains(r.boxes[j], x, y) {
 					continue
 				}
 				if pointInPoly(o.poly, x, y) {

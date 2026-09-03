@@ -43,9 +43,10 @@ func TestClassifyRidgelineReproduitLePOC(t *testing.T) {
 	}
 	big := classifyBig(shaped)
 
+	raster := classementRaster{zones: shaped, boxes: bboxes(shaped), cell: classifyCell}
 	attenduFine := map[int]bool{10: true, 14: true, 23: true, 24: true, 25: true}
 	for _, z := range shaped {
-		frac := coveredFraction(z, bbox(z.poly), shaped, bboxes(shaped), indexOf(shaped, z.vi))
+		frac := raster.couverture(indexOf(shaped, z.vi))
 		t.Logf("vi=%2d %-16s recouvert=%.2f -> big=%v", z.vi, zones[z.vi].LibelleEN, frac, big[z.vi])
 		if attenduFine[z.vi] == big[z.vi] {
 			t.Errorf("vi=%d (%s) : big=%v, le POC dit l'inverse", z.vi, zones[z.vi].LibelleEN, big[z.vi])

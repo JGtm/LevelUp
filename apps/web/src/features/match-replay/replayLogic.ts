@@ -142,6 +142,122 @@ export function fitWidth(
   return Math.min(available, Math.max(needed, 2 * pad + 1))
 }
 
+/**
+ * usefulHeight — LA HAUTEUR AU-DELÀ DE LAQUELLE ON N'AJOUTE PLUS DE CARTE, MAIS DU VIDE.
+ *
+ * C'est l'inverse exact de `fitWidth`, et il répond à une question que la hauteur fixe n'avait
+ * jamais eu à poser : jusqu'où le terrain gagne-t-il à grandir ? `canvasScale` prend le PLUS
+ * PETIT des deux rapports (largeur/largeur de scène, hauteur/hauteur de scène). Passé le point
+ * où la largeur devient le facteur limitant, chaque pixel de hauteur en plus n'agrandit plus
+ * rien : il ajoute une bande vide au-dessus et au-dessous de la carte.
+ *
+ * Ce plafond est donc PAR CARTE. Une carte quasi carrée peut occuper beaucoup de hauteur dans
+ * une colonne large ; une carte très allongée sature bien avant. C'est ce que le plafond
+ * constant ne pouvait pas exprimer.
+ */
+export function usefulHeight(bounds: ReplayBounds, available: number, pad: number): number {
+  const bw = Math.max(bounds.maxX - bounds.minX, 1e-6)
+  const bh = Math.max(bounds.maxY - bounds.minY, 1e-6)
+  return Math.max((available - 2 * pad) * (bh / bw) + 2 * pad, 2 * pad + 1)
+}
+
+/**
+ * LES PALIERS DE ZOOM, et pourquoi ce ne sont pas des crans continus.
+ *
+ * Changer le cadrage fait RECUIRE les quatre calques statiques (le sol et ses ~45 000 cellules
+ * en tête). Un zoom continu — la molette — en déclencherait un par cran, donc des dizaines par
+ * geste. Des paliers rendent chaque changement rare, prévisible, et NOMMABLE à l'écran : « 2x »
+ * se lit, « 1,37x » ne veut rien dire pour qui regarde un match.
+ */
+export const ZOOM_LEVELS = [1, 1.5, 2, 3] as const
+export type ZoomLevel = (typeof ZOOM_LEVELS)[number]
+
+function clamp(v: number, lo: number, hi: number): number {
+  return v < lo ? lo : v > hi ? hi : v
+}
+
+/**
+ * clampCenter — le centre de la fenêtre, ramené là où la fenêtre reste DANS la scène.
+ *
+ * Exporté séparément de `visibleBounds` parce que l'état du zoom en a besoin sans vouloir les
+ * bornes : quand on baisse le zoom, le centre courant peut devenir illégal (une fenêtre plus
+ * large ne tient plus aussi près du bord) et il faut le rapprocher AVANT de le stocker — sinon
+ * l'état garde une valeur que l'affichage corrige en silence, et les deux divergent.
+ *
+ * À zoom 1 la fenêtre vaut la scène : les deux bornes du `clamp` se rejoignent, il ne reste
+ * qu'une position possible. La croix directionnelle se désactive donc d'elle-même, sans que
+ * personne ait à écrire la règle « pas de déplacement à zoom 1 ».
+ */
+export function clampCenter(
+  scene: ReplayBounds,
+  zoom: number,
+  cx: number,
+  cy: number,
+): { x: number; y: number } {
+  const halfW = Math.max(scene.maxX - scene.minX, 0) / (2 * Math.max(zoom, 1))
+  const halfH = Math.max(scene.maxY - scene.minY, 0) / (2 * Math.max(zoom, 1))
+  return {
+    x: clamp(cx, scene.minX + halfW, scene.maxX - halfW),
+    y: clamp(cy, scene.minY + halfH, scene.maxY - halfH),
+  }
+}
+
+/**
+ * visibleBounds — LA FENÊTRE VISIBLE, et c'est TOUT ce que le zoom change.
+ *
+ * # POURQUOI PAR LES BORNES, ET PAS PAR UNE ÉCHELLE
+ *
+ * La tentation était d'ajouter `{échelle, panX, panY}` au cadrage et de les appliquer partout.
+ * Cela aurait touché `worldToCanvas`, `canvasScale`, le survol, les quatre calques et les
+ * infobulles — et surtout introduit DEUX façons de dire où tombe un point du monde, qui
+ * auraient divergé au premier oubli.
+ *
+ * Or la projection est entièrement définie par les BORNES : `worldToCanvas` mappe `bounds` vers
+ * la toile. Zoomer, c'est donc rétrécir les bornes ; se déplacer, c'est les translater. Rien
+ * d'autre ne bouge — le survol lit la même projection que le dessin, il suit sans une ligne.
+ *
+ * # CE QUE ÇA RÈGLE GRATUITEMENT
+ *
+ * Les calques statiques cuisent depuis le cadrage : avec des bornes rétrécies, ils cuisent la
+ * FENÊTRE à la résolution de l'écran. Leur surface ne dépend donc PAS du niveau de zoom — la
+ * crainte d'une mémoire qui enfle avec le grossissement est évitée par construction, et non par
+ * une précaution qu'il faudrait maintenir.
+ *
+ * # L'ASPECT EST PRÉSERVÉ
+ *
+ * Les deux dimensions sont divisées par le MÊME facteur. Sans cela, `usefulHeight` (le plafond
+ * de hauteur calculé par carte) et le cadrage se contrediraient à chaque palier : la fenêtre
+ * réclamerait une forme que la toile ne peut pas lui donner, et la carte flotterait dans des
+ * bandes vides qui changeraient de taille à chaque cran.
+ *
+ * L'amplitude verticale (`minZ`/`maxZ`) traverse inchangée : le zoom est plan, il ne dit rien
+ * des étages.
+ */
+export function visibleBounds(
+  scene: ReplayBounds,
+  zoom: number,
+  cx: number,
+  cy: number,
+): ReplayBounds {
+  const z = Math.max(zoom, 1)
+  const halfW = Math.max(scene.maxX - scene.minX, 0) / (2 * z)
+  const halfH = Math.max(scene.maxY - scene.minY, 0) / (2 * z)
+  const c = clampCenter(scene, z, cx, cy)
+  return {
+    minX: c.x - halfW,
+    maxX: c.x + halfW,
+    minY: c.y - halfH,
+    maxY: c.y + halfH,
+    minZ: scene.minZ,
+    maxZ: scene.maxZ,
+  }
+}
+
+/** Le centre de la scène — la position de départ du cadrage, et celle du retour à 1x. */
+export function sceneCenter(scene: ReplayBounds): { x: number; y: number } {
+  return { x: (scene.minX + scene.maxX) / 2, y: (scene.minY + scene.maxY) / 2 }
+}
+
 /** canvasScale = pixels par unité monde pour le même cadrage que worldToCanvas. */
 export function canvasScale(
   bounds: ReplayBounds,
@@ -352,4 +468,84 @@ export function footprint(o: ReplayMapObject): XY[] {
     x: o.x + ux * cos - uy * sin,
     y: o.y + ux * sin + uy * cos,
   }))
+}
+
+/**
+ * canvasToWorld — L'INVERSE EXACT de `worldToCanvas`.
+ *
+ * Il existe pour UNE raison : savoir quel point du monde se trouve sous le pointeur, afin que la
+ * molette grossisse VERS le curseur. Sans lui, la molette ne pourrait que grossir vers le centre
+ * de la fenêtre — c'est-à-dire déplacer sous la souris ce qu'on visait avec elle.
+ *
+ * Il reprend la formule de `worldToCanvas` à l'envers, terme pour terme, et le test d'aller-
+ * retour est ce qui garantit qu'ils ne divergeront pas : deux projections écrites séparément
+ * finissent toujours par se contredire d'un demi-pixel, et un demi-pixel de dérive à chaque cran
+ * de molette devient un décalage franc en cinq crans.
+ */
+export function canvasToWorld(
+  c: XY,
+  bounds: ReplayBounds,
+  width: number,
+  height: number,
+  pad: number,
+): XY {
+  const bw = Math.max(bounds.maxX - bounds.minX, 1e-6)
+  const bh = Math.max(bounds.maxY - bounds.minY, 1e-6)
+  const scale = Math.min((width - 2 * pad) / bw, (height - 2 * pad) / bh)
+  if (!(scale > 0)) return { x: bounds.minX, y: bounds.maxY }
+  const offsetX = (width - bw * scale) / 2
+  const offsetY = (height - bh * scale) / 2
+  return {
+    x: bounds.minX + (c.x - offsetX) / scale,
+    y: bounds.maxY - (c.y - offsetY) / scale,
+  }
+}
+
+/**
+ * zoomTowards — le centre qui laisse un point du monde IMMOBILE à l'écran quand le zoom change.
+ *
+ * La formule tient en une ligne, et elle se démontre : un point `p` est à la même position
+ * RELATIVE dans la fenêtre avant et après si son écart au centre est divisé par le même facteur
+ * que la fenêtre elle-même. D'où `c' = p + (c - p) x (zoomAvant / zoomApres)`.
+ *
+ * C'est ce qui fait qu'une molette « attrape » l'endroit qu'on vise au lieu de le chasser.
+ */
+export function zoomTowards(
+  center: XY,
+  point: XY,
+  fromZoom: number,
+  toZoom: number,
+): XY {
+  const k = Math.max(fromZoom, 1) / Math.max(toZoom, 1)
+  return { x: point.x + (center.x - point.x) * k, y: point.y + (center.y - point.y) * k }
+}
+
+/**
+ * layerOffset — OÙ POSER UN CALQUE DÉJÀ CUIT quand le cadrage a bougé depuis sa cuisson.
+ *
+ * # POURQUOI IL EXISTE
+ *
+ * Pendant un glisser, le cadrage change à chaque mouvement de pointeur. Recuire les calques
+ * statiques à cette cadence est hors de question — le sol reconstruit fait ~45 000 cellules.
+ * Mais un glisser est une TRANSLATION PURE : la même image, posée ailleurs. Il suffit donc de
+ * recopier le calque cuit avec un décalage, et c'est EXACT — pas une approximation qu'on
+ * corrigerait après coup.
+ *
+ * # COMMENT
+ *
+ * Le pixel (0,0) du calque cuit désigne un point du monde, celui que SA projection y plaçait.
+ * On demande où ce même point tombe dans la projection COURANTE : c'est le décalage. Les deux
+ * projections partagent leur échelle tant que le zoom n'a pas changé (mêmes dimensions de
+ * fenêtre), donc le résultat est une translation et rien d'autre.
+ *
+ * Au changement de ZOOM, l'échelle diffère et un décalage ne suffirait plus : c'est pourquoi
+ * l'appelant ne gèle la cuisson que pendant un glisser, jamais pendant un zoom.
+ */
+export function layerOffset(
+  cooked: { bounds: ReplayBounds; width: number; height: number; pad: number } | null,
+  view: { bounds: ReplayBounds; width: number; height: number; pad: number },
+): XY {
+  if (!cooked) return { x: 0, y: 0 }
+  const p = canvasToWorld({ x: 0, y: 0 }, cooked.bounds, cooked.width, cooked.height, cooked.pad)
+  return worldToCanvas(p, view.bounds, view.width, view.height, view.pad)
 }

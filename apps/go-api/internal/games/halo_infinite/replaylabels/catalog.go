@@ -69,6 +69,9 @@ func Load(repoRoot, titleSlug string) (replay.LabelCatalog, error) {
 	// d'objectif », jamais la chaîne.
 	cat.ObjectiveObjects = objectiveObjects(labels.ObjectiveObjects())
 	cat.ObjectiveFamilies = objectiveFamilies(labels.ObjectiveObjects())
+	// La RÈGLE DE RETOUR DU DRAPEAU voyage telle quelle, comme les icônes et les teintes : le
+	// paquet `replay` ne sait pas ce qu'est le CTF d'Halo, il reçoit un rayon et deux durées.
+	cat.FlagReturnZone = flagReturnZone(labels.FlagReturnZone())
 	return cat, nil
 }
 
@@ -190,4 +193,17 @@ func toLabel(slug string, l mappings.BilingualLabel) replay.Label {
 		out.Tinted = true
 	}
 	return out
+}
+
+// flagReturnZone projette la règle de retour du manifeste vers le document. Une règle non
+// déclarée reste à zéro, et le calque du drapeau ne publie alors rien.
+func flagReturnZone(z mappings.FlagReturnZone) replay.FlagReturnZone {
+	if !z.Declared() {
+		return replay.FlagReturnZone{}
+	}
+	return replay.FlagReturnZone{
+		RadiusM:      float32(z.RadiusM),
+		ResetSeconds: float32(z.ResetSeconds),
+		SoloSeconds:  float32(z.SoloSeconds),
+	}
 }

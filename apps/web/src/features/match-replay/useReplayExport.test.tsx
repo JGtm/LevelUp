@@ -171,7 +171,7 @@ describe('useReplayExport — non-régressions de la revue adversariale', () => 
     distancePercent: 0,
     families: { voice: [], music: [] },
   })
-  const FENETRE = { startFrame: 0, endFrame: 100, startMs: 0, endMs: 5000 }
+  const FENETRE = { startFrame: 0, leadInFrame: 0, endFrame: 100, startMs: 0, endMs: 5000 }
 
   function setupAvecSon(playWindow: ReplayWindowBounds | null = FENETRE) {
     const canvas = document.createElement('canvas')

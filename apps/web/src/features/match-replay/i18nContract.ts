@@ -199,6 +199,21 @@ export interface ReplayText {
    * aucune icône, la ligne garde son repère neutre.
    */
   killFeedDeathKind: Record<'environment' | 'suicide', string>
+  /**
+   * Lignes d'ENTRÉE/SORTIE de partie du fil (presenceFeed.ts, 2026-09-02). Deux sources,
+   * deux vocabulaires : la PARTICIPATION API (drapeaux joined/left_in_progress, précise —
+   * libellés affirmatifs) et le REPLI dérivé des bornes de vie du film (matchs sans les
+   * colonnes) — dont le libellé de sortie reste au FAIT (« ne reviendra plus ») : le film
+   * ne distingue pas un départ d'une élimination définitive, l'infobulle porte la réserve.
+   */
+  presenceJoined: string
+  presenceLeft: string
+  presenceJoinedHint: string
+  presenceLeftHint: string
+  presenceJoinedDerived: string
+  presenceLeftDerived: string
+  presenceJoinedDerivedHint: string
+  presenceLeftDerivedHint: string
   /** Sons du rejeu (lot 5 parité) : COUPÉ PAR DÉFAUT, l'utilisateur l'active. */
   sound: string
   soundHint: string
@@ -214,7 +229,7 @@ export interface ReplayText {
   soundFastHint: string
   /** Filtre des sons par catégorie (tiroir de réglages, phase 2, décision du 16/08). */
   soundCategoriesTitle: string
-  soundCategory: Record<'weapon' | 'grenade' | 'melee' | 'equipment' | 'objective', string>
+  soundCategory: Record<'weapon' | 'grenade' | 'melee' | 'equipment', string>
   /**
    * LA CAPTURE D'IMAGE (2026-08-26) : un bouton en icône dans la barre de lecture, qui
    * télécharge la scène courante en PNG. Le libellé dit le GESTE, pas la technique — « PNG »,
@@ -251,9 +266,6 @@ export interface ReplayText {
    * d'écran annonce. Ce mot-ci est ce que l'ŒIL lit sans survoler : trois icônes muettes côte
    * à côte se ressemblent toutes, un mot les départage d'un coup.
    */
-  captureImageShort: string
-  recordVideoShort: string
-  stopRecordingShort: string
   /** Le tiroir de réglages (décision utilisateur du 16/08) : bouton et panneau partagent
    *  le même intitulé — ouvrir dit ce qu'on va trouver derrière. */
   settingsButton: string
@@ -267,7 +279,6 @@ export interface ReplayText {
    * rejeu ouvert, il décide de son état de DÉPART. Sans cette phrase, on l'essaierait comme un
    * bouton « Lecture » et on conclurait qu'il ne marche pas.
    */
-  playbackTitle: string
   autoPlay: string
   autoPlayHint: string
   /** Calques que le lecteur peut éteindre. */
@@ -275,11 +286,22 @@ export interface ReplayText {
   layerAim: string
   layerAimHint: string
   /** Zones nommées (callouts officiels) : calque + libellé de la fiche. */
+  zoomGroup: string
+  zoomIn: string
+  zoomOut: string
+  zoomReset: string
+  /** « Tout » à 1x, sinon le facteur — cf. ReplayZoomControl. */
+  zoomLevelFmt: (zoom: number) => string
+  panUp: string
+  panDown: string
+  panLeft: string
+  panRight: string
+  layerGroupPlayers: string
+  layerGroupTerrain: string
+  layerGroupObjectives: string
   layerZones: string
   layerZonesHint: string
   /** Noms des joueurs sous leur marqueur (calque éteignable — un BTB à 24 joueurs). */
-  layerNames: string
-  layerNamesHint: string
   /**
    * TRAÎNÉE derrière chaque marqueur (V1, retour utilisateur du 2026-08-18 : « avoir la
    * traînée en option »). ALLUMÉE par défaut : c'est elle qui dit le SENS d'un déplacement,
@@ -465,6 +487,7 @@ export interface ReplayText {
   heatLegendHint: string
   /** Fiches joueur : ce qui est lu, et ce qui ne l'est pas. */
   rosterEmpty: string
+  bridgeDiag: (named: number, total: number, collisions: number) => string
   teamUnknown: string
   /** Libellé d'équipe (cascade `lib/halo/teamLabel.ts`, mêmes textes que la Match View). */
   teamLabelFmt: (name: string) => string
@@ -623,13 +646,13 @@ export interface ReplayText {
   tracksExpand: string
   unknownPlayer: string
   /**
-   * Marques d'identité devant un nom. Le glyphe « moi » ne se DESSINE plus nulle part
-   * (demande utilisateur du 2026-08-24) : `markMe` ne sert plus qu'au libellé lecteur
-   * d'écran du fil (retirer un dessin ne doit pas retirer une information). La marque
-   * « ami » garde son glyphe.
+   * `markMe` — dernier vestige textuel des glyphes d'identité du fil. Le rond du joueur actif
+   * ne se DESSINE plus nulle part depuis le 2026-08-24 ; le glyphe « ami » qui restait au fil
+   * (ex-`PlayerMark.tsx`) est retiré à son tour le 2026-09-02 (décision D5) — sa clé
+   * `markFriend` part avec lui. `markMe` ne sert donc plus qu'au libellé lecteur d'écran du
+   * joueur de la page (retirer un dessin ne doit pas retirer une information).
    */
   markMe: string
-  markFriend: string
   healthLabel: string
   shieldLabel: string
   abilityLabel: string
@@ -642,7 +665,8 @@ export interface ReplayText {
   /** L'encadré de la fiche morte (option 2a) : le mot d'état, puis le décompte lu. */
   eliminatedLabel: string
   respawnIn: string
-  respawnUnknown: string
+  goneLabel: string
+  goneValue: string
   /** Ligne d'inventaire : grenades, capacité, munitions. */
   inventoryAge: string
   inventoryAhead: string
@@ -743,7 +767,6 @@ export interface ReplayText {
    * emballement du rejeu.
    */
   exportVideo: string
-  exportVideoShort: string
   exportHint: string
   exportDialogTitle: string
   exportFrom: string

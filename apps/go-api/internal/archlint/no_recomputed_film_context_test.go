@@ -74,6 +74,20 @@ var calculsDuContexteFilm = map[string]bool{
 //	                      la sous-liste diverge, ce qui n'est pas un refacto pur. HORS PERIMETRE
 //	                      DU LOT 2, note au §8 du plan ; RETRAIT CIBLE : lot 4, ou la bande
 //	                      change de representation (tableau indexe, item 4.1).
+//
+//	weapon_hit_distance_resolver.go
+//	                      ARRIVE PAR L'AMONT (merge de `feat/v75` du 2026-09-03, chantier
+//	                      « precision par arme » remise le 2026-09-01). `DetectFilmWorldRange`
+//	                      resout les bornes monde d'une carte par la SIGNATURE de largeurs d'axe
+//	                      du decoupage i0 : il n'a ni film charge ni contexte, seulement un
+//	                      repertoire, et son unique appelant (`sync/killcollector/hits.go`) est
+//	                      une passe DESACTIVEE en production (capability `match.weapon.accuracy`
+//	                      NON declaree par Infinite depuis la remise, et `ConfigureFilmAccuracy`
+//	                      sans appelant de production). Entree posee par la RECONCILIATION, pas
+//	                      par un lot : la migrer vers la forme film demande des formes
+//	                      `Scan*(film)` pour trois balayages neufs de l'amont — hors perimetre du
+//	                      merge, consigne au registre des reports. RETRAIT CIBLE : le lot qui
+//	                      rallume la precision par arme, ou celui qui migre `hits.go`.
 var appelsAutorisesDuContexte = map[string]string{
 	"film_context.go/(*FilmContext).BipedSlots -> bipedSlotBand":    "le releve unique de la bande du film",
 	"film_context.go/(*FilmContext).I0Layout -> DetectI0LayoutOf":   "la detection unique du decoupage d'i0",
@@ -82,6 +96,8 @@ var appelsAutorisesDuContexte = map[string]string{
 	"i0_layout.go/DetectI0Layout -> DetectI0LayoutOf":               "enveloppe D2, hors production",
 	"offline_biped.go/ScanBipedPositions -> bipedSlotBand":          "bande sur opt.Chunks : hors perimetre du lot 2",
 	"offline_biped.go/ScanBipedPositions -> DetectI0LayoutOf":       "repli quand opt.Layout est nil : hors perimetre du lot 2",
+	"weapon_hit_distance_resolver.go/DetectFilmWorldRange -> DetectI0Layout": "amont 2026-09-03 : " +
+		"signature de largeurs d'axe depuis un repertoire, passe de precision par arme desactivee",
 }
 
 // TestContexteFilmCalculeUneFois — REGLE 1.
@@ -157,6 +173,15 @@ var analysesDeRegistreAutorisees = map[string]string{
 		"registre du film pour son propre monde. HORS PERIMETRE SANS CONDITION (decision D14 de " +
 		"PLAN_CUISSON_PERF) : `killsource` n'est pas dans ce plan. Note §8 — c'est la DERNIERE " +
 		"analyse de registre de la chaine de cuisson qui ne passe pas par `FilmContext`.",
+	"internal/sync/killcollector/hits.go": "ARRIVE PAR L'AMONT (merge de `feat/v75` du " +
+		"2026-09-03, chantier « precision par arme » remise le 2026-09-01). Cette passe rejoue le " +
+		"film DEPUIS LE DISQUE (`ConfigureFilmAccuracy(dir, ...)`) et analyse chunk_00 pour ses " +
+		"propres balayages ; elle est DESACTIVEE en production — Infinite ne declare pas la " +
+		"capability `match.weapon.accuracy` et `ConfigureFilmAccuracy` n'a aucun appelant hors " +
+		"tests. La migrer vers `FilmContext` exige de donner leur forme film a trois balayages " +
+		"neufs de l'amont (`ScanFilmWeaponShots`, `ScanFilmWeaponDamages`, `BuildBipedTracks`) : " +
+		"hors perimetre d'une reconciliation de branche, consigne au registre des reports. " +
+		"RETRAIT CIBLE : le lot qui rallume la precision par arme, ou celui qui migre `hits.go`.",
 }
 
 // TestRegistreAnalyseParLeContexteSeul — REGLE 2.

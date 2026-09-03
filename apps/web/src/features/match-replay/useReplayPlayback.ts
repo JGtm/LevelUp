@@ -44,6 +44,19 @@
  * Match View, qui arrive APRÈS le document du rejeu. Le repositionnement ne va donc que vers
  * l'AVANT (jamais un retour en arrière sous les doigts de qui a déjà déplacé la frise).
  *
+ * # UNE SECONDE DE PRÉAMBULE AVANT LE COUP D'ENVOI (D3, user 2026-09-02)
+ *
+ * Depuis le T0 mesuré dans le film, la lecture ne se pose plus SUR le coup d'envoi mais une
+ * seconde avant (`playWindow.leadInFrame`, cf. `replayWindow.ts`) : le temps de poser les yeux
+ * sur la scène avant que l'action parte. TROIS chemins l'utilisent, et eux seuls — la pose
+ * initiale, « Recommencer » (`rewind`) et la borne BASSE de `seekTo`.
+ *
+ * CE QUI NE BOUGE PAS, et c'est le cœur de la décision : le CADRAGE. `startFrame` reste le coup
+ * d'envoi — c'est lui que la frise publie en borne basse (`useReplayTimeline.minFrame`), lui que
+ * l'horloge prend pour origine (`useReplayClock` via `displayClockMs`) et lui que l'export
+ * propose par défaut (`replayExportPlan.defaultExportBounds`). Le préambule est donc UNIQUEMENT
+ * une position de départ : pendant cette seconde l'horloge lit 0:00 et la frise reste à 0 %.
+ *
  * # SE DÉPLACER SANS VISER : LES SAUTS, ET LE REMPLISSAGE DE LA FRISE
  *
  * Deux commandes s'ajoutent le 2026-08-28 avec la barre de lecture (planche 2a) : `seekBy`,
@@ -121,8 +134,9 @@ export interface ReplayPlaybackOptions {
 export interface ReplayPlayback {
   playing: boolean
   /**
-   * LA PREMIÈRE IMAGE DU GAMEPLAY : la borne basse de la frise ET le point de départ de la
-   * lecture, de « Recommencer » et du rembobinage de fin. Sans fenêtre : l'image zéro.
+   * LA PREMIÈRE IMAGE DU GAMEPLAY : la borne basse de la FRISE, et l'origine du remplissage.
+   * Ce n'est PAS l'endroit où la lecture se pose — celui-là est une seconde en deçà
+   * (`playWindow.leadInFrame`, cf. l'en-tête § du préambule). Sans fenêtre : l'image zéro.
    */
   startFrame: number
   /**
@@ -155,17 +169,27 @@ export function useReplayPlayback(o: ReplayPlaybackOptions): ReplayPlayback {
   const lastFrame = Math.max(doc.frameCount - 1, 0)
   const startFrame = playWindow?.startFrame ?? 0
   const endFrame = playWindow?.endFrame ?? lastFrame
+  // OÙ LA LECTURE SE POSE (cf. l'en-tête, § du préambule) : une seconde en deçà du coup
+  // d'envoi. Sans fenêtre, c'est l'image zéro — exactement le comportement d'avant ce lot.
+  const leadInFrame = playWindow?.leadInFrame ?? 0
 
   /**
    * writeCursor POSE LE CURSEUR : la valeur du champ, et le REMPLISSAGE de la frise habillée.
    *
    * `--played` est la part parcourue, en pourcentage de la fenêtre. Le dégradé de la piste la
-   * consomme depuis les classes du champ lui-même (`ReplayTimelineTracks.tsx`, variantes
+   * consomme depuis les classes du champ (`ReplayTimelineTracks.tsx`, variantes
    * `[&::-webkit-slider-runnable-track]` / `[&::-moz-range-track]` — même technique que le
    * volume dans `ReplaySoundControls.tsx`) : aucune feuille de style à tenir à jour, et aucun
    * rendu React pour un remplissage qui suit la lecture. Elle s'écrit ICI et nulle part
    * ailleurs — un chemin qui déplacerait le curseur sans elle laisserait le remplissage figé
    * sur la position précédente.
+   *
+   * ELLE SE POSE SUR LE PARENT, ET PAS SUR LE CHAMP (2026-09-02). Les propriétés
+   * personnalisées HÉRITENT : le champ la reçoit donc exactement comme avant, son dégradé ne
+   * change pas d'un pixel. Ce qui change, c'est que la BULLE DE TEMPS — un frère du champ,
+   * depuis que les bornes début/milieu/fin ont laissé la place au temps sous le curseur —
+   * peut la lire elle aussi. Posée sur le champ, elle serait restée invisible à tout ce qui
+   * n'est pas lui : un `input` n'a pas de descendants.
    */
   const writeCursor = useCallback(
     (frame: number) => {
@@ -176,18 +200,19 @@ export function useReplayPlayback(o: ReplayPlaybackOptions): ReplayPlayback {
       const pct = span > 0 ? ((frame - startFrame) / span) * 100 : 0
       // Borné : la frise ne se remplit ni en deçà de son début ni au-delà de sa fin, même si
       // un appelant lui sert une image hors fenêtre.
-      el.style.setProperty('--played', `${Math.min(100, Math.max(0, pct))}%`)
+      const played = `${Math.min(100, Math.max(0, pct))}%`
+      ;(el.parentElement ?? el).style.setProperty('--played', played)
     },
     [startFrame, endFrame],
   )
 
-  // LE COUP D'ENVOI, DÈS QUE LA FENÊTRE SE CONNAÎT (cf. l'en-tête) : elle arrive avec la Match
-  // View, donc après le premier rendu. On ne pose le curseur que s'il est encore EN DEÇÀ du
-  // début — le repositionnement ne recule jamais la lecture.
+  // LE COUP D'ENVOI (moins son préambule), DÈS QUE LA FENÊTRE SE CONNAÎT (cf. l'en-tête) : elle
+  // arrive avec la Match View, donc après le premier rendu. On ne pose le curseur que s'il est
+  // encore EN DEÇÀ — le repositionnement ne recule jamais la lecture.
   useEffect(() => {
-    if (frameRef.current < startFrame) {
-      frameRef.current = startFrame
-      writeCursor(startFrame)
+    if (frameRef.current < leadInFrame) {
+      frameRef.current = leadInFrame
+      writeCursor(leadInFrame)
       draw()
       return
     }
@@ -195,7 +220,7 @@ export function useReplayPlayback(o: ReplayPlaybackOptions): ReplayPlayback {
     // lecture est déjà au bon endroit (cas nominal sans fenêtre) laisserait `--played` vide,
     // et la frise s'afficherait creuse jusqu'au premier pas de la boucle.
     writeCursor(frameRef.current)
-  }, [startFrame, frameRef, draw, writeCursor])
+  }, [leadInFrame, frameRef, draw, writeCursor])
 
   // Boucle de lecture (requestAnimationFrame) uniquement quand `playing`.
   //
@@ -249,8 +274,8 @@ export function useReplayPlayback(o: ReplayPlaybackOptions): ReplayPlayback {
   }
 
   const rewind = () => {
-    frameRef.current = startFrame
-    writeCursor(startFrame)
+    frameRef.current = leadInFrame
+    writeCursor(leadInFrame)
   }
 
   /**
@@ -258,9 +283,12 @@ export function useReplayPlayback(o: ReplayPlaybackOptions): ReplayPlayback {
    * sort pas de la fenêtre de gameplay, quel que soit le geste qui l'y envoie. Il peint
    * (`draw`) et fait battre le son (`soundTick`) comme un pas de boucle : un curseur déplacé
    * sans repeindre montrerait la scène de l'instant précédent.
+   *
+   * SA BORNE BASSE EST LE PRÉAMBULE, pas le coup d'envoi : un retour arrière depuis la première
+   * seconde de jeu doit pouvoir redonner à voir ce que la lecture montrait à son ouverture.
    */
   const seekTo = (frame: number) => {
-    const next = Math.min(endFrame, Math.max(startFrame, frame))
+    const next = Math.min(endFrame, Math.max(leadInFrame, frame))
     frameRef.current = next
     writeCursor(next)
     soundTick(frameToMs(next, doc))

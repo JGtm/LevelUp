@@ -27,27 +27,45 @@ export interface HoverLayer {
   onPointerMove: (e: PointerEvent<HTMLCanvasElement>) => void
   onPointerLeave: () => void
 }
-
-/** Les deux gestionnaires à poser tels quels sur la balise `<canvas>`. */
+/** Les gestionnaires à poser tels quels sur la balise `<canvas>`. */
 export interface HoverHandlers {
   onPointerMove: (e: PointerEvent<HTMLCanvasElement>) => void
   onPointerLeave: () => void
+  onPointerDown?: (e: PointerEvent<HTMLCanvasElement>) => void
+  onPointerUp?: (e: PointerEvent<HTMLCanvasElement>) => void
+  onPointerCancel?: (e: PointerEvent<HTMLCanvasElement>) => void
 }
 
 /**
- * hoverHandlers rend les gestionnaires qui servent TOUS les calques donnés.
+ * hoverHandlers rend les gestionnaires qui servent TOUS les calques donnés, et le GLISSER.
  *
  * AUCUN CALQUE N'INTERROMPT LES SUIVANTS : chacun décide seul s'il est concerné. Un calque qui
  * « consommerait » le geste rendrait le survol dépendant de l'ordre de déclaration — ce que le
  * canvas ne faisait pas, et qu'il ne faut surtout pas introduire en factorisant.
+ *
+ * LE GLISSER PASSE PAR ICI, ET PAS PAR UN SECOND JEU D'ATTRIBUTS SUR LA MÊME BALISE. Deux
+ * `{...spread}` sur un même élément ne se composent pas : le second écrase le `onPointerMove` du
+ * premier, et le survol mourrait silencieusement le jour où l'on ajoute le glisser. Ils sont
+ * donc composés ici, où l'ordre est explicite — survol d'abord, déplacement ensuite.
  */
-export function hoverHandlers(...layers: readonly HoverLayer[]): HoverHandlers {
+export function hoverHandlers(
+  layers: readonly HoverLayer[],
+  pan?: {
+    onPointerDown: (e: PointerEvent<HTMLCanvasElement>) => void
+    onPointerMove: (e: PointerEvent<HTMLCanvasElement>) => void
+    onPointerUp: (e: PointerEvent<HTMLCanvasElement>) => void
+  },
+): HoverHandlers {
   return {
     onPointerMove: (e) => {
       for (const l of layers) l.onPointerMove(e)
+      pan?.onPointerMove(e)
     },
     onPointerLeave: () => {
       for (const l of layers) l.onPointerLeave()
     },
+    onPointerDown: pan?.onPointerDown,
+    onPointerUp: pan?.onPointerUp,
+    onPointerCancel: pan?.onPointerUp,
   }
 }

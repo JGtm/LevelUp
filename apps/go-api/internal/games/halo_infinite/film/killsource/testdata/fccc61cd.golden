@@ -50,20 +50,20 @@
 ## COUT PAR VOIE DE LECTURE — ventilation, PAS deux precisions comparables
 marche   : 86 propose(s), 85 apparie(s) au couple exact, 85 publiee(s)
 scan     : 8 propose(s), 7 apparie(s) au couple exact, 7 publiee(s)
-marche, source appartenant a la victime : 2 propose(s), 2 publiee(s)
+marche, source appartenant a la victime : 3 propose(s), 2 publiee(s)
 scan,   source appartenant a la victime : 18 propose(s), 1 publiee(s)
 morts de BOT : 25 propose(s), 2 publiee(s)
 morts infligees PAR un bot : 1 propose(s), 1 apparie(s), 1 publiee(s)
-91 enregistrement(s) lu(s) par LES DEUX voies · ACCORD 85 · DESACCORD 0
+90 enregistrement(s) lu(s) par LES DEUX voies · ACCORD 85 · DESACCORD 0
 DESACCORD doit valoir 0 : sinon l hybride n est plus une PREFERENCE mais un ARBITRAGE
 0 mort(s) a plusieurs candidats en concurrence · 0 enregistrement(s) sans position
 4686 / 4839 paquet(s) a evenements localise(s)
-calibration resolue automatiquement : axisW=16 indexW=2 [score 1114, mediane 317] | recordStateParam=4 [croissance x1.189]
+calibration resolue automatiquement : axisW=16 indexW=2 [score 1113, mediane 316] | recordStateParam=4 [croissance x1.189]
 
 ## SANTE — un verdict porte sur le DOMAINE, pas sur les etiquettes publiees
 verdict : NOMINAL
-118 candidat(s) consulte(s) · 98 publie(s) · 20 inexplique(s) sur les candidats
-ventilation : couple sans equivalent 2 · source-victime non retenue 17 · indice de bot 1
+119 candidat(s) consulte(s) · 98 publie(s) · 21 inexplique(s) sur les candidats
+ventilation : couple sans equivalent 2 · source-victime non retenue 18 · indice de bot 1
 hors roster : 0 — COMPTEUR SEPARE, il ne se compte pas sur les candidats et n entre
    donc PAS dans le taux d inexpliques (un numerateur qui deborde son denominateur
    ne veut rien dire)

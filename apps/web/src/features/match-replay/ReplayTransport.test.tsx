@@ -59,9 +59,6 @@ function makeTimeline(over: Partial<ReplayTimeline> = {}): ReplayTimeline {
     onToggleTracks: vi.fn(),
     playing: true,
     onRequestPause: vi.fn(),
-    startClock: '0:00',
-    midClock: '2:30',
-    endClock: '5:00',
     locale: 'fr',
     ...over,
   }
@@ -78,6 +75,8 @@ function renderTransport(over: Partial<Parameters<typeof ReplayTransport>[0]> = 
   const utils = render(
     <ReplayTransport
       playing
+      autoPlay={false}
+      onToggleAutoPlay={vi.fn()}
       onTogglePlay={onTogglePlay}
       onRestart={onRestart}
       onSeekBy={onSeekBy}
@@ -238,13 +237,21 @@ describe('ReplayTransport — ce qui sort du rejeu', () => {
 
   // LES PASTILLES SONT NOMMÉES À L'ŒIL (planche 2a) : le texte court accompagne l'icône, sans
   // remplacer le nom accessible — trois icônes muettes côte à côte se ressemblent toutes.
-  it('les pastilles portent leur texte court, et gardent leur nom accessible long', () => {
+  // LES LIBELLÉS SONT TOMBÉS LE 2026-09-02 (« vire les labels Image et exporter ») : les
+  // pastilles sont des icônes. CE QUI NE DOIT PAS TOMBER AVEC EUX, c'est leur NOM ACCESSIBLE —
+  // une icône sans nom est une régression pour qui navigue au lecteur d'écran, et c'est
+  // exactement ce qu'un retrait de libellé fait perdre quand personne ne le tient.
+  it('les pastilles sont des icônes nues, mais gardent leur nom accessible long', () => {
     renderTransport()
-    expect(screen.getByRole('button', { name: "Capturer l'image" }).textContent).toContain('Image')
-    expect(screen.getByRole('button', { name: 'Enregistrer la vidéo' }).textContent).toContain('REC')
+    const image = screen.getByRole('button', { name: "Capturer l'image" })
+    const rec = screen.getByRole('button', { name: 'Enregistrer la vidéo' })
+    expect(image.textContent).not.toContain('Image')
+    expect(rec.textContent).not.toContain('REC')
+    expect(image.getAttribute('title')).toBeTruthy()
+    expect(rec.getAttribute('title')).toBeTruthy()
   })
 
-  it('en cours d’enregistrement, la pastille dit « Arrêter »', () => {
+  it('en cours d’enregistrement, la pastille le dit par son nom accessible', () => {
     renderTransport({
       capture: {
         captureImage: vi.fn(),
@@ -254,9 +261,7 @@ describe('ReplayTransport — ce qui sort du rejeu', () => {
     videoExport: null,
       },
     })
-    expect(
-      screen.getByRole('button', { name: "Arrêter l'enregistrement" }).textContent,
-    ).toContain('Arrêter')
+    expect(screen.getByRole('button', { name: "Arrêter l'enregistrement" })).toBeTruthy()
   })
 
   it('à l’arrêt : le bouton dit « Enregistrer la vidéo » et lance au clic', () => {
@@ -434,5 +439,32 @@ describe('ReplayTransport — le panneau est ancre la ou il doit l etre', () => 
     expect(ancre).toHaveClass('relative')
     // Et c'est bien celle qui contient le bouton d'export.
     expect(ancre).toContainElement(screen.getByRole('button', { name: 'Exporter la vidéo' }))
+  })
+})
+
+/**
+ * LA LECTURE AUTOMATIQUE A QUITTÉ LE TIROIR le 2026-09-02 (« on a carrément la place pour un
+ * bouton comme YouTube ») : ces tests ont déménagé depuis `ReplaySettingsDrawer.test.tsx`, avec
+ * leur raison d'être. Le point le plus important est le DERNIER — ce bouton ne met ni en lecture
+ * ni en pause, et rien à l'écran ne le distingue de « Lecture » sinon son nom et son infobulle.
+ */
+describe('ReplayTransport — lecture automatique', () => {
+  it('est un interrupteur, reflète son état et appelle SON callback', () => {
+    const onToggleAutoPlay = vi.fn()
+    const { onTogglePlay } = renderTransport({ autoPlay: false, onToggleAutoPlay })
+    const sw = screen.getByRole('switch', { name: 'Lecture automatique' })
+    expect(sw).toHaveAttribute('aria-checked', 'false')
+    fireEvent.click(sw)
+    expect(onToggleAutoPlay).toHaveBeenCalledTimes(1)
+    // La commande VOISINE est celle qu'on risque de toucher : les deux parlent de lecture.
+    expect(onTogglePlay).not.toHaveBeenCalled()
+  })
+
+  it('dit en clair qu il ne met ni en lecture ni en pause le rejeu ouvert', () => {
+    renderTransport()
+    expect(screen.getByRole('switch', { name: 'Lecture automatique' })).toHaveAttribute(
+      'title',
+      expect.stringContaining('ni en lecture ni en pause'),
+    )
   })
 })

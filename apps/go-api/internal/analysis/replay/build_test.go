@@ -24,7 +24,10 @@ func TestBuildFromPositions_Timeline(t *testing.T) {
 	in := []filmdec.BipedPosition{
 		pos(slot, 10_000, 1, 1, 0.5),
 		pos(slot, 10_100, 2, 2, 0.5),
-		pos(slot, 20_000, 3, 3, 0.5), // +10 s => frame 100
+		// +10 s : au-delà de lifeGapUS, ce point ouvre une NOUVELLE VIE du même slot
+		// (découpe par vie, 2026-09-02 — même règle que buildLifeSpans).
+		pos(slot, 20_000, 3, 3, 0.5), // frame 100
+		pos(slot, 20_100, 4, 4, 0.5), // frame 101
 	}
 	doc := BuildFromPositions("000d5950", "halo_infinite", in, nil, Options{FrameIntervalMS: 100})
 
@@ -34,14 +37,14 @@ func TestBuildFromPositions_Timeline(t *testing.T) {
 	if doc.FrameIntervalMS != 100 {
 		t.Errorf("FrameIntervalMS = %d, attendu 100", doc.FrameIntervalMS)
 	}
-	if doc.FrameCount != 101 || doc.DurationMS != 10_100 {
-		t.Errorf("FrameCount/DurationMS = %d/%d, attendu 101/10100", doc.FrameCount, doc.DurationMS)
+	if doc.FrameCount != 102 || doc.DurationMS != 10_200 {
+		t.Errorf("FrameCount/DurationMS = %d/%d, attendu 102/10200", doc.FrameCount, doc.DurationMS)
 	}
-	if len(doc.Tracks) != 1 {
-		t.Fatalf("attendu 1 track, obtenu %d", len(doc.Tracks))
+	if len(doc.Tracks) != 2 {
+		t.Fatalf("attendu 2 tracks (une par vie du slot), obtenu %d", len(doc.Tracks))
 	}
 	pts := doc.Tracks[0].Points
-	want := []Point{{T: 0, X: 1, Y: 1, Z: 0.5}, {T: 1, X: 2, Y: 2, Z: 0.5}, {T: 100, X: 3, Y: 3, Z: 0.5}}
+	want := []Point{{T: 0, X: 1, Y: 1, Z: 0.5}, {T: 1, X: 2, Y: 2, Z: 0.5}}
 	if len(pts) != len(want) {
 		t.Fatalf("points = %+v, attendu %+v", pts, want)
 	}
@@ -50,8 +53,11 @@ func TestBuildFromPositions_Timeline(t *testing.T) {
 			t.Errorf("point %d = %+v, attendu %+v", i, pts[i], want[i])
 		}
 	}
-	if doc.Tracks[0].StartFrame != 0 || doc.Tracks[0].EndFrame != 100 {
-		t.Errorf("fenêtre de vie = [%d,%d], attendu [0,100]", doc.Tracks[0].StartFrame, doc.Tracks[0].EndFrame)
+	if doc.Tracks[0].StartFrame != 0 || doc.Tracks[0].EndFrame != 1 {
+		t.Errorf("fenêtre de la vie 1 = [%d,%d], attendu [0,1]", doc.Tracks[0].StartFrame, doc.Tracks[0].EndFrame)
+	}
+	if doc.Tracks[1].Slot != slot || doc.Tracks[1].StartFrame != 100 || doc.Tracks[1].EndFrame != 101 {
+		t.Errorf("vie 2 = %+v, attendu slot %d en [100,101]", doc.Tracks[1], slot)
 	}
 }
 

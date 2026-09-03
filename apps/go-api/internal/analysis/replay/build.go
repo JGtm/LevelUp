@@ -59,11 +59,20 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	// Les TIRS entrent dans la construction du pont — non pour désigner un tireur (l'événement
 	// porte déjà son auteur), mais parce que la fermeture A a besoin de savoir QUAND un joueur
 	// agit sans avoir de corps nommé. Cf. closures.go.
-	own := buildOwners(indexBySlot(sorted), opt.Deaths, opt.PlayerIndices, fireRefs(fire))
+	refs := fireRefs(fire)
+	own := buildOwners(indexBySlot(sorted), opt.Deaths, opt.PlayerIndices, refs)
 	// L'IDENTITÉ se pose sur les traces dès que le pont existe : sans elle, un client ne peut
-	// ni nommer un joueur, ni regrouper ses vies, ni colorer une équipe.
-	nameTracks(doc.Tracks, own.SlotXUID)
-	doc.Roster = buildRoster(opt.PlayerIndices, gamertagsOf(opt.Deaths))
+	// ni nommer un joueur, ni regrouper ses vies, ni colorer une équipe. Le nommage se fait
+	// PAR VIE depuis le 2026-09-02 — un slot recyclé porte une identité par occupant.
+	nameTracksByLives(doc.Tracks, own.lives, origin, step)
+	// LES BOTS ENTRENT APRÈS LES HUMAINS : une vie nommée par un xuid n'est jamais écrasée,
+	// et seuls les slots que le pont attribue à un index de bot prennent son nom.
+	nameBotTracks(doc.Tracks, own.Owner, opt.Bots)
+	// LES RELAIS EN DERNIER : le remplaçant hérite des vies restées anonymes après tout ce
+	// que la lecture et les fermetures savaient nommer (cf. successions.go).
+	attributeSuccessions(doc.Tracks, opt.Successions, origin, step,
+		own.DeathOffsetMS, own.DeathOffsetMatches, refs)
+	doc.Roster = buildRoster(opt.PlayerIndices, gamertagsOf(opt.Deaths), opt.Bots)
 	// L'ORIGINE se publie APRÈS le pont : son témoin (le calage du fil des morts) en sort.
 	doc.OriginMs = resolveOriginMs(origin, opt.FilmClockOriginUS, own.DeathOffsetMS, own.DeathOffsetMatches)
 	slog.Info("pont slot->joueur",
@@ -117,6 +126,16 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	// « sur M vies » se lirait comme une exhaustivite.
 	doc.Coverage.Equipment = equipmentCoverage(doc.EquipmentEpisodes, doc.Tracks)
 	doc.Coverage.Equipment.KillsRead = killsRead
+	// LE COUP D'ENVOI, date par le premier mouvement des pistes (cf. t0_film.go). Il se pose
+	// APRES la couverture et non a cote d'`OriginMs` (l. 528) pour deux raisons : son verdict
+	// vit dans `doc.Coverage`, qui n'existe qu'ici, et il se calcule sur les pistes PUBLIEES,
+	// posees juste au-dessus. SANS ORIGINE, PAS DE COUP D'ENVOI : le resultat est un instant
+	// sur l'horloge du fil, et sans origine cette horloge n'est pas etablie — publier une
+	// mesure calee sur zero la rendrait fausse de 3,6 s a 50,8 s selon le match.
+	if doc.OriginMs != nil {
+		doc.T0FilmMs, doc.Coverage.T0Film = DetectT0Film(
+			t0FilmTracksOf(doc.Tracks), interval, *doc.OriginMs, matchID)
+	}
 	// Les TRACTIONS de grappin : fenetre mesuree par vie + ancre en coordonnees monde
 	// (cf. grapple_lines.go). L'ancre exige les bornes de la carte : sans MapQuant,
 	// aucune traction (regle map_bounds.go — pas de bornes, pas de coordonnee monde).
@@ -318,13 +337,24 @@ func keepShotsOfPublishedTracks(shots []Shot, tracks []Track) []Shot {
 }
 
 // decimateTracks projette les positions sur la grille de frames (un point par slot et par
-// frame, le premier observé gagne) et produit une track par slot, dans l'ordre de première
-// apparition.
+// frame, le premier observé gagne) et produit UNE TRACK PAR VIE — un slot qui disparaît plus
+// de `lifeGapUS` puis revient ouvre une nouvelle track, la MÊME règle de découpe que
+// `buildLifeSpans` (lot identité des vies, 2026-09-02).
+//
+// POURQUOI PAR VIE ET PLUS PAR SLOT. Une track unique par slot fusionnait les vies d'un slot
+// RECYCLÉ (partant remplacé par un arrivant ou un bot) : le premier porteur nommé gardait
+// tout l'intervalle, le second n'avait aucune vie — sa fiche restait « Éliminé /
+// Réapparition ? » pendant que son corps se déplaçait sous le nom du premier. Le contrat
+// client (buildSlotOwnership, résolveurs frame-aware par slot) attend des vies disjointes.
+// L'ordre reste celui de première apparition du slot, les vies d'un slot en ordre
+// chronologique — déterministe, artefact diffable.
 func decimateTracks(sorted []filmdec.BipedPosition, origin, step uint64, minPoints int,
 	scoped func(slot uint32, tsUS uint64) int) []Track {
 	type acc struct {
+		done      [][]Point // les vies CLOSES de ce slot, dans l'ordre
 		pts       []Point
 		lastFrame int
+		lastUS    uint64
 	}
 	accs := map[uint32]*acc{}
 	var order []uint32
@@ -339,6 +369,15 @@ func decimateTracks(sorted []filmdec.BipedPosition, origin, step uint64, minPoin
 			accs[p.Slot] = a
 			order = append(order, p.Slot)
 		}
+		// Trou au-delà de lifeGapUS = NOUVELLE VIE : la track courante se clôt, la suivante
+		// s'ouvre. Même seuil que buildLifeSpans — deux découpes divergentes rendraient le
+		// nommage par vie inappariable.
+		if len(a.pts) > 0 && int64(p.TimestampUS)-int64(a.lastUS) > lifeGapUS {
+			a.done = append(a.done, a.pts)
+			a.pts = nil
+			a.lastFrame = -1
+		}
+		a.lastUS = p.TimestampUS
 		if frame == a.lastFrame {
 			continue
 		}
@@ -380,17 +419,19 @@ func decimateTracks(sorted []filmdec.BipedPosition, origin, step uint64, minPoin
 	}
 	tracks := make([]Track, 0, len(order))
 	for _, slot := range order {
-		pts := accs[slot].pts
-		if len(pts) < minPoints {
-			continue
+		a := accs[slot]
+		for _, pts := range append(a.done, a.pts) {
+			if len(pts) < minPoints {
+				continue
+			}
+			tracks = append(tracks, Track{
+				Slot:       slot,
+				Team:       -1,
+				Points:     pts,
+				StartFrame: pts[0].T,
+				EndFrame:   pts[len(pts)-1].T,
+			})
 		}
-		tracks = append(tracks, Track{
-			Slot:       slot,
-			Team:       -1,
-			Points:     pts,
-			StartFrame: pts[0].T,
-			EndFrame:   pts[len(pts)-1].T,
-		})
 	}
 	return tracks
 }

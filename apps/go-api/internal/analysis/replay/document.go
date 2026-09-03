@@ -412,7 +412,63 @@ package replay
 // prise suivante, le client la dérive des périodes et des pistes déjà publiées (dernier
 // point du lâcheur), sans qu'aucune position inventée n'entre dans l'artefact. Chronique,
 // sources et refus : document_bomb_carries.go.
-const SchemaVersion = 34
+//
+// CE QUE LA VERSION 35 PORTE. LE RETOUR DU DRAPEAU DE CTF, dans ses deux moitiés. (1) Le retour
+// AUTOMATIQUE est enfin DATÉ : un drapeau resté au sol rentre chez lui quand l'OBJET renaît à son
+// socle (`coverage.flagCarries.homeByObject`). Jusqu'ici aucune chaîne ne le datait — le statborg
+// ne crédite personne — et les états `dropped` couraient jusqu'à la reprise ou la fin de l'axe,
+// des lâchers de plus de deux minutes qui n'ont jamais existé à l'écran. Contrôle : sur les
+// retours que le statborg CRÉDITE, les deux chaînes tombent à la même frame dans 15 cas sur 15
+// (100 %, écart médian 1 frame ; compté par ÉVÉNEMENT crédité DISTINCT, `flag_returns` ne nommant
+// pas son drapeau). (2) `flagReturnZone` publie la RÈGLE du mode — rayon de la zone de
+// retour, minuterie à vide, durée à un défenseur — que le titre déclare dans son manifeste. LA
+// CONTESTATION N'EN FAIT PAS PARTIE : le jeu la décrit, mais l'utilisateur ne l'a jamais observée,
+// ses constantes sont illisibles, et la mesure explique le silence (sur 72 lâchers où un ennemi
+// entre dans la zone, 56 finissent par une REPRISE — à 1,3 m, un ennemi ne conteste pas, il
+// RAMASSE). (3) LA VARIANTE « DRAPEAU NEUTRE » est reconnue : elle ne publie
+// plus DEUX drapeaux qui n'existent pas mais UN SEUL, d'équipe -1, au socle du centre. Le mode
+// n'est pas dans le film — c'est l'OBJET qui tranche, par le socle où il renaît, et la couverture
+// publie le verdict avec les deux comptes qui le fondent (`neutralFlag`, `neutralBirths`,
+// `teamBirths`). Un artefact 34 doit se lire « à re-cuire » : ses drapeaux au sol n'ont ni retour
+// automatique ni zone, et ses parties à drapeau neutre portent un drapeau de trop. (Ce lot avait
+// pris le 29 sur `wt/ctf-zone-retour` pendant que la lunette, les ramassages et la bombe
+// prenaient 29-34 sur `feat/v75` : renumerote 35 au merge du 2026-09-02, l'arbitrage ecrit aux
+// schemas 30, 31 et 33.)
+//
+// CE QUE LA VERSION 36 PORTE : L'IDENTITÉ DES VIES (lot du 2026-09-02, retour user « joueurs
+// en attente de respawn éternels / quit-rejoin-bots »). (1) UNE TRACK = UNE VIE, réellement :
+// la découpe applique `lifeGapUS` (la règle de `buildLifeSpans`) là où une track par SLOT
+// fusionnait les vies d'un slot recyclé — le premier porteur nommé « vivait » à la place de
+// son remplaçant, dont la fiche restait « Éliminé » à jamais. (2) LE NOMMAGE SE FAIT PAR VIE
+// (`nameTracksByLives`, les fermetures nomment aussi la vie qu'elles closent) : un slot
+// recyclé porte une identité PAR OCCUPANT. (3) LES BOTS EXISTENT : `roster[].bot` (entrée
+// sans xuid, nom suffixé « [bot] », déclarée par BOT_METADATA) et `tracks[].bot` (le nom du
+// bot sur les vies que le pont attribue à son index — fermeture A, jamais une devinette).
+// La version monte pour la raison des montées v22/v23/v33 : la reprise du backfill se fait
+// par SchemaVersion, et un artefact 35 doit se lire « à re-cuire » — sans quoi aucun rejeu
+// déjà cuit ne montrerait ni les occupants d'un slot recyclé ni les bots.
+// CE QUE LA VERSION REFUSE : nommer une vie que rien ne fonde (les segments anonymes d'un
+// slot nommé RESTENT anonymes — l'héritage de slot était exactement le bug corrigé) ; et le
+// COMPTEUR DE RESPAWN RÉEL (`player-respawn-timer`, ti=5 i1) — décodé mais aux entiers BRUTS
+// dont l'unité n'a jamais été calibrée (protocole cmd/tmp_vitals non joué) : publier une
+// grandeur à unité devinée est interdit ici, la condition de reprise est au registre.
+//
+// CE QUE LA VERSION 37 PORTE. LE COUP D'ENVOI, DATE PAR LE FILM (`t0FilmMs`) : l'instant ou la
+// grille se leve, lu dans le PREMIER MOUVEMENT des pistes au lieu d'etre estime des
+// `first_joined_time` de l'API. L'estimation d'API degenere a ~0 ms sur 10-15 % des matchs
+// (elle date alors le coup d'envoi au chargement) ; le film, lui, le porte directement, et la
+// mesure du 2026-09-02 le montre PLUS STABLE que l'etalon — ecart-type 9 752 ms contre
+// 12 764 ms sur les 49 matchs au T0-API sain, avec une marge interne au film de CV 0,013.
+// Champ optionnel, mais la version monte pour la raison exacte des montees v4 (l'origine) et
+// v22 : la reprise du backfill se fait par SchemaVersion, et un artefact 36 doit se lire
+// « a re-cuire », pas « a jour » — sans quoi aucun rejeu deja cuit ne demarrerait sur le coup
+// d'envoi. `coverage.t0Film` publie le verdict, refus compris. CE QUE LA VERSION REFUSE : un
+// zero ambigu. Pas de mouvement detectable, une rafale de depart a moins de deux partants, ou
+// un premier mouvement a plus de 120 s de la frame 0 -> champ ABSENT, refus journalise, raison
+// publiee. Chronique, seuils et mesures : t0_film.go. (Ce lot avait pris le 36 sur
+// `wt/t0-film` pendant que l'identite des vies prenait le 36 sur `feat/v75` : renumerote 37
+// au merge du 2026-09-02 — l'arbitrage par renumerotation ecrit aux schemas 30, 31, 33 et 35.)
+const SchemaVersion = 37
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {
@@ -453,6 +509,26 @@ type ReplayDocument struct {
 	// donc traitée en repli alors qu'elle est mesurée. ABSENT veut dire, et seulement :
 	// l'origine n'est pas établie — le client retombe alors sur son appariement.
 	OriginMs *int64 `json:"originMs,omitempty"`
+	// T0FilmMs est LE COUP D'ENVOI DU MATCH mesuré dans le film, sur la MÊME horloge
+	// qu'`OriginMs` (celle du fil des éliminations) : l'instant où la grille se lève, daté par
+	// le premier mouvement des pistes.
+	//
+	// CE QU'IL FERME. Le T0 servi jusqu'ici est estimé des `first_joined_time` de l'API ; sur
+	// 10-15 % des matchs ces horodatages collent au `start_time` et le T0 tombe à ~0, ce qui
+	// fait démarrer le rejeu sur des joueurs statufiés pendant tout le décompte. Ce champ le
+	// mesure au lieu de l'estimer, et la mesure est plus stable que l'étalon (écart-type
+	// 9 752 ms contre 12 764 ms sur les 49 matchs au T0-API sain).
+	//
+	// D'OÙ IL VIENT : `originMs` plus la frame du premier mouvement détecté, toutes pistes
+	// confondues. Aucune base, aucune horloge murale, aucune constante de jeu en dur — le
+	// détecteur mesure par match. Seuils, refus et mesures : t0_film.go.
+	//
+	// POINTEUR, PAS int64 : même PIÈGE omitempty que sur `OriginMs` ci-dessus. Un coup d'envoi
+	// exactement à zéro (film dont la frame 0 est le coup d'envoi ET dont l'origine est nulle)
+	// serait omis et relu comme « pas de mesure ». ABSENT veut dire, et seulement : le
+	// détecteur a REFUSÉ — `coverage.t0Film.reason` dit lequel des trois refus, et le client
+	// retombe sur le T0 de l'API.
+	T0FilmMs *int64 `json:"t0FilmMs,omitempty"`
 	// Geometry est le fond de carte : props Forge orientés (repères contextuels, pas les
 	// sols). Absent si la géométrie n'a pas été fournie au build.
 	Geometry []MapObject `json:"geometry,omitempty"`
@@ -643,6 +719,15 @@ type ReplayDocument struct {
 	// FlagCarries est LA VIE DE CHAQUE DRAPEAU de CTF, en intervalles d'état (forme, sources et refus :
 	// document_objectives_live.go). Absente hors CTF — `coverage.flagCarries` dit lequel des deux silences.
 	FlagCarries []FlagCarry `json:"flagCarries,omitempty"`
+	// FlagReturnZone est LA RÈGLE DE RETOUR du mode, telle que le manifeste du titre la donne
+	// (schéma 35) : le rayon de la zone autour d'un drapeau tombé, la minuterie qui le ramène
+	// tout seul, et la durée quand UN défenseur s'y tient. Le client en tire le cercle et la
+	// jauge ; l'occupation, elle, se compte chez lui — l'équipe d'un joueur n'est PAS dans le
+	// film (cf. Track.Team), elle vit dans la base et le client la joint déjà.
+	//
+	// ABSENTE quand le titre ne la déclare pas, ou quand le film n'est pas une partie de CTF :
+	// rien à dessiner, et surtout pas un cercle sur un mode qui n'en a pas.
+	FlagReturnZone *FlagReturnZone `json:"flagReturnZone,omitempty"`
 	// ObjectiveObjects est OÙ SE TROUVE L'OBJET D'OBJECTIF QUAND PERSONNE NE LE PORTE — les vies
 	// LIBRES du crâne d'Oddball (forme, canal et refus : document_objective_objects.go). Un trou
 	// entre deux vies est un portage, mais le document ne dit PAS par qui : l'oracle du porteur a
@@ -705,6 +790,11 @@ type RosterEntry struct {
 	// PAS, et que seule la base porte : l'équipe, et les compteurs du match. Vide si
 	// l'enregistrement ne le portait pas.
 	Name string `json:"name,omitempty"`
+	// Bot est vrai pour une entrée déclarée par BOT_METADATA (schéma 36) : son XUID est VIDE
+	// — un bot n'en a pas, et le normaliser en pseudo-identifiant fusionnerait des bots — et
+	// son Name porte le suffixe « [bot] », comme la base l'écrit. FilmIndex est le slot du
+	// roster de réplication que le paquet type 12 déclare.
+	Bot bool `json:"bot,omitempty"`
 }
 
 // Loadout est l'ensemble des armes PORTÉES par un slot à un instant de référence.
@@ -806,7 +896,15 @@ type Track struct {
 	// (cf. lives.go). Vide quand la vie n'a pas été nommée — 15 vies sur 105 sur le film de
 	// référence, dont 4 antérieures au début réel du match et 6 survivants de fin de partie,
 	// que le film ne clôt par aucun événement.
-	XUID   string  `json:"xuid,omitempty"`
+	XUID string `json:"xuid,omitempty"`
+	// Bot est le NOM du bot qui porte cette vie (schéma 36), suffixe « [bot] » compris — un
+	// bot n'a pas de xuid, et c'est le seul cas où une vie est nommée sans en avoir un.
+	//
+	// D'OÙ IL VIENT : BOT_METADATA (paquet type 12) déclare slot de roster + nom, et le pont
+	// des fermetures attribue un slot de biped à cet index quand l'unicité le permet
+	// (cf. nameBotTracks). Une vie de bot que le pont ne peut pas attribuer reste anonyme —
+	// même règle que les humains : rien plutôt que faux.
+	Bot    string  `json:"bot,omitempty"`
 	Points []Point `json:"points"`
 	// StartFrame / EndFrame (optionnels) bornent la vie de la track sur l'axe de temps :
 	// le client peut masquer l'entité hors de cette fenêtre au lieu de la figer.

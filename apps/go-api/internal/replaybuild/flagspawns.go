@@ -18,12 +18,17 @@ package replaybuild
 // Joindre sur l'un ou l'autre ne trouve rien, et ne dit rien. C'est deja par `map_id` que le
 // service sert le calque STATIQUE des objectifs (`service/replay_map_objectives.go`).
 //
-// # Les socles NEUTRES sont ecartes, et c'est une regle de mode
+// # Les socles NEUTRES voyagent, et c'est le CALQUE qui tranche (correction du 2026-08-31)
 //
 // Chaque carte de CTF declare TROIS `flag_spawn` : un par equipe, plus un NEUTRE au centre, qui
-// n'appartient a aucun camp et ne sert qu'aux variantes « drapeau neutre ». Le retenir sur une
-// partie de CTF ordinaire ferait apparaitre un troisieme drapeau qui n'existe pas dans le match,
-// immobile a la maison pour l'eternite.
+// n'appartient a aucun camp et ne sert qu'aux variantes « drapeau neutre ».
+//
+// CE FICHIER LES ECARTAIT, et la raison etait bonne : sur une partie ordinaire, retenir le neutre
+// ferait un troisieme drapeau immobile pour l'eternite. Mais la consequence l'etait moins — une
+// partie A DRAPEAU NEUTRE publiait DEUX drapeaux qui n'existaient pas, et repartissait entre eux
+// les portages d'un objet unique. Le tri se fait donc desormais LA OU L'ON PEUT LE FAIRE : dans
+// le calque, qui voit ou l'OBJET drapeau renait et en deduit la variante (`flag_neutral.go`).
+// Ici on fournit ce que la carte declare, sans decider du mode.
 //
 // # Toute absence est une DEGRADATION JOURNALISEE, jamais une erreur
 //
@@ -39,7 +44,9 @@ import (
 	"levelup/go-api/internal/domain/title"
 )
 
-// flagSpawns rend les socles de drapeau D'EQUIPE de la carte du match, en coordonnees monde.
+// flagSpawns rend TOUS les socles de drapeau de la carte du match, en coordonnees monde — les
+// deux socles d'equipe ET le socle neutre du centre. Le calque retient ceux qui correspondent a
+// la variante qu'il reconnait.
 func (b *Builder) flagSpawns(matchID, mapID string) []replay.FlagSpawn {
 	if mapID == "" {
 		slog.Debug("replaybuild: match sans map_id — drapeaux sans equipe proprietaire",
@@ -56,11 +63,8 @@ func (b *Builder) flagSpawns(matchID, mapID string) []replay.FlagSpawn {
 			"map_id", mapID, "match_id", matchID, "titleSlug", b.titleSlug)
 		return nil
 	}
-	out := make([]replay.FlagSpawn, 0, 2)
+	out := make([]replay.FlagSpawn, 0, 3)
 	for _, p := range entry.PointsOfRole(mapvar.RoleFlagSpawn) {
-		if p.TeamIndex == replay.TeamNeutral {
-			continue // socle du drapeau NEUTRE : pas un camp, pas un drapeau de cette partie
-		}
 		out = append(out, replay.FlagSpawn{
 			Team: p.TeamIndex, X: float32(p.Center.X), Y: float32(p.Center.Y),
 		})

@@ -3,23 +3,23 @@
  *
  * POURQUOI CE FICHIER EXISTE. Le fil écrit cinq noms — tueur, victime, défunt d'une mort
  * neutre, décoré d'une médaille seule, assistant — et les cinq portaient EXACTEMENT le même
- * couple `<PlayerMark/>` + `<span>` coloré. Le retour C1 du 2026-08-18 change la règle des
- * deux à la fois : cinq copies auraient divergé au premier oubli (CLAUDE.md n°6).
+ * `<span>` coloré. Centraliser leur rendu évite que cinq copies divergent au premier oubli
+ * (CLAUDE.md n°6).
  *
- * LES DEUX RÈGLES, ET CE QU'ELLES CORRIGENT :
+ * PLUS AUCUN GLYPHE DANS LE FIL (décision D5, 2026-09-02). Le fil a porté deux marques
+ * successives devant un nom : le rond du joueur actif — retiré le 2026-08-18 (retour C1,
+ * « il y a un symbole rond dans un cercle affiché, je sais pas ce que c'est ») — puis le
+ * glyphe « ami » (deux silhouettes, ex-`PlayerMark.tsx`) qui lui survivait seul. Le
+ * 2026-09-02 le user tranche : plus un seul glyphe au fil, quelle que soit la marque. Les
+ * FICHES et la CARTE gardent leur PROPRE grammaire de formes (losange/anneau/cercle sur le
+ * marqueur de carte, `replayMarkers.ts`) — une grammaire distincte, jamais partagée avec le
+ * fil, qui ne bouge pas.
  *
- *  1. LE GLYPHE « JOUEUR ACTIF » NE S'AFFICHE PLUS ICI. « Il y a un symbole rond dans un
- *     cercle affiché, je sais pas ce que c'est » — le lecteur ne l'a pas reconnu, et l'enquête
- *     du lot R2-V a montré que ce rond dans un cercle était bien ce glyphe (`PlayerMark`,
- *     forme `me`). Sur SON propre fil, savoir lequel des noms est le sien ne vaut pas un
- *     signe de plus par ligne. La marque « ami », elle, RESTE : elle distingue des gens dont
- *     rien d'autre ne dit qu'on les connaît. Les FICHES et la CARTE gardent les deux marques
- *     (grammaire D5) — c'est le fil, et lui seul, qui allège.
- *
- *  2. LE NOM D'UN JOUEUR MARQUÉ PASSE AU TOKEN `success`. C'est le vert demandé le 18/08 pour
- *     le marqueur de carte, porté ici sur le fil : « colorer le joueur actif et ses amis ».
- *     Il remplace la couleur d'ÉQUIPE sur ce nom seulement — le liseré gauche de la ligne et
- *     la teinte de l'icône d'arme continuent de dire le camp, la ligne ne perd donc rien.
+ * L'ENCRE `success`, ELLE, RESTE. C'est le vert demandé le 18/08 pour le marqueur de carte,
+ * porté ici sur le fil : « colorer le joueur actif et ses amis ». Sans glyphe, c'est
+ * désormais le SEUL signe qui distingue un nom marqué — retirer aussi l'encre effacerait une
+ * information plutôt que l'alléger. Elle remplace la couleur d'ÉQUIPE sur ce nom seulement —
+ * la teinte de l'icône d'arme continue de dire le camp, la ligne ne perd donc rien.
  *
  * ACCESSIBILITÉ : retirer un glyphe ne doit pas retirer une information. Le joueur de la page
  * garde son libellé pour les lecteurs d'écran (`sr-only`) — à l'écran il n'y a plus qu'une
@@ -29,10 +29,9 @@ import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 
 import { REPLAY_TEXT, type ReplayLocale } from './i18n'
 import type { PlayerMarkKind } from './playerMarks'
-import { PlayerMark } from './PlayerMark'
 
 interface Props {
-  /** Marque d'identité du joueur, ou rien. */
+  /** Marque d'identité du joueur, ou rien — décide de l'encre (`feedNameInk`), plus d'un glyphe. */
   kind: PlayerMarkKind | undefined
   name: string
   /**
@@ -57,13 +56,9 @@ export function feedNameInk(
 export function FeedName({ kind, name, color, locale, className }: Props) {
   const ink = feedNameInk(kind, color)
   return (
-    <>
-      {/* Le glyphe « ami » seulement : cf. règle 1 de l'en-tête. */}
-      <PlayerMark kind={kind === 'me' ? undefined : kind} locale={locale} />
-      <span className={`truncate ${className ?? ''}`} style={ink ? { color: ink } : undefined}>
-        {name}
-        {kind === 'me' && <span className="sr-only">{` (${REPLAY_TEXT[locale].markMe})`}</span>}
-      </span>
-    </>
+    <span className={`truncate ${className ?? ''}`} style={ink ? { color: ink } : undefined}>
+      {name}
+      {kind === 'me' && <span className="sr-only">{` (${REPLAY_TEXT[locale].markMe})`}</span>}
+    </span>
   )
 }

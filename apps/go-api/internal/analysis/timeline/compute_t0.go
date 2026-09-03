@@ -22,13 +22,27 @@ const (
 	T0QualityNegative T0Quality = "negative"
 	// T0QualitySuspiciousHigh : T0 > seuil max plausible → rejet.
 	T0QualitySuspiciousHigh T0Quality = "suspicious_high"
+	// T0QualityFilmMovement : T0 MESURÉ dans le film au premier mouvement des joueurs
+	// (replay.DetectT0Film), et non estimé des `first_joined_time` de l'API.
+	//
+	// ComputeT0 NE LA REND JAMAIS, et ce n'est pas une omission : cette qualité ne se
+	// calcule pas depuis des participations, elle vient d'une autre source de vérité —
+	// l'artefact de rejeu. Elle vit ici parce que c'est l'énumération de la COLONNE
+	// `t0_quality`, pas celle des sorties de cette fonction ; l'écrire en littéral chez
+	// ses deux écrivains (cmd/backfill_t0_film et le fil de l'eau post-sync) en aurait
+	// fait une chaîne magique dupliquée.
+	//
+	// Elle PRIME sur les qualités estimées (décision D2 du plan T0-film du 2026-09-02) :
+	// dispersion 9 752 ms contre 12 764 ms sur les 49 matchs au T0-API sain, et aucune
+	// valeur invraisemblable côté film.
+	T0QualityFilmMovement T0Quality = "film_movement"
 )
 
 // Computed indique si la qualité correspond à un T0 exploitable (stockable) ou
 // à un rejet (T0 doit rester NULL, fallback T0=0 au runtime).
 func (q T0Quality) Computed() bool {
 	switch q {
-	case T0QualityOK, T0QualitySingleSource, T0QualitySpreadHigh:
+	case T0QualityOK, T0QualitySingleSource, T0QualitySpreadHigh, T0QualityFilmMovement:
 		return true
 	default:
 		return false

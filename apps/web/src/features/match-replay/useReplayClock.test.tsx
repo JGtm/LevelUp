@@ -19,7 +19,15 @@ import type { ReplayWindowBounds } from './replayWindow'
 const DOC = { frameIntervalMs: 100, frameCount: 600, durationMs: 60_000 } as unknown as ReplayDocumentReady
 
 /** La fenêtre de gameplay du témoin : la fin tombe au frame 500. */
-const WINDOW: ReplayWindowBounds = { startFrame: 10, endFrame: 500, startMs: 1_000, endMs: 50_000 }
+// `leadInFrame` est là pour le TYPE : l'horloge ne lit que `startMs` et `endFrame` — c'est
+// précisément ce que la décision D3 (préambule de lecture, 2026-09-02) garantit.
+const WINDOW: ReplayWindowBounds = {
+  startFrame: 10,
+  leadInFrame: 0,
+  endFrame: 500,
+  startMs: 1_000,
+  endMs: 50_000,
+}
 
 function mount(playWindow: ReplayWindowBounds | null, onFrameChange: (f: number) => void) {
   return renderHook(() => useReplayClock({ doc: DOC, playWindow, onFrameChange })).result.current

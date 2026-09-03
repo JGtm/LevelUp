@@ -13,6 +13,12 @@
  * ET DEPUIS LE 2026-08-26, « le début » et « la fin » sont ceux du MATCH : la dernière série
  * vérifie que la fenêtre de gameplay (`replayWindow.ts`) déplace les deux bornes — départ,
  * arrêt, « Recommencer » et rembobinage — sans rien changer quand elle vaut `null`.
+ *
+ * DEPUIS LE 2026-09-02, « le début de la LECTURE » et « le début du MATCH » ne sont plus le même
+ * point : la lecture se pose une seconde plus tôt (`leadInFrame`, décision D3), la frise et
+ * l'horloge restent au coup d'envoi. Les cas ci-dessous distinguent donc les deux — `startFrame`
+ * publié d'un côté, `frameRef` de l'autre. Un test qui les confondrait ne verrait pas la
+ * régression que ce lot craint : un préambule qui contaminerait le cadrage.
  */
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -90,9 +96,17 @@ function mount(
   return { ...view, draw, soundTick, onEnded, onTransportGesture }
 }
 
-/** Une fenêtre de gameplay dans le document de test : le match court de l'image 10 à la 40. */
+/**
+ * Une fenêtre de gameplay dans le document de test : le match court de l'image 10 à la 40.
+ *
+ * LA CADENCE IMPLICITE DE CETTE FIXTURE EST DE 1 000 ms PAR IMAGE (10 000 ms pour l'image 10,
+ * 40 000 pour la 40) : la seconde de préambule (`LEAD_IN_MS`) vaut donc UNE image, et
+ * `leadInFrame` tombe sur la 9. C'est là que la lecture se pose ; la frise, elle, part
+ * toujours de la 10 (D3, 2026-09-02).
+ */
 const FENETRE: ReplayWindowBounds = {
   startFrame: 10,
+  leadInFrame: 9,
   endFrame: 40,
   startMs: 10_000,
   endMs: 40_000,
@@ -126,7 +140,7 @@ describe('useReplayPlayback — la lecture automatique (point 22 du 2026-08-29)'
     expect(pending).toHaveLength(0)
   })
 
-  it('en pause, le curseur se pose quand même AU COUP D ENVOI, et la scène est peinte', () => {
+  it('en pause, le curseur se pose quand même AU COUP D ENVOI (moins son préambule), et la scène est peinte', () => {
     // SANS CE POSITIONNEMENT, un rejeu ouvert en pause resterait sur l'image zéro du FILM —
     // c'est-à-dire sur le countdown d'avant-match, joueurs figés. Le cadrage vaut lecture ou
     // pas ; seule la boucle dépend de la préférence.
@@ -134,7 +148,7 @@ describe('useReplayPlayback — la lecture automatique (point 22 du 2026-08-29)'
     const frameRef = createRef<number>() as RefObject<number>
     frameRef.current = 0
     const { draw } = mount(frameRef, FENETRE)
-    expect(frameRef.current).toBe(FENETRE.startFrame)
+    expect(frameRef.current).toBe(FENETRE.leadInFrame)
     expect(draw).toHaveBeenCalled()
     expect(pending).toHaveLength(0)
   })
@@ -233,19 +247,21 @@ describe('useReplayPlayback — la fin du rejeu reste sur l’état final', () =
 })
 
 describe('useReplayPlayback — la fenêtre de gameplay borne la lecture', () => {
-  it('expose les DEUX bornes du match, pas celles du film', () => {
+  it('expose les DEUX bornes du match, pas celles du film — et le préambule NE les déplace pas', () => {
     const frameRef = createRef<number>() as RefObject<number>
     frameRef.current = 0
     const { result } = mount(frameRef, FENETRE)
+    // LA BORNE PUBLIÉE RESTE LE COUP D'ENVOI (D3) : c'est elle que la frise prend pour minimum
+    // (`useReplayTimeline.minFrame`). La lecture, elle, se pose une image plus tôt.
     expect(result.current.startFrame).toBe(10)
     expect(result.current.endFrame).toBe(40)
   })
 
-  it('la PREMIÈRE lecture démarre au coup d’envoi, et la scène y est peinte', () => {
+  it('la PREMIÈRE lecture démarre au PRÉAMBULE (une seconde avant le coup d’envoi), et la scène y est peinte', () => {
     const frameRef = createRef<number>() as RefObject<number>
     frameRef.current = 0
     const { draw } = mount(frameRef, FENETRE)
-    expect(frameRef.current).toBe(10)
+    expect(frameRef.current).toBe(FENETRE.leadInFrame)
     expect(draw).toHaveBeenCalled()
   })
 
@@ -267,18 +283,18 @@ describe('useReplayPlayback — la fenêtre de gameplay borne la lecture', () =>
     expect(pending).toHaveLength(0)
   })
 
-  it('« Recommencer » ramène au coup d’envoi, pas à l’image zéro', () => {
+  it('« Recommencer » ramène au préambule du coup d’envoi, pas à l’image zéro du film', () => {
     const frameRef = createRef<number>() as RefObject<number>
     frameRef.current = 33
     const { result } = mount(frameRef, FENETRE)
     act(() => {
       result.current.restart()
     })
-    expect(frameRef.current).toBe(10)
+    expect(frameRef.current).toBe(FENETRE.leadInFrame)
     expect(result.current.playing).toBe(true)
   })
 
-  it('« Lecture » sur un rejeu terminé repart du coup d’envoi', () => {
+  it('« Lecture » sur un rejeu terminé repart du préambule du coup d’envoi', () => {
     const frameRef = createRef<number>() as RefObject<number>
     frameRef.current = 40
     const { result } = mount(frameRef, FENETRE)
@@ -287,7 +303,7 @@ describe('useReplayPlayback — la fenêtre de gameplay borne la lecture', () =>
     act(() => {
       result.current.togglePlay()
     })
-    expect(frameRef.current).toBe(10)
+    expect(frameRef.current).toBe(FENETRE.leadInFrame)
     expect(result.current.playing).toBe(true)
   })
 
@@ -385,7 +401,7 @@ describe('useReplayPlayback — les commandes de transport préviennent le son',
       result.current.restart()
     })
     expect(onTransportGesture).toHaveBeenCalledTimes(1)
-    expect(frameRef.current).toBe(10)
+    expect(frameRef.current).toBe(FENETRE.leadInFrame)
     expect(result.current.playing).toBe(true)
   })
 
@@ -442,14 +458,14 @@ describe('useReplayPlayback — les sauts', () => {
     expect(soundTick).toHaveBeenCalledTimes(1)
   })
 
-  it('`seekBy` est borné aux DEUX bouts de la fenêtre de gameplay', () => {
+  it('`seekBy` est borné aux DEUX bouts : le préambule en bas, la fin déclarée en haut', () => {
     const frameRef = createRef<number>() as RefObject<number>
     frameRef.current = 20
     const { result } = mount(frameRef, FENETRE)
     act(() => {
       result.current.seekBy(-10) // 100 images en arrière : bien avant le coup d'envoi
     })
-    expect(frameRef.current).toBe(10)
+    expect(frameRef.current).toBe(FENETRE.leadInFrame)
     act(() => {
       result.current.seekBy(10) // 100 images en avant : bien après la fin déclarée
     })
@@ -479,7 +495,7 @@ describe('useReplayPlayback — les sauts', () => {
     act(() => {
       result.current.stepFrames(-40)
     })
-    expect(frameRef.current).toBe(10)
+    expect(frameRef.current).toBe(FENETRE.leadInFrame)
   })
 })
 
@@ -523,7 +539,10 @@ describe('useReplayPlayback — le remplissage de la frise suit le curseur', () 
     act(() => {
       result.current.restart()
     })
-    expect(el.value).toBe('10')
+    expect(el.value).toBe('9')
+    // Le préambule est EN DEÇÀ de la frise : la part parcourue y serait négative, le bornage
+    // de `writeCursor` la ramène à zéro. C'est ce qui rend la seconde de préambule invisible
+    // sur la barre plutôt que fautive.
     expect(played(el)).toBe('0%')
   })
 
@@ -569,9 +588,9 @@ describe('useReplayPlayback — le remplissage de la frise suit le curseur', () 
     )
     const el = attachSlider(view.result.current.sliderRef)
     view.rerender({ playWindow: FENETRE })
-    // Le curseur est au coup d'envoi, et le remplissage part de zéro AVEC lui.
-    expect(frameRef.current).toBe(10)
-    expect(el.value).toBe('10')
+    // Le curseur est au PRÉAMBULE du coup d'envoi, et le remplissage part de zéro AVEC lui.
+    expect(frameRef.current).toBe(FENETRE.leadInFrame)
+    expect(el.value).toBe('9')
     expect(played(el)).toBe('0%')
   })
 
