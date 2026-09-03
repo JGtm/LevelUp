@@ -87,6 +87,121 @@ func TestVehicleEpisodeMachineForms(t *testing.T) {
 	}
 }
 
+// TestVehicleEpisodeCarriesEventVehicle : la SORTIE nomme le vehicule, l EMBARQUEMENT non.
+func TestVehicleEpisodeCarriesEventVehicle(t *testing.T) {
+	const occ, veh = uint32(500), uint32(770)
+	board := vehEvt(filmdec.EventBipedBoardVehicle, occ, 3_000_000, 0)
+	exit := vehEvt(filmdec.EventUnitExitVehicle, occ, 8_000_000, 0)
+	exit.VehicleSlot, exit.VehicleSlotValid, exit.VehicleGen = veh, true, 1
+	boards, exits := vehicleEventsByOccupant([]filmdec.VehicleEvent{board, exit})
+	got := vehicleEventEpisodes(boards, exits, nil)
+	if len(got) != 1 || !got[0].vehValid || got[0].vehSlot != veh ||
+		got[0].vehAtUS != exit.TimestampUS {
+		t.Fatalf("episode = %+v, attendu vehicule %d date de la SORTIE (%d)", got, veh,
+			exit.TimestampUS)
+	}
+	// TEMOIN : le seul embarquement ne nomme rien — ses references sont en domaines 2/3/7.
+	bo, ex := vehicleEventsByOccupant([]filmdec.VehicleEvent{board})
+	if seul := vehicleEventEpisodes(bo, ex, nil); len(seul) != 1 || seul[0].vehValid {
+		t.Fatalf("episode d embarquement seul = %+v, attendu SANS vehicule nomme", seul)
+	}
+}
+
+// TestVehicleRideFromEventName : le NOM porte par la sortie prime sur la geometrie, et le
+// garde-fou de publiabilite le rend a la geometrie quand la vie nommee est MUETTE.
+//
+// LE TEMOIN EST DANS LE MONTAGE : l ancre de l occupant est a 0,5 m du vehicule 771 et a 40 m du
+// 770. Une resolution geometrique repondrait donc TOUJOURS 771 ; si le cas « nomme » rend 770,
+// c est bien le nom qui a decide, et rien d autre.
+func TestVehicleRideFromEventName(t *testing.T) {
+	const occ = uint32(500)
+	nomme := filmdec.EquipmentLifeKey{Slot: 770, Gen: 1}
+	proche := filmdec.EquipmentLifeKey{Slot: 771, Gen: 1}
+	in := vehicleRideInputs{
+		vehBySlot: map[uint32][]filmdec.BipedPosition{
+			770: {vehPos(770, 2_000_000, 100, 100)},
+			771: {vehPos(771, 2_000_000, 10, 10)},
+		},
+		lives: []vehicleLife{
+			{key: nomme, loUS: 0, hiUS: 30_000_000},
+			{key: proche, loUS: 0, hiUS: 30_000_000},
+		},
+		drawable: map[filmdec.EquipmentLifeKey]bool{nomme: true, proche: true},
+		clock:    vehClock(),
+	}
+	bySlot := map[uint32][]filmdec.BipedPosition{occ: {
+		vehPos(occ, 2_000_000, 10.5, 10), vehPos(occ, 9_000_000, 10.5, 10),
+	}}
+	base := vehicleEpisode{slot: occ, startUS: 3_000_000, endUS: 8_000_000, borders: 2,
+		vehSlot: 770, vehValid: true, vehAtUS: 8_000_000}
+	cases := []struct {
+		name     string
+		muette   bool
+		nomValid bool
+		want     filmdec.EquipmentLifeKey
+		wantSrc  vehicleResolvedBy
+	}{
+		{"le nom prime sur la distance", false, true, nomme, vehicleResolvedByEvent},
+		{"vie nommee MUETTE : repli geometrique", true, true, proche, vehicleResolvedByGeometry},
+		{"aucun nom : geometrie", false, false, proche, vehicleResolvedByGeometry},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			cin := in
+			if c.muette {
+				cin.drawable = map[filmdec.EquipmentLifeKey]bool{proche: true}
+			}
+			ep := base
+			ep.vehValid = c.nomValid
+			key, _, resolved, ok := vehicleRideFromEpisode(ep, bySlot, cin)
+			if !ok {
+				t.Fatal("episode non rattache")
+			}
+			if key != c.want || resolved.resolvedBy != c.wantSrc {
+				t.Fatalf("vie = %+v (voie %d), attendue %+v (voie %d)", key, resolved.resolvedBy,
+					c.want, c.wantSrc)
+			}
+		})
+	}
+}
+
+// TestVehicleLifeNamedByEventNearest : quand l instant de la sortie tombe HORS de toutes les
+// fenetres du slot nomme, la vie la plus proche DANS LE TEMPS est retenue, et la voie le dit.
+func TestVehicleLifeNamedByEventNearest(t *testing.T) {
+	tot := filmdec.EquipmentLifeKey{Slot: 770, Gen: 1}
+	tard := filmdec.EquipmentLifeKey{Slot: 770, Gen: 2}
+	lives := []vehicleLife{
+		{key: tot, loUS: 0, hiUS: 10_000_000},
+		{key: tard, loUS: 60_000_000, hiUS: 90_000_000},
+	}
+	cases := []struct {
+		name string
+		atUS uint64
+		want filmdec.EquipmentLifeKey
+		src  vehicleResolvedBy
+	}{
+		{"dans la fenetre", 5_000_000, tot, vehicleResolvedByEvent},
+		{"entre deux fenetres, plus pres de la premiere", 20_000_000, tot,
+			vehicleResolvedByEventNearest},
+		{"entre deux fenetres, plus pres de la seconde", 55_000_000, tard,
+			vehicleResolvedByEventNearest},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			ep := vehicleEpisode{vehSlot: 770, vehValid: true, vehAtUS: c.atUS}
+			l, src := vehicleLifeNamedByEvent(ep, lives)
+			if l.key != c.want || src != c.src {
+				t.Fatalf("vie = %+v (voie %d), attendue %+v (voie %d)", l.key, src, c.want, c.src)
+			}
+		})
+	}
+	// TEMOIN : un slot SANS aucune vie ne rend rien — la geometrie doit reprendre la main.
+	ep := vehicleEpisode{vehSlot: 999, vehValid: true, vehAtUS: 5_000_000}
+	if _, src := vehicleLifeNamedByEvent(ep, lives); src != vehicleResolvedNone {
+		t.Fatalf("slot inconnu : voie = %d, attendue vehicleResolvedNone", src)
+	}
+}
+
 // TestVehicleEpisodeSeatFromExit : le siege de la SORTIE prime sur celui de l embarquement.
 func TestVehicleEpisodeSeatFromExit(t *testing.T) {
 	const slot = uint32(500)

@@ -61,6 +61,11 @@ type VehicleScan struct {
 	// Events sont les embarquements et les sorties de la liste d evenements des paquets delta.
 	// Absents = episodes d occupation bornes par le seul trou de position (repli mesure).
 	Events []filmdec.VehicleEvent
+	// Aims sont les lectures de VISEE des bipedes qui ne repliquent PLUS leur position — celles
+	// des occupants, donc. Bande `ti=35` (les joueurs), PAS `ti=40` : la visee publiee sur un
+	// episode est celle de l HOMME a bord, jamais du chassis. Absentes = episodes sans serie de
+	// visee, le client retombe sur le cap du chassis (cf. vehicle_rides_aim.go).
+	Aims []filmdec.BipedAim
 }
 
 // decodeFilmVehicleScan decode les QUATRE lectures du calque des vehicules sur le meme film et
@@ -96,11 +101,34 @@ func decodeFilmVehicleScan(
 	}
 	out := VehicleScan{Scanned: true, Keyframes: kf, Creations: cre, Stats: st, Positions: pos}
 	out.Events = decodeFilmVehicleEvents(filmDir)
+	out.Aims = decodeFilmOccupantAims(filmDir)
 	slog.Info("vehicules : balayage ti=40",
 		"slots", st.Slots, "ancres", st.Anchors, "creationsAcceptees", st.Accepted,
 		"imagesCles", len(kf.TimesUS), "viesRecensees", len(kf.SeenUS),
-		"echantillons", len(pos), "evenements", len(out.Events))
+		"echantillons", len(pos), "evenements", len(out.Events), "viseesSansPosition", len(out.Aims))
 	return out
+}
+
+// decodeFilmOccupantAims lit la VISEE des bipedes dans les records qui ne portent AUCUNE
+// position — la CINQUIEME lecture du calque, et celle qui vaut pour les occupants.
+//
+// ADDITIVE ET NON FATALE, meme doctrine que les evenements : son absence rend les episodes SANS
+// serie de visee, et le client retombe sur le cap du chassis, c est-a-dire exactement le
+// comportement du schema 30.
+//
+// POURQUOI UNE LECTURE DE PLUS, ET PAS UN CHAMP DE `ScanFilmBipedPositions` : les deux balayages
+// n acceptent pas les memes records. Le nuage de positions exige un `i0` ABSOLU et un masque
+// commencant par 0 ; ce balayage-ci accepte precisement ceux que cette exigence ecarte (lot V11 :
+// 22 963 lectures sur `0d76e8f1`, invisibles au premier). Les fusionner reviendrait a relacher la
+// porte du nuage de positions, qui est celle sous laquelle TOUT le calque a ete mesure.
+func decodeFilmOccupantAims(filmDir string) []filmdec.BipedAim {
+	aims, err := filmdec.ScanFilmBipedAimOnly(filmDir)
+	if err != nil {
+		slog.Warn("vehicules : visees sans position illisibles — episodes d occupation sans serie"+
+			" de visee, le cone retombe sur le cap du chassis", "err", err, "filmDir", filmDir)
+		return nil
+	}
+	return aims
 }
 
 // decodeFilmVehicleEvents lit les embarquements et les sorties. ADDITIF ET NON FATAL : leur
@@ -126,11 +154,17 @@ func decodeFilmVehicleEvents(filmDir string) []filmdec.VehicleEvent {
 //     vehicule en mouvement (V1a.3 : ecart median 1,7 a 2,1 deg au deplacement sur 4 films,
 //     temoin par melange 51 a 88 deg) ;
 //   - les filtres de post-traitement (`MaxSpeedMPS`, `IsolationGapMS`) gardent leur valeur de
-//     production : ce sont ceux sous lesquels le nuage vehicule a ete mesure (V1a).
+//     production : ce sont ceux sous lesquels le nuage vehicule a ete mesure (V1a) ;
+//   - `DynPrecOrientation` ARME (2026-09-03, lot V9) : `ti=40` porte les variantes
+//     `-dynamic-precision-` d'i2 et i3, dont les deserialiseurs (FUN_140c5f7ec /
+//     FUN_140d87740) ne sont PAS ceux du bipede. Le nuage de POSITIONS et la VELOCITE i1
+//     sont inchanges — ils se lisent AVANT i2 — mais tout ce qui suit i2 (i3, i4 vitalite,
+//     i5, i21) etait jusqu'ici lu a curseur decale.
 func vehicleScanOptions(wr *filmdec.Vec3Range) filmdec.ScanFilmOptions {
 	opt := filmdec.DefaultScanFilmOptions()
 	opt.RequireTag1 = false
 	opt.CaptureDirs = true
+	opt.DynPrecOrientation = true
 	opt.WorldRange = wr
 	return opt
 }
@@ -147,8 +181,34 @@ func attachVehicles(
 	doc *ReplayDocument, scan VehicleScan, bipeds []filmdec.BipedPosition,
 	own OwnerReport, clock replayClock,
 ) {
-	tracks, cov := buildVehicleTracks(scan, bipeds, own, clock)
+	tracks, cov, st := buildVehicleTracks(scan, bipeds, own, clock)
 	doc.Vehicles = tracks
 	doc.Coverage.Vehicles = &cov
 	logVehicleCoverage(&cov)
+	logVehicleRideResolution(st)
+}
+
+// logVehicleRideResolution journalise PAR QUELLE VOIE les episodes d occupation ont trouve leur
+// vehicule. Il n est pas dans `logVehicleCoverage` parce qu il ne decrit PAS le document : ces
+// compteurs ne sont pas publies (le contrat ne bouge pas au lot V8), ils disent comment il a ete
+// obtenu.
+//
+// LE SILENCE QU IL FAUT ROMPRE : si la reference de vehicule de la sortie cessait d etre lue (une
+// largeur de champ qui bouge, un domaine mal attribue), le calque continuerait de publier des
+// episodes — rattaches par la geometrie, en silence, avec l ambiguite d avant. `nommes` a zero
+// alors que des episodes existent est exactement ce signal.
+func logVehicleRideResolution(st vehicleRideStats) {
+	if st.episodes == 0 && st.repli == 0 {
+		return
+	}
+	slog.Info("rejeu : rattachement des episodes d occupation",
+		"episodesEvenement", st.episodes, "nommesParLEvenement", st.nommes,
+		"resolusParEvenement", st.parEvenement, "resolusParVieLaPlusProche", st.parEvenementProche,
+		"resolusParGeometrie", st.parGeometrie, "nonRattaches", st.perdus,
+		"episodesDeRepli", st.repli)
+	if st.episodes > 0 && st.nommes == 0 {
+		slog.Warn("rejeu : AUCUN episode d occupation nomme par son evenement de sortie — la"+
+			" reference de vehicule (domaine 1, ref 1) n est plus lue, le calque retombe sur la"+
+			" seule geometrie", "episodes", st.episodes)
+	}
 }

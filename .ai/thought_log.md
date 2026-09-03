@@ -1,3 +1,233 @@
+## [2026-09-03] Rejeu vehicules — V12 : la VISEE DE CHAQUE OCCUPANT publiee (schema 31) et branchee dans le cone — Complété
+
+Execute le report n° 1 du lot V11. Aucun commit, aucun `git add`. GOCACHE isole
+(`scratchpad/gocache_v12`), avant-plan, `CGO_ENABLED=0` pour l'analyse et `CGO_ENABLED=1` pour le
+service. Rapport : `.ai/V7.5/film_re/V12_VISEE_OCCUPANTS_PROD_2026-09-03.md`.
+
+**DECISION TECHNIQUE PRINCIPALE — LA VISEE VIT SUR L'EPISODE D'OCCUPATION, ET NULLE PART AILLEURS.**
+`Point.H` ne pouvait pas la porter (un occupant attache n'a PAS de position : il n'y a aucun point
+ou accrocher l'angle) et `VehicleTrack.Samples` non plus (la visee est celle de l'OCCUPANT, pas du
+vehicule — un chassis porte plusieurs occupants, donc plusieurs visees simultanees et distinctes).
+Le document publie donc `vehicles[].rides[].aim = [{t, h, p}]`, echantillonne sur la grille du
+document (un point par frame, « le premier observe gagne », la regle de `decimateTracks` et de
+`vehicleSamplesOf`), alimente par `filmdec.ScanFilmBipedAimOnly` filtre au slot de l'occupant et a
+la fenetre de son episode. Les deux angles reutilisent les conventions et les arrondis du pion
+(`headingForJSON` / `pitchForJSON`) : le client n'a qu'une regle d'orientation a connaitre.
+`SchemaVersion` 30 -> **31** (chronique dans `document.go` et dans le ratchet `structure_test.go`).
+`filmdec` n'a PAS ete touche.
+
+**RESULTATS MESURES (deux artefacts reconstruits, `0d76e8f1` Behemoth et `fccc61cd` Launch Site).**
+- **Couverture : 11 / 11 episodes (100 %) portent une visee**, 1 537 points publies pour 2 980
+  frames d'episode (51,6 %), sur 27 795 lectures brutes decodees (22 963 + 4 832).
+- **L'erreur que le cone faisait, mesuree sur l'artefact publie** (visee contre cap du chassis EN
+  VIGUEUR a la meme frame, c'est-a-dire contre ce que le client dessinait) : **mediane 52,0 deg**
+  (q1 22,0 · q3 88,7 · **68,2 %** au-dela de 30 deg) sur `0d76e8f1`, **6,6 deg** (q3 23,2 · 21,4 %)
+  sur `fccc61cd`. Plus severe que les 15,7-21,8 deg de V11, et c'est explicable : V11 mesurait sur
+  du vehicule EN MOUVEMENT, alors que le cap publie est FIGE sous 5 m/s (`vehicleMinSpeedMPS`) —
+  un vehicule a l'arret garde un cap immobile pendant que son occupant balaye la carte du regard.
+- **Cote web** : `drawVehicleAimCone` (conducteur seul, cap du chassis) devient
+  `drawVehicleAimCones` — **un cone par occupant actif**, a SA couleur, oriente par SA visee,
+  longueur portee par SON elevation ; le cap du chassis n'est plus que le REPLI (maintien de
+  10 frames = 1 s, justifie par la densite mesuree de 5-46 lectures/s). `drawAimSector` et le
+  resolveur de couleur par xuid sont REUTILISES ; `pitchScale` est simplement exporte sous le nom
+  `aimLengthScale` (regle « <= 2 copies »).
+- **Quatre compteurs de couverture**, dont le denominateur : `aimReads` (brut du film, il distingue
+  « personne ne visait » de « le decodeur n'a rien lu »), `ridesWithAim`, `aimSamples`,
+  `aimRideFrames` — plus un warn de silence quand des episodes existent sans aucune visee.
+
+**GATES.** `gofmt -l internal/` vide · `go vet` exit 0 · `CGO_ENABLED=0 go test
+./internal/analysis/replay/ ./internal/analysis/filmdec/ -count=1` VERT sans aucune variable
+d'environnement (`grep '^--- FAIL:'` vide) · `CGO_ENABLED=1 go build ./...` exit 0 ·
+`TestOpenAPIYAMLIsUpToDate` PASS · golden regenere = **UNE SEULE LIGNE** (`schema 30` -> `31`) ·
+web : `.tmp` purge, `typecheck` exit 0, `lint` 0 erreur (25 warnings preexistants), `test`
+5 725 verts / 0 echec. Artefacts reconstruits puis copies vers `LevelUp-wt-capture-rejeu`.
+`vehiclesLayer.ts` serait sorti a 581 L : la 7e responsabilite a ete EXTRAITE (`vehiclesAim.ts`,
+110 L) plutot qu'exemptee.
+
+**DECOUVERTES, NOTEES ET NON TRAITEES.** (1) Un episode publie de **90,7 s ne porte que 2 lectures
+de visee** (`0d76e8f1`, vie 773, occupant 561) alors que le meme slot emet a 5-46 lectures/s
+ailleurs : c'est la BORNE DE FIN de l'episode a fin ouverte qui est suspecte, pas la visee — et la
+serie de visee est le premier instrument capable de la contredire. Elle pese a elle seule 905 des
+1 402 frames non couvertes (hors elle, la couverture passe de 50,3 % a 74,0 %).
+(2) `TestReplayDocumentFieldCountIsFrozen` (`contracttest`) etait DEJA rouge avant ce lot
+(46 champs contre 44 geles, `vehicles` et `vehicleLabels` du schema 29) — ce lot n'ajoute aucun
+champ de premier niveau. (3) La visee coute une 5e lecture complete du film (~80 s de plus par
+artefact) ; fusionner les deux balayages relacherait la porte du nuage de positions.
+
+**CE QUE LE LOT NE PROUVE PAS, et c'est ecrit au rapport.** Qu'un artilleur et un conducteur
+affichent DEUX cones distincts dans un artefact reel : **aucun des 11 episodes du corpus ne porte
+un siege > 0**. Le cas est etabli par construction (chaque occupant a son slot bipede) et couvert
+par les tests (Go et web), pas par l'image.
+
+**CONCLUSION / PROCHAINE ETAPE.** Le cone du rejeu dit desormais ou regardent le conducteur,
+l'artilleur et le passager, et non plus ou pointe le chassis. Prochaine etape utile : la borne de
+fin des episodes a fin ouverte (decouverte 1), testable contre les sorties attestees sans aucun
+decodage nouveau ; puis un film dont la sortie nomme la tourelle, pour voir deux cones a l'ecran.
+
+## [2026-09-03] Rejeu vehicules — V11 : la TOURELLE ne replique rien, mais la VISEE DE CHAQUE OCCUPANT est dans le film — Complété
+
+**Question de l'utilisateur** : « est-ce qu'on a l'orientation de la tourelle, ou le point de vue
+de l'artilleur ou du passager ? C'est pour le cone de visee. » **REPONSE : la tourelle NON (refute
+avec temoin), l'occupant OUI — conducteur, artilleur et passager, en continu, pendant tout
+l'episode.** Aucun commit, `CGO_ENABLED=0`, GOCACHE isole, avant-plan. Contrat INCHANGE
+(`SchemaVersion` reste 30, aucun artefact reconstruit). Rapport :
+`.ai/V7.5/film_re/V11_ORIENTATION_TOURELLE_2026-09-03.md`.
+
+**DECISION TECHNIQUE PRINCIPALE — LE POINT AVEUGLE DU DECODEUR, ET IL DEPASSE CE LOT.**
+`ScanBipedRecords` n'accepte un record que s'il porte un `i0` ABSOLU **et** si le premier index de
+son masque vaut 0 (`ascendingFromZero`). Cette exigence est celle du DETECTEUR, pas du format : le
+masque d'un record delta n'a aucune obligation de declarer `i0`. Consequence mesuree : la forme de
+masque la plus frequente de la bande bipede parmi les records sans `i0` est **`i21,i25`** — un
+record de VISEE SANS POSITION — soit **22 963 lectures sur le seul `0d76e8f1`**, invisibles depuis
+toujours. Tout ce que le depot a conclu d'une « absence » dans le flux delta bipede est a relire a
+cette lumiere.
+
+**RESULTATS MESURES.**
+- **Piste A, `i2` du chassis rejoue sous la grammaire V9 : TOUJOURS REFUTE.** Ecart median au cap
+  de deplacement 47,9 / 122,7 / 99,9 / 75,7 deg (seuil 30) sur 4 films ; controle `i1` vert dans
+  les deux regimes (1,7 a 2,9 deg), donc la faute reste dans `i2` seul. Un signal reel apparait
+  sur le plus gros film (R 0,376 contre 0,032 au temoin) sans suffire — inscrit au registre.
+- **Piste B, l'entite TOURELLE : REFUTEE.** Balayage d'en-tetes sans exigence d'`i0`, quatre
+  classes de slots : TOURELLE 139,6 / 85,5 touches par slot contre FANTOME 86,3 / 194,2 (donc
+  SOUS le bruit sur un film), histogramme de formes de masque PLAT, et les slots MUETS
+  non-tourelle rendent la meme chose. La tourelle est muette **tout court**, pas seulement en
+  position. Corollaire : `i31`/`i41`/`i42` ne sont jamais emis, les porter ne servirait a rien.
+  La marche sequentielle (`DecodeFrameViews`) ne repond pas : 323 records `ti=40` recuperes sur
+  32 246, la plupart post-desync avec des index i48-i63 impossibles.
+- **Piste C, `i21` : ABSENT de `ti=40` (2,8 par slot contre 2,1 au bruit) mais DECISIF sur le
+  BIPEDE.** Presence 46,5 a 231,2 lectures par slot contre **0,2 a 0,9** sur la bande FANTOME
+  (x151 a x925, 5 films). Justesse : appariee a moins de 200 ms a la lecture `i21` AVEC position
+  du meme slot, ecart median **0,2 a 0,5 deg** (R 0,979-0,989) contre **75,7 a 93,7 deg** au
+  temoin par melange. Utilite : **35 / 35 episodes d'occupation attestes (100 %)** portent au
+  moins une visee A BORD, a 5 a 46 lectures par seconde, quand le meme episode porte 0 ou 1
+  lecture `i21` avec position. Distinction du cap du chassis : mediane 15,7 a 21,8 deg,
+  quartile superieur 39,6 a 52,9 deg — correlee mais distincte, donc le cone actuel du
+  conducteur (oriente par le cap du vehicule) se trompe de cet ordre.
+
+**PORTE (additif, contrat inchange)** : `filmdec/offline_aim_only.go` (NEUF, 219 L —
+`ScanFilmBipedAimOnly` / `ScanBipedAimRecords`, aucune grammaire reecrite : l'en-tete est celle de
+`matchBipedHeaderRaw` moins la seule contrainte `idx[0]==0`, les composants anterieurs a `i21`
+sont consommes par leurs detenteurs existants), son garde-rail de grammaire SANS environnement
+(6 temoins), et l'extraction de `aimHeadingDegFromRaw`/`aimPitchDegFromRaw` dans `offline_aim.go`
+(un seul detenteur de la convention pour deux appelants, zero bit change).
+
+**NON PORTE, CONFLIT DE PERIMETRE SIGNALE** : l'unique emplacement correct de cette visee dans le
+document est l'EPISODE D'OCCUPATION (`replay/vehicle_rides*.go`), explicitement hors perimetre —
+un autre agent y travaille. `Point.H` ne convient pas (l'occupant n'a par definition pas de
+position a bord) et `VehicleTrack.Samples` non plus (la visee est celle de l'occupant, pas du
+vehicule ; un vehicule a plusieurs occupants). Rien n'a ete invente ailleurs.
+
+**PROCHAINE ETAPE** : publier `aim: [{t,h,p}]` sur le `Ride` (bump `SchemaVersion`, openapi,
+golden, rendu web — le cone existe deja pour le bipede a pied), par le detenteur de
+`vehicle_rides*.go`. Puis remplacer le cone du conducteur, aujourd'hui oriente par le cap du
+vehicule. Restent ouverts : `i2` du chassis (seule orientation qui vaudrait aussi a l'arret),
+l'oracle du tir en vehicule (piste 5, non pose), et le cas ARTILLEUR sur un episode atteste
+(aucune sortie du corpus ne porte un siege > 0).
+
+## [2026-09-03] Rejeu vehicules — V10 : i11 dead-state de ti=40 (deja porte, sous-instrumente) et le PALIER D'EPAVE de la vitalite — Complété
+
+**Question** : dater la DESTRUCTION d'un vehicule, par `i11 object-dead-state` puis — cadrage
+corrige en cours de lot par l'utilisateur — par la VITALITE EFFONDREE EN FIN DE VIE. **REPONSE :
+les deux signaux EXISTENT, aucun n'est publiable en l'etat, et rien n'a ete publie.** Aucun commit,
+`CGO_ENABLED=0`, GOCACHE isole, avant-plan, Ghidra en lecture seule. Contrat INCHANGE
+(`SchemaVersion` reste 30). Rapport : `.ai/V7.5/film_re/V10_DEADSTATE_TI40_2026-09-03.md`.
+
+**GHIDRA — i11 EST DEJA JUSTE, ET LE PIEGE DU LOT V9 N'A PAS D'EQUIVALENT ICI.** `/search_strings`
+sur `dead-state` rend **UNE seule chaine** (`0x143c99320`) : il n'existe AUCUN
+`object-dead-state-dynamic-precision-component`. Chaine statique du lot V9 : chaine -> thunk
+`name()` `0x14064c6d0` -> vtable `0x143d0ba40` -> `[0x28]` = `0x14076ce9c` = LE thunk (dont le
+decompile est LITTERALEMENT `(**(code**)(*p+0x30))()`, ce qui etablit la regle au desassemblage) ->
+deser = **`0x140c1dce0`**. Sa decompile : `mort=R(1)` ; si `ti in {0x23, 0x28}` -> `FUN_140c1dd44` ;
+si `ti == 0x23` -> `R(1)`. `ti=40` = `0x28` : **la forme du bipede MOINS le bit de queue**, et
+`FUN_140c1dd44` ne recoit PAS le typeIndex — c'est le MEME corps lourd que celui du kill-feed. Le
+depot le portait deja (`consumeObjectDeadStateBipedTI`). **Zero ligne de production ecrite.**
+
+**LE TEMOIN QUI A SAUVE LE LOT D'UNE CONCLUSION FAUSSE.** Le balayage ANCRE de `filmdec` voit
+**0 record `ti=40` porteur d'i11 sur 37 677**. Conclusion tentante et FAUSSE : sur la bande BIPEDE
+du meme film, ou les morts sont un fait etabli, il en voit **1 sur 207 808** et **0 sur 193 762**.
+L'ancre exige un i0 ABSOLU en tete de masque : elle est aveugle au dead-state POUR TOUT LE MONDE.
+
+**i11 EST SOUS-INSTRUMENTE, PAS REFUTE.** La marche de `killsource` (la seule voie qui l'atteigne)
+rend **5 dead-states `ti=40` `Mort=1` sur 10 films / 315 vies**, dont **3 en bande** (tous sur
+`fccc61cd`, dates en absolu : slots 772 @3172,2 s · 769 @3243,7 s · 777 @3243,8 s). MAIS le
+denominateur, mesure dans le meme passage, dit pourquoi c'est un PLANCHER : la marche n'atteint que
+**764 records `ti=40` sur les 32 246** que l'ancre accepte = **2,4 % de couverture**, contre
+**24,5 %** pour le bipede. Cause EXCLUE par mesure : ce n'est pas la profondeur — `V10_VIEWS=64`
+(x8) rend des chiffres identiques au record pres. Le verrou est la DESYNCHRONISATION de la chaine
+de records (`frame_records.go`), pas le decodeur du composant.
+
+**LE RESULTAT NEUF : LE PALIER BAS TERMINAL EXISTE — l'intuition « l'epave persiste » est
+CONFIRMEE.** Sur 315 vies / 91 porteuses d'`i4` : **18 vies finissent par une suite de lectures
+`i4 <= 0,25`**, de duree **mediane 2,6 s** et max **6,2 s** (histogramme `[3 1 8 2 0 0]` sur
+[0-1,1-2,2-5,5-10,10-30,>30] s) — un mode NON NUL de quelques secondes. Et le fait le plus fort,
+un ZERO PROPRE : **aucune vie sur 91 ne porte de palier bas de plus de 6,2 s**. Un vehicule
+seulement ENDOMMAGE survivrait a integrite basse pendant des dizaines de secondes ; il n'y en a
+AUCUN. L'etat bas est toujours bref et toujours terminal. Cinematique coherente : le profil EPAVE
+(`i4 <= 0,25` + vitesse finale < 0,5 m/s) fait **9/91 = 10 %** des vies decidables, **2,9 %** de
+toutes les vies — plausible, a comparer aux **89 %** de la lecture fausse d'avant V9.
+
+**POURQUOI RIEN N'EST PUBLIE MALGRE CA.** Le gate de separation ne passe pas franchement, et le
+recoupement independant est sans puissance. Sur la DERNIERE VALEUR d'`i4` : Youden **J = 0,39**
+(sens. 0,63, spec. 0,76) — mauvais. Sur le PALIER, l'enrichissement est significatif — palier
+`<= 0,10` sur **4/19 = 21 %** des vies finissant occupees contre **3/66 = 4,5 %** des abandonnees
+(facteur 4,6, Fisher **p = 0,041** ; au seuil 0,25 : 37 % contre 7,6 %, **p = 0,0039**) — MAIS le
+temoin n'est PAS un temoin d'intactes : la primitive d'occupation n'attribue que 15-21 % des vies,
+et un vehicule detruit **A VIDE** y tombe mecaniquement (cas d'ecole mesure : `51d3ab9f` slot 784,
+chopper de vitesse MAXIMALE 1,2 m/s — jamais conduit — dont l'integrite tombe a 0,02 sur 2,4 s).
+**Le taux de faux positifs n'est donc pas bornable.** Et le recoupement avec `i11` rend une
+intersection de **0/3** dont l'esperance par hasard vaut **0,07** : le test **N'A AUCUNE
+PUISSANCE**, il ne dit ni oui ni non. Publier `destroyed` + une explosion sur 7 vies au vu d'un
+p = 0,041 sans une seule confirmation independante ferait ce que la consigne interdit.
+
+**CE QUI EST LIVRE A LA PLACE, ET C'EST LE PLUS UTILE : LES CANDIDATES DATEES EN TEMPS DE MATCH.**
+La verite terrain manquante est a quelques minutes de visionnage Theater. Regle stricte (palier
+`i4 <= 0,10`, >= 2 lectures) = **7 vies, 6 films, 6 familles**, chacune avec l'instant de la CHUTE
+(= le `tEnd` qui serait publie) : `0d76e8f1`/792 wasp **6:51** · `21468645`/783 falcon **6:01** ·
+`4898d586`/804 (chassis inconnu) **8:35** · `51d3ab9f`/778 warthog **7:35** · `51d3ab9f`/784
+chopper **7:19** · `b232e02d`/776 banshee **6:09** · `e1bdb97f`/776 warthog **2:30**. Regle large
+(`<= 0,25`) : 14 vies, listees au rapport § 4.3. **5 confirmations sur 7 rendent le gate de
+separation sans objet et la publication immediate** — regle, champ et instant sont deja ecrits.
+
+**CONVERSION D'HORLOGE — les instants mesures N'ETAIENT PAS des temps de match, et c'est corrige.**
+`BipedPosition.TimestampUS` est une horloge MOTEUR (temps depuis le demarrage du jeu, 754 a 4 238 s
+de zero selon le film) : une candidate « a 2 519,9 s » etait inverifiable dans un match qui dure
+654 s. La conversion appliquee est celle de `origin.go` — le premier paquet du chunk 1 est le zero
+de l'horloge de match (`start_ms = 0` au manifeste), donc
+`tempsMatchMS = (paquetUS - ScanFilmClockOrigin(dir)) / 1000`. **REPERE DE VALIDATION** :
+`originMs` recalcule par le meme chemin sur `0d76e8f1` rend **10 667 ms** et
+**durationMs 654 200 ms**, soit EXACTEMENT les valeurs de l'artefact deja construit ; second
+controle, **les 14 candidates tombent toutes dans la duree de leur match**. Instrument :
+`replay/vehicules_v10_horloge_test.go` (NEUF, 196 L).
+
+**LA FACTION NE DEMANDE AUCUN CHAMP NOUVEAU — verifie sur pieces.** `VehicleTrack.Family` est deja
+publie et sa table (`vehicle_families.go`) est CLOSE : `warthog`/`mongoose`/`scorpion`/`wasp`
+(humain), `ghost`/`banshee`/`wraith`/`chopper` (Banni), plus `falcon`/`pelican`/`phantom`/`skiff`
+(decor non pilotable, deja filtre cote web). Les variantes citees ne sont pas des familles
+distinctes (rockethog/gauss/razorback -> `warthog`, gungoose -> `mongoose`, toutes humaines). Le
+client derive les deux effets d'explosion ; un champ `faction` serait une seconde source pour la
+meme jointure (anti-patron n°8).
+
+**LIVRE** : 5 instruments NEUFS, gardes par variable d'environnement, **zero fichier de production
+modifie** — `filmdec/vehicules_v10_deadstate_test.go` (260 L, masques + temoin bipede),
+`killsource/vehicules_v10_deadstate_test.go` (244 L, recolte + denominateur par archetype + knob
+`V10_VIEWS`), `replay/vehicules_v10_vitalite_test.go` (298 L, mesure),
+`replay/vehicules_v10_rapport_test.go` (271 L, les cinq gates) et
+`replay/vehicules_v10_horloge_test.go` (190 L, conversion en temps de match + controle `originMs`).
+
+**GATES** : `gofmt -l internal/` vide · `go vet` propre sur les trois paquets ·
+`CGO_ENABLED=0 go test ./internal/analysis/filmdec/ ./internal/analysis/replay/
+./internal/games/halo_infinite/film/killsource/ -count=1` SANS env -> `ok` 1,2 s / 29,2 s / 1,4 s,
+aucun `--- FAIL:`. Fichiers <= 500 L, fonctions <= 80 L.
+
+**COORDINATION** : `replay/vehicle_rides*.go`, `vehicle_tracks.go` et `filmdec/event_list.go` sont
+modifies EN PARALLELE par le lot V8 et n'ont PAS ete touches. L'instrument V10 les APPELLE
+(`buildVehicleRides`, `vehicleDrawableLives`, `vehicleFamilyOf`) sans les modifier : si V8 change
+la signature de `buildVehicleRides` ou la forme de `vehicleRideInputs`, c'est
+`vehicules_v10_vitalite_test.go` qui cassera, et l'adaptation tient en une ligne.
+
+**PROCHAINE ETAPE** : visionner les 7 candidates datees. En parallele, la couverture de la marche
+sur `ti=40` (2,4 %) est le seul verrou d'`i11` — chantier `frame_records.go`.
+
 ## [2026-09-03] Rejeu vehicules — V8 : le vehicule d'un episode est resolu PAR L'EVENEMENT, et la tourelle est une unite a part — Complété
 
 **Question** : exploiter l'acquis V7 (« la reference 1 de la sortie EST le vehicule, 105/105 ») pour

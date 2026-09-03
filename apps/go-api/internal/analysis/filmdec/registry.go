@@ -33,6 +33,7 @@ const (
 const (
 	compObjectBodyVitality  = "object-body-vitality-component"
 	compWeaponStateTypeInfo = "weapon-state-type-info"
+	compForwardUpDynPrec    = "object-forward-and-up-dynamic-precision-component"
 )
 
 // Archetype is one ECS archetype: an ordered list of component names. The slice

@@ -32,6 +32,7 @@ import type {
   ReplayProjectile,
   ReplaySurface,
   ReplayTrack,
+  ReplayVehicleRide,
   ReplayVehicleTrack,
   ReplayWeaponPad,
   ReplayZoneState,
@@ -105,7 +106,19 @@ export type ReplayZoneStateReady = Filled<ReplayZoneState, 'spans' | 'gauge'>
  * n'est pas un tableau mais un objet optionnel (absent quand le record de création n'a pas été
  * lu), et un objet vide inventerait une naissance que le film ne montre pas.
  */
-export type ReplayVehicleTrackReady = Filled<ReplayVehicleTrack, 'samples' | 'rides'>
+export type ReplayVehicleTrackReady = Omit<Filled<ReplayVehicleTrack, 'samples'>, 'rides'> & {
+  rides: ReplayVehicleRideReady[]
+}
+/**
+ * ReplayVehicleRideReady — un épisode d'occupation dont la SÉRIE DE VISÉE est comblée (schéma 31).
+ *
+ * TROISIÈME NIVEAU DE COMBLEMENT, et le premier du document : `aim` est un tableau nullable
+ * imbriqué DANS un tableau imbriqué. Le combler ici plutôt que de le laisser passer garde la
+ * garde de contrat (`replayContract.test.ts`) au même régime pour tout l'artefact — un tableau
+ * nullable de plus, à n'importe quelle profondeur, doit être comblé ou justifié, jamais oublié.
+ * Le coût est nul en pratique : une poignée d'épisodes par match, comblés une fois au chargement.
+ */
+export type ReplayVehicleRideReady = Filled<ReplayVehicleRide, 'aim'>
 
 /**
  * ReplayDocumentReady — le document tel que le rendu a le droit de le lire : chaque
@@ -333,7 +346,15 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     // (`coverage.vehicles` distingue les deux). LES DEUX TABLEAUX IMBRIQUÉS SE COMBLENT AUSSI
     // (`samples`, `rides`), même patron que `tracks` et `weaponPads` : `spawn`, lui, N'EST PAS un
     // tableau et reste tel quel (absent = record de création non lu, jamais un objet inventé).
-    vehicles: (raw.vehicles ?? []).map((v) => ({ ...v, samples: v.samples ?? [], rides: v.rides ?? [] })),
+    vehicles: (raw.vehicles ?? []).map((v) => ({
+      ...v,
+      samples: v.samples ?? [],
+      // LA SÉRIE DE VISÉE D'UN OCCUPANT (schéma 31) SE COMBLE AU TROISIÈME NIVEAU : c'est un
+      // tableau nullable dans un tableau imbriqué, et la garde de contrat les exige tous comblés
+      // ou justifiés. Vide = artefact antérieur au schéma 31, ou épisode sans lecture — le cône
+      // retombe alors sur le cap du châssis (`vehiclesAim.vehicleOccupantAimAt`).
+      rides: (v.rides ?? []).map((r) => ({ ...r, aim: r.aim ?? [] })),
+    })),
     // Les SOCLES D'ARME du match (schéma 11). Absent = le film n'en porte aucun : rien ne se
     // dessine, jamais un socle deviné. Une donnée de MATCH, pas de carte — l'arme qui apparaît
     // sur un socle change d'un match à l'autre, la position non.

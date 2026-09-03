@@ -344,7 +344,36 @@ package replay
 // CE QUE LA VERSION REFUSE : les tirs AMBIGUS (deux slots du même joueur répliquant tous deux une
 // position). Leur signature est celle d'un joueur qui n'est PAS embarqué ; les reprendre
 // mélangerait un défaut du pont slot -> joueur avec un embarquement.
-const SchemaVersion = 30
+//
+// CE QUE LA VERSION 31 PORTE, ET CE QU'ELLE REFUSE. La VISÉE DE CHAQUE OCCUPANT DE VÉHICULE
+// (`vehicles[].rides[].aim`). Un occupant attaché cesse de répliquer sa POSITION — c'est la
+// primitive du « trou » —, et le dépôt en concluait qu'il ne répliquait plus RIEN : le cône du
+// conducteur était donc dessiné au CAP DU CHÂSSIS, et l'artilleur comme le passager n'avaient
+// aucun cône. Le lot V11 (2026-09-03) a montré que la faute était dans le DÉTECTEUR :
+// `ScanBipedRecords` exige un `i0` absolu et un masque commençant par 0, quand la forme la plus
+// fréquente de la bande bipède est `i21,i25` — un record de VISÉE SANS POSITION. Le champ est
+// optionnel, mais la version monte pour la raison exacte des montées v14/v16/v21/v22/v25/v26/v27/
+// v29/v30 : la reprise du backfill se fait par SchemaVersion, et un artefact 30 fait viser tous
+// ses occupants dans l'axe du châssis.
+// NIVEAU DE PREUVE. PRÉSENCE : 4 832 à 24 050 lectures par film (5 films), 46,5 à 231,2 par slot
+// bipède, contre 0,2 à 0,9 par slot sur une bande FANTÔME de même cardinalité — x155 à x925.
+// JUSTESSE : appariée à la lecture `i21` AVEC position du même slot à moins de 200 ms, l'écart
+// médian de cap vaut 0,2 à 0,5 deg (R 0,979-0,989), témoin par mélange déterministe 75,7 à
+// 93,7 deg (R 0,011-0,134) ; la référence est le champ déjà publié `Point.H`, lui-même validé par
+// l'oracle du kill. COUVERTURE : sur les 35 épisodes d'occupation ATTESTÉS par la sortie,
+// 35 / 35 (100 %) portent au moins une visée à bord, à 5 à 46 lectures par seconde, quand le même
+// épisode porte 0 ou 1 lecture `i21` avec position. UTILITÉ : la visée N'EST PAS le cap du
+// châssis — écart médian 15,7 à 21,8 deg, q3 39,6 à 52,9 deg, un tiers des instants au-delà de
+// 30 deg.
+// CE QUE LA VERSION REFUSE, et c'est une réfutation mesurée avec témoin (V11 § 3) : l'ORIENTATION
+// DE LA TOURELLE en tant qu'objet. L'entité tourelle ne réplique RIEN dans le flux delta —
+// 139,6 et 85,5 en-têtes par slot contre 86,3 et 194,2 sur une bande FANTÔME, histogramme de
+// formes de masque PLAT, et les slots MUETS non-tourelle rendent le même chiffre. Les composants
+// `i31` (auto-turret-aiming-vector), `i41` et `i42` (seats-override pitch/yaw) de `ti=40` ne sont
+// pas seulement non portés : ils ne sont JAMAIS émis. Le cône de l'artilleur ne vient donc pas de
+// la tourelle, il vient de L'HOMME qui la tient — et c'est la même mesure que celle du
+// conducteur. Détail : internal/analysis/replay/vehicle_rides_aim.go.
+const SchemaVersion = 31
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {

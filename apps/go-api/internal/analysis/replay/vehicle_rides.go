@@ -111,6 +111,9 @@ type vehicleRideInputs struct {
 	bipeds []filmdec.BipedPosition
 	// events sont les embarquements et les sorties.
 	events []filmdec.VehicleEvent
+	// aimBySlot porte la VISEE de chaque occupant, indexee par SON slot bipede et triee par
+	// instant (cf. vehicle_rides_aim.go). Vide : les episodes sortent sans serie de visee.
+	aimBySlot map[uint32][]filmdec.BipedAim
 	// own donne le pont slot -> xuid. Vide : les episodes sortent anonymes, pas supprimes.
 	own OwnerReport
 	// lives sont les vies de vehicule, avec leur fenetre — c est elle qui rattache un episode a
@@ -271,6 +274,9 @@ func vehicleRideOf(
 	if r.T1 < r.T0 {
 		r.T1 = r.T0
 	}
+	// LA VISEE SE LIT SUR LES BORNES AFFINEES, pas sur celles du trou : quand un evenement a
+	// resserre une borne, la serie doit suivre le meme intervalle que `T0`/`T1`.
+	r.Aim = vehicleRideAimOf(in.aimBySlot[g.slot], startUS, endUS, in.clock)
 	if x, ok := in.own.SlotXUID[g.slot]; ok {
 		r.XUID = strconv.FormatUint(x, 10)
 	}

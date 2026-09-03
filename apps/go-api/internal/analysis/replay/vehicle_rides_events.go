@@ -265,6 +265,10 @@ func vehicleRideFromEpisode(
 	if r.T1 < r.T0 {
 		r.T1 = r.T0
 	}
+	// LA VISEE DE L OCCUPANT, sur SON slot bipede et sur la fenetre de CET episode
+	// (vehicle_rides_aim.go). Un episode a fin ouverte a deja vu `ep.endUS` resserre ci-dessus :
+	// la serie ne deborde donc jamais la fenetre publiee.
+	r.Aim = vehicleRideAimOf(in.aimBySlot[ep.slot], ep.startUS, ep.endUS, in.clock)
 	if x, ok := in.own.SlotXUID[ep.slot]; ok {
 		r.XUID = strconv.FormatUint(x, 10)
 	}

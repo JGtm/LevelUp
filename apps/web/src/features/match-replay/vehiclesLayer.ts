@@ -26,6 +26,11 @@
  * a fait franchir à ce fichier le seuil de taille du dépôt) : il ne fait qu'assembler ces six
  * réponses image par image.
  *
+ * UNE SEPTIÈME EST À CÔTÉ AUSSI (`vehiclesAim.ts`, extrait le 2026-09-03 pour la même raison de
+ * taille) : LA VISÉE MESURÉE DE CHAQUE OCCUPANT (schéma 31, `vehicleOccupantAimAt`). Elle
+ * s'appuie sur `vehicleAimAngle`/`vehicleHeadingAt` de ce fichier — le cap du châssis n'est plus
+ * la direction du cône, il n'en est que le REPLI.
+ *
  * CE QUE CE CALQUE REFUSE DE DESSINER — LES FAMILLES NON JOUABLES (verdict utilisateur du
  * 2026-09-02, après visionnage réel). Voir `FAMILLES_NON_JOUABLES` : ce sont des entités de
  * DÉCOR, pas des véhicules de la partie, et elles ne doivent NI se dessiner, NI nommer
@@ -389,10 +394,13 @@ export function vehicleActiveRides(
  * vehicleDriverAt — L'ÉPISODE DU CONDUCTEUR à `frame` (siège 0), ou `null`.
  *
  * SEUL LE SIÈGE 0 COMPTE, et un siège NON LU ne fait pas l'affaire : c'est le conducteur, et lui
- * seul, dont on peut affirmer où il regarde (décision utilisateur du chantier : « à l'arrêt on
- * assume qu'il regarde devant lui ; en mouvement, la direction du déplacement »). La visée d'un
- * passager ou d'un tourelleur est INDÉPENDANTE de celle du véhicule — elle est inconnue, et rien
- * ne la remplace.
+ * seul, dont le CAP DU CHÂSSIS approche la direction du regard (décision utilisateur du
+ * chantier : « à l'arrêt on assume qu'il regarde devant lui ; en mouvement, la direction du
+ * déplacement »).
+ *
+ * CE N'EST PLUS LA PORTE DU CÔNE DEPUIS LE SCHÉMA 31 (`vehicleOccupantAimAt`) : chaque occupant
+ * porte désormais SA visée mesurée, y compris l'artilleur et le passager. Cette fonction reste
+ * l'accès au conducteur pour tout ce qui le concerne LUI (teinte du véhicule, ordre des noms).
  */
 export function vehicleDriverAt(
   track: ReplayVehicleTrackReady,

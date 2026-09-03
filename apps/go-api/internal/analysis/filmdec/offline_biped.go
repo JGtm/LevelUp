@@ -128,6 +128,15 @@ type ScanFilmOptions struct {
 	// produire des coordonnées monde : nil -> ScanFilmBipedPositions échoue avec
 	// ErrUnknownMapBounds, sauf si QuantaOnly. Cf. MapQuantCatalog.
 	WorldRange *Vec3Range
+	// DynPrecOrientation choisit la grammaire d'i2/i3 sous CaptureDirs. false (défaut) =
+	// celle du BIPÈDE. true = celle des archétypes qui portent les variantes
+	// `-dynamic-precision-` de forward-and-up et angular-velocity : ti=38 (corps rigide),
+	// 39, **40 (véhicule)** et 43 (dispositif). Ce sont QUATRE désérialiseurs distincts
+	// (FUN_14076e278/FUN_140d70998 contre FUN_140c5f7ec/FUN_140d87740), résolus
+	// statiquement le 2026-09-03 — cf. components_dynprec_orientation.go. Laisser ce
+	// drapeau à false sur la bande ti=40 fait atteindre i4/i5 avec un curseur décalé :
+	// c'est la cause racine du bruit de vitalité mesuré au lot V2b.
+	DynPrecOrientation bool
 	// QuantaOnly autorise un balayage SANS bornes : les positions ne portent alors que Q
 	// (HasWorld=false), et les filtres exprimés en m/s sont inopérants — donc désactivés.
 	// Réservé aux outils d'analyse du bitstream.
@@ -354,7 +363,11 @@ func ScanBipedRecords(payload []byte, slots map[uint32]bool, lay I0Layout, opt S
 			rec.Z = DequantBipedAxis(q[2], 2, lay, *opt.WorldRange)
 		}
 		if opt.CaptureDirs {
-			rec.componentDirs, rec.componentVitals = scanRecordDirs(payload, i0+i0Bits, total, idx)
+			g := dirsGrammar{}
+			if opt.DynPrecOrientation {
+				g = dynPrecOrientationGrammar()
+			}
+			rec.componentDirs, rec.componentVitals = scanRecordDirs(payload, i0+i0Bits, total, idx, g)
 			if recordMaskHook != nil {
 				recordMaskHook(idx, payload, i0+i0Bits)
 			}

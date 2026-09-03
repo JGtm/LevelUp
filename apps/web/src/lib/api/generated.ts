@@ -11484,7 +11484,21 @@ export interface components {
             /** Format: double */
             z: number;
         };
+        VehicleAim: {
+            /** Format: float */
+            h?: number;
+            /** Format: float */
+            p?: number;
+            /** Format: int64 */
+            t: number;
+        };
         VehicleCoverage: {
+            /** Format: int64 */
+            aimReads: number;
+            /** Format: int64 */
+            aimRideFrames: number;
+            /** Format: int64 */
+            aimSamples: number;
             /** Format: int64 */
             ambiguous: number;
             /** Format: int64 */
@@ -11509,6 +11523,8 @@ export interface components {
             ridesMixed: number;
             /** Format: int64 */
             ridesNamed: number;
+            /** Format: int64 */
+            ridesWithAim: number;
             /** Format: int64 */
             ridesWithSeat: number;
             /** Format: int64 */
@@ -11541,6 +11557,7 @@ export interface components {
             tinted?: boolean;
         };
         VehicleRide: {
+            aim?: components["schemas"]["VehicleAim"][] | null;
             /** Format: int64 */
             seat?: number;
             /** Format: int32 */
