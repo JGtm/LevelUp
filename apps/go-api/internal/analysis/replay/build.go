@@ -282,7 +282,12 @@ func BuildFromFilm(matchID, titleSlug, filmDir string, opt Options) (ReplayDocum
 	// 100 m/s la rejetait à tort (R3 : 51/51 rejets mesurés, tous à ±200 ms d'un événement
 	// 117 du même slot). Sur un film sans tête 117, la liste est vide et le filtre est
 	// bit à bit identique à l'actuel — invariance prouvée par test.
-	opt.Translocations = filmdec.ScanFilmTranslocatorTeleports(filmDir)
+	//
+	// L'ENTRÉE DE CATALOGUE Y DESCEND parce que la CHARGE de l'événement porte les deux
+	// positions du va-et-vient, quantifiées aux bornes de la carte (R6 §1, validé 18/18) :
+	// sans elle le scanner rendrait des quanta invérifiables, donc rien. Elle est garantie
+	// non nulle ici (refus en tête de fonction).
+	opt.Translocations = filmdec.ScanFilmTranslocatorTeleports(filmDir, opt.MapQuant)
 	scan.TeleportExemptions = filmdec.TeleportExemptionsOf(opt.Translocations)
 	if len(opt.Translocations) > 0 {
 		slog.Info("translocateur : teleportations lues", "evenements", len(opt.Translocations))

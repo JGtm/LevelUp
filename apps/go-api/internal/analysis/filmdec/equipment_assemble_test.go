@@ -22,6 +22,11 @@ func recAt(e abilityEmission, off int) equipRecovered {
 	return equipRecovered{abilityEmission: e, off: off}
 }
 
+// recHeadAt fabrique une émission récupérée issue de la fenêtre de TÊTE d'une vie.
+func recHeadAt(e abilityEmission, off int) equipRecovered {
+	return equipRecovered{abilityEmission: e, off: off, head: true}
+}
+
 func TestAssembleOrdreEtChainagePrevious(t *testing.T) {
 	// Le cas fondateur (Dynasty slot 535), en synthétique : taken r4, RÉCUPÉRÉE r11, spent.
 	// Entrées volontairement DANS LE DÉSORDRE : l'ordre publié vient du tri, pas de l'entrée.
@@ -131,5 +136,89 @@ func TestVerrouFinalRetireRepetitionEtNouveauSaut(t *testing.T) {
 	}
 	if out3[2].Gap != 2 {
 		t.Errorf("gap du spent après récupération partielle = %d, attendu 2", out3[2].Gap)
+	}
+}
+
+// TestVerrouTeteConserveUneRecuperationPartielle rejoue LA SONDE de la revue ronde 2 (défaut
+// P2 « verrou tête partielle », corrigé en P1bis) : une vie dont la première stricte porte c7
+// ouvre une fenêtre de tête [compteur virtuel 4 -> 7] qui prédit c5 et c6 ; seul c5 est
+// retrouvé. Le trou résiduel est le MÊME avec ou sans elle (4 -> 7 vaut un saut, 4 -> 5 -> 7
+// aussi) : le verrou doit la GARDER. Avant le correctif, il la comparait à une chaîne sans
+// amorce et la retirait — sortie de 2 émissions, Recovered=0.
+func TestVerrouTeteConserveUneRecuperationPartielle(t *testing.T) {
+	strict := []abilityEmission{
+		emissAt(800, 1_000, 1, 3, 7, 4),                // première stricte : c7, hors norme
+		emissAt(800, 3_000, 1, 9, 0, AbilitySetNoRank), // spent, chaîne close derrière
+	}
+	rec := []equipRecovered{recHeadAt(emissAt(800, 500, 1, 1, 5, 11), 120)}
+	out, st := assembleEquipmentChanges(strict, rec, nil)
+	if len(out) != 3 || st.Recovered != 1 {
+		t.Fatalf("sortie %+v (recovered=%d) : la récupérée de tête PARTIELLE devait être gardée "+
+			"— le trou résiduel est le même avec ou sans elle", out, st.Recovered)
+	}
+	if !out[0].Recovered || out[0].Counter != 5 {
+		t.Fatalf("première émission publiée %+v, attendu la récupérée c5", out[0])
+	}
+	// La chaîne finale se mesure sur ce qui est publié : c5 -> c7 laisse un saut d'une
+	// émission, et c'est ce que le document doit dire.
+	if st.CounterJumps != 1 || st.MissedEstimate != 1 || out[1].Gap != 1 {
+		t.Errorf("stats %+v / gap %d : attendu 1 saut résiduel d'une émission", st, out[1].Gap)
+	}
+}
+
+// TestVerrouTeteBoutEnBoutParLaFenetre est le test DE BOUT EN BOUT du correctif (revue P1bis
+// ronde 1, G1) : la fenêtre de tête passe par `acceptEquipRecovery` — le SEUL endroit qui pose
+// `head` sur un candidat — puis par la fusion. Les deux tests voisins fabriquent `head:true` à
+// la main ; celui-ci ne le fabrique pas, si bien que neutraliser la propagation
+// (`c.head = w.head`, equipment_recovery.go) le fait tomber. Sans lui, `head` pouvait
+// disparaître du chemin réel sans qu'une seule assertion bouge.
+func TestVerrouTeteBoutEnBoutParLaFenetre(t *testing.T) {
+	// Une vie dont la première stricte porte c7 : buildEquipRecoveryWindows ouvre une fenêtre
+	// de TÊTE [compteur virtuel 4 -> 7], qui prédit c5 et c6. Seul c5 existe dans le film.
+	w := equipRecoveryWindow{
+		slot: 800, fromC: equipRecoveryHeadCounter, toC: 7,
+		miss: counterStep(equipmentFirstCounter, 7), tsMax: 10_000, head: true,
+	}
+	w.cands = []equipRecovered{recCand(800, 500, 5, 11, 120)}
+	kept := acceptEquipRecovery(&w)
+	if len(kept) != 1 || !kept[0].head {
+		t.Fatalf("le témoin de compteur devait accepter c5 ET le marquer « tête » : %+v", kept)
+	}
+	strict := []abilityEmission{
+		emissAt(800, 1_000, 1, 3, 7, 4),
+		emissAt(800, 3_000, 1, 9, 0, AbilitySetNoRank),
+	}
+	out, st := assembleEquipmentChanges(strict, kept, nil)
+	if len(out) != 3 || st.Recovered != 1 {
+		t.Fatalf("sortie %+v (recovered=%d) : la chaîne fenêtre -> témoin -> fusion doit GARDER "+
+			"la récupération de tête partielle", out, st.Recovered)
+	}
+	if !out[0].Recovered || out[0].Counter != 5 || out[0].Rank != 11 {
+		t.Errorf("première émission publiée %+v, attendu la récupérée c5 rang 11", out[0])
+	}
+}
+
+// TestVerrouTeteRetireUneRecupereeQuiViole est le CONTRE-CAS, et il existe pour que le
+// correctif ne se lise pas « les récupérées de tête sont intouchables » : le verrou continue
+// de mordre sur une récupérée de tête qui, elle, aggrave RÉELLEMENT la chaîne (ici une
+// répétition de la première stricte). Une amorce ne relâche aucune garde.
+//
+// CE QU'IL PROUVE, ET CE QU'IL NE PROUVE PAS (revue P1bis ronde 1, G1). L'entrée est
+// DÉLIBÉRÉMENT hors de ce qu'`acceptEquipRecovery` sait produire : pour la fenêtre de tête
+// [4 -> 7], les compteurs prédits sont {5, 6}, jamais c7. Le verrou final est une DÉFENSE EN
+// PROFONDEUR — il juge la chaîne assemblée, d'où qu'elle vienne (un départage de paquet
+// frontière peut intercaler ce que la fenêtre n'aurait pas accepté) —, et c'est cette
+// morsure-là que le test fige. La morsure sur une entrée atteignable de bout en bout est
+// couverte, elle, par TestAssembleDepartageDeterministeAuPaquetFrontiere.
+func TestVerrouTeteRetireUneRecupereeQuiViole(t *testing.T) {
+	strict := []abilityEmission{
+		emissAt(801, 1_000, 1, 3, 7, 4),
+		emissAt(801, 3_000, 1, 9, 0, AbilitySetNoRank),
+	}
+	rec := []equipRecovered{recHeadAt(emissAt(801, 500, 1, 1, 7, 11), 120)} // c7 : une répétition
+	out, st := assembleEquipmentChanges(strict, rec, nil)
+	if len(out) != 2 || st.Recovered != 0 || st.Repeats != 0 {
+		t.Fatalf("sortie %+v (recovered=%d, répétitions=%d) : la récupérée de tête en RÉPÉTITION "+
+			"devait être retirée", out, st.Recovered, st.Repeats)
 	}
 }

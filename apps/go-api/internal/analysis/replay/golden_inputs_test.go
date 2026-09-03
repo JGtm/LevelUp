@@ -76,6 +76,21 @@ func goldenInputsPath() string {
 // a un offset arbitraire : bruyant par chance, pas par construction, et le message ne dit pas
 // quoi faire. [TestGoldenInputsVersionGuard] verrouille le refus explicite.
 //
+// v12 (2026-09-03, lot P1bis) : chaque teleportation porte desormais son VA-ET-VIENT — les
+// deux positions monde lues dans la CHARGE de l evenement 117 (R6 par.1, valide 18/18) — plus le
+// temoin qui dit si la charge a ete lue. La magie monte parce que la SUITE DES SECTIONS change
+// (un fixture v11 relu par ce codec derailerait des la premiere teleportation).
+//
+// LES OCTETS FIGES ONT BOUGE, ET CE N EST PAS CE LOT : le film de reference ne porte AUCUNE
+// teleportation, donc la section ci-dessus ecrit exactement les memes octets qu en v11 (un
+// compte a zero, puis rien) ; 98 octets diffèrent pourtant hors magie. LA CAUSE EST UN ORDRE
+// NON DETERMINISTE EN AMONT, mesuree ici : deux regenerations SUCCESSIVES du meme film
+// rendent des fixtures differentes (verifie le 2026-09-03 — copie, `-update`, `cmp`). Ce n est
+// donc PAS une regression de donnees de ce lot, mais un fixture non reproductible : la piste
+// est `filmdec.lessTrack` (`projectiles.go`), qui ordonne des SEGMENTS sur (naissance, slot,
+// gen) alors que `splitLives` en produit plusieurs par cle, avec un `sort.Slice` NON STABLE
+// derriere. Consigne au plan (Decouvertes, G2), NON traitee dans ce lot — hors perimetre.
+//
 // v11 (2026-09-03, lot P1 lecture fiable de l equipement, schema 38) : le fixture porte les
 // TELEPORTATIONS du translocateur (evenements type 117) que BuildFromFilm decode desormais —
 // et que le decodage des positions CONSOMME AUSSI (exemption du filtre de vitesse a ±200 ms,
@@ -120,7 +135,7 @@ func goldenInputsPath() string {
 // delta, d ou sortent les socles de POWER-UP. Elle est serialisee par le MEME codec que la voie
 // des armes (une seule forme, `WorldObjectScan`), a la suite, et non a sa place : les deux
 // entrent ensemble dans l assemblage.
-const goldenInputsMagic = "REPLAYINPUTS11\n"
+const goldenInputsMagic = "REPLAYINPUTS12\n"
 
 // goldenInputs porte les entrees de BuildFromPositions decodees du film de reference.
 //
@@ -506,6 +521,15 @@ func encodeGoldenInputs(g *goldenInputs) []byte {
 		w.u(tr.TimestampUS - lastTS) // le scan rend les evenements tries par instant
 		lastTS = tr.TimestampUS
 		w.u(uint64(tr.Slot))
+		// LE VA-ET-VIENT VOYAGE AVEC SON TEMOIN (v12) : sans lui, un saut sans position
+		// serait indistinguable d un saut vers l origine du monde.
+		w.bool8(tr.HasPositions)
+		for a := 0; a < 3; a++ {
+			w.f32(tr.From[a])
+		}
+		for a := 0; a < 3; a++ {
+			w.f32(tr.To[a])
+		}
 	}
 
 	// Les POSES, puis la CALIBRATION qui les rend lisibles. Les deux vont ensemble : une
@@ -918,8 +942,15 @@ func decodeGoldenInputs(blob []byte) (*goldenInputs, error) {
 	lastTS = 0
 	for k := 0; k < n && r.err == nil; k++ {
 		lastTS += r.u()
-		g.Translocations = append(g.Translocations,
-			filmdec.TranslocatorTeleport{TimestampUS: lastTS, Slot: uint32(r.u())})
+		tr := filmdec.TranslocatorTeleport{TimestampUS: lastTS, Slot: uint32(r.u())}
+		tr.HasPositions = r.bool8()
+		for a := 0; a < 3; a++ {
+			tr.From[a] = r.f32()
+		}
+		for a := 0; a < 3; a++ {
+			tr.To[a] = r.f32()
+		}
+		g.Translocations = append(g.Translocations, tr)
 	}
 
 	n = int(r.u())
@@ -1110,9 +1141,10 @@ func decodeFilmInputs(film, dir string) (*goldenInputs, error) {
 	scan.WorldRange = &wr
 	scan.CaptureDirs = true
 	// MEME GESTE QUE LA PRODUCTION (BuildFromFilm) : les teleportations se lisent AVANT les
-	// positions, parce qu elles exemptent le filtre de vitesse (decision D2). Sans ce geste,
-	// le fixture porterait des positions que la production ne decode plus.
-	translocs := filmdec.ScanFilmTranslocatorTeleports(dir)
+	// positions, parce qu elles exemptent le filtre de vitesse (decision D2), et AVEC l entree
+	// de catalogue, parce que leur charge porte le va-et-vient quantifie aux bornes de la
+	// carte. Sans ce geste, le fixture porterait des positions que la production ne decode plus.
+	translocs := filmdec.ScanFilmTranslocatorTeleports(dir, &entry)
 	scan.TeleportExemptions = filmdec.TeleportExemptionsOf(translocs)
 	pos, err := filmdec.ScanFilmBipedPositions(dir, scan)
 	if err != nil {

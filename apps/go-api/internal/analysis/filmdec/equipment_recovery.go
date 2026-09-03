@@ -59,11 +59,17 @@ type equipRecoveryWindow struct {
 }
 
 // equipRecovered est un candidat retrouvé dans une fenêtre : une émission plus son offset de
-// bit (dédoublonnage) et sa forme (journal).
+// bit (dédoublonnage), sa forme (journal) et l'origine de sa fenêtre.
 type equipRecovered struct {
 	abilityEmission
 	off   int
 	dense bool
+	// head dit que le candidat vient de la fenêtre de TÊTE d'une vie ([naissance, première
+	// émission]). Le VERROU FINAL en a besoin : la chaîne d'une telle vie commence au
+	// compteur VIRTUEL equipRecoveryHeadCounter, et l'ignorer ferait juger une récupérée de
+	// tête contre rien du tout — donc retirer à tort une récupération partielle (revue
+	// ronde 2, « verrou tête partielle »).
+	head bool
 }
 
 // buildEquipRecoveryWindows dresse les fenêtres de re-balayage d'un film : une par saut de
@@ -354,6 +360,7 @@ func acceptEquipRecovery(w *equipRecoveryWindow) []equipRecovered {
 			return nil // deux candidats pour le même compteur prédit : fenêtre rejetée
 		}
 		seen[c.Counter%8] = true
+		c.head = w.head // l'origine de la fenêtre voyage avec le candidat (verrou final)
 		kept = append(kept, c)
 	}
 	if len(kept) == 0 {

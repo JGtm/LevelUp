@@ -473,12 +473,18 @@ package replay
 // PLAN_LECTURE_FIABLE_EQUIPEMENT_2026-09-03, decisions user D1-D4 — « pas d'heuristique :
 // les ENREGISTREMENTS du film, ou rien »). Trois choses, un seul chantier :
 //
-// (1) `translocations[]` — LES TELEPORTATIONS DU TRANSLOCATEUR, datees par l'EVENEMENT du
-// film (type 117 `EquipmentTranslocatorTeleportEffects`, nom source de l'exe) : precision
-// 18/18 et rappel 8/8 sur 5 films (rapport R1). Jusqu'ici le client DEVINAIT la
-// teleportation d'un seuil spatial (> 4 m — aveugle a un saut de 3,24 m mesure) ou la
-// datait du `spent`, qui peut suivre l'usage de 16,5 s. `coverage.translocations` compte
-// les ecartees.
+// (1) `translocations[]` — LES TELEPORTATIONS DU TRANSLOCATEUR, datees ET SITUEES par
+// l'EVENEMENT du film (type 117 `EquipmentTranslocatorTeleportEffects`, nom source de
+// l'exe) : precision 18/18 et rappel 8/8 sur 5 films (rapport R1). Jusqu'ici le client
+// DEVINAIT la teleportation d'un seuil spatial (> 4 m — aveugle a un saut de 3,24 m mesure)
+// ou la datait du `spent`, qui peut suivre l'usage de 16,5 s. Chaque saut porte AUSSI son
+// VA-ET-VIENT (`fx/fy/fz` -> `tx/ty/tz`) : la charge de l'evenement transporte deux
+// positions quantifiees — A = depart, B = arrivee —, layout lu dans l'executable et valide
+// 18/18 a 0,00-0,26 m des discontinuites de piste (rapport R6 §1). Le client n'a donc plus a
+// deriver le lien d'une discontinuite de piste, et la faille se dessine au point de DEPART
+// (le translocateur est un ECHANGE de positions). PAS DE BORNES DE CARTE -> PAS DE
+// POSITIONS : les six champs sont solidaires et absents ensemble ;
+// `coverage.translocations` compte les ecartees ET les positionnees.
 //
 // (2) `equipmentChanges[].recovered` et `[].gap` — LE CANAL i48 SE REPARE ET PUBLIE SON
 // RESIDU. La recuperation GATEE PAR LE TEMOIN DE COMPTEUR (R2 : les octets des emissions
@@ -506,10 +512,11 @@ package replay
 // la reprise du backfill se fait par SchemaVersion, et un artefact 37 doit se lire « a
 // re-cuire », pas « a jour » — sans quoi aucun rejeu deja cuit ne porterait ni les
 // teleportations ni les emissions recuperees. CE QUE LA VERSION NE PORTE PAS : la POSITION
-// de la faille posee (aucune entite repliquee lisible — negatif mesure R1 §1-3 : entre la
-// pose et le premier echange, aucun canal ne la connait), et rien pour les trois `spent`
-// sans evenement 117 du corpus (hors TETE de liste ou expiration sans usage, non departage
-// R1 §4.3 — la LISTE COMPLETE d'evenements est un chantier distinct). Chronique :
+// de la faille AVANT le premier echange (aucune entite repliquee lisible — negatif mesure
+// R1 §1-3 ; la charge du 117 ne porte que {effet, depart, arrivee}, R6 §1.4), et rien pour
+// les trois `spent` sans evenement 117 du corpus (hors TETE de liste ou expiration sans
+// usage, non departage R1 §4.3 — la LISTE COMPLETE d'evenements est un chantier distinct).
+// Chronique :
 // document_translocations.go, document_equipment_changes.go, filmdec/equipment_recovery.go,
 // filmdec/transloc_events.go, filmdec/offline_filters.go.
 const SchemaVersion = 38
@@ -674,9 +681,13 @@ type ReplayDocument struct {
 	// déjà dans `abilities`. Absent si le film n'en porte aucun.
 	EquipmentChanges []EquipmentChange `json:"equipmentChanges,omitempty"`
 	// Translocations est la liste des TÉLÉPORTATIONS du translocateur (cf.
-	// document_translocations.go) : qui saute, à quelle frame — daté par l'ÉVÉNEMENT du film
-	// (type 117), jamais déduit d'un seuil spatial ni du `spent` (qui peut suivre l'usage de
-	// 16,5 s). Absent si le film n'en porte aucune.
+	// document_translocations.go) : qui saute, à quelle frame, et d'où à où — daté ET situé
+	// par l'ÉVÉNEMENT du film (type 117), jamais déduit d'un seuil spatial, ni du `spent`
+	// (qui peut suivre l'usage de 16,5 s), ni d'une discontinuité de piste. Le va-et-vient
+	// (`fx/fy/fz` -> `tx/ty/tz`) vient de la CHARGE de l'événement, déquantifiée aux bornes
+	// de la carte ; il est ABSENT EN BLOC quand elle n'a pas pu être lue, et
+	// `coverage.translocations.positioned` dit combien de sauts le portent. Absent si le
+	// film n'en porte aucune.
 	Translocations []Translocation `json:"translocations,omitempty"`
 	// GroundWeapons est la liste des ARMES AU SOL individuelles (cf.
 	// document_ground_weapon_items.go) : où chacune gît, de quand à quand l'afficher, qui l'a

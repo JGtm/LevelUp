@@ -25853,6 +25853,15 @@ components:
     Translocation:
       additionalProperties: false
       properties:
+        fx:
+          format: float
+          type: number
+        fy:
+          format: float
+          type: number
+        fz:
+          format: float
+          type: number
         slot:
           format: int32
           minimum: 0
@@ -25860,6 +25869,15 @@ components:
         t:
           format: int64
           type: integer
+        tx:
+          format: float
+          type: number
+        ty:
+          format: float
+          type: number
+        tz:
+          format: float
+          type: number
       required:
         - t
         - slot
@@ -25873,6 +25891,9 @@ components:
         events:
           format: int64
           type: integer
+        positioned:
+          format: int64
+          type: integer
         published:
           format: int64
           type: integer
@@ -25884,6 +25905,7 @@ components:
         - published
         - beforeOrigin
         - unpublished
+        - positioned
       type: object
     UnreadCount:
       additionalProperties: false

@@ -174,8 +174,9 @@ const NULLABLE_ARRAYS = [
   // tenues. La garde de mode est côté serveur : toute la famille bomb, One Bomb comprise.
   'bombCarries',
   // `translocations` : LES TÉLÉPORTATIONS DU TRANSLOCATEUR (schéma 38, 2026-09-03) — une entrée
-  // PLATE par saut (t, slot), datée par l'ÉVÉNEMENT type 117 du film — jamais un seuil spatial,
-  // jamais le `spent` (jusqu'à 16,5 s de retard mesuré). La consommation P2 (éclat, va-et-vient,
+  // PLATE par saut : (t, slot) ET le va-et-vient (`fx/fy/fz` -> `tx/ty/tz`), tous deux lus dans
+  // l'ÉVÉNEMENT type 117 du film — jamais un seuil spatial, jamais le `spent` (jusqu'à 16,5 s de
+  // retard mesuré), jamais une discontinuité de piste. La consommation P2 (éclat, va-et-vient,
   // faille) viendra la lire ici ; la frontière la comble dès le schéma.
   'translocations',
 ] as const
@@ -259,7 +260,8 @@ const NULLABLE_ARRAY_PATHS = [
   // Schéma 29 : le RAMASSAGE NATIF, calque PLAT lui aussi — l'objet ne porte que des nombres
   // et des chaînes (instant, slot, xuid, identifiant de catalogue, nature, classe brute).
   'pickups',
-  // `translocations` (schéma 38) : téléportation PLATE (t, slot) — un seul chemin, la racine.
+  // `translocations` (schéma 38) : téléportation PLATE — (t, slot) et six coordonnées
+  // optionnelles, que des nombres : un seul chemin, la racine.
   'translocations',
   // `bombArmings` (schéma 33) : armement PLAT, aucun tableau imbriqué — un seul chemin, la racine.
   'bombArmings',

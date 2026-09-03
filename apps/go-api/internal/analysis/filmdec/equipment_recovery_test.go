@@ -76,6 +76,12 @@ func TestTemoinDeCompteurAccepteLeComblementExact(t *testing.T) {
 	if len(got) != 1 || got[0].Counter != 6 || got[0].Rank != 11 {
 		t.Fatalf("le candidat au compteur prédit doit être accepté : %+v", got)
 	}
+	// L'ORIGINE DE LA FENÊTRE VOYAGE AVEC LE CANDIDAT, et elle vaut FAUX ici : cette fenêtre
+	// est un saut de MILIEU de vie, sa chaîne n'a pas de compteur virtuel d'amorce. Sans cette
+	// assertion, `head` serait indistinguable d'une constante (revue P1bis ronde 1, G1).
+	if got[0].head {
+		t.Errorf("candidat de MILIEU de vie marqué « tête » : %+v", got[0])
+	}
 }
 
 func TestTemoinDeCompteurRefuseLeBruit(t *testing.T) {
@@ -84,6 +90,10 @@ func TestTemoinDeCompteurRefuseLeBruit(t *testing.T) {
 		w     equipRecoveryWindow
 		cands []equipRecovered
 		want  int // émissions acceptées
+		// wantHead : l'origine de la fenêtre que CHAQUE candidat accepté doit porter. C'est
+		// elle qui amorce le verrou final au compteur virtuel de tête ; sans cette
+		// vérification, `head` serait indistinguable d'une constante (revue P1bis ronde 1, G1).
+		wantHead bool
 	}{
 		{
 			nom:   "hors prédiction : ignoré",
@@ -144,8 +154,9 @@ func TestTemoinDeCompteurRefuseLeBruit(t *testing.T) {
 			w: equipRecoveryWindow{
 				slot: 5, fromC: equipRecoveryHeadCounter, toC: 7, miss: 2, head: true,
 			}, // prédits {5, 6}
-			cands: []equipRecovered{recCand(5, 100, 6, 11, 0)},
-			want:  1,
+			cands:    []equipRecovered{recCand(5, 100, 6, 11, 0)},
+			want:     1,
+			wantHead: true,
 		},
 	}
 	for _, c := range cases {
@@ -153,8 +164,16 @@ func TestTemoinDeCompteurRefuseLeBruit(t *testing.T) {
 			w := c.w
 			w.tsMax = 10_000
 			w.cands = c.cands
-			if got := acceptEquipRecovery(&w); len(got) != c.want {
-				t.Errorf("%d émission(s) acceptée(s), attendu %d : %+v", len(got), c.want, got)
+			got := acceptEquipRecovery(&w)
+			if len(got) != c.want {
+				t.Fatalf("%d émission(s) acceptée(s), attendu %d : %+v", len(got), c.want, got)
+			}
+			for i, g := range got {
+				if g.head != c.wantHead {
+					t.Errorf("candidat %d : head=%v, attendu %v — l'origine de la fenêtre doit "+
+						"voyager avec le candidat, c'est elle qui amorce le verrou final",
+						i, g.head, c.wantHead)
+				}
 			}
 		})
 	}
