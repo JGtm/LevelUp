@@ -18,7 +18,9 @@ import {
   vehicleActiveRides,
   vehicleAimAngle,
   vehicleCanEmbark,
+  vehicleDestructionFrame,
   vehicleDriverAt,
+  vehicleExplosionKindOf,
   vehicleIsDecor,
   vehicleColorAt,
   vehicleHeadingAt,
@@ -29,6 +31,8 @@ import {
   vehicleVisibleAt,
   VEHICLE_DEFAULT_HEADING_DEG,
   VEHICLE_FLOOR_PX,
+  VEHICLE_HUMAN_FAMILIES,
+  VEHICLE_PLASMA_FAMILIES,
   VEHICLE_SOFT_CEIL_PX,
 } from './vehiclesLayer'
 
@@ -186,6 +190,49 @@ describe('vehiclePositionAt / vehicleVisibleAt', () => {
     expect(vehicleVisibleAt(t, 10)).toBe(true)
     expect(vehicleVisibleAt(t, 100)).toBe(true)
     expect(vehicleVisibleAt(t, 101)).toBe(false)
+  })
+
+  it('`tEnd` FAIT AUTORITÉ SUR `t1max` quand la destruction est établie (schéma 30)', () => {
+    const t = track({ t0: 10, t1: 90, t1max: 100, end: 'destroyed', tEnd: 60 })
+    expect(vehicleVisibleAt(t, 60)).toBe(true)
+    expect(vehicleVisibleAt(t, 61)).toBe(false)
+    expect(vehicleVisibleAt(t, 100)).toBe(false)
+  })
+
+  it('AUCUN CHANGEMENT tant que `end` vaut `"unknown"` : `t1max` reste seul maître', () => {
+    const t = track({ t0: 10, t1: 90, t1max: 100, end: 'unknown' })
+    expect(vehicleVisibleAt(t, 100)).toBe(true)
+    expect(vehicleVisibleAt(t, 101)).toBe(false)
+  })
+})
+
+describe('vehicleDestructionFrame — schéma 30, EN AVANCE DE PHASE', () => {
+  it('rend `null` tant que `end` vaut `"unknown"` (état actuel de CHAQUE artefact)', () => {
+    expect(vehicleDestructionFrame(track({ end: 'unknown', tEnd: 42 }))).toBeNull()
+  })
+
+  it('rend `null` quand `end` vaut `"destroyed"` mais que `tEnd` est absent (mesure partielle)', () => {
+    expect(vehicleDestructionFrame(track({ end: 'destroyed', tEnd: undefined }))).toBeNull()
+  })
+
+  it('rend `tEnd` UNIQUEMENT quand LES DEUX conditions sont réunies', () => {
+    expect(vehicleDestructionFrame(track({ end: 'destroyed', tEnd: 42 }))).toBe(42)
+  })
+})
+
+describe('vehicleExplosionKindOf — la table FACTION -> EFFET (demande utilisateur)', () => {
+  it('les CINQ familles Covenant/Bannis reçoivent l’explosion PLASMA', () => {
+    for (const f of VEHICLE_PLASMA_FAMILIES) expect(vehicleExplosionKindOf(f)).toBe('plasma')
+  })
+
+  it('les familles UNSC/humaines citées par l’utilisateur reçoivent l’explosion NORMALE', () => {
+    for (const f of VEHICLE_HUMAN_FAMILIES) expect(vehicleExplosionKindOf(f)).toBe('normal')
+  })
+
+  it('une famille VIDE ou INCONNUE reçoit le repli NORMAL (neutre, documenté)', () => {
+    expect(vehicleExplosionKindOf(undefined)).toBe('normal')
+    expect(vehicleExplosionKindOf('')).toBe('normal')
+    expect(vehicleExplosionKindOf('un_chassis_qui_n_existe_pas_encore')).toBe('normal')
   })
 })
 

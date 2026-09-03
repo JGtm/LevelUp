@@ -25,8 +25,10 @@ import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { staticAssetURL } from '@/lib/staticAssets'
 import { useTitleSlug } from '@/lib/title-routing'
 
+import type { FxInk } from './fxInk'
 import type { PlacementView } from './placementShapes'
 import { tintedIconCanvas } from './replayDraw'
+import { frameToMs } from './replayLogic'
 import type { ReplayDocumentReady } from './replayNormalize'
 import { buildEmbarkedPredicate, vehicleIsDecor } from './vehiclesLayer'
 import { drawVehiclesLayer, type VehicleSpriteSize } from './vehiclesPaint'
@@ -65,6 +67,14 @@ export interface VehiclesInput {
   neutralInk: string
   /** Encre du contour des noms (cf. `useReplayInks`). */
   labelStroke: string
+  /**
+   * Teintes de nature des effets (fxInk.ts, MÊME source que les tirs/grenades) : l'explosion de
+   * destruction d'un véhicule (schéma 30, en avance de phase — cf. `VehicleStyle.explosionInk`)
+   * en tire sa couleur PLASMA vs NORMALE.
+   */
+  explosionInk: FxInk
+  /** Sous « mouvement réduit », l'explosion de destruction ne se joue pas. */
+  reducedMotion: boolean
   /** Repeindre la scène : les vignettes et le manifeste arrivent après coup (chargement async). */
   redraw: () => void
 }
@@ -102,11 +112,17 @@ export function useReplayVehicles({
   nameOfXuid,
   neutralInk,
   labelStroke,
+  explosionInk,
+  reducedMotion,
   redraw,
 }: VehiclesInput): Vehicles {
   const titleSlug = useTitleSlug()
   const tracks = doc.vehicles
   const labels = doc.vehicleLabels
+  // Durée RÉELLE d'une frame : l'explosion de destruction a une timeline en TEMPS, pas en
+  // frames (même besoin que `RestWindow.frameMs` des grenades, `frameToMs` porte déjà le repli
+  // des artefacts sans échelle temporelle). Ne dépend que du document, jamais de l'image.
+  const frameMs = useMemo(() => frameToMs(1, doc), [doc])
 
   // LE PRÉDICAT EMBARQUÉ SUIT LE TOGGLE DU CALQUE (revue adversariale 2026-09-02, point 7) :
   // calque ÉTEINT, on rend les pions — supprimer un occupant sans dessiner son véhicule ferait
@@ -202,11 +218,17 @@ export function useReplayVehicles({
         ctx,
         tracks,
         view,
-        { frame, k },
-        { neutralInk, labelStroke, showNames, showAim, spriteOf, sizeOf, colorOfSlot, colorOfXuid, nameOfSlot, nameOfXuid },
+        { frame, k, frameMs },
+        {
+          neutralInk, labelStroke, showNames, showAim, spriteOf, sizeOf, colorOfSlot, colorOfXuid,
+          nameOfSlot, nameOfXuid, explosionInk, reducedMotion,
+        },
       )
     },
-    [enabled, tracks, view, neutralInk, labelStroke, showNames, showAim, spriteOf, sizeOf, colorOfSlot, colorOfXuid, nameOfSlot, nameOfXuid],
+    [
+      enabled, tracks, view, neutralInk, labelStroke, showNames, showAim, spriteOf, sizeOf,
+      colorOfSlot, colorOfXuid, nameOfSlot, nameOfXuid, frameMs, explosionInk, reducedMotion,
+    ],
   )
 
   // « DISPONIBLE » = AU MOINS UN VÉHICULE QUE LE CALQUE DESSINERAIT. Un film qui ne porte que du

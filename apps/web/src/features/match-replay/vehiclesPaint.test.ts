@@ -19,10 +19,12 @@ import { describe, expect, it } from 'vitest'
 
 import type { ReplayVehicleRide, ReplayVehicleSample } from '@/lib/api/types'
 
+import { EXPLOSION_MS } from './explosionFx'
+import type { FxInk } from './fxInk'
 import { count, recordingContext, type CanvasOp } from './test/recordingContext'
-import type { PlacementView } from './placementShapes'
+import { project, type PlacementView } from './placementShapes'
 import type { ReplayVehicleTrackReady } from './replayNormalize'
-import { drawVehiclesLayer, type VehicleStyle } from './vehiclesPaint'
+import { drawVehiclesLayer, type VehicleStyle, type VehicleTime } from './vehiclesPaint'
 
 const VIEW: PlacementView = {
   bounds: { minX: 0, minY: 0, maxX: 100, maxY: 100 },
@@ -58,6 +60,25 @@ function ride(over: Partial<ReplayVehicleRide>): ReplayVehicleRide {
 /** Un sprite déjà chargé et déjà teint : le calque n'en lit que les dimensions. */
 const SPRITE = { width: 128, height: 128 } as unknown as CanvasImageSource
 
+/**
+ * Encres d'effet FICTIVES mais DISTINCTES par teinte : un test peut ainsi affirmer « c'est LA
+ * teinte plasma qui a été peinte » sans dépendre des vraies valeurs `oklch(...)` du thème (même
+ * patron que `ExplosionInk` dans `explosionFx.test.ts`, qui utilise `'FIRE'`/`'CORE'`/`'SMOKE'`).
+ */
+const EXPLOSION_INK: FxInk = {
+  tint: {
+    kinetic: 'INK-KINETIC',
+    plasma_cool: 'INK-PLASMA',
+    plasma_hot: 'INK-PLASMA-HOT',
+    forerunner: 'INK-FORERUNNER',
+    electric: 'INK-ELECTRIC',
+    needle: 'INK-NEEDLE',
+    blast: 'INK-NORMALE',
+    neutral: 'INK-NEUTRE',
+  },
+  core: 'INK-CORE',
+}
+
 /** Le style par défaut : tout est allumé, tout se résout — les cas éteignent ce qu'ils testent. */
 function style(over: Partial<VehicleStyle> = {}): VehicleStyle {
   return {
@@ -71,15 +92,28 @@ function style(over: Partial<VehicleStyle> = {}): VehicleStyle {
     colorOfXuid: () => null,
     nameOfSlot: () => 'PION-BRIDGE',
     nameOfXuid: () => null,
+    explosionInk: EXPLOSION_INK,
+    reducedMotion: false,
     ...over,
   }
 }
 
-function paint(tracks: ReplayVehicleTrackReady[], st: VehicleStyle = style()): CanvasOp[] {
+/** `frameMs` par défaut : 100 ms/frame — des nombres ronds pour dater l'âge de l'explosion. */
+function paint(
+  tracks: ReplayVehicleTrackReady[],
+  st: VehicleStyle = style(),
+  time: Partial<VehicleTime> = {},
+): CanvasOp[] {
   const { ops, ctx } = recordingContext()
-  drawVehiclesLayer(ctx, tracks, VIEW, { frame: 50, k: 1 }, st)
+  drawVehiclesLayer(ctx, tracks, VIEW, { frame: 50, k: 1, frameMs: 100, ...time }, st)
   return ops
 }
+
+/** Les couleurs (fillStyle/strokeStyle/addColorStop) réellement peintes, dans l'ordre. */
+const paintedColors = (ops: CanvasOp[]): unknown[] =>
+  ops
+    .filter((o) => o.op === 'set fillStyle' || o.op === 'set strokeStyle' || o.op === 'addColorStop')
+    .map((o) => (o.op === 'addColorStop' ? o.args[1] : o.args[0]))
 
 /** Les textes réellement écrits, dans l'ordre. */
 const texts = (ops: CanvasOp[]): string[] =>
@@ -218,5 +252,97 @@ describe('drawVehiclesLayer — le CÔNE DE VISÉE du conducteur (retour utilisa
     const sprite = ops.findIndex((o) => o.op === 'drawImage')
     expect(cone).toBeGreaterThanOrEqual(0)
     expect(sprite).toBeGreaterThan(cone)
+  })
+})
+
+describe('drawVehiclesLayer — LA DESTRUCTION (schéma 30, demande utilisateur : « il faut aussi la destruction et un effet UI »)', () => {
+  /** Aucun cône, aucun nom : seule l'explosion peut produire un dégradé radial ou un arc ici. */
+  const DESTROYED = track({ end: 'destroyed', tEnd: 50, rides: [] })
+
+  it('AUCUN effet AVANT `tEnd`, et le déclenchement tombe PILE à `tEnd`', () => {
+    expect(count(paint([DESTROYED], style(), { frame: 49 }), 'createRadialGradient')).toBe(0)
+    expect(count(paint([DESTROYED], style(), { frame: 50 }), 'createRadialGradient')).toBeGreaterThan(0)
+  })
+
+  it('RIEN tant que `end` vaut `"unknown"` — même avec un `tEnd` publié (mesure Go non aboutie)', () => {
+    const unresolved = track({ end: 'unknown', tEnd: 50, rides: [] })
+    const ops = paint([unresolved], style(), { frame: 50 })
+    expect(count(ops, 'createRadialGradient')).toBe(0)
+    // Le sprite, lui, continue comme avant (repli sur `t1max`) : zéro changement visible.
+    expect(count(ops, 'drawImage')).toBe(1)
+  })
+
+  it('EXPLOSION PLASMA pour une famille Covenant/Bannis (Ghost)', () => {
+    const ghost = track({ end: 'destroyed', tEnd: 50, rides: [], family: 'ghost' })
+    const colors = paintedColors(paint([ghost], style(), { frame: 50 }))
+    expect(colors).toContain('INK-PLASMA')
+    expect(colors).not.toContain('INK-NORMALE')
+  })
+
+  it('EXPLOSION NORMALE pour un véhicule humain (Warthog)', () => {
+    const warthog = track({ end: 'destroyed', tEnd: 50, rides: [], family: 'warthog' })
+    const colors = paintedColors(paint([warthog], style(), { frame: 50 }))
+    expect(colors).toContain('INK-NORMALE')
+    expect(colors).not.toContain('INK-PLASMA')
+  })
+
+  it('REPLI NORMAL pour un châssis non résolu (famille vide)', () => {
+    const inconnu = track({ end: 'destroyed', tEnd: 50, rides: [], family: undefined })
+    const colors = paintedColors(paint([inconnu], style(), { frame: 50 }))
+    expect(colors).toContain('INK-NORMALE')
+    expect(colors).not.toContain('INK-PLASMA')
+  })
+
+  it('le SPRITE NE SE DESSINE PLUS après `tEnd` — il cesse à la destruction, pas à `t1max`', () => {
+    const t = track({ end: 'destroyed', tEnd: 50, t1max: 1000, rides: [], family: 'warthog' })
+    expect(count(paint([t], style(), { frame: 50 }), 'drawImage')).toBe(1)
+    expect(count(paint([t], style(), { frame: 51 }), 'drawImage')).toBe(0)
+  })
+
+  it('L’EXPLOSION S’ÉTEINT à `EXPLOSION_MS` : rien au-delà, quelque chose jusqu’à la borne', () => {
+    // frameMs = 100 : la borne tombe pile sur une frame (50 + 24), l'image suivante en sort.
+    // `drawVehiclesLayer` pose toujours son PROPRE save/restore (même sans rien à peindre), donc
+    // le signal n'est pas « zéro opération » mais « zéro trace de PARTICULE d'explosion ».
+    const atBound = 50 + EXPLOSION_MS / 100
+    const ops = paint([DESTROYED], style(), { frame: atBound })
+    const opsAfter = paint([DESTROYED], style(), { frame: atBound + 1 })
+    expect(count(ops, 'set globalCompositeOperation')).toBeGreaterThan(0)
+    expect(count(opsAfter, 'set globalCompositeOperation')).toBe(0)
+  })
+
+  it('ANCRÉE À LA POSITION DE `tEnd`, pas à la position courante du véhicule', () => {
+    // Le véhicule continue d'écrire des échantillons après sa destruction (l'artefact ne le
+    // garantit pas encore, mais le rendu ne doit pas en dépendre) : l'explosion reste au point
+    // de la destruction plutôt que de suivre une trajectoire post-mortem. `drawWave` (un seul
+    // `arc`, sans dérive de particule) pose son centre exactement à l'ancre — c'est le signal le
+    // plus direct pour lire une position posée par le calque.
+    const t = track({
+      end: 'destroyed',
+      tEnd: 50,
+      rides: [],
+      family: undefined,
+      samples: [sample({ t: 0, x: 50, y: 50 }), sample({ t: 50, x: 50, y: 50 }), sample({ t: 90, x: 90, y: 90 })],
+    })
+    // ageMs = 100 : toujours dans la fenêtre de l'onde de choc (~650 ms), avant toute dérive.
+    const ops = paint([t], style(), { frame: 51 })
+    const wave = ops.find((o) => o.op === 'arc')
+    expect(wave).toBeDefined()
+    const atDestruction = project({ x: 50, y: 50 }, VIEW)
+    const atCurrentFrame = project({ x: 51, y: 51 }, VIEW) // position COURANTE interpolée à t=51 sur [50,90]
+    expect(wave?.args[0]).toBeCloseTo(atDestruction.x, 5)
+    expect(wave?.args[1]).toBeCloseTo(atDestruction.y, 5)
+    expect(wave?.args[0]).not.toBeCloseTo(atCurrentFrame.x, 3)
+  })
+
+  it('LE DÉCOR N’EXPLOSE JAMAIS : une famille non jouable reste muette même détruite', () => {
+    // Même refus qu'à l'accoutumée (cf. le premier `describe` du fichier) : `drawVehiclesLayer`
+    // pose SON PROPRE save/restore quel que soit le contenu de la boucle — le signal reste donc
+    // l'ABSENCE de toute primitive DE VÉHICULE, explosion comprise.
+    const falcon = track({ end: 'destroyed', tEnd: 50, rides: [], family: 'falcon' })
+    const ops = paint([falcon], style(), { frame: 50 })
+    expect(count(ops, 'drawImage')).toBe(0)
+    expect(count(ops, 'fill')).toBe(0)
+    expect(count(ops, 'createRadialGradient')).toBe(0)
+    expect(count(ops, 'set globalCompositeOperation')).toBe(0)
   })
 })
