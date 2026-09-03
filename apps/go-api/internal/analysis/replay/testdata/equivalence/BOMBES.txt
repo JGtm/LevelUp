@@ -1,7 +1,19 @@
-# FILMS-BOMBES — PLAN_CUISSON_PERF §3 D11 : exclus du corpus d'equivalence jusqu'au lot 4b.
-# Ils meurent aujourd'hui au plafond memoire (NamedEventsFrom/incrementTimes) ; leur premier digest
-# sera fige au lot 4b, quand le plafond D13 les rendra cuisables. Memes colonnes que CORPUS.txt.
-51101d1d | Fortress | CTF:Arena Neutral Flag | 13 | 9.1 | bombe RAM du 2026-08-24 (7,9 Go en 2,6 s ; ~26 Gio sans garde)
-a349fea8 | Fragmentation Heavies | BTB Heavies:Total Control | 51 | 65.9 | seconde bombe (3,17 Gio en 3,6 s, 2026-08-26)
-1c4c63c2 | Refuge | BTB:One Flag CTF | 69 | 88.0 | bombe revelee au figeage du 2026-09-02 (3,96 Gio en 4,5 s) — ex-corpus, le plus gros film du cache
-60ae07c4 | Live Fire - Ranked | Ranked:Oddball | 44 | 32.0 | bombe revelee au figeage du 2026-09-02 (4,02 Gio en 2 min 12) — TEMOIN DU LOT 3 (layout Live Fire)
+# FILMS-BOMBES — LISTE CLOSE LE 2026-09-03 (lot 4b). CE FICHIER N'EST PLUS UNE LISTE DE TRAVAIL :
+# les quatre films sont PASSES AU `CORPUS.txt`, et ce qui reste ici est leur dossier.
+#
+# Regime D11 (plan `PLAN_CUISSON_PERF` §3) : ces films etaient exclus du corpus d'equivalence parce
+# qu'ils mouraient au plafond memoire de l'enfant — `objectiveevents.incrementTimes` deroulait un
+# evenement par unite de compteur sur un enregistrement mal aligne, jusqu'a 2,16 MILLIARDS d'entiers
+# pour un seul emplacement (`51101d1d`, comp 20 B : 17,31 Go de `[]int`, 25,96 Go pendant le
+# `growslice` final — l'OOM ~26 Go du registre des reports, 2026-08-24).
+#
+# LEVEE : le lot 4b pose deux bornes mesurees (deroulage <= 100 000 par pas — pire cas SAIN 17 306,
+# marge 5,8x ; total <= 1 000 000 par film — pire total sain 21 160, marge 47x). Les quatre films
+# cuisent alors sous 0,7 Gio, leur premier digest est fige sous cette borne, et le corpus actif
+# passe de 9 a 13 films.
+#
+# Colonnes : short8 | carte | variante | chunks | Mo | dossier (etat AVANT la borne, puis apres).
+51101d1d | Fortress | CTF:Arena Neutral Flag | 13 | 9.1 | bombe du 2026-08-24 (7,9 Go en 2,6 s ; ~26 Gio sans garde) — AU CORPUS depuis le 2026-09-03 : 4,9 s, pic 0,08 Gio, 1 deroulage rejete par passe flag
+a349fea8 | Fragmentation Heavies | BTB Heavies:Total Control | 51 | 65.9 | seconde bombe (3,17 Gio en 3,6 s, 2026-08-26) — AU CORPUS depuis le 2026-09-03 : 1 min 48, pic 0,48 Gio, 9 rejets (flag) + 3 rejets (zone)
+1c4c63c2 | Refuge | BTB:One Flag CTF | 69 | 88.0 | bombe revelee au figeage du 2026-09-02 (3,96 Gio en 4,5 s) — le plus gros film du cache — AU CORPUS depuis le 2026-09-03 : 1 min 54, pic 0,68 Gio, 1 rejet
+60ae07c4 | Live Fire - Ranked | Ranked:Oddball | 44 | 32.0 | bombe revelee au figeage du 2026-09-02 (4,02 Gio en 2 min 12) — TEMOIN DU LOT 3 (layout Live Fire) — AU CORPUS depuis le 2026-09-03 : 25 s, pic 0,34 Gio, 2 rejets

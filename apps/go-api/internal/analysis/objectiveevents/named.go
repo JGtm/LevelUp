@@ -214,19 +214,29 @@ func NamedEventsFrom(recs []StatRecord, objectiveType string) []NamedEvent {
 	// d'enregistrements pour en tirer huit series.
 	real := RealRounds(recs)
 	byKey := rawSeriesByKey(recs, table)
+	// LE BUDGET EST OUVERT ICI, ET LE PARCOURS EST TRIE POUR LUI. Le plafond total appartient
+	// a cette fonction (D13) ; le solde, lui, descend jusqu'a [incrementTimes] pour qu'aucun
+	// appel isole ne le depasse. Des qu'un budget peut s'epuiser, l'ORDRE de parcours devient
+	// observable : deux parcours de map donneraient deux sorties differentes sur un film
+	// tronque. D'ou [sortedSlotKeys] et [sortedIntKeys] — sans effet sur un film sain, ou tout
+	// est emis puis retrie par [sortNamedEvents].
+	b := newEventBudget("named_events:" + objectiveType)
 	var out []NamedEvent
-	for key, slot := range table {
+	for _, key := range sortedSlotKeys(table) {
+		slot := table[key]
 		if slot.Redundant {
 			continue
 		}
-		for entity, pts := range cumulateRounds(byKey[key], real) {
-			for _, t := range incrementTimes(pts) {
+		series := cumulateRounds(byKey[key], real)
+		for _, entity := range sortedIntKeys(series) {
+			for _, t := range incrementTimes(series[entity], key, b) {
 				out = append(out, NamedEvent{
 					TimeMS: t, Slot: entity, Stat: slot.Stat, Comp: key.Comp, Side: key.Side,
 				})
 			}
 		}
 	}
+	b.resume()
 	sortNamedEvents(out)
 	return out
 }
@@ -308,13 +318,18 @@ func crossCheckFrom(recs []StatRecord, objectiveType string) map[int]map[string]
 			canonical[slot.Stat] = key
 		}
 	}
+	// Un budget pour la passe entiere, et un parcours trie pour qu'il se consomme toujours
+	// dans le meme ordre (meme raison qu'a [NamedEventsFrom]).
+	b := newEventBudget("cross_check:" + objectiveType)
+	defer b.resume()
 	out := map[int]map[string][2]int{}
-	for key, slot := range table {
+	for _, key := range sortedSlotKeys(table) {
+		slot := table[key]
 		ref, hasRef := canonical[slot.Stat]
 		if !slot.Redundant || !hasRef {
 			continue
 		}
-		dupCounts, refCounts := countsOf(recs, key), countsOf(recs, ref)
+		dupCounts, refCounts := countsOf(recs, key, b), countsOf(recs, ref, b)
 		for entity, got := range dupCounts {
 			want := refCounts[entity]
 			if got == want {
@@ -330,10 +345,16 @@ func crossCheckFrom(recs []StatRecord, objectiveType string) map[int]map[string]
 }
 
 // countsOf rend, par slot, le nombre d'unites gagnees par un emplacement.
-func countsOf(recs []StatRecord, key statSlotKey) map[int]int {
+//
+// IL DEROULE, DONC IL PAIE LE BUDGET (note N-AV du plan) : c'est le SECOND consommateur de
+// [incrementTimes], et le laisser hors budget aurait laisse une porte ouverte a l'explosion
+// memoire que les bornes ferment chez [NamedEventsFrom]. Le budget vient de l'appelant :
+// le pont d'identite en ouvre un pour ses trois compteurs, le controle croise un pour sa passe.
+func countsOf(recs []StatRecord, key statSlotKey, b *eventBudget) map[int]int {
 	out := map[int]int{}
-	for slot, pts := range seriesBySlot(recs, key) {
-		out[slot] = len(incrementTimes(pts))
+	series := seriesBySlot(recs, key)
+	for _, slot := range sortedIntKeys(series) {
+		out[slot] = len(incrementTimes(series[slot], key, b))
 	}
 	return out
 }

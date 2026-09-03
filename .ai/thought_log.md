@@ -1,3 +1,45 @@
+## [2026-09-03] Cuisson perf, lot 4b — les bornes du deroulage sont posees : les quatre films-bombes cuisent, le report RAM est leve — Complete (4/4 items)
+
+Reprise du lot 4b de `.ai/V7.5/PLAN_CUISSON_PERF.md` apres l'arbitrage utilisateur du meme jour
+(worktree `LevelUp-wt-cuisson-perf`, branche `wt/cuisson-perf`, base `2f930743d`, aucun commit).
+
+**Decision technique principale.** La mesure 4b.1 avait arrete le lot : la borne de 10 000 ecrite
+en D13 passait SOUS le pire deroulage d'un film SAIN (17 306 sur `d9781168`). L'utilisateur a
+tranche **100 000** — 5,8x au-dessus du pire cas sain, 5 377x sous la plus petite bombe, dans
+l'intervalle ou les deux populations sont separees d'un facteur 31 000. Deux bornes posees dans
+`objectiveevents` : (1) `incrementTimes` rejette un deroulage `p.Value - prev > 100 000` (le point
+n'emet rien, `prev` avance quand meme — sinon le point suivant rejouerait le meme ecart), compteur
++ `slog.Warn` ; (2) plafond total de 1 000 000 d'evenements par film dont le SOLDE descend DANS
+l'appel. Ce second point etait la vraie difficulte (note N-AV) : `statMaxRecordsPerFilm` borne les
+POINTS et non les evenements, donc un plafond verifie seulement entre les series aurait laisse un
+appel isole allouer 26 Gio. Consequence non prevue par le plan : les TROIS passes qui deroulent
+ouvrent un budget, et non une seule — `SlotIdentityFrom` et `crossCheckFrom` deroulent aussi, par
+`countsOf`, second consommateur d'`incrementTimes` que D13 n'avait pas vu (decouverte N-BA). Autre
+consequence : un budget rend l'ORDRE DE PARCOURS observable, donc trois iterations de map ont du
+etre triees (N-BB) — meme famille que les dix non-determinismes de l'item 0.4bis, trouvee cette
+fois par construction.
+
+**Resultats observes.** Les quatre bombes cuisent : `51101d1d` 4,9 s / **0,08 Gio** · `a349fea8`
+1 min 48 / **0,48 Gio** · `1c4c63c2` 1 min 54 / **0,68 Gio** · `60ae07c4` 25 s / **0,34 Gio** —
+contre 3,17 a 4,02 Gio auxquels elles MOURAIENT, et contre les ~26 Gio que `51101d1d` demandait
+sans garde. Deroulages rejetes : 1, 12 (9 sur la table flag + 3 sur la sienne), 1, 2. **Aucun film
+n'atteint le plafond total** (maximum emis 231 589 sur 1 000 000) : c'est la borne par pas qui fait
+tout le travail. Trois passes de verification : 4/4 bombes identiques au re-passage (figeage
+deterministe), **9/9 films sains identiques**, et **zero activation de borne sur un film sain**
+(0 ligne de journal, aucun `.tsv` sain modifie). Le corpus d'equivalence passe de 9 a **13 films**.
+Six tests unitaires ajoutes, discriminants verifies dans les deux sens (borne ramenee a 10 000 ->
+le test « serie saine » echoue ; `prev` fige apres rejet -> les deux tests de rejet echouent).
+Gate : `gofmt -l` vide, `go vet` propre, trois paquets de tests verts,
+`golangci-lint --new-from-merge-base=origin/main` 0 issue.
+
+**Conclusion / prochaine etape.** Le report « BOMBE RAM `NamedEventsFrom` » du
+`REGISTRE_REPORTS.md` est LEVE (cloture finale datee, avec durees et pics). **Le LOT 3 est
+DEBLOQUE** : son temoin `60ae07c4` etait bloque parce qu'il etait une bombe — il cuit maintenant
+en 25 s et son digest de reference est fige sous la borne, donc l'ecart Live Fire du lot 3 se
+mesurera contre une reference existante. Restent aussi debloquees mais NON lancees (hors mandat) :
+la passe `backfill-replay --only-existing` et la re-cuisson de masse (schema vehicules). Rien n'a
+ete commis.
+
 ## [2026-09-03] Cuisson perf — CHANTIER LIVRE : 3 min 30 -> 15-19 s (-89 %), branche mergeable — Complete
 
 Fin des lots 0/1/2/4/5/6 de `.ai/V7.5/PLAN_CUISSON_PERF.md` (12 commits sur `wt/cuisson-perf`).
