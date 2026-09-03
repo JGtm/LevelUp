@@ -89120,3 +89120,39 @@ tenir, aucun code retire.
 
 **Conclusion / prochaine etape** : gate visuel. Le SUIVI D UN JOUEUR reste devant : il a
 desormais tout son socle (cadrage par les bornes, gel de cuisson, blit decale).
+
+---
+
+## [2026-09-03] Rejeu 2D : le sol reconstruit est SUPPRIME — plus de repli qui cuise par inadvertance
+
+**Statut** : Complete (code + gates) ; merge vers feat/v75 dans la foulee.
+
+**Decision technique principale** : suppression, pas desactivation (demande utilisateur : « il faut
+desactiver totalement, voire supprimer le code. Je ne veux pas que ca tourne par inadvertance et
+charge la ram »). Le sol reconstruit etait un calque cuit hors ecran de ~45 000 cellules, cuit sur
+TOUTE carte sans fond cale — et `map_structure/` ne contient que DEUX fichiers, donc il ne couvrait
+plus rien tout en restant capable de tourner.
+
+Supprimes avec leurs tests et leurs imports (CLAUDE.md n7, zero code mort) :
+`mapFloor.ts` et `mapFloor.test.ts` en entier ; `drawFloorLayer` + `drawFloorEdges` + les helpers
+`cellX`/`cellY` et les constantes d opacite de `replayDraw.ts` ; le calque et son effet dans
+`useReplayStaticLayers` (ils sont TROIS desormais, plus quatre) ; `floorGrid` dans
+`useReplayView` ; la branche de dessin et les dependances dans `ReplayCanvas` ; le bloc de tests
+« la trame du sol » de `canvasRecording.test.ts`.
+
+CE QUI SURVIT ET POURQUOI : le type `FloorStyle` reste, parce que son champ `edge` sert d encre
+fine aux ZONES NOMMEES — le separer pour un seul champ couterait plus de cablage qu il n en
+economiserait. Et le dernier recours (props Forge, `drawGeometryLayer`) reste : il dessine dans la
+boucle, sans calque cuit, donc il ne coute AUCUNE memoire — la raison de la suppression ne le vise
+pas.
+
+**Resultats observes** : typecheck EXIT=0 ; 138 fichiers / 2085 tests verts ; lint 0 erreur.
+`ReplayCanvas.tsx` descend a 662/665.
+
+**Report assume** : le champ `structure` de l artefact n a plus de consommateur cote web. Le
+retirer cote back changerait le schema et imposerait de recuire TOUS les artefacts — ce qui est
+justement le geste qui a provoque quatre sinistres RAM. Non traite, a decider avec l utilisateur.
+
+**Conclusion / prochaine etape** : une carte sans fond cale n a desormais plus rien sous les
+joueurs (hors props Forge). Le chantier des fonds devient donc le seul chemin, et il avance —
++8 cartes par heritage variante->base le meme jour.
