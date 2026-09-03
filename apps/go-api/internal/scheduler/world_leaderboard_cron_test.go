@@ -13,7 +13,10 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"log/slog"
 	"path/filepath"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -22,6 +25,7 @@ import (
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/migration"
+	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 	"levelup/go-api/internal/platform/halo"
@@ -51,6 +55,69 @@ type stubScraper struct {
 	seasonsCalls int
 	// seedSeason : dernière graine injectée par le cron (F11). "" = jamais appelée.
 	seedSeason string
+	// redirectSeason / redirectErr : repli de découverte SANS page-graine (LB-1.2,
+	// header Location de la racine des classements). Non configuré = repli
+	// INDISPONIBLE (erreur), jamais une saison vide : c'est le défaut des tests
+	// historiques, qui doivent continuer à voir un cycle avorté.
+	redirectSeason string
+	redirectErr    error
+	redirectCalls  int
+}
+
+func (s *stubScraper) FetchActiveSeasonByRedirect(_ context.Context) (string, error) {
+	s.redirectCalls++
+	if s.redirectErr != nil {
+		return "", s.redirectErr
+	}
+	if s.redirectSeason == "" {
+		return "", errors.New("stub: repli par redirection non configuré")
+	}
+	return s.redirectSeason, nil
+}
+
+// levelRecorder capture (niveau, message) des logs émis pendant un test, pour
+// vérifier l'escalade WARN → ERROR sans dépendre d'un format de sortie.
+type levelRecorder struct {
+	mu      sync.Mutex
+	entries []recordedLog
+}
+
+type recordedLog struct {
+	level slog.Level
+	msg   string
+}
+
+func (h *levelRecorder) Enabled(_ context.Context, l slog.Level) bool { return l >= slog.LevelWarn }
+func (h *levelRecorder) Handle(_ context.Context, r slog.Record) error {
+	h.mu.Lock()
+	h.entries = append(h.entries, recordedLog{level: r.Level, msg: r.Message})
+	h.mu.Unlock()
+	return nil
+}
+func (h *levelRecorder) WithAttrs(_ []slog.Attr) slog.Handler { return h }
+func (h *levelRecorder) WithGroup(_ string) slog.Handler      { return h }
+
+// countAtLevel compte les messages capturés d'un niveau donné contenant `substr`.
+func (h *levelRecorder) countAtLevel(level slog.Level, substr string) int {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	n := 0
+	for _, e := range h.entries {
+		if e.level == level && strings.Contains(e.msg, substr) {
+			n++
+		}
+	}
+	return n
+}
+
+// captureLogs installe le recorder comme logger par défaut le temps du test.
+func captureLogs(t *testing.T) *levelRecorder {
+	t.Helper()
+	rec := &levelRecorder{}
+	old := slog.Default()
+	slog.SetDefault(slog.New(rec))
+	t.Cleanup(func() { slog.SetDefault(old) })
+	return rec
 }
 
 func (s *stubScraper) SetSeedSeason(seasonID string) {
@@ -345,6 +412,103 @@ func TestWorldLeaderboardCron_SeasonDiscoveryFallsThrough404(t *testing.T) {
 	// Plusieurs playlists de référence ont été essayées avant le succès (repli).
 	if scraper.activeCalls < 2 {
 		t.Errorf("FetchActiveSeason appelé %d× — le cron n'a pas essayé de playlist de repli après le 404", scraper.activeCalls)
+	}
+}
+
+// TestWorldLeaderboardCron_SeasonDiscoveryFallsBackToRedirect (LB-1.2) : quand la
+// saison-graine a été RETIRÉE de Waypoint, TOUTES les candidates page-graine
+// renvoient 404 et l'ancienne découverte était un point fixe mort (267 cycles à vide
+// en prod). Le cron doit alors basculer sur le repli SANS graine (header Location de
+// la racine des classements) et poursuivre le cycle NORMALEMENT : scrape + persist
+// sous la saison découverte par ce repli.
+func TestWorldLeaderboardCron_SeasonDiscoveryFallsBackToRedirect(t *testing.T) {
+	provider, db := newSharedProviderForTest(t)
+	scraper := &stubScraper{
+		seasonErr:      halo.ErrLeaderboardPageNotFound, // saison-graine retirée du site
+		redirectSeason: "csrseason13-3",                 // seule source encore vivante
+		entries: []domain.LeaderboardEntry{
+			{Rank: 1, Gamertag: "Alpha", XUID: "2535000000000001", CSRValue: 1800},
+		},
+	}
+	c := newTestCron(provider, scraper) // statique = pl-a, pl-b
+	c.RunOnce(context.Background())
+
+	if scraper.redirectCalls == 0 {
+		t.Fatal("repli par redirection jamais appelé — le cron reste bloqué sur la page-graine morte")
+	}
+	// Le cycle est allé jusqu'au bout : 2 playlists × 1 entrée, sous la saison du repli.
+	if got := countSnapshots(t, db, "csrseason13-3"); got != 2 {
+		t.Errorf("snapshots csrseason13-3 = %d, attendu 2 (le repli doit alimenter le cycle comme une découverte normale)", got)
+	}
+	// Découverte réussie (fût-ce par repli) → aucune série d'échecs en cours.
+	if got := c.seasonDiscoveryFails.Load(); got != 0 {
+		t.Errorf("série d'échecs = %d après un repli réussi, attendu 0", got)
+	}
+}
+
+// TestWorldLeaderboardCron_SeasonDiscoveryEscalatesAfterStreak (LB-1.3) : une saison
+// indécouvrable N'EST PAS auto-résolutive. Les 3 premiers cycles consécutifs restent
+// en WARN (hoquet Waypoint plausible), le 4e passe en ERROR — sans quoi une panne
+// durable reste invisible dans le bruit quotidien. Un succès remet la série à zéro.
+func TestWorldLeaderboardCron_SeasonDiscoveryEscalatesAfterStreak(t *testing.T) {
+	provider, _ := newSharedProviderForTest(t)
+	scraper := &stubScraper{
+		seasonErr:   halo.ErrLeaderboardPageNotFound,
+		redirectErr: errors.New("waypoint 500"), // les DEUX chemins sont morts
+	}
+	c := newTestCron(provider, scraper)
+	rec := captureLogs(t)
+	ctx := context.Background()
+
+	const msgFragment = "saison active indécouvrable"
+	for i := 1; i <= 4; i++ {
+		c.RunOnce(ctx)
+		if got := c.seasonDiscoveryFails.Load(); got != int64(i) {
+			t.Fatalf("après %d cycles en échec : série = %d, attendu %d", i, got, i)
+		}
+	}
+	if got := observability.LoadCounter(seasonDiscoveryStreakMetric); got != 4 {
+		t.Errorf("jauge expvar %s = %d, attendu 4", seasonDiscoveryStreakMetric, got)
+	}
+	// 3 WARN tolérés, puis escalade au 4e cycle.
+	if got := rec.countAtLevel(slog.LevelWarn, msgFragment); got != maxSilentSeasonDiscoveryFails {
+		t.Errorf("WARN de découverte = %d, attendu %d", got, maxSilentSeasonDiscoveryFails)
+	}
+	if got := rec.countAtLevel(slog.LevelError, msgFragment); got != 1 {
+		t.Errorf("ERROR de découverte = %d, attendu 1 (escalade au-delà de %d cycles consécutifs)",
+			got, maxSilentSeasonDiscoveryFails)
+	}
+
+	// Retour à la normale : la découverte repasse, la série est remise à zéro.
+	scraper.seasonErr = nil
+	scraper.season = "csrseason13-3"
+	scraper.entries = []domain.LeaderboardEntry{{Rank: 1, Gamertag: "Alpha", XUID: "2535000000000001", CSRValue: 1500}}
+	c.RunOnce(ctx)
+
+	if got := c.seasonDiscoveryFails.Load(); got != 0 {
+		t.Errorf("série d'échecs = %d après un cycle réussi, attendu 0 (reset)", got)
+	}
+	if got := observability.LoadCounter(seasonDiscoveryStreakMetric); got != 0 {
+		t.Errorf("jauge expvar %s = %d après un cycle réussi, attendu 0", seasonDiscoveryStreakMetric, got)
+	}
+}
+
+// TestWorldLeaderboardCron_WarnsWhenEnricherMissing (LB-1.4) : sans enricher câblé,
+// le cycle reste scrape-only — dégradation de wiring qui ne doit PLUS être
+// silencieuse (colonnes détaillées vides côté UI sans trace dans les logs).
+func TestWorldLeaderboardCron_WarnsWhenEnricherMissing(t *testing.T) {
+	provider, _ := newSharedProviderForTest(t)
+	scraper := &stubScraper{
+		season:  "csrseason13-3",
+		entries: []domain.LeaderboardEntry{{Rank: 1, Gamertag: "Alpha", XUID: "2535000000000001", CSRValue: 1500}},
+	}
+	c := newTestCron(provider, scraper) // enricher nil (wiring absent)
+	rec := captureLogs(t)
+
+	c.RunOnce(context.Background())
+
+	if got := rec.countAtLevel(slog.LevelWarn, "enrichissement inactif"); got != 1 {
+		t.Errorf("WARN « enrichissement inactif » = %d, attendu 1 (retour silencieux ?)", got)
 	}
 }
 

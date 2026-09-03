@@ -27,6 +27,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"sync/atomic"
 	"time"
 
 	"levelup/go-api/internal/ctxkeys"
@@ -44,6 +45,11 @@ import (
 type LeaderboardScraperPort interface {
 	// FetchActiveSeason découvre la saison CSR active (seasons[0] de la page).
 	FetchActiveSeason(ctx context.Context, refPlaylistID string) (string, error)
+	// FetchActiveSeasonByRedirect découvre la saison active SANS page-graine ni
+	// playlist de référence (header Location de la racine des classements). Repli
+	// de secours quand toutes les candidates page-graine échouent — le seul chemin
+	// qui survit au retrait d'une saison du site (cf. discoverActiveSeason).
+	FetchActiveSeasonByRedirect(ctx context.Context) (string, error)
 	// FetchCSRLeaderboard scrape le classement d'une playlist pour une saison.
 	FetchCSRLeaderboard(ctx context.Context, seasonID, playlistID string, limit int) ([]domain.LeaderboardEntry, error)
 	// FetchActivePlaylists découvre les playlists classées ACTIVES du menu déroulant
@@ -98,6 +104,11 @@ type WorldLeaderboardCron struct {
 	freshness  time.Duration
 	limit      int
 	minEntries int // plancher de cohérence par playlist (sous ce seuil → skip)
+	// seasonDiscoveryFails : cycles CONSÉCUTIFS terminés sans saison découvrable
+	// (page-graine ET repli redirection en échec). Process-local, remis à zéro au
+	// premier succès. Atomique : RunOnce est appelable hors du ticker (endpoint
+	// admin force-refresh, tests).
+	seasonDiscoveryFails atomic.Int64
 }
 
 // WithStatsEnricher branche l'enrichissement Phase C (agrégateur multi-tokens).
@@ -216,7 +227,8 @@ func (c *WorldLeaderboardCron) RunOnce(ctx context.Context) {
 // runOnceForTitle exécute le cycle scrape+persist+enrich pour UN titre déclarant
 // CapWorldLeaderboard. Retourne l'erreur RÉELLE du cycle (décision D1) : nil pour
 // les skips nominaux (playlists absentes, saison indécouvrable, snapshot frais,
-// scrape vide — dégradations attendues/auto-résolutives déjà loguées WARN/INFO), la
+// scrape vide — dégradations déjà loguées WARN/INFO, escaladées en ERROR si elles
+// durent : une saison indécouvrable N'EST PAS auto-résolutive, cf. discoverActiveSeason), la
 // cause pour un échec DUR (persistance du snapshot). L'enrichissement Phase C reste
 // best-effort interne (n'échoue pas le cycle : le classement est déjà persisté). Une
 // erreur ici n'interrompt pas l'itération sur les autres titres (agrégée par RunOnce).
@@ -247,7 +259,9 @@ func (c *WorldLeaderboardCron) runOnceForTitle(ctx context.Context, titleSlug st
 	//    discoverActiveSeason).
 	season, ok := c.discoverActiveSeason(ctx, titleSlug, static, playlists)
 	if !ok {
-		return nil // dégradation (WARN + compteur expvar) déjà loguée dans discoverActiveSeason
+		// Dégradation (WARN, ou ERROR si la série dure) + compteurs expvar déjà
+		// logués dans discoverActiveSeason, repli par redirection compris.
+		return nil
 	}
 
 	// 2. Garde-fou fraîcheur (lecture RO, sans lease writer).
@@ -289,144 +303,18 @@ func (c *WorldLeaderboardCron) runOnceForTitle(ctx context.Context, titleSlug st
 	return nil
 }
 
-// applyDiscoverySeed remplace la graine de découverte du scraper par la DERNIÈRE
-// saison réellement persistée dans les snapshots (F11/LB3) — garantie de rendre la
-// page Waypoint. Repli silencieux sur la graine constante par défaut du scraper si
-// aucun snapshot (DB vide au premier boot) ou lecture impossible : la graine figée
-// n'est plus l'unique point de découverte, donc elle ne peut plus geler le classement.
-func (c *WorldLeaderboardCron) applyDiscoverySeed(ctx context.Context, titleSlug string) {
-	db, release, err := c.provider.Get(ctx)
-	if err != nil {
-		slog.WarnContext(ctx, "world_leaderboard_cron: lecture graine saison impossible — graine par défaut conservée",
-			"module", logging.ModuleLeaderboard, "titleSlug", titleSlug, "err", err)
-		return
-	}
-	defer release()
-	season, ok, err := duckdb.WorldCSRLatestSeason(ctx, db)
-	if err != nil {
-		slog.WarnContext(ctx, "world_leaderboard_cron: requête graine saison échouée — graine par défaut conservée",
-			"module", logging.ModuleLeaderboard, "titleSlug", titleSlug, "err", err)
-		return
-	}
-	if !ok {
-		return // DB vide (premier boot) → le scraper garde sa graine constante (fallback).
-	}
-	c.scraper.SetSeedSeason(season)
-	slog.DebugContext(ctx, "world_leaderboard_cron: graine de découverte = dernière saison persistée",
-		"module", logging.ModuleLeaderboard, "titleSlug", titleSlug, "season", season)
-}
-
-// discoverActivePlaylists découvre les playlists classées ACTIVES exposées par le menu
-// déroulant de la page Waypoint (via une playlist de référence statique comme graine).
-// Fallback sur la liste statique si la découverte échoue OU revient vide : on ne scrape
-// jamais zéro playlist à cause d'un hoquet de page (résilience). C'est ce qui remplace la
-// limite historique aux ~4 playlists en dur par les playlists réellement actives (7+).
-func (c *WorldLeaderboardCron) discoverActivePlaylists(ctx context.Context, static []string) []string {
-	refs, err := c.scraper.FetchActivePlaylists(ctx, static[0])
-	if err != nil || len(refs) == 0 {
-		slog.WarnContext(ctx, "world_leaderboard_cron: découverte playlists actives échouée — fallback statique",
-			"module", logging.ModuleLeaderboard, "static", len(static), "err", err)
-		return static
-	}
-	ids := make([]string, 0, len(refs))
-	for _, r := range refs {
-		if id := r.AssetID; id != "" {
-			ids = append(ids, id)
-		}
-	}
-	if len(ids) == 0 {
-		return static
-	}
-	slog.InfoContext(ctx, "world_leaderboard_cron: playlists actives découvertes (Waypoint)",
-		"module", logging.ModuleLeaderboard, "discovered", len(ids), "static", len(static))
-	return ids
-}
-
-// discoverActiveSeason découvre la saison CSR active en essayant tour à tour
-// plusieurs playlists de référence. Le scraper rend le menu de saisons via une URL
-// (saison-graine FIXE × playlist) : si la playlist n'était pas classée dans la
-// saison-graine, la page renvoie 404 — cas NOMINAL, pas une panne. Plutôt que
-// d'abandonner tout le cycle sur la première playlist qui échoue (ancien
-// comportement, source d'une ERROR quotidienne en prod, réf triage B3.1), on tente
-// les candidates suivantes et on retient le premier succès.
-//
-// Ordre des candidats : les playlists STATIQUES (classées de longue date, donc les
-// plus susceptibles d'exister dans la saison-graine) d'abord, puis les playlists
-// découvertes dynamiquement. Doublons et entrées vides retirés.
-//
-// Dégradation (DC-B2) : si TOUTES les candidates échouent — état rare et
-// auto-résolutif (page-graine Waypoint globalement indisponible) — on émet UN WARN
-// agrégé + un compteur expvar `world_leaderboard_season_discovery_failed_total`,
-// jamais une ERROR récurrente pour un cas attendu. Le dernier snapshot append-only
-// reste servi entre-temps.
-func (c *WorldLeaderboardCron) discoverActiveSeason(ctx context.Context, titleSlug string, candidateLists ...[]string) (string, bool) {
-	var lastErr error
-	tried := 0
-	for _, pl := range dedupeNonEmpty(candidateLists...) {
-		season, err := c.scraper.FetchActiveSeason(ctx, pl)
-		if err == nil {
-			if tried > 0 {
-				slog.DebugContext(ctx, "world_leaderboard_cron: saison active découverte après repli sur une playlist de référence",
-					"module", logging.ModuleLeaderboard, "titleSlug", titleSlug,
-					"playlist", pl, "season", season, "skipped", tried)
-			}
-			return season, true
-		}
-		lastErr = err
-		tried++
-		// Chaque échec de candidate est NOMINAL tant qu'une autre peut rendre la page
-		// (404 « non classée dans la saison-graine » le plus souvent) : Debug, avec
-		// l'erreur pour diagnostic — la synthèse est loguée en fin de boucle si besoin.
-		slog.DebugContext(ctx, "world_leaderboard_cron: playlist de référence sans page-graine — essai suivant",
-			"module", logging.ModuleLeaderboard, "titleSlug", titleSlug, "playlist", pl, "err", err)
-	}
-	observability.IncCounter("world_leaderboard_season_discovery_failed_total")
-	slog.WarnContext(ctx, "world_leaderboard_cron: saison active indécouvrable sur toutes les playlists candidates — cycle ignoré "+
-		"(page-graine Waypoint indisponible ; le dernier snapshot append-only reste servi ; auto-résolutif)",
-		"module", logging.ModuleLeaderboard, "titleSlug", titleSlug, "candidates", tried, "err", lastErr)
-	return "", false
-}
-
-// dedupeNonEmpty aplatit plusieurs listes en une seule, retire les entrées vides et
-// les doublons, en préservant l'ordre de première apparition (la première liste est
-// prioritaire).
-func dedupeNonEmpty(lists ...[]string) []string {
-	seen := make(map[string]struct{})
-	out := make([]string, 0)
-	for _, l := range lists {
-		for _, s := range l {
-			if s == "" {
-				continue
-			}
-			if _, dup := seen[s]; dup {
-				continue
-			}
-			seen[s] = struct{}{}
-			out = append(out, s)
-		}
-	}
-	return out
-}
-
-// discoverSeasons récupère la liste des saisons (nom d'Operation EN + FR) du menu
-// déroulant Waypoint pour alimenter season_catalog. Best-effort : une découverte en
-// échec (ou vide) renvoie nil — le cycle CSR n'est jamais compromis par les saisons.
-func (c *WorldLeaderboardCron) discoverSeasons(ctx context.Context, refPlaylistID string) []domain.WorldSeasonRef {
-	seasons, err := c.scraper.FetchSeasons(ctx, refPlaylistID)
-	if err != nil {
-		slog.WarnContext(ctx, "world_leaderboard_cron: découverte saisons échouée — season_catalog non rafraîchi",
-			"module", logging.ModuleLeaderboard, "err", err)
-		return nil
-	}
-	return seasons
-}
-
 // enrich agrège les stats des joueurs de la saison active (via l'enricher
 // multi-tokens) et les persiste en append-only. No-op si l'enricher est absent.
 // Lecture des gamertags hors lease writer ; writer acquis uniquement pour l'INSERT
 // (même discipline de fenêtre RW minimale que le scrape CSR).
 func (c *WorldLeaderboardCron) enrich(ctx context.Context, season string) {
 	if c.enricher == nil {
+		// Jamais silencieux : sans enricher, le classement est capturé mais aucune
+		// stat détaillée n'est agrégée (colonnes vides côté UI). C'est une
+		// dégradation de wiring (pool de tokens / résolveur PeopleHub non construits
+		// au boot), pas un mode nominal — elle doit se voir dans les logs du cycle.
+		slog.WarnContext(ctx, "world_leaderboard_cron: enrichissement inactif (enricher non construit au boot) — cycle scrape-only",
+			"module", logging.ModuleLeaderboard, "season", season)
 		return
 	}
 	start := time.Now()
