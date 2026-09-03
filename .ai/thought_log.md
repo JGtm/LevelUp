@@ -89565,3 +89565,6 @@ elargi inchange, 18/18 sur les 5 films temoins.
 **Conclusion / prochaine etape** : lot P1bis mergeable de mon cote (aucun commit pose). Le seul
 report est G2 (b) — l ordre non total de `lessTrack` — consigne en Decouvertes avec sa mesure :
 tant qu il tient, un diff de fixture ne distingue pas une regression du bruit d ordonnancement.
+
+---
+
