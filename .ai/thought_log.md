@@ -1,3 +1,145 @@
+## [2026-09-03] Rejeu vehicules — V8 : le vehicule d'un episode est resolu PAR L'EVENEMENT, et la tourelle est une unite a part — Complété
+
+**Question** : exploiter l'acquis V7 (« la reference 1 de la sortie EST le vehicule, 105/105 ») pour
+que le calque cesse de resoudre le vehicule d'un episode d'occupation par la GEOMETRIE. **REPONSE :
+fait, mesure, et le chemin a revele autre chose.** Aucun commit, `CGO_ENABLED=0`, GOCACHE isole,
+avant-plan. Contrat INCHANGE (`SchemaVersion` reste 30).
+
+**LE 105/105 EST REPRODUIT PAR LE DECODEUR DE PRODUCTION.** `decodeExitRefs` lisait `r1` et le
+JETAIT ; il publie desormais `VehicleEvent.VehicleSlot/VehicleSlotValid/VehicleGen`. Re-mesure sur
+12 films par `decodeVehicleEvent` lui-meme : **105/105 en bande `ti=40`, 0 bipede, 0 hors bande**
+(chance analytique 3,1 a 16,3 %). Resolution en vie : **100/105** ; les 5 restantes tombent hors de
+toute fenetre de recensement (ecart max **41,9 s**) et sont traitees par la vie la plus proche.
+**Zero cas « plusieurs vies candidates »** (les fenetres d'un meme slot ne se recouvrent pas).
+Temoins DEGENERES et dits comme tels : toutes les vies `ti=40` du corpus ont `gen = 1` (histogramme
+`[0,460,0,0]`), donc l'accord de generation (100 %) vaut aussi 100 % sous permutation.
+
+**L'EMBARQUEMENT NE NOMME RIEN — negatif net, re-examine a la lumiere de « domaine 1 = unites ».**
+Ses trois references (domaines 2/3/7) ET la variante « ref 1 lue en domaine 1 avec sonde » resolvent
+**0/15** slots `ti=40`. La production ne lit donc le vehicule que dans la SORTIE ; les silences
+terminaux restent geometriques.
+
+**LE GATE DE PRODUCTION : 46/49 -> 48/49** (5 films, 49 episodes attestes, avant/apres calcules dans
+le MEME processus, un seul parametre change). +2 gagnes, **0 perdu**. Le 48/49 du lot V6 mesurait le
+RAYON (« un vehicule sous 3 m ») ; la production, qui exige en plus une fenetre de VIE, plafonnait a
+46/49 — le nom la ramene au plafond du rayon sans elargir quoi que ce soit. L'unique ambiguite
+geometrique du corpus (2 vehicules sous 3 m) est nommee : **1/1**, elle tombe.
+
+**LES 6 DESACCORDS SONT LE VRAI RESULTAT : LA TOURELLE EST UNE ENTITE `ti=40` A PART, ET
+L'EVENEMENT LA NOMME.** Sur 41 episodes ou les deux voies repondent : 35 accords, **6 desaccords**,
+temoin par permutation **0/41**. Les six ont quatre invariants communs : la vie nommee est MUETTE
+(0 echantillon, 0 record de creation), son slot vaut `slot geometrique - 1`, les deux vies ont la
+MEME fenetre de recensement, l'occupant porte le siege 0 — et le vehicule geometrique est un
+**warthog** (5) ou un **falcon** (1). Sur les 50 vies muettes du corpus, le voisin `slot+1` a la
+meme fenetre est warthog (23), falcon (10) ou chassis non resolu (3), **jamais** ghost / mongoose /
+chopper / banshee : les deux seules familles a TOURELLE D'ARTILLEUR. Recoupe
+`ASSEMBLAGE_ENFANTS_2026-09-01.md` (la tourelle `warthog_g` est un `vehi` a part entiere). Le pas
+« c'est l'artilleur qui descend » n'est PAS prouve (pas de verite terrain) et c'est ecrit.
+
+**GARDE-FOU QUI A SAUVE LE LOT** : une vie muette n'est pas publiable, donc un episode accroche a
+elle serait un occupant PERDU. Regle livree — « le nom prime, SAUF quand il designe une vie que le
+calque ne dessinera pas » (`vehicleLifeFromEvent` + `vehicleDrawableLives`). Cout mesure de
+l'absence de ce garde-fou : **-4 episodes sur 41**.
+
+**ARTEFACTS DE DEMONSTRATION RECUITS** (`replay-build`, copies vers `LevelUp-wt-capture-rejeu`) :
+calque vehicules **identique au bit pres** sur les deux (`0d76e8f1` 20 vies / 9 episodes / 8 nommes
+/ 23 tirs `Shot.v` ; `fccc61cd` 8 / 2 / 1 / 0). Les deux films sont precisement ceux ou les deux
+voies s'accordent sur tout ce qui est publie ; le gain (+1 episode, +1 nomme, +1 siege) est sur
+`4898d586`, hors demonstration. Dit tel quel, pas maquille. **Seule difference d'octets : le champ
+`dropper` de 5 armes au sol sur 204 (et 1 sur 220)** — non determinisme PREEXISTANT
+(`ground_weapon_rules.go:347` parcourt une map et rend le premier match). Decouverte notee, NON
+traitee.
+
+**GATES** : gofmt vide ; `go vet` exit 0 ; `CGO_ENABLED=0 go test ./internal/analysis/{filmdec,replay}/
+-count=1` sans env : `ok` / `ok`, `grep -c '^--- FAIL:'` = **0** ; service `CGO_ENABLED=1 go build
+./cmd/server` exit 0 ; `vehicle_tracks.go` reste a 533 L (dette gelee non accrue) ; `apps/web/`,
+`cmd/weapon-sounds/`, `cmd/vs-measure/` non touches.
+
+**RESERVE** : une AUTRE session travaillait dans le meme worktree (lot V9, `-dynamic-precision-`).
+Tous les avant/apres sont calcules dans un seul processus avec un seul parametre change, donc
+insensibles a l'autre lot ; seule la comparaison d'artefacts sur disque ne l'est pas, et le rapport
+le dit en tete.
+
+**PROCHAINE ETAPE** : rapport `.ai/V7.5/film_re/V8_VEHICULE_PAR_EVENEMENT_2026-09-02.md` § 9 —
+l'item 1 (la tourelle nommee = le marqueur d'ARTILLEUR) est la voie pour resoudre les 7
+chevauchements d'episodes conducteur/passager, et il demande un champ publie donc un bump de
+contrat ; l'item 5 rappelle que le corpus n'a qu'une generation, donc que la resolution
+`(slot, instant) -> vie` n'a jamais ete eprouvee sur un rebouclage de pool.
+
+---
+
+## [2026-09-03] Rejeu vehicules — V9 : la grammaire d'i2/i3 de `ti=40` etait un MAPPING faux, pas une largeur manquante — la vitalite i4 devient lisible, la destruction reste refutee — Complété
+
+**Question** : etablir la consommation de bits d'i2/i3 pour `ti=40` (Ghidra) pour debloquer la
+lecture de la vitalite i4, donc la destruction datee. **La grammaire est ETABLIE et portee, la
+vitalite est LISIBLE ; la destruction par `i4 -> 0` est REFUTEE — et pour la raison inverse de
+V2b.** Rapport : `.ai/V7.5/film_re/V9_GRAMMAIRE_I2I3_VITALITE_2026-09-03.md`. Aucun commit,
+Ghidra en lecture seule (HTTP direct, le pont MCP est mort), `CGO_ENABLED=0`, GOCACHE isole.
+
+**LA CAUSE RACINE N'ETAIT PAS UNE LARGEUR INCONNUE — C'ETAIT UNE ERREUR DE MAPPING.** `ti=40` ne
+porte pas les composants d'orientation du bipede : il porte les variantes `-dynamic-precision-`,
+qui sont **quatre deserialiseurs distincts** — `object-forward-and-up-component` -> FUN_14076e278
+contre `object-forward-and-up-dynamic-precision-component` -> **FUN_140c5f7ec** ;
+`object-angular-velocity-component` -> FUN_140d70998 contre
+`object-angular-velocity-dynamic-precision-component` -> **FUN_140d87740**. Le dispatch fusionnait
+les noms deux a deux et lisait donc i2/i3 de `ti=40` avec la grammaire du bipede, plus courte : le
+curseur arrivait faux sur i4. **Les 46 autres composants de `ti=40` resolvent vers EXACTEMENT le
+meme deser que le bipede** (verifies un par un) : i4 et i5 n'ont jamais eu de probleme propre.
+
+**LE FAIT DE METHODE LE PLUS REUTILISABLE — LA TABLE COMPOSANT -> DESER EST STATIQUE.** Le depot la
+tenait pour une constante de RUNTIME lisible seulement par Cheat Engine sur jeu lance
+(`RECETTE_DECODAGE_FILM_CHUNKS.md` § 5, `DAT_144e61d88`). Faux : les descripteurs de TYPE de
+composant sont des objets statiques. Chaine : la chaine ASCII du nom -> son unique xref DATA (un
+thunk `LEA RAX,[chaine] ; RET` = la methode `name()`) -> le slot qui stocke ce thunk = la vtable a
++0x08 -> deser = `vtable[0x28]`, ou `vtable[0x30]` si `[0x28]` est le thunk `FUN_14076ce9c`.
+**Validee 6/6 contre la table extraite en live du bipede.** N'importe quel deser se resout
+desormais a froid.
+
+**LE CORRECTIF DE 2026-07 AVAIT REPARE ti=35 EN CASSANT ti=40.** `consumeObjectAngularVelocity`
+(= FUN_140d87740, gate externe + R(96)) avait ete debranche sous `useLegacyAngularVel` avec le
+diagnostic « gate parasite ». Juste pour le bipede, faux pour `ti=40` : c'est le vrai deser de la
+variante dyn.-prec. Il est rebranche, sur la SEULE branche du nom dyn.-prec.
+
+**LE BIT QUE SEULE LA MESURE POUVAIT TRANCHER.** `FUN_140c5f7ec` lit un 3e bit de porte C si son
+`arg5 >= 2` — un argument pose par la vtable, illisible au call-site. Balayage de 5 hypotheses sur
+2 films de builds distincts (instrument `TestV9Grammaire`, qui rejoue `scanRecordDirs` sur les
+memes records captes une fois) : part des quanta i4 au-dessus de 192 = **24,0 %** (grammaire du
+depot), 13,5 % (i2 seul), 23,8 % (i3 seul), 27,7 % (i2+i3 sans C), **93,6 % (i2+i3 AVEC C)** ;
+temoin bipede valide 82,9 %. Sur Launch Site : 24,4 / 13,9 / 26,9 / 39,3 / **98,5** contre 86,2.
+Aucun demi-correctif ne suffit ; la grammaire complete depasse la concentration du temoin lui-meme.
+
+**GATE DE VITALITE — TENU, 10 films / 315 vies / 7 943 echantillons i4.** Histogramme des quanta :
+de `[1430 589 1067 497 1102 535 1141 400]` (UNIFORME) a `[0 0 0 4 483 978 2150 3146]`
+(CONCENTRE pres du plein, forme de la sante bipede). Fraction de vie MIN mediane par vie : **0,00 ->
+0,65**. Pas decroissants : **51 % / 48 % (pile ou face exact) -> 60 % / 74 %**. Le seuil « 13-26 % »
+du cadrage etait le MAUVAIS repere et c'est ecrit tel quel au rapport : c'est le chiffre du bipede,
+dont la sante REGENERE (87 % de pas montants) ; une integrite de vehicule ne regenere pas. Le
+discriminant valide est l'ecart au pile-ou-face, et il est net. **Temoin de non-regression : la
+ligne de controle bipede est bit pour bit identique avant/apres** (`DynPrecOrientation` vaut `false`
+par defaut, la branche du nom bipede n'a pas bouge).
+
+**LA DESTRUCTION RESTE REFUTEE — ET LA LECTURE FAUSSE MENTAIT DANS L'AUTRE SENS.** Avec la grammaire
+du depot, **64 des 72 vies decidables (89 %) « tombaient a zero »** : un taux qu'aucun match ne
+produit. Avec la grammaire juste : **3 vies sur 315**, dont **0 % de zeros terminaux**. Le repli
+« la vie finit bas » (dernier i4 <= 0,05) ne donne que 6 vies sur 86. Le gate a 90 % n'est pas
+atteignable : la valeur d'i4 repliquee juste avant qu'un vehicule cesse d'exister n'est pas ~0,
+l'entite disparait du flux sans passer par zero. **Ce n'est pas un defaut de grammaire, c'est ce que
+le flux contient.** Consequence appliquee : `VehicleTrack.End` reste `unknown`, aucun champ `tEnd`,
+`SchemaVersion` inchangee, openapi et golden non touches, **aucun artefact de demo reconstruit**.
+
+**PORTE (additif)** : `filmdec/components_dynprec_orientation.go` (neuf, toute la chaine de preuve
+Ghidra en en-tete), branches separees dans `traverse.go` + cle `paramByComponent` mesuree,
+`decodeObjectForwardAndUp` extrait (une seule copie de grammaire), `ScanFilmOptions.DynPrecOrientation`
+(defaut `false`), `vehicleScanOptions` l'arme (neutre sur positions et velocite, lues avant i2),
+5 lignes d'`ecs_table.tsv` corrigees (le `deser_addr` d'i2 valait `FUN_142ed3fcc`, recopie par erreur
+depuis `change-scene`). Garde-rail neuf : 12 cas de cout en bits sans film. `gofmt` vide, `go vet`
+propre, `filmdec` + `replay` verts sans env.
+
+**PROCHAINE ETAPE — `i11 object-dead-state` de `ti=40` est desormais ATTEIGNABLE** (FUN_140c1dce0,
+forme lourde 191 bits, la meme qui a resolu l'arme du kill a 97,6 %) : le curseur y arrive juste
+maintenant. C'est la piste de destruction la plus serieuse qui reste, et elle est dans le perimetre
+du lot V8 — non touchee ici.
+
 ## [2026-09-03] Rejeu vehicules — V7 : la destruction N'EST PAS dans la liste d'evenements, mais le VEHICULE y est (le domaine 1 est celui des UNITES) — Complété
 
 **Question** : parmi les 28 types de tete jamais decodes du registre V6, lequel date la DESTRUCTION

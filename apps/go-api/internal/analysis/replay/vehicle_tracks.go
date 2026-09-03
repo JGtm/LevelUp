@@ -93,21 +93,21 @@ type vehicleLife struct {
 	census     int
 }
 
-// buildVehicleTracks assemble les vies publiables et leur couverture. PUR.
+// buildVehicleTracks assemble les vies publiables, leur couverture et le bilan de rattachement.
 func buildVehicleTracks(
 	scan VehicleScan, bipeds []filmdec.BipedPosition, own OwnerReport, clock replayClock,
-) ([]VehicleTrack, VehicleCoverage) {
+) ([]VehicleTrack, VehicleCoverage, vehicleRideStats) {
 	cov := VehicleCoverage{Scanned: scan.Scanned, UnknownChassis: map[string]int{}}
 	if !scan.Scanned || clock.step == 0 {
-		return nil, cov
+		return nil, cov, vehicleRideStats{}
 	}
 	lives := vehicleLives(scan.Keyframes)
 	cov.Lives = len(lives)
 	spawns := vehicleSpawnsByLife(scan.Creations)
 	bySlot := vehiclePositionsBySlot(scan.Positions)
-	rides := buildVehicleRides(vehicleRideInputs{
-		vehBySlot: bySlot, bipeds: bipeds, events: scan.Events,
-		own: own, lives: lives, clock: clock,
+	rides, st := buildVehicleRides(vehicleRideInputs{
+		vehBySlot: bySlot, bipeds: bipeds, events: scan.Events, own: own, lives: lives,
+		drawable: vehicleDrawableLives(lives, spawns, bySlot), clock: clock,
 	})
 	out := make([]VehicleTrack, 0, len(lives))
 	for _, l := range lives {
@@ -123,7 +123,7 @@ func buildVehicleTracks(
 	// pas ce qui a ete assemble. `Published` baisse donc exactement de `Merged`.
 	out, cov.Merged = mergeVehicleRelays(out)
 	tallyVehicleCoverage(out, &cov)
-	return out, cov
+	return out, cov, st
 }
 
 // mergeVehicleRelays fond les vies EN RELAIS : deux vies consecutives du MEME chassis, au MEME

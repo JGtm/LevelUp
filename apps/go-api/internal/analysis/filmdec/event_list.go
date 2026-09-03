@@ -172,6 +172,32 @@ type VehicleEvent struct {
 	// OccupantInBand : le slot tombe dans la bande de slots bipèdes du film (contrôle).
 	OccupantInBand bool
 
+	// VehicleSlot est le slot du VÉHICULE que l'événement NOMME : la RÉFÉRENCE 1 de la SORTIE,
+	// lue en domaine 1 exactement comme l'occupant.
+	//
+	// POURQUOI LE MÊME DOMAINE POUR DEUX CHOSES DIFFÉRENTES — c'est l'acquis du lot V7 (§ 6 du
+	// rapport `V7_DESTRUCTION_EVENEMENT_2026-09-02.md`) : LE DOMAINE 1 EST CELUI DES UNITÉS, et
+	// dans la taxonomie Halo le BIPÈDE et le VÉHICULE sont deux spécialisations d'UNITÉ. La base
+	// est la même (le minimum de la bande bipède) et l'index de 9 bits porte au-delà, jusqu'à la
+	// bande `ti=40`. Mesure : sur les références de domaine 1 dont l'index SORT de la bande
+	// bipède, 99,6 à 100,0 % tombent dans la bande `ti=40` (types 0/1/7/36, 12 films) là où le
+	// hasard en mettrait 3 à 16 %. Le lot V6 avait cherché le véhicule en domaine 7 et l'y avait
+	// réfuté à raison : il est en domaine 1.
+	//
+	// POUR LA SORTIE, LA MESURE EST SANS RESTE : 105 / 105 sorties de 12 films, 100,0 % en bande
+	// `ti=40`, zéro bipède, zéro hors bande (V7 § 7). C'est cette référence-là que le calque de
+	// rejeu emploie pour résoudre le véhicule d'un épisode d'occupation, la géométrie n'étant plus
+	// que le repli.
+	VehicleSlot uint32
+	// VehicleSlotValid : la référence du véhicule était PRÉSENTE (bit de garde posé). Faux pour un
+	// EMBARQUEMENT : ses trois références sont en domaines 2/3/7 et AUCUNE ne résout un slot
+	// `ti=40` (mesure au § 2 du rapport V8).
+	VehicleSlotValid bool
+	// VehicleGen est la GÉNÉRATION (2 bits) du handle du véhicule, lue dans la même référence.
+	// Elle n'est PAS la clé de vie employée par le calque — celle-ci se résout par la fenêtre
+	// temporelle du recensement —, mais elle en est le contrôle indépendant (V8 § 2).
+	VehicleGen uint32
+
 	// Seat est le siège (R(6)) lu en fin de charge. SeatValid=false si le payload est trop court.
 	Seat      uint32
 	SeatValid bool
@@ -212,6 +238,11 @@ func decodeVehicleEvent(pay []byte, base uint32, inBand map[uint32]bool) (Vehicl
 // Domaines lus dans l'exécutable (vtable+0x58 du descripteur `unit_exit_vehicle`, 0x14080a018) :
 // réf 0 -> domaine 1, réf 1 -> domaine 1, réf 2 -> domaine 7. C'est exactement la grammaire
 // validée par la mesure (occupant en bande 95,5 %, siège 0 sur 93,8 %).
+//
+// LES DEUX RÉFÉRENCES DE DOMAINE 1 SONT LES DEUX UNITÉS DE LA SCÈNE, et elles ne se confondent
+// pas : la réf 0 est l'OCCUPANT (100 % en bande bipède), la réf 1 est le VÉHICULE (105 / 105 en
+// bande `ti=40`, zéro bipède — V7 § 7). La réf 1 était lue et JETÉE jusqu'au lot V8 ; elle est
+// désormais publiée, et c'est elle qui nomme le véhicule d'un épisode d'occupation.
 func decodeExitRefs(pay []byte, base uint32, inBand map[uint32]bool, ev *VehicleEvent) int {
 	r0 := readDom1Ref(pay, eventPayloadStartBit)
 	if r0.Present {
@@ -225,6 +256,15 @@ func decodeExitRefs(pay []byte, base uint32, inBand map[uint32]bool, ev *Vehicle
 		ev.OccupantInBand = inBand[ev.OccupantSlot]
 	}
 	r1 := readDom1Ref(pay, r0.EndBit)
+	if r1.Present {
+		ev.VehicleSlotValid = true
+		ev.VehicleGen = r1.Gen
+		if r1.Sonde == 1 {
+			ev.VehicleSlot = base + r1.Index
+		} else {
+			ev.VehicleSlot = r1.Index
+		}
+	}
 	r2 := readPlainRef(pay, r1.EndBit, dom7RefWidth)
 	return r2.EndBit
 }
