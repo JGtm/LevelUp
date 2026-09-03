@@ -214,7 +214,7 @@ export function ReplayCanvas({
   // verticale, projection partagée et trame d'altitudes : une seule chaîne de décision, qui
   // vit dans `useReplayView` (neuvième extraction imposée par le cliquet de taille). Les noms
   // sortent inchangés : le dessin en dessous lit exactement les mêmes valeurs qu'avant.
-  const { mapImage, bounds, renderWidth, renderHeight: viewH, zRange, canvasView, floorGrid, zoom } = useReplayView({
+  const { mapImage, bounds, renderWidth, renderHeight: viewH, zRange, canvasView, zoom } = useReplayView({
     doc, background, width, freeHeight,
   })
 
@@ -264,11 +264,10 @@ export function ReplayCanvas({
   // LES CALQUES STATIQUES (sol, zones nommées, chaleur, objectifs), cuits hors écran et
   // recopiés par la boucle : quatre effets qui partageaient la même amorce et recopiaient
   // chacun le cadrage — ils vivent dans useReplayStaticLayers, qui lit `canvasView`.
-  const { floorRef, zonesRef, heatRef, objectivesRef, cookedRef } = useReplayStaticLayers({
+  const { zonesRef, heatRef, objectivesRef, cookedRef } = useReplayStaticLayers({
     view: canvasView,
     redraw,
     frozen: drag.dragging,
-    floor: { grid: floorGrid, style: floorStyle },
     zones: { zones: calloutZones, bigColors: zoneColors, fineInk: floorStyle.edge, locale },
     heat: { grid: heat.grid, ramp: heat.ramp },
     objectives: { elements: mapObjectives, colorOfTeam: zones.colorOfTeam },
@@ -352,8 +351,6 @@ export function ReplayCanvas({
       // L'image ENTIÈRE est posée sur son emprise monde ; le canvas rogne le débord. La
       // projection est affine et sans rotation, donc deux coins suffisent (mapBackground.ts).
       ctx.drawImage(mapImage.image, bgRect.x, bgRect.y, bgRect.width, bgRect.height)
-    } else if (floorRef.current) {
-      ctx.drawImage(floorRef.current, lo.x, lo.y, renderWidth, viewH)
     } else if (doc.geometry?.length) {
       // REPLI, pas un doublon : sans fichier de structure figé, la carte n'a pas de sol
       // reconstruit et les props Forge redeviennent le seul repère disponible. Ils couvrent
@@ -504,7 +501,7 @@ export function ReplayCanvas({
   }, [
     doc, geometryColor, zRange, timing, clockTick, wallInk, riftInk,
     // Refs STABLES : la regle de dependances ne le sait pas d'un hook maison.
-    floorRef, zonesRef, heatRef, objectivesRef, grenadeIconsRef, cookedRef,
+    zonesRef, heatRef, objectivesRef, grenadeIconsRef, cookedRef,
     renderWidth, viewH, canvasView,
     placements.counts.drawable,
     placements.windowTime,
