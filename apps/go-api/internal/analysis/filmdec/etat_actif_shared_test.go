@@ -22,7 +22,7 @@ import (
 type eaFilmSetup struct {
 	dir    string
 	chunks []int
-	slots  map[uint32]bool
+	slots  SlotBand
 	lay    I0Layout
 	arch   Archetype
 }
@@ -39,7 +39,7 @@ func eaSetupBiped(t *testing.T, dir string) eaFilmSetup {
 		chunks = append(chunks, i)
 	}
 	slots := bipedSlotBandDir(dir, chunks)
-	if len(slots) == 0 {
+	if slots.Count() == 0 {
 		t.Fatalf("aucun slot biped (ti=%d) dans les keyframes de %s", BipedTypeIndex, dir)
 	}
 	lay, _, err := DetectI0Layout(dir)

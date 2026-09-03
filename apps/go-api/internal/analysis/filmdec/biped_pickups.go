@@ -189,7 +189,7 @@ func ScanBipedPickups(fc *FilmContext) ([]BipedPickup, BipedPickupStats, error) 
 			if !ok {
 				continue
 			}
-			if len(band) > 0 && !band[p.Slot] {
+			if band.Count() > 0 && !band.Has(p.Slot) {
 				st.RefusedOffBand++
 				continue
 			}

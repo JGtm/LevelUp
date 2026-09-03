@@ -30,14 +30,14 @@ import (
 )
 
 // memeBande dit si deux bandes de slots sont identiques, et nomme le premier ecart.
-func memeBande(t *testing.T, quoi string, got, want map[uint32]bool) {
+func memeBande(t *testing.T, quoi string, got, want SlotBand) {
 	t.Helper()
-	if len(got) != len(want) {
-		t.Fatalf("%s : %d slots, le recalcul direct en donne %d", quoi, len(got), len(want))
+	if got.Count() != want.Count() {
+		t.Fatalf("%s : %d slots, le recalcul direct en donne %d", quoi, got.Count(), want.Count())
 	}
-	for s, v := range want {
-		if got[s] != v {
-			t.Fatalf("%s : slot %d vaut %v, le recalcul direct dit %v", quoi, s, got[s], v)
+	for _, s := range want.Slots() {
+		if !got.Has(s) {
+			t.Fatalf("%s : slot %d absent, le recalcul direct le donne present", quoi, s)
 		}
 	}
 }
@@ -73,7 +73,7 @@ func comparerContexteAuRecalcul(t *testing.T, film *filmsource.Film) {
 	}
 
 	// (2) la bande de slots bipede — l'appel EXACT que faisaient les huit balayages.
-	var bandeDirecte map[uint32]bool
+	var bandeDirecte SlotBand
 	if len(attendus) > 0 {
 		bandeDirecte = bipedSlotBand(film, attendus)
 	}
@@ -180,8 +180,8 @@ func TestFilmContextNilNePaniquePas(t *testing.T) {
 	if n := fc.ChunkNumbers(); len(n) != 0 {
 		t.Fatalf("film nil : %d numeros de chunk, attendu 0", len(n))
 	}
-	if b := fc.BipedSlots(); len(b) != 0 {
-		t.Fatalf("film nil : %d slots, attendu 0", len(b))
+	if b := fc.BipedSlots(); b.Count() != 0 {
+		t.Fatalf("film nil : %d slots, attendu 0", b.Count())
 	}
 	if _, err := fc.I0Layout(); err == nil {
 		t.Fatal("film nil : le decoupage d'i0 devrait refuser")
@@ -210,7 +210,7 @@ func TestFilmContextEgaleLeRecalculDirectVraiFilm(t *testing.T) {
 	// Le film doit etre ASSEZ RICHE pour que la comparaison ait un sens : sans bande, sans
 	// decoupage et sans registre, le test ci-dessus ne comparerait que des vides.
 	fc := NewFilmContext(film)
-	if len(fc.BipedSlots()) == 0 {
+	if fc.BipedSlots().Count() == 0 {
 		t.Fatal("bande bipede vide : ce film ne prouve rien de plus que la mini-bobine")
 	}
 	if _, err := fc.I0Layout(); err != nil {

@@ -141,7 +141,7 @@ func ScanInventoryDeltas(fc *FilmContext) ([]InventoryDelta, InventoryDeltaStats
 // slots, découpage i0, archétype, index des deux composants) et l'accumulateur.
 type invDeltaScanner struct {
 	chunks    []int
-	slots     map[uint32]bool
+	slots     SlotBand
 	lay       I0Layout
 	arch      Archetype
 	minRecord int
@@ -206,7 +206,7 @@ func newInvDeltaScanner(fc *FilmContext) (*invDeltaScanner, error) {
 		return nil, ErrNoFilmChunk
 	}
 	slots := fc.BipedSlots()
-	if len(slots) == 0 {
+	if slots.Count() == 0 {
 		return nil, fmt.Errorf("aucun slot biped (ti=%d) dans les keyframes du film", BipedTypeIndex)
 	}
 	lay, err := fc.I0Layout()

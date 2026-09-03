@@ -56,7 +56,7 @@ func TestI54MobilityActionUsage(t *testing.T) {
 		chunks = append(chunks, i)
 	}
 	slots := bipedSlotBandDir(dir, chunks)
-	if len(slots) == 0 {
+	if slots.Count() == 0 {
 		t.Fatalf("aucun slot biped (ti=%d) dans les keyframes de %s", BipedTypeIndex, dir)
 	}
 	lay, _, err := DetectI0Layout(dir)
@@ -147,7 +147,7 @@ func TestI54MobilityActionUsage(t *testing.T) {
 	durMin := float64(lastTS-firstTS) / 60e6
 	t.Logf("RECORDS delta biped %d · masque∋i54 %d · flag1==1 %d · flag1==0 %d · flag1 illisible %d",
 		records, with54, flag1On, flag1Off, flagNoRead)
-	t.Logf("fenêtre du film : %.1f min · slots biped de la bande : %d", durMin, len(slots))
+	t.Logf("fenêtre du film : %.1f min · slots biped de la bande : %d", durMin, slots.Count())
 
 	// ÉPISODES par slot : des records flag1==1 consécutifs du même slot à < 1 s d'écart
 	// portent LA MÊME action (état répliqué tant qu'il est actif), pas autant d'usages

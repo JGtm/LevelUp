@@ -86,7 +86,7 @@ func TestI56DropsAreEvents(t *testing.T) {
 // i56dEnv porte ce que le balayage doit connaître (règle des 5 paramètres).
 type i56dEnv struct {
 	chunks []int
-	slots  map[uint32]bool
+	slots  SlotBand
 	lay    I0Layout
 	arch   Archetype
 }
@@ -106,7 +106,7 @@ func i56dPrepare(t *testing.T, dir string) i56dEnv {
 		chunks = append(chunks, i)
 	}
 	slots := bipedSlotBandDir(dir, chunks)
-	if len(slots) == 0 {
+	if slots.Count() == 0 {
 		t.Fatalf("aucun slot biped (ti=%d) dans les keyframes de %s", BipedTypeIndex, dir)
 	}
 	lay, _, err := DetectI0Layout(dir)
@@ -126,7 +126,7 @@ func i56dPrepare(t *testing.T, dir string) i56dEnv {
 		t.Fatalf("archétype biped %d absent du registre", BipedTypeIndex)
 	}
 	t.Logf("i56 = %q · i54 = %q · %d slots de bipède",
-		arch.component(i56Index), arch.component(i54Index), len(slots))
+		arch.component(i56Index), arch.component(i54Index), slots.Count())
 	return i56dEnv{chunks: chunks, slots: slots, lay: lay, arch: arch}
 }
 

@@ -188,7 +188,7 @@ func ScanBipedPositions(film *filmsource.Film, opt ScanFilmOptions) ([]BipedPosi
 		return nil, ErrNoFilmChunk
 	}
 	slots := bipedSlotBand(film, chunks)
-	if len(slots) == 0 {
+	if slots.Count() == 0 {
 		return nil, fmt.Errorf("aucun slot biped (ti=%d) dans les keyframes du film", BipedTypeIndex)
 	}
 	var lay I0Layout
@@ -234,7 +234,7 @@ func ScanBipedPositions(film *filmsource.Film, opt ScanFilmOptions) ([]BipedPosi
 // n'apparaît que dans le keyframe d'après), trous comblés entre min et max — les slots
 // biped sont alloués dans une bande contiguë, et un biped créé PUIS détruit à l'intérieur
 // d'un chunk n'apparaît dans aucun keyframe.
-func bipedSlotBand(film *filmsource.Film, chunks []int) map[uint32]bool {
+func bipedSlotBand(film *filmsource.Film, chunks []int) SlotBand {
 	seen := map[uint32]bool{}
 	scan := append(append([]int{}, chunks...), chunks[len(chunks)-1]+1)
 	for _, c := range scan {
@@ -257,8 +257,13 @@ func bipedSlotBand(film *filmsource.Film, chunks []int) map[uint32]bool {
 	return fillSlotBand(seen)
 }
 
-// fillSlotBand comble les trous entre le min et le max de l'ensemble (bande contiguë).
-func fillSlotBand(s map[uint32]bool) map[uint32]bool {
+// fillSlotBand comble les trous entre le min et le max de l'ensemble (bande contiguë) et
+// rend la bande DENSE consultable par bit candidat.
+func fillSlotBand(s map[uint32]bool) SlotBand { return NewSlotBand(filledSlotMap(s)) }
+
+// filledSlotMap est le comblement lui-même, rendu sous forme d'ensemble : `slotBandExcluding`
+// a besoin de retirer des slots AVANT de figer la bande dense.
+func filledSlotMap(s map[uint32]bool) map[uint32]bool {
 	if len(s) == 0 {
 		return s
 	}
@@ -278,11 +283,14 @@ func fillSlotBand(s map[uint32]bool) map[uint32]bool {
 // absolues des records biped reconnus. PUR (aucune I/O) : c'est le cœur testable du
 // décodeur. Les champs Chunk/PacketIndex/TimestampUS sont laissés à zéro (remplis par
 // l'appelant).
-func ScanBipedRecords(payload []byte, slots map[uint32]bool, lay I0Layout, opt ScanFilmOptions) []BipedPosition {
+func ScanBipedRecords(payload []byte, slots SlotBand, lay I0Layout, opt ScanFilmOptions) []BipedPosition {
 	total := len(payload) * 8
 	i0Bits := lay.TotalBits()
 	minRecord := bipedHeaderBits + bipedIndexBits*bipedMinMaskCnt + i0Bits
 	var out []BipedPosition
+	// UN SEUL lecteur de bits pour tout le payload : `scanRecordDirs` le repositionne par
+	// `SetBitPos` a chaque composant de vitalite, la ou il en allouait deux PAR RECORD.
+	br := NewBitReader(payload)
 	for p := 0; p+minRecord <= total; {
 		i0, slot, idx, ok := matchBipedHeader(payload, p, total, slots, opt.RequireTag1, lay)
 		if !ok {
@@ -305,7 +313,7 @@ func ScanBipedRecords(payload []byte, slots map[uint32]bool, lay I0Layout, opt S
 			rec.Z = DequantBipedAxis(q[2], 2, lay, *opt.WorldRange)
 		}
 		if opt.CaptureDirs {
-			rec.componentDirs, rec.componentVitals = scanRecordDirs(payload, i0+i0Bits, total, idx)
+			rec.componentDirs, rec.componentVitals = scanRecordDirs(br, i0+i0Bits, total, idx)
 			rec.MaskBits, rec.MaskOver = maskBitsOf(idx)
 			if recordMaskHook != nil {
 				recordMaskHook(idx, payload, i0+i0Bits)
@@ -322,7 +330,7 @@ func ScanBipedRecords(payload []byte, slots map[uint32]bool, lay I0Layout, opt S
 // sur les cartes dont la région jouée n'est pas la première du bloc structure-BSP) et
 // renvoie l'offset bit de i0, le slot et la liste des index de composants du masque.
 // Un record d'une autre région est écarté : ses quanta vivent dans une autre AABB.
-func matchBipedHeader(pay []byte, p, total int, slots map[uint32]bool, needTag1 bool, lay I0Layout) (int, uint32, []int, bool) {
+func matchBipedHeader(pay []byte, p, total int, slots SlotBand, needTag1 bool, lay I0Layout) (int, uint32, []int, bool) {
 	i0, slot, idx, ok := matchBipedHeaderRaw(pay, p, total, slots, needTag1, lay.TotalBits())
 	if !ok {
 		return 0, 0, nil, false
@@ -341,12 +349,12 @@ func matchBipedHeader(pay []byte, p, total int, slots map[uint32]bool, needTag1 
 // vérifie que needBits bits restent lisibles après le début d'i0. Il ne suppose RIEN du
 // contenu d'i0 : c'est le point d'entrée du détecteur de découpage (i0_layout.go), qui doit
 // justement mesurer i0 sans en présupposer la structure.
-func matchBipedHeaderRaw(pay []byte, p, total int, slots map[uint32]bool, needTag1 bool, needBits int) (int, uint32, []int, bool) {
+func matchBipedHeaderRaw(pay []byte, p, total int, slots SlotBand, needTag1 bool, needBits int) (int, uint32, []int, bool) {
 	if readBitsAt(pay, p, 1) != 1 {
 		return 0, 0, nil, false
 	}
 	slot := readBitsAt(pay, p+1, bipedSlotBits)
-	if !slots[slot] {
+	if !slots.Has(slot) {
 		return 0, 0, nil, false
 	}
 	if needTag1 && readBitsAt(pay, p+14, 2) != 1 {
@@ -372,8 +380,17 @@ func matchBipedHeaderRaw(pay []byte, p, total int, slots map[uint32]bool, needTa
 
 // ascendingFromZero valide la liste d'indices de composants (premier = 0, strictement
 // croissants — invariant fort du masque) et la renvoie.
+//
+// LA VALIDATION PASSE AVANT L'ALLOCATION. Ce test est joue pour CHAQUE position de bit
+// candidate d'un payload delta et il echoue dans l'immense majorite des cas : allouer la
+// tranche d'abord, c'etait une allocation jetee par candidat rejete. Les index sont donc
+// rassembles dans un tampon de pile (`count` vaut au plus [bipedMaxMaskCnt]) et la tranche
+// n'est allouee qu'une fois la liste validee.
 func ascendingFromZero(pay []byte, at, count int) ([]int, bool) {
-	out := make([]int, 0, count)
+	var buf [bipedMaxMaskCnt]int
+	if count < 0 || count > len(buf) {
+		return nil, false
+	}
 	prev := -1
 	for k := 0; k < count; k++ {
 		idx := int(readBitsAt(pay, at+bipedIndexBits*k, bipedIndexBits))
@@ -381,8 +398,10 @@ func ascendingFromZero(pay []byte, at, count int) ([]int, bool) {
 			return nil, false
 		}
 		prev = idx
-		out = append(out, idx)
+		buf[k] = idx
 	}
+	out := make([]int, count)
+	copy(out, buf[:count])
 	return out, true
 }
 
@@ -409,7 +428,17 @@ func DequantBipedAxis(q uint32, ax int, lay I0Layout, world Vec3Range) float32 {
 }
 
 // readBitsAt lit n bits MSB-first à la position bit pos (n <= 32).
+//
+// AUCUNE GARDE, ET C'EST VOULU : une lecture hors du tampon PANIQUE (`index out of range`).
+// Les balayages qui l'appellent bornent eux-memes leur fenetre ; une panique ici denonce un
+// balayage qui a perdu ses bornes, et la faire taire masquerait le defaut. Cette convention
+// est INCHANGEE par la lecture par mot : le chemin rapide n'est pris que quand les n bits
+// tiennent entierement dans le tampon, tout le reste retombe sur la boucle d'origine — qui
+// panique aux memes positions qu'avant.
 func readBitsAt(b []byte, pos, n int) uint32 {
+	if pos >= 0 && n > 0 && n <= 64 && pos+n <= len(b)*8 {
+		return uint32(wordBitsAt(b, pos, uint(n)))
+	}
 	var v uint32
 	for i := 0; i < n; i++ {
 		p := pos + i

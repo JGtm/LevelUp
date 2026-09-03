@@ -41,7 +41,7 @@ func eqiScan(t *testing.T, s hwSetup) []UnitEquipmentEmission {
 }
 
 // eqiBands rend les bandes de slots par archetype, lues des images-cles.
-func eqiBands(dir string) (ti37, ti42, biped map[uint32]bool) {
+func eqiBands(dir string) (ti37, ti42 map[uint32]bool, biped SlotBand) {
 	n := CountFilmChunks(dir)
 	ti37 = worldObjectSlotBandDir(dir, n, EquipmentTypeIndex)
 	ti42 = worldObjectSlotBandDir(dir, n, GroundWeaponTypeIndex)
@@ -101,7 +101,7 @@ func TestI26HandlesAppartenance(t *testing.T) {
 			if ti42[en.Val] {
 				in42++
 			}
-			if biped[en.Val] {
+			if biped.Has(en.Val) {
 				inBiped++
 			}
 			if seen := kf.SeenUS[EquipmentLifeKey{Slot: en.Val, Gen: en.Tail}]; len(seen) > 0 {

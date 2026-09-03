@@ -32,7 +32,7 @@ func filmDeDir(dir string) *filmsource.Film {
 }
 
 // bipedSlotBandDir : [bipedSlotBand] depuis un repertoire.
-func bipedSlotBandDir(dir string, chunks []int) map[uint32]bool {
+func bipedSlotBandDir(dir string, chunks []int) SlotBand {
 	return bipedSlotBand(filmDeDir(dir), chunks)
 }
 

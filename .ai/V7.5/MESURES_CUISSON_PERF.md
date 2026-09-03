@@ -160,3 +160,26 @@ vaut ~50-55 s par film moyen — bien plus que l'estimation (~15-20 s), parce qu
 la bande sont des passes de resynchronisation bit a bit (le poste chaud du profil) et que le
 registre allouait ~1 067 chaines par lecture. Le solde vers <= 100 s partout est au lot 4
 (`playerIndices` 35-40 s, lecteurs de bits, consultation de map par bit candidat).
+### Lot 4 (boucles chaudes, guide par le profil) — 2026-09-03, 02:30-02:59
+
+Equivalence : **9/9 identiques**. Le profil frais (152 s de CPU) contredisait le plan : les
+primitives visees par 4.2 pesaient 0,6 % ; le cout etait `kfReadBits` (58 %) et le lecteur de
+`playerIndices` (26 % cumule). Corrections livrees la ou le profil pointait : lecture par mots
+de 64 bits (4 primitives, ancienne implementation gardee en oracle dans les tests), recherche
+de motif xuid par mot (x97 en micro-mesure), bande de slots dense (struct, 30 sites trouves par
+le compilateur), 22 re-balayages de NamedEventsFrom -> 1, cle de tri completee (R-8).
+
+| film | L0 (reference) | L2 | L4 | gain L0->L4 |
+|---|---|---|---|---|
+| `01e1f945` | 2 min 24 | 1 min 36 | **15,7 s** | **-89 %** |
+| `7344d24f` | 2 min 49 | 1 min 55 | **18,6 s** | **-89 %** |
+| `696a9d7c` | 2 min 43 | 1 min 50 | **18,2 s** | **-89 %** |
+
+Enfants du harnais : `000d5950` 14,0 s · `64e8adfa` 26,2 s · `53ce4390` 27,5 s · `d9781168`
+24,4 s · `9f57c612` 14,3 s · `084a804d` (BTB 26 joueurs) 19 min 54 -> **1 min 40** (x12).
+Pics memoire inchanges (0,17-0,43 Gio).
+
+**LA CIBLE 60-100 s EST DEPASSEE PAR LE BAS : tous les temoins cuisent en 14-28 s** (seul le
+BTB 57 chunks reste au-dela, a 1 min 40 — contre 19 min 54). Restent : 4b (plafond anti-bombe,
+debloque `51101d1d`/`a349fea8`/`1c4c63c2`/`60ae07c4` et la re-cuisson de masse), lot 3 (Live
+Fire, apres 4b), lot 5 (orchestration), lot 6 (cloture, revue de branche, gate-push).

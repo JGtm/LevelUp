@@ -260,7 +260,7 @@ func i57hControlC2(t *testing.T, samples []i57hSample, lives map[eaLifeKey]*eaLi
 	// autre joueur plutôt qu'à un objet) ?
 	inBiped := 0
 	for _, sm := range withRef {
-		if s.slots[sm.ref&0x1FFF] {
+		if s.slots.Has(sm.ref & 0x1FFF) {
 			inBiped++
 		}
 	}

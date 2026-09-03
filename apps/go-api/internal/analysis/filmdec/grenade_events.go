@@ -208,7 +208,15 @@ func scanGrenadeThrows(pay []byte) []GrenadeThrow {
 //
 // EXPORTÉ pour les sondes qui balayent un payload à la recherche d'un motif (marqueurs de
 // mêlée, de tir, de lancer) sans dérouler la chaîne de composants.
+//
+// Lecture par mot (cf. bits_word.go) des que la position de depart est positive et la
+// largeur tient sur 64 bits : `wordBitsAt` rend deja des zeros au-dela de la fin du tampon.
+// Un depart NEGATIF ou une largeur > 64 retombent sur la boucle d'origine, seule a porter
+// ces deux conventions.
 func PeekBits(d []byte, bp, n int) uint64 {
+	if bp >= 0 && n >= 0 && n <= 64 {
+		return wordBitsAt(d, bp, uint(n))
+	}
 	var v uint64
 	for i := 0; i < n; i++ {
 		p := bp + i
