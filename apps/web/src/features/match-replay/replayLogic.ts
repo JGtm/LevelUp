@@ -126,26 +126,9 @@ export function worldToCanvas(
 }
 
 /**
- * fitWidth donne la largeur de canvas qui épouse le ratio de la scène à hauteur fixée :
- * une carte quasi carrée dans un conteneur large laisserait sinon d'immenses marges
- * latérales (la scène est cadrée sur la hauteur). Bornée par la largeur disponible.
- */
-export function fitWidth(
-  bounds: ReplayBounds,
-  available: number,
-  height: number,
-  pad: number,
-): number {
-  const bw = Math.max(bounds.maxX - bounds.minX, 1e-6)
-  const bh = Math.max(bounds.maxY - bounds.minY, 1e-6)
-  const needed = (height - 2 * pad) * (bw / bh) + 2 * pad
-  return Math.min(available, Math.max(needed, 2 * pad + 1))
-}
-
-/**
  * usefulHeight — LA HAUTEUR AU-DELÀ DE LAQUELLE ON N'AJOUTE PLUS DE CARTE, MAIS DU VIDE.
  *
- * C'est l'inverse exact de `fitWidth`, et il répond à une question que la hauteur fixe n'avait
+ * Il répond à une question que la hauteur fixe n'avait
  * jamais eu à poser : jusqu'où le terrain gagne-t-il à grandir ? `canvasScale` prend le PLUS
  * PETIT des deux rapports (largeur/largeur de scène, hauteur/hauteur de scène). Passé le point
  * où la largeur devient le facteur limitant, chaque pixel de hauteur en plus n'agrandit plus
@@ -548,4 +531,57 @@ export function layerOffset(
   if (!cooked) return { x: 0, y: 0 }
   const p = canvasToWorld({ x: 0, y: 0 }, cooked.bounds, cooked.width, cooked.height, cooked.pad)
   return worldToCanvas(p, view.bounds, view.width, view.height, view.pad)
+}
+
+/**
+ * frameBounds — LA SCÈNE ÉLARGIE JUSQU'À LA FORME DE LA TOILE.
+ *
+ * # LE DÉFAUT QU'IL CORRIGE (retour utilisateur du 2026-09-03)
+ *
+ * « Quand je zoome c'est croppé alors que le bloc du replay est assez grand. »
+ *
+ * La toile épousait le ratio de la SCÈNE. Quand la hauteur est bornée par l'écran — le cas
+ * courant — cette toile est alors plus étroite que le bloc, et il reste des marges vides à
+ * gauche et à droite. En zoomant, l'image grossit dans cette toile étroite et se coupe à ses
+ * bords, pendant que la place disponible juste à côté ne sert à rien.
+ *
+ * # LA CORRECTION
+ *
+ * La toile prend TOUTE la largeur du bloc, et c'est la fenêtre visible qui adopte la forme de la
+ * toile — élargie sur l'axe non limitant jusqu'à contenir la scène. Les bandes vides d'hier
+ * deviennent de l'espace monde : à grossissement 1 le rendu est le même, mais dès qu'on zoome,
+ * la fenêtre rétrécit depuis ce cadre-là et remplit la toile entière.
+ *
+ * # POURQUOI LE CADRE, ET PAS LA SCÈNE, EST LA RÉFÉRENCE DU ZOOM
+ *
+ * Tout ce qui borne le cadrage — `clampCenter`, `visibleBounds` — doit travailler sur CE
+ * rectangle. Borner sur la scène laisserait le déplacement s'arrêter avant les bords de ce qu'on
+ * voit, et le zoom repartirait d'une forme qui n'est pas celle de la toile : la fenêtre
+ * redeviendrait plus étroite qu'elle, et le recadrage réapparaîtrait au premier cran.
+ */
+export function frameBounds(
+  scene: ReplayBounds,
+  width: number,
+  height: number,
+  pad: number,
+): ReplayBounds {
+  const bw = Math.max(scene.maxX - scene.minX, 1e-6)
+  const bh = Math.max(scene.maxY - scene.minY, 1e-6)
+  const cw = Math.max(width - 2 * pad, 1)
+  const ch = Math.max(height - 2 * pad, 1)
+  // Les mètres par pixel qu'impose l'axe LIMITANT : c'est lui qui décide de l'échelle, et
+  // l'autre axe reçoit le surplus en espace monde plutôt qu'en bande vide.
+  const mpp = Math.max(bw / cw, bh / ch)
+  const halfW = (cw * mpp) / 2
+  const halfH = (ch * mpp) / 2
+  const cx = (scene.minX + scene.maxX) / 2
+  const cy = (scene.minY + scene.maxY) / 2
+  return {
+    minX: cx - halfW,
+    maxX: cx + halfW,
+    minY: cy - halfH,
+    maxY: cy + halfH,
+    minZ: scene.minZ,
+    maxZ: scene.maxZ,
+  }
 }
