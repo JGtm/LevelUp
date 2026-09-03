@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 	"testing"
 
 	"levelup/go-api/internal/observability"
@@ -229,6 +230,84 @@ func TestFetchSeasons_TranslationsFR(t *testing.T) {
 	// Pas de fr-FR pour csrseason13-2 → fallback EN.
 	if got := byID["csrseason13-2"]; got.en != "Infinite" || got.fr != "Infinite" {
 		t.Errorf("csrseason13-2 = %+v, attendu fallback {Infinite, Infinite}", got)
+	}
+}
+
+// TestFetchActiveSeasonByRedirect_ExtractsSeasonFromLocation valide le repli de
+// découverte SANS page-graine : la racine des classements répond 307 et le header
+// Location porte la saison active. La redirection ne doit PAS être suivie (une seule
+// requête au serveur) — la suivre mènerait à une page playlist par défaut qui peut
+// rendre 500, et perdrait l'information cherchée.
+func TestFetchActiveSeasonByRedirect_ExtractsSeasonFromLocation(t *testing.T) {
+	var hits atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hits.Add(1)
+		if r.URL.Path != "/halo-infinite/leaderboards" {
+			t.Errorf("chemin sondé = %q, attendu /halo-infinite/leaderboards (racine sans saison ni playlist)", r.URL.Path)
+		}
+		w.Header().Set("Location", "/halo-infinite/leaderboards/csrseason13-3")
+		w.WriteHeader(http.StatusTemporaryRedirect)
+	}))
+	defer srv.Close()
+
+	scraper := NewLeaderboardScraper(0)
+	scraper.host = srv.URL
+
+	season, err := scraper.FetchActiveSeasonByRedirect(context.Background())
+	if err != nil {
+		t.Fatalf("FetchActiveSeasonByRedirect: %v", err)
+	}
+	if season != "csrseason13-3" {
+		t.Errorf("saison = %q, attendu csrseason13-3 (dernier segment du Location)", season)
+	}
+	if got := hits.Load(); got != 1 {
+		t.Errorf("%d requêtes au serveur, attendu 1 (redirection suivie ?)", got)
+	}
+}
+
+// TestFetchActiveSeasonByRedirect_RejectsInvalidResponses : toute réponse qui ne
+// désigne pas une saison donne une erreur EXPLICITE, jamais une saison vide ou un
+// segment arbitraire — le cron ne doit pas scraper (ni persister) sous une
+// pseudo-saison inventée par une page d'erreur ou une redirection inattendue.
+func TestFetchActiveSeasonByRedirect_RejectsInvalidResponses(t *testing.T) {
+	cases := []struct {
+		name    string
+		handler http.HandlerFunc
+	}{
+		{"200 sans redirection", func(w http.ResponseWriter, _ *http.Request) {
+			_, _ = w.Write([]byte("<html></html>"))
+		}},
+		{"307 sans header Location", func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusTemporaryRedirect)
+		}},
+		{"Location sans segment de saison", func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Location", "/halo-infinite/leaderboards")
+			w.WriteHeader(http.StatusTemporaryRedirect)
+		}},
+		{"Location vers une autre page", func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Location", "/halo-infinite/news")
+			w.WriteHeader(http.StatusTemporaryRedirect)
+		}},
+		{"500 page en erreur", func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusInternalServerError)
+		}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(tc.handler)
+			defer srv.Close()
+
+			scraper := NewLeaderboardScraper(0)
+			scraper.host = srv.URL
+
+			season, err := scraper.FetchActiveSeasonByRedirect(context.Background())
+			if err == nil {
+				t.Fatalf("attendu une erreur, got saison %q", season)
+			}
+			if season != "" {
+				t.Errorf("saison = %q sur erreur, attendu \"\"", season)
+			}
+		})
 	}
 }
 

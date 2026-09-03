@@ -5,6 +5,7 @@ package duckdb
 import (
 	"context"
 	"database/sql"
+	"slices"
 	"testing"
 	"time"
 
@@ -177,6 +178,72 @@ func TestInsertWorldCSRSnapshot_AppendOnlyAndLatestView(t *testing.T) {
 	}
 }
 
+// TestWorldCSRServedBatchStats valide la lecture de qualité du lot SERVI (garde-fou
+// D1) : comptage des lignes et des xuid sur le DERNIER batch seulement, absence de
+// lot servi signalée sans erreur, et isolation par (titre, saison, playlist).
+func TestWorldCSRServedBatchStats(t *testing.T) {
+	db := openMemDB(t).SQLDb()
+	applyWorldLeaderboardMigration(t, db)
+	ctx := context.Background()
+
+	// Aucun lot servi → (0,0,false) SANS erreur : première capture, rien à protéger.
+	stats, ok, err := WorldCSRServedBatchStats(ctx, db, "halo_infinite", "csrseason13-3", "pl-a")
+	if err != nil {
+		t.Fatalf("lot absent: %v", err)
+	}
+	if ok || stats.Rows != 0 || stats.WithXUID != 0 {
+		t.Errorf("lot absent → (%+v, ok=%v), attendu ({0 0}, false)", stats, ok)
+	}
+
+	t0 := time.Date(2026, 9, 1, 10, 0, 0, 0, time.UTC)
+	// Lot sain servi : 3 lignes, 3 xuid. Une autre playlist en parallèle (isolation).
+	if _, err := InsertWorldCSRSnapshot(ctx, db, "halo_infinite", []domain.LeaderboardEntry{
+		{Season: "csrseason13-3", Playlist: "pl-a", Rank: 1, Gamertag: "A", XUID: "x1", CSRValue: 2000, FetchedAt: t0},
+		{Season: "csrseason13-3", Playlist: "pl-a", Rank: 2, Gamertag: "B", XUID: "x2", CSRValue: 1900, FetchedAt: t0},
+		{Season: "csrseason13-3", Playlist: "pl-a", Rank: 3, Gamertag: "C", XUID: "x3", CSRValue: 1800, FetchedAt: t0},
+		{Season: "csrseason13-3", Playlist: "pl-b", Rank: 1, Gamertag: "Z", XUID: "x9", CSRValue: 1700, FetchedAt: t0},
+	}); err != nil {
+		t.Fatalf("insert lot sain: %v", err)
+	}
+	stats, ok, err = WorldCSRServedBatchStats(ctx, db, "halo_infinite", "csrseason13-3", "pl-a")
+	if err != nil || !ok {
+		t.Fatalf("lot sain: stats=%+v ok=%v err=%v", stats, ok, err)
+	}
+	if stats.Rows != 3 || stats.WithXUID != 3 {
+		t.Errorf("lot sain = %+v, attendu {Rows:3 WithXUID:3}", stats)
+	}
+	if cov := stats.XUIDCoverage(); cov != 1 {
+		t.Errorf("couverture xuid = %v, attendu 1", cov)
+	}
+
+	// Lot plus récent SANS xuid : la vue sert le dernier batch → les stats doivent
+	// décrire CE lot (2 lignes, 0 xuid), pas l'ancien ni la somme des deux.
+	if _, err := InsertWorldCSRSnapshot(ctx, db, "halo_infinite", []domain.LeaderboardEntry{
+		{Season: "csrseason13-3", Playlist: "pl-a", Rank: 1, Gamertag: "A", CSRValue: 2000, FetchedAt: t0.Add(24 * time.Hour)},
+		{Season: "csrseason13-3", Playlist: "pl-a", Rank: 2, Gamertag: "B", CSRValue: 1900, FetchedAt: t0.Add(24 * time.Hour)},
+	}); err != nil {
+		t.Fatalf("insert lot dégradé: %v", err)
+	}
+	stats, ok, err = WorldCSRServedBatchStats(ctx, db, "halo_infinite", "csrseason13-3", "pl-a")
+	if err != nil || !ok {
+		t.Fatalf("lot dégradé: stats=%+v ok=%v err=%v", stats, ok, err)
+	}
+	if stats.Rows != 2 || stats.WithXUID != 0 {
+		t.Errorf("lot servi = %+v, attendu {Rows:2 WithXUID:0} (dernier batch seulement)", stats)
+	}
+	if cov := stats.XUIDCoverage(); cov != 0 {
+		t.Errorf("couverture xuid = %v, attendu 0", cov)
+	}
+
+	// Isolation : la playlist voisine et un autre titre ne sont pas affectés.
+	if other, ok2, err2 := WorldCSRServedBatchStats(ctx, db, "halo_infinite", "csrseason13-3", "pl-b"); err2 != nil || !ok2 || other.Rows != 1 {
+		t.Errorf("pl-b = %+v ok=%v err=%v, attendu {Rows:1 WithXUID:1}", other, ok2, err2)
+	}
+	if _, ok3, err3 := WorldCSRServedBatchStats(ctx, db, "autre_titre", "csrseason13-3", "pl-a"); err3 != nil || ok3 {
+		t.Errorf("autre titre → ok=%v err=%v, attendu false/nil (isolation par titre)", ok3, err3)
+	}
+}
+
 // TestGetWorldLeaderboardCatalog valide la remontée des saisons/playlists
 // distinctes présentes en base + la résolution du libellé de playlist.
 func TestGetWorldLeaderboardCatalog(t *testing.T) {
@@ -251,5 +318,51 @@ func TestGetWorldLeaderboardCatalog(t *testing.T) {
 	}
 	if unknownLabel != "unknown-pl" {
 		t.Errorf("libellé inconnu = %q, attendu fallback sur l'asset_id", unknownLabel)
+	}
+}
+
+// TestGetWorldLeaderboardCatalog_PlaylistIDsPerSeason (Lot 4.2) : chaque saison
+// porte les playlists RÉELLEMENT relevées pour elle. Sans ça, le front croise les
+// deux listes plates et propose des couples jamais capturés (tableau vide).
+func TestGetWorldLeaderboardCatalog_PlaylistIDsPerSeason(t *testing.T) {
+	shared := openMemDB(t)
+	applyWorldLeaderboardMigration(t, shared.SQLDb())
+	ctx := context.Background()
+
+	now := time.Now().UTC()
+	// 13-3 relevée sur 2 playlists, 13-2 sur une seule : le couple (13-2, pl-b)
+	// n'existe pas et ne doit apparaître nulle part.
+	rows := []domain.LeaderboardEntry{
+		{Season: "csrseason13-3", Playlist: "pl-a", Rank: 1, Gamertag: "A", CSRValue: 2000, Tier: "Onyx", FetchedAt: now},
+		{Season: "csrseason13-3", Playlist: "pl-b", Rank: 1, Gamertag: "B", CSRValue: 1900, Tier: "Onyx", FetchedAt: now},
+		{Season: "csrseason13-2", Playlist: "pl-a", Rank: 1, Gamertag: "C", CSRValue: 1800, Tier: "Diamond", FetchedAt: now},
+	}
+	if _, err := InsertWorldCSRSnapshot(ctx, shared.SQLDb(), "halo_infinite", rows); err != nil {
+		t.Fatalf("InsertWorldCSRSnapshot: %v", err)
+	}
+
+	cat, err := NewLeaderboardRepo(&PlayerDB{Shared: shared}).GetWorldLeaderboardCatalog(ctx, "halo_infinite")
+	if err != nil {
+		t.Fatalf("GetWorldLeaderboardCatalog: %v", err)
+	}
+	got := map[string][]string{}
+	for _, s := range cat.Seasons {
+		got[s.ID] = s.PlaylistIDs
+	}
+	if want := []string{"pl-a", "pl-b"}; !slices.Equal(got["csrseason13-3"], want) {
+		t.Errorf("13-3 playlist_ids = %v, attendu %v", got["csrseason13-3"], want)
+	}
+	if want := []string{"pl-a"}; !slices.Equal(got["csrseason13-2"], want) {
+		t.Errorf("13-2 playlist_ids = %v, attendu %v (le couple (13-2, pl-b) n'existe pas)", got["csrseason13-2"], want)
+	}
+	// Les listes plates restent inchangées (compat) : 2 saisons, 2 playlists.
+	if len(cat.Seasons) != 2 || len(cat.Playlists) != 2 {
+		t.Errorf("listes plates = %d saisons / %d playlists, attendu 2 / 2", len(cat.Seasons), len(cat.Playlists))
+	}
+	// Les playlists (liste plate) ne portent JAMAIS de couples.
+	for _, p := range cat.Playlists {
+		if len(p.PlaylistIDs) != 0 {
+			t.Errorf("playlist %s porte playlist_ids=%v, attendu vide", p.ID, p.PlaylistIDs)
+		}
 	}
 }

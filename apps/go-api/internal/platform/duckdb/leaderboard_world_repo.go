@@ -280,19 +280,11 @@ func (r *LeaderboardRepo) GetWorldLeaderboardCatalog(ctx context.Context, titleS
 		return domain.LeaderboardCatalog{}, fmt.Errorf("GetWorldLeaderboardCatalog: seasons: %w", err)
 	}
 	sortSeasonsRecentFirst(seasons)
-	// Marque les saisons réellement enrichies (stats détaillées présentes). Celles sans
-	// stats restent affichées (classement seul) mais Enriched=false → badge côté front.
-	enrichedIDs, err := scanIDColumn(ctx, sharedDB,
-		`SELECT DISTINCT season_id FROM world_player_season_stats_latest WHERE season_id <> ''`)
-	if err != nil {
-		return domain.LeaderboardCatalog{}, fmt.Errorf("GetWorldLeaderboardCatalog: enriched seasons: %w", err)
-	}
-	enrichedSet := make(map[string]bool, len(enrichedIDs))
-	for _, id := range enrichedIDs {
-		enrichedSet[id] = true
-	}
-	for i := range seasons {
-		seasons[i].Enriched = enrichedSet[seasons[i].ID]
+	// Marque les saisons réellement enrichies (stats détaillées présentes ; celles sans
+	// stats restent affichées en classement seul, Enriched=false → badge côté front) et
+	// leur attache les playlists réellement relevées (couplage des sélecteurs).
+	if err := decorateCatalogSeasons(ctx, sharedDB, seasons); err != nil {
+		return domain.LeaderboardCatalog{}, fmt.Errorf("GetWorldLeaderboardCatalog: %w", err)
 	}
 	plIDs, err := scanIDColumn(ctx, sharedDB,
 		`SELECT DISTINCT playlist_id FROM world_csr_leaderboard_latest

@@ -17,18 +17,22 @@
 //	go run ./cmd/snapshot-world-leaderboard -season csrseason13-2
 //	go run ./cmd/snapshot-world-leaderboard -season csrseason13-2 \
 //	    -playlists 6233381c-fc96-40b9-b1ff-f6a4de72dd7a -limit 200 -dry-run
+//
+// Réparation (aucun scrape, cf. restore_best.go) — ré-insère le meilleur lot
+// historique là où le lot servi est dégradé, sur UNE saison nommée ('all' refusé) :
+//
+//	go run ./cmd/snapshot-world-leaderboard -restore-best -season csrseason13-2
+//	go run ./cmd/snapshot-world-leaderboard -restore-best -season csrseason13-2 -execute
 package main
 
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"flag"
 	"fmt"
 	"log/slog"
 	"os"
 	"strings"
-	"time"
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
@@ -36,7 +40,6 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/rankedplaylists"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/observability/logging"
-	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/halo"
 )
 
@@ -50,6 +53,9 @@ func main() {
 	politeMs := flag.Int("polite-ms", 800, "délai poli entre deux pages (ms)")
 	dryRun := flag.Bool("dry-run", false, "scrape et affiche les comptes sans écrire")
 	titleSlug := flag.String("title", "halo_infinite", "slug du titre (défaut halo_infinite)")
+	restoreBest := flag.Bool("restore-best", false,
+		"ne scrape RIEN : ré-insère le meilleur lot historique des playlists de -season (saison PRÉCISE requise, 'all' refusé) dont le lot servi est dégradé (dry-run sauf -execute)")
+	execute := flag.Bool("execute", false, "avec -restore-best : écrit réellement (sinon simulation)")
 	flag.Parse()
 
 	// Enregistre les steps de migration title-owned (halo_infinite) : sans ça,
@@ -63,93 +69,39 @@ func main() {
 	log := slog.Default().With("module", logging.ModuleLeaderboard, "job", "snapshot-world-leaderboard")
 	ctx := context.Background()
 
+	// Mode réparation : aucun scrape, le balayage part de ce qui est DÉJÀ en base
+	// (cf. restore_best.go). Le périmètre doit être NOMMÉ : une restauration écrit
+	// dans la seule archive du classement mondial, on n'y touche pas « partout à la
+	// fois » — d'où une saison précise exigée, et 'all' explicitement refusé.
+	if *restoreBest {
+		s := strings.TrimSpace(*season)
+		if s == "" {
+			fatal("-restore-best exige -season <saison> (ex: -season csrseason13-2) : la restauration écrit, son périmètre doit être explicite")
+		}
+		if strings.EqualFold(s, "all") {
+			fatal("-restore-best refuse -season all : restaurer toutes les saisons d'un coup n'est pas un périmètre explicite ; relancer saison par saison")
+		}
+		runRestoreMode(ctx, log, restoreOptions{
+			sharedDBPath: *sharedDBPath,
+			titleSlug:    *titleSlug,
+			season:       s,
+			execute:      *execute,
+		})
+		return
+	}
+
 	if strings.TrimSpace(*season) == "" {
 		fatal("-season est requis (ex: csrseason13-2 ou 'all' pour toutes les saisons)")
 	}
-	playlists := resolvePlaylists(*playlistsCSV)
-	if len(playlists) == 0 {
-		fatal("aucune playlist à traiter")
-	}
-	scraper := halo.NewLeaderboardScraper(time.Duration(*politeMs) * time.Millisecond)
-
-	// 'all' → snapshot TOUTES les saisons exposées par Halo Waypoint (csrseason3-1
-	// jusqu'à l'active), pas seulement la courante. Miroir du -season all du backfill.
-	seasons, err := resolveSeasons(ctx, scraper, *season, playlists[0])
-	if err != nil {
-		fatal("résolution des saisons: %v", err)
-	}
-	log.InfoContext(ctx, "snapshot world leaderboard démarré",
-		"seasons", len(seasons), "playlists", len(playlists), "limit", *limit, "dry_run", *dryRun)
-	fmt.Printf("Saisons (%d) : %v — %d playlist(s), limite %d/playlist%s\n",
-		len(seasons), seasons, len(playlists), *limit, dryRunSuffix(*dryRun))
-
-	var db *sql.DB
-	if !*dryRun {
-		db, err = openSharedRW(*sharedDBPath)
-		if err != nil {
-			fatal("open shared DB: %v", err)
-		}
-		defer db.Close()
-		if err := migration.RunForDB(db, migration.TargetShared); err != nil {
-			fatal("migration shared: %v", err)
-		}
-	}
-
-	// Scrape+persiste une saison (toutes ses playlists). Closure pour capturer le
-	// contexte commun sans exploser le nombre d'arguments.
-	snapshotSeason := func(s string) (rows, inserted int) {
-		fmt.Printf("Saison %s :\n", s)
-		for i, pl := range playlists {
-			// Délai poli ENTRE playlists (pas seulement entre pages) : Halo Waypoint
-			// throttle au-delà de quelques requêtes rapprochées (429). Sans ça, un
-			// -season all tire ~14 requêtes d'affilée et se fait couper.
-			if i > 0 && *politeMs > 0 {
-				time.Sleep(time.Duration(*politeMs) * time.Millisecond)
-			}
-			entries, ferr := scraper.FetchCSRLeaderboard(ctx, s, pl, *limit)
-			if ferr != nil {
-				// 404 = playlist non classée cette saison : skip NOMINAL d'un backfill
-				// multi-saisons × toutes playlists (pas une erreur). Les vraies erreurs
-				// (429, 5xx, réseau) restent en ERROR.
-				if errors.Is(ferr, halo.ErrLeaderboardPageNotFound) {
-					fmt.Printf("  %s : —  (non classée cette saison)\n", pl)
-					log.InfoContext(ctx, "playlist non classée cette saison — ignorée", "season", s, "playlist", pl)
-				} else {
-					log.ErrorContext(ctx, "scrape playlist échoué", "season", s, "playlist", pl, "err", ferr)
-				}
-				continue
-			}
-			rows += len(entries)
-			fmt.Printf("  %s : %d entrées\n", pl, len(entries))
-			if *dryRun || len(entries) == 0 {
-				continue
-			}
-			n, ierr := duckdb.InsertWorldCSRSnapshot(ctx, db, *titleSlug, entries)
-			if ierr != nil {
-				log.ErrorContext(ctx, "insert snapshot échoué", "season", s, "playlist", pl, "err", ierr)
-				continue
-			}
-			inserted += n
-		}
-		return rows, inserted
-	}
-
-	t0 := time.Now()
-	grandRows, grandInserted := 0, 0
-	for i, s := range seasons {
-		if i > 0 && *politeMs > 0 {
-			time.Sleep(time.Duration(*politeMs) * time.Millisecond)
-		}
-		r, ins := snapshotSeason(s)
-		grandRows += r
-		grandInserted += ins
-	}
-
-	log.InfoContext(ctx, "snapshot world leaderboard terminé",
-		"seasons", len(seasons), "playlists", len(playlists),
-		"rows_scraped", grandRows, "rows_inserted", grandInserted,
-		"dry_run", *dryRun, "duration", time.Since(t0).String())
-	fmt.Printf("\nTerminé : %d saison(s), %d entrées scrapées, %d insérées.\n", len(seasons), grandRows, grandInserted)
+	runSnapshotMode(ctx, log, snapshotOptions{
+		season:       *season,
+		sharedDBPath: *sharedDBPath,
+		playlistsCSV: *playlistsCSV,
+		limit:        *limit,
+		politeMs:     *politeMs,
+		dryRun:       *dryRun,
+		titleSlug:    *titleSlug,
+	})
 }
 
 // resolveSeasons : 'all' (ou vide) → toutes les saisons du catalogue Halo Waypoint

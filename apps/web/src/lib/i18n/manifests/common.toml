@@ -745,6 +745,14 @@ en = "archived"
 fr = "Saison archivée : classement CSR uniquement (stats détaillées indisponibles pour cette saison)."
 en = "Archived season: CSR ranking only (detailed stats unavailable for this season)."
 
+[common.leaderboard.enrichment_unavailable]
+fr = "Stats détaillées indisponibles pour ce relevé : classement CSR seul ({enriched} joueur(s) enrichi(s) sur {total} affichés)."
+en = "Detailed stats unavailable for this snapshot: CSR ranking only ({enriched} of {total} listed players enriched)."
+
+[common.leaderboard.enrichment_partial]
+fr = "Stats détaillées partielles : {enriched} joueurs enrichis sur {total} affichés — les autres lignes restent vides."
+en = "Partial detailed stats: {enriched} of {total} listed players enriched — the other rows stay empty."
+
 [common.leaderboard.col_player]
 fr = "Joueur"
 en = "Player"
