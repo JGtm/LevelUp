@@ -513,20 +513,35 @@ Prerequis : verdict 0.7 = zero divergence sur les 11 films du corpus (sinon : ar
 
 ### Lot 4b — Films-bombes : plafond de prudence (correction declaree) — effort rapide
 
-- [ ] 4b.1 Mesure du deroulage maximal reel `p.Value - prev` (PREMIER TERME COMPRIS, `prev`
+- [x] 4b.1 Mesure du deroulage maximal reel `p.Value - prev` (PREMIER TERME COMPRIS, `prev`
       partant de zero) sur les 11 films sains, par comp et cote — si > 1 000 : escalade avant
-      d'aller plus loin (D13).
-- [ ] 4b.2 Plafond D13 : rejet du deroulage > 10 000 dans `incrementTimes` ; plafond total
+      d'aller plus loin (D13). **FAITE le 2026-09-03 sur les 9 films sains du CORPUS.txt et sur
+      les 4 bombes (journal §10). VERDICT : 17 306 sur `d9781168` (comp 20 B) — 17x le seuil
+      d'escalade, et 1,73x AU-DESSUS de la borne de 10 000 que D13 voulait poser. ESCALADE
+      OUVERTE : le lot s'arrete ici.**
+- [!] 4b.2 Plafond D13 : rejet du deroulage > 10 000 dans `incrementTimes` ; plafond total
       1 000 000 par film dans `NamedEventsFrom` (pas dans `incrementTimes`) ; compteurs de rejet
       journalises ; tests unitaires sur des series construites (premier terme enorme ; saut
-      intermediaire ; total depasse).
-- [ ] 4b.3 `51101d1d` et `a349fea8` cuisent sous 3 Gio via `replay-equiv` (pic + duree au
+      intermediaire ; total depasse). **NON TRAITE — bloque par l'escalade 4b.1 : la valeur
+      10 000 rejetterait un point d'un film SAIN du corpus. La borne par pas attend l'arbitrage
+      utilisateur (journal §10). Le plafond TOTAL de 1 000 000, lui, est VALIDE par la mesure
+      (47x le pire total sain) et n'est pas en cause.**
+- [!] 4b.3 `51101d1d` et `a349fea8` cuisent sous 3 Gio via `replay-equiv` (pic + duree au
       journal) ; premier digest fige (`-update -films ...`), entree au `CORPUS.txt` « fige au lot
-      4b » ; les 11 films sains restent IDENTIQUES.
-- [ ] 4b.4 `REGISTRE_REPORTS.md` (bombe RAM `NamedEventsFrom`) : cause confirmee ou infirmee par
-      le profil heap (`-memprofile` de l'enfant) pris au 4b.3, avec le chiffre.
+      4b » ; les 11 films sains restent IDENTIQUES. **NON TRAITE — depend de 4b.2 : sans borne,
+      les quatre bombes reproduisent l'OOM (2,2 a 3,9 MILLIARDS d'evenements mesures). Aucune
+      cuisson de bombe lancee, aucun digest fige, `CORPUS.txt` et `BOMBES.txt` inchanges.**
+- [~] 4b.4 `REGISTRE_REPORTS.md` (bombe RAM `NamedEventsFrom`) : cause confirmee ou infirmee par
+      le profil heap (`-memprofile` de l'enfant) pris au 4b.3, avec le chiffre. **COUVERT
+      AUTREMENT, ET MIEUX : la mesure 4b.1 CONFIRME la cause sans profil heap — elle nomme
+      l'emplacement fautif, son slot et son instant sur chacune des quatre bombes, et son compte
+      d'evenements retrouve les ~26 Gio a 0,2 % pres (note datee du 2026-09-03 au registre). Ce
+      que le profil aurait apporte en plus (la pile d'allocation) n'ajoute rien a un compte exact.
+      Reste ouvert au registre : la LEVEE du report, qui exige la borne (4b.2) et la cuisson
+      (4b.3).**
 - Gate 4b : equivalence IDENTIQUE sur les 11 films sains ; les deux bombes cuisent sous plafond ;
-  tests verts.
+  tests verts. **NON ATTEINT (lot suspendu a l'escalade) — l'equivalence 9/9 est verte et le
+  depot est a HEAD sans aucune modification de code (journal §10).**
 
 ### Lot 5 — Orchestration et protections — effort moyen
 
@@ -970,6 +985,50 @@ identique a celui en place hors lots de correction, ou le garde anti-regression 
     `CrossCheckNamedEvents`, PRODUCTION) l'appelle toujours. Une suppression « code mort » fondee
     sur le seul appelant visible aurait casse le controle croise. Note ici parce que le meme piege
     guette toute factorisation de ce fichier : `named.go` a DEUX consommateurs de series, pas un.
+
+- 2026-09-03 (agent lot 4b, mesure 4b.1) — QUATRE DECOUVERTES, dont deux qui changent la lecture
+  du dossier « films-bombes ». Aucune n'est traitee (regle 7).
+  - N-AS. **LA TABLE FLAG EST LUE SUR TOUS LES FILMS, HORS DE SON MODE — et c'est par la que
+    trois bombes sur quatre explosent.** `replay/build_objectives_live.go:104` (`flagFilmSignalsOf`,
+    pour DECIDER si le film est un CTF) et `:119` (`attachFlagCarries`) appellent
+    `NamedEventsFrom(recs, ObjectiveTypeFlag)` AVANT tout aiguillage de mode ; `replay/vip_crown.go:199`
+    fait de meme avec la table VIP. Or l'en-tete de `named.go` dit l'inverse en toutes lettres :
+    « Le sens d'un emplacement DEPEND DU MODE [...] un balayage tous modes confondus rend des noms
+    contradictoires ». Consequence mesuree : `60ae07c4` est un **Oddball** — sa famille (`skull`)
+    n'a AUCUNE table, donc `matchfacts.go:218` ne lit rien — et il explose quand meme, a
+    2 148 206 590 evenements sur `comp 21 A` LU PAR LA TABLE FLAG. Idem `a349fea8` (Total Control,
+    zone) : 1,1 milliard par la table FLAG (`21 B`) EN PLUS de 671 millions par la sienne (`21 A`).
+    Le meme mecanisme fait lire a `d9781168` (Oddball) 21 160 « evenements de drapeau » dont le
+    saut de 17 306 qui bloque ce lot. Le detecteur de mode paie donc le deroulage COMPLET de huit
+    emplacements pour ne consommer que trois compteurs (`Captures`, `Steals`, `Grabs`,
+    `flagfilm.go:62-75`) : un compte suffirait, la liste d'evenements n'est jamais utilisee quand
+    le film n'est pas un CTF. C'est a la fois un cout inutile et la surface qui transforme
+    n'importe quel film en bombe. HORS PERIMETRE de ce plan (§7 : pas de changement de contrat).
+  - N-AT. **L'ANOMALIE EST UN ENREGISTREMENT MAL ALIGNE, PAS UN EMPLACEMENT.** Sur `d9781168`, le
+    saut de 17 306 (`comp 20 B`) et un saut de 58 (`comp 3 A`) tombent sur le MEME slot (12) au
+    MEME instant (345 931 ms). Sur `60ae07c4`, trois emplacements sautent ensemble sur le slot 12
+    a 570 965 ms (`21 A` : 2 148 206 590 ; `23 A` : 1 745 602 538 ; `21 B` : 31). C'est la
+    signature deja documentee dans `named_series.go` pour le score de mode (`ce083875`, A=66 /
+    B=16635) : un enregistrement decode a une position ou il n'y en a pas, dont TOUS les canaux
+    sont faux a la fois. Un plafond par pas coupe les gros canaux et laisse passer les petits
+    (31, 58, 2 139) : c'est un dernier rempart memoire, ce n'est PAS un filtre d'anomalie. Le
+    filtre juste serait au niveau de l'enregistrement (rejeter le record entier quand l'un de ses
+    canaux est hors domaine, comme `modeScoreInDomain` le fait deja pour le comp 0).
+  - N-AU. **Le deroulage geant existe sur les films SAINS aussi — simplement sur des emplacements
+    que personne ne lit.** Huit des neuf films sains portent un saut de 2,4 a 3,9 MILLIARDS sur au
+    moins un `comp` hors table (`000d5950` : 2 794 642 979 ; `7344d24f` : 3 864 085 537 ; ...).
+    La frontiere entre « film sain » et « film-bombe » n'est donc PAS la qualite du decodage :
+    c'est le hasard de savoir si l'emplacement fautif appartient ou non a une table lue. Toute
+    extension future de `namedStatSlots` (les emplacements `hill` et `ball` que l'en-tete de
+    `named.go` annonce comme « pas encore nommes ») arme une nouvelle bombe si la borne n'est pas
+    posee d'abord.
+  - N-AV. `statMaxRecordsPerFilm` (33 076) borne les POINTS, pas les EVENEMENTS : avec une borne
+    par pas a B, une seule serie peut encore emettre 33 076 x B entrees. A B = 10 000 cela fait
+    3,3e8 `int` (2,6 Gio) DANS UN SEUL appel de `incrementTimes`, avant que `NamedEventsFrom` ait
+    la main pour appliquer son plafond total. Un plafond total verifie seulement ENTRE les series
+    ne protege donc pas : l'implementation de 4b.2 devra passer le budget restant a
+    `incrementTimes` (ce qui n'est pas un plafond par appel — le plafond et sa valeur restent
+    detenus par `NamedEventsFrom`), ou compter la serie avant de la materialiser.
 
 ## 9. Revue du plan (plan-review, 2026-09-02)
 
@@ -1576,3 +1635,93 @@ exportees). La fenetre glissante de `kfScanNext` n'a pas ete posee (N-AQ).
 ZERO nouvelle issue (une `unparam` introduite en cours de route a ete corrigee avant cloture).
 Goldens inchanges. Decouvertes N-AN a N-AR au §8. AUCUNE CUISSON LANCEE : l'equivalence 11 films
 et les temoins §6 restent a la charge du pilote, et c'est eux qui prononcent le refacto PUR.
+
+### Lot 4b — Films-bombes (2026-09-03) — SUSPENDU A L'ESCALADE D13, mesure faite, aucun code touche
+
+**LA MESURE PREALABLE A FAIT SON TRAVAIL : ELLE A ARRETE LE LOT.** D13 exigeait de mesurer le
+deroulage maximal reel avant de poser la borne, « s'il depasse 1 000 : escalade utilisateur ».
+Il vaut **17 306**. La borne de 10 000 que D13 voulait poser aurait rejete un point d'un film
+SAIN du corpus, donc fait bouger une reference qui doit rester figee. Rien n'a ete pose, rien
+n'a ete cuit, `git status` est vide.
+
+**METHODE (4b.1).** Outil de mesure TEMPORAIRE, supprime apres releve : un `_test.go` du paquet
+`objectiveevents` (le seul endroit d'ou `rawSeriesByKey`, `cumulateRounds` et `RealRounds` sont
+visibles), un film par processus (`FILM_CACHE_ROOT=... MESURE_FILM=<short8> go test -run
+TestMesureDeroulageTmp -v -count=1`). Il rejoue EXACTEMENT le chemin de production jusqu'a
+l'entree de `incrementTimes` — memes filtres, meme cumul de manches, meme `RealRounds` — sur une
+table synthetique de TOUS les emplacements (58 comps x 2 cotes) et non sur la seule table du
+mode, puis marque ceux qui sont REELLEMENT lus (table FLAG et table VIP sur tous les films, cf.
+N-AS, plus la table de la famille de la variante lue dans `<short8>.facts.json`). Il SOMME les
+sauts sans jamais materialiser un evenement : c'est ce qui permet de mesurer les bombes sans les
+faire exploser (`51101d1d` : 0,3 s, quelques Mo).
+
+**RESULTAT — LES NEUF FILMS SAINS** (`recs` = enregistrements decodes ; « saut LU » = pire
+`p.Value - prev`, premier terme compris, sur les emplacements que la production deroule) :
+
+| film | variante | recs | pire saut LU | comp/cote | total evts LUS | pire saut TOUS emplacements |
+|---|---|---|---|---|---|---|
+| `000d5950` | Slayer:Arena Super Fiesta | 592 | 1 | 2 A | 110 | 2 794 642 979 |
+| `01e1f945` | KOTH:Arena | 2 208 | 2 | 2 A | 538 | 2 517 |
+| `64e8adfa` | CTF:Arena | 1 131 | 2 | 2 A | 294 | 2 608 857 088 |
+| `7344d24f` | Strongholds:Arena | 1 199 | 1 | 2 A | 300 | 3 864 085 537 |
+| `696a9d7c` | Strongholds:Arena | 1 089 | 1 | 2 A | 272 | 3 744 448 537 |
+| `084a804d` | BTB Heavies:CTF | 1 647 | 2 | 2 A | 210 | 2 901 149 661 |
+| `53ce4390` | CTF:Arena | 890 | 1 | 2 A | 200 | 2 716 199 895 |
+| **`d9781168`** | **Oddball:Arena** | 9 111 | **17 306** | **20 B** | **21 160** | 3 629 349 481 |
+| `9f57c612` | Assault:One Bomb | 619 | 2 | 2 A | 111 | 2 418 622 464 |
+
+**Max par famille d'objectif, films sains** — `flag` : **17 306** (`d9781168`, comp 20 B, slot 12,
+t = 345 931 ms), puis 58 (`d9781168`, comp 3 A, MEME slot, MEME instant — cf. N-AT), puis 2 ;
+`zone` : 1 ; `vip` : 2 ; `bomb` (Assaut) : 1 ; `hill` et `skull` : aucune table, aucun deroulage.
+Autrement dit : HUIT films sur neuf tiennent sous 2, et un seul film porte toute l'anomalie.
+
+**RESULTAT — LES QUATRE BOMBES** (mesurees, jamais cuites) :
+
+| film | variante | recs | pire saut LU | comp/cote | slot / instant | total evts LUS |
+|---|---|---|---|---|---|---|
+| `51101d1d` | CTF:Arena Neutral Flag | 257 | 2 163 333 610 | 20 B (flag) | 24 / 136 636 ms | 2 163 333 677 |
+| `a349fea8` | BTB Heavies:Total Control | 348 | 1 107 820 492 | 21 B (flag) | 14 / 452 454 ms | 3 660 800 644 |
+| `1c4c63c2` | BTB:One Flag CTF | 2 308 | 537 698 416 | 22 A (flag) | 24 / 0 ms | 537 724 829 |
+| `60ae07c4` | Ranked:Oddball | 9 274 | 2 148 206 590 | 21 A (flag) | 12 / 570 965 ms | 3 893 812 214 |
+
+**LA CAUSE DE LA BOMBE RAM EST CONFIRMEE, ARITHMETIQUEMENT.** `51101d1d` — le film nomme au
+registre le 2026-08-24 — deroule **2 163 333 677** evenements sur `comp 20 B` (slot 24,
+t = 136 636 ms). `incrementTimes` les materialise d'abord en `[]int` : 2 163 333 677 x 8 o =
+**17,31 Go**, et le doublement final de `growslice` (8,65 Go copies vers 17,31 Go, les deux
+vivants) demande **25,96 Go** — les « ~26 Go, crash go runtime » du registre, retrouves a 0,2 %
+pres. Aucun profil heap n'etait necessaire pour cela (item 4b.4).
+
+**L'ESCALADE, ET CE QU'ELLE DEMANDE DE TRANCHER.** D13 posait 10 000 « dernier rempart » sur la
+foi que « la pire anomalie connue est un saut de 66 ». La mesure dit 17 306 : la premisse est
+fausse d'un facteur 260, et la borne proposee passe SOUS le pire cas sain. Les deux populations
+restent pourtant tres largement separees — 17 306 d'un cote, 537 698 416 de l'autre, un facteur
+**31 000** — donc toute borne de l'intervalle ouvert `]17 306 ; 537 698 416[` laisse les neuf
+films sains a l'octet pres ET tue les quatre bombes. Deux valeurs se defendent, l'arbitrage est
+utilisateur (D13) :
+- **100 000** — 5,8x au-dessus du pire cas sain, 5 377x sous la plus petite bombe. Garde son sens
+  de « rempart » et laisse de la marge a un film sain non encore vu.
+- **1 000 000** — meme valeur que le plafond total, 58x au-dessus du pire cas sain ; plus simple a
+  retenir, mais un seul saut accepte consommerait alors tout le budget du film.
+
+Le **plafond TOTAL de 1 000 000 par film n'est PAS en cause** : le pire total sain est 21 160
+(`d9781168`), soit 47x de marge, et les quatre bombes sont 500 a 3 900 fois au-dessus. Il se pose
+tel quel des que la borne par pas est tranchee.
+
+**CE QUI N'A PAS ETE FAIT, ET POURQUOI.** 4b.2 (`[!]`) : poser 10 000 aurait viole l'interdit
+« les 9 films sains INTACTS » ; poser une autre valeur aurait re-decide un D. 4b.3 (`[!]`) :
+sans borne, les quatre bombes reproduisent l'OOM — aucune cuisson lancee, aucun digest fige,
+`CORPUS.txt` et `BOMBES.txt` INCHANGES, les deux lignes commentees le restent. Le **temoin Live
+Fire `60ae07c4` du LOT 3 reste donc BLOQUE** : il est bien une bombe `NamedEventsFrom` (par la
+table FLAG, N-AS), il cuira des que la borne sera posee, mais pas avant. 4b.4 (`[~]`) : la
+cloture « cause » est ecrite au registre (note datee du 2026-09-03) parce que la mesure la
+prouve ; la cloture « report leve » attend 4b.2 + 4b.3.
+
+**GATE.** Aucun fichier `.go` modifie (`git status` vide, `git diff --stat` vide) : la borne
+n'ayant pas ete posee, ce lot n'a rien a faire passer. Verifie quand meme, apres suppression de
+l'outil de mesure : `gofmt -l .` vide (module entier) · `go vet ./internal/analysis/objectiveevents/
+./internal/replaybuild/` vide · `go test ./internal/analysis/objectiveevents/ ./internal/analysis/replay/
+./internal/replaybuild/ -count=1` vert (0,27 s / 9,45 s / 0,54 s) · `golangci-lint run` code 0,
+baseline inchangee · **harnais complet `tmp/replay-equiv.exe` (binaire du lot 4, HEAD `7d0af4440`) :
+9 identiques, 0 different, 0 ecarte, 0 echec, 0 illisible** (passe complete relancee
+apres coup pour relever les chiffres : pics 0,17 a 0,41 Gio ; 13,6 s a 1 min 42 par film,
+`084a804d` etant le temoin 19 min a 26 joueurs). Decouvertes N-AS a N-AV au §8.
