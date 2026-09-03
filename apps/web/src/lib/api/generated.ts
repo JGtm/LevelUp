@@ -7866,7 +7866,13 @@ export interface components {
             /** Format: int64 */
             deaths: number;
             /** Format: int64 */
+            joinMatchMs?: number;
+            joinedInProgress?: boolean;
+            /** Format: int64 */
             kills: number;
+            /** Format: int64 */
+            leaveMatchMs?: number;
+            leftInProgress?: boolean;
             /** Format: int64 */
             teamId: number;
             xuid: string;
