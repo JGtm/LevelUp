@@ -72,6 +72,19 @@ icon = "hud/Spike"
 # s'affiche avec son NUMERO (« capacite inconnue (10) ») — jamais devine, jamais approche
 # par le nom d'une capacite voisine. L'icone suit LE MEME rang que le libelle : nom et
 # vignette bougent ensemble.
+#
+# `family` (OPTIONNEL) — L'IDENTITE STABLE DERRIERE LE RANG, dans le MEME vocabulaire que
+# `[[equipment_objects]].family` : c'est ce qui permet a un calque de dire « propulseur »
+# sans jamais ecrire 5 ni 21 dans du Go (le rang du propulseur vaut 5 en famille A et 21 en
+# famille B — un litteral en dur rendrait le calque muet sur l'autre famille, exactement le
+# piege qui a rendu le translocateur muet hors famille A). Le libelle, lui, reste ce qui
+# s'AFFICHE ; la famille est ce qui se JOINT.
+#
+# LES DEUX POUDRES A CANON (`8` camouflage, `9` surbouclier) N'EN PORTENT PAS : leur objet
+# de manifeste est un power-up ramassable (`powerup_camo` / `powerup_overshield`), pas
+# l'emplacement de capacite, et leur ETAT ACTIF se lit deja par un autre canal
+# (`equipmentEpisodes`, i28 et i5). Leur donner une famille ici ferait joindre deux choses
+# qui ne sont pas la meme.
 
 # --- FAMILLE A ---------------------------------------------------------------------
 # Les trois `sofd` de cette famille (d91958af 27 entrees, 03137359 19, 13c097ed 17) ont un
@@ -99,18 +112,18 @@ id = "famille_a"
 markers = [1, 2, 4, 5, 6, 8, 9, 10, 11, 12, 23]
 
 [ability_palettes.ranks]
-"1"  = { en = "Threat Sensor", fr = "detecteur de menaces", icon = "hud/ThreatSensor" }
-"2"  = { en = "Drop Wall", fr = "mur de protection", icon = "hud/DropWall" }
-"4"  = { en = "Grappleshot", fr = "grappin", icon = "hud/Grappleshot" }
-"5"  = { en = "Thruster", fr = "propulseur", icon = "hud/Thruster" }
-"6"  = { en = "Repulsor", fr = "repulseur", icon = "hud/Repulsor" }
+"1"  = { en = "Threat Sensor", fr = "detecteur de menaces", icon = "hud/ThreatSensor", family = "sensor" }
+"2"  = { en = "Drop Wall", fr = "mur de protection", icon = "hud/DropWall", family = "wall" }
+"4"  = { en = "Grappleshot", fr = "grappin", icon = "hud/Grappleshot", family = "grapple" }
+"5"  = { en = "Thruster", fr = "propulseur", icon = "hud/Thruster", family = "thruster" }
+"6"  = { en = "Repulsor", fr = "repulseur", icon = "hud/Repulsor", family = "repulsor" }
 "8"  = { en = "Active Camouflage", fr = "camouflage actif", icon = "hud/ActiveCamouflage" }
 "9"  = { en = "Overshield", fr = "surbouclier", icon = "hud/Overshield" }
-"11" = { en = "Quantum Translocator", fr = "translocateur quantique", icon = "hud/QuantumTranslocator" }
-"12" = { en = "Threat Seeker", fr = "traqueur de menaces", icon = "hud/ThreatSeeker" }
+"11" = { en = "Quantum Translocator", fr = "translocateur quantique", icon = "hud/QuantumTranslocator", family = "translocator_beacon" }
+"12" = { en = "Threat Seeker", fr = "traqueur de menaces", icon = "hud/ThreatSeeker", family = "threat_seeker" }
 # 23 est le SEUL rang confirme par DEUX chaines : l'inversion murmur3 ET la banque sonore
 # `sb_007_abl_repairfield`, atteinte depuis ce rang a la distance la plus courte.
-"23" = { en = "Repair Field", fr = "champ de reparation", icon = "hud/RepairField" }
+"23" = { en = "Repair Field", fr = "champ de reparation", icon = "hud/RepairField", family = "repair_field" }
 
 # --- FAMILLE B ---------------------------------------------------------------------
 # Cette famille n'expose que les rangs 19 a 22, et AUCUN rang inferieur a 13 : mesure sur
@@ -136,8 +149,32 @@ id = "famille_b"
 markers = [19, 20, 21, 22]
 
 [ability_palettes.ranks]
-"20" = { en = "Grappleshot", fr = "grappin", icon = "hud/Grappleshot" }
-"21" = { en = "Thruster", fr = "propulseur", icon = "hud/Thruster" }
+"20" = { en = "Grappleshot", fr = "grappin", icon = "hud/Grappleshot", family = "grapple" }
+"21" = { en = "Thruster", fr = "propulseur", icon = "hud/Thruster", family = "thruster" }
+
+# Familles de capacite dont l'USAGE est MESURE par le canal d'IMPULSION du bipede : le corps
+# de tag externe `R(2) == 1` des composants `biped-spartan-ability` (i57) et
+# `-non-predicted-state` (i59) — le MEME composant dont le tag 3 porte deja le grappin.
+# Cf. filmdec/ability_impulses.go (lecture) et replay/document_ability_impulses.go (jointure
+# d'identite par le rang i48 de la MEME vie).
+#
+# CETTE LISTE EST UNE MESURE, PAS UN REGLAGE (lot R8 du 2026-09-03,
+# RAPPORT_R8_USAGE_REPULSEUR_PROPULSEUR §8.8 — quatre films de famille A, rang attribue DANS
+# LA MEME VIE et ANTERIEUREMENT) : 0,361 impulsion par vie de PROPULSEUR (22 sur 61) contre
+# 0,011 par vie de repulseur (1 sur 90 — et le repulseur est PLUS porte que lui) et 0,000 sur
+# 132 vies de GRAPPIN, qui a son propre tag. Oracle physique independant : pic de vitesse
+# horizontale 6,2 a 8,8 m/s a ces instants contre 2,9 a 3,6 au hasard dans la meme vie.
+# VERITE TERRAIN utilisateur (Theater, film `1cd3848a`, 2026-09-03) : 5 usages releves,
+# 5 impulsions rendues, ecart <= 1 s.
+#
+# LE REPULSEUR N'Y EST PAS, et c'est un negatif MESURE, pas une lacune : le lot R9 a ferme
+# ses trois portes restantes. L'inscrire ici ferait dessiner un geste que le film
+# n'enregistre pas. UNE FAMILLE ABSENTE DE CETTE LISTE VOIT SES IMPULSIONS ECARTEES ET
+# COMPTEES (`coverage.abilityImpulses.otherFamily`) : le canal ne se tait pas, il dit ce
+# qu'il refuse. Une famille citee ici DOIT etre nommee par au moins un rang ci-dessus, sans
+# quoi le calque serait muet en silence — le loader le refuse.
+[ability_impulses]
+families = ["thruster"]
 
 # Effet de rendu d'un tir, par weapon_key (cf. weapon_names.toml pour le nom affiche).
 #

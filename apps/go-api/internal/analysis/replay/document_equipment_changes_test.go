@@ -93,6 +93,33 @@ func TestBuildEquipmentChangesReporteLeTemoinDeCompletude(t *testing.T) {
 	}
 }
 
+func TestBuildEquipmentChangesPublieRecuperationEtGap(t *testing.T) {
+	in := []filmdec.EquipmentChange{
+		// Une émission RÉCUPÉRÉE (schéma 38) : la provenance voyage jusqu'au document.
+		{TimestampUS: ecOrigin + 1_000_000, Slot: 7, Rank: 11, Previous: 4,
+			Kind: filmdec.EquipmentTaken, Recovered: true},
+		// Une émission sous GAP résiduel : deux émissions manquent encore juste avant elle,
+		// son `from` n'est pas une identité fiable et le document doit le dire.
+		{TimestampUS: ecOrigin + 3_000_000, Slot: 7, Rank: filmdec.AbilitySetNoRank,
+			Previous: 11, Kind: filmdec.EquipmentSpent, Gap: 2},
+	}
+	st := filmdec.EquipmentChangeStats{Lives: 1, Recovered: 1, CounterJumps: 1, MissedEstimate: 2}
+	got, cov := buildEquipmentChanges(in, st, ecOrigin, ecStep)
+	if len(got) != 2 {
+		t.Fatalf("publiés = %d, attendu 2", len(got))
+	}
+	if !got[0].Recovered || got[0].Gap != 0 {
+		t.Errorf("émission récupérée : %+v — recovered doit voyager, gap rester nul", got[0])
+	}
+	if got[1].Recovered || got[1].Gap != 2 {
+		t.Errorf("émission sous gap : %+v — gap=2 doit voyager tel quel, y compris après "+
+			"récupération partielle", got[1])
+	}
+	if cov.Recovered != 1 {
+		t.Errorf("couverture recovered = %d, attendu 1 : les récupérées se comptent À PART", cov.Recovered)
+	}
+}
+
 func TestBirthOfLivesRendLePremierEchantillon(t *testing.T) {
 	born := birthOfLives([]filmdec.BipedPosition{
 		{Slot: 9, TimestampUS: 500},

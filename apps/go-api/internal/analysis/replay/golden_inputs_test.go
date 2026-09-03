@@ -76,6 +76,38 @@ func goldenInputsPath() string {
 // a un offset arbitraire : bruyant par chance, pas par construction, et le message ne dit pas
 // quoi faire. [TestGoldenInputsVersionGuard] verrouille le refus explicite.
 //
+// v13 (2026-09-03, lot P3) : le fixture porte les IMPULSIONS DE CAPACITE (corps tag==1 des
+// composants i57/i59) et les statistiques de leur balayage — dont le temoin `Scanned`, ajoute
+// a la revue de ronde 1 (constat H1) : sans lui le fixture rendrait une couverture de zeros
+// indistinguable d un balayage qui n a jamais tourne, et l assemblage publierait ce zero comme
+// une mesure. Que BuildFromFilm decode desormais. La magie monte parce que la SUITE DES SECTIONS change (un fixture v12 relu par
+// ce codec derailerait des la premiere pose d equipement). LE FILM DE REFERENCE EN PORTE :
+// `000d5950` est de famille B, ou le propulseur est le rang 21, et le lot R8 y a mesure
+// 43 lectures `tag == 1` dont 38 sur ce rang — le golden exerce donc le calque pour de vrai,
+// jointure d identite comprise, au lieu de figer une liste vide.
+//
+// v12 (2026-09-03, lot P1bis) : chaque teleportation porte desormais son VA-ET-VIENT — les
+// deux positions monde lues dans la CHARGE de l evenement 117 (R6 par.1, valide 18/18) — plus le
+// temoin qui dit si la charge a ete lue. La magie monte parce que la SUITE DES SECTIONS change
+// (un fixture v11 relu par ce codec derailerait des la premiere teleportation).
+//
+// LES OCTETS FIGES ONT BOUGE, ET CE N EST PAS CE LOT : le film de reference ne porte AUCUNE
+// teleportation, donc la section ci-dessus ecrit exactement les memes octets qu en v11 (un
+// compte a zero, puis rien) ; 98 octets diffèrent pourtant hors magie. LA CAUSE EST UN ORDRE
+// NON DETERMINISTE EN AMONT, mesuree ici : deux regenerations SUCCESSIVES du meme film
+// rendent des fixtures differentes (verifie le 2026-09-03 — copie, `-update`, `cmp`). Ce n est
+// donc PAS une regression de donnees de ce lot, mais un fixture non reproductible : la piste
+// est `filmdec.lessTrack` (`projectiles.go`), qui ordonne des SEGMENTS sur (naissance, slot,
+// gen) alors que `splitLives` en produit plusieurs par cle, avec un `sort.Slice` NON STABLE
+// derriere. Consigne au plan (Decouvertes, G2), NON traitee dans ce lot — hors perimetre.
+//
+// v11 (2026-09-03, lot P1 lecture fiable de l equipement, schema 38) : le fixture porte les
+// TELEPORTATIONS du translocateur (evenements type 117) que BuildFromFilm decode desormais —
+// et que le decodage des positions CONSOMME AUSSI (exemption du filtre de vitesse a ±200 ms,
+// decision D2) : sans elles le fixture ne porterait ni le calque `translocations` ni les
+// positions telles que la production les decode. Le film de reference (Fiesta Cliffhanger)
+// peut n en porter aucune : la liste vide se serialise, et le zero se fige avec le reste.
+//
 // v10 (2026-08-25, lot 4.4 du suivi delta de l inventaire) : le fixture porte les lectures
 // d INVENTAIRE DELTA (compteurs de grenades i22 et jeu selectionne i47) que BuildFromFilm
 // decode desormais. Sans elles le golden d assemblage n exercerait JAMAIS le second canal de
@@ -113,7 +145,7 @@ func goldenInputsPath() string {
 // delta, d ou sortent les socles de POWER-UP. Elle est serialisee par le MEME codec que la voie
 // des armes (une seule forme, `WorldObjectScan`), a la suite, et non a sa place : les deux
 // entrent ensemble dans l assemblage.
-const goldenInputsMagic = "REPLAYINPUTS10\n"
+const goldenInputsMagic = "REPLAYINPUTS13\n"
 
 // goldenInputs porte les entrees de BuildFromPositions decodees du film de reference.
 //
@@ -164,6 +196,18 @@ type goldenInputs struct {
 	// sans elles le golden verrouillerait un document sans grappin, donc pas celui que la
 	// production sert.
 	GrappleReads []filmdec.GrappleRead
+	// Translocations : les teleportations du translocateur (evenements type 117). MEME
+	// raison : l assemblage en fait le calque du schema 38 — et la production les passe
+	// AUSSI au filtre de vitesse (exemption D2), ce que decodeFilmInputs rejoue.
+	Translocations []filmdec.TranslocatorTeleport
+	// AbilityImpulses / AbilityImpulseStats : les IMPULSIONS DE CAPACITE (corps tag==1 des
+	// MEMES composants i57/i59 que le grappin). MEME raison que les precedents : l assemblage
+	// en fait le calque `abilityImpulses` du schema 38 — et le film de reference (famille B,
+	// ou le propulseur est le rang 21) en porte, donc sans elles le golden verrouillerait un
+	// document que la production ne sert pas. Les stats voyagent avec parce qu elles portent
+	// le temoin `Absent` que la couverture publie.
+	AbilityImpulses     []filmdec.AbilityImpulse
+	AbilityImpulseStats filmdec.AbilityImpulseStats
 	// Placements / PlacementStats : les POSES d equipement et la CALIBRATION du bloc de
 	// replication. MEME raison que les deux precedents : l assemblage en fait le calque du
 	// schema 9. La calibration voyage avec la liste parce que la couverture la publie.
@@ -191,14 +235,19 @@ type goldenInputs struct {
 // sont volontairement absentes (cf. l en-tete).
 func (g *goldenInputs) options() Options {
 	return Options{
-		Loadouts:          g.Loadouts,
-		Grenades:          g.Grenades,
-		Projectiles:       g.Projectiles,
-		Inventory:         g.Inventory,
-		AbilityRanks:      g.AbilityRanks,
-		CamoStates:        g.CamoStates,
-		InventoryDeltas:   g.InventoryDeltas,
-		GrappleReads:      g.GrappleReads,
+		Loadouts:        g.Loadouts,
+		Grenades:        g.Grenades,
+		Projectiles:     g.Projectiles,
+		Inventory:       g.Inventory,
+		AbilityRanks:    g.AbilityRanks,
+		CamoStates:      g.CamoStates,
+		InventoryDeltas: g.InventoryDeltas,
+		GrappleReads:    g.GrappleReads,
+		Translocations:  g.Translocations,
+
+		AbilityImpulses:     g.AbilityImpulses,
+		AbilityImpulseStats: g.AbilityImpulseStats,
+
 		Placements:        g.Placements,
 		PlacementStats:    g.PlacementStats,
 		Pads:              g.Pads,
@@ -487,6 +536,45 @@ func encodeGoldenInputs(g *goldenInputs) []byte {
 			w.u(uint64(gr.PosQ[a]))
 		}
 	}
+
+	w.u(uint64(len(g.Translocations)))
+	lastTS = 0
+	for _, tr := range g.Translocations {
+		w.u(tr.TimestampUS - lastTS) // le scan rend les evenements tries par instant
+		lastTS = tr.TimestampUS
+		w.u(uint64(tr.Slot))
+		// LE VA-ET-VIENT VOYAGE AVEC SON TEMOIN (v12) : sans lui, un saut sans position
+		// serait indistinguable d un saut vers l origine du monde.
+		w.bool8(tr.HasPositions)
+		for a := 0; a < 3; a++ {
+			w.f32(tr.From[a])
+		}
+		for a := 0; a < 3; a++ {
+			w.f32(tr.To[a])
+		}
+	}
+
+	// LES IMPULSIONS DE CAPACITE (v13) : le scan les rend TRIEES par instant, d ou le delta.
+	// Les STATS suivent la liste — c est le temoin `Absent` qui distingue « ce film ne
+	// transmet pas le composant » de « personne ne s en est servi ».
+	w.u(uint64(len(g.AbilityImpulses)))
+	lastTS = 0
+	for _, im := range g.AbilityImpulses {
+		w.u(im.TimestampUS - lastTS)
+		lastTS = im.TimestampUS
+		w.u(uint64(im.Slot))
+		w.bool8(im.Predicted)
+	}
+	w.u(uint64(g.AbilityImpulseStats.Records))
+	w.u(uint64(g.AbilityImpulseStats.WithI57))
+	w.u(uint64(g.AbilityImpulseStats.WithI59))
+	w.u(uint64(g.AbilityImpulseStats.Read))
+	w.u(uint64(g.AbilityImpulseStats.Unread))
+	w.u(uint64(g.AbilityImpulseStats.Tag1))
+	w.bool8(g.AbilityImpulseStats.Absent)
+	// `Scanned` VOYAGE AVEC LES AUTRES : sans lui, un fixture rendrait une couverture de zeros
+	// indistinguable d un balayage qui n a jamais tourne (constat H1 de la revue de ronde 1).
+	w.bool8(g.AbilityImpulseStats.Scanned)
 
 	// Les POSES, puis la CALIBRATION qui les rend lisibles. Les deux vont ensemble : une
 	// liste vide ne dit pas la meme chose selon que le film a tranche sa largeur ou non.
@@ -894,6 +982,36 @@ func decodeGoldenInputs(blob []byte) (*goldenInputs, error) {
 	}
 
 	n = int(r.u())
+	g.Translocations = make([]filmdec.TranslocatorTeleport, 0, n)
+	lastTS = 0
+	for k := 0; k < n && r.err == nil; k++ {
+		lastTS += r.u()
+		tr := filmdec.TranslocatorTeleport{TimestampUS: lastTS, Slot: uint32(r.u())}
+		tr.HasPositions = r.bool8()
+		for a := 0; a < 3; a++ {
+			tr.From[a] = r.f32()
+		}
+		for a := 0; a < 3; a++ {
+			tr.To[a] = r.f32()
+		}
+		g.Translocations = append(g.Translocations, tr)
+	}
+
+	n = int(r.u())
+	g.AbilityImpulses = make([]filmdec.AbilityImpulse, 0, n)
+	lastTS = 0
+	for k := 0; k < n && r.err == nil; k++ {
+		lastTS += r.u()
+		g.AbilityImpulses = append(g.AbilityImpulses, filmdec.AbilityImpulse{
+			TimestampUS: lastTS, Slot: uint32(r.u()), Predicted: r.bool8()})
+	}
+	g.AbilityImpulseStats = filmdec.AbilityImpulseStats{
+		Records: int(r.u()), WithI57: int(r.u()), WithI59: int(r.u()),
+		Read: int(r.u()), Unread: int(r.u()), Tag1: int(r.u()), Absent: r.bool8(),
+		Scanned: r.bool8(),
+	}
+
+	n = int(r.u())
 	g.Placements = make([]filmdec.EquipmentPlacement, 0, n)
 	lastTS = 0
 	for k := 0; k < n && r.err == nil; k++ {
@@ -1003,7 +1121,7 @@ func TestGoldenInputsRoundTrip(t *testing.T) {
 // d octets alors que le probleme est une version. Le test relit le corps COURANT precede de la
 // magie PRECEDENTE : la seule reponse acceptable est le refus de version.
 func TestGoldenInputsVersionGuard(t *testing.T) {
-	const previousMagic = "REPLAYINPUTS9\n"
+	const previousMagic = "REPLAYINPUTS12\n"
 	if previousMagic == goldenInputsMagic {
 		t.Fatal("la magie precedente et la courante sont identiques : le test ne prouve plus rien")
 	}
@@ -1055,10 +1173,10 @@ func TestGoldenInputsRegenerate(t *testing.T) {
 	}
 	t.Logf("fixture reecrit : %s (%d octets brut, %d compresse) — %d positions, %d tirs, "+
 		"%d loadouts, %d lancers, %d projectiles, %d inventaires, %d lectures grappin, "+
-		"%d morts, %d index",
+		"%d impulsions de capacite, %d morts, %d index",
 		goldenInputsPath(), len(blob), buf.Len(), len(g.Positions), len(g.Fire), len(g.Loadouts),
 		len(g.Grenades), len(g.Projectiles), len(g.Inventory), len(g.GrappleReads),
-		len(g.Deaths), len(g.Indices.ByXUID))
+		len(g.AbilityImpulses), len(g.Deaths), len(g.Indices.ByXUID))
 }
 
 // decodeFilmInputs rejoue EXACTEMENT la sequence de decodage de BuildFromFilm — c est ce qui
@@ -1080,11 +1198,17 @@ func decodeFilmInputs(film, dir string) (*goldenInputs, error) {
 	scan := filmdec.DefaultScanFilmOptions()
 	scan.WorldRange = &wr
 	scan.CaptureDirs = true
+	// MEME GESTE QUE LA PRODUCTION (BuildFromFilm) : les teleportations se lisent AVANT les
+	// positions, parce qu elles exemptent le filtre de vitesse (decision D2), et AVEC l entree
+	// de catalogue, parce que leur charge porte le va-et-vient quantifie aux bornes de la
+	// carte. Sans ce geste, le fixture porterait des positions que la production ne decode plus.
+	translocs := filmdec.ScanFilmTranslocatorTeleports(dir, &entry)
+	scan.TeleportExemptions = filmdec.TeleportExemptionsOf(translocs)
 	pos, err := filmdec.ScanFilmBipedPositions(dir, scan)
 	if err != nil {
 		return nil, err
 	}
-	g := &goldenInputs{Film: film, Positions: pos}
+	g := &goldenInputs{Film: film, Positions: pos, Translocations: translocs}
 	if g.Fire, err = filmdec.ScanFilmFireEvents(dir); err != nil {
 		return nil, err
 	}
@@ -1104,6 +1228,11 @@ func decodeFilmInputs(film, dir string) (*goldenInputs, error) {
 		return nil, err
 	}
 	if g.GrappleReads, _, err = filmdec.ScanFilmGrappleReads(dir); err != nil {
+		return nil, err
+	}
+	// MEME COMPOSANT, AUTRE TAG : les impulsions de capacite passent par LA MEME fonction que
+	// BuildFromFilm — le fixture porte ce que la production decode, pas une variante.
+	if g.AbilityImpulses, g.AbilityImpulseStats, err = filmdec.ScanFilmAbilityImpulses(dir); err != nil {
 		return nil, err
 	}
 	if g.Placements, g.PlacementStats, err = filmdec.ScanFilmEquipmentPlacements(dir, &wr); err != nil {

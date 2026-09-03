@@ -24,8 +24,12 @@
  *     court, pas d'où il vient. La réserve est en infobulle d'en-tête, pas dans un commentaire ;
  *   - les socles de bonus vidés sont ANONYMES par mesure : une ligne au niveau du MATCH, jamais
  *     une colonne de joueur ;
- *   - répulseur et propulseur n'ont aucune colonne, et une phrase dit pourquoi : une colonne de
- *     zéros se lirait « zéro utilisation » là où la vérité est « non mesuré ».
+ *   - répulseur et propulseur n'ont aucune colonne, et une phrase dit pourquoi — mais pas pour
+ *     la même raison depuis le 2026-09-03. Le RÉPULSEUR reste non mesuré (neuf canaux du film
+ *     fouillés, négatif) : une colonne de zéros se lirait « zéro utilisation » là où la vérité
+ *     est « non mesuré ». Le PROPULSEUR, lui, EST mesuré (schéma 38) et n'a toujours pas de
+ *     colonne : décision utilisateur — le geste dure une demi-seconde, il se lit sur la carte
+ *     du rejeu (le dash du pion), pas dans un compte de tableau.
  *
  * Aucun calcul ici : tout vient de `equipmentUsageLogic` (les mesures) et
  * `equipmentUsageColumns` (les colonnes et leurs noms). Gabarit structurel :

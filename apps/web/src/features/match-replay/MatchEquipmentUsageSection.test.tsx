@@ -9,7 +9,9 @@
  *   3. L'ANONYME RESTE ANONYME : les socles de bonus vidés sont une ligne au niveau du MATCH,
  *      jamais une colonne rattachée à quelqu'un.
  *   4. CE QUI N'EST PAS MESURÉ SE DIT. Aucune colonne pour le répulseur ni le propulseur, et
- *      une phrase à l'écran explique pourquoi — une colonne de zéros se lirait « zéro usage ».
+ *      une phrase à l'écran explique pourquoi — mais pas la même raison pour les deux depuis le
+ *      2026-09-03 : le répulseur n'a AUCUN canal (une colonne de zéros se lirait « zéro usage »),
+ *      le propulseur en a un (schéma 38) mais son geste se lit sur la CARTE, pas ici.
  *
  * Le calcul est éprouvé chez `equipmentUsageLogic.test.ts` ; ici on éprouve le RENDU.
  */
@@ -244,7 +246,7 @@ describe('MatchEquipmentUsageSection — ce que l’écran DIT de sa mesure', ()
     expect(vue.getByText(t.equipmentUsage.coverageGrappleFmt(3, 3))).toBeTruthy()
   })
 
-  it('dit que le répulseur et le propulseur ne sont pas mesurés, SANS colonne vide', () => {
+  it('n’ouvre AUCUNE colonne pour le répulseur ni le propulseur, et dit pourquoi', () => {
     poserArtefact({
       ...TEMOIN,
       equipmentPlacements: [

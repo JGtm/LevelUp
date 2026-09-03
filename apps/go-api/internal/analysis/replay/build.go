@@ -72,6 +72,15 @@ type Options struct {
 	// filmdec/grapple_state.go). Entree de DONNEES, comme CamoStates. Absente = rejeu sans
 	// tractions de grappin — jamais des tractions devinees.
 	GrappleReads []filmdec.GrappleRead
+	// AbilityImpulses / AbilityImpulseStats : les IMPULSIONS DE CAPACITE lues dans le corps
+	// tag==1 des composants i57/i59 (cf. filmdec/ability_impulses.go). Entree de DONNEES,
+	// comme GrappleReads — c'est le MEME composant, l'autre valeur de son tag.
+	//
+	// LES STATISTIQUES VOYAGENT AVEC LA LISTE, et il le faut : elles portent le temoin
+	// `Absent` (le film ne declare NI i57 NI i59). Une liste vide sans lui serait
+	// indistinguable d'un film ou personne ne s'est servi de son propulseur.
+	AbilityImpulses     []filmdec.AbilityImpulse
+	AbilityImpulseStats filmdec.AbilityImpulseStats
 	// Placements / PlacementStats : les POSES d'objets d'equipement lues dans les records de
 	// CREATION de l'archetype 37 (cf. filmdec/equipment_placements.go). Entree de DONNEES,
 	// comme GrappleReads. Absente = rejeu sans poses — jamais des poses devinees.
@@ -99,8 +108,14 @@ type Options struct {
 	// (compteur de rotation) : sans elles, la couverture ne saurait pas dire ce qui manque.
 	EquipmentChanges     []filmdec.EquipmentChange
 	EquipmentChangeStats filmdec.EquipmentChangeStats
-	Placements           []filmdec.EquipmentPlacement
-	PlacementStats       filmdec.EquipmentPlacementStats
+	// Translocations : les TÉLÉPORTATIONS du translocateur, datées par l'événement type 117
+	// du film (cf. filmdec/transloc_events.go). Entrée de DONNÉES, comme EquipmentChanges.
+	// Absente = rejeu sans téléportations — jamais des téléportations devinées. Ce sont les
+	// MÊMES événements qui exemptent le filtre de vitesse au décodage (décision D2) : le
+	// scan se fait UNE fois, avant les positions.
+	Translocations []filmdec.TranslocatorTeleport
+	Placements     []filmdec.EquipmentPlacement
+	PlacementStats filmdec.EquipmentPlacementStats
 	// Pads : ce que le film rend sur les SOCLES — armes au sol (`ti=42`) et power-ups (`ti=37`),
 	// TROIS lectures chacun, `Scanned` disant qu'elles ont abouti (cf. build_ground_weapons.go).
 	// Entree de DONNEES, comme Placements. Absente = rejeu sans socles — jamais des socles devines.
@@ -270,6 +285,22 @@ func BuildFromFilm(matchID, titleSlug, filmDir string, opt Options) (ReplayDocum
 	// directions est donc toujours active pour l'artefact. Elle n'altère aucune position
 	// (lecture seule après le vec3 d'i0).
 	scan.CaptureDirs = true
+	// TÉLÉPORTATIONS DU TRANSLOCATEUR : lues AVANT les positions, parce qu'elles servent
+	// deux fois — le calque `translocations` du document, et l'EXEMPTION du filtre de
+	// vitesse (décision D2) : une arrivée de téléportation part à 193-1540 m/s, le filtre à
+	// 100 m/s la rejetait à tort (R3 : 51/51 rejets mesurés, tous à ±200 ms d'un événement
+	// 117 du même slot). Sur un film sans tête 117, la liste est vide et le filtre est
+	// bit à bit identique à l'actuel — invariance prouvée par test.
+	//
+	// L'ENTRÉE DE CATALOGUE Y DESCEND parce que la CHARGE de l'événement porte les deux
+	// positions du va-et-vient, quantifiées aux bornes de la carte (R6 §1, validé 18/18) :
+	// sans elle le scanner rendrait des quanta invérifiables, donc rien. Elle est garantie
+	// non nulle ici (refus en tête de fonction).
+	opt.Translocations = filmdec.ScanFilmTranslocatorTeleports(filmDir, opt.MapQuant)
+	scan.TeleportExemptions = filmdec.TeleportExemptionsOf(opt.Translocations)
+	if len(opt.Translocations) > 0 {
+		slog.Info("translocateur : teleportations lues", "evenements", len(opt.Translocations))
+	}
 	positions, err := filmdec.ScanFilmBipedPositions(filmDir, scan)
 	if err != nil {
 		return ReplayDocument{}, err
@@ -409,6 +440,22 @@ func BuildFromFilm(matchID, titleSlug, filmDir string, opt Options) (ReplayDocum
 			"tag3", gStats.Tag3, "corpsCasses", gStats.BodyBroken)
 	}
 	opt.GrappleReads = grappleReads
+	// IMPULSIONS DE CAPACITE : le corps tag==1 des MEMES composants (i57 et son jumeau non
+	// predit i59), lu dans les paquets DELTA sur la MEME horloge (cf.
+	// filmdec/ability_impulses.go). C'est le canal d'usage du PROPULSEUR, mesure au lot R8 ;
+	// l'identite, elle, vient d'i48 (deja balaye ci-dessus). Absence non fatale — le rejeu
+	// sort sans impulsions, jamais avec des impulsions devinees.
+	impulses, iStats, err := filmdec.ScanFilmAbilityImpulses(filmDir)
+	if err != nil {
+		slog.Warn("impulsions de capacite illisibles — rejeu sans impulsions", "err", err, "filmDir", filmDir)
+		impulses, iStats = nil, filmdec.AbilityImpulseStats{}
+	} else {
+		slog.Info("capacites : lectures de tag d i57/i59",
+			"recordsDelta", iStats.Records, "masqueAvecI57", iStats.WithI57,
+			"masqueAvecI59", iStats.WithI59, "lues", iStats.Read, "illisibles", iStats.Unread,
+			"tag1", iStats.Tag1, "composantAbsent", iStats.Absent)
+	}
+	opt.AbilityImpulses, opt.AbilityImpulseStats = impulses, iStats
 	// POSES d'equipement : records de CREATION de l'archetype 37, sur la MEME horloge
 	// (cf. equipment_placements.go — decodage, journal et refus y vivent ensemble).
 	// LA LUNETTE (schema 24) : les bascules vivent dans la liste d'evenements en tete de
@@ -770,11 +817,40 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	doc.EquipmentChanges = keepEquipmentChangesOfPublishedTracks(ecChanges, doc.Tracks)
 	doc.Coverage.EquipmentChanges = &ecCov
 	logEquipmentChangeCoverage(ecCov)
+	// LES TÉLÉPORTATIONS du translocateur, datées par l'événement 117 — même axe, même
+	// règle de publication que les autres calques (rien avant l'origine, rien sans piste).
+	var trCov TranslocationCoverage
+	doc.Translocations, trCov = buildTranslocations(opt.Translocations, doc.Tracks, origin, step)
+	doc.Coverage.Translocations = &trCov
+	logTranslocationCoverage(trCov)
 	palette := classifyAbilityPalette(doc.Abilities, opt.Labels.Abilities)
 	doc.AbilityLabels = abilityLabelsUsed(doc.Abilities, palette)
 	slog.Info("rejeu : palette de capacites",
 		"palette", paletteIDOrNone(palette), "lectures", len(doc.Abilities),
 		"rangsNommes", len(doc.AbilityLabels))
+	// LES IMPULSIONS DE CAPACITE, APRES la palette et non avant : leur identite est le RANG
+	// i48 de la vie, et c'est la palette du match qui le nomme (le propulseur vaut 5 en
+	// famille A et 21 en famille B). Un film non classe ne rend donc aucune impulsion —
+	// mieux vaut muet que faux, la meme regle que `abilityLabelsUsed`.
+	var aiCov AbilityImpulseCoverage
+	doc.AbilityImpulses, aiCov = buildAbilityImpulses(abilityImpulseInputs{
+		reads: opt.AbilityImpulses, stats: opt.AbilityImpulseStats, ranks: opt.AbilityRanks,
+		lives: own.lives, palette: palette, measured: opt.Labels.AbilityImpulseFamilies,
+	}, doc.Tracks, origin, step)
+	// LA COUVERTURE NE SE PUBLIE QUE SI LE BALAYAGE A TOURNE — patron `attachInventoryCoverage`
+	// (inventory.go), et pour la raison qu'il documente : publier {0,0,0,...} affirmerait
+	// « lecture faite, zero trouve », qui est le contraire de ce qui s'est passe quand le
+	// balayage n'a jamais commence (BuildFromFilm degrade alors en `nil, AbilityImpulseStats{}`,
+	// cf. son warn). L'ABSENCE de bloc dit encore autre chose, et c'est la distinction sur
+	// laquelle repose toute la doctrine de coverage.go. Un balayage qui aboutit le pose, meme
+	// vide et meme `componentAbsent`.
+	if opt.AbilityImpulseStats.Scanned {
+		doc.Coverage.AbilityImpulses = &aiCov
+		logAbilityImpulseCoverage(aiCov)
+	} else {
+		slog.Warn("rejeu : impulsions de capacite NON BALAYEES — aucune couverture publiee",
+			"lectures", len(opt.AbilityImpulses))
+	}
 	slog.Info("rejeu : couverture par calque",
 		"tirsRattaches", shotCov.Attached, "tirsDisponibles", shotCov.Available,
 		"tirsSansSlot", shotCov.NoSlot, "tirsAmbigus", shotCov.Ambiguous,

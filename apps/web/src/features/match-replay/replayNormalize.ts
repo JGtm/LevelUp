@@ -103,6 +103,7 @@ export type ReplayZoneStateReady = Filled<ReplayZoneState, 'spans' | 'gauge'>
 export type ReplayDocumentReady = Omit<
   ReplayDocument,
   | 'abilities'
+  | 'abilityImpulses'
   | 'bombArmings'
   | 'bombCarries'
   | 'equipmentChanges'
@@ -128,6 +129,7 @@ export type ReplayDocumentReady = Omit<
   | 'skullCarries'
   | 'structure'
   | 'tracks'
+  | 'translocations'
   | 'vipCrown'
   | 'pickups'
   | 'weaponChanges'
@@ -135,6 +137,19 @@ export type ReplayDocumentReady = Omit<
   | 'zoneStates'
 > & {
   abilities: NonNullable<ReplayDocument['abilities']>
+  /**
+   * LES IMPULSIONS DE CAPACITÉ (schéma 38) : une entrée PLATE par geste — (t, slot, family) —
+   * l'usage MESURÉ du propulseur, daté par le corps `tag == 1` des composants i57/i59 du film
+   * (le même dont le tag 3 porte le grappin) et ATTRIBUÉ par le rang de capacité lu dans la
+   * MÊME VIE et antérieurement. Aucun seuil de vitesse, aucune heuristique.
+   *
+   * CE CALQUE NE COUVRE PAS TOUS LES ÉQUIPEMENTS : seules les familles que le titre déclare
+   * MESURÉES y entrent (aujourd'hui le propulseur, et lui seul — le répulseur n'est PAS dans
+   * ce canal, négatif mesuré). `coverage.abilityImpulses.otherFamily` compte ce qui est
+   * écarté. Vide = artefact antérieur au schéma 38, film sans propulseur, ou palette non
+   * classée — `coverage.abilityImpulses` distingue les trois.
+   */
+  abilityImpulses: NonNullable<ReplayDocument['abilityImpulses']>
   /**
    * L'ARMEMENT DE LA BOMBE d'Assaut (schéma 29) : le début du hold, l'instant armé et la
    * mèche (fuseMs) — le compte à rebours se dessine sur [t, t + fuseMs] sans autre donnée.
@@ -218,6 +233,16 @@ export type ReplayDocumentReady = Omit<
   shots: NonNullable<ReplayDocument['shots']>
   structure: ReplaySurfaceReady[]
   tracks: ReplayTrackReady[]
+  /**
+   * LES TÉLÉPORTATIONS DU TRANSLOCATEUR (schéma 38) : une entrée PLATE par saut — (t, slot)
+   * et le VA-ET-VIENT (`fx/fy/fz` -> `tx/ty/tz`), tous deux lus dans l'ÉVÉNEMENT type 117 du
+   * film — jamais un seuil spatial, jamais le `spent` (jusqu'à 16,5 s de retard mesuré),
+   * jamais une discontinuité de piste. Les six coordonnées sont SOLIDAIRES : présentes
+   * ensemble, ou absentes en bloc (charge non lue) — `coverage.translocations.positioned`
+   * dit combien de sauts les portent. Vide = artefact antérieur au schéma 38, ou film sans
+   * translocateur — `coverage.translocations` distingue les deux.
+   */
+  translocations: NonNullable<ReplayDocument['translocations']>
   weaponPads: ReplayWeaponPadReady[]
   zoneStates: ReplayZoneStateReady[]
   /**
@@ -311,6 +336,14 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     // (xuid, t0, t1, closed), aucun tableau imbriqué. Absent = artefact antérieur, ou film non
     // reconnu Oddball — `coverage.skullCarries` distingue les deux.
     skullCarries: raw.skullCarries ?? [],
+    // LES TÉLÉPORTATIONS DU TRANSLOCATEUR (schéma 38) : une entrée plate par saut — (t, slot)
+    // et le va-et-vient, datés et situés par l'ÉVÉNEMENT du film. Absent = artefact antérieur
+    // au schéma 38, ou film sans translocateur — `coverage.translocations` distingue les deux.
+    translocations: raw.translocations ?? [],
+    // LES IMPULSIONS DE CAPACITÉ (schéma 38) : une entrée plate par geste (t, slot, family),
+    // l'usage MESURÉ du propulseur. Absent = artefact antérieur au schéma 38, film sans
+    // propulseur, ou palette non classée — `coverage.abilityImpulses` distingue les trois.
+    abilityImpulses: raw.abilityImpulses ?? [],
     // LES OBJETS D'OBJECTIF LIBRES (schéma 21) : une entrée par VIE de l'objet hors portage.
     // Absent = artefact antérieur, mode sans objet porté, ou film qui n'en porte pas —
     // `coverage.objectiveObjects` distingue les trois, et c'est pour cela qu'il est publié.

@@ -54,6 +54,11 @@ export const SOUND_VARIANTS: Readonly<Record<string, readonly string[]>> = {
     'repair_field_activate_v3',
   ],
   repair_field_end: ['repair_field_end', 'repair_field_end_v2', 'repair_field_end_v3'],
+  // LE PROPULSEUR (banque `sb_007_abl_evade`, evenement `307114b6` =
+  // `play_007_abl_evade_blast_player`, rendu du 2026-09-03) : « 1 couche, 1 parmi 3 », le jeu
+  // tire une variante A CHAQUE dash. Meme forme que le grappin, et pour la meme raison — c'est
+  // le meme genre de geste, une impulsion unique sans boucle ni queue.
+  thruster_activate: ['thruster_activate', 'thruster_activate_v2', 'thruster_activate_v3'],
   // LE CRANE d'Oddball (banque `sb_004_mod_mp_oddball`, rendu du 2026-08-29) : quatre de ses
   // gestes sont des `RandomSequence` a plusieurs `.wem`, exactement comme le grappin. Le jeu
   // TIRE une variante a chaque lecture ; le rejeu aussi. `objective_skull_spawn` n'y est pas :
