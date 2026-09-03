@@ -6,10 +6,13 @@ package service
 
 import (
 	"context"
+	"log/slog"
+	"strings"
 
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/observability/logging"
 	"levelup/go-api/internal/port"
 )
 
@@ -49,10 +52,28 @@ func (s *LeaderboardService) GetPage(ctx context.Context, req domain.Leaderboard
 	if titleSlug == "" {
 		titleSlug = titlePkg.DefaultSlug
 	}
+	// Entries non nil dès la construction : `entries` n'a pas d'omitempty, une
+	// réponse vide doit sérialiser `[]` et jamais `null` (ratchet
+	// TestDTOs_NoNilSlicesOnEmptyInput) — vrai pour TOUS les chemins de sortie
+	// anticipée : titre sans capability, couple (saison, playlist) incomplet.
 	resp := domain.LeaderboardResponse{
 		Category: string(category), Season: req.Season, Playlist: req.Playlist, TitleSlug: titleSlug,
+		Entries: []domain.LeaderboardEntry{},
 	}
 	if !titleHasWorldLeaderboard(titleSlug) {
+		return resp, nil
+	}
+
+	// Le classement mondial est identifié par un COUPLE (saison, playlist) : sans les
+	// deux, il n'y a pas de classement à servir. Le repo refuse ce cas par une erreur
+	// (contrat interne, cf. GetCSRWorldLeaderboard) — mais côté HTTP, un paramètre
+	// manquant n'est pas une panne serveur : on dégrade en réponse vide + 200, comme le
+	// reste du domaine (titre sans capability). Le front, lui, se cale sur le catalogue.
+	if category == domain.LeaderboardCSRWorld &&
+		(strings.TrimSpace(req.Season) == "" || strings.TrimSpace(req.Playlist) == "") {
+		slog.WarnContext(ctx, "classement mondial demandé sans saison ou sans playlist — réponse vide",
+			"module", logging.ModuleLeaderboard, "titleSlug", titleSlug,
+			"season", req.Season, "playlist", req.Playlist)
 		return resp, nil
 	}
 

@@ -244,6 +244,8 @@ export const commonManifest = {
   "common.leaderboard.col_value": { fr: "Valeur", en: "Value" },
   "common.leaderboard.col_win_rate": { fr: "Victoires", en: "Win rate" },
   "common.leaderboard.empty_title": { fr: "Classement vide", en: "Empty leaderboard" },
+  "common.leaderboard.enrichment_partial": { fr: "Stats détaillées partielles : {enriched} joueurs enrichis sur {total} affichés — les autres lignes restent vides.", en: "Partial detailed stats: {enriched} of {total} listed players enriched — the other rows stay empty." },
+  "common.leaderboard.enrichment_unavailable": { fr: "Stats détaillées indisponibles pour ce relevé : classement CSR seul ({enriched} joueur(s) enrichi(s) sur {total} affichés).", en: "Detailed stats unavailable for this snapshot: CSR ranking only ({enriched} of {total} listed players enriched)." },
   "common.leaderboard.load_error": { fr: "Erreur de chargement", en: "Loading error" },
   "common.leaderboard.local_badge": { fr: "Local", en: "Local" },
   "common.leaderboard.no_match_in_window": { fr: "Aucun match trouvé dans cette fenêtre. Élargis la recherche.", en: "No match found in this window. Broaden your search." },

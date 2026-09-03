@@ -22,6 +22,9 @@ import {
   dmgPerDeath,
   type ColumnExtremes,
 } from './LeaderboardBlock.highlight'
+import { enrichmentCoverage, pickEffectiveOption, playlistsForSeason } from './LeaderboardBlock.logic'
+import { LeaderboardNotes } from './LeaderboardNotes'
+import { Selector } from './LeaderboardSelector'
 import { Spinner } from '@/components/ui/spinner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -103,6 +106,9 @@ const fmtPct = (v: number, locale: ManifestLocale): string =>
 export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockProps) {
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
+  // Variante avec interpolation ICU (bandeaux de couverture : « x sur y »).
+  const tv = (key: CommonManifestKey, vars: Record<string, unknown>) =>
+    formatMessage(commonManifest, key, locale, vars)
   const navigate = useNavigate()
   const titleSlug = useTitleSlug()
 
@@ -133,7 +139,7 @@ export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockP
         : SEASONS.map((s) => ({ value: s.id, label: s.label, enriched: true })),
     [catalog, archivedBadge],
   )
-  const playlistOptions: SelectorOption[] = useMemo(
+  const allPlaylistOptions: SelectorOption[] = useMemo(
     () =>
       catalog?.playlists?.length
         ? // Le backend renvoie un display_name DÉJÀ localisé (header X-LevelUp-Locale :
@@ -149,10 +155,19 @@ export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockP
   // choix courant n'est pas dans les options du catalogue, on retombe sur la 1re
   // option (la saison active est en tête côté API). Un choix utilisateur explicite
   // est toujours dans les options, donc préservé.
-  const effectiveSeason = seasonOptions.some((o) => o.value === season) ? season : (seasonOptions[0]?.value ?? season)
-  const effectivePlaylist = playlistOptions.some((o) => o.value === playlist)
-    ? playlist
-    : (playlistOptions[0]?.value ?? playlist)
+  const effectiveSeason = pickEffectiveOption(seasonOptions, season)
+  // Sélecteurs COUPLÉS : toutes les saisons n'ont pas été relevées sur toutes les
+  // playlists (playlist_ids du catalogue = couples réels en base). Sans ce filtre,
+  // changer de saison peut désigner un couple jamais capturé → tableau vide.
+  const seasonPlaylistIDs = useMemo(
+    () => catalog?.seasons?.find((s) => s.id === effectiveSeason)?.playlist_ids ?? null,
+    [catalog, effectiveSeason],
+  )
+  const playlistOptions: SelectorOption[] = useMemo(
+    () => playlistsForSeason(allPlaylistOptions, seasonPlaylistIDs),
+    [allPlaylistOptions, seasonPlaylistIDs],
+  )
+  const effectivePlaylist = pickEffectiveOption(playlistOptions, playlist)
   // Saison active non enrichie → bandeau « classement seul » (la table dégrade déjà :
   // hasEnrichment=false masque les colonnes stats détaillées).
   const selectedSeasonArchived =
@@ -224,9 +239,13 @@ export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockP
     return sortDir === 'asc' ? sorted : sorted.reverse()
   }, [data?.entries, sortKey, sortDir])
 
-  // Colonnes enrichies affichées uniquement si au moins un joueur est backfillé
-  // (sinon table CSR historique inchangée). Calculé une fois pour aligner en-tête + cellules.
-  const hasEnrichment = isWorld && entries.some((e) => e.match_count != null)
+  // Colonnes enrichies affichées seulement si une PART SUFFISANTE des lignes est
+  // backfillée (décision D2 : seuil 25 %). Une seule ligne enrichie sur 100 donnait
+  // 11 colonnes de tirets. Sous le seuil : colonnes masquées + bandeau ; couverture
+  // incomplète : colonnes + bandeau « partielles ».
+  const coverage = useMemo(() => enrichmentCoverage(entries), [entries])
+  const hasEnrichment = isWorld && coverage.showColumns
+  const coverageVars = { enriched: coverage.enriched, total: coverage.total }
 
   // Extrêmes {min,max} par colonne pour la mise en valeur best/worst (parité
   // scoreboard : meilleur en vert, pire en rouge ; cf. LeaderboardBlock.highlight).
@@ -267,9 +286,16 @@ export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockP
         <p className="mt-1 text-xs text-muted-foreground">
           {isWorld ? t('common.leaderboard.world_hint') : t('common.leaderboard.stats_hint')}
         </p>
-        {selectedSeasonArchived && (
-          <p className="mt-1 text-xs italic text-muted-foreground">{t('common.leaderboard.archived_season_note')}</p>
-        )}
+        <LeaderboardNotes
+          notes={[
+            selectedSeasonArchived && t('common.leaderboard.archived_season_note'),
+            // Saison archivée : le bandeau ci-dessus dit déjà pourquoi il n'y a pas
+            // de stats détaillées — on ne le répète pas sous une autre formulation.
+            isWorld && !selectedSeasonArchived && coverage.showUnavailableNote &&
+              tv('common.leaderboard.enrichment_unavailable', coverageVars),
+            isWorld && coverage.showPartialNote && tv('common.leaderboard.enrichment_partial', coverageVars),
+          ]}
+        />
       </CardHeader>
 
       <CardContent className="p-0">
@@ -509,33 +535,5 @@ function LeaderboardRow({
         </>
       )}
     </tr>
-  )
-}
-
-/** Sélecteur natif compact avec libellé accessible. */
-function Selector({
-  label,
-  value,
-  onChange,
-  options,
-}: {
-  label: string
-  value: string
-  onChange: (v: string) => void
-  options: { value: string; label: string }[]
-}) {
-  return (
-    <select
-      aria-label={label}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="rounded border border-border bg-transparent px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-    >
-      {options.map((o) => (
-        <option key={o.value} value={o.value}>
-          {o.label}
-        </option>
-      ))}
-    </select>
   )
 }
