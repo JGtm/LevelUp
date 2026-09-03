@@ -210,6 +210,20 @@ sont par `NamedEventsFrom`, pas par leur taille (lot 4b).
   bombe vaut des milliards d'entiers. Le lot 4b mesure d'abord le deroulage maximal reel
   (premier terme compris) sur les 11 films sains : s'il depasse 1 000, escalade utilisateur
   avant de poser la borne.
+- **D13 — ARBITRAGE DU 2026-09-03 (decision utilisateur), qui REMPLACE la valeur 10 000.** La
+  mesure 4b.1 a declenche l'escalade prevue : le pire deroulage SAIN vaut **17 306**
+  (`d9781168`, comp 20 B, slot 12, t = 345 931 ms), donc 10 000 aurait coupe un film sain du
+  corpus — la premisse « la pire anomalie connue est un saut de 66 » etait fausse d'un facteur
+  260. Les deux populations restent separees d'un facteur 31 000 (17 306 contre 537 698 416,
+  la plus petite bombe). **BORNE PAR PAS RETENUE : 100 000** — 5,8x au-dessus du pire cas sain,
+  5 377x sous la plus petite bombe ; elle garde son sens de rempart et laisse de la marge a un
+  film sain non encore vu. **PLAFOND TOTAL INCHANGE : 1 000 000 par film** (pire total sain
+  21 160, marge 47x). Deuxieme correction apportee par la mesure (note N-AV) : le plafond total
+  ne peut PAS se verifier seulement entre les series — `statMaxRecordsPerFilm` bornant les
+  POINTS et non les evenements, un seul appel de `incrementTimes` pourrait encore allouer
+  26 Gio. Le SOLDE descend donc DANS l'appel ; la VALEUR du plafond, elle, reste detenue par
+  les passes qui ouvrent un budget (`NamedEventsFrom`, `SlotIdentityFrom`, `crossCheckFrom` —
+  ce dernier et le pont d'identite deroulent eux aussi, par `countsOf`).
 - **D14 — Sites `killsource` hors periмetre, SANS condition.** `locateStrict`/`World.Snapshot`
   ne sont pas dans ce plan. Une mesure du lot 0 qui montrerait killsource dominant est une
   Decouverte (§8) a escalader, pas un item qui s'ajoute.
@@ -519,29 +533,37 @@ Prerequis : verdict 0.7 = zero divergence sur les 11 films du corpus (sinon : ar
       les 4 bombes (journal §10). VERDICT : 17 306 sur `d9781168` (comp 20 B) — 17x le seuil
       d'escalade, et 1,73x AU-DESSUS de la borne de 10 000 que D13 voulait poser. ESCALADE
       OUVERTE : le lot s'arrete ici.**
-- [!] 4b.2 Plafond D13 : rejet du deroulage > 10 000 dans `incrementTimes` ; plafond total
-      1 000 000 par film dans `NamedEventsFrom` (pas dans `incrementTimes`) ; compteurs de rejet
-      journalises ; tests unitaires sur des series construites (premier terme enorme ; saut
-      intermediaire ; total depasse). **NON TRAITE — bloque par l'escalade 4b.1 : la valeur
-      10 000 rejetterait un point d'un film SAIN du corpus. La borne par pas attend l'arbitrage
-      utilisateur (journal §10). Le plafond TOTAL de 1 000 000, lui, est VALIDE par la mesure
-      (47x le pire total sain) et n'est pas en cause.**
-- [!] 4b.3 `51101d1d` et `a349fea8` cuisent sous 3 Gio via `replay-equiv` (pic + duree au
-      journal) ; premier digest fige (`-update -films ...`), entree au `CORPUS.txt` « fige au lot
-      4b » ; les 11 films sains restent IDENTIQUES. **NON TRAITE — depend de 4b.2 : sans borne,
-      les quatre bombes reproduisent l'OOM (2,2 a 3,9 MILLIARDS d'evenements mesures). Aucune
-      cuisson de bombe lancee, aucun digest fige, `CORPUS.txt` et `BOMBES.txt` inchanges.**
-- [~] 4b.4 `REGISTRE_REPORTS.md` (bombe RAM `NamedEventsFrom`) : cause confirmee ou infirmee par
-      le profil heap (`-memprofile` de l'enfant) pris au 4b.3, avec le chiffre. **COUVERT
-      AUTREMENT, ET MIEUX : la mesure 4b.1 CONFIRME la cause sans profil heap — elle nomme
-      l'emplacement fautif, son slot et son instant sur chacune des quatre bombes, et son compte
-      d'evenements retrouve les ~26 Gio a 0,2 % pres (note datee du 2026-09-03 au registre). Ce
-      que le profil aurait apporte en plus (la pile d'allocation) n'ajoute rien a un compte exact.
-      Reste ouvert au registre : la LEVEE du report, qui exige la borne (4b.2) et la cuisson
-      (4b.3).**
-- Gate 4b : equivalence IDENTIQUE sur les 11 films sains ; les deux bombes cuisent sous plafond ;
-  tests verts. **NON ATTEINT (lot suspendu a l'escalade) — l'equivalence 9/9 est verte et le
-  depot est a HEAD sans aucune modification de code (journal §10).**
+- [x] 4b.2 Plafond D13 : rejet du deroulage > **100 000** (valeur arbitree par l'utilisateur le
+      2026-09-03, cf. la revision de D13) dans `incrementTimes` ; plafond total 1 000 000 par
+      film, DETENU par les passes appelantes mais dont le SOLDE descend dans `incrementTimes`
+      (note N-AV — un plafond verifie seulement entre les series laisserait un appel isole
+      allouer 26 Gio) ; compteurs de rejet journalises ; tests unitaires sur des series
+      construites. **FAIT le 2026-09-03** : `objectiveevents/named_series.go:36-58` (les trois
+      constantes, chacune commentee avec sa mesure), `:70-120` (`eventBudget` + `rejeter` /
+      `epuiser` / `resume`), `:310-341` (`incrementTimes` borne) ; budgets ouverts par
+      `named.go:223` (`NamedEventsFrom`), `named.go:323` (`crossCheckFrom`) et
+      `slotidentity.go:85` (`SlotIdentityFrom`) — les TROIS, parce que `countsOf` deroule aussi.
+      Six tests dans `named_bornes_test.go`, DISCRIMINANTS verifies dans les deux sens (borne
+      ramenee a 10 000 -> le test « serie saine » echoue ; `prev` qui n'avance plus apres un
+      rejet -> les deux tests de rejet echouent) ; restaures.
+- [x] 4b.3 Les QUATRE bombes cuisent sous 3 Gio via `replay-equiv` (pic + duree au journal) ;
+      premier digest fige (`-update -films ...`), entree au `CORPUS.txt` « fige au lot 4b,
+      borne 100 000 » ; les films sains restent IDENTIQUES. **FAIT le 2026-09-03** : les quatre
+      cuisent entre 4,9 s et 1 min 54, pics **0,08 a 0,68 Gio** (plafond 3 Gio, marge 4,4x sur
+      le pire) ; seconde passe sans `-update` : 4/4 IDENTIQUES (determinisme) ; harnais des
+      9 films sains sans `-update` : **9/9 identiques, ZERO activation de borne** (aucune ligne
+      de journal). `CORPUS.txt` passe a **13 films**, `BOMBES.txt` devient le dossier clos des
+      quatre. Tableau des durees, pics et rejets : `MESURES_CUISSON_PERF.md` §4 et journal §10.
+- [x] 4b.4 `REGISTRE_REPORTS.md` (bombe RAM `NamedEventsFrom`) : cause confirmee ou infirmee.
+      **CLOS le 2026-09-03.** La CAUSE etait deja prouvee par la mesure 4b.1 sans profil heap
+      (l'emplacement fautif, son slot et son instant sur chacune des quatre bombes, et un compte
+      d'evenements qui retrouve les ~26 Gio a 0,2 % pres). Ce lot ajoute ce qui manquait a la
+      cloture : la BORNE (4b.2) et la PREUVE PAR LA CUISSON (4b.3). La ligne du registre porte
+      desormais sa cloture FINALE datee, avec durees et pics.
+- Gate 4b : equivalence IDENTIQUE sur les films sains ; les bombes cuisent sous plafond ; tests
+  verts. **ATTEINT le 2026-09-03** : 9/9 sains identiques · 4/4 bombes figees puis re-verifiees
+  identiques · `gofmt -l` vide · `go vet` propre · `go test` des trois paquets vert ·
+  `golangci-lint run --new-from-merge-base=origin/main` : **0 issue**.
 
 ### Lot 5 — Orchestration et protections — effort moyen
 
@@ -1074,6 +1096,34 @@ identique a celui en place hors lots de correction, ou le garde anti-regression 
     (`grep -rn "artifact_path" apps/` ne rendait que le site qui l'ecrivait) et que personne d'autre
     ne pouvait ouvrir. Le resume garde `match_id`, `module`, `tracks`, `bytes` (l'accuse du serveur)
     et `chunks`. Consequence observable : la colonne « resultat » de l'admin perd une ligne.
+
+- 2026-09-03 (agent lot 4b, pose des bornes) — decouvertes N-BA a N-BC. Aucune traitee (regle 7).
+  - N-BA. **Le pont d'identite des slots deroulait lui aussi, hors de tout regard.**
+    `SlotIdentityFrom` (`objectiveevents/slotidentity.go:83-85`) appelle `countsOf` trois fois
+    (frags, morts, assistances), et `countsOf` appelle `incrementTimes` : c'est le SECOND
+    consommateur du deroulage, jamais nomme par D13 ni par la mesure 4b.1, qui ne regardait que
+    les tables d'objectif. Il est desormais sous budget comme les deux autres passes, mais le
+    fait qu'il ait echappe a l'inventaire du plan est la vraie note : une borne posee « dans
+    `NamedEventsFrom` » comme D13 l'ecrivait aurait laisse cette porte ouverte. La mesure de
+    l'exposition reelle n'a pas ete faite (les comps 2 A / 2 B / 3 A tiennent sous 2 sur les
+    neuf films sains, et le reliquat des quatre bombes est de 26 413 evenements au pire) : il
+    n'est PAS etabli qu'un film du cache puisse faire exploser ce chemin, seulement qu'il le
+    pouvait par construction.
+  - N-BB. **Le budget rend l'ORDRE DE PARCOURS observable — trois parcours de map devenaient une
+    source de non-determinisme.** Des lors qu'une passe peut s'arreter en cours de route, « quelle
+    serie a consomme le solde » depend de l'ordre d'iteration : `NamedEventsFrom`,
+    `crossCheckFrom` et `countsOf` iteraient tous une map. Corrige DANS le lot (tri par
+    composant/cote et par slot, `sortedSlotKeys` / `sortedIntKeys`), sans effet sur un film sain
+    puisque le tri final de `sortNamedEvents` est total et stable. C'est la MEME famille que les
+    dix sites de l'item 0.4bis, trouvee cette fois-ci par construction et non par un temoin :
+    la lecon est qu'un plafond transforme n'importe quelle iteration de map en decision publiee.
+  - N-BC. **Un commentaire du depot est desormais date, sans etre faux.**
+    `replaybuild/artifact_digest.go:86` justifie l'absence d'un champ `factsApplied` par le fait
+    qu'un bump de `SchemaVersion` forcerait « la re-cuisson de tout le cache, aujourd'hui
+    bloquee par la bombe RAM de `NamedEventsFrom` ». Le blocage est leve depuis ce lot ; la
+    re-cuisson de masse, elle, reste hors perimetre (§7) et suspendue au schema vehicules. Le
+    commentaire n'est pas corrige ici (regle 7) : il se met a jour dans le lot qui rouvrira la
+    question du champ dedie.
 
 ## 9. Revue du plan (plan-review, 2026-09-02)
 
@@ -2030,3 +2080,89 @@ regenere, `tmp/` et `CORPUS.txt` intacts.
   RESTENT OUVERTS, par construction : lot 4b (borne D13 en escalade — proposition 100 000) puis
   lot 3 (Live Fire) ; la re-cuisson de masse attend le schema vehicules (~1 h 30 - 2 h au tarif
   mesure). Le merge dans feat/v75 est a la main de l'utilisateur.
+
+### Lot 4b — REPRISE ET CLOTURE (2026-09-03) — bornes posees, 4 bombes cuites, report leve
+
+**CE QUE LA DECISION UTILISATEUR A DEBLOQUE.** L'escalade ouverte par la mesure 4b.1 portait sur
+UNE valeur : la borne par pas. Le pire deroulage SAIN valant 17 306, la valeur 10 000 de D13
+etait sous le pire cas sain. **Arbitrage rendu le 2026-09-03 : 100 000** (5,8x au-dessus du pire
+cas sain, 5 377x sous la plus petite bombe) ; plafond total inchange a 1 000 000 par film. Le
+reste du lot n'attendait que cela.
+
+**4b.2 — OU SONT LES BORNES, ET POURQUOI LA-BAS.**
+
+| Piece | Emplacement | Ce qu'elle fait |
+|---|---|---|
+| Les trois constantes | `objectiveevents/named_series.go:36-58` | `maxUnrollPerStep = 100_000`, `maxNamedEventsPerFilm = 1_000_000`, `maxRejectLogs = 8` — chacune commentee avec SA mesure (pire cas sain 17 306 ; pire total sain 21 160 ; plus petite bombe 537 698 416) |
+| Le budget | `named_series.go:70-120` | `eventBudget` (origine, solde, compte de rejets, drapeau de troncature, compte de lignes journalisees) + `rejeter` / `epuiser` / `resume` |
+| La borne par pas | `named_series.go:310-341` (`incrementTimes`) | `p.Value - prev > 100 000` : le point n'emet RIEN, `prev` avance quand meme a `p.Value` (sinon le point suivant rejouerait le meme ecart), compteur + `slog.Warn` (passe, comp, cote, slot, instant, deroulage, borne) |
+| Le solde qui descend | `incrementTimes(pts, key, b)` | note N-AV : un deroulage qui ne tient plus dans le solde arrete la passe (`slog.Warn`), et une passe tronquee n'emet plus rien, dans cet appel comme dans les suivants |
+| Les trois budgets | `named.go:223`, `named.go:323`, `slotidentity.go:85` | `NamedEventsFrom`, `crossCheckFrom` et `SlotIdentityFrom` ouvrent chacun le budget de LEUR passe. Les deux derniers deroulent par `countsOf` — les oublier aurait laisse la porte ouverte (decouverte N-BA) |
+| L'ordre rendu total | `sortedSlotKeys`, `sortedIntKeys` | un budget rend l'ordre de parcours OBSERVABLE : trois iterations de map devenaient une source de non-determinisme (decouverte N-BB) |
+
+`maxRejectLogs` merite sa ligne : un film pathologique peut porter un deroulage aberrant par
+point (jusqu'a `statMaxRecordsPerFilm` = 33 076). Le DETAIL journalise est borne a 8 lignes par
+passe ; le COMPTE, lui, est exact et publie par `resume()`.
+
+**Six tests (`named_bornes_test.go`), tous DISCRIMINANTS verifies dans les deux sens.** Serie
+saine intacte AVEC le pas reel de 17 306 (qui PASSE, et c'est la propriete qui protege les
+references figees) · premier terme enorme rejete (la forme exacte de `51101d1d`, 2 163 333 610
+depuis zero) · saut intermediaire rejete (la plus petite bombe, 537 698 416) · budget epuise en
+cours de route (le pas refuse n'est pas debite, la passe est marquee tronquee, l'appel suivant
+rend nil) · budget qui TRAVERSE deux appels · bout en bout, un enregistrement fautif greffe sur
+le corpus sain de `named_onepass_test.go` ne change RIEN a la sortie. Discriminance : borne
+ramenee a 10 000 -> le test « serie saine » echoue en nommant 17 308 attendus contre 2 obtenus
+(c'est exactement l'escalade de 4b.1, rejouee par un test) ; `prev` qui n'avance plus apres un
+rejet -> les deux tests de rejet echouent. Les deux mutations restaurees.
+
+**4b.3 — LES QUATRE BOMBES CUISENT. Binaire rebati (`go build -o ../../tmp/replay-equiv.exe
+./cmd/replay-equiv`), puis `-films 51101d1d,a349fea8,1c4c63c2,60ae07c4 -update` :**
+
+| film | duree | pic | plafond | deroulages rejetes (par passe) | evenements emis |
+|---|---|---|---|---|---|
+| `51101d1d` | **4,9 s** | **0,08 Gio** | 3 Gio (37x) | 1 (flag) — comp 20 B, slot 24, t = 136 636 ms, 2 163 333 610 | 67 |
+| `a349fea8` | **1 min 48** | **0,48 Gio** | 3 Gio (6,2x) | **9 (flag)** + **3 (zone)** — jusqu'a 1 107 820 492 (21 B, slot 14) | 231 589 (flag) / 162 175 (zone) |
+| `1c4c63c2` | **1 min 54** | **0,68 Gio** | 3 Gio (4,4x) | 1 (flag) — comp 22 A, slot 24, t = 0, 537 698 416 | 26 413 |
+| `60ae07c4` | **25 s** | **0,34 Gio** | 3 Gio (8,8x) | 2 (flag) — 21 A (2 148 206 590) et 23 A (1 745 602 538), MEME slot 12, MEME instant 570 965 ms | 3 086 |
+
+Les pics sont a comparer aux 3,17 a 4,02 Gio auxquels ces films MOURAIENT (et aux ~26 Gio
+demandes par `51101d1d` sans aucune garde). **AUCUN film n'a atteint le plafond total** :
+`tronque=false` partout, le maximum emis etant 231 589 sur 1 000 000. C'est la borne PAR PAS qui
+fait tout le travail ; le plafond total reste le second rempart, non sollicite.
+
+Deux faits que la mesure 4b.1 n'avait pas vus, parce qu'elle ne relevait que le PIRE saut :
+`a349fea8` porte **douze** deroulages aberrants et non un (neuf sur la table flag, trois sur la
+sienne), et `60ae07c4` confirme la signature N-AT sur piece — deux emplacements qui sautent au
+MEME instant sur le MEME slot, ce qui est un enregistrement mal aligne et non un compteur fou.
+
+**PUIS, SANS `-update`, LES TROIS PASSES DE VERIFICATION :**
+1. les 4 bombes : **4 identiques, 0 different, 0 ecarte, 0 echec, 0 illisible** — le figeage est
+   DETERMINISTE (4,9 s / 1 min 47 / 1 min 54 / 24,8 s, memes pics) ;
+2. le harnais complet des films sains (`CORPUS.txt` d'avant, 9 films) : **9 identiques, 0
+   different** — 13,9 s a 1 min 39, pics 0,18 a 0,42 Gio ;
+3. **ZERO ligne de journal de borne sur les 9 films sains** (`grep` sur les trois messages :
+   0 occurrence). La borne ne touche AUCUN film sain, et c'est verifie et non deduit — `git
+   status` confirme d'ailleurs qu'aucun des neuf `.tsv` n'a bouge.
+
+`CORPUS.txt` passe a **13 films** : les quatre y entrent avec la mention « fige au lot 4b, borne
+100 000 » (les deux lignes commentees de `1c4c63c2` et `60ae07c4` sont decommentees a leur place
+d'origine, les deux ex-`BOMBES.txt` ajoutees a la fin). `BOMBES.txt` n'est plus une liste de
+travail : c'est le DOSSIER CLOS des quatre, avec leur etat avant et apres la borne.
+
+**4b.4 — LE REPORT EST LEVE.** La ligne « BOMBE RAM `NamedEventsFrom` » de
+`REGISTRE_REPORTS.md` porte sa cloture FINALE datee du 2026-09-03 : cause confirmee (4b.1),
+borne posee (4b.2), quatre bombes cuites sous plafond avec durees et pics (4b.3). Ce qui RESTE
+au registre est une autre ligne : la passe `backfill-replay --only-existing`, qui redevient
+lancable et ne l'a pas ete (hors mandat).
+
+**GATE 4b (execute dans le worktree, 2026-09-03).** `gofmt -l .` : VIDE ·
+`go vet ./internal/analysis/objectiveevents/ ./internal/replaybuild/` : vide, code 0 ·
+`go test ./internal/analysis/objectiveevents/ ./internal/analysis/replay/ ./internal/replaybuild/
+-count=1` : **tout ok** (0,283 s / 9,697 s / 0,551 s) ·
+`golangci-lint run --timeout 5m --new-from-merge-base=origin/main` : **0 issue** ;
+`golangci-lint run` complet : 273 issues, baseline INCHANGEE, et aucune ne pointe un fichier
+touche (grep sur les cinq fichiers du diff) · les trois passes de cuisson ci-dessus. Seuils :
+`named_series.go` 336 L, `named.go` 360 L, `slotidentity.go` 183 L, `named_bornes_test.go`
+169 L — tous < 500 ; `incrementTimes` 32 lignes, `NamedEventsFrom` 35 — tous < 80.
+
+**AUCUN COMMIT** (interdit du mandat). Decouvertes N-BA a N-BC au §8.

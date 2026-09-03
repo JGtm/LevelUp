@@ -190,6 +190,35 @@ Pics memoire inchanges (0,17-0,43 Gio).
 BTB 57 chunks reste au-dela, a 1 min 40 — contre 19 min 54). Restent : 4b (plafond anti-bombe,
 debloque `51101d1d`/`a349fea8`/`1c4c63c2`/`60ae07c4` et la re-cuisson de masse), lot 3 (Live
 Fire, apres 4b), lot 5 (orchestration), lot 6 (cloture, revue de branche, gate-push).
+### Lot 4b (bornes anti-bombe, les quatre films-bombes cuits) — 2026-09-03, 08:26-08:45
+
+Bornes posees apres l'arbitrage utilisateur : deroulage **<= 100 000 par pas** (premier terme
+compris) et **<= 1 000 000 evenements par film**, le SOLDE descendant dans `incrementTimes`
+(note N-AV). Cuisson par `tmp/replay-equiv.exe` (binaire rebati), un film par enfant borne a
+3 Gio.
+
+| film | variante | avant la borne | duree | pic | deroulages REJETES | evenements emis |
+|---|---|---|---|---|---|---|
+| `51101d1d` | CTF:Arena Neutral Flag | mort OOM (~26 Gio demandes) | **4,9 s** | **0,08 Gio** | 1 (flag) | 67 |
+| `a349fea8` | BTB Heavies:Total Control | mort a 3,17 Gio en 3,6 s | **1 min 48** | **0,48 Gio** | **9 (flag) + 3 (zone)** | 231 589 / 162 175 |
+| `1c4c63c2` | BTB:One Flag CTF | mort a 3,96 Gio en 4,5 s | **1 min 54** | **0,68 Gio** | 1 (flag) | 26 413 |
+| `60ae07c4` | Ranked:Oddball | mort a 4,02 Gio en 2 min 12 | **25 s** | **0,34 Gio** | 2 (flag) | 3 086 |
+
+Les quatre passent donc de « tues au plafond » a **0,08-0,68 Gio**, soit 4,4x a 37x de marge sous
+le plafond de 3 Gio. **Aucun n'atteint le plafond TOTAL** (`tronque=false` partout, maximum emis
+231 589 sur 1 000 000) : c'est la borne PAR PAS qui fait tout le travail, le plafond total restant
+le second rempart. Les plus gros deroulages refuses : 2 163 333 610 (`51101d1d`, comp 20 B,
+slot 24, t = 136 636 ms), 2 148 206 590 et 1 745 602 538 (`60ae07c4`, comps 21 A et 23 A — MEME
+slot 12, MEME instant 570 965 ms, signature N-AT de l'enregistrement mal aligne), 1 107 820 492
+(`a349fea8`, 21 B), 537 698 416 (`1c4c63c2`, 22 A).
+
+Verification, en trois passes sans `-update` : les 4 bombes **4/4 identiques** (figeage
+deterministe) ; les 9 films sains **9/9 identiques** (13,9 s a 1 min 39, pics 0,18-0,42 Gio) ;
+et **zero ligne de journal de borne sur les films sains** — la borne de 100 000 ne touche aucun
+film sain, verifie et non deduit (pire pas sain mesure : 17 306).
+
+Le corpus d'equivalence actif passe de 9 a **13 films**.
+
 ### Verdict final du chantier (item 6.1) — 2026-09-03
 
 | critere du plan (§1) | verdict |
@@ -202,3 +231,10 @@ Reste HORS de ce verdict, en attente de la decision D13 (borne anti-bombe, propo
 100 000) : lot 4b (plafond + figeage des 4 bombes) puis lot 3 (justesse Live Fire). La
 re-cuisson de masse (1 380 films) attend le schema vehicules — au tarif mesure, elle vaut
 desormais ~1 h 30 - 2 h de machine au lieu des ~55 h projetees a l'audit.
+
+**MISE A JOUR DU 2026-09-03 (lot 4b clos).** La decision D13 est rendue (borne 100 000), les
+bornes sont posees et les quatre films-bombes cuisent — cf. la section « Lot 4b » ci-dessus. Le
+critere 1 (equivalence) reste TENU : 9/9 sains identiques apres la pose des bornes, aucune borne
+activee sur un film sain. Le corpus d'equivalence passe a 13 films. **Reste ouvert : le lot 3**
+(layout du catalogue pour les six balayages delta), dont le temoin `60ae07c4` est desormais
+cuisable et fige — il n'est plus bloque.

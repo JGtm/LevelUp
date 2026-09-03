@@ -22,13 +22,14 @@ func refNamedEventsFrom(recs []StatRecord, objectiveType string) []NamedEvent {
 	if !ok {
 		return nil
 	}
+	b := newEventBudget("reference")
 	var out []NamedEvent
 	for key, slot := range table {
 		if slot.Redundant {
 			continue
 		}
 		for entity, pts := range seriesBySlot(recs, key) {
-			for _, t := range incrementTimes(pts) {
+			for _, t := range incrementTimes(pts, key, b) {
 				out = append(out, NamedEvent{
 					TimeMS: t, Slot: entity, Stat: slot.Stat, Comp: key.Comp, Side: key.Side,
 				})

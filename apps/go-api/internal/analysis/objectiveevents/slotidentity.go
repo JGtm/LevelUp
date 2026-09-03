@@ -80,9 +80,13 @@ func SlotIdentity(film *filmsource.Film, lines []PlayerLine) map[int]string {
 // d'artefact decode le film une seule fois et fait servir les memes enregistrements a la
 // courbe de score, a l'identite des slots et aux evenements nommes.
 func SlotIdentityFrom(recs []StatRecord, lines []PlayerLine) map[int]string {
-	kills := countsOf(recs, statSlotKey{coreKillsComp, sideA})
-	deaths := countsOf(recs, statSlotKey{coreKillsComp, sideB})
-	assists := countsOf(recs, statSlotKey{coreAssistsComp, sideA})
+	// UN budget pour les trois compteurs (lot 4b) : ce pont deroule lui aussi des compteurs,
+	// et les bornes qui protegent le nommage doivent le proteger de la meme facon.
+	b := newEventBudget("slot_identity")
+	kills := countsOf(recs, statSlotKey{coreKillsComp, sideA}, b)
+	deaths := countsOf(recs, statSlotKey{coreKillsComp, sideB}, b)
+	assists := countsOf(recs, statSlotKey{coreAssistsComp, sideA}, b)
+	b.resume()
 
 	// Premiere passe : les slots dont le triplet designe UNE seule ligne de match.
 	claim := map[int]string{}

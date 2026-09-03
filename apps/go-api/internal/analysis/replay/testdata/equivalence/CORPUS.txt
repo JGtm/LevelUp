@@ -1,4 +1,5 @@
-# CORPUS D'EQUIVALENCE — PLAN_CUISSON_PERF §4 item 0.1 (fige le 2026-09-02)
+# CORPUS D'EQUIVALENCE — PLAN_CUISSON_PERF §4 item 0.1 (fige le 2026-09-02, ETENDU A 13 FILMS
+# le 2026-09-03 par le lot 4b)
 #
 # Une ligne par film : short8 | cartes candidates (ordre de ResolveMapEntry, depuis <short8>.facts.json) |
 # variante | chunks | Mo compresses | raison de presence.
@@ -8,17 +9,22 @@
 # bornes par NormalizeMapName (suffixes « - ranked » et « heavies » retires).
 #
 # `60ae07c4` (Live Fire) est le SEUL film dont les digests changent au lot 3 (layout du catalogue pour
-# les six balayages delta) ; les 10 autres doivent rester IDENTIQUES a chaque lot de refacto pur.
+# les six balayages delta) ; les 12 autres doivent rester IDENTIQUES a chaque lot de refacto pur.
+#
+# LES QUATRE FILMS-BOMBES SONT ENTRES ICI LE 2026-09-03 (lot 4b, regime D11 leve). Ils mouraient au
+# plafond memoire avant la borne de deroulage de `objectiveevents` (100 000 par pas, 1 000 000 par
+# film) : leur premier digest est fige SOUS CETTE BORNE, et leurs lignes le disent. Le journal du
+# plan porte leur duree, leur pic et le compte de leurs deroulages rejetes.
 000d5950 | Cliffhanger | Slayer:Arena Super Fiesta | 28 | 20.2 | temoin historique (golden d'assemblage, mini-bobine)
 01e1f945 | Catalyst | KOTH:Arena | 30 | 22.5 | temoin historique 278 s (decomposition par horodatages) ; zones KOTH
 64e8adfa | Catalyst | CTF:Arena | 45 | 33.7 | temoin historique (sept grandeurs) ; CTF arene
 7344d24f | Vagabond | Strongholds:Arena | 33 | 25.8 | temoin Strongholds (239-260 s) ; zones
 696a9d7c | Vagabond | Strongholds:Arena | 31 | 26.6 | temoin Strongholds (230-284 s) ; zones
 084a804d | Fortitude Heavies | BTB Heavies:CTF | 57 | 58.9 | temoin historique 19 min, BTB 26 joueurs, CTF
- # BOMBE MEMOIRE (figeage 2026-09-02 : 3,96 Gio en 4,5 s, tue au plafond) — regime D11, empreinte au lot 4b
-#1c4c63c2 | Refuge | BTB:One Flag CTF | 69 | 88.0 | LE PLUS GROS film du cache — hypothese memoire au pire cas
+1c4c63c2 | Refuge | BTB:One Flag CTF | 69 | 88.0 | LE PLUS GROS film du cache — hypothese memoire au pire cas ; ex-bombe, fige au lot 4b, borne 100 000
 53ce4390 | Behemoth | CTF:Arena | 41 | 31.8 | ancre historique des bursts de capture CTF
-d9781168 | Dredge | Oddball:Arena | 39 | 29.8 | Oddball (porteur du crane)
+d9781168 | Dredge | Oddball:Arena | 39 | 29.8 | Oddball (porteur du crane) ; porte le pire deroulage SAIN mesure (17 306, comp 20 B)
 9f57c612 | Curfew | Assault:One Bomb | 27 | 19.8 | Assaut One Bomb, temoin des tests navpoint_ti12 (portage de bombe)
- # BOMBE MEMOIRE (figeage 2026-09-02 : 4,02 Gio en 2 min 12) — temoin du LOT 3, regime D11, cf. journal du plan
-#60ae07c4 | Live Fire - Ranked | Ranked:Oddball | 44 | 32.0 | Live Fire : carte a plus de 2 regions — ECART ATTENDU AU LOT 3 SEULEMENT
+60ae07c4 | Live Fire - Ranked | Ranked:Oddball | 44 | 32.0 | Live Fire : carte a plus de 2 regions — ECART ATTENDU AU LOT 3 SEULEMENT ; ex-bombe, fige au lot 4b, borne 100 000
+51101d1d | Fortress | CTF:Arena Neutral Flag | 13 | 9.1 | bombe RAM du 2026-08-24 (~26 Gio sans garde) ; fige au lot 4b, borne 100 000
+a349fea8 | Fragmentation Heavies | BTB Heavies:Total Control | 51 | 65.9 | seconde bombe (2026-08-26) ; seule a rejeter sur DEUX tables (flag et zone) ; fige au lot 4b, borne 100 000
