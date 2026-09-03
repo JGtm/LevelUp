@@ -89644,3 +89644,64 @@ d'i57 (`consumeSpartanAbilityTag3`), portee partiellement car gatee sur un octet
 
 ---
 
+
+---
+
+## [2026-09-03] Creneaux Theater pour la verite terrain propulseur/repulseur — l'horloge du visionneur est CALEE, et deux canaux se recoupent 9 fois sur 9 — Complete
+
+**Ce qui etait demande.** Transformer le resultat de R8 (le propulseur est l'impulsion
+`tag == 1` d'i57/i59) en une liste de creneaux qu'un humain peut aller regarder dans le
+Theater du jeu, pour etablir la verite terrain — le report n°2 du registre R8.
+
+**Le verrou etait le TEMPS, et il est leve.** Un creneau faux en temps est inutilisable. La
+conversion retenue est `msEcoule = (tsUS - tsUS du premier paquet du chunk 1) / 1000`, et
+elle est CONTROLEE et non supposee : le manifeste du film (`data/cache/film_manifests/`)
+publie `start_ms` par chunk, chunk 1 a zero — c'est l'horloge du jeu lui-meme. Confrontation
+chunk par chunk sur **23 films** : ecart maximal **4 a 17 ms** (21 a 38 chunks par film).
+Second temoin : le coup d'envoi detecte tombe entre 0:26 et 0:40 sur presque tous les films
+(frame 226-229 apres le premier paquet de position — soit les 22,7 s mesurees par
+`t0_film.go`).
+
+**LE RESULTAT INATTENDU, et c'est le plus fort du lot : deux canaux independants datent le
+meme geste a une seconde pres, 9 fois sur 9.** Le canal i48 publie des `spent` (« il a
+consomme son equipement ») ; sur les dix films decodes, les NEUF `spent` de propulseur
+tombent tous a 0 ou 1 seconde d'une impulsion `tag == 1` du meme joueur. Cela valide d'un coup
+le canal de R8, la jointure d'identite slot x frame, et la conversion de temps de bout en
+bout. Deux de ces neuf sont de JGtm lui-meme (`1cd3848a` 2:15/2:16, `3ba5a548` 3:09/3:10) :
+ce sont les deux creneaux a verifier en premier.
+
+**Le propulseur, chiffre.** Dix films ou JGtm porte le propulseur, decodes un par un :
+623 impulsions au total, **146 de JGtm**, dont **89 avec la lecture stricte « il portait le
+propulseur juste avant »**. Aucun film muet (le plus pauvre, `9e8fb31b`, rend 22 impulsions
+dont 2 de JGtm — il sert de contre-test au releve). Onze creneaux retenus sur neuf films.
+
+**Le repulseur reste sans signal, et le document le dit a chaque ligne.** Trois sources de
+CANDIDATS, jamais presentees comme des detections : (a) 9 candidats physiques — porteur de
+repulseur, victime a moins de 6 m projetee de 2-3 m/s a 6,5-11 m/s en s'ecartant, le porteur
+la visant (colonne « vise » : 8 des 9 entre 0,89 et 1,00) ; **3 d'entre eux ont JGtm pour
+victime** ; (b) 5 fenetres tirees des `spent` de repulseur (le parc entier n'en porte que 7,
+dont 2 dans un film sans horloge calee, non datables et dits comme tels) ; (c) les 52 vies ou
+JGtm porte lui-meme le repulseur, avec leur plage.
+
+**Un detail de convention mesure au passage** : le cap `h` des points de piste est compte
+depuis +X en sens antihoraire. Verifie en confrontant le cap au deplacement reel des joueurs
+en course (413 pas a plus de 3,5 m/s sur `af3500aa`) : `(cos h, sin h)` rend un cosinus moyen
+de 0,74, les trois autres conventions -0,09 a 0,08.
+
+**Ce que ce lot NE dit pas.** Le rappel n'est toujours pas etabli (c'est justement l'objet du
+releve demande). Et un doute residuel est ECRIT dans le document : le Theater n'a pas pu etre
+ouvert pour lire l'heure affichee a l'ecran ; s'il affichait le chrono du match plutot que le
+temps d'enregistrement, tout le tableau serait decale d'un bloc constant par film — la colonne
+« coup d'envoi » permet a l'utilisateur de le trancher au premier creneau.
+
+**Livrables.** `.ai/V7.5/replay2d/CRENEAUX_VERIFICATION_EQUIPEMENT_2026-09-03.md` (document
+destine a l'utilisateur : les 11 creneaux mesures, les 14 candidats, le mode d'emploi et le
+formulaire de releve) et l'instrument
+`apps/go-api/internal/analysis/filmdec/r9_creneaux_research_test.go` (`TestR9Horloge`,
+`TestR9CreneauxPropulseur` — gardes par environnement, sautes par defaut, `LockProcessDecode`
+et `WorldObjectPrecision` tenus, aucune ecriture, aucune DuckDB ouverte, aucun commit).
+
+**Prochaine etape.** Le releve utilisateur. La ligne la plus rentable : une seule vie de la
+partie 2.c regardee en entier, ou l'on note chaque declenchement du repulseur — c'est le seul
+chemin vers un verdict sur son enregistrement.
+
