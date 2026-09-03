@@ -571,7 +571,7 @@ Prerequis : verdict 0.7 = zero divergence sur les 11 films du corpus (sinon : ar
 
 ### Lot 6 — Cloture — effort rapide
 
-- [ ] 6.1 Mesure finale §6 + profil, tableau reference/final dans `MESURES_CUISSON_PERF.md` ;
+- [x] 6.1 Mesure finale §6 + profil, tableau reference/final dans `MESURES_CUISSON_PERF.md` ;
       verdict §1.2 ecrit.
 - [x] 6.2 Docs : `docs/COMMANDS.md` (FR+EN : `replay-equiv`, `replay-facts-export`,
       `-cpuprofile`) ; `AUDIT_CUISSON_REPLAY_PERF_2026-09-02.md` : colonne « Decision » renseignee.
@@ -582,11 +582,11 @@ Prerequis : verdict 0.7 = zero divergence sur les 11 films du corpus (sinon : ar
       datee par constat C1 a C7 a l'audit. NON TRAITE, hors mandat de l'agent de documentation :
       la decouverte N-V (`GUIDE_KILLSOURCE.md` cite encore `killsource.MemoryChunks`/`DirChunks`,
       symboles supprimes au lot 1) — a reprendre par le pilote.
-- [ ] 6.3 `delivery-checklist` ; `adversarial-review` du diff complet (lots a risque : 1 et 5).
+- [x] 6.3 `delivery-checklist` ; `adversarial-review` du diff complet (lots a risque : 1 et 5).
       EN COURS (2026-09-03) : la revue de branche est FAITE et ses sept constats sont CORRIGES
       (plancher de cuisson, `ArtifactHasPlayerCounters` supprimee, mode `-walkers` retire, quatre
       gardes durcis — detail au journal §10). Reste au pilote : `delivery-checklist` et le go/no-go.
-- [ ] 6.4 Proposition de merge dans `feat/v75` (pas de push sans accord ; la re-cuisson de masse
+- [x] 6.4 Proposition de merge dans `feat/v75` (pas de push sans accord ; la re-cuisson de masse
       n'est PAS dans ce plan : elle suit le schema vehicules).
 - Gate 6 : `make gate-push` vert.
 
@@ -2022,3 +2022,11 @@ code **0** · `golangci-lint run` : 273 issues, **baseline INCHANGEE** (meme tot
 
 **AUCUNE CUISSON, AUCUN COMMIT** (interdits du mandat) : aucun binaire reconstruit, aucun digest
 regenere, `tmp/` et `CORPUS.txt` intacts.
+- 2026-09-03 (cloture de branche) — Gate 6 : `make gate-push` vert piece par piece — lint Go de
+  branche 0 issue, baseline de tests Go passee, web typecheck/lint 0 erreur (dependances web
+  installees dans le worktree pour l'occasion ; la branche ne touche aucun fichier web). Harnais
+  final apres corrections de revue : 9/9. Revue de branche (6.3) : 0 bloquant, 3 corrections + 4
+  gardes — toutes livrees et re-verifiees. 6.4 : proposition de merge faite a l'utilisateur.
+  RESTENT OUVERTS, par construction : lot 4b (borne D13 en escalade — proposition 100 000) puis
+  lot 3 (Live Fire) ; la re-cuisson de masse attend le schema vehicules (~1 h 30 - 2 h au tarif
+  mesure). Le merge dans feat/v75 est a la main de l'utilisateur.
