@@ -26,7 +26,6 @@ import { useMemo } from 'react'
 import type { ReplayBounds, ReplayMapBackgroundCalibration } from '@/lib/api/types'
 
 import { coversPlayedArea } from './mapBackground'
-import { buildFloorGrid, type FloorGrid } from './mapFloor'
 import { fitWidth, sceneBounds, usefulHeight, visibleBounds } from './replayLogic'
 import type { CanvasView } from './replayDraw'
 import type { ReplayDocumentReady } from './replayNormalize'
@@ -152,8 +151,6 @@ export interface ReplayView {
   zRange: { min: number; max: number }
   /** LA projection, partagée par le dessin et par le survol. */
   canvasView: CanvasView
-  /** Trame d'altitudes du sol reconstruit — `null` quand un fond figé la remplace. */
-  floorGrid: FloorGrid | null
   /**
    * L'ÉTAT DE NAVIGATION — palier de grossissement et centre. Il vit ICI et non chez l'appelant
    * parce qu'il a besoin des BORNES DE LA SCÈNE pour se borner, et que ces bornes se décident
@@ -183,11 +180,6 @@ export function useReplayView({
   // Le cadrage se décide APRÈS le fond : une image posée écarte les props du cadre (sceneBounds).
   const bounds = useMemo(() => sceneBounds(doc, mapImage !== null), [doc, mapImage])
 
-  // La trame d'altitudes ne dépend QUE du document : construite une fois, pas à chaque resize.
-  const floorGrid = useMemo(
-    () => (!mapImage && doc.structure?.length ? buildFloorGrid(doc.structure, doc.bounds) : null),
-    [doc.structure, doc.bounds, mapImage],
-  )
   // LA HAUTEUR RETENUE — le moindre de ce que l'écran offre et de ce que la carte peut utiliser.
   // Les deux bornes sont indispensables et ne disent pas la même chose : l'offre empêche la page
   // de déborder, la hauteur utile empêche d'ajouter des bandes vides au-dessus et au-dessous
@@ -233,5 +225,5 @@ export function useReplayView({
     [viewBounds, renderWidth, renderHeight],
   )
 
-  return { mapImage, bounds, renderWidth, renderHeight, zRange, canvasView, floorGrid, zoom }
+  return { mapImage, bounds, renderWidth, renderHeight, zRange, canvasView, zoom }
 }

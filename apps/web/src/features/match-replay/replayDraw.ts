@@ -8,7 +8,6 @@
 import type { ReplayBounds, ReplayGrenade, ReplayMapObject } from '@/lib/api/types'
 
 import type { FxInk } from './fxInk'
-import { altitudeTint, floorRun, hasEdge, type FloorGrid } from './mapFloor'
 import { drawMuzzleFlash } from './muzzleFlash'
 import type { ShotFxEntry } from './shotFx'
 import { drawDeathMarker, drawShotEffect } from './shotEffects'
@@ -80,107 +79,21 @@ export function drawGeometryLayer(
 // gagné le cône de visée, le bouclier, les anneaux d'étage, l'apparition et la mort, et il
 // aurait fait de ce fichier un god file.
 
-// Le SOL RECONSTRUIT (cf. mapFloor.ts). L'opacité monte avec l'altitude du sol : les étages se
-// distinguent sans qu'aucune couleur ne leur soit dédiée. Bornes reprises du POC, où elles ont
-// été réglées à l'écran — assez franches pour que la carte se reconnaisse, assez basses pour
-// que les trajectoires restent le sujet.
-const FLOOR_ALPHA_LOW = 0.1
-const FLOOR_ALPHA_SPAN = 0.46
-const FLOOR_EDGE_ALPHA = 0.32
-
 // Événements ponctuels : un tir est un éclair de bouche (sa géométrie vit dans
 // muzzleFlash.ts), un lancer une marque plus lisible.
 const GRENADE_RADIUS = 4
 const GRENADE_RING = 6.5
 
-/** Couleurs du fond de carte : l'aplat du sol et le trait de ses arêtes. */
+/**
+ * Couleurs héritées du sol reconstruit, SUPPRIMÉ le 2026-09-03 (décision utilisateur : ce repli
+ * ne devait plus pouvoir tourner par inadvertance et cuire un calque de ~45 000 cellules).
+ * Seul `edge` survit — il sert d'encre fine aux ZONES NOMMÉES. `fill` reste porté par
+ * `useReplayInks` : c'est la même paire de tokens, et la séparer pour un seul champ coûterait
+ * plus de câblage qu'elle n'en économiserait.
+ */
 export interface FloorStyle {
   fill: string
   edge: string
-}
-
-/**
- * drawFloorLayer peint le sol reconstruit : aplats par plage d'altitude, puis arêtes.
- *
- * COÛTEUX ET INVARIANT — à peindre UNE FOIS dans un canvas hors écran, puis à recopier à
- * chaque image. La trame fait ~45 000 cellules : la repeindre à 60 images par seconde
- * consommerait tout le budget d'animation pour un fond qui ne bouge pas.
- */
-export function drawFloorLayer(
-  ctx: CanvasRenderingContext2D,
-  grid: FloorGrid,
-  view: CanvasView,
-  style: FloorStyle,
-): void {
-  ctx.fillStyle = style.fill
-  for (let y = 0; y < grid.ny; y++) {
-    // Les bords sont ARRONDIS AU PIXEL : deux plages voisines qui se chevaucheraient d'un
-    // pixel dessineraient un quadrillage parasite sur un sol continu.
-    const yTop = Math.round(cellY(grid, y + 1, view))
-    const height = Math.max(1, Math.round(cellY(grid, y, view)) - yTop)
-    let x = 0
-    while (x < grid.nx) {
-      const run = floorRun(grid, x, y)
-      if (run === 0) {
-        x++
-        continue
-      }
-      const xLeft = Math.round(cellX(grid, x, view))
-      const xRight = Math.round(cellX(grid, x + run, view))
-      ctx.globalAlpha =
-        FLOOR_ALPHA_LOW + FLOOR_ALPHA_SPAN * altitudeTint(grid.topZ[y * grid.nx + x], grid)
-      ctx.fillRect(xLeft, yTop, Math.max(1, xRight - xLeft), height)
-      x += run
-    }
-  }
-  ctx.globalAlpha = 1
-  drawFloorEdges(ctx, grid, view, style.edge)
-}
-
-/**
- * drawFloorEdges trace les marches et bords de vide. Un seul chemin pour toute la carte : des
- * milliers de `stroke()` séparés coûteraient bien plus que le tracé lui-même.
- */
-function drawFloorEdges(
-  ctx: CanvasRenderingContext2D,
-  grid: FloorGrid,
-  view: CanvasView,
-  color: string,
-): void {
-  ctx.strokeStyle = color
-  ctx.globalAlpha = FLOOR_EDGE_ALPHA
-  ctx.lineWidth = 1
-  ctx.beginPath()
-  for (let y = 0; y < grid.ny; y++) {
-    for (let x = 0; x < grid.nx; x++) {
-      // Le demi-pixel place le trait SUR la grille de pixels plutôt qu'à cheval, sans quoi un
-      // trait de 1 px s'étale sur deux et paraît flou.
-      const xL = Math.round(cellX(grid, x, view)) + 0.5
-      const xR = Math.round(cellX(grid, x + 1, view)) + 0.5
-      const yT = Math.round(cellY(grid, y + 1, view)) + 0.5
-      const yB = Math.round(cellY(grid, y, view)) + 0.5
-      if (hasEdge(grid, x, y, 'right')) {
-        ctx.moveTo(xR, yT)
-        ctx.lineTo(xR, yB)
-      }
-      if (hasEdge(grid, x, y, 'up')) {
-        ctx.moveTo(xL, yT)
-        ctx.lineTo(xR, yT)
-      }
-    }
-  }
-  ctx.stroke()
-  ctx.globalAlpha = 1
-}
-
-function cellX(grid: FloorGrid, x: number, view: CanvasView): number {
-  const w = { x: grid.minX + x * grid.cell, y: 0 }
-  return worldToCanvas(w, view.bounds, view.width, view.height, view.pad).x
-}
-
-function cellY(grid: FloorGrid, y: number, view: CanvasView): number {
-  const w = { x: 0, y: grid.minY + y * grid.cell }
-  return worldToCanvas(w, view.bounds, view.width, view.height, view.pad).y
 }
 
 /** Fenêtre d'affichage d'un événement ponctuel, en frames. */
