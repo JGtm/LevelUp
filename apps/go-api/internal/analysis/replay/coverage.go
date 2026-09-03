@@ -220,6 +220,17 @@ type Coverage struct {
 	// `weaponChanges` : un film sans translocateur et un film qu'on n'a pas su balayer
 	// rendent tous deux zéro téléportation — seuls ces compteurs les distinguent.
 	Translocations *TranslocationCoverage `json:"translocations,omitempty"`
+	// AbilityImpulses est la couverture des IMPULSIONS DE CAPACITÉ (schéma 38, cf.
+	// document_ability_impulses.go) : lectures `tag == 1`, gestes après repliement, publiées,
+	// et les CINQ façons d'être écartée — avant l'origine, sans piste, SANS IDENTITÉ (aucun
+	// rang i48 dans la vie avant l'instant), FAMILLE NON MESURÉE (le canal n'est prouvé que
+	// pour celles que le titre déclare) et ATTRIBUTION INDISPONIBLE (`noResolver` : palette non
+	// classée, aucune famille déclarée, ou aucune vie — la chaîne d'identité n'a pas pu
+	// tourner du tout, ce qui n'est ni « un autre équipement » ni « le rang n'a pas été lu »).
+	// Publiée même quand aucune impulsion ne l'est, pour la même raison que `weaponChanges` —
+	// et `componentAbsent` distingue en plus le film qui ne transmet PAS le composant de celui
+	// dont personne ne s'est servi.
+	AbilityImpulses *AbilityImpulseCoverage `json:"abilityImpulses,omitempty"`
 	// GroundWeaponItems est la couverture des ARMES AU SOL individuelles (schéma 27, cf.
 	// document_ground_weapon_items.go) : combien d'objets, combien liés à leur lâcheur et à
 	// leur ramasseur, et comment leurs fins se répartissent entre observé et ouvert. Publiée

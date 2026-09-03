@@ -7027,6 +7027,62 @@ components:
             $ref: '#/components/schemas/ApiError'
       description: Authentification requise
   schemas:
+    AbilityImpulse:
+      additionalProperties: false
+      properties:
+        family:
+          type: string
+        slot:
+          format: int32
+          minimum: 0
+          type: integer
+        t:
+          format: int64
+          type: integer
+      required:
+        - t
+        - slot
+        - family
+      type: object
+    AbilityImpulseCoverage:
+      additionalProperties: false
+      properties:
+        beforeOrigin:
+          format: int64
+          type: integer
+        componentAbsent:
+          type: boolean
+        episodes:
+          format: int64
+          type: integer
+        noIdentity:
+          format: int64
+          type: integer
+        noResolver:
+          format: int64
+          type: integer
+        otherFamily:
+          format: int64
+          type: integer
+        published:
+          format: int64
+          type: integer
+        reads:
+          format: int64
+          type: integer
+        unpublished:
+          format: int64
+          type: integer
+      required:
+        - reads
+        - episodes
+        - published
+        - beforeOrigin
+        - unpublished
+        - noIdentity
+        - otherFamily
+        - noResolver
+      type: object
     AbilityRead:
       additionalProperties: false
       properties:
@@ -10742,6 +10798,8 @@ components:
     Coverage:
       additionalProperties: false
       properties:
+        abilityImpulses:
+          $ref: '#/components/schemas/AbilityImpulseCoverage'
         bombArmings:
           $ref: '#/components/schemas/BombArmingsCoverage'
         bombCarries:
@@ -20860,6 +20918,12 @@ components:
         abilities:
           items:
             $ref: '#/components/schemas/AbilityRead'
+          type:
+            - array
+            - "null"
+        abilityImpulses:
+          items:
+            $ref: '#/components/schemas/AbilityImpulse'
           type:
             - array
             - "null"

@@ -469,9 +469,9 @@ package replay
 // `wt/t0-film` pendant que l'identite des vies prenait le 36 sur `feat/v75` : renumerote 37
 // au merge du 2026-09-02 — l'arbitrage par renumerotation ecrit aux schemas 30, 31, 33 et 35.)
 //
-// CE QUE LA VERSION 38 PORTE : LA LECTURE FIABLE DES USAGES D'EQUIPEMENT (lot P1 du
-// PLAN_LECTURE_FIABLE_EQUIPEMENT_2026-09-03, decisions user D1-D4 — « pas d'heuristique :
-// les ENREGISTREMENTS du film, ou rien »). Trois choses, un seul chantier :
+// CE QUE LA VERSION 38 PORTE : LA LECTURE FIABLE DES USAGES D'EQUIPEMENT (lots P1, P1bis et
+// P3 du PLAN_LECTURE_FIABLE_EQUIPEMENT_2026-09-03, decisions user D1-D4 — « pas
+// d'heuristique : les ENREGISTREMENTS du film, ou rien »). Quatre choses, un seul chantier :
 //
 // (1) `translocations[]` — LES TELEPORTATIONS DU TRANSLOCATEUR, datees ET SITUEES par
 // l'EVENEMENT du film (type 117 `EquipmentTranslocatorTeleportEffects`, nom source de
@@ -508,17 +508,44 @@ package replay
 // donnees synthetiques (TestDropTeleportsInvarianceSansEvenement) et sur film sans tete
 // 117 (TestP1InvarianceSansTete117, 188 979 echantillons identiques a la reference).
 //
+// (4) `abilityImpulses[]` — L'USAGE MESURE DU PROPULSEUR (lot P3, rapports R8 et R9). Le tag
+// externe des composants bipede `biped-spartan-ability` (i57) et `-non-predicted-state`
+// (i59) est un R(2) : la production n'en exploitait qu'UNE valeur, le corps `tag == 3` qui
+// porte le GRAPPIN depuis le 2026-08-16. Le corps `tag == 1` du MEME composant date une
+// IMPULSION, et son identite vient du canal i48 — rang lu dans la MEME VIE et
+// ANTERIEUREMENT (le slot migre aux reapparitions, et un joueur peut changer d'equipement
+// dans sa vie ; le `sub` du composant a ete essaye comme discriminant puis REFUTE par le
+// corpus, R8 par. 8.5). Preuve : 0,361 impulsion par vie de propulseur contre 0,011 par vie
+// de repulseur — PLUS porte que lui — et 0,000 sur 132 vies de grappin, qui a son propre tag
+// (quatre films, R8 par. 8.8) ; oracle physique independant a 6,2-8,8 m/s de pic contre
+// 2,9-3,6 au hasard ; et VERITE TERRAIN Theater du 2026-09-03 sur `1cd3848a` — 5 usages
+// releves, 5 impulsions rendues, ecart <= 1 s. LE CALQUE NE COUVRE PAS TOUS LES EQUIPEMENTS,
+// et il le dit : seules les familles que le TITRE declare mesurees y entrent (le propulseur,
+// et lui seul — le REPULSEUR n'est PAS dans ce canal, negatif MESURE dont le lot R9 a ferme
+// les trois dernieres portes), les autres sont ecartees ET COMPTEES
+// (`coverage.abilityImpulses.otherFamily`) — et quand la chaine d'attribution elle-meme n'a
+// pas pu tourner (palette du match non classee, titre sans famille declaree, aucune vie), les
+// gestes tombent dans un compteur A PART (`noResolver`) plutot que de se deguiser en « un
+// autre equipement ». Aucune grammaire nouvelle n'a ete portee : les
+// deux deserialiseurs publiaient deja le tag ; ce qui manquait etait le croisement avec
+// l'identite.
+//
 // Champs optionnels, mais la version monte pour la raison exacte des montees v14/v22/v25 :
 // la reprise du backfill se fait par SchemaVersion, et un artefact 37 doit se lire « a
 // re-cuire », pas « a jour » — sans quoi aucun rejeu deja cuit ne porterait ni les
-// teleportations ni les emissions recuperees. CE QUE LA VERSION NE PORTE PAS : la POSITION
-// de la faille AVANT le premier echange (aucune entite repliquee lisible — negatif mesure
-// R1 §1-3 ; la charge du 117 ne porte que {effet, depart, arrivee}, R6 §1.4), et rien pour
-// les trois `spent` sans evenement 117 du corpus (hors TETE de liste ou expiration sans
-// usage, non departage R1 §4.3 — la LISTE COMPLETE d'evenements est un chantier distinct).
+// teleportations, ni les emissions recuperees, ni les impulsions. CE QUE LA VERSION NE PORTE
+// PAS : la POSITION de la faille AVANT le premier echange (aucune entite repliquee lisible —
+// negatif mesure R1 §1-3 ; la charge du 117 ne porte que {effet, depart, arrivee}, R6 §1.4),
+// rien pour les trois `spent` sans evenement 117 du corpus (hors TETE de liste ou expiration
+// sans usage, non departage R1 §4.3 — la LISTE COMPLETE d'evenements est un chantier
+// distinct), et AUCUN usage du REPULSEUR : huit canaux ont ete juges, le film ne
+// l'enregistre pas (R8 par. 10.2, R9). Le RAPPEL des impulsions n'est etabli que sur UN film
+// (5/5 au Theater) : ailleurs, c'est un plancher — le detecteur de records bipede ignore les
+// masques denses, limite commune a tout le depot.
 // Chronique :
-// document_translocations.go, document_equipment_changes.go, filmdec/equipment_recovery.go,
-// filmdec/transloc_events.go, filmdec/offline_filters.go.
+// document_translocations.go, document_equipment_changes.go, document_ability_impulses.go,
+// filmdec/equipment_recovery.go, filmdec/transloc_events.go, filmdec/ability_impulses.go,
+// filmdec/offline_filters.go.
 const SchemaVersion = 38
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
@@ -689,6 +716,20 @@ type ReplayDocument struct {
 	// `coverage.translocations.positioned` dit combien de sauts le portent. Absent si le
 	// film n'en porte aucune.
 	Translocations []Translocation `json:"translocations,omitempty"`
+	// AbilityImpulses est la liste des IMPULSIONS DE CAPACITÉ (cf.
+	// document_ability_impulses.go) : qui, à quelle frame, et de quel ÉQUIPEMENT — l'usage
+	// MESURÉ du propulseur, daté par le corps `tag == 1` des composants i57/i59 (le même dont
+	// le tag 3 porte le grappin) et attribué par le rang i48 lu dans la MÊME VIE et
+	// ANTÉRIEUREMENT. Aucun seuil de vitesse, aucune heuristique : le film enregistre le
+	// geste, le canal d'identité dit de quel équipement il vient.
+	//
+	// CE CALQUE NE COUVRE PAS TOUS LES ÉQUIPEMENTS, et c'est publié comme tel : seules les
+	// familles que le titre déclare MESURÉES sur ce canal y entrent (aujourd'hui le
+	// propulseur, et lui seul — le RÉPULSEUR n'y est pas, négatif MESURÉ des rapports R8/R9).
+	// `coverage.abilityImpulses` porte l'entonnoir complet, `otherFamily` compris. Absent si
+	// le film n'en porte aucune, ou si sa palette n'a pas été classée (sans nom de rang, pas
+	// d'identité).
+	AbilityImpulses []AbilityImpulse `json:"abilityImpulses,omitempty"`
 	// GroundWeapons est la liste des ARMES AU SOL individuelles (cf.
 	// document_ground_weapon_items.go) : où chacune gît, de quand à quand l'afficher, qui l'a
 	// lâchée et qui l'a prise quand le flux delta le dit. Les fins sont OBSERVÉES (ramassage

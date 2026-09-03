@@ -340,6 +340,122 @@ Gates rejoués après corrections : 5/5 paquets ok, 0 `--- FAIL:`, `go vet` exit
 `gofmt -l internal/ contracttest/` vide, `make check-types` exit 0. Validation Dynasty
 INCHANGÉE (3/3 positionnés, écarts 0,00-0,10 m) et contrôle élargi inchangé (18/18).
 
+### Lot P3 — L'USAGE DU PROPULSEUR ENTRE EN PRODUCTION (schéma 38 ENRICHI, pas de 39)
+
+Commandé après les lots R8 (le signal trouvé : i57/i59 tag 1) et R9 (le répulseur n'y est pas,
+négatif mesuré), et APRÈS la vérité terrain utilisateur du 03/09 au Theater. Aucun artefact 38
+n'existe hors répertoires de test : on enrichit avant la première cuisson.
+
+- [x] P3.1 FAIT le 03/09 — `filmdec.ScanFilmAbilityImpulses(dir)` (`ability_impulses.go`),
+      calqué sur `ScanFilmGrappleReads` : MÊME composant, tag 1 au lieu de 3, hooks de
+      production comme seule grammaire (`SetSpartanAbilityHook` + `SetAbilityNonPredictedHook`,
+      restaurés en sortie), contexte de balayage partagé (`resolveAbilityScan`, aucune seconde
+      résolution du film). Rend {slot, chunk, paquet, horodatage, `Predicted`} TRIÉ en ordre
+      TOTAL (instant, slot, composant). Stats : Records / WithI57 / WithI59 / Read / Unread /
+      Tag1 / **Absent** (le film ne déclare NI i57 NI i59 — un zéro qui n'est pas l'autre ;
+      deux portes, une suffit, contrairement à `ScanFilmGrappleReads` qui refuse sans i59).
+      Preuves : `filmdec/ability_impulses_test.go` (résolution par nom EXACT — le piège du
+      préfixe i57/i59 —, filtre de tag sur les quatre valeurs, dénominateur des non-lues,
+      ordre total).
+- [x] P3.2 FAIT — JOINTURE D'IDENTITÉ par le rang i48 de la MÊME VIE et ANTÉRIEUREMENT
+      (`abilityRankIndex.rankInLife`, `document_ability_impulses.go`), et **le rang se nomme
+      par la palette du titre** : `family` entre au manifeste
+      (`[ability_palettes.ranks]`, validé contre la liste FERMÉE `equipmentFamilies` déjà en
+      place) -> `AbilityPalette.Families` -> `FamilyOf(rang)`. AUCUN rang en dur : le
+      propulseur est 5 en famille A et 21 en famille B. Le `sub` du composant n'est pas
+      réutilisé (réfuté R8 §8.5). Mutations rejouées et TUÉES : sans l'antériorité
+      (`TestBuildAbilityImpulses_LeRangPosterieurNIdentifiePas`), sans le découpage par vie
+      (`...LeRangDeLaViePrecedenteNIdentifiePas`, avec son contrôle POSITIF sur la même
+      entrée).
+- [x] P3.3 FAIT — `abilityImpulses[]` = {t, slot, family} + `coverage.abilityImpulses` :
+      lectures, GESTES (repliement i57/i59 co-transmis + retransmissions à 1 s, la règle des
+      instruments R8/R9), publiées, et QUATRE refus comptés — `beforeOrigin`, `unpublished`,
+      **`noIdentity`** (aucun rang dans la vie avant l'instant) et **`otherFamily`** (famille
+      hors de celles que le TITRE déclare mesurées). Le canal des familles mesurées est une
+      DONNÉE de titre (`[ability_impulses] families = ["thruster"]`, loader qui REFUSE une
+      famille qu'aucun rang ne nomme) : zéro littéral d'équipement côté Go, et le répulseur
+      reste dehors sans qu'on l'ait écrit dans le code. Journal `logAbilityImpulseCoverage`.
+- [x] P3.4 FAIT — schéma MAINTENU à 38, mis à jour EN COHÉRENCE : chronique v38 (document.go
+      §4 + champ `AbilityImpulses` + coverage.go), structure_test.go, golden réassemblé
+      (fixture REPLAYINPUTS12 -> **13**, `renderAbilityImpulses` + deux phrases au
+      `golden_guard`), contracttest (50 -> **51** champs racine, `AbilityImpulse` et
+      `AbilityImpulseCoverage` dans `replaySchemas` DANS LE MÊME LOT), `api/openapi.yaml`
+      régénéré (`make openapi-gen`, +60 lignes), `make generate-types` (+26 lignes
+      generated.ts) + frontière web comblée (replayNormalize.ts + replayContract.test.ts :
+      `abilityImpulses` énuméré et comblé), `make check-types` exit 0, vitest replayContract
+      13/13. LE FILM DE RÉFÉRENCE EXERCE LE CALQUE : `000d5950` est de famille B — 86 lectures
+      -> 43 gestes -> **37 publiées** (4 sans identité, 2 famille non mesurée), là où le
+      rapport R8 comptait 43 `tag==1` dont 38 sur le rang 21.
+- [x] P3.5 FAIT — TEST D'ACCEPTATION SUR PIÈCES (`replay/ability_impulses_film_test.go`, gaté
+      `P3_FILM` + `P3_BOUNDS`), chaîne de PRODUCTION entière (`BuildFromFilm` + catalogue réel
+      du titre), horloge du visionneur lue dans `originMs` déjà publié :
+      **5 impulsions de propulseur pour JGtm à 1:52, 1:55, 2:03, 2:05, 2:15 — précision 5/5,
+      rappel 5/5 contre le relevé Theater (1:51, 1:54, 2:03, 2:05, 2:14), écart ≤ 1 s.**
+      Film entier : 123 lectures -> 62 gestes (le rapport de créneaux en comptait 62) ->
+      33 publiées, 18 sans identité, 11 famille non mesurée.
+      **ÉCART DIT, NON MASQUÉ** : la chaîne rend **9** impulsions de JGtm sur TOUT le film
+      (2:42, 2:47, 5:21, 5:34 en plus). Ce n'est pas une contradiction du relevé : la fiche
+      soumise à l'utilisateur (créneaux 1 et 3) ne lui demandait de regarder QUE la salve
+      1:52-2:15, et la mesure du lot précédent comptait déjà 14 impulsions de JGtm sur ce film.
+      Le test contrôle donc la FENÊTRE DU RELEVÉ (où il vaut précision ET rappel) et
+      JOURNALISE les quatre autres comme « ni confirmées ni infirmées ».
+
+REVUE ADVERSARIALE P3 RONDE 1 (03/09, relecteur frais, mutations exécutées sur copie) :
+20 conditions vérifiées qui tiennent — dont la résolution de famille par manifeste et ses trois
+refus, l'équivalence terme à terme de `rankInLife` avec l'instrument d'origine, la somme de la
+couverture, la cohabitation avec le grappin (golden +40/−0, section grappin identique au bit
+près), la chronique v38 sur les quatre surfaces, et le test d'acceptation qui échoue bien sur un
+relevé non rendu ET sur une impulsion en trop dans la fenêtre. 3 constats, **tous corrigés DANS
+le lot** :
+
+- [x] H1 (P1) ORACLE CIRCULAIRE — `ability_impulses_test.go` injectait `abilityImpulseTag`
+      lui-même : le test passait pour N'IMPORTE QUELLE valeur du constant. Mutation du
+      relecteur reproduite : `abilityImpulseTag = 1 -> 3` (le tag du GRAPPIN) laissait TOUT
+      vert — on aurait publié les corps d'accroche de grappin sous `family:"thruster"`.
+      CORRIGÉ : `TestAbilityImpulseScannerEpingleLaValeurDuTag` écrit les QUATRE valeurs EN DUR
+      avec leur verdict (1 publiée, 0/2/3 écartées) sans jamais lire la constante de
+      production. Second trou du même constat fermé : `emit` extrait d'`account`
+      (`ability_impulses.go`) et `TestAbilityImpulseEmetLesDeuxComposants` fixe que i57 ET i59
+      contribuent — neutraliser la publication d'i57 ferait tomber `coverage.reads` de 86 à 43
+      dans le document servi. Mutations rejouées et TUÉES : tag 1->3 fait tomber TROIS tests
+      (avant : zéro), publication d'i57 retirée en fait tomber un.
+- [x] H2 (P1) LA COUVERTURE MENTAIT QUAND LE CALQUE N'A PAS PU TOURNER — palette non classée,
+      titre sans famille déclarée, ou aucune vie : tous les gestes tombaient dans `otherFamily`
+      (« ils viennent d'un AUTRE équipement », alors qu'aucune famille n'avait été résolue) ou
+      dans `noIdentity` (« le rang n'a pas été lu dans la vie », là où il n'y a pas de vie).
+      Observé tel quel dans la suite existante (`palette="non classee" ... publiees=0
+      familleNonMesuree=39`). CORRIGÉ : compteur DISTINCT `coverage.abilityImpulses.noResolver`
+      (+ `resolvable` vérifié UNE fois au build), documenté au contrat comme les autres
+      (`document_ability_impulses.go`, `coverage.go`, `document.go`, `structure_test.go`,
+      `contracttest`, golden, openapi régénéré +64 lignes, generated.ts +28). Schéma TOUJOURS
+      38. Preuves : `TestBuildAbilityImpulses_AttributionIndisponibleNEstPasUnAutreEquipement`
+      (les trois causes + contrôle POSITIF sur la même entrée) et
+      `TestBuildAbilityImpulses_LaCouvertureBoucle` (somme des six cases = épisodes). Mutation
+      rejouée et TUÉE.
+- [x] H3 (P2) LA RÈGLE DE REPLIEMENT N'ÉTAIT PINNÉE PAR RIEN — supprimer le glissement de
+      fenêtre (`last[r.Slot] = r.TimestampUS` dans la branche `continue`) laissait tout vert,
+      golden compris. CORRIGÉ :
+      `TestFoldAbilityImpulses_LaFenetreGLISSE_ElleNeSAncrePasSurLaPremiere` — une salve de
+      quatre lectures à 0,9 s d'intervalle couvre 2,7 s : la règle GLISSANTE rend UN geste,
+      une règle ancrée sur la première en rendrait DEUX. Mutation rejouée et TUÉE.
+
+Gates rejoués après corrections : 7/7 paquets ok, 0 `--- FAIL:`, `go vet` exit 0,
+`gofmt -l internal/ contracttest/` vide, `make check-types` exit 0, vitest replayContract 13/13.
+`make go-api-lint` : mêmes 4 constats ANTÉRIEURS, aucun neuf. Test d'acceptation `1cd3848a`
+REJOUÉ, chiffres INCHANGÉS au chiffre près : 123 lectures -> 62 gestes -> 33 publiées,
+18 sans identité, 11 famille non mesurée, **0 attribution indisponible** (la palette de ce film
+est classée), et les 5 impulsions de JGtm de la fenêtre toujours à 1:52, 1:55, 2:03, 2:05, 2:15.
+Golden réassemblé : la ligne de couverture porte le sixième compteur, les 37 impulsions
+publiées de `000d5950` sont inchangées.
+
+Gate P3 : `CGO_ENABLED=0 go test ./internal/analysis/filmdec/ ./internal/analysis/replay/...
+./contracttest/ ./internal/replaybuild/... ./internal/games/mappings/
+./internal/games/halo_infinite/replaylabels/` (0 `--- FAIL:`) + `go vet ./internal/analysis/...`
+exit 0 + `gofmt -l internal/ contracttest/` vide + `make check-types` exit 0. **TOUS VERTS le
+03/09.** `make go-api-lint` : les 2 constats goconst introduits par ce lot ont été corrigés
+(constantes de production réutilisées côté filmdec, constante locale côté mappings) ; les
+4 restants sont ANTÉRIEURS et hors périmètre (voir Découvertes).
+
 ### Lot P2 — Web : consommer la lecture fiable (après P1)
 
 - [ ] P2.1 Éclat de fiche daté par `translocations[]` (l'événement, plus jamais le spent) ;
@@ -426,6 +542,25 @@ jamais de cuisson de masse sans décision séparée.
   16 instruments `r7_*_research_test.go`).
 
 ## Découvertes / suites à arbitrer (issues de R1-R2, hors périmètre des lots courants)
+
+- **P3 (03/09) — `make go-api-lint` ÉTAIT DÉJÀ ROUGE avant ce lot, 4 constats ANTÉRIEURS, non
+  corrigés** (aucun des fichiers n'est touché par P3) : `filmdec/offline_filters.go:145`
+  QF1001 (loi de De Morgan applicable, code du lot P1.4) ; `filmdec/transloc_events.go:172`
+  SA4000 (`br.ReadBit() || br.ReadBit()` — expressions IDENTIQUES de part et d'autre du `||`,
+  code du lot P1.3 ; **à instruire : le linter ne voit pas l'effet de bord du lecteur, mais
+  c'est exactement la forme qu'un court-circuit rendrait fausse si l'ordre de lecture comptait
+  — il compte ici**) ; `r8_i54_oracle_research_test.go:50` const `r8CoincUS` inutilisée et
+  `r8_physique_research_test.go:296` func `r8QRatio` inutilisée (lot R8). Les 2 constats
+  `goconst` que P3 avait introduits ont été corrigés DANS le lot.
+- **P3 (03/09) — LE RAPPEL DU CANAL RESTE UN PLANCHER, hors du témoin** : la vérité terrain
+  ne couvre qu'UNE fenêtre d'UN film (5 usages). Sur ce même film, 18 gestes sur 62 n'ont
+  AUCUN rang i48 dans leur vie (le canal d'identité n'émet qu'environ une fois par vie) : ils
+  sont réellement mesurés mais non attribuables, donc non publiés. Deux leviers connus, aucun
+  traité ici : la récupération gatée d'i48 (P1.1) ne couvre que les fenêtres de SAUT, et le
+  détecteur de records bipède ignore les masques denses (> 7 composants, report R8 n°5).
+- **P3 (03/09) — le worktree était PARTAGÉ pendant l'exécution** : des instruments
+  `filmdec/r11_*_research_test.go` (lot répulseur d'une autre session) sont apparus dans
+  l'arbre en cours de lot. Ils n'ont pas été touchés ; le diff P3 ne les contient pas.
 
 - **P1 (03/09) — LA DÉCOUVERTE LA PLUS LOURDE DE R7, hors périmètre, NON CORRIGÉE** : la
   grammaire de PRODUCTION `lot1DecodeDamageAftermath` (`filmdec/weapon_hits_decode.go`,

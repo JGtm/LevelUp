@@ -89770,3 +89770,155 @@ d'usage certain, alors que le grappin en a 1 101 et que c'est pour cela qu'on l'
 
 ---
 
+
+## [2026-09-03] P3 — L'usage du PROPULSEUR entre en production (schema 38 enrichi)
+
+**Statut** : Complete (lot P3 du PLAN_LECTURE_FIABLE_EQUIPEMENT_2026-09-03, worktree
+`LevelUp-wt-lecture-equipement`, branche `wt/lecture-equipement`, aucun commit — relecture
+superviseur).
+
+**Decision technique principale** : publier au document de rejeu ce que R8 a mesure et que R9
+a borne — l'IMPULSION de capacite (corps de tag externe `R(2) == 1` des composants bipede i57
+`biped-spartan-ability` et i59 `-non-predicted-state`, le MEME dont le tag 3 porte deja le
+grappin) — en resolvant l'identite par le canal i48, **rang lu dans la MEME VIE et
+ANTERIEUREMENT**. Aucune grammaire nouvelle : les deux deserialiseurs publiaient deja le tag
+depuis le 2026-08-16, seul le croisement manquait.
+
+**Le point de conception qui commandait tout le lot** : NE PAS ECRIRE LE RANG DU PROPULSEUR
+DANS DU GO. Il vaut 5 en famille A et 21 en famille B — un litteral en dur aurait rendu le
+calque muet sur l'autre famille, exactement le piege qui avait rendu le translocateur muet hors
+famille A. La reponse est allee jusqu'au bout : le manifeste du titre gagne (1) une `family`
+par rang de palette (`[ability_palettes.ranks]`, validee contre la liste FERMEE
+`equipmentFamilies` deja en place — une faute de frappe est refusee, pas absorbee), et (2) la
+declaration des familles dont l'usage est MESURE sur ce canal (`[ability_impulses] families =
+["thruster"]`, refusee si aucun rang ne nomme la famille citee). **Resultat : zero litteral
+d'equipement cote Go, et le repulseur reste dehors sans qu'on l'ait ecrit dans le code.**
+
+**Resultats observes** :
+- TEST D'ACCEPTATION contre la VERITE TERRAIN (film `1cd3848a`, releve Theater utilisateur du
+  03/09) : la chaine de production rend **5 impulsions de propulseur pour JGtm a 1:52, 1:55,
+  2:03, 2:05, 2:15** — precision 5/5, rappel 5/5 contre le releve (1:51, 1:54, 2:03, 2:05,
+  2:14), ecart <= 1 s. Instrument gate `P3_FILM` + `P3_BOUNDS`.
+- ECART DIT, NON MASQUE : sur TOUT le film la chaine rend **9** impulsions de JGtm (2:42, 2:47,
+  5:21, 5:34 en plus des cinq). Ce n'est pas une contradiction — la fiche de creneaux ne
+  demandait a l'utilisateur de regarder QUE la salve 1:52-2:15, et la mesure du lot precedent
+  comptait deja 14 impulsions de JGtm sur ce film. Le test controle donc la FENETRE DU RELEVE
+  et journalise les quatre autres comme ni confirmees ni infirmees.
+- Film entier `1cd3848a` : 123 lectures -> 62 gestes (le rapport de creneaux comptait 62) ->
+  33 publiees, 18 sans identite, 11 famille non mesuree.
+- Film de reference du golden `000d5950` (famille B) : 86 lectures -> 43 gestes -> 37 publiees,
+  4 sans identite, 2 famille non mesuree — a comparer aux 43 `tag==1` dont 38 sur le rang 21
+  que R8 par. 8.5 y avait mesures. Le golden exerce donc le calque pour de vrai.
+- Mutations rejouees et TUEES sur les deux gardes qui portent la jointure : sans l'anteriorite,
+  et sans le decoupage par vie, un test tombe a chaque fois (le second avec son controle
+  POSITIF sur la meme entree).
+- Gates : `go test` filmdec + replay + contracttest + replaybuild + mappings + replaylabels
+  exit 0 (0 `--- FAIL:`), `go vet ./internal/analysis/...` exit 0, `gofmt -l internal/
+  contracttest/` vide, `make check-types` exit 0, vitest `replayContract` 13/13.
+
+**Ce que le lot NE dit pas, et le dit** : le calque NE COUVRE PAS tous les equipements, et sa
+couverture le publie (`otherFamily`). Le REPULSEUR n'est pas dans ce canal — negatif MESURE
+(R8 par. 8.7, R9 : trois portes fermees), pas une lacune d'implementation. Le RAPPEL reste un
+plancher hors de la fenetre temoin : 18 gestes sur 62 n'ont aucun rang i48 dans leur vie (le
+canal d'identite n'emet qu'environ une fois par vie), et le detecteur de records bipede ignore
+toujours les masques denses.
+
+**Conclusion / prochaine etape** : le schema 38 est reste 38 (aucun artefact 38 hors
+repertoires de test : on enrichit avant la premiere cuisson plutot que d'empiler un 39) et
+porte desormais QUATRE choses. Suite : lot P2 (consommation web) — la frontiere est comble par
+ce lot, il reste le rendu. `make go-api-lint` etait DEJA rouge avant P3 sur 4 constats
+anterieurs (consignes au plan, Decouvertes) ; les 2 que P3 avait introduits sont corriges.
+
+## [2026-09-03] P3 — revue adversariale ronde 1 (3 constats recevables, 20 conditions tiennent)
+
+**Statut** : Complete (worktree `LevelUp-wt-lecture-equipement`, aucun commit).
+
+**Ce que la revue a tenu** : 20 conditions verifiees — resolution de famille par manifeste et
+ses trois refus, equivalence terme a terme de `rankInLife` avec l'instrument d'origine
+(`r8RankInLife`), somme de la couverture, cohabitation avec le grappin (golden +40/-0, section
+grappin identique au bit pres), chronique v38 sur les quatre surfaces, et le test d'acceptation
+qui echoue bien sur un releve non rendu ET sur une impulsion en trop dans la fenetre.
+
+**Decision technique principale (H2)** : un compteur DISTINCT pour « la chaine d'attribution
+n'a pas pu tourner ». Trois pieces la conditionnent (palette du match classee, familles mesurees
+declarees par le titre, vies decoupees) ; il en manque une et TOUS les gestes tombaient jusqu'ici
+dans `otherFamily` — c'est-a-dire annoncaient « ils viennent d'un AUTRE equipement » alors
+qu'AUCUNE famille n'avait jamais ete resolue — ou dans `noIdentity`, qui affirme « le rang n'a
+pas ete lu dans la vie » la ou il n'y a pas de vie. Les deux se lisaient comme des mesures.
+`coverage.abilityImpulses.noResolver` dit desormais ce qui s'est passe. C'est exactement la
+doctrine du chantier : publier l'incertitude, jamais la deguiser en mesure.
+
+**Le constat le plus grave etait un test, pas du code (H1)** : `ability_impulses_test.go`
+injectait `abilityImpulseTag` lui-meme et verifiait qu'une des quatre valeurs sortait — il
+passait donc pour N'IMPORTE QUELLE valeur du constant. Mutation reproduite : `1 -> 3` (le tag du
+GRAPPIN) laissait TOUT vert, et le document aurait publie les corps d'accroche de grappin sous
+`family:"thruster"`. Les quatre valeurs sont maintenant ecrites A LA MAIN avec leur verdict, sans
+jamais lire la constante de production. Second trou du meme constat : `emit` extrait d'`account`
+pour fixer que i57 ET i59 contribuent — neutraliser i57 faisait tomber `coverage.reads` de 86 a
+43 dans le document servi, en silence.
+
+**Resultats observes** :
+- Trois mutations rejouees et TUEES : tag 1->3 fait tomber TROIS tests (avant : zero) ;
+  publication d'i57 retiree en fait tomber un ; `noResolver` retire en fait tomber un ; fenetre
+  de repliement ancree sur la premiere lecture au lieu de glisser en fait tomber un (H3 — la
+  regle n'etait pinnee par RIEN, golden compris ; le nouveau cas separe les deux regles par
+  construction : quatre lectures a 0,9 s couvrant 2,7 s rendent 1 geste, pas 2).
+- Test d'acceptation `1cd3848a` REJOUE, chiffres INCHANGES : 123 lectures -> 62 gestes ->
+  33 publiees, 18 sans identite, 11 famille non mesuree, **0 attribution indisponible** (la
+  palette de ce film est classee), les 5 impulsions de JGtm de la fenetre toujours a 1:52, 1:55,
+  2:03, 2:05, 2:15.
+- Golden reassemble : la ligne de couverture porte le sixieme compteur, les 37 impulsions
+  publiees de `000d5950` sont inchangees. Schema TOUJOURS 38.
+- Gates : 7/7 paquets ok (0 `--- FAIL:`), `go vet` 0, `gofmt -l internal/ contracttest/` vide,
+  `make check-types` 0, vitest replayContract 13/13, openapi + generated.ts regeneres.
+  `make go-api-lint` : memes 4 constats ANTERIEURS, aucun neuf.
+
+**Conclusion / prochaine etape** : P0+P1 de la ronde = 3 -> 0, lot mergeable. Suite : P2
+(consommation web), la frontiere est deja comble.
+
+---
+
+## [2026-09-03] Lot R11 — Le canal des CHARGES est trouvé ; il ne porte pas le répulseur
+
+**Statut** : Complété (rétro-ingénierie, aucun code de production touché, aucun commit).
+
+**Contexte** : l'utilisateur a livré la première ancre NUMÉRIQUE du répulseur (film `72b0a25e` :
+ramassage à 2:46 avec 3 CHARGES) et validé la mesure du propulseur (5 usages relevés = 5
+impulsions mesurées sur `1cd3848a`).
+
+**Décision technique principale** : lire les VALEURS du composant bipède i56
+`biped-spartan-ability-energy` — jamais fait : R9 ne l'avait jugé que sur un recensement
+d'ANNONCES et avait écrit lui-même la limite de cet instrument. Le quartet haut de sa valeur
+7 bits est un COMPTEUR DE CHARGES ENTIÈRES ; sa décroissance date chaque usage.
+
+**Résultats observés** :
+- Série 4, 3, 2, 1, 0 pour JGtm sur `1cd3848a` aux instants 1:52 / 1:55 / 2:03 / 2:05 / 2:15 —
+  exactement les 5 usages du relevé Theater (précision 5/5, rappel 5/5).
+- Témoins positifs pré-inscrits : 52 baisses sur 54 coïncident avec une impulsion i57/i59 ;
+  36 accroches de grappin sur 36 sont appariées (témoin décalé de 5 s : 2/36).
+- Couverture des deux familles de palette : propulseur rang 21 (famille B, `1cd3848a`) ET
+  rang 5 (famille A, `00ba2e1c`, `084a804d`) — résolution par le NOM de la palette, jamais par
+  un numéro figé.
+- RÉPULSEUR : 218 vies, 111,7 minutes de port sur 11 films, ZÉRO baisse attribuable. Dans les
+  6 films sans grappin ni propulseur, i56 est lu 485 fois et jamais armé. Deux porteurs dont
+  le film annonce lui-même la consommation de la dernière charge (`spent` depuis le rang
+  répulseur) ne produisent aucune lecture armée.
+- Faux positifs de mon propre instrument (8 baisses dites « répulseur ») abattus par
+  `grappleLines[]` : c'étaient des accroches de grappin nommées par une lecture i48 vieille de
+  1 à 3 minutes. D'où la colonne `dont_<20s` (fraîcheur du rang attributeur).
+- Réfutés aussi : le compteur R(3) d'i48 (compteur de changements : 5, 6, 7, bouclage) et
+  l'entité ti=37 portée (l'entité du répulseur, identifiée par le handle i26 à l'instant de
+  l'ancre, n'émet aucun record ; le champ i27 ne rend que 6,9 % de valeurs dans 0..8).
+- Correction à la fiche de créneaux : sur `72b0a25e` la fenêtre de port est 2:47 → 2:52 (i48
+  et i26 concordent), pas 2:47 → 3:59.
+
+**Conclusion / prochaine étape** : le négatif du répulseur devient structurel ET ancré — le
+canal des charges existe, il est validé par deux vérités terrain indépendantes, et il ne porte
+que les capacités qui déplacent leur porteur (grappin `e2`, propulseur `e0`). Prochaine piste :
+le type d'événement 14 `PlayEffectOnObject` (grammaire non portée). Acquis livrable au
+passage : i56 date les usages de grappin et de propulseur avec un meilleur rappel que
+`grappleLines[]`. Détail complet et commandes rejouables :
+`.ai/V7.5/replay2d/RAPPORT_R11_REPULSEUR_CHARGES_2026-09-03.md`.
+
+---
+
