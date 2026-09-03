@@ -128,13 +128,35 @@ type vehicleGap struct {
 }
 
 // buildVehicleRides rend les episodes d occupation par vie de vehicule. PUR.
+//
+// DEUX SOURCES, DANS CET ORDRE (lot V6). La machine d etats par OCCUPANT
+// (`vehicle_rides_events.go`) passe d abord : ses bornes sont des EVENEMENTS de la liste, dates a
+// la milliseconde et valides (occupant en bande 100 %). Le TROU du flux de position ne sert plus
+// qu en REPLI, pour les episodes qu aucun evenement n atteste — aux memes portes qu avant.
 func buildVehicleRides(in vehicleRideInputs) map[filmdec.EquipmentLifeKey][]VehicleRide {
 	if in.clock.step == 0 || len(in.lives) == 0 {
 		return nil
 	}
 	boards, exits := vehicleEventsByOccupant(in.events)
+	bySlot := vehiclePositionsBySlot(in.bipeds)
 	out := map[filmdec.EquipmentLifeKey][]VehicleRide{}
+	var kept []vehicleEpisode
+	for _, ep := range vehicleEventEpisodes(boards, exits, bySlot) {
+		key, r, resolved, ok := vehicleRideFromEpisode(ep, bySlot, in)
+		if !ok {
+			continue
+		}
+		out[key] = append(out[key], r)
+		kept = append(kept, resolved)
+	}
 	for _, g := range vehicleGaps(in.bipeds) {
+		// SEULS LES EPISODES PUBLIES ferment la porte du repli. Un episode d evenement dont le
+		// vehicule n a pas pu etre resolu ne doit RIEN supprimer : sinon la machine d etats
+		// retirerait un episode que le trou, lui, savait rattacher (mesure du 2026-09-03 :
+		// 12 -> 11 sur `0d76e8f1` avec la regle naive).
+		if vehicleEpisodeCovers(kept, g) {
+			continue
+		}
 		vs, ok := vehicleNearestTo(g.last, in.vehBySlot)
 		if !ok {
 			continue
@@ -243,6 +265,16 @@ func vehicleGaps(bipeds []filmdec.BipedPosition) []vehicleGap {
 func vehicleNearestTo(
 	e filmdec.BipedPosition, vehBySlot map[uint32][]filmdec.BipedPosition,
 ) (uint32, bool) {
+	return vehicleNearestWithin(e, vehBySlot, vehicleBoardRadiusM)
+}
+
+// vehicleNearestWithin est la MEME recherche, sous un rayon donne. Une seule implementation :
+// le rayon du TROU (`vehicleBoardRadiusM`) et celui de l ANCRE D EVENEMENT
+// (`vehicleEventAnchorRadiusM`) ne sont pas le meme chiffre, mais ils lisent le meme nuage avec
+// la meme regle de fraicheur.
+func vehicleNearestWithin(
+	e filmdec.BipedPosition, vehBySlot map[uint32][]filmdec.BipedPosition, radiusM float64,
+) (uint32, bool) {
 	slots := make([]uint32, 0, len(vehBySlot))
 	for s := range vehBySlot {
 		slots = append(slots, s)
@@ -255,7 +287,7 @@ func vehicleNearestTo(
 			continue
 		}
 		d := planDist(e.X, e.Y, p.X, p.Y)
-		if d <= vehicleBoardRadiusM && (!found || d < bestD) {
+		if d <= radiusM && (!found || d < bestD) {
 			best, bestD, found = s, d, true
 		}
 	}

@@ -73,9 +73,9 @@ func repairUnportedComponent(buf []byte, bodyStart, recType int, slot uint32, tr
 	if _, preset := unportedStubWidth[name]; preset {
 		return tr, 0, false // an external harness already stubs it; do not fight it
 	}
-	savedPos, savedDP := posCaptureHook, dynPrecHook
-	posCaptureHook, dynPrecHook = nil, nil
-	defer func() { posCaptureHook, dynPrecHook = savedPos, savedDP }()
+	savedPos, savedDP, savedRef := posCaptureHook, dynPrecHook, unitRefHook
+	posCaptureHook, dynPrecHook, unitRefHook = nil, nil, nil
+	defer func() { posCaptureHook, dynPrecHook, unitRefHook = savedPos, savedDP, savedRef }()
 
 	frameLen := len(buf) * 8
 	redecode := func() EntityTrace {
