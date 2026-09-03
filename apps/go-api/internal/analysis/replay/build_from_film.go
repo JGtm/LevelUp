@@ -58,7 +58,19 @@ func BuildFromFilm(matchID, titleSlug string, film *filmsource.Film, opt Options
 		scan = *opt.Scan
 	}
 	scan.WorldRange = &worldRange
-	// Le DÉCOUPAGE d'i0 vient du CATALOGUE, comme les bornes dont il est déduit — le
+	// Le cap de visée (Point.H) se lit dans le MÊME record que la position : la capture des
+	// directions est donc toujours active pour l'artefact. Elle n'altère aucune position
+	// (lecture seule après le vec3 d'i0).
+	scan.CaptureDirs = true
+	// LE CONTEXTE DU FILM EST OUVERT UNE FOIS, ICI, ET TOUS LES BALAYAGES LE PARTAGENT (lot 2
+	// de PLAN_CUISSON_PERF, 2026-09-03). Il porte les trois derivations qui ne dependent que du
+	// film — bande de slots bipede, decoupage d'i0, registre chunk_00 — que huit, six et douze
+	// balayages recalculaient chacun pour leur compte sur le film pourtant deja charge. Il ne
+	// LIT rien a la construction : chaque derivation est calculee au premier balayage qui la
+	// demande, donc a l'endroit exact ou elle l'etait avant (cf. filmdec/film_context.go), et
+	// les suivants la lisent.
+	//
+	// LE DÉCOUPAGE d'i0 vient du CATALOGUE, comme les bornes dont il est déduit — le
 	// découpage lu dans le film (DetectI0Layout) est le contrôle, jamais l'entrée (doctrine
 	// écrite sur WorldObjectPrecision, appliquée au bipède depuis le lot C catalogues
 	// 2026-08-27 : sur une carte à plus de 2 régions, l'auto-détection lit l'index de
@@ -66,25 +78,14 @@ func BuildFromFilm(matchID, titleSlug string, film *filmsource.Film, opt Options
 	// Un opt.Scan qui force déjà son Layout (instruments) reste maître ; une entrée sans
 	// largeurs (catalogue antérieur au champ) laisse l'auto-détection, comme le chemin
 	// world-object laisse son défaut — jamais des largeurs nulles.
-	if lay := opt.MapQuant.Layout(); scan.Layout == nil && lay.Valid() {
-		scan.Layout = &lay
-	}
-	// Le cap de visée (Point.H) se lit dans le MÊME record que la position : la capture des
-	// directions est donc toujours active pour l'artefact. Elle n'altère aucune position
-	// (lecture seule après le vec3 d'i0).
-	scan.CaptureDirs = true
-	// LE CONTEXTE DU FILM EST OUVERT UNE FOIS, ICI, ET TOUS LES BALAYAGES LE PARTAGENT (lot 2
-	// de PLAN_CUISSON_PERF, 2026-09-03). Il porte les trois derivations qui ne dependent que du
-	// film — bande de slots bipede, decoupage d'i0 AUTO-DETECTE, registre chunk_00 — que huit,
-	// six et douze balayages recalculaient chacun pour leur compte sur le film pourtant deja
-	// charge. Il ne LIT rien a la construction : chaque derivation est calculee au premier
-	// balayage qui la demande, donc a l'endroit exact ou elle l'etait avant (cf.
-	// filmdec/film_context.go), et les suivants la lisent.
 	//
-	// LE DECOUPAGE DU CONTEXTE EST L'AUTO-DETECTE, PAS CELUI DU CATALOGUE ci-dessus : le lot 2
-	// ne change aucune sortie. Faire lire `opt.MapQuant.Layout()` aux six balayages delta —
-	// ce qui corrige Live Fire — est le lot 3, et lui seul (D3bis).
-	fc := filmdec.NewFilmContext(film)
+	// CETTE REGLE EST DESORMAIS CELLE DU CONTEXTE, ET DONC CELLE DE TOUS LES BALAYAGES (lot 3,
+	// 2026-09-03) : elle est écrite une seule fois, dans `filmdec.NewFilmContextForMap`, et les
+	// positions la lisent au MEME endroit que les six canaux delta. Avant, les positions seules
+	// l'appliquaient et les canaux delta re-detectaient — sur Live Fire, 27 enregistrements
+	// d'une AUTRE region de compression passaient leur porte (mesure du 2026-09-03, item 3.2).
+	fc := filmdec.NewFilmContextForMap(film, opt.MapQuant, scan.Layout)
+	scan.Layout = fc.ImposedLayout()
 	// L'HORLOGE DES BALAYAGES PART ICI, et pas a l'entree de la fonction : ce qui precede est
 	// l'attente du verrou process et la lecture du catalogue, qui ne sont le temps d'aucun
 	// balayage. A partir d'ici, chaque `opt.observe` ferme le balayage qu'il annonce

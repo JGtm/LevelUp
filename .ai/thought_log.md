@@ -87115,3 +87115,53 @@ erreur. Détail en N-M à N-R du §8 de `PLAN_CUISSON_PERF.md`.
 
 **Prochaine étape** : le pilote lance le harnais d'équivalence (9 films). Items 1.4 à 1.8 aux
 agents suivants (`killsource`, `objectiveevents`, `killcollector`, CLI de recherche).
+
+---
+
+## [2026-09-03] Cuisson lot 3 — la règle du catalogue, écrite une fois pour tous les balayages
+
+**Statut** : Complété (gate vert, 3/3 items, rien committé — mandat sans commit).
+
+**Décision technique principale.** Le découpage d'i0 que `filmdec.FilmContext` sert à TOUS les
+balayages suit désormais la règle que les positions appliquaient seules : découpage forcé par
+l'appelant > entrée de catalogue quand elle est valide > auto-détection en repli. La règle vit
+dans `filmdec/film_context.go` (`resolveI0Layout`, privé) et `replay.BuildFromFilm` la CONSOMME au
+lieu de la refaire — `fc := NewFilmContextForMap(film, opt.MapQuant, scan.Layout)` puis
+`scan.Layout = fc.ImposedLayout()`. Il n'existe plus qu'UNE résolution par cuisson, partagée par
+les positions et les six canaux delta ; les trois lignes de `build_from_film.go` qui la
+dupliquaient ont disparu. `NewFilmContext(film)` reste inchangé pour les 40 enveloppes D2 et les
+usages hors production (entrée nil = auto-détection).
+
+**Le point qui a demandé une vérification sur pièces — et qui a démenti le plan.** Le plan
+annonçait « avant : canaux delta vides ou rejetés sur Live Fire ; après : comptes non nuls ». La
+mesure dit autre chose : sur `60ae07c4` l'auto-détection RÉUSSIT et rend `gate=5 region=0
+13/12/11`, soit 41 bits d'i0 — la longueur totale EXACTE du catalogue (`gate=6 region=1
+12/12/11`). Les canaux delta ne lisent du découpage que `TotalBits()` et la porte de région : ils
+marchaient. Le rejet total prédit par la doctrine ne vaut que pour les POSITIONS, qui
+déquantifient le vec3 et le voient sortir de l'AABB. La vraie faute était une porte de région trop
+permissive : un bit testé contre 0 accepte les régions `00` ET `01`, deux bits testés contre 1
+n'acceptent que `01`. Sur ce film, 27 enregistrements d'une autre région de compression sur
+267 400 (0,010 %) étaient décodés comme s'ils appartenaient à l'arène jouée.
+
+**Résultats observés.** Passe d'équivalence complète : 12 identiques, 1 différent (`60ae07c4`,
+première étape en écart `heldWeaponChanges.stats`) — la correction mord sur Live Fire et nulle
+part ailleurs, ce qui était le critère. Après `-update -films 60ae07c4` : 13/13 identiques.
+Le film perd de FAUX événements, il n'en gagne pas : capacités 29 -> 27, ramassages d'équipement
+38 -> 33 (dont « manquées estimées » 6 -> 0, signature d'un canal redevenu cohérent), artefact
+3 030 556 -> 3 030 137 octets ; arme en main (120), inventaire delta (2 430), camo (1 593),
+grappin (0), ramassages natifs (297) et positions (267 365) sont identiques à l'octet — seuls
+leurs compteurs de diagnostic bougent (267 400 -> 267 374 enregistrements delta vus). Les
+ramassages natifs ne lisent pas le découpage du tout. Cuisson `replay-build` de `60ae07c4` :
+21,8 s, 3 030 137 octets, zéro ligne « découpage i0 illisible » — contrôle fait dans les deux
+sens, il valait déjà zéro AVANT (l'auto-détection réussissait). Test de la règle sur le catalogue
+VERSIONNÉ (Live Fire gate 6 région 1, Cliffhanger gate 5, entrée sans largeurs, découpage forcé),
+discriminance prouvée par deux mutations restaurées. `gofmt` vide, `go vet` 0, quatre paquets de
+tests verts, `golangci-lint` 0 nouvelle issue (baseline 273 inchangée).
+
+**Conclusion / prochaine étape.** Le lot 3 est clos, le corpus est refigé à 13 films. Quatre
+découvertes notées et non traitées (§8, N-BD à N-BG), dont la plus structurante : `DetectI0LayoutOf`
+est AVEUGLE par construction à un index de région de plus d'un bit (`GateBits` câblé à 5,
+`Region` à 0) — toute future carte à plus de deux régions produira un découpage décalé et MUET
+pour les consommateurs qui gardent l'auto-détection (enveloppes D2, CLI de recherche,
+`ScanUnitEquipment`, qui n'a aucun appelant de production). Le pilote décide de la suite ; rien
+n'est committé.

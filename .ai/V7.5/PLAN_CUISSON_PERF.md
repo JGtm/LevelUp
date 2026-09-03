@@ -484,16 +484,36 @@ Prerequis : verdict 0.7 = zero divergence sur les 11 films du corpus (sinon : ar
 
 ### Lot 3 — Correction Live Fire : le layout du catalogue pour les six balayages — effort rapide
 
-- [ ] 3.1 `FilmContext.Layout` = `opt.MapQuant.Layout()` quand valide, auto-detection en repli —
+- [x] 3.1 `FilmContext.Layout` = `opt.MapQuant.Layout()` quand valide, auto-detection en repli —
       la regle EXACTE de `build.go:257-259`, ecrite une fois pour les positions ET les six
       balayages.
-- [ ] 3.2 Equivalence : identique sur les 10 films non-Live Fire ; sur `60ae07c4` les digests
+      FAIT (2026-09-03) : la regle vit dans `filmdec/film_context.go` (`resolveI0Layout`, prive,
+      + `NewFilmContextForMap(film, entry, forced)` + `ImposedLayout()`), et
+      `replay/build_from_film.go` la CONSOMME au lieu de la refaire — les positions lisent
+      `scan.Layout = fc.ImposedLayout()`, donc positions et canaux delta partagent UNE resolution
+      et non deux copies. Precedence inchangee : force > catalogue valide > auto-detection.
+      `NewFilmContext(film)` (enveloppes D2, usages hors production) n'impose rien.
+- [x] 3.2 Equivalence : identique sur les 10 films non-Live Fire ; sur `60ae07c4` les digests
       CHANGENT — `-update -films 60ae07c4` (le TSV garde son marqueur de grammaire courant), journal avec le diff des comptes par balayage, et une
       cuisson `replay-build` de `60ae07c4` dont le journal ne porte plus « decoupage i0 illisible ».
-- [ ] 3.3 Test unitaire de la regle sur des entrees du VRAI catalogue (Live Fire : gate 6,
+      FAIT : passe complete sans `-update` = **12 identiques, 1 different** (`60ae07c4`, premiere
+      etape en ecart `heldWeaponChanges.stats`) ; `-update -films 60ae07c4` ; passe complete de
+      verification = **13/13 identiques**. Diff des comptes au §10. ECART DE PREMISSE STATUE
+      (N-BD) : les canaux delta n'etaient NI vides NI rejetes sur Live Fire — la correction porte
+      sur 26 enregistrements d'une autre region, pas sur un canal mort ; et aucune ligne
+      « decoupage i0 illisible » n'existait AVANT non plus (l'auto-detection reussissait, avec un
+      decoupage faux de meme longueur totale). Le controle est fait dans les deux sens et vaut
+      donc « toujours zero », pas « n'existe plus ».
+- [x] 3.3 Test unitaire de la regle sur des entrees du VRAI catalogue (Live Fire : gate 6,
       region 1 ; Cliffhanger : gate 5) et une entree sans largeurs (repli).
+      FAIT : `filmdec/film_context_catalogue_test.go`, trois tests joues sur la MINI-BOBINE (ou
+      l'auto-detection ECHOUE — un decoupage rendu sans erreur ne peut donc venir que du
+      catalogue) et sur le catalogue VERSIONNE `data/titles/halo_infinite/reference/
+      map_quant_bounds.json`. Discriminance verifiee par deux mutations restaurees : catalogue
+      ignore -> le test des deux cartes echoue ; precedence inversee -> le test du decoupage
+      force echoue.
 - Gate 3 : equivalence IDENTIQUE hors `60ae07c4` ; `60ae07c4.tsv` regenere avec diff au journal ;
-  tests verts.
+  tests verts. FAIT, details au §10.
 
 ### Lot 4 — Boucles chaudes (refacto pur) — effort moyen
 
@@ -1124,6 +1144,41 @@ identique a celui en place hors lots de correction, ou le garde anti-regression 
     re-cuisson de masse, elle, reste hors perimetre (§7) et suspendue au schema vehicules. Le
     commentaire n'est pas corrige ici (regle 7) : il se met a jour dans le lot qui rouvrira la
     question du champ dedie.
+
+- 2026-09-03 (agent lot 3, regle du catalogue) — decouvertes N-BD a N-BG. Aucune traitee (regle 7).
+  - N-BD. **LA PREMISSE DU LOT 3 ETAIT FAUSSE, ET LE DIAGNOSTIC EXACT EST PLUS ETROIT.** Le plan
+    (et la doctrine heritee de `build.go:249-259`) annoncait que, sur une carte a plus de deux
+    regions, « l'auto-detection lit l'index de region comme un bit d'axe et le decodeur
+    rejetterait TOUS les records ». C'est vrai des POSITIONS (elles dequantifient le vec3 : lu
+    decale d'un bit, il sort de l'AABB et tombe au filtre) ; c'est FAUX des six canaux delta, qui
+    ne lisent PAS le vec3. Mesure du 2026-09-03 sur `60ae07c4` : l'auto-detection REUSSIT et rend
+    `gate=5 region=0 13/12/11`, soit **41 bits d'i0 — exactement la longueur totale du catalogue**
+    (`gate=6 region=1 12/12/11`). Les canaux delta n'utilisant du decoupage que `TotalBits()` (pas
+    d'axe) et la porte de region, ils marchaient. La SEULE difference est la porte : un bit teste
+    contre 0 accepte les regions `00` ET `01`, deux bits testes contre 1 n'acceptent que `01`. Sur
+    ce film : 27 enregistrements de region `00` sur 267 400 (0,010 %) etaient decodes comme s'ils
+    appartenaient a l'arene jouee. Le lot 3 les ecarte — c'est une correction reelle, mais d'un
+    ordre de grandeur sans rapport avec « des canaux vides ». Consequence de methode : la phrase
+    du plan sur Live Fire doit se lire « rejetterait tous les records DE POSITION ».
+  - N-BE. **Le journal « decoupage i0 illisible » n'existait pas non plus AVANT le lot.** Le gate
+    3.2 demandait de verifier qu'il ne « subsiste » plus ; le controle a ete fait dans les deux
+    sens et il vaut zero des deux cotes, pour la raison de N-BD (la detection reussissait). Le
+    message reste le bon signal pour un film trop court ou une grammaire de record differente ; il
+    n'a jamais ete celui de Live Fire.
+  - N-BF. **L'auto-detection est structurellement AVEUGLE a un index de region large, et le
+    restera.** `DetectI0LayoutOf` cable `GateBits = DefaultI0GateBits` (5) et `Region = 0`
+    (`i0_layout.go:190-193`) : elle ne peut RIEN detecter d'autre. Sur toute carte a plus de deux
+    regions elle rendra un decoupage decale dont la longueur totale peut coincider — donc muet.
+    Les consommateurs qui gardent l'auto-detection par construction restent exposes : les
+    40 enveloppes D2, les CLI de recherche, et `ScanUnitEquipment` (`unit_equipment_scan.go:58`),
+    qui n'a AUCUN appelant de production. Piste si le sujet revient : faire porter au detecteur le
+    nombre de regions, ou lui faire refuser un profil dont la premiere frontiere ne tombe pas sur
+    `DefaultI0GateBits`. Hors perimetre de ce plan.
+  - N-BG. **Les ramassages natifs ne lisent pas le decoupage.** L'item 3.1 les nommait parmi les
+    consommateurs du layout catalogue (« les six canaux delta et les ramassages natifs ») :
+    `ScanBipedPickups` ne consomme du contexte que `BipedSlots()` (`biped_pickups.go:171`), jamais
+    `I0Layout()`. La mesure le confirme — `pickups` est identique a l'octet avant et apres. Le
+    contexte lui est bien passe, mais le catalogue ne change rien pour lui.
 
 ## 9. Revue du plan (plan-review, 2026-09-02)
 
@@ -2166,3 +2221,118 @@ touche (grep sur les cinq fichiers du diff) · les trois passes de cuisson ci-de
 169 L — tous < 500 ; `incrementTimes` 32 lignes, `NamedEventsFrom` 35 — tous < 80.
 
 **AUCUN COMMIT** (interdit du mandat). Decouvertes N-BA a N-BC au §8.
+
+### Lot 3 — Correction Live Fire : la regle du catalogue (2026-09-03) — CLOS, 3/3 items
+
+**3.1 — LA REGLE EST ECRITE UNE FOIS, ET LES POSITIONS LA LISENT AU MEME ENDROIT QUE LES CANAUX
+DELTA.** `filmdec/film_context.go` gagne trois choses : `resolveI0Layout(forced, entry)` (prive,
+lignes 138-149) qui EST la regle — force > catalogue valide > nil, c'est-a-dire auto-detection ;
+`NewFilmContextForMap(film, entry *MapQuantEntry, forced *I0Layout)` (ligne 128) qui la tranche a
+la construction et memorise le resultat dans le champ prive `impose` ; `ImposedLayout()` (ligne
+154) qui le rend, COPIE. `FilmContext.I0Layout()` (ligne 219) court-circuite sur `impose` : quand
+le catalogue impose, AUCUNE auto-detection n'a lieu — c'est aussi ce qui retire `DetectI0LayoutOf`
+du chemin de cuisson. `NewFilmContext(film)` est conserve tel quel : c'est la forme des
+40 enveloppes D2 et des usages hors production, qui n'ont pas d'entree de carte a fournir et
+gardent l'auto-detection (entree nil = repli, comme l'exigeait l'item).
+
+`replay/build_from_film.go:87-88` ne REFAIT plus la regle, il la CONSOMME :
+
+    fc := filmdec.NewFilmContextForMap(film, opt.MapQuant, scan.Layout)
+    scan.Layout = fc.ImposedLayout()
+
+Les trois lignes `if lay := opt.MapQuant.Layout(); scan.Layout == nil && lay.Valid()` disparaissent
+— elles sont devenues `resolveI0Layout`. La substitution est EXACTE dans les trois cas (force
+rendu tel quel, catalogue valide impose, catalogue sans largeurs -> nil), et le commentaire
+doctrinal herite de `build.go:249-259` demenage avec elle, augmente de ce que la mesure a appris.
+Un seul decoupage existe desormais par cuisson, pour les positions ET pour les six canaux delta.
+
+**3.2 — L'ECART, MESURE. Trois passes du harnais (`tmp/replay-equiv.exe` rebati sur le code du
+lot).**
+
+1. **Passe complete SANS `-update` : 12 identiques, 1 different, 0 ecarte, 0 echec.** Le seul
+   film different est `60ae07c4`, premiere etape en ecart `heldWeaponChanges.stats`. C'est la
+   preuve demandee : la correction mord sur Live Fire et NULLE PART ailleurs.
+2. `-update -films 60ae07c4` (24,3 s, pic 0,35 Gio) — le TSV garde `# digest-grammar: 2`.
+3. **Passe complete de verification : 13 identiques, 0 different** (4,8 s a 1 min 50 par film,
+   pics 0,09 a 0,66 Gio).
+
+**LE DIFF DES COMPTES, BALAYAGE PAR BALAYAGE** (`60ae07c4`, 45 etapes, 9 en ecart). Les valeurs de
+compteurs viennent du journal de cuisson des deux binaires (avant : binaire bati sur `179bd7401` ;
+apres : binaire du lot), les comptes de sortie du TSV :
+
+| balayage | avant | apres | ce que le joueur voit |
+|---|---|---|---|
+| `positions` | 267 365 | **267 365** | inchange — les positions lisaient DEJA le catalogue |
+| enregistrements delta vus (les 6 canaux) | 267 400 | **267 374** | −26 : 27 enregistrements de la region `00` ecartes, +1 revele par le realignement de la marche |
+| `heldWeaponChanges` (arme en main) | 120 | **120** | sortie inchangee ; seul le compteur `recordsDelta` de `.stats` bouge |
+| `pickups` (ramassages natifs) | 297 | **297** | inchange — ce balayage ne lit pas le decoupage (N-BG) |
+| `inventoryDeltas` (inventaire delta) | 2 430 | **2 430** | sortie inchangee (i22=438, i47=208 identiques) ; `.stats` bouge |
+| `abilityRanks` (capacites) | 29 | **27** | **−2 rangs** ; lectures d'i48 38 -> 33, portes ouvertes 9 -> 6 |
+| `equipmentChanges` (ramassages d'equipement) | 38 | **33** | **−5** : ramassages 24 -> 23, consommations 9 -> 6, reapparitions 5 -> 4, vies 28 -> 26, manquees estimees 6 -> **0** |
+| `camoStates` (camo) | 1 593 | **1 593** | sortie inchangee (i28=2 873, sans-voie 1 280) ; `.stats` bouge |
+| `grappleReads` (grappin) | 0 | **0** | inchange (i59=2 556, tag3=0 — ce film n'a pas de traction) |
+| `artifact` | 3 030 556 o | **3 030 137 o** | −419 octets |
+
+CE QUE CELA VEUT DIRE EN CLAIR : Live Fire ne gagne pas des calques manquants, elle perd de FAUX
+evenements. 27 enregistrements appartenant a une AUTRE region de compression de la carte etaient
+decodes comme s'ils etaient de l'arene ; ils produisaient 2 rangs de capacite et 5 mouvements
+d'equipement qui n'ont jamais eu lieu — et le compteur « manquees estimees » de l'equipement
+tombe de 6 a 0, ce qui est la signature d'un canal qui redevient coherent avec lui-meme. Les
+quatre autres canaux ne publiaient rien de faux : leurs sorties sont identiques a l'octet, seuls
+leurs compteurs de diagnostic changent.
+
+**LA PREMISSE DU PLAN ETAIT FAUSSE, ET C'EST LE FAIT LE PLUS IMPORTANT DE CE LOT (N-BD).** Il
+etait ecrit « avant : canaux delta vides ou rejetes sur Live Fire ». Mesure sur pieces : sur ce
+film l'auto-detection REUSSIT et rend `gate=5 region=0 13/12/11`, soit **41 bits d'i0 — la
+longueur totale EXACTE du catalogue** (`gate=6 region=1 12/12/11`). Les canaux delta n'utilisant
+du decoupage que `TotalBits()` et la porte de region, ils marchaient. Le rejet total predit par la
+doctrine ne vaut que pour les POSITIONS, qui dequantifient le vec3. La correction est donc reelle
+mais etroite : une porte de region trop permissive (1 bit contre 0 accepte `00` ET `01` ; 2 bits
+contre 1 n'acceptent que `01`).
+
+**CUISSON `replay-build` (item 3.2, dernier point) : ZERO ligne « decoupage i0 illisible ».**
+`CGO_ENABLED=0 go run ./cmd/replay-build --map "Live Fire - Ranked" --facts <60ae07c4.facts.json>
+60ae07c4-5568-42de-99a7-76d1282edc72` : 21,8 s, pic 0,34 Gio, 169 pistes, **3 030 137 octets** —
+la MEME taille que l'etape `artifact` du TSV refige. `grep -ci "i0 illisible"` : **0**. Le controle
+a ete fait DANS LES DEUX SENS : il valait deja 0 AVANT le lot (N-BE), pour la raison de N-BD. Le
+message n'a jamais ete celui de Live Fire ; il reste le bon signal pour un film trop court.
+L'artefact ecrit par cette cuisson (`data/cache/replays/halo_infinite/60ae07c4.json`, qui
+n'existait pas) a ete SUPPRIME apres releve : le cache est une jonction vers le worktree partage,
+et ce lot n'a pas mandat d'y deposer un artefact bati sur une branche non fusionnee.
+
+**3.3 — LE TEST DE LA REGLE, SUR LE VRAI CATALOGUE.**
+`filmdec/film_context_catalogue_test.go` (169 L), trois tests, tous joues sur la MINI-BOBINE — le
+film ou l'auto-detection ECHOUE, donc ou un decoupage rendu sans erreur ne peut venir que du
+catalogue — et sur le catalogue VERSIONNE `data/titles/halo_infinite/reference/map_quant_bounds.json`
+(meme chemin relatif que `replay/golden_inputs_test.go` : le test tourne en CI).
+
+- `TestRegleDuCatalogueSurLeVraiCatalogue` : **Live Fire -> `gate=6 region=1 12/12/11`**
+  (`regionIndexBits: 2`, `region: 1` dans le catalogue) et **Cliffhanger -> `gate=5 region=0
+  13/13/14`**. L'entree est LUE, jamais ecrite a la main : le jour ou le catalogue est regenere
+  sans le champ de region, c'est ici que ca tombe.
+- `TestRegleDuCatalogueRepliAutoDetection` : entree nil et entree SANS largeurs (`axisWidths`
+  absent -> `Layout().Valid()` faux) rendent toutes deux `ImposedLayout() == nil` et l'erreur
+  EXACTE de l'auto-detection ; `NewFilmContext(film)` n'impose jamais rien.
+- `TestRegleDuCatalogueDecoupageForceMaitre` : un decoupage force l'emporte sur l'entree Live
+  Fire, et la valeur est COPIEE DANS LES DEUX SENS (muter le pointeur de l'appelant, ou celui que
+  rend `ImposedLayout`, ne change pas ce que le contexte sert).
+
+DISCRIMINANCE verifiee par deux mutations, toutes deux restaurees : catalogue ignore par
+`resolveI0Layout` -> les deux cartes echouent (« le contexte refuse le decoupage du catalogue :
+aucun slot biped ») ; precedence inversee (entree avant force) -> le test du decoupage force
+echoue en nommant `gate=6 region=1` la ou l'appelant imposait `gate=7 region=3`.
+
+**GATE 3 (execute dans le worktree, 2026-09-03).** `gofmt -l .` : VIDE (module entier) ·
+`go vet ./internal/analysis/filmdec/ ./internal/analysis/replay/` : code 0 ·
+`go test ./internal/analysis/filmdec/ ./internal/analysis/replay/ ./internal/replaybuild/
+./internal/archlint/ -count=1` : **tout ok** (0,748 s / 9,278 s / 0,516 s / 5,667 s), code 0 ·
+`golangci-lint run --new-from-merge-base=origin/main` : **0 issue** ; `golangci-lint run` complet :
+**273 issues, baseline INCHANGEE** (meme compte qu'au lot 4b), aucune ne pointe un fichier du diff ·
+les trois passes de cuisson ci-dessus (12+1, refigeage, 13/13) · la cuisson `replay-build`.
+Seuils : `film_context.go` 270 L, `build_from_film.go` 344 L, `film_context_catalogue_test.go`
+169 L — tous < 500 ; `resolveI0Layout` 12 lignes, `NewFilmContextForMap` 3, `BuildFromFilm` 305
+(depassement PREEXISTANT, non aggrave : le lot retire trois lignes de code et en ajoute deux).
+
+**AUCUN COMMIT** (interdit du mandat). Fichiers modifies : `filmdec/film_context.go`,
+`replay/build_from_film.go`, `replay/testdata/equivalence/60ae07c4.tsv`, ce plan ; ajoute :
+`filmdec/film_context_catalogue_test.go`. Decouvertes N-BD a N-BG au §8.
