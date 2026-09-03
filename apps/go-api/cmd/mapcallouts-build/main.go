@@ -86,8 +86,12 @@ type options struct {
 	forgeOnly   bool
 	forgeFetch  bool
 	lexique     bool
-	delaiFetch  time.Duration
-	res         *title.PathResolver
+	// acceptePerte leve le garde qui refuse un catalogue ou une carte perd des sommets.
+	// A ne poser QUE pour une simplification voulue, et jamais pour faire passer une
+	// relecture native depuis une installation partielle (cf. garde_perte.go).
+	acceptePerte bool
+	delaiFetch   time.Duration
+	res          *title.PathResolver
 }
 
 func main() {
@@ -106,7 +110,7 @@ func main() {
 		passeNative(&cat, opts, labels)
 	}
 	passeForge(&cat, opts, labelsParSID)
-	ecritCatalogue(cat, opts.outPath)
+	ecritCatalogue(cat, opts.outPath, opts.acceptePerte)
 }
 
 // lisOptions déclare les drapeaux et résout les chemins par défaut.
@@ -122,6 +126,8 @@ func lisOptions() options {
 	flag.BoolVar(&o.forgeOnly, "forge-only", false, "ne pas reconstruire la partie native (n'exige pas le jeu installé)")
 	flag.BoolVar(&o.forgeFetch, "forge-fetch", false, "télécharger les map.mvar manquants (stockage blob UGC, sans jeton)")
 	flag.BoolVar(&o.lexique, "lexique", false, "régénérer callouts_lexique.csv depuis les listes de chaînes du jeu (exige l'installation)")
+	flag.BoolVar(&o.acceptePerte, "accepte-perte", false,
+		"écrire même si une carte perd des sommets par rapport au catalogue existant (garde_perte.go)")
 	ms := flag.Int("forge-rate-ms", 300, "délai entre deux téléchargements (politesse)")
 	flag.Parse()
 
@@ -373,7 +379,14 @@ func journaliseStats(s *forgeStats, cibles int) {
 }
 
 // ecritCatalogue sérialise et écrit le fichier de référence.
-func ecritCatalogue(cat replay.MapCalloutsCatalog, outPath string) {
+//
+// Le garde de perte passe AVANT la sérialisation : un catalogue qui amaigrit une carte ne doit
+// pas atteindre le disque, fût-ce une seconde (cf. garde_perte.go).
+func ecritCatalogue(cat replay.MapCalloutsCatalog, outPath string, acceptePerte bool) {
+	if err := verifiePasDePerte(outPath, cat, acceptePerte); err != nil {
+		slog.Error("catalogue non écrit", "err", err, "path", outPath)
+		os.Exit(1)
+	}
 	blob, err := json.MarshalIndent(cat, "", " ")
 	if err != nil {
 		slog.Error("sérialisation", "err", err)
