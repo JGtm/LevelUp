@@ -1,3 +1,96 @@
+## [2026-09-03] Fonds de carte du rejeu 2D — la premisse « reutiliser les dessins » est REFUTEE ; +8 cartes par l'heritage variante -> base — Complete
+
+**Ce qui etait demande, et ce que la mesure a renverse.** La mission partait d'un etat de
+l'art : `static/maps/halo_infinite/` contiendrait 129 « vues du dessus dessinees » qu'il
+suffirait de caler pour donner un fond aux cartes qui n'en ont pas. **Les 129 fichiers sont
+des MINIATURES en perspective**, pas des vues du dessus : 97 en 560x320, 31 en 560x316, une
+en 530x316 — un format FIXE, donc sans aucun rapport avec l'emprise au sol de la carte. Leur
+provenance est ecrite dans le depot (commit `bb7f8ae4c`, « LES MINIATURES tombent juste :
+`images/thumbnail.jpg` fait 560x320 »). Controle visuel sur The Pit, Argyle, Aquarius,
+Streets, Vallaheim Firefight : cinq captures de jeu au niveau du sol. **Il n'y a rien a
+recuperer de ce dossier pour le rejeu.** A comparer aux 106 fonds cuits, dont l'aspect va de
+0,51 a 2,25 selon la carte — c'est ce que produit une vue du dessus.
+
+**Le second point faux de l'etat de l'art : « 34 des 64 cartes Forge n'ont pas de fond ».**
+Ce compte ne regarde que la cle `map_id`, alors que la production resout AUSSI par nom
+(`replay.MapBackgroundIndex`, etape 2 de `service.resolveBackgroundKey`). Onze cartes citees
+comme depourvues ont deja leur fond par cette voie : Cliffside, Critical Dewpoint, Domicile,
+Dynasty, Goliath, High Ground, Isolation, Perilous, Rat's Nest, Shiro, The Pit. Le compte
+reel avant ce lot : **41 des 64 servies, 23 sans fond**.
+
+**Le format du calage, etabli sur pieces.** Chaque fond publie est une paire
+`{cle}.png` + `{cle}.json` dans `data/titles/halo_infinite/reference/map_backgrounds/`. Le
+sidecar porte `calibration` : `metersPerPixel`, `originX`, `originY` (coin HAUT-GAUCHE),
+`widthPx`, `heightPx`, et la convention en clair
+(`xMonde = originX + (px + 0,5) * mpp ; yMonde = originY - (py + 0,5) * mpp`). Structure Go :
+`replay.MapBackgroundCalibration` (`map_background.go:64`).
+
+**L'hypothese de calage automatique, testee et REFUTEE.** Hypothese : « l'emprise de l'image
+vaut la boite des polygones de zones, elargie d'une marge constante ». Jeu de validation : les
+37 cartes distinctes qui ont A LA FOIS des zones dans `map_callouts.json` et un calage publie.
+Verdict : **15 reproduites, 22 echouees**, avec des ecarts jusqu'a **286 m** (The Pit +220/-286,
+Kaiketsu -215, High Ground -201, Perilous -139). La cause est lisible dans le code : le cadre
+publie n'est PAS la boite des zones mais la boite de la MATIERE reellement dessinee, elargie
+de 6 m (`himap.CadreUtile`, `MargeCadreUtile`) — une grandeur qui exige la geometrie du jeu.
+Les echecs sont de deux familles : les cartes dont les zones nomment le canevas entier
+(emprise carree, rapport 1,000 : Smallhalla, Sylvanus, Dynasty, Insolence) et celles dont le
+decor deborde largement les lieux nommes. La seconde hypothese suggeree — l'enveloppe des
+positions jouees — est **INTESTABLE** : `map_positions_jouees.json` ne couvre qu'UNE carte
+(Dredge).
+
+**Ce qui marche, et c'est mesure, pas devine : la variante herite de sa carte de base.**
+Deux mesures independantes sur le catalogue versionne :
+- **19 paires variante/base dont les deux fonds sont publies** : 12 partagent deja le meme
+  sidecar (la cuisson les tient pour une seule carte — `btb_exiled` declare « Oasis », « Oasis
+  Firefight », « Oasis Heavies », « Oasis Sentry Defense ») ; les 7 cuites separement
+  s'accordent a **0,012 m en originX et 0,021 m en originY**.
+- **10 paires variante/base presentes dans `maps_by_id`** : signature de zones (libelle +
+  x,y,z + nombre de sommets) IDENTIQUE sur les 10, emprise monde a **0,000 m** (0,122 m sur
+  Kusini Bay, 1 mm sur Vallaheim Firefight).
+
+`MapBackgroundIndex.Lookup` fait donc DEUX essais : l'identite exacte d'abord — une variante
+qui a son propre fond garde le sien, aucune ambiguite creee — puis l'identite de base
+(`suffixesVariante` = `_-_ranked`, `_heavies`, `_firefight`). L'heritage ne va que dans un
+sens : une carte de base ne prend jamais le fond d'une de ses variantes. Une base ambigue ne se
+transmet pas non plus. `_sentry_defense` est HORS liste : les deux cartes qui le portent sont
+natives et leur sidecar les declare deja — un suffixe qui ne rattrape rien serait du code mort.
+
+**Gain mesure : +8 cartes**, sur un univers de 152 noms (objectifs + rotation UGC + miniatures
++ zones) : Breaker Firefight, Cliffhanger Firefight, Deadlock Firefight, Empyrean - Ranked,
+Forbidden - Ranked, Fragmentation Firefight, Scarr Firefight, The Pit - Ranked. Deux d'entre
+elles (The Pit - Ranked, Empyrean - Ranked) sont au catalogue de zones. Le filet
+`coversPlayedArea` (`mapBackground.ts`) reste en place et n'a pas ete touche.
+
+**AUCUN CALAGE N'A ETE FABRIQUE.** Le seul chemin ajoute reutilise un calage deja publie, dont
+l'identite au repere est mesuree ci-dessus. Rien n'a ete cuit, rien n'a ete devine.
+
+**Restent 27 noms sans fond**, dont 16 au catalogue de zones : Apostle, Aqueduct, Argyle,
+Argyle - Ranked, Arrival, Daimyo, Dead Water, Detachment, Exiled, Exiled Firefight, Kusini Bay,
+Kusini Bay Firefight, Last Broadcast, Suban, Vallaheim, Waterworks. Hors catalogue de zones :
+Live Fire et Live Fire - Ranked (reglages ecrits dans `map_fond_reglages.json` sous
+`sgh_interlock`, cuisson JAMAIS gatee), Cole Protocol, Munera Platform H6, Munera Platform W4,
+Out With A Bang (les quatre BLOQUEES faute d'ancre d'objectif, cf. `bb7f8ae4c`), House of
+Reckoning, TFF Night Of The Undead, plus trois faux manques : `Narrows` (son fond EXISTE sous
+`944396dd`, dont le sidecar ne declare aucun nom), `Devissage` (nom FR de Cliffhanger, qui a
+son fond) et `allaheim Firefight` (nom de fichier tronque, doublon de `Vallaheim Firefight`).
+
+**Un cas laisse ouvert, volontairement : Vallaheim.** Sa variante Firefight a un fond, la base
+n'en a pas, et leurs zones sont identiques a 1 mm pres. L'heritage inverse (base <- variante)
+n'a PAS ete ouvert : la boite du fond est celle du DECOR, et rien ne prouve que la variante
+Firefight ne pose pas d'objets hors de l'emprise de la base. Une carte laissee de cote avec sa
+raison vaut mieux qu'un fond decale.
+
+**Decouvertes notees, non traitees** (hors perimetre) : le fichier tronque
+`static/maps/halo_infinite/allaheim Firefight.jpg` ; le sidecar `944396dd-...json` sans
+`mapNames` (une ligne suffirait, mais le renommage en Narrows appartient au chantier registre) ;
+`map_positions_jouees.json` a une seule carte.
+
+**Prochaine etape.** Les 16 cartes a zones sans fond ne se debloquent que par la cuisson
+(`cmd/mapfond-build` + `.mvar` de l'asset) : c'est la seule chaine qui produit un calage
+verifiable. Live Fire est la plus jouee des cartes sans fond et n'attend qu'un gate visuel.
+
+---
+
 ## [2026-09-02] Callouts Forge — le lexique des noms de lieu : 266/266 string_id resolus, 2 536 zones sur 2 536 nommees — Complete
 
 **Le probleme, chiffre.** Le catalogue venait de s'ouvrir aux cartes Forge (61 cartes,
