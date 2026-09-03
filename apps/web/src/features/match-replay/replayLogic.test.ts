@@ -4,7 +4,6 @@ import {
   advanceFrame,
   altitudeAt,
   altitudeRatio,
-  fitWidth,
   floorOf,
   footprint,
   formatClock,
@@ -20,6 +19,7 @@ import {
   trackWindow,
   trailAt,
   canvasToWorld,
+  frameBounds,
   layerOffset,
   usefulHeight,
   zoomTowards,
@@ -80,14 +80,6 @@ describe('trailAt', () => {
   })
 })
 
-describe('fitWidth', () => {
-  const square = { minX: 0, minY: 0, maxX: 10, maxY: 10 }
-  it('scène carrée : largeur = hauteur (marges latérales supprimées)', () =>
-    expect(fitWidth(square, 900, 480, 24)).toBeCloseTo(480))
-  it('ne dépasse jamais la largeur disponible', () =>
-    expect(fitWidth({ minX: 0, minY: 0, maxX: 100, maxY: 10 }, 600, 480, 24)).toBe(600))
-})
-
 // LE PLAFOND PAR CARTE (2026-09-02) : jusqu'où le terrain gagne-t-il à grandir ? Passé le point
 // où la largeur devient limitante, un pixel de hauteur de plus n'ajoute plus de carte mais une
 // bande vide. Ce plafond ne peut donc pas être une constante — il dépend du ratio de la scène.
@@ -108,13 +100,14 @@ describe('usefulHeight', () => {
   it('scène ÉTIRÉE en profondeur : elle peut au contraire tout prendre', () =>
     expect(usefulHeight(tall, 900, 24)).toBeGreaterThan(900))
 
-  // C'est l'inverse EXACT de fitWidth : à la hauteur utile, la largeur nécessaire est
-  // exactement la largeur disponible. Si les deux divergeaient, le cadrage laisserait une bande
-  // vide sur un axe ou sur l'autre.
-  it('est bien l inverse de fitWidth — aller-retour sans perte', () => {
+  // LA PROPRIÉTÉ QUI COMPTE : à la hauteur utile, la toile a EXACTEMENT le ratio de la carte.
+  // Au-delà, le cadre s'élargirait au-dessus et au-dessous de la scène (cf. frameBounds) : on
+  // montrerait du monde vide plutôt que de la carte.
+  it('à la hauteur utile, la toile a le ratio exact de la carte', () => {
     for (const bounds of [square, wide, tall]) {
       const useful = usefulHeight(bounds, 900, 24)
-      expect(fitWidth(bounds, 10_000, useful, 24)).toBeCloseTo(900)
+      const ratioCarte = (bounds.maxX - bounds.minX) / (bounds.maxY - bounds.minY)
+      expect((900 - 48) / (useful - 48)).toBeCloseTo(ratioCarte, 6)
     }
   })
 
@@ -378,13 +371,13 @@ describe('la surface a cuire est invariante au zoom', () => {
     { minX: 0, minY: 0, maxX: 100, maxY: 60 },
     { minX: -20, minY: 5, maxX: 30, maxY: 95 },
   ]
-  it('fitWidth rend la meme largeur a tous les paliers', () => {
+  it('le ratio de la fenetre ne bouge pas d un palier a l autre', () => {
     for (const scene of scenes) {
       const c = sceneCenter(scene)
-      const base = fitWidth(scene, 900, 480, 24)
+      const base = (scene.maxX - scene.minX) / (scene.maxY - scene.minY)
       for (const z of ZOOM_LEVELS) {
         const v = visibleBounds(scene, z, c.x, c.y)
-        expect(fitWidth(v, 900, 480, 24)).toBeCloseTo(base, 6)
+        expect((v.maxX - v.minX) / (v.maxY - v.minY)).toBeCloseTo(base, 6)
       }
     }
   })
@@ -471,5 +464,62 @@ describe('layerOffset', () => {
     const cuit = cadre(visibleBounds(scene, 2, c.x, c.y))
     const apres = cadre(visibleBounds(scene, 2, c.x + 10, c.y))
     expect(layerOffset(cuit, apres).x).toBeLessThan(0)
+  })
+})
+
+// LE CADRE — la correction du 2026-09-03. La toile épousait le ratio de la SCÈNE : dès que la
+// hauteur était bornée par l'écran, elle devenait plus étroite que le bloc et l'image zoomée se
+// coupait à ses bords, pendant que la place d'à côté ne servait à rien.
+describe('frameBounds — la fenêtre prend la forme de la toile', () => {
+  const scene = { minX: 0, minY: 0, maxX: 100, maxY: 60 }
+  const PAD = 24
+
+  /** Le ratio utile d'une toile, marges intérieures déduites. */
+  const ratio = (w: number, h: number) => (w - 2 * PAD) / (h - 2 * PAD)
+
+  it('épouse le ratio de la TOILE, quelle que soit la forme de la scène', () => {
+    for (const [w, h] of [[900, 480], [1200, 400], [600, 700]]) {
+      const f = frameBounds(scene, w, h, PAD)
+      expect((f.maxX - f.minX) / (f.maxY - f.minY)).toBeCloseTo(ratio(w, h), 6)
+    }
+  })
+
+  // IL CONTIENT TOUJOURS LA SCÈNE : le cadre s'ÉLARGIT, il ne rogne jamais. Sinon on perdrait
+  // du terrain jouable au premier affichage, avant même d'avoir zoomé.
+  it('contient toujours la scène entière', () => {
+    for (const [w, h] of [[900, 480], [1200, 400], [600, 700], [300, 300]]) {
+      const f = frameBounds(scene, w, h, PAD)
+      expect(f.minX).toBeLessThanOrEqual(scene.minX + 1e-9)
+      expect(f.maxX).toBeGreaterThanOrEqual(scene.maxX - 1e-9)
+      expect(f.minY).toBeLessThanOrEqual(scene.minY + 1e-9)
+      expect(f.maxY).toBeGreaterThanOrEqual(scene.maxY - 1e-9)
+    }
+  })
+
+  it('reste centré sur la scène — on élargit des DEUX côtés', () => {
+    const f = frameBounds(scene, 1200, 400, PAD)
+    expect((f.minX + f.maxX) / 2).toBeCloseTo((scene.minX + scene.maxX) / 2, 9)
+    expect((f.minY + f.maxY) / 2).toBeCloseTo((scene.minY + scene.maxY) / 2, 9)
+  })
+
+  // À ratio ÉGAL, le cadre EST la scène : rien n'est ajouté quand il n'y a rien à combler.
+  it('toile au ratio de la scène : le cadre vaut la scène', () => {
+    const h = (900 - 2 * PAD) * (60 / 100) + 2 * PAD
+    const f = frameBounds(scene, 900, h, PAD)
+    expect(f.minX).toBeCloseTo(scene.minX, 6)
+    expect(f.maxX).toBeCloseTo(scene.maxX, 6)
+    expect(f.minY).toBeCloseTo(scene.minY, 6)
+    expect(f.maxY).toBeCloseTo(scene.maxY, 6)
+  })
+
+  // LE POINT DE LA CORRECTION : zoomé, la fenêtre garde la forme de la toile, donc la remplit.
+  // Avec l'ancien cadrage (ratio de la scène) elle restait plus étroite, et l'image se coupait.
+  it('zoomée, la fenêtre garde le ratio de la toile — donc la remplit', () => {
+    const f = frameBounds(scene, 1200, 400, PAD)
+    const c = sceneCenter(f)
+    for (const z of ZOOM_LEVELS) {
+      const v = visibleBounds(f, z, c.x, c.y)
+      expect((v.maxX - v.minX) / (v.maxY - v.minY)).toBeCloseTo(ratio(1200, 400), 6)
+    }
   })
 })
