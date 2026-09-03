@@ -4,7 +4,7 @@
  * DEUX FAMILLES DE COULEUR D'ÉQUIPE COEXISTENT DANS LE DÉPÔT, ET LEUR DIFFÉRENCE EST DU SENS.
  *
  *   IDENTITÉ (`teamColor.ts`, `teamColorResolver`) — le tableau des scores, l'en-tête d'un
- *   camp, la section Objectifs, le fil des éliminations. La cascade y place la couleur
+ *   camp, le fil des éliminations. La cascade y place la couleur
  *   OFFICIELLE du jeu par `team_id` (Eagle bleu, Cobra rouge) AVANT le token sémantique :
  *   c'est le camp tel que le JEU le peint, et c'est ce qu'on veut là où l'écran nomme les
  *   équipes.

@@ -293,7 +293,18 @@ export interface MatchViewText {
    *  libellé + tooltip d'en-tête par clé de colonne objectif. */
   objectives: {
     title: string
-    teamTotal: string
+    /**
+     * LES DEUX VUES EMPILEES (2026-09-03). Le tableau a ete remplace par un graphe :
+     * `viewByPlayer` classe les joueurs grandeur par grandeur, `viewTeamTotals` oppose les
+     * deux camps sur chacune. Les deux titres sont necessaires — sans eux, deux blocs de
+     * barres dans la meme carte se lisent comme deux lectures de la meme chose.
+     */
+    viewByPlayer: string
+    viewTeamTotals: string
+    /** Infobulle d'une barre de la grille : joueur, grandeur, valeur DEJA ecrite. */
+    gridTipFmt: (player: string, metric: string, value: string) => string
+    /** Infobulle d'un cote du face-a-face : equipe, grandeur, total DEJA ecrit. */
+    duelTipFmt: (team: string, metric: string, value: string) => string
     cols: Record<string, { label: string; tooltip: string }>
   }
 }
@@ -531,7 +542,10 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     matchCounterCtxFmt: (label, n, total) => `Matchs ${label} ${n}/${total}`,
     objectives: {
       title: 'Objectifs',
-      teamTotal: 'Total équipe',
+      viewByPlayer: "Actions d'objectif par joueur",
+      viewTeamTotals: "Total d'objectif par équipe",
+      gridTipFmt: (player, metric, value) => `${player} — ${metric} : ${value}`,
+      duelTipFmt: (team, metric, value) => `${team} — ${metric} : ${value}`,
       cols: {
         flag_captures: { label: 'Captures', tooltip: 'Captures de drapeau' },
         flag_returns: { label: 'Retours', tooltip: 'Retours de drapeau' },
@@ -829,7 +843,10 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     matchCounterCtxFmt: (label, n, total) => `${capitalize(label)} matches ${n}/${total}`,
     objectives: {
       title: 'Objectives',
-      teamTotal: 'Team total',
+      viewByPlayer: 'Objective actions by player',
+      viewTeamTotals: 'Objective totals by team',
+      gridTipFmt: (player, metric, value) => `${player} — ${metric}: ${value}`,
+      duelTipFmt: (team, metric, value) => `${team} — ${metric}: ${value}`,
       cols: {
         flag_captures: { label: 'Captures', tooltip: 'Flag captures' },
         flag_returns: { label: 'Returns', tooltip: 'Flag returns' },
