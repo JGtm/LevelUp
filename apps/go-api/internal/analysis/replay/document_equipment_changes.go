@@ -59,6 +59,17 @@ type EquipmentChange struct {
 	// From est le rang précédent sur cette vie, ou NoAbilityRank quand il n'est pas lisible
 	// (première émission de la vie : le film ne dit pas ce qui la précédait).
 	From int `json:"from"`
+	// Recovered dit que cette émission vient de la RÉCUPÉRATION GATÉE (schéma 38, décision
+	// D1) : ses octets existent dans le film sous une forme que le balayage strict rejette
+	// par construction, et son compteur comble EXACTEMENT un saut annoncé par le témoin de
+	// rotation. La provenance est publiée pour que le client puisse la dire — jamais pour
+	// qu'il la dévalue : la certification vient du témoin, pas du chemin.
+	Recovered bool `json:"recovered,omitempty"`
+	// Gap est le saut de compteur RÉSIDUEL depuis l'émission précédente de la même vie,
+	// APRÈS récupération (schéma 38, décision D3) : absent (0) = chaîne saine ; n > 0 =
+	// n émissions manquent encore juste avant celle-ci, et `from` n'est alors PAS une
+	// identité fiable — un consommateur le traite comme inconnu, pas comme faux.
+	Gap int `json:"gap,omitempty"`
 }
 
 // EquipmentChangeCoverage dit ce que le calque a vu, ce qu'il a écarté, et — seul de tous les
@@ -89,6 +100,11 @@ type EquipmentChangeCoverage struct {
 	// contredirait la propriété qui fonde le calque — le composant ne devrait entrer au
 	// masque QUE sur changement.
 	Repeats int `json:"repeats"`
+	// Recovered compte les émissions issues de la récupération gatée (schéma 38), à part des
+	// lues par le balayage strict. Les témoins ci-dessus (missedEstimate, counterJumps,
+	// livesFirstOffSpec) décrivent la chaîne FINALE, récupération comprise : ce qui manque
+	// ENCORE après elle.
+	Recovered int `json:"recovered"`
 }
 
 // buildEquipmentChanges projette les changements lus dans le film sur l'axe de frames du
@@ -100,7 +116,7 @@ func buildEquipmentChanges(
 	cov := EquipmentChangeCoverage{
 		Decoded: len(changes), Lives: st.Lives, MissedEstimate: st.MissedEstimate,
 		CounterJumps: st.CounterJumps, LivesFirstOffSpec: st.LivesFirstOffSpec,
-		Repeats: st.Repeats,
+		Repeats: st.Repeats, Recovered: st.Recovered,
 	}
 	if len(changes) == 0 || step == 0 {
 		return nil, cov
@@ -117,7 +133,7 @@ func buildEquipmentChanges(
 		}
 		e := EquipmentChange{
 			T: int((c.TimestampUS - origin) / step), Slot: c.Slot,
-			R: c.Rank, From: c.Previous,
+			R: c.Rank, From: c.Previous, Recovered: c.Recovered, Gap: c.Gap,
 		}
 		if c.Kind == filmdec.EquipmentSpent {
 			e.Kind, cov.Spent = EquipmentSpent, cov.Spent+1
@@ -175,5 +191,5 @@ func logEquipmentChangeCoverage(cov EquipmentChangeCoverage) {
 		"reapparitions", cov.Spawned, "avantOrigine", cov.BeforeOrigin,
 		"vies", cov.Lives, "manqueesEstimees", cov.MissedEstimate,
 		"sautsCompteur", cov.CounterJumps, "premiereHorsNorme", cov.LivesFirstOffSpec,
-		"repetitions", cov.Repeats)
+		"repetitions", cov.Repeats, "recuperees", cov.Recovered)
 }

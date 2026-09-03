@@ -89342,3 +89342,131 @@ VITESSE_*), .ai/V7.5/replay2d/RAPPORT_R3_FILTRE_VITESSE_2026-09-03.md. go vet ve
 ScanFilmTranslocatorTeleports deja cadree R1 §6) ; noter que le benefice visible artefact est
 minime (<= 0,20 m) — le vrai gain est en amont (positions brutes exactes pour D4 et les
 consommateurs de ScanFilmBipedPositions).
+
+## [2026-09-03] P1 — la lecture fiable des usages d'equipement entre en production (schema 38)
+
+**Statut** : Complete (aucun commit — consolidation superviseur). Worktree
+LevelUp-wt-lecture-equipement, branche wt/lecture-equipement.
+**Decision technique principale** : les quatre decisions D1-D4 implementees SANS affaiblir une
+seule garde du balayage strict — la recuperation i48 est une POST-PASSE gatee par le temoin de
+compteur (fenetres de saut seules, formes « sans i0 » et « dense msb=true », candidat accepte
+au compteur predit, sans doublon ni nouveau saut — regle du trou unique), et l'exemption du
+filtre de vitesse est declenchee par l'EVENEMENT 117 du meme slot a ±200 ms, jamais par un
+seuil. P1.0 prealable : ordre de bits du masque dense FIGE (bit k = composant 63-k) sur 40
+temoins supplementaires / 12 films (instruments R2 rejoues), l'unique contre-signal msb=false
+est du plancher de bruit ET illisible par la forme de production (idx[0]=3). La couverture de
+tete de vie (livesFirstOffSpec) est GARDEE : mesuree saine sur 9 temoins (5 tetes combles a la
+prediction exacte, 0 repetition creee, pertes FILM laissees en residuel).
+**Resultats observes** : Dynasty 1b2d9e08 re-cuit (schema 38, artefact du worktree) —
+(a) slot 535 : taken r4 @1378 -> RECUPEREE taken r11 from=4 @1520 -> spent from=11 @1851,
+chaines closes (0 saut residuel, 0 gap) ; (b) translocations [{535,1761},{560,3261},
+{560,3419}] = 3/3 evenements du film ; (c) 7 echantillons bruts re-acceptes dans les fenetres
+(les 3+1+3 de R3), 0 hors fenetre ; les 34 114 points publies restent identiques a l'ancien
+artefact (conforme R3 : gain d'amont). Invariance D2 : 7344d24f, 0 tete 117, 188 979
+echantillons bit a bit identiques. Gates : go test filmdec+replay+replaybuild+contracttest
+exit 0 (0 --- FAIL), go vet exit 0, openapi-gen +62 l., generate-types +29 l., check-types
+exit 0, vitest replayContract 13/13. Golden reassemble (fixture REPLAYINPUTS11 + section
+TRANSLOCATEUR figee a zero avec ses compteurs).
+**Conclusion / prochaine etape** : lot P2 (web) — consommer translocations[] (eclat,
+va-et-vient, faille apres premier echange, fin mesuree), retirer riftTeleports et le repli
+spentTranslocations (kill-switch date), traiter `from` sous gap comme inconnu. La frontiere
+web est deja comble (translocations dans replayNormalize — exige par le garde de compilation,
+partie mecanique seulement). Re-cuisson de masse : decision separee apres P2.
+
+---
+
+
+## [2026-09-03] R5 — Evenements nommes des autres equipements (agent de recherche, worktree agent)
+
+**Statut** : Complete (lot R5 du PLAN_LECTURE_FIABLE_EQUIPEMENT_2026-09-03, execution pilotee).
+
+**Decision technique** : reutiliser la lecture O(1) des tetes de liste etablie par R1 (aucun
+decodage de trame), croiser sur 9 films avec les verites terrain des artefacts (grappleLines,
+poses deployed, episodes camo/surbouclier) — croisement par slot (hypothese ref0 w=8 de R1)
+PUIS temps seul quand ref0 ne rend pas le porteur ; sonde de continuation sur les tetes 103
+(charge 0 bit) pour mesurer la profondeur de liste.
+
+**Resultats** : 325 160 paquets delta. Seul le translocateur (117, R1) a un signal d'usage
+fiable. Type 103 (poses deployables) : reel, date a ~100 ms, mais rappel en tete 60 % (murs
+77/129, de 0 % a 100 % selon film) et refs = objets (pas le poseur) — redondant avec le canal
+placements de prod. Type 100 (camo/OS) : 7/17 precision, rappel episodes 7/31 et 1/15 — faible.
+118 = effet de reparation (0/11 vs poses). Repulseur/grappin/propulseur : 0 tete (104/119/48/
+42/43), grappin deja couvert par grappleLines. 13 types suspects a 0 tete dont 30
+biped_equipment_activation. Sonde liste : 80/347 paquets a tete 103 portent >= 2 evenements
+(23 %), distribution des types suivants = census (auto-validation des largeurs).
+
+**Conclusion / suite** : rapport `.ai/V7.5/replay2d/RAPPORT_R5_EVENTS_EQUIPEMENTS_2026-09-03.md`
++ instruments `filmdec/equipements_events_{research,sondes_research}_test.go` (env-gates,
+skip par defaut). La liste complete (PLAN_PERCER_TRAME_FILM) reste le seul levier pour les
+deficits de rappel ; aucun equipement hors translocateur ne gagne une lecture fiable en tete.
+Aucun commit (consolidation superviseur).
+
+## [2026-09-03] P1 — revue adversariale ronde 1 : corrections F1-F6
+
+**Statut** : Complete (aucun commit). Constats recus : 8 recevables (3 du relecteur
+invariants + 5 du relecteur tests, dont 1 doublon — le paquet frontiere, trouve par les
+deux), 0 jete. Triage superviseur : 1 P0 + 6 P1 -> corrections F1-F6, zero fix opportuniste.
+**Corrections** :
+F1 (P0) garde de borne dans la forme « sans i0 » (equipment_recovery.go, walkEquipRecoveryAt)
+— la boucle ne garantissait que p+27 <= total, ascendingIndices lisait jusqu'a p+62 via
+readBitsAt (sans filet) : panic en queue de paquet. Meme patron que le strict ; repro figee
+en test (TestRecuperationBorneEnQueueDePaquet, formes count ET dense).
+F2 arithmetique modulo 8 : 5 copies -> UN helper `counterStep` (equipment_changes.go), 4
+sites migres, garde-rail grep pose (TestCounterStepLitteralUnique ; exclusions justifiees :
+fichier hote + instruments *_research_test.go figes par le protocole).
+F3 paquet frontiere : l'offset de bit voyage jusqu'a la fusion (equipRecovered.off ->
+equipEmission.off, strict = -1 documente « stricte avant recuperee a cle egale ») ET verrou
+final pruneRecoveredViolations — toute recuperee dont le RETRAIT baisse repetitions ou sauts
+de la chaine FINALE est retiree ; st.Recovered ne compte que les survivantes.
+F4 fusion extraite PURE (assembleEquipmentChanges / mergeEquipEmissions) + tests non gates
+qui tuent les mutations : ordre publie, chainage Previous (spent from=11), Gap CALCULE
+(0/3 sur saut de 4), stats finales, determinisme au paquet frontiere dans les deux ordres
+d'entree (equipment_assemble_test.go).
+F5 fixtures multi-evenements pour `covers` : deux ilots du meme slot, NON-exemption a ±201 ms
+et au milieu (tue la mutation ts[i]->ts[0]) + aberration entre deux fenetres filtree.
+F6 preuve d'invariance reelle : dropTeleportsReference = copie VERBATIM figee de la
+semantique schema 37 dans le test (DropTeleports delegue desormais a Except : se comparer a
+soi-meme ne prouvait rien) ; TestP1InvarianceSansTete117 compare a CETTE reference ; les 3
+commentaires de prod (TeleportExemptions, chronique v38, structure_test) cites corriges.
+**Resultats** : gates rejoues — go test filmdec+replay+replaybuild+contracttest exit 0
+(0 --- FAIL), go vet exit 0 ; valides gates rejoues sur l'etat corrige : recuperation Dynasty
+(slot 535 c6 r11 recovered, spent from=11, 2 recuperees, residuel 0/0/0), exemption 7
+re-acceptes / 0 hors fenetre, invariance 188 979 echantillons identiques A LA REFERENCE.
+Dynasty re-cuit : constats (a)(b)(c) INCHANGES au chiffre pres (artefact 2 251 698 octets,
+identique).
+**Prochaine etape** : ronde 2 de revue eventuelle, puis lot P2.
+
+---
+
+## [2026-09-03] Lot R6 — Ghidra sur les evenements d'equipement (agent de recherche) — Complete
+
+**Contexte** : lot R6 du PLAN_LECTURE_FIABLE_EQUIPEMENT_2026-09-03 (worktree agent, aucun
+commit — consolidation superviseur). Ghidra explicitement autorise par l'utilisateur. Aucune
+instance ne tournait : instance creee SANS GUI ni re-import via le serveur headless du plugin
+GhidraMCP sur le projet existant HI.gpr (piege machine : AF_UNIX connect casse sous ce JDK →
+`-Djdk.net.unixdomain.tmpdir=Q:\nexistepas` force le repli TCP du pipe NIO ; commande complete
+au rapport, annexe C.1). Analyse STATIQUE seulement (decompilation, xrefs, lecture memoire).
+
+**Decision technique principale** : sourcer le layout du 117 de l'exe (lecteur FUN_140f04fb8 +
+quantification FUN_14076e524/FUN_140be9b88) puis le REJOUER sur les 18 evenements reels — et
+la formule des largeurs lue dans l'exe (granularite 1/120 m, b=ceil(log2(extent*60)) cap 22/26)
+reproduit exactement les axisWidths de map_quant_bounds.json : la quantification des evenements
+est celle du catalogue de production.
+
+**Resultats observes** : (1) layout 117 VALIDE 18/18 — [R(1);R(32)=0xA1344FC2 constant] puis
+DEUX positions quantifiees, A = DEPART du saut, B = ARRIVEE (0,00-0,26 m d'ecart) ; le « mot
+0x42689F84 aligne octet » de R1 etait un artefact de fenetre decale d'un bit ; PIEGE : la porte
+region du vecteur est INVERSEE (bit 0 → index de region + bornes carte ; bit 1 → defaut
+±20000/22 bits). (2) Types muets 30/42/43/48/93/104 : emetteurs INTROUVABLES statiquement
+(negatif B2a.4 reconfirme, aucun immediat de type), reception fonctionnelle et diffusion non
+filtree par type (vtable+0x50 = 0x81/0x82 ; seul 93 conditionnel) → l'absence vient de
+l'emission ; sondage film : 0 occurrence derriere 597 tetes de liste marchees (profondeur 1).
+(3) Lateral : unit_zoom (21) EST dans la bobine (5 occ. en position 2 — E8 ne valait que pour
+les tetes) ; un type 15 Script suit chaque 117 ; action_weapon_fire 20 occ. en position 2.
+
+**Conclusion / prochaine etape** : la brique P1.3 (ScanFilmTranslocatorTeleports) peut publier
+from/to/slot/t SANS heuristique depuis le seul evenement 117 (layout au rapport
+RAPPORT_R6_GHIDRA_EVENTS_2026-09-03.md, instruments r6_*_research_test.go valides, go vet
+vert) ; la POSE reste illisible (aucun canal) ; la liste complete reste le seul chemin vers les
+types muets et vers unit_zoom.
+

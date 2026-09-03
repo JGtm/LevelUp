@@ -142,15 +142,185 @@ encore cherché « un objet créé à la position de l'ancre pendant la fenêtre
 - Gates chantier : `go vet ./...` + tests du package touché ; aucun garde-rail affaibli ;
   thought_log à chaque étape franchie ; delivery-checklist avant tout commit.
 
-## Décisions à trancher (user)
+## Décisions — TRANCHÉES le 2026-09-03 (user : « ok à tout ; la solution la plus propre,
+## solide et pérenne »)
 
-- D1 : R2.3 — appliquer un correctif de scanner (change les artefacts futurs et le golden) ?
-- D2 : R3.2 — remplacer MaxSpeedMPS=100 par une règle de réancrage mesurée ?
-- D3 : R4 — bump de schéma pour `gap` (nouveaux films seulement) ?
-- D4 : ce que le rejeu DESSINE une fois la lecture fiable acquise (faille, passage, éclat) —
-  revient sur la table seulement quand R1-R3 ont rendu leurs verdicts.
+- D1 OK : récupération gatée par le témoin de compteur, étiquette `recovered`.
+- D2 OK : option A — filtre levé à ±200 ms d'un événement 117 du même slot (jamais ailleurs).
+- D3 OK : marqueur `gap` par émission (nouveaux films seulement, aucune re-cuisson).
+- D4 OK : publication `translocations[]` + rendu (éclat daté à l'événement, lien du
+  va-et-vient, faille APRÈS le premier échange, fin mesurée — jamais à demeure).
+
+## Phase de production (après R1-R3 ; commits lot par lot sur cette branche)
+
+### Lot P1 — Go, schéma 38 : la lecture fiable entre en production
+
+- [x] P1.0 FAIT le 03/09 — ORDRE CONFIRMÉ : `bit k = composant 63−k` (msb=true) sur 40 témoins
+      SUPPLÉMENTAIRES au profil conservateur (gardes réduites à `dense`), 12 films nouveaux
+      (bfcd1175 x4, 4f77afc1 x5, bf2a9f05 x5, 58801bc5 x4, 9ffce8ef x4, 8a485699/9b4dba45/
+      d1dfbc02/e1259a69 x3, 0797ce72/30724141/879a4dba x2), tous au compteur prédit, 38/40 dans
+      la famille structurelle [0 1 (5) 17 21 25 (26|28) 48 (56|58...)]. UN SEUL contre-signal
+      msb=false propre (bfcd1175 slot 528, fenêtre de 364 s / 21 812 paquets, masque hors
+      famille, compteur à 3 chances sur 8 de tomber dans la prédiction) = plancher de bruit
+      R2 §5 — et il est ILLISIBLE par la forme de production (relu msb=true : idx[0]=3 ≠ 0,
+      rejeté par construction). La forme dense ENTRE en récupération, restreinte à msb=true.
+      Bilan additionnel (10 films, 58 sauts) : 42 SCANNER / 16 FILM, 82 % des émissions
+      retrouvées. Commande rejouable (depuis apps/go-api ; <b> = film_chunks) :
+      `CGO_ENABLED=0 I48M_PARC="<b>/9ffce8ef,<b>/4f77afc1,<b>/0797ce72,<b>/8a485699,
+      <b>/bf2a9f05,<b>/d1dfbc02,<b>/30724141,<b>/879a4dba,<b>/58801bc5,<b>/e1259a69"
+      I48M_MAXJUMPS=80 go test ./internal/analysis/filmdec/ -run '^TestI48ManquesParc$' -v`
+      (+ lots bfcd1175 et 9b4dba45 joués séparément, mêmes env).
+- [x] P1.1 (D1) FAIT le 03/09 — post-passe `equipment_recovery.go` dans
+      `ScanFilmEquipmentChanges` (aucune garde du strict affaiblie) : fenêtres de saut
+      seules, formes « sans i0 » (en-tête production intact, indices croissants, premier
+      != 0) et « dense msb=true » (i0 absolu + région exigés), candidat accepté SEULEMENT
+      au compteur prédit, sans doublon (ambiguïté = fenêtre rejetée), dans l'ordre, sans
+      créer ni répétition ni nouveau saut (règle du trou unique) ; `Recovered` publié
+      (filmdec + document + coverage). `livesFirstOffSpec` COUVERT (fenêtre [naissance,
+      première émission], compteur virtuel 4 = même arithmétique) : MESURÉ SAIN sur les
+      9 témoins — 13 récupérées au total, chaque récupération mi-vie = exactement un hit
+      conservateur R2, chaque perte FILM/profil bruité laissée en résiduel, 0 répétition
+      créée, 5 têtes de vie combles à la prédiction exacte (1b2d9e08:531, 0a44c6cc:533,
+      28c9b538:512 x2, c75f33b8:543). Preuve : TestP1RecuperationDynasty (gaté P1_FILM) —
+      slot 535 recovered c6 rang 11 @5700481685us, spent from=11, chaînes closes ; tests
+      unitaires equipment_recovery_test.go (fenêtres, témoin de compteur, ordre dense).
+- [x] P1.2 (D3) FAIT — `Gap` par émission (saut RÉSIDUEL après récupération, 0 = chaîne
+      saine, première émission = 0, tête au coverage LivesFirstOffSpec) ; publié
+      `equipmentChanges[].gap` (omitempty) + `coverage.equipmentChanges.recovered`.
+      Preuve : TestBuildEquipmentChangesPublieRecuperationEtGap + TestCounterGap.
+- [x] P1.3 (D4) FAIT — `filmdec.ScanFilmTranslocatorTeleports` (patron zoom_events.go,
+      tête 0xFA, type 117, ref0 8 bits base 512, refs 1-2 non lues) + calque
+      `translocations[]` = {slot, t} (avant-origine et sans-piste écartés et comptés,
+      `coverage.translocations` toujours publié). Aucun rang, aucune heuristique. Preuve :
+      TestDecodeTranslocHead(+Refuse), TestBuildTranslocations ; Dynasty : 3/3 événements
+      lus et publiés {535@1761, 560@3261, 560@3419}.
+- [x] P1.4 (D2) FAIT — `DropTeleportsExcept` + `TeleportExemptions` (±200 000 µs, horloge
+      des paquets = celle des événements, aucun décalage), branché dans
+      ScanFilmBipedPositions via ScanFilmOptions.TeleportExemptions ; BuildFromFilm scanne
+      les événements AVANT les positions. Invariance : unitaire
+      (TestDropTeleportsInvarianceSansEvenement, nil/vide/construit-de-rien identiques) ET
+      sur pièces (TestP1InvarianceSansTete117 : 7344d24f, 0 tête 117, 188 979 échantillons
+      bit à bit identiques). Effet Dynasty : 7 échantillons ré-acceptés (3+1+3 = les 51/51
+      de R3 pour ce film), 0 hors fenêtre (TestP1ExemptionVitesseDynasty).
+- [x] P1.5 FAIT — SchemaVersion 38 + chronique (document.go, structure_test.go), golden
+      réassemblé par la recette (fixture REPLAYINPUTS11 : + Translocations, parité
+      decodeFilmInputs avec l'exemption ; assembly : schéma 38 + section TRANSLOCATEUR
+      figée à zéro avec ses compteurs, phrase gardée par golden_guard), contracttest
+      (49→50 champs racine, Translocation/TranslocationCoverage dans replaySchemas),
+      openapi.yaml régénéré (`make openapi-gen`, +62 lignes : recovered/gap/translocations
+      + coverage), `make generate-types` (+29 lignes generated.ts) + frontière web comblée
+      (replayNormalize.ts + replayContract.test.ts : `translocations` énuméré et comblé —
+      partie MÉCANIQUE du garde de contrat, la consommation reste P2), `make check-types`
+      exit 0. Gates : go test filmdec+replay+replaybuild+contracttest exit 0 (0 --- FAIL),
+      go vet exit 0, vitest replayContract 13/13.
+
+Gate P1 : `CGO_ENABLED=0 go test ./internal/analysis/filmdec/ ./internal/analysis/replay/...`
++ replaybuild + contracttest + `go vet ./...` (packages touchés) + `make check-types` (types
+régénérés) ; aucun garde-rail affaibli ; thought_log.
+
+REVUE ADVERSARIALE RONDE 1 (03/09, 2 relecteurs aveugles) : 8 constats recevables, 0 jeté,
+corrections F1-F6 appliquées — F1 P0 garde de borne forme sans-i0 (panic queue de paquet,
+repro figée en test) ; F2 helper unique `counterStep` + garde-rail grep ; F3 départage par
+offset de bit au paquet frontière + VERROU FINAL sur la chaîne publiée
+(pruneRecoveredViolations) ; F4 fusion extraite pure + tests tueurs de mutations ; F5
+fixtures multi-îlots pour `covers` ; F6 invariance D2 prouvée contre une implémentation de
+RÉFÉRENCE figée (l'ancienne comparaison était circulaire), commentaires de prod corrigés.
+Gates rejoués verts, Dynasty re-cuit : constats (a)(b)(c) inchangés au chiffre près.
+Détail : thought_log entrée « P1 — revue adversariale ronde 1 ».
+
+REVUE RONDE 2 (03/09, relecteur frais, corrections seules) : 6/6 corrections FERMÉES
+(mutations rejouées et tuées : garde P0 — panic reproduite sans elle —, gap=0,
+comparateur inversé, ts[0], référence figée vérifiée contre d28a3aa6a ligne à ligne) ;
+17 conditions tiennent. UN défaut nouveau, P2 CONSIGNÉ (pas corrigé dans ce diff, borne
+de boucle) : voir Découvertes « verrou tête partielle ». P0+P1 : 7 → 0. LOT MERGEABLE.
+
+### Lot P2 — Web : consommer la lecture fiable (après P1)
+
+- [ ] P2.1 Éclat de fiche daté par `translocations[]` (l'événement, plus jamais le spent) ;
+      `spentTranslocations` retiré ou réduit au repli des artefacts < 38 (kill-switch daté).
+- [ ] P2.2 Lien du va-et-vient sur la carte : from/to dérivés de la discontinuité de piste à
+      la frame de l'événement ; `riftTeleports` (heuristique spatiale) retiré (CLAUDE.md n7)
+      — les artefacts < 38 gardent le comportement actuel via le repli.
+- [ ] P2.3 Faille dessinée APRÈS le premier échange (position = point de départ du saut,
+      forme `drawRift` existante), déplacée à chaque échange, éteinte à fin mesurée
+      (spent/`recovered`, mort du porteur) — jamais à demeure (point user expiration).
+- [ ] P2.4 `from` sous `gap` traité comme inconnu par les consommateurs (vignette comprise).
+- [ ] P2.5 i18n FR/EN si libellé ; tests logic ; plafonds de taille.
+
+Gate P2 : `make check-types && make test-web` + gate visuel user sur un film re-cuit témoin.
+
+### Lot R5 — Recherche : les événements des AUTRES équipements (parallèle)
+
+- [ ] R5.1 Inventaire des types d'événements nommés (annexe A de la grammaire, table
+      chunk00) : lesquels parlent d'équipement/usage (répulseur, propulseur, camo,
+      surbouclier, écran, capteur, réparation…) ?
+- [ ] R5.2 Recensement des têtes par type sur ≥ 5 films et CROISEMENT avec les usages déjà
+      mesurés par ailleurs (grappleLines, kills répulseur, épisodes camo/surbouclier, poses
+      deployed datées) — précision/rappel par type, comme R1 l'a fait pour 117.
+- [ ] R5.3 Rapport : quels équipements gagnent un événement d'usage fiable, lesquels
+      restent sans signal — et ce que la LISTE COMPLÈTE (vs tête seule) rapporterait.
+
+### Lot R6 — Ghidra : charge du 117 et émetteurs (commandé oralement le 03/09, user : « si
+### t'as besoin de ghidra tu peux utiliser ») — FAIT 03/09
+
+- [x] R6.A Charge utile du 117 DÉCODÉE ET VALIDÉE 18/18 (écarts 0,00-0,26 m, 5 films) :
+      `[R(1); R(32) effet = 0xA1344FC2 constant]` + DEUX positions quantifiées — A = DÉPART,
+      B = ARRIVÉE du saut. Quantification aux bornes vraies (`map_quant_bounds.json`) ; la
+      formule des largeurs lue dans l'exe reproduit exactement les axisWidths du catalogue.
+      PIÈGE sourcé : porte région du vecteur INVERSÉE (bit 0 → index région + bornes carte).
+      Le « mot 0x42689F84 » du rapport R1 était un artefact de fenêtre décalé d'un bit.
+      LA POSE RESTE ILLISIBLE : la charge ne porte rien d'autre — c'est le verdict final du
+      canal. Rapport : `RAPPORT_R6_GHIDRA_EVENTS_2026-09-03.md`.
+- [x] R6.B Émetteurs des types 30/42/43/48/93/104 introuvables statiquement (réception
+      fonctionnelle, diffusion non filtrée par type → l'absence vient de l'ÉMISSION) ;
+      sondage liste via grammaires fermées : 0 occurrence des 13 types cibles derrière 597
+      têtes marchées. Verdict : « aucune trace ; indéterminé formellement, faisceau vers
+      jamais émis en multi » (42/43/93 gestes IA/campagne, 48/31/119 requêtes C2S, 104
+      notification ciblée). Répulseur/propulseur : le film ne les enregistre pas — clos.
+- Conséquence produit : **P1bis** (à exécuter après la ronde 2 de revue, AVANT toute
+  cuisson) — `translocations[]` gagne les positions from/to décodées de la charge (le
+  schéma 38 n'est déployé nulle part : on l'enrichit avant sa première cuisson, pas de 39).
+  Le lien du va-et-vient (P2.2) se lira alors de l'événement seul, sans dérivation de
+  discontinuité de piste.
+
+### Re-cuisson
+
+Un film témoin d'abord (Dynasty `1b2d9e08`), sur accord explicite user, après P1+P2 —
+jamais de cuisson de masse sans décision séparée.
 
 ## Découvertes / suites à arbitrer (issues de R1-R2, hors périmètre des lots courants)
+
+- P2 revue ronde 2 (03/09) — VERROU TÊTE PARTIELLE : `equipment_changes.go:271`
+  (`pruneRecoveredViolations`) / cause `:290` (`chainViolations` ignore le compteur virtuel
+  de tête `equipRecoveryHeadCounter`) : une récupérée de TÊTE de vie partielle non contiguë
+  à la première stricte (ex. c5 seul retrouvé pour fromC=4, première stricte c7) est
+  acceptée par le témoin puis RETIRÉE par le verrou (sonde exécutée : out=2, Recovered=0).
+  Perte conservatrice (aucune donnée fausse), périmètre étroit. Piste : amorcer
+  `chainViolations` avec le compteur virtuel de tête. À CORRIGER EN P1bis avec son test.
+- R6 latéral (03/09) — `unit_zoom` (type 21) apparaît EN POSITION 2 de la liste
+  d'événements (5 occurrences) : le canal zoom de production ne lit que les TÊTES → il
+  sous-compte. Dette du canal zoom existant, hors chantier — à cadrer séparément.
+- R6 latéral — un événement type 15 `Script` suit chaque 117 ; `action_weapon_fire` vu en
+  position 2 (20 occ.). Matière pour le chantier « liste complète » (PLAN_PERCER_TRAME_FILM).
+- R6 environnement — GhidraMCP headless : piège JDK 25 (`Selector.open()` échoue ;
+  contournement documenté) + commande complète : RAPPORT_R6 §0 et annexe C.1.
+
+- P1 (03/09) — VALIDATION DYNASTY 1b2d9e08, artefact re-cuit schéma 38 (worktree,
+  data/cache/replays du worktree, films lus en lecture seule) : avant = 31 changements,
+  1 saut / 1 manquante / 1 tête hors norme ; après = 33 changements (+2 récupérées),
+  0/0/0 résiduel, 0 gap non nul. (a) slot 535 : {t:1378 taken r4} → {t:1520 taken r11
+  from=4 recovered:true} → {t:1851 spent from=11}. (b) translocations = [{535,1761},
+  {560,3261},{560,3419}] (l'événement précède l'arrivée : arrivées publiées 1762/3262/3420).
+  (c) exemption : 7 échantillons bruts ré-acceptés dans les fenêtres ±200 ms, 0 hors
+  fenêtre ; les POINTS PUBLIÉS (34 114) sont identiques à l'ancien artefact — conforme à
+  R3 §5 (« le bénéfice visible artefact est <= 0,20 m ; le vrai gain est d'amont ») : sur
+  ce film, les échantillons ré-acceptés tombent dans des frames dont le premier
+  échantillon publié ne change pas. Le gain est dans les positions BRUTES (aval :
+  appariements, marqueurs d'usage).
+- P1 (03/09) — la frontière web (replayNormalize/replayContract) a reçu `translocations`
+  dans ce lot (exigence du garde de compilation, gate check-types) ; P2.1-P2.4 partent
+  donc d'une frontière déjà comble — il leur reste la CONSOMMATION (éclat, va-et-vient,
+  faille, `from` sous gap).
 
 - Décodage de la LISTE COMPLÈTE d'événements par paquet (le scanner actuel ne lit que la
   TÊTE) : lèverait la seule réserve du rappel R1 (3 spent sans événement), et vaut pour tous

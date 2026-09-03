@@ -99,8 +99,14 @@ type Options struct {
 	// (compteur de rotation) : sans elles, la couverture ne saurait pas dire ce qui manque.
 	EquipmentChanges     []filmdec.EquipmentChange
 	EquipmentChangeStats filmdec.EquipmentChangeStats
-	Placements           []filmdec.EquipmentPlacement
-	PlacementStats       filmdec.EquipmentPlacementStats
+	// Translocations : les TÉLÉPORTATIONS du translocateur, datées par l'événement type 117
+	// du film (cf. filmdec/transloc_events.go). Entrée de DONNÉES, comme EquipmentChanges.
+	// Absente = rejeu sans téléportations — jamais des téléportations devinées. Ce sont les
+	// MÊMES événements qui exemptent le filtre de vitesse au décodage (décision D2) : le
+	// scan se fait UNE fois, avant les positions.
+	Translocations []filmdec.TranslocatorTeleport
+	Placements     []filmdec.EquipmentPlacement
+	PlacementStats filmdec.EquipmentPlacementStats
 	// Pads : ce que le film rend sur les SOCLES — armes au sol (`ti=42`) et power-ups (`ti=37`),
 	// TROIS lectures chacun, `Scanned` disant qu'elles ont abouti (cf. build_ground_weapons.go).
 	// Entree de DONNEES, comme Placements. Absente = rejeu sans socles — jamais des socles devines.
@@ -270,6 +276,17 @@ func BuildFromFilm(matchID, titleSlug, filmDir string, opt Options) (ReplayDocum
 	// directions est donc toujours active pour l'artefact. Elle n'altère aucune position
 	// (lecture seule après le vec3 d'i0).
 	scan.CaptureDirs = true
+	// TÉLÉPORTATIONS DU TRANSLOCATEUR : lues AVANT les positions, parce qu'elles servent
+	// deux fois — le calque `translocations` du document, et l'EXEMPTION du filtre de
+	// vitesse (décision D2) : une arrivée de téléportation part à 193-1540 m/s, le filtre à
+	// 100 m/s la rejetait à tort (R3 : 51/51 rejets mesurés, tous à ±200 ms d'un événement
+	// 117 du même slot). Sur un film sans tête 117, la liste est vide et le filtre est
+	// bit à bit identique à l'actuel — invariance prouvée par test.
+	opt.Translocations = filmdec.ScanFilmTranslocatorTeleports(filmDir)
+	scan.TeleportExemptions = filmdec.TeleportExemptionsOf(opt.Translocations)
+	if len(opt.Translocations) > 0 {
+		slog.Info("translocateur : teleportations lues", "evenements", len(opt.Translocations))
+	}
 	positions, err := filmdec.ScanFilmBipedPositions(filmDir, scan)
 	if err != nil {
 		return ReplayDocument{}, err
@@ -770,6 +787,12 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	doc.EquipmentChanges = keepEquipmentChangesOfPublishedTracks(ecChanges, doc.Tracks)
 	doc.Coverage.EquipmentChanges = &ecCov
 	logEquipmentChangeCoverage(ecCov)
+	// LES TÉLÉPORTATIONS du translocateur, datées par l'événement 117 — même axe, même
+	// règle de publication que les autres calques (rien avant l'origine, rien sans piste).
+	var trCov TranslocationCoverage
+	doc.Translocations, trCov = buildTranslocations(opt.Translocations, doc.Tracks, origin, step)
+	doc.Coverage.Translocations = &trCov
+	logTranslocationCoverage(trCov)
 	palette := classifyAbilityPalette(doc.Abilities, opt.Labels.Abilities)
 	doc.AbilityLabels = abilityLabelsUsed(doc.Abilities, palette)
 	slog.Info("rejeu : palette de capacites",

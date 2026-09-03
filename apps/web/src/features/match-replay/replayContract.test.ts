@@ -173,6 +173,11 @@ const NULLABLE_ARRAYS = [
   // par période (xuid, t0, t1, closed), le patron de `skullCarries` sur le canal des armes
   // tenues. La garde de mode est côté serveur : toute la famille bomb, One Bomb comprise.
   'bombCarries',
+  // `translocations` : LES TÉLÉPORTATIONS DU TRANSLOCATEUR (schéma 38, 2026-09-03) — une entrée
+  // PLATE par saut (t, slot), datée par l'ÉVÉNEMENT type 117 du film — jamais un seuil spatial,
+  // jamais le `spent` (jusqu'à 16,5 s de retard mesuré). La consommation P2 (éclat, va-et-vient,
+  // faille) viendra la lire ici ; la frontière la comble dès le schéma.
+  'translocations',
 ] as const
 
 /** (1) La liste couvre EXACTEMENT les tableaux nullables du contrat — ni plus, ni moins. */
@@ -254,6 +259,8 @@ const NULLABLE_ARRAY_PATHS = [
   // Schéma 29 : le RAMASSAGE NATIF, calque PLAT lui aussi — l'objet ne porte que des nombres
   // et des chaînes (instant, slot, xuid, identifiant de catalogue, nature, classe brute).
   'pickups',
+  // `translocations` (schéma 38) : téléportation PLATE (t, slot) — un seul chemin, la racine.
+  'translocations',
   // `bombArmings` (schéma 33) : armement PLAT, aucun tableau imbriqué — un seul chemin, la racine.
   'bombArmings',
   // `bombCarries` (schéma 34) : portage PLAT, aucun tableau imbriqué — un seul chemin, la racine.

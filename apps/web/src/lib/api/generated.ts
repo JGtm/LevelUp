@@ -5421,6 +5421,7 @@ export interface components {
             shots: components["schemas"]["LayerCoverage"];
             skullCarries?: components["schemas"]["SkullCarriesCoverage"];
             t0Film?: components["schemas"]["T0FilmCoverage"];
+            translocations?: components["schemas"]["TranslocationCoverage"];
             verdict?: {
                 [key: string]: string;
             };
@@ -5717,9 +5718,12 @@ export interface components {
         EquipmentChange: {
             /** Format: int64 */
             from: number;
+            /** Format: int64 */
+            gap?: number;
             kind: string;
             /** Format: int64 */
             r: number;
+            recovered?: boolean;
             /** Format: int32 */
             slot: number;
             /** Format: int64 */
@@ -5740,6 +5744,8 @@ export interface components {
             missedEstimate: number;
             /** Format: int64 */
             published: number;
+            /** Format: int64 */
+            recovered: number;
             /** Format: int64 */
             repeats: number;
             /** Format: int64 */
@@ -7866,7 +7872,13 @@ export interface components {
             /** Format: int64 */
             deaths: number;
             /** Format: int64 */
+            joinMatchMs?: number;
+            joinedInProgress?: boolean;
+            /** Format: int64 */
             kills: number;
+            /** Format: int64 */
+            leaveMatchMs?: number;
+            leftInProgress?: boolean;
             /** Format: int64 */
             teamId: number;
             xuid: string;
@@ -9742,6 +9754,7 @@ export interface components {
             t0FilmMs?: number;
             titleSlug: string;
             tracks: components["schemas"]["Track"][] | null;
+            translocations?: components["schemas"]["Translocation"][] | null;
             vipCrown?: components["schemas"]["VipPeriod"][] | null;
             weaponChanges?: components["schemas"]["WeaponChange"][] | null;
             weaponLabels?: {
@@ -11611,6 +11624,22 @@ export interface components {
             /** Format: int64 */
             team: number;
             xuid?: string;
+        };
+        Translocation: {
+            /** Format: int32 */
+            slot: number;
+            /** Format: int64 */
+            t: number;
+        };
+        TranslocationCoverage: {
+            /** Format: int64 */
+            beforeOrigin: number;
+            /** Format: int64 */
+            events: number;
+            /** Format: int64 */
+            published: number;
+            /** Format: int64 */
+            unpublished: number;
         };
         UnreadCount: {
             /** Format: int64 */

@@ -10786,6 +10786,8 @@ components:
           $ref: '#/components/schemas/SkullCarriesCoverage'
         t0Film:
           $ref: '#/components/schemas/T0FilmCoverage'
+        translocations:
+          $ref: '#/components/schemas/TranslocationCoverage'
         verdict:
           additionalProperties:
             type: string
@@ -11465,11 +11467,16 @@ components:
         from:
           format: int64
           type: integer
+        gap:
+          format: int64
+          type: integer
         kind:
           type: string
         r:
           format: int64
           type: integer
+        recovered:
+          type: boolean
         slot:
           format: int32
           minimum: 0
@@ -11508,6 +11515,9 @@ components:
         published:
           format: int64
           type: integer
+        recovered:
+          format: int64
+          type: integer
         repeats:
           format: int64
           type: integer
@@ -11532,6 +11542,7 @@ components:
         - counterJumps
         - livesFirstOffSpec
         - repeats
+        - recovered
       type: object
     EquipmentCoverage:
       additionalProperties: false
@@ -16539,9 +16550,19 @@ components:
         deaths:
           format: int64
           type: integer
+        joinMatchMs:
+          format: int64
+          type: integer
+        joinedInProgress:
+          type: boolean
         kills:
           format: int64
           type: integer
+        leaveMatchMs:
+          format: int64
+          type: integer
+        leftInProgress:
+          type: boolean
         teamId:
           format: int64
           type: integer
@@ -21035,6 +21056,12 @@ components:
         tracks:
           items:
             $ref: '#/components/schemas/Track'
+          type:
+            - array
+            - "null"
+        translocations:
+          items:
+            $ref: '#/components/schemas/Translocation'
           type:
             - array
             - "null"
@@ -25822,6 +25849,41 @@ components:
         - slot
         - team
         - points
+      type: object
+    Translocation:
+      additionalProperties: false
+      properties:
+        slot:
+          format: int32
+          minimum: 0
+          type: integer
+        t:
+          format: int64
+          type: integer
+      required:
+        - t
+        - slot
+      type: object
+    TranslocationCoverage:
+      additionalProperties: false
+      properties:
+        beforeOrigin:
+          format: int64
+          type: integer
+        events:
+          format: int64
+          type: integer
+        published:
+          format: int64
+          type: integer
+        unpublished:
+          format: int64
+          type: integer
+      required:
+        - events
+        - published
+        - beforeOrigin
+        - unpublished
       type: object
     UnreadCount:
       additionalProperties: false

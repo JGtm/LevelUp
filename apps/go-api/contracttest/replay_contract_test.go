@@ -126,6 +126,12 @@ var replaySchemas = []struct {
 	{"Pickup", replay.Pickup{}},
 	{"PickupCoverage", replay.PickupCoverage{}},
 	{"T0FilmCoverage", replay.T0FilmCoverage{}},
+	// AJOUTES AU SCHEMA 38 (2026-09-03), DANS LE MEME LOT que le champ — la lecon P2-3 du
+	// 2026-09-01 (`Pickup` absent de cette table pendant deux schemas) appliquee d'emblee :
+	// le couple `recovered`/`gap` (optionnels) contre `recovered` de la couverture (requis)
+	// est exactement ce que les gardes omitempty<->required jugent.
+	{"Translocation", replay.Translocation{}},
+	{"TranslocationCoverage", replay.TranslocationCoverage{}},
 	{"Coverage", replay.Coverage{}},
 	{"LayerCoverage", replay.LayerCoverage{}},
 	{"BridgeHealth", replay.BridgeHealth{}},
@@ -520,9 +526,23 @@ var replaySchemas = []struct {
 //	                      moment dans `replaySchemas` : la lecon P2-3 du 2026-09-01 (`Pickup`
 //	                      absent de la table pendant deux schemas) est appliquee tout de suite.
 //
+//	49 -> 50  2026-09-03  UN champ, la LECTURE FIABLE des usages d equipement (schema 38,
+//	                      lot P1 du PLAN_LECTURE_FIABLE_EQUIPEMENT_2026-09-03) :
+//	                      - `translocations` : LES TELEPORTATIONS DU TRANSLOCATEUR, datees
+//	                        par l evenement type 117 du film (precision 18/18, rappel 8/8
+//	                        sur 5 films — rapport R1). Le client cessera d en deviner par
+//	                        seuil spatial (> 4 m : aveugle a un saut de 3,24 m mesure) ou de
+//	                        les dater du `spent` (jusqu a 16,5 s de retard mesure).
+//	                      Ce lot ajoute AUSSI, sans nouveau champ racine : `recovered` et
+//	                      `gap` sur EquipmentChange (la recuperation gatee par le temoin de
+//	                      compteur, et le saut residuel — decisions D1/D3), `recovered` sur
+//	                      EquipmentChangeCoverage, et le bloc `coverage.translocations`.
+//	                      Les deux types du calque entrent dans replaySchemas DANS LE MEME
+//	                      LOT (lecon P2-3 du 2026-09-01).
+//
 // Les dix-huit fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
 // chiffre ne le dise. Contrat regenere (`make openapi-gen`), jamais ecrit a la main.
-const wantReplayDocumentFields = 49
+const wantReplayDocumentFields = 50
 
 // TestReplayContractDescribesEveryPublishedField : AUCUN CHAMP PUBLIE SANS DESCRIPTION, ET
 // AUCUNE DESCRIPTION SANS CHAMP.
