@@ -448,6 +448,54 @@ est classée), et les 5 impulsions de JGtm de la fenêtre toujours à 1:52, 1:55
 Golden réassemblé : la ligne de couverture porte le sixième compteur, les 37 impulsions
 publiées de `000d5950` sont inchangées.
 
+REVUE ADVERSARIALE P3 RONDE 1 — SECONDE PASSE (03/09, relecteur frais, état épinglé par md5,
+gates rejoués verts) : **18 conditions vérifiées qui tiennent** — dont la résolution de famille
+par manifeste dans ses QUATRE cas, la FRAÎCHEUR du rang (doublement bornée par `rankInLife` et
+`buildLifeSpans` : une lecture de 3 minutes n'est acceptée que si la vie a duré 3 minutes sans
+nouvelle émission), la cohérence des six compteurs, la cohabitation avec le grappin (diff du
+golden strictement additif, section grappin inchangée), l'ordre i57-avant-i59, l'absence de tout
+littéral d'équipement côté Go, et la non-circularité de deux tests clés. Le relecteur note que
+l'ajout de `NoResolver` avait fermé, pendant sa relecture, le défaut de conflation qu'il avait
+isolé. 3 constats, **tous corrigés DANS le lot** :
+
+- [x] H1 (P2 relecteur, remonté) COUVERTURE PUBLIÉE SUR UN BALAYAGE QUI N'A JAMAIS TOURNÉ —
+      `build.go` posait `doc.Coverage.AbilityImpulses` SANS garde, alors que les quatre portes
+      de `ScanFilmAbilityImpulses` (aucun chunk, aucun slot bipède aux images-clés, découpage
+      i0 indétectable, registre illisible) font dégrader en `nil, AbilityImpulseStats{}`.
+      L'artefact affirmait alors « le balayage a tourné, le composant est là, personne ne s'en
+      est servi ». MÊME CLASSE que le défaut fermé par `NoResolver`, et contraire à la règle que
+      le MÊME fichier documente pour l'inventaire (`attachInventoryCoverage`). CORRIGÉ :
+      témoin `AbilityImpulseStats.Scanned` posé par le balayage (les DEUX sorties abouties,
+      `Absent` compris), garde de publication sur le patron exact d'`attachInventoryCoverage`
+      + warn explicite ; le témoin voyage dans le fixture golden (v13 étendu, chronique mise à
+      jour). Preuve : `TestBuildFromPositions_PasDeCouvertureQuandLeBalayageNAPasTourne`, qui
+      sépare les TROIS zéros (balayage en échec -> aucune couverture ; balayage abouti sans
+      composant -> couverture + `componentAbsent` ; balayage abouti avec composant et sans
+      impulsion -> couverture à zéro). Mutation rejouée et TUÉE.
+- [x] H2 (P2 relecteur, remonté) DOUBLE FILTRAGE = CODE MORT (CLAUDE.md n°7) —
+      `buildAbilityImpulses` filtrait déjà sur `publishedSlots(tracks)` (et le COMPTAIT en
+      `Unpublished`), et `keepAbilityImpulsesOfPublishedTracks` rejouait le MÊME prédicat sur
+      les MÊMES `doc.Tracks` à la ligne suivante : il ne pouvait jamais rien retirer. Son
+      commentaire était faux sur ses deux affirmations (aucun nommage entre les deux passes ;
+      les tirs et les grenades ne font QU'UNE passe). CORRIGÉ : seconde passe SUPPRIMÉE et
+      helper supprimé (plus aucun appelant, vérifié par grep) ; le filtre reste dans le
+      constructeur — c'est là qu'il peut être compté — et son commentaire dit désormais la
+      vérité, y compris que les tirs le posent à l'autre place.
+- [x] H3 (P2 relecteur, remonté) DOC INVERSÉE (CLAUDE.md n°9) — l'en-tête de
+      `renderAbilityImpulses` annonçait « les QUATRE refus » alors que la ligne en imprime CINQ
+      depuis `NoResolver`, sur le fichier même dont le rôle est de dire ce que le golden
+      verrouille. CORRIGÉ : les cinq sont énumérés, avec ce que les deux derniers compteurs
+      disent chacun.
+
+Gates rejoués après corrections : 7/7 paquets ok, 0 `--- FAIL:`, `go vet` exit 0,
+`gofmt -l internal/ contracttest/` vide, `make check-types` exit 0, `openapi-gen -check` À JOUR
+(aucun champ servi n'a bougé : `Scanned` est une donnée d'ENTRÉE, pas du document).
+`make go-api-lint` : mêmes 4 constats ANTÉRIEURS, aucun neuf. Test d'acceptation `1cd3848a`
+REJOUÉ, chiffres INCHANGÉS : 123 lectures -> 62 gestes -> 33 publiées, 18 sans identité,
+11 famille non mesurée, 0 attribution indisponible, et les 5 impulsions de JGtm de la fenêtre
+toujours à 1:52, 1:55, 2:03, 2:05, 2:15. Golden `000d5950` : ligne de couverture et
+37 impulsions publiées INCHANGÉES.
+
 Gate P3 : `CGO_ENABLED=0 go test ./internal/analysis/filmdec/ ./internal/analysis/replay/...
 ./contracttest/ ./internal/replaybuild/... ./internal/games/mappings/
 ./internal/games/halo_infinite/replaylabels/` (0 `--- FAIL:`) + `go vet ./internal/analysis/...`

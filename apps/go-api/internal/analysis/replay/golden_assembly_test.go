@@ -592,10 +592,12 @@ func renderTranslocations(p func(string, ...any), doc ReplayDocument) {
 
 // renderAbilityImpulses fige le calque des IMPULSIONS DE CAPACITE (schema 38) : l usage
 // MESURE du propulseur, date par le corps tag==1 d i57/i59 et ATTRIBUE par le rang i48 de la
-// MEME vie. L ENTONNOIR ENTIER SE FIGE — lectures, gestes, publiees, et les quatre refus :
-// une ligne qui ne dirait que « N impulsions » ne distinguerait pas un film sans propulseur
-// d un film dont la palette n a pas ete classee, ni d un canal qui refuse une famille non
-// mesuree. `familleNonMesuree` est le compteur qui dit que le repulseur reste dehors.
+// MEME vie. L ENTONNOIR ENTIER SE FIGE — lectures, gestes, publiees, et les CINQ refus (avant
+// l origine, sans piste, sans identite, famille non mesuree, attribution indisponible) : une
+// ligne qui ne dirait que « N impulsions » ne distinguerait pas un film sans propulseur d un
+// film dont la palette n a pas ete classee, ni d un canal qui refuse une famille non mesuree.
+// `familleNonMesuree` est le compteur qui dit que le repulseur reste dehors ;
+// `attributionIndisponible` celui qui dit que la chaine d identite n a pas pu tourner.
 func renderAbilityImpulses(p func(string, ...any), doc ReplayDocument) {
 	p("## IMPULSIONS DE CAPACITE — l usage MESURE du propulseur, attribue par le rang de la vie")
 	if c := doc.Coverage.AbilityImpulses; c != nil {

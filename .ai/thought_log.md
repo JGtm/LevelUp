@@ -89922,3 +89922,56 @@ passage : i56 date les usages de grappin et de propulseur avec un meilleur rappe
 
 ---
 
+
+## [2026-09-03] P3 — revue ronde 1, seconde passe (3 constats recevables, 18 conditions tenues)
+
+**Statut** : Complete (worktree `LevelUp-wt-lecture-equipement`, aucun commit).
+
+**Ce que la revue a tenu** : 18 conditions — resolution de famille par manifeste dans ses QUATRE
+cas, FRAICHEUR du rang doublement bornee (`rankInLife` + `buildLifeSpans` : une lecture de trois
+minutes n'est acceptee que si la vie a dure trois minutes sans nouvelle emission), coherence des
+six compteurs, cohabitation avec le grappin (diff du golden strictement additif, section grappin
+inchangee), ordre i57-avant-i59, absence de tout litteral d'equipement cote Go, non-circularite
+de deux tests cles. Le relecteur note que `NoResolver`, ajoute a la passe precedente, avait ferme
+pendant sa relecture le defaut de conflation qu'il avait isole.
+
+**Decision technique principale (H1)** : un balayage qui n'a JAMAIS TOURNE ne publie plus de
+couverture. Les quatre portes de `ScanFilmAbilityImpulses` rendent une erreur, `BuildFromFilm`
+degrade en `nil, AbilityImpulseStats{}` — et l'artefact affirmait alors « le balayage a tourne,
+le composant est la, personne ne s'en est servi » sur un film ou rien n'avait ete lu. C'est la
+MEME classe que le defaut ferme par `NoResolver` a la passe precedente, un cran plus haut : la
+conflation ne portait plus sur l'attribution mais sur la LECTURE. La reponse est le patron que
+le meme fichier documente pour l'inventaire (`attachInventoryCoverage` : « Publier {0,0,0,0}
+affirmerait "lecture faite, zero trouve", qui est le contraire de ce qui s'est passe ») : un
+temoin `Scanned` pose par le balayage sur ses DEUX sorties abouties (`Absent` compris — « aucun
+composant declare » EST un resultat de balayage), et une garde de publication. Le temoin voyage
+dans le fixture golden, sans quoi le fixture aurait reintroduit le zero muet.
+
+**Le point que le relecteur a eu raison de remonter (H2)** : `keepAbilityImpulsesOfPublishedTracks`
+rejouait le MEME predicat que le constructeur sur les MEMES `doc.Tracks`, a la ligne suivante —
+il ne pouvait jamais rien retirer. Et son commentaire etait faux DEUX FOIS (il n'y a pas de
+nommage de vies entre les deux passes ; les tirs et les grenades ne font qu'UNE passe). La
+seconde passe et son helper sont supprimes ; le filtre reste dans le constructeur, ou il peut
+etre COMPTE (`Unpublished`), et le commentaire dit maintenant que les deux places sont admises
+mais jamais les deux ensemble.
+
+**Resultats observes** :
+- Mutation H1 rejouee et TUEE : garde forcee a `true` -> `TestBuildFromPositions_
+  PasDeCouvertureQuandLeBalayageNAPasTourne` tombe. Le test separe les TROIS zeros (echec de
+  balayage / balayage sans composant / balayage sans impulsion), qui ne disent pas la meme chose.
+- H2 : plus aucun appelant du helper (verifie par grep), suppression complete.
+- H3 : l'en-tete de `renderAbilityImpulses` annoncait « les QUATRE refus » quand la ligne en
+  imprime CINQ depuis `NoResolver` — doc inversee sur le fichier meme dont le role est de dire
+  ce que le golden verrouille. Corrigee, les cinq enumeres.
+- Test d'acceptation `1cd3848a` REJOUE, chiffres INCHANGES : 123 lectures -> 62 gestes ->
+  33 publiees, 18 sans identite, 11 famille non mesuree, 0 attribution indisponible ; les
+  5 impulsions de JGtm de la fenetre toujours a 1:52, 1:55, 2:03, 2:05, 2:15.
+- Golden `000d5950` : ligne de couverture et 37 impulsions publiees INCHANGEES (le temoin
+  `Scanned` est une donnee d'ENTREE, pas du document — `openapi-gen -check` le confirme : le
+  contrat servi n'a pas bouge).
+- Gates : 7/7 paquets ok (0 `--- FAIL:`), `go vet` 0, `gofmt -l internal/ contracttest/` vide,
+  `make check-types` 0, `openapi-gen -check` a jour. `make go-api-lint` : memes 4 constats
+  ANTERIEURS, aucun neuf.
+
+**Conclusion / prochaine etape** : constats de la ronde = 3 -> 0 sur les deux passes, lot
+mergeable. Suite : P2 (consommation web), la frontiere est deja comble.

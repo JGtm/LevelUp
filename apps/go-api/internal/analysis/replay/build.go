@@ -837,9 +837,20 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 		reads: opt.AbilityImpulses, stats: opt.AbilityImpulseStats, ranks: opt.AbilityRanks,
 		lives: own.lives, palette: palette, measured: opt.Labels.AbilityImpulseFamilies,
 	}, doc.Tracks, origin, step)
-	doc.AbilityImpulses = keepAbilityImpulsesOfPublishedTracks(doc.AbilityImpulses, doc.Tracks)
-	doc.Coverage.AbilityImpulses = &aiCov
-	logAbilityImpulseCoverage(aiCov)
+	// LA COUVERTURE NE SE PUBLIE QUE SI LE BALAYAGE A TOURNE — patron `attachInventoryCoverage`
+	// (inventory.go), et pour la raison qu'il documente : publier {0,0,0,...} affirmerait
+	// « lecture faite, zero trouve », qui est le contraire de ce qui s'est passe quand le
+	// balayage n'a jamais commence (BuildFromFilm degrade alors en `nil, AbilityImpulseStats{}`,
+	// cf. son warn). L'ABSENCE de bloc dit encore autre chose, et c'est la distinction sur
+	// laquelle repose toute la doctrine de coverage.go. Un balayage qui aboutit le pose, meme
+	// vide et meme `componentAbsent`.
+	if opt.AbilityImpulseStats.Scanned {
+		doc.Coverage.AbilityImpulses = &aiCov
+		logAbilityImpulseCoverage(aiCov)
+	} else {
+		slog.Warn("rejeu : impulsions de capacite NON BALAYEES — aucune couverture publiee",
+			"lectures", len(opt.AbilityImpulses))
+	}
 	slog.Info("rejeu : couverture par calque",
 		"tirsRattaches", shotCov.Attached, "tirsDisponibles", shotCov.Available,
 		"tirsSansSlot", shotCov.NoSlot, "tirsAmbigus", shotCov.Ambiguous,

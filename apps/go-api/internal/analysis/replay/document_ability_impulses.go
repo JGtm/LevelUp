@@ -147,6 +147,11 @@ func buildAbilityImpulses(
 	// d'identité ne peut pas tourner du tout, et ses refus n'auraient aucun sens (cf.
 	// AbilityImpulseCoverage.NoResolver).
 	b.resolvable = in.palette != nil && len(b.measured) > 0 && len(in.lives) > 0
+	// LE SEUL FILTRE « pas de piste publiee, pas de calque » de ce canal, et il est ICI parce
+	// que c'est ici qu'on peut le COMPTER (`Unpublished`). Les tirs et les grenades le posent a
+	// l'inverse — une seule passe, mais APRES construction (`keepShotsOfPublishedTracks`) : les
+	// deux places sont admises, les deux ensemble ne le sont pas (la seconde passe ne pourrait
+	// jamais rien retirer — code mort, CLAUDE.md n7 ; constat H2 de la revue de ronde 1).
 	published := publishedSlots(tracks)
 	var out []AbilityImpulse
 	for _, ep := range foldAbilityImpulses(in.reads) {
@@ -295,15 +300,6 @@ func (idx *abilityRankIndex) rankInLife(slot uint32, at uint64) (int, bool) {
 		}
 	}
 	return best, got
-}
-
-// keepAbilityImpulsesOfPublishedTracks écarte les impulsions dont le slot n'a pas de
-// trajectoire publiée. LE FILTRE EST DÉJÀ APPLIQUÉ à la construction (et compté) : cette
-// fonction est le garde-fou commun des calques, appliqué APRÈS le nommage des vies — deux
-// passes sur la même règle, comme pour les tirs et les grenades.
-func keepAbilityImpulsesOfPublishedTracks(in []AbilityImpulse, tracks []Track) []AbilityImpulse {
-	return keepOfPublishedTracks(in, tracks,
-		func(a AbilityImpulse, published map[uint32]bool) bool { return published[a.Slot] })
 }
 
 // logAbilityImpulseCoverage sort la couverture du calque. Un journal qui ne dirait que les
