@@ -313,6 +313,7 @@ func renderAssembly(doc ReplayDocument) string {
 	renderAbilities(p, doc)
 	renderEquipment(p, doc)
 	renderTranslocations(p, doc)
+	renderAbilityImpulses(p, doc)
 	renderGrapple(p, doc)
 	renderPlacements(p, doc)
 	renderGroundWeapons(p, doc)
@@ -585,6 +586,29 @@ func renderTranslocations(p func(string, ...any), doc ReplayDocument) {
 		}
 		p("  slot=%d t=%d (%.2f,%.2f,%.2f) -> (%.2f,%.2f,%.2f)",
 			tr.Slot, tr.T, *tr.FX, *tr.FY, *tr.FZ, *tr.TX, *tr.TY, *tr.TZ)
+	}
+	p("")
+}
+
+// renderAbilityImpulses fige le calque des IMPULSIONS DE CAPACITE (schema 38) : l usage
+// MESURE du propulseur, date par le corps tag==1 d i57/i59 et ATTRIBUE par le rang i48 de la
+// MEME vie. L ENTONNOIR ENTIER SE FIGE — lectures, gestes, publiees, et les quatre refus :
+// une ligne qui ne dirait que « N impulsions » ne distinguerait pas un film sans propulseur
+// d un film dont la palette n a pas ete classee, ni d un canal qui refuse une famille non
+// mesuree. `familleNonMesuree` est le compteur qui dit que le repulseur reste dehors.
+func renderAbilityImpulses(p func(string, ...any), doc ReplayDocument) {
+	p("## IMPULSIONS DE CAPACITE — l usage MESURE du propulseur, attribue par le rang de la vie")
+	if c := doc.Coverage.AbilityImpulses; c != nil {
+		p("%d lecture(s) -> %d geste(s) -> %d publiee(s) · %d sans identite · "+
+			"%d famille non mesuree · %d attribution indisponible · %d avant l origine · "+
+			"%d sans piste publiee · composant absent=%t",
+			c.Reads, c.Episodes, c.Published, c.NoIdentity, c.OtherFamily, c.NoResolver,
+			c.BeforeOrigin, c.Unpublished, c.ComponentAbsent)
+	} else {
+		p("aucune couverture (rien n a ete fourni a lire)")
+	}
+	for _, im := range doc.AbilityImpulses {
+		p("  slot=%d t=%d %s", im.Slot, im.T, im.Family)
 	}
 	p("")
 }

@@ -127,6 +127,26 @@ type AbilityPalette struct {
 	Markers []int
 	// Ranks nomme les rangs établis. Partielle par nature.
 	Ranks map[int]Label
+	// Families donne l'IDENTITÉ STABLE d'un rang, dans le vocabulaire des familles
+	// d'équipement du titre (`thruster`, `grapple`, `wall`...). C'est ce qui permet à un
+	// calque de désigner une capacité sans jamais écrire son RANG dans du Go : le propulseur
+	// vaut 5 en famille A et 21 en famille B, et un littéral en dur rendrait le calque muet
+	// sur l'autre famille.
+	//
+	// PLUS PARTIELLE QUE `Ranks` : un rang nommé peut n'avoir aucune famille (les power-ups,
+	// dont l'objet du manifeste n'est pas l'emplacement de capacité). Absente = aucune
+	// jointure, jamais une jointure devinée.
+	Families map[int]string
+}
+
+// FamilyOf rend la famille d'équipement d'un rang dans cette palette, ou "" quand elle n'est
+// pas établie. Nil-safe : une palette non classée ne nomme aucune famille, exactement comme
+// elle ne nomme aucun rang.
+func (p *AbilityPalette) FamilyOf(rank int) string {
+	if p == nil {
+		return ""
+	}
+	return p.Families[rank]
 }
 
 // LE CLASSEMENT DE PALETTE — la règle, et les chiffres qui la fondent.

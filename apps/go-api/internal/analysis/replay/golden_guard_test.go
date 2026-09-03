@@ -62,6 +62,14 @@ var phrasesGolden = []string{
 	"datee(s) a l instant exact par l evenement natif",
 	"POWER-UPS (voie ti=37)",
 	"retenue(s) par l IDENTITE `powerup_*`",
+	// Schema 38 (2026-09-03, lot P3) : le calque des impulsions doit DIRE qu il attribue par
+	// le rang de la vie — sans quoi un lecteur croirait que le composant nomme l equipement,
+	// ce que le corpus a refute (le `sub` d i57, R8 par. 8.5).
+	"l usage MESURE du propulseur, attribue par le rang de la vie",
+	"famille non mesuree",
+	// Le refus « la chaine d'attribution n'a pas pu tourner » se lit A PART des deux autres :
+	// le confondre avec « un autre equipement » deguiserait une indisponibilite en mesure.
+	"attribution indisponible",
 }
 
 func lireGoldenAssembly(t *testing.T) string {

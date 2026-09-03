@@ -72,6 +72,15 @@ type Options struct {
 	// filmdec/grapple_state.go). Entree de DONNEES, comme CamoStates. Absente = rejeu sans
 	// tractions de grappin — jamais des tractions devinees.
 	GrappleReads []filmdec.GrappleRead
+	// AbilityImpulses / AbilityImpulseStats : les IMPULSIONS DE CAPACITE lues dans le corps
+	// tag==1 des composants i57/i59 (cf. filmdec/ability_impulses.go). Entree de DONNEES,
+	// comme GrappleReads — c'est le MEME composant, l'autre valeur de son tag.
+	//
+	// LES STATISTIQUES VOYAGENT AVEC LA LISTE, et il le faut : elles portent le temoin
+	// `Absent` (le film ne declare NI i57 NI i59). Une liste vide sans lui serait
+	// indistinguable d'un film ou personne ne s'est servi de son propulseur.
+	AbilityImpulses     []filmdec.AbilityImpulse
+	AbilityImpulseStats filmdec.AbilityImpulseStats
 	// Placements / PlacementStats : les POSES d'objets d'equipement lues dans les records de
 	// CREATION de l'archetype 37 (cf. filmdec/equipment_placements.go). Entree de DONNEES,
 	// comme GrappleReads. Absente = rejeu sans poses — jamais des poses devinees.
@@ -431,6 +440,22 @@ func BuildFromFilm(matchID, titleSlug, filmDir string, opt Options) (ReplayDocum
 			"tag3", gStats.Tag3, "corpsCasses", gStats.BodyBroken)
 	}
 	opt.GrappleReads = grappleReads
+	// IMPULSIONS DE CAPACITE : le corps tag==1 des MEMES composants (i57 et son jumeau non
+	// predit i59), lu dans les paquets DELTA sur la MEME horloge (cf.
+	// filmdec/ability_impulses.go). C'est le canal d'usage du PROPULSEUR, mesure au lot R8 ;
+	// l'identite, elle, vient d'i48 (deja balaye ci-dessus). Absence non fatale — le rejeu
+	// sort sans impulsions, jamais avec des impulsions devinees.
+	impulses, iStats, err := filmdec.ScanFilmAbilityImpulses(filmDir)
+	if err != nil {
+		slog.Warn("impulsions de capacite illisibles — rejeu sans impulsions", "err", err, "filmDir", filmDir)
+		impulses, iStats = nil, filmdec.AbilityImpulseStats{}
+	} else {
+		slog.Info("capacites : lectures de tag d i57/i59",
+			"recordsDelta", iStats.Records, "masqueAvecI57", iStats.WithI57,
+			"masqueAvecI59", iStats.WithI59, "lues", iStats.Read, "illisibles", iStats.Unread,
+			"tag1", iStats.Tag1, "composantAbsent", iStats.Absent)
+	}
+	opt.AbilityImpulses, opt.AbilityImpulseStats = impulses, iStats
 	// POSES d'equipement : records de CREATION de l'archetype 37, sur la MEME horloge
 	// (cf. equipment_placements.go — decodage, journal et refus y vivent ensemble).
 	// LA LUNETTE (schema 24) : les bascules vivent dans la liste d'evenements en tete de
@@ -803,6 +828,18 @@ func BuildFromPositions(matchID, titleSlug string, pos []filmdec.BipedPosition,
 	slog.Info("rejeu : palette de capacites",
 		"palette", paletteIDOrNone(palette), "lectures", len(doc.Abilities),
 		"rangsNommes", len(doc.AbilityLabels))
+	// LES IMPULSIONS DE CAPACITE, APRES la palette et non avant : leur identite est le RANG
+	// i48 de la vie, et c'est la palette du match qui le nomme (le propulseur vaut 5 en
+	// famille A et 21 en famille B). Un film non classe ne rend donc aucune impulsion —
+	// mieux vaut muet que faux, la meme regle que `abilityLabelsUsed`.
+	var aiCov AbilityImpulseCoverage
+	doc.AbilityImpulses, aiCov = buildAbilityImpulses(abilityImpulseInputs{
+		reads: opt.AbilityImpulses, stats: opt.AbilityImpulseStats, ranks: opt.AbilityRanks,
+		lives: own.lives, palette: palette, measured: opt.Labels.AbilityImpulseFamilies,
+	}, doc.Tracks, origin, step)
+	doc.AbilityImpulses = keepAbilityImpulsesOfPublishedTracks(doc.AbilityImpulses, doc.Tracks)
+	doc.Coverage.AbilityImpulses = &aiCov
+	logAbilityImpulseCoverage(aiCov)
 	slog.Info("rejeu : couverture par calque",
 		"tirsRattaches", shotCov.Attached, "tirsDisponibles", shotCov.Available,
 		"tirsSansSlot", shotCov.NoSlot, "tirsAmbigus", shotCov.Ambiguous,

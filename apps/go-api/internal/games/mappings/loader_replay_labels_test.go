@@ -150,3 +150,92 @@ func TestLoadReplayLabels_NatureEquipement(t *testing.T) {
 		}
 	}
 }
+
+// famPropulseur : la famille d'equipement du propulseur, telle que la liste fermee du titre
+// la nomme (cf. equipmentFamilies). UN SEUL proprietaire du litteral dans ce fichier.
+const famPropulseur = "thruster"
+
+// replayLabelsImpulses — deux palettes qui nomment la MEME famille sous deux rangs
+// differents (5 et 21, exactement comme le propulseur d'Halo Infinite), et la declaration
+// des familles dont l'usage est mesure par le canal d'impulsion.
+const replayLabelsImpulses = `
+[meta]
+title_slug     = "halo_infinite"
+schema_version = 1
+
+[[ability_palettes]]
+id = "famille_a"
+markers = [5, 6]
+[ability_palettes.ranks]
+"5" = { en = "Thruster", fr = "propulseur", family = "thruster" }
+"6" = { en = "Repulsor", fr = "repulseur", family = "repulsor" }
+
+[[ability_palettes]]
+id = "famille_b"
+markers = [21]
+[ability_palettes.ranks]
+"21" = { en = "Thruster", fr = "propulseur", family = "thruster" }
+
+[ability_impulses]
+families = ["thruster"]
+`
+
+// TestLoadReplayLabels_FamillesDeCapacite — LE RANG N'EST PAS L'IDENTITE : la meme famille
+// porte deux rangs selon la palette, et c'est exactement ce que `family` existe pour dire.
+// Un consommateur qui ecrirait 5 ou 21 en dur serait muet sur l'autre famille.
+func TestLoadReplayLabels_FamillesDeCapacite(t *testing.T) {
+	set, err := LoadReplayLabelsFromBytes("t.toml", []byte(replayLabelsImpulses))
+	if err != nil {
+		t.Fatalf("chargement: %v", err)
+	}
+	pal := set.AbilityPalettes()
+	if len(pal) != 2 {
+		t.Fatalf("palettes mal lues: %+v", pal)
+	}
+	if pal[0].Families[5] != famPropulseur || pal[1].Families[21] != famPropulseur {
+		t.Errorf("la famille ne traverse pas les palettes: %+v / %+v", pal[0].Families, pal[1].Families)
+	}
+	if pal[0].Families[6] != "repulsor" {
+		t.Errorf("famille du rang 6 perdue: %+v", pal[0].Families)
+	}
+	// Le libelle reste ce qui S'AFFICHE, la famille ce qui SE JOINT : les deux coexistent.
+	if got := pal[0].Ranks[5]; got.En != "Thruster" || got.Fr != "propulseur" {
+		t.Errorf("libelle du rang 5 perdu: %+v", got)
+	}
+	if fams := set.AbilityImpulseFamilies(); len(fams) != 1 || fams[0] != famPropulseur {
+		t.Errorf("familles mesurees mal lues: %+v", fams)
+	}
+}
+
+// TestLoadReplayLabels_ImpulsionRefus — une famille citee qu'aucun rang ne nomme laisserait
+// le calque MUET EN SILENCE, ce qui est indistinguable d'un film ou personne ne s'est servi
+// de son equipement. Le loader la refuse plutot que de la laisser passer.
+func TestLoadReplayLabels_ImpulsionRefus(t *testing.T) {
+	base := "[meta]\ntitle_slug=\"x\"\nschema_version=1\n" +
+		"[[ability_palettes]]\nid=\"p\"\nmarkers=[5]\n[ability_palettes.ranks]\n" +
+		"\"5\"={en=\"Thruster\",fr=\"propulseur\",family=\"thruster\"}\n"
+	cas := []struct{ nom, toml string }{
+		{"famille inconnue", base + "[ability_impulses]\nfamilies=[\"thrusters\"]\n"},
+		{"famille vide", base + "[ability_impulses]\nfamilies=[\"\"]\n"},
+		{"famille dupliquee", base + "[ability_impulses]\nfamilies=[\"thruster\",\"thruster\"]\n"},
+	}
+	for _, c := range cas {
+		if _, err := LoadReplayLabelsFromBytes("t.toml", []byte(c.toml)); err == nil {
+			t.Errorf("%s : accepte alors qu'il devrait etre refuse", c.nom)
+		}
+	}
+	// Le cas VALIDE de la meme forme passe : le refus vise la faute, pas la section.
+	if _, err := LoadReplayLabelsFromBytes("t.toml",
+		[]byte(base+"[ability_impulses]\nfamilies=[\"thruster\"]\n")); err != nil {
+		t.Errorf("declaration valide refusee: %v", err)
+	}
+	// SECTION ABSENTE = aucune famille mesuree, et ce n'est PAS une erreur : le titre ne
+	// declare alors aucun usage sur ce canal, et le calque ne publie rien.
+	set, err := LoadReplayLabelsFromBytes("t.toml", []byte(base))
+	if err != nil {
+		t.Fatalf("section absente refusee: %v", err)
+	}
+	if fams := set.AbilityImpulseFamilies(); len(fams) != 0 {
+		t.Errorf("section absente -> %+v, attendu aucune famille", fams)
+	}
+}

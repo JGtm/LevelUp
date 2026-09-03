@@ -72,6 +72,46 @@ couverture : 104 vie(s) publiee(s) · camo 22 vie(s) / 36 episode(s) · surboucl
 ## TRANSLOCATEUR — teleportations datees par l EVENEMENT du film, jamais devinees d un seuil
 0 evenement(s) -> 0 publie(s) (0 avec va-et-vient) · 0 avant l origine · 0 sans piste publiee
 
+## IMPULSIONS DE CAPACITE — l usage MESURE du propulseur, attribue par le rang de la vie
+86 lecture(s) -> 43 geste(s) -> 37 publiee(s) · 4 sans identite · 2 famille non mesuree · 0 attribution indisponible · 0 avant l origine · 0 sans piste publiee · composant absent=false
+  slot=517 t=857 thruster
+  slot=517 t=902 thruster
+  slot=517 t=1035 thruster
+  slot=532 t=1393 thruster
+  slot=534 t=1446 thruster
+  slot=534 t=1514 thruster
+  slot=538 t=1516 thruster
+  slot=540 t=1643 thruster
+  slot=540 t=1913 thruster
+  slot=547 t=1957 thruster
+  slot=550 t=1995 thruster
+  slot=547 t=2000 thruster
+  slot=550 t=2032 thruster
+  slot=547 t=2045 thruster
+  slot=546 t=2125 thruster
+  slot=547 t=2222 thruster
+  slot=547 t=2301 thruster
+  slot=559 t=2848 thruster
+  slot=564 t=3086 thruster
+  slot=575 t=3383 thruster
+  slot=582 t=3639 thruster
+  slot=581 t=3663 thruster
+  slot=582 t=3690 thruster
+  slot=581 t=3734 thruster
+  slot=589 t=4086 thruster
+  slot=592 t=4101 thruster
+  slot=587 t=4107 thruster
+  slot=592 t=4265 thruster
+  slot=592 t=4286 thruster
+  slot=596 t=4298 thruster
+  slot=596 t=4331 thruster
+  slot=592 t=4423 thruster
+  slot=596 t=4494 thruster
+  slot=592 t=4527 thruster
+  slot=596 t=4532 thruster
+  slot=601 t=4877 thruster
+  slot=601 t=4901 thruster
+
 ## GRAPPIN — tractions datees par vie, l ancre en coordonnees monde (fenetre MESUREE)
 25 traction(s) sur 15 vie(s) · lectures : 32 tir(s) + 25 accroche(s) · 7 rate(s) · 0 corps non decodable(s)
   slot=516 t=[272, 282] ancre=(10.77, 10.05, -1.09)
