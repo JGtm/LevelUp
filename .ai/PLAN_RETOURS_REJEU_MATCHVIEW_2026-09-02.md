@@ -181,6 +181,29 @@ Gate : `make check-types && make test-web`.
 Gate : `make check-types && make test-web` + gate visuel utilisateur sur un film où un
 translocateur est consommé (témoins à désigner par le user).
 
+> **Constat gate visuel (2026-09-03, diagnostic sur pièces — thought_log du jour ; CORRIGÉ
+> le même jour après contre-observation user)** : le gate ÉCHOUE sur pièces. Le match Dynasty
+> (`1b2d9e08`) contient DEUX translocations réelles, toutes deux ratées par l'effet :
+> (1) JGtm, slot 535 — saut de 22,1 m en 1 frame à t=1762, sans mort. Sa PRISE du
+> translocateur n'a jamais été décodée (le témoin de complétude du canal l'a compté :
+> `coverage.equipmentChanges.counterJumps=1, missedEstimate=1` — publié, consommé par
+> personne) ; son `spent` à t=1851 porte donc `from=4` (grappin, dernier rang vu) →
+> `spentTranslocations` le rejette ET `portaitLeTranslocateur` rejette le saut de 22 m.
+> UNE émission manquée aveugle les deux canaux d'un coup.
+> (2) SpiffyDart86537, slot 560 — saut de 7,8 m à t=3420 (prise r=11 décodée à 3191), mort
+> 1,2 s après : sous le seuil spatial (12 m/3 frames) et aucune émission d'épuisement (mort).
+> DÉFAUTS STRUCTURELS parc : (a) R3-1 ne peut s'afficher sur AUCUN artefact — 16 poses
+> `translocator_beacon` = 15 dropped + 1 unknown, 0 deployed ; les téléportations réelles
+> n'ont AUCUNE entité de faille dans le canal ti=37 (0x730dc70f = l'objet ramassable) ;
+> (b) canal i48 auto-mesuré sur 67 films : 5,0 % d'émissions manquées entre deux vues,
+> 4,6 % des vies amputées de leur début — et chaque manque empoisonne `from`/état porteur
+> jusqu'à la prochaine lecture (pas de resync keyframe en famille A, rangs 1-12 hors fenêtre
+> kf 16-23) ; (c) spent daté 14-26 s après le saut réel (multi-usages, il date l'épuisement).
+> Témoins où l'éclat actuel doit déjà se voir : `4577fcc4`, `a0c36016`, `f2966f08`,
+> `faff9935`. Chantier proposé (à trancher user) : détection cinématique du passage (intra-vie,
+> ~6 m/1 frame ; grappin ≤ ~2 m/frame), témoin de complétude publié PAR ÉMISSION (marqueur
+> `gap`), spent au `from` périmé requalifiable, RE entité faille, vignette famille A.
+
 ### Lot 4 — Effets de fiche : prise de drapeau + captures (web) — MOYEN
 
 - [ ] 4.1 `CardFxInput` gagne un canal d'événement d'objectif daté (grab/capture/zone) —
