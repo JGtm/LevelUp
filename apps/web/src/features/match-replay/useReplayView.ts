@@ -26,7 +26,7 @@ import { useMemo } from 'react'
 import type { ReplayBounds, ReplayMapBackgroundCalibration } from '@/lib/api/types'
 
 import { coversPlayedArea } from './mapBackground'
-import { fitWidth, sceneBounds, usefulHeight, visibleBounds } from './replayLogic'
+import { frameBounds, sceneBounds, usefulHeight, visibleBounds } from './replayLogic'
 import type { CanvasView } from './replayDraw'
 import type { ReplayDocumentReady } from './replayNormalize'
 import { useReplayZoom, type ReplayZoom } from './useReplayZoom'
@@ -192,13 +192,14 @@ export function useReplayView({
         : Math.floor(Math.min(freeHeight, usefulHeight(bounds, width, CANVAS_PAD))),
     [bounds, width, freeHeight],
   )
-  // Largeur de dessin = ratio de la scène à la hauteur retenue (évite les marges latérales).
-  // Elle SUIT donc la hauteur : un terrain plus court est aussi plus étroit, le cadrage reste
-  // celui de la carte.
-  const renderWidth = useMemo(
-    () => (width === 0 ? 0 : Math.floor(fitWidth(bounds, width, renderHeight, CANVAS_PAD))),
-    [bounds, width, renderHeight],
-  )
+  // LA TOILE PREND TOUTE LA LARGEUR DU BLOC (2026-09-03, « quand je zoome c'est croppé alors que
+  // le bloc du replay est assez grand »). Elle épousait le ratio de la SCÈNE : dès que la hauteur
+  // était bornée par l'écran — le cas courant — la toile devenait plus étroite que le bloc, et
+  // l'image zoomée se coupait à ses bords pendant que la place d'à côté ne servait à rien.
+  //
+  // Ce n'est plus la toile qui prend la forme de la scène, c'est la FENÊTRE qui prend la forme de
+  // la toile (cf. `frameBounds` juste en dessous).
+  const renderWidth = width
   const zRange = useMemo(
     () => ({ min: doc.bounds.minZ ?? 0, max: doc.bounds.maxZ ?? 0 }),
     [doc.bounds.minZ, doc.bounds.maxZ],
@@ -215,10 +216,17 @@ export function useReplayView({
   // ci-dessus) : `visibleBounds` préserve l'aspect, donc le résultat est le même — mais le dire
   // sur la scène garde ces deux valeurs STABLES au zoom. Le terrain ne doit pas changer de
   // taille quand on grossit ; c'est ce qu'on y montre qui change.
-  const zoom = useReplayZoom(bounds)
+  // LE CADRE — la scène élargie à la forme de la toile. C'est LUI, et non la scène, que le zoom
+  // rétrécit et que le déplacement borne : sinon la fenêtre resterait plus étroite que la toile,
+  // et le recadrage reviendrait au premier cran de grossissement.
+  const frame = useMemo(
+    () => frameBounds(bounds, renderWidth, renderHeight, CANVAS_PAD),
+    [bounds, renderWidth, renderHeight],
+  )
+  const zoom = useReplayZoom(frame)
   const viewBounds = useMemo(
-    () => visibleBounds(bounds, zoom.level, zoom.center.x, zoom.center.y),
-    [bounds, zoom.level, zoom.center],
+    () => visibleBounds(frame, zoom.level, zoom.center.x, zoom.center.y),
+    [frame, zoom.level, zoom.center],
   )
   const canvasView = useMemo(
     () => ({ bounds: viewBounds, width: renderWidth, height: renderHeight, pad: CANVAS_PAD }),

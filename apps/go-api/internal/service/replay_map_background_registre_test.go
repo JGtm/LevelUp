@@ -64,41 +64,30 @@ type fondManquantAdmis struct {
 	Retrait string
 }
 
-// fondsManquantsAdmis — ALLOWLIST DATÉE DU 2026-08-27. Sept map_id, 120 matchs sur 1940 (6,2 %).
+// fondsManquantsAdmis — ALLOWLIST DATÉE DU 2026-08-27, RAMENÉE À DEUX ENTRÉES LE 2026-09-03.
+//
+// Elle portait sept map_id et 120 matchs sur 1940 (6,2 %). Les cinq entrées des trois cartes
+// jouées en mode SUPPORTÉ sont tombées avec la publication de leurs fonds ; il ne reste que
+// deux matchs, tous deux hors périmètre du rejeu (Firefight, playlist personnalisée).
 //
 // Ce n'est PAS une liste de cartes « à faire un jour » : chaque entrée porte la cause établie
 // et la condition qui la referme. Ne rien y ajouter sans avoir d'abord vérifié que la carte
 // n'a pas simplement DÉRIVÉ D'IDENTIFIANT — c'est le défaut que ce fichier existe pour
 // attraper, et il se corrige en cuisant ou en republiant, pas en allongeant cette liste.
 var fondsManquantsAdmis = map[string]fondManquantAdmis{
-	// LIVE FIRE — trois assets pour la même carte, aucun fond. Son module installé
-	// `sgh_interlock` ne porte que 6 fichiers et AUCUN tag sbsp : la cuisson native n'a rien
-	// à lire (himap.ErrAucunTagSbsp, cas « non cuisinable » déjà instruit dans
-	// cmd/mapfond-build/cuisson.go). La géométrie vit dans `pc/globals/common-rtx-new.module`,
-	// dont deux des quatre sbsp contiennent les 24 ancres — `ChoisitBSP` retient le mauvais.
-	"6c01f693-c968-4a71-b157-efc35ffcf71f": {
-		Raison:  "Live Fire (51 matchs) : module sgh_interlock sans sbsp ; géométrie dans common-rtx-new, sélection de bsp ambiguë",
-		Retrait: "un fond publié sous une clé que l'index attache à « Live Fire »",
-	},
-	"b6aca0c7-8ba7-4066-bf91-693571374c3c": {
-		Raison:  "Live Fire (18 matchs, asset de saison 1) : même cause",
-		Retrait: "un fond publié sous une clé que l'index attache à « Live Fire »",
-	},
-	"309253f8-7a75-48ff-83e1-e7fb3db2ac47": {
-		Raison:  "Live Fire - Ranked (2 matchs) : même cause",
-		Retrait: "un fond publié sous une clé que l'index attache à « Live Fire - Ranked »",
-	},
-	// DETACHMENT et ARGYLE — absentes du catalogue d'objectifs ET du catalogue de bornes :
-	// aucune ancre, donc aucun cadre à construire. Il leur faut d'abord un passage de
-	// cmd/mapobj-build (réseau ou `--from-file` sur le .mvar) avant toute cuisson.
-	"d39600e2-3c35-4a3a-bdf5-7b3cbdde98e1": {
-		Raison:  "Detachment (25 matchs) : aucune ancre d'objectif ingérée, le cadre ne peut pas se construire",
-		Retrait: "entrée dans map_objectives.json puis fond cuit",
-	},
-	"dd600260-d91c-4d77-9990-3f35873c90a1": {
-		Raison:  "Argyle (22 matchs) : aucune ancre d'objectif ingérée (le .mvar est au dump, pas au catalogue)",
-		Retrait: "entrée dans map_objectives.json puis fond cuit",
-	},
+	// LIVE FIRE (3 assets, 71 matchs), DETACHMENT (25) et ARGYLE (22) ONT ÉTÉ RETIRÉES LE
+	// 2026-09-03 : leurs fonds sont publiés et gatés, ce test l'a imposé au moment même de la
+	// publication — c'est exactement ce qu'un cliquet doit faire.
+	//
+	// Ce que leur retrait a coûté, pour que la prochaine carte bloquée sache où chercher :
+	//
+	//   - Live Fire tenait sur « ChoisitBSP retient le mauvais bsp ». C'était faux. Il retient
+	//     le bon ; ce sont les BORNES d'un bsp qui ne bornent pas la pose de ses instances,
+	//     si bien que `common-rtx-new` dessinait deux arènes dans la même image. Bornée à la
+	//     boîte LUE du bsp retenu (`boiteUtile`), la carte sort en 1 302 x 1 192 px.
+	//   - Detachment et Argyle tenaient sur « aucune ancre » — vrai, et c'était le premier des
+	//     DEUX blocages. `cmd/mapobj-build` a ingéré leurs 14 objectifs chacune ; le canevas,
+	//     lui, se lit dans le `level_id` sans le fichier-lien que leur asset ne publie pas.
 	// COLE PROTOCOL — au catalogue d'objectifs et au dump .mvar depuis la campagne de
 	// catalogage, fond pas encore cuit. Aucune dérive : aucun fond ne porte ce nom.
 	"571afb7f-63c3-40a4-9c21-06ef921eb415": {
