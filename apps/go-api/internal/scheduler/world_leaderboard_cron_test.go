@@ -62,6 +62,10 @@ type stubScraper struct {
 	redirectSeason string
 	redirectErr    error
 	redirectCalls  int
+	// entriesByPlaylist : lots différenciés PAR playlist (garde-fou qualité D1 —
+	// un cycle peut mêler une playlist saine et une playlist dégradée). Prioritaire
+	// sur `entries` ; une playlist absente de la map retombe sur `entries`.
+	entriesByPlaylist map[string][]domain.LeaderboardEntry
 }
 
 func (s *stubScraper) FetchActiveSeasonByRedirect(_ context.Context) (string, error) {
@@ -150,9 +154,13 @@ func (s *stubScraper) FetchCSRLeaderboard(_ context.Context, season, playlist st
 	if s.fetchErr != nil {
 		return nil, s.fetchErr
 	}
+	src := s.entries
+	if byPL, ok := s.entriesByPlaylist[playlist]; ok {
+		src = byPL
+	}
 	// Recopie les entrées en fixant season/playlist (comme le vrai scraper).
-	out := make([]domain.LeaderboardEntry, len(s.entries))
-	for i, e := range s.entries {
+	out := make([]domain.LeaderboardEntry, len(src))
+	for i, e := range src {
 		e.Season = season
 		e.Playlist = playlist
 		out[i] = e

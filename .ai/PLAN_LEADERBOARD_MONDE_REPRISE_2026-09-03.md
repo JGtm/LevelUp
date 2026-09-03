@@ -81,15 +81,22 @@ RW pendant que le serveur tourne — read_only.)
 
 ## Lot 2 — Garde-fous qualité au persist (backend, moyen)
 
-- [ ] 2.1 `internal/platform/duckdb/leaderboard_world_repo.go` : helper lecture des stats du
-      lot servi pour (titre, saison, playlist) → (lignes, couverture xuid). Test `:memory:`.
-- [ ] 2.2 `world_leaderboard_cron.go` : appliquer D1 dans le chemin de persist (comparaison
-      par playlist AVANT insert ; les playlists refusées sont retirées du lot inséré).
-- [ ] 2.3 Tests scheduler : lot plus petit que 50 % → refusé ; effondrement xuid → refusé ;
-      croissance normale / première capture → accepté ; refus partiel (1 playlist sur 3).
+- [x] 2.1 helper lecture des stats du lot servi pour (titre, saison, playlist) →
+      `WorldCSRServedBatchStats` + type `WorldCSRBatchStats`, extraits dans
+      `leaderboard_world_batch_stats.go` (65 L — le repo à 733 L reste intact). Test
+      dans `leaderboard_world_repo_test.go` (harnais existant, build tag integration).
+- [x] 2.2 `scrapeAll` applique D1 par playlist AVANT insert (hors lease writer, reader RO
+      court par playlist, fail-open sur lecture illisible) ; décision isolée en fonction
+      pure `degradedBatchReason` dans `world_leaderboard_quality.go` (126 L) ; refus =
+      skip + WARN chiffré + expvar `world_leaderboard_batch_refused_total`.
+- [x] 2.3 Tests scheduler : effondrement volume refusé ; effondrement xuid refusé ;
+      croissance normale / première capture acceptés ; refus partiel (1 playlist saine
+      persistée quand l'autre est refusée) ; bornes de la règle en table-driven.
 
 **Gate Lot 2** : `cd apps/go-api && go test ./internal/scheduler/... ./internal/platform/duckdb/...`
-(recette CGO msys64 ; les tests persist anti-ART complets restent au gate de livraison).
+(recette CGO msys64) **+ `go test -tags=integration ./internal/platform/duckdb/ -run WorldCSR`**
+— le test du helper 2.1 est sous build tag integration, la commande sans tag ne fait que le
+compiler (découverte Lot 2). Les tests persist anti-ART complets restent au gate de livraison.
 
 ## Lot 3 — Restauration des lots sains (op données, rapide)
 
@@ -164,6 +171,14 @@ HTTP 200 corps vide structuré ; capture visuelle = MAIN AU USER (URL exacte fou
 - (Lot 1, exécuteur) issues lint pré-existantes sur les packages touchés : `goconst`
   `challenges_details.go:429`, `gocyclo` 17 sur `FetchCSRLeaderboard` et `syncPlayer`.
 
+- (Lot 2, exécuteur) le CLI `cmd/snapshot-world-leaderboard` écrit via le même
+  `InsertWorldCSRSnapshot` SANS passer par le garde-fou D1 — un run CLI dégradé peut
+  toujours masquer un lot sain. TRAITÉ AU LOT 3 (le CLI est dans son périmètre).
+- (Lot 2, exécuteur) le garde-fou protège ce que la vue SERT (`max(fetched_at)`), pas la
+  table : un lot accepté au `fetched_at` antérieur au lot servi serait inséré sans jamais
+  être servi. Sans effet aujourd'hui (le scraper pose `time.Now().UTC()`) — hypothèse à
+  ne pas casser.
+
 ## Journal d'exécution
 
 - **2026-09-03 — Lot 1 CLOS.** Exécuteur Opus (2 passes : implémentation puis extraction
@@ -177,6 +192,15 @@ HTTP 200 corps vide structuré ; capture visuelle = MAIN AU USER (URL exacte fou
   découverte de playlists actives passe par la page-graine, morte à ce moment) — le
   cycle suivant se sert de la graine 13-3 fraîchement persistée et retrouvera les
   playlists complètes ; aucun correctif requis.
+- **2026-09-03 — Lot 2 CLOS.** Même exécuteur (2 passes : implémentation puis extraction
+  `leaderboard_world_batch_stats.go`, le repo revenant byte-identique à HEAD). Garde-fou
+  D1 : décision pure `degradedBatchReason` (cause en clair réutilisée dans le WARN),
+  mesure candidate en mémoire ISO-définition avec la requête SQL du lot servi, reader RO
+  court par playlist (discipline `snapshotIsFresh`), fail-open documenté. 6 tests dont
+  refus partiel sur vraie shared DB migrée, candidats à `fetched_at` postérieur (sinon la
+  vue servirait l'ancien lot et les tests d'acceptation ne prouveraient rien). Gate
+  rejoué par l'orchestrateur : scheduler + halo + duckdb (integration -run WorldCSR) +
+  vet + build, tout vert.
 
 ## Protocole de reprise
 
