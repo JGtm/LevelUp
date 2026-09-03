@@ -59,7 +59,13 @@ Dette assumee : bombe RAM `NamedEventsFrom`/`incrementTimes` (~26 Gio, registre 
 - Traitement propose : charger les chunks decompresses UNE fois en memoire (patron
   `killsource.loadFilm`, `chunks.go:126-153`, deja dans le depot) et servir tous les
   scanners depuis la (RAM bornee ~ pics actuels 48-256 Mio, sous le plafond 3 Gio).
-  Decision : a trancher.
+- Decision (2026-09-03) : RETENU ET TRAITE aux lots 1 et 2 — source unique du film
+  (`internal/analysis/filmsource`, 31 balayages migres : `c17f4941f`, `279757444`), puis les
+  redondances trouvees a la verification adverse (double `worldObjectSlotBand`, re-parses du
+  registre) au lot 2 (`0f3c262a0`). Equivalence 9/9 identique a chaque passage. NUANCE MESUREE :
+  le lot 1 seul n'a rendu AUCUN gain (une passe d'inflate vaut ~0,3 s sur un film de 20-30 Mo,
+  soit ~12 s sur 144) — l'hypothese « l'inflate x40 pese lourd » est INFIRMEE, la valeur du lot
+  est structurelle et le gain est venu des lots 2 et 4 (`MESURES_CUISSON_PERF.md` §4).
 
 ### [P1] C2 — 6 scanners recalculent chacun bande de slots + layout (+ ~1,45 passe chacun)
 - Ou : `held_weapon_changes.go:204`, `inventory_delta.go:196`, `ability_rank.go:123`
@@ -76,7 +82,13 @@ Dette assumee : bombe RAM `NamedEventsFrom`/`incrementTimes` (~26 Gio, registre 
 - Verification adverse : TIENT sur les 6 scanners et le principe ; chiffre corrige de
   2 passes a ~1,45 passe chacun (`detectMaxChunks = 6`, `i0_layout.go:128`).
 - Traitement propose : calculer bande + layout + archetypes une fois dans `BuildFromFilm`
-  et les passer (generaliser le motif `...ForBand`). Decision : a trancher.
+  et les passer (generaliser le motif `...ForBand`).
+- Decision (2026-09-03) : VOLET PERFORMANCE TRAITE au lot 2 (`0f3c262a0`) — `filmdec.FilmContext`
+  calcule une fois par cuisson (bande de slots 8 -> 2, detection de layout 6 -> 1, registre
+  10-12 -> 1), garde-rail d'allowlist fermee (`archlint/no_recomputed_film_context_test.go`) :
+  -33 % sur les trois temoins, equivalence 9/9. VOLET JUSTESSE (layout du catalogue pour les six
+  balayages, temoin Live Fire) REPORTE au lot 3, NON LIVRE : il change les digests de `60ae07c4`,
+  qui est un film-bombe — sa cuisson attend la borne anti-deroulage, en escalade D13 (cf. C4).
 
 ### [P1] C3 — Boucles chaudes du decodeur : le cout par passe est lui-meme gonfle
 - Ou / quoi :
@@ -100,7 +112,14 @@ Dette assumee : bombe RAM `NamedEventsFrom`/`incrementTimes` (~26 Gio, registre 
 - Verification adverse : sites verifies sur pieces (V1/V2) ; le profil de reference est
   celui du 2026-08-01.
 - Traitement propose : slots en `[]bool`/bitset indexe par slot ; lecture de bits mot a mot ;
-  reutiliser un lecteur via `SetBitPos` ; cles de composant par index. Decision : a trancher.
+  reutiliser un lecteur via `SetBitPos` ; cles de composant par index.
+- Decision (2026-09-03) : TRAITE au lot 4 (`7d0af4440`), mais GUIDE PAR UN PROFIL FRAIS et non par
+  la liste — les primitives visees ici pesaient 0,6 % du CPU, le cout etait `kfReadBits` (58 %) et
+  le balayage du motif xuid de `playerIndices` (26 %). Livre : lecture de bits par mots de 64 bits
+  (ancienne implementation gardee en oracle de test), recherche xuid par mot, bande de slots dense,
+  lecteur reutilise par `SetBitPos`. Resultat : **-89 %** sur les trois temoins (144/169/163 s ->
+  15,7/18,6/18,2 s), equivalence 9/9. Le point 3 (`killsource.locateStrict`, `World.Snapshot`) est
+  ECARTE sans condition (D14, hors perimetre) : killsource ne pese que 8-9 s a la mesure.
 
 ### [P1] C4 — `NamedEventsFrom` : ~22 re-balayages des StatRecords AVANT la bombe connue
 - Ou : `objectiveevents/named.go:207-212` — pour chacune des ~11 cles de la table,
@@ -111,7 +130,16 @@ Dette assumee : bombe RAM `NamedEventsFrom`/`incrementTimes` (~26 Gio, registre 
 - Verification adverse : non refute (site verifie par V1 sur la structure des appels).
 - Traitement propose : une seule passe de regroupement par cle, et le plafond de prudence
   d'`incrementTimes` deja preconise au registre 2026-08-24 (le poser DEBLOQUE la re-cuisson
-  de masse). Decision : a trancher.
+  de masse).
+- Decision (2026-09-03) : MULTIPLICATEUR TRAITE au lot 4 (`7d0af4440`) — un seul balayage de
+  regroupement par cle a la place des ~22, cle de tri completee (`Comp`, `Side`) pour que la
+  sortie ne soit plus deterministe par accident ; identite prouvee par differentiel
+  (`named_onepass_test.go`) et par le harnais 9/9. PLAFOND de prudence d'`incrementTimes` NON POSE
+  (lot 4b, `5b9e9bca3`) : la mesure du deroulage maximal reel donne 17 306 sur un film SAIN
+  (`d9781168`, comp 20 B), 1,73x au-dessus de la borne de 10 000 que D13 voulait ecrire — la borne
+  par pas est EN ESCALADE UTILISATEUR (le plafond total de 1 000 000 par film, lui, est valide par
+  la mesure). Tant qu'elle n'est pas tranchee, les quatre films-bombes et la re-cuisson de masse
+  restent bloques.
 
 ### [P1] C5 — Orchestration : couts fixes et serialisations evitables autour du decodage
 - Ou / quoi (tous verifies sur pieces, V3) :
@@ -140,7 +168,13 @@ Dette assumee : bombe RAM `NamedEventsFrom`/`incrementTimes` (~26 Gio, registre 
 - Consequence : latence par match et debit de masse ampute, sans aucun gain de securite.
 - Traitement propose : appliquer R1/R3/R4/R8/R9/R2 (rapport orchestration) ; R5
   (alleger `validateArtifact` au digest) est un ALLEGEMENT DE GARDE a trancher explicitement.
-  Decision : a trancher.
+- Decision (2026-09-03) : TRAITE au lot 5 (`aa694442f`), six recommandations sur sept — R1
+  (telechargements de l'ouvrier en parallele borne a 8), R3 (`BuildBytes` : plus d'ecriture ni de
+  relecture disque chez l'ouvrier), R4 (une seule lecture par artefact, `ArtifactDigest` + compteur
+  de production `replay_artifact_digest_reads_total`), R8 (l'enfant de backfill passe sur
+  `filmproc.Runner`, donc en priorite CPU basse), R9 (deadline de 15 min par cuisson post-sync),
+  R2 (prechargement du film N+1, profondeur 1 stricte). R5 (allegement de `validateArtifact`) est
+  ECARTE par D9 : allegement de garde, hors perimetre du plan (§7).
 
 ### [P1] C6 — Instrumentation : la duree est mesuree puis JETEE ; toutes les phases sont aveugles
 - Ou : `filmproc/runner.go:205` produit `Result.Dur` ; `replaychild.go:173-183` consomme
@@ -156,7 +190,12 @@ Dette assumee : bombe RAM `NamedEventsFrom`/`incrementTimes` (~26 Gio, registre 
 - Verification adverse : TIENT (V3).
 - Traitement propose : garder `res.Dur` jusqu'au log de succes ; un `slog` de duree par
   balayage dans `BuildFromFilm` ; harnais pprof CPU+heap sur 2 temoins a HEAD + `51101d1d`.
-  Decision : a trancher (phase 0 du chantier).
+- Decision (2026-09-03) : TRAITE au lot 0 (`b09e67ac5`), premier lot du chantier comme propose —
+  observateur des balayages dans le code de production (duree par balayage en Debug), `res.Dur`
+  conserve jusqu'au log de succes post-sync, et `cmd/replay-build` gagne journal CLI
+  (`LEVELUP_LOG_LEVEL`), duree totale, `-cpuprofile` et `-memprofile`. La reference HEAD et les
+  profils sont au `MESURES_CUISSON_PERF.md` §1 ; c'est elle qui a chiffre chaque lot ensuite. La
+  mesure fausse de `cout_machine.tsv` (pic du processus lanceur) est notee au registre (item 0.9).
 
 ### [P2] C7 — Le verrou solo machine ne couvre qu'UN des quatre points d'entree
 - Ou : `filmproc.AcquireSolo` (`solo.go:91`) n'a qu'un appelant de production
@@ -169,7 +208,13 @@ Dette assumee : bombe RAM `NamedEventsFrom`/`incrementTimes` (~26 Gio, registre 
 - Verification adverse : TIENT.
 - Traitement propose : escalade utilisateur — c'est une decision de protection (etendre le
   verrou aux trois chemins, ou le transformer en compteur a N creneaux si le debit de masse
-  passe a 2 enfants). Decision : escalade.
+  passe a 2 enfants).
+- Decision (2026-09-03) : ESCALADE TRANCHEE EN FAVEUR DE L'EXTENSION (D7), cablee au lot 5
+  (`aa694442f`) — le verrou couvre desormais les QUATRE points d'entree, a deux regimes : refus
+  immediat pour le post-sync (`replaychild.Spawn`, avant de faire naitre l'enfant ; un refus compte
+  en echec du cycle) et attente bornee a 10 min pour les passes (enfant de backfill, ouvrier) ;
+  `cmd/replay-build` garde son refus immediat. Pas de compteur a N creneaux : la phase 3 (deux
+  creneaux) est SANS OBJET au tarif mesure — la re-cuisson des 1 380 films vaut ~1 h 30-2 h.
 
 ## Constats ecartes
 

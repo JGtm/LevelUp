@@ -573,8 +573,15 @@ Prerequis : verdict 0.7 = zero divergence sur les 11 films du corpus (sinon : ar
 
 - [ ] 6.1 Mesure finale §6 + profil, tableau reference/final dans `MESURES_CUISSON_PERF.md` ;
       verdict §1.2 ecrit.
-- [ ] 6.2 Docs : `docs/COMMANDS.md` (FR+EN : `replay-equiv`, `replay-facts-export`,
+- [x] 6.2 Docs : `docs/COMMANDS.md` (FR+EN : `replay-equiv`, `replay-facts-export`,
       `-cpuprofile`) ; `AUDIT_CUISSON_REPLAY_PERF_2026-09-02.md` : colonne « Decision » renseignee.
+      FAIT (2026-09-03) : une section « outillage de construction » ajoutee aux DEUX `COMMANDS.md`
+      (EN et FR, parite ligne a ligne) — `replay-facts-export`, le harnais `replay-equiv` (roles
+      parent/enfant, drapeaux, TSV de reference et marqueur `# digest-grammar: N`) et les mesures
+      de `replay-build` (`LEVELUP_LOG_LEVEL`, `-cpuprofile`, `-memprofile`) ; une ligne de decision
+      datee par constat C1 a C7 a l'audit. NON TRAITE, hors mandat de l'agent de documentation :
+      la decouverte N-V (`GUIDE_KILLSOURCE.md` cite encore `killsource.MemoryChunks`/`DirChunks`,
+      symboles supprimes au lot 1) — a reprendre par le pilote.
 - [ ] 6.3 `delivery-checklist` ; `adversarial-review` du diff complet (lots a risque : 1 et 5).
 - [ ] 6.4 Proposition de merge dans `feat/v75` (pas de push sans accord ; la re-cuisson de masse
       n'est PAS dans ce plan : elle suit le schema vehicules).
@@ -1878,3 +1885,38 @@ regenere, `CORPUS.txt` inchange. Le test de bout en bout revient au pilote. Deco
 au §8 (dont deux qui se tiennent : la sentinelle memoire de `cmd/levelup` reste un doublon de
 `filmproc.Guard`, et c'est pour cela que l'enfant de backfill ne rend pas son verrou avant
 `os.Exit` — la peremption du verrou le reprend en ~6 s).
+
+### Lot 6, item 6.2 — Documentation (2026-09-03) — FAIT
+
+**LES DEUX `COMMANDS.md`, A PARITE.** Une section « outillage de construction » ajoutee entre le
+reglage `replay_build_location` et les notifications, dans `docs/COMMANDS.md` (EN) et
+`docs/FR/COMMANDS.md` (FR) — regle 15 du CLAUDE.md : toute modification EN porte sa MAJ FR dans le
+meme lot. Trois entrees au format des sections voisines (bloc `bash` + deux ou trois phrases) :
+`levelup replay-facts-export` (ce qu'il ecrit, pourquoi l'equivalence serait vacuante sans les
+faits, lecture seule qui echoue franchement plutot que d'ecrire des faits vides) ; `replay-equiv`
+(empreinte par BALAYAGE et pas seulement de l'artefact, parent qui ne decode rien et un enfant
+borne par film, `-corpus` / `-films` / `-update` / `-mem-gib` / `-walkers` / `-walkers-out`,
+references sous `internal/analysis/replay/testdata/equivalence/` et marqueur
+`# digest-grammar: N` dont une version differente est une panne d'INFRASTRUCTURE) ;
+`replay-build` en mesure (`LEVELUP_LOG_LEVEL=debug` pour la duree par balayage, `-cpuprofile`,
+`-memprofile`, options avant `<matchId>`). Aucune section existante reecrite.
+
+**L'AUDIT PORTE MAINTENANT SES SEPT DECISIONS**, une ligne datee par constat, avec le lot et le
+commit : C1 lots 1 et 2 (`c17f4941f`, `279757444`, `0f3c262a0`, avec la nuance mesuree que le lot 1
+seul n'a rien gagne) · C2 volet performance au lot 2 (`0f3c262a0`), volet justesse Live Fire
+REPORTE au lot 3 (les digests de `60ae07c4` changent, et ce film est une bombe : escalade D13) ·
+C3 lot 4 (`7d0af4440`, guide par un profil frais, -89 %) · C4 multiplicateur traite au lot 4,
+plafond NON POSE et en escalade D13 (`5b9e9bca3`) · C5 lot 5 (`aa694442f`, six recommandations sur
+sept ; R5 ecarte par D9) · C6 lot 0 (`b09e67ac5`) · C7 escalade tranchee en faveur de l'extension,
+cablee au lot 5 (4 chemins sur 4). Les sections « Constats ecartes », « Axes sans constat » et
+« Suite proposee » restent INCHANGEES : elles disent l'etat de l'audit, les decisions disent celui
+du chantier.
+
+**RESTE OUVERT, HORS MANDAT DE CET AGENT.** La decouverte N-V du lot 1 :
+`.ai/V7.5/killweapon/GUIDE_KILLSOURCE.md` cite encore `killsource.MemoryChunks` (l. 591) et
+`killsource.DirChunks` (l. 637), symboles SUPPRIMES au lot 1 — verifie ce jour, plus aucune
+declaration de ces deux fonctions dans le depot. `PLAN_BRANCHEMENT_KILLSOURCE.md`, lui, ne les cite
+plus. A reprendre par le pilote (perimetre de l'agent : `docs/` + l'audit + ce §10).
+
+**AUCUNE CUISSON, AUCUN CODE, AUCUN COMMIT.** Le diff se limite a `docs/COMMANDS.md`,
+`docs/FR/COMMANDS.md`, `.ai/AUDIT_CUISSON_REPLAY_PERF_2026-09-02.md` et ce plan.

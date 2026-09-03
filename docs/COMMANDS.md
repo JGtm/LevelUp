@@ -215,6 +215,52 @@ The operator CLI ignores this setting on purpose (see `cmd/levelup backfill-repl
 types it has already decided where they build, on their own machine, with their own cached
 films.
 
+### 2D replay — build tooling (facts, equivalence, profiling)
+
+Operator tools of the artifact build chain ("cuisson" in `.ai/V7.5/PLAN_CUISSON_PERF.md`). They read
+the local film cache; the two offline ones need no DB and decode one film per bounded child process
+(hard memory cap, low CPU priority, solo lock).
+
+```bash
+cd apps/go-api
+go run ./cmd/levelup replay-facts-export --out internal/analysis/replay/testdata/equivalence \
+  [--title slug] <short8|match_id>...
+```
+
+Writes one `<short8>.facts.json` per match — match rows, both team scores, variant, candidate map
+names — in the shape `replay-build --facts` already reads. Without those facts, zones, objective
+actions, VIP/skull/bomb, pads and spawn points are short-circuited and an equivalence run would be
+vacuous. Read-only (`OpenReadForQuery`); it fails outright rather than writing empty facts, so stop
+a server that holds the shared DB in write.
+
+```bash
+go run ./cmd/replay-equiv                            # whole corpus (CORPUS.txt), compare only
+go run ./cmd/replay-equiv -films 000d5950 -update    # (re-)freeze the references of one film
+go run ./cmd/replay-equiv -walkers -walkers-out tmp/walkers.tsv
+# flags: -corpus F  -films a,b (replaces the corpus)  -update  -mem-gib N (default 3, 0 = off)
+#        -title slug  -walkers  -walkers-out F
+```
+
+The equivalence harness of the build chain: it hashes the output of **every** scan, not just the
+final artifact, so a divergence is located down to the scan. Parent and child share one binary —
+the parent plans and decodes nothing, each film is born in a bounded child (solo lock with bounded
+wait, sentinel) and dies with its RAM. References live in
+`internal/analysis/replay/testdata/equivalence/<short8>.tsv`, each opening with its
+`# digest-grammar: N` marker: a reference frozen under another grammar is an infrastructure failure
+("re-freeze with `-update`"), never a decoding difference. `-update` rewrites those references
+instead of comparing them — for a declared correction only. `-walkers` measures the divergence
+of the packet-splitting grammars over the whole film cache instead of comparing digests.
+
+```bash
+LEVELUP_LOG_LEVEL=debug go run ./cmd/replay-build --map "<map name>" --facts <f>.facts.json \
+  --cpuprofile tmp/<f>.cpu.prof --memprofile tmp/<f>.heap.prof <short8> [filmDir]
+```
+
+Measurement of a single build (protocol §6 of the plan): `LEVELUP_LOG_LEVEL=debug` brings out the
+per-scan durations (the binary installs an slog handler), `--cpuprofile` and `--memprofile` write
+pprof files (`go tool pprof`), the heap one after the build. All three are inert by default, and
+the options must precede `<matchId>` — the flag package stops at the first positional argument.
+
 ### Notifications
 
 ```bash
