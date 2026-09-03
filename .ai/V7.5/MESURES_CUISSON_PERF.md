@@ -183,3 +183,15 @@ Pics memoire inchanges (0,17-0,43 Gio).
 BTB 57 chunks reste au-dela, a 1 min 40 — contre 19 min 54). Restent : 4b (plafond anti-bombe,
 debloque `51101d1d`/`a349fea8`/`1c4c63c2`/`60ae07c4` et la re-cuisson de masse), lot 3 (Live
 Fire, apres 4b), lot 5 (orchestration), lot 6 (cloture, revue de branche, gate-push).
+### Verdict final du chantier (item 6.1) — 2026-09-03
+
+| critere du plan (§1) | verdict |
+|---|---|
+| 1. Equivalence | **TENU** — chaque lot prouve par le harnais (45 empreintes x 9 films contre les references du lot 0) : lots 1, 2, 4, 5 = 9/9 identiques a chaque passage. Les seuls ecarts jamais admis sont les corrections declarees 0.4bis (ordre des ex aequo, qui etait aleatoire). |
+| 2. Vitesse | **DEPASSE** — cible 60-100 s ; obtenu **15,7 / 18,6 / 18,2 s** sur les trois temoins (references 144 / 169 / 163 s, soit -89 %). Le pire film sain du corpus (BTB 26 joueurs, 57 chunks) : 19 min 54 -> ~1 min 40. Harnais complet (9 cuissons) : ~5 min contre ~40 min au lot 0. |
+| 3. Protections | **TENUES ET ETENDUES** — plafonds, priorite basse, enfant borne, verrou filmdec intacts ; le verrou solo machine couvre desormais les 4 chemins (1 sur 4 avant) ; deadline par cuisson post-sync ; le backfill herite de la priorite basse. |
+
+Reste HORS de ce verdict, en attente de la decision D13 (borne anti-bombe, proposition
+100 000) : lot 4b (plafond + figeage des 4 bombes) puis lot 3 (justesse Live Fire). La
+re-cuisson de masse (1 380 films) attend le schema vehicules — au tarif mesure, elle vaut
+desormais ~1 h 30 - 2 h de machine au lieu des ~55 h projetees a l'audit.
