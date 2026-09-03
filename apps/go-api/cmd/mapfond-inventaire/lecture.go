@@ -26,6 +26,7 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/platform/duckdb"
 )
 
@@ -96,10 +97,14 @@ func (c carteJouee) PlaylistsTriees() []string {
 	return noms
 }
 
-// requeteCartes : une ligne par (carte, playlist). Le tri temporel passe par le fragment
-// canonique `COALESCE(start_time_utc, start_time AT TIME ZONE 'UTC')` (CLAUDE.md, regle 8) —
-// `start_time` brut n'est pas comparable d'une ligne a l'autre.
-const requeteCartes = `
+// requeteCartes : une ligne par (carte, playlist).
+//
+// L instant du dernier match passe par `analysis.SQLStartTimeCanonical` et NON par le litteral
+// equivalent ecrit a la main. Les deux rendent le meme SQL ; seul le premier est cherchable, et
+// le ratchet `TestNoNewRawStartTimeLiteral` refuse le second — il a d ailleurs refuse celui-ci,
+// ecrit ici le 2026-09-03 sous un commentaire qui citait la regle qu il violait. Le fragment n a
+// pas d alias : la requete ne lit qu une table.
+var requeteCartes = `
 	SELECT
 		COALESCE(map_id, '')                                          AS map_id,
 		COALESCE(map_name, '')                                        AS map_name,
@@ -107,7 +112,7 @@ const requeteCartes = `
 		COUNT(*)                                                      AS matchs,
 		SUM(CASE WHEN is_firefight THEN 1 ELSE 0 END)                 AS firefight,
 		MAX(COALESCE(player_count, 0))                                AS joueurs_max,
-		MAX(COALESCE(start_time_utc, start_time AT TIME ZONE 'UTC'))  AS dernier
+		MAX(` + analysis.SQLStartTimeCanonical("") + `)               AS dernier
 	FROM match_registry
 	GROUP BY 1, 2, 3
 `
