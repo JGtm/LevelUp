@@ -33,6 +33,7 @@
  */
 import { useMemo } from 'react'
 
+import { SectionCard } from '@/components/ui/section-card'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 import { resolveTeamLabel } from '@/lib/halo/teamLabel'
 import { HeaderLabelTooltip } from '@/lib/table/columnMeta'
@@ -79,10 +80,11 @@ export function MatchEquipmentUsageSection({
   if (!usage?.hasData) return null
 
   return (
-    <section className="rounded-lg border-2 border-border" aria-label={t.equipmentUsage.title}>
-      <h3 className="px-3 py-2 text-sm font-bold uppercase tracking-wider text-foreground">
-        {t.equipmentUsage.title}
-      </h3>
+    <SectionCard
+      title={t.equipmentUsage.title}
+      label={t.equipmentUsage.title}
+      footer={<UsageFootnotes usage={usage} t={t} />}
+    >
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-3xs">
           <thead>
@@ -122,8 +124,7 @@ export function MatchEquipmentUsageSection({
           ))}
         </table>
       </div>
-      <UsageFootnotes usage={usage} t={t} />
-    </section>
+    </SectionCard>
   )
 }
 

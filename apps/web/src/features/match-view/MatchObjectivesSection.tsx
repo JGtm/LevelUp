@@ -20,6 +20,7 @@
  */
 import { useMemo } from 'react'
 
+import { SectionCard } from '@/components/ui/section-card'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 import { useCapability } from '@/lib/capabilities/capabilities'
 import { formatDurationMMSS } from '@/lib/formatters/duration'
@@ -77,10 +78,7 @@ export function MatchObjectivesSection({ rows, teams, myTeamSide, t }: Props) {
   const colMeta = t.objectives.cols
 
   return (
-    <section className="rounded-lg border-2 border-border" aria-label={t.objectives.title}>
-      <h3 className="px-3 py-2 text-sm font-bold uppercase tracking-wider text-foreground">
-        {t.objectives.title}
-      </h3>
+    <SectionCard title={t.objectives.title} label={t.objectives.title}>
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-3xs">
           <thead>
@@ -145,6 +143,6 @@ export function MatchObjectivesSection({ rows, teams, myTeamSide, t }: Props) {
           })}
         </table>
       </div>
-    </section>
+    </SectionCard>
   )
 }
