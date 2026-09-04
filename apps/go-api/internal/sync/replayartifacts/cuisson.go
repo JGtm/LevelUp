@@ -123,6 +123,9 @@ type bilanCuisson struct {
 	// plutôt que d'être écrits ici : un burst writer au milieu d'une boucle de décodage est
 	// exactement ce que le découpage du paquet interdit.
 	t0Film []rapportT0Film
+	// usage : les artefacts cuits dans ce cycle, à projeter en résumé d'usage puis à écrire
+	// une fois toute cuisson terminée (cf. usage.go) — même règle de voyage que t0Film.
+	usage []rapportUsage
 }
 
 // buildAll persiste le film puis construit l'artefact de chaque match du lot.
@@ -196,6 +199,9 @@ func buildAll(ctx context.Context, d Deps, work []buildWork) bilanCuisson {
 		if t0 := lireT0FilmArtefact(out.Path); t0 != nil {
 			b.t0Film = append(b.t0Film, rapportT0Film{matchID: w.matchID, t0FilmMs: *t0})
 		}
+		// Le résumé d'usage suit la même règle : projeté depuis le disque, écrit en base
+		// une fois toute cuisson terminée (cf. usage.go).
+		b.usage = append(b.usage, rapportUsage{matchID: w.matchID, path: out.Path})
 		slog.InfoContext(ctx, "post-sync: artefact rejeu construit",
 			"gamertag", d.Gamertag, "match_id", w.matchID, "tracks", out.Tracks, "bytes", out.Bytes)
 	}

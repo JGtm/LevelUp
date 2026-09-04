@@ -248,6 +248,11 @@ var canonicalOrder = []string{
 	// (alphabetique par nom de fichier) — exigence de TestSortByCanonicalIsNoOpOnCurrentRegistry.
 	// (shared_weapon_kills_v3, present sur la branche precision, n'est PAS repris : la voie v3
 	// est morte sur feat/v75 — 9b8c52622, l'arme du kill vient de la source de degat.)
+	// Résumé d'usage équipement/socles dérivé de l'artefact de rejeu (session-usage,
+	// 2026-09-04). Position dictée par l'ordre d'init (alphabétique par nom de fichier :
+	// steps_shared_usage_summary.go précède steps_shared_weapon_*.go) — exigence de
+	// TestSortByCanonicalIsNoOpOnCurrentRegistry.
+	"shared_match_usage_summary_v1",       // shared (match_usage_players + match_usage_films, append-only + vues _latest par passe)
 	"shared_match_weapon_hit_distance_v1", // shared (distances des touches par arme, append-only + vue _latest)
 	"shared_match_weapon_shots_v1",        // shared (J4 : ventilation des tirs par arme, append-only + vue _latest)
 	"add_team_rounds_to_match_registry",   // shared (manches gagnées par camp — le score en points ne dit pas le résultat sur un mode à manches)

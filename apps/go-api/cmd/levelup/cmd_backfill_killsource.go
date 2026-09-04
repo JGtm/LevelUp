@@ -104,7 +104,6 @@ import (
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
-	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/port"
@@ -498,19 +497,9 @@ func resoudreCacheFilms(cfg *config.AppConfig, flagValue string) string {
 //
 // LE COLLECTEUR SE BRANCHE SUR UNE CAPABILITY, JAMAIS SUR UN SLUG (ratchet
 // no_slug_comparison_test.go). Un titre qui ne declare pas `film.kill_source` fait donc une
-// passe VIDE, proprement — pas une erreur, pas un panic.
+// passe VIDE, proprement — pas une erreur, pas un panic. La recette de lecture vit dans
+// games.LoadCapabilityMap (centralisee le 2026-09-04, regle des <= 2 copies — ce fichier
+// en portait une des trois copies d origine).
 func capabilitesDuTitre(cfg *config.AppConfig, slug string) (games.CapabilityMap, error) {
-	reg := mappings.NewRegistry()
-	for _, err := range reg.LoadFromConfigDir(cfg.RepoRoot, []string{slug}, nil) {
-		return nil, fmt.Errorf("mappings du titre %s: %w", slug, err)
-	}
-	set, ok := reg.GetCapabilities(slug)
-	if !ok {
-		return nil, fmt.Errorf("capabilities.toml absent pour le titre %s", slug)
-	}
-	caps, err := games.CapabilityMapFromMappings(set)
-	if err != nil {
-		return nil, fmt.Errorf("capabilities du titre %s: %w", slug, err)
-	}
-	return caps, nil
+	return games.LoadCapabilityMap(cfg.RepoRoot, slug)
 }

@@ -224,6 +224,11 @@ func fallbackCapabilities() games.CapabilityMap {
 		// qu'aucun consommateur ne lit kill_positions pour ce titre — cf.
 		// capabilities.toml).
 		games.CapFilmKillPositions: games.CapSupported,
+		// Résumé d'usage par (match, joueur) dérivé de l'ARTEFACT de rejeu (pas de la
+		// passe de décodage) → shared.match_usage_players + match_usage_films. Gouverne
+		// la production post-sync (replayartifacts) et le backfill CLI ; un titre sans
+		// la clé ne produit AUCUNE ligne, silence propre (cf. capabilities.toml).
+		games.CapFilmUsageSummary: games.CapSupported,
 	}
 }
 

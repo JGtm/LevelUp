@@ -91090,3 +91090,36 @@ passes, 14 skippes ; `npx eslint` exit 0. Zero couleur en dur, aucun cliquet de 
 vie ; le rejeu 2D n'a plus de jointure `slot -> points` ecrasante. Rapport detaille :
 `.ai/V7.5/replay2d/RAPPORT_D1_GRAPPIN_VIES_2026-09-04.md`. La RE-CUISSON DU PARC peut
 desormais se faire sans reintroduire ce trou — c'est elle qui aurait rendu le defaut visible.
+
+---
+
+## [2026-09-04] Session-usage S1 — socle BDD du resume d'usage (executant, reprise apres interruption)
+
+**Statut** : En cours (implementation S1 posee, backfill reel des 114 artefacts et commit = pilote)
+
+**Decision technique principale.** Le resume d'usage se branche dans l'etape qui CONSTRUIT
+l'artefact (`replayartifacts` : `buildAll` collecte les artefacts ranges, `Run` appelle
+`persisterResumesUsage` apres `reporterT0Film`), sur le patron exact du report du T0 :
+projection depuis le disque (jamais le blob candidat — `StoreArtifact` peut refuser), burst
+writer court apres toute cuisson, best-effort compte et journalise. Les modifications heritees
+dans `killcollector/` ne branchent RIEN sur la chaine killsource : c'est la centralisation de
+la recette de lecture des capabilities (`games.LoadCapabilityMap`, regle des <= 2 copies, la
+4e copie a declenche la factorisation + garde-rail `capability_loader_guard_test.go`).
+
+**Choix tranche en cours de route** : les cles de la ventilation par arme (`pad_pickups_json`,
+`weapon_pads_json`) sont NORMALISEES par `replay.PadWeaponFamilyKey` (8 hexa minuscules) des la
+projection — jamais la forme verbatim du document (deux conventions d'ecriture coexistent dans
+les artefacts, des cles verbatim couperaient une famille en deux a l'agregat de session).
+
+**Resultats observes.** `go build ./...` exit 0 ; `go test ./internal/analysis/replay ./internal/games/...
+./internal/migration ./internal/sync/... ./internal/persist ./cmd/levelup` tous verts. Controles
+croises du handoff verifies EN VRAI (bac a sable scratchpad, DB vierge migree + artefacts reels
+copies, aucune base de data/ touchee) : 696a9d7c = 26 prises nommees / 8 anonymes / 10
+powerup_camo en powerup_pickups_json et ZERO en pad_pickups ; b8a44fe8 = 51 / 11 ; ecriture
+reelle puis reprise (deja a jour) validees. ATTENTION : DEUX executants ont travaille en
+parallele dans ce worktree (la session interrompue a repris seule) — les deux implementations
+ont converge (l'autre a adopte usage.go/persist et ecrit usage_integration_test.go contre),
+mais le pilote doit relire en connaissance de cause.
+
+**Conclusion / prochaine etape.** Restent au pilote : suite integration complete (lancee),
+dry-run sur la session temoin 2026-07-31 (193/102), backfill reel serveur arrete, commit S1.
