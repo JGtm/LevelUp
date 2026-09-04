@@ -79,3 +79,32 @@ func CapabilityMapFromMappings(set *mappings.CapabilityMappingSet) (CapabilityMa
 	}
 	return out, nil
 }
+
+// LoadCapabilityMap lit `config/titles/{slug}/mappings/capabilities.toml` depuis le
+// disque et rend la CapabilityMap validée du titre.
+//
+// C'EST LE FOYER CANONIQUE de la recette « registre éphémère -> GetCapabilities ->
+// CapabilityMapFromMappings » (règle des <= 2 copies, CLAUDE.md n°6). Avant ce helper,
+// trois copies identiques vivaient dans killcollector/classifier.go,
+// killcollector/postsync.go et cmd/levelup/cmd_backfill_killsource.go — la quatrième
+// (le résumé d'usage post-sync, 2026-09-04) a déclenché la centralisation. Le
+// garde-rail capability_loader_guard_test.go interdit d'en réécrire une à la main.
+//
+// PAS DE MÉMORISATION ICI, et c'est voulu : les appelants n'ont pas la même politique
+// (le hook post-sync mémorise pour la vie du hook, un backfill lit une fois par lot).
+// La mémorisation reste chez l'appelant.
+func LoadCapabilityMap(repoRoot, slug string) (CapabilityMap, error) {
+	reg := mappings.NewRegistry()
+	for _, err := range reg.LoadFromConfigDir(repoRoot, []string{slug}, nil) {
+		return nil, fmt.Errorf("mappings du titre %s: %w", slug, err)
+	}
+	set, ok := reg.GetCapabilities(slug)
+	if !ok {
+		return nil, fmt.Errorf("capabilities.toml absent pour le titre %s", slug)
+	}
+	caps, err := CapabilityMapFromMappings(set)
+	if err != nil {
+		return nil, fmt.Errorf("capabilities du titre %s: %w", slug, err)
+	}
+	return caps, nil
+}

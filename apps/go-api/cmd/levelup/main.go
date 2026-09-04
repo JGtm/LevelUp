@@ -125,6 +125,8 @@ func main() {
 		exitErr = runArchiveFilms(cfg, args)
 	case "backfill-replay":
 		exitErr = runBackfillReplay(cfg, args)
+	case "backfill-usage-summary":
+		exitErr = runBackfillUsageSummary(cfg, args)
 	case "migrate":
 		exitErr = runMigrate(cfg, args)
 	case "restore-csr":
@@ -183,6 +185,7 @@ Commandes:
   backfill-medailles-feed Rend leur nom aux médailles déjà en base : relit HORS LIGNE le chunk highlight des films en cache, apparie par (xuid, time_ms) et remplit highlight_events.raw_json + type_hint, restés vides depuis avril 2026 (415 matchs / 22 031 events sans identité, donc aucune médaille au fil des éliminations). Film absent du cache = match consigné et sauté (--dry-run, --limit, --cache, serveur arrêté)
   archive-films   Télécharge et CONSERVE les films manquants du cache local (manifeste + chunks complets, sans aucun décodage). Les films EXPIRENT côté 343 et ne se retéléchargent jamais : cette passe est la seule qui les sauve. Lecture seule sur la base (elle ne peut rien corrompre) mais SERVEUR ARRÊTÉ quand même : DuckDB n'autorise qu'un processus par fichier (--dry-run, --limit, --gamertag, --sauter-marques)
   backfill-replay Construit les artefacts de rejeu 2D de tous les films en cache : décodage HORS LIGNE via la librairie replaybuild, UN PROCESSUS PAR FILM (un film-bombe n'emporte plus la passe ni la machine ; gros films en dernier, reprenable par SchemaVersion, échecs ventilés : carte hors catalogue, mémoire, mort subite) (--dry-run, --limit, --force, --only-existing, --mem-limit-gib)
+  backfill-usage-summary Résume les artefacts de rejeu déjà cuits en usages d'équipement et de socles (match_usage_players + match_usage_films, append-only) : AUCUN décodage de film, un artefact lu à la fois, reprenable par (summary_rev, artifact_schema) via la vue _latest. --dry-run imprime les compteurs par match (prises nommées/anonymes, bonus par famille) pour les contrôles croisés (--force, --match, --limit, serveur arrêté)
   migrate         Migrer les donnees vers le namespace multi-titres
   restore-csr     Restaurer les CSR historiques depuis un backup DuckDB legacy (--gamertag X --backup PATH [--dry-run] [--mode preserve|overwrite])
   add-title       Initialiser l'arborescence d'un nouveau titre de jeu
