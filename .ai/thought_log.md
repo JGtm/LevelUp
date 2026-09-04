@@ -91123,3 +91123,31 @@ mais le pilote doit relire en connaissance de cause.
 
 **Conclusion / prochaine etape.** Restent au pilote : suite integration complete (lancee),
 dry-run sur la session temoin 2026-07-31 (193/102), backfill reel serveur arrete, commit S1.
+
+## [2026-09-04] Session-usage S1 — cloture pilote : persiste, backfille, verifie — Complété
+
+Lot S1 commite (`d448c3328`) apres revue adversariale DOUBLE : deux relecteurs frais de
+cette session (lentilles anti-ART/multi-titre et tests/anti-patterns) PLUS la revue de la
+session parallele — les deux ont converge independamment sur les memes P1 (vue
+`match_usage_players_latest` cassee par une re-passe sans ligne joueur ; reprise du CLI
+prouvee par rien), signal fort que les defauts etaient reels. Correctifs complementaires
+du pilote : compteur d'echecs conforme a son contrat (capabilities illisibles comptees),
+origine de pose STRICTE (`deployed` seul compte — 1 artefact schema<10 present au corpus
+aurait gonfle les deploiements), ventilation DroppedByFamily documentee non-persistee,
+deux cas de test (capteur lache, origine absente).
+
+**Le chiffre temoin « 102 anonymes » du handoff est FAUX** : verifie sur artefacts bruts,
+il comptait les 20 occupations `powerup_overshield` comme socles d'arme anonymes tout en
+excluant `powerup_camo` — asymetrie contraire a la regle §4 du handoff. Vrai temoin
+session 2026-07-31 : 193 nommees / 82 anonymes / bonus {camo 45, overshield 20}.
+
+Backfill reel : 106/106 artefacts, 0 echec, reprise idempotente verifiee. Piege releve :
+`air` lance depuis la racine du depot boucle en `exit status 1` (`.air.toml` vit dans
+`apps/go-api/`) — relance depuis `apps/go-api`, port 8000 re-ouvert.
+
+**Coordination** : DEUX sessions pilotes ont travaille le meme worktree cet apres-midi
+(l'executant interrompu par la limite a repris seul). Convergence heureuse cette fois —
+mais avant S2, une seule session doit garder le volant.
+
+Prochaine etape : S2 (agregat de session + contrat, chiffres §7 du handoff a re-deriver
+avec le temoin corrige).
