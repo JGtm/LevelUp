@@ -91062,3 +91062,37 @@ par vie) — avec un arbitrage utilisateur a soumettre : avant la premiere lectu
 afficher ou afficher « pleines » (le film ne transmet rien au ramassage). Autres arbitrages
 ouverts : publier ou non les evenements de consequence 104/105 du repulseur (R12) ; le
 merge de `wt/grappin-vies` (R12) et de ce lot vers `feat/v75`.
+
+## [2026-09-04] Lot P6 — la vignette d'equipement montre les CHARGES (web)
+
+**Statut : Complete.** Meme branche `wt/charges-equipement`. Execution pilotee : agent
+d'implementation, relecteur adversarial frais (une coupure API au premier lancement,
+relance propre), corrections consolidees par le superviseur.
+
+**Decision technique principale.** Consommation du calque `abilityCharges` publie par P5 :
+logique PURE `abilityChargeLogic.ts` (lecture la plus recente <= image, jointe par la VIE
+qui couvre l'instant — patron fireMark, le piege du slot reattribue — et posterieure au
+dernier changement d'equipement de la vie), cellule `ReplayAbilityCell.tsx` extraite de
+`ReplayInventoryRow` (496->404 L). Decisions utilisateur du 04/09 appliquees : « plein »
+QUALITATIF avant la premiere lecture (semantique du protocole), jamais un chiffre invente ;
+famille non mesuree = rien. Reconnaissance rang->famille par racine de libelle
+(`abilityLabels`, table fermee, precedent translocatorRanks) — la revue a valide le
+procede en remontant la chaine TOML, et la piste sans heuristique (publier `family` dans
+`Label`) est consignee pour un lot Go futur.
+
+**Resultats observes.** Revue : 12 conditions tiennent, 3 constats TOUS corriges dans le
+lot — N1 (P0) : sur le parc pre-38, « plein » etait affirme a tort (le canal n'y a jamais
+ete balaye) et un test verrouillait la faute -> garde `hasAbilityChargeLayer`
+(coverage.abilityCharges present et composant present ; lecture publiee en filet), 3 cas
+testes, mutation tuee ; N2 : la regle « famille non mesuree sans lecture = rien » n'etait
+pinnee par rien (mutation survivante) -> test repulseur-sans-lecture, mutation tuee ;
+N3 : export sans lecteur retire. Gates : vitest 14/14, check-types exit 0 (cache purge),
+eslint 0, suite web complete 563 fichiers / 5 855 passes / 0 echec (un flake de worker
+make test-web note : « 1 fichier failed, 0 test failed », non reproduit).
+
+**Conclusion / prochaine etape.** Reste le GATE VISUEL utilisateur (vignette sur un film
+re-cuit — les deux films 38 du chantier n'ont pas ete re-cuits avec les charges). Merge
+`feat/v75` en un seul tenant (decision user : apres P6) — R12 + P5 + P6. En parallele :
+demande produit nouvelle du 04/09 (replier les equipements/armes non « game changer »
+dans les rendus d'usage) — artefact de vote a fabriquer pour que l'utilisateur tranche la
+liste.

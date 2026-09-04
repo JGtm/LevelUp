@@ -288,6 +288,11 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     abilityUnidentified: (rank) => `capacité non identifiée (rang ${rank})`,
     abilityAge: 'Capacité lue il y a',
     abilityAhead: 'Capacité lue dans',
+    abilityChargesFull: 'plein',
+    abilityChargesFullHint:
+      'Charges pleines — le film ne transmet une lecture qu’après le premier usage.',
+    abilityChargesCount: (n) => `Charges restantes : ${n}`,
+    abilityChargesAge: 'Charges lues il y a',
     equipmentActive: {
       camo: 'Camouflage actif — le joueur est invisible à l’écran de jeu',
       overshield: 'Surbouclier actif',
@@ -676,6 +681,11 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     abilityUnidentified: (rank) => `unidentified ability (rank ${rank})`,
     abilityAge: 'Ability read',
     abilityAhead: 'Ability read in',
+    abilityChargesFull: 'full',
+    abilityChargesFullHint:
+      'Charges full — the film only transmits a reading after the first use.',
+    abilityChargesCount: (n) => `Charges left: ${n}`,
+    abilityChargesAge: 'Charges read',
     equipmentActive: {
       camo: 'Active camo — the player is invisible on the game screen',
       overshield: 'Overshield active',

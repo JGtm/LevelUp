@@ -826,13 +826,61 @@ lectures sans repliement. 2 constats recevables :
 
 ### Lot P6 — Web : la fiche montre les charges (après P5)
 
-- [ ] P6.1 Vignette d'équipement du rejeu : le compte de charges de la lecture la plus
-      récente ≤ image courante, par VIE (jointure par `isAliveAt`, piège n°5 du handoff).
-      AVANT la première lecture : rien d'AFFIRMÉ — le film ne transmet rien au ramassage ;
-      la forme exacte (rien, ou « pleines » déduites du masque à 0) est un ARBITRAGE à
-      soumettre à l'utilisateur à la clôture de P5, avec recommandation.
-- [ ] P6.2 Toute string neuve en FR ET EN (`i18n.ts`), tests logic purs, plafonds tenus,
-      zéro littéral de couleur.
+ARBITRAGES TRANCHÉS par l'utilisateur le 04/09 (à la clôture de P5) : (1) avant la
+première lecture, la vignette affiche « PLEIN » QUALITATIF, sans chiffre — c'est la
+sémantique documentée du protocole (bit de masque à 0 = « le moteur pose 0x7F »), donc de
+la lecture ; le chiffre n'apparaît que mesuré. (2) Les événements de conséquence du
+répulseur (104/105, R12) ne sont PAS publiés pour l'instant — reste en recherche.
+(3) Merge vers `feat/v75` APRÈS P6, en un seul tenant.
+
+- [x] P6.1 FAIT le 04/09 — `abilityChargeLogic.ts` (logique pure) + `ReplayAbilityCell.tsx`
+      (cellule extraite de `ReplayInventoryRow`, 496->404 L, qui délègue) : la lecture la
+      plus récente <= image courante, jointe par la VIE qui couvre l'instant (patron
+      `fireMark.ts`, jamais `Map(slot -> piste)`), postérieure au dernier changement
+      d'équipement de la vie (égalité = ambiguë = antérieure) ; « plein » qualitatif avant
+      la première lecture ; famille reconnue par racine de libellé sur `abilityLabels`
+      (table fermée grapple/thruster, les deux locales — précédent `translocatorRanks`,
+      validé par la revue : vocabulaire TOML fermé, dégradation en silence) ; famille non
+      mesurée ou lecture d'une autre famille = RIEN d'affirmé. GARDE DE CALQUE
+      `hasAbilityChargeLayer` (correction P0 de la revue, voir bloc) : sans
+      `coverage.abilityCharges` (parc pré-38, balayage en échec) ou avec `componentAbsent`,
+      rien — pas même « plein » ; une lecture publiée sert de filet.
+- [x] P6.2 FAIT — 4 clés i18n FR ET EN (parité par typage, `i18nContract.ts` §
+      abilityCharges), tests logic purs 14 cas (fabrique canonique, deux vies du même
+      slot, re-ramassage, égalité, futur, familles, les trois cas de calque), plafonds
+      tenus (404/207/134/~150 L, cliquets inchangés), zéro littéral de couleur (grep vide).
+
+REVUE ADVERSARIALE P6 RONDE 1 (04/09, relecteur frais, mutations sur copies, retour à
+l'identique vérifié par md5) : **12 conditions vérifiées qui tiennent** — dont la jointure
+par vie (mutation « dernière piste du slot » : 4 tests tombent), le re-ramassage, la lecture
+future, la propriété P2.4 (« la vignette lit `r`, jamais `from` ») intacte, la parité FR/EN,
+l'extraction sans logique métier dans le composant. POINT D'ATTENTION LIBELLÉS VALIDÉ : la
+chaîne réelle est le TOML du titre (vocabulaire fermé, En+Fr toujours publiés, aucune autre
+entrée ne porte les racines) — le précédent `translocatorRanks` justifie le procédé ; la
+piste SANS heuristique (publier `family` dans `Label`) est consignée en Découvertes.
+3 constats, TOUS corrigés dans le lot :
+
+- [x] N1 (P0) SUR LE PARC PRÉ-38, « PLEIN » ÉTAIT AFFIRMÉ À TORT — `abilityChargesAt`
+      rendait `full` dès qu'aucune lecture n'existait, or sur un artefact antérieur au
+      schéma 38 (100 % du parc) le canal n'a JAMAIS été balayé : « rien transmis » n'y
+      signifie pas « plein » — et un test verrouillait le comportement fautif. CORRIGÉ :
+      garde `hasAbilityChargeLayer` (patron `hasTranslocationLayer`, avec l'étage
+      `componentAbsent` que la couverture des charges publie), trois cas testés (pré-38 ->
+      rien ; composant absent -> rien ; couverture posée sans lecture -> « plein » redevient
+      une lecture). Mutation rejouée et TUÉE (retrait de la garde : 2 tests tombent).
+- [x] N2 (P2, code du lot) LA RÈGLE « FAMILLE NON MESURÉE SANS LECTURE = RIEN » N'ÉTAIT
+      VERROUILLÉE PAR RIEN — le seul test injectait une lecture, qui tombait dans un autre
+      filet ; la mutation « retirer `if (family === null)` » laissait 10/10 verts. CORRIGÉ :
+      test « répulseur porté, zéro lecture -> null » (le cas de production courant).
+      Mutation rejouée et TUÉE (1 test tombe).
+- [x] N3 (P2, code du lot) `CHARGE_FAMILY_STEMS` exporté sans lecteur (règle n°7) —
+      export retiré, la table redevient privée du module.
+
+Gate P6 (rejoué après corrections) : vitest abilityChargeLogic 14/14 ; `make check-types`
+exit 0 (cache purgé) ; eslint exit 0 ; suite web complète **563 fichiers / 5 855 tests
+passés, 14 skippés, 0 échec** (un run `make test-web` a rendu « 1 fichier failed, 0 test
+failed » — flake de worker, non reproduit : la relance directe rend 563/563). Reste à
+l'utilisateur : le GATE VISUEL (vignette sur un film re-cuit).
 
 ### Lot R5 — Recherche : les événements des AUTRES équipements (parallèle)
 
@@ -944,6 +992,21 @@ jamais de cuisson de masse sans décision séparée.
   branche (`wt/grappin-vies`), pas du diff P5 (traverse.go n'y est pas). S'ajoute aux 4
   constats antérieurs consignés à P3 — `make go-api-lint` porte 6 constats, tous hors
   périmètre P5.
+
+- **P6 revue ronde 1 (04/09) — LE CHEMIN SANS HEURISTIQUE DE LIBELLÉ EXISTE CÔTÉ GO, à un
+  champ près, non traité** : `AbilityPalette.Families map[int]string` (`abilities.go:139`)
+  est rempli depuis le TOML et sert déjà à attribuer les lectures ; publier `family` dans
+  `Label` (`document_labels.go:17`) supprimerait la reconnaissance par racine de libellé
+  côté web (`abilityChargeLogic.measuredChargeFamilyOf`) ET la double déclaration du
+  vocabulaire (TOML `[ability_charges] families` + table TS). Lot Go futur (schéma), pas un
+  fix opportuniste.
+- **P6 (04/09) — fixture « deux vies » de `fireMark.test.ts` sans `startFrame`** : les deux
+  fenêtres démarrent à 0 ([0,20] et [0,40], chevauchantes) ; les assertions tiennent par
+  l'ordre du tableau, la fixture ne teste pas aussi nettement que son commentaire l'annonce.
+  Antérieur au lot, non traité.
+- **P6 (04/09) — flake `make test-web`** : un run a rendu « 1 fichier failed » avec ZÉRO
+  test failed (bruit worker jsdom : HTMLMediaElement/canvas non implémentés) ; relance
+  directe 563/563. Non reproduit, à surveiller.
 
 ## Découvertes / suites à arbitrer (issues de R1-R2, hors périmètre des lots courants)
 

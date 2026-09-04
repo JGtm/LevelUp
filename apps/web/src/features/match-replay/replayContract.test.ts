@@ -193,8 +193,8 @@ const NULLABLE_ARRAYS = [
   // 4→0 validée 5/5 au Theater, 36/36 accroches de grappin appariées) et ATTRIBUÉ par le
   // rang de capacité de la MÊME VIE. Jamais un compte d'usages dérivé, rien au ramassage.
   // Seules les familles déclarées mesurées y entrent (grappin, propulseur) — le serveur
-  // compte le reste (`coverage.abilityCharges`). La consommation viendra la lire ici (lot
-  // P6) ; la frontière la comble dès le schéma.
+  // compte le reste (`coverage.abilityCharges`). La vignette d'équipement le lit depuis le
+  // lot P6 (`abilityChargeLogic.ts`) ; la frontière le comble dès le schéma.
   'abilityCharges',
 ] as const
 
