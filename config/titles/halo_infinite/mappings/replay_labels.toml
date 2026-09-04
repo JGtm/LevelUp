@@ -176,6 +176,29 @@ markers = [19, 20, 21, 22]
 [ability_impulses]
 families = ["thruster"]
 
+# Familles de capacite dont les CHARGES RESTANTES sont MESUREES par le canal d'energie du
+# bipede : i56 `biped-spartan-ability-energy`, masque R(3) puis 7 bits par emplacement arme,
+# quartet HAUT = charges entieres (lot R11 du 2026-09-03,
+# RAPPORT_R11_REPULSEUR_CHARGES §1.1 et §2). Cf. filmdec/ability_charges.go (lecture) et
+# replay/document_ability_charges.go (jointure d'identite par le rang i48 de la MEME vie).
+#
+# CETTE LISTE EST UNE MESURE, PAS UN REGLAGE (R11 §2-5) : sur `1cd3848a`, la serie 4, 3, 2,
+# 1, 0 tombe EXACTEMENT sur les cinq usages de propulseur releves au Theater (5/5, ecart
+# <= 1 s) ; 36 accroches de grappin sur 36 (canal `grappleLines`, independant) sont appariees
+# a une baisse, contre 2/36 pour un temoin decale de 5 s. Seules ces DEUX familles arment
+# i56 — ce sont les deux capacites dont le client PREDIT le mouvement du porteur (R11 §8.2).
+#
+# LE REPULSEUR N'Y EST PAS, et c'est un negatif MESURE, pas une lacune : 218 vies de
+# repulseur, 111,7 minutes de port sur onze films, 0 baisse attribuable — dont deux porteurs
+# qui consomment leurs TROIS charges (le film l'annonce par le `spent` d'i48) pendant que le
+# canal compte celles du grappin d'autres joueurs du meme film (R11 §4-5). UNE FAMILLE
+# ABSENTE DE CETTE LISTE VOIT SES LECTURES ECARTEES ET COMPTEES
+# (`coverage.abilityCharges.otherFamily`). Une famille citee ici DOIT etre nommee par au
+# moins un rang de palette ci-dessus, sans quoi le calque serait muet en silence — le loader
+# le refuse (meme validateur que la table precedente).
+[ability_charges]
+families = ["grapple", "thruster"]
+
 # Effet de rendu d'un tir, par weapon_key (cf. weapon_names.toml pour le nom affiche).
 #
 # CE QUI EST MESURE, ET CE QUI EST CHOISI. Le libelle de l'arme est MESURE (le film le

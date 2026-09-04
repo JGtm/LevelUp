@@ -91022,3 +91022,43 @@ pousse, qui est pousse, dans quelle direction). Ensuite : elargir le recensement
 
 ---
 
+
+## [2026-09-04] Lot P5 — les CHARGES d'equipement entrent en production (schema 38 enrichi)
+
+**Statut : Complete.** Branche `wt/charges-equipement` (depuis `wt/grappin-vies`).
+Execution PILOTEE : un agent d'implementation (interrompu par limite API, repris par un
+second qui a TOUT re-audite sur pieces), revue adversariale a contexte frais, ronde 2 sur
+la seule correction. Supervision, triage et consolidation par la session principale.
+
+**Decision technique principale.** Le canal i56 `biped-spartan-ability-energy` (R11) entre
+en production sur le patron exact du propulseur (P3) : `filmdec.ScanFilmAbilityCharges`
+(hook `SetAbilityEnergyHook` comme seule grammaire, temoin `Scanned`, `Absent` distinct,
+ordre total), jointure d'identite par le rang i48 de la meme vie et anterieurement
+(`rankInLife` REUTILISE), familles mesurees = donnee de titre (`[ability_charges]
+families = ["grapple", "thruster"]`, validateur factorise `parseMeasuredFamilies`).
+Publication en LECTURES {t, slot, family, charges} — jamais un compte d'usages derive
+(une baisse peut valoir plusieurs usages). Masque non arme = RIEN publie (le film ne
+transmet rien au ramassage). Schema MAINTENU a 38 : ajouts additifs omitempty, les deux
+artefacts 38 cuits (`1b2d9e08`, `1cd3848a`) restent lisibles — justification en chronique.
+
+**Resultats observes.** Acceptation sur pieces, chaine BuildFromFilm entiere :
+`1cd3848a` — serie 4, 3, 2, 1, 0 a 1:52, 1:55, 2:03, 2:05, 2:15 contre le releve Theater
+de l'utilisateur (1:51-2:14), 5/5, ecart <= 1 s ; entonnoir 93 lectures -> 57 publiees,
+26 sans identite, 10 famille non mesuree. Temoin grappin `f2966f08` : 6/6 baisses
+appariees aux accroches publiees (le chiffre de R11 §3.2). Golden `000d5950` : 91 -> 69
+publiees, somme de couverture bouclee. En reprise, une faute d'axe de temps du premier
+jet de test d'acceptation (offset `originMs` sur une seule des deux series, 0/6) a ete
+trouvee et corrigee — production intouchee. REVUE : 16 conditions tiennent (mutations sur
+copies, restauration verifiee octet a octet), 2 constats — Q1 (P1) `account` a 9
+parametres, CORRIGE au patron du voisin (lay/arch dans la structure), ronde 2 conforme,
+lint n'en porte plus trace ; Q2 (P2) cablage des familles dans `replaylabels/catalog.go`
+couvert par aucun test (trou structurel identique pour les trois listes) — CONSIGNE.
+Gates : go test 7/7 paquets 0 FAIL, go vet 0, gofmt vide, check-types exit 0 (cache
+purge), vitest replayContract 13/13. `make go-api-lint` : 6 constats, TOUS anterieurs au
+lot (4 de P3 + 2 goconst `traverse.go` venus des commits precedents de la branche).
+
+**Conclusion / prochaine etape.** Lot P6 (web : la vignette montre les charges, jointure
+par vie) — avec un arbitrage utilisateur a soumettre : avant la premiere lecture, ne rien
+afficher ou afficher « pleines » (le film ne transmet rien au ramassage). Autres arbitrages
+ouverts : publier ou non les evenements de consequence 104/105 du repulseur (R12) ; le
+merge de `wt/grappin-vies` (R12) et de ce lot vers `feat/v75`.
