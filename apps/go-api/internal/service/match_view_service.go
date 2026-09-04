@@ -174,6 +174,13 @@ type MatchViewService struct {
 	// MANCHES et non en points (regulation.toml [rounds_decide]). Nil/absent → l'en-tête
 	// affiche le score de l'API, comportement d'avant le 2026-08-29.
 	roundsDecide map[string]bool
+	// scoreTimelineKind (optionnel) : la RÈGLE du titre courant — un libellé de mode
+	// normalisé → comment le bloc « Score dans le temps » se montre (`hidden` / `events` /
+	// `curve`, regulation.toml [score_timeline]). Une FONCTION et non une table, parce que
+	// l'appariement se fait par jeton de mode (mot entier) et non par clé exacte : la règle
+	// voyage entière, elle ne se réimplémente pas ici. Nil (titre sans table) → le header
+	// laisse le champ vide et le client retombe sur la courbe.
+	scoreTimelineKind func(modeLabel string) string
 	// killDistanceRepo (optionnel) : loader « distance par arme, par joueur »
 	// (POC LOT G.3, plan retours-utilisateur §3bis DEC-8). Nil, ou titre sans
 	// capability film.kill_source => pas de bloc, jamais d'erreur. Dégradation
@@ -289,6 +296,15 @@ func (s *MatchViewService) WithAssetURL(a games.TitleAssetURLAdapter) *MatchView
 // le comportement d'avant le 2026-08-29, jamais une régression.
 func (s *MatchViewService) WithRoundsDecide(roundsDecide map[string]bool) *MatchViewService {
 	s.roundsDecide = roundsDecide
+	return s
+}
+
+// WithScoreTimelineKind injecte la règle `libellé de mode → lecture du bloc « Score dans le
+// temps »` du titre courant (regulation.toml [score_timeline]). Sans injection, l'en-tête
+// laisse le champ vide et le client garde la courbe — le comportement d'avant le
+// 2026-09-03, jamais un bloc qui disparaît par accident.
+func (s *MatchViewService) WithScoreTimelineKind(resolve func(modeLabel string) string) *MatchViewService {
+	s.scoreTimelineKind = resolve
 	return s
 }
 

@@ -49,8 +49,22 @@ import type { PadEquipmentFamilyKey } from './weaponPadFamilies'
  */
 export interface EquipmentUsageText {
   title: string
-  colPlayer: string
-  teamTotal: string
+  /**
+   * LES DEUX VUES EMPILEES DE LA SECTION (2026-09-03). Le tableau a deux niveaux d'en-tete a
+   * ete remplace par un graphe : `viewByPlayer` classe les joueurs geste par geste,
+   * `viewTeamShare` dit quel camp s'est appuye sur quel outil. Deux titres et pas un : les
+   * deux vues repondent a deux questions, et une carte sans titre de vue laisserait croire
+   * a deux lectures de la meme.
+   */
+  viewByPlayer: string
+  viewTeamShare: string
+  /** Infobulle d'une barre de la grille : joueur, grandeur, valeur DEJA ecrite. */
+  gridTipFmt: (player: string, column: string, value: string) => string
+  /**
+   * Infobulle d'un segment de part d'equipe. Le COMPTE BRUT y figure avec son total, jamais
+   * le seul pourcentage : deux segments a 50 % ne disent pas s'ils valent 1 ou 40.
+   */
+  shareTipFmt: (team: string, family: string, count: number, total: number) => string
   /** Tractions de grappin : la seule ACTIVATION de capacité que le film mesure et attribue. */
   groupGrapple: string
   groupGrappleHint: string
@@ -130,9 +144,20 @@ export interface PadControlText {
   title: string
   /** Infobulle du titre : d'où vient l'attribution, et ce qu'elle refuse de faire. */
   titleHint: string
-  colPlayer: string
-  colTotal: string
-  teamTotal: string
+  /**
+   * LE GRAPHE (2026-09-03) : une arme par ligne, deux bâtons superposés, une échelle commune.
+   * `axisPickups` nomme cette échelle — sans lui, une graduation « 0 1 2 3 » ne dit pas de
+   * quoi elle compte les unités.
+   */
+  axisPickups: string
+  /** Infobulle d'un segment : le joueur, son camp, le socle, ses prises. */
+  barTipFmt: (player: string, team: string, weapon: string, count: number) => string
+  /**
+   * L'ANNOTATION DE DROITE : les occupations de CE socle dont l'événement natif ne nomme pas le
+   * ramasseur. Elles ne sont versées à aucun camp — les afficher à part est la seule façon de
+   * dire « ce socle a changé de mains plus souvent que la ligne ne le montre » sans inventer.
+   */
+  unnamedFmt: (count: number) => string
   /** Le dénominateur : « N prises attribuées sur M occupations de socle ». */
   attributedFmt: (attributed: number, occupations: number) => string
   /** L'annonce du reste, avant la ventilation par cause. */

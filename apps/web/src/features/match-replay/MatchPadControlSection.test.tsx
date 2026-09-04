@@ -1,15 +1,18 @@
 /**
  * Tests — MatchPadControlSection (le contrôle des armes spéciales de la page match).
  *
- * CE QU'ILS PROTÈGENT, et ce sont les quatre promesses de la section :
+ * CE QU'ILS PROTÈGENT, et ce sont les cinq promesses de la section :
  *   1. LA DOUBLE PORTE. Sans artefact — la quasi-totalité des matchs en production — la section
  *      ne rend RIEN ; avec un artefact dont aucune occupation n'est attribuée, non plus. Un
  *      cadre vide répété sur chaque page de match est une promesse non tenue à l'infini.
  *   2. LES NOMS D'ARME viennent des tables EXISTANTES du rejeu (catalogue du document, familles
  *      de socle) — jamais une clé brute, jamais une seconde table de noms.
- *   3. LE TOTAL D'ÉQUIPE est la somme des lignes du camp.
- *   4. CE QUI N'EST PAS ATTRIBUÉ SE DIT, avec sa cause : le lecteur doit pouvoir vérifier que
- *      prises affichées + occupations hors tableau = occupations mesurées.
+ *   3. UNE LIGNE PAR ARME, DEUX BÂTONS, UNE ÉCHELLE COMMUNE : le camp du joueur de la page est
+ *      le bâton du haut, et l'axe compte les prises en entiers.
+ *   4. CE QUI N'A PAS DE RAMASSEUR NOMMÉ N'EST VERSÉ À PERSONNE : il est annoté à droite de sa
+ *      ligne, hors des bâtons.
+ *   5. CE QUI N'EST PAS ATTRIBUÉ SE DIT, avec sa cause : le lecteur doit pouvoir vérifier que
+ *      prises affichées + occupations hors graphe = occupations mesurées.
  *
  * Le calcul est éprouvé chez `padControlLogic.test.ts` ; ici on éprouve le RENDU.
  */
@@ -93,7 +96,7 @@ function poserArtefact(over: Partial<ReplayDocument> | null) {
 }
 
 /**
- * La NOTE de bas de tableau qui contient ce fragment. Un matcher de texte brut remonterait
+ * La NOTE de bas de carte qui contient ce fragment. Un matcher de texte brut remonterait
  * jusqu'aux ancêtres (la section entière contient aussi la phrase) : on borne au paragraphe.
  */
 function note(vue: ReturnType<typeof render>, fragment: string): HTMLElement {
@@ -138,13 +141,12 @@ describe('MatchPadControlSection — la double porte', () => {
   })
 })
 
-describe('MatchPadControlSection — le tableau', () => {
-  it('affiche le titre, la colonne de total et une colonne par socle réellement pris', () => {
+describe('MatchPadControlSection — le graphe', () => {
+  it('affiche le titre et une ligne par socle réellement pris', () => {
     poserArtefact(TEMOIN)
     const vue = afficher()
     expect(vue.getByRole('region', { name: t.padControl.title })).toBeTruthy()
-    expect(vue.getAllByText(t.padControl.colTotal).length).toBeGreaterThan(0)
-    // Le socle de bonus n'a été pris par personne : aucune colonne pour lui.
+    // Le socle de bonus n'a été pris par personne : aucune ligne pour lui.
     expect(vue.queryByText(t.padEquipmentFamily.powerup_overshield)).toBeNull()
   })
 
@@ -155,20 +157,45 @@ describe('MatchPadControlSection — le tableau', () => {
     expect(vue.queryByText(SNIPER)).toBeNull()
   })
 
-  it('montre chaque joueur sous son camp, et le total du camp est la somme de ses lignes', () => {
+  it('nomme chaque segment par son joueur, son camp, son socle et ses prises', () => {
     poserArtefact(TEMOIN)
     const vue = afficher()
-    for (const nom of ['Alpha', 'Bravo', 'Charlie']) expect(vue.getByText(nom)).toBeTruthy()
-    const totaux = vue.getAllByText(t.padControl.teamTotal)
-    expect(totaux.length).toBe(2)
-    // Le camp d'Alpha totalise ses deux prises ; l'autre camp reste à zéro.
-    const ligneTotal = totaux[0].closest('tr')
-    expect(ligneTotal?.textContent).toContain('2')
+    const segment = vue.getByLabelText(
+      t.padControl.barTipFmt('Alpha', 'Équipe Eagle', 'S7 Sniper', 2),
+    )
+    // Deux prises sur une échelle bornée à deux : le segment remplit son bâton et porte son
+    // nombre.
+    expect(segment.textContent).toBe('2')
+  })
+
+  it('pose le camp du joueur de la page EN HAUT, l’adverse en dessous', () => {
+    poserArtefact(TEMOIN)
+    const vue = afficher()
+    const legende = vue.getByTestId('chart-legend')
+    expect([...legende.querySelectorAll('li')].map((li) => li.textContent)).toEqual([
+      'Équipe Eagle',
+      'Équipe Cobra',
+    ])
+  })
+
+  it('gradue l’axe en ENTIERS et nomme ce qu’il compte', () => {
+    poserArtefact(TEMOIN)
+    const vue = afficher()
+    expect(vue.getByText(t.padControl.axisPickups)).toBeTruthy()
+    for (const tick of ['0', '1', '2']) expect(vue.getAllByText(tick).length).toBeGreaterThan(0)
+  })
+
+  it('annote à droite les occupations SANS ramasseur nommé, hors des bâtons', () => {
+    poserArtefact(TEMOIN)
+    const vue = afficher()
+    // Trois occupations du socle S7, deux nommées : la troisième s'affiche à part.
+    const annotation = vue.getByText(t.padControl.unnamedFmt(1))
+    expect(annotation.querySelector('[role="img"]')).toBeNull()
   })
 })
 
 describe('MatchPadControlSection — ce que l’écran dit de sa mesure', () => {
-  it('écrit le dénominateur et ventile les occupations hors tableau par CAUSE', () => {
+  it('écrit le dénominateur et ventile les occupations hors graphe par CAUSE', () => {
     poserArtefact(TEMOIN)
     const vue = afficher()
     expect(note(vue, t.padControl.attributedFmt(2, 4))).toBeTruthy()
@@ -183,6 +210,7 @@ describe('MatchPadControlSection — ce que l’écran dit de sa mesure', () => 
     const en = REPLAY_TEXT.en.padControl
     expect(vue.getByRole('region', { name: en.title })).toBeTruthy()
     expect(note(vue, en.attributedFmt(2, 4))).toBeTruthy()
-    expect(vue.queryByText(t.padControl.colTotal)).toBeNull()
+    expect(vue.getByText(en.axisPickups)).toBeTruthy()
+    expect(vue.queryByText(t.padControl.axisPickups)).toBeNull()
   })
 })
