@@ -740,6 +740,24 @@ func (p *PathResolver) ReplayArtifactsDir(titleSlug string) string {
 	return filepath.Join(p.repoRoot, "data", "cache", "replays", titleSlug)
 }
 
+// ReplayUsageSummaryPath retourne le chemin du RÉSUMÉ D'USAGE d'un match : le sidecar de
+// quelques kilo-octets rangé À CÔTÉ de l'artefact de rejeu, et dérivé de lui.
+// Ex: data/cache/replays/halo_infinite/000d5950.usage.json
+//
+// POURQUOI UN SIDECAR ET PAS UNE TABLE. Les grandeurs d'usage (tractions, épisodes de
+// camouflage, poses, prises de socle) ne vivent que dans l'artefact, qui pèse 1,8 Mo en
+// moyenne : une page qui agrège une session en ouvrirait neuf. La donnée reste où elle est
+// née (décision D2 du plan d'exploitation du registre du film) et le résumé n'est qu'un
+// index de lecture — régénérable à tout moment depuis l'artefact, sans re-décoder de film,
+// donc sans aucune exposition à la doctrine anti-ART.
+//
+// MÊME CLÉ COURTE ET MÊME DOSSIER que ReplayArtifactPath : le résumé se purge avec son
+// artefact, et un artefact sans résumé se distingue d'un match sans film par la seule
+// présence du .json voisin.
+func (p *PathResolver) ReplayUsageSummaryPath(titleSlug, matchID string) string {
+	return filepath.Join(p.ReplayArtifactsDir(titleSlug), FilmShortMatchID(matchID)+".usage.json")
+}
+
 // MapQuantBoundsPath retourne le chemin du catalogue des bornes de quantification par
 // carte (AABB des BSP extraites des modules du jeu, cf. filmdec.MapQuantCatalog). Donnée
 // de RÉFÉRENCE versionnée — pas un cache : elle ne se régénère qu'avec les fichiers du
