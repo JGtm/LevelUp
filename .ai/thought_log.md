@@ -96,9 +96,52 @@ la meme liste de 11 jetons · quatre barres DOM proches (`proportional-bar`, `ou
 (padControlLogic) n'expose pas un socle dont TOUTES les occupations sont anonymes · le ratchet
 `lint-cross-feature-imports` est AU PLAFOND (7/7).
 
-**Prochaine etape.** Merge de `wt/match-view-retours` dans `feat/v75` (accord utilisateur
-requis) — 7 commits. Puis arbitrage des deux ecarts au mock sur pieces.
-Le mock SESSION (Solo + Escouade, 18 formes) est publie et attend le choix de l'utilisateur.
+**PAGE SESSIONS — formes choisies par l'utilisateur le 04/09**, apres trois planches
+(cadences par 10 min ; part du lobby ; consolidation). Doctrine retenue :
+
+- **Tout est NORMALISE**, aucune valeur brute — la page sert a comparer DES SESSIONS entre
+  elles. Cadences par dix minutes de jeu, ou parts en pourcentage. La grille « Objectif par
+  mode en valeurs brutes » est ecartee pour ce motif.
+- **La reference est l'equipe d'en face**, et elle n'est JAMAIS affichee : ni ligne, ni nom,
+  ni couleur. Elle est le denominateur et le trait de PARITE (colore).
+- **DEUX denominateurs partout** : ma part de MON EQUIPE (parite 100/effectif d'equipe) et
+  ma part du LOBBY (parite 100/effectif du lobby). Les deux ensemble repondent a « ai-je ete
+  un poids mort » : etre a la parite de son equipe pendant que l'equipe est sous celle du
+  lobby, ce n'est pas etre en defaut.
+- **Les GRENADES sortent du bloc equipement** (decision utilisateur : ce n'en sont pas).
+  Restent camouflage, surbouclier, mur, grappin, objets laches au sol.
+- Trois formes composent la grammaire : ecart a la parite · jauge double avec etendue ·
+  piste du lobby (colore = nous, hachure = eux). Plus la grille alignee et la bande de
+  regularite, avec axe des valeurs gradue sous chaque forme.
+
+**PIEGE MESURE — les socles melangent armes et bonus.** Releve sur 40 artefacts :
+`weaponPads[].weapon` porte 26 armes reelles PLUS `powerup_camo` (17) et
+`powerup_overshield` (15), plus un identifiant non catalogue. Le bloc de la vue match exclut
+deja les socles de bonus (note de pied `gapFmt.powerup`). Aucun equipement DEPLOYABLE
+(grappin, mur, capteur) n'apparait en socle dans ce corpus.
+
+**Les grandeurs de session vivent UNIQUEMENT dans les artefacts de rejeu** — 1,8 Mo en
+moyenne, 114 artefacts, 208 Mo : ouvrir neuf artefacts par chargement de page est exclu, il
+faut un resume par match. Premiere voie tentee : un SIDECAR a cote de l'artefact (aucune
+table DuckDB, dans l'esprit de la decision D2 du plan d'exploitation du registre). **Voie
+ABANDONNEE le 04/09 sur decision de l'utilisateur : « il faut les sauvegarder en BDD lors du
+sync ».** Le lot a ete arrete en vol, son WIP commite (`wt/session-usage`, `b8dc38107` —
+seule la sortie de la regle socle-arme / socle-bonus y est reutilisable).
+
+**MERGE FAIT** (accord utilisateur 04/09) : `wt/match-view-retours` -> `feat/v75`, merge
+`2577e57a5`. Un seul conflit, sur un commentaire d'en-tete de test que `wt/grappin-vies`
+avait touche en parallele (repulseur/propulseur) — resolu en gardant les DEUX faits.
+Gates apres merge : `tsc -b` propre, 248 fichiers vitest / 3 077 tests verts sur
+match-replay + match-view + components.
+
+**Handoff ecrit** : `.ai/HANDOFF_SESSION_USAGE_BDD_2026-09-04.md` — table append-only
+(ADR 0026, vue `_latest`), ecriture INSERT-only par `persist` (ADR 0019/0030), branchement
+dans l'etape post-sync qui cuit deja les artefacts (`sync/engine_postsync.go`), CLI de
+backfill sur les 114 artefacts existants, puis agregat de session et front. Il porte les
+formes validees, les chiffres de reference du temoin et les controles croises a exiger.
+
+**Prochaine etape.** Reprise du handoff (lots S1/S2/S3). Verification visuelle du merge par
+l'utilisateur sur `:8000`.
 
 ## [2026-09-03] Fonds de carte du rejeu 2D — la premisse « reutiliser les dessins » est REFUTEE ; +8 cartes par l'heritage variante -> base — Complete
 
