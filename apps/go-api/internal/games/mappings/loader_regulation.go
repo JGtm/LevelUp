@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"github.com/pelletier/go-toml/v2"
+
+	"levelup/go-api/internal/analysis/modelabel"
 )
 
 // RegulationSet porte le temps RÉGLEMENTAIRE par variante de jeu d'un titre
@@ -39,15 +41,47 @@ type RegulationSet struct {
 	// de dénominateur, donc aucune jauge de progression — jamais une jauge au jugé.
 	// Consommateur : le constructeur d'artefact (ScoreTimeline.HoldTicksPerPoint).
 	holdTicks map[string]int
+	// scoreTimeline : JETON DE MODE → comment le score se montre dans le temps
+	// (`hidden` / `events` / `curve`). Contrairement aux quatre tables ci-dessus, la clé
+	// n'est PAS un game_variant_name mais un jeton de mode apparié comme dans
+	// objective_roles.toml : la règle porte sur la FAMILLE de mode, pas sur une déclinaison
+	// de playlist qu'un renommage de saison ferait tomber. Mode non déclaré → repli sûr
+	// `curve`, le comportement d'avant la table. Consommateur : MatchViewHeader.
+	scoreTimeline map[string]string
+	// scoreTimelineTokens : les jetons déclarés, dans un ordre stable — l'appariement
+	// (mot entier, jeton le plus long gagnant) les prend tels quels.
+	scoreTimelineTokens []string
+}
+
+// Les trois lectures possibles du bloc « Score dans le temps » de la vue match. Ce sont
+// les SEULES valeurs admises par la table `[score_timeline]` : toute autre est une erreur
+// de configuration refusée au chargement, jamais un silence.
+const (
+	// ScoreTimelineHidden : le bloc ne s'affiche pas (le mode marque au frag — la courbe
+	// redirait « Frags cumulés », juste au-dessus dans le même onglet).
+	ScoreTimelineHidden = "hidden"
+	// ScoreTimelineEvents : des barres verticales aux INSTANTS de marque (le mode marque
+	// en 3 à 5 points sur tout le match : une courbe y serait un escalier vide).
+	ScoreTimelineEvents = "events"
+	// ScoreTimelineCurve : la courbe en escalier — et le REPLI de tout mode non déclaré.
+	ScoreTimelineCurve = "curve"
+)
+
+// scoreTimelineKinds — la liste FERMÉE des lectures admises.
+var scoreTimelineKinds = map[string]bool{
+	ScoreTimelineHidden: true,
+	ScoreTimelineEvents: true,
+	ScoreTimelineCurve:  true,
 }
 
 // regulationTOML — projection brute de regulation.toml.
 type regulationTOML struct {
-	Meta         metaSection     `toml:"meta"`
-	Seconds      map[string]int  `toml:"regulation_seconds"`
-	Targets      map[string]int  `toml:"score_target"`
-	RoundsDecide map[string]bool `toml:"rounds_decide"`
-	HoldTicks    map[string]int  `toml:"hold_ticks_per_point"`
+	Meta          metaSection       `toml:"meta"`
+	Seconds       map[string]int    `toml:"regulation_seconds"`
+	Targets       map[string]int    `toml:"score_target"`
+	RoundsDecide  map[string]bool   `toml:"rounds_decide"`
+	HoldTicks     map[string]int    `toml:"hold_ticks_per_point"`
+	ScoreTimeline map[string]string `toml:"score_timeline"`
 }
 
 // Seconds retourne le temps réglementaire de la variante et true s'il est connu.
@@ -82,6 +116,43 @@ func (s *RegulationSet) HoldTicksPerPoint(gameVariantName string) (int, bool) {
 	}
 	v, ok := s.holdTicks[strings.TrimSpace(gameVariantName)]
 	return v, ok
+}
+
+// ScoreTimelineKind dit COMMENT le score du mode se montre dans le temps :
+// `hidden` (le mode marque au frag — la courbe redirait « Frags cumulés »),
+// `events` (3 à 5 points sur tout le match — des barres aux instants de marque), ou
+// `curve` (le score monte en continu — la courbe en escalier).
+//
+// `pairName` est le `pair_name` BRUT du match, dont on n'a retiré que le suffixe de CARTE
+// (modelabel.StripMapSuffix). La table est indexée par JETON de mode, cherché comme mot
+// entier, insensible à la casse, jeton le plus long gagnant (analysis/modelabel, une seule
+// implémentation dans le dépôt).
+//
+// ET NON PAS UN LIBELLÉ NORMALISÉ, contrairement à objective_roles.toml : la normalisation
+// MANGE le jeton de mode sur toute une famille de pair_name — « Super Fiesta:Slayer » y
+// devient « Super Fiesta », « Team Slayer:Arena » devient « Arena ». Mesure du 2026-09-03
+// sur le registre local : 460 matchs recevraient le mauvais verdict, dont les 429 du mode le
+// plus joué du corpus. Le détail des neuf familles est dans le commentaire de la table
+// (config/titles/halo_infinite/mappings/regulation.toml).
+//
+// LE RETRAIT DU SUFFIXE DE CARTE, LUI, EST INDISPENSABLE : c'est lui qui empêche un nom de
+// carte de porter un jeton de mode.
+//
+// nil-safe, table absente, libellé vide ou mode non déclaré → `curve` : le REPLI SÛR,
+// c'est-à-dire le comportement d'avant la table. Un mode inconnu ne fait jamais
+// disparaître le bloc.
+func (s *RegulationSet) ScoreTimelineKind(pairName string) string {
+	if s == nil || len(s.scoreTimeline) == 0 {
+		return ScoreTimelineCurve
+	}
+	token := modelabel.ExtractKnownMode(pairName, s.scoreTimelineTokens)
+	if token == "" {
+		return ScoreTimelineCurve
+	}
+	if kind, ok := s.scoreTimeline[token]; ok {
+		return kind
+	}
+	return ScoreTimelineCurve
 }
 
 // RoundsDecide dit si le RÉSULTAT de la variante se lit en MANCHES plutôt qu'en points.
@@ -224,12 +295,49 @@ func LoadRegulationFromBytes(path string, raw []byte) (*RegulationSet, error) {
 		}
 		rounds[key] = true
 	}
+	timeline, timelineTokens, err := parseScoreTimeline(path, doc.ScoreTimeline)
+	if err != nil {
+		return nil, err
+	}
 	return &RegulationSet{
-		titleSlug:     doc.Meta.TitleSlug,
-		schemaVersion: doc.Meta.SchemaVersion,
-		seconds:       seconds,
-		targets:       targets,
-		roundsDecide:  rounds,
-		holdTicks:     holds,
+		titleSlug:           doc.Meta.TitleSlug,
+		schemaVersion:       doc.Meta.SchemaVersion,
+		seconds:             seconds,
+		targets:             targets,
+		roundsDecide:        rounds,
+		holdTicks:           holds,
+		scoreTimeline:       timeline,
+		scoreTimelineTokens: timelineTokens,
 	}, nil
+}
+
+// parseScoreTimeline valide la table `[score_timeline]` : jeton non vide, lecture DANS la
+// liste fermée (`hidden` / `events` / `curve`).
+//
+// UNE VALEUR INCONNUE EST UNE ERREUR DE CHARGEMENT, JAMAIS UN SILENCE. Une faute de frappe
+// (`event` au lieu de `events`) tomberait sinon sur le repli `curve` et se lirait à l'écran
+// comme une décision produit — le mode garderait sa courbe alors que la table dit le
+// contraire, et rien ne le signalerait.
+//
+// Les jetons sortent TRIÉS : l'appariement (`ExtractKnownMode`) départage sur la longueur,
+// mais l'ordre stable garde le comportement reproductible et les journaux comparables.
+func parseScoreTimeline(path string, raw map[string]string) (map[string]string, []string, error) {
+	kinds := make(map[string]string, len(raw))
+	tokens := make([]string, 0, len(raw))
+	for rawToken, rawKind := range raw {
+		token := strings.TrimSpace(rawToken)
+		if token == "" {
+			return nil, nil, fmt.Errorf("%s: [score_timeline] jeton de mode vide", path)
+		}
+		kind := strings.TrimSpace(rawKind)
+		if !scoreTimelineKinds[kind] {
+			return nil, nil, fmt.Errorf(
+				"%s: [score_timeline] jeton %q : lecture %q inconnue — attendu %q, %q ou %q",
+				path, token, rawKind, ScoreTimelineHidden, ScoreTimelineEvents, ScoreTimelineCurve)
+		}
+		kinds[token] = kind
+		tokens = append(tokens, token)
+	}
+	sort.Strings(tokens)
+	return kinds, tokens, nil
 }

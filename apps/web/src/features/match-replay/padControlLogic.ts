@@ -94,6 +94,16 @@ export interface PadControl {
    * roster, ou index de socle hors bornes). Distinct des abstentions de la datation.
    */
   unjoined: number
+  /**
+   * LES OCCUPATIONS SANS RAMASSEUR NOMMÉ, SOCLE PAR SOCLE (clé = `weaponPads[].weapon`).
+   *
+   * Le total de ces manques vit déjà dans `padControlGaps`, ventilé par CAUSE ; celui-ci les
+   * ramène à l'ARME, parce que l'écran les annote ligne par ligne (« + N sans nom ») et qu'un
+   * lecteur doit pouvoir dire « le lance-roquettes a changé de mains trois fois de plus que ce
+   * que la ligne montre ». Elles ne sont JAMAIS versées à un camp : ce serait inventer un
+   * ramasseur, exactement ce que la datation a refusé de faire.
+   */
+  unnamedByWeapon: Record<string, number>
   /** Faux = aucune prise attribuée : l'écran ne doit rien rendre (double porte). */
   hasData: boolean
 }
@@ -126,14 +136,19 @@ export function buildPadControl(
   const known = new Set(players.map((p) => p.xuid))
   const tallies = new Map<string, PadControlTally>()
   const matchTotal: Record<string, number> = {}
+  const unnamedByWeapon: Record<string, number> = {}
   let unjoined = 0
 
   for (const pick of doc.padPickups) {
-    // Pas de ramasseur nommé : la datation s'est abstenue, et on ne rattrape rien.
-    if (!pick.xuid) continue
     // `pad` est un INDEX dans `weaponPads` (ordre stable garanti côté build) : un index hors
     // bornes ne compte pour aucun socle voisin — il rejoint les prises non rattachées.
     const pad = doc.weaponPads[pick.pad]
+    // Pas de ramasseur nommé : la datation s'est abstenue, et on ne rattrape rien. L'occupation
+    // est réelle : elle est comptée SUR SON SOCLE, pour que l'écran puisse l'annoter.
+    if (!pick.xuid) {
+      if (pad) unnamedByWeapon[pad.weapon] = (unnamedByWeapon[pad.weapon] ?? 0) + 1
+      continue
+    }
     if (!pad || !known.has(pick.xuid)) {
       unjoined += 1
       continue
@@ -155,6 +170,7 @@ export function buildPadControl(
     coverage: doc.coverage?.padDating ?? null,
     attributed,
     unjoined,
+    unnamedByWeapon,
     hasData: attributed > 0,
   }
 }
