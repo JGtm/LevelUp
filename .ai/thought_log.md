@@ -1,3 +1,30 @@
+## [2026-09-04] Chantier vehicules — HANDOFF complet ecrit — En cours (3 validations utilisateur en attente)
+
+**Handoff** : `.ai/HANDOFF_VEHICULES_2026-09-04.md`. Etat du chantier apres 21 commits depuis
+feat/v75 (branche JAMAIS POUSSEE, CI jamais executee — seul vrai risque en suspens).
+
+**Livre et en production** : les 4 objectifs utilisateur sont couverts sauf la datation de
+destruction. Le rejeu 2D dessine les vehicules (proportions reelles, teinte equipe, orientation,
+occupants nommes avec sieges, un cone de visee PAR OCCUPANT, tirs partant de leur monture,
+fantomes fusionnes, decor filtre). Document schema 31.
+
+**En attente de l utilisateur** : (1) verifier 2-3 destructions candidates en Theater — les 7
+sont datees en TEMPS DE MATCH avec leur identifiant complet dans le handoff §3.1, 5/7 suffisent
+a publier ; (2) ecouter les 4 tirs Covenant reconstruits ; (3) capturer les moteurs en jeu ;
+(4) feu vert pour pousser et jouer la CI.
+
+**Acquis RE qui depassent le chantier** (handoff §5) : table composant->deser STATIQUE (methode
+validee 6/6) ; ti=40 porte les variantes -dynamic-precision- (un correctif de 2026-07 avait
+repare ti=35 en cassant ti=40) ; le decodeur bipede ignorait les records de VISEE SANS POSITION
+(22 963 lectures sur un film) — toute conclusion tiree d une « absence dans le flux » est a
+relire ; domaine 1 = les UNITES ; la tourelle est une entite a part ; le « switch de regime
+moteur » est l espace de l auditeur (reverberation).
+
+**Negatifs mesures a ne pas re-creuser** (handoff §6) : etat « qui est a bord » inexistant dans
+le film (6 endroits), pas d embarquement cache (1,2e8 essais temoins), destruction non datee par
+evenement (28 types, 6 angles), i2 refute meme sous grammaire corrigee, moteurs non
+reconstructibles depuis les banques.
+
 ## [2026-09-03] Rejeu vehicules — V12 : la VISEE DE CHAQUE OCCUPANT publiee (schema 31) et branchee dans le cone — Complété
 
 Execute le report n° 1 du lot V11. Aucun commit, aucun `git add`. GOCACHE isole
