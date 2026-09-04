@@ -90960,3 +90960,65 @@ passes, 14 skippes ; `npx eslint` exit 0. Zero couleur en dur, aucun cliquet de 
 vie ; le rejeu 2D n'a plus de jointure `slot -> points` ecrasante. Rapport detaille :
 `.ai/V7.5/replay2d/RAPPORT_D1_GRAPPIN_VIES_2026-09-04.md`. La RE-CUISSON DU PARC peut
 desormais se faire sans reintroduire ce trou — c'est elle qui aurait rendu le defaut visible.
+
+---
+
+## [2026-09-04] Lot R12 — le REPULSEUR avec six ancres : le film porte l'EFFET, pas le GESTE — Complete
+
+**Statut** : Complete (retro-ingenierie statique, aucun code de production touche, aucun commit,
+aucune DuckDB ouverte, Ghidra non lance). Rapport :
+`.ai/V7.5/replay2d/RAPPORT_R12_REPULSEUR_ANCRES_2026-09-04.md`. Branche `wt/r12-repulseur`,
+creee depuis `wt/grappin-vies`. Huit `*_research_test.go` env-gates, NON commites.
+
+**Decision technique principale.** Neuf canaux avaient ete fermes par R8/R9/R11 sans un seul
+instant d'usage certain du repulseur. Un collegue de l'utilisateur en a releve six au Theater
+sur le film `215e7022` (Argyle). Le lot a d'abord TRANCHE LA CONVENTION DE TEMPS — les
+instants du releve sont en TEMPS DE FILM, etabli deux fois : (a) le decodeur de production
+`killsource` place l'unique kill au `jpt! 0x07104b31` du film a 325 526 ms = 5:25,5 la ou le
+releve situe l'usage a 5:25 ; (b) le canal i48 retrouve les QUATRE ramassages a +1,35 a
++1,97 s (bande de 620 ms), contre 1/4 et 0/4 pour les temoins decales de +/-30 s. Puis il a
+pose la question dans l'autre sens : qu'est-ce qui bouge chez le porteur a ces instants ?
+
+**Resultats observes.** (1) L'ETAT DU BIPEDE ne bouge pas : recensement ancre des 64
+composants, 706 records de porteur en fenetre, aucun composant de capacite au-dessus de son
+taux de repos — alors que le MEME instrument, ancre sur les usages de grappin du MEME film,
+fait bondir i56 d'un facteur 9,00. Le negatif de R9/R11 passe de « plancher de bruit » a
+« mesure a l'endroit et a l'heure, avec temoin positif interne ». (2) LA LISTE D'EVENEMENTS
+bouge : les DEUX seules occurrences du type 104 `EquipmentKnockbackPlayer` du film tombent a
+5:25,5 et 5:25,6, et l'UNIQUE tete de type 105 `EquipmentObjectKnockedBack` du film (position
+1, cadrage CERTAIN) tombe a 5:25,6. (3) SECONDE ANCRE, independante du releve et sur un autre
+film : sur `a6ae19fb`, une tete de 105 tombe 149 ms avant la consommation de la derniere
+charge de repulseur que R11 par. 5 publiait comme « le cas qui tranche ». Hasard des deux
+coincidences : ordre de 5e-7, sur une base de 22 tetes de 105 pour 1 223 551 paquets delta et
+42 films. (4) Le rappel est structurellement partiel — 2 usages sur 5 — parce que ces
+evenements sont des CONSEQUENCES : un repulseur declenche dans le vide ne pousse rien.
+(5) Le report n°1 de R9, le type 14 `PlayEffectOnObject`, est REFUTE : 1 occurrence dans tout
+le film, a 0:54,2.
+
+**Trois acquis lateraux.** (a) Le `jpt! 0x07104b31` = Repulsor est confirme sur corpus reel ET
+par verite terrain Theater — la raison specifique de sa reserve au registre (« PAS de
+verite-terrain Theater ») n'existe plus. (b) Les reapparitions au socle sont datees 3/3
+(temoin decale 0/3) par les creations d'entites ti=37 portant le GlobalID d'`eqip`
+`0x7ca85adc` ; le meme canal rend 0/4 sur les ramassages — separation propre. (c) LA MARCHE DE
+LISTE D'EVENEMENTS NE DEPEND PLUS DU CATALOGUE DE BORNES : `etendue := 2^AxisW[i] / 60`,
+reconstruit depuis le seul layout i0 du film, rend EXACTEMENT les memes largeurs que la vraie
+carte (classe d'equivalence, demontree et controlee a k=16) ; oracle de trame sur Argyle :
+facteur 5,46 contre un seuil pre-inscrit de 3, profondeur 1,763 = mediane du parc de R7.
+
+**Reserve dite.** Le type 104 n'est presque jamais en tete (2 sur 1,22 million de paquets
+delta, 42 films) : les deux occurrences de 5:25 sont en position 4 et 2, donc lues par la
+marche, et le corpus montre que la marche FABRIQUE ce type sur les films mal cadres. Ce qui
+les sauve : predecesseur 105 (pas le `damage_aftermath` suspect de R7), oracle de trame
+restreint non effondre, et coincidence avec un instant date par deux autres canaux. Le type
+105, lui, n'est pas sous cette reserve (tetes, cadrage certain). AMENDEMENT A R7 : son
+« 0 tete sur 108 occurrences, p ~ 1e-23 » doit se lire « trop rare pour se mesurer », pas
+« ce type n'existe pas ».
+
+**Conclusion / prochaine etape.** Registre des reports au par. 11 du rapport. Le plus rentable :
+porter la grammaire des types 104 et 105 (deja lue dans l'exe par R7 par. 4.1) et calibrer le
+domaine de leur reference — c'est ce qui transformerait une DATE en un fait de rejeu (qui
+pousse, qui est pousse, dans quelle direction). Ensuite : elargir le recensement des tetes aux
+1 380 films du cache, et faire relever au Theater les dix tetes de 105 non expliquees.
+
+---
+
